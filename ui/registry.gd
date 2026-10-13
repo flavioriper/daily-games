@@ -382,8 +382,12 @@ const PUZZLES := [
 		"card": "res://ui/menu/cards/hiddenword.gd",
 		"shell": "flat",
 		"tray": "keys",
-		"actions": false,
 		"tip": false,
+		# Its world is the whole screen (`bleed`, puzzles/hidden_word_world.gd) and the
+		# levels stand where the day card was (docs/agents/flat-screens.md).
+		"bleed": true,
+		"level_card": true,
+		"actions": false,
 		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku (2026-09-23): the word comes from the 217
 		# commonest answers, the first 467 or all 968 (content/hidden_word.json's
@@ -411,6 +415,10 @@ const PUZZLES := [
 		"card": "res://ui/menu/cards/wordtrail.gd",
 		"shell": "flat",
 		"tray": "none",
+		# Its world is the whole screen (`bleed`, puzzles/word_trail_world.gd) and the
+		# levels stand where the day card was (docs/agents/flat-screens.md).
+		"bleed": true,
+		"level_card": true,
 		"actions": false,
 		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku (2026-09-23): four words on a 5 by 5 field, six
@@ -449,6 +457,11 @@ const PUZZLES := [
 		"card": "res://ui/menu/cards/mushroom.gd",
 		"shell": "flat",
 		"tray": "patch",
+		# Its world is the whole screen (`bleed`, puzzles/mushroom_world.gd) and the
+		# levels stand where the day card was (docs/agents/flat-screens.md).
+		"bleed": true,
+		"level_card": true,
+		"actions": false,
 		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku (2026-09-23): 6 mushrooms in a 6 by 6 patch, 9 in
 		# 7 by 7 or 12 in 8 by 8 (mushroom_gen.gd's SIZES), and each is its
@@ -476,6 +489,11 @@ const PUZZLES := [
 		"card": "res://ui/menu/cards/sudoku.gd",
 		"shell": "flat",
 		"tray": "digits",
+		# Its world is the whole screen (`bleed`, puzzles/sudoku_world.gd) and the
+		# levels stand where the day card was (docs/agents/flat-screens.md).
+		"bleed": true,
+		"level_card": true,
+		"actions": false,
 		"difficulties": [0, 1, 2, 3],
 		# Easy and medium are the 6x6 mini and hard the 9x9, so the card asks
 		# which before it opens (ui/menu/difficulty_sheet.gd), and each is its

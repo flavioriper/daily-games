@@ -169,3 +169,23 @@ have a sound feedback (and haptic) when selecting a empty space". `_gui_input`
 plays `select` (pencil's take two steps up, -18) as a cell is picked and at
 `SELECT_OFF_PITCH` as it is let go; the cue is unmapped, so the echo knocks
 under it. Rule 11 of `docs/agents/sound.md` is the general one. Unheard.
+
+### The writing desk is the whole screen (2026-10-13)
+
+The redesign (`docs/agents/flat-screens.md`, "Every board gets a world of
+its own"), built unattended. `puzzles/sudoku_world.gd` is the card's sage cloth,
+ruled very faintly in the grid's own squares from 0.27 down, with a
+pencil, eraser crumbs and a daisy in the gap of the tools row, pencil
+ticks between the tray and the pad, a running stitch down the sides and
+the desk's wooden edge along the foot; three glints breathe. It carries no
+digits. The tray's wood is on the host's margin: a cell is 107.5 on the
+9 x 9 and 158.7 on the 6 x 6 at 1080 (they were 100 and 150).
+
+- Registry: `bleed`, `level_card`, no actions row, and **the digit pad
+  stays** (`"tray": "digits"`). **Check is gone**: the grid solves
+  itself.
+- `opengl3_angle`, 810x1440: 77 draw calls at rest; `tests/_win.gd --
+  sudoku` passes; `tests/_probe_level_slide.gd -- sudoku` slid the
+  6 x 6 out and the 9 x 9 in, both right mid-slide.
+- Decided for the user, unconfirmed: no Check; the larger cells. Owed: a
+  phone.

@@ -63,6 +63,12 @@ const Haptics = preload("res://core/haptics.gd")
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 const MovesPill = preload("res://ui/flat/moves_pill.gd")
 const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
+const World = preload("res://puzzles/sudoku_world.gd")
+const FLAT_HOST := "res://ui/flat/flat_host.gd"
+## The slide into the win's span (the host's SLOT_TIME) and the air the
+## tray keeps inside that span.
+const WIN_SLIDE := 0.45
+const WIN_PAD := 28.0
 ## The moves the out-of-moves card's video buys, once a board.
 const MOVES_BONUS := 5
 
@@ -387,6 +393,25 @@ var _tip_timer: Timer
 ## While a refusal or a Check owns the line, the cycle waits.
 var _hold_until := 0.0
 
+## The desk is the whole screen (2026-10-13, the registry's `bleed`):
+## puzzles/sudoku_world.gd lies edge to edge as the board's first child,
+## hidden until the host first says what its rows cover (`set_clear`), and
+## the tray is then laid in that span, its wood on the host's side margin.
+## On the win the board slides and shrinks into the win's span under its own
+## one transform, the world held still against it.
+var _world: Control
+var _bled := false
+var _clear := Vector2.ZERO
+var _win_clear := Vector2.ZERO
+var _won := false
+var _slid_from := Vector2.ZERO
+var _slid_by := Vector2.ZERO
+var _slid_scale := 1.0
+var _slid := 0.0
+var _placed := false
+var _shift := 0.0
+var _slide_tw: Tween
+
 func puzzle_id() -> String: return "sudoku"
 func title() -> String: return "Sudoku"
 
@@ -448,7 +473,9 @@ func capabilities() -> Array[String]:
 		return ["hint"]
 	if max_hearts > 0:
 		return ["undo", "hint"]
-	return ["undo", "hint", "check"]
+	# No Check since 2026-10-13: the grid solves itself on its last right
+	# number, and a board in a world of its own has no actions row.
+	return ["undo", "hint"]
 
 ## The lines the tips cycle: a grid that counts moves leads with that,
 ## Hilltops with the hills' two, a judged grid with the hearts'.
@@ -487,6 +514,12 @@ const HAPTICS := {
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = false
+	# The desk first, under the board's own drawing.
+	_world = World.new()
+	_world.name = "World"
+	_world.show_behind_parent = true
+	_world.visible = false
+	add_child(_world)
 	fx = Fx2D.new()
 	fx.name = "Fx"
 	fx.z_index = 2
@@ -578,14 +611,34 @@ func _deal() -> void:
 ## exactly the 1000 the host's arithmetic hands this slot -- and shrinks
 ## under it only on a screen that cannot hold that.
 func _layout() -> void:
+	if _world != null:
+		_world.size = size
+	_place()
 	if state == null:
 		return
-	_cell = _cell_for(size.y)
+	var row := _heart_row()
+	if _bled:
+		# The tray's wood on the host's margin, at the top of the span the
+		# rows leave, the hearts' strip first where a grid has one.
+		var per := float(Gen.N) + 2.0 * FRAME / CELL
+		var span := size.y - _clear.x - _clear.y
+		_cell = minf(size.x - 2.0 * _side(), span - row - TRAY_LIP) / per
+	else:
+		_cell = _cell_for(size.y)
 	if _cell <= 0.0:
 		return
 	var field: float = _cell * Gen.N
-	var row := _heart_row()
-	_grid = Vector2((size.x - field) * 0.5, (size.y - field - row) * 0.5 + row)
+	if _bled:
+		_grid = Vector2((size.x - field) * 0.5, _clear.x + row + FRAME * _scale())
+	else:
+		_grid = Vector2((size.x - field) * 0.5, (size.y - field - row) * 0.5 + row)
+	if _won:
+		# Laid out under a win (a resize, or a day reopened solved): the
+		# slide is aimed again, and set at its end if it never ran.
+		_aim()
+		if _slid <= 0.0 and not (_slide_tw != null and _slide_tw.is_valid()):
+			_slid = 1.0
+		_place()
 	_hearts_y = _grid.y - FRAME * _scale() - TRAY_LIP - row * 0.5
 	_love_mesh = null
 	_seal_mesh = null
@@ -599,6 +652,83 @@ func _layout() -> void:
 ## Insane's move counter.
 func _heart_row() -> float:
 	return HEART_ROW if max_hearts > 0 or max_moves > 0 else 0.0
+
+## What the host's rows cover, in this board's own pixels (it is laid full
+## rect). While playing the tray is laid in what is left. On the win it is
+## not laid out again: the board slides and shrinks into the win's span.
+func set_clear(top: float, bottom: float, won := false) -> void:
+	Motion.stop(_slide_tw)
+	_bled = true
+	_world.visible = true
+	_won = won
+	if not won:
+		_clear = Vector2(top, bottom)
+		_slid = 0.0
+		_layout()
+		return
+	_win_clear = Vector2(top, bottom)
+	# A day reopened solved is told before it has been laid out: _layout
+	# sets the slide when it has a grid to aim.
+	if _cell <= 0.0:
+		return
+	_aim()
+	if Motion.reduce or not is_inside_tree() or _slid >= 1.0:
+		_slide(1.0)
+		return
+	_slide_tw = create_tween()
+	_slide_tw.tween_method(_slide, _slid, 1.0, WIN_SLIDE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+## Where the win's slide ends: the tray and its hearts' strip as one block,
+## from where it is laid to the middle of the win's span.
+func _aim() -> void:
+	var f := FRAME * _scale()
+	var field: float = _cell * Gen.N
+	var row := _heart_row()
+	var block := Rect2(_grid.x - f, _grid.y - f - row, field + 2.0 * f, field + 2.0 * f + TRAY_LIP + row)
+	var span := size.y - _win_clear.x - _win_clear.y
+	_slid_from = block.get_center()
+	_slid_scale = clampf(minf((size.x - 2.0 * _side() - 2.0 * WIN_PAD) / block.size.x,
+		(span - 2.0 * WIN_PAD) / block.size.y), 0.1, 1.0)
+	_slid_by = Vector2(size.x * 0.5, _win_clear.x + span * 0.5) - _slid_from
+
+## The host's side margin, which the tray keeps although the desk does not.
+func _side() -> float:
+	return float(load(FLAT_HOST).MARGIN)
+
+func _slide(t: float) -> void:
+	_slid = t
+	_place()
+
+## The host slides the board `x` aside on a change of level; the desk stays
+## where it is, and the board that is leaving shows none, so the one
+## arriving under it is not hidden.
+func set_shift(x: float, leaving := false) -> void:
+	_shift = x
+	_world.visible = _bled and not leaving
+	_place()
+
+## The host deals this board into a screen already standing: it arrives
+## whole, without the grid's pop and the givens' fall.
+func skip_entrance() -> void:
+	_opened = _now() - 10.0
+	if _hills_at != INF:
+		_hills_at = _now() - 10.0
+	_redraw()
+
+## The board's transform at `_slid`, and the desk's against it, so the desk
+## stays where it is while the tray and everything on it goes.
+func _place() -> void:
+	if _world == null or (_slid <= 0.0 and _shift == 0.0 and not _placed):
+		return
+	_placed = _slid > 0.0 or _shift != 0.0
+	var k := lerpf(1.0, _slid_scale, _slid)
+	var by := _slid_by * _slid + Vector2(_shift, 0.0)
+	pivot_offset = _slid_from
+	scale = Vector2(k, k)
+	position = by
+	_world.pivot_offset = _slid_from
+	_world.scale = Vector2.ONE / k
+	_world.position = -by / k
 
 func _cell_for(available: float) -> float:
 	return minf(GRID / float(Gen.N), minf(size.x - 2.0 * PAD, available - 2.0 * PAD - _heart_row()) / float(Gen.N))

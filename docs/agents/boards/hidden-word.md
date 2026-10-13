@@ -109,3 +109,23 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   (Hard and Insane) and SNAIL (Insane). Still no Undo: an Enter is the check
   and taking a row back is not this game; backspace undoes typing, Reset is
   there on every band.
+
+### The meadow and its letter box are the whole screen (2026-10-13)
+
+The redesign (`docs/agents/flat-screens.md`, "Every board gets a world of
+its own"), built unattended. `puzzles/hidden_word_world.gd` is cream air
+with clouds, a sealed letter, a loose paper tile and a letter box on a
+post in the left air (the right is Insane's snail's), two far hills and
+the meadow from the ground line down, paler under the keyboard so the
+keys read; six pollen motes breathe. The board's own band scenery moved
+into the world and the board tells it the ground line (`set_ground(y)`).
+Height binds, so the grid is narrower than the margins and centred (170
+of air each side at 1080). On the win or a lost day the world rides
+vertically so the crown stays under the grid.
+
+- Registry: `bleed`, `level_card`, and **the keyboard stays**
+  (`"tray": "keys"`).
+- `opengl3_angle`, 810x1440: 82 draw calls at rest; `tests/_win.gd --
+  hiddenword` passes.
+- Decided for the user, unconfirmed: the grid not widened; the toast over
+  the first row (it touches Hint). Owed: a phone, the lost day's look.

@@ -42,6 +42,16 @@ extends "res://core/puzzle_base.gd"
 ## Everyone's here!, a clean miss in sunglasses), a new green plucks a note up
 ## the scale and three in five do something silly (little hearts, a twirl, a
 ## sprig), and a solve dances, blooms the meadow, cheers and stamps a seal.
+##
+## **The meadow is the whole screen** (2026-10-13, the registry's `bleed`):
+## puzzles/hidden_word_world.gd lies edge to edge as the board's first child
+## (behind the board's own drawing) and carries the band -- the turf, the
+## blades, the bushes and the flowers -- that this file draws only while it
+## is still in a card. The grid and the band's stage are laid in the span the
+## host's rows leave (`set_clear`), the keyboard under them. On the win the
+## board slides and shrinks into the win's span under its own one transform,
+## the world held against it but for the rise that keeps its crown under the
+## grid.
 
 const State = preload("res://puzzles/hidden_word_state.gd")
 const Pal = preload("res://core/palette.gd")
@@ -57,6 +67,12 @@ const SnailFace = preload("res://ui/faces/snail_face.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const RunMesh = preload("res://ui/flat/run_mesh.gd")
 const OUT_OF_ROWS := "res://ui/hud/out_of_rows.gd"
+const World = preload("res://puzzles/hidden_word_world.gd")
+const FLAT_HOST := "res://ui/flat/flat_host.gd"
+## The slide into the win's span (the host's SLOT_TIME), and the air the
+## board keeps inside that span.
+const WIN_SLIDE := 0.45
+const WIN_PAD := 12.0
 
 # --- this board's own three numbers (spec section 9) ---
 ## The flip: how far apart the five tiles start turning, and how long one
@@ -469,6 +485,25 @@ var _rm := RunMesh.new(_shape)
 ## The cell the shapes and runs were made at; another remakes them.
 var _rm_cell := -1.0
 
+## The world under the board, shown once the host says the board is laid
+## full rect (`set_clear`); in a card it stays hidden and the band is drawn.
+var _world: Control
+var _bleeding := false
+## What the host's rows cover of the rect, top and bottom, while playing.
+var _clear := Vector2.ZERO
+## The board's own transform on the win: the middle of its block while
+## playing, how far it moves and how small it gets, and how far along it is.
+var _slid_from := Vector2.ZERO
+var _slid_by := Vector2.ZERO
+var _slid_scale := 1.0
+var _slid := 0.0
+var _won := false
+var _win_clear := Vector2.ZERO
+var _placed := false
+## The host's slide on a change of level (set_shift).
+var _shift := 0.0
+var _slide_tw: Tween
+
 enum { SHAPE_SQ, SHAPE_LIP, SHAPE_TOP, SHAPE_BEVEL, SHAPE_CARET, SHAPE_SHADOW, SHAPE_FLAP, SHAPE_WAX }
 enum { PART_CARET, PART_CELL }
 
@@ -557,6 +592,13 @@ func _ready() -> void:
 	# of the row in hand (_has_point), which moves the caret there.
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = false
+	# The world first and behind this board's own drawing (it paints in
+	# _draw, and a child draws over its parent otherwise).
+	_world = World.new()
+	_world.name = "World"
+	_world.show_behind_parent = true
+	_world.visible = false
+	add_child(_world)
 	fx = Fx2D.new()
 	fx.haptics = HAPTICS
 	fx.name = "Fx"
@@ -668,8 +710,9 @@ func set_tray(t: Control) -> void:
 ## 9:16 phone -- 149 against the 177.6 the width would allow -- which is why
 ## the band costs the grid its cell rather than its air.
 func _cell_for(available: float) -> float:
-	var w := size.x - INSET * 2.0
-	var h := available - INSET * 2.0 - BAND
+	var inset := 0.0 if _bleeding else INSET
+	var w := _card_w() - inset * 2.0
+	var h := available - inset * 2.0 - BAND
 	var n := _rows_f()
 	return maxf(0.0, minf((w - GAP * float(State.LEN - 1)) / float(State.LEN),
 		(h - GAP * (n - 1.0)) / n))
@@ -683,7 +726,20 @@ func _rows_f() -> float:
 	return lerpf(_grow_from, float(state.tries), Motion.back_out(since / GROW_TIME))
 
 func _cell() -> float:
-	return _cell_for(size.y)
+	return _cell_for(_avail())
+
+## The left edge of what was the card: the host's side margin on a board
+## laid full rect, where the reveal's card, the seal and the snail's air end.
+func _x0() -> float:
+	return float(load(FLAT_HOST).MARGIN) if _bleeding else 0.0
+
+func _card_w() -> float:
+	return size.x - _x0() * 2.0
+
+## The height the grid and the band have: the span the host's rows leave, or
+## the whole rect in a card.
+func _avail() -> float:
+	return size.y - _clear.x - _clear.y if _bleeding else size.y
 
 ## The grid block's own size: five tiles across, six down, with the gaps.
 func _block() -> Vector2:
@@ -714,11 +770,13 @@ func card_centred() -> bool:
 ## against the card and not against the slot, or the two drift apart on a
 ## screen where the slack is not zero.
 func _card_top() -> float:
+	if _bleeding:
+		return _clear.x
 	return maxf(0.0, (size.y - card_height(size.y)) * 0.5)
 
 ## The grid block's top-left inside this Control's rect.
 func _origin() -> Vector2:
-	return Vector2((size.x - _block().x) * 0.5, _card_top() + INSET)
+	return Vector2((size.x - _block().x) * 0.5, _card_top() + (0.0 if _bleeding else INSET))
 
 ## The centre of the block: what the entrance pops about.
 func _grid_centre() -> Vector2:
@@ -743,7 +801,101 @@ func _layout() -> void:
 	_reveal_mesh = null
 	_toast_mesh = null
 	_toast_mesh_for = ""
+	if _world == null:
+		# build() before _ready (a probe): nothing to lay yet.
+		_refresh()
+		return
+	_world.size = size
+	_world.visible = _bleeding and _shift_shows
+	if _bleeding and _laid_out():
+		_world.set_ground(_ground())
+		if _won:
+			# Laid out under a win (a resize, or a day reopened solved): the
+			# slide is aimed again, and set at its end if it never ran.
+			_aim()
+			if _slid <= 0.0 and not (_slide_tw != null and _slide_tw.is_valid()):
+				_slid = 1.0
+	_place()
 	_refresh()
+
+## The meadow's crown: the band's ground line under the grid.
+func _ground() -> float:
+	return _origin().y + _block().y + BAND - TURF_TOP
+
+## What the host's rows cover, in this board's own pixels (it is laid full
+## rect). While playing the grid and the band's stage are laid in what is
+## left. On the win nothing is laid out again: the board slides and shrinks
+## into the win's span.
+func set_clear(top: float, bottom: float, won := false) -> void:
+	Motion.stop(_slide_tw)
+	_bleeding = true
+	_won = won
+	if not won:
+		_clear = Vector2(top, bottom)
+		_slid = 0.0
+		_layout()
+		return
+	_win_clear = Vector2(top, bottom)
+	# A day reopened solved is told before it has been laid out: _layout
+	# sets the slide when it has a grid to aim.
+	if not _laid_out():
+		_layout()
+		return
+	_aim()
+	if Motion.reduce or not is_inside_tree() or _slid >= 1.0:
+		_slide(1.0)
+		return
+	_slide_tw = create_tween()
+	_slide_tw.tween_method(_slide, _slid, 1.0, WIN_SLIDE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+## Where the win's slide ends: the grid and the band's stage, as they are
+## laid, fitted into the win's span.
+func _aim() -> void:
+	var block := _block()
+	var tall := block.y + BAND
+	var span := size.y - _win_clear.x - _win_clear.y
+	_slid_from = Vector2(size.x * 0.5, _origin().y + tall * 0.5)
+	_slid_scale = clampf((span - 2.0 * WIN_PAD) / tall, 0.1, 1.0)
+	_slid_by = Vector2(size.x * 0.5, _win_clear.x + span * 0.5) - _slid_from
+
+func _slide(t: float) -> void:
+	_slid = t
+	_place()
+
+## The host slides the board `x` aside on a change of level; the world stays
+## where it is, and the board that is leaving shows none, so the one
+## arriving under it is not hidden.
+var _shift_shows := true
+func set_shift(x: float, leaving := false) -> void:
+	_shift = x
+	_shift_shows = not leaving
+	if _world != null:
+		_world.visible = _bleeding and _shift_shows
+	_place()
+
+## The host deals this board into a screen already standing: it arrives
+## whole, without the grid's pop.
+func skip_entrance() -> void:
+	_opened = -100.0
+	_refresh()
+
+## The board's transform at `_slid`, and the world's against it: the world
+## keeps its size and its place across, and moves only up or down, as far as
+## keeps its crown under the grid's foot.
+func _place() -> void:
+	if _world == null or (_slid <= 0.0 and _shift == 0.0 and not _placed):
+		return
+	_placed = _slid > 0.0 or _shift != 0.0
+	var k := lerpf(1.0, _slid_scale, _slid)
+	var by := _slid_by * _slid + Vector2(_shift, 0.0)
+	pivot_offset = _slid_from
+	scale = Vector2(k, k)
+	position = by
+	var ground := _ground() if _laid_out() else _slid_from.y
+	var rise := by.y + (k - 1.0) * (ground - _slid_from.y)
+	_world.pivot_offset = _slid_from
+	_world.scale = Vector2.ONE / k
+	_world.position = (Vector2(0.0, rise) - by) / k
 
 # --- the frame ---
 
@@ -868,7 +1020,12 @@ func _draw() -> void:
 	var shown: Array = []
 	# The band stands on the grid's foot, which moves while One more row
 	# makes room: rebuilt every frame of that and never otherwise.
-	if _band_mesh == null or now < _grow_at + GROW_TIME:
+	if _bleeding:
+		# The world carries the band; its crown follows the grid's foot
+		# while One more row makes room (it moves only where the width binds).
+		if now < _grow_at + GROW_TIME + 0.1 and not _won:
+			_world.set_ground(_ground())
+	elif _band_mesh == null or now < _grow_at + GROW_TIME:
 		_band_mesh = _build_band()
 	if _band_mesh != null:
 		draw_mesh(_band_mesh, null)
@@ -1566,7 +1723,9 @@ func _draw_toast(t: float, shown: Array) -> void:
 		_toast_mesh_for = line
 	if _toast_mesh == null:
 		return
-	var mid := Vector2(size.x * 0.5, _card_top() - TOAST_RISE + TOAST_H * 0.5)
+	# In a card the toast stands half over its top edge; laid full rect the
+	# host's rows are there, so it lies over the top of the first row.
+	var mid := Vector2(size.x * 0.5, _card_top() + (10.0 if _bleeding else -TOAST_RISE) + TOAST_H * 0.5)
 	draw_mesh(_toast_mesh, null, Transform2D(0.0, grow, 0.0, mid))
 	shown.append(_toast_mesh)
 	var where := Vector2(-w * 0.5 + TOAST_PAD * 0.5,
@@ -1592,10 +1751,10 @@ func _draw_reveal(t: float, shown: Array) -> void:
 		return
 	if _reveal_mesh == null:
 		var b := Face.Builder.new()
-		var w := size.x - WORD_CARD_X - WORD_CARD_RIGHT
-		b.fan(Face.Builder.round_rect(Vector2(WORD_CARD_X, 0.0), Vector2(w, WORD_CARD_H),
+		var w := _card_w() - WORD_CARD_X - WORD_CARD_RIGHT
+		b.fan(Face.Builder.round_rect(Vector2(_x0() + WORD_CARD_X, 0.0), Vector2(w, WORD_CARD_H),
 			WORD_CARD_RADIUS), Pal.LINE)
-		b.fan(Face.Builder.round_rect(Vector2(WORD_CARD_X, 0.0),
+		b.fan(Face.Builder.round_rect(Vector2(_x0() + WORD_CARD_X, 0.0),
 			Vector2(w, WORD_CARD_H - WORD_CARD_EDGE), WORD_CARD_RADIUS), Pal.SURFACE)
 		_reveal_mesh = b.mesh() if not b.verts.is_empty() else null
 	if _reveal_mesh == null:
@@ -1604,7 +1763,7 @@ func _draw_reveal(t: float, shown: Array) -> void:
 	draw_mesh(_reveal_mesh, null, Transform2D(0.0, Vector2.ONE, 0.0, Vector2(0.0, top)),
 		Color(1.0, 1.0, 1.0, a))
 	shown.append(_reveal_mesh)
-	var x := WORD_CARD_X + WORD_TEXT_X
+	var x := _x0() + WORD_CARD_X + WORD_TEXT_X
 	if state.is_solved():
 		# The party's card: the word found, and the sprout's silly cheer.
 		_line(CozyTheme.display(700, WORD_SPACING), WORD_FONT, Vector2(x, top + WORD_LABEL_Y + 2.0),
@@ -1641,7 +1800,7 @@ func _ride_sprout(t: float) -> void:
 	if _sprout == null or not _sprout.visible:
 		return
 	var since := t - _stage_at() - REVEAL_WAIT
-	var seat := Vector2(SPROUT_AT.x, _reveal_top() + SPROUT_AT.y + _reveal_rise(since))
+	var seat := Vector2(_x0() + SPROUT_AT.x, _reveal_top() + SPROUT_AT.y + _reveal_rise(since))
 	_sprout.position = seat - _sprout.size * 0.5
 	_sprout.modulate.a = Motion.appear_level(since, REVEAL_FADE)
 
@@ -2180,7 +2339,7 @@ func _stamp_down() -> void:
 	stamp.z_index = 3
 	stamp.size = Vector2.ONE * rad * 2.0
 	stamp.pivot_offset = stamp.size * 0.5
-	var centre := Vector2(size.x - WORD_CARD_RIGHT - rad * 0.9, _reveal_top() + WORD_CARD_H * 0.45)
+	var centre := Vector2(size.x - _x0() - WORD_CARD_RIGHT - rad * 0.9, _reveal_top() + WORD_CARD_H * 0.45)
 	stamp.position = centre - stamp.pivot_offset
 	stamp.rotation = STAMP_TILT
 	var mesh := Seal.mesh(rad, insane)
@@ -2230,7 +2389,7 @@ func _seat_snail() -> void:
 func _snail_seat(r: int) -> Vector2:
 	var cell := _cell()
 	var right := _origin().x + _block().x
-	var x := right + (size.x - right) * 0.5 - cell * SNAIL_OFF
+	var x := right + (size.x - _x0() - right) * 0.5 - cell * SNAIL_OFF
 	return Vector2(x, cell_to_local(r, 0).y + cell * 0.12)
 
 ## Rides the board's clock: sat beside the row it carries, or crawling down

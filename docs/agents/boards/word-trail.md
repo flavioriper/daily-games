@@ -72,3 +72,22 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   four, a five in the player's language), with the slots in a column beside
   the field through the layout hooks `_slots_wide`, `_slots_left`,
   `_puff_foot`, `_puff_height`, `_lamp_rest`.
+
+### The peach morning is the whole screen (2026-10-13)
+
+The redesign (`docs/agents/flat-screens.md`, "Every board gets a world of
+its own"), built unattended. `puzzles/word_trail_world.gd` is the card's peach
+sky with the sun behind the wordmark, a cloud and two leaves in the gap of
+the tools row, and at the foot two far hills, a trail of six paper
+stepping tiles winding between them, turf edge to edge with bushes,
+flowers and two spare tiles; seven pollen motes breathe. The board's old
+rounded turf plate is gone: it tells the world its ground line
+(`set_ground`). The field is on the host's margin, the slots under it.
+
+- Registry: `bleed`, `level_card`; no tray, no actions row, as before.
+- `opengl3_angle`, 810x1440: 83 draw calls at rest; `tests/_win.gd --
+  wordtrail` passes; `tests/_probe_level_slide.gd -- wordtrail` slid
+  Medium to Hard over one still world.
+- Decided for the user, unconfirmed: on the win the block is about two
+  thirds its size (it includes the band where the cheer card stands);
+  Insane's night stays under the field only. Owed: a phone.

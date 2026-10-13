@@ -100,3 +100,22 @@ those.
   the count wash, the flowers on finished numbers, the streak (a plant that
   sends no number over), `MP_MISPLACED`. The tutorial diagram's HEARTS lesson
   is no longer reached by any band.
+
+### The autumn floor is the whole screen (2026-10-13)
+
+The redesign (`docs/agents/flat-screens.md`, "Every board gets a world of
+its own"), built unattended. `puzzles/mushroom_world.gd` is a wood's floor seen
+from above, cream to amber with sun dapples, faint leaves and an acorn in
+the gap of the tools row, a drift of leaves and twigs between the patch
+and the tray, a mossy log with two button mushrooms at the tray's left and
+a forager's basket at its right; seven dust motes breathe. Nothing in it
+has a face. The field is dug into a bed of soil on the host's margin (one
+more cached mesh), the tally strip over it.
+
+- Registry: `bleed`, `level_card`, no actions row, and **the tray
+  stays** (`"tray": "patch"`): a tap places only what is armed. **Check
+  is gone**: the patch solves itself.
+- `opengl3_angle`, 810x1440: 91 draw calls at rest; `tests/_win.gd --
+  mushroom` passes.
+- Decided for the user, unconfirmed: the soil bed, the tray kept, no
+  Check. Owed: a phone, the level slide.

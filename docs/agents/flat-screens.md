@@ -475,7 +475,7 @@ sections after it say how each part is built.
 
 **Done since** (2026-10-13, unattended, three boards a batch by fork
 workers; each board's own note says what was decided for the user):
-Code Break, Balance, Untangle; Shikaku, Tents, Light Up; One Line, Nonogram, Queens. What the batches taught:
+Code Break, Balance, Untangle; Shikaku, Tents, Light Up; One Line, Nonogram, Queens; Hidden Word, Word Trail, Mushroom Patch, Sudoku. What the batches taught:
 
 - A worker owns two files, `puzzles/<board>_world.gd` and the board; the
   parent sets the registry, shoots (`tests/_shot_anim.gd`, then
@@ -486,6 +486,13 @@ Code Break, Balance, Untangle; Shikaku, Tents, Light Up; One Line, Nonogram, Que
 - **A board that cannot be played without its tray keeps it** (Code
   Break's friends and guess button), the host's own component under a
   bleed board; a Check that only verifies goes.
+- `tests/_probe_level_slide.gd -- <id> ... [to=<0..3>]` asks the host
+  for another level and shoots the slide's middle and rest
+  (`/tmp/slide_<id>_mid.png`, `_rest.png`).
+- A board with a subclass (a tutorial diagram) or a card mode makes or
+  shows its world on the first `set_clear` only. A board whose own band
+  or ground became the world tells it a line (`set_ground(y)`,
+  `set_foot(y)`).
 - On a levelled board the actions row's Reset is hidden and the tools
   row's bin always shows.
 

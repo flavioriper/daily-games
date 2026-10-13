@@ -45,6 +45,15 @@ extends "res://core/puzzle_base.gd"
 ## Spec: docs/superpowers/specs/2026-09-20-mushroom-patch-flat-design.md.
 ## Concept page: docs/brainstorm/concepts.html#mushroom.
 ##
+## The wood's floor is the whole screen (2026-10-13, the registry's `bleed`):
+## puzzles/mushroom_world.gd lies edge to edge behind the board, made when
+## the host first says what its rows cover (`set_clear`), and the field is
+## dug into a bed of soil as wide as the host's rows at the top of the span
+## they leave, the tally over it and the tray under it. On the win the board
+## slides and shrinks into the win's span under its own one transform, the
+## floor held still against it. A patch in a card (the tutorial's) is laid
+## as it always was.
+##
 ## **The polish of 2026-09-30** (spec 2026-09-30-mushroom-polish-design.md).
 ## Hard and Insane can be failed: every mushroom is judged as she lands, and a
 ## wrong one worries, costs a heart, wilts back into the soil and leaves a
@@ -72,12 +81,23 @@ const RunMesh = preload("res://ui/flat/run_mesh.gd")
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 const MovesPill = preload("res://ui/flat/moves_pill.gd")
 const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
+const World = preload("res://puzzles/mushroom_world.gd")
+const FLAT_HOST := "res://ui/flat/flat_host.gd"
 ## The moves the out-of-moves card's video buys, once a board.
 const MOVES_BONUS := 5
 
 # --- the patch ---
 ## The card's inset round the field.
 const PAD := 34.0
+## On a patch whose world fills the screen (set_clear): the soil bed's rim
+## round the field, its corner, and the slide into the win's span (the
+## host's SLOT_TIME).
+const BED_PAD := 16.0
+const BED_ROUND := 30.0
+const SOIL := Color("d9b386")
+const SOIL_RIM := Color("c59c6e")
+const SOIL_LIT := Color("e6c79d")
+const WIN_SLIDE := 0.45
 ## The tally strip over the field, inside the card. It comes out of the
 ## field's height, which is why card_height subtracts it.
 const TALLY := 72.0
@@ -339,6 +359,26 @@ var _look_tw: Dictionary = {}  # face -> the pop, the press, the wobble
 var _tally_face: MushroomFace
 var _gen := 0
 var _card := Rect2()
+## The wood's floor, edge to edge under the patch, on a patch the host lays
+## full rect (the registry's `bleed`): made when the host first says what
+## its rows cover. A patch in a card (the tutorial's) has none.
+var _world: Control
+var _bleed := false
+var _bed_mesh: ArrayMesh
+## What the host's rows cover of the rect, top and bottom, while playing.
+var _clear := Vector2.ZERO
+## The board's own transform on the win: the block's middle while playing,
+## how far it moves and how small it gets, and how far along it is.
+var _slid_from := Vector2.ZERO
+var _slid_by := Vector2.ZERO
+var _slid_scale := 1.0
+var _slid := 0.0
+var _won := false
+var _win_clear := Vector2.ZERO
+var _placed := false
+## The host's slide on a change of level (set_shift).
+var _shift := 0.0
+var _slide_tw: Tween
 var _hearts_y := 0.0
 
 ## The polish's state: hearts, the judged mushroom, the streak, the flowers,
@@ -508,6 +548,10 @@ func tutorial_pages() -> Array:
 func capabilities() -> Array[String]:
 	if state.band >= 3:
 		return ["hint"]
+	# In a world of its own there is no Check (the user, 2026-10-13, of
+	# Binairo: "neither a verify need"): the patch solves itself.
+	if _bleed:
+		return ["undo", "hint"]
 	return ["undo", "hint", "check"]
 
 ## What the phone does under each cue (docs/agents/haptics.md). A mushroom
@@ -720,6 +764,12 @@ func _set_expr(face: Face, expr: int) -> void:
 func _layout() -> void:
 	if state.n <= 0:
 		return
+	if _world != null:
+		_world.size = size
+	_place()
+	if _bleed:
+		_layout_bleed()
+		return
 	_cell = _cell_for(size.y)
 	if _cell <= 0.0:
 		return
@@ -749,6 +799,142 @@ func _layout() -> void:
 	for layer: Control in [_heart_layer, _life_layer, _combo_layer]:
 		if layer != null:
 			layer.queue_redraw()
+
+## The patch in a world of its own: a soil bed as wide as the host's rows
+## (its side margin, so the bed's edges line up with the buttons') at the
+## top of the span the rows leave (`_clear`), the hearts and the tally over
+## it; what is left is open floor down to the tray.
+func _layout_bleed() -> void:
+	var row := _heart_row()
+	var head := row + _tally_h()
+	var span := size.y - _clear.x - _clear.y
+	var bed := minf(size.x - 2.0 * _side(), span - head)
+	_cell = (bed - 2.0 * BED_PAD) / state.n
+	if _cell <= 0.0:
+		return
+	if _cell > _ref + 0.01:
+		_frm.reset()
+		_grm.reset()
+		_ref = _cell
+	var top := _clear.x
+	_card = Rect2((size.x - bed) * 0.5, top + head, bed, bed)
+	_hearts_y = top + row * 0.5
+	_tally_y = top + row + _tally_h() * 0.5
+	_grid = _card.position + Vector2.ONE * BED_PAD
+	_bed_mesh = _build_bed()
+	if _won:
+		# Laid out under a win (a resize, or a day reopened solved): the
+		# slide is aimed again, and set at its end if it never ran.
+		_aim()
+		if _slid <= 0.0 and not (_slide_tw != null and _slide_tw.is_valid()):
+			_slid = 1.0
+		_place()
+	for cell in _caps:
+		_seat(_caps[cell], cell_centre(cell), _seat_px())
+	_layout_tally()
+	_flat_cache = {}
+	_cap_key = []
+	_love_mesh = null
+	_seal_mesh = null
+	_refresh_faces()
+	_redraw()
+	for layer: Control in [_heart_layer, _life_layer, _combo_layer]:
+		if layer != null:
+			layer.queue_redraw()
+
+## The bed of soil the field is dug into: its shadow, its rim, itself.
+func _build_bed() -> ArrayMesh:
+	var b := Face.Builder.new()
+	b.polygon(Face.Builder.round_rect(_card.position + Vector2(0.0, 7.0), _card.size, BED_ROUND), Color(Pal.TEXT, 0.10))
+	b.polygon(Face.Builder.round_rect(_card.position, _card.size, BED_ROUND), SOIL_RIM)
+	b.polygon(Face.Builder.round_rect(_card.position + Vector2(3.0, 3.0), _card.size - Vector2(6.0, 9.0), BED_ROUND - 3.0), SOIL)
+	b.polygon(Face.Builder.round_rect(_card.position + Vector2(8.0, 5.0), Vector2(_card.size.x - 16.0, 5.0), 2.5),
+		Color(SOIL_LIT, 0.8))
+	return b.mesh()
+
+## What the host's rows cover, in this board's own pixels (it is laid full
+## rect). While playing the patch is laid in what is left. On the win it is
+## not laid out again: the board slides and shrinks into the win's span.
+func set_clear(top: float, bottom: float, won := false) -> void:
+	Motion.stop(_slide_tw)
+	if not _bleed:
+		_bleed = true
+		_world = World.new()
+		_world.name = "World"
+		# The patch paints in _draw: the floor goes behind that.
+		_world.show_behind_parent = true
+		add_child(_world)
+		move_child(_world, 0)
+		_world.size = size
+	_won = won
+	if not won:
+		_clear = Vector2(top, bottom)
+		_slid = 0.0
+		_layout()
+		return
+	_win_clear = Vector2(top, bottom)
+	# A day reopened solved is told before it has been laid out: _layout
+	# sets the slide when it has a field to aim.
+	if _cell <= 0.0:
+		return
+	_aim()
+	if Motion.reduce or not is_inside_tree() or _slid >= 1.0:
+		_slide(1.0)
+		return
+	_slide_tw = create_tween()
+	_slide_tw.tween_method(_slide, _slid, 1.0, WIN_SLIDE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+## Where the win's slide ends: the hearts, the tally and the bed as one
+## block, shrunk to the win's span and stood in its middle.
+func _aim() -> void:
+	var head := _heart_row() + _tally_h()
+	var block := Vector2(_card.size.x, head + _card.size.y)
+	var span := size.y - _win_clear.x - _win_clear.y
+	_slid_from = Vector2(size.x * 0.5, _card.position.y - head + block.y * 0.5)
+	_slid_scale = clampf(minf((size.x - 2.0 * _side() - 2.0 * PAD) / block.x, span / block.y), 0.1, 1.0)
+	_slid_by = Vector2(size.x * 0.5, _win_clear.x + span * 0.5) - _slid_from
+
+## The host's side margin, which the bed keeps although the floor does not.
+func _side() -> float:
+	return float(load(FLAT_HOST).MARGIN)
+
+func _slide(t: float) -> void:
+	_slid = t
+	_place()
+
+## The host slides the board `x` aside on a change of level; the floor
+## stays where it is, and the board that is leaving shows none, so the one
+## arriving under it is not hidden.
+func set_shift(x: float, leaving := false) -> void:
+	_shift = x
+	if _world != null:
+		_world.visible = not leaving
+	_place()
+
+## The host deals this board into a screen already standing: it arrives
+## whole, without the field's pop, the cells' wave or the rings growing in.
+func skip_entrance() -> void:
+	_gen += 1
+	var now := _now()
+	_opened = now - 10.0
+	_rings_at = now - 10.0
+	_redraw()
+
+## The board's transform at `_slid`, and the floor's against it, so the
+## floor stays where it is while the patch and everything on it goes.
+func _place() -> void:
+	if _slid <= 0.0 and _shift == 0.0 and not _placed:
+		return
+	_placed = _slid > 0.0 or _shift != 0.0
+	var k := lerpf(1.0, _slid_scale, _slid)
+	var by := _slid_by * _slid + Vector2(_shift, 0.0)
+	pivot_offset = _slid_from
+	scale = Vector2(k, k)
+	position = by
+	if _world != null:
+		_world.pivot_offset = _slid_from
+		_world.scale = Vector2.ONE / k
+		_world.position = -by / k
 
 ## The air round the field inside the card, and the tally strip's height:
 ## hooks a tutorial's patch lays out without (the board's are PAD and TALLY).
@@ -891,6 +1077,10 @@ func _draw() -> void:
 	if since < Motion.ENTER_POP + Motion.stagger(2 * state.n - 2, Motion.ENTER_STAGGER):
 		busy = true
 	var grown := Motion.wide_pop_scale(since)
+	if _bed_mesh != null:
+		draw_mesh(_bed_mesh, null,
+			Transform2D(0.0, Vector2(grown, grown), 0.0, _field_centre()) * Transform2D(0.0, -_field_centre()))
+		shown.append(_bed_mesh)
 	if _floor != null:
 		draw_mesh(_floor, null,
 			Transform2D(0.0, Vector2(grown, grown), 0.0, _field_centre()))

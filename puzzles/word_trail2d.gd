@@ -31,6 +31,16 @@ extends "res://core/puzzle_base.gd"
 ## sections 6 and 7. Ported number for number from the canvas mock at
 ## docs/brainstorm/concepts.html#wordtrail, which is the reference for every
 ## measure here.
+##
+## The morning is the whole screen (2026-10-13, the registry's `bleed`):
+## puzzles/word_trail_world.gd lies edge to edge behind the board from the
+## first `set_clear`, the field is laid on the host's side margin at the top
+## of the span the rows leave, the slots under it, and the meadow the band
+## used to draw is the world's (the dandelion, the lantern and the stage
+## stand on its ground line). On the win the whole block slides and shrinks
+## into the win's span under one transform, the world held still against
+## it. Until `set_clear` is called the board is laid in a card as before
+## (the tutorial's diagram).
 
 const State = preload("res://puzzles/word_trail_state.gd")
 const Pal = preload("res://core/palette.gd")
@@ -42,6 +52,10 @@ const Scenery = preload("res://ui/flat/scenery.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Mosaic = preload("res://ui/faces/mosaic_tile.gd")
 const RunMesh = preload("res://ui/flat/run_mesh.gd")
+const World = preload("res://puzzles/word_trail_world.gd")
+const FLAT_HOST := "res://ui/flat/flat_host.gd"
+## The slide into the win's span (the host's SLOT_TIME).
+const WIN_SLIDE := 0.45
 
 # --- the screen, measured (spec section 6) ---
 ## The card's own inset and the gap between two tiles.
@@ -337,6 +351,24 @@ const STAGE_FONT := 34
 const STAGE_LINE := 26
 
 var _state = State.new()
+## A world of its own (set_clear): the morning under the board, the host's
+## side margin, what its rows cover while playing and on the win, the
+## board's own transform on the win (the block's middle, how far it moves
+## and how small it gets, how far along it is) and the host's level slide.
+var _bleed := false
+var _world: Control
+var _margin := INSET
+var _clear := Vector2.ZERO
+var _win_clear := Vector2.ZERO
+var _won := false
+var _slid_from := Vector2.ZERO
+var _slid_by := Vector2.ZERO
+var _slid_scale := 1.0
+var _slid := 0.0
+var _placed := false
+var _shift := 0.0
+var _slide_tw: Tween
+var _skip_enter := false
 ## The board's own effects node, as on every flat board: the hint's ring and
 ## sparkle come through it and nowhere else.
 var fx: Node2D
@@ -625,12 +657,12 @@ func _cell_for(available: float) -> float:
 	if _state.n <= 0:
 		return 0.0
 	var span := float(_state.n - 1) * GAP
-	var across := (size.x - 2.0 * INSET - span) / float(_state.n)
+	var across := (size.x - 2.0 * _side() - span) / float(_state.n)
 	var down := (available - 2.0 * INSET - SLOTS_H - SLOTS_PAD - span) / float(_state.n)
 	return maxf(0.0, minf(across, down))
 
 func _cell() -> float:
-	return _cell_for(size.y)
+	return _cell_for(_foot() - _top() + 2.0 * INSET)
 
 ## The field is n cells and the gaps between them, square.
 func _field_size() -> float:
@@ -639,7 +671,7 @@ func _field_size() -> float:
 ## The field's top-left inside this Control's rect: centred across the card,
 ## its top at the card's own inset.
 func _origin() -> Vector2:
-	return Vector2((size.x - _field_size()) * 0.5, INSET)
+	return Vector2((size.x - _field_size()) * 0.5, _top())
 
 ## The centre of the field: what the entrance pops about.
 func _field_centre() -> Vector2:
@@ -696,9 +728,111 @@ func _layout() -> void:
 	# the band.
 	_band = null
 	_stage_mesh = null
+	if _bleed:
+		_world.size = size
+		_world.set_ground(_ground())
+		if _won and _cell() > 0.0:
+			# Laid out under a win (a resize, or a day reopened solved): the
+			# slide is aimed again, and set at its end if it never ran.
+			_aim()
+			if _slid <= 0.0 and not (_slide_tw != null and _slide_tw.is_valid()):
+				_slid = 1.0
+		_place()
 	if is_instance_valid(_stamp):
 		_stamp.position = _stamp_centre() - _stamp.pivot_offset
 	_refresh()
+
+# --- a world of its own (the registry's `bleed`) ---
+
+## What the field keeps from the sides, its top and its foot: the old card's
+## inset inside a card, and on a bleed board the host's side margin and the
+## span its rows leave (`_clear`).
+func _side() -> float:
+	return _margin if _bleed else INSET
+
+func _top() -> float:
+	return _clear.x if _bleed else INSET
+
+func _foot() -> float:
+	return size.y - _clear.y if _bleed else size.y - INSET
+
+## What the host's rows cover, in this board's own pixels (it is laid full
+## rect). The first call makes the board a bleed one and stands the world
+## under it; until then it lays itself out in a card as it always did (the
+## tutorial's diagram is this board in a card). While playing the field, the
+## slots and the band's things are laid in what is left. On the win nothing
+## is laid out again: the board slides and shrinks into the win's span.
+func set_clear(top: float, bottom: float, won := false) -> void:
+	if not _bleed:
+		_bleed = true
+		_margin = float(load(FLAT_HOST).MARGIN)
+		_world = World.new()
+		_world.name = "World"
+		_world.show_behind_parent = true
+		add_child(_world)
+		move_child(_world, 0)
+	Motion.stop(_slide_tw)
+	_won = won
+	if not won:
+		_clear = Vector2(top, bottom)
+		_slid = 0.0
+		_layout()
+		return
+	_win_clear = Vector2(top, bottom)
+	# A day reopened solved is told before it has been laid out: _layout
+	# sets the slide when it has a field to aim.
+	if _cell() <= 0.0:
+		return
+	_aim()
+	if Motion.reduce or not is_inside_tree() or _slid >= 1.0:
+		_slide(1.0)
+		return
+	_slide_tw = create_tween()
+	_slide_tw.tween_method(_slide, _slid, 1.0, WIN_SLIDE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+## Where the win's slide ends: the whole block (the field, the slots and the
+## band the stage stands on) fitted into the win's span.
+func _aim() -> void:
+	var block := Vector2(size.x - 2.0 * _margin, _foot() - _top())
+	var span := size.y - _win_clear.x - _win_clear.y
+	_slid_from = Vector2(size.x * 0.5, _top() + block.y * 0.5)
+	_slid_scale = clampf(span / maxf(block.y, 1.0), 0.1, 1.0)
+	_slid_by = Vector2(size.x * 0.5, _win_clear.x + span * 0.5) - _slid_from
+
+func _slide(t: float) -> void:
+	_slid = t
+	_place()
+
+## The host slides the board `x` aside on a change of level; the world stays
+## where it is, and the board that is leaving shows none, so the one
+## arriving under it is not hidden.
+func set_shift(x: float, leaving := false) -> void:
+	_shift = x
+	if _world != null:
+		_world.visible = not leaving
+	_place()
+
+## The host deals this board into a screen already standing: the field's pop
+## and the slots' drop have already played.
+func skip_entrance() -> void:
+	_skip_enter = true
+	_opened = _now() - 100.0
+	_refresh()
+
+## The board's transform at `_slid`, and the world's against it, so the
+## morning stays where it is while the field and everything on it goes.
+func _place() -> void:
+	if not _bleed or (_slid <= 0.0 and _shift == 0.0 and not _placed):
+		return
+	_placed = _slid > 0.0 or _shift != 0.0
+	var k := lerpf(1.0, _slid_scale, _slid)
+	var by := _slid_by * _slid + Vector2(_shift, 0.0)
+	pivot_offset = _slid_from
+	scale = Vector2(k, k)
+	position = by
+	_world.pivot_offset = _slid_from
+	_world.scale = Vector2.ONE / k
+	_world.position = -by / k
 
 ## One group of boxes per word, shortest first, wrapped to as many lines as
 ## it takes -- one on easy, two on the others. Length is the whole clue.
@@ -728,7 +862,7 @@ func _slot_lines(k := -1.0) -> Array:
 ## How wide a line of slot groups may run, and where a line of `w` starts:
 ## across the card, each line centred.
 func _slots_wide() -> float:
-	return size.x - 2.0 * INSET
+	return size.x - 2.0 * _side()
 
 func _slots_left(w: float) -> float:
 	return size.x * 0.5 - w * 0.5
@@ -738,7 +872,7 @@ func _slots_left(w: float) -> float:
 ## pixel for this -- _cell_for still reads SLOTS_H -- so on a short screen the
 ## slots are simply what they were.
 func _slots_room() -> float:
-	var band := size.y - INSET - (_slots_top() + SLOTS_H)
+	var band := _foot() - (_slots_top() + SLOTS_H)
 	return SLOTS_H + clampf(band - BAND_KEEP, 0.0, SLOT_ROOM)
 
 ## How much bigger than the mock's a box is: the largest scale up to
@@ -1721,13 +1855,16 @@ func _slot_wave(i: int, k: int, t: float) -> float:
 ## draw call. It never moves -- only the field takes the entrance -- so it is
 ## built once per layout and drawn with no transform.
 func _build_band() -> ArrayMesh:
+	# In a world of its own the meadow is the world's, edge to edge.
+	if _bleed:
+		return null
 	var top := _slots_top() + _slots_room()
-	var tall := size.y - INSET - top
+	var tall := _foot() - top
 	if _cell() <= 0.0 or tall <= 0.0:
 		return null
 	var b := Face.Builder.new()
-	var x0 := INSET
-	var w := size.x - 2.0 * INSET
+	var x0 := _side()
+	var w := size.x - 2.0 * _side()
 	var ground := top + tall - BAND_FOOT - TURF_TOP
 	var puff: Color = Pal.PARCHMENT.lerp(Pal.SURFACE, Scenery.CLOUD_LIFT)
 	Scenery.cloud(b, Vector2(x0 + CLOUD_LEFT.x, top + CLOUD_LEFT.y), CLOUD_LEFT.z, puff)
@@ -1805,6 +1942,8 @@ func _glyph(font: Font, px: int, text: String, ink: Color, at: Vector2) -> void:
 ## it; both are read off the clock in _draw, so all this has to do is start
 ## it. _animating() knows how long it runs.
 func _enter() -> void:
+	if _skip_enter:
+		return
 	_opened = _now()
 	fx.cue("enter")
 	_refresh()
@@ -2384,7 +2523,7 @@ func _band_top() -> float:
 	return _slots_top() + _slots_room()
 
 func _ground() -> float:
-	return size.y - INSET - BAND_FOOT - TURF_TOP
+	return _foot() - BAND_FOOT - TURF_TOP
 
 func _build_air(t: float) -> ArrayMesh:
 	var b := Face.Builder.new()
@@ -2449,7 +2588,7 @@ func _dandelion(b, t: float) -> void:
 ## Where the dandelion's stem stands, and how tall it may grow from there:
 ## on the band, in from the card's right.
 func _puff_foot() -> Vector2:
-	return Vector2(size.x - INSET - PUFF_RIGHT, _ground() + BLADE_ROOT)
+	return Vector2(size.x - _side() - PUFF_RIGHT, _ground() + BLADE_ROOT)
 
 func _puff_height(base: Vector2) -> float:
 	return minf(PUFF_H, base.y - _band_top() - PUFF_R - 8.0)
@@ -2759,7 +2898,7 @@ func _ride_lamp(t: float, delta: float) -> void:
 
 ## Where the lantern hangs while nothing is held: on the band's left.
 func _lamp_rest() -> Vector2:
-	return Vector2(INSET + 110.0, _band_top() + 40.0)
+	return Vector2(_side() + 110.0, _band_top() + 40.0)
 
 # --- the party and the seal (section 3) ---
 
@@ -2862,13 +3001,13 @@ func _stage_rise(t: float) -> float:
 	return STAGE_RISE * (1.0 - Motion.back_out(clampf((t - _stage_at) / STAGE_TIME, 0.0, 1.0)))
 
 func _stage_top() -> float:
-	var tall := size.y - INSET - _band_top()
+	var tall := _foot() - _band_top()
 	return _band_top() + maxf((tall - STAGE_H) * 0.5, 0.0)
 
 func _ride_sprout(t: float) -> void:
 	if not is_instance_valid(_sprout) or not _sprout.visible:
 		return
-	var seat := Vector2(INSET + STAGE_X * 0.5, _stage_top() + STAGE_H * 0.5 + _stage_rise(t))
+	var seat := Vector2(_side() + STAGE_X * 0.5, _stage_top() + STAGE_H * 0.5 + _stage_rise(t))
 	_sprout.position = seat - _sprout.size * 0.5
 	_sprout.modulate.a = _stage_level(t)
 
@@ -2880,8 +3019,8 @@ func _draw_stage(t: float, shown: Array) -> void:
 	var a := _stage_level(t)
 	if a <= 0.0:
 		return
-	var x := INSET + STAGE_X
-	var w := size.x - INSET - STAGE_RIGHT - x
+	var x := _side() + STAGE_X
+	var w := size.x - _side() - STAGE_RIGHT - x
 	if _stage_mesh == null:
 		var b := Face.Builder.new()
 		b.fan(Face.Builder.round_rect(Vector2(x, 0.0), Vector2(w, STAGE_H), STAGE_RADIUS), Pal.LINE)
@@ -2921,7 +3060,7 @@ func stamp_key() -> String:
 	return "WT_STAMP_2" if m <= 5 else "WT_STAMP_3"
 
 func _stamp_centre() -> Vector2:
-	return Vector2(size.x - INSET - STAGE_RIGHT - STAMP_R * 0.95, _stage_top() + STAGE_H * 0.45)
+	return Vector2(size.x - _side() - STAGE_RIGHT - STAMP_R * 0.95, _stage_top() + STAGE_H * 0.45)
 
 ## The seal drops onto the right end of the stage's card, squashes and
 ## rings: gold with its word, or on Insane the night seal with "Night Walk"
