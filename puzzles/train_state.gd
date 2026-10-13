@@ -1,6 +1,9 @@
 extends RefCounted
-## Toy Train's rules, scene-free (puzzles/train2d.gd draws them;
-## docs/agents/boards/train.md).
+## Toy Cannons' rules, scene-free (puzzles/train2d.gd draws them;
+## docs/agents/boards/train.md). Built as Toy Train and turned into a
+## shooter a day later: the names here are the train's still. An engine is
+## a cannon, its room the corks it has left, the siding the tray it waits
+## in and the shed the toy box; "takes a block" is "shoots it".
 ##
 ## A picture of toy blocks lies on the rug with a loop of track round it.
 ## Little engines wait in the shed in columns, each painted one colour and
@@ -15,19 +18,22 @@ extends RefCounted
 ## a deal. The numbers of a colour's engines add up to exactly its blocks.
 
 const BANK := "res://content/pixel_garden.json"
-## Hard and Insane: the thirty pictures 16 squares a side.
-const BIG_BANK := "res://content/buttons_hard.json"
-const BIG_FROM := 2
+## The bank's band a difficulty deals from: 10 squares a side on Easy, then
+## small ones and a lot of them, 24 on Medium and 32 on Hard and Insane.
+const BANDS := [0, 2, 3, 3]
 const INSANE := 3
 ## Engines on the loop at once, waiting at its gate counted.
 const ON_LOOP := 5
 const SIDING := 5
 ## Stops between two engines as they enter.
 const GAP := 2
+## The same on a band: the squares are small past Easy, and a shooter is
+## two or three of them long.
+const GAPS := [2, 4, 5, 5]
 ## Columns in the shed, a band.
 const SHEDS := [2, 3, 3, 4]
 ## The least and the most a new engine carries, a band.
-const LOADS := [[3, 9], [4, 12], [6, 18], [8, 24]]
+const LOADS := [[3, 9], [10, 36], [16, 60], [20, 80]]
 ## How many engines the deal's own line lets wait in the siding at once: the
 ## rest of the five are the player's slack.
 const REF_PARKED := [1, 2, 3, 4]
@@ -50,7 +56,6 @@ enum { ENTER, PICK, RUN_END, FULL, PARK, HOME, JAM, WHOLE }
 
 static var _bank := {}
 static var _bank_read := false
-static var _big: Array = []
 
 var band := 0
 var w := 0
@@ -105,14 +110,13 @@ static func bank() -> Dictionary:
 				_bank = doc
 	return _bank
 
-static func big_pictures() -> Array:
-	if _big.is_empty():
-		var f := FileAccess.open(BIG_BANK, FileAccess.READ)
-		if f != null:
-			var doc = JSON.parse_string(f.get_as_text())
-			if doc is Dictionary and doc.get("pictures") is Array:
-				_big = doc.pictures
-	return _big
+## The pictures a difficulty deals from.
+static func pictures(band_: int) -> Array:
+	var doc := bank()
+	var k: int = BANDS[clampi(band_, 0, BANDS.size() - 1)]
+	if doc.get("bands") is Array and k < (doc.bands as Array).size():
+		return doc.bands[k]
+	return []
 
 static func hints_for(band_: int) -> int:
 	return HINTS_BY[clampi(band_, 0, HINTS_BY.size() - 1)]
@@ -121,11 +125,7 @@ static func hints_for(band_: int) -> int:
 func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
 	band = clampi(difficulty, 0, SHEDS.size() - 1)
 	var doc := bank()
-	var pics: Array = []
-	if band >= BIG_FROM:
-		pics = big_pictures()
-	elif doc.get("bands") is Array and band < (doc.bands as Array).size():
-		pics = doc.bands[band]
+	var pics := pictures(band)
 	if pics.is_empty():
 		adopt({"name": "", "rows": ["rrgg", "rrgg", "bbyy", "bbyy"]},
 			{"r": "red", "g": "green", "b": "blue", "y": "yellow"}, rng)
@@ -243,14 +243,36 @@ func first_seen(g: PackedInt32Array, s: int) -> int:
 		i += v.y
 	return -1
 
+## The same, from where stop `s` last found one: `near` keeps how deep each
+## stop has looked on a rug that only loses blocks (the deal's, 1,024 blocks
+## and a lap a colour for every engine it makes).
+func _seen_from(g: PackedInt32Array, s: int, near: PackedInt32Array) -> int:
+	var v := _sight(s)
+	var d := near[s]
+	var i := v.x + v.y * d
+	while d < v.z:
+		if g[i] >= 0:
+			near[s] = d
+			return i
+		d += 1
+		i += v.y
+	near[s] = d
+	return -1
+
 ## One engine of colour `c` with room for `most` goes once round `g` alone:
-## the blocks it takes (and takes off `g`).
-func _lap(g: PackedInt32Array, c: int, most: int) -> int:
+## the blocks it takes (and takes off `g`). `near` is `_seen_from`'s, for `g`.
+func _lap(g: PackedInt32Array, c: int, most: int, near = null) -> int:
+	var deep: PackedInt32Array
+	if near == null:
+		deep = PackedInt32Array()
+		deep.resize(stops())
+	else:
+		deep = near
 	var got := 0
 	for s in stops():
 		if got >= most:
 			break
-		var i := first_seen(g, s)
+		var i := _seen_from(g, s, deep)
 		if i >= 0 and g[i] == c:
 			g[i] = -1
 			got += 1
@@ -280,6 +302,8 @@ func _deal(rng: RandomNumberGenerator) -> void:
 	var hi: int = LOADS[band][1]
 	var allow: int = REF_PARKED[band]
 	var parked: Array[int] = []
+	var near := PackedInt32Array()
+	near.resize(stops())
 	var left_room := PackedInt32Array()
 	var order := PackedInt32Array()
 	line = PackedInt32Array()
@@ -288,12 +312,12 @@ func _deal(rng: RandomNumberGenerator) -> void:
 		var best := -1
 		var best_n := 0
 		for e in parked:
-			var n := _lap(g.duplicate(), colour[e], left_room[e])
+			var n := _lap(g.duplicate(), colour[e], left_room[e], near.duplicate())
 			if n > best_n:
 				best_n = n
 				best = e
 		if best >= 0:
-			var n := _lap(g, colour[best], left_room[best])
+			var n := _lap(g, colour[best], left_room[best], near)
 			left_room[best] -= n
 			by[colour[best]] -= n
 			cells -= n
@@ -309,7 +333,7 @@ func _deal(rng: RandomNumberGenerator) -> void:
 		reach.resize(colours.size())
 		var total := 0
 		for c in colours.size():
-			reach[c] = _lap(g.duplicate(), c, free[c]) if free[c] > 0 else 0
+			reach[c] = _lap(g.duplicate(), c, free[c], near.duplicate()) if free[c] > 0 else 0
 			total += reach[c]
 		if total <= 0:
 			break
@@ -344,7 +368,7 @@ func _deal(rng: RandomNumberGenerator) -> void:
 		left_room.append(n)
 		order.append(id)
 		line.append(id)
-		var got := _lap(g, c, n)
+		var got := _lap(g, c, n, near)
 		left_room[id] -= got
 		by[c] -= got
 		cells -= got
@@ -595,7 +619,15 @@ func hint() -> int:
 		var n := _lap(grid.duplicate(), colour[e], room[e])
 		if n <= 0:
 			continue
-		var score := n * 4 + (2 if n == room[e] else 0) + (1 if where[e] == PARKED else 0)
+		# one that fills frees a place for good; one out of the siding costs
+		# no place; a new one that will come back wants a place to come back to
+		var score := n * 4 + (1 if where[e] == PARKED else 0)
+		if n == room[e]:
+			score += 4000
+		elif where[e] == PARKED:
+			score += 2000
+		elif parked() >= SIDING - 1:
+			score = 1
 		if score > best_score:
 			best_score = score
 			best = e

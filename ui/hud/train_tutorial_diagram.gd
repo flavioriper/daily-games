@@ -1,6 +1,8 @@
 extends Control
 
-## One page of Toy Train's tutorial: a small rug played by the board itself.
+## One page of Toy Cannons' tutorial (the board built as Toy Train: an
+## engine here is a cannon, the siding its tray, the shed the toy box): a
+## small rug played by the board itself.
 ## The page holds a `Small` -- train2d.gd with its sounds, buzzes, toast,
 ## pill, party and seal taken out -- laid with a hand-made rug, and plays
 ## the lesson on a loop through the board's own input path (a press on an

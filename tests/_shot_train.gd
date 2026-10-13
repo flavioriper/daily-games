@@ -1,6 +1,6 @@
 extends SceneTree
 
-## Shots and probes of Toy Train, played through the board's own input path
+## Shots and probes of Toy Cannons (built as Toy Train), played through the board's own input path
 ## (a touch pressed and let go on an engine). Windowed, one at a time:
 ##
 ##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_train.gd -- [d=0..3] [mode] [rm] [out=<dir>]

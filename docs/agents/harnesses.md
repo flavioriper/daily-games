@@ -298,7 +298,7 @@ harness's own walk with `_waiting` meanwhile; seven rungs want `to=20`.
 
 ## Button Box's harness (2026-10-11)
 
-`tests/_shot_train.gd` plays Toy Train through its real input path (a touch
+`tests/_shot_train.gd` plays Toy Cannons (id `train`) through its real input path (a touch
 pressed and let go on an engine), through the menu and the host:
 
     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_train.gd -- d=0..3 <mode> [rm]

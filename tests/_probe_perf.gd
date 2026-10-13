@@ -4926,7 +4926,7 @@ func _buzz_buttons() -> void:
 		_buzzed("reset")
 	_moves = _moves_buttons()
 
-## Toy Train's are a tap an engine: the state's own pick, sent when the loop
+## Toy Cannons' are a tap an engine: the state's own pick, sent when the loop
 ## has room for it. The loop runs on its clock, so a tap it had no room for
 ## goes back on the list, and the list is long enough to see the win.
 func _moves_train() -> Array:
@@ -4943,7 +4943,7 @@ func _moves_train() -> Array:
 		out.append(m)
 	return out
 
-## Toy Train's buzzes: a buried engine tapped, the front one sent and its
+## Toy Cannons' buzzes: a buried engine tapped, the front one sent and its
 ## lap (the blocks it takes, and home full or into the siding), the bulb,
 ## Reset. The plain run then plays the state's own hand to the win.
 func _buzz_train() -> void:

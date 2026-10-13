@@ -1,13 +1,18 @@
 extends "res://core/puzzle_base.gd"
-## Toy Train: a picture of toy blocks on the playroom rug, a loop of wooden
-## track round it, and little engines that tidy it away
-## (docs/agents/boards/train.md). The rules are puzzles/train_state.gd's; this
-## draws them and keeps the loop's clock.
+## Toy Cannons: a picture of toy blocks on the playroom rug, a loop of
+## wooden track round it, and little cannons that ride it and shoot the
+## picture away with corks (docs/agents/boards/train.md). The rules are
+## puzzles/train_state.gd's; this draws them and keeps the loop's clock.
+##
+## The board was built as Toy Train on 2026-10-12 and turned into a shooter
+## the day after: its id, its files and its names in code are the train's
+## still. An `engine` is a cannon, its `room` the corks it has left, the
+## `siding` the tray it waits in and the `shed` the toy box.
 ##
 ## A `bleed` board (ui/flat/flat_host.gd): the floor is the whole screen, the
 ## rug and its loop as big as the room between the pill and the yard allows,
-## the siding and the shed at the foot. Tap an engine at the front of a
-## column of the shed, or one waiting in the siding, and it goes once round.
+## the tray and the toy box at the foot. Tap a cannon at the front of a
+## column of the box, or one waiting in the tray, and it goes once round.
 ##
 ## Drawn as `_bg` (the floor), `_yard` (the siding and the shed), `_ring`
 ## (the rug and the track), the blocks as one mesh rebuilt when one is taken,
@@ -29,27 +34,43 @@ const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 const PAD := 22.0
 const HUD_ROW := 76.0
 const GAP := 18.0
-## Squares from the picture to the rug's edge, and to the track's centre.
+## From the picture to the rug's edge, and to the track's centre, in lanes:
+## a lane is a square, but never under LANE_MIN pixels, so the track and the
+## cannons on it keep their size when the squares are small.
 const EDGE := 1.85
 const REACH := 0.95
-## The track's gauge and an engine's length on the loop, in squares.
+const LANE_MIN := 34.0
+## The track's gauge and a cannon's length on the loop, in lanes.
 const GAUGE := 0.62
 const ENGINE := 1.45
+## A cannon on the loop is never shorter than this: on the small pictures it
+## stands from the rug's edge to the picture's, its wheels astride the track.
+const LOOP_MIN := 60.0
 const CELL_MAX := 62.0
+## The blocks are kept as a mesh a patch of this many squares a side, so a
+## block shot rebuilds its patch and not the picture.
+const CHUNK := 8
 ## An engine's length at rest in the yard, and the unit its mesh is built at.
 const REST := 92.0
 const UNIT := 100.0
 ## Rows of a column of the shed that are seen; the rest are a count.
 const ROWS := 3
 const BURIED := 0.84
-## Seconds a stop, a band: a lap is about four seconds on every one.
-const TICKS := [0.085, 0.075, 0.065, 0.065]
+## Seconds a stop, a band, and a shot a stop: a lap is about two seconds on
+## every one, forty to fifty corks a second past Easy.
+const TICKS := [0.045, 0.024, 0.02, 0.02]
 
 ## This board's own motion (the rest is core/motion.gd's).
 const SEND_FLY := 0.24
 const PARK_FLY := 0.34
 const SHIFT := 0.22
-const PICK_FLY := 0.17
+## A cork's flight to its block, the block's burst where it stands, and the
+## cannon's kick back from the shot.
+const PICK_FLY := 0.06
+const BURST := 0.14
+const BURST_GROW := 0.45
+const RECOIL := 0.07
+const RECOIL_PX := 0.12
 const POP := 0.24
 const WIN_WAIT := 1.5
 const PARTY_EXTRA := 0.6
@@ -64,15 +85,18 @@ const CARD_AFTER := 1.0
 const CARD_AFTER_STILL := 0.3
 const HINT_BEAT := 0.5
 
-## A run: the stops in a row one engine takes a block at. Its tick climbs a
-## step of this scale a block (semitones, an octave at the most: the take
-## sits five steps low so the top is still a tock); the bubble counts it
-## from the third, and a long one ends on two notes.
+## A run: the stops in a row one cannon hits a block at. Its tick climbs a
+## step of this scale every RUN_STEP blocks (semitones, an octave at the
+## most: the take sits five steps low so the top is still a tock), and is
+## heard and felt once in PICK_GAP however many are shot; the bubble counts
+## the run from COMBO_FROM, and a long one ends on two notes.
 const RUN_SCALE := [0, 2, 4, 5, 7, 9, 11, 12]
+const RUN_STEP := [1, 3, 4, 4]
+const PICK_GAP := 0.06
 const TICK_VARY := Vector2(0.985, 1.015)
-const COMBO_FROM := 3
-const BIG_RUN := 5
-const RUN_CONFETTI := [10, 15, 20]
+const COMBO_FROM := 5
+const BIG_RUN := 12
+const RUN_CONFETTI := [20, 40, 60]
 const COMBO_DEFLATE := 0.25
 const COMBO_HOLD := 0.9
 const COMBO_FONT := 44
@@ -131,6 +155,10 @@ var _heart_card: Control
 var _clear := Vector2.ZERO
 var _won := false
 var _cell := 0.0
+## The lane (LANE_MIN), and the rug's edge and the track's reach in squares.
+var _lane := 0.0
+var _edge := EDGE
+var _reach := REACH
 var _grid := Vector2.ZERO
 var _rug := Rect2()
 var _siding_rect := Rect2()
@@ -158,6 +186,10 @@ var _yard: ArrayMesh
 var _ring: ArrayMesh
 var _blocks: ArrayMesh
 var _blocks_stale := true
+## The blocks at rest, a mesh a patch (CHUNK), and the patches to rebuild.
+var _chunks := {}
+var _chunk_stale := {}
+var _cork: ArrayMesh
 var _blk := {}
 var _eng := {}
 var _plate: ArrayMesh
@@ -165,6 +197,7 @@ var _flat_cache := {}
 var _shown: Array = []
 var _hud_layer: Control
 var _hud_shown: ArrayMesh
+var _hud_wide := -1.0
 var _combo_shown: ArrayMesh
 var _seal_mesh: ArrayMesh
 var _toast_mesh: ArrayMesh
@@ -185,7 +218,7 @@ var _shiver_at := {}
 var _flights: Array = []
 
 var _pressed := -1
-var _pick_tick := -1
+var _pick_cue_at := -INF
 var _streak := 0
 var _combo_n := 0
 var _combo_e := -1
@@ -206,7 +239,7 @@ var _told_home := false
 var _final_taps := 0
 
 func puzzle_id() -> String: return "train"
-func title() -> String: return "Toy Train"
+func title() -> String: return "Toy Cannons"
 
 func rules() -> String:
 	var out := tr("TT_RULES") % [State.ON_LOOP, State.SIDING]
@@ -330,15 +363,21 @@ func _layout() -> void:
 	var head := top if _won or not _pill else top + HUD_ROW
 	var below := 0.0 if _won else siding_size.y + shed_size.y + 2.0 * GAP + 12.0
 	var room := Vector2(size.x - 2.0 * PAD, foot - head - below)
-	var span := Vector2(state.w + 2.0 * EDGE, state.h + 2.0 * EDGE)
-	_cell = minf(CELL_MAX, minf(room.x / span.x, room.y / span.y))
-	if _cell <= 0.0:
-		return
 	if _beside and not _won:
 		room = Vector2(size.x - siding_size.x - 3.0 * PAD, foot - head - 2.0 * GAP)
-		_cell = minf(CELL_MAX, minf(room.x / span.x, room.y / span.y))
+	var span := Vector2(state.w + 2.0 * EDGE, state.h + 2.0 * EDGE)
+	_cell = minf(CELL_MAX, minf(room.x / span.x, room.y / span.y))
+	_lane = _cell
+	if _cell < LANE_MIN:
+		# small squares: the rug's border keeps its size and the picture has
+		# what is left
+		_lane = LANE_MIN
+		_cell = minf((room.x - 2.0 * EDGE * _lane) / state.w, (room.y - 2.0 * EDGE * _lane) / state.h)
 	if _cell <= 0.0:
 		return
+	_edge = EDGE * _lane / _cell
+	_reach = REACH * _lane / _cell
+	span = Vector2(state.w + 2.0 * _edge, state.h + 2.0 * _edge)
 	var ring := span * _cell
 	_rug = Rect2(Vector2((size.x - ring.x) * 0.5, head + (room.y - ring.y) * 0.5), ring)
 	_siding_rect = Rect2(Vector2((size.x - siding_size.x) * 0.5, _rug.end.y + GAP), siding_size)
@@ -351,8 +390,8 @@ func _layout() -> void:
 		var yard_h := siding_size.y + GAP + shed_size.y
 		_siding_rect.position = Vector2(yard_x - siding_size.x * 0.5, mid_y - yard_h * 0.5)
 		_shed_rect.position = Vector2(yard_x - shed_size.x * 0.5, _siding_rect.end.y + GAP)
-	_grid = _rug.position + Vector2(EDGE, EDGE) * _cell
-	_loop_px = maxf(ENGINE * _cell, 40.0)
+	_grid = _rug.position + Vector2(_edge, _edge) * _cell
+	_loop_px = maxf(ENGINE * _lane, LOOP_MIN)
 	_flat_cache = {}
 	_blk = {}
 	_eng = {}
@@ -365,6 +404,9 @@ func _layout() -> void:
 		Art.engine(eb, UNIT, col)
 		Art.plate(eb, UNIT)
 		_eng[c] = eb.mesh()
+	var cb := Face.Builder.new()
+	Art.cork(cb, UNIT)
+	_cork = cb.mesh()
 	var b := Face.Builder.new()
 	Art.floor_boards(b, size)
 	_bg = b.mesh()
@@ -388,15 +430,15 @@ func _stop_at(s: int) -> Vector2:
 	var w: int = state.w
 	var h: int = state.h
 	if s < w:
-		return Vector2(s + 0.5, h + REACH)
+		return Vector2(s + 0.5, h + _reach)
 	s -= w
 	if s < h:
-		return Vector2(w + REACH, h - 0.5 - s)
+		return Vector2(w + _reach, h - 0.5 - s)
 	s -= h
 	if s < w:
-		return Vector2(w - 0.5 - s, -REACH)
+		return Vector2(w - 0.5 - s, -_reach)
 	s -= w
-	return Vector2(-REACH, s + 0.5)
+	return Vector2(-_reach, s + 0.5)
 
 func _side(s: int) -> int:
 	var w: int = state.w
@@ -416,7 +458,7 @@ func loop_at(u: float) -> Vector2:
 	var w: int = state.w
 	var h: int = state.h
 	var n: int = state.stops()
-	var r := REACH + 0.5
+	var r := _reach + 0.5
 	var p: Vector2
 	if u < 0.0:
 		p = Vector2(0.5, h - 0.5) + Vector2.from_angle(lerpf(PI * 0.75, PI * 0.5, clampf(u + 1.0, 0.0, 1.0))) * r
@@ -434,9 +476,10 @@ func loop_at(u: float) -> Vector2:
 			p = centre + Vector2.from_angle(lerpf(a0, a0 - PI * 0.5, f)) * r
 	return _grid + p * _cell
 
-## The way an engine at `u` faces, as its mesh is turned (nose up at 0).
+## The way a cannon at `u` points, as its mesh is turned (muzzle up at 0):
+## across the rug, square to the way it rolls.
 func _heading(u: float) -> float:
-	return (loop_at(u + 0.08) - loop_at(u - 0.08)).angle() + PI * 0.5
+	return (loop_at(u + 0.08) - loop_at(u - 0.08)).angle()
 
 func siding_pos(place: int) -> Vector2:
 	return Art.siding_place(_siding_rect, place, State.SIDING, _step)
@@ -456,9 +499,9 @@ func _build_yard() -> ArrayMesh:
 ## siding line at the gate.
 func _build_ring() -> ArrayMesh:
 	var b := Face.Builder.new()
-	Art.rug(b, _rug, _field_px(), _cell)
-	var seam := _rug.grow(-_cell * 0.34)
-	Art.stitches(b, seam, _cell * 0.9, 16.0, Art.RUG_STITCH)
+	Art.rug(b, _rug, _field_px(), _lane)
+	var seam := _rug.grow(-_lane * 0.34)
+	Art.stitches(b, seam, _lane * 0.9, 16.0, Art.RUG_STITCH)
 	var pts := PackedVector2Array()
 	var n: int = state.stops()
 	var u := 0.0
@@ -469,7 +512,7 @@ func _build_ring() -> ArrayMesh:
 		pts.append(loop_at(n - 1 + k / 8.0))
 	for k in 8:
 		pts.append(loop_at(-1.0 + k / 8.0))
-	Art.track(b, pts, GAUGE * _cell, true)
+	Art.track(b, pts, GAUGE * _lane, true)
 	return b.mesh()
 
 # --- the engines as they are seen ---
@@ -579,10 +622,7 @@ func _draw() -> void:
 	draw_mesh(_ring, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, 1.0 if Motion.reduce else Motion.appear_level(since + Motion.ENTER_DELAY)))
 	shown.append(_ring)
 	draw_set_transform_matrix(slide)
-	var blocks := _blocks_now(now)
-	if blocks != null:
-		draw_mesh(blocks, null)
-		shown.append(blocks)
+	_draw_blocks(now, shown)
 	if _stamp_at <= now:
 		_draw_stamp(now, shown, slide)
 	draw_set_transform_matrix(Transform2D.IDENTITY)
@@ -590,9 +630,46 @@ func _draw() -> void:
 		_draw_engines(now, shown, yard)
 	_shown = shown
 
-## The blocks on the rug as one mesh: kept while nothing changes, built a
-## frame at a time while they pop in (the opening, and the picture put back
-## whole for the win).
+## The blocks on the rug. At rest and in play a mesh a patch, and only the
+## patch a cork lands in rebuilt (a picture is a thousand blocks and loses
+## fifty a second); while they pop in, one mesh a frame (`_blocks_now`).
+func _draw_blocks(now: float, shown: Array) -> void:
+	var opening := not Motion.reduce and now < _opened + Motion.ENTER_DELAY + Motion.ENTER_POP * 0.5 \
+			+ Motion.stagger(state.w + state.h, Motion.ENTER_STAGGER, 1.0) + Motion.POP_IN + 0.05
+	if _solved_at > -INF or opening:
+		var blocks := _blocks_now(now)
+		if blocks != null:
+			draw_mesh(blocks, null)
+			shown.append(blocks)
+		return
+	if _blocks_stale:
+		_blocks_stale = false
+		_blocks = null
+		_chunks = {}
+		_chunk_stale = {}
+	var w: int = state.w
+	var h: int = state.h
+	var across := ceili(float(w) / CHUNK)
+	for cy in ceili(float(h) / CHUNK):
+		for cx in across:
+			var key := cy * across + cx
+			if _chunk_stale.has(key) or not _chunks.has(key):
+				var fb := Face.FlatBuilder.new(_flat_cache)
+				for y in range(cy * CHUNK, mini(h, (cy + 1) * CHUNK)):
+					for x in range(cx * CHUNK, mini(w, (cx + 1) * CHUNK)):
+						var c: int = state.grid[y * w + x]
+						if c >= 0:
+							fb.append(_blk[c], Transform2D(0.0, cell_centre(y * w + x)))
+				_chunks[key] = fb.mesh()
+			var m: ArrayMesh = _chunks[key]
+			if m != null:
+				draw_mesh(m, null)
+				shown.append(m)
+	_chunk_stale = {}
+
+## The blocks as one mesh, built a frame at a time while they pop in (the
+## opening, and the picture put back whole for the win) and kept once the
+## whole picture stands.
 func _blocks_now(now: float) -> ArrayMesh:
 	var whole: bool = _solved_at > -INF
 	var cells: PackedInt32Array = state.picture if whole else state.grid
@@ -632,21 +709,27 @@ func _blocks_now(now: float) -> ArrayMesh:
 	_blocks_stale = false
 	return m
 
-## The blocks in the air, then every engine with its number: the ones at
-## rest first, the ones on the loop over them.
+## The shots in the air (a block stands until its cork lands, then bursts
+## where it stood), then every cannon with its number: the ones at rest
+## first, the ones on the loop over them.
 func _draw_engines(now: float, shown: Array, alpha: float) -> void:
 	var fb := Face.FlatBuilder.new(_flat_cache)
 	var live: Array = []
 	for f: Dictionary in _flights:
-		var u := clampf((now - float(f.at)) / PICK_FLY, 0.0, 1.0)
-		var to: Array = _seen.get(int(f.e), [])
-		if u >= 1.0 or to.is_empty():
+		var e := now - float(f.at)
+		if e >= PICK_FLY + BURST:
 			continue
 		live.append(f)
-		var s := u * u
-		var k := lerpf(1.0, 0.4, s)
-		var p := (f.from as Vector2).lerp(to[0], s) + Vector2(0.0, -sin(PI * u) * _cell * 0.35)
-		fb.append(_blk[int(f.c)], Transform2D(0.0, Vector2(k, k), 0.0, p))
+		var to: Vector2 = f.to
+		if e < PICK_FLY:
+			fb.append(_blk[int(f.c)], Transform2D(0.0, to))
+			var from: Vector2 = f.from
+			var ck := float(f.px) / UNIT
+			fb.append(_cork, Transform2D((to - from).angle() + PI * 0.5, Vector2(ck, ck), 0.0, from.lerp(to, e / PICK_FLY)))
+		else:
+			var v := (e - PICK_FLY) / BURST
+			var k := 1.0 + BURST_GROW * v
+			fb.append(_blk[int(f.c)], Transform2D(0.0, Vector2(k, k), 0.0, to), Color(1.0, 1.0, 1.0, 1.0 - v * v))
 	_flights = live
 	var labels: Array = []
 	var order: Array = []
@@ -663,9 +746,10 @@ func _draw_engines(now: float, shown: Array, alpha: float) -> void:
 		var px := float(t[2])
 		var pos: Vector2 = t[0]
 		if not Motion.reduce:
-			var bumped := now - float(_bump_at.get(e, -INF))
-			if bumped >= 0.0 and bumped < Motion.BUMP_TIME:
-				px *= Motion.bump_scale(bumped, 0.16)
+			# the kick of a shot, back from the way it points
+			var shot := now - float(_bump_at.get(e, -INF))
+			if shot >= 0.0 and shot < RECOIL:
+				pos -= Vector2.UP.rotated(float(t[1])) * px * RECOIL_PX * (1.0 - shot / RECOIL)
 			var shook := now - float(_shiver_at.get(e, -INF))
 			if shook < Motion.SHIVER_TIME:
 				pos.x += Motion.shiver_offset(shook, 5.0)
@@ -704,10 +788,10 @@ func _draw_engines(now: float, shown: Array, alpha: float) -> void:
 		draw_string(small, Vector2(shed_pos(c, 0).x - wide * 0.5, _shed_rect.end.y - 16.0), text,
 			HORIZONTAL_ALIGNMENT_LEFT, -1.0, 26, Color(Pal.TEXT_DIM, alpha))
 	# the loop's count, on a little post by the gate
-	var post := _grid + Vector2(-EDGE + 0.5, state.h + EDGE - 0.5) * _cell
+	var post := _rug.position + Vector2(0.5 * _lane, _rug.size.y - 0.5 * _lane)
 	var on: int = state.loop.size() + state.gate.size()
 	var pk := 1.0 if Motion.reduce else Motion.bump_scale(now - _tag_bump, 0.2)
-	var pr := maxf(20.0, _cell * 0.52) * pk
+	var pr := maxf(20.0, _lane * 0.52) * pk
 	draw_circle(post + Vector2(0.0, 2.0), pr + 2.0, Color(Pal.OUTLINE, 0.2 * alpha))
 	draw_circle(post, pr, Color(Pal.SURFACE, alpha))
 	var tag := "%d/%d" % [on, State.ON_LOOP]
@@ -730,10 +814,13 @@ func _draw_hud() -> void:
 		var text := pill_text()
 		var wide := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, PILL_FONT).x
 		var box := Vector2(wide + 52.0, PILL_H)
-		var b := Face.Builder.new()
-		b.polygon(Face.Builder.round_rect(-box * 0.5 - Vector2.ONE * 2.0, box + Vector2.ONE * 4.0, box.y * 0.5 + 2.0), Pal.LINE)
-		b.polygon(Face.Builder.round_rect(-box * 0.5, box, box.y * 0.5), Pal.SURFACE)
-		_hud_shown = b.mesh()
+		# the count changes with every cork: the plate only with its width
+		if _hud_shown == null or not is_equal_approx(_hud_wide, box.x):
+			var b := Face.Builder.new()
+			b.polygon(Face.Builder.round_rect(-box * 0.5 - Vector2.ONE * 2.0, box + Vector2.ONE * 4.0, box.y * 0.5 + 2.0), Pal.LINE)
+			b.polygon(Face.Builder.round_rect(-box * 0.5, box, box.y * 0.5), Pal.SURFACE)
+			_hud_shown = b.mesh()
+			_hud_wide = box.x
 		var alpha := 1.0 if Motion.reduce else Motion.appear_level(since)
 		var k := 1.0 if Motion.reduce else Motion.bump_scale(now - _pill_bump, 0.12)
 		_hud_layer.draw_set_transform(Vector2(size.x * 0.5, _clear.x + HUD_ROW * 0.5), 0.0, Vector2(k, k))
@@ -946,18 +1033,24 @@ func _tick() -> void:
 		_tag_bump = now
 	check_solved()
 
-## A block leaves the rug for its engine: it flies to it, the engine bumps
-## as it lands, and the tick climbs the run's scale.
+## A cannon shoots the block it sees: the cork flies to it, the block
+## bursts where it stands and the cannon kicks back; the tick climbs the
+## run's scale.
 func _on_pick(e: int, cell: int, n: int, now: float) -> void:
-	_blocks_stale = true
+	var w: int = state.w
+	_chunk_stale[(cell / w / CHUNK) * ceili(float(w) / CHUNK) + (cell % w) / CHUNK] = true
 	if not Motion.reduce:
-		_flights.append({"c": state.colour[e], "from": cell_centre(cell), "e": e, "at": now})
-		_bump_at[e] = now + PICK_FLY * 0.8
-	# two engines that take a block on one tick tick and knock once (fx.cue
-	# holds the sound to one in 60 ms but knocks every time)
-	if _pick_tick != state.ticks:
-		_pick_tick = state.ticks
-		var semis: int = RUN_SCALE[mini(n - 1, RUN_SCALE.size() - 1)]
+		var seen: Array = _seen.get(e, _target(e))
+		var px := float(seen[2])
+		_flights.append({"c": state.colour[e], "to": cell_centre(cell), "px": px, "at": now,
+			"from": (seen[0] as Vector2) + Vector2.UP.rotated(float(seen[1])) * px * 0.5})
+		_bump_at[e] = now
+	# forty corks a second are one tick and one knock in PICK_GAP (fx.cue
+	# holds the sound but knocks every time it is asked)
+	if now - _pick_cue_at >= PICK_GAP:
+		_pick_cue_at = now
+		var step: int = RUN_STEP[clampi(state.band, 0, RUN_STEP.size() - 1)]
+		var semis: int = RUN_SCALE[mini((n - 1) / step, RUN_SCALE.size() - 1)]
 		fx.cue("pick", pow(2.0, semis / 12.0) * randf_range(TICK_VARY.x, TICK_VARY.y))
 	_bump_pill()
 	if n >= COMBO_FROM:
@@ -972,8 +1065,8 @@ func _on_pick(e: int, cell: int, n: int, now: float) -> void:
 		if RUN_CONFETTI.has(n) and not Motion.reduce:
 			var seen: Array = _seen.get(e, [])
 			if not seen.is_empty():
-				fx.confetti(seen[0], 12, _cell * 3.0)
-	_busy_for(PICK_FLY + Motion.BUMP_TIME + 0.1)
+				fx.confetti(seen[0], 12, _lane * 3.0)
+	_busy_for(PICK_FLY + BURST + 0.1)
 
 ## A run is over: a long one ends on its two notes and a sparkle.
 func _on_run_end(e: int, n: int) -> void:
@@ -993,16 +1086,16 @@ func _on_full(e: int, now: float) -> void:
 	var pos: Vector2 = seen[0]
 	_from.erase(e)
 	if not Motion.reduce:
-		_pops[e] = {"pos": pos, "ang": seen[1], "px": seen[2], "at": now + PICK_FLY * 0.8}
+		_pops[e] = {"pos": pos, "ang": seen[1], "px": seen[2], "at": now + PICK_FLY}
 	var col: Color = Art.colour(state.colours[state.colour[e]])
-	_after(0.0 if Motion.reduce else PICK_FLY * 0.8, func() -> void:
+	_after(0.0 if Motion.reduce else PICK_FLY, func() -> void:
 		fx.cue("full", randf_range(0.97, 1.03))
 		fx.puff(pos, col.lightened(0.3), 6)
 		fx.ring(pos, _loop_px * 0.6, col))
 	_streak += 1
 	if _streak >= 2:
 		var semis: int = STREAK_STEPS[mini(_streak - 2, STREAK_STEPS.size() - 1)]
-		_after(PICK_FLY * 0.8 + 0.09, func() -> void:
+		_after(PICK_FLY + 0.09, func() -> void:
 			if not is_done():
 				fx.cue("combo", pow(2.0, semis / 12.0), STREAK_DB))
 	_busy_for(PICK_FLY + POP + 0.2)
@@ -1096,7 +1189,7 @@ func restore_completed_board() -> void:
 	_request()
 
 func share_glyphs() -> String:
-	return "%s\n🚂 %d" % [state.share_glyphs(), _final_taps]
+	return "%s\n🎯 %d" % [state.share_glyphs(), _final_taps]
 
 # --- the win ---
 
@@ -1122,7 +1215,7 @@ func _on_solved() -> void:
 	_combo_n = 0
 	_solved_at = now
 	_final_taps = state.taps
-	var lag := 0.0 if Motion.reduce else PICK_FLY + POP + 0.25
+	var lag := 0.0 if Motion.reduce else PICK_FLY + BURST + POP + 0.25
 	_win_pop_at = now + lag
 	_blocks_stale = true
 	_after(lag, fx.cue.bind("solved"))

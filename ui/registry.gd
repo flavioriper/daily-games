@@ -1049,13 +1049,13 @@ const PUZZLES := [
 	{
 		"id": "train",
 		"kind": "puzzle",
-		"title": "Toy Train",
+		"title": "Toy Cannons",
 		"blurb": "TT_BLURB",
 		"short": "TT_SHORT",
 		"motto": "TT_MOTTO",
-		"footer": "Send · Carry · Tidy",
+		"footer": "Send · Aim · Pop",
 		# The playroom floor is the whole screen (`bleed`, ui/flat/flat_host.gd):
-		# the rug, its loop, the siding and the shed lie on it, so there is no
+		# the rug, its loop, the tray and the toy box lie on it, so there is no
 		# tray and no actions row, and the bulb and Reset ride up into the top
 		# bar. The board's own toast says what the tip card would.
 		"script": "res://puzzles/train2d.gd",

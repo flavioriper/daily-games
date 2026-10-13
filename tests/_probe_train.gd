@@ -1,6 +1,6 @@
 extends SceneTree
 
-## Toy Train's rules, headless: every picture of every band is dealt off a
+## Toy Cannons' rules (the board built as Toy Train, its names kept), headless: every picture of every band is dealt off a
 ## few seeds and played four ways -- the deal's own line, an engine at a
 ## time; the state's own hand (`hint`), an engine at a time; the same hand
 ## sending as fast as the loop lets it; and a careless one, any engine a tap
@@ -10,24 +10,29 @@ extends SceneTree
 ## REF_PARKED in the siding, and on Easy to Hard every way ends with the rug
 ## clear. Insane can be lost: how often each hand does is printed.
 ##
-##   godot --headless --path . --script tests/_probe_train.gd [-- seeds=3]
+##   godot --headless --path . --script tests/_probe_train.gd [-- seeds=3 band=2]
 
 const State = preload("res://puzzles/train_state.gd")
 
-const GUARD := 20000
+const GUARD := 200000
 
 var _bad := 0
 var _runs := 0
 
 func _initialize() -> void:
 	var seeds := 3
+	var only := -1
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("seeds="):
 			seeds = int(a.trim_prefix("seeds="))
+		if a.begins_with("band="):
+			only = int(a.trim_prefix("band="))
 	var doc: Dictionary = State.bank()
 	for band in 4:
+		if only >= 0 and band != only:
+			continue
 		var t0 := Time.get_ticks_msec()
-		var pics: Array = State.big_pictures() if band >= State.BIG_FROM else doc.bands[band]
+		var pics: Array = State.pictures(band)
 		var engines: Array = []
 		var loads: Array = []
 		var pars: Array = []

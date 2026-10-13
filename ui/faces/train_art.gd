@@ -1,12 +1,12 @@
 extends RefCounted
-## Toy Train's drawings (puzzles/train2d.gd, the menu card and the tutorial):
+## Toy Cannons' drawings (puzzles/train2d.gd, the menu card and the tutorial):
 ## the playroom floor, the rug, the wooden track, a toy block, a little
-## engine seen from above, the siding and the shed. Builder shapes and not a
+## cannon seen from above and its cork, the tray and the toy box. Builder shapes and not a
 ## Control, as `button_art.gd` is: the board bakes every block into one mesh
 ## and every engine into another.
 ##
-## Blocks and engines are coloured by index, so nothing here says a state
-## with a shade of the piece's own colour: an engine's room is its number.
+## Blocks and cannons are coloured by index, so nothing here says a state
+## with a shade of the piece's own colour: a cannon's corks are its number.
 
 const Pal = preload("res://core/palette.gd")
 const Face = preload("res://ui/faces/face.gd")
@@ -34,6 +34,10 @@ const IRON := Color("4a3226")
 ## A block's side of a square, and its corner.
 const BLOCK := 0.9
 const BLOCK_R := 0.16
+## Under this many pixels a square a block is drawn plain.
+const SMALL := 30.0
+const CORK := Color("f1dcb0")
+const CORK_DEEP := Color("c9a871")
 
 static func colour(named: String) -> Color:
 	return Pal.PG_BEADS.get(named, Pal.LINE)
@@ -120,45 +124,59 @@ static func track(b, points: PackedVector2Array, wide: float, closed: bool) -> v
 		b.stroke(side, rail, RAIL, closed, true)
 
 ## One toy block about `at` on a square of `cell`: a deep edge, the face a
-## touch up from it, and a soft shine at its top.
+## touch up from it, and a soft shine at its top. A small one (the pictures
+## past Easy are a thousand of them) is two plain squares: six triangles.
 static func block(b, at: Vector2, cell: float, col: Color) -> void:
 	var s := cell * BLOCK
 	var r := cell * BLOCK_R
 	var lift := cell * 0.07
+	if cell < SMALL:
+		s = cell - 1.0
+		lift = maxf(1.5, cell * 0.1)
+		_bar(b, Rect2(at - Vector2(s, s) * 0.5, Vector2(s, s)), col.darkened(0.24))
+		_bar(b, Rect2(at - Vector2(s, s) * 0.5, Vector2(s, s - lift)), col)
+		return
 	b.polygon(Face.Builder.round_rect(at - Vector2(s, s) * 0.5 + Vector2(0.0, lift * 0.5), Vector2(s, s), r), col.darkened(0.24))
 	b.polygon(Face.Builder.round_rect(at - Vector2(s, s) * 0.5 - Vector2(0.0, lift * 0.5), Vector2(s, s - lift), r), col)
 	if cell >= 30.0:
 		var shine := Vector2(s * 0.56, s * 0.16)
 		b.polygon(Face.Builder.round_rect(at + Vector2(-s * 0.36, -s * 0.4), shine, shine.y * 0.5), Color(col.lightened(0.35), 0.75))
 
-## A little engine seen from above, about the origin, its nose up the
-## screen, `s` long: wheels, the body, the funnel at the nose, the cab at the
-## back and a pale plate for its number.
+## A little toy cannon seen from above, about the origin, its muzzle up the
+## screen, `s` long: two wooden wheels, the carriage in its colour, the
+## barrel out of it with an iron band at the muzzle. (`engine` is the name
+## the board's files were built with: docs/agents/boards/train.md.)
 static func engine(b, s: float, col: Color) -> void:
-	b.ellipse(Vector2(0.0, s * 0.06), s * 0.4, s * 0.5, Color(Pal.OUTLINE, 0.13))
+	b.ellipse(Vector2(0.0, s * 0.08), s * 0.42, s * 0.48, Color(Pal.OUTLINE, 0.13))
 	for sx in [-1.0, 1.0]:
-		for wy in [-0.27, 0.0, 0.27]:
-			var wheel := Vector2(s * 0.13, s * 0.19)
-			b.polygon(Face.Builder.round_rect(Vector2(sx * s * 0.33, wy * s) - wheel * 0.5, wheel, s * 0.05), IRON)
-	var body := Vector2(s * 0.6, s * 0.92)
-	b.polygon(Face.Builder.round_rect(-body * 0.5 + Vector2(0.0, s * 0.035), body, s * 0.17), col.darkened(0.26))
-	b.polygon(Face.Builder.round_rect(-body * 0.5 - Vector2(0.0, s * 0.02), body - Vector2(0.0, s * 0.03), s * 0.17), col)
-	# the cab, a paler roof at the back
-	var cab := Vector2(s * 0.5, s * 0.26)
-	b.polygon(Face.Builder.round_rect(Vector2(-cab.x * 0.5, s * 0.16), cab, s * 0.08), col.lightened(0.28))
-	# the funnel
-	b.disc(Vector2(0.0, -s * 0.33), s * 0.105, IRON)
-	b.disc(Vector2(0.0, -s * 0.33), s * 0.06, Color("6b5145"))
-	# the buffer bar at the nose
-	var bar := Vector2(s * 0.42, s * 0.07)
-	b.polygon(Face.Builder.round_rect(Vector2(-bar.x * 0.5, -s * 0.5), bar, bar.y * 0.5), IRON)
+		var wheel := Vector2(s * 0.14, s * 0.46)
+		var at := Vector2(sx * s * 0.36, s * 0.14) - wheel * 0.5
+		b.polygon(Face.Builder.round_rect(at + Vector2(0.0, s * 0.03), wheel, s * 0.06), RAIL_DEEP)
+		b.polygon(Face.Builder.round_rect(at, wheel, s * 0.06), SLEEPER)
+	var body := Vector2(s * 0.6, s * 0.64)
+	var top := Vector2(-body.x * 0.5, -s * 0.16)
+	b.polygon(Face.Builder.round_rect(top + Vector2(0.0, s * 0.045), body, s * 0.2), col.darkened(0.26))
+	b.polygon(Face.Builder.round_rect(top, body - Vector2(0.0, s * 0.02), s * 0.2), col)
+	# the barrel, over the carriage and out past its front
+	var barrel := Vector2(s * 0.3, s * 0.5)
+	b.polygon(Face.Builder.round_rect(Vector2(-barrel.x * 0.5 - s * 0.02, -s * 0.5), barrel + Vector2(s * 0.04, s * 0.03), s * 0.1), col.darkened(0.26))
+	b.polygon(Face.Builder.round_rect(Vector2(-barrel.x * 0.5, -s * 0.5), barrel, s * 0.1), col.lightened(0.16))
+	var band := Vector2(s * 0.38, s * 0.09)
+	b.polygon(Face.Builder.round_rect(Vector2(-band.x * 0.5, -s * 0.5), band, band.y * 0.5), IRON)
 
-## The plate an engine's number is written on, about the origin.
+## The plate a cannon's number is written on, about the origin.
 static func plate(b, s: float) -> void:
 	b.disc(Vector2(0.0, s * 0.015), s * 0.225, Color(Pal.OUTLINE, 0.25))
 	b.disc(Vector2.ZERO, s * 0.21, PLATE)
 
-## The siding: a wooden tray with `places` hollows `step` apart.
+## A cork in the air, about the origin, flying up the screen, `s` the
+## length of the cannon that fired it.
+static func cork(b, s: float) -> void:
+	var size := Vector2(s * 0.13, s * 0.3)
+	b.polygon(Face.Builder.round_rect(-size * 0.5, size, size.x * 0.5), CORK_DEEP)
+	b.polygon(Face.Builder.round_rect(-size * 0.5, Vector2(size.x, size.y * 0.7), size.x * 0.5), CORK)
+
+## The tray the cannons wait in: wood, with `places` hollows `step` apart.
 static func siding(b, rect: Rect2, places: int, step: float) -> void:
 	var r := rect.size.y * 0.3
 	b.polygon(Face.Builder.round_rect(rect.position + Vector2(0.0, 6.0), rect.size, r), TRAY_DEEP)
@@ -171,7 +189,7 @@ static func siding(b, rect: Rect2, places: int, step: float) -> void:
 static func siding_place(rect: Rect2, p: int, places: int, step: float) -> Vector2:
 	return Vector2(rect.get_center().x + (p - (places - 1) * 0.5) * step, rect.get_center().y)
 
-## The shed from above: a red frame and a pale lane a column.
+## The toy box from above: a red frame and a pale lane a column.
 static func shed(b, rect: Rect2, columns: int, step: float) -> void:
 	var r := 26.0
 	b.polygon(Face.Builder.round_rect(rect.position + Vector2(0.0, 7.0), rect.size, r), SHED_DEEP)

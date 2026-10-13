@@ -326,7 +326,9 @@ a prompt and is two dull knocks on a plank, no note either. The keyboard's
 keys click through `ui/ui_sound.gd` as Hidden Word's do; the board adds no
 cue a letter. Details: `docs/art/sound-direction.md`, its last section.
 
-**Toy Train has a set since 2026-10-12** (`SETS["train"]`, seventeen cues,
+**Toy Cannons (id `train`, built as Toy Train) has a set since 2026-10-12**
+(since 2026-10-13 `pick` is a cork landing, asked for once in 60 ms:
+`docs/agents/boards/train.md`) (`SETS["train"]`, seventeen cues,
 no new take: the same three of Lattice's and Hedgehogs' breath, copied
 into `build/sfx_raw/train/`). `pick` sounds once a block, so it is a tick
 with no note, five steps under its take and climbed a major scale a block

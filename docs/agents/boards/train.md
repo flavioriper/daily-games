@@ -1,4 +1,4 @@
-# Toy Train
+# Toy Cannons (built as Toy Train)
 
 - **Toy Train is the thirty-eighth card** (2026-10-12, `puzzles/train2d.gd`,
   `puzzles/train_state.gd`, `ui/faces/train_art.gd`; no spec and no concept
@@ -123,3 +123,77 @@
   Easy to Hard and the lost day on Insane; no Undo; the lap of four
   seconds; the original's boosters and its shooters that take two slots
   left out (the bulb is the hint).
+
+## 2026-10-13: a shooter, small blocks, fast
+
+The user, off the build: "on toy train after easy, the blocks to be destroyed
+should be really small, the whole game idea come from destroying a lot of
+things. Also, we need to change it to be something that shoot, like the
+original game, not a train, and it should shoot way faster". **Everything
+above this heading is the board as it was built; where the two disagree this
+section wins.**
+
+- **The title is Toy Cannons** and the toy is a little cannon on two wooden
+  wheels that fires corks (`Art.engine`, `Art.cork`). **The id is still
+  `train`, the locale prefix `TT_`, the files `train*.gd`, and the names in
+  code the train's**: an `engine` is a cannon, its `room` the corks it has
+  left, the `siding` the tray it waits in, the `shed` the toy box. The heads
+  of `train2d.gd` and `train_state.gd` say so. A full rename (id, saves,
+  sound folder, analytics) was not done; it is the user's to ask for. On
+  screen and in all three languages: cannon / corks / tray / toy box
+  (canhão, rolhas, bandeja, caixa; cañón, corchos, bandeja, caja).
+- **The rules did not change**: one shot a stop at the nearest block of the
+  line, if it is the cannon's colour; five on the loop, five in the tray.
+- **Pictures** (`State.BANDS`, the band of `content/pixel_garden.json` a
+  difficulty deals from): Easy 10 square as before, **Medium 24 (576
+  blocks), Hard and Insane 32 (1,024)**. `content/buttons_hard.json` is no
+  longer read here. Those pictures have no bare square, so no mat is laid.
+  At 1080 wide a square is about 35 px on Medium and 24 on Hard.
+- **Loads** (`LOADS`): 3-9, 10-36, 16-60, 20-80. 25-39 cannons on Medium,
+  29-46 on Hard, 21-35 on Insane; the deal's own line is 56-82, 89-173 and
+  92-166 laps. The gap between two cannons entering is a band's (`GAPS`, 2,
+  4, 5, 5 stops).
+- **The clock** (`TICKS`): 0.045, 0.024, 0.02, 0.02 s a stop, so a lap is
+  about two seconds on every band (it was four) and a cannon fires 22, 42
+  and 50 corks a second.
+- **The shot**: a cork flies from the muzzle to the block (`PICK_FLY`,
+  0.06 s), the block stands until it lands and then bursts where it stood
+  (`BURST`, growing and fading), and the cannon kicks back (`RECOIL`).
+  Nothing flies to the cannon any more. A cannon on the loop points across
+  the rug, square to the track (`_heading`). Motion reduced: the block is
+  gone and nothing flies.
+- **The track keeps its size on small squares**: a lane (`_lane`) is a
+  square but never under `LANE_MIN` (34), and the rug's edge, the track's
+  reach and gauge are in lanes (`_edge`, `_reach`); a cannon on the loop is
+  60 long at the least (`LOOP_MIN`).
+- **The blocks are a mesh a patch** of 8 squares a side (`CHUNK`,
+  `_draw_blocks`): a block shot rebuilds its patch, not the picture. Under
+  30 px a block is two plain squares (`Art.SMALL`). The opening and the win
+  are still one mesh a frame. **95 to 119 draw calls on Medium, 106 to 118
+  on Hard, in play on `opengl3_angle`** (`tests/_shot_train.gd -- d=1|2
+  play`, one run each).
+- **Sound**: no new take. `pick` is asked for once in 60 ms however many
+  corks land (`PICK_GAP`: `fx.cue` holds the sound but knocks the phone
+  every time it is asked), and climbs its scale a step every 1, 3, 4, 4
+  blocks (`RUN_STEP`). The run's bubble is from 5, its two notes from 12,
+  confetti at 20, 40 and 60.
+- **The deal** keeps how deep each stop has looked (`_seen_from`): the
+  slowest deal is 63 ms on this Mac (it was 91 before the cache, on the
+  same pictures).
+- **`State.hint` minds the tray**: a cannon that would empty first, then
+  one out of the tray, and no new one that would come back when four
+  places are taken. With it Insane is lost by the hand an engine at a time
+  on 7 deals of 18 and by the juggling one on 2; the careless hand loses
+  all 18 (it lost 38 of 60 on the 16-square pictures). Easy to Hard are won
+  every way. `tests/_probe_train.gd -- seeds=1`: 336 runs, 0 failures (it
+  takes a minute now; `band=` plays one).
+- **Proved**: suite 249797/0; `tests/_win.gd -- train` PASS on Medium (74
+  sent, par 85); two windowed runs, Hard and Medium in play.
+- **Calls made without the user**: the name and the toy; Medium at 24 and
+  not 32; the loads; the lap of two seconds; one cork a stop kept (a shot
+  that went through a run of its colour would clear more a lap, and is not
+  the original's rule); the old wooden tock for a shot; the share text is
+  the whole picture, 32 lines on Hard.
+- **Not seen**: the menu card and the tutorial with the cannon on them, the
+  win on a 32 picture, Insane's jam, motion reduced, a phone. pt and es are
+  unreviewed.

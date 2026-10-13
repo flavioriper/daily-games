@@ -241,7 +241,7 @@ var _pearl_u := -1.0
 ## Lattice's corner of slats and tiles, built once a size.
 var _lattice_mesh: ArrayMesh
 var _lattice_u := -1.0
-## Toy Train's blocks, track and engine, built once a size.
+## Toy Cannons' blocks, track and engine, built once a size.
 var _train_mesh: ArrayMesh
 var _train_u := -1.0
 ## Button Box's swatch of patches and buttons, built once a size.
@@ -1815,7 +1815,7 @@ func _draw_lattice() -> void:
 			else:
 				_text(str(absi(v)), at_x, at_y + 5.6, 19.0, Pal.SURFACE if v > 0 else Pal.TEXT)
 
-## Toy Train's card: an engine on a length of the board's own track
+## Toy Cannons' card: an engine on a length of the board's own track
 ## (`ui/faces/train_art.gd`) with its number, rolling up to two rows of its
 ## blocks. One mesh, rebuilt only when the card changes size. The strip is
 ## about 92 units tall: three rows of blocks and an engine under them ran

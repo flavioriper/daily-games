@@ -638,7 +638,7 @@ func _solve_lattice() -> void:
 		await process_frame
 	_waiting = false
 
-## Toy Train: a buried engine tapped (refused), the bulb once where there is
+## Toy Cannons: a buried engine tapped (refused), the bulb once where there is
 ## one, then the deal's own line, an engine at a time through the board's
 ## input, each sent when the loop is empty (the way the line was proved).
 ## The loop runs on its clock, so this one awaits, and holds the walk
