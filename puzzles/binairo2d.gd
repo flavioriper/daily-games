@@ -667,19 +667,21 @@ func _nulls() -> Array:
 		row.append(null)
 	return row
 
-## The grid is a square in the middle of the span the host's rows leave
-## (`_clear`), inside the host's side margin and the padding.
+## The grid is a square as wide as the host's rows (its side margin, so the
+## tiles' edges line up with the buttons') at the top of the span the rows
+## leave (`_clear`), right under the tools row; what is left is open sky
+## under it.
 func _layout() -> void:
 	_sky.size = size
 	_place()
 	if _tiles.is_empty():
 		return
 	var span := size.y - _clear.x - _clear.y
-	var g := minf(size.x - 2.0 * _side(), span) - 2.0 * PAD
+	var g := minf(size.x - 2.0 * _side(), span)
 	_tile = (g - (n - 1) * GAP) / n
 	if _tile <= 0.0:
 		return
-	_origin = Vector2((size.x - g) * 0.5, _clear.x + (span - g) * 0.5)
+	_origin = Vector2((size.x - g) * 0.5, _clear.x)
 	if _won:
 		# Laid out under a win (a resize, or a day reopened solved): the
 		# slide is aimed again, and set at its end if it never ran.

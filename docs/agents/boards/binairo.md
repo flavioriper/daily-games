@@ -399,3 +399,15 @@ line, clouds, stars, crescent and hills were placed for that.
 the frame mid-slide over one still sky, then one board, 10 x 10, at rest,
 Undo greyed on the row. Mine, the user's to call: "redo" read as Reset.
 Owed: a phone.
+
+### The grid lines up with the rows (2026-10-13)
+
+The user, of the tools row: "they should align with the same edge margins,
+and the action buttons should be near the board". The grid is as wide as
+the rows (the host's 40 margin and no pad of its own: 1,000 across, a tile
+of 156 on 6 x 6) and stands at the top of its span, 20 under the tools row
+(510 to 1510); everything left over is open night under it, where the
+stars, the crescent and the hills are. One cloud is left, in the gap of the
+tools row. The win still shrinks it by `PAD` inside its span. Any earlier
+figure for where the grid stands is history. `opengl3_angle`, 810x1440:
+Easy's `solve` peak 111 draw calls; suite 249797/0.

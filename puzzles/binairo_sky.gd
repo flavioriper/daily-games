@@ -47,25 +47,23 @@ const SUN_AT := Vector2(0.07, 0.025)
 const SUN_RINGS := [[700.0, 0.10], [500.0, 0.10], [320.0, 0.16]]
 ## The crescent, in the night under the grid: its middle as shares, its
 ## radius at W.
-const MOON_AT := Vector2(0.850, 0.912)
+const MOON_AT := Vector2(0.840, 0.868)
 const MOON_R := 58.0
-## Two clouds in the air between the tools row and the grid: [x, y as
+## A cloud in the gap of the tools row, between Reset and Hint: [x, y as
 ## shares, radius at W].
-const CLOUDS := [[0.170, 0.322, 46.0], [0.640, 0.298, 34.0]]
+const CLOUDS := [[0.560, 0.232, 34.0]]
 ## The night's stars, as shares of the rect: [x, y, radius at W, alpha].
-## They stand where the night shows: under the grid, down to the hills, and
-## up the right margin.
+## They stand in the open night under the grid, down to the hills.
 const STARS := [
-	[0.060, 0.884, 5.0, 0.85], [0.150, 0.915, 3.5, 0.6], [0.300, 0.888, 4.0, 0.7],
-	[0.045, 0.940, 4.5, 0.8], [0.235, 0.945, 3.0, 0.55], [0.395, 0.925, 3.0, 0.55],
-	[0.490, 0.884, 4.5, 0.8], [0.612, 0.915, 3.5, 0.6], [0.700, 0.882, 3.0, 0.5],
-	[0.690, 0.950, 3.0, 0.5], [0.965, 0.880, 3.5, 0.6], [0.440, 0.955, 3.5, 0.6],
-	[0.330, 0.962, 4.0, 0.7], [0.560, 0.945, 3.0, 0.5], [0.960, 0.955, 3.0, 0.5],
-	[0.018, 0.790, 3.0, 0.5], [0.975, 0.560, 3.5, 0.6], [0.972, 0.430, 3.0, 0.5],
-	[0.968, 0.660, 4.0, 0.7], [0.978, 0.770, 3.0, 0.5],
+	[0.060, 0.822, 5.0, 0.85], [0.150, 0.868, 3.5, 0.6], [0.300, 0.830, 4.0, 0.7],
+	[0.045, 0.905, 4.5, 0.8], [0.235, 0.915, 3.0, 0.55], [0.395, 0.880, 3.0, 0.55],
+	[0.490, 0.822, 4.5, 0.8], [0.612, 0.862, 3.5, 0.6], [0.700, 0.818, 3.0, 0.5],
+	[0.670, 0.925, 3.0, 0.5], [0.965, 0.820, 3.5, 0.6], [0.440, 0.935, 3.5, 0.6],
+	[0.330, 0.950, 4.0, 0.7], [0.560, 0.905, 3.0, 0.5], [0.960, 0.935, 3.0, 0.5],
+	[0.120, 0.950, 3.0, 0.5], [0.790, 0.945, 3.5, 0.6],
 ]
 ## The sparkles that twinkle: [x, y, radius at W].
-const SPARKS := [[0.205, 0.900, 22.0], [0.735, 0.912, 18.0], [0.520, 0.922, 17.0]]
+const SPARKS := [[0.205, 0.846, 22.0], [0.700, 0.880, 18.0], [0.500, 0.870, 17.0]]
 const TWINKLE := 3.2
 const TWINKLE_LOW := 0.35
 
