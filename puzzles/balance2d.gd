@@ -20,8 +20,22 @@ extends "res://core/puzzle_base.gd"
 ## state's (every fruit on, torque zero) *and* the sim's (everything at
 ## rest), so the win screen never rises over a fruit still in the air.
 ##
+## The meadow is the whole screen (2026-10-13, the registry's `bleed`):
+## puzzles/balance_world.gd lies edge to edge as the board's first child,
+## the sky and the land, and the seesaw, its sign and its basket stand in
+## the span the host's rows leave (`set_clear`), the basket's ends on the
+## rows' margin. The grass line is the same for every level. On the win the
+## board is not laid out again: it shrinks about the foot of its trestle
+## and slides into the win's span under its own one transform, and the
+## world goes up or down with it, unscaled, so the grass stays under it.
+##
 ## How it is drawn:
-##   still  -- sky, hills, meadow, trestle, bales, the basket's inside;
+##   world  -- the sky, then this board's own sky layer (the evening, the
+##             stars, the rainbow, the sun, two clouds), then the hills and
+##             the meadow (puzzles/balance_world.gd);
+##   flags  -- the bunting across the top of the span, which the sign
+##             hangs from;
+##   still  -- the trestle, the shadows, the blanket, the basket's inside;
 ##             rebuilt only on a relayout;
 ##   keel   -- the rod and stone under the hub, turned by the beam's angle;
 ##   plank  -- the plank with its cups and distance pips, the spirit level's
@@ -54,6 +68,8 @@ const Scenery = preload("res://ui/flat/scenery.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Rewards = preload("res://arcade/rewards.gd")
 const Seal = preload("res://ui/flat/seal.gd")
+const World = preload("res://puzzles/balance_world.gd")
+const FLAT_HOST := "res://ui/flat/flat_host.gd"
 const OUT_OF_SUN := "res://ui/hud/out_of_rows.gd"
 ## The sunset card's words (ui/hud/out_of_rows.gd, Code Break's card).
 const OUT_WORDS := {"title": "BAL_OUT_TITLE", "body": "BAL_OUT_BODY", "body_rest": "BAL_OUT_BODY_REST",
@@ -82,8 +98,26 @@ const HAPTICS := {
 	"solved": Haptics.WIN,
 }
 
-# --- layout, in the board card's pixels ---
+# --- layout, in the board's own pixels (it is laid full rect) ---
+## What the board keeps clear of its rect's top and foot when no host has
+## said what its rows cover.
 const PAD := 30.0
+## The slide into the win's span (the host's SLOT_TIME).
+const WIN_SLIDE := 0.45
+## What stands over the grass line, top down: the bunting's rope and its
+## sag, the sign's ropes, the sign, the air and the glass over the hub, and
+## the trestle. A flat part in pixels and a part in cups.
+const BUNT_DROP := 6.0
+const BUNT_SAG := 0.6
+const SIGN_ROPE := 0.5
+const GLASS_ROOM := 1.62
+## And under it: the grass before the basket, the basket and the blanket's
+## hem.
+const BASKET_GAP := 0.5
+const BLANKET_UNDER := 0.7
+## The grass line's share of the span, at most: the same line for every
+## level, so the world does not change with one.
+const GROUND_SHARE := 0.58
 const CUP_CAP := 132.0
 ## The plank runs this far past the last cup, in cups.
 const PLANK_OVER := 0.55
@@ -107,8 +141,7 @@ const VIAL_TICKS := 5
 ## The basket along the foot of the card.
 const BASKET_H := 1.45
 const BASKET_RIM := 0.5
-## The reading sign, at the top of the card.
-const SIGN_Y := 64.0
+## The reading sign, hung from the middle of the bunting.
 const SIGN_H := 92.0
 const SIGN_FONT := 56
 const SIGN_W := 220.0
@@ -237,7 +270,31 @@ var _rw: Rewards
 ## redrawn every frame, both small.
 var _sky: Control
 var _air: Control
-var _sky_mesh: ArrayMesh
+## The world under everything, and the bunting's own layer over it.
+var _world: Control
+var _flags: Control
+## What the host's rows cover of the rect, top and bottom, while playing,
+## and on the win.
+var _clear := Vector2.ZERO
+var _win_clear := Vector2.ZERO
+var _won := false
+## The top of the span, the bunting's rope at the edges and the sign's top.
+var _span_top := 0.0
+var _bunt_y := 0.0
+var _sign_y := 64.0
+## The board's own transform on the win: the foot of the trestle, how far
+## it moves and how small it gets, and how far along it is.
+var _slid_from := Vector2.ZERO
+var _slid_by := Vector2.ZERO
+var _slid_scale := 1.0
+var _slid := 0.0
+var _placed := false
+var _slide_tw: Tween
+## The host's slide on a change of level (set_shift).
+var _shift := 0.0
+## The basket fruit's pops, so a board dealt into a standing screen can
+## cut them short.
+var _enter_tw: Array = []
 var _sun_mesh: ArrayMesh
 var _rays_mesh: ArrayMesh
 var _cloud_meshes: Array = []
@@ -370,12 +427,24 @@ func capabilities() -> Array[String]:
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	# Clipped until a host says the board is laid full rect (set_clear): the
+	# world runs past the rect, and in a card it must not.
 	clip_contents = true
+	# The world first, under the board's own drawing; this board's sky lies
+	# in it, between its sky and its hills.
+	_world = World.new()
+	_world.name = "World"
+	_world.show_behind_parent = true
+	add_child(_world)
 	_sky = Layer.new()
 	_sky.name = "Sky"
 	_sky.painter = _draw_sky
-	_sky.show_behind_parent = true
-	add_child(_sky)
+	_world.add_sky(_sky)
+	_flags = Layer.new()
+	_flags.name = "Flags"
+	_flags.painter = _draw_flags
+	_flags.show_behind_parent = true
+	add_child(_flags)
 	_air = Layer.new()
 	_air.name = "Air"
 	_air.painter = _draw_air
@@ -472,6 +541,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 ## each one is the first thing on the screen, and the first lesson -- while
 ## the basket's fruit pop in.
 func _enter() -> void:
+	_enter_tw = []
 	_after(Motion.ENTER_DELAY + 1.2, _warm_words)
 	for f in state.fruit.size():
 		if state.pinned[f]:
@@ -496,7 +566,7 @@ func _enter() -> void:
 	for f in state.fruit.size():
 		if not state.pinned[f]:
 			_faces[f].scale = Vector2.ZERO
-			Motion.pop_in(_faces[f], Motion.POP_IN, Motion.ENTER_DELAY + j * ENTER_STEP * 0.5)
+			_enter_tw.append(Motion.pop_in(_faces[f], Motion.POP_IN, Motion.ENTER_DELAY + j * ENTER_STEP * 0.5))
 			j += 1
 	_moving = true
 	_place_faces()
@@ -525,21 +595,43 @@ func card_centred() -> bool:
 func _layout() -> void:
 	if size.x <= 0.0 or state.fruit.is_empty():
 		return
+	_world.size = size
+	var side := _side()
+	var top := maxf(_clear.x, PAD)
+	var foot := size.y - maxf(_clear.y, PAD)
+	var span := foot - top
 	var reach := state.reach
-	_cup = minf(CUP_CAP, (size.x - 2.0 * PAD) / (2.0 * (reach + PLANK_OVER) + 0.2))
+	var over_flat := BUNT_DROP + SIGN_H
+	var over_cups := BUNT_SAG + SIGN_ROPE + GLASS_ROOM + HUB_H
+	var under_cups := BASKET_GAP + BASKET_H + BLANKET_UNDER
+	_cup = minf(CUP_CAP, (size.x - 2.0 * side) / (2.0 * (reach + PLANK_OVER) + 0.2))
+	_cup = maxf(8.0, minf(_cup, (span - over_flat) / (over_cups + under_cups)))
 	_seat = _cup * SEAT
 	_half = (reach + PLANK_OVER) * _cup
-	# The seesaw stands in the middle of the card and the basket sits on the
-	# lawn in front of it, in the room between the grass line and the foot.
+	# The grass line is the same for every level: where the biggest seesaw
+	# needs it, or GROUND_SHARE of the span on a short screen, and never
+	# nearer the top or the foot than this level's own seesaw and basket need.
+	var want := top + minf(over_flat + over_cups * CUP_CAP, span * GROUND_SHARE)
+	_ground = clampf(want, top + over_flat + over_cups * _cup, maxf(top + over_flat + over_cups * _cup, foot - under_cups * _cup))
+	_span_top = top
+	_bunt_y = top + BUNT_DROP
+	_sign_y = _bunt_y + (BUNT_SAG + SIGN_ROPE) * _cup
+	_pivot = Vector2(size.x * 0.5, _ground - HUB_H * _cup)
+	# The basket sits on the lawn in front of the seesaw, its ends on the
+	# rows' margin, a little over the middle of the grass so the foot of the
+	# screen is open meadow.
 	var basket_h := _cup * BASKET_H
-	var room_top := SIGN_Y + SIGN_H + _cup * (VIAL_UP + 1.1)
-	var hub_y := maxf(room_top, (size.y - basket_h - PAD) * 0.54 - _cup * 0.2)
-	hub_y = minf(hub_y, size.y - PAD - basket_h - _cup * (HUB_H + 0.5))
-	_pivot = Vector2(size.x * 0.5, hub_y)
-	_ground = hub_y + HUB_H * _cup
-	var lawn := size.y - PAD - _ground
-	var basket_top := _ground + maxf(_cup * 0.5, (lawn - basket_h) * 0.5)
-	_basket = Rect2(PAD, basket_top, size.x - 2.0 * PAD, basket_h)
+	var lawn := foot - _ground
+	var basket_top := _ground + maxf(_cup * BASKET_GAP, (lawn - basket_h) * 0.42)
+	_basket = Rect2(side, basket_top, size.x - 2.0 * side, basket_h)
+	_world.set_ground(_ground)
+	if _won:
+		# Laid out under a win (a resize, or a day reopened solved): the
+		# slide is aimed again, and set at its end if it never ran.
+		_aim_win()
+		if _slid <= 0.0 and not (_slide_tw != null and _slide_tw.is_valid()):
+			_slid = 1.0
+	_place()
 	sim.pivot = _pivot
 	sim.cup = _cup
 	sim.r = _cup * R
@@ -578,7 +670,6 @@ func _layout() -> void:
 	_gold_pin = null
 	_sign_mesh = null
 	_live = null
-	_sky_mesh = null
 	_sun_mesh = null
 	_rays_mesh = null
 	_cloud_meshes = []
@@ -592,6 +683,96 @@ func _layout() -> void:
 	_place_stamp()
 	_place_faces()
 	_redraw()
+	_sky.queue_redraw()
+	_flags.queue_redraw()
+
+## What the host's rows cover, in this board's own pixels (it is laid full
+## rect). While playing the seesaw and its basket are laid in what is left.
+## On the win nothing is laid out again: the board shrinks and slides into
+## the win's span.
+func set_clear(top: float, bottom: float, won := false) -> void:
+	Motion.stop(_slide_tw)
+	clip_contents = false
+	_won = won
+	if not won:
+		_clear = Vector2(top, bottom)
+		_slid = 0.0
+		_layout()
+		_place()
+		return
+	_win_clear = Vector2(top, bottom)
+	# A day reopened solved is told before it has been laid out: _layout
+	# sets the slide when it has a seesaw to aim.
+	if size.x <= 0.0 or state.fruit.is_empty() or _ground <= 0.0:
+		return
+	_aim_win()
+	if Motion.reduce or not is_inside_tree() or _slid >= 1.0:
+		_slide(1.0)
+		return
+	_slide_tw = create_tween()
+	_slide_tw.tween_method(_slide, _slid, 1.0, WIN_SLIDE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+## Where the win's slide ends: everything from the bunting to the blanket's
+## hem, shrunk about the foot of the trestle to the win's span and stood in
+## the middle of it.
+func _aim_win() -> void:
+	var c_top := _span_top
+	var c_bottom := _basket.end.y + BLANKET_UNDER * _cup
+	var span := size.y - _win_clear.x - _win_clear.y
+	_slid_from = Vector2(size.x * 0.5, _ground)
+	_slid_scale = clampf(span / maxf(1.0, c_bottom - c_top), 0.3, 1.0)
+	var mid := (c_top + c_bottom) * 0.5
+	_slid_by = Vector2(0.0, _win_clear.x + span * 0.5 - (_ground + _slid_scale * (mid - _ground)))
+
+## The host's side margin, which the basket keeps although the meadow does
+## not.
+func _side() -> float:
+	return float(load(FLAT_HOST).MARGIN)
+
+func _slide(t: float) -> void:
+	_slid = t
+	_place()
+
+## The host slides the board `x` aside on a change of level; the world stays
+## where it is, and the board that is leaving shows none, so the one
+## arriving under it is not hidden.
+func set_shift(x: float, leaving := false) -> void:
+	_shift = x
+	_world.visible = not leaving
+	_place()
+
+## The host deals this board into a screen already standing: it arrives
+## whole, the pinned fruit in their cups and the basket's already out.
+func skip_entrance() -> void:
+	for tw: Variant in _enter_tw:
+		if tw is Tween:
+			Motion.stop(tw)
+	_enter_tw = []
+	for f in state.fruit.size():
+		if state.pinned[f]:
+			sim.to_cup_now(f, state.at[f])
+		if f < _faces.size():
+			_faces[f].scale = Vector2.ONE
+	sim.snap()
+	_place_faces()
+	_redraw()
+
+## The board's transform at `_slid`. The world is held against the scale
+## and against any move sideways, and goes up or down with the board: the
+## grass line is the point the board shrinks about, so the trestle's feet
+## stay on it.
+func _place() -> void:
+	if _slid <= 0.0 and _shift == 0.0 and not _placed:
+		return
+	_placed = _slid > 0.0 or _shift != 0.0
+	var k := lerpf(1.0, _slid_scale, _slid)
+	var by := _slid_by * _slid + Vector2(_shift, 0.0)
+	pivot_offset = _slid_from
+	scale = Vector2(k, k)
+	position = by
+	_world.pivot_offset = _slid_from
+	_world.scale = Vector2.ONE / k
+	_world.position = Vector2(-by.x / k, 0.0)
 
 ## The fruit where the sim says, turned and squashed.
 func _place_faces() -> void:
@@ -742,6 +923,7 @@ func _process(delta: float) -> void:
 	_rw.step(delta)
 	if not Motion.reduce:
 		_sky.queue_redraw()
+		_flags.queue_redraw()
 		_air.queue_redraw()
 	var busy := not sim.calm() or _held >= 0 or absf(_bubble_x - was) > 0.001 or t - _level_at < GLOW_TIME \
 		or (_solved_at >= 0.0 and t - _solved_at < 3.0) or t - _opened < 1.5 or _squashing(t) or t < _fx_until \
@@ -756,6 +938,7 @@ func _process(delta: float) -> void:
 			# the sky and the air only redraw on their own when things move;
 			# still, a step of the sun or nightfall has to show
 			_sky.queue_redraw()
+			_flags.queue_redraw()
 			_air.queue_redraw()
 	elif _toast != "" and t - _toast_at < TOAST_HOLD + 0.1:
 		_front.queue_redraw()
@@ -1022,8 +1205,8 @@ func _on_rest() -> void:
 
 ## Where a word over the seesaw is lettered, in the card's pixels.
 func _word_at() -> Vector2:
-	# in the open sky between the bunting's lowest flag and the glass
-	var flags := SIGN_Y + SIGN_H + _cup * (0.25 + 0.6 + 0.46)
+	# in the open sky between the sign and the glass
+	var flags := _sign_y + SIGN_H + _cup * 0.2
 	var glass := _pivot.y - sim.top - _cup * (VIAL_UP + VIAL_H * 0.5)
 	return Vector2(size.x * 0.5, minf(lerpf(flags, glass, 0.45), glass - _cup * 0.7))
 
@@ -1186,19 +1369,17 @@ func _build_plank_gold() -> ArrayMesh:
 func _tick_px() -> float:
 	return (VIAL_W * _cup * 0.5 - VIAL_H * _cup * 0.5) / (VIAL_TICKS + 0.6)
 
-## The sky, drawn behind the board: its gradient, a sun whose rays turn and
-## swell on a good move, two clouds drifting, a line of bunting fluttering
-## over the seesaw, and on the solve a rainbow growing over it all.
+## This board's own sky, drawn in the world between its sky and its hills:
+## the evening and the stars, on the solve a rainbow growing over the
+## seesaw, a sun whose rays turn and swell on a good move, and two clouds
+## drifting.
 func _draw_sky() -> void:
 	if state.fruit.is_empty() or size.x <= 0.0:
 		return
 	var t := _now()
 	var w := size.x
 	var shown: Array = []
-	if _sky_mesh == null:
-		var b := Face.Builder.new()
-		_grad(b, Rect2(0.0, 0.0, w, _ground + 4.0), Pal.SKY_TOP.lerp(Pal.PAPER, 0.35), Pal.SKY_HORIZON.lerp(Pal.PAPER, 0.25))
-		_sky_mesh = b.mesh()
+	if _sun_mesh == null:
 		_sun_mesh = _build_sun()
 		_rays_mesh = _build_rays()
 		_cloud_meshes = []
@@ -1206,15 +1387,16 @@ func _draw_sky() -> void:
 			var cb := Face.Builder.new()
 			Scenery.cloud(cb, Vector2.ZERO, _cup * r, Pal.CLOUD)
 			_cloud_meshes.append(cb.mesh())
-	_sky.draw_mesh(_sky_mesh, null)
-	shown.append(_sky_mesh)
 	# evening: a warm wash from the horizon up as the sun goes, deeper at
-	# night, and the stars
+	# night, and the stars. It thins to nothing over the host's rows, whose
+	# words are ink.
 	var dusk := maxf(smoothstep(0.4, 1.0, _sun_day) * 0.55, _night * 0.8)
 	if dusk > 0.0:
 		if _dusk_mesh == null:
 			var db := Face.Builder.new()
-			_grad(db, Rect2(0.0, 0.0, w, _ground + 4.0), Color("6f63a8"), Color("f3a86b"))
+			var high := Color("6f63a8")
+			_grad(db, Rect2(-8.0, 0.0, w + 16.0, _span_top), Color(high, 0.0), high)
+			_grad(db, Rect2(-8.0, _span_top, w + 16.0, _ground + 4.0 - _span_top), high, Color("f3a86b"))
 			_dusk_mesh = db.mesh()
 		_sky.draw_mesh(_dusk_mesh, null, Transform2D.IDENTITY, Color(1, 1, 1, dusk))
 		shown.append(_dusk_mesh)
@@ -1244,22 +1426,27 @@ func _draw_sky() -> void:
 	_sky.draw_mesh(_rays_mesh, null, Transform2D(tt * 0.25 + 2.0 * maxf(0.0, 0.6 - (t - _sun_kick_at)), Vector2.ONE * kick * big, 0.0, sun), tint)
 	_sky.draw_mesh(_sun_mesh, null, Transform2D(giggle, Vector2.ONE * (1.0 + (kick - 1.0) * 0.5), 0.0, sun), tint)
 	shown.append_array([_rays_mesh, _sun_mesh])
-	var clouds := [Vector2(w * 0.8, SIGN_Y + SIGN_H * 0.9), Vector2(w * 0.3, SIGN_Y + SIGN_H + _cup * 1.35)]
+	var clouds := [Vector2(w * 0.82, _sign_y + SIGN_H * 0.5), Vector2(w * 0.3, _sign_y + SIGN_H + _cup * 0.9)]
 	for i in _cloud_meshes.size():
 		var drift := sin(tt * 0.07 + i * 2.0) * _cup * 0.6
 		_sky.draw_mesh(_cloud_meshes[i], null, Transform2D(0.0, clouds[i] + Vector2(drift, 0.0)))
 		shown.append(_cloud_meshes[i])
-	_bunting_mesh = _build_bunting(tt)
-	_sky.draw_mesh(_bunting_mesh, null)
-	shown.append(_bunting_mesh)
 	_sky_shown = shown
+
+## The bunting, on its own layer over the world: the sign hangs from it, so
+## it shrinks with the board on the win.
+func _draw_flags() -> void:
+	if state.fruit.is_empty() or size.x <= 0.0:
+		return
+	_bunting_mesh = _build_bunting(0.0 if Motion.reduce else _now())
+	_flags.draw_mesh(_bunting_mesh, null)
 
 ## The sun: high in the corner all morning; on Hard and Insane it sinks a
 ## step a move, down behind the far hill at sunset.
 func _sun_at() -> Vector2:
-	var hi := Vector2(size.x * 0.13, SIGN_Y + _cup * 0.2)
-	# fully behind the far hill (its top stands ~1.03 cups over the grass)
-	var lo := Vector2(size.x * 0.11, _ground - _cup * 1.03 + _cup * SUN_R * 1.4)
+	var hi := Vector2(size.x * 0.13, _sign_y + SIGN_H * 0.5 + _cup * 0.35)
+	# fully behind the world's far hill
+	var lo := Vector2(size.x * 0.11, _ground - World.FAR_HILL_TOP * size.x / World.W + _cup * SUN_R * 1.4)
 	# the day walks it down to sitting on the hill by the last move (0.92);
 	# the sunset itself is the last dip
 	var d := _sun_day
@@ -1275,7 +1462,7 @@ func _build_stars(t: float, k: float) -> ArrayMesh:
 	var b := Face.Builder.new()
 	var spots := [Vector2(0.08, 0.3), Vector2(0.22, 0.12), Vector2(0.36, 0.42), Vector2(0.62, 0.36), Vector2(0.72, 0.1),
 		Vector2(0.9, 0.28), Vector2(0.52, 0.62), Vector2(0.14, 0.7), Vector2(0.84, 0.66), Vector2(0.3, 0.86), Vector2(0.94, 0.9)]
-	var top := SIGN_Y
+	var top := _span_top
 	var bottom := _ground - _cup * 1.4
 	for i in spots.size():
 		var sp: Vector2 = spots[i]
@@ -1321,30 +1508,34 @@ func _build_rainbow(k: float) -> ArrayMesh:
 		b.stroke(pts, band + 1.0, Color(RAINBOW[i], 0.62), false, false)
 	return b.mesh()
 
-## A string of pennants over the scene, fluttering; livelier on a good move.
+## A string of pennants across the top of the span, fluttering; livelier on
+## a good move. The rope runs a screen's width past either edge, climbing,
+## and carries flags there too, so its ends are never seen when the board
+## shrinks on the win.
 func _build_bunting(tt: float) -> ArrayMesh:
 	var b := Face.Builder.new()
 	var w := size.x
-	var y0 := SIGN_Y + SIGN_H + _cup * 0.25
-	var sag := _cup * 0.6
+	var y0 := _bunt_y
+	var sag := _cup * BUNT_SAG
 	var n := 24
 	var pts := PackedVector2Array()
-	for i in n + 1:
+	for i in range(-n, 2 * n + 1):
 		var u := float(i) / n
-		pts.append(Vector2(-10.0 + (w + 20.0) * u, y0 + sag * 4.0 * u * (1.0 - u)))
+		pts.append(Vector2(w * u, y0 + sag * 4.0 * u * (1.0 - u)))
 	b.stroke(pts, 3.0, Pal.ROPE_HEMP.darkened(0.1))
 	var flags := 11
 	var excite := 0.0 if Motion.reduce else clampf(1.0 - (_now() - _sun_kick_at) / 1.2, 0.0, 1.0)
 	if _solved_at >= 0.0 and not Motion.reduce:
 		excite = maxf(excite, 0.6)
-	for i in flags:
+	var past := 3 if _slid > 0.0 else 0
+	for i in range(-past, flags + past):
 		var u := (i + 0.5) / flags
-		var top := Vector2(-10.0 + (w + 20.0) * u, y0 + sag * 4.0 * u * (1.0 - u))
+		var top := Vector2(w * u, y0 + sag * 4.0 * u * (1.0 - u))
 		var fw := _cup * 0.34
 		var fh := _cup * 0.46
 		var sway := sin(tt * (2.2 + 5.0 * excite) + i * 0.9) * (0.08 + 0.22 * excite)
 		var tip := top + Vector2(0.0, fh).rotated(sway)
-		var col: Color = Rewards.CONFETTI[i % Rewards.CONFETTI.size()]
+		var col: Color = Rewards.CONFETTI[posmod(i, Rewards.CONFETTI.size())]
 		b.polygon(PackedVector2Array([top + Vector2(-fw * 0.5, 0.0), top + Vector2(fw * 0.5, 0.0), tip]), col)
 		b.polygon(PackedVector2Array([top + Vector2(-fw * 0.5, 0.0), top + Vector2(0.0, 0.0), tip]), Color(col.lightened(0.25), 0.6))
 	return b.mesh()
@@ -1409,26 +1600,10 @@ static func _butterfly(b: Face.Builder, at: Vector2, r: float, open: float, col:
 		b.disc(up + Vector2(side * r * 0.1 * o, -r * 0.05), r * 0.16 * o, Color(Pal.PAPER, 0.8))
 	b.stroke(PackedVector2Array([at + Vector2(0.0, -r * 0.5).rotated(lean), at + Vector2(0.0, r * 0.55).rotated(lean)]), maxf(2.0, r * 0.18), Pal.TEXT)
 
-## The sky, the hills, the meadow, the trestle's legs, the bales and the
-## basket's dark inside.
+## The trestle's legs, the shadows on the grass, the blanket and the
+## basket's dark inside. The hills and the meadow are the world's.
 func _build_still() -> ArrayMesh:
 	var b := Face.Builder.new()
-	var w := size.x
-	# far hills
-	b.ellipse(Vector2(w * 0.18, _ground + _cup * 0.2), w * 0.42, _cup * 1.25, Pal.LAWN.lerp(Pal.SKY_HORIZON, 0.45))
-	b.ellipse(Vector2(w * 0.86, _ground + _cup * 0.25), w * 0.4, _cup * 1.0, Pal.LAWN.lerp(Pal.SKY_HORIZON, 0.3))
-	# far trees on the hills, behind the meadow's edge
-	for tree: Vector3 in [Vector3(0.09, 0.9, 0.36), Vector3(0.93, 0.8, 0.3), Vector3(0.74, 0.55, 0.22)]:
-		var foot := Vector2(w * tree.x, _ground - _cup * 0.05)
-		var tr_r := _cup * tree.z * 1.6
-		b.fan(Face.Builder.round_rect(foot + Vector2(-tr_r * 0.12, -tr_r * 1.6), Vector2(tr_r * 0.24, tr_r * 1.6), tr_r * 0.1), Pal.BARK.lerp(Pal.SKY_HORIZON, 0.35))
-		var leaf := Pal.LEAF_DEEP.lerp(Pal.SKY_HORIZON, 0.4)
-		b.disc(foot + Vector2(0.0, -tr_r * 2.0), tr_r, leaf)
-		b.disc(foot + Vector2(-tr_r * 0.6, -tr_r * 1.5), tr_r * 0.7, leaf)
-		b.disc(foot + Vector2(tr_r * 0.62, -tr_r * 1.55), tr_r * 0.66, leaf)
-	# the meadow
-	_grad(b, Rect2(0.0, _ground, w, size.y - _ground), Pal.LAWN, Pal.LAWN_DEEP)
-	b.fan(Face.Builder.round_rect(Vector2(0.0, _ground - 3.0), Vector2(w, 7.0), 3.0), Pal.LAWN_DEEP.lerp(Pal.LAWN, 0.4))
 	# the plank's shadow on the grass
 	Scenery.soft_disc(b, Vector2(_pivot.x, _ground + _cup * 0.06), _half * 0.95, _cup * 0.2, Color(Pal.TEXT, 0.12))
 	# the bales' shadows; the bales themselves are _build_bale, drawn on
@@ -1445,23 +1620,7 @@ func _build_still() -> ArrayMesh:
 	var bar_y := hub.y + (_ground - hub.y) * 0.62
 	var bar_x := LEG_SPLAY * _cup * 0.62
 	b.stroke(PackedVector2Array([Vector2(hub.x - bar_x, bar_y), Vector2(hub.x + bar_x, bar_y)]), LEG_W * _cup * 0.7, Pal.SCALE_DEEP)
-	# grass tufts along the meadow, and flowers in it
-	var tufts := [0.06, 0.3, 0.64, 0.93]
-	for i in tufts.size():
-		Scenery.tuft(b, Vector2(w * tufts[i], _ground + _cup * 0.12), _cup * 0.3)
-	var lawn_h := size.y - _ground
-	var flowers := [Vector3(0.1, 0.18, 0), Vector3(0.22, 0.12, 1), Vector3(0.83, 0.2, 2), Vector3(0.9, 0.1, 0),
-		Vector3(0.15, 0.86, 1), Vector3(0.5, 0.9, 2), Vector3(0.8, 0.84, 0), Vector3(0.36, 0.2, 2), Vector3(0.62, 0.15, 1)]
-	for fl: Vector3 in flowers:
-		var at := Vector2(w * fl.x, _ground + lawn_h * fl.y)
-		if _basket.grow(_cup * 0.3).has_point(at):
-			continue
-		_flower(b, at, _cup * 0.1, [Pal.FLOWER, Pal.PAPER, Pal.SUN][int(fl.z)])
-	for tf: Vector2 in [Vector2(0.05, 0.5), Vector2(0.95, 0.45), Vector2(0.45, 0.25), Vector2(0.68, 0.6)]:
-		var at := Vector2(w * tf.x, _ground + lawn_h * tf.y)
-		if not _basket.grow(_cup * 0.2).has_point(at):
-			Scenery.tuft(b, at, _cup * 0.22)
-	# a gingham picnic blanket the basket stands on, running off the card
+	# a gingham picnic blanket the basket stands on
 	_blanket(b)
 	# the basket's ears, behind its body
 	for side: float in [-1.0, 1.0]:
@@ -1518,11 +1677,12 @@ func _bale_scale(at: float) -> float:
 
 ## Red gingham under the basket, a little in perspective: wider at the foot.
 func _blanket(b: Face.Builder) -> void:
+	# It ends a hem under the basket: the foot of the screen is open meadow.
 	var top := _basket.position.y + _cup * 0.55
-	var bottom := size.y + 4.0
+	var bottom := _basket.end.y + _cup * BLANKET_UNDER
 	var cx := size.x * 0.5
-	var wt := size.x * 0.46
-	var wb := size.x * 0.56
+	var wt := _basket.size.x * 0.5 - _cup * 0.1
+	var wb := wt + (bottom - top) * 0.08
 	var quad := func(t0: float, t1: float, x0: float, x1: float, col: Color) -> void:
 		# x0, x1 in -1..1 across the blanket, t0, t1 down it
 		var y0 := lerpf(top, bottom, t0)
@@ -1538,12 +1698,13 @@ func _blanket(b: Face.Builder) -> void:
 		if i % 2 == 0:
 			var x0 := -1.0 + 2.0 * i / n
 			quad.call(0.0, 1.0, x0, x0 + 2.0 / n, stripe)
-	var rows := 4
+	var rows := 2
 	for j in rows:
 		if j % 2 == 0:
 			quad.call(float(j) / rows, float(j + 1) / rows, -1.0, 1.0, stripe)
-	# the hem
+	# the hems
 	quad.call(0.0, 0.035, -1.0, 1.0, Color(Pal.BERRY_DEEP, 0.35))
+	quad.call(0.965, 1.0, -1.0, 1.0, Color(Pal.BERRY_DEEP, 0.35))
 
 static func _flower(b: Face.Builder, at: Vector2, r: float, petal: Color) -> void:
 	b.stroke(PackedVector2Array([at, at + Vector2(0.0, r * 2.2)]), maxf(2.0, r * 0.3), Pal.LEAF_DEEP)
@@ -1723,10 +1884,9 @@ func _draw_sign(t: float, shown: Array) -> void:
 		var b := Face.Builder.new()
 		var w := SIGN_W
 		var h := SIGN_H
-		var top := SIGN_Y - 30.0
-		# the ropes, up out of the card
+		# the ropes, up to the bunting
 		for side: float in [-1.0, 1.0]:
-			b.stroke(PackedVector2Array([Vector2(side * w * 0.3, -top - 20.0), Vector2(side * w * 0.36, 10.0)]), 5.0, Pal.ROPE_HEMP)
+			b.stroke(PackedVector2Array([Vector2(side * w * 0.3, -SIGN_ROPE * _cup - 2.0), Vector2(side * w * 0.36, 10.0)]), 5.0, Pal.ROPE_HEMP)
 		b.fan(Face.Builder.round_rect(Vector2(-w * 0.5, 4.0), Vector2(w, h), 20.0), Color(Pal.TEXT, 0.16))
 		b.fan(Face.Builder.round_rect(Vector2(-w * 0.5, 0.0), Vector2(w, h), 20.0), Pal.SCALE_DEEP)
 		b.fan(Face.Builder.round_rect(Vector2(-w * 0.5 + 6.0, 6.0), Vector2(w - 12.0, h - 12.0), 15.0), Pal.SCALE_WOOD.lerp(Pal.PAPER, 0.55))
@@ -1736,7 +1896,7 @@ func _draw_sign(t: float, shown: Array) -> void:
 			b.disc(Vector2(side * w * 0.36, 14.0), 5.5, Pal.BRASS_DEEP)
 			b.disc(Vector2(side * w * 0.36 - 1.0, 13.0), 3.5, Pal.BRASS)
 		_sign_mesh = b.mesh()
-	var hang := Vector2(size.x * 0.5, SIGN_Y - 30.0)
+	var hang := Vector2(size.x * 0.5, _sign_y)
 	var rest := sim.beam_at_rest() and _held < 0
 	var value := sim.reading() if not rest else float(state.torque())
 	var over := absf(value) > VIAL_TICKS + 0.4
@@ -1792,7 +1952,7 @@ func _draw_pill(t: float, shown: Array) -> void:
 		b.disc(c + Vector2(-1.5, -1.5), PILL_H * 0.16, Pal.SUN)
 		_pill_mesh = b.mesh()
 	var left := state.sun_left()
-	var at := Vector2(size.x - PAD - PILL_W, SIGN_Y - 30.0)
+	var at := Vector2(size.x - _side() - PILL_W, _sign_y + (SIGN_H - PILL_H) * 0.5)
 	var pop := 1.0 if Motion.reduce else Motion.bump_scale(t - _sun_pop_at, 0.22, 0.4)
 	var low := left <= SUN_LOW
 	if low and not Motion.reduce and not _out_card:
@@ -1878,7 +2038,8 @@ func _draw_toast(t: float, shown: Array) -> void:
 		b.fan(Face.Builder.round_rect(Vector2(-w, -h) * 0.5, Vector2(w, h), TOAST_RADIUS), Pal.TEXT)
 		_toast_mesh = b.mesh()
 		_toast_mesh_for = key
-	var mid := Vector2(size.x * 0.5, SIGN_Y + SIGN_H - 10.0 + h * 0.5)
+	# over the bunting, at the top of the span
+	var mid := Vector2(size.x * 0.5, _span_top + 8.0 + h * 0.5)
 	_front.draw_mesh(_toast_mesh, null, Transform2D(0.0, mid), Color(Color.WHITE, alpha))
 	shown.append(_toast_mesh)
 	var top := mid.y - h * 0.5 + (TOAST_H - font.get_height(TOAST_FONT)) * 0.5 + font.get_ascent(TOAST_FONT)

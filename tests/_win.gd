@@ -19,6 +19,7 @@ var _fit_ok := true
 var _hud_ok := true
 ## True while a solver that awaits is still playing: the slots stand still.
 var _waiting := false
+var _late := 0
 
 func _initialize() -> void:
 	# No card is `soon` any more (the last one, Pipes, gave up its slot to
@@ -103,7 +104,15 @@ func _process(_delta: float) -> bool:
 			"id": _entries[_idx].id, "solved": solved, "done": done, "overlay": overlay,
 			"ok": solved and done and overlay and _fit_ok and _hud_ok, "note": _note(_entries[_idx].id),
 		})
+	elif slot == 26 and OS.has_environment("WIN_LATE") and _late < 260:
+		# `WIN_LATE=1`: stand still until the win screen has settled and
+		# shoot it to /tmp/won_<id>_late.png.
+		_late += 1
+		_frames -= 1
+		if _late == 260:
+			root.get_texture().get_image().save_png("/tmp/won_%s_late.png" % _entries[_idx].id)
 	elif slot == 26:
+		_late = 0
 		_host.closed.emit()
 		_idx += 1
 	return false

@@ -33,6 +33,16 @@ extends "res://core/puzzle_base.gd"
 ## the row's growth is that Control's scale -- so a friend's mesh is built
 ## once and never rebuilt as its row grows.
 ## Spec: docs/superpowers/specs/2026-09-18-codebreak-flat-design.md.
+##
+## The box is the whole screen (2026-10-13, the registry's `bleed`):
+## puzzles/codebreak_world.gd lies edge to edge as the board's first child
+## and the column is laid at the top of the span the host's rows leave
+## (`set_clear`), its edges on the host's side margin. The parchment card
+## the column used to stand on is gone, so THE CODE has a plank of its own
+## to stand on, the menu card's dark shelf (`_shelf`), which is the
+## column's and goes where it goes. On the win nothing is laid out again:
+## the column slides and shrinks into the win's span (`_put`), and the
+## world, which is not the column's, stays where it is.
 
 const State = preload("res://puzzles/codebreak_state.gd")
 const Friends = preload("res://ui/faces/friends.gd")
@@ -43,11 +53,25 @@ const Haptics = preload("res://core/haptics.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
 const Seal = preload("res://ui/flat/seal.gd")
+const CardFace = preload("res://ui/menu/cards/card_face.gd")
+const World = preload("res://puzzles/codebreak_world.gd")
+const FLAT_HOST := "res://ui/flat/flat_host.gd"
 
 # --- the column, in design units (spec section 4) ---
 const COL_W := 1000.0
-## Breathing room between the column and the card's edge.
+## Breathing room between the column and the win's span.
 const PAD := 28.0
+## The slide into the win's span (the host's SLOT_TIME).
+const WIN_SLIDE := 0.45
+## The shelf THE CODE stands on: how far it reaches over the column's top,
+## its corner, its lip, and the wood (the menu card's).
+const SHELF_HEAD := 14.0
+const SHELF_ROUND := 30.0
+const SHELF_LIP := 8.0
+const SHELF_TOP := Color("5f3f28")
+const SHELF_LOW := Color("7a5334")
+## THE CODE's label, on the shelf's dark.
+const SHELF_INK := Color("f3e3c4")
 ## The row card, and the number at its left.
 const CARD_X := 28.0
 const CARD_W := 944.0
@@ -271,7 +295,22 @@ var _guesses: Array:
 
 var _column: Control
 var _code_label: Label
-var _rule: Control
+## The plank under the label and the lids, one cached mesh.
+var _shelf: Control
+var _world: Control
+## What the host's rows cover of the rect, top and bottom, while playing
+## and on the win.
+var _clear := Vector2.ZERO
+var _win_clear := Vector2.ZERO
+var _won := false
+## The column's place and scale while playing and on the win, and how far
+## along the slide between them it is.
+var _play_at := Vector2.ZERO
+var _play_scale := 1.0
+var _win_at := Vector2.ZERO
+var _win_scale := 1.0
+var _slid := 0.0
+var _win_tw: Tween
 var _lid_seat: Array = []     # [s] -> Control at a code seat: the lid and the friend
 var _lid: Array = []          # [s] -> the wooden lid
 var _code_face: Array = []    # [s] -> the friend under it, hidden until revealed
@@ -380,6 +419,10 @@ func capabilities() -> Array[String]:
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = false
+	# The world first, under everything.
+	_world = World.new()
+	_world.name = "World"
+	add_child(_world)
 	_column = Control.new()
 	_column.name = "Column"
 	_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -434,13 +477,15 @@ func _build_column() -> void:
 	_bake_key = []
 	_peeker = []
 
+	_shelf = Dashed.new()
+	_shelf.name = "Shelf"
+	_column.add_child(_shelf)
 	_code_label = Label.new()
 	_code_label.text = "CB_THE_CODE"
 	_code_label.theme_type_variation = "FlatMotto"
+	_code_label.add_theme_color_override("font_color", Color(SHELF_INK, 0.9))
 	_code_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_column.add_child(_code_label)
-	_rule = Dashed.new()
-	_column.add_child(_rule)
 	_sparks = Sparks.new()
 	_column.add_child(_sparks)
 
@@ -556,24 +601,40 @@ func _add_row(g: int) -> void:
 	_big.append(1.0 if g == 0 else 0.0)
 	_row_tw.append(null)
 
-## The column's own size, then one uniform scale to fit it in the card.
+## The column's own size, then one uniform scale: as wide as the host's
+## rows (its side margin, so the row cards' edges line up with the
+## buttons') unless the span the rows leave (`_clear`) is too short for
+## that, and at the top of that span, right under the tools row. What is
+## left is open world under it.
 func _layout() -> void:
+	_world.size = size
 	if _rows.is_empty():
 		return
 	var pitch := (SEAT_R - SEAT_L) / length
 	_piece_big = minf(PIECE_MAX, pitch - PIECE_SLACK)
 	_piece_small = _piece_big * PIECE_SMALL
 	_need = CODE_TOP + _piece_big + ROWS_AFTER + RH_SMALL * (state.tries - 1) + RH_BIG
-	_scale = minf(size.x / COL_W, maxf(0.05, (size.y - 2.0 * PAD) / _need))
+	var tall := SHELF_HEAD + _need
+	var wide := maxf(1.0, size.x - 2.0 * _side())
+	var span := size.y - _clear.x - _clear.y
+	_play_scale = minf(wide / COL_W, maxf(0.05, span / tall))
+	_play_at = Vector2((size.x - COL_W * _play_scale) * 0.5, _clear.x + SHELF_HEAD * _play_scale)
 	_column.size = Vector2(COL_W, _need)
-	_column.scale = Vector2.ONE * _scale
-	_column.position = (size - Vector2(COL_W, _need) * _scale) * 0.5
+	if _won:
+		# Laid out under a win (a resize, a bought row, or a day reopened
+		# solved): the slide is aimed again, and set at its end if it never
+		# ran.
+		_aim()
+		if _slid <= 0.0 and not Motion.running(_win_tw):
+			_slid = 1.0
+	_put(_slid)
 
 	_code_label.position = Vector2(CARD_X, LABEL_Y - 20.0)
 	_code_label.size = Vector2(400.0, 40.0)
-	_rule.mesh = _dash_line(CARD_W, 6.0, 14.0, 4.0, Color(Pal.LINE, 0.7))
-	_rule.position = Vector2(CARD_X, CODE_TOP + _piece_big + RULE_AFTER)
-	_rule.size = Vector2(CARD_W, 1.0)
+	var shelf_h := SHELF_HEAD + CODE_TOP + _piece_big + RULE_AFTER + SHELF_LIP
+	_shelf.mesh = _shelf_mesh(shelf_h)
+	_shelf.position = Vector2(0.0, -SHELF_HEAD)
+	_shelf.size = Vector2(COL_W, shelf_h)
 	_sparks.position = Vector2(0.0, CODE_TOP)
 	_sparks.size = Vector2(COL_W, _piece_big)
 	_sparks.left_x = _seat_x(0) - _piece_big * 0.5 - SPARK_GAP
@@ -593,6 +654,101 @@ func _layout() -> void:
 
 func _code_rest(s: int) -> Vector2:
 	return Vector2(_seat_x(s) - _piece_big * 0.5, CODE_TOP)
+
+## What the host's rows cover, in this board's own pixels (it is laid full
+## rect). While playing the column is laid in what is left. On the win it is
+## not laid out again: it slides and shrinks into the win's span.
+func set_clear(top: float, bottom: float, won := false) -> void:
+	Motion.stop(_win_tw)
+	_won = won
+	_world.set_won(won)
+	if not won:
+		_clear = Vector2(top, bottom)
+		_slid = 0.0
+		_layout()
+		return
+	_win_clear = Vector2(top, bottom)
+	# A day reopened solved is told before it has been laid out: _layout
+	# sets the slide when it has a column to aim.
+	if _rows.is_empty() or _need <= 0.0:
+		return
+	_aim()
+	if Motion.reduce or not is_inside_tree() or _slid >= 1.0:
+		_put(1.0)
+		return
+	_win_tw = create_tween()
+	_win_tw.tween_method(_put, _slid, 1.0, WIN_SLIDE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+## Where the win's slide ends: the column in the middle of the win's span,
+## PAD clear of it, never bigger than it was played.
+func _aim() -> void:
+	var tall := SHELF_HEAD + _need
+	var span := size.y - _win_clear.x - _win_clear.y
+	_win_scale = clampf((span - 2.0 * PAD) / tall, 0.05, _play_scale)
+	_win_at = Vector2((size.x - COL_W * _win_scale) * 0.5,
+		_win_clear.x + (span - tall * _win_scale) * 0.5 + SHELF_HEAD * _win_scale)
+
+## The column at `t` of the way from where it is played to the win's span.
+## Everything the board lays over the column (the sparkles, the bubble, a
+## touch) reads `_column.position` and `_scale`, so it follows.
+func _put(t: float) -> void:
+	_slid = t
+	_scale = lerpf(_play_scale, _win_scale, t) if t > 0.0 else _play_scale
+	_column.scale = Vector2.ONE * _scale
+	_column.position = _play_at.lerp(_win_at, t) if t > 0.0 else _play_at
+
+## The host's side margin, which the column keeps although the world does
+## not.
+func _side() -> float:
+	return float(load(FLAT_HOST).MARGIN)
+
+## The host slides the board `x` aside on a change of level; the world stays
+## where it is, and the board that is leaving shows none, so the one
+## arriving under it is not hidden.
+func set_shift(x: float, leaving := false) -> void:
+	position.x = x
+	_world.position.x = -x
+	_world.visible = not leaving
+
+## The host deals this board into a screen already standing: it arrives
+## whole, without the rows' and the lids' entrance.
+func skip_entrance() -> void:
+	_stop_entrance()
+
+## The shelf's plank, `h` tall and the column wide, about its own top left:
+## its shadow, the wood, a little grain and the lit lip along its foot.
+## One mesh a height, kept (a level has one height).
+static var _shelf_cache: Dictionary = {}
+
+func _shelf_mesh(h: float) -> ArrayMesh:
+	var key := int(roundf(h * 4.0))
+	if _shelf_cache.has(key):
+		return _shelf_cache[key]
+	var b := Face.Builder.new()
+	var sz := Vector2(COL_W, h)
+	b.polygon(Face.Builder.round_rect(Vector2(0.0, 7.0), sz, SHELF_ROUND), Color(0.14, 0.08, 0.04, 0.20))
+	var plank := Face.Builder.round_rect(Vector2.ZERO, sz, SHELF_ROUND)
+	var first := b.verts.size()
+	b.polygon(plank, Color.WHITE)
+	CardFace.shade(b, first, SHELF_TOP, SHELF_LOW, 0.0, h)
+	for run: Array in [[0.10, 0.03, 0.44, 0.4], [0.16, 0.58, 0.96, 2.0], [0.52, 0.70, 0.985, 1.1],
+			[0.80, 0.02, 0.36, 2.6], [0.86, 0.52, 0.90, 0.2]]:
+		var pts := PackedVector2Array()
+		for i in 17:
+			var x := lerpf(run[1], run[2], i / 16.0)
+			pts.append(Vector2(x * COL_W, (run[0] + 0.012 * sin(x * 11.0 + run[3])) * (h - SHELF_LIP)))
+		b.stroke(pts, 3.0, Color(Pal.WOOD, 0.14))
+	var lip := PackedVector2Array([Vector2(-4.0, h - SHELF_LIP), Vector2(COL_W + 4.0, h - SHELF_LIP),
+		Vector2(COL_W + 4.0, h + 4.0), Vector2(-4.0, h + 4.0)])
+	for part in Geometry2D.intersect_polygons(plank, lip):
+		b.polygon(part, Pal.WOOD)
+	var shine := PackedVector2Array([Vector2(-4.0, h - SHELF_LIP), Vector2(COL_W + 4.0, h - SHELF_LIP),
+		Vector2(COL_W + 4.0, h - SHELF_LIP + 3.0), Vector2(-4.0, h - SHELF_LIP + 3.0)])
+	for part in Geometry2D.intersect_polygons(plank, shine):
+		b.polygon(part, Color(Pal.WOOD.lightened(0.35), 0.75))
+	var m := b.mesh()
+	_shelf_cache[key] = m
+	return m
 
 ## Every row's y, from the running sum of the heights their bigness gives.
 func _place_rows() -> void:

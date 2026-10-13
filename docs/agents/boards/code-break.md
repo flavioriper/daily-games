@@ -154,3 +154,29 @@ mastermind d=<n> x=buzz` (`_buzz_mastermind`); its moves now skip a seat a
 hint filled. `_glance` holds its face by weak reference: a friend sent back
 inside `GLANCE_TIME` was freed under the lambda, which the engine logged as
 an error (harmless, the lambda checked).
+
+### The box is the whole screen (2026-10-13)
+
+The second board of the redesign (`docs/agents/flat-screens.md`, "Every
+board gets a world of its own"), built unattended to Binairo's checklist.
+`puzzles/codebreak_world.gd` is the card's parchment edge to edge with a
+soft light in the wordmark's corner, a light wood wash from 0.74 down and
+the box's dark rail along the foot; a spare lid and three score pips lie in
+the gap of the tools row (a second mesh, hidden on the win). THE CODE
+stands on a dark plank of its own, a child of the column, where the dashed
+rule was. The column is laid in the span `set_clear` gives, on the host's
+margin; on the win it slides and shrinks under its own transform.
+
+- Registry: `bleed`, `level_card`, and **the friends tray and the guess
+  button stay under the board**: it cannot be played without them. The
+  host hides the actions row's Reset on a levelled board (the bin on the
+  tools row is it) and the bin shows whether or not there is an actions
+  row.
+- `opengl3_angle`, 810x1440, `tests/_shot_anim.gd -- mastermind`: a full
+  Medium board idles at 180 draw calls. `tests/_win.gd -- mastermind`
+  passes through real touches; `WIN_LATE=1` shoots the settled win to
+  `/tmp/won_<id>_late.png`.
+- Decided for the user, unconfirmed: the tray and Check kept; the shelf on
+  the board, not the world; a light foot so the tray reads; the rows 20
+  inside the shelf's edges.
+- Owed: a phone; the level slide was not shot on this board.

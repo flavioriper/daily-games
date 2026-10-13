@@ -409,6 +409,10 @@ func _build_chrome(root: VBoxContainer) -> void:
 		action_bar.reset.connect(_on_reset)
 		action_bar.check.connect(_on_check)
 		_bottom_stack.add_child(action_bar)
+		# A levelled board's Reset is the bin on its tools row: the row down
+		# here keeps the board's own button alone.
+		if levelled:
+			action_bar.reset_button.visible = false
 		rows.append(FlatActions.BUTTON.y)
 	_bottom_play = GAP * maxi(rows.size() - 1, 0)
 	for row in rows:

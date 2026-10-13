@@ -124,7 +124,8 @@ func _build() -> void:
 	# Reset a bin (the host asks before it clears).
 	undo_button = _button("undo_back" if tools != null else "undo", undo, row)
 	reset_button = _button("bin" if tools != null else "reset", reset, row)
-	reset_button.visible = with_reset
+	# The tools row always has its bin, actions row under the board or not.
+	reset_button.visible = with_reset or tools != null
 	if tools != null:
 		var spacer := Control.new()
 		spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL

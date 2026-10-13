@@ -473,6 +473,22 @@ sections after it say how each part is built.
     foot, the top on the win). Shoot rest, `solve` and a level change on
     `opengl3_angle` at 810x1440; the draw calls should not rise.
 
+**Done since** (2026-10-13, unattended, three boards a batch by fork
+workers; each board's own note says what was decided for the user):
+Code Break, Balance, Untangle. What the batches taught:
+
+- A worker owns two files, `puzzles/<board>_world.gd` and the board; the
+  parent sets the registry, shoots (`tests/_shot_anim.gd`, then
+  `WIN_LATE=1 tests/_win.gd -- <id>` for the settled win at
+  `/tmp/won_<id>_late.png`) and commits.
+- A board that paints in `_draw` gives its world `show_behind_parent`.
+- The world file copies its colours; preloading the board is a cycle.
+- **A board that cannot be played without its tray keeps it** (Code
+  Break's friends and guess button), the host's own component under a
+  bleed board; a Check that only verifies goes.
+- On a levelled board the actions row's Reset is hidden and the tools
+  row's bin always shows.
+
 Still open, the user's to call: a real Redo (none exists; "redo" was read
 as the old Reset); whether the bin greys on an untouched board; the
 day's hearts, which are now only on the win's stats card.

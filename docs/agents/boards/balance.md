@@ -137,3 +137,28 @@ down, rolled off). At play nothing spans more than five semitones now:
 `land` is 1.15 down to 0.87 by weight (it was 1.2 to 0.78, and 0.7 on
 grass), the closer-to-level `tock` 1.06 to 1.24 (it was up to 1.47). All 22
 read "0 flagged" in `tools/measure_sfx.py balance`; none heard by the user.
+
+### The meadow is the whole screen (2026-10-13)
+
+The third board of the redesign (`docs/agents/flat-screens.md`, "Every
+board gets a world of its own"). `puzzles/balance_world.gd` is a pale
+morning sky and the meadow (far hills, three trees, flowers under the
+horizon and across the open foot), two meshes in place of the two the board
+drew for itself; one cloud in the gap of the tools row. The board's sun,
+evening wash, stars, rainbow and clouds are a layer handed to the world,
+between its sky and its hills. The bunting hangs across the top of the
+span and the reading sign from its middle; the basket's ends are on the
+host's margin and the blanket ends a hem under it. The grass line is the
+same on every level (0.669 of the height). On the win the board shrinks
+about the trestle's foot and the world follows it vertically, so the grass
+stays under the trestle.
+
+- Registry: `bleed`, `level_card`; tray none, no actions row, as before.
+- `opengl3_angle`, 810x1440, `tests/_shot_anim.gd -- balance`: 115 draw
+  calls; `tests/_win.gd -- balance` passes.
+- Decided for the user, unconfirmed: the sign on the bunting, the short
+  blanket, the moves pill on the sign's row, the wash fading under the
+  host's rows, the world tilting on the win.
+- Seen and left: on the settled win the rainbow's arc runs behind "Well
+  done!" and a white "!" stands at the top left edge. Owed: a phone, the
+  level slide's look (the leaving board shows no sun).

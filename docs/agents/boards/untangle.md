@@ -309,3 +309,25 @@ word, on `feat/untangle-rope`, with no concept tab.
 What this file says of Insane having no hint (or only a video's) is history:
 Insane holds as many hints as Hard on every board with a bulb, at the
 user's word. `docs/agents/flat-screens.md`, "Insane has the bulb again".
+
+### The linen is the whole screen (2026-10-13)
+
+The fourth board of the redesign (`docs/agents/flat-screens.md`, "Every
+board gets a world of its own"). `puzzles/untangle_world.gd` is the card's
+linen with a faint weave, a window light at the upper right, a sagging gold
+stitch with one flower in the gap of the tools row, two sprigs at the
+hoop's lower corners, and in the foot a large sprig, two spare pegs, a
+needle and a coral ball of rope with a hem stitch under them; six dust
+motes breathe. It is the board's first child with `show_behind_parent`
+(the board paints in `_draw`). The ring's wood is on the host's margin; a
+paler taut disc inside the hoop keeps the ropes on plain cloth; the head
+room over the ring is 16, 96 with the thread row, 176 with the kitten. The
+board's own corner embroidery is gone (the world stitches it).
+
+- Registry: `bleed`, `level_card`; tray none, no actions row, as before.
+- `opengl3_angle`, 810x1440, `tests/_shot_anim.gd -- untangle d=3`: 101
+  draw calls, what it was; `tests/_win.gd -- untangle` passes with real
+  drags.
+- Decided for the user, unconfirmed: the paler disc, the ring 36 under the
+  buttons, the thread row and kitten travelling with the ring on the win.
+- Owed: a phone; the toast lies over the foot's things while it is up.

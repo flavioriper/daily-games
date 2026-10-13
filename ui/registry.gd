@@ -109,6 +109,12 @@ const PUZZLES := [
 		"card": "res://ui/menu/cards/codebreak.gd",
 		"shell": "flat",
 		"tray": "friends",
+		# The box's parchment and wood are the whole screen (`bleed`,
+		# puzzles/codebreak_world.gd) and the levels stand where the day card
+		# was. It keeps its friends and its guess button under the board: it
+		# cannot be played without them.
+		"bleed": true,
+		"level_card": true,
 		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku (2026-09-23): four seats of six friends with no one
 		# twice in the code, the same with repeats, or five seats of seven;
@@ -137,6 +143,10 @@ const PUZZLES := [
 		"shell": "flat",
 		"tray": "none",
 		"actions": false,
+		# The meadow is the whole screen (`bleed`, puzzles/balance_world.gd)
+		# and the levels stand where the day card was.
+		"bleed": true,
+		"level_card": true,
 		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku (2026-09-23): balance_gen.gd's BANDS, and each is
 		# its own daily with its own done mark.
@@ -164,6 +174,10 @@ const PUZZLES := [
 		"shell": "flat",
 		"tray": "none",
 		"actions": false,
+		# The linen is the whole screen (`bleed`, puzzles/untangle_world.gd)
+		# and the levels stand where the day card was.
+		"bleed": true,
+		"level_card": true,
 		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku (2026-09-23): four, six, eight or nine ropes on a ring
 		# of pegs (untangle_gen.gd's BANDS; Hard and Insane run on thread and

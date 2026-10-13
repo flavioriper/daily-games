@@ -31,6 +31,15 @@ extends "res://core/puzzle_base.gd"
 ## Hard and Insane run on thread (a stitch a move) and can be lost; Insane also
 ## has the kitten, who bats the marked peg after every third move.
 ## Spec: docs/superpowers/specs/2026-09-29-untangle-knots-design.md.
+##
+## The linen is the whole screen (2026-10-13, the registry's `bleed`):
+## puzzles/untangle_world.gd lies edge to edge as the board's first child,
+## drawn behind the board's own drawing, and the ring is laid in the span
+## the host's rows leave (`set_clear`): its wood on the rows' margin, at the
+## top of the span under whatever the band keeps over it (the thread, the
+## kitten). On the win the board is not laid out again: it slides and
+## shrinks into the win's span under its own one transform, the linen held
+## still against it.
 
 const State = preload("res://puzzles/untangle_state.gd")
 const Gen = preload("res://puzzles/untangle_gen.gd")
@@ -45,15 +54,27 @@ const Scenery = preload("res://ui/flat/scenery.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const Rewards = preload("res://arcade/rewards.gd")
 const CozyTheme = preload("res://ui/theme.gd")
+const World = preload("res://puzzles/untangle_world.gd")
+const FLAT_HOST := "res://ui/flat/flat_host.gd"
 const OUT_CARD := "res://ui/hud/out_of_rows.gd"
 const OUT_WORDS := {"title": "UT_OUT_TITLE", "body": "UT_OUT_BODY", "body_rest": "UT_OUT_BODY_REST",
 	"more": "UT_ONE_SPOOL", "show": "UT_SHOW_ANSWER", "placement": "spool"}
 
 # --- the layout, in the board's own pixels ---
-const PAD_X := 34.0
+## What a band keeps over the ring, from the top of its span: the kitten
+## and her yarn (Insane), the thread row alone (Hard), or only the stitch
+## round the ring.
 const TOP_ROOM := 176.0
-const TOP_ROOM_PLAIN := 96.0
+const TOP_ROOM_THREAD := 96.0
+const TOP_ROOM_PLAIN := 16.0
 const BOTTOM_ROOM := 30.0
+## The win's span is fitted with this much kept clear all round, and the
+## slide into it takes the host's SLOT_TIME.
+const WIN_PAD := 28.0
+const WIN_SLIDE := 0.45
+## The linen the hoop holds, pulled tight: a little paler than the cloth
+## (the menu card's).
+const LINEN_TAUT := Color("fcf6e8")
 ## The ring's inner edge as a share of its outer, and a peg's size against the
 ## ring's width.
 const RING_IN := 0.79
@@ -208,6 +229,22 @@ var _peg_r := 0.0
 var _hole_r := 0.0
 var _wd := 0.0
 var _top := TOP_ROOM
+var _world: Control
+## What the host's rows cover of the rect, top and bottom, while playing.
+var _clear := Vector2.ZERO
+## The board's own transform on the win: the middle of the ring and what it
+## keeps over it while playing, how far that moves and how small it gets,
+## and how far along it is.
+var _slid_from := Vector2.ZERO
+var _slid_by := Vector2.ZERO
+var _slid_scale := 1.0
+var _slid := 0.0
+var _won := false
+var _win_clear := Vector2.ZERO
+var _placed := false
+## The host's slide on a change of level (set_shift).
+var _shift := 0.0
+var _slide_tw: Tween
 var _kitten_at := Vector2.ZERO
 var _yarn_at := Vector2.ZERO
 
@@ -391,6 +428,12 @@ const HAPTICS := {
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = false
+	# The linen first, and behind this board's own drawing: a child draws
+	# over its parent's _draw unless it asks not to.
+	_world = World.new()
+	_world.name = "World"
+	_world.show_behind_parent = true
+	add_child(_world)
 	fx = Fx2D.new()
 	fx.haptics = HAPTICS
 	fx.name = "Fx"
@@ -450,7 +493,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_opened = _now()
 	_busy_until = 0.0
 	_idle_at = _now() + IDLE_WHIP_EVERY
-	_top = TOP_ROOM if (state.budget > 0 or state.cat) else TOP_ROOM_PLAIN
+	_top = TOP_ROOM if state.cat else (TOP_ROOM_THREAD if state.budget > 0 else TOP_ROOM_PLAIN)
 	var pegs: int = state.at.size()
 	_mv = []
 	_lift = PackedFloat32Array(); _lift.resize(pegs)
@@ -496,20 +539,35 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 
 # --- layout ---
 
+## The ring is as wide as the host's rows (its side margin, so the wood's
+## edge lines up with the buttons') and stands at the top of the span the
+## rows leave (`_clear`), under what the band keeps over it; what is left is
+## open linen under it.
 func _layout() -> void:
+	if _world != null:
+		_world.size = size
+	_place()
 	if _ropes.size() != state.ropes or size.x < 100.0 or size.y < 100.0:
 		return
-	var avail_h := size.y - _top - BOTTOM_ROOM
-	var diameter := minf(size.x - 2.0 * PAD_X, avail_h)
+	var side := _side()
+	var avail_h := size.y - _clear.x - _clear.y - _top - BOTTOM_ROOM
+	var diameter := maxf(minf(size.x - 2.0 * side, avail_h), 60.0)
 	_ro = diameter * 0.5
 	_ri = _ro * RING_IN
 	_rh = (_ro + _ri) * 0.5
-	_c = Vector2(size.x * 0.5, _top + avail_h * 0.5)
+	_c = Vector2(size.x * 0.5, _clear.x + _top + _ro)
+	if _won:
+		# Laid out under a win (a resize, or a day reopened solved): the
+		# slide is aimed again, and set at its end if it never ran.
+		_aim()
+		if _slid <= 0.0 and not (_slide_tw != null and _slide_tw.is_valid()):
+			_slid = 1.0
+		_place()
 	var spacing := TAU * _rh / state.holes
 	_peg_r = minf((_ro - _ri) * PEG_OF_RING, spacing * 0.36)
 	_hole_r = _peg_r * HOLE_OF_PEG
 	_wd = _peg_r * ROPE_OF_PEG
-	_kitten_at = Vector2(size.x - PAD_X - KITTEN_SIZE * 0.5, 8.0 + KITTEN_SIZE * 0.5)
+	_kitten_at = Vector2(size.x - side - KITTEN_SIZE * 0.5, _clear.x + 8.0 + KITTEN_SIZE * 0.5)
 	_kitten.size = Vector2.ONE * KITTEN_SIZE
 	_kitten.position = _kitten_at - _kitten.size * 0.5
 	_kitten.pivot_offset = _kitten.size * 0.5
@@ -539,6 +597,83 @@ func _layout() -> void:
 	_look.resize(state.ropes)
 	_over_for = []
 	_dirty = true
+
+## What the host's rows cover, in this board's own pixels (it is laid full
+## rect). While playing the ring is laid in what is left. On the win it is
+## not laid out again: the board slides and shrinks into the win's span.
+func set_clear(top: float, bottom: float, won := false) -> void:
+	Motion.stop(_slide_tw)
+	_won = won
+	if not won:
+		_clear = Vector2(top, bottom)
+		_slid = 0.0
+		_layout()
+		return
+	_win_clear = Vector2(top, bottom)
+	# A day reopened solved is told before it has been laid out: _layout
+	# sets the slide when it has a ring to aim.
+	if _ro <= 0.0:
+		return
+	_aim()
+	if Motion.reduce or not is_inside_tree() or _slid >= 1.0:
+		_slide(1.0)
+		return
+	_slide_tw = create_tween()
+	_slide_tw.tween_method(_slide, _slid, 1.0, WIN_SLIDE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+## Where the win's slide ends: the ring and what the band keeps over it, as
+## one block, in the middle of the win's span and no larger than it.
+func _aim() -> void:
+	var block := _top + 2.0 * _ro
+	var span := size.y - _win_clear.x - _win_clear.y
+	_slid_from = Vector2(size.x * 0.5, _clear.x + block * 0.5)
+	_slid_scale = clampf(minf((size.x - 2.0 * _side() - 2.0 * WIN_PAD) / (2.0 * _ro),
+		(span - 2.0 * WIN_PAD) / block), 0.1, 1.0)
+	_slid_by = Vector2(size.x * 0.5, _win_clear.x + span * 0.5) - _slid_from
+
+## The host's side margin, which the ring keeps although the linen does not.
+func _side() -> float:
+	return float(load(FLAT_HOST).MARGIN)
+
+func _slide(t: float) -> void:
+	_slid = t
+	_place()
+
+## The host slides the board `x` aside on a change of level; the linen
+## stays where it is, and the board that is leaving shows none, so the one
+## arriving under it is not hidden.
+func set_shift(x: float, leaving := false) -> void:
+	_shift = x
+	if _world != null:
+		_world.visible = not leaving
+	_place()
+
+## The host deals this board into a screen already standing: it arrives
+## whole, without the ring's fade and the pegs' pops.
+func skip_entrance() -> void:
+	_opened = _now() - 10.0
+	_dirty = true
+	queue_redraw()
+
+## The board's transform at `_slid`, and the linen's against it, so the
+## cloth stays where it is while the ring and everything on it goes.
+func _place() -> void:
+	if _slid <= 0.0 and _shift == 0.0 and not _placed:
+		return
+	_placed = _slid > 0.0 or _shift != 0.0
+	var k := lerpf(1.0, _slid_scale, _slid)
+	var by := _slid_by * _slid + Vector2(_shift, 0.0)
+	pivot_offset = _slid_from
+	scale = Vector2(k, k)
+	position = by
+	if _world != null:
+		_world.pivot_offset = _slid_from
+		_world.scale = Vector2.ONE / k
+		_world.position = -by / k
+
+## The top of the thread row, under the host's rows.
+func _thread_y() -> float:
+	return _clear.x + THREAD_Y
 
 ## The straight length of a rope reaching `holes` holes round the ring.
 func _span_px(holes_apart: int) -> float:
@@ -570,7 +705,6 @@ func _rope_col(r: int) -> Array:
 
 func _build_ring() -> ArrayMesh:
 	var b := Face.Builder.new()
-	_embroider(b)
 	# A running stitch round the ring.
 	var stitches := 56
 	for i in stitches:
@@ -582,6 +716,8 @@ func _build_ring() -> ArrayMesh:
 	var soft := _ro - _ri
 	b.stroke(Face.Builder.arc_points(_c + Vector2(0.012, 0.03) * _ro, _rh, 0.0, TAU), soft + 22.0, Color(Pal.TEXT, 0.05), true)
 	b.stroke(Face.Builder.arc_points(_c + Vector2(0.01, 0.022) * _ro, _rh, 0.0, TAU), soft + 10.0, Color(Pal.TEXT, 0.09), true)
+	# The linen the hoop holds, pulled tight and plain: the ropes lie on it.
+	b.disc(_c, _rh, LINEN_TAUT)
 	b.stroke(Face.Builder.arc_points(_c, _rh, 0.0, TAU), soft, WOOD, true)
 	b.stroke(Face.Builder.arc_points(_c, _ro - 3.0, 0.0, TAU), 6.0, WOOD_EDGE, true)
 	b.stroke(Face.Builder.arc_points(_c, _ri + 3.0, 0.0, TAU), 6.0, WOOD_EDGE, true)
@@ -604,38 +740,6 @@ func _build_ring() -> ArrayMesh:
 		b.disc(at + Vector2(0.0, _hole_r * 0.16), _hole_r * 0.82, HOLE_DEEP)
 		b.ellipse(at + Vector2(0.0, _hole_r * 0.5), _hole_r * 0.6, _hole_r * 0.26, Color(HOLE, 0.9))
 	return b.mesh()
-
-## Flowers, leaves and berries stitched on the linen where the ring leaves
-## room: the two lower corners, and small sprigs up the sides.
-func _embroider(b: Face.Builder) -> void:
-	var w := size.x
-	var h := size.y
-	_sprig(b, Vector2(PAD_X * 0.2 + 46.0, h - 52.0), 46.0, 0.2, 1.0)
-	_sprig(b, Vector2(w - PAD_X * 0.2 - 46.0, h - 56.0), 40.0, PI - 0.2, -1.0)
-	if _top > TOP_ROOM_PLAIN + 1.0:
-		return
-	_sprig(b, Vector2(50.0, 44.0), 34.0, 0.9, 1.0)
-	_sprig(b, Vector2(w - 50.0, 44.0), 34.0, PI - 0.9, -1.0)
-
-## A stitched flower with two leaves and a pair of berries at `at`.
-func _sprig(b: Face.Builder, at: Vector2, r: float, tilt: float, side: float) -> void:
-	for k in 2:
-		var a := tilt + side * (0.55 + 0.9 * k)
-		var lc := at + Vector2.from_angle(a) * r * 1.35
-		Rewards.petal(b, lc, r * 0.78, r * 0.3, a, CLOTH_LEAF)
-		b.stroke(PackedVector2Array([at + Vector2.from_angle(a) * r * 0.7, at + Vector2.from_angle(a) * r * 1.9]), 2.4, CLOTH_LEAF_DEEP, false, false)
-	for k in 6:
-		var a := TAU * k / 6.0 + tilt
-		Rewards.petal(b, at + Vector2.from_angle(a) * r * 0.5, r * 0.5, r * 0.28, a, CLOTH_PETAL_DEEP)
-	for k in 6:
-		var a := TAU * k / 6.0 + tilt
-		Rewards.petal(b, at + Vector2.from_angle(a) * r * 0.48 + Vector2(-1.0, -1.5), r * 0.46, r * 0.24, a, CLOTH_PETAL)
-	b.disc(at, r * 0.28, CLOTH_GOLD)
-	b.disc(at + Vector2(-r * 0.06, -r * 0.08), r * 0.1, Color("f9dc8a"))
-	for k in 3:
-		var d := at + Vector2(side * (r * 1.6 + k * r * 0.34), -r * 0.9 - k * r * 0.14)
-		b.disc(d, r * 0.17, CLOTH_BERRY)
-		b.disc(d + Vector2(-2.0, -2.0), r * 0.05, Color(1, 1, 1, 0.7))
 
 # --- the frame ---
 
@@ -970,7 +1074,7 @@ func _draw_toast(t: float, shown: Array) -> void:
 		b.fan(Face.Builder.round_rect(Vector2(-w, -h) * 0.5, Vector2(w, h), TOAST_RADIUS), Pal.TEXT)
 		_toast_mesh = b.mesh()
 		_toast_mesh_for = key
-	var mid := Vector2(size.x * 0.5, minf(_c.y + _ro + _peg_r * 0.55 + 46.0 + h * 0.5, size.y - 24.0 - h * 0.5))
+	var mid := Vector2(size.x * 0.5, minf(_c.y + _ro + _peg_r * 0.55 + 46.0 + h * 0.5, size.y - _clear.y - 24.0 - h * 0.5))
 	draw_mesh(_toast_mesh, null, Transform2D(0.0, mid), Color(Color.WHITE, alpha))
 	shown.append(_toast_mesh)
 	var top := mid.y - h * 0.5 + (TOAST_H - font.get_height(TOAST_FONT)) * 0.5 + font.get_ascent(TOAST_FONT)
@@ -1734,7 +1838,7 @@ func _paw_glyph(b: Face.Builder, at: Vector2, r: float, col: Color) -> void:
 # --- the thread ---
 
 func _stitch_x(i: int) -> float:
-	return PAD_X + 44.0 + i * (STITCH_W + STITCH_GAP)
+	return _side() + 44.0 + i * (STITCH_W + STITCH_GAP)
 
 func _draw_thread(b: Face.Builder, t: float) -> void:
 	if state.budget <= 0:
@@ -1743,7 +1847,7 @@ func _draw_thread(b: Face.Builder, t: float) -> void:
 	var low := left <= LOW_THREAD and not is_done()
 	var wobble := 0.0 if Motion.reduce else sin(t * 9.0) * 2.0
 	# The spool.
-	var sp := Vector2(PAD_X + 14.0, THREAD_Y)
+	var sp := Vector2(_side() + 14.0, _thread_y())
 	b.polygon(Face.Builder.round_rect(sp + Vector2(-13.0, -15.0), Vector2(26.0, 30.0), 6.0), Color(THREAD, 1.0))
 	b.polygon(Face.Builder.round_rect(sp + Vector2(-18.0, -19.0), Vector2(36.0, 8.0), 4.0), CAP)
 	b.polygon(Face.Builder.round_rect(sp + Vector2(-18.0, 11.0), Vector2(36.0, 8.0), 4.0), CAP)
@@ -1751,7 +1855,7 @@ func _draw_thread(b: Face.Builder, t: float) -> void:
 		b.stroke(PackedVector2Array([sp + Vector2(-11.0, -8.0 + k * 8.0), sp + Vector2(11.0, -4.0 + k * 8.0)]), 2.4, Color(THREAD_DEEP, 0.7), false, false)
 	for i in state.budget:
 		var spent := i < state.spent
-		var at := Vector2(_stitch_x(i) + STITCH_W * 0.5, THREAD_Y)
+		var at := Vector2(_stitch_x(i) + STITCH_W * 0.5, _thread_y())
 		var since := t - _stitch_at[i]
 		if spent:
 			# A used stitch is a faint ghost; the one just used pops.
@@ -1776,7 +1880,7 @@ func _draw_thread(b: Face.Builder, t: float) -> void:
 	var since_dip := t - _needle_dip
 	if since_dip >= 0.0 and since_dip < 0.5 and not Motion.reduce:
 		dip = sin(PI * since_dip / 0.5) * 12.0
-	var ny := THREAD_Y - 22.0 + dip + wobble * 0.3
+	var ny := _thread_y() - 22.0 + dip + wobble * 0.3
 	var tip := Vector2(_needle_x + 8.0, ny + 22.0)
 	var tail := Vector2(_needle_x - 46.0, ny - 18.0)
 	b.stroke(PackedVector2Array([tail, tip]), 4.2, Color("b6bcc4"), false, true)
@@ -2585,7 +2689,7 @@ func spool_back() -> void:
 	fx.cue("spool_back")
 	_rw.sticker(tr("UT_W_SPOOL"), _c, 64, 1.4, true, Color.WHITE, true, "spool", 24.0)
 	if not Motion.reduce:
-		_rw.spray(Vector2(size.x * 0.25, THREAD_Y), THREAD, 10, 520.0, "star", 0.9)
+		_rw.spray(Vector2(size.x * 0.25, _thread_y()), THREAD, 10, 520.0, "star", 0.9)
 	_busy_until = _now() + 0.6
 	moved.emit()
 	_dirty = true
