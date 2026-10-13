@@ -166,7 +166,7 @@ for (const key in series) {
     if (d.budget_hit) d.flags.push({ level: "serious", text: "generator ran out of budget" });
     if (d.payload) {
       const sig = JSON.stringify([d.payload, d.solution]);
-      if (seen.has(sig)) d.flags.push({ level: "warning", text: "same puzzle as " + fmtDate(seen.get(sig)) });
+      if (seen.has(sig)) d.flags.push({ level: "serious", text: "same puzzle as " + fmtDate(seen.get(sig)) });
       else seen.set(sig, d.date);
     }
     for (const m in st) {
@@ -413,7 +413,7 @@ addEventListener("keydown", e => {
   e.preventDefault();
 });
 $("range").textContent = INDEX.dates.length ? `${INDEX.dates.length} days from ${fmtDate(INDEX.dates[0])}` : "nothing exported";
-$("foot").textContent = `exported ${INDEX.exported || "?"} UTC at ${INDEX.commit || "?"}, dealt on this Mac`;
+$("foot").textContent = `exported ${INDEX.exported || "?"} UTC at ${INDEX.commit || "?"}, dealt on this Mac · days are UTC`;
 draw();
 addEventListener("resize", strip);
 </script>
