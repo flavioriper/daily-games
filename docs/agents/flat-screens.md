@@ -407,9 +407,46 @@ playroom floor edge to edge, the rug and its loop, the siding and the shed
 on it. It is the first flat board whose state moves on a clock (the loop's
 ticks), so it has no Undo; the bulb and Reset ride in the top bar.
 
+**Binairo is the fourth, and the first with a tray and an actions row**
+(2026-10-13, `docs/agents/boards/binairo.md`, "The sky is the whole
+screen"). The host needed nothing new: `_bottom_play` already sums the rows
+it built and `_tell_clear` hands them over, and a touch pushed through the
+window reached the board between the rows and solved it. It is also the
+first bleed board made of nodes rather than one drawing, and the recipe for
+the grid boards still in a card: the world is a Control of its own, the
+board's first child; `_layout` fits the span `set_clear` gave instead of
+`size`; and on `won` the board is not laid out again, it slides and
+shrinks under its own transform with the world counter-transformed.
+
 Everything else is the host's as for any board: the bar, the day card, the
-tutorial, `_on_solved`, the win stack, Redo, the next level. A bleed board
-with a tray or an actions row was not tried.
+tutorial, `_on_solved`, the win stack, Redo, the next level.
+
+### Every board gets a world of its own (2026-10-13)
+
+The user, 2026-10-13: "let's start redesign the ingame to something
+completely customized for every game taking full screen, just making sure
+to keep the same brand UI layout ... Screens should be elegant, cozy, but
+carry the game elements." Binairo is the first; the other card boards
+(Code Break to Lattice in the registry) are still to do, one at a time.
+What "the same brand layout" was taken to mean, mine and the user's to
+call: the top bar, the day card with its painted island, the tray, the
+actions row and the win's panels stay where and as they are; what changes
+is everything under them. For each board:
+
+- `"bleed": true` in the registry; the paper page, the painted header and
+  the parchment card go with it.
+- The world is the board's menu card (`ui/menu/cards/<board>.gd`) at the
+  size of the screen, drawn as one cached mesh in a file of its own beside
+  the board (`puzzles/binairo_sky.gd`).
+- **What lies over the world decides its tones.** The wordmark and the
+  motto are ink with no scrim under them now, and the win's "Well done!"
+  is ink in the top 640: the world is light there. The tray's chips and
+  the buttons carry their own paper and stand on anything.
+- Place the decoration where the world shows: beside the tray, between
+  the buttons, in the air the grid leaves above and below it, and across
+  the top on the win. Behind the grid only the gaps show.
+- Shoot rest and `solve` with `tests/_shot_anim.gd`; the draw calls should
+  not rise (the card and the header plate leave as the world arrives).
 
 ### The win screen comes in with the board's wave (2026-10-04)
 

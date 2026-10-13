@@ -37,6 +37,13 @@ extends "res://core/puzzle_base.gd"
 ## it, right tiles in a row build a streak with a paper bubble and confetti,
 ## a clean line plays one of three gags, and the solve stamps a flawless run
 ## and throws a party. Notes: docs/agents/boards/binairo.md.
+##
+## The sky is the whole screen (2026-10-13, the registry's `bleed`):
+## puzzles/binairo_sky.gd lies edge to edge as the board's first child and
+## the grid is laid in the span the host's rows leave (`set_clear`). On the
+## win the board slides and shrinks into the win's span under its own one
+## transform, the sky held still against it, so no tile is laid out again
+## in the middle of the wave.
 
 const Gen = preload("res://puzzles/binairo_gen.gd")
 const State = preload("res://puzzles/binairo_state.gd")
@@ -55,11 +62,14 @@ const SunFace = preload("res://ui/faces/sun_face.gd")
 const MoonFace = preload("res://ui/faces/moon_face.gd")
 const MovesPill = preload("res://ui/flat/moves_pill.gd")
 const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
+const DaySky = preload("res://puzzles/binairo_sky.gd")
 ## The moves the out-of-moves card's video buys, once a board.
 const MOVES_BONUS := 5
 
 ## Layout, in the board card's inner pixels (spec section 4).
 const PAD := 28.0
+## The slide into the win's span (the host's SLOT_TIME).
+const WIN_SLIDE := 0.45
 const GAP := 12.0
 const TILE_RADIUS := 18
 const TILE_EDGE := 4
@@ -295,6 +305,19 @@ var _signs_tw: Tween
 ## checkup, 2026-10-01). Bodies are grouped by mesh: a board shows a handful
 ## of expressions, eye levels and glances at once, not a hundred.
 var _under: Control
+var _sky: Control
+## What the host's rows cover of the rect, top and bottom, while playing.
+var _clear := Vector2.ZERO
+## The board's own transform on the win: the grid's middle while playing,
+## how far it moves and how small it gets, and how far along it is.
+var _slid_from := Vector2.ZERO
+var _slid_by := Vector2.ZERO
+var _slid_scale := 1.0
+var _slid := 0.0
+var _won := false
+var _win_clear := Vector2.ZERO
+var _placed := false
+var _slide_tw: Tween
 var _mm_edge: MultiMesh
 var _mm_face: MultiMesh
 var _mm_tint: MultiMesh
@@ -430,7 +453,12 @@ func capabilities() -> Array[String]:
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = false
-	# First child, so the tiles (added after) and their faces draw over it.
+	# The sky first, under everything.
+	_sky = DaySky.new()
+	_sky.name = "Sky"
+	add_child(_sky)
+	# Then the coins' layer, so the tiles (added after) and their faces draw
+	# over it.
 	_under = Control.new()
 	_under.name = "Under"
 	_under.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -637,18 +665,26 @@ func _nulls() -> Array:
 		row.append(null)
 	return row
 
-## The grid is the square of the shorter side less the padding, centred. A
-## board with hearts, or with Insane's move counter, keeps HEART_ROW over it
-## for them first.
+## The grid is a square in the middle of the span the host's rows leave
+## (`_clear`), inside the host's side margin and the padding.
 func _layout() -> void:
+	_sky.size = size
+	_place()
 	if _tiles.is_empty():
 		return
-	var top := HEART_ROW if max_hearts > 0 or max_moves > 0 else 0.0
-	var g := minf(size.x, size.y - top) - 2.0 * PAD
+	var span := size.y - _clear.x - _clear.y
+	var g := minf(size.x - 2.0 * _side(), span) - 2.0 * PAD
 	_tile = (g - (n - 1) * GAP) / n
 	if _tile <= 0.0:
 		return
-	_origin = Vector2((size.x - g) * 0.5, top + (size.y - top - g) * 0.5)
+	_origin = Vector2((size.x - g) * 0.5, _clear.x + (span - g) * 0.5)
+	if _won:
+		# Laid out under a win (a resize, or a day reopened solved): the
+		# slide is aimed again, and set at its end if it never ran.
+		_aim()
+		if _slid <= 0.0 and not (_slide_tw != null and _slide_tw.is_valid()):
+			_slid = 1.0
+		_place()
 	_under.position = Vector2.ZERO
 	_under.size = size
 	if _tile != _mm_tile:
@@ -677,6 +713,60 @@ func _layout() -> void:
 			var face: Control = _faces[r][c]
 			if face != null:
 				_fit_face(face, state.grid[r][c])
+
+## What the host's rows cover, in this board's own pixels (it is laid full
+## rect). While playing the grid is laid in what is left. On the win it is
+## not laid out again: the board slides and shrinks into the win's span.
+func set_clear(top: float, bottom: float, won := false) -> void:
+	Motion.stop(_slide_tw)
+	_won = won
+	if not won:
+		_clear = Vector2(top, bottom)
+		_slid = 0.0
+		_layout()
+		return
+	_win_clear = Vector2(top, bottom)
+	# A day reopened solved is told before it has been laid out: _layout
+	# sets the slide when it has a grid to aim.
+	if _tile <= 0.0:
+		return
+	_aim()
+	if Motion.reduce or not is_inside_tree() or _slid >= 1.0:
+		_slide(1.0)
+		return
+	_slide_tw = create_tween()
+	_slide_tw.tween_method(_slide, _slid, 1.0, WIN_SLIDE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+## Where the win's slide ends, from the grid as it is laid and the win's span.
+func _aim() -> void:
+	var g := _tile * n + GAP * (n - 1)
+	var span := size.y - _win_clear.x - _win_clear.y
+	_slid_from = _origin + Vector2(g, g) * 0.5
+	_slid_scale = clampf((minf(size.x - 2.0 * _side(), span) - 2.0 * PAD) / g, 0.1, 1.0)
+	_slid_by = Vector2(size.x * 0.5, _win_clear.x + span * 0.5) - _slid_from
+
+## The host's side margin, which the grid keeps although the sky does not.
+func _side() -> float:
+	return float(load(FLAT_HOST).MARGIN)
+
+func _slide(t: float) -> void:
+	_slid = t
+	_place()
+
+## The board's transform at `_slid`, and the sky's against it, so the sky
+## stays where it is while the grid and everything on it goes.
+func _place() -> void:
+	if _slid <= 0.0 and not _placed:
+		return
+	_placed = _slid > 0.0
+	var k := lerpf(1.0, _slid_scale, _slid)
+	var by := _slid_by * _slid
+	pivot_offset = _slid_from
+	scale = Vector2(k, k)
+	position = by
+	_sky.pivot_offset = _slid_from
+	_sky.scale = Vector2.ONE / k
+	_sky.position = -by / k
 
 ## Where tile (r, c) stands at rest.
 func _rest(r: int, c: int) -> Vector2:

@@ -76,6 +76,10 @@ const PUZZLES := [
 		# Its card on the first screen is its own (ui/menu/cards/card_face.gd).
 		"card": "res://ui/menu/cards/binairo.gd",
 		"shell": "flat",
+		# The day and the night are the whole screen (`bleed`,
+		# ui/flat/flat_host.gd), the first such board to keep a tray and an
+		# actions row.
+		"bleed": true,
 		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku (2026-09-23): easy and medium are 6x6, hard is 8x8,
 		# and each is its own daily with its own done mark.

@@ -47,7 +47,8 @@ extends "res://ui/puzzle_host.gd"
 ## win with the win's slots; the board is never frozen and scaled for the
 ## slide, it moves itself into the span. Everything else -- the bar, the
 ## day card, the tutorial, the win, the done mark, the streak -- is as it
-## is for every board.
+## is for every board. Binairo (2026-10-13) is the first to ask for it and
+## keep its tray and its actions row: the rows are summed and told as ever.
 
 const FlatTopBar = preload("res://ui/flat/flat_top_bar.gd")
 const FlatDayCard = preload("res://ui/flat/flat_day_card.gd")

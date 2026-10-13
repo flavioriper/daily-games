@@ -300,3 +300,41 @@ all where it climbed fourteen. Kept from the first set: `blush_in`, `check`,
 `check_ok` (given its second note), `enter`, `heart_back`, `heart_lost`.
 All 21 read "0 flagged" in `tools/measure_sfx.py binairo`; none heard by the
 user.
+
+### The sky is the whole screen (2026-10-13)
+
+The user: "redesign the ingame to something completely customized for every
+game taking full screen, just making sure to keep the same brand UI layout",
+starting with this board. Binairo is `"bleed": true`
+(`docs/agents/flat-screens.md`, "A board that fills the screen"), the first
+bleed board with a tray and an actions row; the host was not changed.
+
+- **`puzzles/binairo_sky.gd`** is the board's first child, edge to edge: the
+  menu card's day and night at the size of the screen. The day keeps the top
+  (the sun's glow coming up in the corner behind the wordmark, two clouds in
+  the air between the day card and the grid), the night the foot (stars, a
+  crescent right of the tray, two hills behind the buttons), and the lit
+  line between them runs down across the grid from the right edge to the
+  left. One mesh kept in `_shown`, and three sparkles on a child whose alpha
+  breathes (`Motion.pulse`, still under reduce-motion).
+- **The grid is the size it was** (944 across: the host's 40 margin and the
+  board's 28 pad, the host's `MARGIN` and `PAD`), in the middle of the span `set_clear`
+  gives. The dead `HEART_ROW` strip left `_layout`.
+- **The win**: `set_clear(top, bottom, true)` lays nothing out. The board
+  takes one transform (pivot at the grid's middle, `_slid_scale`,
+  `_slid_by`) over `WIN_SLIDE` 0.45 and the sky takes its inverse
+  (`_place`), so the wave, the hats, the stamp and the hugging pair ride
+  along and the sky stays put. It is kept until the board is replaced (Redo
+  and New spawn a fresh one). Reduce-motion sets it at once. A day reopened
+  solved may be told the win before it is laid out; `_layout` then aims
+  and sets the slide itself (`_won`, `_win_clear`).
+- `tests/_shot_anim.gd` on `opengl3_angle` at 810x1440: Hard idle **111**
+  draw calls (111 before: the card and the header plate left as the sky
+  came), Insane 10x10 idle 102, Easy's `solve` peak 138; suite 249797/0. The
+  `solve` run's touch went through the window and solved the board, so the
+  rows over a bleed board with a tray take nothing from it.
+- Mine, the user's to call: the day card keeps its painted island; no mat
+  under the grid; the crescent beside the tray; the clouds; whether the
+  chrome's buttons should take the board's colours.
+- Owed: a phone (notch insets move the rows, the sky does not), the
+  tutorial card and the rules sheet seen over it, pt/es untouched (no text).
