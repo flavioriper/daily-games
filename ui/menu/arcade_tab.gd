@@ -12,7 +12,9 @@ extends HBoxContainer
 ## garden's hedges, and Deckchair (arcade/deckchair_screen.gd), the
 ## seven-column card game for one, and Eddy (arcade/eddy_screen.gd), a
 ## whirlpool steered about a pond, and Trivet (arcade/trivet_screen.gd),
-## stacks of felt mats sorted on a tray. (Gumdrop was the eleventh for a day and
+## stacks of felt mats sorted on a tray, and Factory (factory/screen.gd), the
+## land of belts, which had a tab of its own until the bottom bar left on
+## 2026-10-13. (Gumdrop was the eleventh for a day and
 ## became a daily board on 2026-10-11, puzzles/gumdrop2d.gd.) Its body takes the day row's and the grid's room, as Versus, Stats
 ## and Streak do. (Hedgerow TD, Henhouse and Millstream left for a side
 ## project on 2026-09-27, ~/dev/garden-games.)
@@ -35,11 +37,12 @@ const NightArt = preload("res://arcade/nightlight_art.gd")
 const NightSim = preload("res://arcade/nightlight_sim.gd")
 const FurrowSim = preload("res://arcade/furrow_sim.gd")
 const GriddleSim = preload("res://arcade/griddle_sim.gd")
+const FactoryArt = preload("res://factory/art.gd")
 const GoldPill = preload("res://ui/menu/gold_pill.gd")
 
 const GAP := 20
-const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "nightlight", "beeline", "deckchair", "eddy", "furrow", "griddle", "trivet"]
-const NAMES := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Lucky Thirteen", "posy": "Posy", "peapod": "Peapod", "nightlight": "Nightlight", "beeline": "Beeline", "deckchair": "Deckchair", "eddy": "Eddy", "furrow": "Furrow", "griddle": "Griddle", "trivet": "Trivet"}
+const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "nightlight", "beeline", "deckchair", "eddy", "furrow", "griddle", "trivet", "factory"]
+const NAMES := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Lucky Thirteen", "posy": "Posy", "peapod": "Peapod", "nightlight": "Nightlight", "beeline": "Beeline", "deckchair": "Deckchair", "eddy": "Eddy", "furrow": "Furrow", "griddle": "Griddle", "trivet": "Trivet", "factory": "Factory"}
 ## How far a game went, in its own words: a stage, a wave, or a streak.
 const FURTHEST := {"firefly": "ARC_BEST_STAGE", "molehill": "ARC_BEST_STREAK", "stackwood": "ARC_BEST_BLOCK", "thirteen": "ARC_BEST_NUMBER", "posy": "ARC_BEST_DAY", "peapod": "ARC_BEST_WAVE", "deckchair": "ARC_BEST_HOME", "eddy": "ARC_BEST_LEVEL", "trivet": "ARC_BEST_TRIVET"}
 
@@ -48,6 +51,9 @@ const FURTHEST := {"firefly": "ARC_BEST_STAGE", "molehill": "ARC_BEST_STREAK", "
 var _lines := {}
 var _boosted := {}
 var gold_pill: Button
+## The Factory's hidden tab (ui/menu/factory_tab.gd), which owns the one
+## land: its card's line is the coins held there. Set by the menu.
+var factory: Control
 
 func _init() -> void:
 	name = "GoldStrip"
@@ -71,7 +77,7 @@ func _init() -> void:
 static func entries() -> Array:
 	var out: Array = []
 	for game: String in GAMES:
-		out.append({"id": game, "title": NAMES[game], "short": "ARC_NO_BEST",
+		out.append({"id": game, "title": NAMES[game], "short": "FACTORY_CARD_BLURB" if game == "factory" else "ARC_NO_BEST",
 			"card": "res://ui/menu/cards/arc_%s.gd" % game})
 	return out
 
@@ -89,6 +95,12 @@ func _say(game: String, best: String, further := "", leaf := false) -> void:
 ## Reads every game's line again; the grid builds its cards from them.
 func refresh() -> void:
 	for game: String in GAMES:
+		# Factory is a land looked in on (a tab of its own until 2026-10-13):
+		# its line is the coins held, or the blurb before the land exists.
+		if game == "factory":
+			var held: RefCounted = factory.sim if factory != null else null
+			_say(game, "" if held == null else tr("FACTORY_CARD_COINS") % FactoryArt.short(held.coins))
+			continue
 		# Nightlight is kept, not scored: its line is the star as it stands
 		if game == "nightlight":
 			var star: Dictionary = NightSim.kept()

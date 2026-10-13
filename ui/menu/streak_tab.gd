@@ -15,6 +15,10 @@ extends VBoxContainer
 ## The run's number, its flame and "day streak" stand centred as one group.
 ## Every figure is derived (core/streak.gd); refresh() re-reads the log.
 
+## The Stats button on the streak card: the one door to Stats since the
+## bottom bar left on 2026-10-13, the mirror of the tile Stats has to here.
+signal open_stats
+
 const Pal = preload("res://core/palette.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Icons = preload("res://ui/icons.gd")
@@ -39,6 +43,9 @@ const FILL := Color("fcf7ef")
 const HEART := 62.0
 const HEART_STEP := 74.0
 const CHEVRON := 64.0
+## The Stats button, in the streak card's top right corner.
+const STATS_W := 190.0
+const STATS_H := 84.0
 ## The pictures set into the right of the run's card and today's.
 const STREAK_ART_W := 220.0
 const TODAY_ART_W := 250.0
@@ -101,6 +108,13 @@ func _init() -> void:
 	sprout.offset_top = -50
 	sprout.offset_bottom = 42
 	today_art.add_child(sprout)
+	var stats := IconButton.new("bars", "BAR_STATS", "IconButton")
+	stats.name = "Stats"
+	stats.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	stats.offset_left = -STATS_W
+	stats.offset_bottom = STATS_H
+	stats.pressed.connect(func() -> void: open_stats.emit())
+	_streak_ci.add_child(stats)
 	_cal_ci = _card(0.0, _draw_calendar)
 	_cal_ci.get_parent().size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_prev = _chevron("chevron_left", -1)

@@ -629,6 +629,23 @@ off. A thing laid free and sold with the switch off pays its price back,
 which only a debug build can do. Probe 244/0; `tests/_shot_factory.gd`
 152 pass, 0 failed, the drawer shot with every price 0.
 
+### A card of the Arcade list (2026-10-13)
+
+The bottom bar left the first screen (`docs/agents/first-screen.md`, "The
+categories replace the bottom bar") and the user chose "A card inside
+Arcade" for Factory. `ArcadeTab.GAMES` ends with `factory`; the card is
+`ui/menu/cards/arc_factory.gd` (the game's own trees and log heap, a belt, a
+go disc) and its line is the coins held (`FACTORY_CARD_COINS`).
+`ui/menu.gd`'s `_open_arcade` hands it to `_open_factory`, and closing the
+screen goes back to Arcade with no interstitial, as before.
+
+**`ui/menu/factory_tab.gd` stays as the owner of the one land and is never
+shown**: it makes the sim, saves it on pause and close, and `lend()` /
+`returned()` are unchanged, so the one-sim rule holds. It steps only while
+visible, so the land now runs only on its own screen; the wide card with
+the land running on it is built and never seen (its nodes are a cost left
+standing; cutting the tab down to the owner is owed).
+
 ## The Valley and the Grove (dropped 2026-10-10)
 
 **What follows is history.** The Valley tab and the Grove were removed on

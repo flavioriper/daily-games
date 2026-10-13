@@ -166,10 +166,10 @@ func _process(delta: float) -> bool:
 			if _beat(0.2, func() -> void: pass, "01_tab"):
 				var tab: Control = _menu.versus_tab
 				var bar: Control = _menu.bar
-				print("tab: row %.0f tall, the tab's foot %.0f, the bar's top %.0f, blurbs shown %s, art %.0f" % [
+				print("tab: row %.0f tall, the tab's foot %.0f, the categories' top %.0f, blurbs shown %s, art %.0f" % [
 					tab.friends_row.size.y, tab.global_position.y + tab.size.y, bar.global_position.y,
 					tab._blurbs[0].visible, tab._arts[0].size.y])
-				_check("the tab ends above the bar", tab.global_position.y + tab.size.y <= bar.global_position.y + 0.5)
+				_check("the tab starts under the categories", tab.global_position.y >= bar.global_position.y + bar.size.y - 0.5)
 				_step = 2
 		2:
 			if _beat(0.9, func() -> void: _menu.versus_tab.friends_row.pressed.emit(), "02_sheet_friends"):

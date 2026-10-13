@@ -1,5 +1,11 @@
 extends VBoxContainer
 
+## **Not a page since 2026-10-13**: the bottom bar left, Factory became a
+## card of the Arcade list (ui/menu/cards/arc_factory.gd) and this node is
+## never shown. It is kept as what the next paragraph but one says it is,
+## the owner of the one land; its card and the stepping below only run if
+## it is shown again.
+##
 ## The Factory tab: one card as wide as the column, with the land on it as
 ## it stands and goes (the whole board fitted to the card and drawn by the
 ## game's own path, factory/life.gd, so a glance shows the belts running),

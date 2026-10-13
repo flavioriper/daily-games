@@ -1197,3 +1197,38 @@ the first one ... Card should be elegant, cozy, but carry the game elements".
   only it and the template; Balance, Untangle and Shikaku in es; the
   `ARC_*_BLURB` strings are unused; the user's eye on all fifty-nine
   faces; a phone.
+
+### The categories replace the bottom bar (2026-10-13)
+
+The user: "Remove the bottom nav, instead add the categories before the game
+list as daily - multiplayer (or a better name) - arcades". Asked, they chose
+Factory as a card inside Arcade, Stats from inside Streak, and Versus as the
+middle word; the first chip stays **Puzzles** (the wordmark over it already
+says Daily).
+
+- **The row is the bar** (`ui/menu/category_row.gd`, `bottom_bar.gd` moved
+  and cut): three chips, icon beside the word, the gold pill on the one that
+  is up; the end sprigs and the dot are gone. It keeps `picked`, `show_tab`
+  and `_tabs`, and `ui/menu.gd` still calls it `bar`. It is the column's
+  second row: header, categories, the list's own row (day row, Friends row,
+  gold strip), cards, the pager's seam.
+- **The budget is the same 1040** at 1080x1920: the row is 88 where the bar
+  was 120 and the 32 went to `PAGER_SEAM` (52), now the last row of the
+  column with the pill in it (`PAGER_MID` = margin + half the seam). Four
+  rows of 246 still fit. The toast lies over the seam on a paper plate of
+  its own (`TOAST_OVER`); it had the bar under it before.
+- **Streak and Stats**: the calendar and the day row's chevron open Streak
+  as before; Streak's card has a Stats button in its top right corner
+  (`open_stats`), the only door to Stats. The row stays up over both with
+  nothing lit and a tap on a chip leaves. Android back: Stats to Streak,
+  Streak to Puzzles.
+- **Factory** is the fourteenth Arcade card (`ui/menu/cards/arc_factory.gd`,
+  its line the coins held); see `docs/agents/factory.md`.
+- Measured on `opengl3_angle` at 810x1440, one run: **179** draw calls on
+  Puzzles, **151** on Arcade page one and 129 on page two, 214 on Streak,
+  283 on Stats. A throwaway harness drove chip, page turn, Factory open and
+  close, calendar, the Stats button and both backs: 9/9.
+- **Mine, the user's to call**: the chip's icon beside the word rather than
+  over it; the Stats button's place on the streak card (it stands over the
+  top of the signpost picture); Factory's card drawing; the toast's plate.
+- **Owed**: a phone; pt and es at the row's width were not looked at.

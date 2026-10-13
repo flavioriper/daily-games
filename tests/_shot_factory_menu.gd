@@ -83,10 +83,13 @@ func _process(delta: float) -> bool:
 			"tab":
 				if _menu.gifts_sheet.is_open():
 					_menu.gifts_sheet.close()
-				_menu._show_tab("factory")
-				_check(_menu.factory_tab.is_visible_in_tree(), "the tab is shown")
+				# Factory is a card of the Arcade list since 2026-10-13; its tab
+				# is the land's hidden owner.
+				_menu._show_tab("arcade")
+				_check(_menu.arcade_tab.GAMES.has("factory") and not _menu.factory_tab.is_visible_in_tree(),
+					"Arcade lists Factory and its tab stays hidden")
 			"play":
-				_menu.factory_tab.play.emit("factory")
+				_menu.arcade_tab.play.emit("factory")
 				_s = _menu.get_node_or_null("Factory")
 				_check(_s != null, "Play mounts the screen")
 				_check(_s != null and _s.sim == _menu.factory_tab.sim, "the screen holds the tab's own sim")
@@ -128,7 +131,8 @@ func _process(delta: float) -> bool:
 				_s.go_back()
 				_check(not _s.card_open(), "back closes the card and stays on the screen")
 				_s._on_back()
-				_check(_menu.factory_tab.is_processing(), "the tab steps again once the land is back")
+				_check(not _menu.factory_tab.lent and not _menu.factory_tab.is_processing() and _menu._tab == "arcade",
+					"the land is back with its hidden owner, unstepped, and Arcade is up")
 			"quit":
 				_check(_menu.get_node_or_null("Factory") == null or _menu.get_node("Factory").is_queued_for_deletion(), "the screen is gone")
 				print("shot_factory_menu: %d failed" % _fails)

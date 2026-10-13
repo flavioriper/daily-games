@@ -3,7 +3,10 @@ extends Control
 ## The first screen: the wordmark and the two characters at the top, the day
 ## row under them, a page of eight puzzle cards in a grid of two (490x246
 ## cards, since the painted menu of 2026-09-24 -- twelve in a grid of three
-## before that), and the bottom bar. Everything on it is drawn in 2D -- there
+## before that), and the pager under them. The categories (Puzzles, Versus,
+## Arcade) are a row under the header since 2026-10-13
+## (ui/menu/category_row.gd); a bottom bar of six tabs held them before, and
+## "the bar" in the older notes below is that one. Everything on it is drawn in 2D -- there
 ## is no stage, no World3D and no model anywhere on this screen.
 ##
 ## It replaced the 3D campsite on 2026-09-18, and the whole 3D game was
@@ -39,7 +42,7 @@ const MenuHeader = preload("res://ui/menu/menu_header.gd")
 const Vistas = preload("res://ui/menu/vistas.gd")
 const DayRow = preload("res://ui/menu/day_row.gd")
 const PuzzleCard = preload("res://ui/menu/puzzle_card_2d.gd")
-const BottomBar = preload("res://ui/menu/bottom_bar.gd")
+const CategoryRow = preload("res://ui/menu/category_row.gd")
 const DifficultySheet = preload("res://ui/menu/difficulty_sheet.gd")
 const Icons = preload("res://ui/icons.gd")
 const Analytics = preload("res://core/analytics.gd")
@@ -126,13 +129,15 @@ const ENTER_DAY := 0.1
 const ENTER_CARDS := 0.15
 const CARD_STEP := 0.05
 const CARD_CAP := 0.4
-const ENTER_BAR := 0.5
+const ENTER_BAR := 0.05
 const ENTER_FADE := 0.3
 ## How long a line about an unbuilt thing stays up.
 const TOAST_TIME := 2.6
 const TOAST_FADE := 0.25
 ## Where the line sits: this far above the screen's bottom, and this tall.
-const TOAST_OVER := BottomBar.HEIGHT + MARGIN + 10.0
+## Over the pager's seam since the bar left the foot of the screen
+## (2026-10-13), on a paper plate of its own, so it reads over the pill.
+const TOAST_OVER := MARGIN - 18.0
 const TOAST_H := 88.0
 ## Room between the grid and the bar, reserved so the pager pill never lies
 ## over a card's text (spec 2026-09-24-painted-menu: cards are now 490 wide
@@ -143,7 +148,14 @@ const TOAST_H := 88.0
 ## rows at 18 gaps (1032). `_fit_grid` subtracts it (and one more GAP) from
 ## `room_h` when the seam is standing, and `_build_list` gives it its own
 ## spacer control between `_grid` and the bar.
-const PAGER_SEAM := 20.0
+##
+## **52 since 2026-10-13**, when the bar left the foot of the screen for the
+## category row under the header (ui/menu/category_row.gd, 88 tall where the
+## bar was 120): the 32 came here, so the pill stands in room of its own
+## with nothing under it to lean on, and the budget is the same 1040:
+## 1920 - 80 margins - 380 header - 88 categories - 200 day - 60 gaps -
+## 52 seam - 20 extra gap.
+const PAGER_SEAM := 52.0
 ## The pager strip, laid over the bar the way the toast is: the header, the
 ## day row, the grid, the seam and the bar already spend the screen exactly
 ## (see the toast's own comment in _build_list), so this is an overlay on
@@ -156,7 +168,9 @@ const PAGER_SEAM := 20.0
 ## seam's vertical centre and the pill floats there without lying over
 ## either neighbour. Before the painted menu the pill overlapped the last
 ## card row by about 18px; that overlap is gone now that the seam exists.
-const PAGER_MID := BottomBar.HEIGHT + MARGIN + GAP + PAGER_SEAM * 0.5
+## Since 2026-10-13 the seam is the last row of the column, over the bottom
+## margin.
+const PAGER_MID := MARGIN + PAGER_SEAM * 0.5
 ## The pill's own slot: taller than the pill needs, so CenterContainer never
 ## clips it.
 const PAGER_SLOT_H := 64.0
@@ -437,6 +451,13 @@ func _build_list() -> void:
 	header.calendar.pressed.connect(func() -> void: _show_tab("streak"))
 	root.add_child(header)
 
+	# The categories, over the list they pick (the bottom bar until
+	# 2026-10-13).
+	bar = CategoryRow.new()
+	bar.name = "Categories"
+	bar.picked.connect(_on_tab)
+	root.add_child(bar)
+
 	day_row = DayRow.new()
 	day_row.name = "DayRow"
 	day_row.open_streak.connect(func() -> void: _show_tab("streak"))
@@ -472,6 +493,7 @@ func _build_list() -> void:
 	stats_tab.name = "StatsTab"
 	stats_tab.visible = false
 	stats_tab.open_streak.connect(func() -> void: _show_tab("streak"))
+	streak_tab.open_stats.connect(func() -> void: _show_tab("stats"))
 	root.add_child(stats_tab)
 	versus_tab = VersusTab.new()
 	versus_tab.name = "VersusTab"
@@ -486,16 +508,14 @@ func _build_list() -> void:
 	# on Puzzles.
 	root.move_child(versus_tab, day_row.get_index() + 1)
 	root.move_child(arcade_tab, day_row.get_index() + 2)
+	# Factory is a card of the Arcade list since 2026-10-13 and this is no
+	# page any more: it stays, never shown, as the owner of the one land
+	# (it makes the sim, keeps it and lends it to the screen).
 	factory_tab = FactoryTab.new()
 	factory_tab.name = "FactoryTab"
 	factory_tab.visible = false
-	factory_tab.play.connect(_open_factory)
 	root.add_child(factory_tab)
-
-	bar = BottomBar.new()
-	bar.name = "BottomBar"
-	bar.picked.connect(_on_tab)
-	root.add_child(bar)
+	arcade_tab.factory = factory_tab
 
 	# The pager: prev, dots, next, in their own paper pill -- see PAGER_MID
 	# above for why it is a pill and not a bare row, and PER_PAGE above and
@@ -547,6 +567,9 @@ func _build_list() -> void:
 	_toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_toast.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_toast.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	# A plate of its own: there is no bar under it any more, only the pager
+	# and the last row's foot.
+	_toast.add_theme_stylebox_override("normal", CozyTheme.lifted(Pal.SURFACE, int(TOAST_H * 0.5), 12))
 	_toast.modulate.a = 0.0
 	_toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_toast.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
@@ -1186,7 +1209,6 @@ func _show_tab(key: String) -> void:
 	stats_tab.visible = key == "stats"
 	versus_tab.visible = key == "versus"
 	arcade_tab.visible = key == "arcade"
-	factory_tab.visible = key == "factory"
 	_grid_slot.visible = deck
 	Motion.stop(_tab_tw)
 	if deck:
@@ -1214,7 +1236,7 @@ func _show_tab(key: String) -> void:
 	# over the tab.
 	Motion.stop(_pager_tw)
 	_pager.visible = false
-	var body: Control = {"streak": streak_tab, "stats": stats_tab, "factory": factory_tab}[key]
+	var body: Control = {"streak": streak_tab, "stats": stats_tab}[key]
 	body.refresh()
 	_tab_tw = Motion.appear(body, 0.0, 1.0, ENTER_FADE)
 	Analytics.track("tab_opened", {"tab": key})
@@ -1252,6 +1274,10 @@ func go_back() -> void:
 			card._continue()
 			return
 		host._on_back()
+		return
+	# Stats is reached from Streak, so it goes back there.
+	if _tab == "stats":
+		_show_tab("streak")
 		return
 	if _tab != "home":
 		_show_tab("home")
@@ -1320,6 +1346,9 @@ func _open_versus(game: String, level: int) -> void:
 ## A game on the Arcade tab: its own screen over the list, and back to the
 ## Arcade tab when it closes.
 func _open_arcade(game: String) -> void:
+	if game == "factory":
+		_open_factory(game)
+		return
 	var screen: Control
 	match game:
 		"firefly":
@@ -1377,8 +1406,9 @@ func _open_arcade(game: String) -> void:
 	screen.tutor.first_play()
 	_list_root.visible = false
 
-## Factory, the one game of its tab: its own screen over the list, and back
-## to the tab when it closes. The tab owns the land (one sim, so nothing is
+## Factory, a card of the Arcade list (a tab of its own until 2026-10-13):
+## its own screen over the list, and back to Arcade when it closes. The
+## hidden tab still owns the land (one sim, so nothing is
 ## sold twice by two holders) and lends it for as long as the screen is up.
 ## A land is looked in on for a minute, so leaving it is not a moment for an
 ## interstitial, as leaving a board or an Arcade run is (`_left_game`).
@@ -1390,7 +1420,7 @@ func _open_factory(_game: String) -> void:
 		factory_tab.returned()
 		screen.queue_free()
 		if not _switching:
-			_show_list("factory"))
+			_show_list("arcade"))
 	add_child(screen)
 	_raise_card()
 	screen.tutor.first_play()
