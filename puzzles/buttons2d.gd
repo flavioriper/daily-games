@@ -1251,6 +1251,9 @@ func tap(i: int, twice := false) -> void:
 			_held_places = kept
 		else:
 			_held_cells = kept
+		# (a pick too big to bob is drawn once and kept: what is left of it
+		# is drawn again, or the ones sent stay on the screen where they were)
+		_held_still = false
 		_play(res, i, starts)
 		return
 	match state.judge(i):
@@ -1301,6 +1304,7 @@ func tap_tin(place := -1) -> void:
 			_unhold()
 		else:
 			_held_cells = kept
+		_held_still = false
 		_play(res, -1, starts)
 		return
 	var c: int = state.tin[place] if place >= 0 else -1
