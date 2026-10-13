@@ -1056,6 +1056,55 @@ the first one ... Card should be elegant, cozy, but carry the game elements".
     only go button without one), a sage token on a board of green tiles,
     the top row dropped. **Seen and left**: bare in the middle at 1040
     wide; Lattice's top right tile clears the seal by about 4 px at 490.
-- **Owed**: the thirty-five boards' cells on Stats and Streak still wear the
-  old banner (`CardArt` + `Vistas.card_plate`); the other three cards;
-  Balance, Untangle and Shikaku in es; a phone.
+- **Gumdrop, Button Box and Toy Cannons are the thirty-sixth,
+  thirty-seventh and thirty-eighth** (the same day, the last of the four
+  batches). **Every card of the Puzzles tab is its own now**; the template
+  is left to the Versus tab.
+  - **Gumdrop** (`ui/menu/cards/gumdrop.gd`): candy-pink paper (`fdeff1`
+    to `f8dbe2`) and the board's dark tray low right with the cupcake
+    jelly on it, its cup blueberry, its cherry poured and its icing still
+    clear. Left of the tray the board's taped card shows it wanted, the
+    icing in the card's lavender. The go button is the pot under that
+    card: a glass jar of lavender syrup, lifted, with a chevron. **The
+    board's syrup is a shader fluid**, so what is poured is a flat tint
+    here. Nothing lives on it.
+  - **Button Box** (`ui/menu/cards/buttons.gd`): warm linen (`fbf4e7` to
+    `f1e3cd`) with one stitched hem, and a 5x5 toadstool inside the
+    board's stitched border low right, its cap in the card's rose, nearly
+    all sewn. A tan button lies loose on the yellow spot, the stem's foot
+    is bare, a yellow button waits in a three-place tin, and one cap patch
+    is bare and lit. The go button is the rose button, 54 px, lifted, a
+    chevron in its dish and a dotted hop to that patch. **The board has no
+    sorted stacks**: the tin is a tray of hollows. The sewn squares are
+    drawn as the board draws a small picture seen close, the patch and the
+    whole button with thread through its holes (`Art.button`), not as the
+    flat square a big picture wears. Nothing lives on it.
+  - **Toy Cannons** (`ui/menu/cards/train.gd`): a mint floor (`e9f6ee` to
+    `d3ecdf`), a 4x4 mat of the board's blocks at 30 px low right, the
+    track along the foot and up the right side. A rose cannon at the foot
+    has popped two blocks and has a cork in flight to the next rose one; a
+    yellow cannon stands up the side. The go button is a 60 px cannon in
+    the card's sky blue, lifted out of a wooden tray where a green one
+    still waits, two blue blocks nearest the foot for it. Nothing lives on
+    it.
+  - **Measured**, `tests/_shot_menu.gd -- last` on `opengl3_angle` at
+    810x1440, second of two readings: 162 draw calls on page five with six
+    faces (161 on the first; 178 before). Suite 249797/0. The throwaway
+    probe, each card at the four sizes in es, and page five whole in en.
+    Changed after the looks: Button Box's sewn squares from flat colour to
+    whole buttons, the toadstool having read as a red blob with no button
+    in it, and its square from 33 to 31, the stitched border having run
+    under the seal (that last change was seen on the probe only).
+  - **Mine, the user's to call**: Gumdrop's dark tray, the heaviest thing
+    on the page, grape shown as the card's lavender, a jar and no dropper,
+    the pot 2 px under the taped card; Button Box's toadstool, whole
+    buttons where the board would show flat squares at this size, the
+    border meeting the seal's foot at 490 wide; Toy Cannons' open L of
+    track rather than the loop, a chevron pointing up along the muzzle, no
+    number plates on the cannons, blocks at 30 px.
+  - **A JSON parse error from `core/backend.gd`'s `_refresh`** was printed
+    by one run of the two in four of the day's five pairs of page-four and
+    page-five shots; the suite never printed it. Left alone.
+- **Owed**: the thirty-eight boards' cells on Stats and Streak still wear
+  the old banner (`CardArt` + `Vistas.card_plate`); Balance, Untangle and
+  Shikaku in es; the user's eye on all thirty-eight; a phone.

@@ -1036,6 +1036,7 @@ const PUZZLES := [
 		# tray and no actions row, and Reset rides up into the top bar. It was
 		# an Arcade game for a day (2026-10-10 to 10-11).
 		"script": "res://puzzles/gumdrop2d.gd",
+		"card": "res://ui/menu/cards/gumdrop.gd",
 		"shell": "flat",
 		"bleed": true,
 		"tray": "none",
@@ -1065,6 +1066,7 @@ const PUZZLES := [
 		# actions row, and Undo, the bulb and Reset ride up into the top bar.
 		# The board's own toast says what the tip card would.
 		"script": "res://puzzles/buttons2d.gd",
+		"card": "res://ui/menu/cards/buttons.gd",
 		"shell": "flat",
 		"bleed": true,
 		"tray": "none",
@@ -1095,6 +1097,7 @@ const PUZZLES := [
 		# tray and no actions row, and the bulb and Reset ride up into the top
 		# bar. The board's own toast says what the tip card would.
 		"script": "res://puzzles/train2d.gd",
+		"card": "res://ui/menu/cards/train.gd",
 		"shell": "flat",
 		"bleed": true,
 		"tray": "none",
