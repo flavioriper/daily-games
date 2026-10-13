@@ -150,3 +150,26 @@ lit best first to *find* boards needing suppositions.
   Insane** (`_pick_coach`): with `judged()` false it would have started
   showing a lane of the answer there. What stays is Medium's: an islet over
   its number in rose, the two refusals, the named near-miss.
+
+### The open sea is the whole screen (2026-10-13)
+
+The redesign (`docs/agents/flat-screens.md`, "Every board gets a world of
+its own"), built unattended. `puzzles/bridges_world.gd` is the board's own pale
+sea under a cream morning mist at the top (the wordmark is ink), lily pads
+and a red buoy in the gap of the tools row, and at the foot a curved beach
+with a jetty and its lantern, a stack of spare planks, a dinghy and an
+oar, rocks, tufts and a starfish; glints and the lantern's glow breathe.
+**The framed pool is gone**: once bled the basin, its wall, the shore band
+and the rim are not drawn, and the islets stand in open water. Insane's
+Lantern Night is the world's dusk veil (`set_night(true)`), whole from
+0.285 down. The lattice is on the host's margin; the party boat sails the
+water just under it.
+
+- Registry: `bleed`, `level_card`, no actions row. **Check is gone**:
+  the board solves itself.
+- `opengl3_angle`, 810x1440: 85 draw calls at rest; `tests/_win.gd --
+  bridges` passes with real drags.
+- Decided for the user, unconfirmed: no pool; no Check; a cream-to-blue
+  mist, not the card's dark teal. Seen and left: the win's grey line
+  under "Well done!" is faint on the blue. Owed: a phone, Insane's dusk
+  over the beach, the level slide.

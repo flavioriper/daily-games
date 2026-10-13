@@ -43,6 +43,17 @@ extends "res://core/puzzle_base.gd"
 ## party: the islets dance, confetti, a paper boat sails the pool, a bit of
 ## bridge wisdom and the seal.
 ##
+## **The sea is the whole screen** (2026-10-13, the registry's `bleed`):
+## puzzles/bridges_world.gd lies edge to edge as the board's first child,
+## behind this board's own drawing, and once the host has said what its rows
+## cover (`set_clear`) the pool is no basin in a card any more: it is the
+## lattice itself, as wide as the host's rows and at the top of the span they
+## leave, and the still sea mesh keeps only what lies on the water (the
+## depths, the sandbars, the ripples, the pads). On the win the board slides
+## and shrinks into the win's span under its own one transform, the world
+## held still against it. Until `set_clear` is called the board lays itself
+## in a card as it always did (the tutorial's small sea still does).
+##
 ## Spec: docs/superpowers/specs/2026-09-20-bridges-flat-design.md, sections 6
 ## and 7. Ported number for number from the canvas mock at
 ## docs/brainstorm/concepts.html#bridges, which is the reference for every
@@ -61,6 +72,12 @@ const Haptics = preload("res://core/haptics.gd")
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 const MovesPill = preload("res://ui/flat/moves_pill.gd")
 const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
+const SeaWorld = preload("res://puzzles/bridges_world.gd")
+## The slide into the win's span (the host's SLOT_TIME), and the air the
+## board keeps inside that span.
+const WIN_SLIDE := 0.45
+const WIN_PAD := 28.0
+const FLAT_HOST := "res://ui/flat/flat_host.gd"
 ## The moves the out-of-moves card's video buys, once a board.
 const MOVES_BONUS := 5
 
@@ -671,6 +688,23 @@ var _glow_at := INF
 var _coach_lane := ""
 var _coach_from := State.NOWHERE
 var _tip_timer: Timer
+## The world under the board, and whether the host has laid the board full
+## rect (`set_clear` was called): what its rows cover, top and bottom, while
+## playing and on the win; the board's own transform on the win (the block's
+## middle while playing, how far it moves, how small it gets, how far along
+## it is); and the host's slide on a change of level.
+var _world: Control
+var _bled := false
+var _clear := Vector2.ZERO
+var _win_clear := Vector2.ZERO
+var _won := false
+var _slid_from := Vector2.ZERO
+var _slid_by := Vector2.ZERO
+var _slid_scale := 1.0
+var _slid := 0.0
+var _placed := false
+var _shift := 0.0
+var _slide_tw: Tween
 var _tip_idx := 0
 var _hold_until := 0.0
 ## Bumped by every rebuild, so a callback owed to the last board does nothing.
@@ -736,7 +770,7 @@ func tutorial_pages() -> Array:
 func capabilities() -> Array[String]:
 	if state != null and state.band >= 3:
 		return ["hint"]
-	return ["undo", "hint", "check"]
+	return ["undo", "hint"]
 
 ## The lines the tips cycle: a counted board leads with the moves', Lantern
 ## Night with its two.
@@ -775,6 +809,14 @@ const HAPTICS := {
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = false
+	# The sea first, behind this board's own drawing; hidden until the host
+	# lays the board full rect.
+	_world = SeaWorld.new()
+	_world.name = "World"
+	_world.show_behind_parent = true
+	_world.visible = false
+	add_child(_world)
+	_tell_world()
 	fx = Fx2D.new()
 	fx.name = "Fx"
 	fx.z_index = 2
@@ -842,6 +884,7 @@ func _begin() -> void:
 	_sparked = {}
 	_anim_until = 0.0
 	_lap_rng.seed = hash(state.islets)
+	_tell_world()
 	_deal()
 	_pick_coach()
 	_tip_idx = 0
@@ -891,6 +934,11 @@ func _deal() -> void:
 ## The sea pool, inset from the card on every side.
 func _pool() -> Rect2:
 	var row := _heart_row()
+	if _bled:
+		# The lattice itself, on the host's side margin at the top of the
+		# span the rows leave, under the hearts' strip.
+		var g := maxf(0.0, minf(size.x - 2.0 * _margin(), size.y - _clear.x - _clear.y - row))
+		return Rect2((size.x - g) * 0.5, _clear.x + row, g, g)
 	return Rect2(INSET, INSET + row, maxf(0.0, size.x - 2.0 * INSET),
 		maxf(0.0, size.y - 2.0 * INSET - row))
 
@@ -902,7 +950,17 @@ func _heart_row() -> float:
 
 ## Where the hearts' pill is centred: in the strip over the pool.
 func _hearts_y() -> float:
+	if _bled:
+		return _clear.x + HEART_ROW * 0.5
 	return INSET + HEART_ROW * 0.5
+
+## The host's side margin, which the lattice keeps although the sea does not.
+func _margin() -> float:
+	return float(load(FLAT_HOST).MARGIN)
+
+## The lattice's own pad inside the pool: none once the pool is the lattice.
+func _field_pad() -> float:
+	return 0.0 if _bled else FIELD_PAD
 
 ## The largest cell the pool holds, with the lattice's own pad inside it.
 ## **The width binds at every band** -- 920 of lattice against 1110 of pool
@@ -913,8 +971,9 @@ func _cell() -> float:
 	if state.n <= 0:
 		return 0.0
 	var p := _pool()
-	return maxf(0.0, minf((p.size.x - 2.0 * FIELD_PAD) / float(state.n),
-		(p.size.y - 2.0 * FIELD_PAD) / float(state.n)))
+	var pad := _field_pad()
+	return maxf(0.0, minf((p.size.x - 2.0 * pad) / float(state.n),
+		(p.size.y - 2.0 * pad) / float(state.n)))
 
 func _field_size() -> float:
 	return _cell() * float(state.n)
@@ -994,6 +1053,15 @@ func _refresh() -> void:
 
 ## A new size moves every islet, so the still sea is rebuilt with the board.
 func _resized() -> void:
+	if _world != null:
+		_world.size = size
+	if _bled and _won and _cell() > 0.0:
+		# Laid out under a win (a resize, or a day reopened solved): the
+		# slide is aimed again, and set at its end if it never ran.
+		_aim_win()
+		if _slid <= 0.0 and not (_slide_tw != null and _slide_tw.is_valid()):
+			_slid = 1.0
+	_place()
 	_sea = null
 	_love_mesh = null
 	_seal_mesh = null
@@ -1001,6 +1069,100 @@ func _resized() -> void:
 	for layer: Control in [_heart_layer, _life_layer, _combo_layer]:
 		if layer != null:
 			layer.queue_redraw()
+
+# --- full rect: the host's rows, the win's slide, the level's slide ---
+
+## The night on the world's water, or the day.
+func _tell_world() -> void:
+	if _world != null and state != null:
+		_world.set_night(not state.lanterns.is_empty())
+
+## What the host's rows cover, in this board's own pixels (it is laid full
+## rect). While playing the lattice is laid in what is left. On the win it is
+## not laid out again: the board slides and shrinks into the win's span.
+func set_clear(top: float, bottom: float, won := false) -> void:
+	Motion.stop(_slide_tw)
+	if not _bled:
+		_bled = true
+		_ref_cell = 0.0
+		if _world != null:
+			_world.visible = true
+	_won = won
+	if not won:
+		_clear = Vector2(top, bottom)
+		_slid = 0.0
+		_resized()
+		return
+	_win_clear = Vector2(top, bottom)
+	if _clear == Vector2.ZERO:
+		# Never told the playing rows: lie in the win's span as it is.
+		_clear = _win_clear
+		_slid = 0.0
+		_won = false
+		_resized()
+		_won = true
+		return
+	# A day reopened solved is told before it has a size: `_resized` sets
+	# the slide when it has a lattice to aim.
+	if _cell() <= 0.0:
+		return
+	_aim_win()
+	if Motion.reduce or not is_inside_tree() or _slid >= 1.0:
+		_slide_to(1.0)
+		return
+	_slide_tw = create_tween()
+	_slide_tw.tween_method(_slide_to, _slid, 1.0, WIN_SLIDE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+## Where the win's slide ends, from the lattice (and the hearts' strip over
+## it) as it is laid and the win's span.
+func _aim_win() -> void:
+	var p := _pool()
+	var row := _heart_row()
+	var block := Rect2(p.position - Vector2(0.0, row), p.size + Vector2(0.0, row))
+	if block.size.x <= 0.0 or block.size.y <= 0.0:
+		return
+	var span := size.y - _win_clear.x - _win_clear.y
+	_slid_from = block.get_center()
+	_slid_scale = clampf(minf((size.x - 2.0 * _margin() - 2.0 * WIN_PAD) / block.size.x,
+		(span - 2.0 * WIN_PAD) / block.size.y), 0.1, 1.0)
+	_slid_by = Vector2(size.x * 0.5, _win_clear.x + span * 0.5) - _slid_from
+
+func _slide_to(t: float) -> void:
+	_slid = t
+	_place()
+
+## The host slides the board `x` aside on a change of level; the world stays
+## where it is, and the board that is leaving shows none, so the one
+## arriving under it is not hidden.
+func set_shift(x: float, leaving := false) -> void:
+	_shift = x
+	if _world != null and _bled:
+		_world.visible = not leaving
+	_place()
+
+## The host deals this board into a screen already standing: it arrives
+## whole, without the sea's pop and the islets' rise.
+func skip_entrance() -> void:
+	_opened = -1.0e9
+	_anim_until = _now()
+	_next_lap = _anim_until + LAP_EVERY * 0.5
+	_refresh()
+
+## The board's transform at `_slid`, and the world's against it, so the sea
+## stays where it is while the lattice and everything on it goes.
+func _place() -> void:
+	if _slid <= 0.0 and _shift == 0.0 and not _placed:
+		return
+	_placed = _slid > 0.0 or _shift != 0.0
+	var k := lerpf(1.0, _slid_scale, _slid)
+	var by := _slid_by * _slid + Vector2(_shift, 0.0)
+	pivot_offset = _slid_from
+	scale = Vector2(k, k)
+	position = by
+	if _world != null:
+		_world.pivot_offset = _slid_from
+		_world.scale = Vector2.ONE / k
+		_world.position = -by / k
 
 # --- the drawing ---
 
@@ -1627,6 +1789,8 @@ func _sweep(t: float) -> void:
 ## and a board -- nothing here moves -- so the board's own mesh can be
 ## rebuilt as often as it likes without this one.
 func _build_sea() -> ArrayMesh:
+	if _bled:
+		return _build_open_sea()
 	var p := _pool()
 	if p.size.x <= 2.0 * SHORE_W or p.size.y <= 2.0 * SHORE_W + BASIN_WALL:
 		return null
@@ -1656,12 +1820,38 @@ func _build_sea() -> ArrayMesh:
 		_night(b, water)
 	return b.mesh()
 
+## The still sea of a board laid full rect: the water itself is the world's
+## (puzzles/bridges_world.gd), so this is only what lies on it round the
+## lattice -- the deeper patches, the lighter water and the ring at every
+## islet's foot, the ripples and the pads -- with no basin, wall or rim.
+func _build_open_sea() -> ArrayMesh:
+	var p := _pool()
+	if p.size.x <= 0.0:
+		return null
+	var b := Face.Builder.new()
+	var pale: Color = Pal.WATER_HI.lerp(Pal.PAPER, SEA_PALE)
+	var water := p.grow(_cell() * 0.15)
+	_depths(b, water)
+	var r := _islet_r()
+	for cell in state.islets:
+		var foot := _at(cell) + Vector2(0.0, r * (SIDE + 0.1))
+		Scenery.soft_disc(b, foot, r * SANDBAR, r * SANDBAR * 0.8, Color(pale, SANDBAR_ALPHA))
+		b.stroke(Face.Builder.ring(foot, r * FOOT_RING, r * FOOT_RING * 0.8), r * 0.07,
+			Color(Pal.SURFACE, FOOT_RING_ALPHA), true)
+	_ripples(b, water)
+	_dress(b, p, water)
+	if not state.lanterns.is_empty():
+		_night(b, water)
+	return b.mesh() if not b.verts.is_empty() else null
+
 ## Lantern Night's sky on the water: a dusk-blue veil over the pool and a
 ## scatter of reflected stars in the open water, kept off the islets. The
 ## lanterns' own glow is drawn with them, over this.
 func _night(b, water: Rect2) -> void:
-	b.fan(Face.Builder.round_rect(water.position, water.size, POOL_RADIUS),
-		Color(Pal.MOON_DEEP, NIGHT_ALPHA))
+	# Full rect, the dusk is the world's, over the whole sea.
+	if not _bled:
+		b.fan(Face.Builder.round_rect(water.position, water.size, POOL_RADIUS),
+			Color(Pal.MOON_DEEP, NIGHT_ALPHA))
 	var s := _cell()
 	var placed := 0
 	var i := 0
@@ -1712,7 +1902,8 @@ func _dress(b, pool: Rect2, water: Rect2) -> void:
 	# pair of rocks, sized down or left bare only where an islet crowds them.
 	var corners := [pool.position, Vector2(pool.end.x, pool.position.y),
 		Vector2(pool.position.x, pool.end.y), pool.end]
-	for ci in 4:
+	# Full rect there is no rim to dress: only the pads in the open water.
+	for ci in (0 if _bled else 4):
 		var c: Vector2 = corners[ci]
 		var inward := (pool.get_center() - c).normalized()
 		var size := s * 0.5
@@ -1731,7 +1922,7 @@ func _dress(b, pool: Rect2, water: Rect2) -> void:
 			_rocks(b, at, size * 0.8, ci + salt)
 	# The rim, walked round from the top-left corner.
 	var perimeter := 2.0 * (pool.size.x + pool.size.y)
-	var spots := DRESS_SPOTS
+	var spots := 0 if _bled else DRESS_SPOTS
 	for i in spots:
 		var u := (float(i) + 0.3 + 0.4 * _hash(i, 3 + salt)) / float(spots)
 		var d := u * perimeter
@@ -4151,6 +4342,9 @@ func _draw_boat(u: float) -> void:
 	var w := s * BOAT_W
 	var x := lerpf(pool.position.x - w, pool.end.x + w, u)
 	var y := pool.end.y - maxf(s * 0.5, (pool.size.y - _field_size()) * 0.25)
+	if _bled:
+		# The open water under the lattice.
+		y = pool.end.y + s * 0.32
 	var bob := sin(u * TAU * 3.0) * s * 0.05
 	var tilt := sin(u * TAU * 3.0 + 0.6) * 0.08
 	_life_layer.draw_set_transform(Vector2(x, y + bob), tilt, Vector2.ONE)

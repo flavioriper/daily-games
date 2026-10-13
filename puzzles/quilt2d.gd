@@ -44,10 +44,21 @@ extends "res://core/puzzle_base.gd"
 ## docs/brainstorm/concepts.html#quilt, which is the reference for every
 ## measure here.
 
+## The sewing table is the whole screen (2026-10-13, the registry's `bleed`):
+## puzzles/quilt_world.gd lies edge to edge as the board's first child, behind
+## its own drawing, and the quilt and its rack are laid in the span the
+## host's rows leave (`set_clear`), the mat's edges on the host's margin and
+## FOOT kept open under it for the table's things. On the win the board
+## slides and shrinks into the win's span under its own one transform, the
+## table held still against it. Until `set_clear` is first called the board
+## lays itself in a card as it always did.
+
 ## Back to camp from the out-of-hearts card (the host listens for it).
 signal leave
 
 const State = preload("res://puzzles/quilt_state.gd")
+const World = preload("res://puzzles/quilt_world.gd")
+const FLAT_HOST := "res://ui/flat/flat_host.gd"
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
@@ -76,6 +87,11 @@ const INSET := 28.0
 ## card of another height splits in the same proportion instead of spending
 ## every extra pixel on the rack.
 const FIELD_SHARE := 800.0 / 1284.0
+## What a board in its world leaves open under the rack, at 1080 wide: the
+## table's tape, buttons and pincushion lie there.
+const FOOT := 92.0
+## The slide into the win's span (the host's SLOT_TIME).
+const WIN_SLIDE := 0.45
 const RACK_PAD := 28.0
 ## The largest cell a small quilt may have. Without it a five-patch board on
 ## a 5 x 4 box comes out at 188 a cell and reads as a toy.
@@ -346,6 +362,22 @@ const LOOK_SEAM := 3000000
 const SHEEN_STEPS := 8
 
 var _state = State.new()
+## The world, and whether the host has said what its rows cover (`bleed`).
+var _world: Control
+var _bled := false
+var _clear := Vector2.ZERO
+## The board's own transform on the win: the block's middle while playing,
+## how far it moves and how small it gets, and how far along it is.
+var _slid_from := Vector2.ZERO
+var _slid_by := Vector2.ZERO
+var _slid_scale := 1.0
+var _slid := 0.0
+var _won := false
+var _win_clear := Vector2.ZERO
+var _placed := false
+## The host's slide on a change of level (set_shift).
+var _shift := 0.0
+var _slide_tw: Tween
 ## The board's own effects node: the hint's ring and every sparkle come
 ## through it and nowhere else.
 var fx: Node2D
@@ -622,6 +654,13 @@ const HAPTICS := {
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = false
+	# The table first, and behind this board's own drawing; hidden until the
+	# host says the board fills the screen.
+	_world = World.new()
+	_world.name = "World"
+	_world.show_behind_parent = true
+	_world.visible = false
+	add_child(_world)
 	fx = Fx2D.new()
 	fx.name = "Fx"
 	fx.z_index = 2
@@ -737,7 +776,89 @@ func _shape_cache() -> void:
 
 ## The card's content box, inside the inset.
 func _content() -> Rect2:
+	if _bled:
+		# The span the host's rows leave, the mat's edge (MAT_PAD past the
+		# rack) on the host's margin and the foot left to the table.
+		var side := _side() + MAT_PAD
+		var foot := FOOT * size.x / 1080.0 + MAT_PAD
+		return Rect2(Vector2(side, _clear.x),
+			Vector2(size.x - 2.0 * side, maxf(0.0, size.y - _clear.x - _clear.y - foot)))
 	return Rect2(Vector2.ONE * INSET, size - Vector2.ONE * (2.0 * INSET))
+
+## The host's side margin, which the mat keeps although the table does not.
+func _side() -> float:
+	return float(load(FLAT_HOST).MARGIN)
+
+## What the host's rows cover, in this board's own pixels (it is laid full
+## rect). While playing the quilt and the rack are laid in what is left. On
+## the win nothing is laid out again: the board slides and shrinks into the
+## win's span.
+func set_clear(top: float, bottom: float, won := false) -> void:
+	Motion.stop(_slide_tw)
+	_bled = true
+	_world.visible = true
+	_won = won
+	if not won:
+		_clear = Vector2(top, bottom)
+		_slid = 0.0
+		_layout()
+		return
+	_win_clear = Vector2(top, bottom)
+	# A day reopened solved is told before it has a size: _layout sets the
+	# slide when it has a block to aim.
+	if size.y <= 0.0 or _clear == Vector2.ZERO:
+		if _clear == Vector2.ZERO:
+			_clear = Vector2(top, bottom)
+		_layout()
+		return
+	_aim()
+	if Motion.reduce or not is_inside_tree() or _slid >= 1.0:
+		_slide(1.0)
+		return
+	_slide_tw = create_tween()
+	_slide_tw.tween_method(_slide, _slid, 1.0, WIN_SLIDE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+## Where the win's slide ends: the block is the quilt, the air and the mat.
+func _aim() -> void:
+	var box := _content().grow(MAT_PAD)
+	var span := size.y - _win_clear.x - _win_clear.y
+	_slid_from = box.get_center()
+	_slid_scale = clampf(minf((size.x - 2.0 * _side()) / maxf(box.size.x, 1.0),
+		span / maxf(box.size.y, 1.0)), 0.1, 1.0)
+	_slid_by = Vector2(size.x * 0.5, _win_clear.x + span * 0.5) - _slid_from
+
+func _slide(t: float) -> void:
+	_slid = t
+	_place()
+
+## The host slides the board `x` aside on a change of level; the table stays
+## where it is, and the board that is leaving shows none, so the one
+## arriving under it is not hidden.
+func set_shift(x: float, leaving := false) -> void:
+	_shift = x
+	_world.visible = _bled and not leaving
+	_place()
+
+## The host deals this board into a screen already standing: it arrives
+## whole, without the quilt's pop.
+func skip_entrance() -> void:
+	_opened = _now() - 60.0
+	_refresh()
+
+## The board's transform at `_slid`, and the table's against it, so the
+## table stays where it is while the quilt and its rack go.
+func _place() -> void:
+	if _slid <= 0.0 and _shift == 0.0 and not _placed:
+		return
+	_placed = _slid > 0.0 or _shift != 0.0
+	var k := lerpf(1.0, _slid_scale, _slid)
+	var by := _slid_by * _slid + Vector2(_shift, 0.0)
+	pivot_offset = _slid_from
+	scale = Vector2(k, k)
+	position = by
+	_world.pivot_offset = _slid_from
+	_world.scale = Vector2.ONE / k
+	_world.position = -by / k
 
 ## The box the quilt is laid in: the top share of the content, less the
 ## strip the hearts take on a board that has them. The rack keeps its size:
@@ -755,7 +876,7 @@ func _heart_row() -> float:
 
 ## Where the hearts' pill is centred: in the strip over the field.
 func _hearts_y() -> float:
-	return INSET + HEART_ROW * 0.5
+	return _content().position.y + HEART_ROW * 0.5
 
 ## The box the rack stands in: everything under the field and the air.
 func _rack_box() -> Rect2:
@@ -909,6 +1030,15 @@ func card_centred() -> bool:
 	return false
 
 func _layout() -> void:
+	if _world != null:
+		_world.size = size
+	if _bled and _won and size.y > 0.0:
+		# Laid out under a win (a resize, or a day reopened solved): the
+		# slide is aimed again, and set at its end if it never ran.
+		_aim()
+		if _slid <= 0.0 and not (_slide_tw != null and _slide_tw.is_valid()):
+			_slid = 1.0
+	_place()
 	_forget_looks()
 	_ground = null
 	_mat_mesh = null
@@ -1818,7 +1948,7 @@ func _build_rack(t: float) -> ArrayMesh:
 ## as patches floating on the card.
 func _mat(b) -> void:
 	var box := _rack_box().grow(MAT_PAD)
-	box.size.y = minf(box.size.y, size.y - INSET * 0.5 - box.position.y)
+	box.size.y = minf(box.size.y, (_content().end.y + MAT_PAD if _bled else size.y - INSET * 0.5) - box.position.y)
 	if box.size.x <= 0.0 or box.size.y <= 0.0:
 		return
 	if not _state.scraps().is_empty():
@@ -3330,8 +3460,10 @@ func _bunted(p: int, t: float) -> bool:
 ## The twine's line across the top of the card, as a function of x from 0
 ## to 1: a sag between two pins in the card's top corners.
 func _twine(x: float) -> Vector2:
-	var a := Vector2(INSET * 1.5, BUNT_Y)
-	var z := Vector2(size.x - INSET * 1.5, BUNT_Y)
+	var box := _content()
+	var top := box.position.y - (0.0 if _bled else INSET) + BUNT_Y
+	var a := Vector2(box.position.x + INSET * 0.5, top)
+	var z := Vector2(box.end.x - INSET * 0.5, top)
 	return a.lerp(z, x) + Vector2(0.0, BUNT_SAG * 4.0 * x * (1.0 - x))
 
 ## Where a pennant hangs along the twine. The middle of the card is the
@@ -3844,7 +3976,7 @@ func _draw_stamp(now: float, shown: Array) -> void:
 		var u := clampf(e / STAMP_DROP, 0.0, 1.0)
 		k = lerpf(STAMP_FROM, 1.0, u * u) if e < STAMP_DROP else Motion.bump_scale(e - STAMP_DROP, 0.08, STAMP_DROP)
 	var alpha := clampf(e / 0.08, 0.0, 1.0) if not Motion.reduce else 1.0
-	var centre := size - Vector2(INSET, INSET) - Vector2(rad * 1.1, rad * 1.0)
+	var centre := _content().end - Vector2(rad * 1.1, rad * 1.0)
 	var xf := Transform2D(STAMP_TILT, Vector2(k, k), 0.0, centre)
 	_life_layer.draw_set_transform_matrix(xf)
 	_life_layer.draw_mesh(_seal_mesh, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, alpha))

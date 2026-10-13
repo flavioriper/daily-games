@@ -235,3 +235,21 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   `_left_line` says `QL_WIN` only when the quilt is solved. The pill is in
   the hearts' strip; `completion_record` keeps `moves`. `QL_LVL_2` still
   reads "three hearts" (Hard's, stale since ce192ab).
+
+### The sewing table is the whole screen (2026-10-13)
+
+The redesign (`docs/agents/flat-screens.md`, "Every board gets a world of
+its own"), built unattended. `puzzles/quilt_world.gd` is a pale birch table seen
+from above with faint seams and grain, the window's panes of light behind
+the wordmark, three spools and a thimble in the gap of the tools row, and
+along the foot a tape measure, loose buttons, the card's needle with its
+thread run to a spool, and a pincushion; five dust motes breathe. The
+rack's felt mat is on the host's margin; the quilt's height binds, so it
+stands centred about 106 inside each side at 1080.
+
+- Registry: `bleed`, `level_card`; no tray, no actions row, as before.
+- `opengl3_angle`, 810x1440: 81 draw calls at rest; `tests/_win.gd --
+  quilt` passes with real drags.
+- Decided for the user, unconfirmed: birch, not the card's heather linen
+  (two boards already have cloth); the rack 3% shorter; the empty mat
+  travelling with the quilt on the win. Owed: a phone, the level slide.

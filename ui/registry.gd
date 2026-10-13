@@ -522,6 +522,11 @@ const PUZZLES := [
 		"script": "res://puzzles/bridges2d.gd",
 		"shell": "flat",
 		"tray": "none",
+		# Its world is the whole screen (`bleed`, puzzles/bridges_world.gd) and the
+		# levels stand where the day card was (docs/agents/flat-screens.md).
+		"bleed": true,
+		"level_card": true,
+		"actions": false,
 		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku (2026-09-23): 11 islets on a 7 by 7 sea, 16 on
 		# 9 by 9 or 24 on 11 by 11 (bridges_gen.gd's BANDS), and each is its
@@ -553,6 +558,10 @@ const PUZZLES := [
 		"script": "res://puzzles/quilt2d.gd",
 		"shell": "flat",
 		"tray": "none",
+		# Its world is the whole screen (`bleed`, puzzles/quilt_world.gd) and the
+		# levels stand where the day card was (docs/agents/flat-screens.md).
+		"bleed": true,
+		"level_card": true,
 		"actions": false,
 		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku (2026-09-23): 5 patches on a 5 by 5 backing, 6 on

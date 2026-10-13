@@ -475,7 +475,7 @@ sections after it say how each part is built.
 
 **Done since** (2026-10-13, unattended, three boards a batch by fork
 workers; each board's own note says what was decided for the user):
-Code Break, Balance, Untangle; Shikaku, Tents, Light Up; One Line, Nonogram, Queens; Hidden Word, Word Trail, Mushroom Patch, Sudoku. What the batches taught:
+Code Break, Balance, Untangle; Shikaku, Tents, Light Up; One Line, Nonogram, Queens; Hidden Word, Word Trail, Mushroom Patch, Sudoku; Bridges, Quilt. What the batches taught:
 
 - A worker owns two files, `puzzles/<board>_world.gd` and the board; the
   parent sets the registry, shoots (`tests/_shot_anim.gd`, then
