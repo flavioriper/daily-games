@@ -50,17 +50,22 @@ var _last := false
 var _turns_left := 1
 ## `page3`: the same shot one page further on, the second turn a beat after
 ## the first so the slide is not asked to jump two pages at once.
+## `page4`: one turn more again.
 var _second_turn_at := INF
 var _settle := PAGE2_SETTLE
 var _tab_arg := ""
 
 func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
-	_page2 = args.has("page2") or args.has("page3") or args.has("last")
+	_page2 = args.has("page2") or args.has("page3") or args.has("page4") or args.has("last")
 	_last = args.has("last")
-	if args.has("page3") or _last:
+	if args.has("page3") or args.has("page4") or _last:
 		_second_turn_at = FIRST_AT + 0.8
 		_settle = PAGE2_SETTLE + 0.8
+	if args.has("page4"):
+		# One turn more than page three, a beat after it.
+		_turns_left = 2
+		_settle = PAGE2_SETTLE + 2.4
 	if _last:
 		# Five pages since Golden Acorn (thirty-three cards at eight a page).
 		_turns_left = 3

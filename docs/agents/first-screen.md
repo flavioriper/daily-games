@@ -868,6 +868,66 @@ the first one ... Card should be elegant, cozy, but carry the game elements".
     has none), no mark on the second hop, stepping stones rather than a
     board. **Seen and left**: on a 1040-wide card Sunbeam's first leg is a
     600 px beam and Knight is bare in the middle.
-- **Owed**: the twenty-three boards' cells on Stats and Streak still wear the
-  old banner (`CardArt` + `Vistas.card_plate`); the other fifteen cards;
+- **Hedgehogs, Super Slider and Marigold are the twenty-fourth,
+  twenty-fifth and twenty-sixth** (the same day, the same words an eighth
+  time; the same recipe). With Hedgehogs every card of page three is its
+  own; the other two open page four.
+  - **Hedgehogs** (`ui/menu/cards/hedgehogs.gd`): a leaf-green lawn
+    (`eaf3d8` to `d3e5b5`), three fallen leaves and no grid, so it does not
+    compose like Mushroom Patch, its cousin on page two. One big pile of
+    `leaf_pile.gd`'s leaves on the right with the board's flag in it and
+    the hedgehog asleep at its foot (`HedgehogFace`, SLEEPY, the one live
+    face; a second small child lays two leaves over its back). Left of it
+    two raked patches stacked, each reading 1, counted in code from where
+    she lies, and one pile they prove safe. The go button is the rake over
+    that pile: a wooden handle and a head in the card's grey with the
+    chevron. Two numeral strings.
+  - **Super Slider** (`ui/menu/cards/slider.gd`): the paper is the tray's
+    floor, a light birch (`f8f0de` to `eddfc2`), and the card a close crop
+    of the board at its gate: four columns against the right at 58 px, the
+    walnut wall along the whole foot with its doors ajar and the mat lit
+    under columns one and two. The red block, baked with its happy face,
+    stands one step above the mat; a blue bar and a yellow square stand by.
+    The go button is the square under the red one, in the card's teal,
+    lifted, its chevron pointing right into an empty hollow; the position
+    is checked legal in code (`_legal`). Nothing lives on it.
+  - **Marigold** (`ui/menu/cards/marigold.gd`): the board's dusk kept light,
+    a lilac-to-peach sky (`e6e2f7` to `fbe8dc`) over one soft range, the
+    pond and a green bank along the foot. The sun stands left of the seal
+    with its spout down the aim; the board's dotted guide glances off a
+    violet and a bluebell, both open, and comes down into the pot. Two
+    marigolds are still shut on the pond. The bounces are true mirrors
+    worked out in code from `AIM`. The go button is the pot on the bank in
+    the card's terracotta, lifted, a chevron on its belly and the seed over
+    its mouth. **On the board the sun shoots and the pot catches**, so the
+    guide ends in the go button rather than leaving it. Nothing lives on
+    it and it writes no string.
+  - **Measured**, `tests/_shot_menu.gd` on `opengl3_angle` at 810x1440,
+    second of two readings: `-- page3` 171 draw calls with eight faces
+    (both readings 171; 175 before), `-- page4` 212 with two faces and six
+    template cards (both 212; no reading from before). `page4` is new in
+    the harness: one turn more than `page3`. Suite 249797/0. The throwaway
+    probe, each card at the four sizes in es (Super Slider's pt blurb is a
+    character longer and was not probed), then pages three and four whole
+    in en. Changed after the first look: Marigold's whole shot turned 20
+    degrees about the sun (`AIM` 122.5 to 102.5), its violet having sat on
+    the es blurb, and its shut buds moved left of the pot; Super Slider's
+    cell from 62 to 58, the red block having stood 4 px from the seal;
+    Hedgehogs' pile, hedgehog and flag up by an eighth. Marigold's shut
+    buds were moved after the last probe: their place was seen only on
+    page four in en.
+  - **Mine, the user's to call**: Hedgehogs' rake as the go button (a grey
+    pile would read as a stone), the hedgehog in front of her pile rather
+    than under it, two counts rather than three, a picture that does not
+    grow on a taller card (its scale is the lesser of height and width);
+    Super Slider's blocker a square rather than a bar, no block cropped by
+    the card's edge, the wall running the full foot as a thin rail, teal
+    beside the board's blue bar; Marigold's guide ending in the go button,
+    four flowers, both marigolds left shut and away from the shot, a baked
+    sun. **Seen and left**: on a 1040-wide card all three are bare in the
+    middle; Marigold's two bounces sit close together at 490 wide. One
+    `page4` run printed a JSON parse error from `core/backend.gd`'s
+    `_refresh`; the other run and the suite did not.
+- **Owed**: the twenty-six boards' cells on Stats and Streak still wear the
+  old banner (`CardArt` + `Vistas.card_plate`); the other twelve cards;
   Balance, Untangle and Shikaku in es; a phone.

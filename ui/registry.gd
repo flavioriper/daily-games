@@ -714,6 +714,7 @@ const PUZZLES := [
 		# Mushroom Patch's rows: the two-chip tray (Rake, Flag) and the
 		# actions row (Reset, Check); Undo and Hint ride in the top bar.
 		"script": "res://puzzles/hedgehogs2d.gd",
+		"card": "res://ui/menu/cards/hedgehogs.gd",
 		"shell": "flat",
 		"tray": "lawn",
 		"difficulties": [0, 1, 2, 3],
@@ -739,6 +740,7 @@ const PUZZLES := [
 		# block only ever slides into empty cells. So no tray and no Check;
 		# Undo, Reset and Hint ride in the top bar -- Pinwheel's shape.
 		"script": "res://puzzles/slider2d.gd",
+		"card": "res://ui/menu/cards/slider.gd",
 		"shell": "flat",
 		"tray": "none",
 		"actions": false,
@@ -765,6 +767,7 @@ const PUZZLES := [
 		# flown: no tray, no actions row and no Undo. Hint and Reset ride in
 		# the top bar -- Pinwheel's shape.
 		"script": "res://puzzles/marigold2d.gd",
+		"card": "res://ui/menu/cards/marigold.gd",
 		"shell": "flat",
 		"tray": "none",
 		"actions": false,
