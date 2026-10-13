@@ -874,6 +874,7 @@ const PUZZLES := [
 		# tray and no actions row, and no Undo -- a stroke played is on the
 		# card. Hint and Reset ride in the top bar -- Marigold's shape.
 		"script": "res://puzzles/minigolf2d.gd",
+		"card": "res://ui/menu/cards/minigolf.gd",
 		"shell": "flat",
 		"tray": "none",
 		"actions": false,
@@ -901,6 +902,7 @@ const PUZZLES := [
 		# Submit -- the day ends on that press, not on the pen closing, so a
 		# closed pen can still be rebuilt for a bigger one.
 		"script": "res://puzzles/horse2d.gd",
+		"card": "res://ui/menu/cards/horse.gd",
 		"shell": "flat",
 		"tray": "none",
 		"difficulties": [0, 1, 2, 3],
@@ -926,6 +928,7 @@ const PUZZLES := [
 		# so no tray. The actions row stays for its third button, which here
 		# reads Lock and then Next -- a lock is the one move, and it is final.
 		"script": "res://puzzles/how_big2d.gd",
+		"card": "res://ui/menu/cards/how_big.gd",
 		"shell": "flat",
 		"tray": "none",
 		"difficulties": [0, 1, 2, 3],

@@ -968,6 +968,48 @@ the first one ... Card should be elegant, cozy, but carry the game elements".
     member, the pear as the rider, a cart that is small beside the bridge.
     **Seen and left**: on a 1040-wide card all three are bare in the
     middle.
-- **Owed**: the twenty-nine boards' cells on Stats and Streak still wear the
-  old banner (`CardArt` + `Vistas.card_plate`); the other nine cards;
+- **Mini Golf, Horse Pen and How Big? are the thirtieth, thirty-first and
+  thirty-second** (the same day, the second of the four batches), and with
+  them every card of page four is its own.
+  - **Mini Golf** (`ui/menu/cards/minigolf.gd`): the green is the paper, a
+    light felt (`e4f3d5` to `cbe7b6`) with two mown pools. One bent kerb
+    runs the foot and up the right side with a sand patch in its elbow;
+    the cup and flag stand under the seal's corner and a bumper post on
+    the straight line to it. The dotted aim banks off the foot kerb into
+    the cup, the mirror worked out in code. The go button is the ball in
+    the card's sky blue, radius 26, lifted, a chevron along the aim and
+    the board's pull-back mark behind it. Nothing lives on it.
+  - **Horse Pen** (`ui/menu/cards/horse.gd`): a pale sky over two soft
+    rises of meadow and a free-standing 4x3 patch low right: a stream
+    along its bottom row, two hay bales above and one to the left, the
+    baked pony across the two penned cells in its wheat, facing the lit
+    open cell. The go button is the bale that shuts it, in the card's
+    mustard, larger, lifted, with a chevron; the pen is checked in code.
+    **The board pens with hay bales and water is a wall**; the brief had
+    fence panels. The plain bales are washed toward cream so the mustard
+    one reads.
+  - **How Big?** (`ui/menu/cards/how_big.gd`): periwinkle paper (`efeefa`
+    to `dedcf2`) and one ground line. The known thing is a person in ink
+    with the board's bracket; the answer is a white elephant in an ink
+    outline at 0.76 of its true size, a faint line round it at the size it
+    must reach (to scale, 1.65 m to 3.2 m). The go button is the board's
+    grip on the answer's top left corner, in the card's grey, radius 25,
+    lifted, its chevron up and left along the pull. **The board's Lock is
+    a worded button in the actions row**, so the grip is the go piece.
+    Nothing lives on it.
+  - **Measured**, `tests/_shot_menu.gd -- page4` on `opengl3_angle` at
+    810x1440, second of two readings: 168 draw calls with eight faces
+    (both readings 168; 183 before). Suite 249797/0. The throwaway probe,
+    each card at the four sizes in es, and page four whole in en (the
+    longest for Mini Golf and How Big?). Nothing changed after the look.
+  - **Mine, the user's to call**: Mini Golf's ball as the go button and
+    blue where the board's is white, a 15 px pull-back, one kerb rather
+    than a course; Horse Pen's pale bales, no apple or boulder, the pony
+    overlapping the far bales, the top bale 7 px under the seal at 490
+    wide; How Big?'s person and elephant, the faint true-size line (the
+    board shows none mid-guess), a chevron pointing up-left, no height
+    rule. All three cap their scale by width, so a taller card draws the
+    same picture. **Seen and left**: bare in the middle at 1040 wide.
+- **Owed**: the thirty-two boards' cells on Stats and Streak still wear the
+  old banner (`CardArt` + `Vistas.card_plate`); the other six cards;
   Balance, Untangle and Shikaku in es; a phone.
