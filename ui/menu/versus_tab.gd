@@ -12,20 +12,17 @@ extends VBoxContainer
 ## the grid's room, the way Stats and Streak do, under the same header and
 ## over the same bar.
 ##
-## One card a game, the first screen's own (ui/menu/puzzle_card_2d.gd, since
-## 2026-10-09; before, a wide card each with four chips beside Play): a
-## painted banner with the game's own drawing lying across it (still, so it
-## costs meshes and no frame), the name, a short line and the round go. The
-## whole card is the button, and `open` asks the menu for the sheet that
-## picks who to play (ui/menu/versus_sheet.gd).
+## One card a game, and **the cards stand in the Puzzles tab's own grid**
+## (ui/menu.gd: one grid, one swipe, one slide, one pager for Puzzles,
+## Versus and Arcade), each with a face of its own
+## (ui/menu/cards/vs_<game>.gd). The whole card is the button, and `open`
+## asks the menu for the sheet that picks who to play
+## (ui/menu/versus_sheet.gd).
 ##
-## Above the cards, one row: Friends, with how many of them are online now.
-## It opens the Friends sheet (ui/menu/friends_sheet.gd, through `friends`),
-## where a friend is asked to one of these games. The row is one more
-## child of this column, so its height comes out of the room _fit measures.
-##
-## The cards stand two a row, and the room three rows leave over goes to
-## their pictures (_fit), up to ART_GROW.
+## This is the row over that grid, where the day row stands on Puzzles:
+## Friends, with how many of them are online now. It opens the Friends
+## sheet (ui/menu/friends_sheet.gd, through `friends`), where a friend is
+## asked to one of these games.
 
 ## A card was pressed: the menu asks who to play.
 signal open(game: String)
@@ -34,7 +31,6 @@ signal friends
 
 const Pal = preload("res://core/palette.gd")
 const CozyTheme = preload("res://ui/theme.gd")
-const PuzzleCard = preload("res://ui/menu/puzzle_card_2d.gd")
 const Record = preload("res://versus/versus_record.gd")
 const Social = preload("res://core/social.gd")
 const SheetParts = preload("res://ui/hud/sheet_parts.gd")
@@ -43,9 +39,6 @@ const Icons = preload("res://ui/icons.gd")
 const GAP := 20
 const PAD := 24
 const RADIUS := 36
-const COLS := 2
-## How much taller than the first screen's a card's picture may grow here.
-const ART_GROW := 150.0
 ## The chips, as [key, level]: three of the computer's, then the other
 ## player -- online, or for a game in LOCAL_GAMES across the same phone.
 const LEVELS := [["DIFF_EASY", 0], ["DIFF_MEDIUM", 1], ["DIFF_HARD", 2], ["VS_ONLINE", Record.ONLINE]]
@@ -68,8 +61,6 @@ const FRIENDS_TINT := Color("f4b8a4")
 const ONLINE_INK := Color("4f8a31")
 static var PLAIN := CanvasItemMaterial.new()
 
-var _cards: Array[Control] = []
-var _grid: GridContainer
 var friends_row: Button
 var _friends_sub: Label
 var _friends_dot: Control
@@ -78,17 +69,16 @@ var _friends_on := 0
 
 func _init() -> void:
 	add_theme_constant_override("separation", GAP)
-	size_flags_vertical = Control.SIZE_EXPAND_FILL
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_friends_row())
-	_grid = GridContainer.new()
-	_grid.columns = COLS
-	_grid.add_theme_constant_override("h_separation", GAP)
-	_grid.add_theme_constant_override("v_separation", GAP)
-	_grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_grid)
-	for i in GAMES.size():
-		_grid.add_child(_game_card(GAMES[i], Pal.CAT[i % Pal.CAT.size()]))
+
+## The list the grid shows: one entry a game, in GAMES' order.
+static func entries() -> Array:
+	var out: Array = []
+	for game: String in GAMES:
+		out.append({"id": game, "title": NAMES[game], "short": SHORTS[game],
+			"card": "res://ui/menu/cards/vs_%s.gd" % game})
+	return out
 
 ## A game's four chips, as [key, level].
 static func levels_of(game: String) -> Array:
@@ -97,15 +87,6 @@ static func levels_of(game: String) -> Array:
 ## Whether `game` can be played online, and so against a friend.
 static func plays_online(game: String) -> bool:
 	return GAMES.has(game) and not LOCAL_GAMES.has(game)
-
-func _game_card(game: String, colour: Color) -> Control:
-	# A face of its own over the whole paper (ui/menu/cards/vs_<game>.gd).
-	var card := PuzzleCard.new({"id": game, "title": NAMES[game], "short": SHORTS[game],
-		"card": "res://ui/menu/cards/vs_%s.gd" % game}, colour)
-	card.name = "Card_" + game
-	card.open.connect(func() -> void: open.emit(game))
-	_cards.append(card)
-	return card
 
 ## The row above the cards: a plaque, Friends over a line that counts who is
 ## online, and a chevron. A Button whose face is drawn by its children, the
@@ -202,52 +183,12 @@ func _read_friends() -> void:
 
 func refresh() -> void:
 	_paint_friends()
-	_fit.call_deferred()
 
 func _ready() -> void:
-	Ads.banner_changed.connect(func(_v: bool, _h: float) -> void: _fit.call_deferred())
-	var outer := _outer()
-	if outer != null:
-		outer.resized.connect(_fit)
 	Social.hub().changed.connect(_paint_friends)
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_VISIBILITY_CHANGED and is_visible_in_tree():
-		_fit.call_deferred()
 		_read_friends()
 	elif what == NOTIFICATION_TRANSLATION_CHANGED and _friends_sub != null:
 		_paint_friends()
-
-## What does not grow when the column overflows: the menu's column sits in
-## a margin container on the full-screen list, so that is what is measured
-## (ui/menu.gd's _fit_grid does the same).
-func _outer() -> Control:
-	var parent := get_parent()
-	if parent != null and parent.get_parent() is MarginContainer:
-		return parent.get_parent().get_parent() as Control
-	return null
-
-## Gives the cards' rows the room the column leaves between the header and
-## the bar: never under the first screen's own row, and what is over it goes
-## to the pictures.
-func _fit() -> void:
-	var parent := get_parent() as Control
-	if parent == null or not is_visible_in_tree():
-		return
-	var sep := parent.get_theme_constant("separation") if parent is BoxContainer else 0
-	var other := 0.0
-	var shown := 0
-	for c in parent.get_children():
-		if c is Control and c != self and (c as Control).visible and not (c as Control).top_level:
-			other += (c as Control).get_combined_minimum_size().y
-			shown += 1
-	var height := parent.size.y
-	var outer := _outer()
-	if outer != null:
-		var margins := parent.get_parent() as MarginContainer
-		height = outer.size.y - margins.get_theme_constant("margin_top") - margins.get_theme_constant("margin_bottom")
-	var room := height - other - sep * shown - friends_row.get_combined_minimum_size().y - GAP
-	var rows := ceili(float(_cards.size()) / COLS)
-	var row_h := clampf(floorf((room - GAP * (rows - 1)) / rows), PuzzleCard.CARD_H, PuzzleCard.CARD_H + ART_GROW)
-	for card in _cards:
-		card.fit_height(row_h)

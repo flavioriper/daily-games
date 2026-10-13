@@ -143,12 +143,12 @@ func _process(delta: float) -> bool:
 		1:
 			if _t > _at + 1.0:
 				_shot("1_tab")
-				_menu.arcade_tab.turn(1)
+				_menu._turn_page(1)
 				_at = _t
 				_step = 100
 		100:
 			if _t > _at + 0.6:
-				_check("the tab's second page holds the thirteenth card", _menu.arcade_tab._page == 1 and _menu.arcade_tab._shown().size() == 5)
+				_check("the tab's second page holds the thirteenth card", _menu._page == 1 and _menu.cards.size() == 5)
 				_shot("1b_tab")
 				_step = 1
 				_menu._open_arcade("trivet")

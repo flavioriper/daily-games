@@ -105,7 +105,7 @@ func _process(delta: float) -> bool:
 			_menu._show_tab(_tab_arg)
 			# `turn` after an `arcade`: its second page.
 			if OS.get_cmdline_user_args().has("turn") and _tab_arg == "arcade":
-				_menu.arcade_tab.turn(1)
+				_menu._turn_page(1)
 			_idle = []
 			_draws = 0
 		_phase = 1

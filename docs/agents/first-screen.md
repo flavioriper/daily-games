@@ -1110,11 +1110,27 @@ the first one ... Card should be elegant, cozy, but carry the game elements".
   arcade i think has a totally wrong button to scroll list instead of
   reusing the right one from main list"). Twenty-one workers, one file
   each, then a windowed look at every card and at each tab whole.
+  - **One grid.** The user, an hour on: "why slide is not working to
+    scroll on arcade (just like puzzles), as I told you, it should be the
+    exactly same component, just with different games". The first pass
+    had shared only the pill. Now `ui/menu.gd`'s grid serves three lists
+    (`_deck`: "home", "versus", "arcade"; `_source()` is the registry or
+    the tab's `entries()`), so the swipe, the drag that follows the
+    finger, the slide, the peek and spare pages, the fit and the pager in
+    the seam over the bar are the Puzzles tab's own on all three. Only the
+    row over the grid changes (`_top_row()`): the day row, the Versus
+    tab's Friends row, the Arcade tab's gold strip. Each list keeps the
+    page it was left on (`_deck_page`). `versus_tab.gd` and
+    `arcade_tab.gd` are that row and the list now (194 and 124 lines);
+    a card still opens through the tab's `open` / `play` signal, and a
+    swipe that starts on a card does not open it. Proved with a touch
+    drag in a throwaway harness: Arcade turned from page 0 to 1 and
+    Puzzles came back on the page it was left on.
   - **One pager.** `ui/menu/pager_pill.gd` is the prev, dots, next pill,
-    lifted out of `ui/menu.gd`; the Puzzles grid, the Stats tab and the
-    Arcade tab each own one (`show_page`, `turned`). The Arcade tab's two
-    chevrons and "1/2" beside the Shop button are gone: its pill stands
-    under the cards. Stats' dots were 12 px and are the grid's 14 now.
+    lifted out of `ui/menu.gd`; the grid owns one and the Stats tab
+    another (`show_page`, `turned`). The Arcade tab's two chevrons and
+    "1/2" beside the Shop button are gone. Stats' dots were 12 px and are
+    the grid's 14 now.
   - **The base says a line.** `card_face.gd`'s `say(text, leaf)` puts a
     line where the blurb stands (`puzzle_card_2d.gd` forwards it and keeps
     it until the face is built); a said line, and a blurb with no break of
@@ -1142,10 +1158,9 @@ the first one ... Card should be elegant, cozy, but carry the game elements".
   - **Arcade** (`ui/menu/cards/arc_<game>.gd`, thirteen): the tab is
     rebuilt on the shell. The whole card is the tap; the Play button, the
     long blurb, the one-a-row layout and the four compaction levels are
-    gone; two a row, eight a page, rows sharing the room as the Versus
-    tab's do. Under the name a card says its best and how far (`_say`;
-    `said(game)` reads it back, which `tests/_shot_nightlight.gd` now
-    uses). Colours are `Pal.CAT` by index, where every Play button was
+    gone; two a row, eight a page. Under the name a card says its best
+    and how far (`arcade_tab.line(game)`, which
+    `tests/_shot_nightlight.gd` now reads). Colours are `Pal.CAT` by index, where every Play button was
     gold. The thirteen banner classes left `arcade_tab.gd` (876 lines to
     236). Firefly and Nightlight are night cards in cream ink; the rest
     are light. The go buttons: Firefly's firefly, Molehill's mallet,

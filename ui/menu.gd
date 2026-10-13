@@ -270,6 +270,12 @@ var _drag_v := 0.0
 ## The seam-spacer between the grid and the bar; see PAGER_SEAM above.
 var _pager_seam: Control
 var _page := 0
+## Which list of cards the grid is showing: the Puzzles ("home"), "versus"
+## or "arcade". One grid, one swipe, one slide and one pager for all three;
+## only the list and the row above it change (the day row, the Friends row,
+## the gold strip). Each keeps the page it was left on.
+var _deck := "home"
+var _deck_page := {"home": 0, "versus": 0, "arcade": 0}
 ## The fitted page (`_fit_grid`): cards a page, columns, a row's height.
 var _per_page := PER_PAGE
 var _cols := COLS
@@ -476,6 +482,10 @@ func _build_list() -> void:
 	arcade_tab.visible = false
 	arcade_tab.play.connect(_open_arcade)
 	root.add_child(arcade_tab)
+	# Each is the row over the grid on its own tab, where the day row stands
+	# on Puzzles.
+	root.move_child(versus_tab, day_row.get_index() + 1)
+	root.move_child(arcade_tab, day_row.get_index() + 2)
 	factory_tab = FactoryTab.new()
 	factory_tab.name = "FactoryTab"
 	factory_tab.visible = false
@@ -572,7 +582,25 @@ func _new_grid(grid_name: String) -> GridContainer:
 ## How many pages the registry needs at PER_PAGE a page; at least one, so an
 ## empty registry does not divide by nothing.
 func _pages() -> int:
-	return maxi(1, ceili(float(Registry.PUZZLES.size()) / float(_per_page)))
+	return maxi(1, ceili(float(_source().size()) / float(_per_page)))
+
+## The list the grid is showing: the registry, or a tab's own games.
+func _source() -> Array:
+	match _deck:
+		"arcade":
+			return arcade_tab.entries()
+		"versus":
+			return versus_tab.entries()
+	return Registry.PUZZLES
+
+## The row that stands over the grid for the list that is up.
+func _top_row() -> Control:
+	match _deck:
+		"arcade":
+			return arcade_tab
+		"versus":
+			return versus_tab
+	return day_row
 
 ## The entries on the page that is up, with the index each has in the
 ## registry -- the colour comes off that index, so a card keeps its colour
@@ -580,8 +608,9 @@ func _pages() -> int:
 func _page_entries(page := _page) -> Array:
 	var out: Array = []
 	var from := page * _per_page
-	for i in range(from, mini(from + _per_page, Registry.PUZZLES.size())):
-		out.append({"i": i, "entry": Registry.PUZZLES[i]})
+	var source := _source()
+	for i in range(from, mini(from + _per_page, source.size())):
+		out.append({"i": i, "entry": source[i]})
 	return out
 
 func _build_page() -> void:
@@ -607,12 +636,29 @@ func _fill(grid: GridContainer, page: int, into: Array, pad: Array) -> void:
 	var today: Array = Progress.solve_log().get(Daily.date_key(), [])
 	for row in _page_entries(page):
 		var entry: Dictionary = row.entry
-		var card := PuzzleCard.new(entry, Pal.CAT[int(row.i) % Pal.CAT.size()],
-			Progress.completed(String(entry.id)), Progress.levels_in(today, String(entry.id)))
+		var colour: Color = Pal.CAT[int(row.i) % Pal.CAT.size()]
+		var card: PuzzleCard
+		if _deck == "home":
+			card = PuzzleCard.new(entry, colour,
+				Progress.completed(String(entry.id)), Progress.levels_in(today, String(entry.id)))
+			card.open.connect(_open.bind(entry))
+			card.blocked.connect(_on_soon.bind(entry))
+		else:
+			# A tab's game: the same card, opened through the tab's own
+			# signal; a swipe that started on it does not open it.
+			var game := String(entry.id)
+			card = PuzzleCard.new(entry, colour)
+			if _deck == "arcade":
+				card.say(arcade_tab.line(game), arcade_tab.boosted(game))
+				card.open.connect(func() -> void:
+					if not _swiped:
+						arcade_tab.play.emit(game))
+			else:
+				card.open.connect(func() -> void:
+					if not _swiped:
+						versus_tab.open.emit(game))
 		card.name = "Card_" + entry.id
 		card.fit_height(_row_h)
-		card.open.connect(_open.bind(entry))
-		card.blocked.connect(_on_soon.bind(entry))
 		into.append(card)
 		grid.add_child(card)
 	# A short last row -- one whose cards do not fill COLS -- hands the real
@@ -697,7 +743,7 @@ func _fit_grid() -> void:
 	var room_w := _list_root.size.x - _margins.get_theme_constant("margin_left") \
 		- _margins.get_theme_constant("margin_right")
 	var room_h := _list_root.size.y - _margins.get_theme_constant("margin_top") \
-		- _margins.get_theme_constant("margin_bottom") - header.size.y - day_row.size.y - bar.size.y - GAP * 3
+		- _margins.get_theme_constant("margin_bottom") - header.size.y - _top_h() - bar.size.y - GAP * 3
 	if _pager_seam.visible:
 		room_h -= PAGER_SEAM + GAP
 	var cols := maxi(1, floori((room_w + GAP + 0.5) / (MIN_CARD_W + GAP)))
@@ -725,6 +771,12 @@ func _fit_grid() -> void:
 		_row_h = row_h
 		for card in cards + _peek_cards + _spare_cards():
 			card.fit_height(row_h)
+
+## How tall the row over the grid is: its laid height, or its minimum when
+## it has only just been shown and has none yet.
+func _top_h() -> float:
+	var row := _top_row()
+	return maxf(row.size.y if row.visible else 0.0, row.get_combined_minimum_size().y)
 
 ## Turns the page when a press on the grid travels far enough sideways:
 ## finger moving left is the next page, right the previous, the way a book
@@ -1128,25 +1180,41 @@ func _show_tab(key: String) -> void:
 	_tab = key
 	bar.show_tab(key)
 	var home := key == "home"
+	var deck := key in _deck_page
 	day_row.visible = home
-	_grid_slot.visible = home
-	_pager_seam.visible = home
 	streak_tab.visible = key == "streak"
 	stats_tab.visible = key == "stats"
 	versus_tab.visible = key == "versus"
 	arcade_tab.visible = key == "arcade"
 	factory_tab.visible = key == "factory"
+	_grid_slot.visible = deck
 	Motion.stop(_tab_tw)
-	if home:
+	if deck:
+		# One grid for the three lists: the list changes under it and the
+		# page it was left on comes back.
+		var changed := _deck != key
+		if changed:
+			_deck_page[_deck] = _page
+			_deck = key
+		if not home:
+			(_top_row() as Control).refresh()
+		_page = clampi(int(_deck_page[key]) if changed else _page, 0, _pages() - 1)
+		_pager_seam.visible = home or _pages() > 1
+		if changed or not home:
+			_build_page()
 		_set_pager(_page, _pages())
 		_pager.modulate.a = 1.0
 		_queue_fit()
+		if not home:
+			_tab_tw = Motion.appear(_top_row(), 0.0, 1.0, ENTER_FADE)
+			Analytics.track("tab_opened", {"tab": key})
 		return
+	_pager_seam.visible = false
 	# A pager fade still queued from the entrance would bring the pill back
 	# over the tab.
 	Motion.stop(_pager_tw)
 	_pager.visible = false
-	var body: Control = {"streak": streak_tab, "stats": stats_tab, "versus": versus_tab, "arcade": arcade_tab, "factory": factory_tab}[key]
+	var body: Control = {"streak": streak_tab, "stats": stats_tab, "factory": factory_tab}[key]
 	body.refresh()
 	_tab_tw = Motion.appear(body, 0.0, 1.0, ENTER_FADE)
 	Analytics.track("tab_opened", {"tab": key})
