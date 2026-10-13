@@ -57,6 +57,15 @@ extends "res://core/puzzle_base.gd"
 ## The beads are ui/faces/bead.gd, which the menu card draws too; the iron
 ## is ui/faces/iron.gd.
 ##
+## **The craft mat is the whole screen** (2026-10-13, the registry's
+## `bleed`): from the host's first `set_clear` puzzles/pixel_garden_world.gd
+## lies edge to edge as the first child, the card's table is not drawn, and
+## the head and the tray are laid in the span the host's rows leave, on its
+## side margin, from the top. On the win nothing is laid out again: the
+## block slides and shrinks into the win's span under the board's own
+## transform, the mat held still against it. A board never told a clear
+## (the tutorial's, or one in a card) is laid as it always was.
+##
 ## Spec: docs/superpowers/specs/2026-09-27-pixel-garden-flat-design.md and
 ## docs/superpowers/specs/2026-10-01-pixel-garden-polish-design.md.
 
@@ -77,6 +86,12 @@ const Seal = preload("res://ui/flat/seal.gd")
 const NapCat = preload("res://ui/faces/nap_cat.gd")
 const Cat = preload("res://ui/faces/caterpillar.gd")
 const Looks = preload("res://puzzles/pixel_garden_looks.gd")
+const World = preload("res://puzzles/pixel_garden_world.gd")
+const FLAT_HOST := "res://ui/flat/flat_host.gd"
+## The slide into the win's span (the host's SLOT_TIME) and the air kept
+## round the block inside it.
+const WIN_SLIDE := 0.45
+const WIN_PAD := 28.0
 
 # --- the card ---
 const PAD := 30.0
@@ -466,6 +481,23 @@ var _toast_arg := ""
 var _toast_at := -100.0
 var _toast_mesh: ArrayMesh
 var _toast_mesh_for := ""
+## The world, made on the host's first set_clear (`_bled`), and what the
+## host's rows cover of the rect, top and bottom, while playing.
+var _world: Control
+var _bled := false
+var _clear := Vector2.ZERO
+## The board's own transform on the win: the block's middle while playing,
+## how far it moves and how small it gets, and how far along it is.
+var _slid_from := Vector2.ZERO
+var _slid_by := Vector2.ZERO
+var _slid_scale := 1.0
+var _slid := 0.0
+var _laid_won := false
+var _win_clear := Vector2.ZERO
+var _placed := false
+## The host's slide on a change of level (set_shift).
+var _shift := 0.0
+var _slide_tw: Tween
 
 func puzzle_id() -> String: return "pixelgarden"
 func title() -> String: return "Pixel Garden"
@@ -530,8 +562,11 @@ func tutorial_pages() -> Array:
 ## Insane has the bulb again since 2026-10-13, as many hints as Hard: what is
 ## said of it above is the history (docs/agents/flat-screens.md).
 func capabilities() -> Array[String]:
-	match _state.band:
-		3: return ["undo", "hint"]
+	# In a world of its own the board has no Check (the user, 2026-10-13,
+	# of Binairo's: "neither a verify need"): it solves itself with the
+	# last bead, and check() is left in place, unreached.
+	if _state.band >= 3 or _bled:
+		return ["undo", "hint"]
 	return ["undo", "hint", "check"]
 
 ## Hard and Insane: a board too big to play whole, so it zooms.
@@ -685,12 +720,32 @@ func _span() -> float:
 func _head_for() -> float:
 	return HEAD_BIG if _state.names.size() > ROW_MOST else HEAD
 
-func _cell_for(available: float) -> float:
+## The rect everything is laid in: the card, or in a world of its own the
+## span the host's rows leave, between its side margins.
+func _room() -> Rect2:
+	if not _bled:
+		return Rect2(Vector2.ZERO, size)
+	var side := _side()
+	return Rect2(side, _clear.x, size.x - 2.0 * side, maxf(0.0, size.y - _clear.x - _clear.y))
+
+## The card's own padding, which a board on the host's margin has none of.
+func _pad() -> float:
+	return 0.0 if _bled else PAD
+
+## The host's side margin, which the tray keeps although the mat does not.
+func _side() -> float:
+	return float(load(FLAT_HOST).MARGIN)
+
+func _cell_in(room: Vector2) -> float:
 	if _state.n == 0:
 		return 0.0
 	var span := _span()
-	return maxf(0.0, minf((size.x - 2.0 * PAD - 2.0 * RIM) / span,
-		(available - 2.0 * PAD - _head_for() - HEAD_GAP - 2.0 * RIM) / span))
+	var pad := _pad()
+	return maxf(0.0, minf((room.x - 2.0 * pad - 2.0 * RIM) / span,
+		(room.y - 2.0 * pad - _head_for() - HEAD_GAP - 2.0 * RIM) / span))
+
+func _cell_for(available: float) -> float:
+	return _cell_in(Vector2(size.x, available))
 
 func card_height(available: float) -> float:
 	var cell := _cell_for(available)
@@ -702,20 +757,27 @@ func card_centred() -> bool:
 	return true
 
 func _layout() -> void:
-	_cell = _cell_for(size.y)
+	if _world != null:
+		_world.size = size
+	var room := _room()
+	var pad := _pad()
+	_cell = _cell_in(room.size)
 	if _cell <= 0.0:
 		return
 	_head = _head_for()
 	var face := _cell * _span()
-	var tall := minf(size.y, face + 2.0 * RIM + 2.0 * PAD + _head + HEAD_GAP)
-	var top := (size.y - tall) * 0.5 + PAD
+	var tall := minf(room.size.y, face + 2.0 * RIM + 2.0 * pad + _head + HEAD_GAP)
+	# In a card the block is centred; in a world of its own it stands at the
+	# top of the span, right under the host's tools row.
+	var top := room.position.y + (0.0 if _bled else (room.size.y - tall) * 0.5) + pad
 	_head_top = top
-	var span := maxf(face + 2.0 * RIM, minf(size.x - 2.0 * PAD, 940.0))
-	var left := size.x * 0.5 - span * 0.5
+	var mid := room.position.x + room.size.x * 0.5
+	var span := maxf(face + 2.0 * RIM, room.size.x if _bled else minf(room.size.x - 2.0 * pad, 940.0))
+	var left := mid - span * 0.5
 	_thumb = Rect2(left, top, _head, _head)
 	_right = Rect2(left + _head + 26.0, top, span - _head - 26.0, _head)
 	var board_top := top + _head + HEAD_GAP
-	_board = Rect2(size.x * 0.5 - face * 0.5 - RIM, board_top, face + 2.0 * RIM, face + 2.0 * RIM)
+	_board = Rect2(mid - face * 0.5 - RIM, board_top, face + 2.0 * RIM, face + 2.0 * RIM)
 	_grid = _board.position + Vector2.ONE * (RIM + MARGIN * _cell)
 	_place_chips()
 	_place_view()
@@ -723,7 +785,104 @@ func _layout() -> void:
 	_bands = []
 	_love_mesh = null
 	_drop_layout_meshes()
+	if _world != null:
+		_world.set_foot(_board.end.y + 6.0)
+	if _laid_won:
+		# Laid out under a win (a resize, or a day reopened solved): the
+		# slide is aimed again, and set at its end if it never ran.
+		_aim()
+		if _slid <= 0.0 and not (_slide_tw != null and _slide_tw.is_valid()):
+			_slid = 1.0
+	_place()
 	_refresh()
+
+## What the host's rows cover, in this board's own pixels (it is laid full
+## rect). The first call makes the world. While playing the block is laid
+## in what is left; on the win it is not laid out again: the board slides
+## and shrinks into the win's span.
+func set_clear(top: float, bottom: float, won := false) -> void:
+	Motion.stop(_slide_tw)
+	if not _bled:
+		_bled = true
+		_world = World.new()
+		_world.name = "World"
+		_world.show_behind_parent = true
+		add_child(_world)
+		move_child(_world, 0)
+		_world.size = size
+	_laid_won = won
+	if not won:
+		_clear = Vector2(top, bottom)
+		_slid = 0.0
+		_layout()
+		return
+	_win_clear = Vector2(top, bottom)
+	# A day reopened solved is told before it has been laid out: _layout
+	# sets the slide when it has a block to aim.
+	if _cell <= 0.0:
+		if _clear == Vector2.ZERO:
+			_clear = Vector2(top, bottom)
+		_layout()
+		return
+	_aim()
+	if Motion.reduce or not is_inside_tree() or _slid >= 1.0:
+		_slide(1.0)
+		return
+	_slide_tw = create_tween()
+	_slide_tw.tween_method(_slide, _slid, 1.0, WIN_SLIDE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+## The head and the tray as one block, as they are laid.
+func _block() -> Rect2:
+	var left := minf(_thumb.position.x, _board.position.x)
+	var right := maxf(_right.end.x, _board.end.x)
+	return Rect2(left, _head_top, right - left, _board.end.y - _head_top)
+
+## Where the win's slide ends, from the block as it is laid and the win's
+## span.
+func _aim() -> void:
+	var block := _block()
+	var span := size.y - _win_clear.x - _win_clear.y
+	_slid_from = block.get_center()
+	_slid_scale = clampf(minf((size.x - 2.0 * _side() - 2.0 * WIN_PAD) / block.size.x,
+		(span - 2.0 * WIN_PAD) / block.size.y), 0.1, 1.0)
+	_slid_by = Vector2(size.x * 0.5, _win_clear.x + span * 0.5) - _slid_from
+
+func _slide(t: float) -> void:
+	_slid = t
+	_place()
+
+## The host slides the board `x` aside on a change of level; the mat stays
+## where it is, and the board that is leaving shows none, so the one
+## arriving under it is not hidden.
+func set_shift(x: float, leaving := false) -> void:
+	_shift = x
+	if _world != null:
+		_world.visible = not leaving
+	_place()
+
+## The host deals this board into a screen already standing: it arrives
+## whole, without the tray's pop.
+func skip_entrance() -> void:
+	_opened = _now() - 100.0
+	_sync_zoom()
+	_refresh()
+
+## The board's transform at `_slid`, and the world's against it, so the mat
+## stays where it is while the block and everything on it goes.
+func _place() -> void:
+	if _world == null:
+		return
+	if _slid <= 0.0 and _shift == 0.0 and not _placed:
+		return
+	_placed = _slid > 0.0 or _shift != 0.0
+	var k := lerpf(1.0, _slid_scale, _slid)
+	var by := _slid_by * _slid + Vector2(_shift, 0.0)
+	pivot_offset = _slid_from
+	scale = Vector2(k, k)
+	position = by
+	_world.pivot_offset = _slid_from
+	_world.scale = Vector2.ONE / k
+	_world.position = -by / k
 
 ## The zoom's room (the tray's floor), its limits, and its button, from the
 ## board as just laid out. A zoom in hand is kept and clamped.
@@ -1074,7 +1233,9 @@ func _plate_busy(q: int) -> bool:
 func _pop(t: float) -> Array:
 	var since := t - _opened - Motion.ENTER_DELAY
 	var grow := Motion.wide_pop_scale(since)
-	return [Transform2D(0.0, Vector2.ONE * grow, 0.0, size * 0.5 * (1.0 - grow)),
+	# About the card's middle, or in a world of its own the block's.
+	var about := size * 0.5 if not _bled else Vector2(size.x * 0.5, (_head_top + _board.end.y) * 0.5)
+	return [Transform2D(0.0, Vector2.ONE * grow, 0.0, about * (1.0 - grow)),
 		Motion.appear_level(since, Motion.ENTER_POP), grow]
 
 ## The field stands on the tray's floor under the entrance's pop, so its clip
@@ -1192,14 +1353,16 @@ func _draw() -> void:
 ## the tray's round inner corners (`_mask`).
 func _build_table() -> void:
 	var b := Face.Builder.new()
-	var clip := Face.Builder.round_rect(Vector2.ONE * 2.0, size - Vector2.ONE * 4.0, CARD_RADIUS - 2.0)
-	Rings._clip_polygon(b, clip, Pal.PG_TABLE.lerp(Pal.PARCHMENT, 0.5), clip)
-	# A few soft leaf shadows over the table, the way light falls through
-	# the garden onto it.
-	var seed_i: int = _state.n * 31 + _state.target
-	for d in 5:
-		var at := Vector2(size.x * _h01(seed_i, d + 10), size.y * _h01(seed_i, d + 20))
-		Scenery.soft_disc(b, at, 140.0, 90.0, Color(Pal.LAWN_DEEP, 0.07))
+	# In a world of its own the mat is the table (pixel_garden_world.gd).
+	if not _bled:
+		var clip := Face.Builder.round_rect(Vector2.ONE * 2.0, size - Vector2.ONE * 4.0, CARD_RADIUS - 2.0)
+		Rings._clip_polygon(b, clip, Pal.PG_TABLE.lerp(Pal.PARCHMENT, 0.5), clip)
+		# A few soft leaf shadows over the table, the way light falls through
+		# the garden onto it.
+		var seed_i: int = _state.n * 31 + _state.target
+		for d in 5:
+			var at := Vector2(size.x * _h01(seed_i, d + 10), size.y * _h01(seed_i, d + 20))
+			Scenery.soft_disc(b, at, 140.0, 90.0, Color(Pal.LAWN_DEEP, 0.07))
 	var r := _board
 	Scenery.soft_disc(b, r.get_center() + Vector2(0.0, r.size.y * 0.5 + 6.0), r.size.x * 0.56, 30.0,
 		Color(Pal.TEXT, 0.16))
@@ -2186,9 +2349,11 @@ func _draw_peek(t: float, shown: Array) -> void:
 	if _state.n > PEEK_BIG:
 		# A big picture as large as the card allows, over the board and as
 		# much of the head as it needs.
-		target = minf(size.x, size.y) - 2.0 * PEEK_EDGE
-		big = Rect2(Vector2(size.x * 0.5 - target * 0.5,
-			clampf(_board.get_center().y - target * 0.5, PEEK_EDGE, maxf(PEEK_EDGE, size.y - PEEK_EDGE - target))),
+		var room := _room()
+		target = minf(room.size.x, room.size.y) - 2.0 * PEEK_EDGE
+		big = Rect2(Vector2(room.position.x + room.size.x * 0.5 - target * 0.5,
+			clampf(_board.get_center().y - target * 0.5, room.position.y + PEEK_EDGE,
+				maxf(room.position.y + PEEK_EDGE, room.end.y - PEEK_EDGE - target))),
 			Vector2.ONE * target)
 	var r := Rect2(_thumb.position.lerp(big.position, e), _thumb.size.lerp(big.size, e))
 	var sc := r.size.x / _thumb.size.x
@@ -3083,7 +3248,10 @@ func _curl_cat(quiet: bool) -> void:
 ## words over it: Flawless; on Insane "Insane" over Flawless or the board's
 ## motto, on the night seal.
 func _draw_stamp(t: float, shown: Array) -> void:
-	var rad := size.x * STAMP_R * 0.75
+	# (Sized from the card's width, which a world of its own still has
+	# between the host's margins.)
+	var room := _room()
+	var rad := (room.size.x if _bled else size.x) * STAMP_R * 0.75
 	var insane: bool = _state.insane()
 	if _seal_mesh == null:
 		_seal_mesh = Seal.mesh(rad, insane)
@@ -3095,8 +3263,8 @@ func _draw_stamp(t: float, shown: Array) -> void:
 		k = lerpf(STAMP_FROM, 1.0, u * u) if e < STAMP_DROP else Motion.bump_scale(e - STAMP_DROP, 0.08, STAMP_DROP)
 	var alpha := clampf(e / 0.08, 0.0, 1.0) if not Motion.reduce else 1.0
 	var centre := _board.end - Vector2(rad * 0.7, rad * 0.6)
-	centre.x = clampf(centre.x, rad * 1.08, size.x - rad * 1.08)
-	centre.y = minf(centre.y, size.y - rad * 1.02)
+	centre.x = clampf(centre.x, room.position.x + rad * 1.08, room.end.x - rad * 1.08)
+	centre.y = minf(centre.y, (room.end.y if not _bled else size.y) - rad * 1.02)
 	var xf := Transform2D(STAMP_TILT, Vector2(k, k), 0.0, centre)
 	draw_set_transform_matrix(xf)
 	draw_mesh(_seal_mesh, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, alpha))

@@ -886,6 +886,10 @@ const PUZZLES := [
 		"card": "res://ui/menu/cards/marigold.gd",
 		"shell": "flat",
 		"tray": "none",
+		# Its world is the whole screen (`bleed`, puzzles/marigold_world.gd) and the
+		# levels stand where the day card was (docs/agents/flat-screens.md).
+		"bleed": true,
+		"level_card": true,
 		"actions": false,
 		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku: each garden (marigold_state.gd's BANDS) is its
@@ -913,6 +917,11 @@ const PUZZLES := [
 		"card": "res://ui/menu/cards/pixelgarden.gd",
 		"shell": "flat",
 		"tray": "none",
+		# Its world is the whole screen (`bleed`, puzzles/pixel_garden_world.gd) and the
+		# levels stand where the day card was (docs/agents/flat-screens.md).
+		"bleed": true,
+		"level_card": true,
+		"actions": false,
 		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku: each band of pictures (content/pixel_garden.json)
 		# is its own daily with its own done mark.
@@ -939,6 +948,10 @@ const PUZZLES := [
 		"card": "res://ui/menu/cards/drumbeat.gd",
 		"shell": "flat",
 		"tray": "none",
+		# Its world is the whole screen (`bleed`, puzzles/drumbeat_world.gd) and the
+		# levels stand where the day card was (docs/agents/flat-screens.md).
+		"bleed": true,
+		"level_card": true,
 		"actions": false,
 		"difficulties": [0, 1, 2, 3],
 		# Asks like Marigold: each level is its own daily with its own done
@@ -967,6 +980,10 @@ const PUZZLES := [
 		"card": "res://ui/menu/cards/trestle.gd",
 		"shell": "flat",
 		"tray": "none",
+		# Its world is the whole screen (`bleed`, puzzles/trestle_world.gd) and the
+		# levels stand where the day card was (docs/agents/flat-screens.md).
+		"bleed": true,
+		"level_card": true,
 		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku: each band of mined gaps (content/trestle.json) is
 		# its own daily with its own done mark.
@@ -993,6 +1010,10 @@ const PUZZLES := [
 		"card": "res://ui/menu/cards/minigolf.gd",
 		"shell": "flat",
 		"tray": "none",
+		# Its world is the whole screen (`bleed`, puzzles/minigolf_world.gd) and the
+		# levels stand where the day card was (docs/agents/flat-screens.md).
+		"bleed": true,
+		"level_card": true,
 		"actions": false,
 		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku: each course (minigolf_gen.gd's BANDS, holes mined
@@ -1021,6 +1042,10 @@ const PUZZLES := [
 		"card": "res://ui/menu/cards/horse.gd",
 		"shell": "flat",
 		"tray": "none",
+		# Its world is the whole screen (`bleed`, puzzles/horse_world.gd) and the
+		# levels stand where the day card was (docs/agents/flat-screens.md).
+		"bleed": true,
+		"level_card": true,
 		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku: each field (horse_gen.gd's BANDS, meadows mined
 		# into content/horse.json) is its own daily with its own done mark.

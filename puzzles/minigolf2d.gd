@@ -22,6 +22,15 @@ extends "res://core/puzzle_base.gd"
 ##   live  -- the gates, the aim, the ball, its trail, the flag and the
 ##            ripples: small, and built only while something moves.
 
+## The course is the whole screen (2026-10-13, the registry's `bleed`):
+## puzzles/minigolf_world.gd lies edge to edge behind the board, made on the
+## first `set_clear`, and everything here is laid in the frame the host's
+## rows leave (`_frame`, `_fo`, `_fs`) instead of the card. The card's own
+## lawn is not drawn then. On the win the frame slides and shrinks into the
+## win's span under the board's one transform, the world held still against
+## it. A board never told a clear (the tutorial's Green, a card) is laid in
+## its own rect as before.
+
 signal leave
 
 const State = preload("res://puzzles/minigolf_state.gd")
@@ -37,6 +46,13 @@ const NapCat = preload("res://ui/faces/nap_cat.gd")
 const Haptics = preload("res://core/haptics.gd")
 const MovesPill = preload("res://ui/flat/moves_pill.gd")
 const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
+const World = preload("res://puzzles/minigolf_world.gd")
+const FLAT_HOST_PATH := "res://ui/flat/flat_host.gd"
+## The lawn kept open under the field on a bleed board, for the world's
+## foot, and the slide into the win's span (the host's SLOT_TIME).
+const FOOT_BLED := 110.0
+const WIN_SLIDE := 0.45
+const WIN_PAD := 28.0
 
 # --- the screen, measured ---
 ## The card's inset round the field, the band over it the scorecard takes
@@ -223,6 +239,24 @@ var _tip_text := ""
 var _tip_mood := Face.Expr.HAPPY
 var _tip_idx := 0
 var _anim_until := 0.0
+## The world behind the board, and what the host's rows cover (set_clear).
+var _bled := false
+var _world: Control
+var _clear := Vector2.ZERO
+var _win_clear := Vector2.ZERO
+var _win_span := false
+var _slid_from := Vector2.ZERO
+var _slid_by := Vector2.ZERO
+var _slid_scale := 1.0
+var _slid := 0.0
+var _shift := 0.0
+var _placed := false
+var _slide_tw: Tween
+## The frame everything is laid in: its origin and its size.
+var _fo: Vector2:
+	get: return _frame().position
+var _fs: Vector2:
+	get: return _frame().size
 
 func puzzle_id() -> String: return "minigolf"
 func title() -> String: return "Mini Golf"
@@ -412,7 +446,8 @@ func _band() -> float:
 
 ## The card under the band: where a hole stands.
 func _area() -> Rect2:
-	return Rect2(Vector2(INSET, _band()), Vector2(size.x - 2.0 * INSET, size.y - _band() - FOOT))
+	var foot := FOOT_BLED if _bled else FOOT
+	return Rect2(Vector2(INSET, _band()), Vector2(_fs.x - 2.0 * INSET, _fs.y - _band() - foot))
 
 ## Pixels a field unit: a hole fills the card as far as ZOOM lets a small
 ## one grow, so a short hole is a big one.
@@ -432,6 +467,94 @@ func _hole_origin() -> Vector2:
 func _pt(v: Vector2) -> Vector2:
 	return _hole_origin() + v * _s()
 
+## The frame the board is laid in: its own rect in a card, and in a world of
+## its own the span the host's rows leave, on the host's side margin.
+func _frame() -> Rect2:
+	if not _bled:
+		return Rect2(Vector2.ZERO, size)
+	var side := float(load(FLAT_HOST_PATH).MARGIN)
+	return Rect2(Vector2(side, _clear.x), Vector2(size.x - 2.0 * side, size.y - _clear.x - _clear.y))
+
+## How far a hole slides when the next comes in: off the card, or in a
+## world of its own off the screen.
+func _swap_w() -> float:
+	return size.x if _bled else _fs.x
+
+## What the host's rows cover, in this board's own pixels (it is laid full
+## rect). The first call makes the world. While playing the frame is what is
+## left; on the win nothing is laid out again: the frame slides and shrinks
+## into the win's span.
+func set_clear(top: float, bottom: float, won := false) -> void:
+	Motion.stop(_slide_tw)
+	if not _bled:
+		_bled = true
+		clip_contents = false
+		_world = World.new()
+		_world.name = "World"
+		_world.show_behind_parent = true
+		add_child(_world)
+		move_child(_world, 0)
+		if won:
+			# Told a win before a playing span: the frame is the host's
+			# usual one until a layout says otherwise.
+			_clear = Vector2(top, bottom)
+	_win_span = won
+	if not won:
+		_clear = Vector2(top, bottom)
+		_slid = 0.0
+		_layout()
+		return
+	_win_clear = Vector2(top, bottom)
+	if size.x <= 0.0 or size.y <= 0.0:
+		return
+	_aim_win()
+	if Motion.reduce or not is_inside_tree() or _slid >= 1.0:
+		_slide_to(1.0)
+		return
+	_slide_tw = create_tween()
+	_slide_tw.tween_method(_slide_to, _slid, 1.0, WIN_SLIDE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+## Where the win's slide ends: the frame, shrunk to fit the win's span.
+func _aim_win() -> void:
+	var fr := _frame()
+	var span := size.y - _win_clear.x - _win_clear.y
+	_slid_from = fr.get_center()
+	_slid_scale = clampf(minf((fr.size.x - 2.0 * WIN_PAD) / fr.size.x, (span - 2.0 * WIN_PAD) / fr.size.y), 0.1, 1.0)
+	_slid_by = Vector2(size.x * 0.5, _win_clear.x + span * 0.5) - _slid_from
+
+func _slide_to(t: float) -> void:
+	_slid = t
+	_place()
+
+## The host slides the board `x` aside on a change of level; the world
+## stays where it is, and the board that is leaving shows none.
+func set_shift(x: float, leaving := false) -> void:
+	_shift = x
+	if _world != null:
+		_world.visible = not leaving
+	_place()
+
+## The host deals this board into a screen already standing: it arrives
+## whole.
+func skip_entrance() -> void:
+	_opened = _now() - 100.0
+	queue_redraw()
+
+## The board's transform at `_slid`, and the world's against it.
+func _place() -> void:
+	if _slid <= 0.0 and _shift == 0.0 and not _placed:
+		return
+	_placed = _slid > 0.0 or _shift != 0.0
+	var k := lerpf(1.0, _slid_scale, _slid)
+	var by := _slid_by * _slid + Vector2(_shift, 0.0)
+	pivot_offset = _slid_from
+	scale = Vector2(k, k)
+	position = by
+	if _world != null:
+		_world.pivot_offset = _slid_from
+		_world.scale = Vector2.ONE / k
+		_world.position = -by / k
+
 func card_height(available: float) -> float:
 	return available
 
@@ -439,6 +562,17 @@ func card_centred() -> bool:
 	return true
 
 func _layout() -> void:
+	if _world != null:
+		_world.size = size
+	if fx != null:
+		fx.position = _fo
+	if _win_span and _bled:
+		# Laid out under a win (a resize, or a day reopened solved): the
+		# slide is aimed again, and set at its end if it never ran.
+		_aim_win()
+		if _slid <= 0.0 and not (_slide_tw != null and _slide_tw.is_valid()):
+			_slid = 1.0
+	_place()
 	_still = null
 	_hole = null
 	_old_hole = null
@@ -629,7 +763,7 @@ func _on_sunk(t: float) -> void:
 				fx.cue(cue_name)
 			_sticker(tr(word), col, n == 1 or d < 0))
 	if n == 1 and not Motion.reduce:
-		fx.confetti(Vector2(size.x * 0.5, _band() + 20.0), 24, size.x * 0.8)
+		fx.confetti(Vector2(_fs.x * 0.5, _band() + 20.0), 24, _fs.x * 0.8)
 	_say(tr(word), Face.Expr.JOY if d <= 0 else Face.Expr.HAPPY)
 	if last:
 		fx.buzz(Haptics.WIN)
@@ -680,7 +814,7 @@ func _swap(t: float) -> void:
 ## A word of praise popped over the green.
 func _sticker(text: String, col: Color, big: bool) -> void:
 	_stickers.append({"text": text, "col": col, "at": _now(), "life": STICKER_LIFE, "px": 92 if big else 76,
-		"pos": Vector2(size.x * 0.5, _band() + (size.y - _band()) * 0.36), "tilt": -0.06})
+		"pos": Vector2(_fs.x * 0.5, _band() + (_fs.y - _band()) * 0.36), "tilt": -0.06})
 
 ## A small word by the ball.
 func _float_word(key: String, at: Vector2) -> void:
@@ -701,8 +835,8 @@ func _draw_stickers(t: float, seen: float) -> void:
 		var rise := 0.0 if Motion.reduce else -26.0 * e
 		var w: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, px).x
 		# a long word in another language is lettered smaller, never off the card
-		var fit := minf(1.0, (size.x - 60.0) / maxf(w, 1.0))
-		draw_set_transform(Vector2(st.pos) + Vector2(0.0, rise), float(st.tilt), Vector2(k, k) * fit)
+		var fit := minf(1.0, (_fs.x - 60.0) / maxf(w, 1.0))
+		draw_set_transform(_fo + Vector2(st.pos) + Vector2(0.0, rise), float(st.tilt), Vector2(k, k) * fit)
 		var o := Vector2(-w * 0.5, px * 0.36)
 		draw_string_outline(font, o, text, HORIZONTAL_ALIGNMENT_LEFT, -1, px, int(px * 0.3), Color(Color("fffaf0"), fade))
 		draw_string_outline(font, o, text, HORIZONTAL_ALIGNMENT_LEFT, -1, px, int(px * 0.13), Color(Pal.TEXT, fade))
@@ -859,17 +993,17 @@ func _party() -> void:
 		if not is_inside_tree():
 			return
 		fx.cue("party")
-		fx.confetti(Vector2(size.x * 0.5, _band() + 20.0), 30, size.x * 0.9))
+		fx.confetti(Vector2(_fs.x * 0.5, _band() + 20.0), 30, _fs.x * 0.9))
 
 func _cat_px() -> float:
-	return size.x * CAT_PX
+	return _fs.x * CAT_PX
 
 ## Where the cat curls up: on the lawn at the foot of the card.
 func _cat_spot() -> Vector2:
-	return Vector2(size.x * 0.82, size.y - _cat_px() * 0.55)
+	return _fo + Vector2(_fs.x * 0.82, _fs.y - _cat_px() * 0.55)
 
 func _cat_start() -> Vector2:
-	return Vector2(size.x + _cat_px() * 0.6, size.y - _cat_px() * 0.55)
+	return _fo + Vector2(_fs.x + _cat_px() * 0.6, _fs.y - _cat_px() * 0.55)
 
 func _place_cat(t: float) -> void:
 	if t < _cat_at or _s() <= 0.0:
@@ -928,7 +1062,7 @@ func _place_cat(t: float) -> void:
 ## over it: Flawless; on Insane "Insane" over Flawless or Swing Gates, on
 ## the night seal.
 func _draw_stamp(t: float, shown: Array) -> void:
-	var rad := size.x * STAMP_R
+	var rad := _fs.x * STAMP_R
 	var insane: bool = _state.band >= 3
 	if _seal_mesh == null:
 		_seal_mesh = Seal.mesh(rad, insane)
@@ -939,7 +1073,7 @@ func _draw_stamp(t: float, shown: Array) -> void:
 		var u := clampf(e / STAMP_DROP, 0.0, 1.0)
 		k = lerpf(STAMP_FROM, 1.0, u * u) if e < STAMP_DROP else Motion.bump_scale(e - STAMP_DROP, 0.08, STAMP_DROP)
 	var alpha := clampf(e / 0.08, 0.0, 1.0) if not Motion.reduce else 1.0
-	var centre := Vector2(size.x * 0.5, _band() + (size.y - _band()) * 0.6)
+	var centre := _fo + Vector2(_fs.x * 0.5, _band() + (_fs.y - _band()) * 0.6)
 	var xf := Transform2D(STAMP_TILT, Vector2(k, k), 0.0, centre)
 	draw_set_transform_matrix(xf)
 	draw_mesh(_seal_mesh, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, alpha))
@@ -964,11 +1098,12 @@ func _draw() -> void:
 	if seen <= 0.0:
 		return
 	var grow := 1.0 if Motion.reduce else Motion.wide_pop_scale(since)
-	var mid := size * 0.5
-	var xf := Transform2D(0.0, Vector2.ONE * grow, 0.0, mid * (1.0 - grow))
+	var mid := _fs * 0.5
+	var xf := Transform2D(0.0, Vector2.ONE * grow, 0.0, _fo + mid * (1.0 - grow))
 	var tint := Color(1.0, 1.0, 1.0, seen)
 	var shown: Array = []
-	if _still == null:
+	# In a world of its own the lawn is the world's.
+	if _still == null and not _bled:
 		_still = _build_still()
 	_put(_still, xf, tint, shown)
 	# the hole in play, and the one leaving while the next slides in
@@ -981,9 +1116,9 @@ func _draw() -> void:
 		Parts.hole(b, _state.sim, Vector2.ZERO, _s())
 		_hole = b.mesh()
 	if slide > 0.0 and _old_hole != null:
-		var gone := Transform2D(0.0, _old_origin + Vector2(-(1.0 - slide) * size.x, 0.0))
+		var gone := Transform2D(0.0, _old_origin + Vector2(-(1.0 - slide) * _swap_w(), 0.0))
 		_put(_old_hole, xf * gone, tint, shown)
-	var here := xf * Transform2D(0.0, _hole_origin() + Vector2(slide * size.x, 0.0))
+	var here := xf * Transform2D(0.0, _hole_origin() + Vector2(slide * _swap_w(), 0.0))
 	# no fade: a hole is layers in one mesh, and a faint one shows them all
 	var hole_tint := tint
 	_put(_hole, here, hole_tint, shown)
@@ -992,7 +1127,7 @@ func _draw() -> void:
 	_put(_live, here, hole_tint, shown)
 	_draw_hud(t, xf, tint, shown)
 	if max_moves > 0 and not is_done():
-		_moves_pill.draw(self, xf * Vector2(size.x * 0.5, 34.0), moves_left, t)
+		_moves_pill.draw(self, xf * Vector2(_fs.x * 0.5, 34.0), moves_left, t)
 	_draw_stickers(t, seen)
 	if t >= _stamp_at:
 		_draw_stamp(t, shown)
@@ -1131,14 +1266,14 @@ func _draw_hud(t: float, xf: Transform2D, tint: Color, shown: Array) -> void:
 	var top := _hud_top()
 	var step := 2.0 * PIP_R + PIP_GAP
 	var wide := step * float(holes) - PIP_GAP
-	var x0 := (size.x - wide) * 0.5 + PIP_R
+	var x0 := (_fs.x - wide) * 0.5 + PIP_R
 	var y := top + PIP_Y
 	var bumping := false
 	for i in holes:
 		if not Motion.reduce and t - _pip_at[i] < Motion.BUMP_TIME + SINK_TIME:
 			bumping = true
 	var index: int = _state.index
-	var key := "%d|%s|%d|%s|%d" % [index, str(_state.card), int(size.x), str(_state.sim.sunk), int(top)]
+	var key := "%d|%s|%d|%s|%d" % [index, str(_state.card), int(_fs.x), str(_state.sim.sunk), int(top)]
 	if _hud == null or _hud_for != key or bumping:
 		var b := Face.Builder.new()
 		for i in holes:
@@ -1181,14 +1316,14 @@ func _draw_hud(t: float, xf: Transform2D, tint: Color, shown: Array) -> void:
 		var tag := tr("GF_EVEN") if d == 0 else ("+%d" % d if d > 0 else "−%d" % -d)
 		var tw: float = font.get_string_size(tag, HORIZONTAL_ALIGNMENT_LEFT, -1, TAG_FONT).x
 		var trise := (font.get_ascent(TAG_FONT) - font.get_descent(TAG_FONT)) * 0.5
-		var right := minf(size.x - 28.0, x0 + wide - PIP_R + 28.0 + tw)
+		var right := minf(_fs.x - 28.0, x0 + wide - PIP_R + 28.0 + tw)
 		var ink: Color = Pal.SUN_DEEP.darkened(0.25) if d < 0 else (Pal.TEXT if d == 0 else Pal.FLOWER_DEEP.darkened(0.2))
 		draw_string(font, Vector2(right - tw, y + trise), tag, HORIZONTAL_ALIGNMENT_LEFT, -1, TAG_FONT, Color(ink, tint.a))
 	var line := _line()
 	if line != "":
 		var body: Font = CozyTheme.body(700)
 		var lw: float = body.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, LINE_FONT).x
-		draw_string(body, Vector2((size.x - lw) * 0.5, top + LINE_Y + body.get_ascent(LINE_FONT) * 0.36), line,
+		draw_string(body, Vector2((_fs.x - lw) * 0.5, top + LINE_Y + body.get_ascent(LINE_FONT) * 0.36), line,
 			HORIZONTAL_ALIGNMENT_LEFT, -1, LINE_FONT, Color(Pal.TEXT, 0.75 * tint.a))
 	draw_set_transform(Vector2.ZERO)
 
@@ -1215,7 +1350,7 @@ func _draw_toast(t: float, shown: Array) -> void:
 		return
 	var line := _toast
 	var font: Font = CozyTheme.body(600)
-	var room := maxf(TOAST_PAD, size.x - 120.0)
+	var room := maxf(TOAST_PAD, _fs.x - 120.0)
 	var text_room := room - TOAST_PAD
 	var one: float = font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, TOAST_FONT).x
 	var lines := 1
@@ -1235,7 +1370,7 @@ func _draw_toast(t: float, shown: Array) -> void:
 		_toast_mesh_for = key
 	if _toast_mesh == null:
 		return
-	var mid := Vector2(size.x * 0.5, size.y - 40.0 - h * 0.5)
+	var mid := _fo + Vector2(_fs.x * 0.5, _fs.y - 40.0 - h * 0.5)
 	draw_mesh(_toast_mesh, null, Transform2D(0.0, mid), Color(Color.WHITE, alpha))
 	shown.append(_toast_mesh)
 	var top := mid.y - h * 0.5 + (TOAST_H - font.get_height(TOAST_FONT)) * 0.5 + font.get_ascent(TOAST_FONT)
@@ -1328,7 +1463,7 @@ func _span() -> float:
 
 ## Where the ball lies, on the card.
 func ball_at() -> Vector2:
-	return _pt(_state.sim.p)
+	return _fo + _pt(_state.sim.p)
 
 func _putt() -> void:
 	var power := _power

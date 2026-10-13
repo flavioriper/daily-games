@@ -25,6 +25,14 @@ extends "res://core/puzzle_base.gd"
 ## horse's shake of the head at a Submit that is not yet one, and the win --
 ## the horse kicks up its heels, the bales hop in the order they were laid,
 ## and flowers open across the pen from the horse outward.
+##
+## The paddock is the whole screen (2026-10-13, the registry's `bleed`):
+## puzzles/horse_world.gd lies edge to edge as the board's first child from
+## the first `set_clear`, and the pills and the field are laid in the span
+## the host's rows leave, the meadow card and its ring gone. On the win the
+## board slides and shrinks into the win's span under its own one transform,
+## the world held still against it. A meadow never told a clear (the
+## tutorial's, or the board in a card) is laid as it always was.
 
 const State = preload("res://puzzles/horse_state.gd")
 const Gen = preload("res://puzzles/horse_gen.gd")
@@ -36,6 +44,8 @@ const Face = preload("res://ui/faces/face.gd")
 const Parts = preload("res://ui/faces/horse_parts.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 const Seal = preload("res://ui/flat/seal.gd")
+const World = preload("res://puzzles/horse_world.gd")
+const FLAT_HOST := "res://ui/flat/flat_host.gd"
 const CozyTheme = preload("res://ui/theme.gd")
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 const MovesPill = preload("res://ui/flat/moves_pill.gd")
@@ -45,6 +55,10 @@ const MOVES_BONUS := 5
 
 # --- the meadow ---
 const PAD := 30.0
+## The slide into the win's span (the host's SLOT_TIME), and the air the
+## block keeps inside that span.
+const WIN_SLIDE := 0.45
+const WIN_PAD := 28.0
 ## The strip the pills stand in over the field.
 const HUD_ROW := 76.0
 const CARD_RADIUS := 26.0
@@ -158,7 +172,26 @@ var _moves_pill := MovesPill.new()
 
 var _cell := 0.0
 var _grid := Vector2.ZERO
+## The meadow card; in a world of its own, the block of the pills' strip and
+## the field, as wide as the host's rows.
 var _card := Rect2()
+## The world, made on the first `set_clear`, and what the host's rows cover
+## of the rect, top and bottom, while playing.
+var _world: Control
+var _bled := false
+var _clear := Vector2.ZERO
+## The board's own transform on the win: the block's middle while playing,
+## how far it moves and how small it gets, and how far along it is.
+var _slid_from := Vector2.ZERO
+var _slid_by := Vector2.ZERO
+var _slid_scale := 1.0
+var _slid := 0.0
+var _won := false
+var _win_clear := Vector2.ZERO
+var _placed := false
+## The host's slide on a change of level (set_shift).
+var _shift := 0.0
+var _slide_tw: Tween
 ## Bumped on every rebuild; a pending callback from the last board checks it.
 var _gen := 0
 
@@ -386,15 +419,40 @@ func _deal() -> void:
 ## and the card is cut to the field and centred in the slot (Tents' reason:
 ## the cell is capped by the width, so there is slack however it is cut).
 func _layout() -> void:
+	if _world != null:
+		_world.size = size
+	_place()
 	if state.w <= 0:
 		return
-	_cell = _cell_for(size.y)
-	if _cell <= 0.0:
-		return
-	var grid := Vector2(_cell * state.w, _cell * state.h)
-	var tall := minf(size.y, grid.y + 2.0 * PAD + HUD_ROW)
-	_card = Rect2(0.0, (size.y - tall) * 0.5, size.x, tall)
-	_grid = Vector2(size.x * 0.5 - grid.x * 0.5, _card.position.y + HUD_ROW + (tall - HUD_ROW - grid.y) * 0.5)
+	var grid := Vector2.ZERO
+	if _bled:
+		# The pills' strip at the top of the span the rows leave, on the
+		# host's margin, and the field under it, as wide as that margin
+		# allows; the yard is the world's, under the field.
+		var side := _side()
+		var span := size.y - _clear.x - _clear.y
+		_cell = minf((size.x - 2.0 * side) / state.w, (span - HUD_ROW) / state.h)
+		if _cell <= 0.0:
+			return
+		grid = Vector2(_cell * state.w, _cell * state.h)
+		_card = Rect2(side, _clear.x, size.x - 2.0 * side, HUD_ROW + grid.y)
+		_grid = Vector2(size.x * 0.5 - grid.x * 0.5, _clear.x + HUD_ROW)
+		_world.set_foot(_grid.y + grid.y)
+		if _won:
+			# Laid out under a win (a resize, or a day reopened solved): the
+			# slide is aimed again, and set at its end if it never ran.
+			_aim()
+			if _slid <= 0.0 and not (_slide_tw != null and _slide_tw.is_valid()):
+				_slid = 1.0
+			_place()
+	else:
+		_cell = _cell_for(size.y)
+		if _cell <= 0.0:
+			return
+		grid = Vector2(_cell * state.w, _cell * state.h)
+		var tall := minf(size.y, grid.y + 2.0 * PAD + HUD_ROW)
+		_card = Rect2(0.0, (size.y - tall) * 0.5, size.x, tall)
+		_grid = Vector2(size.x * 0.5 - grid.x * 0.5, _card.position.y + HUD_ROW + (tall - HUD_ROW - grid.y) * 0.5)
 	_flat_cache = {}
 	_build_units()
 	_still = _build_still()
@@ -420,6 +478,97 @@ func card_height(available: float) -> float:
 
 func card_centred() -> bool:
 	return true
+
+## What the host's rows cover, in this board's own pixels (it is laid full
+## rect). The first call makes the paddock, as the board's first child and
+## behind its own drawing. While playing the field is laid in what is left;
+## on the win it is not laid out again: the board slides and shrinks into
+## the win's span.
+func set_clear(top: float, bottom: float, won := false) -> void:
+	Motion.stop(_slide_tw)
+	if not _bled:
+		_bled = true
+		_world = World.new()
+		_world.name = "World"
+		_world.show_behind_parent = true
+		add_child(_world)
+		move_child(_world, 0)
+		_world.size = size
+	_won = won
+	if not won:
+		_clear = Vector2(top, bottom)
+		_slid = 0.0
+		_layout()
+		return
+	_win_clear = Vector2(top, bottom)
+	# A day reopened solved is told before it has been laid out for a world
+	# of its own: _layout lays it and sets the slide.
+	if _cell <= 0.0 or _card.position.x <= 0.0:
+		_layout()
+		return
+	_aim()
+	if Motion.reduce or not is_inside_tree() or _slid >= 1.0:
+		_slide(1.0)
+		return
+	_slide_tw = create_tween()
+	_slide_tw.tween_method(_slide, _slid, 1.0, WIN_SLIDE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+## Where the win's slide ends, from the block as it is laid and the win's
+## span: the pills' strip and the field, WIN_PAD inside the span.
+func _aim() -> void:
+	var span := size.y - _win_clear.x - _win_clear.y
+	_slid_from = _card.get_center()
+	_slid_scale = clampf(minf((size.x - 2.0 * _side()) / _card.size.x,
+		(span - 2.0 * WIN_PAD) / _card.size.y), 0.1, 1.0)
+	_slid_by = Vector2(size.x * 0.5, _win_clear.x + span * 0.5) - _slid_from
+
+## The host's side margin, which the field keeps although the paddock does not.
+func _side() -> float:
+	return float(load(FLAT_HOST).MARGIN)
+
+func _slide(t: float) -> void:
+	_slid = t
+	_place()
+
+## The host slides the board `x` aside on a change of level; the paddock
+## stays where it is, and the board that is leaving shows none, so the one
+## arriving under it is not hidden.
+func set_shift(x: float, leaving := false) -> void:
+	_shift = x
+	if _world != null:
+		_world.visible = not leaving
+	_place()
+
+## The host deals this board into a screen already standing: the meadow,
+## the horse and the wheat are there whole.
+func skip_entrance() -> void:
+	var now := _now()
+	_opened = now - 10.0
+	for i in _lvl_to.size():
+		_lvl_from[i] = _lvl_to[i]
+		_lvl_at[i] = now - 10.0
+	_wheat_until = 0.0
+	_anim_until = 0.0
+	_wheat_dirty = true
+	_hud_layer.queue_redraw()
+	_life_layer.queue_redraw()
+	_redraw()
+
+## The board's transform at `_slid`, and the paddock's against it, so the
+## paddock stays where it is while the field and everything on it goes.
+func _place() -> void:
+	if _slid <= 0.0 and _shift == 0.0 and not _placed:
+		return
+	_placed = _slid > 0.0 or _shift != 0.0
+	var k := lerpf(1.0, _slid_scale, _slid)
+	var by := _slid_by * _slid + Vector2(_shift, 0.0)
+	pivot_offset = _slid_from
+	scale = Vector2(k, k)
+	position = by
+	if _world != null:
+		_world.pivot_offset = _slid_from
+		_world.scale = Vector2.ONE / k
+		_world.position = -by / k
 
 ## Control-local point over the centre of `cell`. The harnesses tap these.
 func cell_centre(cell: int) -> Vector2:
@@ -468,18 +617,20 @@ func _build_units() -> void:
 ## the field with its faint plot lines; the water; the boulders.
 func _build_still() -> ArrayMesh:
 	var b := Face.Builder.new()
-	b.fan(Face.Builder.round_rect(_card.position, _card.size, CARD_RADIUS), Pal.LEAF_DEEP)
-	b.fan(Face.Builder.round_rect(_card.position, _card.size - Vector2(0.0, CARD_EDGE), CARD_RADIUS), Pal.TURF_RING)
 	var field := _field_px()
-	# Tufts in the ring, never on the field: by the card's own lot.
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 20260915 + state.horse * 31 + state.w
-	for _k in 26:
-		var p := _card.position + Vector2(rng.randf() * _card.size.x, rng.randf() * (_card.size.y - CARD_EDGE))
-		if field.grow(10.0).has_point(p) or p.y < _card.position.y + HUD_ROW \
-				or not _card.grow(-16.0).has_point(p):
-			continue
-		Scenery.tuft(b, p, _cell * 0.16)
+	# In a world of its own the paddock is the ground: no card, no ring.
+	if not _bled:
+		b.fan(Face.Builder.round_rect(_card.position, _card.size, CARD_RADIUS), Pal.LEAF_DEEP)
+		b.fan(Face.Builder.round_rect(_card.position, _card.size - Vector2(0.0, CARD_EDGE), CARD_RADIUS), Pal.TURF_RING)
+		# Tufts in the ring, never on the field: by the card's own lot.
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 20260915 + state.horse * 31 + state.w
+		for _k in 26:
+			var p := _card.position + Vector2(rng.randf() * _card.size.x, rng.randf() * (_card.size.y - CARD_EDGE))
+			if field.grow(10.0).has_point(p) or p.y < _card.position.y + HUD_ROW \
+					or not _card.grow(-16.0).has_point(p):
+				continue
+			Scenery.tuft(b, p, _cell * 0.16)
 	b.fan(Face.Builder.round_rect(field.position - Vector2.ONE * 4.0, field.size + Vector2.ONE * 8.0,
 		FIELD_RADIUS + 4.0), Color(Pal.LEAF_DEEP, 0.35))
 	b.fan(Face.Builder.round_rect(field.position, field.size, FIELD_RADIUS), Pal.MEADOW)
@@ -801,7 +952,11 @@ func _draw_hud() -> void:
 	if since < 0.0 and not Motion.reduce:
 		return
 	var font: Font = CozyTheme.display(700)
-	var y := _card.position.y + HUD_ROW * 0.5 + 6.0
+	# In a card the pills hang a little low in their strip and PAD inside
+	# it; in a world of its own they stand on the rows' margin, just over
+	# the field.
+	var y := _card.position.y + HUD_ROW * 0.5 + (-6.0 if _bled else 6.0)
+	var pad := 0.0 if _bled else PAD
 	var left_text := "%d" % state.bales_left()
 	var closed: bool = state.closed()
 	var right_text: String = ("%d / %d" % [state.score(), state.target]) if closed \
@@ -819,8 +974,8 @@ func _draw_hud() -> void:
 	var rw := font.get_string_size(right_text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, PILL_FONT).x
 	var icon := PILL_H * 0.9
 	var boxes := [Vector2(lw + icon + 44.0, PILL_H), Vector2(rw + icon + 44.0, PILL_H)]
-	var centres := [Vector2(_card.position.x + PAD + boxes[0].x * 0.5, y),
-		Vector2(_card.end.x - PAD - boxes[1].x * 0.5, y)]
+	var centres := [Vector2(_card.position.x + pad + boxes[0].x * 0.5, y),
+		Vector2(_card.end.x - pad - boxes[1].x * 0.5, y)]
 	var b := Face.Builder.new()
 	var scales := [1.0, 1.0]
 	for k in 2:

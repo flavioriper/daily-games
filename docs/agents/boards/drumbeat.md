@@ -118,3 +118,27 @@ from one `drum(ratio)`: a felt-beaten skin at 1, 1.5, 2 and 2.67 times 105
 Hz, a little shorter as it rises, its octave and twelfth strong enough
 that a phone's speaker (nothing under 250 Hz) still plays each its own note. `DRUM_KINDS` still plays 0, then 0
 and 3, then 0, 1 and 3. Unheard.
+
+### The festival evening is the whole screen (2026-10-13)
+
+The redesign (`docs/agents/flat-screens.md`, "Every board gets a world of
+its own"), built unattended. `puzzles/drumbeat_world.gd` is the festival's
+evening kept light (cream over the host's rows, apricot, the stage's low
+sky), the sun going down behind the hills, a cloud and two early stars in
+the gap of the tools row, and the festival mat from the horizon past the
+foot with crossed drumsticks, a tambourine and confetti under the drums.
+**The scene runs edge to edge** from under the tools row to the foot (a
+road cut at the margins would read as a panel): the Control is moved down
+under the rows and every bare `size` became `_sz()`. The paper card,
+the dark sky with its stars and moon, and the mat went to the world. On
+the win there is no scale: the scene tilts down into the win's span, the
+drums fade out, the cat curls up on the road, and the sparks, the rewards
+and the cat drop to z 0 so nothing draws over the host's cards.
+
+- Registry: `bleed`, `level_card`; `capabilities()` is still empty,
+  so Undo and Hint stand greyed on the tools row and the bin restarts.
+- `opengl3_angle`, 810x1440, `tests/_shot_drumbeat.gd -- <dir> d=0
+  full`: 93 to 103 draw calls in the song, 124 in Go-Go, 82 on the win.
+- Decided for the user, unconfirmed: a light evening; a stage of 332 at
+  1920 (about 500 in the card); drums 8% larger. Owed: a phone, the user's
+  ear on nothing having moved in time.

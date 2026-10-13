@@ -33,6 +33,18 @@ extends "res://core/puzzle_base.gd"
 ##   the pot, the seed and the sun's three parts are built once and moved by
 ##   transform, so an idle garden rebuilds nothing.
 ##
+## The garden's evening is the whole screen (2026-10-13, the registry's
+## `bleed`): once the host tells the board what its rows cover
+## (`set_clear`), the board stops being the card. It becomes the arbor
+## alone -- the counts' painted sign, the two posts and the picture between
+## them -- a Control exactly that big, laid in the span the rows leave, and
+## puzzles/marigold_world.gd lies edge to edge under it, a sibling just
+## below the board, not a child: the board clips to its own rect, so the
+## close-up of the last marigold stays inside the arbor. On the win the
+## arbor slides and shrinks into the win's span under its own transform and
+## the world does not move. A garden never told a clear (the tutorial's
+## `Garden`, a card) is laid and drawn as it always was.
+##
 ## Spec: docs/superpowers/specs/2026-09-26-marigold-flat-design.md; the
 ## polish (hearts, Sweethearts, the gags, the sounds):
 ## docs/superpowers/specs/2026-10-01-marigold-polish-design.md.
@@ -53,6 +65,8 @@ const RunMesh = preload("res://ui/flat/run_mesh.gd")
 const Haptics = preload("res://core/haptics.gd")
 const MovesPill = preload("res://ui/flat/moves_pill.gd")
 const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
+const World = preload("res://puzzles/marigold_world.gd")
+const FLAT_HOST := "res://ui/flat/flat_host.gd"
 
 # --- the screen, measured ---
 ## The card's inset round the field, the band over it the counts take, the
@@ -61,6 +75,15 @@ const INSET := 22.0
 const BAND := 112.0
 const CARD_RADIUS := 32.0
 const FOOT := 10.0
+## In a world of its own: an arbor post's width in field units, the world
+## left open under the arbor (at a screen 1080 wide), the corner of the
+## counts' sign, how far inside the win's span the arbor lands, and the
+## slide into it (the host's SLOT_TIME).
+const POST := 3.0
+const FOOT_OPEN := 56.0
+const SIGN_RADIUS := 28.0
+const WIN_PAD := 28.0
+const WIN_SLIDE := 0.45
 ## The sun's radius, in field units.
 const SUN_R := 3.4
 const SCORE_FONT := 52
@@ -284,6 +307,21 @@ const HAPTICS := {
 
 var _state = State.new()
 var fx: Node2D
+## A world of its own (set_clear): the world under the board, what the
+## host's rows cover while playing and on the win, the arbor's rect at
+## rest, where and how small it lands on the win, how far along that slide
+## it is, and the host's shift on a change of level.
+var _bled := false
+var _world: Control
+var _clear := Vector2.ZERO
+var _win_clear := Vector2.ZERO
+var _rest := Rect2()
+var _win_at := Vector2.ZERO
+var _win_k := 1.0
+var _slid := 0.0
+var _shift := 0.0
+var _host_won := false
+var _slide_tw: Tween
 
 ## "aim", "shot" (a seed is out), "pick" (the blooms are picked), "out" (no
 ## seeds left, the garden about to grow back), "won".
@@ -660,6 +698,10 @@ func _ready() -> void:
 
 func _exit_tree() -> void:
 	_close_card()
+	# The world is a sibling: it goes with the board.
+	if is_instance_valid(_world):
+		_world.queue_free()
+	_world = null
 	if not _think.is_empty():
 		WorkerThreadPool.wait_for_task_completion(int(_think.id))
 		_think = {}
@@ -777,6 +819,8 @@ func _fresh(t: float) -> void:
 
 ## Pixels a field unit.
 func _s() -> float:
+	if _bled:
+		return maxf(0.0, minf(size.x / (State.W + 2.0 * POST), (size.y - BAND - FOOT) / State.H))
 	var w := (size.x - 2.0 * INSET) / State.W
 	var h := (size.y - BAND - INSET - FOOT) / State.H
 	return maxf(0.0, minf(w, h))
@@ -784,6 +828,8 @@ func _s() -> float:
 ## The field's top-left.
 func _origin() -> Vector2:
 	var s := _s()
+	if _bled:
+		return Vector2((size.x - State.W * s) * 0.5, BAND)
 	var room := size.y - BAND - FOOT
 	return Vector2((size.x - State.W * s) * 0.5, BAND + maxf(0.0, (room - State.H * s) * 0.5))
 
@@ -795,6 +841,112 @@ func card_height(available: float) -> float:
 
 func card_centred() -> bool:
 	return true
+
+## What the host's rows cover of the screen, top and bottom. While playing
+## the arbor is laid in what is left; on the win it is not laid out again,
+## it slides and shrinks into the win's span.
+func set_clear(top: float, bottom: float, won := false) -> void:
+	Motion.stop(_slide_tw)
+	if not _bled:
+		_bled = true
+		set_anchors_preset(Control.PRESET_TOP_LEFT, true)
+		var slot := get_parent() as Control
+		if slot != null:
+			_world = World.new()
+			_world.name = "MarigoldWorld"
+			slot.add_child(_world)
+			slot.move_child(_world, get_index())
+			_world.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			if not slot.resized.is_connected(_fit):
+				slot.resized.connect(_fit)
+	_host_won = won
+	if not won:
+		_clear = Vector2(top, bottom)
+		_slid = 0.0
+		_fit()
+		return
+	_win_clear = Vector2(top, bottom)
+	if _rest.size.x <= 0.0:
+		# A day reopened solved, told before the screen has a size: _fit
+		# lays the arbor at the slide's end when it has one.
+		if _clear == Vector2.ZERO:
+			_clear = Vector2(top, bottom)
+		_fit()
+		return
+	_aim_win()
+	if Motion.reduce or not is_inside_tree() or _slid >= 1.0:
+		_slide(1.0)
+		return
+	_slide_tw = create_tween()
+	_slide_tw.tween_method(_slide, _slid, 1.0, WIN_SLIDE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+## The screen the arbor is laid on: the host's slot.
+func _area() -> Vector2:
+	var slot := get_parent() as Control
+	return slot.size if slot != null else size
+
+## The host's side margin.
+func _side() -> float:
+	return float(load(FLAT_HOST).MARGIN)
+
+## The arbor's rect in the span the rows leave: as big as the span's height
+## and the host's margins allow, its top right under the tools row, the
+## world open under it.
+func _fit() -> void:
+	if not _bled:
+		return
+	var area := _area()
+	if area.x <= 0.0 or area.y <= 0.0:
+		return
+	var span := area.y - _clear.x - _clear.y - FOOT_OPEN * area.x / 1080.0
+	var s := maxf(0.0, minf((area.x - 2.0 * _side()) / (State.W + 2.0 * POST), (span - BAND - FOOT) / State.H))
+	var sz := Vector2((State.W + 2.0 * POST) * s, BAND + FOOT + State.H * s)
+	_rest = Rect2(Vector2((area.x - sz.x) * 0.5, _clear.x), sz)
+	if _host_won:
+		_aim_win()
+		if _slid <= 0.0 and not (_slide_tw != null and _slide_tw.is_valid()):
+			_slid = 1.0
+	_place()
+
+## Where the win's slide ends: the arbor whole, WIN_PAD inside the span.
+func _aim_win() -> void:
+	var area := _area()
+	var span := area.y - _win_clear.x - _win_clear.y
+	_win_k = clampf(minf((area.x - 2.0 * _side() - 2.0 * WIN_PAD) / maxf(_rest.size.x, 1.0),
+		(span - 2.0 * WIN_PAD) / maxf(_rest.size.y, 1.0)), 0.1, 1.0)
+	_win_at = Vector2((area.x - _rest.size.x * _win_k) * 0.5, _win_clear.x + (span - _rest.size.y * _win_k) * 0.5)
+
+func _slide(t: float) -> void:
+	_slid = t
+	_place()
+
+## The arbor's rect and transform at `_slid`, the host's shift added. The
+## size is only ever the rest's, so a slide lays nothing out again.
+func _place() -> void:
+	if not _bled or _rest.size.x <= 0.0:
+		return
+	var k := lerpf(1.0, _win_k, _slid)
+	pivot_offset = Vector2.ZERO
+	scale = Vector2(k, k)
+	size = _rest.size
+	position = _rest.position.lerp(_win_at, _slid) + Vector2(_shift, 0.0)
+
+## The host slides the board `x` aside on a change of level. The world is
+## not the board's child and stays where it is; the board that is leaving
+## shows none, so the one arriving under it is not hidden.
+func set_shift(x: float, leaving := false) -> void:
+	_shift = x
+	if is_instance_valid(_world):
+		_world.visible = not leaving
+	_place()
+
+## The host deals this board into a screen already standing: the garden
+## arrives whole, its pop and its buds' growing already over.
+func skip_entrance() -> void:
+	var t := _now()
+	_opened = t - 100.0
+	_grown_at = t - 100.0
+	queue_redraw()
 
 func _layout() -> void:
 	_still = null
@@ -2346,7 +2498,15 @@ func _build_still() -> ArrayMesh:
 	var o := _origin()
 	var fw := State.W * s
 	var fh := State.H * s
-	_vgrad(b, Rect2(Vector2.ZERO, size), Pal.MG_CARD, Pal.MG_CARD_DEEP)
+	if _bled:
+		# no card: the counts' painted sign across the arbor's top, and the
+		# picture and the posts under it
+		var first := b.verts.size()
+		b.fan(Face.Builder.round_rect(Vector2.ZERO, Vector2(size.x, BAND + 3.0 * s), SIGN_RADIUS), Color.WHITE)
+		for i in range(first, b.verts.size()):
+			b.cols[i] = Pal.MG_CARD.lerp(Pal.MG_CARD_DEEP, clampf(b.verts[i].y / maxf(size.y, 1.0), 0.0, 1.0))
+	else:
+		_vgrad(b, Rect2(Vector2.ZERO, size), Pal.MG_CARD, Pal.MG_CARD_DEEP)
 	# the sky, then the ranges, then the pond
 	var horizon := 58.0
 	_vgrad(b, Rect2(o, Vector2(fw, horizon * s)), Pal.MG_SKY_TOP, Pal.MG_SKY_LOW)
@@ -2456,7 +2616,7 @@ func _build_still() -> ArrayMesh:
 			if k % 2 == 0:
 				b.ellipse(tip + Vector2(0.0, s * 1.6), s * 0.5, s * 1.4, Pal.MG_ARBOR_DEEP)
 	# the arbor: a post down each side and an arch over the sun
-	var post := minf(3.0 * s, maxf(0.0, o.x - 4.0))
+	var post := o.x if _bled else minf(3.0 * s, maxf(0.0, o.x - 4.0))
 	if post > 4.0:
 		for x: float in [o.x - post, o.x + fw]:
 			b.fan(PackedVector2Array([Vector2(x, o.y - s * 2.0), Vector2(x + post, o.y - s * 2.0),

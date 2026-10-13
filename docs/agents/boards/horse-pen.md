@@ -109,3 +109,21 @@
   the best itself; Submit kept on Insane; the bulb pinning a bale; the
   tunnel as the cozy stand-in for the original's paired cells; the pony's
   drawing.
+
+### The paddock is the whole screen (2026-10-13)
+
+The redesign (`docs/agents/flat-screens.md`, "Every board gets a world of
+its own"), built unattended. `puzzles/horse_world.gd` is a pale sky down to a
+horizon behind the tools row with two far hills, a pasture lighter than
+the field, a cloud, a bale, a wheat ear and an apple in the gap of the
+tools row, and at the foot, left of Submit, a stable front, a two-rail
+fence, a water trough, a stack of three bales and windfall apples; six
+pollen motes breathe. The dark meadow card and its ring are gone. Height
+binds on Medium to Insane; the pills stay on the margin.
+
+- Registry: `bleed`, `level_card`, and **Submit stays** on the actions
+  row: closing a pen never ends the day by itself, the player declares it.
+- `opengl3_angle`, 810x1440: 85 draw calls at rest; `tests/_win.gd --
+  horse` passes.
+- Decided for the user, unconfirmed: Submit kept; a small yard (the field
+  comes to 190 of the bottom). Owed: a phone, the level slide.

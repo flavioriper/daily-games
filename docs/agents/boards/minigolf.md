@@ -95,3 +95,21 @@
 - **Not seen on a phone.** Shots on both drivers and under reduce motion
   only; the pull's length (`PULL`, 300 px) and the ball's size were judged
   on this Mac's window. The pt and es lines are unreviewed.
+
+### The park is the whole screen (2026-10-13)
+
+The redesign (`docs/agents/flat-screens.md`, "Every board gets a world of
+its own"), built unattended. `puzzles/minigolf_world.gd` is cream morning air
+turning into the card's mown lawn with its stripes, a small flag and two
+balls in the gap of the tools row, and at the foot a toy windmill (its
+sails sway), a sand bunker, a bucket of balls, a blue golf bag and a
+putter, hedges, tufts and daisies. The card's rounded lawn plate is gone;
+everything is laid in one frame (`_frame()`), the hole centred under the
+scorecard with 110 kept open for the foot. The clip is off once bled: a
+hole swap slides off the screen's edge. `ball_at()` returns local pixels.
+
+- Registry: `bleed`, `level_card`; no tray, no actions row, as before.
+- `opengl3_angle`, 810x1440: 84 draw calls at rest; `tests/_win.gd --
+  minigolf` passes with real pulls.
+- Decided for the user, unconfirmed: the hole centred, not top-aligned;
+  the 110 foot (a full-height hole is 8% smaller). Owed: a phone.

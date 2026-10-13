@@ -36,12 +36,26 @@ extends "res://core/puzzle_base.gd"
 ## The rules, the judging and the score live in puzzles/drumbeat_state.gd;
 ## the drawings in ui/faces/drumbeat_parts.gd.
 ##
+## The evening is the whole screen (2026-10-13, the registry's `bleed`):
+## puzzles/drumbeat_world.gd lies edge to edge as the board's first child,
+## the sky and the festival mat that were the card's, and the board is one
+## scene as wide as the screen from under the host's rows to the foot of it
+## (`set_clear`): the band, the stage, the road and the drums. The scene is
+## the Control itself moved down (`_place`), so every drawing, child and
+## touch keeps the scene's own pixels (`_sz()`). On the win nothing is laid
+## out again: the scene tilts down, the world with it, until the stage and
+## the road stand in the win's span and the drums go under its cards.
+##
 ## Spec: docs/superpowers/specs/2026-10-01-drumbeat-polish-design.md, and
 ## its 2026-10-03 amendment (one road; docs/brainstorm/concepts.html#drumbeat).
 
 signal leave
 
 const State = preload("res://puzzles/drumbeat_state.gd")
+const World = preload("res://puzzles/drumbeat_world.gd")
+const FLAT_HOST := "res://ui/flat/flat_host.gd"
+## The tilt into the win's span (the host's SLOT_TIME).
+const WIN_SLIDE := 0.45
 const Parts = preload("res://ui/faces/drumbeat_parts.gd")
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
@@ -289,6 +303,19 @@ var _stamp_at := INF
 var _seal_mesh: ArrayMesh
 
 # cached meshes (the canvas keeps a mesh by RID, so each is held until replaced)
+## The world under the scene, made on the first `set_clear`; what the
+## host's rows cover, top and bottom, while playing and on the win; how far
+## down the scene has tilted for the win and how far it goes; the host's
+## slide on a change of level.
+var _world: Control
+var _bled := false
+var _clear := Vector2.ZERO
+var _win_clear := Vector2.ZERO
+var _won := false
+var _tilt := 0.0
+var _tilt_by := 0.0
+var _shift := 0.0
+var _slide_tw: Tween
 var _still: ArrayMesh
 var _shown: Array = []
 
@@ -587,8 +614,104 @@ func _pause(on: bool) -> void:
 
 # --- layout ---
 
+## The scene's size: the card, or once bled the screen's width by what is
+## left under the host's rows (the Control itself is moved down to there).
+func _sz() -> Vector2:
+	if not _bled:
+		return size
+	return Vector2(size.x, maxf(size.y - _clear.x - _inset(), 1.0))
+
+## What the host keeps under the board past its own margin (a phone's safe
+## area): the drums' feet stay above it; the mat runs on under it.
+func _inset() -> float:
+	return maxf(_clear.y - float(load(FLAT_HOST).MARGIN), 0.0)
+
+## The whole screen in the scene's pixels, for the edges' glow.
+func _glow_rect() -> Rect2:
+	if not _bled:
+		return Rect2(Vector2.ZERO, size)
+	return Rect2(Vector2(0, -position.y), size)
+
 func _u() -> float:
-	return size.x / 1000.0
+	return _sz().x / 1000.0
+
+## What the host's rows cover, in this board's own pixels (it is laid full
+## rect). The first call makes the world and takes the card away. While
+## playing the scene starts under the rows; on the win it is not laid out
+## again: it tilts down into the win's span.
+func set_clear(top: float, bottom: float, won := false) -> void:
+	Motion.stop(_slide_tw)
+	if not _bled:
+		_bled = true
+		clip_contents = false
+		_world = World.new()
+		_world.name = "World"
+		_world.show_behind_parent = true
+		add_child(_world)
+		move_child(_world, 0)
+		if won:
+			_clear = Vector2(top, bottom)
+	_won = won
+	if not won:
+		var same := _clear == Vector2(top, bottom) and _still != null
+		_clear = Vector2(top, bottom)
+		_tilt = 0.0
+		_place()
+		if not same:
+			_layout()
+		return
+	_win_clear = Vector2(top, bottom)
+	_aim()
+	if _still == null:
+		_layout()
+	if Motion.reduce or not is_inside_tree() or _tilt >= 1.0 or _phase != "won" or _party_at == INF:
+		_slide(1.0)
+		return
+	_slide_tw = create_tween()
+	_slide_tw.tween_method(_slide, _tilt, 1.0, WIN_SLIDE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+## How far the scene tilts down for the win: the band, the stage and the
+## road stand in the middle of the win's span, or at its top when they are
+## taller than it.
+func _aim() -> void:
+	var block := _path_top() + ROAD * _u()
+	var span := size.y - _win_clear.x - _win_clear.y
+	_tilt_by = _win_clear.x + maxf((span - block) * 0.5, 0.0) - _clear.x
+
+func _slide(t: float) -> void:
+	_tilt = t
+	_place()
+
+## The host slides the board `x` aside on a change of level; the world
+## stays where it is, and the board that is leaving shows none.
+func set_shift(x: float, leaving := false) -> void:
+	_shift = x
+	if _world != null:
+		_world.visible = not leaving
+	_place()
+
+## The host deals this board into a screen already standing. Nothing here
+## plays an entrance: the scene stands whole from its first frame.
+func skip_entrance() -> void:
+	pass
+
+## The scene's place on the screen, and the world's against it: the world
+## keeps the screen's own x and rides down with the scene on the win.
+func _place() -> void:
+	if not _bled:
+		return
+	position = Vector2(_shift, _clear.x + _tilt_by * _tilt)
+	# The sparks and the rewards are lifted over the board's own drawing
+	# while it is played; on the win nothing of the board may lie over the
+	# host's cards, so they come back under (the board is under the rows in
+	# the tree).
+	if fx != null:
+		fx.z_index = 0 if _won else 3
+	if _rw != null:
+		_rw.z_index = 0 if _won else 4
+	_world.position = Vector2(-_shift, -_clear.x)
+	_world.size = size
+	_world.set_lines(_clear.x + _band_h(), _clear.x + _path_top(), _clear.x + _path_top() + ROAD * _u())
 
 ## Whether the stage stands over the road: the sky, the lanterns, the crowd
 ## and Tam, the fireworks, the cards and the big combo. A tutorial page's
@@ -609,7 +732,7 @@ func _kind(lane: int) -> int:
 
 ## The stage's foot, which is the road's top.
 func _path_top() -> float:
-	return size.y - (ROAD + GROUND) * _u()
+	return _sz().y - (ROAD + GROUND) * _u()
 
 func _stage_h() -> float:
 	return _path_top() - _band_h()
@@ -626,7 +749,7 @@ func _ring() -> Vector2:
 ## past it to the left.
 func _x_of(dt: float) -> float:
 	var r := RING_X * _u()
-	return r + dt / _travel() * (size.x + (NOTE_R + 10.0) * _u() - r)
+	return r + dt / _travel() * (_sz().x + (NOTE_R + 10.0) * _u() - r)
 
 ## Note `i`'s height on the road: the line, or its row of a twin.
 func _row_y(i: int) -> float:
@@ -648,14 +771,14 @@ func _drum_r() -> float:
 
 ## Where drum `lane` stands: its foot, in its column of the ground.
 func _drum_foot(lane: int) -> Vector2:
-	return Vector2(size.x * (lane + 0.5) / _n(), size.y - DRUM_FOOT * _u())
+	return Vector2(_sz().x * (lane + 0.5) / _n(), _sz().y - DRUM_FOOT * _u())
 
 func _drum_skin(lane: int) -> Vector2:
 	return _drum_foot(lane) + Vector2(0, Parts.skin_y(_kind(lane), _drum_r()))
 
 ## Which drum a point of the board strikes: its column.
 func _lane_at(at: Vector2) -> int:
-	return clampi(int(floor(at.x / (size.x / _n()))), 0, _n() - 1)
+	return clampi(int(floor(at.x / (_sz().x / _n()))), 0, _n() - 1)
 
 func card_height(available: float) -> float:
 	return available
@@ -665,6 +788,10 @@ func card_centred() -> bool:
 
 func _layout() -> void:
 	_still = null
+	if _bled:
+		if _won:
+			_aim()
+		_place()
 	_looks = {}
 	_veil_w = 0.0
 	_fw_cols = {}
@@ -736,7 +863,7 @@ func _process(delta: float) -> void:
 		_score_shown = minf(float(_st.score), _score_shown + maxf(40.0, (_st.score - _score_shown) * minf(1.0, delta * 9.0)))
 	elif _score_shown > _st.score:
 		_score_shown = float(_st.score)
-	_rw.bounds = Rect2(Vector2.ZERO, size)
+	_rw.bounds = Rect2(Vector2.ZERO, _sz())
 	_rw.step(delta)
 	if _party_at < INF:
 		_place_cat(_now())
@@ -823,7 +950,7 @@ func _hold_motes() -> void:
 			_rw.spray(_drum_skin(lane) + Vector2(0, -20.0 * _u()), Parts.LANE_HI[_kind(lane)], 1, 160.0, "note", 0.8)
 
 func _stage_mid() -> Vector2:
-	return Vector2(size.x * 0.5, _band_h() + _stage_h() * 0.42)
+	return Vector2(_sz().x * 0.5, _band_h() + _stage_h() * 0.42)
 
 # --- the strokes ---
 
@@ -1077,7 +1204,7 @@ func _echo_count(t: float, hit: bool) -> void:
 	if not eb[3] and eb[1] + eb[2] >= eb[0] and eb[2] == 0 and eb[0] >= 2:
 		eb[3] = true
 		fx.cue("echo_perfect")
-		var mid := Vector2(size.x * 0.5, _path_top() - 56.0 * _u())
+		var mid := Vector2(_sz().x * 0.5, _path_top() - 56.0 * _u())
 		_rw.sticker(tr("DB_ECHO_PERFECT"), mid, 50, 1.0, false, Parts.ECHO, false, "echo_ok", 20.0)
 		if not Motion.reduce:
 			_rw.spray(mid, Parts.ECHO, 8, 420.0, "star", 0.9)
@@ -1128,7 +1255,7 @@ func _launch(n: int, delay: float) -> void:
 	var gap := _beat() * 0.5
 	for k in n:
 		_fireworks.append({"at": _now() + delay + k * gap,
-			"pos": Vector2(size.x * randf_range(0.14, 0.86), _band_h() + randf_range(70.0, 170.0) * u),
+			"pos": Vector2(_sz().x * randf_range(0.14, 0.86), _band_h() + randf_range(70.0, 170.0) * u),
 			"ci": randi() % FIREWORK_COLS.size(),
 			"r": randf_range(70.0, 110.0) * u, "turn": randf() * TAU})
 
@@ -1147,7 +1274,7 @@ func _seat(i: int) -> Vector2:
 	var slot: int = order[i]
 	var side := -1.0 if slot < 5 else 1.0
 	var k := slot if slot < 5 else 9 - slot
-	var x := size.x * 0.5 + side * (70.0 + k * 82.0) * u
+	var x := _sz().x * 0.5 + side * (70.0 + k * 82.0) * u
 	var back := k % 2 == 1
 	return Vector2(x, _path_top() - (18.0 if back else 0.0) * u)
 
@@ -1322,7 +1449,7 @@ func _on_solved() -> void:
 	elif _level == 3:
 		crown = "DB_ECHO_CLEARED"
 	fx.cue("full_combo" if _st.full_combo() else "clear")
-	var mid := Vector2(size.x * 0.5, _band_h() + _stage_h() * 0.45)
+	var mid := Vector2(_sz().x * 0.5, _band_h() + _stage_h() * 0.45)
 	_rw.sticker(tr(crown), mid, 84, WIN_HOLD, true, Color.WHITE, true, "crown", 24.0)
 	if not Motion.reduce:
 		_rw.rain(WIN_HOLD, ["confetti", "star", "note"], Rewards.CONFETTI)
@@ -1366,7 +1493,7 @@ func _party() -> void:
 func _place_cat(t: float) -> void:
 	if t < _party_at:
 		return
-	var px := size.x * 0.16
+	var px := _sz().x * 0.16
 	if not is_instance_valid(_cat):
 		_cat = NapCat.new()
 		_cat.name = "Cat"
@@ -1380,8 +1507,13 @@ func _place_cat(t: float) -> void:
 		_cat.size = Vector2(px, px)
 		_cat.pivot_offset = _cat.size * Vector2(0.5, 0.85)
 	var spot := _drum_skin(0) + Vector2(0, -6.0 * _u())
+	if _bled:
+		# The drums are gone under the win's cards: she curls up on the
+		# road's planks, right of the stamp, inside the win's span.
+		spot = Vector2(_sz().x * 0.82, _path_top() + ROAD_FLOOR * _u())
+		_cat.z_index = 0
 	var e := t - _party_at
-	var start := spot + Vector2(-0.3 * size.x, -px)
+	var start := spot + Vector2(-0.3 * _sz().x, -px)
 	var at := spot
 	var sc := Vector2.ONE
 	if Motion.reduce or e >= 1.3:
@@ -1536,7 +1668,7 @@ func _tune_step() -> void:
 ## The card the start and the retry are written on, over the stage and path.
 func _card_rect() -> Rect2:
 	var u := _u()
-	return Rect2(Vector2(40.0 * u, _band_h() + 14.0 * u), Vector2(size.x - 80.0 * u, 640.0 * u))
+	return Rect2(Vector2(40.0 * u, _band_h() + 14.0 * u), Vector2(_sz().x - 80.0 * u, 640.0 * u))
 
 ## The card's three buttons at its foot: the timing's minus, Tune, plus.
 func _card_rects() -> Array:
@@ -1563,7 +1695,7 @@ func _card_button(at: Vector2) -> int:
 
 func _gauge_rect() -> Rect2:
 	var u := _u()
-	return Rect2(Vector2(size.x * 0.5, _band_h() * 0.5 - 16.0 * u), Vector2(size.x * 0.44, 32.0 * u))
+	return Rect2(Vector2(_sz().x * 0.5, _band_h() * 0.5 - 16.0 * u), Vector2(_sz().x * 0.44, 32.0 * u))
 
 func _gauge_line() -> Vector2:
 	var r := _gauge_rect()
@@ -1576,7 +1708,7 @@ func _gauge_end() -> Vector2:
 ## Heart `i` in the band, between the score and the gauge.
 func _heart_at(i: int) -> Vector2:
 	var u := _u()
-	return Vector2(size.x * 0.33 + i * 44.0 * u, _band_h() * 0.56)
+	return Vector2(_sz().x * 0.33 + i * 44.0 * u, _band_h() * 0.56)
 
 func _draw() -> void:
 	if size.x <= 0.0 or _st == null:
@@ -1630,7 +1762,7 @@ func _draw() -> void:
 		_road.put(S_DISC, [Color(Parts.LANE_HI[_kind(struck)], _q(0.45 * fl))], Transform2D(0.0, Vector2(fs, fs), 0.0, ring))
 	for bt: float in bars:
 		var x := _x_of(bt - vt)
-		if x < ring.x - 100.0 * u or x > size.x:
+		if x < ring.x - 100.0 * u or x > _sz().x:
 			continue
 		_road.put(S_BAR, [], Transform2D(0.0, Vector2(x, 0.0)))
 	_draw_long(vt)
@@ -1694,7 +1826,11 @@ func _draw() -> void:
 		elif _phase == "won":
 			mood = Parts.Mood.JOY
 		var wob := 0.0 if calm or since > 0.3 else sin(since * 40.0) * 0.04 * (1.0 - since / 0.3)
-		draw_mesh(_drum_look(kind, mood), null, Transform2D(wob, Vector2((1.0 + nod) / squash, (1.0 + nod) * squash), 0.0, foot))
+		# Bled, the drums go as the scene tilts down for the win: they
+		# would stand under the host's cards and show between them.
+		var seen := 1.0 - _tilt if _bled else 1.0
+		if seen > 0.0:
+			draw_mesh(_drum_look(kind, mood), null, Transform2D(wob, Vector2((1.0 + nod) / squash, (1.0 + nod) * squash), 0.0, foot), Color(1, 1, 1, seen))
 		if since < 0.36 and not calm:
 			var k := since / 0.36
 			var skin := foot + Vector2(0, Parts.skin_y(kind, _drum_r()) * (1.0 + nod) * squash)
@@ -1723,7 +1859,7 @@ func _draw() -> void:
 		heat = 0.7
 	if heat > 0.0 and not calm:
 		var eg := Face.Builder.new()
-		Rewards.edge_glow(eg, Rect2(Vector2.ZERO, size), Color("ffb347") if tier < 3 or gogo else Color.from_hsv(fmod(now * 0.2, 1.0), 0.5, 1.0), heat, pulse)
+		Rewards.edge_glow(eg, _glow_rect(), Color("ffb347") if tier < 3 or gogo else Color.from_hsv(fmod(now * 0.2, 1.0), 0.5, 1.0), heat, pulse)
 		_over.put_builder(eg)
 	# over the drums, one mesh: a stroke's ripple on its skin, the edges' glow
 	_put_mesh(_over.mesh())
@@ -1742,9 +1878,9 @@ func _draw_stage(now: float, beats: float, gogo: bool, tier: int, pulse: float) 
 		var low := _path_top()
 		var warm := Color("ff7a59", 0.0)
 		var i0 := sky.vertex(Vector2(0, top), warm)
-		var i1 := sky.vertex(Vector2(size.x, top), warm)
+		var i1 := sky.vertex(Vector2(_sz().x, top), warm)
 		var hot := Color("ff7a59", 0.22 + 0.12 * pulse)
-		var i2 := sky.vertex(Vector2(size.x, low), hot)
+		var i2 := sky.vertex(Vector2(_sz().x, low), hot)
 		var i3 := sky.vertex(Vector2(0, low), hot)
 		sky.tri(i0, i1, i2)
 		sky.tri(i0, i2, i3)
@@ -1753,7 +1889,7 @@ func _draw_stage(now: float, beats: float, gogo: bool, tier: int, pulse: float) 
 	var flare := 1.0 - clampf((now - _flare_at) / 0.8, 0.0, 1.0)
 	var n_l := LANTERN_COLS.size()
 	for k in n_l:
-		var x := size.x * (0.1 + 0.8 * k / float(n_l - 1))
+		var x := _sz().x * (0.1 + 0.8 * k / float(n_l - 1))
 		var sag := sin(PI * k / float(n_l - 1)) * 30.0 * u
 		var hang := Vector2(x, _band_h() + 30.0 * u + sag)
 		var swing := 0.0 if calm else sin(beats * PI + k) * ((0.12 if gogo else 0.05) + 0.25 * flare)
@@ -1869,10 +2005,10 @@ func _shape(id: int) -> Face.Builder:
 		S_DISC:
 			b.disc(o, rr, tint)
 		S_WASH:
-			b.polygon(_rect(0.0, plank, size.x, floor_y), tint)
+			b.polygon(_rect(0.0, plank, _sz().x, floor_y), tint)
 		S_RAILS:
 			for y: float in [top + ROAD_RAIL * 0.5 * u, floor_y + 5.0 * u]:
-				b.stroke(PackedVector2Array([Vector2(0, y), Vector2(size.x, y)]), (5.0 + 2.0 * a) * u, tint)
+				b.stroke(PackedVector2Array([Vector2(0, y), Vector2(_sz().x, y)]), (5.0 + 2.0 * a) * u, tint)
 		S_VEIL:
 			# a hidden bar `_veil_w` long, from its left edge
 			b.polygon(_rect(0.0, plank, _veil_w, floor_y), Color(Parts.ECHO, 0.4))
@@ -1988,7 +2124,7 @@ func _fw_indices(n: int) -> PackedInt32Array:
 ## fireworks' steps, the drums' moods, the crowd's and the berries' faces.
 func _queue_warm() -> void:
 	_warm = []
-	if size.x <= 0.0 or _st == null:
+	if _sz().x <= 0.0 or _st == null:
 		return
 	var u := _u()
 	var r := NOTE_R * u
@@ -2101,7 +2237,7 @@ func _draw_long(vt: float) -> void:
 		var roll := type == State.Type.ROLL
 		var lit: bool = n.held or (roll and t0 <= vt)
 		var x0 := ring_x if lit else _x_of(t0 - vt)
-		var x1 := minf(_x_of(t1 - vt), size.x + 80.0 * u)
+		var x1 := minf(_x_of(t1 - vt), _sz().x + 80.0 * u)
 		if x1 <= x0:
 			continue
 		var y := _row_y(i)
@@ -2122,7 +2258,7 @@ func _draw_long(vt: float) -> void:
 		var bt: float = ceil(maxf(t0, vt) / step) * step
 		while bt < t1:
 			var x := _x_of(bt - vt)
-			if x > x0 + NOTE_R * u and x < size.x:
+			if x > x0 + NOTE_R * u and x < _sz().x:
 				_road.put(S_ROLL + kind if roll else S_BEAD, [], Transform2D(0.0, Vector2(x, y)))
 			bt += step
 
@@ -2262,10 +2398,10 @@ func _draw_conga(now: float, beats: float) -> void:
 	if k < 0.0 or k >= 1.0 or Motion.reduce:
 		return
 	var u := _u()
-	var span := size.x + 520.0 * u
+	var span := _sz().x + 520.0 * u
 	for i in CONGA_N:
 		var x := -260.0 * u + span * k - i * 72.0 * u
-		if x < -60.0 * u or x > size.x + 60.0 * u:
+		if x < -60.0 * u or x > _sz().x + 60.0 * u:
 			continue
 		var hop := absf(sin(beats * PI + i * 0.5)) * 16.0 * u
 		var kick := sin(beats * PI * 0.5 + i) * 0.22
@@ -2279,7 +2415,7 @@ func _draw_veils(vt: float, now: float) -> void:
 	for e: Array in _st.echo:
 		var x0 := _x_of(float(e[0]) - vt)
 		var x1 := _x_of(float(e[1]) - vt)
-		if x1 < 1.0 or x0 > size.x - 1.0:
+		if x1 < 1.0 or x0 > _sz().x - 1.0:
 			continue
 		if _veil_w <= 0.0:
 			_veil_w = x1 - x0
@@ -2301,7 +2437,7 @@ func _put(b: Face.Builder) -> void:
 
 func _frog_foot() -> Vector2:
 	var u := _u()
-	return Vector2(size.x - 120.0 * u, _band_h() + _stage_h() * 0.78)
+	return Vector2(_sz().x - 120.0 * u, _band_h() + _stage_h() * 0.78)
 
 func _frog_head() -> Vector2:
 	var s := 52.0 * _u()
@@ -2438,7 +2574,7 @@ func _draw_path_combo(now: float, tier: int) -> void:
 	var font: Font = CozyTheme.display(700)
 	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 	var base: Color = [Color("d6bf98"), Parts.ROLL, Color("ffb08a")][mini(tier, 2)]
-	var mid := Vector2(size.x * 0.5, _path_top() + (ROAD + 84.0) * u)
+	var mid := Vector2(_sz().x * 0.5, _path_top() + (ROAD + 84.0) * u)
 	draw_set_transform(mid, 0.0, Vector2(sc, sc))
 	var x := -w * 0.5
 	for i in text.length():
@@ -2526,7 +2662,7 @@ func _draw_hearts(now: float) -> void:
 ## The seal over the road: Flawless for a full combo; on Insane the night
 ## seal, "Insane" over Flawless or Echo.
 func _draw_stamp(now: float) -> void:
-	var rad := size.x * STAMP_R
+	var rad := _sz().x * STAMP_R
 	var insane := _level == 3
 	if _seal_mesh == null:
 		_seal_mesh = Seal.mesh(rad, insane)
@@ -2537,7 +2673,7 @@ func _draw_stamp(now: float) -> void:
 		var uu := clampf(e / STAMP_DROP, 0.0, 1.0)
 		k = lerpf(STAMP_FROM, 1.0, uu * uu) if e < STAMP_DROP else Motion.bump_scale(e - STAMP_DROP, 0.08, STAMP_DROP)
 	var alpha := clampf(e / 0.08, 0.0, 1.0) if not Motion.reduce else 1.0
-	var centre := Vector2(size.x * 0.5, _path_top() + ROAD * 0.5 * _u())
+	var centre := Vector2(_sz().x * 0.5, _path_top() + ROAD * 0.5 * _u())
 	var xf := Transform2D(STAMP_TILT, Vector2(k, k), 0.0, centre)
 	draw_set_transform_matrix(xf)
 	draw_mesh(_seal_mesh, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, alpha))
@@ -2566,7 +2702,11 @@ func _draw_words(now: float) -> void:
 		var title := "%s · %s" % [String(_song.get("title", "")), level_name]
 		if _level == 3:
 			title += " · " + tr("DB_ECHO")
-		_label(Vector2(size.x * 0.5, _band_h() + 30.0 * u), title, int(26 * u), Parts.CREAM, Color(Parts.INK, 0.5))
+		# cream on the card's dusk; ink on the world's light evening
+		if _bled:
+			_label(Vector2(_sz().x * 0.5, _band_h() + 30.0 * u), title, int(26 * u), Color(Parts.INK, 0.8), Color(0, 0, 0, 0))
+		else:
+			_label(Vector2(_sz().x * 0.5, _band_h() + 30.0 * u), title, int(26 * u), Parts.CREAM, Color(Parts.INK, 0.5))
 	# the latest judgement, stamped over the ring and rising
 	if not _judge.is_empty() and now - float(_judge.at) < JUDGE_TIME:
 		var k := (now - float(_judge.at)) / JUDGE_TIME
@@ -2715,10 +2855,11 @@ func _label_left(at: Vector2, text: String, px: int, col: Color, outline: Color)
 func _build_still() -> ArrayMesh:
 	var u := _u()
 	var b := Face.Builder.new()
-	b.polygon(Face.Builder.round_rect(Vector2.ZERO, size, CARD_RADIUS * u), Pal.PAPER)
+	if not _bled:
+		b.polygon(Face.Builder.round_rect(Vector2.ZERO, _sz(), CARD_RADIUS * u), Pal.PAPER)
 	var top := _band_h()
 	var low := _path_top()
-	var w := size.x
+	var w := _sz().x
 	if top > 0.0:
 		# the soul gauge's bed
 		var gr := _gauge_rect()
@@ -2726,9 +2867,11 @@ func _build_still() -> ArrayMesh:
 		b.polygon(Face.Builder.round_rect(gr.position, gr.size, gr.size.y * 0.5), GAUGE_BACK)
 	if _staged():
 		_build_stage(b)
-	# the ground: a festival mat under everything below the stage
-	b.polygon(PackedVector2Array([Vector2(0, low), Vector2(w, low), Vector2(w, size.y - CARD_RADIUS * u), Vector2(0, size.y - CARD_RADIUS * u)]), Color("e8dcc4"))
-	b.polygon(Face.Builder.round_rect(Vector2(0, size.y - CARD_RADIUS * u * 2.0), Vector2(w, CARD_RADIUS * u * 2.0), CARD_RADIUS * u), Color("e8dcc4"))
+	# the ground: a festival mat under everything below the stage (the
+	# world's own, edge to edge, once the board is bled)
+	if not _bled:
+		b.polygon(PackedVector2Array([Vector2(0, low), Vector2(w, low), Vector2(w, _sz().y - CARD_RADIUS * u), Vector2(0, _sz().y - CARD_RADIUS * u)]), Color("e8dcc4"))
+		b.polygon(Face.Builder.round_rect(Vector2(0, _sz().y - CARD_RADIUS * u * 2.0), Vector2(w, CARD_RADIUS * u * 2.0), CARD_RADIUS * u), Color("e8dcc4"))
 	# the road of planks across the card: a rail over it and one under, and
 	# the strip under the lower rail where each berry's mark rides
 	var plank := low + ROAD_RAIL * u
@@ -2747,28 +2890,31 @@ func _build_still() -> ArrayMesh:
 	# a faint seam between the drums' columns
 	for lane in range(1, _n()):
 		var x := w * lane / float(_n())
-		b.stroke(PackedVector2Array([Vector2(x, low + (ROAD + 50.0) * u), Vector2(x, size.y - 70.0 * u)]), 3.0 * u, Color(Parts.INK, 0.07))
+		b.stroke(PackedVector2Array([Vector2(x, low + (ROAD + 50.0) * u), Vector2(x, _sz().y - 70.0 * u)]), 3.0 * u, Color(Parts.INK, 0.07))
 	return b.mesh()
 
 ## The dusk stage, into the still picture: the sky and its stars, the moon,
 ## the hills, the stalls and the lanterns' cord.
 func _build_stage(b: Face.Builder) -> void:
 	var u := _u()
-	var w := size.x
+	var w := _sz().x
 	var top := _band_h()
 	var low := _path_top()
-	var i0 := b.vertex(Vector2(0, top), SKY_TOP)
-	var i1 := b.vertex(Vector2(w, top), SKY_TOP)
-	var i2 := b.vertex(Vector2(w, low), SKY_LOW)
-	var i3 := b.vertex(Vector2(0, low), SKY_LOW)
-	b.tri(i0, i1, i2)
-	b.tri(i0, i2, i3)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 11
-	for k in 26:
-		b.disc(Vector2(rng.randf() * w, top + rng.randf() * (low - top) * 0.45), rng.randf_range(1.0, 2.6) * u, Color(1, 0.97, 0.85, rng.randf_range(0.3, 0.8)))
-	b.disc(Vector2(w * 0.2, top + 70.0 * u), 28.0 * u, Color("fff1c8"))
-	b.disc(Vector2(w * 0.2 + 12.0 * u, top + 62.0 * u), 24.0 * u, Color(SKY_TOP.lerp(SKY_LOW, 0.2), 1.0))
+	# The sky, its stars and the moon are the card's: bled, the evening is
+	# the world's (puzzles/drumbeat_world.gd), light over the host's rows.
+	if not _bled:
+		var i0 := b.vertex(Vector2(0, top), SKY_TOP)
+		var i1 := b.vertex(Vector2(w, top), SKY_TOP)
+		var i2 := b.vertex(Vector2(w, low), SKY_LOW)
+		var i3 := b.vertex(Vector2(0, low), SKY_LOW)
+		b.tri(i0, i1, i2)
+		b.tri(i0, i2, i3)
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 11
+		for k in 26:
+			b.disc(Vector2(rng.randf() * w, top + rng.randf() * (low - top) * 0.45), rng.randf_range(1.0, 2.6) * u, Color(1, 0.97, 0.85, rng.randf_range(0.3, 0.8)))
+		b.disc(Vector2(w * 0.2, top + 70.0 * u), 28.0 * u, Color("fff1c8"))
+		b.disc(Vector2(w * 0.2 + 12.0 * u, top + 62.0 * u), 24.0 * u, Color(SKY_TOP.lerp(SKY_LOW, 0.2), 1.0))
 	var far := PackedVector2Array([Vector2(0, low)])
 	for k in 13:
 		var x := w * k / 12.0

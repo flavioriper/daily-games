@@ -112,3 +112,27 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   field, never the answer. The tutorial drops OUT and UNDO on Insane and
   ends on the shared moves page with `HTP_MG_MOVES_BODY`. Not seen on a
   screen: the pill's place, and the new locale rows wait for an import.
+
+### The pond garden is the whole screen (2026-10-13)
+
+The redesign (`docs/agents/flat-screens.md`, "Every board gets a world of
+its own"), built unattended. `puzzles/marigold_world.gd` is the card's dusk kept
+light (pale lilac to peach), a far range, the pond showing down the
+arbor's sides with clouds, glints, lily pads and reeds, a shut marigold, a
+violet and a seed in the gap of the tools row, and a green bank at the
+foot with a potted marigold, a tipped pot spilling seeds, a seed packet
+and clover; six fireflies breathe. **The world is the board's sibling, not
+its child**: the board zooms its picture up to 2.1x on the last marigold
+and needs its clip, so once bled the board Control is exactly the arbor's
+rect and the world is added to the host's slot under it (the board frees
+it in `_exit_tree`). The blue card is gone; the counts' sign, the two
+posts and the picture are left, a framed picture standing in the garden.
+
+- Registry: `bleed`, `level_card`; no tray, no actions row, as before.
+- `opengl3_angle`, 810x1440: 166 draw calls mid-shot, 198 at the solve's
+  peak (`tests/_shot_marigold.gd -- d=1 solve`, which wins);
+  `tests/_probe_level_slide.gd -- marigold` left one board.
+  `tests/_win.gd` has no solver for this board.
+- Decided for the user, unconfirmed: a framed arbor, not the pond edge to
+  edge; height binds, so the field is 49 inside the margin. Owed: a phone,
+  the close-up at the arbor's edge.

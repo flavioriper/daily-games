@@ -168,3 +168,26 @@ scores of earlier days were against the old prices.
 What this file says of Insane having no hint (or only a video's) is history:
 Insane holds as many hints as Hard on every board with a bulb, at the
 user's word. `docs/agents/flat-screens.md`, "Insane has the bulb again".
+
+### The valley is the whole screen (2026-10-13)
+
+The redesign (`docs/agents/flat-screens.md`, "Every board gets a world of
+its own"), built unattended. The board's scene already ran edge to edge of its
+rect (hills, banks, river), so it stays the board's;
+`puzzles/trestle_world.gd` is the sky behind it (cream mist, pale blue,
+warm at the horizon), the five far peaks standing on the board's horizon
+(`set_ground`), a cloud and three birds in the gap of the tools row, and
+the river's bed, painted into the board's still mesh
+(`World.paint_bed`): gravel, stones, waterweed, a sunken plank and a
+cart wheel at the left, pebbles under Go. On the win the span itself is
+eased and the scene laid in it each frame (no transform; the valley has no
+edge to shrink to). **Once bled the board's front, effects and stickers
+layers drop their z_index**: lifted, the water drew over Go and over the
+win's cards.
+
+- Registry: `bleed`, `level_card`, and **Go stays** on the actions row
+  (it is the board's promise, not a verify), alone at the right.
+- `opengl3_angle`, 810x1440: 97 draw calls at rest; `tests/_win.gd --
+  trestle` passes.
+- Decided for the user, unconfirmed: Go kept; a riverbed foot. Owed: a
+  phone, the cost of a relayout a frame during the win's ease.

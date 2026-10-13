@@ -475,7 +475,7 @@ sections after it say how each part is built.
 
 **Done since** (2026-10-13, unattended, three boards a batch by fork
 workers; each board's own note says what was decided for the user):
-Code Break, Balance, Untangle; Shikaku, Tents, Light Up; One Line, Nonogram, Queens; Hidden Word, Word Trail, Mushroom Patch, Sudoku; Bridges, Quilt; Fairy Lights, Paper Planes, Pinwheel; Rings, Caterpillar, Sunbeam; Knight, Hedgehogs, Super Slider. What the batches taught:
+Code Break, Balance, Untangle; Shikaku, Tents, Light Up; One Line, Nonogram, Queens; Hidden Word, Word Trail, Mushroom Patch, Sudoku; Bridges, Quilt; Fairy Lights, Paper Planes, Pinwheel; Rings, Caterpillar, Sunbeam; Knight, Hedgehogs, Super Slider; Marigold, Pixel Garden, Drumbeat; Trestle, Mini Golf, Horse Pen. What the batches taught:
 
 - A worker owns two files, `puzzles/<board>_world.gd` and the board; the
   parent sets the registry, shoots (`tests/_shot_anim.gd`, then
@@ -493,6 +493,17 @@ Code Break, Balance, Untangle; Shikaku, Tents, Light Up; One Line, Nonogram, Que
   shows its world on the first `set_clear` only. A board whose own band
   or ground became the world tells it a line (`set_ground(y)`,
   `set_foot(y)`).
+- **Nothing of a bleed board may carry a z_index over the host's rows.**
+  In a card a lifted layer (effects, stickers, a nap cat, a water veil)
+  only cleared the board's own pieces; full rect it draws over Go and
+  over the win's cards (Trestle's water, Drumbeat's cat). Drop the lift
+  once bled, or on the win.
+- A board whose scene already runs edge to edge keeps it and gives the
+  world what is behind it (Trestle, Drumbeat); a board that needs its
+  clip is its own rect with the world as its sibling in the slot
+  (Marigold).
+- A button that is the board's commit stays on the actions row (Code
+  Break's guess, Trestle's Go, Horse Pen's Submit).
 - On a levelled board the actions row's Reset is hidden and the tools
   row's bin always shows.
 

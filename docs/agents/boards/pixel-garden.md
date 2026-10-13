@@ -266,3 +266,22 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   (`docs/agents/boards/buttons.md`).
 - **Not seen on a screen.** Mine: the iron back on Insane's plates, and
   Undo back; the user asked only for the limit to go.
+
+### The craft mat is the whole screen (2026-10-13)
+
+The redesign (`docs/agents/flat-screens.md`, "Every board gets a world of
+its own"), built unattended. `puzzles/pixel_garden_world.gd` is the card's aqua
+craft mat under a cream window light, with a faint cutting grid, five
+loose beads in the gap of the tools row, and at the foot a printed ruler,
+a glass jar of beads on its side with a spill, steel tweezers and a sheet
+of ironing paper with a small fused flower; six glints breathe. The
+garden table is gone. The board tells the world its tray's foot
+(`set_foot(y)`): Hard and Insane, with the two-row bead box, leave 84
+and show the ruler only.
+
+- Registry: `bleed`, `level_card`, no actions row. **Check is gone**:
+  the board solves itself and Check only haloed wrong beads.
+- `opengl3_angle`, 810x1440: 92 draw calls at rest; `tests/_win.gd --
+  pixelgarden` passes.
+- Decided for the user, unconfirmed: no Check; a mat, not the table. Owed:
+  a phone, the pinch zoom on Hard and Insane.

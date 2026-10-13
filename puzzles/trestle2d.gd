@@ -45,6 +45,15 @@ extends "res://core/puzzle_base.gd"
 ## be stiff as well as strong. The bridge troll under the near bank holds
 ## up a score card, the riders put on party hats, ducks paddle by, the cat
 ## naps on the deck and the seal stamps a flawless or a tea-party solve.
+##
+## The valley is the whole screen (2026-10-13, the registry's `bleed`): the
+## scene already ran from one edge of its rect to the other, so on the first
+## `set_clear` the board keeps painting the hills, the banks and the river
+## down to the foot of the screen, lays its strip and its view in the span
+## the host's rows leave, and hands the sky to puzzles/trestle_world.gd, its
+## first child, which also paints the river's bed into the still scene. On
+## the win the span itself is eased to the win's and the scene laid in it:
+## the valley has no edge to shrink to, so no transform is put on the board.
 
 signal leave
 
@@ -67,6 +76,10 @@ const Seal = preload("res://ui/flat/seal.gd")
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 const RunMesh = preload("res://ui/flat/run_mesh.gd")
 const Haptics = preload("res://core/haptics.gd")
+const World = preload("res://puzzles/trestle_world.gd")
+const FLAT_HOST := "res://ui/flat/flat_host.gd"
+## The span's ease into the win's (the host's SLOT_TIME).
+const WIN_SLIDE := 0.45
 
 ## What the phone knocks for (docs/agents/haptics.md): the building under
 ## the hand, Go, and the test's verdict (`_failed`, `_lose_heart` and
@@ -388,6 +401,14 @@ var _laid := 0
 ## Tests since the board opened (a Try again does not wind it back): what
 ## "First try!" and the sunglasses mean.
 var _tests_all := 0
+## The world the board stands in once the host has told it what its rows
+## cover (`set_clear`): the sky behind everything. A board in a card, and a
+## tutorial page's, never has one.
+var _bled := false
+var _world: Control
+## What the host's rows cover of the rect, top and bottom, eased on the win.
+var _clear := Vector2.ZERO
+var _clear_tw: Tween
 
 func puzzle_id() -> String: return "trestle"
 func title() -> String: return "Trestle"
@@ -623,19 +644,81 @@ func _sign_top() -> float:
 	return (STRIP_H if _strip_shown() else -16.0) + 26.0
 
 func _sign_left() -> float:
-	return PAD + 6.0
+	return _side() + 6.0
 
 ## A loud word over the scene (arcade/rewards.gd's sticker); a tutorial
 ## page's board letters none.
 func _sticker(text: String, where: Vector2, fs: int, life: float, rainbow := true, col := Color.WHITE, rays := false, id := "", rise := 0.0, keep := false) -> void:
 	_rw.sticker(text, where, fs, life, rainbow, col, rays, id, rise, keep)
 
+## What the host's rows cover of the rect (it is laid full rect under
+## them). The strip and the view are laid in what is left; the valley and
+## the river still run to the screen's edges. The first telling makes the
+## world; the win's is eased, the scene laid again as the span closes.
+func set_clear(top: float, bottom: float, won := false) -> void:
+	Motion.stop(_clear_tw)
+	var to := Vector2(top, bottom)
+	if not _bled:
+		_bled = true
+		clip_contents = false
+		# Nothing of the board may stand over the host's rows, which lie
+		# over a bleed board at z 0: the layers keep their order by their
+		# place in the tree (the riders, the troll and the cat are always
+		# moved under the front), so the lifts a card needed come off.
+		_front.z_index = 0
+		fx.z_index = 0
+		_rw.z_index = 0
+		_world = World.new()
+		_world.name = "World"
+		_world.show_behind_parent = true
+		add_child(_world)
+		move_child(_world, 0)
+		_world.size = size
+		_clear = to
+		_layout()
+		return
+	if not won or Motion.reduce or not is_inside_tree() or size.x <= 0.0 or state.level.is_empty() or _clear.is_equal_approx(to):
+		_span(to)
+		return
+	_clear_tw = create_tween()
+	_clear_tw.tween_method(_span, _clear, to, WIN_SLIDE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+func _span(clear: Vector2) -> void:
+	_clear = clear
+	_layout()
+
+## The host slides the board `x` aside on a change of level; the sky stays
+## where it is, and the board that is leaving shows none.
+func set_shift(x: float, leaving := false) -> void:
+	position.x = x
+	if _world != null:
+		_world.position.x = -x
+		_world.visible = not leaving
+
+## The host deals this board into a screen already standing: the cart is
+## at its mark, not rolling in.
+func skip_entrance() -> void:
+	_enter_at = -100.0
+
+## The strip's and the hearts' side margin: the card's pad, or the host's
+## rows' margin (the paper band is 12 outside it, on the rows' own edge).
+func _side() -> float:
+	return float(load(FLAT_HOST).MARGIN) + 12.0 if _bled else PAD
+
+## Where the board's own things start: the top of the rect, or under the
+## host's rows.
+func _top() -> float:
+	return _clear.x if _bled else 0.0
+
 func _layout() -> void:
 	if size.x <= 0.0 or state.level.is_empty():
 		return
+	if _world != null:
+		_world.size = size
 	var w := float(state.level.w)
 	var view := _view()
-	_scene = Rect2(Vector2(0.0, _scene_top()), Vector2(size.x, size.y - _scene_top()))
+	var scene_top := _top() + _scene_top()
+	_scene = Rect2(Vector2(0.0, scene_top), Vector2(size.x, size.y - (_clear.y if _bled else 0.0) - scene_top))
 	var span_x := w + 2.0 * VIEW_SIDE
 	var span_y := view.x - view.y
 	_u = minf(U_CAP, minf((_scene.size.x - 2.0 * PAD) / span_x, _scene.size.y / span_y))
@@ -655,6 +738,8 @@ func _layout() -> void:
 		_bunt_for = 0
 		_sag_stale = true
 	_tags_for = ""
+	_strip_mesh = null
+	_bar_fill_for = ""
 	_frame = null
 	_cart_mesh = null
 	_wheel_mesh = null
@@ -666,6 +751,8 @@ func _layout() -> void:
 	_troll.size = Vector2.ONE * _u * 1.4
 	_troll.pivot_offset = _troll.size * Vector2(0.5, 0.9)
 	_place_cart()
+	if _world != null:
+		_world.set_ground(px(Vector2(0.0, 0.8)).y, _u)
 	queue_redraw()
 	_front.queue_redraw()
 
@@ -1352,7 +1439,7 @@ func _on_solved() -> void:
 		# what was left of the budget flies home to the tally as coins
 		var coins := clampi(int(left / 150), 3, 18)
 		var from := px(Vector2(float(state.level.w) * 0.5, 0.5))
-		_rw.spray(from, Rewards.GOLD, coins, 700.0, "coin", 1.1, 1.3, _rw.at(self, Vector2(size.x - PAD - 90.0, 50.0)))
+		_rw.spray(from, Rewards.GOLD, coins, 700.0, "coin", 1.1, 1.3, _rw.at(self, Vector2(size.x - _side() - 90.0, _top() + 50.0)))
 
 ## The riders' party hats (and sunglasses for a bridge that crossed on its
 ## first test), grown on one after another.
@@ -1858,13 +1945,13 @@ const NONE := Vector2i(-99, -99)
 func _chip_rect(i: int) -> Rect2:
 	if _free:
 		return _slot(i)
-	return Rect2(Vector2(PAD + i * (CHIP.x + CHIP_GAP), (STRIP_H - CHIP.y) * 0.5 + 8.0), CHIP)
+	return Rect2(Vector2(_side() + i * (CHIP.x + CHIP_GAP), _top() + (STRIP_H - CHIP.y) * 0.5 + 8.0), CHIP)
 
 ## The free build's strip: even slots, the chips and three pills.
 func _slot(i: int) -> Rect2:
 	var n := CHIPS + 3
-	var w := (size.x - 2.0 * PAD - (n - 1) * CHIP_GAP) / float(n)
-	return Rect2(Vector2(PAD + i * (w + CHIP_GAP), (STRIP_H - CHIP.y) * 0.5 + 8.0), Vector2(w, CHIP.y))
+	var w := (size.x - 2.0 * _side() - (n - 1) * CHIP_GAP) / float(n)
+	return Rect2(Vector2(_side() + i * (w + CHIP_GAP), _top() + (STRIP_H - CHIP.y) * 0.5 + 8.0), Vector2(w, CHIP.y))
 
 ## Where a pill stands: two wide ones after the solve, three slots in the
 ## free build.
@@ -1872,11 +1959,11 @@ func _pill_rect(p: int) -> Rect2:
 	if _free:
 		return _slot(CHIPS + int({Pill.GO: 0, Pill.CONVOY: 1, Pill.DONE: 2}.get(p, 2)))
 	var font: Font = CozyTheme.body(700)
-	var x := PAD
+	var x := _side()
 	for q in [Pill.CONVOY, Pill.FREE]:
 		var w := maxf(180.0, font.get_string_size(tr(_pill_label(q)), HORIZONTAL_ALIGNMENT_LEFT, -1, 28).x + 44.0)
 		if q == p:
-			return Rect2(Vector2(x, (STRIP_H - CHIP.y) * 0.5 + 8.0), Vector2(w, CHIP.y))
+			return Rect2(Vector2(x, _top() + (STRIP_H - CHIP.y) * 0.5 + 8.0), Vector2(w, CHIP.y))
 		x += w + CHIP_GAP
 	return Rect2()
 
@@ -2221,7 +2308,8 @@ func _draw() -> void:
 	var still := 0.0 if Motion.reduce else 1.0
 	var shake := Transform2D(0.0, _shake_off())
 	# the sky behind everything: the sun turning, the clouds drifting by
-	draw_mesh(_sky_mesh, null, Transform2D(0.0, shift))
+	if not _bled:
+		draw_mesh(_sky_mesh, null, Transform2D(0.0, shift))
 	draw_mesh(_sun_mesh, null, Transform2D(t * 0.12 * still, _sun_at()))
 	var cw := _u * 2.4
 	for k in 3:
@@ -2291,6 +2379,10 @@ func _build_still() -> ArrayMesh:
 	for k in 9:
 		var at := Vector2(px(Vector2(rng.randf_range(0.2, w - 0.2), 0.0)).x, water + _u * rng.randf_range(0.6, 1.0))
 		b.ellipse(at, _u * rng.randf_range(0.1, 0.2), _u * 0.07, Color("4f93c0"))
+	if _bled:
+		# the river's bed, which the foot of the screen shows under the view
+		World.paint_bed(b, size.x, px(Vector2(0.0, Sim.BED)).y - _u * 0.1, size.y, _u,
+			px(Vector2(0.0, 0.0)).x, px(Vector2(w, 0.0)).x)
 	# the banks: grass on top, rock faces down to the river bed
 	_bank(b, true, 0.0)
 	_bank(b, false, dy)
@@ -2855,7 +2947,7 @@ func _draw_front() -> void:
 	if t - _chip_at < 0.4:
 		# a chip just picked is bouncing
 		_strip_mesh = null
-	var strip_key := "%d|%d|%d|%s|%s|%s|%s|%s|%d" % [state.cost(), _mat, state.budget, size, _free, is_done(), _testing, _crowd_state, _pills().size()]
+	var strip_key := "%d|%d|%d|%s|%s|%s|%s|%s|%d" % [state.cost(), _mat, state.budget, Vector3(size.x, size.y, _top()), _free, is_done(), _testing, _crowd_state, _pills().size()]
 	if _strip_mesh == null or _strip_for != strip_key:
 		_strip_mesh = _build_strip()
 		_strip_for = strip_key
@@ -2921,7 +3013,7 @@ func _load_tags() -> Array:
 ## The strip: a paper band, the chips, the budget bar and the proof's star.
 func _build_strip() -> ArrayMesh:
 	var b := Face.Builder.new()
-	var strip := Rect2(Vector2(PAD * 0.5, 8.0), Vector2(size.x - PAD, STRIP_H))
+	var strip := Rect2(Vector2(_side() - 12.0, _top() + 8.0), Vector2(size.x - 2.0 * (_side() - 12.0), STRIP_H))
 	b.fan(Face.Builder.round_rect(strip.position + Vector2(0, 4), strip.size, 30.0), Color(Pal.TEXT, 0.12))
 	b.fan(Face.Builder.round_rect(strip.position, strip.size, 30.0), Color(Pal.SURFACE, 0.94))
 	for pill in _pills():
@@ -2934,7 +3026,7 @@ func _build_strip() -> ArrayMesh:
 	if is_done() and not _free:
 		# the bridge's stars at the strip's right end, after its cost
 		for i in _stars():
-			Rewards.star(b, Vector2(size.x - PAD - 8.0 - STAR_STEP * (i + 0.5), 46.0), 13.0, Rewards.GOLD)
+			Rewards.star(b, Vector2(size.x - _side() - 8.0 - STAR_STEP * (i + 0.5), _top() + 46.0), 13.0, Rewards.GOLD)
 		return b.mesh()
 	for i in CHIPS:
 		var r := _chip_rect(i)
@@ -3006,12 +3098,12 @@ func _draw_words() -> void:
 			HORIZONTAL_ALIGNMENT_LEFT, -1, pfs, Pal.TEXT)
 	if is_done() and not _free:
 		# the bridge's cost, its stars, and where it stands today
-		var right := size.x - PAD - 8.0
+		var right := size.x - _side() - 8.0
 		var left := _pill_rect(Pill.FREE).end.x + 20.0
 		var cost := "%s / %s" % [Locale.number(state.cost()), Locale.number(state.budget)]
 		var cfs := 32
 		var csz := font.get_string_size(cost, HORIZONTAL_ALIGNMENT_LEFT, -1, cfs)
-		_front.draw_string(font, Vector2(right - STAR_STEP * _stars() - 12.0 - csz.x, 58.0), cost, HORIZONTAL_ALIGNMENT_LEFT, -1, cfs, Pal.TEXT)
+		_front.draw_string(font, Vector2(right - STAR_STEP * _stars() - 12.0 - csz.x, _top() + 58.0), cost, HORIZONTAL_ALIGNMENT_LEFT, -1, cfs, Pal.TEXT)
 		var crowd := _crowd_line()
 		if crowd != "":
 			var body: Font = CozyTheme.body(600)
@@ -3019,13 +3111,13 @@ func _draw_words() -> void:
 			while fs > 16 and body.get_string_size(crowd, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > right - left:
 				fs -= 1
 			var sz := body.get_string_size(crowd, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
-			_front.draw_string(body, Vector2(right - sz.x, 96.0), crowd, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Pal.TEXT_DIM)
+			_front.draw_string(body, Vector2(right - sz.x, _top() + 96.0), crowd, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Pal.TEXT_DIM)
 		return
 	if _free:
 		var cost := tr("TR_COST") % [Locale.number(state.cost()), Locale.number(state.budget)]
 		var body: Font = CozyTheme.body(600)
 		var sz := body.get_string_size(cost, HORIZONTAL_ALIGNMENT_LEFT, -1, 24)
-		_front.draw_string(body, Vector2(size.x - PAD - sz.x, STRIP_H + 44.0), cost, HORIZONTAL_ALIGNMENT_LEFT, -1, 24,
+		_front.draw_string(body, Vector2(size.x - _side() - sz.x, _top() + STRIP_H + 44.0), cost, HORIZONTAL_ALIGNMENT_LEFT, -1, 24,
 			Pal.TEXT_DIM if state.cost() <= state.budget else Parts.BAD)
 	for i in CHIPS:
 		var r := _chip_rect(i)
@@ -3176,9 +3268,9 @@ static func _cord(b: Face.Builder, p: Vector2, q: Vector2, u: float) -> void:
 	b.stroke(cord, u * 0.018, Color("7a6048"), false, false)
 
 func _budget_rect() -> Rect2:
-	var x := PAD + CHIPS * (CHIP.x + CHIP_GAP) + 16.0
-	var w := size.x - PAD - x - 12.0
-	return Rect2(Vector2(x, STRIP_H - 34.0), Vector2(w, 22.0))
+	var x := _side() + CHIPS * (CHIP.x + CHIP_GAP) + 16.0
+	var w := size.x - _side() - x - 12.0
+	return Rect2(Vector2(x, _top() + STRIP_H - 34.0), Vector2(w, 22.0))
 
 func _draw_toast(t: float, shown: Array) -> void:
 	if _toast == "":
@@ -3210,7 +3302,7 @@ func _draw_toast(t: float, shown: Array) -> void:
 		b.fan(Face.Builder.round_rect(Vector2(-w, -h) * 0.5, Vector2(w, h), TOAST_RADIUS), Pal.TEXT)
 		_toast_mesh = b.mesh()
 		_toast_mesh_for = key
-	var mid := Vector2(size.x * 0.5, STRIP_H + 30.0 + h * 0.5 + (SIGN_H + 12.0 if max_hearts > 0 else 0.0))
+	var mid := Vector2(size.x * 0.5, _top() + STRIP_H + 30.0 + h * 0.5 + (SIGN_H + 12.0 if max_hearts > 0 else 0.0))
 	_front.draw_mesh(_toast_mesh, null, Transform2D(0.0, mid), Color(Color.WHITE, alpha))
 	shown.append(_toast_mesh)
 	var top := mid.y - h * 0.5 + (TOAST_H - font.get_height(TOAST_FONT)) * 0.5 + font.get_ascent(TOAST_FONT)
@@ -3406,7 +3498,7 @@ func _draw_card_number(t: float) -> void:
 func _draw_hearts(fm: RunMesh, t: float) -> void:
 	if max_hearts <= 0 or is_done():
 		return
-	var top := _sign_top()
+	var top := _top() + _sign_top()
 	var x0 := _sign_left()
 	fm.put(LOOK_SIGN + max_hearts, [], Transform2D(0.0, Vector2(x0, top)))
 	var cy := top + (SIGN_H - 14.0) * 0.5 + 2.0
