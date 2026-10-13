@@ -64,6 +64,8 @@ extends RefCounted
 ## above still counts them; the grid is thirty-three cards now, and a card's
 ## colour comes off its index here, so every card after Binairo changed
 ## colour that day.
+## Marigold left the grid the same day for the Arcade tab (`ARCADE`, below):
+## thirty-two cards.
 ##
 ## A grid entry's `short` is the card's own two-line blurb: at 320 wide a
 ## card fits about seventeen characters a line, which the registry's longer
@@ -728,37 +730,6 @@ const PUZZLES := [
 		],
 	},
 	{
-		"id": "marigold",
-		"kind": "puzzle",
-		"title": "Marigold",
-		"blurb": "MG_BLURB",
-		"short": "MG_SHORT",
-		"motto": "MG_MOTTO",
-		"footer": "Aim · Bounce · Bloom",
-		# Nothing is picked up and nothing can be taken back once a seed has
-		# flown: no tray, no actions row and no Undo. Hint and Reset ride in
-		# the top bar -- Pinwheel's shape.
-		"script": "res://puzzles/marigold2d.gd",
-		"card": "res://ui/menu/cards/marigold.gd",
-		"shell": "flat",
-		"tray": "none",
-		# Its world is the whole screen (`bleed`, puzzles/marigold_world.gd) and the
-		# levels stand where the day card was (docs/agents/flat-screens.md).
-		"bleed": true,
-		"level_card": true,
-		"actions": false,
-		"difficulties": [0, 1, 2, 3],
-		# Asks like Sudoku: each garden (marigold_state.gd's BANDS) is its
-		# own daily with its own done mark.
-		"pick_difficulty": true,
-		"levels": [
-			{"difficulty": 0, "name": "Easy", "line": "MG_LVL_0"},
-			{"difficulty": 1, "name": "Medium", "line": "MG_LVL_1"},
-			{"difficulty": 2, "name": "Hard", "line": "MG_LVL_2"},
-			{"difficulty": 3, "name": "Insane", "line": "MG_LVL_3"},
-		],
-	},
-	{
 		"id": "pixelgarden",
 		"kind": "puzzle",
 		"title": "Pixel Garden",
@@ -1138,9 +1109,80 @@ const PUZZLES := [
 	},
 ]
 
-## Every entry the game knows.
+## Boards that stand on the Arcade tab and not in the grid: the same flat
+## board, opened by the same host with its levels, a day at a time, and
+## closed back to Arcade (`deck`). **Marigold moved here on 2026-10-13** (the
+## user: "move marigold to arcade"): a seed shot at pegs is an arcade game
+## in the hand, whatever its daily gardens are. It keeps its four levels,
+## its done marks and its place in the day's hearts; it left the Stats grid,
+## which lists `PUZZLES`. ui/menu/arcade_tab.gd names it in its list and
+## hands the grid this entry.
+const ARCADE := [
+	{
+		"id": "marigold",
+		"kind": "puzzle",
+		"title": "Marigold",
+		"blurb": "MG_BLURB",
+		"short": "MG_SHORT",
+		"motto": "MG_MOTTO",
+		"footer": "Aim · Bounce · Bloom",
+		# Nothing is picked up and nothing can be taken back once a seed has
+		# flown: no tray, no actions row and no Undo. Hint and Reset ride in
+		# the top bar -- Pinwheel's shape.
+		"script": "res://puzzles/marigold2d.gd",
+		"card": "res://ui/menu/cards/marigold.gd",
+		"shell": "flat",
+		"tray": "none",
+		# It stands on the Arcade tab, and this is its place in that list
+		# (ui/menu/arcade_tab.gd's GAMES): the card's colour comes off it
+		# there, and the board's accent off it here.
+		"deck": "arcade",
+		"slot": 14,
+		# Its world is the whole screen (`bleed`, puzzles/marigold_world.gd) and the
+		# levels stand where the day card was (docs/agents/flat-screens.md).
+		"bleed": true,
+		"level_card": true,
+		"actions": false,
+		"difficulties": [0, 1, 2, 3],
+		# Asks like Sudoku: each garden (marigold_state.gd's BANDS) is its
+		# own daily with its own done mark.
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "MG_LVL_0"},
+			{"difficulty": 1, "name": "Medium", "line": "MG_LVL_1"},
+			{"difficulty": 2, "name": "Hard", "line": "MG_LVL_2"},
+			{"difficulty": 3, "name": "Insane", "line": "MG_LVL_3"},
+		],
+	},
+]
+
+## Every entry the game knows: the grid's and the Arcade tab's boards.
 static func all() -> Array:
-	return PUZZLES
+	return PUZZLES + ARCADE
+
+## The Arcade tab's board called `id`, or {} when `id` is one of that tab's
+## own games (or nothing).
+static func arcade(id: String) -> Dictionary:
+	for p in ARCADE:
+		if p.id == id:
+			return p
+	return {}
+
+## The list an entry's card stands in, and the tab its board closes back to:
+## "home" (the Puzzles grid) or "arcade".
+static func deck(entry: Dictionary) -> String:
+	return str(entry.get("deck", "home"))
+
+## Where an entry's colour comes from (`Pal.CAT[slot % size]`): its index in
+## the grid, or the `slot` an Arcade board names. -1 if it has none.
+static func slot(entry: Dictionary) -> int:
+	if entry.has("slot"):
+		return int(entry.slot)
+	var id := String(entry.get("id", ""))
+	for i in PUZZLES.size():
+		if String(PUZZLES[i].get("id", "")) == id:
+			return i
+	return -1
 
 static func find(id: String) -> Dictionary:
 	for p in all():

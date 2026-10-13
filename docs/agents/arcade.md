@@ -2,6 +2,13 @@
 
 ## Arcade
 
+> **2026-10-13: Marigold stands on this tab**, the fifteenth card, moved from
+> the Puzzles grid at the user's word. It is still the daily board
+> (`puzzles/marigold2d.gd`, the flat host, four levels), not an Arcade
+> screen: no `arcade.cfg` record, no boosters, no best. See
+> `docs/agents/boards/marigold.md`.
+
+
 **A fifth tab since 2026-09-27**, between Versus and Stats: games played
 alone for a score (spec `2026-09-27-arcade-firefly-design.md`). Like Versus
 it is not a registry entry: `ui/menu/arcade_tab.gd` holds one card a game,

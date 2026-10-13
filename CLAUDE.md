@@ -23,6 +23,11 @@ progress under them is simply never read. `ui/hud/out_of_rows.gd` and the
 `HTP_TN_HINT*` / `HTP_TN_HEARTS` tutorial captions were theirs first and are
 still used by other boards, under their old key names.
 
+**Marigold moved to the Arcade tab the same day** (`Registry.ARCADE`): the
+same daily board with its levels, its card in the Arcade list
+(`docs/agents/boards/marigold.md`). `Registry.PUZZLES` is the grid's
+thirty-two; `Registry.all()` is every board.
+
 ## Where the detail lives
 
 This file holds the rules every change needs. Everything else -- each
@@ -40,7 +45,7 @@ that area**, and add new history there rather than here.
 | One board's own notes | `docs/agents/boards/<board>.md` |
 | Versus (snooker, chess, checkers, air hockey, Toy Boats, Penny Drop, Dominoes, Reversi) | `docs/agents/versus.md` |
 | Friends: the link, codes, invites, a friend's game | `docs/agents/friends.md` |
-| Arcade (Firefly, Molehill, Stackwood, Lucky Thirteen, Posy, Peapod, Nightlight, Beeline, Deckchair, Eddy, Furrow, Griddle, Trivet) | `docs/agents/arcade.md` |
+| Arcade (Firefly, Molehill, Stackwood, Lucky Thirteen, Posy, Peapod, Nightlight, Beeline, Deckchair, Eddy, Furrow, Griddle, Trivet; Factory and Marigold have cards there too) | `docs/agents/arcade.md` |
 | Factory: the land, the sim, the one-sim rule (and the dropped Valley and Grove, as history) | `docs/agents/factory.md` |
 | Gold, gifts and the shop | `docs/agents/gold-gifts-shop.md` |
 | Sound | `docs/agents/sound.md` |

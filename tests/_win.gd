@@ -38,7 +38,7 @@ func _initialize() -> void:
 	_entries = []
 	# `-- <id> ...` walks only those boards.
 	var only := OS.get_cmdline_user_args()
-	for e in load("res://ui/registry.gd").PUZZLES:
+	for e in load("res://ui/registry.gd").all():
 		if not only.is_empty() and not only.has(String(e.id)):
 			continue
 		if not e.get("soon", false):

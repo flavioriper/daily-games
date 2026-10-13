@@ -98,7 +98,7 @@ func _initialize() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(progress_path))
 	var progress = load("res://core/progress.gd")
 	progress.path = progress_path
-	for e in load("res://ui/registry.gd").PUZZLES:
+	for e in load("res://ui/registry.gd").all():
 		if not _howto:
 			progress.mark_tutorial_seen(String(e.id))
 	var main: Node = load("res://world/main.tscn").instantiate()
@@ -232,7 +232,7 @@ func _open() -> void:
 	if _lang != "":
 		TranslationServer.set_locale(_lang)
 	_t = 0.0
-	for e in load("res://ui/registry.gd").PUZZLES:
+	for e in load("res://ui/registry.gd").all():
 		if e.id == _id:
 			_entry = e
 	if bool(_entry.get("pick_difficulty", false)):

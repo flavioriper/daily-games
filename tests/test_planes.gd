@@ -37,7 +37,7 @@ static func run(t) -> void:
 ## for the same reason. The board is not instantiated here: it is a Control
 ## that wants a live tree, and loading it is all that proves it compiles.
 static func _test_boards_parse(t) -> void:
-	for e in Registry.PUZZLES:
+	for e in Registry.all():
 		var path: String = e.get("script", "")
 		t.check(not path.is_empty(), "%s: the registry names a script" % e.get("id", "?"))
 		var script := load(path)

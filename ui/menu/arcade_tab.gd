@@ -14,7 +14,11 @@ extends HBoxContainer
 ## whirlpool steered about a pond, and Trivet (arcade/trivet_screen.gd),
 ## stacks of felt mats sorted on a tray, and Factory (factory/screen.gd), the
 ## land of belts, which had a tab of its own until the bottom bar left on
-## 2026-10-13. (Gumdrop was the eleventh for a day and
+## 2026-10-13, and Marigold (puzzles/marigold2d.gd), a seed shot down through
+## a pond garden of buds, which is a daily board with levels and was a card
+## of the Puzzles grid until the same day: its entry is the registry's own
+## (ui/registry.gd's `ARCADE`), its card is the board's, and it opens in the
+## flat host. (Gumdrop was the eleventh for a day and
 ## became a daily board on 2026-10-11, puzzles/gumdrop2d.gd.) Its body takes the day row's and the grid's room, as Versus, Stats
 ## and Streak do. (Hedgerow TD, Henhouse and Millstream left for a side
 ## project on 2026-09-27, ~/dev/garden-games.)
@@ -39,10 +43,11 @@ const FurrowSim = preload("res://arcade/furrow_sim.gd")
 const GriddleSim = preload("res://arcade/griddle_sim.gd")
 const FactoryArt = preload("res://factory/art.gd")
 const GoldPill = preload("res://ui/menu/gold_pill.gd")
+const Registry = preload("res://ui/registry.gd")
 
 const GAP := 20
-const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "nightlight", "beeline", "deckchair", "eddy", "furrow", "griddle", "trivet", "factory"]
-const NAMES := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Lucky Thirteen", "posy": "Posy", "peapod": "Peapod", "nightlight": "Nightlight", "beeline": "Beeline", "deckchair": "Deckchair", "eddy": "Eddy", "furrow": "Furrow", "griddle": "Griddle", "trivet": "Trivet", "factory": "Factory"}
+const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "nightlight", "beeline", "deckchair", "eddy", "furrow", "griddle", "trivet", "factory", "marigold"]
+const NAMES := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Lucky Thirteen", "posy": "Posy", "peapod": "Peapod", "nightlight": "Nightlight", "beeline": "Beeline", "deckchair": "Deckchair", "eddy": "Eddy", "furrow": "Furrow", "griddle": "Griddle", "trivet": "Trivet", "factory": "Factory", "marigold": "Marigold"}
 ## How far a game went, in its own words: a stage, a wave, or a streak.
 const FURTHEST := {"firefly": "ARC_BEST_STAGE", "molehill": "ARC_BEST_STREAK", "stackwood": "ARC_BEST_BLOCK", "thirteen": "ARC_BEST_NUMBER", "posy": "ARC_BEST_DAY", "peapod": "ARC_BEST_WAVE", "deckchair": "ARC_BEST_HOME", "eddy": "ARC_BEST_LEVEL", "trivet": "ARC_BEST_TRIVET"}
 
@@ -77,6 +82,12 @@ func _init() -> void:
 static func entries() -> Array:
 	var out: Array = []
 	for game: String in GAMES:
+		# A board of the registry's (Marigold) is listed by its own entry:
+		# its card, its blurb and its levels are the board's.
+		var board: Dictionary = Registry.arcade(game)
+		if not board.is_empty():
+			out.append(board)
+			continue
 		out.append({"id": game, "title": NAMES[game], "short": "FACTORY_CARD_BLURB" if game == "factory" else "ARC_NO_BEST",
 			"card": "res://ui/menu/cards/arc_%s.gd" % game})
 	return out
@@ -95,6 +106,10 @@ func _say(game: String, best: String, further := "", leaf := false) -> void:
 ## Reads every game's line again; the grid builds its cards from them.
 func refresh() -> void:
 	for game: String in GAMES:
+		# A board keeps no best: its card says its blurb and shows the
+		# day's levels, as in the Puzzles grid.
+		if not Registry.arcade(game).is_empty():
+			continue
 		# Factory is a land looked in on (a tab of its own until 2026-10-13):
 		# its line is the coins held, or the blurb before the land exists.
 		if game == "factory":

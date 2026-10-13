@@ -32,7 +32,7 @@ func _initialize() -> void:
 	var progress = load("res://core/progress.gd")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://_probe_moves_progress.cfg"))
 	progress.path = "user://_probe_moves_progress.cfg"
-	for e in load("res://ui/registry.gd").PUZZLES:
+	for e in load("res://ui/registry.gd").all():
 		progress.mark_tutorial_seen(String(e.id))
 	var main: Node = load("res://world/main.tscn").instantiate()
 	root.add_child(main)
@@ -44,7 +44,7 @@ func _process(delta: float) -> bool:
 		_opened = true
 		_t = 0.0
 		var entry: Dictionary = {}
-		for e in load("res://ui/registry.gd").PUZZLES:
+		for e in load("res://ui/registry.gd").all():
 			if e.id == _id:
 				entry = e
 		if entry.is_empty():

@@ -1,5 +1,22 @@
 # Marigold
 
+> **On the Arcade tab since 2026-10-13** (the user: "move marigold to
+> arcade"). Only its card moved: the board, its four levels, the daily
+> gardens, Sweethearts and its done marks are as below. Its registry entry
+> is in `Registry.ARCADE` (not `PUZZLES`) with `"deck": "arcade"`, so the
+> flat host closes back to Arcade, and `"slot": 14`, its place in
+> `arcade_tab.gd`'s GAMES, which is where its colour comes from.
+> `arcade_tab.entries()` hands the grid the registry's own entry, so the
+> card is the same `ui/menu/cards/marigold.gd` with the day's level pips and
+> no best score. A harness that looks a board up by id walks
+> `Registry.all()`. It left the Stats grid, which lists `PUZZLES`; its solves
+> still count in the day's hearts and the streak. A headless drive of the
+> real menu (throwaway) found the card on Arcade's second page, opened the
+> board and closed back to Arcade, 10/10. Decided for the user: it stays a
+> daily board with levels rather than becoming a run with a score; fifteenth
+> in the list, after Factory. Owed: the user's eye on the card among the
+> Arcade cards, a phone.
+
 Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
 
 - **Marigold is the twenty-sixth card** (2026-09-26,

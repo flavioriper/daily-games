@@ -661,7 +661,8 @@ func _fill(grid: GridContainer, page: int, into: Array, pad: Array) -> void:
 		var entry: Dictionary = row.entry
 		var colour: Color = Pal.CAT[int(row.i) % Pal.CAT.size()]
 		var card: PuzzleCard
-		if _deck == "home":
+		# A board is the same card on any list (Marigold stands on Arcade).
+		if _deck == "home" or entry.has("script"):
 			card = PuzzleCard.new(entry, colour,
 				Progress.completed(String(entry.id)), Progress.levels_in(today, String(entry.id)))
 			card.open.connect(_open.bind(entry))
@@ -1346,6 +1347,12 @@ func _open_versus(game: String, level: int) -> void:
 ## A game on the Arcade tab: its own screen over the list, and back to the
 ## Arcade tab when it closes.
 func _open_arcade(game: String) -> void:
+	# A board on this tab (Marigold) opens as a board does: its levels, the
+	# flat host, and back here when it closes.
+	var board: Dictionary = Registry.arcade(game)
+	if not board.is_empty():
+		_open(board)
+		return
 	if game == "factory":
 		_open_factory(game)
 		return
@@ -1435,9 +1442,11 @@ func _mount_host(host: Control) -> void:
 		host.play_level.connect(func(difficulty: int) -> void:
 			host.queue_free()
 			_open_at(host._entry, difficulty))
+	# Back to the list its card stands in: the grid, or Arcade (Marigold).
+	var deck: String = Registry.deck(host._entry)
 	host.closed.connect(func() -> void:
 		host.queue_free()
-		_left_game("home"))
+		_left_game(deck))
 	add_child(host)
 	_raise_card()
 	_list_root.visible = false

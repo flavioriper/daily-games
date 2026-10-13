@@ -392,7 +392,7 @@ func _initialize() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(progress_path))
 	var progress = load("res://core/progress.gd")
 	progress.path = progress_path
-	for e in load("res://ui/registry.gd").PUZZLES:
+	for e in load("res://ui/registry.gd").all():
 		progress.mark_tutorial_seen(String(e.id))
 	var main: Node = load("res://world/main.tscn").instantiate()
 	root.add_child(main)
@@ -404,7 +404,7 @@ func _process(delta: float) -> bool:
 		if _t >= 0.0:
 			_opened = true
 			_t = 0.0
-			var entries: Array = load("res://ui/registry.gd").PUZZLES
+			var entries: Array = load("res://ui/registry.gd").all()
 			_entry = entries[0]
 			for e in entries:
 				if e.id == _id:

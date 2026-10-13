@@ -228,9 +228,9 @@ func _build_chrome(root: VBoxContainer) -> void:
 	# day card and faded into the paper under them: the first screen's
 	# header, with the picture of the card that was tapped.
 	var id := String(_entry.get("id", ""))
-	for i in Registry.PUZZLES.size():
-		if String(Registry.PUZZLES[i].get("id", "")) == id:
-			_accent = Pal.CAT[i % Pal.CAT.size()]
+	var slot := Registry.slot(_entry)
+	if slot >= 0:
+		_accent = Pal.CAT[slot % Pal.CAT.size()]
 	_bleed = bool(_entry.get("bleed", false))
 	# a board that fills the screen is its own picture
 	if not _bleed:
