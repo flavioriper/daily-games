@@ -552,6 +552,48 @@ the first one ... Card should be elegant, cozy, but carry the game elements".
   second of two readings; suite 249797/0. Mine, the user's to call: the dark
   wood, which is the heaviest thing on the page; the cloud as the friend
   shown; a score of one and two.
-- **Owed**: the two boards' cells on Stats and Streak still wear the old
-  banner (`CardArt` + `Vistas.card_plate`); the other thirty-six cards; a
+- **Balance, Untangle and Shikaku are the third, fourth and fifth** (the same
+  day, on "Do next 3 games at once"; three workers, one file each, then one
+  windowed look at each).
+  - **Balance** (`ui/menu/cards/balance.gd`): the board's meadow over the
+    whole paper (sky, two hills, a cloud, a lawn with tufts and flowers) and
+    the seesaw on the right, its left end down on a straw bale under a
+    pumpkin, the brass level's bubble run to the high side. The go button is
+    the weight the beam is missing: a round fruit in the card's colour with
+    a chevron, hovering over the lit far cup. One live child, the pumpkin
+    (`ui/faces/fruit.gd`). The plank, keel, level, bale and trestle are
+    redrawn small from `balance2d.gd`'s builders, which are instance
+    methods tied to the sim.
+  - **Untangle** (`ui/menu/cards/untangle.gd`): the board's linen with a
+    stitched sprig in the top left corner and a running-stitch hem, and the
+    wooden hoop on the right with eight holes and three whole ropes peg to
+    peg (`untangle_rope.gd`'s own `lay_knot` and `draw`): coral and blue
+    wound in one knot, yellow under the coral. The go button is the coral
+    rope's near peg lifted off its hole, large, in the card's colour.
+    Nothing lives on it: no kitten, no idle.
+  - **Shikaku** (`ui/menu/cards/shikaku.gd`): a three-by-four corner of the
+    garden field down the left side, three beds tilled and fenced round
+    their signs (3 in a 1x3, 4 in a 2x2, 2 in a 2x1, each the board's
+    `MarkerFace` baked settled), and the bottom row the plot not yet drawn:
+    a 3x1 bed in the card's colour with a chevron, its cream 3 waiting in
+    it, alive. Words on the right, the mirror of Binairo. The baked signs'
+    numerals are three `draw_string`s over the mesh, as the board writes
+    them.
+  - **Measured**, `tests/_shot_menu.gd` on `opengl3_angle` at 810x1440,
+    second of two readings: 235 draw calls with all five on the page (both
+    readings 235). Suite 249797/0. A throwaway windowed probe laid each
+    card at 490x246, 490x272, 620x300 and 1040x246 in pt with two, four and
+    the Insane level done: the seal's corner is clear on all three (the
+    hoop passes 5 px from it at 490x246) and the pt words fit.
+  - **Mine, the user's to call**: Balance's go button hovering over a cup
+    rather than standing low right, the pumpkin as the fruit shown, a lower
+    hub than the board's so the weight clears the seal; Untangle's go peg
+    near three times its siblings, pegs fatter than the board's so eight
+    read, coral/blue/yellow, the sprig and hem; Shikaku's signposts on a
+    card whose brief said no mascot (the board has them), a wide bar for a
+    go button on the card's left, the blurb ink `6f6a4c`. **Seen and left**:
+    Shikaku's signs are small at card size, the grin sitting close under
+    each digit.
+- **Owed**: the five boards' cells on Stats and Streak still wear the old
+  banner (`CardArt` + `Vistas.card_plate`); the other thirty-three cards; a
   phone.

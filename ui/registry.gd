@@ -125,6 +125,7 @@ const PUZZLES := [
 		# no tray, and the beam is its own check, so **no actions row** --
 		# Undo, Reset and Hint ride in the top bar.
 		"script": "res://puzzles/balance2d.gd",
+		"card": "res://ui/menu/cards/balance.gd",
 		"shell": "flat",
 		"tray": "none",
 		"actions": false,
@@ -151,6 +152,7 @@ const PUZZLES := [
 		# here is undo and hint, so there is no Check to put in one and Reset
 		# rides in the top bar instead.
 		"script": "res://puzzles/untangle2d.gd",
+		"card": "res://ui/menu/cards/untangle.gd",
 		"shell": "flat",
 		"tray": "none",
 		"actions": false,
@@ -177,6 +179,7 @@ const PUZZLES := [
 		# It picks nothing up, so it asks for no tray; it does have a Check,
 		# so unlike Balance it keeps the actions row.
 		"script": "res://puzzles/shikaku2d.gd",
+		"card": "res://ui/menu/cards/shikaku.gd",
 		"shell": "flat",
 		"tray": "none",
 		"difficulties": [0, 1, 2, 3],
