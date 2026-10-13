@@ -494,7 +494,20 @@ the board has no such capability (Insane's Undo). "Redo" was read as
 Reset, the button already there: no board has a redo. The top slot is
 `_top_play` (TOP_PLAY + 20 + 110 here), which replaced the constant in the
 slides and the clear. A board's further buttons go after Hint; none has
-any yet. It is independent of `tray` and `actions`, but was only built over
+any yet.
+
+**Undo is a turned-back arrow and Reset a bin that asks** (the user, the
+same day, of the two round arrows side by side: "what the both redo
+buttons does different from another?", then "we need a proper UNDO button
+and a clear button (clear must prompt if user really want to do it)").
+On the tools row the bar builds `undo_back` and `bin` (new in
+`ui/icons.gd`); every other board keeps `undo` and `reset`. The bin's
+signal goes to `flat_host._ask_clear`: a `Dialog` card at the sheets'
+`OVER_BOARD` z (a board's signs are lifted with z_index and drew over it
+at 0), "Clear the board?", Keep playing on the sun button and Clear the
+board on the pill under it (`CLEAR_*` in `locale/ui.csv`, en/pt/es). The
+scrim keeps too; the clock is held while it is up; Clear is the old
+`_on_reset`. It asks even on a board nothing was placed on. It is independent of `tray` and `actions`, but was only built over
 Binairo, which has neither: its bottom slot is empty and the board is told
 a clear of the margin alone.
 

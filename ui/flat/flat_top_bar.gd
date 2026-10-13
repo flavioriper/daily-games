@@ -119,8 +119,11 @@ func _build() -> void:
 	_block.add_child(leaf)
 	_title.resized.connect(leaf.queue_redraw)
 	var row: Container = tools if tools != null else _inner
-	undo_button = _button("undo", undo, row)
-	reset_button = _button("reset", reset, row)
+	# In a row of their own the two stand side by side, and two round arrows
+	# read as one button twice: Undo is the turned-back arrow there and
+	# Reset a bin (the host asks before it clears).
+	undo_button = _button("undo_back" if tools != null else "undo", undo, row)
+	reset_button = _button("bin" if tools != null else "reset", reset, row)
 	reset_button.visible = with_reset
 	if tools != null:
 		var spacer := Control.new()

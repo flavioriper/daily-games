@@ -67,6 +67,7 @@ const Icons = preload("res://ui/icons.gd")
 const Streak = preload("res://core/streak.gd")
 const Registry = preload("res://ui/registry.gd")
 const Vistas = preload("res://ui/menu/vistas.gd")
+const Dialog = preload("res://ui/hud/dialog.gd")
 
 ## Asks the menu to swap this board for the same card at `difficulty` (the
 ## win's invite to the next level up); the menu mounts a fresh host.
@@ -79,6 +80,7 @@ signal play_level(difficulty: int)
 const TOP_PLAY := 180.0 + 20.0 + 120.0
 ## A board's change of level in place: how long the boards slide.
 const LEVEL_SLIDE := 0.4
+const CLEAR_CARD := 760.0
 const TOP_WIN := WellDone.HEIGHT
 const BOTTOM_WIN := 120.0 + 20.0 + 130.0
 const CAMP_BUTTON := 130.0
@@ -136,6 +138,8 @@ var _bottom_play := 0.0
 var _top_play := TOP_PLAY
 ## The board sliding out on a change of level, and the slide.
 var _leaving: Control
+## The card that asks before the board is cleared, while it is up.
+var _clear_card: Control
 var _level_tw: Tween
 ## set_tray is a one-time handoff, not a per-move refresh: _refresh() runs on
 ## every move and every focus change, and re-handing the same tray each time
@@ -259,7 +263,9 @@ func _build_chrome(root: VBoxContainer) -> void:
 	top_bar.name = "TopBar"
 	top_bar.back.connect(_on_back)
 	top_bar.undo.connect(_on_undo)
-	top_bar.reset.connect(_on_reset)
+	# The tools row's bin asks first (the user, 2026-10-13: "clear must
+	# prompt if user really want to do it").
+	top_bar.reset.connect(_ask_clear if levelled else _on_reset)
 	top_bar.hint.connect(_on_hint)
 	top_bar.settings.connect(_open_settings)
 	top_bar.help.connect(_open_rules)
@@ -543,6 +549,55 @@ func _dress_win_buttons() -> void:
 	_next_line.text = tr(String(level.get("line", "")))
 	_next_line.add_theme_color_override("font_color",
 		Color(Pal.MOON, 0.72) if night else Color(Pal.SURFACE, 0.85))
+
+## The bin: a card that asks before the board is cleared, since nothing
+## brings the tiles back. Keep playing is the sun button; the scrim keeps
+## too. The clock waits under it.
+func _ask_clear() -> void:
+	if is_instance_valid(_clear_card) or not is_instance_valid(_puzzle):
+		return
+	var scrim := Dialog.scrim()
+	scrim.name = "ClearCard"
+	# over what the board lifts with z_index (its signs), as the sheets are
+	scrim.z_index = preload("res://ui/hud/sheet.gd").OVER_BOARD
+	_clear_card = scrim
+	var shut := func() -> void:
+		if is_instance_valid(scrim):
+			scrim.queue_free()
+		_clear_card = null
+		if not is_instance_valid(_tutorial):
+			_hold_clock(false)
+	scrim.gui_input.connect(func(event: InputEvent) -> void:
+		if (event is InputEventScreenTouch or event is InputEventMouseButton) and event.pressed:
+			shut.call())
+	var center := CenterContainer.new()
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	scrim.add_child(center)
+	var card := Dialog.card(CLEAR_CARD)
+	card.mouse_filter = Control.MOUSE_FILTER_STOP
+	center.add_child(card)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 20)
+	card.add_child(col)
+	col.add_child(Dialog.head("CLEAR_TITLE", "bin"))
+	var body := Label.new()
+	body.text = "CLEAR_BODY"
+	body.theme_type_variation = "CardBlurb"
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(body)
+	var keep := Dialog.primary("check", tr("CLEAR_NO"))
+	keep.name = "Keep"
+	keep.pressed.connect(shut)
+	var yes := Dialog.secondary("bin", tr("CLEAR_YES"))
+	yes.name = "Clear"
+	yes.pressed.connect(func() -> void:
+		shut.call()
+		_on_reset())
+	Dialog.buttons(col, keep, yes)
+	add_child(scrim)
+	_hold_clock(true)
+	Motion.appear(scrim, 0.0, 1.0, 0.2)
 
 ## The level card asked for another level: this board is left as Back would
 ## leave it (an unfinished one is an abandon) and the other is dealt in its

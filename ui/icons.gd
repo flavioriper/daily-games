@@ -10,7 +10,7 @@ const NAMES := ["chevron_left", "chevron_right", "undo", "reset", "bulb", "gear"
 	"calendar", "home", "trophy", "bars", "heart", "heart_line", "pencil",
 	"puzzle", "flame", "cloud", "mountain", "sparkle", "trend", "crown", "no_ads", "versus", "arcade", "play",
 	"coin", "gift", "clock", "shield", "acorn", "run", "music", "buzz", "globe", "swords", "gamepad",
-	"friends", "copy", "share"]
+	"friends", "copy", "share", "undo_back", "bin"]
 const SEGMENTS := 24
 const FEATHERED := ["heart"]
 ## Stroke width of polylines as a fraction of the icon's width.
@@ -31,6 +31,10 @@ static func shape(name: String) -> Dictionary:
 			return _arrow_arc(false)
 		"reset":
 			return _arrow_arc(true)
+		"undo_back":
+			return _undo_back()
+		"bin":
+			return _bin()
 		"bulb":
 			return _bulb()
 		"gear":
@@ -229,6 +233,24 @@ static func _arrow_arc(clockwise: bool) -> Dictionary:
 	var tip: Vector2 = a[a.size() - 1]
 	var head := PackedVector2Array([tip + Vector2(0.0, -0.2), tip + Vector2(-0.13, 0.02), tip + Vector2(0.13, 0.02)])
 	return {"polys": [head], "lines": [a]}
+
+## Undo as a turned-back arrow: a head pointing left and a shaft that
+## hooks round under it. The round `undo` beside the round `reset` read as
+## two of one thing once they stood together (the user, 2026-10-13).
+static func _undo_back() -> Dictionary:
+	var shaft := PackedVector2Array([Vector2(0.28, 0.36), Vector2(0.58, 0.36)])
+	shaft.append_array(arc(Vector2(0.58, 0.57), 0.21, -PI * 0.5, PI * 0.5, 12))
+	shaft.append(Vector2(0.3, 0.78))
+	var head := PackedVector2Array([Vector2(0.08, 0.36), Vector2(0.32, 0.17), Vector2(0.32, 0.55)])
+	return {"polys": [head], "lines": [shaft]}
+
+## A bin: the lid and its handle over a tapered body. Clear.
+static func _bin() -> Dictionary:
+	var body := PackedVector2Array([Vector2(0.25, 0.4), Vector2(0.75, 0.4), Vector2(0.68, 0.9), Vector2(0.32, 0.9)])
+	return {"polys": [body], "lines": [
+		PackedVector2Array([Vector2(0.2, 0.26), Vector2(0.8, 0.26)]),
+		PackedVector2Array([Vector2(0.41, 0.24), Vector2(0.43, 0.13), Vector2(0.57, 0.13), Vector2(0.59, 0.24)]),
+	]}
 
 static func _bulb() -> Dictionary:
 	var glass := circle(Vector2(0.5, 0.4), 0.24)

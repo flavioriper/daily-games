@@ -27,6 +27,10 @@ RULES_TITLE,How to play,Como jogar,Cómo jugar
 RULES_GOT_IT,Got it,Entendi,Entendido
 ACT_RESET,Reset,Recomeçar,Reiniciar
 ACT_CHECK,Check,Conferir,Comprobar
+CLEAR_TITLE,Clear the board?,Limpar o tabuleiro?,¿Limpiar el tablero?
+CLEAR_BODY,Everything you placed is taken off and the board goes back to how it started.,Tudo o que você colocou sai e o tabuleiro volta a como começou.,Todo lo que colocaste se quita y el tablero vuelve a como empezó.
+CLEAR_NO,Keep playing,Continuar jogando,Seguir jugando
+CLEAR_YES,Clear the board,Limpar o tabuleiro,Limpiar el tablero
 ACT_ALL_GOOD,All good,Tudo certo,Todo bien
 WIN_WELL_DONE,Well done!,Muito bem!,¡Muy bien!
 WIN_REDO,Redo,De novo,Otra vez
