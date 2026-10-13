@@ -773,6 +773,54 @@ the first one ... Card should be elegant, cozy, but carry the game elements".
     beside the stone rather than on the string, smiling lanterns, no stars,
     a fourth dark card. **Seen and left**: on a 1040-wide card Bridges and
     Quilt are bare in the middle, as Tents is.
-- **Owed**: the seventeen boards' cells on Stats and Streak still wear the old
-  banner (`CardArt` + `Vistas.card_plate`); the other twenty-one cards;
+- **Paper Planes, Pinwheel and Rings are the eighteenth, nineteenth and
+  twentieth** (the same day, the same words a sixth time; the same recipe),
+  the second, third and fourth of page three.
+  - **Paper Planes** (`ui/menu/cards/planes.gd`): a pale morning sky
+    (`cbe4f1` to `fdf5e4`), two flat clouds and no board frame. Three of
+    `paper_plane.gd`'s darts anchored right, each on a dotted lane that runs
+    the paper edge to edge: a short blue one heading down onto the go
+    plane's body, a bent yellow one heading left onto the blue one's, and
+    the go plane along the foot with nothing ahead, so only it may launch,
+    as the board rules. The go button is that plane in the card's colour,
+    larger, lifted over a shadow, three chevrons leading off the right
+    edge. Nothing lives on it and it writes no string.
+  - **Pinwheel** (`ui/menu/cards/pinwheel.gd`): primrose paper (`fdf7dc` to
+    `f9e9ab`) with a soft rise along the foot and a toy pinwheel on a stick
+    bottom left. The board's frame comes up from the foot on the right,
+    five columns, 2.3 rows showing, three pieces on it in `patch_cloth.gd`'s
+    coral, lilac and sky, each with its pin, leaving a three-cell elbow
+    hole. The go button is that elbow in the card's colour, lifted half a
+    cell and caught 24 degrees short of home about its pin, with a chevron
+    and a short clockwise arrow (the board turns clockwise). Nothing lives
+    on it.
+  - **Rings** (`ui/menu/cards/rings.gd`): a blush plaster wall (`fbeeec` to
+    `f2d5d6`) with a soft light behind the pegs, a wooden base in from the
+    right edge along the foot and three pegs in the board's own ring, post
+    and daisy builders: two yellow, three in the card's purple, four teal
+    under the daisy cap. The go button is the fourth purple ring, larger,
+    hovering over the middle post with a chevron for its emblem; the drop
+    is legal under `can_drop`. Nothing lives on it.
+  - **Measured**, `tests/_shot_menu.gd -- page3` on `opengl3_angle` at
+    810x1440, second of two readings: 190 draw calls on page three with
+    four faces and four template cards (both readings 190; 205 before).
+    Suite 249797/0. The throwaway probe, each card at the four sizes in es,
+    then the two small sizes in pt, and page three whole in en. **es is not
+    always the longest locale**: Pinwheel's en and pt blurbs outrun its es
+    one, and the en one touched the frame's corner on the page, which the
+    es probe had passed. Changed after the looks: Pinwheel's frame from
+    2.72 rows showing to 2.3; Paper Planes' lanes lay no dot under the
+    words (`WORDS_CLEAR`), the left-heading lane having run through the
+    blurb.
+  - **Mine, the user's to call**: Paper Planes' three planes rather than
+    four, chevrons as the go mark, lane dots 1.3 times the board's, a lane
+    that stops at the words; Pinwheel's toy pinwheel (the board has none),
+    the three cloths, the go piece overlapping the sky piece's corner, only
+    2.3 rows of the frame; Rings' low peg on the left and the full one
+    under the seal (the brief had them the other way; the blurb wanted the
+    room), yellow and teal as the other colours, a plain base, the go ring
+    passing 14 px from the seal at 490 wide. **Seen and left**: on a
+    1040-wide card all three are bare in the middle, as Tents is.
+- **Owed**: the twenty boards' cells on Stats and Streak still wear the old
+  banner (`CardArt` + `Vistas.card_plate`); the other eighteen cards;
   Balance, Untangle and Shikaku in es; a phone.

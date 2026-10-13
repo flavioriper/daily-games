@@ -538,6 +538,7 @@ const PUZZLES := [
 		# player cannot dead-end it. Reset rides up into the top bar and the
 		# bottom slot is the tip card alone, which is Word Trail's and
 		# Quilt's shape.
+		"card": "res://ui/menu/cards/planes.gd",
 		"script": "res://puzzles/planes2d.gd",
 		"shell": "flat",
 		"tray": "none",
@@ -566,6 +567,7 @@ const PUZZLES := [
 		"footer": "Turn · Fit · Complete",
 		# Nothing is picked up and nothing is hidden, so there is no tray and no
 		# Check; Reset rides up into the top bar and the tip card stands alone.
+		"card": "res://ui/menu/cards/pinwheel.gd",
 		"script": "res://puzzles/pinwheel2d.gd",
 		"shell": "flat",
 		"tray": "none",
@@ -597,6 +599,7 @@ const PUZZLES := [
 		# either and Reset rides up into the top bar. It was built on
 		# 2026-09-20 and fell off the grid in Pinwheel's merge (57c8539), which
 		# took Pinwheel's side of every conflict; back on 2026-09-24.
+		"card": "res://ui/menu/cards/rings.gd",
 		"script": "res://puzzles/rings2d.gd",
 		"shell": "flat",
 		"tray": "none",
