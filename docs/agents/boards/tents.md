@@ -94,3 +94,21 @@ morning.
   Medium's: a tent in trouble strains, a tree with its tents beams, a chip
   goes green or rose (a "?" chip says nothing), and the streak counts fair
   tents, not the answer's.
+
+### The misty wood is the whole screen (2026-10-13)
+
+The redesign (`docs/agents/flat-screens.md`, "Every board gets a world of
+its own"), built unattended. `puzzles/tents_world.gd` is the card's pale
+mist with a low sun in the top right, ten far pines in the gap of the
+tools row, and at the foot the wood's floor with pines, a clearing, one
+canvas tent with a lamp in its doorway, a cairn, tufts and flowers; the
+lamp's pool and three fireflies breathe. None of it has a face, so nothing
+there reads as a piece. The counts' band starts on the host's margin and
+the turf ends on it; the chips stand straight on the mist.
+
+- Registry: `bleed`, `level_card`, no actions row. **Check is gone**: the
+  board solves itself; flawless on Easy to Hard is simply no hint.
+- `opengl3_angle`, 810x1440: 81 draw calls at rest; `tests/_win.gd --
+  tents` passes.
+- Decided for the user, unconfirmed: no Check; the faceless foot; the far
+  pines behind "Well done!" on the win. Owed: a phone, the level slide.

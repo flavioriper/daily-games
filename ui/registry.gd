@@ -204,6 +204,11 @@ const PUZZLES := [
 		"card": "res://ui/menu/cards/shikaku.gd",
 		"shell": "flat",
 		"tray": "none",
+		# Its world is the whole screen (`bleed`, puzzles/shikaku_world.gd) and the
+		# levels stand where the day card was (docs/agents/flat-screens.md).
+		"bleed": true,
+		"level_card": true,
+		"actions": false,
 		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku (2026-09-23): a 5 by 6, 6 by 8 or 7 by 9 field,
 		# and each is its own daily with its own done mark.
@@ -227,6 +232,11 @@ const PUZZLES := [
 		"card": "res://ui/menu/cards/tents.gd",
 		"shell": "flat",
 		"tray": "none",
+		# Its world is the whole screen (`bleed`, puzzles/tents_world.gd) and the
+		# levels stand where the day card was (docs/agents/flat-screens.md).
+		"bleed": true,
+		"level_card": true,
+		"actions": false,
 		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku (2026-09-23): a 6 by 6 field with 5 tents, 7 by 7
 		# with 7 or 8 by 8 with 9, and each is its own daily with its own
@@ -251,6 +261,11 @@ const PUZZLES := [
 		"card": "res://ui/menu/cards/lightup.gd",
 		"shell": "flat",
 		"tray": "none",
+		# Its world is the whole screen (`bleed`, puzzles/lightup_world.gd) and the
+		# levels stand where the day card was (docs/agents/flat-screens.md).
+		"bleed": true,
+		"level_card": true,
+		"actions": false,
 		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku (2026-09-23): a 5 by 5, 6 by 6 or 7 by 7 court,
 		# and each is its own daily with its own done mark.

@@ -150,3 +150,22 @@ Board 7 of the per-board checkup (`docs/agents/checkup.md`).
   Hint (`HINTS_BY_BAND[3]` is 0) or Check. What Insane still shows is
   Medium's: rose beams between lamps in sight, blocks and cats met or over,
   and the streak counting fair lamps.
+
+### The lantern walk is the whole screen (2026-10-13)
+
+The redesign (`docs/agents/flat-screens.md`, "Every board gets a world of
+its own"), built unattended. `puzzles/lightup_world.gd` is one air from
+pale cream at the top (the wordmark is ink) through peach under the court
+to the card's dusk and plum at the foot; a short cord of four small paper
+lanterns in the gap of the tools row; at the foot a cord of five lanterns
+edge to edge, faint stars, and a walk of the board's own flagstones, warm
+under each lantern; nine motes breathe. The lanterns are faceless garland
+ones. The court's mortar bed is on the host's margin.
+
+- Registry: `bleed`, `level_card`, no actions row. **Check is gone**: the
+  court solves itself after every commit.
+- `opengl3_angle`, 810x1440: 83 draw calls at rest; `tests/_win.gd --
+  lightup` passes. The harness's `_press_check()` calls a board's
+  `check()` where the button is gone.
+- Decided for the user, unconfirmed: no Check; evening only at the foot;
+  the court on a peach mid-tone. Owed: a phone, the level slide.

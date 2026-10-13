@@ -322,7 +322,7 @@ func _solve_mastermind() -> void:
 	for s in length:
 		var friend: int = int(_puzzle._code[s])
 		_press(flat.chips[friend] if flat != null else _host.action_bar.tray.buttons[friend])
-	_press(_host.action_bar.check_button)
+	_press_check()
 
 ## Balance's seesaw: a hint through the HUD, then every loose fruit dragged
 ## out of the basket onto its answer cup by touch. The flights take seconds
@@ -550,7 +550,7 @@ func _solve_horse() -> void:
 	for c in st.cells():
 		if not slot.has_point(_puzzle.cell_centre(c)):
 			_fit_ok = false
-	_press(_host.action_bar.check_button)
+	_press_check()
 	_hud_ok = _puzzle.checks == 1 and not st.is_solved()
 	if _puzzle.capabilities().has("hint"):
 		_press(_host.top_bar.hint_button)
@@ -559,7 +559,7 @@ func _solve_horse() -> void:
 		if not st.has_bale(c):
 			_tap_local(_puzzle.cell_centre(c))
 	_hud_ok = _hud_ok and st.closed() and st.score() == st.best
-	_press(_host.action_bar.check_button)
+	_press_check()
 
 ## Golden Acorn: every question answered through the input path -- a touch
 ## on the right answer's plate, then the row's button to lock and again for
@@ -590,10 +590,10 @@ func _solve_acorn() -> void:
 			_press(_host.top_bar.hint_button)
 			hint_ok = _puzzle.hints_used == 1 and not st.is_cut(st.right_place())
 		_tap_local(_puzzle.plate_point(st.right_place()))
-		_press(_host.action_bar.check_button)
+		_press_check()
 		_hud_ok = _hud_ok and st.locked() and bool(st.results[r].right)
 		await create_timer(1.6).timeout
-		_press(_host.action_bar.check_button)
+		_press_check()
 		if r + 1 < st.count():
 			await create_timer(0.4).timeout
 			_hud_ok = _hud_ok and st.index == r + 1
@@ -828,11 +828,11 @@ func _solve_how_big() -> void:
 		for _try in 3:
 			if st.ratio_off(_puzzle._guess(), st.truth()) > 1.02:
 				_drag_local(_puzzle.grip_point(), _puzzle.grip_for(st.truth()))
-		_press(_host.action_bar.check_button)
+		_press_check()
 		_hud_ok = _hud_ok and st.locked() and int(st.results[r].score) == 100
 		if r + 1 < st.round_count():
 			await create_timer(0.9).timeout
-			_press(_host.action_bar.check_button)
+			_press_check()
 			_hud_ok = _hud_ok and st.index == r + 1
 	_hud_ok = _hud_ok and hint_ok and _puzzle.checks == st.round_count()
 	var wait := 0
@@ -925,7 +925,7 @@ func _solve_hedgehogs() -> void:
 			if not slot.has_point(_puzzle.cell_to_local(r, c)):
 				_fit_ok = false
 	_puzzle._busy_until = -100.0
-	_press(_host.action_bar.check_button)
+	_press_check()
 	_press(_host.top_bar.hint_button)
 	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1 and st.woken == 0
 	for i in 400:
@@ -1044,7 +1044,7 @@ func _solve_shikaku() -> void:
 				_fit_ok = false
 	# The HUD's own buttons: one hint (draws and pins a plot), then one check.
 	_press(_host.top_bar.hint_button)
-	_press(_host.action_bar.check_button)
+	_press_check()
 	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1
 	# Drag each solution rectangle corner to corner, exactly as a player would.
 	for rect in _puzzle._solution:
@@ -1068,7 +1068,7 @@ func _solve_tents() -> void:
 				_fit_ok = false
 	# The HUD's own buttons: one hint (pitches and pins a tent), then one check.
 	_press(_host.top_bar.hint_button)
-	_press(_host.action_bar.check_button)
+	_press_check()
 	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1
 	for t in _puzzle._solution_tents:
 		if _puzzle.is_done():
@@ -1087,7 +1087,7 @@ func _solve_lightup() -> void:
 				_fit_ok = false
 	# The HUD's own buttons: one hint (lights and pins a lantern), then one check.
 	_press(_host.top_bar.hint_button)
-	_press(_host.action_bar.check_button)
+	_press_check()
 	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1
 	for b in _puzzle._solution_bulbs:
 		if _puzzle.is_done():
@@ -1111,7 +1111,7 @@ func _solve_oneline() -> void:
 	# the stroke has not begun), then one check, which must find nothing
 	# stranded on a board nobody has walked yet.
 	_press(_host.top_bar.hint_button)
-	_press(_host.action_bar.check_button)
+	_press_check()
 	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1
 	# The hint takes the first odd-degree post, which is the same post
 	# Gen.find_path begins its trail at, so this tap lands on the post the
@@ -1135,7 +1135,7 @@ func _solve_nonogram() -> void:
 				_fit_ok = false
 	# The HUD's own buttons: one hint (lays and pins a tile), then one check.
 	_press(_host.top_bar.hint_button)
-	_press(_host.action_bar.check_button)
+	_press_check()
 	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1
 	for y in h:
 		for x in w:
@@ -1163,7 +1163,7 @@ func _solve_queens() -> void:
 		for c in n:
 			if not slot.has_point(_puzzle.cell_to_local(r, c)):
 				_fit_ok = false
-	_press(_host.action_bar.check_button)
+	_press_check()
 	for r in range(1, n):
 		if _puzzle.is_done():
 			return
@@ -1191,7 +1191,7 @@ func _solve_mushroom() -> void:
 		for c in n:
 			if not slot.has_point(_puzzle.cell_centre(Vector2i(c, r))):
 				_fit_ok = false
-	_press(_host.action_bar.check_button)
+	_press_check()
 	var cells: Array = _puzzle.state.mushrooms.keys()
 	cells.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
 		return a.y < b.y or (a.y == b.y and a.x < b.x))
@@ -1220,7 +1220,7 @@ func _solve_bridges() -> void:
 	# then one check, which must find nothing wrong on a board carrying only
 	# the answer's own planks.
 	_press(_host.top_bar.hint_button)
-	_press(_host.action_bar.check_button)
+	_press_check()
 	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1
 	var keys: Array = _puzzle.state.answer.keys()
 	keys.sort()
@@ -1325,7 +1325,7 @@ func _solve_sudoku() -> void:
 			if not slot.has_point(_puzzle.cell_to_local(r, c)):
 				_fit_ok = false
 	_press(_host.top_bar.hint_button)
-	_press(_host.action_bar.check_button)
+	_press_check()
 	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1
 	for i in Gen.CELLS:
 		if _puzzle.is_done():
@@ -1438,7 +1438,7 @@ func _solve_pixelgarden() -> void:
 			if not slot.has_point(_puzzle.cell_to_local(r, c)):
 				_fit_ok = false
 	_press(_host.top_bar.hint_button)
-	_press(_host.action_bar.check_button)
+	_press_check()
 	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1
 	# A wrong bead on a bare peg, then lifted by tapping it again.
 	for c in st.size():
@@ -1502,6 +1502,15 @@ func _solve_trestle() -> void:
 	_hud_ok = st.design.size() == before - 1
 	_press(_host.top_bar.undo_button)
 	_hud_ok = _hud_ok and st.design.size() == before and st.design.size() == st.proof.size()
-	_press(_host.action_bar.check_button)
+	_press_check()
 	_puzzle.run_test_now()
 
+
+## Check, where a board still has one. A board in a world of its own lost
+## the button (docs/agents/flat-screens.md): its `check()` is called
+## directly, so the counts the solvers read still add up.
+func _press_check() -> void:
+	if _host.action_bar != null and _host.action_bar.check_button.visible:
+		_press(_host.action_bar.check_button)
+	elif _puzzle.has_method("check"):
+		_puzzle.check()

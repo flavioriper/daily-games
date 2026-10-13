@@ -46,6 +46,15 @@ extends "res://core/puzzle_base.gd"
 ## settled bed sprouts, right beds in a row build a streak, a right bed now
 ## and then plays a gag (a worm, sunglasses, a twirl), butterflies come to
 ## the settled beds, and the solve stamps a seal and throws a hat party.
+##
+## The meadow is the whole screen (2026-10-13, the registry's `bleed`):
+## puzzles/shikaku_world.gd lies edge to edge as the board's first child,
+## behind what the board paints, and the field is laid in the span the
+## host's rows leave (`set_clear`), its edges on the rows' margin. On the
+## win the board slides and shrinks into the win's span under its own one
+## transform, the meadow held still against it, so nothing is cut to a new
+## cell in the middle of the wave. There is no Check: a field whose last bed
+## is right solves itself.
 
 const State = preload("res://puzzles/shikaku_state.gd")
 const Pal = preload("res://core/palette.gd")
@@ -60,6 +69,10 @@ const Seal = preload("res://ui/flat/seal.gd")
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 const MovesPill = preload("res://ui/flat/moves_pill.gd")
 const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
+const Meadow = preload("res://puzzles/shikaku_world.gd")
+const FLAT_HOST := "res://ui/flat/flat_host.gd"
+## The slide into the win's span (the host's SLOT_TIME).
+const WIN_SLIDE := 0.45
 ## The moves the out-of-moves card's video buys, once a board.
 const MOVES_BONUS := 5
 
@@ -462,6 +475,23 @@ var _tip_idx := 0
 var _tip_timer: Timer
 ## Redraw every frame until this msec: a pop, a drag or the crop coming up.
 var _anim_until := 0.0
+## The meadow, edge to edge under everything the board paints.
+var _world: Control
+## What the host's rows cover of the rect, top and bottom, while playing.
+var _clear := Vector2.ZERO
+## The board's own transform on the win: the middle of the field and its
+## pill while playing, how far it moves and how small it gets, and how far
+## along it is.
+var _slid_from := Vector2.ZERO
+var _slid_by := Vector2.ZERO
+var _slid_scale := 1.0
+var _slid := 0.0
+var _won := false
+var _win_clear := Vector2.ZERO
+var _placed := false
+## The host's slide on a change of level (set_shift).
+var _shift := 0.0
+var _slide_tw: Tween
 
 func puzzle_id() -> String: return "shikaku"
 func title() -> String: return "Shikaku"
@@ -524,7 +554,7 @@ func tutorial_pages() -> Array:
 func capabilities() -> Array[String]:
 	if state.band >= 3:
 		return ["hint"]
-	return ["undo", "hint", "check"]
+	return ["undo", "hint"]
 
 ## What the phone does under each cue (docs/agents/haptics.md). A bed
 ## fenced is the faintest knock, whether or not it fits its sign (the sign's
@@ -551,6 +581,12 @@ const HAPTICS := {
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = false
+	# The meadow first, and behind the board's own drawing: the field is
+	# painted in _draw, which a child would otherwise cover.
+	_world = Meadow.new()
+	_world.name = "World"
+	_world.show_behind_parent = true
+	add_child(_world)
 	fx = Fx2D.new()
 	fx.haptics = HAPTICS
 	fx.name = "Fx"
@@ -722,16 +758,33 @@ func _expression(i: int) -> int:
 # --- layout ---
 
 ## The field is the largest square grid the card holds, centred in it.
+## The field is as wide as the host's rows (its side margin, so the ground's
+## edges line up with the buttons') at the top of the span the rows leave
+## (`_clear`), right under the tools row; a taller field than that span
+## gives up width instead. What is left is open meadow under it.
 func _layout() -> void:
+	if _world != null:
+		_world.size = size
+	_place()
 	if state.clues.is_empty():
 		return
 	# A board with hearts, or with Insane's move counter, keeps HEART_ROW
 	# over the field for the pill.
-	var top := HEART_ROW if max_hearts > 0 or max_moves > 0 else 0.0
-	_cell = minf((size.x - 2.0 * PAD) / w, (size.y - 2.0 * PAD - top) / h)
+	var top := _head()
+	var span := size.y - _clear.x - _clear.y
+	_cell = minf((size.x - 2.0 * _side()) / w, (span - top - GROUND_EDGE) / h)
 	if _cell <= 0.0:
 		return
-	_origin = (size - Vector2(_cell * w, _cell * h + top)) * 0.5 + Vector2(0.0, top)
+	_origin = Vector2((size.x - _cell * w) * 0.5, _clear.x + top)
+	if _world != null and not _won:
+		_world.set_foot(_origin.y + _cell * h + GROUND_EDGE)
+	if _won:
+		# Laid out under a win (a resize, or a day reopened solved): the
+		# slide is aimed again, and set at its end if it never ran.
+		_aim()
+		if _slid <= 0.0 and not (_slide_tw != null and _slide_tw.is_valid()):
+			_slid = 1.0
+		_place()
 	var seat := _cell * MARKER
 	for i in _markers.size():
 		var slot: Control = _slots[i]
@@ -760,6 +813,89 @@ func _layout() -> void:
 	_redraw()
 	for layer: Control in [_heart_layer, _combo_layer, _life_layer]:
 		layer.queue_redraw()
+
+## The room kept over the field for the hearts or Insane's counter.
+func _head() -> float:
+	return HEART_ROW if max_hearts > 0 or max_moves > 0 else 0.0
+
+## What the host's rows cover, in this board's own pixels (it is laid full
+## rect). While playing the field is laid in what is left. On the win it is
+## not laid out again: the board slides and shrinks into the win's span.
+func set_clear(top: float, bottom: float, won := false) -> void:
+	Motion.stop(_slide_tw)
+	_won = won
+	if not won:
+		_clear = Vector2(top, bottom)
+		_slid = 0.0
+		_layout()
+		return
+	_win_clear = Vector2(top, bottom)
+	# A day reopened solved is told before it has been laid out: _layout
+	# sets the slide when it has a field to aim.
+	if _cell <= 0.0:
+		return
+	_aim()
+	if Motion.reduce or not is_inside_tree() or _slid >= 1.0:
+		_slide(1.0)
+		return
+	_slide_tw = create_tween()
+	_slide_tw.tween_method(_slide, _slid, 1.0, WIN_SLIDE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+## Where the win's slide ends, from the field as it is laid (its pill's row
+## with it) and the win's span.
+func _aim() -> void:
+	var top := _head()
+	var block := Vector2(_cell * w, _cell * h + top + GROUND_EDGE)
+	var span := size.y - _win_clear.x - _win_clear.y
+	_slid_from = _origin - Vector2(0.0, top) + block * 0.5
+	_slid_scale = clampf(minf((size.x - 2.0 * _side() - 2.0 * PAD) / block.x, (span - 2.0 * PAD) / block.y), 0.1, 1.0)
+	_slid_by = Vector2(size.x * 0.5, _win_clear.x + span * 0.5) - _slid_from
+
+## The host's side margin, which the field keeps although the meadow does not.
+func _side() -> float:
+	return float(load(FLAT_HOST).MARGIN)
+
+func _slide(t: float) -> void:
+	_slid = t
+	_place()
+
+## The host slides the board `x` aside on a change of level; the meadow
+## stays where it is, and the board that is leaving shows none, so the one
+## arriving under it is not hidden.
+func set_shift(x: float, leaving := false) -> void:
+	_shift = x
+	if _world != null:
+		_world.visible = not leaving
+	_place()
+
+## The host deals this board into a screen already standing: the field and
+## its signs arrive whole, without the entrance.
+func skip_entrance() -> void:
+	var now := _now()
+	_opened = now - 10.0
+	_enter_until = now - 10.0
+	for i in _markers.size():
+		Motion.stop(_look_tw[i])
+		_look_tw[i] = null
+		_markers[i].scale = Vector2.ONE
+	_shadows = null
+	_redraw()
+
+## The board's transform at `_slid`, and the meadow's against it, so the
+## meadow stays where it is while the field and everything on it goes.
+func _place() -> void:
+	if _slid <= 0.0 and _shift == 0.0 and not _placed:
+		return
+	_placed = _slid > 0.0 or _shift != 0.0
+	var k := lerpf(1.0, _slid_scale, _slid)
+	var by := _slid_by * _slid + Vector2(_shift, 0.0)
+	pivot_offset = _slid_from
+	scale = Vector2(k, k)
+	position = by
+	if _world != null:
+		_world.pivot_offset = _slid_from
+		_world.scale = Vector2.ONE / k
+		_world.position = -by / k
 
 ## Where a marker's centre stands: its cell's, a touch high, because the
 ## plaque is the thing being read and the stake goes into the ground.

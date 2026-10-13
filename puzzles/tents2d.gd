@@ -49,6 +49,14 @@ extends "res://core/puzzle_base.gd"
 ## wilts and is struck), Insane's Old Oaks with hidden counts, trees that
 ## beam once they have their tents, lamp-lit right tents, the streak, gags,
 ## butterflies, the seal and a party with hats and bunting.
+##
+## The wood is the whole screen (2026-10-13, the registry's `bleed`):
+## puzzles/tents_world.gd lies edge to edge behind the board and the meadow
+## is laid in the span the host's rows leave (`set_clear`), its counts' band
+## and its far edge on the rows' margin, right under the tools row. On the
+## win the board slides and shrinks into the win's span under its own one
+## transform, the wood held still against it, so nothing is laid out again in
+## the middle of the wave.
 
 const State = preload("res://puzzles/tents_state.gd")
 const Pal = preload("res://core/palette.gd")
@@ -66,6 +74,10 @@ const CozyTheme = preload("res://ui/theme.gd")
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 const MovesPill = preload("res://ui/flat/moves_pill.gd")
 const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
+const World = preload("res://puzzles/tents_world.gd")
+const FLAT_HOST := "res://ui/flat/flat_host.gd"
+## The slide into the win's span (the host's SLOT_TIME).
+const WIN_SLIDE := 0.45
 ## The moves the out-of-moves card's video buys, once a board.
 const MOVES_BONUS := 5
 
@@ -309,6 +321,22 @@ var _sweep_n := 0
 var _cell := 0.0
 var _grid := Vector2.ZERO
 var _card := Rect2()
+var _world: Control
+## What the host's rows cover of the rect, top and bottom, while playing.
+var _clear := Vector2.ZERO
+## The board's own transform on the win: the middle of the meadow and its
+## counts while playing, how far it moves and how small it gets, and how far
+## along it is.
+var _slid_from := Vector2.ZERO
+var _slid_by := Vector2.ZERO
+var _slid_scale := 1.0
+var _slid := 0.0
+var _won := false
+var _win_clear := Vector2.ZERO
+var _placed := false
+## The host's slide on a change of level (set_shift).
+var _shift := 0.0
+var _slide_tw: Tween
 var _chips_row: Array = []       # [r] -> CountChip
 var _chips_col: Array = []       # [c] -> CountChip
 var _trees: Dictionary = {}      # Vector2i -> ConiferFace
@@ -442,6 +470,10 @@ func tutorial_pages() -> Array:
 		pages.append(MovesDiagram.page(self, max_moves))
 	return pages
 
+## Undo and Hint up to Hard; Reset is the host's. There is no Check since
+## 2026-10-13 (the user, of the redesign: "neither a verify need"): the
+## meadow solves itself as the last tent is pitched, and `check()` is left
+## in place, unreached. What follows is the history.
 ## Undo, Hint and Check up to Hard; Reset is the host's. Insane counts moves:
 ## no Undo (striking a tent is the take-back, and it costs one), no hint and
 ## no Check, which would each say what is wrong.
@@ -450,7 +482,7 @@ func tutorial_pages() -> Array:
 func capabilities() -> Array[String]:
 	if state.band >= 3:
 		return ["hint"]
-	return ["undo", "hint", "check"]
+	return ["undo", "hint"]
 
 ## What the phone does under each cue (docs/agents/haptics.md). A tent
 ## pitched is the faintest knock, fair or not (its face and the chips say
@@ -479,6 +511,12 @@ const HAPTICS := {
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = false
+	# The wood first, and behind this board's own drawing: the meadow is
+	# painted in _draw, which a plain child would lie over.
+	_world = World.new()
+	_world.name = "World"
+	_world.show_behind_parent = true
+	add_child(_world)
 	fx = Fx2D.new()
 	fx.haptics = HAPTICS
 	fx.name = "Fx"
@@ -688,24 +726,31 @@ func _chip_face(have: int, want: int) -> int:
 
 # --- layout ---
 
-## The meadow is the largest grid the card holds, and the card is cut to the
-## meadow and centred in the slot rather than pinned under the day card the
-## way the other flat boards are. This is the one board of the six whose grid
-## is square while its space is tall: the cell is capped by the width, so
-## there is slack however it is cut, and air above and below reads as centring
-## where all of it below reads as a board that fell over.
+## The meadow and its counts' band are as wide as the host's rows (its side
+## margin, so the band's edge and the turf's far edge line up with the
+## buttons') and stand at the top of the span the rows leave (`_clear`),
+## right under the tools row, the hearts' strip first on a board that has
+## one; what is left is open wood under it. A board too tall for the span is
+## cut to it and centred across.
 func _layout() -> void:
+	_world.size = size
+	_place()
 	if state.tree_list.is_empty():
 		return
-	_cell = _cell_for(size.y)
+	var span := size.y - _clear.x - _clear.y
+	_cell = minf((size.x - 2.0 * _side()) / (state.w + BAND), (span - _heart_row()) / (state.h + BAND))
 	if _cell <= 0.0:
 		return
 	var grid := Vector2(_cell * (state.w + BAND), _cell * (state.h + BAND))
-	var tall := minf(size.y, grid.y + 2.0 * PAD + _heart_row())
-	_card = Rect2(0.0, (size.y - tall) * 0.5, size.x, tall)
-	_grid = Vector2(size.x * 0.5 - grid.x * 0.5,
-		_card.position.y + _heart_row() + (tall - _heart_row() - grid.y) * 0.5) \
-		+ Vector2.ONE * (_cell * BAND)
+	_card = Rect2(0.0, _clear.x, size.x, grid.y + _heart_row())
+	_grid = Vector2(size.x * 0.5 - grid.x * 0.5, _clear.x + _heart_row()) + Vector2.ONE * (_cell * BAND)
+	if _won:
+		# Laid out under a win (a resize, or a day reopened solved): the
+		# slide is aimed again, and set at its end if it never ran.
+		_aim()
+		if _slid <= 0.0 and not (_slide_tw != null and _slide_tw.is_valid()):
+			_slid = 1.0
+		_place()
 	for c in _chips_col.size():
 		_seat(_chips_col[c], Vector2(_grid.x + (c + 0.5) * _cell, _grid.y - _cell * BAND * 0.5), _cell)
 	for r in _chips_row.size():
@@ -720,6 +765,81 @@ func _layout() -> void:
 	for layer: Control in [_heart_layer, _combo_layer, _life_layer]:
 		layer.queue_redraw()
 	_redraw()
+
+## What the host's rows cover, in this board's own pixels (it is laid full
+## rect). While playing the meadow is laid in what is left. On the win it is
+## not laid out again: the board slides and shrinks into the win's span.
+func set_clear(top: float, bottom: float, won := false) -> void:
+	Motion.stop(_slide_tw)
+	_won = won
+	if not won:
+		_clear = Vector2(top, bottom)
+		_slid = 0.0
+		_layout()
+		return
+	_win_clear = Vector2(top, bottom)
+	# A day reopened solved is told before it has been laid out: _layout
+	# sets the slide when it has a meadow to aim.
+	if _cell <= 0.0:
+		return
+	_aim()
+	if Motion.reduce or not is_inside_tree() or _slid >= 1.0:
+		_slide(1.0)
+		return
+	_slide_tw = create_tween()
+	_slide_tw.tween_method(_slide, _slid, 1.0, WIN_SLIDE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+## Where the win's slide ends, from the meadow as it is laid (its counts'
+## band and the hearts' strip with it) and the win's span.
+func _aim() -> void:
+	var block := Rect2(_grid - Vector2(_cell * BAND, _cell * BAND + _heart_row()),
+		Vector2(_cell * (state.w + BAND), _cell * (state.h + BAND) + _heart_row()))
+	var span := size.y - _win_clear.x - _win_clear.y
+	_slid_from = block.get_center()
+	_slid_scale = clampf(minf((size.x - 2.0 * _side() - 2.0 * PAD) / block.size.x,
+		(span - 2.0 * PAD) / block.size.y), 0.1, 1.0)
+	_slid_by = Vector2(size.x * 0.5, _win_clear.x + span * 0.5) - _slid_from
+
+## The host's side margin, which the meadow keeps although the wood does not.
+func _side() -> float:
+	return float(load(FLAT_HOST).MARGIN)
+
+func _slide(t: float) -> void:
+	_slid = t
+	_place()
+
+## The host slides the board `x` aside on a change of level; the wood stays
+## where it is, and the board that is leaving shows none, so the one
+## arriving under it is not hidden.
+func set_shift(x: float, leaving := false) -> void:
+	_shift = x
+	_world.visible = not leaving
+	_place()
+
+## The host deals this board into a screen already standing: it arrives
+## whole, without the meadow's pop or the chips' and the trees'.
+func skip_entrance() -> void:
+	_opened = _now() - 10.0
+	for face in _chips_row + _chips_col + _trees.values():
+		Motion.stop(_look_tw.get(face))
+		_look_tw.erase(face)
+		face.scale = Vector2.ONE
+	_redraw()
+
+## The board's transform at `_slid`, and the wood's against it, so the wood
+## stays where it is while the meadow and everything on it goes.
+func _place() -> void:
+	if _slid <= 0.0 and _shift == 0.0 and not _placed:
+		return
+	_placed = _slid > 0.0 or _shift != 0.0
+	var k := lerpf(1.0, _slid_scale, _slid)
+	var by := _slid_by * _slid + Vector2(_shift, 0.0)
+	pivot_offset = _slid_from
+	scale = Vector2(k, k)
+	position = by
+	_world.pivot_offset = _slid_from
+	_world.scale = Vector2.ONE / k
+	_world.position = -by / k
 
 ## Seats `face` `px` square about `centre`: its slot, when it stands in one,
 ## with the face's own place inside the slot left to the motion; the face

@@ -106,3 +106,22 @@ unattended on `feat/shikaku-polish`.
   because the shared one does not say what a redraw costs. No Undo, Hint
   (`HINTS_BY_BAND[3]` is 0) or Check. Signs still beam, strain and puzzle,
   and a scarecrow still counts its neighbours.
+
+### The meadow is the whole screen (2026-10-13)
+
+The redesign (`docs/agents/flat-screens.md`, "Every board gets a world of
+its own"), built unattended. `puzzles/shikaku_world.gd` is the card's
+meadow with faint mown bands, a run of the garden's fence with three
+flowers in the gap of the tools row, and flowers and tufts in whatever
+band the field leaves at the foot: the board tells the world where its
+field ends (`set_foot(y)`), since the fields differ per level (Medium
+leaves 77 of 1920). The field's edges are on the host's margin; a pill row
+(hearts, Insane's counter) keeps 64 over it and travels with it on the win.
+
+- Registry: `bleed`, `level_card`, no actions row. **Check is gone**
+  (`capabilities()`): the board solves itself; `check()` is unreached.
+- `opengl3_angle`, 810x1440: 89 draw calls at rest (`_shot_anim.gd`);
+  `tests/_win.gd -- shikaku` passes with real drags.
+- Decided for the user, unconfirmed: no Check; the fence in the tools gap
+  (it stands over "Well done!" on the win); the field's own sand panel
+  kept. Owed: a phone, the level slide's look.
