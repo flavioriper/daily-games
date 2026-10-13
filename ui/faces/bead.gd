@@ -108,5 +108,17 @@ static func pixel(b, at: Vector2, s: float, colour: Color, bare: bool) -> void:
 	if bare:
 		b.disc(at, s * 0.14, Color(Pal.PG_PEG_DEEP, 0.7))
 		return
-	b.fan(Face.Builder.round_rect(at - Vector2.ONE * s * 0.47, Vector2.ONE * s * 0.94, s * 0.22), colour)
+	# A bead near the board's own colour (white, cream) is lost on it: it
+	# gets a line round it in the peg's shade (the user, 2026-10-13: "it is
+	# nearly impossible to see the white peg into the reference image").
+	if pale(colour):
+		b.fan(Face.Builder.round_rect(at - Vector2.ONE * s * 0.47, Vector2.ONE * s * 0.94, s * 0.22), Pal.PG_PEG_DEEP)
+		b.fan(Face.Builder.round_rect(at - Vector2.ONE * s * 0.37, Vector2.ONE * s * 0.74, s * 0.16), colour)
+	else:
+		b.fan(Face.Builder.round_rect(at - Vector2.ONE * s * 0.47, Vector2.ONE * s * 0.94, s * 0.22), colour)
 	b.disc(at, s * 0.12, colour.darkened(0.35))
+
+## Whether a bead's colour is too near the pegboard's face to be told from it.
+static func pale(colour: Color) -> bool:
+	var d := Vector3(colour.r - Pal.PG_BOARD.r, colour.g - Pal.PG_BOARD.g, colour.b - Pal.PG_BOARD.b)
+	return d.length() < 0.16

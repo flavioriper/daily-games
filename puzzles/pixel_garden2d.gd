@@ -2135,6 +2135,16 @@ func _build_thumb_pixels(r: Rect2, apart := false) -> ArrayMesh:
 					# the card and a hair apart when it is held up.
 					var e := s * (0.46 if apart else 0.5)
 					var col: Color = _state.colours[k]
+					# A pale square is edged, as Bead.pixel's is: a square
+					# of the peg's shade under a smaller one of its own.
+					if Bead.pale(col):
+						var r0 := b.vertex(px + Vector2(-e, -e), Pal.PG_PEG_DEEP)
+						b.vertex(px + Vector2(e, -e), Pal.PG_PEG_DEEP)
+						b.vertex(px + Vector2(e, e), Pal.PG_PEG_DEEP)
+						b.vertex(px + Vector2(-e, e), Pal.PG_PEG_DEEP)
+						b.tri(r0, r0 + 1, r0 + 2)
+						b.tri(r0, r0 + 2, r0 + 3)
+						e *= 0.72
 					var v0 := b.vertex(px + Vector2(-e, -e), col)
 					b.vertex(px + Vector2(e, -e), col)
 					b.vertex(px + Vector2(e, e), col)
