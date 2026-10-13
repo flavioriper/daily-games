@@ -77,9 +77,13 @@ const PUZZLES := [
 		"card": "res://ui/menu/cards/binairo.gd",
 		"shell": "flat",
 		# The day and the night are the whole screen (`bleed`,
-		# ui/flat/flat_host.gd), the first such board to keep a tray and an
-		# actions row.
+		# ui/flat/flat_host.gd). A tap turns a tile from sun to moon to bare,
+		# so there is no tray, and no Check, so no actions row: Reset rides in
+		# the top bar and the levels lie under the board (`level_card`).
 		"bleed": true,
+		"tray": "none",
+		"actions": false,
+		"level_card": true,
 		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku (2026-09-23): easy and medium are 6x6, hard is 8x8,
 		# and each is its own daily with its own done mark.
@@ -88,7 +92,7 @@ const PUZZLES := [
 			{"difficulty": 0, "name": "Easy", "line": "6 × 6"},
 			{"difficulty": 1, "name": "Medium", "line": "6 × 6"},
 			{"difficulty": 2, "name": "Hard", "line": "8 × 8"},
-			{"difficulty": 3, "name": "Insane", "line": "8 × 8"},
+			{"difficulty": 3, "name": "Insane", "line": "10 × 10"},
 		],
 	},
 	{

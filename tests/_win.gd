@@ -282,10 +282,10 @@ func _solve_binairo() -> void:
 		for c in n:
 			if not slot.has_point(_puzzle.cell_to_local(r, c)):
 				_fit_ok = false
-	# The HUD's own buttons: one hint (fills and locks a cell) and one check.
+	# The HUD's own button: one hint (fills and locks a cell). Binairo has had
+	# no Check since 2026-10-13 (no actions row).
 	_press(_host.top_bar.hint_button)
-	_press(_host.action_bar.check_button)
-	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1
+	_hud_ok = _puzzle.hints_used == 1
 	for r in n:
 		for c in n:
 			if _puzzle.is_done():

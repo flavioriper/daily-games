@@ -407,12 +407,13 @@ playroom floor edge to edge, the rug and its loop, the siding and the shed
 on it. It is the first flat board whose state moves on a clock (the loop's
 ticks), so it has no Undo; the bulb and Reset ride in the top bar.
 
-**Binairo is the fourth, and the first with a tray and an actions row**
+**Binairo is the fourth, and the first with a row under it**
 (2026-10-13, `docs/agents/boards/binairo.md`, "The sky is the whole
-screen"). The host needed nothing new: `_bottom_play` already sums the rows
-it built and `_tell_clear` hands them over, and a touch pushed through the
-window reached the board between the rows and solved it. It is also the
-first bleed board made of nodes rather than one drawing, and the recipe for
+screen"): first its tray and actions row, then, the same day, the level
+card alone. The host needed nothing new for the rows: `_bottom_play`
+already sums what it built and `_tell_clear` hands it over, and a touch
+pushed through the window reached the board between the rows and solved
+it. It is also the first bleed board made of nodes rather than one drawing, and the recipe for
 the grid boards still in a card: the world is a Control of its own, the
 board's first child; `_layout` fits the span `set_clear` gave instead of
 `size`; and on `won` the board is not laid out again, it slides and
@@ -447,6 +448,23 @@ is everything under them. For each board:
   the top on the win. Behind the grid only the gaps show.
 - Shoot rest and `solve` with `tests/_shot_anim.gd`; the draw calls should
   not rise (the card and the header plate leave as the world arrives).
+
+### The level card (2026-10-13)
+
+The user, of the redesign: "let's also add a difficulty card ingame screen
+so user can easily switch between them without needing to left game".
+`"level_card": true` in a registry entry (with `pick_difficulty` and
+`levels`) and the host builds `ui/flat/level_card.gd` as the last row of the
+bottom slot, 150 tall: one paper card, a cell a level in the difficulty
+sheet's own tints with its plaque and name (`DifficultySheet.TINTS`,
+`LevelPlaque`, `LEVEL_KEYS`), the level being played ringed, a level done
+today checked. A tap on another cell is `_on_level`: an unfinished board is
+logged as an abandon, `level_switch` is sent, and `play_level` has the menu
+free this host and mount the card at that level, as the win's invite does.
+Nothing is asked first and the board left is not kept (no board keeps a
+half-played day; Back loses it too). It leaves with the other rows on the
+win, where the invite is. It is independent of `tray` and `actions`, but
+was only built under Binairo, which has neither.
 
 ### The win screen comes in with the board's wave (2026-10-04)
 

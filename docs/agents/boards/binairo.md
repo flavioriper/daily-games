@@ -338,3 +338,36 @@ bleed board with a tray and an actions row; the host was not changed.
   chrome's buttons should take the board's colours.
 - Owed: a phone (notch insets move the rows, the sky does not), the
   tutorial card and the rules sheet seen over it, pt/es untouched (no text).
+
+### No tray, no Check, and the level card (2026-10-13)
+
+The user, the same day: "add a difficulty card ingame screen so user can
+easily switch between them without needing to left game. And remove the
+bottom button, binairo switch sun and moon using taps and there is no X,
+neither a verify need". This replaces what the section above says of the
+rows.
+
+- The registry says `"tray": "none"`, `"actions": false`,
+  `"level_card": true`. A tap cycles bare, sun, moon as it always did
+  (`brush` stays -2; `set_brush` and the brush paths are left in place,
+  unreached). `capabilities()` lost `"check"`; `check()` and the Check
+  flash are unreached too. Flawless on Easy and Medium is now simply no
+  hint.
+- **Reset rides in the top bar**, as on every board with no actions row,
+  which makes six buttons: the wordmark is fitted down to what they leave
+  (about 244 of design space) and Undo and Reset stand side by side. Mine,
+  the user's to call: Reset could go to the settings sheet instead and
+  give the wordmark its size back.
+- **The level card** (`ui/flat/level_card.gd`,
+  `docs/agents/flat-screens.md`) is the only row under the grid. The sky's
+  stars, sparkles and crescent were moved into the air between the grid
+  and the card; the hills show only on the win.
+- The registry's Insane line read "8 × 8"; the board is 10 x 10 and the
+  line says so now.
+- `tests/_shot_anim.gd`, `opengl3_angle`, 810x1440: Medium idle 107 draw
+  calls, Easy's `solve` peak 136; suite 249797/0. A throwaway windowed
+  harness pressed the Easy cell with a touch on Medium: one host after it,
+  at difficulty 0; a second run with Easy and Insane marked done showed
+  both checks. `tests/_win.gd`'s Binairo no longer presses Check (not run:
+  it needs a display to itself).
+- Owed: a phone; pt/es of the card are the sheet's own keys.

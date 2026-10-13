@@ -448,7 +448,7 @@ func tutorial_pages() -> Array:
 func capabilities() -> Array[String]:
 	if _level >= 3:
 		return ["hint"]
-	return ["undo", "hint", "check"]
+	return ["undo", "hint"]
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP

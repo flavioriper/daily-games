@@ -47,8 +47,9 @@ extends "res://ui/puzzle_host.gd"
 ## win with the win's slots; the board is never frozen and scaled for the
 ## slide, it moves itself into the span. Everything else -- the bar, the
 ## day card, the tutorial, the win, the done mark, the streak -- is as it
-## is for every board. Binairo (2026-10-13) is the first to ask for it and
-## keep its tray and its actions row: the rows are summed and told as ever.
+## is for every board. The rows over it are summed and told as ever: Binairo
+## (2026-10-13) lies under the level card (`"level_card": true`,
+## ui/flat/level_card.gd).
 
 const FlatTopBar = preload("res://ui/flat/flat_top_bar.gd")
 const FlatDayCard = preload("res://ui/flat/flat_day_card.gd")
@@ -59,6 +60,7 @@ const TileTray = preload("res://ui/flat/tile_tray.gd")
 const KeyBoard = preload("res://ui/flat/key_board.gd")
 const DigitPad = preload("res://ui/flat/digit_pad.gd")
 const FlatActions = preload("res://ui/flat/flat_actions.gd")
+const LevelCard = preload("res://ui/flat/level_card.gd")
 const WellDone = preload("res://ui/flat/well_done.gd")
 const IconButton = preload("res://ui/hud/icon_button.gd")
 const Icons = preload("res://ui/icons.gd")
@@ -101,6 +103,9 @@ const BACKDROP_BLEED := 90.0
 const BUTTON_RADIUS := 40
 
 var tray: Control
+## The levels side by side under the board (the registry's `level_card`),
+## or null.
+var level_card: Control
 var well_done: Control
 var stats_card: Control
 var camp_button: Button
@@ -371,6 +376,13 @@ func _build_chrome(root: VBoxContainer) -> void:
 		action_bar.check.connect(_on_check)
 		_bottom_stack.add_child(action_bar)
 		rows.append(FlatActions.BUTTON.y)
+	if bool(_entry.get("level_card", false)):
+		# The board's levels, to change between without leaving it.
+		level_card = LevelCard.new(_entry, _difficulty)
+		level_card.name = "LevelCard"
+		level_card.pick.connect(_on_level)
+		_bottom_stack.add_child(level_card)
+		rows.append(LevelCard.HEIGHT)
 	_bottom_play = GAP * maxi(rows.size() - 1, 0)
 	for row in rows:
 		_bottom_play += row
@@ -511,6 +523,20 @@ func _dress_win_buttons() -> void:
 	_next_line.add_theme_color_override("font_color",
 		Color(Pal.MOON, 0.72) if night else Color(Pal.SURFACE, 0.85))
 
+## The level card asked for another level: this board is left as Back would
+## leave it (an unfinished one is an abandon) and the menu mounts the other.
+func _on_level(difficulty: int) -> void:
+	if difficulty == _difficulty:
+		return
+	if is_instance_valid(_puzzle) and not _puzzle.is_done():
+		Analytics.track("puzzle_abandon", _stats())
+	Analytics.track("level_switch", {
+		"puzzle_id": _entry.get("id", ""),
+		"difficulty": _difficulty,
+		"to": difficulty,
+	})
+	play_level.emit(difficulty)
+
 func _on_next() -> void:
 	if _next_level < 0:
 		return
@@ -571,6 +597,8 @@ func _enter() -> void:
 		tray.enter(ENTER_TRAY)
 	if action_bar != null:
 		action_bar.enter(ENTER_ACTIONS)
+	if level_card != null:
+		level_card.enter(ENTER_ACTIONS)
 
 func _refresh() -> void:
 	# The one board that talks back to its tray: Hidden Word paints the keys
