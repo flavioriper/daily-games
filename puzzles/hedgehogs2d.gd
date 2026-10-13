@@ -664,6 +664,53 @@ func _ready() -> void:
 	resized.connect(_layout)
 	solved.connect(_on_solved)
 
+## The day as dealt, for tools/export_days.gd (PuzzleBase.day_dict): the
+## opening's bare patch beside every number and every hedgehog.
+func day_dict() -> Dictionary:
+	var g: Dictionary = _state.g
+	if g.is_empty():
+		return {}
+	var w: int = g.cols
+	var h: int = g.rows
+	var open := PackedByteArray()
+	open.resize(g.n)
+	State.Gen.flood(g, open, g.start)
+	var puzzle: Array = []
+	var answer: Array = []
+	var hogs: Array = []
+	var raked: Array = []
+	for c in int(g.n):
+		var cell := {}
+		if g.hog[c] == 1:
+			hogs.append(c)
+			cell = {"t": "H", "c": 1}
+		elif int(g.num[c]) > 0:
+			cell = {"t": str(int(g.num[c]))}
+		if open[c] == 1:
+			raked.append(c)
+			cell["c"] = 0
+			cell["given"] = true
+		puzzle.append(cell.duplicate() if open[c] == 1 else {})
+		answer.append(cell)
+	var proof: Dictionary = g.get("proof", {})
+	var doc := {
+		"source": "generator", "kind": "grid",
+		"payload": {"cols": w, "rows": h, "hedgehogs": hogs.size(), "start": int(g.start),
+			"raked": raked},
+		"solution": {"hedgehogs": hogs, "numbers": Array(g.num)},
+		"metrics": {"cols": w, "rows": h, "cells": int(g.n), "hedgehogs": hogs.size(),
+			"opened": raked.size(), "to_clear": int(g.n) - hogs.size() - raked.size(),
+			"attempts": int(g.get("attempts", 0)), "graded": bool(g.get("graded", false)),
+			"rounds": int(proof.get("rounds", 0)), "subsets": int(proof.get("sub", 0)),
+			"counts": int(proof.get("cnt", 0)), "sleepwalkers": _state.walkers(),
+			"hints": State.hints_for(_state.difficulty), "move_budget": max_moves},
+		"view": {"w": w, "h": h, "puzzle": puzzle, "solution": answer,
+			"legend": ["raked at the opening", "hedgehog"]},
+	}
+	if g.has("graded") and not g.graded:
+		doc["budget_hit"] = true
+	return doc
+
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_state.setup(rng, difficulty)
 	# A new lawn takes its reference layout afresh (its cell may be smaller

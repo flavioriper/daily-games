@@ -571,6 +571,52 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_say(tr(_tips()[0]), Face.Expr.HAPPY)
 	_tip_timer.start()
 
+## The day as dealt, for tools/export_days.gd (PuzzleBase.day_dict). Insane
+## comes out of its bank when the bank has the day (State.setup); `tumbled`
+## is its lines whose numbers may come in any order, rows then columns.
+func day_dict() -> Dictionary:
+	if not _running and not _done:
+		return {}
+	var w: int = state.w
+	var h: int = state.h
+	var banked: bool = state.band == 3 \
+		and not State.Gen.from_bank(State.InsaneBank.pick("nonogram", bank_step)).is_empty()
+	var dealt: bool = state.bitmap.size() == h
+	var puzzle: Array = []
+	var answer: Array = []
+	var bits: Array = []
+	for y in h:
+		var line := ""
+		for x in w:
+			var on: bool = dealt and int(state.bitmap[y][x]) == 1
+			puzzle.append({})
+			answer.append({"c": 0} if on else {})
+			line += "1" if on else "0"
+		bits.append(line)
+	var numbers := 0
+	for clue in state.row_clues + state.col_clues:
+		numbers += (clue as Array).size()
+	var tumbled: Array = []
+	for i in state.tumbled.size():
+		if bool(state.tumbled[i]):
+			tumbled.append(i)
+	var out := {
+		"source": "bank" if banked else "generator", "kind": "grid",
+		"payload": {"w": w, "h": h, "rows": state.row_clues, "cols": state.col_clues,
+			"tumbled": tumbled},
+		"solution": {"bits": bits},
+		"metrics": {"w": w, "h": h, "cells": w * h, "filled": int(state.target),
+			"fill": snappedf(float(state.target) / float(w * h), 0.01), "numbers": numbers,
+			"longest_row_clue": state.gw, "longest_col_clue": state.gh,
+			"tumbled": tumbled.size(), "hints": hints_left(), "hearts": max_hearts,
+			"moves": max_moves},
+		"view": {"w": w, "h": h, "puzzle": puzzle, "solution": answer,
+			"row_clues": state.row_clues, "col_clues": state.col_clues, "legend": ["tile"]},
+	}
+	if not banked:
+		out["budget_hit"] = not dealt
+	return out
+
 ## The floor as it is dealt, and as Try again deals it back: every heart, the
 ## day's light, nothing judged, blooming or partying.
 func _deal() -> void:

@@ -631,6 +631,25 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_layout()
 	_enter()
 
+## The day as dealt, for tools/export_days.gd (PuzzleBase.day_dict): the word
+## in the language Locale has, which is English unless the player chose another.
+func day_dict() -> Dictionary:
+	if state.answer.is_empty():
+		return {}
+	var banked: bool = state.snail and String(InsaneBank.pick(puzzle_id(), bank_step).get("answer", "")) == state.written
+	var pool: int = InsaneBank.size(puzzle_id()) if banked else State._answers.size()
+	return {
+		"source": "bank", "kind": "text",
+		"payload": {"letters": State.LEN, "rows": state.tries, "lang": Locale.current(), "bands": State._bands,
+			"list": "content/insane/hiddenword.json" if banked else "content/hidden_word.json"},
+		"solution": {"word": state.written.to_upper(), "typed": state.answer.to_upper()},
+		"metrics": {"letters": State.LEN, "rows": state.tries, "rows_max": State.MAX_ROWS,
+			"hints": state.hints_left, "list_words": pool,
+			"commonness_rank": -1 if banked else State._answers.find(state.written),
+			"clue_rule": state.strict, "late_colours": state.snail, "rows_kept": state.keeps_rows,
+			"insane_bank": banked},
+	}
+
 ## Everything a finished board leaves behind: the refusal in hand, the solve,
 ## the reveal and the waves either of them owns. Both build() (a new word) and
 ## reset_board() (the same word again) go through it, because a board that

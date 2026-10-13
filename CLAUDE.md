@@ -56,6 +56,7 @@ that area**, and add new history there rather than here.
 | Ads, age gate, remove-ads purchase | `docs/agents/ads-and-purchase.md` |
 | Backend, Firestore, functions, locale | `docs/agents/turns-and-backend.md` |
 | CI | `docs/agents/ci.md` |
+| The day documents and the quality dashboard (`day_dict()`, `tools/export_days.gd`) | `docs/agents/days-dashboard.md` |
 | The board checkup (perf, tutorial, ?, undo/reset), the Versus and Arcade tutorials, and where it stands | `docs/agents/checkup.md` |
 
 ## Rules that apply everywhere

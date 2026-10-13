@@ -4288,3 +4288,62 @@ func _draw_stamp(now: float, shown: Array) -> void:
 
 func _now() -> float:
 	return Time.get_ticks_msec() / 1000.0
+
+## The day as dealt, for tools/export_days.gd: every plane as a line from
+## its tail to an arrow on its head, and on the answer's side the launch the
+## carve gave it; a cloud where it stands before the first launch.
+func day_dict() -> Dictionary:
+	if _state.planes.is_empty() or _state.cols <= 0:
+		return {}
+	var cols: int = _state.cols
+	var rows: int = _state.rows
+	var arrows := {Vector2i(1, 0): "→", Vector2i(-1, 0): "←", Vector2i(0, 1): "↓", Vector2i(0, -1): "↑"}
+	var puzzle: Array = []
+	var answer: Array = []
+	for i in cols * rows:
+		puzzle.append({})
+		answer.append({})
+	var bodies: Array = []
+	var lines: Array = []
+	var covered := 0
+	var longest := 0
+	for i in _state.planes.size():
+		var cells: Array = _state.planes[i]["cells"]
+		covered += cells.size()
+		longest = maxi(longest, cells.size())
+		# A body is kept by its corners: tail, every bend, head.
+		var from: Vector2i = cells[0]
+		var bends: Array = [[from.x, from.y]]
+		for k in range(1, cells.size()):
+			var c: Vector2i = cells[k]
+			if k == cells.size() - 1 or cells[k + 1] - c != c - cells[k - 1]:
+				lines.append([from.x, from.y, c.x, c.y, 1])
+				bends.append([c.x, c.y])
+				from = c
+		bodies.append(bends)
+		puzzle[from.y * cols + from.x]["t"] = arrows.get(_state.planes[i]["dir"], "?")
+	for k in _state.order.size():
+		var cells: Array = _state.planes[int(_state.order[k])]["cells"]
+		var head: Vector2i = cells[cells.size() - 1]
+		answer[head.y * cols + head.x]["t"] = str(k + 1)
+	var clouds: Array = []
+	for c: Vector2i in _state.clouds:
+		clouds.append([c.x, c.y])
+		puzzle[c.y * cols + c.x]["c"] = 0
+		answer[c.y * cols + c.x]["c"] = 0
+	var view := {"w": cols, "h": rows, "puzzle": puzzle, "solution": answer,
+		"edges": lines, "solution_edges": lines}
+	if not clouds.is_empty():
+		view["legend"] = ["cloud"]
+	return {
+		"source": "bank" if _state.banked else "generator", "kind": "grid",
+		"payload": {"cols": cols, "rows": rows, "planes": bodies, "wind": int(_state.wind.x),
+			"clouds": clouds},
+		"solution": {"order": Array(_state.order)},
+		"metrics": {"cols": cols, "rows": rows, "planes": bodies.size(), "cells": covered,
+			"coverage": snappedf(float(covered) / float(cols * rows), 0.001), "longest": longest,
+			"free_at_deal": _state.free_planes().size(), "clouds": clouds.size(),
+			"par": _state.shortest_solve(), "hints": State.hints_for(_state.difficulty),
+			"hearts": max_hearts, "moves": max_moves},
+		"view": view,
+	}

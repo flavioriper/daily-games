@@ -102,6 +102,52 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	table.set_clear(_clear.x, _clear.y)
 	table.greet()
 
+## The day as dealt, for tools/export_days.gd (PuzzleBase.day_dict): the
+## day's jellies, the flavour each chunk is wanted in and the pots stood by
+## the tray. The answer is the pot, or the two pots half and half, a chunk
+## is filled from.
+func day_dict() -> Dictionary:
+	if sim == null or sim.moulds.is_empty():
+		return {}
+	var names: Array = Mould.Flavour.keys()
+	var moulds: Array = []
+	var fills: Array = []
+	var cells := 0
+	var least := 1 << 30
+	var most := 0
+	var mixes := 0
+	var used := {}
+	for m: Dictionary in sim.moulds:
+		var want: Array = []
+		var fill: Array = []
+		for f: int in m.want:
+			used[f] = true
+			want.append(String(names[f]).to_lower())
+			var from: Array = []
+			for pot: int in Mould.recipe(f, m.pots):
+				from.append(String(names[pot]).to_lower())
+			if from.size() > 1:
+				mixes += 1
+			fill.append(" + ".join(from))
+		var pots: Array = []
+		for pot: int in m.pots:
+			pots.append(String(names[pot]).to_lower())
+		var n: int = (m.cells as Array).size()
+		cells += n
+		least = mini(least, n)
+		most = maxi(most, n)
+		moulds.append({"picture": String(m.id), "pieces": int(m.pieces), "cells": n, "want": want, "pots": pots,
+			"mixed": String(names[int(m.mixed)]).to_lower() if int(m.mixed) >= 0 else ""})
+		fills.append({"picture": String(m.id), "fill": fill})
+	return {
+		"source": "generator", "kind": "text",
+		"payload": {"moulds": moulds, "mark": sim.mark(), "serves": sim.budget},
+		"solution": {"moulds": fills},
+		"metrics": {"moulds": moulds.size(), "mark": sim.mark(), "perfect": Sim.PERFECT, "cells": cells,
+			"cells_min": least, "cells_max": most, "flavours": used.size(), "mixed_cells": mixes,
+			"serves": sim.budget},
+	}
+
 ## The host's rows over this board (ui/flat/flat_host.gd, a `bleed`
 ## board): what they cover at the top and the foot, and on the win the
 ## span the win screen leaves.

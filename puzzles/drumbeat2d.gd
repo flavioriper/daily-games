@@ -478,6 +478,64 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_layout()
 	fx.cue("enter")
 
+## The day as dealt, for tools/export_days.gd (PuzzleBase.day_dict): the song
+## and this level's chart out of content/drumbeat.json. The answer is the
+## chart struck, written a bar a line: the drum's number, `~` a hold, `r` a
+## drumroll, `b` and its strokes a balloon, `+` two at once, brackets a
+## berry Echo hides.
+func day_dict() -> Dictionary:
+	if _song.is_empty() or _st == null:
+		return {}
+	var bars: Array = _song.get("bars", [])
+	var lines: Array = []
+	for k in bars.size() + 1:
+		lines.append("")
+	var rows: Array = []
+	var per_drum := [0, 0, 0, 0]
+	var kinds := [0, 0, 0, 0]
+	var hidden := 0
+	var chords := 0
+	var last_t := -INF
+	var last_bar := -1
+	for n: Dictionary in _st.notes:
+		var t := float(n.t)
+		var type := int(n.type)
+		rows.append([snappedf(t, 0.001), int(n.lane), type, snappedf(float(n.end), 0.001), int(n.count), 1 if n.hidden else 0])
+		per_drum[int(n.lane)] += 1
+		kinds[type] += 1
+		if n.hidden:
+			hidden += 1
+		var bar := 0
+		while bar < bars.size() and t >= float(bars[bar]) - 0.001:
+			bar += 1
+		var mark: String = str(int(n.lane) + 1) + ["", "~", "r", "b%d" % int(n.count)][type]
+		if n.hidden:
+			mark = "(" + mark + ")"
+		var twin := bar == last_bar and absf(t - last_t) < 0.002
+		if twin:
+			chords += 1
+		lines[bar] += ("+" if twin else (" " if lines[bar] != "" else "")) + mark
+		last_t = t
+		last_bar = bar
+	var gogo_s := 0.0
+	for g: Array in _st.gogo:
+		gogo_s += float(g[1]) - float(g[0])
+	return {
+		"source": "bank", "kind": "text",
+		"payload": {"song": String(_song.get("id", "")), "title": String(_song.get("title", "")),
+			"bpm": _song.get("bpm", 0), "length": _st.length, "drums": _st.lanes, "bars": bars,
+			"gogo": _st.gogo, "echo": _st.echo, "notes": rows},
+		"solution": {"strokes": lines, "clear_at": State.CLEAR},
+		"metrics": {"song": String(_song.get("id", "")), "bpm": _song.get("bpm", 0), "length_s": _st.length,
+			"bars": bars.size(), "drums": _st.lanes, "notes": _st.notes.size(), "taps": kinds[0],
+			"holds": kinds[1], "rolls": kinds[2], "balloons": kinds[3], "chords": chords, "hidden": hidden,
+			"drum_1": per_drum[0], "drum_2": per_drum[1], "drum_3": per_drum[2],
+			"notes_per_s": snappedf(_st.notes.size() / maxf(1.0, _st.length), 0.01),
+			"gogo_s": snappedf(gogo_s, 0.01), "echo_bars": _st.echo.size(), "hearts": _st.max_hearts,
+			"good_ms": int(round(float(State.GOOD_WIN[_st.level]) * 1000.0)),
+			"fill_share": State.FILL[_st.level]},
+	}
+
 ## A new run at the song: the state, the clock and the motion, and the music
 ## stopped at its start. Hearts carry over a replay (`_kept_hearts`).
 func _fresh() -> void:

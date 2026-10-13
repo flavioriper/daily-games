@@ -3337,3 +3337,83 @@ func _draw_stamp(now: float, shown: Array) -> void:
 
 func _now() -> float:
 	return Time.get_ticks_msec() / 1000.0
+
+## The day as dealt, for tools/export_days.gd: every piece on the turn it
+## opened on and on the turn that solves the frame, its pin a dot, a stained
+## cell by how many pieces lie on it, a ribbon a line from pin to pin.
+func day_dict() -> Dictionary:
+	if _state.cols <= 0 or _state.shapes.is_empty():
+		return {}
+	var cols: int = _state.cols
+	var rows: int = _state.rows
+	var puzzle: Array = []
+	var answer: Array = []
+	var depth := PackedInt32Array()
+	depth.resize(cols * rows)
+	for i in cols * rows:
+		puzzle.append({})
+		answer.append({})
+	var pins: Array = []
+	var cycles: Array = []
+	var dealt: Array = []
+	var home: Array = []
+	var fixed := 0
+	var off := 0
+	for p in _state.shapes.size():
+		var cycle: int = (_state.shapes[p] as Array).size()
+		cycles.append(cycle)
+		if cycle <= 1:
+			fixed += 1
+		elif posmod(int(_state.start[p]) - int(_state.answer[p]), cycle) != 0:
+			off += 1
+		var cloth := int(_state.cloth[p])
+		var lies: Array = []
+		for cell: Vector2i in _state.cells_of(p, int(_state.start[p])):
+			var i := cell.y * cols + cell.x
+			lies.append([cell.x, cell.y])
+			depth[i] += 1
+			puzzle[i]["c"] = cloth
+			if depth[i] > 1:
+				puzzle[i]["t"] = str(depth[i])
+		dealt.append(lies)
+		var fits: Array = []
+		for cell: Vector2i in _state.cells_of(p, int(_state.answer[p])):
+			fits.append([cell.x, cell.y])
+			answer[cell.y * cols + cell.x]["c"] = cloth
+		home.append(fits)
+		var pin: Vector2i = _state.pin_cell(p)
+		pins.append([pin.x, pin.y])
+		puzzle[pin.y * cols + pin.x]["note"] = "•"
+		answer[pin.y * cols + pin.x]["note"] = "•"
+	var stained := 0
+	var bare := 0
+	for d in depth:
+		if d > 1:
+			stained += 1
+		elif d == 0:
+			bare += 1
+	var ribbons: Array = []
+	var ties: Array = []
+	for r: Dictionary in _state.ribbons:
+		var a: Vector2i = _state.pin_cell(int(r["from"]))
+		var b: Vector2i = _state.pin_cell(int(r["to"]))
+		ribbons.append([int(r["from"]), int(r["to"]), int(r.get("sign", 1))])
+		ties.append([a.x, a.y, b.x, b.y, 1])
+	var view := {"w": cols, "h": rows, "puzzle": puzzle, "solution": answer}
+	if not ties.is_empty():
+		view["edges"] = ties
+		view["solution_edges"] = ties
+	var out := {
+		"source": "generator", "kind": "grid",
+		"payload": {"cols": cols, "rows": rows, "pins": pins, "turns": cycles,
+			"start": Array(_state.start), "pieces": dealt, "ribbons": ribbons},
+		"solution": {"answer": Array(_state.answer), "pieces": home},
+		"metrics": {"cols": cols, "rows": rows, "pieces": pins.size(), "fixed": fixed,
+			"off": off, "par": int(_state.par), "stained": stained, "bare": bare,
+			"ribbons": ribbons.size(), "unique": bool(_state.ok),
+			"hints": State.hints_for(_state.difficulty), "hearts": max_hearts, "moves": max_moves},
+		"view": view,
+	}
+	if not _state.ok:
+		out["budget_hit"] = true
+	return out

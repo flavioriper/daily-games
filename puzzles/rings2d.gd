@@ -3361,3 +3361,50 @@ class RingIcon extends Control:
 		_mesh = b.mesh()
 		if _mesh != null:
 			draw_mesh(_mesh, null)
+
+## The day as dealt, for tools/export_days.gd: a column a peg, its top ring
+## on top, a Tumble ring's under colour in the corner. The answer is the
+## hint's own line from the deal (`Gen.solve`: a way home, not the shortest)
+## and the pegs it ends on.
+func day_dict() -> Dictionary:
+	if _state.deal.is_empty():
+		return {}
+	var deal: Array = _state.deal
+	var cap: int = Gen.CAP
+	var end: Array = []
+	var rings := 0
+	for s: Array in deal:
+		end.append(s.duplicate())
+		rings += s.size()
+	var line: Array = []
+	for m: Vector2i in Gen.solve(deal):
+		(end[m.y] as Array).append(Gen.flip(int((end[m.x] as Array).pop_back())))
+		line.append([m.x, m.y])
+	var slot := func(peg: Array, k: int) -> Dictionary:
+		if k >= peg.size():
+			return {}
+		var ring := int(peg[k])
+		var cell := {"c": Gen.top(ring)}
+		if Gen.two_tone(ring):
+			cell["note"] = str(Gen.under(ring))
+		return cell
+	var puzzle: Array = []
+	var answer: Array = []
+	for y in cap:
+		for x in deal.size():
+			puzzle.append(slot.call(deal[x], cap - 1 - y))
+			answer.append(slot.call(end[x], cap - 1 - y))
+	var banked: bool = _state.difficulty == 3 \
+		and State.InsaneBank.pick("rings", bank_step).get("pegs") is Array
+	var metrics := {"pegs": deal.size(), "colours": int(_state.colours), "rings": rings,
+		"cap": cap, "tumble": bool(_state.tumble), "line": line.size(),
+		"hints": State.hints_for(_state.difficulty), "hearts": max_hearts, "moves": max_moves}
+	if _state.par > 0:
+		metrics["par"] = int(_state.par)
+	return {
+		"source": "bank" if banked else "generator", "kind": "grid",
+		"payload": {"pegs": deal, "cap": cap},
+		"solution": {"moves": line, "pegs": end} if not line.is_empty() else {},
+		"metrics": metrics,
+		"view": {"w": deal.size(), "h": cap, "puzzle": puzzle, "solution": answer},
+	}

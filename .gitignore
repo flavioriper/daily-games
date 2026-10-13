@@ -96,3 +96,7 @@ server/.firebase/
 # (firebase-debug.log turned up the first time the functions emulator ran).
 server/*.log
 tools/how_big/.venv/
+
+# Made by tools/export_days.gd and tools/build_dashboard.py, not written
+tools/days/
+tools/dashboard.html

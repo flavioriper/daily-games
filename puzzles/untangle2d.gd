@@ -2833,6 +2833,41 @@ func flat_win() -> Dictionary:
 func win_delay() -> float:
 	return Motion.REDUCED_TIME if Motion.reduce else WIN_HOLD + 0.6
 
+## The day as dealt, for tools/export_days.gd (PuzzleBase.day_dict). A ring
+## is no grid: the pegs' holes, every crossing as [rope, rope, times, 1 when
+## the first lies on top], and the dealer's own answer as [peg, from, to].
+func day_dict() -> Dictionary:
+	if state.start_at.is_empty():
+		return {}
+	var cfg: Dictionary = Gen.BANDS[state.band]
+	var crossings: Array = []
+	for k in state.start_tw.size():
+		if state.start_tw[k] >> 1 > 0:
+			var p := Gen.pair_of(k, state.ropes)
+			crossings.append([p.x, p.y, state.start_tw[k] >> 1, state.start_tw[k] & 1])
+	var idle := 0
+	for r in state.ropes:
+		if state.start_at[2 * r] < 0:
+			idle += 1
+	var out := {
+		"source": "generator", "kind": "text",
+		"payload": {"holes": state.holes, "ropes": state.ropes, "pegs": Array(state.start_at),
+			"crossings": crossings, "reach": Array(state.reach), "stack": state.start_order,
+			"cat": state.cat, "swipes": state.swipes},
+		"solution": {"plan": state.plan},
+		"metrics": {"holes": state.holes, "ropes": state.ropes, "idle": idle,
+			"crossings": Gen.crossing_count(state.start_tw), "pairs": crossings.size(),
+			"deepest": Gen.deepest(state.start_tw), "knots": Gen.knots(state.start_tw),
+			"par": state.par, "par_floor": int(cfg.par), "thread": state.budget,
+			"cat": state.cat, "swipes": state.swipes.size(),
+			"hints": State.HINTS_BY_BAND[state.band]},
+	}
+	# Every walk of the band was a dud and a smaller ring was dealt
+	# (Gen._fallback).
+	if state.holes != int(cfg.holes) or state.ropes != int(cfg.ropes):
+		out["budget_hit"] = true
+	return out
+
 ## A completed daily reopens as it was left: the ring empty, every rope gone,
 ## and the seal on it.
 func restore_completed_board() -> void:

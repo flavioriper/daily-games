@@ -336,6 +336,42 @@ func _deal(gen: int) -> void:
 		state.setup(key, state.band)
 	_begin()
 
+## The day as dealt, for tools/export_days.gd (PuzzleBase.day_dict): the
+## prompts in English, every answer the list holds by how deep it dives.
+func day_dict() -> Dictionary:
+	if not _dealt:
+		return {"pending": true}
+	if state.prompts.is_empty():
+		return {}
+	var asked: Array = []
+	var held: Array = []
+	var total := 0
+	var least := 1 << 30
+	for p: Dictionary in state.prompts:
+		var tiers: Array = [[], [], [], []]
+		var pearl := ""
+		for a: Dictionary in p.answers:
+			var name := str((a.get("en", [""]) as Array)[0])
+			if int(a.t) == State.PEARL:
+				pearl = name
+			else:
+				(tiers[int(a.t)] as Array).append(name)
+		var count: int = (p.answers as Array).size()
+		total += count
+		least = mini(least, count)
+		asked.append({"id": str(p.id), "ask": str((p.get("en", {}) as Dictionary).get("ask", "")), "answers": count})
+		held.append({"pearl": pearl, "deep": ", ".join(tiers[3]), "rare": ", ".join(tiers[2]),
+			"known": ", ".join(tiers[1]), "common": ", ".join(tiers[0])})
+	return {
+		"source": "bank" if state.source == "bank" else "server", "kind": "text",
+		"payload": {"prompts": asked, "lang": "en", "written_by": state.source},
+		"solution": {"answers": held},
+		"metrics": {"prompts": asked.size(), "prompts_wanted": int(State.ASKS[state.band]),
+			"answers": total, "answers_least": least, "seconds": float(State.SECONDS[state.band]),
+			"hints": int(State.HINTS_BY[state.band]), "floor_m": state.floor_depth(),
+			"one_tank": state.tank(), "written_by": state.source},
+	}
+
 ## The day as `state` has it, from the top: the card stands ready and the
 ## clock waits for the player to dive.
 func _begin() -> void:

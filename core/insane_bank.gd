@@ -35,8 +35,14 @@ static func boards(puzzle_id: String) -> Array:
 static func size(puzzle_id: String) -> int:
 	return boards(puzzle_id).size()
 
+## A day other than today's, for tools/export_days.gd, which deals days the
+## clock has not reached; -1 in the game.
+static var day_override := -1
+
 ## Whole UTC days since the epoch: the same instant the daily rolls over.
 static func day_ordinal() -> int:
+	if day_override >= 0:
+		return day_override
 	return int(Time.get_unix_time_from_system()) / 86400
 
 static func pick(puzzle_id: String, step: int) -> Dictionary:

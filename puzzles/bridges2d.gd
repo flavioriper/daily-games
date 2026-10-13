@@ -851,6 +851,51 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	max_moves = state.moves_budget()
 	_begin()
 
+## The day as dealt, for tools/export_days.gd (PuzzleBase.day_dict). Insane
+## comes out of its bank when the bank has the day (State.build). An islet is
+## its number; a lantern, whose number counts the islets it is joined to, is
+## coloured. A line's count is its planks.
+func day_dict() -> Dictionary:
+	if not _running and not _done:
+		return {}
+	var n: int = state.n
+	var banked: bool = state.band == 3 \
+		and not State.Gen.from_bank(State.InsaneBank.pick("bridges", bank_step)).is_empty()
+	var cells: Array = []
+	for i in n * n:
+		cells.append({})
+	var islets: Array = []
+	for cell in state.islets:
+		var lit: bool = state.lanterns.has(cell)
+		islets.append([cell.x, cell.y, state.need_of(cell), 1 if lit else 0])
+		cells[cell.y * n + cell.x] = {"t": str(state.need_of(cell)), "given": true}
+		if lit:
+			cells[cell.y * n + cell.x]["c"] = 0
+	var runs: Array = []
+	var planks := 0
+	var doubles := 0
+	for key in state.answer:
+		var lane: Dictionary = state.lanes[key]
+		var v := int(state.answer[key])
+		runs.append([lane.a.x, lane.a.y, lane.b.x, lane.b.y, v])
+		planks += v
+		doubles += 1 if v > 1 else 0
+	var out := {
+		"source": "bank" if banked else "generator", "kind": "grid",
+		"payload": {"n": n, "islets": islets},
+		"solution": {"runs": runs},
+		"metrics": {"size": n, "islets": islets.size(), "lanes": state.lanes.size(),
+			"runs": runs.size(), "planks": planks, "doubles": doubles,
+			"lanterns": state.lanterns.size(), "unique": state.unique,
+			"guess_free": state.guess_free, "hints": hints_left(), "hearts": max_hearts,
+			"moves": max_moves},
+		"view": {"w": n, "h": n, "puzzle": cells, "solution": cells.duplicate(true),
+			"solution_edges": runs, "legend": ["lantern"]},
+	}
+	if not banked:
+		out["budget_hit"] = not (state.unique and state.guess_free)
+	return out
+
 ## Everything a newly dealt `state` starts from, and its entrance: what
 ## `build` does after the deal, and what the tutorial's own sea does after it
 ## lays one by hand.

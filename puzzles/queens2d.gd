@@ -558,6 +558,57 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_tip_timer.start()
 	_enter()
 
+## The day as dealt, for tools/export_days.gd (PuzzleBase.day_dict). Hard and
+## Insane come out of their banks when the bank has the day (State.setup). A
+## patch is a colour; a misty one, which takes two, is noted "2" on each cell.
+func day_dict() -> Dictionary:
+	if state.quota.is_empty():
+		return {}
+	var n: int = state.n
+	var banked := false
+	if state.band >= 2:
+		var b: Dictionary = State.Gen.from_bank(
+			State.InsaneBank.pick("queens" if state.band == 3 else "queens_hard", bank_step))
+		banked = not b.is_empty() and bool(b.ok)
+	var puzzle: Array = []
+	var answer: Array = []
+	var regions: Array = []
+	var cells: Array = []
+	var sizes := {}
+	for r in n:
+		var line := ""
+		for c in n:
+			var g := int(state.region[r][c])
+			sizes[g] = int(sizes.get(g, 0)) + 1
+			regions.append(g)
+			line += str(g)
+			var cell := {"c": g % 12}
+			if state.is_misty(g):
+				cell["note"] = "2"
+			puzzle.append(cell)
+			var seat := cell.duplicate()
+			if int(state.solution[r]) == c:
+				seat["t"] = "Q"
+			answer.append(seat)
+		cells.append(line)
+	var smallest := 0
+	var largest := 0
+	for g in sizes:
+		smallest = int(sizes[g]) if smallest == 0 else mini(smallest, int(sizes[g]))
+		largest = maxi(largest, int(sizes[g]))
+	var out := {
+		"source": "bank" if banked else "generator", "kind": "grid",
+		"payload": {"n": n, "cells": cells, "quota": Array(state.quota)},
+		"solution": {"columns": Array(state.solution)},
+		"metrics": {"size": n, "patches": sizes.size(), "misty": state.mist.size(),
+			"smallest_patch": smallest, "largest_patch": largest, "unique": state.ok,
+			"hints": hints_left(), "hearts": max_hearts, "moves": max_moves},
+		"view": {"w": n, "h": n, "puzzle": puzzle, "solution": answer, "regions": regions},
+	}
+	if not banked:
+		out["budget_hit"] = not state.ok
+	return out
+
 ## The court as it is dealt, and as Try again deals it back: every heart and
 ## every move, the day's light, nothing judged, blooming or partying.
 func _deal() -> void:

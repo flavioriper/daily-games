@@ -554,6 +554,55 @@ func _ready() -> void:
 	resized.connect(_layout)
 	solved.connect(_on_solved)
 
+## The day as dealt, for tools/export_days.gd (PuzzleBase.day_dict): the
+## opening beside the shortest line's hops, numbered. The rose knights answer
+## every hop, so the line is drawn over where they opened. Insane is a
+## Brambles board out of its bank when the bank has the day (State.build).
+func day_dict() -> Dictionary:
+	var g: Dictionary = _state.g
+	if g.is_empty() or not g.has("w"):
+		return {}
+	var w: int = g.w
+	var line: PackedInt32Array = g.get("line", PackedInt32Array())
+	var puzzle: Array = []
+	var answer: Array = []
+	for c in w * w:
+		var cell := {}
+		if c == int(g.you):
+			cell = {"t": "N", "c": 0, "given": true}
+		elif c == int(g.king):
+			cell = {"t": "K", "c": 1, "given": true}
+		elif (g.foes as PackedInt32Array).has(c):
+			cell = {"t": "n", "c": 2, "given": true}
+		puzzle.append(cell)
+		answer.append(cell.duplicate())
+	var hops: Array = []
+	var at: int = g.you
+	for i in line.size():
+		var to: int = line[i]
+		hops.append([at % w, at / w, to % w, to / w, 1])
+		var cell: Dictionary = answer[to]
+		var key := "note" if cell.has("t") else "t"
+		cell[key] = str(i + 1) if not cell.has("note") or key == "t" else "%s,%d" % [cell.note, i + 1]
+		at = to
+	var banked: bool = g.get("brambles", false)
+	var doc := {
+		"source": "bank" if banked else "generator", "kind": "grid",
+		"payload": {"w": w, "you": int(g.you), "king": int(g.king), "foes": Array(g.foes),
+			"brambles": banked},
+		"solution": {"line": Array(line)},
+		"metrics": {"size": w, "foes": g.foes.size(), "opt": int(g.get("opt", 0)),
+			"king_dist": int(Gen.dist(w)[int(g.you)][int(g.king)]),
+			"attempts": int(g.get("attempts", 0)), "nodes": int(g.get("nodes", 0)),
+			"brambles": banked, "nap": bool(g.get("nap", false)),
+			"hints": State.hints_for(_state.difficulty), "move_budget": max_moves},
+		"view": {"w": w, "h": w, "puzzle": puzzle, "solution": answer, "solution_edges": hops,
+			"legend": ["you", "king", "rose knight"]},
+	}
+	if not banked and line.size() < int(Gen.band(mini(_state.difficulty, 2)).min):
+		doc["budget_hit"] = true
+	return doc
+
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_gen += 1
 	_close_card()

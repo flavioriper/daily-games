@@ -93,6 +93,14 @@ func peek(_on: bool) -> void: pass
 func status_text() -> String: return ""
 # -------------------
 
+## What build() dealt, for tools/export_days.gd and the dashboard it feeds
+## (docs/superpowers/specs/2026-10-13-day-documents-dashboard-design.md):
+## {"source": "generator"|"bank"|"server", "kind": "grid"|"text", "payload",
+## "solution", "metrics", and "view" for a grid}. It only reads, and nothing
+## in the game calls it. {"pending": true} while a deal is still on its way.
+func day_dict() -> Dictionary:
+	return {}
+
 func start(rng: RandomNumberGenerator, difficulty: int) -> void:
 	moves = 0
 	elapsed = 0.0

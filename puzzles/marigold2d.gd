@@ -4020,6 +4020,42 @@ func completion_record() -> Dictionary:
 	return {"score": _state.score, "shots": _state.shots, "tries": _state.tries, "log": _log,
 		"hearts": hearts, "moves_left": moves_left, "flawless": _flawless}
 
+## The day as dealt, for tools/export_days.gd (PuzzleBase.day_dict). The
+## garden is no grid: every bud as [x, y, kind]. Only a banked garden has an
+## answer, Sweethearts' proof: the angles of the shots that bloom every pair.
+func day_dict() -> Dictionary:
+	if _state.pos.is_empty():
+		return {}
+	var buds: Array = []
+	var clovers := 0
+	for i in _state.pos.size():
+		var k: int = _state.kind0[i]
+		if k == State.GREEN:
+			clovers += 1
+		if _state.kind[i] == State.PURPLE:
+			k = State.PURPLE
+		buds.append([_state.pos[i].x, _state.pos[i].y, k])
+	var pairs: Array = []
+	for i in _state.pair.size():
+		if _state.pair[i] > i:
+			pairs.append([i, _state.pair[i]])
+	var band: Dictionary = State.BANDS[_state.band]
+	var payload := {"field": [State.W, State.H], "buds": buds, "pot": _state.pot_w,
+		"kinds": ["bluebell", "marigold", "clover", "violet"]}
+	if _state.sweethearts:
+		payload["pairs"] = pairs
+	return {
+		"source": "bank" if _state.sweethearts else "generator", "kind": "text",
+		"payload": payload,
+		"solution": {"proof": _state.proof} if not _state.proof.is_empty() else {},
+		"metrics": {"buds": buds.size(), "buds_asked": int(band.pegs),
+			"marigolds": _state.orange_total, "clovers": clovers,
+			"bluebells": buds.size() - _state.orange_total - clovers,
+			"seeds": int(band.seeds), "pot": _state.pot_w, "sweethearts": _state.sweethearts,
+			"pairs": pairs.size(), "proof_shots": _state.proof.size(),
+			"hints": State.hints_for(_state.band), "moves": _state.moves_budget()},
+	}
+
 ## A reopened daily that was already solved: every marigold picked, the
 ## rainbow up, the score as it was. Never check_solved(): `solved` must not
 ## fire twice.

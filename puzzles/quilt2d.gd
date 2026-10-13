@@ -4081,3 +4081,54 @@ func _now() -> float:
 ## patch's own index on every band but Scrap Basket.
 func _ci(p: int) -> int:
 	return _state.cloth(p)
+
+## The day as dealt, for tools/export_days.gd: the quilt's outline, the
+## patches of the rack, and where the answer sews each one (a scrap nowhere).
+func day_dict() -> Dictionary:
+	if _state.cols <= 0 or _state.shapes.is_empty():
+		return {}
+	var cols: int = _state.cols
+	var rows: int = _state.rows
+	var region: Array = []
+	var puzzle: Array = []
+	var answer: Array = []
+	for r in rows:
+		var line := ""
+		for c in cols:
+			var on: bool = _state.region[r * cols + c] == 1
+			line += "1" if on else "0"
+			puzzle.append({} if on else {"wall": true})
+			answer.append({} if on else {"wall": true})
+		region.append(line)
+	var patches: Array = []
+	var scraps := 0
+	for p in _state.shapes.size():
+		var offs: Array = []
+		for off in _state.shapes[p]:
+			offs.append([int(off.x), int(off.y)])
+		patches.append(offs)
+		var origin := int(_state.answer[p])
+		if origin < 0:
+			scraps += 1
+			continue
+		for cell: Vector2i in _state.patch_cells(p, origin):
+			answer[cell.y * cols + cell.x] = {"c": int(_state.cloth_of[p]), "t": char(65 + p)}
+	# Scrap Basket's day is the bank's when its entry holds together, the
+	# question the state's own setup asks.
+	var entry: Dictionary = State.InsaneBank.pick("quilt", bank_step) if _state.band == 3 else {}
+	var banked: bool = not State.Gen.from_bank(entry).is_empty()
+	var metrics := {"cols": cols, "rows": rows, "cells": int(_state.quilt_cells),
+		"patches": patches.size() - scraps, "scraps": scraps, "unique": bool(_state.ok),
+		"hints": State.hints_for(_state.band), "hearts": max_hearts, "moves": max_moves}
+	if banked:
+		metrics["nodes"] = int(entry.get("nodes", 0))
+	var out := {
+		"source": "bank" if banked else "generator", "kind": "grid",
+		"payload": {"cols": cols, "rows": rows, "region": region, "patches": patches},
+		"solution": {"answer": Array(_state.answer)},
+		"metrics": metrics,
+		"view": {"w": cols, "h": rows, "puzzle": puzzle, "solution": answer},
+	}
+	if not _state.ok:
+		out["budget_hit"] = true
+	return out

@@ -3113,6 +3113,45 @@ func _on_solved() -> void:
 func completion_record() -> Dictionary:
 	return {"hearts": hearts, "flawless": _flawless, "moves": moves_left}
 
+## The day as dealt, for tools/export_days.gd (PuzzleBase.day_dict): the bare
+## pegboard in its four plates, and the picture the pattern card shows. Every
+## band's picture is the bank's (State.setup).
+func day_dict() -> Dictionary:
+	if _state.n == 0:
+		return {}
+	var n: int = _state.n
+	var puzzle: Array = []
+	var answer: Array = []
+	var regions: Array = []
+	# The picture a row a string: a colour's place in the kit as one base-36
+	# digit, a dot for a bare peg.
+	var rows: Array = []
+	for y in n:
+		var row := ""
+		for x in n:
+			var v: int = _state.want[y * n + x]
+			row += "0123456789abcdefghijklmnopqrstuvwxyz"[v] if v != State.EMPTY else "."
+			puzzle.append({})
+			answer.append({"c": v} if v != State.EMPTY else {})
+			regions.append(_state.plate_of(y * n + x))
+		rows.append(row)
+	var kit: Array = []
+	var legend: Array = []
+	for k in _state.names.size():
+		kit.append([_state.names[k], (_state.colours[k] as Color).to_html(false), _state.need[k]])
+		legend.append("%s x%d" % [_state.names[k], _state.need[k]])
+	return {
+		"source": "bank", "kind": "grid",
+		"payload": {"n": n, "picture": _state.pic_id, "kit": kit},
+		"solution": {"rows": rows},
+		"metrics": {"size": n, "picture": _state.pic_id, "colours": _state.names.size(),
+			"beads": _state.target, "bare": n * n - _state.target,
+			"pool": State.band_pictures(_state.band).size(),
+			"hints": State.hints_for(_state.band), "moves": _state.moves_budget()},
+		"view": {"w": n, "h": n, "puzzle": puzzle, "solution": answer, "regions": regions,
+			"legend": legend},
+	}
+
 ## A reopened daily that was already solved: the whole picture seated and
 ## fused, the bare pegs gone, the cat asleep on the pattern card and the
 ## seal. Never check_solved(): `solved` must not fire twice.

@@ -3831,3 +3831,55 @@ func _on_solved() -> void:
 
 func _now() -> float:
 	return Time.get_ticks_msec() / 1000.0
+
+## The day as dealt, for tools/export_days.gd: every piece as it lies and as
+## it is wired, a piece drawn by the sides it opens; the post, the lanterns
+## and Wish Tags' depths.
+func day_dict() -> Dictionary:
+	if state.n <= 0 or state.sol.is_empty():
+		return {}
+	var n: int = state.n
+	# One glyph a piece mask: N 1, E 2, S 4, W 8.
+	var pipes := " ╵╶└╷│┌├╴┘─┴┐┤┬┼"
+	var puzzle: Array = []
+	var answer: Array = []
+	var wires: Array = []
+	var tags: Array = []
+	var lanterns := 0
+	var off := 0
+	for i in n * n:
+		var d := int(state.deal[i])
+		var s := int(state.sol[i])
+		var cell := {}
+		if i == state.post:
+			cell = {"c": 0, "given": true}
+		elif Gen.degree(s) == 1:
+			cell = {"c": 1}
+			lanterns += 1
+		if state.tags.has(i):
+			cell["note"] = str(int(state.tags[i]))
+			tags.append([i, int(state.tags[i])])
+		if d != s:
+			off += 1
+		var dealt := cell.duplicate()
+		dealt["t"] = pipes[d]
+		cell["t"] = pipes[s]
+		puzzle.append(dealt)
+		answer.append(cell)
+		if s & Gen.E:
+			wires.append([i % n, i / n, i % n + 1, i / n, 1])
+		if s & Gen.S:
+			wires.append([i % n, i / n, i % n, i / n + 1, 1])
+	var out := {
+		"source": "bank" if state.banked else "generator", "kind": "grid",
+		"payload": {"n": n, "post": int(state.post), "deal": Array(state.deal), "tags": tags},
+		"solution": {"grid": Array(state.sol)},
+		"metrics": {"size": n, "lanterns": lanterns, "tags": tags.size(), "off": off,
+			"par": state.shortest_solve(), "proved": bool(state.proved),
+			"hints": State.hints_for(state.band), "hearts": max_hearts, "moves": max_moves},
+		"view": {"w": n, "h": n, "puzzle": puzzle, "solution": answer,
+			"solution_edges": wires, "legend": ["post", "lantern"]},
+	}
+	if not state.proved:
+		out["budget_hit"] = true
+	return out

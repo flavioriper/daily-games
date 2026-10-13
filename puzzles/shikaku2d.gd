@@ -641,6 +641,79 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_tip_timer.start()
 	_enter()
 
+## The day as dealt, for tools/export_days.gd (PuzzleBase.day_dict). Insane
+## comes out of its bank when the bank has the day (State.setup). A sign's
+## corner note is its shape, or "crow" where its number counts neighbours.
+func day_dict() -> Dictionary:
+	if not _running and not _done:
+		return {}
+	var w: int = state.w
+	var h: int = state.h
+	var banked: bool = state.band == 3 \
+		and not State.Gen.from_bank(State.InsaneBank.pick("shikaku", bank_step)).is_empty()
+	var puzzle: Array = []
+	var answer: Array = []
+	for i in w * h:
+		puzzle.append({})
+		answer.append({})
+	# A colour a plot, never the colour of a plot already beside it.
+	var owner := PackedInt32Array()
+	owner.resize(w * h)
+	owner.fill(-1)
+	var tint: Array = []
+	var rects: Array = []
+	var largest := 0
+	for k in state.solution.size():
+		var r: Rect2i = state.solution[k]
+		rects.append([r.position.x, r.position.y, r.size.x, r.size.y])
+		largest = maxi(largest, r.size.x * r.size.y)
+		var taken := {}
+		for y in range(r.position.y - 1, r.end.y + 1):
+			for x in range(r.position.x - 1, r.end.x + 1):
+				if x >= 0 and y >= 0 and x < w and y < h and owner[y * w + x] >= 0:
+					taken[tint[owner[y * w + x]]] = true
+		var c := 0
+		while taken.has(c):
+			c += 1
+		tint.append(c)
+		for y in range(r.position.y, r.end.y):
+			for x in range(r.position.x, r.end.x):
+				owner[y * w + x] = k
+				answer[y * w + x] = {"c": c}
+	var clues: Array = []
+	var shaped := 0
+	var blank := 0
+	var crows := 0
+	for clue in state.clues:
+		var pos: Vector2i = clue.pos
+		var crow: int = State.Gen.crow_of(clue)
+		var shape := int(clue.get("shape", State.Gen.Shape.ANY))
+		clues.append([pos.x, pos.y, int(clue.area), shape, crow])
+		var cell := {"t": str(int(clue.area)) if int(clue.area) > 0 else "?", "given": true}
+		if crow >= 0:
+			crows += 1
+			cell = {"t": str(crow), "given": true, "note": "crow"}
+		else:
+			if shape != State.Gen.Shape.ANY:
+				shaped += 1
+				cell["note"] = ["", "sq", "tall", "wide"][shape]
+			if int(clue.area) <= 0:
+				blank += 1
+		puzzle[pos.y * w + pos.x] = cell
+		answer[pos.y * w + pos.x] = cell.merged(answer[pos.y * w + pos.x])
+	var out := {
+		"source": "bank" if banked else "generator", "kind": "grid",
+		"payload": {"w": w, "h": h, "clues": clues},
+		"solution": {"rects": rects},
+		"metrics": {"w": w, "h": h, "cells": w * h, "plots": rects.size(), "clues": clues.size(),
+			"shaped": shaped, "blank": blank, "crows": crows, "largest_plot": largest,
+			"hints": hints_left(), "hearts": max_hearts, "moves": max_moves},
+		"view": {"w": w, "h": h, "puzzle": puzzle, "solution": answer},
+	}
+	if not banked:
+		out["budget_hit"] = state.solution.is_empty()
+	return out
+
 ## The field as it is dealt, and as Try again deals it back: no beds, every
 ## heart, nothing growing, nothing in flight.
 func _deal() -> void:

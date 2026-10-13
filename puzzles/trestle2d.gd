@@ -525,6 +525,41 @@ func _ready() -> void:
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_deal(Gen.deal(rng, difficulty), difficulty)
 
+## The day as dealt, for tools/export_days.gd (PuzzleBase.day_dict): the
+## level out of content/trestle.json and the miner's proof, a member a row
+## [ax, ay, bx, by, material] (0 the road, 1 wood).
+func day_dict() -> Dictionary:
+	var lv: Dictionary = state.level
+	if lv.is_empty():
+		return {}
+	var anchors: Array = []
+	for a in lv.anchors:
+		anchors.append([int(a[0]), int(a[1])])
+	var proof: Array = []
+	var road := 0
+	for d: Dictionary in state.proof:
+		proof.append([d.a.x, d.a.y, d.b.x, d.b.y, int(d.m)])
+		if int(d.m) == Sim.ROAD:
+			road += 1
+	var rock = lv.get("rock")
+	var band := clampi(_difficulty, 0, Gen.BANDS.size() - 1)
+	var pool: Array = Gen.bank()
+	var banked: bool = band < pool.size() and pool[band] is Array and not (pool[band] as Array).is_empty()
+	var cost := int(lv.get("proof_cost", 0))
+	return {
+		"source": "bank" if banked else "generator", "kind": "text",
+		"payload": {"w": int(lv.w), "dy": int(lv.get("dy", 0)), "cart": float(lv.cart), "budget": state.budget,
+			"anchors": anchors, "rock": [int(rock[0]), int(rock[1])] if rock != null else [],
+			"tea": bool(lv.get("tea", false)), "mats": state.mats},
+		"solution": {"proof": proof, "proof_cost": cost},
+		"metrics": {"span": int(lv.w), "rise": int(lv.get("dy", 0)), "cart": float(lv.cart),
+			"budget": state.budget, "proof_cost": cost,
+			"slack": snappedf(state.budget / maxf(1.0, cost), 0.01), "pool": (pool[band] as Array).size() if banked else 0,
+			"proof_members": proof.size(), "proof_road": road, "proof_wood": proof.size() - road,
+			"anchors": anchors.size(), "rock": rock != null, "tea": bool(lv.get("tea", false)),
+			"hearts": max_hearts},
+	}
+
 ## The board on `level` at band `difficulty`: the day's from `build`, a
 ## hand-made one from a tutorial page.
 func _deal(level: Dictionary, difficulty: int) -> void:

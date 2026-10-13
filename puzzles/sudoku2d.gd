@@ -573,6 +573,39 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_tip_timer.start()
 	_enter()
 
+## The day as dealt, for tools/export_days.gd (PuzzleBase.day_dict). Hard and
+## Insane come out of their banks when the bank has the day (State.setup).
+func day_dict() -> Dictionary:
+	if state == null or state.sol.is_empty():
+		return {}
+	var n: int = Gen.N
+	var puzzle: Array = []
+	var answer: Array = []
+	var regions: Array = []
+	var hills := 0
+	for i in n * n:
+		var v := int(state.given[i])
+		var hill := int(state.hills[i]) if i < state.hills.size() else -1
+		if hill >= 0:
+			hills += 1
+		var cell := {}
+		if v > 0:
+			cell = {"t": str(v), "given": true}
+		if hill >= 0:
+			cell["note"] = str(hill)
+		puzzle.append(cell)
+		answer.append({"t": str(int(state.sol[i])), "given": v > 0})
+		regions.append((i / n) / Gen.BOX_R * 10 + (i % n) / Gen.BOX_C)
+	var banked: bool = state.band >= 2 and InsaneBank.size("sudoku" if state.band == 3 else "sudoku_hard") > 0
+	return {
+		"source": "bank" if banked else "generator", "kind": "grid",
+		"payload": {"n": n, "puzzle": Array(state.given), "hills": Array(state.hills)},
+		"solution": {"grid": Array(state.sol)},
+		"metrics": {"size": n, "clues": n * n - int(state.target), "blanks": int(state.target),
+			"hills": hills, "hints": state.hints_left},
+		"view": {"w": n, "h": n, "puzzle": puzzle, "solution": answer, "regions": regions},
+	}
+
 ## The grid as it is dealt, and as Try again deals it back: every heart and
 ## every move, the day's light, nothing judged, no streak, sticker or party.
 func _deal() -> void:

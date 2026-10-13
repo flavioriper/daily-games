@@ -477,6 +477,70 @@ func _exit_tree() -> void:
 	_state.abandon()
 	_close_card()
 
+## The day as dealt, for tools/export_days.gd (PuzzleBase.day_dict): the tray
+## out of its bank beside where a shortest way home leaves it, the moves
+## ([block, from, to]) read off the day's own distances once the worker has
+## them, as a hint reads them.
+func day_dict() -> Dictionary:
+	if _state.start_blocks.is_empty():
+		return {}
+	if not _state.solver_ready():
+		return {"pending": true}
+	var draw := func(bl: Array) -> Array:
+		var cells: Array = []
+		for i in Gen.N:
+			cells.append({"note": "gate"} if i >= Gen.GOAL + Gen.COLS and i <= Gen.GOAL + Gen.COLS + 1 else {})
+		for p in bl.size():
+			for c in Gen.cells(int(bl[p][0]), int(bl[p][1])):
+				cells[c]["c"] = p % 12
+				if int(bl[p][0]) == Gen.B0:
+					cells[c]["t"] = "B"
+		return cells
+	var blocks: Array = _state.start_blocks.duplicate(true)
+	var key: int = _state.start_key
+	var r: Dictionary = _state.dist_table()
+	var line: Array = []
+	var at: int = r.index.get(key, -1) if not r.is_empty() else -1
+	while at >= 0 and r.dist[at] > 0 and line.size() < 400:
+		var next := -1
+		for p in blocks.size():
+			var a := int(blocks[p][0])
+			var from := int(blocks[p][1])
+			var g := Gen.grid(key)
+			for c in Gen.cells(a, from):
+				g[c] = Gen.E
+			var base := key - Gen.contrib(a, from)
+			for to in Gen.reach(g, a, from, _state.homesick):
+				var j: int = r.index.get(base + Gen.contrib(a, to), -1)
+				if to != from and j >= 0 and r.dist[j] == r.dist[at] - 1:
+					line.append([p, from, to])
+					blocks[p][1] = to
+					key = base + Gen.contrib(a, to)
+					next = j
+					break
+			if next >= 0:
+				break
+		if next < 0:
+			break
+		at = next
+	var bands: Array = Gen.bank()
+	var banked: bool = _state.homesick or (_state.band < bands.size() and bands[_state.band] is Array \
+		and not (bands[_state.band] as Array).is_empty())
+	return {
+		"source": "bank" if banked else "generator", "kind": "grid",
+		"payload": {"cols": Gen.COLS, "rows": Gen.ROWS, "tray": Gen.encode(_state.start_key),
+			"blocks": _state.start_blocks.duplicate(true), "gate": Gen.GOAL,
+			"homesick": bool(_state.homesick)},
+		"solution": {"tray": Gen.encode(key), "moves": line},
+		"metrics": {"par": int(_state.par), "moves": line.size(), "blocks": blocks.size(),
+			"band": int(_state.band), "homesick": bool(_state.homesick),
+			"positions": int(r.get("keys", PackedInt64Array()).size()),
+			"solved": Gen.is_goal(key), "hints": State.hints_for(_state.difficulty),
+			"move_budget": max_moves},
+		"view": {"w": Gen.COLS, "h": Gen.ROWS, "puzzle": draw.call(_state.start_blocks),
+			"solution": draw.call(blocks)},
+	}
+
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_close_card()
 	_state.build(rng, difficulty, bank_step)

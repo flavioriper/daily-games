@@ -368,6 +368,65 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	state.setup(rng, difficulty)
 	_begin()
 
+## The day as dealt, for tools/export_days.gd (PuzzleBase.day_dict): the
+## meadow, and the answer's bales with the pen they close. The meadow is the
+## bank's when the bank is there (State.setup).
+func day_dict() -> Dictionary:
+	if state.m.is_empty():
+		return {}
+	var m: Dictionary = state.m
+	var n: int = state.cells()
+	var sol: Array = m.get("sol", [])
+	var walls := PackedByteArray()
+	walls.resize(n)
+	for i in sol:
+		walls[int(i)] = 1
+	var pen: Dictionary = Gen.reach(m, walls)
+	var mouth := {}
+	for k in (m.tunnels as Array).size():
+		mouth[int(m.tunnels[k][0])] = "T%d" % (k + 1)
+		mouth[int(m.tunnels[k][1])] = "T%d" % (k + 1)
+	var things := ["", "a", "G", "b"]
+	var puzzle: Array = []
+	var answer: Array = []
+	for i in n:
+		var cell := {}
+		if state.is_water(i):
+			cell = {"c": 0}
+		elif state.is_stone(i):
+			cell = {"wall": true}
+		elif i == state.horse:
+			cell = {"t": "H", "given": true}
+		elif state.item(i) != Gen.NONE:
+			cell = {"t": things[state.item(i)]}
+		elif mouth.has(i):
+			cell = {"t": mouth[i]}
+		puzzle.append(cell)
+		var done := cell.duplicate()
+		if walls[i] == 1:
+			done = {"c": 1, "t": "#"}
+		elif pen.seen[i] == 1:
+			done["c"] = 2
+		answer.append(done)
+	var dealt: Dictionary = Gen.pack(m)
+	dealt.erase("sol")
+	dealt.erase("best")
+	var banked: bool = not State.pool(state.band).is_empty()
+	return {
+		"source": "bank" if banked else "generator", "kind": "grid",
+		"payload": dealt,
+		"solution": {"bales": sol, "score": int(pen.score), "pen": (pen.order as PackedInt32Array).size()},
+		"metrics": {"w": state.w, "h": state.h, "stock": state.budget, "best": state.best,
+			"target": state.target, "bales": sol.size(), "pen": (pen.order as PackedInt32Array).size(),
+			"closed": (pen.gaps as PackedInt32Array).is_empty(),
+			"water": (dealt.water as Array).size(), "stones": (dealt.stones as Array).size(),
+			"apples": (dealt.apples as Array).size(), "gold": (dealt.gold as Array).size(),
+			"bees": (dealt.bees as Array).size(), "tunnels": (m.tunnels as Array).size(),
+			"hints": State.hints_for(state.band), "moves": state.moves_budget()},
+		"view": {"w": state.w, "h": state.h, "puzzle": puzzle, "solution": answer,
+			"legend": ["water", "bale", "pen"]},
+	}
+
 ## The field as `state` has it, from the top: Insane's moves, nothing in
 ## flight, the entrance.
 func _begin() -> void:

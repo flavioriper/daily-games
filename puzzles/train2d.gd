@@ -299,6 +299,57 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	state.setup(rng, difficulty)
 	_begin()
 
+## The day as dealt, for tools/export_days.gd (PuzzleBase.day_dict): the
+## picture of blocks (a row a string, a colour's index in base 36) and the
+## toy box's columns, front first, a cannon [colour, corks]. The answer is
+## the deal's own line, the cannons in the order it sent them, and the rug
+## it leaves is bare.
+func day_dict() -> Dictionary:
+	if state.picture.is_empty():
+		return {}
+	var w: int = state.w
+	var h: int = state.h
+	var digits := "0123456789abcdefghijklmnopqrstuvwxyz"
+	var puzzle: Array = []
+	var answer: Array = []
+	var rows: Array = []
+	var blocks := 0
+	for y in h:
+		var row := ""
+		for x in w:
+			var c: int = state.picture[y * w + x]
+			puzzle.append({"c": c} if c >= 0 else {})
+			answer.append({})
+			row += digits[c] if c >= 0 else "."
+			if c >= 0:
+				blocks += 1
+		rows.append(row)
+	var columns: Array = []
+	for column: PackedInt32Array in state._sheds0:
+		var stood: Array = []
+		for e in column:
+			stood.append([state.colour[e], state.load_[e]])
+		columns.append(stood)
+	var cannons: Array = []
+	var least := 1 << 30
+	var most := 0
+	for e in state.colour.size():
+		cannons.append([state.colour[e], state.load_[e], state.col[e]])
+		least = mini(least, state.load_[e])
+		most = maxi(most, state.load_[e])
+	return {
+		"source": "bank" if state.name_key != "" else "generator", "kind": "grid",
+		"payload": {"w": w, "h": h, "picture": state.name_key, "colours": Array(state.colours), "mat": state.mat,
+			"rows": rows, "toy_box": columns},
+		"solution": {"line": Array(state.line), "cannons": cannons},
+		"metrics": {"w": w, "h": h, "blocks": blocks, "colours": state.colours.size(), "mat": state.mat >= 0,
+			"cannons": cannons.size(), "par": state.par, "sent_again": state.par - cannons.size(),
+			"columns": columns.size(), "corks_min": least if not cannons.is_empty() else 0, "corks_max": most,
+			"stops": state.stops(), "lap_s": snappedf(state.stops() * _tick_time, 0.01),
+			"tray": State.SIDING, "hints": State.hints_for(state.band)},
+		"view": {"w": w, "h": h, "puzzle": puzzle, "solution": answer, "legend": Array(state.colours)},
+	}
+
 ## The rug as `state` has it, from the top.
 func _begin() -> void:
 	_heart_used = false

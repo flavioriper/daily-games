@@ -556,6 +556,84 @@ func _ready() -> void:
 	resized.connect(_layout)
 	solved.connect(_on_solved)
 
+## The day as dealt, for tools/export_days.gd (PuzzleBase.day_dict): the
+## pieces at their opening pegs beside the answer's, each with its beam.
+## Insane is a Shy Dew floor out of its bank when the bank has the day.
+func day_dict() -> Dictionary:
+	var g: Dictionary = _state.g
+	if g.is_empty():
+		return {}
+	var w: int = g.cols
+	var h: int = g.rows
+	var arrows := [">", "v", "<", "^"]
+	var pieces: Array = []
+	var cups := 0
+	var legend: Array = []
+	for pc: Dictionary in g.pieces:
+		var row := {"kind": pc.kind, "rail": Array(pc.rail), "home": int(pc.home)}
+		if pc.kind == "m":
+			row["t"] = pc.t
+		else:
+			row["f"] = int(pc.f)
+			row["s"] = int(pc.s)
+			cups += 1
+		pieces.append(row)
+		legend.append("rail %d: %s" % [legend.size() + 1, "mirror " + String(pc.t) if pc.kind == "m" else "cup"])
+	var sides: Array = []
+	var beams: Array = []
+	var steps := 0
+	for pos: PackedInt32Array in [_state.start, _state.home_pos()]:
+		var cells: Array = []
+		for c in w * h:
+			cells.append({})
+		cells[int(g.lamp)] = {"t": "L" + arrows[int(g.dir)], "given": true}
+		cells[int(g.bud)] = {"t": "B", "given": true}
+		for c in g.drops:
+			cells[c] = {"t": "o", "given": true}
+		for c in g.pots:
+			cells[c] = {"t": "#", "wall": true}
+		for c in _state.snails():
+			cells[c] = {"t": "S", "given": true}
+		for p in pieces.size():
+			for c in g.pieces[p].rail:
+				cells[c]["c"] = p % 12
+		for p in pieces.size():
+			var pc: Dictionary = g.pieces[p]
+			for c in Gen.cells_of(g, p, pos[p]):
+				var cell: Dictionary = cells[c]
+				if cell.has("t"):
+					cell["note"] = cell.t
+				cell["t"] = String(pc.t) if pc.kind == "m" else "C" + arrows[int(pc.f)]
+				cell["c"] = p % 12
+		sides.append(cells)
+		var beam: Array = []
+		var at: int = g.lamp
+		var traced: Dictionary = Gen.trace(g, pos)
+		for st: Dictionary in traced.steps:
+			for c: int in ([st.c, st.o] if st.has("o") else [st.c]):
+				beam.append([at % w, at / w, c % w, c / w, 1])
+				at = c
+		beams.append(beam)
+		steps = traced.steps.size()
+	var doc := {
+		"source": "bank" if _state.shy() else "generator", "kind": "grid",
+		"payload": {"cols": w, "rows": h, "lamp": int(g.lamp), "dir": int(g.dir), "bud": int(g.bud),
+			"drops": Array(g.drops), "pots": Array(g.pots), "snails": Array(_state.snails()),
+			"pieces": pieces, "start": Array(_state.start), "shy": _state.shy(),
+			"key": "L lamp, B bud, o dew, # pot, S snail, / \\ mirror, C cup and its mouth"},
+		"solution": {"home": Array(_state.home_pos())},
+		"metrics": {"cols": w, "rows": h, "pieces": pieces.size(), "cups": cups,
+			"drops": g.drops.size(), "pots": g.pots.size(), "snails": _state.snails().size(),
+			"shy": _state.shy(), "unique": bool(_state.unique), "attempts": int(g.get("attempts", 0)),
+			"par": _state.shortest_solve(), "beam": steps,
+			"hints": State.hints_for(_state.difficulty), "move_budget": max_moves},
+		"view": {"w": w, "h": h, "puzzle": sides[0], "solution": sides[1], "edges": beams[0],
+			"solution_edges": beams[1], "legend": legend},
+	}
+	if not _state.unique:
+		doc["budget_hit"] = true
+	return doc
+
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_gen += 1
 	_close_card()

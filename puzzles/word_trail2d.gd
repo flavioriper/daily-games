@@ -647,6 +647,55 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_say(tr(_tips()[0]), Face.Expr.HAPPY)
 	_tip_timer.start()
 
+## The day as dealt, for tools/export_days.gd (PuzzleBase.day_dict): the words
+## in the language Locale has, which is English unless the player chose another.
+func day_dict() -> Dictionary:
+	if _state.words.is_empty():
+		return {}
+	var n: int = _state.n
+	var puzzle: Array = []
+	var answer: Array = []
+	for y in n:
+		for x in n:
+			var cell := Vector2i(x, y)
+			var has: bool = _state.letters.has(cell)
+			puzzle.append({"t": String(_state.letters[cell])} if has else {"wall": true})
+			answer.append({"t": String(_state.letters[cell])} if has else {"wall": true})
+	var words: Array = []
+	var legend: Array = []
+	var edges: Array = []
+	var bends := 0
+	for i in _state.words.size():
+		var path: Array = _state.words[i]["path"]
+		var cells: Array = []
+		for k in path.size():
+			var at: Vector2i = path[k]
+			cells.append([at.x, at.y])
+			answer[at.y * n + at.x]["c"] = i
+			if k > 0:
+				edges.append([path[k - 1].x, path[k - 1].y, at.x, at.y, 1])
+		bends += _state._bends(path)
+		words.append({"word": String(_state.words[i]["word"]), "path": cells})
+		legend.append(String(_state.words[i]["word"]))
+	var rows: Array = []
+	for y in n:
+		var line := ""
+		for x in n:
+			line += String(_state.letters.get(Vector2i(x, y), "."))
+		rows.append(line)
+	return {
+		"source": "generator", "kind": "grid",
+		"payload": {"n": n, "rows": rows, "lengths": State.lens_for(_state.band), "lang": Locale.current()},
+		"solution": {"words": words},
+		"metrics": {"size": n, "words": words.size(), "walls": _state.walls.size(),
+			"letters": n * n - _state.walls.size(), "bends": bends,
+			"longest": (_state.words[_state.words.size() - 1]["path"] as Array).size(),
+			"hints": int(HINTS_BY_BAND[_state.band]), "wishes": _state.wishes,
+			"dark": _state.band >= State.NIGHT_BAND},
+		"view": {"w": n, "h": n, "puzzle": puzzle, "solution": answer,
+			"solution_edges": edges, "legend": legend},
+	}
+
 # --- layout ---
 
 ## The largest cell the card holds. **The width binds at every band** -- 178,

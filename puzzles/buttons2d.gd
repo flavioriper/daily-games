@@ -396,6 +396,50 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	state.setup(rng, difficulty)
 	_begin()
 
+## The day as dealt, for tools/export_days.gd (PuzzleBase.day_dict): the
+## buttons as the day opens and the picture they are sewn into, a row a
+## string (a colour's index in base 36, `.` off the cloth).
+func day_dict() -> Dictionary:
+	if state.slot.is_empty():
+		return {}
+	var w: int = state.w
+	var h: int = state.h
+	var digits := "0123456789abcdefghijklmnopqrstuvwxyz"
+	var puzzle: Array = []
+	var answer: Array = []
+	var opened: Array = []
+	var sewn: Array = []
+	var home := 0
+	for y in h:
+		var a := ""
+		var b := ""
+		for x in w:
+			var want: int = state.slot[y * w + x]
+			var has: int = state.start[y * w + x]
+			if want < 0:
+				puzzle.append({"wall": true})
+				answer.append({"wall": true})
+				a += "."
+				b += "."
+				continue
+			if has == want:
+				home += 1
+			puzzle.append({"c": has, "given": true} if has == want else {"c": has})
+			answer.append({"c": want})
+			a += digits[has] if has >= 0 else "."
+			b += digits[want]
+		opened.append(a)
+		sewn.append(b)
+	return {
+		"source": "bank" if state.name_key != "" else "generator", "kind": "grid",
+		"payload": {"w": w, "h": h, "picture": state.name_key, "colours": Array(state.colours), "rows": opened},
+		"solution": {"rows": sewn},
+		"metrics": {"w": w, "h": h, "buttons": state.count(), "colours": state.colours.size(), "par": state.par,
+			"sewn_at_start": home, "draws": state.draws, "tin_places": state.places(), "tin_open": state.base(),
+			"hints": State.hints_for(state.band), "moves": max_moves},
+		"view": {"w": w, "h": h, "puzzle": puzzle, "solution": answer, "legend": Array(state.colours)},
+	}
+
 ## The cloth as `state` has it, from the top.
 func _begin() -> void:
 	max_moves = state.moves_budget()

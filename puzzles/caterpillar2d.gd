@@ -636,6 +636,48 @@ func _ready() -> void:
 	resized.connect(_layout)
 	solved.connect(_on_solved)
 
+## The day as dealt, for tools/export_days.gd (PuzzleBase.day_dict): the
+## answer's squares carry their place in the walk. Insane is a Peckish garden
+## out of its bank when the bank has the day (State.build).
+func day_dict() -> Dictionary:
+	if _state.cols <= 0:
+		return {}
+	var w: int = _state.cols
+	var h: int = _state.rows
+	var path: PackedInt32Array = _state.path
+	var puzzle: Array = []
+	var answer: Array = []
+	for c in w * h:
+		var k: int = _state.clue[c]
+		puzzle.append({"t": str(k), "given": true} if k > 0 else {})
+		answer.append({"t": str(k), "given": true} if k > 0 else {})
+	for i in path.size():
+		answer[path[i]]["note"] = str(i + 1)
+	var hedges: Array = []
+	var marks: Array = []
+	for e: int in _state.hedges:
+		var a := e / 4096
+		var b := e % 4096
+		hedges.append([a, b])
+		marks.append([a % w, a / w, 0 if a / w == b / w else 1, "#"])
+	var walk: Array = []
+	for i in path.size() - 1:
+		walk.append([path[i] % w, path[i] / w, path[i + 1] % w, path[i + 1] / w, 1])
+	var doc := {
+		"source": "bank" if _state.hunger > 0 else "generator", "kind": "grid",
+		"payload": {"cols": w, "rows": h, "leaves": Array(_state.leaves), "hedges": hedges,
+			"hunger": int(_state.hunger)},
+		"solution": {"path": Array(path)},
+		"metrics": {"cols": w, "rows": h, "cells": w * h, "leaves": _state.leaves.size(),
+			"hedges": hedges.size(), "unique": bool(_state.unique), "hunger": int(_state.hunger),
+			"hints": State.hints_for(_state.difficulty), "move_budget": max_moves},
+		"view": {"w": w, "h": h, "puzzle": puzzle, "solution": answer, "marks": marks,
+			"solution_edges": walk},
+	}
+	if not _state.unique:
+		doc["budget_hit"] = true
+	return doc
+
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_gen += 1
 	_close_card()

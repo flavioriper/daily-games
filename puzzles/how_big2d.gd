@@ -300,6 +300,35 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	state.setup(rng, difficulty)
 	_begin()
 
+## The day as dealt, for tools/export_days.gd (PuzzleBase.day_dict): the
+## things by their English names, sizes in metres.
+func day_dict() -> Dictionary:
+	if state.rounds.is_empty():
+		return {}
+	var rounds: Array = []
+	var truths: Array = []
+	var lo := INF
+	var hi := 0.0
+	for r: Dictionary in state.rounds:
+		var a := State.bigness(r.ref)
+		var b := State.bigness(r.tgt)
+		var apart := maxf(a / b, b / a)
+		lo = minf(lo, apart)
+		hi = maxf(hi, apart)
+		rounds.append({"ruler": str(r.ref.get("name_en", r.ref.id)), "ruler_m": float(r.ref.size_m),
+			"size": str(r.tgt.get("name_en", r.tgt.id)), "measured": str(r.tgt.get("what_en", "")),
+			"apart": snappedf(apart, 0.01)})
+		truths.append({"thing": str(r.tgt.get("name_en", r.tgt.id)), "m": float(r.tgt.size_m)})
+	return {
+		"source": "generator", "kind": "text",
+		"payload": {"rounds": rounds, "lang": "en", "ladder": state.band >= 3},
+		"solution": {"sizes": truths},
+		"metrics": {"rounds": rounds.size(), "rounds_wanted": int(State.ROUNDS[state.band]),
+			"things": State.items().size(), "apart_min": snappedf(lo, 0.01), "apart_max": snappedf(hi, 0.01),
+			"hints": int(State.HINTS_BY[state.band]), "hearts": int(State.HEARTS_BY[state.band]),
+			"best_total": state.best_total(), "ladder": state.band >= 3},
+	}
+
 ## The day as `state` has it, from the top.
 func _begin() -> void:
 	max_hearts = State.HEARTS_BY[state.band]

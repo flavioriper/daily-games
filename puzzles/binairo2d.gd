@@ -513,6 +513,33 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_heart_used = false
 	_setup_board()
 
+## The day as dealt, for tools/export_days.gd (PuzzleBase.day_dict).
+func day_dict() -> Dictionary:
+	if _data.is_empty():
+		return {}
+	var n: int = (_data.puzzle as Array).size()
+	var puzzle: Array = []
+	var answer: Array = []
+	for r in n:
+		for c in n:
+			var v: int = _data.puzzle[r][c]
+			puzzle.append({"c": v, "given": true} if v != -1 else {})
+			answer.append({"c": int(_data.solution[r][c]), "given": v != -1})
+	var signs: Array = []
+	var marks: Array = []
+	for s in _data.signs:
+		signs.append([s.x, s.y, s.z, s.w])
+		marks.append([s.y, s.x, s.z, "=" if s.w == 1 else "x"])
+	return {
+		"source": "generator", "kind": "grid",
+		"payload": {"n": n, "puzzle": _data.puzzle, "signs": signs},
+		"solution": {"grid": _data.solution},
+		"metrics": {"size": n, "clues": int(_data.clues), "blanks": n * n - int(_data.clues),
+			"signs": signs.size(), "hearts": max_hearts},
+		"view": {"w": n, "h": n, "puzzle": puzzle, "solution": answer, "marks": marks,
+			"legend": ["sun", "moon"]},
+	}
+
 ## Deals `_data` onto a fresh board with every heart and every move: the
 ## build, and Try again.
 func _setup_board() -> void:

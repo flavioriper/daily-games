@@ -363,6 +363,44 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_state.build(rng, difficulty)
 	_begin()
 
+## The day as dealt, for tools/export_days.gd (PuzzleBase.day_dict): the
+## course's holes out of content/minigolf.json, and the miner's putts for
+## each, [angle, power] a putt.
+func day_dict() -> Dictionary:
+	if _state.holes.is_empty():
+		return {}
+	var holes: Array = []
+	var putts: Array = []
+	var pars: Array = []
+	var proved := 0
+	var counts := {"blocks": 0, "posts": 0, "sand": 0, "water": 0, "slopes": 0, "gates": 0}
+	var squares := 0
+	for hole: Dictionary in _state.holes:
+		var shown: Dictionary = hole.duplicate(true)
+		shown.erase("proof")
+		holes.append(shown)
+		var proof: Array = hole.get("proof", [])
+		putts.append(proof)
+		proved += proof.size()
+		pars.append(int(hole.get("par", 2)))
+		squares += (hole.get("cells", []) as Array).size()
+		for k: String in counts:
+			counts[k] += (hole.get(k, []) as Array).size()
+	var band: int = _state.band
+	var pool: Array = State.Gen.bank()
+	var banked: bool = band < pool.size() and pool[band] is Array and (pool[band] as Array).size() >= holes.size()
+	var metrics := {"holes": holes.size(), "par": _state.par_total(), "pars": " ".join(pars.map(func(p): return str(p))),
+		"proof_putts": proved, "squares": squares, "pool": (pool[band] as Array).size() if banked else 0,
+		"hints": State.hints_for(band), "hearts": max_hearts, "moves": max_moves,
+		"guide": State.guide_for(band)}
+	metrics.merge(counts)
+	return {
+		"source": "bank" if banked else "generator", "kind": "text",
+		"payload": {"holes": holes},
+		"solution": {"putts": putts, "par": pars},
+		"metrics": metrics,
+	}
+
 ## Everything a course starts from, the state already laid.
 func _begin() -> void:
 	max_hearts = State.hearts_for(_state.band)

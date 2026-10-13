@@ -739,6 +739,60 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_tip_timer.start()
 	_enter()
 
+## The day as dealt, for tools/export_days.gd (PuzzleBase.day_dict). Insane
+## comes out of its bank when the bank has the day (State.setup). A block is
+## a wall, with its number when it carries one; a cat is a stone noted "cat"
+## with the lamps she wants.
+func day_dict() -> Dictionary:
+	if not _running and not _done:
+		return {}
+	var w: int = state.w
+	var h: int = state.h
+	var banked: bool = state.band == 3 \
+		and not Gen.from_bank(State.InsaneBank.pick("lightup", bank_step)).is_empty()
+	var dealt: bool = state.grid.size() == h
+	var puzzle: Array = []
+	var rows: Array = []
+	var walls := 0
+	var numbered := 0
+	for y in h:
+		var line := ""
+		for x in w:
+			var v: int = int(state.grid[y][x]) if dealt else Gen.WHITE
+			var cell := {}
+			if v == Gen.WHITE:
+				line += "."
+			elif Gen.is_cat(v):
+				cell = {"t": str(v - Gen.CAT), "note": "cat", "given": true}
+				line += "abc"[v - Gen.CAT]
+			else:
+				walls += 1
+				cell = {"wall": true}
+				line += str(v) if v >= 0 else "#"
+				if v >= 0:
+					numbered += 1
+					cell = {"wall": true, "t": str(v), "given": true}
+			puzzle.append(cell)
+		rows.append(line)
+	var answer: Array = puzzle.duplicate(true)
+	var lamps: Array = []
+	for b: Vector2i in state.solution:
+		lamps.append([b.x, b.y])
+		answer[b.y * w + b.x] = {"c": 0}
+	var whites: int = w * h - walls - state.cats.size()
+	var out := {
+		"source": "bank" if banked else "generator", "kind": "grid",
+		"payload": {"w": w, "h": h, "rows": rows},
+		"solution": {"lamps": lamps},
+		"metrics": {"w": w, "h": h, "cells": w * h, "walls": walls, "numbered": numbered,
+			"bare_walls": walls - numbered, "cats": state.cats.size(), "open": whites,
+			"lamps": lamps.size(), "hints": hints_left(), "hearts": max_hearts, "moves": max_moves},
+		"view": {"w": w, "h": h, "puzzle": puzzle, "solution": answer, "legend": ["lamp"]},
+	}
+	if not banked:
+		out["budget_hit"] = not dealt
+	return out
+
 ## The court as it is dealt, and as Try again deals it back: every heart,
 ## the day's light, nothing judged or going out.
 func _deal() -> void:

@@ -293,6 +293,47 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	state.setup(rng, difficulty)
 	_begin()
 
+## The day as dealt, for tools/export_days.gd (PuzzleBase.day_dict): the
+## tiles on their squares, a knot's sum in its hole with the ways it points.
+## The deal is the bank's when the bank is there (State.setup).
+func day_dict() -> Dictionary:
+	if state.n == 0:
+		return {}
+	var n: int = state.n
+	var arrows := {"L": "←", "U": "↑", "R": "→", "D": "↓"}
+	var puzzle: Array = []
+	var answer: Array = []
+	for i in n * n:
+		puzzle.append({"wall": true})
+		answer.append({"wall": true})
+	var home := 0
+	for i in state.count():
+		var c: Vector2i = state.cells[i]
+		var is_home: bool = state.start[i] == state.sol[i]
+		if is_home:
+			home += 1
+		puzzle[c.y * n + c.x] = {"t": str(state.start[i]), "given": is_home}
+		answer[c.y * n + c.x] = {"t": str(state.sol[i]), "given": is_home}
+	var knots: Array = []
+	for k: Dictionary in state.knots:
+		var at: Vector2i = k.at
+		var ways := ""
+		for d in String(k.dirs):
+			ways += String(arrows[d])
+		knots.append([at.x, at.y, String(k.dirs), int(k.sum)])
+		puzzle[at.y * n + at.x] = {"t": str(int(k.sum)), "note": ways}
+		answer[at.y * n + at.x] = {"t": str(int(k.sum)), "note": ways}
+	var banked: bool = not State.pool(state.band).is_empty()
+	return {
+		"source": "bank" if banked else "generator", "kind": "grid",
+		"payload": {"n": n, "tiles": Array(state.start), "knots": knots},
+		"solution": {"tiles": Array(state.sol)},
+		"metrics": {"size": n, "tiles": state.count(), "knots": knots.size(), "par": state.par,
+			"home": home, "astray": state.count() - home, "unique": banked,
+			"hints": State.hints_for(state.band), "moves": state.moves_budget()},
+		"view": {"w": n, "h": n, "puzzle": puzzle, "solution": answer},
+	}
+
 ## The lattice as `state` has it, from the top: Insane's swaps, nothing in
 ## the air, the entrance.
 func _begin() -> void:

@@ -319,6 +319,33 @@ func _deal(gen: int) -> void:
 		state.setup(key, state.band)
 	_begin()
 
+## The day as dealt, for tools/export_days.gd (PuzzleBase.day_dict): the
+## questions in English, the answers in the order they are shown.
+func day_dict() -> Dictionary:
+	if not _dealt:
+		return {"pending": true}
+	if state.questions.is_empty():
+		return {}
+	var asked: Array = []
+	var rights: Array = []
+	for i in state.questions.size():
+		var w: Dictionary = state.questions[i].get("en", {})
+		var all: Array = [w.get("right", "")] + (w.get("wrong", []) as Array)
+		var shown: Array = []
+		for k: int in state.orders[i]:
+			shown.append(str(all[k]))
+		var place: int = state.right_place(i)
+		asked.append({"id": str(state.questions[i].id), "q": str(w.get("q", "")), "answers": shown})
+		rights.append({"place": LETTERS[place], "right": str(w.get("right", "")), "why": str(w.get("why", ""))})
+	return {
+		"source": "bank" if state.source == "bank" else "server", "kind": "text",
+		"payload": {"questions": asked, "lang": "en", "written_by": state.source},
+		"solution": {"answers": rights},
+		"metrics": {"questions": asked.size(), "questions_wanted": int(State.ASKS[state.band]),
+			"hints": int(State.HINTS_BY[state.band]), "hearts": int(State.HEARTS_BY[state.band]),
+			"climb": state.band >= 3, "written_by": state.source},
+	}
+
 ## The day as `state` has it, from the top.
 func _begin() -> void:
 	_dealt = true

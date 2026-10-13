@@ -1,0 +1,421 @@
+<!doctype html>
+<!-- The quality dashboard's source. tools/build_dashboard.py inlines
+     tools/days/*.json where DATA stands and writes tools/dashboard.html.
+     docs/superpowers/specs/2026-10-13-day-documents-dashboard-design.md -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daily days</title>
+<style>
+:root {
+  --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink2: #52514e; --muted: #898781;
+  --hair: #e1e0d9; --axis: #c3c2b7; --wall: #3a3936; --cell: #ffffff; --accent: #2a78d6;
+  --accent-soft: #cde2fb; --bar: #86b6ef; --bar-on: #1c5cab;
+  --good: #0ca30c; --warning: #fab219; --serious: #ec835a; --critical: #d03b3b;
+  --s0: #2a78d6; --s1: #eb6834; --s2: #1baf7a; --s3: #eda100; --s4: #e87ba4; --s5: #008300;
+  --s6: #6250d6; --s7: #e34948; --s8: #86b6ef; --s9: #f3a585; --s10: #76cfaf; --s11: #f4c766;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink2: #c3c2b7; --muted: #898781;
+    --hair: #2c2c2a; --axis: #383835; --wall: #5c5b56; --cell: #232322; --accent: #3987e5;
+    --accent-soft: #10305c; --bar: #256abf; --bar-on: #9ec5f4;
+    --s0: #3987e5; --s1: #d95926; --s2: #199e70; --s3: #c98500; --s4: #d55181; --s5: #008300;
+    --s6: #9085e9; --s7: #e66767; --s8: #184f95; --s9: #8a3c1c; --s10: #0f6b4b; --s11: #7d5400;
+  }
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--page); color: var(--ink);
+  font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  display: grid; grid-template-columns: 232px 1fr; }
+h1, h2, .round { font-family: ui-rounded, "SF Pro Rounded", "Fredoka", system-ui, sans-serif; }
+nav { border-right: 1px solid var(--hair); overflow-y: auto; height: 100vh; position: sticky; top: 0;
+  padding: 18px 10px 24px; }
+nav h1 { font-size: 17px; margin: 0 8px 2px; letter-spacing: -.01em; }
+nav .sub { color: var(--muted); font-size: 12px; margin: 0 8px 14px; }
+nav button { display: flex; align-items: center; gap: 8px; width: 100%; border: 0; background: none;
+  color: var(--ink2); font: inherit; text-align: left; padding: 6px 8px; border-radius: 8px; cursor: pointer; }
+nav button:hover { background: var(--hair); }
+nav button[aria-current="true"] { background: var(--accent-soft); color: var(--ink); font-weight: 600; }
+nav .n { margin-left: auto; font-size: 11px; font-variant-numeric: tabular-nums; color: var(--muted); }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: transparent; }
+.dot.warning { background: var(--warning); } .dot.critical { background: var(--critical); }
+.dot.serious { background: var(--serious); }
+main { padding: 20px 28px 48px; min-width: 0; max-width: 1280px; }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 18px; margin-bottom: 18px; }
+header h2 { font-size: 26px; margin: 0; letter-spacing: -.02em; }
+.seg { display: inline-flex; background: var(--hair); border-radius: 10px; padding: 3px; gap: 2px; }
+.seg button { border: 0; background: none; color: var(--ink2); font: inherit; padding: 5px 12px;
+  border-radius: 8px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.day { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; }
+.day button { border: 1px solid var(--hair); background: var(--surface); color: var(--ink); width: 30px;
+  height: 30px; border-radius: 8px; cursor: pointer; font-size: 15px; }
+.day button:disabled { opacity: .35; cursor: default; }
+.day b { font-variant-numeric: tabular-nums; min-width: 132px; text-align: center; }
+.flags { display: flex; flex-wrap: wrap; gap: 6px; margin: -6px 0 14px; min-height: 0; }
+.flag { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink2);
+  border: 1px solid var(--hair); background: var(--surface); padding: 3px 9px; border-radius: 999px; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.panel { background: var(--surface); border: 1px solid var(--hair); border-radius: 14px; padding: 14px 16px 16px;
+  min-width: 0; }
+.panel h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .06em; }
+.panel svg { display: block; width: 100%; height: auto; max-height: 62vh; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 10px; font-size: 12px; color: var(--ink2); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 10px; margin: 16px 0; }
+.tile { background: var(--surface); border: 1px solid var(--hair); border-radius: 12px; padding: 9px 12px;
+  cursor: pointer; text-align: left; font: inherit; color: inherit; }
+.tile[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.tile .k { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile .v { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.tile .m { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tile.plain { cursor: default; }
+#still { color: var(--muted); font-size: 12px; margin: -6px 2px 16px; }
+.strip h3 { display: flex; gap: 8px; align-items: baseline; }
+.strip h3 span { text-transform: none; letter-spacing: 0; font-weight: 400; }
+.strip svg { max-height: none; }
+.strip rect.hit { fill: transparent; cursor: pointer; }
+#tip { position: fixed; pointer-events: none; background: var(--ink); color: var(--page); font-size: 12px;
+  padding: 5px 8px; border-radius: 6px; opacity: 0; transition: opacity .08s; z-index: 5; white-space: pre; }
+.tree { font-size: 13px; overflow-x: auto; }
+.tree dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 3px 12px; }
+.tree dt { color: var(--muted); } .tree dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.tree table { border-collapse: collapse; font-size: 12px; }
+.tree th { text-align: left; color: var(--muted); font-weight: 500; padding: 2px 10px 2px 0; }
+.tree td { padding: 2px 10px 2px 0; border-top: 1px solid var(--hair); vertical-align: top; }
+.tree .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.tree .chips span { background: var(--hair); border-radius: 6px; padding: 0 6px; font-variant-numeric: tabular-nums; }
+.empty { color: var(--muted); padding: 30px 0; text-align: center; }
+details { margin-top: 16px; color: var(--ink2); }
+details pre { font-size: 11px; overflow: auto; max-height: 300px; background: var(--surface);
+  border: 1px solid var(--hair); border-radius: 10px; padding: 10px; }
+footer { color: var(--muted); font-size: 12px; margin-top: 22px; }
+kbd { border: 1px solid var(--axis); border-radius: 4px; padding: 0 4px; font: inherit; font-size: 11px; }
+@media (max-width: 900px) { body { grid-template-columns: 1fr; } nav { height: auto; position: static;
+  border-right: 0; border-bottom: 1px solid var(--hair); } .pair { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<nav><h1>Daily days</h1><div class="sub" id="range"></div><div id="boards"></div></nav>
+<main>
+  <header>
+    <h2 id="title"></h2>
+    <div class="seg" id="levels"></div>
+    <div class="day"><button id="prev" aria-label="Previous day">‹</button><b id="date"></b><button id="next" aria-label="Next day">›</button></div>
+  </header>
+  <div class="flags" id="flags"></div>
+  <div class="pair">
+    <section class="panel"><h3>Puzzle</h3><div id="puzzle"></div></section>
+    <section class="panel"><h3>Solution</h3><div id="solution"></div></section>
+  </div>
+  <div class="tiles" id="tiles"></div>
+  <div id="still"></div>
+  <section class="panel strip"><h3><b id="stripname"></b><span id="stripnote"></span></h3><div id="strip"></div></section>
+  <details><summary>The day document</summary><pre id="raw"></pre></details>
+  <footer><kbd>←</kbd> <kbd>→</kbd> day · <kbd>↑</kbd> <kbd>↓</kbd> board · <kbd>1</kbd>–<kbd>4</kbd> level · <span id="foot"></span></footer>
+</main>
+<div id="tip"></div>
+<script id="data" type="application/json">/*DATA*/</script>
+<script>
+"use strict";
+const DATA = JSON.parse(document.getElementById("data").textContent);
+const INDEX = DATA.index, DAYS = DATA.days;
+const $ = id => document.getElementById(id);
+const NS = "http://www.w3.org/2000/svg";
+const el = (tag, attrs = {}, text) => {
+  const svg = ["svg", "g", "rect", "line", "text", "circle", "path"].includes(tag);
+  const n = svg ? document.createElementNS(NS, tag) : document.createElement(tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  if (text !== undefined) n.textContent = text;
+  return n;
+};
+const LEVEL_NAMES = ["Easy", "Medium", "Hard", "Insane"];
+const fmtDate = k => {
+  const d = new Date(Date.UTC(Math.floor(k / 10000), Math.floor(k / 100) % 100 - 1, k % 100));
+  return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+};
+const fmtNum = v => typeof v === "number" ? (Number.isInteger(v) ? String(v) : v.toFixed(Math.abs(v) < 10 ? 2 : 1)) : String(v);
+
+// --- what is wrong with a day -------------------------------------------
+// error, budget_hit, a figure over two and a half deviations from the board-and-level
+// mean, and a payload another day in the range also has.
+const series = {};   // board|level -> docs by date
+const stats = {};    // board|level -> {metric: {mean, sd, n}}
+for (const b of INDEX.boards) for (const d of DAYS[b.id] || []) (series[b.id + "|" + d.level] ||= []).push(d);
+const figures = d => ({ ...(d.metrics || {}), gen_ms: d.gen_ms });
+for (const key in series) {
+  const docs = series[key].sort((a, b) => a.date - b.date), st = stats[key] = {};
+  const names = new Set(docs.flatMap(d => Object.keys(figures(d))));
+  for (const m of names) {
+    const xs = docs.map(d => figures(d)[m]).filter(v => typeof v === "number");
+    if (xs.length < 2) continue;
+    const mean = xs.reduce((a, b) => a + b, 0) / xs.length;
+    const sd = Math.sqrt(xs.reduce((a, b) => a + (b - mean) ** 2, 0) / xs.length);
+    st[m] = { mean, sd, n: xs.length, min: Math.min(...xs), max: Math.max(...xs) };
+  }
+  const seen = new Map();
+  for (const d of docs) {
+    d.flags = [];
+    if (d.error) d.flags.push({ level: "critical", text: "error: " + d.error });
+    if (d.budget_hit) d.flags.push({ level: "serious", text: "generator ran out of budget" });
+    if (d.payload) {
+      const sig = JSON.stringify([d.payload, d.solution]);
+      if (seen.has(sig)) d.flags.push({ level: "warning", text: "same puzzle as " + fmtDate(seen.get(sig)) });
+      else seen.set(sig, d.date);
+    }
+    for (const m in st) {
+      const v = figures(d)[m], s = st[m];
+      if (m === "gen_ms" || typeof v !== "number" || s.n < 8 || s.sd === 0) continue;
+      const z = (v - s.mean) / s.sd;
+      if (Math.abs(z) > 2.5) d.flags.push({ level: "warning", metric: m,
+        text: `${m} ${fmtNum(v)} is ${z > 0 ? "high" : "low"} (mean ${fmtNum(s.mean)})` });
+    }
+  }
+}
+const worst = flags => ["critical", "serious", "warning"].find(l => flags.some(f => f.level === l)) || "";
+
+// --- state ---------------------------------------------------------------
+const state = { board: INDEX.boards[0]?.id, level: 0, date: INDEX.dates[0], metric: null };
+try { Object.assign(state, JSON.parse(localStorage.getItem("daily-days") || "{}")); } catch (e) {}
+// #board=sudoku&level=2&date=20261013 opens that day.
+for (const [k, v] of new URLSearchParams(location.hash.slice(1))) state[k] = k === "board" ? v : +v;
+if (!DAYS[state.board]) state.board = INDEX.boards[0]?.id;
+if (!INDEX.dates.includes(state.date)) state.date = INDEX.dates[0];
+const docsNow = () => series[state.board + "|" + state.level] || [];
+const docNow = () => docsNow().find(d => d.date === state.date);
+const levelsOf = id => [...new Set((DAYS[id] || []).map(d => d.level))].sort();
+
+// --- the grid renderer -----------------------------------------------------
+const colour = c => `var(--s${((c % 12) + 12) % 12})`;
+function grid(view, side) {
+  const w = view.w, h = view.h, cells = view[side] || [];
+  const rc = side === "puzzle" || !view.solution_row_clues ? view.row_clues : view.solution_row_clues;
+  const cc = view.col_clues;
+  const S = 40;
+  const left = rc ? Math.max(...rc.map(r => r.length), 1) * 15 + 8 : 0;
+  const top = cc ? Math.max(...cc.map(c => c.length), 1) * 15 + 8 : 0;
+  const svg = el("svg", { viewBox: `${-left - 2} ${-top - 2} ${w * S + left + 4} ${h * S + top + 4}`, role: "img",
+    "aria-label": `${side}, ${w} by ${h}` });
+  svg.style.maxWidth = Math.min(560, (w * S + left) * 1.5) + "px";
+  svg.style.margin = "0 auto";
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const c = cells[y * w + x] || {};
+    const r = el("rect", { x: x * S, y: y * S, width: S, height: S, fill: c.wall ? "var(--wall)" : "var(--cell)",
+      stroke: "var(--hair)", "stroke-width": 1 });
+    svg.append(r);
+    if (c.c !== undefined && c.c !== null && c.c >= 0 && !c.wall) {
+      svg.append(el("rect", { x: x * S + 4, y: y * S + 4, width: S - 8, height: S - 8, rx: 7,
+        fill: colour(c.c), opacity: c.given === false ? .5 : 1 }));
+    }
+  }
+  const edges = (side === "solution" ? view.solution_edges : view.edges) || [];
+  for (const e of edges) {
+    const n = e[4] || 1, a = [e[0] * S + S / 2, e[1] * S + S / 2], b = [e[2] * S + S / 2, e[3] * S + S / 2];
+    const dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy) || 1, ox = -dy / len, oy = dx / len;
+    for (let i = 0; i < Math.min(n, 3); i++) {
+      const off = (i - (Math.min(n, 3) - 1) / 2) * 6;
+      svg.append(el("line", { x1: a[0] + ox * off, y1: a[1] + oy * off, x2: b[0] + ox * off, y2: b[1] + oy * off,
+        stroke: "var(--accent)", "stroke-width": 3, "stroke-linecap": "round", opacity: .85 }));
+    }
+  }
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const c = cells[y * w + x] || {};
+    if (c.t !== undefined && c.t !== "") {
+      const t = String(c.t), filled = c.c !== undefined && c.c >= 0 || c.wall;
+      svg.append(el("text", { x: x * S + S / 2, y: y * S + S / 2 + 1, "text-anchor": "middle",
+        "dominant-baseline": "middle", "font-size": t.length > 2 ? 12 : t.length > 1 ? 16 : 20,
+        "font-weight": c.given ? 700 : 400,
+        fill: c.wall ? "var(--page)" : filled ? "#fff" : c.given ? "var(--ink)" : "var(--accent)",
+        style: filled && !c.wall ? "paint-order:stroke;stroke:rgba(0,0,0,.35);stroke-width:2.5px" : "" }, t));
+    }
+    if (c.note !== undefined) svg.append(el("text", { x: x * S + 4, y: y * S + 11, "font-size": 9,
+      fill: "var(--muted)" }, String(c.note)));
+  }
+  const reg = view.regions;
+  if (reg) for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const id = reg[y * w + x];
+    if (x + 1 < w && reg[y * w + x + 1] !== id) svg.append(el("line", { x1: (x + 1) * S, y1: y * S, x2: (x + 1) * S,
+      y2: (y + 1) * S, stroke: "var(--ink)", "stroke-width": 2.5, "stroke-linecap": "square" }));
+    if (y + 1 < h && reg[(y + 1) * w + x] !== id) svg.append(el("line", { x1: x * S, y1: (y + 1) * S, x2: (x + 1) * S,
+      y2: (y + 1) * S, stroke: "var(--ink)", "stroke-width": 2.5, "stroke-linecap": "square" }));
+  }
+  svg.append(el("rect", { x: 0, y: 0, width: w * S, height: h * S, fill: "none", stroke: "var(--ink)", "stroke-width": 2.5 }));
+  for (const m of view.marks || []) {
+    const [x, y, dir, text] = m, px = dir === 0 ? (x + 1) * S : x * S + S / 2, py = dir === 0 ? y * S + S / 2 : (y + 1) * S;
+    svg.append(el("circle", { cx: px, cy: py, r: 8, fill: "var(--surface)", stroke: "var(--axis)" }));
+    svg.append(el("text", { x: px, y: py + 1, "text-anchor": "middle", "dominant-baseline": "middle", "font-size": 12,
+      "font-weight": 700, fill: "var(--ink)" }, text));
+  }
+  if (rc) rc.forEach((r, y) => r.forEach((v, i) => svg.append(el("text", { x: -8 - (r.length - 1 - i) * 15,
+    y: y * S + S / 2 + 1, "text-anchor": "end", "dominant-baseline": "middle", "font-size": 13, fill: "var(--ink2)" }, v))));
+  if (cc) cc.forEach((c, x) => c.forEach((v, i) => svg.append(el("text", { x: x * S + S / 2,
+    y: -8 - (c.length - 1 - i) * 15, "text-anchor": "middle", "font-size": 13, fill: "var(--ink2)" }, v))));
+  const wrap = el("div");
+  wrap.append(svg);
+  if (view.legend) {
+    const lg = el("div", { class: "legend" });
+    view.legend.forEach((name, i) => { const s = el("span"); const sw = el("i"); sw.style.background = colour(i);
+      s.append(sw, name); lg.append(s); });
+    wrap.append(lg);
+  }
+  return wrap;
+}
+
+// --- a board that is not a grid: its data as text --------------------------
+function tree(v, depth = 0) {
+  if (v === null || v === undefined) return el("span", {}, "–");
+  if (typeof v !== "object") return el("span", {}, typeof v === "number" ? fmtNum(v) : String(v));
+  if (Array.isArray(v)) {
+    if (!v.length) return el("span", {}, "–");
+    if (v.every(x => x === null || typeof x !== "object")) {
+      const c = el("div", { class: "chips" }); v.forEach(x => c.append(el("span", {}, String(x)))); return c;
+    }
+    if (v.every(x => x && typeof x === "object" && !Array.isArray(x))) {
+      const keys = [...new Set(v.flatMap(Object.keys))];
+      const t = el("table"), hr = el("tr");
+      keys.forEach(k => hr.append(el("th", {}, k))); t.append(hr);
+      v.forEach(row => { const tr = el("tr"); keys.forEach(k => { const td = el("td"); td.append(tree(row[k], depth + 1)); tr.append(td); }); t.append(tr); });
+      return t;
+    }
+    if (v.every(Array.isArray) && v.every(r => r.every(x => typeof x !== "object"))) {
+      const pre = el("pre", { style: "margin:0;font-size:12px;line-height:1.25" });
+      pre.textContent = v.map(r => r.map(x => String(x).padStart(2)).join(" ")).join("\n"); return pre;
+    }
+    const d = el("div"); v.forEach(x => { const r = el("div", { style: "margin-bottom:6px" }); r.append(tree(x, depth + 1)); d.append(r); }); return d;
+  }
+  const dl = el("dl");
+  for (const k in v) { const dd = el("dd"); dd.append(tree(v[k], depth + 1)); dl.append(el("dt", {}, k), dd); }
+  return dl;
+}
+function side(doc, which) {
+  const box = el("div");
+  if (!doc) { box.append(el("div", { class: "empty" }, "No day exported.")); return box; }
+  if (doc.kind === "grid" && doc.view && doc.view[which]) { box.append(grid(doc.view, which)); return box; }
+  const data = which === "puzzle" ? doc.payload : doc.solution;
+  if (data === undefined || data === null || (typeof data === "object" && !Object.keys(data).length)) {
+    box.append(el("div", { class: "empty" }, doc.error ? "Error: " + doc.error : "Nothing recorded.")); return box;
+  }
+  const t = el("div", { class: "tree" }); t.append(tree(data)); box.append(t); return box;
+}
+
+// --- the strip: one bar a day for the chosen figure -------------------------
+const tip = $("tip");
+function strip() {
+  const docs = docsNow(), host = $("strip"); host.textContent = "";
+  const m = state.metric, st = (stats[state.board + "|" + state.level] || {})[m];
+  $("stripname").textContent = m || "";
+  $("stripnote").textContent = st ? `mean ${fmtNum(st.mean)} · min ${fmtNum(st.min)} · max ${fmtNum(st.max)} over ${st.n} days` : "";
+  if (!docs.length || !st) { host.append(el("div", { class: "empty" }, "No figure to chart.")); return; }
+  // Drawn at the panel's own width, a pixel a unit, so text keeps its size.
+  const W = Math.max(320, host.clientWidth), H = 110, pad = 24, bw = Math.min(40, (W - 8) / docs.length);
+  const wid = Math.max(2, Math.min(bw - 4, 22));
+  const top = Math.max(st.max, 0) || 1, svg = el("svg", { viewBox: `0 0 ${W} ${H + pad}`, width: W, height: H + pad,
+    role: "img", "aria-label": `${m} by day` });
+  svg.append(el("line", { x1: 0, y1: H, x2: W, y2: H, stroke: "var(--axis)" }));
+  if (st.mean > 0) svg.append(el("line", { x1: 0, y1: H - st.mean / top * (H - 14), x2: W, y2: H - st.mean / top * (H - 14),
+    stroke: "var(--axis)", "stroke-dasharray": "3 4" }));
+  docs.forEach((d, i) => {
+    const v = figures(d)[m], x = 4 + i * bw, on = d.date === state.date;
+    if (typeof v === "number") {
+      const bh = Math.max(2, v / top * (H - 14));
+      svg.append(el("rect", { x: x + 2, y: H - bh, width: wid, height: bh, rx: 3,
+        fill: on ? "var(--bar-on)" : "var(--bar)" }));
+    }
+    const lvl = worst(d.flags);
+    if (lvl) svg.append(el("circle", { cx: x + 2 + wid / 2, cy: H + 7, r: 3.5, fill: `var(--${lvl})` }));
+    if (on || i === 0 || i === docs.length - 1 || d.date % 100 === 1) svg.append(el("text", { x: x + 2 + wid / 2,
+      y: H + 21, "font-size": 10, "text-anchor": i === 0 ? "start" : "middle",
+      fill: on ? "var(--ink)" : "var(--muted)" }, String(d.date % 100) + "/" + Math.floor(d.date / 100) % 100));
+    const hit = el("rect", { class: "hit", x, y: 0, width: bw, height: H + pad });
+    hit.addEventListener("mousemove", e => { tip.textContent = `${fmtDate(d.date)}\n${m}: ${v === undefined ? "–" : fmtNum(v)}` +
+      d.flags.map(f => "\n• " + f.text).join(""); tip.style.opacity = 1;
+      tip.style.left = Math.min(e.clientX + 12, innerWidth - 260) + "px"; tip.style.top = e.clientY - 44 + "px"; });
+    hit.addEventListener("mouseleave", () => tip.style.opacity = 0);
+    hit.addEventListener("click", () => { state.date = d.date; draw(); });
+    svg.append(hit);
+  });
+  host.append(svg);
+}
+
+// --- the page ---------------------------------------------------------------
+function draw() {
+  try { localStorage.setItem("daily-days", JSON.stringify(state)); } catch (e) {}
+  const board = INDEX.boards.find(b => b.id === state.board), levels = levelsOf(state.board);
+  if (!levels.includes(state.level)) state.level = levels[0] ?? 0;
+  const doc = docNow();
+  $("title").textContent = board ? board.title : "";
+  const nav = $("boards"); nav.textContent = "";
+  for (const b of INDEX.boards) {
+    const all = (DAYS[b.id] || []), flagged = all.filter(d => d.flags.length);
+    const btn = el("button", { "aria-current": b.id === state.board });
+    btn.append(el("span", { class: "dot " + worst(flagged.flatMap(d => d.flags)) }), b.title);
+    if (flagged.length) btn.append(el("span", { class: "n", title: "flagged days" }, flagged.length));
+    btn.addEventListener("click", () => { state.board = b.id; state.metric = null; draw(); });
+    nav.append(btn);
+  }
+  const seg = $("levels"); seg.textContent = "";
+  for (const l of levels) {
+    const name = board?.levels?.find(x => x.difficulty === l)?.name || LEVEL_NAMES[l] || "Level " + l;
+    const b = el("button", { "aria-pressed": l === state.level }, name);
+    b.addEventListener("click", () => { state.level = l; draw(); });
+    seg.append(b);
+  }
+  const i = INDEX.dates.indexOf(state.date);
+  $("date").textContent = fmtDate(state.date);
+  $("prev").disabled = i <= 0; $("next").disabled = i >= INDEX.dates.length - 1;
+  const fl = $("flags"); fl.textContent = "";
+  for (const f of doc?.flags || []) { const s = el("span", { class: "flag" }); s.append(el("span", { class: "dot " + f.level }), f.text); fl.append(s); }
+  $("puzzle").replaceChildren(side(doc, "puzzle"));
+  $("solution").replaceChildren(side(doc, "solution"));
+  const tiles = $("tiles"); tiles.textContent = "";
+  const st = stats[state.board + "|" + state.level] || {}, fig = doc ? figures(doc) : {};
+  const numeric = Object.keys(fig).filter(k => typeof fig[k] === "number" && st[k]);
+  if (!numeric.includes(state.metric)) state.metric = numeric.find(k => k !== "gen_ms" && st[k].sd > 0) || numeric[0] || null;
+  if (doc) {
+    const src = el("div", { class: "tile plain" });
+    src.append(el("div", { class: "k" }, "source"), el("div", { class: "v" }, doc.source || "–"), el("div", { class: "m" }, "seed " + doc.seed));
+    tiles.append(src);
+  }
+  // The figures that move over the range first; the ones that never do are
+  // one quiet line under them.
+  const still = Object.keys(fig).filter(k => k !== "gen_ms" && (st[k] ? st[k].sd === 0 : docsNow().every(d => figures(d)[k] === fig[k])));
+  $("still").textContent = still.length ? "Same every day: " + still.map(k => `${k.replace(/_/g, " ")} ${fmtNum(fig[k])}`).join(" · ") : "";
+  for (const k in fig) {
+    if (still.includes(k)) continue;
+    const num = numeric.includes(k);
+    const t = el(num ? "button" : "div", { class: "tile" + (num ? "" : " plain") });
+    if (num) { t.setAttribute("aria-pressed", k === state.metric); t.addEventListener("click", () => { state.metric = k; draw(); }); }
+    t.append(el("div", { class: "k", title: k }, k.replace(/_/g, " ")), el("div", { class: "v" }, fmtNum(fig[k])),
+      el("div", { class: "m" }, num ? `mean ${fmtNum(st[k].mean)}` : " "));
+    tiles.append(t);
+  }
+  strip();
+  $("raw").textContent = doc ? JSON.stringify({ ...doc, flags: undefined }, null, 1) : "";
+}
+$("prev").addEventListener("click", () => step(-1));
+$("next").addEventListener("click", () => step(1));
+function step(n) { const i = INDEX.dates.indexOf(state.date) + n; if (i >= 0 && i < INDEX.dates.length) { state.date = INDEX.dates[i]; draw(); } }
+addEventListener("keydown", e => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const ids = INDEX.boards.map(b => b.id), at = ids.indexOf(state.board);
+  if (e.key === "ArrowLeft") step(-1);
+  else if (e.key === "ArrowRight") step(1);
+  else if (e.key === "ArrowUp" && at > 0) { state.board = ids[at - 1]; state.metric = null; draw(); }
+  else if (e.key === "ArrowDown" && at < ids.length - 1) { state.board = ids[at + 1]; state.metric = null; draw(); }
+  else if (/^[1-4]$/.test(e.key) && levelsOf(state.board).includes(+e.key - 1)) { state.level = +e.key - 1; draw(); }
+  else return;
+  e.preventDefault();
+});
+$("range").textContent = INDEX.dates.length ? `${INDEX.dates.length} days from ${fmtDate(INDEX.dates[0])}` : "nothing exported";
+$("foot").textContent = `exported ${INDEX.exported || "?"} UTC at ${INDEX.commit || "?"}, dealt on this Mac`;
+draw();
+addEventListener("resize", strip);
+</script>
+</body>
+</html>
