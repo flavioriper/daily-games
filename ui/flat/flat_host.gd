@@ -48,8 +48,8 @@ extends "res://ui/puzzle_host.gd"
 ## slide, it moves itself into the span. Everything else -- the bar, the
 ## day card, the tutorial, the win, the done mark, the streak -- is as it
 ## is for every board. The rows over it are summed and told as ever: Binairo
-## (2026-10-13) lies under the level card (`"level_card": true`,
-## ui/flat/level_card.gd).
+## (2026-10-13) has none under it, and the level card (`"level_card": true`,
+## ui/flat/level_card.gd) where the day card was.
 
 const FlatTopBar = preload("res://ui/flat/flat_top_bar.gd")
 const FlatDayCard = preload("res://ui/flat/flat_day_card.gd")
@@ -103,8 +103,8 @@ const BACKDROP_BLEED := 90.0
 const BUTTON_RADIUS := 40
 
 var tray: Control
-## The levels side by side under the board (the registry's `level_card`),
-## or null.
+## The levels side by side in the day card's place (the registry's
+## `level_card`), or null.
 var level_card: Control
 var well_done: Control
 var stats_card: Control
@@ -257,6 +257,17 @@ func _build_chrome(root: VBoxContainer) -> void:
 	day_card = FlatDayCard.new()
 	day_card.name = "DayCard"
 	_top_stack.add_child(day_card)
+	if bool(_entry.get("level_card", false)):
+		# The board's levels stand where the day card did, to change between
+		# without leaving it (the user, 2026-10-13: "replace the day card
+		# (useless) with the difficulty selection, so we can keep the bottom
+		# clear"). The day card is still built, for the handlers that write
+		# to it, and never shown; the win's own is the stats card.
+		day_card.visible = false
+		level_card = LevelCard.new(_entry, _difficulty)
+		level_card.name = "LevelCard"
+		level_card.pick.connect(_on_level)
+		_top_stack.add_child(level_card)
 	well_done = WellDone.new()
 	well_done.name = "WellDone"
 	well_done.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -376,13 +387,6 @@ func _build_chrome(root: VBoxContainer) -> void:
 		action_bar.check.connect(_on_check)
 		_bottom_stack.add_child(action_bar)
 		rows.append(FlatActions.BUTTON.y)
-	if bool(_entry.get("level_card", false)):
-		# The board's levels, to change between without leaving it.
-		level_card = LevelCard.new(_entry, _difficulty)
-		level_card.name = "LevelCard"
-		level_card.pick.connect(_on_level)
-		_bottom_stack.add_child(level_card)
-		rows.append(LevelCard.HEIGHT)
 	_bottom_play = GAP * maxi(rows.size() - 1, 0)
 	for row in rows:
 		_bottom_play += row
@@ -598,7 +602,7 @@ func _enter() -> void:
 	if action_bar != null:
 		action_bar.enter(ENTER_ACTIONS)
 	if level_card != null:
-		level_card.enter(ENTER_ACTIONS)
+		level_card.enter(ENTER_CARDS)
 
 func _refresh() -> void:
 	# The one board that talks back to its tray: Hidden Word paints the keys

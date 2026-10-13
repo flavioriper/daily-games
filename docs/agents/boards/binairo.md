@@ -371,3 +371,16 @@ rows.
   both checks. `tests/_win.gd`'s Binairo no longer presses Check (not run:
   it needs a display to itself).
 - Owed: a phone; pt/es of the card are the sheet's own keys.
+
+### The levels where the day card was (2026-10-13)
+
+The user, on seeing it: "replace the day card (useless) with the difficulty
+selection, so we can keep the bottom clear with no button". The level card
+is in the top slot now (`docs/agents/flat-screens.md`, "The level card")
+and nothing lies under the grid: the grid stands in the middle of what is
+left (658 to 1602 of 1920), the clouds in the air over it, and the stars,
+the crescent and the hills in the open night under it. `opengl3_angle`,
+810x1440, `tests/_shot_anim.gd`: Hard's `solve` peak 139 draw calls; suite
+249797/0; the throwaway touch on Easy from Medium still left one host at
+difficulty 0. What the section above says of a row under the grid is
+history.

@@ -5,13 +5,13 @@ extends Control
 ## It is the menu card's picture (ui/menu/cards/binairo.gd) at the size of
 ## the screen: the day above with the sun coming up in its corner, behind
 ## the wordmark; the night below with its stars, a crescent and two dark
-## hills behind the level card (they show between the win's buttons); and
-## the lit line between them running down across the grid, so the tiles lie
+## hills at the foot, where nothing lies over them while the board is
+## played; and the lit line between them running down across the grid, so the tiles lie
 ## over both.
 ##
 ## The day keeps the top of the screen and the night the foot of it because
-## of what lies over them: the wordmark and the motto are ink, the level
-## card and the win's buttons carry their own paper.
+## of what lies over them: the wordmark and the motto are ink, and the
+## win's buttons carry their own paper.
 ##
 ## One mesh, built when the rect changes and kept (`_shown`) until the next
 ## replaces it; the three sparkles are a second, on a child whose alpha
@@ -45,26 +45,27 @@ const DIVIDE_TO := Vector2(0.0, 0.705)
 ## W, alpha], drawn one over the other.
 const SUN_AT := Vector2(0.07, 0.025)
 const SUN_RINGS := [[700.0, 0.10], [500.0, 0.10], [320.0, 0.16]]
-## The crescent, in the air under the grid: its middle as shares, its radius
-## at W.
-const MOON_AT := Vector2(0.875, 0.862)
-const MOON_R := 54.0
-## Two clouds in the air between the day card and the grid: [x, y as shares,
-## radius at W].
-const CLOUDS := [[0.165, 0.243, 42.0], [0.800, 0.236, 32.0]]
+## The crescent, in the night under the grid: its middle as shares, its
+## radius at W.
+const MOON_AT := Vector2(0.850, 0.878)
+const MOON_R := 58.0
+## Two clouds in the air between the level card and the grid: [x, y as
+## shares, radius at W].
+const CLOUDS := [[0.170, 0.262, 46.0], [0.790, 0.246, 34.0]]
 ## The night's stars, as shares of the rect: [x, y, radius at W, alpha].
-## They stand where the night shows: in the air between the grid and the
-## level card, and up the margins beside both.
+## They stand where the night shows: under the grid, down to the hills, and
+## up the right margin.
 const STARS := [
-	[0.060, 0.812, 5.0, 0.85], [0.150, 0.852, 3.5, 0.6], [0.300, 0.820, 4.0, 0.7],
-	[0.050, 0.874, 4.5, 0.8], [0.235, 0.882, 3.0, 0.55], [0.395, 0.866, 3.0, 0.55],
-	[0.490, 0.814, 4.5, 0.8], [0.612, 0.848, 3.5, 0.6], [0.700, 0.810, 3.0, 0.5],
-	[0.745, 0.884, 3.0, 0.5], [0.975, 0.802, 3.5, 0.6], [0.440, 0.890, 3.5, 0.6],
-	[0.018, 0.748, 3.0, 0.5], [0.982, 0.930, 3.5, 0.6], [0.016, 0.940, 3.0, 0.5],
-	[0.975, 0.560, 3.5, 0.6], [0.972, 0.430, 3.0, 0.5], [0.968, 0.660, 4.0, 0.7],
+	[0.060, 0.852, 5.0, 0.85], [0.150, 0.890, 3.5, 0.6], [0.300, 0.858, 4.0, 0.7],
+	[0.045, 0.918, 4.5, 0.8], [0.235, 0.925, 3.0, 0.55], [0.395, 0.905, 3.0, 0.55],
+	[0.490, 0.852, 4.5, 0.8], [0.612, 0.888, 3.5, 0.6], [0.700, 0.850, 3.0, 0.5],
+	[0.690, 0.935, 3.0, 0.5], [0.965, 0.850, 3.5, 0.6], [0.440, 0.940, 3.5, 0.6],
+	[0.330, 0.948, 4.0, 0.7], [0.560, 0.925, 3.0, 0.5], [0.960, 0.945, 3.0, 0.5],
+	[0.018, 0.748, 3.0, 0.5], [0.975, 0.560, 3.5, 0.6], [0.972, 0.430, 3.0, 0.5],
+	[0.968, 0.660, 4.0, 0.7], [0.978, 0.770, 3.0, 0.5],
 ]
 ## The sparkles that twinkle: [x, y, radius at W].
-const SPARKS := [[0.205, 0.834, 22.0], [0.790, 0.824, 19.0], [0.565, 0.876, 17.0]]
+const SPARKS := [[0.205, 0.874, 22.0], [0.740, 0.888, 18.0], [0.520, 0.900, 17.0]]
 const TWINKLE := 3.2
 const TWINKLE_LOW := 0.35
 
@@ -130,8 +131,8 @@ func _build() -> void:
 			Face.Builder.ring(moon + Vector2(r * 0.42, -r * 0.20), r * 0.86, r * 0.86)):
 		b.polygon(part, Color(Pal.MOON, 0.92))
 	# Two hills at the foot of the night.
-	b.ellipse(Vector2(size.x * 0.80, size.y + 60.0 * u), size.x * 0.66, 250.0 * u, HILL_FAR)
-	b.ellipse(Vector2(size.x * 0.20, size.y + 90.0 * u), size.x * 0.62, 250.0 * u, HILL_NEAR)
+	b.ellipse(Vector2(size.x * 0.80, size.y + 80.0 * u), size.x * 0.66, 200.0 * u, HILL_FAR)
+	b.ellipse(Vector2(size.x * 0.20, size.y + 100.0 * u), size.x * 0.62, 200.0 * u, HILL_NEAR)
 	_shown = b.mesh()
 	queue_redraw()
 	var sb := Face.Builder.new()

@@ -454,17 +454,25 @@ is everything under them. For each board:
 The user, of the redesign: "let's also add a difficulty card ingame screen
 so user can easily switch between them without needing to left game".
 `"level_card": true` in a registry entry (with `pick_difficulty` and
-`levels`) and the host builds `ui/flat/level_card.gd` as the last row of the
-bottom slot, 150 tall: one paper card, a cell a level in the difficulty
-sheet's own tints with its plaque and name (`DifficultySheet.TINTS`,
-`LevelPlaque`, `LEVEL_KEYS`), the level being played ringed, a level done
-today checked. A tap on another cell is `_on_level`: an unfinished board is
-logged as an abandon, `level_switch` is sent, and `play_level` has the menu
-free this host and mount the card at that level, as the win's invite does.
-Nothing is asked first and the board left is not kept (no board keeps a
-half-played day; Back loses it too). It leaves with the other rows on the
-win, where the invite is. It is independent of `tray` and `actions`, but
-was only built under Binairo, which has neither.
+`levels`) and the host builds `ui/flat/level_card.gd`. **It stands in the
+day card's place**, since the user's next word that day: "replace the day
+card (useless) with the difficulty selection, so we can keep the bottom
+clear with no button". It is the day card's height (120), so `TOP_PLAY`
+and every slide are what they were; the day card is still built, hidden,
+because the host's handlers write to it. The day's hearts are not on the
+playing screen of such a board; the win's stats card says them.
+
+One paper card, a cell a level in the difficulty sheet's own tints with
+its plaque and name side by side (`DifficultySheet.TINTS`, `LevelPlaque`,
+`LEVEL_KEYS`), the level being played ringed, a level done today checked.
+A tap on another cell is `_on_level`: an unfinished board is logged as an
+abandon, `level_switch` is sent, and `play_level` has the menu free this
+host and mount the card at that level, as the win's invite does. Nothing
+is asked first and the board left is not kept (no board keeps a
+half-played day; Back loses it too). It leaves with the top rows on the
+win. It is independent of `tray` and `actions`, but was only built over
+Binairo, which has neither: its bottom slot is empty and the board is told
+a clear of the margin alone.
 
 ### The win screen comes in with the board's wave (2026-10-04)
 

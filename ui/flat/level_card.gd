@@ -1,7 +1,7 @@
 extends "res://ui/hud/panel.gd"
 
-## The flat screen's level card: the board's levels side by side under it,
-## the one being played ringed, the ones done today checked, and a tap on
+## The flat screen's level card: the board's levels side by side in the day
+## card's place and at its height, the one being played ringed, the ones done today checked, and a tap on
 ## another opens that level without a stop at the menu (the user,
 ## 2026-10-13: "add a difficulty card ingame screen so user can easily
 ## switch between them without needing to left game"). A registry entry asks
@@ -18,15 +18,16 @@ const Registry = preload("res://ui/registry.gd")
 const Progress = preload("res://core/progress.gd")
 const Icons = preload("res://ui/icons.gd")
 
-const HEIGHT := 150.0
+## The day card's, so the host's top slot is the height it was.
+const HEIGHT := 120.0
 const RADIUS := 32
 const PAD := 12
 const GAP := 10
 const CELL_RADIUS := 22
-const PLAQUE := 60.0
+const PLAQUE := 56.0
 const RING := 4
-const DONE := 34.0
-const NAME_SIZE := 27
+const DONE := 30.0
+const NAME_SIZE := 28
 
 var _entry: Dictionary = {}
 var _current := 0
@@ -70,15 +71,14 @@ func _cell(level: Dictionary, d: int) -> Button:
 		Motion.squash(cell, 0.08, 0.18)
 		if d != _current:
 			pick.emit(d))
-	var col := VBoxContainer.new()
+	var col := HBoxContainer.new()
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	col.alignment = BoxContainer.ALIGNMENT_CENTER
-	col.add_theme_constant_override("separation", 2)
+	col.add_theme_constant_override("separation", 10)
 	cell.add_child(col)
 	var plaque := Sheet.LevelPlaque.new(t, tint[1], tint[2])
 	plaque.custom_minimum_size = Vector2(PLAQUE, PLAQUE)
-	plaque.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	col.add_child(plaque)
 	var name_label := Label.new()
 	var key := String(level.get("name", ""))
@@ -93,10 +93,10 @@ func _cell(level: Dictionary, d: int) -> Button:
 		var done := Control.new()
 		done.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		done.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-		done.offset_left = -DONE - 8.0
-		done.offset_right = -8.0
-		done.offset_top = 8.0
-		done.offset_bottom = 8.0 + DONE
+		done.offset_left = -DONE - 4.0
+		done.offset_right = -4.0
+		done.offset_top = 4.0
+		done.offset_bottom = 4.0 + DONE
 		done.draw.connect(func() -> void:
 			done.draw_circle(done.size * 0.5, done.size.x * 0.5, Pal.SUN if night else Pal.LEAF_DEEP, true, -1.0, true)
 			Icons.paint(done, "check", Rect2(done.size * 0.22, done.size * 0.56), Pal.TEXT if night else Pal.SURFACE))
