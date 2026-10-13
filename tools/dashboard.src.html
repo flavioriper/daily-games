@@ -91,6 +91,26 @@ header h2 { font-size: 26px; margin: 0; letter-spacing: -.02em; }
 .tree td { padding: 2px 10px 2px 0; border-top: 1px solid var(--hair); vertical-align: top; }
 .tree .chips { display: flex; flex-wrap: wrap; gap: 4px; }
 .tree .chips span { background: var(--hair); border-radius: 6px; padding: 0 6px; font-variant-numeric: tabular-nums; }
+.navsep { height: 1px; background: var(--hair); margin: 8px; }
+#gallery h2 { font-size: 26px; margin: 0 0 4px; letter-spacing: -.02em; }
+#gallery .lead { color: var(--ink2); margin: 0 0 22px; max-width: 70ch; }
+.set { margin-bottom: 30px; }
+.set h3 { font-size: 16px; margin: 0; } .set .file { color: var(--muted); font-size: 12px; margin: 2px 0 8px; }
+.users { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.users button { border: 1px solid var(--hair); background: var(--surface); color: var(--ink2); font: inherit;
+  font-size: 12px; padding: 3px 10px; border-radius: 999px; cursor: pointer; }
+.users button[aria-pressed="true"] { border-color: var(--accent); color: var(--ink); box-shadow: 0 0 0 1px var(--accent); }
+.pics { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.pic { background: var(--surface); border: 1px solid var(--hair); border-radius: 12px; padding: 10px; min-width: 0; }
+.pic.unused { opacity: .5; }
+.pic canvas, .pic svg { display: block; width: 100%; height: auto; aspect-ratio: 1; border-radius: 8px;
+  image-rendering: pixelated; background: #efe2c6; }
+.pic svg { background: #3b3e4c; }
+.pic .name { font-weight: 600; margin-top: 8px; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pic .use { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; line-height: 1.5; overflow-wrap: anywhere; }
+.pic .use a { display: inline-block; }
+.pic .use a { color: var(--accent); text-decoration: none; cursor: pointer; margin-right: 5px; }
+.pic .use a:hover { text-decoration: underline; }
 .empty { color: var(--muted); padding: 30px 0; text-align: center; }
 details { margin-top: 16px; color: var(--ink2); }
 details pre { font-size: 11px; overflow: auto; max-height: 300px; background: var(--surface);
@@ -102,8 +122,10 @@ kbd { border: 1px solid var(--axis); border-radius: 4px; padding: 0 4px; font: i
 </style>
 </head>
 <body>
-<nav><h1>Daily days</h1><div class="sub" id="range"></div><div id="boards"></div></nav>
+<nav><h1>Daily days</h1><div class="sub" id="range"></div><button id="gallerybtn"><span class="dot"></span>Picture gallery</button><div class="navsep"></div><div id="boards"></div></nav>
 <main>
+ <div id="gallery" hidden></div>
+ <div id="boardview">
   <header>
     <h2 id="title"></h2>
     <div class="seg" id="levels"></div>
@@ -118,6 +140,7 @@ kbd { border: 1px solid var(--axis); border-radius: 4px; padding: 0 4px; font: i
   <div id="still"></div>
   <section class="panel strip"><h3><b id="stripname"></b><span id="stripnote"></span></h3><div id="strip"></div></section>
   <details><summary>The day document</summary><pre id="raw"></pre></details>
+ </div>
   <footer><kbd>←</kbd> <kbd>→</kbd> day · <kbd>↑</kbd> <kbd>↓</kbd> board · <kbd>1</kbd>–<kbd>4</kbd> level · <span id="foot"></span></footer>
 </main>
 <div id="tip"></div>
@@ -181,10 +204,10 @@ for (const key in series) {
 const worst = flags => ["critical", "serious", "warning"].find(l => flags.some(f => f.level === l)) || "";
 
 // --- state ---------------------------------------------------------------
-const state = { board: INDEX.boards[0]?.id, level: 0, date: INDEX.dates[0], metric: null };
+const state = { board: INDEX.boards[0]?.id, level: 0, date: INDEX.dates[0], metric: null, view: "board", lens: {} };
 try { Object.assign(state, JSON.parse(localStorage.getItem("daily-days") || "{}")); } catch (e) {}
 // #board=sudoku&level=2&date=20261013 opens that day.
-for (const [k, v] of new URLSearchParams(location.hash.slice(1))) state[k] = k === "board" ? v : +v;
+for (const [k, v] of new URLSearchParams(location.hash.slice(1))) state[k] = k === "board" || k === "view" ? v : +v;
 if (!DAYS[state.board]) state.board = INDEX.boards[0]?.id;
 if (!INDEX.dates.includes(state.date)) state.date = INDEX.dates[0];
 const docsNow = () => series[state.board + "|" + state.level] || [];
@@ -343,9 +366,70 @@ function strip() {
   host.append(svg);
 }
 
+// --- the gallery: every picture the picture boards deal from ----------------
+const GALLERY = DATA.gallery || { beads: {}, sets: [] };
+const titleOf = id => INDEX.boards.find(b => b.id === id)?.title || id;
+const levelName = (id, l) => INDEX.boards.find(b => b.id === id)?.levels?.find(x => x.difficulty === l)?.name || LEVEL_NAMES[l];
+// The days a board and level dealt a picture, by the name its documents use.
+function daysOf(board, level, pic) {
+  return (series[board + "|" + level] || []).filter(d => {
+    const p = d.payload || {};
+    if (board === "gumdrop") return (p.moulds || []).some(m => m.picture === pic.id);
+    return p.picture === pic.id || p.picture === pic.key;
+  }).map(d => d.date);
+}
+function thumb(set, pic) {
+  if (set.kind === "shapes") {
+    const side = set.side || 100, svg = el("svg", { viewBox: `0 0 ${side} ${side}`, role: "img", "aria-label": pic.id });
+    pic.cells.forEach((poly, i) => svg.append(el("path", { d: "M" + poly.map(p => p.join(",")).join("L") + "Z",
+      fill: set.flavours[pic.want[i]] || "#888", stroke: "#3b3340", "stroke-width": .8, "stroke-linejoin": "round" })));
+    return svg;
+  }
+  const h = pic.rows.length, w = h ? pic.rows[0].length : 0, cv = el("canvas", { width: w, height: h, "aria-label": pic.id });
+  const ctx = cv.getContext("2d");
+  pic.rows.forEach((row, y) => [...row].forEach((ch, x) => { if (ch !== ".") { ctx.fillStyle = GALLERY.beads[ch] || "#f0f";
+    ctx.fillRect(x, y, 1, 1); } }));
+  return cv;
+}
+function gallery() {
+  const host = $("gallery"); host.textContent = "";
+  host.append(el("h2", {}, "Picture gallery"), el("p", { class: "lead" },
+    `Every picture the picture boards can deal, in the game's colours. Under each: how many of the ${INDEX.dates.length} exported days dealt it, for the board and level picked. A faded picture never came up.`));
+  GALLERY.sets.forEach((set, si) => {
+    const users = set.users.filter(u => series[u[0] + "|" + u[1]]);
+    const box = el("section", { class: "set" });
+    box.append(el("h3", { class: "round" }, `${set.title} · ${set.pictures.length} pictures`), el("div", { class: "file" }, set.file));
+    let lens = state.lens[si] ?? 0; if (lens >= users.length) lens = 0;
+    const row = el("div", { class: "users" });
+    users.forEach((u, i) => { const b = el("button", { "aria-pressed": i === lens }, `${titleOf(u[0])} · ${levelName(u[0], u[1])}`);
+      b.addEventListener("click", () => { state.lens[si] = i; draw(); }); row.append(b); });
+    box.append(row);
+    const grid = el("div", { class: "pics" }), u = users[lens];
+    for (const pic of set.pictures) {
+      if (set.kind === "shapes" && u && !pic.levels.includes(u[1])) continue;
+      const dates = u ? daysOf(u[0], u[1], pic) : [];
+      const card = el("div", { class: "pic" + (u && !dates.length ? " unused" : "") });
+      card.append(thumb(set, pic), el("div", { class: "name", title: pic.id }, pic.id.replace(/_/g, " ")));
+      const use = el("div", { class: "use" });
+      if (!u) use.textContent = "no days exported";
+      else if (!dates.length) use.textContent = "not dealt";
+      else { use.append(`${dates.length}× `); dates.forEach(k => { const a = el("a", { title: fmtDate(k) }, `${k % 100}/${Math.floor(k / 100) % 100}`);
+        a.addEventListener("click", () => { Object.assign(state, { view: "board", board: u[0], level: u[1], date: k, metric: null }); draw(); scrollTo(0, 0); });
+        use.append(a); }); }
+      card.append(use); grid.append(card);
+    }
+    box.append(grid); host.append(box);
+  });
+  if (!GALLERY.sets.length) host.append(el("div", { class: "empty" }, "No gallery exported."));
+}
+
 // --- the page ---------------------------------------------------------------
 function draw() {
   try { localStorage.setItem("daily-days", JSON.stringify(state)); } catch (e) {}
+  const showing = state.view === "gallery";
+  $("gallery").hidden = !showing; $("boardview").hidden = showing;
+  $("gallerybtn").setAttribute("aria-current", showing);
+  if (showing) gallery();
   const board = INDEX.boards.find(b => b.id === state.board), levels = levelsOf(state.board);
   if (!levels.includes(state.level)) state.level = levels[0] ?? 0;
   const doc = docNow();
@@ -353,10 +437,10 @@ function draw() {
   const nav = $("boards"); nav.textContent = "";
   for (const b of INDEX.boards) {
     const all = (DAYS[b.id] || []), flagged = all.filter(d => d.flags.length);
-    const btn = el("button", { "aria-current": b.id === state.board });
+    const btn = el("button", { "aria-current": !showing && b.id === state.board });
     btn.append(el("span", { class: "dot " + worst(flagged.flatMap(d => d.flags)) }), b.title);
     if (flagged.length) btn.append(el("span", { class: "n", title: "flagged days" }, flagged.length));
-    btn.addEventListener("click", () => { state.board = b.id; state.metric = null; draw(); });
+    btn.addEventListener("click", () => { state.board = b.id; state.metric = null; state.view = "board"; draw(); });
     nav.append(btn);
   }
   const seg = $("levels"); seg.textContent = "";
@@ -398,11 +482,12 @@ function draw() {
   strip();
   $("raw").textContent = doc ? JSON.stringify({ ...doc, flags: undefined }, null, 1) : "";
 }
+$("gallerybtn").addEventListener("click", () => { state.view = "gallery"; draw(); scrollTo(0, 0); });
 $("prev").addEventListener("click", () => step(-1));
 $("next").addEventListener("click", () => step(1));
 function step(n) { const i = INDEX.dates.indexOf(state.date) + n; if (i >= 0 && i < INDEX.dates.length) { state.date = INDEX.dates[i]; draw(); } }
 addEventListener("keydown", e => {
-  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.metaKey || e.ctrlKey || e.altKey || state.view === "gallery") return;
   const ids = INDEX.boards.map(b => b.id), at = ids.indexOf(state.board);
   if (e.key === "ArrowLeft") step(-1);
   else if (e.key === "ArrowRight") step(1);

@@ -22,7 +22,9 @@ def main() -> None:
         path = DAYS / f"{board['id']}.json"
         days[board["id"]] = json.loads(path.read_text()) if path.exists() else []
     # "</" would end the script element the data sits in.
-    data = json.dumps({"index": index, "days": days}, separators=(",", ":")).replace("</", "<\\/")
+    gallery = DAYS / "gallery.json"
+    pictures = json.loads(gallery.read_text()) if gallery.exists() else {"beads": {}, "sets": []}
+    data = json.dumps({"index": index, "days": days, "gallery": pictures}, separators=(",", ":")).replace("</", "<\\/")
     page = (HERE / "dashboard.src.html").read_text().replace("/*DATA*/", data, 1)
     out = HERE / "dashboard.html"
     out.write_text(page)

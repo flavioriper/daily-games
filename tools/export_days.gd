@@ -184,4 +184,68 @@ func _write() -> void:
 		"commit": String(head[0]).strip_edges() if not head.is_empty() else "",
 	}))
 	index.close()
+	_gallery()
 	print("export_days: %d documents, %d with an error, in %s" % [_jobs.size(), _errors, OUT])
+
+## Every picture the picture boards deal from, for the page's Gallery: the
+## bead bank's four bands (Pixel Garden, Button Box, Toy Cannons), Button
+## Box's own Hard band, and Gumdrop's moulds, each with the levels that read
+## it. The colours are the game's (Palette.PG_BEADS, Sim.FLAVOURS).
+func _gallery() -> void:
+	var beads := {}
+	var named: Dictionary = load("res://core/palette.gd").PG_BEADS
+	var sets: Array = []
+	var bank = JSON.parse_string(FileAccess.get_file_as_string("res://content/pixel_garden.json"))
+	if bank is Dictionary:
+		for ch in bank.palette:
+			beads[ch] = "#" + (named.get(bank.palette[ch], Color.MAGENTA) as Color).to_html(false)
+		# The levels that read a band: Pixel Garden its own, Button Box its own
+		# but Hard, Toy Cannons by Train's BANDS.
+		var train: Array = load("res://puzzles/train_state.gd").BANDS
+		for k in (bank.bands as Array).size():
+			var users: Array = [["pixelgarden", k]]
+			if k != 2:
+				users.append(["buttons", k])
+			for level in train.size():
+				if int(train[level]) == k:
+					users.append(["train", level])
+			var side := (bank.bands[k][0].rows as Array).size() if not (bank.bands[k] as Array).is_empty() else 0
+			sets.append({"title": "Bead bank, %d × %d" % [side, side], "file": "content/pixel_garden.json, band %d" % k,
+				"kind": "pixels", "users": users, "pictures": _pixel_pictures(bank.bands[k])})
+	var hard = JSON.parse_string(FileAccess.get_file_as_string("res://content/buttons_hard.json"))
+	if hard is Dictionary:
+		sets.append({"title": "Button Box Hard, 16 × 16", "file": "content/buttons_hard.json", "kind": "pixels",
+			"users": [["buttons", 2]], "pictures": _pixel_pictures(hard.pictures)})
+	var mould = load("res://puzzles/gumdrop_mould.gd")
+	var flavours: Array = []
+	for c: Color in load("res://puzzles/gumdrop_sim.gd").FLAVOURS:
+		flavours.append("#" + c.to_html(false))
+	var shapes: Array = []
+	for r in (mould.PICTURES as Array).size():
+		var m: Dictionary = mould.build(mould.PICTURES[r])
+		var cells: Array = []
+		for poly: PackedVector2Array in m.get("cells", []):
+			var pts: Array = []
+			for p in poly:
+				pts.append([snappedf(p.x, 0.1), snappedf(p.y, 0.1)])
+			cells.append(pts)
+		var levels: Array = []
+		for band in (mould.BANDS as Array).size():
+			if r >= int(mould.BANDS[band].rows[0]) and r <= int(mould.BANDS[band].rows[1]):
+				levels.append(band)
+		shapes.append({"id": mould.PICTURES[r], "key": mould.PICTURES[r], "cells": cells, "want": m.get("want", []),
+			"levels": levels})
+	sets.append({"title": "Gumdrop moulds", "file": "puzzles/gumdrop_mould.gd", "kind": "shapes",
+		"users": [["gumdrop", 0], ["gumdrop", 1], ["gumdrop", 2], ["gumdrop", 3]], "pictures": shapes,
+		"flavours": flavours, "side": mould.SIDE})
+	var f := FileAccess.open(OUT + "gallery.json", FileAccess.WRITE)
+	f.store_string(JSON.stringify({"beads": beads, "sets": sets}))
+	f.close()
+
+## `key` is what a day document calls the picture: Pixel Garden its id, the
+## other two its name.
+func _pixel_pictures(list: Array) -> Array:
+	var out: Array = []
+	for pic in list:
+		out.append({"id": String(pic.get("id", "")), "key": String(pic.get("name", "")), "rows": pic.get("rows", [])})
+	return out

@@ -52,6 +52,22 @@ word boards), the network (Golden Acorn, Pearl Dive), and, unmeasured, the
 last bit of a float on another CPU (Paper Planes' `pow`, Marigold's
 garden).
 
+**The Gallery** (the user, the same day, of Pixel Garden, Gumdrop and
+Button Box: "can you add on the dashboard the pictures somewhere? like a
+gallery tab"): the exporter also writes `tools/days/gallery.json`, every
+picture those boards and Toy Cannons deal from -- the bead bank's four
+bands, Button Box's own Hard band, Gumdrop's twenty-nine moulds -- in the
+game's colours (`Palette.PG_BEADS`, `Sim.FLAVOURS`), and the page's Picture
+gallery shows them a set at a time. A set's chips are the boards and levels
+that read it; under a picture, the exported days that board and level dealt
+it (a click opens the day) and a faded card for one that never came up.
+No picture is made on the day: the bead pictures are typed (10 and 12
+square, 16 for Button Box's Hard) or painted by
+`tools/paint_pixel_garden.py` (24 and 32), Gumdrop's are code in
+`gumdrop_mould.gd`. Pixel Garden walks one shuffle of a band a day; Button
+Box, Toy Cannons and Gumdrop draw by the day's seed with no memory, which
+is where their repeats come from.
+
 Not built: the db and the game reading a stored day (the user, the same
 day: "we can keep the seed if it works to render the exactly same board"),
 drawings for the text boards, any new solver or difficulty estimate.
