@@ -356,6 +356,7 @@ const PUZZLES := [
 		# be sitting on the board: only a right word locks. So Reset rides up
 		# into the top bar and the bottom slot is the tip card alone.
 		"script": "res://puzzles/word_trail2d.gd",
+		"card": "res://ui/menu/cards/wordtrail.gd",
 		"shell": "flat",
 		"tray": "none",
 		"actions": false,
@@ -393,6 +394,7 @@ const PUZZLES := [
 		"motto": "MP_MOTTO",
 		"footer": "Count · Prove · Plant",
 		"script": "res://puzzles/mushroom2d.gd",
+		"card": "res://ui/menu/cards/mushroom.gd",
 		"shell": "flat",
 		"tray": "patch",
 		"difficulties": [0, 1, 2, 3],
@@ -419,6 +421,7 @@ const PUZZLES := [
 		# Everything else is the default: it keeps the actions row and the tip
 		# card, which makes it the plainest board in the registry to wire.
 		"script": "res://puzzles/sudoku2d.gd",
+		"card": "res://ui/menu/cards/sudoku.gd",
 		"shell": "flat",
 		"tray": "digits",
 		"difficulties": [0, 1, 2, 3],

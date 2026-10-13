@@ -676,6 +676,46 @@ the first one ... Card should be elegant, cozy, but carry the game elements".
     green** (true of the Y it stands for, but it reads as a mark). **Seen
     and left**: on a 1040-wide card Nonogram and Hidden Word are bare in
     the middle, as Tents is.
-- **Owed**: the eleven boards' cells on Stats and Streak still wear the old
-  banner (`CardArt` + `Vistas.card_plate`); the other twenty-seven cards;
+- **Word Trail, Mushroom Patch and Sudoku are the twelfth, thirteenth and
+  fourteenth** (the same day, the same words a fourth time; the same
+  recipe).
+  - **Word Trail** (`ui/menu/cards/wordtrail.gd`): a peach morning with
+    three fallen leaves, and a 3x3 corner of the board's field on the right
+    in its paper pieces: M A P L traced right, down, right by the board's
+    sun beam, the four tiles lit, and the go button the tile where the E
+    lands. O A K fills the rest and the top right cell is a wall, so the two
+    words and the wall fill the nine cells as a real board's do; both words
+    are in `content/word_trail.json`. Nothing lives on it; seven strings.
+  - **Mushroom Patch** (`ui/menu/cards/mushroom.gd`): a warm autumn floor
+    with leaf litter, and the board's patch coming in from the bottom right
+    corner and running off the right and bottom edges: a 1, a 2 and the go
+    sod on top, a pebble, the planted mushroom (`MushroomFace`, the one live
+    child) and a 2 under them, turf below. The numbers are counted in code
+    from two mushrooms; the go button is the sod the top 2 proves holds the
+    second.
+  - **Sudoku** (`ui/menu/cards/sudoku.gd`): a sage cloth and the board's
+    wooden tray as a corner: the grid's bottom row along the card's foot,
+    its seventh column climbing off the top left of the seal, and the 3x3
+    they share whole in the bottom right. Row, column and region each lack
+    only the 7, and the cell they share is the go button. Givens in ink,
+    written digits in leaf green. Nothing lives on it; up to twenty strings.
+  - **Measured**, `tests/_shot_menu.gd -- page2` on `opengl3_angle` at
+    810x1440, second of two readings: 185 draw calls on page two with six
+    faces and two template cards (both readings 185; 227 before, page one
+    194). Suite 249797/0. The throwaway probe, each card at the four sizes
+    in es: the seal's corner is clear on all three and the words fit.
+    Changed after the first look: Sudoku's go tile stood lifted over the 2
+    above it (it sits in its cell now) and its cloth was a blush, the third
+    warm paper in a row on the page.
+  - **Mine, the user's to call**: Word Trail's field 3x3 rather than wider,
+    MAPLE and OAK, the off-trail letters at 62% ink where the board inks
+    them full; Mushroom Patch's go sod is red because the card's colour is,
+    which is near the cap's red and the board's too-many colour, and it
+    marks a cell that holds a mushroom rather than a safe one; its name
+    ends 4 px short of the seal at 490 wide; Sudoku's crossing as a corner
+    rather than a cross, cells cropped by the card's edge left without a
+    digit, the sage. **Seen and left**: Hidden Word, Word Trail and
+    Mushroom Patch are three warm papers together on page two.
+- **Owed**: the fourteen boards' cells on Stats and Streak still wear the old
+  banner (`CardArt` + `Vistas.card_plate`); the other twenty-four cards;
   Balance, Untangle and Shikaku in es; a phone.
