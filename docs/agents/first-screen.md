@@ -594,6 +594,41 @@ the first one ... Card should be elegant, cozy, but carry the game elements".
     go button on the card's left, the blurb ink `6f6a4c`. **Seen and left**:
     Shikaku's signs are small at card size, the grin sitting close under
     each digit.
-- **Owed**: the five boards' cells on Stats and Streak still wear the old
-  banner (`CardArt` + `Vistas.card_plate`); the other thirty-three cards; a
-  phone.
+- **Tents, Light Up and One Line are the sixth, seventh and eighth** (the
+  same day, the user sending the same words again; the same recipe), and
+  with them every card of page one is its own.
+  - **Tents** (`ui/menu/cards/tents.gd`): a misty mint wood with a line of
+    far pines, the words on top, and one row of the board's meadow along the
+    foot with its count chip (a cream 2): tree, pitched tent with its lamp
+    lit, bare grass, the go tent, tree. The go button is the tent the second
+    tree waits for, in the card's colour, a chevron for its doorway. Two
+    live children, the trees (`ConiferFace`); `TentFace` and `CountChip`
+    baked, the chip's numeral one `draw_string`.
+  - **Light Up** (`ui/menu/cards/lightup.gd`): a dusk of its own, plum to
+    rose-brown, cream ink; a walk of flagstones along the foot that turns up
+    the right side, the board's `CourtLantern` at the corner (the one live
+    child), the stones it sees warm, a block reading 2 beside it and the
+    stones past the block cold. The go button is the stone on the block's
+    other side, where its second lamp goes. No beam shafts: warm floor, halo
+    and motes.
+  - **One Line** (`ui/menu/cards/oneline.gd`): dew-teal paper; the stroke
+    starts at a post under the name, runs the card's foot as a laid
+    boardwalk and enters a figure of two stacked triangles on the right,
+    four lines planked, the snail (`SnailFace`, the one live child) on the
+    fifth, three still bare stone. The walk shown is a legal single stroke.
+    The go button is the apex post she climbs toward.
+  - **Measured**, `tests/_shot_menu.gd` on `opengl3_angle` at 810x1440,
+    second of two readings: 194 draw calls with eight faces on the page
+    (both readings 194). Suite 249797/0. The throwaway probe again, each
+    card at the four sizes, this time in es: the seal's corner is clear on
+    all three and the words fit.
+  - **Mine, the user's to call**: Tents' row left-aligned (on a 1040-wide
+    card the right half is mist), its chip larger than the board's, the mint
+    wood; Light Up's dusk colours (`46384f` to `8d6252`), a second dark card
+    on the page beside Code Break's shelf, its go button bottom middle, no
+    beams; One Line's teal ground, the boardwalk as the name's underline
+    (800 px long on a 1040-wide card), a go post smaller than the other
+    cards' go pieces and grey because the card's colour is.
+- **Owed**: the eight boards' cells on Stats and Streak still wear the old
+  banner (`CardArt` + `Vistas.card_plate`); the other thirty cards; Balance,
+  Untangle and Shikaku in es; a phone.
