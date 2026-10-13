@@ -620,3 +620,53 @@ tin, so "The tin was full: N stayed behind" came up on most moves.
 - The aim's section of `tests/_probe_buttons_board.gd` counts 25 checks
   since the swap (29 before): the deals changed, not the aim.
 - Board probe 38 days, 0 failures; the suite 249,804. Not seen on a screen.
+
+## 2026-10-13: a big pick's ghost, and a tin as big as the picture
+
+The user, off the phone: "on button box there is a issue where on harder
+difficulties after selecting a color and sending buttons to another place,
+they keep showing on the old spot till selection is undone. Also, the case
+buttons box size should change based on the quantity of pieces to avoid
+making it too small and harder images being annoying to fill, you can use
+more than 2 rows if needed. Always round to floor even number, and blocked
+ones should be all free after 4 color filled (1/4 each color)".
+
+- **The ghost.** A pick of more than `HELD_BOB_MAX` (48) buttons does not
+  bob: `_held_mesh` is built once and kept (`_held_still`). `tap` and
+  `tap_tin` put what a move left in the hand into `_held_cells` and did not
+  clear the flag, so the whole pick's mesh went on being drawn until the
+  pick was put down. Only Hard and Insane have picks that long. **Anything
+  that changes `_held_cells` or `_held_places` clears `_held_still`.**
+- **The tin's size is the picture's** (`State.places_for`): a place every
+  `CASE_PER` (5) buttons, rounded down to an even number, `CASE_MIN` (20)
+  at the least and `CASE_CAP` (64) at the most. Half open; each of the
+  first `CASE_WHOLE` (4) colours whole opens a quarter of the rest
+  (`capacity()`, whole numbers rounded down, all of them at the fourth).
+  `CASE_MAX`, `CASE_BASE` and `CASE_STEP` are gone; `state.places()` is the
+  tin's length and `state.tin.size()`. It takes back "twenty places, ten
+  open" and "a colour whole opens two" above. By band: Easy and Medium 20
+  (32-100 buttons), Hard 20 to 32 (87-168), Insane 64 (455-1,024: every
+  picture is at the cap). The tutorial's tin (`tin_base` 4) is its own: six
+  places, both locked ones open with its one colour (`CASE_OWN`).
+- **The rows** (`_layout`, `TIN_ROWS`, `TIN_SMALL`): the fewest rows that
+  keep a place at three quarters of what it is ten to a row, four at the
+  most. 20: two of ten. 22-26: two of 11-13. 28-32: three of 10-11. 64:
+  four of sixteen (a place 61 px of a 1080 canvas, 96 on the small tins).
+  A short last row is in the middle (`Art.tin_place`). Hard is bound by its
+  height: three rows take its square from 60.6 to about 55 px; Insane's
+  from 30.5 to 28.7.
+- **Measured**: `tests/_probe_buttons.gd -- seeds=3`, 864 runs, 0 failures,
+  par medians 12 / 22 / 39 / 161 (Hard was 45, Insane 223; with `CASE_PER`
+  8, 12 or 16 Hard stays at 20 places and 45). `_probe_buttons_board.gd --
+  days=4`: 26 days, 0 failures. One windowed run, `_shot_buttons.gd -- d=3
+  play` on opengl3_angle at 810x1440: thirty-two red in a tin of four rows,
+  113 draw calls at the peak.
+- **Mine, the user's to call**: a place every five buttons; the cap of 64
+  (so every Insane picture has the same tin); half open at the start, as
+  before; the floor of 20, so Easy and Medium are as they were but for the
+  quarters (10, 12, 15, 17, 20 where it was 10, 12, 14, 16, 18); a tin of
+  22 opening at 11 (the even number is the whole tin's, not the open
+  half's); longer rows before more rows.
+- **Not seen**: Hard's tin of three rows, a short last row, the tutorial
+  after the change, the ghost's fix on a screen, a phone. pt and es lines
+  reworded by me, unread.

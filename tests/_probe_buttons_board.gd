@@ -90,7 +90,7 @@ func _play(board: Control, how: int, rng: RandomNumberGenerator) -> int:
 					if not bare.is_empty():
 						board.tap(bare[rng.randi_range(0, bare.size() - 1)])
 				4:
-					board.tap_tin(rng.randi_range(-1, board.state.CASE_MAX - 1))
+					board.tap_tin(rng.randi_range(-1, st.tin.size() - 1))
 				5:
 					board.tap(rng.randi_range(0, st.slot.size() - 1))
 		else:
@@ -98,7 +98,7 @@ func _play(board: Control, how: int, rng: RandomNumberGenerator) -> int:
 			# refused, tap a button in the tin and then a bare patch
 			if not loose.is_empty() and st.in_tin() < st.capacity() and rng.randf() < 0.6:
 				board.tap(loose[rng.randi_range(0, loose.size() - 1)])
-				board.tap_tin(rng.randi_range(-1, board.state.CASE_MAX - 1))
+				board.tap_tin(rng.randi_range(-1, st.tin.size() - 1))
 			elif st.in_tin() > 0 and rng.randf() < 0.5:
 				var places: Array = []
 				for p in st.tin.size():

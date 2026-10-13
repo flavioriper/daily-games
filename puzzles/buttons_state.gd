@@ -34,9 +34,25 @@ const HARD := 2
 ## 2026-10-11: "the case should be bigger, 20 slots, 10 free and 10 to
 ## unlock"; 6 of 12 before, 7 on Hard -- and, the same day, "each unlock
 ## must unlock 2 not 1", one a colour before).
-const CASE_BASE := [10, 10, 10, 10]
-const CASE_MAX := 20
-const CASE_STEP := 2
+##
+## The tin is as big as the picture asks (the user, 2026-10-13: "the case
+## buttons box size should change based on the quantity of pieces to avoid
+## making it too small and harder images being annoying to fill, you can
+## use more than 2 rows if needed. Always round to floor even number, and
+## blocked ones should be all free after 4 color filled (1/4 each color)"):
+## a place every CASE_PER buttons, rounded down to an even number, never
+## under CASE_MIN (the twenty the small pictures had) nor over CASE_CAP
+## (what the foot of a phone holds in places a finger can still tap). Half
+## of them open, and each of the first CASE_WHOLE colours made whole opens
+## a quarter of the rest. `places()`.
+const CASE_MIN := 20
+const CASE_PER := 5
+const CASE_CAP := 64
+const CASE_WHOLE := 4
+## The tutorial's small tin (`tin_base`) has this many places past its own,
+## and opens them both with its one colour whole.
+const CASE_OWN := 2
+const BANDS := 4
 const HINTS_BY := [3, 3, 2, 0]
 ## Insane: no bulb, and the seal for any day sewn. It counted its moves
 ## until 2026-10-12 (`moves_budget`).
@@ -84,8 +100,9 @@ var colours: Array[String] = []
 var slot := PackedInt32Array()
 var cur := PackedInt32Array()
 var start := PackedInt32Array()
-## The tin: CASE_MAX places, -1 empty. Only the first `capacity()` are open.
+## The tin: `places()` places, -1 empty. Only the first `capacity()` are open.
 var tin := PackedInt32Array()
+var _places := CASE_MIN
 var taps := 0
 var par := 0
 ## Every tap, for Undo: [cur, tin, taps].
@@ -127,7 +144,7 @@ static func hints_for(band_: int) -> int:
 
 ## The day's picture out of the bank and its buttons, scrambled.
 func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
-	band = clampi(difficulty, 0, CASE_BASE.size() - 1)
+	band = clampi(difficulty, 0, BANDS - 1)
 	var doc := bank()
 	var pics: Array = []
 	if doc.get("bands") is Array and band < (doc.bands as Array).size():
@@ -177,6 +194,11 @@ func _lay(pic: Dictionary, legend: Dictionary, rng: RandomNumberGenerator) -> vo
 				k = colours.size()
 				colours.append(named)
 			slot[y * w + x] = k
+	_count = 0
+	for k in slot:
+		if k >= 0:
+			_count += 1
+	_places = tin_base + CASE_OWN if tin_base >= 0 else places_for(_count)
 	start = _scramble(rng)
 	reset()
 
@@ -295,14 +317,24 @@ func colours_done() -> int:
 			out += 1
 	return out
 
-## The places the tin starts with: the band's own.
-func base() -> int:
-	return tin_base if tin_base >= 0 else int(CASE_BASE[band])
+## The places a tin has for a picture of `buttons`, open or not.
+static func places_for(buttons: int) -> int:
+	return clampi(buttons / CASE_PER / 2 * 2, CASE_MIN, CASE_CAP)
 
-## The places open in the tin now: the band's own and CASE_STEP a colour
-## whole.
+## The places this picture's tin has.
+func places() -> int:
+	return _places
+
+## The places the tin starts with: half of them.
+func base() -> int:
+	return tin_base if tin_base >= 0 else _places / 2
+
+## The places open in the tin now: the ones it starts with, and a quarter
+## of the rest for each of the first CASE_WHOLE colours whole.
 func capacity() -> int:
-	return mini(CASE_MAX, base() + CASE_STEP * colours_done())
+	if tin_base >= 0:
+		return mini(_places, tin_base + CASE_OWN * colours_done())
+	return base() + (_places - base()) * mini(colours_done(), CASE_WHOLE) / CASE_WHOLE
 
 func in_tin() -> int:
 	var out := 0
@@ -499,7 +531,7 @@ func undo() -> bool:
 func reset() -> void:
 	cur = start.duplicate()
 	tin = PackedInt32Array()
-	tin.resize(CASE_MAX)
+	tin.resize(_places)
 	tin.fill(-1)
 	taps = 0
 	history = []
@@ -678,6 +710,7 @@ func _solve_taps() -> int:
 	var probe = get_script().new()
 	probe.band = band
 	probe.tin_base = tin_base
+	probe._places = _places
 	probe.w = w
 	probe.h = h
 	probe.colours = colours

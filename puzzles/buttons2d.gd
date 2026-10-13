@@ -52,6 +52,11 @@ const HUD_ROW := 76.0
 const GAP := 26.0
 const BORDER := 18.0
 const TIN_ROW := 10
+## A bigger tin has longer rows before it has more of them: the fewest rows
+## that keep a place at TIN_SMALL of what it is ten to a row, and TIN_ROWS
+## at the most (Insane's sixty-four are four rows of sixteen).
+const TIN_ROWS := 4
+const TIN_SMALL := 0.75
 const TIN_STEP := 96.0
 const TIN_PAD := 18.0
 const CELL_MAX := 84.0
@@ -198,8 +203,9 @@ var _tin_rect := Rect2()
 var _tin_step := TIN_STEP
 ## The places the tin is drawn with and the most a place is across: the
 ## tutorial's page has a short tin of one row.
-var _tin_places := State.CASE_MAX
+var _tin_places := State.CASE_MIN
 var _tin_step_max := TIN_STEP
+var _tin_per := TIN_ROW
 ## The picture before the win's slots moved, for its slide to the middle.
 var _from_cell := 0.0
 var _from_grid := Vector2.ZERO
@@ -303,7 +309,7 @@ func rules() -> String:
 		out += " " + tr("BB_RULES_CORNERS")
 	if state.band >= State.BIG_FROM:
 		out += "\n\n" + tr("BB_RULES_BIG")
-	out += "\n\n" + tr("BB_RULES_TIN") % state.base()
+	out += "\n\n" + tr("BB_RULES_TIN") % [state.base(), state.places()]
 	if max_moves > 0:
 		out += "\n\n" + tr("RULES_MOVES_SEQ") % max_moves
 	return out
@@ -420,7 +426,8 @@ func _deal() -> void:
 	_arrive = _filled(n, -INF)
 	_hop_at = _filled(n, -INF)
 	_shiver_at = _filled(n, -INF)
-	_tin_arrive = _filled(State.CASE_MAX, -INF)
+	_tin_places = state.places()
+	_tin_arrive = _filled(_tin_places, -INF)
 	_tin = null
 	_live = {}
 	_stale_all()
@@ -458,9 +465,16 @@ func _layout() -> void:
 		return
 	var top := _clear.x
 	var foot := size.y - _clear.y
-	var per_row := _tin_row()
-	_tin_step = minf(_tin_step_max, (size.x - 2.0 * PAD - 2.0 * TIN_PAD) / per_row)
-	var tin_rows := ceili(float(_tin_places) / per_row)
+	var tin_wide := size.x - 2.0 * PAD - 2.0 * TIN_PAD
+	var full := minf(_tin_step_max, tin_wide / mini(TIN_ROW, _tin_places))
+	var tin_rows := 1
+	while true:
+		_tin_per = ceili(float(_tin_places) / tin_rows)
+		_tin_step = minf(full, tin_wide / _tin_per)
+		if _tin_step >= full * TIN_SMALL or tin_rows >= TIN_ROWS:
+			break
+		tin_rows += 1
+	var per_row := _tin_per
 	var tin_size := Vector2(per_row * _tin_step + 2.0 * TIN_PAD, tin_rows * _tin_step + 2.0 * TIN_PAD)
 	_tin_rect = Rect2(Vector2((size.x - tin_size.x) * 0.5, foot - tin_size.y - GAP * 0.5), tin_size)
 	var head := top if _won else top + HUD_ROW
@@ -570,9 +584,10 @@ func _mark_all() -> void:
 func cell_to_local(r: int, c: int) -> Vector2:
 	return _grid + (Vector2(c, r) + Vector2(0.5, 0.5)) * _cell
 
-## How many places a row of the tin holds: ten, or all of a small tin's.
+## How many places a row of the tin holds (`_layout`): the rows as even as
+## they come, a short last row in the middle.
 func _tin_row() -> int:
-	return mini(TIN_ROW, _tin_places)
+	return _tin_per
 
 func tin_centre(place: int) -> Vector2:
 	return Art.tin_place(_tin_rect, place, _tin_row(), _tin_step, _tin_places)

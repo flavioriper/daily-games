@@ -237,4 +237,6 @@ static func tin(b, rect: Rect2, places: int, open: int, per_row: int, step: floa
 static func tin_place(rect: Rect2, p: int, per_row: int, step: float, places := 12) -> Vector2:
 	var rows := ceili(float(places) / per_row)
 	var origin := rect.get_center() - Vector2(per_row * step, rows * step) * 0.5
-	return origin + Vector2((p % per_row) + 0.5, (p / per_row) + 0.5) * step
+	# a short last row stands in the middle
+	var short := rows * per_row - places if p / per_row == rows - 1 else 0
+	return origin + Vector2((p % per_row) + 0.5 + short * 0.5, (p / per_row) + 0.5) * step
