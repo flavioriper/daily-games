@@ -30,7 +30,9 @@ const SEAL_IN := 38.0
 var entry: Dictionary
 var colour: Color
 var soon := false
+## The mesh `_draw` last handed over, kept until the next replaces it.
 var _mesh: ArrayMesh
+var _dirty := true
 var _made: Array[Node] = []
 
 func _init(the_entry: Dictionary, the_colour: Color) -> void:
@@ -53,14 +55,15 @@ func _relayout() -> void:
 			remove_child(node)
 			node.queue_free()
 	_made.clear()
-	_mesh = null
+	_dirty = true
 	_lay()
 	queue_redraw()
 
 func _draw() -> void:
 	if size.x <= 0.0 or size.y <= 0.0:
 		return
-	if _mesh == null:
+	if _dirty or _mesh == null:
+		_dirty = false
 		var b := Face.Builder.new()
 		_paint(b)
 		_mesh = b.mesh()

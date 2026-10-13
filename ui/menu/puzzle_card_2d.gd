@@ -178,7 +178,7 @@ func _build_template() -> void:
 
 	var name_label := Label.new()
 	name_label.theme_type_variation = "CardName"
-	name_label.text = "BINAiRO" if String(entry.get("id", "")) == "binairo" else String(entry.get("title", ""))
+	name_label.text = String(entry.get("title", ""))
 	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if soon:
 		name_label.add_theme_color_override("font_color", Pal.TEXT_DIM)
@@ -264,6 +264,8 @@ func _build_done_badge() -> void:
 	host.add_child(_seal)
 	if _face != null:
 		_seal.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		# A face lays its cast again on every resize, over whatever is there.
+		_face.resized.connect(_seal.move_to_front)
 
 ## The whole seal about its own centre, as one mesh: antialiased arcs cost
 ## gl_compatibility several commands apiece, and seven seals drawn that way
