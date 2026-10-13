@@ -821,6 +821,53 @@ the first one ... Card should be elegant, cozy, but carry the game elements".
     room), yellow and teal as the other colours, a plain base, the go ring
     passing 14 px from the seal at 490 wide. **Seen and left**: on a
     1040-wide card all three are bare in the middle, as Tents is.
-- **Owed**: the twenty boards' cells on Stats and Streak still wear the old
-  banner (`CardArt` + `Vistas.card_plate`); the other eighteen cards;
+- **Caterpillar, Sunbeam and Knight are the twenty-first, twenty-second and
+  twenty-third** (the same day, the same words a seventh time; the same
+  recipe), the fifth, sixth and seventh of page three.
+  - **Caterpillar** (`ui/menu/cards/caterpillar.gd`): a mint lawn (`eaf6e6`
+    to `cfe9cd`) and no frame. The body is `ui/faces/caterpillar.gd`'s own
+    `body` and `head`: tail tip low on the left, along the foot, up the
+    right side and back left under the seal, the head facing left, with the
+    board's squares laid only under and beside it. Leaf 2 with its badge
+    lies two squares ahead. The go button is the square ahead of the head,
+    in the card's red, lifted, its chevron pointing left, the way she
+    crawls. On a wider card the tail runs further along the foot. One
+    numeral string; nothing lives on it.
+  - **Sunbeam** (`ui/menu/cards/sunbeam.gd`): a lilac-to-apricot dawn
+    (`ebe2f5` to `fbe2cc`), no floor or frame. The board's window and sun
+    low left; the beam runs the foot, lights a drop, steps up at two brass
+    mirrors on their two-peg rails, lights a second drop and stops in a
+    potted fern, with the bud above fed but shut and a faint beam to it.
+    The go button is the third mirror, one peg down its rail, mounted in
+    the card's blue, lifted, a chevron up the rail to a ringed peg. Five
+    motes; nothing lives on it and it writes no string.
+  - **Knight** (`ui/menu/cards/knight.gd`): an oat linen (`f6efe1` to
+    `ead9bf`) with a pale pool behind the path, and only the squares of two
+    hops laid as stepping stones in the board's sage and paper tones: two
+    right and one up, twice, seven squares at 52 px. The cream knight at
+    the low left end, the rose king at the top right under the seal, the
+    board's hoofprints along the first L. The go button is the first hop's
+    landing square in the card's mustard, lifted, with a chevron. Nothing
+    lives on it and it writes no string.
+  - **Measured**, `tests/_shot_menu.gd -- page3` on `opengl3_angle` at
+    810x1440, second of two readings: 175 draw calls on page three with
+    seven faces and one template card (both readings 175; 190 before).
+    Suite 249797/0. The throwaway probe, each card at the four sizes in es
+    (the longest or within a character of it on all three), and page three
+    whole in en. Changed after the looks: Knight's squares from 46 to 52,
+    their shadow from 0.15 to 0.22, the stair 7 px lower so the crown
+    clears the seal, and its linen lightened from `ece2ce`/`dccdb3`, which
+    read muddy on the page.
+  - **Mine, the user's to call**: Caterpillar's chevron pointing left where
+    every other card's points right, the leaf beyond the go square rather
+    than on it, the tail tip inside the left edge, no hedges or clovers;
+    Sunbeam's window and sun as the source, the fern as the beam's stop,
+    rails under all three mirrors, the chevron on the rail rather than the
+    piece, and a picture with more small parts than its neighbours';
+    Knight's hoofprints where the brief asked for a dashed arc (the board
+    has none), no mark on the second hop, stepping stones rather than a
+    board. **Seen and left**: on a 1040-wide card Sunbeam's first leg is a
+    600 px beam and Knight is bare in the middle.
+- **Owed**: the twenty-three boards' cells on Stats and Streak still wear the
+  old banner (`CardArt` + `Vistas.card_plate`); the other fifteen cards;
   Balance, Untangle and Shikaku in es; a phone.

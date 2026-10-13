@@ -629,6 +629,7 @@ const PUZZLES := [
 		# fence, a leaf out of turn and the last leaf too soon are refused at
 		# the step. So no tray and no Check; Undo, Reset and Hint ride in the
 		# top bar and the tip card stands alone -- Pinwheel's shape.
+		"card": "res://ui/menu/cards/caterpillar.gd",
 		"script": "res://puzzles/caterpillar2d.gd",
 		"shell": "flat",
 		"tray": "none",
@@ -658,6 +659,7 @@ const PUZZLES := [
 		# beam is traced after every step of a drag and is the check. So no
 		# tray and no Check; Undo, Reset and Hint ride in the top bar and the
 		# tip card stands alone -- Pinwheel's shape.
+		"card": "res://ui/menu/cards/sunbeam.gd",
 		"script": "res://puzzles/sunbeam2d.gd",
 		"shell": "flat",
 		"tray": "none",
@@ -685,6 +687,7 @@ const PUZZLES := [
 		# catch is undone as it happens. So no tray and no Check; Undo, Reset
 		# and Hint ride in the top bar and the tip card stands alone --
 		# Pinwheel's shape.
+		"card": "res://ui/menu/cards/knight.gd",
 		"script": "res://puzzles/knight2d.gd",
 		"shell": "flat",
 		"tray": "none",
