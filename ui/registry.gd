@@ -275,6 +275,7 @@ const PUZZLES := [
 		"footer": "Count · Lay · Reveal",
 		# A stroke paints with one of two chips, so it asks for the tile tray.
 		"script": "res://puzzles/nonogram2d.gd",
+		"card": "res://ui/menu/cards/nonogram.gd",
 		"shell": "flat",
 		"tray": "tiles",
 		"difficulties": [0, 1, 2, 3],
@@ -299,6 +300,7 @@ const PUZZLES := [
 		# No tray: a tap cycles a cell blank -> cross -> queen and a drag lays
 		# crosses, so there is nothing to pick.
 		"script": "res://puzzles/queens2d.gd",
+		"card": "res://ui/menu/cards/queens.gd",
 		"shell": "flat",
 		"tray": "none",
 		"difficulties": [0, 1, 2, 3],
@@ -325,6 +327,7 @@ const PUZZLES := [
 		# there is no actions row and Reset rides in the top bar; and it is
 		# the first board built with no tip card at all.
 		"script": "res://puzzles/hidden_word2d.gd",
+		"card": "res://ui/menu/cards/hiddenword.gd",
 		"shell": "flat",
 		"tray": "keys",
 		"actions": false,

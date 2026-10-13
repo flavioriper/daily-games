@@ -629,6 +629,53 @@ the first one ... Card should be elegant, cozy, but carry the game elements".
     beams; One Line's teal ground, the boardwalk as the name's underline
     (800 px long on a 1040-wide card), a go post smaller than the other
     cards' go pieces and grey because the card's colour is.
-- **Owed**: the eight boards' cells on Stats and Streak still wear the old
-  banner (`CardArt` + `Vistas.card_plate`); the other thirty cards; Balance,
-  Untangle and Shikaku in es; a phone.
+- **Nonogram, Queens and Hidden Word are the ninth, tenth and eleventh**
+  (the same day, the same words a third time; the same recipe), the first
+  three of page two.
+  - **Nonogram** (`ui/menu/cards/nonogram.gd`): a pale glaze-blue cloth, two
+    daisies in its corner, and on the right a parchment tray leaning 2.5
+    degrees with a heart five wide and four tall in the board's sockets and
+    tiles, three sockets pebbled and one empty. The clue tabs are counted
+    from the picture in code; the lines that already read right are green
+    as the board washes them, and the row and the column still in ink cross
+    at the empty socket. The go button is the tile that socket wants, in
+    the card's colour, lifted over the tray's corner. Two spare tiles and a
+    pebble lie over the tray. Nothing lives on it; nine `draw_string`s.
+  - **Queens** (`ui/menu/cards/queens.gd`): the court is the paper. Four
+    rows of it fill the card to its edges in five regions of `Pal.REGION`
+    under the board's ink seams, anchored right and running on to the left
+    for as wide as the card is; the words stand on a plain tan region top
+    left. The bee is seated on her gold near the right (the one live
+    child), her crosses run her row and column, two blooms stand in her
+    region, and the go button is the next queen's seat: a tile in the
+    card's colour, in another row, column and colour, not touching.
+  - **Hidden Word** (`ui/menu/cards/hiddenword.gd`): warm parchment, the
+    words top left, and three rows of the board's tiles stepping down to
+    the left on the right side: BREAD and LEMON judged by a `marks()`
+    function against HONEY (one amber, then three), H O N E typed on paper,
+    and the fifth tile the go button. The sprout idles on a tump of the
+    board's turf in the bottom left corner (the one live child). Fourteen
+    letter strings.
+  - **Measured**, `tests/_shot_menu.gd -- page2` on `opengl3_angle` at
+    810x1440, second of two readings: 227 draw calls on page two with the
+    three faces and five template cards (both readings 227; page one 194).
+    Suite 249797/0. The throwaway probe, each card at the four sizes in es:
+    the seal's corner is clear on all three and the words fit. Fixed from
+    the first look: Hidden Word's blades and flower stood outside the paper,
+    Nonogram's es blurb touched the tray (the words' room is 258 now), and
+    Queens wore a cross on every cell the board would derive, twenty on a
+    wide card.
+  - **Mine, the user's to call**: Nonogram's picture 5x4 rather than 5x5
+    (the seal's corner caps the tray), a heart, the blue cloth and a tray
+    the board does not have, nothing alive; Queens' crosses on her row and
+    column only and none on the tan (the board also crosses her neighbours
+    and her region), the tan as the words' ground, a second card with no
+    margin at all; Hidden Word's rows stepping left and not overlapping,
+    the three words, no green mark shown, and **its go tile is green
+    because the card's colour is, which is also the board's right-letter
+    green** (true of the Y it stands for, but it reads as a mark). **Seen
+    and left**: on a 1040-wide card Nonogram and Hidden Word are bare in
+    the middle, as Tents is.
+- **Owed**: the eleven boards' cells on Stats and Streak still wear the old
+  banner (`CardArt` + `Vistas.card_plate`); the other twenty-seven cards;
+  Balance, Untangle and Shikaku in es; a phone.
