@@ -1105,6 +1105,80 @@ the first one ... Card should be elegant, cozy, but carry the game elements".
   - **A JSON parse error from `core/backend.gd`'s `_refresh`** was printed
     by one run of the two in four of the day's five pairs of page-four and
     page-five shots; the suite never printed it. Left alone.
-- **Owed**: the thirty-eight boards' cells on Stats and Streak still wear
-  the old banner (`CardArt` + `Vistas.card_plate`); Balance, Untangle and
-  Shikaku in es; the user's eye on all thirty-eight; a phone.
+- **The other tabs wear faces too** (the same day, on "do the same redesign
+  to all cards from others tabs, also make sure they use the same style ...
+  arcade i think has a totally wrong button to scroll list instead of
+  reusing the right one from main list"). Twenty-one workers, one file
+  each, then a windowed look at every card and at each tab whole.
+  - **One pager.** `ui/menu/pager_pill.gd` is the prev, dots, next pill,
+    lifted out of `ui/menu.gd`; the Puzzles grid, the Stats tab and the
+    Arcade tab each own one (`show_page`, `turned`). The Arcade tab's two
+    chevrons and "1/2" beside the Shop button are gone: its pill stands
+    under the cards. Stats' dots were 12 px and are the grid's 14 now.
+  - **The base says a line.** `card_face.gd`'s `say(text, leaf)` puts a
+    line where the blurb stands (`puzzle_card_2d.gd` forwards it and keeps
+    it until the face is built); a said line, and a blurb with no break of
+    its own, wraps to the words' column. `leaf` draws the boosters' leaf
+    after the first line. The members are `_line_said` and `_line_leaf`:
+    `_said` and `_leaf` were taken by Hidden Word, Shikaku, Bridges and
+    Caterpillar, which parse-failed for the minutes the first names stood.
+  - **Versus** (`ui/menu/cards/vs_<game>.gd`, eight): the tab already used
+    the shell, so each card only gained its `card` key and the banner code
+    (six `_*_banner`s, two lineups) left `versus_tab.gd`. Snooker: the
+    baize is the paper, a corner pocket, a red beside it, three colours
+    beyond, the cue low from the left with a teal sleeve as the go button.
+    Chess: lilac marble and the board's top right corner with a back-rank
+    mate checked through `chess_rules.gd`, the go button the terracotta
+    rook. Checkers: five loose dark squares climbing to a crown, two rose
+    men to hop, the go button our man in sage. Air Hockey: the ice is the
+    paper, the goal cut into the right edge, the go button our mallet in
+    lavender. Toy Boats: a pale tub, a 4x3 patch with a boat two thirds
+    found, the go button a rose peg over its last square. Penny Drop: a
+    butter ground and a 4x3 piece of the rack, three of ours along the
+    floor, the go button the fourth penny in sky blue. Dominoes: a blush
+    cloth, a line of three tiles turning a corner, the go button a mustard
+    two-four at its open end. Reversi: mint felt, one strip of five cells
+    with a run mid-flip, the go button a grey disc over the ringed cell.
+  - **Arcade** (`ui/menu/cards/arc_<game>.gd`, thirteen): the tab is
+    rebuilt on the shell. The whole card is the tap; the Play button, the
+    long blurb, the one-a-row layout and the four compaction levels are
+    gone; two a row, eight a page, rows sharing the room as the Versus
+    tab's do. Under the name a card says its best and how far (`_say`;
+    `said(game)` reads it back, which `tests/_shot_nightlight.gd` now
+    uses). Colours are `Pal.CAT` by index, where every Play button was
+    gold. The thirteen banner classes left `arcade_tab.gd` (876 lines to
+    236). Firefly and Nightlight are night cards in cream ink; the rest
+    are light. The go buttons: Firefly's firefly, Molehill's mallet,
+    Stackwood's falling 512, Lucky Thirteen's last 6 of a chain, Posy's
+    third flower, Peapod's pod, Nightlight's star, Beeline's stone
+    tap-pad, Deckchair's 6 of hearts, Eddy's eye, Furrow's seed packet,
+    Griddle's tray on the pass, Trivet's rose stack.
+  - **Stats** cells are the boards' own faces over the whole cell, saying
+    "Solved 3 · Best 0:41 / Average 1:02" (or not solved yet) where the
+    card says its blurb; the plate, `CardArt` and the drawn figures left
+    `stats_tab.gd`. The seal is in the face's corner, 38 in.
+  - **Measured**, `tests/_shot_menu.gd` on `opengl3_angle` at 810x1440,
+    second of two readings (the harness takes `arcade`, `arcade turn` and
+    `versus` now): Arcade 166 draw calls (290 before), its second page 140
+    (193), Versus 128 (232), Stats 300 (426), the Puzzles grid 194
+    (unchanged). Suite 249797/0. The probe: every new card at the four
+    sizes in pt or es, the Arcade ones with a three-line line and the
+    leaf.
+  - **Workers who followed the game over the brief**: Furrow's field is
+    isometric lots now (the card uses the side-view beds its seed cards
+    keep), Griddle's stand is seen from above and the press is the pass
+    (the card's front view is its own).
+  - **Mine, the user's to call**: card colours on Arcade in place of gold;
+    no Play word and no long blurb there; the leaf kept as a mark after
+    the score; Stats figures as two lines of words where they were three
+    columns; Furrow's beds enlarged by an eighth after the look. **Seen
+    and left**: Eddy's pt line ("Maior redemoinho: nível 7") wraps to four
+    lines and meets the duckling; Penny Drop's go penny stands close after
+    its name; Lucky Thirteen's column is wide enough for a long line to
+    reach the chain; `tests/_shot_friends.gd` reads `versus_tab._blurbs`,
+    which that tab did not have before this either.
+- **Owed**: the Streak tab's Today row still wears the old picture
+  (`CardArt` + `Vistas.card_plate`), and `ui/menu/card_art.gd` now serves
+  only it and the template; Balance, Untangle and Shikaku in es; the
+  `ARC_*_BLURB` strings are unused; the user's eye on all fifty-nine
+  faces; a phone.

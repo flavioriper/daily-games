@@ -3641,3 +3641,5 @@ left ends the run.
 - **Not done**: a phone; the sounds heard; pt and es read; `reduce` shot
   (it was driven headless); pt and es tutorial pages shot; a Trivet bot in
   `tests/_probe_arcade_buzz.gd`.
+
+- **The tab's cards (2026-10-13)**: each game's card is a face of its own, `ui/menu/cards/arc_<game>.gd`, on the Puzzles tab's shell with the shared pager; see `docs/agents/first-screen.md`, "A card of its own". A new Arcade game needs a face file, or its card will not load.

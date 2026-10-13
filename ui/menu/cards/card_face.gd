@@ -18,6 +18,7 @@ const Pal = preload("res://core/palette.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Motion = preload("res://core/motion.gd")
 const SunDot = preload("res://ui/sun_dot.gd")
+const Icons = preload("res://ui/icons.gd")
 
 ## The shell's paper: its corner radius and the line round it.
 const RADIUS := 36.0
@@ -34,6 +35,11 @@ var soon := false
 var _mesh: ArrayMesh
 var _dirty := true
 var _made: Array[Node] = []
+## A line set from outside in place of the entry's blurb (the Arcade tab's
+## best score, the Stats tab's times), and whether a leaf follows its first
+## line (a best made with boosters).
+var _line_said := ""
+var _line_leaf := false
 
 func _init(the_entry: Dictionary, the_colour: Color) -> void:
 	entry = the_entry
@@ -68,6 +74,16 @@ func _draw() -> void:
 		_paint(b)
 		_mesh = b.mesh()
 	draw_mesh(_mesh, null)
+
+## Says `text` where the blurb stands, from now on; `leaf` marks its first
+## line with the boosters' leaf. An empty `text` gives the blurb back.
+func say(text: String, leaf := false) -> void:
+	if text == _line_said and leaf == _line_leaf:
+		return
+	_line_said = text
+	_line_leaf = leaf
+	if is_node_ready():
+		_relayout()
 
 ## Everything still, into `b`, in this Control's own pixels.
 func _paint(_b: Face.Builder) -> void:
@@ -114,6 +130,13 @@ func _words(title: String, at_x: float, mid_y: float, w: float, ink := Pal.TEXT,
 	var blurb := Label.new()
 	blurb.theme_type_variation = "CardBlurb"
 	blurb.text = String(entry.get("short", entry.get("blurb", "")))
+	if not _line_said.is_empty():
+		blurb.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+		blurb.text = _line_said
+	# A line with no break of its own (the Versus tab's) wraps to the column.
+	if not _line_said.is_empty() or not "\n" in tr(blurb.text):
+		blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		blurb.custom_minimum_size.x = w
 	blurb.add_theme_color_override("font_color", dim)
 	blurb.add_theme_constant_override("line_spacing", -6)
 	blurb.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -123,4 +146,13 @@ func _words(title: String, at_x: float, mid_y: float, w: float, ink := Pal.TEXT,
 	var h := words.get_combined_minimum_size().y
 	words.position = Vector2(at_x, roundf(mid_y - h * 0.5))
 	words.size = Vector2(w, h)
+	if _line_leaf and not _line_said.is_empty():
+		var first := _line_said.get_slice("\n", 0)
+		var wide := blurb.get_theme_font("font").get_string_size(first, HORIZONTAL_ALIGNMENT_LEFT, -1, blurb.get_theme_font_size("font_size")).x
+		var leaf := Control.new()
+		leaf.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		leaf.position = Vector2(wide + 8.0, 4.0)
+		leaf.size = Vector2(26.0, 26.0)
+		leaf.draw.connect(func() -> void: Icons.paint(leaf, "leaf", Rect2(Vector2.ZERO, leaf.size), Pal.LEAF))
+		blurb.add_child(leaf)
 	return words

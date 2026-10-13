@@ -127,9 +127,21 @@ func _build() -> void:
 	if completed:
 		_build_done_badge()
 
+## A line for the face to say in place of its blurb (the Arcade tab's best
+## score); `leaf` marks it as made with boosters. Kept if the face is not
+## built yet.
+var _said := ""
+var _said_leaf := false
+func say(text: String, leaf := false) -> void:
+	_said = text
+	_said_leaf = leaf
+	if _face != null:
+		_face.say(text, leaf)
+
 ## The board's own face over the whole paper (ui/menu/cards/card_face.gd).
 func _build_face() -> void:
 	_face = load(String(entry["card"])).new(entry, colour)
+	_face.say(_said, _said_leaf)
 	_face.modulate.a = SOON_INK if soon else 1.0
 	_inner.add_child(_face)
 	if soon:

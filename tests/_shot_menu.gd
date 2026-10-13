@@ -71,7 +71,7 @@ func _initialize() -> void:
 		_turns_left = 3
 		_settle = PAGE2_SETTLE + 3.2
 	for a in args:
-		if a in ["streak", "stats"] or a == "diff" or a.begins_with("diff="):
+		if a in ["streak", "stats", "arcade", "versus"] or a == "diff" or a.begins_with("diff="):
 			_tab_arg = a
 			break
 	var main: Node = load("res://world/main.tscn").instantiate()
@@ -103,6 +103,9 @@ func _process(delta: float) -> bool:
 			_draws = 0
 		elif not _tab_arg.is_empty():
 			_menu._show_tab(_tab_arg)
+			# `turn` after an `arcade`: its second page.
+			if OS.get_cmdline_user_args().has("turn") and _tab_arg == "arcade":
+				_menu.arcade_tab.turn(1)
 			_idle = []
 			_draws = 0
 		_phase = 1

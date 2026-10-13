@@ -34,27 +34,8 @@ signal friends
 
 const Pal = preload("res://core/palette.gd")
 const CozyTheme = preload("res://ui/theme.gd")
-const Vistas = preload("res://ui/menu/vistas.gd")
 const PuzzleCard = preload("res://ui/menu/puzzle_card_2d.gd")
 const Record = preload("res://versus/versus_record.gd")
-const Sim = preload("res://versus/snooker_sim.gd")
-const Table = preload("res://versus/snooker_table.gd")
-const ChessSkin = preload("res://versus/chess_skin.gd")
-const Rules = preload("res://versus/chess_rules.gd")
-const CheckersSkin = preload("res://versus/checkers_skin.gd")
-const CheckersRules = preload("res://versus/checkers_rules.gd")
-const HockeySim = preload("res://versus/hockey_sim.gd")
-const HockeyTable = preload("res://versus/hockey_table.gd")
-const BoatsRules = preload("res://versus/boats_rules.gd")
-const BoatsBoard = preload("res://versus/boats_board.gd")
-const PennyRules = preload("res://versus/penny_rules.gd")
-const PennyBoard = preload("res://versus/penny_board.gd")
-const DominoesRules = preload("res://versus/dominoes_rules.gd")
-const DominoesBoard = preload("res://versus/dominoes_board.gd")
-const ReversiRules = preload("res://versus/reversi_rules.gd")
-const ReversiBoard = preload("res://versus/reversi_board.gd")
-const Face = preload("res://ui/faces/face.gd")
-const Scenery = preload("res://ui/flat/scenery.gd")
 const Social = preload("res://core/social.gd")
 const SheetParts = preload("res://ui/hud/sheet_parts.gd")
 const Icons = preload("res://ui/icons.gd")
@@ -87,8 +68,6 @@ const FRIENDS_TINT := Color("f4b8a4")
 const ONLINE_INK := Color("4f8a31")
 static var PLAIN := CanvasItemMaterial.new()
 
-## The banners that are a real table lying on its side: [art, table, span].
-var _laid: Array = []
 var _cards: Array[Control] = []
 var _grid: GridContainer
 var friends_row: Button
@@ -120,35 +99,11 @@ static func plays_online(game: String) -> bool:
 	return GAMES.has(game) and not LOCAL_GAMES.has(game)
 
 func _game_card(game: String, colour: Color) -> Control:
-	var card := PuzzleCard.new({"id": game, "title": NAMES[game], "short": SHORTS[game]}, colour)
+	# A face of its own over the whole paper (ui/menu/cards/vs_<game>.gd).
+	var card := PuzzleCard.new({"id": game, "title": NAMES[game], "short": SHORTS[game],
+		"card": "res://ui/menu/cards/vs_%s.gd" % game}, colour)
 	card.name = "Card_" + game
-	card.art_grow = ART_GROW
 	card.open.connect(func() -> void: open.emit(game))
-	# The card builds itself as it enters the tree; its picture's plate is
-	# there then. The drawing lies in a layer of its own over the plate: the
-	# card's own picture (ui/menu/card_art.gd) frees its children whenever
-	# it is resized, and has none for these games.
-	card.ready.connect(func() -> void:
-		var art := Control.new()
-		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		art.clip_contents = true
-		card.art.get_parent().add_child(art)
-		if game == "snooker":
-			_snooker_banner(art)
-		elif game == "hockey":
-			_hockey_banner(art)
-		elif game == "boats":
-			_boats_banner(art)
-		elif game == "penny":
-			_penny_banner(art)
-		elif game == "dominoes":
-			_dominoes_banner(art)
-		elif game == "reversi":
-			_reversi_banner(art)
-		else:
-			var lineup: Control = ChessLineup.new() if game == "chess" else CheckersLineup.new()
-			lineup.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-			art.add_child(lineup))
 	_cards.append(card)
 	return card
 
@@ -245,123 +200,6 @@ func _read_friends() -> void:
 	await Social.refresh_presence()
 	_paint_friends()
 
-func _snooker_banner(art: Control) -> void:
-	var sim := Sim.new()
-	var table := Table.new()
-	table.still = true
-	table.sim = sim
-	table.show_guide = false
-	table.aim_dir = (sim.pos[11] - sim.pos[Sim.CUE]).normalized()
-	table.power = 0.35
-	art.add_child(table)
-	var entry := [art, table, Vector2(Sim.W, Sim.L) + Vector2.ONE * 2.0 * (Table.CUSHION + Table.RAIL)]
-	_laid.append(entry)
-	art.resized.connect(_lay_table.bind(entry))
-
-## Air hockey's banner: its table too, a rally caught with the puck just off
-## the gold mallet and the blue one coming across to meet it.
-func _hockey_banner(art: Control) -> void:
-	var sim := HockeySim.new()
-	sim.mallet[0] = Vector2(0.36, 1.2)
-	sim.mallet[1] = Vector2(0.66, 0.34)
-	sim.puck = Vector2(0.57, 0.76)
-	var table := HockeyTable.new()
-	table.still = true
-	table.sim = sim
-	art.add_child(table)
-	var entry := [art, table, Vector2(HockeySim.W, HockeySim.L) + Vector2.ONE * 2.0 * HockeyTable.RAIL]
-	_laid.append(entry)
-	art.resized.connect(_lay_table.bind(entry))
-
-## Toy Boats' banner: the box open, a game some way in -- the pond with a
-## peg in one boat and a ripple beside another, the slate with its rings,
-## its crosses and one boat already chalked.
-func _boats_banner(art: Control) -> void:
-	var pond := BoatsRules.new()
-	pond.lay([Vector3i(1, 1, 0), Vector3i(7, 3, 1), Vector3i(2, 4, 0), Vector3i(0, 6, 1), Vector3i(4, 8, 0)])
-	for c: int in [14, 37, 52, 66, 81, 29]:
-		pond.fire(c)
-	var slate := BoatsRules.new()
-	for c: int in [3, 27, 40, 58, 75, 91]:
-		slate.note(c, BoatsRules.MISS)
-	slate.note(62, BoatsRules.HIT)
-	slate.note(63, BoatsRules.HIT)
-	slate.note(64, BoatsRules.SUNK, 2, Vector3i(2, 6, 0))
-	slate.note(18, BoatsRules.HIT)
-	var board := BoatsBoard.new()
-	board.still = true
-	board.setup(pond, slate)
-	board.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	board.offset_top = 8.0
-	board.offset_bottom = -8.0
-	art.add_child(board)
-
-## Penny Drop's banner: the foot of the rack some way into a game, the sun
-## with three on a slant. The rack is as wide as the picture allows and
-## stands on its bottom edge, so a short picture shows its lowest rows.
-func _penny_banner(art: Control) -> void:
-	var rules := PennyRules.new()
-	for c: int in [3, 3, 4, 2, 2, 4, 1, 5, 3, 2, 5, 0]:
-		rules.make(c)
-	var board := PennyBoard.new()
-	board.still = true
-	board.setup(rules, PennyRules.FIRST)
-	art.add_child(board)
-	var lay := func() -> void:
-		var w := minf(art.size.x - 24.0, art.size.y * 3.6)
-		board.size = Vector2(w, art.size.y - 4.0)
-		board.position = Vector2((art.size.x - w) * 0.5, 0.0)
-	art.resized.connect(lay)
-	lay.call()
-
-## Dominoes' banner: a line some way into a hand on its felt, a double
-## across it and a turn at one end, as large as the picture allows.
-func _dominoes_banner(art: Control) -> void:
-	var rules := DominoesRules.new()
-	var line := []
-	for pair: Array in [[6, 4, 0], [4, 4, 1], [6, 2, 0], [4, 1, 1], [2, 2, 0], [1, 5, 1], [2, 3, 0], [5, 5, 1]]:
-		line.append(DominoesRules.id(pair[0], pair[1]) * 2 + pair[2])
-	rules.lay([], [], [], line)
-	var board := DominoesBoard.new()
-	board.still = true
-	board.setup(rules, DominoesRules.FIRST)
-	board.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	board.offset_left = 10.0
-	board.offset_right = -10.0
-	board.offset_top = 8.0
-	board.offset_bottom = -4.0
-	art.add_child(board)
-
-## Reversi's banner: the middle of a board some way into a game, as wide as
-## the picture and cut to its height.
-func _reversi_banner(art: Control) -> void:
-	var rules := ReversiRules.new()
-	rules.lay(["........", "..o.x...", "..oxxx..", ".xxoox..", "..oxoo..", "..xoxo..", "...x....", "........"])
-	var board := ReversiBoard.new()
-	board.still = true
-	board.clip_contents = true
-	board.setup(rules, ReversiRules.FIRST)
-	art.add_child(board)
-	var lay := func() -> void:
-		var w := minf(art.size.x - 24.0, art.size.y * 2.0)
-		board.size = Vector2(w, art.size.y - 8.0)
-		board.position = Vector2((art.size.x - w) * 0.5, 4.0)
-	art.resized.connect(lay)
-	lay.call()
-
-## A table lies on its side across its banner, turned about its middle.
-func _lay_table(entry: Array) -> void:
-	var art: Control = entry[0]
-	var table: Control = entry[1]
-	var span: Vector2 = entry[2]
-	var h := minf(art.size.y - 30.0, (art.size.x - 60.0) * span.x / span.y)
-	var w := h * span.y / span.x
-	table.size = Vector2(h, w)
-	table.pivot_offset = table.size * 0.5
-	table.rotation = -PI * 0.5
-	table.position = art.size * 0.5 - table.size * 0.5
-	table.queue_redraw()
-
 func refresh() -> void:
 	_paint_friends()
 	_fit.call_deferred()
@@ -413,112 +251,3 @@ func _fit() -> void:
 	var row_h := clampf(floorf((room - GAP * (rows - 1)) / rows), PuzzleCard.CARD_H, PuzzleCard.CARD_H + ART_GROW)
 	for card in _cards:
 		card.fit_height(row_h)
-
-## Chess's banner: the garden set lined up on a strip of lawn squares, the
-## cream side facing the rose. Drawn once, with the set's own meshes.
-class ChessLineup extends Control:
-	const LINE := [[Rules.ROOK, 0], [Rules.KNIGHT, 0], [Rules.KING, 0], [Rules.PAWN, 0],
-		[Rules.PAWN, 1], [Rules.QUEEN, 1], [Rules.BISHOP, 1], [Rules.KNIGHT, 1]]
-	var _skin: RefCounted = ChessSkin.named("garden")
-	## The meshes last drawn: a canvas command holds a mesh by RID, so they
-	## live until the next draw replaces them.
-	var _keep: Array = []
-
-	func _ready() -> void:
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-		resized.connect(queue_redraw)
-
-	func _draw() -> void:
-		var n := LINE.size()
-		var c := floorf(minf(size.x * 0.9 / n, size.y * 0.52))
-		if c <= 0.0:
-			return
-		var left := (size.x - c * n) * 0.5
-		var top := size.y - c * 0.95
-		_keep.clear()
-		var b := Face.Builder.new()
-		Scenery.soft_disc(b, Vector2(size.x * 0.5, top + c * 0.55), c * n * 0.56, c * 0.5, Color(0.15, 0.1, 0.05, 0.25))
-		var strip := Face.Builder.round_rect(Vector2(left - c * 0.12, top - c * 0.12), Vector2(c * n + c * 0.24, c * 0.96), c * 0.14)
-		b.fan(strip, Color("6e4a2f"))
-		b.fan(Face.Builder.round_rect(Vector2(left - c * 0.12, top - c * 0.14), Vector2(c * n + c * 0.24, c * 0.92), c * 0.14), Color("9c6b45"))
-		for i in n:
-			var at := Vector2(left + i * c, top)
-			b.fan(PackedVector2Array([at, at + Vector2(c, 0), at + Vector2(c, c * 0.7), at + Vector2(0, c * 0.7)]),
-				Color("a4c088") if i % 2 == 0 else Color("f5e9cf"))
-		for i in n:
-			var foot := Vector2(left + (i + 0.5) * c, top + c * 0.48)
-			Scenery.soft_disc(b, foot, c * 0.34, c * 0.1, Color(Pal.TEXT, 0.24))
-		var ground := b.mesh()
-		_keep.append(ground)
-		draw_mesh(ground, null)
-		for i in n:
-			var type: int = LINE[i][0]
-			var side: int = LINE[i][1]
-			var pb := Face.Builder.new()
-			var face := ChessSkin.F_JOY if type == Rules.KING or type == Rules.QUEEN else ChessSkin.F_OPEN
-			_skin.build(pb, type, side, c, face, 1.0 if side == 0 else -1.0)
-			var foot := Vector2(left + (i + 0.5) * c, top + c * 0.48)
-			var m := pb.mesh()
-			_keep.append(m)
-			draw_mesh(m, null, Transform2D(0.0, foot))
-
-## Checkers' banner: a strip of the board seen from above, a king at each
-## end and a cream man caught mid-leap over a worried rose one. Drawn once,
-## with the set's own meshes.
-class CheckersLineup extends Control:
-	## [square, type, side, face, lift]
-	const LINE := [[0, CheckersRules.MAN, 0, CheckersSkin.F_OPEN, 0.0], [2, CheckersRules.KING, 0, CheckersSkin.F_JOY, 0.0],
-		[4, CheckersRules.MAN, 1, CheckersSkin.F_WORRY, 0.0], [3.6, CheckersRules.MAN, 0, CheckersSkin.F_BRAVE, 0.75],
-		[6, CheckersRules.KING, 1, CheckersSkin.F_OPEN, 0.0]]
-	var _skin: RefCounted = CheckersSkin.named("garden")
-	var _keep: Array = []
-
-	func _ready() -> void:
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-		resized.connect(queue_redraw)
-
-	func _draw() -> void:
-		var n := 8
-		var c := floorf(minf(size.x * 0.9 / n, size.y * 0.5))
-		if c <= 0.0:
-			return
-		var left := (size.x - c * n) * 0.5
-		var top := size.y - c * 1.12
-		_keep.clear()
-		var b := Face.Builder.new()
-		Scenery.soft_disc(b, Vector2(size.x * 0.5, top + c * 0.6), c * n * 0.56, c * 0.55, Color(0.15, 0.1, 0.05, 0.25))
-		b.fan(Face.Builder.round_rect(Vector2(left - c * 0.12, top - c * 0.1), Vector2(c * n + c * 0.24, c * 1.2), c * 0.14), Color("6e4a2f"))
-		b.fan(Face.Builder.round_rect(Vector2(left - c * 0.12, top - c * 0.12), Vector2(c * n + c * 0.24, c * 1.16), c * 0.14), Color("9c6b45"))
-		for i in n:
-			var at := Vector2(left + i * c, top)
-			b.fan(PackedVector2Array([at, at + Vector2(c, 0), at + Vector2(c, c), at + Vector2(0, c)]),
-				Color("a4c088") if i % 2 == 0 else Color("f1e1c1"))
-		# the leap's arc, dotted
-		for k in 9:
-			var f := float(k) / 8.0
-			var q := Vector2(left + (2.5 + 3.0 * f) * c, top + c * 0.5 - sin(PI * f) * c * 0.8)
-			b.disc(q, c * 0.035, Color(Pal.SUN, 0.7))
-		for e: Array in LINE:
-			var lift: float = e[4]
-			var at := Vector2(left + (float(e[0]) + 0.5) * c, top + c * 0.5)
-			Scenery.soft_disc(b, at + Vector2(c * (0.05 + lift * 0.2), c * (0.08 + lift * 0.1)), c * 0.42 * (1.0 - lift * 0.2), c * 0.38 * (1.0 - lift * 0.2),
-				Color(Pal.TEXT, 0.22))
-		var ground := b.mesh()
-		_keep.append(ground)
-		draw_mesh(ground, null)
-		for e: Array in LINE:
-			var lift: float = e[4]
-			var grow := 1.0 + 0.22 * lift
-			var at := Vector2(left + (float(e[0]) + 0.5) * c, top + c * 0.5 - lift * c * 0.8)
-			var xf := Transform2D(0.0, Vector2.ONE * grow, 0.0, at)
-			var bb := Face.Builder.new()
-			_skin.build_base(bb, e[1], e[2], c)
-			var base := bb.mesh()
-			var tb := Face.Builder.new()
-			var gaze := Vector2i(1, 1) if lift > 0.0 else (Vector2i(1, 0) if e[2] == 0 else Vector2i(-1, -1))
-			_skin.build(tb, e[1], e[2], c, e[3], gaze)
-			var topm := tb.mesh()
-			_keep.append(base)
-			_keep.append(topm)
-			draw_mesh(base, null, xf)
-			draw_mesh(topm, null, Transform2D(-0.35 if lift > 0.0 else 0.0, Vector2.ONE * grow, 0.0, at))

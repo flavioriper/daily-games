@@ -56,6 +56,7 @@ const PennyScreen = preload("res://versus/penny_screen.gd")
 const DominoesScreen = preload("res://versus/dominoes_screen.gd")
 const ReversiScreen = preload("res://versus/reversi_screen.gd")
 const ArcadeTab = preload("res://ui/menu/arcade_tab.gd")
+const PagerPill = preload("res://ui/menu/pager_pill.gd")
 const FireflyScreen = preload("res://arcade/firefly_screen.gd")
 const MolehillScreen = preload("res://arcade/molehill_screen.gd")
 const StackwoodScreen = preload("res://arcade/stackwood_screen.gd")
@@ -159,19 +160,6 @@ const PAGER_MID := BottomBar.HEIGHT + MARGIN + GAP + PAGER_SEAM * 0.5
 ## The pill's own slot: taller than the pill needs, so CenterContainer never
 ## clips it.
 const PAGER_SLOT_H := 64.0
-## Chunky, round and bordered, the same visual language as every other
-## control on this screen (the bar's tabs, a card's go button) rather than a
-## bare vector line -- the first version of this strip used a 16px icon on
-## no background at all and read as an artefact, not a button.
-const PAGER_BTN := Vector2(44.0, 44.0)
-const PAGER_ICON := 20.0
-## The pager's dots. Two is what thirteen to twenty-four cards need;
-## the row draws as many as it is given, so a twenty-fifth board would cost
-## nothing here either -- the seventeenth already did not. The current
-## page is a filled disc; every other page is a ring, so the two are never
-## just two shades of the same filled dot.
-const DOT := 14.0
-const DOT_GAP := 10.0
 ## A swipe across the grid turns the page: this far sideways, and at least
 ## SWIPE_SLOPE times further sideways than down, so a vertical flick or a
 ## tap that wanders is never read as one.
@@ -299,9 +287,7 @@ var _toast: Label
 var _toast_tw: Tween
 ## The pager strip: prev, dots, next, between the grid and the bar.
 var _pager: Control
-var _prev: Button
-var _next: Button
-var _dots: Control
+var _pill: PagerPill
 var _pager_tw: Tween
 ## The date key the list last showed; _check_day refreshes when it moves.
 var _shown_day := 0
@@ -535,24 +521,10 @@ func _build_list() -> void:
 	pager_center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pager_center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_pager.add_child(pager_center)
-	var pill := PanelContainer.new()
-	pill.add_theme_stylebox_override("panel", CozyTheme.lifted(Pal.SURFACE, 24, 8))
-	pager_center.add_child(pill)
-	var pager_row := HBoxContainer.new()
-	pager_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	pager_row.add_theme_constant_override("separation", 12)
-	pill.add_child(pager_row)
-	_prev = _page_button("chevron_left")
-	_prev.pressed.connect(func() -> void: _turn_page(-1))
-	pager_row.add_child(_prev)
-	_dots = Control.new()
-	_dots.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_dots.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_dots.draw.connect(_draw_dots.bind(_dots))
-	pager_row.add_child(_dots)
-	_next = _page_button("chevron_right")
-	_next.pressed.connect(func() -> void: _turn_page(1))
-	pager_row.add_child(_next)
+	# The pill every list of the first screen wears (ui/menu/pager_pill.gd).
+	_pill = PagerPill.new(true)
+	_pill.turned.connect(_turn_page)
+	pager_center.add_child(_pill)
 
 	# A line about something that is only drawn, laid over the bar rather
 	# than given a row of the column: four rows of cards and the bar spend
@@ -579,7 +551,7 @@ func _build_list() -> void:
 	_list_root.add_child(_toast)
 
 	# Built last: _set_pager (called from _build_page) reaches into _pager,
-	# _prev, _next and _dots, all built just above -- calling this any
+	# and _pill, built just above -- calling this any
 	# earlier (it once sat right after _grid, before any of them existed)
 	# left _set_pager silently failing on a null _pager and _dots never
 	# getting told how many pages there are, which is why the very first
@@ -964,55 +936,7 @@ func _drop_peek() -> void:
 func _set_pager(page: int, pages: int) -> void:
 	var many := pages > 1
 	_pager.visible = many
-	_prev.disabled = page <= 0
-	_next.disabled = page >= pages - 1
-	(_prev.get_meta("glyph") as Control).queue_redraw()
-	(_next.get_meta("glyph") as Control).queue_redraw()
-	_dots.custom_minimum_size = Vector2(pages * DOT + (pages - 1) * DOT_GAP, DOT)
-	_dots.set_meta("page", page)
-	_dots.set_meta("pages", pages)
-	_dots.queue_redraw()
-
-## The current page is a filled disc; every other page is an outlined
-## ring, so "which page" reads at a glance rather than as two shades of the
-## same dot (found by review, 2026-09-20 -- the fix for the missing second
-## dot was the build-order bug in _build_list, but the ring makes the two
-## states unmistakable even so).
-func _draw_dots(on: Control) -> void:
-	var page: int = on.get_meta("page", 0)
-	var pages: int = on.get_meta("pages", 1)
-	for i in pages:
-		var x := i * (DOT + DOT_GAP) + DOT * 0.5
-		var center_pt := Vector2(x, DOT * 0.5)
-		if i == page:
-			on.draw_circle(center_pt, DOT * 0.5, Pal.TEXT)
-		else:
-			on.draw_arc(center_pt, DOT * 0.5 - 1.5, 0.0, TAU, 24, Pal.TEXT_DIM, 2.5, true)
-
-## One chunky round button for the pager -- CozyTheme's usual card
-## stylebox rather than a bare vector line on no background, so it reads
-## as a button the way the bar's tabs and a card's own go button do.
-func _page_button(icon: String) -> Button:
-	var btn := Button.new()
-	# The turn plays the page's slide (_slide_to), not the button's click.
-	btn.set_meta("silent", true)
-	btn.custom_minimum_size = PAGER_BTN
-	btn.focus_mode = Control.FOCUS_NONE
-	var r := int(PAGER_BTN.y * 0.5)
-	CozyTheme.lift_button(btn, Pal.SURFACE, r, 0)
-	var center := CenterContainer.new()
-	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	btn.add_child(center)
-	var glyph := Control.new()
-	glyph.custom_minimum_size = Vector2(PAGER_ICON, PAGER_ICON)
-	glyph.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	glyph.draw.connect(func() -> void:
-		Icons.paint(glyph, icon, Rect2(Vector2.ZERO, glyph.size),
-			Pal.TEXT_DIM if btn.disabled else Pal.TEXT))
-	center.add_child(glyph)
-	btn.set_meta("glyph", glyph)
-	return btn
+	_pill.show_page(page, pages)
 
 ## A page change is not an entrance: the header, the day row and the bar
 ## stay where they are, and the page slides -- the one up leaves to one side

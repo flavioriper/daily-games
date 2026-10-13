@@ -1440,3 +1440,5 @@ rules or `Match`'s clocks.
   anyone is found (`docs/agents/analytics.md`).
 - The pt and es names and strings (`VS_NAME_*`, the 28 `VS_` keys,
   `SNK_RIVAL_TURN`) are machine-fluent and want a native eye.
+
+- **The tab's cards (2026-10-13)**: each game's card is a face of its own, `ui/menu/cards/vs_<game>.gd`; see `docs/agents/first-screen.md`, "A card of its own". A new Versus game needs a face file, or its card will not load.

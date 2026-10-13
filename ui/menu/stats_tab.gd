@@ -19,8 +19,7 @@ const Streak = preload("res://core/streak.gd")
 const PlayerStats = preload("res://core/player_stats.gd")
 const Registry = preload("res://ui/registry.gd")
 const Ink = preload("res://ui/menu/ink.gd")
-const CardArt = preload("res://ui/menu/card_art.gd")
-const Vistas = preload("res://ui/menu/vistas.gd")
+const PagerPill = preload("res://ui/menu/pager_pill.gd")
 const StreakTab = preload("res://ui/menu/streak_tab.gd")
 const UiSound = preload("res://ui/ui_sound.gd")
 const Motion = preload("res://core/motion.gd")
@@ -34,25 +33,17 @@ const COLS := 2
 const ROWS := 4
 const PER_PAGE := COLS * ROWS
 const CELL_GAP := 16.0
-## A cell's banner: inset CELL_PAD from the cell, as tall as the room under
-## it leaves (the home card's 100 at 1080x1920).
-const CELL_PAD := 8.0
-## Under the banner: the title's line and the three figures' two.
-const TEXT_H := 118.0
 ## The pager pill under the grid: the home pager's buttons and dots.
 const PAGER_H := 64.0
-const PAGER_BTN := Vector2(44.0, 44.0)
-const PAGER_ICON := 20.0
-const DOT := 12.0
-const DOT_GAP := 12.0
 ## A turn: the page slides a share of its width out and the next one in.
 const TURN_OUT := 0.12
 const TURN_IN := 0.2
 const TURN_SHIFT := 0.18
 ## A swipe past this many px sideways turns the page.
 const SWIPE := 60.0
-const BANNER_R := 18.0
-const SEAL_R := 14.0
+const SEAL_R := 18.0
+## How far in from the cell's corner the seal stands, as on a home card.
+const SEAL_IN := 38.0
 const DIFFS := ["DIFF_EASY", "DIFF_MEDIUM", "DIFF_HARD", "DIFF_INSANE"]
 const CHIP_ICONS := ["leaf", "cloud", "mountain", "sparkle"]
 
@@ -68,9 +59,7 @@ var _page_ci: Control
 var _seals_ci: Control
 var _page := 0
 var _pager: Control
-var _prev: Button
-var _next: Button
-var _dots: Control
+var _pill: PagerPill
 var _turn_tw: Tween
 var _swipe_id := -2
 var _swipe_from := Vector2.ZERO
@@ -143,6 +132,7 @@ func refresh() -> void:
 	_diff = Progress.stats_difficulty()
 	_boards = PlayerStats.boards(_log, _diff)
 	_build_banners()
+	_say_figures()
 	_dress_chips()
 	_show_page()
 	_tiles_ci.queue_redraw()
@@ -153,6 +143,7 @@ func _pick(i: int) -> void:
 	Progress.set_stats_difficulty(i)
 	_diff = i
 	_boards = PlayerStats.boards(_log, _diff)
+	_say_figures()
 	_dress_chips()
 	_page_ci.queue_redraw()
 	_seals_ci.queue_redraw()
@@ -250,26 +241,20 @@ func _draw_chip(i: int) -> void:
 
 # --- the boards ---
 
-## Each board's banner is its home card's: the painted plate and the cast
-## (one plate draw call and the cast's own meshes apiece). Built on the first
-## refresh rather than at startup, so a player who never opens Stats pays
-## nothing for the pictures, and only the page's eight are shown.
+## Each board's cell is its home card's own face (ui/menu/cards/<id>.gd),
+## laid over the whole cell, saying the figures where the card says its
+## blurb. Built on the first refresh rather than at startup, so a player who
+## never opens Stats pays nothing for the pictures, and only the page's
+## eight are shown.
 func _build_banners() -> void:
 	if not _banners.is_empty():
 		return
 	for i in Registry.PUZZLES.size():
-		var id := String(Registry.PUZZLES[i].id)
-		var holder := Control.new()
-		holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var plate := Vistas.card_plate(id, Pal.CAT[i % Pal.CAT.size()])
-		(plate.material as ShaderMaterial).set_shader_parameter("radius", BANNER_R)
-		plate.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		holder.add_child(plate)
-		var art := CardArt.new(id)
-		art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		holder.add_child(art)
-		_page_ci.add_child(holder)
-		_banners.append(holder)
+		var entry: Dictionary = Registry.PUZZLES[i]
+		var face: Control = load(String(entry["card"])).new(entry, Pal.CAT[i % Pal.CAT.size()])
+		_page_ci.add_child(face)
+		_banners.append(face)
+	_say_figures()
 	# The seals ride over every banner, so they are the last child.
 	_seals_ci = Control.new()
 	_seals_ci.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -296,9 +281,19 @@ func _cell(k: int) -> Rect2:
 	return Rect2((k % COLS) * (tw + CELL_GAP), (k / COLS) * (th + CELL_GAP), tw, th)
 
 func _banner(cell: Rect2) -> Rect2:
-	var w := cell.size.x - CELL_PAD * 2.0
-	var h := clampf(cell.size.y - CELL_PAD - TEXT_H, 40.0, w * CardArt.ART.y / CardArt.ART.x)
-	return Rect2(cell.position + Vector2.ONE * CELL_PAD, Vector2(w, h))
+	return cell
+
+## What each face says under its name at this difficulty: how many solved
+## over the best and the mean time, or that it is not solved yet.
+func _say_figures() -> void:
+	for i in _banners.size():
+		var row: Dictionary = _boards.get(String(Registry.PUZZLES[i].id), {})
+		var line := tr("STATS_NOT_YET")
+		if int(row.get("count", 0)) > 0:
+			line = "%s %d" % [tr("STATS_SOLVED"), int(row.count)]
+			if float(row.get("best", 0.0)) > 0.0:
+				line += " · %s %s\n%s %s" % [tr("STATS_BEST"), _mmss(row.best), tr("STATS_MEAN"), _mmss(row.mean)]
+		_banners[i].say(line)
 
 func _place_banners() -> void:
 	var many := _pages() > 1
@@ -324,48 +319,20 @@ func _place_banners() -> void:
 func _show_page() -> void:
 	_page = clampi(_page, 0, _pages() - 1)
 	_place_banners()
-	_prev.disabled = _page <= 0
-	_next.disabled = _page >= _pages() - 1
-	for b in [_prev, _next]:
-		(b.get_meta("glyph") as Control).queue_redraw()
-	_dots.custom_minimum_size = Vector2(_pages() * DOT + (_pages() - 1) * DOT_GAP, DOT)
-	_dots.queue_redraw()
+	_pill.show_page(_page, _pages())
 
 ## A cell: the banner, the title, then three figures side by side -- a
 ## small dim label over a bold value -- or one dim line for a board not yet
 ## solved at this difficulty.
 func _draw_grid() -> void:
 	var ci := _page_ci
-	var box := CozyTheme.lifted(Pal.SURFACE, 24, 0)
+	var box := CozyTheme.lifted(Pal.SURFACE, 36, 0)
+	box.set_border_width_all(2)
+	box.border_color = Color(Pal.LINE, 0.35)
 	box.shadow_size = 8
 	box.shadow_offset = Vector2(0.0, 4.0)
-	var shown := _on_page()
-	for k in shown.size():
-		var entry: Dictionary = Registry.PUZZLES[shown[k]]
-		var row: Dictionary = _boards.get(String(entry.id), {})
-		var r := _cell(k)
-		ci.draw_style_box(box, r)
-		var y := _banner(r).end.y
-		var x := r.position.x + 18.0
-		var room := r.size.x - 36.0
-		var title := String(entry.title)
-		Ink.text(ci, _head, title, Vector2(x, y + 40), Ink.fit(_head, title, 32, room), Pal.TEXT)
-		if int(row.get("count", 0)) > 0:
-			var timed := float(row.get("best", 0.0)) > 0.0
-			var figs := [
-				[tr("STATS_SOLVED"), str(int(row.count))],
-				[tr("STATS_BEST"), _mmss(row.best) if timed else "—"],
-				[tr("STATS_MEAN"), _mmss(row.mean) if timed else "—"],
-			]
-			var col_w := room / 3.0
-			for f in figs.size():
-				var fx := x + f * col_w
-				var label: String = figs[f][0]
-				Ink.text(ci, _body, label, Vector2(fx, y + 74), Ink.fit(_body, label, 20, col_w - 10.0, 14), Pal.TEXT_DIM)
-				Ink.text(ci, _head, figs[f][1], Vector2(fx, y + 106), 30, Pal.TEXT)
-		else:
-			var line := tr("STATS_NOT_YET")
-			Ink.text(ci, _body, line, Vector2(x, y + 88), Ink.fit(_body, line, 24, room), Color(Pal.TEXT_DIM, 0.8))
+	for k in _on_page().size():
+		ci.draw_style_box(box, _cell(k))
 
 ## A green check seal on a board solved at this difficulty, an empty ring on
 ## one not yet: pinned over the banner's top right corner like the home card's.
@@ -374,7 +341,7 @@ func _draw_seals() -> void:
 	var shown := _on_page()
 	for k in shown.size():
 		var b := _banner(_cell(k))
-		var c := Vector2(b.end.x - SEAL_R - 8.0, b.position.y + SEAL_R + 8.0)
+		var c := Vector2(b.end.x - SEAL_IN, b.position.y + SEAL_IN)
 		var row: Dictionary = _boards.get(String(Registry.PUZZLES[shown[k]].id), {})
 		if int(row.get("count", 0)) > 0:
 			ci.draw_circle(c, SEAL_R + 3.0, Pal.SURFACE, true, -1.0, true)
@@ -388,58 +355,14 @@ func _draw_seals() -> void:
 
 # --- the pager ---
 
-## The home grid's pager, drawn the same: prev, dots, next in a paper pill.
+## The pager every list of the first screen wears (ui/menu/pager_pill.gd).
 func _build_pager() -> void:
 	_pager = CenterContainer.new()
 	_pager.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_grid_ci.add_child(_pager)
-	var pill := PanelContainer.new()
-	pill.add_theme_stylebox_override("panel", CozyTheme.lifted(Pal.SURFACE, 24, 8))
-	_pager.add_child(pill)
-	var row := HBoxContainer.new()
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 12)
-	pill.add_child(row)
-	_prev = _page_button("chevron_left")
-	_prev.pressed.connect(turn.bind(-1))
-	row.add_child(_prev)
-	_dots = Control.new()
-	_dots.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_dots.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_dots.draw.connect(_draw_dots)
-	row.add_child(_dots)
-	_next = _page_button("chevron_right")
-	_next.pressed.connect(turn.bind(1))
-	row.add_child(_next)
-
-func _page_button(icon: String) -> Button:
-	var btn := Button.new()
-	# The turn plays the page's slide, not the button's click.
-	btn.set_meta("silent", true)
-	btn.custom_minimum_size = PAGER_BTN
-	btn.focus_mode = Control.FOCUS_NONE
-	CozyTheme.lift_button(btn, Pal.SURFACE, int(PAGER_BTN.y * 0.5), 0)
-	var center := CenterContainer.new()
-	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	btn.add_child(center)
-	var glyph := Control.new()
-	glyph.custom_minimum_size = Vector2(PAGER_ICON, PAGER_ICON)
-	glyph.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	glyph.draw.connect(func() -> void:
-		Icons.paint(glyph, icon, Rect2(Vector2.ZERO, glyph.size),
-			Pal.TEXT_DIM if btn.disabled else Pal.TEXT))
-	center.add_child(glyph)
-	btn.set_meta("glyph", glyph)
-	return btn
-
-func _draw_dots() -> void:
-	for i in _pages():
-		var c := Vector2(i * (DOT + DOT_GAP) + DOT * 0.5, DOT * 0.5)
-		if i == _page:
-			_dots.draw_circle(c, DOT * 0.5, Pal.TEXT)
-		else:
-			_dots.draw_arc(c, DOT * 0.5 - 1.5, 0.0, TAU, 24, Pal.TEXT_DIM, 2.5, true)
+	_pill = PagerPill.new(true)
+	_pill.turned.connect(turn)
+	_pager.add_child(_pill)
 
 ## Turns `by` pages (clamped): the page slides out towards the side it is
 ## leaving by, fading, and the next one slides in from the other side.

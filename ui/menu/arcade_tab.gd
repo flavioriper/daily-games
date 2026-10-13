@@ -17,87 +17,50 @@ extends VBoxContainer
 ## and Streak do. (Hedgerow TD, Henhouse and Millstream left for a side
 ## project on 2026-09-27, ~/dev/garden-games.)
 ##
-## One card a game: the game's own cast lying across a painted banner (still,
-## drawn once), the name and the best score, a line, and the best stage
-## beside Play. A short screen gives up the line and then some of the
-## picture before it would push the bar off (_fit, the Versus tab's rule),
-## and past that stands the cards two a row.
+## One card a game, on the Puzzles tab's shell (ui/menu/puzzle_card_2d.gd)
+## with a face of its own (ui/menu/cards/arc_<game>.gd): the whole card is
+## the tap, the go button is part of its picture, and under the name it
+## says the best score and how far the player got. Two a row, eight a page,
+## and the pages turn with the pager every list of the first screen wears
+## (ui/menu/pager_pill.gd), under the cards.
 
 signal play(game: String)
 ## The strip's Shop button, or its gold pill: the shop sheet, on `game`.
 signal shop(game: String)
 
 const Pal = preload("res://core/palette.gd")
-const CozyTheme = preload("res://ui/theme.gd")
-const Vistas = preload("res://ui/menu/vistas.gd")
 const IconButton = preload("res://ui/hud/icon_button.gd")
-const SunDot = preload("res://ui/sun_dot.gd")
 const Record = preload("res://arcade/arcade_record.gd")
-const Art = preload("res://arcade/firefly_art.gd")
-const Face = preload("res://ui/faces/face.gd")
-const MoleArt = preload("res://arcade/molehill_art.gd")
-const StackArt = preload("res://arcade/stackwood_art.gd")
-const PebbleArt = preload("res://arcade/thirteen_art.gd")
-const PosyArt = preload("res://arcade/posy_art.gd")
-const PeaArt = preload("res://arcade/peapod_art.gd")
-const PeaSim = preload("res://arcade/peapod_sim.gd")
 const NightArt = preload("res://arcade/nightlight_art.gd")
 const NightSim = preload("res://arcade/nightlight_sim.gd")
-const BeeArt = preload("res://arcade/beeline_art.gd")
-const EddyArt = preload("res://arcade/eddy_art.gd")
-const EddySim = preload("res://arcade/eddy_sim.gd")
-const FurrowArt = preload("res://arcade/furrow_art.gd")
 const FurrowSim = preload("res://arcade/furrow_sim.gd")
-const GriddleArt = preload("res://arcade/griddle_art.gd")
 const GriddleSim = preload("res://arcade/griddle_sim.gd")
-const DeckArt = preload("res://arcade/deckchair_art.gd")
-const TrivetArt = preload("res://arcade/trivet_art.gd")
 const GoldPill = preload("res://ui/menu/gold_pill.gd")
-const Icons = preload("res://ui/icons.gd")
+const PuzzleCard = preload("res://ui/menu/puzzle_card_2d.gd")
+const PagerPill = preload("res://ui/menu/pager_pill.gd")
 
 const GAP := 20
-const PAD := 24
-const RADIUS := 36
-const ART_H := 260.0
-const ART_H_SHORT := 150.0
-const ART_H_TINY := 104.0
-## Eleven cards were six rows of two (2026-10-10, for a day): the pictures
-## a strip, so the sixth row was on the page. Kept for the next eleventh.
-const ART_H_STRIP := 62.0
-const CHIP_H := 84
+const COLS := 2
+## How much taller than the first screen's a card may grow here.
+const GROW := 150.0
 const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "nightlight", "beeline", "deckchair", "eddy", "furrow", "griddle", "trivet"]
 const NAMES := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Lucky Thirteen", "posy": "Posy", "peapod": "Peapod", "nightlight": "Nightlight", "beeline": "Beeline", "deckchair": "Deckchair", "eddy": "Eddy", "furrow": "Furrow", "griddle": "Griddle", "trivet": "Trivet"}
-const BLURBS := {"firefly": "ARC_FIREFLY_BLURB", "molehill": "ARC_MOLEHILL_BLURB", "stackwood": "ARC_STACKWOOD_BLURB", "thirteen": "ARC_THIRTEEN_BLURB", "posy": "ARC_POSY_BLURB", "peapod": "ARC_PEAPOD_BLURB",
-	"nightlight": "ARC_NIGHTLIGHT_BLURB", "beeline": "ARC_BEELINE_BLURB", "deckchair": "ARC_DECKCHAIR_BLURB", "eddy": "ARC_EDDY_BLURB", "furrow": "ARC_FURROW_BLURB", "griddle": "ARC_GRIDDLE_BLURB", "trivet": "ARC_TRIVET_BLURB"}
 ## How far a game went, in its own words: a stage, a wave, or a streak.
 const FURTHEST := {"firefly": "ARC_BEST_STAGE", "molehill": "ARC_BEST_STREAK", "stackwood": "ARC_BEST_BLOCK", "thirteen": "ARC_BEST_NUMBER", "posy": "ARC_BEST_DAY", "peapod": "ARC_BEST_WAVE", "deckchair": "ARC_BEST_HOME", "eddy": "ARC_BEST_LEVEL", "trivet": "ARC_BEST_TRIVET"}
-const PLATE_TINT := {"firefly": Pal.MOON_INK, "molehill": Pal.LEAF_DEEP, "stackwood": Pal.LEAF_DEEP, "thirteen": Pal.LEAF_DEEP, "posy": Pal.LEAF_DEEP, "peapod": Pal.LEAF_DEEP, "nightlight": Pal.MOON_INK, "beeline": Pal.LEAF_DEEP, "deckchair": Pal.LEAF_DEEP, "eddy": Pal.LEAF_DEEP, "furrow": Pal.LEAF_DEEP, "griddle": Pal.LEAF_DEEP, "trivet": Pal.LEAF_DEEP}
-const FILL := Color("fcf7ef")
-static var PLAIN := CanvasItemMaterial.new()
 
-var _best := {}
-var _stage := {}
-var _blurbs: Array[Label] = []
-var _arts: Array[Control] = []
 var _cards: Array[Control] = []
-var _goes: Array = []
-## The leaf beside a best made with boosters (spec 2026-09-28-gold-gifts).
-var _leaves := {}
+## What each card last said under its name, by game.
+var _lines := {}
 ## The gold and the shop, above the cards (spec 2026-09-28-gold-gifts).
 var _strip: HBoxContainer
 var gold_pill: Button
-## Two cards a row: six cards do not fit one above another on a phone even
-## with the smallest pictures, so a short screen pairs them up.
-var _paired := false
-## The cards stand a page at a time since the thirteenth (2026-10-12): seven
-## rows of two do not fit a phone even with the pictures a strip, and the
-## menu's cards are paged, never scrolled. The strip's two chevrons turn it.
+var _grid: GridContainer
+## The cards stand a page at a time since the thirteenth (2026-10-12): the
+## menu's cards are paged, never scrolled.
 const PER_PAGE := 8
 var _page := 0
-var _pager: HBoxContainer
-var _page_l: Label
-var _prev_b: Button
-var _next_b: Button
+var _pager: PagerPill
+var _pager_row: CenterContainer
 
 func _init() -> void:
 	add_theme_constant_override("separation", GAP)
@@ -113,33 +76,33 @@ func _init() -> void:
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_strip.add_child(spacer)
-	_pager = HBoxContainer.new()
-	_pager.name = "Pager"
-	_pager.add_theme_constant_override("separation", 10)
-	_prev_b = IconButton.new("chevron_left", "", "IconButton")
-	_prev_b.name = "Prev"
-	_prev_b.custom_minimum_size = Vector2(GoldPill.H, GoldPill.H)
-	_prev_b.pressed.connect(turn.bind(-1))
-	_pager.add_child(_prev_b)
-	_page_l = Label.new()
-	_page_l.theme_type_variation = "MenuKicker"
-	_page_l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_page_l.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_pager.add_child(_page_l)
-	_next_b = IconButton.new("chevron_right", "", "IconButton")
-	_next_b.name = "Next"
-	_next_b.custom_minimum_size = Vector2(GoldPill.H, GoldPill.H)
-	_next_b.pressed.connect(turn.bind(1))
-	_pager.add_child(_next_b)
-	_strip.add_child(_pager)
 	var shop_b := IconButton.new("coin", "SHOP_TITLE", "IconButton")
 	shop_b.name = "Shop"
 	shop_b.custom_minimum_size.y = GoldPill.H
 	shop_b.pressed.connect(func() -> void: shop.emit(""))
 	_strip.add_child(shop_b)
-	for game: String in GAMES:
-		_cards.append(_game_card(game))
-	_rows(false)
+	add_child(_strip)
+	_grid = GridContainer.new()
+	_grid.columns = COLS
+	_grid.add_theme_constant_override("h_separation", GAP)
+	_grid.add_theme_constant_override("v_separation", GAP)
+	_grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_grid)
+	# What a short last page leaves is above the pager, which keeps its place.
+	var rest := Control.new()
+	rest.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	rest.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(rest)
+	_pager_row = CenterContainer.new()
+	_pager_row.name = "Pager"
+	_pager_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_pager = PagerPill.new()
+	_pager.turned.connect(turn)
+	_pager_row.add_child(_pager)
+	add_child(_pager_row)
+	for i in GAMES.size():
+		_cards.append(_game_card(GAMES[i], Pal.CAT[i % Pal.CAT.size()]))
+	_lay_page()
 
 func pages() -> int:
 	return maxi(1, ceili(_cards.size() / float(PER_PAGE)))
@@ -157,125 +120,34 @@ func turn(by: int) -> void:
 	if to == _page:
 		return
 	_page = to
-	_rows(_paired)
+	_lay_page()
 	_fit.call_deferred()
 
-## Lays the page's cards out one a row, or two.
-func _rows(paired: bool) -> void:
-	_paired = paired
+## Stands the page's cards in the grid and the pager at its page.
+func _lay_page() -> void:
 	for c in _cards:
 		if c.get_parent() != null:
 			c.get_parent().remove_child(c)
-	if _strip.get_parent() != null:
-		_strip.get_parent().remove_child(_strip)
-	for r in get_children():
-		remove_child(r)
-		r.queue_free()
-	add_child(_strip)
-	_pager.visible = pages() > 1
-	_page_l.text = "%d/%d" % [_page + 1, pages()]
-	_prev_b.disabled = _page == 0
-	_next_b.disabled = _page >= pages() - 1
-	var cards := _shown()
-	var per := 2 if paired else 1
-	var i := 0
-	while i < cards.size():
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", GAP)
-		row.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		add_child(row)
-		for k in per:
-			if i < cards.size():
-				cards[i].size_flags_horizontal = Control.SIZE_EXPAND_FILL
-				row.add_child(cards[i])
-			i += 1
-	# a short last page keeps its cards the height a full one gives them
-	var full := ceili(PER_PAGE / float(per))
-	var rows := ceili(cards.size() / float(per))
-	if pages() > 1:
-		for k in full - rows:
-			var blank := Control.new()
-			blank.size_flags_vertical = Control.SIZE_EXPAND_FILL
-			blank.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			add_child(blank)
-	# paired, Play loses its word and the furthest line goes, to leave the
-	# name its room
-	for g: Array in _goes:
-		(g[0] as Control).custom_minimum_size.x = 110 if paired else 260
-		g[0].set_label("" if paired else tr("VS_PLAY"))
-		(_stage[g[1]] as Label).visible = not paired
+	for c in _shown():
+		_grid.add_child(c)
+	_pager_row.visible = pages() > 1
+	_pager.show_page(_page, pages())
 
-func _game_card(game: String) -> Control:
-	var card := PanelContainer.new()
-	card.add_theme_stylebox_override("panel", CozyTheme.lifted(FILL, RADIUS, PAD))
-	card.material = PLAIN
-	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	card.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 12)
-	col.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	card.add_child(col)
-	var art := Vistas.card_plate(game, PLATE_TINT[game])
-	art.custom_minimum_size.y = ART_H
-	art.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	art.clip_contents = true
-	col.add_child(art)
-	_arts.append(art)
-	var swarm: Control = {"firefly": FireflyBanner, "molehill": MolehillBanner, "stackwood": StackwoodBanner, "thirteen": ThirteenBanner, "posy": PosyBanner, "peapod": PeapodBanner, "nightlight": NightlightBanner, "beeline": BeelineBanner, "deckchair": DeckchairBanner, "eddy": EddyBanner, "furrow": FurrowBanner, "griddle": GriddleBanner, "trivet": TrivetBanner}[game].new()
-	swarm.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	art.add_child(swarm)
-
-	# The name with the best under it, and Play beside them: one row, so
-	# four cards stand on a phone.
-	var head := HBoxContainer.new()
-	head.add_theme_constant_override("separation", 16)
-	col.add_child(head)
-	var words := VBoxContainer.new()
-	words.add_theme_constant_override("separation", -4)
-	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	words.alignment = BoxContainer.ALIGNMENT_CENTER
-	head.add_child(words)
-	var name_l := Label.new()
-	name_l.text = NAMES[game]
-	name_l.theme_type_variation = "CardName"
-	words.add_child(name_l)
-	name_l.add_child(SunDot.new(name_l))
-	var line := HBoxContainer.new()
-	line.add_theme_constant_override("separation", 14)
-	words.add_child(line)
-	var best := Label.new()
-	best.theme_type_variation = "CardBlurb"
-	line.add_child(best)
-	_best[game] = best
-	var leaf := Control.new()
-	leaf.custom_minimum_size = Vector2(30, 30)
-	leaf.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	leaf.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	leaf.tooltip_text = "ARC_BOOSTED"
-	leaf.draw.connect(func() -> void: Icons.paint(leaf, "leaf", Rect2(Vector2.ZERO, leaf.size), Pal.LEAF))
-	leaf.visible = false
-	line.add_child(leaf)
-	_leaves[game] = leaf
-	var stage := Label.new()
-	stage.theme_type_variation = "CardBlurb"
-	stage.modulate.a = 0.8
-	line.add_child(stage)
-	_stage[game] = stage
-	var go := IconButton.new("chevron_right", tr("VS_PLAY"), "SunButton")
-	go.name = "Play_" + game
-	go.custom_minimum_size = Vector2(260, CHIP_H)
-	go.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	go.pressed.connect(func() -> void: play.emit(game))
-	head.add_child(go)
-	_goes.append([go, game])
-	var blurb := Label.new()
-	blurb.text = BLURBS[game]
-	blurb.theme_type_variation = "CardBlurb"
-	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	col.add_child(blurb)
-	_blurbs.append(blurb)
+func _game_card(game: String, colour: Color) -> Control:
+	var card := PuzzleCard.new({"id": game, "title": NAMES[game], "short": "ARC_NO_BEST",
+		"card": "res://ui/menu/cards/arc_%s.gd" % game}, colour)
+	card.name = "Card_" + game
+	card.open.connect(func() -> void: play.emit(game))
 	return card
+
+## What `game`'s card says under its name.
+func said(game: String) -> String:
+	return String(_lines.get(game, ""))
+
+func _say(game: String, best: String, further := "", leaf := false) -> void:
+	var text := best if further.is_empty() else best + "\n" + further
+	_lines[game] = text
+	(_cards[GAMES.find(game)] as PuzzleCard).say(text, leaf)
 
 func refresh() -> void:
 	for game: String in GAMES:
@@ -283,35 +155,35 @@ func refresh() -> void:
 		if game == "nightlight":
 			var star: Dictionary = NightSim.kept()
 			var novas := int(star.novas)
-			(_best[game] as Label).text = tr("NL_CARD_MASS") % NightArt.short(star.mass / NightSim.START, Locale.current() != "en") if star.mass > 0.0 else tr("NL_CARD_NEW")
+			var line: String = tr("NL_CARD_MASS") % NightArt.short(star.mass / NightSim.START, Locale.current() != "en") if star.mass > 0.0 else tr("NL_CARD_NEW")
 			var worlds := int(star.worlds)
 			if worlds > 0:
-				(_best[game] as Label).text += " · " + (tr("NL_CARD_WORLDS_ONE") if worlds == 1 else tr("NL_CARD_WORLDS_N") % worlds)
+				line += " · " + (tr("NL_CARD_WORLDS_ONE") if worlds == 1 else tr("NL_CARD_WORLDS_N") % worlds)
 			var relics := int(star.relics)
 			if relics > 0:
-				(_best[game] as Label).text += " · " + (tr("NL_CARD_RELICS_ONE") if relics == 1 else tr("NL_CARD_RELICS_N") % relics)
-			(_stage[game] as Label).text = "" if novas == 0 else "· " + (tr("NL_CARD_NOVAS_ONE") if novas == 1 else tr("NL_CARD_NOVAS_N") % novas)
+				line += " · " + (tr("NL_CARD_RELICS_ONE") if relics == 1 else tr("NL_CARD_RELICS_N") % relics)
+			_say(game, line, "" if novas == 0 else (tr("NL_CARD_NOVAS_ONE") if novas == 1 else tr("NL_CARD_NOVAS_N") % novas))
 			continue
 		# Furrow is kept too: its line is the field as it stands
 		if game == "furrow":
 			var land: Dictionary = FurrowSim.kept()
 			var open := int(land.plots)
-			(_best[game] as Label).text = tr("FW_CARD_NEW") if open == 0 else tr("FW_CARD_SEEDS") % Record.grouped(int(land.seeds))
-			(_stage[game] as Label).text = "" if open == 0 else "· " + tr("FW_CARD_PLOTS") % open
+			_say(game, tr("FW_CARD_NEW") if open == 0 else tr("FW_CARD_SEEDS") % Record.grouped(int(land.seeds)),
+				"" if open == 0 else tr("FW_CARD_PLOTS") % open)
 			continue
 		# and Griddle: its line is the stand as it stands
 		if game == "griddle":
 			var stand: Dictionary = GriddleSim.kept()
 			var sold := int(stand.served)
-			(_best[game] as Label).text = tr("GR_CARD_NEW") if sold == 0 else tr("GR_CARD_SOLD") % Record.grouped(sold)
 			var stars := int(stand.stars)
-			(_stage[game] as Label).text = "" if stars == 0 else "· " + (tr("GR_CARD_STAR_ONE") if stars == 1 else tr("GR_CARD_STAR_N") % stars)
+			_say(game, tr("GR_CARD_NEW") if sold == 0 else tr("GR_CARD_SOLD") % Record.grouped(sold),
+				"" if stars == 0 else (tr("GR_CARD_STAR_ONE") if stars == 1 else tr("GR_CARD_STAR_N") % stars))
 			continue
 		var best := Record.best(game)
-		(_best[game] as Label).text = tr("ARC_BEST") % Record.grouped(best) if best > 0 else tr("ARC_NO_BEST")
-		(_leaves[game] as Control).visible = best > 0 and Record.best_boosted(game)
 		var st := Record.best_stage(game)
-		(_stage[game] as Label).text = "· " + tr(FURTHEST[game]) % st if st > 0 else ""
+		_say(game, tr("ARC_BEST") % Record.grouped(best) if best > 0 else tr("ARC_NO_BEST"),
+			tr(FURTHEST[game]) % st if st > 0 and FURTHEST.has(game) else "",
+			best > 0 and Record.best_boosted(game))
 	_fit.call_deferred()
 
 func _ready() -> void:
@@ -319,9 +191,6 @@ func _ready() -> void:
 	var outer := _outer()
 	if outer != null:
 		outer.resized.connect(_fit)
-	# A wrapped line measures its height off its width, which is not known
-	# until the cards are laid out, so the fit runs again once they are.
-	resized.connect(func() -> void: _fit.call_deferred())
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_VISIBILITY_CHANGED and is_visible_in_tree():
@@ -338,9 +207,9 @@ func _outer() -> Control:
 		return parent.get_parent().get_parent() as Control
 	return null
 
-## The Versus tab's fit: whole if the cards fit, else without the lines,
-## else with shorter pictures too, else two cards a row (six do not stand
-## one above another on a phone).
+## The Versus tab's fit: a full page's four rows share the room the strip
+## and the pager leave, never under the first screen's card and never more
+## than GROW over it.
 func _fit() -> void:
 	var parent := get_parent() as Control
 	if parent == null or not is_visible_in_tree():
@@ -357,520 +226,10 @@ func _fit() -> void:
 	if outer != null:
 		var margins := parent.get_parent() as MarginContainer
 		height = outer.size.y - margins.get_theme_constant("margin_top") - margins.get_theme_constant("margin_bottom")
-	var room := height - other - sep * shown
-	# The lines are measured off the font at the column's width rather than
-	# read off the labels: a wrapped label hidden before its first layout
-	# has no width, and measures thousands of pixels tall.
-	_compact(1)
-	var bare := _need(false)
-	var lines := 0.0
-	for b: Label in _blurbs.slice(0, PER_PAGE):
-		var holder := b.get_parent() as Control
-		var font := b.get_theme_font("font")
-		var fs := b.get_theme_font_size("font_size")
-		var w := holder.size.x if holder != null and holder.size.x > 0.0 and not _paired else size.x - PAD * 2
-		lines += font.get_multiline_string_size(tr(b.text), HORIZONTAL_ALIGNMENT_LEFT, w, fs).y
-		lines += (holder as BoxContainer).get_theme_constant("separation") if holder is BoxContainer else 0
-	var paired := false
-	if bare + lines <= room:
-		_compact(0)
-	elif bare > room:
-		_compact(2)
-		if _need(false) > room:
-			_compact(3)
-			if _need(false) > room:
-				# one a row will not fit: two a row, with the taller pictures
-				# back if they fit
-				paired = true
-				_compact(2)
-				if _need(true) > room:
-					_compact(3)
-					if _need(true) > room:
-						_compact(4)
-	if paired != _paired:
-		_rows(paired)
-
-## The height the cards want one or two a row, at the pictures' current size.
-func _need(paired: bool) -> float:
-	var per := 2 if paired else 1
-	var total := 0.0
-	var i := 0
-	var rows := 0
-	# a full page's worth, so the last page lays out as the first does
-	var cards: Array[Control] = []
-	for c in mini(PER_PAGE, _cards.size()):
-		cards.append(_cards[c])
-	while i < cards.size():
-		var tall := 0.0
-		for k in per:
-			if i < cards.size():
-				tall = maxf(tall, cards[i].get_combined_minimum_size().y)
-			i += 1
-		total += tall
-		rows += 1
-	return total + GAP * rows + _strip.get_combined_minimum_size().y
-
-func _compact(level: int) -> void:
-	for b in _blurbs:
-		b.visible = level == 0
-	for a in _arts:
-		a.custom_minimum_size.y = ART_H_STRIP if level >= 4 else ART_H_TINY if level >= 3 else (ART_H_SHORT if level >= 2 else ART_H)
-
-## Firefly's banner: a strip of the swarm in its rows over the night plate,
-## a moth diving with its beam half open, and the firefly under them with a
-## spark on its way up. Drawn once.
-class FireflyBanner extends Control:
-	var _keep: Array = []
-
-	func _ready() -> void:
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-		resized.connect(queue_redraw)
-
-	func _draw() -> void:
-		if size.x <= 0.0 or size.y <= 0.0:
-			return
-		_keep.clear()
-		var u := minf(size.y / 60.0, size.x / 150.0)
-		var mid := size.x * 0.5
-		var b := Face.Builder.new()
-		# the night laid over the plate, so the cast reads
-		b.fan(PackedVector2Array([Vector2.ZERO, Vector2(size.x, 0), size, Vector2(0, size.y)]), Color(0.11, 0.12, 0.28, 0.45))
-		var rng := RandomNumberGenerator.new()
-		rng.seed = 4
-		for i in 40:
-			b.disc(Vector2(rng.randf() * size.x, rng.randf() * size.y), rng.randf_range(1.0, 2.6), Color(1.0, 0.96, 0.8, rng.randf_range(0.3, 0.8)))
-		# the beam from the diving moth down toward the firefly
-		var moth_at := Vector2(mid + 30.0 * u, size.y * 0.52)
-		var fly_at := Vector2(mid - 18.0 * u, size.y - 9.0 * u)
-		b.fan(PackedVector2Array([moth_at + Vector2(-3 * u, 6 * u), moth_at + Vector2(3 * u, 6 * u),
-			Vector2(moth_at.x + 12 * u, size.y), Vector2(moth_at.x - 12 * u, size.y)]), Color(0.85, 0.86, 1.0, 0.16))
-		# the spark
-		var spark := fly_at + Vector2(0, -16 * u)
-		b.ellipse(spark, 2.2 * u, 3.6 * u, Color(Art.GLOW, 0.25))
-		b.ellipse(spark, 0.9 * u, 2.4 * u, Color("fff1a8"))
-		var ground := b.mesh()
-		_keep.append(ground)
-		draw_mesh(ground, null)
-		var rows := [[Art.Look.MOTH, [-1.5, -0.5, 0.5, 1.5], 0.0], [Art.Look.BEETLE, [-3.5, -2.5, -1.5, -0.5, 0.5, 1.5, 2.5, 3.5], 0.0],
-			[Art.Look.GNAT, [-4.5, -3.5, -2.5, -1.5, -0.5, 0.5, 1.5, 2.5, 3.5, 4.5], 1.0]]
-		var top := 10.0 * u
-		for r in rows.size():
-			var row: Array = rows[r]
-			for x: float in row[1]:
-				if row[0] == Art.Look.MOTH and x == 1.5:
-					continue
-				var at := Vector2(mid + x * 14.0 * u, top + r * 12.0 * u)
-				_put(row[0], int(x * 2.0 + r) % 2, u, Transform2D(PI, at))
-		_put(Art.Look.MOTH, 1, u, Transform2D(PI * 1.1, moth_at))
-		_put(Art.Look.FIREFLY, 0, u, Transform2D(0.0, fly_at))
-
-	func _put(look: int, frame: int, u: float, xf: Transform2D) -> void:
-		var m := Art.mesh(look, frame, u)
-		draw_mesh(m, null, xf)
-
-## Molehill's banner: three mounds on a strip of lawn, a mole up in the
-## middle one with the mallet coming down on it, a golden one peeking out
-## and the rabbit at the end. Drawn once.
-class MolehillBanner extends Control:
-	var _keep: Array = []
-
-	func _ready() -> void:
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-		resized.connect(queue_redraw)
-
-	func _draw() -> void:
-		if size.x <= 0.0 or size.y <= 0.0:
-			return
-		_keep.clear()
-		var u := minf(size.y / 95.0, size.x / 260.0)
-		var foot := size.y * 0.8
-		var xs := [size.x * 0.5 - 90.0 * u, size.x * 0.5, size.x * 0.5 + 90.0 * u]
-		var looks := [MoleArt.Look.GOLD, MoleArt.Look.MOLE_DIZZY, MoleArt.Look.BUNNY]
-		var rises := [0.8, 1.0, 1.0]
-		var back := Face.Builder.new()
-		back.fan(PackedVector2Array([Vector2(0, foot - 22.0 * u), Vector2(size.x, foot - 22.0 * u), size, Vector2(0, size.y)]), Color("a9cf78", 0.9))
-		for x: float in xs:
-			MoleArt.mound_back(back, Vector2(x, foot), u)
-		var bm := back.mesh()
-		_keep.append(bm)
-		draw_mesh(bm, null)
-		var front := Face.Builder.new()
-		for x: float in xs:
-			MoleArt.mound_front(front, Vector2(x, foot), u)
-		var fm := front.mesh()
-		_keep.append(fm)
-		for k in 3:
-			# the part of each creature below the hole's mouth is under the lip
-			var drop: float = (1.0 - rises[k]) * 60.0 * u
-			draw_mesh(MoleArt.mesh(looks[k], u), null, Transform2D(0.0, Vector2(xs[k], foot + drop)))
-		draw_mesh(fm, null)
-		# the mallet, just landed on the middle mole's head
-		var head := Vector2(xs[1], foot - 50.0 * u)
-		var hand := head - Vector2(0, -MoleArt.HEAD_AT * u).rotated(-0.55)
-		draw_mesh(MoleArt.mallet(u), null, Transform2D(-0.55, hand))
-
-## Stackwood's banner: a strip of shelf with stacks of numbered blocks on
-## it, a pair about to merge and one falling in from above. Drawn once.
-class StackwoodBanner extends Control:
-	func _ready() -> void:
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-		resized.connect(queue_redraw)
-
-	func _draw() -> void:
-		if size.x <= 0.0 or size.y <= 0.0:
-			return
-		var s := minf(size.y * 0.3, size.x / 9.0)
-		var foot := size.y - s * 0.3
-		var mid := size.x * 0.5
-		var font := StackArt.font()
-		draw_rect(Rect2(Vector2(0, foot), Vector2(size.x, size.y - foot)), StackArt.WOOD_DEEP)
-		draw_rect(Rect2(Vector2(0, foot), Vector2(size.x, s * 0.12)), StackArt.WOOD)
-		# column by column, bottom up; 0 is the rainbow block
-		var stacks := [[16, 4], [64, 8, 2], [128, 32], [8, 8], [256, 64, 0], [32]]
-		for k in stacks.size():
-			var x := mid + (k - 2.5) * s * 1.04
-			var col: Array = stacks[k]
-			for i in col.size():
-				var c := Vector2(x, foot - s * 0.5 - i * s * 0.96)
-				draw_mesh(StackArt.block(col[i], s), null, Transform2D(0.0, c))
-				if int(col[i]) > 0:
-					StackArt.number(self, font, c, col[i], s)
-		# one falling in over the pair of eights, with a trail
-		var fx := mid + 0.5 * s * 1.04
-		var fy := foot - s * 2.9
-		for j in 3:
-			draw_rect(Rect2(Vector2(fx - s * 0.06 + (j - 1) * s * 0.22, fy - s * 1.0), Vector2(s * 0.05, s * 0.4)), Color(1, 1, 1, 0.5))
-		var fc := Vector2(fx, fy)
-		draw_mesh(StackArt.block(8, s), null, Transform2D(0.0, fc))
-		StackArt.number(self, font, fc, 8, s)
-
-## Lucky Thirteen's banner: a row of pebbles on raked sand, three sixes
-## strung on a chain toward a seven, and the gold thirteen at the end.
-## Drawn once.
-class ThirteenBanner extends Control:
-	var _keep: Array = []
-
-	func _ready() -> void:
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-		resized.connect(queue_redraw)
-
-	func _draw() -> void:
-		if size.x <= 0.0 or size.y <= 0.0:
-			return
-		_keep.clear()
-		if PebbleArt.skin() == null:
-			texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-			PebbleArt.ensure_skin(self, queue_redraw)
-		var s := minf(size.y * 0.42, size.x / 8.5)
-		var mid := size * Vector2(0.5, 0.56)
-		var font := PebbleArt.font()
-		var b := Face.Builder.new()
-		b.fan(PackedVector2Array([Vector2(0, mid.y - s * 0.8), Vector2(size.x, mid.y - s * 0.8), size, Vector2(0, size.y)]), Color(Pal.PARCHMENT, 0.9))
-		# the chain through the three sixes: paper slid under them
-		var row := [3, 6, 6, 6, 9, 13]
-		var at: Array = []
-		for k in row.size():
-			at.append(mid + Vector2((k - 2.5) * s * 1.12, (0.18 if k % 2 == 0 else -0.14) * s))
-		var chain := PackedVector2Array([at[1], at[2], at[3]])
-		for p in chain:
-			b.polygon(PebbleArt.tile_outline(p, s * 1.2), Color("fffaf0"))
-		b.stroke(chain, s * 0.46, Color("fffaf0"))
-		b.stroke(chain, s * 0.3, PebbleArt.paint(6))
-		var ground := b.mesh()
-		_keep.append(ground)
-		draw_mesh(ground, null)
-		for k in row.size():
-			var sc := 1.1 if k >= 1 and k <= 3 else 1.0
-			draw_set_transform(at[k], 0.0, Vector2(sc, sc))
-			draw_mesh(PebbleArt.pebble(row[k], s), PebbleArt.skin(), Transform2D.IDENTITY)
-			PebbleArt.number(self, font, Vector2.ZERO, row[k], s)
-		draw_set_transform(Vector2.ZERO)
-
-## Posy's banner: a strip of the bed's pale cells with a row of garden
-## tiles, a breeze sweeping through the middle and the rainbow posy at the
-## end. Drawn once.
-class PosyBanner extends Control:
-	var _keep: Array = []
-
-	func _ready() -> void:
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-		resized.connect(queue_redraw)
-
-	func _draw() -> void:
-		if size.x <= 0.0 or size.y <= 0.0:
-			return
-		_keep.clear()
-		var s := minf(size.y * 0.5, size.x / 8.6)
-		var mid := size * Vector2(0.5, 0.56)
-		var b := Face.Builder.new()
-		var row := [0, 1, 1, 2, 1, 3, 4, -1]
-		var at: Array = []
-		for k in row.size():
-			at.append(mid + Vector2((k - 3.5) * s * 1.06, 0))
-		var strip := Vector2(s * 1.06 * row.size() + s * 0.3, s * 1.3)
-		b.polygon(Face.Builder.round_rect(mid - strip * 0.5, strip, s * 0.3), Color(PosyArt.BOARD, 0.92))
-		for p: Vector2 in at:
-			b.polygon(Face.Builder.round_rect(p - Vector2(s, s) * 0.48, Vector2(s, s) * 0.96, s * 0.18), PosyArt.CELL)
-		var ground := b.mesh()
-		_keep.append(ground)
-		draw_mesh(ground, null)
-		for k in row.size():
-			draw_mesh(PosyArt.tile(row[k], s * 0.84), null, Transform2D(0.0, at[k]))
-		# the three leaves lined up, and a breeze streaking through them
-		draw_mesh(PosyArt.breeze(s * 0.84), null, Transform2D(0.0, at[2]))
-		draw_mesh(PosyArt.bomb_glow(s * 0.84), null, Transform2D(0.0, at[5]))
-		draw_mesh(PosyArt.tile(3, s * 0.84), null, Transform2D(0.0, at[5]))
-
-## Peapod's banner: a strip of numbered crates over the plate, a gift among
-## them and one just burst, the cart on the grass under them with a volley
-## of peas on its way up. Drawn once.
-class PeapodBanner extends Control:
-	var _keep: Array = []
-
-	func _ready() -> void:
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-		resized.connect(queue_redraw)
-
-	func _draw() -> void:
-		if size.x <= 0.0 or size.y <= 0.0:
-			return
-		_keep.clear()
-		var u := minf(size.y / 110.0, size.x / 330.0)
-		var mid := size.x * 0.5
-		var turf := size.y - 12.0 * u
-		var b := Face.Builder.new()
-		b.fan(PackedVector2Array([Vector2(0, turf), Vector2(size.x, turf), size, Vector2(0, size.y)]), Color("84c957", 0.95))
-		b.fan(PackedVector2Array([Vector2(0, turf), Vector2(size.x, turf), Vector2(size.x, turf + 2.0 * u), Vector2(0, turf + 2.0 * u)]), Color("a9dc7f"))
-		var cart_x := mid + 22.0 * u
-		for k in 3:
-			for side in [-0.5, 0.5]:
-				PeaArt.pea(b, Vector2(cart_x + side * 7.5 * u, turf - 52.0 * u - k * 13.0 * u), 3.3 * u)
-		var ground := b.mesh()
-		_keep.append(ground)
-		draw_mesh(ground, null)
-		var crates := [[-2, 0, PeaSim.Kind.CRATE, 35], [-1, 0, PeaSim.Kind.FAN, 0], [0, 0, PeaSim.Kind.CRATE, 120], [1, 0, PeaSim.Kind.CRATE, 8],
-			[2, 0, PeaSim.Kind.GOLD, 60], [-2, 1, PeaSim.Kind.CRATE, 3], [-1, 1, PeaSim.Kind.CRATE, 17], [2, 1, PeaSim.Kind.BOMB, 0]]
-		var font := PeaArt.font()
-		var top := 6.0 * u + (PeaSim.CELL_H - 3.0) * u * 0.5
-		for c: Array in crates:
-			var at := Vector2(mid + c[0] * PeaSim.CELL_W * u, top + c[1] * PeaSim.CELL_H * u)
-			var kind: int = c[2]
-			draw_mesh(PeaArt.crate(kind, PeaArt.tier_of(c[3]) if kind == PeaSim.Kind.CRATE else 0, u), null, Transform2D(0.0, at))
-			if c[3] > 0:
-				PeaArt.number(self, font, at + Vector2(0, -2.2 * u), c[3], (PeaSim.CELL_H - 3.0) * u)
-		var foot := Vector2(cart_x, turf - 9.0 * u)
-		draw_mesh(PeaArt.barrel(u), null, Transform2D(0.0, foot + Vector2(0, -12.0 * u)))
-		draw_mesh(PeaArt.cart(u), null, Transform2D(0.0, foot))
-		for side in [-1.0, 1.0]:
-			draw_mesh(PeaArt.wheel(u), null, Transform2D(0.4, foot + Vector2(side * 13.0 * u, 0)))
-		draw_mesh(PeaArt.token(PeaSim.Kind.FLAME, u), null, Transform2D(-0.15, Vector2(mid - 60.0 * u, turf - 30.0 * u)))
-
-## Nightlight's banner: the small star in the night plate's sky with its
-## light round it, a meteor winding in on its trail and a few bodies lit on
-## the side that faces the star. Drawn once.
-class NightlightBanner extends Control:
-	var _keep: Array = []
-
-	func _ready() -> void:
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-		resized.connect(queue_redraw)
-
-	func _draw() -> void:
-		if size.x <= 0.0 or size.y <= 0.0:
-			return
-		_keep.clear()
-		var u := minf(size.y / 110.0, size.x / 330.0)
-		var star := size * 0.5
-		var b := Face.Builder.new()
-		for k in 16:
-			b.disc(star + Vector2.from_angle(k * 2.4) * (18.0 + (k * 7) % 26) * u, 1.1 * u, Color(1.0, 0.93, 0.8, 0.5))
-		# the gas winding in, and what it has made on its way round
-		for i in 22:
-			var at := star + Vector2.from_angle(-0.4 + i * 0.3) * (70.0 - i * 2.0) * u
-			NightArt.lay_puff(b, at, (9.0 - i * 0.2) * u, Color(NightArt.GAS.lerp(NightArt.WARM, i / 21.0), 0.7))
-		NightArt.lay_star(b, star, 17.0 * u, NightArt.star_col(5800.0))
-		for body: Array in [[Vector2(-120, -22), 4.5, NightSim.Kind.ROCK], [Vector2(-84, 30), 2.5, NightSim.Kind.GRAIN],
-				[Vector2(98, 24), 3.5, NightSim.Kind.COMET], [Vector2(138, -28), 6.0, NightSim.Kind.GIANT]]:
-			var at: Vector2 = star + (body[0] as Vector2) * u
-			if body[2] == NightSim.Kind.COMET:
-				var away := (at - star).normalized()
-				b.polygon(PackedVector2Array([at + away.orthogonal() * 3.0 * u, at + away * 26.0 * u, at - away.orthogonal() * 3.0 * u]), Color(NightArt.TAIL, 0.4))
-			NightArt.lit(b, at, float(body[1]) * u, NightArt.PAINT[body[2]], star - at)
-		var mesh := b.mesh()
-		_keep.append(mesh)
-		draw_mesh(mesh, null)
-
-## Beeline's banner: a strip of the garden with two gates in it, the nearer
-## wearing its ribbon, and the bee on her way from one gap to the next with
-## a little pollen behind her. Drawn once.
-class BeelineBanner extends Control:
-	var _keep: Array = []
-
-	func _ready() -> void:
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-		resized.connect(queue_redraw)
-
-	func _draw() -> void:
-		if size.x <= 0.0 or size.y <= 0.0:
-			return
-		_keep.clear()
-		var u := size.y / 150.0
-		var ground := size.y - 16.0 * u
-		var x := -20.0 * u
-		while x < size.x:
-			draw_mesh(BeeArt.ground(u), null, Transform2D(0.0, Vector2(x, ground)))
-			x += BeeArt.GROUND_TILE * u
-		var mid := size.x * 0.5
-		# each gate: where it stands and the gap's top and bottom
-		for g: Array in [[mid - 150.0 * u, 26.0, 96.0], [mid + 110.0 * u, 50.0, 118.0]]:
-			draw_mesh(BeeArt.hedge(u, true), null, Transform2D(0.0, Vector2(g[0], float(g[1]) * u)))
-			draw_mesh(BeeArt.hedge(u, false), null, Transform2D(0.0, Vector2(g[0], float(g[2]) * u)))
-		draw_mesh(BeeArt.ribbon(1, 8.0 * u), null, Transform2D(0.0, Vector2(mid + 110.0 * u, 132.0 * u)))
-		var at := Vector2(mid - 20.0 * u, 74.0 * u)
-		var b := Face.Builder.new()
-		for k in 5:
-			b.disc(at + Vector2(-30.0 - 13.0 * k, -3.0 - 0.9 * k * k) * u, (2.4 - 0.3 * k) * u, Color("fbe08a", 0.9 - 0.15 * k))
-		var trail := b.mesh()
-		_keep.append(trail)
-		draw_mesh(trail, null)
-		var xf := Transform2D(0.2, at)
-		draw_mesh(BeeArt.wings(u * 2.0), null, xf * Transform2D(0.0, BeeArt.WING_AT * u * 2.0))
-		draw_mesh(BeeArt.bee(BeeArt.Look.FLY, u * 2.0), null, xf)
-
-## Deckchair's banner: a hand of cards fanned over the meadow, the ace to
-## the six, and a back behind them. Drawn once. The cards are marks, so nobody sits here.
-class DeckchairBanner extends Control:
-
-	func _ready() -> void:
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-		resized.connect(queue_redraw)
-
-	func _draw() -> void:
-		if size.x <= 0.0 or size.y <= 0.0:
-			return
-		var w := size.y * 0.6
-		var font := CozyTheme.display(700)
-		var foot := Vector2(size.x * 0.5, size.y * 2.1)
-		var up := Vector2(-w * 0.5, -size.y * 1.98)
-		draw_set_transform_matrix(Transform2D(-0.44, foot) * Transform2D(0.0, up))
-		draw_mesh(DeckArt.back(w), null)
-		for k in 6:
-			draw_set_transform_matrix(Transform2D((k - 2.2) * 0.125, foot) * Transform2D(0.0, up))
-			draw_mesh(DeckArt.face(k % 4, w), null)
-			draw_string(font, Vector2(0.11, 0.325) * w, DeckArt.RANKS[k], HORIZONTAL_ALIGNMENT_LEFT, -1, int(w * 0.31),
-				DeckArt.RED if k % 2 == 1 else DeckArt.BLACK)
-		draw_set_transform_matrix(Transform2D.IDENTITY)
-
-## Furrow's banner: a row of beds dug in the meadow, a crop ripe on each
-## and a sprout on the last. Drawn once.
-class FurrowBanner extends Control:
-	var _keep: Array = []
-
-	func _ready() -> void:
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-		resized.connect(queue_redraw)
-
-	func _draw() -> void:
-		if size.x <= 0.0 or size.y <= 0.0:
-			return
-		_keep.clear()
-		var u := size.y / 110.0
-		var n := 5
-		# on the strip a card is cut to when the tab is full, the plants are
-		# still as tall as the strip lets them be
-		var w := minf(size.x * 0.92 / n, maxf(74.0 * u, size.y * 0.95))
-		var from := size.x * 0.5 - w * n * 0.5
-		var bed := Vector2(w * 0.88, w * 0.36)
-		var b := Face.Builder.new()
-		for i in n:
-			b.append(FurrowArt.bed(bed), Transform2D(0.0, Vector2(from + w * (i + 0.5), size.y * 0.8)))
-		var beds := b.mesh()
-		_keep.append(beds)
-		draw_mesh(beds, null)
-		for row: Array in [[4, 3], [0, 3], [5, 3], [6, 3], [1, 1]]:
-			var i := _keep.size() - 1
-			draw_mesh(FurrowArt.plant(row[0], row[1], w * 0.4), null, Transform2D(0.0, Vector2(from + w * (i + 0.5), size.y * 0.8)))
-			_keep.append(null)
-
-## Griddle's banner: a loaf, a cheese, a toastie pale and one done, and a
-## coin, in a row on the grass. Drawn once.
-class GriddleBanner extends Control:
-	func _ready() -> void:
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-		resized.connect(queue_redraw)
-
-	func _draw() -> void:
-		if size.x <= 0.0 or size.y <= 0.0:
-			return
-		var n := 5
-		var w := minf(size.x * 0.9 / n, maxf(80.0 * size.y / 110.0, size.y * 0.95))
-		var from := size.x * 0.5 - w * n * 0.5
-		var s := w * 0.74
-		var y := size.y * 0.56
-		draw_mesh(GriddleArt.loaf(s), null, Transform2D(0.0, Vector2(from + w * 0.5, y)))
-		draw_mesh(GriddleArt.cheese(s * 0.9), null, Transform2D(0.0, Vector2(from + w * 1.5, y)))
-		draw_mesh(GriddleArt.toastie(s, 0.0), null, Transform2D(-0.08, Vector2(from + w * 2.5, y)))
-		draw_mesh(GriddleArt.toastie(s, 1.0), null, Transform2D(0.08, Vector2(from + w * 3.5, y)))
-		draw_mesh(GriddleArt.coin(s * 0.8), null, Transform2D(0.0, Vector2(from + w * 4.5, y)))
-
-## Trivet's banner: five stacks of mats in a row, the middle one the
-## tallest. Drawn once.
-class TrivetBanner extends Control:
-	const PILES := [[2, 2], [0, 0, 1, 1], [3, 3, 3, 0, 0, 0], [1, 1, 4], [5, 5]]
-	var _keep: Array = []
-
-	func _ready() -> void:
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-		resized.connect(queue_redraw)
-
-	func _draw() -> void:
-		if size.x <= 0.0 or size.y <= 0.0:
-			return
-		if _keep.is_empty():
-			for p: Array in PILES:
-				_keep.append(TrivetArt.stack(p))
-		var n := PILES.size()
-		# a mat's half width: the tallest stack and its shadow stand in the strip
-		var r := minf(size.x * 0.94 / n / 2.3, size.y * 0.3)
-		var w := r * 2.3
-		var s := r / TrivetArt.U
-		var from := size.x * 0.5 - w * n * 0.5
-		for k in n:
-			draw_mesh(_keep[k], null, Transform2D(0.0, Vector2(s, s), 0.0, Vector2(from + w * (k + 0.5), size.y - r * 0.95)))
-
-## Eddy's banner: a round of the pond lying in the meadow, the whirlpool
-## turning in its middle, a duck and a boat on their way round it and
-## leaves between them. Drawn once.
-class EddyBanner extends Control:
-	var _keep: Array = []
-
-	func _ready() -> void:
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-		resized.connect(queue_redraw)
-
-	func _draw() -> void:
-		if size.x <= 0.0 or size.y <= 0.0:
-			return
-		_keep.clear()
-		var u := size.y / 110.0
-		var c := size * Vector2(0.5, 0.54)
-		var rx := minf(size.x * 0.46, 170.0 * u)
-		var ry := 46.0 * u
-		var b := Face.Builder.new()
-		b.ellipse(c + Vector2(0, 3.0 * u), rx + 5.0 * u, ry + 5.0 * u, EddyArt.BANK_DEEP)
-		b.ellipse(c, rx + 3.0 * u, ry + 3.0 * u, EddyArt.BANK_HI)
-		b.ellipse(c, rx, ry, EddyArt.WATER_LOW)
-		b.ellipse(c - Vector2(0, 2.0 * u), rx * 0.96, ry * 0.92, EddyArt.WATER)
-		b.ellipse(c - Vector2(rx * 0.3, ry * 0.4), rx * 0.4, ry * 0.2, Color(EddyArt.WATER_HI, 0.6))
-		var water := b.mesh()
-		_keep.append(water)
-		draw_mesh(water, null)
-		# the whirlpool lies flat on the water: squashed as the pond is
-		var flat := Transform2D(0.0, Vector2(1.0, ry / rx * 1.9), 0.0, c)
-		draw_mesh(EddyArt.streaks(11.0 * u), null, flat * Transform2D(0.6, Vector2.ZERO))
-		draw_mesh(EddyArt.funnel(11.0 * u), null, flat)
-		for row: Array in [[EddySim.Kind.LEAF, 0, -0.62, -0.2, 0.5], [EddySim.Kind.LEAF, 1, -0.3, 0.5, 2.1], [EddySim.Kind.PETAL, 0, 0.2, -0.56, 1.0],
-				[EddySim.Kind.LEAF, 2, 0.74, 0.1, 3.6], [EddySim.Kind.ACORN, 0, -0.78, 0.3, 4.0], [EddySim.Kind.PETAL, 2, 0.34, 0.62, 5.2]]:
-			draw_mesh(EddyArt.thing(row[0], row[1], 1.5 * u), null, Transform2D(float(row[4]), c + Vector2(float(row[2]) * rx, float(row[3]) * ry)))
-		draw_mesh(EddyArt.thing(EddySim.Kind.BOAT, 1, 1.25 * u), null, Transform2D(-0.5, c + Vector2(0.52 * rx, -0.3 * ry)))
-		draw_mesh(EddyArt.thing(EddySim.Kind.DUCK, 0, 1.5 * u), null, Transform2D(2.4, c + Vector2(-0.4 * rx, 0.02 * ry)))
+	var room := height - other - sep * shown - _strip.get_combined_minimum_size().y - GAP
+	if pages() > 1:
+		room -= PagerPill.H + GAP * 2
+	var rows := ceili(float(mini(PER_PAGE, _cards.size())) / COLS)
+	var row_h := clampf(floorf((room - GAP * (rows - 1)) / rows), PuzzleCard.CARD_H, PuzzleCard.CARD_H + GROW)
+	for card in _cards:
+		(card as PuzzleCard).fit_height(row_h)

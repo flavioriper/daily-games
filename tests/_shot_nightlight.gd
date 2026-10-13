@@ -693,13 +693,14 @@ func _process(delta: float) -> bool:
 				# and the card is no wider for it than the screen has room for
 				var kept: Dictionary = Sim.kept()
 				var n := int(kept.worlds)
-				var best: Label = _menu.arcade_tab._best["nightlight"]
+				var line: String = _menu.arcade_tab.said("nightlight")
 				var words: String = tr("NL_CARD_WORLDS_ONE") if n == 1 else tr("NL_CARD_WORLDS_N") % n
-				# the label, its line, the words, the head, the column, the card
-				var card: Control = best.get_parent().get_parent().get_parent().get_parent().get_parent()
+				# the line wraps in the card's own column now, so the card is
+				# as wide as its row gives it whatever the line says
+				var card: Control = _menu.arcade_tab._cards[_menu.arcade_tab.GAMES.find("nightlight")]
 				var right: float = card.get_global_rect().end.x
-				_check(n > 0 and best.text.contains(" · " + words) and right <= root.get_visible_rect().size.x,
-					"the card names the star's worlds and its line fits: kept %s, the line \"%s\" %d px long, the card ends at %d of %d px" % [str(kept), best.text, int(best.size.x), int(right), int(root.get_visible_rect().size.x)])
+				_check(n > 0 and line.contains(" · " + words) and right <= root.get_visible_rect().size.x,
+					"the card names the star's worlds and its line fits: kept %s, the line \"%s\", the card ends at %d of %d px" % [str(kept), line, int(right), int(root.get_visible_rect().size.x)])
 			"tutor":
 				_s.tutor.show()
 			"page":
