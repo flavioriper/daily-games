@@ -590,6 +590,10 @@ const PUZZLES := [
 		"script": "res://puzzles/fairy_lights2d.gd",
 		"shell": "flat",
 		"tray": "none",
+		# Its world is the whole screen (`bleed`, puzzles/fairy_lights_world.gd) and the
+		# levels stand where the day card was (docs/agents/flat-screens.md).
+		"bleed": true,
+		"level_card": true,
 		"actions": false,
 		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku (2026-09-23): a 5 by 5, 6 by 6 or 7 by 7 garden
@@ -621,6 +625,10 @@ const PUZZLES := [
 		"script": "res://puzzles/planes2d.gd",
 		"shell": "flat",
 		"tray": "none",
+		# Its world is the whole screen (`bleed`, puzzles/planes_world.gd) and the
+		# levels stand where the day card was (docs/agents/flat-screens.md).
+		"bleed": true,
+		"level_card": true,
 		"actions": false,
 		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku (2026-09-23): a 12 by 17, 16 by 23 or 21 by 30
@@ -650,6 +658,10 @@ const PUZZLES := [
 		"script": "res://puzzles/pinwheel2d.gd",
 		"shell": "flat",
 		"tray": "none",
+		# Its world is the whole screen (`bleed`, puzzles/pinwheel_world.gd) and the
+		# levels stand where the day card was (docs/agents/flat-screens.md).
+		"bleed": true,
+		"level_card": true,
 		"actions": false,
 		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku (2026-09-23): 9 pieces on a 5 by 5 frame, 11 on

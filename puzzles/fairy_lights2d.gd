@@ -126,6 +126,10 @@ const Seal = preload("res://ui/flat/seal.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const RunMesh = preload("res://ui/flat/run_mesh.gd")
 const Haptics = preload("res://core/haptics.gd")
+const World = preload("res://puzzles/fairy_lights_world.gd")
+const FLAT_HOST := "res://ui/flat/flat_host.gd"
+## The slide into the win's span (the host's SLOT_TIME).
+const WIN_SLIDE := 0.45
 
 # --- the screen, measured (spec section 2.1) ---
 ## The card's own inset. The grid is what is left of the card's width, cut
@@ -200,6 +204,8 @@ const DOT_RING: Array[Vector2] = [
 ## flowers hang on its corners and on a few places along it.
 const FRAME := 22.0
 const FRAME_RADIUS := 22.0
+## How far the frame's darker lip stands under it.
+const FRAME_LIP := 5.0
 const RAIL := 4.0
 const LEAF := 0.26
 const FLOWER_R := 0.085
@@ -673,6 +679,22 @@ var _stamp_at := INF
 var _cat: Control
 var _cat_at := INF
 var _cat_curled := false
+## The garden is the whole screen (2026-10-13, the registry's `bleed`):
+## puzzles/fairy_lights_world.gd lies edge to edge behind the plot from the
+## first `set_clear`, and the plot is laid in the span the host's rows leave
+## (`_clear`), its frame on the host's margin. On the win the span is slid
+## to the win's (`_win_clear`) over WIN_SLIDE: every layout smaller than the
+## reference draws the meshes it has through `_relay`, so nothing is built
+## in the middle of the wave. Until `set_clear` is called (in a card, on the
+## tutorial's page) the board lays itself as it always did.
+var _world: Control
+var _bled := false
+var _clear := Vector2.ZERO
+var _win_clear := Vector2.ZERO
+var _won := false
+var _slid := 0.0
+var _slide_tw: Tween
+var _enter_tws: Array = []
 
 func puzzle_id() -> String: return "fairylights"
 func title() -> String: return "Fairy Lights"
@@ -960,8 +982,27 @@ func _build_lanterns() -> void:
 func _cell_for(available: float) -> float:
 	if state.n <= 0:
 		return 0.0
+	if _bled:
+		var span := _span()
+		var bled_room := minf(span.size.x, span.size.y - _heart_row() - FRAME_LIP) - 2.0 * FRAME
+		var cell := maxf(0.0, bled_room) / float(state.n)
+		# Whole pixels at rest; the slide between is smooth.
+		return floorf(cell) if _slid <= 0.0 or _slid >= 1.0 else cell
 	var room := minf(size.x, available - _heart_row()) - 2.0 * _inset()
 	return floorf(maxf(0.0, room) / float(state.n))
+
+## What the host's rows leave of the screen, the frame's own box: between
+## the host's side margins, from the playing span to the win's as the slide
+## runs, the win's a pad inside its span.
+func _span() -> Rect2:
+	var side := float(load(FLAT_HOST).MARGIN) + INSET * _slid
+	var top := lerpf(_clear.x, _win_clear.x + INSET * 0.5, _slid)
+	var bottom := lerpf(_clear.y, _win_clear.y + INSET * 0.5, _slid)
+	return Rect2(side, top, maxf(0.0, size.x - 2.0 * side), maxf(0.0, size.y - top - bottom))
+
+## The width things were sized by when the board lay in a card.
+func _wide() -> float:
+	return size.x - 2.0 * float(load(FLAT_HOST).MARGIN) if _bled else size.x
 
 ## The card this board wants: the grid and its two insets, and the hearts'
 ## strip on a garden that has them, and no more. The air the card does not
@@ -990,6 +1031,59 @@ func _hearts_at() -> Vector2:
 func card_centred() -> bool:
 	return true
 
+## What the host's rows cover, in this board's own pixels (it is laid full
+## rect). While playing the plot is laid in what is left; on the win the
+## span slides to the win's and the plot with it, the garden held still.
+func set_clear(top: float, bottom: float, won := false) -> void:
+	Motion.stop(_slide_tw)
+	if not _bled:
+		_bled = true
+		# The card's layout, if one was taken, is not this one's reference.
+		_ref_cell = 0.0
+		_world = World.new()
+		_world.name = "World"
+		_world.show_behind_parent = true
+		add_child(_world)
+		move_child(_world, 0)
+		_world.size = size
+	_won = won
+	if not won:
+		_clear = Vector2(top, bottom)
+		_slid = 0.0
+		_layout()
+		return
+	_win_clear = Vector2(top, bottom)
+	if Motion.reduce or not is_inside_tree() or _cell <= 0.0 or _slid >= 1.0:
+		_slide(1.0)
+		return
+	_slide_tw = create_tween()
+	_slide_tw.tween_method(_slide, _slid, 1.0, WIN_SLIDE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+func _slide(t: float) -> void:
+	_slid = t
+	_layout()
+
+## The host slides the board `x` aside on a change of level; the garden
+## stays where it is, and the board that is leaving shows none, so the one
+## arriving under it is not hidden.
+func set_shift(x: float, leaving := false) -> void:
+	position.x = x
+	if _world != null:
+		_world.position.x = -x
+		_world.visible = not leaving
+
+## The host deals this board into a screen already standing: the plot and
+## its lanterns arrive whole. The first wash still runs out from the post.
+func skip_entrance() -> void:
+	for tw in _enter_tws:
+		Motion.stop(tw)
+	_enter_tws = []
+	var t := _now()
+	_opened = minf(_opened, t - Motion.ENTER_DELAY - Motion.ENTER_POP - Motion.POP_IN - 0.2)
+	for i in _lanterns:
+		_lanterns[i].scale = Vector2.ONE
+	_refresh()
+
 func _layout() -> void:
 	if state.n <= 0:
 		return
@@ -1001,10 +1095,21 @@ func _layout() -> void:
 	# it, so the grid is square in its card whether or not the host trimmed
 	# the card to card_height().
 	var row := _heart_row()
-	var tall := minf(size.y, span + 2.0 * _inset() + row)
-	var top := (size.y - tall) * 0.5
-	_grid = Vector2(size.x * 0.5 - span * 0.5, top + _inset() + row)
-	_hearts_y = top + HEART_TOP + HEART_R + HEART_PILL_PAD.y
+	if _bled:
+		# At the top of the span while playing, right under the tools row;
+		# in the middle of the win's.
+		var box := _span()
+		var high := span + 2.0 * FRAME + FRAME_LIP + row
+		var from := box.position.y + maxf(0.0, box.size.y - high) * 0.5 * _slid
+		_grid = Vector2(size.x * 0.5 - span * 0.5, from + row + FRAME)
+		_hearts_y = from + HEART_TOP + HEART_R + HEART_PILL_PAD.y - (INSET - FRAME)
+		if _world != null:
+			_world.size = size
+	else:
+		var tall := minf(size.y, span + 2.0 * _inset() + row)
+		var top := (size.y - tall) * 0.5
+		_grid = Vector2(size.x * 0.5 - span * 0.5, top + _inset() + row)
+		_hearts_y = top + HEART_TOP + HEART_R + HEART_PILL_PAD.y
 	if _heart_layer != null:
 		_heart_layer.queue_redraw()
 	# A deal, or a layout bigger than the reference, takes a new reference;
@@ -2359,9 +2464,10 @@ func _lantern_shape(id: int) -> Face.Builder:
 func _enter() -> void:
 	_opened = _now()
 	fx.cue("enter")
+	_enter_tws = []
 	for i in _lanterns:
-		Motion.pop_in(_lanterns[i], Motion.POP_IN,
-			Motion.ENTER_DELAY + Motion.ENTER_POP + Motion.ENTER_FACE_LAG)
+		_enter_tws.append(Motion.pop_in(_lanterns[i], Motion.POP_IN,
+			Motion.ENTER_DELAY + Motion.ENTER_POP + Motion.ENTER_FACE_LAG))
 	var dark := PackedInt32Array()
 	dark.resize(state.n * state.n)
 	dark.fill(-1)
@@ -2972,7 +3078,7 @@ func _cheer() -> String:
 # --- the nap cat ---
 
 func _cat_px() -> float:
-	return size.x * CAT_PX
+	return _wide() * CAT_PX
 
 ## Where she curls up: on the frame's foot, her cushion on the wood, along
 ## the bottom row where she hides the fewest lanterns (a lantern's paper is
@@ -3311,7 +3417,7 @@ func _draw_combo(now: float, shown: Array) -> void:
 ## and settling with the back ease's overshoot, its words over it: Flawless;
 ## on Insane "Insane" over Flawless or Wish Tags, on the night seal.
 func _draw_stamp(now: float, shown: Array) -> void:
-	var rad := size.x * STAMP_R * 0.75
+	var rad := _wide() * STAMP_R * 0.75
 	var insane: bool = state.band == 3
 	if _seal_mesh == null:
 		_seal_mesh = Seal.mesh(rad, insane)

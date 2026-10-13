@@ -318,3 +318,22 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   (the refusal's cue plays at the tap, not at the meeting). `_nudge` is gone
   (the run was its only reader's writer); 84 is a reading, not a comparison
   with the commit before.
+
+### The air above the clouds is the whole screen (2026-10-13)
+
+The redesign (`docs/agents/flat-screens.md`, "Every board gets a world of
+its own"), built unattended. `puzzles/planes_world.gd` is pale blue at the top
+turning to cream, the card's lattice of dots across the sky, a small cloud
+and a folded plane on a dotted way in the gap of the tools row, flat
+clouds half off the sides, and a sea of cloud in three scalloped bands at
+the foot with two planes skimming it; five glints breathe. The board's
+clip goes off on the first `set_clear`: **a launched plane flies on to
+the edge of the screen**, under the host's rows. Height binds, so the
+panel stands 36 to 50 inside the margin, with 56 kept open under it.
+
+- Registry: `bleed`, `level_card`; no tray, no actions row, as before.
+- `opengl3_angle`, 810x1440: 77 draw calls at rest; `tests/_win.gd --
+  planes` passes.
+- Decided for the user, unconfirmed: the 56 open foot; planes flying out
+  across the screen; the dusk of spent hearts dimming the world too.
+  Owed: a phone, Insane's wind sock against the tools row, the level slide.

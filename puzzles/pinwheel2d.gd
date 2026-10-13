@@ -67,6 +67,12 @@ const Seal = preload("res://ui/flat/seal.gd")
 const NapCat = preload("res://ui/faces/nap_cat.gd")
 const RunMesh = preload("res://ui/flat/run_mesh.gd")
 const Haptics = preload("res://core/haptics.gd")
+const World = preload("res://puzzles/pinwheel_world.gd")
+const FLAT_HOST := "res://ui/flat/flat_host.gd"
+## The slide into the win's span (the host's SLOT_TIME), and the air the
+## block keeps inside that span.
+const WIN_SLIDE := 0.45
+const WIN_PAD := 28.0
 
 # --- the screen, measured (spec section 4) ---
 ## The card's own inset, all round. At the standard 1000 x 1340 card that
@@ -350,6 +356,26 @@ const STAMP_TILT := -0.22
 signal leave
 
 var _state = State.new()
+## The hill is the whole screen (2026-10-13, the registry's `bleed`):
+## puzzles/pinwheel_world.gd lies edge to edge behind the board from the
+## first `set_clear`, and the frame is laid in the span the host's rows
+## leave. A board never told a clear lays itself in a card as before.
+var _world: Control
+var _bled := false
+## What the host's rows cover of the rect, top and bottom, while playing.
+var _clear := Vector2.ZERO
+## The board's own transform on the win: the block's middle while playing,
+## how far it moves and how small it gets, and how far along it is.
+var _slid_from := Vector2.ZERO
+var _slid_by := Vector2.ZERO
+var _slid_scale := 1.0
+var _slid := 0.0
+var _won := false
+var _win_clear := Vector2.ZERO
+var _placed := false
+## The host's slide on a change of level (set_shift).
+var _shift := 0.0
+var _slide_tw: Tween
 ## The board's own effects node: the hint's ring and every sparkle come
 ## through it and nowhere else.
 var fx: Node2D
@@ -807,8 +833,21 @@ func _cell() -> float:
 		return _ref_cell
 	if _state.cols <= 0 or _state.rows <= 0:
 		return 0.0
+	if _bled:
+		# The frame's rim on the host's margin, in the span the rows leave.
+		var rim := 2.0 * _rim()
+		return maxf(0.0, minf((size.x - 2.0 * _side() - rim) / float(_state.cols),
+			(size.y - _clear.x - _clear.y - _heart_row() - rim) / float(_state.rows)))
 	return minf((size.x - 2.0 * INSET) / float(_state.cols),
 		(size.y - _heart_row() - 2.0 * INSET) / float(_state.rows))
+
+## From the frame's cells out to the rim's outer edge.
+func _rim() -> float:
+	return FRAME_PAD + FRAME_RIM * 0.5
+
+## The host's side margin, which the frame keeps although the hill does not.
+func _side() -> float:
+	return float(load(FLAT_HOST).MARGIN)
 
 ## The strip the pill takes over the frame: the hearts on a band that has
 ## them, the move counter on Insane.
@@ -822,6 +861,10 @@ func _origin() -> Vector2:
 		return _ref_origin
 	var cell := _cell()
 	var row := _heart_row()
+	if _bled:
+		# At the top of the span, right under the tools row; what is left
+		# is open hill under the frame.
+		return Vector2((size.x - float(_state.cols) * cell) * 0.5, _clear.x + row + _rim())
 	return Vector2((size.x - float(_state.cols) * cell) * 0.5,
 		row + (size.y - row - float(_state.rows) * cell) * 0.5)
 
@@ -929,7 +972,18 @@ func _layout() -> void:
 	_bow_mesh = null
 	_seal_mesh = null
 	_combo_shown = null
+	if _world != null:
+		_world.size = size
 	_take_ref()
+	if _bled and _cell() > 0.0:
+		_world.set_foot(_frame_rect().end.y)
+		if _won:
+			# Laid out under a win (a resize, or a day reopened solved): the
+			# slide is aimed again, and set at its end if it never ran.
+			_aim()
+			if _slid <= 0.0 and not (_slide_tw != null and _slide_tw.is_valid()):
+				_slid = 1.0
+	_place()
 	if is_instance_valid(_cat):
 		_place_cat(_now())
 	if _life_layer != null:
@@ -937,6 +991,90 @@ func _layout() -> void:
 	if _heart_layer != null:
 		_heart_layer.queue_redraw()
 	_refresh()
+
+## What the host's rows cover, in this board's own pixels (it is laid full
+## rect). While playing the frame is laid in what is left. On the win it is
+## not laid out again: the board slides and shrinks into the win's span.
+func set_clear(top: float, bottom: float, won := false) -> void:
+	Motion.stop(_slide_tw)
+	if not _bled:
+		_bled = true
+		_world = World.new()
+		_world.name = "World"
+		# The board paints in `_draw`: the hill goes behind that.
+		_world.show_behind_parent = true
+		add_child(_world)
+		move_child(_world, 0)
+		_world.size = size
+		_ref_cell = 0.0
+	_won = won
+	if not won:
+		_clear = Vector2(top, bottom)
+		_slid = 0.0
+		_layout()
+		return
+	_win_clear = Vector2(top, bottom)
+	# A day reopened solved is told before it has been laid out: _layout
+	# sets the slide when it has a frame to aim.
+	if _cell() <= 0.0:
+		return
+	_aim()
+	if Motion.reduce or not is_inside_tree() or _slid >= 1.0:
+		_slide(1.0)
+		return
+	_slide_tw = create_tween()
+	_slide_tw.tween_method(_slide, _slid, 1.0, WIN_SLIDE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+## Where the win's slide ends: the block is the frame and the pill's strip
+## over it, as they are laid, and it goes to the middle of the win's span.
+func _aim() -> void:
+	var box := _frame_rect()
+	var row := _heart_row()
+	var block := Rect2(box.position - Vector2(0.0, row), box.size + Vector2(0.0, row))
+	var span := size.y - _win_clear.x - _win_clear.y
+	_slid_from = block.get_center()
+	_slid_scale = clampf(minf((size.x - 2.0 * _side() - 2.0 * WIN_PAD) / block.size.x,
+		(span - 2.0 * WIN_PAD) / block.size.y), 0.1, 1.0)
+	_slid_by = Vector2(size.x * 0.5, _win_clear.x + span * 0.5) - _slid_from
+
+func _slide(t: float) -> void:
+	_slid = t
+	_place()
+
+## The host slides the board `x` aside on a change of level; the hill stays
+## where it is, and the board that is leaving shows none, so the one
+## arriving under it is not hidden.
+func set_shift(x: float, leaving := false) -> void:
+	_shift = x
+	if _world != null:
+		_world.visible = not leaving
+	_place()
+
+## The host deals this board into a screen already standing: it arrives
+## whole, without the frame's pop and the pieces' entrance.
+func skip_entrance() -> void:
+	var t := _now() - 10.0
+	_opened = t
+	for p in _turned_at.size():
+		_turned_at[p] = t
+	_refresh()
+
+## The board's transform at `_slid`, and the hill's against it, so the hill
+## stays where it is while the frame and everything on it goes.
+func _place() -> void:
+	if _world == null:
+		return
+	if _slid <= 0.0 and _shift == 0.0 and not _placed:
+		return
+	_placed = _slid > 0.0 or _shift != 0.0
+	var k := lerpf(1.0, _slid_scale, _slid)
+	var by := _slid_by * _slid + Vector2(_shift, 0.0)
+	pivot_offset = _slid_from
+	scale = Vector2(k, k)
+	position = by
+	_world.pivot_offset = _slid_from
+	_world.scale = Vector2.ONE / k
+	_world.position = -by / k
 
 # --- the frame ---
 
@@ -2472,7 +2610,7 @@ func _draw_hearts() -> void:
 ## sits with the frame it belongs to on a band whose frame is bound by the
 ## width and leaves air above it.
 func _hearts_at() -> Vector2:
-	return Vector2(size.x * 0.5, maxf(HEART_TOP + HEART_PILL_PAD.y + HEART_R,
+	return Vector2(size.x * 0.5, maxf((_clear.x if _bled else 0.0) + HEART_TOP + HEART_PILL_PAD.y + HEART_R,
 		_origin().y - FRAME_PAD - FRAME_RIM - HEART_PILL_PAD.y - HEART_R - 10.0))
 
 ## A heart's small face: two dots and a smile in ink, a shine at the top

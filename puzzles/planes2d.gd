@@ -77,12 +77,23 @@ const Seal = preload("res://ui/flat/seal.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const RunMesh = preload("res://ui/flat/run_mesh.gd")
 const Haptics = preload("res://core/haptics.gd")
+const PlanesWorld = preload("res://puzzles/planes_world.gd")
+const FLAT_HOST := "res://ui/flat/flat_host.gd"
 
 # --- the screen, measured (spec section 7) ---
 ## The board card's own inset: 28 off a 1000 by 1340 card leaves a field box
 ## of 944 by 1284, and the cell is the largest whole number of pixels that
 ## fits the band's grid in it -- 91 on easy, 71 on medium, 58 on hard.
 const INSET := 28.0
+## **In a world of its own** (the registry's `bleed`, 2026-10-13): the air
+## kept open under the panel for the world's sea of cloud, on top of the
+## host's own margin. With it the cells are what the card gave them (91, 71
+## and 58 of 1080). The win shrinks the block this far inside its span, and
+## slides it there in the host's SLOT_TIME.
+const FOOT_ROOM := 56.0
+const WIN_PAD := 28.0
+const SOCK_ROOM := 28.0
+const WIN_SLIDE := 0.45
 
 # --- the pieces, every one of them a fraction of the cell (spec section 8) ---
 ## An empty cell's dot, and how far its LINE is let through. This is what
@@ -480,6 +491,26 @@ var _origin := Vector2.ZERO
 ## creases, in one mesh. Dropped whenever something changed so the next
 ## _draw rebuilds it.
 var _field: ArrayMesh
+## The world under the board (puzzles/planes_world.gd), made when the host
+## first says what its rows cover (`set_clear`); until then the board lies
+## in a card as it always did, which the tutorial's own boards still do.
+var _world: Control
+var _bled := false
+## What the host's rows cover of the rect, top and bottom, while playing
+## and on the win.
+var _clear := Vector2.ZERO
+var _win_clear := Vector2.ZERO
+var _won := false
+## The board's own transform on the win: the block's middle while playing,
+## how far it moves and how small it gets, and how far along it is.
+var _slid_from := Vector2.ZERO
+var _slid_by := Vector2.ZERO
+var _slid_scale := 1.0
+var _slid := 0.0
+var _placed := false
+var _slide_tw: Tween
+## The host's slide on a change of level (set_shift).
+var _shift := 0.0
 ## The mesh the last _draw actually handed to the canvas item. See the note
 ## at the top: a canvas command holds it by RID, so it is kept until the next
 ## one takes its place.
@@ -804,6 +835,8 @@ func _ready() -> void:
 	# slot, and the board card fills that slot, so the cut lands exactly on
 	# the card's own edge -- the mock's picture, where a plane flies off the
 	# grid, across the hem and is gone.
+	# In a world of its own (`set_clear`) there is no card: the clip goes and
+	# a plane flies on to the edge of the screen, under the host's rows.
 	clip_contents = true
 	fx = Fx2D.new()
 	fx.name = "Fx"
@@ -910,13 +943,33 @@ func _layout() -> void:
 	_cell = 0.0
 	_origin = Vector2.ZERO
 	var row := _heart_row()
-	if _state.cols > 0 and _state.rows > 0:
+	if _bled:
+		# The panel under the host's rows, as wide as their margin allows, at
+		# the top of the span they leave, FOOT_ROOM of air kept under it.
+		_world.size = size
+		row = _head_room()
+		var out := PANEL_PAD + PANEL_RIM
+		if _state.cols > 0 and _state.rows > 0:
+			_cell = maxf(0.0, floorf(minf(
+				(size.x - 2.0 * (_side() + out)) / float(_state.cols),
+				(size.y - _clear.x - _clear.y - row - 2.0 * out - FOOT_ROOM) / float(_state.rows))))
+			_origin = Vector2((size.x - float(_state.cols) * _cell) * 0.5, _clear.x + row + out)
+		_hearts_y = _clear.x + HEART_TOP + HEART_PILL_PAD.y + HEART_R
+		if _won and _cell > 0.0:
+			# Laid out under a win (a resize, or a day reopened solved): the
+			# slide is aimed again, and set at its end if it never ran.
+			_aim()
+			if _slid <= 0.0 and not (_slide_tw != null and _slide_tw.is_valid()):
+				_slid = 1.0
+		_place()
+	elif _state.cols > 0 and _state.rows > 0:
 		_cell = maxf(0.0, floorf(minf(
 			(size.x - 2.0 * INSET) / float(_state.cols),
 			(size.y - row - 2.0 * INSET) / float(_state.rows))))
 		_origin = Vector2((size.x - float(_state.cols) * _cell) * 0.5,
 			row + (size.y - row - float(_state.rows) * _cell) * 0.5)
-	_hearts_y = HEART_TOP + HEART_PILL_PAD.y + HEART_R
+	if not _bled:
+		_hearts_y = HEART_TOP + HEART_PILL_PAD.y + HEART_R
 	_cloud_mesh = null
 	_sock_mesh = null
 	_sky_flat = {}
@@ -942,6 +995,98 @@ func _layout() -> void:
 ## The strip the hearts take over the panel, on a sky that has them.
 func _heart_row() -> float:
 	return HEART_ROW if max_hearts > 0 or max_moves > 0 else 0.0
+
+## The air a bled board keeps over its panel: the hearts' strip, or on a
+## windy sky with none SOCK_ROOM, so the sock on its pole stands under the
+## host's buttons and not behind them.
+func _head_room() -> float:
+	if _heart_row() > 0.0:
+		return HEART_ROW
+	return SOCK_ROOM if _state.windy() else 0.0
+
+## The host's side margin, which the panel keeps although the world does not.
+func _side() -> float:
+	return float(load(FLAT_HOST).MARGIN)
+
+## What the host's rows cover, in this board's own pixels (a `bleed` board
+## is laid full rect). The first word of it makes the world and lets the
+## planes fly out over the whole screen instead of behind the card's edge.
+## While playing the panel is laid in what is left; on the win it is not
+## laid out again: the board slides and shrinks into the win's span under
+## its own one transform, the world held still against it.
+func set_clear(top: float, bottom: float, won := false) -> void:
+	if not _bled:
+		_bled = true
+		clip_contents = false
+		_world = PlanesWorld.new()
+		_world.name = "World"
+		# The board paints in _draw: the world lies behind that.
+		_world.show_behind_parent = true
+		add_child(_world)
+		move_child(_world, 0)
+	Motion.stop(_slide_tw)
+	_won = won
+	if not won:
+		_clear = Vector2(top, bottom)
+		_slid = 0.0
+		_layout()
+		return
+	_win_clear = Vector2(top, bottom)
+	# A day reopened solved may be told before it has been laid out: _layout
+	# sets the slide when it has a panel to aim.
+	if _cell <= 0.0:
+		return
+	_aim()
+	if Motion.reduce or not is_inside_tree() or _slid >= 1.0:
+		_slide(1.0)
+		return
+	_slide_tw = create_tween()
+	_slide_tw.tween_method(_slide, _slid, 1.0, WIN_SLIDE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+## Where the win's slide ends: the block is the panel and the air kept over
+## it (the hearts, the sock), fitted WIN_PAD inside the win's span.
+func _aim() -> void:
+	var box := _panel_rect()
+	var block := Rect2(box.position.x, _clear.x, box.size.x, box.end.y - _clear.x)
+	var span := size.y - _win_clear.x - _win_clear.y
+	_slid_from = block.get_center()
+	_slid_scale = clampf(minf((size.x - 2.0 * _side() - 2.0 * WIN_PAD) / block.size.x,
+		(span - 2.0 * WIN_PAD) / block.size.y), 0.1, 1.0)
+	_slid_by = Vector2(size.x * 0.5, _win_clear.x + span * 0.5) - _slid_from
+
+func _slide(t: float) -> void:
+	_slid = t
+	_place()
+
+## The host slides the board `x` aside on a change of level; the world stays
+## where it is, and the board that is leaving shows none, so the one
+## arriving under it is not hidden.
+func set_shift(x: float, leaving := false) -> void:
+	_shift = x
+	if _world != null:
+		_world.visible = not leaving
+	_place()
+
+## The host deals this board into a screen already standing: it arrives
+## whole, without the field's pop or the planes' wave.
+func skip_entrance() -> void:
+	_opened = _now() - 10.0
+	_refresh_all()
+
+## The board's transform at `_slid`, and the world's against it, so the sky
+## stays where it is while the panel and everything on it goes.
+func _place() -> void:
+	if _world == null or (_slid <= 0.0 and _shift == 0.0 and not _placed):
+		return
+	_placed = _slid > 0.0 or _shift != 0.0
+	var k := lerpf(1.0, _slid_scale, _slid)
+	var by := _slid_by * _slid + Vector2(_shift, 0.0)
+	pivot_offset = _slid_from
+	scale = Vector2(k, k)
+	position = by
+	_world.pivot_offset = _slid_from
+	_world.scale = Vector2.ONE / k
+	_world.position = -by / k
 
 ## The card this board wants: every pixel it is given. The grid is taller
 ## than it is wide in a slot that is taller than it is wide, so the height

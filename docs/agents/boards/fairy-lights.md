@@ -129,3 +129,23 @@ one at a time.
   slips, not twenty-two. Not updated: `FL_LVL_3` still says "two hearts",
   and `tests/_shot_fairylights.gd`'s `fuse` and `out` modes have no fuse to
   shoot.
+
+### The evening garden is the whole screen (2026-10-13)
+
+The redesign (`docs/agents/flat-screens.md`, "Every board gets a world of
+its own"), built unattended. `puzzles/fairy_lights_world.gd` is the card's night
+garden turned so the last light is at the top (cream behind the wordmark,
+a sage mist under the plot, teal dusk, the night lawn at the foot); a moth
+and three fireflies in the gap of the tools row; at the foot two garden
+posts with the power's lamp on the left one, two strands of bare bulbs
+swagged between them, fireflies and the card's hedge. The halos, the
+wire's glow and the fireflies breathe. The frame is on the host's margin.
+**The win is done differently from Binairo's**: this board already draws
+any smaller layout through its reference meshes, so the span itself is
+tweened and no transform is put on the board.
+
+- Registry: `bleed`, `level_card`; no tray, no actions row, as before.
+- `opengl3_angle`, 810x1440: 81 draw calls at rest; `tests/_win.gd --
+  fairylights` passes.
+- Decided for the user, unconfirmed: evening only at the foot; bare bulbs,
+  not paper lanterns (Light Up has those). Owed: a phone, the level slide.

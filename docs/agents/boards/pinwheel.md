@@ -175,3 +175,21 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   updated: `PW_LVL_3` ("two hearts") on the level picker and
   `tests/_shot_pinwheel.gd`. Not seen on screen: only headless checks were
   run.
+
+### The primrose hill is the whole screen (2026-10-13)
+
+The redesign (`docs/agents/flat-screens.md`, "Every board gets a world of
+its own"), built unattended. `puzzles/pinwheel_world.gd` is the card's primrose
+paper going to butter with the sun behind the wordmark, a cloud and a
+small kite in the gap of the tools row, and at the foot butter rises,
+tufts, five toy pinwheels on sticks (the largest sways) and three scraps
+of the pieces' cloth. The frames are tall: the board tells the world where
+its frame ends (`set_foot(y)`) and under 150 of open foot the toys are
+left out (Medium and Hard show rises and grass only). The frame's rim is
+on the host's margin.
+
+- Registry: `bleed`, `level_card`; no tray, no actions row, as before.
+- `opengl3_angle`, 810x1440: 79 draw calls at rest; `tests/_win.gd --
+  pinwheel` passes.
+- Decided for the user, unconfirmed: Medium's frame coming to 40 of the
+  bottom edge. Owed: a phone, the level slide.
