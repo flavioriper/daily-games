@@ -111,6 +111,31 @@ header h2 { font-size: 26px; margin: 0; letter-spacing: -.02em; }
 .pic .use a { display: inline-block; }
 .pic .use a { color: var(--accent); text-decoration: none; cursor: pointer; margin-right: 5px; }
 .pic .use a:hover { text-decoration: underline; }
+.conv { display: grid; grid-template-columns: 280px 1fr; gap: 16px; align-items: start; }
+.conv .ctl { display: grid; gap: 14px; }
+.conv label, .conv .lab { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 5px; }
+.conv label output { float: right; font-variant-numeric: tabular-nums; text-transform: none; letter-spacing: 0; }
+.conv input[type=range] { width: 100%; margin: 0; accent-color: var(--accent); }
+.conv input[type=text], .conv textarea { width: 100%; font: 12px/1.35 ui-monospace, Menlo, monospace; color: var(--ink);
+  background: var(--page); border: 1px solid var(--hair); border-radius: 8px; padding: 6px 8px; }
+.conv textarea { height: 300px; resize: vertical; white-space: pre; }
+.conv .seg { display: flex; flex-wrap: wrap; } .conv .seg button { flex: 1; padding: 5px 8px; white-space: nowrap; }
+.conv .hint { font-size: 12px; color: var(--muted); margin-top: 5px; }
+.drop { border: 1.5px dashed var(--axis); border-radius: 12px; padding: 18px 12px; text-align: center; color: var(--ink2);
+  cursor: pointer; }
+.drop.over { border-color: var(--accent); background: var(--accent-soft); }
+.drop b { display: block; color: var(--ink); }
+.conv .panel canvas { display: block; width: 100%; height: auto; max-height: 62vh; object-fit: contain; border-radius: 8px;
+  image-rendering: pixelated; background: #efe2c6; }
+#convres canvas { aspect-ratio: 1; cursor: crosshair; touch-action: none; }
+.swatches { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+.swatches button { width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--axis); padding: 0; cursor: pointer;
+  font-size: 10px; color: var(--muted); background: var(--surface); }
+.swatches button[aria-pressed="true"] { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn { border: 1px solid var(--hair); background: var(--surface); color: var(--ink); font: inherit; padding: 5px 12px;
+  border-radius: 8px; cursor: pointer; }
+.conv .panel canvas.small { width: 96px; margin-top: 10px; }
+@media (max-width: 900px) { .conv { grid-template-columns: 1fr; } }
 .empty { color: var(--muted); padding: 30px 0; text-align: center; }
 details { margin-top: 16px; color: var(--ink2); }
 details pre { font-size: 11px; overflow: auto; max-height: 300px; background: var(--surface);
@@ -122,9 +147,10 @@ kbd { border: 1px solid var(--axis); border-radius: 4px; padding: 0 4px; font: i
 </style>
 </head>
 <body>
-<nav><h1>Daily days</h1><div class="sub" id="range"></div><button id="gallerybtn"><span class="dot"></span>Picture gallery</button><div class="navsep"></div><div id="boards"></div></nav>
+<nav><h1>Daily days</h1><div class="sub" id="range"></div><button id="gallerybtn"><span class="dot"></span>Picture gallery</button><button id="convertbtn"><span class="dot"></span>Picture maker</button><div class="navsep"></div><div id="boards"></div></nav>
 <main>
  <div id="gallery" hidden></div>
+ <div id="convert" hidden></div>
  <div id="boardview">
   <header>
     <h2 id="title"></h2>
@@ -423,13 +449,253 @@ function gallery() {
   if (!GALLERY.sets.length) host.append(el("div", { class: "empty" }, "No gallery exported."));
 }
 
+// --- the picture maker: any image as a bead picture -------------------------
+// A try-out: nothing here writes the bank. The image is cut to a square, laid
+// on the band's grid, and each square takes the nearest of the game's beads
+// (in OKLab, where near means near to the eye); the band's colour count is
+// kept by dropping the bead that costs the picture least, one at a time. The
+// checks are tools/check_pixel_garden.py's, which stays the judge.
+const BEADS = Object.entries(GALLERY.beads);
+const BAND_RULES = { 10: { colours: [3, 4], fill: [.3, .7], small: true }, 12: { colours: [4, 5], fill: [.3, .7], small: true },
+  24: { colours: [7, 10], fill: [.85, 1], cut: 5 }, 32: { colours: [8, 12], fill: [.85, 1], cut: 6 } };
+const CUT_FILL = [.3, .7], MOST = .45, WORK = 240;
+const conv = { img: null, id: "picture", size: 10, frame: "subject", bg: "auto", tol: .1, margin: 1, colours: 4, zoom: 1,
+  px: 0, py: 0, vivid: 1, edits: {}, brush: null, rows: null };
+const lin = v => { v /= 255; return v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; };
+function oklab(r, g, b) {
+  const l = Math.cbrt(.4122214708 * r + .5363325363 * g + .0514459929 * b), m = Math.cbrt(.2119034982 * r + .6806995451 * g + .1073969566 * b),
+    s = Math.cbrt(.0883024619 * r + .2817188376 * g + .6299787005 * b);
+  return [.2104542553 * l + .793617785 * m - .0040720468 * s, 1.9779984951 * l - 2.428592205 * m + .4505937099 * s,
+    .0259040371 * l + .7827717662 * m - .808675766 * s];
+}
+const BEAD_LAB = BEADS.map(([, hex]) => oklab(lin(parseInt(hex.slice(1, 3), 16)), lin(parseInt(hex.slice(3, 5), 16)), lin(parseInt(hex.slice(5, 7), 16))));
+const setOfSize = n => GALLERY.sets.find(s => s.kind === "pixels" && s.pictures[0]?.rows.length === n);
+const fillOf = rows => { const flat = rows.join(""); return [...flat].filter(c => c !== ".").length / flat.length; };
+// A size with no written rule (Button Box's Hard) is held beside the pictures it has.
+function rulesOf(n) {
+  if (BAND_RULES[n]) return BAND_RULES[n];
+  const pics = setOfSize(n)?.pictures || [];
+  if (!pics.length) return { colours: [1, BEADS.length], fill: [0, 1], loose: true };
+  const cs = pics.map(p => new Set(p.rows.join("").replace(/\./g, "")).size), fs = pics.map(p => fillOf(p.rows));
+  return { colours: [Math.min(...cs), Math.max(...cs)], fill: [Math.min(...fs), Math.max(...fs)], loose: true };
+}
+// tools/check_pixel_garden.py's check(), for one picture.
+function checkPicture(rows, n) {
+  const rule = rulesOf(n), flat = rows.join(""), out = [], pct = v => Math.round(v * 100) + "%";
+  const used = [...new Set(flat.replace(/\./g, ""))], filled = fillOf(rows);
+  const cut = !!rule.cut && filled >= CUT_FILL[0] && filled <= CUT_FILL[1];
+  const lo = cut ? rule.cut : rule.colours[0], hi = rule.colours[1];
+  out.push({ ok: used.length >= lo && used.length <= hi, text: `${used.length} colours, wants ${lo}–${hi}` });
+  out.push({ ok: cut || (filled >= rule.fill[0] && filled <= rule.fill[1]),
+    text: `${pct(filled)} filled, wants ${pct(rule.fill[0])}–${pct(rule.fill[1])}` + (rule.cut ? (cut ? " (a cut-out)" : " or a cut-out at 30%–70%") : "") });
+  if (rule.cut) {
+    const share = Math.max(0, ...used.map(c => flat.split(c).length - 1)) / flat.length;
+    out.push({ ok: share < MOST, text: `largest colour ${pct(share)} of it, wants under ${pct(MOST)}` });
+  }
+  if (rule.small) {
+    const all = [rows[0], rows[n - 1], rows.map(r => r[0]).join(""), rows.map(r => r[n - 1]).join("")].every(e => /[^.]/.test(e));
+    out.push({ ok: !all, text: all ? "touches all four edges" : "leaves an edge bare" });
+  }
+  return out;
+}
+// The source at working size, with what of it is background: what is
+// transparent and, unless "alpha", what is the border's colour: joined to the
+// border ("auto") or anywhere ("all").
+function convWork() {
+  const img = conv.img, s = Math.min(1, WORK / Math.max(img.naturalWidth, img.naturalHeight));
+  const w = Math.max(1, Math.round(img.naturalWidth * s)), h = Math.max(1, Math.round(img.naturalHeight * s));
+  const cv = el("canvas", { width: w, height: h }), ctx = cv.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(img, 0, 0, w, h);
+  const px = ctx.getImageData(0, 0, w, h).data, n = w * h;
+  const rgb = new Float32Array(n * 3), lab = new Float32Array(n * 3), bg = new Uint8Array(n);
+  for (let i = 0; i < n; i++) {
+    const r = lin(px[4 * i]), g = lin(px[4 * i + 1]), b = lin(px[4 * i + 2]);
+    rgb.set([r, g, b], 3 * i); lab.set(oklab(r, g, b), 3 * i);
+    if (px[4 * i + 3] < 128) bg[i] = 1;
+  }
+  if (conv.bg !== "alpha") {
+    const border = [];
+    for (let x = 0; x < w; x++) border.push(x, n - w + x);
+    for (let y = 1; y < h - 1; y++) border.push(y * w, y * w + w - 1);
+    const buckets = new Map();
+    for (const i of border) if (!bg[i]) { const k = (px[4 * i] >> 4) << 8 | (px[4 * i + 1] >> 4) << 4 | px[4 * i + 2] >> 4;
+      buckets.has(k) ? buckets.get(k).push(i) : buckets.set(k, [i]); }
+    const most = [...buckets.values()].sort((a, b) => b.length - a.length)[0];
+    if (most) {
+      const ref = [0, 1, 2].map(c => most.reduce((t, i) => t + lab[3 * i + c], 0) / most.length), t2 = conv.tol * conv.tol;
+      const near = i => (lab[3 * i] - ref[0]) ** 2 + (lab[3 * i + 1] - ref[1]) ** 2 + (lab[3 * i + 2] - ref[2]) ** 2 < t2;
+      const seen = new Uint8Array(n), stack = [];
+      const push = i => { if (!seen[i] && (bg[i] || near(i))) { seen[i] = 1; bg[i] = 1; stack.push(i); } };
+      // "all" leaves bare what is the edge colour anywhere, a hole in the subject too.
+      if (conv.bg === "all") for (let i = 0; i < n; i++) { if (near(i)) bg[i] = 1; }
+      else border.forEach(push);
+      while (stack.length) { const i = stack.pop(), x = i % w;
+        if (x) push(i - 1); if (x < w - 1) push(i + 1); if (i >= w) push(i - w); if (i < n - w) push(i + w); }
+    }
+  }
+  return { cv, w, h, rgb, bg };
+}
+// The square of the source the picture is cut from: its corner and a cell's side.
+function convFrame(wk) {
+  const N = conv.size, { w, h, bg } = wk;
+  if (conv.frame === "subject") {
+    let x0 = w, y0 = h, x1 = -1, y1 = -1;
+    for (let i = 0; i < w * h; i++) if (!bg[i]) { const x = i % w, y = (i - x) / w;
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    if (x1 < 0) { x0 = 0; y0 = 0; x1 = w - 1; y1 = h - 1; }
+    const bw = x1 - x0 + 1, bh = y1 - y0 + 1, cs = Math.max(bw, bh) / Math.max(1, N - 2 * conv.margin);
+    return [x0 + bw / 2 - N * cs / 2, y0 + bh / 2 - N * cs / 2, cs];
+  }
+  const side = (conv.frame === "crop" ? Math.min(w, h) : Math.max(w, h)) / conv.zoom;
+  return [w / 2 + conv.px * Math.abs(w - side) / 2 - side / 2, h / 2 + conv.py * Math.abs(h - side) / 2 - side / 2, side / N];
+}
+// A cell's colour: the mean of what it covers that is not background, in
+// OKLab; null where over half of it is background.
+function convCells(wk, fr) {
+  const N = conv.size, { w, h, rgb, bg } = wk, cells = [];
+  const span = (a, b) => { let i0 = Math.ceil(a - .5), i1 = Math.ceil(b - .5) - 1; if (i1 < i0) i0 = i1 = Math.floor((a + b) / 2); return [i0, i1]; };
+  for (let cy = 0; cy < N; cy++) for (let cx = 0; cx < N; cx++) {
+    const [X0, X1] = span(fr[0] + cx * fr[2], fr[0] + (cx + 1) * fr[2]), [Y0, Y1] = span(fr[1] + cy * fr[2], fr[1] + (cy + 1) * fr[2]);
+    let tot = 0, fg = 0, r = 0, g = 0, b = 0;
+    for (let y = Y0; y <= Y1; y++) for (let x = X0; x <= X1; x++) {
+      tot++;
+      if (x < 0 || y < 0 || x >= w || y >= h || bg[y * w + x]) continue;
+      const i = 3 * (y * w + x); fg++; r += rgb[i]; g += rgb[i + 1]; b += rgb[i + 2];
+    }
+    if (!fg || fg * 2 < tot) { cells.push(null); continue; }
+    const L = oklab(r / fg, g / fg, b / fg);
+    cells.push([L[0], L[1] * conv.vivid, L[2] * conv.vivid]);
+  }
+  return cells;
+}
+// Each cell's bead, in no more than k colours.
+function convBeads(cells, k) {
+  const d = cells.map(c => c && BEAD_LAB.map(b => (c[0] - b[0]) ** 2 + (c[1] - b[1]) ** 2 + (c[2] - b[2]) ** 2));
+  let kept = BEADS.map((_, i) => i);
+  const assign = () => d.map(row => row ? kept.reduce((a, i) => row[i] < row[a] ? i : a, kept[0]) : -1);
+  let at = assign();
+  kept = kept.filter(i => at.includes(i));
+  while (kept.length > k) {
+    let drop = -1, least = Infinity;
+    for (const out of kept) {
+      const rest = kept.filter(i => i !== out); let cost = 0;
+      at.forEach((a, j) => { if (a === out) cost += Math.min(...rest.map(i => d[j][i])) - d[j][out]; });
+      if (cost < least) { least = cost; drop = out; }
+    }
+    kept = kept.filter(i => i !== drop); at = assign();
+  }
+  return at;
+}
+function convRun() {
+  const N = conv.size;
+  $("convsrc").textContent = ""; $("convres").textContent = ""; $("convflags").textContent = ""; $("convnote").textContent = "";
+  conv.rows = null;
+  if (!conv.img) { $("convsrc").append(el("div", { class: "empty" }, "No image yet.")); $("convjson").value = ""; return; }
+  const wk = convWork(), fr = convFrame(wk), at = convBeads(convCells(wk, fr), conv.colours);
+  const chars = at.map((a, j) => conv.edits[j] ?? (a < 0 ? "." : BEADS[a][0]));
+  const rows = conv.rows = Array.from({ length: N }, (_, y) => chars.slice(y * N, y * N + N).join(""));
+  // The source, what was taken for background greyed, the square cut from it.
+  const ctx = wk.cv.getContext("2d"), shade = ctx.getImageData(0, 0, wk.w, wk.h);
+  for (let i = 0; i < wk.w * wk.h; i++) if (wk.bg[i]) { const c = ((i % wk.w >> 3) + (Math.floor(i / wk.w) >> 3)) % 2 ? 150 : 185;
+    shade.data.set([c, c, c, 255], 4 * i); }
+  ctx.putImageData(shade, 0, 0);
+  ctx.strokeStyle = "#2a78d6"; ctx.lineWidth = 1.5; ctx.strokeRect(fr[0], fr[1], fr[2] * N, fr[2] * N);
+  wk.cv.style.aspectRatio = wk.w + " / " + wk.h;
+  $("convsrc").append(wk.cv);
+  const pic = { id: conv.id, rows };
+  const small = thumb({ kind: "pixels" }, pic); small.className = "small"; small.title = "at a gallery card's size";
+  $("convres").append(thumb({ kind: "pixels" }, pic), small);
+  for (const c of checkPicture(rows, N)) { const s = el("span", { class: "flag" });
+    s.append(el("span", { class: "dot", style: `background: var(--${c.ok ? "good" : "critical"})` }), (c.ok ? "✓ " : "✗ ") + c.text); $("convflags").append(s); }
+  const set = setOfSize(N), users = set ? set.users.map(u => `${titleOf(u[0])} ${levelName(u[0], u[1])}`).join(", ") : "nothing";
+  const edits = Object.keys(conv.edits).length;
+  $("convnote").textContent = `${[...rows.join("")].filter(c => c !== ".").length} beads · read at this size by ${users}`
+    + (rulesOf(N).loose ? " · this set has no written rule: the ranges are the pictures it has" : "")
+    + (edits ? ` · ${edits} painted by hand` : "");
+  const slug = conv.id.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "") || "picture";
+  $("convjson").value = `{\n "id": "${slug}",\n "name": "PG_PIC_${slug.toUpperCase()}",\n "rows": [\n${rows.map(r => `  "${r}"`).join(",\n")}\n ]\n}`;
+}
+function convLoad(file, name) {
+  if (!file) return;
+  const img = new Image(), url = typeof file === "string" ? file : URL.createObjectURL(file);
+  img.onload = () => { conv.img = img; conv.edits = {}; conv.id = (name || file.name || "picture").replace(/\.[^.]*$/, ""); convertView(); };
+  img.onerror = () => { $("convnote").textContent = "That file is not an image this browser reads."; };
+  img.src = url;
+}
+function convSize(n) {
+  const rule = rulesOf(n);
+  Object.assign(conv, { size: n, colours: rule.colours[1], frame: rule.fill[1] < .85 ? "subject" : "crop", bg: rule.fill[1] < .85 ? "auto" : "alpha",
+    margin: 1, zoom: 1, px: 0, py: 0, edits: {} });
+}
+function convertView() {
+  const host = $("convert"); host.textContent = "";
+  host.append(el("h2", {}, "Picture maker"), el("p", { class: "lead" },
+    "A try-out: any image as a bead picture in the game's nineteen colours, at a size the picture boards read, held to the bank's rules. Nothing is written to the game; the entry at the foot is what would be pasted into the bank. Gumdrop's jellies are drawn shapes, not squares, and are not made here."));
+  const box = el("div", { class: "conv" }), ctl = el("div", { class: "panel ctl" }), right = el("div");
+  const field = (label, node, hint) => { const f = el("div"); f.append(el("div", { class: "lab" }, label), node); if (hint) f.append(el("div", { class: "hint" }, hint)); return f; };
+  const seg = (key, options, then) => { const s = el("div", { class: "seg" });
+    for (const [v, text] of options) { const b = el("button", { "aria-pressed": conv[key] === v }, text);
+      b.addEventListener("click", () => { then ? then(v) : (conv[key] = v, conv.edits = {}); convertView(); }); s.append(b); }
+    return s; };
+  const slider = (label, key, min, max, step, show = v => v) => { const f = el("div"), l = el("label"), o = el("output", {}, show(conv[key]));
+    const r = el("input", { type: "range", min, max, step, value: conv[key] });
+    r.addEventListener("input", () => { conv[key] = +r.value; conv.edits = {}; o.textContent = show(conv[key]); convRun(); });
+    l.append(label, o); f.append(l, r); return f; };
+  const drop = el("div", { class: "drop", tabindex: 0 }), pick = el("input", { type: "file", accept: "image/*", hidden: "" });
+  drop.append(el("b", {}, conv.img ? "Another image" : "Drop an image here"), "or click to choose, or paste one");
+  drop.addEventListener("click", () => pick.click());
+  pick.addEventListener("change", () => convLoad(pick.files[0]));
+  drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("over"); });
+  drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+  drop.addEventListener("drop", e => { e.preventDefault(); drop.classList.remove("over"); convLoad(e.dataTransfer.files[0]); });
+  const rule = rulesOf(conv.size);
+  ctl.append(drop, pick,
+    field("Size", seg("size", [10, 12, 16, 24, 32].map(n => [n, String(n)]), convSize),
+      { 10: "Easy", 12: "Medium", 16: "Button Box's Hard", 24: "Hard", 32: "Insane" }[conv.size] + ` · ${rule.colours[0]}–${rule.colours[1]} colours`),
+    field("Frame", seg("frame", [["subject", "Subject"], ["crop", "Crop"], ["pad", "Whole"]]),
+      { subject: "The subject alone on a bare board, as the small pictures are.", crop: "A square cut from the middle.", pad: "The whole image, bare where it ends." }[conv.frame]),
+    field("Background", seg("bg", [["auto", "Edge"], ["all", "Edge, holes too"], ["alpha", "None"]]),
+      { auto: "What joins the border in the border's colour is left bare.", all: "The border's colour is left bare wherever it is, inside the subject too.",
+        alpha: "Only what is transparent is left bare." }[conv.bg]));
+  if (conv.bg !== "alpha") ctl.append(slider("How near the edge colour", "tol", .02, .4, .01, v => v.toFixed(2)));
+  if (conv.frame === "subject") ctl.append(slider("Bare squares round it", "margin", 0, Math.floor(conv.size / 4), 1));
+  else ctl.append(slider("Zoom", "zoom", 1, 4, .05, v => v.toFixed(2) + "×"), slider("Across", "px", -1, 1, .02, v => v.toFixed(2)), slider("Down", "py", -1, 1, .02, v => v.toFixed(2)));
+  ctl.append(slider("Colours at the most", "colours", 2, Math.max(rule.colours[1], 12), 1), slider("Vivid", "vivid", .6, 2.5, .05, v => v.toFixed(2) + "×"));
+  const pair = el("div", { class: "pair" }), src = el("section", { class: "panel" }), res = el("section", { class: "panel" });
+  src.append(el("h3", {}, "Source"), el("div", { id: "convsrc" }));
+  const board = el("div", { id: "convres" }), sw = el("div", { class: "swatches" });
+  for (const [ch, hex] of [[".", ""], ...BEADS]) { const b = el("button", { "aria-pressed": conv.brush === ch, title: ch === "." ? "bare" : ch, style: hex ? `background:${hex}` : "" }, ch === "." ? "×" : "");
+    b.addEventListener("click", () => { conv.brush = conv.brush === ch ? null : ch; sw.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b && conv.brush !== null)); });
+    sw.append(b); }
+  const paint = e => { const cv = board.querySelector("canvas"); if (conv.brush === null || !conv.rows || !cv || !(e.buttons & 1) && e.type !== "pointerdown") return;
+    const r = cv.getBoundingClientRect(), x = Math.floor((e.clientX - r.left) / r.width * conv.size), y = Math.floor((e.clientY - r.top) / r.height * conv.size);
+    if (x < 0 || y < 0 || x >= conv.size || y >= conv.size || conv.rows[y][x] === conv.brush) return;
+    conv.edits[y * conv.size + x] = conv.brush; convRun(); };
+  board.addEventListener("pointerdown", paint); board.addEventListener("pointermove", paint);
+  res.append(el("h3", {}, `As beads, ${conv.size} × ${conv.size}`), board, sw, el("div", { class: "hint" }, "Pick a bead (or × for bare) and paint squares. Moving a control starts over."));
+  pair.append(src, res);
+  const entry = el("section", { class: "panel", style: "margin-top:16px" }), name = el("input", { type: "text", value: conv.id, "aria-label": "id" });
+  name.addEventListener("input", () => { conv.id = name.value; convRun(); });
+  const copy = el("button", { class: "btn" }, "Copy");
+  copy.addEventListener("click", () => { const t = $("convjson"); t.select(); (navigator.clipboard?.writeText(t.value) || Promise.reject()).catch(() => document.execCommand("copy")); copy.textContent = "Copied"; setTimeout(() => copy.textContent = "Copy", 1200); });
+  const head = el("div", { style: "display:flex;gap:8px;margin-bottom:8px" }); head.append(name, copy);
+  entry.append(el("h3", {}, "The bank entry"), head, el("textarea", { id: "convjson", readonly: "", spellcheck: "false" }));
+  right.append(pair, el("div", { class: "flags", id: "convflags", style: "margin-top:14px" }), el("div", { class: "hint", id: "convnote" }), entry);
+  box.append(ctl, right); host.append(box);
+  convRun();
+}
+addEventListener("paste", e => { if (state.view !== "convert") return;
+  const f = [...(e.clipboardData?.files || [])].find(x => x.type.startsWith("image/")); if (f) { e.preventDefault(); convLoad(f, "pasted"); } });
+
 // --- the page ---------------------------------------------------------------
 function draw() {
   try { localStorage.setItem("daily-days", JSON.stringify(state)); } catch (e) {}
-  const showing = state.view === "gallery";
-  $("gallery").hidden = !showing; $("boardview").hidden = showing;
-  $("gallerybtn").setAttribute("aria-current", showing);
-  if (showing) gallery();
+  const showing = state.view === "gallery" || state.view === "convert";
+  $("gallery").hidden = state.view !== "gallery"; $("convert").hidden = state.view !== "convert"; $("boardview").hidden = showing;
+  $("gallerybtn").setAttribute("aria-current", state.view === "gallery");
+  $("convertbtn").setAttribute("aria-current", state.view === "convert");
+  if (state.view === "gallery") gallery();
+  if (state.view === "convert" && !$("convert").firstChild) convertView();
   const board = INDEX.boards.find(b => b.id === state.board), levels = levelsOf(state.board);
   if (!levels.includes(state.level)) state.level = levels[0] ?? 0;
   const doc = docNow();
@@ -483,11 +749,12 @@ function draw() {
   $("raw").textContent = doc ? JSON.stringify({ ...doc, flags: undefined }, null, 1) : "";
 }
 $("gallerybtn").addEventListener("click", () => { state.view = "gallery"; draw(); scrollTo(0, 0); });
+$("convertbtn").addEventListener("click", () => { state.view = "convert"; draw(); scrollTo(0, 0); });
 $("prev").addEventListener("click", () => step(-1));
 $("next").addEventListener("click", () => step(1));
 function step(n) { const i = INDEX.dates.indexOf(state.date) + n; if (i >= 0 && i < INDEX.dates.length) { state.date = INDEX.dates[i]; draw(); } }
 addEventListener("keydown", e => {
-  if (e.metaKey || e.ctrlKey || e.altKey || state.view === "gallery") return;
+  if (e.metaKey || e.ctrlKey || e.altKey || state.view !== "board") return;
   const ids = INDEX.boards.map(b => b.id), at = ids.indexOf(state.board);
   if (e.key === "ArrowLeft") step(-1);
   else if (e.key === "ArrowRight") step(1);

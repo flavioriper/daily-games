@@ -75,3 +75,36 @@ Checked: the suite 249565/0, every touched script `--check-only`, two
 exports of the thirty days identical but for `gen_ms`, twelve boards looked
 at in headless Chrome. Not checked: the page in Safari or Firefox, the
 light theme, a phone-width window.
+
+## The picture maker (2026-10-13)
+
+The user: "given any image, I want us to be able to convert it to a pixel
+image, and map it to fit into the picture games. Do it somewhere on the
+dashboard for now so we can test". A try-out, all of it in
+`tools/dashboard.src.html` (`#view=convert`): nothing writes the bank, and no
+game code was touched.
+
+- An image is dropped, chosen or pasted, and read in the browser. A size is
+  picked: 10, 12, 24, 32 (the bead bank's bands) or 16 (Button Box's Hard).
+- **Frame**: the subject alone with bare squares round it (the default where
+  the band's pictures are cut-outs), a square cropped from it, or the whole
+  image. **Background**: what joins the border in the border's colour is left
+  bare, or that colour anywhere, or only what is transparent.
+- A square takes the mean of what it covers and then the nearest of the
+  nineteen beads in OKLab; the band's colour count is kept by dropping, one
+  at a time, the bead whose loss costs least. No dithering. `Vivid` scales
+  chroma before the match, for photos that come out tan and grey.
+- A picked bead paints squares by hand; moving a control starts over.
+- The checks are a port of `tools/check_pixel_garden.py`'s `check()`, which
+  stays the judge. Button Box's Hard has no written rule, so a 16 is held
+  beside the ranges of the thirty it has, and the page says so.
+- The foot is the bank entry as text. Pasting one in also wants its
+  `PG_PIC_*` row in the locale files.
+- Gumdrop's jellies are polygons built from named parts
+  (`gumdrop_mould.gd`); an image cannot become one here.
+
+Checked in headless Chrome, dark theme: two emoji drawings and two photos
+converted at 10, 12, 16, 24 and 32; four of them appended to a scratch copy
+of the bank pass `check_pixel_garden.py --bank`, and a fifth fails it for the
+reason the page gave. Not driven: the file chooser, drop, paste and the
+painting (the test fed images to `convLoad` directly).
