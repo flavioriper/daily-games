@@ -102,6 +102,15 @@ const FOCUS_ALPHA := 0.12
 const ROCK_SHARE := 0.34
 ## A sign's badge radius and its glyph's half-width and stroke, as fractions
 ## of the tile.
+## A placed tile's sky, top to bottom, and how much of the paper it covers.
+const DAY_TILE_TOP := Color("bfe0fb")
+const DAY_TILE_LOW := Color("e4f2ff")
+const NIGHT_TILE_TOP := Color("353f7c")
+const NIGHT_TILE_LOW := Color("5562ab")
+const TILE_SKY := 0.9
+## The night tile's stars, as shares of the tile: [x, y, radius].
+const TILE_STARS := [[0.15, 0.19, 0.026], [0.86, 0.60, 0.028], [0.13, 0.80, 0.022],
+	[0.62, 0.90, 0.018], [0.40, 0.09, 0.016], [0.90, 0.86, 0.014]]
 const SIGN_R := 0.14
 const SIGN_GLYPH := 0.065
 const SIGN_STROKE := 0.028
@@ -323,6 +332,11 @@ var _slide_tw: Tween
 var _mm_edge: MultiMesh
 var _mm_face: MultiMesh
 var _mm_tint: MultiMesh
+## A placed tile's own sky (the user, 2026-10-13): a sunny blue with a glint
+## under a sun the player set, a starry night under a moon. One mesh each,
+## drawn over the coin's paper at the tile's own alpha; a clue keeps its sand.
+var _mm_day: MultiMesh
+var _mm_night: MultiMesh
 var _mm_shadow: MultiMesh
 var _mm_rays: MultiMesh
 var _mm_bodies: Dictionary = {}   # ArrayMesh -> MultiMesh, the bodies shown now
@@ -467,10 +481,12 @@ func _ready() -> void:
 	_mm_edge = _multimesh()
 	_mm_face = _multimesh()
 	_mm_tint = _multimesh()
+	_mm_day = _multimesh()
+	_mm_night = _multimesh()
 	_mm_shadow = _multimesh()
 	_mm_rays = _multimesh()
 	_under.draw.connect(func() -> void:
-		for mm in [_mm_edge, _mm_face, _mm_tint, _mm_shadow, _mm_rays] + _mm_bodies.values():
+		for mm in [_mm_edge, _mm_face, _mm_day, _mm_night, _mm_tint, _mm_shadow, _mm_rays] + _mm_bodies.values():
 			if mm.mesh != null:
 				_under.draw_multimesh(mm, null))
 	add_child(_under)
@@ -696,6 +712,8 @@ func _layout() -> void:
 		_mm_edge.mesh = _coin_mesh(_tile)
 		_mm_face.mesh = _coin_mesh(_tile - TILE_EDGE)
 		_mm_tint.mesh = _mm_face.mesh
+		_mm_day.mesh = _sky_mesh(_tile - TILE_EDGE, false)
+		_mm_night.mesh = _sky_mesh(_tile - TILE_EDGE, true)
 		_under.queue_redraw()
 	for layer: Control in [_sign_layer, _heart_layer, _combo_layer]:
 		layer.position = Vector2.ZERO
@@ -1818,6 +1836,34 @@ func _coin_mesh(h: float) -> ArrayMesh:
 	b.polygon(Face.Builder.round_rect(Vector2.ZERO, Vector2(_tile, h), TILE_RADIUS), Color.WHITE)
 	return b.mesh()
 
+## A placed tile's sky, the coin's paper shape `h` tall: the day a pale blue
+## with two glints across its corner, the night an indigo with a few stars
+## round where the moon sits.
+func _sky_mesh(h: float, night: bool) -> ArrayMesh:
+	var b := Face.Builder.new()
+	var shape := Face.Builder.round_rect(Vector2.ZERO, Vector2(_tile, h), TILE_RADIUS)
+	b.polygon(shape, Color.WHITE)
+	var top: Color = NIGHT_TILE_TOP if night else DAY_TILE_TOP
+	var low: Color = NIGHT_TILE_LOW if night else DAY_TILE_LOW
+	for i in b.verts.size():
+		var c := top.lerp(low, clampf(b.verts[i].y / h, 0.0, 1.0))
+		b.cols[i] = Color(c.r, c.g, c.b, b.cols[i].a)
+	if night:
+		for st in TILE_STARS:
+			b.disc(Vector2(st[0] * _tile, st[1] * h), st[2] * _tile, Color(Pal.MOON, 0.85))
+		var at := Vector2(0.84 * _tile, 0.2 * h)
+		var pts := PackedVector2Array()
+		for i in 8:
+			pts.append(at + Vector2.from_angle(-PI * 0.5 + i * PI * 0.25) * _tile * (0.075 if i % 2 == 0 else 0.022))
+		b.polygon(pts, Color(Pal.SUN_TILE, 0.95))
+	else:
+		for band in [[0.16, 0.40, 0.30], [0.50, 0.58, 0.20]]:
+			var glint := PackedVector2Array([Vector2(_tile * band[0], 0.0), Vector2(_tile * band[1], 0.0),
+				Vector2(0.0, h * band[1]), Vector2(0.0, h * band[0])])
+			for part in Geometry2D.intersect_polygons(shape, glint):
+				b.polygon(part, Color(1.0, 1.0, 1.0, band[2]))
+	return b.mesh()
+
 ## Copies every coin's, tint's and face's place, turn and colour into the
 ## MultiMeshes under the tiles, and hands a buffer over only when it changed.
 func _sync_under() -> void:
@@ -1830,6 +1876,10 @@ func _sync_under() -> void:
 	face.resize(count * 12)
 	var tints := PackedFloat32Array()
 	tints.resize(count * 12)
+	var day := PackedFloat32Array()
+	day.resize(count * 12)
+	var night := PackedFloat32Array()
+	night.resize(count * 12)
 	# A coin holds its face and, mid-turn, the one leaving.
 	var shadow := PackedFloat32Array()
 	shadow.resize(count * 2 * 12)
@@ -1850,6 +1900,19 @@ func _sync_under() -> void:
 			var tint: Control = _tints[r][c]
 			var tc: Color = (_tint_styles[r][c] as StyleBoxFlat).bg_color
 			_put(tints, i, xf, Color(tc, tc.a * tint.modulate.a * a))
+			# The sky of what the coin shows: none on a clue (its sand), and it
+			# gives way to a blush.
+			var sky: float = a * TILE_SKY * (1.0 - _warm[r][c]) * (1.0 - clampf(_blend[r][c], 0.0, 1.0))
+			var sunny := 0.0
+			var starry := 0.0
+			for f in coin.get_children():
+				if f is Face and f.visible:
+					if f is SunFace:
+						sunny = sky
+					else:
+						starry = sky
+			_put(day, i, xf, Color(1.0, 1.0, 1.0, sunny))
+			_put(night, i, xf, Color(1.0, 1.0, 1.0, starry))
 			i += 1
 			for f in coin.get_children():
 				if not (f is Face) or f.skip_layers.is_empty():
@@ -1877,6 +1940,8 @@ func _sync_under() -> void:
 				bodies[mesh].append(tone)
 	_hand(_mm_edge, edge, count)
 	_hand(_mm_face, face, count)
+	_hand(_mm_day, day, count)
+	_hand(_mm_night, night, count)
 	_hand(_mm_tint, tints, count)
 	_hand(_mm_shadow, shadow, count * 2, suns)
 	_hand(_mm_rays, rays, count * 2, suns)

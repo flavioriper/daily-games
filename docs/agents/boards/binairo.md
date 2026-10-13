@@ -411,3 +411,19 @@ stars, the crescent and the hills are. One cloud is left, in the gap of the
 tools row. The win still shrinks it by `PAD` inside its span. Any earlier
 figure for where the grid stands is history. `opengl3_angle`, 810x1440:
 Easy's `solve` peak 111 draw calls; suite 249797/0.
+
+### A placed tile has its own sky (2026-10-13)
+
+The user: "when user select sun, make the card background slighthly shine
+and blueishy like a sunny day, moon make it change to a star night sky,
+subtle". Two more MultiMeshes in the `Under` layer, between the coin's
+paper and the focus tint: `_mm_day` (a pale blue, two glints across the
+corner) and `_mm_night` (an indigo, six stars and a sparkle round where
+the moon sits), built by `_sky_mesh` at the tile's size. `_sync_under`
+gives each tile the alpha of the face its coin shows, so the sky changes
+at the edge of the coin's turn with the face. A clue keeps its sand (the
+alpha is `1 - _warm`, so a hint's tile loses its sky as it warms) and a
+blush shows through (`1 - _blend`). `TILE_SKY` 0.9. The night tile is
+kept deep so the moon reads on it; "subtle" is the user's to call.
+`opengl3_angle`, 810x1440: Easy's `solve` peak 114 draw calls (111); suite
+249797/0.
