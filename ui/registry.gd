@@ -289,6 +289,11 @@ const PUZZLES := [
 		"card": "res://ui/menu/cards/oneline.gd",
 		"shell": "flat",
 		"tray": "none",
+		# Its world is the whole screen (`bleed`, puzzles/oneline_world.gd) and the
+		# levels stand where the day card was (docs/agents/flat-screens.md).
+		"bleed": true,
+		"level_card": true,
+		"actions": false,
 		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku (2026-09-23): a 3 by 3, 4 by 3 or 4 by 4 lattice
 		# of posts, and each is its own daily with its own done mark. The
@@ -315,6 +320,11 @@ const PUZZLES := [
 		"card": "res://ui/menu/cards/nonogram.gd",
 		"shell": "flat",
 		"tray": "tiles",
+		# Its world is the whole screen (`bleed`, puzzles/nonogram_world.gd) and the
+		# levels stand where the day card was (docs/agents/flat-screens.md).
+		"bleed": true,
+		"level_card": true,
+		"actions": false,
 		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku (2026-09-23): a 5 by 5, 7 by 7 or 9 by 9 picture,
 		# and each is its own daily with its own done mark.
@@ -340,6 +350,11 @@ const PUZZLES := [
 		"card": "res://ui/menu/cards/queens.gd",
 		"shell": "flat",
 		"tray": "none",
+		# Its world is the whole screen (`bleed`, puzzles/queens_world.gd) and the
+		# levels stand where the day card was (docs/agents/flat-screens.md).
+		"bleed": true,
+		"level_card": true,
+		"actions": false,
 		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku (2026-09-23): a 7 by 7, 8 by 8 or 9 by 9 court, or
 		# Insane's 10 by 10 in the morning mist (2026-09-30), and each is its

@@ -39,6 +39,15 @@ extends "res://core/puzzle_base.gd"
 ## Spec: docs/superpowers/specs/2026-09-18-oneline-flat-design.md, sections 2
 ## to 7 and the amendment in section 11, and the mock it is ported from
 ## (docs/brainstorm/concepts.html#oneline).
+##
+## The garden is the whole screen (2026-10-13, the registry's `bleed`):
+## puzzles/oneline_world.gd lies edge to edge as the board's first child,
+## behind what `_draw` paints, and the figure is laid in the span the host's
+## rows leave (`set_clear`), its outer posts' air on the host's margin, at
+## the top of the span. On the win the board slides and shrinks into the
+## win's span under its own one transform, the garden held still against it.
+## Until the host says what its rows cover the board is laid in a card as it
+## was.
 
 const State = preload("res://puzzles/oneline_state.gd")
 const Pal = preload("res://core/palette.gd")
@@ -54,6 +63,13 @@ const CozyTheme = preload("res://ui/theme.gd")
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 const MovesPill = preload("res://ui/flat/moves_pill.gd")
 const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
+const World = preload("res://puzzles/oneline_world.gd")
+## The air round the figure when the garden is the whole screen, in steps:
+## the outer posts' drums stand on the host's margin (MARGIN is the card's).
+const BLED_MARGIN := 0.38
+const FLAT_HOST := "res://ui/flat/flat_host.gd"
+## The slide into the win's span (the host's SLOT_TIME).
+const WIN_SLIDE := 0.45
 ## The moves the out-of-moves card's video buys, once a board.
 const MOVES_BONUS := 5
 
@@ -320,6 +336,24 @@ var _seat: Control
 var _step := 0.0
 var _origin := Vector2.ZERO
 var _card := Rect2()
+## The garden, edge to edge under the figure.
+var _world: Control
+## True once the host has said what its rows cover (`set_clear`): the board
+## is laid full rect, in the span they leave.
+var _bled := false
+var _clear := Vector2.ZERO
+## The board's own transform on the win: the block's middle while playing,
+## how far it moves and how small it gets, and how far along it is.
+var _slid_from := Vector2.ZERO
+var _slid_by := Vector2.ZERO
+var _slid_scale := 1.0
+var _slid := 0.0
+var _won := false
+var _win_clear := Vector2.ZERO
+var _moved := false
+## The host's slide on a change of level (set_shift).
+var _shift := 0.0
+var _slide_tw: Tween
 
 ## The line in flight, and the walker's own travel with it:
 ## {"edge", "from", "to", "at", "up", "to_cap"}. `from` and `to` are posts --
@@ -464,7 +498,7 @@ func tutorial_pages() -> Array:
 func capabilities() -> Array[String]:
 	if state.band >= 3:
 		return ["hint"]
-	return ["undo", "hint", "check"]
+	return ["undo", "hint"]
 
 ## What the phone does under each cue (docs/agents/haptics.md). The walker
 ## set down and a plank laid are the faintest knock, a post at a time as the
@@ -493,6 +527,12 @@ const HAPTICS := {
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = false
+	# The garden first, and behind this board's own drawing.
+	_world = World.new()
+	_world.name = "World"
+	_world.show_behind_parent = true
+	_world.visible = false
+	add_child(_world)
 	fx = Fx2D.new()
 	fx.haptics = HAPTICS
 	fx.name = "Fx"
@@ -609,19 +649,43 @@ func _deal() -> void:
 ## than it is tall, leaves air above and below in equal measure -- which reads
 ## as room, where all of it below would read as a board that fell over.
 func _layout() -> void:
+	_world.size = size
+	_place()
 	if state.nodes.is_empty():
 		return
-	_step = _step_for(size.y)
-	if _step <= 0.0:
-		return
-	_slot = {}
-	_looks = {}
-	var figure := Vector2(_step * (state.cols - 1), _step * (state.rows - 1))
-	var row := _heart_row()
-	var tall := minf(size.y, figure.y + 2.0 * PAD + _step * MARGIN + row)
-	_card = Rect2(0.0, (size.y - tall) * 0.5, size.x, tall)
-	_origin = Vector2(size.x * 0.5 - figure.x * 0.5,
-		_card.position.y + row + (tall - row - figure.y) * 0.5)
+	if _bled:
+		# Full rect: the block is as wide as the host's rows and stands at
+		# the top of the span they leave; what is left is open garden.
+		var side := _side()
+		_step = _step_for(size.y - _clear.x - _clear.y)
+		if _step <= 0.0:
+			return
+		_slot = {}
+		_looks = {}
+		var span := Vector2(_step * (state.cols - 1), _step * (state.rows - 1))
+		var strip := _heart_row()
+		var high := span.y + _step * BLED_MARGIN + strip
+		_card = Rect2(side, _clear.x, size.x - 2.0 * side, high)
+		_origin = Vector2(size.x * 0.5 - span.x * 0.5, _clear.x + strip + _step * BLED_MARGIN * 0.5)
+	else:
+		_step = _step_for(size.y)
+		if _step <= 0.0:
+			return
+		_slot = {}
+		_looks = {}
+		var figure := Vector2(_step * (state.cols - 1), _step * (state.rows - 1))
+		var row := _heart_row()
+		var tall := minf(size.y, figure.y + 2.0 * PAD + _step * MARGIN + row)
+		_card = Rect2(0.0, (size.y - tall) * 0.5, size.x, tall)
+		_origin = Vector2(size.x * 0.5 - figure.x * 0.5,
+			_card.position.y + row + (tall - row - figure.y) * 0.5)
+	if _won:
+		# Laid out under a win (a resize, or a day reopened solved): the
+		# slide is aimed again, and set at its end if it never ran.
+		_aim()
+		if _slid <= 0.0 and not (_slide_tw != null and _slide_tw.is_valid()):
+			_slid = 1.0
+		_place()
 	# The life's meshes are cut to the step; a new step cuts them again.
 	_love_mesh = null
 	_bug_mesh = null
@@ -641,8 +705,84 @@ func _layout() -> void:
 func _step_for(available: float) -> float:
 	if state.nodes.is_empty():
 		return 0.0
+	if _bled:
+		return minf((size.x - 2.0 * _side()) / (float(state.cols) - 1.0 + BLED_MARGIN),
+			(available - _heart_row()) / (float(state.rows) - 1.0 + BLED_MARGIN))
 	return minf((size.x - 2.0 * PAD) / (float(state.cols) - 1.0 + MARGIN),
 		(available - 2.0 * PAD - _heart_row()) / (float(state.rows) - 1.0 + MARGIN))
+
+## The host's side margin, which the figure keeps although the garden does
+## not.
+func _side() -> float:
+	return float(load(FLAT_HOST).MARGIN)
+
+## What the host's rows cover, in this board's own pixels (it is laid full
+## rect). While playing the figure is laid in what is left. On the win it is
+## not laid out again: the board slides and shrinks into the win's span.
+func set_clear(top: float, bottom: float, won := false) -> void:
+	Motion.stop(_slide_tw)
+	_bled = true
+	_world.visible = true
+	_won = won
+	if not won:
+		_clear = Vector2(top, bottom)
+		_slid = 0.0
+		_layout()
+		return
+	_win_clear = Vector2(top, bottom)
+	# A day reopened solved is told before it has been laid out: _layout
+	# sets the slide when it has a figure to aim.
+	if _step <= 0.0:
+		return
+	_aim()
+	if Motion.reduce or not is_inside_tree() or _slid >= 1.0:
+		_slide(1.0)
+		return
+	_slide_tw = create_tween()
+	_slide_tw.tween_method(_slide, _slid, 1.0, WIN_SLIDE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+## Where the win's slide ends, from the block as it is laid and the win's
+## span.
+func _aim() -> void:
+	var span := size.y - _win_clear.x - _win_clear.y
+	_slid_from = _card.get_center()
+	_slid_scale = clampf(minf((_card.size.x - 2.0 * PAD) / _card.size.x,
+		(span - 2.0 * PAD) / maxf(_card.size.y, 1.0)), 0.1, 1.0)
+	_slid_by = Vector2(size.x * 0.5, _win_clear.x + span * 0.5) - _slid_from
+
+func _slide(t: float) -> void:
+	_slid = t
+	_place()
+
+## The host slides the board `x` aside on a change of level; the garden
+## stays where it is, and the board that is leaving shows none, so the one
+## arriving under it is not hidden.
+func set_shift(x: float, leaving := false) -> void:
+	_shift = x
+	_world.visible = _bled and not leaving
+	_place()
+
+## The host deals this board into a screen already standing: it arrives
+## whole, without the lines' and posts' entrance.
+func skip_entrance() -> void:
+	_opened = _now() - 10.0
+	_anim_until = 0.0
+	_refresh()
+
+## The board's transform at `_slid`, and the garden's against it, so the
+## garden stays where it is while the figure and everything on it goes.
+func _place() -> void:
+	if _slid <= 0.0 and _shift == 0.0 and not _moved:
+		return
+	_moved = _slid > 0.0 or _shift != 0.0
+	var k := lerpf(1.0, _slid_scale, _slid)
+	var by := _slid_by * _slid + Vector2(_shift, 0.0)
+	pivot_offset = _slid_from
+	scale = Vector2(k, k)
+	position = by
+	_world.pivot_offset = _slid_from
+	_world.scale = Vector2.ONE / k
+	_world.position = -by / k
 
 ## The strip the hearts take over the figure, on a board that has them.
 func _heart_row() -> float:

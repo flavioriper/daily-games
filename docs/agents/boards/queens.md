@@ -124,3 +124,20 @@ no bottom row, board in the same place, 87 draw calls.
 What this file says of Insane having no hint (or only a video's) is history:
 Insane holds as many hints as Hard on every board with a bulb, at the
 user's word. `docs/agents/flat-screens.md`, "Insane has the bulb again".
+
+### The garden is the whole screen (2026-10-13)
+
+The redesign (`docs/agents/flat-screens.md`, "Every board gets a world of
+its own"), built unattended. `puzzles/queens_world.gd` is cream air
+turning to a pale lawn, a garland of the court's blooms in the gap of the
+tools row, and at the foot a clipped hedge with two topiaries, a walk of
+six loose court tiles (one crossed, one crowned), blooms, tufts and a
+straw hive with a dashed flight; six pollen motes breathe. Nothing in it
+has a face. The court's ink frame is on the host's margin.
+
+- Registry: `bleed`, `level_card`, no actions row, no tray (a tap cycles,
+  a sweep crosses). **Check is gone**: the n-th queen is the win.
+- `opengl3_angle`, 810x1440: 77 draw calls at rest; `tests/_win.gd --
+  queens` passes.
+- Decided for the user, unconfirmed: a garden rather than the card's
+  all-court ground; no Check. Owed: a phone, the level slide.

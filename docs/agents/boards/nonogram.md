@@ -87,3 +87,21 @@ of the grid open (0 of the 160 finished on line logic).
   laid or rubbed out is one, a cross is free, and a stroke stops where the
   budget does (`_release`). No Undo, Hint (`HINTS_BY_BAND[3]` is 0) or Check.
   Clues still go green and rose as on Medium.
+
+### The blue cloth is the whole screen (2026-10-13)
+
+The redesign (`docs/agents/flat-screens.md`, "Every board gets a world of
+its own"), built unattended. `puzzles/nonogram_world.gd` is the card's
+glaze-blue cloth with a faint weave and a window light; two spare tiles, a
+pebble and a daisy in the gap of the tools row; and in the foot's corners,
+either side of the tray, a small finished heart of tiles on a parchment
+tray, a saucer of pebbles and a stitched hem; four glints breathe.
+
+- Registry: `bleed`, `level_card`, no actions row, and **the tile tray
+  stays** (`"tray": "tiles"`): a cross cannot be marked without it.
+  **Check is gone**: the floor solves itself.
+- `opengl3_angle`, 810x1440: 81 draw calls at rest; `tests/_win.gd --
+  nonogram` passes.
+- Decided for the user, unconfirmed: the tray kept, no Check, an Easy cell
+  of 160 uncapped, plain cloth between a wide picture and the tray. Owed:
+  a phone, the level slide.

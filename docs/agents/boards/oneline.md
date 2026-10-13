@@ -161,3 +161,21 @@ Board 8 of the per-board checkup (`docs/agents/checkup.md`).
 What this file says of Insane having no hint (or only a video's) is history:
 Insane holds as many hints as Hard on every board with a bulb, at the
 user's word. `docs/agents/flat-screens.md`, "Insane has the bulb again".
+
+### The dewy garden is the whole screen (2026-10-13)
+
+The redesign (`docs/agents/flat-screens.md`, "Every board gets a world of
+its own"), built unattended. `puzzles/oneline_world.gd` is the card's
+morning dew with a low sun behind the wordmark, the lattice's faint dots
+under the figure, a short boardwalk in the gap of the tools row, and at
+the foot mossy banks, four stepping drums with the snail's shine between
+them, a stack of planks, a pond with lily pads, toadstools and daisies;
+six dew glints breathe. The figure stands at the top of the span with a
+`BLED_MARGIN` of 0.38 step, the outer drums about 6 inside the margin.
+
+- Registry: `bleed`, `level_card`, no actions row. **Check is gone**: the
+  board solves itself.
+- `opengl3_angle`, 810x1440: 79 draw calls at rest; `tests/_win.gd --
+  oneline` passes.
+- Decided for the user, unconfirmed: no Check; Medium's wide figure at the
+  top, not centred. Owed: a phone, the level slide.

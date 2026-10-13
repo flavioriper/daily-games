@@ -45,6 +45,14 @@ extends "res://core/puzzle_base.gd"
 ## queen a row + 3 moves; a queen seated or lifted costs one, a cross nothing,
 ## and there is no Undo, hint or Check there. A seat a queen sees is still
 ## refused, free: that is the rule, on every band.
+##
+## The garden is the whole screen (2026-10-13, the registry's `bleed`):
+## puzzles/queens_world.gd lies edge to edge as the board's first child,
+## behind what `_draw` paints, and the court is laid in the span the host's
+## rows leave (`set_clear`), its ink frame on the rows' margin. On the win
+## the board slides and shrinks into the win's span under its own one
+## transform, the garden held still against it. Until `set_clear` is first
+## called it lays itself out in a card as it always did.
 
 const State = preload("res://puzzles/queens_state.gd")
 const Pal = preload("res://core/palette.gd")
@@ -61,6 +69,10 @@ const RunMesh = preload("res://ui/flat/run_mesh.gd")
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 const MovesPill = preload("res://ui/flat/moves_pill.gd")
 const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
+const Garden = preload("res://puzzles/queens_world.gd")
+const FLAT_HOST := "res://ui/flat/flat_host.gd"
+## The slide into the win's span (the host's SLOT_TIME).
+const WIN_SLIDE := 0.45
 ## The moves the out-of-moves card's video buys, once a board.
 const MOVES_BONUS := 5
 
@@ -373,6 +385,23 @@ var _seal_mesh: ArrayMesh
 var _drone: BeeFace
 var _drone_tw: Tween
 var _card := Rect2()
+## The garden under everything, and what the host's rows cover of the rect,
+## top and bottom, while playing. `_bleed` is set by the first `set_clear`.
+var _world: Control
+var _bleed := false
+var _clear := Vector2.ZERO
+## The board's own transform on the win: the block's middle while playing,
+## how far it moves and how small it gets, and how far along it is.
+var _slid_from := Vector2.ZERO
+var _slid_by := Vector2.ZERO
+var _slid_scale := 1.0
+var _slid := 0.0
+var _won := false
+var _win_clear := Vector2.ZERO
+var _placed := false
+## The host's slide on a change of level (set_shift).
+var _shift := 0.0
+var _slide_tw: Tween
 
 func puzzle_id() -> String: return "queens"
 func title() -> String: return "Queens"
@@ -434,7 +463,9 @@ func tutorial_pages() -> Array:
 func capabilities() -> Array[String]:
 	if state.band >= 3:
 		return ["hint"]
-	return ["undo", "hint", "check"]
+	# No Check since the garden (2026-10-13, the user of Binairo: "neither a
+	# verify need"): the n-th queen is the win, and check() is unreached.
+	return ["undo", "hint"]
 
 ## What the phone does under each cue (docs/agents/haptics.md). `place` and
 ## `remove` are not mapped: a cross, a queen and every cell of a sweep share
@@ -461,6 +492,12 @@ const HAPTICS := {
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = false
+	# The garden first, and behind this board's own drawing.
+	_world = Garden.new()
+	_world.name = "World"
+	_world.show_behind_parent = true
+	_world.visible = false
+	add_child(_world)
 	fx = Fx2D.new()
 	fx.haptics = HAPTICS
 	fx.name = "Fx"
@@ -636,16 +673,38 @@ func _set_expr(face: Face, expr: int) -> void:
 ## square while its space is tall, so the cell is capped by the width at
 ## every step and there is slack however the card is cut.
 func _layout() -> void:
+	_world.size = size
+	_place()
 	if state.region.is_empty():
 		return
-	_cell = _cell_for(size.y)
-	if _cell <= 0.0:
-		return
-	var court: Vector2 = Vector2.ONE * (_cell * state.n)
 	var row := _heart_row()
-	var tall := minf(size.y, court.y + 2.0 * PAD + row)
-	_card = Rect2(0.0, (size.y - tall) * 0.5, size.x, tall)
-	_grid = Vector2(size.x * 0.5 - court.x * 0.5, _card.position.y + row + (tall - row - court.y) * 0.5)
+	var court: Vector2
+	if _bleed:
+		# The frame's outer edge on the rows' margin, at the top of the span
+		# (the strip of hearts or moves first); the rest is open garden.
+		var span := size.y - _clear.x - _clear.y
+		var g := minf(size.x - 2.0 * _side(), span - row) - 2.0 * FRAME
+		_cell = g / state.n
+		if _cell <= 0.0:
+			return
+		court = Vector2.ONE * g
+		_card = Rect2((size.x - g) * 0.5 - FRAME, _clear.x, g + 2.0 * FRAME, row + g + 2.0 * FRAME)
+		_grid = Vector2((size.x - g) * 0.5, _clear.x + row + FRAME)
+		if _won:
+			# Laid out under a win (a resize, or a day reopened solved): the
+			# slide is aimed again, and set at its end if it never ran.
+			_aim()
+			if _slid <= 0.0 and not (_slide_tw != null and _slide_tw.is_valid()):
+				_slid = 1.0
+			_place()
+	else:
+		_cell = _cell_for(size.y)
+		if _cell <= 0.0:
+			return
+		court = Vector2.ONE * (_cell * state.n)
+		var tall := minf(size.y, court.y + 2.0 * PAD + row)
+		_card = Rect2(0.0, (size.y - tall) * 0.5, size.x, tall)
+		_grid = Vector2(size.x * 0.5 - court.x * 0.5, _card.position.y + row + (tall - row - court.y) * 0.5)
 	for cell in _bees:
 		_seat(_bees[cell], cell_to_local(cell.y, cell.x), _cell * BEE_SIZE)
 	_drone.size = Vector2.ONE * _cell * DRONE_SIZE
@@ -662,6 +721,78 @@ func _layout() -> void:
 	_redraw()
 	for layer: Control in [_heart_layer, _life_layer, _combo_layer]:
 		layer.queue_redraw()
+
+## What the host's rows cover, in this board's own pixels (it is laid full
+## rect). While playing the court is laid in what is left. On the win it is
+## not laid out again: the board slides and shrinks into the win's span.
+func set_clear(top: float, bottom: float, won := false) -> void:
+	Motion.stop(_slide_tw)
+	_bleed = true
+	_world.visible = true
+	_won = won
+	if not won:
+		_clear = Vector2(top, bottom)
+		_slid = 0.0
+		_layout()
+		return
+	_win_clear = Vector2(top, bottom)
+	# A day reopened solved is told before it has been laid out: _layout
+	# sets the slide when it has a court to aim.
+	if _cell <= 0.0:
+		return
+	_aim()
+	if Motion.reduce or not is_inside_tree() or _slid >= 1.0:
+		_slide(1.0)
+		return
+	_slide_tw = create_tween()
+	_slide_tw.tween_method(_slide, _slid, 1.0, WIN_SLIDE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+## Where the win's slide ends, from the court as it is laid (its strip and
+## its frame with it) and the win's span.
+func _aim() -> void:
+	var span := size.y - _win_clear.x - _win_clear.y
+	_slid_from = _card.get_center()
+	_slid_scale = clampf((minf(size.x - 2.0 * _side(), span) - 2.0 * PAD) / maxf(_card.size.x, _card.size.y), 0.1, 1.0)
+	_slid_by = Vector2(size.x * 0.5, _win_clear.x + span * 0.5) - _slid_from
+
+## The host's side margin, which the court keeps although the garden does not.
+func _side() -> float:
+	return float(load(FLAT_HOST).MARGIN)
+
+func _slide(t: float) -> void:
+	_slid = t
+	_place()
+
+## The host slides the board `x` aside on a change of level; the garden
+## stays where it is, and the board that is leaving shows none, so the one
+## arriving under it is not hidden.
+func set_shift(x: float, leaving := false) -> void:
+	_shift = x
+	_world.visible = _bleed and not leaving
+	_place()
+
+## The host deals this board into a screen already standing: it arrives
+## whole, without the court's pop or the mist rolling in.
+func skip_entrance() -> void:
+	_opened = -1.0e9
+	if state.has_mist():
+		_mist_in_at = -1.0e9
+	_redraw()
+
+## The board's transform at `_slid`, and the garden's against it, so the
+## garden stays where it is while the court and everything on it goes.
+func _place() -> void:
+	if _slid <= 0.0 and _shift == 0.0 and not _placed:
+		return
+	_placed = _slid > 0.0 or _shift != 0.0
+	var k := lerpf(1.0, _slid_scale, _slid)
+	var by := _slid_by * _slid + Vector2(_shift, 0.0)
+	pivot_offset = _slid_from
+	scale = Vector2(k, k)
+	position = by
+	_world.pivot_offset = _slid_from
+	_world.scale = Vector2.ONE / k
+	_world.position = -by / k
 
 ## The strip the hearts take over the court, on a board that has them, or
 ## Insane's move counter.

@@ -55,6 +55,8 @@ const Scenery = preload("res://ui/flat/scenery.gd")
 const MushroomFace = preload("res://ui/faces/mushroom_face.gd")
 const BeeFace = preload("res://ui/faces/bee_face.gd")
 const Seal = preload("res://ui/flat/seal.gd")
+const World = preload("res://puzzles/nonogram_world.gd")
+const FLAT_HOST := "res://ui/flat/flat_host.gd"
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 const MovesPill = preload("res://ui/flat/moves_pill.gd")
 const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
@@ -63,6 +65,8 @@ const MOVES_BONUS := 5
 
 # --- the floor ---
 const PAD := 30.0
+## The slide into the win's span (the host's SLOT_TIME).
+const WIN_SLIDE := 0.45
 ## The clue band, per number, in cells. On the island it is a whole extra row
 ## and column of bare platform, because a stone has to stand on something;
 ## here nothing stands on it, and this is most of why a 9x9 fits at all.
@@ -318,6 +322,26 @@ var _mush_tw: Tween
 var _bee: BeeFace
 var _bee_tw: Tween
 var _card := Rect2()
+## The cloth is the whole screen (2026-10-13, the registry's `bleed`):
+## puzzles/nonogram_world.gd lies edge to edge as the first child, behind
+## this board's own drawing, and the floor is laid in the span the host's
+## rows leave (`set_clear`), which is what makes this a bleed board
+## (`_bleed`); until it is told, it lays itself in a card as it always did.
+var _world: Control
+var _bleed := false
+var _clear := Vector2.ZERO
+## The board's own transform on the win: the block's middle while playing,
+## how far it moves and how small it gets, and how far along it is.
+var _slid_from := Vector2.ZERO
+var _slid_by := Vector2.ZERO
+var _slid_scale := 1.0
+var _slid := 0.0
+var _won := false
+var _win_clear := Vector2.ZERO
+var _placed := false
+## The host's slide on a change of level (set_shift).
+var _shift := 0.0
+var _slide_tw: Tween
 
 var fx: Node2D
 var _cell := 0.0
@@ -442,7 +466,9 @@ func tutorial_pages() -> Array:
 func capabilities() -> Array[String]:
 	if state.band >= 3:
 		return ["hint"]
-	return ["undo", "hint", "check"]
+	# No Check: the floor reads itself after every stroke (`note_move`), and
+	# the tabs go green a line at a time. `check()` is left, unreached.
+	return ["undo", "hint"]
 
 ## How far the stroke's tick climbs: three semitones.
 const SELECT_TOP := 1.19
@@ -472,6 +498,12 @@ const HAPTICS := {
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = false
+	# The cloth first, and behind this board's own drawing.
+	_world = World.new()
+	_world.name = "World"
+	_world.show_behind_parent = true
+	_world.visible = false
+	add_child(_world)
 	fx = Fx2D.new()
 	fx.haptics = HAPTICS
 	fx.name = "Fx"
@@ -583,16 +615,37 @@ func _deal() -> void:
 func _layout() -> void:
 	if state.bitmap.is_empty():
 		return
-	_cell = _cell_for(size.y)
+	_world.size = size
+	_place()
+	var row := _heart_row()
+	if _bleed:
+		# As wide as the host's rows and at the top of the span they leave,
+		# right under the tools row; what is left is open cloth under it.
+		var side := _side()
+		var span := size.y - _clear.x - _clear.y
+		_cell = minf((size.x - 2.0 * side) / (state.w + state.gw * NUM),
+			(span - row) / (state.h + state.gh * NUM))
+	else:
+		_cell = _cell_for(size.y)
 	if _cell <= 0.0:
 		return
 	_band = Vector2(_cell * state.gw * NUM, _cell * state.gh * NUM)
 	var floor_size := Vector2(_cell * state.w, _cell * state.h) + _band
-	var row := _heart_row()
-	var tall := minf(size.y, floor_size.y + 2.0 * PAD + row)
-	_card = Rect2(0.0, (size.y - tall) * 0.5, size.x, tall)
-	_grid = Vector2(size.x * 0.5 - floor_size.x * 0.5,
-		_card.position.y + row + (tall - row - floor_size.y) * 0.5) + _band
+	if _bleed:
+		_card = Rect2(_side(), _clear.x, size.x - 2.0 * _side(), row + floor_size.y)
+		_grid = Vector2(size.x * 0.5 - floor_size.x * 0.5, _clear.x + row) + _band
+		if _won:
+			# Laid out under a win (a resize, or a day reopened solved): the
+			# slide is aimed again, and set at its end if it never ran.
+			_aim()
+			if _slid <= 0.0 and not (_slide_tw != null and _slide_tw.is_valid()):
+				_slid = 1.0
+			_place()
+	else:
+		var tall := minf(size.y, floor_size.y + 2.0 * PAD + row)
+		_card = Rect2(0.0, (size.y - tall) * 0.5, size.x, tall)
+		_grid = Vector2(size.x * 0.5 - floor_size.x * 0.5,
+			_card.position.y + row + (tall - row - floor_size.y) * 0.5) + _band
 	# The life's meshes are cut to the cell; a new cell cuts them again.
 	_love_mesh = null
 	_runs = {}
@@ -603,6 +656,79 @@ func _layout() -> void:
 	_refresh()
 	for layer: Control in [_heart_layer, _life_layer, _combo_layer]:
 		layer.queue_redraw()
+
+## What the host's rows cover, in this board's own pixels (it is laid full
+## rect). While playing the floor is laid in what is left. On the win it is
+## not laid out again: the board slides and shrinks into the win's span.
+func set_clear(top: float, bottom: float, won := false) -> void:
+	Motion.stop(_slide_tw)
+	_bleed = true
+	_world.visible = true
+	_won = won
+	if not won:
+		_clear = Vector2(top, bottom)
+		_slid = 0.0
+		_layout()
+		return
+	_win_clear = Vector2(top, bottom)
+	# A day reopened solved is told before it has been laid out: _layout
+	# sets the slide when it has a floor to aim.
+	if _cell <= 0.0:
+		return
+	_aim()
+	if Motion.reduce or not is_inside_tree() or _slid >= 1.0:
+		_slide(1.0)
+		return
+	_slide_tw = create_tween()
+	_slide_tw.tween_method(_slide, _slid, 1.0, WIN_SLIDE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+## Where the win's slide ends, from the block as it is laid (the hearts'
+## strip, the bands and the floor) and the win's span.
+func _aim() -> void:
+	var block := Rect2(_grid - _band - Vector2(0.0, _heart_row()),
+		Vector2(state.w, state.h) * _cell + _band + Vector2(0.0, _heart_row()))
+	var span := size.y - _win_clear.x - _win_clear.y
+	_slid_from = block.get_center()
+	_slid_scale = clampf(minf((size.x - 2.0 * _side() - 2.0 * PAD) / block.size.x,
+		(span - 2.0 * PAD) / block.size.y), 0.1, 1.0)
+	_slid_by = Vector2(size.x * 0.5, _win_clear.x + span * 0.5) - _slid_from
+
+## The host's side margin, which the floor keeps although the cloth does not.
+func _side() -> float:
+	return float(load(FLAT_HOST).MARGIN)
+
+func _slide(t: float) -> void:
+	_slid = t
+	_place()
+
+## The host slides the board `x` aside on a change of level; the cloth stays
+## where it is, and the board that is leaving shows none, so the one
+## arriving under it is not hidden.
+func set_shift(x: float, leaving := false) -> void:
+	_shift = x
+	_world.visible = _bleed and not leaving
+	_place()
+
+## The host deals this board into a screen already standing: it arrives
+## whole, without the floor's pop or the numbers'.
+func skip_entrance() -> void:
+	_opened = _now() - 10.0
+	_refresh()
+
+## The board's transform at `_slid`, and the cloth's against it, so the
+## cloth stays where it is while the floor and everything on it goes.
+func _place() -> void:
+	if _slid <= 0.0 and _shift == 0.0 and not _placed:
+		return
+	_placed = _slid > 0.0 or _shift != 0.0
+	var k := lerpf(1.0, _slid_scale, _slid)
+	var by := _slid_by * _slid + Vector2(_shift, 0.0)
+	pivot_offset = _slid_from
+	scale = Vector2(k, k)
+	position = by
+	_world.pivot_offset = _slid_from
+	_world.scale = Vector2.ONE / k
+	_world.position = -by / k
 
 ## The strip the hearts take over the floor, on a board that has them.
 func _heart_row() -> float:
@@ -2440,7 +2566,7 @@ func _close_card() -> void:
 ## halves falling apart, and one coming back popping in.
 func _draw_hearts() -> void:
 	if max_moves > 0 and _cell > 0.0:
-		_moves_pill.draw(_heart_layer, Vector2(size.x * 0.5, _card.position.y + 12.0 + HEART_ROW * 0.5),
+		_moves_pill.draw(_heart_layer, Vector2(size.x * 0.5, _card.position.y + (0.0 if _bleed else 12.0) + HEART_ROW * 0.5),
 			moves_left, _now())
 		return
 	if max_hearts <= 0 or _cell <= 0.0:
@@ -2448,7 +2574,7 @@ func _draw_hearts() -> void:
 	var b := Face.Builder.new()
 	var now := _now()
 	var step := 2.0 * HEART_R + HEART_GAP
-	var y := _card.position.y + 12.0 + HEART_ROW * 0.5
+	var y := _card.position.y + (0.0 if _bleed else 12.0) + HEART_ROW * 0.5
 	var x0 := size.x * 0.5 - step * (max_hearts - 1) * 0.5
 	var pill := Vector2(step * (max_hearts - 1) + 2.0 * HEART_R, 2.0 * HEART_R) + 2.0 * HEART_PILL_PAD
 	var corner := Vector2(size.x * 0.5, y) - pill * 0.5
