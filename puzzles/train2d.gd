@@ -12,7 +12,8 @@ extends "res://core/puzzle_base.gd"
 ## A `bleed` board (ui/flat/flat_host.gd): the floor is the whole screen, the
 ## rug and its loop as big as the room between the pill and the yard allows,
 ## the tray and the toy box at the foot. Tap a cannon at the front of a
-## column of the box, or one waiting in the tray, and it goes once round.
+## column of the box, or one waiting in the tray, and it goes round and
+## round while a lap hits anything.
 ##
 ## Drawn as `_bg` (the floor), `_yard` (the siding and the shed), `_ring`
 ## (the rug and the track), the blocks as one mesh rebuilt when one is taken,

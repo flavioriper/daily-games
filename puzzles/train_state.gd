@@ -8,10 +8,12 @@ extends RefCounted
 ## A picture of toy blocks lies on the rug with a loop of track round it.
 ## Little engines wait in the shed in columns, each painted one colour and
 ## each with a number: the blocks it still has room for. An engine sent out
-## goes once round the loop. At every stop it looks straight across the rug
-## at the nearest block in that line, and takes it if it is its own colour.
-## An engine with no room left goes home for good. One that comes round with
-## room to spare waits in the siding, five places, to be sent again.
+## goes round the loop, and round again for as long as a lap takes anything
+## (since 2026-10-13: it was once round). At every stop it looks straight
+## across the rug at the nearest block in that line, and takes it if it is
+## its own colour. An engine with no room left goes home for good. One that
+## comes round from a lap that took nothing waits in the siding, five
+## places, to be sent again.
 ##
 ## The loop moves by ticks (`tick`), a stop a tick, so the same taps on the
 ## same ticks always play the same game and a probe with no screen can prove
@@ -83,6 +85,9 @@ var at := PackedInt32Array()
 var col := PackedInt32Array()
 ## Stops in a row it has taken a block at.
 var run := PackedInt32Array()
+## Blocks it has taken since it last passed the gate: an engine that comes
+## round having taken any goes round again.
+var got := PackedInt32Array()
 
 ## The shed's columns, the front engine first.
 var sheds: Array = []
@@ -202,6 +207,7 @@ func _clear_engines() -> void:
 	at = PackedInt32Array()
 	col = PackedInt32Array()
 	run = PackedInt32Array()
+	got = PackedInt32Array()
 
 func _new_engine(c: int, n: int, column: int) -> int:
 	colour.append(c)
@@ -211,6 +217,7 @@ func _new_engine(c: int, n: int, column: int) -> int:
 	at.append(-1)
 	col.append(column)
 	run.append(0)
+	got.append(0)
 	return colour.size() - 1
 
 # --- the loop ---
@@ -278,12 +285,29 @@ func _lap(g: PackedInt32Array, c: int, most: int, near = null) -> int:
 			got += 1
 	return got
 
+## The same engine left on the loop: lap after lap until one takes nothing
+## or it is full, as `tick` has it.
+func _laps(g: PackedInt32Array, c: int, most: int, near = null) -> int:
+	var deep: PackedInt32Array
+	if near == null:
+		deep = PackedInt32Array()
+		deep.resize(stops())
+	else:
+		deep = near
+	var total := 0
+	while total < most:
+		var n := _lap(g, c, most - total, deep)
+		if n <= 0:
+			break
+		total += n
+	return total
+
 # --- the deal ---
 
 ## Builds the engines by playing the picture away one engine at a time: an
 ## engine of a colour the loop can see, with a load out of the band's range
 ## (never more than its colour has left unspoken for). One that cannot fill
-## in a lap waits in the line's own siding, and goes again as soon as it
+## before a lap takes nothing waits in the line's own siding, and goes again as soon as it
 ## can take something. The line that results is a way to win that never
 ## holds more than REF_PARKED engines in the siding; the engines are then
 ## stood in the shed's columns in the order the line sends them.
@@ -312,12 +336,12 @@ func _deal(rng: RandomNumberGenerator) -> void:
 		var best := -1
 		var best_n := 0
 		for e in parked:
-			var n := _lap(g.duplicate(), colour[e], left_room[e], near.duplicate())
+			var n := _laps(g.duplicate(), colour[e], left_room[e], near.duplicate())
 			if n > best_n:
 				best_n = n
 				best = e
 		if best >= 0:
-			var n := _lap(g, colour[best], left_room[best], near)
+			var n := _laps(g, colour[best], left_room[best], near)
 			left_room[best] -= n
 			by[colour[best]] -= n
 			cells -= n
@@ -333,7 +357,7 @@ func _deal(rng: RandomNumberGenerator) -> void:
 		reach.resize(colours.size())
 		var total := 0
 		for c in colours.size():
-			reach[c] = _lap(g.duplicate(), c, free[c], near.duplicate()) if free[c] > 0 else 0
+			reach[c] = _laps(g.duplicate(), c, free[c], near.duplicate()) if free[c] > 0 else 0
 			total += reach[c]
 		if total <= 0:
 			break
@@ -368,7 +392,7 @@ func _deal(rng: RandomNumberGenerator) -> void:
 		left_room.append(n)
 		order.append(id)
 		line.append(id)
-		var got := _lap(g, c, n, near)
+		var got := _laps(g, c, n, near)
 		left_room[id] -= got
 		by[c] -= got
 		cells -= got
@@ -414,6 +438,7 @@ func reset() -> void:
 		where[e] = SHED
 		at[e] = -1
 		run[e] = 0
+		got[e] = 0
 	siding = PackedInt32Array()
 	siding.resize(SIDING)
 	siding.fill(-1)
@@ -493,6 +518,7 @@ func send(e: int) -> int:
 	where[e] = GATE
 	at[e] = -1
 	run[e] = 0
+	got[e] = 0
 	gate.append(e)
 	taps += 1
 	return OK
@@ -519,9 +545,13 @@ func tick() -> Array:
 	for e in loop:
 		at[e] += 1
 		if at[e] >= stops():
-			_run_end(e, out)
-			_come_round(e, out)
-			continue
+			if got[e] <= 0:
+				_run_end(e, out)
+				_come_round(e, out)
+				continue
+			# a lap that took something: round again, the run unbroken
+			at[e] = 0
+			got[e] = 0
 		if _stop(e, out):
 			still.append(e)
 	loop = still
@@ -553,6 +583,7 @@ func _stop(e: int, out: Array) -> bool:
 	left_by[c] -= 1
 	room[e] -= 1
 	run[e] += 1
+	got[e] += 1
 	out.append([PICK, e, i, run[e]])
 	if room[e] == 0:
 		out.append([RUN_END, e, run[e], 0])
@@ -568,7 +599,7 @@ func _run_end(e: int, out: Array) -> void:
 		out.append([RUN_END, e, run[e], 0])
 	run[e] = 0
 
-## An engine back at the gate with room to spare: into the siding. With the
+## An engine back at the gate from a lap that took nothing: into the siding. With the
 ## siding full it rolls to the back of its column in the shed, and on Insane
 ## the day is lost.
 func _come_round(e: int, out: Array) -> void:
@@ -616,7 +647,7 @@ func hint() -> int:
 	var best := -1
 	var best_score := 0
 	for e in ready_engines():
-		var n := _lap(grid.duplicate(), colour[e], room[e])
+		var n := _laps(grid.duplicate(), colour[e], room[e])
 		if n <= 0:
 			continue
 		# one that fills frees a place for good; one out of the siding costs
@@ -638,7 +669,7 @@ func hint() -> int:
 		for d in column.size():
 			if d >= depth:
 				break
-			if _lap(grid.duplicate(), colour[column[d]], room[column[d]]) > 0:
+			if _laps(grid.duplicate(), colour[column[d]], room[column[d]]) > 0:
 				depth = d
 				best = column[0]
 				break

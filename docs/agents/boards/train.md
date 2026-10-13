@@ -202,3 +202,31 @@ section wins.**
 - **Not seen**: the menu card with the cannon on it, the
   win on a 32 picture, Insane's jam, motion reduced, a phone. pt and es are
   unreviewed.
+
+## 2026-10-13, later: a cannon stays on the loop
+
+The user: "after canon is placed, keep it looping on the path instead of
+doing just one run". **This section wins over the two above.**
+
+- **A cannon sent goes round and round** for as long as a lap hits
+  anything (`State.got`, the blocks since it last passed the gate; `tick`
+  puts it back at stop 0 with its run unbroken). Out of corks it is done, as
+  before. **A whole lap with nothing hit sends it to the tray** (and on
+  Insane, with the tray full, loses the day): that is mine, so a cannon
+  whose colour is buried does not hold one of the loop's five places for
+  ever. The user asked only for the looping.
+- **The deal and the hint play the same rule** (`_laps`: laps until one
+  takes nothing). Cannons mostly empty in one send now, so the line is
+  short: 31-48 sends on Medium, 44-67 on Hard, 39-60 on Insane (they were
+  56-82, 89-173, 92-166).
+- **Insane is easier for it**: the hand a cannon at a time loses 4 deals of
+  18, the juggling one none, the careless one 5 (it lost all 18).
+  Not retuned.
+- **The deal is slower**: 114 ms the slowest on Hard on this Mac (a lap a
+  colour became several). Not measured on a phone.
+- `tests/_probe_train.gd -- seeds=1`: 336 runs, 0 failures. Suite
+  249797/0. `tests/_win.gd -- train` PASS on Medium, 36 sent, par 40. The
+  rules, the tutorial's bodies and one caption reworded in en, pt and es;
+  the motto is "Round and round, pop".
+- **Not seen**: a cannon coming round the gate's bend into a second lap, the
+  tutorial after the change, a phone.
