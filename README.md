@@ -66,19 +66,14 @@ rather than the live project (`daily-games-420bf`):
 | Puzzle | Gesture | Uniqueness proof |
 |---|---|---|
 | Binairo | tap-cycle | backtracking count to 2 |
-| Code Break | tap-cycle | — calibration, not uniqueness |
-| Balance | tap-cycle | brute force over the domain |
 | Pipes | tap-a-mouth, tap-to-turn | the generator floods its own route |
 | Untangle | lift a peg over the ropes, drop it in a hole; the rope on top slides off, the one under wraps tighter | — dealt backwards from a solved ring (a move made back undoes it exactly); a beam search sets par, any crossing-free layout wins |
 | Shikaku | drag rect | exact cover count to 2 |
-| Tents | tap-cycle | matching search count to 2 |
 | Light Up | tap-cycle | backtracking count to 2 |
-| One Line | drag path | degree parity, no search at all; Insane (Sunny Spells) plants the sun on a real walk and a pruned search judges every step |
 | Nonogram | drag strokes | line-solvable implies unique; Insane (Leaf Fall) tumbles line clues and a bit-mask solver proves each banked board by line logic plus one-cell suppositions |
 | Queens | tap-cycle, drag crosses | repair to a unique seating (backtracking count to 2), then a hand-logic solver grades it (no one-cell patch, bands, suppositions); Hard and Insane (Morning Mist: misty patches take two queens) are banked and re-proved by that solver |
 | Hidden Word | type, Enter | — a word list, not a proof; Hard and Insane use every clue, and Insane (Snail Mail: a row's colours arrive a row late) draws from the words an answer-list-aware solver needs five or more rows for under that rule (`tools/insane/hiddenword_ladder.py`) |
 | Word Trail | drag trail | none needed: a path's shape puts no constraint on its letters, so every board is solvable by construction; Hard and Insane count wrong trails on a dandelion, and Insane (Night Walk) plays the field in the dark under a lantern |
-| Mushroom Patch | tap to plant, drag pebbles | carved backwards from a fully turned field, keeping a cut only while a no-guess solver (plain rules, the global count, subset subtraction on Hard up) still proves every cell; Insane (Fairy Rings: half the numbers count the ring two steps out) is carved again with suppositions allowed, banked, and re-proved by that solver on the Mac |
 | Sudoku | tap a cell, tap a number | seeded full grid, symmetric dig keeping a unique count; Easy must fall to singles, Hard must not; Insane (Hilltops: a hill counts its lower orthogonal neighbours, 15-16 givens) is dug under a count that propagates the hills, graded by a solver with suppositions, banked, and re-proved on the Mac |
 | Bridges | drag islet to islet, or tap the water between | grown answer network (one or two planks a pair), proved unique by range propagation with the connectivity group rule; Easy must need no guess; Insane (Lantern Night: a lantern counts the islets it joins, not its planks) lights lanterns best-first while the board stays unique, graded by a solver with suppositions, banked, and re-proved on the Mac |
 | Quilt | drag a patch from the rack onto the backing | patches grown in the box, exact cover count to 2 (patches never turn); Insane (Scrap Basket: three scraps that belong nowhere) proves exactly one choice of nine covers the quilt exactly once, graded by the search's nodes, banked, and checked for form and cover on the phone |

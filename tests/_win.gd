@@ -120,17 +120,11 @@ func _process(_delta: float) -> bool:
 func _note(id: String) -> String:
 	match id:
 		"binairo": return "%d moves, hints=%d checks=%d, camera fit=%s" % [_puzzle.moves, _puzzle.hints_used, _puzzle.checks, _fit_ok]
-		"mastermind": return "cracked in %d guesses, camera fit=%s" % [_puzzle._guesses.size(), _fit_ok]
-		"balance": return "weights %s, %d moves, board fit=%s, hud=%s" % [_puzzle.state.weights, _puzzle.moves, _fit_ok, _hud_ok]
 		"untangle": return "%d holes, %d ropes, %d moves, board fit=%s, hud=%s" % [_puzzle.state.holes, _puzzle.state.ropes, _puzzle.moves, _fit_ok, _hud_ok]
 		"shikaku": return "%d plots, board fit=%s, hud=%s" % [_puzzle._rects.size(), _fit_ok, _hud_ok]
-		"tents": return "%d tents, board fit=%s, hud=%s" % [_puzzle._solution_tents.size(), _fit_ok, _hud_ok]
 		"lightup": return "%d lanterns, board fit=%s, hud=%s" % [_puzzle._solution_bulbs.size(), _fit_ok, _hud_ok]
-		"oneline": return "%d planks walked, board fit=%s, hud=%s" % [_puzzle._walked.size(), _fit_ok, _hud_ok]
 		"nonogram": return "%dx%d picture, camera fit=%s, hud=%s" % [_puzzle.w, _puzzle.h, _fit_ok, _hud_ok]
 		"queens": return "%dx%d court, %d queens, board fit=%s, hud=%s" % [_puzzle.n, _puzzle.n, _puzzle.state.queens.size(), _fit_ok, _hud_ok]
-		"mushroom": return "%dx%d patch, %d mushrooms, board fit=%s, hud=%s" % [
-			_puzzle.n, _puzzle.n, _puzzle.state.mushrooms.size(), _fit_ok, _hud_ok]
 		"wordtrail": return "%dx%d field, %d words traced, board fit=%s, hud=%s" % [
 			_puzzle._state.n, _puzzle._state.n, _puzzle._state.words.size(),
 			_fit_ok, _hud_ok]
@@ -212,16 +206,11 @@ func _note(id: String) -> String:
 func _solve(id: String) -> void:
 	match id:
 		"binairo": _solve_binairo()
-		"mastermind": _solve_mastermind()
-		"balance": _solve_balance_flat()
 		"untangle": _solve_untangle()
 		"shikaku": _solve_shikaku()
-		"tents": _solve_tents()
 		"lightup": _solve_lightup()
-		"oneline": _solve_oneline()
 		"nonogram": _solve_nonogram()
 		"queens": _solve_queens()
-		"mushroom": _solve_mushroom()
 		"wordtrail": _solve_wordtrail()
 		"bridges": _solve_bridges()
 		"planes": _solve_planes()
@@ -305,51 +294,6 @@ func _solve_binairo() -> void:
 			# empty -> sun is one tap, empty -> moon is two.
 			for k in (1 if target == 0 else 2):
 				_tap_local(_puzzle.cell_to_local(r, c))
-
-func _solve_mastermind() -> void:
-	var length: int = _puzzle.length
-	# Camera fit check: every socket centre must project inside the board slot.
-	var slot := Rect2(Vector2.ZERO, _puzzle.size)
-	_fit_ok = true
-	for g in _puzzle.max_guesses:
-		for s in length:
-			if not slot.has_point(_puzzle.cell_to_local(g, s)):
-				_fit_ok = false
-	# The HUD's tray fills the active row with the code, then the real Check.
-	# The flat shell keeps its chips on the host (ui/flat/friend_tray.gd);
-	# the island's sit in the action bar.
-	var flat = _host.get("tray")
-	for s in length:
-		var friend: int = int(_puzzle._code[s])
-		_press(flat.chips[friend] if flat != null else _host.action_bar.tray.buttons[friend])
-	_press_check()
-
-## Balance's seesaw: a hint through the HUD, then every loose fruit dragged
-## out of the basket onto its answer cup by touch. The flights take seconds
-## to land and settle, longer than this harness waits, so the sim is snapped
-## to rest once every fruit has been let go -- the drags are the input path
-## under test, the physics is the drawing's.
-func _solve_balance_flat() -> void:
-	var st = _puzzle.state
-	var card := Rect2(Vector2.ZERO, _puzzle.size)
-	_fit_ok = true
-	for x in st.cups():
-		if not card.has_point(_puzzle.cup_to_local(x)):
-			_fit_ok = false
-	_press(_host.top_bar.hint_button)
-	_hud_ok = _puzzle.hints_used == 1
-	_puzzle.sim.snap()
-	var want := {}
-	for f in st.fruit.size():
-		want[st.answer[f]] = st.fruit[f]
-	for x in st.cups():
-		if not want.has(x) or st.occupant(x) >= 0:
-			continue
-		for f in st.fruit.size():
-			if st.loose(f) and st.at[f] == 0 and st.fruit[f] == int(want[x]):
-				_drag_local(_puzzle.fruit_to_local(f), _puzzle.cup_to_local(x))
-				break
-	_puzzle.sim.snap()
 
 ## Untangle: every peg is dragged along a shortest way home the board's own
 ## solver finds, one drag at a time through touch, settling between them (the
@@ -1054,27 +998,6 @@ func _solve_shikaku() -> void:
 			_puzzle.cell_to_local(rect.position.y + rect.size.y - 1,
 				rect.position.x + rect.size.x - 1))
 
-## Drives both Tents boards: the flat one answers the island's own names,
-## because it keeps the state's grid under them.
-func _solve_tents() -> void:
-	var w: int = _puzzle.w
-	var h: int = _puzzle.h
-	# Fit check: every field cell centre must land inside the board slot.
-	var slot := Rect2(Vector2.ZERO, _puzzle.size)
-	_fit_ok = true
-	for r in h:
-		for c in w:
-			if not slot.has_point(_puzzle.cell_to_local(r, c)):
-				_fit_ok = false
-	# The HUD's own buttons: one hint (pitches and pins a tent), then one check.
-	_press(_host.top_bar.hint_button)
-	_press_check()
-	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1
-	for t in _puzzle._solution_tents:
-		if _puzzle.is_done():
-			return
-		_tap_local(_puzzle.cell_to_local(t.y, t.x))
-
 func _solve_lightup() -> void:
 	var w: int = _puzzle.w
 	var h: int = _puzzle.h
@@ -1093,35 +1016,6 @@ func _solve_lightup() -> void:
 		if _puzzle.is_done():
 			return
 		_tap_local(_puzzle.cell_to_local(b.y, b.x))
-
-## Drives both One Line boards: the flat one answers the island's own names,
-## because it keeps the state's figure under them.
-func _solve_oneline() -> void:
-	# Camera fit check: every post must project inside the board slot.
-	var slot := Rect2(Vector2.ZERO, _puzzle.size)
-	_fit_ok = true
-	for n in _puzzle._nodes:
-		if not slot.has_point(_puzzle.node_to_local(n)):
-			_fit_ok = false
-	var Gen = load("res://puzzles/oneline_gen.gd")
-	var trail: Array = Gen.find_path(_puzzle._edges, _puzzle._nodes)
-	if trail.is_empty():
-		return
-	# The HUD's own buttons: one hint (which takes the starting post, since
-	# the stroke has not begun), then one check, which must find nothing
-	# stranded on a board nobody has walked yet.
-	_press(_host.top_bar.hint_button)
-	_press_check()
-	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1
-	# The hint takes the first odd-degree post, which is the same post
-	# Gen.find_path begins its trail at, so this tap lands on the post the
-	# stroke is already standing on and does nothing. It is here so the walk
-	# below reads as the whole trail rather than the whole trail bar one.
-	_tap_local(_puzzle.node_to_local(trail[0]))
-	for i in range(1, trail.size()):
-		if _puzzle.is_done():
-			return
-		_tap_local(_puzzle.node_to_local(trail[i]))
 
 func _solve_nonogram() -> void:
 	var w: int = _puzzle.w
@@ -1176,31 +1070,6 @@ func _solve_queens() -> void:
 	_press(_host.top_bar.hint_button)
 	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1
 
-## Mushroom Patch: the mushroom chip is the tray's default, so every mushroom
-## of the answer is planted with a real touch on its own cell, in reading
-## order -- and the last one is left to the hint, the way _solve_queens leaves
-## the n-th queen, so the win comes through the hint path as well as through
-## the tap path. Check is spent first, on a bare patch, where it must find
-## nothing wrong and say so.
-func _solve_mushroom() -> void:
-	var n: int = _puzzle.n
-	# Board fit check: every cell centre must land inside the slot.
-	var slot := Rect2(Vector2.ZERO, _puzzle.size)
-	_fit_ok = true
-	for r in n:
-		for c in n:
-			if not slot.has_point(_puzzle.cell_centre(Vector2i(c, r))):
-				_fit_ok = false
-	_press_check()
-	var cells: Array = _puzzle.state.mushrooms.keys()
-	cells.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
-		return a.y < b.y or (a.y == b.y and a.x < b.x))
-	for i in range(cells.size() - 1):
-		if _puzzle.is_done():
-			return
-		_tap_local(_puzzle.cell_centre(cells[i]))
-	_press(_host.top_bar.hint_button)
-	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1
 ## Bridges: one hint and one check through the HUD, then the answer laid one
 ## run at a time with real drags from islet to islet. **Nothing here writes to
 ## the state** -- every plank goes in through the board's own `_gui_input`, so

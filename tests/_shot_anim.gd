@@ -8,20 +8,15 @@ extends SceneTree
 ##
 ##     godot --path . --resolution 1080x1920 --script res://tests/_shot_anim.gd [-- <puzzle id> [empty]]
 ##
-## Code Break is filled to its fullest board before the idle window, since
-## that is the state the budget is written against; `empty` after the id
-## measures the bare board instead, so both numbers come from this one probe.
+## `empty` after the id measures the bare board, so a played board's number
+## and a bare one's come from this one probe.
 ## Untangle is dragged once, and its springs settle into the idle window, so
 ## `empty` is the number to compare with a board that was left alone. Shikaku
 ## has its first plot drawn corner to corner, so the strip shows the wash, the
 ## count and the bed landing and the idle window has a bed and a fence in it.
-## Tents is swept along its top row, so the strip shows the shade under the
-## finger and the cairns arriving in a wave and the idle window has a row of
-## cairns in it. Light Up has its first answer lamp set down, so the strip
+## Light Up has its first answer lamp set down, so the strip
 ## shows the pop, the light travelling and the beam, and the idle window has
-## a lit lamp and its halo in it. One Line has its walker stood on the start
-## post and walked one line, so the strip shows the pop, the walk and the
-## landing hop, and the idle window has a plank and the walker in it.
+## a lit lamp and its halo in it.
 ## Nonogram is swept along its top row with the tile chip, so the strip shows
 ## the cells sinking under the finger and the tiles arriving in a wave, and
 ## the idle window has a row of tiles in it.
@@ -56,12 +51,6 @@ extends SceneTree
 ## ghost under it, and the seam stitches sewing themselves in a wave once it
 ## lands. It gets a later idle window for that, because the wave runs on
 ## past the drop.
-## Mushroom Patch has the answer's first mushroom planted with the mushroom
-## chip the tray arms by default, so the strip shows the pop, the ring, the
-## puff and -- the point of the shot -- the count wash arriving on the givens
-## around it as their numerals bump and turn green. `solve` after the id
-## plants every mushroom but the last at once and taps the last, so the strip
-## catches the sods lifting, the solve's hops and the light crossing the patch.
 ## Fairy Lights has one dark cell beside the live run turned a quarter turn
 ## clockwise, chosen so the turn joins it to the post and **the wash** --
 ## this board's signature -- actually runs: the light walking out along the
@@ -124,7 +113,6 @@ extends SceneTree
 ##
 ## Saves /tmp/anim_<id>_<n>.png for n = 0..5 (0..6 under `rm`).
 
-const MushroomGen = preload("res://puzzles/mushroom_gen.gd")
 const FairyGen = preload("res://puzzles/fairy_lights_gen.gd")
 const RingsGen = preload("res://puzzles/rings_gen.gd")
 
@@ -146,7 +134,6 @@ var _shot := 0
 var _idle: Array[float] = []
 var _idle_from := IDLE_FROM
 var _idle_to := IDLE_TO
-var _filling := false
 var _draws := 0
 var _id := ""
 var _empty := false   # skip the fill and measure the bare board
@@ -222,10 +209,6 @@ func _initialize() -> void:
 		else:
 			_mode = args[i]
 	_empty = _mode == "empty"
-	if _id == "mastermind" and not _empty:
-		# The fill takes a couple of seconds a row now (the reactions and
-		# Insane's swaps hold each row), so the frames are spread over it.
-		_shots = [1.6, 2.4, 3.0, 4.2, 6.0, 8.5, 11.0, 14.0, 17.0]
 	if _id == "wordtrail" and not _empty:
 		# The trail is traced from TAP_AT and the lock wave runs off its
 		# release, so three frames go between the usual ones: the trail
@@ -333,14 +316,6 @@ func _initialize() -> void:
 		_shots = [0.35, 0.9, 1.75, 1.95, 2.1, 2.3, 2.9, 3.9]
 		_idle_from = 2.7
 		_idle_to = 4.7
-	if _id == "mushroom" and _mode == "solve":
-		# Every mushroom but one is planted a frame before TAP_AT and the
-		# last is tapped, so the strip catches the sods lifting under the
-		# wave of plants, the last one sprouting, the solve's hops with the
-		# light crossing the patch, and the board settled under the win.
-		_shots = [0.35, 1.62, 1.72, 2.1, 2.45, 2.8, 3.8]
-		_idle_from = 4.0
-		_idle_to = 6.0
 	if _id == "pixelgarden" and _mode != "solve" and not _empty:
 		# A run stroked at TAP_AT: frames close enough to see each bead fade
 		# in above its peg, fall onto it and press home.
@@ -370,35 +345,6 @@ func _initialize() -> void:
 		_shots = [0.35, 1.75, 1.95, 2.25, 2.6, 2.9, 3.8]
 		_idle_from = 4.0
 		_idle_to = 6.0
-	if _id == "balance" and _mode == "win":
-		# Every fruit but one seated on its answer, then the last dragged
-		# on: the landing, the rest, the solve and its rewards.
-		# The last two catch the hats, the tags and the stamp on the basket.
-		_shots = [0.35, 2.3, 5.0, 5.3, 5.7, 6.2, 6.9, 7.7]
-		_idle_from = 5.0
-		_idle_to = 8.0
-	elif _id == "balance" and _mode == "rest":
-		# The drag, then an idle window long after every sticker is gone.
-		_shots = [0.35, 2.4, 6.0]
-		_idle_from = 6.5
-		_idle_to = 8.5
-	elif _id == "balance" and _mode == "hint":
-		_shots = [0.35, 1.75, 1.85, 1.95, 2.1, 2.3, 2.6]
-	elif _id == "balance" and _mode == "sunset":
-		# d=2: the day spent but for one move, then a fruit dragged onto the
-		# plank: the sun sinking, the stars, the fruit nodding off, the card.
-		_shots = [0.35, 1.7, 2.6, 3.4, 4.2, 5.2, 6.4]
-		_idle_from = 6.6
-		_idle_to = 8.0
-	elif _id == "balance" and _mode == "boing":
-		# d=3: a fruit dropped where the beam bottoms out with it on the low
-		# side, so the springy bale bounces it home.
-		_shots = [0.35, 2.0, 2.6, 2.9, 3.2, 3.6, 4.4, 5.4]
-		_idle_from = 6.0
-		_idle_to = 8.0
-	elif _id == "balance" and _mode == "level":
-		# The level moment, called straight: its sticker, confetti and cheer.
-		_shots = [0.35, 1.72, 1.85, 2.0, 2.3, 2.7, 3.4]
 	if _id == "rings" and _mode == "win":
 		# The drop lands about 0.74 s after the id opens (TAP_AT plus the
 		# drop delay plus the flight), the wash runs another 0.18 s and the
@@ -487,35 +433,18 @@ func _process(delta: float) -> bool:
 		return false
 	if not _tapped and _t >= TAP_AT:
 		_tapped = true
-		if _entry.id == "mastermind" and not _empty:
-			# The flat board plays a row over about a second (the score, then
-			# the slide), so the fill is one press a frame until it is done and
-			# the idle window opens after it.
-			_filling = true
-			_idle_from = INF
-			_idle_to = INF
-		elif _entry.id == "balance":
-			# One fruit dragged onto the seesaw, so the strip shows a flight
-			# and the beam's swing.
-			_step_balance()
-		elif _entry.id == "untangle" and not _empty:
+		if _entry.id == "untangle" and not _empty:
 			_begin_untangle_drag()
 		elif _entry.id == "shikaku" and not _empty:
 			_begin_shikaku_drag()
-		elif _entry.id == "tents" and not _empty:
-			_begin_tents_sweep()
 		elif _entry.id == "lightup" and not _empty:
 			_tap_lightup()
-		elif _entry.id == "oneline" and not _empty:
-			_walk_oneline()
 		elif _entry.id == "nonogram" and not _empty:
 			_begin_nonogram_sweep()
 		elif _entry.id == "queens" and not _empty:
 			_tap_queens()
 		elif _entry.id == "hiddenword" and not _empty:
 			_type_hiddenword()
-		elif _entry.id == "mushroom" and not _empty:
-			_tap_mushroom()
 		elif _entry.id == "wordtrail" and not _empty:
 			_drag_wordtrail()
 		elif _entry.id == "planes" and not _empty:
@@ -612,8 +541,6 @@ func _process(delta: float) -> bool:
 				_tap_key("Key_%s" % word[i].to_upper())
 			_tap_key("Key_Enter")
 			_word_at = _t + WORD_EVERY
-	if _filling:
-		_fill_mastermind_step()
 	if not _drag_done:
 		_drag_step()
 	if _t >= _idle_from and _t <= _idle_to:
@@ -675,17 +602,6 @@ func _tap_lightup() -> void:
 	var b: Vector2i = _puzzle._solution_bulbs[0]
 	_tap_global(_puzzle.get_global_transform_with_canvas() * _puzzle.cell_to_local(b.y, b.x))
 
-## One Line: stand the walker on the trail's first post and walk its first
-## line, two real touches.
-func _walk_oneline() -> void:
-	var Gen = load("res://puzzles/oneline_gen.gd")
-	var trail: Array = Gen.find_path(_puzzle._edges, _puzzle._nodes)
-	if trail.size() < 2:
-		return
-	var xf: Transform2D = _puzzle.get_global_transform_with_canvas()
-	_tap_global(xf * _puzzle.node_to_local(trail[0]))
-	_tap_global(xf * _puzzle.node_to_local(trail[1]))
-
 ## Nonogram: sweep the top row from its first cell to its last with the tile
 ## chip, laying a tile on every cell.
 func _begin_nonogram_sweep() -> void:
@@ -701,46 +617,6 @@ func _tap_queens() -> void:
 	var at: Vector2 = _puzzle.get_global_transform_with_canvas() * _puzzle.cell_to_local(0, c)
 	_tap_global(at)
 	_tap_global(at)
-
-## Mushroom Patch: one real touch on the answer's first mushroom (reading
-## order, sorted by y then x), with the mushroom chip the tray arms by
-## default. That cell is the point of the shot only if planting it turns a
-## given neighbour's numeral green; if the first mushroom in reading order
-## touches none, the one whose plant changes the most numbers is tapped
-## instead, so the strip always catches the wash landing.
-func _tap_mushroom() -> void:
-	var st = _puzzle.state
-	var cells: Array = st.mushrooms.keys()
-	cells.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
-		return a.y < b.y or (a.y == b.y and a.x < b.x))
-	if _mode == "solve":
-		# `solve`: the rest are planted through the board's own tap, the last
-		# by a real touch.
-		for i in cells.size() - 1:
-			_puzzle._tap(cells[i], _puzzle._now())
-		var last: Vector2i = cells[cells.size() - 1]
-		_tap_global(_puzzle.get_global_transform_with_canvas() * _puzzle.cell_to_local(last.y, last.x))
-		return
-	var best: Vector2i = cells[0]
-	if _mushroom_wash_count(cells[0]) == 0:
-		var best_score := 0
-		for cell in cells:
-			var score := _mushroom_wash_count(cell)
-			if score > best_score:
-				best_score = score
-				best = cell
-	_tap_global(_puzzle.get_global_transform_with_canvas() * _puzzle.cell_to_local(best.y, best.x))
-
-## How many of `cell`'s given neighbours would turn green the instant it is
-## planted: on a fresh board every given starts short, so a neighbour whose
-## own number is exactly one goes straight to settled.
-func _mushroom_wash_count(cell: Vector2i) -> int:
-	var st = _puzzle.state
-	var c := 0
-	for p in MushroomGen.neighbours(cell, st.n):
-		if st.given.has(p) and int(st.given[p]) == 1:
-			c += 1
-	return c
 
 ## Pinwheel: one real touch on one pinwheel, which is this board's whole
 ## input vocabulary. The piece tapped is the one whose quarter turn leaves
@@ -1287,54 +1163,6 @@ func _tap_key(name: String) -> void:
 	if chip is Button:
 		_press(chip)
 
-## Balance: drag the first basket fruit up and over its answer cup, so the
-## strip shows a flight, a landing and the beam's swing.
-func _step_balance() -> void:
-	var st = _puzzle.state
-	if _mode == "level":
-		_puzzle._cheer_level()
-		return
-	if _mode == "hint":
-		_puzzle.hint()
-		return
-	if _mode == "sunset":
-		st.spent = st.budget - 1
-		_puzzle._sun_day = 0.7
-	if _mode == "boing":
-		for f in st.fruit.size():
-			if not st.loose(f):
-				continue
-			for x in st.cups():
-				var t2: int = st.torque() + st.weights[st.fruit[f]] * x
-				if st.occupant(x) < 0 and absi(t2) > 5 and x * t2 > 0:
-					var xb: Transform2D = _puzzle.get_global_transform_with_canvas()
-					var fb: Vector2 = xb * _puzzle.fruit_to_local(f)
-					_begin_drag(fb, xb * (_puzzle.cup_to_local(x) + Vector2(0.0, -120.0)) - fb)
-					return
-		return
-	if _mode == "win":
-		var last := -1
-		for f in st.fruit.size():
-			if st.loose(f):
-				if last < 0:
-					last = f
-					continue
-				st.place(f, st.answer[f])
-				_puzzle.sim.to_cup_now(f, st.answer[f])
-		_puzzle.sim.snap()
-		var xf0: Transform2D = _puzzle.get_global_transform_with_canvas()
-		var from0: Vector2 = xf0 * _puzzle.fruit_to_local(last)
-		var to0: Vector2 = xf0 * (_puzzle.cup_to_local(st.answer[last]) + Vector2(0.0, -120.0))
-		_begin_drag(from0, to0 - from0)
-		return
-	for f in st.fruit.size():
-		if st.loose(f) and st.at[f] == 0:
-			var xf: Transform2D = _puzzle.get_global_transform_with_canvas()
-			var from: Vector2 = xf * _puzzle.fruit_to_local(f)
-			var to: Vector2 = xf * (_puzzle.cup_to_local(st.answer[f]) + Vector2(0.0, -120.0))
-			_begin_drag(from, to - from)
-			return
-
 ## Untangle: touch the first peg that can move and drag it to the first hole
 ## it can go to.
 func _begin_untangle_drag() -> void:
@@ -1356,14 +1184,6 @@ func _begin_shikaku_drag() -> void:
 	var xf: Transform2D = _puzzle.get_global_transform_with_canvas()
 	var from: Vector2 = xf * _puzzle.cell_to_local(rect.position.y, rect.position.x)
 	var to: Vector2 = xf * _puzzle.cell_to_local(rect.end.y - 1, rect.end.x - 1)
-	_begin_drag(from, to - from)
-
-## Tents: sweep the top row from its first cell to its last, laying cairns
-## on every square the sweep may change.
-func _begin_tents_sweep() -> void:
-	var xf: Transform2D = _puzzle.get_global_transform_with_canvas()
-	var from: Vector2 = xf * _puzzle.cell_to_local(0, 0)
-	var to: Vector2 = xf * _puzzle.cell_to_local(0, _puzzle.w - 1)
 	_begin_drag(from, to - from)
 
 ## Word Trail: trace the first word -- the shortest, since the board sorts
@@ -1635,44 +1455,6 @@ func _drag_step() -> void:
 		up.position = at
 		root.push_input(up, true)
 		_drag_done = true
-
-## Code Break's fullest board: seven rows guessed and scored, the eighth
-## filled and waiting on Check. Every row is one colour, and at difficulty 0
-## the day's code has no repeats, so no monochrome row can win and the eighth
-## row is still there to fill. Driven through the HUD the way tests/_win.gd
-## drives it, so the board reaches the state by playing rather than by having
-## its arrays written: one press a frame, and nothing while a score plays.
-func _fill_mastermind_step() -> void:
-	if _puzzle._busy:
-		return
-	var tray = _host.tray
-	var played: int = _puzzle._guesses.size()
-	# Hard and Insane have seven rows since 2026-09-29, so the fullest board
-	# is one short of the band's own count. `solve` plays three rows and
-	# then the code as it sits, for the stamp and the party.
-	var stop: int = 3 if _mode == "solve" else _puzzle.max_guesses - 1
-	if _puzzle.state.is_solved() or _puzzle.is_done():
-		_filling = false
-		_idle_from = _t + 3.6
-		_idle_to = _idle_from + 1.0
-		return
-	if played >= stop:
-		if not _puzzle.state.full():
-			var s: int = _puzzle.state.free_slot()
-			_press(tray.chips[int(_puzzle.state.code[s]) if _mode == "solve" else 0])
-			return
-		if _mode == "solve":
-			_press(_host.action_bar.check_button)
-			return
-		_filling = false
-		_idle_from = _t + 0.6
-		_idle_to = _idle_from + 2.0
-		print("filled at t=%.2f" % _t)
-		return
-	if _puzzle.state.full():
-		_press(_host.action_bar.check_button)
-	else:
-		_press(tray.chips[played % tray.chips.size()])
 
 ## Presses a HUD button through a touch at its centre, like a player would.
 func _press(btn: Button) -> void:

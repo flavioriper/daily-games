@@ -8,19 +8,18 @@ extends "res://ui/puzzle_host.gd"
 ## ui/puzzle_host.gd's rows.
 ##
 ## The one row the flat screens do not share is the tray: Binairo arms a
-## brush from three symbol chips, Code Break seats a friend from six or
-## seven, Balance steps a weight from one card per fruit, Nonogram paints
-## with one of two tile chips, and Shikaku picks nothing up at all. Queens
-## arms a queen or a cross chip in the same tile tray, built with
-## `TileTray.QUEENS` in place of Nonogram's `TileTray.MOSAIC`, and Mushroom
-## Patch arms a mushroom or a pebble chip in that same tray again, built with
-## `TileTray.PATCH`. Hidden Word types instead: its tray is a keyboard. And
+## brush from three symbol chips, Nonogram paints with one of two tile
+## chips, and Shikaku picks nothing up at all. Queens arms a queen or a
+## cross chip in the same tile tray, built with `TileTray.QUEENS` in place
+## of Nonogram's `TileTray.MOSAIC`, and Hedgehogs a rake or a flag
+## (`TileTray.LAWN`). Hidden Word types instead: its tray is a keyboard. And
 ## Sudoku's ten digit chips fire straight through `_on_pick` to the board's
-## own `pick()`, the way Code Break's friends do, rather than through
-## `_on_brush`: nothing on that row stays armed except the pencil, which the
-## board owns. The registry names which (`"tray": "friends"`, `"weights"`,
-## `"tiles"`, `"queens"`, `"patch"`, `"keys"`, `"digits"`, `"none"`), because
-## the host lays out its rows before it has a puzzle to ask.
+## own `pick()` rather than through `_on_brush`: nothing on that row stays
+## armed except the pencil, which the board owns. The registry names which
+## (`"tiles"`, `"queens"`, `"lawn"`, `"keys"`, `"digits"`, `"none"`), because
+## the host lays out its rows before it has a puzzle to ask. (Code Break's
+## friends, Balance's weights and Mushroom Patch's pair had trays of their
+## own until those boards left on 2026-10-13.)
 ##
 ## Nor do they all carry an actions row. A board that is its own continuous
 ## check has nothing to put in one -- no Check, and Reset riding up in the
@@ -54,8 +53,6 @@ extends "res://ui/puzzle_host.gd"
 const FlatTopBar = preload("res://ui/flat/flat_top_bar.gd")
 const FlatDayCard = preload("res://ui/flat/flat_day_card.gd")
 const SymbolTray = preload("res://ui/flat/symbol_tray.gd")
-const FriendTray = preload("res://ui/flat/friend_tray.gd")
-const WeightTray = preload("res://ui/flat/weight_tray.gd")
 const TileTray = preload("res://ui/flat/tile_tray.gd")
 const KeyBoard = preload("res://ui/flat/key_board.gd")
 const DigitPad = preload("res://ui/flat/digit_pad.gd")
@@ -347,14 +344,6 @@ func _build_chrome(root: VBoxContainer) -> void:
 			# Shikaku picks nothing up: there is no brush, no seat and no
 			# weight, so the row is never built.
 			tray = null
-		"friends":
-			tray = FriendTray.new()
-			tray.pick.connect(_on_pick)
-			rows.append(FriendTray.HEIGHT)
-		"weights":
-			tray = WeightTray.new()
-			tray.step.connect(_on_step)
-			rows.append(WeightTray.HEIGHT)
 		"tiles":
 			tray = TileTray.new()
 			tray.pick.connect(_on_brush)
@@ -362,11 +351,6 @@ func _build_chrome(root: VBoxContainer) -> void:
 		"queens":
 			# Queens' pair: the same tray as Nonogram's, with the queen set.
 			tray = TileTray.new(TileTray.QUEENS)
-			tray.pick.connect(_on_brush)
-			rows.append(TileTray.HEIGHT)
-		"patch":
-			# Mushroom Patch's pair: the same tray again, with the patch set.
-			tray = TileTray.new(TileTray.PATCH)
 			tray.pick.connect(_on_brush)
 			rows.append(TileTray.HEIGHT)
 		"lawn":
@@ -750,14 +734,6 @@ func _refresh() -> void:
 	var p = _puzzle if is_instance_valid(_puzzle) else null
 	if tray != null:
 		tray.refresh(p)
-
-## The weights tray asked for one unit onto or off a kind. The board decides
-## -- it owns the rules and the sprout's reason for a refusal -- and the row
-## is re-read either way.
-func _on_step(i: int, delta: int) -> void:
-	if is_instance_valid(_puzzle) and _puzzle.has_method("step_weight"):
-		_puzzle.step_weight(i, delta)
-		_refresh()
 
 ## A board may want less of the slot than it was given: Balance caps its
 ## bands, so a short column leaves the rest as air above the weight cards

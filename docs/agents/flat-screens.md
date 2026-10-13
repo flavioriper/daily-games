@@ -2,6 +2,14 @@
 
 ## The flat screens
 
+> **2026-10-13: Balance, Code Break, Tents, One Line and Mushroom Patch were
+> removed** (the user: "we need to remove some games not so good"). What
+> follows still names them where they set a precedent; their files are in
+> git history, and `docs/agents/boards/` no longer has their notes. The
+> friends tray, the weights tray and the tile tray's PATCH set went with
+> them.
+
+
 Eighteen cards open a flat 2D board under flat chrome: **Binairo**
 (`puzzles/binairo2d.gd`), **Code Break** (`puzzles/codebreak2d.gd`),
 **Balance** (`puzzles/balance2d.gd`), **Shikaku**

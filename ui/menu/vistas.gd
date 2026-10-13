@@ -35,18 +35,13 @@ const BOARD_FADE := Vector2(0.55, 0.97)
 
 const CARDS := {
 	"binairo": ["sky", 1.5, Vector2(0.30, 0.30)],
-	"mastermind": ["meadow", 1.6, Vector2(0.70, 0.55)],
-	"balance": ["sky", 1.4, Vector2(0.80, 0.45)],
 	"untangle": ["night", 1.5, Vector2(0.60, 0.40)],
 	"shikaku": ["meadow", 1.5, Vector2(0.20, 0.70)],
-	"tents": ["autumn", 1.5, Vector2(0.70, 0.40)],
 	"lightup": ["night", 1.7, Vector2(0.85, 0.60)],
-	"oneline": ["meadow", 1.4, Vector2(0.45, 0.80)],
 	"nonogram": ["dusk", 1.5, Vector2(0.20, 0.35)],
 	"queens": ["meadow", 1.8, Vector2(0.90, 0.85)],
 	"hiddenword": ["dusk", 1.5, Vector2(0.55, 0.55)],
 	"wordtrail": ["autumn", 1.6, Vector2(0.40, 0.20)],
-	"mushroom": ["autumn", 1.7, Vector2(0.15, 0.80)],
 	"sudoku": ["dusk", 1.7, Vector2(0.85, 0.75)],
 	"bridges": ["beach", 1.5, Vector2(0.70, 0.65)],
 	"quilt": ["dusk", 1.8, Vector2(0.92, 0.70)],

@@ -58,6 +58,13 @@ extends RefCounted
 ## pager rather than of today's card count. See
 ## docs/superpowers/specs/2026-09-20-pinwheel-flat-design.md, section 7.
 ##
+## **Five left on 2026-10-13** (the user: "we need to remove some games not
+## so good"): Code Break (id `mastermind`), Balance, Tents, One Line and
+## Mushroom Patch, with their boards, cards, sounds and banks. The history
+## above still counts them; the grid is thirty-three cards now, and a card's
+## colour comes off its index here, so every card after Binairo changed
+## colour that day.
+##
 ## A grid entry's `short` is the card's own two-line blurb: at 320 wide a
 ## card fits about seventeen characters a line, which the registry's longer
 ## `blurb` (still used by the rules sheet) does not.
@@ -93,69 +100,6 @@ const PUZZLES := [
 			{"difficulty": 1, "name": "Medium", "line": "6 × 6"},
 			{"difficulty": 2, "name": "Hard", "line": "8 × 8"},
 			{"difficulty": 3, "name": "Insane", "line": "10 × 10"},
-		],
-	},
-	{
-		"id": "mastermind",
-		"kind": "puzzle",
-		"title": "Code Break",
-		"blurb": "CB_BLURB",
-		"short": "CB_SHORT",
-		"motto": "CB_MOTTO",
-		"footer": "Small puzzles · Brighter days",
-		# Its palette is friends, not a brush, so the shell builds the other
-		# tray.
-		"script": "res://puzzles/codebreak2d.gd",
-		"card": "res://ui/menu/cards/codebreak.gd",
-		"shell": "flat",
-		"tray": "friends",
-		# The box's parchment and wood are the whole screen (`bleed`,
-		# puzzles/codebreak_world.gd) and the levels stand where the day card
-		# was. It keeps its friends and its guess button under the board: it
-		# cannot be played without them.
-		"bleed": true,
-		"level_card": true,
-		"difficulties": [0, 1, 2, 3],
-		# Asks like Sudoku (2026-09-23): four seats of six friends with no one
-		# twice in the code, the same with repeats, or five seats of seven;
-		# each is its own daily with its own done mark.
-		"pick_difficulty": true,
-		"levels": [
-			{"difficulty": 0, "name": "Easy", "line": "CB_LVL_0"},
-			{"difficulty": 1, "name": "Medium", "line": "CB_LVL_1"},
-			{"difficulty": 2, "name": "Hard", "line": "CB_LVL_2"},
-			{"difficulty": 3, "name": "Insane", "line": "CB_LVL_3"},
-		],
-	},
-	{
-		"id": "balance",
-		"kind": "puzzle",
-		"title": "Balance",
-		"blurb": "BAL_BLURB",
-		"short": "BAL_SHORT",
-		"motto": "BAL_MOTTO",
-		"footer": "Weigh · Place · Level",
-		# A seesaw since 2026-09-27: the basket is inside the board card, so
-		# no tray, and the beam is its own check, so **no actions row** --
-		# Undo, Reset and Hint ride in the top bar.
-		"script": "res://puzzles/balance2d.gd",
-		"card": "res://ui/menu/cards/balance.gd",
-		"shell": "flat",
-		"tray": "none",
-		"actions": false,
-		# The meadow is the whole screen (`bleed`, puzzles/balance_world.gd)
-		# and the levels stand where the day card was.
-		"bleed": true,
-		"level_card": true,
-		"difficulties": [0, 1, 2, 3],
-		# Asks like Sudoku (2026-09-23): balance_gen.gd's BANDS, and each is
-		# its own daily with its own done mark.
-		"pick_difficulty": true,
-		"levels": [
-			{"difficulty": 0, "name": "Easy", "line": "BAL_LVL_0"},
-			{"difficulty": 1, "name": "Medium", "line": "BAL_LVL_1"},
-			{"difficulty": 2, "name": "Hard", "line": "BAL_LVL_2"},
-			{"difficulty": 3, "name": "Insane", "line": "BAL_LVL_3"},
 		],
 	},
 	{
@@ -221,35 +165,6 @@ const PUZZLES := [
 		],
 	},
 	{
-		"id": "tents",
-		"kind": "puzzle",
-		"title": "Tents",
-		"blurb": "TN_BLURB",
-		"short": "TN_SHORT",
-		"motto": "TN_MOTTO",
-		"footer": "Pitch · Count · Rest",
-		"script": "res://puzzles/tents2d.gd",
-		"card": "res://ui/menu/cards/tents.gd",
-		"shell": "flat",
-		"tray": "none",
-		# Its world is the whole screen (`bleed`, puzzles/tents_world.gd) and the
-		# levels stand where the day card was (docs/agents/flat-screens.md).
-		"bleed": true,
-		"level_card": true,
-		"actions": false,
-		"difficulties": [0, 1, 2, 3],
-		# Asks like Sudoku (2026-09-23): a 6 by 6 field with 5 tents, 7 by 7
-		# with 7 or 8 by 8 with 9, and each is its own daily with its own
-		# done mark.
-		"pick_difficulty": true,
-		"levels": [
-			{"difficulty": 0, "name": "Easy", "line": "6 × 6"},
-			{"difficulty": 1, "name": "Medium", "line": "7 × 7"},
-			{"difficulty": 2, "name": "Hard", "line": "8 × 8"},
-			{"difficulty": 3, "name": "Insane", "line": "TN_LVL_3"},
-		],
-	},
-	{
 		"id": "lightup",
 		"kind": "puzzle",
 		"title": "Light Up",
@@ -275,36 +190,6 @@ const PUZZLES := [
 			{"difficulty": 1, "name": "Medium", "line": "6 × 6"},
 			{"difficulty": 2, "name": "Hard", "line": "7 × 7"},
 			{"difficulty": 3, "name": "Insane", "line": "LU_LVL_3"},
-		],
-	},
-	{
-		"id": "oneline",
-		"kind": "puzzle",
-		"title": "One Line",
-		"blurb": "OL_BLURB",
-		"short": "OL_SHORT",
-		"motto": "OL_MOTTO",
-		"footer": "Walk · Lay · Finish",
-		"script": "res://puzzles/oneline2d.gd",
-		"card": "res://ui/menu/cards/oneline.gd",
-		"shell": "flat",
-		"tray": "none",
-		# Its world is the whole screen (`bleed`, puzzles/oneline_world.gd) and the
-		# levels stand where the day card was (docs/agents/flat-screens.md).
-		"bleed": true,
-		"level_card": true,
-		"actions": false,
-		"difficulties": [0, 1, 2, 3],
-		# Asks like Sudoku (2026-09-23): a 3 by 3, 4 by 3 or 4 by 4 lattice
-		# of posts, and each is its own daily with its own done mark. The
-		# lattice is named rather than the lines, which vary a lot within a
-		# level (4 to 19 on easy, 6 to 29 on hard, over 300 seeds each).
-		"pick_difficulty": true,
-		"levels": [
-			{"difficulty": 0, "name": "Easy", "line": "OL_LVL_0"},
-			{"difficulty": 1, "name": "Medium", "line": "OL_LVL_1"},
-			{"difficulty": 2, "name": "Hard", "line": "OL_LVL_2"},
-			{"difficulty": 3, "name": "Insane", "line": "OL_LVL_3"},
 		],
 	},
 	{
@@ -445,35 +330,6 @@ const PUZZLES := [
 	# them. Sudoku's own spec (2026-09-20-sudoku-flat-design.md, section 9)
 	# argued that pager into the day row; the user ruled otherwise and the
 	# strip under the grid is what shipped. See that section's amendments.
-	{
-		"id": "mushroom",
-		"kind": "puzzle",
-		"title": "Mushroom Patch",
-		"blurb": "MP_BLURB",
-		"short": "MP_SHORT",
-		"motto": "MP_MOTTO",
-		"footer": "Count · Prove · Plant",
-		"script": "res://puzzles/mushroom2d.gd",
-		"card": "res://ui/menu/cards/mushroom.gd",
-		"shell": "flat",
-		"tray": "patch",
-		# Its world is the whole screen (`bleed`, puzzles/mushroom_world.gd) and the
-		# levels stand where the day card was (docs/agents/flat-screens.md).
-		"bleed": true,
-		"level_card": true,
-		"actions": false,
-		"difficulties": [0, 1, 2, 3],
-		# Asks like Sudoku (2026-09-23): 6 mushrooms in a 6 by 6 patch, 9 in
-		# 7 by 7 or 12 in 8 by 8 (mushroom_gen.gd's SIZES), and each is its
-		# own daily with its own done mark.
-		"pick_difficulty": true,
-		"levels": [
-			{"difficulty": 0, "name": "Easy", "line": "MP_LVL_0"},
-			{"difficulty": 1, "name": "Medium", "line": "MP_LVL_1"},
-			{"difficulty": 2, "name": "Hard", "line": "MP_LVL_2"},
-			{"difficulty": 3, "name": "Insane", "line": "MP_LVL_3"},
-		],
-	},
 	{
 		"id": "sudoku",
 		"kind": "puzzle",

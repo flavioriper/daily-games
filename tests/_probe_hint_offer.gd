@@ -21,7 +21,7 @@ var _files: Array = []
 var _backup := {}
 var _langs := ["en", "pt", "es"]
 var _li := 0
-var _insane_ids := ["balance", "trestle", "hiddenword"]
+var _insane_ids := ["untangle", "trestle", "hiddenword"]
 var _ii := 0
 
 func _initialize() -> void:

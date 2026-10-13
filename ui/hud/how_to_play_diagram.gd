@@ -8,15 +8,9 @@ extends Control
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const Face = preload("res://ui/faces/face.gd")
-const Friends = preload("res://ui/faces/friends.gd")
-const Fruit = preload("res://ui/faces/fruit.gd")
 const MarkerFace = preload("res://ui/faces/marker_face.gd")
-const TentFace = preload("res://ui/faces/tent_face.gd")
-const ConiferFace = preload("res://ui/faces/conifer_face.gd")
 const CourtLantern = preload("res://ui/faces/court_lantern.gd")
-const SnailFace = preload("res://ui/faces/snail_face.gd")
 const BeeFace = preload("res://ui/faces/bee_face.gd")
-const MushroomFace = preload("res://ui/faces/mushroom_face.gd")
 const Cloth = preload("res://ui/faces/patch_cloth.gd")
 const LanternFace = preload("res://ui/faces/lantern_face.gd")
 const PaperPlane = preload("res://ui/faces/paper_plane.gd")
@@ -58,31 +52,17 @@ func _exit_tree() -> void:
 
 func _build_pieces() -> void:
 	match puzzle_id:
-		"mastermind":
-			_add_piece(Friends.make(2, 100.0, Vector2.ZERO))
-			_add_piece(Friends.make(3, 100.0, Vector2.ZERO))
-		"balance":
-			_add_piece(Fruit.make(0, 100.0, Vector2.ZERO))
-			_add_piece(Fruit.make(2, 100.0, Vector2.ZERO))
 		"untangle":
 			pass
 		"shikaku":
 			var marker := MarkerFace.new()
 			marker.number = 6
 			_add_piece(marker)
-		"tents":
-			_add_piece(ConiferFace.new())
-			_add_piece(TentFace.new())
 		"lightup":
 			var lamp := CourtLantern.new()
 			lamp.lit = 1.0
 			_add_piece(lamp)
-		"oneline": _add_piece(SnailFace.new())
 		"queens": _add_piece(BeeFace.new())
-		"mushroom":
-			var mushroom := MushroomFace.new()
-			mushroom.sprig = true
-			_add_piece(mushroom)
 		"fairylights":
 			var lantern := LanternFace.new()
 			lantern.iron = true
@@ -117,7 +97,7 @@ func _layout_pieces() -> void:
 	var cell := (board.size.x - GAP * (GRID - 1)) / GRID
 	var a := board.position + Vector2(cell * 1.5 + GAP, cell * 1.5 + GAP)
 	var b := board.position + Vector2(cell * 2.5 + GAP * 2.0, cell * 2.5 + GAP * 2.0)
-	var moving := puzzle_id in ["untangle", "oneline", "wordtrail", "bridges"]
+	var moving := puzzle_id in ["untangle", "wordtrail", "bridges"]
 	for i in _pieces.size():
 		var piece := _pieces[i]
 		var extent := cell * (0.82 if puzzle_id != "shikaku" else 0.95)
@@ -127,7 +107,7 @@ func _layout_pieces() -> void:
 		if moving and i == 0:
 			centre = a.lerp(b, _ease(_progress))
 		piece.position = centre - piece.size * 0.5
-		if i == _pieces.size() - 1 and puzzle_id in ["mastermind", "tents", "queens", "mushroom"]:
+		if i == _pieces.size() - 1 and puzzle_id == "queens":
 			piece.scale = Vector2.ONE * (0.25 + 0.75 * _ease(_progress))
 			piece.modulate.a = _ease(_progress)
 		else:
@@ -193,9 +173,6 @@ func _draw_game_marks(board: Rect2, cell: float) -> void:
 		"lightup":
 			for point in [_centre(board, cell, 1, 0), _centre(board, cell, 1, 2), _centre(board, cell, 0, 1), _centre(board, cell, 2, 1)]:
 				draw_circle(point, cell * 0.36, Color(Pal.SUN, 0.08 + 0.22 * p))
-		"oneline":
-			var path := PackedVector2Array([_centre(board, cell, 0, 1), _centre(board, cell, 1, 1), _centre(board, cell, 1, 2), _centre(board, cell, 2, 2)])
-			_draw_path(path, p, Pal.ACCENT, 9.0)
 		"nonogram":
 			for c in 3:
 				if float(c + 1) / 3.0 <= p + 0.01:
@@ -461,18 +438,13 @@ func _quilt_outline(cells: Array, at: Vector2, cell: float, ink: Color, width :=
 
 func _lesson() -> String:
 	match puzzle_id:
-		"mastermind": return tr("HTP_LESSON_CB")
-		"balance": return tr("HTP_LESSON_BAL")
 		"untangle": return tr("HTP_LESSON_UT")
 		"shikaku": return tr("HTP_LESSON_SK")
-		"tents": return tr("HTP_LESSON_TN")
 		"lightup": return tr("HTP_LESSON_LU")
-		"oneline": return tr("HTP_LESSON_OL")
 		"nonogram": return tr("HTP_LESSON_NG")
 		"queens": return tr("HTP_LESSON_QN")
 		"hiddenword": return tr("HTP_LESSON_HW")
 		"wordtrail": return tr("HTP_LESSON_WT")
-		"mushroom": return tr("HTP_LESSON_MP")
 		"sudoku": return tr("HTP_LESSON_SD")
 		"bridges": return tr("HTP_LESSON_BR")
 		"quilt": return tr("HTP_LESSON_QL")

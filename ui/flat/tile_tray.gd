@@ -19,21 +19,20 @@ extends "res://ui/hud/panel.gd"
 ## paints, the word it carries, its node name and which glyph it draws --
 ## and there are three: MOSAIC, Nonogram's tile and cross, the default;
 ## QUEENS, Queens' bee and cross, which the registry asks for with
-## `"tray": "queens"`; and PATCH, Mushroom Patch's mushroom and pebble, asked
-## for with `"tray": "patch"`. One tray, three sets, no copy.
+## `"tray": "queens"`; and LAWN, Hedgehogs' rake and flag, asked for with
+## `"tray": "lawn"`. One tray, three sets, no copy. (A fourth, PATCH, was
+## Mushroom Patch's mushroom and pebble; it left with that board on
+## 2026-10-13.)
 ## Spec: docs/superpowers/specs/2026-09-18-nonogram-flat-design.md, section 6;
-## docs/superpowers/specs/2026-09-19-queens-flat-design.md, section 6;
-## docs/superpowers/specs/2026-09-20-mushroom-patch-flat-design.md, section 7.
+## docs/superpowers/specs/2026-09-19-queens-flat-design.md, section 6.
 
 ## What the player chose: one of the set's values.
 signal pick(v: int)
 
 const NonogramState = preload("res://puzzles/nonogram_state.gd")
 const QueensState = preload("res://puzzles/queens_state.gd")
-const MushroomState = preload("res://puzzles/mushroom_state.gd")
 const HedgehogsState = preload("res://puzzles/hedgehogs_state.gd")
 const BeeFace = preload("res://ui/faces/bee_face.gd")
-const MushroomFace = preload("res://ui/faces/mushroom_face.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Mosaic = preload("res://ui/faces/mosaic_tile.gd")
 const CrossMark = preload("res://ui/faces/cross_mark.gd")
@@ -65,9 +64,9 @@ const LABEL_PAD := 16.0
 ## board's tenth of a cell: at 84 across, a tenth reads as a circle.
 const SOCKET_RADIUS := 12.0
 
-## The three sets. `glyphs` names what the chip's picture is: a laid tile, a
-## pebble on its socket, Queens' X on its socket, the bee (a BeeFace seated on the chip, alive) or the
-## mushroom (a MushroomFace, still).
+## The three sets. `glyphs` names what the chip's picture is: a laid tile,
+## the X on its socket, the bee (a BeeFace seated on the chip, alive), the
+## rake or the flag.
 const MOSAIC := {
 	"values": [NonogramState.FILL, NonogramState.MARK],
 	"labels": ["TRAY_TILE", "TRAY_CROSS"],
@@ -79,12 +78,6 @@ const QUEENS := {
 	"labels": ["TRAY_QUEEN", "TRAY_CROSS"],
 	"names": ["QueenChip", "CrossChip"],
 	"glyphs": ["bee", "cross"],
-}
-const PATCH := {
-	"values": [MushroomState.FOUND, MushroomState.CLEAR],
-	"labels": ["TRAY_MUSHROOM", "TRAY_PEBBLE"],
-	"names": ["MushroomChip", "PebbleChip"],
-	"glyphs": ["mushroom", "pebble"],
 }
 ## Hedgehogs' rake and flag, asked for with `"tray": "lawn"`: the chip armed
 ## is what a tap on a covered pile does, and a long press does the other.
@@ -136,11 +129,6 @@ func _build() -> void:
 			# wings beat on the chip as they do on the court.
 			glyph = BeeFace.new()
 			glyph.set_idle(true)
-		elif str(_set.glyphs[i]) == "mushroom":
-			# The mushroom draws herself too, but the mock keeps her still: no
-			# idle motion of her own means set_idle(true) here would only add
-			# a blink neither the mock nor the tray's other chips carry.
-			glyph = MushroomFace.new()
 		else:
 			glyph = Control.new()
 			glyph.draw.connect(_draw_glyph.bind(glyph, i))
@@ -200,10 +188,6 @@ func _draw_glyph(glyph: Control, i: int) -> void:
 		Lawn.rake(b, centre, GLYPH)
 	elif str(_set.glyphs[i]) == "flag":
 		Lawn.flag(b, centre + Vector2(-GLYPH * 0.1, GLYPH * 0.05), GLYPH * 0.5)
-	else:
-		b.fan(Face.Builder.round_rect(Vector2.ZERO, glyph.size, SOCKET_RADIUS),
-			Pal.SOCKET_OUT)
-		Mosaic.pebble(b, centre, GLYPH, Vector2.ONE, 1.0)
 	var mesh := b.mesh()
 	if mesh != null:
 		glyph.draw_mesh(mesh, null)

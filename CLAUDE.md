@@ -11,6 +11,18 @@ board is drawn in 2D like the other twenty. The Blender rules that used to open
 this file went with it; if a model ever comes back, recover them from history
 (`docs/art/blender-contract.md` is still in the tree).
 
+## Boards that left
+
+**Balance, Code Break, Tents, One Line and Mushroom Patch were removed on
+2026-10-13** (the user: "we need to remove some games not so good"): their
+boards, worlds, generators, cards, tutorials, sounds, Insane banks, tests,
+locale rows and notes. Git history has all of it; older notes and comments
+still name them as precedents, and nothing loads them. The ids were
+`balance`, `mastermind`, `tents`, `oneline` and `mushroom`; a player's saved
+progress under them is simply never read. `ui/hud/out_of_rows.gd` and the
+`HTP_TN_HINT*` / `HTP_TN_HEARTS` tutorial captions were theirs first and are
+still used by other boards, under their old key names.
+
 ## Where the detail lives
 
 This file holds the rules every change needs. Everything else -- each
@@ -25,7 +37,7 @@ that area**, and add new history there rather than here.
 | The opening: the boot scene, the launch colours, the handover to the first screen | `docs/agents/opening.md` |
 | First screen: menu, cards, pager, header, Stats/Streak, registry | `docs/agents/first-screen.md` |
 | Flat boards: shared rules, motion, shell, trays, faces, meshes | `docs/agents/flat-screens.md` |
-| One board's own notes | `docs/agents/boards/<board>.md` (Code Break: `code-break.md`) |
+| One board's own notes | `docs/agents/boards/<board>.md` |
 | Versus (snooker, chess, checkers, air hockey, Toy Boats, Penny Drop, Dominoes, Reversi) | `docs/agents/versus.md` |
 | Friends: the link, codes, invites, a friend's game | `docs/agents/friends.md` |
 | Arcade (Firefly, Molehill, Stackwood, Lucky Thirteen, Posy, Peapod, Nightlight, Beeline, Deckchair, Eddy, Furrow, Griddle, Trivet) | `docs/agents/arcade.md` |
@@ -62,7 +74,7 @@ that area**, and add new history there rather than here.
 - **On a board whose pieces are coloured by index, no state may be signalled
   by a shade of the piece's own colour** (halo, hatch or ring instead).
 - **Renamed genres**: a board never uses the name of the game it follows, in
-  code, comments, commits or on screen (Code Break, Hidden Word, Word Trail,
+  code, comments, commits or on screen (Hidden Word, Word Trail,
   Bridges, Quilt, Paper Planes, Pinwheel, Caterpillar, Sunbeam, Knight,
   Hedgehogs, Marigold, Drumbeat, Trestle, Horse Pen, Firefly, Molehill,
   Stackwood, Lucky Thirteen, Posy, Peapod, Nightlight, Beeline, Deckchair, Eddy, Furrow, Griddle, Trivet, Gumdrop, Grove, How Big?, Golden Acorn, Pearl Dive, Lattice, Toy Boats, Penny Drop, Button Box, Toy Cannons). The spec names the original once, to

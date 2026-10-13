@@ -712,19 +712,6 @@ func _experiment() -> void:
 		"sk_numbers":
 			for m in _puzzle._markers:
 				m.number = 0
-		"tn_count":
-			await create_timer(2.0).timeout
-			var t0 := Time.get_ticks_usec()
-			_puzzle._build_ground(_puzzle._now())
-			print("  ground build %.2f ms cairns %d anim %.2f flies %d" % [(Time.get_ticks_usec() - t0) / 1000.0,
-				_puzzle.state.cairns(), _puzzle._anim_until - _puzzle._now(), _puzzle._flies.size()])
-			print("  draws now ", Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), " process ", Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0)
-			_log_until = _t + 0.1
-		"tn_trees", "tn_tents", "tn_chips":
-			var hide: Array = {"tn_trees": _puzzle._trees.values(), "tn_tents": _puzzle._tents.values(),
-				"tn_chips": _puzzle._chips_row + _puzzle._chips_col}[_exp]
-			for f in hide:
-				f.visible = false
 		"lu_count":
 			# One court build as a frame does it, then one with every bake made
 			# again (the cost of a change to what is at rest), then the beams.
@@ -989,17 +976,6 @@ func _experiment() -> void:
 					_puzzle._life_layer.visible = false
 				"lu_veil":
 					_puzzle._veil_layer.visible = false
-		"ol_count":
-			# One figure cast as a frame does it, timed, and what it draws.
-			await create_timer(2.0).timeout
-			for k in 3:
-				var t0 := Time.get_ticks_usec()
-				_puzzle._cast_figure(_puzzle._now())
-				var t1 := Time.get_ticks_usec()
-				var a = _puzzle._figure.surface_get_arrays(0)
-				print("  cast %.2f ms verts %d (runs %d) indices %d looks %d lines %d posts %d" % [(t1 - t0) / 1000.0,
-					a[0].size(), _puzzle._fixed, a[Mesh.ARRAY_INDEX].size(), _puzzle._looks.size(), _puzzle.state.edges.size(), _puzzle.state.nodes.size()])
-			print("  draws now ", Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), " anim ", _puzzle._anim_until - _puzzle._now())
 		"ng_count":
 			# One floor build as a frame does it, timed, and what it draws.
 			await create_timer(2.0).timeout
@@ -1037,21 +1013,6 @@ func _experiment() -> void:
 				var a = m.surface_get_arrays(0) if m != null else [[]]
 				print("  field %.2f ms verts %d | slots %.2f | air %.2f | found %d" % [(t1 - t0) / 1000.0, a[0].size(),
 					(t2 - t1) / 1000.0, (t3 - t2) / 1000.0, _puzzle._state.found_count()])
-		"mp_count":
-			# One floor and one ground build as an animating frame does them,
-			# timed, a few times over the run.
-			for k in 6:
-				await create_timer(2.0).timeout
-				var now: float = _puzzle._now()
-				var t0 := Time.get_ticks_usec()
-				var fl: ArrayMesh = _puzzle._build_floor(now)
-				var t1 := Time.get_ticks_usec()
-				var gr: Dictionary = _puzzle._build_ground(now)
-				var t2 := Time.get_ticks_usec()
-				var fa = fl.surface_get_arrays(0) if fl != null else [[]]
-				var ga = gr.mesh.surface_get_arrays(0) if gr.mesh != null else [[]]
-				print("  floor %.2f ms verts %d | ground %.2f ms verts %d | marks %d" % [(t1 - t0) / 1000.0, fa[0].size(),
-					(t2 - t1) / 1000.0, ga[0].size(), _puzzle.state.marks.size()])
 		"trivialwash":
 			var sh := Shader.new()
 			sh.code = "shader_type canvas_item;\nvoid fragment() { COLOR.rgb *= 1.0; }"
@@ -1075,31 +1036,6 @@ func _experiment() -> void:
 				l.visible = false
 		"bn_fx":
 			_puzzle.fx.visible = false
-		"cb_faces", "cb_sockets", "cb_pouches", "cb_cards", "cb_nums", "cb_marks", "cb_code", "cb_rings":
-			var arr: Array = {"cb_faces": _puzzle._face, "cb_sockets": _puzzle._socket,
-				"cb_pouches": [_puzzle._pouch], "cb_cards": [_puzzle._row_card],
-				"cb_nums": [_puzzle._row_num], "cb_marks": [_puzzle._mark],
-				"cb_code": [_puzzle._lid_seat], "cb_rings": _puzzle._ring}[_exp]
-			for row in arr:
-				for n in row:
-					if n != null:
-						n.visible = false
-		"cb_reset":
-			var baked := func() -> int:
-				return _puzzle._baked.filter(func(b): return b.visible).size()
-			print("  baked before reset ", baked.call(), " can_reset ", _puzzle.can_reset())
-			_puzzle.reset_board()
-			_puzzle._process(0.0)
-			print("  baked after reset ", baked.call(), " guesses ", _puzzle.state.guesses.size())
-		"cb_live":
-			_puzzle.set_process(false)
-			for g in _puzzle._rows.size():
-				_puzzle._show_nodes(g, true)
-		"bal_warm":
-			# the solve's lettering once, early, to see whether its first
-			# draw (glyph rasterising) is the solve's hitch
-			_puzzle._rw.sticker(_puzzle.tr("BAL_W_BALANCED"), _puzzle._word_at(), 112, 0.3, true, Color.WHITE, true, "closer")
-			_puzzle._rw.sticker(_puzzle.tr("BAL_W_NO_HINTS"), _puzzle._word_at(), 46, 0.3, false, Color.WHITE, false, "nohints")
 		"nowash":
 			for c in _all(_host, func(n): return n is CanvasItem and n.material != null):
 				c.material = null
@@ -1397,168 +1333,6 @@ func _buzz_binairo() -> void:
 	await pause.call()
 	_buzzed("reset")
 
-## Code Break: every row but the last a wrong guess (the code turned by one
-## friend, so it scores), then the code as it sits at that moment.
-func _moves_mastermind() -> Array:
-	var out := []
-	var st = _puzzle.state
-	# (a seat a hint already filled is skipped: pick takes the first free one)
-	for g in st.tries - 1:
-		for s in st.length:
-			out.append({"do": func() -> void:
-				if st.row[s] == -1:
-					_puzzle.pick((int(st.code[s]) + 1 + g % (st.palette_size - 1)) % st.palette_size)})
-		out.append({"do": func() -> void: _puzzle.check()})
-	for s in st.length:
-		out.append({"do": func() -> void:
-			if st.row[s] == -1:
-				_puzzle.pick(int(st.code[s]))})
-	out.append({"do": func() -> void: _puzzle.check()})
-	return out
-
-## Code Break's buzzes: a friend seated, one sent back, Undo, Check on a
-## short row, a palette tap on a full row, Reset, a hint and a tap on the
-## hinted seat. The plain run then scores every row and cracks the last
-## (the row's knock, a new best, the lids, the seal).
-func _buzz_mastermind() -> void:
-	var st = _puzzle.state
-	_buzz_more = st.tries * 2.0 + 4.0
-	var pause := func() -> void: await create_timer(0.8).timeout
-	_puzzle.pick(0)
-	await pause.call()
-	_buzzed("a friend seated")
-	_click(_puzzle.cell_to_local(st.active(), 0))
-	await pause.call()
-	_buzzed("sent back with a tap")
-	_puzzle.pick(1)
-	await pause.call()
-	_buzzed("another seated")
-	_host._on_undo()
-	await pause.call()
-	_buzzed("undo")
-	_puzzle.check()
-	await pause.call()
-	_buzzed("check on a short row")
-	for s in st.length:
-		_puzzle.pick(s % st.palette_size)
-	await pause.call()
-	_buzzed("the row filled")
-	_puzzle.pick(0)
-	await pause.call()
-	_buzzed("a tap on a full row")
-	_puzzle.reset_board()
-	await pause.call()
-	_buzzed("reset")
-	if _puzzle.hints_left() > 0:
-		_puzzle.hint()
-		await pause.call()
-		_buzzed("hint")
-		for s in st.length:
-			if st.locked[s] and st.row[s] != -1:
-				_click(_puzzle.cell_to_local(st.active(), s))
-		await pause.call()
-		_buzzed("the hinted seat tapped")
-
-## Balance: each loose fruit dropped into its answer cup, in the safe order
-## (Insane's bales bounce a low side home), through the board's own hop.
-func _moves_balance() -> Array:
-	var out := []
-	var st = _puzzle.state
-	var order: Array[int] = []
-	if st.boing:
-		order = st.safe_order()
-	if order.is_empty():
-		order.assign(range(st.fruit.size()))
-	for f: int in order:
-		if not st.loose(f) or st.at[f] == st.answer[f]:
-			continue
-		out.append({"do": func() -> void:
-			# (a hint may have pinned a twin of this fruit in its cup: it
-			# takes the twin's)
-			var x: int = st.answer[f]
-			var o: int = st.occupant(x)
-			if o >= 0 and o != f:
-				x = st.answer[o]
-			if st.place(f, x):
-				_puzzle._hop(f, x, 0.0)
-				_puzzle._by_hand[f] = true  # the hand's release, for x=buzz
-				_puzzle._spend()
-				_puzzle.note_move()
-				_puzzle._moving = true})
-	return out
-
-## A fruit carried from where it is to over cup `x` and let go, through the
-## board's own input (two drags a frame apart, so it is let go at rest).
-func _bal_carry(f: int, x: int) -> void:
-	var ev := InputEventMouseButton.new()
-	ev.button_index = MOUSE_BUTTON_LEFT
-	ev.pressed = true
-	ev.position = _puzzle.fruit_to_local(f)
-	_puzzle._gui_input(ev)
-	var over: Vector2 = _puzzle.cup_to_local(x) + Vector2(0.0, -_puzzle.sim.r * 1.5)
-	for i in 2:
-		await process_frame
-		var mv := InputEventMouseMotion.new()
-		mv.position = over
-		_puzzle._gui_input(mv)
-	await process_frame
-	var up := InputEventMouseButton.new()
-	up.button_index = MOUSE_BUTTON_LEFT
-	up.pressed = false
-	up.position = over
-	_puzzle._gui_input(up)
-
-## Balance's buzzes: a pinned fruit touched, a fruit carried to a cup and
-## left to settle, tapped home, a toss, Undo, a hint, the sun
-## tapped and Reset. On Insane a drop may bounce (the bale's `bad`). The
-## plain run then drops every fruit in its cup and ends level.
-func _buzz_balance() -> void:
-	var st = _puzzle.state
-	_buzz_more = 8.0  # (the beam settles before the solve, the seal after)
-	var rest := func() -> void: await create_timer(2.6).timeout
-	var loose: Array = []
-	var pinned := -1
-	for f in st.fruit.size():
-		if st.loose(f):
-			loose.append(f)
-		else:
-			pinned = f
-	if pinned >= 0:
-		_click(_puzzle.fruit_to_local(pinned))
-		await create_timer(0.6).timeout
-		_buzzed("a pinned fruit touched")
-	var a: int = loose[0]
-	await _bal_carry(a, st.answer[a])
-	await create_timer(0.1).timeout
-	_buzzed("a fruit lifted and let go")
-	await rest.call()
-	_buzzed("it lands, the beam rests")
-	if st.at[a] != 0:
-		_click(_puzzle.fruit_to_local(a))
-		await rest.call()
-		_buzzed("tapped home")
-	var b: int = loose[1]
-	# (a toss is a fast let-go far from the cup it lands in, which a free
-	# cup under the hand rarely allows: the carry is marked one by hand)
-	await _bal_carry(b, st.answer[b])
-	_puzzle._tossed[b] = true
-	await rest.call()
-	_buzzed("a toss that lands")
-	if _puzzle.can_undo():
-		_host._on_undo()
-		await rest.call()
-		_buzzed("undo")
-	if _puzzle.hints_left() > 0:
-		_puzzle.hint()
-		await rest.call()
-		_buzzed("hint")
-	_click(_puzzle._sun_at())
-	await create_timer(0.6).timeout
-	_buzzed("the sun tapped")
-	_puzzle.reset_board()
-	await rest.call()
-	_buzzed("reset")
-
 ## Untangle: the way home, a peg at a time, carried by hand -- a press, a
 ## drag in steps over the ropes (the tangle reacts under the hand, which is
 ## the Insane cost to watch), a release on the hole. A step that finds the
@@ -1773,120 +1547,6 @@ func _buzz_shikaku() -> void:
 	await pause.call()
 	_buzzed("reset")
 
-## Tents: every row swept into cairns a run at a time (press, a motion a
-## square, release; a run stops at the answer's tents, and a lone square is
-## left bare, since a press without a drag would pitch a tent), then the
-## answer's tents tapped in, one event a step.
-func _moves_tents() -> Array:
-	_keep = 2
-	var out := []
-	var st = _puzzle.state
-	var tents: Dictionary = {}
-	for t: Vector2i in st.solution:
-		tents[t] = true
-	for r in st.h:
-		var run: Array = []
-		for c in st.w + 1:
-			var cell := Vector2i(c, r)
-			if c < st.w and not tents.has(cell):
-				run.append(cell)
-				continue
-			if run.size() >= 2:
-				var cells := run.duplicate()
-				out.append({"do": func() -> void: _ut_button(_puzzle.cell_to_local(cells[0].y, cells[0].x), true)})
-				for k in range(1, cells.size()):
-					var at: Vector2i = cells[k]
-					out.append({"do": func() -> void: _ut_motion(_puzzle.cell_to_local(at.y, at.x))})
-				var last: Vector2i = cells[cells.size() - 1]
-				out.append({"do": func() -> void: _ut_button(_puzzle.cell_to_local(last.y, last.x), false)})
-			run = []
-	for t: Vector2i in st.solution:
-		out.append({"at": _puzzle.cell_to_local.bind(t.y, t.x)})
-	return out
-
-## Tents' buzzes: a tree tapped, a tent pitched where the answer has one and
-## tapped away, a tent with no tree beside it, a run swept into cairns and
-## rubbed out, Undo, on Hard a tent the board cannot fault that is not the
-## answer's, a hint and a tap on its pegged tent, Check and Reset. The plain
-## run then sweeps the rows and pitches the answer (the oaks, the streak's
-## confetti, the win, the seal when it is earned).
-func _buzz_tents() -> void:
-	var st = _puzzle.state
-	_buzz_more = 8.0
-	var pause := func() -> void: await create_timer(0.8).timeout
-	var at := func(cell: Vector2i) -> Vector2: return _puzzle.cell_to_local(cell.y, cell.x)
-	var tree: Vector2i = st.tree_list[0]
-	_click(at.call(tree))
-	await pause.call()
-	_buzzed("a tree tapped")
-	var first: Vector2i = st.solution[0]
-	_click(at.call(first))
-	await create_timer(1.6).timeout
-	_buzzed("a right tent")
-	_click(at.call(first))
-	await pause.call()
-	_buzzed("tapped away")
-	# two bare squares side by side, neither the answer's nor a tree's
-	var run: Array = []
-	var lone := Vector2i(-1, -1)
-	var wrong := Vector2i(-1, -1)
-	for y in st.h:
-		for x in st.w:
-			var cell := Vector2i(x, y)
-			if st.trees.has(cell) or st.solution.has(cell):
-				continue
-			var beside := false
-			for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-				beside = beside or st.trees.has(cell + d)
-			if not beside and lone.x < 0:
-				lone = cell
-			if beside and wrong.x < 0 and int(st.row_counts[y]) != 0 and int(st.col_counts[x]) != 0:
-				wrong = cell
-			var next := Vector2i(x + 1, y)
-			if run.is_empty() and x + 1 < st.w and not st.trees.has(next) and not st.solution.has(next):
-				run = [cell, next]
-	if lone.x >= 0:
-		_click(at.call(lone))
-		await pause.call()
-		_buzzed("a tent with no tree by it")
-		_click(at.call(lone))
-		await pause.call()
-	_buzz_seen = Haptics.trace.size()
-	if not run.is_empty():
-		for k in 2:
-			_ut_button(at.call(run[0]), true)
-			await process_frame
-			_ut_motion(at.call(run[1]))
-			await process_frame
-			_buzzed("the sweep under the finger")
-			_ut_button(at.call(run[1]), false)
-			await pause.call()
-			_buzzed("two cairns swept" if k == 0 else "and rubbed out")
-		_host._on_undo()
-		await pause.call()
-		_buzzed("undo")
-		_host._on_undo()
-		await pause.call()
-		_buzz_seen = Haptics.trace.size()
-	if _puzzle.max_hearts > 1 and wrong.x >= 0:
-		_click(at.call(wrong))
-		await create_timer(2.5).timeout
-		_buzzed("a tent that costs a heart")
-	if _puzzle.hints_left() > 0:
-		_puzzle.hint()
-		await pause.call()
-		_buzzed("hint")
-		for cell: Vector2i in st.locked:
-			_click(at.call(cell))
-		await pause.call()
-		_buzzed("the pegged tent tapped")
-	_puzzle.check()
-	await pause.call()
-	_buzzed("check")
-	_puzzle.reset_board()
-	await pause.call()
-	_buzzed("reset")
-
 ## Light Up: the answer's lamps tapped in, one tap a step.
 func _moves_lightup() -> Array:
 	_keep = 2
@@ -1982,102 +1642,6 @@ func _buzz_lightup() -> void:
 	_buzzed("check")
 	_puzzle.reset_board()
 	await pause.call()
-	_buzzed("reset")
-
-## One Line's buzzes: a post that may not start, the walker set down, a
-## line walked by a tap and two by a drag, a walked line refused, Undo, a
-## step that leaves no finish (the warn as it strands a line on Easy and
-## Medium, a heart on Hard and Insane), a hint, Check and Reset. The plain
-## run then draws the planted walk to the win.
-func _buzz_oneline() -> void:
-	var st = _puzzle.state
-	_buzz_more = 8.0
-	var pause := func() -> void: await create_timer(0.8).timeout
-	var path: Array = st.solution_path()
-	for n in st.nodes:
-		if not st.may_start(int(n)):
-			_click(_puzzle.node_to_local(int(n)))
-			await pause.call()
-			_buzzed("a post that may not start")
-			break
-	_click(_puzzle.node_to_local(int(path[0])))
-	await pause.call()
-	_buzzed("the walker set down")
-	_click(_puzzle.node_to_local(int(path[1])))
-	await pause.call()
-	_buzzed("a line walked")
-	if st.edge_between(int(path[0]), int(path[1])) >= 0 and not st.may_step(int(path[0])):
-		_click(_puzzle.node_to_local(int(path[0])))
-		await pause.call()
-		_buzzed("a walked line refused")
-	_host._on_undo()
-	await pause.call()
-	_buzzed("undo")
-	_ut_button(_puzzle.node_to_local(int(path[0])), true)
-	await process_frame
-	_buzz_seen = Haptics.trace.size()
-	for k in range(1, mini(3, path.size())):
-		_ut_motion(_puzzle.node_to_local(int(path[k])))
-		await create_timer(0.3).timeout
-	_ut_button(_puzzle.node_to_local(int(path[mini(2, path.size() - 1)])), false)
-	await pause.call()
-	_buzzed("two lines in one drag")
-	# along the planted walk, the first step off it that leaves no finish
-	var k := mini(2, path.size() - 1)
-	var found := false
-	while not found and k < path.size() - 1:
-		for q: Dictionary in st.adj.get(st.current, []):
-			var to := int(q.to)
-			if not st.may_step(to) or st.step_leaves_finish(to):
-				continue
-			var hearts: int = _puzzle.hearts
-			_click(_puzzle.node_to_local(to))
-			if _puzzle.max_hearts > 0:
-				await create_timer(3.0).timeout
-				_buzzed("a step that costs a heart (%d -> %d)" % [hearts, _puzzle.hearts])
-				found = true
-			elif not st.stranded().is_empty():
-				await pause.call()
-				_buzzed("a step that strands a line")
-				for r: Dictionary in st.adj.get(st.current, []):
-					if st.may_step(int(r.to)):
-						_click(_puzzle.node_to_local(int(r.to)))
-						await pause.call()
-						_buzzed("the next step, still stranded")
-						_host._on_undo()
-						await pause.call()
-						break
-				_puzzle.check()
-				await pause.call()
-				_buzzed("check, a line stranded")
-				_host._on_undo()
-				await pause.call()
-				found = true
-			else:
-				await pause.call()
-				_host._on_undo()
-				await pause.call()
-			_buzz_seen = Haptics.trace.size()
-			if found:
-				break
-		if not found:
-			k += 1
-			_click(_puzzle.node_to_local(int(path[k])))
-			await pause.call()
-			_buzz_seen = Haptics.trace.size()
-	if not found:
-		print("  buzz (no step off the walk loses the figure)")
-	if _puzzle.out_of_hearts:
-		return
-	if _puzzle.hints_left() > 0:
-		_puzzle.hint()
-		await create_timer(1.2).timeout
-		_buzzed("hint")
-	_puzzle.check()
-	await pause.call()
-	_buzzed("check")
-	_puzzle.reset_board()
-	await create_timer(1.5).timeout
 	_buzzed("reset")
 
 ## Nonogram's buzzes: a tile tapped down and tapped away, a run swept, a
@@ -2178,19 +1742,6 @@ func _buzz_nonogram() -> void:
 	_puzzle.reset_board()
 	await create_timer(1.5).timeout
 	_buzzed("reset")
-
-## One Line: the planted walk drawn as one drag -- the press on its first
-## post, a motion to each next post, the release -- one event a step.
-func _moves_oneline() -> Array:
-	_keep = 3
-	var out := []
-	var path: Array = _puzzle.state.solution_path()
-	out.append({"do": func() -> void: _ut_button(_puzzle.node_to_local(int(path[0])), true)})
-	for k in range(1, path.size()):
-		var n := int(path[k])
-		out.append({"do": func() -> void: _ut_motion(_puzzle.node_to_local(n))})
-	out.append({"do": func() -> void: _ut_button(_puzzle.node_to_local(int(path[-1])), false)})
-	return out
 
 ## Nonogram: every row's runs of the picture dragged as strokes -- a press
 ## on its first cell, a motion a cell, the release -- one event a step.
@@ -2465,117 +2016,6 @@ func _buzz_wordtrail() -> void:
 		_buzzed("hint")
 	_puzzle.reset_board()
 	await create_timer(1.6).timeout
-	_buzzed("reset")
-
-## Mushroom Patch: a row at a time, a pebble tapped on every bare cell of it,
-## then its mushrooms planted, the chip switched as a player would.
-func _moves_mushroom() -> Array:
-	_keep = 2
-	var out := []
-	var st = _puzzle.state
-	for r in st.n:
-		var safe := []
-		var shrooms := []
-		for c in st.n:
-			var cell := Vector2i(c, r)
-			if st.given.has(cell):
-				continue
-			(shrooms if st.mushrooms.has(cell) else safe).append(cell)
-		if not safe.is_empty():
-			out.append({"do": func() -> void: _puzzle.set_brush(st.CLEAR)})
-			for cell: Vector2i in safe:
-				out.append({"at": _puzzle.cell_to_local.bind(cell.y, cell.x)})
-		if not shrooms.is_empty():
-			out.append({"do": func() -> void: _puzzle.set_brush(st.FOUND)})
-			for cell: Vector2i in shrooms:
-				out.append({"at": _puzzle.cell_to_local.bind(cell.y, cell.x)})
-	return out
-
-## Mushroom Patch's buzzes: a number pressed, a mushroom planted where the
-## answer grows one and pulled up, a pebble tapped down and up, two pebbles
-## swept and rubbed out, Undo, on Hard and Insane a mushroom the answer does
-## not grow, a hint and a tap on its mushroom, Check and Reset. The plain run
-## then plays the patch (a number finished, the streak's confetti, the win,
-## the seal when it is earned).
-func _buzz_mushroom() -> void:
-	var st = _puzzle.state
-	_buzz_more = 8.0
-	var pause := func() -> void: await create_timer(0.8).timeout
-	var at := func(cell: Vector2i) -> Vector2: return _puzzle.cell_to_local(cell.y, cell.x)
-	var right := Vector2i(-1, -1)
-	var bare := Vector2i(-1, -1)
-	var run: Array = []
-	for y in st.n:
-		for x in st.n:
-			var cell := Vector2i(x, y)
-			if st.given.has(cell):
-				continue
-			if st.mushrooms.has(cell):
-				if right.x < 0:
-					right = cell
-				continue
-			if bare.x < 0:
-				bare = cell
-			var next := Vector2i(x + 1, y)
-			if run.is_empty() and cell != bare and x + 1 < st.n and not st.given.has(next) \
-					and not st.mushrooms.has(next):
-				run = [cell, next]
-	for g: Vector2i in st.given:
-		_click(at.call(g))
-		break
-	await pause.call()
-	_buzzed("a number pressed")
-	_puzzle.set_brush(st.FOUND)
-	_click(at.call(right))
-	await create_timer(1.6).timeout
-	_buzzed("a mushroom planted")
-	_click(at.call(right))
-	await pause.call()
-	_buzzed("pulled up")
-	_puzzle.set_brush(st.CLEAR)
-	_click(at.call(bare))
-	await pause.call()
-	_buzzed("a pebble tapped down")
-	_click(at.call(bare))
-	await pause.call()
-	_buzzed("and tapped up")
-	if not run.is_empty():
-		for k in 2:
-			_ut_button(at.call(run[0]), true)
-			await process_frame
-			_ut_motion(at.call(run[1]))
-			await process_frame
-			_buzzed("the sweep under the finger")
-			_ut_button(at.call(run[1]), false)
-			await pause.call()
-			_buzzed("two pebbles swept" if k == 0 else "and rubbed out")
-		_host._on_undo()
-		await pause.call()
-		_buzzed("undo")
-		_host._on_undo()
-		await pause.call()
-		_buzz_seen = Haptics.trace.size()
-	if st.judged() and _puzzle.max_hearts > 1:
-		_puzzle.set_brush(st.FOUND)
-		_click(at.call(bare))
-		await create_timer(0.3).timeout
-		_buzzed("a wrong mushroom: planted")
-		await create_timer(3.0).timeout
-		_buzzed("and the heart she costs")
-	if _puzzle.hints_left() > 0:
-		_puzzle.hint()
-		await create_timer(1.6).timeout
-		_buzzed("hint")
-		_puzzle.set_brush(st.FOUND)
-		for cell: Vector2i in st.pinned:
-			_click(at.call(cell))
-		await pause.call()
-		_buzzed("the hint's mushroom tapped")
-	_puzzle.check()
-	await pause.call()
-	_buzzed("check")
-	_puzzle.reset_board()
-	await pause.call()
 	_buzzed("reset")
 
 ## Sudoku: every empty cell in reading order, tapped (it only selects) and

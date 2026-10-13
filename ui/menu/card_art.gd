@@ -33,19 +33,13 @@ extends Control
 
 const Pal = preload("res://core/palette.gd")
 const CozyTheme = preload("res://ui/theme.gd")
-const Friends = preload("res://ui/faces/friends.gd")
-const Fruit = preload("res://ui/faces/fruit.gd")
 const SunFace = preload("res://ui/faces/sun_face.gd")
 const MoonFace = preload("res://ui/faces/moon_face.gd")
 const LanternFace = preload("res://ui/faces/lantern_face.gd")
 const CourtLantern = preload("res://ui/faces/court_lantern.gd")
-const TentFace = preload("res://ui/faces/tent_face.gd")
-const ConiferFace = preload("res://ui/faces/conifer_face.gd")
 const MarkerFace = preload("res://ui/faces/marker_face.gd")
-const SnailFace = preload("res://ui/faces/snail_face.gd")
 const BeeFace = preload("res://ui/faces/bee_face.gd")
 const SproutFace = preload("res://ui/faces/sprout_face.gd")
-const MushroomFace = preload("res://ui/faces/mushroom_face.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 const MosaicTile = preload("res://ui/faces/mosaic_tile.gd")
@@ -296,15 +290,6 @@ func _build() -> void:
 			var moon := MoonFace.new()
 			moon.rocks = true
 			_seat(moon, 62.0, 40.0, -2.0)
-		"mastermind":
-			# Three of the seven, on the tray _draw lays under them.
-			for i in 3:
-				add_child(Friends.make(i + 3, 50.0 * _u, at(-64.0 + i * 64.0, -2.0)))
-		"balance":
-			# The two pans of the beam _draw tilts; the fruit ride its ends,
-			# so the picture reads as a weighing and not two loose fruit.
-			add_child(Fruit.make(0, 52.0 * _u, at(-64.0, -24.0)))
-			add_child(Fruit.make(1, 44.0 * _u, at(66.0, -11.0)))
 		"untangle":
 			# The ring, its ropes and its pegs are all _draw's.
 			pass
@@ -316,15 +301,9 @@ func _build() -> void:
 			var b := MarkerFace.new()
 			b.number = 2
 			_seat(b, 44.0, 38.0, 19.0)
-		"tents":
-			_seat(ConiferFace.new(), 84.0, -86.0, 0.0)
-			_seat(ConiferFace.new(), 70.0, 76.0, 8.0)
-			_seat(TentFace.new(), 78.0, -6.0, 6.0)
 		"lightup":
 			var lamp := CourtLantern.new()
 			_seat(lamp, 58.0, -81.0, 0.0)
-		"oneline":
-			_seat(SnailFace.new(), 96.0, 6.0, 4.0)
 		"queens":
 			# The queen bee on a patch of the court _draw lays under her.
 			_seat(BeeFace.new(), 72.0, 0.0, 2.0)
@@ -348,17 +327,6 @@ func _build() -> void:
 			field.position = at(32.0, 2.0) - field.size * 0.5
 			field.draw.connect(_draw_word_field.bind(field))
 			add_child(field)
-		"mushroom":
-			# Two mushrooms on the turf strip _draw lays under them, the tile
-			# and its numeral drawn beside them. `sprig` stays false: it marks
-			# a mushroom a hint planted, which would be a lie on a card.
-			# The y's here were set by eye against a rendered, zoomed crop,
-			# not by the body's arithmetic alone (a first pass trusted the
-			# arithmetic and buried both mushrooms to the chin -- see
-			# _draw_patch's comment): each mushroom's own foot lands right at
-			# the strip's top (24), fully clear of it, rather than sunk in.
-			_seat(MushroomFace.new(), 62.0, -104.0, -1.0)
-			_seat(MushroomFace.new(), 48.0, -26.0, 5.0)
 		"hedgehogs":
 			# One hedgehog asleep on the raked strip _draw lays under it.
 			var hog := HedgehogFace.new()
@@ -413,16 +381,12 @@ func _draw() -> void:
 	if _u <= 0.0:
 		return
 	match id:
-		"mastermind": _draw_tray()
-		"balance": _draw_beam()
 		"untangle": _draw_cords()
 		"shikaku": _draw_field()
 		"lightup": _draw_court()
-		"oneline": _draw_trail()
 		"nonogram": _draw_mosaic()
 		"queens": _draw_regions()
 		"hiddenword": _draw_letters()
-		"mushroom": _draw_patch()
 		"sudoku": _draw_sudoku()
 		"bridges": _draw_sea()
 		"quilt": _draw_quilt()
@@ -468,26 +432,6 @@ func _text(s: String, x: float, y: float, px: float, colour: Color) -> void:
 	var sz := int(px * _u)
 	var w := font.get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x
 	draw_string(font, at(x, y) - Vector2(w * 0.5, 0.0), s, HORIZONTAL_ALIGNMENT_LEFT, -1, sz, colour)
-
-## Code Break: the wooden tray the friends are seated in.
-func _draw_tray() -> void:
-	_round(-112.0, -38.0, 224.0, 78.0, 16.0, Pal.WOOD)
-	_round(-104.0, -32.0, 208.0, 58.0, 12.0, Pal.PLAQUE_DEEP)
-
-## Balance: the fulcrum, and the beam tilted across it.
-func _draw_beam() -> void:
-	var tilt := 0.11
-	var pivot := at(0.0, 30.0)
-	draw_colored_polygon(PackedVector2Array([
-		at(-18.0, 34.0), at(18.0, 34.0), at(0.0, -2.0)]), Pal.PLAQUE_DEEP)
-	var half := 98.0 * _u
-	var thick := 8.0 * _u
-	var d := Vector2(cos(tilt), sin(tilt))
-	var n := Vector2(-d.y, d.x)
-	var mid := pivot - Vector2(0.0, 34.0 * _u)
-	draw_colored_polygon(PackedVector2Array([
-		mid - d * half - n * thick, mid + d * half - n * thick,
-		mid + d * half + n * thick, mid - d * half + n * thick]), Pal.WOOD)
 
 ## Untangle: a wooden ring with three pegs' ropes crossing over it, and one
 ## empty hole waiting.
@@ -537,14 +481,6 @@ func _draw_court() -> void:
 	# sitting on some tiles rather than a lamp lighting them.
 	_disc(x0 + cell * 0.5, 0.0, 40.0, Color(Pal.SUN, 0.22))
 	_disc(x0 + cell * 0.5, 0.0, 26.0, Color(Pal.SUN, 0.18))
-
-## One Line: the posts and the stroke the snail is walking.
-func _draw_trail() -> void:
-	var p := [Vector2(-88.0, 24.0), Vector2(-26.0, -26.0), Vector2(38.0, 22.0), Vector2(92.0, -24.0)]
-	_line(p, 9.0, Color(Pal.ACCENT, 0.8))
-	for v in p:
-		_disc(v.x, v.y, 12.0, Pal.SURFACE)
-		draw_arc(at(v.x, v.y), 12.0 * _u, 0.0, TAU, 18, Pal.WOOD, 4.0 * _u, true)
 
 ## Nonogram: a three by three of the picture, with its clues beside it. The
 ## tiles are drawn rather than seated, because ui/faces/mosaic_tile.gd is
@@ -603,32 +539,6 @@ func _draw_letters() -> void:
 	for i in 3:
 		_round(xs[i] - cell * 0.5, -cell * 0.5 - 6.0, cell, cell, 12.0, marks[i])
 		MosaicTile.letter(self, at(xs[i], -6.0), cell * _u, letters[i], Vector2.ONE, Pal.PAPER, font)
-
-## Mushroom Patch: the turf strip the pair stands on -- TURF_REACH, the same
-## pale meadow a covered cell wears on the board itself, so the card and the
-## field read as one screen -- and, beside them, a cream SURFACE tile
-## carrying a number. The numeral is written in LEAF_DEEP rather than TEXT: a
-## turned-over cell's own ink is TEXT, but LEAF_DEEP is what a number turns
-## the moment its count is satisfied, and that is the hint worth giving on a
-## card for a board nobody has played yet. The tile stays SURFACE rather than
-## washing toward LEAF, because a fully green tile would claim a solved board
-## rather than hint at the mechanic.
-##
-## The strip's top is 24 and its height 35, landing its bottom exactly on the
-## box's own edge (ART.y * 0.5 = 59) with its radius fully inside that span
-## -- Hidden Word's turf band (_draw_letters) is drawn the same way for the
-## same reason: a strip cut short of the radius, or clipped mid-curve by
-## `clip_contents`, shows its straight-cut bottom overhanging the card
-## plate's own rounded corner, which reads as a drawing bug rather than
-## ground running off the frame. A first pass here got this wrong (top 20,
-## height 50, bottom 70 clipped at 59) and, worse, seated the mushrooms with
-## their feet above the strip's top, burying them to the chin and clipping
-## the smaller one's face; both are fixed by the numbers below, checked
-## against a rendered, zoomed crop rather than by arithmetic alone.
-func _draw_patch() -> void:
-	_round(-150.0, 24.0, 195.0, 35.0, 16.0, Pal.TURF_REACH)
-	_round(70.0, -38.0, 76.0, 76.0, 14.0, Pal.SURFACE)
-	_text("3", 108.0, 12.0, 42.0, Pal.LEAF_DEEP)
 
 ## Word Trail: a small field of letter tiles beside the sprout, four by
 ## three, with two grey wall slabs and one trail bending twice through the
