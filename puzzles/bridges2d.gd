@@ -731,9 +731,11 @@ func tutorial_pages() -> Array:
 ## Undo, Hint and Check below Insane. Insane counts moves: no Undo (going
 ## round a lane's cycle is the take-back, and it costs), no hint and no
 ## Check, which would each say what is wrong.
+## Insane has the bulb again since 2026-10-13, as many hints as Hard: what is
+## said of it above is the history (docs/agents/flat-screens.md).
 func capabilities() -> Array[String]:
 	if state != null and state.band >= 3:
-		return []
+		return ["hint"]
 	return ["undo", "hint", "check"]
 
 ## The lines the tips cycle: a counted board leads with the moves', Lantern

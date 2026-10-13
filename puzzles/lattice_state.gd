@@ -13,12 +13,13 @@ extends RefCounted
 ##
 ## No band has hearts. Easy to Hard count the swaps and never run out;
 ## Insane has the fewest swaps the deal can be done in and five more
-## (`moves_budget`), and no Undo and no hint.
+## (`moves_budget`, 0 since 2026-10-12), no Undo, and Hard's hints since
+## 2026-10-13.
 
 const Gen = preload("res://puzzles/lattice_gen.gd")
 
 const BANK := "res://content/lattice.json"
-const HINTS_BY := [3, 3, 2, 0]
+const HINTS_BY := [3, 3, 2, 2]
 ## Insane's spare swaps over the deal's par.
 const MOVES_SLACK := [0, 0, 0, 0]
 

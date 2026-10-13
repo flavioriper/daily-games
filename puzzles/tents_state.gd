@@ -25,9 +25,9 @@ const BLANK := 0
 const TENT := 1
 const GRASS := 2
 const HINTS := 3
-## Hints per difficulty: Insane has none (it counts moves, and a hint is a
-## tent of the answer for free).
-const HINTS_BY_BAND := [3, 3, 3, 0]
+## Hints per difficulty. Insane had none while it counted moves; since
+## 2026-10-13 it has Hard's.
+const HINTS_BY_BAND := [3, 3, 3, 3]
 ## No band has hearts since 2026-10-04: a heart went on a tent that broke no
 ## rule the board can show and was not the answer's, which is the answer with
 ## a price on it. Insane counts moves instead.

@@ -39,7 +39,7 @@ const SECONDS := [30.0, 25.0, 20.0, 20.0]
 const TANK_FROM := 4
 ## How many of each level the bank's One Breath takes, easy to hard.
 const BREATH := [3, 3, 2]
-const HINTS_BY := [2, 1, 1, 0]
+const HINTS_BY := [2, 1, 1, 1]
 ## Metres an answer dives by its tier: common, known, rare, deep, the Pearl.
 const METRES := [1, 3, 6, 8, 10]
 const PEARL := 4

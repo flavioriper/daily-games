@@ -18,7 +18,7 @@ const InsaneBank = preload("res://core/insane_bank.gd")
 
 ## Per band: hints and hearts (0 = nothing can be lost). No band has hearts
 ## since 2026-10-04: a catch and being boxed in cost nothing of their own.
-const HINTS_BY := [3, 3, 2, 0]
+const HINTS_BY := [3, 3, 2, 2]
 const HEARTS_BY := [0, 0, 0, 0]
 ## Insane's spare moves over the board's shortest line (`moves_budget`):
 ## every hop costs one, a caught one too. The spare is a quarter of the

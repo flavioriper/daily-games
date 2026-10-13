@@ -527,9 +527,11 @@ func tutorial_pages() -> Array:
 ## Easy, Medium and Hard keep Undo, Check and their hints. Insane has Undo
 ## alone: no hint and no Check, which would each say what is wrong (it had
 ## no Undo either while it counted its moves, until 2026-10-12).
+## Insane has the bulb again since 2026-10-13, as many hints as Hard: what is
+## said of it above is the history (docs/agents/flat-screens.md).
 func capabilities() -> Array[String]:
 	match _state.band:
-		3: return ["undo"]
+		3: return ["undo", "hint"]
 	return ["undo", "hint", "check"]
 
 ## Hard and Insane: a board too big to play whole, so it zooms.

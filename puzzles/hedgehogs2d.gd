@@ -474,9 +474,11 @@ func _tips() -> Array:
 	return TIPS
 
 ## Sleepwalkers counts moves: no Undo, no hint and no Check.
+## Insane has the bulb again since 2026-10-13, as many hints as Hard: what is
+## said of it above is the history (docs/agents/flat-screens.md).
 func capabilities() -> Array[String]:
 	if _state.walkers():
-		return []
+		return ["hint"]
 	return ["undo", "hint", "check"]
 
 ## What the phone does under each cue (docs/agents/haptics.md). A rake or a
@@ -1929,8 +1931,6 @@ func undo() -> bool:
 	return true
 
 func hints_left() -> int:
-	if _state.walkers():
-		return 0
 	return maxi(0, State.hints_for(_state.difficulty) + hints_extra - hints_used)
 
 ## The next thing logic can prove from what the player can see: a bare cell

@@ -571,7 +571,7 @@ morning).
   springy bales stay). Hard had neither thread nor sunset already; its
   labels (`UT_LVL_2`, `BAL_LVL_2`) said so wrongly and are fixed.
 - **Insane keeps its own rule and its seal**: no Undo, Hint or Check, as
-  before. Fairy Lights and Paper Planes hung that on `max_moves` and now
+  before (the Hint came back on 2026-10-13, below). Fairy Lights and Paper Planes hung that on `max_moves` and now
   read the band. Button Box and Pixel Garden keep the Undo they were given.
 - **Paper Planes**: a gust on a closed-in Windy Day was paid with a move;
   with no counter and no hearts it is free (`_gust_left`,
@@ -594,3 +594,45 @@ The suite 249,784, 0 failed; all 37 boards opened headless on Insane with
 `max_moves` 0. Nothing seen on a screen and no Insane day played through:
 boards that can dead-end with no Undo (Rings, Hedgehogs, Paper Planes) end
 in Start over, as they did under the counter.
+
+### Insane has the bulb again (2026-10-13)
+
+The user, 2026-10-13: "add hints back to insane, players are complaining too
+much that it's not fun because of the lack of it".
+
+- **Insane holds as many hints as Hard** on every board that has a bulb:
+  each `HINTS_BY` / `HINTS_BY_BAND` / `HINTS` table ends in Hard's figure
+  (1, 2 or 3; Binairo's flat 3). The count is mine, the user's to call. A
+  video's hint follows once they are spent, as on any band
+  (`puzzle_host._hint_offer` reads the capability and `hints_left()`).
+- **Only the bulb came back.** `capabilities()` on Insane is what it was
+  plus `"hint"`: no Undo and no Check where there was none. The boards that
+  refused inside the hint itself no longer do (Marigold's and Mini Golf's
+  `hint()`, Trestle's and Hedgehogs' `hints_left()`, Hidden Word's
+  `no_hints`, which now reads the table).
+- **Hedgehogs, Sleepwalkers**: a hint's flag is pinned, and `restart()` kept
+  every pin while it sent the hedgehogs home, so a flag the bulb laid on a
+  hedgehog that had walked there would pin a bare pile. `restart()` lifts
+  those pins (the hint stays spent).
+- **Code Break, the Shell Game**: a hinted seat stays shown through a swap
+  and shows whoever sits under that lid now (`_fresh_row` reads `code`), so
+  it is never wrong; it does tell one more friend than the hint paid for
+  when its lid trades. Left as it is, the user's to call.
+- The `*_LVL_3` labels and the Insane rules that said "no hints" / "no
+  bulb" lost those words in en, pt and es (the unreached `*_MOVES` rules
+  are left as they are, with the counter).
+- `tests/_probe_insane_hints.gd` (headless): every registry board on band 3
+  must offer the bulb with Hard's count, build its lessons and rules, and
+  is then played by the bulb alone. `seeds=2`: 76 days, 0 failures. 22
+  boards are carried to the end by it (Knight's Brambles, the
+  Sleepwalkers, Homesick, Shy Dew, Peckish, Ribbons, Wish Tags and
+  Untangle's kitten among them); the others have a bulb that shows and
+  does not play (an aim, a plane named, a letter, an option struck, a
+  member laid before Go), as on Hard, or a day longer than the probe's 600
+  hints (Pixel Garden's 1,024 beads). Rings is not carried on Hard either:
+  each hint is the first move of a fresh search and they do not add up to
+  a line; it was so before this and is not looked into. Drumbeat and
+  Gumdrop have no bulb on any band. Pearl Dive waits on the backend and is
+  not judged there.
+
+Not seen on a phone; no Insane day played by hand with the bulb.

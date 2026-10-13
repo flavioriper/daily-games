@@ -32,7 +32,7 @@ const ASKS := [7, 7, 7, 10]
 ## How many of each tier the bank's Climb takes, easy to expert.
 const CLIMB := [3, 3, 2, 2]
 ## The bulb takes two wrong answers away.
-const HINTS_BY := [2, 1, 1, 0]
+const HINTS_BY := [2, 1, 1, 1]
 const HEARTS_BY := [0, 0, 0, 2]
 ## The longest a line may be and still be shown (the server's limits).
 const Q_MAX := 120

@@ -118,7 +118,7 @@ one at a time.
   (`_spend(1, ...)` after `note_move()`); a cross or a pinned piece refused
   costs nothing. Out of moves is `out_of_hearts` and the old dark ending;
   the card is opened with `MOVES_BONUS` (5). Reset and Try again hand the
-  budget back. No Undo and no hint on Insane (`capabilities()` is empty,
+  budget back. No Undo and no hint on Insane (`capabilities()` is empty; the hint is back since 2026-10-13,
   `can_undo()` false), the tutorial drops its UNDO page there and ends on
   `MovesDiagram.page`; the completion record keeps `moves_left`. Kept: the
   gold wire, the loose round tips and the tags' tick or rose number, all read

@@ -27,8 +27,8 @@ const HINTS := 3
 ## Hints a board gets per band, and hearts
 ## (docs/superpowers/specs/2026-09-30-oneline-polish-design.md, section 1).
 ## No band has hearts since 2026-10-04: no step is judged as it lands.
-## Insane counts moves instead, and has no hint.
-const HINTS_BY_BAND := [3, 3, 3, 0]
+## Insane counted moves until 2026-10-12 and has Hard's hints since 2026-10-13.
+const HINTS_BY_BAND := [3, 3, 3, 3]
 const HEARTS := [0, 0, 0, 0]
 ## Insane's spare moves over the figure's own lines (`moves_budget`): a line
 ## walked costs one and a line stepped back over costs one. The spare is a

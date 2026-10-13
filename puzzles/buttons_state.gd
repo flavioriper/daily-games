@@ -53,8 +53,8 @@ const CASE_WHOLE := 4
 ## and opens them both with its one colour whole.
 const CASE_OWN := 2
 const BANDS := 4
-const HINTS_BY := [3, 3, 2, 0]
-## Insane: no bulb, and the seal for any day sewn. It counted its moves
+const HINTS_BY := [3, 3, 2, 2]
+## Insane: Hard's two hints (none until 2026-10-13), and the seal for any day sewn. It counted its moves
 ## until 2026-10-12 (`moves_budget`).
 const INSANE := 3
 ## A shared picture is at most this many marks across.

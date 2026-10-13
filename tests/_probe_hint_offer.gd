@@ -3,7 +3,9 @@ extends SceneTree
 ## The video hint through the real menu on Binairo, with the desktop stand-in
 ## ad (ADS_FAKE_FULL): spend the hints, the hint button shows the play badge,
 ## a tap asks, No thanks leaves the board as it was, Watch grants one hint and
-## the offer comes back (no limit a board); a "skip" ad grants nothing. Shoots the
+## the offer comes back (no limit a board); a "skip" ad grants nothing. Then
+## three boards on Insane: the bulb with its own hints, and the offer once
+## they are spent (/tmp/shot_hint_insane_<id>.png). Shoots the
 ## prompt in en, pt and es to /tmp/shot_hint_offer_<lang>.png. Throwaway
 ## progress, wallet and ads files; puts user://arcade.cfg back.
 ##   godot --resolution 810x1440 --always-on-top --script tests/_probe_hint_offer.gd
@@ -172,11 +174,17 @@ func _process(delta: float) -> bool:
 			_step = 12
 			_at = _t + 0.6
 		12:
-			# Insane on a board that has no hint gives no video offer either.
+			# Insane has the bulb since 2026-10-13: its own hints on the badge,
+			# and the video offer once they are spent, as on any band.
 			var caps: Array = _host._puzzle.capabilities()
-			_check(not caps.has("hint"), "%s Insane: no hint capability" % _insane_ids[_ii])
-			_check(_host._puzzle.hints_left() == 0, "%s Insane: hints_left is 0" % _insane_ids[_ii])
-			_check(not _host._hint_offer(), "%s Insane: no video offer" % _insane_ids[_ii])
+			var bar = _host.top_bar
+			_check(caps.has("hint"), "%s Insane: the hint capability" % _insane_ids[_ii])
+			_check(_host._puzzle.hints_left() > 0, "%s Insane: hints_left is %d" % [_insane_ids[_ii], _host._puzzle.hints_left()])
+			_check(bar.hint_button.visible and bar.hint_button.badge > 0 and bar.hint_button.badge_glyph == "", "%s Insane: the bulb with its number" % _insane_ids[_ii])
+			_check(not _host._hint_offer(), "%s Insane: no video offer while hints are left" % _insane_ids[_ii])
+			root.get_texture().get_image().save_png("/tmp/shot_hint_insane_%s.png" % _insane_ids[_ii])
+			_spend()
+			_check(_host._puzzle.hints_left() == 0 and _host._hint_offer(), "%s Insane: spent, the video offer" % _insane_ids[_ii])
 			_ii += 1
 			if _ii < _insane_ids.size():
 				_host.closed.emit()

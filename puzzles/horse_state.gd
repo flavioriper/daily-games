@@ -18,7 +18,7 @@ extends RefCounted
 const Gen = preload("res://puzzles/horse_gen.gd")
 
 const BANK := "res://content/horse.json"
-const HINTS_BY := [3, 3, 2, 0]
+const HINTS_BY := [3, 3, 2, 2]
 ## Insane's spare moves over the stock of bales (`moves_budget`).
 const MOVES_SLACK := [0, 0, 0, 0]
 

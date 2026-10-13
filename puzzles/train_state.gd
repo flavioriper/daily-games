@@ -42,7 +42,7 @@ const REF_PARKED := [1, 2, 3, 4]
 ## How often the deal stands an engine in the shed before its colour is in
 ## sight: it has to come out and wait for the ones behind it to be reached.
 const EARLY := [0.0, 0.15, 0.25, 0.4]
-const HINTS_BY := [3, 3, 2, 0]
+const HINTS_BY := [3, 3, 2, 2]
 
 ## A picture is laid on a mat of blocks of one more colour, so the rug is
 ## full edge to edge: the first of these the picture does not use.

@@ -572,9 +572,11 @@ func _tips() -> Array:
 
 ## Undo takes the last shot back; Reset is the host's. Insane has neither
 ## hint nor Undo: a shot taken back would be a seed back in the count.
+## Insane has the bulb again since 2026-10-13, as many hints as Hard: what is
+## said of it above is the history (docs/agents/flat-screens.md).
 func capabilities() -> Array[String]:
 	if _state.band >= 3:
-		return []
+		return ["hint"]
 	return ["undo", "hint"]
 
 ## Undo waits for the shot to be over; on Hard and Insane it costs a heart,
@@ -3754,7 +3756,7 @@ func hints_left() -> int:
 ## The sun finds the best line it can from here -- every angle played out on
 ## a copy of the garden -- turns to it, and shows the long guide.
 func hint() -> bool:
-	if is_done() or _state.band >= 3 or hints_left() <= 0 or _phase != "aim" or _state.seeds <= 0 or not _think.is_empty():
+	if is_done() or hints_left() <= 0 or _phase != "aim" or _state.seeds <= 0 or not _think.is_empty():
 		return false
 	# a third of a second on this Mac, so off the frame: the sun spins while
 	# it looks, and the aim turns when it has found the line

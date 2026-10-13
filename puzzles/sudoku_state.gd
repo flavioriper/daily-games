@@ -26,7 +26,7 @@ const InsaneBank = preload("res://core/insane_bank.gd")
 ## Medium. The polish (2026-09-30) gives Hard one and Insane none of its own;
 ## a video hint is still offered once they are spent.
 const HINTS := 3
-const HINTS_BY_BAND := [3, 3, 1, 0]
+const HINTS_BY_BAND := [3, 3, 1, 1]
 ## No band has hearts since 2026-10-04: nothing is judged as it lands, so
 ## `judged()` is false everywhere, no number is ruled out of a cell and no
 ## right one is kept there. Insane counts moves instead.

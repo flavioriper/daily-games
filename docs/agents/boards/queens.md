@@ -118,3 +118,9 @@ no bottom row, board in the same place, 87 draw calls.
   legally in the wrong place: finding out costs nothing until a row runs
   out of seats, and mending it is a lift and a seat. Rules end on
   `QN_RULES_MOVES`.
+
+## 2026-10-13: Insane has the bulb again
+
+What this file says of Insane having no hint (or only a video's) is history:
+Insane holds as many hints as Hard on every board with a bulb, at the
+user's word. `docs/agents/flat-screens.md`, "Insane has the bulb again".

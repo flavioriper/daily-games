@@ -441,9 +441,11 @@ func tutorial_pages() -> Array:
 ## Insane counts moves: no Undo (taking a number out is the take-back, and
 ## it costs one), no hint and no Check, which would each say what is wrong.
 ## A judged band (none since 2026-10-04) left Check out.
+## Insane has the bulb again since 2026-10-13, as many hints as Hard: what is
+## said of it above is the history (docs/agents/flat-screens.md).
 func capabilities() -> Array[String]:
 	if state != null and state.band >= 3:
-		return []
+		return ["hint"]
 	if max_hearts > 0:
 		return ["undo", "hint"]
 	return ["undo", "hint", "check"]

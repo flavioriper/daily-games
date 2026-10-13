@@ -34,7 +34,7 @@ const InsaneBank = preload("res://core/insane_bank.gd")
 
 ## Per band, Easy .. Insane: the hints a sky starts with, and its hearts (0 is
 ## a band that cannot be lost). Polish spec section 1.
-const HINTS := [3, 3, 1, 0]
+const HINTS := [3, 3, 1, 1]
 ## No band has hearts since 2026-10-04: `judged` is false everywhere, so a
 ## tap on a blocked plane is refused for free on every band, as the rules
 ## refuse it on Easy. Insane counts moves instead.

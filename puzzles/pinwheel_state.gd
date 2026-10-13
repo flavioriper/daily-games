@@ -51,7 +51,7 @@ const Gen = preload("res://puzzles/pinwheel_gen.gd")
 ## polish (2026-10-01) gives Hard one and Insane none, and hearts to the two
 ## bands that judge a tap (`hints_for`, `hearts_for`).
 const HINTS := 3
-const HINTS_BY := [3, 3, 1, 0]
+const HINTS_BY := [3, 3, 1, 1]
 const HEARTS_BY := [0, 0, 0, 0]
 ## Insane's spare taps over the fewest that solve the frame (`moves_budget`):
 ## a quarter of them, and never fewer than this. 0 on a band that does not

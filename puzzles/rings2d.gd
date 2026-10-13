@@ -513,9 +513,11 @@ func _tips() -> Array:
 
 ## Insane counts moves: no Undo and no Hint there (either would say what was
 ## wrong).
+## Insane has the bulb again since 2026-10-13, as many hints as Hard: what is
+## said of it above is the history (docs/agents/flat-screens.md).
 func capabilities() -> Array[String]:
 	if _state.difficulty >= 3:
-		return []
+		return ["hint"]
 	return ["undo", "hint"]
 
 func can_undo() -> bool:

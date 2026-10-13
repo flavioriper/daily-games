@@ -405,7 +405,7 @@ func _script() -> void:
 			_at(4.6, _shot)
 		"hint":
 			_end = 5.0
-			# Insane has no hints of its own; a video's is added first.
+			# A band with no hints of its own (Insane until 2026-10-13): a video's is added first.
 			_at(1.2, func() -> void:
 				if _puzzle.hints_left() <= 0:
 					_puzzle.add_hint())

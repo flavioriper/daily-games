@@ -746,9 +746,11 @@ func tutorial_pages() -> Array:
 ## Untangle's and Word Trail's shape, reached by a third route.
 ##
 ## Insane has no Undo and no hint (and, since 2026-10-12, no move counter).
+## Insane has the bulb again since 2026-10-13, as many hints as Hard: what is
+## said of it above is the history (docs/agents/flat-screens.md).
 func capabilities() -> Array[String]:
 	if state != null and state.band >= 3:
-		return []
+		return ["hint"]
 	return ["undo", "hint"]
 
 ## What the phone does under each cue (docs/agents/haptics.md). A piece

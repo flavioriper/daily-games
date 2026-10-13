@@ -155,3 +155,9 @@ Board 8 of the per-board checkup (`docs/agents/checkup.md`).
   the end of `locale/boards.csv`.
 - Not seen on a screen yet (`tests/_probe_moves.gd -- id=oneline`);
   `tests/_shot_oneline.gd`'s `wrong` mode describes the old behaviour.
+
+## 2026-10-13: Insane has the bulb again
+
+What this file says of Insane having no hint (or only a video's) is history:
+Insane holds as many hints as Hard on every board with a bulb, at the
+user's word. `docs/agents/flat-screens.md`, "Insane has the bulb again".

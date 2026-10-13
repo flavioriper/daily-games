@@ -503,7 +503,7 @@ func tip_line() -> Dictionary:
 func tutorial_pages() -> Array:
 	var Diagram = load("res://ui/hud/hidden_word_tutorial_diagram.gd")
 	# The band's own count (State.HINTS_BY_BAND), read off the rules it set.
-	var hints: int = State.HINTS_BY_BAND[3 if state.no_hints else (2 if state.strict else 0)]
+	var hints: int = State.HINTS_BY_BAND[3 if state.snail else (2 if state.strict else 0)]
 	var steps := [
 		[Diagram.Lesson.GUESS, "HTP_HW_GUESS", tr("HTP_HW_GUESS_BODY")],
 		[Diagram.Lesson.CLUES, "HTP_HW_CLUES", tr("HTP_HW_CLUES_BODY")],

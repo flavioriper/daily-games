@@ -31,7 +31,7 @@ const MAX_PLANKS := Gen.MAX_PLANKS
 ## false everywhere, every band lays planks through `cycle` and no lane is
 ## ever `ruled`. Insane counts moves instead.
 const HEARTS := [0, 0, 0, 0]
-const HINTS := [3, 3, 1, 0]
+const HINTS := [3, 3, 1, 1]
 ## Insane's spare moves over the answer's own planks (`moves_budget`). Every
 ## step of a lane's cycle costs one, the step that lifts the run too, so a
 ## plank laid by mistake is three moves to mend (it only comes off by going

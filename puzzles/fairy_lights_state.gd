@@ -45,7 +45,7 @@ const InsaneBank = preload("res://core/insane_bank.gd")
 ## `judged` is false everywhere, so a turn of a piece that is already right
 ## is a turn like any other (no RIGHT, no clip, no fuse). Insane counts
 ## moves instead.
-const HINTS := [3, 3, 1, 0]
+const HINTS := [3, 3, 1, 1]
 const HEARTS := [0, 0, 0, 0]
 ## Insane's spare turns over the fewest the garden can be wired in
 ## (`moves_budget`): a quarter of that again, and never fewer than this.

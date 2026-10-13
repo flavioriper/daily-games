@@ -284,9 +284,11 @@ func _tips() -> Array:
 
 ## The bulb only: a putt cannot be taken back, and Reset is the host's.
 ## Insane counts strokes and has no bulb either.
+## Insane has the bulb again since 2026-10-13, as many hints as Hard: what is
+## said of it above is the history (docs/agents/flat-screens.md).
 func capabilities() -> Array[String]:
 	if _state.band >= 3:
-		return []
+		return ["hint"]
 	return ["hint"]
 
 ## Reset waits while the ball rolls or the bulb is looking.
@@ -1368,7 +1370,7 @@ func hints_left() -> int:
 ## The bulb plays every putt out on a copy of the hole and shows the
 ## steadiest good one the whole way; the aim takes it when it comes near.
 func hint() -> bool:
-	if is_done() or _state.band >= 3 or hints_left() <= 0 or _phase != "aim" or not _think.is_empty():
+	if is_done() or hints_left() <= 0 or _phase != "aim" or not _think.is_empty():
 		return false
 	# a fraction of a second on this Mac, so off the frame
 	var c = _state.sim.clone()

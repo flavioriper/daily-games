@@ -22,7 +22,7 @@ const TABLE := "res://content/how_big.json"
 const SHAPES := "res://content/how_big_shapes.json"
 
 const ROUNDS := [5, 5, 5, 7]
-const HINTS_BY := [3, 2, 1, 0]
+const HINTS_BY := [3, 2, 1, 1]
 const HEARTS_BY := [0, 0, 0, 2]
 ## How far apart a round's two things may be, the bigger over the smaller,
 ## by band: [least, most]. Insane's is a rung of the Ladder.

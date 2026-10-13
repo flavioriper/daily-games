@@ -128,7 +128,7 @@ const TAP_TIME := 0.3
 const GLOW_TIME := 0.8
 const WIN_HOLD := 2.8
 ## Hints per band: Easy, Medium, Hard, Insane.
-const HINTS_BY_BAND := [3, 3, 1, 0]
+const HINTS_BY_BAND := [3, 3, 1, 1]
 const TOAST_HOLD := 2.8
 const TOAST_H := 84.0
 const TOAST_PAD := 80.0
@@ -360,9 +360,9 @@ func tutorial_pages() -> Array:
 ## 2026-10-01 checkup: a bounce is kept in the move's history entry, so one
 ## undo puts the bounced fruit back too, at a step of the sun like any
 ## move). Reset is the host's. No Check: the beam is its own.
+## Insane has the bulb again since 2026-10-13, as many hints as Hard: what is
+## said of it above is the history (docs/agents/flat-screens.md).
 func capabilities() -> Array[String]:
-	if _difficulty >= 3:
-		return ["undo"]
 	# no bulb once the sun is down: a video hint then would be for nothing
 	if _out_card or state.out_of_sun():
 		return ["undo"]

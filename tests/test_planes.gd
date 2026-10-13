@@ -250,7 +250,7 @@ static func _test_windy_deal(t) -> void:
 		t.check(maze.solved(), "windy maze %d: clears in any order, gusts and all" % s)
 	t.check(not dealt.judged and not dealt.undo_allowed, "nothing judged, and no undo")
 	t.eq(State.hearts_for(3), 0, "no hearts on Insane: it counts moves")
-	t.eq(State.hints_for(3), 0, "no hints on Insane")
+	t.eq(State.hints_for(3), State.hints_for(2), "Insane has as many hints as Hard")
 	t.eq(State.hearts_for(2), 0, "no hearts on Hard")
 	t.check(not _built(5, 1).judged, "Medium is not judged")
 	for s in range(1, 11):

@@ -162,3 +162,9 @@ in budget. The tutorial's bridges at cart 1.6: the road alone snaps (1.03),
 two struts hold at 0.71, with tea they spill (1.01) and the two braces
 carry it at 0.73. `Gen.FALLBACK` is the bank's first Easy level as re-priced (2040, budget 3300). The crowd's
 scores of earlier days were against the old prices.
+
+## 2026-10-13: Insane has the bulb again
+
+What this file says of Insane having no hint (or only a video's) is history:
+Insane holds as many hints as Hard on every board with a bulb, at the
+user's word. `docs/agents/flat-screens.md`, "Insane has the bulb again".

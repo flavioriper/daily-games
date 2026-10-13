@@ -226,9 +226,11 @@ func tutorial_pages() -> Array:
 ## Undo and the bulb up to Hard. Insane counts its swaps, so neither: a swap
 ## made is a swap spent. There is no Check on any band -- a tile says for
 ## itself whether it is home.
+## Insane has the bulb again since 2026-10-13, as many hints as Hard: what is
+## said of it above is the history (docs/agents/flat-screens.md).
 func capabilities() -> Array[String]:
 	if state.band >= 3:
-		return []
+		return ["hint"]
 	return ["undo", "hint"]
 
 func _ready() -> void:

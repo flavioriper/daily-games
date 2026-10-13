@@ -370,7 +370,8 @@ func tutorial_pages() -> Array:
 		pages.append({"diagram": d, "title": step[1], "body": step[2]})
 	return pages
 
-## Insane gives no hints, so its bar has no bulb (and no video for one).
+## A band with no hints has no bulb (and no video for one): none since
+## 2026-10-13, when Insane got Hard's one.
 func capabilities() -> Array[String]:
 	if state.hints <= 0:
 		return ["undo", "check", "palette"]

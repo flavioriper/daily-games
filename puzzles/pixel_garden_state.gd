@@ -44,9 +44,10 @@ const EMPTY := -1
 const HINTS := 3
 ## Hints and hearts by band: Hard trades a hint for hearts, Insane has
 ## neither hints nor Check -- only the iron judges.
-const HINTS_BY := [3, 3, 2, 0]
+const HINTS_BY := [3, 3, 2, 2]
 const HEARTS_BY := [0, 0, 0, 0]
-## The band with no hints and no Check (it counted moves until 2026-10-12).
+## The band with no Check (it counted moves until 2026-10-12, and had no
+## hints until 2026-10-13).
 const INSANE := 3
 ## share_glyphs draws no more squares a side than this: a bigger picture is
 ## shared a block of pegs a square.

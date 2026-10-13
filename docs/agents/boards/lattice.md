@@ -96,3 +96,9 @@
   knots and its name, Twenty; the green kept on Insane; tap-tap beside the
   drag; two of one number refused; one answer only, which the original does
   not promise; stars left out (the win says the swaps to spare).
+
+## 2026-10-13: Insane has the bulb again
+
+What this file says of Insane having no hint (or only a video's) is history:
+Insane holds as many hints as Hard on every board with a bulb, at the
+user's word. `docs/agents/flat-screens.md`, "Insane has the bulb again".

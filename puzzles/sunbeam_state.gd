@@ -26,7 +26,7 @@ extends RefCounted
 const Gen = preload("res://puzzles/sunbeam_gen.gd")
 const InsaneBank = preload("res://core/insane_bank.gd")
 
-const HINTS_BY := [3, 3, 2, 0]
+const HINTS_BY := [3, 3, 2, 2]
 ## No band has hearts since 2026-10-04. The sleepers' rule stays on both
 ## bands that have it (a move let go on one is still taken back); Insane
 ## counts moves instead.

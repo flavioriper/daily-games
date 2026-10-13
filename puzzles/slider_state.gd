@@ -29,7 +29,7 @@ extends RefCounted
 
 const Gen = preload("res://puzzles/slider_gen.gd")
 
-const HINTS_BY := [3, 3, 2, 0]
+const HINTS_BY := [3, 3, 2, 2]
 const HEARTS_BY := [0, 0, 0, 0]
 ## Insane's spare moves over the shortest way home (`moves_budget`): a
 ## quarter of it, and never fewer than this. 0 on a band that does not count.

@@ -53,7 +53,7 @@ var walks := 0
 
 ## Hints and hearts by level. No level has hearts since 2026-10-04: a wake
 ## costs nothing but the move that made it.
-const HINTS_BY := [3, 3, 2, 0]
+const HINTS_BY := [3, 3, 2, 2]
 const HEARTS_BY := [0, 0, 0, 0]
 ## Insane's spare moves over the lawn's own piles (`moves_budget`): every
 ## pile cleared costs one -- raked by hand, blown off by a nought or raked
@@ -101,14 +101,19 @@ func walkers() -> bool:
 	return difficulty >= 3
 
 ## The lawn back as it was dealt, at its opening: every hedgehog home, no
-## rakes, no player's flags and nobody woken (a hint's flags stay: on Hard
-## nothing moves, and Insane has none). `woken`, the day's tally, is kept.
-## Returns the cells it re-covered.
+## rakes, no player's flags and nobody woken. A hint's flags stay where the
+## hedgehog under them is home again; one laid on a hedgehog that had walked
+## there is lifted (Insane has the bulb since 2026-10-13), or it would pin a
+## bare pile. `woken`, the day's tally, is kept. Returns the cells it
+## re-covered.
 func restart() -> PackedInt32Array:
 	var covered := PackedInt32Array()
 	if not dealt_hog.is_empty():
 		g.hog = dealt_hog.duplicate()
 		Gen.count(g)
+		for c in size():
+			if pin[c] == 1 and g.hog[c] == 0:
+				pin[c] = 0
 	var was := open.duplicate()
 	open.fill(0)
 	woke.fill(0)

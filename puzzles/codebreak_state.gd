@@ -19,7 +19,7 @@ const TRIES := 8
 ## Not refunded by reset, as on every other board. Easy and Medium have
 ## three; Hard one; Insane none (HINTS_BY_BAND).
 const HINTS := 3
-const HINTS_BY_BAND := [3, 3, 1, 0]
+const HINTS_BY_BAND := [3, 3, 1, 1]
 
 ## What the row's seats are worth, once the row is scored. The pouch only
 ## ever shows how many of each; a seat's own kind is drawn on nobody's face

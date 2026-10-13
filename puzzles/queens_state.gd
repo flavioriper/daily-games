@@ -38,7 +38,7 @@ const CROSS := 2
 const AUTO := 3
 ## Three a board, as every flat board gives; Insane none.
 const HINTS := 3
-const HINTS_BY_BAND := [3, 3, 3, 0]
+const HINTS_BY_BAND := [3, 3, 3, 3]
 ## No band has hearts since 2026-10-04: no seat is judged against the answer,
 ## so `judged()` is false everywhere and no cross is ever `shown`. Insane
 ## counts moves instead.

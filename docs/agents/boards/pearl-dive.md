@@ -184,3 +184,9 @@
   Insane's prompts are still the mix the server writes (three easy, three
   medium, two hard): making them harder than Hard's is a change to the
   functions and a deploy, not done. Not seen on a screen.
+
+## 2026-10-13: Insane has the bulb again
+
+What this file says of Insane having no hint (or only a video's) is history:
+Insane holds as many hints as Hard on every board with a bulb, at the
+user's word. `docs/agents/flat-screens.md`, "Insane has the bulb again".

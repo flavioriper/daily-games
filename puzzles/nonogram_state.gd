@@ -28,7 +28,7 @@ const MARK := 2
 const HINTS := 3
 ## Hints a board gets per band, and hearts: Hard and Insane can be failed
 ## (docs/superpowers/specs/2026-09-30-nonogram-polish-design.md, section 1).
-const HINTS_BY_BAND := [3, 3, 3, 0]
+const HINTS_BY_BAND := [3, 3, 3, 3]
 ## No band has hearts since 2026-10-04: nothing is judged as it lands, so
 ## `judged()` is false everywhere and the pebbles a wrong tile or a finished
 ## line used to lay are never laid. Insane counts moves instead.

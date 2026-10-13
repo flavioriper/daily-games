@@ -51,7 +51,7 @@ const InsaneBank = preload("res://core/insane_bank.gd")
 ## Hints and hearts by band (the polish): Easy and Medium get three hints and
 ## cannot be lost; Hard gets one hint and three hearts, Insane none and two.
 ## The hearts are the board's to count -- see `judged()`.
-const HINTS := [3, 3, 1, 0]
+const HINTS := [3, 3, 1, 1]
 ## No band has hearts since 2026-10-04: nothing is judged as it lands, so
 ## `judged()` is false everywhere and no drop comes back WRONG, RULED or
 ## STAYS. Insane counts moves instead.

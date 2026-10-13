@@ -108,7 +108,7 @@ const GROW_TIME := 0.16
 const FAIL_HOLD := 2.0
 const WIN_HOLD := 3.0
 ## Hints and hearts by band: Hard and Insane can be lost.
-const HINTS_BY := [3, 3, 2, 0]
+const HINTS_BY := [3, 3, 2, 2]
 const HEARTS_BY := [0, 0, 0, 2]
 ## The hearts' sign under the strip, and how a heart splits and comes back.
 const SIGN_H := 92.0
@@ -434,9 +434,9 @@ func tutorial_pages() -> Array:
 
 ## Undo, Hint (not on Insane, where hints_left() is 0) and Go (the Check
 ## button, relabelled); Reset is the host's.
+## Insane has the bulb again since 2026-10-13, as many hints as Hard: what is
+## said of it above is the history (docs/agents/flat-screens.md).
 func capabilities() -> Array[String]:
-	if _difficulty >= 3:
-		return ["undo", "check"]
 	return ["undo", "hint", "check"]
 
 func check_label() -> String:
@@ -1769,8 +1769,6 @@ func undo() -> bool:
 	return true
 
 func hints_left() -> int:
-	if _difficulty >= 3:
-		return 0
 	return maxi(0, HINTS_BY[clampi(_difficulty, 0, 3)] + hints_extra - hints_used)
 
 ## One member of the day's proof, laid in gold; the player's own members

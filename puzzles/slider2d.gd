@@ -386,9 +386,11 @@ func _tips() -> Array:
 
 ## Undo and Hint; Reset is the host's. No Check: nothing wrong can sit here.
 ## Insane counts moves and has neither.
+## Insane has the bulb again since 2026-10-13, as many hints as Hard: what is
+## said of it above is the history (docs/agents/flat-screens.md).
 func capabilities() -> Array[String]:
 	if _state.difficulty >= 3:
-		return []
+		return ["hint"]
 	return ["undo", "hint"]
 
 ## What the phone does under each cue (docs/agents/haptics.md). A block is

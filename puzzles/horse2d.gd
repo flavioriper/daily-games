@@ -293,9 +293,11 @@ func tutorial_pages() -> Array:
 ## a bale is the take-back, and it costs one) and no hint; Submit stays on
 ## every band, since it is the day's ending and says nothing the score does
 ## not already show.
+## Insane has the bulb again since 2026-10-13, as many hints as Hard: what is
+## said of it above is the history (docs/agents/flat-screens.md).
 func capabilities() -> Array[String]:
 	if state.band >= 3:
-		return ["check"]
+		return ["hint", "check"]
 	return ["undo", "hint", "check"]
 
 func check_label() -> String: return "HP_SUBMIT"

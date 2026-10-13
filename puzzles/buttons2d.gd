@@ -341,9 +341,9 @@ func tutorial_pages() -> Array:
 ## Undo on every band and the bulb up to Hard (Insane has no hints; it had
 ## no Undo either while it counted its moves, until 2026-10-12). There is
 ## no Check on any band: a button sewn on says so itself.
+## Insane has the bulb again since 2026-10-13, as many hints as Hard: what is
+## said of it above is the history (docs/agents/flat-screens.md).
 func capabilities() -> Array[String]:
-	if state.band >= State.INSANE:
-		return ["undo"]
 	return ["undo", "hint"]
 
 func _ready() -> void:

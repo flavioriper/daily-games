@@ -577,9 +577,11 @@ func tutorial_pages() -> Array:
 ## registry drops the actions row and Reset rides up into the top bar.
 ## Insane counts moves: no Undo (dragging a patch off is the take-back, and
 ## it costs one) and no hint.
+## Insane has the bulb again since 2026-10-13, as many hints as Hard: what is
+## said of it above is the history (docs/agents/flat-screens.md).
 func capabilities() -> Array[String]:
 	if _state.band >= 3:
-		return []
+		return ["hint"]
 	return ["undo", "hint"]
 
 ## The lines the tips cycle: a board that counts moves leads with that,

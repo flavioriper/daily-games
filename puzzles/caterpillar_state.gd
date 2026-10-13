@@ -22,7 +22,7 @@ const InsaneBank = preload("res://core/insane_bank.gd")
 ## judged as it lands, so `judged()` is false everywhere and `judge()` prices
 ## no step (it told the player which step was wrong). Insane counts moves
 ## instead. Spec: docs/superpowers/specs/2026-10-01-caterpillar-polish-design.md.
-const HINTS_BY := [3, 3, 1, 0]
+const HINTS_BY := [3, 3, 1, 1]
 const HEARTS_BY := [0, 0, 0, 0]
 ## Insane's spare moves over the walk's own steps (`moves_budget`): a square
 ## crawled onto costs one and a square backed off costs one. The spare is a

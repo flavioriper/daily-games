@@ -43,7 +43,7 @@ const ROWS := 6
 const MAX_ROWS := 7
 const LEN := 5
 const HINTS := 2
-const HINTS_BY_BAND := [2, 2, 1, 0]
+const HINTS_BY_BAND := [2, 2, 1, 1]
 
 const GLYPH := ["🟩", "🟨", "⬜"]
 
@@ -66,7 +66,8 @@ var typed := "":
 var cursor := 0
 var given: Array[int] = []
 var hints_left := HINTS
-## True on Insane, where no hint is given at all (capabilities() reads it).
+## True on a band with no hint at all (capabilities() reads it): none since
+## 2026-10-13, when Insane got Hard's one.
 var no_hints := false
 ## How many rows this word gets: ROWS, or MAX_ROWS once one is bought.
 var tries := ROWS
@@ -130,7 +131,7 @@ func setup(rng: RandomNumberGenerator, difficulty: int, banked := "") -> void:
 	seen = -1
 	tries = ROWS
 	hints_left = HINTS_BY_BAND[clampi(difficulty, 0, HINTS_BY_BAND.size() - 1)]
-	no_hints = difficulty >= 3
+	no_hints = hints_left <= 0
 	keeps_rows = difficulty >= 3
 	strict = difficulty >= 2
 	snail = difficulty >= 3

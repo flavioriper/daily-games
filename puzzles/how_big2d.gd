@@ -233,9 +233,9 @@ func tutorial_pages() -> Array:
 
 ## Hint and Lock up to Hard; Lock alone on the Ladder. No Undo anywhere: a
 ## lock is the one move there is, and it is never taken back.
+## Insane has the bulb again since 2026-10-13, as many hints as Hard: what is
+## said of it above is the history (docs/agents/flat-screens.md).
 func capabilities() -> Array[String]:
-	if state.band >= 3:
-		return ["check"]
 	return ["hint", "check"]
 
 ## The row's third button locks the round, then deals the next.

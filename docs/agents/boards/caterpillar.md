@@ -130,3 +130,9 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   page. Not seen on a screen yet: `tests/_probe_moves.gd -- id=caterpillar`;
   `tests/_probe_cat_judge.gd` and `_shot_caterpillar.gd`'s wrong-step modes
   describe the old behaviour.
+
+## 2026-10-13: Insane has the bulb again
+
+What this file says of Insane having no hint (or only a video's) is history:
+Insane holds as many hints as Hard on every board with a bulb, at the
+user's word. `docs/agents/flat-screens.md`, "Insane has the bulb again".

@@ -259,7 +259,7 @@ func tutorial_pages() -> Array:
 		[Diagram.Lesson.SIDING, "HTP_TT_SIDING", tr("HTP_TT_SIDING_BODY") % State.SIDING]]
 	if state.band >= State.INSANE:
 		steps.append([Diagram.Lesson.JAM, "HTP_TT_JAM", tr("HTP_TT_JAM_BODY")])
-	elif hints > 0:
+	if hints > 0:
 		steps.append([Diagram.Lesson.HINT, "HTP_TT_HINT",
 			tr("HTP_TT_HINT_BODY_ONE") if hints == 1 else tr("HTP_TT_HINT_BODY_N") % hints])
 	var pages := []
@@ -271,9 +271,9 @@ func tutorial_pages() -> Array:
 
 ## The bulb up to Hard. No Undo on any band (the loop runs on a clock, and a
 ## block an engine took is taken) and no Check: Reset is the way back.
+## Insane has the bulb again since 2026-10-13, as many hints as Hard: what is
+## said of it above is the history (docs/agents/flat-screens.md).
 func capabilities() -> Array[String]:
-	if state.band >= State.INSANE:
-		return []
 	return ["hint"]
 
 func _ready() -> void:

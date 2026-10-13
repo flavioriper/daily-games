@@ -303,3 +303,9 @@ word, on `feat/untangle-rope`, with no concept tab.
 - **The kitten's tip was wrong**: `UT_TIP_CAT` said she bats the peg "into
   the hole you just left"; `Gen.cat_hole` puts it in the nearest empty hole
   its rope spans (clockwise first). The tip and the tutorial say so now.
+
+## 2026-10-13: Insane has the bulb again
+
+What this file says of Insane having no hint (or only a video's) is history:
+Insane holds as many hints as Hard on every board with a bulb, at the
+user's word. `docs/agents/flat-screens.md`, "Insane has the bulb again".

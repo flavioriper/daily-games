@@ -30,7 +30,7 @@ const InsaneBank = preload("res://core/insane_bank.gd")
 ## (`reveal` is never called). Insane counts moves instead. A board's own
 ## hints thin out as the bands climb.
 const HEARTS := [0, 0, 0, 0]
-const HINTS_BY_BAND := [3, 3, 1, 0]
+const HINTS_BY_BAND := [3, 3, 1, 1]
 ## Insane's spare moves over the answer's own mushrooms (`moves_budget`): a
 ## mushroom planted or pulled up costs one, a pebble costs nothing. Three is
 ## one slip mended (up and down again) with one to spare.

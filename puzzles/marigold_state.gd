@@ -64,7 +64,7 @@ const FREE_AT := [25000, 75000, 125000]
 const LEFT_BONUS := 10000
 
 ## Hints and hearts by band: Hard and Insane can be lost.
-const HINTS_BY := [3, 3, 2, 0]
+const HINTS_BY := [3, 3, 2, 2]
 const HEARTS_BY := [0, 0, 0, 0]
 ## Insane counts moves (docs/agents/flat-screens.md): the seeds are the
 ## counter, one garden and no second try. The handful is the proof's shots

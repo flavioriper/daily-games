@@ -68,7 +68,7 @@ const WIN_WAIT := 1.4
 ## Hard has one and Insane none of its own (polish spec 2026-09-30, section
 ## 1); a video hint is still offered once they are spent, as on every board
 ## (the user's call of 2026-09-29).
-const HINTS_BY_BAND := [3, 3, 1, 0]
+const HINTS_BY_BAND := [3, 3, 1, 1]
 ## A moment that has not happened: far enough back that no reader ever sees
 ## it, and never confused with "a while ago" (`_now() - 100`), which can be
 ## negative in the first minute after launch.

@@ -29,7 +29,7 @@ extends RefCounted
 ## pegs never stand in a dead position on a judged band. Insane is **Tumble**:
 ## the bank deals six two-tone rings, and `lift()` turns a ring over (Gen.flip)
 ## so what is in the hand is what it will land as; `put_back()` and `undo()`
-## turn it back. No undo and no hints there.
+## turn it back. No undo there (Hard's hints since 2026-10-13).
 ## **Since 2026-10-04 no band judges** (`HEARTS_BY` is all zero, `judged`
 ## false everywhere; `would_doom` and the worker are left in place, asleep).
 ## Insane counts moves instead: `moves_budget()` is the deal's shortest solve
@@ -43,7 +43,7 @@ const Gen = preload("res://puzzles/rings_gen.gd")
 const InsaneBank = preload("res://core/insane_bank.gd")
 
 ## Hints and hearts by band (Easy, Medium, Hard, Insane).
-const HINTS_BY := [3, 3, 1, 0]
+const HINTS_BY := [3, 3, 1, 1]
 const HEARTS_BY := [0, 0, 0, 0]
 ## Insane's spare moves over the shortest solve (`moves_budget`): a quarter of
 ## it, and never fewer than this. 0 on a band that does not count.

@@ -503,9 +503,11 @@ func tutorial_pages() -> Array:
 
 ## Insane counts moves: no Undo (pulling a mushroom up is the take-back, and
 ## it costs one), no hint and no Check, which would each say what is wrong.
+## Insane has the bulb again since 2026-10-13, as many hints as Hard: what is
+## said of it above is the history (docs/agents/flat-screens.md).
 func capabilities() -> Array[String]:
 	if state.band >= 3:
-		return []
+		return ["hint"]
 	return ["undo", "hint", "check"]
 
 ## What the phone does under each cue (docs/agents/haptics.md). A mushroom

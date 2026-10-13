@@ -1358,8 +1358,8 @@ func _solve_fairylights() -> void:
 	# A deal that came out all but solved would leave the hint nothing to do;
 	# the generator's 60% rule makes that impossible, and this is the guard
 	# rather than the plan.
-	# Insane has no hints: every piece is tapped round, and the HUD check is
-	# only that nothing was spent.
+	# A band with no hints (none since 2026-10-13): every piece is tapped
+	# round, and the HUD check is only that nothing was spent.
 	var hinted: bool = _puzzle.hints_left() > 0
 	if not hinted:
 		_hud_ok = _puzzle.hints_used == 0
