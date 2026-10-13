@@ -79,3 +79,24 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   so, and presses Reset before the move that makes room. Not updated:
   `tests/_shot_slider.gd` and `_probe_perf.gd`'s slider walk, which read
   `dist_of` on Insane. Not seen on screen: only headless checks were run.
+
+### The carpenter's bench is the whole screen (2026-10-13)
+
+The redesign (`docs/agents/flat-screens.md`, "Every board gets a world of
+its own"), built unattended. `puzzles/slider_world.gd` is a honey-oak bench seen
+from above with faint seams and grain; two shavings, a brass screw and a
+spare yellow square in the gap of the tools row; and at the foot the
+gate's green mat run out as a stitched runner off the bottom edge, a
+walnut mallet at its left and spare blocks, a tin of wax and two dog holes
+at its right; five dust motes breathe. **The lawn and the stepping stones
+are gone**; the board tells the world its frame's foot and gate
+(`set_foot(y, gate)`). The clip is off once bled, so the big block walks
+out of the gate and on down the runner. Height binds: the frame stands 53
+inside the margin.
+
+- Registry: `bleed`, `level_card`; no tray, no actions row, as before.
+- `opengl3_angle`, 810x1440: 80 draw calls at rest; `tests/_win.gd --
+  slider` passes with real drags.
+- Decided for the user, unconfirmed: a bench, not the lawn; the runner in
+  place of the stones. Owed: a phone, the block's walk against the win's
+  shrink, the level slide.

@@ -1413,7 +1413,9 @@ func _solve_rings() -> void:
 ## column whatever the row it stands in.
 func _station_centre(i: int) -> Vector2:
 	var st: Dictionary = _puzzle._station(i)
-	return Vector2(float(st["cx"]), (float(st["top"]) + float(st["ground"])) * 0.5)
+	# A station is in the board's design space; in a world of its own the
+	# board lays that space in a box under the host's rows.
+	return _puzzle._box.position + Vector2(float(st["cx"]), (float(st["top"]) + float(st["ground"])) * 0.5) * _puzzle._s
 
 ## One tap on a key of the keyboard tray or a chip of the digit pad, found by
 ## the name that tray gives it.

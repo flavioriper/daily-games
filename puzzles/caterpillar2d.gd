@@ -39,6 +39,15 @@ extends "res://core/puzzle_base.gd"
 ## The rewards (bubble, love hearts, ladybug, the party's butterflies, the
 ## streak's bubble and the seal) are cached meshes on their own layer.
 ##
+## The garden is the whole screen (2026-10-13, the registry's `bleed`):
+## puzzles/caterpillar_world.gd lies edge to edge behind the board from the
+## first `set_clear`, the lawn this board painted over its card is not drawn
+## any more, and the bed is laid in the span the host's rows leave, its
+## wooden frame on the host's margin. On the win the board slides and
+## shrinks into the win's span under its own one transform, the world held
+## still against it. A garden never told a clear (the tutorial's, a card's)
+## is laid and drawn as it always was.
+##
 ## Spec: docs/superpowers/specs/2026-09-25-caterpillar-flat-design.md (the
 ## board) and 2026-10-01-caterpillar-polish-design.md (hearts, Peckish,
 ## rewards, the frame's cost).
@@ -61,6 +70,12 @@ const Rings = preload("res://puzzles/rings2d.gd")
 const RunMesh = preload("res://ui/flat/run_mesh.gd")
 const MovesPill = preload("res://ui/flat/moves_pill.gd")
 const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
+const World = preload("res://puzzles/caterpillar_world.gd")
+const FLAT_HOST := "res://ui/flat/flat_host.gd"
+## The slide into the win's span (the host's SLOT_TIME) and the air kept
+## round the bed there.
+const WIN_SLIDE := 0.45
+const WIN_PAD := 28.0
 ## The moves the out-of-moves card's video buys, once a garden.
 const MOVES_BONUS := 5
 
@@ -279,6 +294,23 @@ signal leave
 
 var _state = State.new()
 var fx: Node2D
+## The world behind the board, made on the first `set_clear`; what the
+## host's rows cover of the rect, top and bottom, while playing.
+var _world: Control
+var _bled := false
+var _clear := Vector2.ZERO
+## The board's own transform on the win: the block's middle while playing,
+## how far it moves and how small it gets, and how far along it is.
+var _slid_from := Vector2.ZERO
+var _slid_by := Vector2.ZERO
+var _slid_scale := 1.0
+var _slid := 0.0
+var _won := false
+var _win_clear := Vector2.ZERO
+var _placed := false
+## The host's slide on a change of level (set_shift).
+var _shift := 0.0
+var _slide_tw: Tween
 
 ## When each body segment appeared, parallel to the body.
 var _seg_at: Array[float] = []
@@ -663,6 +695,12 @@ func _cell() -> float:
 		return _ref_cell
 	if _state.cols <= 0:
 		return 0.0
+	if _bled:
+		# The frame's outer edges on the host's margin, in the span the rows
+		# leave; no cap, the screen is the measure.
+		var rim := 2.0 * (GROUND_PAD + FRAME)
+		return maxf(0.0, minf((size.x - 2.0 * _side() - rim) / _state.cols,
+			(size.y - _clear.x - _clear.y - _heart_row() - rim) / _state.rows))
 	return maxf(0.0, minf(CELL_CAP, minf((size.x - 2.0 * _inset()) / _state.cols,
 		(size.y - _heart_row() - 2.0 * _inset()) / _state.rows)))
 
@@ -683,6 +721,9 @@ func _origin() -> Vector2:
 		return _ref_origin
 	var row := _heart_row()
 	var g := _grid_size()
+	if _bled:
+		# At the top of the span, right under the tools row (the pill first).
+		return Vector2((size.x - g.x) * 0.5, _clear.x + row + GROUND_PAD + FRAME)
 	return Vector2((size.x - g.x) * 0.5, row + (size.y - row - g.y) * 0.5)
 
 func _mid() -> Vector2:
@@ -712,6 +753,96 @@ func _cell_at(local: Vector2, core := false) -> int:
 			return -1
 	return y * _state.cols + x
 
+## What the host's rows cover, in this board's own pixels (it is laid full
+## rect). While playing the bed is laid in what is left. On the win it is
+## not laid out again: the board slides and shrinks into the win's span.
+func set_clear(top: float, bottom: float, won := false) -> void:
+	Motion.stop(_slide_tw)
+	if not _bled:
+		_bled = true
+		clip_contents = false
+		_world = World.new()
+		_world.name = "World"
+		_world.show_behind_parent = true
+		_world.size = size
+		add_child(_world)
+		move_child(_world, 0)
+	_won = won
+	if not won:
+		_clear = Vector2(top, bottom)
+		_slid = 0.0
+		# The meshes are made again at the span's own cell.
+		_ref_cell = 0.0
+		_layout()
+		return
+	_win_clear = Vector2(top, bottom)
+	# A day reopened solved is told before it has been laid out: _layout
+	# sets the slide when it has a bed to aim.
+	if _cell() <= 0.0:
+		return
+	_aim()
+	if Motion.reduce or not is_inside_tree() or _slid >= 1.0:
+		_slide(1.0)
+		return
+	_slide_tw = create_tween()
+	_slide_tw.tween_method(_slide, _slid, 1.0, WIN_SLIDE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+## The block that travels on the win: the bed's frame and the pill's row
+## over it.
+func _block() -> Rect2:
+	var box := _frame_rect()
+	var row := _heart_row()
+	return Rect2(box.position - Vector2(0.0, row), box.size + Vector2(0.0, row))
+
+## Where the win's slide ends, from the bed as it is laid and the win's span.
+func _aim() -> void:
+	var block := _block()
+	var span := size.y - _win_clear.x - _win_clear.y
+	_slid_from = block.get_center()
+	_slid_scale = clampf(minf((size.x - 2.0 * _side() - 2.0 * WIN_PAD) / block.size.x,
+		(span - 2.0 * WIN_PAD) / block.size.y), 0.1, 1.0)
+	_slid_by = Vector2(size.x * 0.5, _win_clear.x + span * 0.5) - _slid_from
+
+## The host's side margin, which the bed keeps although the world does not.
+func _side() -> float:
+	return float(load(FLAT_HOST).MARGIN)
+
+func _slide(t: float) -> void:
+	_slid = t
+	_place()
+
+## The host slides the board `x` aside on a change of level; the world stays
+## where it is, and the board that is leaving shows none, so the one
+## arriving under it is not hidden.
+func set_shift(x: float, leaving := false) -> void:
+	_shift = x
+	if _world != null:
+		_world.visible = not leaving
+	_place()
+
+## The host deals this board into a screen already standing: it arrives
+## whole, without the bed's pop.
+func skip_entrance() -> void:
+	_opened = _now() - 100.0
+	_decor_until = 0.0
+	_dirty()
+
+## The board's transform at `_slid`, and the world's against it, so the
+## garden stays where it is while the bed and everything on it goes.
+func _place() -> void:
+	if _slid <= 0.0 and _shift == 0.0 and not _placed:
+		return
+	_placed = _slid > 0.0 or _shift != 0.0
+	var k := lerpf(1.0, _slid_scale, _slid)
+	var by := _slid_by * _slid + Vector2(_shift, 0.0)
+	pivot_offset = _slid_from
+	scale = Vector2(k, k)
+	position = by
+	if _world != null:
+		_world.pivot_offset = _slid_from
+		_world.scale = Vector2.ONE / k
+		_world.position = -by / k
+
 func card_height(available: float) -> float:
 	return available
 
@@ -722,7 +853,16 @@ func card_centred() -> bool:
 func _layout() -> void:
 	_lawn = null
 	_still = null
+	if _world != null:
+		_world.size = size
 	_take_ref()
+	if _won and _cell() > 0.0:
+		# Laid out under a win (a resize, or a day reopened solved): the
+		# slide is aimed again, and set at its end if it never ran.
+		_aim()
+		if _slid <= 0.0 and not (_slide_tw != null and _slide_tw.is_valid()):
+			_slid = 1.0
+	_place()
 	_love_mesh = null
 	_flutters = {}
 	_hearts_cache = {}
@@ -927,7 +1067,7 @@ func _draw() -> void:
 	var tint := Color(1.0, 1.0, 1.0, seen)
 	var shown: Array = []
 	var moving := t < _decor_until
-	if _lawn == null:
+	if _lawn == null and not _bled:
 		_lawn = _build_lawn()
 	_take_ref()
 	_in_ref = true
@@ -944,7 +1084,11 @@ func _draw() -> void:
 	_in_ref = false
 	var relay := _relay()
 	var board := xf * relay
-	if relay == Transform2D.IDENTITY:
+	if _bled:
+		# The lawn is the world's now: only the bed is this board's ground.
+		draw_mesh(_bed, null, board, tint)
+		shown.append(_bed)
+	elif relay == Transform2D.IDENTITY:
 		if _still == null:
 			_still = _join(_lawn, _bed)
 		draw_mesh(_still, null, xf, tint)

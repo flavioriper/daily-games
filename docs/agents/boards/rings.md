@@ -100,3 +100,26 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   `[-2, -1, 0, 1, 2, 3]`; it was `[-5, -3, 0, 2, 4, 7, 9]`, fourteen), and
   `lift` and `drop` play at 0.94 to 1.06 at random (the doomed drop's 0.9
   stands). Measured, not heard.
+
+### The terrace is the whole screen (2026-10-13)
+
+The redesign (`docs/agents/flat-screens.md`, "Every board gets a world of
+its own"), built unattended. `puzzles/rings_world.gd` is the sunny flagstone
+terrace the board drew inside its card, edge to edge under a cream
+morning light at the top, with leaf shade at the sides, two fallen leaves
+and a daisy in the gap of the tools row, and at the foot three bushes, a
+short spare plank with a stub peg holding two rings, a lone ring on the
+stones and fallen leaves; seven pollen motes breathe. The spare rings have
+no emblem and are half size. The board paints its own shapes into the
+world's mesh through a `painter` callable. Everything hangs from one
+`_box` (the span on the host's margin, at scale `_s`); the rows hang
+from its top and leftover height goes three tenths between them.
+
+- Registry: `bleed`, `level_card`; no tray, no actions row, as before.
+- `opengl3_angle`, 810x1440: 83 draw calls at rest; `tests/_win.gd --
+  rings` passes once its taps are mapped through `_box` and `_s` (a
+  station is in design space; unmapped, the first tap fell on the level
+  card and changed the level).
+- Decided for the user, unconfirmed: the terrace, not the card's blush
+  wall; 147 of air over the first row for the lifted ring. Owed: a phone,
+  Insane with its move pill, the level slide.

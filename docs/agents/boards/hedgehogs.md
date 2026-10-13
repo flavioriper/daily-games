@@ -83,3 +83,23 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   through `_dealt()` and count nothing. No Undo (it was greyed), hint or
   Check; Reset hands the budget back. New lines: `HH_RULES_WALKERS_MOVES`,
   `HTP_HH_WOKE_BODY_MOVES`, `HTP_HH_RESET_BODY_MOVES`, `HH_MOVES_BACK`.
+
+### The raking-day garden is the whole screen (2026-10-13)
+
+The redesign (`docs/agents/flat-screens.md`, "Every board gets a world of
+its own"), built unattended. `puzzles/hedgehogs_world.gd` is cream air turning
+into the card's lawn with faint mown bands, a washing line with three
+pegged things in the gap of the tools row, a drift of leaves and acorns
+under the bed (`set_foot(y)`), a wheelbarrow of leaves left of the
+tray's chips and a wicker basket with the rake leant on it at their
+right, tufts and toadstools along the foot; six motes breathe. Once bled
+the board's lawn mesh keeps only the wooden bed and its soil. The lawns
+are taller than wide, so height binds and the bed stands centred inside
+the margin; 96 is kept open under it for the drift.
+
+- Registry: `bleed`, `level_card`, no actions row, and **the tray
+  stays** (`"tray": "lawn"`). **Check is gone**: the lawn solves itself.
+- `opengl3_angle`, 810x1440: 91 draw calls at rest; `tests/_win.gd --
+  hedgehogs` passes.
+- Decided for the user, unconfirmed: the tray kept, no Check, the 96 of
+  drift, the tally on bare lawn. Owed: a phone, the level slide.

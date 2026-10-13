@@ -694,6 +694,10 @@ const PUZZLES := [
 		"script": "res://puzzles/rings2d.gd",
 		"shell": "flat",
 		"tray": "none",
+		# Its world is the whole screen (`bleed`, puzzles/rings_world.gd) and the
+		# levels stand where the day card was (docs/agents/flat-screens.md).
+		"bleed": true,
+		"level_card": true,
 		"actions": false,
 		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku: rings_gen.gd's BANDS, and each is its own daily
@@ -724,6 +728,10 @@ const PUZZLES := [
 		"script": "res://puzzles/caterpillar2d.gd",
 		"shell": "flat",
 		"tray": "none",
+		# Its world is the whole screen (`bleed`, puzzles/caterpillar_world.gd) and the
+		# levels stand where the day card was (docs/agents/flat-screens.md).
+		"bleed": true,
+		"level_card": true,
 		"actions": false,
 		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku: a 5 by 5, 6 by 6, 7 by 7 or 8 by 8 garden
@@ -754,6 +762,10 @@ const PUZZLES := [
 		"script": "res://puzzles/sunbeam2d.gd",
 		"shell": "flat",
 		"tray": "none",
+		# Its world is the whole screen (`bleed`, puzzles/sunbeam_world.gd) and the
+		# levels stand where the day card was (docs/agents/flat-screens.md).
+		"bleed": true,
+		"level_card": true,
 		"actions": false,
 		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku: each floor size (sunbeam_gen.gd's BANDS) is its
@@ -782,6 +794,10 @@ const PUZZLES := [
 		"script": "res://puzzles/knight2d.gd",
 		"shell": "flat",
 		"tray": "none",
+		# Its world is the whole screen (`bleed`, puzzles/knight_world.gd) and the
+		# levels stand where the day card was (docs/agents/flat-screens.md).
+		"bleed": true,
+		"level_card": true,
 		"actions": false,
 		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku: each board size (knight_gen.gd's BANDS) is its
@@ -808,6 +824,11 @@ const PUZZLES := [
 		"card": "res://ui/menu/cards/hedgehogs.gd",
 		"shell": "flat",
 		"tray": "lawn",
+		# Its world is the whole screen (`bleed`, puzzles/hedgehogs_world.gd) and the
+		# levels stand where the day card was (docs/agents/flat-screens.md).
+		"bleed": true,
+		"level_card": true,
+		"actions": false,
 		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku: each lawn (hedgehogs_gen.gd's BANDS) is its own
 		# daily with its own done mark.
@@ -834,6 +855,10 @@ const PUZZLES := [
 		"card": "res://ui/menu/cards/slider.gd",
 		"shell": "flat",
 		"tray": "none",
+		# Its world is the whole screen (`bleed`, puzzles/slider_world.gd) and the
+		# levels stand where the day card was (docs/agents/flat-screens.md).
+		"bleed": true,
+		"level_card": true,
 		"actions": false,
 		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku: each band of the bank (slider_gen.gd's BANDS) is

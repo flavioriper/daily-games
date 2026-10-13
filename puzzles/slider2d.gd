@@ -69,6 +69,12 @@ const Seal = preload("res://ui/flat/seal.gd")
 const NapCat = preload("res://ui/faces/nap_cat.gd")
 const Cat = preload("res://ui/faces/caterpillar.gd")
 const RunMesh = preload("res://ui/flat/run_mesh.gd")
+const Bench = preload("res://puzzles/slider_world.gd")
+const FLAT_HOST := "res://ui/flat/flat_host.gd"
+## The slide into the win's span (the host's SLOT_TIME), and the air the
+## tray keeps inside that span.
+const WIN_SLIDE := 0.45
+const WIN_PAD := 28.0
 
 # --- the screen, measured ---
 ## The card's inset round the tray, the largest cell, the card's corner, the
@@ -212,6 +218,25 @@ const STAMP_TILT := -0.22
 const SWEAT := Color("a9dcf5")
 
 var _state = State.new()
+## The bench is the whole screen (2026-10-13, the registry's `bleed`):
+## puzzles/slider_world.gd lies edge to edge as the board's first child from
+## the first `set_clear`, and the tray is laid in the span the host's rows
+## leave (`_box`). Until then -- in a card, or the tutorial's Board -- it
+## draws its own lawn as it always did. On the win the board slides and
+## shrinks into the win's span under its own one transform, the bench held
+## still against it.
+var _world: Control
+var _bled := false
+var _clear := Vector2.ZERO
+var _win_clear := Vector2.ZERO
+var _win_told := false
+var _slid_from := Vector2.ZERO
+var _slid_by := Vector2.ZERO
+var _slid_scale := 1.0
+var _slid := 0.0
+var _placed := false
+var _shift := 0.0
+var _slide_tw: Tween
 var fx: Node2D
 
 ## How each block is travelling: {"pts" (anchors in cells, float), "at",
@@ -524,12 +549,29 @@ func _top_band() -> float:
 func _cell() -> float:
 	var w := float(Gen.COLS) + 2.0 * Block.FRAME
 	var h := float(Gen.ROWS) + 2.0 * Block.FRAME + PATH
+	if _bled:
+		# The frame's edges on the host's margin, unless the span's height
+		# binds first.
+		var box := _box()
+		return maxf(0.0, minf(CELL_CAP, minf(box.size.x / w, (box.size.y - _top_band()) / h)))
 	var inset := _inset()
 	return maxf(0.0, minf(CELL_CAP, minf((size.x - 2.0 * inset) / w, (size.y - 2.0 * inset - _top_band()) / h)))
 
 ## The card's margin round the tray (the tutorial's page is short).
 func _inset() -> float:
 	return INSET
+
+## The box everything is laid from: the card, or on the bench the span the
+## host's rows leave, between its side margins.
+func _box() -> Rect2:
+	if not _bled:
+		return Rect2(Vector2.ZERO, size)
+	var side := _side()
+	return Rect2(Vector2(side, _clear.x), Vector2(size.x - 2.0 * side, maxf(0.0, size.y - _clear.x - _clear.y)))
+
+## The host's side margin, which the tray keeps although the bench does not.
+func _side() -> float:
+	return float(load(FLAT_HOST).MARGIN)
 
 func _grid_size() -> Vector2:
 	return Vector2(Gen.COLS, Gen.ROWS) * _cell()
@@ -539,6 +581,10 @@ func _grid_size() -> Vector2:
 func _origin() -> Vector2:
 	var s := _cell()
 	var tall := (float(Gen.ROWS) + 2.0 * Block.FRAME + PATH) * s
+	if _bled:
+		# At the top of the span, right under the tools row; the bench is
+		# open below.
+		return Vector2((size.x - _grid_size().x) * 0.5, _clear.x + _top_band() + Block.FRAME * s)
 	var top := _top_band() + (size.y - _top_band() - tall) * 0.5
 	return Vector2((size.x - _grid_size().x) * 0.5, top + Block.FRAME * s)
 
@@ -561,6 +607,16 @@ func card_centred() -> bool:
 	return true
 
 func _layout() -> void:
+	if _world != null:
+		_world.size = size
+		_tell_world()
+		if _win_told:
+			# Laid out under a win (a resize, or a day reopened solved): the
+			# slide is aimed again, and set at its end if it never ran.
+			_aim()
+			if _slid <= 0.0 and not (_slide_tw != null and _slide_tw.is_valid()):
+				_slid = 1.0
+		_place()
 	_still = null
 	_love_mesh = null
 	_refresh()
@@ -568,6 +624,91 @@ func _layout() -> void:
 		_heart_layer.queue_redraw()
 	if _life_layer != null:
 		_life_layer.queue_redraw()
+
+## Where the tray ends and how wide its gate is, for the bench's runner.
+func _tell_world() -> void:
+	if _world == null or _cell() <= 0.0:
+		return
+	_world.set_foot(_frame_rect().end.y, 2.0 * _cell())
+
+## What the host's rows cover, in this board's own pixels (it is laid full
+## rect). While playing the tray is laid in what is left. On the win nothing
+## is laid out again: the board slides and shrinks into the win's span.
+func set_clear(top: float, bottom: float, won := false) -> void:
+	Motion.stop(_slide_tw)
+	if not _bled:
+		_bled = true
+		# The big block walks out of the gate and on down the runner.
+		clip_contents = false
+		_world = Bench.new()
+		_world.name = "World"
+		_world.show_behind_parent = true
+		add_child(_world)
+		move_child(_world, 0)
+		_world.size = size
+	_win_told = won
+	if not won:
+		_clear = Vector2(top, bottom)
+		_slid = 0.0
+		_layout()
+		return
+	_win_clear = Vector2(top, bottom)
+	# A day reopened solved is told before it has been laid out: _layout
+	# sets the slide when it has a tray to aim.
+	if _cell() <= 0.0 or _state.blocks.is_empty():
+		return
+	_aim()
+	if Motion.reduce or not is_inside_tree() or _slid >= 1.0:
+		_slide(1.0)
+		return
+	_slide_tw = create_tween()
+	_slide_tw.tween_method(_slide, _slid, 1.0, WIN_SLIDE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+## Where the win's slide ends: the block is the band over the tray and the
+## tray's frame.
+func _aim() -> void:
+	var frame := _frame_rect()
+	var block := Rect2(Vector2(frame.position.x, _clear.x), Vector2(frame.size.x, frame.end.y - _clear.x))
+	var span := size.y - _win_clear.x - _win_clear.y
+	_slid_from = block.get_center()
+	_slid_scale = clampf(minf((size.x - 2.0 * _side() - 2.0 * WIN_PAD) / maxf(block.size.x, 1.0),
+		(span - 2.0 * WIN_PAD) / maxf(block.size.y, 1.0)), 0.1, 1.0)
+	_slid_by = Vector2(size.x * 0.5, _win_clear.x + span * 0.5) - _slid_from
+
+func _slide(t: float) -> void:
+	_slid = t
+	_place()
+
+## The host slides the board `x` aside on a change of level; the bench stays
+## where it is, and the board that is leaving shows none, so the one
+## arriving under it is not hidden.
+func set_shift(x: float, leaving := false) -> void:
+	_shift = x
+	if _world != null:
+		_world.visible = not leaving
+	_place()
+
+## The host deals this board into a screen already standing: it arrives
+## whole, without the tray's pop and the blocks' drop.
+func skip_entrance() -> void:
+	_opened = _now() - 100.0
+	_refresh()
+
+## The board's transform at `_slid`, and the bench's against it, so the
+## bench stays where it is while the tray and everything on it goes.
+func _place() -> void:
+	if _slid <= 0.0 and _shift == 0.0 and not _placed:
+		return
+	_placed = _slid > 0.0 or _shift != 0.0
+	var k := lerpf(1.0, _slid_scale, _slid)
+	var by := _slid_by * _slid + Vector2(_shift, 0.0)
+	pivot_offset = _slid_from
+	scale = Vector2(k, k)
+	position = by
+	if _world != null:
+		_world.pivot_offset = _slid_from
+		_world.scale = Vector2.ONE / k
+		_world.position = -by / k
 
 ## Block `p`'s foot: the middle of its bottom edge where it stands.
 func _foot(p: int) -> Vector2:
@@ -832,7 +973,7 @@ func _draw() -> void:
 	if seen <= 0.0:
 		return
 	var grow := 1.0 if Motion.reduce else Motion.wide_pop_scale(since)
-	var mid := size * 0.5
+	var mid := _frame_rect().get_center() if _bled else size * 0.5
 	var xf := Transform2D(0.0, Vector2.ONE * grow, 0.0, mid * (1.0 - grow))
 	var tint := Color(1.0, 1.0, 1.0, seen)
 	if _still == null:
@@ -856,6 +997,12 @@ func _build_still() -> ArrayMesh:
 	var s := _cell()
 	var o := _origin()
 	var g := _grid_size()
+	if _bled:
+		# On the bench the lawn, its bushes and the stepping stones are not
+		# drawn: the tray lies on the oak and the runner under its gate is
+		# the world's.
+		Block.tray(b, o, s)
+		return b.mesh()
 	b.fan(Face.Builder.round_rect(Vector2.ONE * 2.0, size - Vector2.ONE * 4.0, CARD_RADIUS - 2.0), Pal.SLIDE_LAWN)
 	# mown stripes, very faint
 	var stripe := s * 0.9
@@ -1198,14 +1345,14 @@ func _count_font() -> int:
 
 ## Where the count line's text starts (its baseline's left end), `w` wide.
 func _count_spot(w: float, font: Font) -> Vector2:
-	var band_top := _top_band() - COUNT_BAND
+	var band_top := _box().position.y + _top_band() - COUNT_BAND
 	var top := _origin().y - Block.FRAME * _cell()
 	var y := band_top + minf(COUNT_BAND, top - band_top) * 0.5 + font.get_ascent(COUNT_FONT) * 0.5 + 8.0
 	return Vector2((size.x - w) * 0.5, y)
 
 ## The count line's middle, for the halfway sparkle.
 func _count_at() -> Vector2:
-	var band_top := _top_band() - COUNT_BAND
+	var band_top := _box().position.y + _top_band() - COUNT_BAND
 	var top := _origin().y - Block.FRAME * _cell()
 	return Vector2(size.x * 0.5, band_top + minf(COUNT_BAND, top - band_top) * 0.5 + 8.0)
 
@@ -1222,7 +1369,7 @@ func _draw_toast(t: float, shown: Array) -> void:
 		return
 	var line := tr(_toast)
 	var font: Font = CozyTheme.body(600)
-	var room := maxf(TOAST_PAD, size.x - 120.0)
+	var room := maxf(TOAST_PAD, _box().size.x - (40.0 if _bled else 120.0))
 	var text_room := room - TOAST_PAD
 	var one: float = font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, TOAST_FONT).x
 	var lines := 1
@@ -1242,7 +1389,7 @@ func _draw_toast(t: float, shown: Array) -> void:
 		_toast_mesh_for = key
 	if _toast_mesh == null:
 		return
-	var mid := Vector2(size.x * 0.5, size.y - TOAST_MARGIN - h * 0.5)
+	var mid := Vector2(size.x * 0.5, _box().end.y - (20.0 if _bled else TOAST_MARGIN) - h * 0.5)
 	draw_mesh(_toast_mesh, null, Transform2D(0.0, mid), Color(Color.WHITE, alpha))
 	shown.append(_toast_mesh)
 	var top := mid.y - h * 0.5 + (TOAST_H - font.get_height(TOAST_FONT)) * 0.5 + font.get_ascent(TOAST_FONT)
@@ -1828,7 +1975,7 @@ func _draw_hearts() -> void:
 
 ## The hearts' pill's middle, `pill` its size: centred over the count line.
 func _hearts_mid(_pill: Vector2) -> Vector2:
-	return Vector2(size.x * 0.5, HEART_TOP + HEART_PILL_PAD.y + HEART_R)
+	return Vector2(size.x * 0.5, _box().position.y + HEART_TOP + HEART_PILL_PAD.y + HEART_R)
 
 static func _heart_face(b, at: Vector2, s: float) -> void:
 	b.ellipse(at + Vector2(-0.5, -0.5) * s, 0.16 * s, 0.1 * s, Color(1.0, 1.0, 1.0, 0.45))
@@ -2259,7 +2406,7 @@ func _frame_rect() -> Rect2:
 # --- the nap cat ---
 
 func _cat_px() -> float:
-	return size.x * CAT_PX
+	return _box().size.x * CAT_PX
 
 ## Where she curls up: on the frame's foot, left of the gate (the seal takes
 ## the right).
@@ -2465,7 +2612,7 @@ func _draw_combo(now: float, shown: Array) -> void:
 ## words over it: Flawless; on Homesick "Insane" over Flawless or Homesick,
 ## on the night seal.
 func _draw_stamp(now: float, shown: Array) -> void:
-	var rad := size.x * STAMP_R * 0.75
+	var rad := _box().size.x * STAMP_R * 0.75
 	var insane: bool = _state.homesick
 	if _seal_mesh == null:
 		_seal_mesh = Seal.mesh(rad, insane)

@@ -136,3 +136,21 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
 What this file says of Insane having no hint (or only a video's) is history:
 Insane holds as many hints as Hard on every board with a bulb, at the
 user's word. `docs/agents/flat-screens.md`, "Insane has the bulb again".
+
+### The kitchen garden is the whole screen (2026-10-13)
+
+The redesign (`docs/agents/flat-screens.md`, "Every board gets a world of
+its own"), built unattended. `puzzles/caterpillar_world.gd` is the card's mint
+lawn with faint mown bands and a low sun at the top right, three of the
+bed's tiles as stepping stones, a nibbled leaf and a clover in the gap of
+the tools row, and at the foot a low fence, a soil bed of five cabbages
+(one nibbled), a terracotta pot, a watering can, daisies, clovers and a
+bush in each corner; six dew glints breathe. Once bled the board no
+longer paints its card-shaped lawn; the bed's frame is on the host's
+margin and the 180 cell cap is off (an Easy cell is 190).
+
+- Registry: `bleed`, `level_card`; no tray, no actions row, as before.
+- `opengl3_angle`, 810x1440: 87 draw calls at rest; `tests/_win.gd --
+  caterpillar` passes.
+- Decided for the user, unconfirmed: the larger Easy cell; the dusk of
+  spent moves dimming the world too. Owed: a phone, the level slide.

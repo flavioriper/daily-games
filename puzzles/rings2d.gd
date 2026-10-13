@@ -104,6 +104,12 @@ const Seal = preload("res://ui/flat/seal.gd")
 const RunMesh = preload("res://ui/flat/run_mesh.gd")
 const NapCat = preload("res://ui/faces/nap_cat.gd")
 const Haptics = preload("res://core/haptics.gd")
+const World = preload("res://puzzles/rings_world.gd")
+const FLAT_HOST := "res://ui/flat/flat_host.gd"
+## The slide into the win's span (the host's SLOT_TIME), and the air the
+## block keeps inside that span.
+const WIN_SLIDE := 0.45
+const WIN_PAD := 20.0
 
 signal leave
 
@@ -333,6 +339,26 @@ var _opened := 0.0
 ## Design pixels to the control's own: `_s` scale, and the design box's size.
 var _s := 1.0
 var _dsize := Vector2(DESIGN_W, MIN_H)
+## Where the design box hangs, in the control's pixels: the whole card, or,
+## in a world of its own, the span the host's rows leave (`set_clear`).
+var _box := Rect2()
+## The terrace edge to edge (puzzles/rings_world.gd), made on the first
+## `set_clear`: a board in a card, and the tutorial's yard, have none.
+var _world: Control
+var _bled := false
+var _clear := Vector2.ZERO
+## The board's own transform on the win: the block's middle while playing,
+## how far it moves and how small it gets, and how far along it is.
+var _slid_from := Vector2.ZERO
+var _slid_by := Vector2.ZERO
+var _slid_scale := 1.0
+var _slid := 0.0
+var _won := false
+var _win_clear := Vector2.ZERO
+var _stood := false
+## The host's slide on a change of level (set_shift).
+var _shift := 0.0
+var _slide_tw: Tween
 ## The two rows' ground lines, set by _layout() and read by _station().
 var _ground: Array[float] = [HEAD + STATION_H, HEAD + 2.0 * STATION_H + SHELF_H + MID_GAP]
 
@@ -683,16 +709,40 @@ static func _rows_of(peg_count: int) -> Array:
 ## rows sit in the middle of the card rather than hanging from its top.
 func _layout() -> void:
 	var min_h := _min_h() + _top_pad()
-	if size.x > 0.0 and size.y > 0.0:
-		_s = minf(size.x / DESIGN_W, size.y / min_h)
-		_dsize = size / _s
+	# In a card the box is the card. In a world of its own (`_bled`) it is
+	# the span the host's rows leave, on the host's side margin.
+	_box = Rect2(Vector2.ZERO, size)
+	if _bled:
+		var side := _side()
+		_box = Rect2(side, _clear.x, size.x - 2.0 * side, size.y - _clear.x - _clear.y)
+		_world.size = size
+	if _box.size.x > 0.0 and _box.size.y > 0.0:
+		_s = minf(_box.size.x / DESIGN_W, _box.size.y / min_h)
+		_dsize = _box.size / _s
 	else:
 		_s = 1.0
 		_dsize = Vector2(DESIGN_W, min_h)
 	var extra := maxf(_dsize.y - min_h, 0.0)
-	var g0 := _top_pad() + HEAD + extra * 0.4 + STATION_H
+	# Bled, the rows hang from the top of the span, right under the host's
+	# tools row, and what is left over is open terrace at the foot.
+	var above := 0.0 if _bled else extra * 0.4
+	var g0 := _top_pad() + HEAD + above + STATION_H
 	var g1 := g0 + SHELF_H + MID_GAP + extra * 0.3 + STATION_H
 	_ground = [g0, g1]
+	# The effects and the two layers over the pegs are laid on the box, so
+	# everything they are told is the box's own pixels.
+	if fx != null:
+		fx.position = _box.position
+	for layer: Control in [_heart_layer, _life_layer]:
+		if layer != null:
+			layer.set_anchors_preset(Control.PRESET_TOP_LEFT)
+			layer.position = _box.position
+			layer.size = _box.size
+	if _won:
+		_aim()
+		if _slid <= 0.0 and not (_slide_tw != null and _slide_tw.is_valid()):
+			_slid = 1.0
+	_stand()
 	_toast_mesh = null
 	_toast_mesh_for = ""
 	_still_mesh = null
@@ -706,10 +756,142 @@ func _layout() -> void:
 	_seal_mesh = null
 	if _cat_curled and is_instance_valid(_cat):
 		_cat.size = Vector2.ONE * _cat_px()
-		_cat.position = _cat_spot() - _cat.size * 0.5
+		_cat.position = _box.position + _cat_spot() - _cat.size * 0.5
 	if _heart_layer != null:
 		_heart_layer.queue_redraw()
 	_refresh()
+
+## What the host's rows cover, in this board's own pixels (it is laid full
+## rect: the registry's `bleed`). The first call makes the world and turns
+## the layout over to the span. On the win nothing is laid out again: the
+## board slides and shrinks into the win's span under its own transform.
+func set_clear(top: float, bottom: float, won := false) -> void:
+	Motion.stop(_slide_tw)
+	if not _bled:
+		_bled = true
+		_world = World.new()
+		_world.name = "World"
+		_world.show_behind_parent = true
+		_world.painter = _paint_world
+		add_child(_world)
+		move_child(_world, 0)
+		_still_mesh = null
+		if won:
+			_layout()
+	_won = won
+	if not won:
+		_clear = Vector2(top, bottom)
+		_slid = 0.0
+		_layout()
+		return
+	_win_clear = Vector2(top, bottom)
+	# A day reopened solved is told before it has a size: _layout aims then.
+	if _box.size.x <= 0.0 or _state.pegs.is_empty():
+		return
+	_aim()
+	if Motion.reduce or not is_inside_tree() or _slid >= 1.0:
+		_slide(1.0)
+		return
+	_slide_tw = create_tween()
+	_slide_tw.tween_method(_slide, _slid, 1.0, WIN_SLIDE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+## Where the win's slide ends: the block is the pill, both rows and the
+## strip of terrace under them where the cat curls up and the seal lands.
+func _aim() -> void:
+	var g1: float = _ground[1]
+	var tall := minf((g1 + SHELF_H) * _s + _cat_px() * 1.1, _box.size.y)
+	var block := Vector2(_box.size.x, tall)
+	var span := size.y - _win_clear.x - _win_clear.y
+	_slid_from = _box.position + block * 0.5
+	_slid_scale = clampf(minf((size.x - 2.0 * _side()) / block.x, (span - 2.0 * WIN_PAD) / block.y), 0.1, 1.0)
+	_slid_by = Vector2(size.x * 0.5, _win_clear.x + span * 0.5) - _slid_from
+
+## The host's side margin, which the pegs keep although the terrace does not.
+func _side() -> float:
+	return float(load(FLAT_HOST).MARGIN)
+
+func _slide(t: float) -> void:
+	_slid = t
+	_stand()
+
+## The host slides the board `x` aside on a change of level; the terrace
+## stays where it is, and the board that is leaving shows none.
+func set_shift(x: float, leaving := false) -> void:
+	_shift = x
+	if _world != null:
+		_world.visible = not leaving
+	_stand()
+
+## The host deals this board into a screen already standing: it arrives
+## whole, without the planks' pop and the pegs' drop.
+func skip_entrance() -> void:
+	_opened = _now() - 60.0
+	_refresh()
+	if _heart_layer != null:
+		_heart_layer.queue_redraw()
+
+## The board's transform at `_slid`, and the world's against it, so the
+## terrace stays where it is while the pegs and everything on them go.
+func _stand() -> void:
+	if _world == null or (_slid <= 0.0 and _shift == 0.0 and not _stood):
+		return
+	_stood = _slid > 0.0 or _shift != 0.0
+	var k := lerpf(1.0, _slid_scale, _slid)
+	var by := _slid_by * _slid + Vector2(_shift, 0.0)
+	pivot_offset = _slid_from
+	scale = Vector2(k, k)
+	position = by
+	_world.pivot_offset = _slid_from
+	_world.scale = Vector2.ONE / k
+	_world.position = -by / k
+
+## The board's own things on the world's terrace, painted into the world's
+## one mesh (the world cannot load the board: the board loads it). In the
+## gap of the host's tools row, two fallen leaves and a daisy; along the
+## foot, the bushes that spilt into the old card, a short spare plank with
+## one short peg half filled, a ring lying on the stones beside it and a few
+## leaves. None of it has an emblem or a face, and it is smaller than the
+## pieces, so nothing down there reads as a peg to tap.
+func _paint_world(b: Face.Builder, wsize: Vector2, u: float) -> void:
+	var none := Callable()
+	var w := wsize.x
+	var h := wsize.y
+	var all := PackedVector2Array([Vector2(-40.0, -40.0), Vector2(w + 40.0, -40.0),
+		Vector2(w + 40.0, h + 40.0), Vector2(-40.0, h + 40.0)])
+	# The tools row's gap: small and pale, since the win's title lies there.
+	_append_leaf(b, Vector2(w * 0.405, h * 0.240), -0.5, 26.0 * u, 15.0 * u, Color(Pal.LEAF_LIGHT, 0.7), none)
+	_append_leaf(b, Vector2(w * 0.690, h * 0.228), 2.5, 22.0 * u, 13.0 * u, Color(Pal.MOSS, 0.6), none)
+	_append_daisy(b, Vector2(w * 0.560, h * 0.236), 15.0 * u, none, 0.9)
+	# Fallen leaves on the foot's stones.
+	for f in 9:
+		var at := Vector2(w * (0.06 + 0.88 * _h(71, f + 500)), h * (0.895 + 0.085 * _h(71, f + 600)))
+		var lng := (15.0 + 9.0 * _h(71, f + 800)) * u
+		var col: Color = [Pal.LEAF_LIGHT, Pal.MOSS, Pal.LEAF][f % 3]
+		Scenery.soft_disc(b, at + Vector2(3.0, 4.0) * u, lng * 0.7, lng * 0.4, Color(Pal.TEXT, 0.08))
+		_append_leaf(b, at, _h(71, f + 700) * TAU, lng, lng * 0.6, col, none)
+	# The spare plank and its peg, and a ring that rolled off.
+	var rw := RING_W * 0.5 * u
+	var g := h - 60.0 * u
+	var px := w * 0.555
+	_append_plank(b, px, g, rw * 1.9, rw, none, 5)
+	var cx := px + rw * 0.95
+	b.fan(Face.Builder.ring(Vector2(cx + 0.07 * rw, g - SEAT * rw + FACE * rw * 0.75), 0.55 * rw, FACE * rw * 0.85),
+		Color(Pal.TEXT, 0.16))
+	var into := g
+	for k in 2:
+		into = _ring_yt(g, rw, k)
+		_donut_body(b, cx, into, rw, RING_COLOURS[2], 1.0, none)
+		_donut_face(b, cx, into, rw, RING_COLOURS[2], 1.0, none)
+	_append_post(b, cx, into - 0.5 * rw, into, rw, 1.0, none)
+	var lone := Vector2(w * 0.405, h - 92.0 * u)
+	Scenery.soft_disc(b, lone + Vector2(0.06, SIDE + FACE * 0.9) * rw, 0.56 * rw, FACE * rw * 0.9, Color(Pal.TEXT, 0.14))
+	_donut_body(b, lone.x, lone.y, rw, RING_COLOURS[0], 1.0, none)
+	_donut_face(b, lone.x, lone.y, rw, RING_COLOURS[0], 1.0, none)
+	_append_daisy(b, Vector2(w * 0.475, h - 40.0 * u), 17.0 * u, none)
+	# The bushes along the very foot.
+	_foot_bush(b, Vector2(54.0 * u, h + 14.0 * u), 124.0 * u, 3, all)
+	_foot_bush(b, Vector2(w - 50.0 * u, h + 14.0 * u), 136.0 * u, 4, all)
+	_foot_bush(b, Vector2(w * 0.27, h + 18.0 * u), 62.0 * u, 6, all)
 
 ## The pill's strip off the top of the design box: the hearts on a judged
 ## band, the move counter on Insane.
@@ -769,7 +951,7 @@ func _gui_input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch or event is InputEventMouseButton:
 		if event is InputEventMouseButton and event.button_index != MOUSE_BUTTON_LEFT:
 			return
-		var p: Vector2 = event.position / _s
+		var p: Vector2 = (event.position - _box.position) / _s
 		if event.pressed:
 			_press_i = _peg_at(p) if not busy() else -1
 			if _press_i >= 0:
@@ -1268,13 +1450,13 @@ func _draw() -> void:
 	if _state.pegs.is_empty():
 		return
 	var t := _now()
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2(_s, _s))
-	if _still_mesh == null:
+	draw_set_transform(_box.position, 0.0, Vector2(_s, _s))
+	if _still_mesh == null and not _bled:
 		_still_mesh = _build_terrace()
 	if _still_mesh != null:
 		draw_mesh(_still_mesh, null)
 	_draw_stations(t)
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2(_s, _s))
+	draw_set_transform(_box.position, 0.0, Vector2(_s, _s))
 	if _live_mesh == null:
 		_live_mesh = _build_live(t)
 	if _live_mesh != null:
@@ -1323,7 +1505,7 @@ func _draw_stations(t: float) -> void:
 ## `(centre + (p + off - centre) * wide) * _s` -- what the old per-vertex map
 ## did, as one affine transform.
 func _place(centre: Vector2, wide: float, off: Vector2) -> void:
-	draw_set_transform((centre * (1.0 - wide) + off * wide) * _s, 0.0, Vector2(_s * wide, _s * wide))
+	draw_set_transform(_box.position + (centre * (1.0 - wide) + off * wide) * _s, 0.0, Vector2(_s * wide, _s * wide))
 
 func _build_planks() -> ArrayMesh:
 	var b := Face.Builder.new()
@@ -2158,14 +2340,14 @@ func _draw_toast(t: float, shown: Array) -> void:
 	if _toast_mesh == null:
 		return
 	var mid := Vector2(_dsize.x * 0.5, _dsize.y - TOAST_MARGIN - TOAST_H * 0.5)
-	draw_set_transform(mid * _s, 0.0, Vector2(_s, _s))
+	draw_set_transform(_box.position + mid * _s, 0.0, Vector2(_s, _s))
 	draw_mesh(_toast_mesh, null, Transform2D.IDENTITY, Color(Color.WHITE, alpha))
 	shown.append(_toast_mesh)
 	var where := Vector2(-w * 0.5 + TOAST_PAD * 0.5,
 		font.get_height(TOAST_FONT) * 0.5 - font.get_descent(TOAST_FONT))
 	font.draw_string(get_canvas_item(), where, line, HORIZONTAL_ALIGNMENT_LEFT, -1,
 		TOAST_FONT, Color(Pal.PAPER, alpha))
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2(_s, _s))
+	draw_set_transform(_box.position, 0.0, Vector2(_s, _s))
 
 # --- the terrace under everything ---
 
@@ -2176,6 +2358,8 @@ func _draw_toast(t: float, shown: Array) -> void:
 ## a layout into a mesh of its own, clipped to the card's rounded rect: the
 ## stations' mesh, rebuilt while anything moves, stays as small as before.
 func _build_terrace() -> ArrayMesh:
+	if _bled:
+		return null
 	var b := Face.Builder.new()
 	var clip := _clip_rect()
 	var w: float = _dsize.x
@@ -2417,7 +2601,7 @@ func _now() -> float:
 ## keeps clear at the top of the card.
 func _draw_hearts() -> void:
 	if max_moves > 0 and not _state.pegs.is_empty():
-		_moves_pill.draw(_heart_layer, Vector2(size.x * 0.5, HEART_ROW * 0.55 * _s), moves_left, _now())
+		_moves_pill.draw(_heart_layer, Vector2(_box.size.x * 0.5, HEART_ROW * 0.55 * _s), moves_left, _now())
 		return
 	if max_hearts <= 0 or _state.pegs.is_empty():
 		return
@@ -2425,9 +2609,9 @@ func _draw_hearts() -> void:
 	var now := _now()
 	var step := 2.0 * HEART_R + HEART_GAP
 	var y := HEART_ROW * 0.55 * _s
-	var x0 := size.x * 0.5 - step * (max_hearts - 1) * 0.5
+	var x0 := _box.size.x * 0.5 - step * (max_hearts - 1) * 0.5
 	var pill := Vector2(step * (max_hearts - 1) + 2.0 * HEART_R, 2.0 * HEART_R) + 2.0 * HEART_PILL_PAD
-	var corner := Vector2(size.x * 0.5, y) - pill * 0.5
+	var corner := Vector2(_box.size.x * 0.5, y) - pill * 0.5
 	var rim := Vector2.ONE * HEART_PILL_RIM
 	var enter := 1.0 if Motion.reduce else Motion.pop_in_scale(now - _opened - Motion.ENTER_DELAY).x
 	if enter <= 0.0:
@@ -2457,7 +2641,7 @@ func _draw_hearts() -> void:
 					pts[k] = at + shift + pts[k].rotated(turn)
 				b.polygon(pts, Color(Pal.FLOWER if side < 0 else Pal.FLOWER_DEEP, fade))
 	_hearts_shown = b.mesh()
-	var c := Vector2(size.x * 0.5, y)
+	var c := Vector2(_box.size.x * 0.5, y)
 	_heart_layer.draw_set_transform(c * (1.0 - enter), 0.0, Vector2.ONE * enter)
 	_heart_layer.draw_mesh(_hearts_shown, null)
 	_heart_layer.draw_set_transform(Vector2.ZERO)
@@ -2759,7 +2943,7 @@ func _start_gag(i: int, gag: int, lands: float) -> void:
 					fx.cue("love"))
 			_gag_until = lands + 0.24 + LOVE_TIME
 		Gag.BEE:
-			var from := -1.0 if top.x > size.x * 0.5 else 1.0
+			var from := -1.0 if top.x > _box.size.x * 0.5 else 1.0
 			_bees.append({"peg": i, "t": lands, "from": from})
 			_after(wait, func() -> void:
 				if gg == _gag_gen:
@@ -2791,12 +2975,12 @@ func _party(wave: float) -> void:
 	if Motion.reduce:
 		_life_layer.queue_redraw()
 		return
-	var field := Rect2(Vector2.ZERO, size)
+	var field := Rect2(Vector2.ZERO, _box.size)
 	_after(lead + 0.15, func() -> void:
-		fx.confetti(Vector2(field.get_center().x, size.y * 0.2), 30, size.x * 0.9)
+		fx.confetti(Vector2(field.get_center().x, _box.size.y * 0.2), 30, _box.size.x * 0.9)
 		fx.cue("party"))
 	_after(lead + 0.7, func() -> void:
-		fx.confetti(field.get_center(), 24, size.x * 0.7))
+		fx.confetti(field.get_center(), 24, _box.size.x * 0.7))
 	_after(lead + HOOP_AT, fx.cue.bind("hoop"))
 	_life_layer.queue_redraw()
 
@@ -2808,15 +2992,15 @@ func _cheer() -> String:
 ## rolls and the cat curls up.
 func _foot_y() -> float:
 	var g1: float = _ground[1]
-	return minf((g1 + SHELF_H + 44.0) * _s, size.y - _cat_px() * 0.42)
+	return minf((g1 + SHELF_H + 44.0) * _s, _box.size.y - _cat_px() * 0.42)
 
 # --- the nap cat ---
 
 func _cat_px() -> float:
-	return size.x * CAT_PX
+	return _box.size.x * CAT_PX
 
 func _cat_spot() -> Vector2:
-	return Vector2(size.x * 0.2, _foot_y())
+	return Vector2(_box.size.x * 0.2, _foot_y())
 
 func _cat_start() -> Vector2:
 	return Vector2(_cat_px() * 0.5 + 6.0, _foot_y())
@@ -2828,7 +3012,7 @@ func _cat_walk() -> float:
 ## hopping along the foot; landing with a squash; curled up asleep, purring.
 ## Under reduce motion she is simply curled up there.
 func _place_cat(t: float) -> void:
-	if t < _cat_at or size.x <= 0.0:
+	if t < _cat_at or _box.size.x <= 0.0:
 		return
 	if not is_instance_valid(_cat):
 		_cat = NapCat.new()
@@ -2853,7 +3037,7 @@ func _place_cat(t: float) -> void:
 		if not _cat_curled:
 			_curl_cat(e > CURL_AT - CAT_AT + 1.0)
 		else:
-			_cat.position = _cat_spot() - _cat.size * 0.5
+			_cat.position = _box.position + _cat_spot() - _cat.size * 0.5
 		return
 	elif e < CAT_POP:
 		at = start
@@ -2871,7 +3055,7 @@ func _place_cat(t: float) -> void:
 		var u := (e - _cat_walk()) / CAT_SETTLE
 		var s := 0.14 * sin(u * PI)
 		sc = Vector2(1.0 + s, 1.0 - s)
-	_cat.position = at - _cat.size * Vector2(0.5, 0.5)
+	_cat.position = _box.position + at - _cat.size * Vector2(0.5, 0.5)
 	_cat.scale = sc
 
 ## She curls up: the sleepy face and the drifting "z", and a purr -- unless
@@ -2881,7 +3065,7 @@ func _curl_cat(quiet: bool) -> void:
 	_cat.expression = Face.Expr.SLEEPY
 	_cat.scale = Vector2.ONE
 	_cat.rotation = 0.0
-	_cat.position = _cat_spot() - _cat.size * 0.5
+	_cat.position = _box.position + _cat_spot() - _cat.size * 0.5
 	if not quiet:
 		fx.cue("purr")
 
@@ -2900,7 +3084,7 @@ func _tick_life(now: float) -> bool:
 ## Each thing one cached mesh through a transform: love hearts, bees, the
 ## hoop, then the seal and the streak's bubble with their words.
 func _draw_life() -> void:
-	if _state.pegs.is_empty() or size.x <= 0.0:
+	if _state.pegs.is_empty() or _box.size.x <= 0.0:
 		_life_shown = []
 		return
 	var now := _now()
@@ -2987,7 +3171,7 @@ func _draw_bee(f: Dictionary, now: float, shown: Array) -> void:
 	var rx := RING_W * 0.42 * _s
 	var ry := RING_W * 0.14 * _s
 	var side := float(f.from)
-	var far := post + Vector2(side * size.x * 0.45, -RING_W * _s * 0.8)
+	var far := post + Vector2(side * _box.size.x * 0.45, -RING_W * _s * 0.8)
 	var at := post
 	var face := -side
 	var depth := 1.0
@@ -3046,7 +3230,7 @@ func _draw_hoop(e: float, shown: Array) -> void:
 	var u := clampf(e / HOOP_TIME, 0.0, 1.0)
 	var run := minf(u / 0.72, 1.0)
 	var x0 := -r * 1.4
-	var x1 := size.x * 0.66
+	var x1 := _box.size.x * 0.66
 	var x := lerpf(x0, x1, 1.0 - pow(1.0 - run, 2.2))
 	var roll := (x - x0) / r
 	var ground := _foot_y() + _cat_px() * 0.25
@@ -3096,7 +3280,7 @@ func _draw_combo(now: float, shown: Array) -> void:
 	var box := Vector2(tw + 30.0, COMBO_FONT + 16.0)
 	var tail := _combo_pos
 	var centre := tail + Vector2(box.x * 0.35, -box.y * 0.95)
-	centre.x = clampf(centre.x, box.x * 0.5 + 4.0, size.x - box.x * 0.5 - 4.0)
+	centre.x = clampf(centre.x, box.x * 0.5 + 4.0, _box.size.x - box.x * 0.5 - 4.0)
 	centre.y = maxf(centre.y, box.y * 0.5 + 4.0)
 	var tip := (tail - centre).round()
 	var key := [text, tip]
@@ -3122,7 +3306,7 @@ func _draw_combo(now: float, shown: Array) -> void:
 ## and settling with the back ease's overshoot, its words over it: Flawless;
 ## on Tumble "Insane" over Flawless or Tumble, on the night seal.
 func _draw_stamp(now: float, shown: Array) -> void:
-	var rad := size.x * STAMP_R * 0.75
+	var rad := _box.size.x * STAMP_R * 0.75
 	var insane: bool = _state.tumble
 	if _seal_mesh == null:
 		_seal_mesh = Seal.mesh(rad, insane)
@@ -3133,7 +3317,7 @@ func _draw_stamp(now: float, shown: Array) -> void:
 		var u := clampf(e / STAMP_DROP, 0.0, 1.0)
 		k = lerpf(STAMP_FROM, 1.0, u * u) if e < STAMP_DROP else Motion.bump_scale(e - STAMP_DROP, 0.08, STAMP_DROP)
 	var alpha := clampf(e / 0.08, 0.0, 1.0) if not Motion.reduce else 1.0
-	var centre := Vector2(size.x - rad * 1.15, minf(_foot_y(), size.y - rad * 1.1))
+	var centre := Vector2(_box.size.x - rad * 1.15, minf(_foot_y(), _box.size.y - rad * 1.1))
 	var xf := Transform2D(STAMP_TILT, Vector2(k, k), 0.0, centre)
 	_life_layer.draw_set_transform_matrix(xf)
 	_life_layer.draw_mesh(_seal_mesh, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, alpha))

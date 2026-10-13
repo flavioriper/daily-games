@@ -74,3 +74,23 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   heart"). `SB_SHY_WARN` (said once, mid-drag) stays: it restates the rule.
   Surprising: the budget is tight in absolute terms -- three spare moves on
   eight -- because the formula's quarter rounds under its floor here.
+
+### The greenhouse is the whole screen (2026-10-13)
+
+The redesign (`docs/agents/flat-screens.md`, "Every board gets a world of
+its own"), built unattended. `puzzles/sunbeam_world.gd` is the greenhouse's glass
+wall the board drew inside its card: cream light across the top, sage
+glass from the top rail down with white mullions, slant shafts of light
+and two glints; a small hanging shelf of three seedlings in the gap of the
+tools row; and at the foot a potting bench with a terracotta trough of
+leaves and flowers, a watering can, a trowel and two potted plants; seven
+motes breathe. The iron frame is on the host's margin; the 180 cell cap is
+off (an Easy cell is 191).
+
+- Registry: `bleed`, `level_card`; no tray, no actions row, as before.
+- `opengl3_angle`, 810x1440: 77 draw calls at rest; `tests/_win.gd --
+  sunbeam` passes.
+- Decided for the user, unconfirmed: the larger Easy cell; the shelf
+  staying over "Well done!". Seen and left: on the win the wall's top rail
+  and the rainbow run close to the grey line. Owed: a phone, the level
+  slide.

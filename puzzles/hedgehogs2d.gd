@@ -61,6 +61,8 @@ const Seal = preload("res://ui/flat/seal.gd")
 const NapCat = preload("res://ui/faces/nap_cat.gd")
 const Cat = preload("res://ui/faces/caterpillar.gd")
 const RunMesh = preload("res://ui/flat/run_mesh.gd")
+const World = preload("res://puzzles/hedgehogs_world.gd")
+const FLAT_HOST := "res://ui/flat/flat_host.gd"
 
 ## The looks a cell is put together from, each made once at the reference
 ## cell about the cell's centre: a look's id is its kind times LOOK_SPAN plus
@@ -82,6 +84,13 @@ signal leave
 # --- the lawn ---
 ## The card's inset round the lawn, and the tally strip over it.
 const PAD := 44.0
+## The slide into the win's span (the host's SLOT_TIME), and the air the
+## shrunken bed keeps inside that span.
+const WIN_SLIDE := 0.45
+const WIN_PAD := 28.0
+## What the bed keeps open under it on a board laid full rect, for the
+## world's drift of leaves over the tray.
+const FOOT_ROOM := 96.0
 const TALLY := 72.0
 const TALLY_SIZE := 34
 const TALLY_GLYPH := 60.0
@@ -247,6 +256,26 @@ const STAMP_R := 0.16
 const STAMP_TILT := -0.22
 
 var _state = State.new()
+## The back garden edge to edge (the registry's `bleed`): made on the first
+## set_clear, so a lawn never told one (the tutorial's, a card's) is laid in
+## its card as before.
+var _world: Control
+var _bled := false
+## What the host's rows cover of the rect, top and bottom, while playing and
+## on the win.
+var _clear := Vector2.ZERO
+var _win_clear := Vector2.ZERO
+var _won := false
+## The board's own transform on the win: the block's middle while playing,
+## how far it moves and how small it gets, and how far along it is.
+var _slid_from := Vector2.ZERO
+var _slid_by := Vector2.ZERO
+var _slid_scale := 1.0
+var _slid := 0.0
+var _placed := false
+var _slide_tw: Tween
+## The host's slide on a change of level (set_shift).
+var _shift := 0.0
 var fx: Node2D
 ## The armed chip, read by the tray (ui/flat/tile_tray.gd's refresh).
 var brush: int = State.RAKE
@@ -277,6 +306,98 @@ var _band_looks: Array = []
 var _looks: RunMesh
 var _band_rms: Array = []
 var _live_rm: RunMesh
+## What the host's rows cover, in this board's own pixels (it is laid full
+## rect). While playing the bed is laid in what is left. On the win it is
+## not laid out again: the board slides and shrinks into the win's span.
+func set_clear(top: float, bottom: float, won := false) -> void:
+	Motion.stop(_slide_tw)
+	if not _bled:
+		_bled = true
+		clip_contents = false
+		_world = World.new()
+		_world.name = "World"
+		_world.show_behind_parent = true
+		add_child(_world)
+		move_child(_world, 0)
+		_world.size = size
+	_won = won
+	if not won:
+		_clear = Vector2(top, bottom)
+		_slid = 0.0
+		_layout()
+		return
+	_win_clear = Vector2(top, bottom)
+	# A day reopened solved is told before it has been laid out: _layout
+	# sets the slide when it has a bed to aim.
+	if _cell <= 0.0:
+		return
+	_aim()
+	if Motion.reduce or not is_inside_tree() or _slid >= 1.0:
+		_slide(1.0)
+		return
+	_slide_tw = create_tween()
+	_slide_tw.tween_method(_slide, _slid, 1.0, WIN_SLIDE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+## The block that travels on the win: the strip over the bed and the bed.
+func _block() -> Rect2:
+	var box := _frame_rect()
+	return Rect2(box.position - Vector2(0.0, _top_h()), box.size + Vector2(0.0, _top_h()))
+
+## Where the win's slide ends, from the block as it is laid and the win's
+## span.
+func _aim() -> void:
+	var block := _block()
+	var span := size.y - _win_clear.x - _win_clear.y
+	_slid_from = block.get_center()
+	_slid_scale = clampf(minf((size.x - 2.0 * _side() - 2.0 * WIN_PAD) / block.size.x,
+		(span - 2.0 * WIN_PAD) / block.size.y), 0.1, 1.0)
+	_slid_by = Vector2(size.x * 0.5, _win_clear.x + span * 0.5) - _slid_from
+
+## The host's side margin, which the bed keeps although the garden does not.
+func _side() -> float:
+	return float(load(FLAT_HOST).MARGIN)
+
+## The width things on the board are sized from: the old card's, whatever
+## the rect.
+func _wide() -> float:
+	return size.x - 2.0 * _side() if _bled else size.x
+
+func _slide(t: float) -> void:
+	_slid = t
+	_place()
+
+## The host slides the board `x` aside on a change of level; the garden
+## stays where it is, and the board that is leaving shows none, so the one
+## arriving under it is not hidden.
+func set_shift(x: float, leaving := false) -> void:
+	_shift = x
+	if _world != null:
+		_world.visible = not leaving
+	_place()
+
+## The host deals this board into a screen already standing: the bed is
+## there whole, without its pop (the opening's gust still blows).
+func skip_entrance() -> void:
+	_opened = _now() - 100.0
+	queue_redraw()
+	if _heart_layer != null:
+		_heart_layer.queue_redraw()
+
+## The board's transform at `_slid`, and the garden's against it, so the
+## garden stays where it is while the bed and everything on it goes.
+func _place() -> void:
+	if not _bled or (_slid <= 0.0 and _shift == 0.0 and not _placed):
+		return
+	_placed = _slid > 0.0 or _shift != 0.0
+	var k := lerpf(1.0, _slid_scale, _slid)
+	var by := _slid_by * _slid + Vector2(_shift, 0.0)
+	pivot_offset = _slid_from
+	scale = Vector2(k, k)
+	position = by
+	_world.pivot_offset = _slid_from
+	_world.scale = Vector2.ONE / k
+	_world.position = -by / k
+
 ## The layout the looks, bands and live mesh are made in: the first with
 ## room on it after a deal, and any larger one; a smaller one (the win
 ## card's) is drawn under `_relay()`.
@@ -479,6 +600,10 @@ func _tips() -> Array:
 func capabilities() -> Array[String]:
 	if _state.walkers():
 		return ["hint"]
+	# In a world of its own there is no Check: the lawn is done on the last
+	# bare cell raked (check_solved after every move).
+	if _bled:
+		return ["undo", "hint"]
 	return ["undo", "hint", "check"]
 
 ## What the phone does under each cue (docs/agents/haptics.md). A rake or a
@@ -638,6 +763,12 @@ func _clear_faces() -> void:
 func _cell_for(available: float) -> float:
 	if _state.size() == 0:
 		return 0.0
+	if _bled:
+		# The bed's wooden frame on the host's margin, in the span its rows
+		# leave, with the strip over it and the drift's room under it.
+		var span := size.y - _clear.x - _clear.y
+		return maxf(0.0, minf((size.x - 2.0 * _side() - 2.0 * FRAME) / float(_state.cols()),
+			(span - 2.0 * FRAME - _top_h() - FOOT_ROOM * size.x / 1080.0) / float(_state.rows())))
 	return maxf(0.0, minf((size.x - 2.0 * _pad()) / float(_state.cols()),
 		(available - 2.0 * _pad() - _top_h()) / float(_state.rows())))
 
@@ -664,9 +795,22 @@ func _layout() -> void:
 	if _cell <= 0.0:
 		return
 	var field := Vector2(_state.cols(), _state.rows()) * _cell
-	var tall := minf(size.y, field.y + 2.0 * _pad() + _top_h())
-	var top := (size.y - tall) * 0.5
-	_grid = Vector2(size.x * 0.5 - field.x * 0.5, top + _pad() + _top_h())
+	if _bled:
+		# At the top of the span, right under the tools row.
+		_grid = Vector2(size.x * 0.5 - field.x * 0.5, _clear.x + _top_h() + FRAME)
+		_world.size = size
+		_world.set_foot(_grid.y + field.y + FRAME)
+		if _won:
+			# Laid out under a win (a resize, or a day reopened solved): the
+			# slide is aimed again, and set at its end if it never ran.
+			_aim()
+			if _slid <= 0.0 and not (_slide_tw != null and _slide_tw.is_valid()):
+				_slid = 1.0
+		_place()
+	else:
+		var tall := minf(size.y, field.y + 2.0 * _pad() + _top_h())
+		var top := (size.y - tall) * 0.5
+		_grid = Vector2(size.x * 0.5 - field.x * 0.5, top + _pad() + _top_h())
 	_tally_y = _grid.y - TALLY * 0.5
 	for c: int in _faces:
 		_seat(_faces[c], _centre(c))
@@ -1216,21 +1360,24 @@ func _build_lawn() -> ArrayMesh:
 	var h := size.y
 	var clip := Face.Builder.round_rect(Vector2.ONE * 2.0, size - Vector2.ONE * 4.0, CARD_RADIUS - 2.0)
 	var grass := Pal.LAWN.lerp(Pal.PAPER, 0.62)
-	Rings._clip_polygon(b, clip, grass, clip)
+	# In a world of its own the garden is the world's (hedgehogs_world.gd):
+	# only the bed is the board's.
+	if not _bled:
+		Rings._clip_polygon(b, clip, grass, clip)
 	var band := 84.0
-	for k in int(ceil(h / band)):
+	for k in (0 if _bled else int(ceil(h / band))):
 		if k % 2 == 1:
 			Rings._clip_polygon(b, PackedVector2Array([Vector2(0.0, k * band), Vector2(w, k * band),
 				Vector2(w, (k + 1) * band), Vector2(0.0, (k + 1) * band)]), Pal.LAWN.lerp(Pal.PAPER, 0.56), clip)
 	var seed_i: int = _state.cols() * 97 + _state.rows() * 13 + int(_state.g.start)
-	for d in 6:
+	for d in (0 if _bled else 6):
 		var at := Vector2(w * Lawn.h01(seed_i, d + 200), h * Lawn.h01(seed_i, d + 300))
 		Scenery.soft_disc(b, at, 110.0, 70.0, Color(Pal.LAWN_DEEP, 0.08))
 	var field := Vector2(_state.cols(), _state.rows()) * _cell
 	var bed := Rect2(_grid - Vector2.ONE * (FRAME + 18.0), field + Vector2.ONE * (FRAME + 18.0) * 2.0)
 	var words := Rect2(w * 0.5 - 260.0, _tally_y - 40.0, 520.0, 80.0)
 	var placed := 0
-	for f in LITTER * 4:
+	for f in (0 if _bled else LITTER * 4):
 		if placed >= LITTER:
 			break
 		var at := Vector2(30.0 + (w - 60.0) * Lawn.h01(seed_i, f + 500), 30.0 + (h - 60.0) * Lawn.h01(seed_i, f + 600))
@@ -1801,6 +1948,9 @@ func _draw_toast(t: float, shown: Array) -> void:
 	if _toast_mesh == null:
 		return
 	var mid := Vector2(size.x * 0.5, size.y - TOAST_MARGIN - h * 0.5)
+	if _bled:
+		# Over the bed's foot, clear of the tray under it.
+		mid.y = minf(size.y - _clear.y - 12.0 - h * 0.5, _frame_rect().end.y + 12.0 + h * 0.5)
 	draw_mesh(_toast_mesh, null, Transform2D(0.0, mid), Color(Color.WHITE, alpha))
 	shown.append(_toast_mesh)
 	var top := mid.y - h * 0.5 + (TOAST_H - font.get_height(TOAST_FONT)) * 0.5 + font.get_ascent(TOAST_FONT)
@@ -2803,7 +2953,7 @@ func _cheer() -> String:
 	return tr("HH_CHEER_%d" % posmod(_day_hash(), CHEERS))
 
 func _cat_px() -> float:
-	return size.x * CAT_PX
+	return _wide() * CAT_PX
 
 ## Where she curls up: on the bed's foot, a fifth of the way along from its
 ## left (the seal takes the right).
@@ -2878,7 +3028,7 @@ func _curl_cat(quiet: bool) -> void:
 ## words over it: Flawless; on Sleepwalkers "Insane" over Flawless or
 ## Sleepwalkers, on the night seal.
 func _draw_stamp(now: float, shown: Array) -> void:
-	var rad := size.x * STAMP_R * 0.75
+	var rad := _wide() * STAMP_R * 0.75
 	var insane: bool = _state.walkers()
 	if _seal_mesh == null:
 		_seal_mesh = Seal.mesh(rad, insane)

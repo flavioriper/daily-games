@@ -75,3 +75,22 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   `HTP_KN_RESET_BODY_MOVES`, `HTP_KN_MOVES_BODY`, `HTP_KN_BOXED_MOVES_CAP`;
   the rules close on the shared `RULES_MOVES_SEQ`. Not seen on a screen yet
   (`tests/_probe_moves.gd -- id=knight`).
+
+### The castle court is the whole screen (2026-10-13)
+
+The redesign (`docs/agents/flat-screens.md`, "Every board gets a world of
+its own"), built unattended. `puzzles/knight_world.gd` is a courtyard in the
+card's oat tones with faint flagstone joints, a horseshoe, three
+hoofprints and a small crown in the gap of the tools row, and at the foot
+the court's wall with battlements, two turrets under rose roofs with
+pennants, a plank gate and rose bushes; five petals breathe on the air.
+Once bled the board's own plank table is not drawn; the frame is on the
+host's margin and the 170 cell cap is off (an Easy cell is 190).
+
+- Registry: `bleed`, `level_card`; no tray, no actions row, as before.
+- `opengl3_angle`, 810x1440: 79 draw calls at rest; `tests/_win.gd --
+  knight` passes.
+- Decided for the user, unconfirmed: a court, not the garden table; the
+  larger cells. **Start over stays**: it does what the bin does, but it
+  comes up only once the position is proved lost and does not ask; the
+  user's to call whether it goes. Owed: a phone, the level slide.
