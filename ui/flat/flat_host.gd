@@ -812,6 +812,9 @@ func _on_brush(v: int) -> void:
 
 ## A new board (Reset never spawns one, but the settings sheet's New does):
 ## the win screen, if it was up, goes back to the playing rows at once.
+func _daily_key() -> int:
+	return _day_key
+
 func _spawn(the_seed: int) -> void:
 	if _won:
 		_won = false

@@ -689,3 +689,9 @@ before; its world was not redrawn. `opengl3_angle`, 810x1440: rest,
 writes the board's `position.x`: it has no `set_shift`, so its world
 slides with it). Owed: a phone; whether its ground wants the richer foot
 the later boards have.
+
+- **A daily may deal a themed picture (2026-10-13)**: when this phone holds
+  the day's `pictures` document, Button Box's daily takes its band's size from
+  it in place of the bank's (`core/themed_pictures.gd`,
+  `docs/agents/days-dashboard.md`, "The daily theme, stage 2"). New, the
+  suite and every harness are the bank's as before.

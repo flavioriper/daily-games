@@ -285,3 +285,9 @@ and show the ruler only.
   pixelgarden` passes.
 - Decided for the user, unconfirmed: no Check; a mat, not the table. Owed:
   a phone, the pinch zoom on Hard and Insane.
+
+- **A daily may deal a themed picture (2026-10-13)**: when this phone holds
+  the day's `pictures` document, Pixel Garden's daily takes its band's size from
+  it in place of the bank's (`core/themed_pictures.gd`,
+  `docs/agents/days-dashboard.md`, "The daily theme, stage 2"). New, the
+  suite and every harness are the bank's as before.

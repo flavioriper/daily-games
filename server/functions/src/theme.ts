@@ -18,6 +18,9 @@ export interface Thing {
   id: string;
   /** What it is called, in English: a noun or two. */
   name: string;
+  /** And in Portuguese and Spanish, as a board names the picture. */
+  pt: string;
+  es: string;
   /** What to draw: the thing with its colours. */
   draw: string;
 }
@@ -54,6 +57,7 @@ export function validTheme(t: unknown): t is Theme {
   for (const x of o.objects) {
     if (typeof x !== "object" || x === null) return false;
     if (!SLUG.test(String(x.id)) || !text(x.name, 30) || !text(x.draw, DRAW_MAX)) return false;
+    if (!text(x.pt, 30) || !text(x.es, 30)) return false;
     ids.add(x.id);
   }
   if (ids.size !== THINGS) return false;
@@ -72,7 +76,7 @@ A theme is one small, warm place or moment: a campfire at dusk, a bakery in the 
 The theme is drawn as pixel pictures of very few squares, so everything in it must be a big simple shape a child would name at once.
 
 - "scene": one sentence, what a single picture of the theme shows: four to six big things and where they are, in several areas of different colour, so that no sky, wall or floor is half the picture. No people's faces, no text.
-- "objects": exactly ${THINGS} single things from that scene, the simplest first. Each must be recognisable by its outline alone when drawn in a grid of ten by ten squares (a mushroom, a mug, a tent: yes; a book, a blanket, a cloud of steam: no). "draw" says the thing with its colours, clearly different ones: three or four for the first ("a red mushroom with white spots and a cream stem"), five for the second, seven for the third, which is the one with the most to it. None of them is a thin or spindly shape: each fills most of a square. "name" is its plain English name, one or two words.
+- "objects": exactly ${THINGS} single things from that scene, the simplest first. Each must be recognisable by its outline alone when drawn in a grid of ten by ten squares (a mushroom, a mug, a tent: yes; a book, a blanket, a cloud of steam: no). "draw" says the thing with its colours, clearly different ones: three or four for the first ("a red mushroom with white spots and a cream stem"), five for the second, seven for the third, which is the one with the most to it. None of them is a thin or spindly shape: each fills most of a square. None is mostly one colour (a red apple, a blue teapot: no; a striped mug, a slice of watermelon, a toadstool: yes). "name" is its plain English name, one or two words, and "pt" and "es" the same in Portuguese (Brazil) and Spanish.
 - "name": the theme's name, two or three words, in each language.
 - "words": ${WORDS} common single nouns about the theme in each language, four to eight letters, lowercase.
 - "id" values are lowercase English slugs.`;
@@ -86,8 +90,9 @@ const THEME_SCHEMA = {
     name: {type: "object", additionalProperties: false, required: ["en", "pt", "es"],
       properties: {en: {type: "string"}, pt: {type: "string"}, es: {type: "string"}}},
     scene: {type: "string"},
-    objects: {type: "array", items: {type: "object", additionalProperties: false, required: ["id", "name", "draw"],
-      properties: {id: {type: "string"}, name: {type: "string"}, draw: {type: "string"}}}},
+    objects: {type: "array", items: {type: "object", additionalProperties: false, required: ["id", "name", "pt", "es", "draw"],
+      properties: {id: {type: "string"}, name: {type: "string"}, pt: {type: "string"}, es: {type: "string"},
+        draw: {type: "string"}}}},
     words: {type: "object", additionalProperties: false, required: ["en", "pt", "es"],
       properties: {en: {type: "array", items: {type: "string"}}, pt: {type: "array", items: {type: "string"}},
         es: {type: "array", items: {type: "string"}}}},

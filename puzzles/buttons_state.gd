@@ -143,7 +143,10 @@ static func hints_for(band_: int) -> int:
 	return HINTS_BY[clampi(band_, 0, HINTS_BY.size() - 1)]
 
 ## The day's picture out of the bank and its buttons, scrambled.
-func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
+## `daily_key` is PuzzleBase.daily_key: a daily takes the day's themed
+## picture of its band's size when this phone holds one
+## (core/themed_pictures.gd) and it scrambles, and the bank's otherwise.
+func setup(rng: RandomNumberGenerator, difficulty: int, daily_key := 0) -> void:
 	band = clampi(difficulty, 0, BANDS - 1)
 	var doc := bank()
 	var pics: Array = []
@@ -162,6 +165,17 @@ func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
 	# par is the hand's whole game, so it is counted once, for the picture
 	# kept.
 	draws = 0
+	var themed := ThemedPictures.picture(daily_key, (pics[0].rows as Array).size())
+	# The same test as the bank's: scrambled again while too much of it opens
+	# sewn, and a picture that never scrambles off itself is left to the bank.
+	if not themed.is_empty():
+		for attempt in DRAWS:
+			draws += 1
+			_lay(themed, doc.palette, rng)
+			if homes() * 4 <= count():
+				par = _solve_taps()
+				return
+		draws = 0
 	for attempt in DRAWS:
 		draws += 1
 		_lay(pics[rng.randi_range(0, pics.size() - 1)], doc.palette, rng)

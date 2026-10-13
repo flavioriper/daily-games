@@ -58,6 +58,9 @@ letters):
 | 24 | Hard | the scene |
 | 32 | Insane | the scene, finer |
 
+A picture is `{"id", "name": {"en", "pt", "es"}, "rows"}`, under
+`sizes["<size>"]`; a size not there is the bank's that day.
+
 1. **Drawn** by an image model through OpenRouter, in one standing style:
    flat colours, a thick dark line, no shading, no text; an object alone on
    plain white, the scene filling a square. `generate.ts` gains a second

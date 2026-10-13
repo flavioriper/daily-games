@@ -296,7 +296,7 @@ func _ready() -> void:
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_gen += 1
-	state.setup(rng, difficulty)
+	state.setup(rng, difficulty, daily_key if bank_step == 0 else 0)
 	_begin()
 
 ## The day as dealt, for tools/export_days.gd (PuzzleBase.day_dict): the

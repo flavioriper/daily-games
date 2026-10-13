@@ -127,7 +127,11 @@ static func hints_for(band_: int) -> int:
 	return HINTS_BY[clampi(band_, 0, HINTS_BY.size() - 1)]
 
 ## The day's picture out of the bank and its engines, dealt.
-func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
+## `daily_key` is PuzzleBase.daily_key: a daily takes the day's themed
+## picture of its band's size when this phone holds one
+## (core/themed_pictures.gd), and the bank's otherwise. Hard and Insane read
+## one band, so on a themed day they are the one picture.
+func setup(rng: RandomNumberGenerator, difficulty: int, daily_key := 0) -> void:
 	band = clampi(difficulty, 0, SHEDS.size() - 1)
 	var doc := bank()
 	var pics := pictures(band)
@@ -135,7 +139,11 @@ func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
 		adopt({"name": "", "rows": ["rrgg", "rrgg", "bbyy", "bbyy"]},
 			{"r": "red", "g": "green", "b": "blue", "y": "yellow"}, rng)
 		return
-	adopt(pics[rng.randi_range(0, pics.size() - 1)], doc.get("palette", {}), rng)
+	# The bank's pick is drawn either way, so the deal's own draws that
+	# follow are the same ones on a phone with the day and one without.
+	var pic: Dictionary = pics[rng.randi_range(0, pics.size() - 1)]
+	var themed := ThemedPictures.picture(daily_key, (pics[0].rows as Array).size())
+	adopt(themed if not themed.is_empty() else pic, doc.get("palette", {}), rng)
 
 ## Plays `pic` ({name, rows}) with its letters read through `legend`.
 func adopt(pic: Dictionary, legend: Dictionary, rng: RandomNumberGenerator) -> void:

@@ -131,12 +131,16 @@ static func day_pick(difficulty: int, count: int, step: int) -> int:
 		var t = order[i]; order[i] = order[j]; order[j] = t
 	return order[posmod(InsaneBank.day_ordinal() + step, count)]
 
-func setup(rng: RandomNumberGenerator, difficulty: int, bank_step := 0) -> void:
+## `daily_key` is PuzzleBase.daily_key: a daily not dealt again by New takes
+## the day's themed picture of its band's size when this phone holds one
+## (core/themed_pictures.gd), and the bank's otherwise.
+func setup(rng: RandomNumberGenerator, difficulty: int, bank_step := 0, daily_key := 0) -> void:
 	var pics := band_pictures(difficulty)
 	if pics.is_empty():
 		return
 	band = clampi(difficulty, 0, 3)
-	load_picture(pics[day_pick(band, pics.size(), bank_step)])
+	var themed := ThemedPictures.picture(daily_key, (pics[0].rows as Array).size()) if bank_step == 0 else {}
+	load_picture(themed if not themed.is_empty() else pics[day_pick(band, pics.size(), bank_step)])
 	_rng.seed = rng.randi()
 
 func insane() -> bool:

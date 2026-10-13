@@ -20,6 +20,8 @@ import {Theme, Thing} from "./theme";
 export interface Picture {
   /** The thing's id, or "scene". */
   id: string;
+  /** What a board calls it: the thing's name, or the theme's for the scene. */
+  name: {en: string; pt: string; es: string};
   rows: string[];
 }
 
@@ -62,7 +64,7 @@ const DECOYS = ["umbrella", "bicycle", "guitar", "rocket", "anchor", "teapot", "
  *  most its band lets a picture have. */
 const INKS: Record<number, string> = {10: "four", 12: "five", 16: "seven"};
 
-const OBJECT = (what: string, size: number) => `Draw ONE thing: ${what}. Alone, centred and large on a plain pure white background. A children's sticker drawing: flat solid colours, a thick dark brown outline, chunky simple shapes, in exactly ${INKS[size]} clearly different colours, each over a good part of it. No shading, no gradients, no highlights, no shadow under it, no white sticker border round it, nothing else in the picture, no text or letters. A square picture.`;
+const OBJECT = (what: string, size: number) => `Draw ONE thing: ${what}. Alone, centred and large on a plain pure white background. A children's sticker drawing: flat solid colours, a thick dark brown outline, chunky simple shapes, in exactly ${INKS[size]} clearly different colours, each over a good part of it and none over half of it. No shading, no gradients, no highlights, no shadow under it, no white sticker border round it, nothing else in the picture, no text or letters. A square picture.`;
 
 const SCENE = (what: string) => `Draw this scene as a flat children's illustration that fills the whole square picture from edge to edge, with no border, no frame and no white margin: ${what} Flat solid colours with thick dark brown outlines, a few big simple shapes, eight to ten clearly different colours and no one colour over a third of the picture. No shading, no gradients, no text or letters, no faces.`;
 
@@ -207,7 +209,8 @@ export async function makeDay(day: number, theme: Theme,
           tried.look = item.thing === null ? await lookScene(rows, theme) : await lookThing(day, rows, item.thing, theme);
           if (!tried.look.ok) continue;
           tried.kept = true;
-          sizes[size] = {id: item.what, rows};
+          sizes[size] = {id: item.what, rows, name: item.thing === null ? theme.name :
+            {en: item.thing.name, pt: item.thing.pt, es: item.thing.es}};
         }
       } catch (e) {
         draft.error = String(e).slice(0, 300);

@@ -18,8 +18,14 @@ var Beads = (function () {
     d: "4a3226", e: "a9a39a" };
   // Button Box's Hard (16) has no written rule: it is held to what its
   // thirty pictures are, and `loose` says so.
-  var RULES = { 10: { colours: [3, 4], fill: [.3, .7], small: true }, 12: { colours: [4, 5], fill: [.3, .7], small: true },
-    16: { colours: [6, 7], fill: [.34, .66], loose: true },
+  // `lead` is not the bank's rule but Button Box's (buttons_state.gd): its
+  // buttons open as whole colours traded along, and a picture over half one
+  // colour opens with that colour's surplus already sewn; past a quarter of
+  // the cloth sewn it will not deal the picture. A made picture is for all
+  // three boards, so its biggest colour stays under LEAD of its beads.
+  var LEAD = .6;
+  var RULES = { 10: { colours: [3, 4], fill: [.3, .7], small: true, lead: LEAD }, 12: { colours: [4, 5], fill: [.3, .7], small: true, lead: LEAD },
+    16: { colours: [6, 7], fill: [.34, .66], loose: true, lead: LEAD },
     24: { colours: [7, 10], fill: [.85, 1], cut: 5 }, 32: { colours: [8, 12], fill: [.85, 1], cut: 6 } };
   var CUT_FILL = [.3, .7], MOST = .45, WORK = 240;
   var DEFAULTS = { size: 10, frame: "subject", bg: "auto", tol: .1, margin: 1, colours: 4, zoom: 1, px: 0, py: 0, vivid: 1 };
@@ -57,6 +63,10 @@ var Beads = (function () {
     if (rule.cut) {
       var share = used.reduce(function (m, c) { return Math.max(m, flat.split(c).length - 1); }, 0) / flat.length;
       out.push({ ok: share < MOST, text: "largest colour " + pct(share) + " of it, wants under " + pct(MOST) });
+    }
+    if (rule.lead) {
+      var lead = used.reduce(function (m, c) { return Math.max(m, flat.split(c).length - 1); }, 0) / Math.max(1, flat.replace(/\./g, "").length);
+      out.push({ ok: lead < rule.lead, text: "largest colour " + pct(lead) + " of its beads, Button Box wants under " + pct(rule.lead) });
     }
     if (rule.small) {
       var all = [rows[0], rows[n - 1], rows.map(function (r) { return r[0]; }).join(""), rows.map(function (r) { return r[n - 1]; }).join("")]

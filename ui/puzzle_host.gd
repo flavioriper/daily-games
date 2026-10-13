@@ -197,6 +197,11 @@ func _enter() -> void:
 	pass
 
 
+## The date key of the daily being spawned, 0 for any other board. The flat
+## host knows; this one deals no daily that reads it.
+func _daily_key() -> int:
+	return 0
+
 func _spawn(the_seed: int) -> void:
 	if is_instance_valid(_puzzle):
 		_puzzle.queue_free()
@@ -215,6 +220,9 @@ func _spawn(the_seed: int) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = the_seed
 	_puzzle.bank_step = _bank_step
+	# Before start() too: a board whose day comes off the server's document
+	# (core/themed_pictures.gd) has to know in build() that it is a daily.
+	_puzzle.daily_key = _daily_key()
 	_puzzle.start(rng, _difficulty)
 	_card.visible = not _puzzle.is_3d()
 	_overlay.visible = false

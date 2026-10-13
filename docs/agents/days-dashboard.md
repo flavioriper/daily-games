@@ -160,3 +160,52 @@ day. The drawings are in the style asked for every time. What was seen:
 
 Not done: stages 2 to 4. Not checked: a run long enough to say how the
 style and the themes hold over weeks; the light theme.
+
+## The daily theme, stage 2 (2026-10-13)
+
+The user: "do stage 2". Pixel Garden, Button Box and Toy Cannons deal the
+day's themed picture when this phone holds it.
+
+- **`core/themed_pictures.gd`** (`ThemedPictures.picture(date_key, size)`)
+  reads `Backend.cached_day("pictures", key)` and answers the picture in
+  the bank's shape, or `{}`: no key (a board not a daily), an unstarted
+  backend (the suite, every harness, `export_days.gd`), no document, or a
+  picture that fails `valid()` -- the rules of `tools/beads.js` a third
+  time, in GDScript. It never waits: `world/main.gd` asks for the day
+  behind the menu at boot, beside Golden Acorn's.
+- **The host sets `daily_key` before `start()` now** (`puzzle_host._spawn`
+  through `_daily_key()`, which the flat host answers), as well as after:
+  these boards deal inside `build()`. Golden Acorn and Pearl Dive still
+  defer their deal and are not changed by it.
+- **Each board's `State.setup` takes the key** and asks for its band's
+  size (the side of the band's first bank picture: 10/12/24/32 for Pixel
+  Garden, 10/12/16/32 for Button Box, 10/24/32/32 for Toy Cannons). New
+  (`bank_step` > 0) is always the bank's.
+- **The name**: the document carries each picture's name in en, pt and es
+  (the thing's; the theme's for the scene). The board is handed the one in
+  the player's language as its `name`, and `tr()` gives back a string it
+  has no row for, so no board's naming code changed.
+- **Button Box turns a picture down for itself**: its scramble trades whole
+  colours, so a picture over half one colour opens part sewn, and past a
+  quarter sewn it deals the bank's. The first made days lost Easy and
+  Medium to this (a red apple, a blue teapot, a red mug). So
+  `tools/beads.js` has a rule that is Button Box's and not the bank's
+  (`lead`: the biggest colour under 60% of a small picture's beads), and
+  the theme and drawing prompts ask for things not mostly one colour.
+- **Toy Cannons' Hard and Insane read one band**, so on a themed day they
+  are the same picture (in the bank they are two draws of one band).
+- **Known and left**: a daily finished from the bank before the day's
+  document arrived, and reopened after, shows the themed picture on its
+  finished screen. Only a phone that was offline at boot can meet it.
+- **`tools/themed_play.sh <yyyymmdd>|off`** copies a made day into this
+  Mac's game as today's pictures, to play it; nothing else writes there.
+
+Checked headless with a throwaway probe over the four made days (a
+stand-in backend node, the cache file written and removed): for each board
+and level, the daily is the themed picture at the band's size and New and a
+plain board are the bank's; a document with a bad row is refused; 55 to 61
+checks a day, 0 failed after the Button Box rule. Suite 249565/0. Thirty
+days re-exported: 3,960 documents, 0 errors. **Not run**: the game itself
+with a themed day on screen (that is `themed_play.sh` and the user's eye),
+and the fetch against the real server, where no `pictures` document exists
+until stage 4.
