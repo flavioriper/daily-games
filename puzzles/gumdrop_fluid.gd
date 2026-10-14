@@ -88,10 +88,13 @@ const SETTLE_R := 3.0
 const FAR := 0.08
 const FAR_R := 14.0
 ## The chunk under the tip takes no more past the card's shade (the user,
-## 2026-10-14: "if 100% no more liquid can be added"): the rate eases to
-## nothing over the last FULL_EASE of C_FULL, read off the meter, so the
-## ring stops at 100 and the grey button is the only way down. Headless
-## the meter reads nothing and the sim's own tally stops the pour.
+## 2026-10-14: "if 100% no more liquid can be added"): the dye pass eases
+## the pour to nothing over the last FULL_EASE of C_FULL as the meter's
+## last frame has the chunk, so the ring stops at 100 and the grey button
+## is the only way down. On the GPU, a frame behind, so it never waits on
+## the meter's readback (a first cut read `level()` here: right in every
+## harness, but one readback away from a chunk at 144%). Headless the sim's
+## own tally stops the pour.
 const FULL_EASE := 0.06
 
 var soft := false
@@ -193,6 +196,9 @@ func _build() -> void:
 	_judge = _pass("Judge", DYE, "judge", {"dye": _last_dye.get_texture(), "mask": mask})
 	# one texel a chunk: its mean pigments, for the ring on the squeeze button
 	_meter = _pass("Meter", Mould.CELLS_TOP, "meter", {"dye": _last_dye.get_texture(), "mask": mask}, 1)
+	# the dye pass caps the pour on the meter's last frame
+	_mats["Dye"].set_shader_parameter("meter", _meter.get_texture())
+	_mats["Dye"].set_shader_parameter("full_ease", FULL_EASE)
 
 ## Whether a deal's clearing frames are over: a cell filled before that
 ## would be wiped with them.
@@ -271,6 +277,7 @@ func tick(delta: float) -> void:
 	dye.set_shader_parameter("tip", tip)
 	dye.set_shader_parameter("tip_cell", tip_cell)
 	dye.set_shader_parameter("rate", rate_now())
+	dye.set_shader_parameter("drain_rate", rate_now() * DRAIN)
 	dye.set_shader_parameter("squeezing", 1.0 if squeezing else 0.0)
 	dye.set_shader_parameter("draining", 1.0 if draining and not squeezing else 0.0)
 	dye.set_shader_parameter("pigment", pigment)
@@ -280,13 +287,9 @@ func tick(delta: float) -> void:
 	fill_cell = -1
 
 ## Pigment a second at the tip's middle into the chunk under it: more
-## into a bigger chunk, and nothing once the chunk holds the card's shade
-## (the meter's reading, in amounts; easing in over the last FULL_EASE).
+## into a bigger chunk. The cap at the card's shade is the dye pass's.
 func rate_now() -> float:
-	var rate := RATE * maxf(1.0, tip_squares / SQUARES_REF)
-	var have := level(tip_cell)
-	var room := (Sim.C_FULL - (have.x + have.y + have.z)) / (Sim.C_FULL * FULL_EASE)
-	return rate * clampf(room, 0.0, 1.0)
+	return RATE * maxf(1.0, tip_squares / SQUARES_REF)
 
 ## The chunk's mean pigments, in amounts (the card's shade is Sim.C_FULL of
 ## them in all), from the meter's last frame: read back at most every

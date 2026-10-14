@@ -532,3 +532,30 @@ and are gone.
   two flavours take longer to become one at `FAR` 0.08, and the bot waits
   five seconds). The headless probe 0 failed, the suite passed; play 115
   to 121 draw calls, the win 75 to 80, as before.
+
+### The cap on the GPU, and the drain's own rate (2026-10-14, later)
+
+The user, with a Hard stalk reading 144% on their desk: "gumdrop not yet,
+it should never pass 100%". Not reproduced here with the commit before
+this one: the stalk held 18 s stopped at 100 and stayed there (`pour` on
+Hard, and a new `wander` mode that draws the tip about the chunk and over
+its seam while held, with the pots changed in turn in a throwaway), so
+their game was most likely launched before that commit. Two things were
+wrong all the same:
+
+- **The drain took nothing out of a full chunk**: it took at `rate`, which
+  the cap had just made nothing at 100%. The dye pass has `drain_rate`
+  now (the pour's rate before any cap, times `Fluid.DRAIN`): a full stalk
+  drained reads 77, 32, 5 at 0.5, 1.5, 3 s of hold.
+- **The cap is the dye pass's**: it reads the meter's last frame
+  (`meter` uniform, `full_ease`) for the chunk under the tip and eases the
+  pour to nothing over the last 6% of `C_FULL`, a frame behind rather
+  than a readback behind. `Fluid.rate_now` is the plain rate again (the
+  CPU cut used `level()`, a 0.1 s cache of a GPU readback: right in every
+  harness, but the one link that could fail on a desk). The sim's own
+  tally still stops headless.
+
+Read on Hard (`wander`, `opengl3_angle`): 22% at 0.5 s, 67 at 1.5, 98 at
+2.5, 99 at 4, 100 from 7 s to 18 s and after the release, then the drain
+as above. The probe and the suite as before.
+

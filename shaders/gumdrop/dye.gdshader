@@ -39,16 +39,25 @@ render_mode blend_disabled, unshaded;
 uniform sampler2D dye : filter_nearest, repeat_disable;
 uniform sampler2D vel : filter_nearest, repeat_disable;
 uniform sampler2D mask : filter_nearest, repeat_disable;
+// The meter's last frame (meter.gdshader: a texel a chunk, its mean
+// pigments over AMOUNT_TOP): the chunk under the tip takes no more past
+// the card's shade (the user, 2026-10-14: "if 100% no more liquid can be
+// added"), the pour easing to nothing over the last `full_ease` of C_FULL.
+// Read here rather than on the CPU so the cap never waits on a readback.
+uniform sampler2D meter : filter_nearest, repeat_disable;
+uniform float full_ease = 0.06;
 uniform ivec2 n = ivec2(128, 128);
 uniform float dt = 0.016;
 uniform vec2 tip = vec2(0.5, 0.5);
 uniform int tip_cell = -1;
 uniform float squeezing = 0.0;
-// The grey button held: pigment taken out about the tip at `drain` times
-// the rate, every pigment in its share, while the far settle levels the
-// chunk down with it (it is on, since nothing is squeezed).
+// The grey button held: pigment taken out about the tip at `drain_rate`
+// (the pour's own rate before the chunk's cap, which `rate` is under:
+// at 100% `rate` is nothing, and a drain at `rate` took nothing out of a
+// full chunk, 2026-10-14), every pigment in its share, while the far
+// settle levels the chunk down with it.
 uniform float draining = 0.0;
-uniform float drain = 1.0;
+uniform float drain_rate = 4.0;
 uniform float radius = 0.045;
 // Pigment a second at the tip's middle, in amounts, and the most the tip
 // pours a texel up to (over AMOUNT_TOP): a strong pour that does not
@@ -126,9 +135,11 @@ void fragment() {
 		if (squeezing > 0.5 && tip_cell == cell) {
 			vec2 off = UV - tip;
 			float g = exp(-dot(off, off) / (radius * radius));
-			// past the top the new dye takes the old one's place, so a
-			// second flavour poured on a full cell shifts it toward itself
-			d += pigment * (rate / AMOUNT_TOP) * g * dt;
+			vec3 have = texelFetch(meter, ivec2(cell, 0), 0).rgb * AMOUNT_TOP;
+			float room = clamp((C_FULL - (have.r + have.g + have.b)) / (C_FULL * full_ease), 0.0, 1.0);
+			// past a texel's top the new dye takes the old one's place, so
+			// nothing goes black under the tip
+			d += pigment * (rate * room / AMOUNT_TOP) * g * dt;
 			float tot = d.r + d.g + d.b;
 			if (tot > pour_top) {
 				d *= pour_top / tot;
@@ -139,7 +150,7 @@ void fragment() {
 			float g = exp(-dot(off, off) / (radius * radius));
 			float tot = d.r + d.g + d.b;
 			if (tot > 0.0) {
-				float take = (rate * drain / AMOUNT_TOP) * g * dt;
+				float take = (drain_rate / AMOUNT_TOP) * g * dt;
 				d *= max(0.0, tot - take) / tot;
 			}
 		}

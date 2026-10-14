@@ -2,7 +2,7 @@ extends SceneTree
 
 ## Shots of Gumdrop, the daily board, through the real menu and the flat
 ## host. Windowed, one at a time:
-##   godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_gumdrop.gd -- <outdir> [0|1|2|3] [reduce] [en|pt|es] [tutor] [pour|dab]
+##   godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_gumdrop.gd -- <outdir> [0|1|2|3] [reduce] [en|pt|es] [tutor] [pour|dab|wander]
 ## Opens the card at the band (Easy when none is named), then presses with
 ## real touches through the viewport: a pot, a tap on the tray, the squeeze
 ## button held, a drag over the tray, and that first mould served nearly
@@ -11,9 +11,11 @@ extends SceneTree
 ## serves each with a real touch; the win is shot, the board left and
 ## opened again as a finished day.
 ## With `tutor` the ? card's pages are shot instead; with `pour` the
-## squeeze button is held four seconds and let go, then the grey drain
+## squeeze button is held eighteen seconds and let go, then the grey drain
 ## button held three, the tip's chunk read off the dye and the meter at
-## each still, and the run ends there.
+## each still, and the run ends there; `wander` is `pour` with the tip
+## drawn about its chunk and over its seam the while, as a hand holds it
+## (the chunk must stop at 100% whatever the finger does).
 ## Each shot prints the frame's draw calls. The save is a harness file and
 ## the wallet a throwaway, so nothing of this Mac's is touched.
 
@@ -31,6 +33,7 @@ var _band := 0
 var _tutor := false
 var _pour := false
 var _dab := false
+var _wander := false
 var _page := 0
 var _turns := 0
 var _gold := 0
@@ -53,6 +56,9 @@ func _initialize() -> void:
 		elif a == "dab":
 			_pour = true
 			_dab = true
+		elif a == "wander":
+			_pour = true
+			_wander = true
 		elif a in ["0", "1", "2", "3"]:
 			_band = int(a)
 		elif a in ["en", "pt", "es"]:
@@ -148,7 +154,7 @@ func _bot() -> void:
 		print("bot serves at %.1f: fill %s near %s all %.2f" % [_t, str(m.fill), str(m.near), m.all])
 		sim.serve()
 
-const POUR_HELD := [0.5, 1.5, 2.5, 4.0]
+const POUR_HELD := [0.5, 1.5, 2.5, 4.0, 7.0, 10.0, 14.0, 18.0]
 const POUR_FREE := [0.1, 0.5, 2.0]
 ## `dab`: the button held this long only, and the chunk read this long
 ## after the release, to see a short pour go on spreading over its chunk
@@ -360,6 +366,12 @@ func _process(delta: float) -> bool:
 			# read at each still, so a pour that only spreads at the release
 			# shows as a jump between `held_4.0` and `free_0.5`
 			var held: Array = DAB_HELD if _dab else POUR_HELD
+			if _wander:
+				# the finger wanders: round the chunk's middle, out over the
+				# seam and back, as a hand does
+				var home: Vector2 = _t_.sim.centre_of(_t_.sim.tip_cell() if _t_.sim.tip_cell() >= 0 else 1)
+				var e: float = _t - _at
+				_t_.sim.aim(home + Vector2(sin(e * 2.1), cos(e * 1.3)) * 4.5)
 			if _marks < held.size() and _t > _at + held[_marks]:
 				_spread("held_%.1f" % held[_marks])
 				_marks += 1
