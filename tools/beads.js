@@ -37,7 +37,7 @@ var Beads = (function () {
   // own side (what the boards ask for); fill is of the picture's own
   // square, and every band leaves an edge bare. core/themed_pictures.gd
   // holds the same rules for the phone: the two change together.
-  var RULES = { 10: { side: [10, 18], colours: [3, 6], fill: [.25, .8], small: true, lead: LEAD },
+  var RULES = { 10: { side: [10, 18], colours: [3, 7], fill: [.25, .8], small: true, lead: LEAD },
     12: { side: [12, 22], colours: [4, 7], fill: [.25, .8], small: true, lead: LEAD },
     16: { side: [16, 26], colours: [5, 9], fill: [.25, .8], small: true, lead: LEAD },
     24: { side: [24, 34], colours: [6, 12], fill: [.25, .8], small: true, lead: LEAD },

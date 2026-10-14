@@ -338,7 +338,7 @@ spots as sky. So, `feat/pixel-subjects`:
   18, 24); no redraw. Bands up to 16 fall back to rows written from words.
 - **A side range a band** (`Beads.RULES.side`, mirrored in
   `core/themed_pictures.gd`): 10 to 18, 12 to 22, 16 to 26, 24 to 34, 32
-  to 40; colours 3 to 6 up to 8 to 14; fill 25 to 80% of the picture's own
+  to 40; colours 3 to 7 up to 8 to 14 (Easy and Medium the same seven, so a day is dealt again by side: `bySide`); fill 25 to 80% of the picture's own
   square; the largest colour under 60% of its beads (Button Box's rule);
   an edge bare. The day document is still keyed by the band's side and
   `v: 1`; an old phone's `valid()` turns a picture of another side down

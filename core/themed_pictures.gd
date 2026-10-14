@@ -27,7 +27,7 @@ const BANK := "res://content/pixel_garden.json"
 ## largest colour's share of its beads (Button Box's `lead`), and an edge
 ## left bare. The two tables change together.
 const RULES := {
-	10: {"side": [10, 18], "colours": [3, 6]},
+	10: {"side": [10, 18], "colours": [3, 7]},
 	12: {"side": [12, 22], "colours": [4, 7]},
 	16: {"side": [16, 26], "colours": [5, 9]},
 	24: {"side": [24, 34], "colours": [6, 12]},
