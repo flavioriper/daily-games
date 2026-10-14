@@ -433,6 +433,17 @@ deployed (stage 4, `publishDay`, is the user's).
   three in all (a type of mushroom, a type of lamp), hence two a level now,
   not yet run.
 
+The first real run (Anthropic's API, Haiku writes and Opus reviews, as the
+night does), 2026-10-14, on 20261019 Picnic on the Hill and 20261018
+Campfire at Dusk, about 10 min and US$1.95 a day for the two quizzes (by
+cost()'s list prices), nothing from the bank: Golden Acorn themed 1/3/3/2
+and 2/1/3/2 a band (thatch, fly agaric, the gourd family, spores, ember, a
+lantern's mantle; loose: tungsten for a lantern, cacao for cocoa, raisins);
+Pearl Dive 2/2/2/0 and 1/1/2/0 (a fruit, a kind of bread, a type of tree,
+a type of mushroom, a type of tea, a kind of tent, a kind of pine; loose:
+a room in a house for the cottage, a moon of Saturn for the dusk sky). In
+the days' files as `quizzes`, on Themed days.
+
 **Decided for the user, unconfirmed**: Hidden Word's Easy may deal any
 answer of the list on a themed day, not only Easy's 217 (the theme gives
 it away); Word Trail takes themed words on every band, Insane too, as many
