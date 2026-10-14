@@ -366,3 +366,23 @@ each at the project's two-a-minute quota, is 15 to 60 minutes a day, over
 the function's 1,800 s for two days. The deployed function runs the first
 way until `DAILY_PICTURE_STYLE=pixel` is set on it and its quota raised;
 `tools/themed_days.sh` makes pixel days on this Mac meanwhile.
+
+### Button Box's ladder: Hard is the 32, Insane a 48 (2026-10-14)
+
+The user, on the first pixel day in the game: "hard and insane is way too
+easy, insane should be a really big and detailed image, and hard should be
+what is current insane". So Button Box's Hard deals the bank's 32 band and
+asks the day for the 32 picture, and its Insane asks for a sixth band, key
+48 (`Beads.RULES[48]`, side 40 to 64, colours 10 to 16), drawn with
+"detailed, with texture and small features" in place of "big simple
+shapes" (`DETAIL_FROM` 32) and asked for at 40 first. The gate before the
+wiring: asked 36, the model drew a picnic basket at 32 × 32; asked 40, a
+stone cottage at 64 × 61, both read clean. A drawing under the band's
+range is now asked for again, scaled up, while a drawing is still to come
+(the pad to the band's side is for the last one only). The 16 band is
+nobody's now (only Button Box's Hard took it) and is gone from
+`Beads.SIZES` and both rules tables; `content/buttons_hard.json` stays for
+the dashboard's export but no board reads it. With no day held, Button
+Box's Hard and Insane deal the same bank. Pixel Garden and Toy Cannons keep
+24 and 32. A theme names six things (`THINGS`). The first day made so:
+20261019.

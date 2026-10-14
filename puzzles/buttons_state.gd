@@ -27,8 +27,12 @@ const BANK := "res://content/pixel_garden.json"
 ## medium"; Hard was the shared bank's 24-square band, 267 to 576 buttons
 ## after Medium's 50 to 100). Pixel Garden's Insane band as it was before
 ## the big pictures; the shared bank's palette names their letters.
-const HARD_BANK := "res://content/buttons_hard.json"
 const HARD := 2
+## The bank's band each band deals (Hard and Insane both the bank's 32s),
+## and the side of the day's themed picture each asks for
+## (core/themed_pictures.gd): Insane's 48 is drawn for Button Box alone.
+const BANK_BAND := [0, 1, 3, 3]
+const THEMED_KEY := [10, 12, 32, 48]
 ## The places in the tin a band starts with, and the most it ever has.
 ## Ten places open of twenty, CASE_STEP more a colour whole (the user,
 ## 2026-10-11: "the case should be bigger, 20 slots, 10 free and 10 to
@@ -84,7 +88,6 @@ enum { TO_PATCH, TO_TIN, FROM_TIN }
 
 static var _bank: Dictionary = {}
 static var _bank_read := false
-static var _hard: Array = []
 
 var band := 0
 ## A cloth with a tin of its own (the tutorial's); -1 is the band's.
@@ -130,15 +133,6 @@ static func bank() -> Dictionary:
 				_bank = doc
 	return _bank
 
-static func hard_pictures() -> Array:
-	if _hard.is_empty():
-		var f := FileAccess.open(HARD_BANK, FileAccess.READ)
-		if f != null:
-			var doc = JSON.parse_string(f.get_as_text())
-			if doc is Dictionary and doc.get("pictures") is Array:
-				_hard = doc.pictures
-	return _hard
-
 static func hints_for(band_: int) -> int:
 	return HINTS_BY[clampi(band_, 0, HINTS_BY.size() - 1)]
 
@@ -150,11 +144,12 @@ func setup(rng: RandomNumberGenerator, difficulty: int, daily_key := 0) -> void:
 	band = clampi(difficulty, 0, BANDS - 1)
 	var doc := bank()
 	var pics: Array = []
-	if doc.get("bands") is Array and band < (doc.bands as Array).size():
-		pics = doc.bands[band]
-	# (a harness's PG_BANK is played band for band, as it is given)
-	if band == HARD and not (OS.is_debug_build() and OS.has_environment("PG_BANK")):
-		pics = hard_pictures()
+	# Hard deals the bank's biggest band (the user, 2026-10-14: "hard should
+	# be what is current insane"), and Insane the same when no day holds a
+	# picture of its own: the bank has nothing bigger than 32.
+	var from: int = BANK_BAND[band]
+	if doc.get("bands") is Array and from < (doc.bands as Array).size():
+		pics = doc.bands[from]
 	var pic := {"name": "", "rows": ["rrgg", "rrgg", "bbyy", "bbyy"]}
 	var legend := {"r": "red", "g": "green", "b": "blue", "y": "yellow"}
 	if pics.is_empty():
@@ -165,7 +160,7 @@ func setup(rng: RandomNumberGenerator, difficulty: int, daily_key := 0) -> void:
 	# par is the hand's whole game, so it is counted once, for the picture
 	# kept.
 	draws = 0
-	var themed := ThemedPictures.picture(daily_key, (pics[0].rows as Array).size())
+	var themed := ThemedPictures.picture(daily_key, THEMED_KEY[band])
 	# The same test as the bank's: scrambled again while too much of it opens
 	# sewn, and a picture that never scrambles off itself is left to the bank.
 	if not themed.is_empty():

@@ -39,9 +39,12 @@ var Beads = (function () {
   // holds the same rules for the phone: the two change together.
   var RULES = { 10: { side: [10, 18], colours: [3, 7], fill: [.25, .8], small: true, lead: LEAD },
     12: { side: [12, 22], colours: [4, 7], fill: [.25, .8], small: true, lead: LEAD },
-    16: { side: [16, 26], colours: [5, 9], fill: [.25, .8], small: true, lead: LEAD },
     24: { side: [24, 34], colours: [6, 12], fill: [.25, .8], small: true, lead: LEAD },
-    32: { side: [32, 40], colours: [8, 14], fill: [.25, .8], small: true, lead: LEAD } };
+    32: { side: [32, 40], colours: [8, 14], fill: [.25, .8], small: true, lead: LEAD },
+    // Button Box's Insane alone (the user, 2026-10-14: "insane should be a
+    // really big and detailed image"): asked 40, the model drew a cottage
+    // at 64 × 61 that read clean.
+    48: { side: [40, 64], colours: [10, 16], fill: [.25, .8], small: true, lead: LEAD } };
   var CUT_FILL = [.3, .7], MOST = .45, WORK = 240;
   var DEFAULTS = { size: 10, frame: "subject", bg: "auto", tol: .1, margin: 1, colours: 4, zoom: 1, px: 0, py: 0, vivid: 1 };
 
@@ -394,7 +397,7 @@ var Beads = (function () {
     for (y = 0; y < N; y++) rows.push(at.slice(y * N, y * N + N).map(function (a) { return a < 0 ? "." : LETTERS[a]; }).join(""));
     return { rows: rows, w: bw, h: bh, side: N };
   }
-  return { PALETTE: PALETTE, cutOut: cutOut, RULES: RULES, SIZES: [10, 12, 16, 24, 32], rulesOf: rulesOf, optionsFor: optionsFor, fillOf: fillOf,
+  return { PALETTE: PALETTE, cutOut: cutOut, SIZES: [10, 12, 24, 32, 48], RULES: RULES, rulesOf: rulesOf, optionsFor: optionsFor, fillOf: fillOf,
     check: check, convert: convert, snap: snap, fromSnap: fromSnap };
 })();
 if (typeof module !== "undefined") module.exports = Beads;

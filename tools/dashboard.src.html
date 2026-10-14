@@ -613,7 +613,7 @@ addEventListener("paste", e => { if (state.view !== "convert") return;
 // tools/themed_days.sh's days (server/functions' `cli.js themed`): the theme,
 // the picture each size came to, and every drawing with its verdicts.
 const THEMED = DATA.themed || [], PIXEL = DATA.themedPixel || [];
-const SIZE_FOR = { 10: "Easy", 12: "Medium", 16: "Button Box's Hard", 24: "Hard", 32: "Insane" };
+const SIZE_FOR = { 10: "Easy", 12: "Medium", 24: "Hard", 32: "Insane, Button Box's Hard", 48: "Button Box's Insane" };
 function themedView() {
   const host = $("themed"); host.textContent = "";
   const made = THEMED.filter(d => d.theme), sizes = made.flatMap(d => Object.keys(d.pictures?.sizes || {}));
