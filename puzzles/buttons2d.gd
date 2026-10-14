@@ -1,8 +1,9 @@
 extends "res://core/puzzle_base.gd"
 
 ## Button Box as a flat board: a sewing table laid with linen from edge to
-## edge (`"bleed": true` in ui/registry.gd), a little picture of dyed cloth
-## patches on it with a button of the wrong colour on every one, and a
+## edge (`"bleed": true` in ui/registry.gd), a little picture of cloth
+## patches on it, each the colour of the button it wants and joined with its
+## neighbours of that colour, with a button of the wrong colour on every one, and a
 ## wooden tin at the foot. A move is two taps: the first picks a button and
 ## every one of its colour touching it, and they lift and draw together;
 ## the second says where they go -- a bare patch of their colour, where
@@ -26,9 +27,11 @@ extends "res://core/puzzle_base.gd"
 ##
 ## How it moves. The flat boards' vocabulary (core/motion.gd,
 ## docs/art/flat-motion.md) read as curves. This board's own: a run leaving
-## one button after another, each in an arc; the cross of thread as one
-## lands; a whole colour hopping outward from its last button; the tin's new
-## place.
+## one button after another, each in an arc; a button settling into its
+## socket as it lands (the drop's back ease, from a hair above) and, on its
+## own colour, the square filling out from under it (the user, 2026-10-14:
+## "the button slide in the slot and make it full when color is right"); a
+## whole colour hopping outward from its last button; the tin's new place.
 
 const State = preload("res://puzzles/buttons_state.gd")
 const Pal = preload("res://core/palette.gd")
@@ -61,10 +64,12 @@ const TIN_STEP := 96.0
 const TIN_PAD := 18.0
 const CELL_MAX := 84.0
 ## A button in the tin, as a share of a place: the size it had there before
-## the cloth's buttons were made smaller (0.86 of the old 0.8 across).
-const TIN_FIT := 1.0
-## The tin's ring, which is cut with the tin's buttons, kept at its own size.
-const TIN_RING := 0.69
+## the cloth's buttons were made smaller, twice (0.86 of the old 0.8 across:
+## 0.335 / Art.RIM).
+const TIN_FIT := 1.196
+## The tin's ring, which is cut with the tin's buttons, kept at its own size
+## (0.69 / TIN_FIT).
+const TIN_RING := 0.577
 ## The zoom button's close: a square about this big on the screen (and
 ## CELL_MAX at the closest a pinch goes).
 const NEAR_PX := 60.0
@@ -96,6 +101,13 @@ const PICK_CAP := 0.5
 const FLY_TIME := 0.3
 const FLY_ARC := 0.55
 const FLY_GROW := 0.18
+## A flight to a patch ends this much of a square above its socket, still
+## at HELD_SCALE, and the button settles in from there: the drop's back
+## ease down and the release's back to size over RELEASE_TIME, so it sinks
+## a hair past the socket and comes back. On its own colour the square
+## then fills out from under it, from the button's width to the whole
+## square, with the sine over LIFT_TIME.
+const SETTLE_DROP := 0.1
 ## A button out of the tin leaves once its patch is bare.
 const TIN_LAG := 0.16
 const WHOLE_STEP := 0.03
@@ -653,7 +665,8 @@ func _cell_under(at: Vector2) -> int:
 func _field_px() -> Rect2:
 	return Rect2(_grid, Vector2(state.w, state.h) * _cell)
 
-## The stitched border and a dyed patch a square.
+## The stitched border and a patch a square, each in its button's colour
+## with a socket: one mesh, and the patches of one colour join in it.
 func _build_still() -> ArrayMesh:
 	var b := Face.Builder.new()
 	var field := _field_px().grow(BORDER * 0.6)
@@ -840,6 +853,10 @@ func _build_live(now: float) -> bool:
 		var lift := 0.0
 		var home: bool = c == state.slot[i]
 		var moving := false
+		# a landed button settles into its socket, loose; on its own colour
+		# the square then fills out from under it (`fill`, 0 to 1)
+		var settling := false
+		var fill := 1.0
 		if not Motion.reduce:
 			var p: Vector2i = state.xy(i)
 			var e := now - _opened - Motion.ENTER_DELAY - Motion.stagger(p.x + p.y, Motion.ENTER_STAGGER)
@@ -850,9 +867,14 @@ func _build_live(now: float) -> bool:
 				moving = true
 				sc = Motion.pop_in_scale(e)
 			var landed := now - _arrive[i]
-			if landed < Motion.BUMP_TIME:
+			if landed < Motion.RELEASE_TIME:
 				moving = true
-				sc *= Motion.bump_scale(landed, 0.2 if home else 0.1)
+				settling = true
+				sc *= lerpf(HELD_SCALE, 1.0, Motion.back_out(landed / Motion.RELEASE_TIME))
+				lift += Motion.drop_in_lift(landed, SETTLE_DROP * _cell, Motion.RELEASE_TIME)
+			elif home and landed < Motion.RELEASE_TIME + Motion.LIFT_TIME:
+				moving = true
+				fill = sin((landed - Motion.RELEASE_TIME) / Motion.LIFT_TIME * PI * 0.5)
 			var hop := now - _hop_at[i]
 			if hop >= 0.0 and hop < Motion.SOLVE_TIME:
 				moving = true
@@ -867,9 +889,14 @@ func _build_live(now: float) -> bool:
 			busy = true
 		else:
 			still += 1
-		if not home or lift > 0.5:
+		var loose := not home or settling or fill < 1.0
+		if loose or lift > 0.5:
 			rest.append(u.shade, Transform2D(0.0, sc, 0.0, at))
-		rest.append(u.sewn[c] if home else u.loose[c], Transform2D(0.0, sc, 0.0, at - Vector2(0.0, lift)))
+		if loose:
+			rest.append(u.loose[c], Transform2D(0.0, sc, 0.0, at - Vector2(0.0, lift)))
+		if home and not settling:
+			var k := lerpf(Art.RIM * 2.0 + 0.04, 1.0, fill)
+			rest.append(u.sewn[c], Transform2D(0.0, sc * k, 0.0, at - Vector2(0.0, lift)))
 	_live_mesh = rest.mesh()
 	# all still: back to the blocks (the pick stays out while it is held)
 	if not busy and still > 0:
@@ -946,6 +973,9 @@ func _draw_over() -> void:
 		var at := from.lerp(to, s)
 		var grow := lerpf(k_from, k_to, s) * (1.0 + arc * FLY_GROW)
 		var lift := arc * FLY_ARC * _cell * lerpf(zk if bool(f.fc) else 1.0, zk if bool(f.tc) else 1.0, s)
+		# a flight to a patch ends a hair above the socket, to settle in
+		if bool(f.tc):
+			lift += SETTLE_DROP * _cell * zk * s
 		top.append(u.shade, Transform2D(0.0, Vector2(grow, grow), 0.0, at + Vector2(0.0, lift * 0.2)))
 		top.append(u.loose[int(f.c)], Transform2D(0.0, Vector2(grow, grow), 0.0, at - Vector2(0.0, lift)))
 	_flights = keep
@@ -1396,7 +1426,8 @@ func _play(res: Dictionary, at_cell: int, starts: Dictionary) -> void:
 		var at := now + (0.0 if Motion.reduce else order * step)
 		# `fc` and `tc`: the end is on the cloth (in the picture's own
 		# measure, which the zoom moves) and not on the tin (the screen's)
-		var f := {"c": int(m[3]), "time": fly, "at": at, "k0": HELD_SCALE, "k1": 1.0, "fc": true, "tc": true}
+		# a patch landing keeps HELD_SCALE to the end: the settle takes it down
+		var f := {"c": int(m[3]), "time": fly, "at": at, "k0": HELD_SCALE, "k1": HELD_SCALE, "fc": true, "tc": true}
 		match kind:
 			State.TO_PATCH:
 				f.from = starts.get(int(m[1]), cell_centre(int(m[1])))
@@ -1426,7 +1457,7 @@ func _play(res: Dictionary, at_cell: int, starts: Dictionary) -> void:
 		order += 1
 	_last_land = last
 	_bump_pill()
-	_busy_for(last - now + Motion.BUMP_TIME + 0.1)
+	_busy_for(last - now + Motion.RELEASE_TIME + Motion.LIFT_TIME + 0.1)
 	# the streak: moves in a row that each sewed something
 	if sewn > 0:
 		_streak += 1

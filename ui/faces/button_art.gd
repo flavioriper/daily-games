@@ -1,42 +1,51 @@
 extends RefCounted
 
-## Button Box's drawings: the linen the table is laid with, a dyed patch of
-## cloth, the button that sits on it (loose, or sewn on with a cross of
-## thread), and the tin. Builder shapes and not Controls, as Quilt's cloth
-## and Lattice's tiles are: the board bakes its buttons into meshes (a
-## thousand of them on Insane's 32-square picture), and the menu card and
-## the tutorial draw the same pieces. A big picture's are `button_lite`:
-## plain while a square is under SMALL across (its holes would be a pixel,
-## and its cross of thread has to stay a shape), and with their holes once
-## the picture is seen close -- both a third of the vertices of `button`,
-## whose every disc is feathered and round to three pixels.
+## Button Box's drawings: the linen the table is laid with, a patch of cloth
+## in a button's colour with a socket in it, the button that sits on it
+## (loose, or sewn on with a cross of thread), and the tin. Builder shapes
+## and not Controls, as Quilt's cloth and Lattice's tiles are: the board
+## bakes its buttons into meshes (a thousand of them on Insane's 32-square
+## picture), and the menu card and the tutorial draw the same pieces. A big
+## picture's are `button_lite`: plain while a square is under SMALL across
+## (its holes would be a pixel, and its cross of thread has to stay a
+## shape), and with their holes once the picture is seen close -- both a
+## third of the vertices of `button`, whose every disc is feathered and
+## round to three pixels.
 ##
+## A patch is its whole square in the button's own colour, edge to edge, so
+## that the patches of one colour join into one flat area and the picture
+## reads as the picture from afar (the user, 2026-10-14: "join the same
+## color slots to make it look more like a image ... make sure the slot has
+## the same color of the respective button"; until then a patch was a
+## rounded square a gap from its neighbour, washed 0.42 toward the linen).
 ## A button is coloured by index, so nothing about it is said by a shade of
-## its colour: loose is a round button with a shadow on a patch of another
-## colour, a bare patch is a small washed square with linen round it, and
-## sewn is the whole square in the colour, edge to edge, so the sewn ones
-## run together into the picture (`sewn`; the user, 2026-10-11: "it's hard
-## to see when button is on right place, can we make the button blend to
-## the ground and become just the color?"). The cross of thread `button`
-## and `button_lite` can still draw is no longer asked for.
+## its colour alone: a bare patch has a socket in its middle (`socket`, a
+## ring the button goes into), loose is a round button with a shadow,
+## smaller than its square so the patch shows round it, and sewn is the
+## square filled whole (`sewn`; the user, 2026-10-11: "can we make the
+## button blend to the ground and become just the color?"), the socket gone
+## under it. The cross of thread `button` and `button_lite` can still draw
+## is no longer asked for.
 
 const Pal = preload("res://core/palette.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 
-## Sizes as a share of the cell.
-const PATCH := 0.94
-const PATCH_RADIUS := 0.14
-## The button is two thirds of its square across (0.8 until 2026-10-12; the
-## user: "the buttons are too big, let's make it bit smaller so user can see
-## better the color below it"). RIM stays over `_seat`'s 0.3: the ring is
-## what says bare, and a button must hide it.
-const RIM := 0.335
-const FACE_R := 0.3
-const DISH := 0.2
-const HOLE := 0.038
-const HOLE_AT := 0.071
+## Sizes as a share of the cell. The button is 0.56 of its square across
+## (0.8 until 2026-10-12, two thirds until 2026-10-14; the user, both
+## times: smaller, so the colour under it shows), its face, dish, holes
+## and shadow with it. RIM stays over SOCKET: the socket is what says bare,
+## and a button must hide it.
+const RIM := 0.28
+const FACE_R := 0.25
+const DISH := 0.165
+const HOLE := 0.032
+const HOLE_AT := 0.059
 const RISE := 0.03
+## The socket's outer radius, and the shadow a loose button throws.
+const SOCKET := 0.235
+const SHADOW_R := 0.31
+const SHADOW_DOWN := 0.085
 const LINEN := Color("e9dcc3")
 const LINEN_WARP := Color("dfd0b3")
 const LINEN_WEFT := Color("f1e6d0")
@@ -49,10 +58,6 @@ enum { FULL, PLAIN, CLOSE }
 
 static func colour(named: String) -> Color:
 	return Pal.PG_BEADS.get(named, Pal.LINE)
-
-## The cloth a patch is cut from: the button's colour, washed out.
-static func dyed(col: Color) -> Color:
-	return col.lerp(LINEN, 0.42)
 
 ## The thread a button of `col` is sewn on with: pale, or dark on a pale one.
 static func thread_for(col: Color) -> Color:
@@ -82,26 +87,24 @@ static func stitches(b, rect: Rect2, step: float, colour_: Color) -> void:
 			var q := a.lerp(z, (i + 0.8) / n)
 			b.stroke(PackedVector2Array([p, q]), maxf(2.0, step * 0.16), colour_)
 
-## A patch of dyed cloth centred on `at`. `lite` cuts its corners straight
-## and leaves its edge hard: a thousand of them are one mesh.
+## A patch of cloth centred on `at`: its whole square in `col`, edge to
+## edge (a hair over, as `sewn` is, so neighbours of one colour leave no
+## seam and join into one area), with the socket its button goes into.
+## `lite` cuts the socket in fewer sides: a thousand of them are one mesh.
 static func patch(b, at: Vector2, cell: float, col: Color, lite := false) -> void:
-	var s := cell * PATCH
-	var corner := at - Vector2.ONE * s * 0.5
-	if lite:
-		_raw(b, _cut(at, s * 0.5, cell * PATCH_RADIUS * 0.6), dyed(col).darkened(0.1))
-		_raw(b, _cut(at, s * 0.5 - cell * 0.03, cell * PATCH_RADIUS * 0.5), dyed(col))
-		_seat(b, at, cell, col, 12)
-		return
-	b.fan(Face.Builder.round_rect(corner, Vector2.ONE * s, cell * PATCH_RADIUS), dyed(col).darkened(0.1))
-	b.fan(Face.Builder.round_rect(corner + Vector2.ONE * cell * 0.03, Vector2.ONE * (s - cell * 0.06), cell * PATCH_RADIUS * 0.8), dyed(col))
-	_seat(b, at, cell, col, 20)
+	sewn(b, at, cell, col)
+	socket(b, at, cell, col, 12 if lite else 20)
 
-## The mark a button leaves to be sat on: a ring on the patch, hidden under
+## The socket a button sits in: a ring sunk into the patch, hidden under
 ## any button and seen on a bare one, so that bare and sewn differ by a
-## shape on the palest colours too (white cloth washed out is nearly white).
-static func _seat(b, at: Vector2, cell: float, col: Color, sides: int) -> void:
-	_raw(b, _gon(at, cell * 0.3, sides), dyed(col).darkened(0.16))
-	_raw(b, _gon(at, cell * 0.3 - maxf(1.5, cell * 0.045), sides), dyed(col))
+## shape and not a shade (a white patch's socket is a grey ring). Its floor
+## is set a hair low, so the ring is thicker along the top: a recess, lit
+## from above. Readable at 14 px a square: a ring of 3.3 px, 2 px wide.
+static func socket(b, at: Vector2, cell: float, col: Color, sides: int) -> void:
+	var r := cell * SOCKET
+	var rim := maxf(2.0, cell * 0.06)
+	_raw(b, _gon(at, r, sides), col.darkened(0.34))
+	_raw(b, _gon(at + Vector2(0.0, cell * 0.018), r - rim, sides), col.darkened(0.1))
 
 ## A button sewn on: it has gone into the cloth, and its square is the
 ## colour whole, a hair over the cell so that neighbours leave no seam.
@@ -135,12 +138,6 @@ static func _gon(at: Vector2, r: float, sides: int) -> PackedVector2Array:
 	for i in sides:
 		pts[i] = at + Vector2.from_angle(TAU * i / sides) * r
 	return pts
-
-## A square of half-side `half` about `at` with its corners cut by `c`.
-static func _cut(at: Vector2, half: float, c: float) -> PackedVector2Array:
-	var a := half - c
-	return PackedVector2Array([at + Vector2(-a, -half), at + Vector2(a, -half), at + Vector2(half, -a),
-		at + Vector2(half, a), at + Vector2(a, half), at + Vector2(-a, half), at + Vector2(-half, a), at + Vector2(-half, -a)])
 
 ## A convex outline as a fan with no feather: for what lies inside another
 ## shape, or is small, where the feather is two triangles a side unseen.
@@ -195,9 +192,9 @@ static func units(cell: float, colours: Array, look := FULL) -> Dictionary:
 	var out := {"loose": [], "sewn": []}
 	var b := Face.Builder.new()
 	if look != FULL:
-		_raw(b, _gon(Vector2(0.0, cell * 0.11), cell * 0.36, 12), Color(Pal.TEXT, 0.2))
+		_raw(b, _gon(Vector2(0.0, cell * SHADOW_DOWN), cell * (SHADOW_R - 0.01), 12), Color(Pal.TEXT, 0.2))
 	else:
-		Scenery.soft_disc(b, Vector2(0.0, cell * 0.1), cell * 0.37, cell * 0.12, Color(Pal.TEXT, 0.22))
+		Scenery.soft_disc(b, Vector2(0.0, cell * SHADOW_DOWN), cell * SHADOW_R, cell * 0.1, Color(Pal.TEXT, 0.22))
 	out.shade = b.mesh()
 	b = Face.Builder.new()
 	b.disc(Vector2.ZERO, cell * 0.5, Pal.SUN)

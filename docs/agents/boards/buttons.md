@@ -700,3 +700,88 @@ the later boards have.
   (`ThemedPictures.RULES.side`: 10 to 18 at Easy, up to 40 at Insane), a
   shaded sprite kept at the squares it was drawn at; this board lays the
   side it is handed.
+## Slots in the colour, joined, and a socket (2026-10-14)
+
+The user, with a bead-art app's board beside ours: "colored has a really
+good view of the board, let's use as reference to redesign the board itself
+on button box, we keep the button but make it smaller, join the same color
+slots to make it look more like a image, and show a better empty slot, so
+the button slide in the slot and make it full when color is right, also the
+slots color are not accurate, make sure the slot has the same color of the
+respective button". Until then a patch was a rounded square with a rim and
+a gap to its neighbour, in the button's colour washed 0.42 toward the linen
+(`Art.dyed`), which is why the slots were not the buttons' colour.
+
+- **A patch is its square in the button's exact colour, edge to edge**
+  (`Art.patch` is now `Art.sewn` plus `Art.socket`: the same hair-over
+  square a sewn button is, `Art.colour` with no wash). The patches of one
+  colour join into one flat area with no rim or gap, so the picture reads
+  as the picture from afar, and a sewn square is the same square with the
+  socket gone under it. `Art.dyed`, `PATCH`, `PATCH_RADIUS` and the
+  octagon `_cut` are gone; nothing else used them (the card and the swatch
+  call `patch` with four arguments, as before).
+- **The empty slot is a socket** (`Art.socket`, in place of `_seat`): a ring
+  of `SOCKET` 0.235 of the square, `maxf(2, 0.06 cell)` wide, in the
+  colour darkened 0.34 round a floor darkened 0.1, the floor set 0.018 low
+  so the ring is thicker along the top, a recess lit from above. Bare and
+  sewn still differ by a shape, never a shade alone. `lite` (the far look)
+  cuts it in 12 sides, the near one 20. At 14 px a square (a 56-square
+  themed Insane) it is a ring of 3.3 px, 2 wide: arithmetic, not seen.
+- **The button is 0.56 of its square across** (`Art.RIM` 0.28, was 0.335;
+  `FACE_R` 0.25, `DISH` 0.165, `HOLE` 0.032, `HOLE_AT` 0.059 with it), so a
+  loose button of the wrong colour has the slot's colour all round it. RIM
+  stays over SOCKET: a button hides the socket under it. The shadow is
+  `SHADOW_R` 0.31 and `SHADOW_DOWN` 0.085 in both looks. The tin's buttons
+  keep their size: `TIN_FIT` 1.196 (0.335 / RIM), `TIN_RING` 0.577 (0.69 /
+  TIN_FIT).
+- **A landed button settles into its socket, and on its own colour the
+  square fills out from under it.** A flight to a patch now ends
+  `SETTLE_DROP` (0.1 of a square) above the socket and still at
+  `HELD_SCALE` (`_play`'s `k1`; `_draw_over` adds the hair); then
+  `_build_live` draws it loose, sinking with `Motion.drop_in_lift` and
+  coming down to size with the release's back ease over
+  `Motion.RELEASE_TIME`, so it dips a hair past the socket and comes back.
+  If it is home, the sewn square is then drawn over it, from the button's
+  width (`2 RIM + 0.04`) to the whole square with the sine over
+  `Motion.LIFT_TIME`; a square that only grows never overlaps its
+  neighbours, which are flush now. The landing bump is gone from the cloth
+  (the tin's stays). Reduce-motion: sewn at once, as before. The only new
+  constant is `SETTLE_DROP`.
+- **Draw calls unchanged in kind**: the still mesh is still one mesh (the
+  patches join inside it), the blocks one each, the live buttons one.
+  `opengl3_angle`, 810x1440, two windows: `-- d=3 big` (a 32-square cabin,
+  110 sewn by the harness's own moves before the first shot) 143 at rest
+  with the harness's rings and streak bubble still up, 156 in the frame of
+  twelve moves at once, 98-121 close, to the tin, panned and whole again;
+  `-- d=1 play` (a 16-square toadstool) 94 at the peak. One reading of
+  each mode, not the second of two.
+- **Seen** (those shots): Insane whole at 28.7 px a square -- the cabin
+  reads as a picture, the purple, blue, brown and white regions flat and
+  joined, the empty sockets as dark rings on the white and the purple, the
+  plain buttons as small discs with the slot's colour round them; close at
+  84 px -- the whole button with its holes, the sockets on blue and white
+  as rings, the sewn squares flat and joined; Medium at 50 px -- the
+  toadstool's outline, cap, spots and stem as flat regions, the sockets on
+  the dark outline and the white stem, a pick lifted, twelve sewn as flat
+  squares. The settle and the fill were not caught by a shot (the play
+  mode's frames fall in the flight, not the landing): `_shot_buttons.gd`'s
+  `play` now shoots once more 0.45 s after the place, for the next run. A
+  throwaway headless check called `_build_live` at 0.05, 0.2, 0.3, 0.36
+  and 0.5 s after a landing on a home square and a wrong one: loose and
+  shadow through the settle, the sewn square added through the fill, both
+  back to their blocks after.
+- **Checked**: `tests/_probe_buttons_board.gd -- days=4`, 26 days, the zoom
+  and the aim, 0 failures; the suite 249,565 passed, 0 failed.
+- **Not seen or owed**: the settle and the fill in motion; the socket at 14
+  px (no bank picture is under 28.7 px a square; only a themed 56-square
+  day gets there); the menu card at the new sizes (`ui/menu/cards/
+  buttons.gd` and `card_art.gd`'s swatch draw the same `patch` and parse;
+  not shot); the socket on the darkest colours (`dark` 4a3226's ring is
+  the colour darkened 0.34: readable in the Medium shot's outline, faint);
+  the tutorial; a phone.
+- **Mine, not the user's**: a ring as the socket rather than a dimple or an
+  inset square; 0.56 as "smaller"; the sizes of the socket and its tones;
+  the settle over RELEASE_TIME and the fill over LIFT_TIME; the tin's
+  buttons kept at their size; no bevel between squares of different
+  colours (the reference has a light bevel a bead; ours are flat, as the
+  sewn squares already were).

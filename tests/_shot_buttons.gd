@@ -214,6 +214,8 @@ func _script() -> void:
 			_at(2.3, _shot)
 			_at(2.4, _place)
 			_at(2.55, _shot)
+			# the first of the run settling into its socket, the rest in the air
+			_at(2.85, _shot)
 			_at(3.2, _pick)
 			_at(3.7, _shot)
 			_at(3.8, _place)
