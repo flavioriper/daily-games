@@ -75,9 +75,14 @@ const AMOUNT_TOP := 2.5
 const VISC := 0.6
 const VISC_CALM := 2.5
 const VISC_SOFT := 0.6
-const VISC_REST := 2.0
+const VISC_REST := 8.0
+## Seconds the dye goes on riding the flow after the button is let go
+## (e^-t/CARRY): the jet's last push, and then the dye stays where it is
+## whatever the flow does, since a flow at rest is never quite still and
+## its slow drift smeared a blob let go over its chunk (2026-10-14).
+const CARRY := 0.15
 const EPS := 7.0
-const SETTLE := 0.25
+const SETTLE := 0.14
 const SETTLE_R := 3.0
 const FAR := 0.4
 const FAR_R := 14.0
@@ -105,6 +110,7 @@ var _mask_ids := PackedByteArray()
 var _mask_fresh := false
 var _clear_for := 0
 var _time := 0.0
+var _held_at := -10.0
 var _running := false
 var _last_dye: SubViewport
 var _judge: SubViewport
@@ -236,6 +242,8 @@ func tick(delta: float) -> void:
 	var dt := minf(delta, 1.0 / 30.0)
 	_time += dt
 	var held := squeezing and tip_cell >= 0
+	if held:
+		_held_at = _time
 	var visc := VISC_REST
 	if held:
 		visc = VISC_CALM if calm else (VISC_SOFT if soft else VISC)
@@ -255,12 +263,14 @@ func tick(delta: float) -> void:
 	vort.set_shader_parameter("dt", dt)
 	vort.set_shader_parameter("eps", EPS if held and not calm else 0.0)
 	_mats["Pressure0"].set_shader_parameter("clearing", clearing)
+
 	var dye: ShaderMaterial = _mats["Dye"]
 	dye.set_shader_parameter("dt", dt)
 	dye.set_shader_parameter("tip", tip)
 	dye.set_shader_parameter("tip_cell", tip_cell)
 	dye.set_shader_parameter("rate", rate_now())
 	dye.set_shader_parameter("squeezing", 1.0 if squeezing else 0.0)
+	dye.set_shader_parameter("carry", 1.0 if held else exp(-(_time - _held_at) / CARRY))
 	dye.set_shader_parameter("draining", 1.0 if draining and not squeezing else 0.0)
 	dye.set_shader_parameter("pigment", pigment)
 	dye.set_shader_parameter("fill_cell", fill_cell)

@@ -2,7 +2,7 @@ extends SceneTree
 
 ## Shots of Gumdrop, the daily board, through the real menu and the flat
 ## host. Windowed, one at a time:
-##   godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_gumdrop.gd -- <outdir> [0|1|2|3] [reduce] [en|pt|es] [tutor] [pour]
+##   godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_gumdrop.gd -- <outdir> [0|1|2|3] [reduce] [en|pt|es] [tutor] [pour|dab]
 ## Opens the card at the band (Easy when none is named), then presses with
 ## real touches through the viewport: a pot, a tap on the tray, the squeeze
 ## button held, a drag over the tray, and that first mould served nearly
@@ -30,6 +30,7 @@ var _out := "/tmp"
 var _band := 0
 var _tutor := false
 var _pour := false
+var _dab := false
 var _page := 0
 var _turns := 0
 var _gold := 0
@@ -49,6 +50,9 @@ func _initialize() -> void:
 			_tutor = true
 		elif a == "pour":
 			_pour = true
+		elif a == "dab":
+			_pour = true
+			_dab = true
 		elif a in ["0", "1", "2", "3"]:
 			_band = int(a)
 		elif a in ["en", "pt", "es"]:
@@ -146,6 +150,10 @@ func _bot() -> void:
 
 const POUR_HELD := [0.5, 1.5, 2.5, 4.0]
 const POUR_FREE := [0.1, 0.5, 2.0]
+## `dab`: the button held this long only, and the chunk read this long
+## after the release, to see whether a short pour stays the blob it is.
+const DAB_HELD := [0.3, 0.7]
+const DAB_FREE := [0.1, 0.5, 1.0, 2.0, 4.0]
 const DRAIN_HELD := [0.5, 1.5, 3.0]
 var _marks := 0
 
@@ -173,6 +181,23 @@ func _spread(name: String) -> void:
 		if c > 0.03:
 			wet += 1
 	var level: Vector3 = fluid.level(cell)
+	# the flow: mean and top speed over the sim grid, texels a second
+	var vimg: Image = fluid.get_node("Gradient").get_texture().get_image()
+	var vs: int = fluid.SIM
+	var vsum := 0.0
+	var vtop := 0.0
+	var vn := 0
+	for y in vs:
+		for x in vs:
+			var px := vimg.get_pixel(x, y)
+			var vx := ((px.r * 255.0 + px.g) / 255.0 - 0.5) * 1200.0
+			var vy := ((px.b * 255.0 + px.a) / 255.0 - 0.5) * 1200.0
+			var sp := sqrt(vx * vx + vy * vy)
+			if sp > 0.5:
+				vsum += sp
+				vn += 1
+				vtop = maxf(vtop, sp)
+	print("flow %s: moving texels %d, mean speed %.1f, top %.1f" % [name, vn, vsum / maxf(1.0, vn), vtop])
 	print("pour %s: cell %d of %d texels, tinted %.2f, mean %.3f, top %.3f; meter %.2f (%.2f %.2f %.2f) shown %d%% tank %.1f wet %s" % [name, cell, all, wet / maxf(1.0, all), sum / maxf(1.0, all), top,
 		(level.x + level.y + level.z) / Sim.C_FULL, level.x, level.y, level.z, int(round((_t_._level.x + _t_._level.y + _t_._level.z) / Sim.C_FULL * 100.0)), _t_.sim.tank[cell], str(_t_.sim.wet())])
 
@@ -218,9 +243,14 @@ func _process(delta: float) -> bool:
 				# a real touch on the second pot
 				_tap(_t_._pot_at[1] + Vector2(0, -50))
 				print("touch picked the second pot: ", _t_.sim.picked == 1)
-				# a tap on the tray puts the tip there
-				_tap(_t_.px(_t_.sim.centre_of(1)))
-				print("tap put the tip in cell 1: ", _t_.sim.reg[Sim.square(_t_.sim.tip)] == 1)
+				# a tap on the tray puts the tip there (`dab`: in the biggest chunk)
+				var into := 1
+				if _dab:
+					for c in _t_.sim.count.size():
+						if _t_.sim.count[c] > _t_.sim.count[into]:
+							into = c
+				_tap(_t_.px(_t_.sim.centre_of(into)))
+				print("tap put the tip in cell %d: %s" % [into, str(_t_.sim.reg[Sim.square(_t_.sim.tip)] == into)])
 				_at = _t
 				_step = 2
 		2:
@@ -328,19 +358,23 @@ func _process(delta: float) -> bool:
 			# `pour`: the button held four seconds and let go, the tip's chunk
 			# read at each still, so a pour that only spreads at the release
 			# shows as a jump between `held_4.0` and `free_0.5`
-			if _marks < POUR_HELD.size() and _t > _at + POUR_HELD[_marks]:
-				_spread("held_%.1f" % POUR_HELD[_marks])
+			var held: Array = DAB_HELD if _dab else POUR_HELD
+			if _marks < held.size() and _t > _at + held[_marks]:
+				_spread("held_%.1f" % held[_marks])
 				_marks += 1
-			elif _marks == POUR_HELD.size():
+			elif _marks == held.size():
 				_touch(false, _t_._squeeze_at)
 				_at = _t
 				_marks = 0
 				_step = 41
 		41:
-			if _marks < POUR_FREE.size() and _t > _at + POUR_FREE[_marks]:
-				_spread("free_%.1f" % POUR_FREE[_marks])
+			var free: Array = DAB_FREE if _dab else POUR_FREE
+			if _marks < free.size() and _t > _at + free[_marks]:
+				_spread("free_%.1f" % free[_marks])
 				_marks += 1
-			elif _marks == POUR_FREE.size():
+			elif _dab and _marks == free.size():
+				return true
+			elif _marks == free.size():
 				# the grey button held: the chunk drawn back out
 				_touch(true, _t_._drain_at)
 				print("touch drains: ", _t_.sim.draining)

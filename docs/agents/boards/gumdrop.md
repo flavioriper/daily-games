@@ -422,3 +422,49 @@ autonomous". Built unattended on that; nothing of it seen by the user.
   rather than at the tip or by the card; the pill's corner on Insane; the
   grey of the drain button. Owed: a phone (the meter pass's 65k fetches
   and its tiny readback are untimed there), pt and es, the sounds heard (the loop at 0.78 was not).
+
+### A pour let go stays where it is (2026-10-14, later)
+
+The user, with the day in hand: "the pour pace is right, but there is a
+problem yet, for example when I click to pour and release, the liquid
+should not change but keep filling everything as it spread. Right now when
+player release, the liquid auto fill everything." Read with
+`tests/_shot_gumdrop.gd -- <out> 1 dab` (new: the button held 0.7 s over
+the biggest chunk, the mushroom's cap, and the chunk read 0.1 to 4 s after
+the release): the cap was 49% tinted at the release and 100% four seconds
+later, one flat shade. Three things spread it, found one at a time:
+
+- **The far settle pulled clear texels up** (`FAR` 0.4 a frame, read 14
+  texels off): any texel of the chunk blended with eight far ones, so the
+  clear half filled from the tinted half in a second. Now a texel under
+  `front` (0.03 of the texture, just under the blob's visible edge) is
+  clear to both settles: it neither takes nor gives, and a far tap that is
+  clear counts as the texel's own. The blob's body still levels, shade and
+  amount, and two flavours in it still become one (Hard by the bot 99,
+  89, 87, 82 in 5 serves, the mixed chunk among them). Tried and dropped:
+  blending the shade only and not the amount (the blob held, but a chunk
+  poured unevenly stayed uneven and the bot's Hard fell to 84, 79, 73, 71
+  in 9 serves).
+- **The near settle leaked into clear texels** (`SETTLE` 0.25, 3 texels
+  off, in eight bits): gated the same way, and `SETTLE` 0.14.
+- **The dye rode a flow that never rests**: semi-Lagrangian advection
+  traced back a fraction of a texel reads a blend of neighbours, and the
+  flow at rest is slow but never nothing, so a blob let go smeared over
+  its chunk in a few seconds whatever `VISC_REST` was (2 or 8: the same
+  read). Now the dye rides the flow only while its chunk is poured into
+  and for a moment after (`carry`, e^-t/`Fluid.CARRY` 0.15 s after the
+  release), and a texel the flow moves under `still` 0.2 texel a frame
+  keeps its own dye. `VISC_REST` is 8 (the flow dies in a quarter second,
+  which nothing sees now). Tried and dropped: decaying the pressure's warm
+  start with the flow (the projection fell apart: the dye drained to a
+  sixth and the flow grew), and taking the pressure off only while poured
+  (the flow still read a few texels a second, which turned out to be the
+  harness reading a three-byte image as four; the readout now uses
+  `get_pixel`).
+
+Read after: the cap 49% tinted at the release, 58% half a second later
+(the jet's last push) and 58% at 4 s, the mean amount the same throughout,
+the top amount falling from 0.57 to 0.28 as the body levels; the jet's
+fingers stay as the blob's outline. The pour while held is as it was
+(`pour` reads the same). Unseen by the user on this; the knobs are
+`front`, `still`, `CARRY`.

@@ -51,6 +51,18 @@ uniform float settle = 0.14;
 uniform float settle_r = 3.0;
 uniform float far = 0.4;
 uniform float far_r = 14.0;
+// A texel holding less than this (over AMOUNT_TOP) is clear to the far
+// settle: it neither takes from the far taps nor gives to them, so a
+// pour let go stays the blob it is and only its tinted part levels (the
+// user, 2026-10-14: "when player release, the liquid auto fill
+// everything"). Just under the blob's visible edge (gumdrop_syrup_2d's
+// EDGE_HI).
+uniform float front = 0.03;
+
+uniform float still = 0.2;
+// How much the dye rides the flow: all while the button is held over a
+// chunk, fading in a moment once it is let go (the screen's CARRY).
+uniform float carry = 1.0;
 
 // One texel of the dye, or the texel's own when it lies in another cell
 // or a wall: a wall is black, and reading it through the sampler's
@@ -88,19 +100,44 @@ void fragment() {
 		vec3 own = texelFetch(dye, here, 0).rgb;
 		vec2 v = vel_at(vel, UV * vec2(n), n);
 		vec2 back = UV - v * dt / vec2(n);
-		vec3 d = dye_at(back, own, cell);
-		int o = int(settle_r);
-		vec3 about = (dye_texel(here + ivec2(o, 0), own, cell, size) + dye_texel(here - ivec2(o, 0), own, cell, size)
-			+ dye_texel(here + ivec2(0, o), own, cell, size) + dye_texel(here - ivec2(0, o), own, cell, size)) * 0.25;
-		d = mix(d, about, settle);
-		if (squeezing < 0.5 || tip_cell != cell) {
+		// The dye rides the flow while the chunk is poured into and for a
+		// moment after (`carry`), and then stays where it is: a flow at
+		// rest is slow but never nothing (the pressure's warm start keeps
+		// it drifting at a few texels a second), and traced back a fraction
+		// of a texel every frame a blob let go smeared over its whole chunk
+		// in a few seconds. A texel the flow barely moves (under `still`
+		// texels a frame) keeps its own dye for the same reason.
+		float moved = length(v * dt) * float(size.x) / float(n.x);
+		float ride = (squeezing > 0.5 && tip_cell == cell) ? 1.0 : carry;
+		vec3 d = mix(own, dye_at(back, own, cell), ride * smoothstep(still, still * 2.0, moved));
+		// both settles work inside the blob only: a clear texel (under
+		// `front`) neither takes nor gives, so the blob spreads by the flow
+		// and the pour alone and keeps its shape once the button is let go
+		bool in_blob = d.r + d.g + d.b >= front;
+		if (in_blob) {
+			int o = int(settle_r);
+			ivec2 near[4] = {ivec2(o, 0), ivec2(-o, 0), ivec2(0, o), ivec2(0, -o)};
+			vec3 about = vec3(0.0);
+			for (int i = 0; i < 4; i++) {
+				vec3 t = dye_texel(here + near[i], own, cell, size);
+				about += (t.r + t.g + t.b < front) ? d : t;
+			}
+			d = mix(d, about * 0.25, settle);
+		}
+		if ((squeezing < 0.5 || tip_cell != cell) && in_blob) {
 			int a = int(far_r);
 			int g = int(far_r * 0.7071 + 0.5);
-			vec3 wide = (dye_texel(here + ivec2(a, 0), own, cell, size) + dye_texel(here - ivec2(a, 0), own, cell, size)
-				+ dye_texel(here + ivec2(0, a), own, cell, size) + dye_texel(here - ivec2(0, a), own, cell, size)
-				+ dye_texel(here + ivec2(g, g), own, cell, size) + dye_texel(here - ivec2(g, g), own, cell, size)
-				+ dye_texel(here + ivec2(g, -g), own, cell, size) + dye_texel(here - ivec2(g, -g), own, cell, size)) * 0.125;
-			d = mix(d, wide, far);
+			ivec2 taps[8] = {ivec2(a, 0), ivec2(-a, 0), ivec2(0, a), ivec2(0, -a), ivec2(g, g), ivec2(-g, -g), ivec2(g, -g), ivec2(-g, g)};
+			vec3 wide = vec3(0.0);
+			for (int i = 0; i < 8; i++) {
+				vec3 t = dye_texel(here + taps[i], own, cell, size);
+				// a clear tap is no part of the blob: this texel's own instead
+				wide += (t.r + t.g + t.b < front) ? d : t;
+			}
+			// levelled, shade and amount, inside the blob only: its clear
+			// surroundings take nothing, so the blob keeps its outline while
+			// its body evens out and two flavours in it become one
+			d = mix(d, wide * 0.125, far);
 		}
 		if (squeezing > 0.5 && tip_cell == cell) {
 			vec2 off = UV - tip;
