@@ -1,4 +1,5 @@
 import {ask, available} from "./generate";
+import type {Theme} from "./theme";
 import bank from "./pearl_bank.json";
 
 /**
@@ -316,8 +317,9 @@ const KINDS_SCHEMA = {
           en: {type: "string"},
           pt: {type: "string"},
           es: {type: "string"},
+          theme: {type: "boolean"},
         },
-        required: ["level", "en", "pt", "es"],
+        required: ["level", "en", "pt", "es", "theme"],
         additionalProperties: false,
       },
     },
@@ -366,6 +368,8 @@ interface Kind {
   en: string;
   pt: string;
   es: string;
+  /** One of the day's few on its theme. */
+  theme?: boolean;
 }
 
 function validKind(k: unknown): k is Kind {
@@ -376,9 +380,25 @@ function validKind(k: unknown): k is Kind {
     (x[l] as string).length <= ASK_MAX);
 }
 
+/** How many kinds of each level are on the day's theme, when it has one
+ *  (docs/superpowers/specs/2026-10-13-daily-theme-design.md): a band asks
+ *  one level, so Easy, Medium and Hard get up to two each. Three in all,
+ *  spread over the levels, kept two on 2026-10-14's first try: a level
+ *  that lost its one to the review had none. One Breath takes the kinds
+ *  left over, so it seldom has one. */
+const THEMED = 2;
+
+function themed(theme: Theme | null): string {
+  if (theme === null) return "Mark every kind \"theme\": false.";
+  return `The day has a theme, ${theme.name.en}: ${theme.scene} Its things: ${theme.objects.map((o) => o.name).join(", ")}. ` +
+    `Exactly ${THEMED} of the kinds of each level belong to it, marked "theme": true: a set the theme brings ` +
+    "to mind that keeps every rule above (for a picnic: a fruit, a kind of sandwich, a flower of the meadow), never " +
+    "a loose \"something at a picnic\". The rest are marked \"theme\": false.";
+}
+
 /** Kinds for the levels asked, `want[level]` of each and no fewer when the
  *  model obliges; none that `taken` (English asks) already has. */
-async function proposeKinds(what: string, want: number[], taken: string[]): Promise<Kind[][]> {
+async function proposeKinds(what: string, want: number[], taken: string[], theme: Theme | null = null): Promise<Kind[][]> {
   const stale = taken.length === 0 ? "" :
     `\n\nAlready asked, so not to be proposed again nor anything close to it:\n${taken.map((t) => `- ${t}`).join("\n")}`;
   const asks = want.map((n, l) => n > 0 ? `${n} of level ${l}` : "").filter((s) => s !== "").join(", ");
@@ -386,7 +406,7 @@ async function proposeKinds(what: string, want: number[], taken: string[]): Prom
     system: KINDS_WRITER,
     prompt: `Propose the kinds for ${what}: ${asks} -- exactly that many and no more, a short list. ` +
       "Spread them over the wide world -- nature, food, geography, the arts, science, sports, " +
-      `everyday life, history -- with no two alike.${stale}`,
+      `everyday life, history -- with no two alike. ${themed(theme)}${stale}`,
     schema: KINDS_SCHEMA,
     role: "write" as const,
   };
@@ -657,9 +677,11 @@ async function pooled<T>(jobs: (() => Promise<T | null>)[]): Promise<(T | null)[
  * not be proposed at all.
  */
 async function writePrompts(what: string, want: number[], taken: string[],
-  idOf: (level: number, n: number) => string): Promise<Prompt[][]> {
+  idOf: (level: number, n: number) => string, theme: Theme | null = null): Promise<Prompt[][]> {
   const spare = want.map((n) => n > 0 ? n + Math.max(2, Math.ceil(n / 3)) : 0);
-  const kinds = await proposeKinds(what, spare, taken);
+  const kinds = await proposeKinds(what, spare, taken, theme);
+  // The themed kinds first in their level, so the day keeps them.
+  if (theme !== null) for (const l of kinds) l.sort((a, b) => Number(b.theme === true) - Number(a.theme === true));
   const out: Prompt[][] = [[], [], []];
   const used = [0, 0, 0];
   for (let round = 0; round < 2; round++) {
@@ -668,7 +690,9 @@ async function writePrompts(what: string, want: number[], taken: string[],
     for (let l = 0; l < 3; l++) {
       const short = want[l] - out[l].length;
       for (const k of kinds[l].slice(used[l], used[l] + short)) {
-        const id = idOf(l, used[l]++);
+        // A themed prompt's id says so (a "t" at its end): the ids are
+        // opaque to the phone, and the dashboard counts them.
+        const id = idOf(l, used[l]++) + (theme !== null && k.theme === true ? "t" : "");
         jobs.push(() => writePrompt(id, k));
         levels.push(l);
       }
@@ -708,11 +732,13 @@ function slotLevels(): number[][] {
 }
 
 /**
- * The day to publish. `recent` is what the last days asked (asked()). Never
- * throws: whatever goes wrong with the model, the bank answers -- for the
- * prompt that failed, and for the whole day when there is no model at all.
+ * The day to publish. `recent` is what the last days asked (asked()), and
+ * `theme` the day's (theme.ts), when it has one: two or three of its
+ * prompts are on it. Never throws: whatever goes wrong with the model, the
+ * bank answers -- for the prompt that failed, and for the whole day when
+ * there is no model at all.
  */
-export async function makeDay(day: number, recent: string[] = []): Promise<Day> {
+export async function makeDay(day: number, recent: string[] = [], theme: Theme | null = null): Promise<Day> {
   const reserve = bankDay(day);
   if (!available()) return {v: 1, source: "bank", bands: reserve};
   const slots = slotLevels();
@@ -722,7 +748,7 @@ export async function makeDay(day: number, recent: string[] = []): Promise<Day> 
   try {
     // The bank's day is told too: it fills what the model loses.
     written = await writePrompts(`day ${day}`, want, [...recent, ...reserve.flat().map((p) => p.en.ask)],
-      (l, n) => `d${day}l${l}k${n}`);
+      (l, n) => `d${day}l${l}k${n}`, theme);
   } catch (e) {
     console.error(`pearl: day ${day} has no kinds, the bank's day stands`, e);
     return {v: 1, source: "bank", bands: reserve};

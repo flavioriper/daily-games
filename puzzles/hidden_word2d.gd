@@ -613,7 +613,9 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	var banked := ""
 	if difficulty >= 3:
 		banked = String(InsaneBank.pick(puzzle_id(), bank_step).get("answer", ""))
-	state.setup(rng, difficulty, banked)
+	# Easy's daily takes the day's theme's word when this phone holds one.
+	var themed: Array = ThemedPictures.words(daily_key, puzzle_id()) if difficulty == 0 and bank_step == 0 else []
+	state.setup(rng, difficulty, banked, themed)
 	state.seen = 0
 	_gen += 1
 	if _tray != null:

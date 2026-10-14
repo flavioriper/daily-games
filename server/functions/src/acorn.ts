@@ -1,4 +1,5 @@
 import {ask, available} from "./generate";
+import type {Theme} from "./theme";
 import bank from "./acorn_bank.json";
 
 /**
@@ -141,8 +142,9 @@ const QUESTION_SCHEMA = {
     en: WORDING_SCHEMA,
     pt: WORDING_SCHEMA,
     es: WORDING_SCHEMA,
+    theme: {type: "boolean"},
   },
-  required: ["cat", "en", "pt", "es"],
+  required: ["cat", "en", "pt", "es", "theme"],
   additionalProperties: false,
 };
 
@@ -182,6 +184,8 @@ The game shuffles the answers itself.`;
 
 interface Draft {
   cat: string;
+  /** One of the band's few on the day's theme. */
+  theme?: boolean;
   en: Wording;
   pt: Wording;
   es: Wording;
@@ -197,16 +201,30 @@ const BRIEFS = [
     "No question may be easier than the one before it.",
 ];
 
+/** How many of a band's drafts are on the day's theme, when it has one
+ *  (docs/superpowers/specs/2026-10-13-daily-theme-design.md): two or three
+ *  of a band's questions, so a few more than that are asked for. */
+const THEMED = 3;
+
+/** The day's theme as a writer is told it. */
+function themeLine(theme: Theme): string {
+  return `${theme.name.en}: ${theme.scene} Its things: ${theme.objects.map((o) => o.name).join(", ")}.`;
+}
+
 /** A band a request: a cheap model's answer has a low ceiling, and a band
  *  that fails costs the day one band and not four. `taken` is what the last
  *  days asked and what today's earlier bands already have. */
-function writerPrompt(day: number, band: number, taken: string[]): string {
+function writerPrompt(day: number, band: number, taken: string[], theme: Theme | null = null): string {
   const stale = taken.length === 0 ? "" :
     `\n\nAlready asked, so not to be asked again nor anything close to it:\n${taken.map((r) => `- ${r}`).join("\n")}`;
+  const themed = theme === null ? "Mark every question \"theme\": false." :
+    `The day has a theme, ${themeLine(theme)} Exactly ${THEMED} of the questions are about it, marked "theme": true: ` +
+    "a solid fact about something you would find, do or see there, at this band's difficulty and fair to a player " +
+    "anywhere -- the theme gives the subject, never the answer. The rest are marked \"theme\": false.";
   return `Write part of the quiz for day ${day}: ${BRIEFS[band](DRAFTS[band])}
 
 Spread them over these subjects, no more than two on one: ${CATS.join(", ")}. \
-No fact may be asked twice.${stale}`;
+No fact may be asked twice. ${themed}${stale}`;
 }
 
 // --- the reviewer ---
@@ -338,15 +356,17 @@ export function asked(day: unknown): string[] {
 
 /** One band from the model: written, checked against the contract, then
  *  reviewed blind. Throws when the model could not be asked. */
-async function writeBand(day: number, band: number, taken: string[]): Promise<Question[]> {
+async function writeBand(day: number, band: number, taken: string[], theme: Theme | null): Promise<Question[]> {
   const draft = await ask<{questions: Draft[]}>({
     system: WRITER,
-    prompt: writerPrompt(day, band, taken),
+    prompt: writerPrompt(day, band, taken, theme),
     schema: BAND_SCHEMA,
     role: "write",
   });
   const written = (Array.isArray(draft.questions) ? draft.questions : [])
-    .map((d, i) => ({id: `d${day}b${band}q${i}`, cat: d.cat, en: d.en, pt: d.pt, es: d.es}))
+    // A themed question's id says so ("t" for "q"): the ids are opaque to
+    // the phone, and the dashboard counts them.
+    .map((d, i) => ({id: `d${day}b${band}${theme !== null && d.theme === true ? "t" : "q"}${i}`, cat: d.cat, en: d.en, pt: d.pt, es: d.es}))
     .filter(validQuestion);
   if (written.length === 0) return [];
   const review = await ask<{verdicts: Verdict[]}>({
@@ -359,11 +379,13 @@ async function writeBand(day: number, band: number, taken: string[]): Promise<Qu
 }
 
 /**
- * The day to publish. `recent` is what the last days asked (asked()). Never
- * throws: whatever goes wrong with the model, the bank answers -- for the
- * band that failed, and for the whole day when there is no model at all.
+ * The day to publish. `recent` is what the last days asked (asked()), and
+ * `theme` the day's (theme.ts), when it has one: two or three of a band's
+ * questions are on it. Never throws: whatever goes wrong with the model,
+ * the bank answers -- for the band that failed, and for the whole day when
+ * there is no model at all.
  */
-export async function makeDay(day: number, recent: string[] = []): Promise<Day> {
+export async function makeDay(day: number, recent: string[] = [], theme: Theme | null = null): Promise<Day> {
   const reserve = bankDay(day);
   if (!available()) return {v: 1, source: "bank", bands: reserve};
   const tiers = bank.tiers as Question[][];
@@ -376,7 +398,7 @@ export async function makeDay(day: number, recent: string[] = []): Promise<Day> 
     const n = ASKS[b];
     let list: Question[] = [];
     try {
-      list = await writeBand(day, b, taken);
+      list = await writeBand(day, b, taken, theme);
     } catch (e) {
       console.error(`acorn: band ${b} of day ${day} failed, the bank fills it`, e);
     }

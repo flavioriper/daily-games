@@ -96,6 +96,25 @@ static func jellies(date_key: int, band: int) -> Array:
 			out.append(m)
 	return out
 
+## The word boards' themed words for the daily of `date_key`, in the
+## language the boards' lists follow (Locale.current()), the best first, or
+## empty: `hiddenword` is an Array of answers, `wordtrail` a Dictionary of
+## them by length ("3" to "8"). The
+## night picks them out of the boards' own lists (server/functions/src/
+## words.ts); the board keeps only what its list holds as it spells it
+## (HiddenWordState.setup, WordTrailState._write), so a word it would not
+## deal is never dealt.
+static func words(date_key: int, board: String):
+	var empty = {} if board == "wordtrail" else []
+	if date_key == 0 or not Backend.started():
+		return empty
+	var doc: Dictionary = Backend.cached_day(GAME, date_key)
+	var all = doc.get("words")
+	if int(doc.get("v", 0)) != 1 or not all is Dictionary or not all.get(board) is Dictionary:
+		return empty
+	var got = all[board].get(Locale.current())
+	return got if typeof(got) == typeof(empty) else empty
+
 ## Whether `rows` is a picture the band of side `size` may deal: a square
 ## of a side within the band's range, in the bank's letters, keeping the
 ## rules above.

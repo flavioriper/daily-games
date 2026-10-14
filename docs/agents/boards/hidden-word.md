@@ -129,3 +129,7 @@ vertically so the crown stays under the grid.
   hiddenword` passes.
 - Decided for the user, unconfirmed: the grid not widened; the toast over
   the first row (it touches Hint). Owed: a phone, the lost day's look.
+- **A themed day's Easy word** (2026-10-14, the daily theme's stage 3,
+  `docs/agents/days-dashboard.md`): Easy's daily takes the first of
+  `ThemedPictures.words(daily_key, "hiddenword")` its answer list holds as
+  spelt, any band of the list; Medium up, New and Snail Mail as before.

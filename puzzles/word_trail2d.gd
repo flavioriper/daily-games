@@ -596,7 +596,8 @@ func _ready() -> void:
 	solved.connect(_on_solved)
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
-	_state.build(rng, difficulty)
+	# A daily takes the day's theme's words when this phone holds them.
+	_state.build(rng, difficulty, ThemedPictures.words(daily_key, puzzle_id()) if bank_step == 0 else {})
 	_trail = []
 	_beam_at = -100.0
 	_grew_at = -100.0

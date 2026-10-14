@@ -389,3 +389,54 @@ the dashboard's export but no board reads it. With no day held, Button
 Box's Hard and Insane deal the same bank. Pixel Garden and Toy Cannons keep
 24 and 32. A theme names six things (`THINGS`). The first day made so:
 20261019.
+
+## The daily theme, stage 3: the word boards and the quizzes (2026-10-14)
+
+Gumdrop was stage 3's first (its jellies, above and in
+`docs/agents/boards/gumdrop.md`); this is the rest, on local main, not
+deployed (stage 4, `publishDay`, is the user's).
+
+- **`server/functions/src/words.ts`** (`makeWords(theme)`): a language a
+  request, Haiku shown the theme and the two boards' own lists (copied into
+  `src/word_lists/` by `npm run build`, git-ignored, like the quiz banks)
+  and asked for up to four of Hidden Word's answers and up to three Word
+  Trail words a length that belong to the theme. A word is kept only if
+  the list holds it exactly as spelt (accents and all); the theme's own
+  eight words the lists hold are added after the model's. Rides in the
+  pictures document as `words: {hiddenword: {en, pt, es}, wordtrail: {en:
+  {"3": [...], ...}, ...}}`, `v` still 1. Why a pick and not the theme's
+  words: those met Hidden Word's answers not once on two days of six in
+  English. Eight days picked for US$0.03 in all, about 10 s a day:
+  `node lib/cli.js words <day.json>...` (the step is also in `themed`).
+  Some picks are loose (glass for a picnic, float for a harbour, monte).
+- **The phone**: `ThemedPictures.words(date_key, board)` reads them in
+  `Locale.current()` (the language the boards' lists follow). Hidden
+  Word's Easy daily takes the first its list holds (`setup(..., themed)`);
+  Word Trail's daily, every band, writes a path the first unused themed
+  word of its length, drawn after the random one so the grid and the other
+  words are the day's as without a theme. New deals, Medium to Insane of
+  Hidden Word, and Insane's Snail Mail bank are untouched. Read headless
+  with this Mac's cache (Picnic on the Hill): Easy deals "grass".
+- **The quizzes**: `acorn.ts` and `pearl.ts` `makeDay(day, recent,
+  theme)`. Golden Acorn's writer is told the theme and asked for exactly
+  three of a band's drafts on it, flagged `theme` in the schema; Pearl
+  Dive's kinds writer for two kinds of each level that keep every kind
+  rule (a set, thirty members), the themed sorted first so a level keeps
+  them. A themed item's id says so (`d…b0t3`, `d…l1k0t`): ids are opaque
+  to the phone. `node lib/cli.js quizzes <day.json>...` writes both days
+  into the file as `quizzes`, and Themed days lists the themed items. Not
+  yet wired into `publishDay` (stage 4).
+  Smoke run on 20261018 Campfire at Dusk with Haiku in both roles (to
+  spare OpenRouter's last US$0.40; the night reviews with Opus): US$0.20,
+  9.5 min; Golden Acorn kept 3/3/2/2 on the theme (embers, mycelium,
+  evergreen, cones; granite barely), Pearl Dive 1/1/0/0 when it was asked
+  three in all (a type of mushroom, a type of lamp), hence two a level now,
+  not yet run.
+
+**Decided for the user, unconfirmed**: Hidden Word's Easy may deal any
+answer of the list on a themed day, not only Easy's 217 (the theme gives
+it away); Word Trail takes themed words on every band, Insane too, as many
+as there are lengths; the word picks have no second model reading them
+(the lists are the board's own, already fit to deal); Golden Acorn three a
+band asked, Pearl Dive two a level, One Breath seldom any; the theme's name
+is still shown nowhere.

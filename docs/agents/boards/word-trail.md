@@ -91,3 +91,8 @@ rounded turf plate is gone: it tells the world its ground line
 - Decided for the user, unconfirmed: on the win the block is about two
   thirds its size (it includes the band where the cheer card stands);
   Insane's night stays under the field only. Owed: a phone.
+- **A themed day's words** (2026-10-14, the daily theme's stage 3,
+  `docs/agents/days-dashboard.md`): every band's daily writes a path the
+  first unused word of its length out of `ThemedPictures.words(daily_key,
+  "wordtrail")` that its bucket holds, drawn after the random pick so the
+  grid and the other words are the day's as without a theme.

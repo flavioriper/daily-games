@@ -120,7 +120,11 @@ static func _load() -> void:
 
 ## `banked` is Insane's word out of the Snail Mail bank (the board picks it
 ## through InsaneBank); empty, the word comes off the list's bands as ever.
-func setup(rng: RandomNumberGenerator, difficulty: int, banked := "") -> void:
+## `themed` is the day's theme's answers, the best first
+## (ThemedPictures.words): the first the list holds, as it spells it, is the
+## word. The board hands them to Easy's daily alone -- a theme known gives a
+## harder answer away -- and any word of the list is fair there.
+func setup(rng: RandomNumberGenerator, difficulty: int, banked := "", themed: Array = []) -> void:
 	_load()
 	rows = []
 	marks = []
@@ -137,6 +141,10 @@ func setup(rng: RandomNumberGenerator, difficulty: int, banked := "") -> void:
 	snail = difficulty >= 3
 	var band := int(_bands[clampi(difficulty, 0, _bands.size() - 1)]) if not _bands.is_empty() else _answers.size()
 	written = String(_answers[rng.randi() % maxi(band, 1)]) if not _answers.is_empty() else "mossy"
+	for w in themed:
+		if w is String and _answers.has(w):
+			written = w
+			break
 	if not banked.is_empty():
 		written = banked
 	answer = Locale.fold(written)

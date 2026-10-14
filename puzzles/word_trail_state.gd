@@ -77,7 +77,10 @@ static func word_bank() -> Dictionary:
 	_words_cache = parsed["words"]
 	return _words_cache
 
-func build(rng: RandomNumberGenerator, difficulty: int) -> void:
+## `themed` is the day's theme's words by length, the best first
+## (ThemedPictures.words): a path takes one its bucket holds before a
+## random one, so the grid is laid as ever and only its words change.
+func build(rng: RandomNumberGenerator, difficulty: int, themed: Dictionary = {}) -> void:
 	var lens: Array = lens_for(difficulty)
 	band = clampi(difficulty, 0, BANDS.size() - 1)
 	n = 5 + band
@@ -109,7 +112,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 			best = paths
 	if best.is_empty():
 		best = loose
-	_write(rng, best)
+	_write(rng, best, themed)
 
 ## Longest first: a random free start, then a self-avoiding walk through free
 ## neighbours, restarting that word if it paints itself into a corner.
@@ -150,7 +153,7 @@ func _grow(rng: RandomNumberGenerator, lens: Array) -> Array:
 		out.append(got)
 	return out
 
-func _write(rng: RandomNumberGenerator, paths: Array) -> void:
+func _write(rng: RandomNumberGenerator, paths: Array, themed: Dictionary = {}) -> void:
 	var bank := word_bank()
 	var built: Array[Dictionary] = []
 	var taken := {}
@@ -165,6 +168,13 @@ func _write(rng: RandomNumberGenerator, paths: Array) -> void:
 			for tries in 8:
 				word = str(bucket[rng.randi_range(0, bucket.size() - 1)])
 				if not taken.has(word):
+					break
+			# Drawn first all the same, so a day's grid and its other words
+			# are the ones it deals with no theme.
+			var mine = themed.get(str(path.size()), [])
+			for w in (mine if mine is Array else []):
+				if w is String and bucket.has(w) and not taken.has(w):
+					word = w
 					break
 		taken[word] = true
 		built.append({"word": word.to_upper(), "path": path, "found": false})

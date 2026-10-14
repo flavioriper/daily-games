@@ -3,6 +3,7 @@ import {PNG} from "pngjs";
 import Beads = require("./beads");
 import {ask, available, draw, Drawing} from "./generate";
 import type {Jelly} from "./jelly";
+import type {Words} from "./words";
 import {Theme, Thing} from "./theme";
 
 /**
@@ -35,6 +36,8 @@ export interface Pictures {
    *  (jelly.ts). A place not filled here the board fills from its own
    *  twenty-nine. */
   jellies?: Record<string, Jelly[]>;
+  /** Hidden Word's and Word Trail's, a language each (words.ts). */
+  words?: Words;
 }
 
 /** What became of one size of one draft: for the dashboard, not the phone. */

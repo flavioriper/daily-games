@@ -139,6 +139,9 @@ header h2 { font-size: 26px; margin: 0; letter-spacing: -.02em; }
 #themed h2 { font-size: 26px; margin: 0 0 4px; letter-spacing: -.02em; }
 #themed .lead { color: var(--ink2); margin: 0 0 22px; max-width: 76ch; }
 .tday { margin-bottom: 22px; }
+.tday table.words { border-collapse: collapse; font-size: 13px; margin: 6px 0 4px; }
+.tday table.words th, .tday table.words td { text-align: left; padding: 3px 12px 3px 0; vertical-align: top; color: var(--ink2); }
+.tday table.words th { color: var(--muted); font-weight: 500; }
 .tday h3 { font-size: 18px; margin: 0; text-transform: none; letter-spacing: 0; color: var(--ink); font-weight: 600; }
 .tday .when { color: var(--muted); font-size: 12px; margin: 2px 0 8px; font-variant-numeric: tabular-nums; }
 .tday .scene { color: var(--ink2); margin: 0 0 12px; max-width: 80ch; }
@@ -199,11 +202,12 @@ const DATA = JSON.parse(document.getElementById("data").textContent);
 const INDEX = DATA.index, DAYS = DATA.days;
 const $ = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
-const el = (tag, attrs = {}, text) => {
+// Text or nodes after the attributes, as many as are given.
+const el = (tag, attrs = {}, ...kids) => {
   const svg = ["svg", "g", "rect", "line", "text", "circle", "path"].includes(tag);
   const n = svg ? document.createElementNS(NS, tag) : document.createElement(tag);
   for (const k in attrs) n.setAttribute(k, attrs[k]);
-  if (text !== undefined) n.textContent = text;
+  for (const k of kids) if (k !== undefined && k !== null) n.append(k instanceof Node ? k : String(k));
   return n;
 };
 const LEVEL_NAMES = ["Easy", "Medium", "Hard", "Insane"];
@@ -627,10 +631,45 @@ function themedView() {
     box.append(el("h3", { class: "round" }, d.theme.name.en), el("div", { class: "when" },
       `${fmtDate(d.day)} · ${d.theme.name.pt} · ${d.theme.name.es}`),
       el("p", { class: "scene" }, d.theme.scene));
+    themedWords(box, px?.pictures?.words || d.pictures?.words);
+    themedQuizzes(box, px?.quizzes || d.quizzes);
     themedWay(box, d, "days/themed/", px ? "The first way: a smooth drawing, averaged down" : "");
     if (px) themedWay(box, px, "days/themed-pixel/", "Pixel art: drawn as pixel art and read at its own squares, or that drawing redrawn to size by a text model; things also written from words");
     host.append(box);
   }
+}
+// The word boards' words (server/functions/src/words.ts): Hidden Word's Easy
+// takes the first of its list, Word Trail a path of each length the first
+// unused of its.
+function themedWords(box, w) {
+  const way = el("div", { class: "way" }, el("b", {}, "Words"), w ? " · Hidden Word's Easy deals the first, Word Trail one a path of each length it has"
+    : " · none: tools/themed_days.sh or `cli.js words` picks them");
+  box.append(way);
+  if (!w) return;
+  const t = el("table", { class: "words" });
+  t.append(el("tr", {}, el("th", {}, ""), el("th", {}, "Hidden Word"), el("th", {}, "Word Trail")));
+  for (const l of ["en", "pt", "es"]) {
+    const hw = w.hiddenword?.[l] || [], wt = w.wordtrail?.[l] || {};
+    const trail = Object.keys(wt).sort((a, b) => a - b).map(n => `${n}: ${wt[n].join(", ")}`).join(" · ");
+    const first = el("td");
+    if (hw.length) first.append(el("b", {}, hw[0]), hw.length > 1 ? " · " + hw.slice(1).join(", ") : ""); else first.append("–");
+    t.append(el("tr", {}, el("th", {}, l), first, el("td", {}, trail || "–")));
+  }
+  box.append(t);
+}
+// Golden Acorn's and Pearl Dive's days on the theme (`cli.js quizzes`): what
+// of each band is on it, by the "t" in its id.
+function themedQuizzes(box, q) {
+  if (!q) return;
+  const names = ["Easy", "Medium", "Hard", "Climb / One Breath"];
+  const acorn = (q.acorn?.bands || []).map(b => b.filter(x => /b\dt\d+$/.test(x.id)));
+  const pearl = (q.pearl?.bands || []).map(b => b.filter(x => /t$/.test(x.id)));
+  box.append(el("div", { class: "way" }, el("b", {}, "Quizzes on the theme"),
+    ` · Golden Acorn ${acorn.map(b => b.length).join("/")} a band, Pearl Dive ${pearl.map(b => b.length).join("/")} · US$${(q.cost || 0).toFixed(2)}`));
+  const t = el("table", { class: "words" });
+  acorn.forEach((b, i) => b.forEach(x => t.append(el("tr", {}, el("th", {}, `Acorn ${names[i]}`), el("td", {}, x.en.q), el("td", {}, el("b", {}, x.en.right))))));
+  pearl.forEach((b, i) => b.forEach(x => t.append(el("tr", {}, el("th", {}, `Pearl ${names[i]}`), el("td", {}, x.en.ask), el("td", {}, `${x.answers.length} answers`)))));
+  box.append(t);
 }
 // One way of making a day's pictures: the picture each size came to, and
 // every drawing (or written picture) with what was said of it.

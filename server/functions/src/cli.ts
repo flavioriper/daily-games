@@ -6,6 +6,7 @@ import {bankPrompts, cleaned, makeDay as pearlDay, Prompt} from "./pearl";
 import {makeJellies} from "./jelly";
 import {makeDay as picturesDay} from "./pictures";
 import {makeTheme, themed} from "./theme";
+import {makeWords} from "./words";
 
 /**
  * The night's work by hand (tools/acorn_day.sh, tools/pearl_day.sh,
@@ -29,6 +30,15 @@ import {makeTheme, themed} from "./theme";
  *       not made again. Publishes nothing; costs what the models cost.
  *       With [themes-dir], a day made there lends its theme and only the
  *       pictures are new (DAILY_PICTURE_STYLE=pixel against the first way).
+ *   node lib/cli.js quizzes <day.json>...
+ *       Golden Acorn's and Pearl Dive's days on each file's theme (two or
+ *       three questions a band, three prompts a day), into the file as
+ *       `quizzes`, for the dashboard. The night's reviewer reads them, so
+ *       this costs what a published day does.
+ *   node lib/cli.js words <day.json>...
+ *       Hidden Word's and Word Trail's words (words.ts) for days the
+ *       command above made, into each file's pictures document; the
+ *       pictures and the jellies are left as they are.
  *   node lib/cli.js publish
  *       runs publishDays for today and tomorrow against whatever project
  *       the credentials name -- the day a game ships on, which the 03:00
@@ -95,7 +105,13 @@ async function themedDays(first: number, count: number, outdir: string, themesFr
     if (Object.keys(jelly.jellies).length > 0) {
       pictures.doc = {...(pictures.doc ?? {v: 1 as const, theme: theme.id, sizes: {}}), jellies: jelly.jellies};
     }
+    // And the word boards' (words.ts).
+    const words = theme === null ? {words: null, tries: []} : await makeWords(theme);
+    if (words.words !== null) {
+      pictures.doc = {...(pictures.doc ?? {v: 1 as const, theme: theme.id, sizes: {}}), words: words.words};
+    }
     fs.writeFileSync(file, JSON.stringify({day, theme, pictures: pictures.doc, drafts: pictures.drafts, jellyTries: jelly.tries,
+      wordsTries: words.tries,
       cost: Math.round((cost() - before) * 10000) / 10000, seconds: Math.round((Date.now() - t0) / 1000)}));
     if (theme !== null) recent.unshift(...themed(theme));
     made++;
@@ -120,6 +136,39 @@ async function main(): Promise<void> {
     print(await growBank(Number(args[1]), Number(args[2]), args[3]));
   } else if (what === "themed" && (args.length === 3 || args.length === 4)) {
     print(await themedDays(Number(args[0]), Number(args[1]), args[2], args[3]));
+  } else if (what === "quizzes" && args.length >= 1) {
+    // Golden Acorn's and Pearl Dive's days on the theme of days already
+    // made, beside the rest as `quizzes`, for Themed days; not what a
+    // phone reads (stage 4 publishes them as the two games' own days).
+    for (const file of args) {
+      const day = JSON.parse(fs.readFileSync(file, "utf8"));
+      if (day.theme === null) continue;
+      const before = cost();
+      const acorn = await acornDay(day.day, [], day.theme);
+      const pearl = await pearlDay(day.day, [], day.theme);
+      day.quizzes = {acorn, pearl, cost: Math.round((cost() - before) * 10000) / 10000};
+      fs.writeFileSync(file, JSON.stringify(day));
+      const on = (bands: {id: string}[][], t: RegExp) => bands.map((b) => b.filter((q) => t.test(q.id)).length).join("/");
+      print(`${file}: acorn ${acorn.source}, themed ${on(acorn.bands, /b\dt\d+$/)}; pearl ${pearl.source}, ` +
+        `themed ${on(pearl.bands, /t$/)}; US$${cost().toFixed(2)} so far`);
+    }
+  } else if (what === "words" && args.length >= 1) {
+    // The word boards' words for days already made, the rest untouched.
+    for (const file of args) {
+      const day = JSON.parse(fs.readFileSync(file, "utf8"));
+      if (day.theme === null) continue;
+      const got = await makeWords(day.theme);
+      if (got.words !== null) {
+        day.pictures = {...(day.pictures ?? {v: 1, theme: day.theme.id, sizes: {}}), words: got.words};
+      } else if (day.pictures) {
+        delete day.pictures.words;
+      }
+      day.wordsTries = got.tries;
+      fs.writeFileSync(file, JSON.stringify(day));
+      const w = got.words;
+      print(`${file}: ${w === null ? "none" : (["en", "pt", "es"] as const).map((l) =>
+        `${l} hidden ${w.hiddenword[l].join("/") || "-"} trail ${Object.values(w.wordtrail[l]).flat().join("/") || "-"}`).join("; ")}, US$${cost().toFixed(2)} so far`);
+    }
   } else if (what === "jellies" && args.length >= 1) {
     // Gumdrop's jellies for days already made, their pictures untouched.
     for (const file of args) {
@@ -142,7 +191,7 @@ async function main(): Promise<void> {
     await publishDays(new Date());
     print("published");
   } else {
-    console.error("usage: cli.js day [acorn|pearl] [yyyymmdd] | bank pearl <level> <count> <outfile> | themed <yyyymmdd> <days> <outdir> [themes-dir] | jellies <day.json>... | publish");
+    console.error("usage: cli.js day [acorn|pearl] [yyyymmdd] | bank pearl <level> <count> <outfile> | themed <yyyymmdd> <days> <outdir> [themes-dir] | jellies <day.json>... | words <day.json>... | quizzes <day.json>... | publish");
     process.exitCode = 2;
   }
 }
