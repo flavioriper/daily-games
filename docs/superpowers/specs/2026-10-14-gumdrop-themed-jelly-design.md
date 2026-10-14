@@ -74,3 +74,16 @@ the twenty-nine").
 
 How often a day keeps all fourteen with credits to spare; a phone; the
 user's eye on the jellies themselves.
+
+- **Stage 4's time**: `publishDay` makes two days inside 1,800 seconds,
+  and a pixel day's drawings already take minutes; fourteen Opus writes and
+  their looks, one at a time, add several more a day. Timed when the deploy
+  is planned.
+- **The night counts chunks on a 100 by 100 raster, the phone with
+  `merge_polygons`**: they agreed on all thirteen jellies made, but two
+  shapes that only just touch could pass the night and fail the phone;
+  that jelly's place is then dealt from the twenty-nine.
+
+Seen through the real path (`tests/_shot_gumdrop.gd -- 0`, the 19th
+installed as today's): Easy dealt the themed mushroom and then the mug,
+served at 100% and 98%, the done day reopened on the mug.
