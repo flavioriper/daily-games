@@ -99,8 +99,9 @@ const PIXEL_OBJECT = (what: string, side: number, colours: number) => `Pixel art
  *  Each next ask is scaled by what the last came out at. */
 const FIRST_ASK: Record<number, number> = {10: 8, 12: 9, 16: 12, 24: 18, 32: 24};
 /** Drawings of one band before it is written from words instead: a drawing
- *  on gemini-3-pro-image is one to four minutes with its rate limit. */
-const PIXEL_DRAWINGS = 3;
+ *  on gemini-3-pro-image is one to four minutes with its rate limit, and the
+ *  two small bands, which the model seldom draws small enough, get two. */
+const PIXEL_DRAWINGS: Record<number, number> = {10: 2, 12: 2, 16: 3, 24: 3, 32: 3};
 /** Bare squares round the thing each way: the boards' bare edge. */
 const MARGIN = 1;
 
@@ -322,7 +323,7 @@ async function pixelDay(day: number, theme: Theme, sizes: Record<string, Picture
     const rule = Beads.RULES[size];
     const colours = rule.colours[1];
     let side = FIRST_ASK[size];
-    for (let n = 0; n < PIXEL_DRAWINGS && sizes[size] === undefined; n++) {
+    for (let n = 0; n < PIXEL_DRAWINGS[size] && sizes[size] === undefined; n++) {
       const draft: Draft = {what, draft: n, asked: side, tried: []};
       drafts.push(draft);
       try {
@@ -341,8 +342,9 @@ async function pixelDay(day: number, theme: Theme, sizes: Record<string, Picture
           const drawn = Math.max(got.w, got.h) + 2 * MARGIN;
           if (drawn > rule.side[1]) {
             // Asked again, scaled to land in the middle of the band's range;
-            // never under 4 (asked for 4, a model drew a literal 4 by 4 grid).
-            side = Math.max(4, Math.round(side * (rule.side[0] + rule.side[1]) / 2 / drawn));
+            // never under 6 (asked for 4, a model drew a literal 4 by 4 grid,
+            // and asked for 5 it drew 48 by 43).
+            side = Math.max(6, Math.round(side * (rule.side[0] + rule.side[1]) / 2 / drawn));
             draft.snap.why = `drawn ${got.w} × ${got.h}, over ${rule.side[1]} a side`;
             continue;
           }
@@ -376,6 +378,32 @@ async function pixelDay(day: number, theme: Theme, sizes: Record<string, Picture
         draft.error = String(e).slice(0, 300);
         console.error(`pictures: day ${day}, ${what} rows, try ${n} failed`, e);
       }
+    }
+  }
+  bySide(sizes, drafts);
+}
+
+/**
+ * The bands in order of size. A thing is kept at the side it was drawn,
+ * so the simplest thing can come out bigger than the next (the first day:
+ * a mushroom at 16 on Easy, a mug at 12 on Medium): the kept pictures are
+ * dealt again to the bands by side, then by beads, when every one keeps
+ * its new band's rules; otherwise they stay as made. The drafts' kept
+ * tries follow, for the dashboard.
+ */
+export function bySide(sizes: Record<string, Picture>, drafts: Draft[]): void {
+  const keys = Beads.SIZES.map(String).filter((k) => sizes[k] !== undefined);
+  const beads = (p: Picture) => p.rows.join("").replace(/\./g, "").length;
+  const pics = keys.map((k) => sizes[k]).sort((a, b) => a.rows.length - b.rows.length || beads(a) - beads(b));
+  const next: Record<string, Picture> = {};
+  keys.forEach((k, i) => { next[k] = pics[i]; });
+  if (keys.some((k) => next[k] !== sizes[k] && !Beads.check(next[k].rows, Number(k)).every((c) => c.ok))) return;
+  for (const k of keys) sizes[k] = next[k];
+  for (const d of drafts) {
+    for (const t of d.tried) {
+      if (!t.kept) continue;
+      const k = keys.find((key) => sizes[key].rows === t.rows);
+      if (k !== undefined) t.size = Number(k);
     }
   }
 }
