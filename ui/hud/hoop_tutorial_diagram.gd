@@ -57,6 +57,7 @@ class Small extends "res://puzzles/hoop2d.gd":
 		return "hoop_tutorial"
 
 	func _ready() -> void:
+		zoomable = false
 		super()
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 		fx.buzzes = false  # (the page's finger is not the player's)

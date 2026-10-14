@@ -176,6 +176,15 @@ func next_in() -> bool:
 		return false
 	return _going_in
 
+## Moves the zoomed picture by `d` (screen), kept within the view: a board
+## that is dragged to play pans a picture seen close from where nothing is
+## in hand (Yarn Hoop's bare linen).
+func pan_by(d: Vector2) -> void:
+	if not zoomed():
+		return
+	_glide = -1.0
+	_t = _clamp(_t + d, k)
+
 ## Brings the layout point `p` into the view, zoomed as it is (a hint's
 ## square, a refusal's).
 func show_point(p: Vector2) -> void:

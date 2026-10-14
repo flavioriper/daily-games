@@ -17,6 +17,13 @@ extends "res://core/puzzle_base.gd"
 ## mesh each rebuilt when a thread is laid, and what moves (a panel knitting
 ## in, a pin popping off, the thread in hand) as one mesh a frame. No
 ## character: the pieces are marks.
+##
+## The whole table zooms (`zoom`, ui/flat/pan_zoom.gd; the user, 2026-10-14:
+## "make sure it has zoom in and out properly"): two fingers pinch, the
+## wheel zooms on a desk, the round button at the foot's left goes close and
+## back out a step at a time, and a finger dragged from bare linen looks
+## round a table seen close. The zoom is one transform over the same
+## meshes; the pill and the bubble stay on the glass.
 
 const State = preload("res://puzzles/hoop_state.gd")
 const Pal = preload("res://core/palette.gd")
@@ -26,6 +33,8 @@ const Haptics = preload("res://core/haptics.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const CozyTheme = preload("res://ui/theme.gd")
+const PanZoom = preload("res://ui/flat/pan_zoom.gd")
+const IconButton = preload("res://ui/hud/icon_button.gd")
 
 ## The hoop: its room from the screen's sides, the ring's width, and the
 ## linen left round the picture inside it.
@@ -66,7 +75,22 @@ const YARN_HI := Color("d98c70")
 const PIN := Color("6b5b8c")
 const PIN_DEEP := Color("4d4068")
 const PIN_HI := Color("a596c4")
-const MARK := Color("b5a48b")
+const MARK := Color("9d8c6f")
+## A panel's mark is its corner count written in a stitched numeral, this
+## tall at the most and at the least, and the yarn it is stitched in.
+const MARK_H := Vector2(10.0, 22.0)
+const MARK_W := 0.17
+## The two numerals a panel can need, as strokes in a box a unit tall:
+## a 4 is a stem and a bent arm, a 3 two bows.
+const GLYPH_FOUR := [[Vector2(0.62, 0.0), Vector2(0.62, 1.0)], [Vector2(0.62, 0.0), Vector2(0.0, 0.66), Vector2(0.78, 0.66)]]
+## The zoom: the round button's size and inset at the foot's left, how wide
+## the shortest side between two pins comes to seen close, and the farthest
+## the fingers may go.
+const ZOOM_B := 84.0
+const ZOOM_INSET := 12.0
+const ZOOM_SIDE := 110.0
+const ZOOM_NEAR := Vector2(1.6, 3.0)
+const ZOOM_MOST := 3.5
 ## The table's dressing: balls of yarn, a needle.
 const BALLS := [Color("e48a7a"), Color("8fb7a0"), Color("e9c46a")]
 
@@ -129,6 +153,12 @@ const HAPTICS := {
 var state = State.new()
 
 var fx: Node2D
+## The zoom over the table, and whether this board may zoom at all (the
+## tutorial's small boards may not).
+var zoom := PanZoom.new()
+var zoomable := true
+var _zoom_b: IconButton
+var _pan_last := Vector2(-1.0, -1.0)
 
 ## The host reads these off every board; this one has neither hearts nor a
 ## move counter and cannot be lost.
@@ -218,6 +248,7 @@ func rules() -> String:
 	out += "\n\n" + tr("YH_RULES_COMBO")
 	if state.band >= State.INSANE:
 		out += "\n\n" + tr("YH_RULES_INSANE")
+	out += "\n\n" + tr("YH_RULES_ZOOM")
 	return out
 
 ## The tutorial: each page is the board itself on a small hand-cut picture
@@ -263,6 +294,20 @@ func _ready() -> void:
 	_hud_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_hud_layer.draw.connect(_draw_hud)
 	add_child(_hud_layer)
+	# The zoom button, over the table at the foot's left (the thumb's side
+	# stays clear): its own size, in no container.
+	_zoom_b = IconButton.new("plus", "", "IconButton")
+	_zoom_b.name = "Zoom"
+	_zoom_b.z_index = 1
+	_zoom_b.visible = false
+	_zoom_b.custom_minimum_size = Vector2(ZOOM_B, ZOOM_B)
+	var up := CozyTheme.soft_button(Pal.SURFACE, int(ZOOM_B * 0.5), false, 0)
+	var down := CozyTheme.soft_button(Pal.SURFACE, int(ZOOM_B * 0.5), true, 0)
+	for st in ["normal", "hover", "disabled"]:
+		_zoom_b.add_theme_stylebox_override(st, up)
+	_zoom_b.add_theme_stylebox_override("pressed", down)
+	_zoom_b.pressed.connect(zoom_button)
+	add_child(_zoom_b)
 	resized.connect(_layout)
 	solved.connect(_on_solved)
 
@@ -374,6 +419,14 @@ func _layout() -> void:
 		shortest = minf(shortest, _px[s.x].distance_to(_px[s.y]))
 	_snap = clampf(shortest * SNAP_SHARE, SNAP.x, SNAP.y)
 	_pin_r = clampf(shortest * 0.16, PIN_R_MIN, PIN_R)
+	# the zoom's room is the whole table; close is the shortest side made
+	# wide enough for a finger, within bounds; none once the day is won
+	var near := clampf(ZOOM_SIDE / maxf(shortest, 1.0), ZOOM_NEAR.x, ZOOM_NEAR.y)
+	if _won or not zoomable:
+		near = 1.0
+	zoom.setup(Rect2(Vector2.ZERO, size), near, maxf(near, ZOOM_MOST) if near > 1.0 else 1.0)
+	_zoom_b.position = Vector2(ZOOM_INSET, size.y - _clear.y - ZOOM_INSET - ZOOM_B)
+	_zoom_b.size = Vector2(ZOOM_B, ZOOM_B)
 	_bg = _build_table()
 	_hoop = _build_hoop()
 	_clamp = _build_clamp()
@@ -392,12 +445,27 @@ func _layout() -> void:
 func _to_screen(p: Vector2) -> Vector2:
 	return _centre + (p - _mid) * _k
 
-## Control-local point of pin `v`. The harnesses press these.
+## Control-local point of pin `v`, wherever the zoom has it. The harnesses
+## press these.
 func pin_screen(v: int) -> Vector2:
-	return _px[v] if v < _px.size() else Vector2.ZERO
+	return zoom.to_screen(_px[v]) if v < _px.size() else Vector2.ZERO
 
+## A panel's middle on the table as laid out (the meshes' coordinates).
 func panel_screen(k: int) -> Vector2:
 	return _to_screen(state.centre(k))
+
+## A point of the table as laid out, where the zoom shows it: the fx and
+## the bubble are on the glass.
+func _at(p: Vector2) -> Vector2:
+	return zoom.to_screen(p)
+
+func _zoom_button_wanted() -> bool:
+	return zoom.enabled and not _won and _solved_at == -INF and not is_done()
+
+## The zoom button: whole, half way, close, and back out a step at a time.
+func zoom_button() -> void:
+	zoom.cycle()
+	_request()
 
 func _outline_px(k: int) -> PackedVector2Array:
 	var out := PackedVector2Array()
@@ -603,16 +671,57 @@ func _pin_into(b, at: Vector2, r: float) -> void:
 	b.disc(at + Vector2(-0.4, -0.6), r * 0.82, PIN)
 	b.disc(at + Vector2(-r * 0.3, -r * 0.32), r * 0.3, PIN_HI)
 
-## Panel `k`'s mark: a dot a corner, the panel's own shape in small.
+## Panel `k`'s mark: its corner count, a 3 or a 4 stitched in grey yarn
+## about its middle (the user, 2026-10-14: "make the numbers clear (instead
+## of just dots, write the number)"), sized to the room the panel has about
+## that middle so a thin panel's never spills past its sides. A panel of
+## any other count (none is cut) gets a dot a corner.
 func _mark_into(b, k: int) -> void:
-	var c := panel_screen(k)
 	var outline := _outline_px(k)
-	var far := 0.01
+	var n := outline.size()
+	var c := _mark_at(outline)
+	# the room: the nearest side
+	var room := INF
+	for m in n:
+		room = minf(room, Geometry2D.get_closest_point_to_segment(c, outline[m], outline[(m + 1) % n]).distance_to(c))
+	var tall := clampf(room * 1.25, MARK_H.x, MARK_H.y)
+	if room * 1.25 < MARK_H.x * 0.7:
+		return
+	var wide := tall * MARK_W
+	var strokes: Array = []
+	match n:
+		3:
+			# two bows, the top one a little smaller, open to the left
+			var r := 0.26
+			var top := Face.Builder.arc_points(Vector2(0.36, r), r, PI * 1.15, PI * 2.5)
+			var low := Face.Builder.arc_points(Vector2(0.36, 1.0 - r), r, PI * 1.5, PI * 2.85)
+			strokes = [Array(top), Array(low)]
+		4:
+			strokes = GLYPH_FOUR
+		_:
+			for p in outline:
+				b.disc(c + (p - c).normalized() * tall * 0.45, 3.0, MARK)
+			return
+	for stroke: Array in strokes:
+		var pts := PackedVector2Array()
+		for q: Vector2 in stroke:
+			pts.append(c + (q - Vector2(0.36, 0.5)) * tall)
+		b.stroke(pts, wide, MARK)
+
+## Where a panel's mark sits: a triangle's incentre (the middle of the room
+## it has), a quad's middle.
+func _mark_at(outline: PackedVector2Array) -> Vector2:
+	if outline.size() == 3:
+		var a := outline[1].distance_to(outline[2])
+		var bb := outline[2].distance_to(outline[0])
+		var cc := outline[0].distance_to(outline[1])
+		var per := a + bb + cc
+		if per > 0.0:
+			return (outline[0] * a + outline[1] * bb + outline[2] * cc) / per
+	var c := Vector2.ZERO
 	for p in outline:
-		far = maxf(far, p.distance_to(c))
-	var size := minf(13.0, far * 0.3)
-	for p in outline:
-		b.disc(c + (p - c) / far * size, 3.0, MARK)
+		c += p
+	return c / outline.size()
 
 func _combine(parts: Array) -> ArrayMesh:
 	var verts := PackedVector2Array()
@@ -723,6 +832,7 @@ func _draw() -> void:
 			k *= 1.0 + 0.05 * sin(PI * w / WAVE)
 	if k != 1.0:
 		xf = xf * Transform2D(0.0, Vector2(k, k), 0.0, _centre - _centre * k)
+	xf = zoom.xf() * xf
 	draw_set_transform_matrix(xf)
 	var alpha := 1.0 if Motion.reduce else Motion.appear_level(since + Motion.ENTER_DELAY)
 	draw_mesh(_hoop, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, alpha))
@@ -930,7 +1040,7 @@ func _draw_combo(now: float) -> void:
 	var text := "x%d" % _combo_n
 	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, COMBO_FONT).x
 	var box := Vector2(tw + 30.0, COMBO_FONT + 16.0)
-	var tail := _combo_pos + Vector2(0.0, -12.0)
+	var tail := _at(_combo_pos) + Vector2(0.0, -12.0)
 	var centre := tail + Vector2(box.x * 0.35, -box.y * 0.95)
 	centre.x = clampf(centre.x, box.x * 0.5 + 4.0, size.x - box.x * 0.5 - 4.0)
 	centre.y = maxf(centre.y, box.y * 0.5 + 4.0)
@@ -994,11 +1104,26 @@ func _tell(text: String) -> void:
 # --- the hand ---
 
 ## Touch and mouse, as every flat board takes them (touch is not mouse here:
-## emulate_mouse_from_touch is off). A press on a pin takes the thread up; a
-## drag lays it to every pin it passes that shares a side with the one in
-## hand; the release puts it down. A press and release on one pin with no
-## drag holds it, and a press on another lays the thread between the two.
+## emulate_mouse_from_touch is off). The zoom reads every event first: two
+## fingers pinch and pan, the wheel zooms on a desk, and a gesture that
+## begins takes the thread in hand with it. Then a press on a pin takes the
+## thread up; a drag lays it to every pin it passes that shares a side with
+## the one in hand; the release puts it down. A press and release on one pin
+## with no drag holds it, and a press on another lays the thread between the
+## two. A press on bare linen seen close, dragged, looks round.
 func _gui_input(event: InputEvent) -> void:
+	if zoom.enabled:
+		var took := zoom.feed(event)
+		if took != PanZoom.NONE:
+			if took == PanZoom.BEGAN:
+				_end_stroke()
+				_cur = -1
+				_armed = -1
+				_press_pin = -1
+				_finger = Vector2(-1.0, -1.0)
+				_pan_last = Vector2(-1.0, -1.0)
+			_request()
+			return
 	if event is InputEventMouseButton and event.button_index != MOUSE_BUTTON_LEFT:
 		return
 	if event is InputEventScreenTouch or event is InputEventMouseButton:
@@ -1006,21 +1131,22 @@ func _gui_input(event: InputEvent) -> void:
 			press(event.position)
 		else:
 			release(event.position)
-	elif event is InputEventScreenDrag or (event is InputEventMouseMotion and _cur >= 0):
+	elif event is InputEventScreenDrag or (event is InputEventMouseMotion and (_cur >= 0 or _pan_last.x >= 0.0)):
 		drag(event.position)
 
 func _can_play() -> bool:
 	return not (is_done() or _solved_at > -INF)
 
-## The pin a finger at `at` means: the nearest still standing within the
-## snap, -1 for none.
+## The pin a finger at `at` (the screen; the table as the zoom shows it)
+## means: the nearest still standing within the snap, -1 for none.
 func pin_at(at: Vector2, but := -1) -> int:
 	var best := -1
-	var best_d := _snap
+	var best_d := _snap / zoom.k
+	var lp := zoom.to_layout(at)
 	for v in _px.size():
 		if v == but or state.pin_open[v] <= 0:
 			continue
-		var d := _px[v].distance_to(at)
+		var d := _px[v].distance_to(lp)
 		if d < best_d:
 			best_d = d
 			best = v
@@ -1030,11 +1156,14 @@ func press(at: Vector2) -> void:
 	if not _can_play():
 		return
 	var v := pin_at(at)
-	_finger = at
+	_finger = zoom.to_layout(at)
 	_moved = false
 	_press_pin = v
+	_pan_last = Vector2(-1.0, -1.0)
 	if v < 0:
 		_armed = -1
+		if zoom.zoomed():
+			_pan_last = at
 		_request()
 		return
 	_stroke = 0
@@ -1051,27 +1180,35 @@ func press(at: Vector2) -> void:
 	_request()
 
 func drag(at: Vector2) -> void:
+	if _pan_last.x >= 0.0:
+		zoom.pan_by(at - _pan_last)
+		_pan_last = at
+		_request()
+		return
 	if _cur < 0 or not _can_play():
 		return
 	# the finger's way since the last event, a sample a half snap apart, so
 	# a quick drag still passes every pin under it
-	var from := _finger if _finger.x >= 0.0 else at
-	var n := maxi(1, ceili(from.distance_to(at) / (_snap * 0.5)))
+	var lp := zoom.to_layout(at)
+	var snap := _snap / zoom.k
+	var from := _finger if _finger.x >= 0.0 else lp
+	var n := maxi(1, ceili(from.distance_to(lp) / (snap * 0.5)))
 	for m in range(1, n + 1):
-		var q := from.lerp(at, float(m) / n)
-		if _refused >= 0 and q.distance_to(_px[_refused]) > _snap:
+		var q := from.lerp(lp, float(m) / n)
+		if _refused >= 0 and q.distance_to(_px[_refused]) > snap:
 			_refused = -1
-		var v := pin_at(q, _cur)
+		var v := pin_at(zoom.to_screen(q), _cur)
 		if v >= 0 and v != _refused:
 			_step(v)
 			if _cur < 0 or not _can_play():
 				break
-	_finger = at
-	if _cur >= 0 and at.distance_to(_px[_cur]) > _snap:
+	_finger = lp
+	if _cur >= 0 and lp.distance_to(_px[_cur]) > snap:
 		_moved = true
 	_request()
 
 func release(_at: Vector2) -> void:
+	_pan_last = Vector2(-1.0, -1.0)
 	if _cur < 0:
 		return
 	var tapped := not _moved and _stroke_threads == 0 and _cur == _press_pin
@@ -1142,7 +1279,7 @@ func _close(k: int, from: Vector2, now: float) -> void:
 		fx.cue("fill", pow(2.0, step / 12.0) * randf_range(0.98, 1.02))
 		if not Motion.reduce:
 			var col: Color = Pal.PG_BEADS.get(state.colours[state.colour[k]], Pal.LINE)
-			fx.puff(c, col.lightened(0.25), 6))
+			fx.puff(_at(c), col.lightened(0.25), 6))
 	if _stroke >= COMBO_FROM:
 		_combo_popped = _combo_n < COMBO_FROM or _combo_out_at > -INF
 		_combo_n = _stroke
@@ -1157,9 +1294,9 @@ func _end_stroke() -> void:
 	if _stroke >= BIG_RUN and not is_done():
 		fx.cue("run")
 		if not Motion.reduce:
-			fx.sparkle(_combo_pos, Pal.SUN)
+			fx.sparkle(_at(_combo_pos), Pal.SUN)
 			if _stroke >= RUN_CONFETTI:
-				fx.confetti(_combo_pos, 14, _radius * 0.6)
+				fx.confetti(_at(_combo_pos), 14, _radius * 0.6 * zoom.k)
 	if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
 		_combo_at = minf(_combo_at, _now() - COMBO_HOLD * 0.5)
 	_stroke = 0
@@ -1187,7 +1324,7 @@ func _check_whole(closed: PackedInt32Array) -> void:
 			var n := 0
 			for m in state.panels.size():
 				if state.colour[m] == c and n < 8:
-					fx.sparkle(panel_screen(m), Pal.SUN)
+					fx.sparkle(_at(panel_screen(m)), Pal.SUN)
 					n += 1)
 
 func tip_line() -> Dictionary:
@@ -1209,9 +1346,10 @@ func hint() -> bool:
 	hints_used += 1
 	var a: int = state.sides[s].x
 	var b: int = state.sides[s].y
+	zoom.show_point((_px[a] + _px[b]) * 0.5)
 	for v in [a, b]:
-		fx.ring(_px[v], _pin_r * 3.0, Pal.SUN)
-	fx.sparkle((_px[a] + _px[b]) * 0.5, Pal.SUN)
+		fx.ring(_at(_px[v]), _pin_r * 3.0 * zoom.k, Pal.SUN)
+	fx.sparkle(_at((_px[a] + _px[b]) * 0.5), Pal.SUN)
 	fx.cue("hint")
 	_tell(tr("YH_HINTED"))
 	_after(0.0 if Motion.reduce else HINT_BEAT, func() -> void:
@@ -1255,6 +1393,7 @@ func restore_completed_board() -> void:
 	state.finish()
 	state.refused = int(completed_record.get("slips", 0))
 	_best = int(completed_record.get("best", 0))
+	zoom.reset()
 	_deal()
 	_opened = now - 10.0
 	_solved_at = now - 10.0
@@ -1291,6 +1430,9 @@ func _on_solved() -> void:
 	_toast = ""
 	_solved_at = now
 	_final_refused = state.refused
+	# the picture is seen whole for its win
+	if zoom.zoomed():
+		zoom.toggle()
 	var lag := 0.0 if Motion.reduce else FILL
 	_after(lag, fx.cue.bind("solved"))
 	_hud_layer.queue_redraw()
@@ -1312,10 +1454,10 @@ func _party(lag: float) -> void:
 	if Motion.reduce:
 		return
 	_after(lag + 0.2, func() -> void:
-		fx.confetti(_centre + Vector2(0.0, -_radius * 0.6), 30, _radius * 1.4)
+		fx.confetti(_at(_centre + Vector2(0.0, -_radius * 0.6)), 30, _radius * 1.4)
 		fx.cue("party"))
 	_after(lag + 0.6, func() -> void:
-		fx.confetti(_centre, 24, _radius))
+		fx.confetti(_at(_centre), 24, _radius))
 
 func _draw_stamp(now: float, shown: Array, slide: Transform2D) -> void:
 	var rad := maxf(_radius * 2.0, 420.0) * STAMP_R
@@ -1370,9 +1512,15 @@ func _process(delta: float) -> void:
 	if _k <= 0.0:
 		return
 	var now := _now()
-	if now < _anim_until or now - _slid_at < WIN_SLIDE + 0.1 or not _filling.is_empty() or not _laid_at.is_empty() \
-			or not _gone.is_empty() or _cur >= 0:
+	var gliding := zoom.step(delta)
+	if gliding or zoom.busy() or now < _anim_until or now - _slid_at < WIN_SLIDE + 0.1 or not _filling.is_empty() \
+			or not _laid_at.is_empty() or not _gone.is_empty() or _cur >= 0:
 		_request()
+	var wanted := _zoom_button_wanted()
+	if _zoom_b.visible != wanted:
+		_zoom_b.visible = wanted
+	if wanted:
+		_zoom_b.set_icon("plus" if zoom.next_in() else "minus")
 	var since := now - _opened - Motion.ENTER_DELAY
 	if since < Motion.DROP_FADE + 0.1 or now - _pill_bump < Motion.BUMP_TIME + 0.1 \
 			or (_toast != "" and now - _toast_at < TOAST_HOLD + 0.1) \

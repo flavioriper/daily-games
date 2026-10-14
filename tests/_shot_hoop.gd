@@ -5,7 +5,8 @@ extends SceneTree
 ##
 ##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_hoop.gd -- [d=0..3] [mode] [rm] [out=<dir>]
 ##
-## Modes: `rest` (the entrance and the bare hoop); `play` (one long greedy
+## Modes: `rest` (the entrance and the bare hoop); `zoom` (the button, a pan,
+## a drag seen close, the wheel); `play` (one long greedy
 ## drag that closes panel after panel, shot mid-knit and with the combo up);
 ## `howto` (the tutorial sheet as a first open shows it);
 ## `solve` (all but the last few sides threaded through the state, the rest
@@ -168,6 +169,32 @@ func _script() -> void:
 			_at(0.6, _shot)
 			_at(1.8, _shot)
 			_end = 2.4
+		"zoom":
+			# the button twice (half way, close), a finger dragged from bare
+			# linen to look round, the wheel, then a short greedy drag close
+			_at(1.0, _puzzle.zoom_button)
+			_at(1.5, _puzzle.zoom_button)
+			_at(2.0, _shot)
+			_at(2.1, func() -> void:
+				var p: Vector2 = _puzzle._centre + Vector2(0.0, _puzzle._radius - 60.0)
+				_touch(p, true)
+				_move(p + Vector2(0.0, -60.0))
+				_move(p + Vector2(0.0, -160.0))
+				_touch(p + Vector2(0.0, -160.0), false))
+			_at(2.4, _shot)
+			_at(2.5, func() -> void:
+				_walk = _greedy(6)
+				_walk_at = _t
+				_touch(_puzzle.pin_screen(_walk[0]), true))
+			_at(3.4, _shot)
+			_at(3.5, func() -> void:
+				var ev := InputEventMouseButton.new()
+				ev.button_index = MOUSE_BUTTON_WHEEL_DOWN
+				ev.pressed = true
+				ev.position = _puzzle._centre
+				_puzzle._gui_input(ev))
+			_at(3.8, _shot)
+			_end = 4.2
 		"play":
 			_at(1.4, func() -> void:
 				_walk = _greedy(22)

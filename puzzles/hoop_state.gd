@@ -9,30 +9,52 @@ extends RefCounted
 ## taken only along a panel's side, and a panel whose every side is threaded
 ## fills with knitting in its colour. Every panel filled is the picture.
 ##
-## The panels are cut from the day's bead picture (the bank Pixel Garden,
-## Button Box and Toy Cannons deal from, or the day's themed one): a lattice
-## of pins a stride apart, jittered off the rng, each cell of it cut on the
-## diagonal that keeps its two halves the more one colour, each half the
-## colour most of its beads are, and a half that is mostly bare linen left
-## out. Two halves of one colour in a cell are sometimes one four-sided
-## panel. So the same seed always cuts the same picture.
+## The panels are cut from the day's bead picture (the biggest the bank
+## Pixel Garden, Button Box and Toy Cannons deal from holds, or the day's
+## themed one), the way low-poly art is cut (2026-10-14, after the user set
+## a low-poly fox beside our lattice cut): the picture's thin outline and
+## speckles are dissolved into what they touch, the edges between its
+## colours are traced and simplified to the band's tolerance, pins are set
+## along them no nearer than the band's spacing, and the pins are joined
+## into triangles (Delaunay), each one the colour most of its beads are,
+## one mostly bare linen left out; the biggest triangles are split about
+## their middles until the band has its count. Two neighbours of one colour
+## are sometimes one four-sided panel. So the same seed always cuts the
+## same picture, and its sides follow the picture's own edges.
 
 const ThemedPictures = preload("res://core/themed_pictures.gd")
 const BANK := "res://content/pixel_garden.json"
-## The bank's band a difficulty deals from, and the side the day's themed
-## picture of that band has.
-const BANDS := [0, 1, 2, 3]
+## The bank's bands every difficulty deals from (its 32- and 24-side
+## pictures: the cut sets the coarseness, so the biggest source reads best
+## on every band), and the sides of the day's themed picture tried in turn.
+const BANDS := [3, 2]
+const THEMED_SIDES := [48, 32, 24, 12, 10]
 const INSANE := 3
 ## About how many panels a band cuts its picture into.
 const PANELS := [26, 50, 90, 140]
-## How far a pin is pushed off the lattice, a share of the stride.
-const JITTER := [0.16, 0.2, 0.22, 0.22]
-## How often two halves of one colour are one four-sided panel.
-const QUADS := [0.55, 0.45, 0.4, 0.35]
-## A half is kept when bare linen is under this share of its beads.
+## The cut's tolerance and the least distance between two pins, as shares of
+## the picture's side; both grow while the picture cuts too fine.
+const TOLERANCE := [0.1, 0.07, 0.05, 0.036]
+const SPACING := [0.1, 0.075, 0.06, 0.05]
+## Triangles the split aims for, over the band's panels: the quads that
+## follow take about that many back.
+const OVER := 1.18
+## How often two neighbouring triangles of one colour are one four-sided
+## panel.
+const QUADS := [0.5, 0.4, 0.35, 0.3]
+## A triangle is kept when bare linen is under this share of its beads.
 const BARE_MAX := 0.5
-## Beads read a side of a cell, to colour its halves.
+## Beads read a side of a triangle, to colour it.
 const SAMPLES := 6
+## A triangle narrower than this at a corner is a sliver and left out.
+const MIN_ANGLE := 0.07
+## A region of the picture is dissolved into its neighbours when it is
+## smaller than this share of the squares, or when under half its squares
+## sit in a 2x2 block of their own colour (the one-square outline, a stem).
+const SPECK := 0.004
+## The background carved off is at least this share (percent) of the
+## picture's drawn squares.
+const BACKDROP := 15
 const HINTS_BY := [3, 3, 2, 2]
 
 static var _bank := {}
@@ -80,23 +102,26 @@ static func bank() -> Dictionary:
 				_bank = doc
 	return _bank
 
-static func pictures(band_: int) -> Array:
+## The bank's pictures every band deals from, the biggest bands' first.
+static func pictures() -> Array:
 	var doc := bank()
-	var k: int = BANDS[clampi(band_, 0, BANDS.size() - 1)]
-	if doc.get("bands") is Array and k < (doc.bands as Array).size():
-		return doc.bands[k]
-	return []
+	var out: Array = []
+	if doc.get("bands") is Array:
+		for k: int in BANDS:
+			if k < (doc.bands as Array).size():
+				out.append_array(doc.bands[k])
+	return out
 
 static func hints_for(band_: int) -> int:
 	return HINTS_BY[clampi(band_, 0, HINTS_BY.size() - 1)]
 
 ## The day's picture out of the bank, cut. `daily_key` is
-## PuzzleBase.daily_key: a daily takes the day's themed picture of its
-## band's side when this phone holds one (core/themed_pictures.gd).
+## PuzzleBase.daily_key: a daily takes the day's themed picture, the biggest
+## side this phone holds (core/themed_pictures.gd).
 func setup(rng: RandomNumberGenerator, difficulty: int, daily_key := 0) -> void:
 	band = clampi(difficulty, 0, PANELS.size() - 1)
 	var doc := bank()
-	var pics := pictures(band)
+	var pics := pictures()
 	if pics.is_empty():
 		adopt({"name": "", "rows": ["..rr..", ".rrrr.", "rrggrr", "rggggr", ".gggg.", "..gg.."]},
 			{"r": "red", "g": "green"}, rng)
@@ -104,12 +129,18 @@ func setup(rng: RandomNumberGenerator, difficulty: int, daily_key := 0) -> void:
 	# The bank's pick is drawn either way, so the cut that follows is the same
 	# on a phone with the day and one without.
 	var pic: Dictionary = pics[rng.randi_range(0, pics.size() - 1)]
-	var themed := ThemedPictures.picture(daily_key, (pics[0].rows as Array).size())
+	var themed := {}
+	for side: int in THEMED_SIDES:
+		themed = ThemedPictures.picture(daily_key, side)
+		if not themed.is_empty():
+			break
 	adopt(themed if not themed.is_empty() else pic, doc.get("palette", {}), rng)
 
 ## Cuts `pic` ({name, rows}, its letters read through `legend`).
 func adopt(pic: Dictionary, legend: Dictionary, rng: RandomNumberGenerator) -> void:
 	_read(pic, legend)
+	_carve()
+	_dissolve()
 	_cut(rng, PANELS[band])
 	reset()
 
@@ -143,62 +174,469 @@ func bead(p: Vector2) -> int:
 		return -1
 	return picture[y * w + x]
 
-## The cut: a lattice over the beads at a stride that gives about `want`
-## panels.
+## The picture's background made bare linen, so the thing drawn stands on
+## the hoop alone: a themed picture sits on a white board and the bank's
+## scenes under a sky, and either would knit as a square. The one region
+## carved is the thick one that fronts the outside (the picture's edge, or
+## the bare linen reached from it) along most of its contact and is a fair
+## share of the picture; a whale's body touching the edge at a few squares
+## fronts far less of it than its outline does, and stays.
+func _carve() -> void:
+	var n := w * h
+	var got := _components()
+	var comp: PackedInt32Array = got[0]
+	var cells: Array = got[1]
+	# the outside: every bare square reached from the edge
+	var outside := PackedByteArray()
+	outside.resize(n)
+	var queue := PackedInt32Array()
+	for c in n:
+		var x := c % w
+		var y := c / w
+		if picture[c] < 0 and (x == 0 or y == 0 or x == w - 1 or y == h - 1):
+			outside[c] = 1
+			queue.append(c)
+	var head := 0
+	while head < queue.size():
+		var c := queue[head]
+		head += 1
+		for d in _around(c):
+			if picture[d] < 0 and not outside[d]:
+				outside[d] = 1
+				queue.append(d)
+	# the squares that front it, by region
+	var contact := {}
+	var contacts := 0
+	var filled := 0
+	for c in n:
+		if picture[c] < 0:
+			continue
+		filled += 1
+		var x := c % w
+		var y := c / w
+		var fronts := x == 0 or y == 0 or x == w - 1 or y == h - 1
+		for d in _around(c):
+			fronts = fronts or outside[d] == 1
+		if fronts:
+			contact[comp[c]] = int(contact.get(comp[c], 0)) + 1
+			contacts += 1
+	for id in contact:
+		var mine: PackedInt32Array = cells[id]
+		if int(contact[id]) * 2 < contacts or mine.size() * 100 < filled * BACKDROP:
+			continue
+		var thick := 0
+		for c in mine:
+			if _in_block(c, comp):
+				thick += 1
+		if thick * 2 < mine.size():
+			continue
+		for c in mine:
+			picture[c] = -1
+		return
+
+## The picture's regions: a square's region, and each region's squares.
+func _components() -> Array:
+	var n := w * h
+	var comp := PackedInt32Array()
+	comp.resize(n)
+	comp.fill(-1)
+	var cells: Array = []
+	var queue := PackedInt32Array()
+	for start in n:
+		if picture[start] < 0 or comp[start] >= 0:
+			continue
+		var id := cells.size()
+		var mine := PackedInt32Array()
+		queue = PackedInt32Array([start])
+		comp[start] = id
+		var head := 0
+		while head < queue.size():
+			var c := queue[head]
+			head += 1
+			mine.append(c)
+			for d in _around(c):
+				if comp[d] < 0 and picture[d] == picture[c]:
+					comp[d] = id
+					queue.append(d)
+		cells.append(mine)
+	return [comp, cells]
+
+## Dissolves what would cut badly: the one-square outline round the drawn
+## thing and any other thin run (a stem, a whisker), and specks too small
+## to be a panel, each square of them taking the colour of the nearest
+## region that stays. The outline's beads are the darkest and they bound
+## every shape, so left in they would be a ring of slivers.
+func _dissolve() -> void:
+	var n := w * h
+	var got := _components()
+	var comp: PackedInt32Array = got[0]
+	var cells: Array = got[1]
+	var queue := PackedInt32Array()
+	var small := maxi(3, int(round(n * SPECK)))
+	var keep := PackedByteArray()
+	keep.resize(cells.size())
+	for id in cells.size():
+		var mine: PackedInt32Array = cells[id]
+		var thick := 0
+		for c in mine:
+			if _in_block(c, comp):
+				thick += 1
+		keep[id] = 1 if mine.size() >= small and thick * 2 >= mine.size() else 0
+	# the squares of what goes take the colour of the nearest kept square,
+	# spreading out from every kept square at once
+	var out := PackedInt32Array()
+	out.resize(n)
+	out.fill(-1)
+	queue = PackedInt32Array()
+	for c in n:
+		if comp[c] >= 0 and keep[comp[c]]:
+			out[c] = picture[c]
+			queue.append(c)
+	var head := 0
+	while head < queue.size():
+		var c := queue[head]
+		head += 1
+		for d in _around(c):
+			if out[d] < 0 and comp[d] >= 0 and not keep[comp[d]]:
+				out[d] = out[c]
+				queue.append(d)
+	picture = out
+
+## The squares beside square `c`.
+func _around(c: int) -> PackedInt32Array:
+	var x := c % w
+	var y := c / w
+	var out := PackedInt32Array()
+	if x > 0:
+		out.append(c - 1)
+	if x < w - 1:
+		out.append(c + 1)
+	if y > 0:
+		out.append(c - w)
+	if y < h - 1:
+		out.append(c + w)
+	return out
+
+## Whether square `c` sits in a 2x2 block of its own region.
+func _in_block(c: int, comp: PackedInt32Array) -> bool:
+	var x := c % w
+	var y := c / w
+	var id := comp[c]
+	for dy in [-1, 0]:
+		for dx in [-1, 0]:
+			var ok := true
+			for yy in [y + dy, y + dy + 1]:
+				for xx in [x + dx, x + dx + 1]:
+					if xx < 0 or yy < 0 or xx >= w or yy >= h or comp[yy * w + xx] != id:
+						ok = false
+			if ok:
+				return true
+	return false
+
+## The colour of the square at (x, y) of the picture, -1 bare or off it.
+func _label(x: int, y: int) -> int:
+	if x < 0 or y < 0 or x >= w or y >= h:
+		return -1
+	return picture[y * w + x]
+
+## The cut: the picture's edges traced and simplified, pins set along them,
+## the pins joined into triangles, and the triangles split until there are
+## about `want`. The tolerance and the spacing both grow a step while the
+## picture comes out too fine.
 func _cut(rng: RandomNumberGenerator, want: int) -> void:
-	var beads := 0
+	# the side of a square the drawn thing would half fill: what the band's
+	# shares are of, so a small thing on a big board cuts as fine as a scene
+	var filled := 0
 	for c in picture:
 		if c >= 0:
-			beads += 1
-	# a cell is two halves, a quad now and then one: about 1.7 panels a cell
-	var stride := sqrt(1.7 * maxf(1.0, beads) / float(want))
-	stride = maxf(stride, 1.0)
-	var nx := maxi(2, int(round(w / stride)))
-	var ny := maxi(2, int(round(h / stride)))
-	var sx := float(w) / nx
-	var sy := float(h) / ny
-	var jit: float = JITTER[band]
-	var lattice := PackedVector2Array()
-	for j in ny + 1:
-		for i in nx + 1:
-			var p := Vector2(i * sx, j * sy)
-			if i > 0 and i < nx:
-				p.x += rng.randf_range(-jit, jit) * sx
-			if j > 0 and j < ny:
-				p.y += rng.randf_range(-jit, jit) * sy
-			lattice.append(p)
+			filled += 1
+	var side := clampf(sqrt(filled / 0.5), 8.0, float(maxi(w, h)) * 1.5)
+	var chains := _trace()
+	var tol: float = TOLERANCE[band] * side
+	var gap: float = SPACING[band] * side
+	var aim := int(round(want * OVER))
+	var points := PackedVector2Array()
+	var mesh: Array = []
+	for attempt in 8:
+		points = _place(chains, tol, gap)
+		mesh = _mesh(points)
+		if (mesh[0] as Array).size() <= int(aim * 1.1) or points.size() <= 4:
+			break
+		tol *= 1.2
+		gap *= 1.2
+	# the biggest triangle whose middle is the spacing clear of every pin is
+	# split about it, until there are enough
+	var guard := 0
+	var read := {}
+	while (mesh[0] as Array).size() < aim and guard < 400:
+		guard += 1
+		var tris: Array = mesh[0]
+		var order: Array = []
+		for t in tris.size():
+			var tri: PackedInt32Array = tris[t]
+			order.append([absf(_area(points[tri[0]], points[tri[1]], points[tri[2]])), t])
+		order.sort_custom(func(x: Array, y: Array) -> bool: return float(x[0]) > float(y[0]))
+		var mid := Vector2.INF
+		for o: Array in order:
+			var tri: PackedInt32Array = tris[int(o[1])]
+			var m := (points[tri[0]] + points[tri[1]] + points[tri[2]]) / 3.0
+			var clear := true
+			for q in points:
+				if q.distance_squared_to(m) < gap * gap:
+					clear = false
+					break
+			if clear:
+				mid = m
+				break
+		if mid == Vector2.INF:
+			break
+		points.append(mid)
+		mesh = _mesh(points, read)
+	_quads(rng, points, mesh[0], mesh[1])
+
+## The picture's edges, as chains of points on the squares' corners: every
+## edge between two colours (or a colour and bare linen) walked from one
+## corner where three or more meet to the next, and loops with no such
+## corner from any point of theirs. Each chain is [points, junction_first,
+## junction_last].
+func _trace() -> Array:
+	var W := w + 1
+	# edges off a corner: east and south, as bits
+	var east := PackedByteArray()
+	var south := PackedByteArray()
+	east.resize(W * (h + 1))
+	south.resize(W * (h + 1))
+	var degree := PackedByteArray()
+	degree.resize(W * (h + 1))
+	for y in h + 1:
+		for x in w + 1:
+			var k := y * W + x
+			if x < w and _label(x, y - 1) != _label(x, y):
+				east[k] = 1
+				degree[k] += 1
+				degree[k + 1] += 1
+			if y < h and _label(x - 1, y) != _label(x, y):
+				south[k] = 1
+				degree[k] += 1
+				degree[k + W] += 1
+	var out: Array = []
+	var seen_e := PackedByteArray()
+	var seen_s := PackedByteArray()
+	seen_e.resize(east.size())
+	seen_s.resize(south.size())
+	for sweep in 2:
+		for k in degree.size():
+			if degree[k] == 0 or (sweep == 0 and degree[k] == 2):
+				continue
+			for dir in 4:
+				var chain := _walk(k, dir, east, south, seen_e, seen_s, degree, W)
+				if not chain.is_empty():
+					out.append(chain)
+	return out
+
+## One chain from corner `k` leaving in `dir` (0 east, 1 south, 2 west, 3
+## north), on to the next junction or back to the start.
+func _walk(k: int, dir: int, east: PackedByteArray, south: PackedByteArray, seen_e: PackedByteArray,
+		seen_s: PackedByteArray, degree: PackedByteArray, W: int) -> Array:
+	var pts := PackedVector2Array()
+	var at := k
+	var d := dir
+	var first_junction := degree[k] != 2
+	while true:
+		# the edge out of `at` in `d`, if there is one unseen
+		var e := -1
+		match d:
+			0: e = at if east[at] and not seen_e[at] else -1
+			1: e = at if south[at] and not seen_s[at] else -1
+			2: e = at - 1 if at % W > 0 and east[at - 1] and not seen_e[at - 1] else -1
+			3: e = at - W if at >= W and south[at - W] and not seen_s[at - W] else -1
+		if e < 0:
+			break
+		if d == 0 or d == 2:
+			seen_e[e] = 1
+		else:
+			seen_s[e] = 1
+		if pts.is_empty():
+			pts.append(Vector2(at % W, at / W))
+		at = [at + 1, at + W, at - 1, at - W][d]
+		pts.append(Vector2(at % W, at / W))
+		if degree[at] != 2 or at == k:
+			break
+		# the one other edge out of a corner of two
+		for nd in 4:
+			if nd == (d + 2) % 4:
+				continue
+			var has := false
+			match nd:
+				0: has = east[at] == 1
+				1: has = south[at] == 1
+				2: has = at % W > 0 and east[at - 1] == 1
+				3: has = at >= W and south[at - W] == 1
+			if has:
+				d = nd
+				break
+	if pts.size() < 2:
+		return []
+	return [pts, first_junction, degree[at] != 2]
+
+## The pins: every chain simplified to the tolerance `tol`, its corners where
+## three colours meet kept first, and no pin nearer another than `gap`.
+func _place(chains: Array, tol: float, gap: float) -> PackedVector2Array:
+	var wanted: Array = []
+	var later: Array = []
+	for chain: Array in chains:
+		var pts: PackedVector2Array = chain[0]
+		var kept := _simplify(pts, tol)
+		for i in kept.size():
+			var junction: bool = (i == 0 and bool(chain[1])) or (i == kept.size() - 1 and bool(chain[2]))
+			if junction:
+				wanted.append(kept[i])
+			else:
+				later.append(kept[i])
+	wanted.append_array(later)
+	var out := PackedVector2Array()
+	for p: Vector2 in wanted:
+		var near := false
+		for q in out:
+			if q.distance_squared_to(p) < gap * gap:
+				near = true
+				break
+		if not near:
+			out.append(p)
+	return out
+
+## Douglas-Peucker: the chain's ends, and every point farther than `tol` off
+## the line between the points kept either side of it.
+func _simplify(pts: PackedVector2Array, tol: float) -> PackedVector2Array:
+	var keep := PackedByteArray()
+	keep.resize(pts.size())
+	keep[0] = 1
+	keep[pts.size() - 1] = 1
+	var stack: Array = [[0, pts.size() - 1]]
+	while not stack.is_empty():
+		var span: Array = stack.pop_back()
+		var i0: int = span[0]
+		var i1: int = span[1]
+		if i1 - i0 < 2:
+			continue
+		var a := pts[i0]
+		var b := pts[i1]
+		var far := -1
+		var far_d := tol
+		for i in range(i0 + 1, i1):
+			var d: float
+			if a == b:
+				d = pts[i].distance_to(a)
+			else:
+				d = Geometry2D.get_closest_point_to_segment(pts[i], a, b).distance_to(pts[i])
+			if d > far_d:
+				far_d = d
+				far = i
+		if far >= 0:
+			keep[far] = 1
+			stack.append([i0, far])
+			stack.append([far, i1])
+	var out := PackedVector2Array()
+	for i in pts.size():
+		if keep[i]:
+			out.append(pts[i])
+	return out
+
+## The pins joined into triangles, each one the colour most of its beads
+## are: [the triangles kept (corner indices, wound the same way), their
+## colours]. A triangle mostly over bare linen, or a sliver, is left out.
+## `read` remembers what a triangle's beads said across the splits.
+func _mesh(points: PackedVector2Array, read := {}) -> Array:
+	var tris: Array = []
+	var cols: Array = []
+	if points.size() < 3:
+		return [tris, cols]
+	var idx := Geometry2D.triangulate_delaunay(points)
+	for t in idx.size() / 3:
+		var tri := PackedInt32Array([idx[t * 3], idx[t * 3 + 1], idx[t * 3 + 2]])
+		if _area(points[tri[0]], points[tri[1]], points[tri[2]]) < 0.0:
+			tri = PackedInt32Array([tri[0], tri[2], tri[1]])
+		if _min_angle(points[tri[0]], points[tri[1]], points[tri[2]]) < MIN_ANGLE:
+			continue
+		var key := Vector3i(tri[0], tri[1], tri[2])
+		if not read.has(key):
+			read[key] = _read_half(points, [tri[0], tri[1], tri[2]])
+		var got: Array = read[key]
+		if int(got[0]) < 0:
+			continue
+		tris.append(tri)
+		cols.append(int(got[0]))
+	return [tris, cols]
+
+## Twice the signed area of a triangle, positive when wound clockwise on
+## the screen (y down), as every panel is.
+func _area(a: Vector2, b: Vector2, c: Vector2) -> float:
+	return (b - a).cross(c - a)
+
+func _min_angle(a: Vector2, b: Vector2, c: Vector2) -> float:
+	var out := PI
+	for corner in [[a, b, c], [b, c, a], [c, a, b]]:
+		var u: Vector2 = corner[1] - corner[0]
+		var v: Vector2 = corner[2] - corner[0]
+		if u.length_squared() < 1.0e-9 or v.length_squared() < 1.0e-9:
+			return 0.0
+		out = minf(out, absf(u.angle_to(v)))
+	return out
+
+## Two neighbouring triangles of one colour that make a convex four-sided
+## shape are sometimes one panel. Then the panels are indexed.
+func _quads(rng: RandomNumberGenerator, points: PackedVector2Array, tris: Array, cols: Array) -> void:
+	var by_side := {}
+	for t in tris.size():
+		var tri: PackedInt32Array = tris[t]
+		for m in 3:
+			var key := _key(tri[m], tri[(m + 1) % 3])
+			if not by_side.has(key):
+				by_side[key] = PackedInt32Array()
+			var lst: PackedInt32Array = by_side[key]
+			lst.append(t)
+			by_side[key] = lst
+	var used := PackedByteArray()
+	used.resize(tris.size())
 	var raw_panels: Array = []
 	var raw_colour: Array = []
-	for j in ny:
-		for i in nx:
-			var a := j * (nx + 1) + i
-			var b := a + 1
-			var c := a + nx + 2
-			var d := a + nx + 1
-			# corners clockwise on screen: a top left, b top right, c bottom
-			# right, d bottom left. Cut a-c or b-d, whichever keeps its halves
-			# the more one colour.
-			var cut_ac := [[a, b, c], [a, c, d]]
-			var cut_bd := [[a, b, d], [b, c, d]]
-			var ac := [_read_half(lattice, cut_ac[0]), _read_half(lattice, cut_ac[1])]
-			var bd := [_read_half(lattice, cut_bd[0]), _read_half(lattice, cut_bd[1])]
-			var score_ac: int = int(ac[0][1]) + int(ac[1][1])
-			var score_bd: int = int(bd[0][1]) + int(bd[1][1])
-			var use_ac := score_ac > score_bd or (score_ac == score_bd and rng.randf() < 0.5)
-			var halves: Array = cut_ac if use_ac else cut_bd
-			var read: Array = ac if use_ac else bd
-			var kept: Array = []
-			for k in 2:
-				if int(read[k][0]) >= 0:
-					kept.append(k)
-			if kept.size() == 2 and int(read[0][0]) == int(read[1][0]) and rng.randf() < float(QUADS[band]):
-				raw_panels.append([a, b, c, d])
-				raw_colour.append(int(read[0][0]))
-				continue
-			for k: int in kept:
-				raw_panels.append(halves[k])
-				raw_colour.append(int(read[k][0]))
-	_index(lattice, raw_panels, raw_colour)
+	for t in tris.size():
+		if used[t]:
+			continue
+		var tri: PackedInt32Array = tris[t]
+		var merged := false
+		for m in 3:
+			var a := tri[m]
+			var b := tri[(m + 1) % 3]
+			var c := tri[(m + 2) % 3]
+			var lst: PackedInt32Array = by_side[_key(a, b)]
+			for u in lst:
+				if u == t or used[u] or cols[u] != cols[t] or merged:
+					continue
+				var other: PackedInt32Array = tris[u]
+				var d := -1
+				for v in other:
+					if v != a and v != b:
+						d = v
+				# the shape a, d, b, c must turn the same way at every corner
+				var quad := PackedVector2Array([points[a], points[d], points[b], points[c]])
+				var convex := true
+				for q in 4:
+					if _area(quad[q], quad[(q + 1) % 4], quad[(q + 2) % 4]) <= 1.0e-6:
+						convex = false
+				if convex and rng.randf() < float(QUADS[band]):
+					raw_panels.append([a, d, b, c])
+					raw_colour.append(cols[t])
+					used[t] = 1
+					used[u] = 1
+					merged = true
+			if merged:
+				break
+		if not merged:
+			raw_panels.append([tri[0], tri[1], tri[2]])
+			raw_colour.append(cols[t])
+			used[t] = 1
+	_index(points, raw_panels, raw_colour)
 
 ## What a half's beads say: [its colour or -1, how many beads agree].
 func _read_half(lattice: PackedVector2Array, tri: Array) -> Array:
