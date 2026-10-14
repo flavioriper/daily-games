@@ -19,16 +19,28 @@ const TABLE := Color("ecd3ab")
 const TABLE_HI := Color("f4e2c2")
 const TABLE_LOW := Color("dcbc8d")
 const TABLE_LINE := Color("c9a473")
-const TRAY := Color("3b3e4c")
-const TRAY_HI := Color("585c6e")
-const TRAY_LOW := Color("2b2d38")
-const FLOOR := Color("30323e")
-const CLEAR := Color("c9d6e0")
-const JELLY_LOW := Color("4d5162")
+const TRAY := Color("474b5c")
+const TRAY_HI := Color("636879")
+const TRAY_LOW := Color("33363f")
+## The clear jelly (2026-10-14, after the two screens of the game the first
+## spec names, the user: "right now borders make it look weird, i wanted
+## something that look more like a jelly"): a dark glossy gel, darker
+## than the tray it stands on, its side (`GEL_SIDE`) lit along the upper
+## left and no light outline anywhere. The tint lies on `GEL` and is
+## drawn the card's colour at the card's shade.
+const GEL := Color("1e1f28")
+const GEL_SIDE := Color("2f313d")
+const GEL_LIT := Color("8c90a4")
+const GEL_SHADOW := Color("14151b")
 const STEEL := Color("b9c2cc")
 ## How wide the seam between two chunks is drawn, in mould units: the
-## dye's texels are 0.4 of one, and the line hides where two tints meet.
+## dye's texels are 0.4 of one, and the groove hides where two tints meet.
 const SEAM := 1.3
+## The grey of the drain button, the one tool that takes tint out: no
+## flavour's colour (the pots are coloured by index).
+const DRAIN := Color("7b8496")
+const DRAIN_HI := Color("a6aec0")
+const DRAIN_LOW := Color("5d6577")
 const PAPER := Color("fcf7ef")
 const GLASS := Color("eef4f6")
 const GLASS_LINE := Color("9fb2bd")
@@ -92,47 +104,55 @@ static func tray(side: float) -> ArrayMesh:
 		b.fan(Face.Builder.round_rect(Vector2.ZERO, Vector2(side, side), r), TRAY)
 		b.fan(Face.Builder.round_rect(Vector2(side * 0.05, side * 0.03), Vector2(side * 0.5, side * 0.012), side * 0.006), Color(1, 1, 1, 0.07)))
 
-## A jelly's floor: its shadow on the tray and the clear jelly itself,
-## under the tint.
+## A jelly's floor, under the tint: its soft shadow on the tray, its side
+## (the clear rim, `Mould.RIM` out from the outline) lit along the upper
+## left, and the dark gel itself, a little lighter toward its middle, as a
+## dome is.
 static func floor_of(m: Dictionary, u: float) -> ArrayMesh:
 	var b := Face.Builder.new()
 	var rim := _scaled(m.rim, u)
-	b.polygon(_moved(rim, Vector2(1.1, 1.8) * u), Color(0, 0, 0, 0.32))
-	b.polygon(rim, JELLY_LOW)
+	b.polygon(_moved(rim, Vector2(1.6, 2.6) * u), Color(GEL_SHADOW, 0.28))
+	b.polygon(_moved(rim, Vector2(0.7, 1.2) * u), Color(GEL_SHADOW, 0.35))
+	b.polygon(rim, GEL_SIDE)
 	var body := _scaled(m.outline, u)
-	b.polygon(body, FLOOR)
-	b.polygon(body, Color(CLEAR, 0.4))
+	# the side's light: a stroke of the outline moved up and left, which the
+	# gel then covers but for a crescent along the upper left
+	b.stroke(_moved(body, Vector2(-0.55, -0.75) * u), 0.9 * u, Color(GEL_LIT, 0.55), true)
+	b.polygon(body, GEL)
+	for k in 3:
+		for inner: PackedVector2Array in Geometry2D.offset_polygon(body, -(2.5 + 2.5 * k) * u, Geometry2D.JOIN_ROUND):
+			if inner.size() >= 3:
+				b.polygon(inner, Color(1, 1, 1, 0.035))
 	return b.mesh()
 
-## A jelly's skin, drawn over the tint: the thin seam where one chunk
-## meets the next (no wall: the chunks touch), the clear edge the whole
-## stands up by, lit from the upper left, and the light lying on it.
+## A jelly's skin, drawn over the tint: the groove where one chunk meets
+## the next (no wall: the chunks touch, and the groove hides where two
+## tints meet), the crisp edge where the tint ends at the gel's side, and
+## the light lying on the gel.
 static func gloss_of(m: Dictionary, u: float) -> ArrayMesh:
 	var b := Face.Builder.new()
 	var body := _scaled(m.outline, u)
-	var w: float = Mould.RIM * u * 2.0
 	for line: PackedVector2Array in m.seams:
 		if line.size() >= 2:
-			b.stroke(_moved(_scaled(line, u), Vector2(0.15, 0.25) * u), SEAM * u, Color(JELLY_LOW, 0.7))
+			b.stroke(_scaled(line, u), SEAM * u, Color(GEL, 0.9))
 	for line: PackedVector2Array in m.seams:
 		if line.size() >= 2:
-			b.stroke(_moved(_scaled(line, u), Vector2(-0.15, -0.2) * u), SEAM * 0.5 * u, Color(CLEAR, 0.7))
-	b.stroke(_moved(body, Vector2(0.25, 0.4) * u), w, Color(JELLY_LOW, 0.75), true)
-	b.stroke(body, w * 0.82, Color(CLEAR, 0.62), true)
-	b.stroke(_moved(body, Vector2(-0.3, -0.42) * u), w * 0.26, Color(1, 1, 1, 0.5), true)
-	# the light: a long glint along the upper left and a small one by it
+			b.stroke(_moved(_scaled(line, u), Vector2(-0.35, -0.45) * u), SEAM * 0.3 * u, Color(GEL_LIT, 0.28))
+	b.stroke(body, 0.8 * u, Color(GEL_SIDE, 0.95), true)
+	# the light: a soft sheen along the upper left and a small glint by it
 	var box := Rect2(body[0], Vector2.ZERO)
 	for q in body:
 		box = box.expand(q)
 	for k in 9:
 		var at := box.position + box.size * Vector2(0.24 + 0.07 * (k % 3), 0.2 + 0.09 * (k / 3))
-		var r := clampf(minf(box.size.x, box.size.y) * 0.09, 3.0 * u, 7.0 * u)
+		var r := clampf(minf(box.size.x, box.size.y) * 0.1, 3.0 * u, 8.0 * u)
 		var fits := true
 		for d: Vector2 in [Vector2(-1.6, 0), Vector2(1.6, 0), Vector2(0, -0.8), Vector2(0, 0.8)]:
 			fits = fits and Geometry2D.is_point_in_polygon(at + d * r, body)
 		if fits:
-			b.ellipse(at, r * 1.5, r * 0.62, Color(1, 1, 1, 0.16))
-			b.ellipse(at + Vector2(-r * 0.45, -r * 0.08), r * 0.5, r * 0.24, Color(1, 1, 1, 0.3))
+			b.ellipse(at, r * 1.7, r * 0.7, Color(1, 1, 1, 0.12))
+			b.ellipse(at + Vector2(-r * 0.4, -r * 0.1), r * 0.6, r * 0.28, Color(1, 1, 1, 0.3))
+			b.ellipse(at + Vector2(r * 1.5, r * 0.55), r * 0.22, r * 0.13, Color(1, 1, 1, 0.22))
 			break
 	return b.mesh()
 
@@ -250,9 +270,59 @@ static func squeeze_button(r: float) -> ArrayMesh:
 		_drop(b, Vector2(0, 0.04 * r), 0.36 * r, Color("fffdf8")))
 
 static func _drop(b: Face.Builder, c: Vector2, r: float, col: Color) -> void:
+	b.polygon(_drop_points(c, r), col)
+
+static func _drop_points(c: Vector2, r: float) -> PackedVector2Array:
 	var pts := PackedVector2Array([c + Vector2(0, -r * 1.25)])
 	pts.append_array(Face.Builder.arc_points(c + Vector2(0, r * 0.2), r * 0.78, -PI * 0.2, PI * 1.2))
-	b.polygon(pts, col)
+	return pts
+
+## The drain button: a round of grey with a hollow drop on it, the one
+## tool that takes tint out (2026-10-14).
+static func drain_button(r: float) -> ArrayMesh:
+	return _made("drain/%.0f" % r, func(b: Face.Builder) -> void:
+		b.disc(Vector2(0, 0.1 * r), r, Color(0.25, 0.14, 0.06, 0.25))
+		b.disc(Vector2.ZERO, r, Color("fffdf8"))
+		b.disc(Vector2.ZERO, 0.9 * r, DRAIN_LOW)
+		b.disc(Vector2(0, -0.05 * r), 0.84 * r, DRAIN)
+		b.ellipse(Vector2(-0.3, -0.48) * r, 0.34 * r, 0.14 * r, Color(DRAIN_HI, 0.8))
+		b.stroke(_drop_points(Vector2(0, 0.04 * r), 0.36 * r), 0.09 * r, Color("fffdf8"), true)
+		# the arrow out of it
+		b.stroke(PackedVector2Array([Vector2(0, 0.22 * r), Vector2(0, -0.2 * r)]), 0.08 * r, Color("fffdf8"))
+		b.stroke(PackedVector2Array([Vector2(-0.13 * r, -0.07 * r), Vector2(0, -0.22 * r), Vector2(0.13 * r, -0.07 * r)]), 0.08 * r, Color("fffdf8")))
+
+## The meter's slack: a reading up to this far over full is still the
+## card's shade to the eye (the strength's curve flattens there) and the
+## number stays white.
+const METER_SLACK := 0.08
+## The meter on the squeeze button (puzzles/gumdrop_table.gd): the chunk's
+## pigments as shares of the card's shade (`fill`, red, yellow, blue),
+## laid clockwise from the top along the button's white rim, a segment a
+## pigment; past full a dark ring climbs outside the rim. Built each
+## frame it is shown.
+static func meter(r: float, fill: Vector3) -> ArrayMesh:
+	var b := Face.Builder.new()
+	var cols := [FLAVOURS[0], FLAVOURS[2], FLAVOURS[4]]
+	var total := fill.x + fill.y + fill.z
+	var from := -PI * 0.5
+	var shown := minf(total, 1.0)
+	var rim := 0.95 * r
+	var w := 0.1 * r
+	for i in 3:
+		var part := fill[i] / maxf(total, 0.0001) * shown
+		if part > 0.002:
+			var to := from + TAU * part
+			b.stroke(Face.Builder.arc_points(Vector2.ZERO, rim, from, to), w, cols[i], false, false)
+			from = to
+	# the marks a quarter apart, over the segments
+	for q in 4:
+		var a := -PI * 0.5 + TAU * 0.25 * q
+		var d := Vector2.from_angle(a)
+		b.stroke(PackedVector2Array([d * (rim - w * 0.5), d * (rim + w * 0.5)]), 0.03 * r, Color(INK, 0.35 if q > 0 else 0.6))
+	if total > 1.0 + METER_SLACK:
+		var over := clampf((total - 1.0) / 0.6, 0.0, 1.0)
+		b.stroke(Face.Builder.arc_points(Vector2.ZERO, r + 0.05 * r, -PI * 0.5, -PI * 0.5 + TAU * over), 0.08 * r, Color(INK, 0.7), false, true)
+	return b.mesh()
 
 ## The serve button: a round of gold with a tick on it.
 static func serve_button(r: float) -> ArrayMesh:

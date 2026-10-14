@@ -17,7 +17,7 @@ const CozyTheme = preload("res://ui/theme.gd")
 const Sim = preload("res://puzzles/gumdrop_sim.gd")
 const Mould = preload("res://puzzles/gumdrop_mould.gd")
 
-enum Lesson { FILL, SOAK, MATCH, MIX, HUD }
+enum Lesson { FILL, SOAK, DRAIN, MATCH, MIX, HUD }
 
 var lesson: int = Lesson.FILL
 
@@ -31,7 +31,7 @@ var _rows_shown: ArrayMesh
 
 ## The sim with a clock and a hand: `plan` rows are [second, what, with],
 ## in order: "pick" a pot, "aim" at a point of the mould (the tip travels
-## there), "squeeze" true or false, "serve".
+## there), "squeeze" true or false, "drain" true or false, "serve".
 class Round extends "res://puzzles/gumdrop_sim.gd":
 	const TRAVEL := 70.0
 
@@ -74,6 +74,8 @@ class Round extends "res://puzzles/gumdrop_sim.gd":
 					_goal = row[2]
 				"squeeze":
 					squeeze(bool(row[2]))
+				"drain":
+					drain(bool(row[2]))
 				"serve":
 					serve()
 		if tip.distance_to(_goal) > 0.01:
@@ -127,8 +129,13 @@ class Bench extends "res://puzzles/gumdrop_table.gd":
 		var n := _pots()
 		for i in n:
 			_pot_at.append(Vector2(827.0 + (i - (n - 1) * 0.5) * 124.0, 384.0))
-		_squeeze_at = Vector2(896.0, 512.0)
-		_serve_at = Vector2(712.0, 522.0)
+		# three buttons in the bench's width: smaller than the board's
+		_squeeze_r = 92.0
+		_serve_r = 56.0
+		_drain_r = 56.0
+		_serve_at = Vector2(660.0, 526.0)
+		_squeeze_at = Vector2(818.0, 516.0)
+		_drain_at = Vector2(976.0, 526.0)
 
 	func _place_labels() -> void:
 		super()
@@ -212,6 +219,16 @@ func _reset() -> void:
 				[7.4, "squeeze", true], [9.0, "squeeze", false]]
 			_length = 12.0
 			_still_at = 6.4
+		Lesson.DRAIN:
+			# the cap poured well past the card's shade, then the grey button
+			# held: the syrup drawn back out until the meter reads full
+			game.lay([F.CHERRY, F.LIME], [F.CHERRY, F.LIME])
+			game.filled(1, F.LIME, 1.0)
+			game.filled(0, F.CHERRY, 1.5)
+			game.plan = [[0.4, "aim", game.centre_of(0)], [1.6, "drain", true], [2.3, "drain", false],
+				[4.4, "drain", true], [4.7, "drain", false]]
+			_length = 8.0
+			_still_at = 5.6
 		Lesson.MATCH:
 			# one half as the card has it, the other topped up, and served
 			game.lay([F.LIME, F.ORANGE], [F.LIME, F.ORANGE])

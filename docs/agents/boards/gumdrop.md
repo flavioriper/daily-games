@@ -41,8 +41,9 @@
   tutorial's last page is the shared diagram under "Count your serves" and
   `GD_RULES_SERVES`. **The user picked "under the mark loses the day"; the
   one spare serve was put to them in the design and stood.**
-- **No Undo, bulb or Check on any band** (`capabilities()` is empty): syrup
-  cannot be taken out and the match is a `?` beside the card until Serve.
+- **No Undo, bulb or Check on any band** (`capabilities()` is empty): the
+  match is a `?` beside the card until Serve, and syrup is taken out by
+  the table's own grey button (the drain, 2026-10-14, below), not an Undo.
   A serve is the one move, so the win's line counts serves as moves.
 - **The table is the whole screen** (`"bleed": true`; the host's side of it
   is in `docs/agents/flat-screens.md`). The board is a thin
@@ -316,3 +317,114 @@ theme?". Spec: `docs/superpowers/specs/2026-10-14-gumdrop-themed-jelly-design.md
   spec's stage 4, the user's deploy). Owed: a day with all fourteen kept
   (the first run lost five to an empty OpenRouter account), a phone, the
   user's eye on the jellies.
+
+### A jelly, a drain and a meter (2026-10-14)
+
+The user, over two screens of the game the first spec names once to
+forbid (a green world map and a yellow banana, each a black glossy jelly
+on a dark tray with the colour vivid inside it): "polish gumdrop ... to
+make it way more like a jelly (right now borders make it look weird ...),
+the tint should be more satisfactory to see it filling, also we need
+another tool to remove fluid and a indicator about % of filled, so user
+can have a reference when doing like 50% of each color. Do everything
+autonomous". Built unattended on that; nothing of it seen by the user.
+
+- **The jelly is a dark glossy gel** (`Art.floor_of`, `Art.gloss_of`;
+  `GEL` 1e1f28 on a tray lightened to 474b5c so the two are no longer one
+  value): two soft shadows, the gel's side (`GEL_SIDE`, `Mould.RIM` out
+  from the outline) with a lit crescent along its upper left (a stroke of
+  the outline moved up and left, which the gel then covers but for that
+  crescent), the body a little lighter toward its middle (three insets of
+  `offset_polygon`, 3.5% white each) and the sheen on top. **No light
+  outline anywhere**: the grey strokes of the outline and the light seam
+  lines were the "borders". A seam is a groove in the gel's own colour
+  (`SEAM` 1.3 units, still wider than a dye texel) with a faint light edge
+  on its upper-left side, so the chunks still read as pieces (the rule of
+  2026-10-11 stands). The tint ends at the gel's side under a thin stroke
+  of `GEL_SIDE` on the outline, so the dye's blurred edge never shows. The
+  menu card's jelly (`ui/menu/cards/gumdrop.gd`) copies the same drawing.
+- **The tint is a blob with a body** (`shaders/gumdrop_syrup_2d.gdshader`):
+  opaque wherever the amount passes a short ramp (`EDGE_LO` 0.02 to
+  `EDGE_HI` 0.09 of an amount), a darker lip just inside that edge (`LIP`
+  0.72 up to `LIP_TO` 0.22), the colour `mix(MILK, colour_of, strength)`:
+  **at the card's shade it is the card's colour exactly** (the judge's
+  `colour_of`, the card's `FLAVOURS`), under it pale toward milk, as
+  `nearness_of` sees a weak tint (it mixes toward white), and over it the
+  deepening as before. No lighting from the dye's slope (foil, 2026-10-11).
+- **The pour is paced for a meter** (`Fluid.RATE` 0.9, `SQUARES_REF` 23):
+  pigment a second at the tip is the rate into a chunk of 23 squares or
+  fewer and grows with a bigger chunk in proportion, so every chunk takes
+  about the same hold to reach the card's shade. Before, 20 into any
+  chunk: the mushroom's stalk passed the card's shade in half a second
+  (0.57 of the texture's top at 0.5 s, read 2026-10-14 before the change),
+  which no meter could be read against; the 2026-10-12 entry left `RATE`
+  as the user's knob and a meter to hit 50% by is that call made. Read
+  now (`tests/_shot_gumdrop.gd -- <out> 1 pour`, `opengl3_angle`): the
+  stalk 21% at 0.5 s of hold, 58% at 1.5, 90% at 2.5 (the meter's own
+  reading 95%), 134% at 4 s; let go, it holds (139% two seconds later).
+  **The jet is untouched** (the spread across the chunk is 2026-10-12's).
+- **The drain** (`Sim.drain`, `Sim.draining`; the dye pass's `draining`
+  and `drain` uniforms; `Art.drain_button`): a grey round button
+  (`DRAIN` 7b8496, no flavour's colour: the pots are coloured by index)
+  to the right of the squeeze button, at `SERVE_OFF`, the serve's mirror,
+  held like the squeeze: pigment is taken out about the tip at the pour's
+  rate (`Fluid.DRAIN` 1.0), every pigment in its share, and the far settle,
+  on since nothing is squeezed, levels the chunk down with it. The needle's
+  plunger rises, the rings run into the tip, the pour loop plays lower
+  (`DRAIN_PITCH` 0.78), the button greys while nothing is in the mould.
+  Read: 139% to 113% at 0.5 s of hold, 54% at 1.5, 6% at 3 s. **Nothing
+  is added to the jet**: a point sink is all divergence and the pressure
+  cancels it, as the push straight out was. **Insane's serves pill moved**
+  from the drain's place to the tray's top left corner (`_pill_at`,
+  `_tray.position + (126, 38)`), over the tray's dark; a picture reaching
+  that corner would lie under it (4 to 96 is the night's rule, the
+  twenty-nine stay off it). Not seen on Insane with the pill.
+- **The sim's tally is per chunk and put right by the fluid**
+  (`Sim.tank`, `learn`, `WET` 0.02, `RATE` 0.5 amounts a second): `wet()`
+  used to be "ever squeezed", so a mould drawn fully out would still serve
+  (at 0%, a serve spent on Insane). Now each chunk's amount is the sim's
+  reckoning until the table hands it the meter's reading (`learn`, every
+  frame the tip is over a chunk and the meter has been read), and the
+  mould is wet while any chunk holds more than a trace. Headless, the sim
+  reckons alone.
+- **The meter** (`shaders/gumdrop/meter.gdshader`, `Fluid.level`,
+  `Art.meter`, the table's `_draw_meter`): a pass of `CELLS_TOP` texels
+  by one, each a chunk's mean pigments over the dye at a stride of 4,
+  read back at most every `METER_GAP` 0.1 s (sixteen texels, in place of
+  the judge's whole picture). The squeeze button's white rim is the
+  track: it fills clockwise from the top with the chunk under the tip,
+  **a segment a pigment** (cherry, lemon, blueberry in the card's
+  colours), 100% the card's shade (`C_FULL` of amounts), marks a quarter
+  apart, the number under the drop (`METER_FONT` 28); past full by more
+  than `METER_SLACK` (8%) the number turns ink and a dark ring climbs
+  outside the rim, to 160% at the dye's top. So a mixed flavour's "half
+  of each" is two equal halves of the ring. Eased at `METER_EASE` 12 a
+  second toward the reading, faded at `METER_FADE` 6 when the tip is over
+  the tray or the mould is served; "0%" shows over an empty chunk. The
+  mesh is built each frame it is shown (its arcs change), as the rings
+  are.
+- **The words**: `GD_RULES` gained the grey button and the ring in the
+  three languages; `TUT_GUMDROP_HUD_BODY` no longer says syrup cannot be
+  taken out; a sixth page, `TUT_GUMDROP_DRAIN` ("Draw it back out",
+  `Lesson.DRAIN` after SOAK) prefilling the stalk at 150% and draining it
+  to about 90% as the ring reads it. The bench lays three buttons
+  smaller (`_squeeze_r` 92, `_serve_r` 56, `_drain_r` 56, the radii now
+  vars the board's `_place` sets from the constants). Reimported with
+  `godot --headless --path . --import` (a CSV row is nothing on screen
+  until then: the first tutor run read "TUT_GUMDROP_DRAIN").
+- **Measured** (`opengl3_angle`, 810x1440): play 115 to 122 draw calls
+  (100 to 111 before: the meter's mesh and string, the third button, the
+  gel's insets), the win 75 to 82, the tutorial 176 to 180. Medium by the
+  bot: 100, 85, 100 in 4 serves (one flop by hand first), the win, the
+  done day, Redo and Reset as before. The probe's five Insane-serves
+  checks fail as they did on `main`. `tests/_shot_gumdrop.gd -- <out> 1
+  pour` now holds the drain three seconds after the pour and prints the
+  meter's reading, the shown number and the sim's tally at each still.
+- **Calls that are the user's**: the rate (2.6 s of hold to the card's
+  shade on a 92-square chunk; `RATE`) and the drain at the same; the gel's
+  darkness against the tray; the milky pale of a thin pour (the judge's
+  own reading of it, so pale means "more"); the number on the button
+  rather than at the tip or by the card; the pill's corner on Insane; the
+  grey of the drain button. Owed: a phone (the meter pass's 65k fetches
+  and its tiny readback are untimed there), Insane with the pill in its
+  corner, pt and es, the sounds heard (the loop at 0.78 was not).

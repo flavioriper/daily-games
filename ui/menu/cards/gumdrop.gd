@@ -126,27 +126,26 @@ func _jelly_on(b: Face.Builder, at: Vector2, u: float) -> void:
 	var m := _jelly()
 	if m.is_empty():
 		return
+	# the board's gel (gumdrop_art.gd's floor_of and gloss_of, 2026-10-14)
 	var rim := _laid(m.rim, at, u)
-	b.polygon(_laid(m.rim, at + Vector2(1.1, 1.8) * u, u), Color(0, 0, 0, 0.32))
-	b.polygon(rim, Art.JELLY_LOW)
+	b.polygon(_laid(m.rim, at + Vector2(1.6, 2.6) * u, u), Color(Art.GEL_SHADOW, 0.28))
+	b.polygon(_laid(m.rim, at + Vector2(0.7, 1.2) * u, u), Color(Art.GEL_SHADOW, 0.35))
+	b.polygon(rim, Art.GEL_SIDE)
 	var body := _laid(m.outline, at, u)
-	b.polygon(body, Art.FLOOR)
-	b.polygon(body, Color(Art.CLEAR, 0.4))
+	b.stroke(_laid(m.outline, at + Vector2(-0.55, -0.75) * u, u), 0.9 * u, Color(Art.GEL_LIT, 0.55), true)
+	b.polygon(body, Art.GEL)
 	var want: Array = m.want
 	for c in m.cells.size():
 		if int(want[c]) != WANTED:
 			b.polygon(_laid(m.cells[c], at, u), Color(Art.FLAVOURS[int(want[c])], TINT))
 	for line: PackedVector2Array in m.seams:
 		if line.size() >= 2:
-			b.stroke(_laid(line, at + Vector2(0.15, 0.25) * u, u), Art.SEAM * u, Color(Art.JELLY_LOW, 0.7))
+			b.stroke(_laid(line, at, u), Art.SEAM * u, Color(Art.GEL, 0.9))
 	for line: PackedVector2Array in m.seams:
 		if line.size() >= 2:
-			b.stroke(_laid(line, at + Vector2(-0.15, -0.2) * u, u), Art.SEAM * 0.5 * u, Color(Art.CLEAR, 0.7))
-	var w: float = Mould.RIM * u * 2.0
-	b.stroke(_laid(m.outline, at + Vector2(0.25, 0.4) * u, u), w, Color(Art.JELLY_LOW, 0.75), true)
-	b.stroke(body, w * 0.82, Color(Art.CLEAR, 0.62), true)
-	b.stroke(_laid(m.outline, at + Vector2(-0.3, -0.42) * u, u), w * 0.26, Color(1, 1, 1, 0.5), true)
-	# The light lying on the clear icing: two flat pale patches.
+			b.stroke(_laid(line, at + Vector2(-0.35, -0.45) * u, u), Art.SEAM * 0.3 * u, Color(Art.GEL_LIT, 0.28))
+	b.stroke(body, 0.8 * u, Color(Art.GEL_SIDE, 0.95), true)
+	# The light lying on the gel: two flat pale patches.
 	var glint := at + Vector2(41.0, 33.0) * u
 	b.ellipse(glint, 9.0 * u, 3.6 * u, Color(1, 1, 1, 0.18))
 	b.ellipse(glint + Vector2(-2.6, -0.5) * u, 3.0 * u, 1.4 * u, Color(1, 1, 1, 0.3))

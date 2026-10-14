@@ -49,10 +49,21 @@ const SWIRL := 320.0
 const JET_LEAN := 0.55
 const JET_TURN := 0.9
 const JET_RATE := 0.7
-const RATE := 20.0
+## Pigment a second at the tip's middle into a chunk of SQUARES_REF
+## squares or fewer (of the sim's 36 by 36), and more into a bigger one in
+## proportion, so every chunk takes about the same hold to reach the
+## card's shade (2026-10-14; before, 20 into any chunk, and the stalk of
+## the mushroom passed the card's shade in half a second, which no meter
+## could be read against). The grey button draws it out at DRAIN times
+## the same.
+const RATE := 0.9
+const SQUARES_REF := 23.0
+const DRAIN := 1.0
 ## The most the tip pours a texel up to, in amounts: a little past the
-## card's shade (1.25), so a pour never goes black under the tip.
+## card's shade (1.25), so a pour never goes black under the tip. The dye
+## texture holds a pigment's amount over AMOUNT_TOP (the include's).
 const POUR_TOP := 2.0
+const AMOUNT_TOP := 2.5
 ## The jelly: how much velocity a second keeps (e^-VISC) while the button
 ## is held, plain, under reduce motion and with the Softer jelly booster,
 ## and once it is let go (the flow dies in a moment instead of churning);
@@ -76,7 +87,10 @@ var calm := false
 ## The frame's state, set by the screen.
 var tip := Vector2(0.5, 0.5)
 var tip_cell := -1
+## Squares the chunk under the tip has (the sim's `count`), for the rate.
+var tip_squares := 0
 var squeezing := false
+var draining := false
 var pigment := Vector3(1, 0, 0)
 var drag := Vector2.ZERO
 var fill_cell := -1
@@ -94,6 +108,12 @@ var _time := 0.0
 var _running := false
 var _last_dye: SubViewport
 var _judge: SubViewport
+var _meter: SubViewport
+var _meter_img: Image
+var _meter_at := -10.0
+## Seconds between two reads of the meter: a tiny readback, CELLS_TOP
+## texels, so the ring on the squeeze button follows the pour.
+const METER_GAP := 0.1
 
 func _ready() -> void:
 	_build()
@@ -102,17 +122,18 @@ func _ready() -> void:
 func _load(name: String) -> Shader:
 	return load("res://shaders/gumdrop/%s.gdshader" % name)
 
-## One pass: a render target of `size` with a shader on a rect over it.
-func _pass(name: String, size: int, shader: String, params: Dictionary) -> SubViewport:
+## One pass: a render target of `size` (square, or `tall` high) with a
+## shader on a rect over it.
+func _pass(name: String, size: int, shader: String, params: Dictionary, tall := -1) -> SubViewport:
 	var vp := SubViewport.new()
 	vp.name = name
-	vp.size = Vector2i(size, size)
+	vp.size = Vector2i(size, size if tall < 0 else tall)
 	vp.disable_3d = true
 	vp.transparent_bg = false
 	vp.gui_disable_input = true
 	vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	var rect := ColorRect.new()
-	rect.size = Vector2(size, size)
+	rect.size = Vector2(vp.size)
 	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var mat := ShaderMaterial.new()
 	mat.shader = _load(shader)
@@ -154,10 +175,12 @@ func _build() -> void:
 	_mats["Pressure0"].set_shader_parameter("pres", last_p.get_texture())
 	var grad := _pass("Gradient", SIM, "gradient", {"vel": vort.get_texture(), "pres": last_p.get_texture(), "mask": mask, "n": n})
 	_mats["Advect"].set_shader_parameter("vel", grad.get_texture())
-	var dye := _pass("Dye", DYE, "dye", {"vel": grad.get_texture(), "mask": mask, "n": n, "radius": DYE_R, "rate": RATE, "pour_top": POUR_TOP / 2.5, "settle": SETTLE, "settle_r": SETTLE_R, "far": FAR, "far_r": FAR_R})
+	var dye := _pass("Dye", DYE, "dye", {"vel": grad.get_texture(), "mask": mask, "n": n, "radius": DYE_R, "rate": RATE, "pour_top": POUR_TOP / AMOUNT_TOP, "settle": SETTLE, "settle_r": SETTLE_R, "far": FAR, "far_r": FAR_R})
 	_last_dye = _pass("Keep", DYE, "copy", {"from": dye.get_texture()})
 	_mats["Dye"].set_shader_parameter("dye", _last_dye.get_texture())
 	_judge = _pass("Judge", DYE, "judge", {"dye": _last_dye.get_texture(), "mask": mask})
+	# one texel a chunk: its mean pigments, for the ring on the squeeze button
+	_meter = _pass("Meter", Mould.CELLS_TOP, "meter", {"dye": _last_dye.get_texture(), "mask": mask}, 1)
 
 ## Whether a deal's clearing frames are over: a cell filled before that
 ## would be wiped with them.
@@ -236,12 +259,34 @@ func tick(delta: float) -> void:
 	dye.set_shader_parameter("dt", dt)
 	dye.set_shader_parameter("tip", tip)
 	dye.set_shader_parameter("tip_cell", tip_cell)
+	dye.set_shader_parameter("rate", rate_now())
 	dye.set_shader_parameter("squeezing", 1.0 if squeezing else 0.0)
+	dye.set_shader_parameter("draining", 1.0 if draining and not squeezing else 0.0)
 	dye.set_shader_parameter("pigment", pigment)
 	dye.set_shader_parameter("fill_cell", fill_cell)
 	dye.set_shader_parameter("fill_pig", fill_pig)
 	dye.set_shader_parameter("clearing", clearing)
 	fill_cell = -1
+
+## Pigment a second at the tip's middle into the chunk under it: more
+## into a bigger chunk.
+func rate_now() -> float:
+	return RATE * maxf(1.0, tip_squares / SQUARES_REF)
+
+## The chunk's mean pigments, in amounts (the card's shade is Sim.C_FULL of
+## them in all), from the meter's last frame: read back at most every
+## METER_GAP, and nothing headless.
+func level(cell: int) -> Vector3:
+	if cell < 0 or cell >= Mould.CELLS_TOP or DisplayServer.get_name() == "headless":
+		return Vector3.ZERO
+	var now := Time.get_ticks_msec() / 1000.0
+	if _meter_img == null or now - _meter_at >= METER_GAP:
+		_meter_at = now
+		_meter_img = _meter.get_texture().get_image()
+	if _meter_img == null or _meter_img.get_width() < Mould.CELLS_TOP:
+		return Vector3.ZERO
+	var c := _meter_img.get_pixel(cell, 0)
+	return Vector3(c.r, c.g, c.b) * AMOUNT_TOP
 
 ## The mask's cell numbers, read back once a deal.
 func _mask_bytes() -> PackedByteArray:

@@ -30,6 +30,11 @@ uniform float dt = 0.016;
 uniform vec2 tip = vec2(0.5, 0.5);
 uniform int tip_cell = -1;
 uniform float squeezing = 0.0;
+// The grey button held: pigment taken out about the tip at `drain` times
+// the rate, every pigment in its share, while the far settle levels the
+// chunk down with it (it is on, since nothing is squeezed).
+uniform float draining = 0.0;
+uniform float drain = 1.0;
 uniform float radius = 0.045;
 // Pigment a second at the tip's middle, in amounts, and the most the tip
 // pours a texel up to (over AMOUNT_TOP): a strong pour that does not
@@ -106,6 +111,15 @@ void fragment() {
 			float tot = d.r + d.g + d.b;
 			if (tot > pour_top) {
 				d *= pour_top / tot;
+			}
+		}
+		if (draining > 0.5 && tip_cell == cell) {
+			vec2 off = UV - tip;
+			float g = exp(-dot(off, off) / (radius * radius));
+			float tot = d.r + d.g + d.b;
+			if (tot > 0.0) {
+				float take = (rate * drain / AMOUNT_TOP) * g * dt;
+				d *= max(0.0, tot - take) / tot;
 			}
 		}
 		if (fill_cell == cell) {

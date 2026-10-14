@@ -441,7 +441,10 @@ flagged `high`**, 1,061 Hz with 68% from 1 to 3 kHz and 32 dB down above 3
 kHz (at `warm:1500` 1,125 Hz and 28 dB down): a trickle lives there, and
 rolled off further it stops being one. It is the sound heard all the time
 (rule 9), so its level is the first thing to judge by ear. Twelve cues.
-Unheard.
+Unheard. **The drain (2026-10-14, `docs/agents/boards/gumdrop.md`) is the
+same loop at `DRAIN_PITCH` 0.78**, the syrup drawn back out by the grey
+button, up and down as the pour's is; the button's press is the click a
+little low (`touch` at 0.78). No take of its own. Unheard.
 
 **Deckchair has a set since 2026-10-10** (`SETS["deckchair"]`, fifteen
 cues), made against the cozy rules from the start and unheard by the user.

@@ -12,8 +12,9 @@ extends SceneTree
 ## opened again as a finished day. With `lose` on band 3 the bot is kept
 ## off: two moulds are served nearly clear and the out-of-moves card shot.
 ## With `tutor` the ? card's pages are shot instead; with `pour` the
-## squeeze button is held four seconds and let go, the tip's chunk read
-## off the dye at each still, and the run ends there.
+## squeeze button is held four seconds and let go, then the grey drain
+## button held three, the tip's chunk read off the dye and the meter at
+## each still, and the run ends there.
 ## Each shot prints the frame's draw calls. The save is a harness file and
 ## the wallet a throwaway, so nothing of this Mac's is touched.
 
@@ -149,6 +150,7 @@ func _bot() -> void:
 
 const POUR_HELD := [0.5, 1.5, 2.5, 4.0]
 const POUR_FREE := [0.1, 0.5, 2.0]
+const DRAIN_HELD := [0.5, 1.5, 3.0]
 var _marks := 0
 
 ## The chunk under the tip, read off the dye: what share of it holds any
@@ -174,7 +176,9 @@ func _spread(name: String) -> void:
 		top = maxf(top, c)
 		if c > 0.03:
 			wet += 1
-	print("pour %s: cell %d of %d texels, tinted %.2f, mean %.3f, top %.3f" % [name, cell, all, wet / maxf(1.0, all), sum / maxf(1.0, all), top])
+	var level: Vector3 = fluid.level(cell)
+	print("pour %s: cell %d of %d texels, tinted %.2f, mean %.3f, top %.3f; meter %.2f (%.2f %.2f %.2f) shown %d%% tank %.1f wet %s" % [name, cell, all, wet / maxf(1.0, all), sum / maxf(1.0, all), top,
+		(level.x + level.y + level.z) / Sim.C_FULL, level.x, level.y, level.z, int(round((_t_._level.x + _t_._level.y + _t_._level.z) / Sim.C_FULL * 100.0)), _t_.sim.tank[cell], str(_t_.sim.wet())])
 
 ## A point of the field as the window has it.
 func _win(p: Vector2) -> Vector2:
@@ -344,6 +348,19 @@ func _process(delta: float) -> bool:
 				_spread("free_%.1f" % POUR_FREE[_marks])
 				_marks += 1
 			elif _marks == POUR_FREE.size():
+				# the grey button held: the chunk drawn back out
+				_touch(true, _t_._drain_at)
+				print("touch drains: ", _t_.sim.draining)
+				_at = _t
+				_marks = 0
+				_step = 42
+		42:
+			if _marks < DRAIN_HELD.size() and _t > _at + DRAIN_HELD[_marks]:
+				_spread("drain_%.1f" % DRAIN_HELD[_marks])
+				_marks += 1
+			elif _marks == DRAIN_HELD.size():
+				_touch(false, _t_._drain_at)
+				print("let go of the drain: ", not _t_.sim.draining)
 				return true
 		30:
 			# the ? card, a shot of every page a while into its lesson

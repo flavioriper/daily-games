@@ -45,8 +45,11 @@ const C_FULL := 1.25
 const DEEP := 0.3
 const NEAR_FREE := 0.1
 const NEAR_GONE := 0.8
-## Squeezed a second, for the record of what went in.
-const RATE := 4.0
+## What a chunk under the needle gains a second, in amounts (the card's
+## shade is C_FULL), as this sim reckons it until the table says what the
+## fluid holds (`learn`); and the amount a chunk is dry under.
+const RATE := 0.5
+const WET := 0.02
 ## The mark a mould has to be served at when no day says (a tutorial
 ## page's), and the match a mould is called perfect at.
 const MARK := 60
@@ -83,11 +86,18 @@ var mould := {}
 ## The pots: {flavour}. They never run dry.
 var pots: Array = []
 var picked := 0
-## The needle's tip, in mould units, and whether it is being squeezed.
+## The needle's tip, in mould units, whether it is being squeezed, and
+## whether syrup is being drawn back out of the chunk under it (the grey
+## button, 2026-10-14: the one tool that takes tint out).
 var tip := Vector2(Mould.SIDE, Mould.SIDE) * 0.5
 var squeezing := false
-## Syrup squeezed into the jelly this mould.
+var draining := false
+## What each chunk holds, in amounts: this sim's reckoning of the
+## squeezes and drains, put right by the table from the fluid's meter
+## (`learn`), so an emptied chunk is dry again and a mould drawn fully
+## out cannot be served. `poured` is the most of them.
 var poured := 0.0
+var tank := PackedFloat32Array()
 ## Which cell each square is in (-1 the tray), and how many squares each
 ## cell has.
 var reg := PackedInt32Array()
@@ -236,7 +246,10 @@ func _lay() -> void:
 	picked = 0
 	tip = centre_of(0)
 	squeezing = false
+	draining = false
 	poured = 0.0
+	tank.resize(cells.size())
+	tank.fill(0.0)
 	prefill.clear()
 	_asked = false
 
@@ -281,7 +294,7 @@ func centre_of(c: int) -> Vector2:
 func filled(c: int, flavour: int, part: float) -> void:
 	var pig: Vector3 = Mould.PIGMENT[flavour]
 	prefill.append({"cell": c, "pigment": pig * part * C_FULL})
-	poured += part * C_FULL * count[c]
+	_tally(c, part * C_FULL)
 	if phase == Phase.READY:
 		phase = Phase.PLAY
 
@@ -298,9 +311,34 @@ func squeeze(on: bool) -> void:
 	if not on or phase == Phase.READY or phase == Phase.PLAY:
 		squeezing = on
 
-## Whether anything has been squeezed into the mould.
+## The grey button: syrup drawn back out of the chunk under the tip for
+## as long as it is held.
+func drain(on: bool) -> void:
+	if not on or phase == Phase.READY or phase == Phase.PLAY:
+		draining = on
+
+## Syrup into (or, under zero, out of) a chunk's tally.
+func _tally(c: int, amount: float) -> void:
+	if c < 0 or c >= tank.size():
+		return
+	tank[c] = maxf(0.0, tank[c] + amount)
+	poured = 0.0
+	for v in tank:
+		poured = maxf(poured, v)
+
+## What the fluid's meter read in a chunk, in amounts: the truth over this
+## sim's reckoning.
+func learn(c: int, amount: float) -> void:
+	if c < 0 or c >= tank.size():
+		return
+	tank[c] = maxf(0.0, amount)
+	poured = 0.0
+	for v in tank:
+		poured = maxf(poured, v)
+
+## Whether anything is in the mould: some chunk holds more than a trace.
 func wet() -> bool:
-	return poured > 0.0
+	return poured > WET
 
 func can_serve() -> bool:
 	return phase == Phase.PLAY and wet()
@@ -309,6 +347,7 @@ func serve() -> void:
 	if not can_serve():
 		return
 	squeezing = false
+	draining = false
 	serves += 1
 	phase = Phase.SETTLE
 	phase_t = 0.0
@@ -321,12 +360,15 @@ func step() -> void:
 	phase_t += DT
 	match phase:
 		Phase.READY, Phase.PLAY:
-			if squeezing and tip_cell() >= 0:
+			var c := tip_cell()
+			if squeezing and c >= 0:
 				if phase == Phase.READY:
 					phase = Phase.PLAY
 					phase_t = 0.0
 					events.append({"type": "go"})
-				poured += RATE * DT
+				_tally(c, RATE * DT)
+			elif draining and c >= 0:
+				_tally(c, -RATE * DT)
 			if phase == Phase.PLAY:
 				t += DT
 		Phase.SETTLE:

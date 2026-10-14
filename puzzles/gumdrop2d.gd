@@ -63,8 +63,9 @@ func rules() -> String:
 		out += "\n\n" + tr("GD_RULES_SERVES") % max_moves
 	return out
 
-## Syrup squeezed in cannot be taken out and the match is hidden until the
-## mould is served: no Undo, no bulb, no Check.
+## The match is hidden until the mould is served, and syrup is taken out
+## with the table's own grey button, not an Undo: no Undo, no bulb, no
+## Check.
 func capabilities() -> Array[String]:
 	return []
 
@@ -289,6 +290,7 @@ func tutorial_pages() -> Array:
 	var steps := [
 		[Diagram.Lesson.FILL, "TUT_GUMDROP_FILL", tr("TUT_GUMDROP_FILL_BODY")],
 		[Diagram.Lesson.SOAK, "TUT_GUMDROP_SOAK", tr("TUT_GUMDROP_SOAK_BODY")],
+		[Diagram.Lesson.DRAIN, "TUT_GUMDROP_DRAIN", tr("TUT_GUMDROP_DRAIN_BODY")],
 		[Diagram.Lesson.MATCH, "TUT_GUMDROP_MATCH", tr("TUT_GUMDROP_MATCH_BODY") % sim.mark()],
 		[Diagram.Lesson.MIX, "TUT_GUMDROP_MIX", tr("TUT_GUMDROP_MIX_BODY")],
 		[Diagram.Lesson.HUD, "TUT_GUMDROP_HUD", tr("TUT_GUMDROP_HUD_BODY")],

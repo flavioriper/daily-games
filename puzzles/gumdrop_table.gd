@@ -66,6 +66,22 @@ const POT_GAP := 150.0
 const SQUEEZE_R := 104.0
 const SERVE_R := 66.0
 const SERVE_OFF := 250.0
+## The drain button (2026-10-14, the user: "we also need another tool to
+## remove fluid"): held, it draws syrup back out of the chunk under the
+## tip, as the squeeze button puts it in. It stands to the right of the
+## squeeze where Insane's serves pill stood, and the pill is on the tray's
+## top left corner.
+const DRAIN_R := 66.0
+## The meter (the user, the same day: "a indicator about % of filled, so
+## user can have a reference when doing like 50% of each color"): the
+## squeeze button's white rim fills clockwise with the chunk under the
+## tip, a segment a pigment, 100% the card's shade, and the number sits
+## under the drop; more than full climbs a dark ring outside it. It eases
+## toward the fluid's reading at this rate and fades at this one when the
+## tip is over the tray.
+const METER_EASE := 12.0
+const METER_FADE := 6.0
+const METER_FONT := 28
 ## The needle's length in pixels and how far it leans.
 const DROPPER := 250.0
 const LEAN := 0.55
@@ -85,6 +101,7 @@ const POUR_TOP := 0.9
 const POUR_IN := 0.12
 const POUR_OUT := 0.3
 const MIX_GAP := 0.6
+const DRAIN_PITCH := 0.78
 ## The cozy rules (docs/agents/sound.md): no cue climbs past five semitones,
 ## and a tick that repeats varies by TICK_VARY and climbs nothing.
 const CLIMB_TOP := 1.335
@@ -131,7 +148,17 @@ var _card := Rect2()
 var _pot_at: Array = []
 var _squeeze_at := Vector2.ZERO
 var _serve_at := Vector2.ZERO
+var _drain_at := Vector2.ZERO
 var _pill_at := Vector2.ZERO
+## The buttons' radii as laid (the tutorial's bench lays them smaller).
+var _squeeze_r := SQUEEZE_R
+var _serve_r := SERVE_R
+var _drain_r := DRAIN_R
+## The meter: the chunk's pigments as shown (eased), how far it is shown,
+## and its mesh, handed over each frame.
+var _level := Vector3.ZERO
+var _meter_k := 0.0
+var _meter: ArrayMesh
 var _table: ArrayMesh
 var _table_of := Vector2.ZERO
 ## The dealt mould's meshes and what they were built for.
@@ -149,6 +176,7 @@ var _clock := 0.0
 var _aim_by := -1
 var _aim_moved := 0.0
 var _squeeze_by := -1
+var _drain_by := -1
 var _serve_down := -10.0
 ## The needle as drawn: its tip eased to the sim's, and how far in its
 ## plunger is.
@@ -284,7 +312,8 @@ func _place() -> void:
 	y += GAP + SQUEEZE_R
 	_squeeze_at = Vector2(s.x * 0.5, y)
 	_serve_at = Vector2(s.x * 0.5 - SERVE_OFF, y + 10.0)
-	_pill_at = Vector2(s.x * 0.5 + SERVE_OFF + 20.0, y + 10.0)
+	_drain_at = Vector2(s.x * 0.5 + SERVE_OFF, y + 10.0)
+	_pill_at = _tray.position + Vector2(126.0, 38.0)
 	# the win's tray: as big as the span allows, in its middle
 	var big := clampf(minf(s.x - MARGIN * 2.0 - 30.0, room - WIN_FOOT), 160.0, 1000.0)
 	_win_tray = Rect2((s.x - big) * 0.5, bands.x + maxf(0.0, (room - WIN_FOOT - big) * 0.5), big, big)
@@ -367,6 +396,9 @@ func lay(game: RefCounted) -> void:
 	_bits.clear()
 	_aim_by = -1
 	_squeeze_by = -1
+	_drain_by = -1
+	_level = Vector3.ZERO
+	_meter_k = 0.0
 	_deal_at = -10.0
 	_verdict_at = -10.0
 	_slid = false
@@ -427,8 +459,11 @@ func _hand() -> void:
 func _drive(delta: float) -> void:
 	_fluid.set_running(_fluid_runs())
 	_fluid.tip = sim.tip / Mould.SIDE
-	_fluid.tip_cell = sim.tip_cell()
+	var cell: int = sim.tip_cell()
+	_fluid.tip_cell = cell
+	_fluid.tip_squares = sim.count[cell] if cell >= 0 and cell < sim.count.size() else 0
 	_fluid.squeezing = sim.squeezing and sim.phase <= Sim.Phase.PLAY
+	_fluid.draining = sim.draining and sim.phase <= Sim.Phase.PLAY
 	_fluid.pigment = Mould.PIGMENT[int(sim.pots[sim.picked].flavour)]
 	_fluid.drag = (sim.tip - _tip_was) / Mould.SIDE / maxf(delta, 0.001)
 	_tip_was = sim.tip
@@ -457,12 +492,28 @@ func _animate(delta: float) -> void:
 		bit.t += delta
 	_bits = _bits.filter(func(bit: Dictionary) -> bool: return bit.t < bit.life)
 	_tip = _tip.lerp(sim.tip, minf(1.0, delta * 30.0))
-	var pouring: bool = sim.squeezing and sim.phase <= Sim.Phase.PLAY and sim.tip_cell() >= 0
-	_squash = lerpf(_squash, 1.0 if sim.squeezing else 0.0, minf(1.0, delta * 16.0))
-	if pouring and _clock - _pour_at >= POUR_GAP:
+	var cell: int = sim.tip_cell()
+	var playing: bool = sim.phase <= Sim.Phase.PLAY and cell >= 0
+	var pouring: bool = sim.squeezing and playing
+	var draining: bool = sim.draining and not sim.squeezing and playing
+	_squash = lerpf(_squash, 1.0 if sim.squeezing else (-0.5 if sim.draining else 0.0), minf(1.0, delta * 16.0))
+	if (pouring or draining) and _clock - _pour_at >= POUR_GAP:
 		_pour_at = _clock
-		_ring(sim.tip, 4.0, 0.5, Color(1, 1, 1, 0.8))
-	_pour_sound(delta, pouring)
+		# rings out of the tip as it pours, into it as it draws out
+		_ring(sim.tip, 4.0, 0.5, Color(1, 1, 1, 0.8), draining)
+	_pour_sound(delta, pouring, draining)
+	# the meter: the chunk under the tip, eased; gone when the tip is over
+	# the tray or the mould is served
+	if playing and not won:
+		var read: Vector3 = _fluid.level(cell)
+		if DisplayServer.get_name() != "headless":
+			sim.learn(cell, read.x + read.y + read.z)
+		_level = _level.lerp(read, minf(1.0, delta * METER_EASE))
+		_meter_k = minf(1.0, _meter_k + delta * METER_FADE)
+	else:
+		_meter_k = maxf(0.0, _meter_k - delta * METER_FADE)
+		if _meter_k <= 0.0:
+			_level = Vector3.ZERO
 	_rw.bounds = Rect2(_rw.at(field, Vector2.ZERO), field.size)
 	if _refund > 0 and field.size.x > 0.0:
 		_rw.sticker(tr("GD_REFUND") % _refund, _rw.at(field, _tray.get_center() + Vector2(0, _tray.size.y * 0.32)), 44, 3.5, false, Color("fff4c2"), false, "refund")
@@ -472,7 +523,7 @@ func _animate(delta: float) -> void:
 ## What a pour sounds like: the loop up while syrup goes into a cell and
 ## down when it stops, and the bubbles while this flavour goes into a cell
 ## that another has gone into.
-func _pour_sound(delta: float, pouring: bool) -> void:
+func _pour_sound(delta: float, pouring: bool, draining := false) -> void:
 	if pouring:
 		var cell: int = sim.tip_cell()
 		var flavour := int(sim.pots[sim.picked].flavour)
@@ -485,12 +536,13 @@ func _pour_sound(delta: float, pouring: bool) -> void:
 			_fx.cue("mix", randf_range(1.0 - TICK_VARY, 1.0 + TICK_VARY))
 	if _pour_snd == null:
 		return
-	var want := POUR_TOP if pouring and not held else 0.0
+	# the same loop runs for a drain, slower and lower: the syrup drawn out
+	var want := POUR_TOP if (pouring or draining) and not held else 0.0
 	var now := db_to_linear(_pour_snd.volume_db)
 	now = move_toward(now, want, delta * POUR_TOP / (POUR_IN if want > now else POUR_OUT))
 	_pour_snd.volume_db = linear_to_db(maxf(now, 0.0001))
 	if now > 0.002 and not _pour_snd.playing:
-		_pour_snd.pitch_scale = randf_range(0.97, 1.03)
+		_pour_snd.pitch_scale = randf_range(0.97, 1.03) * (DRAIN_PITCH if draining else 1.0)
 		_pour_snd.play(randf() * 2.0)
 	elif now <= 0.002 and _pour_snd.playing:
 		_pour_snd.stop()
@@ -522,7 +574,7 @@ func _busy() -> bool:
 func _press(index: int, at: Vector2) -> void:
 	if _busy():
 		return
-	if at.distance_to(_squeeze_at) <= SQUEEZE_R + 14.0:
+	if at.distance_to(_squeeze_at) <= _squeeze_r + 14.0:
 		if _squeeze_by == -1:
 			_squeeze_by = index
 			sim.squeeze(true)
@@ -534,7 +586,14 @@ func _press(index: int, at: Vector2) -> void:
 				_fx.touch(randf_range(1.0 - TICK_VARY, 1.0 + TICK_VARY))
 			_fx.buzz(Haptics.TAP)
 		return
-	if at.distance_to(_serve_at) <= SERVE_R + 14.0:
+	if at.distance_to(_drain_at) <= _drain_r + 14.0:
+		if _drain_by == -1:
+			_drain_by = index
+			sim.drain(true)
+			_fx.touch(randf_range(1.0 - TICK_VARY, 1.0 + TICK_VARY) * DRAIN_PITCH)
+			_fx.buzz(Haptics.TAP)
+		return
+	if at.distance_to(_serve_at) <= _serve_r + 14.0:
 		_serve_down = _clock
 		_fx.buzz(Haptics.TAP)
 		if sim.can_serve():
@@ -570,6 +629,10 @@ func _release(index: int, at: Vector2) -> void:
 		_squeeze_by = -1
 		if sim != null:
 			sim.squeeze(false)
+	if index == _drain_by:
+		_drain_by = -1
+		if sim != null:
+			sim.drain(false)
 	if index == _aim_by:
 		_aim_by = -1
 		if not _busy() and _aim_moved < TAP_PX:
@@ -578,8 +641,10 @@ func _release(index: int, at: Vector2) -> void:
 func _let_go() -> void:
 	_aim_by = -1
 	_squeeze_by = -1
+	_drain_by = -1
 	if sim != null:
 		sim.squeeze(false)
+		sim.drain(false)
 
 # --- events ---
 
@@ -653,10 +718,10 @@ func _on_served(ev: Dictionary) -> void:
 		_rw.sticker("%d%%" % pct, at, 100, 2.2, false, Color("fffaf0"), false, "pct")
 		_rw.sticker(tr("GD_NEEDED") % int(ev.need), at + Vector2(0, 104.0), 46, 2.2, false, Color("ffd9c2"), false, "word")
 
-func _ring(at: Vector2, r: float, life: float, col: Color) -> void:
+func _ring(at: Vector2, r: float, life: float, col: Color, inward := false) -> void:
 	if Motion.reduce:
 		return
-	_bits.append({"pos": at, "t": 0.0, "life": life, "r": r, "col": col})
+	_bits.append({"pos": at, "t": 0.0, "life": life, "r": r, "col": col, "in": inward})
 
 func _refresh_hud() -> void:
 	if sim == null:
@@ -748,12 +813,19 @@ func _draw_top() -> void:
 	# the buttons: a pressed one sinks and shades
 	var can: bool = sim.can_serve()
 	var sd := 0.94 if _clock - _serve_down < 0.12 else 1.0
-	_top.draw_mesh(Art.serve_button(SERVE_R), null, Transform2D(0.0, Vector2(sd, sd), 0.0, _serve_at),
+	_top.draw_mesh(Art.serve_button(_serve_r), null, Transform2D(0.0, Vector2(sd, sd), 0.0, _serve_at),
 		fade * Color(1, 1, 1, 1.0 if can else 0.45) * (Color(0.88, 0.88, 0.88) if sd < 1.0 else Color.WHITE))
 	var down: bool = _squeeze_by != -1 or sim.squeezing
 	var qd := 0.94 if down else 1.0
-	_top.draw_mesh(Art.squeeze_button(SQUEEZE_R), null, Transform2D(0.0, Vector2(qd, qd), 0.0, _squeeze_at),
+	var squeeze_xf := Transform2D(0.0, Vector2(qd, qd), 0.0, _squeeze_at)
+	_top.draw_mesh(Art.squeeze_button(_squeeze_r), null, squeeze_xf,
 		fade * (Color(0.86, 0.86, 0.86) if down else Color.WHITE))
+	_draw_meter(squeeze_xf, fade)
+	# the drain: greyed while nothing is in the mould to draw out
+	var pulling: bool = _drain_by != -1 or sim.draining
+	var dd := 0.94 if pulling else 1.0
+	_top.draw_mesh(Art.drain_button(_drain_r), null, Transform2D(0.0, Vector2(dd, dd), 0.0, _drain_at),
+		fade * Color(1, 1, 1, 1.0 if sim.wet() else 0.45) * (Color(0.86, 0.86, 0.86) if pulling else Color.WHITE))
 	_draw_live()
 	# the needle over all of it, leaning away to the upper right
 	if sim.phase <= Sim.Phase.PLAY and not won:
@@ -767,13 +839,32 @@ func _draw_top() -> void:
 	if sim.budget > 0 and not won:
 		_pill.draw(_top, _pill_at, sim.serves_left(), _clock)
 
+## The meter on the squeeze button: the white rim filled clockwise with
+## the chunk's pigments, 100% the card's shade, the number under the drop.
+func _draw_meter(xf: Transform2D, fade: Color) -> void:
+	if _meter_k <= 0.0:
+		return
+	var total: float = (_level.x + _level.y + _level.z) / Sim.C_FULL
+	var alpha := fade * Color(1, 1, 1, _meter_k)
+	_meter = Art.meter(_squeeze_r, _level / Sim.C_FULL)
+	if _meter != null:
+		_top.draw_mesh(_meter, null, xf, alpha)
+	var font: Font = CozyTheme.display(700)
+	var text := "%d%%" % int(round(total * 100.0))
+	var fs := int(METER_FONT * _squeeze_r / SQUEEZE_R)
+	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs).x
+	var at := xf * Vector2(-tw * 0.5, _squeeze_r * 0.62 + font.get_ascent(fs) * 0.35)
+	_top.draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs,
+		(Art.INK if total > 1.0 + Art.METER_SLACK else Color("fffdf8")) * alpha)
+
 func _draw_live() -> void:
 	if _bits.is_empty():
 		return
 	var b := Face.Builder.new()
 	for bit: Dictionary in _bits:
 		var k: float = bit.t / bit.life
-		var r: float = float(bit.r) * _u * (0.3 + 0.7 * k)
+		var grow := 1.0 - k if bool(bit.get("in", false)) else k
+		var r: float = float(bit.r) * _u * (0.3 + 0.7 * grow)
 		b.stroke(Face.Builder.ring(px(bit.pos), r, r), maxf(1.5, 0.9 * _u * (1.0 - k)), Color(bit.col, bit.col.a * (1.0 - k)), true)
 	_live = b.mesh()
 	if _live != null:
