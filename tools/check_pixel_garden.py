@@ -33,11 +33,13 @@ MOST = 0.45      # a big picture's largest colour stays under this share
 SHEET_W = 2000
 # core/palette.gd's PG_BEADS.
 BEADS = {
-    "red": "e0503a", "orange": "f08a2c", "yellow": "f4c640", "cream": "f3e6c8",
+    "maroon": "a83a30", "red": "e0503a", "coral": "f28c78", "rust": "c66a24",
+    "orange": "f08a2c", "yellow": "f4c640", "butter": "fbe28e", "cream": "f3e6c8",
     "white": "fbf7ee", "pink": "f4a3b4", "rose": "d9607a", "lilac": "b99ad8",
-    "purple": "7e5aa6", "sky": "8cc4e8", "blue": "4a7fc1", "teal": "4fae9c",
-    "lime": "a8cf5a", "green": "5fa845", "forest": "2f7a3f", "tan": "d4a56a",
-    "brown": "8a5a36", "dark": "4a3226", "grey": "a9a39a",
+    "purple": "7e5aa6", "sky": "8cc4e8", "blue": "4a7fc1", "navy": "2e4f80",
+    "teal": "4fae9c", "lime": "a8cf5a", "green": "5fa845", "forest": "2f7a3f",
+    "tan": "d4a56a", "brown": "8a5a36", "dark": "4a3226", "silver": "d5d1c9",
+    "grey": "a9a39a",
 }
 
 

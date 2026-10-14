@@ -643,7 +643,7 @@ function themedWay(box, d, dir, title) {
     const how = pic && (d.drafts.find(dr => dr.tried.some(t => t.kept && t.size === n))?.tried.find(t => t.kept)?.route || "");
     card.append(pic ? thumb({ kind: "pixels" }, pic) : el("div", { class: "hole" }, "the bank's"),
       el("div", { class: "name" }, pic ? pic.id.replace(/_/g, " ").replace(/^scene\d+$/, "scene") : "–"),
-      el("div", { class: "use" }, `${n} × ${n} · ${SIZE_FOR[n]}${{ rows: " · written", drawn: " · drawn", redrawn: " · redrawn" }[how] || ""}`));
+      el("div", { class: "use" }, `${pic ? pic.rows.length : n} × ${pic ? pic.rows.length : n} · ${SIZE_FOR[n]}${{ rows: " · written", drawn: " · drawn", redrawn: " · redrawn" }[how] || ""}`));
     levels.append(card);
   }
   const more = el("details"), list = el("div", { class: "drafts" });

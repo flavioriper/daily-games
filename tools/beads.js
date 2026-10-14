@@ -13,9 +13,14 @@
 var Beads = (function () {
   "use strict";
   // content/pixel_garden.json's letters in core/palette.gd's PG_BEADS.
-  var PALETTE = { r: "e0503a", o: "f08a2c", y: "f4c640", c: "f3e6c8", w: "fbf7ee", p: "f4a3b4", s: "d9607a", l: "b99ad8",
-    u: "7e5aa6", k: "8cc4e8", b: "4a7fc1", t: "4fae9c", i: "a8cf5a", g: "5fa845", f: "2f7a3f", n: "d4a56a", m: "8a5a36",
-    d: "4a3226", e: "a9a39a" };
+  // The bank's beads (content/pixel_garden.json, core/palette.gd PG_BEADS,
+  // tools/check_pixel_garden.py BEADS: the four stay the same). The six
+  // added on 2026-10-14 (a maroon, h coral, j butter, q rust, v navy, x
+  // silver) are the shadow and light tones shaded pixel art needs: without
+  // them a mushroom's maroon shadow read as brown and its grey spots as sky.
+  var PALETTE = { a: "a83a30", r: "e0503a", h: "f28c78", q: "c66a24", o: "f08a2c", y: "f4c640", j: "fbe28e", c: "f3e6c8",
+    w: "fbf7ee", p: "f4a3b4", s: "d9607a", l: "b99ad8", u: "7e5aa6", k: "8cc4e8", b: "4a7fc1", v: "2e4f80", t: "4fae9c",
+    i: "a8cf5a", g: "5fa845", f: "2f7a3f", n: "d4a56a", m: "8a5a36", d: "4a3226", x: "d5d1c9", e: "a9a39a" };
   // Button Box's Hard (16) has no written rule: it is held to what its
   // thirty pictures are, and `loose` says so.
   // `lead` is not the bank's rule but Button Box's (buttons_state.gd): its
@@ -24,9 +29,19 @@ var Beads = (function () {
   // the cloth sewn it will not deal the picture. A made picture is for all
   // three boards, so its biggest colour stays under LEAD of its beads.
   var LEAD = .6;
-  var RULES = { 10: { colours: [3, 4], fill: [.3, .7], small: true, lead: LEAD }, 12: { colours: [4, 5], fill: [.3, .7], small: true, lead: LEAD },
-    16: { colours: [6, 7], fill: [.34, .66], loose: true, lead: LEAD },
-    24: { colours: [7, 10], fill: [.85, 1], cut: 5 }, 32: { colours: [8, 12], fill: [.85, 1], cut: 6 } };
+  // A themed picture (2026-10-14, after the user set real bead art beside
+  // ours: "this is what I wanted, something really amazing"): one shaded
+  // subject on a bare board at every band, a square of any side within the
+  // band's range, so a drawing is kept at the squares it was drawn at and
+  // never redrawn to the band's. `side` is the range, the key the band's
+  // own side (what the boards ask for); fill is of the picture's own
+  // square, and every band leaves an edge bare. core/themed_pictures.gd
+  // holds the same rules for the phone: the two change together.
+  var RULES = { 10: { side: [10, 18], colours: [3, 6], fill: [.25, .8], small: true, lead: LEAD },
+    12: { side: [12, 22], colours: [4, 7], fill: [.25, .8], small: true, lead: LEAD },
+    16: { side: [16, 26], colours: [5, 9], fill: [.25, .8], small: true, lead: LEAD },
+    24: { side: [24, 34], colours: [6, 12], fill: [.25, .8], small: true, lead: LEAD },
+    32: { side: [32, 40], colours: [8, 14], fill: [.25, .8], small: true, lead: LEAD } };
   var CUT_FILL = [.3, .7], MOST = .45, WORK = 240;
   var DEFAULTS = { size: 10, frame: "subject", bg: "auto", tol: .1, margin: 1, colours: 4, zoom: 1, px: 0, py: 0, vivid: 1 };
 
@@ -56,7 +71,11 @@ var Beads = (function () {
     var rule = rulesOf(n), flat = rows.join(""), out = [], pct = function (v) { return Math.round(v * 100) + "%"; };
     var used = flat.replace(/\./g, "").split("").filter(function (c, i, a) { return a.indexOf(c) === i; }), filled = fillOf(rows);
     var cut = !!rule.cut && filled >= CUT_FILL[0] && filled <= CUT_FILL[1];
-    var lo = cut ? rule.cut : rule.colours[0], hi = rule.colours[1];
+    var lo = cut ? rule.cut : rule.colours[0], hi = rule.colours[1], side = rows.length;
+    var square = rows.every(function (r) { return r.length === side; });
+    if (rule.side) out.push({ ok: square && side >= rule.side[0] && side <= rule.side[1],
+      text: (square ? side + " a side" : "not square") + ", wants " + rule.side[0] + "–" + rule.side[1] });
+    else out.push({ ok: square && side === n, text: (square ? side + " a side" : "not square") + ", wants " + n });
     out.push({ ok: used.length >= lo && used.length <= hi, text: used.length + " colours, wants " + lo + "–" + hi });
     out.push({ ok: cut || (filled >= rule.fill[0] && filled <= rule.fill[1]),
       text: pct(filled) + " filled, wants " + pct(rule.fill[0]) + "–" + pct(rule.fill[1]) + (rule.cut ? (cut ? " (a cut-out)" : " or a cut-out at 30%–70%") : "") });
@@ -69,7 +88,7 @@ var Beads = (function () {
       out.push({ ok: lead < rule.lead, text: "largest colour " + pct(lead) + " of its beads, Button Box wants under " + pct(rule.lead) });
     }
     if (rule.small) {
-      var all = [rows[0], rows[n - 1], rows.map(function (r) { return r[0]; }).join(""), rows.map(function (r) { return r[n - 1]; }).join("")]
+      var all = [rows[0], rows[side - 1], rows.map(function (r) { return r[0]; }).join(""), rows.map(function (r) { return r[side - 1]; }).join("")]
         .every(function (e) { return /[^.]/.test(e); });
       out.push({ ok: !all, text: all ? "touches all four edges" : "leaves an edge bare" });
     }
@@ -339,7 +358,43 @@ var Beads = (function () {
     for (y = 0; y < N; y++) rows.push(at.slice(y * N, y * N + N).map(function (a) { return a < 0 ? "." : LETTERS[a]; }).join(""));
     return { rows: rows, w: bw, h: bh };
   }
-  return { PALETTE: PALETTE, RULES: RULES, SIZES: [10, 12, 16, 24, 32], rulesOf: rulesOf, optionsFor: optionsFor, fillOf: fillOf,
+  // A snapped drawing of one thing kept at the squares it was drawn at: the
+  // background (the border's colour, joined to the border) bare, the thing
+  // cut to what is drawn, in no more than `colours` beads, and centred in a
+  // square of its longer side plus `margin` bare squares each way, never
+  // under `least` a side. `why` says why there are no rows: over MIXED of
+  // its squares are not one colour (the grid was misread, or the model drew
+  // finer in places), or nothing is drawn. What the caller makes of the
+  // side it came out at (the band's range) is the caller's.
+  function cutOut(sn, colours, margin, least) {
+    var W = sn.cols, H = sn.rows, cells2 = sn.cells, flags = sn.flags, x, y, i;
+    var bg = new Uint8Array(W * H), border = [];
+    for (x = 0; x < W; x++) border.push(x, (H - 1) * W + x);
+    for (y = 1; y < H - 1; y++) border.push(y * W, y * W + W - 1);
+    var votes = {}, most = null;
+    border.forEach(function (j) { var c = cells2[j], k = Math.round(c[0] * 20) + "," + Math.round(c[1] * 20) + "," + Math.round(c[2] * 20);
+      (votes[k] = votes[k] || []).push(j); if (!most || votes[k].length > most.length) most = votes[k]; });
+    var ref = cells2[most[0]], t2 = .08 * .08, stack = [];
+    var push = function (j) { if (!bg[j] && dist2(cells2[j], 0, ref, 0) < t2) { bg[j] = 1; stack.push(j); } };
+    border.forEach(push);
+    while (stack.length) { var j = stack.pop(), jx = j % W;
+      if (jx) push(j - 1); if (jx < W - 1) push(j + 1); if (j >= W) push(j - W); if (j < W * H - W) push(j + W); }
+    var x0 = W, y0 = H, x1 = -1, y1 = -1, drawn = 0, mixed = 0;
+    for (i = 0; i < W * H; i++) if (!bg[i]) { x = i % W; y = (i - x) / W; x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); drawn++; if (flags[i]) mixed++; }
+    if (x1 < 0) return { why: "nothing drawn" };
+    var bw = x1 - x0 + 1, bh = y1 - y0 + 1;
+    if (mixed > drawn * MIXED) return { why: Math.round(100 * mixed / drawn) + "% of its squares hold a finer drawing", w: bw, h: bh };
+    var N = Math.max(least || 0, Math.max(bw, bh) + 2 * (margin || 0)), ox = x0 - Math.floor((N - bw) / 2), oy = y0 - Math.floor((N - bh) / 2), list = [];
+    for (y = 0; y < N; y++) for (x = 0; x < N; x++) {
+      var sx = ox + x, sy = oy + y, k2 = sy * W + sx;
+      var inside = sx >= x0 && sx <= x1 && sy >= y0 && sy <= y1 && !bg[k2];
+      list.push(inside ? cells2[k2] : null);
+    }
+    var at = pick(list, colours), rows = [];
+    for (y = 0; y < N; y++) rows.push(at.slice(y * N, y * N + N).map(function (a) { return a < 0 ? "." : LETTERS[a]; }).join(""));
+    return { rows: rows, w: bw, h: bh, side: N };
+  }
+  return { PALETTE: PALETTE, cutOut: cutOut, RULES: RULES, SIZES: [10, 12, 16, 24, 32], rulesOf: rulesOf, optionsFor: optionsFor, fillOf: fillOf,
     check: check, convert: convert, snap: snap, fromSnap: fromSnap };
 })();
 if (typeof module !== "undefined") module.exports = Beads;

@@ -35,7 +35,12 @@ export interface Theme {
 }
 
 /** Things a theme has, and words a language. */
-export const THINGS = 3;
+/** Things a theme names: one a band (10, 12, 16, 24, 32 squares), the
+ *  simplest first. Themes written before 2026-10-14 name three; they are
+ *  still valid (LEAST), and the pixel way draws the last one for the bands
+ *  it has no thing for. */
+export const THINGS = 5;
+const LEAST = 3;
 const WORDS = 8;
 const SCENE_MAX = 320;
 const DRAW_MAX = 160;
@@ -52,7 +57,7 @@ export function validTheme(t: unknown): t is Theme {
   const o = t as Theme;
   if (typeof o !== "object" || o === null || !SLUG.test(String(o.id))) return false;
   if (!text(o.scene, SCENE_MAX)) return false;
-  if (!Array.isArray(o.objects) || o.objects.length !== THINGS) return false;
+  if (!Array.isArray(o.objects) || o.objects.length < LEAST || o.objects.length > THINGS) return false;
   const ids = new Set<string>();
   for (const x of o.objects) {
     if (typeof x !== "object" || x === null) return false;
@@ -76,7 +81,7 @@ A theme is one small, warm place or moment: a campfire at dusk, a bakery in the 
 The theme is drawn as pixel pictures of very few squares, so everything in it must be a big simple shape a child would name at once.
 
 - "scene": one sentence, what a single picture of the theme shows: four to six big things and where they are, in several areas of different colour, so that no sky, wall or floor is half the picture. No people's faces, no text.
-- "objects": exactly ${THINGS} single things from that scene, the simplest first. Each must be recognisable by its outline alone when drawn in a grid of ten by ten squares (a mushroom, a mug, a tent: yes; a book, a blanket, a cloud of steam: no). "draw" says the thing with its colours, clearly different ones: three or four for the first ("a red mushroom with white spots and a cream stem"), five for the second, seven for the third, which is the one with the most to it. None of them is a thin or spindly shape: each fills most of a square. None is mostly one colour (a red apple, a blue teapot: no; a striped mug, a slice of watermelon, a toadstool: yes). "name" is its plain English name, one or two words, and "pt" and "es" the same in Portuguese (Brazil) and Spanish.
+- "objects": exactly ${THINGS} single things from that scene, the simplest first, each drawn as one pixel art sprite on a bare board. Each must be recognisable by its outline alone (a mushroom, a mug, a tent: yes; a book, a blanket, a cloud of steam: no). "draw" says the thing with its colours, clearly different ones: three or four for the first ("a red mushroom with white spots and a cream stem"), then more with each, up to seven or eight for the last two, which are the ones with the most to them (a basket of fruit, a tea tray, a lantern among leaves). None of them is a thin or spindly shape: each fills most of a square. None is mostly one colour (a red apple, a blue teapot: no; a striped mug, a slice of watermelon, a toadstool: yes). "name" is its plain English name, one or two words, and "pt" and "es" the same in Portuguese (Brazil) and Spanish.
 - "name": the theme's name, two or three words, in each language.
 - "words": ${WORDS} common single nouns about the theme in each language, four to eight letters, lowercase.
 - "id" values are lowercase English slugs.`;

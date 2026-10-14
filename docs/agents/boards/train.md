@@ -250,3 +250,8 @@ the later boards have.
   it in place of the bank's (`core/themed_pictures.gd`,
   `docs/agents/days-dashboard.md`, "The daily theme, stage 2"). New, the
   suite and every harness are the bank's as before.
+
+  **Since 2026-10-14 the picture is any side within the band's range**
+  (`ThemedPictures.RULES.side`: 10 to 18 at Easy, up to 40 at Insane), a
+  shaded sprite kept at the squares it was drawn at; this board lays the
+  side it is handed.

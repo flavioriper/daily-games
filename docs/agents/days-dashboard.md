@@ -311,3 +311,58 @@ to the first way's pictures every one has its outline and reads. The
 project's image quota is 2 a minute a model, and an increase is refused
 for now (`NOT_ENOUGH_USAGE_HISTORY`, a new project).
 
+
+## One shaded thing a band, kept at its own squares (2026-10-14)
+
+The user, of the pixel way's first day beside bead-art apps' pictures (a
+croissant, a cat, a flower, 30 to 50 squares wide, one subject, two or
+three tones a hue, bare board round it): "i still not happy about the
+drawings ... this is what I wanted, something really amazing". Two drawings
+asked that way (one shaded sprite on white, about 18 and 24 squares) came
+back at 34 and 36 and read `mixed 0`: `gemini-3-pro-image` already draws
+that quality. What lost it was after the drawing: the scene prompt and the
+24/32 fill rule (85 to 100%) put four things and 600 beads of sky in 32
+squares, the Opus redraw to the band's side flattened the outlines, and
+the nineteen beads had no dark red, light red, light yellow, dark orange
+or light grey, so a mushroom's maroon shadow read as brown and its grey
+spots as sky. So, `feat/pixel-subjects`:
+
+- **One thing a band**, five a theme (`theme.ts` THINGS; a theme written
+  before, with three, lends its last to the bands past it). No scene.
+- **Drawn shaded** (`PIXEL_OBJECT`: a one-pixel dark outline, each colour
+  in two or three tones) and **kept at its own squares** by
+  `Beads.cutOut`: the border's colour bare, the thing cut to what is drawn
+  and centred in a square of its longer side plus one bare square each
+  way, never under the band's side. A drawing over the band's range is
+  asked for again, scaled by what came out (`FIRST_ASK` by band: 8, 9, 12,
+  18, 24); no redraw. Bands up to 16 fall back to rows written from words.
+- **A side range a band** (`Beads.RULES.side`, mirrored in
+  `core/themed_pictures.gd`): 10 to 18, 12 to 22, 16 to 26, 24 to 34, 32
+  to 40; colours 3 to 6 up to 8 to 14; fill 25 to 80% of the picture's own
+  square; the largest colour under 60% of its beads (Button Box's rule);
+  an edge bare. The day document is still keyed by the band's side and
+  `v: 1`; an old phone's `valid()` turns a picture of another side down
+  and the bank deals. Pixel Garden lays `rows.size()`, Button Box and Toy
+  Cannons `w` and `h`: all three take any side.
+- **Six shade beads**: maroon `a`, coral `h`, rust `q`, butter `j`, navy
+  `v`, silver `x`, in `tools/beads.js`, `tools/check_pixel_garden.py`,
+  `content/pixel_garden.json` and `core/palette.gd` (the four change
+  together; Pixel Garden's chips stand in `PG_BEADS`' order, so each sits
+  by its hue). The bank passes unchanged.
+- The first way (`DAILY_PICTURE_STYLE` unset) is judged by the same rules
+  now, so its 24 and 32 scenes fail fill: it is in effect Easy to Hard
+  only. The Themed days page labels each picture by its own side.
+
+Read with the new reader, the morning's two drawings: the mushroom 26 × 28
+in a 30 square, 11 beads, 61% filled; the sunflower 16 × 31 in a 33 square,
+11 beads, 35%; both passing every rule. The dashboard's own renderer puts
+a highlight on each bead and the game a hole: Button Box looks dimmer than
+the sheet, and the bead face is a separate call. Easy and Medium cannot
+look like the references at 10 to 18 squares; the image model draws no
+sprite under about 17.
+
+The time: up to three drawings a band and five bands, one to four minutes
+each at the project's two-a-minute quota, is 15 to 60 minutes a day, over
+the function's 1,800 s for two days. The deployed function runs the first
+way until `DAILY_PICTURE_STYLE=pixel` is set on it and its quota raised;
+`tools/themed_days.sh` makes pixel days on this Mac meanwhile.

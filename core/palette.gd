@@ -681,12 +681,19 @@ const PG_TRAY         := Color("c89a6c")   # the wooden tray round the board
 const PG_TRAY_HI      := Color("dcb389")
 const PG_TRAY_DEEP    := Color("9a6f48")
 const PG_TABLE        := Color("e7d6b4")   # the table the tray stands on
+## The beads, in the order Pixel Garden's chips stand (a day's reds beside
+## its oranges). The six shade beads (maroon, coral, rust, butter, navy,
+## silver) came on 2026-10-14 for shaded pixel art; tools/beads.js,
+## tools/check_pixel_garden.py and content/pixel_garden.json hold the same
+## table, and the four change together.
 const PG_BEADS := {
-	"red": Color("e0503a"), "orange": Color("f08a2c"), "yellow": Color("f4c640"),
-	"cream": Color("f3e6c8"), "white": Color("fbf7ee"), "pink": Color("f4a3b4"),
-	"rose": Color("d9607a"), "lilac": Color("b99ad8"), "purple": Color("7e5aa6"),
-	"sky": Color("8cc4e8"), "blue": Color("4a7fc1"), "teal": Color("4fae9c"),
-	"lime": Color("a8cf5a"), "green": Color("5fa845"), "forest": Color("2f7a3f"),
-	"tan": Color("d4a56a"), "brown": Color("8a5a36"), "dark": Color("4a3226"),
+	"maroon": Color("a83a30"), "red": Color("e0503a"), "coral": Color("f28c78"),
+	"rust": Color("c66a24"), "orange": Color("f08a2c"), "yellow": Color("f4c640"),
+	"butter": Color("fbe28e"), "cream": Color("f3e6c8"), "white": Color("fbf7ee"),
+	"pink": Color("f4a3b4"), "rose": Color("d9607a"), "lilac": Color("b99ad8"),
+	"purple": Color("7e5aa6"), "sky": Color("8cc4e8"), "blue": Color("4a7fc1"),
+	"navy": Color("2e4f80"), "teal": Color("4fae9c"), "lime": Color("a8cf5a"),
+	"green": Color("5fa845"), "forest": Color("2f7a3f"), "tan": Color("d4a56a"),
+	"brown": Color("8a5a36"), "dark": Color("4a3226"), "silver": Color("d5d1c9"),
 	"grey": Color("a9a39a"),
 }

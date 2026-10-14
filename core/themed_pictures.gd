@@ -3,10 +3,15 @@ extends RefCounted
 
 ## The day's themed bead pictures, as a phone reads them
 ## (docs/superpowers/specs/2026-10-13-daily-theme-design.md). The night's
-## process publishes one picture a size -- three things from the theme's
-## scene at 10, 12 and 16 squares, the scene at 24 and 32
-## (server/functions/src/pictures.ts) -- and Pixel Garden, Button Box and Toy
-## Cannons deal it in place of their bank's for that size.
+## process publishes one picture a band -- a thing from the theme, drawn as
+## shaded pixel art on a bare board (server/functions/src/pictures.ts) --
+## keyed by the band's side (10, 12, 16, 24, 32), and Pixel Garden, Button
+## Box and Toy Cannons deal it in place of their bank's for that band.
+##
+## Since 2026-10-14 a picture is kept at the squares it was drawn at, never
+## redrawn to the band's side: its rows are a square of any side within the
+## band's range (RULES.side), and the boards lay whatever side they are
+## handed (Pixel Garden by rows.size(), the other two by w and h).
 ##
 ## Only what this phone already holds is read (Backend.cached_day): no board
 ## waits on the network for a picture. world/main.gd asks for the day behind
@@ -17,18 +22,19 @@ extends RefCounted
 const Backend = preload("res://core/backend.gd")
 const GAME := "pictures"
 const BANK := "res://content/pixel_garden.json"
-## tools/check_pixel_garden.py's check(), as tools/beads.js holds it and the
-## server ran it: colours and fill by size; a small picture leaves an edge
-## bare; a big one is a scene or a cut-out and no colour is `MOST` of it.
+## tools/beads.js RULES, as the server ran them, by the band's side: the
+## side the rows may be, colours, the fill of the picture's own square, the
+## largest colour's share of its beads (Button Box's `lead`), and an edge
+## left bare. The two tables change together.
 const RULES := {
-	10: {"colours": [3, 4], "fill": [0.30, 0.70], "small": true},
-	12: {"colours": [4, 5], "fill": [0.30, 0.70], "small": true},
-	16: {"colours": [6, 7], "fill": [0.34, 0.66]},
-	24: {"colours": [7, 10], "fill": [0.85, 1.0], "cut": 5},
-	32: {"colours": [8, 12], "fill": [0.85, 1.0], "cut": 6},
+	10: {"side": [10, 18], "colours": [3, 6]},
+	12: {"side": [12, 22], "colours": [4, 7]},
+	16: {"side": [16, 26], "colours": [5, 9]},
+	24: {"side": [24, 34], "colours": [6, 12]},
+	32: {"side": [32, 40], "colours": [8, 14]},
 }
-const CUT_FILL := [0.30, 0.70]
-const MOST := 0.45
+const FILL := [0.25, 0.80]
+const LEAD := 0.6
 
 static var _letters := {}
 
@@ -62,14 +68,21 @@ static func picture(date_key: int, size: int) -> Dictionary:
 	shown = shown.strip_edges()
 	return {"id": "themed_" + id, "name": shown.left(1).to_upper() + shown.substr(1), "rows": pic.rows}
 
+## Whether `rows` is a picture the band of side `size` may deal: a square
+## of a side within the band's range, in the bank's letters, keeping the
+## rules above.
 static func valid(rows, size: int) -> bool:
-	if not RULES.has(size) or not rows is Array or (rows as Array).size() != size:
+	if not RULES.has(size) or not rows is Array or (rows as Array).is_empty():
+		return false
+	var rule: Dictionary = RULES[size]
+	var side: int = (rows as Array).size()
+	if side < int(rule.side[0]) or side > int(rule.side[1]):
 		return false
 	var known := letters()
 	var count := {}
 	var filled := 0
 	for row in rows:
-		if not row is String or (row as String).length() != size:
+		if not row is String or (row as String).length() != side:
 			return false
 		for ch: String in row:
 			if ch == ".":
@@ -78,25 +91,18 @@ static func valid(rows, size: int) -> bool:
 				return false
 			count[ch] = int(count.get(ch, 0)) + 1
 			filled += 1
-	var rule: Dictionary = RULES[size]
-	var share := float(filled) / float(size * size)
-	var cut: bool = rule.has("cut") and share >= CUT_FILL[0] and share <= CUT_FILL[1]
-	var least: int = rule.cut if cut else rule.colours[0]
-	if count.size() < least or count.size() > int(rule.colours[1]):
+	if count.size() < int(rule.colours[0]) or count.size() > int(rule.colours[1]):
 		return false
-	if not cut and (share < float(rule.fill[0]) or share > float(rule.fill[1])):
+	var share := float(filled) / float(side * side)
+	if share < float(FILL[0]) or share > float(FILL[1]):
 		return false
-	if rule.has("cut"):
-		for ch in count:
-			if int(count[ch]) >= MOST * size * size:
-				return false
-	if rule.get("small", false):
-		var top := false; var bottom := false; var left := false; var right := false
-		for i in size:
-			top = top or String(rows[0])[i] != "."
-			bottom = bottom or String(rows[size - 1])[i] != "."
-			left = left or String(rows[i])[0] != "."
-			right = right or String(rows[i])[size - 1] != "."
-		if top and bottom and left and right:
+	for ch in count:
+		if float(count[ch]) >= LEAD * filled:
 			return false
-	return true
+	var top := false; var bottom := false; var left := false; var right := false
+	for i in side:
+		top = top or String(rows[0])[i] != "."
+		bottom = bottom or String(rows[side - 1])[i] != "."
+		left = left or String(rows[i])[0] != "."
+		right = right or String(rows[i])[side - 1] != "."
+	return not (top and bottom and left and right)

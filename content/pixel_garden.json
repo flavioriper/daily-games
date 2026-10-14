@@ -1,26 +1,6 @@
 {
  "note": "Pixel Garden's pictures, hand-drawn. rows: one string a row, one char a peg; '.' is a bare peg; every other char is a bead colour named in palette.",
- "palette": {
-  "r": "red",
-  "o": "orange",
-  "y": "yellow",
-  "c": "cream",
-  "w": "white",
-  "p": "pink",
-  "s": "rose",
-  "l": "lilac",
-  "u": "purple",
-  "k": "sky",
-  "b": "blue",
-  "t": "teal",
-  "i": "lime",
-  "g": "green",
-  "f": "forest",
-  "n": "tan",
-  "m": "brown",
-  "d": "dark",
-  "e": "grey"
- },
+ "palette": {"a": "maroon", "r": "red", "h": "coral", "q": "rust", "o": "orange", "y": "yellow", "j": "butter", "c": "cream", "w": "white", "p": "pink", "s": "rose", "l": "lilac", "u": "purple", "k": "sky", "b": "blue", "v": "navy", "t": "teal", "i": "lime", "g": "green", "f": "forest", "n": "tan", "m": "brown", "d": "dark", "x": "silver", "e": "grey"},
  "bands": [
   [
    {
