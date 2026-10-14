@@ -12,7 +12,9 @@ extends SceneTree
 ## run with the judge answered by hand (a mould served asks to be judged,
 ## over the mark the next is set down and the last is the day done, under
 ## it the mould is emptied, Insane's serves and the day lost, the video's
-## serves, a finished day put back).
+## serves, a finished day put back); and the themed jellies the night wrote
+## for the days in tools/days/themed-pixel/ (server/functions/src/jelly.ts):
+## each kept one keeps its band's row here too, and is dealt first.
 
 const Sim = preload("res://puzzles/gumdrop_sim.gd")
 const Mould = preload("res://puzzles/gumdrop_mould.gd")
@@ -25,6 +27,7 @@ func _initialize() -> void:
 	_days()
 	_run()
 	_insane()
+	_themed()
 	print("%d failed" % _fails)
 	quit(1 if _fails > 0 else 0)
 
@@ -199,3 +202,49 @@ func _insane() -> void:
 	for i in s.moulds.size():
 		_serve_as(s, 0.8)
 	_check("five moulds at 80%% over a mark of 75 is the day done with a serve unspent", s.is_done() and s.serves_left() == 1)
+
+func _themed() -> void:
+	var dir := "res://tools/days/themed-pixel/"
+	var seen := 0
+	for f in DirAccess.get_files_at(dir):
+		if not f.ends_with(".json"):
+			continue
+		var day = JSON.parse_string(FileAccess.get_file_as_string(dir + f))
+		if not day is Dictionary or not day.get("pictures") is Dictionary or not day.pictures.get("jellies") is Dictionary:
+			continue
+		for key: String in day.pictures.jellies:
+			var band := int(key)
+			var built: Array = []
+			for j: Dictionary in day.pictures.jellies[key]:
+				var m := Mould.build_parts("themed_" + String(j.id), Mould.from_doc(j.parts))
+				var why := Mould.unfit(m, band)
+				_check("%s band %d: the night's %s keeps its row here (%s)" % [f.get_basename(), band, j.id, why if why != "" else "%d chunks" % (m.cells as Array).size()], why == "")
+				if why == "":
+					built.append(m)
+			if built.is_empty():
+				continue
+			seen += built.size()
+			var rng := RandomNumberGenerator.new()
+			rng.seed = 7
+			var s = Sim.new()
+			s.deal_day(band, rng, built)
+			var ids: Array = s.moulds.map(func(x: Dictionary) -> String: return String(x.id))
+			var once := ids.all(func(i: String) -> bool: return ids.count(i) == 1 and not ids.has("themed_" + i))
+			var lead := true
+			for k in mini(built.size(), s.moulds.size()):
+				lead = lead and s.moulds[k] == built[k] and not (built[k].pots as Array).is_empty()
+			_check("  %d of %d moulds themed, first and in order, no picture twice (%s)" % [mini(built.size(), s.moulds.size()), int(Mould.BANDS[band].moulds), ", ".join(ids)],
+				lead and s.moulds.size() == int(Mould.BANDS[band].moulds) and once)
+			var least := 9999
+			for m: Dictionary in built:
+				s.deal(m)
+				for c in s.count.size():
+					least = mini(least, s.count[c])
+			_check("  the sim counts every chunk 9 squares or more (%d)" % least, least >= 9)
+	# tools/days/ is not in git: a clone with no made days skips them
+	if seen == 0:
+		print("     no made day holds themed jellies here (tools/days/themed-pixel/, node lib/cli.js jellies)")
+	_check("a part that is not one is no jelly", Mould.from_doc([{"flavour": "mint", "shapes": [{"kind": "ell", "n": [50, 50, 20, 20]}]}]).is_empty()
+		and Mould.from_doc([{"flavour": "cherry", "shapes": [{"kind": "ell", "n": [50, 50]}]}]).is_empty() and Mould.from_doc("x").is_empty())
+	var off := Mould.build_parts("themed_x", Mould.from_doc([{"flavour": "cherry", "shapes": [{"kind": "ell", "n": [50, 50, 40, 40]}]}, {"flavour": "lemon", "shapes": [{"kind": "ell", "n": [50, 50, 10, 10]}]}]))
+	_check("an Easy jelly of two flavours keeps Easy (%s) and not Medium (%s)" % [Mould.unfit(off, 0), Mould.unfit(off, 1)], Mould.unfit(off, 0) == "" and Mould.unfit(off, 1) != "")

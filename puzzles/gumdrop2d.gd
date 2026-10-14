@@ -92,7 +92,8 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_ensure_table()
 	band = clampi(difficulty, 0, Mould.BANDS.size() - 1)
 	sim = Sim.new()
-	sim.deal_day(band, rng)
+	# The day's themed jellies (core/themed_pictures.gd), for a daily only.
+	sim.deal_day(band, rng, ThemedPictures.jellies(daily_key, band) if bank_step == 0 else [])
 	max_moves = sim.budget
 	out_of_hearts = false
 	_heart_used = false

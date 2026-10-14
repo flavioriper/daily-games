@@ -41,7 +41,8 @@ func _ready() -> void:
 	# Pearl Dive's prompts ride the same way (puzzles/pearl2d.gd).
 	Backend.day_content("pearl", Daily.date_key())  # deliberately not awaited
 	# The day's themed bead pictures, for Pixel Garden, Button Box and Toy
-	# Cannons (core/themed_pictures.gd): they deal what is held, never wait.
+	# Cannons, and Gumdrop's jellies (core/themed_pictures.gd): they deal
+	# what is held, never wait.
 	Backend.day_content(ThemedPictures.GAME, Daily.date_key())  # deliberately not awaited
 	# Friends ride on the backend's identity. Started is not connected: it
 	# holds no stream until the player has social (core/social.gd).

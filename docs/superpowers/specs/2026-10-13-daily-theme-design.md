@@ -97,8 +97,10 @@ A picture is `{"id", "name": {"en", "pt", "es"}, "rows"}`, under
 
 ## The other boards
 
-- **Gumdrop**: the theme writer names moulds out of `gumdrop_mould.gd`'s
-  twenty-nine; a name outside the level's rows is dropped and the seed deals.
+- **Gumdrop**: replaced on 2026-10-14 by
+  `2026-10-14-gumdrop-themed-jelly-design.md`: the night writes a jelly a
+  mould from the theme's things, in the twenty-nine's own shapes. (It was:
+  the theme writer names moulds out of `gumdrop_mould.gd`'s twenty-nine.)
 - **Hidden Word, Word Trail**: the theme's words, kept only where the
   board's own dictionaries and lengths take them, in each language. Hidden
   Word takes one on Easy only: a known theme gives a harder answer away.

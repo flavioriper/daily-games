@@ -63,6 +63,23 @@ const BANDS := [
 ]
 ## The three pots Insane stands by every tray: the pigments themselves.
 const PRIMARIES := [0, 2, 4]
+## A themed jelly (core/themed_pictures.gd's `jelly`), written each night
+## by server/functions/src/jelly.ts, is held to its band's row here: how
+## many flavours, how many of them mixed, how many chunks; every chunk
+## shows LEAST_SQUARES of the sim's grid, the jelly covers COVER of it, one
+## piece, every point inside EDGE. jelly.ts's RULES are the same numbers:
+## the two change together.
+const THEMED := [
+	{"flavours": [2, 2], "mixed": 0, "chunks": [2, 5]},
+	{"flavours": [3, 3], "mixed": 0, "chunks": [3, 7]},
+	{"flavours": [3, 4], "mixed": 1, "chunks": [3, 10]},
+	{"flavours": [4, 6], "mixed": 2, "chunks": [4, 14]},
+]
+const LEAST_SQUARES := 9
+const COVER := [0.2, 0.75]
+const EDGE := [4.0, 96.0]
+## The sim's grid (gumdrop_sim.gd N), counted here without a sim.
+const GRID := 36
 
 # --- shapes ---
 
@@ -270,9 +287,13 @@ static func parts(id: String) -> Array:
 ## in two pieces is two cells), the flavour each is wanted in, and the
 ## whole jelly's outline. Empty when the id is no picture's.
 static func build(id: String) -> Dictionary:
+	return build_parts(id, parts(id))
+
+## A jelly built from parts as `parts()` gives them, under `id`.
+static func build_parts(id: String, given: Array) -> Dictionary:
 	var cells: Array = []
 	var want: Array = []
-	for part: Array in parts(id):
+	for part: Array in given:
 		for piece: PackedVector2Array in joined(part[1]):
 			cells.append(piece)
 			want.append(int(part[0]))
@@ -317,19 +338,28 @@ static func flavours(m: Dictionary) -> Array:
 	return out
 
 ## A band's jellies for a day, easiest first: distinct pictures from the
-## band's rows, each with its pots stood by the band's rule.
-static func day(band: int, rng: RandomNumberGenerator) -> Array:
+## band's rows, each with its pots stood by the band's rule. The day's
+## themed jellies (core/themed_pictures.gd `jellies`, built) come first, in
+## the theme's order, and take as many of the band's places as they fill;
+## a picture of the same name as one of them is not drawn beside it.
+static func day(band: int, rng: RandomNumberGenerator, themed: Array = []) -> Array:
 	var spec: Dictionary = BANDS[clampi(band, 0, BANDS.size() - 1)]
+	var names: Array = themed.map(func(m: Dictionary) -> String: return String(m.id))
 	var rows: Array = []
 	for r in range(int(spec.rows[0]), int(spec.rows[1]) + 1):
-		rows.append(r)
+		if not names.has("themed_" + String(PICTURES[r])):
+			rows.append(r)
 	var picked: Array = []
-	while picked.size() < int(spec.moulds) and not rows.is_empty():
+	var first: Array = []
+	for m: Dictionary in themed.slice(0, int(spec.moulds)):
+		dress(m, int(spec.stood), rng)
+		first.append(m)
+	while first.size() + picked.size() < int(spec.moulds) and not rows.is_empty():
 		var r: int = rows[rng.randi_range(0, rows.size() - 1)]
 		rows.erase(r)
 		picked.append(r)
 	picked.sort()
-	var out: Array = []
+	var out: Array = first
 	for r: int in picked:
 		var m := build(PICTURES[r])
 		dress(m, int(spec.stood), rng)
@@ -363,3 +393,81 @@ static func recipe(flavour: int, pots: Array) -> Dictionary:
 	if pots.has(flavour):
 		return {flavour: 1.0}
 	return {(flavour + 5) % 6: 0.5, (flavour + 1) % 6: 0.5}
+
+# --- a themed jelly ---
+
+## Parts as the night writes them ([{flavour, shapes: [{kind, n}]}],
+## server/functions/src/jelly.ts) in `parts()`'s shape, or [] when any of
+## it is not a part, a flavour or a shape.
+static func from_doc(doc) -> Array:
+	if not doc is Array or (doc as Array).is_empty() or (doc as Array).size() > 8:
+		return []
+	var names: Array = Flavour.keys().map(func(k: String) -> String: return k.to_lower())
+	var out: Array = []
+	for part in doc:
+		if not part is Dictionary or not part.get("shapes") is Array:
+			return []
+		var f := names.find(String(part.get("flavour", "")))
+		var list: Array = part.shapes
+		if f < 0 or list.is_empty() or list.size() > 8:
+			return []
+		var shapes: Array = []
+		for sh in list:
+			if not sh is Dictionary or not sh.get("n") is Array:
+				return []
+			var n: Array = sh.n
+			if not n.all(func(v) -> bool: return (v is float or v is int) and is_finite(float(v))):
+				return []
+			match String(sh.get("kind", "")):
+				"ell":
+					if n.size() < 4 or n.size() > 5 or n[2] < 2 or n[3] < 2:
+						return []
+					shapes.append(ell(n[0], n[1], n[2], n[3], n[4] if n.size() > 4 else 0.0))
+				"box":
+					if n.size() < 4 or n.size() > 5 or n[2] < 2 or n[3] < 2:
+						return []
+					shapes.append(box(n[0], n[1], n[2], n[3], n[4] if n.size() > 4 else 0.0))
+				"soft", "sharp":
+					if n.size() < 6 or n.size() > 32 or n.size() % 2 == 1:
+						return []
+					shapes.append(soft(n, 2 if sh.kind == "soft" else 1))
+				_:
+					return []
+		out.append([f, shapes])
+	return out
+
+## Whether a built themed jelly keeps its band's row of THEMED; "" when it
+## does, else what it breaks (the probe prints it).
+static func unfit(m: Dictionary, band: int) -> String:
+	if m.is_empty():
+		return "nothing built"
+	var rule: Dictionary = THEMED[clampi(band, 0, THEMED.size() - 1)]
+	for c: PackedVector2Array in m.cells:
+		for q: Vector2 in c:
+			if q.x < EDGE[0] or q.y < EDGE[0] or q.x > EDGE[1] or q.y > EDGE[1]:
+				return "off the field"
+	var has := flavours(m)
+	if has.size() < int(rule.flavours[0]) or has.size() > int(rule.flavours[1]):
+		return "%d flavours" % has.size()
+	if has.filter(func(f: int) -> bool: return f % 2 == 1).size() < int(rule.mixed):
+		return "too few mixed flavours"
+	var n: int = (m.cells as Array).size()
+	if n < int(rule.chunks[0]) or n > mini(int(rule.chunks[1]), CELLS_TOP):
+		return "%d chunks" % n
+	if int(m.pieces) != 1:
+		return "%d pieces" % int(m.pieces)
+	var shows := PackedInt32Array()
+	shows.resize(n)
+	var covered := 0
+	for i in GRID * GRID:
+		var c := cell_at(m, Vector2((i % GRID) + 0.5, (i / GRID) + 0.5) * (SIDE / GRID))
+		if c >= 0:
+			shows[c] += 1
+			covered += 1
+	for k in shows:
+		if k < LEAST_SQUARES:
+			return "a chunk too small"
+	var share := float(covered) / float(GRID * GRID)
+	if share < float(COVER[0]) or share > float(COVER[1]):
+		return "covers %d%%" % roundi(share * 100.0)
+	return ""

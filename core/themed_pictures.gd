@@ -14,6 +14,8 @@ extends RefCounted
 ## band's range (RULES.side), and the boards lay whatever side they are
 ## handed (Pixel Garden by rows.size(), the other two by w and h).
 ##
+## Gumdrop's jellies ride in the same document, a mould each (`jellies`).
+##
 ## Only what this phone already holds is read (Backend.cached_day): no board
 ## waits on the network for a picture. world/main.gd asks for the day behind
 ## the menu at boot. With no document, an unstarted backend (the suite, every
@@ -21,6 +23,7 @@ extends RefCounted
 ## does not keep the rules below, the answer is {} and the bank deals.
 
 const Backend = preload("res://core/backend.gd")
+const Mould = preload("res://puzzles/gumdrop_mould.gd")
 const GAME := "pictures"
 const BANK := "res://content/pixel_garden.json"
 ## tools/beads.js RULES, as the server ran them, by the band's side: the
@@ -68,6 +71,30 @@ static func picture(date_key: int, size: int) -> Dictionary:
 		shown = String(names.get(lang, names.get("en", shown)))
 	shown = shown.strip_edges()
 	return {"id": "themed_" + id, "name": shown.left(1).to_upper() + shown.substr(1), "rows": pic.rows}
+
+## Gumdrop's themed jellies for `band` of the daily of `date_key`, built
+## and not yet dressed (puzzles/gumdrop_mould.gd `build_parts`), a mould
+## each in the theme's order, or []: the night writes a list a band under
+## `jellies` (server/functions/src/jelly.ts), and one that does not keep
+## its band's row of Mould.THEMED is dropped, its place the board's own.
+static func jellies(date_key: int, band: int) -> Array:
+	var out: Array = []
+	if date_key == 0 or not Backend.started():
+		return out
+	var doc: Dictionary = Backend.cached_day(GAME, date_key)
+	var all = doc.get("jellies")
+	if int(doc.get("v", 0)) != 1 or not all is Dictionary or not all.get(str(band)) is Array:
+		return out
+	for got in all[str(band)]:
+		if not got is Dictionary:
+			continue
+		var parts := Mould.from_doc(got.get("parts"))
+		if parts.is_empty():
+			continue
+		var m := Mould.build_parts("themed_" + String(got.get("id", "")), parts)
+		if Mould.unfit(m, band) == "" and not out.any(func(x: Dictionary) -> bool: return x.id == m.id):
+			out.append(m)
+	return out
 
 ## Whether `rows` is a picture the band of side `size` may deal: a square
 ## of a side within the band's range, in the bank's letters, keeping the

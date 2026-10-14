@@ -101,7 +101,10 @@ game code was touched.
 - The foot is the bank entry as text. Pasting one in also wants its
   `PG_PIC_*` row in the locale files.
 - Gumdrop's jellies are polygons built from named parts
-  (`gumdrop_mould.gd`); an image cannot become one here.
+  (`gumdrop_mould.gd`); an image cannot become one here. The themed days'
+  are written as parts by the night instead (`server/functions/src/jelly.ts`,
+  `node lib/cli.js jellies <day.json>...` for a day already made; drawn by
+  `tests/_shot_gumdrop_bank.gd -- <out> themed`).
 
 Checked in headless Chrome, dark theme: two emoji drawings and two photos
 converted at 10, 12, 16, 24 and 32; four of them appended to a scratch copy

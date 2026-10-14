@@ -285,3 +285,34 @@ before; its world was not redrawn. `opengl3_angle`, 810x1440: rest,
 writes the board's `position.x`: it has no `set_shift`, so its world
 slides with it). Owed: a phone; whether its ground wants the richer foot
 the later boards have.
+
+### The day's theme (2026-10-14)
+
+The user: "the gumdrop game should use the same picture themed approach of
+the others picture games"; and, of an Insane day whose first mould was the
+themed crab and the last a traffic light: "what this has to do with the
+theme?". Spec: `docs/superpowers/specs/2026-10-14-gumdrop-themed-jelly-design.md`.
+
+- **Every mould is a thing of the day's theme** when the night wrote it:
+  Easy the theme's first two things, Medium three, Hard four, Insane five,
+  each at its band's row of `Mould.THEMED` (flavours, mixed among them,
+  chunks; one piece, inside 4-96, 9 squares a chunk, 20-75% covered). The
+  night (`server/functions/src/jelly.ts`) writes them as parts in the
+  twenty-nine's own shapes, so `build_parts` builds and `Art` draws them as
+  it does `parts()`; `jelly.ts` RULES and `THEMED` change together.
+- `ThemedPictures.jellies(daily_key, band)` reads the `pictures` document's
+  `jellies` list for the band, builds each and drops one that breaks its
+  row; `Mould.day(band, rng, themed)` deals them first in the theme's
+  order and fills the places left from the band's rows, never a picture of
+  a themed one's name. New (`bank_step`), no backend, no document: the
+  twenty-nine as before. A themed jelly's id is `themed_<thing>`.
+- The themed Insane crab (14 chunks; the twenty-nine stop at 6) poured and
+  served at 89% by `tests/_shot_gumdrop.gd -- 3`'s bot, 118 draw calls.
+  `tests/_probe_gumdrop.gd` checks the made days' jellies
+  (`tools/days/themed-pixel/`) against `THEMED` and their deal; its five
+  Insane-serves checks fail on `main` as well (Insane stopped counting
+  serves on 2026-10-12) and were left as they are.
+- Only this Mac sees it until `publishDay` writes `pictures` (the theme
+  spec's stage 4, the user's deploy). Owed: a day with all fourteen kept
+  (the first run lost five to an empty OpenRouter account), a phone, the
+  user's eye on the jellies.

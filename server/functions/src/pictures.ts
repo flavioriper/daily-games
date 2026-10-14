@@ -2,6 +2,7 @@ import jpeg from "jpeg-js";
 import {PNG} from "pngjs";
 import Beads = require("./beads");
 import {ask, available, draw, Drawing} from "./generate";
+import type {Jelly} from "./jelly";
 import {Theme, Thing} from "./theme";
 
 /**
@@ -30,6 +31,10 @@ export interface Pictures {
   theme: string;
   /** By size: "10", "12", "16", "24", "32". A size not here is the bank's. */
   sizes: Record<string, Picture>;
+  /** Gumdrop's, by band: "0" Easy to "3" Insane, a jelly a mould
+   *  (jelly.ts). A place not filled here the board fills from its own
+   *  twenty-nine. */
+  jellies?: Record<string, Jelly[]>;
 }
 
 /** What became of one size of one draft: for the dashboard, not the phone. */
@@ -181,7 +186,7 @@ const SAME_SCHEMA = {
 
 /** A single thing: the reviewer picks among the day's three and one that
  *  is not the day's. A mug of a hundred squares is named by nobody cold. */
-async function lookThing(day: number, rows: string[], thing: Thing, theme: Theme): Promise<NonNullable<Tried["look"]>> {
+export async function lookThing(day: number, rows: string[], thing: Thing, theme: Theme): Promise<NonNullable<Tried["look"]>> {
   const names = theme.objects.map((o) => o.name.toLowerCase());
   const free = DECOYS.filter((d) => !names.some((n) => n.includes(d)));
   const decoy = free.length > 0 ? free[fnv1a(`${day}`) % free.length] : "none of these";

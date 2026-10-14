@@ -3,6 +3,7 @@ import path from "node:path";
 import {makeDay as acornDay} from "./acorn";
 import {cost} from "./generate";
 import {bankPrompts, cleaned, makeDay as pearlDay, Prompt} from "./pearl";
+import {makeJellies} from "./jelly";
 import {makeDay as picturesDay} from "./pictures";
 import {makeTheme, themed} from "./theme";
 
@@ -89,7 +90,12 @@ async function themedDays(first: number, count: number, outdir: string, themesFr
       fs.writeFileSync(path.join(outdir, kept), d.bytes);
       return kept;
     });
-    fs.writeFileSync(file, JSON.stringify({day, theme, pictures: pictures.doc, drafts: pictures.drafts,
+    // Gumdrop's jellies ride in the same document (jelly.ts).
+    const jelly = theme === null ? {jellies: {}, tries: []} : await makeJellies(day, theme);
+    if (Object.keys(jelly.jellies).length > 0) {
+      pictures.doc = {...(pictures.doc ?? {v: 1 as const, theme: theme.id, sizes: {}}), jellies: jelly.jellies};
+    }
+    fs.writeFileSync(file, JSON.stringify({day, theme, pictures: pictures.doc, drafts: pictures.drafts, jellyTries: jelly.tries,
       cost: Math.round((cost() - before) * 10000) / 10000, seconds: Math.round((Date.now() - t0) / 1000)}));
     if (theme !== null) recent.unshift(...themed(theme));
     made++;
@@ -114,6 +120,21 @@ async function main(): Promise<void> {
     print(await growBank(Number(args[1]), Number(args[2]), args[3]));
   } else if (what === "themed" && (args.length === 3 || args.length === 4)) {
     print(await themedDays(Number(args[0]), Number(args[1]), args[2], args[3]));
+  } else if (what === "jellies" && args.length >= 1) {
+    // Gumdrop's jellies for days already made, their pictures untouched.
+    for (const file of args) {
+      const day = JSON.parse(fs.readFileSync(file, "utf8"));
+      if (day.theme === null) continue;
+      const jelly = await makeJellies(day.day, day.theme);
+      if (Object.keys(jelly.jellies).length > 0) {
+        day.pictures = {...(day.pictures ?? {v: 1, theme: day.theme.id, sizes: {}}), jellies: jelly.jellies};
+      } else if (day.pictures) {
+        delete day.pictures.jellies;
+      }
+      day.jellyTries = jelly.tries;
+      fs.writeFileSync(file, JSON.stringify(day));
+      print(`${file}: ${Object.entries(jelly.jellies).map(([b, l]) => `${b}:${l.length}`).join(" ") || "none"} in ${jelly.tries.length} tries, US$${cost().toFixed(2)} so far`);
+    }
   } else if (what === "publish") {
     // Loaded here and not at the top: index.ts wakes the admin SDK, which a
     // dry run has no credentials for and no use of.
@@ -121,7 +142,7 @@ async function main(): Promise<void> {
     await publishDays(new Date());
     print("published");
   } else {
-    console.error("usage: cli.js day [acorn|pearl] [yyyymmdd] | bank pearl <level> <count> <outfile> | themed <yyyymmdd> <days> <outdir> [themes-dir] | publish");
+    console.error("usage: cli.js day [acorn|pearl] [yyyymmdd] | bank pearl <level> <count> <outfile> | themed <yyyymmdd> <days> <outdir> [themes-dir] | jellies <day.json>... | publish");
     process.exitCode = 2;
   }
 }
