@@ -6,6 +6,7 @@
 # nothing but that one cache file; `off` takes it away again.
 #
 #   tools/themed_play.sh 20261014      # that made day, as today's
+#   tools/themed_play.sh 20261014 pixel   # its pixel art pictures (days/themed-pixel)
 #   tools/themed_play.sh off
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -15,7 +16,8 @@ if [ "${1:-}" = "off" ]; then
   rm -f "$file"; echo "removed $file"; exit 0
 fi
 mkdir -p "$cache"
-python3 - "$here/days/themed/${1:?a made day, yyyymmdd}.json" "$file" <<'PY'
+dir=themed; [ "${2:-}" = pixel ] && dir=themed-pixel
+python3 - "$here/days/$dir/${1:?a made day, yyyymmdd}.json" "$file" <<'PY'
 import json, sys
 day = json.load(open(sys.argv[1]))
 if not day.get("pictures"):
