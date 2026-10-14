@@ -1,3 +1,4 @@
+import Anthropic from "@anthropic-ai/sdk";
 /**
  * The one place a model is asked for a day's content. A game that wants its
  * day written rather than derived hands over a prompt and the JSON schema of
@@ -21,6 +22,10 @@
  *                         process's own Google identity is used
  *   VERTEX_TOKEN_COMMAND  a command that prints a token, run for each
  *                         drawing (a login's token outlives no long run)
+ *
+ *   ANTHROPIC_API_KEY     when set, an "anthropic/..." model is asked of
+ *                         Anthropic's own API (askAnthropic) and not
+ *                         OpenRouter; every other model stays on OpenRouter
  *
  * The two defaults are cheap models of different makers on purpose: a
  * reviewer from the writer's own family shares its mistakes. `off` as
@@ -81,8 +86,12 @@ export function modelFor(role: Role = "write"): string {
   return (process.env.DAILY_MODEL ?? "").trim() || DEFAULT_MODEL;
 }
 
+function anthropicKey(): string {
+  return (process.env.ANTHROPIC_API_KEY ?? "").trim();
+}
+
 export function available(): boolean {
-  if (modelFor() === "off" || key() === "") return false;
+  if (modelFor() === "off" || (key() === "" && anthropicKey() === "")) return false;
   return (process.env.FIRESTORE_EMULATOR_HOST ?? "") === "";
 }
 
@@ -116,6 +125,8 @@ async function post(body: Record<string, unknown>): Promise<Response> {
 export async function ask<T>(a: Ask): Promise<T> {
   if (!available()) throw new Error("no model");
   const model = a.model ?? modelFor(a.role);
+  const direct = anthropicModel(model);
+  if (direct !== null) return askAnthropic<T>(direct, a);
   const told = `${a.system}\n\nAnswer with one JSON object and nothing else, in exactly this JSON schema:\n${JSON.stringify(a.schema)}`;
   const base = {
     model,
@@ -148,6 +159,51 @@ export async function ask<T>(a: Ask): Promise<T> {
     throw new Error(`${model} stopped on ${choice?.finish_reason}`);
   }
   return jsonIn(choice.message?.content ?? "") as T;
+}
+
+/** Anthropic's own id for an OpenRouter "anthropic/..." name when its key
+ *  is set ("anthropic/claude-opus-5.5" is "claude-opus-5-5"), else null. */
+export function anthropicModel(model: string): string | null {
+  if (anthropicKey() === "" || !model.startsWith("anthropic/")) return null;
+  return model.slice("anthropic/".length).replace(/\./g, "-");
+}
+
+/** US dollars a million tokens in and out, Anthropic's list prices
+ *  (2026-10), so cost() still counts what is asked here. */
+const ANTHROPIC_PRICE: Record<string, [number, number]> = {
+  "claude-opus-5-5": [4, 20],
+  "claude-sonnet-5-5": [2, 10],
+  "claude-haiku-5-5": [0.1, 0.5],
+};
+
+let anthropic: Anthropic | null = null;
+
+/** ask(), of Anthropic's API: the schema held by structured outputs, the
+ *  pictures as base64 images, and a decline by a safety classifier rerun
+ *  on the model the API picks for it (server-side fallback, the Opus
+ *  models only). */
+async function askAnthropic<T>(model: string, a: Ask): Promise<T> {
+  anthropic ??= new Anthropic({apiKey: anthropicKey(), timeout: TIMEOUT_MS});
+  const images = (a.images ?? []).map((url) => {
+    const got = /^data:(image\/(?:png|jpeg|gif|webp));base64,(.+)$/s.exec(url);
+    if (got === null) throw new Error("a picture that is not a data: URL");
+    return {type: "image" as const, source: {type: "base64" as const, media_type: got[1] as "image/png", data: got[2]}};
+  });
+  const opus = model.startsWith("claude-opus");
+  const stream = anthropic.beta.messages.stream({
+    model,
+    max_tokens: 32000,
+    system: a.system,
+    messages: [{role: "user", content: [...images, {type: "text", text: a.prompt}]}],
+    output_config: {effort: "medium", format: {type: "json_schema", schema: a.schema}},
+    ...(opus ? {betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const} : {}),
+  });
+  const out = await stream.finalMessage();
+  const price = ANTHROPIC_PRICE[out.model] ?? ANTHROPIC_PRICE[model] ?? [0, 0];
+  spent += (out.usage.input_tokens * price[0] + out.usage.output_tokens * price[1]) / 1e6;
+  if (out.stop_reason !== "end_turn") throw new Error(`${model} stopped on ${out.stop_reason}`);
+  const text = out.content.map((b) => b.type === "text" ? b.text : "").join("");
+  return jsonIn(text) as T;
 }
 
 /** Vertex AI's name for the image model, which has no maker's prefix. */
