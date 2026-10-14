@@ -14,6 +14,14 @@ extends RefCounted
 ## Nothing goes anywhere by itself.
 ##
 ## The tin starts small and gains two places every time a colour is whole.
+## Its buttons sit packed from its first place in groups of a colour, in
+## the order the colours came (the user, 2026-10-14: "when moving pieces to
+## case box or after placing them, we need to reorder it to make sure
+## colors stay in sequence. For example if green is first and yellow
+## second, and I move in green, it should be added right after green and
+## move yellow to the next available slot"): a button stowed goes in right
+## after the last of its colour, the ones past it sliding along a place,
+## and buttons sewn out of the tin leave no gap, the rest sliding back.
 ##
 ## Nothing here can be lost up to Hard: the bare patches are always as many
 ## as the buttons in the tin, so while the tin holds anything some colour
@@ -85,8 +93,9 @@ const GUIDES_TO := 1
 ## What a move came to.
 enum { OK, REFUSED_HOME, REFUSED_FULL, REFUSED_BARE, REFUSED_WRONG }
 ## What one button of a tap did: [kind, from, to, colour]. `from` and `to`
-## are squares, or places in the tin on the side the kind names.
-enum { TO_PATCH, TO_TIN, FROM_TIN }
+## are squares, or places in the tin on the side the kind names; a SLIDE is
+## a button of the tin moved along to another place, both ends places.
+enum { TO_PATCH, TO_TIN, FROM_TIN, SLIDE }
 
 static var _bank: Dictionary = {}
 static var _bank_read := false
@@ -501,7 +510,25 @@ func sew(cells: PackedInt32Array, places: PackedInt32Array, at: int) -> Dictiona
 		else:
 			cur[source[k]] = -1
 			moves.append([TO_PATCH, source[k], to, c])
+	if from_tin:
+		_pack(moves)
 	return _after({"moves": moves, "kept": kept}, was, whole_was)
+
+## Closes the tin's gaps: every button slides back to the first free place
+## before it, in order, so the groups of a colour stay together. The
+## slides go on `moves`; the count of buttons in the tin is answered.
+func _pack(moves: Array) -> int:
+	var n := 0
+	for p in tin.size():
+		var c := tin[p]
+		if c < 0:
+			continue
+		if n < p:
+			tin[n] = c
+			tin[p] = -1
+			moves.append([SLIDE, p, n, c])
+		n += 1
+	return n
 
 ## Puts the picked run `cells` into the tin, as many as it has room for.
 ## {why, moves, kept}.
@@ -516,15 +543,28 @@ func stow(cells: PackedInt32Array) -> Dictionary:
 	var c := cur[cells[0]]
 	var moves: Array = []
 	var kept := PackedInt32Array()
+	# packed, the new ones go in right after the last of their colour (at
+	# the end with none), and the buttons past that slide along to make
+	# room for them
+	var held := _pack(moves)
+	var n := mini(room, cells.size())
+	var at := held
+	for p in held:
+		if tin[p] == c:
+			at = p + 1
+	for p in range(held - 1, at - 1, -1):
+		tin[p + n] = tin[p]
+		tin[p] = -1
+		moves.append([SLIDE, p, p + n, tin[p + n]])
 	for g in cells:
 		if room <= 0:
 			kept.append(g)
 			continue
-		var place := tin.find(-1)
-		tin[place] = c
+		tin[at] = c
 		cur[g] = -1
 		room -= 1
-		moves.append([TO_TIN, g, place, c])
+		moves.append([TO_TIN, g, at, c])
+		at += 1
 	return _after({"moves": moves, "kept": kept}, was, whole_was)
 
 ## Takes the last move back. False with nothing to take back.
@@ -743,6 +783,8 @@ func _solve_taps() -> int:
 		if int(res.why) != OK:
 			return 0
 		for m: Array in res.moves:
+			if int(m[0]) == SLIDE:
+				continue
 			if int(m[0]) != TO_TIN:
 				bare.erase(int(m[2]))
 			if int(m[0]) != FROM_TIN:

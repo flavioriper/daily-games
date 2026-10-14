@@ -26,6 +26,21 @@
   with a sun ring for 1.6 s on every button a tap would sew).
 - **The tin** starts at 6 places (7 on Hard) of 12 and gains one each time
   a colour is whole (`State.capacity`).
+- **The tin keeps its colours in sequence** (2026-10-14, the user: "when
+  moving pieces to case box or after placing them, we need to reorder it
+  to make sure colors stay in sequence. For example if green is first and
+  yellow second, and I move in green, it should be added right after green
+  and move yellow to the next available slot"): its buttons sit packed
+  from the first place in groups of a colour, in the order the colours
+  came. `State.stow` packs, then puts the new ones right after the last of
+  their colour (at the end with none there), the buttons past that
+  sliding along as many places; `State.sew` out of the tin packs after,
+  so no gap is left. Each button moved along is a `State.SLIDE` move
+  (both ends places), which the board plays as a short hop between the
+  two places (`SLIDE_TIME` 0.18 s, all at once, no tick) and the state's
+  own solver skips. Undo keeps the tin as it was. Checked by random play
+  on every band: 4,751 taps, 30,791 slides, never a gap nor a colour
+  split; `_probe_buttons.gd` 648 runs, 0 failures; `_win.gd` buttons PASS.
 - **Nothing can be stuck.** The bare patches are always as many as the
   buttons in the tin, and the tin never holds a colour a bare patch wants,
   so a button of that colour is still on the cloth and a tap on it sews.

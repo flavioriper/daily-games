@@ -99,6 +99,8 @@ const RUN_STEP_CAP := 0.9
 const PICK_STEP := 0.045
 const PICK_CAP := 0.5
 const FLY_TIME := 0.3
+## A button of the tin sliding along to the next place (State.SLIDE).
+const SLIDE_TIME := 0.18
 const FLY_ARC := 0.55
 const FLY_GROW := 0.18
 ## A flight to a patch ends this much of a square above its socket, still
@@ -1423,6 +1425,15 @@ func _play(res: Dictionary, at_cell: int, starts: Dictionary) -> void:
 	var tin_k := _tin_step * TIN_FIT / _cell
 	for m: Array in moves_:
 		var kind := int(m[0])
+		if kind == State.SLIDE:
+			# a button of the tin moved along a place: a short hop, all of
+			# them at once, with no tick of their own
+			var hop := 0.0 if Motion.reduce else SLIDE_TIME
+			_flights.append({"c": int(m[3]), "time": hop, "at": now, "k0": tin_k, "k1": tin_k, "fc": false, "tc": false,
+				"from": tin_centre(int(m[1])), "to": tin_centre(int(m[2]))})
+			_tin_arrive[int(m[2])] = now + hop
+			last = maxf(last, now + hop)
+			continue
 		var at := now + (0.0 if Motion.reduce else order * step)
 		# `fc` and `tc`: the end is on the cloth (in the picture's own
 		# measure, which the zoom moves) and not on the tin (the screen's)
