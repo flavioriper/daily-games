@@ -32,7 +32,7 @@ const RULES := {
 	12: {"side": [12, 22], "colours": [4, 7]},
 	24: {"side": [24, 34], "colours": [6, 12]},
 	32: {"side": [32, 40], "colours": [8, 14]},
-	48: {"side": [40, 64], "colours": [10, 16]},
+	48: {"side": [44, 64], "colours": [10, 16]},
 }
 const FILL := [0.25, 0.80]
 const LEAD := 0.6

@@ -373,7 +373,7 @@ The user, on the first pixel day in the game: "hard and insane is way too
 easy, insane should be a really big and detailed image, and hard should be
 what is current insane". So Button Box's Hard deals the bank's 32 band and
 asks the day for the 32 picture, and its Insane asks for a sixth band, key
-48 (`Beads.RULES[48]`, side 40 to 64, colours 10 to 16), drawn with
+48 (`Beads.RULES[48]`, side 44 to 64 (the first tray drawn came at 38 wide and was let in at 40; the floor is up so a drawing that size is asked for again bigger), colours 10 to 16), drawn with
 "detailed, with texture and small features" in place of "big simple
 shapes" (`DETAIL_FROM` 32) and asked for at 40 first. The gate before the
 wiring: asked 36, the model drew a picnic basket at 32 × 32; asked 40, a

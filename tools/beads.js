@@ -44,7 +44,7 @@ var Beads = (function () {
     // Button Box's Insane alone (the user, 2026-10-14: "insane should be a
     // really big and detailed image"): asked 40, the model drew a cottage
     // at 64 × 61 that read clean.
-    48: { side: [40, 64], colours: [10, 16], fill: [.25, .8], small: true, lead: LEAD } };
+    48: { side: [44, 64], colours: [10, 16], fill: [.25, .8], small: true, lead: LEAD } };
   var CUT_FILL = [.3, .7], MOST = .45, WORK = 240;
   var DEFAULTS = { size: 10, frame: "subject", bg: "auto", tol: .1, margin: 1, colours: 4, zoom: 1, px: 0, py: 0, vivid: 1 };
 
