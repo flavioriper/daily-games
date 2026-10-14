@@ -182,6 +182,9 @@ func _note(id: String) -> String:
 			_puzzle.hints_used, _puzzle.checks, _fit_ok, _hud_ok]
 		"gumdrop": return "band %d, %d moulds at %d%%, served at %s in %d serves, board fit=%s, hud=%s" % [
 			_puzzle.band, _puzzle.sim.moulds.size(), _puzzle.sim.mark(), str(_puzzle.sim.marks), _puzzle.moves, _fit_ok, _hud_ok]
+		"hoop": return "band %d, %d panels (%s), %d pins, %d sides, %d refused, best combo %d, hints=%d, board fit=%s, hud=%s" % [
+			_puzzle.state.band, _puzzle.state.panels.size(), _puzzle.state.name_key, _puzzle.state.pins.size(),
+			_puzzle.state.sides.size(), _puzzle.state.refused, _puzzle._best, _puzzle.hints_used, _fit_ok, _hud_ok]
 		"train": return "band %d, %d blocks on %d by %d (%s), %d engines, %d sent (par %d), %d in the siding, jammed=%s, hints=%d, board fit=%s, hud=%s" % [
 			_puzzle.state.band, _puzzle.state.count(), _puzzle.state.w, _puzzle.state.h, _puzzle.state.name_key,
 			_puzzle.state.colour.size(), _puzzle.state.taps, _puzzle.state.par, _puzzle.state.parked(),
@@ -235,6 +238,7 @@ func _solve(id: String) -> void:
 		"lattice": _solve_lattice()
 		"buttons": _solve_buttons()
 		"train": _solve_train()
+		"hoop": _solve_hoop()
 		"gumdrop": _solve_gumdrop()
 
 ## Gumdrop's syrup is a fluid on the GPU, so nothing here can pour it in a
@@ -596,6 +600,32 @@ func _solve_lattice() -> void:
 ## input, each sent when the loop is empty (the way the line was proved).
 ## The loop runs on its clock, so this one awaits, and holds the walk
 ## (`_waiting`) to the win.
+## Yarn Hoop: the bulb once, then every side still open dragged pin to pin
+## through the window, as a finger would.
+func _solve_hoop() -> void:
+	_waiting = true
+	var st = _puzzle.state
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for v in st.pins.size():
+		_fit_ok = _fit_ok and slot.has_point(_puzzle.pin_screen(v))
+	await create_timer(0.8).timeout
+	_hud_ok = true
+	if _puzzle.capabilities().has("hint"):
+		_press(_host.top_bar.hint_button)
+		await create_timer(1.0).timeout
+		_hud_ok = _puzzle.hints_used == 1 and st.threads == 1
+	var guard := 0
+	for s in st.sides.size():
+		if st.laid[s]:
+			continue
+		var sd: Vector2i = st.sides[s]
+		_drag_local(_puzzle.pin_screen(sd.x), _puzzle.pin_screen(sd.y))
+		guard += 1
+		if guard % 8 == 0:
+			await process_frame
+	_waiting = false
+
 func _solve_train() -> void:
 	_waiting = true
 	var st = _puzzle.state

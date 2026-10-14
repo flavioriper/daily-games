@@ -1107,6 +1107,40 @@ const PUZZLES := [
 			{"difficulty": 3, "name": "Insane", "line": "TT_LVL_3"},
 		],
 	},
+	{
+		"id": "hoop",
+		"kind": "puzzle",
+		"title": "Yarn Hoop",
+		"blurb": "YH_BLURB",
+		"short": "YH_SHORT",
+		"motto": "YH_MOTTO",
+		"footer": "Pin · Thread · Knit",
+		# The sewing table is the whole screen (`bleed`, ui/flat/flat_host.gd):
+		# the hoop and its linen lie on it, so there is no tray and no actions
+		# row; the bulb and the bin ride in the tools row. The board's own
+		# toast says what the tip card would.
+		"script": "res://puzzles/hoop2d.gd",
+		"card": "res://ui/menu/cards/hoop.gd",
+		"shell": "flat",
+		"bleed": true,
+		# The levels stand where the day card was, with the tools row under
+		# them (docs/agents/flat-screens.md, "Every board gets a world").
+		"level_card": true,
+		"tray": "none",
+		"actions": false,
+		"tip": false,
+		"difficulties": [0, 1, 2, 3],
+		# Asks like Sudoku: each band (a picture of the bank, or the day's
+		# themed one, cut off the day's seed) is its own daily with its own
+		# done mark.
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "YH_LVL_0"},
+			{"difficulty": 1, "name": "Medium", "line": "YH_LVL_1"},
+			{"difficulty": 2, "name": "Hard", "line": "YH_LVL_2"},
+			{"difficulty": 3, "name": "Insane", "line": "YH_LVL_3"},
+		],
+	},
 ]
 
 ## Boards that stand on the Arcade tab and not in the grid: the same flat

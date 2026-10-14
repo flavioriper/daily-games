@@ -209,6 +209,7 @@ func _gallery() -> void:
 			for level in train.size():
 				if int(train[level]) == k:
 					users.append(["train", level])
+			users.append(["hoop", k])
 			var side := (bank.bands[k][0].rows as Array).size() if not (bank.bands[k] as Array).is_empty() else 0
 			sets.append({"title": "Bead bank, %d × %d" % [side, side], "file": "content/pixel_garden.json, band %d" % k,
 				"kind": "pixels", "users": users, "pictures": _pixel_pictures(bank.bands[k])})

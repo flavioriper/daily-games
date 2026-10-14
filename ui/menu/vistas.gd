@@ -76,6 +76,8 @@ const CARDS := {
 	"buttons": ["meadow", 1.6, Vector2(0.58, 0.34)],
 	# Toy Cannons is played on a playroom floor, by the same cottages.
 	"train": ["meadow", 1.6, Vector2(0.50, 0.36)],
+	# Yarn Hoop is knitted indoors too, further along the same cottages.
+	"hoop": ["meadow", 1.6, Vector2(0.66, 0.38)],
 	# Versus (not a grid card): the treehouse terrace the reference stands
 	# the snooker table in.
 	"snooker": ["dusk", 1.3, Vector2(0.55, 0.55)],

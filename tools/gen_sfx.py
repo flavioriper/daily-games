@@ -2595,6 +2595,35 @@ SETS = {
         "out_of_hearts": ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:5,2,-2"),
         "heart_back":    ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.14:0,7", "cut:0.7"),
     },
+    # Yarn Hoop (puzzles/hoop2d.gd, 2026-10-14): pins, yarn and knitting
+    # on linen. No new take: the three it is made of are Button Box's,
+    # copied into build/sfx_raw/hoop/ -- the light wooden button set down on
+    # felt (a pin taken up, a thread laid), the hollow block (a panel
+    # filled) and the one muffled kalimba note -- with Hedgehogs' breath for
+    # the reset. What repeats has no note in it: `stitch` once a thread,
+    # climbed half a step a thread along a drag, and `fill` once a panel,
+    # climbed a step a panel the drag closed, five at the most. The notes
+    # are kept for a side that fills two panels at once (`double`), a drag
+    # that closed three or more (`run`), a colour whole, the bulb and the
+    # day's end; every note lands between 400 and 700 Hz.
+    "hoop": {
+        "pick":          ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -18, HUSH, "warm:1300", "cut:0.08", "body:320", "tight", "notes:0:-3"),
+        "stitch":        ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.09", "body:320", "tight", "notes:0:-1"),
+        "fill":          ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1500", "cut:0.12", "body:320", "tight", "notes:0:-2"),
+        "locked":        ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.24", "body:320", "tight", "notes:0.1:-5,-6"),
+        "enter":         ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.5", "body:320", "tight", "notes:0.08:-3,-1,-3,1"),
+        "reset":         ("a soft breath of warm breeze that eases, fades and stops, calm, short", 0.8, -17, BREEZE, "warm:900", "steep", "ease:0.05", "body:320"),
+        # Two panels at once: two notes close together, a third apart. A
+        # drag that closed three or more: two, a fourth apart. A colour
+        # whole: three up.
+        "double":        ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.06:0,4", "cut:0.6"),
+        "run":           ("one soft short note on a kalimba, muffled and kind", 0.6, -11, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.07:2,7", "cut:0.6"),
+        "whole":         ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.11:0,3,7", "cut:0.9"),
+        "hint":          ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:2,5,5", "cut:1.0"),
+        "solved":        ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.07:-3,0,2", "cut:0.6"),
+        "party":         ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:2,5,7,2,5,9", "cut:1.4"),
+        "stamp":         ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.26:4,0,7"),
+    },
     # How Big? (puzzles/how_big2d.gd, 2026-10-08): a carpenter's bench. The
     # one cue that repeats is `notch`, a click every time the answer grows or
     # shrinks by a twelfth while the finger pulls it: the wheel of an old
