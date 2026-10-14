@@ -8,9 +8,12 @@
 # and tools/public_invoker.sh after the first deploy so submitTurn can be
 # called at all; see CLAUDE.md, "Turns and the backend".
 #
-# publishDay writes Golden Acorn's day and Pearl Dive's with a model asked
-# through OpenRouter (server/functions/src/generate.ts; acorn.ts, pearl.ts)
-# and reads its key from the secret OPENROUTER_API_KEY. The deploy fails until that secret exists; set it once:
+# publishDay writes Golden Acorn's day and Pearl Dive's with Anthropic's
+# models, asked of Anthropic's own API (server/functions/src/generate.ts;
+# acorn.ts, pearl.ts), and keeps OpenRouter for any other model: it reads the
+# secrets ANTHROPIC_API_KEY and OPENROUTER_API_KEY. The deploy fails until
+# both exist; set each once:
+#   cd server && firebase functions:secrets:set ANTHROPIC_API_KEY --project daily-games-420bf
 #   cd server && firebase functions:secrets:set OPENROUTER_API_KEY --project daily-games-420bf
 # The scheduler runs at 03:00 UTC, so the day of a deploy is published by
 # tools/publish_day.sh (docs/agents/turns-and-backend.md, "A day written by

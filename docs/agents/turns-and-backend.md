@@ -122,7 +122,22 @@ foundation's, unchanged. Three things changed in `index.ts`:
   racing cannot overwrite either.
 - The schedule has `timeoutSeconds: 1800` (1500 until Pearl Dive joined,
   2026-10-09; the most a scheduled function is given), `memory: "512MiB"` and
-  `secrets: ["OPENROUTER_API_KEY"]`.
+  `secrets: ["OPENROUTER_API_KEY", "ANTHROPIC_API_KEY"]` (the second since
+  2026-10-14).
+
+**Since 2026-10-14 the night writes on Anthropic's own API** (the user, after
+OpenRouter's balance ran out mid-run: "i allow you to replace it, use the opus
+to check quiz and jelly"). With `ANTHROPIC_API_KEY` set, `ask()` sends every
+`anthropic/...` model to Anthropic through `@anthropic-ai/sdk` (structured
+outputs for the schema, effort medium, the Opus models with the server-side
+fallback); Haiku 5.5 writes and **Opus 5.5 reviews** (`DEFAULT_REVIEW_MODEL`,
+it was GPT-6 Luna, of another maker on purpose). Any other model, and the
+image model, stays on OpenRouter. `publishDay` declares both secrets;
+`ANTHROPIC_API_KEY` version 1 was set by the user and `publishDay` alone
+deployed by them the same day. Read on this Mac before the deploy: Golden
+Acorn's day in 3 min 21 s (8/9/7/12, none from the bank), Pearl Dive's in
+5 min (8/9/9 of 8/9/9). The first night on it is unseen. What follows is
+the OpenRouter history.
 
 **`server/functions/src/generate.ts` is the only place a model is called.**
 It asks through **OpenRouter** (`https://openrouter.ai/api/v1/chat/completions`,
