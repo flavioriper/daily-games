@@ -14,6 +14,11 @@
  *   DAILY_MODEL           the model that writes
  *   DAILY_REVIEW_MODEL    the model that reviews
  *   DAILY_IMAGE_MODEL     the model that draws (draw(), for pictures.ts)
+ *   VERTEX_PROJECT        when set, draw() asks Vertex AI in that Google
+ *                         Cloud project and not OpenRouter, so the pictures
+ *                         are billed there (the project with the credits)
+ *   VERTEX_ACCESS_TOKEN   a token to ask Vertex with; without one the
+ *                         process's own Google identity is used
  *
  * The two defaults are cheap models of different makers on purpose: a
  * reviewer from the writer's own family shares its mistakes. `off` as
@@ -141,8 +146,56 @@ export async function ask<T>(a: Ask): Promise<T> {
   return jsonIn(choice.message?.content ?? "") as T;
 }
 
+/** Vertex AI's name for the image model, which has no maker's prefix. */
+export const DEFAULT_VERTEX_IMAGE_MODEL = "gemini-2.5-flash-image";
+
+function vertexProject(): string {
+  return (process.env.VERTEX_PROJECT ?? "").trim();
+}
+
 export function imageModel(): string {
-  return (process.env.DAILY_IMAGE_MODEL ?? "").trim() || DEFAULT_IMAGE_MODEL;
+  return (process.env.DAILY_IMAGE_MODEL ?? "").trim() ||
+    (vertexProject() !== "" ? DEFAULT_VERTEX_IMAGE_MODEL : DEFAULT_IMAGE_MODEL);
+}
+
+/** A token Vertex AI takes: the one handed in, or the process's own
+ *  identity's (the function's service account when deployed). An API key is
+ *  refused there ("API keys are not supported by this API", 2026-10-13). */
+async function vertexToken(): Promise<string> {
+  const given = (process.env.VERTEX_ACCESS_TOKEN ?? "").trim();
+  if (given !== "") return given;
+  const {GoogleAuth} = await import("google-auth-library");
+  const token = await new GoogleAuth({scopes: ["https://www.googleapis.com/auth/cloud-platform"]}).getAccessToken();
+  if (!token) throw new Error("no Google identity to ask Vertex AI with");
+  return token;
+}
+
+/** draw(), asked of Vertex AI: the same model family, Google's own dialect,
+ *  the picture in `candidates[0].content.parts[].inlineData`. What it cost
+ *  is not in the answer, so cost() does not count it. */
+async function drawOnVertex(prompt: string): Promise<Drawing> {
+  const model = imageModel();
+  const res = await fetch(
+    `https://aiplatform.googleapis.com/v1/projects/${vertexProject()}/locations/global/publishers/google/models/${model}:generateContent`, {
+      method: "POST",
+      headers: {"Authorization": `Bearer ${await vertexToken()}`, "Content-Type": "application/json"},
+      body: JSON.stringify({
+        contents: [{role: "user", parts: [{text: prompt}]}],
+        generationConfig: {responseModalities: ["TEXT", "IMAGE"]},
+      }),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+  if (!res.ok) {
+    throw new Error(`vertex ${model}: HTTP ${res.status} ${(await res.text()).slice(0, 400)}`);
+  }
+  const out = await res.json() as {
+    candidates?: {content?: {parts?: {inlineData?: {mimeType?: string; data?: string}}[]}}[]};
+  for (const part of out.candidates?.[0]?.content?.parts ?? []) {
+    if (part.inlineData?.data) {
+      return {mime: part.inlineData.mimeType ?? "image/png", bytes: Buffer.from(part.inlineData.data, "base64")};
+    }
+  }
+  throw new Error(`vertex ${model} drew nothing`);
 }
 
 export interface Drawing {
@@ -159,6 +212,7 @@ export interface Drawing {
  */
 export async function draw(prompt: string): Promise<Drawing> {
   if (!available()) throw new Error("no model");
+  if (vertexProject() !== "") return drawOnVertex(prompt);
   const model = imageModel();
   const res = await post({model, modalities: ["image", "text"], messages: [{role: "user", content: prompt}]});
   if (!res.ok) {

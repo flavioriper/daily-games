@@ -209,3 +209,31 @@ days re-exported: 3,960 documents, 0 errors. **Not run**: the game itself
 with a themed day on screen (that is `themed_play.sh` and the user's eye),
 and the fetch against the real server, where no `pictures` document exists
 until stage 4.
+
+## Drawing on Vertex AI, on a project's credits (2026-10-13)
+
+The user has Google Cloud credits (a startup programme's, on the billing
+account of `production-506015`, the `andressa.t@navlio.io` login) and asked
+for the pictures to be drawn on them. What was found, in the order it cost:
+
+- **The plain Gemini API does not spend Cloud credits**: a key for
+  `generativelanguage.googleapis.com` listed the models and then answered
+  402, "Your prepayment credits are depleted". AI Studio shows "R$ 0
+  qualifying GCP credits" on every billing account looked at.
+- **Vertex AI takes no bare API key** ("API keys are not supported by this
+  API"), and a key bound to a service account is refused by that
+  organisation's policy (`iam.managed.disableServiceAccountApiKeyCreation`).
+- **Vertex AI with a login's own token works** and is billed to the project:
+  `generate.ts`'s `draw()` asks Vertex when `VERTEX_PROJECT` is set
+  (`VERTEX_ACCESS_TOKEN`, or the process's own Google identity through
+  `google-auth-library`), and OpenRouter otherwise. `cost()` does not count
+  a Vertex drawing: the answer carries no price.
+
+      VERTEX_PROJECT=production-506015 VERTEX_ACCOUNT=andressa.t@navlio.io tools/themed_days.sh
+
+Left in that project and used by nothing: the service account
+`daily-pictures` with `roles/aiplatform.user`, an API key "Peeplet Daily
+pictures (Gemini image)" (also in `~/.config/gemini/api_key`), and the
+Gemini API enabled. **For the deployed function** (stage 4) the token has
+to be its own: its service account granted `roles/aiplatform.user` on that
+project, across projects. Not done.
