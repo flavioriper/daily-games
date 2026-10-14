@@ -177,10 +177,9 @@ func _go(b: Face.Builder, at: Vector2, k: float, home: Vector2, s: float) -> voi
 	Scenery.soft_disc(b, at + Vector2(0.0, r * 0.7 + lift), r * 1.05, r * 0.34, Color(Pal.TEXT, GO_SHADOW))
 	var up := at - Vector2(0.0, lift)
 	Art.button(b, up, cell, colour, false)
-	# The dish again over the holes, and the chevron in it.
+	# The centre face again over the holes, and the chevron in it.
 	var c := up - Vector2(0.0, cell * Art.RISE)
-	b.disc(c, cell * Art.DISH, colour.darkened(0.1))
-	b.disc(c - Vector2(0.0, cell * 0.012), cell * (Art.DISH - 0.025), colour.lightened(0.05))
+	b.polygon(Art.tile(c, cell * Art.FACE, cell * Art.TIP * 0.35), colour)
 	var h := r * 0.34
 	b.stroke(PackedVector2Array([c + Vector2(-h * 0.55, -h), c + Vector2(h * 0.55, 0.0), c + Vector2(-h * 0.55, h)]),
 		r * 0.2, Pal.SURFACE)

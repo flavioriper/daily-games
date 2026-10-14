@@ -31,21 +31,33 @@ const Pal = preload("res://core/palette.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 
-## Sizes as a share of the cell. The button is 0.56 of its square across
-## (0.8 until 2026-10-12, two thirds until 2026-10-14; the user, both
-## times: smaller, so the colour under it shows), its face, dish, holes
-## and shadow with it. RIM stays over SOCKET: the socket is what says bare,
-## and a button must hide it.
-const RIM := 0.28
-const FACE_R := 0.25
-const DISH := 0.165
+## Sizes as a share of the cell. **A loose button is a gem tile** (since
+## 2026-10-14, the user: "make the button in a more diamond shape rather
+## than plain rounded so it can fill a bit more of the square, and make it
+## bit bigger, to not let user guess so easy what is the picture early",
+## then, over a rhombus, a picture of faceted square gems: "a shape like
+## this, not a triangle"): a rounded square RIM out from the middle to
+## each side, 0.8 of its square across and covering 0.64 of it (the user,
+## over 0.92: "smaller, it's too big, keep it like 80% of the cell"; a round
+## button 0.56 across, 0.25 of its square, from the morning; two thirds
+## before, 0.8 before that), so the patch's colour shows as a thin border
+## only. Four bevel facets slope from its edge to a flat centre face FACE
+## out, lit from the top; the holes sit in the face. TIP rounds the
+## corners. RIM stays over SOCKET: the socket is what says bare, and a
+## button must hide it.
+const RIM := 0.4
+const TIP := 0.1
+const FACE := 0.22
 const HOLE := 0.032
-const HOLE_AT := 0.059
+const HOLE_AT := 0.085
 const RISE := 0.03
 ## The socket's outer radius, and the shadow a loose button throws.
 const SOCKET := 0.235
-const SHADOW_R := 0.31
-const SHADOW_DOWN := 0.085
+const SHADOW_R := 0.41
+const SHADOW_DOWN := 0.06
+## The facets' light: the top one lifted, the sides a little, the bottom
+## sunk.
+const FACET := [0.2, 0.06, -0.06, -0.22]
 const LINEN := Color("e9dcc3")
 const LINEN_WARP := Color("dfd0b3")
 const LINEN_WEFT := Color("f1e6d0")
@@ -101,10 +113,13 @@ static func patch(b, at: Vector2, cell: float, col: Color, lite := false) -> voi
 ## is set a hair low, so the ring is thicker along the top: a recess, lit
 ## from above. Readable at 14 px a square: a ring of 3.3 px, 2 px wide.
 static func socket(b, at: Vector2, cell: float, col: Color, sides: int) -> void:
+	# the button's own shape, as the tin's hollows are (the user,
+	# 2026-10-14: "same for the slot of empty cells on the picture")
 	var r := cell * SOCKET
 	var rim := maxf(2.0, cell * 0.06)
-	_raw(b, _gon(at, r, sides), col.darkened(0.34))
-	_raw(b, _gon(at + Vector2(0.0, cell * 0.018), r - rim, sides), col.darkened(0.1))
+	var tip := cell * TIP * 0.5
+	_raw(b, tile(at, r, tip, sides > 12), col.darkened(0.34))
+	_raw(b, tile(at + Vector2(0.0, cell * 0.018), r - rim, maxf(1.0, tip - rim * 0.5), sides > 12), col.darkened(0.1))
 
 ## A button sewn on: it has gone into the cloth, and its square is the
 ## colour whole, a hair over the cell so that neighbours leave no seam.
@@ -113,15 +128,57 @@ static func sewn(b, at: Vector2, cell: float, col: Color) -> void:
 	_raw(b, PackedVector2Array([at + Vector2(-half, -half), at + Vector2(half, -half),
 			at + Vector2(half, half), at + Vector2(-half, half)]), col)
 
-## A button centred on `at`: its rim, its face a little above it, the dish
-## and the four holes; `sewn` crosses them with thread.
+## A rounded square about `at`, `r` from its middle to each side, its
+## corners rounded by `tip`; `fine` false cuts each corner in two points.
+static func tile(at: Vector2, r: float, tip: float, fine := true) -> PackedVector2Array:
+	if fine:
+		return Face.Builder.round_rect(at - Vector2(r, r), Vector2(r, r) * 2.0, tip)
+	var pts := PackedVector2Array()
+	var k := tip * 0.5
+	for c: Vector2 in [Vector2(-r, -r), Vector2(r, -r), Vector2(r, r), Vector2(-r, r)]:
+		var sx := signf(c.x)
+		var sy := signf(c.y)
+		# the two points of a cut corner, in winding order
+		if sx * sy < 0.0:
+			pts.append(c - Vector2(0.0, sy * k))
+			pts.append(c - Vector2(sx * k, 0.0))
+		else:
+			pts.append(c - Vector2(sx * k, 0.0))
+			pts.append(c - Vector2(0.0, sy * k))
+	return pts
+
+## The gem's four facets between its edge (`r` out, corners in by `tip`)
+## and its centre face (`face` out): top, left, right, bottom, each a
+## trapezoid in the colour lifted or sunk by FACET.
+static func facets(b, at: Vector2, r: float, tip: float, face: float, col: Color) -> void:
+	var o := r - tip * 0.55
+	var outer := [Vector2(-o, -r), Vector2(o, -r), Vector2(r, -o), Vector2(r, o), Vector2(o, r), Vector2(-o, r), Vector2(-r, o), Vector2(-r, -o)]
+	var inner := [Vector2(-face, -face), Vector2(face, -face), Vector2(face, face), Vector2(-face, face)]
+	var sides := [[outer[0], outer[1], inner[1], inner[0]], [outer[7], inner[0], inner[3], outer[6]],
+		[outer[2], outer[3], inner[2], inner[1]], [outer[5], outer[4], inner[2], inner[3]]]
+	var order := [0, 1, 2, 3]
+	for k in 4:
+		var quad: Array = sides[order[k]]
+		var pts := PackedVector2Array()
+		for q: Vector2 in quad:
+			pts.append(at + q)
+		var lift: float = FACET[k]
+		_raw(b, pts, col.lightened(lift) if lift >= 0.0 else col.darkened(-lift))
+
+## A button centred on `at`: its rim, its body a little above it, the four
+## facets, the centre face, its gloss and the four holes; `sewn` crosses
+## them with thread.
 static func button(b, at: Vector2, cell: float, col: Color, sewn: bool) -> void:
 	var up := at - Vector2(0.0, cell * RISE)
-	b.disc(at + Vector2(0.0, cell * RISE), cell * RIM, col.darkened(0.3))
-	b.disc(up, cell * RIM, col.darkened(0.12))
-	b.disc(up, cell * FACE_R, col)
-	b.disc(up, cell * DISH, col.darkened(0.1))
-	b.disc(up - Vector2(0.0, cell * 0.012), cell * (DISH - 0.025), col.lightened(0.05))
+	var r := cell * RIM
+	var tip := cell * TIP
+	var face := cell * FACE
+	b.polygon(tile(at + Vector2(0.0, cell * RISE), r, tip), col.darkened(0.3))
+	b.polygon(tile(up, r, tip), col.darkened(0.12))
+	facets(b, up, r, tip, face, col)
+	_raw(b, tile(up, face, tip * 0.35, false), col)
+	# the gloss: a pale sliver along the face's top left
+	_raw(b, PackedVector2Array([up + Vector2(-face, -face), up + Vector2(face * 0.2, -face), up + Vector2(-face, face * 0.2)]), Color(1, 1, 1, 0.18))
 	var d := cell * HOLE_AT
 	var ink := col.darkened(0.6)
 	for o: Vector2 in [Vector2(-d, -d), Vector2(d, -d), Vector2(d, d), Vector2(-d, d)]:
@@ -151,30 +208,32 @@ static func _raw(b, points: PackedVector2Array, col: Color) -> void:
 		b.idx.append(first + i)
 		b.idx.append(first + i + 1)
 
-## The button of a big picture. Seen whole (20 to 40 px across) it is a rim,
-## a face and a dish and no holes, and `sewn` is a bold cross of thread from
-## edge to edge of the dish, which reads at that size where four holes do
-## not. `close` (the picture zoomed) is the whole button, holes and all, cut
-## in polygons with only its outline feathered.
+## The button of a big picture. Seen whole (20 to 40 px across) it is the
+## tile with its top and bottom facets and no holes, and `sewn` is a bold
+## cross of thread, which reads at that size where four holes do not.
+## `close` (the picture zoomed) is the whole gem, holes and all, cut in
+## polygons with only its outline feathered.
 static func button_lite(b, at: Vector2, cell: float, col: Color, sewn: bool, close: bool) -> void:
 	var up := at - Vector2(0.0, cell * RISE)
-	var sides := 22 if close else 14
-	_raw(b, _gon(at + Vector2(0.0, cell * RISE), cell * RIM, sides), col.darkened(0.32))
+	var r := cell * RIM
+	var tip := cell * TIP
+	var face := cell * FACE
+	_raw(b, tile(at + Vector2(0.0, cell * RISE), r, tip, close), col.darkened(0.32))
 	var thread := thread_for(col)
 	if not close:
-		b.fan(_gon(up, cell * RIM, sides), col)
+		b.fan(tile(up, r, tip, false), col.darkened(0.12))
+		facets(b, up, r, tip, face, col)
+		_raw(b, tile(up, face, tip * 0.35, false), col)
 		if sewn:
 			var d := cell * 0.17
 			var wide := maxf(2.6, cell * 0.11)
 			b.stroke(PackedVector2Array([up + Vector2(-d, -d), up + Vector2(d, d)]), wide, thread, false, false)
 			b.stroke(PackedVector2Array([up + Vector2(d, -d), up + Vector2(-d, d)]), wide, thread, false, false)
-		else:
-			_raw(b, _gon(up, cell * DISH, 12), col.darkened(0.14))
 		return
-	b.fan(_gon(up, cell * RIM, sides), col.darkened(0.12))
-	_raw(b, _gon(up, cell * FACE_R, sides), col)
-	_raw(b, _gon(up, cell * DISH, 16), col.darkened(0.1))
-	_raw(b, _gon(up - Vector2(0.0, cell * 0.012), cell * (DISH - 0.025), 16), col.lightened(0.05))
+	b.fan(tile(up, r, tip), col.darkened(0.12))
+	facets(b, up, r, tip, face, col)
+	_raw(b, tile(up, face, tip * 0.35, false), col)
+	_raw(b, PackedVector2Array([up + Vector2(-face, -face), up + Vector2(face * 0.2, -face), up + Vector2(-face, face * 0.2)]), Color(1, 1, 1, 0.18))
 	var d := cell * HOLE_AT
 	var ink := col.darkened(0.6)
 	for o: Vector2 in [Vector2(-d, -d), Vector2(d, -d), Vector2(d, d), Vector2(-d, d)]:
@@ -192,9 +251,10 @@ static func units(cell: float, colours: Array, look := FULL) -> Dictionary:
 	var out := {"loose": [], "sewn": []}
 	var b := Face.Builder.new()
 	if look != FULL:
-		_raw(b, _gon(Vector2(0.0, cell * SHADOW_DOWN), cell * (SHADOW_R - 0.01), 12), Color(Pal.TEXT, 0.2))
+		_raw(b, tile(Vector2(0.0, cell * SHADOW_DOWN), cell * (SHADOW_R - 0.01), cell * TIP, false), Color(Pal.TEXT, 0.2))
 	else:
-		Scenery.soft_disc(b, Vector2(0.0, cell * SHADOW_DOWN), cell * SHADOW_R, cell * 0.1, Color(Pal.TEXT, 0.22))
+		b.polygon(tile(Vector2(0.0, cell * SHADOW_DOWN + 2.0), cell * (SHADOW_R + 0.03), cell * TIP * 1.3), Color(Pal.TEXT, 0.1))
+		b.polygon(tile(Vector2(0.0, cell * SHADOW_DOWN), cell * SHADOW_R, cell * TIP * 1.1), Color(Pal.TEXT, 0.18))
 	out.shade = b.mesh()
 	b = Face.Builder.new()
 	b.disc(Vector2.ZERO, cell * 0.5, Pal.SUN)
@@ -221,14 +281,17 @@ static func tin(b, rect: Rect2, places: int, open: int, per_row: int, step: floa
 	b.fan(Face.Builder.round_rect(rect.position + Vector2(0.0, 6.0), rect.size, r), Pal.PLAQUE_DEEP)
 	b.fan(Face.Builder.round_rect(rect.position, rect.size, r), Pal.WOOD_DEEP)
 	b.fan(Face.Builder.round_rect(rect.position + Vector2.ONE * 5.0, rect.size - Vector2.ONE * 10.0, r * 0.8), Pal.WOOD)
+	# a hollow is the button's own shape (the user, 2026-10-14: "make the
+	# case slots follow the same button shape, not circle")
+	var tip := step * 0.09
 	for p in places:
 		var at := tin_place(rect, p, per_row, step, places)
 		if p < open:
-			b.disc(at + Vector2(0.0, 2.0), step * 0.4, Pal.WOOD.lightened(0.18))
-			b.disc(at, step * 0.4, Pal.WOOD_DEEP)
-			b.disc(at + Vector2(0.0, 2.0), step * 0.37, Pal.WOOD_DEEP.darkened(0.12))
+			b.polygon(tile(at + Vector2(0.0, 2.0), step * 0.4, tip), Pal.WOOD.lightened(0.18))
+			b.polygon(tile(at, step * 0.4, tip), Pal.WOOD_DEEP)
+			b.polygon(tile(at + Vector2(0.0, 2.0), step * 0.37, tip), Pal.WOOD_DEEP.darkened(0.12))
 		else:
-			b.stroke(Face.Builder.ring(at, step * 0.33, step * 0.33), 2.0, Color(Pal.WOOD_DEEP, 0.55), true)
+			b.stroke(tile(at, step * 0.33, tip * 0.8), 2.0, Color(Pal.WOOD_DEEP, 0.55), true)
 
 ## The middle of place `p` of a tin over `rect`.
 static func tin_place(rect: Rect2, p: int, per_row: int, step: float, places := 12) -> Vector2:

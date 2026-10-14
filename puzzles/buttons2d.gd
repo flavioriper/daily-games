@@ -64,12 +64,12 @@ const TIN_STEP := 96.0
 const TIN_PAD := 18.0
 const CELL_MAX := 84.0
 ## A button in the tin, as a share of a place: the size it had there before
-## the cloth's buttons were made smaller, twice (0.86 of the old 0.8 across:
-## 0.335 / Art.RIM).
-const TIN_FIT := 1.196
+## the cloth's buttons changed, twice smaller and then the gem tile (0.86 of
+## the old 0.8 across: 0.335 / Art.RIM).
+const TIN_FIT := 0.838
 ## The tin's ring, which is cut with the tin's buttons, kept at its own size
 ## (0.69 / TIN_FIT).
-const TIN_RING := 0.577
+const TIN_RING := 0.824
 ## The zoom button's close: a square about this big on the screen (and
 ## CELL_MAX at the closest a pinch goes).
 const NEAR_PX := 60.0

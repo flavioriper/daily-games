@@ -785,3 +785,36 @@ a gap to its neighbour, in the button's colour washed 0.42 toward the linen
   buttons kept at their size; no bevel between squares of different
   colours (the reference has a light bevel a bead; ours are flat, as the
   sewn squares already were).
+
+## The gem tile (2026-10-14, afternoon)
+
+The user: "on button box, make the button in a more diamond shape rather
+than plain rounded so it can fill a bit more of the square, and make it bit
+bigger, to not let user guess so easy what is the picture early"; then,
+over a first cut as a rhombus, a picture of a pixel butterfly made of
+faceted square gems: "a shape like this, not a triangle"; then, over a tile
+0.92 of its square: "smaller, it's too big, keep it like 80% of the cell";
+then "make the case slots follow the same button shape, not circle" and
+"same for the slot of empty cells on the picture".
+
+- **A loose button is a gem tile** (`ui/faces/button_art.gd`: `tile`,
+  `facets`, `button`, `button_lite`): a rounded square `RIM` 0.4 out from
+  its middle to each side (0.8 of its square across, 0.64 of it covered;
+  the round button was 0.56 across and 0.25), its corners rounded by `TIP`
+  0.1, four bevel facets from its edge to a flat centre face `FACE` 0.22
+  out (`FACET`: the top lifted 0.2, the sides 0.06 either way, the bottom
+  sunk 0.22), a pale sliver of gloss on the face's top left, the four
+  holes in the face (`HOLE_AT` 0.085). The patch's colour shows as a thin
+  border round it, so the picture is harder to read with the buttons on.
+  The plain look of a big picture whole is the tile with its facets and no
+  holes, its sewn cross as before; close it is the whole gem. The shadow is
+  a tile too (`SHADOW_R` 0.41). The tin's buttons keep their size
+  (`TIN_FIT` 0.838, `TIN_RING` 0.824). The menu card's go button draws its
+  chevron on the tile's face.
+- **The tin's hollows and the bare patch's socket are the tile's shape**
+  (`tin`, `socket`): a square recess, the unopened places a square outline.
+- Read on `opengl3_angle`, 810x1440: Medium play peak 106 draw calls (92
+  before), Insane's picture whole at rest 149 and close 97 to 101;
+  `tests/_probe_buttons.gd` 756 runs, 0 failures. Shots at
+  `tests/_shot_buttons.gd -- d=1 play` seen by me, not yet by the user on a
+  phone.
