@@ -111,7 +111,9 @@ export const publishDay = onSchedule({
   // a scheduled function is given.
   timeoutSeconds: 1800,
   memory: "512MiB",
-  secrets: ["OPENROUTER_API_KEY"],
+  // The Anthropic key writes and reviews (generate.ts: every model is
+  // anthropic/); OpenRouter's is kept for any other model named by env.
+  secrets: ["OPENROUTER_API_KEY", "ANTHROPIC_API_KEY"],
 }, async () => {
   await publishDays(new Date());
 });

@@ -27,15 +27,19 @@ import Anthropic from "@anthropic-ai/sdk";
  *                         Anthropic's own API (askAnthropic) and not
  *                         OpenRouter; every other model stays on OpenRouter
  *
- * The two defaults are cheap models of different makers on purpose: a
- * reviewer from the writer's own family shares its mistakes. `off` as
+ * The writer is Haiku and the reviewer Opus, both Anthropic's since
+ * 2026-10-14 (the user's call: it was a reviewer of another maker, since one
+ * of the writer's family can share its mistakes). `off` as
  * DAILY_MODEL means there is no model, as does a missing key or running
  * against the emulator suite; available() says so before anybody builds a
  * prompt.
  */
 
 export const DEFAULT_MODEL = "anthropic/claude-haiku-5.5";
-export const DEFAULT_REVIEW_MODEL = "openai/gpt-6-luna";
+/** Opus reads every quiz and jelly since 2026-10-14 (the user: "use the
+ *  opus to check quiz and jelly"), through Anthropic's own API; it was
+ *  openai/gpt-6-luna, picked so the reviewer was not of the writer's family. */
+export const DEFAULT_REVIEW_MODEL = "anthropic/claude-opus-5.5";
 export const DEFAULT_IMAGE_MODEL = "google/gemini-3.1-flash-lite-image";
 const ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 
