@@ -124,6 +124,9 @@ Where the theme's name is shown is not decided.
 2. The bead boards read the day.
 3. Gumdrop, the word boards, the quizzes.
 4. `publishDay` gains `theme` and `pictures`; the deploy is the user's.
+   Built 2026-10-14 as a second job, `themeDay` (themeday.ts), since the
+   pixel pictures outrun one scheduled run; see
+   `docs/agents/turns-and-backend.md`.
 
 ## Not known yet
 

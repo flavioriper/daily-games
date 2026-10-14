@@ -125,6 +125,29 @@ foundation's, unchanged. Three things changed in `index.ts`:
   `secrets: ["OPENROUTER_API_KEY", "ANTHROPIC_API_KEY"]` (the second since
   2026-10-14).
 
+**The daily theme at night** (stage 4, 2026-10-14, the user: "run it for
+me", having chosen "everything, pictures too" and "deploy and push";
+`server/functions/src/themeday.ts`). `GAMES`' `make` is `(day, recent,
+theme)`: `publishDays` reads the day's staged theme (`themes/<day>`,
+server only) and Golden Acorn and Pearl Dive write two or three of a band
+on it; a day with no staged theme is written as ever, and no theme is made
+inside `publishDay`. A second job, **`themeDay`** (every 30 minutes, 1,800 s,
+1 GiB, one instance, a lease in `themes/_lease`), does the next steps of
+today, tomorrow and the day after -- theme, words, Gumdrop's jellies a band
+a step, the pixel pictures a band a step (`pictures.ts pixelBand`) -- and
+starts none past 17 minutes; each step is saved as it ends, and one that
+made nothing is tried once more, then given up on (the board deals its
+own there). The `pictures` content (`days/<day>/turns/pictures`, `{v, theme,
+sizes, jellies, words}`, what `core/themed_pictures.gd` reads) is
+`create()`d once: by `themeDay` when a day of today or tomorrow has every
+step done, and by `publishDays` for today with whatever there is. It is not
+in `GAMES` or `TALLIED` (no submits, no tally). The drawings are Vertex
+AI's (`functions/.env`: `DAILY_PICTURE_STYLE=pixel`, `VERTEX_PROJECT`
+navlio's `production-506015`, `DAILY_IMAGE_MODEL=gemini-3-pro-image`), asked
+as the functions' service account, which needs Vertex AI User there:
+`tools/vertex_identity.sh`, run by a person. Without it every picture step
+fails twice and the bead boards deal their banks; the rest still publishes.
+
 **Since 2026-10-14 the night writes on Anthropic's own API** (the user, after
 OpenRouter's balance ran out mid-run: "i allow you to replace it, use the opus
 to check quiz and jelly"). With `ANTHROPIC_API_KEY` set, `ask()` sends every

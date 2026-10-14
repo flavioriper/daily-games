@@ -306,6 +306,80 @@ function rowsOf(out: {rows?: unknown}, size: number): string[] | null {
   return ok ? rows : null;
 }
 
+/** One band of pixelDay, the `i`th of Beads.SIZES, into `sizes`: alone, so
+ *  the night draws a band a run (index.ts drawPictures) and keeps under a
+ *  scheduled function's 1,800 s. */
+export async function pixelBand(day: number, theme: Theme, i: number, sizes: Record<string, Picture>, drafts: Draft[],
+  keep?: (name: string, d: Drawing) => string): Promise<void> {
+  const rowsModel = (process.env.DAILY_ROWS_MODEL ?? "").trim() || DEFAULT_ROWS_MODEL;
+  const size = Beads.SIZES[i];
+  const thing = theme.objects[Math.min(i, theme.objects.length - 1)];
+  const what = thing.id;
+  const rule = Beads.RULES[size];
+  const colours = rule.colours[1];
+  let side = FIRST_ASK[size];
+  for (let n = 0; n < PIXEL_DRAWINGS[size] && sizes[size] === undefined; n++) {
+    const draft: Draft = {what, draft: n, asked: side, tried: []};
+    drafts.push(draft);
+    try {
+      const drawing = await draw(PIXEL_OBJECT(thing.draw, side, colours, size >= DETAIL_FROM));
+      if (keep !== undefined) draft.file = keep(`${day}_${what}_${n}`, drawing);
+      const px = decoded(drawing);
+      const sn = Beads.snap(px.data, px.width, px.height);
+      if (sn === null) {
+        draft.error = "no squares found in it";
+        continue;
+      }
+      const got = Beads.cutOut(sn, colours, MARGIN, size);
+      draft.snap = {cols: sn.cols, rows: sn.rows, pitch: Math.round(sn.pitch[0] * 10) / 10, mixed: sn.mixed,
+        w: got.w, h: got.h, why: got.why};
+      if (got.w !== undefined && got.h !== undefined) {
+        const drawn = Math.max(got.w, got.h) + 2 * MARGIN;
+        const last = n === PIXEL_DRAWINGS[size] - 1;
+        // Over the band's range, or under it with a drawing still to come
+        // (cutOut pads a small drawing up to the band's side, which is not
+        // the big detailed picture the band is for): asked again, scaled
+        // to land in the middle of the range; never under 6 (asked for 4,
+        // a model drew a literal 4 by 4 grid, and asked for 5 it drew 48
+        // by 43).
+        if (drawn > rule.side[1] || (drawn < rule.side[0] && !last)) {
+          side = Math.max(6, Math.round(side * (rule.side[0] + rule.side[1]) / 2 / drawn));
+          draft.snap.why = `drawn ${got.w} × ${got.h}, ${drawn > rule.side[1] ? "over " + rule.side[1] : "under " + rule.side[0]} a side`;
+          continue;
+        }
+      }
+      if (got.rows === undefined) continue;
+      const tried: Tried = {route: "drawn", size, rows: got.rows, checks: Beads.check(got.rows, size), kept: false};
+      draft.tried.push(tried);
+      await judge(day, theme, thing, tried, sizes);
+    } catch (e) {
+      draft.error = String(e).slice(0, 300);
+      console.error(`pictures: day ${day}, ${what}, draft ${n} failed`, e);
+    }
+  }
+  if (sizes[size] !== undefined || size > 12) return;
+  const shape = `exactly ${size} rows of exactly ${size} letters, the thing centred and large on empty squares (".") leaving at least one empty column or row at some edge`;
+  const limits = `${rule.colours[0]} to ${colours} different beads including the outline, no one bead over half the drawn squares`;
+  const prompt = `Draw ${thing.draw} as cute cozy pixel art, ${shape}. A one-square dark outline (d) around the thing, each main colour in two tones where there is room (a shadow and a light), ${limits}. Think about the shape first, then answer "rows".`;
+  for (let n = 0; n < 2 && sizes[size] === undefined; n++) {
+    const draft: Draft = {what: `${what} (rows)`, draft: n, tried: []};
+    drafts.push(draft);
+    try {
+      const rows = rowsOf(await ask<{rows: string[]}>({system: ROWS_SYSTEM, prompt, schema: ROWS_SCHEMA, model: rowsModel}), size);
+      if (rows === null) {
+        draft.error = `not ${size} rows of ${size} beads`;
+        continue;
+      }
+      const tried: Tried = {route: "rows", size, rows, checks: Beads.check(rows, size), kept: false};
+      draft.tried.push(tried);
+      await judge(day, theme, thing, tried, sizes);
+    } catch (e) {
+      draft.error = String(e).slice(0, 300);
+      console.error(`pictures: day ${day}, ${what} rows, try ${n} failed`, e);
+    }
+  }
+}
+
 /**
  * The pixel art way: one thing a band, shaded, on a bare board (the user,
  * 2026-10-14, of real bead art beside ours: "this is what I wanted,
@@ -326,74 +400,7 @@ function rowsOf(out: {rows?: unknown}, size: number): string[] | null {
  */
 async function pixelDay(day: number, theme: Theme, sizes: Record<string, Picture>, drafts: Draft[],
   keep?: (name: string, d: Drawing) => string): Promise<void> {
-  const rowsModel = (process.env.DAILY_ROWS_MODEL ?? "").trim() || DEFAULT_ROWS_MODEL;
-  for (const [i, size] of Beads.SIZES.entries()) {
-    const thing = theme.objects[Math.min(i, theme.objects.length - 1)];
-    const what = thing.id;
-    const rule = Beads.RULES[size];
-    const colours = rule.colours[1];
-    let side = FIRST_ASK[size];
-    for (let n = 0; n < PIXEL_DRAWINGS[size] && sizes[size] === undefined; n++) {
-      const draft: Draft = {what, draft: n, asked: side, tried: []};
-      drafts.push(draft);
-      try {
-        const drawing = await draw(PIXEL_OBJECT(thing.draw, side, colours, size >= DETAIL_FROM));
-        if (keep !== undefined) draft.file = keep(`${day}_${what}_${n}`, drawing);
-        const px = decoded(drawing);
-        const sn = Beads.snap(px.data, px.width, px.height);
-        if (sn === null) {
-          draft.error = "no squares found in it";
-          continue;
-        }
-        const got = Beads.cutOut(sn, colours, MARGIN, size);
-        draft.snap = {cols: sn.cols, rows: sn.rows, pitch: Math.round(sn.pitch[0] * 10) / 10, mixed: sn.mixed,
-          w: got.w, h: got.h, why: got.why};
-        if (got.w !== undefined && got.h !== undefined) {
-          const drawn = Math.max(got.w, got.h) + 2 * MARGIN;
-          const last = n === PIXEL_DRAWINGS[size] - 1;
-          // Over the band's range, or under it with a drawing still to come
-          // (cutOut pads a small drawing up to the band's side, which is not
-          // the big detailed picture the band is for): asked again, scaled
-          // to land in the middle of the range; never under 6 (asked for 4,
-          // a model drew a literal 4 by 4 grid, and asked for 5 it drew 48
-          // by 43).
-          if (drawn > rule.side[1] || (drawn < rule.side[0] && !last)) {
-            side = Math.max(6, Math.round(side * (rule.side[0] + rule.side[1]) / 2 / drawn));
-            draft.snap.why = `drawn ${got.w} × ${got.h}, ${drawn > rule.side[1] ? "over " + rule.side[1] : "under " + rule.side[0]} a side`;
-            continue;
-          }
-        }
-        if (got.rows === undefined) continue;
-        const tried: Tried = {route: "drawn", size, rows: got.rows, checks: Beads.check(got.rows, size), kept: false};
-        draft.tried.push(tried);
-        await judge(day, theme, thing, tried, sizes);
-      } catch (e) {
-        draft.error = String(e).slice(0, 300);
-        console.error(`pictures: day ${day}, ${what}, draft ${n} failed`, e);
-      }
-    }
-    if (sizes[size] !== undefined || size > 12) continue;
-    const shape = `exactly ${size} rows of exactly ${size} letters, the thing centred and large on empty squares (".") leaving at least one empty column or row at some edge`;
-    const limits = `${rule.colours[0]} to ${colours} different beads including the outline, no one bead over half the drawn squares`;
-    const prompt = `Draw ${thing.draw} as cute cozy pixel art, ${shape}. A one-square dark outline (d) around the thing, each main colour in two tones where there is room (a shadow and a light), ${limits}. Think about the shape first, then answer "rows".`;
-    for (let n = 0; n < 2 && sizes[size] === undefined; n++) {
-      const draft: Draft = {what: `${what} (rows)`, draft: n, tried: []};
-      drafts.push(draft);
-      try {
-        const rows = rowsOf(await ask<{rows: string[]}>({system: ROWS_SYSTEM, prompt, schema: ROWS_SCHEMA, model: rowsModel}), size);
-        if (rows === null) {
-          draft.error = `not ${size} rows of ${size} beads`;
-          continue;
-        }
-        const tried: Tried = {route: "rows", size, rows, checks: Beads.check(rows, size), kept: false};
-        draft.tried.push(tried);
-        await judge(day, theme, thing, tried, sizes);
-      } catch (e) {
-        draft.error = String(e).slice(0, 300);
-        console.error(`pictures: day ${day}, ${what} rows, try ${n} failed`, e);
-      }
-    }
-  }
+  for (let i = 0; i < Beads.SIZES.length; i++) await pixelBand(day, theme, i, sizes, drafts, keep);
   bySide(sizes, drafts);
 }
 

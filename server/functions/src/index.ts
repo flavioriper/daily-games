@@ -5,6 +5,8 @@ import {getAuth} from "firebase-admin/auth";
 import {FieldValue, getFirestore} from "firebase-admin/firestore";
 import {asked, makeDay} from "./acorn";
 import {asked as pearlAsked, makeDay as pearlDay} from "./pearl";
+import type {Theme} from "./theme";
+import {publishPictures, stagedTheme, themeWork} from "./themeday";
 
 initializeApp();
 const db = getFirestore();
@@ -47,12 +49,12 @@ export function dayKey(d: Date): number {
  * bank the game ships. docs/agents/turns-and-backend.md, "A day written by a
  * model", is the contract a new game follows.
  */
-export const GAMES: Record<string, (day: number, recent: unknown[]) => Promise<unknown>> = {
-  acorn: (day, recent) => makeDay(day, recent.flatMap(asked)),
+export const GAMES: Record<string, (day: number, recent: unknown[], theme: Theme | null) => Promise<unknown>> = {
+  acorn: (day, recent, theme) => makeDay(day, recent.flatMap(asked), theme),
   // Three days back and no further: good kinds are a few hundred, a day
   // takes twenty-six, and a writer forbidden ten days of them goes looking
   // among moons and cacti.
-  pearl: (day, recent) => pearlDay(day, recent.slice(0, 3).flatMap(pearlAsked)),
+  pearl: (day, recent, theme) => pearlDay(day, recent.slice(0, 3).flatMap(pearlAsked), theme),
 };
 
 /** How many days back a game is shown of itself. */
@@ -143,18 +145,43 @@ export async function publishDays(now: Date): Promise<void> {
   const tomorrow = new Date(now.getTime() + 86400000);
   for (const when of [now, tomorrow]) {
     const day = dayKey(when);
+    // The day's theme, made a day and more before by themeWork; a day with
+    // none has quizzes as ever, never a theme made here (its pictures and
+    // its quizzes would not agree).
+    const theme = await stagedTheme(db, day);
     for (const [game, make] of Object.entries(GAMES)) {
       const doc = turnDoc(day, game);
       if ((await doc.get()).exists) continue;
-      const content = await make(day, await recentDays(game, when));
+      const content = await make(day, await recentDays(game, when), theme);
       try {
         await doc.create({json: JSON.stringify(content)});
       } catch (e) {
         if (!(await doc.get()).exists) throw e;
       }
     }
+    // The bead pictures, jellies and words (themeday.ts): today's with what
+    // there is, tomorrow's only once every step has run. Not in GAMES: no
+    // player submits to it, and it has no tally.
+    await publishPictures(db, day, when === now);
   }
 }
+
+/**
+ * The daily theme's work (themeday.ts): every half hour, the next steps of
+ * today, tomorrow and the day after, a step at a time, until a run's
+ * budget is spent. Draws on Vertex AI in the project VERTEX_PROJECT names
+ * (functions/.env), as the functions' service account
+ * (tools/vertex_identity.sh grants it there).
+ */
+export const themeDay = onSchedule({
+  schedule: "*/30 * * * *",
+  timeoutSeconds: 1800,
+  memory: "1GiB",
+  maxInstances: 1,
+  secrets: ["OPENROUTER_API_KEY", "ANTHROPIC_API_KEY"],
+}, async () => {
+  await themeWork(db, new Date());
+});
 
 /**
  * One submit per player per game per day, written once. A repeat answers with

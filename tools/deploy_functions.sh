@@ -15,6 +15,9 @@
 # both exist; set each once:
 #   cd server && firebase functions:secrets:set ANTHROPIC_API_KEY --project daily-games-420bf
 #   cd server && firebase functions:secrets:set OPENROUTER_API_KEY --project daily-games-420bf
+# themeDay (every half hour) makes the daily theme a step at a time and
+# draws its pictures on Vertex AI in the project functions/.env names; the
+# functions' account needs Vertex AI User there first: tools/vertex_identity.sh.
 # The scheduler runs at 03:00 UTC, so the day of a deploy is published by
 # tools/publish_day.sh (docs/agents/turns-and-backend.md, "A day written by
 # a model").

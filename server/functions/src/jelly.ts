@@ -303,7 +303,7 @@ export const MOULDS = [2, 3, 4, 5];
  *  list a band in the theme's order, and what became of every try. A thing
  *  whose tries all fail is left out of its band's list, and the board fills
  *  its place from the twenty-nine. Never throws. */
-export async function makeJellies(day: number, theme: Theme): Promise<{jellies: Record<string, Jelly[]>; tries: JellyTry[]}> {
+export async function makeJellies(day: number, theme: Theme, only?: number): Promise<{jellies: Record<string, Jelly[]>; tries: JellyTry[]}> {
   const jellies: Record<string, Jelly[]> = {};
   const tries: JellyTry[] = [];
   if (!available()) return {jellies, tries};
@@ -337,7 +337,9 @@ export async function makeJellies(day: number, theme: Theme): Promise<{jellies: 
   // Fourteen jellies a day, one request at a time: side by side, the four
   // bands' Opus requests ran past OpenRouter's in-flight credit budget
   // (HTTP 402, 2026-10-14).
+  // `only`: that band alone, so the night writes a band a run (index.ts).
   for (let band = 0; band < RULES.length; band++) {
+    if (only !== undefined && band !== only) continue;
     const list: Jelly[] = [];
     for (const thing of theme.objects.slice(0, MOULDS[band])) {
       const got = await one(band, thing);
