@@ -23,14 +23,14 @@ extends RefCounted
 ## judged (`judge` event); the table answers `judge()` with each cell's
 ## match and the verdict follows. At the mark or over, the next mould is
 ## set down, and the last one served is the day done. Under it the mould
-## is emptied and poured again -- unless the band counts its serves
-## (Insane: `budget`, the moulds and SLACK more) and there are now fewer
-## left than moulds, which is the day lost. The match is not shown while
-## the mould is played.
+## is emptied and poured again, on every band: no day can be lost (Insane
+## counted its serves until 2026-10-12, when the user took every move limit
+## off Insane; the count's leftovers went on 2026-10-14). The match is not
+## shown while the mould is played.
 
 const Mould = preload("res://puzzles/gumdrop_mould.gd")
 
-enum Phase { READY, PLAY, SETTLE, SHOW, OVER, DONE }
+enum Phase { READY, PLAY, SETTLE, SHOW, DONE }
 
 const DT := 1.0 / 60.0
 ## Squares a side of the grid that says which cell the tip is over, and
@@ -54,8 +54,7 @@ const WET := 0.02
 ## page's), and the match a mould is called perfect at.
 const MARK := 60
 const PERFECT := 95
-## The serves a counted band has over its moulds: one flop mended.
-const SLACK := 1
+
 ## Seconds: the syrup left to settle before it is judged, and the verdict
 ## shown.
 const SETTLE_T := 0.9
@@ -75,8 +74,7 @@ var moulds: Array = []
 var index := 0
 var need := MARK
 var marks: Array = []
-## The serves a counted band has (0: not counted) and the serves made.
-var budget := 0
+## The serves made.
 var serves := 0
 ## The last verdict: {pct, need, pass, perfect}.
 var verdict := {}
@@ -110,35 +108,30 @@ var match_all := 0.0
 ## The screen drains them into the fluid.
 var prefill: Array = []
 var _asked := false
-var _counted := false
 
 ## A sim with the first picture on its tray, until `set_day` or `deal`
 ## says otherwise.
 func _init() -> void:
 	var m := Mould.build(Mould.PICTURES[0])
 	m.pots = Mould.flavours(m)
-	set_day([m], MARK, false)
+	set_day([m], MARK)
 
-## The day: these moulds, each served at `mark_at`, the serves counted or
-## not.
-func set_day(list: Array, mark_at: int, counted: bool) -> void:
+## The day: these moulds, each served at `mark_at`.
+func set_day(list: Array, mark_at: int) -> void:
 	moulds = list
 	need = mark_at
-	_counted = counted
 	restart()
 
 ## A band's day off the day's seed, the day's themed jellies first when
 ## there are any (Mould.day).
 func deal_day(band: int, from: RandomNumberGenerator, themed: Array = []) -> void:
 	var spec: Dictionary = Mould.BANDS[clampi(band, 0, Mould.BANDS.size() - 1)]
-	set_day(Mould.day(band, from, themed), int(spec.mark), false)
+	set_day(Mould.day(band, from, themed), int(spec.mark))
 
-## The day from its first mould, every serve back.
+## The day from its first mould, the serves from zero.
 func restart() -> void:
 	index = 0
 	serves = 0
-	# a video's serves are gone with the day they were bought in
-	budget = moulds.size() + SLACK if _counted else 0
 	marks.clear()
 	verdict = {}
 	t = 0.0
@@ -146,19 +139,13 @@ func restart() -> void:
 	phase_t = 0.0
 	deal(moulds[0])
 
-func is_over() -> bool:
-	return phase == Phase.OVER
-
 func is_done() -> bool:
 	return phase == Phase.DONE
 
 func mark() -> int:
 	return need
 
-## Serves left on a counted band, and moulds still to pass.
-func serves_left() -> int:
-	return maxi(0, budget - serves)
-
+## Moulds still to pass.
 func moulds_left() -> int:
 	return moulds.size() - index
 
@@ -407,25 +394,11 @@ func _after() -> void:
 		deal(moulds[index])
 		phase = Phase.PLAY
 		phase_t = 0.0
-	elif budget > 0 and serves_left() < moulds_left():
-		phase = Phase.OVER
-		events.append({"type": "over"})
 	else:
 		_lay()
 		phase = Phase.PLAY
 		phase_t = 0.0
 		events.append({"type": "again"})
-
-## The out-of-moves card's video: `more` serves and the mould that ended
-## the day, clear again.
-func revive(more: int) -> void:
-	if phase != Phase.OVER:
-		return
-	budget = serves + moulds_left() - 1 + more
-	_lay()
-	phase = Phase.PLAY
-	phase_t = 0.0
-	events.append({"type": "again"})
 
 ## A finished day put back: its last mould on the tray, filled as the card
 ## has it, and the numbers it was served at.

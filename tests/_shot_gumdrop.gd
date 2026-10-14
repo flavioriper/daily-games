@@ -2,15 +2,14 @@ extends SceneTree
 
 ## Shots of Gumdrop, the daily board, through the real menu and the flat
 ## host. Windowed, one at a time:
-##   godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_gumdrop.gd -- <outdir> [0|1|2|3] [lose] [reduce] [en|pt|es] [tutor] [pour]
+##   godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_gumdrop.gd -- <outdir> [0|1|2|3] [reduce] [en|pt|es] [tutor] [pour]
 ## Opens the card at the band (Easy when none is named), then presses with
 ## real touches through the viewport: a pot, a tap on the tray, the squeeze
 ## button held, a drag over the tray, and that first mould served nearly
 ## clear (a flop: it is emptied and poured again). A careful bot then
 ## plays the day's moulds through the sim, reading the fluid back, and
 ## serves each with a real touch; the win is shot, the board left and
-## opened again as a finished day. With `lose` on band 3 the bot is kept
-## off: two moulds are served nearly clear and the out-of-moves card shot.
+## opened again as a finished day.
 ## With `tutor` the ? card's pages are shot instead; with `pour` the
 ## squeeze button is held four seconds and let go, then the grey drain
 ## button held three, the tip's chunk read off the dye and the meter at
@@ -29,7 +28,6 @@ var _t_: Node
 var _t := 0.0
 var _out := "/tmp"
 var _band := 0
-var _lose := false
 var _tutor := false
 var _pour := false
 var _page := 0
@@ -47,8 +45,6 @@ func _initialize() -> void:
 	for a: String in OS.get_cmdline_user_args():
 		if a == "reduce":
 			load("res://core/motion.gd").reduce = true
-		elif a == "lose":
-			_lose = true
 		elif a == "tutor":
 			_tutor = true
 		elif a == "pour":
@@ -267,14 +263,11 @@ func _process(delta: float) -> bool:
 				_shot("3_flop")
 			if _t_.sim.phase == Sim.Phase.PLAY and _seen == 0:
 				_flops += 1
-				print("under the mark: emptied, wet %s, index %d, serves left %d" % [str(_t_.sim.wet()), _t_.sim.index, _t_.sim.serves_left()])
+				print("under the mark: emptied, wet %s, index %d" % [str(_t_.sim.wet()), _t_.sim.index])
 				_at = _t
-				if _lose:
-					_step = 20
-				else:
-					_shot("4_again")
-					_play = true
-					_step = 6
+				_shot("4_again")
+				_play = true
+				_step = 6
 		6:
 			# the bot plays: a shot of each mould served, and one mid-pour
 			if _t_.sim.phase == Sim.Phase.SHOW and _t_.sim.phase_t > 0.5 and _t_.sim.serves > _seen:
@@ -377,30 +370,4 @@ func _process(delta: float) -> bool:
 					return true
 				card._turn(1)
 				_at = _t
-		20:
-			# Insane, losing: a second mould served nearly clear
-			if _t > _at + 0.5:
-				_t_.sim.aim(_t_.sim.centre_of(0))
-				_touch(true, _t_._squeeze_at)
-				_at = _t
-				_step = 21
-		21:
-			if _t > _at + 0.8:
-				_touch(false, _t_._squeeze_at)
-				_shot("4_pill")
-				_tap(_t_._serve_at)
-				_at = _t
-				_step = 22
-		22:
-			if _b.out_of_hearts and _t > _at + 5.0:
-				_shot("5_out_of_serves")
-				print("out: over %s card %s" % [str(_t_.sim.is_over()), str(is_instance_valid(_b._heart_card))])
-				_b.try_again()
-				_at = _t
-				_step = 23
-		23:
-			if _t > _at + 1.0:
-				_shot("6_try_again")
-				print("try again: index %d serves left %d out %s" % [_t_.sim.index, _t_.sim.serves_left(), str(_b.out_of_hearts)])
-				return true
 	return false

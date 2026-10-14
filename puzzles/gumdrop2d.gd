@@ -24,30 +24,17 @@ const Sim = preload("res://puzzles/gumdrop_sim.gd")
 const Mould = preload("res://puzzles/gumdrop_mould.gd")
 const Table = preload("res://puzzles/gumdrop_table.gd")
 const Motion = preload("res://core/motion.gd")
-const Haptics = preload("res://core/haptics.gd")
 const Face = preload("res://ui/faces/face.gd")
-const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
-const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
-## The serves the out-of-moves card's video buys, once a board.
-const MOVES_BONUS := 2
 ## The gold boosters Gumdrop had on the Arcade tab, and what one cost: held
 ## ones come back as gold when the board opens (core/wallet.gd).
 const OLD := ["gd_full", "gd_tall", "gd_soft", "gd_kind"]
 const OLD_PRICE := 120
-## Seconds from the last flop's number to the card.
-const CARD_AFTER := 0.5
 ## The tray is on its way to the middle while the host's slots slide.
 const WIN_HOLD := 0.9
 
 var sim: RefCounted
 var table: Control
 var band := 0
-## The serves a counted band starts with (0: not counted), and the name
-## the host and the card read for "the day ran out".
-var max_moves := 0
-var out_of_hearts := false
-var _heart_used := false
-var _heart_card: Control
 ## What the host's rows cover, kept for a table built after it was said.
 var _clear := Vector2.ZERO
 var _restored := false
@@ -59,8 +46,6 @@ func rules() -> String:
 	var out := tr("GD_RULES") % [sim.moulds.size(), sim.mark()]
 	if band >= 2:
 		out += "\n\n" + tr("GD_RULES_MIX")
-	if max_moves > 0:
-		out += "\n\n" + tr("GD_RULES_SERVES") % max_moves
 	return out
 
 ## The match is hidden until the mould is served, and syrup is taken out
@@ -95,11 +80,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	sim = Sim.new()
 	# The day's themed jellies (core/themed_pictures.gd), for a daily only.
 	sim.deal_day(band, rng, ThemedPictures.jellies(daily_key, band) if bank_step == 0 else [])
-	max_moves = sim.budget
-	out_of_hearts = false
-	_heart_used = false
 	_restored = false
-	_close_card()
 	table.lay(sim)
 	table.set_clear(_clear.x, _clear.y)
 	table.greet()
@@ -143,11 +124,10 @@ func day_dict() -> Dictionary:
 		fills.append({"picture": String(m.id), "fill": fill})
 	return {
 		"source": "generator", "kind": "text",
-		"payload": {"moulds": moulds, "mark": sim.mark(), "serves": sim.budget},
+		"payload": {"moulds": moulds, "mark": sim.mark()},
 		"solution": {"moulds": fills},
 		"metrics": {"moulds": moulds.size(), "mark": sim.mark(), "perfect": Sim.PERFECT, "cells": cells,
-			"cells_min": least, "cells_max": most, "flavours": used.size(), "mixed_cells": mixes,
-			"serves": sim.budget},
+			"cells_min": least, "cells_max": most, "flavours": used.size(), "mixed_cells": mixes},
 	}
 
 ## The host's rows over this board (ui/flat/flat_host.gd, a `bleed`
@@ -167,8 +147,6 @@ func _on_event(ev: Dictionary) -> void:
 			moved.emit()
 		"done":
 			check_solved()
-		"over":
-			_run_out()
 
 func is_solved() -> bool:
 	return sim != null and sim.is_done()
@@ -188,18 +166,12 @@ func flat_win() -> Dictionary:
 func win_delay() -> float:
 	return 0.0 if Motion.reduce else WIN_HOLD
 
-## Easy to Hard: the mould on the tray, clear again, and the serves made
-## so far today still counted (they were made). Insane: the day from its
-## first mould with every serve back, since an emptied mould there would be
-## a flop taken back for nothing.
+## Reset: the mould on the tray, clear again; the serves made so far today
+## stay counted (they were made).
 func reset_board() -> void:
-	if is_done() or out_of_hearts or sim == null:
+	if is_done() or sim == null:
 		return
-	if max_moves > 0:
-		sim.restart()
-		moves = 0
-	else:
-		sim.empty()
+	sim.empty()
 
 func completion_record() -> Dictionary:
 	return {"pct": sim.marks.duplicate()}
@@ -212,73 +184,6 @@ func restore_completed_board() -> void:
 	_restored = true
 	table.lay(sim)
 	table.set_clear(_clear.x, _clear.y)
-
-# --- Insane's serves ---
-
-func _run_out() -> void:
-	if out_of_hearts or is_done():
-		return
-	out_of_hearts = true
-	_running = false
-	table.held = true
-	table.cue("game_over", Haptics.BAD)
-	moved.emit()
-	get_tree().create_timer(CARD_AFTER).timeout.connect(_open_card)
-
-## The card, over the whole screen: on the host so it covers the chrome, or
-## on the board's own viewport when there is none (a probe).
-func _open_card() -> void:
-	if not out_of_hearts or is_done() or is_instance_valid(_heart_card) or not is_inside_tree():
-		return
-	var card: Control = load(OUT_OF_HEARTS).new(_heart_used, ["GD_OUT_BODY", "GD_OUT_REST"], MOVES_BONUS,
-		{"title": "GD_OUT_TITLE", "more": "GD_OUT_MORE"})
-	_heart_card = card
-	card.try_again.connect(try_again)
-	card.one_more_heart.connect(heart_back)
-	card.leave.connect(_leave)
-	var host := get_tree().get_first_node_in_group("puzzle_host")
-	if host != null and host.is_ancestor_of(self):
-		host.add_child(card)
-	else:
-		get_tree().root.add_child(card)
-
-## Try again: the day from its first mould, every serve back, the clock
-## from zero.
-func try_again() -> void:
-	if is_done():
-		return
-	_close_card()
-	moves = 0
-	elapsed = 0.0
-	out_of_hearts = false
-	_running = true
-	table.held = false
-	sim.restart()
-	moved.emit()
-
-## A couple more serves (the card's video), once a board: the mould that
-## ended the day is clear again.
-func heart_back() -> void:
-	if is_done() or not out_of_hearts:
-		return
-	_close_card()
-	_heart_used = true
-	out_of_hearts = false
-	_running = true
-	table.held = false
-	sim.revive(MOVES_BONUS)
-	table.cue("good", Haptics.GOOD)
-	moved.emit()
-
-func _leave() -> void:
-	_close_card()
-	finish_unsolved()
-	leave.emit()
-
-func _close_card() -> void:
-	if is_instance_valid(_heart_card) and not _heart_card.is_queued_for_deletion():
-		_heart_card.queue_free()
-	_heart_card = null
 
 # --- the tutorial ---
 
@@ -300,13 +205,6 @@ func tutorial_pages() -> Array:
 		var d: Control = Diagram.new()
 		d.lesson = step[0]
 		pages.append({"diagram": d, "title": step[1], "body": step[2]})
-	if max_moves > 0:
-		# the shared page's pill, with this board's own rule under it: the day
-		# is lost with fewer serves than moulds, not at none
-		var count: Control = MovesDiagram.new()
-		count.moves = max_moves
-		count._pill.keys = Table.SERVES
-		pages.append({"diagram": count, "title": "TUT_GUMDROP_SERVES", "body": tr("GD_RULES_SERVES") % max_moves})
 	return pages
 
 # --- the win's row ---

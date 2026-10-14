@@ -11,8 +11,7 @@ extends SceneTree
 ## the tray, every wanted flavour makeable from the pots); and the day's
 ## run with the judge answered by hand (a mould served asks to be judged,
 ## over the mark the next is set down and the last is the day done, under
-## it the mould is emptied, Insane's serves and the day lost, the video's
-## serves, a finished day put back); and the themed jellies the night wrote
+## it the mould is emptied, Insane the same, a finished day put back); and the themed jellies the night wrote
 ## for the days in tools/days/themed-pixel/ (server/functions/src/jelly.ts):
 ## each kept one keeps its band's row here too, and is dealt first.
 
@@ -188,20 +187,19 @@ func _run() -> void:
 	_check("a finished day put back: the last mould, every cell to be filled, its numbers", back.is_done() and back.index == 1 and back.prefill.size() == back.mould.want.size() and back.marks == [86, 97])
 
 func _insane() -> void:
+	# Insane counts nothing since 2026-10-12 (no move limit on any Insane
+	# board): a flop there is emptied and poured again, as on every band
 	var s = _day(3, 11)
-	_check("Insane counts serves: the moulds and %d more (%d)" % [Sim.SLACK, s.budget], s.budget == s.moulds.size() + Sim.SLACK and _day(2, 11).budget == 0)
 	_serve_as(s, 0.9)
 	var tally := _serve_as(s, 0.3)
-	_check("one flop is mended: %d serves left for %d moulds" % [s.serves_left(), s.moulds_left()], s.phase == Sim.Phase.PLAY and s.serves_left() == s.moulds_left() and int(tally.get("again", 0)) == 1)
+	_check("Insane: a flop is emptied and poured again, never the day lost", s.phase == Sim.Phase.PLAY and s.index == 1 and int(tally.get("again", 0)) == 1 and not s.wet())
 	tally = _serve_as(s, 0.3)
-	_check("a second leaves fewer serves than moulds: the day is lost", s.is_over() and int(tally.get("over", 0)) == 1)
-	s.revive(2)
-	_check("the video's two serves: the mould clear, one to spare (%d for %d)" % [s.serves_left(), s.moulds_left()], s.phase == Sim.Phase.PLAY and not s.wet() and s.serves_left() == s.moulds_left() + 1)
+	_check("Insane: and a second flop the same", s.phase == Sim.Phase.PLAY and s.index == 1 and int(tally.get("again", 0)) == 1)
 	s.restart()
-	_check("Try again is the day from its first mould, every serve back", s.index == 0 and s.serves == 0 and s.marks.is_empty() and s.serves_left() == s.budget)
+	_check("Reset is the day from its first mould, the serves from zero", s.index == 0 and s.serves == 0 and s.marks.is_empty())
 	for i in s.moulds.size():
 		_serve_as(s, 0.8)
-	_check("five moulds at 80%% over a mark of 75 is the day done with a serve unspent", s.is_done() and s.serves_left() == 1)
+	_check("five moulds at 80%% over a mark of 75 is the day done in five serves", s.is_done() and s.serves == 5)
 
 func _themed() -> void:
 	var dir := "res://tools/days/themed-pixel/"

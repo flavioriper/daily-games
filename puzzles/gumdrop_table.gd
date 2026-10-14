@@ -53,7 +53,7 @@ const Haptics = preload("res://core/haptics.gd")
 ## strongest; no cue is mapped.
 const HAPTICS := {}
 const Face = preload("res://ui/faces/face.gd")
-const MovesPill = preload("res://ui/flat/moves_pill.gd")
+
 const Rewards = preload("res://arcade/rewards.gd")
 
 const MARGIN := 40
@@ -69,8 +69,7 @@ const SERVE_OFF := 250.0
 ## The drain button (2026-10-14, the user: "we also need another tool to
 ## remove fluid"): held, it draws syrup back out of the chunk under the
 ## tip, as the squeeze button puts it in. It stands to the right of the
-## squeeze where Insane's serves pill stood, and the pill is on the tray's
-## top left corner.
+## squeeze, the serve button's mirror.
 const DRAIN_R := 66.0
 ## The meter (the user, the same day: "a indicator about % of filled, so
 ## user can have a reference when doing like 50% of each color"): the
@@ -135,9 +134,7 @@ var _need_l: Label
 var _acc := 0.0
 var _shown_index := -1
 var _shown_match := -2
-var _shown_left := -1
-var _pill := MovesPill.new()
-const SERVES := ["GD_SERVES_ONE", "GD_SERVES_N"]
+
 ## The knock this frame's events asked for, the strongest of them (-1: none).
 var _knock := -1
 ## Where everything lies on the table (`_place`): the tray's square, pixels
@@ -149,7 +146,6 @@ var _pot_at: Array = []
 var _squeeze_at := Vector2.ZERO
 var _serve_at := Vector2.ZERO
 var _drain_at := Vector2.ZERO
-var _pill_at := Vector2.ZERO
 ## The buttons' radii as laid (the tutorial's bench lays them smaller).
 var _squeeze_r := SQUEEZE_R
 var _serve_r := SERVE_R
@@ -207,7 +203,6 @@ func _ready() -> void:
 	add_child(table)
 	_rw = Rewards.new()
 	add_child(_rw)
-	_pill.keys = SERVES
 	_build_pour()
 
 ## The loop of syrup running, silent until something is poured. A table
@@ -313,7 +308,6 @@ func _place() -> void:
 	_squeeze_at = Vector2(s.x * 0.5, y)
 	_serve_at = Vector2(s.x * 0.5 - SERVE_OFF, y + 10.0)
 	_drain_at = Vector2(s.x * 0.5 + SERVE_OFF, y + 10.0)
-	_pill_at = _tray.position + Vector2(126.0, 38.0)
 	# the win's tray: as big as the span allows, in its middle
 	var big := clampf(minf(s.x - MARGIN * 2.0 - 30.0, room - WIN_FOOT), 160.0, 1000.0)
 	_win_tray = Rect2((s.x - big) * 0.5, bands.x + maxf(0.0, (room - WIN_FOOT - big) * 0.5), big, big)
@@ -728,11 +722,6 @@ func _refresh_hud() -> void:
 		return
 	# the number is told only once the mould is served: a ? until then
 	var pct := int(sim.verdict.get("pct", -1)) if sim.phase >= Sim.Phase.SHOW else -1
-	var left: int = sim.serves_left()
-	if left != _shown_left:
-		if _shown_left >= 0:
-			_pill.bump(_clock)
-		_shown_left = left
 	if pct == _shown_match and sim.index == _shown_index and not won:
 		return
 	_shown_match = pct
@@ -835,9 +824,6 @@ func _draw_top() -> void:
 		# the plunger first, so it sinks into the barrel as it is squeezed
 		_top.draw_mesh(Art.plunger(DROPPER), null, lean * Transform2D(0.0, Vector2(0, -DROPPER * 0.74 + DROPPER * 0.13 * _squash)))
 		_top.draw_mesh(Art.needle(int(sim.pots[sim.picked].flavour), DROPPER), null, lean)
-	# a counted band's serves, beside the squeeze button
-	if sim.budget > 0 and not won:
-		_pill.draw(_top, _pill_at, sim.serves_left(), _clock)
 
 ## The meter on the squeeze button: the white rim filled clockwise with
 ## the chunk's pigments, 100% the card's shade, the number under the drop.

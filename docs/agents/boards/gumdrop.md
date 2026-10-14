@@ -25,22 +25,19 @@
 - **Easy to Hard cannot be lost**: a mould under the mark shows its number,
   is emptied and poured again (`again`). Reset empties the mould on the
   tray (`Sim.empty`).
-- **Insane counts serves** (`docs/agents/flat-screens.md`, "Insane counts
-  moves"): the budget is the moulds and `Sim.SLACK` (1) more, a serve costs
-  one whatever it scores, and a flop that leaves fewer serves than moulds
-  is the day lost (`over`): `out_of_hearts`, the shared out-of-moves card,
-  whose video buys `MOVES_BONUS` (2) serves once. Reset and Try again are
-  the day from its first mould with the serves back (`Sim.restart`); an
-  emptied mould there would be a flop taken back for nothing. **The
-  counted move is named on screen**, because the day is lost with fewer
-  serves than moulds and not at none, and the shared words ("Out of moves",
-  "when they are gone the board is lost") said otherwise beside a pill
-  still reading 4: the shared `MovesPill` beside the squeeze button reads
-  "N serves left" (`MovesPill.keys`, new, `Table.SERVES`), the card is "Not
-  enough serves" with its own body and button (`GD_OUT_*`), and the
-  tutorial's last page is the shared diagram under "Count your serves" and
-  `GD_RULES_SERVES`. **The user picked "under the mark loses the day"; the
-  one spare serve was put to them in the design and stood.**
+- **Insane counts nothing** (since 2026-10-12, the user: "remove any move
+  limit or time limit from insane, all insane games must be insane for
+  difficulty not because it limit player movements"; commit 517c37ff): a
+  flop on Insane is emptied and poured again as on every band, and no day
+  can be lost. Until then Insane had a budget of serves (the moulds and one
+  more), a "Not enough serves" card with a video, a serves pill beside the
+  squeeze button and a tutorial page on it; the count's leftovers (the
+  sim's `budget`, `SLACK`, `Phase.OVER`, `revive`; the table's pill; the
+  board's card path, `max_moves` and the page; `GD_SERVES_*`, `GD_OUT_*`,
+  `GD_RULES_SERVES`, `TUT_GUMDROP_SERVES`; the harness's `lose` mode; the
+  probe's five checks, failing since) went on 2026-10-14 at the user's
+  word ("can we fix this insane serves pill?", put to them as restore or
+  remove: remove). Reset on every band empties the mould on the tray.
 - **No Undo, bulb or Check on any band** (`capabilities()` is empty): the
   match is a `?` beside the card until Serve, and syrup is taken out by
   the table's own grey button (the drain, 2026-10-14, below), not an Undo.
@@ -374,11 +371,9 @@ autonomous". Built unattended on that; nothing of it seen by the user.
   (`DRAIN_PITCH` 0.78), the button greys while nothing is in the mould.
   Read: 139% to 113% at 0.5 s of hold, 54% at 1.5, 6% at 3 s. **Nothing
   is added to the jet**: a point sink is all divergence and the pressure
-  cancels it, as the push straight out was. **Insane's serves pill moved**
-  from the drain's place to the tray's top left corner (`_pill_at`,
-  `_tray.position + (126, 38)`), over the tray's dark; a picture reaching
-  that corner would lie under it (4 to 96 is the night's rule, the
-  twenty-nine stay off it). Not seen on Insane with the pill.
+  cancels it, as the push straight out was. The drain stands where Insane's
+  serves pill once stood (the pill was dead code by then, see "Insane
+  counts nothing" above, and went the same day).
 - **The sim's tally is per chunk and put right by the fluid**
   (`Sim.tank`, `learn`, `WET` 0.02, `RATE` 0.5 amounts a second): `wet()`
   used to be "ever squeezed", so a mould drawn fully out would still serve
@@ -412,7 +407,7 @@ autonomous". Built unattended on that; nothing of it seen by the user.
   vars the board's `_place` sets from the constants). Reimported with
   `godot --headless --path . --import` (a CSV row is nothing on screen
   until then: the first tutor run read "TUT_GUMDROP_DRAIN").
-- **Measured** (`opengl3_angle`, 810x1440): play 115 to 122 draw calls
+- **Measured** (`opengl3_angle`, 810x1440; the probe 0 failed once the serves checks went): play 115 to 122 draw calls
   (100 to 111 before: the meter's mesh and string, the third button, the
   gel's insets), the win 75 to 82, the tutorial 176 to 180. Medium by the
   bot: 100, 85, 100 in 4 serves (one flop by hand first), the win, the
@@ -426,5 +421,4 @@ autonomous". Built unattended on that; nothing of it seen by the user.
   own reading of it, so pale means "more"); the number on the button
   rather than at the tip or by the card; the pill's corner on Insane; the
   grey of the drain button. Owed: a phone (the meter pass's 65k fetches
-  and its tiny readback are untimed there), Insane with the pill in its
-  corner, pt and es, the sounds heard (the loop at 0.78 was not).
+  and its tiny readback are untimed there), pt and es, the sounds heard (the loop at 0.78 was not).
