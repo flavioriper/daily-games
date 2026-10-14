@@ -135,7 +135,7 @@ inside `publishDay`. A second job, **`themeDay`** (every 30 minutes, 1,800 s,
 1 GiB, one instance, a lease in `themes/_lease`), does the next steps of
 today, tomorrow and the day after -- theme, words, Gumdrop's jellies a band
 a step, the pixel pictures a band a step (`pictures.ts pixelBand`) -- and
-starts none past 17 minutes; each step is saved as it ends, and one that
+starts none past 15 minutes; each step is saved as it ends, and one that
 made nothing is tried once more, then given up on (the board deals its
 own there). The `pictures` content (`days/<day>/turns/pictures`, `{v, theme,
 sizes, jellies, words}`, what `core/themed_pictures.gd` reads) is

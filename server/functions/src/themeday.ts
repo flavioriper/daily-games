@@ -31,8 +31,9 @@ export const STEPS: string[] = ["theme", "words",
 /** Runs a step may have before it is given up on. */
 const TRIES = 2;
 /** A run starts no step past this: the longest step seen is some ten
- *  minutes, and the function is given thirty. */
-const START_BUDGET_MS = 17 * 60 * 1000;
+ *  minutes (a picture band four on the emulator trial, its Pearl-sized
+ *  ones longer on the Mac), and the function is given thirty. */
+const START_BUDGET_MS = 15 * 60 * 1000;
 /** How long a run holds the lease (the function's own timeout). */
 const LEASE_MS = 30 * 60 * 1000;
 /** Days back a new theme is told of. */
