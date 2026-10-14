@@ -559,3 +559,67 @@ Read on Hard (`wander`, `opengl3_angle`): 22% at 0.5 s, 67 at 1.5, 98 at
 2.5, 99 at 4, 100 from 7 s to 18 s and after the release, then the drain
 as above. The probe and the suite as before.
 
+
+### A chunk a piece, a segment a pot (2026-10-14, night)
+
+The user, with an Insane cupcake on their phone whose cup was a lemon part
+either side of a stripe laid over it, and the meter one ring for both
+sides: "every part of the picture should have its own 0-100% even within
+the same chunk, not share it. Also if there is orange on bucket for
+example, it should show 100% filled of orange, not 50% of yellow and 50%
+red, the split % is only shown if the slot is manual filled with both
+colors."
+
+- **Every piece a later chunk leaves of an earlier one is a cell of its
+  own** (`Mould.build_parts`): the parts' pieces are the chunks as the
+  night counts them (`laid`, and `source[c]` says which each cell came
+  from), and each is clipped by every chunk over it; a chunk left in one
+  piece keeps its whole polygon (what lies over it covers the rest, so a
+  hole costs nothing to draw), one cut in two or more is as many cells,
+  each its own tank, fence, meter texel and judge cell. A piece under
+  `SLIVER` (24 units², about three of the sim's squares) is given to the
+  first later chunk it touches rather than stood as a chunk too small to
+  pour in (the 20261019 Insane fruit basket had one of 2 squares). Over
+  the bank only the bee splits (4 to 6: the body either side of its two
+  stripes); the night's striped mug splits on every band (4 to 6, 5 to 8),
+  and the most any kept jelly comes to is 14 cells, under `CELLS_TOP` 16.
+  `Mould.unfit` keeps the night's own count: its chunk rule and the
+  9-squares rule go by `laid` and `source`, and the `CELLS_TOP` cap by
+  the cells ("%d cells"). `jelly.ts` `why()` refuses the same, counting
+  each chunk's pieces of the 100-grid once the later ones are laid over
+  it (`CELLS_TOP`, `SLIVER` there), so a jelly the night keeps builds
+  here; **that is on this Mac until the user deploys `publishDay`**, and
+  until then a night could in principle keep a jelly of 17 cells, which
+  the phone would drop for a bank picture (none of the made days comes
+  past 14). The probe's squares check reads by `source` and prints the
+  smallest cell cut; `day_dict`'s `cells` counts the cut cells now. A seam
+  along a cut runs the same line twice (the piece's edge and the
+  cutter's); nothing seen of it in the Medium shots.
+- **The meter is a segment a pot** (`_meter_segments`, `_pot_shares`,
+  `Art.meter(r, segments, total)`): `_cell_pots` already knew which pots
+  had gone into a chunk (for the mix sound); the ring now shows one
+  segment a pot in the order they went in, each the share of the reading
+  that pot's pigment accounts for, least squares over the pots' pigment
+  vectors (one pot: all of it; two: solved by hand; three: a `Basis`
+  inverse, or a segment a pigment when they cannot be told apart, cherry,
+  lemon and orange all in one chunk). So the orange pot poured reads one
+  orange segment, and cherry then lemon by hand reads the two shares. A
+  chunk drawn back under `Sim.WET` forgets its pots; a chunk no pot is
+  known to have gone into (a tutorial's prefill) shows the one flavour its
+  pigments make within 0.04, else a segment a pigment as before.
+- **Measured** (`opengl3_angle`, 810x1440): the headless probe 0 failed;
+  the suite 249,567 passed, 0 failed; `_win.gd -- gumdrop hoop` both PASS.
+  `_shot_gumdrop.gd -- <out> 1` (Medium, the day's cupcake then the
+  night's striped mug and a third): the mug's body on the tray as three
+  bands with a seam each side of its stripes, the bot 100, 100, 100 in 4
+  serves after the flop by hand, play 115 to 122 draw calls, the win 77
+  to 82, the done day 75. Hard (`-- 2`): 71, 88, 93, 93 in 6 serves (the
+  bot still pours a mix by strength, 0.4 to 0.5 near on the mixed chunk,
+  as it has since 2026-10-11). **Seen**: a primary poured as one segment
+  (the shot of the squeeze, lemon at 65%); a pot of a mixed flavour as one
+  segment, a hand mix as two, and the three-pot fall-back are proved by
+  `_pot_shares` headless (orange alone 0.8; cherry and lemon 0.3 and 0.5;
+  orange then cherry 0.4 and 0.4; orange and lime 0.4 and 0.6; cherry,
+  lemon, blueberry 0.2, 0.3, 0.4; cherry, lemon and orange empty; a
+  -0.01 of noise clamped), not by a shot: the harness's flop pours lemon
+  into a grape chunk and the meter fades at the serve. Unseen on a phone.

@@ -90,11 +90,15 @@ const PIN_DEEP := Color("4d4068")
 const PIN_HI := Color("a596c4")
 const MARK := Color("9d8c6f")
 ## A panel's mark is its corner count written in a stitched numeral, this
-## tall at the most and at the least, and the yarn it is stitched in.
-## (Small, the user, 2026-10-14: "make the numbers smaller to avoid
-## collision, user can zoom in to see it better".)
-const MARK_H := Vector2(7.0, 13.0)
+## tall at the most and at the least seen whole, and the yarn it is
+## stitched in; the zoom scales it with the linen, so close up it reads.
+## (Tiny, the user, 2026-10-14, with the reference's screen: "numbers
+## should be really small to be properly seeing on zoom in, to avoid
+## making the screen polluted like it's today"; 7-13 px before, 10-22
+## before that.) A stroke is never thinner than MARK_STROKE px whole.
+const MARK_H := Vector2(3.5, 5.5)
 const MARK_W := 0.17
+const MARK_STROKE := 0.8
 const MARK_ROOM := 0.9
 ## The two numerals a panel can need, as strokes in a box a unit tall:
 ## a 4 is a stem and a bent arm, a 3 two bows.
@@ -708,7 +712,7 @@ func _mark_into(b, k: int) -> void:
 	for m in n:
 		room = minf(room, Geometry2D.get_closest_point_to_segment(c, outline[m], outline[(m + 1) % n]).distance_to(c))
 	var tall := clampf(room * MARK_ROOM, MARK_H.x, MARK_H.y)
-	var wide := tall * MARK_W
+	var wide := maxf(MARK_STROKE, tall * MARK_W)
 	var strokes: Array = []
 	match n:
 		3:
@@ -729,20 +733,26 @@ func _mark_into(b, k: int) -> void:
 			pts.append(c + (q - Vector2(0.36, 0.5)) * tall)
 		b.stroke(pts, wide, MARK)
 
-## Where a panel's mark sits: a triangle's incentre (the middle of the room
-## it has), a quad's middle.
+## Where a panel's mark sits: the panel's centre of area (the user,
+## 2026-10-14: "the number should always stay at the center of the region
+## it's indicating"; a triangle's incentre until then, which on a thin
+## panel sat by its wide corner). A quad's corners are weighed by area,
+## not just averaged, so a kite's mark is in its body.
 func _mark_at(outline: PackedVector2Array) -> Vector2:
-	if outline.size() == 3:
-		var a := outline[1].distance_to(outline[2])
-		var bb := outline[2].distance_to(outline[0])
-		var cc := outline[0].distance_to(outline[1])
-		var per := a + bb + cc
-		if per > 0.0:
-			return (outline[0] * a + outline[1] * bb + outline[2] * cc) / per
+	var n := outline.size()
 	var c := Vector2.ZERO
-	for p in outline:
-		c += p
-	return c / outline.size()
+	var twice := 0.0
+	for i in n:
+		var p := outline[i]
+		var q := outline[(i + 1) % n]
+		var cross := p.cross(q)
+		c += (p + q) * cross
+		twice += cross
+	if absf(twice) < 1e-6:
+		for p in outline:
+			c += p
+		return c / n
+	return c / (3.0 * twice)
 
 func _combine(parts: Array) -> ArrayMesh:
 	var verts := PackedVector2Array()

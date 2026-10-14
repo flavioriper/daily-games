@@ -41,13 +41,22 @@
   of just dots, write the number)"; they were dots at first, a numeral a
   panel through draw_string being a draw call a panel): a 3 and a 4 as
   strokes of grey yarn (`GLYPH_FOUR`, two bows for the 3) baked into the
-  one marks mesh, so they cost nothing. A triangle's sits at its incentre,
-  a quad's at its middle, sized to the room about that point (`MARK_ROOM`
-  0.9 x the nearest side's distance, `MARK_H` 7-13 px; they were 10-22
-  until the user asked for "smaller to avoid collision, user can zoom in
-  to see it better") so a thin panel's never spills; a cramped panel's may
-  touch its sides, but every panel says its count. They scale with the
-  zoom. Insane shows them too, since the same evening.
+  one marks mesh, so they cost nothing. Each sits at its panel's centre
+  of area (`_mark_at`; a triangle's incentre until the user, 2026-10-14
+  evening: "the number should always stay at the center of the region
+  it's indicating"), sized to the room about that point (`MARK_ROOM`
+  0.9 x the nearest side's distance, `MARK_H` 3.5-5.5 px seen whole, a
+  stroke never under `MARK_STROKE` 0.8 px; they were 10-22, then 7-13
+  until the user, with the reference's screen where the numerals are
+  specks beside the dots, asked that they "be really small to be properly
+  seeing on zoom in, to avoid making the screen polluted like it's today",
+  2026-10-14 evening) so a thin panel's never spills; a cramped panel's
+  may touch its sides, but every panel says its count. They scale with
+  the zoom (the marks mesh is drawn under `zoom.xf()`), so whole they are
+  specks and close up (Insane to 4x, fingers 5x) they are 14-22 px and
+  read (`_shot_hoop.gd -- d=3 zoom`, `opengl3_angle`: 91 draw calls at
+  the peak, the marks clear of the pins at 4x). Insane shows them too,
+  since the same evening.
 - **The zoom** (the same day: "make sure it has zoom in and out properly";
   the web game zooms with the wheel and pans with a drag): `PanZoom`
   (ui/flat/pan_zoom.gd) over the whole table, every band. Its room is the

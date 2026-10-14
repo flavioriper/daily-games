@@ -73,6 +73,13 @@ export const COVER = [0.2, 0.75];
 export const EDGE = [4, 96];
 const MOST_PARTS = 8;
 const MOST_SHAPES = 8;
+/** The phone makes a cell of every piece a later chunk leaves of an
+ *  earlier one (gumdrop_mould.gd build_parts, 2026-10-14), a piece under
+ *  SLIVER of the field's 100 by 100 going to the chunk that cut it; its
+ *  passes hold CELLS_TOP cells, so a jelly whose cut pieces come to more
+ *  is dropped there, and so refused here. */
+const CELLS_TOP = 16;
+const SLIVER = 24;
 const MOST_POINTS = 16;
 const TRIES = 2;
 
@@ -208,6 +215,12 @@ export function why(parts: unknown, band: number): string {
   const fine = laid(parts as Part[], 100);
   if (fine.chunks < rule.chunks[0] || fine.chunks > rule.chunks[1]) return `${fine.chunks} chunks`;
   if (pieces(Array.from(fine.at, (c) => c >= 0), 100).length !== 1) return "more than one piece of jelly";
+  let cells = 0;
+  for (let c = 0; c < fine.chunks; c++) {
+    const cut = pieces(Array.from(fine.at, (k) => k === c), 100).filter((p) => p.length >= SLIVER).length;
+    cells += Math.max(1, cut);
+  }
+  if (cells > CELLS_TOP) return `${cells} cells once cut`;
   // What each chunk shows of the sim's grid, read off the fine one at
   // each square's middle, so a chunk is the same chunk in both.
   const shows = new Array(fine.chunks).fill(0);

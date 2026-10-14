@@ -502,6 +502,9 @@ func _animate(delta: float) -> void:
 		var read: Vector3 = _fluid.level(cell)
 		if DisplayServer.get_name() != "headless":
 			sim.learn(cell, read.x + read.y + read.z)
+			# a chunk drawn back to nothing forgets what went into it
+			if not sim.squeezing and read.x + read.y + read.z < Sim.WET:
+				_cell_pots.erase(cell)
 		_level = _level.lerp(read, minf(1.0, delta * METER_EASE))
 		_meter_k = minf(1.0, _meter_k + delta * METER_FADE)
 	else:
@@ -832,7 +835,7 @@ func _draw_meter(xf: Transform2D, fade: Color) -> void:
 		return
 	var total: float = (_level.x + _level.y + _level.z) / Sim.C_FULL
 	var alpha := fade * Color(1, 1, 1, _meter_k)
-	_meter = Art.meter(_squeeze_r, _level / Sim.C_FULL)
+	_meter = Art.meter(_squeeze_r, _meter_segments(sim.tip_cell(), _level / Sim.C_FULL), total)
 	if _meter != null:
 		_top.draw_mesh(_meter, null, xf, alpha)
 	var font: Font = CozyTheme.display(700)
@@ -842,6 +845,73 @@ func _draw_meter(xf: Transform2D, fade: Color) -> void:
 	var at := xf * Vector2(-tw * 0.5, _squeeze_r * 0.62 + font.get_ascent(fs) * 0.35)
 	_top.draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs,
 		(Art.INK if total > 1.0 + Art.METER_SLACK else Color("fffdf8")) * alpha)
+
+## The meter's segments for the chunk: a segment a pot that has gone into
+## it, in the order they went in, each the share of the reading its
+## flavour's pigment accounts for (the user, 2026-10-14: "if there is
+## orange on bucket for example, it should show 100% filled of orange, not
+## 50% of yellow and 50% red, the split % is only shown if the slot is
+## manual filled with both colors"). A chunk no pot is known to have gone
+## into (a tutorial's prefill) shows the one flavour its pigments make, or
+## else a segment a pigment, as the pots' shares do when they cannot be
+## told apart (cherry, lemon and orange all in one chunk).
+func _meter_segments(cell: int, fill: Vector3) -> Array:
+	var total := fill.x + fill.y + fill.z
+	if total <= 0.0:
+		return []
+	var pots: Array = _cell_pots.get(cell, {}).keys()
+	var shares := _pot_shares(fill, pots)
+	var out: Array = []
+	if not shares.is_empty():
+		for i in pots.size():
+			if shares[i] > 0.0:
+				out.append([pots[i], shares[i]])
+		return out
+	var mix := fill / total
+	for f in Mould.PIGMENT.size():
+		if (mix - (Mould.PIGMENT[f] as Vector3)).length() < 0.04:
+			return [[f, total]]
+	for i in 3:
+		if fill[i] > 0.0:
+			out.append([Mould.PRIMARIES[i], fill[i]])
+	return out
+
+## How much of `fill` each of these pots' pigments accounts for, least
+## squares, no share under nothing and all of them summing to the fill;
+## empty when there is no pot or they cannot be told apart.
+static func _pot_shares(fill: Vector3, pots: Array) -> PackedFloat32Array:
+	var total := fill.x + fill.y + fill.z
+	var out := PackedFloat32Array()
+	match pots.size():
+		1:
+			out.append(total)
+		2:
+			var p1: Vector3 = Mould.PIGMENT[int(pots[0])]
+			var p2: Vector3 = Mould.PIGMENT[int(pots[1])]
+			var det := p1.dot(p1) * p2.dot(p2) - p1.dot(p2) * p1.dot(p2)
+			if det < 1e-6:
+				return out
+			out.append((fill.dot(p1) * p2.dot(p2) - fill.dot(p2) * p1.dot(p2)) / det)
+			out.append((fill.dot(p2) * p1.dot(p1) - fill.dot(p1) * p1.dot(p2)) / det)
+		3:
+			var m := Basis(Mould.PIGMENT[int(pots[0])], Mould.PIGMENT[int(pots[1])], Mould.PIGMENT[int(pots[2])])
+			if absf(m.determinant()) < 1e-6:
+				return out
+			var a: Vector3 = m.inverse() * fill
+			out.append(a.x)
+			out.append(a.y)
+			out.append(a.z)
+		_:
+			return out
+	var sum := 0.0
+	for i in out.size():
+		out[i] = maxf(out[i], 0.0)
+		sum += out[i]
+	if sum <= 0.0:
+		return PackedFloat32Array()
+	for i in out.size():
+		out[i] *= total / sum
+	return out
 
 func _draw_live() -> void:
 	if _bits.is_empty():

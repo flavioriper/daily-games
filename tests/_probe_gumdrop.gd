@@ -216,7 +216,7 @@ func _themed() -> void:
 			for j: Dictionary in day.pictures.jellies[key]:
 				var m := Mould.build_parts("themed_" + String(j.id), Mould.from_doc(j.parts))
 				var why := Mould.unfit(m, band)
-				_check("%s band %d: the night's %s keeps its row here (%s)" % [f.get_basename(), band, j.id, why if why != "" else "%d chunks" % (m.cells as Array).size()], why == "")
+				_check("%s band %d: the night's %s keeps its row here (%s)" % [f.get_basename(), band, j.id, why if why != "" else "%d chunks, %d cells" % [int(m.laid), (m.cells as Array).size()]], why == "")
 				if why == "":
 					built.append(m)
 			if built.is_empty():
@@ -233,12 +233,20 @@ func _themed() -> void:
 				lead = lead and s.moulds[k] == built[k] and not (built[k].pots as Array).is_empty()
 			_check("  %d of %d moulds themed, first and in order, no picture twice (%s)" % [mini(built.size(), s.moulds.size()), int(Mould.BANDS[band].moulds), ", ".join(ids)],
 				lead and s.moulds.size() == int(Mould.BANDS[band].moulds) and once)
+			# by the night's chunks: a piece a later chunk cuts off is a
+			# cell of its own here, and may be small
 			var least := 9999
+			var small := 9999
 			for m: Dictionary in built:
 				s.deal(m)
+				var by_source := PackedInt32Array()
+				by_source.resize(int(m.laid))
 				for c in s.count.size():
-					least = mini(least, s.count[c])
-			_check("  the sim counts every chunk 9 squares or more (%d)" % least, least >= 9)
+					by_source[m.source[c]] += s.count[c]
+					small = mini(small, s.count[c])
+				for k in by_source:
+					least = mini(least, k)
+			_check("  the sim counts every chunk of the night's 9 squares or more (%d; the smallest cell cut %d)" % [least, small], least >= 9)
 	# tools/days/ is not in git: a clone with no made days skips them
 	if seen == 0:
 		print("     no made day holds themed jellies here (tools/days/themed-pixel/, node lib/cli.js jellies)")

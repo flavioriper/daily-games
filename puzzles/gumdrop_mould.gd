@@ -76,6 +76,10 @@ const THEMED := [
 	{"flavours": [4, 6], "mixed": 2, "chunks": [4, 14]},
 ]
 const LEAST_SQUARES := 9
+## Mould units squared (about three of the sim's squares) under which a
+## piece a later chunk cuts off an earlier one is a sliver, given to the
+## chunk that cut it rather than stood as a chunk too small to pour in.
+const SLIVER := 24.0
 const COVER := [0.2, 0.75]
 const EDGE := [4.0, 96.0]
 ## The sim's grid (gumdrop_sim.gd N), counted here without a sim.
@@ -290,15 +294,57 @@ static func build(id: String) -> Dictionary:
 	return build_parts(id, parts(id))
 
 ## A jelly built from parts as `parts()` gives them, under `id`.
+##
+## The parts' pieces are the chunks as the night counts them (`laid`,
+## `source`); every piece a later chunk leaves of an earlier one is then
+## a cell of its own (the user, 2026-10-14, of a cup two stripes of one
+## part either side of a stripe laid over it: "every part of the picture
+## should have its own 0-100% even within the same chunk, not share it"),
+## so each has its own tank, fence and meter. A chunk left in one piece
+## keeps its whole polygon: what lies over it covers the rest, as it
+## always did, so a hole in it is nothing to draw.
 static func build_parts(id: String, given: Array) -> Dictionary:
-	var cells: Array = []
-	var want: Array = []
+	var laid: Array = []
+	var laid_want: Array = []
 	for part: Array in given:
 		for piece: PackedVector2Array in joined(part[1]):
-			cells.append(piece)
-			want.append(int(part[0]))
-	if cells.is_empty():
+			laid.append(piece)
+			laid_want.append(int(part[0]))
+	if laid.is_empty():
 		return {}
+	var cells: Array = []
+	var want: Array = []
+	var source := PackedInt32Array()
+	for c in laid.size():
+		var left: Array = [laid[c]]
+		for d in range(c + 1, laid.size()):
+			var next: Array = []
+			for piece: PackedVector2Array in left:
+				next.append_array(_outer(Geometry2D.clip_polygons(piece, laid[d])))
+			left = next
+		if left.size() <= 1:
+			left = [laid[c]]
+		else:
+			# a sliver goes to the first later chunk it touches (the cut's
+			# own), which takes it into its polygon; one that touches none
+			# stands
+			var kept: Array = []
+			for piece: PackedVector2Array in left:
+				var taken := false
+				if area(piece) < SLIVER:
+					for d in range(c + 1, laid.size()):
+						var both: Array = _outer(Geometry2D.merge_polygons(piece, laid[d]))
+						if both.size() == 1:
+							laid[d] = both[0]
+							taken = true
+							break
+				if not taken:
+					kept.append(piece)
+			left = kept if not kept.is_empty() else [laid[c]]
+		for piece: PackedVector2Array in left:
+			cells.append(piece)
+			want.append(laid_want[c])
+			source.append(c)
 	var whole := joined(cells)
 	var outline: PackedVector2Array = whole[0]
 	for piece: PackedVector2Array in whole:
@@ -317,7 +363,7 @@ static func build_parts(id: String, given: Array) -> Dictionary:
 			shown = left
 		seams.append_array(shown)
 	return {"id": id, "seams": seams, "outline": outline, "rim": rims[0] if not rims.is_empty() else outline, "pieces": whole.size(),
-		"cells": cells, "want": want, "pots": [], "mixed": -1}
+		"cells": cells, "want": want, "laid": laid.size(), "source": source, "pots": [], "mixed": -1}
 
 ## The chunk of a jelly a point belongs to: the last that holds it, -1
 ## the tray.
@@ -451,9 +497,13 @@ static func unfit(m: Dictionary, band: int) -> String:
 		return "%d flavours" % has.size()
 	if has.filter(func(f: int) -> bool: return f % 2 == 1).size() < int(rule.mixed):
 		return "too few mixed flavours"
-	var n: int = (m.cells as Array).size()
-	if n < int(rule.chunks[0]) or n > mini(int(rule.chunks[1]), CELLS_TOP):
+	# the chunks and their size as the night counts them (a part's pieces,
+	# before a later one cuts them), so a jelly the night kept is kept here
+	var n: int = int(m.laid)
+	if n < int(rule.chunks[0]) or n > int(rule.chunks[1]):
 		return "%d chunks" % n
+	if (m.cells as Array).size() > CELLS_TOP:
+		return "%d cells" % (m.cells as Array).size()
 	if int(m.pieces) != 1:
 		return "%d pieces" % int(m.pieces)
 	var shows := PackedInt32Array()
@@ -462,7 +512,7 @@ static func unfit(m: Dictionary, band: int) -> String:
 	for i in GRID * GRID:
 		var c := cell_at(m, Vector2((i % GRID) + 0.5, (i / GRID) + 0.5) * (SIDE / GRID))
 		if c >= 0:
-			shows[c] += 1
+			shows[m.source[c]] += 1
 			covered += 1
 	for k in shows:
 		if k < LEAST_SQUARES:

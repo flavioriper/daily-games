@@ -296,23 +296,21 @@ static func drain_button(r: float) -> ArrayMesh:
 ## number stays white.
 const METER_SLACK := 0.08
 ## The meter on the squeeze button (puzzles/gumdrop_table.gd): the chunk's
-## pigments as shares of the card's shade (`fill`, red, yellow, blue),
-## laid clockwise from the top along the button's white rim, a segment a
-## pigment; past full a dark ring climbs outside the rim. Built each
-## frame it is shown.
-static func meter(r: float, fill: Vector3) -> ArrayMesh:
+## syrup as shares of the card's shade, laid clockwise from the top along
+## the button's white rim, a segment a flavour poured in (`segments`,
+## [flavour, share] in the order they went in, summing to `total`); past
+## full a dark ring climbs outside the rim. Built each frame it is shown.
+static func meter(r: float, segments: Array, total: float) -> ArrayMesh:
 	var b := Face.Builder.new()
-	var cols := [FLAVOURS[0], FLAVOURS[2], FLAVOURS[4]]
-	var total := fill.x + fill.y + fill.z
 	var from := -PI * 0.5
 	var shown := minf(total, 1.0)
 	var rim := 0.95 * r
 	var w := 0.1 * r
-	for i in 3:
-		var part := fill[i] / maxf(total, 0.0001) * shown
+	for seg: Array in segments:
+		var part: float = float(seg[1]) / maxf(total, 0.0001) * shown
 		if part > 0.002:
 			var to := from + TAU * part
-			b.stroke(Face.Builder.arc_points(Vector2.ZERO, rim, from, to), w, cols[i], false, false)
+			b.stroke(Face.Builder.arc_points(Vector2.ZERO, rim, from, to), w, FLAVOURS[int(seg[0])], false, false)
 			from = to
 	# the marks a quarter apart, over the segments
 	for q in 4:
