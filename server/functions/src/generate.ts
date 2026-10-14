@@ -19,6 +19,8 @@
  *                         are billed there (the project with the credits)
  *   VERTEX_ACCESS_TOKEN   a token to ask Vertex with; without one the
  *                         process's own Google identity is used
+ *   VERTEX_TOKEN_COMMAND  a command that prints a token, run for each
+ *                         drawing (a login's token outlives no long run)
  *
  * The two defaults are cheap models of different makers on purpose: a
  * reviewer from the writer's own family shares its mistakes. `off` as
@@ -54,6 +56,8 @@ export interface Ask {
   role?: Role;
   /** Pictures shown with the request, as data: URLs. */
   images?: string[];
+  /** A model by name, over the role's. */
+  model?: string;
 }
 
 /** What the requests of this process have cost so far, in US dollars, by
@@ -111,7 +115,7 @@ async function post(body: Record<string, unknown>): Promise<Response> {
  */
 export async function ask<T>(a: Ask): Promise<T> {
   if (!available()) throw new Error("no model");
-  const model = modelFor(a.role);
+  const model = a.model ?? modelFor(a.role);
   const told = `${a.system}\n\nAnswer with one JSON object and nothing else, in exactly this JSON schema:\n${JSON.stringify(a.schema)}`;
   const base = {
     model,
@@ -162,6 +166,13 @@ export function imageModel(): string {
  *  identity's (the function's service account when deployed). An API key is
  *  refused there ("API keys are not supported by this API", 2026-10-13). */
 async function vertexToken(): Promise<string> {
+  // A login's token lives an hour, and gcloud hands out the one it holds:
+  // a run on this Mac names the command that prints one, asked each drawing.
+  const command = (process.env.VERTEX_TOKEN_COMMAND ?? "").trim();
+  if (command !== "") {
+    const {execSync} = await import("child_process");
+    return execSync(command, {encoding: "utf8"}).trim();
+  }
   const given = (process.env.VERTEX_ACCESS_TOKEN ?? "").trim();
   if (given !== "") return given;
   const {GoogleAuth} = await import("google-auth-library");
@@ -175,16 +186,13 @@ async function vertexToken(): Promise<string> {
  *  is not in the answer, so cost() does not count it. */
 async function drawOnVertex(prompt: string): Promise<Drawing> {
   const model = imageModel();
-  const res = await fetch(
-    `https://aiplatform.googleapis.com/v1/projects/${vertexProject()}/locations/global/publishers/google/models/${model}:generateContent`, {
-      method: "POST",
-      headers: {"Authorization": `Bearer ${await vertexToken()}`, "Content-Type": "application/json"},
-      body: JSON.stringify({
-        contents: [{role: "user", parts: [{text: prompt}]}],
-        generationConfig: {responseModalities: ["TEXT", "IMAGE"]},
-      }),
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
+  let res = await askVertex(model, prompt);
+  // The bigger image models answer 429 to a project's first requests in a
+  // row (2026-10-14, gemini-3-pro-image): asked again after a wait, they draw.
+  for (let wait = 20; res.status === 429 && wait <= 80; wait *= 2) {
+    await new Promise((r) => setTimeout(r, wait * 1000));
+    res = await askVertex(model, prompt);
+  }
   if (!res.ok) {
     throw new Error(`vertex ${model}: HTTP ${res.status} ${(await res.text()).slice(0, 400)}`);
   }
@@ -196,6 +204,20 @@ async function drawOnVertex(prompt: string): Promise<Drawing> {
     }
   }
   throw new Error(`vertex ${model} drew nothing`);
+}
+
+/** A square picture: gemini-3-pro-image answers 1408 by 768 unless told. */
+async function askVertex(model: string, prompt: string): Promise<Response> {
+  return fetch(
+    `https://aiplatform.googleapis.com/v1/projects/${vertexProject()}/locations/global/publishers/google/models/${model}:generateContent`, {
+      method: "POST",
+      headers: {"Authorization": `Bearer ${await vertexToken()}`, "Content-Type": "application/json"},
+      body: JSON.stringify({
+        contents: [{role: "user", parts: [{text: prompt}]}],
+        generationConfig: {responseModalities: ["TEXT", "IMAGE"], imageConfig: {aspectRatio: "1:1"}},
+      }),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
 }
 
 export interface Drawing {

@@ -28,7 +28,10 @@ def main() -> None:
     # The themed days tools/themed_days.sh made; their drawings stay files
     # beside them, which a page may show from file:// though not read.
     themed = [json.loads(f.read_text()) for f in sorted((DAYS / "themed").glob("[0-9]*.json"))]
-    data = json.dumps({"index": index, "days": days, "gallery": pictures, "themed": themed},
+    # The same days drawn as pixel art (DAILY_PICTURE_STYLE=pixel), shown
+    # beside the first way's.
+    pixel = [json.loads(f.read_text()) for f in sorted((DAYS / "themed-pixel").glob("[0-9]*.json"))]
+    data = json.dumps({"index": index, "days": days, "gallery": pictures, "themed": themed, "themedPixel": pixel},
                       separators=(",", ":")).replace("</", "<\\/")
     page = (HERE / "dashboard.src.html").read_text().replace("/*BEADS*/", (HERE / "beads.js").read_text(), 1)
     page = page.replace("/*DATA*/", data, 1)

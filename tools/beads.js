@@ -181,7 +181,165 @@ var Beads = (function () {
     for (var y = 0; y < N; y++) rows.push(at.slice(y * N, y * N + N).map(function (a) { return a < 0 ? "." : LETTERS[a]; }).join(""));
     return { rows: rows, work: wk, frame: fr };
   }
+
+  // Pixel art read as drawn, never averaged down: an image model asked for
+  // pixel art answers a big picture of squares, of a side it chose and laid
+  // a little unevenly. The squares' lines are found from where the colour
+  // changes, each square takes the colour at its middle, and the picture is
+  // kept only at its own size: padded into the band's square when smaller,
+  // turned down when bigger or when the squares do not hold one colour each.
+  var EDGE = .06, SNAP_TOL = .12, MIXED = .05;
+  function dist2(a, i, b, j) { var x = a[i] - b[j], y = a[i + 1] - b[j + 1], z = a[i + 2] - b[j + 2]; return x * x + y * y + z * z; }
+  // Each column's (or row's) count of colour changes from the one before.
+  function profiles(lab, w, h) {
+    var col = new Float32Array(w), row = new Float32Array(h), e2 = EDGE * EDGE;
+    for (var y = 0; y < h; y++) for (var x = 0; x < w; x++) { var i = 3 * (y * w + x);
+      if (x && dist2(lab, i, lab, i - 3) > e2) col[x]++;
+      if (y && dist2(lab, i, lab, i - 3 * w) > e2) row[y]++; }
+    return [col, row];
+  }
+  // The pitch and phase whose lines the most changes fall on, past what a
+  // line's width would catch by chance (so half the pitch, which catches
+  // every line too, scores less).
+  // One axis at one pitch: its best phase and score.
+  function phaseOf(prof, total, p) {
+    var tol = Math.min(2.5, p * .12), best = { p: p, phase: 0, score: -1 };
+    for (var ph = 0; ph < p; ph += .5) {
+      var on = 0;
+      for (var x = 0; x < prof.length; x++) if (prof[x]) { var d = (x - ph) % p; if (d < 0) d += p; if (Math.min(d, p - d) <= tol) on += prof[x]; }
+      var score = on / total - (2 * tol + 1) / p;
+      if (score > best.score) best = { p: p, phase: ph, score: score };
+    }
+    return best;
+  }
+  // Pixel art's squares are square: one pitch for both axes, each its phase.
+  function pitchOf(col, row, lo, hi) {
+    var tc = 0, tr = 0, x, all = [];
+    for (x = 0; x < col.length; x++) tc += col[x];
+    for (x = 0; x < row.length; x++) tr += row[x];
+    if (!tc || !tr) return [];
+    for (var p = lo; p <= hi; p += .25) {
+      var gx = phaseOf(col, tc, p), gy = phaseOf(row, tr, p);
+      all.push({ g: [gx, gy], score: gx.score + gy.score });
+    }
+    // The best few pitches, none within a sixth of a better one.
+    all.sort(function (a, b) { return b.score - a.score; });
+    var out = [];
+    all.forEach(function (c) { if (out.length < 3 && c.score >= all[0].score * .75 &&
+      out.every(function (o) { return Math.abs(o.g[0].p - c.g[0].p) > o.g[0].p / 6; })) out.push(c); });
+    return out;
+  }
+  // The lines at that pitch, laid where the most changes are with each
+  // square between three quarters and five quarters of it, so a grid that
+  // drifts across the picture is followed rather than averaged.
+  function lines(prof, g) {
+    var n = prof.length, lo = Math.max(2, Math.round(g.p * .75)), hi = Math.round(g.p * 1.25);
+    var score = new Float64Array(n + 1), from = new Int32Array(n + 1), x, s2;
+    // A line may start anywhere in the first square and end in the last.
+    for (x = 0; x <= n; x++) {
+      score[x] = -1; from[x] = -1;
+      if (x < hi) score[x] = prof[x] || 0;
+      for (s2 = lo; s2 <= hi && s2 <= x; s2++) if (score[x - s2] >= 0 && score[x - s2] + (prof[x] || 0) > score[x]) { score[x] = score[x - s2] + (prof[x] || 0); from[x] = x - s2; }
+    }
+    var end = n;
+    for (x = Math.max(0, n - hi); x <= n; x++) if (score[x] > score[end]) end = x;
+    var out = [];
+    for (x = end; x >= 0; x = from[x]) out.unshift(x);
+    // The part squares at the edges are kept as whole ones.
+    if (out[0] >= lo) out.unshift(Math.max(0, out[0] - Math.round(g.p)));
+    if (n - out[out.length - 1] >= lo) out.push(Math.min(n, out[out.length - 1] + Math.round(g.p)));
+    return out;
+  }
+  // The image as squares: their lines, each square's colour (OKLab, the
+  // middle half's most common shade) and how well the squares hold one
+  // colour each: `fit`, the share of their pixels near their own colour,
+  // and `mixed`, the squares whose middle is not mostly one colour.
+  function snap(rgba, w, h) {
+    var n = w * h, lab = new Float32Array(n * 3), i;
+    for (i = 0; i < n; i++) lab.set(oklab(lin(rgba[4 * i]), lin(rgba[4 * i + 1]), lin(rgba[4 * i + 2])), 3 * i);
+    var pr = profiles(lab, w, h), side = Math.max(w, h), lo = Math.max(4, side / 96), hi = side / 6;
+    // The changes can fall as well on a finer pitch, its lines laid unevenly,
+    // as on the drawing's own, and the other way about where the drawing
+    // is finer in places. So the best few pitches and the best one's
+    // multiples are each read, and the coarsest whose squares hold one colour
+    // about as well as the best's is the drawing's.
+    var found = pitchOf(pr[0], pr[1], lo, hi), cands = found.map(function (c) { return c.g; }), tc = 0, tr = 0, x;
+    if (!found.length) return null;
+    for (x = 0; x < w; x++) tc += pr[0][x];
+    for (x = 0; x < h; x++) tr += pr[1][x];
+    [1.5, 2, 3].forEach(function (m) { var p = found[0].g[0].p * m;
+      if (p <= hi) cands.push([phaseOf(pr[0], tc, p), phaseOf(pr[1], tr, p)]); });
+    var reads = cands.map(function (g) { var r = readAt(lab, w, h, pr, g[0], g[1]); r.share = r.mixed / r.cells.length; return r; });
+    var least = Math.min.apply(null, reads.map(function (r) { return r.share; }));
+    return reads.filter(function (r) { return r.share <= least + .01; })
+      .reduce(function (a, b) { return b.pitch[0] > a.pitch[0] ? b : a; });
+  }
+  function readAt(lab, w, h, pr, gx, gy) {
+    var xs = lines(pr[0], gx), ys = lines(pr[1], gy), x, y, cols = xs.length - 1, rws = ys.length - 1, out = [], flags = [], mixed = 0, near = 0, all = 0, t2 = SNAP_TOL * SNAP_TOL;
+    for (var cy = 0; cy < rws; cy++) for (var cx = 0; cx < cols; cx++) {
+      var x0 = xs[cx], x1 = xs[cx + 1], y0 = ys[cy], y1 = ys[cy + 1], mx = (x1 - x0) / 4, my = (y1 - y0) / 4, seen = {}, top = null;
+      for (var y = Math.floor(y0 + my); y < Math.ceil(y1 - my); y++) for (var x = Math.floor(x0 + mx); x < Math.ceil(x1 - mx); x++) {
+        var j = 3 * (y * w + x), k = Math.round(lab[j] * 40) + "," + Math.round(lab[j + 1] * 40) + "," + Math.round(lab[j + 2] * 40);
+        var s = seen[k] = seen[k] || { n: 0, l: 0, a: 0, b: 0 }; s.n++; s.l += lab[j]; s.a += lab[j + 1]; s.b += lab[j + 2];
+        if (!top || s.n > top.n) top = s;
+      }
+      var c = top ? [top.l / top.n, top.a / top.n, top.b / top.n] : [1, 0, 0], inner = 0, same = 0;
+      for (y = Math.floor(y0 + my); y < Math.ceil(y1 - my); y++) for (x = Math.floor(x0 + mx); x < Math.ceil(x1 - mx); x++) {
+        inner++; if (dist2(lab, 3 * (y * w + x), c, 0) < t2) same++; }
+      // A square whose middle is not mostly one colour holds a finer drawing.
+      var mx = same < inner * .7; if (mx) mixed++; flags.push(mx);
+      out.push(c);
+      for (y = y0; y < y1; y++) for (x = x0; x < x1; x++) { all++; if (dist2(lab, 3 * (y * w + x), c, 0) < t2) near++; }
+    }
+    return { cols: cols, rows: rws, pitch: [gx.p, gy.p], xs: xs, ys: ys, cells: out, mixed: mixed, flags: flags, fit: all ? near / all : 0 };
+  }
+  // A snapped picture as the band's rows: what is the border's colour and
+  // joined to the border is bare, the rest takes the nearest bead in no more
+  // than `colours`, and the drawing is cut to what is drawn and centred in N
+  // squares. `why` says why there are no rows: over MIXED of its squares
+  // are not one colour (the grid was misread, or the model drew finer in
+  // places), it is bigger than N, or (a scene, which must fill) off N by
+  // more than `slack`, a little over being cut evenly off its sides. Read
+  // smaller by taking each bead's most common colour, a scene of 64 squares
+  // lost its basket and mug at 24 (2026-10-14): it is redrawn instead.
+  function fromSnap(sn, N, colours, scene, slack) {
+    var W = sn.cols, H = sn.rows, cells2 = sn.cells, flags = sn.flags, x, y, i;
+    var bg = new Uint8Array(W * H);
+    if (!scene) {
+      var border = [];
+      for (x = 0; x < W; x++) border.push(x, (H - 1) * W + x);
+      for (y = 1; y < H - 1; y++) border.push(y * W, y * W + W - 1);
+      var votes = {}, most = null;
+      border.forEach(function (j) { var c = cells2[j], k = Math.round(c[0] * 20) + "," + Math.round(c[1] * 20) + "," + Math.round(c[2] * 20);
+        (votes[k] = votes[k] || []).push(j); if (!most || votes[k].length > most.length) most = votes[k]; });
+      var ref = cells2[most[0]], t2 = .08 * .08, stack = [];
+      var push = function (j) { if (!bg[j] && dist2(cells2[j], 0, ref, 0) < t2) { bg[j] = 1; stack.push(j); } };
+      border.forEach(push);
+      while (stack.length) { var j = stack.pop(), jx = j % W;
+        if (jx) push(j - 1); if (jx < W - 1) push(j + 1); if (j >= W) push(j - W); if (j < W * H - W) push(j + W); }
+    }
+    var x0 = W, y0 = H, x1 = -1, y1 = -1;
+    for (i = 0; i < W * H; i++) if (!bg[i]) { x = i % W; y = (i - x) / W; x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+    if (x1 < 0) return { why: "nothing drawn" };
+    var bw = x1 - x0 + 1, bh = y1 - y0 + 1, drawn = 0, mixed = 0;
+    for (i = 0; i < W * H; i++) if (!bg[i]) { drawn++; if (flags[i]) mixed++; }
+    if (mixed > drawn * MIXED) return { why: Math.round(100 * mixed / drawn) + "% of its squares hold a finer drawing", w: bw, h: bh };
+    if (scene) {
+      // A scene fills its square: a little over is cut evenly off its sides.
+      if (bw < N - slack || bh < N - slack || bw > N + slack || bh > N + slack)
+        return { why: "drawn " + bw + "×" + bh + ", wants " + N + "×" + N, w: bw, h: bh };
+    } else if (bw > N || bh > N) return { why: "drawn " + bw + "×" + bh + ", over " + N + "×" + N, w: bw, h: bh };
+    var ox = x0 + Math.floor((bw - N) / 2), oy = y0 + Math.floor((bh - N) / 2), list = [];
+    for (y = 0; y < N; y++) for (x = 0; x < N; x++) {
+      var sx = ox + x, sy = oy + y, k2 = sy * W + sx;
+      var inside = sx >= x0 && sx <= x1 && sy >= y0 && sy <= y1 && !bg[k2];
+      list.push(inside ? cells2[k2] : null);
+    }
+    var at = pick(list, colours), rows = [];
+    for (y = 0; y < N; y++) rows.push(at.slice(y * N, y * N + N).map(function (a) { return a < 0 ? "." : LETTERS[a]; }).join(""));
+    return { rows: rows, w: bw, h: bh };
+  }
   return { PALETTE: PALETTE, RULES: RULES, SIZES: [10, 12, 16, 24, 32], rulesOf: rulesOf, optionsFor: optionsFor, fillOf: fillOf,
-    check: check, convert: convert };
+    check: check, convert: convert, snap: snap, fromSnap: fromSnap };
 })();
 if (typeof module !== "undefined") module.exports = Beads;

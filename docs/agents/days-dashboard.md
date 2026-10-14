@@ -231,9 +231,83 @@ for the pictures to be drawn on them. What was found, in the order it cost:
 
       VERTEX_PROJECT=production-506015 VERTEX_ACCOUNT=andressa.t@navlio.io tools/themed_days.sh
 
+  The script names `gcloud auth print-access-token` as `VERTEX_TOKEN_COMMAND`,
+  run for each drawing: handed one token at the start, a run of 2026-10-14
+  was refused (401) twenty minutes in, gcloud's held token having expired.
+
 Left in that project and used by nothing: the service account
 `daily-pictures` with `roles/aiplatform.user`, an API key "Peeplet Daily
 pictures (Gemini image)" (also in `~/.config/gemini/api_key`), and the
 Gemini API enabled. **For the deployed function** (stage 4) the token has
 to be its own: its service account granted `roles/aiplatform.user` on that
 project, across projects. Not done.
+
+## Pixel art, drawn as pixel art (2026-10-14)
+
+The user, of the first way's pictures beside real pixel art (a kawaii ramen
+bowl, bead kits): "i'm not happy about result ... isn't better and more
+accurate to generate the images into pixel art already?" It is: pixel art
+is drawn for its grid (a one-square outline, a face on whole squares), and
+averaging a smooth drawing down loses exactly that. `DAILY_PICTURE_STYLE=pixel`
+is the second way, beside the first, not over it:
+
+- **Drawn as pixel art** on Vertex by `gemini-3-pro-image` (the only model
+  of three that draws near the side it is asked; `gemini-2.5-flash-image`
+  draws about three times finer than asked, and in two pitches at once:
+  an outline in pairs of squares, a face in single ones). It is asked for a
+  square image (`imageConfig.aspectRatio`; unasked it answers 1408 × 768).
+- **Read at its own squares** by `Beads.snap` (tools/beads.js): the colour
+  changes of each column and row, one pitch for both axes scored past
+  chance, lines laid where the changes are with each square three quarters
+  to five quarters of the pitch (the models' grids drift), each square the
+  most common colour of its middle half. Of the best few pitches and the
+  best one's multiples, the coarsest whose squares hold one colour about as
+  well as any. `mixed` counts the squares that do not: over 5% of the
+  drawing's and it is turned down, being either misread or drawn finer in
+  places.
+- **Kept only at its own size** by `Beads.fromSnap`: the background (the
+  border's colour, joined to the border) bare, the drawing cut to what is
+  drawn and centred in the band's square, never shrunk; a scene up to a
+  quarter over is cut to its middle. A thing drawn too big is drawn again
+  at the side that would have fitted (never under 0.6 of the band's: asked
+  for 4, a model drew a literal 4 × 4 grid). **The image model holds no
+  side** (the first made day: asked 6 to 8 squares for Easy, it drew 16,
+  three times; a scene asked at 19 came back 67): a drawing seldom fits.
+  Read smaller by each bead's most common colour, a 64-square scene at 24
+  lost its basket and mug; that was tried and dropped.
+- **Redrawn**: so the cleanest drawing of a size is shown to a text model
+  that sees pictures (`DAILY_ROWS_MODEL`, Opus by default) and redrawn as
+  rows of the band's side, keeping its layout. On the picnic scene at 24
+  and 32 this was the best of every way tried: the basket, mug, sunflower
+  and mushroom all in place, outlines one square wide.
+- **Written**, things only: the same model draws the thing as rows from its
+  words alone, every day, for the page to set beside the others. Opus's
+  10 × 10 mushroom, 12 × 12 sunflower and 16 × 16 mug passed every rule at
+  the first ask, US$0.02 to 0.04 each; GPT-6 Luna's were blobs, and Sonnet
+  refused the mushroom (`content_filter`).
+- The first route a size passes (rules, then the blind look) is kept:
+  drawn, then redrawn, then written.
+- **The same themes**: `tools/themed_days.sh` with the style set writes
+  `tools/days/themed-pixel/` on the themes of `tools/days/themed/`, and
+  Themed days shows the two ways one above the other. The Picture maker
+  has "Read as: Pixel art", the same reader on any image.
+
+The reader was tuned on eight drawings (`scratchpad`, not kept): four read
+right, two turned down for `mixed`, two (flash) read at a finer pitch and
+then turned down as too big. The rate: `gemini-3-pro-image` answers 429 to
+a new project's second request in a minute; `draw()` waits 20, 40 and 80
+seconds and asks again, so a drawing is one to four minutes, and the first
+made day (three drawings a size) took 1,352 s. Two drawings a size now;
+still too slow for the function's two days in 1,800 s unless the
+project's quota for the model is raised.
+
+**The first day made this way** (20261014, Garden Picnic, beside the first
+way's): all five sizes kept, in 1,578 s and US$0.55 of OpenRouter (Opus)
+plus ten drawings on Vertex's credits. Easy (mushroom) and Medium (mug)
+were redrawn from Pro's drawings, Button Box's Hard (sunflower) written
+from words (its two redraws were 71% filled, over the rule), and both
+scenes redrawn; not one of Pro's drawings fitted its size as drawn. Next
+to the first way's pictures every one has its outline and reads. The
+project's image quota is 2 a minute a model, and an increase is refused
+for now (`NOT_ENOUGH_USAGE_HISTORY`, a new project).
+

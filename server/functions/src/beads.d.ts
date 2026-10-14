@@ -3,11 +3,17 @@
  *  same file. */
 declare const Beads: {
   PALETTE: Record<string, string>;
+  RULES: Record<number, {colours: number[]; fill: number[]}>;
   SIZES: number[];
   optionsFor(size: number): Beads.Options;
   fillOf(rows: string[]): number;
   check(rows: string[], size: number): Beads.Check[];
   convert(rgba: Uint8Array | Uint8ClampedArray, width: number, height: number, opt: Beads.Options): {rows: string[]};
+  /** Pixel art read at its own squares; null when no grid is found. */
+  snap(rgba: Uint8Array | Uint8ClampedArray, width: number, height: number): Beads.Snapped | null;
+  /** A snapped drawing as a band's rows, or `why` it is not one. */
+  fromSnap(sn: Beads.Snapped, size: number, colours: number, scene: boolean, slack: number):
+    {rows?: string[]; why?: string; w?: number; h?: number};
 };
 declare namespace Beads {
   interface Options {
@@ -21,6 +27,13 @@ declare namespace Beads {
     px: number;
     py: number;
     vivid: number;
+  }
+  interface Snapped {
+    cols: number;
+    rows: number;
+    pitch: number[];
+    mixed: number;
+    fit: number;
   }
   interface Check {
     ok: boolean;

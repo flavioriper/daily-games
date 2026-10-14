@@ -142,6 +142,8 @@ header h2 { font-size: 26px; margin: 0; letter-spacing: -.02em; }
 .tday h3 { font-size: 18px; margin: 0; text-transform: none; letter-spacing: 0; color: var(--ink); font-weight: 600; }
 .tday .when { color: var(--muted); font-size: 12px; margin: 2px 0 8px; font-variant-numeric: tabular-nums; }
 .tday .scene { color: var(--ink2); margin: 0 0 12px; max-width: 80ch; }
+.tday .way { color: var(--ink2); font-size: 13px; margin: 16px 0 8px; }
+.tday .way b { color: var(--ink); }
 .levels { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
 .levels .pic.bank { border-style: dashed; }
 .levels .pic .hole { aspect-ratio: 1; border-radius: 8px; display: grid; place-items: center; color: var(--muted);
@@ -474,7 +476,7 @@ function gallery() {
 // tools/beads.js, the file the night's pictures are made with.
 /*BEADS*/
 const BEADS = Object.entries(Beads.PALETTE).map(([ch, hex]) => [ch, "#" + hex]);
-const conv = { ...Beads.optionsFor(10), img: null, id: "picture", edits: {}, brush: null, rows: null };
+const conv = { ...Beads.optionsFor(10), read: "average", img: null, id: "picture", edits: {}, brush: null, rows: null };
 const setOfSize = n => GALLERY.sets.find(s => s.kind === "pixels" && s.pictures[0]?.rows.length === n);
 const rulesOf = Beads.rulesOf, checkPicture = Beads.check;
 function convRun() {
@@ -487,6 +489,7 @@ function convRun() {
   const sw = Math.max(1, Math.round(conv.img.naturalWidth * s)), sh = Math.max(1, Math.round(conv.img.naturalHeight * s));
   const read = el("canvas", { width: sw, height: sh }).getContext("2d", { willReadFrequently: true });
   read.drawImage(conv.img, 0, 0, sw, sh);
+  if (conv.read === "pixel") return convPixel(read, sw, sh);
   const made = Beads.convert(read.getImageData(0, 0, sw, sh).data, sw, sh, conv), fr = made.frame;
   const wk = { ...made.work, cv: el("canvas", { width: made.work.w, height: made.work.h }) };
   wk.cv.getContext("2d").drawImage(conv.img, 0, 0, wk.w, wk.h);
@@ -500,6 +503,29 @@ function convRun() {
   ctx.strokeStyle = "#2a78d6"; ctx.lineWidth = 1.5; ctx.strokeRect(fr[0], fr[1], fr[2] * N, fr[2] * N);
   wk.cv.style.aspectRatio = wk.w + " / " + wk.h;
   $("convsrc").append(wk.cv);
+  convShow(rows, N);
+}
+// Pixel art read at its own squares (Beads.snap, as the night's pixel way):
+// the source with the squares found in it, and the picture padded into the
+// band's square, or why it is not one.
+function convPixel(read, sw, sh) {
+  const N = conv.size, sn = Beads.snap(read.getImageData(0, 0, sw, sh).data, sw, sh);
+  const cv = el("canvas", { width: sw, height: sh }), ctx = cv.getContext("2d");
+  ctx.drawImage(conv.img, 0, 0, sw, sh);
+  cv.style.aspectRatio = sw + " / " + sh;
+  $("convsrc").append(cv);
+  if (!sn) { $("convnote").textContent = "No squares found in it: this is not pixel art, or not of squares this reader finds."; $("convjson").value = ""; return; }
+  ctx.strokeStyle = "rgba(42,120,214,.7)"; ctx.lineWidth = 1;
+  for (const x of sn.xs) { ctx.beginPath(); ctx.moveTo(x + .5, 0); ctx.lineTo(x + .5, sh); ctx.stroke(); }
+  for (const y of sn.ys) { ctx.beginPath(); ctx.moveTo(0, y + .5); ctx.lineTo(sw, y + .5); ctx.stroke(); }
+  const got = Beads.fromSnap(sn, N, conv.colours, conv.frame !== "subject", 3);
+  const read2 = `read as ${sn.cols} × ${sn.rows} squares of ${sn.pitch[0].toFixed(1)} px, ${sn.mixed} not one colour` + (got.w ? ` · the drawing ${got.w} × ${got.h}` : "");
+  if (!got.rows) { $("convres").append(el("div", { class: "empty" }, got.why)); $("convnote").textContent = read2; $("convjson").value = ""; return; }
+  const chars = [...got.rows.join("")].map((c, j) => conv.edits[j] ?? c);
+  conv.rows = Array.from({ length: N }, (_, y) => chars.slice(y * N, y * N + N).join(""));
+  convShow(conv.rows, N, read2);
+}
+function convShow(rows, N, said) {
   const pic = { id: conv.id, rows };
   const small = thumb({ kind: "pixels" }, pic); small.className = "small"; small.title = "at a gallery card's size";
   $("convres").append(thumb({ kind: "pixels" }, pic), small);
@@ -507,7 +533,7 @@ function convRun() {
     s.append(el("span", { class: "dot", style: `background: var(--${c.ok ? "good" : "critical"})` }), (c.ok ? "✓ " : "✗ ") + c.text); $("convflags").append(s); }
   const set = setOfSize(N), users = set ? set.users.map(u => `${titleOf(u[0])} ${levelName(u[0], u[1])}`).join(", ") : "nothing";
   const edits = Object.keys(conv.edits).length;
-  $("convnote").textContent = `${[...rows.join("")].filter(c => c !== ".").length} beads · read at this size by ${users}`
+  $("convnote").textContent = (said ? said + " · " : "") + `${[...rows.join("")].filter(c => c !== ".").length} beads · read at this size by ${users}`
     + (rulesOf(N).loose ? " · this set has no written rule: the ranges are what its thirty pictures are" : "")
     + (edits ? ` · ${edits} painted by hand` : "");
   const slug = conv.id.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "") || "picture";
@@ -546,6 +572,8 @@ function convertView() {
   ctl.append(drop, pick,
     field("Size", seg("size", [10, 12, 16, 24, 32].map(n => [n, String(n)]), convSize),
       { 10: "Easy", 12: "Medium", 16: "Button Box's Hard", 24: "Hard", 32: "Insane" }[conv.size] + ` · ${rule.colours[0]}–${rule.colours[1]} colours`),
+    field("Read as", seg("read", [["average", "A drawing"], ["pixel", "Pixel art"]]),
+      conv.read === "pixel" ? "Read at its own squares, never shrunk: kept only when it fits the size. Frame says whether it is a thing (Subject) or a scene that fills." : "Each square the average of what it covers."),
     field("Frame", seg("frame", [["subject", "Subject"], ["crop", "Crop"], ["pad", "Whole"]]),
       { subject: "The subject alone on a bare board, as the small pictures are.", crop: "A square cut from the middle.", pad: "The whole image, bare where it ends." }[conv.frame]),
     field("Background", seg("bg", [["auto", "Edge"], ["all", "Edge, holes too"], ["alpha", "None"]]),
@@ -584,7 +612,7 @@ addEventListener("paste", e => { if (state.view !== "convert") return;
 // --- the themed days: what the night would make, and what became of it -----
 // tools/themed_days.sh's days (server/functions' `cli.js themed`): the theme,
 // the picture each size came to, and every drawing with its verdicts.
-const THEMED = DATA.themed || [];
+const THEMED = DATA.themed || [], PIXEL = DATA.themedPixel || [];
 const SIZE_FOR = { 10: "Easy", 12: "Medium", 16: "Button Box's Hard", 24: "Hard", 32: "Insane" };
 function themedView() {
   const host = $("themed"); host.textContent = "";
@@ -595,35 +623,52 @@ function themedView() {
   for (const d of THEMED) {
     const box = el("section", { class: "panel tday" });
     if (!d.theme) { box.append(el("h3", {}, "No theme"), el("div", { class: "when" }, fmtDate(d.day) + " · the day is the bank's")); host.append(box); continue; }
+    const px = PIXEL.find(p => p.day === d.day);
     box.append(el("h3", { class: "round" }, d.theme.name.en), el("div", { class: "when" },
-      `${fmtDate(d.day)} · ${d.theme.name.pt} · ${d.theme.name.es} · US$${(d.cost || 0).toFixed(2)} · ${d.seconds} s · ${d.drafts.length} drawings`),
+      `${fmtDate(d.day)} · ${d.theme.name.pt} · ${d.theme.name.es}`),
       el("p", { class: "scene" }, d.theme.scene));
-    const levels = el("div", { class: "levels" });
-    for (const n of Beads.SIZES) {
-      const pic = d.pictures?.sizes?.[n], card = el("div", { class: "pic" + (pic ? "" : " bank") });
-      card.append(pic ? thumb({ kind: "pixels" }, pic) : el("div", { class: "hole" }, "the bank's"),
-        el("div", { class: "name" }, pic ? pic.id.replace(/_/g, " ") : "–"), el("div", { class: "use" }, `${n} × ${n} · ${SIZE_FOR[n]}`));
-      levels.append(card);
-    }
-    const more = el("details"), list = el("div", { class: "drafts" });
-    more.append(el("summary", {}, "The drawings and what was said of them"), list);
-    for (const dr of d.drafts) {
-      const row = el("div", { class: "draft" }), side = el("div");
-      row.append(dr.file ? el("img", { src: "days/themed/" + dr.file, loading: "lazy", alt: dr.what }) : el("div", { class: "hole" }, "no drawing"), side);
-      side.append(el("div", { class: "what" }, `${dr.what.replace(/_/g, " ")} · drawing ${dr.draft + 1}`));
-      if (dr.error) side.append(el("div", { class: "use" }, dr.error));
-      const tries = el("div", { class: "tries" });
-      for (const t of dr.tried) {
-        const tr = el("div", { class: "try" }), say = el("div");
-        const failed = t.checks.filter(c => !c.ok).map(c => c.text);
-        say.append(el("b", {}, `${t.size} × ${t.size}: ${t.kept ? "kept" : "turned down"}`), el("br"),
-          failed.length ? "rules: " + failed.join("; ") : t.look ? `seen as: ${t.look.said}${t.look.wrong ? " · wrong: " + t.look.wrong : ""}` : "");
-        tr.append(thumb({ kind: "pixels" }, { id: dr.what, rows: t.rows }), say); tries.append(tr);
-      }
-      side.append(tries); list.append(row);
-    }
-    box.append(levels, more); host.append(box);
+    themedWay(box, d, "days/themed/", px ? "The first way: a smooth drawing, averaged down" : "");
+    if (px) themedWay(box, px, "days/themed-pixel/", "Pixel art: drawn as pixel art and read at its own squares, or that drawing redrawn to size by a text model; things also written from words");
+    host.append(box);
   }
+}
+// One way of making a day's pictures: the picture each size came to, and
+// every drawing (or written picture) with what was said of it.
+function themedWay(box, d, dir, title) {
+  if (title) box.append(el("div", { class: "way" }, el("b", {}, title),
+    ` · US$${(d.cost || 0).toFixed(2)}${d.cost ? "" : " on OpenRouter (Vertex's drawings are not counted)"} · ${d.seconds} s · ${d.drafts.length} drafts`));
+  const levels = el("div", { class: "levels" });
+  for (const n of Beads.SIZES) {
+    const pic = d.pictures?.sizes?.[n], card = el("div", { class: "pic" + (pic ? "" : " bank") });
+    const how = pic && (d.drafts.find(dr => dr.tried.some(t => t.kept && t.size === n))?.tried.find(t => t.kept)?.route || "");
+    card.append(pic ? thumb({ kind: "pixels" }, pic) : el("div", { class: "hole" }, "the bank's"),
+      el("div", { class: "name" }, pic ? pic.id.replace(/_/g, " ").replace(/^scene\d+$/, "scene") : "–"),
+      el("div", { class: "use" }, `${n} × ${n} · ${SIZE_FOR[n]}${{ rows: " · written", drawn: " · drawn", redrawn: " · redrawn" }[how] || ""}`));
+    levels.append(card);
+  }
+  const more = el("details"), list = el("div", { class: "drafts" });
+  more.append(el("summary", {}, "The drawings and what was said of them"), list);
+  for (const dr of d.drafts) {
+    const row = el("div", { class: "draft" }), side = el("div");
+    const art = dr.file ? el("img", { src: dir + dr.file, loading: "lazy", alt: dr.what })
+      : el("div", { class: "hole" }, dr.what.endsWith("(rows)") ? "written from words, no drawing" : "no drawing");
+    row.append(art, side);
+    side.append(el("div", { class: "what" }, `${dr.what.replace(/_/g, " ")} · ${/\((rows|redrawn)\)$/.test(dr.what) ? "try" : "drawing"} ${dr.draft + 1}`));
+    if (dr.asked) side.append(el("div", { class: "use" }, `asked for ${dr.asked} × ${dr.asked}` + (dr.snap
+      ? ` · read as ${dr.snap.cols} × ${dr.snap.rows} squares of ${dr.snap.pitch} px, ${dr.snap.mixed} not one colour` +
+        (dr.snap.w ? ` · the thing ${dr.snap.w} × ${dr.snap.h}` : "") + (dr.snap.why ? ` · not used: ${dr.snap.why}` : "") : "")));
+    if (dr.error) side.append(el("div", { class: "use" }, dr.error));
+    const tries = el("div", { class: "tries" });
+    for (const t of dr.tried) {
+      const tr = el("div", { class: "try" }), say = el("div");
+      const failed = t.checks.filter(c => !c.ok).map(c => c.text);
+      say.append(el("b", {}, `${t.size} × ${t.size}: ${t.kept ? "kept" : "turned down"}`), el("br"),
+        failed.length ? "rules: " + failed.join("; ") : t.look ? `seen as: ${t.look.said}${t.look.wrong ? " · wrong: " + t.look.wrong : ""}${!t.kept && t.look.ok ? " (passed; the size already had one)" : ""}` : "");
+      tr.append(thumb({ kind: "pixels" }, { id: dr.what, rows: t.rows }), say); tries.append(tr);
+    }
+    side.append(tries); list.append(row);
+  }
+  box.append(levels, more);
 }
 
 // --- the page ---------------------------------------------------------------

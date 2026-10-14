@@ -34,6 +34,10 @@ export interface Pictures {
 
 /** What became of one size of one draft: for the dashboard, not the phone. */
 export interface Tried {
+  /** How the rows were made: a drawing averaged down ("sticker"), a pixel
+   *  art drawing read at its squares ("drawn"), that drawing redrawn as rows
+   *  by a text model ("redrawn"), or rows it wrote from words ("rows"). */
+  route?: "sticker" | "drawn" | "redrawn" | "rows";
   size: number;
   rows: string[];
   checks: Beads.Check[];
@@ -48,6 +52,12 @@ export interface Draft {
   draft: number;
   /** The drawing's file, when the caller kept it. */
   file?: string;
+  /** A pixel art drawing: the side it was asked to be drawn at, and what
+   *  the reader found in it (its squares, their pitch in the image's
+   *  pixels, how many of them hold a finer drawing, and why it was not
+   *  read into the band when it was not). */
+  asked?: number;
+  snap?: {cols: number; rows: number; pitch: number; mixed: number; w?: number; h?: number; why?: string; pooled?: number};
   error?: string;
   tried: Tried[];
 }
@@ -65,6 +75,38 @@ const DECOYS = ["umbrella", "bicycle", "guitar", "rocket", "anchor", "teapot", "
 const INKS: Record<number, string> = {10: "four", 12: "five", 16: "seven"};
 
 const OBJECT = (what: string, size: number) => `Draw ONE thing: ${what}. Alone, centred and large on a plain pure white background. A children's sticker drawing: flat solid colours, a thick dark brown outline, chunky simple shapes, in exactly ${INKS[size]} clearly different colours, each over a good part of it and none over half of it. No shading, no gradients, no highlights, no shadow under it, no white sticker border round it, nothing else in the picture, no text or letters. A square picture.`;
+
+/** "pixel" (DAILY_PICTURE_STYLE): drawn as pixel art and read at its own
+ *  squares, never averaged, or redrawn or written as rows by a text model
+ *  (pixelDay). Otherwise the first way, a smooth drawing averaged down. */
+export function pixelStyle(): boolean {
+  return (process.env.DAILY_PICTURE_STYLE ?? "").trim() === "pixel";
+}
+/** The model that writes rows (DAILY_ROWS_MODEL): the strongest of those
+ *  tried on 2026-10-14; a cheaper writer's mushroom was a blob. */
+export const DEFAULT_ROWS_MODEL = "anthropic/claude-opus-5.5";
+
+const PIXEL_OBJECT = (what: string, side: number, colours: number) => `Pixel art sprite of ${what}, exactly ${side} by ${side} pixels, upscaled so every pixel is one big square block. No grid lines, one sprite only. Every pixel one flat colour, a one-pixel black outline around it, no anti-aliasing, no shading gradients, at most ${colours} colours. Plain white background, centred, nothing else, no text. Cute cozy kawaii style.`;
+
+const PIXEL_SCENE = (what: string, side: number, colours: number) => `Pixel art of a whole scene, exactly ${side} by ${side} pixels, upscaled so every pixel is one big square block, filling the whole square image edge to edge with no border and no white margin: ${what} Very low resolution and chunky, no grid lines. Every pixel one flat colour, dark outlines one pixel wide, no anti-aliasing, no gradients, at most ${colours} colours, big simple shapes, no text, no people. Cute cozy style.`;
+
+/** The image models draw a sprite about a third over the side they are
+ *  asked for, and a scene about a quarter over (read off five drawings,
+ *  2026-10-14): the first ask is under the band's side by that much, and
+ *  each next one by what the last came out at. */
+const FIRST_ASK = {thing: .75, scene: .8};
+/** Drawings of one size before it is redrawn: a drawing on
+ *  gemini-3-pro-image is one to four minutes with its rate limit. */
+const PIXEL_DRAWINGS = 2;
+
+const ROWS_SYSTEM = `You are a pixel artist making cute cozy pixel art for a children's bead puzzle. You draw by writing rows of letters, one letter a square; "." is an empty square. The beads are: ${Object.entries(Beads.PALETTE).map(([k, v]) => `${k} #${v}`).join(", ")}. d (dark brown) is the darkest bead and makes the outline.`;
+
+const ROWS_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["rows"],
+  properties: {rows: {type: "array", items: {type: "string"}}},
+};
 
 const SCENE = (what: string) => `Draw this scene as a flat children's illustration that fills the whole square picture from edge to edge, with no border, no frame and no white margin: ${what} Flat solid colours with thick dark brown outlines, a few big simple shapes, eight to ten clearly different colours and no one colour over a third of the picture. No shading, no gradients, no text or letters, no faces.`;
 
@@ -180,6 +222,12 @@ export async function makeDay(day: number, theme: Theme,
   const drafts: Draft[] = [];
   if (!available()) return {doc: null, drafts};
   const sizes: Record<string, Picture> = {};
+  if (pixelStyle()) {
+    await pixelDay(day, theme, sizes, drafts, keep);
+    const got = Object.keys(sizes);
+    console.log(`pictures: day ${day} (${theme.id}), pixel art, kept ${got.join("/") || "none"} in ${drafts.length} drafts`);
+    return {doc: got.length > 0 ? {v: 1, theme: theme.id, sizes} : null, drafts};
+  }
   const plan: {what: string; thing: Thing | null; prompt: string; sizes: number[]}[] = [
     ...theme.objects.map((o, i) => ({what: o.id, thing: o, prompt: OBJECT(o.draw, [10, 12, 16][i]), sizes: [[10], [12], [16]][i]})),
     {what: "scene", thing: null, prompt: SCENE(theme.scene), sizes: [24, 32]},
@@ -203,7 +251,7 @@ export async function makeDay(day: number, theme: Theme,
             checks = Beads.check(rows, size);
             if (checks.every((c) => c.ok)) break;
           }
-          const tried: Tried = {size, rows, checks, kept: false};
+          const tried: Tried = {route: "sticker", size, rows, checks, kept: false};
           draft.tried.push(tried);
           if (!tried.checks.every((c) => c.ok)) continue;
           tried.look = item.thing === null ? await lookScene(rows, theme) : await lookThing(day, rows, item.thing, theme);
@@ -221,4 +269,125 @@ export async function makeDay(day: number, theme: Theme,
   const got = Object.keys(sizes);
   console.log(`pictures: day ${day} (${theme.id}), kept ${got.join("/") || "none"} in ${drafts.length} drawings`);
   return {doc: got.length > 0 ? {v: 1, theme: theme.id, sizes} : null, drafts};
+}
+
+/** The rules, then the blind look; a picture both pass is the size's when
+ *  the size has none yet. */
+async function judge(day: number, theme: Theme, thing: Thing | null, tried: Tried, sizes: Record<string, Picture>): Promise<void> {
+  if (!tried.checks.every((c) => c.ok)) return;
+  tried.look = thing === null ? await lookScene(tried.rows, theme) : await lookThing(day, tried.rows, thing, theme);
+  if (!tried.look.ok || sizes[tried.size] !== undefined) return;
+  tried.kept = true;
+  sizes[tried.size] = {id: thing === null ? "scene" : thing.id, rows: tried.rows,
+    name: thing === null ? theme.name : {en: thing.name, pt: thing.pt, es: thing.es}};
+}
+
+/** Rows a text model answered, when they are the band's side in beads. */
+function rowsOf(out: {rows?: unknown}, size: number): string[] | null {
+  const rows = Array.isArray(out.rows) ? out.rows.map((r) => String(r)) : [];
+  const ok = rows.length === size && rows.every((r) => r.length === size &&
+    [...r].every((c) => c === "." || Beads.PALETTE[c] !== undefined));
+  return ok ? rows : null;
+}
+
+/**
+ * The pixel art way, each size on its own:
+ *
+ * 1. **Drawn**: an image model draws pixel art, read at the squares it drew
+ *    (Beads.snap) and kept only at its own size: a thing padded into the
+ *    band's square, a scene a little over cut to its middle, never shrunk.
+ *    A thing drawn too big is asked for again at the side that would have
+ *    fitted. The image models hold no side they are asked for (2026-10-14:
+ *    asked for 8 squares, 16; for 19, 67), so this often comes to nothing.
+ * 2. **Redrawn**: a text model that sees pictures is shown the cleanest of
+ *    those drawings and redraws it as rows of the band's side, keeping its
+ *    layout and its things.
+ * 3. **Written**, things only: the text model draws the thing as rows from
+ *    its words alone. Run every day beside the others, for the dashboard.
+ *
+ * The first that passes the rules and the blind look is the size's.
+ */
+async function pixelDay(day: number, theme: Theme, sizes: Record<string, Picture>, drafts: Draft[],
+  keep?: (name: string, d: Drawing) => string): Promise<void> {
+  const plan: {size: number; thing: Thing | null}[] = [
+    ...theme.objects.map((o, i) => ({size: [10, 12, 16][i], thing: o})),
+    {size: 24, thing: null}, {size: 32, thing: null},
+  ];
+  const rowsModel = (process.env.DAILY_ROWS_MODEL ?? "").trim() || DEFAULT_ROWS_MODEL;
+  for (const {size, thing} of plan) {
+    const what = thing === null ? `scene${size}` : thing.id;
+    const colours = Beads.RULES[size].colours[1];
+    // A thing leaves a bare square at an edge (the rules want one), so it
+    // fits in one less than the band's side.
+    const room = thing === null ? size : size - 1;
+    let side = Math.round(size * (thing === null ? FIRST_ASK.scene : FIRST_ASK.thing));
+    let clean: {url: string; share: number; file?: string} | null = null;
+    for (let n = 0; n < PIXEL_DRAWINGS && sizes[size] === undefined; n++) {
+      const draft: Draft = {what, draft: n, asked: side, tried: []};
+      drafts.push(draft);
+      try {
+        const drawing = await draw(thing === null ? PIXEL_SCENE(theme.scene, side, colours) : PIXEL_OBJECT(thing.draw, side, colours));
+        if (keep !== undefined) draft.file = keep(`${day}_${what}_${n}`, drawing);
+        const px = decoded(drawing);
+        const sn = Beads.snap(px.data, px.width, px.height);
+        if (sn === null) {
+          draft.error = "no squares found in it";
+          continue;
+        }
+        const share = sn.mixed / (sn.cols * sn.rows);
+        if (clean === null || share < clean.share) {
+          clean = {url: `data:${drawing.mime};base64,${drawing.bytes.toString("base64")}`, share, file: draft.file};
+        }
+        const got = Beads.fromSnap(sn, size, colours, thing === null, thing === null ? Math.round(size / 4) : 0);
+        draft.snap = {cols: sn.cols, rows: sn.rows, pitch: Math.round(sn.pitch[0] * 10) / 10, mixed: sn.mixed,
+          w: got.w, h: got.h, why: got.why};
+        if (got.w !== undefined && got.h !== undefined && thing !== null) {
+          // Never under 0.6 of the side: asked for 4 squares, a model drew
+          // a literal 4 by 4 grid (2026-10-14).
+          side = Math.min(size, Math.max(Math.ceil(size * .6), Math.round(side * room / Math.max(got.w, got.h))));
+        }
+        if (got.rows === undefined) continue;
+        const tried: Tried = {route: "drawn", size, rows: got.rows, checks: Beads.check(got.rows, size), kept: false};
+        draft.tried.push(tried);
+        await judge(day, theme, thing, tried, sizes);
+      } catch (e) {
+        draft.error = String(e).slice(0, 300);
+        console.error(`pictures: day ${day}, ${what}, draft ${n} failed`, e);
+      }
+    }
+    const shape = thing === null ?
+      `exactly ${size} rows of exactly ${size} letters, no empty squares, filling the picture` :
+      `exactly ${size} rows of exactly ${size} letters, the thing centred and large on empty squares (".") leaving at least one empty column or row at some edge`;
+    const limits = `at most ${colours} different beads including the outline, no one bead over ${thing === null ? "40% of the squares" : "half the drawn squares"}`;
+    // 2, redrawn from the cleanest drawing; 3, written from words.
+    const routes: {route: "redrawn" | "rows"; prompt: string; images?: string[]}[] = [];
+    if (clean !== null && sizes[size] === undefined) {
+      routes.push({route: "redrawn", images: [clean.url], prompt: `The picture is pixel art of ${thing === null ? "a scene" : thing.draw}. Redraw it as pixel art of ${shape}, keeping its layout and its main things recognisable: simplify, keep the dark outlines one square wide, ${limits}. Answer "rows".`});
+    }
+    if (thing !== null) {
+      routes.push({route: "rows", prompt: `Draw ${thing.draw} as cute cozy pixel art, ${shape}. A one-square dark outline (d) around the thing, flat colours, ${limits}. Think about the shape first, then answer "rows".`});
+    }
+    for (const r of routes) {
+      for (let n = 0; n < 2; n++) {
+        const draft: Draft = {what: `${what} (${r.route})`, draft: n, tried: []};
+        if (r.route === "redrawn") draft.file = clean?.file;
+        drafts.push(draft);
+        try {
+          const rows = rowsOf(await ask<{rows: string[]}>({system: ROWS_SYSTEM, prompt: r.prompt, schema: ROWS_SCHEMA,
+            model: rowsModel, images: r.images}), size);
+          if (rows === null) {
+            draft.error = `not ${size} rows of ${size} beads`;
+            continue;
+          }
+          const tried: Tried = {route: r.route, size, rows, checks: Beads.check(rows, size), kept: false};
+          draft.tried.push(tried);
+          await judge(day, theme, thing, tried, sizes);
+          if (tried.checks.every((c) => c.ok) && tried.look?.ok) break;
+        } catch (e) {
+          draft.error = String(e).slice(0, 300);
+          console.error(`pictures: day ${day}, ${what} ${r.route}, try ${n} failed`, e);
+        }
+      }
+    }
+  }
 }
