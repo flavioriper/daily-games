@@ -45,9 +45,22 @@ const INSET := 30.0
 ## A pin's head, and how near a finger has to come to one (a share of the
 ## shortest side between two pins, within the two bounds).
 const PIN_R := 11.0
-const PIN_R_MIN := 7.5
+const PIN_R_MIN := 5.5
 const SNAP := Vector2(24.0, 46.0)
 const SNAP_SHARE := 0.45
+## The magnet (the user, 2026-10-14: "some helper to help user when clicking
+## near the dot to avoid miss click by requiring something too accurate"):
+## past the snap, a finger still takes the nearest pin out to REACH (a share
+## of the shortest side, within the bound) when that pin is clearly the
+## nearest, REACH_CLEAR times nearer than the next; a halo on it says so
+## while the finger is down.
+const REACH_SHARE := 0.8
+const REACH_MAX := 78.0
+const REACH_CLEAR := 1.35
+## On its way a drag takes only a pin it passes this near (a share of the
+## snap): three pins all but in a line, and a straight drag to the far one
+## would be taken by the middle one at the full snap.
+const PASS_SHARE := 0.6
 ## A thread: its width, and its twist a dash every TWIST pixels.
 const YARN_W := 6.0
 const TWIST := 9.0
@@ -78,8 +91,11 @@ const PIN_HI := Color("a596c4")
 const MARK := Color("9d8c6f")
 ## A panel's mark is its corner count written in a stitched numeral, this
 ## tall at the most and at the least, and the yarn it is stitched in.
-const MARK_H := Vector2(10.0, 22.0)
+## (Small, the user, 2026-10-14: "make the numbers smaller to avoid
+## collision, user can zoom in to see it better".)
+const MARK_H := Vector2(7.0, 13.0)
 const MARK_W := 0.17
+const MARK_ROOM := 0.9
 ## The two numerals a panel can need, as strokes in a box a unit tall:
 ## a 4 is a stem and a bent arm, a 3 two bows.
 const GLYPH_FOUR := [[Vector2(0.62, 0.0), Vector2(0.62, 1.0)], [Vector2(0.62, 0.0), Vector2(0.0, 0.66), Vector2(0.78, 0.66)]]
@@ -89,8 +105,8 @@ const GLYPH_FOUR := [[Vector2(0.62, 0.0), Vector2(0.62, 1.0)], [Vector2(0.62, 0.
 const ZOOM_B := 84.0
 const ZOOM_INSET := 12.0
 const ZOOM_SIDE := 110.0
-const ZOOM_NEAR := Vector2(1.6, 3.0)
-const ZOOM_MOST := 3.5
+const ZOOM_NEAR := Vector2(1.6, 4.0)
+const ZOOM_MOST := 5.0
 ## The table's dressing: balls of yarn, a needle.
 const BALLS := [Color("e48a7a"), Color("8fb7a0"), Color("e9c46a")]
 
@@ -176,6 +192,7 @@ var _radius := 0.0
 var _mid := Vector2.ZERO
 var _k := 0.0
 var _snap := 30.0
+var _reach := 50.0
 var _pin_r := PIN_R
 var _px := PackedVector2Array()
 var _from_k := 0.0
@@ -219,6 +236,8 @@ var _shiver_at := {}
 # the hand
 var _cur := -1
 var _armed := -1
+## The thread is in hand by taps (a chain): it stays in hand pin to pin.
+var _chain := false
 var _press_pin := -1
 var _moved := false
 var _finger := Vector2(-1.0, -1.0)
@@ -246,6 +265,7 @@ func title() -> String: return "Yarn Hoop"
 func rules() -> String:
 	var out := tr("YH_RULES")
 	out += "\n\n" + tr("YH_RULES_COMBO")
+	out += "\n\n" + tr("YH_RULES_TAP")
 	if state.band >= State.INSANE:
 		out += "\n\n" + tr("YH_RULES_INSANE")
 	out += "\n\n" + tr("YH_RULES_ZOOM")
@@ -260,9 +280,8 @@ func tutorial_pages() -> Array:
 	var steps := [
 		[Diagram.Lesson.THREAD, "HTP_YH_THREAD", tr("HTP_YH_THREAD_BODY")],
 		[Diagram.Lesson.FILL, "HTP_YH_FILL", tr("HTP_YH_FILL_BODY")],
-		[Diagram.Lesson.COMBO, "HTP_YH_COMBO", tr("HTP_YH_COMBO_BODY")]]
-	if state.band >= State.INSANE:
-		steps.append([Diagram.Lesson.BLIND, "HTP_YH_BLIND", tr("HTP_YH_BLIND_BODY")])
+		[Diagram.Lesson.COMBO, "HTP_YH_COMBO", tr("HTP_YH_COMBO_BODY")],
+		[Diagram.Lesson.TAP, "HTP_YH_TAP", tr("HTP_YH_TAP_BODY")]]
 	if hints > 0:
 		steps.append([Diagram.Lesson.HINT, "HTP_YH_HINT",
 			tr("HTP_YH_HINT_BODY_ONE") if hints == 1 else tr("HTP_YH_HINT_BODY_N") % hints])
@@ -358,6 +377,7 @@ func _begin() -> void:
 func _deal() -> void:
 	_cur = -1
 	_armed = -1
+	_chain = false
 	_press_pin = -1
 	_refused = -1
 	_stroke = 0
@@ -418,6 +438,7 @@ func _layout() -> void:
 	for s in state.sides:
 		shortest = minf(shortest, _px[s.x].distance_to(_px[s.y]))
 	_snap = clampf(shortest * SNAP_SHARE, SNAP.x, SNAP.y)
+	_reach = clampf(shortest * REACH_SHARE, _snap, REACH_MAX)
 	_pin_r = clampf(shortest * 0.16, PIN_R_MIN, PIN_R)
 	# the zoom's room is the whole table; close is the shortest side made
 	# wide enough for a finger, within bounds; none once the day is won
@@ -686,7 +707,7 @@ func _mark_into(b, k: int) -> void:
 	var room := INF
 	for m in n:
 		room = minf(room, Geometry2D.get_closest_point_to_segment(c, outline[m], outline[(m + 1) % n]).distance_to(c))
-	var tall := clampf(room * 1.25, MARK_H.x, MARK_H.y)
+	var tall := clampf(room * MARK_ROOM, MARK_H.x, MARK_H.y)
 	var wide := tall * MARK_W
 	var strokes: Array = []
 	match n:
@@ -781,8 +802,6 @@ func _marks_mesh() -> ArrayMesh:
 		return _marks
 	_marks_stale = false
 	_marks = null
-	if state.band >= State.INSANE:
-		return null
 	var b := Face.Builder.new()
 	for k in state.panels.size():
 		if not state.filled[k]:
@@ -936,6 +955,10 @@ func _moving_meshes(now: float, since: float) -> Array:
 			var mid := (a + _finger) * 0.5 + Vector2(0.0, a.distance_to(_finger) * SAG)
 			b.stroke(Face.Builder.bezier2(a, mid, _finger, 12), YARN_W, Color(YARN, 0.85))
 			b.disc(_finger, YARN_W * 0.9, YARN_HI)
+			# the magnet's halo: the pin the finger would take, let go here
+			var near := _reached(zoom.to_screen(_finger))
+			if near >= 0 and near != _refused:
+				b.disc(_px[near], _pin_r + 9.0, Color(YARN_HI, 0.35))
 	return [under, b.mesh() if not b.idx.is_empty() else null]
 
 ## A pin's turn in the entrance: from the top down, as the picture is read.
@@ -1138,46 +1161,91 @@ func _can_play() -> bool:
 	return not (is_done() or _solved_at > -INF)
 
 ## The pin a finger at `at` (the screen; the table as the zoom shows it)
-## means: the nearest still standing within the snap, -1 for none.
-func pin_at(at: Vector2, but := -1) -> int:
+## means: the nearest still standing within the snap, -1 for none. With
+## `reach` (a tap, or a drag let go), the magnet: out to the reach when it
+## is clearly the nearest. A drag on its way takes only what it passes
+## close to, or it would be pulled to pins beside its path.
+func pin_at(at: Vector2, but := -1, reach := false, within := -1.0) -> int:
+	var snap := (_snap if within < 0.0 else within) / zoom.k
 	var best := -1
-	var best_d := _snap / zoom.k
+	var best_d := INF
+	var next_d := INF
 	var lp := zoom.to_layout(at)
 	for v in _px.size():
 		if v == but or state.pin_open[v] <= 0:
 			continue
 		var d := _px[v].distance_to(lp)
 		if d < best_d:
+			next_d = best_d
 			best_d = d
 			best = v
-	return best
+		elif d < next_d:
+			next_d = d
+	if best < 0:
+		return -1
+	# within the snap it is taken; past it, only when clearly the nearest
+	if best_d < snap:
+		return best
+	if reach and best_d < _reach / zoom.k and best_d * REACH_CLEAR < next_d:
+		return best
+	return -1
 
 func press(at: Vector2) -> void:
 	if not _can_play():
 		return
-	var v := pin_at(at)
+	var v := pin_at(at, -1, true)
 	_finger = zoom.to_layout(at)
 	_moved = false
 	_press_pin = v
 	_pan_last = Vector2(-1.0, -1.0)
 	if v < 0:
-		_armed = -1
+		# bare linen: a thread held is put down; seen close, a drag pans
+		if _armed >= 0:
+			_put_down()
 		if zoom.zoomed():
 			_pan_last = at
 		_request()
 		return
-	_stroke = 0
-	_stroke_threads = 0
 	_refused = -1
-	if _armed >= 0 and _armed != v:
-		# the second tap of a tap-tap: the thread goes from the pin held
+	if _armed >= 0 and _armed == v:
+		# a tap on the pin held: the thread is put down
+		_put_down()
+	elif _armed >= 0:
+		# a tap with the thread held: it goes on from the pin held to this
+		# one and stays in hand there (the chain); refused, it is put down
 		_cur = _armed
 		_armed = -1
+		_chain = true
 		_step(v)
+		if _refused == v:
+			_put_down()
 	else:
+		_stroke = 0
+		_stroke_threads = 0
+		_chain = false
 		_cur = v
 		fx.cue("pick", randf_range(0.94, 1.06))
 	_request()
+
+## The pin a finger at `at` (screen) would take with the thread in hand,
+## within the magnet's reach, when a side joins it to the pin held; -1
+## for none.
+func _reached(at: Vector2) -> int:
+	if _cur < 0:
+		return -1
+	var v := pin_at(at, _cur, true)
+	if v < 0 or state.side_between(_cur, v) < 0:
+		return -1
+	return v
+
+## The thread in hand is put down: its combo ends.
+func _put_down() -> void:
+	_end_stroke()
+	_armed = -1
+	_cur = -1
+	_chain = false
+	_finger = Vector2(-1.0, -1.0)
+	fx.cue("pick", 0.82)
 
 func drag(at: Vector2) -> void:
 	if _pan_last.x >= 0.0:
@@ -1197,7 +1265,7 @@ func drag(at: Vector2) -> void:
 		var q := from.lerp(lp, float(m) / n)
 		if _refused >= 0 and q.distance_to(_px[_refused]) > snap:
 			_refused = -1
-		var v := pin_at(zoom.to_screen(q), _cur)
+		var v := pin_at(zoom.to_screen(q), _cur, false, -1.0 if m == n else _snap * PASS_SHARE)
 		if v >= 0 and v != _refused:
 			_step(v)
 			if _cur < 0 or not _can_play():
@@ -1207,13 +1275,23 @@ func drag(at: Vector2) -> void:
 		_moved = true
 	_request()
 
-func release(_at: Vector2) -> void:
+## Let go: a drag puts the thread down, its combo counted; a tap on a pin
+## with nothing in hand takes the thread up, and a chain keeps it.
+func release(at: Vector2) -> void:
 	_pan_last = Vector2(-1.0, -1.0)
 	if _cur < 0:
 		return
+	# let go near a pin the thread could reach along a side: it is taken
+	if _moved and _can_play():
+		var v := _reached(at)
+		if v >= 0:
+			_step(v)
 	var tapped := not _moved and _stroke_threads == 0 and _cur == _press_pin
-	_end_stroke()
-	_armed = _cur if tapped and _can_play() else -1
+	var keep := (tapped or _chain) and _can_play()
+	if not keep:
+		_end_stroke()
+		_chain = false
+	_armed = _cur if keep else -1
 	_cur = -1
 	_finger = Vector2(-1.0, -1.0)
 	_request()

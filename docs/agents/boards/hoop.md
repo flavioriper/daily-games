@@ -16,22 +16,45 @@
   that share none. A panel whose every side is threaded knits in, in its
   colour. A pin with nothing left to thread pops off. The pill reads panels
   filled of all, as the screenshots' 5/54.
+- **The magnet** (2026-10-14, the user: "some helper to help user when
+  clicking near the dot to avoid miss click by requiring something too
+  accurate"): a tap, or a drag let go, takes the nearest standing pin out
+  to `_reach` (0.8 of the shortest side, 24-78 px) when it is clearly the
+  nearest, `REACH_CLEAR` 1.35 times nearer than the next; within the snap
+  it is taken either way. A drag on its way takes only a pin it passes
+  within `PASS_SHARE` 0.6 of the snap (three pins all but in a line, and a
+  straight drag to the far one was taken by the middle one at the full
+  snap: `_win.gd` found it). A drag let go near a pin takes it only along
+  a side from the pin held (`_reached`), never as a refusal. A pale halo
+  on the pin the finger would take shows while it is down.
+- **The tap chain** (the same day: "keeping the line drawing till there is
+  an error or maybe a double click on the previous dot, so user can click
+  once into start point and keep clicking on the next one"): a tap on a
+  pin takes the thread up (as before); a tap on another lays the thread
+  along their side and the thread stays in hand there (`_chain`), on and
+  on, and the panels closed count as one combo until it is put down. Put
+  down by: a tap on the pin held, a tap on bare linen, or a tap no side
+  allows (the refusal still counts). A drag from a fresh press still puts
+  the thread down when let go. `YH_RULES_TAP`, and a fourth tutorial page
+  (`Lesson.TAP`: taps 3, 4, 1, 3, 0, 1, then a tap on 1 to put it down).
 - **The numerals** (2026-10-14, the user: "make the numbers clear (instead
   of just dots, write the number)"; they were dots at first, a numeral a
   panel through draw_string being a draw call a panel): a 3 and a 4 as
   strokes of grey yarn (`GLYPH_FOUR`, two bows for the 3) baked into the
   one marks mesh, so they cost nothing. A triangle's sits at its incentre,
-  a quad's at its middle, sized to the room about that point (1.25 x the
-  nearest side's distance, 10-22 px) so a thin panel's never spills; a
-  cramped panel's may touch its sides, but every panel says its count. They
-  scale with the zoom.
+  a quad's at its middle, sized to the room about that point (`MARK_ROOM`
+  0.9 x the nearest side's distance, `MARK_H` 7-13 px; they were 10-22
+  until the user asked for "smaller to avoid collision, user can zoom in
+  to see it better") so a thin panel's never spills; a cramped panel's may
+  touch its sides, but every panel says its count. They scale with the
+  zoom. Insane shows them too, since the same evening.
 - **The zoom** (the same day: "make sure it has zoom in and out properly";
   the web game zooms with the wheel and pans with a drag): `PanZoom`
   (ui/flat/pan_zoom.gd) over the whole table, every band. Its room is the
   full screen, so nothing is clipped: the table, ring and linen all come
   close like a camera, the pill, bubble and button stay on the glass. Close
   is the shortest side between two pins made `ZOOM_SIDE` (110 px) wide,
-  within 1.6-3x; the fingers may go to 3.5x. Two fingers pinch and pan, the
+  within 1.6-4x; the fingers may go to 5x. Two fingers pinch and pan, the
   wheel zooms on a desk, the round button at the foot's left (the thumb's
   side stays clear) steps whole / half way / close and back, and a finger
   pressed on bare linen when close pans (`PanZoom.pan_by`, new; a drag from
@@ -83,13 +106,19 @@
   there are `PANELS` x `OVER` (1.18). (7) `_quads`: two neighbours of one
   colour making a convex four-sided shape are one panel at `QUADS`.
   Measured on the 36 bank pictures and this Mac's cached themed ones (a
-  48 teapot, a 32 sun hat, two 24s): 24-29 / 44-56 / 78-88 / 129-142
-  panels, 5-43 ms, the shortest side on Insane 1.2-2 squares (about 32 px
-  on the phone, hence the zoom). Edges that are not Delaunay edges leave
+  48 teapot, a 32 sun hat, two 24s): 24-29 / 44-56 / 78-88 panels in
+  5-25 ms, and Insane 266-298 in 125-160 ms, its shortest side 0.8-1.6
+  squares (18-40 px on the phone, hence the zoom). Edges that are not Delaunay edges leave
   a triangle straddling two colours now and then; that is the look.
-- **Insane** is the biggest picture with no numbers (`YH_RULES_INSANE`,
-  the BLIND tutorial page). Nothing counts and nothing can be lost.
-- **Tools row**: the bulb on every band (3, 3, 2, 2; it threads a side of
+- **Insane** (2026-10-14 evening, the user: "keep the numbers, but make it
+  way more complex, like the others picture games does") is about 300
+  panels (`PANELS` 330 before the quads; 266-298 measured), pins 18-40 px
+  apart at the whole, cut at `TOLERANCE` 0.024 and `SPACING` 0.034, with
+  three hints; it is played through the zoom (close up to 4x, the fingers
+  to 5x), and the numbers show. The blind rule and its tutorial page went
+  with it. Nothing counts and nothing can be lost. The cut takes 125-160 ms
+  on this Mac and the knitting ~25 ms.
+- **Tools row**: the bulb on every band (3, 3, 2, 3; it threads a side of
   the panel nearest done) and the bin. **No Undo**: a thread is only ever
   taken along a side, so nothing laid is wrong. The seal: any Insane day, or
   a day with no thread refused ("Neat stitch").
@@ -111,7 +140,7 @@
   copied into `build/sfx_raw/hoop/`): `pick`, `stitch`, `fill`, `locked`,
   `enter`, `reset`, `double`, `run`, `whole`, `hint`, `solved`, `party`,
   `stamp`. All 13 pass `measure_sfx.py`; **none has been heard by the user**.
-- **Harnesses**: `tests/_shot_hoop.gd -- d=<0..3> rest|zoom|play|solve` (a
+- **Harnesses**: `tests/_shot_hoop.gd -- d=<0..3> rest|zoom|play|solve|howto` (a
   greedy drag through the board's own input path; `zoom` presses the
   button twice, pans from bare linen, drags close and wheels out),
   `tests/_probe_hoop.gd` (headless, every band), `tests/_win.gd -- hoop`
@@ -122,8 +151,8 @@
 ## Decided for the user, unconfirmed (2026-10-14)
 
 - The name, the hoop-and-knitting look, the purple pins and terracotta yarn.
-- Insane hides the numerals (the dots before them; the user asked for
-  numbers, not for Insane to show them).
+- The magnet's shares and the tap chain's three ways down (the user named
+  a tap on the held pin and an error; bare linen is mine).
 - The cut: every band off the big bank pictures (Easy no longer off the
   10-side ones); the carve, dissolve and spacing rules; the zoom on every
   band, as a camera over the whole table rather than clipped to the linen.

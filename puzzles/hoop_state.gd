@@ -31,11 +31,11 @@ const BANDS := [3, 2]
 const THEMED_SIDES := [48, 32, 24, 12, 10]
 const INSANE := 3
 ## About how many panels a band cuts its picture into.
-const PANELS := [26, 50, 90, 140]
+const PANELS := [26, 50, 90, 330]
 ## The cut's tolerance and the least distance between two pins, as shares of
 ## the picture's side; both grow while the picture cuts too fine.
-const TOLERANCE := [0.1, 0.07, 0.05, 0.036]
-const SPACING := [0.1, 0.075, 0.06, 0.05]
+const TOLERANCE := [0.1, 0.07, 0.05, 0.024]
+const SPACING := [0.1, 0.075, 0.06, 0.034]
 ## Triangles the split aims for, over the band's panels: the quads that
 ## follow take about that many back.
 const OVER := 1.18
@@ -55,7 +55,7 @@ const SPECK := 0.004
 ## The background carved off is at least this share (percent) of the
 ## picture's drawn squares.
 const BACKDROP := 15
-const HINTS_BY := [3, 3, 2, 2]
+const HINTS_BY := [3, 3, 2, 3]
 
 static var _bank := {}
 static var _bank_read := false

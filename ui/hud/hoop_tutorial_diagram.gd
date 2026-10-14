@@ -12,7 +12,8 @@ extends Control
 ##   that share no side is refused.
 ## - FILL: every side of a triangle threaded, and it knits in.
 ## - COMBO: one long drag closes the three triangles in a row.
-## - BLIND (Insane): the same triangle, with no corner dots to read.
+## - TAP: a tap on a pin, then taps on the next ones: the thread goes on
+##   from pin to pin and stays in hand; a tap on the pin held puts it down.
 ## - HINT: the bulb lays a thread.
 
 const Pal = preload("res://core/palette.gd")
@@ -21,7 +22,7 @@ const Face = preload("res://ui/faces/face.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const IconButton = preload("res://ui/hud/icon_button.gd")
 
-enum Lesson { THREAD, FILL, COMBO, BLIND, HINT }
+enum Lesson { THREAD, FILL, COMBO, TAP, HINT }
 
 const FINGER_R := 26.0
 const FINGER_ALPHA := 0.16
@@ -216,11 +217,13 @@ func _start() -> void:
 		Lesson.THREAD:
 			_stroke([0, 1], "HTP_YH_DRAG_CAP", 1.0)
 			_stroke([3, 2], "HTP_YH_NO_CAP", 1.8)
-		Lesson.FILL, Lesson.BLIND:
-			var cap := "HTP_YH_BLIND_CAP" if lesson == Lesson.BLIND else "HTP_YH_DRAG_CAP"
-			_stroke([0, 1, 3, 0], cap, 0.2)
-			_loop.tween_callback(_say.bind("HTP_YH_BLIND_CAP" if lesson == Lesson.BLIND else "HTP_YH_FILL_CAP"))
+		Lesson.FILL:
+			_stroke([0, 1, 3, 0], "HTP_YH_DRAG_CAP", 0.2)
+			_loop.tween_callback(_say.bind("HTP_YH_FILL_CAP"))
 			_loop.tween_interval(2.0)
+		Lesson.TAP:
+			_taps([3, 4, 1, 3, 0, 1], "HTP_YH_TAP_CAP", 1.2)
+			_taps([1], "HTP_YH_TAP_DOWN_CAP", 1.6)
 		Lesson.COMBO:
 			_stroke([3, 0, 1, 3, 4, 1, 2, 4], "HTP_YH_COMBO_CAP", 2.6)
 		Lesson.HINT:
@@ -256,6 +259,30 @@ func _stroke(path: Array, say: String, wait: float) -> void:
 	_loop.tween_callback(_lift)
 	_loop.tween_interval(wait)
 
+## The finger taps the pins of `path` one after another (a press and a
+## release on each, a move between): the thread goes on from pin to pin and
+## stays in hand; the caption turns to `say` first, then the hoop plays for
+## `wait`.
+func _taps(path: Array, say: String, wait: float) -> void:
+	if say != "":
+		_loop.tween_callback(_say.bind(say))
+	for m in path.size():
+		var v := int(path[m])
+		var from := int(path[m - 1]) if m > 0 else v
+		_loop.tween_method(func(t: float) -> void:
+			_finger = _art.pin_screen(from).lerp(_art.pin_screen(v), t), 0.0, 1.0, LEG if m > 0 else 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		_loop.tween_callback(func() -> void:
+			_down = true
+			_art.press(_art.pin_screen(v)))
+		_loop.tween_interval(0.12)
+		_loop.tween_callback(func() -> void:
+			_art.release(_art.pin_screen(v))
+			_down = false)
+		_loop.tween_interval(0.3)
+	_loop.tween_interval(0.25)
+	_loop.tween_callback(_lift)
+	_loop.tween_interval(wait)
+
 ## The finger presses the page's bulb, which lays a thread.
 func _press_chip() -> void:
 	_loop.tween_callback(_say.bind("HTP_YH_BULB_CAP"))
@@ -282,7 +309,7 @@ func _say(key: String) -> void:
 ## The hoop from the top: laid the first time, played again after.
 func _reset(first := false) -> void:
 	_lift()
-	var band := 3 if lesson == Lesson.BLIND else 0
+	var band := 0
 	if first or _art.state.pins.is_empty():
 		_art.lay(band)
 	else:
@@ -294,7 +321,7 @@ func _opening() -> String:
 	match lesson:
 		Lesson.THREAD, Lesson.FILL: return "HTP_YH_DRAG_CAP"
 		Lesson.COMBO: return "HTP_YH_COMBO_CAP"
-		Lesson.BLIND: return "HTP_YH_BLIND_CAP"
+		Lesson.TAP: return "HTP_YH_TAP_CAP"
 	return "HTP_YH_BULB_CAP"
 
 ## Motion reduced: the hoop as it lies, under the lesson's line.
