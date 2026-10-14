@@ -818,3 +818,40 @@ then "make the case slots follow the same button shape, not circle" and
   `tests/_probe_buttons.gd` 756 runs, 0 failures. Shots at
   `tests/_shot_buttons.gd -- d=1 play` seen by me, not yet by the user on a
   phone.
+
+## The socket back on a bared patch, and Hard zooms (2026-10-14, evening)
+
+The user, with a phone shot of Insane mid-play: "on Button box there is a
+bug where the slot is not showing, the purple is empty and it show as
+filled, and the hard mode should have a zoom feature just like insane".
+
+- **The cut tile forgot its centre** (`Art.tile` with `fine` false, the
+  eight-point tile of 2026-10-14 afternoon): its points were laid about the
+  origin, never moved to `at`. Every other use builds a unit about the
+  origin and places it by transform (the lite button's under-tile, face
+  and shadow in `units`), so those drew where they belonged; the bare
+  patch's socket is the one tile built in place (`_build_still`, a cell's
+  centre handed in), and on every big picture (`_cell` under `Art.SMALL`,
+  Hard and Insane) all of its sockets lay in a heap at the cloth's top
+  left corner. A bared patch was a flat square, the same as a sewn one:
+  "filled". Reproduced on this Mac with `tests/_shot_buttons.gd -- d=3
+  big` (the run lifted to the tin bared flat squares) and with a
+  throwaway probe printing the socket's vertices at 15 and 24 px (all
+  about (0, 0)). The tile now adds `at`, and its points run round in one
+  direction: before they zigzagged at each corner (a bow-tie the fan still
+  mostly covered, with a notch at each corner). The 44 px and over socket
+  (`round_rect`) was never wrong, so Easy and Medium showed theirs.
+- **Hard zooms** (`State.BIG_FROM` 2): the zoom button at the room's foot,
+  the pinch and the one-finger pan, the picture cut to its room when
+  close, the "Come close to a big picture" rules line and the tutorial's
+  ZOOM page, all as Insane has them. Hard deals the bank's 32s since the
+  morning (`BANK_BAND`), so its squares are 24 px on this screen and were
+  not pickable by sight without it. `tests/_probe_buttons.gd` plays Hard
+  one seed now, as a big band (its `band < BIG_FROM` test); 648 runs, 0
+  failures.
+- Read on `opengl3_angle`, 810x1440: Insane `big` whole at rest peak 149,
+  close 97 to 101 (as before); Hard `big` on a 40-square themed day (the
+  Mac's, 1128 buttons) whole at rest peak 225, going close 240, close 91
+  to 102; the Hard tutorial's five pages peak 157. Bared patches in the
+  `big` shots show the sunk ring on blue and white (they were flat in the
+  same shot before the fix). Not on a phone.

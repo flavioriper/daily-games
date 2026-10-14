@@ -130,22 +130,21 @@ static func sewn(b, at: Vector2, cell: float, col: Color) -> void:
 
 ## A rounded square about `at`, `r` from its middle to each side, its
 ## corners rounded by `tip`; `fine` false cuts each corner in two points.
+## The cut tile is laid about `at` as the round one is (until 2026-10-14 it
+## forgot `at`: a bare patch's socket on a big picture, the one tile built
+## in place rather than about the origin, lay at the cloth's corner, and
+## every bared patch read as a flat square, "filled"), and its eight points
+## run round in one direction (they zigzagged at each corner before, a
+## bow-tie the fan still mostly covered).
 static func tile(at: Vector2, r: float, tip: float, fine := true) -> PackedVector2Array:
 	if fine:
 		return Face.Builder.round_rect(at - Vector2(r, r), Vector2(r, r) * 2.0, tip)
-	var pts := PackedVector2Array()
 	var k := tip * 0.5
-	for c: Vector2 in [Vector2(-r, -r), Vector2(r, -r), Vector2(r, r), Vector2(-r, r)]:
-		var sx := signf(c.x)
-		var sy := signf(c.y)
-		# the two points of a cut corner, in winding order
-		if sx * sy < 0.0:
-			pts.append(c - Vector2(0.0, sy * k))
-			pts.append(c - Vector2(sx * k, 0.0))
-		else:
-			pts.append(c - Vector2(sx * k, 0.0))
-			pts.append(c - Vector2(0.0, sy * k))
-	return pts
+	return PackedVector2Array([
+		at + Vector2(-r, -r + k), at + Vector2(-r + k, -r),
+		at + Vector2(r - k, -r), at + Vector2(r, -r + k),
+		at + Vector2(r, r - k), at + Vector2(r - k, r),
+		at + Vector2(-r + k, r), at + Vector2(-r, r - k)])
 
 ## The gem's four facets between its edge (`r` out, corners in by `tip`)
 ## and its centre face (`face` out): top, left, right, bottom, each a

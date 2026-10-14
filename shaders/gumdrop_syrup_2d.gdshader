@@ -23,9 +23,11 @@ const vec3 MILK = vec3(0.96, 0.95, 0.94);
 // The amount the blob's edge lies at, and over which it is solid.
 const float EDGE_LO = 0.02;
 const float EDGE_HI = 0.09;
-// The lip: how far in from the edge it shades, and how dark.
+// The lip: how far in from the edge it shades, and how dark. Faint since
+// the tint spreads on after the release (2026-10-14): at 0.72 the thin
+// front of a spreading tint was a grey fringe over half the chunk.
 const float LIP_TO = 0.22;
-const float LIP = 0.72;
+const float LIP = 0.92;
 
 void fragment() {
 	vec3 pig = texture(TEXTURE, UV).rgb * AMOUNT_TOP;

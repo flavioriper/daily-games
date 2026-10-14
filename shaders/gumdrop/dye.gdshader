@@ -15,10 +15,24 @@ render_mode blend_disabled, unshaded;
 // three texels off it crosses a cell in half a minute, and in eight bits
 // it stops at a slope of two steps a read, a fifth of the scale across a
 // petal (the user, 2026-10-11, of a petal red at one end and blue at the
-// other: "colors are hard to mix"). A cell nothing is being poured into
-// is blended with eight texels far off as well (`far`), which makes it
-// one shade in a second or two; the cell under the tip keeps the near
-// blend only, so a pour fills as slowly as it did.
+// other: "colors are hard to mix"). Every texel of a chunk is blended
+// with eight texels far off as well (`far`), which carries a pour to
+// the chunk's far end in a few seconds.
+//
+// It is a tint in water (the user, 2026-10-14: "it should keep doing
+// the exactly same behavior of moving around to fill available space,
+// the difference is that the color will be way lighter after space
+// filled ... It has to act exactly like water tint"): the dye rides the
+// flow and both settles work on every texel, clear or tinted, whether
+// the button is held or not, and nothing of them adds or takes pigment.
+// Each settle is a mean over a symmetric stencil whose taps outside the
+// chunk read the texel's own, so the chunk's pigment is kept while it
+// spreads: a dab let go goes on spreading until it is one shade over its
+// whole chunk, paler for it, and a pour held pushes what is in ahead of
+// it until the chunk is full. For a day on 2026-10-14 a blob let go was
+// frozen instead (a `front` under which a texel took nothing, the flow
+// dropped a moment after the release), at the user's earlier word, read
+// too far.
 
 #include "res://shaders/gumdrop/fluid.gdshaderinc"
 
@@ -51,18 +65,6 @@ uniform float settle = 0.14;
 uniform float settle_r = 3.0;
 uniform float far = 0.4;
 uniform float far_r = 14.0;
-// A texel holding less than this (over AMOUNT_TOP) is clear to the far
-// settle: it neither takes from the far taps nor gives to them, so a
-// pour let go stays the blob it is and only its tinted part levels (the
-// user, 2026-10-14: "when player release, the liquid auto fill
-// everything"). Just under the blob's visible edge (gumdrop_syrup_2d's
-// EDGE_HI).
-uniform float front = 0.03;
-
-uniform float still = 0.2;
-// How much the dye rides the flow: all while the button is held over a
-// chunk, fading in a moment once it is let go (the screen's CARRY).
-uniform float carry = 1.0;
 
 // One texel of the dye, or the texel's own when it lies in another cell
 // or a wall: a wall is black, and reading it through the sampler's
@@ -100,45 +102,27 @@ void fragment() {
 		vec3 own = texelFetch(dye, here, 0).rgb;
 		vec2 v = vel_at(vel, UV * vec2(n), n);
 		vec2 back = UV - v * dt / vec2(n);
-		// The dye rides the flow while the chunk is poured into and for a
-		// moment after (`carry`), and then stays where it is: a flow at
-		// rest is slow but never nothing (the pressure's warm start keeps
-		// it drifting at a few texels a second), and traced back a fraction
-		// of a texel every frame a blob let go smeared over its whole chunk
-		// in a few seconds. A texel the flow barely moves (under `still`
-		// texels a frame) keeps its own dye for the same reason.
-		float moved = length(v * dt) * float(size.x) / float(n.x);
-		float ride = (squeezing > 0.5 && tip_cell == cell) ? 1.0 : carry;
-		vec3 d = mix(own, dye_at(back, own, cell), ride * smoothstep(still, still * 2.0, moved));
-		// both settles work inside the blob only: a clear texel (under
-		// `front`) neither takes nor gives, so the blob spreads by the flow
-		// and the pour alone and keeps its shape once the button is let go
-		bool in_blob = d.r + d.g + d.b >= front;
-		if (in_blob) {
-			int o = int(settle_r);
-			ivec2 near[4] = {ivec2(o, 0), ivec2(-o, 0), ivec2(0, o), ivec2(0, -o)};
-			vec3 about = vec3(0.0);
-			for (int i = 0; i < 4; i++) {
-				vec3 t = dye_texel(here + near[i], own, cell, size);
-				about += (t.r + t.g + t.b < front) ? d : t;
-			}
-			d = mix(d, about * 0.25, settle);
+		// the dye rides the flow, held or let go: a flow at rest is slow
+		// but never nothing, and its drift is the tint's own spreading
+		vec3 d = dye_at(back, own, cell);
+		// the near settle: a fold ironed, the pour's edge softened
+		int o = int(settle_r);
+		ivec2 near[4] = {ivec2(o, 0), ivec2(-o, 0), ivec2(0, o), ivec2(0, -o)};
+		vec3 about = vec3(0.0);
+		for (int i = 0; i < 4; i++) {
+			about += dye_texel(here + near[i], own, cell, size);
 		}
-		if ((squeezing < 0.5 || tip_cell != cell) && in_blob) {
-			int a = int(far_r);
-			int g = int(far_r * 0.7071 + 0.5);
-			ivec2 taps[8] = {ivec2(a, 0), ivec2(-a, 0), ivec2(0, a), ivec2(0, -a), ivec2(g, g), ivec2(-g, -g), ivec2(g, -g), ivec2(-g, g)};
-			vec3 wide = vec3(0.0);
-			for (int i = 0; i < 8; i++) {
-				vec3 t = dye_texel(here + taps[i], own, cell, size);
-				// a clear tap is no part of the blob: this texel's own instead
-				wide += (t.r + t.g + t.b < front) ? d : t;
-			}
-			// levelled, shade and amount, inside the blob only: its clear
-			// surroundings take nothing, so the blob keeps its outline while
-			// its body evens out and two flavours in it become one
-			d = mix(d, wide * 0.125, far);
+		d = mix(d, about * 0.25, settle);
+		// the far settle: the chunk levelled, shade and amount, so a tint
+		// reaches its far end in a few seconds and two flavours become one
+		int a = int(far_r);
+		int g = int(far_r * 0.7071 + 0.5);
+		ivec2 taps[8] = {ivec2(a, 0), ivec2(-a, 0), ivec2(0, a), ivec2(0, -a), ivec2(g, g), ivec2(-g, -g), ivec2(g, -g), ivec2(-g, g)};
+		vec3 wide = vec3(0.0);
+		for (int i = 0; i < 8; i++) {
+			wide += dye_texel(here + taps[i], own, cell, size);
 		}
+		d = mix(d, wide * 0.125, far);
 		if (squeezing > 0.5 && tip_cell == cell) {
 			vec2 off = UV - tip;
 			float g = exp(-dot(off, off) / (radius * radius));

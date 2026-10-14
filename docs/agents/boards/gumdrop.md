@@ -468,3 +468,67 @@ the top amount falling from 0.57 to 0.28 as the body levels; the jet's
 fingers stay as the blob's outline. The pour while held is as it was
 (`pour` reads the same). Unseen by the user on this; the knobs are
 `front`, `still`, `CARRY`.
+
+### A tint in water (2026-10-14, evening)
+
+The user, over the day before's "a pour let go stays where it is": "right
+now when player release button, the color freeze. Instead, it should keep
+doing the exactly same behavior of moving around to fill available space,
+the difference is that the color will be way lighter after space filled.
+Also, if user keep pressing the button, the color should keep expanding to
+take all available space, since it's a liquid as user keep pressed, the
+new liquid will pull the already in liquid further and further till it
+fill everything, if 100% no more liquid can be added. It has to act
+exactly like water tint." So the earlier "auto fill everything" was about
+the result (the chunk one flat shade, as dark as the pour, in a second),
+not about the spreading; the three gates of that entry read it too far
+and are gone.
+
+- **The dye spreads and keeps its pigment** (`shaders/gumdrop/
+  dye.gdshader`): it rides the flow held or let go (`carry` and `still`
+  gone), and both settles work on every texel of every chunk, clear or
+  tinted, under the tip or not (`front` gone, the far settle no longer off
+  in the poured chunk). Each settle is a mean over a symmetric stencil
+  whose taps outside the chunk read the texel's own, so the chunk's
+  pigment is kept as it spreads (textbook advection-diffusion, mass
+  conserved): a dab let go goes on spreading until it is one shade over
+  the chunk, paler for it; a pour held pushes what is in ahead of it to
+  the far end. `FAR` is 0.08 (0.4 made the chunk one shade in a second,
+  the "auto fill"; a tint now takes a few seconds to reach the far end,
+  and two flavours in a chunk a few more to become one).
+- **The flow coasts** (`Fluid.VISC_REST` gone): the jelly keeps the same
+  viscosity held or let go (`VISC` 0.6), so the jet's last push carries
+  the dye round for a few seconds and dies on its own. The vorticity
+  confinement stays held-only: on at rest it fed the swirl for good (top
+  speed 103 texels a second four seconds after the release, half the
+  pour's own; with it held-only, 84 at two seconds and falling).
+- **A chunk takes no more past the card's shade** (`Fluid.rate_now`,
+  `FULL_EASE` 0.06; `Sim.step`): the rate eases to nothing over the last
+  6% of `C_FULL` as the meter reads the chunk under the tip, and headless
+  the sim's own tally stops at `C_FULL`. The ring stops at 100 and the
+  grey button is the only way down. **Gone with it**: a second flavour
+  poured on a full chunk no longer shifts it toward itself (the drain is
+  the fix now; `pour_top` still caps a texel so nothing goes black under
+  the tip), and the meter's past-full ink and dark ring are reached only
+  by the tutorial's drain page (prefilled at 150%). `GD_RULES` and the
+  SOAK page still say "past the card's shade it goes darker": true of the
+  tutorial's prefill and a texel under the tip, not of a chunk's mean;
+  left as they are.
+- **The syrup's lip is faint** (`gumdrop_syrup_2d.gdshader` `LIP` 0.92,
+  was 0.72): at 0.72 the thin front of a spreading tint was a grey fringe
+  over half the chunk.
+- **Read** (`tests/_shot_gumdrop.gd -- <out> 1 dab` and `pour`,
+  `opengl3_angle`, 810x1440): the cap held 0.7 s is 59% tinted at the
+  release, 82% half a second on, 91% at 1 s, 100% at 2 s, its mean amount
+  0.150 to 0.149 of the texture across the four seconds (0.168 at the
+  peak) while its top falls 0.565 to 0.216: the same yellow, pale over the
+  whole cap. The stalk held: 21% at 0.5 s, 61% at 1.5, 98% at 2.5, 100% at
+  4 (the meter 1.25 amounts exactly), 100% still two seconds after the
+  release; drained 92, 44, 15 at 0.5, 1.5, 3 s of hold. The drain leaves a
+  clear hollow about the tip that the settles close more slowly than they
+  did (seen in the drain shot; not raised with the user). Hard by the bot
+  (`-- <out> 2`): 92, 88, 80, 90 in 5 serves after the flop by hand (99,
+  89, 87, 82 the day before: the mixed chunks read 0.4 to 0.7 near, since
+  two flavours take longer to become one at `FAR` 0.08, and the bot waits
+  five seconds). The headless probe 0 failed, the suite passed; play 115
+  to 121 draw calls, the win 75 to 80, as before.

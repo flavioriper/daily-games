@@ -353,7 +353,10 @@ func step() -> void:
 					phase = Phase.PLAY
 					phase_t = 0.0
 					events.append({"type": "go"})
-				_tally(c, RATE * DT)
+				# no more past the card's shade (2026-10-14): the fluid's
+				# meter stops the pour, and headless this tally does
+				if tank[c] < C_FULL:
+					_tally(c, minf(RATE * DT, C_FULL - tank[c]))
 			elif draining and c >= 0:
 				_tally(c, -RATE * DT)
 			if phase == Phase.PLAY:

@@ -151,7 +151,8 @@ func _bot() -> void:
 const POUR_HELD := [0.5, 1.5, 2.5, 4.0]
 const POUR_FREE := [0.1, 0.5, 2.0]
 ## `dab`: the button held this long only, and the chunk read this long
-## after the release, to see whether a short pour stays the blob it is.
+## after the release, to see a short pour go on spreading over its chunk
+## and pale as it does (its mean amount the same, its top falling).
 const DAB_HELD := [0.3, 0.7]
 const DAB_FREE := [0.1, 0.5, 1.0, 2.0, 4.0]
 const DRAIN_HELD := [0.5, 1.5, 3.0]

@@ -64,28 +64,35 @@ const DRAIN := 1.0
 ## texture holds a pigment's amount over AMOUNT_TOP (the include's).
 const POUR_TOP := 2.0
 const AMOUNT_TOP := 2.5
-## The jelly: how much velocity a second keeps (e^-VISC) while the button
-## is held, plain, under reduce motion and with the Softer jelly booster,
-## and once it is let go (the flow dies in a moment instead of churning);
-## and the vorticity's strength while held, nothing under reduce or at
-## rest. The dye settles toward its neighbours (`SETTLE` a frame, read
-## SETTLE_R texels off), which irons a fold, and a cell not being poured
-## into toward eight texels FAR_R off (`FAR` a frame), which makes two
-## flavours one shade in a second or two.
+## The jelly: how much velocity a second keeps (e^-VISC), plain, under
+## reduce motion and with the Softer jelly booster, held or let go alike
+## (the user, 2026-10-14: a tint let go "should keep doing the exactly
+## same behavior of moving around to fill available space"; for a day
+## before, VISC_REST 8 killed the flow in a quarter second at the
+## release), so the jet's last push coasts for a few seconds; and the
+## vorticity's strength while held, nothing under reduce or at rest (on
+## at rest it fed the swirl for good: a top speed of 100 texels a second
+## four seconds after the release, half the pour's own). The dye
+## settles toward its neighbours (`SETTLE` a frame, read SETTLE_R texels
+## off), which irons a fold, and toward eight texels FAR_R off (`FAR` a
+## frame), which carries a tint over its chunk in a few seconds; both on
+## every texel of every chunk, held or not, each a mean that keeps the
+## chunk's pigment as it spreads (FAR was 0.4 and off under the tip: the
+## chunk went one flat shade in a second, which read as "auto fill").
 const VISC := 0.6
 const VISC_CALM := 2.5
 const VISC_SOFT := 0.6
-const VISC_REST := 8.0
-## Seconds the dye goes on riding the flow after the button is let go
-## (e^-t/CARRY): the jet's last push, and then the dye stays where it is
-## whatever the flow does, since a flow at rest is never quite still and
-## its slow drift smeared a blob let go over its chunk (2026-10-14).
-const CARRY := 0.15
 const EPS := 7.0
 const SETTLE := 0.14
 const SETTLE_R := 3.0
-const FAR := 0.4
+const FAR := 0.08
 const FAR_R := 14.0
+## The chunk under the tip takes no more past the card's shade (the user,
+## 2026-10-14: "if 100% no more liquid can be added"): the rate eases to
+## nothing over the last FULL_EASE of C_FULL, read off the meter, so the
+## ring stops at 100 and the grey button is the only way down. Headless
+## the meter reads nothing and the sim's own tally stops the pour.
+const FULL_EASE := 0.06
 
 var soft := false
 var calm := false
@@ -110,7 +117,6 @@ var _mask_ids := PackedByteArray()
 var _mask_fresh := false
 var _clear_for := 0
 var _time := 0.0
-var _held_at := -10.0
 var _running := false
 var _last_dye: SubViewport
 var _judge: SubViewport
@@ -242,11 +248,7 @@ func tick(delta: float) -> void:
 	var dt := minf(delta, 1.0 / 30.0)
 	_time += dt
 	var held := squeezing and tip_cell >= 0
-	if held:
-		_held_at = _time
-	var visc := VISC_REST
-	if held:
-		visc = VISC_CALM if calm else (VISC_SOFT if soft else VISC)
+	var visc := VISC_CALM if calm else (VISC_SOFT if soft else VISC)
 	var clearing := 1.0 if _clear_for > 0 else 0.0
 	if _clear_for > 0:
 		_clear_for -= 1
@@ -270,7 +272,6 @@ func tick(delta: float) -> void:
 	dye.set_shader_parameter("tip_cell", tip_cell)
 	dye.set_shader_parameter("rate", rate_now())
 	dye.set_shader_parameter("squeezing", 1.0 if squeezing else 0.0)
-	dye.set_shader_parameter("carry", 1.0 if held else exp(-(_time - _held_at) / CARRY))
 	dye.set_shader_parameter("draining", 1.0 if draining and not squeezing else 0.0)
 	dye.set_shader_parameter("pigment", pigment)
 	dye.set_shader_parameter("fill_cell", fill_cell)
@@ -279,9 +280,13 @@ func tick(delta: float) -> void:
 	fill_cell = -1
 
 ## Pigment a second at the tip's middle into the chunk under it: more
-## into a bigger chunk.
+## into a bigger chunk, and nothing once the chunk holds the card's shade
+## (the meter's reading, in amounts; easing in over the last FULL_EASE).
 func rate_now() -> float:
-	return RATE * maxf(1.0, tip_squares / SQUARES_REF)
+	var rate := RATE * maxf(1.0, tip_squares / SQUARES_REF)
+	var have := level(tip_cell)
+	var room := (Sim.C_FULL - (have.x + have.y + have.z)) / (Sim.C_FULL * FULL_EASE)
+	return rate * clampf(room, 0.0, 1.0)
 
 ## The chunk's mean pigments, in amounts (the card's shade is Sim.C_FULL of
 ## them in all), from the meter's last frame: read back at most every

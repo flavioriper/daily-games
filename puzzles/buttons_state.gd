@@ -63,9 +63,11 @@ const HINTS_BY := [3, 3, 2, 2]
 const INSANE := 3
 ## A shared picture is at most this many marks across.
 const SHARE_MAX := 16
-## The bands of the big pictures, which zoom: Insane alone since
-## 2026-10-12, Hard too for a day before it.
-const BIG_FROM := 3
+## The bands of the big pictures, which zoom: Hard and Insane (the user,
+## 2026-10-14: "the hard mode should have a zoom feature just like insane";
+## Hard deals the bank's 32s since the same day). Insane alone from
+## 2026-10-12 to then.
+const BIG_FROM := 2
 ## The pictures a day may draw before it keeps the one it has.
 const DRAWS := 12
 const NEAR := [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
