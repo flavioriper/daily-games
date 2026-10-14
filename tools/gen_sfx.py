@@ -2564,7 +2564,14 @@ SETS = {
     # whole, the bulb and the day's end; every note lands between 400 and
     # 700 Hz. `enter` is four tocks in two pairs, an engine's chuff.
     "train": {
-        "pick":          ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1500", "cut:0.09", "body:320", "tight", "notes:0:-5"),
+        # 2026-10-14, the user: "pop sfx sounds, shoots". A shot is two
+        # sounds, both ticks (they come fifty a second on Hard, heard once in
+        # 70 ms): `shoot` as the cork leaves the cannon, a puff of air with a
+        # soft tock under it, and `pop` as the block bursts, a small cork's
+        # pop, which the board climbs five steps at the most along a run.
+        # `pick` (one wooden tock for both) is gone.
+        "shoot":         ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1300", "cut:0.08", "body:320", "tight"),
+        "pop":           ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1500", "cut:0.09", "body:320", "tight"),
         "send":          ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.1", "body:320", "tight", "notes:0:-2"),
         "park":          ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.1", "body:320", "tight", "notes:0:-4"),
         # Back to the shed: two tocks, the second three steps down.

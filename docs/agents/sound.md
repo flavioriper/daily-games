@@ -327,14 +327,22 @@ keys click through `ui/ui_sound.gd` as Hidden Word's do; the board adds no
 cue a letter. Details: `docs/art/sound-direction.md`, its last section.
 
 **Toy Cannons (id `train`, built as Toy Train) has a set since 2026-10-12**
-(since 2026-10-13 `pick` is a cork landing, asked for once in 60 ms:
-`docs/agents/boards/train.md`) (`SETS["train"]`, seventeen cues,
+(`SETS["train"]`, eighteen cues since 2026-10-14; the first seventeen were
 no new take: the same three of Lattice's and Hedgehogs' breath, copied
-into `build/sfx_raw/train/`). `pick` sounds once a block, so it is a tick
-with no note, five steps under its take and climbed a major scale a block
-along a run, an octave at the most; the notes are a long run (`run`),
-engines home full in a row (`combo`, pitched up to seven steps), `whole`,
-`hint` and the day's end. 0 of 17 flagged; unheard by the user.
+into `build/sfx_raw/train/`). **2026-10-14, the user: "pop sfx sounds,
+shoots"**: a shot is two ticks, `shoot` as the cork leaves the cannon (a
+light button on felt, -17, cut 0.08) and `pop` as the block bursts (a
+hollow block on felt, -15, cut 0.09), heard once in 70 ms however many
+corks fly (fifty a second on Hard, `PICK_GAP`), the pop climbed a major
+scale along a run and **five steps at the most** (`RUN_SCALE`; `pick`, the
+one tock for both, climbed an octave and is gone). Two takes were refused
+by the measure first: `shoot` asked for as "a puff of air with a tock
+under it" came back 68% at 1-3 kHz, and `pop` as "a cork coming out of a
+small bottle" 91% under 300 Hz, then as Firefly's cork on felt 34% under
+300 and 48% at 1-3 kHz; the hollow block passed at once (603 Hz, 97% in
+the body). The notes are a long run (`run`), engines home full in a row
+(`combo`, pitched up to seven steps), `whole`, `hint` and the day's end.
+`tools/measure_sfx.py train`: 0 of 18 flagged; unheard by the user.
 
 **Button Box has a set since 2026-10-11** (`SETS["buttons"]`, seventeen
 cues, no new take: Lattice's `pick`, `drop` and kalimba note and Hedgehogs'

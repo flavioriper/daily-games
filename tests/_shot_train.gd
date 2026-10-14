@@ -100,6 +100,8 @@ func _process(delta: float) -> bool:
 			" taps ", st.taps, " par ", st.par, ", parked ", st.parked(), ", jammed ", st.jammed, ", out ", _puzzle.out_of_hearts,
 			", done ", _puzzle.is_done(), ", solved ", st.is_solved(), ", hints ", _puzzle.hints_left(), ", pill '", _puzzle.pill_text(), "'")
 		print("share:\n", _puzzle.share_glyphs())
+		print("layout: cell %.1f lane %.1f rug %s loop_px %.0f rest %.0f muzzle gap %.0f" % [_puzzle._cell, _puzzle._lane,
+			_puzzle._rug, _puzzle._loop_px, _puzzle._rest, _puzzle._reach * _puzzle._cell - _puzzle._loop_px * 0.5])
 		_cleanup()
 		quit()
 		return true

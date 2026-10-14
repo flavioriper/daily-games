@@ -255,3 +255,53 @@ the later boards have.
   (`ThemedPictures.RULES.side`: 10 to 18 at Easy, up to 40 at Insane), a
   shaded sprite kept at the squares it was drawn at; this board lays the
   side it is handed.
+## 2026-10-14: more to see of a shot
+
+The user: "polish and improve the toy cannon, the good part of the game is
+seeing a lot of particles and things being destroyed fast, so we need way
+more pixels, animations, pop sfx sounds, shoots, also increase the space
+between the cannon and the drawing, it's too close user barely see the
+shoot". **This section wins over the ones above where they disagree.** The
+rules did not change: `train_state.gd` is untouched, and so are the bands,
+the loads, the clock and the deal.
+
+- **The open rug.** The track's reach is 2.4 lanes off the picture
+  (`REACH`, it was 0.95) and the rug's edge 3.15 (`EDGE`, 1.85), the lane
+  now clamped between `LANE_MIN` 34 and `LANE_MAX` 40 canvas pixels so Easy's
+  big squares do not open a border of their own. Read off the harness's new
+  `layout:` line (canvas units, 1080 wide): **the muzzle stands 52 off the
+  picture's edge on Medium and Hard and 66 on Easy; it stood 2 and 14.** The
+  yard gave the room back: a cannon at rest is 84 long (`REST`, 92) and the
+  gaps 14 (`GAP`, 18), so the rug is 867 square where it was 830 and a
+  square lost little: Medium's 24 is 27.2 (29.3), the 40-square themed day
+  16.3 (17.6), Easy's 10 is 61.5 (60.6).
+- **What a shot leaves** (`_draw_shot`, all of it appended to the frame's
+  one mesh with the cannons: fifty shots a second would starve `fx.puff`'s
+  pool of four, so no particle node is used for anything that comes with a
+  shot). The cork flies for 0.09 s (`PICK_FLY`, 0.06) with two ghosts behind
+  it (`TRAIL`); the muzzle flashes a pale disc for 0.05 s (`FLASH`) and lets
+  a wisp of smoke drift out and fade over 0.32 (`SMOKE`); the cannon kicks
+  back 0.22 of its length (`RECOIL_PX`, 0.12). The block still bursts where
+  it stands and, with it, **five shards** (`SHARDS`) fly on along the shot,
+  flat squares of its two tones a quarter to half a square across, spun,
+  pulled down at 900 px/s² and faded over the last two fifths of 0.42 s
+  (`SHARD_*`). A colour whole throws confetti over the rug as well as its
+  sparkles; an emptied cannon's puff is ten stars and its ring bigger.
+  Motion reduced: nothing flies, as before.
+- **The sound is two** (`docs/agents/sound.md`): `shoot` as the cork
+  leaves and `pop` as the block bursts, once in 70 ms however many corks
+  fly (`PICK_GAP`), the pop climbing five steps at the most (`RUN_SCALE`,
+  it was an octave). `shoot` is asked for with the knocks off so a shot is
+  one knock, the pop's tick (`HAPTICS`).
+- **Measured** on `opengl3_angle` at 810x1440, one run each: Hard play 135
+  draw calls at the peak (111-123 on the shots), Medium play 111, Easy at
+  rest 89, the Hard tutorial 151. `tests/_probe_train.gd -- seeds=1` 0
+  failures; `tests/_win.gd -- train` PASS (Medium, 35 sent, par 32).
+- **Mine, the user's to call**: the gap's size (fifty canvas pixels, about
+  the cannon's length), five shards a block, the smoke, the yard made
+  smaller to pay for the rug, and the pop as a hollow block's tock (a cork
+  drawn from a bottle and a cork on felt both failed the cozy measure).
+- **Not seen**: the shards and the smoke in motion (shots only), a phone,
+  the sounds heard, Insane, reduced motion, the win and the jam after the
+  change. A `Parse JSON failed ... getting token` line prints in every
+  windowed run of the harness, on main before this change too.

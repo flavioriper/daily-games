@@ -34,13 +34,18 @@ const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 
 const PAD := 22.0
 const HUD_ROW := 76.0
-const GAP := 18.0
+const GAP := 14.0
 ## From the picture to the rug's edge, and to the track's centre, in lanes:
-## a lane is a square, but never under LANE_MIN pixels, so the track and the
-## cannons on it keep their size when the squares are small.
-const EDGE := 1.85
-const REACH := 0.95
+## a lane is a square, but never under LANE_MIN pixels nor over LANE_MAX, so
+## the track and the cannons on it keep their size when the squares are
+## small, and the shot's open rug its width when they are big. The user,
+## 2026-10-14: "increase the space between the cannon and the drawing, it's
+## too close, user barely see the shoot": a muzzle stands about fifty canvas
+## pixels off the picture's edge on every band (it stood two on Hard).
+const EDGE := 3.15
+const REACH := 2.4
 const LANE_MIN := 34.0
+const LANE_MAX := 40.0
 ## The track's gauge and a cannon's length on the loop, in lanes.
 const GAUGE := 0.62
 const ENGINE := 1.45
@@ -52,7 +57,7 @@ const CELL_MAX := 62.0
 ## block shot rebuilds its patch and not the picture.
 const CHUNK := 8
 ## An engine's length at rest in the yard, and the unit its mesh is built at.
-const REST := 92.0
+const REST := 84.0
 const UNIT := 100.0
 ## Rows of a column of the shed that are seen; the rest are a count.
 const ROWS := 3
@@ -65,13 +70,36 @@ const TICKS := [0.045, 0.024, 0.02, 0.02]
 const SEND_FLY := 0.24
 const PARK_FLY := 0.34
 const SHIFT := 0.22
-## A cork's flight to its block, the block's burst where it stands, and the
+## A cork's flight to its block (the cork leaves ghosts behind it, TRAIL of
+## them TRAIL_STEP apart), the block's burst where it stands, and the
 ## cannon's kick back from the shot.
-const PICK_FLY := 0.06
-const BURST := 0.14
-const BURST_GROW := 0.45
-const RECOIL := 0.07
-const RECOIL_PX := 0.12
+const PICK_FLY := 0.09
+const TRAIL := 2
+const TRAIL_STEP := 0.016
+const BURST := 0.12
+const BURST_GROW := 0.5
+const RECOIL := 0.1
+const RECOIL_PX := 0.22
+## What a shot leaves (the user, 2026-10-14: "the good part of the game is
+## seeing a lot of particles and things being destroyed fast, so we need way
+## more pixels, animations"): the block bursts into SHARDS flat squares of
+## its two tones that fly on along the shot, fall and fade; the muzzle
+## flashes for FLASH and lets a wisp of smoke drift out for SMOKE. All of it
+## is in the frame's one mesh with the cannons, never a particle node, since
+## fifty shots a second would starve the puff pool (ui/fx2d.gd).
+const SHARDS := 5
+const SHARD_LIFE := 0.42
+const SHARD_SIZE := Vector2(0.24, 0.46)
+const SHARD_SPEED := Vector2(170.0, 360.0)
+const SHARD_SPREAD := 1.1
+const SHARD_GRAVITY := 900.0
+const SHARD_SPIN := 9.0
+const FLASH := 0.05
+const FLASH_R := 0.2
+const FLASH_COL := Color(1.0, 0.97, 0.82)
+const SMOKE := 0.32
+const SMOKE_R := Vector2(0.08, 0.34)
+const SMOKE_COL := Color(0.95, 0.92, 0.86)
 const POP := 0.24
 const WIN_WAIT := 1.5
 const PARTY_EXTRA := 0.6
@@ -86,14 +114,16 @@ const CARD_AFTER := 1.0
 const CARD_AFTER_STILL := 0.3
 const HINT_BEAT := 0.5
 
-## A run: the stops in a row one cannon hits a block at. Its tick climbs a
-## step of this scale every RUN_STEP blocks (semitones, an octave at the
-## most: the take sits five steps low so the top is still a tock), and is
-## heard and felt once in PICK_GAP however many are shot; the bubble counts
-## the run from COMBO_FROM, and a long one ends on two notes.
-const RUN_SCALE := [0, 2, 4, 5, 7, 9, 11, 12]
+## A run: the stops in a row one cannon hits a block at. A shot is two
+## sounds, the cannon's `shoot` as the cork leaves and the block's `pop` as
+## it bursts; the pop climbs a step of this scale every RUN_STEP blocks
+## (semitones, five at the most: docs/agents/sound.md, rule 2). A shot is
+## heard and felt once in PICK_GAP however many corks fly (fifty a second on
+## Hard); the bubble counts the run from COMBO_FROM, and a long one ends on
+## two notes.
+const RUN_SCALE := [0, 2, 4, 5]
 const RUN_STEP := [1, 3, 4, 4]
-const PICK_GAP := 0.06
+const PICK_GAP := 0.07
 const TICK_VARY := Vector2(0.985, 1.015)
 const COMBO_FROM := 5
 const BIG_RUN := 12
@@ -116,11 +146,12 @@ const TOAST_FONT := 32
 const TOAST_MARGIN := 24.0
 
 ## What the phone does under each cue (docs/agents/haptics.md). An engine
-## sent is a tap and a block taken a tick; an engine home full is a small
-## yes, a long run and a colour whole firmer ones.
+## sent is a tap and a block burst a tick (the shot that burst it is the
+## same knock: `shoot` is asked for without one); an engine home full is a
+## small yes, a long run and a colour whole firmer ones.
 const HAPTICS := {
 	"send": Haptics.TAP,
-	"pick": Haptics.TICK,
+	"pop": Haptics.TICK,
 	"run": Haptics.GOOD,
 	"full": Haptics.BUMP,
 	"combo": Haptics.TICK,
@@ -191,7 +222,12 @@ var _blocks_stale := true
 var _chunks := {}
 var _chunk_stale := {}
 var _cork: ArrayMesh
+## A white square and a white disc of UNIT, tinted as they are appended: the
+## shards, the flash and the smoke.
+var _square: ArrayMesh
+var _disc: ArrayMesh
 var _blk := {}
+var _col := {}
 var _eng := {}
 var _plate: ArrayMesh
 var _flat_cache := {}
@@ -419,12 +455,11 @@ func _layout() -> void:
 		room = Vector2(size.x - siding_size.x - 3.0 * PAD, foot - head - 2.0 * GAP)
 	var span := Vector2(state.w + 2.0 * EDGE, state.h + 2.0 * EDGE)
 	_cell = minf(CELL_MAX, minf(room.x / span.x, room.y / span.y))
-	_lane = _cell
-	if _cell < LANE_MIN:
-		# small squares: the rug's border keeps its size and the picture has
-		# what is left
-		_lane = LANE_MIN
-		_cell = minf((room.x - 2.0 * EDGE * _lane) / state.w, (room.y - 2.0 * EDGE * _lane) / state.h)
+	_lane = clampf(_cell, LANE_MIN, LANE_MAX)
+	if _lane != _cell:
+		# the rug's border keeps its size, small squares or big: the picture
+		# has what is left
+		_cell = minf(CELL_MAX, minf((room.x - 2.0 * EDGE * _lane) / state.w, (room.y - 2.0 * EDGE * _lane) / state.h))
 	if _cell <= 0.0:
 		return
 	_edge = EDGE * _lane / _cell
@@ -446,9 +481,11 @@ func _layout() -> void:
 	_loop_px = maxf(ENGINE * _lane, LOOP_MIN)
 	_flat_cache = {}
 	_blk = {}
+	_col = {}
 	_eng = {}
 	for c in state.colours.size():
 		var col: Color = Art.colour(state.colours[c])
+		_col[c] = col
 		var bb := Face.Builder.new()
 		Art.block(bb, Vector2.ZERO, _cell, col)
 		_blk[c] = bb.mesh()
@@ -459,6 +496,12 @@ func _layout() -> void:
 	var cb := Face.Builder.new()
 	Art.cork(cb, UNIT)
 	_cork = cb.mesh()
+	var sb := Face.Builder.new()
+	sb.fan(PackedVector2Array([Vector2(-0.5, -0.5) * UNIT, Vector2(0.5, -0.5) * UNIT, Vector2(0.5, 0.5) * UNIT, Vector2(-0.5, 0.5) * UNIT]), Color.WHITE)
+	_square = sb.mesh()
+	var db := Face.Builder.new()
+	db.disc(Vector2.ZERO, UNIT * 0.5, Color.WHITE)
+	_disc = db.mesh()
 	var b := Face.Builder.new()
 	Art.floor_boards(b, size)
 	_bg = b.mesh()
@@ -762,26 +805,18 @@ func _blocks_now(now: float) -> ArrayMesh:
 	return m
 
 ## The shots in the air (a block stands until its cork lands, then bursts
-## where it stood), then every cannon with its number: the ones at rest
-## first, the ones on the loop over them.
+## where it stood into its shards; the muzzle flashes and smokes), then every
+## cannon with its number: the ones at rest first, the ones on the loop over
+## them.
 func _draw_engines(now: float, shown: Array, alpha: float) -> void:
 	var fb := Face.FlatBuilder.new(_flat_cache)
 	var live: Array = []
 	for f: Dictionary in _flights:
 		var e := now - float(f.at)
-		if e >= PICK_FLY + BURST:
+		if e >= PICK_FLY + SHARD_LIFE:
 			continue
 		live.append(f)
-		var to: Vector2 = f.to
-		if e < PICK_FLY:
-			fb.append(_blk[int(f.c)], Transform2D(0.0, to))
-			var from: Vector2 = f.from
-			var ck := float(f.px) / UNIT
-			fb.append(_cork, Transform2D((to - from).angle() + PI * 0.5, Vector2(ck, ck), 0.0, from.lerp(to, e / PICK_FLY)))
-		else:
-			var v := (e - PICK_FLY) / BURST
-			var k := 1.0 + BURST_GROW * v
-			fb.append(_blk[int(f.c)], Transform2D(0.0, Vector2(k, k), 0.0, to), Color(1.0, 1.0, 1.0, 1.0 - v * v))
+		_draw_shot(fb, f, e)
 	_flights = live
 	var labels: Array = []
 	var order: Array = []
@@ -851,6 +886,48 @@ func _draw_engines(now: float, shown: Array, alpha: float) -> void:
 	var tw := font.get_string_size(tag, HORIZONTAL_ALIGNMENT_LEFT, -1.0, tfs).x
 	draw_string(font, post + Vector2(-tw * 0.5, (font.get_ascent(tfs) - font.get_descent(tfs)) * 0.5), tag,
 		HORIZONTAL_ALIGNMENT_LEFT, -1.0, tfs, Color(Pal.BAD if on >= State.ON_LOOP else Pal.TEXT, alpha))
+
+## One shot, `e` seconds after the cannon fired it.
+func _draw_shot(fb, f: Dictionary, e: float) -> void:
+	var to: Vector2 = f.to
+	var from: Vector2 = f.from
+	var dir: Vector2 = f.dir
+	var px := float(f.px)
+	var c := int(f.c)
+	var col: Color = _col[c]
+	if e < PICK_FLY:
+		fb.append(_blk[c], Transform2D(0.0, to))
+		var ck := px / UNIT
+		var ang := dir.angle() + PI * 0.5
+		for k in range(TRAIL, -1, -1):
+			var t := (e - k * TRAIL_STEP) / PICK_FLY
+			if t <= 0.0:
+				continue
+			fb.append(_cork, Transform2D(ang, Vector2(ck, ck), 0.0, from.lerp(to, t)),
+				Color.WHITE if k == 0 else Color(1.0, 1.0, 1.0, 0.5 / k))
+	else:
+		var v := (e - PICK_FLY) / BURST
+		if v < 1.0:
+			var k := 1.0 + BURST_GROW * v
+			fb.append(_blk[c], Transform2D(0.0, Vector2(k, k), 0.0, to), Color(1.0, 1.0, 1.0, 1.0 - v * v))
+		var t := e - PICK_FLY
+		var fade := 1.0 - clampf((t / SHARD_LIFE - 0.6) / 0.4, 0.0, 1.0)
+		var shade := col.darkened(0.24)
+		for sh: Array in f.shards:
+			var vel: Vector2 = dir.rotated(float(sh[0])) * float(sh[1])
+			var at := to + vel * t + Vector2(0.0, 0.5 * SHARD_GRAVITY * t * t)
+			var s := float(sh[3]) * _cell / UNIT
+			fb.append(_square, Transform2D(float(sh[2]) * t, Vector2(s, s), 0.0, at),
+				Color(shade if sh[4] else col, fade))
+	# the muzzle: a flash, then a wisp of smoke drifting out
+	if e < FLASH:
+		var fk := px * FLASH_R / UNIT * (1.0 - e / FLASH)
+		fb.append(_disc, Transform2D(0.0, Vector2(fk, fk), 0.0, from + dir * px * 0.04), FLASH_COL)
+	if e < SMOKE:
+		var u := e / SMOKE
+		var sk := px * lerpf(SMOKE_R.x, SMOKE_R.y, u) / UNIT
+		var at := from + dir * px * (0.06 + 0.3 * u) + Vector2(0.0, -px * 0.12 * u)
+		fb.append(_disc, Transform2D(0.0, Vector2(sk, sk), 0.0, at), Color(SMOKE_COL, 0.55 * (1.0 - u) * (1.0 - u)))
 
 # --- the pill, the toast and the run ---
 
@@ -1094,16 +1171,29 @@ func _on_pick(e: int, cell: int, n: int, now: float) -> void:
 	if not Motion.reduce:
 		var seen: Array = _seen.get(e, _target(e))
 		var px := float(seen[2])
-		_flights.append({"c": state.colour[e], "to": cell_centre(cell), "px": px, "at": now,
-			"from": (seen[0] as Vector2) + Vector2.UP.rotated(float(seen[1])) * px * 0.5})
+		var to := cell_centre(cell)
+		var from := (seen[0] as Vector2) + Vector2.UP.rotated(float(seen[1])) * px * 0.5
+		var shards: Array = []
+		for k in SHARDS:
+			shards.append([randf_range(-SHARD_SPREAD, SHARD_SPREAD), randf_range(SHARD_SPEED.x, SHARD_SPEED.y),
+				randf_range(-SHARD_SPIN, SHARD_SPIN), randf_range(SHARD_SIZE.x, SHARD_SIZE.y), k % 2 == 1])
+		_flights.append({"c": state.colour[e], "to": to, "px": px, "at": now, "from": from,
+			"dir": (to - from).normalized(), "shards": shards})
 		_bump_at[e] = now
-	# forty corks a second are one tick and one knock in PICK_GAP (fx.cue
-	# holds the sound but knocks every time it is asked)
+	# fifty corks a second are one shot heard and one knock in PICK_GAP
+	# (fx.cue holds the sound but knocks every time it is asked): the cannon's
+	# sound as the cork leaves, with no knock of its own, and the block's pop
+	# with the tick as it bursts
 	if now - _pick_cue_at >= PICK_GAP:
 		_pick_cue_at = now
 		var step: int = RUN_STEP[clampi(state.band, 0, RUN_STEP.size() - 1)]
 		var semis: int = RUN_SCALE[mini((n - 1) / step, RUN_SCALE.size() - 1)]
-		fx.cue("pick", pow(2.0, semis / 12.0) * randf_range(TICK_VARY.x, TICK_VARY.y))
+		var buzzed: bool = fx.buzzes
+		fx.buzzes = false
+		fx.cue("shoot", randf_range(0.94, 1.06))
+		fx.buzzes = buzzed
+		var pitch := pow(2.0, semis / 12.0) * randf_range(TICK_VARY.x, TICK_VARY.y)
+		_after(0.0 if Motion.reduce else PICK_FLY, fx.cue.bind("pop", pitch))
 	_bump_pill()
 	if n >= COMBO_FROM:
 		_combo_popped = _combo_n < COMBO_FROM or _combo_out_at > -INF or _combo_e != e
@@ -1118,7 +1208,7 @@ func _on_pick(e: int, cell: int, n: int, now: float) -> void:
 			var seen: Array = _seen.get(e, [])
 			if not seen.is_empty():
 				fx.confetti(seen[0], 12, _lane * 3.0)
-	_busy_for(PICK_FLY + BURST + 0.1)
+	_busy_for(PICK_FLY + SHARD_LIFE + 0.1)
 
 ## A run is over: a long one ends on its two notes and a sparkle.
 func _on_run_end(e: int, n: int) -> void:
@@ -1142,8 +1232,8 @@ func _on_full(e: int, now: float) -> void:
 	var col: Color = Art.colour(state.colours[state.colour[e]])
 	_after(0.0 if Motion.reduce else PICK_FLY, func() -> void:
 		fx.cue("full", randf_range(0.97, 1.03))
-		fx.puff(pos, col.lightened(0.3), 6)
-		fx.ring(pos, _loop_px * 0.6, col))
+		fx.puff(pos, col.lightened(0.3), 10)
+		fx.ring(pos, _loop_px * 0.8, col))
 	_streak += 1
 	if _streak >= 2:
 		var semis: int = STREAK_STEPS[mini(_streak - 2, STREAK_STEPS.size() - 1)]
@@ -1164,7 +1254,9 @@ func _on_whole(_c: int) -> void:
 		if not Motion.reduce:
 			var n: int = state.stops()
 			for k in 6:
-				fx.sparkle(loop_at(n * (k + 0.5) / 6.0 - 1.0), Pal.SUN))
+				fx.sparkle(loop_at(n * (k + 0.5) / 6.0 - 1.0), Pal.SUN)
+			var field := _field_px()
+			fx.confetti(Vector2(field.get_center().x, field.position.y + _cell), 20, field.size.x * 0.7))
 
 func tip_line() -> Dictionary:
 	return {"text": "", "mood": Face.Expr.HAPPY}
@@ -1267,7 +1359,7 @@ func _on_solved() -> void:
 	_combo_n = 0
 	_solved_at = now
 	_final_taps = state.taps
-	var lag := 0.0 if Motion.reduce else PICK_FLY + BURST + POP + 0.25
+	var lag := 0.0 if Motion.reduce else PICK_FLY + SHARD_LIFE + POP + 0.1
 	_win_pop_at = now + lag
 	_blocks_stale = true
 	_after(lag, fx.cue.bind("solved"))
