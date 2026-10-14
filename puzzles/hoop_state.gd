@@ -135,6 +135,12 @@ func setup(rng: RandomNumberGenerator, difficulty: int, daily_key := 0) -> void:
 		if not themed.is_empty():
 			break
 	adopt(themed if not themed.is_empty() else pic, doc.get("palette", {}), rng)
+	# a picture the cut makes nothing of (none of the bank's or the themed
+	# ones seen does; one wholly carved or wholly thin would) is dealt the
+	# heart above instead
+	if panels.is_empty():
+		adopt({"name": "", "rows": ["..rr..", ".rrrr.", "rrggrr", "rggggr", ".gggg.", "..gg.."]},
+			{"r": "red", "g": "green"}, rng)
 
 ## Cuts `pic` ({name, rows}, its letters read through `legend`).
 func adopt(pic: Dictionary, legend: Dictionary, rng: RandomNumberGenerator) -> void:

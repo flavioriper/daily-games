@@ -674,8 +674,10 @@ func _pin_into(b, at: Vector2, r: float) -> void:
 ## Panel `k`'s mark: its corner count, a 3 or a 4 stitched in grey yarn
 ## about its middle (the user, 2026-10-14: "make the numbers clear (instead
 ## of just dots, write the number)"), sized to the room the panel has about
-## that middle so a thin panel's never spills past its sides. A panel of
-## any other count (none is cut) gets a dot a corner.
+## that middle, and never under MARK_H.x: a cramped panel's may touch its
+## sides, but every panel says its count (two of a thousand Hard panels
+## at 810 wide are cramped). A panel of any other count (none is cut)
+## gets a dot a corner.
 func _mark_into(b, k: int) -> void:
 	var outline := _outline_px(k)
 	var n := outline.size()
@@ -685,8 +687,6 @@ func _mark_into(b, k: int) -> void:
 	for m in n:
 		room = minf(room, Geometry2D.get_closest_point_to_segment(c, outline[m], outline[(m + 1) % n]).distance_to(c))
 	var tall := clampf(room * 1.25, MARK_H.x, MARK_H.y)
-	if room * 1.25 < MARK_H.x * 0.7:
-		return
 	var wide := tall * MARK_W
 	var strokes: Array = []
 	match n:

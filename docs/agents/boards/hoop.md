@@ -23,7 +23,8 @@
   one marks mesh, so they cost nothing. A triangle's sits at its incentre,
   a quad's at its middle, sized to the room about that point (1.25 x the
   nearest side's distance, 10-22 px) so a thin panel's never spills; a
-  panel with under 7 px of room shows none. They scale with the zoom.
+  cramped panel's may touch its sides, but every panel says its count. They
+  scale with the zoom.
 - **The zoom** (the same day: "make sure it has zoom in and out properly";
   the web game zooms with the wheel and pans with a drag): `PanZoom`
   (ui/flat/pan_zoom.gd) over the whole table, every band. Its room is the
@@ -126,6 +127,12 @@
 - The cut: every band off the big bank pictures (Easy no longer off the
   10-side ones); the carve, dissolve and spacing rules; the zoom on every
   band, as a camera over the whole table rather than clipped to the linen.
+- A Delaunay over floats can place one edge differently on a phone than on
+  this Mac when four pins are all but on one circle, so a day's panel count
+  may differ by one between the two; a day put back on the phone that
+  played it is the same cut. A picture the cut makes nothing of is dealt
+  the small heart in `setup` (none of the 40 seen comes near: the fewest
+  was 23 panels).
 - Wrong threads refused rather than laid and judged; hence no Undo, and the
   seal's "no thread refused".
 - Panel counts per band (26/50/90/140) and the quad share; Easy's pictures
