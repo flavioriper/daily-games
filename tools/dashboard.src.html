@@ -624,16 +624,20 @@ function themedView() {
   host.append(el("h2", {}, "Themed days"), el("p", { class: "lead" },
     THEMED.length ? `${THEMED.length} days made on this Mac as the night would make them; nothing here is published. ${sizes.length} of ${made.length * 5} pictures came through the rules and the blind look; a size that did not is the bank's that day. US$${THEMED.reduce((t, d) => t + (d.cost || 0), 0).toFixed(2)} in all.`
       : "No themed days made yet: tools/themed_days.sh makes them."));
-  for (const d of THEMED) {
+  // Every day either way made, a day made only the pixel way (20261018 on)
+  // shown by its pixel art alone.
+  const days = [...THEMED, ...PIXEL.filter(p => !THEMED.some(d => d.day === p.day))].sort((a, b) => a.day - b.day);
+  for (const day of days) {
+    const only = !THEMED.includes(day), d = day;
     const box = el("section", { class: "panel tday" });
     if (!d.theme) { box.append(el("h3", {}, "No theme"), el("div", { class: "when" }, fmtDate(d.day) + " · the day is the bank's")); host.append(box); continue; }
-    const px = PIXEL.find(p => p.day === d.day);
+    const px = only ? null : PIXEL.find(p => p.day === d.day);
     box.append(el("h3", { class: "round" }, d.theme.name.en), el("div", { class: "when" },
       `${fmtDate(d.day)} · ${d.theme.name.pt} · ${d.theme.name.es}`),
       el("p", { class: "scene" }, d.theme.scene));
     themedWords(box, px?.pictures?.words || d.pictures?.words);
     themedQuizzes(box, px?.quizzes || d.quizzes);
-    themedWay(box, d, "days/themed/", px ? "The first way: a smooth drawing, averaged down" : "");
+    themedWay(box, d, only ? "days/themed-pixel/" : "days/themed/", px ? "The first way: a smooth drawing, averaged down" : only ? "Pixel art only" : "");
     if (px) themedWay(box, px, "days/themed-pixel/", "Pixel art: drawn as pixel art and read at its own squares, or that drawing redrawn to size by a text model; things also written from words");
     host.append(box);
   }
