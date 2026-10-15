@@ -801,7 +801,10 @@ func _pill_press(name: String) -> void:
 	var t: Vector2i = _pill.tile
 	var build := String(_pill.kind) == "build"
 	_btn_at[name] = _clock
-	touched.emit(float(PILL_PITCH.get(name, 1.0)))
+	# a button whose deed the sim names (turn, lift, place) is heard through
+	# that event alone; the others are heard here
+	if name == "info" or name == "cancel" or (name == "turn" and build):
+		touched.emit(float(PILL_PITCH.get(name, 1.0)))
 	match name:
 		"turn":
 			if build:
@@ -823,6 +826,7 @@ func _pill_press(name: String) -> void:
 		"place":
 			var why := _ghost_why()
 			if why != "":
+				touched.emit(float(PILL_PITCH.get(name, 1.0)))
 				refused.emit(why, screen_of(Vector2(t) + Vector2(0.5, 0.5)), sim.dep_at(t))
 				return
 			var kd := int(_ghost.kind)
