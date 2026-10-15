@@ -83,6 +83,26 @@ Moved verbatim from CLAUDE.md's "The flat screens" on 2026-09-29.
   so the rest of the card lets them through. The keyboard's backspace moved
   to the right end of the bottom row and Enter to the left, where phone
   keyboards keep them. `_shot_hiddenword.gd select` taps bed five for real.
+- **The keys tile the tray** (2026-10-15, the user: "on games that require
+  words and typing, players are complaining about the built in keyboard
+  missing things, can we use the device keyboard?"). Not the device
+  keyboard: it cannot carry the key marks, which are the aid this genre
+  lives on, it covers near half the screen, and its suggestions spell
+  answers on Pearl Dive. The keyboard was dropping letters instead. A key's
+  face is 91x100 with 10 px between keys and 14 between rows, and nothing
+  was hit in those gaps; worse, the press tween shrinks a held key to 94%
+  about its centre, so a finger that landed 1-3 px inside a face and moved
+  1-2 px before lifting was outside the key when it lifted and typed
+  nothing (a windowed probe sending `ScreenTouch`/`ScreenDrag` through
+  `Input.parse_input_event`; headless, nothing reaches a Button at all).
+  Every key is a `KeyBoard.KeyButton` now: `_has_point` reaches `REACH` (half a
+  gap each way) past the face, so two neighbours meet at a seam, and reads
+  the point against the key's unscaled size, so a press never moves the
+  edge under the finger. After: every tap from 2 px into the gap to the
+  face's centre types, with up to 4 px of jitter; only a finger that lands
+  in the gap and crosses the seam before lifting still types nothing. The
+  faces are drawn exactly as before. Suite 249567/0; `_shot_hiddenword.gd
+  select` on opengl3_angle; unseen on a phone.
 - **The board checkup** (2026-10-02, `docs/agents/checkup.md` row 11).
   The lag was the keyboard and the grid. Every key was a Button drawing its
   own `soft_button` StyleBoxFlat and its own letter, two draw calls a key, 56

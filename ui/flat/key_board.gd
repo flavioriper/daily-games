@@ -23,6 +23,17 @@ extends "res://ui/hud/panel.gd"
 ## wider backspace; Enter is the one key that commits a guess and so wears
 ## `Pal.GOOD`.
 ## Spec: docs/superpowers/specs/2026-09-19-hidden-word-flat-design.md, section 6.
+##
+## **The keys tile the tray under a finger** (2026-10-15; players: the
+## keyboard "misses" letters). A key's face is 91x100 and the gaps between
+## faces were dead, and the press tween shrinks a key to 94% about its
+## centre, so a finger that landed near a face's edge and moved a pixel
+## before lifting was outside the key when it lifted and typed nothing (a
+## windowed probe: 1-3 px in from the edge with 1-2 px of jitter, dropped).
+## Every key is a `KeyButton`, whose hit test reaches `REACH` into the gaps on
+## every side (half a gap, so two neighbours meet) and is read against the
+## key's unscaled size, so a press never moves the edge under the finger.
+## The faces are drawn as before; only where a tap lands changes.
 
 ## The letter tapped, lower-case.
 signal key(letter: String)
@@ -49,6 +60,19 @@ const ROWS := ["qwertyuiop", "asdfghjkl", "zxcvbnm"]
 ## which makes that row ten keys -- the top row's width exactly.
 const ROWS_ES := ["qwertyuiop", "asdfghjklñ", "zxcvbnm"]
 const FONT_SIZE := 44
+## How far past its face a key still takes a tap: half a key gap sideways,
+## half a row gap up and down, so the keys tile the tray with no dead seam.
+const REACH := Vector2(GAP * 0.5, ROW_GAP * 0.5)
+
+## A key: a Button whose hit area is its face grown by `REACH`, judged on
+## the key's unscaled size. `_has_point` is handed the point in the key's
+## own space, which the press tween has scaled about `pivot_offset`; it is
+## put back to the resting size first, so a key held down is as wide to the
+## finger as a key at rest.
+class KeyButton extends Button:
+	func _has_point(p: Vector2) -> bool:
+		var q := pivot_offset + (p - pivot_offset) * scale
+		return Rect2(-REACH, size + REACH * 2.0).has_point(q)
 
 ## True while the keyboard has been slid out of the way. The board asks,
 ## because a Reset or a new word has to bring it back and the board that
@@ -185,7 +209,7 @@ func _make_slot(row: HBoxContainer, width: float) -> Control:
 
 func _add_letter(row: HBoxContainer, letter: String) -> void:
 	var slot := _make_slot(row, KEY.x)
-	var chip := Button.new()
+	var chip := KeyButton.new()
 	chip.name = "Key_%s" % letter.to_upper()
 	chip.focus_mode = Control.FOCUS_NONE
 	chip.size = Vector2(KEY.x, KEY.y)
@@ -207,7 +231,7 @@ func _add_letter(row: HBoxContainer, letter: String) -> void:
 ## backspace in the same face every untouched letter wears.
 func _add_special(row: HBoxContainer, role: String, width: float) -> void:
 	var slot := _make_slot(row, width)
-	var chip := Button.new()
+	var chip := KeyButton.new()
 	chip.name = "Key_Erase" if role == "erase" else "Key_Enter"
 	chip.focus_mode = Control.FOCUS_NONE
 	chip.size = Vector2(width, KEY.y)

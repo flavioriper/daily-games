@@ -846,6 +846,11 @@ func _draw_paper(now: float, alpha: float) -> void:
 	if not told.is_empty():
 		var line := tr("PD_HINT_LINE") % [str(told.first), int(told.letters)]
 		_write(body, line, foot, FOOT_FONT, Color(Art.tier(State.PEARL).darkened(0.15), a))
+	elif _phase == Phase.PLAY:
+		# The keyboard has no space key and no accents, and `State.norm` drops
+		# both from either side; the foot says so while the bulb has nothing
+		# to say (2026-10-15: players looked for what the keyboard "misses").
+		_write(body, tr("PD_FOLD"), foot, FOOT_FONT, Color(Pal.TEXT_DIM, a * 0.8))
 
 ## What the answer came to: its name on the line with what it dived, its
 ## tier under it, and then the Pearl and two more that were deep.

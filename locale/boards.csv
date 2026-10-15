@@ -2595,6 +2595,7 @@ PD_READY_FIELD,Enter to dive,Enviar para mergulhar,Enviar para bucear
 PD_READY_FOOT,An answer that isn't on the list costs %d seconds.,Uma resposta fora da lista custa %d segundos.,Una respuesta fuera de la lista cuesta %d segundos.
 PD_TYPE,Type an answer,Digite uma resposta,Escribe una respuesta
 PD_TYPE_FIRST,Type an answer first.,Digite uma resposta primeiro.,Escribe una respuesta primero.
+PD_FOLD,Spaces and accents don't matter,Espaços e acentos não importam,Espacios y acentos no importan
 PD_MISS,%s isn't on the list · −%d s,%s não está na lista · −%d s,%s no está en la lista · −%d s
 PD_DRY,Out of time,Acabou o tempo,Se acabó el tiempo
 PD_TIER_0,The shallows: everyone says it,No raso: todo mundo diz,En lo bajo: todos lo dicen

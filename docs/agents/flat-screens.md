@@ -241,7 +241,8 @@ pointing `seed_as` at them. Specs:
   where a tray is 150: `170 + 20 + 130 (actions) + 20 + 140 (tip card)`. It
   is the first board since Nonogram to want all three bottom rows at once.
   Of the rest: Untangle drops the tray *and* the actions row, so its slot
-  is the tip card alone, Hidden Word's is the keyboard alone (`ui/flat/key_board.gd`'s `HEIGHT`), and
+  is the tip card alone, Hidden Word's is the keyboard alone (`ui/flat/key_board.gd`'s `HEIGHT`;
+  its keys tile the tray under a finger since 2026-10-15, `docs/agents/boards/hidden-word.md`), and
   **Word Trail** is Untangle's shape again: it picks nothing up and there is
   no Check, because only a right word locks, so its slot is the tip card
   alone at 140 and Reset rides up into the top bar. **Quilt is the third of

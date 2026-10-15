@@ -147,6 +147,17 @@
   typing by itself a letter a beat through `type_letter` and `commit_row`.
   The screen's keyboard is not on the page, so no finger is drawn but on the
   page's own bulb.
+- **The foot says spaces and accents don't matter** (2026-10-15, with
+  Hidden Word's keyboard fix, `docs/agents/boards/hidden-word.md`: players
+  said the keyboard was "missing things"). The keyboard has no space key
+  and no accents or ç, and `State.norm` drops them from both sides, but
+  nothing on screen said so; while a prompt is being typed and the bulb has
+  nothing to say, the foot reads `PD_FOLD` ("Spaces and accents don't
+  matter", pt and es rows beside it) in `Pal.TEXT_DIM`. The bulb's line
+  takes the foot back once it has told. The device keyboard was weighed and
+  not taken (the reasons are in Hidden Word's note); if players still ask
+  for it, Pearl Dive is the board it fits, being free text with no key
+  marks.
 - **Known soft spots**: an answer that is right in the world and missing
   from the list costs the player 3 s, and is the complaint to expect; the
   clock stops while the app is in the background (nothing checks the wall
