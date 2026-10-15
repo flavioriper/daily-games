@@ -5,7 +5,7 @@ extends SceneTree
 ##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_howto_screen.gd -- <game> <outdir> [lang=pt] [level=2] [secs=6] [every=1.5] [reduce]
 ##
 ## <game> is snooker, chess, checkers, hockey, boats, penny, dominoes, reversi, firefly, molehill, stackwood, thirteen,
-## posy, peapod, beeline, deckchair, eddy, furrow, griddle or trivet. The screen is built by hand, the card opened as the ? opens
+## posy, peapod, beeline, deckchair, eddy, furrow, griddle, trivet or tally. The screen is built by hand, the card opened as the ? opens
 ## it (`tutor.show()`), and each page is shot every `every` seconds for `secs`
 ## before Next is pressed: <outdir>/ht_<game>_p<page>_<n>.png. Prints each
 ## page's title, how long its body runs against the room it has, and the draw
@@ -34,6 +34,7 @@ const SCREENS := {
 	"furrow": "res://arcade/furrow_screen.gd",
 	"griddle": "res://arcade/griddle_screen.gd",
 	"trivet": "res://arcade/trivet_screen.gd",
+	"tally": "res://arcade/tally_screen.gd",
 }
 const SAVES := ["user://versus.cfg", "user://arcade.cfg"]
 
@@ -87,6 +88,7 @@ func _initialize() -> void:
 	# Furrow keeps its field in a file of its own: a new field here, never saved.
 	load("res://arcade/furrow_sim.gd").path = ""
 	load("res://arcade/griddle_sim.gd").path = ""
+	load("res://arcade/tally_sim.gd").path = ""
 	# load(), not preload: the screens name the Ads autoload.
 	var script: GDScript = load(SCREENS[_game])
 	_s = script.new(_level) if _game in ["snooker", "chess", "checkers", "hockey", "boats", "penny", "dominoes", "reversi"] else script.new()
