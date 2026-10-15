@@ -290,7 +290,7 @@ func _process(delta: float) -> bool:
 				_next()
 		11:
 			if _t > _at + 0.6:
-				_check("a pinch in zooms out (k %.1f)" % _s.board.k, _s.board.k < Sim.W * 2.0)
+				_check("a real pinch in zooms out (k %.1f from 74)" % _s.board.k, _s.board.k < 74.0 * 0.6 or _blind)
 				_shot("6_far")
 				_s.board.k = 74.0
 				_s.board.look_at_square(Vector2(Sim.HUB_AT) + Vector2(-2, 2), true)
@@ -319,29 +319,35 @@ func _process(delta: float) -> bool:
 					sim.ledger[int(a[0])] = int(a[1]) + 5
 				for a: Array in sim.asks("add"):
 					sim.ledger[int(a[0])] = int(a[1]) / 2
+				_next()
+		16:
+			if _t > _at + 0.3:
 				_tap(_win(_s.hud, _s._up_rect().get_center()))
 				_check("a real tap on the upgrades button opens them", _s.get_node_or_null("Shop") != null)
 				_next()
-		16:
+		17:
 			if _t > _at + 0.6:
 				_shot("9_shop")
-				var shop: Node = _s.get_node("Shop")
+				var shop: Node = _s.get_node_or_null("Shop")
+				if shop == null:
+					_fails += 1
+					return _done()
 				var before := int(sim.lv.belt)
 				shop._buy("belt")
 				_check("the belt's rank is bought", int(sim.lv.belt) == before + 1)
 				_next()
-		17:
+		18:
 			if _t > _at + 0.5:
 				_shot("9b_bought")
 				_close("Shop")
 				_tap_tray(1)
 				_tap(_square(Sim.HUB_AT + Vector2i(1, 1)))
 				_next()
-		18:
+		19:
 			if _t > _at + 0.4:
 				_tap_tray(9)
 				_next()
-		19:
+		20:
 			if _t > _at + 0.4:
 				_shot("10_say")
 				return _done()

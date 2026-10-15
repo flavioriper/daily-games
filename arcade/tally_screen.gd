@@ -78,6 +78,7 @@ var _slot_touch := -2
 var _hud_down := -1
 var _hud_live: ArrayMesh
 var _tray_live: ArrayMesh
+var _marks_live: ArrayMesh
 var _shown_got := -1
 var _bar := 0.0
 var _ready_on := false
@@ -541,9 +542,9 @@ func _draw_tray() -> void:
 			Art.eraser_into(marks, at, 24.0 * sc)
 	_tray_live = b.mesh()
 	tray.draw_mesh(_tray_live, null)
-	var m := marks.mesh()
-	if m != null and not marks.verts.is_empty():
-		tray.draw_mesh(m, null)
+	_marks_live = marks.mesh() if not marks.verts.is_empty() else null
+	if _marks_live != null:
+		tray.draw_mesh(_marks_live, null)
 	for slot in 10:
 		@warning_ignore("integer_division")
 		var id: String = TOOLS[slot / 5][slot % 5]

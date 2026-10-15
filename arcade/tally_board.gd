@@ -107,6 +107,10 @@ var _box_glow := -10.0
 var _shown_got := 0
 var _shown_target := 0
 
+## The desk under everything, past the paper's own rim of it.
+func _draw() -> void:
+	draw_rect(Rect2(Vector2.ZERO, size), Art.DESK)
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP if interactive else Control.MOUSE_FILTER_IGNORE
 	clip_contents = true
@@ -129,6 +133,7 @@ func _ready() -> void:
 	resized.connect(_on_resized)
 
 func _on_resized() -> void:
+	queue_redraw()
 	if view.size == Vector2.ZERO:
 		view = Rect2(Vector2.ZERO, size)
 	_clamp_k()
@@ -246,7 +251,7 @@ func _rebuild() -> void:
 			var v := int(sim.dep[i])
 			if v > 0:
 				Art.print_ring(b, Art.mid(Sim.tile_of(i)), sim.can_dig(v))
-		_prints = b.mesh()
+		_prints = b.mesh() if not b.verts.is_empty() else null
 	_work_ins()
 	var beds := Face.Builder.new()
 	var decks := Face.Builder.new()
@@ -260,8 +265,8 @@ func _rebuild() -> void:
 			var v := int(sim.face2[i])
 			Art.bed_into(beds, at, v, v)
 			decks.append(Art.deck(int(sim.face[i])), Transform2D(0.0, at))
-	_beds = beds.mesh()
-	_decks = decks.mesh()
+	_beds = beds.mesh() if not beds.verts.is_empty() else null
+	_decks = decks.mesh() if not decks.verts.is_empty() else null
 	_layers.ground.queue_redraw()
 	_layers.beds.queue_redraw()
 	_layers.decks.queue_redraw()
@@ -775,14 +780,19 @@ func run_to(a: Vector2i, b: Vector2i, swipe: Vector2) -> Dictionary:
 		f = 1 if d.y > 0 else 3
 	var n := absi(d.x) if f % 2 == 0 else absi(d.y)
 	var tiles := []
-	var cut := -1
 	for j in n + 1:
 		var t: Vector2i = a + Sim.DIRS[f] * j
 		if not Sim.inside(t):
 			break
 		tiles.append(t)
-		if cut < 0 and not sim.can_lay(t):
+	# a swipe begun on a dig, a machine or the box starts beside it
+	if tiles.size() > 1 and not sim.can_lay(tiles[0]):
+		tiles.pop_front()
+	var cut := -1
+	for j in tiles.size():
+		if not sim.can_lay(tiles[j]):
 			cut = j
+			break
 	return {"tiles": tiles, "f": f, "cut": cut if cut >= 0 else tiles.size()}
 
 func _lay(run: Dictionary) -> void:
