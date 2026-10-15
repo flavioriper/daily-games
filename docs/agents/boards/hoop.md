@@ -21,7 +21,19 @@
   accurate"): a tap, or a drag let go, takes the nearest standing pin out
   to `_reach` (0.8 of the shortest side, 24-78 px) when it is clearly the
   nearest, `REACH_CLEAR` 1.35 times nearer than the next; within the snap
-  it is taken either way. A drag on its way takes only a pin it passes
+  it is taken either way. **With a thread in hand** (2026-10-15, the user:
+  players "have to click exactly on the dot to connect after clicking on
+  the start point") only the pins a side joins to the pin held compete
+  (`_target_at`): a tap off every pin takes the nearest of those when the
+  finger is nearer it than the pin held and no farther from it than the
+  pin held is (or within the reach), however many other pins lie about
+  it and however far apart the two are (the reach alone, 0.8 of the
+  board's shortest side, was 30 px on a Medium board whose pins lie 96 px
+  apart, and a tap 60% of the way to the next pin missed: a throwaway
+  headless probe pressing off the pins found it; the probe and `_win.gd`
+  press pins dead centre and never would); a tap on a pin is that pin
+  (refused if no side joins it, which puts the thread down, as the
+  chain's rules say). A drag let go goes the same way. A drag on its way takes only a pin it passes
   within `PASS_SHARE` 0.6 of the snap (three pins all but in a line, and a
   straight drag to the far one was taken by the middle one at the full
   snap: `_win.gd` found it). A drag let go near a pin takes it only along
@@ -94,10 +106,18 @@
   was there, the cutter was the gap, and the bank needs it too). (1)
   `_carve`: the background made bare, so the thing drawn stands on the
   linen: the one thick region that fronts the outside (the edge, or the
-  bare reached from it) along half or more of its contact and is at least
-  `BACKDROP` 15% of the drawn squares (a themed picture's white board, a
-  bank scene's sky; a whale's body touching the edge at four squares fronts
-  far less than its outline and stays). (2) `_dissolve`: the one-square
+  bare reached from it) along half or more of its contact, is at least
+  `BACKDROP` 15% of the drawn squares, **and** (2026-10-15) either lies on
+  the picture's own edge for `EDGE_SHARE` 0.3 of its perimeter (a bank
+  scene's sky or grass: 0.48-0.63 measured) or fills its bounding box,
+  holes included, to `BOARD_FILL` 0.95 (the teapot's white board inside
+  its bare margin: 1.00). The day's lantern (63 squares, a dark body on
+  bare linen fronting the outside along all its contact: edge 0, box fill
+  0.63) was carved by the first rule, and the user saw its flame, leaves
+  and base floating ("Our game board do not even look the same of the
+  drawed image"); the mug's and the ladybird's bodies were carved the
+  same way. Measured over the bank's 36 and the Mac's 13 cached themed
+  pictures: only those three cuts changed. (2) `_dissolve`: the one-square
   dark outline, thin runs and specks under `SPECK` (regions with under
   half their squares in a 2x2 block of their own) flooded with the nearest
   kept colour. (3) `_trace`: every edge between two colours walked on the
@@ -106,19 +126,34 @@
   pin nearer another than `SPACING`; both shares are of the side of a
   square the drawn thing would half fill, so a small thing cuts as fine as
   a scene, and both grow 20% a pass while the cut comes out too fine. (5)
-  `_mesh`: Delaunay (`Geometry2D.triangulate_delaunay`) over the pins, each
-  triangle the colour most of its beads say (`_read_half`, 21 samples,
-  cached by corners across the splits), one mostly bare or a sliver under
-  `MIN_ANGLE` left out, every one wound clockwise on screen (positive
-  `_area`; `offset_polygon(-SEAM)` needs it). (6) The biggest triangle
-  whose middle is the spacing clear of every pin is split about it until
-  there are `PANELS` x `OVER` (1.18). (7) `_quads`: two neighbours of one
+  `_mesh`: Delaunay (`Geometry2D.triangulate_delaunay`) over the pins,
+  **made to keep the picture's edges** (2026-10-15): `_place` also hands
+  back every chain as steps between the pins it kept (a point dropped
+  for being near a pin hands its place to that pin), and an edge the
+  triangles miss has a pin put at its middle and the Delaunay run again,
+  up to `CONFORM` 8 times (a middle all but on a pin is skipped; an edge
+  still missing is let go). So no triangle straddles two colours or
+  bridges two parts of the drawing, which the plain Delaunay did (gaps
+  beside the lantern's flame, a leaf's corner in the body's colour). Each
+  triangle is then the colour most of its beads say (`_read_half`, 21
+  samples, cached by corners across the splits); one with `BARE_MAX` 0.7
+  of them bare is left out (only a bridge can be, now), a sliver under
+  `MIN_ANGLE` is left out when a tenth of its beads disagree and kept
+  when it is plainly a piece of the drawing (a hole is worse), one flat
+  under `FLAT` always; every one wound clockwise on screen (positive
+  `_area`). (6) The biggest triangles whose middles are the spacing clear
+  of every pin are split about them, a quarter of the shortfall a pass,
+  until there are `PANELS` x `OVER` (1.18); the cut starts at `FINE` 0.5
+  of the band's tolerance and spacing and coarsens a step (1.2x, ten
+  tries) while the outline alone overflows the count, so the panels go
+  to the drawing's shape first (the whale on Hard: 78 pins, were 68). (7) `_quads`: two neighbours of one
   colour making a convex four-sided shape are one panel at `QUADS`.
-  Measured on the 36 bank pictures and this Mac's cached themed ones (a
-  48 teapot, a 32 sun hat, two 24s): 24-29 / 44-56 / 78-88 panels in
-  5-25 ms, and Insane 266-298 in 125-160 ms, its shortest side 0.8-1.6
-  squares (18-40 px on the phone, hence the zoom). Edges that are not Delaunay edges leave
-  a triangle straddling two colours now and then; that is the look.
+  Measured on the 36 bank pictures and this Mac's cached themed ones
+  (2026-10-15, a throwaway cut report over every picture: carved colour,
+  panels a colour, ms): Hard 77-93 panels in 7-27 ms (the 63-square
+  lantern 52 ms), Insane 303-318 in 26-48 ms (were 125-160: the splits
+  come a batch a pass now), its shortest side 0.8-1.6 squares (18-40 px
+  on the phone, hence the zoom).
 - **Insane** (2026-10-14 evening, the user: "keep the numbers, but make it
   way more complex, like the others picture games does") is about 300
   panels (`PANELS` 330 before the quads; 266-298 measured), pins 18-40 px
@@ -132,14 +167,43 @@
   taken along a side, so nothing laid is wrong. The seal: any Insane day, or
   a day with no thread refused ("Neat stitch").
 - **The look**: a sewing table of oat check, the hoop's wood ring with its
-  screw, linen with a weave, purple pins, terracotta yarn with a twist; a
-  filled panel is a darker ground in its bead colour with columns of lighter
-  V stitches, each panel a shade of its own so the picture reads as facets.
-  Two balls of yarn and a needle dress the foot. The win swells the picture
-  once, then slides the hoop to the win's span.
+  screw, linen with a weave, purple pins, terracotta yarn with a twist.
+  **The knit** (2026-10-15, the user, with the reference's screens beside
+  ours: "see how different in quality they are ... it's insanely
+  terrible ... show a really great mosaic image, this is what I want"):
+  a filled panel is its outline over one knit tile, `knit_texture()`, a
+  128x144 texture drawn once in code (grey; the panel's colour is the
+  vertex colour, multiplied in) of `TILE` 4x6 V stitches, each `STITCH`
+  8x6 px at 1x: two leaves slim at the top and plump at the foot, the
+  foot reaching a third of the way into the row below over the slim tops
+  there, as stockinette lies (arms of one width stopping at their own row
+  left a field of dark arrowheads; plump ones merged into a chevron
+  weave). The tile repeats and is mipmapped (`texture_repeat`,
+  `texture_filter` on the board), so whole it is an even grain and close
+  up it is stitches; nothing is rebuilt for the zoom. Drawing the tile is
+  63 ms of GDScript on this Mac, once per run, at the first board's first
+  draw (a hitch to feel for on a phone). Seen the same on
+  `--rendering-driver opengl3_angle` (`close`, 95 draw calls). Each panel is lit
+  as a facet: `FACET` 0.13 lighter or darker by its index and
+  `FACET_SLOPE` 0.08 across it toward `LIGHT`, so neighbours of one colour
+  read as planes. A side's thread is terracotta yarn on bare linen and,
+  once a panel beside it is knitted, **a rope in that panel's colour**
+  (lighter, its twist darker and half clear), drawn over the knitting;
+  a pin whose every side is threaded leaves **a knot** in the colour of a
+  panel knitted at it. The rope is `_rope_w`, 0.13 of the shortest side
+  within 2.4-6 px, so Insane's tiny panels are rimmed thinly rather than
+  caged (a 6 px rope round 18-40 px panels was a wire mesh). The old knit
+  (polygons: a dark ground, hexagon leaves, `KNIT` 15x12, `SEAM`,
+  `_knit_rim`) is gone; a panel knitting in now comes in across itself
+  from the side that closed it and swells. Two balls of yarn and a needle
+  dress the foot. The win swells the picture once, then slides the hoop
+  to the win's span.
 - **Meshes**: the table, the hoop and the clamp built a layout; the knitting
-  in chunks of ten panels, rebuilt when one fills; threads, pins and marks a
-  mesh each, rebuilt on a thread; what moves as two meshes a frame. The
+  in chunks of ten panels (three or four vertices a panel, with UVs),
+  rebuilt when one fills and drawn with the knit texture; threads, pins
+  and marks a mesh each, rebuilt on a thread (the pins' when a fill ends,
+  for the knots); what moves as three meshes a frame (the panels knitting
+  in, textured; the rest under and over the pins). The
   zoom is a transform over them all while fingers pinch; once it settles
   (2026-10-15, the user, at 4x on Hard: "check why the game resolution is
   so terrible") everything under it is rebuilt for that zoom (`_built_k`,
@@ -147,8 +211,10 @@
   was a 6 px blur, the numerals' 0.9 px strokes blots, the leaves hexagons.
   The Builder now takes `feather` (FEATHER / k) and `detail` (k); the
   knitting got the feather it never had (`_knit_rim`, ground and leaves),
-  whose stair-stepped edge showed at any zoom. Hard zoomed: 90 draw calls
-  peak. Draw calls on
+  whose stair-stepped edge showed at any zoom (the knit of that day; the
+  textured one needs no rebuild). Hard zoomed: 90 draw calls
+  peak; 2026-10-15: Hard close 95 (the same on `opengl3_angle`), Hard
+  solve 114, Insane solve 140 peak, Medium play 99 (the default driver). Draw calls on
   `opengl3_angle` at 810x1440 (2026-10-14, after the numerals and the
   zoom): 85 at rest, 82-88 zoomed and threading on Medium, 117 peak on the
   Insane solve (budget 855). Building every panel's knitting on Insane
@@ -157,9 +223,11 @@
   copied into `build/sfx_raw/hoop/`): `pick`, `stitch`, `fill`, `locked`,
   `enter`, `reset`, `double`, `run`, `whole`, `hint`, `solved`, `party`,
   `stamp`. All 13 pass `measure_sfx.py`; **none has been heard by the user**.
-- **Harnesses**: `tests/_shot_hoop.gd -- d=<0..3> rest|zoom|play|solve|howto` (a
+- **Harnesses**: `tests/_shot_hoop.gd -- d=<0..3> rest|zoom|play|solve|close|howto` (a
   greedy drag through the board's own input path; `zoom` presses the
-  button twice, pans from bare linen, drags close and wheels out),
+  button twice, pans from bare linen, drags close and wheels out; `close`
+  threads most sides through the state and zooms in with the button and
+  the wheel, for the knit seen close),
   `tests/_probe_hoop.gd` (headless, every band), `tests/_win.gd -- hoop`
   (PASS, Medium, bulb then every side dragged through the window). On a
   Mac with the day cached (this one holds 20261014's) the shots show the

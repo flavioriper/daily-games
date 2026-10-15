@@ -10,7 +10,8 @@ extends SceneTree
 ## drag that closes panel after panel, shot mid-knit and with the combo up);
 ## `howto` (the tutorial sheet as a first open shows it);
 ## `solve` (all but the last few sides threaded through the state, the rest
-## dragged, the win and the seal). Frames go to <dir>/yh_<mode>_d<level>_<n>.png;
+## dragged, the win and the seal); `close` (most sides threaded, then the
+## button's zoom and the wheel's, for the knit seen close). Frames go to <dir>/yh_<mode>_d<level>_<n>.png;
 ## every mode prints the peak draw calls and the mean frame from 0.5 s on.
 
 var _t := 0.0
@@ -229,6 +230,27 @@ func _script() -> void:
 			for t in [2.2, 2.9, 3.6, 5.5]:
 				_at(t, _shot)
 			_end = 6.0
+		"close":
+			# the picture all but knitted, seen close: the knit, the ropes
+			# and the knots at the zoom the button gives
+			_at(1.2, func() -> void:
+				var st = _puzzle.state
+				for s in st.sides.size():
+					if s % 7 != 3:
+						st.lay_side(s)
+				_puzzle._deal())
+			_at(1.6, _puzzle.zoom_button)
+			_at(2.1, _puzzle.zoom_button)
+			_at(2.8, _shot)
+			_at(2.9, func() -> void:
+				var ev := InputEventMouseButton.new()
+				ev.button_index = MOUSE_BUTTON_WHEEL_UP
+				ev.pressed = true
+				ev.position = _puzzle._centre
+				_puzzle._gui_input(ev)
+				_puzzle._gui_input(ev))
+			_at(3.6, _shot)
+			_end = 4.0
 
 ## The finger along `_walk`, a pin every 0.12 s, a few drag events between.
 func _drive() -> void:

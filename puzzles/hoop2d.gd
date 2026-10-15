@@ -53,7 +53,10 @@ const SNAP_SHARE := 0.45
 ## past the snap, a finger still takes the nearest pin out to REACH (a share
 ## of the shortest side, within the bound) when that pin is clearly the
 ## nearest, REACH_CLEAR times nearer than the next; a halo on it says so
-## while the finger is down.
+## while the finger is down. With a thread in hand only the pins a side
+## joins to the pin held compete (`_target_at`), the nearest within the
+## reach taken outright (the user, 2026-10-15: players "have to click
+## exactly on the dot to connect after clicking on the start point").
 const REACH_SHARE := 0.8
 const REACH_MAX := 78.0
 const REACH_CLEAR := 1.35
@@ -66,8 +69,18 @@ const YARN_W := 6.0
 const TWIST := 9.0
 ## The knitting: a stitch's column width and row height on the screen, and
 ## the linen left between two panels.
-const KNIT := Vector2(15.0, 12.0)
-const SEAM := 1.6
+## One V stitch on the table, px at 1x (the reference's are specks whole
+## and read close up), the stitches a tile of the knit texture holds, and
+## the texels across one.
+const STITCH := Vector2(8.0, 6.0)
+const TILE := Vector2i(4, 6)
+const TEXEL := 32
+## Each panel a shade of its own, so the picture reads as facets: this much
+## lighter or darker than its colour, and this much from one side of the
+## panel to the other.
+const FACET := 0.13
+const FACET_SLOPE := 0.08
+const LIGHT := Vector2(-0.6, -0.8)
 ## Panels a chunk of the knitting's meshes.
 const CHUNK := 10
 
@@ -198,6 +211,10 @@ var _k := 0.0
 var _snap := 30.0
 var _reach := 50.0
 var _pin_r := PIN_R
+## The rope's width on this cut: YARN_W, thinner on a fine cut (Insane's
+## panels are 18-40 px, and a 6 px rope round each made a wire mesh of
+## the picture).
+var _rope_w := YARN_W
 var _px := PackedVector2Array()
 var _from_k := 0.0
 var _from_centre := Vector2.ZERO
@@ -216,10 +233,10 @@ var _marks: ArrayMesh
 var _marks_stale := true
 var _chunks := {}
 var _chunk_stale := {}
-## A panel's knitting, built once a layout: [verts, colours, indices, and a
-## vertex's stitch's middle (GROUND for the ground's)], so it can knit in
-## stitch by stitch from the side that closed it.
+## A panel's knitting, built once a layout: [verts, colours, indices, uvs]
+## over the knit texture, lit as a facet.
 var _knit := {}
+## A side's rope, by side and colour (see `_yarn_part`).
 var _yarn := {}
 var _pin_part := []
 ## The zoom the table's meshes were built for: they are rebuilt at the zoom
@@ -312,6 +329,10 @@ func capabilities() -> Array[String]:
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = false
+	# the knit tile repeats under every panel and is mipmapped, so it stays
+	# even whole and sharp close up
+	texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
+	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	fx = Fx2D.new()
 	fx.haptics = HAPTICS
 	fx.name = "Fx"
@@ -451,6 +472,7 @@ func _layout() -> void:
 	_snap = clampf(shortest * SNAP_SHARE, SNAP.x, SNAP.y)
 	_reach = clampf(shortest * REACH_SHARE, _snap, REACH_MAX)
 	_pin_r = clampf(shortest * 0.16, PIN_R_MIN, PIN_R)
+	_rope_w = clampf(shortest * 0.13, 2.4, YARN_W)
 	# the zoom's room is the whole table; close is the shortest side made
 	# wide enough for a finger, within bounds; none once the day is won
 	var near := clampf(ZOOM_SIDE / maxf(shortest, 1.0), ZOOM_NEAR.x, ZOOM_NEAR.y)
@@ -600,130 +622,166 @@ func _build_clamp() -> ArrayMesh:
 	b.stroke(PackedVector2Array([top + Vector2(-7.0, -46.0), top + Vector2(7.0, -46.0)]), 3.0, RING_DEEP)
 	return b.mesh()
 
-## A knit vertex of the ground, not of a stitch.
-const GROUND := Vector2(-1.0e9, -1.0e9)
+## The knit: one tile of V stitches drawn once into a texture (grey, the
+## panel's colour multiplied in as vertex colour) and laid under every
+## filled panel through its UVs, so a chunk of panels is still one draw
+## call, the stitches are as fine as a real knit's and they stay sharp
+## close up (the tile repeats and is mipmapped). Each stitch is two plump
+## leaves meeting at the foot, its point tucked between the arms of the
+## one below, as stockinette lies; the groove between leaves is dark.
+static var _knit_tex: ImageTexture
 
-## Panel `k`'s knitting, built once a layout: a darker ground in its colour
-## with columns of lighter Vs over it, each stitch a pair of tilted leaves.
+static func knit_texture() -> ImageTexture:
+	if _knit_tex != null:
+		return _knit_tex
+	var cw := float(TEXEL)
+	var tw := TILE.x * TEXEL
+	var th := int(round(cw * STITCH.y / STITCH.x * TILE.y))
+	var rh := float(th) / TILE.y
+	var img := Image.create(tw, th, true, Image.FORMAT_RGBA8)
+	# each arm a leaf, slim at its top and plump at the foot, the V's foot
+	# reaching a third of the way into the row below, where it lies over
+	# the slim tops of that row's arms, as a knit does (arms of one width
+	# stopping at their own row left the valleys a field of dark
+	# arrowheads, and plump ones merged across the columns into a chevron
+	# weave)
+	var r_top := cw * 0.11
+	var r_foot := cw * 0.3
+	var light := LIGHT.normalized()
+	var leaves := [[Vector2(0.17, -0.02), Vector2(0.5, 1.3)], [Vector2(0.83, -0.02), Vector2(0.5, 1.3)]]
+	for y in th:
+		for x in tw:
+			var p := Vector2(fmod(x + 0.5, cw), fmod(y + 0.5, rh))
+			var inside := 0.0
+			var ridge := 0.0
+			for dy in [-2.0, -1.0, 0.0, 1.0]:
+				var o := Vector2(0.0, dy * rh)
+				for leaf: Array in leaves:
+					var a: Vector2 = Vector2(leaf[0].x * cw, leaf[0].y * rh) + o
+					var b: Vector2 = Vector2(leaf[1].x * cw, leaf[1].y * rh) + o
+					var q := Geometry2D.get_closest_point_to_segment(p, a, b)
+					var along := (q - a).length() / maxf((b - a).length(), 0.001)
+					var r := lerpf(r_top, r_foot, along)
+					var d := 1.0 - q.distance_to(p) / r
+					if d > inside:
+						inside = d
+						# the light on a leaf's upper left side
+						ridge = (p - q).normalized().dot(light)
+			# the groove is only a little darker than a leaf's edge: whole,
+			# the knit is an even grain, not a grid of dots
+			var v := 0.56
+			if inside > 0.0:
+				var round_ := sqrt(clampf(inside, 0.0, 1.0))
+				v = lerpf(0.68, 1.0, round_) + 0.05 * ridge * (1.0 - round_)
+			img.set_pixel(x, y, Color(v, v, v, 1.0))
+	img.generate_mipmaps()
+	_knit_tex = ImageTexture.create_from_image(img)
+	return _knit_tex
+
+## Panel `k`'s knitting, built once a layout: its outline over the knit
+## tile, lit as a facet: a shade of its own (FACET, by its index) and a
+## slope across it toward the light (FACET_SLOPE), so neighbours of one
+## colour read as the low-poly picture's planes.
 func _knit_part(k: int) -> Array:
 	if _knit.has(k):
 		return _knit[k]
 	var outline := _outline_px(k)
-	var inset: Array = Geometry2D.offset_polygon(outline, -SEAM)
-	var ground: PackedVector2Array = inset[0] if not inset.is_empty() else outline
 	var base: Color = Pal.PG_BEADS.get(state.colours[state.colour[k]], Pal.LINE)
-	# each panel a shade of its own, so the picture reads as facets
-	var h := float((k * 2654435761) % 1000) / 1000.0
-	base = base.lightened(0.05 * h) if h > 0.5 else base.darkened(0.06 * (0.5 - h) * 2.0)
-	var dark := base.darkened(0.16)
-	var light := base.lightened(0.07)
+	# the tile is grey about 0.8, so the colour is lifted to read true
+	base = base.lightened(0.12)
+	var h := float((k * 2654435761) % 1000) / 500.0 - 1.0
+	var lit := base.lightened(FACET * h) if h > 0.0 else base.darkened(FACET * -h)
+	var c := Vector2.ZERO
+	for p in outline:
+		c += p
+	c /= outline.size()
+	var reach := 1.0
+	for p in outline:
+		reach = maxf(reach, p.distance_to(c))
 	var verts := PackedVector2Array()
 	var cols := PackedColorArray()
-	var idx := PackedInt32Array()
-	var leaves := PackedVector2Array()
-	var tris := Geometry2D.triangulate_polygon(ground)
-	for p in ground:
+	var uvs := PackedVector2Array()
+	var span := Vector2(STITCH.x * TILE.x, STITCH.y * TILE.y)
+	var light := LIGHT.normalized()
+	for p in outline:
 		verts.append(p)
-		cols.append(dark)
-		leaves.append(GROUND)
-	idx.append_array(tris)
-	_knit_rim(verts, cols, idx, leaves, ground, 0, dark, GROUND)
-	var lo := ground[0]
-	var hi := ground[0]
-	for p in ground:
-		lo = Vector2(minf(lo.x, p.x), minf(lo.y, p.y))
-		hi = Vector2(maxf(hi.x, p.x), maxf(hi.y, p.y))
-	var cw := KNIT.x
-	var rh := KNIT.y
-	var x0 := floorf(lo.x / cw) * cw
-	var y0 := floorf(lo.y / rh) * rh
-	var y := y0
-	while y <= hi.y + rh:
-		var x := x0
-		while x <= hi.x + cw:
-			var c := Vector2(x + cw * 0.5, y + rh * 0.5)
-			for side in [-1.0, 1.0]:
-				var leaf := _leaf(c, side, cw, rh)
-				var inside := true
-				for q in leaf:
-					if not Geometry2D.is_point_in_polygon(q, ground):
-						inside = false
-						break
-				if not inside:
-					continue
-				var first := verts.size()
-				var lc := c + Vector2(side * cw * 0.21, 0.0)
-				for q in leaf:
-					verts.append(q)
-					cols.append(light)
-					leaves.append(lc)
-				for m in range(1, leaf.size() - 1):
-					idx.append_array([first, first + m, first + m + 1])
-				_knit_rim(verts, cols, idx, leaves, leaf, first, light, lc)
-			x += cw
-		y += rh
-	var part := [verts, cols, idx, leaves]
+		var slope := (p - c).dot(light) / reach * FACET_SLOPE
+		cols.append(lit.lightened(slope) if slope > 0.0 else lit.darkened(-slope))
+		uvs.append(Vector2(p.x / span.x, p.y / span.y))
+	var idx := Geometry2D.triangulate_polygon(outline)
+	var part := [verts, cols, idx, uvs]
 	_knit[k] = part
 	return part
 
-## A knit outline's feather (its vertices start at `first`): a rim
-## Face.FEATHER screen pixels outside it at alpha 0, the Builder's _feather
-## written into the knit's own arrays so the rim pops with its leaf (`lc`).
-func _knit_rim(verts: PackedVector2Array, cols: PackedColorArray, idx: PackedInt32Array, leaves: PackedVector2Array,
-		outline: PackedVector2Array, first: int, colour: Color, lc: Vector2) -> void:
-	var n := outline.size()
-	var area := 0.0
-	for i in n:
-		area += outline[i].cross(outline[(i + 1) % n])
-	var out := 1.0 if area > 0.0 else -1.0
-	var f := Face.FEATHER / _built_k
-	var rim := verts.size()
-	for i in n:
-		var e0 := (outline[i] - outline[(i - 1 + n) % n]).normalized()
-		var e1 := (outline[(i + 1) % n] - outline[i]).normalized()
-		var nrm := Vector2(e0.y, -e0.x) + Vector2(e1.y, -e1.x)
-		if nrm.length_squared() < 1e-8:
-			nrm = Vector2(e1.y, -e1.x)
-		verts.append(outline[i] + nrm.normalized() * out * f)
-		cols.append(Color(colour, 0.0))
-		leaves.append(lc)
-	for i in n:
-		var j := (i + 1) % n
-		idx.append_array([first + i, first + j, rim + j, first + i, rim + j, rim + i])
-
-## One leaf of a V stitch about `c`: a slim oval leaning in toward the V's
-## foot.
-func _leaf(c: Vector2, side: float, cw: float, rh: float) -> PackedVector2Array:
-	var centre := c + Vector2(side * cw * 0.21, 0.0)
-	var ang := -side * 0.5
-	var out := PackedVector2Array()
-	var sides := clampi(roundi(6.0 * _built_k), 6, 16)
-	for m in sides:
-		var a := TAU * m / sides
-		out.append(centre + Vector2(cos(a) * cw * 0.17, sin(a) * rh * 0.6).rotated(ang))
-	return out
-
-## A side's thread: the yarn, its lighter top and its twist.
-func _yarn_part(s: int) -> Array:
-	if _yarn.has(s):
-		return _yarn[s]
+## A side's thread: the player's terracotta yarn while it lies on bare
+## linen, and once a panel beside it is knitted, a rope in that panel's
+## colour, lighter than the knit, with its twist (the reference's panels
+## are rimmed so). `colour` -1 is the player's yarn.
+func _yarn_part(s: int, colour: int) -> Array:
+	var key := s * 64 + colour + 1
+	if _yarn.has(key):
+		return _yarn[key]
 	var a := _px[state.sides[s].x]
 	var c := _px[state.sides[s].y]
 	var b := _builder()
-	b.stroke(PackedVector2Array([a, c]), YARN_W, YARN)
+	_rope_into(b, a, c, colour)
+	var part := [b.verts, b.cols, b.idx]
+	_yarn[key] = part
+	return part
+
+## The rope's body and twist colours for a panel colour, or the yarn's.
+func _rope_colours(colour: int) -> Array:
+	if colour < 0:
+		return [YARN, Color(YARN_DEEP, 0.7)]
+	var base: Color = Pal.PG_BEADS.get(state.colours[colour], Pal.LINE)
+	return [base.lightened(0.3), Color(base.darkened(0.25), 0.55)]
+
+func _rope_into(b, a: Vector2, c: Vector2, colour: int) -> void:
+	var cols := _rope_colours(colour)
+	var body: Color = cols[0]
+	var deep: Color = cols[1]
+	var w := _rope_w
+	var twist := TWIST * w / YARN_W
+	b.stroke(PackedVector2Array([a + Vector2(1.0, 2.0), c + Vector2(1.0, 2.0)]), w + 1.0, Color(Pal.OUTLINE, 0.16))
+	b.stroke(PackedVector2Array([a, c]), w, body)
 	var d := (c - a)
 	var n := d.length()
 	if n > 0.0:
 		var u := d / n
 		var v := Vector2(-u.y, u.x)
-		var t := TWIST * 0.5
-		while t < n - TWIST * 0.3:
+		var t := twist * 0.5
+		while t < n - twist * 0.3:
 			var p := a + u * t
-			b.stroke(PackedVector2Array([p - v * YARN_W * 0.4 - u * 2.0, p + v * YARN_W * 0.4 + u * 2.0]), 1.6, YARN_DEEP, false, false)
-			t += TWIST
-	var part := [b.verts, b.cols, b.idx]
-	_yarn[s] = part
-	return part
+			b.stroke(PackedVector2Array([p - v * w * 0.4 - u * w * 0.33, p + v * w * 0.4 + u * w * 0.33]), maxf(0.9, w * 0.23), deep, false, false)
+			t += twist
+
+## A knot where a pin has popped off: the rope's end tied, in the colour of
+## a panel knitted beside it (the yarn's while none is).
+func _knot_into(b, at: Vector2, colour: int) -> void:
+	var cols := _rope_colours(colour)
+	var body: Color = cols[0]
+	var deep: Color = cols[1]
+	var r := _rope_w * 0.95
+	b.disc(at + Vector2(1.0, 1.5), r, Color(Pal.OUTLINE, 0.16))
+	b.disc(at, r, deep)
+	b.disc(at + Vector2(-0.3, -0.5), r * 0.8, body)
+	b.disc(at + Vector2(-r * 0.3, -r * 0.35), r * 0.28, Color(body.lightened(0.4), 0.8))
+
+## The colour a side's rope takes: of a panel beside it that is knitted
+## (the first), -1 for the yarn.
+func _side_colour(s: int) -> int:
+	for k in state.side_panels[s]:
+		if state.filled[k] and not _filling.has(k):
+			return state.colour[k]
+	return -1
+
+## The colour a pin's knot takes: of a panel knitted at it, -1 for none.
+func _pin_colour(v: int) -> int:
+	for s in state.pin_sides[v]:
+		var c := _side_colour(s)
+		if c >= 0:
+			return c
+	return -1
 
 ## A pin: its shadow, its head and the light on it.
 func _pin_into(b, at: Vector2, r: float) -> void:
@@ -798,10 +856,12 @@ func _builder() -> Face.Builder:
 	b.detail = _built_k
 	return b
 
+## Parts [verts, colours, indices] (and uvs, for the knitting) as one mesh.
 func _combine(parts: Array) -> ArrayMesh:
 	var verts := PackedVector2Array()
 	var cols := PackedColorArray()
 	var idx := PackedInt32Array()
+	var uvs := PackedVector2Array()
 	for part: Array in parts:
 		var first := verts.size()
 		var ix: PackedInt32Array = part[2]
@@ -812,6 +872,8 @@ func _combine(parts: Array) -> ArrayMesh:
 		verts.append_array(part[0])
 		cols.append_array(part[1])
 		idx.append_array(ix)
+		if part.size() > 3:
+			uvs.append_array(part[3])
 	if idx.is_empty():
 		return null
 	var arrays := []
@@ -819,6 +881,8 @@ func _combine(parts: Array) -> ArrayMesh:
 	arrays[Mesh.ARRAY_VERTEX] = verts
 	arrays[Mesh.ARRAY_COLOR] = cols
 	arrays[Mesh.ARRAY_INDEX] = idx
+	if uvs.size() == verts.size():
+		arrays[Mesh.ARRAY_TEX_UV] = uvs
 	var m := ArrayMesh.new()
 	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	return m
@@ -831,12 +895,7 @@ func _threads_mesh() -> ArrayMesh:
 	for s in state.sides.size():
 		if not state.laid[s] or _laid_at.has(s):
 			continue
-		var covered := true
-		for k in state.side_panels[s]:
-			if not state.filled[k] or _filling.has(k):
-				covered = false
-		if not covered:
-			parts.append(_yarn_part(s))
+		parts.append(_yarn_part(s, _side_colour(s)))
 	_threads = _combine(parts)
 	return _threads
 
@@ -848,6 +907,8 @@ func _pins_mesh() -> ArrayMesh:
 	for v in state.pins.size():
 		if state.pin_open[v] > 0:
 			_pin_into(b, _px[v], _pin_r)
+		elif not _gone.has(v):
+			_knot_into(b, _px[v], _pin_colour(v))
 	_pins = b.mesh() if not b.idx.is_empty() else null
 	return _pins
 
@@ -910,10 +971,11 @@ func _draw() -> void:
 	var alpha := 1.0 if Motion.reduce else Motion.appear_level(since + Motion.ENTER_DELAY)
 	draw_mesh(_hoop, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, alpha))
 	shown.append(_hoop)
+	var knit := knit_texture()
 	for c in ceili(float(state.panels.size()) / CHUNK):
 		var m := _chunk_mesh(c)
 		if m != null:
-			draw_mesh(m, null)
+			draw_mesh(m, knit)
 			shown.append(m)
 	var marks := _marks_mesh()
 	if marks != null and _solved_at == -INF:
@@ -925,16 +987,19 @@ func _draw() -> void:
 		shown.append(threads)
 	var moving: Array = _moving_meshes(now, since)
 	if moving[0] != null:
-		draw_mesh(moving[0], null)
+		draw_mesh(moving[0], knit)
 		shown.append(moving[0])
+	if moving[1] != null:
+		draw_mesh(moving[1], null)
+		shown.append(moving[1])
 	if not _entering(since):
 		var pins := _pins_mesh()
 		if pins != null:
 			draw_mesh(pins, null)
 			shown.append(pins)
-	if moving[1] != null:
-		draw_mesh(moving[1], null)
-		shown.append(moving[1])
+	if moving[2] != null:
+		draw_mesh(moving[2], null)
+		shown.append(moving[2])
 	draw_mesh(_clamp, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, alpha))
 	shown.append(_clamp)
 	if _stamp_at <= now:
@@ -945,10 +1010,11 @@ func _draw() -> void:
 func _entering(since: float) -> bool:
 	return not Motion.reduce and since < Motion.ENTER_POP * 0.5 + Motion.stagger(state.pins.size(), Motion.ENTER_STAGGER, 0.8) + Motion.POP_IN
 
-## What moves, as two meshes a frame, one under the still pins and one over
-## them: under, the pins while they pop in (the still ones are `_pins`
-## after), the panels knitting in and the threads being laid; over, the pins
-## popping off, a refused pin's ring and the thread in hand.
+## What moves, as three meshes a frame, two under the still pins and one
+## over them: under, the panels knitting in (over the knit texture), then
+## the pins while they pop in (the still ones are `_pins` after) and the
+## threads being laid; over, the pins popping off, a refused pin's ring and
+## the thread in hand.
 func _moving_meshes(now: float, since: float) -> Array:
 	var parts: Array = []
 	var b := _builder()
@@ -968,6 +1034,7 @@ func _moving_meshes(now: float, since: float) -> Array:
 			_filling.erase(kk)
 			_chunk_stale[kk / CHUNK] = true
 			_threads_stale = true
+			_pins_stale = true
 			continue
 		parts.append(_knit_now(kk, e, f.from))
 	# threads being laid draw in from the pin they left
@@ -981,9 +1048,8 @@ func _moving_meshes(now: float, since: float) -> Array:
 		var a := _px[int(l.from)]
 		var c := _px[int(l.to)]
 		b.stroke(PackedVector2Array([a, a.lerp(c, Motion.back_out(e / THREAD_IN))]), YARN_W, YARN)
-	if not b.idx.is_empty():
-		parts.append([b.verts, b.cols, b.idx])
-	var under := _combine(parts)
+	var knitting := _combine(parts)
+	var under := b.mesh() if not b.idx.is_empty() else null
 	b = _builder()
 	# pins whose every side is threaded pop off
 	for v: int in _gone.keys():
@@ -1013,19 +1079,18 @@ func _moving_meshes(now: float, since: float) -> Array:
 			var near := _reached(zoom.to_screen(_finger))
 			if near >= 0 and near != _refused:
 				b.disc(_px[near], _pin_r + 9.0, Color(YARN_HI, 0.35))
-	return [under, b.mesh() if not b.idx.is_empty() else null]
+	return [knitting, under, b.mesh() if not b.idx.is_empty() else null]
 
 ## A pin's turn in the entrance: from the top down, as the picture is read.
 func _enter_order(v: int) -> int:
 	return int((_px[v].y - (_centre.y - _radius)) / maxf(1.0, _snap))
 
 ## Panel `kk` `e` seconds into knitting in from `from` (a point on the side
-## that closed it): the ground fades in, the stitches pop in nearest first,
-## and the panel swells a little about its middle.
+## that closed it): the knit comes in across the panel from that side, and
+## the panel swells a little about its middle.
 func _knit_now(kk: int, e: float, from: Vector2) -> Array:
 	var part := _knit_part(kk)
 	var src: PackedVector2Array = part[0]
-	var leaves: PackedVector2Array = part[3]
 	var verts := PackedVector2Array()
 	verts.resize(src.size())
 	var cols: PackedColorArray = (part[1] as PackedColorArray).duplicate()
@@ -1035,19 +1100,13 @@ func _knit_now(kk: int, e: float, from: Vector2) -> Array:
 		far = maxf(far, p.distance_to(from))
 	var u := e / FILL
 	var swell := 1.0 + FILL_PUSH * sin(PI * u)
-	var ground := clampf(u * 4.0, 0.0, 1.0)
-	var spread := FILL - STITCH_POP
 	for m in src.size():
 		var p := src[m]
-		var lc := leaves[m]
-		if lc == GROUND:
-			cols[m].a = ground
-		else:
-			var at := spread * lc.distance_to(from) / far
-			var k := Motion.pop_in_scale(e - at, STITCH_POP).x if e > at else 0.0
-			p = lc + (p - lc) * k
+		# the far corner comes in last
+		var at := 0.55 * p.distance_to(from) / far
+		cols[m].a = clampf((u - at) / 0.35, 0.0, 1.0)
 		verts[m] = c + (p - c) * swell
-	return [verts, cols, part[2]]
+	return [verts, cols, part[2], part[3]]
 
 # --- the pill, the toast and the combo ---
 
@@ -1247,7 +1306,14 @@ func pin_at(at: Vector2, but := -1, reach := false, within := -1.0) -> int:
 func press(at: Vector2) -> void:
 	if not _can_play():
 		return
-	var v := pin_at(at, -1, true)
+	# a pin under the finger is the pin meant, refused or not; off every
+	# pin, with a thread in hand, the nearest the thread can go to along
+	# a side (the user, 2026-10-15: "players are complaining it's hard to
+	# play because they have to click exactly on the dot to connect after
+	# clicking on the start point"); with none in hand, the magnet's pick
+	var v := pin_at(at, -1, false)
+	if v < 0:
+		v = _target_at(at, _armed) if _armed >= 0 else pin_at(at, -1, true)
 	_finger = zoom.to_layout(at)
 	_moved = false
 	_press_pin = v
@@ -1287,10 +1353,34 @@ func press(at: Vector2) -> void:
 func _reached(at: Vector2) -> int:
 	if _cur < 0:
 		return -1
-	var v := pin_at(at, _cur, true)
-	if v < 0 or state.side_between(_cur, v) < 0:
+	return _target_at(at, _cur)
+
+## The pin a finger at `at` (screen) means with the thread in hand at pin
+## `from`: the nearest of the standing pins a side joins to it, when the
+## finger is nearer that pin than the pin held and no farther from it
+## than the pin held is (or within the magnet's reach); -1 for none. Only
+## the pins the thread can go to compete, so a tap roughly toward the
+## next one lands, however many other pins lie about it and however far
+## apart the two are (the reach alone, 0.8 of the board's shortest side,
+## was 30 px on a Medium board whose pins lie 96 px apart).
+func _target_at(at: Vector2, from: int) -> int:
+	if from < 0:
 		return -1
-	return v
+	var lp := zoom.to_layout(at)
+	var reach := _reach / zoom.k
+	var held := _px[from].distance_to(lp)
+	var best := -1
+	var best_d := INF
+	for s in state.pin_sides[from]:
+		var sd: Vector2i = state.sides[s]
+		var v: int = sd.y if sd.x == from else sd.x
+		if state.pin_open[v] <= 0:
+			continue
+		var d := _px[v].distance_to(lp)
+		if d < best_d and (d < reach or (d < held and d < _px[v].distance_to(_px[from]))):
+			best_d = d
+			best = v
+	return best
 
 ## The thread in hand is put down: its combo ends.
 func _put_down() -> void:
@@ -1667,10 +1757,7 @@ func _rebuild_for_zoom() -> void:
 	_built_k = zoom.k
 	_hoop = _build_hoop()
 	_clamp = _build_clamp()
-	_knit = {}
 	_yarn = {}
-	_chunks = {}
-	_chunk_stale = {}
 	_threads_stale = true
 	_pins_stale = true
 	_marks_stale = true
