@@ -3737,8 +3737,25 @@ divide and raise, and the box asks for one number so many times a level.
   and a fifth; no away progress; no priorities, copy, paste, undo or
   markers; straight runs only; a crate of 500; no concept tab, no new take,
   no mascot.
-- **Not done**: a phone; the sounds heard; pt and es read; `reduce` shot
-  windowed; es tutorial pages; a merge into a belt's side looked at close
-  (the bed is straight while the side's token curves in over the paper);
-  a pace bot (only the first level's pace is measured: ten 1s at 1 a
-  second); a Tally bot in `tests/_probe_arcade_buzz.gd`.
+- **Merges and splits are drawn** (2026-10-15, second pass): a belt fed
+  from a side as well as its back, or splitting to a side, has that bend
+  laid under its straight bed, so the token taking it rides walnut; the
+  harness lays one of each and shoots them close (`5b_close`, 78 draw calls).
+- **The pace, by a bot** (`tests/_pace_tally.gd -- [levels] [copies] [up]`):
+  for each level it finds the shortest chain to the target from what it may
+  dig and the machines it has (the last result and a fresh dug number each
+  step, a divider only where it divides evenly), builds three copies into
+  the box and plays; it writes its own numbers where it builds, so it
+  measures the rules, not the walk on the paper. **Three lines and no
+  upgrades**: level 5 at 4.8 minutes, level 10 at 25, level 13 (the
+  subtractor) at 53, level 22 (the crate) at 5.1 hours, each level then
+  about 40 minutes. **With `up`**, making each open track's next rank's
+  numbers before each level, one track after another: 20 ranks bought by
+  level 22, the levels after the multiplier's fourth rank about 2.5 times
+  quicker, but level 22 only at 13.4 hours: as costed, the upgrades take
+  longer to make than they give back by level 22, for a bot that makes them
+  one after another and never in parallel. Not tuned: the user's to call
+  (the counts are the reference's fifth). The bot never earns an upgrade by
+  the way: a target is rarely a rank's number.
+- **Not done**: a phone; the sounds heard; pt and es read by a speaker;
+  `reduce` shot windowed; a Tally bot in `tests/_probe_arcade_buzz.gd`.
