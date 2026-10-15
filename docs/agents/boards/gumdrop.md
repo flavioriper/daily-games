@@ -348,7 +348,8 @@ autonomous". Built unattended on that; nothing of it seen by the user.
   `colour_of`, the card's `FLAVOURS`), under it pale toward milk, as
   `nearness_of` sees a weak tint (it mixes toward white), and over it the
   deepening as before. No lighting from the dye's slope (foil, 2026-10-11).
-- **The pour is paced for a meter** (`Fluid.RATE` 0.9, `SQUARES_REF` 23):
+- **The pour is paced for a meter** (`Fluid.RATE` 0.9, `SQUARES_REF` 23;
+  superseded 2026-10-15, below: a bigger chunk takes longer now):
   pigment a second at the tip is the rate into a chunk of 23 squares or
   fewer and grows with a bigger chunk in proportion, so every chunk takes
   about the same hold to reach the card's shade. Before, 20 into any
@@ -623,3 +624,37 @@ colors."
   lemon, blueberry 0.2, 0.3, 0.4; cherry, lemon and orange empty; a
   -0.01 of noise clamped), not by a shot: the harness's flop pours lemon
   into a grape chunk and the meter fades at the serve. Unseen on a phone.
+
+### A big chunk takes longer (2026-10-15)
+
+The user: "on gumdrop, bigger spaces to fill should take longer than small
+ones, if there is a small circle, it should not take same time to fill as
+a big chunck". Since 2026-10-14 the rate grew with the chunk in
+proportion past 23 squares, so every chunk but the tiniest took the same
+hold.
+
+- **The hold grows as the root of the chunk's squares** (`Sim.pace`,
+  `Sim.SQUARES_REF` 92, `Fluid.RATE` 3.6 at 92 squares, `Fluid.rate_now`):
+  the rate is `RATE * sqrt(squares / 92)`, so the mushroom's stalk (92
+  squares, the pace the user called right) is unchanged, a chunk four
+  times its size takes twice as long, a quarter of it half as long. The
+  drain follows (`drain_rate` is `rate_now() * DRAIN`), so a big chunk
+  drains slower too. The headless tally (`Sim.step`, `RATE` 0.5 at 92
+  squares) uses the same `pace`, so the probe and the screen agree.
+- **Chunk sizes** (60 seeds a band, every mould): 14 to 328 squares; the
+  median 164 on Easy, 80 Medium, 68 Hard, 96 Insane; a tenth of them 24
+  squares or fewer.
+- **Measured** (`_shot_gumdrop.gd -- <out> 1 pour small|big`, new args
+  that pour into the mould's smallest or biggest chunk; `opengl3_angle`,
+  810x1440; the meter's shown number at each second of hold): 14 squares
+  26, 53, 79, 100 at 0.5, 1, 1.5, 2.5 s; 242 squares 13, 23, 33, 49, 80,
+  106 at 0.5, 1, 1.5, 2.5, 4, 7 s (on the commit before, 20, 36, 51, 80,
+  100, 106). The probe 0 failed.
+- **Not this change**: the biggest chunk reads 104 to 106% after a long
+  hold, on the commit before as well (the cap is eased off the meter a
+  frame behind; a 242-square chunk spreads slower than the meter's last
+  frame). Open.
+- **Calls that are the user's**: the root (a time per chunk between the
+  same-for-all before and the proportional, 4.7 times as long on 306
+  squares as on 14 by the rate, 2.5 by the measured hold since a tint
+  spreads); the stalk as the anchor. Unseen by the user, no phone.

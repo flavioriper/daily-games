@@ -45,10 +45,19 @@ const C_FULL := 1.25
 const DEEP := 0.3
 const NEAR_FREE := 0.1
 const NEAR_GONE := 0.8
-## What a chunk under the needle gains a second, in amounts (the card's
-## shade is C_FULL), as this sim reckons it until the table says what the
-## fluid holds (`learn`); and the amount a chunk is dry under.
+## What a chunk of SQUARES_REF squares under the needle gains a second,
+## in amounts (the card's shade is C_FULL), as this sim reckons it until
+## the table says what the fluid holds (`learn`); and the amount a chunk
+## is dry under.
 const RATE := 0.5
+## A bigger chunk takes longer to fill and a smaller one less (the user,
+## 2026-10-15: "bigger spaces to fill should take longer than small ones,
+## if there is a small circle, it should not take same time to fill as a
+## big chunck"): the hold to the card's shade grows as the root of the
+## chunk's squares, 2.6 s at SQUARES_REF, the mushroom's stalk, whose pace
+## the user called right; about 1 s on 14 squares, 4.7 s on 306. Before,
+## every chunk of 23 squares or more took the same 2.6 s.
+const SQUARES_REF := 92.0
 const WET := 0.02
 ## The mark a mould has to be served at when no day says (a tutorial
 ## page's), and the match a mould is called perfect at.
@@ -341,6 +350,11 @@ func serve() -> void:
 	_asked = false
 	events.append({"type": "serve"})
 
+## How much faster than at SQUARES_REF a chunk of this many squares
+## fills (its pour's rate over its size): under 1 for a bigger chunk.
+static func pace(squares: int) -> float:
+	return sqrt(SQUARES_REF / maxf(1.0, squares))
+
 # --- a step ---
 
 func step() -> void:
@@ -356,9 +370,9 @@ func step() -> void:
 				# no more past the card's shade (2026-10-14): the fluid's
 				# meter stops the pour, and headless this tally does
 				if tank[c] < C_FULL:
-					_tally(c, minf(RATE * DT, C_FULL - tank[c]))
+					_tally(c, minf(RATE * pace(count[c]) * DT, C_FULL - tank[c]))
 			elif draining and c >= 0:
-				_tally(c, -RATE * DT)
+				_tally(c, -RATE * pace(count[c]) * DT)
 			if phase == Phase.PLAY:
 				t += DT
 		Phase.SETTLE:

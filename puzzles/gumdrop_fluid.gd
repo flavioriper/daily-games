@@ -49,15 +49,15 @@ const SWIRL := 320.0
 const JET_LEAN := 0.55
 const JET_TURN := 0.9
 const JET_RATE := 0.7
-## Pigment a second at the tip's middle into a chunk of SQUARES_REF
-## squares or fewer (of the sim's 36 by 36), and more into a bigger one in
-## proportion, so every chunk takes about the same hold to reach the
-## card's shade (2026-10-14; before, 20 into any chunk, and the stalk of
-## the mushroom passed the card's shade in half a second, which no meter
-## could be read against). The grey button draws it out at DRAIN times
-## the same.
-const RATE := 0.9
-const SQUARES_REF := 23.0
+## Pigment a second at the tip's middle into a chunk of Sim.SQUARES_REF
+## squares (of the sim's 36 by 36), 2.6 s of hold to the card's shade;
+## into a bigger chunk more, as the root of its squares, so a big chunk
+## takes longer than a small one and a small one is not a flash (Sim.pace,
+## 2026-10-15; from 2026-10-14 every chunk of 23 squares or more took the
+## same 2.6 s, and before that 20 into any chunk, the stalk past the
+## card's shade in half a second). The grey button draws it out at DRAIN
+## times the same, so a big chunk drains slower too.
+const RATE := 3.6
 const DRAIN := 1.0
 ## The most the tip pours a texel up to, in amounts: a little past the
 ## card's shade (1.25), so a pour never goes black under the tip. The dye
@@ -287,9 +287,10 @@ func tick(delta: float) -> void:
 	fill_cell = -1
 
 ## Pigment a second at the tip's middle into the chunk under it: more
-## into a bigger chunk. The cap at the card's shade is the dye pass's.
+## into a bigger chunk, less than in proportion (Sim.pace is the rate over
+## the size). The cap at the card's shade is the dye pass's.
 func rate_now() -> float:
-	return RATE * maxf(1.0, tip_squares / SQUARES_REF)
+	return RATE * Sim.pace(tip_squares) * maxf(1.0, tip_squares) / Sim.SQUARES_REF
 
 ## The chunk's mean pigments, in amounts (the card's shade is Sim.C_FULL of
 ## them in all), from the meter's last frame: read back at most every

@@ -2,7 +2,7 @@ extends SceneTree
 
 ## Shots of Gumdrop, the daily board, through the real menu and the flat
 ## host. Windowed, one at a time:
-##   godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_gumdrop.gd -- <outdir> [0|1|2|3] [reduce] [en|pt|es] [tutor] [pour|dab|wander]
+##   godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_gumdrop.gd -- <outdir> [0|1|2|3] [reduce] [en|pt|es] [tutor] [pour|dab|wander] [small|big]
 ## Opens the card at the band (Easy when none is named), then presses with
 ## real touches through the viewport: a pot, a tap on the tray, the squeeze
 ## button held, a drag over the tray, and that first mould served nearly
@@ -34,6 +34,8 @@ var _tutor := false
 var _pour := false
 var _dab := false
 var _wander := false
+## `small` / `big`: `pour` into the mould's smallest or biggest chunk.
+var _pick := ""
 var _page := 0
 var _turns := 0
 var _gold := 0
@@ -59,6 +61,8 @@ func _initialize() -> void:
 		elif a == "wander":
 			_pour = true
 			_wander = true
+		elif a == "small" or a == "big":
+			_pick = a
 		elif a in ["0", "1", "2", "3"]:
 			_band = int(a)
 		elif a in ["en", "pt", "es"]:
@@ -154,7 +158,7 @@ func _bot() -> void:
 		print("bot serves at %.1f: fill %s near %s all %.2f" % [_t, str(m.fill), str(m.near), m.all])
 		sim.serve()
 
-const POUR_HELD := [0.5, 1.5, 2.5, 4.0, 7.0, 10.0, 14.0, 18.0]
+const POUR_HELD := [0.5, 1.0, 1.5, 2.5, 4.0, 7.0, 10.0, 14.0, 18.0]
 const POUR_FREE := [0.1, 0.5, 2.0]
 ## `dab`: the button held this long only, and the chunk read this long
 ## after the release, to see a short pour go on spreading over its chunk
@@ -252,10 +256,12 @@ func _process(delta: float) -> bool:
 				print("touch picked the second pot: ", _t_.sim.picked == 1)
 				# a tap on the tray puts the tip there (`dab`: in the biggest chunk)
 				var into := 1
-				if _dab:
+				if _dab or _pick != "":
 					for c in _t_.sim.count.size():
-						if _t_.sim.count[c] > _t_.sim.count[into]:
+						var n: int = _t_.sim.count[c]
+						if n > 0 and (n < _t_.sim.count[into] if _pick == "small" else n > _t_.sim.count[into]):
 							into = c
+					print("into cell %d of %d squares" % [into, _t_.sim.count[into]])
 				_tap(_t_.px(_t_.sim.centre_of(into)))
 				print("tap put the tip in cell %d: %s" % [into, str(_t_.sim.reg[Sim.square(_t_.sim.tip)] == into)])
 				_at = _t
