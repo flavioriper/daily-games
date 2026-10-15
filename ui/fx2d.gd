@@ -223,8 +223,10 @@ func buzz(kind: int) -> void:
 ## line cues fire per cell, several in one frame. `pitch` scales the
 ## playback rate, for a cue that should climb (Shikaku's select tick), and
 ## `volume_db` its level, for a hit that should be as loud as it was hard
-## (snooker's clack).
-func cue(cue_name: String, pitch := 1.0, volume_db := 0.0) -> void:
+## (snooker's clack). `gap` is the ms inside which a repeat is swallowed:
+## a run the board paces itself (Lucky Thirteen's merge, a pop a pebble
+## closer than CUE_GAP) passes a smaller one, or 0.
+func cue(cue_name: String, pitch := 1.0, volume_db := 0.0, gap := CUE_GAP) -> void:
 	last_cue = cue_name
 	var mapped := haptics.has(cue_name)
 	if buzzes and mapped:
@@ -240,7 +242,7 @@ func cue(cue_name: String, pitch := 1.0, volume_db := 0.0) -> void:
 	if stream == null:
 		return
 	var now := Time.get_ticks_msec()
-	if now - int(_played_at.get(path, -CUE_GAP)) < CUE_GAP:
+	if now - int(_played_at.get(path, -CUE_GAP)) < gap:
 		return
 	_played_at[path] = now
 	# What is heard is felt: a sound the board gave no kind still knocks,

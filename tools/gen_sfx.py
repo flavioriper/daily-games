@@ -407,7 +407,17 @@ SETS = {
         # that counts, so it is -18, inside rule 1's -13 to -19, the same low
         # take. It must not read `faint` in the measure (phone -24 or
         # better), and it does not go under -20 again.
-        "click":    ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -18, HUSH, "warm:1200", "cut:0.07", "body:320", "tight"),
+        #
+        # 2026-10-15: a pop, not a tick. From a page of seventeen pops (the
+        # coin pages of that day, build/sfx_raw/coin_try/), the user of
+        # this take: "way better than our current tick sound, let's use
+        # it", and of a bubble-wrap pop, "insanely better than tick toc
+        # sounds". So the wheel's notch (rule 5) is over: the button is a
+        # smooth wooden token dropped on thick felt, a rounded pop, heard
+        # as it came back (no roll-off, no body cut; 1,003 Hz, 45% from 1
+        # to 3 kHz, 0.5% above). Same -18. The old take is
+        # build/sfx_raw/ui/old/click_button.mp3.
+        "click":    ("a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short", 0.5, -18, FOLEY, "bank:token", "cut:0.12", "tight"),
         # The user, 2026-10-09, twice: the linen brush "too harsh", then the
         # card slid over felt that replaced it "a harsh scratch". A page turn
         # is a breath of breeze now (BREEZE), rolled off steeply above 1.1 kHz and
@@ -1888,16 +1898,29 @@ SETS = {
     # so it is a tock with no note either. Nothing is a stone: a pebble on
     # sand came back as a click at 2.5 kHz and three clacking at 4.5.
     "thirteen": {
+        # 2026-10-15, the pops pilot (docs/agents/sound.md): the user, from
+        # the day's pop pages, "W1 [a pebble into a pond] this combine with
+        # games that use ticks to select like lucky 13, Bubble wrap is very
+        # satisfactory for repeated sounds". So every tick here is a take
+        # from tools/sfx_bank/ (`bank:`), nothing bought: select and
+        # unselect the pebble into the pond (the chain's climb and the
+        # unselect's two steps down as before), what repeats (land, merge,
+        # shuffle's nine, tumble's eleven) the bubble wrap, a pebble set
+        # (arm, pluck, swap) the wooden token, a move taken back the lip
+        # pop twice falling, refused the tongue click twice alike. Levels
+        # and phrases are the 2026-10-10 ones; no roll-off and no body cut,
+        # the takes heard as they came back. The seven notes stand. The
+        # old tick takes are build/sfx_raw/thirteen/old_ticks/.
         # A chain's click, heard for as long as a finger slides: 4 dB down
         # and darker (the user, 2026-10-10: the slide is "too loud, too
         # harsh"), and the screen's climb stops at three semitones.
-        "select":     ("one small smooth wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -23, HUSH, "warm:1200", "cut:0.07", "body:320", "tight"),
+        "select":     ("a small pebble dropped into a calm pond, one soft plop, close, very short", 0.6, -23, FOLEY, "bank:pebble", "cut:0.2", "tight"),
         # A pebble given back: select's take, two steps down.
-        "unselect":   ("one small smooth wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -25, HUSH, "warm:1100", "cut:0.07", "body:320", "tight", "notes:0:-2"),
+        "unselect":   ("a small pebble dropped into a calm pond, one soft plop, close, very short", 0.6, -25, FOLEY, "bank:pebble", "cut:0.2", "tight", "notes:0:-2"),
         "short":      ("one soft low damped note on a wooden tongue drum, a kind 'not yet', not enough pebbles, gentle, very short", 0.5, -10, ARCADE),
-        "merge":      ("one smooth round wooden pebble set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.12", "body:320", "tight"),
+        "merge":      ("one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short", 0.5, -13, FOLEY, "bank:wrap", "cut:0.12", "tight"),
         # A pebble settling: merge's take, two steps down and quieter.
-        "land":       ("one smooth round wooden pebble set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1300", "cut:0.1", "body:320", "tight", "notes:0:-2"),
+        "land":       ("one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short", 0.5, -16, FOLEY, "bank:wrap", "cut:0.1", "tight", "notes:0:-2"),
         "new_number": ("two bright happy notes on a real music box with a hand bell sparkle, a new biggest number made, short", 0.8, -8, ARCADE, "warm:2600", "body:300"),
         "goal":       ("a joyful triumphant fanfare on a real kalimba, music box and hand bells with one lucky bell ringing on top, the number thirteen reached, about two seconds", 2.4, -8, ARCADE, "warm:2600", "body:300"),
         # No moves left: two slow notes, the second a third lower.
@@ -1905,17 +1928,17 @@ SETS = {
         # The tools are select's take: one notch two steps up for a tool
         # picked up, twice and falling for a move taken back, two a third
         # apart for two pebbles trading places, two low ones alike for no.
-        "arm":        ("one small smooth wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.07", "body:320", "tight", "notes:0:2"),
-        "undo":       ("one small smooth wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.2", "body:320", "tight", "notes:0.09:0,-3"),
-        "swap":       ("one small smooth wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.18", "body:320", "tight", "notes:0.08:-1,2"),
+        "arm":        ("a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short", 0.5, -15, FOLEY, "bank:token", "cut:0.12", "tight", "notes:0:2"),
+        "undo":       ("a single mouth pop made with the lips, soft and rounded, very short, close", 0.5, -15, FOLEY, "bank:lip", "cut:0.25", "tight", "notes:0.09:0,-3"),
+        "swap":       ("a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short", 0.5, -15, FOLEY, "bank:token", "cut:0.2", "tight", "notes:0.08:-1,2"),
         # A pebble taken off the board: merge's take, three steps up.
-        "pluck":      ("one smooth round wooden pebble set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1500", "cut:0.12", "body:320", "tight", "notes:0:3"),
+        "pluck":      ("a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short", 0.5, -14, FOLEY, "bank:token", "cut:0.12", "tight", "notes:0:3"),
         # The board stirred and the board tipped out are merge's take: the
         # wheel spun, nine notches wandering and eleven falling.
-        "shuffle":    ("one smooth round wooden pebble set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1500", "cut:0.75", "body:320", "tight", "notes:0.075:0,2,-1,3,0,-2,1,-1,2"),
+        "shuffle":    ("one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short", 0.5, -14, FOLEY, "bank:wrap", "cut:0.75", "tight", "notes:0.075:0,2,-1,3,0,-2,1,-1,2"),
         "lift":       ("a soft rising pair of kalimba notes with a hand bell sparkle, a pebble raised up one, short", 0.6, -8, ARCADE),
-        "refused":    ("one small smooth wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.2", "body:320", "tight", "notes:0.1:-3,-3"),
-        "tumble":     ("one smooth round wooden pebble set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -12, HUSH, "warm:1500", "cut:1.1", "body:320", "tight", "notes:0.085:0,-1,2,-2,-1,-4,-3,-5,-4,-7,-7"),
+        "refused":    ("one soft tongue click, a hollow rounded pop, close, very short", 0.5, -15, FOLEY, "bank:tongue", "cut:0.3", "tight", "notes:0.1:-3,-3"),
+        "tumble":     ("one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short", 0.5, -12, FOLEY, "bank:wrap", "cut:1.1", "tight", "notes:0.085:0,-1,2,-2,-1,-4,-3,-5,-4,-7,-7"),
         "start":      ("a short cheerful opening tune on a real kalimba and music box, a bouncy lucky little melody, a game beginning, about two seconds", 2.2, -8, ARCADE, "warm:1800", "body:300"),
         # The game's end: stuck's note, four slow ones stepping down.
         "game_over":  ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0.3:11,9,7,4", "cut:1.6"),
@@ -3126,7 +3149,24 @@ SETS = {
         # measure; this is the one cue in the game allowed that. It repeats
         # (a sale every 4 s on a new land, up to four a second), so -14; the
         # screen varies it 0.94 to 1.06.
-        "coin": ("one gold coin dropped into a small velvet-lined wooden drawer, a single soft muted clink, close, very short", 0.5, -14, COZY, "warm:3000", "steep", "cut:0.25", "body:320", "ease:0.004", "tight", "notes:0:-10"),
+        #
+        # Fourth try, 2026-10-15. The user, of the velvet drawer and every
+        # other earn-coin cue: "i'm not happy with what we have". Three
+        # pages of candidates (build/sfx_raw/coin_try/, 98 rows across six
+        # families: muffled real coins, musical rises, a till, coin under a
+        # note, synth for contrast) and the user hated every coin but a coin
+        # dropped into a glass jar of coins, first under a celesta fourth
+        # (X), then alone and rolled off at 8 kHz (J6: "something that I
+        # like"). This is J6 "but not so high": the same take three steps
+        # down and rolled off at 6 kHz (R13 was two down at 6 kHz; both
+        # readings of "high" taken a little). The take is bright by nature
+        # (a real coin on glass: 12 kHz raw, still 87% above 3 kHz here),
+        # so this bends rule 4 further than the drawer did; the velvet take
+        # is build/sfx_raw/factory/old/coin_velvet.mp3. Wired here first so
+        # the user hears it in the game; the celesta fourth (C12 short, C10
+        # five lower) they liked is not on it yet, and the wallet's gold
+        # count still has its wooden button.
+        "coin": ("one coin dropped into a small glass jar that holds a few coins, one short soft clink, close", 0.7, -14, FOLEY, "bank:jar", "warm:6000", "cut:0.7", "ease:0.004", "tight", "notes:0:-3"),
     },
     # Nightlight (arcade/nightlight_screen.gd, 2026-10-06). Redone 2026-10-10
     # against the cozy rules (docs/agents/sound.md), the fifty-second set of
@@ -3762,7 +3802,16 @@ def main() -> None:
         cut = next((float(f[4:]) for f in rest[1:] if isinstance(f, str) and f.startswith("cut:")), 0.0)
         ease = next((float(f[5:]) for f in rest[1:] if isinstance(f, str) and f.startswith("ease:")), 0.0)
         raw = raw_dir / f"{cue}.mp3"
-        if "--new" in flags or not raw.exists():
+        # `bank:<name>` (2026-10-15): the take is one of the kept pops in
+        # tools/sfx_bank/ (the user's picks from the coin and pop pages of
+        # that day; docs/agents/sound.md), copied into the board's raw dir
+        # and never bought. A copy, not a reference: `tune` writes its
+        # phrase beside the source, so every cue keeps its own. The prompt
+        # in the row is the bank take's, for the record.
+        bank = next((f[5:] for f in rest[1:] if isinstance(f, str) and f.startswith("bank:")), "")
+        if bank and ("--new" in flags or not raw.exists()):
+            raw.write_bytes((ROOT / "tools/sfx_bank" / f"{bank}.mp3").read_bytes())
+        elif "--new" in flags or not raw.exists():
             raw.write_bytes(generate(key(), prompt, seconds, style, loop))
         out = out_dir / f"{cue}.ogg"
         notes = next((f[6:] for f in rest[1:] if isinstance(f, str) and f.startswith("notes:")), "")

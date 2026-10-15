@@ -226,6 +226,17 @@ var _tier := 0
 ## semitones since 2026-10-10 (the user: the slide is "too loud, too harsh"),
 ## and `select` is 4 dB down in its file.
 const CLIMB_TOP := 1.19
+## A merge pops once a pebble in the chain (the user, 2026-10-15: "when I
+## select multiple items and merge them, i miss multiple sounds instead of
+## just one same tick"), and the pops ride the join (the user, three minutes
+## on: "make it faster, following the items merging"): the last pop lands
+## with the chain at JOIN_T, the ones before it MERGE_STEP apart back from
+## there, or closer so a long chain's first pop is still after the event;
+## each a semitone under the next up to the merge's own pitch (the number
+## made), the climb held at five steps, never more than MERGE_POPS of them.
+## Closer than Fx2D's CUE_GAP, so the run passes its own gap.
+const MERGE_STEP := 0.05
+const MERGE_POPS := 8
 ## Pebbles falling together land as one soft patter, not a rattle: `land`
 ## is heard at most once in LAND_GAP seconds.
 const LAND_GAP := 0.09
@@ -1289,6 +1300,18 @@ func _on_merge(ev: Dictionary) -> void:
 	if int(ev.v) == Sim.GOAL and bool(ev.get("new_max", false)):
 		feel = Haptics.THUD
 	var delay := 0.0 if Motion.reduce else JOIN_T
+	var top := clampf(0.95 + 0.025 * int(ev.v), 0.95, 1.26)
+	var pops := clampi(int(ev.get("n", 1)), 1, MERGE_POPS)
+	var step := minf(MERGE_STEP, delay / maxf(1.0, pops - 1.0)) if delay > 0.0 else MERGE_STEP * 0.5
+	for i in pops:
+		var pitch := top / pow(2.0, mini(pops - 1 - i, 5) / 12.0)
+		var when := delay - step * (pops - 1 - i) if delay > 0.0 else step * i
+		if when <= 0.0:
+			_fx.cue("merge", pitch, 0.0, 0)
+		else:
+			get_tree().create_timer(when).timeout.connect(func() -> void:
+				if is_instance_valid(_fx):
+					_fx.cue("merge", pitch, 0.0, 0))
 	get_tree().create_timer(delay).timeout.connect(func() -> void:
 		if not is_instance_valid(_fx):
 			return
@@ -1296,7 +1319,6 @@ func _on_merge(ev: Dictionary) -> void:
 			_fx.buzz(feel)
 		_fx.puff(at, Art.paint(int(ev.v)), 6)
 		_fx.ring(at, 0.75 * _u, Art.paint(int(ev.v)).lightened(0.25))
-		_fx.cue("merge", clampf(0.95 + 0.025 * int(ev.v), 0.95, 1.26))
 		_knock(into, 0.04 + 0.008 * n)
 		_merge_burst(ev, at)
 		if bool(ev.get("new_max", false)):

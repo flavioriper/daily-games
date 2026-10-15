@@ -133,7 +133,13 @@ static func ensure_skin(host: Node, done := Callable()) -> void:
 		var side := SKIN_CELL * SKIN_SIDE
 		_skin = await bake(host, items, Vector2i(side, side), true)
 		_skin_busy = false
-		_cache.clear()
+		# The cache is not cleared here (2026-10-15): the meshes pebble()
+		# built before the bake are still the commands of every control
+		# that has not redrawn since (the big number, the seats, a tutorial
+		# page), and freeing them had the renderer complain of a null mesh
+		# on every frame until the game was left ("Parameter mesh is null"
+		# at mesh_get_surface_count, twenty a frame, the user's screen of
+		# that evening). pebble() keys its baked quads apart instead.
 	while _skin_busy and is_instance_valid(host) and host.is_inside_tree():
 		await host.get_tree().process_frame
 	if _skin != null and done.is_valid():
@@ -166,12 +172,17 @@ static func number_colour(v: int) -> Color:
 ## baked picture's quad, or until it is baked (and for good headless) the
 ## same piece as a mesh -- the lip, the face, a ring from 10, the clover.
 static func pebble(v: int, s: float) -> ArrayMesh:
-	var key := "p%d_%d" % [v, roundi(s)]
+	# A baked quad and the built piece are two entries ("q" and "p"), so the
+	# bake adds to the cache and never replaces a mesh a control still shows.
+	var key := ("q%d_%d" if _skin != null and v >= 1 and v < PAINT.size() else "p%d_%d") % [v, roundi(s)]
 	if _cache.has(key):
 		return _cache[key]
 	if _cache.size() > 300:
+		# A guard against growth, not a reset: anything still drawn from a
+		# freed mesh is the null-mesh error above until it redraws. The
+		# sizes a game uses are few, so this is not reached in play.
 		_cache.clear()
-	if _skin != null and v >= 1 and v < PAINT.size():
+	if key.begins_with("q"):
 		_cache[key] = _skin_quad(v, s)
 		return _cache[key]
 	var b := Face.Builder.new()

@@ -2,6 +2,23 @@
 
 ## The cozy rules
 
+**Partly superseded on 2026-10-15, before the rewrite.** The user, unhappy
+with the earn-coin and tick sounds ("i'm not happy with what we have"),
+chose by ear from pages of candidates: a real coin dropped into a glass
+jar of coins (Factory's `coin`, three steps down, rolled off at 6 kHz) and
+five rounded pops for actions -- a wooden token dropped on felt (every
+button's click now: "way better than our current tick sound"), one bubble
+of bubble wrap ("insanely better than tick toc sounds", for anything
+repeated), a pebble into a pond (for games that select by ticks, Lucky
+Thirteen first), a lip pop and a tongue click. The takes are in
+`tools/sfx_bank/` and a cue names one with `bank:<name>` (no purchase; the
+row's prompt is the take's, for the record). So rule 5's mouse-wheel notch
+and rule 4's ban on a coin are over, and rule 2's `high` flag no longer
+decides (bubble wrap sits at 2 kHz by nature; `faint` still does). Lucky
+Thirteen is the pilot (its eleven ticks, 2026-10-15); the plan for the
+other sets, by role, is in the session notes of that day and is the
+user's to start. Rewrite this section once the direction settles.
+
 The user, 2026-10-09: "Sounds should always aim for cozy low, low clicks,
 ticks, slides should always aim for something gentle sliding on wood never
 on steel, old mouse center button wheel scroll fast clicks, for sounds like
