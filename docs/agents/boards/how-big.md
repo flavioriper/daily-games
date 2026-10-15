@@ -236,6 +236,15 @@ quality and ask to redo if it's poor".
   - Their shapes live in `State._day_shapes` by id. An id is a thing's for
     good, so `Art.prep`'s cache stays right.
   - `name_of` and the fact read the thing's own words (`State.words_of`).
+- **The first trial** (2026-10-15, Anthropic's key only, so objects fell
+  at the drawing): the writer offered on all three days. Gate B on the
+  writer's own other side turned down a fair herring gull (0.3 m tall,
+  where one stands some 0.45). So the reviewer now gives the other side in
+  gate A, and gate B goes by it, at 1.6x (was 1.45). Run again, it kept a
+  greylag goose and a mallard: both clean side views, looked at. It turned
+  down, rightly, a harbour seal sat up (2.7x too tall), a curled sea otter,
+  and a grand piano the two sizes disagreed on (2.74 m against 1.8). About
+  US$0.02 a day without drawings.
 - Measured headless with three made-up things, 60 days by four bands: no
   short deal; the two new ones were in 225 and 203 of 240 deals. Suite
   249567 passed, 0 failed.

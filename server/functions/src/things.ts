@@ -20,7 +20,8 @@ import bundled from "./how_big_bank.json";
  *     must agree within SIZE_AGREE (the grade gives 100 within 6%, so a
  *     loose truth costs the player points they earned);
  *  B. the box: the silhouette's other side at that size must come within
- *     BOX_AGREE of the thing's real one. This is the crocodile of
+ *     BOX_AGREE of the thing's real one, as the reviewer gives it in A
+ *     (the writer's own was often off: a herring gull 0.3 m tall, 2026-10-15). This is the crocodile of
  *     2026-10-15, a lunge on a slant whose box stood 2 m tall beside a
  *     door: a drawing posed or tilted is turned down here, with numbers;
  *  C. the look: the reviewer is shown the silhouette as the phone draws it
@@ -50,8 +51,10 @@ export const OLD = 6;
 const DRAWS = 3;
 /** The two sizes agree when the bigger over the smaller is at most this. */
 const SIZE_AGREE = 1.2;
-/** The box's other side over the real one, both ways. */
-const BOX_AGREE = 1.45;
+/** The box's other side over the real one, both ways. A first run turned
+ *  a gull down at 1.45 on the writer's own figure; the poses it is for
+ *  come out far past this (the crocodile 2.9x, a seal sat up 2.7x). */
+const BOX_AGREE = 1.6;
 
 export interface Words3 {
   en: string;
@@ -149,8 +152,8 @@ const SIZER = `You know the typical sizes of animals and objects. Answer from wh
 const SIZE_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["metres"],
-  properties: {metres: {type: "number"}},
+  required: ["metres", "other_metres"],
+  properties: {metres: {type: "number"}, other_metres: {type: "number"}},
 };
 
 const LOOKER = `You check silhouettes for a family puzzle game before players see them. You are shown one solid silhouette, dark on cream. Be strict: a player has to recognise it at a glance and judge its size from it.`;
@@ -254,18 +257,21 @@ function pixels(bytes: Buffer, mime: string): {data: Uint8Array; width: number; 
 
 // --- the gates ---
 
-/** Gate A: the reviewer's own size, and whether the two agree. */
-async function sizeAgrees(o: Offer): Promise<{ok: boolean; said: number}> {
+/** Gate A: the reviewer's own size, whether the two agree, and its
+ *  other side of the box, which gate B goes by. */
+async function sizeAgrees(o: Offer): Promise<{ok: boolean; said: number; other: number}> {
   const side = o.measure === "long" ? "long, nose to tail tip with the tail" : "tall, the ground to its very top";
-  const got = await ask<{metres: number}>({
+  const other = o.measure === "long" ? "how tall it stands from the ground to its top, as it rests" : "how long it is from front to back, seen from the side";
+  const got = await ask<{metres: number; other_metres: number}>({
     system: SIZER,
-    prompt: `How ${side}, is ${o.kind === "animal" ? `an adult ${o.name.en.toLowerCase()} (${o.taxon})` : `a standard ${o.name.en.toLowerCase()}`}? Answer "metres".`,
+    prompt: `How ${side}, is ${o.kind === "animal" ? `an adult ${o.name.en.toLowerCase()} (${o.taxon})` : `a standard ${o.name.en.toLowerCase()}`}? Answer "metres". And "other_metres": ${other}.`,
     schema: SIZE_SCHEMA,
     role: "review",
   });
   const said = Number(got.metres);
   const off = said > 0 ? Math.max(said / o.size_m, o.size_m / said) : Infinity;
-  return {ok: off <= SIZE_AGREE, said};
+  const theirs = Number(got.other_metres);
+  return {ok: off <= SIZE_AGREE, said, other: theirs > 0 ? theirs : o.other_m};
 }
 
 /** Gate B: the box's other side at the stated size against the real one;
@@ -319,6 +325,7 @@ async function oneThing(day: number, o: Offer, t: ThingTry): Promise<DayThing | 
     t.why.push(`size ${o.size_m} m against the reviewer's ${size.said} m`);
     return null;
   }
+  o = {...o, other_m: size.other};
   const keep = (shape: Shape, credit: string): DayThing => ({
     id: `d_${o.slug}`, kind: o.kind, name: o.name, fact: o.fact, size_m: o.size_m, measure: o.measure,
     from: 0, to: 1, source: o.source, born: day, credit, shape,

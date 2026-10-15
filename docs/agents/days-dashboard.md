@@ -452,3 +452,9 @@ day, each band after the ones below it, `docs/agents/boards/word-trail.md`); the
 (the lists are the board's own, already fit to deal); Golden Acorn three a
 band asked, Pearl Dive two a level, One Breath seldom any; the theme's name
 is still shown nowhere.
+
+**How Big?'s things** (2026-10-15): the night has a step `things` after
+`words`: two new things a day on the theme, past three gates, and a pool
+in `things/` that grows. The whole of it is in `docs/agents/boards/how-big.md`,
+"New things every day". The first night after the deploy also runs the step
+for days already staged; a line for it in the log is that, not a fault.
