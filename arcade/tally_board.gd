@@ -1231,5 +1231,6 @@ func let_go() -> void:
 	_moved = false
 	_consumed = false
 	_drag_ghost = false
+	_ghost = {}
 	_pill = {}
 	_pill_hit = ""

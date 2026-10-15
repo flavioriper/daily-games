@@ -236,8 +236,8 @@ func _grow(sim) -> void:
 	# it starves on B, and its two-pip side goes amber
 	var w := b + Vector2i(6, 6)
 	sim.place(Sim.SUB, w, 2)
-	put.call(w + Vector2i(0, 3), 3)
-	sim.lay_run([w + Vector2i(0, 2), w + Vector2i(0, 1)], 3)
+	put.call(w + Vector2i(0, 2), 3)
+	sim.lay_run([w + Vector2i(0, 1)], 3)
 	sim.events.clear()
 	_s.board.relay()
 
@@ -321,13 +321,15 @@ func _process(delta: float) -> bool:
 				_next()
 		9:
 			if _t > _at + 6.0:
-				_check("the subtractor fed on A alone is starving on B", sim.starving(Sim._i(Sim.HUB_AT + Vector2i(6, 6))) == 1)
 				_shot("5_grown")
 				_s.board.k = 150.0
 				_s.board.look_at_square(Vector2(Sim.HUB_AT + Vector2i(-4, 1)) + Vector2(2.0, 0.5), true)
 				_next()
 		10:
 			if _t > _at + 1.0:
+				# the sim's clock lags a slow frame's (steps are capped): hurry it past the 3 s
+				sim.step(4.0)
+				_check("the subtractor fed on A alone is starving on B", sim.starving(Sim._i(Sim.HUB_AT + Vector2i(6, 6))) == 1)
 				_shot("5b_close")
 				_s.board.k = 74.0
 				_s.board.look_at_square(Vector2(Sim.HUB_AT) + Vector2(2, 3), true)
