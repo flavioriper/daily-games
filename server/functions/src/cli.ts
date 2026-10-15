@@ -6,6 +6,8 @@ import {bankPrompts, cleaned, makeDay as pearlDay, Prompt} from "./pearl";
 import {makeJellies} from "./jelly";
 import {makeDay as picturesDay} from "./pictures";
 import {makeTheme, themed} from "./theme";
+import {shapePng} from "./silhouette";
+import {dayList, DayThing, makeThings} from "./things";
 import {makeWords} from "./words";
 
 /**
@@ -39,6 +41,12 @@ import {makeWords} from "./words";
  *       Hidden Word's and Word Trail's words (words.ts) for days the
  *       command above made, into each file's pictures document; the
  *       pictures and the jellies are left as they are.
+ *   node lib/cli.js things <pool.json> <day.json>...
+ *       How Big?'s new things (things.ts) for days already made, into
+ *       each file's pictures document as `things`, with what became of
+ *       every offer as `thingTries`. <pool.json> stands for the night's
+ *       `things/` pool: read, and grown by what is kept; a PNG of each
+ *       kept silhouette, as the reviewer saw it, goes beside it.
  *   node lib/cli.js publish
  *       runs publishDays for today and tomorrow against whatever project
  *       the credentials name -- the day a game ships on, which the 03:00
@@ -184,6 +192,25 @@ async function main(): Promise<void> {
       fs.writeFileSync(file, JSON.stringify(day));
       print(`${file}: ${Object.entries(jelly.jellies).map(([b, l]) => `${b}:${l.length}`).join(" ") || "none"} in ${jelly.tries.length} tries, US$${cost().toFixed(2)} so far`);
     }
+  } else if (what === "things" && args.length >= 2) {
+    const poolFile = args[0];
+    const held = new Map<string, DayThing>(fs.existsSync(poolFile) ?
+      (JSON.parse(fs.readFileSync(poolFile, "utf8")) as DayThing[]).map((t) => [t.id, t]) : []);
+    for (const file of args.slice(1)) {
+      const day = JSON.parse(fs.readFileSync(file, "utf8"));
+      if (day.theme === null) continue;
+      const got = await makeThings(day.day, day.theme, held);
+      const list = dayList(day.day, got.things, held);
+      for (const t of got.things) {
+        held.set(t.id, t);
+        fs.writeFileSync(path.join(path.dirname(poolFile), `${t.id}.png`), Buffer.from(shapePng(t.shape).split(",")[1], "base64"));
+      }
+      day.pictures = {...(day.pictures ?? {v: 1, theme: day.theme.id, sizes: {}}), things: list};
+      day.thingTries = got.tries;
+      fs.writeFileSync(file, JSON.stringify(day));
+      fs.writeFileSync(poolFile, JSON.stringify([...held.values()]));
+      print(`${file}: kept ${got.things.map((t) => `${t.id} ${t.size_m} m ${t.measure}`).join(", ") || "none"}, ${list.length} in the day, US$${cost().toFixed(2)} so far`);
+    }
   } else if (what === "publish") {
     // Loaded here and not at the top: index.ts wakes the admin SDK, which a
     // dry run has no credentials for and no use of.
@@ -191,7 +218,7 @@ async function main(): Promise<void> {
     await publishDays(new Date());
     print("published");
   } else {
-    console.error("usage: cli.js day [acorn|pearl] [yyyymmdd] | bank pearl <level> <count> <outfile> | themed <yyyymmdd> <days> <outdir> [themes-dir] | jellies <day.json>... | words <day.json>... | quizzes <day.json>... | publish");
+    console.error("usage: cli.js day [acorn|pearl] [yyyymmdd] | bank pearl <level> <count> <outfile> | themed <yyyymmdd> <days> <outdir> [themes-dir] | jellies <day.json>... | words <day.json>... | things <pool.json> <day.json>... | quizzes <day.json>... | publish");
     process.exitCode = 2;
   }
 }

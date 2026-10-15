@@ -190,3 +190,62 @@ animal. A pose that tilts or rears makes the box taller than the animal
 ever is. Every other row was in range on 2026-10-15. The orca's 4.1 m is
 mostly its fin. Suite 249567 passed, 0 failed. The day's pairs moved,
 since a pair is picked by box.
+
+### New things every day (2026-10-15, built, not deployed, unseen)
+
+The user: "we must find a way to wire the daily process to add new objects
+into it". They chose animals and model-drawn objects both, and a pool that
+grows. Of drawn objects: "that's why we need a supervisor to check outcome
+quality and ask to redo if it's poor".
+
+- **The night** (`server/functions/src/things.ts`, step `things` in
+  `themeday.ts` STEPS, after `words`). The writer (Haiku) offers four things
+  on the day's theme, at least one animal and one object. Each comes with
+  its names and a fact in three languages, its size with the page it came
+  from, and **both sides of its side-on box** (`size_m` and `other_m`).
+  These things are always measured whole: `from` 0, `to` 1, no "at the
+  shoulder". Two a day are kept (`NEW`).
+- **The supervisor, three gates, a redo told why**:
+  - A, the size: Opus is asked the size cold. The two must agree within
+    1.2x.
+  - B, the box: the silhouette's other side at that size must come within
+    1.45x of `other_m`. This is the crocodile's bug as a number.
+  - C, the look: Opus picks the thing from three decoys, and says it is
+    a side view, at rest and level, and one clean silhouette.
+
+  An animal's silhouette is PhyloPic's (CC0 or PDM only, asserted from the
+  API). When one fails, the next of its species is tried, up to four. An
+  object is drawn by the image model, up to three drawings, each told why
+  the last was turned down.
+- **The shape** (`silhouette.ts`) is a raster to the bundled format. It
+  makes a mask (dark and opaque), drops specks under 1% and fills pinholes,
+  follows the pixel edges, thins with RDP to 400 points, and triangulates
+  with earcut (2.2.4, the CommonJS one). The 1000 box is asserted, and the
+  triangles must cover the ink within 2%. Proved on the crocodile's PhyloPic
+  raster: 1000x188, where the Python build makes 1000x186.
+- **The pool**: `things/{id}` (server only; firestore.rules denies what it
+  does not name, as with `themes/`), created and never rewritten. A day
+  carries its new things and six of the pool's (`OLD`) in the `pictures`
+  document under `things`, never the whole pool.
+- **The phone**:
+  - `ThemedPictures.things(daily_key)` checks every entry: the id `d_...`,
+    the size, the measure, the names, and a shape inside its 1000 box.
+  - `State.setup(rng, band, things, day)` adds them to the thirty. The
+    day's new ones (`born` on the day) are dealt first in a pair band. On
+    the Ladder, the first forty climbs must take one.
+  - Their shapes live in `State._day_shapes` by id. An id is a thing's for
+    good, so `Art.prep`'s cache stays right.
+  - `name_of` and the fact read the thing's own words (`State.words_of`).
+- Measured headless with three made-up things, 60 days by four bands: no
+  short deal; the two new ones were in 225 and 203 of 240 deals. Suite
+  249567 passed, 0 failed.
+- **Owed**:
+  - A first run on real themes. `node lib/cli.js things <pool.json>
+    <day.json>...` was denied on this Mac by the auto-mode classifier,
+    since it draws with the Vertex token.
+  - The deploy (`tools/deploy_functions.sh`, the user's).
+  - A look at what it keeps.
+  - The phone.
+- Decided for the user, unconfirmed: the gate thresholds, two new things a
+  day, six of the pool, PhyloPic over drawn animals, and new things dealt
+  first.

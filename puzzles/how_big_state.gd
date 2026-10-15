@@ -51,6 +51,10 @@ const HEAD_MAX := 3.4
 static var _items: Array = []
 static var _shapes: Dictionary = {}
 static var _read := false
+## The night's things' shapes (core/themed_pictures.gd things()), by id: an
+## id is a thing's for good (server/functions/src/things.ts never rewrites
+## one), so a shape once held is never wrong for it and stays held.
+static var _day_shapes: Dictionary = {}
 
 var band := 0
 ## The day's rounds: [{"ref": item, "tgt": item}].
@@ -64,6 +68,10 @@ var ref_m := 0.0
 var hearts := 0
 var hinted := false
 var _lot := 0.0
+## The day's things from the night, beside the thirty: the day's new ones
+## (`born` on the day) and a few of the pool's.
+var extra: Array = []
+var _fresh: Array = []
 
 # --- the table ---
 
@@ -93,7 +101,24 @@ static func item(id: String) -> Dictionary:
 ## {"w", "h", "loops", "tris"} in the shape's own units, y down.
 static func shape(id: String) -> Dictionary:
 	_load()
+	if _day_shapes.has(id):
+		return _day_shapes[id]
 	return _shapes.get(id, {})
+
+## `field` ("name" or "fact") of a thing from the night, in the player's
+## language or else English; "" for one of the thirty, whose words are
+## locale rows.
+static func words_of(it: Dictionary, field: String) -> String:
+	var w = it.get(field)
+	if not w is Dictionary:
+		return ""
+	return str(w.get(Locale.current(), w.get("en", "")))
+
+## A thing's English name, for tools and logs.
+static func english(it: Dictionary) -> String:
+	if it.get("name") is Dictionary:
+		return str(it.name.get("en", it.id))
+	return str(it.get("name_en", it.get("id", "")))
 
 ## The locale key of what `it`'s number measures when that is not simply
 ## its whole height or length ("at the shoulder" -> HB_WHAT_AT_THE_SHOULDER),
@@ -151,8 +176,19 @@ static func score_for(guess: float, truth: float) -> int:
 
 # --- the day ---
 
-func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
+## `day_things` are the night's (core/themed_pictures.gd things()), [] when
+## there are none; the ones born on `day` are dealt first, so each is in the
+## day if anything fits beside it.
+func setup(rng: RandomNumberGenerator, difficulty: int, day_things: Array = [], day := 0) -> void:
 	band = clampi(difficulty, 0, 3)
+	extra = []
+	_fresh = []
+	for it: Dictionary in day_things:
+		if item(str(it.id)).is_empty():
+			_day_shapes[str(it.id)] = it.shape
+			extra.append(it)
+			if day != 0 and int(it.get("born", 0)) == day:
+				_fresh.append(it)
 	rounds = _ladder(rng) if band >= 3 else _pairs(rng)
 	_lot = rng.randf()
 	restart()
@@ -178,7 +214,8 @@ func restart() -> void:
 ## Rounds of two things each, no thing twice in a day, each pair inside the
 ## band's spread; which of the two is the ruler is the lot's.
 func _pairs(rng: RandomNumberGenerator) -> Array:
-	var pool: Array = items().duplicate()
+	var pool: Array = items() + extra
+	var fresh: Array = _fresh.duplicate()
 	var out: Array = []
 	var want: int = ROUNDS[band]
 	var lo: float = SPREAD[band][0]
@@ -186,7 +223,10 @@ func _pairs(rng: RandomNumberGenerator) -> Array:
 	for _try in 400:
 		if out.size() >= want or pool.size() < 2:
 			break
-		var a: Dictionary = pool[rng.randi() % pool.size()]
+		# The day's new things first, each tried once.
+		var a: Dictionary = fresh.pop_front() if not fresh.is_empty() else pool[rng.randi() % pool.size()]
+		if not pool.has(a):
+			continue
 		var fits: Array = []
 		for b: Dictionary in pool:
 			if b == a:
@@ -206,13 +246,14 @@ func _pairs(rng: RandomNumberGenerator) -> Array:
 ## The Ladder: a climb from something small, each rung bigger than the last
 ## by the band's spread, found by a walk that backs out of dead ends.
 func _ladder(rng: RandomNumberGenerator) -> Array:
-	var all: Array = items().duplicate()
+	var all: Array = items() + extra
 	all.sort_custom(func(a, b): return bigness(a) < bigness(b))
 	var want: int = ROUNDS[band] + 1
 	var starts: Array = all.slice(0, maxi(1, all.size() / 3))
 	for _try in 60:
 		var chain: Array = [starts[rng.randi() % starts.size()]]
-		if _climb(rng, all, chain, want):
+		# The first forty climbs must take one of the day's new things.
+		if _climb(rng, all, chain, want) and (_try >= 40 or _fresh.is_empty() or chain.any(func(c): return _fresh.has(c))):
 			var out: Array = []
 			for k in range(1, chain.size()):
 				out.append({"ref": chain[k - 1], "tgt": chain[k]})

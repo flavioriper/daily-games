@@ -297,7 +297,8 @@ func _ready() -> void:
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_gen += 1
-	state.setup(rng, difficulty)
+	# The night's things (core/themed_pictures.gd), for a daily only.
+	state.setup(rng, difficulty, ThemedPictures.things(daily_key) if bank_step == 0 else [], daily_key)
 	_begin()
 
 ## The day as dealt, for tools/export_days.gd (PuzzleBase.day_dict): the
@@ -315,10 +316,10 @@ func day_dict() -> Dictionary:
 		var apart := maxf(a / b, b / a)
 		lo = minf(lo, apart)
 		hi = maxf(hi, apart)
-		rounds.append({"ruler": str(r.ref.get("name_en", r.ref.id)), "ruler_m": float(r.ref.size_m),
-			"size": str(r.tgt.get("name_en", r.tgt.id)), "measured": str(r.tgt.get("what_en", "")),
+		rounds.append({"ruler": State.english(r.ref), "ruler_m": float(r.ref.size_m),
+			"size": State.english(r.tgt), "measured": str(r.tgt.get("what_en", "")),
 			"apart": snappedf(apart, 0.01)})
-		truths.append({"thing": str(r.tgt.get("name_en", r.tgt.id)), "m": float(r.tgt.size_m)})
+		truths.append({"thing": State.english(r.tgt), "m": float(r.tgt.size_m)})
 	return {
 		"source": "generator", "kind": "text",
 		"payload": {"rounds": rounds, "lang": "en", "ladder": state.band >= 3},
@@ -796,7 +797,8 @@ static func measure_text(it: Dictionary, m: float) -> String:
 	return tr_s("HB_TALL" if State.is_tall(it) else "HB_LONG") % size_text(m)
 
 static func name_of(it: Dictionary) -> String:
-	return tr_s(str(it.get("label", "")))
+	var own := State.words_of(it, "name")
+	return own if own != "" else tr_s(str(it.get("label", "")))
 
 ## The two captions in the grass: the ruler's on the left, the answer's on
 ## the right -- a question mark until the lock (Easy reads the tape as it
@@ -872,7 +874,9 @@ func _draw_result(now: float, shown: Array) -> void:
 	var verdict_text := verdict(res)
 	if bool(res.missed):
 		verdict_text += "  " + tr("HB_HEART_LOST")
-	var fact := tr(State.fact_key(state.tgt()))
+	var fact := State.words_of(state.tgt(), "fact")
+	if fact == "":
+		fact = tr(State.fact_key(state.tgt()))
 	if fact == State.fact_key(state.tgt()):
 		fact = ""
 	var wide := minf(_stage.size.x - 40.0, 760.0)

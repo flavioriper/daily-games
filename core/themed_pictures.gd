@@ -15,6 +15,7 @@ extends RefCounted
 ## handed (Pixel Garden by rows.size(), the other two by w and h).
 ##
 ## Gumdrop's jellies ride in the same document, a mould each (`jellies`).
+## How Big?'s things of the day ride there too (`things`).
 ##
 ## Only what this phone already holds is read (Backend.cached_day): no board
 ## waits on the network for a picture. world/main.gd asks for the day behind
@@ -114,6 +115,63 @@ static func words(date_key: int, board: String):
 		return empty
 	var got = all[board].get(Locale.current())
 	return got if typeof(got) == typeof(empty) else empty
+
+## How Big?'s things from the night for the daily of `date_key`, or []:
+## the day's new ones and a few of the pool's (server/functions/src/
+## things.ts), each a row of content/how_big.json's kind with its shape in
+## it (`shape`: content/how_big_shapes.json's kind) and its words in three
+## languages (`name`, `fact`). One that does not keep what the board reads
+## is dropped, and the thirty fill its place.
+static func things(date_key: int) -> Array:
+	var out: Array = []
+	if date_key == 0 or not Backend.started():
+		return out
+	var doc: Dictionary = Backend.cached_day(GAME, date_key)
+	var all = doc.get("things")
+	if int(doc.get("v", 0)) != 1 or not all is Array:
+		return out
+	var id_ok := RegEx.create_from_string("^d_[a-z0-9_]+$")
+	for got in all:
+		if not got is Dictionary or id_ok.search(str(got.get("id", ""))) == null:
+			continue
+		var size := float(got.get("size_m", 0.0))
+		if size <= 0.0 or size > 40.0 or not str(got.get("measure", "")) in ["long", "tall"]:
+			continue
+		if not (got.get("name") is Dictionary and str(got.name.get("en", "")) != ""):
+			continue
+		if not (got.get("fact") is Dictionary and _shape_ok(got.get("shape"))):
+			continue
+		if out.any(func(x: Dictionary) -> bool: return x.id == got.id):
+			continue
+		got["from"] = 0.0
+		got["to"] = 1.0
+		out.append(got)
+	return out
+
+## A shape as the board draws it: a box whose longer side is 1000, rings of
+## at least three points and whole triangles, every number inside the box.
+static func _shape_ok(s) -> bool:
+	if not s is Dictionary:
+		return false
+	var w := float(s.get("w", 0.0))
+	var h := float(s.get("h", 0.0))
+	if w <= 0.0 or h <= 0.0 or absf(maxf(w, h) - 1000.0) > 0.5:
+		return false
+	var tris = s.get("tris")
+	var loops = s.get("loops")
+	if not tris is Array or (tris as Array).is_empty() or (tris as Array).size() % 6 != 0:
+		return false
+	if not loops is Array or (loops as Array).is_empty():
+		return false
+	for ring in loops:
+		if not ring is Array or (ring as Array).size() < 6 or (ring as Array).size() % 2 != 0:
+			return false
+	for list in [tris] + loops:
+		for k in (list as Array).size():
+			var v = list[k]
+			if not (v is float or v is int) or float(v) < -0.5 or float(v) > (w if k % 2 == 0 else h) + 0.5:
+				return false
+	return true
 
 ## Whether `rows` is a picture the band of side `size` may deal: a square
 ## of a side within the band's range, in the bank's letters, keeping the

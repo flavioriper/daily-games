@@ -3,6 +3,7 @@ import Beads = require("./beads");
 import {makeJellies, MOULDS, Jelly} from "./jelly";
 import {bySide, Picture, pixelBand, Pictures} from "./pictures";
 import {makeTheme, Theme, themed, validTheme} from "./theme";
+import {dayList, DayThing, grow, makeThings, pool} from "./things";
 import {makeWords, Words} from "./words";
 
 /**
@@ -26,7 +27,7 @@ import {makeWords, Words} from "./words";
  */
 
 /** The steps of a day, in order. */
-export const STEPS: string[] = ["theme", "words",
+export const STEPS: string[] = ["theme", "words", "things",
   ...MOULDS.map((_, b) => `jelly${b}`), ...Beads.SIZES.map((s) => `pic${s}`)];
 /** Runs a step may have before it is given up on. */
 const TRIES = 2;
@@ -42,6 +43,7 @@ const RECENT = 30;
 interface Staged {
   theme?: string;
   words?: string;
+  things?: string;
   jellies?: Record<string, string>;
   pictures?: Record<string, string>;
   tries?: Record<string, number>;
@@ -91,6 +93,8 @@ function content(s: Staged): Pictures | null {
   if (Object.keys(jellies).length > 0) doc.jellies = jellies;
   const words = parsed<Words>(s.words);
   if (words !== null) doc.words = words;
+  const things = parsed<DayThing[]>(s.things);
+  if (things !== null && things.length > 0) doc.things = things;
   return doc;
 }
 
@@ -142,6 +146,15 @@ async function runStep(db: Firestore, when: Date, day: number, step: string, s: 
   if (step === "words") {
     const got = await makeWords(theme);
     return {save: got.words === null ? {} : {words: JSON.stringify(got.words)}, made: got.words !== null};
+  }
+  if (step === "things") {
+    // New things join the pool as they are made; the day carries them and a
+    // few of the pool's. A run that makes none still stages the pool's.
+    const held = await pool(db);
+    const got = await makeThings(day, theme, held);
+    await grow(db, got.things);
+    const list = dayList(day, got.things, held);
+    return {save: list.length === 0 ? {} : {things: JSON.stringify(list)}, made: got.things.length > 0};
   }
   if (step.startsWith("jelly")) {
     const band = step.slice("jelly".length);
