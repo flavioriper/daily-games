@@ -1,10 +1,10 @@
 extends Control
 
 ## Tally's card for one thing on the paper, laid over it by the screen: a
-## piece tapped with Move (what it holds, turn it, lift it, empty a crate)
-## or the counting box (the level, the next targets and what each hands
-## over, and the numbers the box holds most of). Spec
-## docs/superpowers/specs/2026-10-15-arcade-tally-design.md.
+## piece's, from its pill's Info (what it holds, the side a machine has
+## waited on, turn it, lift it, empty a crate) or the counting box's (the
+## level, the next targets and what each hands over, and the numbers the box
+## holds most of). Spec docs/superpowers/specs/2026-10-15-arcade-tally-design.md.
 
 signal closed
 signal chose(id: String)
@@ -85,6 +85,8 @@ func _ready() -> void:
 func _tall(kd: int) -> float:
 	if kd == Sim.BOX:
 		return 150.0 + NEXT * 62.0 + 64.0 + ceilf(TALLY / 4.0) * 80.0
+	if Sim.is_op(kd):
+		return 270.0
 	return 230.0
 
 func _pick(id: String) -> void:
@@ -138,6 +140,11 @@ func _draw_piece() -> void:
 		var made := tr("TL_MAKES") % (Sim.short(int(mm.last)) if bool(mm.has_last) else "–")
 		_text(c, made, Vector2(x, 205), 28, Pal.TEXT)
 		_text(c, tr("TL_PER_S") % String.num(sim.op_speed(kd), 2).trim_suffix("0").trim_suffix("."), Vector2(x + 380, 205), 26, Pal.TEXT_DIM)
+		# a side it has waited on: said in amber, as the board shows its pips
+		var side: int = sim.starving(i)
+		if side >= 0:
+			var waiting := tr("TL_WAITING_SIDE") % [tr("TL_SIDE_A" if side == 0 else "TL_SIDE_B"), tr("TL_SIDE_ONE_DOT" if side == 0 else "TL_SIDE_TWO_DOT")]
+			_text(c, waiting, Vector2(x, 250), 26, Art.AMBER.darkened(0.2))
 	elif kd == Sim.DIG:
 		var v := int(sim.dep[i])
 		_token(c, v, Vector2(x + 40, 70), 1.2)

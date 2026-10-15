@@ -5,9 +5,13 @@ extends Control
 ## **The paper is the whole screen**, edge to edge (the rule since
 ## 2026-10-10). Over it lie the flat boards' top bar, a plate row (the
 ## counting box's goal, and the upgrades with a dot when one can be bought)
-## and at the foot the tray: two rows of tools, Move, Belt, Dig, Crate and
+## and at the foot the tray: two rows of tools, Look, Belt, Dig, Crate and
 ## Remove, then the five operators. A tool not handed over yet is a lock
-## with the level it comes at.
+## with the level it comes at; the held tool pressed again is put down. The
+## board's hand (arcade/tally_board.gd) traces paths and drops ghosts with
+## pills; after a path laid or a lift an **undo chip** (a round paper button
+## at the tray's top-left corner) rests for UNDO_FOR seconds and takes that
+## one gesture back (spec 2026-10-15-tally-builder-and-tree-design.md).
 ##
 ## **A kept game, like the Factory**: no run, no end card, no gold. The sim
 ## (arcade/tally_sim.gd) is loaded when the screen opens and saved after a
@@ -53,6 +57,11 @@ const SAVE_AFTER := 4.0
 const HIT_GAP := 0.14
 const TOOLS := [["move", "belt", "dig", "crate", "remove"], ["add", "mul", "sub", "div", "pow"]]
 const HAPTICS := {}
+## The undo chip: how long it rests, its disc's radius, how far it stands
+## over the tray's top-left corner.
+const UNDO_FOR := 6.0
+const UNDO_R := 46.0
+const UNDO_OVER := Vector2(6.0, -30.0)
 
 var sim: RefCounted
 var top_bar: Control
@@ -82,6 +91,11 @@ var _marks_live: ArrayMesh
 var _shown_got := -1
 var _bar := 0.0
 var _ready_on := false
+var _ready_n := 0
+var undo_chip: Control
+var _undo_at := -10.0
+var _undo_down := false
+var _undo_live: ArrayMesh
 
 func puzzle_id() -> String:
 	return GAME
@@ -171,6 +185,15 @@ func _build() -> void:
 	tray.gui_input.connect(_on_tray_input)
 	col.add_child(tray)
 
+	undo_chip = Control.new()
+	undo_chip.name = "UndoChip"
+	undo_chip.size = Vector2.ONE * (UNDO_R * 2.0 + 16.0)
+	undo_chip.mouse_filter = Control.MOUSE_FILTER_STOP
+	undo_chip.visible = false
+	undo_chip.draw.connect(_draw_undo)
+	undo_chip.gui_input.connect(_on_undo_input)
+	add_child(undo_chip)
+
 	_rw = Rewards.new()
 	add_child(_rw)
 	_apply_insets()
@@ -192,6 +215,9 @@ func _lay_board() -> void:
 	var top := MARGIN + insets.x + FlatTopBar.HEIGHT + GAP + HUD_H + GAP
 	var foot := MARGIN + insets.y + TRAY_H + GAP
 	board.set_view(Rect2(0.0, top, size.x, maxf(60.0, size.y - top - foot)))
+	# the undo chip's disc stands on the tray's top-left corner
+	var corner := Vector2(MARGIN, size.y - MARGIN - insets.y - TRAY_H)
+	undo_chip.position = corner + Vector2(UNDO_R, 0.0) + UNDO_OVER - undo_chip.size * 0.5
 
 # --- the top bar's questions ---
 
@@ -250,8 +276,20 @@ func _process(delta: float) -> void:
 		_save()
 	var fill := float(sim.got) / maxf(1.0, float(sim.count()))
 	_bar = fill if Motion.reduce else lerpf(_bar, fill, 1.0 - exp(-10.0 * delta))
+	var n := 0
+	for id: String in Sim.TRACKS:
+		if sim.can_buy(id):
+			n += 1
+	_ready_n = n
+	_ready_on = n > 0
+	var chip_up: bool = sim.can_undo() and _clock - _undo_at < UNDO_FOR and not _busy()
+	if undo_chip.visible != chip_up:
+		undo_chip.visible = chip_up
+		_undo_down = false
 	hud.queue_redraw()
 	tray.queue_redraw()
+	if chip_up:
+		undo_chip.queue_redraw()
 
 func _save() -> void:
 	_saved_at = _clock
@@ -295,18 +333,34 @@ func _play_events() -> void:
 				_fx.cue("lay", randf_range(0.96, 1.04) * pow(2.0, mini(int(ev.n) - 1, 5) / 24.0))
 				_feel(Haptics.TICK)
 				_changed()
+				_undo_at = _clock
 			"place":
 				_fx.cue("place", randf_range(0.95, 1.05))
 				_feel(Haptics.TAP)
 				_changed()
+				_undo_at = -10.0
 			"turn":
 				_fx.cue("turn", randf_range(0.96, 1.04))
 				_feel(Haptics.TICK)
 				_changed()
-			"lift", "emptied":
+				_undo_at = -10.0
+			"lift":
 				_fx.cue("lift", randf_range(0.95, 1.05))
 				_feel(Haptics.TICK)
 				_changed()
+				_undo_at = _clock
+			"emptied":
+				_fx.cue("lift", randf_range(0.95, 1.05))
+				_feel(Haptics.TICK)
+				_changed()
+			"undo":
+				_fx.cue("lift", 0.9)
+				_feel(Haptics.TICK)
+				_changed()
+				_undo_at = -10.0
+			"off_target":
+				_rw.sticker(tr("TL_SAY_NOT_TARGET") % [Sim.short(int(ev.v)), Sim.short(int(ev.came))],
+					_square_rw(Sim.HUB_AT + Vector2i(2, 2)) + Vector2(0, -70.0), 36, 3.2, false, Color("fffaf0"), false, "say", 20.0)
 			"hit":
 				if _clock - _hit_at > HIT_GAP and not _busy():
 					_hit_at = _clock
@@ -422,11 +476,16 @@ func _draw_hud() -> void:
 	b.disc(um + Vector2(0, 4.0), 40.0 * press, Color(Pal.TEXT, 0.16))
 	b.disc(um, 40.0 * press, Pal.ACCENT_DEEP)
 	if _ready_on:
+		# a count of the ranks that can be bought, on the sun dot
 		var beat := 0.0 if Motion.reduce else 1.5 * sin(_clock * 4.0)
-		b.disc(um + Vector2(32, -32), 13.0, Color("fffaf0"))
-		b.disc(um + Vector2(32, -32), 9.0 + beat, Pal.SUN)
+		b.disc(um + Vector2(32, -32), 18.0, Color("fffaf0"))
+		b.disc(um + Vector2(32, -32), 14.0 + beat, Pal.SUN)
 	_hud_live = b.mesh()
 	hud.draw_mesh(_hud_live, null)
+	if _ready_on:
+		var n := str(_ready_n)
+		var nw := _font.get_string_size(n, HORIZONTAL_ALIGNMENT_LEFT, -1, 19).x
+		hud.draw_string(_font, um + Vector2(32.0 - nw * 0.5, -32.0 + 19.0 * 0.36), n, HORIZONTAL_ALIGNMENT_LEFT, -1, 19, Pal.TEXT)
 	var hop := 1.0 if Motion.reduce else Motion.bump_scale(_clock - float(_chip_at.get(-2, -10.0)), 0.08, 0.16)
 	hud.draw_mesh(Art.token(true), null, Transform2D(0.0, Vector2.ONE * 1.25 * hop, 0.0, mid))
 	var txt := Sim.short(sim.target())
@@ -499,8 +558,9 @@ func _on_tray_input(event: InputEvent) -> void:
 		if was == slot:
 			press_slot(slot)
 
-## A press on the tray: picks the tool; a machine's tool pressed again turns
-## the way it will be set down.
+## A press on the tray: picks the tool; the held tool pressed again is put
+## down (Look). Nothing here turns anything (the user, 2026-10-15: a tap
+## that turned a machine was how the numbers stopped).
 func press_slot(slot: int) -> void:
 	@warning_ignore("integer_division")
 	var id: String = TOOLS[slot / 5][slot % 5]
@@ -510,14 +570,67 @@ func press_slot(slot: int) -> void:
 		_feel(Haptics.WARN)
 		_rw.sticker(tr("TL_SAY_LOCKED") % (int(Sim.UNLOCK[tool_kind(id)]) + 1), _rw.at(tray, _slot_mid(slot) + Vector2(0, -90.0)), 34, 1.6, false, Color("fffaf0"), false, "nope", 20.0)
 		return
-	if board.tool == id and Sim.is_op(tool_kind(id)):
-		board.place_face = (board.place_face + 1) % 4
-		_fx.cue("turn", 1.05)
-		_feel(Haptics.TICK)
+	if board.tool == id and id != "move":
+		board.set_tool("move")
+		_chip_at[0] = _clock
+		_fx.touch(0.94)
+		_feel(Haptics.TAP)
 		return
 	board.set_tool(id)
 	_fx.touch(1.0 + 0.03 * slot)
 	_feel(Haptics.TAP)
+
+# --- the undo chip ---
+
+## The chip fades in and out with Motion; still, it is simply on or off.
+func _undo_alpha() -> float:
+	var t := _clock - _undo_at
+	if Motion.reduce:
+		return 1.0
+	return clampf(minf(t * 5.0, (UNDO_FOR - t) * 2.5), 0.0, 1.0)
+
+func _draw_undo() -> void:
+	var a := _undo_alpha()
+	if a <= 0.0:
+		return
+	var c := undo_chip.size * 0.5
+	var press := 0.94 if _undo_down else 1.0
+	var b := Face.Builder.new()
+	b.disc(c + Vector2(0, 5.0), UNDO_R * press, Color(Pal.TEXT, 0.16 * a))
+	b.disc(c, UNDO_R * press, Color(Color("fcf7ef"), a))
+	b.stroke(Face.Builder.ring(c, UNDO_R * press, UNDO_R * press), 3.0, Color(Pal.SUN, 0.9 * a), true)
+	Art.glyph_into(b, "undo_back", Rect2(c + Vector2(-19.0, -30.0) * press, Vector2(38.0, 38.0) * press), Color(Art.INK, a))
+	_undo_live = b.mesh()
+	undo_chip.draw_mesh(_undo_live, null)
+	var cap := tr("TL_UNDO")
+	undo_chip.draw_string(_font, Vector2(c.x - UNDO_R, c.y + 30.0 * press), cap, HORIZONTAL_ALIGNMENT_CENTER, UNDO_R * 2.0, 18, Color(Art.INK, 0.85 * a))
+
+func _on_undo_input(event: InputEvent) -> void:
+	var at := Vector2(-1, -1)
+	var down := false
+	if event is InputEventScreenTouch:
+		at = (event as InputEventScreenTouch).position
+		down = (event as InputEventScreenTouch).pressed
+	elif event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+		at = (event as InputEventMouseButton).position
+		down = (event as InputEventMouseButton).pressed
+	else:
+		return
+	var inside := at.distance_to(undo_chip.size * 0.5) <= UNDO_R + 8.0
+	if down:
+		_undo_down = inside
+	elif _undo_down:
+		_undo_down = false
+		if inside:
+			undo()
+
+## The last gesture taken back (the chip, or a harness).
+func undo() -> void:
+	if not sim.can_undo():
+		return
+	board.let_go()
+	sim.undo()
+	_undo_at = -10.0
 
 func _draw_tray() -> void:
 	if tray.size.x <= 0.0:
@@ -584,8 +697,10 @@ func _show_piece(t: Vector2i) -> void:
 func _on_card(id: String, t: Vector2i) -> void:
 	match id:
 		"turn":
+			sim.mark()
 			sim.turn(t)
 		"lift":
+			sim.mark()
 			sim.remove(t)
 		"empty":
 			sim.empty_crate(t)

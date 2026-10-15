@@ -10,6 +10,7 @@ extends RefCounted
 
 const Face = preload("res://ui/faces/face.gd")
 const Sim = preload("res://arcade/tally_sim.gd")
+const Icons = preload("res://ui/icons.gd")
 
 const U := 100.0
 
@@ -323,6 +324,17 @@ static func icon(k: int) -> ArrayMesh:
 		_:
 			b.append(machine(k), Transform2D.IDENTITY)
 	return _keep(key, b)
+
+## One of ui/icons.gd's glyphs into `b`, fitted to `rect`: its polygons
+## filled and its lines stroked at the icons' own width, so a pill's buttons
+## are one mesh and not a draw command a shape.
+static func glyph_into(b: Face.Builder, name: String, rect: Rect2, c: Color) -> void:
+	var s: Dictionary = Icons.shape(name)
+	var xf := Transform2D(0.0, rect.size, 0.0, rect.position)
+	for poly: PackedVector2Array in s.polys:
+		b.polygon(xf * poly, c)
+	for line: PackedVector2Array in s.lines:
+		b.stroke(xf * line, Icons.STROKE * rect.size.x, c)
 
 ## A small padlock about the origin, `r` its half height.
 static func lock_into(b: Face.Builder, at: Vector2, r: float, c: Color) -> void:
