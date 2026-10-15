@@ -28,6 +28,8 @@ const IconButton = preload("res://ui/hud/icon_button.gd")
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const CozyTheme = preload("res://ui/theme.gd")
+const UiSound = preload("res://ui/ui_sound.gd")
+const Haptics = preload("res://core/haptics.gd")
 
 const CARD_W := 1000.0
 const CARD_INSET := 26
@@ -414,7 +416,12 @@ func _release(at: Vector2) -> void:
 	_finger = NONE
 	if not _moved:
 		_speed = 0.0
-		select(_plate_at(at))
+		var id := _plate_at(at)
+		# a tap that moves the choice is heard and felt, as a button's is
+		if id != "" and id != _chosen:
+			UiSound.click(self)
+			Haptics.play(Haptics.TICK)
+		select(id)
 	elif Motion.reduce or Time.get_ticks_msec() - _last_ms > 90 or absf(_speed) < GLIDE_LEAST * 4.0:
 		_speed = 0.0
 	else:

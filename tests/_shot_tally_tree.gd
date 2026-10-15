@@ -9,7 +9,8 @@ extends SceneTree
 ## top, the adders half way): 1 the card as it opens (the belts chosen, since
 ## they can be bought), 2 the adders by a real tap on their plate, 3 the
 ## belts again, 4 a rank bought by a real press on the sun bar, 5 a shut
-## track (the raisers) by a tap, 6 the card at level 1. Checks that the foot
+## track (the raisers) by a tap, 6 the card at level 1, then, unshot, the
+## card on a host 1300 tall where the tree pans under a finger. Checks that the foot
 ## names what was tapped, that the belt's rank went up, that no plate meets
 ## another and that the tree fits the field without a pan, and prints the
 ## draw calls at each shot. Headless it shoots nothing and prints 0 failed.
@@ -28,6 +29,8 @@ var _out := "/tmp"
 var _blind := false
 var _fails := 0
 var _closed := false
+var _short: Control
+var _before_y := 0.0
 
 func _initialize() -> void:
 	_blind = DisplayServer.get_name() == "headless"
@@ -87,6 +90,13 @@ func _touch(at: Vector2, down: bool) -> void:
 	Input.parse_input_event(ev)
 	Input.flush_buffered_events()
 
+func _drag_ev(at: Vector2) -> void:
+	var ev := InputEventScreenDrag.new()
+	ev.index = 0
+	ev.position = at
+	Input.parse_input_event(ev)
+	Input.flush_buffered_events()
+
 func _tap(at: Vector2) -> void:
 	_touch(at, true)
 	_touch(at, false)
@@ -132,6 +142,7 @@ func _process(delta: float) -> bool:
 			if _t > 0.5:
 				print("root %s" % str(root.get_visible_rect().size))
 				_shot("1_open")
+				_check("the words are English", tr("TL_UPGRADES") == "Upgrades")
 				_check("the belts are chosen on opening (they can be bought)", _shop._chosen == "belt")
 				_check("the foot names the belts", _label("Name").text == tr("TL_TRACK_BELT"))
 				_check("the bar says Up", _shop._bar.label_text == tr("TL_BUY") and not _shop._bar.disabled)
@@ -191,8 +202,42 @@ func _process(delta: float) -> bool:
 				_check_layout("level 1")
 				_shot("7_level1")
 				_shop.close()
+				# a short screen: the card on a host 1300 tall, so the tree is
+				# taller than its field and pans under a finger
+				_short = Control.new()
+				_short.name = "Short"
+				_short.theme = CozyTheme.make()
+				_short.size = Vector2(1080.0, 1300.0)
+				root.add_child(_short)
+				_shop = Shop.new()
+				_shop.name = "Shop"
+				_shop.sim = _sim
+				_short.add_child(_shop)
 				_next()
 		9:
+			if _t > _at + 0.5:
+				_check("on a short screen the tree is taller than the field (field %s, pan %d)" % [str(_shop._field.size), int(_shop._pan_most)], _shop._pan_most > 0.0)
+				var p: Control = _shop._plates["belt"]
+				_before_y = p.position.y
+				var mid: Vector2 = _shop._field.size * 0.5
+				_touch(_win(_shop._field, mid), true)
+				for j in range(1, 7):
+					_drag_ev(_win(_shop._field, mid + Vector2(0.0, 50.0 * j)))
+				_next()
+		10:
+			# the finger rests before it lifts, so the tree stands where it was left
+			if _t > _at + 0.25:
+				_touch(_win(_shop._field, _shop._field.size * 0.5 + Vector2(0.0, 300.0)), false)
+				_next()
+		11:
+			if _t > _at + 0.3:
+				var p: Control = _shop._plates["belt"]
+				_check("a finger drawn down 300 px pans the tree down (pan %d)" % int(_shop._pan), _shop._pan > 200.0 and _shop._pan <= 300.0)
+				_check("the plates went with it", absf((p.position.y - _before_y) - _shop._pan) < 1.0)
+				_check("a drag chooses nothing", _shop._chosen == "belt")
+				_shop.close()
+				_next()
+		12:
 			if _t > _at + 0.2:
 				return _done()
 	return false
