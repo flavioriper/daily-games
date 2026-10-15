@@ -15,9 +15,25 @@ Thirteen first), a lip pop and a tongue click. The takes are in
 row's prompt is the take's, for the record). So rule 5's mouse-wheel notch
 and rule 4's ban on a coin are over, and rule 2's `high` flag no longer
 decides (bubble wrap sits at 2 kHz by nature; `faint` still does). Lucky
-Thirteen is the pilot (its eleven ticks, 2026-10-15); the plan for the
-other sets, by role, is in the session notes of that day and is the
-user's to start. Rewrite this section once the direction settles.
+Thirteen was the pilot (its eleven ticks), and the same evening, on the
+user's "do the batch", every tick-like cue in the other sets went over
+too: 313 rows in 55 sets, by the cue's name (`build/sfx_raw/coin_try/batch.py`
+holds the role lists and wrote the rows; `batch_plan.txt` lists them).
+Select, unselect, pick, arm: the pebble. Combos, landings, counts, runs,
+deals: the wrap. A thing set down (enter, place, drop, stamp, post, swap,
+flip, home, send): the token, two steps under the button, or the plop on
+the water boards (Toy Boats, Pearl Dive, Eddy, Mini Golf). A thing taken
+off (undo, lift, remove, erase, draw, capture): the lip pop. Not allowed
+(refused, nope, locked, miss, wall, bump): the tongue click. Each board
+sits a step off its neighbours (-1, 0, +1 by its place in `SETS`). Levels,
+cuts and phrases were kept from the 2026-10-10 rows; `warm`, `body` and
+`ease` were dropped. The old tick takes are each set's
+`build/sfx_raw/<set>/old_ticks/`. Untouched: the breezes, the note cues,
+the wallet's claim, and 187 tick-like cues whose name is the board's own
+foley (hearts, checks, chops, hens, pots). Measured: 2 of 313 `faint`,
+Stackwood's `move` and Penny Drop's `tick`, both at the levels the user
+asked down to. Nothing of the batch heard by the user. Rewrite this
+section once the direction settles.
 
 The user, 2026-10-09: "Sounds should always aim for cozy low, low clicks,
 ticks, slides should always aim for something gentle sliding on wood never

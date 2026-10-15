@@ -446,12 +446,12 @@ SETS = {
         # as they were (blush_in 4 dB down), enter levelled down and rolled
         # off, check_ok levelled down and given the second note its prompt
         # always asked for.
-        "place":    ("one small wooden tile set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.16", "body:320"),
-        "clear":    ("one small light wooden tile set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1500", "cut:0.12", "body:320"),
+        "place":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -13, FOLEY, "bank:token", "cut:0.16", "notes:0:-2", "tight"),
+        "clear":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -16, FOLEY, "bank:wrap", "cut:0.12", "tight"),
         # The lift's take over again: four prompts for a pencil's own tick came
         # back scratched (a fifth to a quarter of each above 3 kHz).
         "brush":    ("one small light wooden tile set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1500", "cut:0.1", "body:320", "notes:0:2"),
-        "undo":     ("two soft dull hollow wooden tocks close together, the second a little lower, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.24", "body:320", "tight"),
+        "undo":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -15, FOLEY, "bank:lip", "cut:0.24", "tight"),
         "hint":     ("three slow soft notes rising on a kalimba, a gentle little idea, short", 1.0, -10, COZY_TUNE, "warm:2000", "steep", "ease:0.012", "body:300", "notes:0.15:3,7,10", "cut:0.8"),
         # check and blush_in re-prompted 2026-09-29 (insane polish): the low
         # marimba boops and the wooden "bonk" read as a scold, not a shrug.
@@ -461,14 +461,14 @@ SETS = {
         "solved":   ("five slow soft notes rising on a kalimba over one gentle tongue drum note, a warm quiet little celebration that fades", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:0,2,4,7,9", "cut:1.7"),
         "line":     ("two soft notes rising on a kalimba, short", 0.6, -12, COZY_TUNE, "warm:2600", "ease:0.01", "body:300", "notes:0.12:5,9"),
         "blush_in": ("a tiny soft felt mallet tap on a small wooden block with a gentle little pitch dip, a shy muffled 'oops', very short and quiet", 0.5, -14, STYLE, "body:300"),
-        "enter":    ("a soft airy cascade of tiny wooden pops rolling in, a board of tiles appearing", 1.0, -13, STYLE, "body:300", "warm:2400"),
+        "enter":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -13, FOLEY, "bank:token", "cut:0.12", "notes:0:-2", "tight"),
         # Hearts, streaks and rewards (2026-09-29 insane polish, spec section 3).
         "heart_lost":    ("a soft felt-mallet marimba two-note fall, a small gentle 'oh', warm and muffled, never a buzzer", 0.6, -15),
         "out_of_hearts": ("three slow soft notes going down on a kalimba, like a sleepy yawn, calm and kind, maybe tomorrow", 1.5, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.3:9,5,2"),
         "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -15),
         # Every scored tile from the second of a streak, on top of `place`: a
         # tick the board pitches, not a note (what repeats is a click).
-        "combo":         ("a single soft hollow wooden tock, a small woodblock tapped with felt, round, very short", 0.5, -15, HUSH, "warm:1600", "cut:0.14", "body:320"),
+        "combo":         ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -15, FOLEY, "bank:wrap", "cut:0.14", "tight"),
         "confetti":      ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
         "line_silly":    ("three soft hollow wooden ticks one after another, speeding up, an old mouse wheel turned", 0.7, -15, HUSH, "warm:1500", "body:320"),
         "flawless":      ("two slow soft notes rising on a kalimba and left to fade, a gentle proud 'perfect'", 1.5, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.32:0,7"),
@@ -496,9 +496,9 @@ SETS = {
         # three notches. Every tick is `tight`.
         # The drop's take two steps up: two prompts for a lighter peg came back
         # scratched (three quarters and more of each above 3 kHz).
-        "pick":     ("one small round wooden peg set down gently in a wooden hole lined with felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1500", "cut:0.1", "body:320", "tight", "notes:0:2"),
-        "drop":     ("one small round wooden peg set down gently in a wooden hole lined with felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.18", "body:320", "tight"),
-        "put":      ("one small wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.09", "body:320", "tight", "notes:0:4"),
+        "pick":     ('a small pebble dropped into a calm pond, one soft plop, close, very short', 0.6, -15, FOLEY, "bank:pebble", "cut:0.1", "notes:0:3", "tight"),
+        "drop":     ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -13, FOLEY, "bank:token", "cut:0.18", "notes:0:-1", "tight"),
+        "put":      ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -13, FOLEY, "bank:token", "cut:0.09", "notes:0:3", "tight"),
         # "Not that far": two notes, the second lower.
         "refused":  ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.12:6,3", "cut:0.5"),
         "taut":     ("one small wooden block set down gently on thick felt, a single soft dull tock, round and hollow, very short", 0.6, -14, HUSH, "warm:1300", "cut:0.12", "body:320", "tight"),
@@ -507,24 +507,24 @@ SETS = {
         "cinch":    ("one soft pat on a small felt cushion over wood, a single dull hollow tock, round, very short", 0.5, -13, HUSH, "warm:1400", "cut:0.14", "body:320", "tight"),
         # unwind is the drop's take, three notches rising: a spool's own came
         # back twice with its tock 80 ms behind a first faint one.
-        "unwind":   ("one small round wooden peg set down gently in a wooden hole lined with felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.36", "body:320", "tight", "notes:0.08:0,2,4"),
+        "unwind":   ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -13, FOLEY, "bank:lip", "cut:0.36", "notes:0.08:1,3,5", "tight"),
         "free":     ("a soft springy cotton rope boing with a tiny happy two-note kalimba lift, cute and cozy, very short", 0.6, -9, STYLE, "warm:6000"),
         "untie":    ("a tiny bright kalimba pluck going up with a soft rope loosening rustle, a knot coming undone, very short", 0.6, -10, STYLE, "warm:2400", "body:300"),
-        "combo":    ("two or three soft rising kalimba and glockenspiel notes, a cheerful cozy little fanfare", 0.9, -10),
+        "combo":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -10, FOLEY, "bank:wrap", "cut:0.1", "notes:0:1", "tight"),
         "oops":     ("two soft wobbly descending marimba notes with a tiny cartoon slide, a gentle comic oops, not harsh", 0.7, -10),
-        "undo":     ("one small wooden peg set down gently on thick felt, a single soft dull tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        "undo":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -15, FOLEY, "bank:lip", "cut:0.28", "notes:0.11:1,-2", "tight"),
         "hint":     ("one soft note on a kalimba, a gentle little idea, short", 1.0, -10, COZY_TUNE, "warm:2000", "steep", "ease:0.012", "body:300", "notes:0.17:0,5,9", "cut:0.9"),
         "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
         "solved":   ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:0,4,7,9,12", "cut:1.7"),
-        "enter":    ("four or five soft low wooden marimba ticks one after another, like small round pegs settling into a wooden ring, warm and gentle, no hiss", 1.0, -9, STYLE, "warm:5000"),
+        "enter":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -9, FOLEY, "bank:token", "cut:0.12", "notes:0:-1", "tight"),
         # Thread (Hard and Insane): a stitch is the lightest tick there is.
-        "stitch":      ("one small wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.08", "body:320", "tight", "notes:0:5"),
+        "stitch":      ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -13, FOLEY, "bank:wrap", "cut:0.08", "notes:0:6", "tight"),
         "thread_low":  ("a single soft low warm kalimba note, gentle, a quiet 'the thread is getting short', very short", 0.5, -12),
         "thread_out":  ("one slow soft note on a kalimba, sleepy, calm and kind, left to fade", 1.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:7,4,0"),
         "spool_back":  ("a warm rising pair of soft kalimba plucks with a tiny sparkle and a light wooden spool spinning, gentle and happy", 0.9, -10, STYLE, "warm:2400", "body:300"),
-        "reveal":      ("a small wooden box lid set down gently on thick felt, a single soft tock, round and hollow, very short", 0.6, -13, HUSH, "warm:1600", "cut:0.34", "body:320", "tight", "notes:0.13:0,3"),
+        "reveal":      ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -13, FOLEY, "bank:lip", "cut:0.34", "notes:0.13:1,4", "tight"),
         # The seal and the party.
-        "stamp":    ("a very quiet soft paper stamp tap followed by a loud clear warm glockenspiel chime, two bright rising notes ringing out and fading slowly, proud", 1.5, -9),
+        "stamp":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -9, FOLEY, "bank:token", "cut:0.12", "notes:0:-1", "tight"),
         "party":    ("one soft note on a kalimba over a gentle tongue drum, warm and cozy, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:0,4,7,4,7,12", "cut:1.9"),
         "confetti": ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
         # Insane's kitten. The purr was 89% under 300 Hz, which a phone does
@@ -542,7 +542,7 @@ SETS = {
         # board's own came back under 300 Hz). select and combo are ticks the board
         # pitches, and neither climbs past five semitones. Every tick is
         # `tight`.
-        "select":   ("one small light wooden stake set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1600", "cut:0.1", "body:320", "tight"),
+        "select":   ('a small pebble dropped into a calm pond, one soft plop, close, very short', 0.6, -15, FOLEY, "bank:pebble", "cut:0.1", "notes:0:-1", "tight"),
         "plot":     ("a soft short garden trowel pat in loose soil with a tiny wooden tap, a garden bed marked out", 0.5, -13),
         "hint":     ("one soft note on a kalimba, a gentle little idea, short", 1.0, -10, COZY_TUNE, "warm:2000", "steep", "ease:0.012", "body:300", "notes:0.15:2,5,10", "cut:0.9"),
         "check_ok": ("two soft bright marimba notes going up, a friendly 'all good' confirmation", 0.7, -10, STYLE, "body:300", "warm:2600", "notes:0.13:2,6"),
@@ -550,17 +550,17 @@ SETS = {
         "solved":   ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:0,2,5,7,10", "cut:1.7"),
         # The stakes going in: select's take, five in a row. The cascade of
         # pops it was sat between 1 and 3 kHz whatever was rolled off.
-        "enter":    ("one small light wooden stake set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,2,0,3,5"),
+        "enter":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.5", "notes:0.08:-3,-1,-3,0,2", "tight"),
         # A bed taken up: a lift is a lighter thing set down.
-        "clear":    ("one small light wooden block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1500", "cut:0.12", "body:320", "tight"),
-        "locked":   ("a tiny soft kalimba note with a gentle little wobble, a kind 'this one stays', muffled and warm, very short", 0.5, -12),
-        "undo":     ("one small wooden block set down gently on thick felt, a single soft dull tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        "clear":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -16, FOLEY, "bank:wrap", "cut:0.12", "notes:0:-1", "tight"),
+        "locked":   ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -12, FOLEY, "bank:tongue", "cut:0.3", "notes:0:-1", "tight"),
+        "undo":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -15, FOLEY, "bank:lip", "cut:0.28", "notes:0.11:-1,-4", "tight"),
         "check":    ("a gentle two-note melody on a soft kalimba: one note, then a second lower note, 'uh-oh' but kind, a cozy 'not quite yet', warm and round, never a buzzer", 1.0, -17, STYLE, "fall"),
         # The polish pass (2026-09-30, docs/superpowers/specs/2026-09-30-shikaku-polish-design.md).
         # sprout: a light tick after the bed's own. combo: layered over plot,
         # a tick the board pitches by the streak.
         "sprout":   ("one small wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1600", "cut:0.09", "body:320", "tight", "notes:0:3"),
-        "combo":    ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.14", "body:320", "tight"),
+        "combo":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.14", "notes:0:-1", "tight"),
         "confetti": ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
         "worm":     ("a tiny cute soft squeaky 'bloop' of a little worm popping out of soft soil, then a small playful wooden kalimba trill, silly and sweet", 0.9, -9),
         "cool":     ("a laid-back soft kalimba slide down and back up, a cool little 'nice', with a tiny soft wooden click like sunglasses going on, relaxed and cute", 0.9, -8),
@@ -587,20 +587,20 @@ SETS = {
         "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
         "solved":   ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:0,3,5,7,10", "cut:1.7"),
         # The stones rolling in: place's take, five in a row.
-        "enter":    ("one small wooden lantern base set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,2,3,0,5"),
-        "place":    ("one small wooden lantern base set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.16", "body:320", "tight"),
+        "enter":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.5", "notes:0.08:-2,0,1,-2,3", "tight"),
+        "place":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -13, FOLEY, "bank:token", "cut:0.16", "notes:0:-2", "tight"),
         # A lamp put out: a lift is a lighter thing set down. The board also
         # plays it 5 dB down when a wrong lamp is taken away, so it is no
         # quieter than place.
         "strike":   ("one small light wooden block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.12", "body:320", "tight"),
-        "locked":   ("a tiny soft kalimba note with a gentle little wobble, a kind 'this one stays', muffled and warm, very short", 0.5, -12),
-        "undo":     ("one small light wooden block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        "locked":   ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -12, FOLEY, "bank:tongue", "cut:0.3", "tight"),
+        "undo":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -15, FOLEY, "bank:lip", "cut:0.28", "notes:0.11:0,-3", "tight"),
         "check":    ("a gentle two-note melody on a soft kalimba: one note, then a second lower note, 'uh-oh' but kind, a cozy 'not quite yet', warm and round, never a buzzer", 1.0, -17, STYLE, "fall"),
         # chip / clear tick per stone of a sweep, pitched up as it grows.
-        "chip":     ("one small wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1600", "cut:0.09", "body:320", "tight"),
-        "clear":    ("one small wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1500", "cut:0.1", "body:320", "tight", "notes:0:-3"),
+        "chip":     ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -15, FOLEY, "bank:wrap", "cut:0.09", "tight"),
+        "clear":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -16, FOLEY, "bank:wrap", "cut:0.1", "notes:0:-3", "tight"),
         # combo: layered over place, a tick the board pitches by the streak.
-        "combo":    ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.14", "body:320", "tight"),
+        "combo":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.14", "tight"),
         "confetti": ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
         "cool":     ("a laid-back soft kalimba slide down and back up, a cool little 'nice', with a tiny soft wooden click like sunglasses going on, relaxed and cute", 0.9, -8, STYLE, "warm:2400", "body:300"),
         # The gags. puff: the lantern's smoke ring, a puff of air. snail:
@@ -636,32 +636,32 @@ SETS = {
         # second 60 ms behind). The phrases' steps are set by each take's own
         # note, so that every note lands between 400 and 700 Hz. slip's
         # prompt still says ceramic: it is the kept take's, which measures low.
-        "place":    ("one small wooden tile set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.16", "body:320", "tight"),
+        "place":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.16", "notes:0:-1", "tight"),
         # The user, 2026-10-10: a sound "when selecting tiles, not only on
         # place (like we do for trail word)". Each cell a stroke takes in:
         # place's take two steps up, the click under a finger that slides
         # (rule 9), so -21 and short.
-        "select":   ("one small wooden tile set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -21, HUSH, "warm:1400", "cut:0.08", "body:320", "tight", "notes:0:2"),
-        "locked":   ("a tiny soft kalimba note with a gentle little wobble, a kind 'this one stays', muffled and warm, very short", 0.5, -12),
-        "undo":     ("one small light wooden block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        "select":   ('a small pebble dropped into a calm pond, one soft plop, close, very short', 0.6, -21, FOLEY, "bank:pebble", "cut:0.08", "notes:0:3", "tight"),
+        "locked":   ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -12, FOLEY, "bank:tongue", "cut:0.3", "notes:0:1", "tight"),
+        "undo":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -15, FOLEY, "bank:lip", "cut:0.28", "notes:0.11:1,-2", "tight"),
         "hint":     ("one soft note on a kalimba, a gentle little idea, short", 1.0, -10, COZY_TUNE, "warm:2000", "steep", "ease:0.012", "body:300", "notes:0.16:2,7,9", "cut:0.9"),
         "check":    ("a gentle two-note melody on a soft kalimba: one note, then a second lower note, 'uh-oh' but kind, a cozy 'not quite yet', warm and round, never a buzzer", 1.0, -17, STYLE, "fall"),
         "check_ok": ("two soft warm kalimba notes going up, a friendly cozy 'all good', gentle and round", 0.7, -10),
         "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
         # The floor laid out: place's take, five in a row.
-        "enter":    ("one small wooden tile set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,3,2,0,5"),
+        "enter":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.5", "notes:0.08:-1,2,1,-1,4", "tight"),
         "solved":   ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:4,6,8,11,13", "cut:1.7"),
         # The streak, the gags, the daisies and the pebbles a finished line
         # lays. combo: layered over place, a tick the board pitches by the
         # streak. mushroom: two tocks a third apart. bee: two quiet notes
         # going by. bloom: one. pebbles: a wheel's four notches.
-        "combo":    ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.14", "body:320", "tight"),
+        "combo":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.14", "notes:0:1", "tight"),
         "confetti": ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
         "love":     ("a few tiny soft bubbly pops rising with a sweet little two-note kalimba 'aww', little hearts floating up, cute and warm", 0.8, -10, STYLE, "warm:2400", "body:300"),
         "mushroom": ("one soft pat on a small felt cushion over wood, a single dull hollow tock, round, very short", 0.5, -14, HUSH, "warm:1400", "cut:0.4", "body:320", "tight", "notes:0.13:0,4"),
         "bee":      ("one soft short note on a kalimba, muffled and kind", 0.6, -14, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.12:7,5", "cut:0.55"),
         "bloom":    ("one soft short note on a kalimba, muffled and kind", 0.6, -15, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0:2", "cut:0.45"),
-        "pebbles":  ("one small wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1600", "cut:0.4", "body:320", "tight", "notes:0.07:0,2,0,3"),
+        "pebbles":  ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -15, FOLEY, "bank:wrap", "cut:0.4", "notes:0.07:1,3,1,4", "tight"),
         # Hearts, the wrong tile turned out, and the party.
         "heart_lost":    ("a soft felt-mallet marimba two-note fall, a small gentle 'oh', warm and muffled, never a buzzer", 0.6, -15),
         "slip":     ("a small ceramic tile lifted out of its socket with a soft hollow wooden pop, and a tiny pebble set down in its place, warm and quiet", 0.6, -12, COZY),
@@ -691,23 +691,23 @@ SETS = {
         # confetti Binairo's (its own came back scratched four times in
         # four); enter is place's. The phrases' steps are set by each take's
         # own note, so that every note lands between 400 and 700 Hz.
-        "place":    ("one small wooden tile set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.16", "body:320", "tight"),
+        "place":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.16", "notes:0:-3", "tight"),
         # A lift is a lighter thing set down.
-        "remove":   ("one small light wooden block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1500", "cut:0.12", "body:320", "tight"),
-        "locked":   ("a tiny soft kalimba note with a gentle little wobble, a kind 'not there', muffled and warm, very short", 0.5, -12, STYLE, "body:300", "warm:2600", "notes:0:6"),
-        "undo":     ("one small light wooden block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        "remove":   ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -15, FOLEY, "bank:lip", "cut:0.12", "notes:0:-1", "tight"),
+        "locked":   ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -12, FOLEY, "bank:tongue", "cut:0.3", "notes:0:5", "tight"),
+        "undo":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -15, FOLEY, "bank:lip", "cut:0.28", "notes:0.11:-1,-4", "tight"),
         "hint":     ("one soft note on a kalimba, a gentle little idea, short", 1.0, -10, COZY_TUNE, "warm:2000", "steep", "ease:0.012", "body:300", "notes:0.16:4,7,9", "cut:0.9"),
         "check":    ("a gentle two-note melody on a soft kalimba: one note, then a second lower note, 'uh-oh' but kind, a cozy 'not quite yet', warm and round, never a buzzer", 1.0, -17, STYLE, "fall"),
         "check_ok": ("two soft warm kalimba notes going up, a friendly cozy 'all good', gentle and round", 0.7, -10),
         "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
         # The court laid out: place's take, five in a row.
-        "enter":    ("one small wooden tile set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,2,3,0,5"),
+        "enter":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.5", "notes:0.08:-3,-1,0,-3,2", "tight"),
         "solved":   ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:6,8,10,11,13", "cut:1.7"),
         # The streak, the gags, and the flowers a patch opens once it has
         # its queen. combo: layered over her seat, a tick the board pitches
         # by the streak. drone: a bee going by, two quiet notes up. twirl
         # and dance are the first set's takes, rolled off. bloom: one note.
-        "combo":    ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.14", "body:320", "tight"),
+        "combo":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.14", "notes:0:-1", "tight"),
         "confetti": ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
         "love":     ("a few tiny soft bubbly pops rising with a sweet little two-note kalimba 'aww', little hearts floating up, cute and warm", 0.8, -10),
         "drone":    ("one soft short note on a kalimba, muffled and kind", 0.6, -14, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.12:6,8", "cut:0.55"),
@@ -747,20 +747,20 @@ SETS = {
         # snail and snail_hurry are type's and post is flip's. The phrases'
         # steps are set by each take's own note, so that every note lands
         # between 400 and 700 Hz.
-        "type":     ("one small wooden tile set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1600", "cut:0.1", "body:320", "tight"),
+        "type":     ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -15, FOLEY, "bank:wrap", "cut:0.1", "tight"),
         # A letter taken back: a lighter thing set down.
-        "erase":    ("one small light wooden block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1500", "cut:0.12", "body:320", "tight"),
-        "flip":     ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.14", "body:320", "tight"),
-        "refused":  ("a tiny soft kalimba note with a gentle little wobble, a kind 'not quite a word', muffled and warm, very short, never a buzzer", 0.5, -12),
+        "erase":    ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -16, FOLEY, "bank:lip", "cut:0.12", "tight"),
+        "flip":     ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.14", "notes:0:-2", "tight"),
+        "refused":  ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -12, FOLEY, "bank:tongue", "cut:0.3", "tight"),
         "hint":     ("one soft note on a kalimba, a gentle little idea, short", 1.0, -10, COZY_TUNE, "warm:2000", "steep", "ease:0.012", "body:300", "notes:0.16:2,5,9", "cut:0.9"),
         "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
         "solved":   ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:6,9,11,13,14", "cut:1.7"),
-        "lost":     ("a gentle warm three-note soft felt kalimba phrase slowly descending and resolving softly, a kind 'maybe tomorrow', calm, not sad, never a buzzer", 1.5, -9),
+        "lost":     ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -9, FOLEY, "bank:tongue", "cut:0.3", "tight"),
         # The card laid out: type's take, five in a row.
-        "enter":    ("one small wooden tile set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,3,0,2,5"),
+        "enter":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.5", "notes:0.08:-2,1,-2,0,3", "tight"),
         # The streak, the row's reactions and the gags. combo: a tick a green
         # letter, pitched by the board. sprout: one quiet note.
-        "combo":    ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.08", "body:320", "tight"),
+        "combo":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.08", "tight"),
         "warmer":   ("a cheerful little two-note rising kalimba 'ooh!', soft and warm, getting warmer, short", 0.6, -10),
         "so_close": ("a slightly excited three-note rising melody on soft kalimba and glockenspiel, a happy 'so close!', warm and bright, short", 0.8, -8),
         "all_here": ("a playful little soft hand-drum and kalimba conga shuffle, bouncy and cute, every friend has arrived, cozy", 1.2, -10, STYLE, "body:300", "warm:2600"),
@@ -784,7 +784,7 @@ SETS = {
         # snail is never a slide (a slide is the scratch): three slow
         # notches when it brings a sealed row's colours, four quick ones
         # climbing when it hurries, both type's take.
-        "post":     ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1400", "cut:0.14", "body:320", "tight"),
+        "post":     ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.14", "notes:0:-2", "tight"),
         "snail":    ("one small wooden tile set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.7", "body:320", "tight", "notes:0.22:0,2,0"),
         "snail_hurry": ("one small wooden tile set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.45", "body:320", "tight", "notes:0.08:0,2,3,5"),
     },
@@ -811,37 +811,37 @@ SETS = {
         # takes: confetti is Binairo's, of the same prompt; enter is
         # select's. The phrases' steps are set by each take's own note, so
         # that every note lands between 400 and 700 Hz.
-        "select":   ("one small wooden tile set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1600", "cut:0.1", "body:320", "tight"),
+        "select":   ('a small pebble dropped into a calm pond, one soft plop, close, very short', 0.6, -15, FOLEY, "bank:pebble", "cut:0.1", "notes:0:1", "tight"),
         # A word found: four quick notes up.
         "place":    ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.09:4,6,8,11", "cut:0.8"),
         # A word taken back: a lighter thing set down, twice and falling.
-        "undo":     ("one small light wooden block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        "undo":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -15, FOLEY, "bank:lip", "cut:0.28", "notes:0.11:1,-2", "tight"),
         "hint":     ("one soft note on a kalimba, a gentle little idea, short", 1.0, -10, COZY_TUNE, "warm:2000", "steep", "ease:0.012", "body:300", "notes:0.16:3,7,10", "cut:0.9"),
         "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
         "solved":   ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:2,4,6,9,11", "cut:1.7"),
         # The field laid out: select's take, five in a row.
-        "enter":    ("one small wooden tile set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,2,0,3,5"),
+        "enter":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.5", "notes:0.08:-1,1,-1,2,4", "tight"),
         # Rewards: the streak, the word's reactions and its gags. combo: a
         # tick a word, pitched by the board. quick: a small puff of air.
         # flutter: the butterfly going, two quiet notes up.
-        "combo":    ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.055", "body:320", "tight"),
+        "combo":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.055", "notes:0:1", "tight"),
         "streak":   ("a cheerful quick three-note rising kalimba and glockenspiel run, on a roll, bright and happy, short", 0.7, -9),
         "big":      ("a pleased little 'ooh' on soft kalimba, two notes up then a third higher with a small glockenspiel sparkle, a big word found, warm", 0.8, -9),
         "quick":    ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.5, -17, BREEZE, "warm:1000", "steep", "ease:0.03", "body:320"),
         "love":     ("a few tiny soft bubbly pops rising with a sweet little two-note kalimba 'aww', little hearts floating up, cute and warm", 0.8, -10),
-        "conga":    ("a playful little soft hand-drum and kalimba conga shuffle, bouncy and cute, letters dancing in a line, cozy", 1.2, -10, STYLE, "body:300", "warm:2600", "notes:0:5"),
+        "conga":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -10, FOLEY, "bank:wrap", "cut:0.1", "notes:0:6", "tight"),
         "flutter":  ("one soft short note on a kalimba, muffled and kind", 0.6, -14, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.12:5,8", "cut:0.55"),
         "twirl":    ("a tiny playful spin, a soft airy whirl ending on a small bright kalimba 'ta-da' pluck, cute and silly, very short", 0.8, -10),
         # A wrong trail on Hard and Insane blows a dandelion seed away: a
         # breath of air, no shimmer. wish_low: two quiet notes down.
-        "miss":     ("a tiny soft kalimba note with a gentle little downward wobble, a kind 'not that one', muffled and warm, very short, never a buzzer", 0.5, -13, STYLE, "body:300", "warm:2600", "notes:0:6"),
+        "miss":     ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -13, FOLEY, "bank:tongue", "cut:0.3", "notes:0:7", "tight"),
         "wish":     ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -16, BREEZE, "warm:900", "steep", "ease:0.05", "body:320"),
         "wish_low": ("one soft short note on a kalimba, muffled and kind", 0.6, -14, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.2:6,3", "cut:0.7"),
         "droop":    ("a soft slow descending felt-mallet marimba slide, sleepy and kind, little tiles sagging gently, warm and muffled, never a buzzer", 0.8, -13),
         "out_of_wishes": ("one slow soft note on a kalimba, sleepy, calm and kind, left to fade", 1.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:10,7,4"),
         "wish_back": ("a warm rising pair of soft kalimba plucks with a tiny airy puff, a new dandelion clock growing back, gentle and happy", 0.7, -12),
-        "reveal":   ("a single soft low felt kalimba note with a light paper ribbon unrolling, a word shown gently, calm, not sad", 0.6, -13, STYLE, "warm:2000", "body:300"),
-        "lost":     ("a gentle warm three-note soft felt kalimba phrase slowly descending and resolving softly, a kind 'maybe tomorrow', calm, not sad, never a buzzer", 1.5, -9),
+        "reveal":   ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -13, FOLEY, "bank:lip", "cut:0.25", "notes:0:1", "tight"),
+        "lost":     ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -9, FOLEY, "bank:tongue", "cut:0.3", "notes:0:1", "tight"),
         # The party. bloom: the meadow opening, four quiet notes.
         "bloom":    ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.13:4,8,6,11", "cut:0.9"),
         "party":    ("one soft note on a kalimba over a gentle tongue drum, warm and cozy, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:0,3,5,3,5,8", "cut:1.9"),
@@ -874,25 +874,25 @@ SETS = {
         # behind, so combo is cut at 0.07 s), undo and tumble pencil's. The
         # phrases' steps are set by each take's own note, so that every note
         # lands between 400 and 700 Hz.
-        "place":    ("one small wooden tile set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.16", "body:320", "tight"),
+        "place":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.16", "notes:0:-3", "tight"),
         # A pencilled note: a lighter thing set down.
-        "pencil":   ("one small light wooden block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1200", "cut:0.1", "body:320", "tight"),
+        "pencil":   ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -17, FOLEY, "bank:wrap", "cut:0.1", "notes:0:-1", "tight"),
         # A cell picked, and let go by a second tap (the user, 2026-10-10:
         # "Sudoku should have a sound feedback (and haptic) when selecting a
         # empty space ... never a ghost click that do something silent"). The
         # thing a finger does most here, so the quietest tick of the set:
         # pencil's take (never `--new`), two steps up, which the board
         # plays a little lower when it lets go.
-        "select":   ("one small light wooden block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -18, HUSH, "warm:1300", "cut:0.08", "body:320", "tight", "notes:0:2"),
-        "line":     ("a short happy two-note soft kalimba pluck rising, a row completed, warm and round", 0.6, -8),
-        "locked":   ("a tiny soft kalimba note with a gentle little wobble, a kind 'not there', muffled and warm, very short", 0.5, -12),
-        "undo":     ("one small light wooden block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        "select":   ('a small pebble dropped into a calm pond, one soft plop, close, very short', 0.6, -18, FOLEY, "bank:pebble", "cut:0.08", "notes:0:1", "tight"),
+        "line":     ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -8, FOLEY, "bank:wrap", "cut:0.1", "notes:0:-1", "tight"),
+        "locked":   ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -12, FOLEY, "bank:tongue", "cut:0.3", "notes:0:-1", "tight"),
+        "undo":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -15, FOLEY, "bank:lip", "cut:0.28", "notes:0.11:-1,-4", "tight"),
         "hint":     ("one soft note on a kalimba, a gentle little idea, short", 1.0, -10, COZY_TUNE, "warm:2000", "steep", "ease:0.012", "body:300", "notes:0.16:4,8,11", "cut:0.9"),
         "check":    ("a gentle two-note melody on a soft kalimba: one note, then a second lower note, 'uh-oh' but kind, a cozy 'not quite yet', warm and round, never a buzzer", 1.0, -17, STYLE, "fall"),
         "check_ok": ("two soft warm kalimba notes going up, a friendly cozy 'all good', gentle and round", 0.7, -10, STYLE, "warm:2400", "body:300"),
         "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
         # The tray laid out: place's take, five in a row.
-        "enter":    ("one small wooden tile set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,2,3,0,5"),
+        "enter":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.5", "notes:0.08:-3,-1,0,-3,2", "tight"),
         "solved":   ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.14:3,5,7,10,12", "cut:1.7"),
         # A number is complete (all nine are placed): four quick notes, up,
         # back a step and up. A region's sticker opens on one quiet note.
@@ -901,7 +901,7 @@ SETS = {
         # The streak and the gags. combo: a tick the board pitches by the
         # streak. boing: the number hopping, place's take three times, up
         # and back a step.
-        "combo":    ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1300", "cut:0.07", "body:320", "tight"),
+        "combo":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.07", "notes:0:-1", "tight"),
         "confetti": ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
         "love":     ("a few tiny soft bubbly pops rising with a sweet little two-note kalimba 'aww', little hearts floating up, cute and warm", 0.8, -10),
         "twirl":    ("a tiny playful spin, a soft airy whirl ending on a small bright kalimba 'ta-da' pluck, cute and silly, very short", 0.8, -10),
@@ -909,7 +909,7 @@ SETS = {
         # Hearts, the wrong number tumbling off (three notches down, never a
         # slide), and the tray at dusk.
         "heart_lost":    ("a soft felt-mallet marimba two-note fall, a small gentle 'oh', warm and muffled, never a buzzer", 0.6, -15, STYLE, "warm:2400", "body:300"),
-        "tumble":   ("one small light wooden block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.5", "body:320", "tight", "notes:0.14:0,-2,-4"),
+        "tumble":   ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -15, FOLEY, "bank:wrap", "cut:0.5", "notes:0.14:-1,-3,-5", "tight"),
         "ruled":    ("a very soft short felt tap with a tiny low kalimba note, a gentle 'we already know that one', quiet and kind", 0.5, -14, STYLE, "body:300", "warm:2600", "notes:0:6"),
         "out_of_hearts": ("one slow soft note on a kalimba, sleepy, calm and kind, left to fade", 1.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:6,3,0"),
         "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -15),
@@ -940,19 +940,19 @@ SETS = {
         # Binairo's, of the same prompts; enter is place's, undo and sink
         # remove's, ruled join's. The phrases' steps are set by each take's
         # own note, so that every note lands between 400 and 700 Hz.
-        "place":    ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.16", "body:320", "tight"),
+        "place":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.16", "notes:0:-2", "tight"),
         # A lift is a lighter thing set down.
-        "remove":   ("one small light wooden block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.12", "body:320", "tight"),
+        "remove":   ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -16, FOLEY, "bank:lip", "cut:0.12", "tight"),
         "met":      ("a short happy two-note soft kalimba pluck rising, a little island complete, warm and round", 0.6, -10, STYLE, "warm:2400", "body:300"),
-        "over":     ("a tiny soft kalimba note with a gentle little wobble, a kind 'too many', muffled and warm, very short", 0.5, -13),
-        "locked":   ("a tiny soft kalimba note with a gentle little wobble, a kind 'not there', muffled and warm, very short", 0.5, -12),
-        "undo":     ("one small light wooden block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        "over":     ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -13, FOLEY, "bank:token", "cut:0.12", "notes:0:-2", "tight"),
+        "locked":   ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -12, FOLEY, "bank:tongue", "cut:0.3", "tight"),
+        "undo":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -15, FOLEY, "bank:lip", "cut:0.28", "notes:0.11:0,-3", "tight"),
         "hint":     ("one soft note on a kalimba, a gentle little idea, short", 1.0, -10, COZY_TUNE, "warm:2000", "steep", "ease:0.012", "body:300", "notes:0.16:3,6,10", "cut:0.9"),
         "check":    ("a gentle two-note melody on a soft kalimba: one note, then a second lower note, 'uh-oh' but kind, a cozy 'not quite yet', warm and round, never a buzzer", 1.0, -17, STYLE, "fall"),
         "check_ok": ("two soft warm kalimba notes going up, a friendly cozy 'all good', gentle and round", 0.7, -10),
         "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
         # The islets rising: place's take, five in a row.
-        "enter":    ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,3,0,2,5"),
+        "enter":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.5", "notes:0.08:-2,1,-2,0,3", "tight"),
         "solved":   ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.14:-1,1,4,6,8", "cut:1.7"),
         # The network: two groups joined, two quiet notes alike and a third
         # up, and the near-miss named.
@@ -960,7 +960,7 @@ SETS = {
         "split":    ("a gentle curious three-note kalimba question, rising at the end, 'hmm, almost', warm and kind, never a buzzer", 0.9, -13),
         # The streak and the gags. combo: a tick the board pitches by the
         # streak. fish: a small puff of air where the splash was.
-        "combo":    ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.1", "body:320", "tight"),
+        "combo":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.1", "tight"),
         "confetti": ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
         "love":     ("a few tiny soft bubbly pops rising with a sweet little two-note kalimba 'aww', little hearts floating up, cute and warm", 0.8, -10),
         "twirl":    ("a tiny playful spin, a soft airy whirl ending on a small bright kalimba 'ta-da' pluck, cute and silly, very short", 0.8, -10, STYLE, "warm:2400", "body:300"),
@@ -1007,26 +1007,26 @@ SETS = {
         # alike and a third up now). The phrases' steps are set by each
         # take's own note, so that every note lands between 400 and 700 Hz.
         # A lift is a lighter thing set down.
-        "lift":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.12", "body:320", "tight"),
-        "place":    ("one small wooden spool set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.16", "body:320", "tight"),
-        "refused":  ("a tiny soft kalimba note with a gentle little wobble, a kind 'not there', muffled and warm, very short", 0.5, -12),
-        "undo":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        "lift":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -16, FOLEY, "bank:lip", "cut:0.12", "notes:0:1", "tight"),
+        "place":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.16", "notes:0:-1", "tight"),
+        "refused":  ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -12, FOLEY, "bank:tongue", "cut:0.3", "notes:0:1", "tight"),
+        "undo":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -15, FOLEY, "bank:lip", "cut:0.28", "notes:0.11:1,-2", "tight"),
         "hint":     ("one soft note on a kalimba, a gentle little idea, short", 1.0, -10, COZY_TUNE, "warm:2000", "steep", "ease:0.012", "body:300", "notes:0.16:4,7,11", "cut:0.9"),
         "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
         # The patches laid out: place's take, five in a row.
-        "enter":    ("one small wooden spool set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,3,0,2,5"),
+        "enter":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.5", "notes:0.08:-1,2,-1,1,4", "tight"),
         "solved":   ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.14:4,6,9,11,13", "cut:1.7"),
         # The rack patch tapped (two notches, side to side), and the dead end
         # named (Easy and Medium).
-        "wiggle":   ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.22", "body:320", "tight", "notes:0.07:2,0"),
-        "stuck":    ("a gentle two-note melody on a soft kalimba: one note, then a second lower note, 'hmm, that gap won't fill', kind and curious, warm and round, never a buzzer", 1.0, -16, STYLE, "fall"),
+        "wiggle":   ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -16, FOLEY, "bank:wrap", "cut:0.22", "notes:0.07:3,1", "tight"),
+        "stuck":    ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -16, FOLEY, "bank:tongue", "cut:0.3", "notes:0:1", "tight"),
         # The streak and the gags. combo: a tick the board pitches by the
         # streak. button: a wooden bead pressed home. boing: place's take
         # three times, up and back.
-        "combo":    ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.1", "body:320", "tight"),
+        "combo":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.1", "notes:0:1", "tight"),
         "confetti": ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
         "love":     ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.1:5,5,8", "cut:0.6"),
-        "button":   ("one small round wooden bead set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1500", "cut:0.14", "body:320", "tight"),
+        "button":   ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -15, FOLEY, "bank:token", "cut:0.14", "notes:0:-1", "tight"),
         "boing":    ("one small wooden spool set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1600", "cut:0.4", "body:320", "tight", "notes:0.1:0,3,0"),
         # A row or column of the quilt finished: four quick quiet notes up.
         "row":      ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.07:3,5,7,10", "cut:0.7"),
@@ -1034,7 +1034,7 @@ SETS = {
         # patch blown home (a small puff of air, never a flap), the chalk
         # mark (one quiet note), the quilt at dusk.
         "heart_lost":    ("a soft felt-mallet marimba two-note fall, a small gentle 'oh', warm and muffled, never a buzzer", 0.6, -15),
-        "snip":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1500", "cut:0.09", "body:320", "tight", "notes:0:4"),
+        "snip":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -15, FOLEY, "bank:lip", "cut:0.09", "notes:0:5", "tight"),
         "flutter":  ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.5, -16, BREEZE, "warm:750", "steep", "ease:0.03", "body:320"),
         "ruled":    ("one soft short note on a kalimba, muffled and kind", 0.6, -14, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0:7", "cut:0.45"),
         "out_of_hearts": ("one slow soft note on a kalimba, sleepy, calm and kind, left to fade", 1.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:10,6,3"),
@@ -1081,7 +1081,7 @@ SETS = {
         # The streak and the gags. combo: a tick the board pitches by the
         # streak. loop: four quiet notes up and over. tweet: two quiet
         # notes, the bird. whoosh: place's puff, lower and slower in.
-        "combo":    ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.1", "body:320", "tight"),
+        "combo":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.1", "notes:0:-1", "tight"),
         "confetti": ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
         "loop":     ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.12:4,9,7,4", "cut:0.8"),
         "tweet":    ("one soft short note on a kalimba, muffled and kind", 0.6, -15, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.09:9,11", "cut:0.4"),
@@ -1128,18 +1128,18 @@ SETS = {
         # each take's own note, so that every note lands between 400 and
         # 700 Hz. What travels on air is air: the whirl, the kite and the
         # ribbons are a breath of breeze each.
-        "place":    ("one small wooden bobbin set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.16", "body:320", "tight"),
+        "place":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.16", "notes:0:-2", "tight"),
         "refused":  ("a tiny soft kalimba note with a gentle little wobble, a kind 'that one stays', muffled and warm, very short", 0.5, -12, LINEN),
-        "undo":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        "undo":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -15, FOLEY, "bank:lip", "cut:0.28", "notes:0.11:0,-3", "tight"),
         "hint":     ("a gentle magical sparkle, three soft music box notes rising with a warm kalimba note underneath, cozy and kind", 1.0, -8, LINEN),
         "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
         # The pinwheels pinned up: place's take, five in a row.
-        "enter":    ("one small wooden bobbin set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,3,0,2,5"),
+        "enter":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.5", "notes:0.08:-2,1,-2,0,3", "tight"),
         "solved":   ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.14:6,8,11,13,15", "cut:1.7"),
         # The streak and the gags. combo: a tick the board pitches by the
         # streak. whirl: a pinwheel catching a gust. flutter: two quiet
         # notes up, the butterfly.
-        "combo":    ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.1", "body:320", "tight"),
+        "combo":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.1", "tight"),
         "confetti": ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
         "whirl":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises, passes and fades", 1.0, -15, BREEZE, "warm:1100", "steep", "ease:0.08", "body:320"),
         "love":     ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.1:5,5,8", "cut:0.6"),
@@ -1147,9 +1147,9 @@ SETS = {
         # Snags and hearts (Hard and Insane). snag: the wrong turn caught, one
         # light notch. tack: its take, two quick notches, the piece stitched
         # down. tug: its take, lower, a ribbon gone taut (Insane).
-        "snag":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.12", "body:320", "tight"),
+        "snag":     ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.12", "tight"),
         "heart_lost":    ("a soft gentle kalimba two-note fall, a small sad 'oh', a delicate note dropping, warm and muffled, never a buzzer", 0.6, -15, LINEN),
-        "tack":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.22", "body:320", "tight", "notes:0.07:0,2"),
+        "tack":     ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -16, FOLEY, "bank:token", "cut:0.22", "notes:0.07:-2,0", "tight"),
         "out_of_hearts": ("one slow soft note on a kalimba, sleepy, calm and kind, left to fade", 1.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:4,1,-3"),
         "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -15, LINEN),
         "tug":      ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1300", "cut:0.12", "body:320", "tight", "notes:0:-2"),
@@ -1183,19 +1183,19 @@ SETS = {
         # phrases' steps are set by each take's own note, so that every note
         # lands between 400 and 700 Hz, and no two phrases share a contour.
         # A lift is a lighter thing set down.
-        "place":    ("one small wooden bead set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.16", "body:320", "tight"),
+        "place":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.16", "notes:0:-1", "tight"),
         "munch":    ("one small wooden peg set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.24", "body:320", "tight", "notes:0.08:0,2"),
         "refuse":   ("a tiny soft kalimba note with a gentle little wobble and a muffled leafy tap, a kind 'not that way', warm, very short", 0.5, -12, CLOVER),
-        "undo":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        "undo":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -15, FOLEY, "bank:lip", "cut:0.28", "notes:0.11:1,-2", "tight"),
         "hint":     ("one soft note on a kalimba, a gentle little idea, short", 1.0, -10, COZY_TUNE, "warm:2000", "steep", "ease:0.012", "body:300", "notes:0.16:9,12,16", "cut:0.9"),
         "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
         "solved":   ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.14:4,6,9,11,13", "cut:1.7"),
         # The leaves laid out: place's take, five in a row.
-        "enter":    ("one small wooden bead set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,3,0,2,5"),
+        "enter":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.5", "notes:0.08:-1,2,-1,1,4", "tight"),
         # The streak and the gags. combo: a tick the board pitches by the
         # streak. burp: one quiet note. ladybug: three quiet notes, up and
         # back a step. hungry: two low notes alike, a kind 'not yet'.
-        "combo":    ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.055", "body:320", "tight"),
+        "combo":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.055", "notes:0:1", "tight"),
         "confetti": ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
         "burp":     ("one soft short note on a kalimba, muffled and kind", 0.6, -14, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0:5", "cut:0.45"),
         "love":     ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.1:5,5,8", "cut:0.6"),
@@ -1237,20 +1237,20 @@ SETS = {
         # the dew's. The phrases' steps are set by each take's own note, so
         # that every note lands between 400 and 700 Hz, and no two phrases
         # share a contour. A lift is a lighter thing set down.
-        "lift":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.12", "body:320", "tight"),
-        "step":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -19, HUSH, "warm:1300", "cut:0.06", "body:320", "tight", "notes:0:-1"),
+        "lift":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -16, FOLEY, "bank:lip", "cut:0.12", "notes:0:-1", "tight"),
+        "step":     ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -19, FOLEY, "bank:wrap", "cut:0.06", "notes:0:-2", "tight"),
         "slide":    ("one small wooden peg set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.16", "body:320", "tight"),
         # Put back where it was lifted: slide's take, lower and quieter.
-        "drop":     ("one small wooden peg set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1400", "cut:0.14", "body:320", "tight", "notes:0:-2"),
+        "drop":     ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -17, FOLEY, "bank:token", "cut:0.14", "notes:0:-5", "tight"),
         "dew":      ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0:7", "cut:0.4"),
         "dry":      ("a soft gentle two-note kalimba falling, a kind 'not yet', warm and patient, short", 0.6, -12, GLASSHOUSE),
         "refuse":   ("a tiny soft kalimba note with a gentle little wobble and a muffled felt tap, a kind 'not that one', warm, very short", 0.5, -12, GLASSHOUSE),
-        "undo":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        "undo":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -15, FOLEY, "bank:lip", "cut:0.28", "notes:0.11:-1,-4", "tight"),
         "hint":     ("one soft note on a kalimba, a gentle little idea, short", 1.0, -10, COZY_TUNE, "warm:2000", "steep", "ease:0.012", "body:300", "notes:0.16:-2,1,5", "cut:0.9"),
         "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
         "solved":   ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.14:4,6,9,11,13", "cut:1.7"),
         # The mirrors set on their pegs: slide's take, five in a row.
-        "enter":    ("one small wooden peg set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,3,0,2,5"),
+        "enter":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.5", "notes:0.08:-3,0,-3,-1,2", "tight"),
         # The polish's cues. stir: a snail under the light, one low light
         # notch (it fires mid-drag). sizzle: a drop dried, a small puff of
         # air. slip: the piece gone home along its rail, a short breath.
@@ -1266,7 +1266,7 @@ SETS = {
         # streak. rainbow: four quick quiet notes, up and over. flutter: two
         # quiet notes up, the butterfly. chorus: every drop at once, three
         # notes all but together.
-        "combo":    ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.1", "body:320", "tight"),
+        "combo":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.1", "notes:0:-1", "tight"),
         "confetti": ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
         "rainbow":  ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.09:6,9,13,9", "cut:0.8"),
         "love":     ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.1:7,7,10", "cut:0.6"),
@@ -1295,19 +1295,19 @@ SETS = {
         # lands between 400 and 700 Hz, and no two phrases share a contour.
         # What travels is air: the slide back, the somersault and the
         # brambles withering are a breath of breeze each.
-        "hop":      ("one small wooden pawn set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.16", "body:320", "tight"),
-        "answer":   ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1300", "cut:0.12", "body:320", "tight", "notes:0:-2"),
+        "hop":      ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.16", "tight"),
+        "answer":   ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -16, FOLEY, "bank:token", "cut:0.12", "notes:0:-4", "tight"),
         # A rose knight taken: hop's take, two notches, the second up.
-        "take":     ("one small wooden pawn set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.24", "body:320", "tight", "notes:0.08:0,3"),
+        "take":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -13, FOLEY, "bank:lip", "cut:0.24", "notes:0.08:0,3", "tight"),
         "caught":   ("a soft gentle two-note kalimba falling, a kind 'oops, caught', warm and patient, never a buzzer, short", 0.6, -12, PADDOCK),
         "slide":    ("a soft breath of warm breeze that eases, fades and stops, calm, short", 0.8, -17, BREEZE, "warm:900", "steep", "ease:0.05", "body:320"),
         "refuse":   ("a tiny soft kalimba note with a gentle little wobble and a muffled felt tap, a kind 'not that one', very short", 0.5, -13, PADDOCK),
-        "undo":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        "undo":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -15, FOLEY, "bank:lip", "cut:0.28", "notes:0.11:0,-3", "tight"),
         "hint":     ("a gentle magical sparkle, three soft music box notes rising with a warm kalimba underneath, cozy and kind", 1.0, -8, PADDOCK),
         "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
         "solved":   ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.14:4,7,9,11,13", "cut:1.7"),
         # The pieces set on the board: hop's take, five in a row.
-        "enter":    ("one small wooden pawn set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,3,0,2,5"),
+        "enter":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.5", "notes:0.08:-2,1,-2,0,3", "tight"),
         # The somersault: a small puff of air.
         "flip":     ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -16, BREEZE, "warm:900", "steep", "ease:0.04", "body:320"),
         # Brambles (Insane). bramble: one sprung up, a light notch. nap: a
@@ -1324,7 +1324,7 @@ SETS = {
         # The streak and the gags. combo: a tick the board pitches by the
         # streak. flutter: two quiet notes up, the butterfly. crown: two
         # slow notes, the second a fifth up.
-        "combo":    ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.1", "body:320", "tight"),
+        "combo":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.1", "tight"),
         "confetti": ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
         "love":     ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.1:5,5,8", "cut:0.6"),
         "flutter":  ("one soft short note on a kalimba, muffled and kind", 0.6, -15, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.09:7,9", "cut:0.4"),
@@ -1350,9 +1350,9 @@ SETS = {
         "strike":   ("one small wooden peg set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.14", "body:320", "tight"),
         "clack":    ("one small wooden ball set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.1", "body:320", "tight"),
         # A rail: clack's take, three steps down and duller.
-        "cushion":  ("one small wooden ball set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1200", "cut:0.14", "body:320", "tight", "notes:0:-3"),
+        "cushion":  ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.14", "notes:0:-4", "tight"),
         # A ball down: clack's take, two notches, the second four steps up.
-        "pot":      ("one small wooden ball set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.26", "body:320", "tight", "notes:0.1:0,4"),
+        "pot":      ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -13, FOLEY, "bank:token", "cut:0.26", "notes:0.1:-1,3", "tight"),
         "roll":     ("a continuous steady soft warm breath of air moving, smooth, constant and even, no gusts", 3.0, -22, BREEZE, "loop", "warm:700", "steep", "body:320"),
         "foul":     ("a soft gentle two-note downward kalimba, not yet, never a buzzer", 0.6, -9),
         "hint":     ("one soft note on a kalimba, gentle and kind, left to fade", 1.0, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:-3,0,4", "cut:1.0"),
@@ -1372,12 +1372,12 @@ SETS = {
     # end plays `win`.
     "hockey": {
         "strike":   ("one small round wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.1", "body:320", "tight"),
-        "wall":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1400", "cut:0.1", "body:320", "tight"),
+        "wall":     ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -14, FOLEY, "bank:tongue", "cut:0.1", "notes:0:-1", "tight"),
         # A goal's corner: wall's take, three steps down.
-        "post":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1200", "cut:0.16", "body:320", "tight", "notes:0:-3"),
+        "post":     ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -13, FOLEY, "bank:token", "cut:0.16", "notes:0:-6", "tight"),
         "glide":    ("a continuous steady soft warm breath of air moving, smooth, constant and even, no gusts", 3.0, -22, BREEZE, "loop", "warm:700", "steep", "body:320"),
         # The puck set down: strike's take, two steps down.
-        "serve":    ("one small round wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1300", "cut:0.1", "body:320", "tight", "notes:0:-2"),
+        "serve":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -15, FOLEY, "bank:token", "cut:0.1", "notes:0:-5", "tight"),
         "goal":     ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.12:3,8", "cut:0.7"),
         "conceded": ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.18:7,3", "cut:0.7"),
         "win":      ("one soft note on a kalimba over a gentle tongue drum, warm and cozy, left to fade", 2.0, -8, COZY_TUNE, "warm:2400", "steep", "ease:0.012", "body:300", "notes:0.14:8,12,15,12,15,17", "cut:1.9"),
@@ -1397,11 +1397,11 @@ SETS = {
     # are set by each take's own note, so that every note lands between 400
     # and 700 Hz, and no two phrases share a contour.
     "chess": {
-        "lift":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1300", "cut:0.12", "body:320", "tight"),
-        "place":    ("one small wooden pawn set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.14", "body:320", "tight"),
+        "lift":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -16, FOLEY, "bank:lip", "cut:0.12", "tight"),
+        "place":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -13, FOLEY, "bank:token", "cut:0.14", "notes:0:-2", "tight"),
         "slide":    ("a soft breath of warm breeze that eases, fades and stops, calm, short", 0.8, -17, BREEZE, "warm:900", "steep", "ease:0.05", "body:320"),
         # A piece taken: place's take, two notches, the second four steps up.
-        "capture":  ("one small wooden pawn set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -12, HUSH, "warm:1600", "cut:0.24", "body:320", "tight", "notes:0.08:0,4"),
+        "capture":  ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -12, FOLEY, "bank:lip", "cut:0.24", "notes:0.08:0,4", "tight"),
         # King and rook: place's take, two notches alike.
         "castle":   ("one small wooden pawn set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.3", "body:320", "tight", "notes:0.13:0,0"),
         # The knight's leap: a small puff of air.
@@ -1409,10 +1409,10 @@ SETS = {
         "check":    ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.16:5,7", "cut:0.7"),
         "promote":  ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.11:4,7,11,7", "cut:0.9"),
         # Not that square: lift's take, twice and falling.
-        "refused":  ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        "refused":  ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.28", "notes:0.11:0,-3", "tight"),
         "hint":     ("one soft note on a kalimba, gentle and kind, left to fade", 1.0, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:0,2,5", "cut:1.0"),
         # The pieces set out: place's take, five in a row.
-        "enter":    ("one small wooden pawn set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,3,0,2,5"),
+        "enter":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.5", "notes:0.08:-2,1,-2,0,3", "tight"),
         "win":      ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2000", "steep", "ease:0.012", "body:300", "notes:0.14:4,5,7,9,12", "cut:1.7"),
         "lose":     ("a soft warm three-note descending marimba, gentle and kind, good game", 1.4, -10),
         "draw":     ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.24:5,5", "cut:0.8"),
@@ -1428,23 +1428,23 @@ SETS = {
     # breath of breeze, `hop` (a jump's take-off) a small puff, `flip` (a
     # losing piece turning face down, a dozen in a row) one light notch.
     "checkers": {
-        "lift":     ("one small light flat wooden disc set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1300", "cut:0.12", "body:320", "tight"),
-        "place":    ("one small flat round wooden disc set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.16", "body:320", "tight"),
+        "lift":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -16, FOLEY, "bank:lip", "cut:0.12", "notes:0:1", "tight"),
+        "place":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -13, FOLEY, "bank:token", "cut:0.16", "notes:0:-1", "tight"),
         "slide":    ("a soft breath of warm breeze that eases, fades and stops, calm, short", 0.8, -17, BREEZE, "warm:900", "steep", "ease:0.05", "body:320"),
         "hop":      ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -16, BREEZE, "warm:900", "steep", "ease:0.04", "body:320"),
         # A piece jumped: place's take, two notches, the second three steps down.
-        "capture":  ("one small flat round wooden disc set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -12, HUSH, "warm:1600", "cut:0.24", "body:320", "tight", "notes:0.08:0,-3"),
+        "capture":  ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -12, FOLEY, "bank:lip", "cut:0.24", "notes:0.08:1,-2", "tight"),
         "crown":    ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.11:6,9,13,9", "cut:0.9"),
         # A losing piece turned face down: lift's take, two steps down.
-        "flip":     ("one small light flat wooden disc set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.12", "body:320", "tight", "notes:0:-2"),
+        "flip":     ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -15, FOLEY, "bank:token", "cut:0.12", "notes:0:-3", "tight"),
         # Not that square: lift's take, twice and falling.
-        "refused":  ("one small light flat wooden disc set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        "refused":  ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.28", "notes:0.11:1,-2", "tight"),
         "hint":     ("one soft note on a kalimba, gentle and kind, left to fade", 1.0, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:4,7,9", "cut:1.0"),
         # The pieces dealt out: place's take, five in a row.
-        "enter":    ("one small flat round wooden disc set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,2,0,3,5"),
+        "enter":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.5", "notes:0.08:-1,1,-1,2,4", "tight"),
         "win":      ("one soft note on a kalimba over a gentle tongue drum, warm and cozy, left to fade", 2.0, -8, COZY_TUNE, "warm:2400", "steep", "ease:0.012", "body:300", "notes:0.14:4,7,9,7,9,12", "cut:1.9"),
         "lose":     ("a soft warm three-note descending marimba, gentle and kind, good game", 1.4, -10),
-        "draw":     ("two soft even marimba notes, calm and balanced, a friendly handshake", 1.0, -10),
+        "draw":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -10, FOLEY, "bank:lip", "cut:0.25", "notes:0:1", "tight"),
     },
     # Hedgehogs: rake autumn leaf piles off a lawn; hedgehogs sleep under
     # some. A wrong rake wakes one, grumpy -- two low notes, never a buzzer.
@@ -1466,9 +1466,9 @@ SETS = {
         # and a lawn's worth a longer one.
         "rake":     ("one small wooden peg set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.16", "body:320", "tight"),
         "gust":     ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -16, BREEZE, "warm:900", "steep", "ease:0.04", "body:320"),
-        "flag":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.12", "body:320", "tight"),
+        "flag":     ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -16, FOLEY, "bank:token", "cut:0.12", "notes:0:-3", "tight"),
         # The twig pulled out: flag's take, two steps down.
-        "unflag":   ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1200", "cut:0.12", "body:320", "tight", "notes:0:-2"),
+        "unflag":   ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -17, FOLEY, "bank:lip", "cut:0.12", "notes:0:-3", "tight"),
         # A hedgehog woken: the bell's take, two low notes alike, a small
         # "hmph" (heart_lost falls a quarter second behind it).
         "woke":     ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2200", "ease:0.01", "body:300", "notes:0.14:4,4", "cut:0.6"),
@@ -1477,7 +1477,7 @@ SETS = {
         "refuse":   ("a tiny soft kalimba note with a gentle little wobble and a muffled leaf rustle, a kind 'not that one', very short", 0.5, -14, HARVEST),
         "check":    ("a soft gentle two-note kalimba falling, a kind 'not yet', warm and patient", 0.6, -12, HARVEST),
         "check_ok": ("three soft warm kalimba notes rising, bright and happy, 'all good'", 0.7, -10, HARVEST),
-        "undo":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        "undo":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -15, FOLEY, "bank:lip", "cut:0.28", "notes:0.11:-1,-4", "tight"),
         "hint":     ("a gentle magical sparkle, three soft music box notes rising with a warm kalimba underneath, cozy and kind", 1.0, -9, HARVEST),
         "reset":    ("a soft breath of warm breeze that eases, fades and stops, calm, short", 0.8, -17, BREEZE, "warm:900", "steep", "ease:0.05", "body:320"),
         "solved":   ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.14:4,6,9,11,13", "cut:1.7"),
@@ -1494,7 +1494,7 @@ SETS = {
         # streak. flutter: two quiet notes up, the butterfly. acorn: flag's
         # take, a hop and two bounces. whoosh: a lawn's worth of leaves gone
         # at once, a longer breath than the gust.
-        "combo":    ("one small wooden peg set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.1", "body:320", "tight"),
+        "combo":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.1", "notes:0:-1", "tight"),
         "confetti": ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
         "love":     ("a tiny soft sweet bubbly pop with a little two-note music box 'aww', cute and warm, short", 0.7, -11, HARVEST),
         "flutter":  ("one soft short note on a kalimba, muffled and kind", 0.6, -15, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.09:7,9", "cut:0.4"),
@@ -1525,24 +1525,24 @@ SETS = {
         # two phrases share a contour. What travels is air: a block sent home,
         # the tray dealt again and the gate swinging open are a breath of
         # breeze each. A lift is a lighter thing set down.
-        "lift":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.12", "body:320", "tight"),
-        "step":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -19, HUSH, "warm:1300", "cut:0.06", "body:320", "tight", "notes:0:-1"),
+        "lift":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -16, FOLEY, "bank:lip", "cut:0.12", "tight"),
+        "step":     ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -19, FOLEY, "bank:wrap", "cut:0.06", "notes:0:-1", "tight"),
         "bump":     ("a solid hardwood toy block gently knocking against another wooden block, one soft dull hollow wooden knock, very short", 0.5, -13, WALNUT, "warm:7000", "cut:0.16", "tight"),
         "slide":    ("one small smooth wooden toy block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.16", "body:320", "tight"),
         # Put back where it was lifted: slide's take, lower and quieter.
-        "drop":     ("one small smooth wooden toy block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1400", "cut:0.14", "body:320", "tight", "notes:0:-2"),
-        "undo":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        "drop":     ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -17, FOLEY, "bank:token", "cut:0.14", "notes:0:-4", "tight"),
+        "undo":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -15, FOLEY, "bank:lip", "cut:0.28", "notes:0.11:0,-3", "tight"),
         "slip":     ("a soft breath of warm breeze that eases, fades and stops, calm, short", 0.8, -17, BREEZE, "warm:900", "steep", "ease:0.05", "body:320"),
         "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
         # The blocks set in the tray: slide's take, five in a row.
-        "enter":    ("one small smooth wooden toy block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,3,0,2,5"),
+        "enter":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.5", "notes:0.08:-2,1,-2,0,3", "tight"),
         # The win. gate: the gate swinging open, a long breath. hop: the big
         # block out over the stepping stones, slide's take two steps up (the
         # board pitches each stone a little higher). latch: one move from
         # home, lift's take, three quick notches.
         "gate":     ("a long soft breath of warm breeze that eases, fades and stops, calm", 1.0, -16, BREEZE, "warm:900", "steep", "ease:0.1", "body:320"),
-        "hop":      ("one small smooth wooden toy block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1600", "cut:0.12", "body:320", "tight", "notes:0:2"),
-        "latch":    ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.3", "body:320", "tight", "notes:0.07:0,2,0"),
+        "hop":      ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -15, FOLEY, "bank:wrap", "cut:0.12", "notes:0:2", "tight"),
+        "latch":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -15, FOLEY, "bank:token", "cut:0.3", "notes:0.07:-2,0,-2", "tight"),
         "hint":     ("three soft rising notes plucked on a real kalimba with a delicate music box sparkle, gentle and magical", 1.0, -10, WALNUT_TUNE),
         "solved":   ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.14:4,7,9,11,13", "cut:1.7"),
         "fret":     ("one soft short note on a kalimba, muffled and kind", 0.6, -17, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0:-1", "cut:0.4"),
@@ -1554,7 +1554,7 @@ SETS = {
         # streak. love: two quiet notes alike and a third up. flutter: two
         # quiet notes up, the butterfly. twirl: four quick ones, up and over.
         # fret (a drag that leads away from home): one low quiet note.
-        "combo":    ("one small wooden peg set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.1", "body:320", "tight"),
+        "combo":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.1", "tight"),
         "confetti": ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
         "love":     ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.1:2,2,5", "cut:0.6"),
         "flutter":  ("one soft short note on a kalimba, muffled and kind", 0.6, -15, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.09:4,6", "cut:0.4"),
@@ -1590,7 +1590,7 @@ SETS = {
         # drumroll under a seed falling to its pot a loop of steady air.
         "shoot":    ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -15, BREEZE, "warm:900", "steep", "ease:0.03", "body:320"),
         "hit":      ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2200", "ease:0.008", "body:300", "cut:0.5"),
-        "wall":     ("one small wooden bead set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1500", "cut:0.1", "body:320", "tight"),
+        "wall":     ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -17, FOLEY, "bank:tongue", "cut:0.1", "notes:0:1", "tight"),
         # A lucky clover splitting the seed in two: two quick notes alike.
         "clover":   ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.07:5,5", "cut:0.5"),
         # The violet, a special find: four quick notes, up and over.
@@ -1614,7 +1614,7 @@ SETS = {
         "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
         "solved":   ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.14:4,7,9,11,13", "cut:1.7"),
         # The garden set out: wall's take, five in a row.
-        "enter":    ("one small wooden bead set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,3,0,2,5"),
+        "enter":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.5", "notes:0.08:-1,2,-1,1,4", "tight"),
         # A heart lost: one low quiet note.
         "heart_lost":    ("one soft short note on a kalimba, muffled and kind", 0.6, -14, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0:-1", "cut:0.45"),
         "out_of_hearts": ("one slow soft note on a kalimba, sleepy, calm and kind, left to fade", 1.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:11,8,4"),
@@ -1628,7 +1628,7 @@ SETS = {
         # streak. ribbit: the frog, wall's take, two low notches. splash: the
         # frog back on its pad, pop's take, one notch two steps down. quack:
         # the ducks crossing, two low notes and three small ones above them.
-        "combo":    ("one small wooden peg set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.1", "body:320", "tight"),
+        "combo":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.1", "notes:0:1", "tight"),
         "confetti": ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
         "ribbit":   ("one small wooden bead set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1300", "cut:0.26", "body:320", "tight", "notes:0.09:-2,-2"),
         "splash":   ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1200", "cut:0.07", "body:320", "tight", "notes:0:-2"),
@@ -1668,35 +1668,35 @@ SETS = {
         # note lands between 400 and 700 Hz. What travels is air: the
         # pattern card lifted, the beads poured back, the iron and its steam
         # are a breath or a puff each. A lift is a lighter thing set down.
-        "place":    ("one small wooden bead set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1500", "cut:0.09", "body:320", "tight"),
-        "lift":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1300", "cut:0.09", "body:320", "tight"),
+        "place":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -16, FOLEY, "bank:token", "cut:0.09", "notes:0:-3", "tight"),
+        "lift":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -17, FOLEY, "bank:lip", "cut:0.09", "notes:0:-1", "tight"),
         # A colour picked from the box: lift's take, two steps up.
-        "pick":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.1", "body:320", "tight", "notes:0:2"),
+        "pick":     ('a small pebble dropped into a calm pond, one soft plop, close, very short', 0.6, -15, FOLEY, "bank:pebble", "cut:0.1", "notes:0:1", "tight"),
         "peek":     ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
         # An empty compartment: lift's take, two low notches alike.
-        "refuse":   ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.26", "body:320", "tight", "notes:0.1:-3,-3"),
-        "undo":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        "refuse":   ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.26", "notes:0.1:-4,-4", "tight"),
+        "undo":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -15, FOLEY, "bank:lip", "cut:0.28", "notes:0.11:-1,-4", "tight"),
         "hint":     ("a gentle sparkle, three soft kalimba notes rising with a tiny hand bell on top, kind and helpful", 1.0, -9, BEADBOX_TUNE, "warm:2400", "body:300"),
         "check":    ("a soft two-note downward kalimba, gentle, kind, not yet", 0.6, -10, BEADBOX_TUNE, "warm:7000"),
         "check_ok": ("a soft bright three-note rising kalimba, all good", 0.7, -9, BEADBOX_TUNE, "warm:7000"),
         "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
         # The beads set in the box: place's take, five in a row.
-        "enter":    ("one small wooden bead set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,3,0,2,5"),
+        "enter":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.5", "notes:0.08:-3,0,-3,-1,2", "tight"),
         # The iron over a full plate: a long breath. steam: a small puff.
         "iron":     ("a long soft breath of warm breeze that eases, fades and stops, calm", 1.0, -15, BREEZE, "warm:900", "steep", "ease:0.1", "body:320"),
         "steam":    ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -17, BREEZE, "warm:900", "steep", "ease:0.04", "body:320"),
         "plate":    ("a small happy flourish, four soft kalimba notes rising with a tiny music box sparkle on top, a little square of bead art finished, proud and cute", 1.2, -8, BEADBOX_TUNE, "warm:7000"),
         # A plate ironed wrong, its beads hopping off: place's take, three
         # notches down.
-        "astray":   ("one small wooden bead set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.4", "body:320", "tight", "notes:0.1:0,-2,-4"),
+        "astray":   ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.4", "notes:0.1:-1,-3,-5", "tight"),
         "heart_lost": ("a soft sad little two-note kalimba falling, gentle and kind, not scolding", 0.9, -12, BEADBOX_TUNE, "warm:7000"),
         "out_of_hearts": ("one slow soft note on a kalimba, sleepy, calm and kind, left to fade", 1.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:7,4,0"),
         "heart_back": ("a warm hopeful rising kalimba phrase with a small hand bell, a heart coming back, gentle and happy", 1.0, -10, BEADBOX_TUNE, "warm:7000"),
         # The streak: a tick the board pitches by the plates ironed right in
         # a row. steady: a tidy run of beads, the wheel spun, place's take
         # four quick notches.
-        "combo":    ("one small wooden peg set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.1", "body:320", "tight"),
-        "steady":   ("one small wooden bead set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1500", "cut:0.3", "body:320", "tight", "notes:0.055:0,1,0,2"),
+        "combo":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.1", "notes:0:-1", "tight"),
+        "steady":   ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -16, FOLEY, "bank:token", "cut:0.3", "notes:0.055:-3,-2,-3,-1", "tight"),
         "confetti": ("a soft little paper confetti pop and flutter with a tiny music box twinkle, cute", 1.0, -10, BEADBOX_TUNE, "warm:7000"),
         # The butterfly: Hedgehogs' gust again, the quietest puff there is
         # (pitched up, a take that quiet came out of `notes` empty).
@@ -1727,23 +1727,23 @@ SETS = {
     # waking is a tick the board pitches by its depth, combo one it pitches
     # by the streak, neither past five semitones.
     "fairylights": {
-        "place":    ("one small wooden toggle set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1500", "cut:0.09", "body:320", "tight"),
+        "place":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -15, FOLEY, "bank:token", "cut:0.09", "notes:0:-2", "tight"),
         # Two wires touching: wake's take, two steps down.
-        "join":     ("one small light wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1300", "cut:0.09", "body:320", "tight", "notes:0:-2"),
+        "join":     ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -17, FOLEY, "bank:token", "cut:0.09", "notes:0:-4", "tight"),
         # A lantern lit, seventeen in a ripple: the wheel spun, and the board
         # pitches it by the lantern's depth, not past five semitones.
         "wake":     ("one small light wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1500", "cut:0.09", "body:320", "tight"),
         # Not there: the note, two quick ones a step down.
         "refuse":   ("one soft short note on a kalimba, muffled and kind", 0.6, -14, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0.1:6,4", "cut:0.5"),
         # Taken back: place's take, twice and falling.
-        "undo":     ("one small wooden toggle set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        "undo":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -15, FOLEY, "bank:lip", "cut:0.28", "notes:0.11:0,-3", "tight"),
         "hint":     ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:4,7,11", "cut:1.0"),
         "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
         # The garden set out: place's take, five in a row.
-        "enter":    ("one small wooden toggle set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,3,0,2,5"),
+        "enter":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.5", "notes:0.08:-2,1,-2,0,3", "tight"),
         "solved":   ("one soft note on a kalimba over a gentle tongue drum, warm, left to fade", 2.0, -8, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.14:4,6,9,11,13", "cut:1.7"),
         # The streak and the gags.
-        "combo":    ("one small wooden peg set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.1", "body:320", "tight"),
+        "combo":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.1", "tight"),
         "confetti": ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
         # The moth: Hedgehogs' gust, the quietest puff there is.
         "moth":     ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -19, BREEZE, "warm:1100", "steep", "ease:0.05", "body:320"),
@@ -1755,7 +1755,7 @@ SETS = {
         "heart_lost":    ("one soft short note on a kalimba, muffled and kind", 0.6, -15, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0:4", "cut:0.6"),
         "fuse":     ("one small wooden toggle set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.26", "body:320", "tight", "notes:0.1:-3,-3"),
         # The clip on a judged wire: place's take, one notch two steps up.
-        "clip":     ("one small wooden toggle set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.1", "body:320", "tight", "notes:0:2"),
+        "clip":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -15, FOLEY, "bank:lip", "cut:0.1", "notes:0:2", "tight"),
         "out_of_hearts": ("one slow soft note on a kalimba, sleepy, calm and kind, left to fade", 1.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:11,8,4"),
         "heart_back":    ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.14:4,9", "cut:0.7"),
         # The party.
@@ -1832,11 +1832,11 @@ SETS = {
         # The bunny bopped by mistake: a low wobble, a step down and back.
         "bunny":       ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.13:5,4,5", "cut:0.7"),
         # The mallet on the grass: Firefly's shot, a lighter thing.
-        "miss":        ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.06", "body:320", "tight"),
+        "miss":        ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -16, FOLEY, "bank:tongue", "cut:0.06", "notes:0:-1", "tight"),
         # A mole gone back down: Hedgehogs' gust.
         "escape":      ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -19, BREEZE, "warm:900", "steep", "ease:0.04", "body:320"),
         # The multiplier going up: Super Slider's tick, a semitone a step.
-        "combo":       ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.14", "body:320", "tight"),
+        "combo":       ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.14", "notes:0:-1", "tight"),
         "streak_lost": ("one soft short note on a kalimba, muffled and kind", 0.6, -11, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0.16:7,4", "cut:0.7"),
         "go":          ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.12:4,4,8", "cut:0.8"),
         "tick":        ("a single soft wooden clock tick with a tiny bell, a countdown second, very short", 0.5, -9, ARCADE),
@@ -1857,13 +1857,13 @@ SETS = {
         # click under a finger that slides, and the two passes that took
         # Lucky Thirteen's and Penny Drop's down to -23 and -24 missed it:
         # -24 and duller (1100) where -18 and 1400.
-        "move":      ("one small light wooden toy block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -24, HUSH, "warm:1100", "cut:0.07", "body:320", "tight"),
+        "move":      ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -24, FOLEY, "bank:token", "cut:0.07", "notes:0:-2", "tight"),
         # A block let go: Hedgehogs' gust.
         "drop":      ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -17, BREEZE, "warm:900", "steep", "ease:0.04", "body:320"),
-        "land":      ("one hollow wooden toy block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.12", "body:320", "tight"),
-        "merge":     ("one hollow wooden toy block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.12", "body:320", "tight", "notes:0:2"),
+        "land":      ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -13, FOLEY, "bank:wrap", "cut:0.12", "tight"),
+        "merge":     ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -13, FOLEY, "bank:wrap", "cut:0.12", "notes:0:2", "tight"),
         # The chain's count: Super Slider's tick, a semitone a step.
-        "chain":     ("one small wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.14", "body:320", "tight"),
+        "chain":     ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.14", "tight"),
         # A new biggest block: the note, two a fourth apart.
         "big":       ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.12:4,9", "cut:0.7"),
         "milestone": ("a joyful triumphant fanfare on a real kalimba, music box and hand bells, a great block reached at last, about two seconds", 2.2, -8, ARCADE, "warm:2600", "body:300"),
@@ -1876,7 +1876,7 @@ SETS = {
         # of five notches and a long one of eleven, falling.
         "bomb":      ("one hollow wooden toy block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.36", "body:320", "tight", "notes:0.05:0,-3,-1,-5,-2"),
         "zap":       ("one small light wooden toy block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.17", "body:320", "tight", "notes:0.045:5,2,0"),
-        "refused":   ("one small light wooden toy block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.2", "body:320", "tight", "notes:0.1:-3,-3"),
+        "refused":   ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.2", "notes:0.1:-3,-3", "tight"),
         # A stack near the top: two slow notes, the second lower.
         "warn":      ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0.2:7,4", "cut:0.8"),
         "retired":   ("a soft pop and a small falling sprinkle of music box notes, the smallest blocks put away, short", 0.6, -8, ARCADE),
@@ -1951,16 +1951,16 @@ SETS = {
     # semitone a step and five at most, so it is a tock; collect fires on
     # every tile landing on a goal, the faintest tick. What travels is air.
     "posy": {
-        "select":       ("one small thin wooden tile set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.07", "body:320", "tight", "before:1700:-5"),
+        "select":       ('a small pebble dropped into a calm pond, one soft plop, close, very short', 0.6, -15, FOLEY, "bank:pebble", "cut:0.07", "notes:0:-1", "tight"),
         # Two tiles trading places: Paper Planes' puff.
         "swap":         ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.5, -16, BREEZE, "warm:750", "steep", "ease:0.05", "body:320", "before:2400:0"),
         # A swap that makes nothing: select's take, there and a step back.
-        "bad_swap":     ("one small thin wooden tile set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.2", "body:320", "tight", "notes:0.09:0,-2", "before:2400:0"),
-        "match":        ("one small round wooden button set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.12", "body:320", "tight", "before:2400:0"),
+        "bad_swap":     ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.2", "notes:0.09:-1,-3", "tight"),
+        "match":        ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -13, FOLEY, "bank:wrap", "cut:0.12", "notes:0:-1", "tight"),
         # Tiles settling: select's take, two steps down and quiet.
-        "land":         ("one small thin wooden tile set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -18, HUSH, "warm:1200", "cut:0.06", "body:320", "tight", "notes:0:-2", "before:2400:0"),
+        "land":         ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -18, FOLEY, "bank:wrap", "cut:0.06", "notes:0:-3", "tight"),
         # A tile reaching its goal: Firefly's shot, a lighter thing.
-        "collect":      ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -18, HUSH, "warm:1400", "cut:0.06", "body:320", "tight", "before:1700:-5"),
+        "collect":      ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -18, FOLEY, "bank:wrap", "cut:0.06", "notes:0:-1", "tight"),
         # A breeze made is Hedgehogs' breath (its reset; Binairo's gust,
         # tried first, is 78% above 3 kHz raw and passes only filtered) and
         # a breeze let go its long one.
@@ -1977,14 +1977,14 @@ SETS = {
         "day_done":     ("a joyful short garden fanfare on a real kalimba, music box and hand bells, a day's goals completed, about two seconds", 2.0, -8, ARCADE),
         # The bed dealt and the bed stirred: the wheel spun, nine notches
         # of match's take falling into place and eight of select's wandering.
-        "deal":         ("one small round wooden button set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1500", "cut:0.8", "body:320", "tight", "notes:0.08:3,1,2,0,1,-2,-1,-3,-4", "before:2400:0"),
-        "shuffle":      ("one small thin wooden tile set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.6", "body:320", "tight", "notes:0.065:0,3,-1,2,-2,1,3,0", "before:1700:-5"),
+        "deal":         ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.8", "notes:0.08:2,0,1,-1,0,-3,-2,-4,-5", "tight"),
+        "shuffle":      ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -15, FOLEY, "bank:wrap", "cut:0.6", "notes:0.065:-1,2,-2,1,-3,0,2,-1", "tight"),
         "convert":      ("a soft twinkle of two tiny music box notes, a tile turning special, short", 0.6, -9, ARCADE, "warm:2400", "body:300"),
         "gift":         ("a cheerful little rising music box phrase with a hand bell sparkle, a present, a tool earned, short", 0.8, -8, ARCADE, "warm:2600", "body:300"),
         # The trowel: two notches of match's take, falling.
         "trowel":       ("one small round wooden button set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.22", "body:320", "tight", "notes:0.09:0,-4", "before:2400:-3"),
-        "arm":          ("one small thin wooden tile set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.07", "body:320", "tight", "notes:0:2", "before:2400:0"),
-        "refused":      ("one small round wooden button set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.2", "body:320", "tight", "notes:0.1:-3,-3", "before:2400:0:150"),
+        "arm":          ('a small pebble dropped into a calm pond, one soft plop, close, very short', 0.6, -15, FOLEY, "bank:pebble", "cut:0.07", "notes:0:1", "tight"),
+        "refused":      ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.2", "notes:0.1:-4,-4", "tight"),
         "out_of_moves": ("a soft slow descending wobble, out of moves, gentle and kind, not sad", 1.0, -8, CARTOON),
         "start":        ("a short cheerful opening tune on a real kalimba and music box, a bouncy flowery little melody, a game beginning, about two seconds", 2.2, -8, ARCADE),
         "game_over":    ("a gentle slow descending melody on a real kalimba, a few soft notes stepping down, the game is over, kind and calm, never sad", 2.2, -8, ARCADE),
@@ -1999,8 +1999,8 @@ SETS = {
         # take, rising; a stone knocked one of match's three steps down and
         # a stone broken three falling; moss creeping three slow low ones of
         # select's and moss plucked one of match's two steps up.
-        "weed":         ("one small thin wooden tile set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.15", "body:320", "tight", "notes:0.06:0,2", "before:1700:-5"),
-        "stone":        ("one small round wooden button set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.12", "body:320", "tight", "notes:0:-3", "before:2400:0"),
+        "weed":         ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -15, FOLEY, "bank:lip", "cut:0.15", "notes:0.06:-1,1", "tight"),
+        "stone":        ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -13, FOLEY, "bank:token", "cut:0.12", "notes:0:-6", "tight"),
         "stone_break":  ("one small round wooden button set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.3", "body:320", "tight", "notes:0.07:-2,-5,-7", "before:2400:0"),
         "moss":         ("one small thin wooden tile set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1200", "cut:0.34", "body:320", "tight", "notes:0.11:-4,-4,-2", "before:2400:0"),
         "moss_clear":   ("one small round wooden button set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1500", "cut:0.12", "body:320", "tight", "notes:0:2", "before:2400:0:150"),
@@ -2056,7 +2056,7 @@ SETS = {
         "twin_off":  ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -17, BREEZE, "warm:900", "steep", "ease:0.04", "body:320"),
         # A gift missed (no caller on the screen): knock's take, one notch
         # two steps down.
-        "lost":      ("one small hollow wooden box set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1300", "cut:0.1", "body:320", "tight", "notes:0:-2"),
+        "lost":      ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -16, FOLEY, "bank:tongue", "cut:0.1", "notes:0:-2", "tight"),
         # The cracker going off: knock's take, a tumble of five notches.
         "boom":      ("one small hollow wooden box set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -12, HUSH, "warm:1500", "cut:0.36", "body:320", "tight", "notes:0.05:-1,2,-3,0,-4"),
         "knock":     ("one small hollow wooden box set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.12", "body:320", "tight"),
@@ -2066,7 +2066,7 @@ SETS = {
         "wave":      ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.12:4,4,8", "cut:0.8"),
         # The big bug arriving on its many feet: knock's take, four notches
         # marching.
-        "milli":     ("one small hollow wooden box set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.5", "body:320", "tight", "notes:0.11:0,-2,0,-2"),
+        "milli":     ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -13, FOLEY, "bank:wrap", "cut:0.5", "notes:0.11:0,-2,0,-2", "tight"),
         "clear":     ("a quick happy rising run on a real kalimba ending on a hand bell, a wave cleared", 1.0, -8, ARCADE, "warm:2000", "body:300"),
         "word":      ("a bright rising three-note run on a real kalimba with a hand bell sparkle, a combo streak, short", 0.7, -8, ARCADE),
         "warn":      ("two soft worried notes on a real kalimba, the second a little lower, something getting too close, gentle, not alarming", 0.6, -8, ARCADE),
@@ -2106,33 +2106,33 @@ SETS = {
         # stone. The note came back at 373 Hz, so the phrases' steps are 2 to
         # 11 up and every note lands between 400 and 700 Hz; no two cues
         # share a contour. lift's tock starts at 20 ms, the others at 0.
-        "lift":     ("one small light wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.12", "body:320", "tight"),
-        "drop":     ("one small hollow wooden ring set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.16", "body:320", "tight"),
+        "lift":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -16, FOLEY, "bank:lip", "cut:0.12", "notes:0:1", "tight"),
+        "drop":     ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -13, FOLEY, "bank:token", "cut:0.16", "notes:0:-1", "tight"),
         # A peg filled with one colour: two notes a third apart, all but
         # together.
         "lock":     ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.03:3,7", "cut:0.7"),
         # Not there: lift's take, two low notches alike.
-        "refused":  ("one small light wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.26", "body:320", "tight", "notes:0.1:-3,-3"),
+        "refused":  ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.26", "notes:0.1:-2,-2", "tight"),
         # Taken back: lift's take, twice and falling.
-        "undo":     ("one small light wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        "undo":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -15, FOLEY, "bank:lip", "cut:0.28", "notes:0.11:1,-2", "tight"),
         "hint":     ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:3,7,10", "cut:1.0"),
         # The rings back on their pegs: drop's take, five notches falling.
         "reset":    ("one small hollow wooden ring set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.5", "body:320", "tight", "notes:0.08:4,2,0,-1,-3"),
         # The pegs set out: drop's take, five in a row.
-        "enter":    ("one small hollow wooden ring set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:0,3,0,2,5"),
+        "enter":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.5", "notes:0.08:-1,2,-1,1,4", "tight"),
         "solved":   ("one soft short note on a kalimba, muffled and kind", 0.6, -8, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.14:2,5,7,9,11", "cut:1.7"),
         # The streak and the gags. combo: a tick the board pitches by the
         # streak, not past five semitones. twirl: the ring spun on its peg,
         # the wheel spun, four quick notches rising. love: two quiet notes
         # alike and a third up. buzz: the bee, the quietest puff there is.
-        "combo":    ("one small wooden peg set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.1", "body:320", "tight"),
+        "combo":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.1", "notes:0:1", "tight"),
         "confetti": ("a soft breath of warm breeze that eases, fades and stops, calm, short", 0.8, -17, BREEZE, "warm:900", "steep", "ease:0.05", "body:320"),
         "twirl":    ("one small light wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.36", "body:320", "tight", "notes:0.07:0,2,3,5"),
         "love":     ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.1:3,3,7", "cut:0.6"),
         "buzz":     ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -19, BREEZE, "warm:1100", "steep", "ease:0.05", "body:320"),
         # Tumble (Insane): a two-tone ring turning over as it is lifted,
         # lift's take, one notch two steps down.
-        "tumble":   ("one small light wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1200", "cut:0.12", "body:320", "tight", "notes:0:-2"),
+        "tumble":   ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -17, FOLEY, "bank:wrap", "cut:0.12", "notes:0:-1", "tight"),
         # Hearts (Hard and Insane). The doomed ring wobbles on the stack as
         # the heart goes, so wobble is three notches, there and back, and the
         # heart one low quiet note: neither is a second fall. hop_back: the
@@ -2140,7 +2140,7 @@ SETS = {
         # steps up.
         "wobble":   ("one small hollow wooden ring set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.3", "body:320", "tight", "notes:0.07:0,2,0"),
         "heart_lost":    ("one soft short note on a kalimba, muffled and kind", 0.6, -15, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0:2", "cut:0.6"),
-        "hop_back": ("one small hollow wooden ring set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1500", "cut:0.26", "body:320", "tight", "notes:0.1:0,3"),
+        "hop_back": ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -15, FOLEY, "bank:wrap", "cut:0.26", "notes:0.1:1,4", "tight"),
         "out_of_hearts": ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:10,7,3"),
         "heart_back":    ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.14:3,8", "cut:0.7"),
         # The party.
@@ -2186,9 +2186,9 @@ SETS = {
         # and the cues made of it are written one to three steps down: the
         # board pitches the balloon up five semitones and it stays under
         # 900 Hz. Every tick starts at 0 ms.
-        "select":       ("one small light wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.1", "body:320", "tight"),
+        "select":       ('a small pebble dropped into a calm pond, one soft plop, close, very short', 0.6, -16, FOLEY, "bank:pebble", "cut:0.1", "notes:0:-1", "tight"),
         # The band setting up: balloon's take, five in a row.
-        "enter":        ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:-3,0,-3,-1,2"),
+        "enter":        ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.5", "notes:0.08:-6,-3,-6,-4,-1", "tight"),
         "reset":        ("a soft breath of warm breeze that eases, fades and stops, calm, short", 0.8, -17, BREEZE, "warm:900", "steep", "ease:0.05", "body:320"),
         # In the song. gogo: four quick notes hopping up. soul (the gauge
         # past its line): three up. combo: a tick the board pitches by the
@@ -2197,7 +2197,7 @@ SETS = {
         # ribbon held to its end): balloon's take, one notch two steps over it.
         "gogo":         ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.1:0,4,2,7", "cut:0.9"),
         "soul":         ("one soft short note on a kalimba, muffled and kind", 0.6, -11, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.11:3,5,8", "cut:0.8"),
-        "combo":        ("one small wooden peg set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.1", "body:320", "tight"),
+        "combo":        ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.1", "notes:0:-1", "tight"),
         "break":        ("one small light wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
         "hold_done":    ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.12", "body:320", "tight", "notes:0:-1"),
         # The balloon: a tock a stroke, which the board pitches by the
@@ -2226,7 +2226,7 @@ SETS = {
         # alike and the last up. shades (the frog's sunglasses): three notes,
         # up and half back.
         "golden":       ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.07:2,4,5,7", "cut:0.7"),
-        "conga":        ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.5", "body:320", "tight", "notes:0.12:-3,-3,-3,1"),
+        "conga":        ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -13, FOLEY, "bank:wrap", "cut:0.5", "notes:0.12:-4,-4,-4,0", "tight"),
         "shades":       ("one soft short note on a kalimba, muffled and kind", 0.6, -11, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.12:0,7,4", "cut:0.7"),
         # The tap-along done: two quiet notes alike and a third up.
         "tune_done":    ("one soft short note on a kalimba, muffled and kind", 0.6, -11, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.12:0,0,4", "cut:0.7"),
@@ -2263,23 +2263,23 @@ SETS = {
         # back at 353 Hz, so the phrases' steps are 3 to 12 up and every note
         # lands between 400 and 700 Hz; no two cues share a contour. Every
         # tock starts at 0 ms.
-        "place_wood":    ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.14", "body:320", "tight", "notes:0:-2"),
+        "place_wood":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -13, FOLEY, "bank:token", "cut:0.14", "notes:0:-4", "tight"),
         # The road is the heavier plank: wood's take, three steps under it.
-        "place_road":    ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1400", "cut:0.16", "body:320", "tight", "notes:0:-5"),
+        "place_road":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -13, FOLEY, "bank:token", "cut:0.16", "notes:0:-7", "tight"),
         # Rope is the lighter thing: select's take, three steps up.
-        "place_rope":    ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.12", "body:320", "tight", "notes:0:3"),
-        "select":        ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1200", "cut:0.12", "body:320", "tight"),
+        "place_rope":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -15, FOLEY, "bank:token", "cut:0.12", "notes:0:1", "tight"),
+        "select":        ('a small pebble dropped into a calm pond, one soft plop, close, very short', 0.6, -16, FOLEY, "bank:pebble", "cut:0.12", "tight"),
         # A piece taken off: select's take, one notch two steps down.
-        "remove":        ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1200", "cut:0.12", "body:320", "tight", "notes:0:-2"),
+        "remove":        ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -16, FOLEY, "bank:lip", "cut:0.12", "notes:0:-2", "tight"),
         # Not there: two low notches alike. Taken back, and Stop: twice and
         # falling.
-        "refused":       ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.26", "body:320", "tight", "notes:0.1:-3,-3"),
-        "undo":          ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        "refused":       ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.26", "notes:0.1:-3,-3", "tight"),
+        "undo":          ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -15, FOLEY, "bank:lip", "cut:0.28", "notes:0.11:0,-3", "tight"),
         "hint":          ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:3,7,10", "cut:1.0"),
         # Back to building: wood's take, five notches falling. The planks set
         # out: five in a row.
         "reset":         ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.5", "body:320", "tight", "notes:0.08:3,1,-1,-2,-4"),
-        "enter":         ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:-2,1,-2,0,3"),
+        "enter":         ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.5", "notes:0.08:-4,-1,-4,-2,1", "tight"),
         # Go: two notes alike and a third up. The cart is a loop of steady air
         # the board fades in and out and pitches by its load (0.85 to 1.1):
         # Snooker's roll, of the same prompt. honk: the horn at mid-span, two
@@ -2292,7 +2292,7 @@ SETS = {
         # board still lowers it for a heavy cart, which slows the wheel too.
         # The take is Toy Boats' lift (the same prompt); never `--new`, which
         # would ask for a loop of it.
-        "roll":          ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -21, HUSH, "loop", "warm:1100", "body:320", "notes:0.2:0,-2,0,-3", "cut:0.8"),
+        "roll":          ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -21, FOLEY, "bank:wrap", "cut:0.8", "notes:0.2:0,-2,0,-3", "loop", "tight"),
         "honk":          ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.13:8,8", "cut:0.5"),
         # A beam near its limit: select's take, three slow low notches. A beam
         # gone: wood's take, three notches, down and half back. A rope gone:
@@ -2307,10 +2307,10 @@ SETS = {
         # the deck onto the bank, wood's take twice with the second three steps
         # up; it sounds on the frame `solved` does, so it is not a phrase.
         "whoa":          ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.09:7,5,7", "cut:0.5"),
-        "bump":          ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1400", "cut:0.2", "body:320", "tight", "notes:0.03:-6,-2"),
+        "bump":          ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -13, FOLEY, "bank:tongue", "cut:0.2", "notes:0.03:-6,-2", "tight"),
         "splash":        ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -16, BREEZE, "warm:900", "steep", "ease:0.04", "body:320"),
         "fail":          ("one soft short note on a kalimba, muffled and kind", 0.6, -11, COZY_TUNE, "warm:2400", "ease:0.015", "body:300", "notes:0.2:10,7,3,5"),
-        "cross":         ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.26", "body:320", "tight", "notes:0.1:-2,1"),
+        "cross":         ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.26", "notes:0.1:-4,-1", "tight"),
         "solved":        ("one soft short note on a kalimba, muffled and kind", 0.6, -8, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.14:3,5,7,10,12", "cut:1.7"),
         # The bridge easing back after a test: a breath, Hedgehogs' reset.
         "settle":        ("a soft breath of warm breeze that eases, fades and stops, calm, short", 0.8, -18, BREEZE, "warm:900", "steep", "ease:0.05", "body:320"),
@@ -2369,8 +2369,8 @@ SETS = {
         # The kerb, pitched and levelled by how hard the ball met it. A post
         # is the same take one notch three steps up (the board adds a step a
         # post).
-        "wall":          ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.1", "body:320", "tight"),
-        "post":          ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.1", "body:320", "tight", "notes:0:3"),
+        "wall":          ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.1", "notes:0:1", "tight"),
+        "post":          ('one water drop falling into a cup of water, a single soft plop, close, very short', 0.5, -15, FOLEY, "bank:plop", "cut:0.1", "notes:0:4", "tight"),
         # Into the sand: a breath that eases and stops, Hedgehogs' reset.
         # Into the pond: a puff of air, its gust.
         "sand":          ("a soft breath of warm breeze that eases, fades and stops, calm, short", 0.8, -17, BREEZE, "warm:900", "steep", "ease:0.05", "body:320"),
@@ -2398,7 +2398,7 @@ SETS = {
         # The card blank again: wall's take, five notches falling. The course
         # set out: five in a row.
         "reset":         ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.5", "body:320", "tight", "notes:0.08:5,3,1,0,-2"),
-        "enter":         ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1400", "cut:0.5", "body:320", "tight", "notes:0.08:0,3,0,2,5"),
+        "enter":         ('one water drop falling into a cup of water, a single soft plop, close, very short', 0.5, -14, FOLEY, "bank:plop", "cut:0.5", "notes:0.08:1,4,1,3,6", "tight"),
         # The strokes run out (Insane), and the three handed back.
         "out_of_hearts": ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:10,7,3"),
         "heart_back":    ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.14:3,8", "cut:0.7"),
@@ -2438,22 +2438,22 @@ SETS = {
         # note came back at 342 Hz, so the phrases' steps are 3 to 12 up and
         # every note lands between 400 and 700 Hz; no two cues share a
         # contour. Every tock starts at 0 ms.
-        "enter":         ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.09:-5,-2,-5,-2"),
-        "place":         ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.14", "body:320", "tight", "notes:0:-2"),
-        "lift":          ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.12", "body:320", "tight", "notes:0:3"),
+        "enter":         ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.5", "notes:0.09:-8,-5,-8,-5", "tight"),
+        "place":         ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -13, FOLEY, "bank:token", "cut:0.14", "notes:0:-5", "tight"),
+        "lift":          ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -16, FOLEY, "bank:lip", "cut:0.12", "notes:0:2", "tight"),
         # Taken back: lift's take, twice and falling.
-        "undo":          ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.28", "body:320", "tight", "notes:0.11:3,0"),
+        "undo":          ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -15, FOLEY, "bank:lip", "cut:0.28", "notes:0.11:2,-1", "tight"),
         # Every bale gone: a breath, Hedgehogs' reset.
         "reset":         ("a soft breath of warm breeze that eases, fades and stops, calm, short", 0.8, -17, BREEZE, "warm:900", "steep", "ease:0.05", "body:320"),
         # Not there (water, a stone, a tunnel, a pinned bale, no bales left):
         # lift's take, two low notches alike.
-        "locked":        ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.26", "body:320", "tight", "notes:0.1:0,0"),
+        "locked":        ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.26", "notes:0.1:-1,-1", "tight"),
         # The pen shut, short of its target: it sounds on the frame `place`
         # does, so it is lift's take, two notches with the second four steps
         # up. The pen open again sounds with `lift`, so it is place's take,
         # one notch four steps under place's.
-        "closed":        ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1400", "cut:0.24", "body:320", "tight", "notes:0.09:2,6"),
-        "open":          ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.14", "body:320", "tight", "notes:0:-6"),
+        "closed":        ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -14, FOLEY, "bank:tongue", "cut:0.24", "notes:0.09:1,5", "tight"),
+        "open":          ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -15, FOLEY, "bank:lip", "cut:0.14", "notes:0:-7", "tight"),
         # The pen at its target: two notes a third apart all but together. At
         # the best there is: two alike and a third up. Either sounds over
         # `place`, a tock.
@@ -2461,7 +2461,7 @@ SETS = {
         "best":          ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.1:7,7,11", "cut:0.8"),
         # Check on a pen that is open or too small: place's take, three slow
         # notches falling.
-        "not_yet":       ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1400", "cut:0.5", "body:320", "tight", "notes:0.14:-2,-4,-7"),
+        "not_yet":       ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -14, FOLEY, "bank:tongue", "cut:0.5", "notes:0.14:-3,-5,-8", "tight"),
         "hint":          ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:3,7,10", "cut:1.0"),
         # The pony patted: its own voice, a real one (PONY), the take of
         # 2026-10-08 with the top rolled off, 3 dB down.
@@ -2504,8 +2504,8 @@ SETS = {
         # the note came back at 453 Hz, so the phrases' steps are 2 down to 7 up
         # and every note lands between 400 and 700 Hz; no two cues share a
         # contour. Every tock starts at 0 ms.
-        "drop":          ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.1", "body:320", "tight", "notes:0:-2"),
-        "pick":          ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.1", "body:320", "tight"),
+        "drop":          ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -13, FOLEY, "bank:token", "cut:0.1", "notes:0:-4", "tight"),
+        "pick":          ('a small pebble dropped into a calm pond, one soft plop, close, very short', 0.6, -16, FOLEY, "bank:pebble", "cut:0.1", "tight"),
         # Two tiles crossing in their arc: what travels is air, a small puff,
         # Hedgehogs' gust. `hint` sounds on the frame it does, and with motion
         # reduced so does whichever of home, home2 and miss the swap earns, so
@@ -2514,17 +2514,17 @@ SETS = {
         # The swap landed, 0.24 s on. One tile home: drop's take, one notch
         # three steps over drop's. Two at once: two notches, the second four
         # steps up. Neither: pick's take, one notch four steps down.
-        "home":          ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.1", "body:320", "tight", "notes:0:1"),
-        "home2":         ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.2", "body:320", "tight", "notes:0.09:-3,1"),
-        "miss":          ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1200", "cut:0.12", "body:320", "tight", "notes:0:-4"),
+        "home":          ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -13, FOLEY, "bank:token", "cut:0.1", "notes:0:-1", "tight"),
+        "home2":         ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -13, FOLEY, "bank:token", "cut:0.2", "notes:0.09:-5,-1", "tight"),
+        "miss":          ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -16, FOLEY, "bank:tongue", "cut:0.12", "notes:0:-4", "tight"),
         # Taken back: pick's take, twice and falling. Not that one (a tile at
         # home, two of one number): two low notches alike.
-        "undo":          ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.26", "body:320", "tight", "notes:0.11:0,-3"),
-        "locked":        ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.24", "body:320", "tight", "notes:0.1:-5,-5"),
+        "undo":          ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -15, FOLEY, "bank:lip", "cut:0.26", "notes:0.11:0,-3", "tight"),
+        "locked":        ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.24", "notes:0.1:-5,-5", "tight"),
         # The deal again: a breath, Hedgehogs' reset. The tiles popping onto the
         # lattice: pick's take, five in a row.
         "reset":         ("a soft breath of warm breeze that eases, fades and stops, calm, short", 0.8, -17, BREEZE, "warm:900", "steep", "ease:0.05", "body:320"),
-        "enter":         ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.5", "body:320", "tight", "notes:0.08:-4,-1,-4,-2,1"),
+        "enter":         ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -15, FOLEY, "bank:token", "cut:0.5", "notes:0.08:-6,-3,-6,-4,-1", "tight"),
         # A whole line: it sounds on the frame home or home2 does, a tock under
         # it, so it is the one small note of the board, two a third apart all
         # but together. The bulb: two alike and a third up, over the puff.
@@ -2557,14 +2557,14 @@ SETS = {
     # whole, the bulb and the day's end; every note lands between 400 and
     # 700 Hz and no two cues share a contour.
     "buttons": {
-        "lift":          ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.1", "body:320", "tight", "notes:0:-2"),
-        "sew":           ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1500", "cut:0.09", "body:320", "tight", "notes:0:1"),
+        "lift":          ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -16, FOLEY, "bank:lip", "cut:0.1", "notes:0:-1", "tight"),
+        "sew":           ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -15, FOLEY, "bank:token", "cut:0.09", "notes:0:0", "tight"),
         "tin":           ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.1", "body:320", "tight", "notes:0:-3"),
         # The tin's new place: two tocks of its wood, the second four steps up.
-        "open":          ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.2", "body:320", "tight", "notes:0.09:-3,1"),
-        "undo":          ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.26", "body:320", "tight", "notes:0.11:0,-3"),
-        "locked":        ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.24", "body:320", "tight", "notes:0.1:-5,-5"),
-        "enter":         ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.5", "body:320", "tight", "notes:0.08:-4,-1,-4,-2,1"),
+        "open":          ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -13, FOLEY, "bank:lip", "cut:0.2", "notes:0.09:-2,2", "tight"),
+        "undo":          ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -15, FOLEY, "bank:lip", "cut:0.26", "notes:0.11:1,-2", "tight"),
+        "locked":        ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.24", "notes:0.1:-4,-4", "tight"),
+        "enter":         ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -15, FOLEY, "bank:token", "cut:0.5", "notes:0.08:-5,-2,-5,-3,0", "tight"),
         "reset":         ("a soft breath of warm breeze that eases, fades and stops, calm, short", 0.8, -17, BREEZE, "warm:900", "steep", "ease:0.05", "body:320"),
         # The streak: one note, pitched by the board. A long run sewn at
         # once: two close together, a third apart. A colour whole: three up.
@@ -2602,14 +2602,14 @@ SETS = {
         # `pick` (one wooden tock for both) is gone.
         "shoot":         ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1300", "cut:0.08", "body:320", "tight"),
         "pop":           ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1500", "cut:0.09", "body:320", "tight"),
-        "send":          ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.1", "body:320", "tight", "notes:0:-2"),
-        "park":          ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.1", "body:320", "tight", "notes:0:-4"),
+        "send":          ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -15, FOLEY, "bank:token", "cut:0.1", "notes:0:-5", "tight"),
+        "park":          ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -15, FOLEY, "bank:token", "cut:0.1", "notes:0:-7", "tight"),
         # Back to the shed: two tocks, the second three steps down.
-        "home":          ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.26", "body:320", "tight", "notes:0.11:-1,-4"),
+        "home":          ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -15, FOLEY, "bank:token", "cut:0.26", "notes:0.11:-4,-7", "tight"),
         # An engine home full: two tocks of its wood, the second four steps up.
-        "full":          ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.2", "body:320", "tight", "notes:0.08:-3,1"),
-        "locked":        ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.24", "body:320", "tight", "notes:0.1:-6,-6"),
-        "enter":         ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.5", "body:320", "tight", "notes:0.09:-5,-5,-3,-3"),
+        "full":          ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -13, FOLEY, "bank:tongue", "cut:0.2", "notes:0.08:-4,0", "tight"),
+        "locked":        ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.24", "notes:0.1:-7,-7", "tight"),
+        "enter":         ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -15, FOLEY, "bank:token", "cut:0.5", "notes:0.09:-8,-8,-6,-6", "tight"),
         "reset":         ("a soft breath of warm breeze that eases, fades and stops, calm, short", 0.8, -17, BREEZE, "warm:900", "steep", "ease:0.05", "body:320"),
         # Engines home full in a row: one note, pitched by the board. A long
         # run: two close together, a fourth apart. A colour whole: three up.
@@ -2637,11 +2637,11 @@ SETS = {
     # that closed three or more (`run`), a colour whole, the bulb and the
     # day's end; every note lands between 400 and 700 Hz.
     "hoop": {
-        "pick":          ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -18, HUSH, "warm:1300", "cut:0.08", "body:320", "tight", "notes:0:-3"),
-        "stitch":        ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.09", "body:320", "tight", "notes:0:-1"),
-        "fill":          ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1500", "cut:0.12", "body:320", "tight", "notes:0:-2"),
-        "locked":        ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.24", "body:320", "tight", "notes:0.1:-5,-6"),
-        "enter":         ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.5", "body:320", "tight", "notes:0.08:-3,-1,-3,1"),
+        "pick":          ('a small pebble dropped into a calm pond, one soft plop, close, very short', 0.6, -18, FOLEY, "bank:pebble", "cut:0.08", "notes:0:-3", "tight"),
+        "stitch":        ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -16, FOLEY, "bank:wrap", "cut:0.09", "notes:0:-1", "tight"),
+        "fill":          ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.12", "notes:0:-2", "tight"),
+        "locked":        ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.24", "notes:0.1:-5,-6", "tight"),
+        "enter":         ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -15, FOLEY, "bank:token", "cut:0.5", "notes:0.08:-5,-3,-5,-1", "tight"),
         "reset":         ("a soft breath of warm breeze that eases, fades and stops, calm, short", 0.8, -17, BREEZE, "warm:900", "steep", "ease:0.05", "body:320"),
         # Two panels at once: two notes close together, a third apart. A
         # drag that closed three or more: two, a fourth apart. A colour
@@ -2684,12 +2684,12 @@ SETS = {
         # share a contour. Both takes are one tock and nothing else, and every
         # tock starts at 0 ms.
         # The bench set out: lock's take, five notches in a row.
-        "enter":         ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:-7,-4,-7,-5,-2"),
+        "enter":         ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.5", "notes:0.08:-8,-5,-8,-6,-3", "tight"),
         # One notch of the wheel, a step under its take. The board plays it at
         # 1.08 to 0.92 by the answer's size and 0.94 to 1.06 at random, -4 dB,
         # and fx's CUE_GAP holds two 60 ms apart.
-        "notch":         ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.07", "body:320", "tight", "notes:0:-1"),
-        "lock":          ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.14", "body:320", "tight", "notes:0:-6"),
+        "notch":         ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -16, FOLEY, "bank:wrap", "cut:0.07", "notes:0:0", "tight"),
+        "lock":          ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -13, FOLEY, "bank:token", "cut:0.14", "notes:0:-7", "tight"),
         # The pair walking off and the next coming on: a puff of air,
         # Hedgehogs' gust.
         "next":          ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -16, BREEZE, "warm:900", "steep", "ease:0.04", "body:320"),
@@ -2719,7 +2719,7 @@ SETS = {
         # notches all but together, a thing pressed down.
         "solved":        ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.1:-2,0,2,5", "cut:0.9"),
         "party":         ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:-4,0,3,0,3,5", "cut:1.9"),
-        "stamp":         ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1400", "cut:0.2", "body:320", "tight", "notes:0.03:-9,-6"),
+        "stamp":         ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -13, FOLEY, "bank:token", "cut:0.2", "notes:0.03:-10,-7", "tight"),
     },
     # Golden Acorn (puzzles/acorn2d.gd, 2026-10-08): a quiz at a card table.
     # `pick` is the one that repeats (every tap on an answer, and a player
@@ -2751,16 +2751,16 @@ SETS = {
         # phrases' steps are 1 to 10 up and every note lands between 400 and 700
         # Hz; no two cues share a contour. Every tock starts at 0 ms.
         # The cards laid out: pick's take, five notches in a row.
-        "enter":         ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1400", "cut:0.5", "body:320", "tight", "notes:0.08:-2,-5,-2,-4,0"),
-        "pick":          ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.1", "body:320", "tight"),
-        "lock":          ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.14", "body:320", "tight", "notes:0:-2"),
+        "enter":         ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.5", "notes:0.08:-5,-8,-5,-7,-3", "tight"),
+        "pick":          ('a small pebble dropped into a calm pond, one soft plop, close, very short', 0.6, -16, FOLEY, "bank:pebble", "cut:0.1", "notes:0:-1", "tight"),
+        "lock":          ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -13, FOLEY, "bank:token", "cut:0.14", "notes:0:-5", "tight"),
         # The next question is a page turned: air, Hedgehogs' gust. It sounds on
         # the frame heart_back does when a heart is taken back, a puff under two
         # notes.
         "next":          ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -16, BREEZE, "warm:900", "steep", "ease:0.04", "body:320"),
         # Lock with nothing picked, the bulb with nothing left to cut: pick's
         # take, two low notches alike.
-        "refuse":        ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.26", "body:320", "tight", "notes:0.1:-5,-5"),
+        "refuse":        ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.26", "notes:0.1:-6,-6", "tight"),
         # The verdict, 0.6 s after the lock (HOLD) and a dozen times a day, so
         # short: right is three quick notes up, wrong two with the second two
         # steps down.
@@ -2782,7 +2782,7 @@ SETS = {
         # notches all but together, a thing pressed down.
         "solved":        ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.08:1,6,3,8", "cut:0.9"),
         "party":         ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:1,5,8,5,8,10", "cut:1.9"),
-        "stamp":         ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1400", "cut:0.2", "body:320", "tight", "notes:0.03:-8,-5"),
+        "stamp":         ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -13, FOLEY, "bank:token", "cut:0.2", "notes:0.03:-11,-8", "tight"),
     },
     # Pearl Dive (puzzles/pearl2d.gd, 2026-10-09): a dive off a wooden jetty.
     # `tick` is the one that repeats (the clock's last five seconds, every
@@ -2817,20 +2817,20 @@ SETS = {
         # no two cues share a contour. Both takes are one tock and nothing
         # else, and every tock starts at 0 ms.
         # The card standing ready: miss's take, five notches in a row.
-        "enter":         ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:-4,-1,-4,-2,1"),
+        "enter":         ('one water drop falling into a cup of water, a single soft plop, close, very short', 0.5, -14, FOLEY, "bank:plop", "cut:0.5", "notes:0.08:-4,-1,-4,-2,1", "tight"),
         # The dive: what travels is air, Hedgehogs' whoosh.
         "dive":          ("a long soft gust of warm breeze through leaves, one gentle whoosh of air that rises slowly and fades", 1.0, -16, BREEZE, "warm:1100", "steep", "ease:0.1", "body:320"),
         # The clock's last five seconds, one a second: one notch of the wheel,
         # at -14 (a light tick, but the one that says the time is going: it
         # reads -18 on a phone, as the old one did). The board varies it by
         # 0.94 to 1.06, and the miss and the refusal with it.
-        "tick":          ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1400", "cut:0.07", "body:320", "tight", "notes:0:2"),
+        "tick":          ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.07", "notes:0:2", "tight"),
         # Not on the list: twice and falling. It can sound on the frame `dry`
         # or `out_of_air` does (the miss's three seconds ran the clock out),
         # notches under a phrase. Enter on an empty line, and a bulb with
         # nothing left to tell: tick's take, two low notches alike.
-        "miss":          ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.26", "body:320", "tight", "notes:0.11:0,-3"),
-        "refuse":        ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.24", "body:320", "tight", "notes:0.1:-4,-4"),
+        "miss":          ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -13, FOLEY, "bank:tongue", "cut:0.26", "notes:0.11:0,-3", "tight"),
+        "refuse":        ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.24", "notes:0.1:-4,-4", "tight"),
         # An answer by its depth: the rarer the find, the longer and the
         # higher the rise. A common one is two notes a third apart all but
         # together, a rare one three up, the Pearl two climbs of three; a
@@ -2855,7 +2855,7 @@ SETS = {
         # pressed down.
         "solved":        ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.07:4,6,8,11", "cut:0.7"),
         "party":         ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:4,8,11,8,11,13", "cut:1.9"),
-        "stamp":         ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1400", "cut:0.2", "body:320", "tight", "notes:0.03:-7,-4"),
+        "stamp":         ('one water drop falling into a cup of water, a single soft plop, close, very short', 0.5, -13, FOLEY, "bank:plop", "cut:0.2", "notes:0.03:-7,-4", "tight"),
     },
     # Toy Boats (Versus, versus/boats_screen.gd). Redone 2026-10-10 against
     # the cozy rules (docs/agents/sound.md), the forty-sixth set of the redo,
@@ -2876,17 +2876,17 @@ SETS = {
     # second air (Hedgehogs' whoosh): the box swung over.
     "boats": {
         # The five boats set out: place's take, five in a row.
-        "enter":    ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.5", "body:320", "tight", "notes:0.08:-4,-2,0,-2,1"),
-        "lift":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1300", "cut:0.12", "body:320", "tight"),
+        "enter":    ('one water drop falling into a cup of water, a single soft plop, close, very short', 0.5, -14, FOLEY, "bank:plop", "cut:0.5", "notes:0.08:-3,-1,1,-1,2", "tight"),
+        "lift":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -16, FOLEY, "bank:lip", "cut:0.12", "notes:0:1", "tight"),
         # A boat set down: the block, four steps under its take to be the
         # heavier of the two (the take sat at 820 Hz, the button at 670).
-        "place":    ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.14", "body:320", "tight", "notes:0:-4"),
+        "place":    ('one water drop falling into a cup of water, a single soft plop, close, very short', 0.5, -13, FOLEY, "bank:plop", "cut:0.14", "notes:0:-3", "tight"),
         # A quarter turn: lift's take, two notches close, the second three steps up.
-        "turn":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1300", "cut:0.2", "body:320", "tight", "notes:0.07:0,3"),
+        "turn":     ('one water drop falling into a cup of water, a single soft plop, close, very short', 0.5, -15, FOLEY, "bank:plop", "cut:0.2", "notes:0.07:1,4", "tight"),
         # A square crossed: lift's take, one notch of the wheel two steps up.
-        "tick":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1300", "cut:0.07", "body:320", "tight", "notes:0:2"),
+        "tick":     ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -17, FOLEY, "bank:wrap", "cut:0.07", "notes:0:3", "tight"),
         # No room, or a square already tried: lift's take, twice and falling.
-        "refused":  ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        "refused":  ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.28", "notes:0.11:1,-2", "tight"),
         # The lid pressed shut: place's take, two low notches all but together.
         "ready":    ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1400", "cut:0.2", "body:320", "tight", "notes:0.03:-7,-4"),
         # The box swung over: a whoosh of air, Hedgehogs'.
@@ -2899,10 +2899,10 @@ SETS = {
         # now, as rule 4 has it for a slide that does not pass: the flick of
         # the hand letting go (lift's take three steps up), and for theirs
         # two light notches coming down. Never `--new`: the takes are lift's.
-        "throw":    ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -18, HUSH, "warm:1300", "cut:0.09", "body:320", "tight", "notes:0:3"),
-        "lob":      ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -19, HUSH, "warm:1300", "cut:0.24", "body:320", "tight", "notes:0.11:2,-1"),
+        "throw":    ('one water drop falling into a cup of water, a single soft plop, close, very short', 0.5, -18, FOLEY, "bank:plop", "cut:0.09", "notes:0:4", "tight"),
+        "lob":      ('one water drop falling into a cup of water, a single soft plop, close, very short', 0.5, -19, FOLEY, "bank:plop", "cut:0.24", "notes:0.11:3,0", "tight"),
         # Yours, wide: lift's take, one low notch.
-        "miss":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.14", "body:320", "tight", "notes:0:-4", "before:2200:3"),
+        "miss":     ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.14", "notes:0:-3", "tight"),
         # Theirs, wide of your boats: place's, three steps under it and duller.
         "splash":   ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1200", "cut:0.14", "body:320", "tight", "notes:0:-7", "before:2200:3"),
         # Yours on a boat: place's take, two notches, the second four steps up.
@@ -2945,17 +2945,17 @@ SETS = {
         "drop":     ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -22, BREEZE, "warm:750", "steep", "ease:0.04", "body:320", "cut:0.22"),
         # Its knock on what is below: the board plays it 1.08 to 0.92, lower
         # and up to 5.5 dB louder the further it fell.
-        "land":     ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.14", "body:320", "tight"),
+        "land":     ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -13, FOLEY, "bank:wrap", "cut:0.14", "notes:0:-1", "tight"),
         # A penny taken back out of the top of its column.
-        "lift":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1300", "cut:0.12", "body:320", "tight"),
+        "lift":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -16, FOLEY, "bank:lip", "cut:0.12", "notes:0:-1", "tight"),
         # The finger crossing to another slot: lift's take, one notch of the
         # wheel two steps up, the quietest thing in the set.
         # A notch a column as the finger slides along the rack: 3 dB down,
         # darker, and as the take came where it sat two steps up (the user,
         # 2026-10-10: a slide heard all the time is "waaaay more subtle").
-        "tick":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -24, HUSH, "warm:1200", "cut:0.07", "body:320", "tight"),
+        "tick":     ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -24, FOLEY, "bank:wrap", "cut:0.07", "notes:0:-1", "tight"),
         # A full column: lift's take, two low notches alike.
-        "refused":  ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.26", "body:320", "tight", "notes:0.1:-3,-3"),
+        "refused":  ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.26", "notes:0.1:-4,-4", "tight"),
         # The rack emptied before a new game: lift's take, seven notches
         # tumbling down, the bottom row first.
         "spill":    ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1300", "cut:0.62", "body:320", "tight", "notes:0.07:4,2,3,0,1,-2,-4"),
@@ -2985,21 +2985,21 @@ SETS = {
         # out, lost_hand, win and lose the note's. Nothing new is a knuckle,
         # a table, a tile slid, a clack or a stir of tiles: a tile is a
         # wooden thing on felt.
-        "place":     ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.14", "body:320", "tight", "notes:0:-4"),
+        "place":     ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -13, FOLEY, "bank:token", "cut:0.14", "notes:0:-6", "tight"),
         # A tile picked to choose its end.
-        "lift":      ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1300", "cut:0.12", "body:320", "tight"),
+        "lift":      ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -16, FOLEY, "bank:lip", "cut:0.12", "tight"),
         # One taken from the boneyard, by either hand: lift's take, one notch
         # of the wheel two steps up, the quietest thing in the set.
-        "draw":      ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1400", "cut:0.09", "body:320", "tight", "notes:0:2"),
+        "draw":      ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -17, FOLEY, "bank:lip", "cut:0.09", "notes:0:2", "tight"),
         # A tile that fits neither end, or the boneyard tapped with a tile
         # that fits: lift's take, twice and falling.
-        "refused":   ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        "refused":   ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.28", "notes:0.11:0,-3", "tight"),
         # A pass, "I cannot go", and a hand tied: place's take, two low
         # notches alike.
         "knock":     ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1400", "cut:0.3", "body:320", "tight", "notes:0.13:-7,-7"),
         # The tiles stirred before a deal, once a hand: lift's take, the
         # wheel spun, nine notches wandering over the deal's first second.
-        "shuffle":   ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1300", "cut:0.95", "body:320", "tight", "notes:0.1:0,3,-2,2,-1,4,1,-3,0"),
+        "shuffle":   ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -17, FOLEY, "bank:wrap", "cut:0.95", "notes:0.1:0,3,-2,2,-1,4,1,-3,0", "tight"),
         # Your hand emptied, or a blocked hand yours: three quick notes up.
         "out":       ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.1:4,8,11", "cut:0.7"),
         # The hand theirs: two notes, the second two steps down.
@@ -3029,19 +3029,19 @@ SETS = {
         # sweep, five ticks asked for in one take, came back 90% above 3 kHz.
         # A disc set on its square: the block, three steps under its take to
         # be the heavier of the two (the take sat at 684 Hz, as the button).
-        "place":   ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.14", "body:320", "tight", "notes:0:-3"),
+        "place":   ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -13, FOLEY, "bank:token", "cut:0.14", "notes:0:-4", "tight"),
         # A move taken back: the lighter thing set down.
-        "lift":    ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1300", "cut:0.12", "body:320", "tight"),
+        "lift":    ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -16, FOLEY, "bank:lip", "cut:0.12", "notes:0:1", "tight"),
         # One ring of discs turned over, up to seven a move 85 ms apart:
         # lift's take, one notch of the wheel two steps up, from 0 ms. The
         # board plays it half a step higher a ring and 3 dB down on the
         # first (versus/reversi_board.gd, FLIP_PITCH).
-        "flip":    ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.07", "body:320", "tight", "notes:0:2"),
+        "flip":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -16, FOLEY, "bank:token", "cut:0.07", "notes:0:1", "tight"),
         # A square that turns nothing: lift's take, twice and falling.
-        "refused": ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.28", "body:320", "tight", "notes:0.11:0,-3"),
+        "refused": ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.28", "notes:0.11:1,-2", "tight"),
         # No square to play, the turn handed back: place's take, two low
         # notches alike.
-        "pass":    ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1400", "cut:0.3", "body:320", "tight", "notes:0.14:-5,-5"),
+        "pass":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -13, FOLEY, "bank:token", "cut:0.3", "notes:0.14:-6,-6", "tight"),
         # The board cleared for a new game, the discs going off corner to
         # corner in 0.3 s: a breath of air, Hedgehogs' (its reset).
         "sweep":   ("a soft breath of warm breeze that eases, fades and stops, calm, short", 0.8, -17, BREEZE, "warm:900", "steep", "ease:0.05", "body:320"),
@@ -3074,15 +3074,15 @@ SETS = {
         "claim":    ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.12:5,9,12", "cut:0.6"),
         # A thing bought in the shop, and nothing else sounds with it: one
         # tock, six steps under its take (916 Hz raw) to stay the heavier.
-        "buy":      ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.14", "body:320", "tight", "notes:0:-6"),
+        "buy":      ('one coin dropped into a small glass jar that holds a few coins, one short soft clink, close', 0.7, -13, FOLEY, "bank:jar", "cut:0.14", "notes:0:-7", "tight"),
         # Gold counted: one notch of the wheel for each coin that lands in
         # the pill, 50 ms apart, four to twelve of them, on the pill's own
         # player (four voices, not Fx2D's, so no CUE_GAP), a step of 0.03 up
         # each: the wheel spun. Two steps under its take so the twelfth, at
         # 1.33, still sits under 1 kHz.
-        "coin":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.08", "body:320", "tight", "notes:0:-2"),
+        "coin":     ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -16, FOLEY, "bank:wrap", "cut:0.08", "notes:0:-3", "tight"),
         # Not enough gold: coin's take, two low notches alike.
-        "refused":  ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1200", "cut:0.26", "body:320", "tight", "notes:0.1:-4,-4"),
+        "refused":  ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.26", "notes:0.1:-5,-5", "tight"),
     },
     # The Grove (valley/grove_screen.gd, 2026-10-05). `chop` plays on every
     # swing that hits for as long as a finger is held, twice a second at the
@@ -3112,7 +3112,7 @@ SETS = {
         # What the energy does not reach: fell's take, two low notches alike
         # (chop's take holds a second knock 0.16 s behind its tock, past
         # chop's cut, and no row is written from it).
-        "no":   ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1300", "cut:0.3", "body:320", "tight", "notes:0.14:-8,-8"),
+        "no":   ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.3", "notes:0.14:-8,-8", "tight"),
     },
     # Factory (factory/screen.gd). Everything else it plays is the Grove's
     # set above; this is the market's sale alone.
@@ -3209,14 +3209,14 @@ SETS = {
         "wake":   ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0.2:2,2,5", "cut:1.0"),
         # The two powers offered: a card set down, the button's take, two
         # notches up.
-        "pick":   ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1300", "cut:0.26", "body:320", "tight", "notes:0.1:-2,1"),
+        "pick":   ('a small pebble dropped into a calm pond, one soft plop, close, very short', 0.6, -16, FOLEY, "bank:pebble", "cut:0.26", "notes:0.1:-3,0", "tight"),
         # A power or a perk taken: two notes a fourth apart, all but
         # together.
         "perk":   ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.03:2,7", "cut:0.6"),
         # A tile bought: two quiet notes up a third.
         "buy":    ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.13:3,7", "cut:0.6"),
         # What the light does not reach: two low notches alike.
-        "no":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1300", "cut:0.3", "body:320", "tight", "notes:0.14:-3,-3"),
+        "no":     ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.3", "notes:0.14:-4,-4", "tight"),
         # The supernova: six notes up and over, the longest phrase of the
         # set. The screen starts it NOVA_LEAD (0.65 s) before the core has
         # fallen in, and the third note, the top, is written at 0.65 s.
@@ -3261,13 +3261,13 @@ SETS = {
         # A gap behind her: the block, one tock. A beat of the wings can fall
         # on its frame, so it is the other take; the screen climbs it under
         # two semitones across ten gaps.
-        "pass":      ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1400", "cut:0.12", "body:320", "tight"),
+        "pass":      ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.12", "notes:0:-2", "tight"),
         # A hedge met, the end of the run: pass's take, one notch five steps
         # down, the loudest tick.
-        "bump":      ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -12, HUSH, "warm:1400", "cut:0.14", "body:320", "tight", "notes:0:-5"),
+        "bump":      ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -12, FOLEY, "bank:tongue", "cut:0.14", "notes:0:-5", "tight"),
         # The grass, a moment after the hedge or by itself: pass's take, two
         # low notches alike, two steps under the hedge's.
-        "land":      ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1300", "cut:0.28", "body:320", "tight", "notes:0.1:-7,-7"),
+        "land":      ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -13, FOLEY, "bank:wrap", "cut:0.28", "notes:0.1:-7,-7", "tight"),
         # A dewdrop bursting in place of the bump, and the Second chance
         # taken: one note and no more, so it is never pass's tick twice.
         "dew":       ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0:6", "cut:0.5"),
@@ -3296,27 +3296,27 @@ SETS = {
     "deckchair": {
         # A card set on a column: the constant action. The table varies it
         # by 0.94 to 1.06.
-        "place":     ("one small flat wooden tile laid down gently on a thick felt table, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.1", "body:320", "tight"),
+        "place":     ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -15, FOLEY, "bank:token", "cut:0.1", "notes:0:-1", "tight"),
         # A card taken up to be carried: the same tick two steps up, shorter
         # and the quietest of the set.
-        "lift":      ("one small flat wooden tile laid down gently on a thick felt table, a single soft tock, round and hollow, very short", 0.5, -19, HUSH, "warm:1400", "cut:0.07", "body:320", "tight", "notes:0:2"),
+        "lift":      ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -19, FOLEY, "bank:lip", "cut:0.07", "notes:0:3", "tight"),
         # The stock's top card turned onto the waste: two steps down.
-        "draw":      ("one small flat wooden tile laid down gently on a thick felt table, a single soft tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1300", "cut:0.09", "body:320", "tight", "notes:0:-2"),
+        "draw":      ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -17, FOLEY, "bank:lip", "cut:0.09", "notes:0:-1", "tight"),
         # A hidden card turning up: two quick notches, the second a step up.
-        "flip":      ("one small flat wooden tile laid down gently on a thick felt table, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.2", "body:320", "tight", "notes:0.07:1,3"),
+        "flip":      ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -15, FOLEY, "bank:token", "cut:0.2", "notes:0.07:0,2", "tight"),
         # A card home: four steps up. The table climbs it under two and a
         # half semitones from the ace to the king; the sweep plays it with
         # no knock.
-        "home":      ("one small flat wooden tile laid down gently on a thick felt table, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1500", "cut:0.12", "body:320", "tight", "notes:0:4"),
+        "home":      ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.12", "notes:0:3", "tight"),
         # The waste turned back over into the stock: the wheel spun, five
         # quick notches.
-        "recycle":   ("one small flat wooden tile laid down gently on a thick felt table, a single soft tock, round and hollow, very short", 0.5, -18, HUSH, "warm:1300", "cut:0.34", "body:320", "tight", "notes:0.055:0,0,0,0,0"),
+        "recycle":   ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -18, FOLEY, "bank:lip", "cut:0.34", "notes:0.055:1,1,1,1,1", "tight"),
         # The deal: the wheel spun for as long as the cards are laid.
-        "deal":      ("one small flat wooden tile laid down gently on a thick felt table, a single soft tock, round and hollow, very short", 0.5, -19, HUSH, "warm:1300", "cut:1.0", "body:320", "tight", "notes:0.09:0,1,0,1,0,1,0,1,0,1"),
+        "deal":      ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -19, FOLEY, "bank:wrap", "cut:1.0", "notes:0.09:1,2,1,2,1,2,1,2,1,2", "tight"),
         # A card that has nowhere to go: two low notches alike.
-        "nope":      ("one small flat wooden tile laid down gently on a thick felt table, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1300", "cut:0.26", "body:320", "tight", "notes:0.1:-5,-5"),
+        "nope":      ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -14, FOLEY, "bank:tongue", "cut:0.26", "notes:0.1:-4,-4", "tight"),
         # A move taken back: three steps down.
-        "undo":      ("one small flat wooden tile laid down gently on a thick felt table, a single soft tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1300", "cut:0.1", "body:320", "tight", "notes:0:-3"),
+        "undo":      ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -17, FOLEY, "bank:lip", "cut:0.1", "notes:0:-2", "tight"),
         # The bulb: two notes up a third.
         "hint":      ("one soft short note on a kalimba, muffled and kind", 0.6, -11, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.12:5,9", "cut:0.6"),
         # A suit all the way home, four a deal at most: three up.
@@ -3374,13 +3374,13 @@ SETS = {
     # are the button's own click (fx2d's touch).
     "furrow": {
         # A crop picked: the chain's tick, the cue of the game.
-        "pick":      ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1400", "cut:0.07", "body:320", "tight"),
+        "pick":      ('a small pebble dropped into a calm pond, one soft plop, close, very short', 0.6, -17, FOLEY, "bank:pebble", "cut:0.07", "tight"),
         # A packet's crop into a bed: the block, three steps down.
-        "sow":       ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1300", "cut:0.14", "body:320", "tight", "notes:0:-3"),
+        "sow":       ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -17, FOLEY, "bank:token", "cut:0.14", "notes:0:-5", "tight"),
         # Not enough seeds: two low notches alike.
-        "nope":      ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1300", "cut:0.26", "body:320", "tight", "notes:0.1:-5,-5"),
+        "nope":      ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.26", "notes:0.1:-5,-5", "tight"),
         # A chain over, its basket set down: two knocks, the second a third up.
-        "tally":     ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1300", "cut:0.3", "body:320", "tight", "notes:0.09:0,4"),
+        "tally":     ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.3", "notes:0.09:0,4", "tight"),
         # A plot opened: three notches up.
         "plot":      ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1300", "cut:0.42", "body:320", "tight", "notes:0.1:-2,1,5"),
         # The 5th, 10th, 15th and 20th link: two notes up a third, played a
@@ -3408,7 +3408,7 @@ SETS = {
         # A cow milked: the block twice, quick, the second lower: into the pail.
         "milk":      ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1300", "cut:0.2", "body:320", "tight", "notes:0.07:0,-4"),
         # A dead crop cleared, a growing one dug up: one low knock.
-        "clear":     ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1200", "cut:0.14", "body:320", "tight", "notes:0:-7"),
+        "clear":     ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -17, FOLEY, "bank:wrap", "cut:0.14", "notes:0:-7", "tight"),
         # A chick out of its egg, and grown: the button twice, up.
         "chick":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.2", "body:320", "tight", "notes:0.08:5,9"),
         # The fox sent off: three quick notches up.
@@ -3432,23 +3432,23 @@ SETS = {
     # and the jars' calm touch are the button's own click (fx2d's touch).
     "griddle": {
         # A toastie sold by hand: the rush's tick, the cue of the game.
-        "serve":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1400", "cut:0.07", "body:320", "tight"),
+        "serve":     ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -17, FOLEY, "bank:token", "cut:0.07", "notes:0:-1", "tight"),
         # A till's own sale: the button a fourth down, quieter.
         "till":      ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -19, HUSH, "warm:1300", "cut:0.07", "body:320", "tight", "notes:0:-5"),
         # A toastie onto the pass: one low knock of the block, quieter still.
         "cook":      ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -19, HUSH, "warm:1200", "cut:0.12", "body:320", "tight", "notes:0:-7"),
         # A lot cut by hand: the block, three steps down.
-        "cut":       ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1300", "cut:0.14", "body:320", "tight", "notes:0:-3"),
+        "cut":       ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -17, FOLEY, "bank:lip", "cut:0.14", "notes:0:-2", "tight"),
         # A cow's milk taken: the block twice, quick, the second lower.
         "milk":      ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1300", "cut:0.2", "body:320", "tight", "notes:0.07:0,-4"),
         # A lot's crop set: the block, lower.
-        "plant":     ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1200", "cut:0.14", "body:320", "tight", "notes:0:-5"),
+        "plant":     ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -17, FOLEY, "bank:token", "cut:0.14", "notes:0:-6", "tight"),
         # Tonic, scraps, the hurry board, a notch of the signboard: the button twice.
-        "switch":    ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.16", "body:320", "tight", "notes:0.07:0,3"),
+        "switch":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -16, FOLEY, "bank:token", "cut:0.16", "notes:0.07:-1,2", "tight"),
         # Not enough coins, a full larder, the signboard down: two low notches alike.
-        "nope":      ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1300", "cut:0.26", "body:320", "tight", "notes:0.1:-5,-5"),
+        "nope":      ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.26", "notes:0.1:-4,-4", "tight"),
         # A rush of three or more over: two knocks, the second a third up.
-        "tally":     ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1300", "cut:0.3", "body:320", "tight", "notes:0.09:0,4"),
+        "tally":     ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.3", "notes:0.09:1,5", "tight"),
         # A lot, a cow, a stall, a grill, a till: three notches up.
         "buy":       ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1300", "cut:0.42", "body:320", "tight", "notes:0.1:-2,1,5"),
         # The 5th, 10th and 15th link: two notes up a third, played a step
@@ -3487,23 +3487,23 @@ SETS = {
     # brush is the button's own click (fx2d's touch).
     "trivet": {
         # A stack lifted off the cloth: the button, the quietest touch.
-        "lift":      ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -19, HUSH, "warm:1400", "cut:0.07", "body:320", "tight", "notes:0:2"),
+        "lift":      ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -19, FOLEY, "bank:lip", "cut:0.07", "notes:0:1", "tight"),
         # A stack let go where it cannot lie, back to the cloth: the block, low.
-        "back":      ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1200", "cut:0.14", "body:320", "tight", "notes:0:-5"),
+        "back":      ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -17, FOLEY, "bank:lip", "cut:0.14", "notes:0:-6", "tight"),
         # A stack set down on the tray: felt on wood, the block's one knock.
-        "place":     ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1300", "cut:0.16", "body:320", "tight"),
+        "place":     ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.16", "notes:0:-3", "tight"),
         # A mat landing on a stack: the tick of the game, the button's notch.
-        "hop":       ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1400", "cut:0.07", "body:320", "tight"),
+        "hop":       ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -17, FOLEY, "bank:wrap", "cut:0.07", "notes:0:-1", "tight"),
         # A mat of a stack put away: the block, three steps up and shorter.
         "pop":       ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -18, HUSH, "warm:1300", "cut:0.08", "body:320", "tight", "notes:0:3"),
         # Three stacks dealt onto the cloth: the button three times, up.
-        "deal":      ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -18, HUSH, "warm:1400", "cut:0.26", "body:320", "tight", "notes:0.07:0,2,4"),
+        "deal":      ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -18, FOLEY, "bank:wrap", "cut:0.26", "notes:0.07:-1,1,3", "tight"),
         # The brush taking a stack off: the block twice, the second lower.
         "sweep":     ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1300", "cut:0.24", "body:320", "tight", "notes:0.08:0,-4"),
         # No brush left, no fresh hand left: two low notches alike.
-        "nope":      ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1300", "cut:0.26", "body:320", "tight", "notes:0.1:-5,-5"),
+        "nope":      ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.26", "notes:0.1:-6,-6", "tight"),
         # The tray full and no brush: two slow knocks down, before the card.
-        "over":      ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1200", "cut:0.42", "body:320", "tight", "notes:0.18:-3,-7"),
+        "over":      ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.42", "notes:0.18:-6,-10", "tight"),
         # Ten of a colour put away: three notes up.
         "clear":     ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.1:2,5,9", "cut:0.8"),
         # The second stack one move puts away: four up, from higher.
@@ -3536,17 +3536,17 @@ SETS = {
     # kalimba note), copied into build/sfx_raw/tally/.
     "tally": {
         # A belt square laid: the button, the quietest tick, a step up.
-        "lay":       ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -19, HUSH, "warm:1400", "cut:0.07", "body:320", "tight", "notes:0:2"),
+        "lay":       ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -19, FOLEY, "bank:token", "cut:0.07", "notes:0:0", "tight"),
         # A dig, a machine or a crate set down: the block's one low knock.
-        "place":     ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1300", "cut:0.16", "body:320", "tight", "notes:0:-2"),
+        "place":     ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.16", "notes:0:-4", "tight"),
         # A piece turned: the button, a soft notch.
-        "turn":      ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.08", "body:320", "tight"),
+        "turn":      ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -16, FOLEY, "bank:token", "cut:0.08", "notes:0:-2", "tight"),
         # A piece lifted off the paper: the block, lower and softer.
-        "lift":      ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1200", "cut:0.14", "body:320", "tight", "notes:0:-5"),
+        "lift":      ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -17, FOLEY, "bank:lip", "cut:0.14", "notes:0:-5", "tight"),
         # A target token into the box: the button a fourth down, very quiet.
-        "deliver":   ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -21, HUSH, "warm:1300", "cut:0.07", "body:320", "tight", "notes:0:-5"),
+        "deliver":   ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -21, FOLEY, "bank:token", "cut:0.07", "notes:0:-7", "tight"),
         # A place refused: two low notches alike.
-        "nope":      ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1300", "cut:0.26", "body:320", "tight", "notes:0.1:-5,-5"),
+        "nope":      ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.26", "notes:0.1:-5,-5", "tight"),
         # An upgrade can be bought: one soft note.
         "ready":     ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0:5", "cut:0.45"),
         # An upgrade bought: two notes up a fourth.
@@ -3577,10 +3577,10 @@ SETS = {
         "drop":      ("one single soft low drop of thick syrup falling into a bowl of calm water, one round gentle plop, very short", 0.5, -16, SYRUP, "warm:1500", "cut:0.22", "body:320", "ease:0.004", "tight"),
         "mix":       ("a few small soft round bubbles popping gently at the top of thick warm syrup stirred slowly with a wooden spoon, a quiet bloop bloop bloop, calm", 1.0, -15, SYRUP, "warm:1500", "cut:0.7", "body:320", "ease:0.006"),
         # The next tray set down.
-        "deal":      ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.1", "body:320", "tight", "notes:0.09:0,-2"),
+        "deal":      ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -16, FOLEY, "bank:wrap", "cut:0.1", "notes:0.09:1,-1", "tight"),
         # The mould served: one knock, the tray picked up. (Spill, empty and
         # set went on 2026-10-11 with the leak, the limit and the live match.)
-        "serve":     ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1300", "cut:0.16", "body:320", "tight", "notes:0:-4"),
+        "serve":     ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -13, FOLEY, "bank:token", "cut:0.16", "notes:0:-5", "tight"),
         # Served over the mark: two notes up a fourth.
         "good":      ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.1:2,7", "cut:0.6"),
         # Served perfect: three up.
