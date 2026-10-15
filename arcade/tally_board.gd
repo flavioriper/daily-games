@@ -54,6 +54,8 @@ const POP := 0.26
 const SPIN := 0.16
 const SQUASH := 0.22
 const GONE := 0.22
+## Chevrons are drawn from this many pixels a square.
+const CHEV_FROM := 30.0
 ## A numeral smaller than this many pixels is not written.
 const FS_MIN := 8
 const TOOL_KINDS := {"belt": Sim.BELT, "dig": Sim.DIG, "crate": Sim.CRATE, "add": Sim.ADD, "mul": Sim.MUL, "sub": Sim.SUB, "div": Sim.DIV, "pow": Sim.POW}
@@ -254,20 +256,20 @@ func _rebuild() -> void:
 				Art.print_ring(b, Art.mid(Sim.tile_of(i)), sim.can_dig(v))
 		_prints = b.mesh() if not b.verts.is_empty() else null
 	_work_ins()
-	var beds := Face.Builder.new()
-	var decks := Face.Builder.new()
+	var beds := Face.FlatBuilder.new(_flat_cache)
+	var decks := Face.FlatBuilder.new(_flat_cache)
 	for i in Sim.N:
 		var kd := int(sim.kind[i])
 		if kd == Sim.BELT:
 			var f := int(sim.face[i])
-			Art.bed_into(beds, Art.mid(Sim.tile_of(i)), _entry(i, f), f)
+			beds.append(Art.bed(_entry(i, f), f), Transform2D(0.0, Art.mid(Sim.tile_of(i))))
 		elif kd == Sim.BRIDGE:
 			var at := Art.mid(Sim.tile_of(i))
 			var v := int(sim.face2[i])
-			Art.bed_into(beds, at, v, v)
+			beds.append(Art.bed(v, v), Transform2D(0.0, at))
 			decks.append(Art.deck(int(sim.face[i])), Transform2D(0.0, at))
-	_beds = beds.mesh() if not beds.verts.is_empty() else null
-	_decks = decks.mesh() if not decks.verts.is_empty() else null
+	_beds = beds.mesh()
+	_decks = decks.mesh()
 	_layers.ground.queue_redraw()
 	_layers.beds.queue_redraw()
 	_layers.decks.queue_redraw()
@@ -354,6 +356,9 @@ func _draw_mesh_live(l: Node2D, nm: String, m: ArrayMesh) -> void:
 		l.draw_mesh(m, null)
 
 func _build_chevrons() -> ArrayMesh:
+	# far out a chevron is a speck: the tokens show the way
+	if k < CHEV_FROM:
+		return null
 	var fb := Face.FlatBuilder.new(_flat_cache)
 	var chev := Art.chevron()
 	var r := _visible()
@@ -375,8 +380,9 @@ func _build_chevrons() -> ArrayMesh:
 
 func _build_tokens(under: bool) -> ArrayMesh:
 	var fb := Face.FlatBuilder.new(_flat_cache)
-	var plain := Art.token(false)
-	var ringed := Art.token(true)
+	var lod := 0 if k >= 100.0 else (1 if k >= 40.0 else 2)
+	var plain := Art.token(false, lod)
+	var ringed := Art.token(true, lod)
 	var aim: int = sim.target()
 	var r := _visible()
 	for s: int in sim.lanes:

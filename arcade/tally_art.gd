@@ -127,6 +127,16 @@ static func bed_into(b: Face.Builder, at: Vector2, a: int, x: int) -> void:
 	b.stroke(pts, U * 0.54, WALNUT, false, false)
 	b.stroke(pts, U * 0.08, Color(WALNUT_HI, 0.5), false, false)
 
+## A belt square's bed about the origin, built once a shape.
+static func bed(a: int, x: int) -> ArrayMesh:
+	var key := ["bed", a, x]
+	if _cache.has(key):
+		return _cache[key]
+	var b := Face.Builder.new()
+	b.feather = 2.4
+	bed_into(b, Vector2.ZERO, a, x)
+	return _keep(key, b)
+
 ## A belt's cap where it starts from nothing, so a run's end is round.
 static func bed_cap(b: Face.Builder, at: Vector2) -> void:
 	b.disc(at, U * 0.33, WALNUT_EDGE)
@@ -160,18 +170,22 @@ static func deck(across: int) -> ArrayMesh:
 # --- tokens ---
 
 ## A token: a cream wooden disc with a rim and its shadow, about the origin;
-## `ring` a target's sun ring.
-static func token(ring: bool) -> ArrayMesh:
-	var key := ["token", ring]
+## `ring` a target's sun ring. `lod` 0 is seen close, 1 at the usual zoom, 2
+## far out (one disc and its rim, few sides: hundreds are laid a frame).
+static func token(ring: bool, lod := 0) -> ArrayMesh:
+	var key := ["token", ring, lod]
 	if _cache.has(key):
 		return _cache[key]
 	var b := Face.Builder.new()
+	b.detail = [1.0, 0.45, 0.16][lod]
+	b.feather = [1.3, 2.4, 6.0][lod]
 	var r := U * 0.31
-	b.disc(Vector2(0, U * 0.05), r, TOKEN_SHADE)
+	if lod < 2:
+		b.disc(Vector2(0, U * 0.05), r, TOKEN_SHADE)
 	b.disc(Vector2.ZERO, r, TOKEN_RIM)
-	b.disc(Vector2(0, -U * 0.02), r * 0.88, TOKEN)
+	b.disc(Vector2(0, -U * 0.02), r * 0.86, TOKEN)
 	if ring:
-		b.stroke(Face.Builder.ring(Vector2(0, -U * 0.02), r * 0.98, r * 0.98), U * 0.07, TARGET, true)
+		b.stroke(Face.Builder.ring(Vector2(0, -U * 0.02), r * 0.98, r * 0.98, b.detail), U * 0.07, TARGET, true)
 	return _keep(key, b)
 
 const TOKEN_R := 0.31
