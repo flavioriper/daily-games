@@ -262,7 +262,19 @@ func _rebuild() -> void:
 		var kd := int(sim.kind[i])
 		if kd == Sim.BELT:
 			var f := int(sim.face[i])
-			beds.append(Art.bed(_entry(i, f), f), Transform2D(0.0, Art.mid(Sim.tile_of(i))))
+			var at := Art.mid(Sim.tile_of(i))
+			var a := _entry(i, f)
+			# a second way in from a side (a merge) and a way out to a side
+			# (a split) each get their bend under the main bed, so a token
+			# taking it rides on walnut and not on the paper
+			var bits := int(_ins.get(i, 0))
+			for d: int in [Sim.left_of(f), Sim.right_of(f)]:
+				if bits & (1 << d) and d != a:
+					beds.append(Art.bed(d, f), Transform2D(0.0, at))
+			for e: int in sim.outs.get(i, PackedInt32Array()):
+				if (e & 3) != f:
+					beds.append(Art.bed(a, e & 3), Transform2D(0.0, at))
+			beds.append(Art.bed(a, f), Transform2D(0.0, at))
 		elif kd == Sim.BRIDGE:
 			var at := Art.mid(Sim.tile_of(i))
 			var v := int(sim.face2[i])

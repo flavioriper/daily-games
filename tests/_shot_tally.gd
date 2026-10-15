@@ -201,6 +201,11 @@ func _grow(sim) -> void:
 		col.append(s + Vector2i(-2, j))
 	sim.lay_run(col, 3)
 	sim.lay_run([s + Vector2i(-2, -4), s + Vector2i(-1, -4), s + Vector2i(0, -4)], 0)
+	# a merge: 8s up into the side of the adder's run to the box, and a
+	# split: a belt off that run's side going north
+	put.call(m + Vector2i(2, 3), 8)
+	sim.lay_run([m + Vector2i(2, 2), m + Vector2i(2, 1)], 3)
+	sim.lay_run([m + Vector2i(1, -1), m + Vector2i(1, -2)], 3)
 	sim.events.clear()
 	_s.board.relay()
 
@@ -273,10 +278,14 @@ func _process(delta: float) -> bool:
 		9:
 			if _t > _at + 6.0:
 				_shot("5_grown")
+				_s.board.k = 150.0
+				_s.board.look_at_square(Vector2(Sim.HUB_AT + Vector2i(-4, 1)) + Vector2(2.0, 0.5), true)
 				_next()
 		10:
 			if _t > _at + 1.0:
-				_shot("5b_grown_again")
+				_shot("5b_close")
+				_s.board.k = 74.0
+				_s.board.look_at_square(Vector2(Sim.HUB_AT) + Vector2(2, 3), true)
 				# a real two-finger pinch out about the middle
 				var mid: Vector2 = _win(_s.board, _s.board.view.get_center())
 				_touch(mid + Vector2(-160, 0), true, 0)
