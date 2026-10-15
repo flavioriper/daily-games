@@ -4018,3 +4018,56 @@ end still makes the corner. The Belts tutorial body says so in en, pt, es
 headless 0 failed twice (its straight-line beat now finds clear paper,
 `_clear_row`). A sheet already laid like the shot stays unjoined: the
 player redraws the branch from the line.
+
+### Bagatelle (2026-10-15)
+
+**The fifteenth Arcade card**, built unattended from the user's nine
+screenshots of a web pin-drop idle game ("here is next arcade game to be
+created ... Do everything autonomous"). Spec
+`docs/superpowers/specs/2026-10-15-arcade-bagatelle-design.md`, which names
+the original once to forbid it. Marbles dropped through brass pins on plum
+velvet into seven wooden cups; coins buy four run upgrades; ten marbles of a
+tier merge into one of the next (×20); a cash out turns a run into stars,
+kept for ever, which buy the star shop (gold and rose pins you hold and
+move, polish, a fuller jar, finer marbles, twins, warm cups, shine). Kept
+like Tally (`user://bagatelle.cfg`, no run end, no gold, no ads, nothing
+runs while shut); the card sits after Tally on the tab's second page.
+
+- **Files**: `arcade/bagatelle_{sim,art,board,shop,screen}.gd`,
+  `ui/hud/bagatelle_tutorial_diagram.gd`, `ui/menu/cards/arc_bagatelle.gd`,
+  the `bagatelle` set in `tools/gen_sfx.py`, locale `BG_*` and
+  `TUT_BAGATELLE_*`. Probe `tests/_probe_bagatelle.gd -- [seed] [minutes]`
+  (rules, kept file, the cups' spread and, with minutes, a greedy pace bot);
+  harness `tests/_shot_bagatelle.gd` (every beat by real touches, the four
+  tutorial pages; headless it is a smoke run).
+- **The physics is the sim's own**, 1/120 s steps, circle against pin, a
+  seeded RNG, no bodies, marbles never touch each other. What it took to
+  feel like a pin board: **a blow sends the marble left or right afresh**
+  (`KICK_LO`..`KICK_HI`, 40% against the side struck, `LEAN_OFF`), or a
+  drifting marble rides the staggered pins' diagonal to a wall and the cups
+  come out flat or edge-heavy; the scatter is a blow's, never a roll's; the
+  wide rows' two outermost pins are left bare (`has_pin`), as a pin there
+  stands closer to the wall than a marble is wide and wedged one in three
+  edge drops; a marble resting 0.25 s is tipped toward the middle. A fall
+  takes about 2.4 to 2.9 s (Weight shortens it). From the middle the cups
+  come out 88/139/177/201/173/144/78 in a thousand.
+- **A tap's across is kept in the middle band** (0.36 to 0.64 of the
+  board): at 0.3 a tap fed the 5× edge cup two times in five and paid twice
+  the middle. The auto dropper glides wider (±0.36) and is not kept in.
+- **The economy, after four tries with the bot** (seed 7, greedy buyer,
+  cash out at half the stars ever): the square root of a run's coins made
+  stars follow the ×20 tiers and a cash out doubled the last in seconds;
+  stars are now `(log10(coins) - 4)^2.5` (1e5 one, 1e8 thirty-two, 1e15
+  four hundred) and every star ever earned adds `0.1 × sqrt(stars)` to every
+  coin, which converges. First cash out at 5 minutes, ten stars at 18, 474
+  by two hours. Value is linear (a doubling every ten ranks ran away);
+  Finer marbles is the tiers' road (bought marbles a kind better). Every
+  figure is a call for the user.
+- **Draw calls** on `opengl3_angle` at 810x1440: 82 to 109 in play (three
+  marbles to twenty-six in the air with auto drop at its top), 140 to 224
+  under a card, 149 for the Arcade tab, 144 to 156 for the tutorial. Pins,
+  velvet, rail and cups are cached meshes; the marbles and the halos are
+  each one `Face.FlatBuilder` mesh a frame.
+- **Not done**: a phone; the sounds heard; pt and es read by a speaker;
+  `reduce` shot; offline progress (a call); the tutorial pages shot after
+  their zoom.

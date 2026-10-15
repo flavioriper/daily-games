@@ -123,6 +123,8 @@ const CARDS := {
 	"trivet": ["sky", 1.5, Vector2(0.6, 0.5)],
 	# Tally's paper lies on a desk in the warm light of the sky vista.
 	"tally": ["sky", 1.5, Vector2(0.45, 0.55)],
+	# Bagatelle's velvet board is lit like an evening: the night vista.
+	"bagatelle": ["night", 1.6, Vector2(0.6, 0.35)],
 	# Gumdrop's tray is set out on the meadow's grass.
 	"gumdrop": ["meadow", 1.5, Vector2(0.7, 0.55)],
 }

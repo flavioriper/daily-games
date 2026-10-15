@@ -70,6 +70,7 @@ const FurrowScreen = preload("res://arcade/furrow_screen.gd")
 const GriddleScreen = preload("res://arcade/griddle_screen.gd")
 const TrivetScreen = preload("res://arcade/trivet_screen.gd")
 const TallyScreen = preload("res://arcade/tally_screen.gd")
+const BagatelleScreen = preload("res://arcade/bagatelle_screen.gd")
 const ThirteenScreen = preload("res://arcade/thirteen_screen.gd")
 const PeapodScreen = preload("res://arcade/peapod_screen.gd")
 const PosyScreen = preload("res://arcade/posy_screen.gd")
@@ -1653,14 +1654,17 @@ func _open_arcade(game: String) -> void:
 		"tally":
 			screen = TallyScreen.new()
 			screen.name = "Tally"
+		"bagatelle":
+			screen = BagatelleScreen.new()
+			screen.name = "Bagatelle"
 		_:
 			return
-	# Nightlight, Furrow, Griddle and Tally are kept and have no run to finish: like the Factory's land
+	# Nightlight, Furrow, Griddle, Tally and Bagatelle are kept and have no run to finish: like the Factory's land
 	# tab it is looked in on, so leaving it is not a moment for an
 	# interstitial.
 	screen.closed.connect(func() -> void:
 		screen.queue_free()
-		if game != "nightlight" and game != "furrow" and game != "griddle" and game != "tally":
+		if game != "nightlight" and game != "furrow" and game != "griddle" and game != "tally" and game != "bagatelle":
 			_left_game("arcade")
 		elif not _switching:
 			_show_list("arcade"))

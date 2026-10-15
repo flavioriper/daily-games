@@ -140,3 +140,11 @@ paid). No event a sale, a cut or a cow milked. `rules_opened` carries
 `tally_upgrade` (tile: the track, belt, dig, add, mul, sub or pow; level).
 No event a piece placed, a belt laid or a number delivered. `rules_opened`
 carries `puzzle_id` tally.
+
+**Bagatelle (2026-10-15)** is kept like Tally, so no `arcade_start` or
+`arcade_end`: `bagatelle_enter` (stars: ever earned, tier: the best marble's
+index), `bagatelle_leave` (seconds, stars, tier), `bagatelle_upgrade` (id:
+marbles, value, auto or weight; level), `bagatelle_shop` (id, level),
+`bagatelle_tier` (tier, a marble never had before), `bagatelle_cashout`
+(stars, outs). No event a drop or a landing. `rules_opened` carries
+`puzzle_id` bagatelle.

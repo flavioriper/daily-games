@@ -1,0 +1,139 @@
+# Bagatelle: the fifteenth Arcade game
+
+2026-10-15. Built unattended. The user, with nine screenshots of a web
+game: "here is next arcade game to be created, check on web for further
+references. Wire sounds, cozy animations, rewards, great player experience
+like the arcade games have. Do everything autonomous."
+
+## 1. What it follows, and what it may not be
+
+The reference is the idle pin-drop game the user played on a web portal
+(screenshots of 2026-10-15), itself after the television game show's
+pin-board. **That name is written here once, to forbid it: Plinko.** It
+appears nowhere in code, comments, commits, locale or on screen; neither
+does the portal's game title. Nothing of the reference is kept but the
+shape:
+
+- a board of pins, balls dropped from the top by a tap or by an auto
+  dropper, landing in cups along the foot that pay the ball's worth times
+  the cup's multiplier;
+- a cup levels up the more balls land in it, and its multiplier with it;
+- coins buy run upgrades (ball count, ball value, auto drop, ball weight);
+- balls come in tiers; ten of one tier merge into one of the next;
+- cash out: a run's coins become a permanent second currency spent in a
+  shop of lasting upgrades; bonus pins (a plus pin and a times pin) can be
+  moved about the board.
+
+What is not kept: the night-sky purple, the XP bar, investments, ascend,
+the slots and stats tabs, skins, the watch-an-ad tier ball, away progress.
+
+## 2. The game
+
+**Bagatelle**: the old parlour board. A tall board of plum velvet edge to
+edge, brass pins in staggered rows, matte clay and glass marbles falling
+through them, seven turned wooden cups along the foot, each with its
+multiplier painted on and its level on a little tag. A brass dropper glides
+back and forth along the top.
+
+- **Tap the board** and a marble leaves the jar at the tap's across,
+  dropped from the top. The auto dropper (an upgrade) lets one go at its
+  own across every so often.
+- **The jar** holds every marble you own. A marble in the air is out of
+  it; landing, it rolls back. The jar is shown in the top-left of the
+  board as one chip a tier: the tier's marble, "in jar / owned".
+- The jar lets the **best marble it holds** go first.
+- A marble pays `value × worth(tier) × cup multiplier × polish` in coins.
+- **Marbles do not knock each other**: each falls alone through the pins
+  (the genre's rule, and what keeps a hundred in the air cheap).
+
+**Cups**: seven, base multipliers 5, 2, 1, 0.5, 1, 2, 5. Each landing is a
+point to that cup; a cup goes up a level at `need(lv)` points, and its
+multiplier is `base × (1 + 0.1 × lv)`. The middle fills fastest, the edges
+pay most.
+
+**Tiers**: twelve, Clay, Glass, Agate, Swirl, Cat's-eye, Opal, Moonstone,
+Pearl, Ember, Frost, Comet, Star; tier k is worth `20^k`. Ten of a tier
+merge into one of the next (the Marbles card: Merge per row, Merge all). A
+merged marble is worth twice the ten, but drops one at a time: a jar too
+merged runs dry between drops. That is the choice.
+
+**Run upgrades** (coins; Buy ×1 or Max):
+
+| Upgrade | Rank 0 | A rank | Price |
+|---|---|---|---|
+| Marbles | 3 clay | +1 clay marble | 6 × 1.15^n |
+| Value | 1 | `(1 + n) × 2^(n div 10)` | 12 × 1.22^n |
+| Auto drop | off | `2.4 s × 0.9^(n−1)`, at least 0.1 s | 25 × 1.3^n |
+| Weight | gravity ×1 | +12% gravity, 25 ranks | 60 × 1.45^n |
+
+**Cash out**: stars = `floor(sqrt(coins earned this run / 2000) × shine)`.
+Resets coins, upgrades, cups, marbles. Stars are kept for ever and buy:
+
+| Star shop | Ranks | What a rank does | Prices in stars |
+|---|---|---|---|
+| Plus pin | 5 | one more gold pin: a marble that touches it is worth +50% (once a pin) | 2, 5, 12, 30, 75 |
+| Times pin | 3 | one more rose pin: ×2 (once a pin) | 10, 40, 150 |
+| Polish | 10 | every coin ×1.5 | 3 × 2^n |
+| Full jar | 5 | the run starts with 3 more clay marbles | 1, 3, 8, 20, 50 |
+| Twins | 5 | a drop lets go two marbles one time in five more | 4, 10, 25, 60, 150 |
+| Warm cups | 5 | cups start a run at level 5 a rank | 3, 8, 20, 50, 120 |
+| Shine | 5 | +25% stars from a cash out | 5, 15, 40, 100, 250 |
+
+Bonus pins stand on pins of the board; **a finger held on one carries it**
+to another pin. They stay where they are put across cash outs.
+
+**Numbers are floats.** Tier 11 alone is worth 20^11 ≈ 2×10^14; with
+value, cups and polish a coin count passes int64. Coins, worth and prices
+are floats, shown 999, 12.4K, 3.1M, B, T, Qa, Qi, Sx, Sp, Oc, No, Dc, then
+1.2e36.
+
+**The physics is the sim's own**, fixed steps of 1/120 s, circle against
+pin, a seeded RNG for the scatter, no physics bodies, so the probe can
+replay a seed. Marbles do not touch each other.
+
+**Kept like Tally**: `user://bagatelle.cfg`, no run end, no end card, no
+gold, no boosters, no interstitial. **The board runs only while it is on
+screen** (the Factory's and Tally's rule).
+
+## 3. The screen
+
+The board fills the screen, and the whole board -- pins, dropper and the
+seven cups along its foot -- is laid inside the room between the plate row
+and the tray. Over it the flat boards' top bar and a plate
+row: coins (and the coins a second, smoothed), stars (and "Cash out +N"
+when a cash out would pay). At the foot a tray of four round buttons:
+Upgrades, Marbles, Stars, and the big Drop on the left (the thumb side).
+**Draw calls**: the pins are one cached mesh; every marble in the air is
+laid into one mesh rebuilt a frame (one `draw_mesh` for the swarm), the
+pin halos into one more; the cups one cached mesh and their tags strings.
+A marble that touched a bonus pin wears a ring of the pin's colour, never a
+shade of its own (the marbles are coloured by tier).
+
+Cards (the house Dialog card) for Upgrades, Marbles (the jar's tiers, Merge
+and Merge all), Stars (cash out and the star shop).
+
+## 4. Moments, sound and feel
+
+Every touch is heard and felt. The takes are the bank's
+(`tools/sfx_bank/`, the user's 2026-10-15 rules): pins the pebble (very
+quiet, a step down a row, throttled), a cup landing the bubble wrap, a
+buy the jar coin, refused the tongue, a cup's level and a new tier the
+kalimba notes, a cash out the longest rise.
+
+A hit pin glows softly (a halo, never rays) and the marble shivers off it;
+a landing squashes its cup and floats its coins; a big landing sends coins
+to the plate; a cup's level hops its tag and rings it; a new tier is named
+with confetti; a cash out rains stars. `Motion.reduce` stills all but the
+words.
+
+## 5. Calls that are mine, the user's to change
+
+1. **The name** Bagatelle and the plum velvet, brass pins, clay marbles.
+2. **Tap where to drop**: the reference drops from the middle only.
+3. **Seven cups**, base 5/2/1/0.5/1/2/5, +10% a level.
+4. **Twelve tiers**, 10 into 1, worth ×20.
+5. **One prestige layer** (stars) and its shop; no investments, no ascend,
+   no XP bar.
+6. **No away progress**, no gold, no ads in the game.
+7. **No concept tab** (the user said "do everything autonomous").
+8. **No mascot**: the marbles are pieces, not characters.

@@ -12,7 +12,10 @@ extends HBoxContainer
 ## garden's hedges, and Deckchair (arcade/deckchair_screen.gd), the
 ## seven-column card game for one, and Eddy (arcade/eddy_screen.gd), a
 ## whirlpool steered about a pond, and Trivet (arcade/trivet_screen.gd),
-## stacks of felt mats sorted on a tray, and Factory (factory/screen.gd), the
+## stacks of felt mats sorted on a tray, and Tally (arcade/tally_screen.gd),
+## a number factory on squared paper, and Bagatelle
+## (arcade/bagatelle_screen.gd), marbles dropped through brass pins into
+## cups, and Factory (factory/screen.gd), the
 ## land of belts, which had a tab of its own until the bottom bar left on
 ## 2026-10-13, and Marigold (puzzles/marigold2d.gd), a seed shot down through
 ## a pond garden of buds, which is a daily board with levels and was a card
@@ -42,13 +45,14 @@ const NightSim = preload("res://arcade/nightlight_sim.gd")
 const FurrowSim = preload("res://arcade/furrow_sim.gd")
 const GriddleSim = preload("res://arcade/griddle_sim.gd")
 const TallySim = preload("res://arcade/tally_sim.gd")
+const BagatelleSim = preload("res://arcade/bagatelle_sim.gd")
 const FactoryArt = preload("res://factory/art.gd")
 const GoldPill = preload("res://ui/menu/gold_pill.gd")
 const Registry = preload("res://ui/registry.gd")
 
 const GAP := 20
-const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "nightlight", "beeline", "deckchair", "eddy", "furrow", "griddle", "trivet", "tally", "factory", "marigold"]
-const NAMES := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Lucky Thirteen", "posy": "Posy", "peapod": "Peapod", "nightlight": "Nightlight", "beeline": "Beeline", "deckchair": "Deckchair", "eddy": "Eddy", "furrow": "Furrow", "griddle": "Griddle", "trivet": "Trivet", "tally": "Tally", "factory": "Factory", "marigold": "Marigold"}
+const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "nightlight", "beeline", "deckchair", "eddy", "furrow", "griddle", "trivet", "tally", "bagatelle", "factory", "marigold"]
+const NAMES := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Lucky Thirteen", "posy": "Posy", "peapod": "Peapod", "nightlight": "Nightlight", "beeline": "Beeline", "deckchair": "Deckchair", "eddy": "Eddy", "furrow": "Furrow", "griddle": "Griddle", "trivet": "Trivet", "tally": "Tally", "bagatelle": "Bagatelle", "factory": "Factory", "marigold": "Marigold"}
 ## How far a game went, in its own words: a stage, a wave, or a streak.
 const FURTHEST := {"firefly": "ARC_BEST_STAGE", "molehill": "ARC_BEST_STREAK", "stackwood": "ARC_BEST_BLOCK", "thirteen": "ARC_BEST_NUMBER", "posy": "ARC_BEST_DAY", "peapod": "ARC_BEST_WAVE", "deckchair": "ARC_BEST_HOME", "eddy": "ARC_BEST_LEVEL", "trivet": "ARC_BEST_TRIVET"}
 
@@ -151,6 +155,13 @@ func refresh() -> void:
 			var lvl := int(paper.level)
 			_say(game, tr("TL_CARD_NEW") if lvl == 0 else tr("TL_CARD_LEVEL") % lvl,
 				"" if int(paper.made) == 0 else tr("TL_CARD_MADE") % Record.grouped(int(paper.made)))
+			continue
+		# and Bagatelle: its line is the stars it has earned and its best marble
+		if game == "bagatelle":
+			var board: Dictionary = BagatelleSim.kept()
+			var stars := int(board.stars)
+			_say(game, tr("BG_CARD_NEW") if bool(board.new) else (tr("BG_CARD_STAR_ONE") if stars == 1 else tr("BG_CARD_STAR_N") % Record.grouped(stars)),
+				"" if bool(board.new) else tr("BG_CARD_TIER") % tr("BG_TIER_" + String(BagatelleSim.TIER_IDS[int(board.tier)]).to_upper()))
 			continue
 		var best := Record.best(game)
 		var st := Record.best_stage(game)

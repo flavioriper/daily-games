@@ -3558,6 +3558,47 @@ SETS = {
         # The paper opened: two notes up, quieter than anything it leads to.
         "start":     ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:5,9", "cut:0.8"),
     },
+    # Bagatelle (arcade/bagatelle_screen.gd, 2026-10-15): marbles dropped
+    # through brass pins on a velvet board into wooden cups. Made against the
+    # user's 2026-10-15 rules from the start: the pops from tools/sfx_bank/,
+    # the kalimba note for the moments. Three cues repeat and the screen
+    # throttles them: `pin`, a marble touching a pin (the pebble, the
+    # quietest of the set, pitched down a step a row as it falls), `land`, a
+    # marble into a cup (one bubble of the wrap, the user's rule for what
+    # repeats), and `drop`, a marble let go (the token). A buy is the jar
+    # coin. The notes: a cup's level, a merge, a new tier, a cash out, each a
+    # longer rise. No new take: the kalimba note is Tally's, copied into
+    # build/sfx_raw/bagatelle/.
+    "bagatelle": {
+        # A marble touching a pin: the pebble, very quiet.
+        "pin":       ('one small pebble dropped into a still pond, a soft round plip, close, very short', 0.5, -22, FOLEY, "bank:pebble", "cut:0.12", "notes:0:3", "tight"),
+        # A marble let go: the token, light.
+        "drop":      ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -19, FOLEY, "bank:token", "cut:0.07", "notes:0:2", "tight"),
+        # A marble into a cup: one bubble of the wrap.
+        "land":      ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -16, FOLEY, "bank:wrap", "cut:0.2", "notes:0:0", "tight"),
+        # A marble touching a bonus pin: the pebble twice, up a fifth.
+        "bonus":     ('one small pebble dropped into a still pond, a soft round plip, close, very short', 0.5, -14, FOLEY, "bank:pebble", "cut:0.24", "notes:0.06:0,7", "tight"),
+        # A bonus pin set on another pin: the token, lower.
+        "place":     ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.16", "notes:0:-4", "tight"),
+        # The jar empty, a buy short: two low tongue clicks.
+        "nope":      ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.26", "notes:0.1:-5,-5", "tight"),
+        # An upgrade bought: the jar coin.
+        "buy":       ('one coin dropped into a small glass jar that holds a few coins, one short soft clink, close', 0.7, -13, FOLEY, "bank:jar", "warm:6000", "cut:0.5", "ease:0.004", "tight", "notes:0:-3"),
+        # A star spent: the jar coin twice, up.
+        "star_buy":  ('one coin dropped into a small glass jar that holds a few coins, one short soft clink, close', 0.7, -12, FOLEY, "bank:jar", "warm:6000", "cut:0.6", "ease:0.004", "tight", "notes:0.09:-3,2"),
+        # Ten marbles merged: the wrap, three up quickly.
+        "merge":     ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -13, FOLEY, "bank:wrap", "cut:0.36", "notes:0.08:0,4,7", "tight"),
+        # An upgrade can be bought: one soft note.
+        "ready":     ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0:5", "cut:0.45"),
+        # A cup up a level: two notes up a fourth.
+        "cup":       ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.1:2,7", "cut:0.6"),
+        # A tier never had before: three up.
+        "tier":      ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.12:2,5,9", "cut:0.9"),
+        # A cash out: five up, the longest rise.
+        "cashout":   ("one soft short note on a kalimba, muffled and kind", 0.6, -8, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.13:2,4,6,7,9", "cut:1.2"),
+        # The board opened: two notes up, quieter than anything it leads to.
+        "start":     ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:5,9", "cut:0.8"),
+    },
     # Gumdrop (arcade/gumdrop_screen.gd, 2026-10-10): clear jelly in a mould
     # coloured with a dropper of syrup. Made against the cozy rules from the
     # start (docs/agents/sound.md). One cue never stops: `pour`, the
