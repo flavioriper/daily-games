@@ -3984,7 +3984,16 @@ default**. Built on `feat/tally-easier`.
 
 Measured: probe 0 failed; `_shot_tally.gd` headless 0 failed three times;
 windowed on `opengl3_angle` 810x1440 0 failed, 62 to 89 draw calls in play,
-125 to 149 under a card or the tutorial; suite 249567 passed, 0 failed.
+125 to 149 under a card or the tutorial, 78 at the farthest zoom (the
+whole sheet; the 20 to 30 px band, where most printed numerals are
+written, not shot); the tutorial windowed in pt, every body 188 px of 230,
+98 to 103 draw calls; `_shot_tally_tree.gd` 0 failed; `_perf_tally.gd` on
+2923 full belts: builders 3.7 ms at k 74, 5.7 ms at k 22, the still layers'
+rebuild 9.2 ms; `_wire()` 2.2 ms on a fresh sheet, 6.2 ms under 3076 lanes
+(once a placement, once a square a Remove swipe lifts); suite 249567
+passed, 0 failed. Watch: the Straight chip covers the board's bottom-right
+corner while Belt is held, and the splitter's and combiner's three arms are
+drawn even where no belt meets them.
 Decided for the user (unconfirmed): the divider and raiser shapes (no shot
 of them; the reference's tables), the L's A fed from behind like B (the
 user's image 13 fed A from its outer side; their answer "back in" won),
