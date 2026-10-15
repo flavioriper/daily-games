@@ -199,6 +199,7 @@ func play(ev: Dictionary) -> void:
 			_dirty = true
 		"lift":
 			_gone.append([int(ev.kind), 0, ev.tile, _clock])
+			_pop[ev.tile] = _clock
 			_dirty = true
 		"op":
 			_squash[Sim.tile_of(int(ev.i))] = _clock
@@ -731,7 +732,14 @@ func release(p: Vector2) -> void:
 				_tap(p)
 		"remove":
 			if not moved:
-				_lift_at(p)
+				var t := tile_under(p)
+				var kd: int = sim.kind_at(t)
+				if kd == Sim.EMPTY or kd < 0:
+					touched.emit(0.85)
+				elif kd == Sim.BOX:
+					box_asked.emit()
+				else:
+					_lift_at(p)
 			_lifted = {}
 		_:
 			if moved:

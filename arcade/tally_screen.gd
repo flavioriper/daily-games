@@ -310,6 +310,7 @@ func _play_events() -> void:
 			"hit":
 				if _clock - _hit_at > HIT_GAP and not _busy():
 					_hit_at = _clock
+					_chip_at[-2] = _clock
 					_fx.cue("deliver", randf_range(0.97, 1.03), -4.0)
 			"level":
 				_on_level(int(ev.n))
@@ -323,6 +324,7 @@ func _play_events() -> void:
 				_on_refused(String(ev.why), board.screen_of(Vector2(ev.get("tile", Vector2i.ZERO)) + Vector2(0.5, 0.5)), int(ev.get("v", 0)))
 
 func _on_level(n: int) -> void:
+	_chip_at[-2] = _clock + 0.05
 	_fx.cue("level")
 	_feel(Haptics.WIN)
 	var at := _top()
@@ -425,7 +427,8 @@ func _draw_hud() -> void:
 		b.disc(um + Vector2(32, -32), 9.0 + beat, Pal.SUN)
 	_hud_live = b.mesh()
 	hud.draw_mesh(_hud_live, null)
-	hud.draw_mesh(Art.token(true), null, Transform2D(0.0, Vector2.ONE * 1.25, 0.0, mid))
+	var hop := 1.0 if Motion.reduce else Motion.bump_scale(_clock - float(_chip_at.get(-2, -10.0)), 0.08, 0.16)
+	hud.draw_mesh(Art.token(true), null, Transform2D(0.0, Vector2.ONE * 1.25 * hop, 0.0, mid))
 	var txt := Sim.short(sim.target())
 	var fs := 34 if txt.length() <= 3 else (27 if txt.length() == 4 else 22)
 	var w := _font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
