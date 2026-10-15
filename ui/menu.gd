@@ -1365,6 +1365,8 @@ func _show_tab(key: String) -> void:
 		_set_pager(_page, _pages())
 		_pager.modulate.a = 1.0
 		_queue_fit()
+		# Back on a list from Stats or Streak, where warming stood still.
+		_queue_warm(0.3)
 		if not home:
 			_tab_tw = Motion.appear(_top_row(), 0.0, 1.0, ENTER_FADE)
 			Analytics.track("tab_opened", {"tab": key})
