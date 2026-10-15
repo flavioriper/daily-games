@@ -25,8 +25,8 @@ import bundled from "./how_big_bank.json";
  *     2026-10-15, a lunge on a slant whose box stood 2 m tall beside a
  *     door: a drawing posed or tilted is turned down here, with numbers;
  *  C. the look: the reviewer is shown the silhouette as the phone draws it
- *     and must pick the thing out from decoys, and say the drawing is a
- *     clean side view standing as the thing stands.
+ *     and must name it blind (judged by a second question), and say the
+ *     drawing is a clean side view standing as the thing stands.
  *
  * A drawing turned down is redone, told why (the jelly loop's way,
  * jelly.ts). An animal's silhouette is PhyloPic's, CC0 or Public Domain
@@ -161,9 +161,9 @@ const LOOKER = `You check silhouettes for a family puzzle game before players se
 const LOOK_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["pick", "side_view", "pose_ok", "clean", "problem"],
+  required: ["sees", "side_view", "pose_ok", "clean", "problem"],
   properties: {
-    pick: {type: "string"},
+    sees: {type: "string"},
     side_view: {type: "boolean"},
     pose_ok: {type: "boolean"},
     clean: {type: "boolean"},
@@ -171,8 +171,14 @@ const LOOK_SCHEMA = {
   },
 };
 
-/** Things a silhouette is not, shown beside the real one. */
-const DECOYS = ["kangaroo", "teapot", "tractor", "owl", "sofa", "lamp post", "rocking horse", "submarine", "camel", "wheelbarrow", "flamingo", "grand piano"];
+const JUDGE = `You decide whether someone recognised a silhouette. "same" is true when what they said names the thing, or a kind a player told the thing's name would happily accept (a goose seen as "a duck", a wine bottle as "a bottle"). It is false when they named something else, or only a shape or a vague kind that fits many things ("a rectangle", "a circle", "a box", "a ball" for one particular ball, "an animal", "a bird" for a particular bird whose shape should show).`;
+
+const SAME_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["same"],
+  properties: {same: {type: "boolean"}},
+};
 
 function fnv1a(s: string): number {
   let h = 0x811c9dc5;
@@ -287,26 +293,33 @@ function boxWhy(o: Offer, s: Shape): string {
       `it is squashed or seen end on; draw the whole of it, side on`);
 }
 
-/** Gate C: picked out from decoys, a side view, a resting pose, clean. */
-async function lookWhy(o: Offer, s: Shape, day: number): Promise<string> {
-  const me = o.name.en.toLowerCase();
-  const free = DECOYS.filter((d) => !me.includes(d) && !d.includes(me));
-  const decoys = [0, 1, 2].map((k) => free[(fnv1a(`${day}${o.slug}`) + k * 5) % free.length]);
-  const choices = [...new Set([me, ...decoys])].sort((a, b) => fnv1a(`${day}${a}`) - fnv1a(`${day}${b}`));
-  const got = await ask<{pick: string; side_view: boolean; pose_ok: boolean; clean: boolean; problem: string}>({
+/** Gate C, blind: the reviewer names what it sees with no list to pick
+ *  from (picking among four, a plain rectangle passed as a shipping
+ *  container and a plain disc as a volleyball, 2026-10-15), a second
+ *  question with no picture judges whether that is the thing, and the view,
+ *  pose and cleanness are passed. */
+async function lookWhy(o: Offer, s: Shape): Promise<string> {
+  const got = await ask<{sees: string; side_view: boolean; pose_ok: boolean; clean: boolean; problem: string}>({
     system: LOOKER,
-    prompt: `Which one of these is it: ${choices.join(", ")}? Answer "pick" with exactly one of them, or "none".
+    prompt: `What is it? Answer "sees" with what it shows in a few words, as specifically as the shape lets you; if it is only a plain shape, say the shape.
 "side_view": true when it is seen from the side (not from above, the front or at an angle).
 "pose_ok": true when it stands, sits or lies as it does at rest, level on the ground (or level in the water), not leaping, rearing, diving or tilted.
-"clean": true when it is one whole, clear silhouette: nothing cut off, no ground line, shadow, frame, text or second thing.
+"clean": true when it is one whole, clear silhouette: nothing cut off, no ground line, shadow, frame, text or second thing. A few thin gaps that help tell what it is (a ball's seams, a door's panels) are fine.
 "problem": what is wrong with it in a sentence, or "" when nothing is.`,
     schema: LOOK_SCHEMA,
     role: "review",
     images: [shapePng(s)],
   });
-  const pick = String(got.pick ?? "").trim().toLowerCase();
+  const sees = String(got.sees ?? "").trim();
   const problem = String(got.problem ?? "").trim();
-  if (pick !== me) return `shown to someone, they took it for ${pick || "nothing"}`;
+  if (sees === "") return "shown to someone, they could not say what it is";
+  const judged = await ask<{same: boolean}>({
+    system: JUDGE,
+    prompt: `The thing: ${o.name.en}\nThey said: ${sees}`,
+    schema: SAME_SCHEMA,
+    role: "review",
+  });
+  if (judged.same !== true) return `shown to someone with no hint, they saw ${sees}: make it unmistakably ${o.name.en.toLowerCase()} from its outline alone`;
   if (!got.side_view) return `it is not seen from the side${problem ? `: ${problem}` : ""}`;
   if (!got.pose_ok) return `its pose is wrong${problem ? `: ${problem}` : ""}`;
   if (!got.clean) return `the silhouette is not clean${problem ? `: ${problem}` : ""}`;
@@ -315,7 +328,7 @@ async function lookWhy(o: Offer, s: Shape, day: number): Promise<string> {
 
 function drawPrompt(o: Offer, last: string): string {
   const again = last === "" ? "" : ` The last drawing was turned down: ${last}.`;
-  return `A single solid pure black silhouette of ${o.draw.replace(/\.$/, "")}, seen exactly from the side, level, whole and centred, on a plain pure white background with a wide white margin. Flat black only: no outline, no inner detail, no shading, no ground line, no shadow, no text, no frame. Square image.${again}`;
+  return `A single solid pure black silhouette of ${o.draw.replace(/\.$/, "")}, seen exactly from the side, level, whole and centred, on a plain pure white background with a wide white margin. Flat black only, no shading, no ground line, no shadow, no text, no frame; it must be recognisable from its outline, so draw the parts that make it so, and where only inner lines would tell it (a ball's seams) cut them as a few thin white gaps. Square image.${again}`;
 }
 
 /** One offer through the gates: the thing, or null with why in `t`. */
@@ -330,7 +343,7 @@ async function oneThing(day: number, o: Offer, t: ThingTry): Promise<DayThing | 
     id: `d_${o.slug}`, kind: o.kind, name: o.name, fact: o.fact, size_m: o.size_m, measure: o.measure,
     from: 0, to: 1, source: o.source, born: day, credit, shape,
   });
-  const gates = async (shape: Shape): Promise<string> => boxWhy(o, shape) || await lookWhy(o, shape, day);
+  const gates = async (shape: Shape): Promise<string> => boxWhy(o, shape) || await lookWhy(o, shape);
   if (o.kind === "animal") {
     const found = (await phylopic(o.taxon)).slice(0, DRAWS + 1);
     if (found.length === 0) t.why.push(`no open silhouette of ${o.taxon}`);

@@ -245,6 +245,19 @@ quality and ask to redo if it's poor".
   down, rightly, a harbour seal sat up (2.7x too tall), a curled sea otter,
   and a grand piano the two sizes disagreed on (2.74 m against 1.8). About
   US$0.02 a day without drawings.
+- **With drawings** (2026-10-15, the user: "i allow you to run the drawn
+  objects"). The first run kept seven, but a shipping container drawn as a
+  plain rectangle and a volleyball as a plain disc passed gate C, because
+  picking one of four very different names is too easy. **Gate C is blind
+  now**: the reviewer says what it sees with no list, a second question
+  with no picture judges whether that is the thing (a shape, or "a ball"
+  for one ball, is not), and the drawing is asked for the parts that make
+  it recognisable (a ball's seams as thin gaps). Run again, it kept a
+  ribbed container with its corner posts, a pallet, a standing herring gull
+  (the flying one before it was sent back), a bowling pin and the mallard.
+  It redrew a pallet first drawn too deep, and turned down a puffin, a sea
+  turtle and an otter on their poses. Some US$0.07 for three days, about
+  ten minutes.
 - Measured headless with three made-up things, 60 days by four bands: no
   short deal; the two new ones were in 225 and 203 of 240 deals. Suite
   249567 passed, 0 failed.
