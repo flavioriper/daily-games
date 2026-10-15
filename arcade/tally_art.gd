@@ -3,8 +3,9 @@ extends RefCounted
 ## Tally's drawings (arcade/tally_board.gd lays them). A sheet of squared
 ## paper on a wooden desk; walnut belts with brass chevrons; cream wooden
 ## tokens; painted wooden blocks for the machines, each with its sign carved
-## in cream, its A side one pip and its B side two, its way out a tongue; the
-## counting box a teal chest with a cream panel. Everything is built once at
+## in cream, its A and B sides notches cut in with cream chevrons pointing
+## in (one, two), its way out a dark spout with a brass chevron pointing
+## away; the counting box a teal chest with a cream panel. Everything is built once at
 ## U units to a square, about the square's middle facing east, and laid by
 ## the board's transform: nothing is keyed by a size that changes.
 
@@ -202,34 +203,76 @@ static func block_into(b: Face.Builder, s: float, col: Color, at := Vector2.ZERO
 	b.polygon(Face.Builder.round_rect(at + Vector2(-h, -h), Vector2(s, s), 16.0), col)
 	b.polygon(Face.Builder.round_rect(at + Vector2(-h + 8.0, -h + 6.0), Vector2(s - 16.0, s * 0.22), 10.0), Color(1, 1, 1, 0.16))
 
-## An operator facing east: its block, its sign, the A pip on the left
-## (north), the B pips on the right (south), the tongue out of the front,
-## and the divider's second tongue out of its back.
+## An operator's ports, facing east, in mesh units: the block's half size,
+## and how far into the block an input's notch is cut.
+const OP_HALF := U * 0.37
+const NOTCH_IN := U * 0.17
+const PORT_EDGE := U * 0.5
+
+## The middle of an input's notch for side `side` (0 A on the left, north;
+## 1 B on the right, south), about the square's middle facing east.
+static func port(side: int) -> Vector2:
+	return Vector2(0, (-1.0 if side == 0 else 1.0) * (OP_HALF + NOTCH_IN) * 0.5)
+
+## An input's notch on side `side` about the origin facing east: cut into
+## the block from its edge and narrowing, so a belt runs into it.
+static func mouth_poly(side: int, grow := 0.0) -> PackedVector2Array:
+	var sy := -1.0 if side == 0 else 1.0
+	var lip := OP_HALF + U * 0.03
+	var we := U * 0.16 + grow
+	var wi := U * 0.095 + grow
+	return PackedVector2Array([Vector2(-we, sy * lip), Vector2(we, sy * lip), Vector2(wi, sy * (NOTCH_IN - grow)), Vector2(-wi, sy * (NOTCH_IN - grow))])
+
+## A notch's chevrons pointing into the block: one on A's, two on B's.
+static func mouth_chevrons(side: int) -> Array:
+	var sy := -1.0 if side == 0 else 1.0
+	var w := U * 0.07
+	var d := U * 0.03
+	var at: Array = [port(side)] if side == 0 else [port(side) + Vector2(0, U * 0.04), port(side) - Vector2(0, U * 0.04)]
+	var out := []
+	for c: Vector2 in at:
+		out.append(PackedVector2Array([c + Vector2(-w, sy * d), c + Vector2(0, -sy * d), c + Vector2(w, sy * d)]))
+	return out
+
+const MOUTH_W := U * 0.04
+
+## An operator facing east: its block, its sign, a notch cut into each of
+## its A side (the left, north; one chevron) and its B side (the right,
+## south; two), the chevrons pointing in, and its way out a dark spout out
+## of the front with a brass chevron pointing away, as the belts' chevrons
+## point; the divider's remainder a second spout out of its back.
 static func machine(k: int) -> ArrayMesh:
 	var key := ["machine", k]
 	if _cache.has(key):
 		return _cache[key]
 	var b := Face.Builder.new()
 	var col: Color = PAINT[k]
-	# the way out: a tongue on the front edge
-	_tongue(b, 0, col)
+	_spout(b, 0, 1.0)
 	if k == Sim.DIV:
-		_tongue(b, 2, col.darkened(0.12))
-	block_into(b, U * 0.84, col)
-	sign_into(b, k, Vector2(0, -2), U * 0.2, CREAM)
-	# A: one pip by the north edge, B: two by the south
-	var pip := Color(INK, 0.55)
-	b.disc(Vector2(0, -U * 0.31), U * 0.05, pip)
-	b.disc(Vector2(-U * 0.07, U * 0.31), U * 0.05, pip)
-	b.disc(Vector2(U * 0.07, U * 0.31), U * 0.05, pip)
+		_spout(b, 2, 0.82)
+	block_into(b, OP_HALF * 2.0, col)
+	for side in 2:
+		b.polygon(mouth_poly(side), WALNUT_EDGE)
+		for c: PackedVector2Array in mouth_chevrons(side):
+			b.stroke(c, MOUTH_W, TOKEN)
+	sign_into(b, k, Vector2(0, -1), U * 0.14, CREAM)
 	return _keep(key, b)
 
-static func _tongue(b: Face.Builder, d: int, col: Color) -> void:
+## A way out on side `d` (0 the front, 2 the back): a dark spout from under
+## the block to the square's edge, a brass chevron pointing away. `s` its size.
+static func _spout(b: Face.Builder, d: int, s: float) -> void:
 	var v := dir_v(d)
 	var n := v.orthogonal()
-	var base := v * U * 0.36
-	var tip := v * U * 0.5
-	b.polygon(PackedVector2Array([base + n * U * 0.18, tip + n * U * 0.12, tip - n * U * 0.12, base - n * U * 0.18]), col.darkened(0.3))
+	var base := v * (OP_HALF - U * 0.1)
+	var tip := v * PORT_EDGE
+	var wb := U * 0.2 * s
+	var wt := U * 0.15 * s
+	b.polygon(PackedVector2Array([base + v * U * 0.04 + n * (wb + 6.0), tip + v * 2.0 + n * (wt + 6.0), tip + v * 2.0 - n * (wt + 6.0), base + v * U * 0.04 - n * (wb + 6.0)]), SHADE)
+	b.polygon(PackedVector2Array([base + n * wb, tip + n * wt, tip - n * wt, base - n * wb]), WALNUT_EDGE)
+	var c := v * (OP_HALF + PORT_EDGE) * 0.5 + v * U * 0.005
+	var w := U * 0.085 * s
+	var q := U * 0.04 * s
+	b.stroke(PackedVector2Array([c - v * q + n * w, c + v * q, c - v * q - n * w]), U * 0.05 * s, BRASS)
 
 ## An operator's sign about `at`, `r` its half size.
 static func sign_into(b: Face.Builder, k: int, at: Vector2, r: float, c: Color) -> void:

@@ -1858,11 +1858,11 @@ TL_PIECE_BOX,The counting box,A caixa de contagem,La caja de conteo
 TL_PIECE_BELT_LINE,Carries one number a square.,Leva um número por casa.,Lleva un número por casilla.
 TL_PIECE_BRIDGE_LINE,"Two belts crossing, each going straight on.","Duas esteiras se cruzando, cada uma seguindo reto.","Dos cintas que se cruzan, cada una sigue recta."
 TL_PIECE_DIG_LINE,Puts its number on every belt that leads away from it.,Põe seu número em cada esteira que sai dele.,Pone su número en cada cinta que sale de él.
-TL_PIECE_ADD_LINE,"A on its one-dot side, B on its two-dot side: A + B goes out of the front.","A no lado de um ponto, B no lado de dois: A + B sai pela frente.","A en el lado de un punto, B en el de dos: A + B sale por delante."
-TL_PIECE_MUL_LINE,"A on its one-dot side, B on its two-dot side: A × B goes out of the front.","A no lado de um ponto, B no lado de dois: A × B sai pela frente.","A en el lado de un punto, B en el de dos: A × B sale por delante."
-TL_PIECE_SUB_LINE,"A on its one-dot side, B on its two-dot side: A − B goes out of the front.","A no lado de um ponto, B no lado de dois: A − B sai pela frente.","A en el lado de un punto, B en el de dos: A − B sale por delante."
+TL_PIECE_ADD_LINE,"A on its one-arrow side, B on its two-arrow side: A + B goes out of the front.","A no lado de uma seta, B no lado de duas: A + B sai pela frente.","A en el lado de una flecha, B en el de dos: A + B sale por delante."
+TL_PIECE_MUL_LINE,"A on its one-arrow side, B on its two-arrow side: A × B goes out of the front.","A no lado de uma seta, B no lado de duas: A × B sai pela frente.","A en el lado de una flecha, B en el de dos: A × B sale por delante."
+TL_PIECE_SUB_LINE,"A on its one-arrow side, B on its two-arrow side: A − B goes out of the front.","A no lado de uma seta, B no lado de duas: A − B sai pela frente.","A en el lado de una flecha, B en el de dos: A − B sale por delante."
 TL_PIECE_DIV_LINE,A ÷ B goes out of the front and the remainder out of the back. A remainder of 0 is not put out.,A ÷ B sai pela frente e o resto por trás. Resto 0 não sai.,A ÷ B sale por delante y el resto por detrás. Un resto de 0 no sale.
-TL_PIECE_POW_LINE,"A on its one-dot side, B on its two-dot side: A to the power B goes out of the front.","A no lado de um ponto, B no lado de dois: A elevado a B sai pela frente.","A en el lado de un punto, B en el de dos: A elevado a B sale por delante."
+TL_PIECE_POW_LINE,"A on its one-arrow side, B on its two-arrow side: A to the power B goes out of the front.","A no lado de uma seta, B no lado de duas: A elevado a B sai pela frente.","A en el lado de una flecha, B en el de dos: A elevado a B sale por delante."
 TL_PIECE_CRATE_LINE,"Keeps the first number it gets, up to 500, and lets them out on every belt leading away.","Guarda o primeiro número que recebe, até 500, e solta em cada esteira que sai dele.","Guarda el primer número que recibe, hasta 500, y lo suelta en cada cinta que sale de él."
 TL_TURN,Turn,Girar,Girar
 TL_LIFT,Remove,Remover,Quitar
@@ -1900,8 +1900,8 @@ TL_SAY_DRAW,Drag to draw a belt,Arraste para traçar uma esteira,Arrastra para t
 TL_SAY_NOT_TARGET,"The box wants %ss now, the %ss don't count","A caixa quer %s agora, os %s não contam","La caja quiere %s ahora, los %s no cuentan"
 TL_WAITING,Waiting for %s,Esperando %s,Esperando %s
 TL_WAITING_SIDE,Waiting for %s on its %s side,Esperando %s no lado %s,Esperando %s en su lado %s
-TL_SIDE_ONE_DOT,one-dot,de um ponto,de un punto
-TL_SIDE_TWO_DOT,two-dot,de dois pontos,de dos puntos
+TL_SIDE_ONE_DOT,one-arrow,de uma seta,de una flecha
+TL_SIDE_TWO_DOT,two-arrow,de duas setas,de dos flechas
 TL_THEN,Then,Depois,Luego
 TL_SHORT_OF,Need %s more %ss,Faltam %s × %s,Faltan %s × %s
 TL_MET,%d of %d met,%d de %d prontos,%d de %d listos
@@ -1913,7 +1913,7 @@ TUT_TALLY_DIG_BODY,"Pick Dig, tap a printed 1 and tap Place to set a dig on it. 
 TUT_TALLY_BOX,The box asks,A caixa pede,La caja pide
 TUT_TALLY_BOX_BODY,The counting box asks for one number so many times. The tokens it wants wear a gold ring. Each level done hands over a new piece or a new number to dig.,A caixa de contagem pede um número tantas vezes. As fichas que ela quer têm um anel dourado. Cada nível feito libera uma peça nova ou um número novo para extrair.,La caja de conteo pide un número tantas veces. Las fichas que quiere llevan un anillo dorado. Cada nivel hecho entrega una pieza nueva o un número nuevo para extraer.
 TUT_TALLY_MACHINE,Machines,Máquinas,Máquinas
-TUT_TALLY_MACHINE_BODY,"A machine takes A on its one-dot side and B on its two-dot side, and the answer leaves by its front: 3 and 4 make 7. Tap where it goes, Turn it, then Place. A side left empty glows amber: it is waiting.","Uma máquina recebe A no lado de um ponto e B no lado de dois, e a resposta sai pela frente: 3 e 4 dão 7. Toque onde ela vai, Gire e depois Colocar. Um lado vazio brilha âmbar: está esperando.","Una máquina toma A por su lado de un punto y B por el de dos, y el resultado sale por delante: 3 y 4 dan 7. Toca dónde va, Gírala y luego Colocar. Un lado vacío brilla ámbar: está esperando."
+TUT_TALLY_MACHINE_BODY,"A machine takes A on its one-arrow side and B on its two-arrow side, and the answer leaves by its front: 3 and 4 make 7. Tap where it goes, Turn it, then Place. A side left empty glows amber: it is waiting.","Uma máquina recebe A no lado de uma seta e B no lado de duas, e a resposta sai pela frente: 3 e 4 dão 7. Toque onde ela vai, Gire e depois Colocar. Um lado vazio brilha âmbar: está esperando.","Una máquina toma A por su lado de una flecha y B por el de dos, y el resultado sale por delante: 3 y 4 dan 7. Toca dónde va, Gírala y luego Colocar. Un lado vacío brilla ámbar: está esperando."
 TUT_TALLY_BELTS,Splits and crossings,Divisões e cruzamentos,Desvíos y cruces
 TUT_TALLY_BELTS_BODY,"A belt starting at another's side takes every other token. Belts running into one take turns. From level 5, a path drawn across a belt makes a bridge over it; before that it stops beside it.","Uma esteira que começa ao lado de outra leva uma ficha sim, outra não. Esteiras que entram numa só se revezam. Do nível 5, traçar por cima de uma esteira faz uma ponte; antes, o caminho para ao lado.","Una cinta que empieza al lado de otra se lleva una ficha sí y otra no. Las cintas que entran en una se turnan. Desde el nivel 5, trazar sobre una cinta hace un puente; antes, el camino se detiene al lado."
 TUT_TALLY_UPGRADE,Upgrades,Melhorias,Mejoras

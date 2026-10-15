@@ -83,6 +83,8 @@ const PILL_POP := 0.18
 const PILL_ICON := {"turn": "turn", "lift": "bin", "info": "help", "place": "check", "cancel": "cross"}
 const PILL_CAP := {"turn": "TL_TURN", "lift": "TL_LIFT", "info": "TL_INFO", "place": "TL_PLACE", "cancel": "TL_CANCEL"}
 const PILL_PITCH := {"turn": 1.02, "lift": 0.92, "info": 1.0, "place": 1.08, "cancel": 0.9}
+## How far along its last square a token riding into an operator is drawn.
+const OP_STOP := 0.72
 ## A starving side's pulse ring takes this long a beat.
 const STARVE_BEAT := 1.4
 
@@ -460,10 +462,16 @@ func _build_tokens(under: bool) -> ArrayMesh:
 		fb.append(ringed if int(sim.val[s]) == aim else plain, Transform2D(0.0, token_at(s)))
 	return fb.mesh()
 
-## Where the token in slot `s` is, in mesh units.
+## Where the token in slot `s` is, in mesh units. One riding into an
+## operator stops short of its edge, so the token waiting there and its
+## numeral leave the notch it goes in by in sight.
 func token_at(s: int) -> Vector2:
 	var t := Sim.tile_of(s % Sim.N)
-	return Art.path(Art.mid(t), int(sim.from_d[s]), sim.exit_dir(s), clampf(sim.prog[s], 0.0, 1.0))
+	var x: int = sim.exit_dir(s)
+	var p := clampf(sim.prog[s], 0.0, 1.0)
+	if Sim.is_op(sim.kind_at(t + Sim.DIRS[x])):
+		p *= OP_STOP
+	return Art.path(Art.mid(t), int(sim.from_d[s]), x, p)
 
 ## How much a piece is grown as it is set down (0 to 1, with a bounce).
 func _grow(t: Vector2i) -> float:
@@ -563,7 +571,7 @@ func _build_live() -> ArrayMesh:
 			if u < 0.0 or u >= 1.0 or not _sees(t, r):
 				continue
 			b.stroke(Face.Builder.ring(Art.mid(t), U * (0.3 + 0.3 * u), U * (0.3 + 0.3 * u)), U * 0.06 * (1.0 - u), Color(Art.CREAM, 0.8 * (1.0 - u)), true)
-	# a machine waiting on one side: that side's pips in amber, with a slow pulse
+	# a machine waiting on one side: that side's mouth in amber, with a slow pulse
 	for i: int in sim.machines:
 		var side: int = sim.starving(i)
 		if side < 0:
@@ -572,13 +580,19 @@ func _build_live() -> ArrayMesh:
 		if not _sees(t, r):
 			continue
 		var xf := Transform2D(int(sim.face[i]) * PI * 0.5, Art.mid(t))
-		var pips: Array = [Vector2(0, -U * 0.31)] if side == 0 else [Vector2(-U * 0.07, U * 0.31), Vector2(U * 0.07, U * 0.31)]
-		for p: Vector2 in pips:
-			b.disc(xf * p, U * 0.07, Art.AMBER)
+		var mouth := PackedVector2Array()
+		for p: Vector2 in Art.mouth_poly(side):
+			mouth.append(xf * p)
+		b.polygon(mouth, Art.AMBER)
+		for c: PackedVector2Array in Art.mouth_chevrons(side):
+			var chev := PackedVector2Array()
+			for p: Vector2 in c:
+				chev.append(xf * p)
+			b.stroke(chev, Art.MOUTH_W, Art.INK)
 		if not Motion.reduce:
 			var u := fposmod(_clock, STARVE_BEAT) / STARVE_BEAT
-			var c: Vector2 = xf * (Vector2(0, -U * 0.31) if side == 0 else Vector2(0, U * 0.31))
-			b.stroke(Face.Builder.ring(c, U * (0.1 + 0.16 * u), U * (0.1 + 0.16 * u)), U * 0.04 * (1.0 - u), Color(Art.AMBER, 0.9 * (1.0 - u)), true)
+			var c: Vector2 = xf * Art.port(side)
+			b.stroke(Face.Builder.ring(c, U * (0.14 + 0.16 * u), U * (0.14 + 0.16 * u)), U * 0.04 * (1.0 - u), Color(Art.AMBER, 0.9 * (1.0 - u)), true)
 	# the path traced in hand, as it would be laid
 	if not _path.is_empty():
 		var p: Dictionary = sim.trim_path(_path, _trace_f)

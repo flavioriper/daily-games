@@ -3901,3 +3901,27 @@ view"):
   calls (a tap with Belt lays one belt; one undo step for belts and lifts
   only; the tree's shape; no double-tap path selection, drag-box delete,
   copy or paste).
+
+**The machines' ins and outs** (2026-10-15, fourth pass, from the user: "the
++ element ain't clear where the in and out belt sides are, and it should
+be"). The old tongue was a shade of the block's own paint, and the block
+(0.84 of a square) covered all but 8 units of it; the pips were 0.05 ink
+specks. Now (`Art.machine`, `arcade/tally_art.gd`) the block is 0.74 of a
+square and every side says what it is in the belts' own materials, never
+the paint: **in** is a walnut notch cut into the block's A and B edges
+(`mouth_poly`) with cream chevrons pointing in, **one on A, two on B**
+(`mouth_chevrons`); **out** is a walnut spout past the front edge with a
+brass chevron pointing away, as the belts' chevrons point (the divider's
+remainder a smaller one out of its back); the sign is 0.14. The words went
+from dots to arrows in en, pt and es (the card's lines, `TL_SIDE_ONE_DOT` /
+`TL_SIDE_TWO_DOT` under their old key names, the Machine page's body,
+still five lines). A starving side fills its notch amber, its chevrons in
+ink, the pulse ring about `Art.port(side)` (the one source of the notch's
+place). A token riding into an operator is drawn at most `OP_STOP` 0.72
+along its last square (`token_at`, the drawing only, the sim untouched), so
+the waiting token and its numeral leave the notch in sight. Probe 0
+failed, `_shot_tally.gd` headless 0 failed and windowed twice on
+`opengl3_angle` 810x1440, 0 failed, 58 to 96 draw calls in play, 131 to 151
+under a card (the same cached mesh a kind). Unconfirmed: whether the notch
+and spout read on a phone at the usual zoom (about 55 px a square, the
+spout's chevron about 9 px), and the 0.72 stop.
