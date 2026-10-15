@@ -104,7 +104,34 @@ Mock: `docs/art/concept-menu-flat.png`, playable at
   and three, the same as hidden). Measured with real ScreenTouch drags
   through the viewport, ten swipes: the worst frame of a drag was 30-42 ms
   before and 7-8 ms after, against 6 ms at rest. Not felt on a phone yet.
-  Still paid, once a page: the build itself, just after a landing. A turn sounds
+  Still paid, once a page: the build itself, just after a landing. **Since 2026-10-15 every list is kept and the tabs swap, never rebuild**
+  (the user: "check why menu is so laggy ... we should use the initial
+  loading to load most of UI lists, so it's instant when user click").
+  Measured headless on this Mac before: the first tap on Versus 156 ms in
+  the call and a 212 ms frame, Arcade 175/221, Stats 157/182, and every
+  later switch between Puzzles, Versus and Arcade 80-128 ms, because a tab
+  freed the grid and built the next list's cards. ~440 ms of the first taps
+  was compiling the 58 card faces' scripts. Now: `_load_faces` asks for
+  every face script on a thread from `_ready` (`ResourceLoader.
+  load_threaded_request`, polled in `_process`; boot already loads
+  `main.tscn` this way); a tab parks the list it leaves in `_kept` (its
+  grid, peek, spares, page and fit) and takes its own back, refreshing
+  marks in place (`_refresh_cards`: done seals and rings, an Arcade best);
+  `_warm`, once the page's neighbours are built, bakes the lists not yet
+  shown at the fit they will have (`_measure_fit`), **a card a frame**
+  (`_bake`/`_bake_step`), held under a drag or a slide and while the next
+  card's face is still loading. A kept list built on another day, or whose
+  ids changed, is built again on the tap. Page neighbours are baked a card
+  a frame too, no longer a page in one frame. After: Versus 5/9 ms,
+  Arcade 10/13, Puzzles 3/10, at the first tap and every one after; the
+  idle bake's worst frames are 15-40 ms, one card each. Draw calls
+  unchanged (182 Home, 151 Arcade on opengl3_angle; parked grids are
+  culled). `Progress.completed_on` reads the completed marks once a page:
+  `Progress.completed` opened the save file once a card (Puzzles' take was
+  23 ms on that alone). **Still paid on the first visit**: Stats 46-61 ms
+  and Streak 33 ms, the first layout and draw (Stats bakes a face for all
+  32 boards); hidden `refresh()` does not move it, only drawing does. Not
+  felt on a phone yet. A turn sounds
   a thick card slid over felt (`assets/sfx/ui/page.ogg`, `UiSound.page`; a paper swish until 2026-09-28, which the house marimba style made tonal, then a linen brush the user called "too harsh" on 2026-10-09: a rumble under 400 Hz and a hiss as loud at 6 kHz as at 3, so the new take has its body in the middle, is rolled off above 3.5 kHz and eased in over 30 ms; unheard by the user), never the click. The card under a lifting swipe is still pressed, and until 2026-10-09 it clicked: the release of a swipe calls `UiSound.hush()` from `_input`, which drops any click asked for in that frame (Stats' pages too; a touch-drag probe saw the click's player made before the fix and not after, and a plain tap still clicks):
   the pager buttons carry the `silent` meta. Which cards stand on page one is therefore a property of the phone
   as well as of the card count -- the "eight on the first" figures in this

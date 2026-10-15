@@ -291,6 +291,24 @@ var _page := 0
 ## the gold strip). Each keeps the page it was left on.
 var _deck := "home"
 var _deck_page := {"home": 0, "versus": 0, "arcade": 0}
+## The lists the grid is not showing, kept built as they were left: deck ->
+## the bundle `_keep_deck` packs (its page, the page's neighbours, the fit
+## it was built at). A tab used to free its cards and build the next list's
+## on the tap, 80-120 ms headless on this Mac every switch and ~440 ms more
+## the first time, compiling the faces' scripts (2026-10-15: the user, "check
+## why menu is so laggy"); now a tap swaps a kept grid in, and `_warm` bakes
+## the lists not yet seen while the menu sits idle.
+var _kept := {}
+## The day the page up was built on, kept with it: a list kept across 00:00
+## UTC is built again rather than shown with yesterday's marks.
+var _built_day := 0
+## The page being baked a card a frame (`_bake_step`), or empty: {gen,
+## deck, page, rows, fit, made, done}.
+var _baking := {}
+## Card faces' scripts still loading on a thread, and the ones loaded, held
+## so the cache keeps them (`_load_faces`).
+var _faces_loading: Array = []
+var _faces: Array = []
 ## The fitted page (`_fit_grid`): cards a page, columns, a row's height.
 var _per_page := PER_PAGE
 var _cols := COLS
@@ -318,6 +336,7 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	Ads.banner_changed.connect(func(_visible: bool, _height: float) -> void: _apply_insets())
 	_build_list()
+	_load_faces()
 	settings_sheet = SettingsSheet.new(false)
 	settings_sheet.name = "SettingsSheet"
 	settings_sheet.reduce_changed.connect(header.refresh_motion)
@@ -605,12 +624,13 @@ func _new_grid(grid_name: String) -> GridContainer:
 
 ## How many pages the registry needs at PER_PAGE a page; at least one, so an
 ## empty registry does not divide by nothing.
-func _pages() -> int:
-	return maxi(1, ceili(float(_source().size()) / float(_per_page)))
+func _pages(deck := _deck, per := _per_page) -> int:
+	return maxi(1, ceili(float(_source(deck).size()) / float(per)))
 
-## The list the grid is showing: the registry, or a tab's own games.
-func _source() -> Array:
-	match _deck:
+## The list the grid is showing (or `deck`'s): the registry, or a tab's own
+## games.
+func _source(deck := _deck) -> Array:
+	match deck:
 		"arcade":
 			return arcade_tab.entries()
 		"versus":
@@ -618,8 +638,8 @@ func _source() -> Array:
 	return Registry.PUZZLES
 
 ## The row that stands over the grid for the list that is up.
-func _top_row() -> Control:
-	match _deck:
+func _top_row(deck := _deck) -> Control:
+	match deck:
 		"arcade":
 			return arcade_tab
 		"versus":
@@ -629,11 +649,11 @@ func _top_row() -> Control:
 ## The entries on the page that is up, with the index each has in the
 ## registry -- the colour comes off that index, so a card keeps its colour
 ## whichever page it lands on.
-func _page_entries(page := _page) -> Array:
+func _page_entries(page := _page, deck := _deck, per := _per_page) -> Array:
 	var out: Array = []
-	var from := page * _per_page
-	var source := _source()
-	for i in range(from, mini(from + _per_page, source.size())):
+	var from := page * per
+	var source := _source(deck)
+	for i in range(from, mini(from + per, source.size())):
 		out.append({"i": i, "entry": source[i]})
 	return out
 
@@ -643,6 +663,7 @@ func _build_page() -> void:
 	_free_nodes(_grid, _fillers)
 	_grid.position.x = 0.0
 	_fill(_grid, _page, cards, _fillers)
+	_built_day = Daily.date_key()
 	_set_pager(_page, _pages())
 	# once the menu's entrance has played
 	_queue_warm(0.9)
@@ -658,34 +679,45 @@ func _free_nodes(from: Node, nodes: Array) -> void:
 ## fillers to `pad`.
 func _fill(grid: GridContainer, page: int, into: Array, pad: Array) -> void:
 	var today: Array = Progress.solve_log().get(Daily.date_key(), [])
+	var done := Progress.completed_on()
 	for row in _page_entries(page):
-		var entry: Dictionary = row.entry
-		var colour: Color = Pal.CAT[int(row.i) % Pal.CAT.size()]
-		var card: PuzzleCard
-		# A board is the same card on any list (Marigold stands on Arcade).
-		if _deck == "home" or not Registry.arcade(String(entry.id)).is_empty():
-			card = PuzzleCard.new(entry, colour,
-				Progress.completed(String(entry.id)), Progress.levels_in(today, String(entry.id)))
-			card.open.connect(_open.bind(entry))
-			card.blocked.connect(_on_soon.bind(entry))
-		else:
-			# A tab's game: the same card, opened through the tab's own
-			# signal; a swipe that started on it does not open it.
-			var game := String(entry.id)
-			card = PuzzleCard.new(entry, colour)
-			if _deck == "arcade":
-				card.say(arcade_tab.line(game), arcade_tab.boosted(game))
-				card.open.connect(func() -> void:
-					if not _swiped:
-						arcade_tab.play.emit(game))
-			else:
-				card.open.connect(func() -> void:
-					if not _swiped:
-						versus_tab.open.emit(game))
-		card.name = "Card_" + entry.id
-		card.fit_height(_row_h)
+		var card := _make_card(row, _deck, today, done, _row_h)
 		into.append(card)
 		grid.add_child(card)
+	_pad(grid, into, pad, _cols)
+
+## One card of `deck`'s list, `row` as _page_entries gives it, fitted to a
+## row of `row_h`.
+func _make_card(row: Dictionary, deck: String, today: Array, done: Dictionary, row_h: float) -> PuzzleCard:
+	var entry: Dictionary = row.entry
+	var colour: Color = Pal.CAT[int(row.i) % Pal.CAT.size()]
+	var card: PuzzleCard
+	# A board is the same card on any list (Marigold stands on Arcade).
+	if deck == "home" or not Registry.arcade(String(entry.id)).is_empty():
+		card = PuzzleCard.new(entry, colour,
+			done.has(String(entry.id)), Progress.levels_in(today, String(entry.id)))
+		card.open.connect(_open.bind(entry))
+		card.blocked.connect(_on_soon.bind(entry))
+	else:
+		# A tab's game: the same card, opened through the tab's own
+		# signal; a swipe that started on it does not open it.
+		var game := String(entry.id)
+		card = PuzzleCard.new(entry, colour)
+		if deck == "arcade":
+			card.say(arcade_tab.line(game), arcade_tab.boosted(game))
+			card.open.connect(func() -> void:
+				if not _swiped:
+					arcade_tab.play.emit(game))
+		else:
+			card.open.connect(func() -> void:
+				if not _swiped:
+					versus_tab.open.emit(game))
+	card.name = "Card_" + entry.id
+	card.fit_height(row_h)
+	return card
+
+## Pads `grid`'s short last row out to `cols` with fillers, appended to `pad`.
+func _pad(grid: GridContainer, into: Array, pad: Array, cols: int) -> void:
 	# A short last row -- one whose cards do not fill COLS -- hands the real
 	# columns it does have the empty
 	# one's
@@ -705,9 +737,9 @@ func _fill(grid: GridContainer, page: int, into: Array, pad: Array) -> void:
 	# exactly where it is rather than being deleted the moment a page happens
 	# to come out square. Whether it runs is a property of today's card
 	# count, never of the pager.
-	var short := into.size() % _cols
+	var short := into.size() % cols
 	if short > 0:
-		for i in _cols - short:
+		for i in cols - short:
 			var filler := Control.new()
 			filler.name = "Filler_%d" % i
 			filler.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -765,24 +797,14 @@ func _fit_grid() -> void:
 		return
 	if _column == null or _column.size.x <= 0.0:
 		return
-	var room_w := _list_root.size.x - _margins.get_theme_constant("margin_left") \
-		- _margins.get_theme_constant("margin_right")
-	var room_h := _list_root.size.y - _margins.get_theme_constant("margin_top") \
-		- _margins.get_theme_constant("margin_bottom") - header.size.y - _top_h() - bar.size.y - GAP * 3
-	if _pager_seam.visible:
-		room_h -= PAGER_SEAM + GAP
-	var cols := maxi(1, floori((room_w + GAP + 0.5) / (MIN_CARD_W + GAP)))
-	var rows := maxi(1, floori((room_h + MIN_ROW_GAP) / (PuzzleCard.CARD_H + MIN_ROW_GAP)))
-	var slack := room_h - rows * PuzzleCard.CARD_H - (rows - 1) * GAP
-	var grow := floorf(clampf(slack / rows, 0.0, PuzzleCard.ART_GROW))
-	var gap := GAP
-	if rows > 1:
-		gap = maxi(MIN_ROW_GAP, GAP + floori((slack - grow * rows) / (rows - 1)))
+	var fit := _measure_fit(_deck, _pager_seam.visible)
+	var gap: int = fit.gap
 	_row_gap = gap
 	for g: GridContainer in [_grid, _peek] + _spare_grids():
 		g.add_theme_constant_override("v_separation", gap)
-	var per := cols * rows
-	var row_h := PuzzleCard.CARD_H + grow
+	var per: int = fit.per
+	var cols: int = fit.cols
+	var row_h: float = fit.row_h
 	if per != _per_page or cols != _cols:
 		var first := _page * _per_page
 		_per_page = per
@@ -797,10 +819,28 @@ func _fit_grid() -> void:
 		for card in cards + _peek_cards + _spare_cards():
 			card.fit_height(row_h)
 
+## The page `deck`'s list fits on this screen, with or without the pager's
+## seam: {per, cols, row_h, gap} (see _fit_grid).
+func _measure_fit(deck: String, seam: bool) -> Dictionary:
+	var room_w := _list_root.size.x - _margins.get_theme_constant("margin_left") \
+		- _margins.get_theme_constant("margin_right")
+	var room_h := _list_root.size.y - _margins.get_theme_constant("margin_top") \
+		- _margins.get_theme_constant("margin_bottom") - header.size.y - _top_h(deck) - bar.size.y - GAP * 3
+	if seam:
+		room_h -= PAGER_SEAM + GAP
+	var cols := maxi(1, floori((room_w + GAP + 0.5) / (MIN_CARD_W + GAP)))
+	var rows := maxi(1, floori((room_h + MIN_ROW_GAP) / (PuzzleCard.CARD_H + MIN_ROW_GAP)))
+	var slack := room_h - rows * PuzzleCard.CARD_H - (rows - 1) * GAP
+	var grow := floorf(clampf(slack / rows, 0.0, PuzzleCard.ART_GROW))
+	var gap := GAP
+	if rows > 1:
+		gap = maxi(MIN_ROW_GAP, GAP + floori((slack - grow * rows) / (rows - 1)))
+	return {"per": cols * rows, "cols": cols, "row_h": PuzzleCard.CARD_H + grow, "gap": gap}
+
 ## How tall the row over the grid is: its laid height, or its minimum when
 ## it has only just been shown and has none yet.
-func _top_h() -> float:
-	var row := _top_row()
+func _top_h(deck := _deck) -> float:
+	var row := _top_row(deck)
 	return maxf(row.size.y if row.visible else 0.0, row.get_combined_minimum_size().y)
 
 ## Turns the page when a press on the grid travels far enough sideways:
@@ -979,19 +1019,99 @@ func _queue_warm(delay: float) -> void:
 ## first layout and its first drawing are paid now and not on the frame a
 ## finger first pulls it in. Never under a drag or a slide: the landing asks
 ## again.
+##
+## Then, with both neighbours built, the lists the grid is not showing:
+## each the page it was left on, at the fit it will have, kept as if it had
+## been shown and left (`_kept`), so the tap on its tab only swaps it in.
+## Every page is baked a card a frame (`_bake`), never a page in one frame.
 func _warm(gen: int) -> void:
-	if gen != _warm_gen or _dragging or Motion.running(_slide_tw) or not _can_swipe():
+	if gen != _warm_gen or _dragging or Motion.running(_slide_tw) \
+			or _list_root == null or not _list_root.visible or not _grid_slot.visible:
 		return
-	for page: int in [_page + 1, _page - 1]:
-		if page < 0 or page >= _pages() or page == _peek_page or _spare.has(page):
+	if _can_swipe():
+		for page: int in [_page + 1, _page - 1]:
+			if page < 0 or page >= _pages() or page == _peek_page or _spare.has(page):
+				continue
+			var fit := {"per": _per_page, "cols": _cols, "row_h": _row_h, "gap": _row_gap}
+			_bake(gen, _deck, page, fit, func(made: Dictionary) -> void:
+				if page == _peek_page or _spare.has(page) or page >= _pages():
+					_free_grid(made.grid)
+					return
+				made.grid.name = "Spare_%d" % page
+				_spare[page] = made
+				_queue_warm(0.15))
+			return
+	for key: String in ["home", "versus", "arcade"]:
+		if key == _deck or _kept.has(key):
 			continue
-		var g := _new_grid("Spare_%d" % page)
-		var made := {"grid": g, "cards": [], "fillers": []}
-		_fill(g, page, made.cards, made.fillers)
-		_park(g)
-		_spare[page] = made
-		_queue_warm(0.15)
+		var fit := _measure_fit(key, key == "home" or _pages(key) > 1)
+		var page := clampi(int(_deck_page[key]), 0, _pages(key, fit.per) - 1)
+		_bake(gen, key, page, fit, func(made: Dictionary) -> void:
+			if key == _deck or _kept.has(key):
+				_free_grid(made.grid)
+				return
+			var peek := _new_grid("KeptPeek_" + key)
+			peek.columns = fit.cols
+			peek.visible = false
+			made.grid.name = "Kept_" + key
+			_kept[key] = {"grid": made.grid, "cards": made.cards, "fillers": made.fillers,
+				"peek": peek, "peek_cards": [], "peek_fillers": [], "peek_page": -1, "spare": {},
+				"page": page, "per": fit.per, "cols": fit.cols, "row_h": fit.row_h,
+				"day": Daily.date_key(), "ids": _ids(key)}
+			_queue_warm(0.15))
 		return
+
+## Starts baking `deck`'s `page` into a parked grid of its own, one card a
+## frame from _process, and hands {grid, cards, fillers} to `done` once the
+## last is in. Dropped, grid and all, once a later warm is asked for; held
+## under a drag or a slide, while the list is not up, and while the next
+## card's face is still loading.
+func _bake(gen: int, deck: String, page: int, fit: Dictionary, done: Callable) -> void:
+	if not _baking.is_empty():
+		_free_grid(_baking.made.grid)
+	var g := _new_grid("Baking")
+	g.columns = fit.cols
+	g.add_theme_constant_override("v_separation", fit.gap)
+	_park(g)
+	_baking = {"gen": gen, "deck": deck, "rows": _page_entries(page, deck, fit.per),
+		"fit": fit, "made": {"grid": g, "cards": [], "fillers": []}, "done": done,
+		"today": Progress.solve_log().get(Daily.date_key(), []), "done_ids": Progress.completed_on()}
+	set_process(true)
+
+func _bake_step() -> void:
+	var b := _baking
+	if int(b.gen) != _warm_gen:
+		_free_grid(b.made.grid)
+		_baking = {}
+		return
+	if _dragging or Motion.running(_slide_tw) or not _list_root.visible:
+		return
+	var made: Dictionary = b.made
+	var rows: Array = b.rows
+	if rows.is_empty():
+		_baking = {}
+		_pad(made.grid, made.cards, made.fillers, int(b.fit.cols))
+		(b.done as Callable).call(made)
+		return
+	var entry: Dictionary = rows[0].entry
+	if _faces_loading.has(String(entry.get("card", ""))):
+		return
+	var card := _make_card(rows.pop_front(), String(b.deck), b.today, b.done_ids, float(b.fit.row_h))
+	made.cards.append(card)
+	(made.grid as Node).add_child(card)
+
+func _free_grid(g: Node) -> void:
+	if is_instance_valid(g):
+		if g.get_parent() != null:
+			g.get_parent().remove_child(g)
+		g.queue_free()
+
+## The ids `deck` lists, to tell a kept list the list has since changed.
+func _ids(deck: String) -> Array:
+	var out: Array = []
+	for e: Dictionary in _source(deck):
+		out.append(String(e.id))
+	return out
 
 func _drop_peek() -> void:
 	Motion.stop(_slide_tw)
@@ -1218,14 +1338,30 @@ func _show_tab(key: String) -> void:
 		# page it was left on comes back.
 		var changed := _deck != key
 		if changed:
-			_deck_page[_deck] = _page
+			_keep_deck()
 			_deck = key
 		if not home:
 			(_top_row() as Control).refresh()
-		_page = clampi(int(_deck_page[key]) if changed else _page, 0, _pages() - 1)
+		if changed:
+			# The list as it was left (or as `_warm` baked it), else built now
+			# at the fit it will have, so the fit does not build it twice.
+			if not _take_deck(key):
+				var fit := _measure_fit(key, home or _pages(key) > 1)
+				_per_page = fit.per
+				_cols = fit.cols
+				_row_h = fit.row_h
+				_row_gap = fit.gap
+				_grid.columns = _cols
+				_peek.columns = _cols
+				_grid.add_theme_constant_override("v_separation", _row_gap)
+				_page = clampi(int(_deck_page[key]), 0, _pages() - 1)
+				_build_page()
+		else:
+			_page = clampi(_page, 0, _pages() - 1)
+			if not home:
+				# Back from one of the tab's games: its best moved, the cards stay.
+				_refresh_cards()
 		_pager_seam.visible = home or _pages() > 1
-		if changed or not home:
-			_build_page()
 		_set_pager(_page, _pages())
 		_pager.modulate.a = 1.0
 		_queue_fit()
@@ -1242,6 +1378,120 @@ func _show_tab(key: String) -> void:
 	body.refresh()
 	_tab_tw = Motion.appear(body, 0.0, 1.0, ENTER_FADE)
 	Analytics.track("tab_opened", {"tab": key})
+
+## Parks the list that is up, its page, its neighbours and its fit, in
+## `_kept` for its tab to take back.
+func _keep_deck() -> void:
+	_grab_slide()
+	_hide_peek()
+	_deck_page[_deck] = _page
+	if _kept.has(_deck):
+		_drop_kept(_deck)
+	_park(_grid)
+	_grid.name = "Kept_" + _deck
+	_peek.name = "KeptPeek_" + _deck
+	_kept[_deck] = {"grid": _grid, "cards": cards, "fillers": _fillers,
+		"peek": _peek, "peek_cards": _peek_cards, "peek_fillers": _peek_fillers,
+		"peek_page": _peek_page, "spare": _spare, "page": _page,
+		"per": _per_page, "cols": _cols, "row_h": _row_h,
+		"day": _built_day, "ids": _ids(_deck)}
+	_grid = null
+	_peek = null
+
+## Stands `key`'s kept list up as the grid; false, with an empty grid up in
+## its place, when there is none, or it was built on another day or before
+## its list changed.
+func _take_deck(key: String) -> bool:
+	var b: Dictionary = _kept.get(key, {})
+	_kept.erase(key)
+	if b.is_empty() or int(b.day) != Daily.date_key() or b.ids != _ids(key):
+		if not b.is_empty():
+			_free_bundle(b)
+		_grid = _new_grid("Grid")
+		_peek = _new_grid("Peek")
+		_peek.visible = false
+		cards = []
+		_fillers = []
+		_peek_cards = []
+		_peek_fillers = []
+		_peek_page = -1
+		_spare = {}
+		return false
+	_grid = b.grid
+	_peek = b.peek
+	cards = b.cards
+	_fillers = b.fillers
+	_peek_cards = b.peek_cards
+	_peek_fillers = b.peek_fillers
+	_peek_page = int(b.peek_page)
+	_spare = b.spare
+	_page = int(b.page)
+	_per_page = int(b.per)
+	_cols = int(b.cols)
+	_row_h = float(b.row_h)
+	_built_day = int(b.day)
+	_grid.name = "Grid"
+	_peek.name = "Peek"
+	_peek_shown = false
+	_drag_x = 0.0
+	_grid.position.x = 0.0
+	_refresh_cards()
+	_queue_warm(0.3)
+	return true
+
+func _drop_kept(key: String) -> void:
+	_free_bundle(_kept[key])
+	_kept.erase(key)
+
+func _free_bundle(b: Dictionary) -> void:
+	_free_grid(b.grid)
+	_free_grid(b.peek)
+	for e: Dictionary in (b.spare as Dictionary).values():
+		_free_grid(e.grid)
+
+## What a kept card may have missed while it was out of sight: a board's
+## done marks and rings, an Arcade game's best.
+func _refresh_cards() -> void:
+	var today: Array = Progress.solve_log().get(Daily.date_key(), [])
+	var done_ids := Progress.completed_on()
+	for card: PuzzleCard in cards + _peek_cards + _spare_cards():
+		if not is_instance_valid(card):
+			continue
+		var id := String(card.entry.get("id", ""))
+		if _deck == "home" or not Registry.arcade(id).is_empty():
+			var lv: Array = Progress.levels_in(today, id)
+			if lv != card.levels:
+				card.set_levels(lv)
+			var done: bool = done_ids.has(id) or not lv.is_empty()
+			if done != card.completed:
+				card.set_completed(done)
+		elif _deck == "arcade":
+			card.say(arcade_tab.line(id), arcade_tab.boosted(id))
+
+## Asks for every card face's script on a thread, so no tab's first tap
+## compiles them (~440 ms for the 58 on this Mac).
+func _load_faces() -> void:
+	for source: Array in [Registry.all(), VersusTab.entries(), ArcadeTab.entries()]:
+		for e: Dictionary in source:
+			var path := String(e.get("card", ""))
+			if path.is_empty() or _faces_loading.has(path) or ResourceLoader.has_cached(path):
+				continue
+			if ResourceLoader.load_threaded_request(path) == OK:
+				_faces_loading.append(path)
+	set_process(true)
+
+func _process(_delta: float) -> void:
+	for path: String in _faces_loading.duplicate():
+		var status := ResourceLoader.load_threaded_get_status(path)
+		if status == ResourceLoader.THREAD_LOAD_LOADED:
+			_faces.append(ResourceLoader.load_threaded_get(path))
+			_faces_loading.erase(path)
+		elif status != ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+			_faces_loading.erase(path)
+	if not _baking.is_empty():
+		_bake_step()
+	if _faces_loading.is_empty() and _baking.is_empty():
+		set_process(false)
 
 ## A card that names a board nobody has drawn flat yet.
 func _on_soon(entry: Dictionary) -> void:

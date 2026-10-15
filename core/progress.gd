@@ -75,6 +75,19 @@ static func completed(puzzle_id: String, date_key: int = Daily.date_key()) -> bo
 	cfg.load(path)
 	return bool(cfg.get_value("completed", "%d_%s" % [date_key, puzzle_id], false))
 
+## Every id completed on `date_key`, as a set, from one read of the file
+## (the menu marks a page of cards at once).
+static func completed_on(date_key: int = Daily.date_key()) -> Dictionary:
+	var cfg := ConfigFile.new()
+	cfg.load(path)
+	var out := {}
+	var tail := "%d_" % date_key
+	if cfg.has_section("completed"):
+		for key: String in cfg.get_section_keys("completed"):
+			if key.begins_with(tail) and bool(cfg.get_value("completed", key, false)):
+				out[key.substr(tail.length())] = true
+	return out
+
 static func completed_stats(puzzle_id: String, date_key: int = Daily.date_key()) -> Dictionary:
 	var cfg := ConfigFile.new()
 	cfg.load(path)
