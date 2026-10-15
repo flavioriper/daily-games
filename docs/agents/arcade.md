@@ -4053,14 +4053,16 @@ runs while shut); the card sits after Tally on the tab's second page.
   come out 88/139/177/201/173/144/78 in a thousand.
 - **A tap's across is kept in the middle band** (0.36 to 0.64 of the
   board): at 0.3 a tap fed the 5× edge cup two times in five and paid twice
-  the middle. The auto dropper glides wider (±0.36) and is not kept in.
+  the middle. **The auto dropper glides over the same band** (±0.14): at
+  ±0.36, two minutes at the top of Auto put 234 and 242 of 1,173 in the
+  edge cups, a mean base of ×2.71 against ×1.79 at ±0.14.
 - **The economy, after four tries with the bot** (seed 7, greedy buyer,
   cash out at half the stars ever): the square root of a run's coins made
   stars follow the ×20 tiers and a cash out doubled the last in seconds;
-  stars are now `(log10(coins) - 4)^2.5` (1e5 one, 1e8 thirty-two, 1e15
-  four hundred) and every star ever earned adds `0.1 × sqrt(stars)` to every
-  coin, which converges. First cash out at 5 minutes, ten stars at 18, 474
-  by two hours. Value is linear (a doubling every ten ranks ran away);
+  stars are now `(log10(coins) - 3.7)^2.5` (about 5e4 one, 1e6 eight,
+  1e15 four hundred and fifty) and every star ever earned adds `0.1 × sqrt(stars)` to every
+  coin, which converges. First cash out at 5.8 minutes, ten stars at 20, 474
+  by two hours (after the dropper was narrowed). Value is linear (a doubling every ten ranks ran away);
   Finer marbles is the tiers' road (bought marbles a kind better). Every
   figure is a call for the user.
 - **Draw calls** on `opengl3_angle` at 810x1440: 82 to 109 in play (three
@@ -4069,5 +4071,4 @@ runs while shut); the card sits after Tally on the tab's second page.
   velvet, rail and cups are cached meshes; the marbles and the halos are
   each one `Face.FlatBuilder` mesh a frame.
 - **Not done**: a phone; the sounds heard; pt and es read by a speaker;
-  `reduce` shot; offline progress (a call); the tutorial pages shot after
-  their zoom.
+  `reduce` shot; es shot; offline progress (a call).

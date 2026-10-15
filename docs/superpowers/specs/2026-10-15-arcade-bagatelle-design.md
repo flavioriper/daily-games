@@ -35,14 +35,17 @@ through them, seven turned wooden cups along the foot, each with its
 multiplier painted on and its level on a little tag. A brass dropper glides
 back and forth along the top.
 
-- **Tap the board** and a marble leaves the jar at the tap's across,
-  dropped from the top. The auto dropper (an upgrade) lets one go at its
-  own across every so often.
+- **Tap the board** (or hold Drop) and a marble leaves the jar at the
+  tap's across, kept within the middle band (0.36 to 0.64 of the board),
+  dropped from the top; a finger held on the board keeps dropping every
+  0.16 s. The auto dropper (an upgrade) lets one go where it is as it
+  glides over the same band (±0.14 of the board from the middle).
 - **The jar** holds every marble you own. A marble in the air is out of
   it; landing, it rolls back. The jar is shown in the top-left of the
   board as one chip a tier: the tier's marble, "in jar / owned".
 - The jar lets the **best marble it holds** go first.
-- A marble pays `value × worth(tier) × cup multiplier × polish` in coins.
+- A marble pays `value × worth(tier) × cup multiplier × pin bonus ×
+  polish × (1 + 0.1 × sqrt(stars ever earned))` in coins.
 - **Marbles do not knock each other**: each falls alone through the pins
   (the genre's rule, and what keeps a hundred in the air cheap).
 
@@ -61,20 +64,26 @@ merged runs dry between drops. That is the choice.
 
 | Upgrade | Rank 0 | A rank | Price |
 |---|---|---|---|
-| Marbles | 3 clay | +1 clay marble | 6 × 1.15^n |
-| Value | 1 | `(1 + n) × 2^(n div 10)` | 12 × 1.22^n |
-| Auto drop | off | `2.4 s × 0.9^(n−1)`, at least 0.1 s | 25 × 1.3^n |
+| Marbles | 3 clay | +1 marble (of the Finer marbles tier) | 6 × 1.1^n |
+| Value | 1 | `1 + n` | 12 × 1.2^n |
+| Auto drop | off | `2.4 s × 0.9^(n−1)`, at least 0.1 s; 40 ranks | 25 × 1.3^n |
 | Weight | gravity ×1 | +12% gravity, 25 ranks | 60 × 1.45^n |
 
-**Cash out**: stars = `floor(sqrt(coins earned this run / 2000) × shine)`.
-Resets coins, upgrades, cups, marbles. Stars are kept for ever and buy:
+**Cash out**: stars = `floor((log10(coins earned this run) − 3.7)^2.5 ×
+shine)`: about 50K coins pay one, 1M eight, 1e8 forty-five, 1e15 four
+hundred and fifty. (A square root of the coins was tried first and ran
+away: every ×20 tier went straight into the stars and each cash out
+doubled the last in seconds.) Every star ever earned also adds to every
+coin, `1 + 0.1 × sqrt(stars ever)`, a root so it converges. A cash out
+resets coins, upgrades, cups and marbles. Stars are kept for ever and buy:
 
 | Star shop | Ranks | What a rank does | Prices in stars |
 |---|---|---|---|
 | Plus pin | 5 | one more gold pin: a marble that touches it is worth +50% (once a pin) | 2, 5, 12, 30, 75 |
 | Times pin | 3 | one more rose pin: ×2 (once a pin) | 10, 40, 150 |
-| Polish | 10 | every coin ×1.5 | 3 × 2^n |
+| Polish | 10 | every coin ×1.25 | 5 × 2^n |
 | Full jar | 5 | the run starts with 3 more clay marbles | 1, 3, 8, 20, 50 |
+| Finer marbles | 6 | marbles bought come a tier better (the tiers' road) | 20, 80, 300, 1000, 3000, 9000 |
 | Twins | 5 | a drop lets go two marbles one time in five more | 4, 10, 25, 60, 150 |
 | Warm cups | 5 | cups start a run at level 5 a rank | 3, 8, 20, 50, 120 |
 | Shine | 5 | +25% stars from a cash out | 5, 15, 40, 100, 250 |
@@ -89,7 +98,16 @@ are floats, shown 999, 12.4K, 3.1M, B, T, Qa, Qi, Sx, Sp, Oc, No, Dc, then
 
 **The physics is the sim's own**, fixed steps of 1/120 s, circle against
 pin, a seeded RNG for the scatter, no physics bodies, so the probe can
-replay a seed. Marbles do not touch each other.
+replay a seed. Marbles do not touch each other. **A blow sends a marble
+left or right afresh** (170 to 250 across, 40% against the side struck):
+without it a drifting marble rides the staggered pins' diagonal to a wall.
+The wide rows' two outermost places are left bare, as a pin there stands
+closer to the wall than a marble is wide. A fall takes about 2.4 to 2.9 s.
+
+**The bot's pace** (`tests/_probe_bagatelle.gd -- 7 120`, a greedy buyer
+tapping four times a second, cashing out at half its stars ever): first
+cash out at 5.8 minutes, ten stars at 20, 474 by two hours. A bot's, not a
+promise.
 
 **Kept like Tally**: `user://bagatelle.cfg`, no run end, no end card, no
 gold, no boosters, no interstitial. **The board runs only while it is on
@@ -102,14 +120,14 @@ seven cups along its foot -- is laid inside the room between the plate row
 and the tray. Over it the flat boards' top bar and a plate
 row: coins (and the coins a second, smoothed), stars (and "Cash out +N"
 when a cash out would pay). At the foot a tray of four round buttons:
-Upgrades, Marbles, Stars, and the big Drop on the left (the thumb side).
+Upgrades, Jar, Stars, and the big Drop on the left (the thumb side).
 **Draw calls**: the pins are one cached mesh; every marble in the air is
 laid into one mesh rebuilt a frame (one `draw_mesh` for the swarm), the
 pin halos into one more; the cups one cached mesh and their tags strings.
 A marble that touched a bonus pin wears a ring of the pin's colour, never a
 shade of its own (the marbles are coloured by tier).
 
-Cards (the house Dialog card) for Upgrades, Marbles (the jar's tiers, Merge
+Cards (the house Dialog card) for Upgrades, the Jar (its's tiers, Merge
 and Merge all), Stars (cash out and the star shop).
 
 ## 4. Moments, sound and feel
@@ -129,11 +147,15 @@ words.
 ## 5. Calls that are mine, the user's to change
 
 1. **The name** Bagatelle and the plum velvet, brass pins, clay marbles.
-2. **Tap where to drop**: the reference drops from the middle only.
+2. **Tap where to drop**, kept to the middle band (the reference drops
+   from the middle only); the dropper glides only over that band (at
+   ±0.36 it fed the ×5 edge cups and paid half again over a tap).
 3. **Seven cups**, base 5/2/1/0.5/1/2/5, +10% a level.
 4. **Twelve tiers**, 10 into 1, worth ×20.
 5. **One prestige layer** (stars) and its shop; no investments, no ascend,
-   no XP bar.
+   no XP bar. Stars from the coins' digit count, and the star bonus.
+6a. **Every figure** in the tables: upgrade prices, the cups' +10%, the
+   star formula, the shop's prices. Tuned on a bot only.
 6. **No away progress**, no gold, no ads in the game.
 7. **No concept tab** (the user said "do everything autonomous").
 8. **No mascot**: the marbles are pieces, not characters.

@@ -111,9 +111,9 @@ func _rules(seed_v: int) -> void:
 	_check("best tier noted", s.best_tier == 1)
 	_check("drop takes the best first", s.drop(500.0) and int(s.balls[0].tier) == 1)
 	s.earned = 1e6
-	_check("stars for 1M earned is 5", s.stars_for() == 5)
-	_check("next star past 1M", s.next_star_at() > 1e6 and s.stars_for(s.next_star_at() * 1.0001) == 6)
-	_check("cash out pays 5", s.cash_out() == 5 and s.stars == 5)
+	_check("stars for 1M earned is 8", s.stars_for() == 8)
+	_check("next star past 1M", s.next_star_at() > 1e6 and s.stars_for(s.next_star_at() * 1.0001) == 9)
+	_check("cash out pays 8", s.cash_out() == 8 and s.stars == 8)
 	_check("a cash out resets the run", s.coins == 0.0 and int(s.up.value) == 0 and s.owned_all() == 3 and s.balls.is_empty())
 	_check("a plus pin bought stands on the board", s.shop_buy("plus") and s.bonus.size() == 1)
 	var from: int = s.bonus.keys()[0]

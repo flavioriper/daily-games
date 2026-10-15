@@ -61,7 +61,7 @@ const AIM_LO := 0.36
 const AIM_HI := 0.64
 ## The dropper's glide.
 const GLIDE := 0.55
-const GLIDE_SPAN := 0.36
+const GLIDE_SPAN := 0.14
 
 ## The tiers: ten of one merge into one of the next; tier k is worth WORTH^k.
 const TIERS := 12
@@ -102,7 +102,7 @@ const SHINE_STEP := 0.25
 ## A cash out: stars = floor((log10(earned) - STAR_FROM)^STAR_POW × shine),
 ## so a run of 1e5 coins pays one, 1e8 thirty-two, 1e15 four hundred: the
 ## tiers multiply coins by twenty and the stars must not follow them.
-const STAR_FROM := 4.0
+const STAR_FROM := 3.7
 const STAR_POW := 2.5
 ## Every coin is worth 1 + STAR_BONUS × sqrt(stars ever earned): the stars
 ## always count, and the root keeps cash outs from doubling each other.
