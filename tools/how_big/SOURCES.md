@@ -28,7 +28,7 @@ so the game owes no attribution. Objects are drawn by the tool itself.
 | bicycle | authored | a bicycle | this project (`make_bicycle` in the tool) | own work | -- |
 | door | authored | a door | this project (`make_door` in the tool) | own work | -- |
 | elephant | PhyloPic | *Loxodonta* | An Ignorant Atheist | CC0 1.0 | https://www.phylopic.org/images/47a8b95c-4981-4873-a87a-c51e99f34f63 |
-| crocodile | PhyloPic | *Crocodylus porosus* | Steven Traver | CC0 1.0 | https://www.phylopic.org/images/a796420f-5158-4e96-acbe-e30ef36b26d6 |
+| crocodile | PhyloPic | *Alligator mississippiensis* | Ferran Sayol | CC0 1.0 | https://www.phylopic.org/images/eefc0a4d-24b5-4c91-b687-8bd28c414295 |
 | car | authored | a car | this project (`make_car` in the tool) | own work | -- |
 | shark | PhyloPic | *Carcharodon carcharias* | Steven Traver | CC0 1.0 | https://www.phylopic.org/images/545d45f0-0dd1-4cfd-aad6-2b835223ea0d |
 | giraffe | PhyloPic | *Giraffa* | An Ignorant Atheist | CC0 1.0 | https://www.phylopic.org/images/bbce74cf-4df3-4b7d-8b1d-f5b24dd3264a |

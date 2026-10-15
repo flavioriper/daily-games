@@ -172,3 +172,21 @@ so the grass stays under the things.
   how_big` passes.
 - Decided for the user, unconfirmed: Lock kept; the two new hills behind
   the things; a small block on the win (0.71). Owed: a phone.
+
+### The crocodile lies down (2026-10-15)
+
+The user, of a Medium round with the crocodile beside the door: "a crocodile
+isn't that big compared to the door, the image should be accurate to help
+player". The length was right (4.25 m beside 2.03 m), but the drawing was a
+crocodile mid-lunge on a diagonal: its box came to 2.0 m tall, as tall as
+the door. It is now Ferran Sayol's walking side view (PhyloPic `eefc0a4d`,
+CC0, filed as *Alligator mississippiensis*: no CC0 crocodile on PhyloPic is
+drawn flat and side on), 0.79 m tall at 4.25 m. The blue whale was on a
+slant too and is levelled (`rotate: 8`): 7.55 m tall became 6.1 m.
+
+**Checking a new shape**: work out the box's other side in metres
+(`size_m / (to - from)` times the aspect) and set it beside the real
+animal. A pose that tilts or rears makes the box taller than the animal
+ever is. Every other row was in range on 2026-10-15. The orca's 4.1 m is
+mostly its fin. Suite 249567 passed, 0 failed. The day's pairs moved,
+since a pair is picked by box.
