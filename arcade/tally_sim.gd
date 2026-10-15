@@ -651,17 +651,24 @@ static func path_faces(tiles: Array, f_last: int) -> PackedByteArray:
 ## at a square that cannot take belt, or a belt across its way where no
 ## bridge can go (before bridges are had, or at the path's end). A belt
 ## across the way is never turned, but for a line's loose end the path is
-## begun on (`extend`): it turns to go on with the path, the corner.
+## begun on (`extend`): it turns to go on with the path, the corner; and a
+## path begun on a line and leaving it by a side branches it (`branch`):
+## that square becomes a splitter facing the line's way, so a branch is
+## drawn and never made by two belts lying side by side.
 func trim_path(tiles: Array, f_last: int) -> Dictionary:
 	var faces := path_faces(tiles, f_last)
 	var ts := tiles.duplicate()
 	var fs := Array(faces)
 	var extend := false
+	var branch := false
 	if ts.size() > 1:
 		var i0 := _i(ts[0])
 		if inside(ts[0]) and int(kind[i0]) == BELT and int(face[i0]) % 2 != int(fs[0]) % 2 and _dangles(i0):
 			# begun on a line's loose end: the path goes on from it, its end the corner
 			extend = true
+		elif inside(ts[0]) and int(kind[i0]) == BELT and int(face[i0]) % 2 != int(fs[0]) % 2 and _fed_straight(i0) and has(SPLIT):
+			# begun on a line and leaving it by a side: a branch, the square a splitter
+			branch = true
 		elif not can_lay(ts[0]) or (inside(ts[0]) and int(kind[i0]) == BELT and int(face[i0]) % 2 != int(fs[0]) % 2):
 			ts.pop_front()
 			fs.pop_front()
@@ -676,11 +683,21 @@ func trim_path(tiles: Array, f_last: int) -> Dictionary:
 			break
 		var i := _i(t)
 		var f := int(fs[j])
-		if int(kind[i]) == BELT and int(face[i]) % 2 != f % 2 and not (j == 0 and extend):
+		if int(kind[i]) == BELT and int(face[i]) % 2 != f % 2 and not (j == 0 and (extend or branch)):
 			if j == 0 or j == ts.size() - 1 or not has(BRIDGE):
 				cut = j
 				break
-	return {"tiles": ts, "faces": fs, "cut": cut, "extend": extend}
+	return {"tiles": ts, "faces": fs, "cut": cut, "extend": extend, "branch": branch}
+
+## Whether every belt handing into square `i` comes in at its back (or none
+## does): a splitter there would take what the belt took.
+func _fed_straight(i: int) -> bool:
+	var f := int(face[i])
+	for s: int in feeders.get(i, PackedInt32Array()):
+		for e: int in outs[s]:
+			if (e >> 2) == i and (e & 3) != f:
+				return false
+	return true
 
 ## Whether the belt on square `i` is a line's loose end: it hands nothing on.
 func _dangles(i: int) -> bool:
@@ -702,7 +719,12 @@ func lay_path(tiles: Array, f_last: int) -> int:
 		var i := _i(t)
 		var k := int(kind[i])
 		var across := f % 2 == 0
-		if k == EMPTY:
+		if j == 0 and bool(p.branch):
+			# the line keeps its way; the square shares it with the branch
+			_record(i)
+			kind[i] = SPLIT
+			to_d[i] = NONE
+		elif k == EMPTY:
 			_record(i)
 			kind[i] = BELT
 			face[i] = f

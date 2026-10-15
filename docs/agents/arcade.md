@@ -3999,3 +3999,22 @@ of them; the reference's tables), the L's A fed from behind like B (the
 user's image 13 fed A from its outer side; their answer "back in" won),
 splitter and combiner at level 1, 80 squares, `APART` 3, the old sheet's
 layout dropped, the pace (runs to the box are longer now, belts unchanged).
+
+#### Branching a line by drawing out of it (2026-10-15)
+
+The user's phone shot, level 7: a 2s line running east with two belts
+starting just under it, going south into an adder's B and A, fed nothing
+("in this case the convey should merge, in a way that user should be able to
+branch the convey at any time"). The two belts lay beside the line: since
+the footprints pass a belt never splits by itself. Now a stroke **begun on a
+line square and leaving it by a side** branches it: `trim_path`'s `branch`
+turns that square into a splitter facing the line's way (the line goes on,
+the branch takes every other token in turn), when everything handing into
+it comes in at its back (`_fed_straight`; a corner or a T square is left as
+it was and the stroke starts beside it). Belts that only lie side by side
+still never join; the branch is always drawn. A stroke from a line's loose
+end still makes the corner. The Belts tutorial body says so in en, pt, es
+(pt and es 188 px of 230, windowed). Probe 0 failed; `_shot_tally.gd`
+headless 0 failed twice (its straight-line beat now finds clear paper,
+`_clear_row`). A sheet already laid like the shot stays unjoined: the
+player redraws the branch from the line.

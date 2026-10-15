@@ -363,15 +363,29 @@ func _path() -> void:
 	_run(r, Vector2i(5, 5), Vector2i(9, 5), E)
 	r.lay_path([Vector2i(9, 5), Vector2i(8, 5), Vector2i(7, 5), Vector2i(6, 5), Vector2i(5, 5)], Wd)
 	_check("a path along a line reverses it", r.face_at(Vector2i(5, 5)) == Wd and r.face_at(Vector2i(9, 5)) == Wd)
-	# a path begun on a belt across its way starts beside it
+	# a path begun on a belt across its way branches it and never turns it
 	r.lay_path([Vector2i(7, 5), Vector2i(7, 6), Vector2i(7, 7)], S)
-	_check("a path begun on a belt across its way leaves it and starts beside it", r.face_at(Vector2i(7, 5)) == Wd and r.kind_at(Vector2i(7, 6)) == Sim.BELT and r.face_at(Vector2i(7, 6)) == S)
+	_check("a path begun on a belt across its way branches it, its way kept", r.kind_at(Vector2i(7, 5)) == Sim.SPLIT and r.face_at(Vector2i(7, 5)) == Wd and r.kind_at(Vector2i(7, 6)) == Sim.BELT and r.face_at(Vector2i(7, 6)) == S)
 	# a second stroke begun on a line's loose end turns it into the corner;
 	# begun on a belt mid-line it starts beside it
 	var x = _blank(3)
 	_run(x, Vector2i(5, 9), Vector2i(9, 9), E)
 	x.lay_path([Vector2i(9, 9), Vector2i(9, 10), Vector2i(9, 11)], S)
 	_check("a path begun on a line's loose end goes on from it round the corner", x.face_at(Vector2i(9, 9)) == S and x.face_at(Vector2i(9, 11)) == S and (x.outs[Sim._i(Vector2i(8, 9))] as PackedInt32Array).size() == 1)
+	# a stroke begun mid-line and leaving it by a side branches it: a splitter there
+	var br = _blank(3)
+	br.dep[Sim._i(Vector2i(4, 20))] = 1
+	br.place(Sim.DIG, Vector2i(4, 20), E)
+	_run(br, Vector2i(5, 20), Vector2i(12, 20), E)
+	br.lay_path([Vector2i(8, 20), Vector2i(8, 21), Vector2i(8, 22), Vector2i(8, 23)], S)
+	_check("a stroke out of a line's side makes a splitter there, the line still going on", br.kind_at(Vector2i(8, 20)) == Sim.SPLIT and br.face_at(Vector2i(8, 20)) == E and br.face_at(Vector2i(8, 21)) == S and (br.outs[Sim._i(Vector2i(8, 20))] as PackedInt32Array).size() == 2)
+	br.step(20.0)
+	_check("the branch fills and the line goes on (%d, %d)" % [br.occ[Sim._i(Vector2i(8, 23))], br.occ[Sim._i(Vector2i(11, 20))]], br.occ[Sim._i(Vector2i(8, 23))] == 1 and br.occ[Sim._i(Vector2i(11, 20))] == 1)
+	_check("a belt lying beside a line still takes nothing from it", (func() -> bool:
+		var q = _blank(3)
+		_run(q, Vector2i(5, 20), Vector2i(12, 20), E)
+		_run(q, Vector2i(8, 21), Vector2i(8, 23), S)
+		return q.kind_at(Vector2i(8, 20)) == Sim.BELT and (q.outs[Sim._i(Vector2i(8, 20))] as PackedInt32Array).size() == 1).call())
 	var one = _blank(3)
 	one.lay_path([Vector2i(3, 3)], Nd)
 	_check("a path of one square faces the way given", one.kind_at(Vector2i(3, 3)) == Sim.BELT and one.face_at(Vector2i(3, 3)) == Nd)

@@ -113,6 +113,22 @@ func _trace(pts: Array) -> void:
 			_drag_ev(p0.lerp(p1, float(s) / n))
 	_touch(_square(pts[-1]), false)
 
+## A square from `near` with six free squares east of it and the row under,
+## for the straight-line beat (the paper's seed is new each run).
+func _clear_row(sim, near: Vector2i) -> Vector2i:
+	for r in 12:
+		for dy in [-r, r]:
+			for dx in range(-r, r + 1):
+				var t: Vector2i = near + Vector2i(dx, dy)
+				var ok := true
+				for x in 6:
+					for y in 4:
+						var u := t + Vector2i(x, y)
+						ok = ok and Sim.inside(u) and sim.kind_at(u) == Sim.EMPTY and sim.ring(u) > 1
+				if ok:
+					return t
+	return near
+
 ## A pill button pressed for real, where the board says it is.
 func _tap_pill(name: String) -> void:
 	var r: Rect2 = _s.board.pill_button_rect(name)
@@ -319,7 +335,7 @@ func _process(delta: float) -> bool:
 				_check("traced again, the run is back (%d belts)" % sim.lanes.size(), sim.lanes.size() >= 2)
 				# Straight on again: a drag that wobbles a square off its row lays one straight run
 				_tap(_win(_s.line_chip, _s.line_chip.size * 0.5))
-				var w0 := _dig + Vector2i(-6, -5)
+				var w0 := _clear_row(sim, _dig + Vector2i(-6, -5))
 				var before: int = sim.lanes.size()
 				_trace([w0, w0 + Vector2i(2, 0), w0 + Vector2i(2, 1), w0 + Vector2i(4, 1)])
 				var straight_ok: bool = sim.straight and sim.lanes.size() - before == 5
