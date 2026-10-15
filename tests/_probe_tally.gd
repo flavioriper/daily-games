@@ -366,6 +366,12 @@ func _path() -> void:
 	# a path begun on a belt across its way starts beside it
 	r.lay_path([Vector2i(7, 5), Vector2i(7, 6), Vector2i(7, 7)], S)
 	_check("a path begun on a belt across its way leaves it and starts beside it", r.face_at(Vector2i(7, 5)) == Wd and r.kind_at(Vector2i(7, 6)) == Sim.BELT and r.face_at(Vector2i(7, 6)) == S)
+	# a second stroke begun on a line's loose end turns it into the corner;
+	# begun on a belt mid-line it starts beside it
+	var x = _blank(3)
+	_run(x, Vector2i(5, 9), Vector2i(9, 9), E)
+	x.lay_path([Vector2i(9, 9), Vector2i(9, 10), Vector2i(9, 11)], S)
+	_check("a path begun on a line's loose end goes on from it round the corner", x.face_at(Vector2i(9, 9)) == S and x.face_at(Vector2i(9, 11)) == S and (x.outs[Sim._i(Vector2i(8, 9))] as PackedInt32Array).size() == 1)
 	var one = _blank(3)
 	one.lay_path([Vector2i(3, 3)], Nd)
 	_check("a path of one square faces the way given", one.kind_at(Vector2i(3, 3)) == Sim.BELT and one.face_at(Vector2i(3, 3)) == Nd)

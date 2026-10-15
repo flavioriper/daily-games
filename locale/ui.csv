@@ -1845,6 +1845,17 @@ TL_TOOL_MUL,Times,Vezes,Por
 TL_TOOL_SUB,Take,Tirar,Restar
 TL_TOOL_DIV,Divide,Dividir,Dividir
 TL_TOOL_POW,Power,Potência,Potencia
+TL_TOOL_TURN,Rotate,Girar,Girar
+TL_TOOL_SPLIT,Splitter,Separar,Separar
+TL_TOOL_JOIN,Combiner,Juntar,Juntar
+TL_PIECE_SPLIT,Splitter,Separador,Separador
+TL_PIECE_JOIN,Combiner,Juntador,Combinador
+TL_PIECE_SPLIT_LINE,Takes from its back and hands out in turn to its front and both sides.,Recebe por trás e entrega na vez da frente e de cada lado.,Recibe por detrás y reparte por turnos al frente y a cada lado.
+TL_PIECE_JOIN_LINE,Takes from its back and both sides in turn and hands out of its front.,"Recebe por trás e pelos lados, na vez de cada um, e entrega pela frente.","Recibe por detrás y por los lados, por turnos, y entrega por delante."
+TL_STRAIGHT_ON,Straight,Reta,Recta
+TL_STRAIGHT_OFF,Curves,Curvas,Curvas
+TL_SAY_NO_ROOM,No room to turn it,Sem espaço para girar,No hay sitio para girarlo
+TL_SAY_NO_TURN,That one doesn't turn,Esse não gira,Ese no gira
 TL_PIECE_BELT,Belt,Esteira,Cinta
 TL_PIECE_BRIDGE,Bridge,Ponte,Puente
 TL_PIECE_DIG,Dig,Extrator,Extractor
@@ -1858,11 +1869,11 @@ TL_PIECE_BOX,The counting box,A caixa de contagem,La caja de conteo
 TL_PIECE_BELT_LINE,Carries one number a square.,Leva um número por casa.,Lleva un número por casilla.
 TL_PIECE_BRIDGE_LINE,"Two belts crossing, each going straight on.","Duas esteiras se cruzando, cada uma seguindo reto.","Dos cintas que se cruzan, cada una sigue recta."
 TL_PIECE_DIG_LINE,Puts its number on every belt that leads away from it.,Põe seu número em cada esteira que sai dele.,Pone su número en cada cinta que sale de él.
-TL_PIECE_ADD_LINE,"A on its one-arrow side, B on its two-arrow side: A + B goes out of the front.","A no lado de uma seta, B no lado de duas: A + B sai pela frente.","A en el lado de una flecha, B en el de dos: A + B sale por delante."
-TL_PIECE_MUL_LINE,"A on its one-arrow side, B on its two-arrow side: A × B goes out of the front.","A no lado de uma seta, B no lado de duas: A × B sai pela frente.","A en el lado de una flecha, B en el de dos: A × B sale por delante."
-TL_PIECE_SUB_LINE,"A on its one-arrow side, B on its two-arrow side: A − B goes out of the front.","A no lado de uma seta, B no lado de duas: A − B sai pela frente.","A en el lado de una flecha, B en el de dos: A − B sale por delante."
-TL_PIECE_DIV_LINE,A ÷ B goes out of the front and the remainder out of the back. A remainder of 0 is not put out.,A ÷ B sai pela frente e o resto por trás. Resto 0 não sai.,A ÷ B sale por delante y el resto por detrás. Un resto de 0 no sale.
-TL_PIECE_POW_LINE,"A on its one-arrow side, B on its two-arrow side: A to the power B goes out of the front.","A no lado de uma seta, B no lado de duas: A elevado a B sai pela frente.","A en el lado de una flecha, B en el de dos: A elevado a B sale por delante."
+TL_PIECE_ADD_LINE,"A into the back of its A square, B into the back of its B square: A + B leaves the front.","A entra por trás do quadrado A, B por trás do quadrado B: A + B sai pela frente.","A entra por detrás de la casilla A, B por detrás de la B: A + B sale por delante."
+TL_PIECE_MUL_LINE,"A into the back of its A square, B into the back of its B square: A × B leaves the front.","A entra por trás do quadrado A, B por trás do quadrado B: A × B sai pela frente.","A entra por detrás de la casilla A, B por detrás de la B: A × B sale por delante."
+TL_PIECE_SUB_LINE,"A into the back of its A square, B into the back of its B square: A − B leaves the front.","A entra por trás do quadrado A, B por trás do quadrado B: A − B sai pela frente.","A entra por detrás de la casilla A, B por detrás de la B: A − B sale por delante."
+TL_PIECE_DIV_LINE,"A and B in at the back: A ÷ B leaves the front of its answer square, the remainder the front of its R square. A remainder of 0 is not put out.","A e B entram por trás: A ÷ B sai pela frente do quadrado da resposta, o resto pela frente do quadrado R. Resto 0 não sai.","A y B entran por detrás: A ÷ B sale por delante de su casilla de resultado, el resto por delante de la casilla R. Un resto de 0 no sale."
+TL_PIECE_POW_LINE,"A into the back of its A square, B into the back of its B square: A to the power B leaves the front.","A entra por trás do quadrado A, B por trás do quadrado B: A elevado a B sai pela frente.","A entra por detrás de la casilla A, B por detrás de la B: A elevado a B sale por delante."
 TL_PIECE_CRATE_LINE,"Keeps the first number it gets, up to 500, and lets them out on every belt leading away.","Guarda o primeiro número que recebe, até 500, e solta em cada esteira que sai dele.","Guarda el primer número que recibe, hasta 500, y lo suelta en cada cinta que sale de él."
 TL_TURN,Turn,Girar,Girar
 TL_LIFT,Remove,Remover,Quitar
@@ -1913,8 +1924,8 @@ TUT_TALLY_DIG_BODY,"Pick Dig, tap a printed 1 and tap Place to set a dig on it. 
 TUT_TALLY_BOX,The box asks,A caixa pede,La caja pide
 TUT_TALLY_BOX_BODY,The counting box asks for one number so many times. The tokens it wants wear a gold ring. Each level done hands over a new piece or a new number to dig.,A caixa de contagem pede um número tantas vezes. As fichas que ela quer têm um anel dourado. Cada nível feito libera uma peça nova ou um número novo para extrair.,La caja de conteo pide un número tantas veces. Las fichas que quiere llevan un anillo dorado. Cada nivel hecho entrega una pieza nueva o un número nuevo para extraer.
 TUT_TALLY_MACHINE,Machines,Máquinas,Máquinas
-TUT_TALLY_MACHINE_BODY,"A machine takes A on its one-arrow side and B on its two-arrow side, and the answer leaves by its front: 3 and 4 make 7. Tap where it goes, Turn it, then Place. A side left empty glows amber: it is waiting.","Uma máquina recebe A no lado de uma seta e B no lado de duas, e a resposta sai pela frente: 3 e 4 dão 7. Toque onde ela vai, Gire e depois Colocar. Um lado vazio brilha âmbar: está esperando.","Una máquina toma A por su lado de una flecha y B por el de dos, y el resultado sale por delante: 3 y 4 dan 7. Toca dónde va, Gírala y luego Colocar. Un lado vacío brilla ámbar: está esperando."
-TUT_TALLY_BELTS,Splits and crossings,Divisões e cruzamentos,Desvíos y cruces
-TUT_TALLY_BELTS_BODY,"A belt starting at another's side takes every other token. Belts running into one take turns. From level 5, a path drawn across a belt makes a bridge over it; before that it stops beside it.","Uma esteira que começa ao lado de outra leva uma ficha sim, outra não. Esteiras que entram numa só se revezam. Do nível 5, traçar por cima de uma esteira faz uma ponte; antes, o caminho para ao lado.","Una cinta que empieza al lado de otra se lleva una ficha sí y otra no. Las cintas que entran en una se turnan. Desde el nivel 5, trazar sobre una cinta hace un puente; antes, el camino se detiene al lado."
+TUT_TALLY_MACHINE_BODY,"A machine takes A and B into the backs of its A and B squares, and the answer leaves its front: 3 and 4 make 7. Tap where it goes, Turn it, then Place. A side left empty glows amber: it is waiting.","Uma máquina recebe A e B por trás dos quadrados A e B, e a resposta sai pela frente: 3 e 4 dão 7. Toque onde ela vai, Gire e depois Colocar. Um lado vazio brilha âmbar: está esperando.","Una máquina recibe A y B por detrás de sus casillas A y B, y el resultado sale por delante: 3 y 4 dan 7. Toca dónde va, Gírala y luego Colocar. Un lado vacío brilla ámbar: está esperando."
+TUT_TALLY_BELTS,Splitters and crossings,Separar e cruzar,Separar y cruzar
+TUT_TALLY_BELTS_BODY,"A belt only carries straight on. A splitter hands its line out to its front and sides in turn; a combiner takes from its back and sides in turn. From level 5, a path drawn across a belt makes a bridge.","Uma esteira só segue reto. Um separador reparte a linha entre a frente e os lados; um juntador recebe de trás e dos lados, na vez de cada um. Do nível 5, traçar por cima de uma esteira faz uma ponte.","Una cinta solo sigue recta. Un separador reparte su línea al frente y a los lados; un combinador recibe de detrás y de los lados por turnos. Desde el nivel 5, trazar sobre una cinta hace un puente."
 TUT_TALLY_UPGRADE,Upgrades,Melhorias,Mejoras
 TUT_TALLY_UPGRADE_BODY,"Upgrades are paid in numbers the box has had: tap a branch of the tree, deliver what it asks and press Up. Faster belts, digs on more belts, quicker machines.","Melhorias são pagas com números que a caixa recebeu: toque num ramo da árvore, entregue o que ele pede e aperte Subir. Esteiras mais rápidas, extratores em mais esteiras, máquinas mais ágeis.","Las mejoras se pagan con números que la caja recibió: toca una rama del árbol, entrega lo que pide y pulsa Subir. Cintas más rápidas, extractores en más cintas, máquinas más ágiles."

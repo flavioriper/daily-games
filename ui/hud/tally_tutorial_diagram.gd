@@ -14,12 +14,12 @@ extends Control
 ## - BOX: the box asks for 1s; the tokens it wants wear a sun ring, a 3s
 ##   line comes in plain; ten 1s finish the level and the adder is handed
 ##   over.
-## - MACHINE: the adder's ghost is dropped facing the wrong way, Turn turns
-##   it, Place sets it down, and 3 on its one-dot side and 4 on its two-dot
-##   side make 7.
-## - BELTS: a belt whose back touches the 1s line's side takes every other
-##   token, the 2s join the line taking turns, and a path traced across the
-##   line makes a bridge.
+## - MACHINE: the adder's ghost (four squares) is dropped facing north, Turn
+##   faces it east, Place sets it down, and 3 into the back of its A square
+##   and 4 into the back of its B square make 7.
+## - BELTS: a splitter on the 1s line sends every other token down its side
+##   arm, the 2s come into a combiner on the line taking turns, and a path
+##   traced across the line makes a bridge.
 ## - UPGRADE: the 1s coming in fill the belt's upgrade (drawn as the
 ##   upgrades card draws a row); the finger presses Up and the belts run
 ##   twice as fast.
@@ -39,21 +39,21 @@ enum Lesson { DIG, BOX, MACHINE, BELTS, UPGRADE }
 
 ## The squares seen across the page, and where the page looks.
 const ACROSS := 9.5
-const LOOK := {Lesson.DIG: Vector2(20.2, 22.8), Lesson.BOX: Vector2(20.2, 23.0), Lesson.MACHINE: Vector2(19.8, 22.5),
-	Lesson.BELTS: Vector2(18.5, 22.5), Lesson.UPGRADE: Vector2(19.8, 23.0)}
+const LOOK := {Lesson.DIG: Vector2(37.2, 39.8), Lesson.BOX: Vector2(37.2, 40.0), Lesson.MACHINE: Vector2(35.6, 40.0),
+	Lesson.BELTS: Vector2(35.5, 39.5), Lesson.UPGRADE: Vector2(36.8, 40.0)}
 ## Each lesson's finger: [second, square (its middle is + 0.5), down].
 const SCRIPTS := {
-	Lesson.DIG: [[0.0, Vector2(18.5, 24.5), false], [0.8, Vector2(16.5, 22.5), false], [1.0, Vector2(16.5, 22.5), true], [1.15, Vector2(16.5, 22.5), false],
+	Lesson.DIG: [[0.0, Vector2(35.5, 41.5), false], [0.8, Vector2(33.5, 39.5), false], [1.0, Vector2(33.5, 39.5), true], [1.15, Vector2(33.5, 39.5), false],
 		[1.7, "place", false], [1.85, "place", true], [2.0, "place", false],
-		[2.8, Vector2(17.5, 22.5), false], [3.0, Vector2(17.5, 22.5), true], [3.9, Vector2(20.5, 22.5), true], [4.05, Vector2(20.5, 22.5), false],
-		[4.7, Vector2(18.5, 24.5), false]],
-	Lesson.BOX: [[0.0, Vector2(18.5, 25.0), false]],
-	Lesson.MACHINE: [[0.0, Vector2(16.5, 24.5), false], [0.8, Vector2(18.5, 22.5), false], [1.0, Vector2(18.5, 22.5), true], [1.15, Vector2(18.5, 22.5), false],
+		[2.8, Vector2(34.5, 39.5), false], [3.0, Vector2(34.5, 39.5), true], [3.9, Vector2(37.5, 39.5), true], [4.05, Vector2(37.5, 39.5), false],
+		[4.7, Vector2(35.5, 41.5), false]],
+	Lesson.BOX: [[0.0, Vector2(35.5, 42.0), false]],
+	Lesson.MACHINE: [[0.0, Vector2(33.5, 41.5), false], [0.8, Vector2(36.5, 39.5), false], [1.0, Vector2(36.5, 39.5), true], [1.15, Vector2(36.5, 39.5), false],
 		[1.9, "turn", false], [2.05, "turn", true], [2.2, "turn", false],
-		[3.0, "place", false], [3.15, "place", true], [3.3, "place", false], [4.1, Vector2(16.5, 24.5), false]],
-	Lesson.BELTS: [[0.0, Vector2(13.5, 24.5), false], [3.4, Vector2(16.5, 21.5), false], [3.6, Vector2(16.5, 21.5), true], [4.6, Vector2(16.5, 24.5), true], [4.75, Vector2(16.5, 24.5), false],
-		[5.4, Vector2(13.5, 24.5), false]],
-	Lesson.UPGRADE: [[0.0, Vector2(18.0, 25.0), false]],
+		[3.0, "place", false], [3.15, "place", true], [3.3, "place", false], [4.1, Vector2(33.5, 41.5), false]],
+	Lesson.BELTS: [[0.0, Vector2(30.5, 41.5), false], [3.4, Vector2(33.5, 38.5), false], [3.6, Vector2(33.5, 38.5), true], [4.6, Vector2(33.5, 41.5), true], [4.75, Vector2(33.5, 41.5), false],
+		[5.4, Vector2(30.5, 41.5), false]],
+	Lesson.UPGRADE: [[0.0, Vector2(35.0, 42.0), false]],
 }
 ## When the tool in hand changes: [second, tool].
 const TOOLS := {
@@ -147,48 +147,53 @@ func _reset() -> void:
 	match lesson:
 		Lesson.DIG:
 			_sim.lv.belt = 3
-			_sim.dep[Sim._i(Vector2i(16, 22))] = 1
-			_sim.dep[Sim._i(Vector2i(17, 25))] = 1
-			_sim.dep[Sim._i(Vector2i(18, 20))] = 2
+			_sim.dep[Sim._i(Vector2i(33, 39))] = 1
+			_sim.dep[Sim._i(Vector2i(34, 42))] = 1
+			_sim.dep[Sim._i(Vector2i(35, 37))] = 2
 		Lesson.BOX:
 			_sim.lv.belt = 3
 			_sim.got = 5
-			_dig(Vector2i(16, 22), 1)
-			_dig(Vector2i(17, 24), 3)
+			_dig(Vector2i(33, 39), 1)
+			_dig(Vector2i(34, 41), 3)
 			_sim._wire()
-			_run(Vector2i(17, 22), Vector2i(20, 22), 0)
-			_run(Vector2i(18, 24), Vector2i(20, 24), 0)
+			_run(Vector2i(34, 39), Vector2i(37, 39), 0)
+			_run(Vector2i(35, 41), Vector2i(37, 41), 0)
 		Lesson.MACHINE:
 			_sim.level = 2
 			_sim.lv.belt = 3
 			_sim.lv.add = 8
-			_dig(Vector2i(18, 20), 3)
-			_dig(Vector2i(18, 24), 4)
+			# 3 and 4 come along to where the adder's A and B squares will be;
+			# its answer squares' belts lead into the box
+			_dig(Vector2i(32, 39), 3)
+			_dig(Vector2i(32, 40), 4)
 			_sim._wire()
-			_run(Vector2i(18, 21), Vector2i(18, 21), 1)
-			_run(Vector2i(18, 23), Vector2i(18, 23), 3)
-			_run(Vector2i(19, 22), Vector2i(20, 22), 0)
+			_run(Vector2i(33, 39), Vector2i(34, 39), 0)
+			_run(Vector2i(33, 40), Vector2i(34, 40), 0)
+			_run(Vector2i(37, 39), Vector2i(37, 39), 0)
+			_run(Vector2i(37, 40), Vector2i(37, 40), 0)
 		Lesson.BELTS:
 			_sim.level = 6
 			_sim.lv.belt = 3
-			_dig(Vector2i(14, 22), 1)
-			_dig(Vector2i(19, 20), 2)
-			_dig(Vector2i(16, 20), 3)
+			_dig(Vector2i(31, 39), 1)
+			_dig(Vector2i(36, 37), 2)
+			_dig(Vector2i(33, 37), 3)
 			_sim._wire()
-			_run(Vector2i(15, 22), Vector2i(20, 22), 0)
-			# a belt whose back touches the line's side: a split
-			_run(Vector2i(17, 23), Vector2i(17, 23), 1)
-			_run(Vector2i(17, 24), Vector2i(20, 24), 0)
-			# the 2s come down into the line from its side: they take turns
-			_run(Vector2i(19, 21), Vector2i(19, 21), 1)
+			_run(Vector2i(32, 39), Vector2i(37, 39), 0)
+			# a splitter on the line sends every other token down its side arm
+			_run(Vector2i(34, 40), Vector2i(34, 40), 1)
+			_run(Vector2i(34, 41), Vector2i(37, 41), 0)
+			_sim.place(Sim.SPLIT, Vector2i(34, 39), 0)
+			# the 2s come down into a combiner on the line: they take turns
+			_run(Vector2i(36, 38), Vector2i(36, 38), 1)
+			_sim.place(Sim.JOIN, Vector2i(36, 39), 0)
 		Lesson.UPGRADE:
 			_sim.level = 2
 			_sim.ledger[1] = 36
-			_dig(Vector2i(17, 21), 1)
-			_dig(Vector2i(17, 22), 1)
+			_dig(Vector2i(34, 38), 1)
+			_dig(Vector2i(34, 39), 1)
 			_sim._wire()
-			_run(Vector2i(18, 21), Vector2i(20, 21), 0)
-			_run(Vector2i(18, 22), Vector2i(20, 22), 0)
+			_run(Vector2i(35, 38), Vector2i(37, 38), 0)
+			_run(Vector2i(35, 39), Vector2i(37, 39), 0)
 	_sim.events.clear()
 	_board.sim = _sim
 	_board.place_face = 3 if lesson == Lesson.MACHINE else 0
@@ -201,7 +206,7 @@ func _reset() -> void:
 func _script() -> Array:
 	if lesson != Lesson.UPGRADE:
 		return SCRIPTS[lesson]
-	var rest := Vector2(16.5, 23.5)
+	var rest := Vector2(33.5, 40.5)
 	if _up_t < 0.0:
 		return [[0.0, rest, false]]
 	var up: Vector2 = _board.squares_at(_up_button().get_center())
@@ -294,8 +299,7 @@ func _draw_over() -> void:
 	_over_l.draw_circle(chip, 40.0, Color("fcf7ef"), true, -1.0, true)
 	var kd := int(Board.TOOL_KINDS.get(tool, -1))
 	if kd >= 0:
-		var rot: float = _board.place_face * PI * 0.5 if Sim.is_op(kd) else 0.0
-		_over_l.draw_mesh(Art.icon(kd), null, Transform2D(rot, Vector2.ONE * 0.6, 0.0, chip))
+		_over_l.draw_mesh(Art.icon(kd), null, Transform2D(0.0, Vector2.ONE * 0.6, 0.0, chip))
 	else:
 		_over_l.draw_circle(chip, 14.0, Pal.TEXT_DIM, true, -1.0, true)
 	_text(tr("TL_TOOL_" + tool.to_upper()), chip + Vector2(52.0, 10.0), 28, Pal.TEXT)

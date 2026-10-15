@@ -108,7 +108,7 @@ func _paint(b: Face.Builder) -> void:
 	b.append(chev, _xf(UP + Vector2(0.0, S * 0.25)) * Transform2D(-PI * 0.5, Vector2.ZERO))
 	# The pieces and the tokens riding.
 	b.append(Art.dig(), _xf(DIG))
-	b.append(Art.machine(Sim.ADD), _xf(ADDER, -PI * 0.5))
+	b.append(Art.icon(Sim.ADD), _xf(ADDER))
 	for p: Vector2 in _ones():
 		b.append(Art.token(false), _xf(p))
 	b.append(Art.token(true), _xf(_two()))

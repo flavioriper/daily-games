@@ -44,6 +44,7 @@ const PAINT := {
 	Sim.ADD: Color("8fbf7a"), Sim.MUL: Color("7fa7d6"), Sim.SUB: Color("b48cc4"),
 	Sim.DIV: Color("e0956a"), Sim.POW: Color("d6b25c"), Sim.DIG: Color("c46a5a"),
 	Sim.CRATE: Color("6fb3a8"), Sim.BOX: Color("4f9fa0"), Sim.BELT: WALNUT, Sim.BRIDGE: Color("c99a6c"),
+	Sim.SPLIT: BRASS, Sim.JOIN: BRASS,
 }
 
 static var _cache := {}
@@ -106,28 +107,43 @@ static func print_ring(b: Face.Builder, at: Vector2, open: bool) -> void:
 # --- belts ---
 
 ## The path a token takes over a square, entry edge to exit edge through the
-## middle: `a` the way it is going as it comes in, `x` as it leaves.
+## middle in two straight legs (a corner is square, as the bed is): `a` the
+## way it is going as it comes in, `x` as it leaves.
 static func path(at: Vector2, a: int, x: int, p: float) -> Vector2:
 	var e := at - dir_v(a) * U * 0.5
 	var o := at + dir_v(x) * U * 0.5
-	var q := 1.0 - p
-	return e * (q * q) + at * (2.0 * q * p) + o * (p * p)
+	if p < 0.5:
+		return e.lerp(at, p * 2.0)
+	return at.lerp(o, p * 2.0 - 1.0)
 
 static func path_tan(a: int, x: int, p: float) -> Vector2:
-	var e := -dir_v(a) * 0.5
-	var o := dir_v(x) * 0.5
-	var t := (Vector2.ZERO - e) * (2.0 * (1.0 - p)) + (o - Vector2.ZERO) * (2.0 * p)
-	return t.normalized() if t.length_squared() > 1e-6 else dir_v(x)
+	return dir_v(a) if p < 0.5 else dir_v(x)
 
-## One belt square's bed into `b`: walnut with darker edges, along the path
-## from `a` to `x`.
+## A bar from `a` to `b`, `w` wide, run on `ext` past each end: square ends.
+static func _leg(a: Vector2, b: Vector2, w: float, ext: float) -> PackedVector2Array:
+	var v := (b - a).normalized()
+	var n := v.orthogonal() * w * 0.5
+	var a2 := a - v * ext
+	var b2 := b + v * ext
+	return PackedVector2Array([a2 + n, b2 + n, b2 - n, a2 - n])
+
+## The belts' widths: the dark edge and the walnut inside.
+const BED_W := U * 0.72
+const BED_IN := U * 0.58
+
+## One belt square's bed into `b`: a straight walnut strip with darker edges
+## from the edge it is entered by to the one it is left by, a corner square
+## (two legs meeting in the middle, no curve).
 static func bed_into(b: Face.Builder, at: Vector2, a: int, x: int) -> void:
-	var pts := PackedVector2Array()
-	for k in 9:
-		pts.append(path(at, a, x, k / 8.0))
-	b.stroke(pts, U * 0.66, WALNUT_EDGE, false, false)
-	b.stroke(pts, U * 0.54, WALNUT, false, false)
-	b.stroke(pts, U * 0.08, Color(WALNUT_HI, 0.5), false, false)
+	var e := at - dir_v(a) * U * 0.5
+	var o := at + dir_v(x) * U * 0.5
+	for pass_w: Array in [[BED_W, WALNUT_EDGE], [BED_IN, WALNUT]]:
+		var w: float = pass_w[0]
+		if a == x:
+			b.polygon(_leg(e, o, w, 0.0), pass_w[1])
+		else:
+			b.polygon(_leg(e, at, w, w * 0.5), pass_w[1])
+			b.polygon(_leg(at, o, w, 0.0), pass_w[1])
 
 ## A belt square's bed about the origin, built once a shape.
 static func bed(a: int, x: int) -> ArrayMesh:
@@ -139,10 +155,6 @@ static func bed(a: int, x: int) -> ArrayMesh:
 	bed_into(b, Vector2.ZERO, a, x)
 	return _keep(key, b)
 
-## A belt's cap where it starts from nothing, so a run's end is round.
-static func bed_cap(b: Face.Builder, at: Vector2) -> void:
-	b.disc(at, U * 0.33, WALNUT_EDGE)
-	b.disc(at, U * 0.27, WALNUT)
 
 ## A brass chevron about the origin pointing east, built once.
 static func chevron() -> ArrayMesh:
@@ -203,76 +215,162 @@ static func block_into(b: Face.Builder, s: float, col: Color, at := Vector2.ZERO
 	b.polygon(Face.Builder.round_rect(at + Vector2(-h, -h), Vector2(s, s), 16.0), col)
 	b.polygon(Face.Builder.round_rect(at + Vector2(-h + 8.0, -h + 6.0), Vector2(s - 16.0, s * 0.22), 10.0), Color(1, 1, 1, 0.16))
 
-## An operator's ports, facing east, in mesh units: the block's half size,
-## and how far into the block an input's notch is cut.
-const OP_HALF := U * 0.37
-const NOTCH_IN := U * 0.17
-const PORT_EDGE := U * 0.5
-
-## The middle of an input's notch for side `side` (0 A on the left, north;
-## 1 B on the right, south), about the square's middle facing east.
-static func port(side: int) -> Vector2:
-	return Vector2(0, (-1.0 if side == 0 else 1.0) * (OP_HALF + NOTCH_IN) * 0.5)
-
-## An input's notch on side `side` about the origin facing east: cut into
-## the block from its edge and narrowing, so a belt runs into it.
-static func mouth_poly(side: int, grow := 0.0) -> PackedVector2Array:
-	var sy := -1.0 if side == 0 else 1.0
-	var lip := OP_HALF + U * 0.03
-	var we := U * 0.16 + grow
-	var wi := U * 0.095 + grow
-	return PackedVector2Array([Vector2(-we, sy * lip), Vector2(we, sy * lip), Vector2(wi, sy * (NOTCH_IN - grow)), Vector2(-wi, sy * (NOTCH_IN - grow))])
-
-## A notch's chevrons pointing into the block: one on A's, two on B's.
-static func mouth_chevrons(side: int) -> Array:
-	var sy := -1.0 if side == 0 else 1.0
-	var w := U * 0.07
-	var d := U * 0.03
-	var at: Array = [port(side)] if side == 0 else [port(side) + Vector2(0, U * 0.04), port(side) - Vector2(0, U * 0.04)]
-	var out := []
-	for c: Vector2 in at:
-		out.append(PackedVector2Array([c + Vector2(-w, sy * d), c + Vector2(0, -sy * d), c + Vector2(w, sy * d)]))
-	return out
-
+## An operator's squares: how far in from a square's edge its block stands,
+## how deep an input's notch is cut, the reach of a spout.
+const CELL_IN := U * 0.04
+const NOTCH_D := U * 0.2
 const MOUTH_W := U * 0.04
 
-## An operator facing east: its block, its sign, a notch cut into each of
-## its A side (the left, north; one chevron) and its B side (the right,
-## south; two), the chevrons pointing in, and its way out a dark spout out
-## of the front with a brass chevron pointing away, as the belts' chevrons
-## point; the divider's remainder a second spout out of its back.
-static func machine(k: int) -> ArrayMesh:
-	var key := ["machine", k]
+## The notch cut into an input square from its back edge: `c` the square's
+## middle, `v` the way the machine faces (the way a token goes in).
+static func notch_poly(c: Vector2, v: Vector2, grow := 0.0) -> PackedVector2Array:
+	var n := v.orthogonal()
+	var lip := c - v * (U * 0.5 + 2.0)
+	var deep := c - v * (U * 0.5 - CELL_IN - NOTCH_D + grow)
+	var we := U * 0.17 + grow
+	var wi := U * 0.1 + grow
+	return PackedVector2Array([lip - n * we, lip + n * we, deep + n * wi, deep - n * wi])
+
+## Where an input's notch is, for a pulse ring: its middle.
+static func notch_mid(c: Vector2, v: Vector2) -> Vector2:
+	return c - v * (U * 0.5 - (CELL_IN + NOTCH_D) * 0.5)
+
+## A notch's chevrons pointing in, along `v`: one on A's, two on B's.
+static func notch_chevrons(c: Vector2, v: Vector2, many: int) -> Array:
+	var n := v.orthogonal()
+	var m := notch_mid(c, v)
+	var w := U * 0.07
+	var d := U * 0.03
+	var at: Array = [m] if many == 1 else [m - v * U * 0.04, m + v * U * 0.04]
+	var out := []
+	for p: Vector2 in at:
+		out.append(PackedVector2Array([p - v * d - n * w, p + v * d, p - v * d + n * w]))
+	return out
+
+## A machine's squares as [middle, role] about its root's middle, facing `f`.
+static func cells(k: int, f: int) -> Array:
+	var out := []
+	for c: Array in Sim.footprint(k, Vector2i.ZERO, f):
+		out.append([Vector2(c[0] as Vector2i) * U, int(c[1])])
+	return out
+
+## An operator facing `f` about its root square's middle, drawn as it lies
+## (the letters and the sign stay upright, so a mesh a facing): one painted
+## block over all its squares, the answer squares light, A and B a shade
+## down; A and B each a notch cut into its back edge with cream chevrons
+## pointing in (one, two) and its letter; the answer a dark spout out of its
+## front edge with a brass chevron pointing away and the sign; the
+## divider's remainder a smaller spout and an R.
+static func machine(k: int, f := 0) -> ArrayMesh:
+	var key := ["machine", k, f]
 	if _cache.has(key):
 		return _cache[key]
 	var b := Face.Builder.new()
 	var col: Color = PAINT[k]
-	_spout(b, 0, 1.0)
-	if k == Sim.DIV:
-		_spout(b, 2, 0.82)
-	block_into(b, OP_HALF * 2.0, col)
-	for side in 2:
-		b.polygon(mouth_poly(side), WALNUT_EDGE)
-		for c: PackedVector2Array in mouth_chevrons(side):
-			b.stroke(c, MOUTH_W, TOKEN)
-	sign_into(b, k, Vector2(0, -1), U * 0.14, CREAM)
+	var v := dir_v(f)
+	var cs := cells(k, f)
+	var h := U * 0.5 - CELL_IN
+	# spouts first: they come out from under the block
+	for c: Array in cs:
+		if int(c[1]) == Sim.R_OUT or int(c[1]) == Sim.R_REM:
+			_spout_at(b, c[0], v, 1.0 if int(c[1]) == Sim.R_OUT else 0.8)
+	for layer in 3:
+		for c: Array in cs:
+			var at: Vector2 = c[0]
+			var fill := col if int(c[1]) == Sim.R_OUT or int(c[1]) == Sim.R_REM else col.darkened(0.14)
+			var r := Rect2(at - Vector2(h, h), Vector2(h, h) * 2.0)
+			# a square reaches over to a neighbour of the same machine: one block
+			for o: Array in cs:
+				var d: Vector2 = (o[0] as Vector2) - at
+				if d.length() < U * 1.01 and d.length() > 1.0:
+					r = r.expand(at + d * 0.5 + d.orthogonal().normalized() * h).expand(at + d * 0.5 - d.orthogonal().normalized() * h)
+			match layer:
+				0:
+					b.polygon(_rect(r, Vector2(0, 12.0)), SHADE)
+				1:
+					b.polygon(_rect(r, Vector2(0, 6.0)), col.darkened(0.3))
+				2:
+					b.polygon(_rect(r, Vector2.ZERO), fill)
+	for c: Array in cs:
+		var at: Vector2 = c[0]
+		match int(c[1]):
+			Sim.R_A, Sim.R_B:
+				var many := 1 if int(c[1]) == Sim.R_A else 2
+				b.polygon(notch_poly(at, v), WALNUT_EDGE)
+				for ch: PackedVector2Array in notch_chevrons(at, v, many):
+					b.stroke(ch, MOUTH_W, TOKEN)
+				letter_into(b, "A" if many == 1 else "B", at + v * U * 0.08, U * 0.15, CREAM)
+			Sim.R_OUT:
+				sign_into(b, k, at, U * 0.15, CREAM)
+			Sim.R_REM:
+				letter_into(b, "R", at, U * 0.13, CREAM)
 	return _keep(key, b)
 
-## A way out on side `d` (0 the front, 2 the back): a dark spout from under
-## the block to the square's edge, a brass chevron pointing away. `s` its size.
-static func _spout(b: Face.Builder, d: int, s: float) -> void:
-	var v := dir_v(d)
+static func _rect(r: Rect2, off: Vector2) -> PackedVector2Array:
+	return PackedVector2Array([r.position + off, Vector2(r.end.x, r.position.y) + off, r.end + off, Vector2(r.position.x, r.end.y) + off])
+
+## A letter in strokes about `at`, `r` its half height, upright.
+static func letter_into(b: Face.Builder, ch: String, at: Vector2, r: float, c: Color) -> void:
+	var w := r * 0.3
+	var q := r * 0.62
+	match ch:
+		"A":
+			b.stroke(PackedVector2Array([at + Vector2(-q, r), at + Vector2(0, -r), at + Vector2(q, r)]), w, c)
+			b.stroke(PackedVector2Array([at + Vector2(-q * 0.5, r * 0.3), at + Vector2(q * 0.5, r * 0.3)]), w, c)
+		"B", "R":
+			var x0 := at.x - q * 0.75
+			b.stroke(PackedVector2Array([Vector2(x0, at.y - r), Vector2(x0, at.y + r)]), w, c)
+			var top := PackedVector2Array([Vector2(x0, at.y - r)])
+			top.append_array(Face.Builder.arc_points(Vector2(at.x + q * 0.05, at.y - r * 0.5), r * 0.5, -PI * 0.5, PI * 0.5))
+			top.append(Vector2(x0, at.y))
+			b.stroke(top, w, c)
+			if ch == "B":
+				var low := PackedVector2Array([Vector2(x0, at.y)])
+				low.append_array(Face.Builder.arc_points(Vector2(at.x + q * 0.15, at.y + r * 0.5), r * 0.5, -PI * 0.5, PI * 0.5))
+				low.append(Vector2(x0, at.y + r))
+				b.stroke(low, w, c)
+			else:
+				b.stroke(PackedVector2Array([at + Vector2(-q * 0.1, 0), at + Vector2(q * 0.75, r)]), w, c)
+
+## A way out from the square at `at` going `v`: a dark spout from under the
+## block to the square's edge, a brass chevron pointing away. `s` its size.
+static func _spout_at(b: Face.Builder, at: Vector2, v: Vector2, s: float) -> void:
 	var n := v.orthogonal()
-	var base := v * (OP_HALF - U * 0.1)
-	var tip := v * PORT_EDGE
+	var base := at + v * (U * 0.5 - CELL_IN - U * 0.12)
+	var tip := at + v * U * 0.5
 	var wb := U * 0.2 * s
 	var wt := U * 0.15 * s
-	b.polygon(PackedVector2Array([base + v * U * 0.04 + n * (wb + 6.0), tip + v * 2.0 + n * (wt + 6.0), tip + v * 2.0 - n * (wt + 6.0), base + v * U * 0.04 - n * (wb + 6.0)]), SHADE)
+	b.polygon(PackedVector2Array([base + n * (wb + 6.0) + Vector2(0, 8.0), tip + n * (wt + 6.0) + Vector2(0, 8.0), tip - n * (wt + 6.0) + Vector2(0, 8.0), base - n * (wb + 6.0) + Vector2(0, 8.0)]), SHADE)
 	b.polygon(PackedVector2Array([base + n * wb, tip + n * wt, tip - n * wt, base - n * wb]), WALNUT_EDGE)
-	var c := v * (OP_HALF + PORT_EDGE) * 0.5 + v * U * 0.005
+	var c := at + v * (U * 0.5 - CELL_IN * 0.5)
 	var w := U * 0.085 * s
 	var q := U * 0.04 * s
 	b.stroke(PackedVector2Array([c - v * q + n * w, c + v * q, c - v * q - n * w]), U * 0.05 * s, BRASS)
+
+## A splitter's or a combiner's plate over its belt square, facing `f`: a
+## brass square with three chevrons, pointing out to the front and both
+## sides (a splitter) or in from the back and both sides (a combiner).
+static func junction(k: int, f: int) -> ArrayMesh:
+	var key := ["junction", k, f]
+	if _cache.has(key):
+		return _cache[key]
+	var b := Face.Builder.new()
+	var h := U * 0.25
+	b.polygon(_rect(Rect2(-h, -h, h * 2.0, h * 2.0), Vector2(0, 6.0)), SHADE)
+	b.polygon(_rect(Rect2(-h, -h, h * 2.0, h * 2.0), Vector2.ZERO), BRASS)
+	b.polygon(_rect(Rect2(-h + 5.0, -h + 5.0, h * 2.0 - 10.0, h * 2.0 - 10.0), Vector2.ZERO), BRASS.lightened(0.18))
+	var ways := [f, Sim.left_of(f), Sim.right_of(f)] if k == Sim.SPLIT else [f, Sim.left_of(f), Sim.right_of(f)]
+	for d: int in ways:
+		var v := dir_v(d)
+		var n := v.orthogonal()
+		# a splitter's point away from the middle; a combiner's toward the front
+		var pv := v if k == Sim.SPLIT else dir_v(f)
+		var at := v * U * 0.13 if k == Sim.SPLIT else -v * U * 0.13 + (dir_v(f) * U * 0.26 if d == f else Vector2.ZERO)
+		if k == Sim.JOIN and d != f:
+			pv = -v
+		var pn := pv.orthogonal()
+		b.stroke(PackedVector2Array([at - pv * U * 0.04 + pn * U * 0.06, at + pv * U * 0.04, at - pv * U * 0.04 - pn * U * 0.06]), U * 0.045, WALNUT_EDGE)
+	return _keep(key, b)
 
 ## An operator's sign about `at`, `r` its half size.
 static func sign_into(b: Face.Builder, k: int, at: Vector2, r: float, c: Color) -> void:
@@ -364,8 +462,25 @@ static func icon(k: int) -> ArrayMesh:
 		Sim.BRIDGE:
 			bed_into(b, Vector2.ZERO, 1, 1)
 			b.append(deck(0), Transform2D.IDENTITY)
+		Sim.SPLIT, Sim.JOIN:
+			bed_into(b, Vector2.ZERO, 0, 0)
+			if k == Sim.SPLIT:
+				bed_into(b, Vector2.ZERO, 0, 1)
+				bed_into(b, Vector2.ZERO, 0, 3)
+			else:
+				bed_into(b, Vector2.ZERO, 1, 0)
+				bed_into(b, Vector2.ZERO, 3, 0)
+			b.append(junction(k, 0), Transform2D.IDENTITY)
 		_:
-			b.append(machine(k), Transform2D.IDENTITY)
+			# a machine facing north, drawn to fit one square
+			var cs := cells(k, 3)
+			var lo := Vector2.INF
+			var hi := -Vector2.INF
+			for c: Array in cs:
+				lo = lo.min(c[0])
+				hi = hi.max(c[0])
+			var span := maxf(hi.x - lo.x, hi.y - lo.y) / U + 1.0
+			b.append(machine(k, 3), Transform2D(0.0, Vector2.ONE / span, 0.0, -(lo + hi) * 0.5 / span))
 	return _keep(key, b)
 
 ## One of ui/icons.gd's glyphs into `b`, fitted to `rect`: its polygons

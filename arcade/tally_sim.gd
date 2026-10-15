@@ -53,7 +53,7 @@ enum { EMPTY, BELT, BRIDGE, DIG, ADD, MUL, SUB, DIV, POW, CRATE, BOX, SPLIT, JOI
 const OPS := [ADD, MUL, SUB, DIV, POW]
 const KIND_IDS := {BELT: "belt", BRIDGE: "bridge", DIG: "dig", ADD: "add", MUL: "mul", SUB: "sub", DIV: "div", POW: "pow", CRATE: "crate", BOX: "box", SPLIT: "split", JOIN: "join"}
 ## The level whose end hands a piece over (it is had from the level after).
-const UNLOCK := {BELT: 0, DIG: 0, ADD: 1, SPLIT: 1, JOIN: 1, BRIDGE: 4, MUL: 7, SUB: 13, DIV: 16, POW: 19, CRATE: 22}
+const UNLOCK := {BELT: 0, DIG: 0, SPLIT: 0, JOIN: 0, ADD: 1, BRIDGE: 4, MUL: 7, SUB: 13, DIV: 16, POW: 19, CRATE: 22}
 
 ## What an operator's square is.
 enum { R_NONE, R_A, R_B, R_OUT, R_REM }
@@ -171,6 +171,8 @@ var _could := {}
 var _looked := 0.0
 ## What the last gesture changed: square -> [kind, face, face2] before it.
 var _undo := {}
+## The belt tool keeps to straight lines (the hand's toggle, kept with the paper).
+var straight := true
 ## Numbers into the box this level that were not the target, and the last
 ## such number; `off_target` is said once when OFF_SAY come with no hit.
 var off := 0
@@ -648,14 +650,19 @@ static func path_faces(tiles: Array, f_last: int) -> PackedByteArray:
 ## cannot (the square before faces into it); `cut` is where the path stops:
 ## at a square that cannot take belt, or a belt across its way where no
 ## bridge can go (before bridges are had, or at the path's end). A belt
-## across the way is never turned.
+## across the way is never turned, but for a line's loose end the path is
+## begun on (`extend`): it turns to go on with the path, the corner.
 func trim_path(tiles: Array, f_last: int) -> Dictionary:
 	var faces := path_faces(tiles, f_last)
 	var ts := tiles.duplicate()
 	var fs := Array(faces)
+	var extend := false
 	if ts.size() > 1:
 		var i0 := _i(ts[0])
-		if not can_lay(ts[0]) or (inside(ts[0]) and int(kind[i0]) == BELT and int(face[i0]) % 2 != int(fs[0]) % 2):
+		if inside(ts[0]) and int(kind[i0]) == BELT and int(face[i0]) % 2 != int(fs[0]) % 2 and _dangles(i0):
+			# begun on a line's loose end: the path goes on from it, its end the corner
+			extend = true
+		elif not can_lay(ts[0]) or (inside(ts[0]) and int(kind[i0]) == BELT and int(face[i0]) % 2 != int(fs[0]) % 2):
 			ts.pop_front()
 			fs.pop_front()
 	if ts.size() > 1 and not can_lay(ts[-1]):
@@ -669,11 +676,15 @@ func trim_path(tiles: Array, f_last: int) -> Dictionary:
 			break
 		var i := _i(t)
 		var f := int(fs[j])
-		if int(kind[i]) == BELT and int(face[i]) % 2 != f % 2:
+		if int(kind[i]) == BELT and int(face[i]) % 2 != f % 2 and not (j == 0 and extend):
 			if j == 0 or j == ts.size() - 1 or not has(BRIDGE):
 				cut = j
 				break
-	return {"tiles": ts, "faces": fs, "cut": cut}
+	return {"tiles": ts, "faces": fs, "cut": cut, "extend": extend}
+
+## Whether the belt on square `i` is a line's loose end: it hands nothing on.
+func _dangles(i: int) -> bool:
+	return (outs.get(i, PackedInt32Array()) as PackedInt32Array).is_empty()
 
 ## Lays a traced path (4-connected squares in order; `f_last` the way the
 ## finger went last, for a path of one square) after `trim_path`. Belts
@@ -700,7 +711,7 @@ func lay_path(tiles: Array, f_last: int) -> int:
 			if int(face[i]) == f:
 				continue
 			_record(i)
-			if int(face[i]) % 2 == f % 2:
+			if int(face[i]) % 2 == f % 2 or (j == 0 and bool(p.extend)):
 				face[i] = f
 				to_d[i] = NONE
 			else:
@@ -1275,6 +1286,7 @@ func save() -> void:
 	cfg.set_value("paper", "keys", keys)
 	cfg.set_value("paper", "counts", counts)
 	cfg.set_value("paper", "crates", crate_rows)
+	cfg.set_value("hand", "straight", straight)
 	cfg.save(path)
 
 static func load_saved(rng_seed := 0) -> RefCounted:
@@ -1285,6 +1297,7 @@ static func load_saved(rng_seed := 0) -> RefCounted:
 	s.level = maxi(1, int(cfg.get_value("paper", "level", 1)))
 	s.got = maxi(0, int(cfg.get_value("paper", "got", 0)))
 	s.made = maxi(0, int(cfg.get_value("paper", "made", 0)))
+	s.straight = bool(cfg.get_value("hand", "straight", true))
 	var levels: Dictionary = cfg.get_value("paper", "lv", {})
 	for id: String in TRACKS:
 		s.lv[id] = clampi(int(levels.get(id, 1)), 1, int(TRACK_TOP[id]))

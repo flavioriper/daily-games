@@ -122,12 +122,12 @@ func _tokens(c: Control, q: Array, at: Vector2, most := 4) -> void:
 
 func _draw_piece() -> void:
 	var c := _live
-	var kd: int = sim.kind_at(tile)
-	var i := Sim._i(tile)
+	var t: Vector2i = sim.root_of(tile)
+	var kd: int = sim.kind_at(t)
+	var i := Sim._i(t)
 	var at := Vector2(100, 110)
-	var rot := int(sim.face[i]) * PI * 0.5 if Sim.is_op(kd) else 0.0
-	var m: ArrayMesh = Art.machine(kd) if Sim.is_op(kd) else Art.icon(kd)
-	c.draw_mesh(m, null, Transform2D(rot, Vector2.ONE * 1.5, 0.0, at))
+	var rot := int(sim.face[i]) * PI * 0.5 if kd == Sim.SPLIT or kd == Sim.JOIN else 0.0
+	c.draw_mesh(Art.icon(kd), null, Transform2D(rot, Vector2.ONE * 1.5, 0.0, at))
 	var x := 240.0
 	if Sim.is_op(kd):
 		if not sim.machines.has(i):

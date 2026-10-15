@@ -55,13 +55,19 @@ const SAVE_EVERY := 20.0
 const SAVE_AFTER := 4.0
 ## The box's tick for a target coming in, at most this often.
 const HIT_GAP := 0.14
-const TOOLS := [["move", "belt", "dig", "crate", "remove"], ["add", "mul", "sub", "div", "pow"]]
+## The tray's two rows: the hands and the belt pieces, then what is set
+## down on the paper. A slot is row * ROW + its place in the row.
+const TOOLS := [["move", "belt", "turn", "remove", "split", "join"], ["dig", "crate", "add", "mul", "sub", "div", "pow"]]
+const ROW := 8
 const HAPTICS := {}
 ## The undo chip: how long it rests, its disc's radius, how far it stands
 ## over the tray's top-left corner.
 const UNDO_FOR := 6.0
 const UNDO_R := 46.0
 const UNDO_OVER := Vector2(6.0, -30.0)
+## The Straight toggle's capsule.
+const LINE_W := 220.0
+const LINE_H := 64.0
 
 var sim: RefCounted
 var top_bar: Control
@@ -93,6 +99,11 @@ var _bar := 0.0
 var _ready_on := false
 var _ready_n := 0
 var undo_chip: Control
+## The Straight toggle, up over the tray's top-right corner while Belt is held.
+var line_chip: Control
+var _line_down := false
+var _line_at := -10.0
+var _line_live: ArrayMesh
 var _undo_at := -10.0
 var _undo_down := false
 var _undo_live: ArrayMesh
@@ -194,6 +205,15 @@ func _build() -> void:
 	undo_chip.gui_input.connect(_on_undo_input)
 	add_child(undo_chip)
 
+	line_chip = Control.new()
+	line_chip.name = "LineChip"
+	line_chip.size = Vector2(LINE_W + 16.0, LINE_H + 16.0)
+	line_chip.mouse_filter = Control.MOUSE_FILTER_STOP
+	line_chip.visible = false
+	line_chip.draw.connect(_draw_line_chip)
+	line_chip.gui_input.connect(_on_line_input)
+	add_child(line_chip)
+
 	_rw = Rewards.new()
 	add_child(_rw)
 	_apply_insets()
@@ -218,6 +238,9 @@ func _lay_board() -> void:
 	# the undo chip's disc stands on the tray's top-left corner
 	var corner := Vector2(MARGIN, size.y - MARGIN - insets.y - TRAY_H)
 	undo_chip.position = corner + Vector2(UNDO_R, 0.0) + UNDO_OVER - undo_chip.size * 0.5
+	# the Straight toggle on its top-right corner
+	var right := Vector2(size.x - MARGIN, corner.y)
+	line_chip.position = right + Vector2(-LINE_W * 0.5 - 6.0, -LINE_H * 0.5 - 22.0) - line_chip.size * 0.5
 
 # --- the top bar's questions ---
 
@@ -290,6 +313,12 @@ func _process(delta: float) -> void:
 	tray.queue_redraw()
 	if chip_up:
 		undo_chip.queue_redraw()
+	var line_up: bool = board.tool == "belt" and not _busy()
+	if line_chip.visible != line_up:
+		line_chip.visible = line_up
+		_line_down = false
+	if line_up:
+		line_chip.queue_redraw()
 
 func _save() -> void:
 	_saved_at = _clock
@@ -400,7 +429,7 @@ func _on_unlock(r: int) -> void:
 	for row in TOOLS.size():
 		var j: int = TOOLS[row].find(String(Sim.KIND_IDS[r]))
 		if j >= 0:
-			var slot: int = row * 5 + j
+			var slot: int = row * ROW + j
 			_chip_at[slot] = _clock
 			_rw.ring(_rw.at(tray, _slot_mid(slot)), 90.0, Pal.SUN)
 			_rw.spray(_rw.at(tray, _slot_mid(slot)), Pal.SUN, 10, 380.0, "star", 0.9)
@@ -444,6 +473,10 @@ func _on_refused(why: String, at: Vector2, n: int) -> void:
 			text = tr("TL_SAY_LOCKED") % n
 		"box":
 			text = tr("TL_SAY_BOX")
+		"no_room":
+			text = tr("TL_SAY_NO_ROOM")
+		"no_turn":
+			text = tr("TL_SAY_NO_TURN")
 		_:
 			text = tr("TL_SAY_TAKEN")
 	_fx.cue("nope")
@@ -521,8 +554,30 @@ func _on_hud_input(event: InputEvent) -> void:
 
 func _slot_mid(slot: int) -> Vector2:
 	@warning_ignore("integer_division")
-	var row := slot / 5
-	return Vector2(tray.size.x * ((slot % 5) + 0.5) / 5.0, 14.0 + ROW_H * row + 50.0)
+	var row := slot / ROW
+	var n: int = TOOLS[row].size()
+	return Vector2(tray.size.x * ((slot % ROW) + 0.5) / n, 14.0 + ROW_H * row + 50.0)
+
+## The tool in `slot`.
+static func tool_of(slot: int) -> String:
+	@warning_ignore("integer_division")
+	return TOOLS[slot / ROW][slot % ROW]
+
+## Every slot, row by row.
+static func slots() -> Array:
+	var out := []
+	for row in TOOLS.size():
+		for j in TOOLS[row].size():
+			out.append(row * ROW + j)
+	return out
+
+## The slot of tool `id`, or -1.
+static func slot_of(id: String) -> int:
+	for row in TOOLS.size():
+		var j: int = TOOLS[row].find(id)
+		if j >= 0:
+			return row * ROW + j
+	return -1
 
 ## The kind a tool places, or -1 for Move and Remove.
 static func tool_kind(id: String) -> int:
@@ -547,7 +602,8 @@ func _on_tray_input(event: InputEvent) -> void:
 	else:
 		return
 	var row := clampi(int((at.y - 14.0) / ROW_H), 0, 1)
-	var slot := row * 5 + clampi(int(at.x / (tray.size.x / 5.0)), 0, 4)
+	var n: int = TOOLS[row].size()
+	var slot := row * ROW + clampi(int(at.x / (tray.size.x / n)), 0, n - 1)
 	if down:
 		if _slot_down < 0:
 			_slot_down = slot
@@ -562,8 +618,7 @@ func _on_tray_input(event: InputEvent) -> void:
 ## down (Look). Nothing here turns anything (the user, 2026-10-15: a tap
 ## that turned a machine was how the numbers stopped).
 func press_slot(slot: int) -> void:
-	@warning_ignore("integer_division")
-	var id: String = TOOLS[slot / 5][slot % 5]
+	var id := tool_of(slot)
 	_chip_at[slot] = _clock
 	if not _tool_open(id):
 		_fx.cue("nope")
@@ -577,7 +632,7 @@ func press_slot(slot: int) -> void:
 		_feel(Haptics.TAP)
 		return
 	board.set_tool(id)
-	_fx.touch(1.0 + 0.03 * slot)
+	_fx.touch(1.0 + 0.03 * (slot % ROW) + 0.1 * (slot / ROW))
 	_feel(Haptics.TAP)
 
 # --- the undo chip ---
@@ -624,6 +679,57 @@ func _on_undo_input(event: InputEvent) -> void:
 		if inside:
 			undo()
 
+## The Straight toggle: a paper capsule, a ruler line and its caption; on,
+## it wears the sun and the line is straight; off, the line bends.
+func _draw_line_chip() -> void:
+	var r := Rect2(Vector2(8.0, 8.0), Vector2(LINE_W, LINE_H))
+	var on: bool = sim.straight
+	var sc := 0.95 if _line_down else (1.0 if Motion.reduce else Motion.bump_scale(_clock - _line_at, 0.12, 0.2))
+	var c := r.get_center()
+	line_chip.draw_set_transform(c - c * sc, 0.0, Vector2(sc, sc))
+	var b := Face.Builder.new()
+	b.polygon(Face.Builder.round_rect(r.position + Vector2(0, 5.0), r.size, LINE_H * 0.5), Color(Pal.TEXT, 0.16))
+	b.polygon(Face.Builder.round_rect(r.position, r.size, LINE_H * 0.5), Pal.SUN if on else Color("fcf7ef"))
+	b.stroke(Face.Builder.round_rect(r.position, r.size, LINE_H * 0.5), 3.0, Color(Pal.SUN, 0.9) if not on else Color(Art.INK, 0.25), true)
+	var g := Vector2(r.position.x + 34.0, c.y)
+	var col := Art.INK if on else Color(Art.INK, 0.55)
+	if on:
+		b.stroke(PackedVector2Array([g + Vector2(-16, 12), g + Vector2(16, -12)]), 7.0, col)
+	else:
+		b.stroke(PackedVector2Array([g + Vector2(-16, 12), g + Vector2(-16, -8), g + Vector2(16, -8)]), 7.0, col)
+	_line_live = b.mesh()
+	line_chip.draw_mesh(_line_live, null)
+	var cap := tr("TL_STRAIGHT_ON") if on else tr("TL_STRAIGHT_OFF")
+	line_chip.draw_string(_font, Vector2(r.position.x + 60.0, c.y + 8.0), cap, HORIZONTAL_ALIGNMENT_CENTER, r.size.x - 70.0, 22, col)
+	line_chip.draw_set_transform(Vector2.ZERO)
+
+func _on_line_input(event: InputEvent) -> void:
+	var at := Vector2(-1, -1)
+	var down := false
+	if event is InputEventScreenTouch:
+		at = (event as InputEventScreenTouch).position
+		down = (event as InputEventScreenTouch).pressed
+	elif event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+		at = (event as InputEventMouseButton).position
+		down = (event as InputEventMouseButton).pressed
+	else:
+		return
+	var inside := Rect2(Vector2.ZERO, line_chip.size).grow(8.0).has_point(at)
+	if down:
+		_line_down = inside
+	elif _line_down:
+		_line_down = false
+		if inside:
+			toggle_straight()
+
+## Straight lines on or off for the belt tool (the chip, or a harness).
+func toggle_straight() -> void:
+	sim.straight = not sim.straight
+	_line_at = _clock
+	_fx.touch(1.06 if sim.straight else 0.94)
+	_feel(Haptics.TAP)
+	_changed_at = _clock
+
 ## The last gesture taken back (the chip, or a harness).
 func undo() -> void:
 	if not sim.can_undo():
@@ -639,9 +745,8 @@ func _draw_tray() -> void:
 	var still := Motion.reduce
 	var b := Face.Builder.new()
 	var marks := Face.Builder.new()
-	for slot in 10:
-		@warning_ignore("integer_division")
-		var id: String = TOOLS[slot / 5][slot % 5]
+	for slot: int in slots():
+		var id := tool_of(slot)
 		var at := _slot_mid(slot)
 		var on: bool = board.tool == id
 		var sc := 1.0 if still else Motion.bump_scale(_clock - float(_chip_at.get(slot, -10.0)), 0.16, 0.22)
@@ -656,22 +761,22 @@ func _draw_tray() -> void:
 			Art.hand_into(marks, at + Vector2(0, 4.0), 24.0 * sc, Pal.TEXT_DIM)
 		elif id == "remove":
 			Art.eraser_into(marks, at, 24.0 * sc)
+		elif id == "turn":
+			Art.glyph_into(marks, "turn", Rect2(at - Vector2.ONE * 24.0 * sc, Vector2.ONE * 48.0 * sc), Pal.TEXT_DIM)
 	_tray_live = b.mesh()
 	tray.draw_mesh(_tray_live, null)
 	_marks_live = marks.mesh() if not marks.verts.is_empty() else null
 	if _marks_live != null:
 		tray.draw_mesh(_marks_live, null)
-	for slot in 10:
-		@warning_ignore("integer_division")
-		var id: String = TOOLS[slot / 5][slot % 5]
+	for slot: int in slots():
+		var id := tool_of(slot)
 		var at := _slot_mid(slot)
 		var kd := tool_kind(id)
 		if kd >= 0 and _tool_open(id):
 			var sc := 1.0 if still else Motion.bump_scale(_clock - float(_chip_at.get(slot, -10.0)), 0.16, 0.22)
-			var rot: float = board.place_face * PI * 0.5 if Sim.is_op(kd) else 0.0
-			tray.draw_mesh(Art.icon(kd), null, Transform2D(rot, Vector2.ONE * 0.62 * sc, 0.0, at))
+			tray.draw_mesh(Art.icon(kd), null, Transform2D(0.0, Vector2.ONE * 0.62 * sc, 0.0, at))
 		var cap := tr("TL_TOOL_" + id.to_upper()) if _tool_open(id) else tr("TL_LEVEL_SHORT") % (int(Sim.UNLOCK[kd]) + 1)
-		var w := tray.size.x / 5.0
+		var w: float = tray.size.x / float((TOOLS[slot / ROW] as Array).size())
 		var col := Art.INK if board.tool == id else Color(Art.INK, 0.7)
 		tray.draw_string(_font, Vector2(at.x - w * 0.5, at.y + 44.0 + 30.0), cap, HORIZONTAL_ALIGNMENT_CENTER, w, 22, col)
 

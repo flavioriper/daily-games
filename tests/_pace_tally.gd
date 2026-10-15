@@ -1,5 +1,9 @@
 extends SceneTree
 
+## STALE since 2026-10-15's footprints (feat/tally-easier): the bot still
+## lays one-square machines on the old 46-square paper; its chains no longer
+## fit and its numbers are not the game's. Rebuild before quoting a pace.
+##
 ## Tally's pace, played by a bot, headless:
 ##   godot --headless --path . --script tests/_pace_tally.gd -- [levels] [copies] [up]
 ## With `up`, before each level the bot also makes the numbers its upgrades

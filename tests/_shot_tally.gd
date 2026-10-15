@@ -176,68 +176,77 @@ func _route(dig: Vector2i) -> Array:
 		return [start, end, f]
 	return [dig + Vector2i(0, 1 if dig.y < ty else -1), Vector2i(dig.x, ty), 1 if dig.y < ty else 3, Vector2i(tx, ty)]
 
-## A grown paper laid by hand: a few digs near the box with numbers written
-## for the harness, an adder, a multiplier, a divider, a bridge and a crate.
+## A grown paper laid by hand, the pieces spread round the box with room
+## between them: digs with numbers written for the harness, an adder (2 by
+## 2), a multiplier (1 by 3), a divider (2 by 2) with its remainder into a
+## crate, a splitter, a combiner and a bridge on a 1s line, and a
+## subtractor fed on A alone.
 func _grow(sim) -> void:
 	sim.level = 23
 	var b := Sim.HUB_AT
 	var put := func(t: Vector2i, v: int) -> void:
 		sim.dep[Sim._i(t)] = v
 		sim.place(Sim.DIG, t, 0)
-	# an adder west of the box: 3 from the north, 4 from the south, 7 east into the box
-	var m := b + Vector2i(-4, 1)
+	var run := func(a: Vector2i, z: Vector2i, f: int) -> void:
+		var tiles := [a]
+		while tiles[-1] != z:
+			tiles.append((tiles[-1] as Vector2i) + Sim.DIRS[f])
+		sim.lay_run(tiles, f)
+	# the real dig and its run from the first beats may stand where a machine goes
+	var room := func(k: int, t: Vector2i, f: int) -> void:
+		for c: Array in Sim.footprint(k, t, f):
+			var u: Vector2i = c[0]
+			if sim.kind_at(u) != Sim.EMPTY and sim.kind_at(u) != Sim.BOX:
+				sim.remove(u)
+	room.call(Sim.ADD, b + Vector2i(-4, 0), 0)
+	room.call(Sim.MUL, b + Vector2i(1, -4), 1)
+	room.call(Sim.DIV, b + Vector2i(7, 1), 2)
+	room.call(Sim.SUB, b + Vector2i(6, 6), 2)
+	# an adder west of the box facing east: 3 and 4 in at its back, 7 out of both answer squares
+	var m := b + Vector2i(-4, 0)
 	sim.place(Sim.ADD, m, 0)
-	put.call(m + Vector2i(0, -3), 3)
-	put.call(m + Vector2i(0, 3), 4)
-	sim.lay_run([m + Vector2i(0, -2), m + Vector2i(0, -1)], 1)
-	sim.lay_run([m + Vector2i(0, 2), m + Vector2i(0, 1)], 3)
-	sim.lay_run([m + Vector2i(1, 0), m + Vector2i(2, 0), m + Vector2i(3, 0)], 0)
-	# a multiplier north of the box: 6 × 5, down into it
+	put.call(b + Vector2i(-8, 0), 3)
+	put.call(b + Vector2i(-8, 1), 4)
+	run.call(b + Vector2i(-7, 0), b + Vector2i(-6, 0), 0)
+	run.call(b + Vector2i(-7, 1), b + Vector2i(-6, 1), 0)
+	run.call(b + Vector2i(-3, 0), b + Vector2i(-1, 0), 0)
+	run.call(b + Vector2i(-3, 1), b + Vector2i(-1, 1), 0)
+	# a multiplier north of the box facing south: 5 and 6 down into it, 30 down into the box
 	var x := b + Vector2i(1, -4)
 	sim.place(Sim.MUL, x, 1)
-	put.call(x + Vector2i(3, 0), 6)
-	put.call(x + Vector2i(-3, 0), 5)
-	sim.lay_run([x + Vector2i(2, 0), x + Vector2i(1, 0)], 2)
-	sim.lay_run([x + Vector2i(-2, 0), x + Vector2i(-1, 0)], 0)
-	sim.lay_run([x + Vector2i(0, 1), x + Vector2i(0, 2), x + Vector2i(0, 3)], 1)
-	# a divider east of the box: 9 ÷ 2, the quotient into the box, the remainder off to a crate
-	var d := b + Vector2i(7, 2)
+	put.call(b + Vector2i(2, -8), 6)
+	put.call(b + Vector2i(0, -8), 5)
+	run.call(b + Vector2i(2, -7), b + Vector2i(2, -5), 1)
+	run.call(b + Vector2i(0, -7), b + Vector2i(0, -5), 1)
+	run.call(b + Vector2i(1, -3), b + Vector2i(1, -1), 1)
+	# a divider east of the box facing west: 9 ÷ 2, the answer into the box, the remainder into a crate
+	var d := b + Vector2i(7, 1)
 	sim.place(Sim.DIV, d, 2)
-	put.call(d + Vector2i(0, 3), 9)
-	put.call(d + Vector2i(0, -3), 2)
-	sim.lay_run([d + Vector2i(0, 2), d + Vector2i(0, 1)], 3)
-	sim.lay_run([d + Vector2i(0, -2), d + Vector2i(0, -1)], 1)
-	sim.lay_run([d + Vector2i(-1, 0), d + Vector2i(-2, 0), d + Vector2i(-3, 0)], 2)
-	sim.lay_run([d + Vector2i(1, 0), d + Vector2i(2, 0)], 0)
-	sim.place(Sim.CRATE, d + Vector2i(3, 0), 0)
-	# a 1s line south of the box crossing a 2s line: a bridge
-	var s := b + Vector2i(0, 8)
+	put.call(b + Vector2i(12, 1), 9)
+	put.call(b + Vector2i(12, 0), 2)
+	run.call(b + Vector2i(11, 1), b + Vector2i(9, 1), 2)
+	run.call(b + Vector2i(11, 0), b + Vector2i(9, 0), 2)
+	run.call(b + Vector2i(6, 1), b + Vector2i(4, 1), 2)
+	run.call(b + Vector2i(6, 0), b + Vector2i(6, 0), 2)
+	sim.place(Sim.CRATE, b + Vector2i(5, 0), 0)
+	# a 1s line south of the box: a splitter sends every other 1 down an arm,
+	# a combiner takes 2s in from the north, a 3s line crosses on a bridge
+	var s := b + Vector2i(0, 9)
 	put.call(s + Vector2i(-6, 0), 1)
-	var row := []
-	for j in range(-5, 3):
-		row.append(s + Vector2i(j, 0))
-	sim.lay_run(row, 0)
-	var up := []
-	for j in range(0, 4):
-		up.append(s + Vector2i(3, -j))
-	sim.lay_run(up, 3)
-	put.call(s + Vector2i(-2, 3), 2)
-	var col := []
-	for j in range(2, -4, -1):
-		col.append(s + Vector2i(-2, j))
-	sim.lay_run(col, 3)
-	sim.lay_run([s + Vector2i(-2, -4), s + Vector2i(-1, -4), s + Vector2i(0, -4)], 0)
-	# a merge: 8s up into the side of the adder's run to the box, and a
-	# split: a belt off that run's side going north
-	put.call(m + Vector2i(2, 3), 8)
-	sim.lay_run([m + Vector2i(2, 2), m + Vector2i(2, 1)], 3)
-	sim.lay_run([m + Vector2i(1, -1), m + Vector2i(1, -2)], 3)
-	# a subtractor south-east of the box fed on A alone (3s from the south):
-	# it starves on B, and its two-pip side goes amber
+	run.call(s + Vector2i(-5, 0), s + Vector2i(2, 0), 0)
+	sim.lay_path([s + Vector2i(3, 0), s + Vector2i(3, -1), s + Vector2i(3, -2), s + Vector2i(3, -3), s + Vector2i(3, -4), s + Vector2i(3, -5), s + Vector2i(3, -6)], 3)
+	run.call(s + Vector2i(-3, 1), s + Vector2i(-3, 3), 1)
+	sim.place(Sim.SPLIT, s + Vector2i(-3, 0), 0)
+	put.call(s + Vector2i(2, -3), 2)
+	run.call(s + Vector2i(2, -2), s + Vector2i(2, -1), 1)
+	sim.place(Sim.JOIN, s + Vector2i(2, 0), 0)
+	put.call(s + Vector2i(-1, -3), 3)
+	run.call(s + Vector2i(-1, -2), s + Vector2i(-1, 3), 1)
+	# a subtractor south-east of the box fed on A alone: it starves on B
 	var w := b + Vector2i(6, 6)
 	sim.place(Sim.SUB, w, 2)
-	put.call(w + Vector2i(0, 2), 3)
-	sim.lay_run([w + Vector2i(0, 1)], 3)
+	put.call(w + Vector2i(2, -1), 3)
+	run.call(w + Vector2i(1, -1), w + Vector2i(1, -1), 2)
 	sim.events.clear()
 	_s.board.relay()
 
@@ -272,7 +281,7 @@ func _process(delta: float) -> bool:
 				_next()
 		4:
 			if _t > _at + 0.3:
-				_tap_tray(2)
+				_tap_tray(_s.slot_of("dig"))
 				_tap(_square(_dig))
 				_check("a real tap with Dig on the nearest 1 drops its ghost and the builder pill", _s.board.pill_open() and sim.kind_at(_dig) == Sim.EMPTY)
 				_check("the pill's Place button has a place on the board", _s.board.pill_button_rect("place").size.x > 0.0)
@@ -282,7 +291,15 @@ func _process(delta: float) -> bool:
 				_shot("2b_pill")
 				_tap_pill("place")
 				_check("a real tap on Place sets the dig there and shuts the pill", sim.kind_at(_dig) == Sim.DIG and not _s.board.pill_open())
-				_tap_tray(1)
+				_tap_tray(_s.slot_of("belt"))
+				_step = 30
+				_at = _t
+		30:
+			if _t > _at + 0.25:
+				_check("the Straight chip is up with Belt in hand, on", _s.line_chip.visible and sim.straight)
+				# curves for the one-gesture route round its corner
+				_tap(_win(_s.line_chip, _s.line_chip.size * 0.5))
+				_check("a real tap on the chip turns Straight off", not sim.straight)
 				_trace(_route_points(_dig))
 				var outs: PackedInt32Array = sim.digs[Sim._i(_dig)].outs
 				_check("the traced path laid a run leading away from the dig (%d belts)" % sim.lanes.size(), outs.size() == 1 and sim.lanes.size() >= 2)
@@ -300,6 +317,22 @@ func _process(delta: float) -> bool:
 				_check("a real tap on the chip takes the path back (%d belts)" % sim.lanes.size(), sim.lanes.size() == 0 and not sim.can_undo())
 				_trace(_route_points(_dig))
 				_check("traced again, the run is back (%d belts)" % sim.lanes.size(), sim.lanes.size() >= 2)
+				# Straight on again: a drag that wobbles a square off its row lays one straight run
+				_tap(_win(_s.line_chip, _s.line_chip.size * 0.5))
+				var w0 := _dig + Vector2i(-6, -5)
+				var before: int = sim.lanes.size()
+				_trace([w0, w0 + Vector2i(2, 0), w0 + Vector2i(2, 1), w0 + Vector2i(4, 1)])
+				var straight_ok: bool = sim.straight and sim.lanes.size() - before == 5
+				for j in 5:
+					straight_ok = straight_ok and sim.kind_at(w0 + Vector2i(j, 0)) == Sim.BELT and sim.face_at(w0 + Vector2i(j, 0)) == 0
+				_check("with Straight on, a wobbly drag lays one straight run (%d belts)" % (sim.lanes.size() - before), straight_ok and sim.kind_at(w0 + Vector2i(4, 1)) == Sim.EMPTY)
+				# a second stroke from the run's loose end turns it into the corner
+				_trace([w0 + Vector2i(4, 0), w0 + Vector2i(4, 3)])
+				_check("a stroke begun on the run's loose end makes the corner", sim.face_at(w0 + Vector2i(4, 0)) == 1 and sim.kind_at(w0 + Vector2i(4, 3)) == Sim.BELT)
+				_s.undo()
+				sim.mark()
+				for j in 5:
+					sim.remove(w0 + Vector2i(j, 0))
 				_s.board.look_at_square(Vector2(Sim.HUB_AT) + Vector2(2, 2) + (Vector2(_dig) - Vector2(Sim.HUB_AT)) * 0.4, true)
 				_step = 5
 				_next()
@@ -330,6 +363,7 @@ func _process(delta: float) -> bool:
 				# the sim's clock lags a slow frame's (steps are capped): hurry it past the 3 s
 				sim.step(4.0)
 				_check("the subtractor fed on A alone is starving on B", sim.starving(Sim._i(Sim.HUB_AT + Vector2i(6, 6))) == 1)
+				_check("the grown paper's machines all stand (%s)" % str(sim.machines.keys().map(func(i: int) -> String: return Sim.KIND_IDS[int(sim.kind[i])])), sim.machines.size() == 4)
 				_shot("5b_close")
 				_s.board.k = 74.0
 				_s.board.look_at_square(Vector2(Sim.HUB_AT) + Vector2(2, 3), true)
@@ -408,7 +442,7 @@ func _process(delta: float) -> bool:
 				_next()
 		19:
 			if _t > _at + 0.4:
-				_tap_tray(9)
+				_tap_tray(_s.slot_of("pow"))
 				_next()
 		20:
 			if _t > _at + 0.4:
@@ -431,8 +465,8 @@ func _process(delta: float) -> bool:
 		24:
 			if _t > _at + 3.5:
 				var page: Control = _card._pages[0].diagram
-				var dug: bool = page._sim.kind_at(Vector2i(16, 22)) == Sim.DIG
-				var laid: bool = page._sim.kind_at(Vector2i(17, 22)) == Sim.BELT and page._sim.kind_at(Vector2i(20, 22)) == Sim.BELT and page._sim.face_at(Vector2i(20, 22)) == 0
+				var dug: bool = page._sim.kind_at(Vector2i(33, 39)) == Sim.DIG
+				var laid: bool = page._sim.kind_at(Vector2i(34, 39)) == Sim.BELT and page._sim.kind_at(Vector2i(37, 39)) == Sim.BELT and page._sim.face_at(Vector2i(37, 39)) == 0
 				_check("the Dig page placed the dig through Place and traced the belt to the box", dug and laid)
 				_card._turn(1)
 				_card._turn(1)
@@ -447,13 +481,14 @@ func _process(delta: float) -> bool:
 		26:
 			if _t > _at + 1.4:
 				var page: Control = _card._pages[2].diagram
-				_check("the Machine page placed the adder facing east", page._sim.kind_at(Vector2i(18, 22)) == Sim.ADD and page._sim.face_at(Vector2i(18, 22)) == 0)
+				_check("the Machine page placed the adder facing east", page._sim.kind_at(Vector2i(36, 39)) == Sim.ADD and page._sim.face_at(Vector2i(36, 39)) == 0 and page._sim.kind_at(Vector2i(35, 40)) == Sim.ADD)
 				_card._turn(1)
 				_next()
 		27:
 			if _t > _at + 5.2:
 				var page: Control = _card._pages[3].diagram
-				_check("the Belts page's trace across the line made a bridge", page._sim.kind_at(Vector2i(16, 22)) == Sim.BRIDGE)
+				_check("the Belts page's trace across the line made a bridge", page._sim.kind_at(Vector2i(33, 39)) == Sim.BRIDGE)
+				_check("the Belts page's splitter sent 1s down its arm and the combiner took 2s", page._sim.held(1) > 0 or page._sim.occ[Sim._i(Vector2i(34, 41))] == 1 or page._sim.occ[Sim._i(Vector2i(35, 41))] == 1)
 				_card.free()
 				return _done()
 	return false

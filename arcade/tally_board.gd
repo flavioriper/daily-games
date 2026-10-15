@@ -70,7 +70,9 @@ const GONE := 0.22
 const CHEV_FROM := 30.0
 ## A numeral smaller than this many pixels is not written.
 const FS_MIN := 8
-const TOOL_KINDS := {"belt": Sim.BELT, "dig": Sim.DIG, "crate": Sim.CRATE, "add": Sim.ADD, "mul": Sim.MUL, "sub": Sim.SUB, "div": Sim.DIV, "pow": Sim.POW}
+const TOOL_KINDS := {"belt": Sim.BELT, "dig": Sim.DIG, "crate": Sim.CRATE, "split": Sim.SPLIT, "join": Sim.JOIN, "add": Sim.ADD, "mul": Sim.MUL, "sub": Sim.SUB, "div": Sim.DIV, "pow": Sim.POW}
+## The kinds set down with a ghost and turned before they go.
+const TURNS := [Sim.SPLIT, Sim.JOIN, Sim.ADD, Sim.MUL, Sim.SUB, Sim.DIV, Sim.POW]
 ## A pill: round buttons this wide, their captions under, in a paper capsule
 ## PILL_OFF pixels off the square, which wears a sun ring while it is up.
 const BTN := 84.0
@@ -128,11 +130,14 @@ var _moved := false
 ## The squares traced under the finger with Belt, and the way of its last step.
 var _path: Array = []
 var _trace_f := 0
+## With `straight`, the axis the path keeps to (0 across, 1 up and down; -1
+## until the finger has gone a square).
+var _axis := -1
 var _lifted := {}
 var _vel := Vector2.ZERO
 var _moved_at := 0
 var _cam_to := Vector2.INF
-## The builder's ghost: {kind, tile, face, swap}; the pill up: {kind
+## The builder's ghost: {kind, tile, face}; the pill up: {kind
 ## "piece" or "build", tile, buttons}; the pill button under the finger.
 var _ghost := {}
 var _pill := {}
@@ -320,17 +325,24 @@ func _rebuild() -> void:
 			var f := int(sim.face[i])
 			var at := Art.mid(Sim.tile_of(i))
 			var a := _entry(i, f)
-			# a second way in from a side (a merge) and a way out to a side
-			# (a split) each get their bend under the main bed, so a token
-			# taking it rides on walnut and not on the paper
+			# a second way in from a side (a T) gets its bend under the main
+			# bed, so a token taking it rides on walnut and not on the paper
 			var bits := int(_ins.get(i, 0))
 			for d: int in [Sim.left_of(f), Sim.right_of(f)]:
 				if bits & (1 << d) and d != a:
 					beds.append(Art.bed(d, f), Transform2D(0.0, at))
-			for e: int in sim.outs.get(i, PackedInt32Array()):
-				if (e & 3) != f:
-					beds.append(Art.bed(a, e & 3), Transform2D(0.0, at))
 			beds.append(Art.bed(a, f), Transform2D(0.0, at))
+		elif kd == Sim.SPLIT or kd == Sim.JOIN:
+			# its three arms always drawn, the plate over them
+			var f := int(sim.face[i])
+			var at := Art.mid(Sim.tile_of(i))
+			if kd == Sim.SPLIT:
+				for d: int in [Sim.left_of(f), Sim.right_of(f), f]:
+					beds.append(Art.bed(f, d), Transform2D(0.0, at))
+			else:
+				for d: int in [Sim.left_of(f), Sim.right_of(f), f]:
+					beds.append(Art.bed(d, f), Transform2D(0.0, at))
+			decks.append(Art.junction(kd, f), Transform2D(0.0, at))
 		elif kd == Sim.BRIDGE:
 			var at := Art.mid(Sim.tile_of(i))
 			var v := int(sim.face2[i])
@@ -349,8 +361,10 @@ func _work_ins() -> void:
 		for e: int in sim.outs[s]:
 			_mark(e)
 	for i: int in sim.machines:
-		_mark(int(sim.machines[i].front))
-		_mark(int(sim.machines[i].back))
+		for e: int in sim.machines[i].fronts:
+			_mark(e)
+		for e: int in sim.machines[i].rems:
+			_mark(e)
 	for i: int in sim.digs:
 		for e: int in sim.digs[i].outs:
 			_mark(e)
@@ -496,36 +510,42 @@ func _build_pieces() -> ArrayMesh:
 			bump = 1.0 + 0.035 * sin(u * PI)
 	var half := Sim.HUB * U * 0.5
 	fb.append(Art.box(), Transform2D(0.0, Vector2(bump, bump), 0.0, bx + Vector2(half, half) - Vector2(half, half) * bump))
-	for y in range(maxi(r.position.y, 0), mini(r.end.y, Sim.H)):
-		for x in range(maxi(r.position.x, 0), mini(r.end.x, Sim.W)):
-			var i := y * Sim.W + x
-			var kd := int(sim.kind[i])
-			if kd == Sim.EMPTY or kd == Sim.BELT or kd == Sim.BRIDGE or kd == Sim.BOX:
-				continue
-			var t := Vector2i(x, y)
-			var at := Art.mid(t)
-			var g := _grow(t)
-			if g <= 0.01:
-				continue
-			var sc := Vector2(g, g)
-			if _squash.has(t) and not Motion.reduce:
-				var u := (_clock - float(_squash[t])) / SQUASH
-				if u < 1.0:
-					var w := sin(u * PI) * 0.09
-					sc *= Vector2(1.0 + w, 1.0 - w)
-			var rot := 0.0
-			var m: ArrayMesh
-			if kd == Sim.DIG:
-				m = Art.dig()
-			elif kd == Sim.CRATE:
-				m = Art.crate()
-			else:
-				m = Art.machine(kd)
-				rot = int(sim.face[i]) * PI * 0.5
-				if _spin.has(t) and not Motion.reduce:
-					var u := clampf((_clock - float(_spin[t][0])) / SPIN, 0.0, 1.0)
-					rot -= (1.0 - (1.0 - pow(1.0 - u, 3.0))) * PI * 0.5
-			fb.append(m, Transform2D(rot, sc, 0.0, at))
+	# a machine is drawn from its root, seen when any of it may be
+	var wide := r.grow(2)
+	var roots: Array = []
+	for i: int in sim.digs:
+		roots.append(i)
+	for i: int in sim.crates:
+		roots.append(i)
+	for i: int in sim.machines:
+		roots.append(i)
+	for i: int in roots:
+		var t := Sim.tile_of(i)
+		if not _sees(t, wide):
+			continue
+		var kd := int(sim.kind[i])
+		var at := Art.mid(t)
+		var g := _grow(t)
+		if g <= 0.01:
+			continue
+		var sc := Vector2(g, g)
+		if _squash.has(t) and not Motion.reduce:
+			var u := (_clock - float(_squash[t])) / SQUASH
+			if u < 1.0:
+				var w := sin(u * PI) * 0.06
+				sc *= Vector2(1.0 + w, 1.0 - w)
+		var rot := 0.0
+		var m: ArrayMesh
+		if kd == Sim.DIG:
+			m = Art.dig()
+		elif kd == Sim.CRATE:
+			m = Art.crate()
+		else:
+			m = Art.machine(kd, int(sim.face[i]))
+			if _spin.has(t) and not Motion.reduce:
+				var u := clampf((_clock - float(_spin[t][0])) / SPIN, 0.0, 1.0)
+				rot -= (1.0 - (1.0 - pow(1.0 - u, 3.0))) * PI * 0.5
+		fb.append(m, Transform2D(rot, sc, 0.0, at))
 	for g: Array in _gone:
 		var u := (_clock - float(g[3])) / GONE
 		if Motion.reduce or u >= 1.0:
@@ -577,22 +597,22 @@ func _build_live() -> ArrayMesh:
 		if side < 0:
 			continue
 		var t := Sim.tile_of(i)
-		if not _sees(t, r):
+		if not _sees(t, r.grow(2)):
 			continue
-		var xf := Transform2D(int(sim.face[i]) * PI * 0.5, Art.mid(t))
-		var mouth := PackedVector2Array()
-		for p: Vector2 in Art.mouth_poly(side):
-			mouth.append(xf * p)
-		b.polygon(mouth, Art.AMBER)
-		for c: PackedVector2Array in Art.mouth_chevrons(side):
-			var chev := PackedVector2Array()
-			for p: Vector2 in c:
-				chev.append(xf * p)
-			b.stroke(chev, Art.MOUTH_W, Art.INK)
-		if not Motion.reduce:
-			var u := fposmod(_clock, STARVE_BEAT) / STARVE_BEAT
-			var c: Vector2 = xf * Art.port(side)
-			b.stroke(Face.Builder.ring(c, U * (0.14 + 0.16 * u), U * (0.14 + 0.16 * u)), U * 0.04 * (1.0 - u), Color(Art.AMBER, 0.9 * (1.0 - u)), true)
+		var f := int(sim.face[i])
+		var v := Art.dir_v(f)
+		var want := Sim.R_A if side == 0 else Sim.R_B
+		for c: Array in Sim.footprint(int(sim.kind[i]), t, f):
+			if int(c[1]) != want:
+				continue
+			var at := Art.mid(c[0])
+			b.polygon(Art.notch_poly(at, v), Art.AMBER)
+			for ch: PackedVector2Array in Art.notch_chevrons(at, v, side + 1):
+				b.stroke(ch, Art.MOUTH_W, Art.INK)
+			if not Motion.reduce:
+				var u := fposmod(_clock, STARVE_BEAT) / STARVE_BEAT
+				var pc := Art.notch_mid(at, v)
+				b.stroke(Face.Builder.ring(pc, U * (0.14 + 0.16 * u), U * (0.14 + 0.16 * u)), U * 0.04 * (1.0 - u), Color(Art.AMBER, 0.9 * (1.0 - u)), true)
 	# the path traced in hand, as it would be laid
 	if not _path.is_empty():
 		var p: Dictionary = sim.trim_path(_path, _trace_f)
@@ -620,21 +640,42 @@ func _build_live() -> ArrayMesh:
 	if not _ghost.is_empty():
 		var t: Vector2i = _ghost.tile
 		var kd := int(_ghost.kind)
+		var gf := int(_ghost.face)
 		var ok := _ghost_why() == ""
 		var c := Color(Art.GHOST, 0.45) if ok else Color(Art.WARN, 0.4)
-		b.polygon(Face.Builder.round_rect(Art.mid(t) - Vector2.ONE * U * 0.47, Vector2.ONE * U * 0.94, 18.0), c)
+		# every square it would cover, green where it can go, red where not
+		for sq: Array in Sim.footprint(kd, t, gf):
+			b.polygon(Face.Builder.round_rect(Art.mid(sq[0]) - Vector2.ONE * U * 0.48, Vector2.ONE * U * 0.96, 6.0), c)
 		var rot := 0.0
+		if not Motion.reduce:
+			var u := clampf((_clock - _ghost_spin) / SPIN, 0.0, 1.0)
+			rot -= (1.0 - (1.0 - pow(1.0 - u, 3.0))) * PI * 0.5
+		var m: ArrayMesh
 		if Sim.is_op(kd):
-			rot = int(_ghost.face) * PI * 0.5
-			if not Motion.reduce:
-				var u := clampf((_clock - _ghost_spin) / SPIN, 0.0, 1.0)
-				rot -= (1.0 - (1.0 - pow(1.0 - u, 3.0))) * PI * 0.5
-		var m: ArrayMesh = Art.machine(kd) if Sim.is_op(kd) else Art.icon(kd)
-		b.append(m, Transform2D(rot, Vector2.ONE * 0.92, 0.0, Art.mid(t)), Color(1, 1, 1, 0.7))
+			m = Art.machine(kd, gf)
+		elif kd == Sim.SPLIT or kd == Sim.JOIN:
+			m = Art.icon(kd)
+			rot += gf * PI * 0.5
+		else:
+			m = Art.icon(kd)
+			rot = 0.0
+		b.append(m, Transform2D(rot, Vector2.ONE * 0.96, 0.0, Art.mid(t)), Color(1, 1, 1, 0.7))
 	# the square under a pill wears a sun ring
 	if not _pill.is_empty():
 		var t: Vector2i = _pill.tile
-		b.stroke(Face.Builder.round_rect(Art.mid(t) - Vector2.ONE * U * 0.5, Vector2.ONE * U, 20.0), 9.0, Color(Art.TARGET, 0.95), true)
+		var sqs: Array = [t]
+		if String(_pill.kind) == "build" and not _ghost.is_empty():
+			sqs = []
+			for sq: Array in Sim.footprint(int(_ghost.kind), t, int(_ghost.face)):
+				sqs.append(sq[0])
+		elif Sim.inside(t):
+			sqs = sim.piece_squares(t)
+		var lo := Vector2(sqs[0] as Vector2i)
+		var hi := lo
+		for q: Vector2i in sqs:
+			lo = lo.min(Vector2(q))
+			hi = hi.max(Vector2(q))
+		b.stroke(Face.Builder.round_rect(lo * U, (hi - lo + Vector2.ONE) * U, 14.0), 9.0, Color(Art.TARGET, 0.95), true)
 	if tool == "remove" and _finger != -99 and not _consumed:
 		var t := tile_under(_at)
 		b.stroke(Face.Builder.round_rect(Art.mid(t) - Vector2.ONE * U * 0.47, Vector2.ONE * U * 0.94, 18.0), 8.0, Color(Art.WARN, 0.8), true)
@@ -737,7 +778,7 @@ func _pill_title() -> String:
 		var t: Vector2i = _pill.tile
 		kd = sim.kind_at(t)
 		if Sim.is_op(kd):
-			var side: int = sim.starving(Sim._i(t))
+			var side: int = sim.starving(Sim._i(sim.root_of(t)))
 			if side >= 0:
 				return tr("TL_WAITING") % tr("TL_SIDE_A" if side == 0 else "TL_SIDE_B")
 	return tr("TL_PIECE_" + String(Sim.KIND_IDS.get(kd, "box")).to_upper())
@@ -773,30 +814,28 @@ func _pill_button_at(p: Vector2) -> String:
 			return nm
 	return ""
 
-## Why the ghost cannot be set down where it is, or "" when it can: a swap
-## of one operator for another is always possible.
+## Why the ghost cannot be set down where it is, or "" when it can.
 func _ghost_why() -> String:
 	if _ghost.is_empty():
 		return "taken"
-	if bool(_ghost.swap):
-		return "" if sim.has(int(_ghost.kind)) else "locked"
-	return sim.why_not(int(_ghost.kind), _ghost.tile)
+	return sim.why_not(int(_ghost.kind), _ghost.tile, int(_ghost.face))
 
 func _open_piece_pill(t: Vector2i) -> void:
+	t = sim.root_of(t)
 	var kd: int = sim.kind_at(t)
 	var buttons := ["lift", "info"]
-	if kd == Sim.BELT or Sim.is_op(kd):
+	if kd == Sim.BELT or TURNS.has(kd):
 		buttons.push_front("turn")
 	_ghost = {}
 	_pill = {"kind": "piece", "tile": t, "buttons": buttons}
 	_pill_at = _clock
 	touched.emit(1.0)
 
-func _set_ghost(kd: int, t: Vector2i, f: int, swap: bool) -> void:
+func _set_ghost(kd: int, t: Vector2i, f: int) -> void:
 	var fresh := _ghost.is_empty() or Vector2i(_ghost.tile) != t or int(_ghost.kind) != kd
-	_ghost = {"kind": kd, "tile": t, "face": f, "swap": swap}
+	_ghost = {"kind": kd, "tile": t, "face": f}
 	var buttons := ["place", "cancel"]
-	if Sim.is_op(kd):
+	if TURNS.has(kd):
 		buttons.push_front("turn")
 	_pill = {"kind": "build", "tile": t, "buttons": buttons}
 	if fresh:
@@ -826,7 +865,9 @@ func _pill_press(name: String) -> void:
 				_ghost_spin = _clock
 			else:
 				sim.mark()
-				sim.turn(t)
+				# a turn with no room is refused by the sim's own event
+				if sim.turn(t):
+					_pill.tile = sim.root_of(t)
 		"lift":
 			sim.mark()
 			sim.remove(t)
@@ -846,8 +887,6 @@ func _pill_press(name: String) -> void:
 			var kd := int(_ghost.kind)
 			var f := int(_ghost.face)
 			sim.mark()
-			if bool(_ghost.swap):
-				sim.remove(t)
 			sim.place(kd, t, f)
 			place_face = f
 			_ghost = {}
@@ -869,7 +908,6 @@ func _draw_pills() -> void:
 	_pills.draw_style_box(_pill_box, r)
 	var names: Array = _pill.buttons
 	var dim := names.has("place") and _ghost_why() != ""
-	var swap := names.has("place") and not _ghost.is_empty() and bool(_ghost.swap)
 	var key := [String(_pill.kind), names, dim]
 	var m: ArrayMesh = _pill_cache.get(key)
 	if m == null:
@@ -900,7 +938,7 @@ func _draw_pills() -> void:
 	if _pill_live["ring"] != null:
 		_pills.draw_mesh(_pill_live["ring"], null)
 	for nm: String in names:
-		var cap := tr("TL_SWAP") if nm == "place" and swap else tr(String(PILL_CAP[nm]))
+		var cap := tr(String(PILL_CAP[nm]))
 		var br: Rect2 = lay.buttons[nm]
 		var col := Color(Art.INK, 0.4 if nm == "place" and dim else 0.85)
 		_pills.draw_string(font, Vector2(br.position.x - 20.0, br.position.y + BTN + 6.0 + CAP_FS * 0.9), cap, HORIZONTAL_ALIGNMENT_CENTER, BTN + 40.0, CAP_FS, col)
@@ -1013,6 +1051,7 @@ func press(p: Vector2, id := -1) -> void:
 	_at = p
 	_moved = false
 	_path = []
+	_axis = -1
 	_lifted = {}
 	_vel = Vector2.ZERO
 	_cam_to = Vector2.INF
@@ -1144,6 +1183,9 @@ func _trace_to(t: Vector2i) -> void:
 		if Sim.inside(t):
 			_path = [t]
 		return
+	if sim.straight:
+		_trace_straight(t)
+		return
 	var cur: Vector2i = _path[-1]
 	var d := t - cur
 	if d == Vector2i.ZERO:
@@ -1167,6 +1209,27 @@ func _trace_to(t: Vector2i) -> void:
 			_path.append(nxt)
 		if _path.size() >= 2:
 			_trace_f = Sim.DIRS.find((_path[-1] as Vector2i) - (_path[-2] as Vector2i))
+
+## Straight: the path is the run from its first square along the axis the
+## finger first left it by, as far as the finger has gone along that axis;
+## going back over the first square turns it round.
+func _trace_straight(t: Vector2i) -> void:
+	var p0: Vector2i = _path[0]
+	var d := t - p0
+	if _axis < 0:
+		if d == Vector2i.ZERO:
+			return
+		_axis = 0 if absi(d.x) >= absi(d.y) else 1
+	var n := d.x if _axis == 0 else d.y
+	var step := Vector2i(signi(n), 0) if _axis == 0 else Vector2i(0, signi(n))
+	_path = [p0]
+	for j in absi(n):
+		var nxt: Vector2i = (_path[-1] as Vector2i) + step
+		if not Sim.inside(nxt):
+			break
+		_path.append(nxt)
+	if n != 0:
+		_trace_f = Sim.DIRS.find(step)
 
 ## The traced path laid, each square facing the next; a path that cannot
 ## begin where it was drawn is refused there.
@@ -1228,14 +1291,20 @@ func _tap(p: Vector2) -> void:
 				_open_piece_pill(t)
 		"remove":
 			pass
+		"turn":
+			# the Rotate tool: a tap turns what it lands on, a quarter clockwise
+			if kd == Sim.EMPTY:
+				touched.emit(0.9)
+			elif kd == Sim.BELT or TURNS.has(kd):
+				sim.mark()
+				sim.turn(t)
+			else:
+				refused.emit("no_turn", at, 0)
 		_:
 			var want := int(TOOL_KINDS[tool])
-			if Sim.is_op(kd) and Sim.is_op(want) and kd != want:
-				# another machine's tool on a machine: the ghost of the swap, as the old one faces
-				_set_ghost(want, t, int(sim.face[i]), true)
-			elif kd == Sim.EMPTY or kd == Sim.BELT or kd == Sim.BRIDGE:
+			if kd == Sim.EMPTY or kd == Sim.BELT or kd == Sim.BRIDGE:
 				var f := int(_ghost.face) if not _ghost.is_empty() else place_face
-				_set_ghost(want, t, f, false)
+				_set_ghost(want, t, f)
 			else:
 				_open_piece_pill(t)
 
