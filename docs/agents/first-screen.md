@@ -1168,6 +1168,16 @@ the first one ... Card should be elegant, cozy, but carry the game elements".
     third flower, Peapod's pod, Nightlight's star, Beeline's stone
     tap-pad, Deckchair's 6 of hearts, Eddy's eye, Furrow's seed packet,
     Griddle's tray on the pass, Trivet's rose stack.
+    **Tally's** (2026-10-15, `ui/menu/cards/arc_tally.gd`, the fourteenth
+    Arcade card, on the second page) is a corner of the game's squared
+    paper ruled over the whole face: a dig on a 1, two 1s riding a walnut
+    belt into an adder facing up, a 2 on the square of belt above it, and a
+    printed 2 in pencil. Its go button is the counting box in the card's
+    colour with a cream panel saying the 2 it asks for and a chevron; the
+    pieces are `arcade/tally_art.gd`'s own meshes laid by a transform, the
+    numerals draw_strings over the one mesh. Seen once on `opengl3_angle`
+    (`tests/_shot_menu.gd -- arcade turn`: the tab's second page 142 draw
+    calls idle, 182 at most).
   - **Stats** cells are the boards' own faces over the whole cell, saying
     "Solved 3 · Best 0:41 / Average 1:02" (or not solved yet) where the
     card says its blurb; the plate, `CardArt` and the drawn figures left
