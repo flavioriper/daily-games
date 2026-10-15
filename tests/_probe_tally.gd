@@ -31,6 +31,7 @@ func _initialize() -> void:
 	_divider()
 	_split_merge()
 	_bridge()
+	_path()
 	_crate()
 	_stall()
 	_ladder()
@@ -259,7 +260,7 @@ func _bridge() -> void:
 	s.place(Sim.DIG, Vector2i(5, 12), E)
 	_run(s, Vector2i(6, 12), Vector2i(20, 12), E)
 	_run(s, Vector2i(12, 8), Vector2i(12, 16), S)
-	_check("before bridges, crossing a belt turns it", s.kind_at(Vector2i(12, 12)) == Sim.BELT and s.face_at(Vector2i(12, 12)) == S)
+	_check("before bridges, a run across a belt stops before it and never turns it", s.kind_at(Vector2i(12, 12)) == Sim.BELT and s.face_at(Vector2i(12, 12)) == E and s.kind_at(Vector2i(12, 11)) == Sim.BELT and s.kind_at(Vector2i(12, 13)) == Sim.EMPTY)
 	var b = _blank(6)
 	b.dep[Sim._i(Vector2i(5, 12))] = 1
 	b.dep[Sim._i(Vector2i(12, 4))] = 3
@@ -273,6 +274,61 @@ func _bridge() -> void:
 	_check("a run across a belt makes a bridge", b.kind_at(Vector2i(12, 12)) == Sim.BRIDGE)
 	b.step(60.0)
 	_check("both lanes cross (%d 1s, %d 3s)" % [b.held(1), b.held(3)], b.held(1) > 20 and b.held(3) > 20)
+
+## A traced path: each square faces the next, a belt along the way takes the
+## path's facing, the ends start beside a dig and face into the box, and
+## one step back puts it all as it was.
+func _path() -> void:
+	var s = _blank(3)
+	s.dep[Sim._i(Vector2i(16, 18))] = 1
+	s.place(Sim.DIG, Vector2i(16, 18), E)
+	# begun on the dig, east three, south to the box's row, east into the box
+	var path := [Vector2i(16, 18), Vector2i(17, 18), Vector2i(18, 18), Vector2i(19, 18), Vector2i(19, 19), Vector2i(19, 20), Vector2i(19, 21), Vector2i(20, 21), Vector2i(21, 21)]
+	s.mark()
+	var n: int = s.lay_path(path, E)
+	_check("a traced path drops the dig and the box at its ends (%d laid)" % n, n == 7 and s.kind_at(Vector2i(16, 18)) == Sim.DIG)
+	_check("each square faces the next and the corner turns south", s.face_at(Vector2i(17, 18)) == E and s.face_at(Vector2i(19, 18)) == S and s.face_at(Vector2i(19, 20)) == S)
+	_check("the last square faces into the box", s.face_at(Vector2i(20, 21)) == E)
+	s.step(20.0)
+	_check("the 1s ride the corner into the box (%d)" % s.made, s.made >= 10)
+	_check("one step back lifts the whole path", s.undo() and s.lanes.is_empty() and s.kind_at(Vector2i(16, 18)) == Sim.DIG and not s.can_undo())
+	# a path drawn back along a line reverses it
+	var r = _blank(3)
+	_run(r, Vector2i(5, 5), Vector2i(9, 5), E)
+	r.lay_path([Vector2i(9, 5), Vector2i(8, 5), Vector2i(7, 5), Vector2i(6, 5), Vector2i(5, 5)], Wd)
+	_check("a path along a line reverses it", r.face_at(Vector2i(5, 5)) == Wd and r.face_at(Vector2i(9, 5)) == Wd)
+	# a path begun on a belt across its way starts beside it
+	r.lay_path([Vector2i(7, 5), Vector2i(7, 6), Vector2i(7, 7)], S)
+	_check("a path begun on a belt across its way leaves it and starts beside it", r.face_at(Vector2i(7, 5)) == Wd and r.kind_at(Vector2i(7, 6)) == Sim.BELT and r.face_at(Vector2i(7, 6)) == S)
+	var one = _blank(3)
+	one.lay_path([Vector2i(3, 3)], Nd)
+	_check("a path of one square faces the way given", one.kind_at(Vector2i(3, 3)) == Sim.BELT and one.face_at(Vector2i(3, 3)) == Nd)
+	# a one-sided adder makes nothing and says which side starves
+	var a = _blank()
+	a.place(Sim.ADD, Vector2i(10, 10), E)
+	a.dep[Sim._i(Vector2i(10, 6))] = 1
+	a.place(Sim.DIG, Vector2i(10, 6), E)
+	_run(a, Vector2i(10, 7), Vector2i(10, 9), S)
+	_run(a, Vector2i(11, 10), Vector2i(20, 10), E)
+	a.step(10.0)
+	_check("an adder fed on A alone makes nothing and starves on B", a.made == 0 and a.starving(Sim._i(Vector2i(10, 10))) == 1)
+	a.dep[Sim._i(Vector2i(10, 14))] = 1
+	a.place(Sim.DIG, Vector2i(10, 14), E)
+	_run(a, Vector2i(10, 13), Vector2i(10, 11), Nd)
+	a.step(10.0)
+	_check("fed on both it works and starves no more", a.starving(Sim._i(Vector2i(10, 10))) == -1 and bool(a.machines[Sim._i(Vector2i(10, 10))].has_last))
+	# twenty non-targets with no hit: the box says so once
+	var o = _blank(2)
+	o.dep[Sim._i(Vector2i(16, 22))] = 1
+	o.place(Sim.DIG, Vector2i(16, 22), E)
+	_run(o, Vector2i(17, 22), Vector2i(20, 22), E)
+	o.events.clear()
+	o.step(40.0)
+	var said := 0
+	for ev: Dictionary in o.events:
+		if ev.type == "off_target":
+			said += 1
+	_check("the box says once that the 1s do not count (%d)" % said, said == 1 and o.off >= Sim.OFF_SAY)
 
 func _crate() -> void:
 	var s = _blank()

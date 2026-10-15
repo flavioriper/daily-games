@@ -1822,20 +1822,20 @@ TL_MOTTO,Numbers on the move,Números em movimento,Números en marcha
 TL_LEVEL,Level %d,Nível %d,Nivel %d
 TL_LEVEL_SHORT,Lv %d,Nv %d,Nv %d
 TL_GOAL,%s / %s of %s,%s / %s de %s,%s / %s de %s
-TL_HINT_START,Pick Dig and tap a 1 near the box,Escolha Extrair e toque num 1 perto da caixa,Elige Extraer y toca un 1 cerca de la caja
+TL_HINT_START,"Pick Dig, tap a 1 near the box, then Place","Escolha Extrair, toque num 1 perto da caixa e depois Colocar","Elige Extraer, toca un 1 cerca de la caja y luego Colocar"
 TL_LEVEL_DONE,Level %d done!,Nível %d feito!,¡Nivel %d hecho!
 TL_NOW_ASKS,Now %s × %s,Agora %s × %s,Ahora %s × %s
 TL_NEW_DIG,You can dig %ds now,Agora dá para extrair %d,Ya puedes extraer %d
 TL_NEW_PIECE,New: %s!,Novo: %s!,¡Nuevo: %s!
 TL_UPGRADED,"%s, level %d","%s, nível %d","%s, nivel %d"
 TL_READY,%s can go up,%s pode subir,%s puede subir
-TL_SAY_DIG_IT,A %d: pick Dig and tap it,Um %d: escolha Extrair e toque,Un %d: elige Extraer y tócalo
+TL_SAY_DIG_IT,"A %d: pick Dig, tap it, then Place","Um %d: escolha Extrair, toque e depois Colocar","Un %d: elige Extraer, tócalo y luego Colocar"
 TL_SAY_DIG_FROM,%d is dug from level %d,%d é extraído a partir do nível %d,%d se extrae desde el nivel %d
 TL_SAY_ON_NUMBER,A dig goes on a printed number,A extração vai num número impresso,La extracción va sobre un número impreso
 TL_SAY_LOCKED,Handed over at level %d,Liberado no nível %d,Se entrega en el nivel %d
 TL_SAY_BOX,That's the counting box,Essa é a caixa de contagem,Esa es la caja de conteo
 TL_SAY_TAKEN,Something stands there,Já tem algo aí,Ya hay algo ahí
-TL_TOOL_MOVE,Move,Mover,Mover
+TL_TOOL_MOVE,Look,Olhar,Mirar
 TL_TOOL_BELT,Belt,Esteira,Cinta
 TL_TOOL_DIG,Dig,Extrair,Extraer
 TL_TOOL_CRATE,Crate,Caixote,Cajón
@@ -1892,13 +1892,29 @@ TL_TRACK_POW,Raisers,Potenciadores,Potenciadores
 TL_OPENS_AT,Opens at level %d,Abre no nível %d,Se abre en el nivel %d
 TL_AT_TOP,Level %d · %s · the top,Nível %d · %s · no máximo,Nivel %d · %s · al máximo
 TL_TRACK_LINE,Level %d · %s → %s,Nível %d · %s → %s,Nivel %d · %s → %s
+TL_PLACE,Place,Colocar,Colocar
+TL_CANCEL,Cancel,Cancelar,Cancelar
+TL_INFO,Info,Info,Info
+TL_UNDO,Undo,Desfazer,Deshacer
+TL_SAY_DRAW,Drag to draw a belt,Arraste para traçar uma esteira,Arrastra para trazar una cinta
+TL_SAY_NOT_TARGET,"The box wants %ss now, the %ss don't count","A caixa quer %s agora, os %s não contam","La caja quiere %s ahora, los %s no cuentan"
+TL_WAITING,Waiting for %s,Esperando %s,Esperando %s
+TL_WAITING_SIDE,Waiting for %s on its %s side,Esperando %s no lado %s,Esperando %s en su lado %s
+TL_SIDE_ONE_DOT,one-dot,de um ponto,de un punto
+TL_SIDE_TWO_DOT,two-dot,de dois pontos,de dos puntos
+TL_THEN,Then,Depois,Luego
+TL_SHORT_OF,Need %s more %ss,Faltam %s %s,Faltan %s %s
+TL_MET,%d of %d met,%d de %d prontos,%d de %d listos
+TL_AT_TOP_SHORT,The top,No máximo,Al máximo
+TL_TREE_LINE,Tap a branch. Each rank is paid in numbers the box has had.,Toque num ramo. Cada nível é pago com números que a caixa recebeu.,Toca una rama. Cada rango se paga con números que la caja recibió.
+TL_SWAP,Swap,Trocar,Cambiar
 TUT_TALLY_DIG,Dig and carry,Extraia e leve,Extrae y lleva
-TUT_TALLY_DIG_BODY,Pick Dig and tap a printed 1 to set a dig on it. Then pick Belt and swipe away from the dig to the box: the 1s ride along it.,Escolha Extrair e toque num 1 impresso para pôr um extrator. Depois escolha Esteira e deslize do extrator até a caixa: os 1 seguem por ela.,Elige Extraer y toca un 1 impreso para poner un extractor. Luego elige Cinta y desliza desde él hasta la caja: los 1 viajan por ella.
+TUT_TALLY_DIG_BODY,"Pick Dig, tap a printed 1 and tap Place to set a dig on it. Then pick Belt and draw a path with your finger from the dig to the box: the 1s ride along it.","Escolha Extrair, toque num 1 impresso e toque em Colocar para pôr um extrator. Depois escolha Esteira e trace um caminho com o dedo do extrator até a caixa: os 1 seguem por ele.","Elige Extraer, toca un 1 impreso y toca Colocar para poner un extractor. Luego elige Cinta y traza un camino con el dedo desde él hasta la caja: los 1 viajan por él."
 TUT_TALLY_BOX,The box asks,A caixa pede,La caja pide
 TUT_TALLY_BOX_BODY,The counting box asks for one number so many times. The tokens it wants wear a gold ring. Each level done hands over a new piece or a new number to dig.,A caixa de contagem pede um número tantas vezes. As fichas que ela quer têm um anel dourado. Cada nível feito libera uma peça nova ou um número novo para extrair.,La caja de conteo pide un número tantas veces. Las fichas que quiere llevan un anillo dorado. Cada nivel hecho entrega una pieza nueva o un número nuevo para extraer.
 TUT_TALLY_MACHINE,Machines,Máquinas,Máquinas
-TUT_TALLY_MACHINE_BODY,"A machine takes A on its one-dot side and B on its two-dot side, and the answer leaves by its front: 3 and 4 make 7. Tap it again to turn it.","Uma máquina recebe A no lado de um ponto e B no lado de dois, e a resposta sai pela frente: 3 e 4 dão 7. Toque de novo para girá-la.","Una máquina toma A por su lado de un punto y B por el de dos, y el resultado sale por delante: 3 y 4 dan 7. Tócala otra vez para girarla."
+TUT_TALLY_MACHINE_BODY,"A machine takes A on its one-dot side and B on its two-dot side, and the answer leaves by its front: 3 and 4 make 7. Tap where it goes, Turn it, then Place. A side left empty glows amber: it is waiting.","Uma máquina recebe A no lado de um ponto e B no lado de dois, e a resposta sai pela frente: 3 e 4 dão 7. Toque onde ela vai, Gire e depois Colocar. Um lado vazio brilha âmbar: está esperando.","Una máquina toma A por su lado de un punto y B por el de dos, y el resultado sale por delante: 3 y 4 dan 7. Toca dónde va, Gírala y luego Colocar. Un lado vacío brilla ámbar: está esperando."
 TUT_TALLY_BELTS,Splits and crossings,Divisões e cruzamentos,Desvíos y cruces
-TUT_TALLY_BELTS_BODY,"A belt starting at another's side takes every other token. Belts running into one take turns. From level 5, a swipe across a belt makes a bridge over it.","Uma esteira que começa ao lado de outra leva uma ficha sim, outra não. Esteiras que entram numa só se revezam. Do nível 5, deslizar por cima de uma esteira faz uma ponte.","Una cinta que empieza al lado de otra se lleva una ficha sí y otra no. Las cintas que entran en una se turnan. Desde el nivel 5, deslizar sobre una cinta hace un puente."
+TUT_TALLY_BELTS_BODY,"A belt starting at another's side takes every other token. Belts running into one take turns. From level 5, a path drawn across a belt makes a bridge over it; before that it stops beside it.","Uma esteira que começa ao lado de outra leva uma ficha sim, outra não. Esteiras que entram numa só se revezam. Do nível 5, um caminho traçado por cima de uma esteira faz uma ponte; antes disso ele para ao lado.","Una cinta que empieza al lado de otra se lleva una ficha sí y otra no. Las cintas que entran en una se turnan. Desde el nivel 5, un camino trazado sobre una cinta hace un puente; antes de eso se detiene al lado."
 TUT_TALLY_UPGRADE,Upgrades,Melhorias,Mejoras
-TUT_TALLY_UPGRADE_BODY,"Upgrades are paid in numbers the box has had: deliver what a row asks and press Up. Faster belts, digs on more belts, quicker machines.","Melhorias são pagas com números que a caixa recebeu: entregue o que a linha pede e aperte Subir. Esteiras mais rápidas, extratores em mais esteiras, máquinas mais ágeis.","Las mejoras se pagan con números que la caja recibió: entrega lo que pide la fila y pulsa Subir. Cintas más rápidas, extractores en más cintas, máquinas más ágiles."
+TUT_TALLY_UPGRADE_BODY,"Upgrades are paid in numbers the box has had: tap a branch of the tree, deliver what it asks and press Up. Faster belts, digs on more belts, quicker machines.","Melhorias são pagas com números que a caixa recebeu: toque num ramo da árvore, entregue o que ele pede e aperte Subir. Esteiras mais rápidas, extratores em mais esteiras, máquinas mais ágeis.","Las mejoras se pagan con números que la caja recibió: toca una rama del árbol, entrega lo que pide y pulsa Subir. Cintas más rápidas, extractores en más cintas, máquinas más ágiles."

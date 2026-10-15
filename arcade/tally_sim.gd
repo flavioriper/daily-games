@@ -57,6 +57,12 @@ const CRATE_MAX := 500
 ## The longest step taken in one go: a token at 20 squares a second moves
 ## two thirds of a square in it.
 const STEP := 1.0 / 30.0
+## A machine idle with one side fed and the other empty this long is
+## starving on the empty side (`starving`).
+const STARVE_AFTER := 3.0
+## Non-target numbers into the box, with none of the target, before the
+## box says they do not count.
+const OFF_SAY := 20
 const LIMIT := 2147483647
 const FLOOR := -2147483648
 
@@ -137,6 +143,13 @@ var clock := 0.0
 ## Ranks that could be bought when last looked, so `ready` is said once.
 var _could := {}
 var _looked := 0.0
+## What the last gesture changed: square -> [kind, face, face2] before it.
+var _undo := {}
+## Numbers into the box this level that were not the target, and the last
+## such number; `off_target` is said once when OFF_SAY come with no hit.
+var off := 0
+var off_v := 0
+var _off_said := false
 
 var kind := PackedByteArray()
 var face := PackedByteArray()
@@ -512,6 +525,7 @@ func place(k: int, t: Vector2i, f: int) -> bool:
 		_emit("refused", {"why": why, "tile": t, "v": dep_at(t)})
 		return false
 	var i := _i(t)
+	_record(i)
 	_clear(i)
 	kind[i] = k
 	face[i] = f
@@ -526,29 +540,88 @@ func can_lay(t: Vector2i) -> bool:
 	var k := int(kind[_i(t)])
 	return k == EMPTY or k == BELT or k == BRIDGE
 
-## Lays belt over `tiles` (a straight run, in order) going `f`; stops at the
-## first square it cannot. A belt across the run's way in its middle is
-## bridged once bridges are had, and turned otherwise; at the run's ends it
-## is turned. Returns the squares laid or changed.
+## Lays belt over `tiles` (a straight run, in order) going `f`: a path whose
+## every square faces `f`. Returns the squares laid or changed.
 func lay_run(tiles: Array, f: int) -> int:
-	var n := 0
-	var last := tiles.size() - 1
-	var across := f % 2 == 0
+	return lay_path(tiles, f)
+
+## A traced path's facings: each square faces the next, the last as the one
+## before it; a path of one square faces `f_last`.
+static func path_faces(tiles: Array, f_last: int) -> PackedByteArray:
+	var faces := PackedByteArray()
+	faces.resize(tiles.size())
 	for j in tiles.size():
-		var t: Vector2i = tiles[j]
+		var f := f_last
+		if j + 1 < tiles.size():
+			var d: Vector2i = (tiles[j + 1] as Vector2i) - (tiles[j] as Vector2i)
+			var at := DIRS.find(d)
+			if at >= 0:
+				f = at
+		elif j > 0:
+			f = faces[j - 1]
+		faces[j] = f
+	return faces
+
+## What a traced path would do: {tiles, faces, cut}. The path's facings are
+## worked out first, then a first square that cannot take belt or holds a
+## belt across the way is dropped (the path starts beside a dig, a machine,
+## the box or a line it would otherwise turn) and so is a last square that
+## cannot (the square before faces into it); `cut` is where the path stops:
+## at a square that cannot take belt, or a belt across its way where no
+## bridge can go (before bridges are had, or at the path's end). A belt
+## across the way is never turned.
+func trim_path(tiles: Array, f_last: int) -> Dictionary:
+	var faces := path_faces(tiles, f_last)
+	var ts := tiles.duplicate()
+	var fs := Array(faces)
+	if ts.size() > 1:
+		var i0 := _i(ts[0])
+		if not can_lay(ts[0]) or (inside(ts[0]) and int(kind[i0]) == BELT and int(face[i0]) % 2 != int(fs[0]) % 2):
+			ts.pop_front()
+			fs.pop_front()
+	if ts.size() > 1 and not can_lay(ts[-1]):
+		ts.pop_back()
+		fs.pop_back()
+	var cut := ts.size()
+	for j in ts.size():
+		var t: Vector2i = ts[j]
 		if not can_lay(t):
+			cut = j
 			break
 		var i := _i(t)
+		var f := int(fs[j])
+		if int(kind[i]) == BELT and int(face[i]) % 2 != f % 2:
+			if j == 0 or j == ts.size() - 1 or not has(BRIDGE):
+				cut = j
+				break
+	return {"tiles": ts, "faces": fs, "cut": cut}
+
+## Lays a traced path (4-connected squares in order; `f_last` the way the
+## finger went last, for a path of one square) after `trim_path`. Belts
+## along the way take the path's facing; a belt across it in the middle
+## becomes a bridge. Returns the squares laid or changed.
+func lay_path(tiles: Array, f_last: int) -> int:
+	var p := trim_path(tiles, f_last)
+	var ts: Array = p.tiles
+	var fs: Array = p.faces
+	var n := 0
+	var laid := []
+	for j in int(p.cut):
+		var t: Vector2i = ts[j]
+		var f := int(fs[j])
+		var i := _i(t)
 		var k := int(kind[i])
+		var across := f % 2 == 0
 		if k == EMPTY:
+			_record(i)
 			kind[i] = BELT
 			face[i] = f
 			_drop(i)
 		elif k == BELT:
-			var same_axis := int(face[i]) % 2 == f % 2
-			if same_axis or j == 0 or j == last or not has(BRIDGE):
-				if int(face[i]) == f and tiles.size() > 1:
-					continue
+			if int(face[i]) == f:
+				continue
+			_record(i)
+			if int(face[i]) % 2 == f % 2:
 				face[i] = f
 				to_d[i] = NONE
 			else:
@@ -558,15 +631,19 @@ func lay_run(tiles: Array, f: int) -> int:
 				face2[i] = other if across else f
 				_drop(i)
 		elif k == BRIDGE:
+			if (int(face[i]) if across else int(face2[i])) == f:
+				continue
+			_record(i)
 			if across:
 				face[i] = f
 			else:
 				face2[i] = f
 			_drop(i)
+		laid.append(t)
 		n += 1
 	if n > 0:
 		_wire()
-		_emit("lay", {"n": n, "tiles": tiles.slice(0, n)})
+		_emit("lay", {"n": n, "tiles": laid})
 	return n
 
 ## Turns what stands on `t` a quarter clockwise.
@@ -577,6 +654,7 @@ func turn(t: Vector2i) -> bool:
 	var k := int(kind[i])
 	if k == EMPTY or k == BOX or k == DIG or k == CRATE or k == BRIDGE:
 		return false
+	_record(i)
 	face[i] = (int(face[i]) + 1) % 4
 	if k == BELT:
 		to_d[i] = NONE
@@ -591,10 +669,42 @@ func remove(t: Vector2i) -> bool:
 	var k := int(kind[i])
 	if k == EMPTY or k == BOX:
 		return false
+	_record(i)
 	_clear(i)
 	kind[i] = EMPTY
 	_wire()
 	_emit("lift", {"kind": k, "tile": t})
+	return true
+
+# --- one step back ---
+
+## The holder calls `mark()` as a gesture begins; every square the gesture
+## changes is written down once, and `undo()` puts them all back as they
+## were (tokens riding there fall off, a crate's contents are not kept).
+func mark() -> void:
+	_undo = {}
+
+func _record(i: int) -> void:
+	if not _undo.has(i):
+		_undo[i] = [int(kind[i]), int(face[i]), int(face2[i])]
+
+func can_undo() -> bool:
+	return not _undo.is_empty()
+
+func undo() -> bool:
+	if _undo.is_empty():
+		return false
+	var n := 0
+	for i: int in _undo:
+		var was: Array = _undo[i]
+		_clear(i)
+		kind[i] = int(was[0])
+		face[i] = int(was[1])
+		face2[i] = int(was[2])
+		n += 1
+	_undo = {}
+	_wire()
+	_emit("undo", {"n": n})
 	return true
 
 ## A crate's number thrown out, so it takes the next that comes.
@@ -706,7 +816,7 @@ func _wire() -> void:
 				crates[i].outs = _away_from(t)
 			elif is_op(k):
 				if not machines.has(i):
-					machines[i] = {"a": [], "b": [], "out": [], "rem": [], "busy": false, "t": 0.0, "x": 0, "y": 0, "last": 0, "has_last": false}
+					machines[i] = {"a": [], "b": [], "out": [], "rem": [], "busy": false, "t": 0.0, "x": 0, "y": 0, "last": 0, "has_last": false, "a_since": -1.0, "b_since": -1.0}
 				var f := int(face[i])
 				machines[i].front = _end_into(t + DIRS[f], f)
 				machines[i].back = _end_into(t + DIRS[opp(f)], opp(f)) if k == DIV else -1
@@ -834,11 +944,19 @@ func _deliver(v: int, _i_box: int) -> void:
 		_emit("hit", {"v": v})
 		if got >= count():
 			_level_up()
+	else:
+		off += 1
+		off_v = v
+		if off >= OFF_SAY and got == 0 and not _off_said:
+			_off_said = true
+			_emit("off_target", {"v": target(), "came": v})
 
 func _level_up() -> void:
 	var done := level
 	level += 1
 	got = 0
+	off = 0
+	_off_said = false
 	var r := reward_of(done)
 	_emit("level", {"n": level, "reward": r})
 	if r != 0:
@@ -916,6 +1034,23 @@ func _step_machines(d: float) -> void:
 				_try_move(s)
 		_push(m.out, int(m.front))
 		_push(m.rem, int(m.back))
+		# a side empty while the other waits: since when
+		var a_empty := (m.a as Array).is_empty() and not (m.b as Array).is_empty() and not bool(m.busy)
+		var b_empty := (m.b as Array).is_empty() and not (m.a as Array).is_empty() and not bool(m.busy)
+		m.a_since = (float(m.a_since) if float(m.a_since) >= 0.0 else clock) if a_empty else -1.0
+		m.b_since = (float(m.b_since) if float(m.b_since) >= 0.0 else clock) if b_empty else -1.0
+
+## The side the machine on square `i` has waited on for STARVE_AFTER: 0 for
+## A, 1 for B, or -1.
+func starving(i: int) -> int:
+	if not machines.has(i):
+		return -1
+	var m: Dictionary = machines[i]
+	if float(m.a_since) >= 0.0 and clock - float(m.a_since) >= STARVE_AFTER:
+		return 0
+	if float(m.b_since) >= 0.0 and clock - float(m.b_since) >= STARVE_AFTER:
+		return 1
+	return -1
 
 func _push(q: Array, e: int) -> void:
 	while not q.is_empty() and e >= 0 and _accepts(e, int(q[0])):
