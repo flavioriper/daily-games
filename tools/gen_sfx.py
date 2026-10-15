@@ -3476,6 +3476,41 @@ SETS = {
         "game_over": ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0.28:9,6,2", "cut:1.3"),
         "new_best":  ("one soft short note on a kalimba, muffled and kind", 0.6, -8, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.13:2,4,6,7,9", "cut:1.2"),
     },
+    # Tally (arcade/tally_screen.gd, 2026-10-15): number tokens carried on
+    # belts across squared paper to a counting box. Made against the cozy
+    # rules from the start (docs/agents/sound.md). Two cues repeat: `lay`,
+    # a belt square laid, a square at a time along a swipe (the quietest
+    # tick of the set), and `deliver`, a target token into the box, which
+    # the screen throttles and plays quieter still. Both are ticks, never
+    # notes. The notes are the moments: an upgrade ready, bought, a level
+    # done, a piece handed over, each a longer rise than the last. No new
+    # take is kept: the set is the three measured takes Griddle and Trivet
+    # are made of (the light button on felt, the hollow block, one muffled
+    # kalimba note), copied into build/sfx_raw/tally/.
+    "tally": {
+        # A belt square laid: the button, the quietest tick, a step up.
+        "lay":       ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -19, HUSH, "warm:1400", "cut:0.07", "body:320", "tight", "notes:0:2"),
+        # A dig, a machine or a crate set down: the block's one low knock.
+        "place":     ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1300", "cut:0.16", "body:320", "tight", "notes:0:-2"),
+        # A piece turned: the button, a soft notch.
+        "turn":      ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.08", "body:320", "tight"),
+        # A piece lifted off the paper: the block, lower and softer.
+        "lift":      ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1200", "cut:0.14", "body:320", "tight", "notes:0:-5"),
+        # A target token into the box: the button a fourth down, very quiet.
+        "deliver":   ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -21, HUSH, "warm:1300", "cut:0.07", "body:320", "tight", "notes:0:-5"),
+        # A place refused: two low notches alike.
+        "nope":      ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1300", "cut:0.26", "body:320", "tight", "notes:0.1:-5,-5"),
+        # An upgrade can be bought: one soft note.
+        "ready":     ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0:5", "cut:0.45"),
+        # An upgrade bought: two notes up a fourth.
+        "upgrade":   ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.1:2,7", "cut:0.6"),
+        # A level done: two notes up, from higher.
+        "level":     ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.12:4,9", "cut:0.7"),
+        # A piece or a number handed over: three up.
+        "unlock":    ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.12:2,5,9", "cut:0.9"),
+        # The paper opened: two notes up, quieter than anything it leads to.
+        "start":     ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:5,9", "cut:0.8"),
+    },
     # Gumdrop (arcade/gumdrop_screen.gd, 2026-10-10): clear jelly in a mould
     # coloured with a dropper of syrup. Made against the cozy rules from the
     # start (docs/agents/sound.md). One cue never stops: `pour`, the
