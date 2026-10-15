@@ -3650,3 +3650,88 @@ left ends the run.
   `tests/_probe_arcade_buzz.gd`.
 
 - **The tab's cards (2026-10-13)**: each game's card is a face of its own, `ui/menu/cards/arc_<game>.gd`, on the Puzzles tab's shell with the shared pager; see `docs/agents/first-screen.md`, "A card of its own". A new Arcade game needs a face file, or its card will not load.
+
+
+**Tally is the fourteenth** (2026-10-15, spec
+`docs/superpowers/specs/2026-10-15-arcade-tally-design.md`), built
+unattended from "belmatic like game is the next arcade game, there is a
+implementation plan spec from a deep search to use as guidance ... Build end
+to end, wire sfx, smooth and cozy animations based on current games. Do it
+autonomous." The research is the user's `reports/Beltmatic game spec.md`
+(untracked); the spec names the reference once to forbid it; **it is called
+Tally and nothing else**. A number factory on a sheet of squared paper on a
+desk: digs stand on numbers printed about the counting box, walnut belts
+carry cream wooden tokens, five painted machines add, multiply, take away,
+divide and raise, and the box asks for one number so many times a level.
+
+- **A kept game, like the Factory**: `user://tally.cfg` (`ver` 1, packed
+  arrays: the pieces as [square, kind, face, face2] fours, the tally as keys
+  and counts), no run, no end card, no gold, no boosters, no interstitial
+  (`ui/menu.gd` lists it with Nightlight, Furrow and Griddle). **Nothing runs
+  while it is shut** (the Factory's rule), and tokens on belts and in
+  machines are not saved: they refill in seconds. The tab's line is
+  `Sim.kept()` (the level, the numbers counted).
+- **The game is pure data** (`arcade/tally_sim.gd`): a 46 by 46 sheet, the
+  box 4 by 4 at (21, 21), every piece one square. A slot is where a token
+  rides (`s` < N a square's own, `s` >= N a bridge's up-and-down lane), with
+  `prog` 0 to 1 from the edge it came in by to the edge it leaves by; an end
+  is `(id << 2) | dir`, a slot or a machine's side, a crate or the box.
+  `_wire()` works out every slot's ends after any change; a token moving
+  wakes the slots waiting on the one it left (`_try_move`, `_wake`), so a
+  full belt stays full. `tests/_probe_tally.gd` must print 0 failed (54
+  checks: saturation both ways, A ÷ 0, no zero remainder, a belt's rate,
+  each operator's sides, split, merge, bridge, crate, a full output
+  stopping a machine, the ladder to level 1000, upgrades, save and load).
+- **The rules kept from the reference** (the report's load-bearing three):
+  saturating 32-bit numbers, A ÷ 0 = (0, A), a zero remainder not put out;
+  and no 10 printed. Its belt and machine speeds, unlock ladder and upgrade
+  curve are the report's closed forms; the counts are halved for levels and a
+  fifth for upgrades.
+- **An operator's sides are its facing**: A in on the left (one pip), B on
+  the right (two pips), the answer out of the front (a tongue), the
+  divider's remainder out of the back. A belt takes from its back and sides,
+  never its front; a belt whose back touches another's side takes every
+  other token (a split); a dig and a crate feed only belts leading away.
+- **The board** (`arcade/tally_board.gd`) is the paper as a Control, the
+  screen's and the tutorial's: a camera (`cam` in squares, `k` pixels a
+  square, two fingers pan and pinch, the wheel zooms, a fling), the tools
+  under one finger (`tool`), and the drawing under one Node2D: the desk and
+  paper (one mesh), the printed numbers' rings (again when the level
+  changes, as numbers open), the belts' beds (again when the paper
+  changes; a belt fed by one side alone is a bend), and every frame, only
+  what is in sight, the brass chevrons (moving at the belt's speed), the
+  tokens (FlatBuilder appends of one cached disc), the pieces (squash, pop,
+  spin) and a live layer (machines' work arcs, the box's bar and glow, the
+  run in hand, dust). **The numerals are written in screen space by one
+  layer (`_words`), the tokens' one run of glyphs a size**, so hundreds of
+  numbers cost a few draw calls.
+- **Laying a belt is a swipe**: a straight run along the way the finger went
+  further, shown as a ghost (green, red past the first square that cannot
+  take belt) until the finger lifts; begun on a dig or machine it starts
+  beside it; near the view's edge the view moves. A run across a belt in its
+  middle makes a bridge once bridges are had (level 5), and turns it before.
+  A tap lays one belt the way of the last run, or turns the belt under it.
+- **The tray** is drawn, not built of buttons (two rows of five, pressed on
+  the finger's release); a machine's tool pressed again turns the way it
+  will be set down, and its icon turns with it. A tool not handed over is a
+  lock with its level.
+- **Sounds**: eleven cues from the three kept takes (`docs/agents/sound.md`,
+  the `tally` row), unheard. `deliver` is a target into the box, at most
+  every 0.14 s, quiet.
+- **How to see it**: `tests/_shot_tally.gd -- <outdir> [reduce] [en|pt|es]`
+  (windowed, through the real menu: a real Dig tap on the nearest 1, a real
+  swipe to the box, level 1 done through it, a grown paper, a real
+  two-finger pinch, a machine's card by a real Move tap, the box's card and
+  the upgrades by real taps on the plates; headless it shoots nothing and
+  still drives every beat, 0 failed). 56 to 84 draw calls in play, 68 far
+  out, 125 to 180 with a card or the upgrades over it (`opengl3_angle`,
+  810x1440, first run).
+- **Mine, the user's to call** (the spec's section 6): the name and the
+  squared paper; every piece one square, A left and B right; a 4 by 4 box;
+  a 46 by 46 sheet with numbers to 60; digs to 4 belts; the counts halved
+  and a fifth; no away progress; no priorities, copy, paste, undo or
+  markers; straight runs only; a crate of 500; no concept tab, no new take,
+  no mascot.
+- **Not done**: a phone; the sounds heard; pt and es read; `reduce` shot;
+  a pace bot (only the first level's pace is measured: ten 1s at 1 a
+  second); a Tally bot in `tests/_probe_arcade_buzz.gd`.
