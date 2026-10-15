@@ -222,6 +222,13 @@ var _chunk_stale := {}
 var _knit := {}
 var _yarn := {}
 var _pin_part := []
+## The zoom the table's meshes were built for: they are rebuilt at the zoom
+## once it settles, so a feather stays Face.FEATHER screen pixels and a
+## numeral's strokes stay strokes close up (built at 1x and scaled 4x, the
+## feather was a 6 px blur and the 3s were blots; the user, 2026-10-15:
+## "check why the game resolution is so terrible"). While fingers pinch
+## the built meshes ride the transform.
+var _built_k := 1.0
 var _shown: Array = []
 var _hud_layer: Control
 var _hud_shown: ArrayMesh
@@ -452,6 +459,7 @@ func _layout() -> void:
 	zoom.setup(Rect2(Vector2.ZERO, size), near, maxf(near, ZOOM_MOST) if near > 1.0 else 1.0)
 	_zoom_b.position = Vector2(ZOOM_INSET, size.y - _clear.y - ZOOM_INSET - ZOOM_B)
 	_zoom_b.size = Vector2(ZOOM_B, ZOOM_B)
+	_built_k = zoom.k
 	_bg = _build_table()
 	_hoop = _build_hoop()
 	_clamp = _build_clamp()
@@ -553,7 +561,7 @@ func _needle(b, from: Vector2, to: Vector2) -> void:
 
 ## The ring and the linen stretched in it, with its weave.
 func _build_hoop() -> ArrayMesh:
-	var b := Face.Builder.new()
+	var b := _builder()
 	b.disc(_centre, _radius, RING_DEEP)
 	b.disc(_centre + Vector2(0.0, -2.0), _radius - 3.0, RING_WOOD)
 	var hi := Face.Builder.arc_points(_centre, _radius - RING * 0.3, PI * 1.1, PI * 1.75)
@@ -582,7 +590,7 @@ func _build_hoop() -> ArrayMesh:
 
 ## The ring's screw at the top, over everything on the linen.
 func _build_clamp() -> ArrayMesh:
-	var b := Face.Builder.new()
+	var b := _builder()
 	var top := _centre + Vector2(0.0, -_radius)
 	b.polygon(Face.Builder.round_rect(top + Vector2(-26.0, -14.0), Vector2(52.0, RING + 10.0), 8.0), RING_DEEP)
 	b.polygon(Face.Builder.round_rect(top + Vector2(-23.0, -12.0), Vector2(46.0, RING + 4.0), 7.0), RING_WOOD)
@@ -619,6 +627,7 @@ func _knit_part(k: int) -> Array:
 		cols.append(dark)
 		leaves.append(GROUND)
 	idx.append_array(tris)
+	_knit_rim(verts, cols, idx, leaves, ground, 0, dark, GROUND)
 	var lo := ground[0]
 	var hi := ground[0]
 	for p in ground:
@@ -650,11 +659,37 @@ func _knit_part(k: int) -> Array:
 					leaves.append(lc)
 				for m in range(1, leaf.size() - 1):
 					idx.append_array([first, first + m, first + m + 1])
+				_knit_rim(verts, cols, idx, leaves, leaf, first, light, lc)
 			x += cw
 		y += rh
 	var part := [verts, cols, idx, leaves]
 	_knit[k] = part
 	return part
+
+## A knit outline's feather (its vertices start at `first`): a rim
+## Face.FEATHER screen pixels outside it at alpha 0, the Builder's _feather
+## written into the knit's own arrays so the rim pops with its leaf (`lc`).
+func _knit_rim(verts: PackedVector2Array, cols: PackedColorArray, idx: PackedInt32Array, leaves: PackedVector2Array,
+		outline: PackedVector2Array, first: int, colour: Color, lc: Vector2) -> void:
+	var n := outline.size()
+	var area := 0.0
+	for i in n:
+		area += outline[i].cross(outline[(i + 1) % n])
+	var out := 1.0 if area > 0.0 else -1.0
+	var f := Face.FEATHER / _built_k
+	var rim := verts.size()
+	for i in n:
+		var e0 := (outline[i] - outline[(i - 1 + n) % n]).normalized()
+		var e1 := (outline[(i + 1) % n] - outline[i]).normalized()
+		var nrm := Vector2(e0.y, -e0.x) + Vector2(e1.y, -e1.x)
+		if nrm.length_squared() < 1e-8:
+			nrm = Vector2(e1.y, -e1.x)
+		verts.append(outline[i] + nrm.normalized() * out * f)
+		cols.append(Color(colour, 0.0))
+		leaves.append(lc)
+	for i in n:
+		var j := (i + 1) % n
+		idx.append_array([first + i, first + j, rim + j, first + i, rim + j, rim + i])
 
 ## One leaf of a V stitch about `c`: a slim oval leaning in toward the V's
 ## foot.
@@ -662,8 +697,9 @@ func _leaf(c: Vector2, side: float, cw: float, rh: float) -> PackedVector2Array:
 	var centre := c + Vector2(side * cw * 0.21, 0.0)
 	var ang := -side * 0.5
 	var out := PackedVector2Array()
-	for m in 6:
-		var a := TAU * m / 6.0
+	var sides := clampi(roundi(6.0 * _built_k), 6, 16)
+	for m in sides:
+		var a := TAU * m / sides
 		out.append(centre + Vector2(cos(a) * cw * 0.17, sin(a) * rh * 0.6).rotated(ang))
 	return out
 
@@ -673,7 +709,7 @@ func _yarn_part(s: int) -> Array:
 		return _yarn[s]
 	var a := _px[state.sides[s].x]
 	var c := _px[state.sides[s].y]
-	var b := Face.Builder.new()
+	var b := _builder()
 	b.stroke(PackedVector2Array([a, c]), YARN_W, YARN)
 	var d := (c - a)
 	var n := d.length()
@@ -712,7 +748,7 @@ func _mark_into(b, k: int) -> void:
 	for m in n:
 		room = minf(room, Geometry2D.get_closest_point_to_segment(c, outline[m], outline[(m + 1) % n]).distance_to(c))
 	var tall := clampf(room * MARK_ROOM, MARK_H.x, MARK_H.y)
-	var wide := maxf(MARK_STROKE, tall * MARK_W)
+	var wide := maxf(MARK_STROKE / _built_k, tall * MARK_W)
 	var strokes: Array = []
 	match n:
 		3:
@@ -753,6 +789,14 @@ func _mark_at(outline: PackedVector2Array) -> Vector2:
 			c += p
 		return c / n
 	return c / (3.0 * twice)
+
+## A Builder for the meshes drawn under the zoom, feathered and rounded
+## for the zoom they are built at (`_built_k`).
+func _builder() -> Face.Builder:
+	var b := Face.Builder.new()
+	b.feather = Face.FEATHER / _built_k
+	b.detail = _built_k
+	return b
 
 func _combine(parts: Array) -> ArrayMesh:
 	var verts := PackedVector2Array()
@@ -800,7 +844,7 @@ func _pins_mesh() -> ArrayMesh:
 	if not _pins_stale:
 		return _pins
 	_pins_stale = false
-	var b := Face.Builder.new()
+	var b := _builder()
 	for v in state.pins.size():
 		if state.pin_open[v] > 0:
 			_pin_into(b, _px[v], _pin_r)
@@ -812,7 +856,7 @@ func _marks_mesh() -> ArrayMesh:
 		return _marks
 	_marks_stale = false
 	_marks = null
-	var b := Face.Builder.new()
+	var b := _builder()
 	for k in state.panels.size():
 		if not state.filled[k]:
 			_mark_into(b, k)
@@ -907,7 +951,7 @@ func _entering(since: float) -> bool:
 ## popping off, a refused pin's ring and the thread in hand.
 func _moving_meshes(now: float, since: float) -> Array:
 	var parts: Array = []
-	var b := Face.Builder.new()
+	var b := _builder()
 	if _entering(since):
 		for v in state.pins.size():
 			if state.pin_open[v] <= 0:
@@ -940,7 +984,7 @@ func _moving_meshes(now: float, since: float) -> Array:
 	if not b.idx.is_empty():
 		parts.append([b.verts, b.cols, b.idx])
 	var under := _combine(parts)
-	b = Face.Builder.new()
+	b = _builder()
 	# pins whose every side is threaded pop off
 	for v: int in _gone.keys():
 		var e := now - float(_gone[v])
@@ -1601,6 +1645,8 @@ func _process(delta: float) -> void:
 		return
 	var now := _now()
 	var gliding := zoom.step(delta)
+	if not gliding and not zoom.busy() and absf(zoom.k / _built_k - 1.0) > 0.05:
+		_rebuild_for_zoom()
 	if gliding or zoom.busy() or now < _anim_until or now - _slid_at < WIN_SLIDE + 0.1 or not _filling.is_empty() \
 			or not _laid_at.is_empty() or not _gone.is_empty() or _cur >= 0:
 		_request()
@@ -1614,6 +1660,21 @@ func _process(delta: float) -> void:
 			or (_toast != "" and now - _toast_at < TOAST_HOLD + 0.1) \
 			or (_combo_n >= COMBO_FROM and (now - _combo_at < COMBO_HOLD + 0.1 or _combo_out_at > -INF)):
 		_hud_layer.queue_redraw()
+
+## Rebuilds what is drawn under the zoom for the zoom it settled at; the
+## table under it does not scale.
+func _rebuild_for_zoom() -> void:
+	_built_k = zoom.k
+	_hoop = _build_hoop()
+	_clamp = _build_clamp()
+	_knit = {}
+	_yarn = {}
+	_chunks = {}
+	_chunk_stale = {}
+	_threads_stale = true
+	_pins_stale = true
+	_marks_stale = true
+	_request()
 
 func _request() -> void:
 	queue_redraw()

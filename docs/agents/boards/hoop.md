@@ -140,7 +140,15 @@
 - **Meshes**: the table, the hoop and the clamp built a layout; the knitting
   in chunks of ten panels, rebuilt when one fills; threads, pins and marks a
   mesh each, rebuilt on a thread; what moves as two meshes a frame. The
-  zoom is a transform over them all, nothing rebuilt. Draw calls on
+  zoom is a transform over them all while fingers pinch; once it settles
+  (2026-10-15, the user, at 4x on Hard: "check why the game resolution is
+  so terrible") everything under it is rebuilt for that zoom (`_built_k`,
+  `_rebuild_for_zoom`): built at 1x and scaled 4x, Face's 1.5 px feather
+  was a 6 px blur, the numerals' 0.9 px strokes blots, the leaves hexagons.
+  The Builder now takes `feather` (FEATHER / k) and `detail` (k); the
+  knitting got the feather it never had (`_knit_rim`, ground and leaves),
+  whose stair-stepped edge showed at any zoom. Hard zoomed: 90 draw calls
+  peak. Draw calls on
   `opengl3_angle` at 810x1440 (2026-10-14, after the numerals and the
   zoom): 85 at rest, 82-88 zoomed and threading on Medium, 117 peak on the
   Insane solve (budget 855). Building every panel's knitting on Insane

@@ -564,6 +564,12 @@ class Builder:
 	var verts := PackedVector2Array()
 	var cols := PackedColorArray()
 	var idx := PackedInt32Array()
+	## How wide the feather is and how finely a circle is cut. A mesh drawn
+	## under a scale (a board's zoom) is built with `feather` FEATHER / k and
+	## `detail` k, so its edges stay FEATHER screen pixels soft and its
+	## discs round when seen close.
+	var feather := FEATHER
+	var detail := 1.0
 
 	## How many segments an arc of `r` sweeping `sweep` radians takes.
 	static func arc_n(r: float, sweep: float) -> int:
@@ -581,8 +587,8 @@ class Builder:
 		return pts
 
 	## Points around an ellipse, without repeating the first.
-	static func ring(centre: Vector2, rx: float, ry: float) -> PackedVector2Array:
-		var n := arc_n(maxf(rx, ry), TAU)
+	static func ring(centre: Vector2, rx: float, ry: float, fine := 1.0) -> PackedVector2Array:
+		var n := arc_n(maxf(rx, ry) * fine, TAU)
 		var pts := PackedVector2Array()
 		pts.resize(n)
 		for i in n:
@@ -640,10 +646,10 @@ class Builder:
 		idx.append(c)
 
 	func disc(centre: Vector2, r: float, colour: Color) -> void:
-		fan(ring(centre, r, r), colour)
+		fan(ring(centre, r, r, detail), colour)
 
 	func ellipse(centre: Vector2, rx: float, ry: float, colour: Color) -> void:
-		fan(ring(centre, rx, ry), colour)
+		fan(ring(centre, rx, ry, detail), colour)
 
 	## A convex outline as a fan about its centroid. (Written into local
 	## arrays sized once, here and in stroke() and _feather(): a vertex at a
@@ -704,10 +710,10 @@ class Builder:
 			var nrm := Vector2(-t.y, t.x)
 			# Four across: outer feather, edge, edge, outer feather.
 			var w := i * 4
-			vs[w] = points[i] - nrm * (half + FEATHER)
+			vs[w] = points[i] - nrm * (half + feather)
 			vs[w + 1] = points[i] - nrm * half
 			vs[w + 2] = points[i] + nrm * half
-			vs[w + 3] = points[i] + nrm * (half + FEATHER)
+			vs[w + 3] = points[i] + nrm * (half + feather)
 			cs[w] = clear
 			cs[w + 1] = colour
 			cs[w + 2] = colour
@@ -755,7 +761,7 @@ class Builder:
 			var nrm := Vector2(e0.y, -e0.x) + Vector2(e1.y, -e1.x)
 			if nrm.length_squared() < 1e-8:
 				nrm = Vector2(e1.y, -e1.x)
-			vs[i] = points[i] + nrm.normalized() * out * FEATHER
+			vs[i] = points[i] + nrm.normalized() * out * feather
 		var cs := PackedColorArray()
 		cs.resize(n)
 		cs.fill(clear)
