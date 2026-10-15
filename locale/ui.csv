@@ -1903,7 +1903,7 @@ TL_WAITING_SIDE,Waiting for %s on its %s side,Esperando %s no lado %s,Esperando 
 TL_SIDE_ONE_DOT,one-dot,de um ponto,de un punto
 TL_SIDE_TWO_DOT,two-dot,de dois pontos,de dos puntos
 TL_THEN,Then,Depois,Luego
-TL_SHORT_OF,Need %s more %ss,Faltam %s %s,Faltan %s %s
+TL_SHORT_OF,Need %s more %ss,Faltam %s × %s,Faltan %s × %s
 TL_MET,%d of %d met,%d de %d prontos,%d de %d listos
 TL_AT_TOP_SHORT,The top,No máximo,Al máximo
 TL_TREE_LINE,Tap a branch. Each rank is paid in numbers the box has had.,Toque num ramo. Cada nível é pago com números que a caixa recebeu.,Toca una rama. Cada rango se paga con números que la caja recibió.
@@ -1915,6 +1915,6 @@ TUT_TALLY_BOX_BODY,The counting box asks for one number so many times. The token
 TUT_TALLY_MACHINE,Machines,Máquinas,Máquinas
 TUT_TALLY_MACHINE_BODY,"A machine takes A on its one-dot side and B on its two-dot side, and the answer leaves by its front: 3 and 4 make 7. Tap where it goes, Turn it, then Place. A side left empty glows amber: it is waiting.","Uma máquina recebe A no lado de um ponto e B no lado de dois, e a resposta sai pela frente: 3 e 4 dão 7. Toque onde ela vai, Gire e depois Colocar. Um lado vazio brilha âmbar: está esperando.","Una máquina toma A por su lado de un punto y B por el de dos, y el resultado sale por delante: 3 y 4 dan 7. Toca dónde va, Gírala y luego Colocar. Un lado vacío brilla ámbar: está esperando."
 TUT_TALLY_BELTS,Splits and crossings,Divisões e cruzamentos,Desvíos y cruces
-TUT_TALLY_BELTS_BODY,"A belt starting at another's side takes every other token. Belts running into one take turns. From level 5, a path drawn across a belt makes a bridge over it; before that it stops beside it.","Uma esteira que começa ao lado de outra leva uma ficha sim, outra não. Esteiras que entram numa só se revezam. Do nível 5, um caminho traçado por cima de uma esteira faz uma ponte; antes disso ele para ao lado.","Una cinta que empieza al lado de otra se lleva una ficha sí y otra no. Las cintas que entran en una se turnan. Desde el nivel 5, un camino trazado sobre una cinta hace un puente; antes de eso se detiene al lado."
+TUT_TALLY_BELTS_BODY,"A belt starting at another's side takes every other token. Belts running into one take turns. From level 5, a path drawn across a belt makes a bridge over it; before that it stops beside it.","Uma esteira que começa ao lado de outra leva uma ficha sim, outra não. Esteiras que entram numa só se revezam. Do nível 5, traçar por cima de uma esteira faz uma ponte; antes, o caminho para ao lado.","Una cinta que empieza al lado de otra se lleva una ficha sí y otra no. Las cintas que entran en una se turnan. Desde el nivel 5, trazar sobre una cinta hace un puente; antes, el camino se detiene al lado."
 TUT_TALLY_UPGRADE,Upgrades,Melhorias,Mejoras
 TUT_TALLY_UPGRADE_BODY,"Upgrades are paid in numbers the box has had: tap a branch of the tree, deliver what it asks and press Up. Faster belts, digs on more belts, quicker machines.","Melhorias são pagas com números que a caixa recebeu: toque num ramo da árvore, entregue o que ele pede e aperte Subir. Esteiras mais rápidas, extratores em mais esteiras, máquinas mais ágeis.","Las mejoras se pagan con números que la caja recibió: toca una rama del árbol, entrega lo que pide y pulsa Subir. Cintas más rápidas, extractores en más cintas, máquinas más ágiles."

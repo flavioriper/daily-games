@@ -826,7 +826,7 @@ func _pill_press(name: String) -> void:
 		"place":
 			var why := _ghost_why()
 			if why != "":
-				touched.emit(float(PILL_PITCH.get(name, 1.0)))
+				# the refusal is the answer to this touch: the screen cues nope
 				refused.emit(why, screen_of(Vector2(t) + Vector2(0.5, 0.5)), sim.dep_at(t))
 				return
 			var kd := int(_ghost.kind)

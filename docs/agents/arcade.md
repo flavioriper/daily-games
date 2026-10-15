@@ -3874,8 +3874,9 @@ view"):
   Place and traces to the box; the Machine page drops the adder's ghost
   facing north, presses Turn once and Place; the Belts page traces. The
   bodies say so (en, pt, es). `tests/_shot_howto_screen.gd -- tally`
-  windowed on `opengl3_angle` 2026-10-15: 90 to 101 draw calls, bodies 141
-  to 188 px of 230.
+  windowed on `opengl3_angle` 2026-10-15 in en, pt and es: 90 to 101 draw
+  calls, every body 188 px of 230 or less (the pt Belts body ran to 235
+  and was shortened, es with it).
 - **How to see it now**: `tests/_shot_tally.gd -- <outdir>`, 23 checks (the
   ghost and its pill, Place, a traced corner whose square faces the next
   leg, the undo chip pressed for real and the path traced again, the Look
@@ -3895,8 +3896,8 @@ view"):
   formatting error" at the `%` is the symptom). The same rule as
   regenerated sounds.
 - **Not done, the user's to call**: a phone (the pills' 84 px buttons and
-  the trace under a thumb); the sounds heard; pt and es read by a speaker;
-  the amber pips and the count badge seen windowed; the spec's section 7
+  the trace under a thumb); the sounds heard; pt and es read by a speaker (the
+  tutorial's pages shot in both); the amber pips and the count badge seen windowed; the spec's section 7
   calls (a tap with Belt lays one belt; one undo step for belts and lifts
   only; the tree's shape; no double-tap path selection, drag-box delete,
   copy or paste).
