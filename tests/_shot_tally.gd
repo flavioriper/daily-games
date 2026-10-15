@@ -218,9 +218,8 @@ func _process(delta: float) -> bool:
 				_next()
 		1:
 			if _t > _at + 1.0:
-				var tab: Node = _menu.find_child("ArcadeTab", true, false)
-				if tab != null and tab.has_method("turn"):
-					tab.turn(1)
+				# Tally stands on the tab's second page
+				_menu._turn_page(1)
 				_next()
 		2:
 			if _t > _at + 0.8:
