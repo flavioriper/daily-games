@@ -870,3 +870,16 @@ filled, and the hard mode should have a zoom feature just like insane".
   to 102; the Hard tutorial's five pages peak 157. Bared patches in the
   `big` shots show the sunk ring on blue and white (they were flat in the
   same shot before the fix). Not on a phone.
+
+**2026-10-15, a pick out of the tin outlived the pack** (the user: "after
+placing a piece it stays showing as available on the case till I click
+outside, making impossible to keep playing because it says i don't have
+the color on case even tho i have"). A sew out of the tin that left some
+of the colour picked kept `_held_places` as the places they had before
+`State._pack` slid the tin down, so the pick pointed at another colour or
+at nothing and the next sew was refused as the wrong colour. The kept pick
+is now `state.tin_of(_held_c)`, and a SLIDE whose end is a picked place
+draws no hop (the button hangs over it). `_probe_buttons_board.gd` caught
+it before the fix (five days stuck, a pick held, not run for c53bcbe6) and
+finishes every day after; its two `zoom` failures on band 2 are there with
+and without the fix.

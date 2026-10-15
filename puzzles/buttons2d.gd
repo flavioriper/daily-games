@@ -1339,7 +1339,9 @@ func tap(i: int, twice := false) -> void:
 		if kept.is_empty():
 			_unhold()
 		elif _held_cells.is_empty():
-			_held_places = kept
+			# the tin packs after a sew out of it, so the ones kept are not
+			# where they were: the pick follows its colour to its new places
+			_held_places = state.tin_of(_held_c)
 		else:
 			_held_cells = kept
 		# (a pick too big to bob is drawn once and kept: what is left of it
@@ -1427,7 +1429,10 @@ func _play(res: Dictionary, at_cell: int, starts: Dictionary) -> void:
 		var kind := int(m[0])
 		if kind == State.SLIDE:
 			# a button of the tin moved along a place: a short hop, all of
-			# them at once, with no tick of their own
+			# them at once, with no tick of their own (one still picked hangs
+			# over its new place instead)
+			if _held_places.has(int(m[2])):
+				continue
 			var hop := 0.0 if Motion.reduce else SLIDE_TIME
 			_flights.append({"c": int(m[3]), "time": hop, "at": now, "k0": tin_k, "k1": tin_k, "fc": false, "tc": false,
 				"from": tin_centre(int(m[1])), "to": tin_centre(int(m[2]))})
