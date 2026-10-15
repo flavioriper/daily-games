@@ -8,19 +8,25 @@ extends Control
 ## player's would. The tool in hand is a chip in the corner. `lesson` picks
 ## the page (set before it enters the tree):
 ##
-## - DIG: the Dig tool sets a dig on a 1, the Belt tool swipes a run from it
+## - DIG: the Dig tool taps a 1 (its ghost and the builder pill come up),
+##   the finger presses Place, then the Belt tool traces a path from the dig
 ##   to the box, and the 1s ride in.
 ## - BOX: the box asks for 1s; the tokens it wants wear a sun ring, a 3s
 ##   line comes in plain; ten 1s finish the level and the adder is handed
 ##   over.
-## - MACHINE: an adder set down facing the wrong way does nothing; a second
-##   tap turns it, and 3 on its one-dot side and 4 on its two-dot side make 7.
+## - MACHINE: the adder's ghost is dropped facing the wrong way, Turn turns
+##   it, Place sets it down, and 3 on its one-dot side and 4 on its two-dot
+##   side make 7.
 ## - BELTS: a belt whose back touches the 1s line's side takes every other
-##   token, the 2s join the line taking turns, and a swipe across the line
-##   makes a bridge.
+##   token, the 2s join the line taking turns, and a path traced across the
+##   line makes a bridge.
 ## - UPGRADE: the 1s coming in fill the belt's upgrade (drawn as the
 ##   upgrades card draws a row); the finger presses Up and the belts run
 ##   twice as fast.
+##
+## A keyframe's point is a square (Vector2) or a pill button's name
+## ("place", "turn"), found through the board's `pill_button_rect` as the
+## finger goes, so the script presses the pill where the board puts it.
 
 const Motion = preload("res://core/motion.gd")
 const CozyTheme = preload("res://ui/theme.gd")
@@ -37,19 +43,21 @@ const LOOK := {Lesson.DIG: Vector2(20.2, 22.8), Lesson.BOX: Vector2(20.2, 23.0),
 	Lesson.BELTS: Vector2(18.5, 22.5), Lesson.UPGRADE: Vector2(19.8, 23.0)}
 ## Each lesson's finger: [second, square (its middle is + 0.5), down].
 const SCRIPTS := {
-	Lesson.DIG: [[0.0, Vector2(18.5, 24.5), false], [0.8, Vector2(16.5, 22.5), false], [1.0, Vector2(16.5, 22.5), true], [1.2, Vector2(16.5, 22.5), false],
-		[2.0, Vector2(17.5, 22.5), false], [2.2, Vector2(17.5, 22.5), true], [3.0, Vector2(20.5, 22.5), true], [3.15, Vector2(20.5, 22.5), false],
-		[3.8, Vector2(18.5, 24.5), false]],
+	Lesson.DIG: [[0.0, Vector2(18.5, 24.5), false], [0.8, Vector2(16.5, 22.5), false], [1.0, Vector2(16.5, 22.5), true], [1.15, Vector2(16.5, 22.5), false],
+		[1.7, "place", false], [1.85, "place", true], [2.0, "place", false],
+		[2.8, Vector2(17.5, 22.5), false], [3.0, Vector2(17.5, 22.5), true], [3.9, Vector2(20.5, 22.5), true], [4.05, Vector2(20.5, 22.5), false],
+		[4.7, Vector2(18.5, 24.5), false]],
 	Lesson.BOX: [[0.0, Vector2(18.5, 25.0), false]],
-	Lesson.MACHINE: [[0.0, Vector2(16.5, 24.5), false], [0.8, Vector2(18.5, 22.5), false], [1.0, Vector2(18.5, 22.5), true], [1.2, Vector2(18.5, 22.5), false],
-		[3.6, Vector2(18.5, 22.5), false], [3.8, Vector2(18.5, 22.5), true], [4.0, Vector2(18.5, 22.5), false], [4.8, Vector2(16.5, 24.5), false]],
+	Lesson.MACHINE: [[0.0, Vector2(16.5, 24.5), false], [0.8, Vector2(18.5, 22.5), false], [1.0, Vector2(18.5, 22.5), true], [1.15, Vector2(18.5, 22.5), false],
+		[1.9, "turn", false], [2.05, "turn", true], [2.2, "turn", false],
+		[3.0, "place", false], [3.15, "place", true], [3.3, "place", false], [4.1, Vector2(16.5, 24.5), false]],
 	Lesson.BELTS: [[0.0, Vector2(13.5, 24.5), false], [3.4, Vector2(16.5, 21.5), false], [3.6, Vector2(16.5, 21.5), true], [4.6, Vector2(16.5, 24.5), true], [4.75, Vector2(16.5, 24.5), false],
 		[5.4, Vector2(13.5, 24.5), false]],
 	Lesson.UPGRADE: [[0.0, Vector2(18.0, 25.0), false]],
 }
 ## When the tool in hand changes: [second, tool].
 const TOOLS := {
-	Lesson.DIG: [[0.0, "dig"], [1.7, "belt"]],
+	Lesson.DIG: [[0.0, "dig"], [2.5, "belt"]],
 	Lesson.BOX: [[0.0, "move"]],
 	Lesson.MACHINE: [[0.0, "add"]],
 	Lesson.BELTS: [[0.0, "belt"]],
@@ -216,11 +224,11 @@ func _process(delta: float) -> void:
 	var at := 0
 	while at + 1 < script.size() and float(script[at + 1][0]) <= _t:
 		at += 1
-	var pos: Vector2 = _board.screen_of(script[at][1])
+	var pos: Vector2 = _point(script[at][1])
 	if at + 1 < script.size():
 		var u := clampf((_t - float(script[at][0])) / maxf(0.01, float(script[at + 1][0]) - float(script[at][0])), 0.0, 1.0)
 		u = u * u * (3.0 - 2.0 * u)
-		pos = pos.lerp(_board.screen_of(script[at + 1][1]), u)
+		pos = pos.lerp(_point(script[at + 1][1]), u)
 	var down := bool(script[at][2])
 	if lesson == Lesson.UPGRADE:
 		if down and not _down:
@@ -247,6 +255,20 @@ func _process(delta: float) -> void:
 	_over_l.queue_redraw()
 
 var _finger := Vector2.INF
+var _last_point := Vector2.ZERO
+
+## A keyframe's point in page pixels: a square's, or a pill button's middle
+## (the board's pixels are the page's: it fills it). A button not up yet
+## keeps the finger where it was.
+func _point(p) -> Vector2:
+	if p is String:
+		var r: Rect2 = _board.pill_button_rect(String(p))
+		if r.size == Vector2.ZERO:
+			return _last_point
+		_last_point = r.position + Vector2(r.size.x * 0.5, Board.BTN * 0.5)
+		return _last_point
+	_last_point = _board.screen_of(p)
+	return _last_point
 
 ## The upgrade row's button, in page pixels.
 func _up_button() -> Rect2:

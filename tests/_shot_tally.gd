@@ -5,14 +5,20 @@ extends SceneTree
 ##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_tally.gd -- <outdir> [reduce] [en|pt|es]
 ##
 ## 1 the Arcade tab (Tally's card on its page), 2 a new sheet, then real
-## touches: the Dig tool from the tray and a tap on the nearest 1 (printed:
-## a dig stands there), the Belt tool and a swipe away from the dig to the
-## box (printed: the run is laid and leads into the box), 3 the first 1s
-## riding, 4 level 1 done, 5 a grown paper close (digs, an adder, a
-## multiplier, a divider, a bridge and a crate, every token sliding), 6 the
-## same far after a real two-finger pinch out, 7 a machine's card by a real
-## tap with Move, 8 the box's card by a real tap on the plate, 9 the
-## upgrades, one bought, 10 a refusal. Prints the draw calls at each shot.
+## touches: the Dig tool from the tray, a tap on the nearest 1 (its ghost
+## and the builder pill come up: shot 2b) and a tap on the pill's Place (a
+## dig stands there), the Belt tool and a path traced from beside the dig
+## to the box in one gesture, round the route's corner (the run is laid and
+## leads into the box), the undo chip pressed (the run is gone) and the path
+## traced again, 3 the first 1s riding, 4 level 1 done, 5 a grown paper
+## close (digs, an adder, a multiplier, a divider, a bridge and a crate,
+## every token sliding), 6 the same far after a real two-finger pinch out,
+## 7 the adder's pill by a real tap with Look (shot 6b) and its card by a
+## tap on Info, 8 the box's card by a real tap on the plate, 9 the upgrades,
+## one bought, 10 a refusal, then the tutorial: 11 its Dig page with the
+## finger on the pill's Place, 12 its Machine page with the adder's ghost
+## turned (and what each page's own paper ends with is checked). Prints the
+## draw calls at each shot.
 ## With no display it shoots nothing and still drives every beat, so it
 ## serves as a smoke run. The paper is kept in a file of the harness's own
 ## (`Sim.path`), so this machine's paper is never touched.
@@ -28,6 +34,7 @@ var _at := 0.0
 var _blind := false
 var _fails := 0
 var _dig := Vector2i(-1, -1)
+var _card: Control
 
 func _initialize() -> void:
 	load("res://ui/hud/screen_tutor.gd").no_first_play = true
@@ -91,14 +98,33 @@ func _square(t: Vector2i) -> Vector2:
 func _tap_tray(slot: int) -> void:
 	_tap(_win(_s.tray, _s._slot_mid(slot)))
 
-## A real swipe from square `a` to square `b`, in steps.
-func _swipe(a: Vector2i, b: Vector2i) -> void:
-	var p0 := _square(a)
-	var p1 := _square(b)
-	_touch(p0, true)
-	for j in range(1, 9):
-		_drag_ev(p0.lerp(p1, j / 8.0))
-	_touch(p1, false)
+## A real path traced through the squares `pts` in one gesture: pressed on
+## the first, dragged in samples three to a square along each leg, let go
+## on the last.
+func _trace(pts: Array) -> void:
+	_touch(_square(pts[0]), true)
+	for j in range(1, pts.size()):
+		var a: Vector2i = pts[j - 1]
+		var b: Vector2i = pts[j]
+		var n: int = maxi(1, (absi(b.x - a.x) + absi(b.y - a.y)) * 3)
+		var p0 := _square(a)
+		var p1 := _square(b)
+		for s in range(1, n + 1):
+			_drag_ev(p0.lerp(p1, float(s) / n))
+	_touch(_square(pts[-1]), false)
+
+## A pill button pressed for real, where the board says it is.
+func _tap_pill(name: String) -> void:
+	var r: Rect2 = _s.board.pill_button_rect(name)
+	_tap(_win(_s.board, r.position + Vector2(r.size.x * 0.5, 42.0)))
+
+## The route from beside the dig into the box as the squares a finger
+## traces through: [start, end] or [start, corner, end].
+func _route_points(dig: Vector2i) -> Array:
+	var r: Array = _route(dig)
+	if r.size() > 3:
+		return [r[0], r[1], r[3]]
+	return [r[0], r[1]]
 
 func _close(node: String) -> void:
 	var n: Node = _s.get_node_or_null(node)
@@ -242,22 +268,34 @@ func _process(delta: float) -> bool:
 			if _t > _at + 0.3:
 				_tap_tray(2)
 				_tap(_square(_dig))
-				_check("a real tap with Dig on the nearest 1 sets a dig there", sim.kind_at(_dig) == Sim.DIG)
-				_tap_tray(1)
-				var r: Array = _route(_dig)
-				_swipe(r[0], r[1])
-				if r.size() > 3:
-					_swipe(r[1] + Sim.DIRS[int(r[2])] * 0, r[3])
+				_check("a real tap with Dig on the nearest 1 drops its ghost and the builder pill", _s.board.pill_open() and sim.kind_at(_dig) == Sim.EMPTY)
+				_check("the pill's Place button has a place on the board", _s.board.pill_button_rect("place").size.x > 0.0)
 				_next()
 		5:
-			if _t > _at + 0.3:
-				var r: Array = _route(_dig)
+			if _t > _at + 0.4:
+				_shot("2b_pill")
+				_tap_pill("place")
+				_check("a real tap on Place sets the dig there and shuts the pill", sim.kind_at(_dig) == Sim.DIG and not _s.board.pill_open())
+				_tap_tray(1)
+				_trace(_route_points(_dig))
 				var outs: PackedInt32Array = sim.digs[Sim._i(_dig)].outs
-				_check("the swipe laid a run leading away from the dig (%d belts)" % sim.lanes.size(), outs.size() == 1 and sim.lanes.size() >= 2)
-				if r.size() > 3:
-					# the corner: the second run starts on the first's last square, so turn it
-					pass
+				_check("the traced path laid a run leading away from the dig (%d belts)" % sim.lanes.size(), outs.size() == 1 and sim.lanes.size() >= 2)
+				var pts: Array = _route_points(_dig)
+				if pts.size() == 3:
+					var corner: Vector2i = pts[1]
+					var next_f: int = Sim.DIRS.find(((pts[2] as Vector2i) - corner).sign())
+					_check("the path's corner square faces the next leg", sim.kind_at(corner) == Sim.BELT and sim.face_at(corner) == next_f)
+				_step = 21
+				_at = _t
+		21:
+			if _t > _at + 0.3:
+				_check("the undo chip is up after the path", _s.undo_chip.visible)
+				_tap(_win(_s.undo_chip, _s.undo_chip.size * 0.5))
+				_check("a real tap on the chip takes the path back (%d belts)" % sim.lanes.size(), sim.lanes.size() == 0 and not sim.can_undo())
+				_trace(_route_points(_dig))
+				_check("traced again, the run is back (%d belts)" % sim.lanes.size(), sim.lanes.size() >= 2)
 				_s.board.look_at_square(Vector2(Sim.HUB_AT) + Vector2(2, 2) + (Vector2(_dig) - Vector2(Sim.HUB_AT)) * 0.4, true)
+				_step = 5
 				_next()
 		6:
 			if _t > _at + 4.0:
@@ -307,7 +345,15 @@ func _process(delta: float) -> bool:
 		12:
 			if _t > _at + 0.5:
 				_tap(_square(Sim.HUB_AT + Vector2i(-4, 1)))
-				_check("a real tap with Move on the adder opens its card", _s.get_node_or_null("Card") != null)
+				_check("a real tap with Look on the adder opens its pill, with Turn", _s.board.pill_open() and _s.board.pill_button_rect("turn").size.x > 0.0)
+				_step = 22
+				_at = _t
+		22:
+			if _t > _at + 0.4:
+				_shot("6b_pill")
+				_tap_pill("info")
+				_check("a real tap on the pill's Info opens the adder's card", _s.get_node_or_null("Card") != null and not _s.board.pill_open())
+				_step = 12
 				_next()
 		13:
 			if _t > _at + 0.6:
@@ -358,5 +404,47 @@ func _process(delta: float) -> bool:
 		20:
 			if _t > _at + 0.4:
 				_shot("10_say")
+				_close("Card")
+				_s.tutor.show()
+				_card = _s.get_node_or_null("HowToPlay")
+				_check("the tutorial card opens", _card != null)
+				if _card == null:
+					return _done()
+				_step = 23
+				_at = _t
+		23:
+			# the Dig page: the finger is on the pill's Place from 1.85 to 2.0 s
+			if _t > _at + 1.75:
+				var page: Control = _card._pages[0].diagram
+				_shot("11_tut_dig")
+				_check("the Dig page's finger has the builder pill up with Place", page._board.pill_open() and page._board.pill_button_rect("place").size.x > 0.0)
+				_next()
+		24:
+			if _t > _at + 3.5:
+				var page: Control = _card._pages[0].diagram
+				var dug: bool = page._sim.kind_at(Vector2i(16, 22)) == Sim.DIG
+				var laid: bool = page._sim.kind_at(Vector2i(17, 22)) == Sim.BELT and page._sim.kind_at(Vector2i(20, 22)) == Sim.BELT and page._sim.face_at(Vector2i(20, 22)) == 0
+				_check("the Dig page placed the dig through Place and traced the belt to the box", dug and laid)
+				_card._turn(1)
+				_card._turn(1)
+				_next()
+		25:
+			# the Machine page: the ghost dropped facing north at 1.15 s, turned east by 2.2 s
+			if _t > _at + 2.6:
+				var page: Control = _card._pages[2].diagram
+				_shot("12_tut_machine")
+				_check("the Machine page's ghost was turned once, to face east", page._board.pill_open() and not page._board._ghost.is_empty() and int(page._board._ghost.face) == 0)
+				_next()
+		26:
+			if _t > _at + 1.4:
+				var page: Control = _card._pages[2].diagram
+				_check("the Machine page placed the adder facing east", page._sim.kind_at(Vector2i(18, 22)) == Sim.ADD and page._sim.face_at(Vector2i(18, 22)) == 0)
+				_card._turn(1)
+				_next()
+		27:
+			if _t > _at + 5.2:
+				var page: Control = _card._pages[3].diagram
+				_check("the Belts page's trace across the line made a bridge", page._sim.kind_at(Vector2i(16, 22)) == Sim.BRIDGE)
+				_card.free()
 				return _done()
 	return false
