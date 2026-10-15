@@ -291,6 +291,14 @@ static func machine(k: int, f := 0) -> ArrayMesh:
 					b.polygon(_rect(r, Vector2(0, 6.0)), col.darkened(0.3))
 				2:
 					b.polygon(_rect(r, Vector2.ZERO), fill)
+	# one sign for the answer, over all its squares (the adder's two)
+	var mid := Vector2.ZERO
+	var outs := 0
+	for c: Array in cs:
+		if int(c[1]) == Sim.R_OUT:
+			mid += c[0]
+			outs += 1
+	sign_into(b, k, mid / maxf(1.0, outs), U * (0.19 if outs > 1 else 0.15), CREAM)
 	for c: Array in cs:
 		var at: Vector2 = c[0]
 		match int(c[1]):
@@ -300,8 +308,6 @@ static func machine(k: int, f := 0) -> ArrayMesh:
 				for ch: PackedVector2Array in notch_chevrons(at, v, many):
 					b.stroke(ch, MOUTH_W, TOKEN)
 				letter_into(b, "A" if many == 1 else "B", at + v * U * 0.08, U * 0.15, CREAM)
-			Sim.R_OUT:
-				sign_into(b, k, at, U * 0.15, CREAM)
 			Sim.R_REM:
 				letter_into(b, "R", at, U * 0.13, CREAM)
 	return _keep(key, b)

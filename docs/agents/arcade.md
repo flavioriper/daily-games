@@ -3925,3 +3925,68 @@ failed, `_shot_tally.gd` headless 0 failed and windowed twice on
 under a card (the same cached mesh a kind). Unconfirmed: whether the notch
 and spout read on a phone at the usual zoom (about 55 px a square, the
 spout's chevron about 9 px), and the 0.72 stop.
+
+#### Tally made easier to handle: footprints, junctions, Rotate, Straight (2026-10-15)
+
+The user, with three shots of the reference: "we need to make tally game way
+easier to handle ... we don't need rounded edges for convey ... input and
+output matters a lot ... a way bigger board ... create a splitter and
+combiner element so convey only create bridges or link to another convey
+... add a rotate view ... a toggle on off selector for lines". Asked three
+calls: **ports back in, front out only**; **a belt's front into another's
+side still joins it (T)**, only the automatic split went; **Straight on by
+default**. Built on `feat/tally-easier`.
+
+- **Footprints** (`Sim.SHAPES`, after the reference's tile maps, facing
+  north as [across, back, role]): adder 2x2 (answer row in front, A and B
+  behind), multiplier 1x3 (A, answer, B), subtractor L (answer at the
+  corner, A to its right, B behind), raiser the subtractor mirrored, divider
+  2x2 (answer and R in front, A and B behind). Every square carries the
+  kind and facing; `root` is the first answer square, where `machines` is
+  keyed; `role` says A, B, OUT or REM. A and B take only a token going the
+  way the machine faces (from their back edge); OUT and REM hand out only
+  from their front edge, round robin over the squares (`_push`). Placing
+  takes belts under the footprint; a **turn** goes about the root and is
+  refused (event `refused`, why `no_room`) unless every new square is empty
+  or its own: a turn never eats a belt. A lift from any square lifts it all,
+  undo puts it back whole (`_record` keeps root and role).
+- **No automatic split**: a belt hands only to its front. **Splitter**
+  (takes from its back alone, hands round robin to front and both sides)
+  and **combiner** (takes from back and sides in turn, hands to its front)
+  are lanes like a belt, so tokens ride across them; both from level 1.
+- **Paper 80 by 80**, the box at (38, 38); number bands pushed out (1s
+  within 10 squares, the far ones 26 to 36) and `APART` 3: no printed
+  number within 3 squares of another. Save `VER` 2: a sheet kept under 1
+  keeps level, tally and upgrades and drops its pieces and crates (the
+  user's phone sheet lost its layout).
+- **Square belts**: `Art.bed_into` is two straight legs of polygons meeting
+  in the middle, `Art.path` two straight legs; no stroke joins.
+- **Machines drawn as they lie**: `Art.machine(k, f)` cached per facing so A,
+  B, R and the sign stay upright; one block over the footprint, answer
+  squares light, inputs a shade down; a notch at A's and B's back edge
+  (one, two chevrons), a spout at each answer square's front; the adder's
+  sign once across its two answer squares. The starving pulse is on the A
+  or B square's notch (`Art.notch_poly`).
+- **The tray**: rows of 6 and 7 (`TOOLS`, slot = row * `ROW` + place):
+  Look, Belt, Rotate, Remove, Splitter, Combiner / Dig, Crate and the five
+  operators. **Rotate** turns what a tap lands on. The **Straight chip**
+  stands over the tray's top-right corner while Belt is held; on, a drag
+  keeps to the axis it first moved along (`_trace_straight`), off, it
+  traces curves as before; kept as `sim.straight` in the cfg's `hand`
+  section. A stroke begun on a line's **loose end** (a belt handing nothing
+  on) turns that end into the corner (`trim_path`'s `extend`), so two
+  straight strokes make an L.
+- The tutorial pages moved with the box (+17 squares); Machine drops a 2x2
+  adder facing north and turns it east; Belts shows a splitter, a combiner
+  and a bridge. The piece card shows the icon; the menu card's adder is the
+  icon. `tests/_pace_tally.gd` is **stale** (marked): its bot lays
+  one-square machines.
+
+Measured: probe 0 failed; `_shot_tally.gd` headless 0 failed three times;
+windowed on `opengl3_angle` 810x1440 0 failed, 62 to 89 draw calls in play,
+125 to 149 under a card or the tutorial; suite 249567 passed, 0 failed.
+Decided for the user (unconfirmed): the divider and raiser shapes (no shot
+of them; the reference's tables), the L's A fed from behind like B (the
+user's image 13 fed A from its outer side; their answer "back in" won),
+splitter and combiner at level 1, 80 squares, `APART` 3, the old sheet's
+layout dropped, the pace (runs to the box are longer now, belts unchanged).
