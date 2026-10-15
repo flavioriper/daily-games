@@ -597,6 +597,16 @@ func remove(t: Vector2i) -> bool:
 	_emit("lift", {"kind": k, "tile": t})
 	return true
 
+## A crate's number thrown out, so it takes the next that comes.
+func empty_crate(t: Vector2i) -> bool:
+	var i := _i(t)
+	if not crates.has(i) or int(crates[i].n) == 0:
+		return false
+	crates[i].n = 0
+	crates[i].v = 0
+	_emit("emptied", {"tile": t})
+	return true
+
 ## Every token on a square's lanes falls off.
 func _drop(i: int) -> void:
 	for s in [i, i + N]:

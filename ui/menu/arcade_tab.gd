@@ -41,13 +41,14 @@ const NightArt = preload("res://arcade/nightlight_art.gd")
 const NightSim = preload("res://arcade/nightlight_sim.gd")
 const FurrowSim = preload("res://arcade/furrow_sim.gd")
 const GriddleSim = preload("res://arcade/griddle_sim.gd")
+const TallySim = preload("res://arcade/tally_sim.gd")
 const FactoryArt = preload("res://factory/art.gd")
 const GoldPill = preload("res://ui/menu/gold_pill.gd")
 const Registry = preload("res://ui/registry.gd")
 
 const GAP := 20
-const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "nightlight", "beeline", "deckchair", "eddy", "furrow", "griddle", "trivet", "factory", "marigold"]
-const NAMES := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Lucky Thirteen", "posy": "Posy", "peapod": "Peapod", "nightlight": "Nightlight", "beeline": "Beeline", "deckchair": "Deckchair", "eddy": "Eddy", "furrow": "Furrow", "griddle": "Griddle", "trivet": "Trivet", "factory": "Factory", "marigold": "Marigold"}
+const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "nightlight", "beeline", "deckchair", "eddy", "furrow", "griddle", "trivet", "tally", "factory", "marigold"]
+const NAMES := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Lucky Thirteen", "posy": "Posy", "peapod": "Peapod", "nightlight": "Nightlight", "beeline": "Beeline", "deckchair": "Deckchair", "eddy": "Eddy", "furrow": "Furrow", "griddle": "Griddle", "trivet": "Trivet", "tally": "Tally", "factory": "Factory", "marigold": "Marigold"}
 ## How far a game went, in its own words: a stage, a wave, or a streak.
 const FURTHEST := {"firefly": "ARC_BEST_STAGE", "molehill": "ARC_BEST_STREAK", "stackwood": "ARC_BEST_BLOCK", "thirteen": "ARC_BEST_NUMBER", "posy": "ARC_BEST_DAY", "peapod": "ARC_BEST_WAVE", "deckchair": "ARC_BEST_HOME", "eddy": "ARC_BEST_LEVEL", "trivet": "ARC_BEST_TRIVET"}
 
@@ -143,6 +144,13 @@ func refresh() -> void:
 			var stars := int(stand.stars)
 			_say(game, tr("GR_CARD_NEW") if sold == 0 else tr("GR_CARD_SOLD") % Record.grouped(sold),
 				"" if stars == 0 else (tr("GR_CARD_STAR_ONE") if stars == 1 else tr("GR_CARD_STAR_N") % stars))
+			continue
+		# and Tally: its line is the paper as it stands
+		if game == "tally":
+			var paper: Dictionary = TallySim.kept()
+			var lvl := int(paper.level)
+			_say(game, tr("TL_CARD_NEW") if lvl == 0 else tr("TL_CARD_LEVEL") % lvl,
+				"" if int(paper.made) == 0 else tr("TL_CARD_MADE") % Record.grouped(int(paper.made)))
 			continue
 		var best := Record.best(game)
 		var st := Record.best_stage(game)

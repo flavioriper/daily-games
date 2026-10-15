@@ -1814,3 +1814,81 @@ TUT_TRIVET_HUD_BODY,"A stack set down is never taken back, so there is no Undo. 
 TUT_TRIVET_HUD_RESET,A fresh run on an empty tray,Uma partida nova com a bandeja vazia,Una partida nueva con la bandeja vacía
 TUT_TRIVET_HUD_GEAR,"Settings: sound, motion and this guide","Configurações: som, movimento e este guia","Ajustes: sonido, movimiento y esta guía"
 TUT_TRIVET_HUD_HELP,"This guide, whenever you like","Este guia, quando você quiser","Esta guía, cuando quieras"
+ARC_TALLY_BLURB,"Dig numbers, belt them through adders and multipliers, and bring the counting box the number it asks for.","Extraia números, leve-os em esteiras por somadores e multiplicadores e entregue à caixa o número que ela pede.","Extrae números, llévalos en cintas por sumadores y multiplicadores y dale a la caja el número que pide."
+TL_CARD_NEW,A fresh sheet,Uma folha nova,Una hoja nueva
+TL_CARD_LEVEL,Level %d,Nível %d,Nivel %d
+TL_CARD_MADE,%s numbers counted,%s números contados,%s números contados
+TL_MOTTO,Numbers on the move,Números em movimento,Números en marcha
+TL_LEVEL,Level %d,Nível %d,Nivel %d
+TL_LEVEL_SHORT,Lv %d,Nv %d,Nv %d
+TL_GOAL,%s / %s of %s,%s / %s de %s,%s / %s de %s
+TL_HINT_START,Pick Dig and tap a 1 near the box,Escolha Extrair e toque num 1 perto da caixa,Elige Extraer y toca un 1 cerca de la caja
+TL_LEVEL_DONE,Level %d done!,Nível %d feito!,¡Nivel %d hecho!
+TL_NOW_ASKS,Now %s × %s,Agora %s × %s,Ahora %s × %s
+TL_NEW_DIG,You can dig %ds now,Agora dá para extrair %d,Ya puedes extraer %d
+TL_NEW_PIECE,New: %s!,Novo: %s!,¡Nuevo: %s!
+TL_UPGRADED,"%s, level %d","%s, nível %d","%s, nivel %d"
+TL_READY,%s can go up,%s pode subir,%s puede subir
+TL_SAY_DIG_IT,A %d: pick Dig and tap it,Um %d: escolha Extrair e toque,Un %d: elige Extraer y tócalo
+TL_SAY_DIG_FROM,%d is dug from level %d,%d é extraído a partir do nível %d,%d se extrae desde el nivel %d
+TL_SAY_ON_NUMBER,A dig goes on a printed number,A extração vai num número impresso,La extracción va sobre un número impreso
+TL_SAY_LOCKED,Handed over at level %d,Liberado no nível %d,Se entrega en el nivel %d
+TL_SAY_BOX,That's the counting box,Essa é a caixa de contagem,Esa es la caja de conteo
+TL_SAY_TAKEN,Something stands there,Já tem algo aí,Ya hay algo ahí
+TL_TOOL_MOVE,Move,Mover,Mover
+TL_TOOL_BELT,Belt,Esteira,Cinta
+TL_TOOL_DIG,Dig,Extrair,Extraer
+TL_TOOL_CRATE,Crate,Caixote,Cajón
+TL_TOOL_REMOVE,Remove,Remover,Quitar
+TL_TOOL_ADD,Add,Somar,Sumar
+TL_TOOL_MUL,Times,Vezes,Por
+TL_TOOL_SUB,Take,Tirar,Restar
+TL_TOOL_DIV,Divide,Dividir,Dividir
+TL_TOOL_POW,Power,Potência,Potencia
+TL_PIECE_BELT,Belt,Esteira,Cinta
+TL_PIECE_BRIDGE,Bridge,Ponte,Puente
+TL_PIECE_DIG,Dig,Extrator,Extractor
+TL_PIECE_ADD,Adder,Somador,Sumador
+TL_PIECE_MUL,Multiplier,Multiplicador,Multiplicador
+TL_PIECE_SUB,Subtractor,Subtrator,Restador
+TL_PIECE_DIV,Divider,Divisor,Divisor
+TL_PIECE_POW,Raiser,Potenciador,Potenciador
+TL_PIECE_CRATE,Crate,Caixote,Cajón
+TL_PIECE_BOX,The counting box,A caixa de contagem,La caja de conteo
+TL_PIECE_BELT_LINE,Carries one number a square.,Leva um número por casa.,Lleva un número por casilla.
+TL_PIECE_BRIDGE_LINE,"Two belts crossing, each going straight on.","Duas esteiras se cruzando, cada uma seguindo reto.","Dos cintas que se cruzan, cada una sigue recta."
+TL_PIECE_DIG_LINE,Puts its number on every belt that leads away from it.,Põe seu número em cada esteira que sai dele.,Pone su número en cada cinta que sale de él.
+TL_PIECE_ADD_LINE,"A on its one-dot side, B on its two-dot side: A + B goes out of the front.","A no lado de um ponto, B no lado de dois: A + B sai pela frente.","A en el lado de un punto, B en el de dos: A + B sale por delante."
+TL_PIECE_MUL_LINE,"A on its one-dot side, B on its two-dot side: A × B goes out of the front.","A no lado de um ponto, B no lado de dois: A × B sai pela frente.","A en el lado de un punto, B en el de dos: A × B sale por delante."
+TL_PIECE_SUB_LINE,"A on its one-dot side, B on its two-dot side: A − B goes out of the front.","A no lado de um ponto, B no lado de dois: A − B sai pela frente.","A en el lado de un punto, B en el de dos: A − B sale por delante."
+TL_PIECE_DIV_LINE,A ÷ B goes out of the front and the remainder out of the back. A remainder of 0 is not put out.,A ÷ B sai pela frente e o resto por trás. Resto 0 não sai.,A ÷ B sale por delante y el resto por detrás. Un resto de 0 no sale.
+TL_PIECE_POW_LINE,"A on its one-dot side, B on its two-dot side: A to the power B goes out of the front.","A no lado de um ponto, B no lado de dois: A elevado a B sai pela frente.","A en el lado de un punto, B en el de dos: A elevado a B sale por delante."
+TL_PIECE_CRATE_LINE,"Keeps the first number it gets, up to 500, and lets them out on every belt leading away.","Guarda o primeiro número que recebe, até 500, e solta em cada esteira que sai dele.","Guarda el primer número que recibe, hasta 500, y lo suelta en cada cinta que sale de él."
+TL_TURN,Turn,Girar,Girar
+TL_LIFT,Remove,Remover,Quitar
+TL_EMPTY,Empty it,Esvaziar,Vaciar
+TL_DONE,Done,Pronto,Listo
+TL_SIDE_A,A,A,A
+TL_SIDE_B,B,B,B
+TL_MAKES,Made %s,Fez %s,Hizo %s
+TL_PER_S,%s/s,%s/s,%s/s
+TL_BELTS,%s belts,%s esteiras,%s cintas
+TL_DIG_BELTS,%d belts of %d,%d esteiras de %d,%d cintas de %d
+TL_CRATE_HOLDS,%d of %d,%d de %d,%d de %d
+TL_BOX_ASKS,%s of %s in,%s de %s entregues,%s de %s entregados
+TL_NEXT,Next,Próximos,Siguientes
+TL_GIVES,gives the %s,dá o %s,da el %s
+TL_GIVES_DIG,dig %d,extrair %d,extraer %d
+TL_HELD,The box holds,A caixa guarda,La caja guarda
+TL_UPGRADES,Upgrades,Melhorias,Mejoras
+TL_UPGRADES_LINE,Paid in numbers the box has had. What is spent comes off its tally.,Pagas com números que a caixa recebeu. O que é gasto sai da contagem.,Se pagan con números que la caja recibió. Lo gastado sale de su cuenta.
+TL_BUY,Up,Subir,Subir
+TL_TRACK_BELT,Belts,Esteiras,Cintas
+TL_TRACK_DIG,Digs,Extratores,Extractores
+TL_TRACK_ADD,Adders,Somadores,Sumadores
+TL_TRACK_MUL,Multipliers,Multiplicadores,Multiplicadores
+TL_TRACK_SUB,Subtract and divide,Subtrair e dividir,Restar y dividir
+TL_TRACK_POW,Raisers,Potenciadores,Potenciadores
+TL_OPENS_AT,Opens at level %d,Abre no nível %d,Se abre en el nivel %d
+TL_AT_TOP,Level %d · %s · the top,Nível %d · %s · no máximo,Nivel %d · %s · al máximo
+TL_TRACK_LINE,Level %d · %s → %s,Nível %d · %s → %s,Nivel %d · %s → %s

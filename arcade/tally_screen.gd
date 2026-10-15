@@ -1,0 +1,641 @@
+extends Control
+
+## Tally: the fourteenth game on the Arcade tab, a number factory on a sheet
+## of squared paper (spec docs/superpowers/specs/2026-10-15-arcade-tally-design.md).
+## **The paper is the whole screen**, edge to edge (the rule since
+## 2026-10-10). Over it lie the flat boards' top bar, a plate row (the
+## counting box's goal, and the upgrades with a dot when one can be bought)
+## and at the foot the tray: two rows of tools, Move, Belt, Dig, Crate and
+## Remove, then the five operators. A tool not handed over yet is a lock
+## with the level it comes at.
+##
+## **A kept game, like the Factory**: no run, no end card, no gold. The sim
+## (arcade/tally_sim.gd) is loaded when the screen opens and saved after a
+## change, every twenty seconds, when the app loses focus and when the
+## screen is left. The paper runs only while it is on screen.
+##
+## The moments (arcade/rewards.gd over everything): a level done is named
+## with confetti and the box glows; a piece handed over hops into the tray;
+## a number now dug lights its pencil rings; an upgrade that can be bought
+## rings its button; the box's tick is heard for a target coming in, quietly
+## and not too often.
+
+signal closed
+
+const Sim = preload("res://arcade/tally_sim.gd")
+const Art = preload("res://arcade/tally_art.gd")
+const Board = preload("res://arcade/tally_board.gd")
+const Shop = preload("res://arcade/tally_shop.gd")
+const Card = preload("res://arcade/tally_card.gd")
+const FlatTopBar = preload("res://ui/flat/flat_top_bar.gd")
+const SettingsSheet = preload("res://ui/hud/settings_sheet.gd")
+const ScreenTutor = preload("res://ui/hud/screen_tutor.gd")
+const CozyTheme = preload("res://ui/theme.gd")
+const Icons = preload("res://ui/icons.gd")
+const Pal = preload("res://core/palette.gd")
+const Motion = preload("res://core/motion.gd")
+const SafeArea = preload("res://ui/safe_area.gd")
+const Fx2D = preload("res://ui/fx2d.gd")
+const Haptics = preload("res://core/haptics.gd")
+const Analytics = preload("res://core/analytics.gd")
+const Rewards = preload("res://arcade/rewards.gd")
+const Face = preload("res://ui/faces/face.gd")
+
+const GAME := "tally"
+const MARGIN := 40
+const GAP := 20
+const HUD_H := 120.0
+const ROW_H := 128.0
+const TRAY_H := ROW_H * 2.0 + 20.0
+const SAVE_EVERY := 20.0
+const SAVE_AFTER := 4.0
+## The box's tick for a target coming in, at most this often.
+const HIT_GAP := 0.14
+const TOOLS := [["move", "belt", "dig", "crate", "remove"], ["add", "mul", "sub", "div", "pow"]]
+const HAPTICS := {}
+
+var sim: RefCounted
+var top_bar: Control
+var settings_sheet: Control
+var tutor: RefCounted
+var board: Control
+var tray: Control
+var hud: Control
+var _fx: Node2D
+var _rw: Rewards
+var _margins: MarginContainer
+var _font: Font
+var _clock := 0.0
+var _knock := -1
+var _saved_at := 0.0
+var _changed_at := -1.0
+var _opened_at := 0
+var _hit_at := -10.0
+var _said_at := {}
+var _chip_at := {}
+var _slot_down := -1
+var _slot_touch := -2
+var _hud_down := -1
+var _hud_live: ArrayMesh
+var _tray_live: ArrayMesh
+var _shown_got := -1
+var _bar := 0.0
+var _ready_on := false
+
+func puzzle_id() -> String:
+	return GAME
+
+func _ready() -> void:
+	add_to_group("versus_host")
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	theme = CozyTheme.make()
+	_font = theme.get_font("font", "SheetTitle")
+	sim = Sim.load_saved()
+	_build()
+	settings_sheet = SettingsSheet.new(false)
+	settings_sheet.name = "SettingsSheet"
+	add_child(settings_sheet)
+	tutor = ScreenTutor.new(self, puzzle_id(), "Tally")
+	tutor.wire(top_bar, settings_sheet)
+	Ads.banner_changed.connect(func(_v: bool, _h: float) -> void: _apply_insets())
+	top_bar.enter(0.0)
+	top_bar.refresh(self)
+	_opened_at = Time.get_ticks_msec()
+	_ready_on = sim.any_ready()
+	_fx.cue("start")
+	_first_hint.call_deferred()
+	Analytics.track("tally_enter", {"level": sim.level, "made": sim.made})
+
+func _notification(what: int) -> void:
+	if sim == null:
+		return
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
+		sim.save()
+
+## A new paper says where to begin, once.
+func _first_hint() -> void:
+	if sim.level == 1 and sim.digs.is_empty() and _rw != null:
+		_rw.sticker(tr("TL_HINT_START"), _rw.at(self, size * Vector2(0.5, 0.36)), 40, 4.0, false, Color("fff4c2"), false, "hint", 0.0, true)
+
+# --- building ---
+
+func _build() -> void:
+	board = Board.new()
+	board.name = "Board"
+	board.sim = sim
+	board.font = _font
+	board.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	board.refused.connect(_on_refused)
+	board.touched.connect(func(pitch: float) -> void:
+		_fx.touch(pitch)
+		_feel(Haptics.TAP))
+	board.asked.connect(_show_piece)
+	board.box_asked.connect(_show_box)
+	add_child(board)
+	_fx = Fx2D.new()
+	_fx.haptics = HAPTICS
+	board.add_child(_fx)
+
+	_margins = MarginContainer.new()
+	_margins.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_margins.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_margins)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", GAP)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_margins.add_child(col)
+
+	top_bar = FlatTopBar.new("Tally", tr("TL_MOTTO"), false)
+	top_bar.name = "TopBar"
+	top_bar.back.connect(_on_back)
+	top_bar.settings.connect(func() -> void: settings_sheet.open())
+	col.add_child(top_bar)
+	hud = Control.new()
+	hud.name = "Hud"
+	hud.custom_minimum_size.y = HUD_H
+	hud.mouse_filter = Control.MOUSE_FILTER_STOP
+	hud.draw.connect(_draw_hud)
+	hud.gui_input.connect(_on_hud_input)
+	col.add_child(hud)
+	var open := Control.new()
+	open.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	open.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(open)
+
+	tray = Control.new()
+	tray.name = "Tray"
+	tray.custom_minimum_size.y = TRAY_H
+	tray.mouse_filter = Control.MOUSE_FILTER_STOP
+	tray.draw.connect(_draw_tray)
+	tray.gui_input.connect(_on_tray_input)
+	col.add_child(tray)
+
+	_rw = Rewards.new()
+	add_child(_rw)
+	_apply_insets()
+
+func _apply_insets() -> void:
+	var insets := SafeArea.insets(self)
+	_margins.add_theme_constant_override("margin_left", MARGIN)
+	_margins.add_theme_constant_override("margin_right", MARGIN)
+	_margins.add_theme_constant_override("margin_top", MARGIN + int(insets.x))
+	_margins.add_theme_constant_override("margin_bottom", MARGIN + int(insets.y))
+	_lay_board()
+
+## The paper fills the screen; its camera looks at the room between the
+## plates and the tray.
+func _lay_board() -> void:
+	if board == null or size.x <= 0.0:
+		return
+	var insets := SafeArea.insets(self)
+	var top := MARGIN + insets.x + FlatTopBar.HEIGHT + GAP + HUD_H + GAP
+	var foot := MARGIN + insets.y + TRAY_H + GAP
+	board.set_view(Rect2(0.0, top, size.x, maxf(60.0, size.y - top - foot)))
+
+# --- the top bar's questions ---
+
+func tutorial_pages() -> Array:
+	var Diagram = load("res://ui/hud/tally_tutorial_diagram.gd")
+	var steps := [
+		[Diagram.Lesson.DIG, "TUT_TALLY_DIG", tr("TUT_TALLY_DIG_BODY")],
+		[Diagram.Lesson.BOX, "TUT_TALLY_BOX", tr("TUT_TALLY_BOX_BODY")],
+		[Diagram.Lesson.MACHINE, "TUT_TALLY_MACHINE", tr("TUT_TALLY_MACHINE_BODY")],
+		[Diagram.Lesson.BELTS, "TUT_TALLY_BELTS", tr("TUT_TALLY_BELTS_BODY")],
+		[Diagram.Lesson.UPGRADE, "TUT_TALLY_UPGRADE", tr("TUT_TALLY_UPGRADE_BODY")],
+	]
+	var pages := []
+	for step in steps:
+		var d: Control = Diagram.new()
+		d.lesson = step[0]
+		pages.append({"diagram": d, "title": step[1], "body": step[2]})
+	return pages
+
+func capabilities() -> Array:
+	return []
+
+func is_done() -> bool:
+	return false
+
+func is_solved() -> bool:
+	return false
+
+func can_undo() -> bool:
+	return false
+
+func hints_left() -> int:
+	return 0
+
+# --- the frame ---
+
+func _busy() -> bool:
+	return get_node_or_null("Card") != null or get_node_or_null("Shop") != null
+
+func _process(delta: float) -> void:
+	if sim == null:
+		return
+	_clock += delta
+	if not tutor.is_open():
+		sim.step(minf(delta, 0.25))
+	_play_events()
+	board.tick(delta)
+	_rw.bounds = Rect2(Vector2.ZERO, size)
+	_rw.step(delta)
+	if _knock >= 0:
+		_fx.buzz(_knock)
+		_knock = -1
+	if _changed_at >= 0.0 and _clock - _changed_at > SAVE_AFTER:
+		_save()
+	elif _clock - _saved_at > SAVE_EVERY:
+		_save()
+	var fill := float(sim.got) / maxf(1.0, float(sim.count()))
+	_bar = fill if Motion.reduce else lerpf(_bar, fill, 1.0 - exp(-10.0 * delta))
+	hud.queue_redraw()
+	tray.queue_redraw()
+
+func _save() -> void:
+	_saved_at = _clock
+	_changed_at = -1.0
+	sim.save()
+
+func _changed() -> void:
+	if _changed_at < 0.0:
+		_changed_at = _clock
+
+## Asks for a knock this frame; the strongest asked for is the one played.
+func _feel(kind: int) -> void:
+	_knock = maxi(_knock, kind)
+
+# --- the sim's events ---
+
+func _once(id: String, every: float) -> bool:
+	if _clock - float(_said_at.get(id, -1000.0)) < every:
+		return false
+	_said_at[id] = _clock
+	return true
+
+func _in_rw(p: Vector2) -> Vector2:
+	return _rw.at(board, p)
+
+func _square_rw(t: Vector2i) -> Vector2:
+	return _in_rw(board.screen_of(Vector2(t) + Vector2(0.5, 0.5)))
+
+func _top() -> Vector2:
+	return _rw.at(self, size * Vector2(0.5, 0.4))
+
+func _play_events() -> void:
+	if sim.events.is_empty():
+		return
+	var evs: Array = sim.events.duplicate()
+	sim.events.clear()
+	for ev: Dictionary in evs:
+		board.play(ev)
+		match String(ev.type):
+			"lay":
+				_fx.cue("lay", randf_range(0.96, 1.04) * pow(2.0, mini(int(ev.n) - 1, 5) / 24.0))
+				_feel(Haptics.TICK)
+				_changed()
+			"place":
+				_fx.cue("place", randf_range(0.95, 1.05))
+				_feel(Haptics.TAP)
+				_changed()
+			"turn":
+				_fx.cue("turn", randf_range(0.96, 1.04))
+				_feel(Haptics.TICK)
+				_changed()
+			"lift", "emptied":
+				_fx.cue("lift", randf_range(0.95, 1.05))
+				_feel(Haptics.TICK)
+				_changed()
+			"hit":
+				if _clock - _hit_at > HIT_GAP and not _busy():
+					_hit_at = _clock
+					_fx.cue("deliver", randf_range(0.97, 1.03), -4.0)
+			"level":
+				_on_level(int(ev.n))
+			"unlock":
+				_on_unlock(int(ev.reward))
+			"upgrade":
+				_on_upgrade(String(ev.id), int(ev.level))
+			"ready":
+				_on_ready(String(ev.id))
+			"refused":
+				_on_refused(String(ev.why), board.screen_of(Vector2(ev.get("tile", Vector2i.ZERO)) + Vector2(0.5, 0.5)), int(ev.get("v", 0)))
+
+func _on_level(n: int) -> void:
+	_fx.cue("level")
+	_feel(Haptics.WIN)
+	var at := _top()
+	_rw.sticker(tr("TL_LEVEL_DONE") % (n - 1), at, 72, 2.2, true, Color.WHITE, true, "level")
+	_rw.sticker(tr("TL_NOW_ASKS") % [Sim.short(sim.target()), Sim.short(sim.count())], at + Vector2(0, 92.0), 40, 2.4, false, Color("fff4c2"), false, "asks", 0.0, true)
+	_rw.rain(1.4, ["confetti", "star"], Rewards.CONFETTI)
+	_rw.spray(_square_rw(Sim.HUB_AT + Vector2i(2, 2)), Pal.SUN, 14, 600.0, "star", 1.0)
+	Analytics.track("tally_level", {"level": n, "made": sim.made})
+	_save()
+
+func _on_unlock(r: int) -> void:
+	_fx.cue("unlock")
+	_feel(Haptics.GOOD)
+	var at := _top() + Vector2(0, 170.0)
+	if r < 0:
+		_rw.sticker(tr("TL_NEW_DIG") % -r, at, 44, 2.6, false, Color("fff4c2"), false, "unlock", 0.0, true)
+		return
+	_rw.sticker(tr("TL_NEW_PIECE") % tr("TL_PIECE_" + String(Sim.KIND_IDS[r]).to_upper()), at, 48, 2.6, true, Color.WHITE, true, "unlock", 0.0, true)
+	for row in TOOLS.size():
+		var j: int = TOOLS[row].find(String(Sim.KIND_IDS[r]))
+		if j >= 0:
+			var slot: int = row * 5 + j
+			_chip_at[slot] = _clock
+			_rw.ring(_rw.at(tray, _slot_mid(slot)), 90.0, Pal.SUN)
+			_rw.spray(_rw.at(tray, _slot_mid(slot)), Pal.SUN, 10, 380.0, "star", 0.9)
+
+func _on_upgrade(id: String, level: int) -> void:
+	_fx.cue("upgrade", minf(pow(2.0, (level - 2) * 0.25 / 12.0), 1.3))
+	_feel(Haptics.GOOD)
+	_rw.sticker(tr("TL_UPGRADED") % [tr("TL_TRACK_" + id.to_upper()), level], _top(), 50, 1.8, false, Color("fff4c2"), true, "up")
+	Analytics.track("tally_upgrade", {"tile": id, "level": level})
+	_ready_on = sim.any_ready()
+	_save()
+
+func _on_ready(id: String) -> void:
+	_ready_on = true
+	if not _once("ready", 6.0):
+		return
+	_fx.cue("ready")
+	_feel(Haptics.TAP)
+	_rw.sticker(tr("TL_READY") % tr("TL_TRACK_" + id.to_upper()), _rw.at(hud, _up_rect().get_center() + Vector2(-180.0, 110.0)), 36, 2.4, false, Color("fff4c2"), false, "ready")
+	_rw.ring(_rw.at(hud, _up_rect().get_center()), 80.0, Pal.SUN)
+
+## A touch the paper could not do.
+func _on_refused(why: String, at: Vector2, n: int) -> void:
+	var p := _in_rw(at) + Vector2(0, -60.0)
+	var text := ""
+	match why:
+		"printed":
+			if sim.can_dig(n):
+				text = tr("TL_SAY_DIG_IT") % n
+			else:
+				text = tr("TL_SAY_DIG_FROM") % [n, Sim.dig_level(n) + 1]
+			_fx.touch(0.9)
+			_feel(Haptics.TAP)
+			_rw.sticker(text, p, 36, 1.8, false, Color("fffaf0"), false, "say", 20.0)
+			return
+		"not_yet":
+			text = tr("TL_SAY_DIG_FROM") % [n, Sim.dig_level(n) + 1]
+		"no_number":
+			text = tr("TL_SAY_ON_NUMBER")
+		"locked":
+			text = tr("TL_SAY_LOCKED") % n
+		"box":
+			text = tr("TL_SAY_BOX")
+		_:
+			text = tr("TL_SAY_TAKEN")
+	_fx.cue("nope")
+	_feel(Haptics.WARN)
+	_rw.sticker(text, p, 36, 1.6, false, Color("fffaf0"), false, "nope", 20.0)
+
+# --- the plate row ---
+
+func _goal_rect() -> Rect2:
+	return Rect2(Vector2.ZERO, Vector2(hud.size.x - HUD_H - 20.0, hud.size.y))
+
+func _up_rect() -> Rect2:
+	return Rect2(Vector2(hud.size.x - HUD_H, 0.0), Vector2(HUD_H, hud.size.y))
+
+func _draw_hud() -> void:
+	if hud.size.x <= 0.0:
+		return
+	var g := _goal_rect()
+	var u := _up_rect()
+	hud.draw_style_box(CozyTheme.lifted(Color("fcf7ef"), 30, 8), g)
+	hud.draw_style_box(CozyTheme.lifted(Color("fcf7ef"), 30, 8), u)
+	var b := Face.Builder.new()
+	var mid := Vector2(g.position.x + 70.0, g.get_center().y)
+	var bar := Rect2(Vector2(g.position.x + 140.0, g.end.y - 34.0), Vector2(g.size.x - 170.0, 14.0))
+	b.polygon(Face.Builder.round_rect(bar.position, bar.size, 7.0), Color(Pal.TEXT, 0.1))
+	if _bar > 0.002:
+		b.polygon(Face.Builder.round_rect(bar.position, Vector2(maxf(bar.size.x * _bar, 14.0), bar.size.y), 7.0), Pal.GOOD)
+	var press := 1.0 if Motion.reduce else Motion.bump_scale(_clock - float(_chip_at.get(-1, -10.0)), 0.14, 0.2)
+	var um := u.get_center()
+	b.disc(um + Vector2(0, 4.0), 40.0 * press, Color(Pal.TEXT, 0.16))
+	b.disc(um, 40.0 * press, Pal.ACCENT_DEEP)
+	if _ready_on:
+		var beat := 0.0 if Motion.reduce else 1.5 * sin(_clock * 4.0)
+		b.disc(um + Vector2(32, -32), 13.0, Color("fffaf0"))
+		b.disc(um + Vector2(32, -32), 9.0 + beat, Pal.SUN)
+	_hud_live = b.mesh()
+	hud.draw_mesh(_hud_live, null)
+	hud.draw_mesh(Art.token(true), null, Transform2D(0.0, Vector2.ONE * 1.25, 0.0, mid))
+	var txt := Sim.short(sim.target())
+	var fs := 34 if txt.length() <= 3 else (27 if txt.length() == 4 else 22)
+	var w := _font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+	hud.draw_string(_font, mid + Vector2(-w * 0.5, fs * 0.36 - 3.0), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Art.INK)
+	hud.draw_string(_font, Vector2(bar.position.x, g.position.y + 40.0), tr("TL_LEVEL") % sim.level, HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Pal.ACCENT_2)
+	hud.draw_string(_font, Vector2(bar.position.x, g.position.y + 76.0), tr("TL_GOAL") % [Sim.short(sim.got), Sim.short(sim.count()), Sim.short(sim.target())], HORIZONTAL_ALIGNMENT_LEFT, bar.size.x, 30, Pal.TEXT)
+	Icons.paint(hud, "trend", Rect2(um - Vector2(22, 22) * press, Vector2(44, 44) * press), Pal.SURFACE)
+
+func _on_hud_input(event: InputEvent) -> void:
+	var at := Vector2(-1, -1)
+	var down := false
+	if event is InputEventScreenTouch:
+		at = (event as InputEventScreenTouch).position
+		down = (event as InputEventScreenTouch).pressed
+	elif event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+		at = (event as InputEventMouseButton).position
+		down = (event as InputEventMouseButton).pressed
+	else:
+		return
+	var which := 1 if _up_rect().has_point(at) else (0 if _goal_rect().has_point(at) else -1)
+	if down:
+		_hud_down = which
+	elif which == _hud_down and which >= 0:
+		_hud_down = -1
+		if which == 1:
+			open_shop()
+		else:
+			_show_box()
+
+# --- the tray ---
+
+func _slot_mid(slot: int) -> Vector2:
+	@warning_ignore("integer_division")
+	var row := slot / 5
+	return Vector2(tray.size.x * ((slot % 5) + 0.5) / 5.0, 14.0 + ROW_H * row + 50.0)
+
+## The kind a tool places, or -1 for Move and Remove.
+static func tool_kind(id: String) -> int:
+	return int(Board.TOOL_KINDS.get(id, -1))
+
+func _tool_open(id: String) -> bool:
+	var kd := tool_kind(id)
+	return kd < 0 or sim.has(kd)
+
+func _on_tray_input(event: InputEvent) -> void:
+	var at := Vector2(-1, -1)
+	var down := false
+	var id := -2
+	if event is InputEventScreenTouch:
+		at = (event as InputEventScreenTouch).position
+		down = (event as InputEventScreenTouch).pressed
+		id = (event as InputEventScreenTouch).index
+	elif event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+		at = (event as InputEventMouseButton).position
+		down = (event as InputEventMouseButton).pressed
+		id = -1
+	else:
+		return
+	var row := clampi(int((at.y - 14.0) / ROW_H), 0, 1)
+	var slot := row * 5 + clampi(int(at.x / (tray.size.x / 5.0)), 0, 4)
+	if down:
+		if _slot_down < 0:
+			_slot_down = slot
+			_slot_touch = id
+	elif id == _slot_touch and _slot_down >= 0:
+		var was := _slot_down
+		_slot_down = -1
+		if was == slot:
+			press_slot(slot)
+
+## A press on the tray: picks the tool; a machine's tool pressed again turns
+## the way it will be set down.
+func press_slot(slot: int) -> void:
+	@warning_ignore("integer_division")
+	var id: String = TOOLS[slot / 5][slot % 5]
+	_chip_at[slot] = _clock
+	if not _tool_open(id):
+		_fx.cue("nope")
+		_feel(Haptics.WARN)
+		_rw.sticker(tr("TL_SAY_LOCKED") % (int(Sim.UNLOCK[tool_kind(id)]) + 1), _rw.at(tray, _slot_mid(slot) + Vector2(0, -90.0)), 34, 1.6, false, Color("fffaf0"), false, "nope", 20.0)
+		return
+	if board.tool == id and Sim.is_op(tool_kind(id)):
+		board.place_face = (board.place_face + 1) % 4
+		_fx.cue("turn", 1.05)
+		_feel(Haptics.TICK)
+		return
+	board.set_tool(id)
+	_fx.touch(1.0 + 0.03 * slot)
+	_feel(Haptics.TAP)
+
+func _draw_tray() -> void:
+	if tray.size.x <= 0.0:
+		return
+	tray.draw_style_box(CozyTheme.lifted(Color("fcf7ef"), 36, 8), Rect2(Vector2.ZERO, tray.size))
+	var still := Motion.reduce
+	var b := Face.Builder.new()
+	var marks := Face.Builder.new()
+	for slot in 10:
+		@warning_ignore("integer_division")
+		var id: String = TOOLS[slot / 5][slot % 5]
+		var at := _slot_mid(slot)
+		var on: bool = board.tool == id
+		var sc := 1.0 if still else Motion.bump_scale(_clock - float(_chip_at.get(slot, -10.0)), 0.16, 0.22)
+		var open := _tool_open(id)
+		if on:
+			b.disc(at, 52.0 * sc, Pal.SUN)
+		b.disc(at + Vector2(0, 4.0), 44.0 * sc, Color(Pal.TEXT, 0.14))
+		b.disc(at, 44.0 * sc, Color("f3ead6") if open else Color("e4dccb"))
+		if not open:
+			Art.lock_into(marks, at, 22.0, Color(Pal.TEXT, 0.4))
+		elif id == "move":
+			Art.hand_into(marks, at + Vector2(0, 4.0), 24.0 * sc, Pal.TEXT_DIM)
+		elif id == "remove":
+			Art.eraser_into(marks, at, 24.0 * sc)
+	_tray_live = b.mesh()
+	tray.draw_mesh(_tray_live, null)
+	var m := marks.mesh()
+	if m != null and not marks.verts.is_empty():
+		tray.draw_mesh(m, null)
+	for slot in 10:
+		@warning_ignore("integer_division")
+		var id: String = TOOLS[slot / 5][slot % 5]
+		var at := _slot_mid(slot)
+		var kd := tool_kind(id)
+		if kd >= 0 and _tool_open(id):
+			var sc := 1.0 if still else Motion.bump_scale(_clock - float(_chip_at.get(slot, -10.0)), 0.16, 0.22)
+			var rot: float = board.place_face * PI * 0.5 if Sim.is_op(kd) else 0.0
+			tray.draw_mesh(Art.icon(kd), null, Transform2D(rot, Vector2.ONE * 0.62 * sc, 0.0, at))
+		var cap := tr("TL_TOOL_" + id.to_upper()) if _tool_open(id) else tr("TL_LEVEL_SHORT") % (int(Sim.UNLOCK[kd]) + 1)
+		var w := tray.size.x / 5.0
+		var col := Art.INK if board.tool == id else Color(Art.INK, 0.7)
+		tray.draw_string(_font, Vector2(at.x - w * 0.5, at.y + 44.0 + 30.0), cap, HORIZONTAL_ALIGNMENT_CENTER, w, 22, col)
+
+# --- cards ---
+
+func _show_piece(t: Vector2i) -> void:
+	if _busy():
+		return
+	_fx.touch()
+	_feel(Haptics.TAP)
+	board.let_go()
+	var card := Card.new()
+	card.name = "Card"
+	card.sim = sim
+	card.tile = t
+	card.closed.connect(func() -> void:
+		_fx.touch(0.94)
+		_fx.buzz(Haptics.TAP))
+	card.chose.connect(_on_card.bind(t))
+	add_child(card)
+	move_child(_rw, get_child_count() - 1)
+
+func _on_card(id: String, t: Vector2i) -> void:
+	match id:
+		"turn":
+			sim.turn(t)
+		"lift":
+			sim.remove(t)
+		"empty":
+			sim.empty_crate(t)
+
+func _show_box() -> void:
+	if _busy():
+		return
+	_fx.touch()
+	_feel(Haptics.TAP)
+	board.let_go()
+	var card := Card.new()
+	card.name = "Card"
+	card.sim = sim
+	card.box = true
+	card.closed.connect(func() -> void:
+		_fx.touch(0.94)
+		_fx.buzz(Haptics.TAP))
+	add_child(card)
+	move_child(_rw, get_child_count() - 1)
+
+func open_shop() -> void:
+	if _busy():
+		return
+	_chip_at[-1] = _clock
+	_fx.touch()
+	_feel(Haptics.TAP)
+	board.let_go()
+	var shop := Shop.new()
+	shop.name = "Shop"
+	shop.sim = sim
+	shop.closed.connect(func() -> void:
+		_fx.touch(0.94)
+		_fx.buzz(Haptics.TAP))
+	add_child(shop)
+	move_child(_rw, get_child_count() - 1)
+
+# --- chrome ---
+
+func _on_back() -> void:
+	sim.save()
+	Analytics.track("tally_leave", {"seconds": int((Time.get_ticks_msec() - _opened_at) / 1000.0), "level": sim.level, "made": sim.made})
+	closed.emit()
+
+## Android's back, through the menu: a sheet first, then the screen.
+func go_back() -> void:
+	if tutor.close():
+		return
+	if settings_sheet.is_open():
+		settings_sheet.close()
+		return
+	for nm in ["Shop", "Card"]:
+		var sheet := get_node_or_null(nm)
+		if sheet != null and not sheet.is_queued_for_deletion():
+			sheet.closed.emit()
+			sheet.queue_free()
+			return
+	_on_back()
