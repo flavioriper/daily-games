@@ -3759,3 +3759,144 @@ divide and raise, and the box asks for one number so many times a level.
   the way: a target is rarely a rank's number.
 - **Not done**: a phone; the sounds heard; pt and es read by a speaker;
   `reduce` shot windowed; a Tally bot in `tests/_probe_arcade_buzz.gd`.
+
+**The builder's hand and the upgrades tree** (2026-10-15, third pass, spec
+`docs/superpowers/specs/2026-10-15-tally-builder-and-tree-design.md`, from
+the user's phone at level 2: "I upgraded convey and numbers stopped ... it's
+too hard to deal with the conveys since clicking on board place it auto or
+rotate it, we need some builder view ... check how those games does on
+mobile using web. Also, i want better upgrade sheets, something more tree
+view"):
+
+- **What stopped the numbers was not the upgrade.** Headless, a dig, a belt
+  and the box make ten a second at the belt's rank 1 and nineteen in ten
+  seconds at rank 2, through a save and a load. The screenshot's loop stood
+  still because the adder's two-pip side (B) was empty: four 1s queued on
+  A, the machine idle. Four 2s had reached the box, so B had been fed once;
+  on the board as it was, a run drawn across a belt before level 5 turned
+  it, and a tap on an operator with Belt or its own tool in hand turned it,
+  and a starving machine said nothing. The spec's three rules: a drawn path
+  never rewrites a belt across its way; a tap never turns or places by
+  itself; a machine waiting on one side says so.
+- **The mobile games, surveyed on the web** (the session's research note;
+  Mindustry's `MobileInput.java`, Builderment's changelog, shapez mobile's
+  history, Mini Motorways, the reference game's forum): with no tool held
+  one finger pans and a tap never builds; with a tool held one finger
+  builds and two pan; a belt's way is always the drag order; a machine
+  goes down as a ghost with rotate and confirm; deleting is its own tool.
+  Taken whole.
+- **The sim** (`arcade/tally_sim.gd`): `trim_path(tiles, f_last)` says
+  what a traced 4-connected path would do (each square faces the next, the
+  last as the one before; a first square that is a dig, a machine, the box
+  or a belt across the way is dropped so the path starts beside it; a last
+  square that cannot take belt is dropped and the one before faces into
+  it; `cut` at the first square that cannot take belt or a belt across the
+  way with no bridge to be had) and `lay_path` lays it: belts along the way
+  take the path's facing (a line is extended or reversed by drawing over
+  it), a belt across the middle becomes a bridge from level 5, **nothing
+  across the way is ever turned**. `lay_run(tiles, f)` is `lay_path` with
+  one facing (the tutorial, the pace bot and the perf probe still call it).
+  `mark()` opens a gesture and `undo()` puts back every square it changed
+  (kind, face, face2; tokens there fall off, a crate's contents are not
+  kept), one step. `starving(i)` names the side (0 A, 1 B) a machine has
+  waited on for `STARVE_AFTER` 3 s while the other holds a token. The box
+  emits `off_target` once a level when `OFF_SAY` 20 numbers that are not
+  the target come in with none of the target. Probe 0 failed, eleven new
+  checks (the corner path into the box, the ends dropped, the reverse, a
+  start beside a crossing belt, a path of one, undo, the one-sided adder,
+  the off-target say). The pace bot's figures are unchanged to level 4.
+- **The upgrades are a tree** (`arcade/tally_shop.gd`, rewritten;
+  `arcade/tally_tree_art.gd` its drawings), the Grove's skills tree
+  (`git show 65ad7b2b:valley/grove_tree.gd`) in Tally's materials: a card
+  over the screen with the sheets' head and a round X, a field of squared
+  paper with the counting box at its root, an ink trunk up to the highest
+  open row and dashed pencil past it, and the six tracks as boughs in the
+  order they open, alternating sides (Belts left and Digs right, Adders
+  left, Multipliers right, Subtract and divide left, Raisers right), joined
+  to the trunk by round joints (hollow pencil rings while shut). A plate is
+  lifted paper 128 px with the track's piece, a brass "Lv n" chip, a ring
+  in as many segments as the next rank asks numbers (green where met), the
+  sun dot when it can be bought, a crown at the top; shut it is dim with a
+  lock and "Lv n" under a dashed bough. The foot card: the name, "Level n ·
+  speed → speed", the asks as tokens with "have / need" and a thin bar,
+  a dim "Then" row with the rank after's numbers and counts (`_asks_at`,
+  a local mirror of `asks`), and one sun bar: Up when all are met, else
+  "Need n more Ms", disabled. Each plate is one cached mesh a state, so a
+  bought one squashes; the tree pans with a glide only when taller than
+  the field (rows 203 px apart, clamped 190 to 210; `_pan_most` is 0 at
+  810x1440 at levels 1 and 9). The contract the screen and harness use is
+  kept: `sim`, `closed`, `bought`, `_buy(id)`, `refresh()`, node "Shop".
+  `tests/_shot_tally_tree.gd -- <outdir>`: 27 checks, 0 failed headless
+  (real taps on plates name them in the foot, a real press on the bar buys
+  the belt's rank, a shut track says its level, no plate rects meet at
+  levels 1 and 9, a 300 px drag pans); windowed on `opengl3_angle` 51 draw
+  calls with an open track chosen, 55 right after a buy, 36 with a shut
+  one. Shots read: nothing clipped or overlapping.
+- **The board under the builder's hand** (`arcade/tally_board.gd`,
+  `tally_screen.gd`, `tally_art.gd`, `tally_card.gd`): **a tap never turns
+  or places.** Look (id `move`, captioned Look) pans with the fling and a
+  tap on a piece opens the **piece pill** (Turn for belts and machines,
+  Remove, Info which opens the card); the box its card; a printed number
+  the "dig it" sticker; bare paper the touch. Belt traces a 4-connected
+  path (`_trace_to`: the larger axis first between samples, a step onto a
+  square already on the path cuts it back to there), the ghost from
+  `sim.trim_path` each frame (green to the cut, red past it, corners bent
+  at the middle), laid on release with `mark()` then `lay_path`; a tap on
+  bare paper lays one belt the way of the last trace and opens its pill;
+  edge-pan extends the path; `run_to` and `_lay` are gone. Dig, Crate and
+  the machines drop a snapped **ghost** with the **builder pill** (Turn
+  for machines, Place, Cancel), green or red by `why_not` (one operator
+  over another is a swap keeping the old facing, captioned Swap), moved
+  by a drag from it or a tap elsewhere; Place marks, places, keeps the
+  tool and the facing for the next ghost. Remove marks at the press and
+  lifts as before. **The pills are the board's**: a `_pills` Node2D after
+  `_words`, a `CozyTheme.lifted` capsule with a 24 px title (the piece's
+  name, or "Waiting for B") and 84 px round buttons whose glyphs are
+  `Art.glyph_into` (ui/icons.gd shapes baked into a Builder), one cached
+  mesh per (kind, buttons, dim), 20 px captions, under the square or over
+  it in the view's lower third, clamped in `view`; hit in `press` and
+  `release`; `pill_open()` and `pill_button_rect(name)` for the tutorial
+  and the harness; the square ringed in sun; a press elsewhere closes a
+  piece pill and is consumed. A card going up calls `let_go`, which drops
+  a ghost and its pill. A pill's Turn, Remove and Place are heard once,
+  through the sim's own cue. A starving side's pips are amber with a 1.4 s
+  pulse ring (still under `Motion.reduce`); the card says "Waiting for B
+  on its two-dot side". The screen: the held tool pressed again is put
+  down; the **undo chip** (`UndoChip`, a round paper disc R 46 with
+  `undo_back` and Undo at the tray's top-left) shows while `sim.can_undo()`
+  within six seconds of a `lay` or `lift` (never after a place or a turn,
+  hidden under a card), fades with Motion, and its press is `sim.undo()`
+  heard as `lift`; the `off_target` sticker over the box; the upgrades
+  button's dot is a count of ranks that can be bought (R 14).
+- **The tutorial** (`ui/hud/tally_tutorial_diagram.gd`): a keyframe's
+  point may be a pill button's name ("place", "turn"), found through
+  `pill_button_rect` as the finger goes; the Dig page taps the 1, presses
+  Place and traces to the box; the Machine page drops the adder's ghost
+  facing north, presses Turn once and Place; the Belts page traces. The
+  bodies say so (en, pt, es). `tests/_shot_howto_screen.gd -- tally`
+  windowed on `opengl3_angle` 2026-10-15: 90 to 101 draw calls, bodies 141
+  to 188 px of 230.
+- **How to see it now**: `tests/_shot_tally.gd -- <outdir>`, 23 checks (the
+  ghost and its pill, Place, a traced corner whose square faces the next
+  leg, the undo chip pressed for real and the path traced again, the Look
+  tap opening the adder's pill and Info the card, a subtractor fed on A
+  alone starving on B, the tutorial's Dig and Machine pages through the
+  real card). Headless 0 failed; one windowed run on `opengl3_angle`,
+  810x1440: 58 to 89 draw calls in play (62 with the builder pill, 63 with
+  the undo chip, 89 with the adder's pill over a crowded paper), 127 to
+  149 with a card or the tree over it, 125 to 129 for the tutorial pages
+  with their pills. Shots read: the pills, the chip, the tree, the
+  tutorial pages. Not seen windowed: the amber pips (the subtractor beat
+  came after the run), the count badge (the tree covers the HUD in its
+  shots).
+- **Locale rows need an import.** New `locale/ui.csv` rows resolve to
+  their key names in a run until `godot --headless --path . --import`
+  (the tree's TL_SHORT_OF and TL_THEN did, until imported, and a "String
+  formatting error" at the `%` is the symptom). The same rule as
+  regenerated sounds.
+- **Not done, the user's to call**: a phone (the pills' 84 px buttons and
+  the trace under a thumb); the sounds heard; pt and es read by a speaker;
+  the amber pips and the count badge seen windowed; the spec's section 7
+  calls (a tap with Belt lays one belt; one undo step for belts and lifts
+  only; the tree's shape; no double-tap path selection, drag-box delete,
+  copy or paste).
