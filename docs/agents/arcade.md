@@ -3723,15 +3723,22 @@ divide and raise, and the box asks for one number so many times a level.
   swipe to the box, level 1 done through it, a grown paper, a real
   two-finger pinch, a machine's card by a real Move tap, the box's card and
   the upgrades by real taps on the plates; headless it shoots nothing and
-  still drives every beat, 0 failed). 56 to 84 draw calls in play, 68 far
-  out, 125 to 180 with a card or the upgrades over it (`opengl3_angle`,
-  810x1440, first run).
+  still drives every beat, 0 failed). 58 to 82 draw calls in play, 69 far
+  out, 123 to 180 with a card or the upgrades over it (`opengl3_angle`,
+  810x1440; two windowed runs agree). `tests/_perf_tally.gd` times the
+  builders on 900 full belts: 2.8 ms a frame at the usual zoom, 3.7 far out.
+- **A split is the genre's T, not a slip**: a belt whose back touches
+  another's side takes every other token, so a run ended beside the start
+  of another can split by accident (the tutorial's builder met it). Kept,
+  as the reference has it; the user's to call.
 - **Mine, the user's to call** (the spec's section 6): the name and the
   squared paper; every piece one square, A left and B right; a 4 by 4 box;
   a 46 by 46 sheet with numbers to 60; digs to 4 belts; the counts halved
   and a fifth; no away progress; no priorities, copy, paste, undo or
   markers; straight runs only; a crate of 500; no concept tab, no new take,
   no mascot.
-- **Not done**: a phone; the sounds heard; pt and es read; `reduce` shot;
+- **Not done**: a phone; the sounds heard; pt and es read; `reduce` shot
+  windowed; es tutorial pages; a merge into a belt's side looked at close
+  (the bed is straight while the side's token curves in over the paper);
   a pace bot (only the first level's pace is measured: ten 1s at 1 a
   second); a Tally bot in `tests/_probe_arcade_buzz.gd`.
