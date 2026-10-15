@@ -22,7 +22,7 @@ extends SceneTree
 ## frames instead: how many, how many over 34 ms, the longest.
 ## `rm` is reduce motion, through a settings file of the harness's own.
 
-const STILLS: Array[float] = [0.0, 0.2, 0.34, 0.48, 0.62, 0.76, 0.9, 1.04, 1.18, 1.32, 1.5, 1.7, 2.34, 2.5]
+const STILLS: Array[float] = [0.0, 0.2, 0.35, 0.5, 0.65, 0.8, 0.95, 1.05, 1.2, 1.35, 1.5, 1.7, 2.05, 2.7, 2.85]
 const LEAVING: Array[float] = [0.06, 0.12, 0.2, 0.3, 0.4]
 const BOOT_AT: Array[float] = [0.02, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75]
 const REVEAL_AT: Array[float] = [0.0, 0.1, 0.2, 0.3, 0.42, 0.7, 1.4]

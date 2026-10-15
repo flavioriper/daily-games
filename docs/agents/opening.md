@@ -22,8 +22,8 @@ places or not at all.
 
 ### What plays (`ui/opening.gd`)
 
-The app icon coming together: nine soft tiles drop in along the diagonals,
-the sprout grows out of the middle one and its two leaves fall open, `Daily`
+The app icon coming together: the grid is built a tile at a time (since
+2026-10-15, below), the sprout grows out of the middle one and its two leaves fall open, `Daily`
 is lettered under it a letter at a time with the sun-dot last, and warm motes
 drift up through it (round lights with no shape, never rays or sparkles).
 Then it waits: the leaves sway and a ripple runs over the tiles every 2.6 s,
@@ -41,14 +41,43 @@ came in, the word lifts off and the ground thins over 0.5 s.
   (a finger still down from the icon is not a skip).
 - Reduce motion: it stands finished from the first frame, is held 0.8 s at
   least, and leaves in one plain fade of `Motion.REDUCED_TIME`.
-- It has one sound since 2026-10-09, asked for by the user: `ui`'s
-  `opening` (`assets/sfx/ui/opening.ogg`, 1.7 s at -13, `HEARTH_TUNE`: tiles
-  set down, then two low kalimba notes), played by `world/boot.gd` from the
-  first frame, so `ui/opening.gd` alone stays silent in a harness. Boot
-  loads the sound switch before it plays; under reduce motion it is not
-  played. A tapped opening leaves before the tune ends: boot frees the
-  opening's layer and waits for the last note before freeing itself.
-  Unheard by the user, and not synced to a beat of the animation.
+- It had one sound from 2026-10-09: `ui`'s `opening`, tiles set down and
+  two kalimba notes in one take from the first frame, synced to nothing.
+
+### The grid built one by one (2026-10-15)
+
+The user: "We need a better initial animation, some pop sounds with the
+grid being build one by one". Where the nine came in along the diagonals
+0.05 s apart (a blur, three at a time), they come round the edge clockwise
+from the upper left, 0.085 s apart, and the cream middle one 0.06 s after
+the eighth (`ORDER`, `TILE_STEP`, `MIDDLE_LAG`). Each pushes a puff of pale
+light out from under it as it lands (`PUFF`, the `_soft` mesh grown and
+thinned over 0.42 s, one draw while it lasts), and when the middle lands the
+edge hops for it, the four beside it first and the corners 35 ms after
+(`DONE_HOP`). The sprout, leaves, letters and sun moved 0.36 to 0.44 s later
+with it; `SETTLED` is 2.05 s (was 1.7).
+
+- **The sounds.** `ui/opening.gd` stays silent: it says `landed(rank)` as a
+  tile first touches the paper (`touch_at`: `TOUCH` 0.37 of its drop, where
+  the back ease first reaches zero) and `bloomed` as the right leaf starts
+  to open, each from `step` on the frame the clock crosses the beat, never
+  under reduce motion or once leaving. `world/boot.gd` plays `ui`'s `tile`
+  on `landed` (a HUSH tock at -16, two players taken in turn, a half
+  semitone higher each tile, four over the nine, with a 1.2% jitter) and
+  `ui`'s `opening` on `bloomed`, now only its two kalimba notes
+  (`COZY_TUNE`, `notes:0.3:0,5`, -13). The tune's first two takes were near
+  silent at 320-350 Hz (rule 3); the second of three was kept. Measured:
+  `tile` centroid 538 Hz, phone -15; `opening` 442 Hz, phone -14; nothing
+  flagged. A tap before the leaves skips the tune; a tune already playing
+  still rings out past the opening as before. No haptics: the opening is on
+  the "screen opening" side of every board's nothing list.
+- **Measured** (second of two `boot time` runs): the game under the
+  opening at 3.08 s, and 3.08 s with the old opening too, so the load sets
+  the handover and the longer build adds no wait on this Mac; a phone is
+  slower still. Settled 42 draw calls; at most 134 with the first screen
+  under it. The 1.95 s of 2026-10-06 is history: the game loads slower now.
+- **Unheard by the user**, and the puff, the order and the hop are calls
+  taken for them; nothing of it on a phone.
 
 ### The handover (`world/boot.gd`)
 

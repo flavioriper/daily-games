@@ -418,7 +418,14 @@ SETS = {
         "page":     ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.6, -28, BREEZE, "warm:900", "steep", "ease:0.08", "body:320", "cut:0.35"),
         # The opening (world/boot.gd, 2026-10-09): heard on every launch, so
         # it is the quietest tune there is, low and eased in.
-        "opening":  ("a few small wooden tiles set down gently one after another on a wooden table, then two slow soft rising notes on a low kalimba, a quiet good morning, short", 1.7, -13, HEARTH_TUNE, "warm:5000", "ease:0.02"),
+        # The user, 2026-10-15: "a better initial animation, some pop sounds
+        # with the grid being built one by one". The tiles are `tile` now,
+        # one a tile as it lands, so the tune is only its two notes, played
+        # as the sprout's leaves open; the take is one note (rule 8).
+        "opening":  ("two slow soft notes rising on a kalimba and left to fade, a quiet good morning", 1.5, -13, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.3:0,5"),
+        # One tile of the opening's grid set down (ui/opening.gd's `landed`):
+        # nine in a row, each a step higher (world/boot.gd).
+        "tile":     ("one small hollow wooden tile set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1400", "cut:0.09", "body:320", "tight"),
     },
     "binairo": {
         # Redone 2026-10-09 against the cozy rules (docs/agents/sound.md): what

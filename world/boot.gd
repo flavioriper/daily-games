@@ -33,11 +33,17 @@ const SOONEST := 0.6
 ## The frames the first screen gets under the opening before it is shown:
 ## its build, its first draw, and one to spare.
 const UNDER := 3
-## The opening's one sound (tools/gen_sfx.py, `ui`'s `opening`): tiles set
-## down and two low kalimba notes, the quietest tune in the game since it is
-## heard on every launch. Not played under reduce motion, where nothing
-## lands for it to belong to.
+## The opening's sounds (tools/gen_sfx.py, `ui`): a soft wooden pop as each
+## tile of the grid lands (`landed`), a step higher each, and two low
+## kalimba notes as the leaves open (`bloomed`), the quietest tune in the
+## game since it is heard on every launch. Neither under reduce motion,
+## where nothing lands for them to belong to.
+const TILE := preload("res://assets/sfx/ui/tile.ogg")
 const TUNE := preload("res://assets/sfx/ui/opening.ogg")
+## The pops climb this many semitones a tile: four over the nine (the cozy
+## rules' five at most), and a hair either way so no two are one sound.
+const POP_STEP := 0.5
+const POP_JITTER := 0.012
 
 ## Put on the real scene root in place of its own script: a harness's offline
 ## stand-in.
@@ -47,6 +53,8 @@ var _main: Node
 var _hurry := false
 var _under := 0
 var _tune: AudioStreamPlayer
+## Two, taken in turn: a pop rings a little past the next tile's.
+var _pops: Array[AudioStreamPlayer] = []
 
 func _ready() -> void:
 	# main.gd loads this again with the rest; the opening has to know now.
@@ -57,7 +65,11 @@ func _ready() -> void:
 		_tune = AudioStreamPlayer.new()
 		_tune.stream = TUNE
 		add_child(_tune)
-		_tune.play()
+		for k in 2:
+			var pop := AudioStreamPlayer.new()
+			pop.stream = TILE
+			add_child(pop)
+			_pops.append(pop)
 	var layer := CanvasLayer.new()
 	layer.name = "OpeningLayer"
 	layer.layer = LAYER
@@ -65,6 +77,9 @@ func _ready() -> void:
 	opening = Opening.new()
 	opening.skip.connect(func() -> void: _hurry = true)
 	opening.left.connect(_done)
+	if _tune != null:
+		opening.landed.connect(_pop)
+		opening.bloomed.connect(_tune.play)
 	layer.add_child(opening)
 	if ResourceLoader.load_threaded_request(MAIN) != OK:
 		push_warning("boot: the threaded load would not start; loading on this thread")
@@ -89,6 +104,11 @@ func _process(_delta: float) -> void:
 	if main_script != null:
 		_main.set_script(main_script)
 	get_tree().root.add_child(_main)
+
+func _pop(rank: int) -> void:
+	var pop := _pops[rank % _pops.size()]
+	pop.pitch_scale = pow(2.0, rank * POP_STEP / 12.0) * randf_range(1.0 - POP_JITTER, 1.0 + POP_JITTER)
+	pop.play()
 
 ## The first screen is built and drawn under the opening: lift it off.
 func _reveal() -> void:

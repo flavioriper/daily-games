@@ -2,9 +2,11 @@ extends Control
 
 ## The opening: what is on the screen from the game's first frame until the
 ## first screen is ready under it (world/boot.gd), in place of the black the
-## game used to open on. It is the app icon coming together: nine soft tiles
-## drop onto the paper in a diagonal run, a sprout grows out of the middle
-## one and unfurls its two leaves, and `Daily` is lettered under them with
+## game used to open on. It is the app icon coming together: the grid is
+## built a tile at a time, round the edge from the upper left and the cream
+## middle one last, each tile dropping onto the paper with a puff of light
+## (and a pop, which world/boot.gd plays on `landed`); the edge hops as the
+## middle lands, a sprout grows out of it and unfurls its two leaves, and `Daily` is lettered under them with
 ## its golden sun for the dot of the i, the wordmark the first screen
 ## carries. Warm motes of light drift up through it while it waits (cozy
 ## light has no shape: a mote is a round falloff and nothing else). Then the
@@ -26,6 +28,12 @@ extends Control
 
 ## A tap on the opening: the player has seen it and wants the game.
 signal skip
+## The `rank`th tile (0 to 8, in the run they come in) has touched the paper.
+## Nothing here plays a sound: world/boot.gd pops one on this.
+signal landed(rank: int)
+## The leaves are opening: boot's two notes. Neither signal is sent under
+## reduce motion or once leaving.
+signal bloomed
 ## Gone: the paper has thinned to nothing and nothing here draws any more.
 signal left
 
@@ -87,27 +95,42 @@ const SOFT_RINGS := 18
 const SOFT_SIDES := 48
 
 ## The score, in seconds from the first frame. A tile is `TILE_STEP` behind
-## the one before it along the diagonals; the sprout comes as the middle
-## tile lands; the letters follow the leaves, the sun last. SETTLED is when
-## the last of it has landed: the soonest the opening is taken off unasked.
-const TILE_AT := 0.12
-const TILE_STEP := 0.05
+## the one before it round the edge (the user, 2026-10-15: "the grid being
+## built one by one", where the diagonals came in a blur of 0.05), and the
+## middle one `MIDDLE_LAG` more; a tile touches the paper TOUCH of the way
+## into its drop, where the back ease first reaches it, and that is its pop.
+## The edge hops (`DONE_HOP`) as the middle lands, the sprout comes out of
+## it, the letters follow the leaves, the sun last. SETTLED is when the last
+## of it has landed: the soonest the opening is taken off unasked.
+const ORDER: Array[int] = [0, 1, 2, 5, 8, 7, 6, 3, 4]
+const TILE_AT := 0.1
+const TILE_STEP := 0.085
+const MIDDLE_LAG := 0.06
 const TILE_TIME := 0.32
 const TILE_DROP := 54.0
-const SPROUT_AT := 0.66
+const TOUCH := 0.37
+## The light a tile puffs out from under itself as it lands.
+const PUFF := Color("fff3d6")
+const PUFF_TIME := 0.42
+const PUFF_FROM := 0.9
+const PUFF_TO := 1.75
+const DONE_HOP := -12.0
+const DONE_TIME := 0.34
+const DONE_STEP := 0.035
+const SPROUT_AT := 1.1
 const STEM_TIME := 0.34
-const LEAF_RIGHT_AT := 0.84
-const LEAF_LEFT_AT := 0.94
+const LEAF_RIGHT_AT := 1.28
+const LEAF_LEFT_AT := 1.38
 const LEAF_TIME := 0.44
-const WORD_AT := 1.0
+const WORD_AT := 1.36
 const LETTER_STEP := 0.05
 const LETTER_TIME := 0.3
 const LETTER_RISE := 34.0
-const SUN_AT := 1.3
+const SUN_AT := 1.66
 const SUN_TIME := 0.28
-const GLOW_TIME := 0.7
-const MOTES_AT := 0.5
-const SETTLED := 1.7
+const GLOW_TIME := 1.0
+const MOTES_AT := 0.6
+const SETTLED := 2.05
 ## Under reduce motion nothing lands; it is only looked at this long.
 const HELD := 0.8
 ## The wait: the leaves' sway, and a ripple over the tiles every so often.
@@ -173,15 +196,10 @@ func _init() -> void:
 	add_child(_ground)
 	for colour in TILES:
 		_tiles.append(_tile_mesh(colour))
-	# The run the tiles come in: along the diagonals from the upper left.
-	var order: Array = range(9)
-	order.sort_custom(func(a: int, b: int) -> bool:
-		var da := a / 3 + a % 3
-		var db := b / 3 + b % 3
-		return da < db or (da == db and a < b))
+	# The run the tiles come in: round the edge, the middle last.
 	_ranks.resize(9)
 	for rank in 9:
-		_ranks[order[rank]] = rank
+		_ranks[ORDER[rank]] = rank
 	_shadow = _shadow_mesh()
 	_stem = _stem_mesh()
 	_leaf = _leaf_mesh()
@@ -215,8 +233,16 @@ func _gui_input(event: InputEvent) -> void:
 
 ## Moves the clock on and draws; says `left` once the leaving is over.
 func step(delta: float) -> void:
+	var before := clock
 	clock += delta
 	queue_redraw()
+	if not Motion.reduce and not leaving():
+		for rank in 9:
+			var beat := touch_at(rank)
+			if before < beat and beat <= clock:
+				landed.emit(rank)
+		if before < LEAF_RIGHT_AT and LEAF_RIGHT_AT <= clock:
+			bloomed.emit()
 	if not _gone and clock - _leave_at >= (Motion.REDUCED_TIME if Motion.reduce else LEAVE_TIME):
 		_gone = true
 		left.emit()
@@ -228,6 +254,14 @@ func leave() -> void:
 
 func leaving() -> bool:
 	return _leave_at != INF
+
+## When the `rank`th tile starts to drop.
+static func drop_at(rank: int) -> float:
+	return TILE_AT + rank * TILE_STEP + (MIDDLE_LAG if rank == 8 else 0.0)
+
+## When the `rank`th tile touches the paper.
+static func touch_at(rank: int) -> float:
+	return drop_at(rank) + TILE_TIME * TOUCH
 
 ## Whether the opening has played: the soonest it is taken off unasked.
 func settled() -> bool:
@@ -261,16 +295,27 @@ func _draw() -> void:
 	var places := PackedVector2Array()
 	var scales := PackedVector2Array()
 	var levels := PackedFloat32Array()
+	var done := touch_at(8)
 	for i in 9:
-		var e := clock - (TILE_AT + _ranks[i] * TILE_STEP)
+		var e := clock - drop_at(_ranks[i])
 		var out := _pop_out(away - (8 - _ranks[i]) * LEAVE_STEP)
 		var s := Motion.pop_in_scale(e, TILE_TIME) * out
 		if i == MIDDLE:
 			s *= Motion.bump_scale(clock - SPROUT_AT, 0.07)
 		var drop := Motion.drop_in_lift(e, TILE_DROP, TILE_TIME)
 		var hop := Motion.hop_lift(_ripple() - _ranks[i] * RIPPLE_STEP, RIPPLE_HOP, RIPPLE_TIME)
+		# The edge hops for the middle as it lands: the four beside it
+		# first, the corners after.
+		if i != MIDDLE and not leaving():
+			hop += Motion.hop_lift(clock - done - (DONE_STEP if i % 2 == 0 else 0.0), DONE_HOP, DONE_TIME)
 		var at := mid + Vector2((i % 3 - 1) * pitch, (i / 3 - 1) * pitch)
 		var level := Motion.appear_level(e) * fade * out
+		# The puff of light a tile pushes out from under it as it lands.
+		var puff := (clock - touch_at(_ranks[i])) / PUFF_TIME
+		if puff > 0.0 and puff < 1.0 and not Motion.reduce:
+			var grow := lerpf(PUFF_FROM, PUFF_TO, 1.0 - pow(1.0 - puff, 3.0)) * TILE * 0.5 / SOFT_R
+			draw_mesh(_soft, null, Transform2D(0.0, Vector2.ONE * grow * u, 0.0, at),
+				Color(PUFF, 0.85 * (1.0 - puff) * (1.0 - puff) * fade))
 		if level > 0.0:
 			# The shadow stays on the paper: it thins and spreads under a
 			# tile still in the air.
