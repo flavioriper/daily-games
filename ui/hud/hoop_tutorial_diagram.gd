@@ -12,8 +12,9 @@ extends Control
 ##   that share no side is refused.
 ## - FILL: every side of a triangle threaded, and it knits in.
 ## - COMBO: one long drag closes the three triangles in a row.
-## - TAP: a tap on a pin, then taps on the next ones: the thread goes on
-##   from pin to pin and stays in hand; a tap on the pin held puts it down.
+## - HOLD: the thread is laid only while the finger is down: a drag lays
+##   two sides, the finger lifts half way to the next pin and the thread
+##   breaks there.
 ## - HINT: the bulb lays a thread.
 
 const Pal = preload("res://core/palette.gd")
@@ -22,7 +23,7 @@ const Face = preload("res://ui/faces/face.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const IconButton = preload("res://ui/hud/icon_button.gd")
 
-enum Lesson { THREAD, FILL, COMBO, TAP, HINT }
+enum Lesson { THREAD, FILL, COMBO, HOLD, HINT }
 
 const FINGER_R := 26.0
 const FINGER_ALPHA := 0.16
@@ -221,9 +222,10 @@ func _start() -> void:
 			_stroke([0, 1, 3, 0], "HTP_YH_DRAG_CAP", 0.2)
 			_loop.tween_callback(_say.bind("HTP_YH_FILL_CAP"))
 			_loop.tween_interval(2.0)
-		Lesson.TAP:
-			_taps([3, 4, 1, 3, 0, 1], "HTP_YH_TAP_CAP", 1.2)
-			_taps([1], "HTP_YH_TAP_DOWN_CAP", 1.6)
+		Lesson.HOLD:
+			_stroke([0, 1, 3, 4], "HTP_YH_HOLD_CAP", 0.0, 1.2)
+			_loop.tween_callback(_say.bind("HTP_YH_BREAK_CAP"))
+			_loop.tween_interval(1.8)
 		Lesson.COMBO:
 			_stroke([3, 0, 1, 3, 4, 1, 2, 4], "HTP_YH_COMBO_CAP", 2.6)
 		Lesson.HINT:
@@ -234,8 +236,10 @@ func _start() -> void:
 
 ## The finger presses pin `path[0]`, drags through the rest in order and
 ## lets go; the caption turns to `say` as it comes, then the hoop plays for
-## `wait`.
-func _stroke(path: Array, say: String, wait: float) -> void:
+## `wait`. With `loose` over 0, the finger goes on past the last pin, that
+## many times the last leg, onto bare linen, and lifts there: the thread
+## breaks.
+func _stroke(path: Array, say: String, wait: float, loose := 0.0) -> void:
 	if say != "":
 		_loop.tween_callback(_say.bind(say))
 	_loop.tween_callback(func() -> void: _finger = _art.pin_screen(int(path[0])))
@@ -251,34 +255,17 @@ func _stroke(path: Array, say: String, wait: float) -> void:
 			var at: Vector2 = _art.pin_screen(a).lerp(_art.pin_screen(b), t)
 			_finger = at
 			_art.drag(at), 0.0, 1.0, LEG).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	if loose > 0.0:
+		var a := int(path[path.size() - 2])
+		var b := int(path[path.size() - 1])
+		_loop.tween_method(func(t: float) -> void:
+			var at: Vector2 = _art.pin_screen(b).lerp(_art.pin_screen(b) * 2.0 - _art.pin_screen(a), t)
+			_finger = at
+			_art.drag(at), 0.0, loose, LEG).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	_loop.tween_interval(0.15)
 	_loop.tween_callback(func() -> void:
 		_art.release(_finger)
 		_down = false)
-	_loop.tween_interval(0.25)
-	_loop.tween_callback(_lift)
-	_loop.tween_interval(wait)
-
-## The finger taps the pins of `path` one after another (a press and a
-## release on each, a move between): the thread goes on from pin to pin and
-## stays in hand; the caption turns to `say` first, then the hoop plays for
-## `wait`.
-func _taps(path: Array, say: String, wait: float) -> void:
-	if say != "":
-		_loop.tween_callback(_say.bind(say))
-	for m in path.size():
-		var v := int(path[m])
-		var from := int(path[m - 1]) if m > 0 else v
-		_loop.tween_method(func(t: float) -> void:
-			_finger = _art.pin_screen(from).lerp(_art.pin_screen(v), t), 0.0, 1.0, LEG if m > 0 else 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-		_loop.tween_callback(func() -> void:
-			_down = true
-			_art.press(_art.pin_screen(v)))
-		_loop.tween_interval(0.12)
-		_loop.tween_callback(func() -> void:
-			_art.release(_art.pin_screen(v))
-			_down = false)
-		_loop.tween_interval(0.3)
 	_loop.tween_interval(0.25)
 	_loop.tween_callback(_lift)
 	_loop.tween_interval(wait)
@@ -321,7 +308,7 @@ func _opening() -> String:
 	match lesson:
 		Lesson.THREAD, Lesson.FILL: return "HTP_YH_DRAG_CAP"
 		Lesson.COMBO: return "HTP_YH_COMBO_CAP"
-		Lesson.TAP: return "HTP_YH_TAP_CAP"
+		Lesson.HOLD: return "HTP_YH_HOLD_CAP"
 	return "HTP_YH_BULB_CAP"
 
 ## Motion reduced: the hoop as it lies, under the lesson's line.

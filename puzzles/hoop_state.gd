@@ -23,27 +23,41 @@ extends RefCounted
 ## same picture, and its sides follow the picture's own edges.
 
 const ThemedPictures = preload("res://core/themed_pictures.gd")
+const Pal = preload("res://core/palette.gd")
 const BANK := "res://content/pixel_garden.json"
-## The bank's bands every difficulty deals from (its 32- and 24-side
-## pictures: the cut sets the coarseness, so the biggest source reads best
-## on every band), and the sides of the day's themed picture tried in turn.
-const BANDS := [3, 2]
-const THEMED_SIDES := [48, 32, 24, 12, 10]
+## A band's difficulty is its picture, as Pixel Garden's is (the user,
+## 2026-10-15: "just like pixel garden easier level means simpler
+## images"): Easy deals the day's 24-side themed picture (or the bank's
+## 24-side ones), Medium the 32, Hard the 48 and Insane the 48 again, cut
+## twice as fine and played through the zoom (the bank's 32 where no 48
+## is cached), each cut as true to its own drawing as the pins' spacing
+## allows. Cutting one big picture coarse for Easy left a brown blob round
+## a red one where the lantern was; the 10- and 12-side pictures are drawn
+## in one-square strokes no pin spacing a finger can take keeps.
+const THEMED_SIDE := [24, 32, 48, 48]
+const BANK_BAND := [2, 3, 3, 3]
 const INSANE := 3
-## About how many panels a band cuts its picture into.
-const PANELS := [26, 50, 90, 330]
-## The cut's tolerance and the least distance between two pins, as shares of
-## the picture's side; both grow while the picture cuts too fine.
-const TOLERANCE := [0.1, 0.07, 0.05, 0.024]
-const SPACING := [0.1, 0.075, 0.06, 0.034]
-## Triangles the split aims for, over the band's panels: the quads that
-## follow take about that many back.
-const OVER := 1.18
-## The cut's first try is this share of the band's tolerance and spacing.
-const FINE := 0.5
-## How often two neighbouring triangles of one colour are one four-sided
-## panel.
-const QUADS := [0.5, 0.4, 0.35, 0.3]
+## The least distance between two pins, as a share of the side of the
+## square the drawn thing would half fill (so on screen, about 760 px of
+## linen across the drawing at the whole: Easy ~80 px, Hard ~50, Insane
+## ~32 before the zoom), and never under SPACING_MIN squares of the
+## picture. No pin is ever set nearer another than that (the user,
+## 2026-10-15, of a Hard board: "a lot of dots together, user can't even
+## see what to connect").
+const SPACING := [0.09, 0.075, 0.066, 0.042]
+const SPACING_MIN := 1.15
+## The cut's tolerance, in the picture's squares: how far a traced edge
+## may stray from the drawing.
+const TOLERANCE := [0.6, 0.7, 0.75, 0.8]
+## A triangle bigger than this many spacings squared is split about its
+## middle, so a wide region still reads as facets.
+const SPLIT_AREA := [3.2, 3.0, 2.8, 2.6]
+## A panel has 3 to MAX_CORNERS corners (the user: "we should be able to
+## handle up to 7 dots area"): neighbouring triangles of one colour are
+## joined while the shape stays convex, each panel growing toward a size
+## drawn between CORNERS_AIM's two ends.
+const MAX_CORNERS := 7
+const CORNERS_AIM := [[4, 7], [4, 7], [5, 7], [5, 7]]
 ## A triangle is kept when bare linen is under this share of its beads
 ## (its sides keep the drawing's edges, so one over more is a bridge
 ## between two parts of it, not a piece of its outline).
@@ -59,6 +73,12 @@ const FLAT := 0.012
 ## smaller than this share of the squares, or when under half its squares
 ## sit in a 2x2 block of their own colour (the one-square outline, a stem).
 const SPECK := 0.004
+## Before that, a thin region joins the thin neighbours of a near colour
+## (two greens shading the grass, a pink and a rose): the two-tone run is
+## one shape of the bigger one's colour, thick enough to stay. A small
+## picture is drawn in such pairs, and dissolved one by one its grass and
+## petals were gone (the Easy ladybird of 2026-10-15, a brown blob).
+const FAMILY := 0.3
 ## The background carved off is at least this share (percent) of the
 ## picture's drawn squares, and either lies along the picture's own edge
 ## for EDGE_SHARE of its perimeter (a scene's sky or grass) or fills its
@@ -116,26 +136,25 @@ static func bank() -> Dictionary:
 				_bank = doc
 	return _bank
 
-## The bank's pictures every band deals from, the biggest bands' first.
-static func pictures() -> Array:
+## The bank's pictures band `band_` deals from.
+static func pictures(band_ := INSANE) -> Array:
 	var doc := bank()
 	var out: Array = []
-	if doc.get("bands") is Array:
-		for k: int in BANDS:
-			if k < (doc.bands as Array).size():
-				out.append_array(doc.bands[k])
+	var k: int = BANK_BAND[clampi(band_, 0, BANK_BAND.size() - 1)]
+	if doc.get("bands") is Array and k < (doc.bands as Array).size():
+		out.append_array(doc.bands[k])
 	return out
 
 static func hints_for(band_: int) -> int:
 	return HINTS_BY[clampi(band_, 0, HINTS_BY.size() - 1)]
 
 ## The day's picture out of the bank, cut. `daily_key` is
-## PuzzleBase.daily_key: a daily takes the day's themed picture, the biggest
-## side this phone holds (core/themed_pictures.gd).
+## PuzzleBase.daily_key: a daily takes the day's themed picture of the
+## band's side (core/themed_pictures.gd).
 func setup(rng: RandomNumberGenerator, difficulty: int, daily_key := 0) -> void:
-	band = clampi(difficulty, 0, PANELS.size() - 1)
+	band = clampi(difficulty, 0, THEMED_SIDE.size() - 1)
 	var doc := bank()
-	var pics := pictures()
+	var pics := pictures(band)
 	if pics.is_empty():
 		adopt({"name": "", "rows": ["..rr..", ".rrrr.", "rrggrr", "rggggr", ".gggg.", "..gg.."]},
 			{"r": "red", "g": "green"}, rng)
@@ -143,11 +162,9 @@ func setup(rng: RandomNumberGenerator, difficulty: int, daily_key := 0) -> void:
 	# The bank's pick is drawn either way, so the cut that follows is the same
 	# on a phone with the day and one without.
 	var pic: Dictionary = pics[rng.randi_range(0, pics.size() - 1)]
-	var themed := {}
-	for side: int in THEMED_SIDES:
-		themed = ThemedPictures.picture(daily_key, side)
-		if not themed.is_empty():
-			break
+	var themed := ThemedPictures.picture(daily_key, THEMED_SIDE[band])
+	if themed.is_empty() and band == INSANE:
+		themed = ThemedPictures.picture(daily_key, 32)
 	adopt(themed if not themed.is_empty() else pic, doc.get("palette", {}), rng)
 	# a picture the cut makes nothing of (none of the bank's or the themed
 	# ones seen does; one wholly carved or wholly thin would) is dealt the
@@ -161,7 +178,7 @@ func adopt(pic: Dictionary, legend: Dictionary, rng: RandomNumberGenerator) -> v
 	_read(pic, legend)
 	_carve()
 	_dissolve()
-	_cut(rng, PANELS[band])
+	_cut(rng)
 	reset()
 
 func _read(pic: Dictionary, legend: Dictionary) -> void:
@@ -334,6 +351,7 @@ func _components() -> Array:
 ## region that stays. The outline's beads are the darkest and they bound
 ## every shape, so left in they would be a ring of slivers.
 func _dissolve() -> void:
+	_join_families()
 	var n := w * h
 	var got := _components()
 	var comp: PackedInt32Array = got[0]
@@ -368,6 +386,65 @@ func _dissolve() -> void:
 				out[d] = out[c]
 				queue.append(d)
 	picture = out
+
+## Thin regions joined with the touching regions of a near colour, painted
+## the colour of the biggest of them (FAMILY).
+func _join_families() -> void:
+	var got := _components()
+	var comp: PackedInt32Array = got[0]
+	var cells: Array = got[1]
+	var m := cells.size()
+	var tone: Array = []
+	for named in colours:
+		tone.append(Pal.PG_BEADS.get(named, Color.GRAY))
+	var thin := PackedByteArray()
+	thin.resize(m)
+	for id in m:
+		var mine: PackedInt32Array = cells[id]
+		var thick := 0
+		for c in mine:
+			if _in_block(c, comp):
+				thick += 1
+		thin[id] = 1 if thick * 2 < mine.size() else 0
+	# union-find over regions touching with a near colour, one of them thin
+	var root := PackedInt32Array()
+	root.resize(m)
+	for id in m:
+		root[id] = id
+	for c in w * h:
+		var a := comp[c]
+		if a < 0:
+			continue
+		for d in _around(c):
+			var b := comp[d]
+			if b < 0 or b == a or not (thin[a] or thin[b]):
+				continue
+			var ca: Color = tone[picture[c]]
+			var cb: Color = tone[picture[d]]
+			if Vector3(ca.r - cb.r, ca.g - cb.g, ca.b - cb.b).length() > FAMILY:
+				continue
+			var ra := _find(root, a)
+			var rb := _find(root, b)
+			if ra != rb:
+				root[ra] = rb
+	var biggest := {}
+	for id in m:
+		var r := _find(root, id)
+		if not biggest.has(r) or (cells[id] as PackedInt32Array).size() > (cells[biggest[r]] as PackedInt32Array).size():
+			biggest[r] = id
+	for id in m:
+		var top: int = biggest[_find(root, id)]
+		if top == id:
+			continue
+		var col := picture[(cells[top] as PackedInt32Array)[0]]
+		for c in cells[id]:
+			picture[c] = col
+
+func _find(root: PackedInt32Array, a: int) -> int:
+	while root[a] != a:
+		root[a] = root[root[a]]
+		a = root[a]
+	return a
 
 ## The squares beside square `c`.
 func _around(c: int) -> PackedInt32Array:
@@ -406,69 +483,52 @@ func _label(x: int, y: int) -> int:
 		return -1
 	return picture[y * w + x]
 
-## The cut: the picture's edges traced and simplified, pins set along them,
-## the pins joined into triangles, and the triangles split until there are
-## about `want`. The tolerance and the spacing both grow a step while the
-## picture comes out too fine.
-func _cut(rng: RandomNumberGenerator, want: int) -> void:
+## The cut: the picture's edges traced and simplified to the band's
+## tolerance, pins set along them no nearer each other than the band's
+## spacing, the pins joined into triangles, the big ones split about their
+## middles, and neighbours of one colour joined into panels of up to
+## MAX_CORNERS corners. How many panels there are is the picture's own: a
+## richer drawing makes more.
+func _cut(rng: RandomNumberGenerator) -> void:
 	# the side of a square the drawn thing would half fill: what the band's
-	# shares are of, so a small thing on a big board cuts as fine as a scene
+	# spacing is a share of, so a small thing on a big board is spaced as a
+	# scene is on screen
 	var filled := 0
 	for c in picture:
 		if c >= 0:
 			filled += 1
 	var side := clampf(sqrt(filled / 0.5), 8.0, float(maxi(w, h)) * 1.5)
 	var chains := _trace()
-	# the cut starts finer than the band's and coarsens a step at a time
-	# while the outline alone overflows the count, so the band's panels go
-	# to the drawing's shape first and to splits of its inside after
-	var tol: float = TOLERANCE[band] * side * FINE
-	var gap: float = SPACING[band] * side * FINE
-	var aim := int(round(want * OVER))
-	var points := PackedVector2Array()
-	var cons: Array = []
-	var mesh: Array = []
+	var tol: float = TOLERANCE[band]
+	var gap: float = maxf(SPACING[band] * side, SPACING_MIN)
+	var placed := _place(chains, tol, gap)
+	var points: PackedVector2Array = placed[0]
+	var cons: Array = placed[1]
 	var read := {}
-	for attempt in 10:
-		var placed := _place(chains, tol, gap)
-		points = placed[0]
-		cons = placed[1]
-		read = {}
-		mesh = _mesh(points, cons, gap, read)
-		if (mesh[0] as Array).size() <= int(aim * 1.1) or points.size() <= 4:
-			break
-		tol *= 1.2
-		gap *= 1.2
-	# the biggest triangles whose middles are the spacing clear of every pin
-	# are split about them, a few a pass, until there are enough
-	var guard := 0
-	while (mesh[0] as Array).size() < aim and guard < 60:
-		guard += 1
+	var mesh := _mesh(points, cons, gap, read)
+	# the triangles over SPLIT_AREA spacings squared whose middles are the
+	# spacing clear of every pin are split about them, the biggest first
+	var big: float = SPLIT_AREA[band] * gap * gap
+	for pass_ in 40:
 		var tris: Array = mesh[0]
 		var order: Array = []
 		for t in tris.size():
 			var tri: PackedInt32Array = tris[t]
-			order.append([absf(_area(points[tri[0]], points[tri[1]], points[tri[2]])), t])
+			var area := absf(_area(points[tri[0]], points[tri[1]], points[tri[2]])) * 0.5
+			if area > big:
+				order.append([area, t])
 		order.sort_custom(func(x: Array, y: Array) -> bool: return float(x[0]) > float(y[0]))
-		var batch := maxi(1, (aim - tris.size()) / 4)
 		var added := 0
 		for o: Array in order:
-			if added >= batch:
-				break
 			var tri: PackedInt32Array = tris[int(o[1])]
 			var m := (points[tri[0]] + points[tri[1]] + points[tri[2]]) / 3.0
-			var clear := true
-			for q in points:
-				if q.distance_squared_to(m) < gap * gap:
-					clear = false
-					break
-			if clear:
+			if _nearest(points, m, gap) < 0:
 				points.append(m)
 				added += 1
 		if added == 0:
 			break
 		mesh = _mesh(points, cons, gap, read)
-	_quads(rng, points, mesh[0], mesh[1])
+	_merge(rng, points, mesh[0], mesh[1])
 
 ## The picture's edges, as chains of points on the squares' corners: every
 ## edge between two colours (or a colour and bare linen) walked from one
@@ -683,8 +743,10 @@ func _mesh(points: PackedVector2Array, cons: Array, gap: float, read := {}) -> A
 		for c: int in missing:
 			var e: Vector2i = cons[c]
 			var m := (points[e.x] + points[e.y]) * 0.5
-			# a pin on the edge's middle, unless one is all but there already
-			if _nearest(points, m, gap * 0.25) >= 0:
+			# a pin on the edge's middle, unless it would crowd one: then the
+			# edge is let go (a panel a little across two colours reads; a
+			# knot of pins does not, the user's Hard board of 2026-10-15)
+			if _nearest(points, m, gap * 0.75) >= 0:
 				continue
 			var p := points.size()
 			points.append(m)
@@ -727,9 +789,13 @@ func _min_angle(a: Vector2, b: Vector2, c: Vector2) -> float:
 		out = minf(out, absf(u.angle_to(v)))
 	return out
 
-## Two neighbouring triangles of one colour that make a convex four-sided
-## shape are sometimes one panel. Then the panels are indexed.
-func _quads(rng: RandomNumberGenerator, points: PackedVector2Array, tris: Array, cols: Array) -> void:
+## Neighbouring triangles of one colour joined into convex panels of up to
+## MAX_CORNERS corners: from each triangle not yet taken, in an order the
+## rng draws, a panel grows across its sides toward a corner count drawn
+## from the band's CORNERS_AIM, taking a neighbour of its colour whenever
+## the shape stays convex with no corner on a straight line. Then the
+## panels are indexed.
+func _merge(rng: RandomNumberGenerator, points: PackedVector2Array, tris: Array, cols: Array) -> void:
 	var by_side := {}
 	for t in tris.size():
 		var tri: PackedInt32Array = tris[t]
@@ -742,45 +808,63 @@ func _quads(rng: RandomNumberGenerator, points: PackedVector2Array, tris: Array,
 			by_side[key] = lst
 	var used := PackedByteArray()
 	used.resize(tris.size())
+	var order := range(tris.size())
+	for i in range(order.size() - 1, 0, -1):
+		var j := rng.randi_range(0, i)
+		var tmp = order[i]
+		order[i] = order[j]
+		order[j] = tmp
+	var aim: Array = CORNERS_AIM[band]
 	var raw_panels: Array = []
 	var raw_colour: Array = []
-	for t in tris.size():
+	for t: int in order:
 		if used[t]:
 			continue
-		var tri: PackedInt32Array = tris[t]
-		var merged := false
-		for m in 3:
-			var a := tri[m]
-			var b := tri[(m + 1) % 3]
-			var c := tri[(m + 2) % 3]
-			var lst: PackedInt32Array = by_side[_key(a, b)]
-			for u in lst:
-				if u == t or used[u] or cols[u] != cols[t] or merged:
-					continue
-				var other: PackedInt32Array = tris[u]
-				var d := -1
-				for v in other:
-					if v != a and v != b:
-						d = v
-				# the shape a, d, b, c must turn the same way at every corner
-				var quad := PackedVector2Array([points[a], points[d], points[b], points[c]])
-				var convex := true
-				for q in 4:
-					if _area(quad[q], quad[(q + 1) % 4], quad[(q + 2) % 4]) <= 1.0e-6:
-						convex = false
-				if convex and rng.randf() < float(QUADS[band]):
-					raw_panels.append([a, d, b, c])
-					raw_colour.append(cols[t])
-					used[t] = 1
-					used[u] = 1
-					merged = true
-			if merged:
-				break
-		if not merged:
-			raw_panels.append([tri[0], tri[1], tri[2]])
-			raw_colour.append(cols[t])
-			used[t] = 1
+		used[t] = 1
+		var poly: Array = Array(tris[t])
+		var want := rng.randi_range(int(aim[0]), int(aim[1]))
+		var grew := true
+		while grew and poly.size() < want:
+			grew = false
+			var n := poly.size()
+			for m in n:
+				var a: int = poly[m]
+				var b: int = poly[(m + 1) % n]
+				for u in by_side.get(_key(a, b), PackedInt32Array()):
+					if used[u] or cols[u] != cols[t]:
+						continue
+					var other: PackedInt32Array = tris[u]
+					var d := -1
+					for v in other:
+						if v != a and v != b:
+							d = v
+					if d < 0 or poly.has(d):
+						continue
+					var next := poly.duplicate()
+					next.insert(m + 1, d)
+					if _convex(points, next):
+						poly = next
+						used[u] = 1
+						grew = true
+						break
+				if grew or poly.size() >= want:
+					break
+		raw_panels.append(poly)
+		raw_colour.append(cols[t])
 	_index(points, raw_panels, raw_colour)
+
+## Whether the corners of `poly` (indices into `points`, wound clockwise on
+## screen) turn the same way at every one, none on a straight line.
+func _convex(points: PackedVector2Array, poly: Array) -> bool:
+	var n := poly.size()
+	for q in n:
+		var a: Vector2 = points[poly[q]]
+		var b: Vector2 = points[poly[(q + 1) % n]]
+		var c: Vector2 = points[poly[(q + 2) % n]]
+		var turn := _area(a, b, c)
+		if turn <= 0.02 * (b - a).length() * (c - b).length():
+			return false
+	return true
 
 ## What a half's beads say: [its colour or -1, how many beads agree, how
 ## many were read].

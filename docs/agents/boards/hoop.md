@@ -256,3 +256,60 @@
   menu card (a low-poly heart in a hoop, the go button a ball of yarn).
 - Owed: a phone (pin size at ~65 px spacing on Insane; the snap is 24-46 px
   by spacing), the sounds heard, pt/es read, haptics felt.
+
+## 2026-10-15 evening: hold to thread, panels to 7 corners, the band is the picture
+
+The user, with a Hard board's screen (a knot of pins too close to tell
+apart, every panel a 3 or a 4): "User has to click and hold to connect
+dots, if touch is released the string breaks ... we should be able to
+handle up to 7 dots area. Difficulty should come from harder pictures,
+with way more complex shapes. So just like pixel garden easier level
+means simpler images". Built unattended ("do everything and when it's
+done push to main").
+
+- **Hold to thread.** The tap chain is gone (`_armed`, `_chain`,
+  `_press_pin`, `_put_down`): a press on a pin takes the thread up, a drag
+  lays it pin to pin, and the release breaks it off (a low `pick` and a
+  puff of yarn where the finger was, when it hung loose). A drag let go
+  short of a pin still takes it along a side (`_reached`). The tutorial's
+  TAP page is now HOLD (two sides laid, the finger runs on past the last
+  pin onto bare linen and lifts: `HTP_YH_HOLD_CAP`, `HTP_YH_BREAK_CAP`);
+  `YH_RULES_TAP` became `YH_RULES_HOLD`; the `HTP_YH_TAP*` rows went.
+- **The band is the picture** (`THEMED_SIDE` [24, 32, 48, 48],
+  `BANK_BAND` [2, 3, 3, 3]): Easy cuts the day's 24-side themed picture,
+  Medium the 32, Hard the 48, Insane the 48 again at the finest spacing
+  (the themed 32, then the bank's 32, where no 48 is cached). The 10- and
+  12-side pictures were tried for Easy and dropped: they are drawn in
+  one-square strokes (the ladybird's grass, spots and petals), and no
+  spacing a finger can take keeps them. No panel count is aimed at now:
+  the tolerance is in the picture's squares (`TOLERANCE` 0.6-0.8), the
+  spacing a share of the drawing's side (`SPACING` 0.09, 0.075, 0.066,
+  0.042, never under `SPACING_MIN` 1.15 squares), triangles over
+  `SPLIT_AREA` spacings squared are split, and the count is what the
+  drawing makes. `FINE`, `OVER`, `PANELS`, `QUADS` and the coarsening
+  loop are gone.
+- **No pin crowds another.** The knot on the user's Hard board came from
+  the cut's first try at half the spacing and from the conforming
+  midpoints (a pin a quarter spacing from another); now the conform puts
+  no midpoint within 0.75 of the spacing of a pin, and lets that edge go.
+- **Panels of 3 to 7 corners** (`_merge`, was `_quads`): from each
+  triangle in an order the rng draws, a panel grows across its sides
+  over neighbours of its colour while it stays convex (no corner on a
+  straight line: `_convex`), toward a size drawn from `CORNERS_AIM`.
+  Numerals 5, 6 and 7 are stroked like the 3 and 4 (`_glyph`).
+- **Two-tone shading joins before the dissolve** (`_join_families`,
+  `FAMILY` 0.3 in RGB): a thin region and the touching regions of a near
+  colour become one region of the biggest one's colour, so a grass of two
+  greens stays a shape instead of dissolving square by square.
+- Measured (a throwaway cut report over the bank and the Mac's three
+  cached days, minimum pin distance at 810 wide, whole view): Easy 23-40
+  panels, pins 48-79 px apart at the least; Medium 23-50, 35-62 px; Hard
+  41-61, 30-43 px (the screenshot's knot was ~10 px); Insane 94-141, 18-24
+  px (played through the zoom). Corners 3-7 on every band. Cut 7-41 ms.
+  `_probe_hoop.gd` solves every band; `_shot_hoop.gd` on `opengl3_angle`:
+  Hard rest 85 draw calls, close 92 peak, tutorial 111.
+- `YH_LVL_*` say the picture and about how many panels (30, 40, 50,
+  120); `YH_RULES` says 3 to 7 corners; `YH_RULES_INSANE` about 120.
+- Unconfirmed: the user's verdict, the shares above, the break's sound
+  (a low `pick`, no new take), the HOLD page seen moving, pt/es read on a
+  phone. The `day_dict` metric `quads` is now `corners_3_to_7`.

@@ -7,8 +7,9 @@ extends "res://core/puzzle_base.gd"
 ##
 ## A `bleed` board (ui/flat/flat_host.gd): a sewing table is the whole
 ## screen, the hoop on it as big as the room between the pill and the foot
-## allows, the picture inside it. One drag can go on from pin to pin, and
-## the panels it closes on the way are a combo: the bubble counts them and
+## allows, the picture inside it. A thread is laid only while the finger
+## is held down, and breaks when it is let go. One drag can go on from pin
+## to pin, and the panels it closes on the way are a combo: the bubble counts them and
 ## each one climbs a step.
 ##
 ## Drawn as `_bg` (the table), `_hoop` (the ring and its linen) and
@@ -53,9 +54,9 @@ const SNAP_SHARE := 0.45
 ## past the snap, a finger still takes the nearest pin out to REACH (a share
 ## of the shortest side, within the bound) when that pin is clearly the
 ## nearest, REACH_CLEAR times nearer than the next; a halo on it says so
-## while the finger is down. With a thread in hand only the pins a side
-## joins to the pin held compete (`_target_at`), the nearest within the
-## reach taken outright (the user, 2026-10-15: players "have to click
+## while the finger is down. A drag let go short of a pin: only the pins a
+## side joins to the pin held compete (`_target_at`), the nearest within
+## the reach taken outright (the user, 2026-10-15: players "have to click
 ## exactly on the dot to connect after clicking on the start point").
 const REACH_SHARE := 0.8
 const REACH_MAX := 78.0
@@ -113,9 +114,11 @@ const MARK_H := Vector2(3.5, 5.5)
 const MARK_W := 0.17
 const MARK_STROKE := 0.8
 const MARK_ROOM := 0.9
-## The two numerals a panel can need, as strokes in a box a unit tall:
-## a 4 is a stem and a bent arm, a 3 two bows.
+## The numerals a panel can need (3 to 7 corners), as strokes in a box a
+## unit tall: a 4 is a stem and a bent arm, a 7 a bar and a slope; the 3,
+## 5 and 6 have bows (`_glyph`).
 const GLYPH_FOUR := [[Vector2(0.62, 0.0), Vector2(0.62, 1.0)], [Vector2(0.62, 0.0), Vector2(0.0, 0.66), Vector2(0.78, 0.66)]]
+const GLYPH_SEVEN := [[Vector2(0.02, 0.0), Vector2(0.72, 0.0), Vector2(0.26, 1.0)]]
 ## The zoom: the round button's size and inset at the foot's left, how wide
 ## the shortest side between two pins comes to seen close, and the farthest
 ## the fingers may go.
@@ -263,10 +266,6 @@ var _shiver_at := {}
 
 # the hand
 var _cur := -1
-var _armed := -1
-## The thread is in hand by taps (a chain): it stays in hand pin to pin.
-var _chain := false
-var _press_pin := -1
 var _moved := false
 var _finger := Vector2(-1.0, -1.0)
 var _refused := -1
@@ -293,7 +292,7 @@ func title() -> String: return "Yarn Hoop"
 func rules() -> String:
 	var out := tr("YH_RULES")
 	out += "\n\n" + tr("YH_RULES_COMBO")
-	out += "\n\n" + tr("YH_RULES_TAP")
+	out += "\n\n" + tr("YH_RULES_HOLD")
 	if state.band >= State.INSANE:
 		out += "\n\n" + tr("YH_RULES_INSANE")
 	out += "\n\n" + tr("YH_RULES_ZOOM")
@@ -309,7 +308,7 @@ func tutorial_pages() -> Array:
 		[Diagram.Lesson.THREAD, "HTP_YH_THREAD", tr("HTP_YH_THREAD_BODY")],
 		[Diagram.Lesson.FILL, "HTP_YH_FILL", tr("HTP_YH_FILL_BODY")],
 		[Diagram.Lesson.COMBO, "HTP_YH_COMBO", tr("HTP_YH_COMBO_BODY")],
-		[Diagram.Lesson.TAP, "HTP_YH_TAP", tr("HTP_YH_TAP_BODY")]]
+		[Diagram.Lesson.HOLD, "HTP_YH_HOLD", tr("HTP_YH_HOLD_BODY")]]
 	if hints > 0:
 		steps.append([Diagram.Lesson.HINT, "HTP_YH_HINT",
 			tr("HTP_YH_HINT_BODY_ONE") if hints == 1 else tr("HTP_YH_HINT_BODY_N") % hints])
@@ -376,11 +375,10 @@ func day_dict() -> Dictionary:
 	for p in state.pins:
 		pins.append([snappedf(p.x, 0.01), snappedf(p.y, 0.01)])
 	var panels: Array = []
-	var quads := 0
+	var corners := [0, 0, 0, 0, 0]
 	for k in state.panels.size():
 		panels.append([state.colour[k], Array(state.panels[k])])
-		if (state.panels[k] as PackedInt32Array).size() == 4:
-			quads += 1
+		corners[clampi((state.panels[k] as PackedInt32Array).size() - 3, 0, 4)] += 1
 	var doubles := 0
 	for sp in state.side_panels:
 		if (sp as PackedInt32Array).size() == 2:
@@ -390,7 +388,7 @@ func day_dict() -> Dictionary:
 		"payload": {"picture": state.name_key, "w": state.w, "h": state.h, "colours": Array(state.colours),
 			"pins": pins, "panels": panels},
 		"solution": {"sides": state.sides.size()},
-		"metrics": {"panels": state.panels.size(), "quads": quads, "pins": state.pins.size(),
+		"metrics": {"panels": state.panels.size(), "corners_3_to_7": corners, "pins": state.pins.size(),
 			"sides": state.sides.size(), "shared_sides": doubles, "colours": state.colours.size(),
 			"hints": State.hints_for(state.band)},
 	}
@@ -408,9 +406,6 @@ func _begin() -> void:
 
 func _deal() -> void:
 	_cur = -1
-	_armed = -1
-	_chain = false
-	_press_pin = -1
 	_refused = -1
 	_stroke = 0
 	_combo_n = 0
@@ -807,25 +802,40 @@ func _mark_into(b, k: int) -> void:
 		room = minf(room, Geometry2D.get_closest_point_to_segment(c, outline[m], outline[(m + 1) % n]).distance_to(c))
 	var tall := clampf(room * MARK_ROOM, MARK_H.x, MARK_H.y)
 	var wide := maxf(MARK_STROKE / _built_k, tall * MARK_W)
-	var strokes: Array = []
+	var strokes := _glyph(n)
+	if strokes.is_empty():
+		for p in outline:
+			b.disc(c + (p - c).normalized() * tall * 0.45, 3.0, MARK)
+		return
+	for stroke: Array in strokes:
+		var pts := PackedVector2Array()
+		for q: Vector2 in stroke:
+			pts.append(c + (q - Vector2(0.36, 0.5)) * tall)
+		b.stroke(pts, wide, MARK)
+
+## Numeral `n` as strokes in a box a unit tall, about (0.36, 0.5); [] for
+## a count no panel is cut with.
+static func _glyph(n: int) -> Array:
 	match n:
 		3:
 			# two bows, the top one a little smaller, open to the left
 			var r := 0.26
 			var top := Face.Builder.arc_points(Vector2(0.36, r), r, PI * 1.15, PI * 2.5)
 			var low := Face.Builder.arc_points(Vector2(0.36, 1.0 - r), r, PI * 1.5, PI * 2.85)
-			strokes = [Array(top), Array(low)]
+			return [Array(top), Array(low)]
 		4:
-			strokes = GLYPH_FOUR
-		_:
-			for p in outline:
-				b.disc(c + (p - c).normalized() * tall * 0.45, 3.0, MARK)
-			return
-	for stroke: Array in strokes:
-		var pts := PackedVector2Array()
-		for q: Vector2 in stroke:
-			pts.append(c + (q - Vector2(0.36, 0.5)) * tall)
-		b.stroke(pts, wide, MARK)
+			return GLYPH_FOUR
+		5:
+			# a flag, a short stem and a bow open to the left
+			var bow := Face.Builder.arc_points(Vector2(0.34, 0.65), 0.33, PI * 1.2, PI * 2.8)
+			return [[Vector2(0.66, 0.0), Vector2(0.1, 0.0), Vector2(0.07, 0.46)], Array(bow)]
+		6:
+			# a sweep down the left into a closed loop
+			var loop := Face.Builder.arc_points(Vector2(0.36, 0.69), 0.3, 0.0, TAU)
+			return [[Vector2(0.62, 0.02), Vector2(0.3, 0.12), Vector2(0.11, 0.4), Vector2(0.06, 0.69)], Array(loop)]
+		7:
+			return GLYPH_SEVEN
+	return []
 
 ## Where a panel's mark sits: the panel's centre of area (the user,
 ## 2026-10-14: "the number should always stay at the center of the region
@@ -1067,7 +1077,7 @@ func _moving_meshes(now: float, since: float) -> Array:
 		var at := _px[v] + Vector2(Motion.shiver_offset(e, 4.0), 0.0)
 		b.stroke(Face.Builder.arc_points(at, _pin_r + 6.0, 0.0, TAU), 3.0, Color(Pal.BAD, 1.0 - e / (Motion.SHIVER_TIME * 2.0)), true)
 	# the thread in hand, sagging a little from its pin to the finger
-	var from := _cur if _cur >= 0 else _armed
+	var from := _cur
 	if from >= 0 and _can_play():
 		var a := _px[from]
 		b.stroke(Face.Builder.arc_points(a, _pin_r + 7.0, 0.0, TAU), 3.0, Color(YARN, 0.8), true)
@@ -1244,9 +1254,11 @@ func _tell(text: String) -> void:
 ## fingers pinch and pan, the wheel zooms on a desk, and a gesture that
 ## begins takes the thread in hand with it. Then a press on a pin takes the
 ## thread up; a drag lays it to every pin it passes that shares a side with
-## the one in hand; the release puts it down. A press and release on one pin
-## with no drag holds it, and a press on another lays the thread between the
-## two. A press on bare linen seen close, dragged, looks round.
+## the one in hand; let go, and the thread breaks off there (the user,
+## 2026-10-15: "user has to click and hold to connect dots, if touch is
+## released the string breaks"; a tap had held the thread and taps laid
+## it on, pin to pin, since 2026-10-14). A press on bare linen seen close,
+## dragged, looks round.
 func _gui_input(event: InputEvent) -> void:
 	if zoom.enabled:
 		var took := zoom.feed(event)
@@ -1254,8 +1266,6 @@ func _gui_input(event: InputEvent) -> void:
 			if took == PanZoom.BEGAN:
 				_end_stroke()
 				_cur = -1
-				_armed = -1
-				_press_pin = -1
 				_finger = Vector2(-1.0, -1.0)
 				_pan_last = Vector2(-1.0, -1.0)
 			_request()
@@ -1306,45 +1316,25 @@ func pin_at(at: Vector2, but := -1, reach := false, within := -1.0) -> int:
 func press(at: Vector2) -> void:
 	if not _can_play():
 		return
-	# a pin under the finger is the pin meant, refused or not; off every
-	# pin, with a thread in hand, the nearest the thread can go to along
-	# a side (the user, 2026-10-15: "players are complaining it's hard to
-	# play because they have to click exactly on the dot to connect after
-	# clicking on the start point"); with none in hand, the magnet's pick
+	# a pin under the finger is the pin meant; off every pin, the magnet's
+	# pick
 	var v := pin_at(at, -1, false)
 	if v < 0:
-		v = _target_at(at, _armed) if _armed >= 0 else pin_at(at, -1, true)
+		v = pin_at(at, -1, true)
 	_finger = zoom.to_layout(at)
 	_moved = false
-	_press_pin = v
 	_pan_last = Vector2(-1.0, -1.0)
 	if v < 0:
-		# bare linen: a thread held is put down; seen close, a drag pans
-		if _armed >= 0:
-			_put_down()
+		# bare linen: seen close, a drag pans
 		if zoom.zoomed():
 			_pan_last = at
 		_request()
 		return
 	_refused = -1
-	if _armed >= 0 and _armed == v:
-		# a tap on the pin held: the thread is put down
-		_put_down()
-	elif _armed >= 0:
-		# a tap with the thread held: it goes on from the pin held to this
-		# one and stays in hand there (the chain); refused, it is put down
-		_cur = _armed
-		_armed = -1
-		_chain = true
-		_step(v)
-		if _refused == v:
-			_put_down()
-	else:
-		_stroke = 0
-		_stroke_threads = 0
-		_chain = false
-		_cur = v
-		fx.cue("pick", randf_range(0.94, 1.06))
+	_stroke = 0
+	_stroke_threads = 0
+	_cur = v
+	fx.cue("pick", randf_range(0.94, 1.06))
 	_request()
 
 ## The pin a finger at `at` (screen) would take with the thread in hand,
@@ -1382,15 +1372,6 @@ func _target_at(at: Vector2, from: int) -> int:
 			best = v
 	return best
 
-## The thread in hand is put down: its combo ends.
-func _put_down() -> void:
-	_end_stroke()
-	_armed = -1
-	_cur = -1
-	_chain = false
-	_finger = Vector2(-1.0, -1.0)
-	fx.cue("pick", 0.82)
-
 func drag(at: Vector2) -> void:
 	if _pan_last.x >= 0.0:
 		zoom.pan_by(at - _pan_last)
@@ -1419,23 +1400,24 @@ func drag(at: Vector2) -> void:
 		_moved = true
 	_request()
 
-## Let go: a drag puts the thread down, its combo counted; a tap on a pin
-## with nothing in hand takes the thread up, and a chain keeps it.
+## Let go: a drag let go near a pin the thread could reach along a side
+## takes it, then the thread breaks off (a snip and a puff of yarn where
+## the finger was, when it hung loose) and its combo is counted.
 func release(at: Vector2) -> void:
 	_pan_last = Vector2(-1.0, -1.0)
 	if _cur < 0:
 		return
-	# let go near a pin the thread could reach along a side: it is taken
 	if _moved and _can_play():
 		var v := _reached(at)
 		if v >= 0:
 			_step(v)
-	var tapped := not _moved and _stroke_threads == 0 and _cur == _press_pin
-	var keep := (tapped or _chain) and _can_play()
-	if not keep:
-		_end_stroke()
-		_chain = false
-	_armed = _cur if keep else -1
+	if _cur >= 0 and _can_play():
+		var lp := zoom.to_layout(at)
+		if lp.distance_to(_px[_cur]) > _snap / zoom.k:
+			fx.cue("pick", 0.72)
+			if not Motion.reduce:
+				fx.puff(_at(lp), YARN_HI, 4)
+	_end_stroke()
 	_cur = -1
 	_finger = Vector2(-1.0, -1.0)
 	_request()
@@ -1648,7 +1630,6 @@ func _on_solved() -> void:
 	var now := _now()
 	_end_stroke()
 	_cur = -1
-	_armed = -1
 	_toast = ""
 	_solved_at = now
 	_final_refused = state.refused
