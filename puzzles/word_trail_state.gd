@@ -157,23 +157,46 @@ func _write(rng: RandomNumberGenerator, paths: Array, themed: Dictionary = {}) -
 	var bank := word_bank()
 	var built: Array[Dictionary] = []
 	var taken := {}
+	# A day never shows a word on two of its bands (the user, 2026-10-15:
+	# "there is a lot of repeated words accross difficulty ... let's make
+	# sure to generate unique words for each difficulty"). Each band builds
+	# alone, so they are kept apart by rule: a band's random words are the
+	# bucket's every fourth from its own (BANDS.size() bands), never one of
+	# the theme's, and a band's themed words of a length start after the
+	# ones the bands below it take (one a path of that length, BANDS).
+	var theme_all := {}
+	for l in themed:
+		for w in (themed[l] if themed[l] is Array else []):
+			theme_all[w] = true
+	var below := {}
+	for b in band:
+		for l in BANDS[b]:
+			below[str(l)] = int(below.get(str(l), 0)) + 1
 	for path in paths:
-		var bucket: Array = bank.get(str(path.size()), [])
+		var l := str(path.size())
+		var bucket: Array = bank.get(l, [])
 		var word: String = "?".repeat(path.size())
 		if not bucket.is_empty():
+			var pool: Array = []
+			for k in range(band, bucket.size(), BANDS.size()):
+				if not theme_all.has(bucket[k]):
+					pool.append(bucket[k])
 			# A day never writes the same word twice: the two larger bands
 			# repeat a length on purpose, so two paths draw from one bucket.
-			# The shallowest bucket is 108 deep and at most two paths share a
-			# length, so eight tries is overwhelming.
-			for tries in 8:
-				word = str(bucket[rng.randi_range(0, bucket.size() - 1)])
+			# The shallowest pool is 19 deep (Spanish threes) and at most four
+			# paths share a length, so it is drawn until it is new.
+			for tries in 32:
+				word = str(pool[rng.randi_range(0, pool.size() - 1)])
 				if not taken.has(word):
 					break
 			# Drawn first all the same, so a day's grid and its other words
 			# are the ones it deals with no theme.
-			var mine = themed.get(str(path.size()), [])
-			for w in (mine if mine is Array else []):
-				if w is String and bucket.has(w) and not taken.has(w):
+			var mine: Array = []
+			for w in (themed.get(l, []) if themed.get(l, []) is Array else []):
+				if w is String and bucket.has(w):
+					mine.append(w)
+			for w in mine.slice(int(below.get(l, 0))):
+				if not taken.has(w):
 					word = w
 					break
 		taken[word] = true

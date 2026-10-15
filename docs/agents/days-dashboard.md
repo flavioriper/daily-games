@@ -447,7 +447,8 @@ the days' files as `quizzes`, on Themed days.
 **Decided for the user, unconfirmed**: Hidden Word's Easy may deal any
 answer of the list on a themed day, not only Easy's 217 (the theme gives
 it away); Word Trail takes themed words on every band, Insane too, as many
-as there are lengths; the word picks have no second model reading them
+as there are lengths (overruled 2026-10-15: no themed word on two bands of a
+day, each band after the ones below it, `docs/agents/boards/word-trail.md`); the word picks have no second model reading them
 (the lists are the board's own, already fit to deal); Golden Acorn three a
 band asked, Pearl Dive two a level, One Breath seldom any; the theme's name
 is still shown nowhere.

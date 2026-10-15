@@ -133,3 +133,13 @@ vertically so the crown stays under the grid.
   `docs/agents/days-dashboard.md`): Easy's daily takes the first of
   `ThemedPictures.words(daily_key, "hiddenword")` its answer list holds as
   spelt, any band of the list; Medium up, New and Snail Mail as before.
+- **No word on two bands of a day** (2026-10-15, the user, of the word
+  games: "make sure to generate unique words for each difficulty"). The
+  bands are nested slices of one list (217 / 467 / 968), so two bands of a
+  day could meet (2 days in a year measured). `State.deal` draws as before
+  and steps on to the band's next word past any of `avoid`; the board's
+  `_day_words` deals Insane's banked word and the bands below from their
+  own daily seeds, so Easy keeps clear of Insane's, Medium of both, Hard of
+  all three. A day that met nothing deals as it did. A year measured: 0.
+  The nested slices themselves stay (a Medium word may be an Easy word of
+  another day).

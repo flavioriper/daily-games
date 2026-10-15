@@ -606,6 +606,23 @@ func _ready() -> void:
 	add_child(fx)
 	resized.connect(_layout)
 
+## The words the day's other bands deal, for band `difficulty` to keep
+## clear of: Insane's out of the bank, then Easy up to the band below this
+## one, each dealt from its own daily seed clear of the ones before it.
+## The bands above this one keep clear of it in their turn.
+func _day_words(difficulty: int) -> Array:
+	var out: Array = []
+	if difficulty < 3:
+		var insane := String(InsaneBank.pick(puzzle_id(), 0).get("answer", ""))
+		if not insane.is_empty():
+			out.append(insane)
+	var dt := {"year": daily_key / 10000, "month": daily_key / 100 % 100, "day": daily_key % 100}
+	for b in mini(difficulty, 3):
+		var r := Daily.rng(puzzle_id(), b, dt)
+		var themed: Array = ThemedPictures.words(daily_key, puzzle_id()) if b == 0 else []
+		out.append(State.deal(r, b, themed, out.duplicate()))
+	return out
+
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	# Insane's word comes out of the Snail Mail bank (content/insane/
 	# hiddenword.json, the words the delayed colours make hardest, graded by
@@ -615,7 +632,8 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 		banked = String(InsaneBank.pick(puzzle_id(), bank_step).get("answer", ""))
 	# Easy's daily takes the day's theme's word when this phone holds one.
 	var themed: Array = ThemedPictures.words(daily_key, puzzle_id()) if difficulty == 0 and bank_step == 0 else []
-	state.setup(rng, difficulty, banked, themed)
+	var avoid: Array = _day_words(difficulty) if bank_step == 0 and daily_key != 0 else []
+	state.setup(rng, difficulty, banked, themed, avoid)
 	state.seen = 0
 	_gen += 1
 	if _tray != null:

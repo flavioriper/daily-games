@@ -124,7 +124,9 @@ static func _load() -> void:
 ## (ThemedPictures.words): the first the list holds, as it spells it, is the
 ## word. The board hands them to Easy's daily alone -- a theme known gives a
 ## harder answer away -- and any word of the list is fair there.
-func setup(rng: RandomNumberGenerator, difficulty: int, banked := "", themed: Array = []) -> void:
+## `avoid` is the words the day's other bands deal (the board's
+## `_day_words`): none of them is this band's.
+func setup(rng: RandomNumberGenerator, difficulty: int, banked := "", themed: Array = [], avoid: Array = []) -> void:
 	_load()
 	rows = []
 	marks = []
@@ -139,17 +141,32 @@ func setup(rng: RandomNumberGenerator, difficulty: int, banked := "", themed: Ar
 	keeps_rows = difficulty >= 3
 	strict = difficulty >= 2
 	snail = difficulty >= 3
-	var band := int(_bands[clampi(difficulty, 0, _bands.size() - 1)]) if not _bands.is_empty() else _answers.size()
-	written = String(_answers[rng.randi() % maxi(band, 1)]) if not _answers.is_empty() else "mossy"
-	for w in themed:
-		if w is String and _answers.has(w):
-			written = w
-			break
+	written = deal(rng, difficulty, themed, avoid)
 	if not banked.is_empty():
 		written = banked
 	answer = Locale.fold(written)
 	# A banked word has to be one the board would never refuse.
 	_accept[answer] = true
+
+## The word a band deals off the list's bands: one draw, the themed first
+## its list holds, and past any of `avoid` to the next of the band (the
+## user, 2026-10-15: "let's make sure to generate unique words for each
+## difficulty"), so a day that meets none deals as it always did.
+static func deal(rng: RandomNumberGenerator, difficulty: int, themed: Array = [], avoid: Array = []) -> String:
+	_load()
+	var band := int(_bands[clampi(difficulty, 0, _bands.size() - 1)]) if not _bands.is_empty() else _answers.size()
+	band = clampi(band, 1, maxi(_answers.size(), 1))
+	var at := rng.randi() % band
+	if _answers.is_empty():
+		return "mossy"
+	for w in themed:
+		if w is String and _answers.has(w) and not avoid.has(w):
+			return w
+	for k in band:
+		var w := String(_answers[(at + k) % band])
+		if not avoid.has(w):
+			return w
+	return String(_answers[at])
 
 ## The out-of-rows card's one more row, once a word.
 func add_row() -> bool:

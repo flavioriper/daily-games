@@ -96,3 +96,20 @@ rounded turf plate is gone: it tells the world its ground line
   first unused word of its length out of `ThemedPictures.words(daily_key,
   "wordtrail")` that its bucket holds, drawn after the random pick so the
   grid and the other words are the day's as without a theme.
+- **No word on two bands of a day** (2026-10-15, the user: "there is a lot
+  of repeated words accross difficulty, when generating the words let's
+  make sure to generate unique words for each difficulty"). The themed
+  words were taken first-unused on every band, so the picnic day (20261014)
+  dealt cup, cake, candy and basket on Easy, Medium and Hard alike; and with
+  no theme a year of days repeated 42 words between bands (the eights of
+  Hard and Insane). `_write` now keeps the bands apart by rule, each still
+  built alone from its own seed: a band's random words are its own fourth
+  of the bucket (index % 4 == band), never one of the theme's, and its
+  themed words of a length start after the ones the bands below take (one
+  a path of that length, `BANDS`). Measured: the picnic day deals cup cake
+  candy basket / mug bread picnic cupcake / grape teapot / none themed; a
+  year unthemed repeats 0. Every day's deal changed (the random words come
+  from a quarter of the bucket). The theme's lists are three a length, so
+  Hard sees few themed words and Insane mostly none: the server's ask
+  (`words.ts`) would need more a length to feed every band, which is a
+  `publishDay` deploy and the user's to run.
