@@ -984,14 +984,10 @@ func _tap(i: int) -> void:
 				_land_flight(_now())
 				break
 		var src: Array = _state.pegs[i]
-		var under := src.size() - Gen.run(src) - 1
-		var uncovers := under >= 0 and Gen.hidden(int(src[under]))
 		if _state.lift(i):
 			_held_at = _now()
-			fx.cue("lift", randf_range(0.94, 1.06))
-			if uncovers:
-				_reveal_at[i] = _now() + (0.0 if Motion.reduce else RISE_TIME * 0.5)
-				_after(RISE_TIME * 0.5, fx.cue.bind("tumble"))
+			_pops(_state.held.size(), 0.0, "lift")
+			_turn_over(i, RISE_TIME * 0.5)
 			_say(tr("RG_HELD") if _state.held.size() == 1 else tr("RG_HELD_RUN") % _state.held.size(), Face.Expr.HAPPY)
 		elif src.is_empty():
 			_shake_at[i] = _now()
@@ -1035,22 +1031,32 @@ func _tap(i: int) -> void:
 			_fly(codes.slice(codes.size() - k), from, i, slot, -1, _now(), true, turn)
 			_by_hand = false
 			if not stay.is_empty():
+				# From where they hung in the hand, under the rings that left.
+				var hand := _held_yt(float(_station(from)["ground"]), RING_W) + float(k) * PITCH * RING_W
 				_fly(stay, from, from, (_state.pegs[from] as Array).size() - stay.size(), -1, _now(), false,
-					turn, true)
+					turn, true, hand)
 			note_move()
 			_on_dropped(i, onto)
 			_spend(1, _now() + (0.0 if Motion.reduce else ARC_TIME + THREAD_TIME))
 	_refresh()
 
-## A run of `n` pops, a ring a step, from `lead` seconds on: the sound rides
-## the rings down the post.
-func _pops(n: int, lead: float) -> void:
+## A run of `n` pops of `cue`, a ring a step, from `lead` seconds on: the
+## sound rides the rings up or down the post.
+func _pops(n: int, lead: float, cue := "drop") -> void:
 	var gen := _gen
 	for q in n:
 		var at := 0.0 if Motion.reduce else lead + float(q) * BUMP_STEP * 2.0
 		_after(at, func() -> void:
 			if gen == _gen:
-				fx.cue("drop", randf_range(0.94, 1.06) * pow(2.0, float(q) / 12.0)))
+				fx.cue(cue, randf_range(0.94, 1.06) * pow(2.0, float(q) / 12.0)))
+
+## Peg `i`'s new top turns over `after` seconds on, when the lift that
+## uncovered it (a tap's or a hint's) turned a face-down ring up.
+func _turn_over(i: int, after: float) -> void:
+	if not _state.turned_up:
+		return
+	_reveal_at[i] = _now() + (0.0 if Motion.reduce else after)
+	_after(0.0 if Motion.reduce else after, fx.cue.bind("tumble"))
 
 ## `cost` moves go off Insane's counter. The last one gone with the pegs
 ## unsorted ends the board once the ring has landed (`land`).
@@ -1083,7 +1089,7 @@ func _spend(cost: int, land: float) -> void:
 ## turning); the flight whirls them on to the next half turn but one, so they
 ## land with an emblem square to the front.
 func _fly(codes: Array, from: int, to: int, slot: int, from_slot: int, at: float, settle: bool,
-		turn := 0.0, also := false) -> void:
+		turn := 0.0, also := false, from_yt := INF) -> void:
 	if not also:
 		_land_flight(at)
 	if Motion.reduce:
@@ -1097,7 +1103,8 @@ func _fly(codes: Array, from: int, to: int, slot: int, from_slot: int, at: float
 	if from != to:
 		turn_to += PI
 	_flights.append({"codes": codes, "from": from, "to": to, "slot": slot, "from_slot": from_slot,
-		"at": at, "dur": dur, "settle": settle, "turn": turn, "turn_to": turn_to, "hand": _by_hand})
+		"at": at, "dur": dur, "settle": settle, "turn": turn, "turn_to": turn_to, "hand": _by_hand,
+		"from_yt": from_yt})
 
 ## Resolves every flight in the air right now, as if it had just landed at
 ## `at`. A no-op when nothing is flying.
@@ -1264,6 +1271,7 @@ func hint() -> bool:
 		return false
 	hints_used += 1
 	fx.cue("hint")
+	_turn_over(m.x, RISE_TIME)
 	var dst: Array = _state.pegs[m.y]
 	var slot := dst.size() - m.z
 	_fly(dst.slice(slot), m.x, m.y, slot, (_state.pegs[m.x] as Array).size(), _now(), true)
@@ -2194,8 +2202,10 @@ static func _landing_mark(b, cx: float, y: float, map: Callable) -> void:
 ## Where the top ring of a flying stack of `n` is `e` seconds into a flight:
 ## {x, yt, tilt, peg, u} -- `peg` the post it is on (rising off or threading
 ## down), or -1 while it is in the air, and `u` how far down the thread it
-## is. `slot` and `from_slot` are the lowest ring's.
-func _leg_pose(from: int, to: int, slot: int, from_slot: int, n: int, dur: float, e: float) -> Dictionary:
+## is. `slot` and `from_slot` are the lowest ring's; `from_yt`, when given,
+## is where a stack going home down its own post starts (a drop's leftovers).
+func _leg_pose(from: int, to: int, slot: int, from_slot: int, n: int, dur: float, e: float,
+		from_yt := INF) -> Dictionary:
 	var a := _station(from)
 	var d := _station(to)
 	var ya := _held_yt(float(a["ground"]), RING_W)
@@ -2203,7 +2213,8 @@ func _leg_pose(from: int, to: int, slot: int, from_slot: int, n: int, dur: float
 	var y_land := _ring_yt(float(d["ground"]), RING_W, slot + n - 1)
 	if from == to:
 		var u0 := clampf(e / dur, 0.0, 1.0)
-		return {"x": float(d["cx"]), "yt": lerpf(yd, y_land, u0 * u0), "tilt": 0.0, "peg": to, "u": u0}
+		var y0 := yd if from_yt == INF else from_yt
+		return {"x": float(d["cx"]), "yt": lerpf(y0, y_land, u0 * u0), "tilt": 0.0, "peg": to, "u": u0}
 	if from_slot >= 0:
 		if e < RISE_TIME:
 			var u := e / RISE_TIME
@@ -2225,7 +2236,7 @@ func _leg_pose(from: int, to: int, slot: int, from_slot: int, n: int, dur: float
 func _build_flight(f: Dictionary, t: float) -> void:
 	var codes: Array = f["codes"]
 	var p := _leg_pose(int(f["from"]), int(f["to"]), int(f["slot"]), int(f["from_slot"]), codes.size(),
-		float(f["dur"]), t - float(f["at"]))
+		float(f["dur"]), t - float(f["at"]), float(f.get("from_yt", INF)))
 	var peg: int = p["peg"]
 	if peg < 0:
 		var d := _station(int(f["to"]))

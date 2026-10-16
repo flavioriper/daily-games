@@ -63,6 +63,8 @@ var hints_used := 0
 ## Hints given on top of HINTS (a rewarded video's, core/ads.gd).
 var hints_extra := 0
 var difficulty := 0
+## Whether the last lift turned a face-down ring up (the board turns it over).
+var turned_up := false
 ## Kept for the board's dormant hearts: no band judges.
 var judged := false
 var undo_allowed := true
@@ -141,6 +143,7 @@ func lift(i: int) -> bool:
 	held_from = i
 	held = src.slice(src.size() - n)
 	src.resize(src.size() - n)
+	turned_up = not src.is_empty() and Gen.hidden(int(src.back()))
 	_turn_up(i)
 	return true
 
