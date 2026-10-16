@@ -7,22 +7,18 @@ extends Control
 ## board's own input path (a press on a peg, the release), over a caption
 ## that says what it means. So a ring slides up its post and turns in the
 ## hand, a drop on another colour is refused with a shiver, a drop flies and
-## threads down its post, a full peg glints and wears its daisy, a dead end
-## wobbles and hops home for a heart, and a two-tone ring somersaults as it
-## lifts, exactly as on the board. `lesson` picks the page (set before it
-## enters the tree):
+## threads down its post, a full peg glints and wears its daisy, and a
+## face-down ring turns over when it comes to the top, exactly as on the
+## board. `lesson` picks the page (set before it enters the tree):
 ##
-## - LIFT: a ring lifted, refused on another colour, set down on an empty peg.
-## - SORT: a ring onto its own colour fills a peg, which locks; the last ring
+## - LIFT: a run of two lifted together, refused on another colour, set down
+##   on an empty peg.
+## - SORT: a run onto its own colour fills a peg, which locks; the last run
 ##   home and the solve wave.
-## - HEARTS (Hard, Insane): the only empty peg spent on the wrong ring is a
-##   dead end -- it wobbles, a heart splits, it hops back -- and the ring
-##   that belongs there goes instead.
-## - TUMBLE (Insane): a two-tone ring turns over as it lifts and lands as the
-##   colour it shows, locking the peg.
-## - UNDO: Undo takes a drop back; Reset puts every ring back (Reset alone on
-##   Insane, which has no Undo).
+## - HIDDEN (Insane): a ring lifted off a face-down one turns it face up.
+## - UNDO: Undo takes a drop back; Reset puts every ring back.
 ## - HINT: the bulb plays a move.
+## (The hearts lesson went with the doomed drop on 2026-10-16.)
 ##
 ## The board checkup, 2026-10-02: Rings had only the shared one-page card.
 
@@ -30,7 +26,7 @@ const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const Face = preload("res://ui/faces/face.gd")
 
-enum Lesson { LIFT, SORT, HEARTS, TUMBLE, UNDO, HINT }
+enum Lesson { LIFT, SORT, HIDDEN, UNDO, HINT }
 
 ## The finger: a soft disc and a ring, pressed smaller while it is down.
 const FINGER_R := 20.0
@@ -38,15 +34,10 @@ const FINGER_ALPHA := 0.16
 const CAPTION_H := 92.0
 
 ## The lessons' pegs, bottom ring first, two colours (0 the berry heart, 1
-## the sun sprout). A Tumble ring is `top | (under + 1) << 3`: 9 shows the
-## sun over a berry band, 16 the berry over a sun band.
-const LIFT_PEGS := [[1, 1, 1, 0], [0, 0, 0, 1], []]
-const SORT_PEGS := [[1, 1, 1, 0], [0, 0, 0], [1]]
-## Searched for (every three-peg deal of two colours): the empty peg spent on
-## the middle peg's sun leaves no way to sort them; the left peg's berry
-## there is the way on.
-const DOOM_PEGS := [[1, 1, 0, 0], [0, 1, 0, 1], []]
-const TUMBLE_PEGS := [[0, 0, 0], [1, 1, 9], [1, 16]]
+## the sun sprout); 8 over a colour is a face-down ring.
+const LIFT_PEGS := [[1, 1, 0, 0], [0, 0, 1, 1], []]
+const SORT_PEGS := [[1, 1, 0, 0], [0, 0], [1, 1]]
+const HIDDEN_PEGS := [[9, 8, 1], [8, 9, 0], []]
 
 var lesson: int = Lesson.LIFT
 ## The band the board behind the page is on.
@@ -86,10 +77,6 @@ class Yard extends "res://puzzles/rings2d.gd":
 
 	func _party(_wave: float) -> void:
 		pass
-
-	func _doom(to: int) -> void:
-		super(to)
-		out_of_hearts = false
 
 	func _run_out() -> void:
 		pass
@@ -211,45 +198,34 @@ func _start() -> void:
 			_loop.tween_interval(0.5)
 			_play_tap(1, "HTP_RG_OWN_CAP")
 			_loop.tween_interval(2.0)
-			_play_tap(2, "")
-			_loop.tween_interval(0.5)
 			_play_tap(0, "")
+			_loop.tween_interval(0.5)
+			_play_tap(2, "")
 			_loop.tween_interval(0.5)
 			_loop.tween_callback(func() -> void: _art.win())
 			_say_for("HTP_RG_DONE_CAP", 3.0)
-		Lesson.HEARTS:
-			_play_tap(1, "")
-			_loop.tween_interval(0.5)
+		Lesson.HIDDEN:
+			_play_tap(0, "HTP_RG_UP_CAP")
+			_loop.tween_interval(1.2)
 			_play_tap(2, "")
-			_loop.tween_interval(0.35)
-			_say_for("HTP_RG_DOOM_CAP", 2.2)
-			_play_tap(0, "HTP_RG_BETTER_CAP")
-			_loop.tween_interval(0.5)
-			_play_tap(2, "")
-			_loop.tween_interval(2.2)
-		Lesson.TUMBLE:
-			_play_tap(1, "HTP_RG_TURN_CAP")
-			_loop.tween_interval(1.4)
-			_play_tap(0, "HTP_RG_LANDS_CAP")
-			_loop.tween_interval(2.0)
-			_play_tap(2, "HTP_RG_TURN_CAP")
 			_loop.tween_interval(1.0)
-			_play_tap(1, "")
-			_loop.tween_interval(2.0)
+			_play_tap(1, "HTP_RG_UP_CAP")
+			_loop.tween_interval(1.2)
+			_play_tap(0, "HTP_RG_FACE_CAP")
+			_loop.tween_interval(2.2)
 		Lesson.UNDO:
 			_play_tap(1, "HTP_RG_TAP_CAP")
 			_loop.tween_interval(0.4)
 			_play_tap(2, "")
 			_loop.tween_interval(0.9)
-			if band < 3:
-				_loop.tween_callback(_say.bind("HTP_RG_UNDO_CAP"))
-				_loop.tween_interval(0.6)
-				_loop.tween_callback(func() -> void: _art.undo())
-				_loop.tween_interval(1.4)
-				_play_tap(0, "HTP_RG_TAP_CAP")
-				_loop.tween_interval(0.4)
-				_play_tap(2, "")
-				_loop.tween_interval(0.9)
+			_loop.tween_callback(_say.bind("HTP_RG_UNDO_CAP"))
+			_loop.tween_interval(0.6)
+			_loop.tween_callback(func() -> void: _art.undo())
+			_loop.tween_interval(1.4)
+			_play_tap(0, "HTP_RG_TAP_CAP")
+			_loop.tween_interval(0.4)
+			_play_tap(2, "")
+			_loop.tween_interval(0.9)
 			_loop.tween_callback(_say.bind("HTP_RG_RESET_CAP"))
 			_loop.tween_interval(0.6)
 			_loop.tween_callback(func() -> void: _art.reset_board())
@@ -282,12 +258,11 @@ func _play_tap(i: int, say: String) -> void:
 ## nothing in flight. `fresh` is the first deal, which pops the pegs in with
 ## the board's entrance.
 func _reset(fresh := false) -> void:
-	var pegs: Array = {Lesson.SORT: SORT_PEGS, Lesson.HEARTS: DOOM_PEGS,
-		Lesson.TUMBLE: TUMBLE_PEGS}.get(lesson, LIFT_PEGS)
+	var pegs: Array = {Lesson.SORT: SORT_PEGS, Lesson.HIDDEN: HIDDEN_PEGS}.get(lesson, LIFT_PEGS)
 	_art.lay(band, pegs, 2, fresh)
 	_lift()
 	_say({Lesson.LIFT: "HTP_RG_START_CAP", Lesson.SORT: "HTP_RG_SORT_CAP",
-		Lesson.HEARTS: "HTP_RG_EMPTY_LEFT_CAP", Lesson.TUMBLE: "HTP_RG_TWO_CAP",
+		Lesson.HIDDEN: "HTP_RG_HIDDEN_CAP",
 		Lesson.UNDO: "HTP_RG_START_CAP", Lesson.HINT: "HTP_RG_HINT_CAP"}[lesson])
 
 ## Reduce-motion: the lesson's answer, standing still.
@@ -298,20 +273,16 @@ func _still() -> void:
 			_art._tap(2)
 			_say("HTP_RG_EMPTY_CAP")
 		Lesson.SORT:
-			for i in [0, 1, 2, 0]:
+			for i in [0, 1, 0, 2]:
 				_art._tap(i)
 			_art.win()
 			_say("HTP_RG_DONE_CAP")
-		Lesson.HEARTS:
+		Lesson.HIDDEN:
 			_art._tap(0)
 			_art._tap(2)
-			_say("HTP_RG_BETTER_CAP")
-		Lesson.TUMBLE:
-			_art._tap(1)
-			_art._tap(0)
-			_say("HTP_RG_LANDS_CAP")
+			_say("HTP_RG_UP_CAP")
 		Lesson.UNDO:
-			_say("HTP_RG_UNDO_CAP" if band < 3 else "HTP_RG_RESET_CAP")
+			_say("HTP_RG_UNDO_CAP")
 		Lesson.HINT:
 			_art.hint()
 	_art._refresh()

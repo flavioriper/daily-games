@@ -18,14 +18,21 @@ extends RefCounted
 ## search is thousands of nodes; with it, it is dozens.
 ##
 ## The same solver answers the board's hint, which is why solve() returns the
-## path and not just a verdict, and since the 2026-10-01 polish it also judges
-## Hard and Insane: a drop that leaves the pegs unsortable (`verdict() == 0`)
-## costs a heart and hops back.
+## path and not just a verdict.
 ##
-## **A ring is an int.** A plain ring is its colour, 0-5, as it always was.
-## Insane's Tumble rings are two-tone, `top | (under + 1) << 3`, and lifting
-## one turns it over (`flip`); a plain ring flips onto itself, so every rule
-## below reads a ring through `top()` and never cares which kind it is.
+## **A move carries the run** (2026-10-16, the user's reference): the rings of
+## one colour lying together on top of a peg go as one, as many of them as the
+## peg they go to has room for; the rest stay where they were. So a move is
+## still (from, to) -- how many rings it carries is the position's to say
+## (`take`), and `apply` plays it.
+##
+## **A ring is an int**: its colour in the low three bits (0-7), and on
+## Insane `HIDDEN` over it while it lies face down. Insane deals every ring
+## under a peg's top face down; a ring turns face up for good the moment it is
+## a peg's top, and a run stops at a face-down ring (the player cannot know
+## it is the same colour, so the solver does not move it either). Every rule
+## reads a ring through `top()`, so a face-down ring still counts toward its
+## colour's lock.
 ## Spec: docs/superpowers/specs/2026-09-20-rings-flat-design.md, section 3.
 ## Concept page: docs/brainstorm/concepts.html#rings.
 
@@ -37,19 +44,18 @@ const CAP := 4
 ## spread over the deal rather than left as two empty pegs. Six over eight is
 ## the reference's own three a peg; the other two bands leave a peg or two one
 ## short, which is the arithmetic and not a choice.
-## Hard is six colours on **seven** pegs since the 2026-10-01 polish: on
-## eight, under one move in a hundred could doom a board, so a heart would
-## almost never be at stake; on seven it is about one in seventeen (measured
-## over random play), and about four deals in one are proved.
+## Hard is six colours on **seven** pegs since the 2026-10-01 polish.
+## Insane (2026-10-16) is bigger and blind: eight colours on ten pegs, two
+## rows of five, every ring under a top dealt face down (`hidden`).
 const BANDS := [
 	{"colours": 4, "pegs": 6},
 	{"colours": 5, "pegs": 7},
 	{"colours": 6, "pegs": 7},
-	# Insane: Tumble -- Hard's pegs with six two-tone rings, read from
-	# content/insane/rings.json (tools/insane/rings_tumble_mine.py). Live,
-	# without the bank, it falls back to Hard's plain deal.
-	{"colours": 6, "pegs": 7},
+	{"colours": 8, "pegs": 10, "hidden": true},
 ]
+
+## A face-down ring: its colour with this bit over it.
+const HIDDEN := 8
 
 ## Deals tried before the day gives up and takes the last one anyway. Hard on
 ## seven pegs (2026-10-01) needs up to ~30 tries for a proved deal and 40 ran
@@ -58,39 +64,87 @@ const BANDS := [
 ## tries is cheap and the fallback is never reached in practice.
 const ATTEMPTS := 400
 
-## Nodes a doom check may cost. A search that runs out counts as alive, so a
-## smaller budget only lets an occasional dead end through -- never takes a
-## heart wrongly -- and keeps Insane's check off the phone's frame (52 ms worst
-## on this Mac at the full budget).
-const DOOM_BUDGET := 4000
-
-## Nodes a single verdict may cost. Measured worst: 267 for a deal, 3346
-## for a Tumble position's doom check (Python, the miner's same search).
+## Nodes a single verdict may cost.
 const NODE_BUDGET := 20000
 
-## A ring's colour as it lies: what it shows, and what it is matched on.
+## A ring's colour as it lies, face up or down: what it is matched on.
 static func top(c: int) -> int:
 	return c & 7
 
-## The colour under a Tumble ring; a plain ring's own.
-static func under(c: int) -> int:
-	return (c >> 3) - 1 if c >= 8 else c
+## Whether a ring lies face down.
+static func hidden(c: int) -> bool:
+	return c & HIDDEN != 0
 
-static func two_tone(c: int) -> bool:
-	return c >= 8
+## The run on top of `peg`: the face-up rings of the top ring's colour lying
+## together, counted down from the top. 0 on an empty peg.
+static func run(peg: Array) -> int:
+	var n := 0
+	var col := -1
+	for k in range(peg.size() - 1, -1, -1):
+		var c := int(peg[k])
+		if hidden(c) or (col >= 0 and top(c) != col):
+			break
+		col = top(c)
+		n += 1
+	return n
 
-## The ring turned over: its under colour on top. A plain ring is itself.
-static func flip(c: int) -> int:
-	if c < 8:
-		return c
-	return ((c >> 3) - 1) | (((c & 7) + 1) << 3)
+## How many rings a move from `src` onto `dst` carries: the run, or as many
+## of it as `dst` has room for. 0 when nothing may go (an empty source, no
+## room, another colour on top).
+static func take(src: Array, dst: Array) -> int:
+	var n := run(src)
+	var room := CAP - dst.size()
+	if n == 0 or room <= 0:
+		return 0
+	if not dst.is_empty() and top(int(dst.back())) != top(int(src.back())):
+		return 0
+	return mini(n, room)
 
-## The day's deal, proved solvable. `difficulty` is 0 to 3.
+## Plays (i -> j) on `pegs`: moves `take` rings, keeping their order, and
+## turns the source's new top face up. Returns [rings moved, the code the
+## source's new top had before it turned] ([0, -1] when nothing moved), which
+## is what `unapply` needs.
+static func apply(pegs: Array, i: int, j: int) -> Array:
+	var src: Array = pegs[i]
+	var dst: Array = pegs[j]
+	var k := take(src, dst)
+	if k == 0:
+		return [0, -1]
+	var start := src.size() - k
+	for q in k:
+		dst.append(src[start + q])
+	src.resize(start)
+	var was := -1
+	if not src.is_empty():
+		was = int(src.back())
+		src[src.size() - 1] = top(was)
+	return [k, was]
+
+## Takes `apply` back exactly, face-down ring and all.
+static func unapply(pegs: Array, i: int, j: int, done: Array) -> void:
+	var k: int = done[0]
+	if k == 0:
+		return
+	var src: Array = pegs[i]
+	var dst: Array = pegs[j]
+	if int(done[1]) >= 0:
+		src[src.size() - 1] = int(done[1])
+	var start := dst.size() - k
+	for q in k:
+		src.append(dst[start + q])
+	dst.resize(start)
+
+## The day's deal, proved solvable. `difficulty` is 0 to 3. Insane's rings
+## under each top are dealt face down, and proved under that rule.
 static func deal(rng: RandomNumberGenerator, difficulty: int) -> Array:
 	var band: Dictionary = BANDS[clampi(difficulty, 0, BANDS.size() - 1)]
 	var last: Array = []
 	for attempt in ATTEMPTS:
 		var pegs := _deal_once(rng, int(band["colours"]), int(band["pegs"]))
+		if band.get("hidden", false):
+			for peg: Array in pegs:
+				for k in peg.size() - 1:
+					peg[k] = int(peg[k]) | HIDDEN
 		last = pegs
 		if solved(pegs):
 			continue
@@ -150,8 +204,8 @@ static func locked(peg: Array) -> bool:
 			return false
 	return true
 
-## The canonical key. A peg is (ring + 1) in six bits a ring (a Tumble
-## ring's code runs to 53); the codes are sorted, so two positions that
+## The canonical key. A peg is (ring + 1) in six bits a ring (a face-down
+## ring's code runs to 15); the codes are sorted, so two positions that
 ## differ only in which peg is which come out identical.
 static func key(pegs: Array) -> String:
 	var codes: Array[int] = []
@@ -168,34 +222,37 @@ static func key(pegs: Array) -> String:
 
 ## Every legal move from `pegs`, best first: a move that finishes a peg, then
 ## any other move onto a matching colour, then a move onto an empty peg. The
-## ordering is what makes the search cheap. The prunings are only the ones
-## that are **sound**, because a doom verdict costs a heart: a locked peg is
-## never a source (the game's own rule), and a lone plain ring is never moved
-## onto an empty peg (the same position with the pegs renamed). The old
-## "never split a uniform peg" pruning went with the 2026-10-01 polish -- it
-## was never proved, and a Tumble ring turns over when it moves anyway.
+## ordering is what makes the search cheap. The prunings are only sound ones:
+## a locked peg is never a source (the game's own rule), a peg that is one
+## run and nothing else never moves onto an empty peg (the same position with
+## the pegs renamed), and of several empty pegs only the first is tried
+## (the same again).
 static func moves_from(pegs: Array) -> Array:
 	var scored: Array = []
+	var empty := -1
+	for j in pegs.size():
+		if (pegs[j] as Array).is_empty():
+			empty = j
+			break
 	for i in pegs.size():
 		var src: Array = pegs[i]
 		if src.is_empty() or locked(src):
 			continue
-		var ring := flip(int(src.back()))
-		var col := top(ring)
+		var n := run(src)
+		var col := top(int(src.back()))
 		for j in pegs.size():
 			if i == j:
 				continue
 			var dst: Array = pegs[j]
-			if dst.size() >= CAP:
-				continue
 			if dst.is_empty():
-				if src.size() == 1 and ring == int(src.back()):
+				if j != empty or n == src.size():
 					continue
 				scored.append([2, i, j])
 				continue
-			if top(int(dst.back())) != col:
+			var k := take(src, dst)
+			if k == 0:
 				continue
-			var finishes := dst.size() + 1 == CAP
+			var finishes := dst.size() + k == CAP
 			if finishes:
 				for c in dst:
 					if top(int(c)) != col:
@@ -246,14 +303,12 @@ static func _dfs(pegs: Array, seen: Dictionary, path: Array, nodes: Array, budge
 		return false
 	seen[k] = true
 	for m in moves_from(pegs):
-		var src: Array = pegs[m.x]
-		var dst: Array = pegs[m.y]
-		dst.append(flip(int(src.pop_back())))
+		var done := apply(pegs, m.x, m.y)
 		path.append(m)
 		if _dfs(pegs, seen, path, nodes, budget):
 			return true
 		path.pop_back()
-		src.append(flip(int(dst.pop_back())))
+		unapply(pegs, m.x, m.y, done)
 		if nodes[0] > budget:
 			return false
 	return false

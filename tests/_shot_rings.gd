@@ -85,7 +85,7 @@ func _process(delta: float) -> bool:
 		if _ms_n > 0:
 			print("frames: draw calls peak %d, mean %.2f ms over %d frames" % [_draws_max, _ms_sum / maxf(_ms_n, 1), _ms_n])
 		var st = _puzzle._state
-		print("board: band ", st.difficulty, " pegs ", st.pegs.size(), " colours ", st.colours, " tumble ", st.tumble,
+		print("board: band ", st.difficulty, " pegs ", st.pegs.size(), " colours ", st.colours, " held ", st.held.size(),
 			", hearts ", _puzzle.hearts, "/", _puzzle.max_hearts, ", out ", _puzzle.out_of_hearts,
 			", done ", _puzzle.is_done(), ", solved ", st.is_solved(), ", hints ", _puzzle.hints_left(),
 			", can_undo ", _puzzle.can_undo(), ", flawless ", _puzzle._flawless, ", win_delay ", _puzzle.win_delay(),
@@ -126,7 +126,7 @@ func _mouse(pos: Vector2, pressed: bool) -> void:
 
 func _peg(i: int) -> Vector2:
 	var st: Dictionary = _puzzle._station(i)
-	return Vector2(float(st["cx"]), (float(st["top"]) + float(st["ground"])) * 0.5) * _puzzle._s
+	return _puzzle._box.position + Vector2(float(st["cx"]), (float(st["top"]) + float(st["ground"])) * 0.5) * _puzzle._s
 
 func _tap(i: int) -> void:
 	_mouse(_peg(i), true)
@@ -193,17 +193,33 @@ func _after_move(st, j: int) -> Array:
 	var copy: Array = []
 	for s in st.pegs:
 		copy.append((s as Array).duplicate())
-	(copy[j] as Array).append(st.held)
+	(copy[j] as Array).append_array(st.held)
 	return copy
 
-## A peg whose top ring is two-tone, or -1.
+## A peg whose top run is two rings or more, or -1.
 func _two_tone_top() -> int:
 	var st = _puzzle._state
 	for i in st.pegs.size():
 		var p: Array = st.pegs[i]
-		if not p.is_empty() and Gen.two_tone(int(p.back())) and not st.locked(i):
+		if Gen.run(p) >= 2 and not st.locked(i):
 			return i
 	return -1
+
+## Plays the solver's line until its next move carries a run that does not
+## all fit (or a run of two at least), and returns that move.
+func _to_partial() -> Vector2i:
+	var st = _puzzle._state
+	var best := Vector2i(-1, -1)
+	for m: Vector2i in Gen.solve(st.pegs):
+		var n := Gen.run(st.pegs[m.x])
+		var k := Gen.take(st.pegs[m.x], st.pegs[m.y])
+		if k < n:
+			return m
+		if n >= 2 and best.x < 0:
+			best = m
+		st.lift(m.x)
+		st.drop(m.y)
+	return best
 
 # --- the scripts ---
 
@@ -223,6 +239,22 @@ func _script() -> void:
 			_at(1.86, _shot)
 			_at(2.3, _shot)
 			_end = 3.0
+		"run":
+			var m := [Vector2i(-1, -1)]
+			_at(1.2, func() -> void:
+				m[0] = _to_partial()
+				_puzzle._lock_at = {}
+				_puzzle._refresh()
+				print("run move ", m[0]))
+			_at(1.6, _shot)
+			_at(1.7, func() -> void: _tap(m[0].x))
+			_at(2.05, _shot)
+			_at(2.4, _shot)
+			_at(2.5, func() -> void: _tap(m[0].y))
+			for k in 4:
+				_at(2.56 + 0.07 * k, _shot)
+			_at(3.3, _shot)
+			_end = 3.6
 		"lift":
 			var i := [-1]
 			_at(1.4, func() -> void:

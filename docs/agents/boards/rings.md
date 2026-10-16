@@ -123,3 +123,51 @@ from its top and leftover height goes three tenths between them.
 - Decided for the user, unconfirmed: the terrace, not the card's blush
   wall; 147 of air over the first row for the lifted ring. Owed: a phone,
   Insane with its move pill, the level slide.
+
+### A move carries the run; Insane is Hidden (2026-10-16)
+
+The user, with three screenshots of a nut-sorting game: "when user move a
+color, all following same color go with it till there is no more room or
+pieces ends. Remove the insane double color logic and add this complexity
+instead, making insane for being bigger, more color and with hidden colors".
+Built straight in Godot (no concept tab: the reference set the rules).
+
+- **The run.** A tap lifts every face-up ring of the top colour lying
+  together (`Gen.run`); a drop lands `min(run, room)` of them and the rest
+  thread back down their own post beside the flight. A move is still
+  `(from, to)` for the solver -- what it carries is the position's
+  (`Gen.take`, `Gen.apply`/`unapply`) -- and `(from, to, carried)` in the
+  state's log (`Vector3i`). The hand is `held: Array`, bottom ring first.
+  The solver prunes a whole-peg run onto an empty peg and tries only the
+  first empty peg (both sound).
+- **Insane = Hidden**: eight colours on ten pegs (two rows of five; the
+  design box widens to 1236 and the board scales to ~0.81), every ring under
+  a top dealt face down (`Gen.HIDDEN`, bit 8 over the colour). A face-down
+  ring is a slate ring with a question mark (`VEIL`, `Emblem.QUESTION`),
+  never a shade of its own colour. It turns face up for good when it is a
+  peg's top (or its peg locks): `_reveal_at` squashes it to its edge and
+  opens it face up, on the old `tumble` cue. **A run stops at a face-down
+  ring**, and the solver plays by that rule, so a deal is proved under it
+  and a hint never lifts what the player could not. Undo and Reset never
+  turn a ring back down (Reset keeps the face-down count of each peg's foot:
+  a face-down ring has never moved). Measured on the Mac over 40 seeds:
+  Insane deals 6.6 ms mean, 25 ms worst; the solver's lines 25-48.
+- **Gone**: Tumble (two-tone rings, `flip`, the somersault), its bank
+  (`content/insane/rings.json`) and miner (`tools/insane/rings_tumble_mine.py`),
+  the dormant judge (`would_doom`, `prejudge`, `_doom`, the wobble) and the
+  tutorial's HEARTS lesson. Insane has Undo and the bulb like the others;
+  no band counts moves (`MOVES_SLACK` all zero, as it already was).
+- Two new colours, a leaf green with a star and a lemon with a square
+  (`RING_COLOURS`, `EMBLEMS`, `SHARE_GLYPHS`); the seal reads Hidden.
+  Sound: a drop is a run of `drop` pops a ring a step (`_pops`).
+- Tutorial: LIFT moves a run of two; SORT locks with runs; HIDDEN (Insane)
+  lifts off face-down rings. Locale rows en/pt/es rewritten, Tumble's and
+  the doom's rows removed.
+- `opengl3_angle` 810x1440 Insane: peak 87 draw calls over a run move
+  (`tests/_shot_rings.gd -- d=3 run`, a new mode; the harness's taps now add
+  `_box.position`). Suite 248464 passed 0 failed.
+- Decided for the user, unconfirmed: ten pegs at cap four rather than
+  taller pegs; the run stopping at a face-down ring; leftover rings going
+  home rather than staying in the hand; reveals kept through Undo and
+  Reset; the slate-and-question-mark look; leaf and lemon as the new
+  colours. Owed: a phone, the sound heard.

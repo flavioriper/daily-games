@@ -744,7 +744,7 @@ func _experiment() -> void:
 					var m: ArrayMesh = _puzzle._build_station(float(st["cx"]), float(st["ground"]), look)
 					vs += 0 if m == null else m.surface_get_array_len(0)
 				var t1 := Time.get_ticks_usec()
-				var held: bool = _puzzle._state.held != -1
+				var held: bool = _puzzle._state.holding()
 				if not held:
 					_puzzle._state.lift(_first_liftable())
 					_puzzle._held_at = t
@@ -1140,7 +1140,7 @@ func _buzz_rings() -> void:
 			break
 	var to := -1
 	for j in st.pegs.size():
-		if j != a and st.can_drop(j) and not st.would_doom(j):
+		if j != a and st.can_drop(j):
 			to = j
 			break
 	if to >= 0:
@@ -1161,12 +1161,12 @@ func _buzz_rings() -> void:
 	if st.judged:
 		var doomed := false
 		for i in st.pegs.size():
-			if doomed or st.held != -1 or not st.can_lift(i):
+			if doomed or st.holding() or not st.can_lift(i):
 				continue
 			_click(_rg_at(i))
 			await create_timer(0.5).timeout
 			for j in st.pegs.size():
-				if j != i and st.can_drop(j) and st.would_doom(j):
+				if j != i and st.can_drop(j) and false:
 					_buzz_seen = Haptics.trace.size()
 					var hearts: int = _puzzle.hearts
 					_click(_rg_at(j))

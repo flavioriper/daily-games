@@ -23,24 +23,20 @@ extends RefCounted
 ## `hint()` never invents a move: it asks Gen.solve() for the same path a
 ## full solve would take and plays its first step through drop()'s own path,
 ## so a hinted move is logged and undoable exactly like a tapped one.
-## **Hard and Insane judge** (2026-10-01 polish, `judged`): a drop that would
-## leave the pegs unsortable is `would_doom()` -- Gen.verdict() proves it on a
-## copy -- and the board takes a heart for it and hops the ring back, so the
-## pegs never stand in a dead position on a judged band. Insane is **Tumble**:
-## the bank deals six two-tone rings, and `lift()` turns a ring over (Gen.flip)
-## so what is in the hand is what it will land as; `put_back()` and `undo()`
-## turn it back. No undo there (Hard's hints since 2026-10-13).
-## **Since 2026-10-04 no band judges** (`HEARTS_BY` is all zero, `judged`
-## false everywhere; `would_doom` and the worker are left in place, asleep).
-## Insane counts moves instead: `moves_budget()` is the deal's shortest solve
-## (`par`, the bank's `grade.par`) and a quarter more, and a dead end is the
-## player's to notice (docs/agents/flat-screens.md, "Insane counts moves").
+## **Since 2026-10-04 no band judges** (`HEARTS_BY` is all zero).
+##
+## **The hand holds a run** (2026-10-16, the user's reference): `lift` takes
+## every face-up ring of the top colour lying together (`Gen.run`), and `drop`
+## lands as many of them as the peg has room for -- the rest go back where
+## they came from. A move in the log is (from, to, rings carried). Insane
+## deals the rings under each top face down (`Gen.HIDDEN`); a ring turns face
+## up for good once it is a peg's top, or once its peg locks, and neither an
+## undo nor a reset turns it back down. Tumble and its bank went the same day.
 ## Spec: docs/superpowers/specs/2026-09-20-rings-flat-design.md and
 ## docs/superpowers/specs/2026-10-01-rings-polish-design.md.
 ## Concept page: docs/brainstorm/concepts.html#rings.
 
 const Gen = preload("res://puzzles/rings_gen.gd")
-const InsaneBank = preload("res://core/insane_bank.gd")
 
 ## Hints and hearts by band (Easy, Medium, Hard, Insane).
 const HINTS_BY := [3, 3, 1, 1]
@@ -54,31 +50,22 @@ const HINTS := 3
 
 var pegs: Array = []
 var deal: Array = []
-var log: Array[Vector2i] = []
-var held := -1
+var log: Array[Vector3i] = []
+## The run in hand, bottom ring first ([] when the hand is empty), and the
+## peg it came off.
+var held: Array = []
 var held_from := -1
 var colours := 6
-## The fewest moves the deal can be sorted in, from the bank (`grade.par`,
-## breadth-first in tools/insane/rings_tumble_mine.py). Without one, the
-## solver's own line: a way home, not the shortest. 0 on a hand-made deal.
+## The fewest moves the deal is known to sort in: the solver's own line, a
+## way home and not the shortest. Read only by a band that counts moves.
 var par := 0
 var hints_used := 0
 ## Hints given on top of HINTS (a rewarded video's, core/ads.gd).
 var hints_extra := 0
 var difficulty := 0
-## Hard and Insane: a dooming drop costs a heart (would_doom).
+## Kept for the board's dormant hearts: no band judges.
 var judged := false
-## Insane from the bank: two-tone rings that turn over when lifted.
-var tumble := false
 var undo_allowed := true
-## The judge's answers for the ring in hand, worked out on a worker thread
-## from the moment it is lifted (`prejudge`): peg -> whether a drop there
-## dooms. A verdict is a search of 10-15 ms on Insane on this Mac, and it was
-## paid inside the drop's tap (the 2026-10-02 checkup); a player takes longer
-## than that between lifting a ring and dropping it.
-var _judge_task := -1
-var _judge_out: Dictionary = {}
-var _judge_for := ""
 
 static func hints_for(band: int) -> int:
 	return HINTS_BY[clampi(band, 0, HINTS_BY.size() - 1)]
@@ -86,49 +73,20 @@ static func hints_for(band: int) -> int:
 static func hearts_for(band: int) -> int:
 	return HEARTS_BY[clampi(band, 0, HEARTS_BY.size() - 1)]
 
-## The day's deal, proved solvable. Keeps a duplicate of it in `deal` so
-## reset_board() can go back to exactly what was dealt, not to one undo at a
-## time. Insane (band 3) reads a Tumble deal from the bank
-## (content/insane/rings.json, mined and proved by
-## tools/insane/rings_tumble_mine.py); without one it deals Hard live, plain.
-func build(rng: RandomNumberGenerator, band: int, bank_step := 0) -> void:
+## The day's deal, proved solvable (Insane's face down). Keeps a duplicate
+## of it in `deal` so reset_board() can go back to exactly what was dealt,
+## not to one undo at a time.
+func build(rng: RandomNumberGenerator, band: int, _bank_step := 0) -> void:
 	difficulty = clampi(band, 0, Gen.BANDS.size() - 1)
-	tumble = false
+	take(Gen.deal(rng, difficulty), difficulty, int(Gen.BANDS[difficulty]["colours"]))
 	par = 0
-	var banked: Dictionary = InsaneBank.pick("rings", bank_step) if difficulty == 3 else {}
-	if banked.get("pegs") is Array:
-		var grade: Dictionary = banked.get("grade", {})
-		par = int(grade.get("par", grade.get("line", 0)))
-		pegs = []
-		for s in banked["pegs"]:
-			var peg: Array = []
-			for c in s:
-				peg.append(int(c))
-				if int(c) >= 8:
-					tumble = true
-			pegs.append(peg)
-	else:
-		pegs = Gen.deal(rng, difficulty)
-	if MOVES_SLACK[difficulty] > 0 and par <= 0:
+	if MOVES_SLACK[difficulty] > 0:
 		par = Gen.solve(pegs).size()
-	deal = []
-	for s in pegs:
-		deal.append((s as Array).duplicate())
-	colours = int(Gen.BANDS[difficulty]["colours"])
-	judged = hearts_for(difficulty) > 0
-	undo_allowed = difficulty < 3
-	log = []
-	held = -1
-	held_from = -1
-	hints_used = 0
-	hints_extra = 0
 
 ## A hand-made deal (the tutorial's pages): `given` pegs, bottom ring first,
-## `count` colours, judged, undone and hinted as band `band` is.
+## `count` colours, undone and hinted as band `band` is.
 func take(given: Array, band: int, count: int) -> void:
-	settle_judge()
 	difficulty = clampi(band, 0, Gen.BANDS.size() - 1)
-	tumble = false
 	par = 0
 	pegs = []
 	deal = []
@@ -136,22 +94,27 @@ func take(given: Array, band: int, count: int) -> void:
 		var peg: Array = []
 		for c in s:
 			peg.append(int(c))
-			if int(c) >= 8:
-				tumble = true
 		pegs.append(peg)
 		deal.append(peg.duplicate())
 	colours = count
-	judged = hearts_for(difficulty) > 0
-	undo_allowed = difficulty < 3
+	judged = false
+	undo_allowed = true
 	log = []
-	held = -1
+	held = []
 	held_from = -1
 	hints_used = 0
 	hints_extra = 0
 
-## Insane's moves for this deal: the shortest solve and a quarter more (three
-## at least), every drop on another peg costing one. 0 on a band that does
-## not count, and on a deal with no known solve.
+## Whether a run is in the hand.
+func holding() -> bool:
+	return not held.is_empty()
+
+## The colour in hand, or -1.
+func held_colour() -> int:
+	return Gen.top(int(held[0])) if holding() else -1
+
+## Insane's moves for this deal, on a band that counts (none does now): the
+## known solve and a quarter more (three at least).
 func moves_budget() -> int:
 	var least: int = MOVES_SLACK[difficulty]
 	if least <= 0 or par <= 0:
@@ -162,93 +125,50 @@ func moves_budget() -> int:
 func locked(i: int) -> bool:
 	return Gen.locked(pegs[i])
 
-## A ring may be lifted off a peg that has one, is not locked, and only when
+## A run may be lifted off a peg that has one, is not locked, and only when
 ## the hand is empty.
 func can_lift(i: int) -> bool:
-	return held == -1 and not (pegs[i] as Array).is_empty() and not locked(i)
+	return not holding() and not (pegs[i] as Array).is_empty() and not locked(i)
 
-## Takes the top ring off peg `i` into the hand, turned over (a Tumble ring
-## shows its under colour now; a plain ring is itself). Refused (and `false`)
-## on an empty peg, a locked peg, or with a ring already in hand.
+## Takes the run on top of peg `i` into the hand and turns the ring it
+## leaves on top face up. Refused (and `false`) on an empty peg, a locked
+## peg, or with a run already in hand.
 func lift(i: int) -> bool:
 	if not can_lift(i):
 		return false
+	var src: Array = pegs[i]
+	var n := Gen.run(src)
 	held_from = i
-	held = Gen.flip(int((pegs[i] as Array).pop_back()))
+	held = src.slice(src.size() - n)
+	src.resize(src.size() - n)
+	_turn_up(i)
 	return true
 
-## Puts the ring in hand back where it came from. Not a move: the log never
-## sees it.
+## Puts the run in hand back where it came from. Not a move: the log never
+## sees it. The ring it uncovered stays face up.
 func put_back() -> void:
-	if held == -1:
+	if not holding():
 		return
-	(pegs[held_from] as Array).append(Gen.flip(held))
-	held = -1
+	(pegs[held_from] as Array).append_array(held)
+	held = []
 	held_from = -1
 
-## A drop is legal onto an empty peg or onto its own colour top, and refused
-## on a full peg of another colour. Dropping back onto `held_from` is not a
-## drop at all -- the board calls put_back() for that.
-func can_drop(j: int) -> bool:
-	if held == -1:
-		return false
+## How many of the run in hand a drop on `j` would land: as many as `j` has
+## room for, onto an empty peg or onto its own colour. 0 when refused.
+## Dropping back onto `held_from` is not a drop -- the board calls put_back().
+func lands(j: int) -> int:
+	if not holding() or j == held_from:
+		return 0
 	var dst: Array = pegs[j]
-	if dst.size() >= Gen.CAP:
-		return false
-	return dst.is_empty() or Gen.top(int(dst.back())) == Gen.top(held)
+	var room := Gen.CAP - dst.size()
+	if room <= 0:
+		return 0
+	if not dst.is_empty() and Gen.top(int(dst.back())) != held_colour():
+		return 0
+	return mini(held.size(), room)
 
-## On a judged band: whether dropping the held ring on `j` would leave the
-## pegs unsortable -- proved on a copy (Gen.verdict() == 0). A search that
-## runs out of nodes is not a proof, and is let through.
-func would_doom(j: int) -> bool:
-	if not judged or not can_drop(j):
-		return false
-	if _judge_task >= 0 and _judge_for == _judge_sig():
-		settle_judge()
-		if _judge_out.has(j):
-			return _judge_out[j]
-	var copy: Array = []
-	for s in pegs:
-		copy.append((s as Array).duplicate())
-	(copy[j] as Array).append(held)
-	return not Gen.solved(copy) and Gen.verdict(copy, Gen.DOOM_BUDGET) == 0
-
-## Starts judging every drop the ring in hand could make, off the main
-## thread; `would_doom` reads the answers (waiting for them if it must).
-## Nothing on a band that is not judged or with an empty hand.
-func prejudge() -> void:
-	settle_judge()
-	_judge_out = {}
-	if not judged or held == -1:
-		return
-	var base: Array = []
-	for s in pegs:
-		base.append((s as Array).duplicate())
-	_judge_for = _judge_sig()
-	_judge_task = WorkerThreadPool.add_task(_judge_all.bind(base, held, held_from, _judge_out))
-
-## Waits for a judge still at work (a deal or a board going away must not
-## leave one running).
-func settle_judge() -> void:
-	if _judge_task >= 0:
-		WorkerThreadPool.wait_for_task_completion(_judge_task)
-		_judge_task = -1
-
-## What the answers are for: the pegs and the ring in hand.
-func _judge_sig() -> String:
-	return "%d|%d|%s" % [held, held_from, Gen.key(pegs)]
-
-## The worker: `would_doom` for every peg `ring` may land on, on copies.
-static func _judge_all(base: Array, ring: int, from: int, out: Dictionary) -> void:
-	for j in base.size():
-		var dst: Array = base[j]
-		if j == from or dst.size() >= Gen.CAP or not (dst.is_empty() or Gen.top(int(dst.back())) == Gen.top(ring)):
-			continue
-		var copy: Array = []
-		for s in base:
-			copy.append((s as Array).duplicate())
-		(copy[j] as Array).append(ring)
-		out[j] = not Gen.solved(copy) and Gen.verdict(copy, Gen.DOOM_BUDGET) == 0
+func can_drop(j: int) -> bool:
+	return lands(j) > 0
 
 ## Why a drop on `j` would be refused right now, or "" when it would not be.
 ## Exactly these two keys (RG_FULL, RG_WRONG_COLOUR); the board puts them
@@ -261,30 +181,47 @@ func refusal(j: int) -> String:
 		return "RG_FULL"
 	return "RG_WRONG_COLOUR"
 
-## Lands the held ring on peg `j`. Refused (returns -1) when nothing is held
-## or can_drop(j) is false. On success, logs the move, clears the hand, and
-## returns the slot index the ring landed in.
+## Lands what fits of the run in hand on peg `j` and puts the rest back on
+## the peg it came from. Refused (returns -1) when nothing would land. On
+## success, logs the move, clears the hand, and returns the slot the lowest
+## landed ring sits in (`log.back().z` is how many landed).
 func drop(j: int) -> int:
-	if not can_drop(j):
+	var k := lands(j)
+	if k == 0:
 		return -1
 	var dst: Array = pegs[j]
 	var slot := dst.size()
-	dst.append(held)
-	log.append(Vector2i(held_from, j))
-	held = -1
-	held_from = -1
+	dst.append_array(held.slice(held.size() - k))
+	held.resize(held.size() - k)
+	var from := held_from
+	put_back()
+	log.append(Vector3i(from, j, k))
+	if locked(j):
+		_turn_up_all(j)
 	return slot
 
 ## Walks the last move back exactly, including one that finished a peg. No
-## legality check: it was legal on the way out.
-func undo() -> Vector2i:
+## legality check: it was legal on the way out. Face-up rings stay face up.
+func undo() -> Vector3i:
 	put_back()
 	if log.is_empty():
-		return Vector2i(-1, -1)
-	var m: Vector2i = log.pop_back()
-	var ring := int((pegs[m.y] as Array).pop_back())
-	(pegs[m.x] as Array).append(Gen.flip(ring))
+		return Vector3i(-1, -1, 0)
+	var m: Vector3i = log.pop_back()
+	var dst: Array = pegs[m.y]
+	(pegs[m.x] as Array).append_array(dst.slice(dst.size() - m.z))
+	dst.resize(dst.size() - m.z)
 	return m
+
+## Turns peg `i`'s top ring face up.
+func _turn_up(i: int) -> void:
+	var peg: Array = pegs[i]
+	if not peg.is_empty():
+		peg[peg.size() - 1] = Gen.top(int(peg.back()))
+
+func _turn_up_all(i: int) -> void:
+	var peg: Array = pegs[i]
+	for k in peg.size():
+		peg[k] = Gen.top(int(peg[k]))
 
 ## Locked pegs, counted fresh every time -- the colours already home.
 func home_count() -> int:
@@ -303,38 +240,43 @@ func is_solved() -> bool:
 func is_stuck() -> bool:
 	return not is_solved() and Gen.moves_from(pegs).is_empty()
 
-## Back to the dealt position in one step, not one undo at a time.
+## Back to the dealt position in one step, not one undo at a time. A ring
+## seen face up stays face up: a face-down ring has never moved, so the
+## face-down rings at the foot of each peg now are the same rings at the foot
+## of the same peg as dealt.
 func reset_board() -> void:
+	put_back()
+	var down: Array = []
+	for s: Array in pegs:
+		var n := 0
+		while n < s.size() and Gen.hidden(int(s[n])):
+			n += 1
+		down.append(n)
 	pegs = []
-	for s in deal:
-		pegs.append((s as Array).duplicate())
+	for i in deal.size():
+		var peg: Array = (deal[i] as Array).duplicate()
+		for k in range(int(down[i]), peg.size()):
+			peg[k] = Gen.top(int(peg[k]))
+		pegs.append(peg)
 	log = []
-	held = -1
-	held_from = -1
 
-## Plays the solver's own next move, spending one of HINTS. Returns (-1, -1)
+## Plays the solver's own next move, spending one hint. Returns (-1, -1, 0)
 ## when hints are spent, the board is already solved, or Gen.solve() finds
 ## nothing (a stuck board, or one past the search budget). Otherwise the move
-## goes through lift()/drop() so it is logged and undoable exactly like a tap.
-##
-## Self-guards the way undo() does: put_back() first, so a ring already in
-## hand when hint() is called cannot leave lift() silently refusing (held
-## already set) while drop() tests can_drop against the *stale* held colour
-## instead of the solver's. And a hint is only ever credited once lift() and
-## drop() have both actually succeeded -- the board must never be told a move
-## happened when it did not, nor lose a count for one that never played.
-func hint() -> Vector2i:
+## goes through lift()/drop() so it is logged and undoable exactly like a tap,
+## and is credited only once both have actually succeeded.
+func hint() -> Vector3i:
 	put_back()
 	if hints_used >= hints_for(difficulty) + hints_extra or is_solved():
-		return Vector2i(-1, -1)
+		return Vector3i(-1, -1, 0)
 	var path: Array = Gen.solve(pegs)
 	if path.is_empty():
-		return Vector2i(-1, -1)
+		return Vector3i(-1, -1, 0)
 	var m: Vector2i = path[0]
 	if not lift(m.x):
-		return Vector2i(-1, -1)
+		return Vector3i(-1, -1, 0)
 	if drop(m.y) == -1:
 		put_back()
-		return Vector2i(-1, -1)
+		return Vector3i(-1, -1, 0)
 	hints_used += 1
-	return m
+	return log.back()

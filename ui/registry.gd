@@ -559,9 +559,10 @@ const PUZZLES := [
 		"actions": false,
 		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku: rings_gen.gd's BANDS, and each is its own daily
-		# with its own done mark. Four rings a peg at every band. Hard and
-		# Insane are judged (hearts); Insane is Tumble, two-tone rings from
-		# content/insane/rings.json (rings_state.gd).
+		# with its own done mark. Four rings a peg at every band; a move
+		# carries the run of one colour on top. Insane is Hidden: eight
+		# colours on ten pegs, the rings under each top face down
+		# (rings_gen.gd), dealt live.
 		"pick_difficulty": true,
 		"levels": [
 			{"difficulty": 0, "name": "Easy", "line": "RG_LVL_0"},

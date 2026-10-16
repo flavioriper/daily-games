@@ -69,23 +69,21 @@ extends "res://core/puzzle_base.gd"
 ## station or the ring in hand is those looks copied under the moment's
 ## squash, lean and turn, ~0.4 ms a station.)
 ##
-## **The 2026-10-01 polish** (`docs/superpowers/specs/2026-10-01-rings-polish-design.md`):
-## Hard and Insane can be lost -- a drop that would leave the pegs unsortable
-## lands, wobbles, splits a heart on the paper pill and hops back home; out of
-## hearts, dusk and the card. Insane is **Tumble**: two-tone rings that turn
-## over in a somersault as they are lifted, so the colour under a ring is the
-## colour it will land as. The rewards: the streak (drops onto their own
-## colour in a row, the pentatonic, the bubble, confetti), the twirl, love and
-## bee gags, a happy hop on every lock, and the party -- confetti, a runaway
-## hoop rolling across the terrace, the nap cat, the seal and a bit of ring
-## wisdom. A press dips the peg under the finger.
+## **The 2026-10-01 polish** (`docs/superpowers/specs/2026-10-01-rings-polish-design.md`)
+## brought the rewards: the streak (drops onto their own colour in a row,
+## the pentatonic, the bubble, confetti), the twirl, love and bee gags, a
+## happy hop on every lock, and the party -- confetti, a runaway hoop
+## rolling across the terrace, the nap cat, the seal and a bit of ring
+## wisdom. A press dips the peg under the finger. Its hearts are asleep since
+## 2026-10-04 (no band has any) and its doomed drop and Tumble's two-tone
+## rings are gone.
 ##
-## **Since 2026-10-04 nothing is judged** (docs/agents/flat-screens.md,
-## "Insane counts moves"): no band has hearts and no drop is called a dead
-## end; `_doom` and the hearts are left in place, asleep. Tumble counts moves
-## instead -- `max_moves` off the state's `moves_budget()`, "N moves left" on
-## the pill where the hearts sat, one off for every drop on another peg
-## (`_spend`), and out of moves unsolved is the old out-of-hearts ending.
+## **A move carries the run** (2026-10-16, the user's reference): a tap
+## lifts every ring of the top colour lying together, a drop lands as many
+## as the peg has room for, and the rest thread back down their own post
+## beside it (`_flights`). Insane is bigger and blind: eight colours on ten
+## pegs, every ring under a top dealt face down -- a slate ring with a
+## question mark -- that turns over when it comes to the top (`_reveal_at`).
 ##
 ## Spec: docs/superpowers/specs/2026-09-20-rings-flat-design.md (the 2026-09-25
 ## and 2026-09-26 amendments are this drawing). `ui/menu/card_art.gd`'s "rings" branch calls
@@ -197,23 +195,31 @@ const CARD_RADIUS := 32.0
 ## colour is the game that rule was written for. The emblems replaced pips on
 ## 2026-09-26 (the user's reference): a shape reads at a glance where a count
 ## of dots had to be counted.
-const RING_COLOURS := [Pal.BERRY, Pal.SUN, Pal.MOON_INK, Pal.ACORN, Pal.FLOWER, Pal.ACCENT]
-enum Emblem { HEART, SPROUT, CIRCLE, FLOWER, DIAMOND, TRIANGLE }
-const EMBLEMS := [Emblem.HEART, Emblem.SPROUT, Emblem.CIRCLE, Emblem.FLOWER, Emblem.DIAMOND, Emblem.TRIANGLE]
+## Insane's two more (2026-10-16) are a leaf green and a lemon, with a star
+## and a square; `VEIL` is a face-down ring's slate and its question mark,
+## never a shade of a ring's own colour.
+const RING_COLOURS := [Pal.BERRY, Pal.SUN, Pal.MOON_INK, Pal.ACORN, Pal.FLOWER, Pal.ACCENT,
+	Pal.LEAF, Color("e6cf3e"), Color("5f5a62")]
+enum Emblem { HEART, SPROUT, CIRCLE, FLOWER, DIAMOND, TRIANGLE, STAR, SQUARE, QUESTION }
+const EMBLEMS := [Emblem.HEART, Emblem.SPROUT, Emblem.CIRCLE, Emblem.FLOWER, Emblem.DIAMOND, Emblem.TRIANGLE,
+	Emblem.STAR, Emblem.SQUARE, Emblem.QUESTION]
+## A face-down ring's colour and emblem index.
+const VEIL := 8
 
 ## One coloured square per ring colour, in RING_COLOURS' own order, for
 ## share_glyphs() -- the same language Word Trail's green squares speak.
-const SHARE_GLYPHS := ["🟥", "🟨", "🟦", "🟫", "🟪", "🟩"]
+const SHARE_GLYPHS := ["🟥", "🟧", "🟦", "🟫", "🟪", "🟩", "🟢", "🟨"]
 
 const TIP_CYCLE := 8.0
 const TIPS := [
 	"RG_TIP_LIFT",
+	"RG_TIP_RUN",
 	"RG_TIP_LANDS",
 	"RG_TIP_LOCKS",
 	"RG_TIP_UNDO",
 ]
 const TIPS_HEARTS := ["RG_TIP_HEARTS", "RG_TIP_LANDS", "RG_TIP_AHEAD", "RG_TIP_LOCKS"]
-const TIPS_TUMBLE := ["TIP_MOVES_SEQ", "RG_TIP_TUMBLE", "RG_TIP_UNDER", "RG_TIP_NO_UNDO"]
+const TIPS_HIDDEN := ["RG_TIP_RUN", "RG_TIP_HIDDEN", "RG_TIP_TURNS", "RG_TIP_LOCKS"]
 
 const STUCK_MSG := "RG_STUCK"
 
@@ -240,17 +246,10 @@ const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
 ## The moves the out-of-moves card's video buys.
 const MOVES_BONUS := 5
 
-# --- the doomed drop: lands, wobbles, hops back ---
-## How long the ring rocks on the stack it would have doomed, how far, and
-## how many rocks.
-const WOBBLE_TIME := 0.55
-const WOBBLE_TILT := 0.2
-const WOBBLE_ROCKS := 3.0
-
-# --- Tumble's somersault ---
-## A two-tone ring turning over squashes to its edge and opens again with
-## the other colour on top; this is the share of the lift it takes.
-const FLIP_SPAN := 1.0
+# --- a face-down ring coming up ---
+## How long it takes to turn over: it squashes to its edge and opens again
+## face up.
+const REVEAL_TIME := 0.32
 
 # --- a press ---
 ## How far the peg under a finger sinks, and how fast it springs back.
@@ -313,10 +312,9 @@ const STAMP_TILT := -0.22
 ## Shape ids in `_looks`: every part of a ring made once at RING_W about its
 ## own origin (the ring's top face centred on it), and copied natively under
 ## a transform -- a squash, a lean, a hop or a flight is that transform.
-const LOOK_BODY := 0          # + the ring's code: the band, under the emblems
-const LOOK_FACE := 100        # + its top colour: the top face and the hole
+const LOOK_BODY := 0          # + the ring's ink (`_ink`): the band, under the emblems
+const LOOK_FACE := 100        # + its ink: the top face and the hole
 const LOOK_EMBLEM := 200      # + the emblem's kind, in slots (shade, inlay, eye)
-const LOOK_EMBLEM_SMALL := 210  # + the kind: a two-tone ring's smaller ones
 const LOOK_GLINT := 300       # the lock's shine, in a slot
 const LOOK_SHADOW := 301      # a stack's shadow, about (cx, ground)
 const LOOK_SOCKET := 302      # an empty peg's socket, about (cx, ground)
@@ -397,11 +395,15 @@ var _toast := ""
 var _toast_at := -100.0
 var _reset_at := -100.0
 var _held_at := -100.0
-## The one ring in flight, or {} for none: "colour", "from"/"to" (pegs),
-## "slot" (landing slot), "from_slot" (the slot it rises off, or -1 when it
-## starts in the hand), "at", "dur" and "settle" (whether it calls _settle
-## when it lands -- a drop or a hint does, an undo never can lock a peg).
-var _flight: Dictionary = {}
+## The rings in flight, a stack a flight: "codes" (bottom first),
+## "from"/"to" (pegs), "slot" (the lowest's landing slot), "from_slot" (the
+## lowest's slot it rises off, or -1 when they start in the hand), "at",
+## "dur" and "settle" (whether it calls _settle when it lands -- a drop or a
+## hint does, an undo never can lock a peg). A drop whose run does not all
+## fit flies its leftover rings home beside it.
+var _flights: Array = []
+## Peg -> when its top ring turns face up (Insane), for the turn.
+var _reveal_at: Dictionary = {}
 var _land_peg := -1
 var _land_slot := -1
 var _land_at := -100.0
@@ -480,11 +482,11 @@ func puzzle_id() -> String: return "rings"
 func title() -> String: return "Rings"
 
 ## What a move is, then the band's own closing: nothing can be lost (Easy to
-## Hard), or Tumble and its move counter (Insane).
+## Hard), or the face-down rings (Insane).
 func rules() -> String:
 	var line := tr("RG_RULES")
-	if _state.tumble:
-		line += "\n\n" + tr("RG_RULES_TUMBLE_MOVES")
+	if _state.difficulty == 3:
+		line += "\n\n" + tr("RG_RULES_HIDDEN")
 	elif max_hearts > 0:
 		line += "\n\n" + tr("RG_RULES_HEARTS") % max_hearts
 	elif max_moves <= 0:
@@ -495,7 +497,7 @@ func rules() -> String:
 
 ## The tutorial, a page a rule, each played on a row of pegs of its own
 ## (`ui/hud/rings_tutorial_diagram.gd`): a lift and a drop, four of a colour
-## locking a peg and the board done, Tumble's two-tone rings, Undo and Reset,
+## locking a peg and the board done, Insane's face-down rings, Undo and Reset,
 ## the bulb on a band that has hints, and Insane's move counter (the shared
 ## page). The HEARTS lesson is asleep with the hearts.
 func tutorial_pages() -> Array:
@@ -507,14 +509,10 @@ func tutorial_pages() -> Array:
 		[Diagram.Lesson.LIFT, "HTP_RG_LIFT", tr("HTP_RG_LIFT_BODY")],
 		[Diagram.Lesson.SORT, "HTP_RG_SORT", tr("HTP_RG_SORT_BODY")],
 	]
-	if hearts_n > 0:
-		steps.append([Diagram.Lesson.HEARTS, "HTP_TN_HEARTS", tr("HTP_RG_HEARTS_BODY") % hearts_n])
 	if band == 3:
-		steps.append([Diagram.Lesson.TUMBLE, "RG_TUMBLE_SEAL", tr("HTP_RG_TUMBLE_BODY")])
+		steps.append([Diagram.Lesson.HIDDEN, "RG_HIDDEN_SEAL", tr("HTP_RG_HIDDEN_BODY")])
 	var undo_body := "HTP_RG_UNDO_BODY"
-	if band == 3:
-		undo_body = "HTP_RG_RESET_BODY_MOVES" if max_moves > 0 else "HTP_RG_RESET_BODY"
-	elif hearts_n > 0:
+	if hearts_n > 0:
 		undo_body = "HTP_RG_UNDO_BODY_JUDGED"
 	steps.append([Diagram.Lesson.UNDO, "HTP_WT_UNDO", tr(undo_body)])
 	if hints > 0:
@@ -531,19 +529,16 @@ func tutorial_pages() -> Array:
 	return pages
 
 func _tips() -> Array:
-	if _state.tumble:
-		return TIPS_TUMBLE
+	if _state.difficulty == 3:
+		return TIPS_HIDDEN
 	if max_hearts > 0:
 		return TIPS_HEARTS
 	return TIPS
 
-## Insane counts moves: no Undo and no Hint there (either would say what was
-## wrong).
-## Insane has the bulb again since 2026-10-13, as many hints as Hard: what is
-## said of it above is the history (docs/agents/flat-screens.md).
+## Undo and the bulb on every band: since 2026-10-16 Insane counts no moves
+## (its face-down rings are its own difficulty), and Undo turns no ring back
+## face down.
 func capabilities() -> Array[String]:
-	if _state.difficulty >= 3:
-		return ["hint"]
 	return ["undo", "hint"]
 
 func can_undo() -> bool:
@@ -627,14 +622,9 @@ func _ready() -> void:
 	add_child(_life_layer)
 	solved.connect(_on_solved)
 
-## A judge still at work on the ring in hand is waited for, not left running.
-func _exit_tree() -> void:
-	_state.settle_judge()
-
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_gen += 1
 	_close_card()
-	_state.settle_judge()
 	_state.build(rng, difficulty, bank_step)
 	_dealt()
 
@@ -679,7 +669,8 @@ func _dealt() -> void:
 	_reset_at = -100.0
 	_lock_at = {}
 	_held_at = -100.0
-	_flight = {}
+	_flights = []
+	_reveal_at = {}
 	_land_peg = -1
 	_land_slot = -1
 	_land_at = -100.0
@@ -696,12 +687,20 @@ func _row_counts() -> Array:
 func _min_h() -> float:
 	return MIN_H
 
-## Rows of four at the hard band, four and three at the medium one, three and
-## three at the easy one.
+## Rows of four and three at the hard and medium bands, three and three at
+## the easy one, five and five on Insane.
 static func _rows_of(peg_count: int) -> Array:
-	if peg_count <= 6:
+	if peg_count <= 6 or peg_count >= 9:
 		return [int(ceil(peg_count / 2.0)), int(floor(peg_count / 2.0))]
 	return [4, peg_count - 4]
+
+## The design box's width: DESIGN_W, or wider when a row holds more stations
+## than that fits (Insane's five), so the whole board scales down to fit.
+func _design_w() -> float:
+	var most := 0
+	for n in _row_counts():
+		most = maxi(most, int(n))
+	return maxf(DESIGN_W, float(most) * STATION_W + 2.0 * INSET)
 
 ## Fits the design box to the card: as wide as the card at DESIGN_W, and never
 ## shorter than MIN_H, whichever binds. What height is left over goes four
@@ -717,11 +716,11 @@ func _layout() -> void:
 		_box = Rect2(side, _clear.x, size.x - 2.0 * side, size.y - _clear.x - _clear.y)
 		_world.size = size
 	if _box.size.x > 0.0 and _box.size.y > 0.0:
-		_s = minf(_box.size.x / DESIGN_W, _box.size.y / min_h)
+		_s = minf(_box.size.x / _design_w(), _box.size.y / min_h)
 		_dsize = _box.size / _s
 	else:
 		_s = 1.0
-		_dsize = Vector2(DESIGN_W, min_h)
+		_dsize = Vector2(_design_w(), min_h)
 	var extra := maxf(_dsize.y - min_h, 0.0)
 	# Bled, the rows hang from the top of the span, right under the host's
 	# tools row, and what is left over is open terrace at the foot.
@@ -969,30 +968,32 @@ func _gui_input(event: InputEvent) -> void:
 				_tap(i)
 				accept_event()
 
-## The one tap gesture this board takes: lift an empty hand's ring off peg
-## `i`, put a held ring back where it came from, or drop it on `i` -- the
-## only place state.drop() is ever called. On a judged band (none since
-## 2026-10-04) a drop that would doom the pegs never lands for good: it
-## wobbles and hops back (`_doom`) and costs a heart. On Insane a drop that
-## lands costs a move (`_spend`); a ring put back on its own peg costs none.
+## The one tap gesture this board takes: lift an empty hand's run off peg
+## `i`, put a held run back where it came from, or drop it on `i` -- the only
+## place state.drop() is ever called. As many rings of the run as `i` has
+## room for go; the rest thread back down their own post. On a band that
+## counts moves (none since 2026-10-16) a drop that lands costs one.
 func _tap(i: int) -> void:
 	if is_done() or out_of_hearts or busy():
 		return
-	if _state.held == -1:
+	if not _state.holding():
 		# A ring still threading down onto this peg lands first, or it would
 		# be drawn twice: in flight and rising into the hand.
-		if not _flight.is_empty() and int(_flight.get("to", -1)) == i:
-			_land_flight(_now())
+		for f: Dictionary in _flights:
+			if int(f["to"]) == i:
+				_land_flight(_now())
+				break
+		var src: Array = _state.pegs[i]
+		var under := src.size() - Gen.run(src) - 1
+		var uncovers := under >= 0 and Gen.hidden(int(src[under]))
 		if _state.lift(i):
-			_state.prejudge()
 			_held_at = _now()
 			fx.cue("lift", randf_range(0.94, 1.06))
-			if Gen.two_tone(_state.held):
-				_after(RISE_TIME * 0.3, fx.cue.bind("tumble"))
-				_say(tr("RG_HELD_TUMBLE"), Face.Expr.PUZZLED)
-			else:
-				_say(tr("RG_HELD"), Face.Expr.HAPPY)
-		elif (_state.pegs[i] as Array).is_empty():
+			if uncovers:
+				_reveal_at[i] = _now() + (0.0 if Motion.reduce else RISE_TIME * 0.5)
+				_after(RISE_TIME * 0.5, fx.cue.bind("tumble"))
+			_say(tr("RG_HELD") if _state.held.size() == 1 else tr("RG_HELD_RUN") % _state.held.size(), Face.Expr.HAPPY)
+		elif src.is_empty():
 			_shake_at[i] = _now()
 			fx.cue("refused")
 			_say(tr("RG_EMPTY_PEG"), Face.Expr.HAPPY)
@@ -1001,20 +1002,17 @@ func _tap(i: int) -> void:
 			fx.cue("refused")
 			_say(tr("RG_HOME_PEG"), Face.Expr.HAPPY)
 	elif i == _state.held_from:
-		# Back down its own post: the same thread a drop ends on, turning
-		# back over on the way if it is two-tone.
-		var code: int = _state.held
+		# Back down its own post: the same thread a drop ends on.
+		var codes: Array = _state.held.duplicate()
 		var turn := _held_turn(_now())
 		_state.put_back()
 		_held_at = -100.0
-		fx.cue("drop", randf_range(0.94, 1.06))
-		_fly(code, i, i, (_state.pegs[i] as Array).size() - 1, -1, _now(), false, turn, Gen.flip(code))
+		_pops(codes.size(), 0.0)
+		_fly(codes, i, i, (_state.pegs[i] as Array).size() - codes.size(), -1, _now(), false, turn)
 		_say(tr("RG_PUT_BACK"), Face.Expr.HAPPY)
-	elif _state.would_doom(i):
-		_doom(i)
 	else:
 		var from: int = _state.held_from
-		var code: int = _state.held
+		var codes: Array = _state.held.duplicate()
 		var turn := _held_turn(_now())
 		var onto := not (_state.pegs[i] as Array).is_empty()
 		var slot := _state.drop(i)
@@ -1025,19 +1023,34 @@ func _tap(i: int) -> void:
 			fx.cue("refused")
 			_say(tr(_state.refusal(i)), Face.Expr.WORRIED)
 		else:
+			var k: int = _state.log.back().z
+			var stay := codes.slice(0, codes.size() - k)
 			_held_at = -100.0
-			fx.cue("drop", randf_range(0.94, 1.06))
+			_pops(k, ARC_TIME + THREAD_TIME * 0.6)
 			fx.buzz(Haptics.TAP)
 			# The flight has to exist before note_move()'s check_solved() can
-			# fire solved -- _on_solved reads _flight for the landing moment
-			# its hop wave waits on.
+			# fire solved -- _on_solved reads the flights for the landing
+			# moment its hop wave waits on.
 			_by_hand = true
-			_fly(code, from, i, slot, -1, _now(), true, turn)
+			_fly(codes.slice(codes.size() - k), from, i, slot, -1, _now(), true, turn)
 			_by_hand = false
+			if not stay.is_empty():
+				_fly(stay, from, from, (_state.pegs[from] as Array).size() - stay.size(), -1, _now(), false,
+					turn, true)
 			note_move()
 			_on_dropped(i, onto)
 			_spend(1, _now() + (0.0 if Motion.reduce else ARC_TIME + THREAD_TIME))
 	_refresh()
+
+## A run of `n` pops, a ring a step, from `lead` seconds on: the sound rides
+## the rings down the post.
+func _pops(n: int, lead: float) -> void:
+	var gen := _gen
+	for q in n:
+		var at := 0.0 if Motion.reduce else lead + float(q) * BUMP_STEP * 2.0
+		_after(at, func() -> void:
+			if gen == _gen:
+				fx.cue("drop", randf_range(0.94, 1.06) * pow(2.0, float(q) / 12.0)))
 
 ## `cost` moves go off Insane's counter. The last one gone with the pegs
 ## unsorted ends the board once the ring has landed (`land`).
@@ -1055,133 +1068,88 @@ func _spend(cost: int, land: float) -> void:
 	moved.emit()
 	_after(maxf(0.0, land - _now()) + (0.0 if Motion.reduce else _LAND_SQUASH_TIME), _run_out)
 
-## A drop that would leave the pegs unsortable, on Hard or Insane. The ring
-## is put back in the state at once -- the pegs never stand doomed -- and the
-## picture plays it out: the ring flies over and threads down onto the stack
-## it would have doomed, wobbles there (the stack shivers), a heart splits on
-## the pill, and it hops back home, turning back over if it is two-tone.
-## Input, Undo, Hint and Reset wait until it is home.
-func _doom(to: int) -> void:
-	var t := _now()
-	var from: int = _state.held_from
-	var code: int = _state.held
-	var turn := _held_turn(t)
-	var slot := (_state.pegs[to] as Array).size()
-	_state.put_back()
-	_held_at = -100.0
-	_lost_ever = true
-	_break_streak()
-	_clear_gags()
-	hearts = maxi(0, hearts - 1)
-	_split_index = hearts
-	if hearts <= 0:
-		out_of_hearts = true
-	var gen := _gen
-	var lands := 0.0
-	if Motion.reduce:
-		_shake_at[to] = t
-		_split_at = t
-		_busy_until = t + Motion.REDUCED_TIME
-		fx.cue("wobble")
-		fx.cue("heart_lost")
-	else:
-		var there := ARC_TIME + THREAD_TIME
-		var back := RISE_TIME + ARC_TIME + THREAD_TIME
-		_land_flight(t)
-		_flight = {"code": code, "end_code": code, "from": from, "to": to, "slot": slot, "from_slot": -1,
-			"at": t, "dur": there + WOBBLE_TIME + back, "settle": false, "turn": turn,
-			"turn_to": ceilf(turn / PI + 0.001) * PI, "doom": true, "there": there,
-			"home_slot": (_state.pegs[from] as Array).size() - 1}
-		lands = there
-		_shake_at[to] = t + there
-		_split_at = t + there + 0.08
-		_busy_until = t + there + WOBBLE_TIME + back + 0.05
-		_after(there, func() -> void:
-			if gen == _gen:
-				fx.cue("wobble")
-				fx.cue("heart_lost")
-				_heart_layer.queue_redraw())
-		_after(there + WOBBLE_TIME, func() -> void:
-			if gen == _gen:
-				fx.cue("hop_back")
-				if Gen.two_tone(code):
-					fx.cue("tumble", 0.92))
-	_was_busy = true
-	fx.cue("drop", 0.9, -3.0)
-	fx.buzz(Haptics.TAP)
-	_say(tr("RG_DOOM") if hearts > 0 else tr("RG_DOOM_LAST"), Face.Expr.WORRIED)
-	_heart_layer.queue_redraw()
-	moved.emit()
-	if out_of_hearts:
-		_after(_busy_until - t, _run_out)
-	var st := _station(to)
-	var at := _loc(Vector2(float(st["cx"]), float(st["top"])))
-	_after(lands, func() -> void:
-		if gen == _gen and not Motion.reduce:
-			fx.puff(at, Pal.FLOWER, 4))
-
-## Sends a ring from `from` to `to`, landing in `slot`: up off `from`'s post
-## first when `from_slot` says it starts on one, over, and down `to`'s post.
-## Under reduce motion there is no flight: the ring is simply on its new peg,
+## Sends the rings `codes` (bottom first) from `from` to `to`, the lowest
+## landing in `slot`: up off `from`'s post first when `from_slot` says they
+## start on one (the lowest's slot), over, and down `to`'s post, one stack.
+## Under reduce motion there is no flight: they are simply on their new peg,
 ## and _settle runs at once if asked.
 ##
-## **Never blocks a second move.** A flight already live when a new one
-## starts is landed on the spot (_land_flight), so its _settle -- and the
+## **Never blocks a second move.** Flights already live when a new one
+## starts are landed on the spot (_land_flight), so a _settle -- and the
 ## lock it may carry -- is never lost to a player tapping faster than the
-## arc (tests/test_rings.gd's overlapping-flight case).
+## arc. `also` keeps them: a drop's leftover rings going home fly beside it.
 ##
-## `turn` is how far round the ring already is (a held ring has been turning);
-## the flight whirls it on to the next half turn but one, so it lands with an
-## emblem square to the front. `code` is the ring as it leaves and `end_code`
-## as it lands (-1: the same); a two-tone ring whose two differ turns over in
-## a somersault across the arc.
-func _fly(code: int, from: int, to: int, slot: int, from_slot: int, at: float, settle: bool,
-		turn := 0.0, end_code := -1) -> void:
-	_land_flight(at)
+## `turn` is how far round the rings already are (a held run has been
+## turning); the flight whirls them on to the next half turn but one, so they
+## land with an emblem square to the front.
+func _fly(codes: Array, from: int, to: int, slot: int, from_slot: int, at: float, settle: bool,
+		turn := 0.0, also := false) -> void:
+	if not also:
+		_land_flight(at)
 	if Motion.reduce:
 		if settle:
 			_settle(to, at)
 		return
 	var dur := ARC_TIME + THREAD_TIME + (RISE_TIME if from_slot >= 0 else 0.0)
 	if from == to:
-		dur = THREAD_TIME * (2.4 if end_code >= 0 and end_code != code else 1.4)
+		dur = THREAD_TIME * 1.4
 	var turn_to := ceilf(turn / PI + 0.001) * PI
 	if from != to:
 		turn_to += PI
-	_flight = {"code": code, "end_code": code if end_code < 0 else end_code, "from": from, "to": to,
-		"slot": slot, "from_slot": from_slot, "at": at, "dur": dur, "settle": settle, "turn": turn,
-		"turn_to": turn_to, "hand": _by_hand}
+	_flights.append({"codes": codes, "from": from, "to": to, "slot": slot, "from_slot": from_slot,
+		"at": at, "dur": dur, "settle": settle, "turn": turn, "turn_to": turn_to, "hand": _by_hand})
 
-## Resolves whatever flight is in the air right now, as if it had just
-## landed at `at`. A no-op when nothing is flying. A doomed ring lands home.
+## Resolves every flight in the air right now, as if it had just landed at
+## `at`. A no-op when nothing is flying.
 func _land_flight(at: float) -> void:
-	if _flight.is_empty():
+	if _flights.is_empty():
 		return
-	var doom: bool = _flight.get("doom", false)
-	var to: int = _flight["from"] if doom else _flight["to"]
-	var slot: int = _flight["home_slot"] if doom else _flight["slot"]
-	var settle: bool = _flight.get("settle", false)
-	var hand: bool = _flight.get("hand", false)
-	_flight = {}
-	_land_peg = to
-	_land_slot = slot
-	_land_at = at
-	# The flight's own last frame is in _live_mesh: once the ring is on its
-	# post nothing else rebuilds that mesh, so a stale copy of the ring would
-	# hang over the one now drawn in its slot -- the "double ring".
+	var flights := _flights
+	_flights = []
+	for f: Dictionary in flights:
+		_land_one(f, at)
+
+## Lands the flights whose time is up by `t`, each at its own moment.
+func _land_due(t: float) -> void:
+	var due: Array = []
+	for f: Dictionary in _flights:
+		if t >= float(f["at"]) + float(f["dur"]):
+			due.append(f)
+	for f: Dictionary in due:
+		_flights.erase(f)
+		_land_one(f, float(f["at"]) + float(f["dur"]))
+
+## One flight's rings on their post: the squash, the dust on bare wood, and
+## the _settle a drop or a hint asks for.
+func _land_one(f: Dictionary, at: float) -> void:
+	# The flight's own last frame is in _live_mesh: once the rings are on
+	# their post nothing else rebuilds that mesh, so a stale copy would hang
+	# over the ones now drawn in their slots -- the "double ring".
 	_live_mesh = null
 	queue_redraw()
-	if not Motion.reduce:
+	var to: int = f["to"]
+	var slot: int = f["slot"]
+	if f.get("settle", false) or _land_at < at - 0.01 or _land_peg < 0:
+		_land_peg = to
+		_land_slot = slot + (f["codes"] as Array).size() - 1
+		_land_at = at
+	if not Motion.reduce and slot == 0:
 		var st := _station(to)
-		var foot := Vector2(float(st["cx"]), _ring_yt(float(st["ground"]), RING_W, slot) + (SIDE + FACE) * RING_W)
-		if slot == 0:
-			fx.puff(_loc(foot), Pal.ACORN_TILE.lerp(Pal.WOOD, 0.35), 4)
-	if settle:
+		var foot := Vector2(float(st["cx"]), _ring_yt(float(st["ground"]), RING_W, 0) + (SIDE + FACE) * RING_W)
+		fx.puff(_loc(foot), Pal.ACORN_TILE.lerp(Pal.WOOD, 0.35), 4)
+	if f.get("settle", false):
 		# (A flight landed early by the next tap's: that one's flag is kept.)
 		var was := _by_hand
-		_by_hand = hand
+		_by_hand = f.get("hand", false)
 		_settle(to, at)
 		_by_hand = was
+
+## When the last flight in the air lands, or now.
+func _flights_land() -> float:
+	var land := _now()
+	for f: Dictionary in _flights:
+		land = maxf(land, float(f["at"]) + float(f["dur"]))
+	return land
 
 ## Drops `_lock_at`'s entry for any peg that is no longer locked, checked
 ## against the state fresh rather than trusted.
@@ -1250,13 +1218,13 @@ func _say(text: String, mood: int) -> void:
 
 # --- undo, hint and reset ---
 
-## Takes the last drop back exactly -- up off the peg it landed on, over and
-## down the one it came from, turning back over if it is two-tone. Counts no
-## move, clears the toast and ends the streak. Never on Insane.
+## Takes the last drop back exactly -- the rings it carried up off the peg
+## they landed on, over and down the one they came from. Counts no move,
+## clears the toast and ends the streak.
 func undo() -> bool:
 	if not can_undo():
 		return false
-	var m: Vector2i = _state.undo()
+	var m: Vector3i = _state.undo()
 	if m.x < 0:
 		return false
 	_toast = ""
@@ -1269,9 +1237,8 @@ func undo() -> bool:
 	_reconcile_locks()
 	_held_at = -100.0
 	var dst: Array = _state.pegs[m.x]
-	var slot := dst.size() - 1
-	var code: int = dst[slot]
-	_fly(Gen.flip(code), m.y, m.x, slot, (_state.pegs[m.y] as Array).size(), _now(), false, 0.0, code)
+	var slot := dst.size() - m.z
+	_fly(dst.slice(slot), m.y, m.x, slot, (_state.pegs[m.y] as Array).size(), _now(), false)
 	fx.cue("undo")
 	_say(tr("RG_TAKEN_BACK") + " " + _left_line(), Face.Expr.HAPPY)
 	_refresh()
@@ -1288,7 +1255,7 @@ func hint() -> bool:
 	_toast = ""
 	_toast_at = -100.0
 	_held_at = -100.0
-	var m: Vector2i = _state.hint()
+	var m: Vector3i = _state.hint()
 	if m.x < 0:
 		if _state.is_stuck():
 			_toast = "RG_STUCK_MOVES" if max_moves > 0 else STUCK_MSG
@@ -1298,9 +1265,8 @@ func hint() -> bool:
 	hints_used += 1
 	fx.cue("hint")
 	var dst: Array = _state.pegs[m.y]
-	var slot := dst.size() - 1
-	var code: int = dst[slot]
-	_fly(Gen.flip(code), m.x, m.y, slot, (_state.pegs[m.x] as Array).size(), _now(), true, 0.0, code)
+	var slot := dst.size() - m.z
+	_fly(dst.slice(slot), m.x, m.y, slot, (_state.pegs[m.x] as Array).size(), _now(), true)
 	check_solved()
 	_refresh()
 	moved.emit()
@@ -1326,7 +1292,8 @@ func reset_board() -> void:
 	_toast_at = -100.0
 	_reset_at = _now()
 	_held_at = -100.0
-	_flight = {}
+	_flights = []
+	_reveal_at = {}
 	_land_peg = -1
 	_land_slot = -1
 	_land_at = -100.0
@@ -1351,10 +1318,10 @@ func _process(delta: float) -> void:
 	if _was_busy and not b:
 		moved.emit()
 	_was_busy = b
-	if not _flight.is_empty():
-		var land: float = float(_flight["at"]) + float(_flight["dur"])
-		if t >= land:
-			_land_flight(land)
+	_land_due(t)
+	for j in _reveal_at.keys():
+		if t - float(_reveal_at[j]) < REVEAL_TIME + 0.05:
+			queue_redraw()
 	var redraw := false
 	if _stations_moving(t):
 		redraw = true
@@ -1379,7 +1346,7 @@ func _process(delta: float) -> void:
 func _ring_moving() -> bool:
 	if Motion.reduce:
 		return false
-	return _state.held != -1 or not _flight.is_empty()
+	return _state.holding() or not _flights.is_empty()
 
 ## Whether anything in the stations' mesh is still moving, asked wave by
 ## wave: the entrance, the landing squash and its bump down the stack, the
@@ -1419,9 +1386,7 @@ func _stations_moving(t: float) -> bool:
 ## Every colour on a peg of its own: every peg hops on the family's wave, off
 ## the moment the winning ring actually lands, and the party starts.
 func _on_solved() -> void:
-	var land := _now()
-	if not _flight.is_empty():
-		land = float(_flight["at"]) + float(_flight["dur"])
+	var land := _flights_land()
 	_solved_at = land + (0.0 if Motion.reduce else float(Gen.CAP) * Motion.WAVE_STEP)
 	_tip_timer.stop()
 	# Flawless: no hint, and never out of moves on Insane (no heart lost on a
@@ -1677,26 +1642,35 @@ func _press_dip(i: int, t: float) -> float:
 ## the key that says when that mesh is stale.
 func _station_look(i: int, t: float, hop: float) -> Dictionary:
 	var turn := 0.0
+	var turn_top := 1.0
 	if _solved_at > -INF and not Motion.reduce:
 		# The solve spins every ring a half turn on its post while it hops.
 		var e := t - _solved_at - Motion.SOLVE_DELAY - Motion.stagger(i, Motion.SOLVE_STAGGER)
 		var u := clampf(e / Motion.SOLVE_TIME, 0.0, 1.0)
 		turn = PI * u * u * (3.0 - 2.0 * u)
 	var pegs: Array = (_state.pegs[i] as Array).duplicate()
-	# The destination slot of a live flight is drawn by the flight itself --
-	# and for a doomed ring, which never landed, its home slot.
-	if not _flight.is_empty() and t < float(_flight["at"]) + float(_flight["dur"]):
-		if _flight.get("doom", false):
-			if int(_flight["from"]) == i:
-				pegs.resize(mini(pegs.size(), int(_flight["home_slot"])))
-		elif int(_flight["to"]) == i:
-			pegs.resize(mini(pegs.size(), int(_flight["slot"])))
+	# The slots a live flight lands in are drawn by the flight itself.
+	var flying := false
+	for f: Dictionary in _flights:
+		if int(f["to"]) == i and t < float(f["at"]) + float(f["dur"]):
+			pegs.resize(mini(pegs.size(), int(f["slot"])))
+			flying = true
+	# A face-down ring coming to the top turns over: still face down until
+	# half way, squashed to its edge, then face up.
+	if _reveal_at.has(i) and not pegs.is_empty() and not Motion.reduce:
+		var u := (t - float(_reveal_at[i])) / REVEAL_TIME
+		if u < 1.0:
+			var fp := _flip_pose(int(pegs.back()) | Gen.HIDDEN, int(pegs.back()), maxf(u, 0.0))
+			pegs[pegs.size() - 1] = fp[0]
+			turn_top = float(fp[1])
 	var scales: Array = []
 	var glints: Array = []
 	var turns: Array = []
 	var stretch := hop / absf(Motion.SOLVE_HOP)
 	for k in pegs.size():
 		var sc := Vector2(1.0 - 0.04 * stretch, 1.0 + 0.07 * stretch)
+		if k == pegs.size() - 1:
+			sc.y *= turn_top
 		if i == _land_peg and k <= _land_slot:
 			var e := t - _land_at - float(_land_slot - k) * BUMP_STEP
 			var amount := 0.14 if k == _land_slot else 0.06
@@ -1715,7 +1689,7 @@ func _station_look(i: int, t: float, hop: float) -> Dictionary:
 				scales[k] = (scales[k] as Vector2) * Vector2(1.0 - 0.05 * sin(u * PI), 1.0 + 0.12 * sin(u * PI))
 		turns.append(spin)
 	var cap := 0.0
-	if _state.locked(i) and _flight.get("to", -1) != i:
+	if _state.locked(i) and not flying:
 		cap = 1.0
 		if _lock_at.has(i) and not Motion.reduce:
 			cap = Motion.pop_in_scale(t - float(_lock_at[i]) - float(Gen.CAP - 1) * Motion.WAVE_STEP).x
@@ -1741,15 +1715,14 @@ static func _append_peg(b, cx: float, ground: float, w: float, colours: Array, m
 			Color(Pal.TEXT, 0.16 * alpha), map)
 	for k in colours.size():
 		var code: int = colours[k]
-		var ci := Gen.top(code)
+		var ci := _ink(code)
 		var sc: Vector2 = scales[k] if k < scales.size() else Vector2.ONE
 		var glint: float = glints[k] if k < glints.size() else 0.0
 		var turn: float = turns[k] if k < turns.size() else 0.0
 		var yt := _ring_yt(ground, w, k)
 		# A squash sits the ring on its own bottom rather than its middle.
 		yt += (1.0 - sc.y) * (SIDE + FACE) * w
-		_append_donut(b, cx, yt, w, RING_COLOURS[ci], ci, alpha, map, sc, glint, 0.0, turn,
-			Gen.under(code) if Gen.two_tone(code) else -1)
+		_append_donut(b, cx, yt, w, RING_COLOURS[ci], ci, alpha, map, sc, glint, 0.0, turn)
 		into = yt
 	_append_post(b, cx, top_y, into, w, alpha, map)
 	if cap > 0.0:
@@ -1825,13 +1798,8 @@ static func _poly_mapped(b, points: PackedVector2Array, colour: Color, map: Call
 ## shine; `turn` is how far round the ring has turned on its axis, which only
 ## the emblems show -- two of them, opposite, so one is always to the front
 ## when the turn is a whole number of half turns.
-##
-## `under` (Tumble, -1 for a plain ring) is the colour of a two-tone ring's
-## lower layer: the band's lower half is drawn in it with its own small
-## emblem, under a cream seam, so a player reads what a ring will show once
-## it is lifted and turned over.
 static func _append_donut(b, cx: float, yt: float, w: float, colour: Color, emblem: int, alpha: float,
-		map: Callable, sc := Vector2.ONE, glint := 0.0, tilt := 0.0, turn := 0.0, under := -1) -> void:
+		map: Callable, sc := Vector2.ONE, glint := 0.0, tilt := 0.0, turn := 0.0) -> void:
 	var smap := map
 	if sc != Vector2.ONE or tilt != 0.0:
 		var about := Vector2(cx, yt + SIDE * w * 0.5)
@@ -1842,16 +1810,15 @@ static func _append_donut(b, cx: float, yt: float, w: float, colour: Color, embl
 		else:
 			smap = func(p: Vector2) -> Vector2:
 				return map.call(about + rot * ((p - about) * sc))
-	_donut_body(b, cx, yt, w, colour, alpha, smap, under)
-	_donut_emblems(b, cx, yt, w, colour, emblem, alpha, smap, turn, under)
+	_donut_body(b, cx, yt, w, colour, alpha, smap)
+	_donut_emblems(b, cx, yt, w, colour, emblem, alpha, smap, turn)
 	_donut_face(b, cx, yt, w, colour, alpha, smap)
 	if glint > 0.0:
 		_donut_glint(b, cx, yt, w, Color(Color.WHITE, 0.55 * glint * alpha), smap)
 
-## A ring's band: its rim and body, the tube's shading, a two-tone ring's
-## lower layer and seam, and the sheen spot -- everything under the emblems.
-static func _donut_body(b, cx: float, yt: float, w: float, colour: Color, alpha: float, smap: Callable,
-		under := -1) -> void:
+## A ring's band: its rim and body, the tube's shading and the sheen spot --
+## everything under the emblems.
+static func _donut_body(b, cx: float, yt: float, w: float, colour: Color, alpha: float, smap: Callable) -> void:
 	var rx := w * 0.5
 	var ry := FACE * w
 	var yb := yt + SIDE * w
@@ -1865,51 +1832,31 @@ static func _donut_body(b, cx: float, yt: float, w: float, colour: Color, alpha:
 	# so the shading curves round it the way a torus's does.
 	_fan_mapped(b, _capsule(cx, yt + SIDE * w * 0.62, yb - edge, rx * 0.99, ry), Color(rim, 0.38 * alpha), smap)
 	_fan_mapped(b, _capsule(cx, yt, yt + SIDE * w * 0.3, rx * 0.985, ry), Color(Color.WHITE, 0.2 * alpha), smap)
-	var mid := yt + SIDE * w * 0.5
-	if under >= 0:
-		# The lower layer: its own colour from the seam down, rounded and
-		# shaded like the band, and a cream seam between the two.
-		var lower: Color = RING_COLOURS[under % RING_COLOURS.size()]
-		_poly_mapped(b, _front_band(cx, mid, yb, rx, ry), Color(lower.lerp(Pal.TEXT, 0.26), alpha), smap)
-		_poly_mapped(b, _front_band(cx, mid, yb - edge, rx * 0.99, ry), Color(lower.lerp(Pal.TEXT, 0.03), alpha), smap)
-		_poly_mapped(b, _front_band(cx, yt + SIDE * w * 0.8, yb - edge, rx * 0.99, ry), Color(lower.lerp(Pal.TEXT, 0.26), 0.38 * alpha), smap)
-		var seam := PackedVector2Array()
-		for p in Face.Builder.arc_points(Vector2.ZERO, 1.0, 0.05, PI - 0.05):
-			seam.append(Vector2(cx + p.x * rx * 0.995, mid + p.y * ry))
-		_stroke_mapped(b, seam, w * 0.022, Color(Pal.SURFACE, 0.9 * alpha), smap)
 	_fan_mapped(b, Face.Builder.ring(Vector2(cx - rx * 0.66, yt + ry + SIDE * w * 0.36), rx * 0.1, SIDE * w * 0.22),
 		Color(Color.WHITE, 0.22 * alpha), smap)
 
 ## Where an emblem `q` (0 or 1, opposite each other) sits on a ring whose
 ## top face is centred on (cx, yt), turned `turn` round: [centre, how square
-## to the eye, fade], or [] when it is round the back. `low` is a two-tone
-## ring's lower emblem.
-static func _emblem_spot(cx: float, yt: float, w: float, turn: float, q: int, two: bool, low: bool) -> Array:
+## to the eye, fade], or [] when it is round the back.
+static func _emblem_spot(cx: float, yt: float, w: float, turn: float, q: int) -> Array:
 	var a := turn + PI * float(q)
 	var c := cos(a)
 	if c < 0.1:
 		return []
 	var rx := w * 0.5
 	var ry := FACE * w
-	var y := yt + ry + SIDE * w * ((0.74 if low else 0.26) if two else 0.48) + ry * (c - 1.0)
+	var y := yt + ry + SIDE * w * 0.48 + ry * (c - 1.0)
 	return [Vector2(cx + sin(a) * rx * EMBLEM_REACH, y), c, clampf((c - 0.1) / 0.3, 0.0, 1.0)]
 
 ## The emblems inlaid on the band, two of them opposite each other so one is
-## always to the front when the turn is a whole number of half turns; a
-## two-tone ring wears a small one of its lower colour under each.
+## always to the front when the turn is a whole number of half turns.
 static func _donut_emblems(b, cx: float, yt: float, w: float, colour: Color, emblem: int, alpha: float,
-		smap: Callable, turn: float, under: int) -> void:
-	var two := under >= 0
-	var emb_s := EMBLEM * w * (0.62 if two else 1.0)
+		smap: Callable, turn: float) -> void:
 	for q in 2:
-		var spot := _emblem_spot(cx, yt, w, turn, q, two, false)
+		var spot := _emblem_spot(cx, yt, w, turn, q)
 		if spot.is_empty():
 			continue
-		_append_emblem(b, emblem, spot[0], emb_s, spot[1], colour, float(spot[2]) * alpha, smap)
-		if two:
-			var low := _emblem_spot(cx, yt, w, turn, q, two, true)
-			_append_emblem(b, under, low[0], emb_s, low[1], RING_COLOURS[under % RING_COLOURS.size()],
-				float(low[2]) * alpha, smap)
+		_append_emblem(b, emblem, spot[0], EMBLEM * w, spot[1], colour, float(spot[2]) * alpha, smap)
 
 ## The lighter top face, its cream inner lip and the hole.
 static func _donut_face(b, cx: float, yt: float, w: float, colour: Color, alpha: float, smap: Callable) -> void:
@@ -1982,6 +1929,27 @@ static func _append_emblem(b, kind: int, at: Vector2, s: float, sx: float, colou
 					0.3, s, col, to, true)
 			Emblem.TRIANGLE:
 				_stroke_to(b, [Vector2(0.0, -0.82), Vector2(0.9, 0.7), Vector2(-0.9, 0.7)], 0.3, s, col, to, true)
+			Emblem.STAR:
+				var star := PackedVector2Array()
+				for q in 10:
+					var r := 1.0 if q % 2 == 0 else 0.45
+					star.append(to.call(Vector2.from_angle(TAU * float(q) / 10.0 - PI * 0.5) * r))
+				b.polygon(star, col)
+			Emblem.SQUARE:
+				_stroke_to(b, [Vector2(-0.68, -0.68), Vector2(0.68, -0.68), Vector2(0.68, 0.68), Vector2(-0.68, 0.68)],
+					0.3, s, col, to, true)
+			Emblem.QUESTION:
+				# A hook and a dot: what a face-down ring keeps to itself.
+				var hook: Array = []
+				for q in 9:
+					hook.append(Vector2.from_angle(PI * 1.05 + PI * 1.45 * float(q) / 8.0) * 0.48 + Vector2(0.0, -0.42))
+				hook.append(Vector2(0.06, 0.12))
+				hook.append(Vector2(0.06, 0.36))
+				_stroke_to(b, hook, 0.28, s, col, to)
+				var dot := PackedVector2Array()
+				for p in Face.Builder.ring(Vector2(0.06, 0.78), 0.17, 0.17):
+					dot.append(to.call(p))
+				b.fan(dot, col)
 
 ## An emblem's three inks on a ring of `colour`: the shade under it, the
 ## cream inlay and a flower's eye.
@@ -2049,16 +2017,12 @@ func _make_look(id: int) -> Face.Builder:
 	var w := RING_W
 	var none := Callable()
 	if id < LOOK_FACE:
-		var code := id - LOOK_BODY
-		_donut_body(b, 0.0, 0.0, w, RING_COLOURS[Gen.top(code)], 1.0, none,
-			Gen.under(code) if Gen.two_tone(code) else -1)
+		_donut_body(b, 0.0, 0.0, w, RING_COLOURS[id - LOOK_BODY], 1.0, none)
 	elif id < LOOK_EMBLEM:
 		_donut_face(b, 0.0, 0.0, w, RING_COLOURS[id - LOOK_FACE], 1.0, none)
 	elif id < LOOK_GLINT:
 		# At the size it is drawn, so its feather stays a pixel and a half.
-		var small := id >= LOOK_EMBLEM_SMALL
-		var kind := id - (LOOK_EMBLEM_SMALL if small else LOOK_EMBLEM)
-		_append_emblem(b, kind, Vector2.ZERO, EMBLEM * w * (0.62 if small else 1.0), 1.0, Color.WHITE, 1.0, none,
+		_append_emblem(b, id - LOOK_EMBLEM, Vector2.ZERO, EMBLEM * w, 1.0, Color.WHITE, 1.0, none,
 			[RunMesh.slot(0), RunMesh.slot(1), RunMesh.slot(2)])
 	elif id == LOOK_GLINT:
 		_donut_glint(b, 0.0, 0.0, w, RunMesh.slot(0), none)
@@ -2110,27 +2074,28 @@ func _build_station(cx: float, ground: float, look: Dictionary) -> ArrayMesh:
 func _put_ring(cx: float, yt: float, code: int, sc := Vector2.ONE, tilt := 0.0, turn := 0.0, glint := 0.0) -> void:
 	var half := SIDE * RING_W * 0.5
 	var xf := Transform2D(tilt, sc, 0.0, Vector2(cx, yt + half)) * Transform2D(0.0, Vector2(0.0, -half))
-	var ci := Gen.top(code)
-	var two := Gen.two_tone(code)
-	_looks.put(LOOK_BODY + code, [], xf)
+	var ci := _ink(code)
+	_looks.put(LOOK_BODY + ci, [], xf)
 	for q in 2:
-		var spot := _emblem_spot(0.0, 0.0, RING_W, turn, q, two, false)
+		var spot := _emblem_spot(0.0, 0.0, RING_W, turn, q)
 		if spot.is_empty():
 			continue
-		_put_emblem(xf, ci, spot, two)
-		if two:
-			_put_emblem(xf, Gen.under(code), _emblem_spot(0.0, 0.0, RING_W, turn, q, two, true), true)
+		_put_emblem(xf, ci, spot)
 	_looks.put(LOOK_FACE + ci, [], xf)
 	if glint > 0.0:
 		_looks.put(LOOK_GLINT, [Color(Color.WHITE, 0.55 * roundf(glint * FADE_STEPS) / FADE_STEPS)], xf)
 
+## What a ring is drawn as: its colour, or VEIL while it lies face down.
+static func _ink(code: int) -> int:
+	return VEIL if Gen.hidden(code) else Gen.top(code)
+
 ## An emblem at `spot` (`_emblem_spot`) on the ring under `xf`, narrowed as
 ## it turns away and faded in steps.
-func _put_emblem(xf: Transform2D, kind: int, spot: Array, small: bool) -> void:
+func _put_emblem(xf: Transform2D, kind: int, spot: Array) -> void:
 	var fade := roundf(float(spot[2]) * FADE_STEPS) / FADE_STEPS
 	if fade <= 0.0:
 		return
-	_looks.put((LOOK_EMBLEM_SMALL if small else LOOK_EMBLEM) + kind, _emblem_inks(RING_COLOURS[kind], fade),
+	_looks.put(LOOK_EMBLEM + kind, _emblem_inks(RING_COLOURS[kind], fade),
 		xf * Transform2D(Vector2(float(spot[1]), 0.0), Vector2(0.0, 1.0), spot[0]))
 
 ## The dowel down into a ring at `bottom_y`, a look a whole design pixel of
@@ -2147,18 +2112,18 @@ func _put_hover(cx: float, top_y: float) -> void:
 # --- the ring in hand and the ring in flight ---
 
 func _build_live(t: float) -> ArrayMesh:
-	if _state.held == -1 and _flight.is_empty():
+	if not _state.holding() and _flights.is_empty():
 		return null
 	_looks.begin()
-	if _state.held != -1:
+	if _state.holding():
 		_build_held(t)
-	if not _flight.is_empty():
-		_build_flight(t)
+	for f: Dictionary in _flights:
+		_build_flight(f, t)
 	return _looks.mesh()
 
-## A two-tone ring's somersault at `u` (0..1 across its turn): how tall it is
-## drawn (it squashes to its edge at the middle) and which face is up -- the
-## `from` code until the middle, the `to` code after.
+## A ring turning over at `u` (0..1 across its turn): which face is up -- the
+## `from` code until the middle, the `to` code after -- and how tall it is
+## drawn (it squashes to its edge at the middle).
 static func _flip_pose(from: int, to: int, u: float) -> Array:
 	if from == to or u >= 1.0:
 		return [to, 1.0]
@@ -2166,11 +2131,25 @@ static func _flip_pose(from: int, to: int, u: float) -> Array:
 		return [from, 1.0]
 	return [from if u < 0.5 else to, maxf(absf(cos(PI * u)), 0.08)]
 
-## The held ring: up its post on the back ease over RISE_TIME, stretched
-## while it slides, then breathing BOB px for as long as it waits. A two-tone
-## ring turns over as it rises (Tumble). A refusal dips it toward the peg that
-## refused it and shivers it there. On Easy and Medium a soft leaf ring marks
-## every post it may land on. Under reduce motion it is simply up and still.
+## A stack of rings `codes` (bottom first) whose top ring's face is at `yt`,
+## the rest a slot apart under it, all under one squash, lean and turn; the
+## post from `post_top` goes into the lowest one's hole when it is on one
+## (`post_top` < INF), drawn before the rings above it so they cover it.
+func _put_stack(cx: float, yt: float, codes: Array, sc: Vector2, tilt: float, turn: float, post_top := INF) -> void:
+	var n := codes.size()
+	for q in n:
+		var dy := float(n - 1 - q) * PITCH * RING_W
+		var at := Vector2(cx, yt) + Vector2(-sin(tilt), cos(tilt)) * dy
+		_put_ring(at.x, at.y, int(codes[q]), sc, tilt, turn)
+		if q == 0 and post_top < INF:
+			_put_post(cx, post_top, at.y)
+
+## The run in hand: up its post on the back ease over RISE_TIME, stretched
+## while it slides, then breathing BOB px for as long as it waits, its top
+## ring clear of the post and the rest a slot apart under it. A refusal dips
+## it toward the peg that refused it and shivers it there. On Easy and
+## Medium a soft leaf ring marks every post it may land on. Under reduce
+## motion it is simply up and still.
 func _build_held(t: float) -> void:
 	var st := _station(_state.held_from)
 	var cx: float = st["cx"]
@@ -2178,7 +2157,7 @@ func _build_held(t: float) -> void:
 	var up := _held_yt(ground, RING_W)
 	var y := up
 	var sc := Vector2.ONE
-	var code: int = _state.held
+	var codes: Array = _state.held
 	if _state.difficulty <= 1:
 		# Breathing: the look made at rest, scaled about its middle.
 		var k := 1.0 + 0.06 * sin(t * 4.0)
@@ -2188,16 +2167,11 @@ func _build_held(t: float) -> void:
 				_looks.put(LOOK_MARK, [], Transform2D(0.0, Vector2(k, k), 0.0, Vector2(float(sj["cx"]), float(sj["top"]) + 6.0)))
 	if not Motion.reduce:
 		var since := t - _held_at
-		var from_y := _ring_yt(ground, RING_W, (_state.pegs[_state.held_from] as Array).size())
+		var from_y := _ring_yt(ground, RING_W, (_state.pegs[_state.held_from] as Array).size() + codes.size() - 1)
 		var u := clampf(since / RISE_TIME, 0.0, 1.0)
 		y = lerpf(from_y, up, Motion.back_out(u))
 		var s := sin(PI * u)
 		sc = Vector2(1.0 - 0.05 * s, 1.0 + 0.09 * s)
-		if Gen.two_tone(code):
-			var fu := clampf(since / (RISE_TIME + 0.12), 0.0, 1.0)
-			var fp := _flip_pose(Gen.flip(code), code, fu)
-			code = fp[0]
-			sc.y *= float(fp[1])
 		var breath := clampf((since - RISE_TIME) / 0.3, 0.0, 1.0)
 		y += BOB * sin(maxf(since - RISE_TIME, 0.0) * TAU / BOB_CYCLE) * breath
 		if _refuse_to >= 0:
@@ -2207,9 +2181,8 @@ func _build_held(t: float) -> void:
 			cx += dir * Motion.nudge_offset(e, DIP, Motion.NUDGE_TIME, 0.0)
 			cx += Motion.shiver_offset(e - Motion.NUDGE_TIME * 0.5, Motion.SHIVER_PX * 2.5)
 	_put_hover(float(st["cx"]), float(st["top"]))
-	_put_ring(cx, y, code, sc, 0.0, _held_turn(t))
-	# Still on its post while it slides: the post over the ring, into its hole.
-	_put_post(float(st["cx"]), float(st["top"]), y)
+	# Still on its post while it slides: the post into the lowest ring's hole.
+	_put_stack(cx, y, codes, sc, 0.0, _held_turn(t), float(st["top"]))
 
 ## A soft leaf-green ring breathing round a post top the held ring may land
 ## on (Easy and Medium only: the harder bands read the pegs themselves).
@@ -2218,25 +2191,25 @@ static func _landing_mark(b, cx: float, y: float, map: Callable) -> void:
 	var pts := Face.Builder.ring(Vector2(cx, y + 6.0), RING_W * 0.24, 13.0)
 	_stroke_mapped(b, pts, 4.0, Color(Pal.LEAF, 0.55), map, true)
 
-## Where a ring on one leg of a flight is `e` seconds in: {x, yt, tilt, peg,
-## u, arc} -- `peg` the post it is on (rising off or threading down), or -1
-## while it is in the air, `u` how far down the thread it is, and `arc` how far
-## across the arc (0..1, for the somersault).
-func _leg_pose(from: int, to: int, slot: int, from_slot: int, dur: float, e: float) -> Dictionary:
+## Where the top ring of a flying stack of `n` is `e` seconds into a flight:
+## {x, yt, tilt, peg, u} -- `peg` the post it is on (rising off or threading
+## down), or -1 while it is in the air, and `u` how far down the thread it
+## is. `slot` and `from_slot` are the lowest ring's.
+func _leg_pose(from: int, to: int, slot: int, from_slot: int, n: int, dur: float, e: float) -> Dictionary:
 	var a := _station(from)
 	var d := _station(to)
 	var ya := _held_yt(float(a["ground"]), RING_W)
 	var yd := _held_yt(float(d["ground"]), RING_W)
-	var y_land := _ring_yt(float(d["ground"]), RING_W, slot)
+	var y_land := _ring_yt(float(d["ground"]), RING_W, slot + n - 1)
 	if from == to:
 		var u0 := clampf(e / dur, 0.0, 1.0)
-		return {"x": float(d["cx"]), "yt": lerpf(yd, y_land, u0 * u0), "tilt": 0.0, "peg": to, "u": u0, "arc": u0}
+		return {"x": float(d["cx"]), "yt": lerpf(yd, y_land, u0 * u0), "tilt": 0.0, "peg": to, "u": u0}
 	if from_slot >= 0:
 		if e < RISE_TIME:
 			var u := e / RISE_TIME
-			var y0 := _ring_yt(float(a["ground"]), RING_W, from_slot)
+			var y0 := _ring_yt(float(a["ground"]), RING_W, from_slot + n - 1)
 			return {"x": float(a["cx"]), "yt": lerpf(y0, ya, 1.0 - (1.0 - u) * (1.0 - u)), "tilt": 0.0,
-				"peg": from, "u": 0.0, "arc": 0.0}
+				"peg": from, "u": 0.0}
 		e -= RISE_TIME
 	if e < ARC_TIME:
 		var u := e / ARC_TIME
@@ -2245,63 +2218,30 @@ func _leg_pose(from: int, to: int, slot: int, from_slot: int, dur: float, e: flo
 		var y := lerpf(ya, yd, ease) - ARC_LIFT * sin(PI * u)
 		y = maxf(y, FACE * RING_W + 8.0)
 		var lean := TILT * sin(PI * u) * signf(float(d["cx"]) - float(a["cx"]))
-		return {"x": x, "yt": y, "tilt": lean, "peg": -1, "u": 0.0, "arc": u}
+		return {"x": x, "yt": y, "tilt": lean, "peg": -1, "u": 0.0}
 	var v := clampf((e - ARC_TIME) / THREAD_TIME, 0.0, 1.0)
-	return {"x": float(d["cx"]), "yt": lerpf(yd, y_land, v * v), "tilt": 0.0, "peg": to, "u": v, "arc": 1.0}
+	return {"x": float(d["cx"]), "yt": lerpf(yd, y_land, v * v), "tilt": 0.0, "peg": to, "u": v}
 
-## Where the flying ring is at `t`. A doomed ring's flight is three legs: over
-## and down onto the stack it would doom, a wobble there (rocking, the code
-## as it was held), and up, over and down home again, turning back over.
-func _pose(t: float) -> Dictionary:
-	var e := t - float(_flight["at"])
-	var from: int = _flight["from"]
-	var to: int = _flight["to"]
-	if not _flight.get("doom", false):
-		var p := _leg_pose(from, to, int(_flight["slot"]), int(_flight["from_slot"]), float(_flight["dur"]), e)
-		p["code_u"] = p["arc"]
-		return p
-	var there: float = _flight["there"]
-	if e < there:
-		var p := _leg_pose(from, to, int(_flight["slot"]), -1, there, e)
-		p["code_u"] = 0.0
-		return p
-	if e < there + WOBBLE_TIME:
-		var w := (e - there) / WOBBLE_TIME
-		var d := _station(to)
-		var rock := sin(w * WOBBLE_ROCKS * TAU) * WOBBLE_TILT * (1.0 - w)
-		var yt := _ring_yt(float(d["ground"]), RING_W, int(_flight["slot"])) - absf(rock) * 30.0
-		return {"x": float(d["cx"]) + rock * 24.0, "yt": yt, "tilt": rock, "peg": to, "u": 1.0, "arc": 1.0, "code_u": 0.0}
-	var back := _leg_pose(to, from, int(_flight["home_slot"]), int(_flight["slot"]),
-		float(_flight["dur"]) - there - WOBBLE_TIME, e - there - WOBBLE_TIME)
-	back["code_u"] = back["arc"]
-	return back
-
-func _build_flight(t: float) -> void:
-	var p := _pose(t)
+func _build_flight(f: Dictionary, t: float) -> void:
+	var codes: Array = f["codes"]
+	var p := _leg_pose(int(f["from"]), int(f["to"]), int(f["slot"]), int(f["from_slot"]), codes.size(),
+		float(f["dur"]), t - float(f["at"]))
 	var peg: int = p["peg"]
 	if peg < 0:
-		var land := int(_flight["from"]) if _flight.get("doom", false) and t - float(_flight["at"]) > float(_flight.get("there", 0.0)) \
-			else int(_flight["to"])
-		var d := _station(land)
+		var d := _station(int(f["to"]))
 		_put_hover(float(p["x"]), float(d["top"]))
 	var sc := Vector2(1.0 + 0.04 * float(p["u"]), 1.0 - 0.02 * float(p["u"]))
-	var start: int = _flight["code"]
-	var end: int = _flight["end_code"]
-	if _flight.get("doom", false):
-		end = Gen.flip(start)
-	var fp := _flip_pose(start, end, float(p["code_u"]))
-	sc.y *= float(fp[1])
-	var f := clampf((t - float(_flight["at"])) / float(_flight["dur"]), 0.0, 1.0)
-	var turn := lerpf(float(_flight.get("turn", 0.0)), float(_flight.get("turn_to", 0.0)), 1.0 - pow(1.0 - f, 3.0))
-	_put_ring(float(p["x"]), float(p["yt"]), int(fp[0]), sc, float(p["tilt"]), turn)
+	var u := clampf((t - float(f["at"])) / float(f["dur"]), 0.0, 1.0)
+	var turn := lerpf(float(f.get("turn", 0.0)), float(f.get("turn_to", 0.0)), 1.0 - pow(1.0 - u, 3.0))
+	var post := INF
 	if peg >= 0:
-		var st := _station(peg)
-		_put_post(float(st["cx"]), float(st["top"]), float(p["yt"]))
+		post = float(_station(peg)["top"])
+	_put_stack(float(p["x"]), float(p["yt"]), codes, sc, float(p["tilt"]), turn, post)
 
-## How far round the ring in hand has turned: still as it rises, then easing
+## How far round the run in hand has turned: still as it rises, then easing
 ## into a slow turn on its post's axis for as long as it waits.
 func _held_turn(t: float) -> float:
-	if Motion.reduce or _state.held == -1:
+	if Motion.reduce or not _state.holding():
 		return 0.0
 	var since := maxf(t - _held_at - RISE_TIME, 0.0)
 	if since < HOLD_SPIN_IN:
@@ -2492,7 +2432,7 @@ func tip_line() -> Dictionary:
 ## things allowed to speak, or a stale rule would paper over a live status
 ## line.
 func _cycle_tip() -> void:
-	if is_done() or out_of_hearts or not _state.log.is_empty() or _state.held != -1:
+	if is_done() or out_of_hearts or not _state.log.is_empty() or _state.holding():
 		return
 	var tips := _tips()
 	_tip_idx = (_tip_idx + 1) % tips.size()
@@ -2511,23 +2451,22 @@ func completion_record() -> Dictionary:
 ## One coloured square per colour already home, in the order it actually
 ## came home: replays `log` from the dealt position rather than trusting
 ## anything stored, the same way every other derived read on this board
-## does (a Tumble ring turning over on every move, as it does on the board).
-## Then the seal's words: `🙃 Tumble` for any Insane solve (and ` · Flawless`
-## when it was), `🏅 Flawless` otherwise.
+## does. Then the seal's words: `🙈 Hidden` for any Insane solve (and
+## ` · Flawless` when it was), `🏅 Flawless` otherwise.
 func share_glyphs() -> String:
 	var pegs: Array = []
 	for s in _state.deal:
 		pegs.append((s as Array).duplicate())
 	var out := ""
-	for m in _state.log:
-		var ring := int((pegs[m.x] as Array).pop_back())
-		(pegs[m.y] as Array).append(Gen.flip(ring))
+	var insane: bool = _state.difficulty == 3
+	for m: Vector3i in _state.log:
+		Gen.apply(pegs, m.x, m.y)
 		if Gen.locked(pegs[m.y]):
 			out += SHARE_GLYPHS[Gen.top(int(pegs[m.y][0]))]
-	if (_state.tumble and is_solved()) or (_flawless and is_solved()):
+	if (insane or _flawless) and is_solved():
 		out += "\n"
-	if _state.tumble and is_solved():
-		out += "🙃 " + tr("RG_TUMBLE_SEAL") + (" · " + tr("BN_FLAWLESS") if _flawless else "")
+	if insane and is_solved():
+		out += "🙈 " + tr("RG_HIDDEN_SEAL") + (" · " + tr("BN_FLAWLESS") if _flawless else "")
 	elif _flawless and is_solved():
 		out += "🏅 " + tr("BN_FLAWLESS")
 	return out
@@ -2551,9 +2490,10 @@ func restore_completed_board() -> void:
 		home.append([])
 	_state.pegs = home
 	_state.log = []
-	_state.held = -1
+	_state.held = []
 	_state.held_from = -1
-	_flight = {}
+	_flights = []
+	_reveal_at = {}
 	_lock_at = {}
 	_hop_at = {}
 	_shake_at = {}
@@ -2562,7 +2502,7 @@ func restore_completed_board() -> void:
 	_solved_at = t - 10.0
 	_cat_at = t - 100.0
 	_place_cat(t)
-	if _flawless or _state.tumble:
+	if _flawless or _state.difficulty == 3:
 		_stamp_at = t - 100.0
 	_tip_timer.stop()
 	_say(tr("RG_WIN"), Face.Expr.JOY)
@@ -2741,7 +2681,8 @@ func try_again() -> void:
 	_shake_at = {}
 	_refuse_to = -1
 	_toast = ""
-	_flight = {}
+	_flights = []
+	_reveal_at = {}
 	_land_peg = -1
 	_held_at = -100.0
 	_reset_at = _now()
@@ -2956,7 +2897,7 @@ func _start_gag(i: int, gag: int, lands: float) -> void:
 ## shares a bit of ring wisdom, confetti twice, a runaway hoop rolls across
 ## the terrace and spins down flat, the nap cat hops in by the foot and curls
 ## up, and the seal stamps when the solve earned one (flawless, or any
-## Tumble). Under reduce motion the cat and the seal are simply there.
+## Insane). Under reduce motion the cat and the seal are simply there.
 func _party(wave: float) -> void:
 	var now := _now()
 	var lead := 0.0 if Motion.reduce else wave + PARTY_AT
@@ -2964,7 +2905,7 @@ func _party(wave: float) -> void:
 	_after(lead + 0.6, func() -> void:
 		_say(_cheer(), Face.Expr.JOY))
 	_cat_at = now if Motion.reduce else _party_at + CAT_AT
-	if _flawless or _state.tumble:
+	if _flawless or _state.difficulty == 3:
 		_stamp_at = now if Motion.reduce else _party_at + STAMP_AT
 		_seal_mesh = null
 		_after(_stamp_at - now, func() -> void:
@@ -3304,10 +3245,10 @@ func _draw_combo(now: float, shown: Array) -> void:
 
 ## The seal at the card's lower right, dropping in from STAMP_FROM its size
 ## and settling with the back ease's overshoot, its words over it: Flawless;
-## on Tumble "Insane" over Flawless or Tumble, on the night seal.
+## on Insane "Insane" over Flawless or Hidden, on the night seal.
 func _draw_stamp(now: float, shown: Array) -> void:
 	var rad := _box.size.x * STAMP_R * 0.75
-	var insane: bool = _state.tumble
+	var insane: bool = _state.difficulty == 3
 	if _seal_mesh == null:
 		_seal_mesh = Seal.mesh(rad, insane)
 	shown.append(_seal_mesh)
@@ -3325,7 +3266,7 @@ func _draw_stamp(now: float, shown: Array) -> void:
 	var lines: Array
 	if insane:
 		lines = [[tr("BN_INSANE_SEAL"), 0.27, 0.02],
-			[tr("BN_FLAWLESS") if _flawless else tr("RG_TUMBLE_SEAL"), 0.17, 0.36]]
+			[tr("BN_FLAWLESS") if _flawless else tr("RG_HIDDEN_SEAL"), 0.17, 0.36]]
 	else:
 		lines = [[tr("BN_FLAWLESS"), 0.24, 0.12]]
 	Seal.text(_life_layer, rad, lines)
@@ -3363,7 +3304,7 @@ class RingIcon extends Control:
 			draw_mesh(_mesh, null)
 
 ## The day as dealt, for tools/export_days.gd: a column a peg, its top ring
-## on top, a Tumble ring's under colour in the corner. The answer is the
+## on top, a face-down ring noted "?". The answer is the
 ## hint's own line from the deal (`Gen.solve`: a way home, not the shortest)
 ## and the pegs it ends on.
 func day_dict() -> Dictionary:
@@ -3378,15 +3319,15 @@ func day_dict() -> Dictionary:
 		rings += s.size()
 	var line: Array = []
 	for m: Vector2i in Gen.solve(deal):
-		(end[m.y] as Array).append(Gen.flip(int((end[m.x] as Array).pop_back())))
+		Gen.apply(end, m.x, m.y)
 		line.append([m.x, m.y])
 	var slot := func(peg: Array, k: int) -> Dictionary:
 		if k >= peg.size():
 			return {}
 		var ring := int(peg[k])
 		var cell := {"c": Gen.top(ring)}
-		if Gen.two_tone(ring):
-			cell["note"] = str(Gen.under(ring))
+		if Gen.hidden(ring):
+			cell["note"] = "?"
 		return cell
 	var puzzle: Array = []
 	var answer: Array = []
@@ -3394,15 +3335,13 @@ func day_dict() -> Dictionary:
 		for x in deal.size():
 			puzzle.append(slot.call(deal[x], cap - 1 - y))
 			answer.append(slot.call(end[x], cap - 1 - y))
-	var banked: bool = _state.difficulty == 3 \
-		and State.InsaneBank.pick("rings", bank_step).get("pegs") is Array
 	var metrics := {"pegs": deal.size(), "colours": int(_state.colours), "rings": rings,
-		"cap": cap, "tumble": bool(_state.tumble), "line": line.size(),
+		"cap": cap, "hidden": _state.difficulty == 3, "line": line.size(),
 		"hints": State.hints_for(_state.difficulty), "hearts": max_hearts, "moves": max_moves}
 	if _state.par > 0:
 		metrics["par"] = int(_state.par)
 	return {
-		"source": "bank" if banked else "generator", "kind": "grid",
+		"source": "generator", "kind": "grid",
 		"payload": {"pegs": deal, "cap": cap},
 		"solution": {"moves": line, "pegs": end} if not line.is_empty() else {},
 		"metrics": metrics,

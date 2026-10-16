@@ -71,12 +71,8 @@ static func _test_every_deal_is_solvable(t) -> void:
 			for s in pegs:
 				work.append((s as Array).duplicate())
 			for m in path:
-				var from: Array = work[m.x]
-				var to: Array = work[m.y]
-				t.check(not from.is_empty(), "source not empty")
-				t.check(to.size() < Gen.CAP, "destination has room")
-				t.check(to.is_empty() or to.back() == from.back(), "lands on its own colour")
-				to.append(from.pop_back())
+				t.check(Gen.take(work[m.x], work[m.y]) > 0, "a legal move")
+				Gen.apply(work, m.x, m.y)
 			t.check(Gen.solved(work), "band %d seed %d: the path finishes it" % [band, i])
 
 ## The same seed deals the same board, on every phone and every run.
@@ -110,8 +106,8 @@ static func _test_lift_and_put_back(t) -> void:
 	var s = _state()
 	var before: Array = (s.pegs[0] as Array).duplicate()
 	t.check(s.lift(0), "lifted")
-	t.eq(s.held, int(before.back()), "the colour is in hand")
-	t.eq((s.pegs[0] as Array).size(), before.size() - 1, "and off the peg")
+	t.eq(int(s.held.back()), int(before.back()), "the colour is in hand")
+	t.eq((s.pegs[0] as Array).size(), before.size() - s.held.size(), "and off the peg")
 	s.put_back()
 	t.eq(str(s.pegs[0]), str(before), "back where it was")
 	t.eq(s.log.size(), 0, "a put-back is not a move")
@@ -131,7 +127,7 @@ static func _test_drop_rules(t) -> void:
 	t.eq(s.refusal(3), "RG_FULL", "the full line's key")
 	t.eq(s.drop(2), 0, "landed in the empty peg's first slot")
 	t.eq(s.log.size(), 1, "one move logged")
-	t.eq(s.held, -1, "the hand is empty")
+	t.eq(s.held.size(), 0, "the hand is empty")
 
 ## Nothing comes off a finished peg.
 static func _test_locked_peg(t) -> void:
@@ -150,8 +146,8 @@ static func _test_undo(t) -> void:
 	s.lift(1)
 	t.check(s.drop(0) >= 0, "dropped")
 	t.check(s.locked(0), "peg 0 holds 1,1,1,1 -- locked")
-	var m: Vector2i = s.undo()
-	t.eq(m, Vector2i(1, 0), "the move that was undone")
+	var m: Vector3i = s.undo()
+	t.eq(m, Vector3i(1, 0, 1), "the move that was undone")
 	t.eq(str(s.pegs), str([[1, 1, 1], [0, 1]]), "exactly as it was")
 	t.eq(s.log.size(), 0, "and off the log")
 
@@ -185,7 +181,7 @@ static func _test_reset(t) -> void:
 static func _test_hint(t) -> void:
 	var s = _state()
 	var before: int = s.log.size()
-	var m: Vector2i = s.hint()
+	var m: Vector3i = s.hint()
 	t.check(m.x >= 0, "a move was played")
 	t.eq(s.log.size(), before + 1, "and logged like any other")
 	t.eq(s.hints_used, 1, "one spent")
@@ -204,7 +200,7 @@ static func _test_hint_guards_a_held_ring(t) -> void:
 	t.check(s.lift(0), "a ring already in hand before hinting")
 	var before_hints: int = s.hints_used
 	var before_log: int = s.log.size()
-	var m: Vector2i = s.hint()
+	var m: Vector3i = s.hint()
 	t.check(m.x >= 0, "a real move was played, off the restored board")
 	t.check(not s.log.is_empty() and s.log.back() == m, "the move reported is the move made")
 	t.eq(s.log.size(), before_log + 1, "the log grew by exactly one")
@@ -254,12 +250,12 @@ static func _test_overlapping_flight_settles_the_first(t, board) -> void:
 		[],
 	]
 	board._lock_at = {}
-	board._flight = {}
+	board._flights = []
 	board._tap(1)   # lift the ring that will finish peg 0
 	board._tap(0)   # drop it -- peg 0 is locked in state now, but _settle
 	                # (and _lock_at) waits for the flight to land
 	t.check(board._state.locked(0), "peg 0 is locked in state the instant drop() returns")
-	t.check(not board._flight.is_empty(), "its ring is still flying, not settled yet")
+	t.check(not board._flights.is_empty(), "its ring is still flying, not settled yet")
 	t.check(not board._lock_at.has(0), "so _lock_at has nothing for it yet -- the deferral is real")
 	board._tap(2)   # an unrelated second move, well inside ARC_TIME of the first
 	board._tap(3)
