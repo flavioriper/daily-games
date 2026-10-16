@@ -66,7 +66,7 @@ const BANDS := [
 	{"plates": [["honey:19", 8], ["grid:5x4", 9]],
 		"moves": 6, "cross": 7, "par": 6, "wrap": 2, "knots": 2, "most": 13, "extra": 1.2, "min_reach": 0.5, "slack": 0},
 	{"plates": [["grid:5x5", 11], ["honey:23", 10]],
-		"moves": 10, "cross": 12, "par": 10, "wrap": 3, "knots": 4, "most": 22, "extra": 1.2, "min_reach": 0.45, "slack": 0},
+		"moves": 10, "cross": 12, "par": 10, "wrap": 3, "knots": 4, "most": 22, "extra": 1.2, "min_reach": 0.45, "slack": 0, "beam": 16},
 ]
 ## A dealt rope is wrapped round two others at most: more and it is a snarl
 ## nobody can read.
@@ -77,7 +77,9 @@ const WRAPS_PER_ROPE := 2
 ## deal the same board on a slow phone and a fast one.
 const TRIES := 14
 const WALKS := 70
-## The beam search's width and how deep it goes.
+## The beam search's width and how deep it goes. A band may deal with a
+## narrower beam (`beam`): Insane's big boards have the most moves a layout,
+## and the deal is made on the frame the board opens.
 const BEAM := 30
 const BEAM_DEPTH := 20
 ## A hint's search is narrower: a first step, not a par.
@@ -193,13 +195,24 @@ static func _carry(pl: Plate, at: PackedInt32Array, tw: PackedInt32Array, ropes:
 	var other := at[peg ^ 1]
 	var po := pl.pts[other]
 	var delta := 0
+	# The plate's turn table read in line (this is the search's inner loop):
+	# crosses(a, b, c, d) is o[ab + c] != o[ab + d] and o[cd + a] != o[cd + b].
+	var o := pl.o
+	var hn := pl.n
+	var of := (other * hn + from) * hn
+	var oh := (other * hn + hole) * hn
 	for y in ropes:
 		if y == x or at[2 * y] < 0:
 			continue
 		var y0 := at[2 * y]
 		var y1 := at[2 * y + 1]
-		var was := pl.crosses(other, from, y0, y1)
-		var now := pl.crosses(other, hole, y0, y1) if hole >= 0 else Plate.seg_cross(po, tp, pl.pts[y0], pl.pts[y1])
+		var yy := (y0 * hn + y1) * hn
+		var was := o[of + y0] != o[of + y1] and o[yy + other] != o[yy + from]
+		var now := false
+		if hole >= 0:
+			now = o[oh + y0] != o[oh + y1] and o[yy + other] != o[yy + hole]
+		else:
+			now = Plate.seg_cross(po, tp, pl.pts[y0], pl.pts[y1])
 		if was == now:
 			continue
 		var k := pair_index(x, y, ropes)
@@ -365,7 +378,7 @@ static func occupancy(at: PackedInt32Array, holes: int) -> PackedInt32Array:
 ## Whether peg `p` may be dropped in `hole`: the hole is free and the rope it
 ## is on reaches that far.
 static func fits(pl: Plate, at: PackedInt32Array, reach: PackedFloat32Array, p: int, hole: int, occ: PackedInt32Array) -> bool:
-	return at[p] >= 0 and hole != at[p] and occ[hole] < 0 and pl.dist(hole, at[p ^ 1]) <= reach[p >> 1]
+	return at[p] >= 0 and hole != at[p] and occ[hole] < 0 and pl.dd[hole * pl.n + at[p ^ 1]] <= reach[p >> 1]
 
 ## Every legal move from `at` as [peg, hole].
 static func legal_moves(pl: Plate, at: PackedInt32Array, reach: PackedFloat32Array) -> Array:
@@ -375,13 +388,15 @@ static func legal_moves(pl: Plate, at: PackedInt32Array, reach: PackedFloat32Arr
 		if occ[h] < 0:
 			free.append(h)
 	var out: Array = []
+	var dd := pl.dd
+	var n := pl.n
 	for p in at.size():
 		if at[p] < 0:
 			continue
-		var far := at[p ^ 1]
+		var far := at[p ^ 1] * n
 		var most := reach[p >> 1]
 		for h in free:
-			if pl.dist(h, far) <= most:
+			if dd[far + h] <= most:
 				out.append([p, h])
 	return out
 
@@ -697,7 +712,7 @@ static func generate(rng: RandomNumberGenerator, band: int, plate_id := "", plat
 		# the walk.
 		var depth: int = BEAM_DEPTH if plan == null else plan.size() - 1
 		if depth > 0:
-			var found = way_home(pl, start, start_tw, ropes, goal.reach, depth, BEAM, rng)
+			var found = way_home(pl, start, start_tw, ropes, goal.reach, depth, int(cfg.get("beam", BEAM)), rng)
 			if found != null:
 				plan = found
 		searched += 1

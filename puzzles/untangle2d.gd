@@ -68,7 +68,7 @@ const OUT_WORDS := {"title": "UT_OUT_TITLE", "body": "UT_OUT_BODY", "body_rest":
 # --- the layout, in the board's own pixels ---
 ## What a band keeps over the plate, from the top of its span: the kitten
 ## (Insane), the thread row alone, or only the stitch round the plate.
-const TOP_ROOM := 176.0
+const TOP_ROOM := 196.0
 const TOP_ROOM_THREAD := 96.0
 const TOP_ROOM_PLAIN := 16.0
 const BOTTOM_ROOM := 30.0
@@ -381,7 +381,8 @@ func capabilities() -> Array[String]:
 ## The tutorial, a page a rule, drawn from the board's own ring, pegs and
 ## ropes (ui/hud/untangle_tutorial_diagram.gd): lift a peg over the top, the
 ## rope underneath wraps tighter, a short rope's reach; then the hint where
-## the band has one, and the thread on a band that has it.
+## the band has one, and the thread on a band that has it; Hard and Insane
+## also show a drilled board, second.
 func tutorial_pages() -> Array:
 	const Diagram = preload("res://ui/hud/untangle_tutorial_diagram.gd")
 	var steps := [
@@ -396,6 +397,9 @@ func tutorial_pages() -> Array:
 		steps.append([Diagram.Lesson.HINT, "HTP_UT_HINT", body])
 	if int(Gen.BANDS[clampi(_difficulty, 0, 3)].slack) > 0:
 		steps.append([Diagram.Lesson.THREAD, "HTP_UT_THREAD", tr("HTP_UT_THREAD_BODY")])
+	# Hard and Insane are dealt on drilled boards.
+	if _difficulty >= 2:
+		steps.insert(1, [Diagram.Lesson.BOARD, "HTP_UT_BOARD", tr("HTP_UT_BOARD_BODY")])
 	var pages := []
 	for step in steps:
 		var d := Diagram.new()

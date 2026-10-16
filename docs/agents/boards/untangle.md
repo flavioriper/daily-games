@@ -1,5 +1,34 @@
 # Untangle
 
+**Plates, and the kitten stops swiping (2026-10-16)**, after the user:
+"different grids not only the current one" (outline shapes and peg boards
+both, knots kept everywhere) and an Insane that is "way harder and bigger",
+with the kitten kept but no longer "shuffling things". Spec:
+`docs/superpowers/specs/2026-10-16-untangle-plates-design.md` -- read it
+first. What this file says below about the ring as the only board, chords,
+hole spans as reach, and the kitten's schedule, swat, yarn and paw is
+history.
+
+- **Where the holes are** is `puzzles/untangle_plate.gd` (`Plate.of(id)`:
+  `ring:N`, `square:N`, `hex:N`, `tri:N`, `grid:RxC`, `honey:19|23`). Every
+  Gen call that took `holes` takes the plate first. `State.plate`; the day's
+  id is in `day_dict()`'s payload and metrics.
+- **The rule** reads the plate's turn table `o`; `Gen._carry` reads it in
+  line (it is the search's inner loop). A crossing flips when the carried
+  rope's straight line starts or stops crossing the other. Equal to the old
+  ring rule move for move (7200/7200, checked against a copy of the old
+  file); reversible with parity = straight-line crossing on every plate
+  (`tests/_probe_ut_plates.gd`, 13200 moves). Keep both true.
+- **Board pixels**: `_rh` is pixels per plate unit, `_hole_px` is
+  `_c + pts[h] * _rh`, `_ro` the larger half of the plate with its wood,
+  `_ri` an inner size for the seal; knots are kept in by `_keep_in` through
+  the plate's edge table, the held peg by `keep_in` with a negative inset.
+- **Harness**: `tests/_shot_untangle.gd -- d=N plate=<id> <mode>` deals on a
+  plate (`State.force_plate`). The `swat` mode went.
+- **Measured** (ANGLE, 810x1440, rest): hex:12 84 draws, tri:15 86, square:16
+  86, honey:19 87, grid:5x5 91, honey:23 90; Insane plan to the win, 121
+  draws peak, ~11.8 ms. Deal times are in the spec.
+
 **Tight knots, and free ropes leave (2026-10-05)**, after the user: a
 reference of taut ropes meeting in compact knots that "keep persistent no
 matter how you change it", against a shot of ours torn into arrowheads and

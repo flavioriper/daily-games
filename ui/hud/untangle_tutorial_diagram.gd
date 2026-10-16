@@ -17,6 +17,9 @@ extends Control
 ## - HINT: a peg flies to its hole by itself, and the ropes it frees leave.
 ## - THREAD: every move, an undo too, uses a stitch from the row of thread.
 ##   (Its move crosses nothing, so no rope leaves in the middle of it.)
+## - BOARD: the same lift on a drilled board of nine holes, from the middle
+##   hole to the top row: a peg can stand anywhere, and ropes cross wherever
+##   their straight lines meet.
 ##
 ## The kitten's page went with her swipes (2026-10-16).
 ##
@@ -24,13 +27,14 @@ extends Control
 
 const UT = preload("res://puzzles/untangle2d.gd")
 const Rope = preload("res://puzzles/untangle_rope.gd")
+const Plate = preload("res://puzzles/untangle_plate.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 
-enum Lesson { LIFT, WRAP, REACH, HINT, THREAD }
+enum Lesson { LIFT, WRAP, REACH, HINT, THREAD, BOARD }
 
 const HOLES := 8
 const CARRY := 1.2
@@ -41,6 +45,8 @@ const BUDGET := 6
 var lesson: int = Lesson.LIFT
 
 var _caption: Label
+## The ring of eight, or BOARD's nine-hole board.
+var _plate: Plate
 var _started := false
 var _clock := 0.0
 var _loop := 0.0
@@ -112,11 +118,18 @@ func _start() -> void:
 	var top := 46.0 if lesson == Lesson.THREAD else 8.0
 	var room := size.y - 100.0 - top
 	var wide := size.x * 0.8
-	_ro = minf(wide, room) * 0.5
-	_ri = _ro * UT.RING_IN
-	_rh = (_ro + _ri) * 0.5
+	_plate = Plate.of("grid:3x3") if lesson == Lesson.BOARD else Plate.ring(HOLES)
 	_c = Vector2(size.x * 0.5, top + room * 0.5)
-	_peg_r = minf((_ro - _ri) * UT.PEG_OF_RING, TAU * _rh / HOLES * 0.36)
+	if lesson == Lesson.BOARD:
+		_ro = minf(wide, room) * 0.5
+		_rh = _ro / maxf(_plate.ext.x, _plate.ext.y)
+		_ri = _ro * 0.85
+		_peg_r = _plate.spacing * _rh * UT.PEG_OF_SPACING
+	else:
+		_ro = minf(wide, room) * 0.5
+		_ri = _ro * UT.RING_IN
+		_rh = (_ro + _ri) * 0.5
+		_peg_r = minf((_ro - _ri) * UT.PEG_OF_RING, TAU * _rh / HOLES * 0.36)
 	_hole_r = _peg_r * UT.HOLE_OF_PEG
 	_wd = _peg_r * UT.ROPE_OF_PEG
 	_ring_mesh = _build_ring()
@@ -150,6 +163,20 @@ func _scene() -> void:
 	_taut = false
 	_far = -1
 	match lesson:
+		Lesson.BOARD:
+			# Holes 0 1 2 / 3 4 5 / 6 7 8. Coral runs 0 to the middle, yellow
+			# 3 to 2, and coral lies on top: lifted out of the middle to the
+			# top row, it slides off and both come free.
+			_deal([[2, 0, 4, 2.0], [1, 3, 2, 2.0]])
+			_pairs[Vector2i(0, 1)] = {"n": 1, "t": 1}
+			_order = [1, 0]
+			_say(0.0, "HTP_UT_BOARD_CAP")
+			_at(0.6, func() -> void: _carry(1, 1, CARRY))
+			_at(0.6 + CARRY * 0.5, func() -> void: _cross_off())
+			_at(0.6 + CARRY + 0.1, func() -> void:
+				_free()
+				_say_now("HTP_UT_FREE_CAP"))
+			_loop = 5.0
 		Lesson.REACH:
 			_deal([[2, 1, 5, 4], [1, 7, 0, 2]])
 			_say(0.0, "HTP_UT_GLOW_CAP")
@@ -219,6 +246,10 @@ func _still() -> void:
 		Lesson.REACH:
 			_place(3, 6)
 			cap = "HTP_UT_REACHED_CAP"
+		Lesson.BOARD:
+			_place(1, 1)
+			_pairs = {}
+			cap = "HTP_UT_FREE_CAP"
 		Lesson.THREAD:
 			_spent = 2
 			cap = "HTP_UT_STITCH_CAP"
@@ -247,7 +278,11 @@ func _deal(ropes: Array) -> void:
 		for e in 2:
 			_hole[2 * r + e] = int(d[1 + e])
 			_pos[2 * r + e] = _hole_px(int(d[1 + e]))
-		_len[r] = 2.0 * _rh * sin(PI * float(d[3]) / HOLES) * UT.LENGTH_OVER
+		# A ring rope's reach in holes round it; a board's in plate units.
+		if lesson == Lesson.BOARD:
+			_len[r] = float(d[3]) * _rh * UT.LENGTH_OVER
+		else:
+			_len[r] = 2.0 * _rh * sin(PI * float(d[3]) / HOLES) * UT.LENGTH_OVER
 		var rope := Rope.new()
 		rope.setup(_pos[2 * r], _pos[2 * r + 1], _len[r], _wd)
 		_ropes.append(rope)
@@ -318,7 +353,7 @@ func _stitch() -> void:
 	_spent += 1
 
 func _hole_px(h: int) -> Vector2:
-	return _c + Vector2.from_angle(TAU * float(h) / HOLES - PI * 0.5) * _rh
+	return _c + _plate.pts[h] * _rh
 
 # --- the frame ---
 
@@ -380,7 +415,7 @@ func _move_pegs(delta: float) -> void:
 ## What dropping held peg `p` at `at` would do, as the board's number over
 ## the hole: -1 when its rope lies on top of the one it crosses, +1 under.
 func _preview_for(p: int, at: Vector2) -> void:
-	for h in HOLES:
+	for h in _plate.n:
 		if _hole_px(h).distance_to(at) < _peg_r * UT.SNAP_R and h != _hole[p] and not _hole.has(h):
 			_preview_hole = h
 	if _preview_hole < 0 or lesson == Lesson.REACH:
@@ -412,7 +447,10 @@ func _lay() -> void:
 		for e: Vector2 in [a0, a1, b0, b1]:
 			if c.distance_to(e) < clear:
 				c = e + ((a0 + a1 + b0 + b1 - e) / 3.0 - e).limit_length(clear)
-		c = _c + (c - _c).limit_length(maxf(_ri - _wd * 1.1 - half, 0.0))
+		if lesson == Lesson.BOARD:
+			c = _c + _plate.keep_in((c - _c) / _rh, (_wd * 1.1 + half) / _rh) * _rh
+		else:
+			c = _c + (c - _c).limit_length(maxf(_ri - _wd * 1.1 - half, 0.0))
 		# No further off a rope's line than that rope reaches.
 		for r in [k.x, k.y]:
 			var p0 := _pos[2 * r]
@@ -472,6 +510,8 @@ func _crossings() -> Array:
 # --- the picture ---
 
 func _build_ring() -> ArrayMesh:
+	if lesson == Lesson.BOARD:
+		return _build_board()
 	var b := Face.Builder.new()
 	var soft := _ro - _ri
 	b.stroke(Face.Builder.arc_points(_c + Vector2(0.012, 0.03) * _ro, _rh, 0.0, TAU), soft + 16.0, Color(Pal.TEXT, 0.05), true)
@@ -486,7 +526,36 @@ func _build_ring() -> ArrayMesh:
 		var rr := grain.randf_range(_ri + 6.0, _ro - 6.0)
 		var a0 := grain.randf_range(0.0, TAU)
 		b.stroke(Face.Builder.arc_points(_c, rr, a0, a0 + grain.randf_range(0.25, 0.9)), 1.6, Color(UT.WOOD_GRAIN, grain.randf_range(0.12, 0.26)), false, true)
-	for h in HOLES:
+	for h in _plate.n:
+		var at := _hole_px(h)
+		b.disc(at, _hole_r * 1.14, Color(UT.HOLE_RIM, 0.7))
+		b.disc(at, _hole_r, UT.HOLE)
+		b.disc(at + Vector2(0.0, _hole_r * 0.16), _hole_r * 0.82, UT.HOLE_DEEP)
+	return b.mesh()
+
+## BOARD's plank, as the board draws one (untangle2d.gd _lay_board), smaller.
+func _build_board() -> ArrayMesh:
+	var b := Face.Builder.new()
+	var edge := PackedVector2Array()
+	for p in _plate.outline:
+		edge.append(_c + p * _rh)
+	var shade := PackedVector2Array()
+	for p in edge:
+		shade.append(p + Vector2(0.012, 0.03) * _ro)
+	b.fan(shade, Color(Pal.TEXT, 0.08))
+	b.fan(edge, UT.WOOD_EDGE)
+	var inner := PackedVector2Array()
+	for p in _plate.outline:
+		inner.append(_c + p * (_rh - 4.0 / maxf(p.length(), 0.01)))
+	b.fan(inner, UT.WOOD)
+	var grain := RandomNumberGenerator.new()
+	grain.seed = 4471
+	for k in 10:
+		var y := grain.randf_range(-0.8, 0.8) * _ro
+		var x0 := grain.randf_range(-0.8, 0.2) * _ro
+		b.stroke(PackedVector2Array([_c + Vector2(x0, y), _c + Vector2(x0 + grain.randf_range(0.3, 0.6) * _ro, y + grain.randf_range(-3.0, 3.0))]),
+			1.6, Color(UT.WOOD_GRAIN, grain.randf_range(0.12, 0.26)), false, true)
+	for h in _plate.n:
 		var at := _hole_px(h)
 		b.disc(at, _hole_r * 1.14, Color(UT.HOLE_RIM, 0.7))
 		b.disc(at, _hole_r, UT.HOLE)
@@ -540,7 +609,7 @@ func _draw_targets(b: Face.Builder) -> void:
 	var u := _lift[lifted]
 	var pulse := 0.5 + 0.5 * sin(_clock * 6.0)
 	var other := _pos[lifted ^ 1]
-	for h in HOLES:
+	for h in _plate.n:
 		if _hole.has(h):
 			continue
 		var at := _hole_px(h)
@@ -645,7 +714,9 @@ func _draw() -> void:
 	if _preview != "" and _preview_hole >= 0:
 		var fs := int(_peg_r * 1.2)
 		var hole := _hole_px(_preview_hole)
-		var at := hole + (hole - _c).normalized() * _peg_r * 2.4
+		var out := hole - _c
+		out = out.normalized() if out.length() > _peg_r * 2.0 else Vector2(0.7, -0.7)
+		var at := hole + out * _peg_r * 2.4
 		var w := font.get_string_size(_preview, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 		var base := at + Vector2(-w * 0.5, fs * 0.36)
 		var col := Pal.GOOD.darkened(0.15) if _preview.begins_with("−") else UT.KNOT_HALO

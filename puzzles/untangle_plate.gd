@@ -50,6 +50,8 @@ var ext := Vector2.ONE
 ## two.
 var spacing := 1.0
 var maxd := 2.0
+## The distance between holes a and b at dd[a * n + b].
+var dd := PackedFloat32Array()
 ## The edge's distance from the middle, a step a degree from +x, clockwise
 ## on screen (`edge_at`).
 var edge := PackedFloat32Array()
@@ -107,6 +109,10 @@ func _build(plate_id: String) -> void:
 	_measure()
 	_turns()
 	_edges()
+	dd.resize(n * n)
+	for a in n:
+		for b in n:
+			dd[a * n + b] = pts[a].distance_to(pts[b])
 
 # --- hoops ---
 
@@ -304,7 +310,7 @@ func crosses(a: int, b: int, c: int, d: int) -> bool:
 	return o[cd + a] != o[cd + b]
 
 func dist(a: int, b: int) -> float:
-	return pts[a].distance_to(pts[b])
+	return dd[a * n + b]
 
 ## The same test for a point in the air (a peg in the hand, in plate units)
 ## against holes.

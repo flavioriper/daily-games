@@ -527,9 +527,9 @@ SETS = {
         "stamp":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -9, FOLEY, "bank:token", "cut:0.12", "notes:0:-1", "tight"),
         "party":    ("one soft note on a kalimba over a gentle tongue drum, warm and cozy, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:0,4,7,4,7,12", "cut:1.9"),
         "confetti": ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
-        # Insane's kitten. The purr was 89% under 300 Hz, which a phone does
+        # Insane's kitten (petted; her pounce went with her swipes,
+        # 2026-10-16). The purr was 89% under 300 Hz, which a phone does
         # not play: it is a chirrup now, a real kitten's and no cartoon's.
-        "pounce":   ("a tiny playful kitten mrrp and a soft paw swat, cute and cozy, very short", 0.8, -8, CARTOON),
         "purr":     ("one short soft contented chirrup, a little rolling trill with the mouth closed, gentle and happy", 1.0, -12, KITTEN, "warm:2400", "ease:0.01", "body:300"),
     },
     # Shikaku: garden beds drawn as rectangles in soil around number stakes.
