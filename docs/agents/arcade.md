@@ -4083,7 +4083,7 @@ runs while shut); the card sits after Tally on the tab's second page.
 - **The economy, after four tries with the bot** (seed 7, greedy buyer,
   cash out at half the stars ever): the square root of a run's coins made
   stars follow the ×20 tiers and a cash out doubled the last in seconds;
-  stars are now `(log10(coins) - 3.7)^2.5` (about 5e4 one, 1e6 eight,
+  stars were, until 2026-10-16, `(log10(coins) - 3.7)^2.5` (about 5e4 one, 1e6 eight,
   1e15 four hundred and fifty) and every star ever earned adds `0.1 × sqrt(stars)` to every
   coin, which converges. First cash out at 5.8 minutes, ten stars at 20, 474
   by two hours (after the dropper was narrowed). Value is linear (a doubling every ten ranks ran away);
@@ -4108,5 +4108,26 @@ runs while shut); the card sits after Tally on the tab's second page.
   one Builder mesh kept in `_bars_live` (one draw call; a mesh not kept past
   `_draw` is freed before it renders: `mesh_get_surface_count` errors and
   nothing shows).
+- **2026-10-16, the user: "prices and rewards are totally out of place,
+  rewards are too high since beggining and prices are too cheap"**, with two
+  shots of the reference beside ours ("ours increment 2 flat each ball,
+  reference is 180 on 3 -> 5"). A clay marble cost 6 and paid up to 5 a
+  drop. Now: cups `2/1/0.5/0.5/0.5/1/2` (was 5/2/1/0.5/1/2/5; the
+  reference's edge-to-middle is 3:1); Marbles `10 × 4.25^n` (10, 42, 180,
+  767 ...; was 6 × 1.1^n) and a rank gives `marble_gain(n) = 1 + n / 2`
+  marbles (1, 1, 2, 2, 3 ...: the reference's third rank is "3 → 5"), so
+  `buy` adds the gain and the shop's "→" reads `Sim.marbles_at(n)`; Value
+  `2 × 1.6^n` (was 12 × 1.2^n), the cheap first buy; Auto `30 × 1.3^n`
+  (was 25). The first star moved with it: `STAR_FROM` 3.0 (10K coins pay
+  one, 1M fifteen; was 3.7, 50K one, 1M eight), or the bot's first cash
+  out slid from 5.8 to 21 minutes. Bot, seed 7: first cash out at 10.0
+  min, ten stars at 26.6, 94 by two hours (was 5.8 / 20 / 474). Probe 0
+  failed, `_shot_bagatelle` headless 0 failed; no windowed run, no
+  drawing changed. Calls: the gain past rank 2 (the reference shows one
+  point); `START_MARBLES` stays 3 (the reference starts with one ball,
+  so our opening income is about three times its); Weight untouched;
+  the star pace, now a fifth of what it was by two hours; a kept run
+  from before shows the old jar beside the new "→" count until its cash
+  out (`owned` is saved apart from the rank).
 - **Not done**: a phone; the sounds heard; pt and es read by a speaker;
   `reduce` shot; es shot; offline progress (a call).

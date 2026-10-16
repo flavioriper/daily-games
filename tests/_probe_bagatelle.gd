@@ -104,16 +104,16 @@ func _rules(seed_v: int) -> void:
 	_check("max buy stops at auto's top (%d)" % n, int(s.up.auto) == Sim.UP_TOP.auto)
 	_check("auto every at least 0.1 s", s.auto_every() >= Sim.AUTO_LEAST - 0.0001)
 	s.buy("marbles", 5)
-	_check("marbles adds to the jar", s.owned[0] == 8 and s.jar[0] == 8)
+	_check("marbles adds to the jar (1, 1, 2, 2, 3)", s.owned[0] == 12 and s.jar[0] == 12 and Sim.marbles_at(5) == 12)
 	s.jar[0] = 25
 	s.owned[0] = 25
 	_check("merge all makes two glass", s.merge_all() == 2 and s.owned[1] == 2 and s.jar[0] == 5)
 	_check("best tier noted", s.best_tier == 1)
 	_check("drop takes the best first", s.drop(500.0) and int(s.balls[0].tier) == 1)
 	s.earned = 1e6
-	_check("stars for 1M earned is 8", s.stars_for() == 8)
-	_check("next star past 1M", s.next_star_at() > 1e6 and s.stars_for(s.next_star_at() * 1.0001) == 9)
-	_check("cash out pays 8", s.cash_out() == 8 and s.stars == 8)
+	_check("stars for 1M earned is 15", s.stars_for() == 15)
+	_check("next star past 1M", s.next_star_at() > 1e6 and s.stars_for(s.next_star_at() * 1.0001) == 16)
+	_check("cash out pays 15", s.cash_out() == 15 and s.stars == 15)
 	_check("a cash out resets the run", s.coins == 0.0 and int(s.up.value) == 0 and s.owned_all() == 3 and s.balls.is_empty())
 	_check("a plus pin bought stands on the board", s.shop_buy("plus") and s.bonus.size() == 1)
 	var from: int = s.bonus.keys()[0]

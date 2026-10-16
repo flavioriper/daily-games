@@ -49,7 +49,9 @@ back and forth along the top.
 - **Marbles do not knock each other**: each falls alone through the pins
   (the genre's rule, and what keeps a hundred in the air cheap).
 
-**Cups**: seven, base multipliers 5, 2, 1, 0.5, 1, 2, 5. Each landing is a
+**Cups**: seven, base multipliers 2, 1, 0.5, 0.5, 0.5, 1, 2 (5/2/1/0.5/1/2/5
+until 2026-10-16, when the user found the rewards "too high since
+beginning"). Each landing is a
 point to that cup; a cup goes up a level at `need(lv)` points, and its
 multiplier is `base × (1 + 0.1 × lv)`. The middle fills fastest, the edges
 pay most.
@@ -64,14 +66,14 @@ merged runs dry between drops. That is the choice.
 
 | Upgrade | Rank 0 | A rank | Price |
 |---|---|---|---|
-| Marbles | 3 clay | +1 marble (of the Finer marbles tier) | 6 × 1.1^n |
-| Value | 1 | `1 + n` | 12 × 1.2^n |
-| Auto drop | off | `2.4 s × 0.9^(n−1)`, at least 0.1 s; 40 ranks | 25 × 1.3^n |
+| Marbles | 3 clay | +1, +1, +2, +2, +3 ... marbles a rank (of the Finer marbles tier) | 10 × 4.25^n (10, 42, 180, 767) |
+| Value | 1 | `1 + n` | 2 × 1.6^n |
+| Auto drop | off | `2.4 s × 0.9^(n−1)`, at least 0.1 s; 40 ranks | 30 × 1.3^n |
 | Weight | gravity ×1 | +12% gravity, 25 ranks | 60 × 1.45^n |
 
-**Cash out**: stars = `floor((log10(coins earned this run) − 3.7)^2.5 ×
-shine)`: about 50K coins pay one, 1M eight, 1e8 forty-five, 1e15 four
-hundred and fifty. (A square root of the coins was tried first and ran
+**Cash out**: stars = `floor((log10(coins earned this run) − 3.0)^2.5 ×
+shine)`: about 10K coins pay one, 1M fifteen, 1e8 fifty-five, 1e15 five
+hundred (3.7 until 2026-10-16, when the prices rose and the cups fell). (A square root of the coins was tried first and ran
 away: every ×20 tier went straight into the stars and each cash out
 doubled the last in seconds.) Every star ever earned also adds to every
 coin, `1 + 0.1 × sqrt(stars ever)`, a root so it converges. A cash out
@@ -150,7 +152,7 @@ words.
 2. **Tap where to drop**, kept to the middle band (the reference drops
    from the middle only); the dropper glides only over that band (at
    ±0.36 it fed the ×5 edge cups and paid half again over a tap).
-3. **Seven cups**, base 5/2/1/0.5/1/2/5, +10% a level.
+3. **Seven cups**, base 2/1/0.5/0.5/0.5/1/2 (5/2/1/0.5/1/2/5 until 2026-10-16), +10% a level.
 4. **Twelve tiers**, 10 into 1, worth ×20.
 5. **One prestige layer** (stars) and its shop; no investments, no ascend,
    no XP bar. Stars from the coins' digit count, and the star bonus.

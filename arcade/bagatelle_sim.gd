@@ -38,7 +38,9 @@ const CUP_TOP := 880.0
 const LAND_Y := 925.0
 const CUPS := 7
 const CUP_W := W / CUPS
-const CUP_BASE := [5.0, 2.0, 1.0, 0.5, 1.0, 2.0, 5.0]
+## The cups pay a marble's worth times these (2026-10-16: 5/2/1/0.5/1/2/5
+## paid a clay marble back in three drops; the reference pays 0.5 to 1.5).
+const CUP_BASE := [2.0, 1.0, 0.5, 0.5, 0.5, 1.0, 2.0]
 const CUP_STEP := 0.1
 ## The physics: gravity, how much of a blow's speed comes back, the scatter
 ## a pin adds along its face, the fastest a marble falls.
@@ -70,9 +72,11 @@ const WORTH := 20.0
 const TIER_IDS := ["clay", "glass", "agate", "swirl", "cats_eye", "opal", "moonstone", "pearl", "ember", "frost", "comet", "star"]
 
 ## The run's upgrades: first price, growth, and the most ranks (0: no top).
+## Marbles climb steeply (10, 42, 180, 767 ...) and a rank gives more of
+## them as it goes (`marble_gain`); Value is the cheap first buy.
 const UPS := ["marbles", "value", "auto", "weight"]
-const UP_FIRST := {"marbles": 6.0, "value": 12.0, "auto": 25.0, "weight": 60.0}
-const UP_GROWTH := {"marbles": 1.1, "value": 1.2, "auto": 1.3, "weight": 1.45}
+const UP_FIRST := {"marbles": 10.0, "value": 2.0, "auto": 30.0, "weight": 60.0}
+const UP_GROWTH := {"marbles": 4.25, "value": 1.6, "auto": 1.3, "weight": 1.45}
 const UP_TOP := {"marbles": 0, "value": 0, "auto": 40, "weight": 25}
 const START_MARBLES := 3
 const AUTO_FIRST := 2.4
@@ -100,9 +104,10 @@ const TWIN_STEP := 0.2
 const WARM_STEP := 5
 const SHINE_STEP := 0.25
 ## A cash out: stars = floor((log10(earned) - STAR_FROM)^STAR_POW × shine),
-## so a run of 1e5 coins pays one, 1e8 thirty-two, 1e15 four hundred: the
-## tiers multiply coins by twenty and the stars must not follow them.
-const STAR_FROM := 3.7
+## so a run of 1e4 coins pays one, 1e6 fifteen, 1e8 fifty-five, 1e15 five
+## hundred: the tiers multiply coins by twenty and the stars must not
+## follow them (3.0 since 2026-10-16, when the prices rose and the cups fell).
+const STAR_FROM := 3.0
 const STAR_POW := 2.5
 ## Every coin is worth 1 + STAR_BONUS × sqrt(stars ever earned): the stars
 ## always count, and the root keeps cash outs from doubling each other.
@@ -245,6 +250,17 @@ static func worth(tier: int) -> float:
 static func need(lv: int) -> int:
 	return int(ceil(6.0 * pow(1.08, lv)))
 
+## Marbles the Marbles rank `n` adds: 1, 1, 2, 2, 3, 3 ...
+static func marble_gain(n: int) -> int:
+	return 1 + n / 2
+
+## Marbles a run holds after `n` ranks of Marbles.
+static func marbles_at(n: int) -> int:
+	var m := START_MARBLES
+	for k in n:
+		m += marble_gain(k)
+	return m
+
 func cup_mult(c: int) -> float:
 	return float(CUP_BASE[c]) * (1.0 + CUP_STEP * cup_lv[c])
 
@@ -307,12 +323,13 @@ func buy(id: String, times := 1) -> int:
 	var n := 0
 	while (times <= 0 or n < times) and can_buy(id):
 		coins -= price(id)
-		up[id] = int(up[id]) + 1
 		if id == "marbles":
 			var k := int(shop.finer)
-			owned[k] += 1
-			jar[k] += 1
+			var gain := marble_gain(int(up[id]))
+			owned[k] += gain
+			jar[k] += gain
 			_note_tier(k)
+		up[id] = int(up[id]) + 1
 		n += 1
 		if n >= 1000:
 			break
