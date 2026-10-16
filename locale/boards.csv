@@ -1350,10 +1350,11 @@ TR_CHEER_4,Bridge wisdom: the ducks will be using this one too.,Sabedoria de pon
 TR_CHEER_5,"Bridge wisdom: measure twice, Go once.","Sabedoria de ponte: meça duas vezes, aperte Ir uma.","Sabiduría de puente: mide dos veces, pulsa Ir una."
 TR_CHEER_6,Bridge wisdom: a good deck is a quiet deck.,Sabedoria de ponte: tabuleiro bom é tabuleiro calado.,Sabiduría de puente: un buen tablero es un tablero callado.
 TR_CHEER_7,Bridge wisdom: every river is just a gap that hasn't met you yet.,Sabedoria de ponte: todo rio é só um vão que ainda não te conheceu.,Sabiduría de puente: todo río es solo un hueco que aún no te conoce.
-NG_LVL_0,"5 × 5, tall or wide","5 × 5, em pé ou deitado","5 × 5, alto o ancho"
-NG_LVL_1,"7 × 7, tall or wide","7 × 7, em pé ou deitado","7 × 7, alto o ancho"
-NG_LVL_2,"9 × 9, tall or wide","9 × 9, em pé ou deitado","9 × 9, alto o ancho"
-NG_LVL_3,"10 × 10 or so, leaf fall","10 × 10 ou quase, folhas ao vento","10 × 10 o casi, hojas al viento"
+NG_LVL_0,5 to 7 a side,5 a 7 por lado,5 a 7 por lado
+NG_LVL_1,6 to 10 a side,6 a 10 por lado,6 a 10 por lado
+NG_LVL_2,10 to 15 a side,10 a 15 por lado,10 a 15 por lado
+NG_LVL_3,13 to 20 a side,13 a 20 por lado,13 a 20 por lado
+NG_SIZE,%d × %d,%d × %d,%d × %d
 NG_RULES_LEAF,"Leaf Fall: on a line whose numbers sit on leaves, the wind has tumbled them. Every run is there, but they can come in any order.","Folhas ao vento: numa linha cujos números estão sobre folhas, o vento os embaralhou. Todas as sequências estão lá, mas podem vir em qualquer ordem.","Hojas al viento: en una línea cuyos números están sobre hojas, el viento los revolvió. Todas las tiras están, pero pueden ir en cualquier orden."
 NG_RULES_HEARTS_1,You have one heart. A tile laid where the picture has none costs it.,Você tem um coração. Uma peça posta onde o desenho não tem nenhuma custa ele.,Tienes un corazón. Una ficha puesta donde el dibujo no tiene ninguna lo cuesta.
 NG_RULES_HEARTS_N,You have %d hearts. A tile laid where the picture has none costs one.,Você tem %d corações. Uma peça posta onde o desenho não tem nenhuma custa um.,Tienes %d corazones. Una ficha puesta donde el dibujo no tiene ninguna cuesta uno.

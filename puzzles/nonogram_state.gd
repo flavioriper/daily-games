@@ -39,8 +39,9 @@ const MOVES_SLACK := [0, 0, 0, 0]
 ## The square each band falls back to when its drawn shape (Gen.SHAPES)
 ## will not line-solve. Insane no longer reads its bank of tumbled lines
 ## (content/insane/nonogram.json, left as history) since 2026-10-16: it is
-## dealt big and slow by Gen.hardest, and 12 is its fallback.
-const SIZES := [5, 7, 9, 12]
+## dealt big and slow by Gen.hardest, and 15 is its fallback (12 till the
+## sizes widened, 2026-10-16).
+const SIZES := [5, 7, 10, 15]
 
 ## A line's state, which is what its clue numbers wear.
 const LINE_IDLE := 0

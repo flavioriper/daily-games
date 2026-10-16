@@ -72,6 +72,14 @@ const WIN_SLIDE := 0.45
 ## here nothing stands on it, and this is most of why a 9x9 fits at all.
 const NUM := 0.55
 const NUM_SIZE := 0.42
+## The picture's size, columns by rows (`NG_SIZE`), under the floor's
+## bottom right edge as every nonogram prints it (the user, 2026-10-16: "show
+## the grid sizing so user can easily know how many rows and columns in total
+## are"). SIZE_PX in the board's pixels, SIZE_ROW the strip the layout keeps
+## for it, SIZE_A its ink. It leaves with the scaffolding on the win.
+const SIZE_PX := 26
+const SIZE_ROW := 40.0
+const SIZE_A := 0.6
 ## The heavier line every fifth cell, which only a board with more than five
 ## of them needs.
 const GUIDE_EVERY := 5
@@ -668,7 +676,7 @@ func _layout() -> void:
 		var side := _side()
 		var span := size.y - _clear.x - _clear.y
 		_cell = minf((size.x - 2.0 * side) / (state.w + state.gw * NUM),
-			(span - row) / (state.h + state.gh * NUM))
+			(span - row - SIZE_ROW) / (state.h + state.gh * NUM))
 	else:
 		_cell = _cell_for(size.y)
 	if _cell <= 0.0:
@@ -785,13 +793,13 @@ func _cell_for(available: float) -> float:
 	if state.bitmap.is_empty():
 		return 0.0
 	return minf((size.x - 2.0 * PAD) / (state.w + state.gw * NUM),
-		(available - 2.0 * PAD - _heart_row()) / (state.h + state.gh * NUM))
+		(available - 2.0 * PAD - _heart_row() - SIZE_ROW) / (state.h + state.gh * NUM))
 
 func card_height(available: float) -> float:
 	var cell := _cell_for(available)
 	if cell <= 0.0:
 		return available
-	return minf(available, cell * (state.h + state.gh * NUM) + 2.0 * PAD + _heart_row())
+	return minf(available, cell * (state.h + state.gh * NUM) + 2.0 * PAD + _heart_row() + SIZE_ROW)
 
 func card_centred() -> bool:
 	return true
@@ -860,7 +868,23 @@ func _draw() -> void:
 		draw_mesh(_shown, null, Transform2D(0.0, Vector2.ONE * grow, 0.0, c * (1.0 - grow)),
 			Color(1.0, 1.0, 1.0, Motion.appear_level(elapsed)))
 	_draw_clues()
+	_draw_size()
 	_draw_badge()
+
+## "15 × 20" under the floor, right-aligned to its last column.
+func _draw_size() -> void:
+	if _cell <= 0.0 or state.bitmap.is_empty():
+		return
+	var t := _now()
+	var a := SIZE_A * (1.0 - _gone(t)) * Motion.appear_level(t - _opened - Motion.ENTER_DELAY)
+	if a <= 0.0:
+		return
+	var font: Font = CozyTheme.display(600)
+	var text := tr("NG_SIZE") % [state.w, state.h]
+	var wide := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, SIZE_PX).x
+	var at := _grid + Vector2(state.w * _cell - wide, state.h * _cell
+		+ (SIZE_ROW + font.get_ascent(SIZE_PX) - font.get_descent(SIZE_PX)) * 0.5)
+	draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, SIZE_PX, Color(Pal.TEXT, a))
 
 ## Everything on the floor in one mesh, in the order the mock paints it: the
 ## bands' tabs, leaves and daisies, the sockets, the five-cell guides over

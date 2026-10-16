@@ -154,3 +154,31 @@ others levels but make it way harder and bigger".
   daisy at the tab's outer end.
 - A day finished on Insane before this restores a different picture.
 - Unseen by the user, no phone.
+
+### Every size, and the size printed (2026-10-16)
+
+The user, with a 20 x 20 from the web: "nonogram daily challenges should
+have all sort of sizes, grids, numbers ... based on difficulty", and "show
+the grid sizing so user can easily know how many rows and columns in total
+are".
+
+- `Gen.SHAPES` is six shapes a band: Easy 5-7 a side, Medium 6-10, Hard
+  10-15 (12 x 15 the biggest), Insane 13-20 (15 x 13 up to 15 x 20 and
+  14 x 20). `State.SIZES` fallbacks 5, 7, 10, 15. The numbers come with the
+  size: Hard reaches 12-13, Insane 14 and six numbers a row.
+- **Insane grows tall, not wide** (decided for the user): the cell is capped
+  by the width, and 20 columns plus the row clues' band is a 30 px cell at
+  810 wide. 15 x 20 is a 36 px cell, height-capped. A real 20 x 20 wants a
+  zoom first.
+- `Gen.hardest`'s pool shrinks with the picture (`INSANE_POOL` 12 at
+  `INSANE_CELLS` 225, by the square, never under 4): Insane deals 61-235 ms
+  on the Mac over 12 seeds a shape (15 x 20 with the full pool was 350,
+  20 x 20 900). Hard deals 2-19 ms.
+- `NG_SIZE` ("15 × 20", columns by rows) is drawn under the floor's bottom
+  right edge (`_draw_size`, one draw_string); the layout keeps `SIZE_ROW`
+  for it; it fades with the scaffolding on the win. `NG_LVL_*` say the
+  band's range ("10 to 15 a side"); `NG_LVL_3` said leaf fall till now.
+- `opengl3_angle`, 810x1440, `d=3 right` with SHAPES[3] forced to 15 x 20:
+  a two-digit row clue (10 3) fits its slots, the label clears the tray.
+- A day finished before this restores a different picture (the shape draw
+  moved). Unseen by the user, no phone.

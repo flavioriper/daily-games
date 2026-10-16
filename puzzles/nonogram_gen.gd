@@ -194,11 +194,19 @@ static func _blobby(rng: RandomNumberGenerator, w: int, h: int) -> Array:
 ## The picture's shape per band, [w, h]: squares, and tall and wide ones
 ## (the user, 2026-09-30: "some boards with different shapes, like
 ## rectangles as portrait, landscape, not just squares"). A day draws one.
+##
+## Widened 2026-10-16 (the user, with a 20 x 20 from the web: "nonogram daily
+## challenges should have all sort of sizes, grids, numbers ... based on
+## difficulty"): each band a range of squares, portraits and landscapes.
+## Insane grows tall rather than wide: the phone is portrait and the cell is
+## capped by the width (columns plus the row clues' band), so a 20-wide
+## picture would be a 30 px cell, a third of a fingertip; 15 wide with 20
+## rows keeps it near 40.
 const SHAPES := [
-	[[5, 5], [5, 6], [6, 5]],
-	[[7, 7], [6, 8], [8, 6], [7, 9]],
-	[[9, 9], [8, 10], [10, 8], [9, 11]],
-	[[15, 15], [13, 16], [15, 13]],
+	[[5, 5], [5, 6], [6, 5], [6, 6], [5, 7], [7, 5]],
+	[[7, 7], [8, 8], [6, 8], [8, 6], [7, 9], [8, 10]],
+	[[10, 10], [12, 12], [10, 12], [12, 10], [10, 14], [12, 15]],
+	[[15, 15], [15, 18], [15, 20], [14, 20], [13, 17], [15, 13]],
 ]
 
 ## Insane since 2026-10-16 (the user: "instead of having shuffled numbers,
@@ -210,6 +218,12 @@ const SHAPES := [
 ## first sweep leaves open. Still line logic alone, so still no guessing.
 const INSANE_GRAIN := 0.15
 const INSANE_POOL := 12
+## The pool shrinks with the picture so a deal stays near a third of a second
+## on the Mac: line logic costs about the square of the cells (a 15 x 20 with
+## the full pool was 350 ms). INSANE_POOL is for INSANE_CELLS, never fewer
+## than INSANE_POOL_MIN.
+const INSANE_CELLS := 225
+const INSANE_POOL_MIN := 4
 
 static func hardest(rng: RandomNumberGenerator, w: int, h: int) -> Dictionary:
 	var straight: Array = []
@@ -218,8 +232,9 @@ static func hardest(rng: RandomNumberGenerator, w: int, h: int) -> Dictionary:
 	var best: Dictionary = {}
 	var best_score := -1
 	var kept := 0
+	var pool := maxi(INSANE_POOL_MIN, INSANE_POOL * INSANE_CELLS * INSANE_CELLS / (w * h * w * h))
 	for _attempt in 200:
-		if kept >= INSANE_POOL:
+		if kept >= pool:
 			break
 		var bmp := picture(rng, w, h, INSANE_GRAIN)
 		if bmp.is_empty():
