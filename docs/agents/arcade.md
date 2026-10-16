@@ -3832,6 +3832,17 @@ view"):
   levels 1 and 9, a 300 px drag pans); windowed on `opengl3_angle` 51 draw
   calls with an open track chosen, 55 right after a buy, 36 with a shut
   one. Shots read: nothing clipped or overlapping.
+- **The machines wear the dig's look** (2026-10-16, the user: "redesign the
+  modules into tally (sum, sub, multiplier) to have the same look of the
+  extractor one"): `Art.machine` draws each square of an operator as the
+  dig's rounded block (`BLOCK`, lip, light top edge), neighbours joined by a
+  waist (`WAIST`, half a square) of the same paint; the answer wears the
+  dig's dark-rimmed cream face (`FACE`) with the sign in ink, A, B and R a
+  smaller face with the letter. Notches and spouts kept, `CELL_IN` 0.07 to
+  meet the block's edge. The busy arc rings the face (`Art.face_mid`, between
+  the adder's two answer squares). Windowed on `opengl3_angle`: 84 draw calls
+  on the grown paper (92 before); headless shot run 0 failed. Unseen by the
+  user, no phone.
 - **The tree follows the tally while it is open** (2026-10-16, the user:
   "they should instant reflect into the upgrade tab, right now i need to
   close and reopen to see it"): the screen's `_follow_shop` calls the shop's

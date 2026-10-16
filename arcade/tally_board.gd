@@ -560,17 +560,19 @@ func _build_live() -> ArrayMesh:
 	var b := Face.Builder.new()
 	b.feather = 1.5 * U / maxf(k, 1.0)
 	var r := _visible()
-	# a machine at work: an arc round its sign
+	# a machine at work: an arc round its face
 	for i: int in sim.machines:
 		var t := Sim.tile_of(i)
 		if not _sees(t, r):
 			continue
 		var m: Dictionary = sim.machines[i]
 		if bool(m.busy):
-			var at := Art.mid(t)
+			var kd := int(sim.kind[i])
+			var at := Art.mid(t) + Art.face_mid(kd, int(sim.face[i]))
 			var u := clampf(float(m.t), 0.0, 1.0)
 			if u > 0.02:
-				b.stroke(Face.Builder.arc_points(at, U * 0.3, -PI * 0.5, -PI * 0.5 + TAU * u), U * 0.05, Color(Art.CREAM, 0.85), false)
+				var ar := U * (0.34 if kd == Sim.ADD else 0.31)
+				b.stroke(Face.Builder.arc_points(at, ar, -PI * 0.5, -PI * 0.5 + TAU * u), U * 0.05, Color(Art.CREAM, 0.85), false)
 	# the box: its bar, and a glow when a level is done
 	var panel := Art.box_panel()
 	var bx := Vector2(Sim.HUB_AT) * U

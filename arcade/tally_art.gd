@@ -2,10 +2,10 @@ extends RefCounted
 
 ## Tally's drawings (arcade/tally_board.gd lays them). A sheet of squared
 ## paper on a wooden desk; walnut belts with brass chevrons; cream wooden
-## tokens; painted wooden blocks for the machines, each with its sign carved
-## in cream, its A and B sides notches cut in with cream chevrons pointing
-## in (one, two), its way out a dark spout with a brass chevron pointing
-## away; the counting box a teal chest with a cream panel. Everything is built once at
+## tokens; the machines in the dig's look, a rounded painted block a square
+## joined at a waist, the sign in ink on the dig's cream face, its A and B
+## sides notches cut in with cream chevrons pointing in (one, two), its way
+## out a dark spout with a brass chevron pointing away; the counting box a teal chest with a cream panel. Everything is built once at
 ## U units to a square, about the square's middle facing east, and laid by
 ## the board's transform: nothing is keyed by a size that changes.
 
@@ -217,7 +217,7 @@ static func block_into(b: Face.Builder, s: float, col: Color, at := Vector2.ZERO
 
 ## An operator's squares: how far in from a square's edge its block stands,
 ## how deep an input's notch is cut, the reach of a spout.
-const CELL_IN := U * 0.04
+const CELL_IN := U * 0.07
 const NOTCH_D := U * 0.2
 const MOUTH_W := U * 0.04
 
@@ -254,13 +254,16 @@ static func cells(k: int, f: int) -> Array:
 		out.append([Vector2(c[0] as Vector2i) * U, int(c[1])])
 	return out
 
-## An operator facing `f` about its root square's middle, drawn as it lies
-## (the letters and the sign stay upright, so a mesh a facing): one painted
-## block over all its squares, the answer squares light, A and B a shade
-## down; A and B each a notch cut into its back edge with cream chevrons
-## pointing in (one, two) and its letter; the answer a dark spout out of its
-## front edge with a brass chevron pointing away and the sign; the
-## divider's remainder a smaller spout and an R.
+## An operator facing `f` about its root square's middle, in the dig's look
+## (the user, 2026-10-16: "the same look of the extractor"): each of its
+## squares a painted block as the dig's, rounded, with its lip and its light
+## top edge, joined to its neighbours by a waist of the same paint, so the
+## machine reads as blocks of one piece. The answer wears the dig's cream
+## face with the sign in ink; A, B and the remainder a smaller face with
+## their letter. A and B keep their notch cut into the back edge with cream
+## chevrons pointing in (one, two); the answer its dark spout out of the
+## front edge with a brass chevron pointing away. Drawn as it lies (the
+## letters and the sign stay upright, so a mesh a facing).
 static func machine(k: int, f := 0) -> ArrayMesh:
 	var key := ["machine", k, f]
 	if _cache.has(key):
@@ -269,36 +272,39 @@ static func machine(k: int, f := 0) -> ArrayMesh:
 	var col: Color = PAINT[k]
 	var v := dir_v(f)
 	var cs := cells(k, f)
-	var h := U * 0.5 - CELL_IN
+	var h := BLOCK * 0.5
 	# spouts first: they come out from under the block
 	for c: Array in cs:
 		if int(c[1]) == Sim.R_OUT or int(c[1]) == Sim.R_REM:
 			_spout_at(b, c[0], v, 1.0 if int(c[1]) == Sim.R_OUT else 0.8)
+	# the waists between neighbouring squares, once a pair
+	var waists := []
+	for i in cs.size():
+		for j in range(i + 1, cs.size()):
+			var d: Vector2 = (cs[j][0] as Vector2) - (cs[i][0] as Vector2)
+			if d.length() < U * 1.01:
+				var m: Vector2 = (cs[i][0] as Vector2) + d * 0.5
+				var a := d.abs() * 0.5 + d.orthogonal().abs().normalized() * WAIST * 0.5
+				waists.append(Rect2(m - a, a * 2.0))
 	for layer in 3:
+		var off := Vector2(0, 12.0) if layer == 0 else (Vector2(0, 6.0) if layer == 1 else Vector2.ZERO)
+		var paint := SHADE if layer == 0 else (col.darkened(0.22) if layer == 1 else col)
+		for w: Rect2 in waists:
+			b.polygon(_rect(w, off), paint)
 		for c: Array in cs:
-			var at: Vector2 = c[0]
-			var fill := col if int(c[1]) == Sim.R_OUT or int(c[1]) == Sim.R_REM else col.darkened(0.14)
-			var r := Rect2(at - Vector2(h, h), Vector2(h, h) * 2.0)
-			# a square reaches over to a neighbour of the same machine: one block
-			for o: Array in cs:
-				var d: Vector2 = (o[0] as Vector2) - at
-				if d.length() < U * 1.01 and d.length() > 1.0:
-					r = r.expand(at + d * 0.5 + d.orthogonal().normalized() * h).expand(at + d * 0.5 - d.orthogonal().normalized() * h)
-			match layer:
-				0:
-					b.polygon(_rect(r, Vector2(0, 12.0)), SHADE)
-				1:
-					b.polygon(_rect(r, Vector2(0, 6.0)), col.darkened(0.3))
-				2:
-					b.polygon(_rect(r, Vector2.ZERO), fill)
-	# one sign for the answer, over all its squares (the adder's two)
-	var mid := Vector2.ZERO
+			b.polygon(Face.Builder.round_rect((c[0] as Vector2) + Vector2(-h, -h) + off, Vector2(BLOCK, BLOCK), 16.0), paint)
+	for c: Array in cs:
+		b.polygon(Face.Builder.round_rect((c[0] as Vector2) + Vector2(-h + 8.0, -h + 6.0), Vector2(BLOCK - 16.0, BLOCK * 0.22), 10.0), Color(1, 1, 1, 0.16))
+	# the answer's face, the dig's: a dark rim and a cream disc, the sign in ink
+	var mid := face_mid(k, f)
 	var outs := 0
 	for c: Array in cs:
 		if int(c[1]) == Sim.R_OUT:
-			mid += c[0]
 			outs += 1
-	sign_into(b, k, mid / maxf(1.0, outs), U * (0.19 if outs > 1 else 0.15), CREAM)
+	var fr := U * (0.3 if outs > 1 else 0.27)
+	b.disc(mid, fr, col.darkened(0.35))
+	b.disc(mid + Vector2(0, -2), fr - U * 0.04, FACE)
+	sign_into(b, k, mid + Vector2(0, -2), U * (0.17 if outs > 1 else 0.14), col.darkened(0.45))
 	for c: Array in cs:
 		var at: Vector2 = c[0]
 		match int(c[1]):
@@ -307,10 +313,32 @@ static func machine(k: int, f := 0) -> ArrayMesh:
 				b.polygon(notch_poly(at, v), WALNUT_EDGE)
 				for ch: PackedVector2Array in notch_chevrons(at, v, many):
 					b.stroke(ch, MOUTH_W, TOKEN)
-				letter_into(b, "A" if many == 1 else "B", at + v * U * 0.08, U * 0.15, CREAM)
+				var fa := at + v * U * 0.1
+				b.disc(fa, U * 0.19, col.darkened(0.35))
+				b.disc(fa + Vector2(0, -2), U * 0.16, FACE)
+				letter_into(b, "A" if many == 1 else "B", fa + Vector2(0, -2), U * 0.1, col.darkened(0.45))
 			Sim.R_REM:
-				letter_into(b, "R", at, U * 0.13, CREAM)
+				b.disc(at, U * 0.19, col.darkened(0.35))
+				b.disc(at + Vector2(0, -2), U * 0.16, FACE)
+				letter_into(b, "R", at + Vector2(0, -2), U * 0.1, col.darkened(0.45))
 	return _keep(key, b)
+
+## A machine's square block as the dig's, the waist that joins two, and the
+## cream of a face.
+const BLOCK := U - CELL_IN * 2.0
+const WAIST := U * 0.5
+const FACE := Color("fbe9d0")
+
+## The middle of an operator's answer face about its root, facing `f`: the
+## answer square, or between the adder's two.
+static func face_mid(k: int, f: int) -> Vector2:
+	var mid := Vector2.ZERO
+	var n := 0
+	for c: Array in cells(k, f):
+		if int(c[1]) == Sim.R_OUT:
+			mid += c[0]
+			n += 1
+	return mid / maxf(1.0, n)
 
 static func _rect(r: Rect2, off: Vector2) -> PackedVector2Array:
 	return PackedVector2Array([r.position + off, Vector2(r.end.x, r.position.y) + off, r.end + off, Vector2(r.position.x, r.end.y) + off])
@@ -405,9 +433,9 @@ static func dig() -> ArrayMesh:
 		return _cache["dig"]
 	var b := Face.Builder.new()
 	var col: Color = PAINT[Sim.DIG]
-	block_into(b, U * 0.86, col)
+	block_into(b, BLOCK, col)
 	b.disc(Vector2(0, 0), U * 0.27, col.darkened(0.35))
-	b.disc(Vector2(0, -2), U * 0.23, Color("fbe9d0"))
+	b.disc(Vector2(0, -2), U * 0.23, FACE)
 	return _keep("dig", b)
 
 ## A crate: a teal box with slats; its number and count written by the board.
