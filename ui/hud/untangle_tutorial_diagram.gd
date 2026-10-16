@@ -35,6 +35,9 @@ const Scenery = preload("res://ui/flat/scenery.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 
 enum Lesson { LIFT, WRAP, REACH, HINT, THREAD, BOARD }
+## BOARD's board: four rows of three, the third row's middle plugged (draw 1
+## puts the plug there), as Hard's and Insane's boards have a few.
+const BOARD_PLATE := "grid:4x3:b1:1"
 
 const HOLES := 8
 const CARRY := 1.2
@@ -45,7 +48,7 @@ const BUDGET := 6
 var lesson: int = Lesson.LIFT
 
 var _caption: Label
-## The ring of eight, or BOARD's nine-hole board.
+## The ring of eight, or BOARD's board of eleven holes and a plug.
 var _plate: Plate
 var _started := false
 var _clock := 0.0
@@ -118,7 +121,7 @@ func _start() -> void:
 	var top := 46.0 if lesson == Lesson.THREAD else 8.0
 	var room := size.y - 100.0 - top
 	var wide := size.x * 0.8
-	_plate = Plate.of("grid:3x3") if lesson == Lesson.BOARD else Plate.ring(HOLES)
+	_plate = Plate.of(BOARD_PLATE) if lesson == Lesson.BOARD else Plate.ring(HOLES)
 	_c = Vector2(size.x * 0.5, top + room * 0.5)
 	if lesson == Lesson.BOARD:
 		_ro = minf(wide, room) * 0.5
@@ -164,7 +167,7 @@ func _scene() -> void:
 	_far = -1
 	match lesson:
 		Lesson.BOARD:
-			# Holes 0 1 2 / 3 4 5 / 6 7 8. Coral runs 0 to the middle, yellow
+			# Holes 0 1 2 / 3 4 5 / 6 plug 7 / 8 9 10. Coral runs 0 to the middle, yellow
 			# 3 to 2, and coral lies on top: lifted out of the middle to the
 			# top row, it slides off and both come free.
 			_deal([[2, 0, 4, 2.0], [1, 3, 2, 2.0]])
@@ -531,6 +534,8 @@ func _build_ring() -> ArrayMesh:
 		b.disc(at, _hole_r * 1.14, Color(UT.HOLE_RIM, 0.7))
 		b.disc(at, _hole_r, UT.HOLE)
 		b.disc(at + Vector2(0.0, _hole_r * 0.16), _hole_r * 0.82, UT.HOLE_DEEP)
+	for q in _plate.blocked:
+		UT.lay_plug(b, _c + q * _rh, _hole_r)
 	return b.mesh()
 
 ## BOARD's plank, as the board draws one (untangle2d.gd _lay_board), smaller.
@@ -560,6 +565,8 @@ func _build_board() -> ArrayMesh:
 		b.disc(at, _hole_r * 1.14, Color(UT.HOLE_RIM, 0.7))
 		b.disc(at, _hole_r, UT.HOLE)
 		b.disc(at + Vector2(0.0, _hole_r * 0.16), _hole_r * 0.82, UT.HOLE_DEEP)
+	for q in _plate.blocked:
+		UT.lay_plug(b, _c + q * _rh, _hole_r)
 	return b.mesh()
 
 func _rebuild() -> void:

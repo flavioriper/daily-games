@@ -45,7 +45,7 @@ extends RefCounted
 ## board's par.
 ##
 ## Spec: docs/superpowers/specs/2026-10-16-untangle-plates-design.md (the
-## plates), docs/superpowers/specs/2026-09-29-untangle-knots-design.md (the
+## plates; plugged holes and the big boards at its end), docs/superpowers/specs/2026-09-29-untangle-knots-design.md (the
 ## knots).
 
 const Plate = preload("res://puzzles/untangle_plate.gd")
@@ -63,11 +63,16 @@ const BANDS := [
 		"moves": 3, "cross": 2, "par": 3, "wrap": 1, "knots": 0, "most": 6, "extra": 9.0, "min_reach": 1.0, "slack": 0},
 	{"plates": [["ring:13", 6], ["square:16", 7], ["tri:15", 7]],
 		"moves": 5, "cross": 4, "par": 5, "wrap": 2, "knots": 1, "most": 10, "extra": 1.6, "min_reach": 0.6, "slack": 0},
-	{"plates": [["honey:19", 8], ["grid:5x4", 9]],
-		"moves": 6, "cross": 7, "par": 6, "wrap": 2, "knots": 2, "most": 13, "extra": 1.2, "min_reach": 0.5, "slack": 0},
-	{"plates": [["grid:5x5", 11], ["honey:23", 10]],
-		"moves": 10, "cross": 12, "par": 10, "wrap": 3, "knots": 4, "most": 22, "extra": 1.2, "min_reach": 0.45, "slack": 0, "beam": 16},
+	{"plates": [["grid:7x5:b3", 10], ["grid:6x6:b4", 10]],
+		"moves": 6, "cross": 7, "par": 6, "wrap": 2, "knots": 2, "most": 13, "extra": 1.2, "min_reach": 0.5, "slack": 0,
+		"look": 90, "beam": 0},
+	{"plates": [["grid:8x6:b5", 13]],
+		"moves": 12, "cross": 14, "par": 12, "wrap": 3, "knots": 4, "most": 26, "extra": 1.2, "min_reach": 0.45, "slack": 0,
+		"look": 90, "beam": 0, "hint_beam": 8},
 ]
+## A plate id ending ":bK" has K holes plugged; the day draws where, one of
+## this many patterns, and the id it stores names it (":bK:D").
+const PLUG_DRAWS := 100
 ## A dealt rope is wrapped round two others at most: more and it is a snarl
 ## nobody can read.
 const WRAPS_PER_ROPE := 2
@@ -78,8 +83,11 @@ const WRAPS_PER_ROPE := 2
 const TRIES := 14
 const WALKS := 70
 ## The beam search's width and how deep it goes. A band may deal with a
-## narrower beam (`beam`): Insane's big boards have the most moves a layout,
-## and the deal is made on the frame the board opens.
+## narrower beam (`beam`), or none (0): its par is then the walk back, which
+## the search on a big board almost never shortens and which costs it a
+## second -- the deal is made on the frame the board opens. A big board's
+## walk also weighs only `look` of its moves a step, and its hint searches
+## `hint_beam` wide.
 const BEAM := 30
 const BEAM_DEPTH := 20
 ## A hint's search is narrower: a first step, not a par.
@@ -580,6 +588,11 @@ static func _pick_away(rng: RandomNumberGenerator, pl: Plate, at: PackedInt32Arr
 	for i in range(options.size() - 1, 0, -1):
 		var j := rng.randi_range(0, i)
 		var tmp = options[i]; options[i] = options[j]; options[j] = tmp
+	# A big board weighs a sample of its moves, not all of them (`look`):
+	# they are shuffled already, and the best of a fair few deepens as well.
+	var look := int(cfg.get("look", 0))
+	if look > 0 and options.size() > look:
+		options.resize(look)
 	var base := score(tw, ropes)
 	var best: Array = []
 	var best_score := -100000
@@ -670,7 +683,10 @@ static func _fallback(rng: RandomNumberGenerator) -> Dictionary:
 static func pick_plate(rng: RandomNumberGenerator, band: int) -> Array:
 	var cfg: Dictionary = BANDS[clampi(band, 0, BANDS.size() - 1)]
 	var list: Array = cfg.plates
-	return list[rng.randi_range(0, list.size() - 1)]
+	var choice: Array = list[rng.randi_range(0, list.size() - 1)]
+	if String(choice[0]).contains(":b"):
+		return ["%s:%d" % [choice[0], rng.randi_range(0, PLUG_DRAWS - 1)], choice[1]]
+	return choice
 
 ## One full board for `band`: {"plate", "holes", "ropes", "start", "tw",
 ## "reach", "plan", "par", "budget", "order"}. `plan` is an answer, as
@@ -711,8 +727,9 @@ static func generate(rng: RandomNumberGenerator, band: int, plate_id := "", plat
 		# thread are measured against: it looks only as deep as would beat
 		# the walk.
 		var depth: int = BEAM_DEPTH if plan == null else plan.size() - 1
-		if depth > 0:
-			var found = way_home(pl, start, start_tw, ropes, goal.reach, depth, int(cfg.get("beam", BEAM)), rng)
+		var width := int(cfg.get("beam", BEAM))
+		if depth > 0 and width > 0:
+			var found = way_home(pl, start, start_tw, ropes, goal.reach, depth, width, rng)
 			if found != null:
 				plan = found
 		searched += 1

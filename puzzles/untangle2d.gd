@@ -106,6 +106,7 @@ const ROPES := [
 	[Color("a3b3c9"), Color("687c98"), Color("d6e0ec")],
 	[Color("cfc66b"), Color("979036"), Color("eeeab0")],
 	[Color("d98b7f"), Color("a85a50"), Color("f4c4bb")],
+	[Color("d690d2"), Color("a25c9e"), Color("f4d2f1")],
 ]
 const WOOD := Color("e7c795")
 const WOOD_EDGE := Color("c39b63")
@@ -736,7 +737,18 @@ func _build_plate() -> ArrayMesh:
 		b.disc(at, _hole_r, HOLE)
 		b.disc(at + Vector2(0.0, _hole_r * 0.16), _hole_r * 0.82, HOLE_DEEP)
 		b.ellipse(at + Vector2(0.0, _hole_r * 0.5), _hole_r * 0.6, _hole_r * 0.26, Color(HOLE, 0.9))
+	for q in pl.blocked:
+		lay_plug(b, _c + q * _rh, _hole_r)
 	return b.mesh()
+
+## A plugged hole (the tutorial draws it too): drilled, then stopped with a
+## dowel cut flush and a stroke across it -- no peg goes there.
+static func lay_plug(b: Face.Builder, at: Vector2, hole_r: float) -> void:
+	b.disc(at, hole_r * 1.14, Color(HOLE_RIM, 0.55))
+	b.disc(at, hole_r, WOOD_EDGE)
+	b.disc(at + Vector2(-0.12, -0.14) * hole_r, hole_r * 0.8, Color(WOOD_HI, 0.5))
+	var d := Vector2(1.0, -1.0).normalized() * hole_r * 0.62
+	b.stroke(PackedVector2Array([at - d, at + d]), maxf(hole_r * 0.2, 2.5), Color(HOLE_DEEP, 0.55), false, true)
 
 func _lay_ring(b: Face.Builder) -> void:
 	# A running stitch round the ring.

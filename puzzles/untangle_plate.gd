@@ -36,7 +36,8 @@ const BOW := {"square": 0.0, "hex": 0.3, "tri": 0.34}
 const EDGE_STEPS := 360
 const SNAP := 65536
 
-## The plate's id as a day stores it, e.g. "ring:13", "hex:14", "grid:4x5".
+## The plate's id as a day stores it, e.g. "ring:13", "hex:14", "grid:4x5",
+## "grid:8x6:b5:37" (a board with five holes plugged, placed by draw 37).
 var id := ""
 ## "ring", "hoop" or "board".
 var kind := ""
@@ -47,6 +48,10 @@ var pts := PackedVector2Array()
 ## True when every hole is on the edge of the plate in order round it: the
 ## ring and the hoops. A rope's way round such a plate is the old ring rule.
 var convex := false
+## A board's plugged holes: lattice points drilled and stopped, so no peg
+## goes there (plate units, drawn only; they are not holes and the rule never
+## reads them). Ropes may lie over them.
+var blocked := PackedVector2Array()
 ## A ring or hoop: its centre line, closed, dense, in plate units.
 var curve := PackedVector2Array()
 ## A board: its wooden edge, closed, in plate units.
@@ -112,7 +117,9 @@ func _build(plate_id: String) -> void:
 		"grid":
 			kind = "board"
 			var rc := size.split("x")
-			_grid(int(rc[0]), int(rc[1]))
+			var plugs := int(parts[2].trim_prefix("b")) if parts.size() > 2 else 0
+			var draw := int(parts[3]) if parts.size() > 3 else 0
+			_grid(int(rc[0]), int(rc[1]), plugs, draw)
 		"honey":
 			kind = "board"
 			_honey(int(size))
@@ -192,14 +199,47 @@ static func _along(c: PackedVector2Array, count: int) -> PackedVector2Array:
 
 # --- boards ---
 
-func _grid(rows: int, cols: int) -> void:
-	n = rows * cols
+func _grid(rows: int, cols: int, plugs := 0, draw := 0) -> void:
+	var stopped := _plugs(rows, cols, plugs, draw)
 	for r in rows:
 		for c in cols:
-			pts.append(Vector2(float(c) - (cols - 1) * 0.5, float(r) - (rows - 1) * 0.5))
+			var p := Vector2(float(c) - (cols - 1) * 0.5, float(r) - (rows - 1) * 0.5)
+			if stopped.has(r * cols + c):
+				blocked.append(p)
+			else:
+				pts.append(p)
+	n = pts.size()
 	var half := Vector2((cols - 1) * 0.5, (rows - 1) * 0.5) + Vector2.ONE * BOARD_MARGIN
 	outline = _rounded_rect(half, BOARD_MARGIN * 0.9)
 	_fit(half)
+
+## Which lattice cells (r * cols + c) are plugged: one patch grown from a
+## cell near the middle through its neighbours, never on the outer rows or
+## columns, so the ropes have to go round it. The same for an id everywhere
+## (a draw seeded by the cells and `draw`, whole numbers only).
+static func _plugs(rows: int, cols: int, plugs: int, draw: int) -> Dictionary:
+	var out := {}
+	if plugs <= 0 or rows < 3 or cols < 3:
+		return out
+	var rng := RandomNumberGenerator.new()
+	rng.seed = (rows * 131 + cols * 17 + plugs * 7919 + draw * 104729) & 0x7fffffff
+	var inner := (rows - 2) * (cols - 2)
+	# One of the middle cells (two of them on an even side).
+	var r0 := clampi((rows - 1) / 2 + rng.randi_range(0, (rows + 1) % 2), 1, rows - 2)
+	var c0 := clampi((cols - 1) / 2 + rng.randi_range(0, (cols + 1) % 2), 1, cols - 2)
+	out[r0 * cols + c0] = true
+	var tries := 0
+	while out.size() < mini(plugs, inner) and tries < 400:
+		tries += 1
+		var keys := out.keys()
+		var from: int = keys[rng.randi_range(0, keys.size() - 1)]
+		var step: Vector2i = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)][rng.randi_range(0, 3)]
+		var r: int = from / cols + step.y
+		var c: int = from % cols + step.x
+		if r < 1 or r > rows - 2 or c < 1 or c > cols - 2:
+			continue
+		out[r * cols + c] = true
+	return out
 
 ## A honeycomb in rows: 19 is the hexagon of side three, 23 a block of five
 ## rows, five and four holes in turn.
@@ -234,6 +274,8 @@ func _fit(half: Vector2) -> void:
 	margin = BOARD_MARGIN * k
 	for i in pts.size():
 		pts[i] *= k
+	for i in blocked.size():
+		blocked[i] *= k
 	for i in outline.size():
 		outline[i] *= k
 

@@ -1,5 +1,12 @@
 # Untangle
 
+**Plugged holes and big boards (2026-10-16, evening)**: Hard deals on
+`grid:7x5:b3` / `grid:6x6:b4` with 10 ropes, Insane on `grid:8x6:b5` with
+13; a plug is a lattice cell left out of the plate (`Plate.blocked`, drawn by
+`lay_plug`), its place drawn by the day and kept in the id. Big boards deal
+with `look` 90 and `beam` 0 (par = the walk back). Everything in the spec's
+last section; the band table below is history.
+
 **Plates, and the kitten stops swiping (2026-10-16)**, after the user:
 "different grids not only the current one" (outline shapes and peg boards
 both, knots kept everywhere) and an Insane that is "way harder and bigger",

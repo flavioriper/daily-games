@@ -92,3 +92,51 @@ insane, not the cat itself".
 
 A phone run (deal time on Insane, the plates at phone size), the pt/es
 reads, the user's verdict on the plates.
+
+## Plugged holes and big boards (2026-10-16, evening)
+
+The user showed a Hard level of a peg-grid untangle game (a 6x8 board,
+about 14 ropes, a patch of plugged holes in the middle, many free holes)
+and asked whether ours was similar; said "yes" to adding both plugged holes
+and bigger, roomier grids.
+
+- **A plug is not a hole.** `grid:RxC:bK:D` leaves K lattice cells out of
+  `pts` (so `o`, `dd`, the rule, reach and hit tests never see them) and
+  keeps them in `Plate.blocked` for drawing. `_plugs` grows one patch from a
+  middle cell through neighbours, never on the outer rows or columns; draw
+  D (0-99) is picked by the day (`Gen.pick_plate`, `PLUG_DRAWS`) and is in
+  the stored id, so every phone has the same board. Drawn by
+  `untangle2d.gd lay_plug` (the tutorial calls the same function): a flush
+  dowel with a stroke across it.
+- **Bands now:**
+
+| Band | Plates (ropes) | Moves/par | Most crossings | Holes free |
+|---|---|---|---|---|
+| Hard | grid:7x5:b3, grid:6x6:b4 (10) | 6 | 13 | 12 |
+| Insane | grid:8x6:b5 (13) | 12 | 26 | 17 |
+
+- **The deal had to get cheaper.** On 43 holes and 13 ropes the old dealer
+  took 1.2-2.3 s (beam 8-16). Two band keys: `look` 90 (the scramble weighs
+  90 of its shuffled moves a step, not all ~400) and `beam` 0 (no par
+  search: par is the walk back, which the search never shortened on Insane
+  in any probe, at 16 or now). Insane's hint searches `hint_beam` 8 wide.
+  This Mac, 8 seeds a plate: Hard 164 / 312 ms and 54 / 125 (7x5 / 6x6),
+  Insane 164 / 352, against the old Insane's 221 / 676. Par on Insane is
+  the walk's 12, an upper bound; a shorter answer may exist.
+- A thirteenth rope colour (orchid).
+- Draw calls (ANGLE 810x1440, rest): Hard 89, Insane 93.
+- Tutorial: BOARD is `grid:4x3:b1:1` (the third row's middle plugged; the
+  lesson's holes 0-5 unchanged) and its body mentions plugs.
+
+### Decided for the user (unconfirmed)
+
+- Honeycombs leave Hard and Insane (a 19-hole honeycomb beside a 32-hole
+  grid would swing a band's difficulty day to day); `honey:*` is still a
+  plate, unused by any band.
+- Rope counts 10 / 13 (14 dealt in 321 / 806 ms: too slow), plug counts
+  3-4 / 5, Insane par 12 and up to 26 crossings.
+- No timer or boosters.
+- Level lines: "Peg boards · 10 ropes · plugged holes", "Big peg board ·
+  13 ropes · plugged holes" (pt/es mine).
+
+Owed: the user's look, a phone (deal and hint time), pt/es reads.

@@ -247,7 +247,7 @@ func undo() -> Dictionary:
 func hint_step() -> Array:
 	if at == start_at and tw == start_tw and not plan.is_empty():
 		return plan[0]
-	var way = Gen.way_home(plate, at, tw, ropes, reach, Gen.BEAM_DEPTH, Gen.HINT_BEAM)
+	var way = Gen.way_home(plate, at, tw, ropes, reach, Gen.BEAM_DEPTH, int(Gen.BANDS[band].get("hint_beam", Gen.HINT_BEAM)))
 	if way == null and not history.is_empty():
 		var last: Dictionary = history.back()
 		var back_peg := int(last.peg)
