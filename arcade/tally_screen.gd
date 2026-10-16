@@ -57,6 +57,8 @@ const SAVE_AFTER := 4.0
 const HIT_GAP := 0.14
 ## A machine's sum is a pop at most this often, so a busy paper patters.
 const OP_GAP := 0.16
+## The open shop catches up with the tally at most this often.
+const SHOP_EVERY := 0.25
 ## The tray's two rows: the hands and the belt pieces, then what is set
 ## down on the paper. A slot is row * ROW + its place in the row.
 const TOOLS := [["move", "belt", "turn", "remove", "split", "join"], ["dig", "crate", "add", "mul", "sub", "div", "pow"]]
@@ -89,6 +91,9 @@ var _changed_at := -1.0
 var _opened_at := 0
 var _hit_at := -10.0
 var _said_at := {}
+## What the open shop last showed: the tally's count and level, and when.
+var _shop_saw := Vector2i(-1, -1)
+var _shop_at := -10.0
 var _chip_at := {}
 var _slot_down := -1
 var _slot_touch := -2
@@ -289,6 +294,7 @@ func _process(delta: float) -> void:
 	if not tutor.is_open():
 		sim.step(minf(delta, 0.25))
 	_play_events()
+	_follow_shop()
 	board.tick(delta)
 	_rw.bounds = Rect2(Vector2.ZERO, size)
 	_rw.step(delta)
@@ -321,6 +327,20 @@ func _process(delta: float) -> void:
 		_line_down = false
 	if line_up:
 		line_chip.queue_redraw()
+
+## Numbers into the box while the shop is open show on its plates and its
+## foot as they come (the user, 2026-10-16: "i need to close and reopen").
+func _follow_shop() -> void:
+	var shop := get_node_or_null("Shop")
+	if shop == null:
+		_shop_saw = Vector2i(-1, -1)
+		return
+	var saw := Vector2i(sim.made, sim.level)
+	if saw == _shop_saw or _clock - _shop_at < SHOP_EVERY:
+		return
+	_shop_saw = saw
+	_shop_at = _clock
+	shop.refresh()
 
 func _save() -> void:
 	_saved_at = _clock

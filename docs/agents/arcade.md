@@ -3832,6 +3832,13 @@ view"):
   levels 1 and 9, a 300 px drag pans); windowed on `opengl3_angle` 51 draw
   calls with an open track chosen, 55 right after a buy, 36 with a shut
   one. Shots read: nothing clipped or overlapping.
+- **The tree follows the tally while it is open** (2026-10-16, the user:
+  "they should instant reflect into the upgrade tab, right now i need to
+  close and reopen to see it"): the screen's `_follow_shop` calls the shop's
+  `refresh()` when `made` or `level` moved, at most every 0.25 s
+  (`SHOP_EVERY`), so the plates' rings, the have / need counts and the Buy
+  bar catch up as numbers reach the box. Only `_deliver`, `buy` and a load
+  write the ledger; `buy` already refreshed.
 - **The board under the builder's hand** (`arcade/tally_board.gd`,
   `tally_screen.gd`, `tally_art.gd`, `tally_card.gd`): **a tap never turns
   or places.** Look (id `move`, captioned Look) pans with the fling and a
