@@ -498,86 +498,22 @@ static func fits(band: int, g: Dictionary) -> bool:
 		_:
 			return int(g.wide) >= 2
 
-# --- Insane: Morning Mist ---
-
-## A court where mist has faded the seam between `mists` pairs of
-## neighbouring patches: each such patch takes two queens, every row and
-## column still one. Grown as an ordinary unique court, then merged, then
-## repaired again (counting a misty patch as two) until one seating is left.
-## Returns the `generate` shape plus "quota" (patch -> queens) and "mist"
-## (the misty patches' ids); "ok" is false when repair never got it unique.
-static func mist(rng: RandomNumberGenerator, n: int, mists: int, keep := 2) -> Dictionary:
-	var base := generate(rng, n, keep)
-	if not base.ok:
-		return {}
-	var flat := _flatten(base.region, n)
-	# Which patches touch which, then `mists` disjoint touching pairs.
-	var touch: Dictionary = {}
-	for i in n * n:
-		var r := i / n
-		var c := i % n
-		for d in [Vector2i(1, 0), Vector2i(0, 1)]:
-			var x: int = c + d.x
-			var y: int = r + d.y
-			if x >= n or y >= n:
-				continue
-			var a := flat[i]
-			var b := flat[y * n + x]
-			if a != b:
-				touch[Vector2i(mini(a, b), maxi(a, b))] = true
-	var pairs: Array = touch.keys()
-	_shuffle(pairs, rng)
-	var used: Dictionary = {}
-	var merged: Array = []
-	for p in pairs:
-		if merged.size() >= mists:
-			break
-		if used.has(p.x) or used.has(p.y):
-			continue
-		used[p.x] = true
-		used[p.y] = true
-		merged.append(p)
-	if merged.size() < mists:
-		return {}
-	# Fold each pair's second patch into its first, then number the patches
-	# 0..m-1 again.
-	for p in merged:
-		for i in n * n:
-			if flat[i] == p.y:
-				flat[i] = p.x
-	var ids: Dictionary = {}
-	for i in n * n:
-		if not ids.has(flat[i]):
-			ids[flat[i]] = ids.size()
-		flat[i] = ids[flat[i]]
-	var quota := PackedInt32Array()
-	quota.resize(ids.size())
-	quota.fill(1)
-	var misty: Array = []
-	for p in merged:
-		quota[ids[p.x]] = 2
-		misty.append(ids[p.x])
-	var region: Array = []
-	for r in n:
-		var row: Array = []
-		row.resize(n)
-		region.append(row)
-	_unflatten_into(flat, n, region)
-	var ok := _repair(rng, region, n, base.solution, REPAIRS * 2, true, keep, quota)
-	return {"region": region, "solution": base.solution, "n": n, "ok": ok, "quota": quota,
-		"mist": misty}
-
 # --- the banks ---
 
+## One character a patch or a column in a bank: a digit, then a letter from
+## ten on (Insane's 12x12 has patches 0-b), so a 9x9 entry reads as before.
+const BANK_DIGITS := "0123456789abcdefghijklmnopqrstuvwxyz"
+
 ## The banks' encoding (content/insane/queens.json for Insane,
-## content/insane/queens_hard.json for Hard): the court row by row, one digit
-## a cell for its patch; the patches' quotas; the answer, row by row.
+## content/insane/queens_hard.json for Hard): the court row by row, one
+## BANK_DIGITS character a cell for its patch; the patches' quotas; the
+## answer, row by row, a character a column.
 static func to_bank(out: Dictionary) -> Dictionary:
 	var n: int = out.n
 	var cells := ""
 	for r in n:
 		for c in n:
-			cells += str(int(out.region[r][c]))
+			cells += BANK_DIGITS[int(out.region[r][c])]
 	var quota := PackedInt32Array()
 	if out.has("quota"):
 		quota = out.quota
@@ -586,7 +522,7 @@ static func to_bank(out: Dictionary) -> Dictionary:
 		quota.fill(1)
 	var answer := ""
 	for r in n:
-		answer += str(int(out.solution[r]))
+		answer += BANK_DIGITS[int(out.solution[r])]
 	return {"n": n, "cells": cells, "quota": Array(quota), "answer": answer}
 
 ## A bank entry back in `generate`'s shape. With `prove` (the miner and the
@@ -606,14 +542,14 @@ static func from_bank(board: Dictionary, prove := false) -> Dictionary:
 	for r in n:
 		var row: Array = []
 		for c in n:
-			row.append(int(cells[r * n + c]))
+			row.append(BANK_DIGITS.find(cells[r * n + c]))
 		region.append(row)
 	var quota := PackedInt32Array()
 	for q in board.quota:
 		quota.append(int(q))
 	var solution := PackedInt32Array()
 	for r in n:
-		solution.append(int(answer[r]))
+		solution.append(BANK_DIGITS.find(answer[r]))
 	var misty: Array = []
 	for g in quota.size():
 		if quota[g] > 1:

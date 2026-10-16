@@ -210,7 +210,7 @@ static func _test_state(t) -> void:
 
 static func _test_palette(t) -> void:
 	var Pal = load("res://core/palette.gd")
-	t.eq(Pal.REGION.size(), 9, "nine region pastels, one per region of the hard board")
+	t.eq(Pal.REGION.size(), 12, "twelve region pastels, one per region of the insane board")
 	for i in Pal.REGION.size():
 		for j in range(i + 1, Pal.REGION.size()):
 			t.check(Pal.REGION[i] != Pal.REGION[j], "REGION %d and %d differ" % [i, j])

@@ -46,6 +46,12 @@ extends "res://core/puzzle_base.gd"
 ## and there is no Undo, hint or Check there. A seat a queen sees is still
 ## refused, free: that is the rule, on every band.
 ##
+## Insane is a plain 12x12 court since 2026-10-16 (the user: "just a hard
+## board but way harder and bigger"), mined to ask for three bands over
+## several lines where Hard asks for two. No court has mist now: the mist's
+## wisps, crowns, rules line, tips and tutorial page are gated on
+## `has_mist()` and stay, unreached.
+##
 ## The garden is the whole screen (2026-10-13, the registry's `bleed`):
 ## puzzles/queens_world.gd lies edge to edge as the board's first child,
 ## behind what `_draw` paints, and the court is laid in the span the host's

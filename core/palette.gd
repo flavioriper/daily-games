@@ -346,6 +346,11 @@ const REGION := [
 	Color("e3e27c"),   # lemon
 	Color("f79a80"),   # coral
 	Color("eaa0b8"),   # rose
+	# Insane's 12x12 (2026-10-16) has twelve patches; these three come after
+	# the nine so no smaller court changes colour.
+	Color("8fd5cc"),   # aqua
+	Color("c9a07e"),   # latte
+	Color("9aa6e6"),   # cornflower
 ]
 ## The gold the wave leaves on a cell for a moment as a queen's reach arrives:
 ## a paler gold than SUN, so the wash still reads over the apricot and lemon

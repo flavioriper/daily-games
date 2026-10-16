@@ -141,3 +141,35 @@ has a face. The court's ink frame is on the host's margin.
   queens` passes.
 - Decided for the user, unconfirmed: a garden rather than the card's
   all-court ground; no Check. Owed: a phone, the level slide.
+
+### Insane is a bigger, harder court, no mist (2026-10-16)
+
+The user: "redo queens insane to be just a hard board but way harder and
+bigger, instead of adding issues to it". Morning Mist is gone; what this file
+says of misty patches above is history.
+
+- Insane is a plain **12x12** court, one queen a row, column and patch, from
+  `content/insane/queens.json`, mined by `tools/insane/queens_ladder.gd`
+  (`Gen.generate` at 12, no `Gen.mist`, which is deleted). A court is kept
+  when bands and reach finish it and it needs **three** bands over several
+  lines (`WIDE`; Hard's `Gen.fits` asks two), ranked by Hard's rung. A 12x12
+  costs ~3 s a try on one thread, so it is mined and never dealt live (the
+  live fallback is `Gen.graded(rng, 2, 12)`, seconds).
+- The banks' cells and answer are one `Gen.BANK_DIGITS` character a patch or
+  column (digits, then letters from ten on); the Hard bank reads as before
+  (200 of 200 round-trip).
+- `Pal.REGION` grew three pastels after the nine (aqua, latte, cornflower)
+  so twelve patches never share a colour; smaller courts are unchanged.
+  `State.SQUARES` grew three share marks.
+- Everything mist-shaped in the board (wisps, crown pips, `QN_RULES_MIST`,
+  the MIST tips and tutorial page, `quota` in the logic) is gated on
+  `has_mist()` or a quota over one and stays, unreached.
+- Kept as Nonogram's Insane keeps it: the bulb and no Undo
+  (`capabilities()`).
+- Mined 2026-10-16: a 2,400-try run was stopped at 2,007; its 162 passing
+  seeds were re-dealt (each try is seeded by its index) into the bank, all
+  162 reproduced, rungs 360-720 (Hard's bank 300-520). 162 Insane setups
+  from the bank: 12x12, no mist, `ok`. Windowed on `opengl3_angle`
+  810x1440, `right` mode: 62 px cells, 99 draw calls peak.
+- Decided for the user, unconfirmed: 12 rather than 11; three wide bands as
+  the gate; the three new colours. Owed: a phone, the user's eye on it.

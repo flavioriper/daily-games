@@ -166,7 +166,7 @@ QN_WIN,Every queen has her seat.,Cada rainha tem seu lugar.,Cada reina tiene su 
 QN_LVL_0,7 × 7,7 × 7,7 × 7
 QN_LVL_1,8 × 8,8 × 8,8 × 8
 QN_LVL_2,"9 × 9","9 × 9","9 × 9"
-QN_LVL_3,"10 × 10, morning mist","10 × 10, neblina da manhã","10 × 10, niebla matinal"
+QN_LVL_3,12 × 12,12 × 12,12 × 12
 QN_RULES_MIST,"Morning mist has faded some seams: a misty patch is two colours run together, and it takes two queens. Its seats are crossed only once both are seated.","A neblina da manhã apagou algumas divisas: um canteiro enevoado são duas cores misturadas, e ele leva duas rainhas. Suas casas só são riscadas quando as duas estão no lugar.","La niebla matinal borró algunas costuras: una parcela con niebla son dos colores fundidos, y lleva dos reinas. Sus casillas se tachan solo cuando las dos están sentadas."
 QN_RULES_HEARTS_1,You have one heart. A queen seated where the answer has none costs it.,Você tem um coração. Uma rainha posta onde a resposta não tem nenhuma custa ele.,Tienes un corazón. Una reina sentada donde la respuesta no tiene ninguna lo cuesta.
 QN_RULES_HEARTS_N,You have %d hearts. A queen seated where the answer has none costs one.,Você tem %d corações. Uma rainha posta onde a resposta não tem nenhuma custa um.,Tienes %d corazones. Una reina sentada donde la respuesta no tiene ninguna cuesta uno.

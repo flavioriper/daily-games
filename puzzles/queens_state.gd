@@ -23,9 +23,10 @@ extends RefCounted
 ## the polish (hearts, Morning Mist, graded courts):
 ## docs/superpowers/specs/2026-09-30-queens-polish-design.md.
 ##
-## Morning Mist (Insane): a misty patch takes two queens (`quota`). A queen
-## there does not cross her patch until its second queen sits; then the rest
-## of it is crossed at once.
+## A patch may take more than one queen (`quota`): Insane's Morning Mist did,
+## a misty patch taking two, until 2026-10-16, when Insane became a plain
+## 12x12 court. No court dealt has a misty patch now; the code that counts
+## with them stays, unreached.
 
 const Gen = preload("res://puzzles/queens_gen.gd")
 const InsaneBank = preload("res://core/insane_bank.gd")
@@ -50,7 +51,7 @@ const MOVES_SLACK := [0, 0, 0, 0]
 ## The ladder: easy, medium, hard, insane. The menu opens medium. Hard and
 ## Insane are read from banks mined on the Mac (content/insane/queens_hard.json
 ## and queens.json); these sizes are what an empty bank falls back to.
-const SIZES := [7, 8, 9, 10]
+const SIZES := [7, 8, 9, 12]
 ## Why a seat or a lift was turned down.
 const OK := 0
 const SEEN := 1
@@ -58,7 +59,7 @@ const PINNED := 2
 ## A cross a heart showed: that seat is empty for sure.
 const SHOWN := 3
 ## The share's squares, one per region index; a crown marks a queen.
-const SQUARES := ["🟫", "🟪", "🟦", "🟩", "🟧", "⬜", "🟨", "🟥", "⬛"]
+const SQUARES := ["🟫", "🟪", "🟦", "🟩", "🟧", "⬜", "🟨", "🟥", "⬛", "🟢", "🟤", "🔵"]
 
 var n: int = 7
 var band := 0
