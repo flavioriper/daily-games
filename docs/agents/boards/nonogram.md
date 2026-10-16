@@ -118,8 +118,13 @@ others levels but make it way harder and bigger".
   before against after) lays an X in each blank cell, rippling from the
   stroke. It reads the board, not the picture: a wrong row that reads right
   gets its X's too. They ride the stroke's history entry (`apply_more`), so
-  one Undo takes both back; a line that already read right (an empty one)
-  is left alone; a hint's X's are their own entry.
+  one Undo takes both back; a hint's X's are their own entry.
+  **Fixed the same day** (the user, with a screenshot of an Easy day whose
+  `0` row stayed bare: "not working"): it waited for lines the move *brought*
+  to read right and *touched*, so an empty line, right from the deal, never
+  got its X's. Now every line reading right fills after every move, rippling
+  from the move's last cell when the move did not touch it; an X rubbed out
+  of a finished line comes straight back.
 - **Insane is no longer Leaf Fall**: `State.setup` deals band 3 from
   `Gen.hardest` instead of the bank (`content/insane/nonogram.json` and
   `tools/insane/nonogram_ladder.gd` are left, unread). Shapes 15x15, 13x16,

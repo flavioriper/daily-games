@@ -2349,8 +2349,9 @@ func _judge_stroke(before: Dictionary, changed: Array, arrivals: Dictionary, set
 		land = maxf(land, float(arrivals[cell]) - _now())
 	_on_right_stroke(changed, last, land)
 
-## A line that has just come out right lays a pebble in each of its empty
-## cells, rippling out from where the stroke touched it. It reads the board
+## After every move, each line reading right lays a pebble in each of its
+## empty cells, rippling out from where the stroke touched it (or landed,
+## for a line it did not touch, such as an empty line). It reads the board
 ## as the player has it, never the picture (the user, 2026-10-16: "autofill
 ## x but based on current board, not based on the right answer"), so a line
 ## read right by a wrong tile gets its pebbles too; they ride the stroke's
@@ -2361,15 +2362,21 @@ func _auto_pebbles(arrivals: Dictionary, ok_before: Dictionary, own_entry := fal
 		return
 	var cells: Array = []
 	var when: Dictionary = {}
+	# Where the move landed last, for lines it did not touch (an empty line
+	# reads right from the start, and gets its X's on the first move).
+	var last := Vector2i(-1, -1)
+	var last_at := -1.0
+	for cell in arrivals:
+		if float(arrivals[cell]) > last_at:
+			last_at = float(arrivals[cell])
+			last = cell
 	for k in state.h + state.w:
-		# Only a line this move brought to read right: one that already did
-		# (an empty line does from the start) keeps whatever the player
-		# rubs out of it.
-		if _line_state(k) != State.LINE_OK or ok_before.has(k):
+		# Every line reading right, whether or not this move brought it
+		# there: an X rubbed out of a finished line comes straight back.
+		if _line_state(k) != State.LINE_OK:
 			continue
 		var y: int = k if k < state.h else -1
 		var x: int = -1 if k < state.h else k - state.h
-		# Only a line this move touched.
 		var from := Vector2i(-1, -1)
 		var at := -1.0
 		for cell in arrivals:
@@ -2378,7 +2385,8 @@ func _auto_pebbles(arrivals: Dictionary, ok_before: Dictionary, own_entry := fal
 					at = float(arrivals[cell])
 					from = cell
 		if from.x < 0:
-			continue
+			from = last
+			at = last_at
 		for cell in state.blanks_in(y, x):
 			if when.has(cell) or cell == skip:
 				continue
