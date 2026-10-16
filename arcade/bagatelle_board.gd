@@ -200,6 +200,7 @@ func _draw() -> void:
 	_balls_live = mb.mesh()
 	if _balls_live != null:
 		draw_mesh(_balls_live, null)
+	_draw_worths()
 	# the cups, each squashed as a marble lands in it
 	for c in Sim.CUPS:
 		var e := _clock - _cup_hit[c]
@@ -231,6 +232,22 @@ func _draw_words() -> void:
 		var rise := 0.0 if Motion.reduce else 90.0 * k * (1.0 - pow(1.0 - u, 2.0))
 		var at := cup_mid(int(f.c)) + Vector2(float(f.dx) * k, -30.0 * k - rise)
 		_write(String(f.text), at, int(round(28.0 * k)), Color(Color("ffe08a"), a), int(6 * k), Color(Art.VELVET_LOW, 0.8 * a))
+
+## What each marble in the air is worth before its cup, written on it:
+## one string a marble, upright while the marble stretches.
+func _draw_worths() -> void:
+	if font == null:
+		return
+	var base: float = sim.value() * sim.polish()
+	for b: Dictionary in sim.balls:
+		var tier := int(b.tier)
+		var text := Sim.short(base * Sim.worth(tier) * float(b.boost))
+		var fs := int(round((20.0 if text.length() <= 2 else (17.0 if text.length() == 3 else 13.0)) * k))
+		var c := Art.tier_colour(tier)
+		var ink := Art.WOOD_DEEP.darkened(0.4) if c.get_luminance() > 0.5 else Color(Art.CREAM, 0.95)
+		var at := screen_of(b.p as Vector2)
+		var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		draw_string(font, at + Vector2(-w * 0.5, fs * 0.36), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, ink)
 
 static func _mult_text(m: float) -> String:
 	if m >= 100.0:

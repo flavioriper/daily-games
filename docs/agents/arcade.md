@@ -4094,5 +4094,12 @@ runs while shut); the card sits after Tally on the tab's second page.
   under a card, 149 for the Arcade tab, 144 to 156 for the tutorial. Pins,
   velvet, rail and cups are cached meshes; the marbles and the halos are
   each one `Face.FlatBuilder` mesh a frame.
+- **2026-10-16, the user: "balls should have number value on it" and the
+  upgrades' One/Max "should persist on the session"**: each marble in the air
+  wears what it pays before its cup (`value × worth(tier) × boost × polish`,
+  `Sim.short`), one `draw_string` a marble, dark ink on light tiers and cream
+  on dark, 20/17/13 px × k by length (+0 to +26 draw calls; 85 with three
+  marbles, 108 with twenty-eight). The Max toggle is a `static var` on the
+  sheet, so it holds until the app quits, not across launches.
 - **Not done**: a phone; the sounds heard; pt and es read by a speaker;
   `reduce` shot; es shot; offline progress (a call).

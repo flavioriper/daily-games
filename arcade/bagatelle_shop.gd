@@ -40,7 +40,8 @@ var sim: RefCounted
 var mode := "up"
 var _rows := {}
 var _col: VBoxContainer
-var _max := false
+## One or Max, kept for the session: the sheet is built afresh each time.
+static var _max := false
 var _max_b: Button
 var _held: Label
 var _clock := 0.0
@@ -243,7 +244,7 @@ func _build_up() -> void:
 	var held := pill(false, 44.0)
 	_held = held.get_node("Row/Count")
 	trailing.add_child(held)
-	_max_b = IconButton.new("", "BG_BUY_ONE", "IconButton")
+	_max_b = IconButton.new("", "BG_BUY_MAX" if _max else "BG_BUY_ONE", "IconButton")
 	_max_b.name = "Max"
 	_max_b.custom_minimum_size = Vector2(150, X_SIZE)
 	_max_b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
