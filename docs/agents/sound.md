@@ -1,8 +1,95 @@
 <!-- Moved verbatim from CLAUDE.md on 2026-09-29. -->
 
-## The cozy rules
+## The house sound
 
-**Partly superseded on 2026-10-15, before the rewrite.** The user, unhappy
+Rewritten 2026-10-16 on the user's word ("change guidelines based on these
+new sounds"), after the evening of 2026-10-15. The user had said "i'm not
+happy with what we have", chose by ear from pages of candidates, and called
+the result "amazing sounds". These rules come first. Where a note further
+down this file, in a set's comment in `tools/gen_sfx.py` or in
+`docs/art/sound-direction.md` disagrees, it is history and these win.
+
+**1. An action is a pop.** A thing done by a finger, or a piece that lands,
+is a short rounded pop with a little body: never the mouse-wheel tick of
+2026-10-09, which the user heard as "tick toc". Of the wooden token: "way
+better than our current tick sound". Of the bubble wrap: "insanely better
+than tick toc sounds". Each pop has its job:
+
+| Take in `tools/sfx_bank/` | What it is | Its job |
+|---|---|---|
+| `token` | a smooth wooden token dropped on thick felt | every button, tab and chip (`ui/click`, -18); a thing set down, two steps under the button |
+| `wrap` | one bubble of bubble wrap popped | anything repeated: combos, landings, counts, runs, deals, the gold pill ("very satisfactory for repeated sounds") |
+| `pebble` | a small pebble dropped into a calm pond | a game that selects by ticks: select, unselect, pick, arm (the user named Lucky Thirteen) |
+| `lip` | a soft lip pop | a thing taken off: undo, lift, remove, erase, draw, capture |
+| `tongue` | a soft tongue click | not allowed: refused, nope, locked, miss, wall |
+| `plop` | a water drop into a cup | a thing set down on a water board (Toy Boats, Pearl Dive, Eddy, Mini Golf) |
+| `jar` | a coin dropped into a glass jar of coins | money earned or spent: the Factory sale, the shop's buy |
+
+**2. The bank is the source.** A cue names its take with `bank:<name>` and
+is never bought again: `tools/gen_sfx.py` copies the take into the set's
+raw folder and every treatment applies on top (level, `cut`, `notes`).
+Takes the user has not chosen do not go in the bank. A new pop family is
+chosen the way these were: a page of playable candidates, the user's
+pick, then the bank.
+
+**3. Kept as it came back.** The pops and the coin are heard as the takes
+came back: no `warm`, no `body`, no `ease`. The jar coin is the one
+treated take: three steps down and rolled off at 6 kHz, the user's "not so
+high". When a pick reads too bright, pitch it down a few steps before
+rolling it off. Never more than six steps: `tune` stretches as it lowers,
+and past that a clink becomes a groan.
+
+**4. A coin is a real coin.** The ban on coins that ring is over. A coin is
+a real coin on glass, never a wooden tock: the user rejected the sale that
+sounded "same as the wood being cutted". The user also liked a celesta
+fourth under the coin, cut short or five steps lower. That is not on any
+cue yet; it is the first thing to try for a bigger earn.
+
+**5. No two boards share the exact pop.** In the batch each set sits a step
+off its neighbours (-1, 0, +1 by its place in `SETS`), and a place sits two
+steps under the button. A repeated pop varies 0.94 to 1.06 at play. A run
+climbs a semitone a pop, five at most, as Lucky Thirteen's chain does.
+
+**6. A run follows the thing it sounds.** When several things happen as one
+move (pebbles merging, coins landing), the pops ride the motion: one a
+piece, the last landing with the motion's end, closer than `CUE_GAP` when
+the motion is quick (`Fx2D.cue(..., gap)`). The user, of Lucky Thirteen's
+merge: "i miss multiple sounds instead of just one same tick", then "make
+it faster, following the items merging". The model is `_on_merge` in
+`arcade/thirteen_screen.gd` (`MERGE_STEP`, `MERGE_POPS`).
+
+**7. What stays as it was.** A swipe or a page is still a breeze (`BREEZE`,
+`BREEZE_TRIM`): a pop is not a travel. A moment (a hint, a line, a solve, a
+win) is still a few muffled notes (`COZY_TUNE`, one recorded note with the phrase written by `notes:`, as the old rule 8 says), and nothing
+synthesised. Board foley that is already its own thing (hearts, checks,
+chops, hens, pots: 187 cues the batch left alone) stays until the user
+asks. Rules 9 to 11 below still hold.
+
+**8. The measure informs, the ear decides.** `tools/measure_sfx.py` is
+still run on every new file, but its `high` flag no longer decides: bubble
+wrap sits at 2 kHz by nature and the coin higher. `faint` still decides.
+The phone plays little under 300 Hz, so a pop high-passed at 400 Hz must
+still read -24 or better. `empty` still means ask again. A take the user
+has not heard is said to be unheard, in the commit and in this file.
+
+**Where it stands (2026-10-16).** Picked by the user's ear: the jar coin
+(Factory's sale), the token (`ui/click`), and the six pops, all heard on
+the Mac, none on a phone. Lucky Thirteen's eleven ticks and its merge run
+were heard on the Mac ("amazing sounds"). The batch of 313 cues in 55 sets
+is pushed (a6dc1215) and unheard: the role lists are in
+`build/sfx_raw/coin_try/batch.py`, the rows it wrote in `batch_plan.txt`,
+the old takes in each set's `build/sfx_raw/<set>/old_ticks/`. Two read
+`faint`, Stackwood's `move` and Penny Drop's `tick`, at the levels the user
+asked down to. My calls, not the user's: the place two steps under the
+button, the pill's count as the wrap, the one-step offset between boards.
+
+### The cozy rules of 2026-10-09 (history)
+
+Kept for the record; rules 1 to 8 of this file replaced them. Rules 9 to 11
+are still in force.
+
+
+**Superseded on 2026-10-15, rewritten 2026-10-16 above.** The user, unhappy
 with the earn-coin and tick sounds ("i'm not happy with what we have"),
 chose by ear from pages of candidates: a real coin dropped into a glass
 jar of coins (Factory's `coin`, three steps down, rolled off at 6 kHz) and
@@ -114,6 +201,9 @@ phrase from it: `"notes:0.14:0,2,4,7,9"` is five rising, `"notes:0.3:9,5,2"`
 three falling slowly, and the steps are chosen so every note lands between
 400 and 700 Hz (the measure prints the raw take's centroid). Rising is
 good, falling is not yet, and two cues of one board never share a contour.
+
+
+**Still in force (2026-10-16):** rules 9, 10 and 11, which follow.
 
 **9. What is heard all the time is under everything else (user, 2026-10-10).**
 Of the button's click, the menu's page turn and the slides of air hockey,

@@ -72,6 +72,14 @@ that area**, and add new history there rather than here.
   look that only moves is a cached mesh under a transform, not a rebuild.
 - **Check the phone's driver**: `--rendering-driver opengl3_angle`; no
   `instance uniform` anywhere (garbage on Android past 16 instances).
+- **Sound** (the user, 2026-10-15: "amazing sounds"): an action is a pop
+  from `tools/sfx_bank/`, named in a cue's row with `bank:<name>`. The
+  token is a button or a thing set down, the wrap anything repeated, the
+  pebble a select, the lip a thing taken off, the tongue a refusal, and
+  the jar coin money. Never the old mouse-wheel tick. A run of pops rides
+  the motion it sounds. Swipes stay breezes and moments stay muffled
+  notes. Read "The house sound" at the top of `docs/agents/sound.md`
+  first.
 - **Motion** comes from `core/motion.gd` and `docs/art/flat-motion.md`;
   rings, puffs and sparkles from `ui/fx2d.gd`. A board keeps only its own
   signature constants. Honour `Motion.reduce`.

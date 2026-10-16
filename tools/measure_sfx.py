@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Measure a board's sounds against the cozy rules (docs/agents/sound.md).
+"""Measure a board's sounds (docs/agents/sound.md). Since 2026-10-16 (the
+house sound, rule 8) the `high` flag informs and no longer decides: the
+pops and the coin the user chose sit above 1 kHz by nature. `faint` and
+`empty` still decide.
 
     tools/measure_sfx.py <puzzle_id> [cue ...] [--raw]
 
