@@ -13,9 +13,10 @@ const Sim = preload("res://arcade/trivet_sim.gd")
 ## A mat's half width in the meshes' own pixels.
 const U := 100.0
 ## How much the tray is seen from above: a mat's depth on the page over
-## its width, and its thickness.
-const SQ := 0.8
-const TH := 0.17
+## its width, and its thickness. Seen from high up (about 68 degrees) so a
+## tall stack in front does not hide the tops of the stacks behind it.
+const SQ := 0.93
+const TH := 0.11
 ## The felts, by the sim's colour index, and the ink the page letters in.
 const FELT := [Color("d9694f"), Color("e6b441"), Color("7fae6a"), Color("4f9fb5"), Color("9a6bb0"), Color("e79aa6")]
 const INK := Color("4a3626")

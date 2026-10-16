@@ -3648,6 +3648,12 @@ left ends the run.
 - **Not done**: a phone; the sounds heard; pt and es read; `reduce` shot
   (it was driven headless); pt and es tutorial pages shot; a Trivet bot in
   `tests/_probe_arcade_buzz.gd`.
+- **Seen from higher (2026-10-16)** (the user: "the pieces at back are all
+  hidden behind the pieces on front because of the angle"): `Art.SQ` 0.8
+  to 0.93 and `Art.TH` 0.17 to 0.11, about 68 degrees down, so the tops
+  show more, the rows stand further apart and a ten-high stack is 1.1 mat
+  widths tall, not 1.7. Shots: a tall middle stack no longer covers the one
+  behind. Draw calls unchanged (81 at a full tray).
 
 - **The tab's cards (2026-10-13)**: each game's card is a face of its own, `ui/menu/cards/arc_<game>.gd`, on the Puzzles tab's shell with the shared pager; see `docs/agents/first-screen.md`, "A card of its own". A new Arcade game needs a face file, or its card will not load.
 
