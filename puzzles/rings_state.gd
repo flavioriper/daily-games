@@ -56,6 +56,8 @@ var log: Array[Vector3i] = []
 var held: Array = []
 var held_from := -1
 var colours := 6
+## Rings a peg holds full: the band's (`Gen.BANDS`), or a hand-made deal's.
+var cap := Gen.CAP
 ## The fewest moves the deal is known to sort in: the solver's own line, a
 ## way home and not the shortest. Read only by a band that counts moves.
 var par := 0
@@ -80,15 +82,18 @@ static func hearts_for(band: int) -> int:
 ## not to one undo at a time.
 func build(rng: RandomNumberGenerator, band: int, _bank_step := 0) -> void:
 	difficulty = clampi(band, 0, Gen.BANDS.size() - 1)
-	take(Gen.deal(rng, difficulty), difficulty, int(Gen.BANDS[difficulty]["colours"]))
+	take(Gen.deal(rng, difficulty), difficulty, int(Gen.BANDS[difficulty]["colours"]),
+		int(Gen.BANDS[difficulty].get("cap", Gen.CAP)))
 	par = 0
 	if MOVES_SLACK[difficulty] > 0:
-		par = Gen.solve(pegs).size()
+		par = Gen.solve(pegs, Gen.NODE_BUDGET, cap).size()
 
 ## A hand-made deal (the tutorial's pages): `given` pegs, bottom ring first,
-## `count` colours, undone and hinted as band `band` is.
-func take(given: Array, band: int, count: int) -> void:
+## `count` colours, `full` rings to a full peg, undone and hinted as band
+## `band` is.
+func take(given: Array, band: int, count: int, full := Gen.CAP) -> void:
 	difficulty = clampi(band, 0, Gen.BANDS.size() - 1)
+	cap = full
 	par = 0
 	pegs = []
 	deal = []
@@ -125,7 +130,7 @@ func moves_budget() -> int:
 
 ## A peg nothing comes off again: full and all one colour.
 func locked(i: int) -> bool:
-	return Gen.locked(pegs[i])
+	return Gen.locked(pegs[i], cap)
 
 ## A run may be lifted off a peg that has one, is not locked, and only when
 ## the hand is empty.
@@ -163,7 +168,7 @@ func lands(j: int) -> int:
 	if not holding() or j == held_from:
 		return 0
 	var dst: Array = pegs[j]
-	var room := Gen.CAP - dst.size()
+	var room := cap - dst.size()
 	if room <= 0:
 		return 0
 	if not dst.is_empty() and Gen.top(int(dst.back())) != held_colour():
@@ -180,7 +185,7 @@ func refusal(j: int) -> String:
 	if can_drop(j):
 		return ""
 	var dst: Array = pegs[j]
-	if dst.size() >= Gen.CAP:
+	if dst.size() >= cap:
 		return "RG_FULL"
 	return "RG_WRONG_COLOUR"
 
@@ -230,18 +235,18 @@ func _turn_up_all(i: int) -> void:
 func home_count() -> int:
 	var n := 0
 	for s in pegs:
-		if Gen.locked(s):
+		if Gen.locked(s, cap):
 			n += 1
 	return n
 
 func is_solved() -> bool:
-	return Gen.solved(pegs)
+	return Gen.solved(pegs, cap)
 
 ## Not solved, and nothing legal to play. Two loops (is_solved, moves_from)
 ## and no solver -- that is the point: a stuck board is cheap to notice, a
 ## solvable one is not free to prove.
 func is_stuck() -> bool:
-	return not is_solved() and Gen.moves_from(pegs).is_empty()
+	return not is_solved() and Gen.moves_from(pegs, cap).is_empty()
 
 ## Back to the dealt position in one step, not one undo at a time. A ring
 ## seen face up stays face up: a face-down ring has never moved, so the
@@ -272,7 +277,7 @@ func hint() -> Vector3i:
 	put_back()
 	if hints_used >= hints_for(difficulty) + hints_extra or is_solved():
 		return Vector3i(-1, -1, 0)
-	var path: Array = Gen.solve(pegs)
+	var path: Array = Gen.solve(pegs, Gen.NODE_BUDGET, cap)
 	if path.is_empty():
 		return Vector3i(-1, -1, 0)
 	var m: Vector2i = path[0]

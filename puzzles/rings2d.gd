@@ -146,9 +146,10 @@ const EMBLEM := 0.078
 const EMBLEM_REACH := 0.84
 
 # --- the layout, in design pixels ---
-## Ground to post top of a station. The 3 is Gen.CAP - 1, written out
-## because a const from another script's constant does not always fold in
-## GDScript.
+## Ground to post top of a four-ring station (the menu card's, the
+## tutorial's). The 3 is Gen.CAP - 1, written out because a const from
+## another script's constant does not always fold in GDScript; a deal's own
+## towers are `_station_h()`.
 const STATION_H := (SEAT + 3.0 * PITCH + SIDE + POST_UP) * RING_W
 ## A held ring's room over its post, plus a little air.
 const HEAD := (SIDE + 2.0 * FACE + HOVER) * RING_W + 16.0
@@ -488,7 +489,7 @@ func title() -> String: return "Rings"
 ## What a move is, then the band's own closing: nothing can be lost (Easy to
 ## Hard), or the face-down rings (Insane).
 func rules() -> String:
-	var line := tr("RG_RULES")
+	var line := tr("RG_RULES") % _state.cap
 	if _state.difficulty == 3:
 		line += "\n\n" + tr("RG_RULES_HIDDEN")
 	elif max_hearts > 0:
@@ -687,9 +688,14 @@ func _dealt() -> void:
 func _row_counts() -> Array:
 	return _rows_of(_state.pegs.size())
 
-## The design box's least height, the heart strip aside.
+## The design box's least height, the heart strip aside: MIN_H with this
+## deal's towers.
 func _min_h() -> float:
-	return MIN_H
+	return MIN_H + 2.0 * (_station_h() - STATION_H)
+
+## Ground to post top of this deal's stations.
+func _station_h() -> float:
+	return (SEAT + float(_state.cap - 1) * PITCH + SIDE + POST_UP) * RING_W
 
 ## Rows of four and three at the hard and medium bands, three and three at
 ## the easy one, five and five on Insane.
@@ -729,8 +735,8 @@ func _layout() -> void:
 	# Bled, the rows hang from the top of the span, right under the host's
 	# tools row, and what is left over is open terrace at the foot.
 	var above := 0.0 if _bled else extra * 0.4
-	var g0 := _top_pad() + HEAD + above + STATION_H
-	var g1 := g0 + SHELF_H + MID_GAP + extra * 0.3 + STATION_H
+	var g0 := _top_pad() + HEAD + above + _station_h()
+	var g1 := g0 + SHELF_H + MID_GAP + extra * 0.3 + _station_h()
 	_ground = [g0, g1]
 	# The effects and the two layers over the pegs are laid on the box, so
 	# everything they are told is the box's own pixels.
@@ -911,18 +917,18 @@ func _station(i: int) -> Dictionary:
 	var x := (_dsize.x - float(n) * STATION_W) * 0.5 + float(k) * STATION_W
 	var ground: float = _ground[row]
 	return {"row": row, "x": x, "cx": x + STATION_W * 0.5, "ground": ground,
-		"top": _post_top(ground, RING_W)}
+		"top": _post_top(ground, RING_W, _state.cap)}
 
 ## A ring's top face centre in slot `k` of a peg standing on `ground`.
 static func _ring_yt(ground: float, w: float, k: int) -> float:
 	return ground - (SEAT + float(k) * PITCH + SIDE) * w
 
-static func _post_top(ground: float, w: float) -> float:
-	return _ring_yt(ground, w, Gen.CAP - 1) - POST_UP * w
+static func _post_top(ground: float, w: float, cap := Gen.CAP) -> float:
+	return _ring_yt(ground, w, cap - 1) - POST_UP * w
 
 ## A ring in hand: its bottom clear of the post top by HOVER.
-static func _held_yt(ground: float, w: float) -> float:
-	return _post_top(ground, w) - (SIDE + FACE + HOVER) * w
+static func _held_yt(ground: float, w: float, cap := Gen.CAP) -> float:
+	return _post_top(ground, w, cap) - (SIDE + FACE + HOVER) * w
 
 func _loc(p: Vector2) -> Vector2:
 	return p * _s
@@ -1032,7 +1038,7 @@ func _tap(i: int) -> void:
 			# fire solved -- _on_solved reads the flights for the landing
 			# moment its hop wave waits on.
 			_by_hand = true
-			var up := _held_yt(float(_station(from)["ground"]), RING_W)
+			var up := _held_yt(float(_station(from)["ground"]), RING_W, _state.cap)
 			_fly(codes.slice(codes.size() - k), from, i, slot, -1, _now(), true, turn, false, up, RUN_STEP)
 			_by_hand = false
 			if not stay.is_empty():
@@ -1190,7 +1196,7 @@ func _settle(j: int, at: float) -> void:
 	_reconcile_locks()
 	if _state.locked(j):
 		_lock_at[j] = at
-		_hop_at[j] = at + float(Gen.CAP - 1) * Motion.WAVE_STEP
+		_hop_at[j] = at + float(_state.cap - 1) * Motion.WAVE_STEP
 		var st := _station(j)
 		var top_pt := _loc(Vector2(float(st["cx"]), float(st["top"])))
 		var colour: Color = RING_COLOURS[Gen.top(int(_state.pegs[j][0]))]
@@ -1387,7 +1393,7 @@ func _stations_moving(t: float) -> bool:
 	var entrance := Motion.ENTER_DELAY + Motion.stagger(n, Motion.ENTER_STAGGER) + Motion.DROP_TIME
 	if t - _opened < entrance:
 		return true
-	if t - _land_at < _LAND_SQUASH_TIME + float(Gen.CAP) * BUMP_STEP:
+	if t - _land_at < _LAND_SQUASH_TIME + float(_state.cap) * BUMP_STEP:
 		return true
 	if t - _reset_at < Motion.stagger(n, Motion.RESET_STAGGER) + Motion.HOP_TIME:
 		return true
@@ -1398,7 +1404,7 @@ func _stations_moving(t: float) -> bool:
 		if e > -1.5 and e < Motion.SHIVER_TIME:
 			return true
 	for j in _lock_at.keys():
-		if t - float(_lock_at[j]) < float(Gen.CAP - 1) * Motion.WAVE_STEP + Motion.FLASH_IN + Motion.FLASH_OUT:
+		if t - float(_lock_at[j]) < float(_state.cap - 1) * Motion.WAVE_STEP + Motion.FLASH_IN + Motion.FLASH_OUT:
 			return true
 	for j in _hop_at.keys():
 		if t - float(_hop_at[j]) < LOCK_HOP_TIME + 0.05:
@@ -1413,7 +1419,7 @@ func _stations_moving(t: float) -> bool:
 ## the moment the winning ring actually lands, and the party starts.
 func _on_solved() -> void:
 	var land := _flights_land()
-	_solved_at = land + (0.0 if Motion.reduce else float(Gen.CAP) * Motion.WAVE_STEP)
+	_solved_at = land + (0.0 if Motion.reduce else float(_state.cap) * Motion.WAVE_STEP)
 	_tip_timer.stop()
 	# Flawless: no hint, and never out of moves on Insane (no heart lost on a
 	# judged band), or where nothing can be lost never an undo.
@@ -1464,7 +1470,7 @@ func _draw() -> void:
 ## and per station its drop, hops and shiver as an offset and its fade as a
 ## modulate. A station's mesh is rebuilt only when its look changed.
 func _draw_stations(t: float) -> void:
-	var centre := Vector2(_dsize.x * 0.5, (float(_ground[0]) + float(_ground[1]) - STATION_H) * 0.5)
+	var centre := Vector2(_dsize.x * 0.5, (float(_ground[0]) + float(_ground[1]) - _station_h()) * 0.5)
 	var wide := 1.0
 	if not Motion.reduce:
 		wide = Motion.wide_pop_scale(t - _opened - Motion.ENTER_DELAY)
@@ -1704,7 +1710,7 @@ func _station_look(i: int, t: float, hop: float) -> Dictionary:
 		scales.append(sc)
 		var glint := 0.0
 		if _lock_at.has(i):
-			glint = Motion.flash_level(t - float(_lock_at[i]) - float(Gen.CAP - 1 - k) * Motion.WAVE_STEP)
+			glint = Motion.flash_level(t - float(_lock_at[i]) - float(_state.cap - 1 - k) * Motion.WAVE_STEP)
 		glints.append(glint)
 		var spin := turn * (1.0 if k % 2 == 0 else -1.0)
 		if not _twirl.is_empty() and int(_twirl["peg"]) == i and k == pegs.size() - 1 and not Motion.reduce:
@@ -1718,7 +1724,7 @@ func _station_look(i: int, t: float, hop: float) -> Dictionary:
 	if _state.locked(i) and not flying:
 		cap = 1.0
 		if _lock_at.has(i) and not Motion.reduce:
-			cap = Motion.pop_in_scale(t - float(_lock_at[i]) - float(Gen.CAP - 1) * Motion.WAVE_STEP).x
+			cap = Motion.pop_in_scale(t - float(_lock_at[i]) - float(_state.cap - 1) * Motion.WAVE_STEP).x
 	return {"pegs": pegs, "scales": scales, "glints": glints, "turns": turns, "cap": cap}
 
 ## A whole peg, `w` the ring's width: its shadow on the plank, the rings
@@ -2077,7 +2083,7 @@ func _make_look(id: int) -> Face.Builder:
 func _build_station(cx: float, ground: float, look: Dictionary) -> ArrayMesh:
 	var w := RING_W
 	var rings: Array = look["pegs"]
-	var top_y := _post_top(ground, w)
+	var top_y := _post_top(ground, w, _state.cap)
 	_looks.begin()
 	_looks.put(LOOK_SOCKET if rings.is_empty() else LOOK_SHADOW, [], Transform2D(0.0, Vector2(cx, ground)))
 	var into := ground - SEAT * w
@@ -2180,7 +2186,7 @@ func _build_held(t: float) -> void:
 	var st := _station(_state.held_from)
 	var cx: float = st["cx"]
 	var ground: float = st["ground"]
-	var up := _held_yt(ground, RING_W)
+	var up := _held_yt(ground, RING_W, _state.cap)
 	var y := up
 	var sc := Vector2.ONE
 	var codes: Array = _state.held
@@ -2226,10 +2232,10 @@ func _leg_pose(from: int, to: int, slot: int, from_slot: int, n: int, dur: float
 		from_yt := INF) -> Dictionary:
 	var a := _station(from)
 	var d := _station(to)
-	var ya := _held_yt(float(a["ground"]), RING_W)
+	var ya := _held_yt(float(a["ground"]), RING_W, _state.cap)
 	if from_slot < 0 and from_yt < INF:
 		ya = from_yt
-	var yd := _held_yt(float(d["ground"]), RING_W)
+	var yd := _held_yt(float(d["ground"]), RING_W, _state.cap)
 	var y_land := _ring_yt(float(d["ground"]), RING_W, slot + n - 1)
 	if from == to:
 		var u0 := clampf(e / dur, 0.0, 1.0)
@@ -2262,7 +2268,7 @@ func _build_flight(f: Dictionary, t: float) -> void:
 		if int(f["from_slot"]) >= 0:
 			wait = _ring_yt(float(st["ground"]), RING_W, int(f["from_slot"]) + codes.size() - 1)
 		elif wait == INF:
-			wait = _held_yt(float(st["ground"]), RING_W)
+			wait = _held_yt(float(st["ground"]), RING_W, _state.cap)
 		_put_stack(float(st["cx"]), wait, codes, Vector2.ONE, 0.0, float(f.get("turn", 0.0)), float(st["top"]))
 		return
 	var p := _leg_pose(int(f["from"]), int(f["to"]), int(f["slot"]), int(f["from_slot"]), codes.size(),
@@ -2501,8 +2507,8 @@ func share_glyphs() -> String:
 	var out := ""
 	var insane: bool = _state.difficulty == 3
 	for m: Vector3i in _state.log:
-		Gen.apply(pegs, m.x, m.y)
-		if Gen.locked(pegs[m.y]):
+		Gen.apply(pegs, m.x, m.y, _state.cap)
+		if Gen.locked(pegs[m.y], _state.cap):
 			out += SHARE_GLYPHS[Gen.top(int(pegs[m.y][0]))]
 	if (insane or _flawless) and is_solved():
 		out += "\n"
@@ -2526,7 +2532,10 @@ func restore_completed_board() -> void:
 	_flawless = bool(completed_record.get("flawless", false))
 	var home: Array = []
 	for c in _state.colours:
-		home.append([c, c, c, c])
+		var full: Array = []
+		full.resize(_state.cap)
+		full.fill(c)
+		home.append(full)
 	while home.size() < _state.pegs.size():
 		home.append([])
 	_state.pegs = home
@@ -3352,15 +3361,15 @@ func day_dict() -> Dictionary:
 	if _state.deal.is_empty():
 		return {}
 	var deal: Array = _state.deal
-	var cap: int = Gen.CAP
+	var cap: int = _state.cap
 	var end: Array = []
 	var rings := 0
 	for s: Array in deal:
 		end.append(s.duplicate())
 		rings += s.size()
 	var line: Array = []
-	for m: Vector2i in Gen.solve(deal):
-		Gen.apply(end, m.x, m.y)
+	for m: Vector2i in Gen.solve(deal, Gen.NODE_BUDGET, cap):
+		Gen.apply(end, m.x, m.y, cap)
 		line.append([m.x, m.y])
 	var slot := func(peg: Array, k: int) -> Dictionary:
 		if k >= peg.size():

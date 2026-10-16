@@ -893,7 +893,7 @@ func _tap_rings() -> void:
 	var src := 1
 	for i in range(1, pegs.size()):
 		var peg: Array = pegs[i]
-		if not peg.is_empty() and not RingsGen.locked(peg):
+		if not peg.is_empty() and not RingsGen.locked(peg, p._state.cap):
 			src = i
 			break
 	var peg: Array = pegs[src]

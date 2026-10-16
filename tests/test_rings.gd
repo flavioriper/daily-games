@@ -36,27 +36,28 @@ static func _rng(seed_value: int) -> RandomNumberGenerator:
 static func _test_deal_shape(t) -> void:
 	for band in 3:
 		var want: Dictionary = Gen.BANDS[band]
+		var cap: int = want["cap"]
 		var pegs := Gen.deal(_rng(band * 100 + 7), band)
 		t.eq(pegs.size(), want["pegs"], "band %d peg count" % band)
 		var seen := {}
 		var total := 0
 		for s in pegs:
-			t.check(s.size() <= Gen.CAP, "band %d peg within CAP" % band)
+			t.check(s.size() <= cap, "band %d peg within its cap" % band)
 			total += s.size()
 			for c in s:
 				seen[c] = int(seen.get(c, 0)) + 1
-		t.eq(total, want["colours"] * Gen.CAP, "band %d ring count" % band)
+		t.eq(total, want["colours"] * cap, "band %d ring count" % band)
 		t.eq(seen.size(), want["colours"], "band %d colour count" % band)
 		for c in seen:
-			t.eq(int(seen[c]), Gen.CAP, "band %d four of colour %d" % [band, c])
+			t.eq(int(seen[c]), cap, "band %d a full peg of colour %d" % [band, c])
 
-## The hard band is six colours on seven pegs since the 2026-10-01 polish:
-## three or four rings a peg.
+## The hard band is five colours of six on seven pegs since 2026-10-16:
+## four or five rings a peg.
 static func _test_hard_band_is_three_a_peg(t) -> void:
 	var pegs := Gen.deal(_rng(11), 2)
 	t.eq(pegs.size(), 7, "seven pegs")
 	for s in pegs:
-		t.check(s.size() == 3 or s.size() == 4, "three or four rings a peg")
+		t.check(s.size() == 4 or s.size() == 5, "four or five rings a peg")
 
 ## Every deal the generator hands over can actually be sorted, and the path it
 ## returns is legal move by move and ends solved.
@@ -64,16 +65,17 @@ static func _test_every_deal_is_solvable(t) -> void:
 	for band in 3:
 		for i in 6:
 			var pegs := Gen.deal(_rng(i * 31 + band), band)
-			t.check(not Gen.solved(pegs), "band %d seed %d is not already solved" % [band, i])
-			var path: Array = Gen.solve(pegs, 20000)
+			var cap: int = Gen.BANDS[band]["cap"]
+			t.check(not Gen.solved(pegs, cap), "band %d seed %d is not already solved" % [band, i])
+			var path: Array = Gen.solve(pegs, 20000, cap)
 			t.check(not path.is_empty(), "band %d seed %d has a solution" % [band, i])
 			var work: Array = []
 			for s in pegs:
 				work.append((s as Array).duplicate())
 			for m in path:
-				t.check(Gen.take(work[m.x], work[m.y]) > 0, "a legal move")
-				Gen.apply(work, m.x, m.y)
-			t.check(Gen.solved(work), "band %d seed %d: the path finishes it" % [band, i])
+				t.check(Gen.take(work[m.x], work[m.y], cap) > 0, "a legal move")
+				Gen.apply(work, m.x, m.y, cap)
+			t.check(Gen.solved(work, cap), "band %d seed %d: the path finishes it" % [band, i])
 
 ## The same seed deals the same board, on every phone and every run.
 static func _test_deal_is_seeded(t) -> void:

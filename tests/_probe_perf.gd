@@ -1094,7 +1094,7 @@ func _first_liftable() -> int:
 
 func _moves_rings() -> Array:
 	var out := []
-	for m: Vector2i in load("res://puzzles/rings_gen.gd").solve(_puzzle._state.pegs):
+	for m: Vector2i in load("res://puzzles/rings_gen.gd").solve(_puzzle._state.pegs, 20000, _puzzle._state.cap):
 		for i in [m.x, m.y]:
 			out.append({"at": func() -> Vector2:
 				var st: Dictionary = _puzzle._station(i)

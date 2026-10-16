@@ -36,8 +36,10 @@ extends RefCounted
 ## Spec: docs/superpowers/specs/2026-09-20-rings-flat-design.md, section 3.
 ## Concept page: docs/brainstorm/concepts.html#rings.
 
-## Rings a peg holds when it is full. Four at every band; the colour count is
-## what moves.
+## Rings a peg holds when it is full: four on Easy, the tutorial and the menu
+## card, and taller towers up the bands since 2026-10-16 (the user: "add
+## bigger towers, not just the same fixed amount of piles") -- each band's
+## `cap`, passed to every rule below.
 const CAP := 4
 
 ## Colours by band, and always two pegs' worth of slack -- eight free slots,
@@ -47,11 +49,13 @@ const CAP := 4
 ## Hard is six colours on **seven** pegs since the 2026-10-01 polish.
 ## Insane (2026-10-16) is bigger and blind: eight colours on ten pegs, two
 ## rows of five, every ring under a top dealt face down (`hidden`).
+## Towers since 2026-10-16: Medium five high, Hard and Insane six, still two
+## pegs' worth of room free.
 const BANDS := [
-	{"colours": 4, "pegs": 6},
-	{"colours": 5, "pegs": 7},
-	{"colours": 6, "pegs": 7},
-	{"colours": 8, "pegs": 10, "hidden": true},
+	{"colours": 4, "pegs": 6, "cap": 4},
+	{"colours": 4, "pegs": 6, "cap": 5},
+	{"colours": 5, "pegs": 7, "cap": 6},
+	{"colours": 8, "pegs": 10, "cap": 6, "hidden": true},
 ]
 
 ## A face-down ring: its colour with this bit over it.
@@ -91,9 +95,9 @@ static func run(peg: Array) -> int:
 ## How many rings a move from `src` onto `dst` carries: the run, or as many
 ## of it as `dst` has room for. 0 when nothing may go (an empty source, no
 ## room, another colour on top).
-static func take(src: Array, dst: Array) -> int:
+static func take(src: Array, dst: Array, cap := CAP) -> int:
 	var n := run(src)
-	var room := CAP - dst.size()
+	var room := cap - dst.size()
 	if n == 0 or room <= 0:
 		return 0
 	if not dst.is_empty() and top(int(dst.back())) != top(int(src.back())):
@@ -104,10 +108,10 @@ static func take(src: Array, dst: Array) -> int:
 ## turns the source's new top face up. Returns [rings moved, the code the
 ## source's new top had before it turned] ([0, -1] when nothing moved), which
 ## is what `unapply` needs.
-static func apply(pegs: Array, i: int, j: int) -> Array:
+static func apply(pegs: Array, i: int, j: int, cap := CAP) -> Array:
 	var src: Array = pegs[i]
 	var dst: Array = pegs[j]
-	var k := take(src, dst)
+	var k := take(src, dst, cap)
 	if k == 0:
 		return [0, -1]
 	var start := src.size() - k
@@ -139,24 +143,25 @@ static func unapply(pegs: Array, i: int, j: int, done: Array) -> void:
 static func deal(rng: RandomNumberGenerator, difficulty: int) -> Array:
 	var band: Dictionary = BANDS[clampi(difficulty, 0, BANDS.size() - 1)]
 	var last: Array = []
+	var cap: int = band.get("cap", CAP)
 	for attempt in ATTEMPTS:
-		var pegs := _deal_once(rng, int(band["colours"]), int(band["pegs"]))
+		var pegs := _deal_once(rng, int(band["colours"]), int(band["pegs"]), cap)
 		if band.get("hidden", false):
 			for peg: Array in pegs:
 				for k in peg.size() - 1:
 					peg[k] = int(peg[k]) | HIDDEN
 		last = pegs
-		if solved(pegs):
+		if solved(pegs, cap):
 			continue
-		if not solve(pegs, NODE_BUDGET).is_empty():
+		if not solve(pegs, NODE_BUDGET, cap).is_empty():
 			return pegs
 	return last
 
 ## One shuffled deal, as even as the band divides.
-static func _deal_once(rng: RandomNumberGenerator, colours: int, peg_count: int) -> Array:
+static func _deal_once(rng: RandomNumberGenerator, colours: int, peg_count: int, cap := CAP) -> Array:
 	var bag: Array[int] = []
 	for c in colours:
-		for k in CAP:
+		for k in cap:
 			bag.append(c)
 	_shuffle(bag, rng)
 	var base := bag.size() / peg_count
@@ -183,11 +188,11 @@ static func _shuffle(a: Array, rng: RandomNumberGenerator) -> void:
 		a[j] = v
 
 ## Every peg empty or full of one colour.
-static func solved(pegs: Array) -> bool:
+static func solved(pegs: Array, cap := CAP) -> bool:
 	for s in pegs:
 		if s.is_empty():
 			continue
-		if not locked(s):
+		if not locked(s, cap):
 			return false
 	return true
 
@@ -195,8 +200,8 @@ static func solved(pegs: Array) -> bool:
 ## source rather than merely pointless -- a full monochrome peg is already
 ## where that colour belongs and has no free slot, so no solution can need to
 ## take rings off it.
-static func locked(peg: Array) -> bool:
-	if peg.size() != CAP:
+static func locked(peg: Array, cap := CAP) -> bool:
+	if peg.size() != cap:
 		return false
 	var c0 := top(int(peg[0]))
 	for c in peg:
@@ -227,7 +232,7 @@ static func key(pegs: Array) -> String:
 ## run and nothing else never moves onto an empty peg (the same position with
 ## the pegs renamed), and of several empty pegs only the first is tried
 ## (the same again).
-static func moves_from(pegs: Array) -> Array:
+static func moves_from(pegs: Array, cap := CAP) -> Array:
 	var scored: Array = []
 	var empty := -1
 	for j in pegs.size():
@@ -236,7 +241,7 @@ static func moves_from(pegs: Array) -> Array:
 			break
 	for i in pegs.size():
 		var src: Array = pegs[i]
-		if src.is_empty() or locked(src):
+		if src.is_empty() or locked(src, cap):
 			continue
 		var n := run(src)
 		var col := top(int(src.back()))
@@ -249,10 +254,10 @@ static func moves_from(pegs: Array) -> Array:
 					continue
 				scored.append([2, i, j])
 				continue
-			var k := take(src, dst)
+			var k := take(src, dst, cap)
 			if k == 0:
 				continue
-			var finishes := dst.size() + k == CAP
+			var finishes := dst.size() + k == cap
 			if finishes:
 				for c in dst:
 					if top(int(c)) != col:
@@ -268,32 +273,31 @@ static func moves_from(pegs: Array) -> Array:
 ## A path from `pegs` to solved, or []. Depth-first over canonical positions,
 ## a solution and not the shortest -- which is all either caller needs: the
 ## deal wants a yes, and the hint wants a next move that leads somewhere.
-static func solve(pegs: Array, budget := NODE_BUDGET) -> Array:
-	return _search(pegs, budget)["path"]
+static func solve(pegs: Array, budget := NODE_BUDGET, cap := CAP) -> Array:
+	return _search(pegs, budget, cap)["path"]
 
 ## 1 when `pegs` can still be sorted, 0 when the search proved it cannot (a
 ## doomed position: every line from it walked), -1 when it ran out of nodes
-## first -- which the board treats as alive, so a heart is only ever taken
-## for a proof.
-static func verdict(pegs: Array, budget := NODE_BUDGET) -> int:
-	var out := _search(pegs, budget)
-	if not (out["path"] as Array).is_empty() or solved(pegs):
+## first.
+static func verdict(pegs: Array, budget := NODE_BUDGET, cap := CAP) -> int:
+	var out := _search(pegs, budget, cap)
+	if not (out["path"] as Array).is_empty() or solved(pegs, cap):
 		return 1
 	return 0 if int(out["nodes"]) <= budget else -1
 
-static func _search(pegs: Array, budget: int) -> Dictionary:
+static func _search(pegs: Array, budget: int, cap := CAP) -> Dictionary:
 	var work: Array = []
 	for s in pegs:
 		work.append((s as Array).duplicate())
 	var seen := {}
 	var path: Array[Vector2i] = []
 	var nodes := [0]
-	if _dfs(work, seen, path, nodes, budget):
+	if _dfs(work, seen, path, nodes, budget, cap):
 		return {"path": path, "nodes": nodes[0]}
 	return {"path": [] as Array[Vector2i], "nodes": nodes[0]}
 
-static func _dfs(pegs: Array, seen: Dictionary, path: Array, nodes: Array, budget: int) -> bool:
-	if solved(pegs):
+static func _dfs(pegs: Array, seen: Dictionary, path: Array, nodes: Array, budget: int, cap: int) -> bool:
+	if solved(pegs, cap):
 		return true
 	nodes[0] += 1
 	if nodes[0] > budget:
@@ -302,10 +306,10 @@ static func _dfs(pegs: Array, seen: Dictionary, path: Array, nodes: Array, budge
 	if seen.has(k):
 		return false
 	seen[k] = true
-	for m in moves_from(pegs):
-		var done := apply(pegs, m.x, m.y)
+	for m in moves_from(pegs, cap):
+		var done := apply(pegs, m.x, m.y, cap)
 		path.append(m)
-		if _dfs(pegs, seen, path, nodes, budget):
+		if _dfs(pegs, seen, path, nodes, budget, cap):
 			return true
 		path.pop_back()
 		unapply(pegs, m.x, m.y, done)

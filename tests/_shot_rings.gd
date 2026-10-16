@@ -139,7 +139,7 @@ func _move(m: Vector2i) -> void:
 ## A legal move the state would judge doomed (tried in the hand, put back).
 func _doom_move() -> Vector2i:
 	var st = _puzzle._state
-	for m: Vector2i in Gen.moves_from(st.pegs):
+	for m: Vector2i in Gen.moves_from(st.pegs, st.cap):
 		st.lift(m.x)
 		var d: bool = st.would_doom(m.y)
 		st.put_back()
@@ -155,7 +155,7 @@ func _walk_to_doom() -> Vector2i:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 7
 	while mv.x < 0 and q < 60:
-		var ms: Array = Gen.moves_from(st.pegs)
+		var ms: Array = Gen.moves_from(st.pegs, st.cap)
 		var safe: Array = []
 		for m: Vector2i in ms:
 			st.lift(m.x)
@@ -178,7 +178,7 @@ func _walk_to_doom() -> Vector2i:
 ## A move onto its own colour that dooms nothing; failing that the solver's.
 func _good_onto() -> Vector2i:
 	var st = _puzzle._state
-	for m: Vector2i in Gen.moves_from(st.pegs):
+	for m: Vector2i in Gen.moves_from(st.pegs, st.cap):
 		if (st.pegs[m.y] as Array).is_empty():
 			continue
 		st.lift(m.x)
@@ -186,7 +186,7 @@ func _good_onto() -> Vector2i:
 		st.put_back()
 		if not d:
 			return m
-	var path: Array = Gen.solve(st.pegs)
+	var path: Array = Gen.solve(st.pegs, Gen.NODE_BUDGET, st.cap)
 	return path[0] if not path.is_empty() else Vector2i(-1, -1)
 
 func _after_move(st, j: int) -> Array:
@@ -210,9 +210,9 @@ func _two_tone_top() -> int:
 func _to_partial() -> Vector2i:
 	var st = _puzzle._state
 	var best := Vector2i(-1, -1)
-	for m: Vector2i in Gen.solve(st.pegs):
+	for m: Vector2i in Gen.solve(st.pegs, Gen.NODE_BUDGET, st.cap):
 		var n := Gen.run(st.pegs[m.x])
-		var k := Gen.take(st.pegs[m.x], st.pegs[m.y])
+		var k := Gen.take(st.pegs[m.x], st.pegs[m.y], st.cap)
 		if k < n:
 			return m
 		if n >= 2 and best.x < 0:
@@ -323,7 +323,7 @@ func _script() -> void:
 		"solve":
 			var line: Array = []
 			_at(0.95, func() -> void:
-				line.append_array(Gen.solve(_puzzle._state.pegs))
+				line.append_array(Gen.solve(_puzzle._state.pegs, Gen.NODE_BUDGET, _puzzle._state.cap))
 				print("solve: line of %d" % line.size()))
 			for k in 90:
 				_at(1.0 + 0.45 * k, func() -> void:

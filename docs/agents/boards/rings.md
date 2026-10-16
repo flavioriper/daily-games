@@ -178,3 +178,18 @@ Built straight in Godot (no concept tab: the reference set the rules).
   where it was, and only the last one settles the peg. A drop's leftovers
   thread home once the last mover has left; a put-back still goes down as
   one stack. Each landing pops on the same step. ANGLE peak 87.
+- **Taller towers, the same evening** (the user, with the reference's bonus
+  level of tall towers: "also add bigger towers, not just the same fixed
+  amount of piles"): a band's `cap` in `Gen.BANDS`, passed to every rule
+  (`take`, `apply`, `locked`, `solved`, `moves_from`, `solve`) and kept on
+  the state (`State.cap`; `take(..., full)` for a hand-made deal). Easy 4
+  colours on 6 pegs, towers of 4; Medium 4 on 6, towers of 5; Hard 5 on 7,
+  towers of 6; Insane 8 on 10, towers of 6, face down -- two pegs' worth of
+  room free on every band. The station height is `_station_h()`, the box's
+  `_min_h()` grows with it; `STATION_H`/`MIN_H` and the statics' default cap
+  stay four for the menu card and the tutorial. `RG_RULES` prints the cap.
+  Deals on the Mac over 40 seeds: Hard 2.9 ms mean (8 worst), Insane 15 ms
+  (50 worst); solver lines Hard 22-43, Insane 51-74. ANGLE 810x1440: Insane
+  peak 89 draw calls at scale 0.81, Hard 84 at 0.93; `_win.gd -- rings`
+  passes (Easy). Decided for the user: these heights and colour counts
+  (Medium drops to four colours so its taller towers stay gentle).

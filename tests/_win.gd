@@ -1299,7 +1299,7 @@ func _solve_fairylights() -> void:
 ## directly or calls state.drop -- only the board's own _tap does that.
 func _solve_rings() -> void:
 	var Gen = load("res://puzzles/rings_gen.gd")
-	var path: Array = Gen.solve(_puzzle._state.pegs)
+	var path: Array = Gen.solve(_puzzle._state.pegs, Gen.NODE_BUDGET, _puzzle._state.cap)
 	for m: Vector2i in path:
 		if _puzzle.is_done():
 			return
