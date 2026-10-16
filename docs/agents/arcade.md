@@ -4101,5 +4101,12 @@ runs while shut); the card sits after Tally on the tab's second page.
   on dark, 20/17/13 px × k by length (+0 to +26 draw calls; 85 with three
   marbles, 108 with twenty-eight). The Max toggle is a `static var` on the
   sheet, so it holds until the app quits, not across launches.
+- **Same evening, the user: each cup's level "should show a increasing
+  bar"**: a track and a gold fill under the cup's Lv line, `cup_pts /
+  need(lv)`, easing up as marbles land; a level reached holds it full in
+  cream `BAR_HOLD` (0.35 s), then it starts from the leftover. The seven are
+  one Builder mesh kept in `_bars_live` (one draw call; a mesh not kept past
+  `_draw` is freed before it renders: `mesh_get_surface_count` errors and
+  nothing shows).
 - **Not done**: a phone; the sounds heard; pt and es read by a speaker;
   `reduce` shot; es shot; offline progress (a call).

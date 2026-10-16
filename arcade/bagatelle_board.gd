@@ -38,6 +38,11 @@ const FLOAT_LIFE := 1.0
 ## The jar's chips: the top-left of the view.
 const CHIP_H := 50.0
 const CHIP_W := 168.0
+## The cups' level bars: where under the rim, how tall, how long held full.
+const BAR_Y := 90.0
+const BAR_H := 9.0
+const BAR_HOLD := 0.35
+const BAR_TRACK := Color(0.12, 0.08, 0.06, 0.4)
 
 var sim: RefCounted
 var font: Font
@@ -56,6 +61,8 @@ var _carry := -1
 var _carry_at := Vector2.ZERO
 var _cup_hit := PackedFloat32Array()
 var _cup_up := PackedFloat32Array()
+## How full each cup's bar is drawn, 0..1, easing after `cup_pts`.
+var _fill := PackedFloat32Array()
 var _floats: Array = []
 var _pending := PackedFloat64Array()
 var _pending_at := PackedFloat32Array()
@@ -64,6 +71,7 @@ var _halos_live: ArrayMesh
 var _balls_live: ArrayMesh
 var _bonus_live: ArrayMesh
 var _chips_live: ArrayMesh
+var _bars_live: ArrayMesh
 var _jar_hop := -10.0
 
 func _ready() -> void:
@@ -72,6 +80,8 @@ func _ready() -> void:
 	_cup_hit.fill(-10.0)
 	_cup_up.resize(Sim.CUPS)
 	_cup_up.fill(-10.0)
+	_fill.resize(Sim.CUPS)
+	_fill.fill(-1.0)
 	_pending.resize(Sim.CUPS)
 	_pending_at.resize(Sim.CUPS)
 	_pending_at.fill(-10.0)
@@ -116,6 +126,7 @@ func play(ev: Dictionary) -> void:
 				_float_cup(c)
 		"cup":
 			_cup_up[int(ev.cup)] = _clock
+			_fill[int(ev.cup)] = 1.0
 		"merge", "upgrade":
 			_jar_hop = _clock
 
@@ -140,7 +151,22 @@ func tick(delta: float) -> void:
 			_float_cup(c)
 	while not _floats.is_empty() and _clock - float(_floats[0].t) > FLOAT_LIFE:
 		_floats.pop_front()
+	_ease_fills(delta)
 	queue_redraw()
+
+## A bar fills as marbles land; a level reached holds it full a moment,
+## then it starts again from what is left over.
+func _ease_fills(delta: float) -> void:
+	if sim == null:
+		return
+	for c in Sim.CUPS:
+		var want := clampf(float(sim.cup_pts[c]) / float(Sim.need(sim.cup_lv[c])), 0.0, 1.0)
+		if _clock - _cup_up[c] < BAR_HOLD and not Motion.reduce:
+			continue
+		if _fill[c] < 0.0 or want < _fill[c] or Motion.reduce:
+			_fill[c] = want
+		else:
+			_fill[c] = lerpf(_fill[c], want, 1.0 - exp(-12.0 * delta))
 
 # --- drawing ---
 
@@ -207,8 +233,27 @@ func _draw() -> void:
 		var sq := 0.0 if Motion.reduce or e > 0.22 else sin(e / 0.22 * PI) * 0.07
 		var at := Vector2((c + 0.5) * Sim.CUP_W, Sim.CUP_TOP)
 		draw_mesh(Art.cup(c), null, xf * Transform2D(0.0, Vector2(1.0 + sq, 1.0 - sq), 0.0, at))
+	_draw_bars(xf)
 	_draw_words()
 	_draw_jar()
+
+## Each cup's way to its next level, a track and a fill, one mesh for the seven.
+func _draw_bars(xf: Transform2D) -> void:
+	var b := Face.Builder.new()
+	var w := Sim.CUP_W - 10.0 - 44.0
+	for c in Sim.CUPS:
+		var at := xf * Vector2((c + 0.5) * Sim.CUP_W, Sim.CUP_TOP + BAR_Y)
+		var bw := w * k
+		var bh := BAR_H * k
+		var left := at - Vector2(bw * 0.5, bh * 0.5)
+		b.polygon(Face.Builder.round_rect(left, Vector2(bw, bh), bh * 0.45), BAR_TRACK)
+		var f := maxf(0.0, _fill[c])
+		if f > 0.0:
+			var full := _clock - _cup_up[c] < BAR_HOLD
+			var col := Art.CREAM if full else Art.PLUS
+			b.polygon(Face.Builder.round_rect(left, Vector2(maxf(bh, bw * f), bh), bh * 0.45), col)
+	_bars_live = b.mesh()
+	draw_mesh(_bars_live, null)
 
 func _write(text: String, at: Vector2, fs: int, col: Color, outline := 0, out_col := Color.BLACK) -> void:
 	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
@@ -221,11 +266,11 @@ func _draw_words() -> void:
 	if font == null:
 		return
 	for c in Sim.CUPS:
-		var at := screen_of(Vector2((c + 0.5) * Sim.CUP_W, Sim.CUP_TOP + 46.0))
+		var at := screen_of(Vector2((c + 0.5) * Sim.CUP_W, Sim.CUP_TOP + 40.0))
 		var hop := Motion.bump_scale(_clock - _cup_up[c], 0.3, 0.4)
 		var fs := int(round(30.0 * k * hop))
 		_write("×" + _mult_text(sim.cup_mult(c)), at, fs, Art.CREAM, int(6 * k), Color(Art.WOOD_DEEP, 0.9))
-		_write(tr("BG_CUP_LV") % sim.cup_lv[c], at + Vector2(0, 34.0 * k), int(round(19.0 * k)), Color(Art.CREAM, 0.85))
+		_write(tr("BG_CUP_LV") % sim.cup_lv[c], at + Vector2(0, 27.0 * k), int(round(19.0 * k)), Color(Art.CREAM, 0.85))
 	for f: Dictionary in _floats:
 		var u := (_clock - float(f.t)) / FLOAT_LIFE
 		var a := 1.0 - u * u
