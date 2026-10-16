@@ -16,22 +16,21 @@ extends Control
 ##   in a hole it reaches.
 ## - HINT: a peg flies to its hole by itself, and the ropes it frees leave.
 ## - THREAD: every move, an undo too, uses a stitch from the row of thread.
-## - CAT: the kitten's yarn counts down; after the move she bats the marked
-##   peg into the nearest empty hole. (THREAD's and CAT's moves cross
-##   nothing, so no rope leaves in the middle of what they show.)
+##   (Its move crosses nothing, so no rope leaves in the middle of it.)
+##
+## The kitten's page went with her swipes (2026-10-16).
 ##
 ## Performance checkup, 2026-10-01: the one generic card became these pages.
 
 const UT = preload("res://puzzles/untangle2d.gd")
 const Rope = preload("res://puzzles/untangle_rope.gd")
 const Face = preload("res://ui/faces/face.gd")
-const KittenFace = preload("res://ui/faces/kitten_face.gd")
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 
-enum Lesson { LIFT, WRAP, REACH, HINT, THREAD, CAT }
+enum Lesson { LIFT, WRAP, REACH, HINT, THREAD }
 
 const HOLES := 8
 const CARRY := 1.2
@@ -42,7 +41,6 @@ const BUDGET := 6
 var lesson: int = Lesson.LIFT
 
 var _caption: Label
-var _kitten: Face
 var _started := false
 var _clock := 0.0
 var _loop := 0.0
@@ -57,7 +55,6 @@ var _rh := 0.0
 var _peg_r := 0.0
 var _hole_r := 0.0
 var _wd := 0.0
-var _yarn_at := Vector2.ZERO
 
 # pegs: 2 * rope + end
 var _hole := PackedInt32Array()
@@ -77,9 +74,6 @@ var _reeled := false                     # ...and whether they have been reeled 
 var _pairs := {}
 ## The knot of a pair wrapped twice round or more, as last laid.
 var _knots := {}
-var _marked := -1
-var _cat_in := 0
-var _paw_t := -10.0
 var _spent := 0
 var _stitch_t: Array = []
 var _hint_t := -10.0
@@ -117,26 +111,15 @@ func _start() -> void:
 	_caption.size = Vector2(size.x - 40.0, 88.0)
 	var top := 46.0 if lesson == Lesson.THREAD else 8.0
 	var room := size.y - 100.0 - top
-	var wide := size.x * (0.6 if lesson == Lesson.CAT else 0.8)
+	var wide := size.x * 0.8
 	_ro = minf(wide, room) * 0.5
 	_ri = _ro * UT.RING_IN
 	_rh = (_ro + _ri) * 0.5
-	_c = Vector2(size.x * (0.4 if lesson == Lesson.CAT else 0.5), top + room * 0.5)
+	_c = Vector2(size.x * 0.5, top + room * 0.5)
 	_peg_r = minf((_ro - _ri) * UT.PEG_OF_RING, TAU * _rh / HOLES * 0.36)
 	_hole_r = _peg_r * UT.HOLE_OF_PEG
 	_wd = _peg_r * UT.ROPE_OF_PEG
 	_ring_mesh = _build_ring()
-	if lesson == Lesson.CAT:
-		if _kitten == null:
-			_kitten = KittenFace.new()
-			_kitten.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			add_child(_kitten)
-		var k := _ro * 0.95
-		_kitten.size = Vector2.ONE * k
-		_kitten.position = Vector2(size.x - k - 14.0, _c.y - _ro * 0.95)
-		_kitten.pivot_offset = _kitten.size * 0.5
-		_kitten.set_idle(not Motion.reduce)
-		_yarn_at = _kitten.position + Vector2(-_ro * 0.08, k * 0.95)
 	_scene()
 	if Motion.reduce:
 		_still()
@@ -158,9 +141,6 @@ func _scene() -> void:
 	_pairs = {}
 	_knots = {}
 	_reeled = false
-	_marked = -1
-	_cat_in = 0
-	_paw_t = -10.0
 	_spent = 0
 	_stitch_t = []
 	_hint_t = -10.0
@@ -180,7 +160,7 @@ func _scene() -> void:
 			_loop = 5.6
 		_:
 			# A on top in LIFT and HINT (a move off the top slides it off);
-			# underneath in WRAP (it wraps tighter); THREAD and CAT play LIFT's.
+			# underneath in WRAP (it wraps tighter); THREAD plays LIFT's.
 			_deal([[2, 1, 5, 4], [1, 2, 6, 4]])
 			_pairs[Vector2i(0, 1)] = {"n": 1, "t": 0 if lesson == Lesson.WRAP else 1}
 			_order = [0, 1] if lesson == Lesson.WRAP else [1, 0]
@@ -221,22 +201,6 @@ func _scene() -> void:
 				_stitch())
 			_at(4.4, func() -> void: _say_now("HTP_UT_OUT_CAP"))
 			_loop = 6.6
-		Lesson.CAT:
-			_marked = 2
-			_cat_in = 1
-			_say(0.0, "HTP_UT_CAT_CAP")
-			_at(0.8, func() -> void: _carry(1, 4, CARRY))
-			_at(2.5, func() -> void:
-				_say_now("HTP_UT_SWAT_CAP")
-				_paw_t = _clock
-				_kitten.expression = Face.Expr.JOY)
-			_at(2.5 + UT.POUNCE_LEAD, func() -> void:
-				_fly_to(2, 3, UT.POUNCE_FLY, _peg_r * 1.2)
-				_cat_in = 3)
-			_at(4.3, func() -> void: _kitten.expression = Face.Expr.HAPPY)
-			_loop = 6.0
-	if _kitten != null:
-		_kitten.expression = Face.Expr.HAPPY
 	_settle(70)
 	_rebuild()
 
@@ -258,9 +222,6 @@ func _still() -> void:
 		Lesson.THREAD:
 			_spent = 2
 			cap = "HTP_UT_STITCH_CAP"
-		Lesson.CAT:
-			_place(1, 4)
-			cap = "HTP_UT_CAT_CAP"
 	_caption.text = tr(cap)
 	# Laid again from where the pegs now sit, straight, as the board lays a
 	# restored day.
@@ -566,7 +527,6 @@ func _rebuild() -> void:
 			_draw_peg(b, p, left * (1.0 + 0.5 * sin(PI * left)) if left < 1.0 else 1.0)
 	_draw_hand(b)
 	_draw_thread(b)
-	_draw_cat(b)
 	_mesh = b.mesh()
 
 ## The holes the lifted peg's rope reaches, glowing; the one under it ringed.
@@ -624,26 +584,16 @@ func _draw_peg(b: Face.Builder, p: int, pop := 1.0) -> void:
 	var col: Array = UT.ROPES[_col[p >> 1]]
 	if _face[p] != 0:
 		Face.face_parts(b, k * 0.82, at, Pal.TEXT, 1.0, Face.Expr.JOY if _face[p] == 1 else Face.Expr.STRAIN)
-	elif p == _marked:
-		_paw(b, at + Vector2(0.0, k * 0.02), k * 0.5, Color(UT.PAW, 0.95))
 	else:
 		b.disc(at + Vector2(0.0, -k * 0.06), k * 0.4, col[1])
 		b.disc(at + Vector2(0.0, -k * 0.08), k * 0.32, col[0])
 		b.disc(at + Vector2(-0.1, -0.16) * k, k * 0.1, Color(col[2], 0.9))
-	if p == _marked and _cat_in == 1:
-		var beat := 0.5 + 0.5 * sin(_clock * 7.0)
-		b.stroke(Face.Builder.arc_points(c, R * (1.32 + 0.1 * beat), 0.0, TAU), 3.0, Color(UT.PAW, 0.85), true)
 	# The bulb's glow on the peg a hint is about to move.
 	var hs := _clock - _hint_t
 	if p == 1 and hs >= 0.0 and hs < 1.2:
 		var a := sin(PI * hs / 1.2)
 		Scenery.soft_disc(b, at, R * 2.2, R * 2.2, Color(Pal.SUN, 0.35 * a))
 		b.stroke(Face.Builder.arc_points(at, R * (1.3 + 0.2 * hs), 0.0, TAU), 3.0, Color(Pal.SUN, 0.9 * a), true)
-
-func _paw(b: Face.Builder, at: Vector2, r: float, col: Color) -> void:
-	b.ellipse(at + Vector2(0.0, r * 0.32), r * 0.62, r * 0.5, col)
-	for k in 4:
-		b.ellipse(at + Vector2((k - 1.5) * r * 0.5, -r * (0.34 if k == 1 or k == 2 else 0.12)), r * 0.2, r * 0.26, col)
 
 ## The finger on a carried peg: a pale touch under it.
 func _draw_hand(b: Face.Builder) -> void:
@@ -686,26 +636,6 @@ func _draw_thread(b: Face.Builder) -> void:
 			b.polygon(Face.Builder.round_rect(at - Vector2(w, h) * 0.5, Vector2(w, h), h * 0.5), UT.THREAD_DEEP)
 			b.polygon(Face.Builder.round_rect(at - Vector2(w, h) * 0.5 * 0.9 + Vector2(0.0, -1.5), Vector2(w, h) * 0.9, h * 0.45), col)
 
-## The kitten's yarn in the marked peg's colour, and her paw on it as she
-## swats.
-func _draw_cat(b: Face.Builder) -> void:
-	if lesson != Lesson.CAT:
-		return
-	var col: Array = UT.ROPES[_col[_marked >> 1]]
-	var r := _ro * 0.17
-	var at := _yarn_at
-	Scenery.soft_disc(b, at + Vector2(r * 0.15, r * 0.95), r * 1.15, r * 0.36, Color(Pal.TEXT, 0.2))
-	b.disc(at, r, col[1])
-	b.disc(at + Vector2(-0.03, -0.05) * r, r * 0.93, col[0])
-	for k in 3:
-		var a0 := 0.5 + k * 1.05
-		b.stroke(Face.Builder.arc_points(at + Vector2.from_angle(a0 + 2.2) * r * 0.5, r * 0.85, a0, a0 + 1.4), 2.4, Color(col[1], 0.75), false, false)
-	var ps := _clock - _paw_t
-	if ps >= 0.0 and ps < 0.9:
-		var a := sin(PI * ps / 0.9)
-		var p := _pos[_marked] + Vector2(-_peg_r * 0.2, -_peg_r * 1.1)
-		_paw(b, p, _peg_r * (0.9 + 0.2 * a), Color(UT.PAW, 0.9 * a))
-
 func _draw() -> void:
 	if _ring_mesh == null or _mesh == null:
 		return
@@ -721,10 +651,3 @@ func _draw() -> void:
 		var col := Pal.GOOD.darkened(0.15) if _preview.begins_with("−") else UT.KNOT_HALO
 		draw_string_outline(font, base, _preview, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, int(fs * 0.34), Color("fffaf0"))
 		draw_string(font, base, _preview, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, col)
-	if lesson == Lesson.CAT and _marked >= 0:
-		var fs := int(_ro * 0.2)
-		var text := str(_cat_in)
-		var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-		var base := _yarn_at + Vector2(-w * 0.5, fs * 0.36)
-		draw_string_outline(font, base, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, int(fs * 0.3), Color(Pal.TEXT, 0.85))
-		draw_string(font, base, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color("fffaf0"))

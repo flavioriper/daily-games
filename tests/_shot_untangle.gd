@@ -15,6 +15,7 @@ extends SceneTree
 ## then Show the answer), `hint` (the HUD's hint), `undo`, `reset`, `lifts`
 ## (every peg in turn, or `peg=N` alone, lifted a little toward the middle,
 ## held, shot at 0.2 s and 0.6 s and let go: the knots under a hand).
+## `plate=<id>` deals on that plate (e.g. `plate=grid:5x5`).
 ## Each mode saves numbered frames to <dir>/ut_<mode>_<n>.png and prints the
 ## board's draw-call count and mean frame time over its last second.
 
@@ -51,6 +52,13 @@ func _initialize() -> void:
 			_day = int(a.substr(4))
 		elif a.begins_with("peg="):
 			_peg = int(a.substr(4))
+		elif a.begins_with("plate="):
+			# A plate of any band, with the ropes its band deals on it.
+			var id := a.substr(6)
+			for band in load("res://puzzles/untangle_gen.gd").BANDS:
+				for opt in band.plates:
+					if opt[0] == id:
+						load("res://puzzles/untangle_state.gd").force_plate = opt
 		elif a == "rm":
 			_reduce = true
 		elif a.begins_with("out="):
@@ -328,37 +336,6 @@ func _script() -> void:
 			_at(44.0, func() -> void:
 				var pz = _puzzle
 				print("soak: done=", pz.is_done(), " solved=", pz.state.is_solved(), " held=", pz._held, " sel=", pz._sel, " settled=", pz._settled(pz._now()), " out=", pz.out_of_hearts, " crossings=", pz.state.crossings(), " spent=", pz.state.spent, "/", pz.state.budget))
-		"swat":
-			# Insane: on the move before her swipe, move the very peg she is
-			# eyeing. Its drop flight must not be skipped by her swat.
-			_end = 8.0
-			_ms_from = 99.0
-			var plan: Array = _puzzle.state.plan
-			for k in 2:
-				var step := k
-				_drag(1.0 + k * 2.9, plan[step][0], plan[step][2], 0.3)
-			_at(7.0 - 0.9, func() -> void:
-				var pz = _puzzle
-				var p: int = pz.state.cat_next().peg
-				var hole := -1
-				for h in pz.state.holes:
-					if pz.state.drop_check(p, h) == 0:
-						hole = h
-				print("swat: peg ", p, " to hole ", hole, " in ", pz.state.cat_next()["in"])
-				if hole >= 0:
-					# Tap the peg, then tap the hole: a long flight from home.
-					_press(pz.peg_to_local(p))
-					_release(pz.peg_to_local(p))
-					_at(_t + 0.3, func() -> void:
-						print("swat: selected=", pz._sel, " moves_here=", pz.state.moves_here, " busy_left=", pz._busy_until - pz._now())
-						_press(pz.hole_to_local(hole))
-						_release(pz.hole_to_local(hole))
-						print("swat: after tap moves_here=", pz.state.moves_here))
-					for dt in [0.03, 0.06, 0.1, 0.2, 0.3, 0.45]:
-						_at(_t + 0.3 + dt, func() -> void:
-							print("swat: t+", dt, " peg_px=", pz._peg_px[p], " mv=", pz._mv[p], " lift=", pz._lift[p]))
-					_at(_t + 0.3 + 0.10, func() -> void:
-						print("swat: 0.10s after the drop the peg is ", pz.peg_to_local(p).distance_to(pz.hole_to_local(hole)), " px from its hole (flight length ", pz.peg_to_local(p).distance_to(pz.hole_to_local(hole)), ")")))
 		"toys":
 			# Pet the kitten, then pluck a rope.
 			_end = 4.0
@@ -470,7 +447,6 @@ func _plan_script(t0: float, gap: float, only := -1) -> void:
 	var count: int = plan.size() if only < 0 else mini(only, plan.size())
 	_end = t0 + gap * count + 5.5
 	_at(t0 - 0.2, _shot)
-	var cat: bool = _puzzle.state.cat
 	for k in count:
 		var step := k
 		_at(t0 + gap * k, func() -> void:
@@ -483,8 +459,6 @@ func _plan_script(t0: float, gap: float, only := -1) -> void:
 		_at(t0 + gap * k + 0.6, _shot)
 		# A rope the move set free, on its way off the ring.
 		_at(t0 + gap * k + 1.05, _shot)
-		if cat and (step + 1) % 3 == 0:
-			_at(t0 + gap * k + 1.6, _shot)
 	if only < 0:
 		for k in 5:
 			_at(t0 + gap * count + 0.6 + k * 1.0, _shot)

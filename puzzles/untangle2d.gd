@@ -1,8 +1,10 @@
 extends "res://core/puzzle_base.gd"
 
-## Untangle as a wooden ring: pegs in a ring of holes, a thick twisted rope
-## from each peg to its twin, and the job of lifting pegs into the empty holes
-## until no two ropes cross. The rules live in puzzles/untangle_state.gd (and
+## Untangle on a wooden plate: pegs in holes -- round a ring, round a hoop
+## bent square, hexagonal or three-cornered, or drilled all over a board
+## (puzzles/untangle_plate.gd) -- a thick twisted rope from each peg to its
+## twin, and the job of lifting pegs into the empty holes until no two ropes
+## cross. The rules live in puzzles/untangle_state.gd (and
 ## the dealer in untangle_gen.gd); each rope's line and its look are in
 ## puzzles/untangle_rope.gd; this lays the ropes out, draws them and takes the
 ## player's fingers.
@@ -15,7 +17,7 @@ extends "res://core/puzzle_base.gd"
 ## (_build_patches). A rope that crosses nothing has come free: one of its
 ## pegs is reeled across to the other and both pop off the ring (_send_off).
 ##
-## What is on the cloth. The ring, its holes and the embroidery round it are
+## What is on the cloth. The plate, its holes and the embroidery round it are
 ## one static mesh; everything that moves -- the target glows, every rope in
 ## the order it lies, the crossing marks, every peg, the thread row -- is one
 ## more, rebuilt only on the frames something is moving. So the board costs two
@@ -23,18 +25,20 @@ extends "res://core/puzzle_base.gd"
 ##
 ## How it moves. Pegs and ropes are placed in _process against a clock,
 ## never tweened: a peg is on the finger, or on a scripted flight (a drop, a
-## return, a hint, the kitten's swipe, reset's walk home, a free rope reeled
+## return, a hint, reset's walk home, a free rope reeled
 ## in), or in its hole, and the rope runs from wherever the peg is drawn. The
 ## paper-side polish (pops, squashes, faces) is the family's vocabulary
 ## (core/motion.gd).
 ##
-## Hard and Insane run on thread (a stitch a move) and can be lost; Insane also
-## has the kitten, who bats the marked peg after every third move.
-## Spec: docs/superpowers/specs/2026-09-29-untangle-knots-design.md.
+## A day may run on thread (a stitch a move) and then can be lost. Insane's
+## kitten keeps the board company: she watches the peg in the hand and can be
+## petted, and touches nothing (her swipes went 2026-10-16).
+## Spec: docs/superpowers/specs/2026-10-16-untangle-plates-design.md (the
+## plates), docs/superpowers/specs/2026-09-29-untangle-knots-design.md.
 ##
 ## The linen is the whole screen (2026-10-13, the registry's `bleed`):
 ## puzzles/untangle_world.gd lies edge to edge as the board's first child,
-## drawn behind the board's own drawing, and the ring is laid in the span
+## drawn behind the board's own drawing, and the plate is laid in the span
 ## the host's rows leave (`set_clear`): its wood on the rows' margin, at the
 ## top of the span under whatever the band keeps over it (the thread, the
 ## kitten). On the win the board is not laid out again: it slides and
@@ -43,6 +47,7 @@ extends "res://core/puzzle_base.gd"
 
 const State = preload("res://puzzles/untangle_state.gd")
 const Gen = preload("res://puzzles/untangle_gen.gd")
+const Plate = preload("res://puzzles/untangle_plate.gd")
 const Rope = preload("res://puzzles/untangle_rope.gd")
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
@@ -61,9 +66,8 @@ const OUT_WORDS := {"title": "UT_OUT_TITLE", "body": "UT_OUT_BODY", "body_rest":
 	"more": "UT_ONE_SPOOL", "show": "UT_SHOW_ANSWER", "placement": "spool"}
 
 # --- the layout, in the board's own pixels ---
-## What a band keeps over the ring, from the top of its span: the kitten
-## and her yarn (Insane), the thread row alone (Hard), or only the stitch
-## round the ring.
+## What a band keeps over the plate, from the top of its span: the kitten
+## (Insane), the thread row alone, or only the stitch round the plate.
 const TOP_ROOM := 176.0
 const TOP_ROOM_THREAD := 96.0
 const TOP_ROOM_PLAIN := 16.0
@@ -84,6 +88,8 @@ const HOLE_OF_PEG := 1.1
 const ROPE_OF_PEG := 1.1
 ## A rope's own length is the span it can reach, plus this much.
 const LENGTH_OVER := 1.012
+## On a drilled board, a peg's size against the holes' spacing.
+const PEG_OF_SPACING := 0.27
 
 # --- the colours ---
 ## Each rope's fill, its deep edge and its pale strip.
@@ -97,6 +103,9 @@ const ROPES := [
 	[Color("f3a6c2"), Color("c4739a"), Color("fdd4e4")],
 	[Color("7ecfbf"), Color("459a8b"), Color("bcefe4")],
 	[Color("f4a85a"), Color("c4772a"), Color("fdd8a4")],
+	[Color("a3b3c9"), Color("687c98"), Color("d6e0ec")],
+	[Color("cfc66b"), Color("979036"), Color("eeeab0")],
+	[Color("d98b7f"), Color("a85a50"), Color("f4c4bb")],
 ]
 const WOOD := Color("e7c795")
 const WOOD_EDGE := Color("c39b63")
@@ -112,7 +121,6 @@ const CAP_HI := Color("f2d5a9")
 const THREAD := Color("e8806a")
 const THREAD_DEEP := Color("bd5b48")
 const THREAD_GONE := Color("b9a58a")
-const PAW := Color("e58a86")
 const KNOT_HALO := Color("e0604a")
 const CLOTH_LEAF := Color("a9b98d")
 const CLOTH_LEAF_DEEP := Color("859a6c")
@@ -198,9 +206,6 @@ const OUT_CARD_AFTER := 1.7
 
 # --- the kitten ---
 const KITTEN_SIZE := 172.0
-const POUNCE_LEAD := 0.34
-const POUNCE_FLY := 0.5
-const SWIPE_BUSY := 1.15
 
 const TIP_CYCLE := 9.0
 ## The toast: a dark label over the ring's top for a few seconds.
@@ -246,7 +251,6 @@ var _placed := false
 var _shift := 0.0
 var _slide_tw: Tween
 var _kitten_at := Vector2.ZERO
-var _yarn_at := Vector2.ZERO
 
 # the rope and peg cast
 var _ropes: Array = []                       # [r] -> Rope
@@ -278,7 +282,6 @@ var _held_want := Vector2.ZERO
 var _hot := -1
 var _hot_far := -1
 var _taut_sent := false
-var _ghost: Array = []                       # the kitten's foreseen swipe
 
 # the clock
 var _last := -1.0
@@ -303,7 +306,6 @@ var _shown_answer := false
 var _stamp: Control
 var _stamp_rad := STAMP_R
 var _party := false
-var _paw := {}
 var _kitten_mood_until := 0.0
 
 # what is drawn
@@ -311,7 +313,6 @@ var _ring_mesh: ArrayMesh
 var _under_mesh: ArrayMesh
 var _over_mesh: ArrayMesh
 var _extra_mesh: ArrayMesh
-var _paw_mesh: ArrayMesh
 var _rope_mesh: Array = []                   # [r] -> that rope's own mesh
 var _rope_sig: Array = []                    # [r] -> what it was built from
 var _peg_mesh: Array = []                    # [rope] -> [cap with inlay, cap blank]
@@ -380,7 +381,7 @@ func capabilities() -> Array[String]:
 ## The tutorial, a page a rule, drawn from the board's own ring, pegs and
 ## ropes (ui/hud/untangle_tutorial_diagram.gd): lift a peg over the top, the
 ## rope underneath wraps tighter, a short rope's reach; then the hint where
-## the band has one, the thread on Hard and Insane, and Insane's kitten.
+## the band has one, and the thread on a band that has it.
 func tutorial_pages() -> Array:
 	const Diagram = preload("res://ui/hud/untangle_tutorial_diagram.gd")
 	var steps := [
@@ -393,10 +394,8 @@ func tutorial_pages() -> Array:
 		if _difficulty >= 3:
 			body += " " + tr("HTP_UT_HINT_THREAD")
 		steps.append([Diagram.Lesson.HINT, "HTP_UT_HINT", body])
-	if _difficulty >= 3:
+	if int(Gen.BANDS[clampi(_difficulty, 0, 3)].slack) > 0:
 		steps.append([Diagram.Lesson.THREAD, "HTP_UT_THREAD", tr("HTP_UT_THREAD_BODY")])
-	if _difficulty >= 3:
-		steps.append([Diagram.Lesson.CAT, "HTP_UT_CAT", tr("HTP_UT_CAT_BODY")])
 	var pages := []
 	for step in steps:
 		var d := Diagram.new()
@@ -405,7 +404,7 @@ func tutorial_pages() -> Array:
 	return pages
 
 ## What the phone does under each cue (docs/agents/haptics.md). The `drop`
-## cue is not here: the kitten's swat and a hint's flight fire it too, so the
+## cue is not here: a hint's flight fires it too, so the
 ## peg the hand let go knocks from `_landed` (a tap, or a bump when a rope
 ## comes free or two crossings go at once). The rope going taut in the hand
 ## ticks once (`_update_held`), which is the reach rule felt, and the pluck
@@ -413,8 +412,8 @@ func tutorial_pages() -> Array:
 ## the ring (`_update_leaving`). The win knocks on `solved`, which waits for
 ## the last rope to go; the seal thuds as it lands (`_stamp_down`). A peg
 ## lifted, put back or selected, a hole hovered, a knot cinching under the
-## hand, a refused peg, a stitch sewn, the kitten petted or swatting and the
-## shown answer say nothing.
+## hand, a refused peg, a stitch sewn, the kitten petted and the shown answer
+## say nothing.
 const HAPTICS := {
 	"undo": Haptics.TICK,
 	"reset": Haptics.TAP,
@@ -481,8 +480,6 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_press_peg = -1
 	_hot = -1
 	_hot_far = -1
-	_ghost = []
-	_paw = {}
 	_later = []
 	_all_moves = 0
 	_restored = false
@@ -493,7 +490,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_opened = _now()
 	_busy_until = 0.0
 	_idle_at = _now() + IDLE_WHIP_EVERY
-	_top = TOP_ROOM if state.cat else (TOP_ROOM_THREAD if state.budget > 0 else TOP_ROOM_PLAIN)
+	_top = TOP_ROOM if _kitten_here() else (TOP_ROOM_THREAD if state.budget > 0 else TOP_ROOM_PLAIN)
 	var pegs: int = state.at.size()
 	_mv = []
 	_lift = PackedFloat32Array(); _lift.resize(pegs)
@@ -516,8 +513,8 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_stitch_at = PackedFloat32Array(); _stitch_at.resize(maxi(state.budget, 0)); _stitch_at.fill(-100.0)
 	_spent_shown = 0
 	_needle_x = 0.0
-	_kitten.visible = state.cat
-	if state.cat:
+	_kitten.visible = _kitten_here()
+	if _kitten.visible:
 		_kitten.expression = Face.Expr.HAPPY
 		_kitten.look = _gaze()
 		_kitten.set_idle(true)
@@ -530,7 +527,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_say(tr("UT_TIP_DRAG"), Face.Expr.HAPPY)
 	_tip_timer.start()
 	# The first thing to know about this day, once the pegs are in.
-	var first := "UT_TIP_CAT" if state.cat else ("UT_TIP_THREAD" if state.budget > 0 else "UT_TIP_DRAG")
+	var first := "UT_TIP_THREAD" if state.budget > 0 else "UT_TIP_DRAG"
 	_later_call(1.1, func() -> void:
 		if not is_done():
 			_tell(first, Face.Expr.HAPPY, 4.6))
@@ -539,10 +536,11 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 
 # --- layout ---
 
-## The ring is as wide as the host's rows (its side margin, so the wood's
-## edge lines up with the buttons') and stands at the top of the span the
-## rows leave (`_clear`), under what the band keeps over it; what is left is
-## open linen under it.
+## The plate is as wide as the host's rows (its side margin, so the wood's
+## edge lines up with the buttons'), or as tall as the span the rows leave
+## (`_clear`) allows, and stands at its top under what the band keeps over
+## it; what is left is open linen under it. `_rh` is the pixels of one plate
+## unit (a ring's holes lie on its unit circle).
 func _layout() -> void:
 	if _world != null:
 		_world.size = size
@@ -550,12 +548,15 @@ func _layout() -> void:
 	if _ropes.size() != state.ropes or size.x < 100.0 or size.y < 100.0:
 		return
 	var side := _side()
+	var pl := state.plate
 	var avail_h := size.y - _clear.x - _clear.y - _top - BOTTOM_ROOM
-	var diameter := maxf(minf(size.x - 2.0 * side, avail_h), 60.0)
-	_ro = diameter * 0.5
-	_ri = _ro * RING_IN
-	_rh = (_ro + _ri) * 0.5
-	_c = Vector2(size.x * 0.5, _clear.x + _top + _ro)
+	_rh = maxf(minf((size.x - 2.0 * side) / (2.0 * pl.ext.x), avail_h / (2.0 * pl.ext.y)), 27.0)
+	_ro = maxf(pl.ext.x, pl.ext.y) * _rh
+	if pl.kind == "board":
+		_ri = minf(pl.ext.x, pl.ext.y) * _rh * 0.85
+	else:
+		_ri = (minf(pl.ext.x, pl.ext.y) - 2.0 * Plate.HOOP_HALF) * _rh
+	_c = Vector2(size.x * 0.5, _clear.x + _top + pl.ext.y * _rh)
 	if _won:
 		# Laid out under a win (a resize, or a day reopened solved): the
 		# slide is aimed again, and set at its end if it never ran.
@@ -563,15 +564,17 @@ func _layout() -> void:
 		if _slid <= 0.0 and not (_slide_tw != null and _slide_tw.is_valid()):
 			_slid = 1.0
 		_place()
-	var spacing := TAU * _rh / state.holes
-	_peg_r = minf((_ro - _ri) * PEG_OF_RING, spacing * 0.36)
+	var spacing := pl.spacing * _rh
+	if pl.kind == "board":
+		_peg_r = spacing * PEG_OF_SPACING
+	else:
+		_peg_r = minf(2.0 * Plate.HOOP_HALF * _rh * PEG_OF_RING, spacing * 0.36)
 	_hole_r = _peg_r * HOLE_OF_PEG
 	_wd = _peg_r * ROPE_OF_PEG
 	_kitten_at = Vector2(size.x - side - KITTEN_SIZE * 0.5, _clear.x + 8.0 + KITTEN_SIZE * 0.5)
 	_kitten.size = Vector2.ONE * KITTEN_SIZE
 	_kitten.position = _kitten_at - _kitten.size * 0.5
 	_kitten.pivot_offset = _kitten.size * 0.5
-	_yarn_at = _kitten_at + Vector2(-KITTEN_SIZE * 0.98, KITTEN_SIZE * 0.2)
 	_place_stamp()
 	# A flight is in the old geometry's pixels: the pegs settle where they
 	# belong, and a rope on its way off the ring is off it.
@@ -581,13 +584,12 @@ func _layout() -> void:
 	for p in state.at.size():
 		_mv[p] = null
 		_peg_px[p] = _peg_home(p)
-	_paw = {}
 	for r in state.ropes:
 		if not _away[r]:
 			_set_up_rope(r)
 	_set_shown(_tw_px if _tw_px.size() == Gen.pair_count(state.ropes) else state.tw, true)
 	_rest_ropes()
-	_ring_mesh = _build_ring()
+	_ring_mesh = _build_plate()
 	_build_peg_meshes()
 	_rope_sig = []
 	_rope_sig.resize(state.ropes)
@@ -621,13 +623,14 @@ func set_clear(top: float, bottom: float, won := false) -> void:
 	_slide_tw = create_tween()
 	_slide_tw.tween_method(_slide, _slid, 1.0, WIN_SLIDE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
-## Where the win's slide ends: the ring and what the band keeps over it, as
+## Where the win's slide ends: the plate and what the band keeps over it, as
 ## one block, in the middle of the win's span and no larger than it.
 func _aim() -> void:
-	var block := _top + 2.0 * _ro
+	var half := state.plate.ext * _rh
+	var block := _top + 2.0 * half.y
 	var span := size.y - _win_clear.x - _win_clear.y
 	_slid_from = Vector2(size.x * 0.5, _clear.x + block * 0.5)
-	_slid_scale = clampf(minf((size.x - 2.0 * _side() - 2.0 * WIN_PAD) / (2.0 * _ro),
+	_slid_scale = clampf(minf((size.x - 2.0 * _side() - 2.0 * WIN_PAD) / (2.0 * half.x),
 		(span - 2.0 * WIN_PAD) / block), 0.1, 1.0)
 	_slid_by = Vector2(size.x * 0.5, _win_clear.x + span * 0.5) - _slid_from
 
@@ -675,12 +678,20 @@ func _place() -> void:
 func _thread_y() -> float:
 	return _clear.x + THREAD_Y
 
-## The straight length of a rope reaching `holes` holes round the ring.
-func _span_px(holes_apart: int) -> float:
-	return 2.0 * _rh * sin(PI * float(holes_apart) / state.holes)
+## A rope's reach (plate units) in pixels.
+func _span_px(reach: float) -> float:
+	return reach * _rh
 
 func _hole_px(h: int) -> Vector2:
-	return _c + Vector2.from_angle(TAU * float(h) / state.holes - PI * 0.5) * _rh
+	return _c + state.plate.pts[h] * _rh
+
+## A point on the board in plate units, and back.
+func _to_plate(at: Vector2) -> Vector2:
+	return (at - _c) / _rh
+
+## The bottom of the plate's wood.
+func _plate_bottom() -> float:
+	return _c.y + state.plate.ext.y * _rh
 
 ## Where peg `p` sits: its hole, or where it is drawn when its rope has come
 ## free (it has no hole then, and is on its way off the ring).
@@ -701,10 +712,29 @@ func hole_to_local(h: int) -> Vector2:
 func _rope_col(r: int) -> Array:
 	return ROPES[r % ROPES.size()]
 
-# --- the static picture: the cloth's flowers, the ring and its holes ---
+# --- the static picture: the plate and its holes ---
 
-func _build_ring() -> ArrayMesh:
+## The plate, as one mesh: a ring, a hoop of the same wood bent to its shape,
+## or a drilled board; a running stitch round it on the cloth, and the holes.
+func _build_plate() -> ArrayMesh:
 	var b := Face.Builder.new()
+	var pl := state.plate
+	match pl.kind:
+		"ring":
+			_lay_ring(b)
+		"hoop":
+			_lay_hoop(b)
+		_:
+			_lay_board(b)
+	for h in state.holes:
+		var at := _hole_px(h)
+		b.disc(at, _hole_r * 1.14, Color(HOLE_RIM, 0.7))
+		b.disc(at, _hole_r, HOLE)
+		b.disc(at + Vector2(0.0, _hole_r * 0.16), _hole_r * 0.82, HOLE_DEEP)
+		b.ellipse(at + Vector2(0.0, _hole_r * 0.5), _hole_r * 0.6, _hole_r * 0.26, Color(HOLE, 0.9))
+	return b.mesh()
+
+func _lay_ring(b: Face.Builder) -> void:
 	# A running stitch round the ring.
 	var stitches := 56
 	for i in stitches:
@@ -732,14 +762,116 @@ func _build_ring() -> ArrayMesh:
 		var a0 := grain.randf_range(0.0, TAU)
 		var sweep := grain.randf_range(0.25, 0.9)
 		b.stroke(Face.Builder.arc_points(_c, rr, a0, a0 + sweep), grain.randf_range(1.6, 2.6), Color(WOOD_GRAIN, grain.randf_range(0.12, 0.26)), false, true)
-	# The holes.
-	for h in state.holes:
-		var at := _hole_px(h)
-		b.disc(at, _hole_r * 1.14, Color(HOLE_RIM, 0.7))
-		b.disc(at, _hole_r, HOLE)
-		b.disc(at + Vector2(0.0, _hole_r * 0.16), _hole_r * 0.82, HOLE_DEEP)
-		b.ellipse(at + Vector2(0.0, _hole_r * 0.5), _hole_r * 0.6, _hole_r * 0.26, Color(HOLE, 0.9))
-	return b.mesh()
+
+## A closed line in pixels `d` out from a closed line of plate units (in, for
+## a negative `d`), along each point's own outward normal.
+func _offset(line: PackedVector2Array, d: float) -> PackedVector2Array:
+	var n := line.size()
+	var out := PackedVector2Array()
+	out.resize(n)
+	for i in n:
+		var t := (line[(i + 1) % n] - line[(i - 1 + n) % n]).normalized()
+		# Clockwise on screen: the outward normal is the tangent turned left.
+		var nrm := Vector2(t.y, -t.x)
+		out[i] = _c + line[i] * _rh + nrm * d
+	return out
+
+## The stretches of a closed line whose outward normal faces `toward` (the
+## light's side): open runs for a bevel.
+static func _runs_facing(line: PackedVector2Array, toward: Vector2, least: float) -> Array:
+	var n := line.size()
+	var out: Array = []
+	var run := PackedVector2Array()
+	for i in n + 1:
+		var j := i % n
+		var t := (line[(j + 1) % n] - line[(j - 1 + n) % n]).normalized()
+		var nrm := Vector2(t.y, -t.x)
+		if nrm.dot(toward) >= least:
+			run.append(line[j])
+		elif run.size() > 1:
+			out.append(run)
+			run = PackedVector2Array()
+		else:
+			run = PackedVector2Array()
+	if run.size() > 1:
+		out.append(run)
+	return out
+
+## A running stitch along a closed line, `every` points a stitch.
+static func _stitch_along(b: Face.Builder, line: PackedVector2Array, every: int, col: Color) -> void:
+	var n := line.size()
+	for i in range(0, n, every):
+		var seg := PackedVector2Array()
+		for k in int(every * 0.55) + 1:
+			seg.append(line[(i + k) % n])
+		b.stroke(seg, 5.0, col, false, true)
+
+func _lay_hoop(b: Face.Builder) -> void:
+	var curve := state.plate.curve
+	var half := Plate.HOOP_HALF * _rh
+	var band := half * 2.0
+	_stitch_along(b, _offset(curve, half + _peg_r * 0.55), 6, Color(CLOTH_GOLD, 0.55))
+	var mid := _offset(curve, 0.0)
+	var drop := Vector2(0.012, 0.03) * _ro
+	var shade := mid.duplicate()
+	for i in shade.size():
+		shade[i] += drop
+	b.stroke(shade, band + 22.0, Color(Pal.TEXT, 0.05), true)
+	b.stroke(shade, band + 10.0, Color(Pal.TEXT, 0.09), true)
+	b.fan(mid, LINEN_TAUT)
+	b.stroke(mid, band, WOOD, true)
+	b.stroke(_offset(curve, half - 3.0), 6.0, WOOD_EDGE, true)
+	b.stroke(_offset(curve, -half + 3.0), 6.0, WOOD_EDGE, true)
+	for run in _runs_facing(_offset(curve, half - 11.0), Vector2(-0.6, -0.8), 0.55):
+		b.stroke(run, 5.0, Color(WOOD_HI, 0.85), false, true)
+	for run in _runs_facing(_offset(curve, -half + 11.0), Vector2(0.6, 0.8), 0.55):
+		b.stroke(run, 4.0, Color(WOOD_HI, 0.4), false, true)
+	var grain := RandomNumberGenerator.new()
+	grain.seed = 4471
+	for k in 22:
+		var line := _offset(curve, grain.randf_range(-half + 9.0, half - 9.0))
+		var at := grain.randi_range(0, line.size() - 1)
+		var run := PackedVector2Array()
+		for i in grain.randi_range(14, 48):
+			run.append(line[(at + i) % line.size()])
+		b.stroke(run, grain.randf_range(1.6, 2.6), Color(WOOD_GRAIN, grain.randf_range(0.12, 0.26)), false, true)
+
+## A drilled board: one plank of the ring's wood with its edge, its light and
+## its grain; the ropes lie on the wood.
+func _lay_board(b: Face.Builder) -> void:
+	var edge := state.plate.outline
+	_stitch_along(b, _offset(edge, _peg_r * 0.85), 2, Color(CLOTH_GOLD, 0.55))
+	var rim := _offset(edge, 0.0)
+	var drop := Vector2(0.012, 0.03) * _ro
+	for pass_i in 2:
+		var shade := _offset(edge, 8.0 - 4.0 * pass_i)
+		for i in shade.size():
+			shade[i] += drop
+		b.fan(shade, Color(Pal.TEXT, 0.05 + 0.04 * pass_i))
+	b.fan(rim, WOOD_EDGE)
+	b.fan(_offset(edge, -6.0), WOOD)
+	for run in _runs_facing(_offset(edge, -13.0), Vector2(-0.6, -0.8), 0.5):
+		b.stroke(run, 5.0, Color(WOOD_HI, 0.85), false, true)
+	for run in _runs_facing(_offset(edge, -12.0), Vector2(0.6, 0.8), 0.5):
+		b.stroke(run, 4.0, Color(WOOD_GRAIN, 0.35), false, true)
+	# Grain: long gentle waves across the plank, kept off its edge.
+	var grain := RandomNumberGenerator.new()
+	grain.seed = 4471
+	var ext := state.plate.ext
+	for k in 26:
+		var y := grain.randf_range(-ext.y, ext.y) * 0.92
+		var x0 := grain.randf_range(-ext.x, ext.x * 0.4)
+		var len := grain.randf_range(0.35, 1.1) * ext.x
+		var bend := grain.randf_range(-0.05, 0.05)
+		var run := PackedVector2Array()
+		for i in 13:
+			var u := float(i) / 12.0
+			var p := Vector2(x0 + len * u, y + bend * sin(PI * u))
+			if not state.plate.holds(p, 22.0 / _rh):
+				continue
+			run.append(_c + p * _rh)
+		if run.size() > 1:
+			b.stroke(run, grain.randf_range(1.6, 2.6), Color(WOOD_GRAIN, grain.randf_range(0.12, 0.26)), false, true)
 
 # --- the frame ---
 
@@ -807,7 +939,7 @@ func _dec(u: float) -> float:
 
 ## True while anything is in the air, in the hand or still finishing a pop.
 func _animating(t: float) -> bool:
-	if _held >= 0 or not _paw.is_empty():
+	if _held >= 0:
 		return true
 	if t < _opened + Motion.ENTER_DELAY + Motion.stagger(state.at.size(), Motion.ENTER_STAGGER) + Motion.POP_IN + ENTER_LAG + 0.3:
 		return true
@@ -850,6 +982,9 @@ func _update_pegs(t: float, dt: float) -> void:
 		# gives it weight.
 		_held_pos = _held_want if Motion.reduce else _held_pos.lerp(_held_want, 1.0 - exp(-dt * 38.0))
 		_carry_tangle()
+		if _kitten.visible and t >= _kitten_mood_until:
+			# She watches the peg in the hand.
+			_kitten.look = (_held_pos - _kitten_at).normalized()
 	for p in _peg_px.size():
 		if _away[p >> 1]:
 			continue
@@ -866,37 +1001,22 @@ func _update_pegs(t: float, dt: float) -> void:
 			else:
 				_peg_px[p] = (m.from as Vector2).lerp(m.to, _ease(u))
 			if u >= 1.0 and t >= float(m.t0):
-				# A flight may have another queued behind it (the kitten
-				# batting the peg the player has just dropped).
-				_mv[p] = m.get("then")
+				_mv[p] = null
 				_peg_px[p] = m.to
 		else:
 			_peg_px[p] = _peg_home(p)
 
-## The tangle under the hand: the held peg carried straight from its hole to
-## where it is now passes over the top of every rope whose line that crosses,
-## and each of those wraps round it or slides off it right then (the rule,
-## `Gen.apply_toward`, taken toward where the carry held straight on would
-## meet the ring). So a rope reacts as the peg goes over it, and the drop only
-## confirms what the hand already did: carried to a hole this is `state.move`.
+## The tangle under the hand: the held peg carried from its hole to where it
+## is now, over the top, and every rope that its rope comes to cross or
+## stops crossing on the way wraps round it or slides off it right then (the
+## rule, `Gen.apply_toward`, taken to the hand). So a rope reacts as the peg
+## goes over it, and the drop only confirms what the hand already did:
+## carried to a hole this is `state.move`.
 func _carry_tangle() -> void:
 	var p := _held
-	var a := _hole_px(state.at[p])
-	var pt := _held_pos
-	var d := pt - a
 	var tw := state.tw.duplicate()
-	if d.length_squared() > 1.0:
-		var over := 0
-		for y in state.ropes:
-			if y == p >> 1 or state.is_gone(y):
-				continue
-			if Geometry2D.segment_intersects_segment(a, pt, _hole_px(state.at[2 * y]), _hole_px(state.at[2 * y + 1])) != null:
-				over |= 1 << y
-		if over != 0:
-			# The other end of the chord through the hand: a sits on the circle.
-			var far := a + d * (-2.0 * (a - _c).dot(d) / d.length_squared())
-			var to := fposmod(((far - _c).angle() + PI * 0.5) / TAU * state.holes, float(state.holes))
-			Gen.apply_toward(state.at, tw, state.ropes, p, to, over)
+	if _held_pos.distance_squared_to(_hole_px(state.at[p])) > 1.0:
+		Gen.apply_toward(state.plate, state.at, tw, state.ropes, p, _to_plate(_held_pos))
 	if tw == _tw_px:
 		return
 	var tighter := false
@@ -1027,9 +1147,6 @@ func _draw() -> void:
 	if _extra_mesh != null:
 		draw_mesh(_extra_mesh, null)
 		shown.append(_extra_mesh)
-	if _paw_mesh != null:
-		draw_mesh(_paw_mesh, null)
-		shown.append(_paw_mesh)
 	_draw_toast(t, shown)
 	_shown = shown
 	_draw_numbers()
@@ -1074,7 +1191,7 @@ func _draw_toast(t: float, shown: Array) -> void:
 		b.fan(Face.Builder.round_rect(Vector2(-w, -h) * 0.5, Vector2(w, h), TOAST_RADIUS), Pal.TEXT)
 		_toast_mesh = b.mesh()
 		_toast_mesh_for = key
-	var mid := Vector2(size.x * 0.5, minf(_c.y + _ro + _peg_r * 0.55 + 46.0 + h * 0.5, size.y - _clear.y - 24.0 - h * 0.5))
+	var mid := Vector2(size.x * 0.5, minf(_plate_bottom() + _peg_r * 0.55 + 46.0 + h * 0.5, size.y - _clear.y - 24.0 - h * 0.5))
 	draw_mesh(_toast_mesh, null, Transform2D(0.0, mid), Color(Color.WHITE, alpha))
 	shown.append(_toast_mesh)
 	var top := mid.y - h * 0.5 + (TOAST_H - font.get_height(TOAST_FONT)) * 0.5 + font.get_ascent(TOAST_FONT)
@@ -1127,8 +1244,8 @@ func _rope_stack() -> Array:
 	return stack
 
 ## Rebuilds what changed: the glow under the holes, each rope that moved (a
-## rope at rest keeps the mesh it has), the crossing marks with the thread and
-## the kitten's yarn, the faces on the pegs, and the paw.
+## rope at rest keeps the mesh it has), the crossing marks with the thread,
+## and the faces on the pegs.
 func _rebuild(t: float) -> void:
 	# The crossings are found again only when a rope's line has moved (or
 	# the tangle drawn has changed); a frame that only beats a glow keeps them.
@@ -1146,38 +1263,33 @@ func _rebuild(t: float) -> void:
 	var patches := Face.Builder.new()
 	_build_patches(patches)
 	_patch_mesh = patches.mesh() if not patches.verts.is_empty() else null
-	# The thread row and the kitten's yarn only change when a stitch is used
-	# or beats, or her count moves: kept until then.
+	# The thread row only changes when a stitch is used or beats: kept until
+	# then.
 	var over_key := _over_key(t)
 	if over_key.is_empty() or over_key != _over_for:
 		var over := Face.Builder.new()
 		_draw_thread(over, t)
-		_draw_cat_badge(over, t)
 		_over_mesh = over.mesh() if not over.verts.is_empty() else null
 		_over_for = over_key
 	var extra := Face.Builder.new()
 	_build_extras(extra, t)
 	_extra_mesh = extra.mesh() if not extra.verts.is_empty() else null
-	var paw := Face.Builder.new()
-	_draw_paw(paw, t)
-	_paw_mesh = paw.mesh() if not paw.verts.is_empty() else null
 
-## What the thread row and the yarn are drawn from, or [] while any of it is
-## moving (a stitch popping, the needle dipping or gliding, the last stitches
-## or the yarn beating), when it is drawn afresh every frame.
+## What the thread row is drawn from, or [] while any of it is moving (a
+## stitch popping, the needle dipping or gliding, the last stitches beating),
+## when it is drawn afresh every frame.
 func _over_key(t: float) -> Array:
 	if Motion.reduce:
 		return [state.spent, state.budget, state.moves_here, is_done(), _out_card]
 	var low := state.budget > 0 and state.thread_left() <= LOW_THREAD and not is_done()
-	var soon := state.cat and not state.cat_next().is_empty() and int(state.cat_next()["in"]) == 1
-	if low or soon or t < _needle_dip + 0.5:
+	if low or t < _needle_dip + 0.5:
 		return []
 	for i in _stitch_at.size():
 		if t < _stitch_at[i] + 0.5:
 			return []
 	if state.budget > 0 and absf(_needle_x - (_stitch_x(mini(state.spent, state.budget)) - 6.0)) > 0.5:
 		return []
-	return [state.spent, state.budget, state.moves_here, is_done(), _out_card, _target_peg()]
+	return [state.spent, state.budget, state.moves_here, is_done(), _out_card]
 
 func _enter_u(p: int, t: float) -> float:
 	return _dec((t - _opened - Motion.ENTER_DELAY - Motion.stagger(p, Motion.ENTER_STAGGER)) / Motion.ENTER_POP)
@@ -1237,7 +1349,7 @@ func _refresh_rope(r: int, t: float) -> void:
 # --- how the ropes lie round each other ---
 
 ## The tangle as drawn. It follows state.tw, but a move's change lands with
-## its peg (and the kitten's with her swat), so a knot cinches as the peg
+## its peg, so a knot cinches as the peg
 ## drops in, not while it is still in the air. `instant` puts the ropes on
 ## their new lines at once, with no glide.
 func _set_shown(tw: PackedInt32Array, instant := false) -> void:
@@ -1272,10 +1384,12 @@ static func knot_centre(a0: Vector2, a1: Vector2, b0: Vector2, b1: Vector2) -> V
 func _knot_half(n: int) -> float:
 	return Rope.knot_half(n, _wd)
 
-## A knot lies on the cloth inside the ring, never over the wood.
+## A knot lies on the cloth inside a ring or a hoop, never over the wood; on
+## a board, on the wood clear of its edge.
 func _keep_in(c: Vector2, half: float) -> Vector2:
-	var room := maxf(_ri - _wd * 1.1 - half, 0.0)
-	return _c + (c - _c).limit_length(room)
+	var pl := state.plate
+	var inset := (_wd * 1.1 + half) / _rh + (0.0 if pl.kind == "board" else Plate.HOOP_HALF)
+	return _c + pl.keep_in(_to_plate(c), inset) * _rh
 
 ## Every rope's way: pulled tight, a rope runs straight from its peg into the
 ## first knot it is in, through it, straight on to the next and so to its
@@ -1360,8 +1474,8 @@ func _lay_all() -> void:
 			if hi > 0.0:
 				for i in list.size():
 					at[list[i]] = (at[list[i]] as Vector2).lerp(near[i], hi)
-	# On the cloth inside the ring whatever a short rope asks: a knot pulled
-	# out to a peg would sit on the wood, and the rope is drawn a little long.
+	# On the plate whatever a short rope asks: a knot pulled out to a peg
+	# would sit on the wood, and the rope is drawn a little long.
 	for k in keys:
 		at[k] = _keep_in(at[k], _knot_half(deep[k]))
 	# Apart: two knots in one spot are one snarl.
@@ -1640,14 +1754,6 @@ func _draw_targets(b: Face.Builder, t: float) -> void:
 		for k in 4:
 			var d := Vector2.from_angle(k * PI * 0.5)
 			b.stroke(PackedVector2Array([at + d * r * 0.7, at + d * r * 1.32]), 5.0, Color(KNOT_HALO, 0.95 * u), false, true)
-	# The kitten's foreseen swipe: her peg's ghost on the hole it would land in.
-	if not _ghost.is_empty():
-		var gp: int = _ghost[0]
-		var to := _hole_px(int(_ghost[2]))
-		var col: Array = _rope_col(gp >> 1)
-		b.disc(to, _peg_r * 0.95, Color(col[0], 0.42))
-		b.stroke(Face.Builder.arc_points(to, _peg_r * 1.05, 0.0, TAU), 4.0, Color(PAW, 0.9), true)
-		_paw_glyph(b, to, _peg_r * 0.6, Color(PAW, 0.95))
 
 ## The peg meshes, built once per layout: for each rope the cap with its
 ## coloured inlay, and the cap without it (under a face). Drawn scaled about the
@@ -1781,19 +1887,15 @@ static func _append_arrays(b: Face.Builder, a: Array, xf: Transform2D, tint: Col
 	for i in ix:
 		b.idx.append(base + i)
 
-## Faces and the kitten's paw print, over the caps: everything on a peg that
-## is not the cap.
+## Faces over the caps: everything on a peg that is not the cap.
 func _build_extras(b: Face.Builder, t: float) -> void:
 	if _peg_px.is_empty():
 		return
-	var order: Array = range(_peg_px.size())
-	var target := _target_peg()
-	for p in order:
+	for p in _peg_px.size():
 		if _away[p >> 1]:
 			continue
 		var mode: int = _face[p]
-		var paw: bool = state.cat and mode == 0 and target == p and not is_done() and not _out_card
-		if mode == 0 and not paw:
+		if mode == 0:
 			continue
 		var R := _peg_r
 		var up := _peg_height(p, t)
@@ -1804,16 +1906,7 @@ func _build_extras(b: Face.Builder, t: float) -> void:
 		if sh >= 0.0 and sh < 0.4 and not Motion.reduce:
 			shake = sin(sh * 54.0) * (1.0 - sh / 0.4) * R * 0.22
 		var at: Vector2 = _peg_px[p] + Vector2(shake, -(HOLD_LIFT * R * _lift[p] + _arc_lift(p, t)))
-		if mode != 0:
-			_draw_face(b, at, R * Vector2(scale * pop.x, scale * pop.y), p, mode, t)
-		if paw:
-			_paw_glyph(b, at + Vector2(0.0, R * 0.02), R * 0.5, Color(PAW, 0.95))
-
-func _target_peg() -> int:
-	var nxt: Dictionary = state.cat_next()
-	if nxt.is_empty():
-		return -1
-	return int(nxt.peg)
+		_draw_face(b, at, R * Vector2(scale * pop.x, scale * pop.y), p, mode, t)
 
 ## Joy, sleep or strain drawn on a cap, replacing the inlay.
 func _draw_face(b: Face.Builder, at: Vector2, R: Vector2, p: int, mode: int, t: float) -> void:
@@ -1826,14 +1919,6 @@ func _draw_face(b: Face.Builder, at: Vector2, R: Vector2, p: int, mode: int, t: 
 	var eye := 0.3 if mode == 2 else 1.0
 	var r := R.x * 0.82 * clampf(grow, 0.0, 1.3)
 	Face.face_parts(b, r, at + Vector2(0.0, R.y * 0.0), Pal.TEXT, eye, expr)
-
-## A paw print: a pad and four toes.
-func _paw_glyph(b: Face.Builder, at: Vector2, r: float, col: Color) -> void:
-	b.ellipse(at + Vector2(0.0, r * 0.32), r * 0.62, r * 0.5, col)
-	for k in 4:
-		var x := (k - 1.5) * r * 0.5
-		var y := -r * (0.34 if k == 1 or k == 2 else 0.12)
-		b.ellipse(at + Vector2(x, y), r * 0.2, r * 0.26, col)
 
 # --- the thread ---
 
@@ -1894,55 +1979,11 @@ func _draw_thread(b: Face.Builder, t: float) -> void:
 func _stitch_shape(at: Vector2, k: float) -> PackedVector2Array:
 	return Face.Builder.round_rect(at - Vector2(STITCH_W, STITCH_H) * 0.5 * k, Vector2(STITCH_W, STITCH_H) * k, STITCH_H * 0.5 * k)
 
-# --- the kitten's marks ---
-
-## Her toy: a ball of yarn in the colour of the peg she is eyeing, beside her,
-## with the moves until she pounces on it; and a beat of halo on the peg
-## itself once she is about to.
-func _draw_cat_badge(b: Face.Builder, t: float) -> void:
-	if not state.cat or is_done() or _out_card:
-		return
-	var p := _target_peg()
-	if p < 0:
-		return
-	var nxt: Dictionary = state.cat_next()
-	var soon := int(nxt["in"]) == 1
-	var beat := 0.0 if Motion.reduce else ((0.5 + 0.5 * sin(t * 7.0)) if soon else 0.0)
-	var col: Array = _rope_col(p >> 1)
-	var r := KITTEN_SIZE * 0.2 * (1.0 + 0.06 * beat)
-	var at := _yarn_at
-	Scenery.soft_disc(b, at + Vector2(r * 0.15, r * 0.95), r * 1.15, r * 0.36, Color(Pal.TEXT, 0.2))
-	b.disc(at, r, col[1])
-	b.disc(at + Vector2(-0.03, -0.05) * r, r * 0.93, col[0])
-	for k in 3:
-		var a0 := 0.5 + k * 1.05
-		b.stroke(Face.Builder.arc_points(at + Vector2.from_angle(a0 + 2.2) * r * 0.5, r * 0.85, a0, a0 + 1.4), 3.0, Color(col[1], 0.75), false, false)
-	b.disc(at + Vector2(-0.34, -0.38) * r, r * 0.2, Color(col[2], 0.8))
-	# The loose end, curling away.
-	var tail := Face.Builder.bezier2(at + Vector2(0.62, 0.7) * r, at + Vector2(1.5, 1.35) * r, at + Vector2(1.9, 0.55) * r)
-	tail.append(at + Vector2(1.9, 0.55) * r)
-	b.stroke(tail, 6.0, Color(col[1], 1.0), false, true)
-	b.stroke(tail, 3.6, col[0], false, false)
-	if soon:
-		var pr := _peg_r * (1.32 + 0.1 * beat)
-		b.stroke(Face.Builder.arc_points(_peg_px[p], pr, 0.0, TAU), 4.0, Color(PAW, 0.85), true)
-
-## The number over the yarn: the moves until the kitten pounces.
+## The numbers over the ropes: what a drop would do, and the turns of a knot
+## deeper than it is drawn.
 func _draw_numbers() -> void:
 	_draw_preview()
 	_draw_turns()
-	if not state.cat or is_done() or _out_card or _peg_px.is_empty():
-		return
-	var nxt: Dictionary = state.cat_next()
-	if nxt.is_empty():
-		return
-	var font: Font = CozyTheme.display(700)
-	var fs := int(KITTEN_SIZE * 0.22)
-	var text := str(int(nxt["in"]))
-	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-	var base := _yarn_at + Vector2(-w * 0.5, fs * 0.36)
-	draw_string_outline(font, base, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, int(fs * 0.3), Color(Pal.TEXT, 0.85))
-	draw_string(font, base, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color("fffaf0"))
 
 ## Beside a knot wrapped deeper than it is drawn, how many times round it is.
 func _draw_turns() -> void:
@@ -1956,7 +1997,7 @@ func _draw_turns() -> void:
 			continue
 		var text := "\u00d7%d" % int(kn.of)
 		var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-		# On the side of the knot with more cloth: toward the ring's middle.
+		# On the side of the knot with more cloth: toward the plate's middle.
 		var out: Vector2 = kn.y
 		if out.dot(_c - (kn.c as Vector2)) < 0.0:
 			out = -out
@@ -1981,7 +2022,10 @@ func _draw_preview() -> void:
 	var font: Font = CozyTheme.display(700)
 	var fs := int(_peg_r * 0.95)
 	var hole := _hole_px(_hot)
-	var out := (hole - _c).normalized()
+	# Out from the plate's middle; a hole near the middle of a board says it
+	# up and to the right.
+	var out := hole - _c
+	out = out.normalized() if out.length() > _peg_r * 3.0 else Vector2(0.7, -0.7)
 	var at := hole + out * _peg_r * 2.25
 	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 	var base := at + Vector2(-w * 0.5, fs * 0.36)
@@ -1991,25 +2035,6 @@ func _draw_preview() -> void:
 		var loop := at + Vector2(w * 0.5 + fs * 0.42, -fs * 0.18)
 		draw_arc(loop, fs * 0.2, 0.0, TAU, 18, Color("fffaf0"), fs * 0.16)
 		draw_arc(loop, fs * 0.2, 0.0, TAU, 18, KNOT_HALO, fs * 0.08)
-
-## The paw that swats at the peg, out and back.
-func _draw_paw(b: Face.Builder, t: float) -> void:
-	if _paw.is_empty():
-		return
-	var u := (t - float(_paw.t0)) / float(_paw.dur)
-	if u < 0.0:
-		return
-	if u > 1.0:
-		_paw = {}
-		return
-	var out := sin(PI * minf(u * 1.05, 1.0))
-	var at: Vector2 = (_paw.from as Vector2).lerp(_paw.to, out)
-	var dir: Vector2 = ((_paw.to as Vector2) - (_paw.from as Vector2)).normalized()
-	var arm := PackedVector2Array([_paw.from, at])
-	b.stroke(arm, _peg_r * 0.9, Color(KittenFace.FUR_DEEP, 1.0), false, true)
-	b.stroke(arm, _peg_r * 0.72, KittenFace.FUR, false, true)
-	b.disc(at, _peg_r * 0.62, KittenFace.FUR)
-	_paw_glyph(b, at + dir * _peg_r * 0.02, _peg_r * 0.5, Color(KittenFace.EAR_IN, 0.95))
 
 # --- input ---
 
@@ -2064,7 +2089,6 @@ func _press(at: Vector2) -> void:
 		_held = -1
 		_hot = -1
 		_hot_far = -1
-		_ghost = []
 		if _face[stale] == 3:
 			_face[stale] = 0
 		_go_home(stale, false)
@@ -2075,7 +2099,7 @@ func _press(at: Vector2) -> void:
 	_press_peg = p
 	if p < 0:
 		# Nothing to lift: the kitten is petted, a rope is plucked.
-		if state.cat and _kitten.visible and Rect2(_kitten.position, _kitten.size).grow(-KITTEN_SIZE * 0.12).has_point(at):
+		if _kitten.visible and Rect2(_kitten.position, _kitten.size).grow(-KITTEN_SIZE * 0.12).has_point(at):
 			_pet_kitten()
 		elif _sel < 0:
 			_pluck_at(at)
@@ -2112,8 +2136,8 @@ func _drag(at: Vector2) -> void:
 func _update_held() -> void:
 	var p := _held
 	var want := _finger + _grab if _dragged else _held_want
-	# A lifted peg hovers over the ring, not out on the cloth.
-	want = _c + (want - _c).limit_length(_ro * 1.06)
+	# A lifted peg hovers over the plate, not out on the cloth.
+	want = _c + state.plate.keep_in(_to_plate(want), -0.06 * maxf(state.plate.ext.x, state.plate.ext.y)) * _rh
 	var other: Vector2 = _peg_px[p ^ 1]
 	var max_len: float = (_ropes[p >> 1] as Rope).length
 	var d := want.distance_to(other)
@@ -2149,10 +2173,8 @@ func _update_held() -> void:
 			elif code == 2:
 				_hot_far = h
 	if _hot != old_hot:
-		_ghost = []
 		_hot_preview = state.preview(p, _hot) if _hot >= 0 else []
 		if _hot >= 0:
-			_ghost = state.foresee(p, _hot)
 			fx.cue("hover", 1.0 + 0.02 * (_hot % 5), -12.0)
 
 func _release() -> void:
@@ -2161,7 +2183,6 @@ func _release() -> void:
 		var p := _held
 		var was_far := _hot_far >= 0
 		_held = -1
-		_ghost = []
 		# A strained face is for the hand; the peg lets go of it with the rope.
 		if _face[p] == 3:
 			_face[p] = 0
@@ -2211,13 +2232,9 @@ func _release() -> void:
 ## harness that plays a move a frame, and for a board restored.
 func settle_now() -> void:
 	_busy_until = 0.0
-	_paw = {}
 	for p in _mv.size():
 		if _mv[p] != null:
-			var last: Dictionary = _mv[p]
-			while last.has("then"):
-				last = last.then
-			_peg_px[p] = last.to
+			_peg_px[p] = (_mv[p] as Dictionary).to
 			_mv[p] = null
 	var pending := _later
 	_later = []
@@ -2278,10 +2295,6 @@ func _drop(p: int, hole: int, from: Vector2, hint := false) -> void:
 	# Thread: a stitch is used.
 	if state.budget > 0:
 		_use_stitch(t + dur * 0.5)
-	# The kitten's swipe, if this move was the one before it.
-	var swipe: Dictionary = res.cat
-	if not swipe.is_empty():
-		_schedule_swipe(swipe, t + dur + POUNCE_LEAD)
 	_streak_update(int(res.cleared))
 	if hint:
 		moved.emit()
@@ -2505,31 +2518,6 @@ func _use_stitch(when: float) -> void:
 
 # --- the kitten ---
 
-## She stalks the marked peg and swats it into the hole she was aiming for:
-## the paw comes out from the corner, the peg hops across.
-func _schedule_swipe(entry: Dictionary, at_time: float) -> void:
-	var p: int = entry.peg
-	var from_px := _hole_px(int(entry.from))
-	var to_px := _hole_px(int(entry.to))
-	# Until she swipes, the peg is drawn where she found it.
-	var delay := maxf(0.0, at_time - _now())
-	var flight := {"from": from_px, "to": to_px, "t0": at_time + 0.22, "dur": POUNCE_FLY, "arc": _peg_r * 1.5}
-	if Motion.reduce:
-		flight.dur = 0.001
-	if _mv[p] == null:
-		_mv[p] = flight
-	else:
-		# The peg is still flying in from the player's drop: hers waits behind it.
-		var last: Dictionary = _mv[p]
-		while last.has("then"):
-			last = last.then
-		last["then"] = flight
-	_busy_until = maxf(_busy_until, at_time + SWIPE_BUSY)
-	_later_call(delay, func() -> void:
-		_pounce(p, from_px, to_px))
-	_later_call(delay + 0.22 + POUNCE_FLY * 0.9, func() -> void:
-		_swiped(p, int(entry.to), entry.get("gone", [])))
-
 ## A tap on the kitten: she squints with joy and purrs, hearts float up.
 func _pet_kitten() -> void:
 	if _now() < _kitten_mood_until:
@@ -2564,37 +2552,13 @@ func _pluck_at(at: Vector2) -> void:
 	fx.cue("taut", 1.1, -10.0)
 	_dirty = true
 
-## Where the kitten looks when she is not swatting: at her yarn.
+## Where the kitten looks when no peg is in the hand: down at the plate.
 func _gaze() -> Vector2:
-	return Vector2(-1.0, 0.45)
+	return Vector2(-0.6, 0.8)
 
-func _pounce(p: int, from_px: Vector2, _to_px: Vector2) -> void:
-	_kitten.expression = Face.Expr.JOY
-	_kitten_mood_until = _now() + 1.0
-	fx.cue("pounce")
-	_paw = {"from": _kitten_at + Vector2(0.0, KITTEN_SIZE * 0.25), "to": from_px, "t0": _now(), "dur": 0.45}
-	var dir := (from_px - _kitten_at).normalized()
-	_kitten.look = dir
-	if not Motion.reduce:
-		Motion.squash(_kitten, 0.18, 0.3)
-	_say(tr("UT_CAT_SWIPE"), Face.Expr.HAPPY)
-	_dirty = true
-
-func _swiped(p: int, hole: int, gone: Array) -> void:
-	_sq_at[p] = _now()
-	_set_shown(state.tw)
-	_undone = []
-	# She can knock a rope free by accident, and it leaves like any other.
-	_send_off(gone, p)
-	_whip(p >> 1, WHIP_DROP)
-	fx.cue("drop")
-	fx.ring(_hole_px(hole), _peg_r * 1.5, KittenFace.FUR_DEEP)
-	fx.puff(_hole_px(hole) + Vector2(0.0, _peg_r * 0.4), Pal.WOOD, 3)
-	_later_call(0.6, func() -> void:
-		_kitten.expression = Face.Expr.HAPPY
-		_kitten.look = _gaze()
-		_dirty = true)
-	_dirty = true
+## Insane's companion: she sits over the plate and touches nothing.
+func _kitten_here() -> bool:
+	return state.band >= 3
 
 # --- what settles ---
 
@@ -2605,7 +2569,7 @@ func _settled(t: float) -> bool:
 	for p in _mv.size():
 		if _mv[p] != null:
 			return false
-	return _paw.is_empty() or t > float(_paw.t0) + float(_paw.dur)
+	return true
 
 ## The board is won only once everything has landed, so the win never rises
 ## over a peg still in the air.
@@ -2627,8 +2591,8 @@ func _flow(t: float) -> void:
 	elif state.out_of_thread():
 		_run_out(t)
 	elif state.stuck():
-		# Every free hole is out of every rope's reach (the kitten can leave
-		# it so): say so once for this layout.
+		# Every free hole is out of every rope's reach: say so once for this
+		# layout.
 		var key := state.at.to_byte_array()
 		if key != _stuck_key:
 			_stuck_key = key
@@ -2722,7 +2686,6 @@ func _on_solved() -> void:
 	_held = -1
 	_sel = -1
 	_hot = -1
-	_ghost = []
 	_tip_timer.stop()
 	fx.cue("solved")
 	_say(tr("UT_WIN"), Face.Expr.JOY)
@@ -2784,7 +2747,7 @@ func _stamp_down(quiet := false) -> void:
 	# A board restored before its first layout has no ring yet: the seal is cut
 	# at full size and _place_stamp scales it once the ring is known.
 	var rad := STAMP_R if _ri <= 0.0 else minf(STAMP_R, _ri * 0.5)
-	var insane := state.cat
+	var insane := state.band >= 3
 	var stamp := Control.new()
 	stamp.name = "Stamp"
 	stamp.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -2794,7 +2757,7 @@ func _stamp_down(quiet := false) -> void:
 	stamp.rotation = -0.12
 	var mesh := Seal.mesh(rad, insane)
 	var word: String = tr(stamp_key())
-	var lines := [[Seal.tr_static("UT_CAT_SEAL"), 0.24, 0.02], [word, 0.22, 0.36]] if insane \
+	var lines := [[Seal.tr_static("BN_INSANE_SEAL"), 0.27, 0.02], [word, 0.2, 0.36]] if insane \
 		else [[word, 0.28, 0.12]]
 	stamp.draw.connect(func() -> void:
 		stamp.draw_mesh(mesh, null, Transform2D(0.0, stamp.pivot_offset))
@@ -2833,9 +2796,10 @@ func flat_win() -> Dictionary:
 func win_delay() -> float:
 	return Motion.REDUCED_TIME if Motion.reduce else WIN_HOLD + 0.6
 
-## The day as dealt, for tools/export_days.gd (PuzzleBase.day_dict). A ring
-## is no grid: the pegs' holes, every crossing as [rope, rope, times, 1 when
-## the first lies on top], and the dealer's own answer as [peg, from, to].
+## The day as dealt, for tools/export_days.gd (PuzzleBase.day_dict). A plate
+## is no grid: its id, the pegs' holes, every crossing as [rope, rope, times,
+## 1 when the first lies on top], and the dealer's own answer as [peg, from,
+## to].
 func day_dict() -> Dictionary:
 	if state.start_at.is_empty():
 		return {}
@@ -2851,20 +2815,18 @@ func day_dict() -> Dictionary:
 			idle += 1
 	var out := {
 		"source": "generator", "kind": "text",
-		"payload": {"holes": state.holes, "ropes": state.ropes, "pegs": Array(state.start_at),
-			"crossings": crossings, "reach": Array(state.reach), "stack": state.start_order,
-			"cat": state.cat, "swipes": state.swipes},
+		"payload": {"plate": state.plate.id, "holes": state.holes, "ropes": state.ropes, "pegs": Array(state.start_at),
+			"crossings": crossings, "reach": Array(state.reach), "stack": state.start_order},
 		"solution": {"plan": state.plan},
-		"metrics": {"holes": state.holes, "ropes": state.ropes, "idle": idle,
+		"metrics": {"plate": state.plate.id, "holes": state.holes, "ropes": state.ropes, "idle": idle,
 			"crossings": Gen.crossing_count(state.start_tw), "pairs": crossings.size(),
 			"deepest": Gen.deepest(state.start_tw), "knots": Gen.knots(state.start_tw),
 			"par": state.par, "par_floor": int(cfg.par), "thread": state.budget,
-			"cat": state.cat, "swipes": state.swipes.size(),
 			"hints": State.HINTS_BY_BAND[state.band]},
 	}
-	# Every walk of the band was a dud and a smaller ring was dealt
+	# Every walk of the band was a dud and a small ring was dealt
 	# (Gen._fallback).
-	if state.holes != int(cfg.holes) or state.ropes != int(cfg.ropes):
+	if not cfg.plates.has([state.plate.id, state.ropes]):
 		out["budget_hit"] = true
 	return out
 
@@ -2889,7 +2851,7 @@ func share_glyphs() -> String:
 	var out := "🧶 " + tr("UT_SHARE") % [state.holes, state.ropes_dealt()]
 	if state.is_solved() and not _shown_answer and stamp_key() != "":
 		var word: String = tr(stamp_key())
-		out += "\n" + (("🌙 %s · %s" % [tr("UT_CAT_SEAL"), word]) if state.cat else ("🏅 " + word))
+		out += "\n" + (("🌙 %s · %s" % [tr("BN_INSANE_SEAL"), word]) if state.band >= 3 else ("🏅 " + word))
 	return out
 
 # --- the HUD's actions ---
@@ -2938,7 +2900,6 @@ func _drop_held() -> void:
 		_fly(p, _peg_px[p], _peg_home(p), 0.0, 0.1)
 		_set_shown(state.tw)
 	_sel = -1
-	_ghost = []
 
 ## Insane gives none of its own; a video's (which cost thread, like any move)
 ## are the only ones there.
@@ -3015,8 +2976,6 @@ func _cycle_tip() -> void:
 	var tips: Array[String] = ["UT_TIP_DRAG", "UT_TIP_KNOT", "UT_TIP_WRAP", "UT_TIP_REACH"]
 	if state.budget > 0:
 		tips.append("UT_TIP_THREAD")
-	if state.cat:
-		tips.append("UT_TIP_CAT")
 	_tip_idx = (_tip_idx + 1) % tips.size()
 	_say(tr(tips[_tip_idx]), Face.Expr.HAPPY)
 

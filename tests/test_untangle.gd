@@ -2,13 +2,14 @@ extends RefCounted
 
 const Gen = preload("res://puzzles/untangle_gen.gd")
 const State = preload("res://puzzles/untangle_state.gd")
+const Plate = preload("res://puzzles/untangle_plate.gd")
 
 static func run(t) -> void:
-	# Four holes interleave or they do not.
-	t.check(Gen.crosses(0, 5, 2, 7), "0-5 and 2-7 cross")
-	t.check(not Gen.crosses(0, 5, 1, 4), "0-5 holds 1-4 inside it, no crossing")
-	t.check(not Gen.crosses(0, 3, 4, 8), "0-3 and 4-8 are apart")
-	t.eq(Gen.chord(10, 1, 9), 2, "a chord is the short way round")
+	# Four holes round a ring interleave or they do not.
+	var pl: Plate = Plate.ring(12)
+	t.check(Gen.crosses(pl, 0, 5, 2, 7), "0-5 and 2-7 cross")
+	t.check(not Gen.crosses(pl, 0, 5, 1, 4), "0-5 holds 1-4 inside it, no crossing")
+	t.check(not Gen.crosses(pl, 0, 3, 4, 8), "0-3 and 4-8 are apart")
 	for k in Gen.pair_count(9):
 		var pr := Gen.pair_of(k, 9)
 		t.eq(Gen.pair_index(pr.x, pr.y, 9), k, "pair slot %d round trips" % k)
@@ -17,16 +18,16 @@ static func run(t) -> void:
 	var at := PackedInt32Array([0, 5, 1, 4])
 	var tw := Gen.empty_tangle(2)
 	# Rope 1's peg carried from 1 over rope 0 to 7: a crossing, rope 1 on top.
-	t.eq(Gen.apply(at, tw, 2, 2, 7), 1, "carried over another rope: one crossing")
-	t.eq(Gen.top_at(at, tw, 2, 1, 0, 0), 1, "the rope carried over lies on top")
-	t.eq(Gen.top_at(at, tw, 2, 0, 0, 1), 0, "the other lies under")
+	t.eq(Gen.apply(pl, at, tw, 2, 2, 7), 1, "carried over another rope: one crossing")
+	t.eq(Gen.top_at(pl, at, tw, 2, 1, 0, 0), 1, "the rope carried over lies on top")
+	t.eq(Gen.top_at(pl, at, tw, 2, 0, 0, 1), 0, "the other lies under")
 	# Rope 0 (underneath) carried across rope 1: wrapped, not undone.
-	t.eq(Gen.apply(at, tw, 2, 1, 3), 1, "the rope underneath carried across wraps tighter")
+	t.eq(Gen.apply(pl, at, tw, 2, 1, 3), 1, "the rope underneath carried across wraps tighter")
 	t.eq(Gen.count(tw, 0), 2, "twice round")
-	t.check(not Gen.crosses(at[0], at[1], at[2], at[3]), "wrapped twice, the pegs no longer interleave")
+	t.check(not Gen.crosses(pl, at[0], at[1], at[2], at[3]), "wrapped twice, the pegs no longer interleave")
 	# Taken back, the same way: each move undone by the move made back.
-	t.eq(Gen.apply(at, tw, 2, 1, 5), -1, "rope 0 lifted back off")
-	t.eq(Gen.apply(at, tw, 2, 2, 1), -1, "rope 1 lifted back off")
+	t.eq(Gen.apply(pl, at, tw, 2, 1, 5), -1, "rope 0 lifted back off")
+	t.eq(Gen.apply(pl, at, tw, 2, 2, 1), -1, "rope 1 lifted back off")
 	t.check(Gen.is_solved(tw), "and nothing crosses")
 
 	# A rope that crosses nothing leaves the ring, and nothing is carried over it again.
@@ -36,45 +37,48 @@ static func run(t) -> void:
 	tw2[Gen.pair_index(0, 1, 3)] = 3
 	tw2[Gen.pair_index(1, 2, 3)] = 2
 	t.eq(Gen.retire(at2, tw2, 3), [], "every rope in a crossing stays")
-	t.eq(Gen.apply(at2, tw2, 3, 1, 2), -1, "rope 0 lifted off rope 1")
+	t.eq(Gen.apply(pl, at2, tw2, 3, 1, 2), -1, "rope 0 lifted off rope 1")
 	t.eq(Gen.retire(at2, tw2, 3), [0], "rope 0 crosses nothing now and leaves; ropes 1 and 2 still cross")
 	t.check(Gen.gone(at2, 0) and not Gen.gone(at2, 1), "its pegs are off the ring")
 	t.eq(Gen.occupancy(at2, 12)[0], -1, "its holes stand empty")
-	t.eq(Gen.apply(at2, tw2, 3, 2, 1), 0, "a peg carried across where it lay crosses nothing")
-	t.eq(Gen.cat_peg(at2, 0), 2, "the kitten takes the next peg round when hers has left")
+	t.eq(Gen.apply(pl, at2, tw2, 3, 2, 1), 0, "a peg carried across where it lay crosses nothing")
 
-	# Random walks: a move made back restores everything, and a pair's count is
-	# odd exactly when its pegs interleave.
+	# Random walks on every band's plates: a move made back restores
+	# everything, and a pair's count is odd exactly when its ropes cross.
 	var rng := RandomNumberGenerator.new()
 	var bad_back := 0
 	var bad_parity := 0
 	for trial in 60:
 		rng.seed = 400 + trial
-		var cfg: Dictionary = Gen.BANDS[trial % Gen.BANDS.size()]
-		var goal := Gen._goal(rng, cfg)
+		var band := trial % Gen.BANDS.size()
+		var cfg: Dictionary = Gen.BANDS[band]
+		var choice: Array = Gen.pick_plate(rng, band)
+		var wp: Plate = Plate.of(choice[0])
+		var ropes: int = choice[1]
+		var goal := Gen._goal(rng, wp, cfg, ropes)
 		var here: PackedInt32Array = goal.at.duplicate()
-		var knots := Gen.empty_tangle(cfg.ropes)
+		var knots := Gen.empty_tangle(ropes)
 		for step in 25:
-			var ms := Gen.legal_moves(here, cfg.holes, goal.reach)
+			var ms := Gen.legal_moves(wp, here, goal.reach)
 			if ms.is_empty():
 				break
 			var m: Array = ms[rng.randi() % ms.size()]
 			var from := here[m[0]]
 			var a0 := here.duplicate()
 			var k0 := knots.duplicate()
-			Gen.apply(here, knots, cfg.ropes, m[0], m[1])
+			Gen.apply(wp, here, knots, ropes, m[0], m[1])
 			var a1 := here.duplicate()
 			var k1 := knots.duplicate()
-			Gen.apply(a1, k1, cfg.ropes, m[0], from)
+			Gen.apply(wp, a1, k1, ropes, m[0], from)
 			if a1 != a0 or k1 != k0:
 				bad_back += 1
 			for k in knots.size():
-				var pr := Gen.pair_of(k, cfg.ropes)
-				var inter := Gen.crosses(here[2 * pr.x], here[2 * pr.x + 1], here[2 * pr.y], here[2 * pr.y + 1])
+				var pr := Gen.pair_of(k, ropes)
+				var inter := Gen.crosses(wp, here[2 * pr.x], here[2 * pr.x + 1], here[2 * pr.y], here[2 * pr.y + 1])
 				if (Gen.count(knots, k) % 2 == 1) != inter:
 					bad_parity += 1
 	t.eq(bad_back, 0, "every move is undone by the move made back")
-	t.eq(bad_parity, 0, "a pair crosses an odd number of times exactly when its pegs interleave")
+	t.eq(bad_parity, 0, "a pair crosses an odd number of times exactly when its ropes cross")
 
 	for band in 4:
 		for i in 3:
@@ -95,8 +99,8 @@ static func run(t) -> void:
 					seen[h] = true
 					dealt += 1
 			t.eq(seen.size(), dealt, name + " no two pegs in a hole")
-			# The answer replays, ropes leaving and kitten included, and empties the ring.
-			var replayed = Gen._replay(start, out.tw, out.plan, cfg, out.reach, out.swipes)
+			# The answer replays, ropes leaving, and empties the plate.
+			var replayed = Gen._replay(Plate.of(out.plate), start, out.tw, out.plan, out.ropes, out.reach)
 			t.check(replayed != null and replayed.size() == out.plan.size(), name + " the dealer's answer wins")
 			for idle in out.ropes:
 				if start[2 * idle] < 0:
@@ -124,9 +128,9 @@ static func run(t) -> void:
 	st.reset()
 	t.eq(st.spent, 2, "reset gives no thread back")
 
-	# The dealer's answer, played through the state's own move (the kitten's
-	# swipes included), on Hard and Insane: it must win inside
-	# the budget (Insane runs on thread) without winning early, and end where the deal says it does.
+	# The dealer's answer, played through the state's own move, on Hard and
+	# Insane: it must win inside the budget (when there is thread) without
+	# winning early, and end where the deal says it does.
 	for band in [2, 3]:
 		for i in 20:
 			var r := RandomNumberGenerator.new()
@@ -161,5 +165,5 @@ static func run(t) -> void:
 				dealt += 1
 		t.eq(seen.size(), dealt, "fallback %d has distinct holes" % i)
 		t.check(not Gen.is_solved(fb.tw), "fallback %d starts tangled" % i)
-		var won = Gen._replay(fb.start, fb.tw, fb.plan, {"holes": fb.holes, "ropes": fb.ropes, "cat": false}, fb.reach, {})
+		var won = Gen._replay(Plate.of(fb.plate), fb.start, fb.tw, fb.plan, fb.ropes, fb.reach)
 		t.check(won != null and won.size() == fb.plan.size(), "fallback %d answer wins" % i)

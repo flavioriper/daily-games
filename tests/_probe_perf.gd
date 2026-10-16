@@ -1430,7 +1430,7 @@ func _buzz_untangle() -> void:
 		await _ut_carry_to(int(step[0]), _puzzle._hole_px(int(step[2])))
 		await create_timer(0.1).timeout
 		_buzzed("a peg carried and let go")
-		await create_timer(2.4).timeout  # (the kitten's swat, on Insane)
+		await create_timer(2.4).timeout
 		_buzzed("it lands")
 	if _puzzle.can_undo():
 		_host._on_undo()
@@ -1440,7 +1440,7 @@ func _buzz_untangle() -> void:
 		_puzzle.hint()
 		await create_timer(2.4).timeout
 		_buzzed("hint")
-	if st.cat:
+	if _puzzle._kitten.visible:
 		_click(_puzzle._kitten.position + _puzzle._kitten.size * 0.5)
 		await create_timer(0.4).timeout
 		_buzzed("the kitten petted")
