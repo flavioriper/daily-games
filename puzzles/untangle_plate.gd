@@ -16,6 +16,12 @@ extends RefCounted
 ## holes are drilled a little off the lattice (`JITTER`, the same on every
 ## copy of a plate), so the turn of three holes is never nought.
 ##
+## The same day deals the same board on every phone: holes are snapped to a
+## grid of 1/`SNAP` (exact in a float) and the turns and distances the rule
+## reads are worked out from those whole numbers, never from a float cross
+## product a phone may round another way (a board's far lines pass within a
+## hair of other holes).
+##
 ## Spec: docs/superpowers/specs/2026-10-16-untangle-plates-design.md.
 
 ## A board's holes stand this share of their spacing off the lattice.
@@ -28,6 +34,7 @@ const HOOP_HALF := 0.1173
 ## How round a bowed hoop is between its corners (0 straight, 1 a circle).
 const BOW := {"square": 0.0, "hex": 0.3, "tri": 0.34}
 const EDGE_STEPS := 360
+const SNAP := 65536
 
 ## The plate's id as a day stores it, e.g. "ring:13", "hex:14", "grid:4x5".
 var id := ""
@@ -50,6 +57,13 @@ var ext := Vector2.ONE
 ## two.
 var spacing := 1.0
 var maxd := 2.0
+## A board's lattice step in plate units, and how far its wood reaches past
+## its outer holes.
+var unit := 0.0
+var margin := 0.0
+## The holes on the snapped grid, as whole numbers.
+var ix := PackedInt64Array()
+var iy := PackedInt64Array()
 ## The distance between holes a and b at dd[a * n + b].
 var dd := PackedFloat32Array()
 ## The edge's distance from the middle, a step a degree from +x, clockwise
@@ -58,6 +72,8 @@ var edge := PackedFloat32Array()
 ## The turn of holes (a, b, c): o[(a * n + b) * n + c] is 1 when c lies to
 ## the left of a -> b (screen y down: clockwise), else 0.
 var o := PackedByteArray()
+## How many turns of three distinct holes came out nought (always 0).
+var flat := 0
 
 static var _made := {}
 
@@ -106,13 +122,10 @@ func _build(plate_id: String) -> void:
 			return
 	if kind == "board":
 		_jitter()
+	_snap()
 	_measure()
 	_turns()
 	_edges()
-	dd.resize(n * n)
-	for a in n:
-		for b in n:
-			dd[a * n + b] = pts[a].distance_to(pts[b])
 
 # --- hoops ---
 
@@ -217,6 +230,8 @@ func _honey(count: int) -> void:
 ## Scales a board's holes and edge so its wood's larger half is 1.
 func _fit(half: Vector2) -> void:
 	var k := 1.0 / maxf(half.x, half.y)
+	unit = k
+	margin = BOARD_MARGIN * k
 	for i in pts.size():
 		pts[i] *= k
 	for i in outline.size():
@@ -248,17 +263,32 @@ static func _round_poly(corners: PackedVector2Array, r: float) -> PackedVector2A
 			out.append(centre + Vector2.from_angle(a0 + sweep * s / 6.0) * r)
 	return out
 
-## Each hole a little off the lattice, the same way on every copy: a hash of
-## its index, so no three holes stand in a row.
+## Each hole a little off the lattice, the same way on every copy (a draw
+## seeded by the plate's id), so no three holes stand in a row. Plain sums
+## and products only: a phone works them out to the same bits.
 func _jitter() -> void:
-	var near := INF
-	for i in pts.size():
-		for j in range(i + 1, pts.size()):
-			near = minf(near, pts[i].distance_to(pts[j]))
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(id) & 0x7fffffff
 	for i in pts.size():
-		pts[i] += Vector2(rng.randf_range(-1.0, 1.0), rng.randf_range(-1.0, 1.0)) * near * JITTER
+		var dx := rng.randf_range(-1.0, 1.0) * unit * JITTER
+		var dy := rng.randf_range(-1.0, 1.0) * unit * JITTER
+		pts[i] = Vector2(pts[i].x + dx, pts[i].y + dy)
+
+## Every hole onto the 1/SNAP grid, kept as whole numbers too, and the
+## distances between holes from those (a square of whole numbers is exact).
+func _snap() -> void:
+	ix.resize(n)
+	iy.resize(n)
+	for i in n:
+		ix[i] = int(round(pts[i].x * SNAP))
+		iy[i] = int(round(pts[i].y * SNAP))
+		pts[i] = Vector2(float(ix[i]) / SNAP, float(iy[i]) / SNAP)
+	dd.resize(n * n)
+	for a in n:
+		for b in n:
+			var dx := ix[a] - ix[b]
+			var dy := iy[a] - iy[b]
+			dd[a * n + b] = sqrt(float(dx * dx + dy * dy)) / SNAP
 
 func _measure() -> void:
 	var near_sum := 0.0
@@ -268,7 +298,7 @@ func _measure() -> void:
 		for j in n:
 			if i == j:
 				continue
-			var d := pts[i].distance_to(pts[j])
+			var d := dd[i * n + j]
 			near = minf(near, d)
 			maxd = maxf(maxd, d)
 		near_sum += near
@@ -288,14 +318,24 @@ func _measure() -> void:
 			hi = Vector2(maxf(hi.x, p.x), maxf(hi.y, p.y))
 		ext = Vector2(maxf(-lo.x, hi.x), maxf(-lo.y, hi.y)) + Vector2.ONE * HOOP_HALF
 
+## The turn of every three holes, in whole numbers (exact; an int is 64
+## bits and these are under 2^34). Three distinct holes in a row would read
+## nought: the plates are built so that never happens.
 func _turns() -> void:
 	o = PackedByteArray()
 	o.resize(n * n * n)
+	flat = 0
 	for a in n:
 		for b in n:
-			var ab := pts[b] - pts[a]
+			var abx := ix[b] - ix[a]
+			var aby := iy[b] - iy[a]
 			for c in n:
-				o[(a * n + b) * n + c] = 1 if ab.cross(pts[c] - pts[a]) > 0.0 else 0
+				var turn := abx * (iy[c] - iy[a]) - aby * (ix[c] - ix[a])
+				o[(a * n + b) * n + c] = 1 if turn > 0 else 0
+				if turn == 0 and a != b and b != c and a != c:
+					flat += 1
+	if flat > 0:
+		push_error("Untangle plate %s: %d turns of three holes are nought" % [id, flat])
 
 # --- what the rule reads ---
 

@@ -58,6 +58,7 @@ func _shapes() -> void:
 						if pl.o[(a * pl.n + b) * pl.n + c] != 1:
 							convex_ok = false
 		_check(convex_ok, "%s holes in order round it" % id)
+		_check(pl.flat == 0, "%s no three holes in a row" % id)
 		print("%-10s n=%2d spacing=%.3f maxd=%.3f ext=%s nearest-to-a-line=%.4f (%.3f spacings)" % [id, pl.n, pl.spacing, pl.maxd, pl.ext, near, near / pl.spacing])
 
 func _reverse() -> void:

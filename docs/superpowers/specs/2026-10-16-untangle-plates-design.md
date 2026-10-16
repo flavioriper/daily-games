@@ -33,6 +33,15 @@ insane, not the cat itself".
   neither does (the four not in convex position). Any function of the holes
   keeps a move made back exact; this one is the ring's on a ring.
 - **Reach is a length** (plate units), not a span of holes.
+- **The same board on every phone.** Holes are snapped to a 1/65536 grid
+  and the turn table and the hole distances are worked out from those whole
+  numbers, so no turn hangs on how a phone rounds a float (a board's far
+  lines pass within a hair of other holes). A board's jitter is plain sums
+  and products of its seeded draw. `Plate.flat` counts noughts (0 on every
+  plate; the probe checks it).
+- **The live carry reads no further out than the holes**: the hand's point
+  is kept to a ring's or hoop's line of holes and a board's margin in, so a
+  hand over the wood does not sweep a rope past pegs it never went near.
 - **The deal**: a crossing-free start is `_pair_up` round a ring or hoop and
   a random tie-up uncrossed by swaps on a board (each swap is shorter, so it
   ends). Bands pick a plate by the day's draw:

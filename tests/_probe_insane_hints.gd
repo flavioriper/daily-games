@@ -20,7 +20,7 @@ const Motion = preload("res://core/motion.gd")
 const Registry = preload("res://ui/registry.gd")
 
 ## Seconds a board may say no in a row (a hint that thinks on a thread, a
-## piece still landing, Untangle's kitten at the pegs) before the bulb is
+## piece still landing, an Untangle rope leaving) before the bulb is
 ## called silent. Headless frames are far shorter than a board's clocks.
 const PATIENCE := 6.0
 ## Boards whose day comes from the backend, which a probe never starts: the

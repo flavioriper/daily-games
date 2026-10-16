@@ -1020,7 +1020,13 @@ func _carry_tangle() -> void:
 	var p := _held
 	var tw := state.tw.duplicate()
 	if _held_pos.distance_squared_to(_hole_px(state.at[p])) > 1.0:
-		Gen.apply_toward(state.plate, state.at, tw, state.ropes, p, _to_plate(_held_pos))
+		# Read no further out than the holes stand: a hand over a ring's wood,
+		# past the line of holes, would have the rope sweep past pegs it
+		# never went near (a ring's or hoop's holes lie on its edge line, a
+		# board's a margin in from its edge).
+		var pl := state.plate
+		var at := pl.keep_in(_to_plate(_held_pos), pl.margin if pl.kind == "board" else 0.0)
+		Gen.apply_toward(pl, state.at, tw, state.ropes, p, at)
 	if tw == _tw_px:
 		return
 	var tighter := false
