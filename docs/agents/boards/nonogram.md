@@ -105,3 +105,33 @@ tray, a saucer of pebbles and a stitched hem; four glints breathe.
 - Decided for the user, unconfirmed: the tray kept, no Check, an Easy cell
   of 160 uncapped, plain cloth between a wide picture and the tray. Owed:
   a phone, the level slide.
+
+### X's on their own, and a big straight Insane (2026-10-16)
+
+The user: "autofill x but based on current board, not based on the right
+answer, just to help user to not need to fill everything all the time. Also,
+on insane level instead of having shuffled numbers, keep the same behavior of
+others levels but make it way harder and bigger".
+
+- **Auto X on every band**: `_auto_pebbles` lost its `judged()` gate. A line
+  a stroke brings to read right (the player's runs equal its clue, `_ok_lines`
+  before against after) lays an X in each blank cell, rippling from the
+  stroke. It reads the board, not the picture: a wrong row that reads right
+  gets its X's too. They ride the stroke's history entry (`apply_more`), so
+  one Undo takes both back; a line that already read right (an empty one)
+  is left alone; a hint's X's are their own entry.
+- **Insane is no longer Leaf Fall**: `State.setup` deals band 3 from
+  `Gen.hardest` instead of the bank (`content/insane/nonogram.json` and
+  `tools/insane/nonogram_ladder.gd` are left, unread). Shapes 15x15, 13x16,
+  15x13 (`Gen.SHAPES[3]`); pictures with `INSANE_GRAIN` 0.15 of raw noise;
+  of `INSANE_POOL` 12 that line logic fills, the slowest by `Lines.sweeps()`
+  (sweeps of every line, then cells open after the first). Over 30 seeds:
+  6-16 sweeps with 103-201 cells open after the first, against Hard's 3-4
+  and 5-49. 47-124 ms on the Mac to deal. Fallback 12x12 by `Gen.generate`.
+  Hints 3, Undo and the tray as on the other bands; the leaf code stays and
+  is never reached (`tumbled` all false). `day_dict` says `generator`.
+- `opengl3_angle`, 810x1440, `_shot_nonogram.gd -- d=3 right`: 43 px cells,
+  peak 92 draw calls. A four-number row clue's first digit sits under its
+  daisy at the tab's outer end.
+- A day finished on Insane before this restores a different picture.
+- Unseen by the user, no phone.

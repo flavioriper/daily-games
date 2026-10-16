@@ -198,8 +198,44 @@ const SHAPES := [
 	[[5, 5], [5, 6], [6, 5]],
 	[[7, 7], [6, 8], [8, 6], [7, 9]],
 	[[9, 9], [8, 10], [10, 8], [9, 11]],
-	[[10, 10], [9, 11], [11, 9]],
+	[[15, 15], [13, 16], [15, 13]],
 ]
+
+## Insane since 2026-10-16 (the user: "instead of having shuffled numbers,
+## keep the same behavior of others levels but make it way harder and
+## bigger"): no tumbled lines, a picture of 15 or so a side with some raw
+## noise left in it (INSANE_GRAIN, so lines carry more and shorter runs),
+## and of INSANE_POOL that line logic fills, the one it fills slowest
+## (`Lines.sweeps`): the most sweeps of every line, then the most cells a
+## first sweep leaves open. Still line logic alone, so still no guessing.
+const INSANE_GRAIN := 0.15
+const INSANE_POOL := 12
+
+static func hardest(rng: RandomNumberGenerator, w: int, h: int) -> Dictionary:
+	var straight: Array = []
+	for i in w + h:
+		straight.append(false)
+	var best: Dictionary = {}
+	var best_score := -1
+	var kept := 0
+	for _attempt in 200:
+		if kept >= INSANE_POOL:
+			break
+		var bmp := picture(rng, w, h, INSANE_GRAIN)
+		if bmp.is_empty():
+			continue
+		var c := clues_of(bmp, w, h)
+		var lines := Lines.new(c.rows, c.cols, straight)
+		if not lines.matches(lines.line_solve(), bmp):
+			continue
+		kept += 1
+		var sw := lines.sweeps()
+		var score: int = sw[0] * 1000 + sw[1]
+		if score > best_score:
+			best_score = score
+			best = {"bitmap": bmp, "rows": c.rows, "cols": c.cols, "w": w, "h": h,
+				"ok": true, "sweeps": sw[0], "open": sw[1]}
+	return best
 
 static func shape_for(rng: RandomNumberGenerator, band: int) -> Vector2i:
 	var set: Array = SHAPES[clampi(band, 0, SHAPES.size() - 1)]
@@ -456,6 +492,52 @@ class Lines:
 		if not any:
 			return []
 		return [and_m, full & ~or_m]
+
+	## How slowly line logic fills the picture, as a player reading one line
+	## at a time would: [sweeps of every row then every column until nothing
+	## more is known, cells still open after the first sweep].
+	func sweeps() -> Array:
+		var g := blank()
+		var f: PackedInt64Array = g.f
+		var e: PackedInt64Array = g.e
+		var full_w := (1 << w) - 1
+		var full_h := (1 << h) - 1
+		var first := -1
+		var n := 0
+		while n < 100:
+			n += 1
+			var gained := false
+			for y in h:
+				var r := _refine(_opts[y], f[y], e[y], full_w)
+				if r.is_empty():
+					return [n, 0]
+				if int(r[0]) != f[y] or int(r[1]) != e[y]:
+					gained = true
+				f[y] = r[0]
+				e[y] = r[1]
+			for x in w:
+				var cf := 0
+				var ce := 0
+				for y in h:
+					if f[y] & (1 << x):
+						cf |= 1 << y
+					elif e[y] & (1 << x):
+						ce |= 1 << y
+				var r := _refine(_opts[h + x], cf, ce, full_h)
+				if r.is_empty():
+					return [n, 0]
+				for y in h:
+					if int(r[0]) & (1 << y) and not (f[y] & (1 << x)):
+						f[y] |= 1 << x
+						gained = true
+					elif int(r[1]) & (1 << y) and not (e[y] & (1 << x)):
+						e[y] |= 1 << x
+						gained = true
+			if first < 0:
+				first = unknown({"f": f, "e": e})
+			if not gained:
+				break
+		return [n, first]
 
 	func unknown(g: Dictionary) -> int:
 		var n := 0

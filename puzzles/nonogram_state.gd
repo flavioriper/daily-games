@@ -20,7 +20,6 @@ extends RefCounted
 ## Spec: docs/superpowers/specs/2026-09-18-nonogram-flat-design.md, section 3.
 
 const Gen = preload("res://puzzles/nonogram_gen.gd")
-const InsaneBank = preload("res://core/insane_bank.gd")
 
 const BLANK := 0
 const FILL := 1
@@ -38,10 +37,10 @@ const HEARTS := [0, 0, 0, 0]
 ## slip mended (off and on) with one to spare.
 const MOVES_SLACK := [0, 0, 0, 0]
 ## The square each band falls back to when its drawn shape (Gen.SHAPES)
-## will not line-solve. Insane is read from the bank
-## (content/insane/nonogram.json, tools/insane/nonogram_ladder.gd); 10 is its
-## live fallback, with nothing tumbled.
-const SIZES := [5, 7, 9, 10]
+## will not line-solve. Insane no longer reads its bank of tumbled lines
+## (content/insane/nonogram.json, left as history) since 2026-10-16: it is
+## dealt big and slow by Gen.hardest, and 12 is its fallback.
+const SIZES := [5, 7, 9, 12]
 
 ## A line's state, which is what its clue numbers wear.
 const LINE_IDLE := 0
@@ -75,10 +74,10 @@ var history: Array = []
 func setup(rng: RandomNumberGenerator, difficulty: int, bank_step := 0) -> void:
 	band = clampi(difficulty, 0, SIZES.size() - 1)
 	var out: Dictionary = {}
+	var shape := Gen.shape_for(rng, band)
 	if band == 3:
-		out = Gen.from_bank(InsaneBank.pick("nonogram", bank_step))
-	if out.is_empty():
-		var shape := Gen.shape_for(rng, band)
+		out = Gen.hardest(rng, shape.x, shape.y)
+	else:
 		out = Gen.generate(rng, shape.x, shape.y)
 	if not bool(out.get("ok", false)):
 		out = Gen.generate(rng, SIZES[band], SIZES[band])

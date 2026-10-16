@@ -180,9 +180,8 @@ const MUSH_SIZE := 0.8
 const BEE_SIZE := 0.62
 const BEE_TIME := 1.1
 const BEE_BOB := 0.12
-## A line that comes out right lays pebbles in its empty cells on Hard and
-## Insane (every tile there is judged, so a line reading right is done),
-## rippling out from the stroke AUTO_STEP a cell.
+## A line that comes out right lays pebbles in its empty cells, on every
+## band, rippling out from the stroke AUTO_STEP a cell.
 const AUTO_STEP := 0.035
 ## A line that reads right opens a daisy at the outer end of its tab.
 const DAISY_R := 0.2
@@ -579,8 +578,7 @@ func day_dict() -> Dictionary:
 		return {}
 	var w: int = state.w
 	var h: int = state.h
-	var banked: bool = state.band == 3 \
-		and not State.Gen.from_bank(State.InsaneBank.pick("nonogram", bank_step)).is_empty()
+	var banked := false
 	var dealt: bool = state.bitmap.size() == h
 	var puzzle: Array = []
 	var answer: Array = []
@@ -2351,12 +2349,15 @@ func _judge_stroke(before: Dictionary, changed: Array, arrivals: Dictionary, set
 		land = maxf(land, float(arrivals[cell]) - _now())
 	_on_right_stroke(changed, last, land)
 
-## On Hard and Insane, a line that has just come out right lays a pebble in
-## each of its empty cells, rippling out from where the stroke touched it:
-## every tile there was judged, so a line reading right is finished.
+## A line that has just come out right lays a pebble in each of its empty
+## cells, rippling out from where the stroke touched it. It reads the board
+## as the player has it, never the picture (the user, 2026-10-16: "autofill
+## x but based on current board, not based on the right answer"), so a line
+## read right by a wrong tile gets its pebbles too; they ride the stroke's
+## entry, and one Undo takes both back.
 func _auto_pebbles(arrivals: Dictionary, ok_before: Dictionary, own_entry := false,
 		skip := Vector2i(-1, -1)) -> void:
-	if not state.judged() or arrivals.is_empty() or state.is_solved():
+	if arrivals.is_empty() or state.is_solved():
 		return
 	var cells: Array = []
 	var when: Dictionary = {}
