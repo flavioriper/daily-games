@@ -2349,9 +2349,10 @@ func _judge_stroke(before: Dictionary, changed: Array, arrivals: Dictionary, set
 		land = maxf(land, float(arrivals[cell]) - _now())
 	_on_right_stroke(changed, last, land)
 
-## After every move, each line reading right lays a pebble in each of its
-## empty cells, rippling out from where the stroke touched it (or landed,
-## for a line it did not touch, such as an empty line). It reads the board
+## After every move, each line lays a pebble in every empty cell its tiles
+## shut out (State.shut_in: all of them once it reads right, the cell after
+## a run pinned to its edge), rippling out from where the stroke touched it
+## (or landed, for a line it did not touch, such as an empty line). It reads the board
 ## as the player has it, never the picture (the user, 2026-10-16: "autofill
 ## x but based on current board, not based on the right answer"), so a line
 ## read right by a wrong tile gets its pebbles too; they ride the stroke's
@@ -2371,12 +2372,14 @@ func _auto_pebbles(arrivals: Dictionary, ok_before: Dictionary, own_entry := fal
 			last_at = float(arrivals[cell])
 			last = cell
 	for k in state.h + state.w:
-		# Every line reading right, whether or not this move brought it
-		# there: an X rubbed out of a finished line comes straight back.
-		if _line_state(k) != State.LINE_OK:
-			continue
+		# Every line, whether or not this move touched it: the cells its
+		# tiles shut out (State.shut_in). An X rubbed out of one comes
+		# straight back.
 		var y: int = k if k < state.h else -1
 		var x: int = -1 if k < state.h else k - state.h
+		var shut: Array = state.shut_in(y, x)
+		if shut.is_empty():
+			continue
 		var from := Vector2i(-1, -1)
 		var at := -1.0
 		for cell in arrivals:
@@ -2387,7 +2390,7 @@ func _auto_pebbles(arrivals: Dictionary, ok_before: Dictionary, own_entry := fal
 		if from.x < 0:
 			from = last
 			at = last_at
-		for cell in state.blanks_in(y, x):
+		for cell in shut:
 			if when.has(cell) or cell == skip:
 				continue
 			var d: int = absi(cell.x - from.x) + absi(cell.y - from.y)

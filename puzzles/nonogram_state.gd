@@ -314,6 +314,31 @@ func blanks_in(y: int, x: int) -> Array:
 				out.append(Vector2i(x, i))
 	return out
 
+## The blank cells of row `y` (or column `x` when `y` is negative) that no
+## way of laying the line's runs over the player's own tiles can fill: the
+## cell after a finished run at the edge, a whole line reading right, the
+## far end of a line whose one run is pinned. Crosses are not read, so one
+## line's X's never feed another's. Nothing on a line its tiles cannot
+## answer (too many, or in no order the clue allows), nor on a tumbled one.
+func shut_in(y: int, x: int) -> Array:
+	var clue: Array = row_clues[y] if y >= 0 else col_clues[x]
+	var tumble := row_tumbled(y) if y >= 0 else col_tumbled(x)
+	var line: Array = row_line(y) if y >= 0 else col_line(x)
+	if tumble:
+		return blanks_in(y, x) if Gen.reads(line, clue, true) else []
+	var known: Array = []
+	for v in line:
+		known.append(1 if int(v) == 1 else -1)
+	var refined: Array = Gen.refine(clue, known)
+	var out: Array = []
+	if refined.is_empty():
+		return out
+	for i in refined.size():
+		var cell := Vector2i(i, y) if y >= 0 else Vector2i(x, i)
+		if int(refined[i]) == 0 and mark_at(cell) == BLANK:
+			out.append(cell)
+	return out
+
 ## Every pebble on a cell the picture wants: what Check points at on Hard
 ## and Insane, where no wrong tile ever stays down.
 func wrong_pebbles() -> Array:

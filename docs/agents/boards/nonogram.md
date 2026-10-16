@@ -125,6 +125,14 @@ others levels but make it way harder and bigger".
   got its X's. Now every line reading right fills after every move, rippling
   from the move's last cell when the move did not touch it; an X rubbed out
   of a finished line comes straight back.
+  **And again** (the user, a column reading `1 1` with its top tile laid
+  and the cell under it bare: "if there is 1 on the column, it can't be the
+  following place, should be blocked"): a line's X's are now every blank
+  no placement of its runs over the player's tiles can fill
+  (`State.shut_in`, `Gen.refine` with the tiles known and everything else
+  open). Crosses are not read, so X's never cascade from line to line; a
+  line its tiles cannot answer gets none. About 3 ms a move on a 15x15 on
+  the Mac.
 - **Insane is no longer Leaf Fall**: `State.setup` deals band 3 from
   `Gen.hardest` instead of the bank (`content/insane/nonogram.json` and
   `tools/insane/nonogram_ladder.gd` are left, unread). Shapes 15x15, 13x16,
