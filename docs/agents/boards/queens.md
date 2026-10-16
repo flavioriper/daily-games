@@ -151,8 +151,8 @@ says of misty patches above is history.
 - Insane is a plain **12x12** court, one queen a row, column and patch, from
   `content/insane/queens.json`, mined by `tools/insane/queens_ladder.gd`
   (`Gen.generate` at 12, no `Gen.mist`, which is deleted). A court is kept
-  when bands and reach finish it and it needs **three** bands over several
-  lines (`WIDE`; Hard's `Gen.fits` asks two), ranked by Hard's rung. A 12x12
+  when bands and reach finish it and it needs **four** bands over several lines (three until
+  later that day, below; `WIDE`; Hard's `Gen.fits` asks two), ranked by Hard's rung. A 12x12
   costs ~3 s a try on one thread, so it is mined and never dealt live (the
   live fallback is `Gen.graded(rng, 2, 12)`, seconds).
 - The banks' cells and answer are one `Gen.BANK_DIGITS` character a patch or
@@ -173,3 +173,12 @@ says of misty patches above is history.
   810x1440, `right` mode: 62 px cells, 99 draw calls peak.
 - Decided for the user, unconfirmed: 12 rather than 11; three wide bands as
   the gate; the three new colours. Owed: a phone, the user's eye on it.
+- **Four wide bands, same day** (the user asked how Hard and Insane differ;
+  at three the gate only cut Hard's easiest third: Hard's median is three
+  wide bands, 10 thinks, the 12x12's was three, 11). `WIDE` is 4: a court
+  needs four bands over several lines, which 13 of Hard's 200 reach. Bank
+  re-dealt from the passing seeds of seeds 0-6046 (the first run's 0-2006
+  regraded, a second run stopped at 6046), each written as it landed: 136
+  kept, rungs 470-720; wide 4: 113, 5: 22, 6: 1; thinks median 12 (7-16).
+  About 1 try in 45 passes at ~0.7 tries a second on 8 threads; the bank
+  repeats after 136 days.

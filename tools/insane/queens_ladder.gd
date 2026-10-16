@@ -16,7 +16,7 @@ const Gen = preload("res://puzzles/queens_gen.gd")
 const Logic = preload("res://puzzles/queens_logic.gd")
 
 const N := 12
-const WIDE := 3
+const WIDE := 4
 const HARD_RUNG := -1
 
 static func candidate(rng: RandomNumberGenerator) -> Dictionary:

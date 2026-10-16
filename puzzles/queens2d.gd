@@ -47,7 +47,7 @@ extends "res://core/puzzle_base.gd"
 ## refused, free: that is the rule, on every band.
 ##
 ## Insane is a plain 12x12 court since 2026-10-16 (the user: "just a hard
-## board but way harder and bigger"), mined to ask for three bands over
+## board but way harder and bigger"), mined to ask for four bands over
 ## several lines where Hard asks for two. No court has mist now: the mist's
 ## wisps, crowns, rules line, tips and tutorial page are gated on
 ## `has_mist()` and stay, unreached.
