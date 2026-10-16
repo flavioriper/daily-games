@@ -55,6 +55,8 @@ const SAVE_EVERY := 20.0
 const SAVE_AFTER := 4.0
 ## The box's tick for a target coming in, at most this often.
 const HIT_GAP := 0.14
+## A machine's sum is a pop at most this often, so a busy paper patters.
+const OP_GAP := 0.16
 ## The tray's two rows: the hands and the belt pieces, then what is set
 ## down on the paper. A slot is row * ROW + its place in the row.
 const TOOLS := [["move", "belt", "turn", "remove", "split", "join"], ["dig", "crate", "add", "mul", "sub", "div", "pow"]]
@@ -387,7 +389,12 @@ func _play_events() -> void:
 				_feel(Haptics.TICK)
 				_changed()
 				_undo_at = -10.0
+			"op":
+				if _once("op", OP_GAP) and not _busy():
+					_fx.cue("op", randf_range(0.95, 1.05) * pow(2.0, mini(str(absi(int(ev.v))).length() - 1, 4) / 12.0))
 			"off_target":
+				_fx.cue("nope", 1.0, -6.0)
+				_feel(Haptics.WARN)
 				_rw.sticker(tr("TL_SAY_NOT_TARGET") % [Sim.short(int(ev.v)), Sim.short(int(ev.came))],
 					_square_rw(Sim.HUB_AT + Vector2i(2, 2)) + Vector2(0, -70.0), 36, 3.2, false, Color("fffaf0"), false, "say", 20.0)
 			"hit":
@@ -435,6 +442,7 @@ func _on_unlock(r: int) -> void:
 			_rw.spray(_rw.at(tray, _slot_mid(slot)), Pal.SUN, 10, 380.0, "star", 0.9)
 
 func _on_upgrade(id: String, level: int) -> void:
+	_fx.cue("buy", randf_range(0.97, 1.03))
 	_fx.cue("upgrade", minf(pow(2.0, (level - 2) * 0.25 / 12.0), 1.3))
 	_feel(Haptics.GOOD)
 	_rw.sticker(tr("TL_UPGRADED") % [tr("TL_TRACK_" + id.to_upper()), level], _top(), 50, 1.8, false, Color("fff4c2"), true, "up")
@@ -456,6 +464,11 @@ func _on_refused(why: String, at: Vector2, n: int) -> void:
 	var p := _in_rw(at) + Vector2(0, -60.0)
 	var text := ""
 	match why:
+		"short":
+			# a rank the ledger cannot pay: the shop shivers its bar, the ear hears no
+			_fx.cue("nope")
+			_feel(Haptics.WARN)
+			return
 		"printed":
 			if sim.can_dig(n):
 				text = tr("TL_SAY_DIG_IT") % n

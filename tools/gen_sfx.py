@@ -3547,6 +3547,13 @@ SETS = {
         "deliver":   ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -21, FOLEY, "bank:token", "cut:0.07", "notes:0:-7", "tight"),
         # A place refused: two low notches alike.
         "nope":      ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.26", "notes:0.1:-5,-5", "tight"),
+        # A machine's sum made (2026-10-16): one bubble of the wrap, the
+        # quietest pop of the set; the screen throttles it and walks it up a
+        # little with the number, so a busy paper is a soft patter.
+        "op":        ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -22, FOLEY, "bank:wrap", "cut:0.2", "notes:0:-1", "tight"),
+        # A rank bought (2026-10-16): the jar coin, a step under Bagatelle's,
+        # under the upgrade's two notes.
+        "buy":       ('one coin dropped into a small glass jar that holds a few coins, one short soft clink, close', 0.7, -13, FOLEY, "bank:jar", "warm:6000", "cut:0.5", "ease:0.004", "tight", "notes:0:-4"),
         # An upgrade can be bought: one soft note.
         "ready":     ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0:5", "cut:0.45"),
         # An upgrade bought: two notes up a fourth.
