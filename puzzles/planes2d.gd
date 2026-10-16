@@ -769,11 +769,11 @@ func tutorial_pages() -> Array:
 		steps.append([Diagram.Lesson.HEARTS, "HTP_TN_HEARTS", tr("PP_RULES_HEARTS") % hearts_n])
 	else:
 		steps.append([Diagram.Lesson.REFUSE, "HTP_PP_ORDER", tr("HTP_PP_REFUSE_BODY")])
-	if band == 3:
+	if _state.windy():
 		steps.append([Diagram.Lesson.WIND, "PP_WINDY_SEAL", tr("PP_RULES_WIND_MOVES")])
 	steps.append([Diagram.Lesson.DONE, "HTP_PP_DONE", tr("HTP_PP_DONE_BODY")])
 	var undo_body := "HTP_PP_UNDO_BODY"
-	if band == 3:
+	if not _state.undo_allowed:
 		undo_body = "HTP_PP_RESET_BODY"
 	elif judged:
 		undo_body = "HTP_PP_UNDO_BODY_JUDGED"
@@ -799,8 +799,10 @@ func tutorial_pages() -> Array:
 ## Insane has no Undo and no hint (and, since 2026-10-12, no move counter).
 ## Insane has the bulb again since 2026-10-13, as many hints as Hard: what is
 ## said of it above is the history (docs/agents/flat-screens.md).
+## Undo is back on Insane since 2026-10-16, when the wind left it: only a
+## windy sky goes without.
 func capabilities() -> Array[String]:
-	if _state != null and _state.difficulty >= 3:
+	if _state != null and not _state.undo_allowed:
 		return ["hint"]
 	return ["undo", "hint"]
 
@@ -879,7 +881,7 @@ func _ready() -> void:
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_gen += 1
 	_close_card()
-	_state.build(rng, difficulty, bank_step)
+	_state.build(rng, difficulty, bank_step, daily_key)
 	max_hearts = State.hearts_for(_state.difficulty) if _state.judged else 0
 	max_moves = _state.moves_budget()
 	_heart_used = false
@@ -1499,6 +1501,21 @@ func _panel(b) -> void:
 	b.fan(Face.Builder.round_rect(inner, isz, ir), Pal.ACORN.lerp(Pal.STONE_GIVEN, 0.55))
 	b.fan(Face.Builder.round_rect(inner + Vector2(0.0, 3.0), isz - Vector2(0.0, 3.0), ir),
 		Pal.SURFACE.lerp(Pal.PARCHMENT, 0.45))
+	if not _state.shape.is_empty():
+		# Insane's shape, a shade deeper than the paper round it, a run of
+		# cells a rect, so the thing reads under its planes and its gaps.
+		var tint := Pal.SURFACE.lerp(Pal.PARCHMENT, 0.45).lerp(Pal.ACORN, 0.22)
+		for y in _state.rows:
+			var x := 0
+			while x < _state.cols:
+				if not _state.live(Vector2i(x, y)):
+					x += 1
+					continue
+				var from := x
+				while x < _state.cols and _state.live(Vector2i(x, y)):
+					x += 1
+				b.fan(Face.Builder.round_rect(_origin + Vector2(float(from), float(y)) * _cell - Vector2.ONE * 0.5,
+					Vector2(float(x - from), 1.0) * _cell + Vector2.ONE, 0.0), tint)
 	if _state.windy():
 		# The wind sock's pole, standing on the rim at the upwind corner: a
 		# little wooden stick and its knob. The sock itself sways on the sky
@@ -1605,6 +1622,8 @@ func _dots(b, cover: Dictionary, t: float, moving_only := false) -> void:
 	for y in _state.rows:
 		for x in _state.cols:
 			var cell := Vector2i(x, y)
+			if not _state.live(cell):
+				continue
 			var shown := 1.0
 			if cover.has(cell):
 				shown = 1.0 - float(cover[cell])
@@ -1660,7 +1679,11 @@ func _place_sprigs() -> void:
 			var free := 0
 			var head := false
 			var toward := Vector2.ZERO
-			for c in [Vector2i(x - 1, y - 1), Vector2i(x, y - 1), Vector2i(x - 1, y), Vector2i(x, y)]:
+			var corners := [Vector2i(x - 1, y - 1), Vector2i(x, y - 1), Vector2i(x - 1, y), Vector2i(x, y)]
+			# A leaf lies on the shape, never out in the bare sky round it.
+			if not corners.all(func(c: Vector2i) -> bool: return _state.live(c)):
+				continue
+			for c in corners:
 				var i := _state.plane_at(c)
 				if i < 0:
 					free += 1
@@ -1737,7 +1760,7 @@ func _build_ground() -> ArrayMesh:
 	for y in _state.rows:
 		for x in _state.cols:
 			var cell := Vector2i(x, y)
-			if flown.has(cell) or _state.plane_at(cell) >= 0:
+			if flown.has(cell) or _state.plane_at(cell) >= 0 or not _state.live(cell):
 				continue
 			b.disc(_centre(cell), r, Color(Pal.LINE, DOT_ALPHA))
 	for sp in _sprigs:

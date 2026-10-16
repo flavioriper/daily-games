@@ -337,3 +337,36 @@ panel stands 36 to 50 inside the margin, with 56 kept open under it.
 - Decided for the user, unconfirmed: the 56 open foot; planes flying out
   across the screen; the dusk of spent hearts dimming the world too.
   Owed: a phone, Insane's wind sock against the tools row, the level slide.
+
+### Insane is the day's shape, and the clouds are gone (2026-10-16)
+
+The user, with a screenshot of an arrow maze cut into an apple: "paper
+planes insane should not have the clouds anymore, it should only be a
+bigger harder board, also it could carry different shapes based on the day
+theme". Insane is now Hard's carve with no wind, inside a silhouette
+(`PlanesState.shape`, `live()`): the day's themed thing (the first of
+`SHAPE_SIZES` this phone holds, `ThemedPictures.picture`), else one of
+Pixel Garden's single things (its 10 and 12 bands), picked by
+`Daily.fnv1a("planes_shape|<day>|<step>")` so every phone cuts the same.
+`cut_shape` trims the picture to what it covers and scales it, cell centre
+by cell centre, into `SHAPE_BOX` (30 x 42) on its own proportions; a cut
+under `SHAPE_MIN` (630, Hard's whole board) is passed over -- 27 of the
+bank's 60 things pass, a flat or thin themed thing falls back to the bank.
+A plane only stands inside the shape; its lane still runs to the grid's
+edge over the bare sky round it. The board tints the shape a shade deeper
+than the paper (a rect a run of cells in the panel mesh), and dots and
+leaves stay on it. Undo is back on Insane (`undo_allowed = not windy()`),
+and the tutorial's WIND page and Reset-only page follow `windy()`.
+
+- Twelve seeds on the Mac: 30 x 30 to 30 x 41 boxes, 648-941 cells,
+  69-119 planes (Hard 68-78 on the same seeds), 0.97-0.98 cover, 38-79 ms
+  to carve; every stored order replays.
+- `opengl3_angle`, 810x1440, `_shot_planes.gd d=3 rest`: 76 draw calls
+  peak, cell 32 px in the 1080-wide board (Hard's ~45).
+- The Windy Day engine, `WINDY_SMALL`, the miner and the windy tests stay;
+  no band deals them. Removing them is the user's call.
+- Decided for the user, unconfirmed: the 30 x 42 box (smaller cells than
+  Hard), the 630-cell floor and the bank fallback on a flat themed thing,
+  `max_len` 29 as Hard, the tint, undo back. Owed: a phone, a themed day
+  seen (none checked on this Mac), the shape read on a 12-side bank thing
+  scaled 2.5 times is blocky.

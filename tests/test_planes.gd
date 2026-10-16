@@ -217,9 +217,9 @@ static func _test_windy(t) -> void:
 	t.eq(st.count(), 0, "reset puts the clock back to 0")
 	t.eq(st.solve_order(), [b, a] as Array[int], "the exact search finds the order that keeps b clear")
 
-## Insane deals a Windy Day sky: every banked sky holds together on the
-## phone's own check, the live fallback replays its own order, and Insane
-## judges, has no undo and no hints.
+## The Windy Day bank still holds together (the miner's), and Insane deals a
+## shaped maze with no wind: every plane inside the shape, the stored order
+## replaying, any order clearing it, no fewer cells than Hard, and undo.
 static func _test_windy_deal(t) -> void:
 	var pool := InsaneBank.boards("planes")
 	t.check(pool.size() > 0, "the Windy Day bank is not empty")
@@ -230,25 +230,31 @@ static func _test_windy_deal(t) -> void:
 	t.check(not bad.from_bank({"cols": 10, "rows": 14, "wind": 1, "clouds": [0], "planes": [[0, 1]], "order": []}),
 		"an order that does not replay is refused")
 	var dealt := _built(5, 3)
-	t.check(dealt.windy() and not dealt.banked, "Insane deals a live Windy Day sky")
-	t.eq(Vector2i(dealt.cols, dealt.rows), Vector2i(_built(5, 2).cols, _built(5, 2).rows), "on a sky the size of Hard's")
+	t.check(not dealt.windy() and dealt.clouds.is_empty() and not dealt.banked, "Insane deals no wind")
 	for s in range(1, 6):
 		var maze := _built(s, 3)
-		t.check(maze.clouds.size() > 0 and maze.clouds.size() <= int(State.band(3)["clouds"]) and maze.has_moments(),
-			"windy maze %d: clouds, and a moment for every plane" % s)
-		# Played badly on purpose: any free plane, a gust when none can fly.
+		t.check(not maze.shape.is_empty() and maze.shape_id != "", "shaped maze %d: cut from a thing" % s)
+		t.check(maze.cols <= State.SHAPE_BOX.x and maze.rows <= State.SHAPE_BOX.y, "shaped maze %d: inside the box" % s)
+		var outside := 0
+		for p in maze.planes:
+			for c in p["cells"]:
+				if not maze.shape.has(c):
+					outside += 1
+		t.eq(outside, 0, "shaped maze %d: every plane inside the shape" % s)
+		t.check(maze.shape.size() >= State.SHAPE_MIN, "shaped maze %d: no fewer cells than Hard's board" % s)
+		t.check(maze.replays(maze.order), "shaped maze %d: the stored order replays" % s)
 		var pick := RandomNumberGenerator.new()
 		pick.seed = s
-		var guard: int = maze.planes.size() * (maze.cols + 1)
-		while not maze.solved() and guard > 0:
+		var guard: int = maze.planes.size() + 1
+		while not maze.solved() and guard > 0 and not maze.free_planes().is_empty():
 			guard -= 1
 			var free := maze.free_planes()
-			if free.is_empty():
-				maze.gust()
-			else:
-				maze.launch(free[pick.randi_range(0, free.size() - 1)])
-		t.check(maze.solved(), "windy maze %d: clears in any order, gusts and all" % s)
-	t.check(not dealt.judged and not dealt.undo_allowed, "nothing judged, and no undo")
+			maze.launch(free[pick.randi_range(0, free.size() - 1)])
+		t.check(maze.solved(), "shaped maze %d: clears in any order" % s)
+	var cut := State.cut_shape(["....", ".##.", ".#..", "...."], Vector2i(4, 4))
+	t.eq(Vector2i(cut.cols, cut.rows), Vector2i(4, 4), "a cut fills the box on its own proportions")
+	t.check(cut.cells.has(Vector2i(0, 0)) and not cut.cells.has(Vector2i(3, 3)), "a cut keeps the picture's outline")
+	t.check(not dealt.judged and dealt.undo_allowed, "nothing judged, and undo")
 	t.eq(State.hearts_for(3), 0, "no hearts on Insane: it counts moves")
 	t.eq(State.hints_for(3), State.hints_for(2), "Insane has as many hints as Hard")
 	t.eq(State.hearts_for(2), 0, "no hearts on Hard")

@@ -144,7 +144,7 @@ class TutorialSky extends "res://puzzles/planes2d.gd":
 		for i in ORDER:
 			st.order.append(i)
 		st.judged = judged
-		st.undo_allowed = b < 3
+		st.undo_allowed = not windy
 		if windy:
 			st.wind = Vector2i(1, 0)
 			st.clouds.append(CLOUD)
