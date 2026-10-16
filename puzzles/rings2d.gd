@@ -170,6 +170,10 @@ const ARC_LIFT := 40.0
 const TILT := 0.16
 ## Down the target post.
 const THREAD_TIME := 0.15
+## Rings of a run that move go one after another, this far apart, the top
+## one first (the user, 2026-10-16: "they should go one after another to make
+## it more cozy").
+const RUN_STEP := 0.13
 ## The landing's bump running down the stack, a ring a step.
 const BUMP_STEP := 0.035
 ## How far a refused ring dips toward the peg that refused it.
@@ -1022,19 +1026,20 @@ func _tap(i: int) -> void:
 			var k: int = _state.log.back().z
 			var stay := codes.slice(0, codes.size() - k)
 			_held_at = -100.0
-			_pops(k, ARC_TIME + THREAD_TIME * 0.6)
+			_pops(k, ARC_TIME + THREAD_TIME * 0.6, "drop", RUN_STEP)
 			fx.buzz(Haptics.TAP)
 			# The flight has to exist before note_move()'s check_solved() can
 			# fire solved -- _on_solved reads the flights for the landing
 			# moment its hop wave waits on.
 			_by_hand = true
-			_fly(codes.slice(codes.size() - k), from, i, slot, -1, _now(), true, turn)
+			var up := _held_yt(float(_station(from)["ground"]), RING_W)
+			_fly(codes.slice(codes.size() - k), from, i, slot, -1, _now(), true, turn, false, up, RUN_STEP)
 			_by_hand = false
 			if not stay.is_empty():
-				# From where they hung in the hand, under the rings that left.
-				var hand := _held_yt(float(_station(from)["ground"]), RING_W) + float(k) * PITCH * RING_W
-				_fly(stay, from, from, (_state.pegs[from] as Array).size() - stay.size(), -1, _now(), false,
-					turn, true, hand)
+				# From where they hung in the hand, under the rings that left,
+				# once the last of those is on its way.
+				_fly(stay, from, from, (_state.pegs[from] as Array).size() - stay.size(), -1,
+					_now() + float(k) * RUN_STEP, false, turn, true, up + float(k) * PITCH * RING_W)
 			note_move()
 			_on_dropped(i, onto)
 			_spend(1, _now() + (0.0 if Motion.reduce else ARC_TIME + THREAD_TIME))
@@ -1042,10 +1047,10 @@ func _tap(i: int) -> void:
 
 ## A run of `n` pops of `cue`, a ring a step, from `lead` seconds on: the
 ## sound rides the rings up or down the post.
-func _pops(n: int, lead: float, cue := "drop") -> void:
+func _pops(n: int, lead: float, cue := "drop", step := BUMP_STEP * 2.0) -> void:
 	var gen := _gen
 	for q in n:
-		var at := 0.0 if Motion.reduce else lead + float(q) * BUMP_STEP * 2.0
+		var at := 0.0 if Motion.reduce else lead + float(q) * step
 		_after(at, func() -> void:
 			if gen == _gen:
 				fx.cue(cue, randf_range(0.94, 1.06) * pow(2.0, float(q) / 12.0)))
@@ -1088,8 +1093,13 @@ func _spend(cost: int, land: float) -> void:
 ## `turn` is how far round the rings already are (a held run has been
 ## turning); the flight whirls them on to the next half turn but one, so they
 ## land with an emblem square to the front.
+##
+## `step` > 0 sends the rings one after another, that far apart, the top one
+## first (it lands lowest); only the last one settles. `from_yt` is where the
+## top ring starts when they leave the hand; a ring waiting its turn is drawn
+## where it waits (`_build_flight`).
 func _fly(codes: Array, from: int, to: int, slot: int, from_slot: int, at: float, settle: bool,
-		turn := 0.0, also := false, from_yt := INF) -> void:
+		turn := 0.0, also := false, from_yt := INF, step := 0.0) -> void:
 	if not also:
 		_land_flight(at)
 	if Motion.reduce:
@@ -1102,9 +1112,17 @@ func _fly(codes: Array, from: int, to: int, slot: int, from_slot: int, at: float
 	var turn_to := ceilf(turn / PI + 0.001) * PI
 	if from != to:
 		turn_to += PI
-	_flights.append({"codes": codes, "from": from, "to": to, "slot": slot, "from_slot": from_slot,
-		"at": at, "dur": dur, "settle": settle, "turn": turn, "turn_to": turn_to, "hand": _by_hand,
-		"from_yt": from_yt})
+	var n := codes.size()
+	if step <= 0.0 or n < 2 or from == to:
+		_flights.append({"codes": codes, "from": from, "to": to, "slot": slot, "from_slot": from_slot,
+			"at": at, "dur": dur, "settle": settle, "turn": turn, "turn_to": turn_to, "hand": _by_hand,
+			"from_yt": from_yt})
+		return
+	for q in n:
+		_flights.append({"codes": [codes[n - 1 - q]], "from": from, "to": to, "slot": slot + q,
+			"from_slot": from_slot + n - 1 - q if from_slot >= 0 else -1, "at": at + float(q) * step,
+			"dur": dur, "settle": settle and q == n - 1, "turn": turn, "turn_to": turn_to, "hand": _by_hand,
+			"from_yt": from_yt + float(q) * PITCH * RING_W if from_yt < INF else INF})
 
 ## Resolves every flight in the air right now, as if it had just landed at
 ## `at`. A no-op when nothing is flying.
@@ -1245,7 +1263,7 @@ func undo() -> bool:
 	_held_at = -100.0
 	var dst: Array = _state.pegs[m.x]
 	var slot := dst.size() - m.z
-	_fly(dst.slice(slot), m.y, m.x, slot, (_state.pegs[m.y] as Array).size(), _now(), false)
+	_fly(dst.slice(slot), m.y, m.x, slot, (_state.pegs[m.y] as Array).size(), _now(), false, 0.0, false, INF, RUN_STEP)
 	fx.cue("undo")
 	_say(tr("RG_TAKEN_BACK") + " " + _left_line(), Face.Expr.HAPPY)
 	_refresh()
@@ -1274,7 +1292,7 @@ func hint() -> bool:
 	_turn_over(m.x, RISE_TIME)
 	var dst: Array = _state.pegs[m.y]
 	var slot := dst.size() - m.z
-	_fly(dst.slice(slot), m.x, m.y, slot, (_state.pegs[m.x] as Array).size(), _now(), true)
+	_fly(dst.slice(slot), m.x, m.y, slot, (_state.pegs[m.x] as Array).size(), _now(), true, 0.0, false, INF, RUN_STEP)
 	check_solved()
 	_refresh()
 	moved.emit()
@@ -2209,6 +2227,8 @@ func _leg_pose(from: int, to: int, slot: int, from_slot: int, n: int, dur: float
 	var a := _station(from)
 	var d := _station(to)
 	var ya := _held_yt(float(a["ground"]), RING_W)
+	if from_slot < 0 and from_yt < INF:
+		ya = from_yt
 	var yd := _held_yt(float(d["ground"]), RING_W)
 	var y_land := _ring_yt(float(d["ground"]), RING_W, slot + n - 1)
 	if from == to:
@@ -2235,6 +2255,16 @@ func _leg_pose(from: int, to: int, slot: int, from_slot: int, n: int, dur: float
 
 func _build_flight(f: Dictionary, t: float) -> void:
 	var codes: Array = f["codes"]
+	if t < float(f["at"]):
+		# Waiting its turn: still in the hand, or still on its own post.
+		var st := _station(int(f["from"]))
+		var wait := float(f.get("from_yt", INF))
+		if int(f["from_slot"]) >= 0:
+			wait = _ring_yt(float(st["ground"]), RING_W, int(f["from_slot"]) + codes.size() - 1)
+		elif wait == INF:
+			wait = _held_yt(float(st["ground"]), RING_W)
+		_put_stack(float(st["cx"]), wait, codes, Vector2.ONE, 0.0, float(f.get("turn", 0.0)), float(st["top"]))
+		return
 	var p := _leg_pose(int(f["from"]), int(f["to"]), int(f["slot"]), int(f["from_slot"]), codes.size(),
 		float(f["dur"]), t - float(f["at"]), float(f.get("from_yt", INF)))
 	var peg: int = p["peg"]

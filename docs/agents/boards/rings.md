@@ -171,3 +171,10 @@ Built straight in Godot (no concept tab: the reference set the rules).
   home rather than staying in the hand; reveals kept through Undo and
   Reset; the slate-and-question-mark look; leaf and lemon as the new
   colours. Owed: a phone, the sound heard.
+- **One after another, the same evening** (the user: "when moving multiple
+  rings, they should go one after another to make it more cozy"): a drop,
+  an undo or a hint of several rings is a flight a ring, `RUN_STEP` 0.13 s
+  apart, the top ring first (it lands lowest); a ring waiting its turn hangs
+  where it was, and only the last one settles the peg. A drop's leftovers
+  thread home once the last mover has left; a put-back still goes down as
+  one stack. Each landing pops on the same step. ANGLE peak 87.
