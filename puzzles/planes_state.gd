@@ -94,11 +94,21 @@ const BANDS: Array[Dictionary] = [
 const SHAPE_BOX := Vector2i(30, 42)
 ## The themed picture sizes a shape is read from, the first the phone holds:
 ## the larger, the smoother the outline once scaled.
-const SHAPE_SIZES := [24, 32, 48, 12, 10]
+const SHAPE_SIZES := [24, 32, 48, 16, 12, 10]
 ## The fewest cells a shape may hold: Hard's whole board, so Insane is never
 ## the smaller sky. A thing too flat or thin to reach it in the box (a
 ## watermelon slice cuts 30 x 18) is passed over for one that does.
 const SHAPE_MIN := 21 * 30
+## The most of its own box a shape may fill: a scene drawn edge to edge cuts
+## a plain block, which is no shape at all.
+const SHAPE_FILL := 0.9
+
+## Whether a cut is a shape Insane may deal: big enough, and not a block.
+static func shape_fits(cut: Dictionary) -> bool:
+	if cut.is_empty():
+		return false
+	var n := (cut.cells as Dictionary).size()
+	return n >= SHAPE_MIN and float(n) <= SHAPE_FILL * float(int(cut.cols) * int(cut.rows))
 const WINDY_SMALL := {"cols": 10, "rows": 14, "min_len": 3, "max_len": 7, "weights": [4, 5, 5, 4, 3], "floor": 0.70,
 	"picks": 16, "noise": 0.3, "clouds": 8, "wind_w": 1.0, "maze": false}
 ## How many draws of the clouds a count of them gets before one fewer is
@@ -438,7 +448,7 @@ static func shape_for(rng: RandomNumberGenerator, daily_key := 0, bank_step := 0
 			var pic := ThemedPictures.picture(daily_key, size)
 			if not pic.is_empty():
 				var cut := cut_shape(pic.rows, SHAPE_BOX)
-				if not cut.is_empty() and (cut.cells as Dictionary).size() >= SHAPE_MIN:
+				if shape_fits(cut):
 					cut["id"] = String(pic.id)
 					return cut
 	var things := bank_shapes()
@@ -461,7 +471,7 @@ static func bank_shapes() -> Array:
 		for b in [0, 1]:
 			for pic in doc.bands[b]:
 				var cut := cut_shape(pic.rows, SHAPE_BOX)
-				if not cut.is_empty() and (cut.cells as Dictionary).size() >= SHAPE_MIN:
+				if shape_fits(cut):
 					cut["id"] = String(pic.id)
 					_bank_shapes.append(cut)
 	return _bank_shapes

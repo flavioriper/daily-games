@@ -363,6 +363,16 @@ and the tutorial's WIND page and Reset-only page follow `windy()`.
   to carve; every stored order replays.
 - `opengl3_angle`, 810x1440, `_shot_planes.gd d=3 rest`: 76 draw calls
   peak, cell 32 px in the 1080-wide board (Hard's ~45).
+- A cut that fills over `SHAPE_FILL` (0.9) of its box is a block, not a
+  shape (the old scene pictures at 24/32 cut a plain 30 x 30): passed
+  over; 26 bank things deal. The Mac's four themed-pixel days, cut
+  headless: 20261014 deals the 16's sunflower, 20261018 the 10's mug,
+  20261019 the 32's fruit basket, 20261015 (shell, crab, a scene) falls
+  back to the bank. A phone holding the day's document and one without it
+  deal different Insane boards, as Pixel Garden's do.
+- Two of twelve seeds came out at or under Hard's plane count (mushroom 69
+  against 76): the floor guarantees cells, not planes. `SHAPE_MIN` ~700
+  would keep about 18 bank things and put every seed over Hard.
 - The Windy Day engine, `WINDY_SMALL`, the miner and the windy tests stay;
   no band deals them. Removing them is the user's call.
 - Decided for the user, unconfirmed: the 30 x 42 box (smaller cells than
