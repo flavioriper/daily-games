@@ -133,6 +133,12 @@ others levels but make it way harder and bigger".
   open). Crosses are not read, so X's never cascade from line to line; a
   line its tiles cannot answer gets none. About 3 ms a move on a 15x15 on
   the Mac.
+  **The board's X's go again** (the user: "when user remove a move board
+  helper should also remove the blocked that is available now"):
+  `State.auto` holds the X's the board laid, each history entry remembers
+  whether a cell's old mark was the board's, and after every move an auto
+  X no line shuts out any more is lifted in the same entry. The player's
+  own X's are never lifted. Undo restores both.
 - **Insane is no longer Leaf Fall**: `State.setup` deals band 3 from
   `Gen.hardest` instead of the bank (`content/insane/nonogram.json` and
   `tools/insane/nonogram_ladder.gd` are left, unread). Shapes 15x15, 13x16,

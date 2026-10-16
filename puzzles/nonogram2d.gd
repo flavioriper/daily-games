@@ -2042,6 +2042,7 @@ func restore_completed_board() -> void:
 	_tip_timer.stop()
 	state.marks = {}
 	state.locked = {}
+	state.auto = {}
 	for y in state.h:
 		for x in state.w:
 			if int(state.bitmap[y][x]) == 1:
@@ -2363,6 +2364,7 @@ func _auto_pebbles(arrivals: Dictionary, ok_before: Dictionary, own_entry := fal
 		return
 	var cells: Array = []
 	var when: Dictionary = {}
+	var held: Dictionary = {}
 	# Where the move landed last, for lines it did not touch (an empty line
 	# reads right from the start, and gets its X's on the first move).
 	var last := Vector2i(-1, -1)
@@ -2378,6 +2380,8 @@ func _auto_pebbles(arrivals: Dictionary, ok_before: Dictionary, own_entry := fal
 		var y: int = k if k < state.h else -1
 		var x: int = -1 if k < state.h else k - state.h
 		var shut: Array = state.shut_in(y, x)
+		for cell in shut:
+			held[cell] = true
 		if shut.is_empty():
 			continue
 		var from := Vector2i(-1, -1)
@@ -2391,20 +2395,31 @@ func _auto_pebbles(arrivals: Dictionary, ok_before: Dictionary, own_entry := fal
 			from = last
 			at = last_at
 		for cell in shut:
-			if when.has(cell) or cell == skip:
+			if when.has(cell) or cell == skip or state.mark_at(cell) != State.BLANK:
 				continue
 			var d: int = absi(cell.x - from.x) + absi(cell.y - from.y)
 			when[cell] = at + Motion.POP_IN * 0.5 + (0.0 if Motion.reduce else d * AUTO_STEP)
 			cells.append({"cell": cell, "to": State.MARK})
-	if cells.is_empty():
+	# The board's own X's no line shuts out any more (the tile that pinned
+	# them was rubbed out) go again, as the move lands. The player's stay.
+	var lift: Array = []
+	for cell in state.auto:
+		if not held.has(cell) and state.mark_at(cell) == State.MARK:
+			lift.append({"cell": cell, "to": State.BLANK})
+	if cells.is_empty() and lift.is_empty():
 		return
-	var changed: Array = state.apply(cells) if own_entry else state.apply_more(cells)
+	var all: Array = cells + lift
+	var changed: Array = state.apply(all, true) if own_entry else state.apply_more(all, true)
 	var first := INF
 	for cell in changed:
+		if state.mark_at(cell) == State.BLANK:
+			_arrive.erase(cell)
+			_leave(cell, State.MARK, last_at)
+			continue
 		_arrive[cell] = {"at": float(when[cell]), "drop": false}
 		first = minf(first, float(when[cell]))
 		_busy_for(float(when[cell]) - _now() + Motion.POP_IN)
-	if not changed.is_empty():
+	if first < INF:
 		_after(first - _now(), fx.cue.bind("pebbles"))
 
 ## The lines reading right now, as a set of line indices (rows, then columns).

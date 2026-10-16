@@ -68,7 +68,11 @@ var target: int = 0
 ## Vector2i -> FILL or MARK. A blank cell is simply absent.
 var marks: Dictionary = {}
 var locked: Dictionary = {}      # Vector2i -> true, a tile a hint grouted in
-## One entry per stroke, newest last: [{"cell": Vector2i, "prev": int}].
+## Vector2i -> true, an X the board laid itself (`shut_in`), not the
+## player: it goes again when the tiles that shut its cell out go.
+var auto: Dictionary = {}
+## One entry per stroke, newest last: [{"cell": Vector2i, "prev": int,
+## "auto": bool}], `auto` being whether the cell's old mark was the board's.
 var history: Array = []
 
 func setup(rng: RandomNumberGenerator, difficulty: int, bank_step := 0) -> void:
@@ -103,6 +107,7 @@ func setup(rng: RandomNumberGenerator, difficulty: int, bank_step := 0) -> void:
 		gh = maxi(gh, (clue as Array).size())
 	marks = {}
 	locked = {}
+	auto = {}
 	history = []
 
 # --- reading the board ---
@@ -241,7 +246,7 @@ func share_glyphs() -> String:
 ## Puts `cells` -- [{"cell": Vector2i, "to": int}] -- on the floor as **one**
 ## entry in the history, which is what makes a painted run one undo. Returns
 ## the cells that actually changed, so the board can pop just those.
-func apply(cells: Array) -> Array:
+func apply(cells: Array, as_auto := false) -> Array:
 	var entry: Array = []
 	var changed: Array = []
 	for c in cells:
@@ -249,26 +254,30 @@ func apply(cells: Array) -> Array:
 		var to: int = int(c.to)
 		if mark_at(cell) == to:
 			continue
-		entry.append({"cell": cell, "prev": mark_at(cell)})
-		_put(cell, to)
+		entry.append({"cell": cell, "prev": mark_at(cell), "auto": auto.has(cell)})
+		_put(cell, to, as_auto)
 		changed.append(cell)
 	if entry.is_empty():
 		return changed
 	history.append(entry)
 	return changed
 
-func _put(cell: Vector2i, to: int) -> void:
+func _put(cell: Vector2i, to: int, as_auto := false) -> void:
 	if to == BLANK:
 		marks.erase(cell)
 	else:
 		marks[cell] = to
+	if as_auto and to == MARK:
+		auto[cell] = true
+	else:
+		auto.erase(cell)
 
 ## Adds `cells` -- [{"cell", "to"}] -- to the last stroke's entry, so one
 ## undo takes them back with it: the pebbles a finished line lays in its
 ## empty cells on Hard and Insane. Returns the cells that changed.
-func apply_more(cells: Array) -> Array:
+func apply_more(cells: Array, as_auto := false) -> Array:
 	if history.is_empty():
-		return apply(cells)
+		return apply(cells, as_auto)
 	var entry: Array = history[-1]
 	var changed: Array = []
 	for c in cells:
@@ -276,8 +285,8 @@ func apply_more(cells: Array) -> Array:
 		var to: int = int(c.to)
 		if mark_at(cell) == to or locked.has(cell):
 			continue
-		entry.append({"cell": cell, "prev": mark_at(cell)})
-		_put(cell, to)
+		entry.append({"cell": cell, "prev": mark_at(cell), "auto": auto.has(cell)})
+		_put(cell, to, as_auto)
 		changed.append(cell)
 	return changed
 
@@ -287,6 +296,7 @@ func apply_more(cells: Array) -> Array:
 func reveal(cell: Vector2i) -> void:
 	_forget(cell)
 	marks[cell] = MARK
+	auto.erase(cell)
 	locked[cell] = true
 
 ## Drops `cell` from every stroke in the history.
@@ -314,7 +324,8 @@ func blanks_in(y: int, x: int) -> Array:
 				out.append(Vector2i(x, i))
 	return out
 
-## The blank cells of row `y` (or column `x` when `y` is negative) that no
+## The blank cells (and the board's own X's) of row `y` (or column `x` when
+## `y` is negative) that no
 ## way of laying the line's runs over the player's own tiles can fill: the
 ## cell after a finished run at the edge, a whole line reading right, the
 ## far end of a line whose one run is pinned. Crosses are not read, so one
@@ -325,7 +336,13 @@ func shut_in(y: int, x: int) -> Array:
 	var tumble := row_tumbled(y) if y >= 0 else col_tumbled(x)
 	var line: Array = row_line(y) if y >= 0 else col_line(x)
 	if tumble:
-		return blanks_in(y, x) if Gen.reads(line, clue, true) else []
+		var open: Array = []
+		if Gen.reads(line, clue, true):
+			for i in (w if y >= 0 else h):
+				var c := Vector2i(i, y) if y >= 0 else Vector2i(x, i)
+				if mark_at(c) == BLANK or auto.has(c):
+					open.append(c)
+		return open
 	var known: Array = []
 	for v in line:
 		known.append(1 if int(v) == 1 else -1)
@@ -335,7 +352,7 @@ func shut_in(y: int, x: int) -> Array:
 		return out
 	for i in refined.size():
 		var cell := Vector2i(i, y) if y >= 0 else Vector2i(x, i)
-		if int(refined[i]) == 0 and mark_at(cell) == BLANK:
+		if int(refined[i]) == 0 and (mark_at(cell) == BLANK or auto.has(cell)):
 			out.append(cell)
 	return out
 
@@ -357,7 +374,7 @@ func undo() -> Array:
 	# Newest first, so a cell an entry touched twice ends as it began.
 	for i in range(entry.size() - 1, -1, -1):
 		var e: Dictionary = entry[i]
-		_put(e.cell, int(e.prev))
+		_put(e.cell, int(e.prev), bool(e.get("auto", false)))
 		if not touched.has(e.cell):
 			touched.append(e.cell)
 	return touched
@@ -379,6 +396,7 @@ func hint() -> Vector2i:
 		return target_cell
 	_forget(target_cell)
 	marks[target_cell] = FILL
+	auto.erase(target_cell)
 	locked[target_cell] = true
 	return target_cell
 
@@ -399,5 +417,6 @@ func reset() -> Array:
 	var cleared: Array = marks.keys()
 	marks = {}
 	locked = {}
+	auto = {}
 	history = []
 	return cleared

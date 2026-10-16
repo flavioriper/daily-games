@@ -173,7 +173,7 @@ static func _sign_up() -> bool:
 	var res := await _http("%s/accounts:signUp?key=%s" % [_host("identity"), API_KEY],
 		HTTPClient.METHOD_POST, ["Content-Type: application/json"],
 		JSON.stringify({"returnSecureToken": true}))
-	var d = JSON.parse_string(str(res.body))
+	var d = _json(str(res.body))
 	if not res.ok or typeof(d) != TYPE_DICTIONARY:
 		return false
 	_uid = str(d.get("localId", ""))
@@ -188,7 +188,7 @@ static func _refresh() -> bool:
 	var res := await _http("%s/token?key=%s" % [_host("securetoken"), API_KEY],
 		HTTPClient.METHOD_POST,
 		["Content-Type: application/x-www-form-urlencoded"], body)
-	var d = JSON.parse_string(str(res.body))
+	var d = _json(str(res.body))
 	if not res.ok or typeof(d) != TYPE_DICTIONARY:
 		# A rejected refresh token is dead; drop it so the next call signs up.
 		# One that got no answer (no network, a timeout) may be perfectly
@@ -256,7 +256,7 @@ static func config(name: String) -> Dictionary:
 	var cache := "%s/config-%s.json" % [CACHE_DIR, name]
 	var cached := {}
 	if FileAccess.file_exists(cache):
-		var d = JSON.parse_string(FileAccess.get_file_as_string(cache))
+		var d = _json(FileAccess.get_file_as_string(cache))
 		cached = d if typeof(d) == TYPE_DICTIONARY else {}
 	if not cached.is_empty():
 		@warning_ignore("return_value_discarded")
@@ -276,10 +276,10 @@ static func _fetch_config(name: String) -> Dictionary:
 		["Authorization: Bearer %s" % _id_token], "")
 	if not res.ok:
 		return {"ok": false, "data": {}, "error": str(res.error)}
-	var doc = JSON.parse_string(str(res.body))
+	var doc = _json(str(res.body))
 	var fields = doc.get("fields", {}) if typeof(doc) == TYPE_DICTIONARY else {}
 	var raw = fields.get("json", {}).get("stringValue", "") if typeof(fields) == TYPE_DICTIONARY else ""
-	var parsed = JSON.parse_string(str(raw))
+	var parsed = _json(str(raw))
 	if typeof(parsed) != TYPE_DICTIONARY:
 		return {"ok": false, "data": {}, "error": "bad payload"}
 	var cache := "%s/config-%s.json" % [CACHE_DIR, name]
@@ -320,12 +320,12 @@ static func _fetch(game: String, date_key: int, what: String) -> Dictionary:
 		HTTPClient.METHOD_GET, ["Authorization: Bearer %s" % _id_token], "")
 	if not res.ok:
 		return {"ok": false, "data": {}, "error": str(res.error)}
-	var doc = JSON.parse_string(str(res.body))
+	var doc = _json(str(res.body))
 	if typeof(doc) != TYPE_DICTIONARY:
 		return {"ok": false, "data": {}, "error": "bad document"}
 	var fields = doc.get("fields", {})
 	var raw = fields.get("json", {}).get("stringValue", "") if typeof(fields) == TYPE_DICTIONARY else ""
-	var parsed = JSON.parse_string(str(raw))
+	var parsed = _json(str(raw))
 	if typeof(parsed) != TYPE_DICTIONARY:
 		return {"ok": false, "data": {}, "error": "bad payload"}
 	_write_cache(game, date_key, what, parsed)
@@ -338,7 +338,7 @@ static func _read_cache(game: String, date_key: int, what: String) -> Dictionary
 	var path := _cache_file(game, date_key, what)
 	if not FileAccess.file_exists(path):
 		return {}
-	var d = JSON.parse_string(FileAccess.get_file_as_string(path))
+	var d = _json(FileAccess.get_file_as_string(path))
 	return d if typeof(d) == TYPE_DICTIONARY else {}
 
 static func _write_cache(game: String, date_key: int, what: String, data: Dictionary) -> void:
@@ -352,7 +352,7 @@ static func bundled(game: String) -> Dictionary:
 	var path := BUNDLED % game
 	if not FileAccess.file_exists(path):
 		return {}
-	var d = JSON.parse_string(FileAccess.get_file_as_string(path))
+	var d = _json(FileAccess.get_file_as_string(path))
 	return d if typeof(d) == TYPE_DICTIONARY else {}
 
 # --- the offline queue ---
@@ -360,7 +360,7 @@ static func bundled(game: String) -> Dictionary:
 static func _queue_read() -> Array:
 	if not FileAccess.file_exists(QUEUE_PATH):
 		return []
-	var d = JSON.parse_string(FileAccess.get_file_as_string(QUEUE_PATH))
+	var d = _json(FileAccess.get_file_as_string(QUEUE_PATH))
 	return d if typeof(d) == TYPE_ARRAY else []
 
 static func _queue_write(items: Array) -> void:
@@ -394,7 +394,7 @@ static func _flush_queue() -> Dictionary:
 			["Content-Type: application/json", "Authorization: Bearer %s" % _id_token],
 			JSON.stringify(item))
 		if res.ok:
-			var d = JSON.parse_string(str(res.body))
+			var d = _json(str(res.body))
 			last = {"ok": true, "data": d if typeof(d) == TYPE_DICTIONARY else {}, "error": ""}
 		elif int(res.code) >= 400 and int(res.code) < 500 and int(res.code) != 429:
 			# The server will never accept this one; dropping it beats
@@ -407,6 +407,14 @@ static func _flush_queue() -> Dictionary:
 	return last
 
 # --- one request ---
+
+## JSON.parse_string, but quiet on an empty text: a request that got no
+## answer (offline, a timeout) has an empty body, and the engine logs a
+## "Parse JSON failed" error for every one.
+static func _json(text: String) -> Variant:
+	if text.strip_edges().is_empty():
+		return null
+	return JSON.parse_string(text)
 
 static func _http(url: String, method: int, headers: PackedStringArray, body: String) -> Dictionary:
 	if not started():
