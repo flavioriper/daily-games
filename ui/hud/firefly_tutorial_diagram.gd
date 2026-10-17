@@ -197,7 +197,7 @@ class Garden extends "res://arcade/firefly_screen.gd":
 			super(seconds * 0.5, kinds, cols)
 
 	class Hush extends "res://ui/fx2d.gd":
-		func cue(cue_name: String, _pitch := 1.0, _volume_db := 0.0) -> void:
+		func cue(cue_name: String, _pitch := 1.0, _volume_db := 0.0, _gap := 0) -> void:
 			last_cue = cue_name
 
 		func _prefetch() -> void:
