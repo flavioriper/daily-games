@@ -162,6 +162,8 @@ export async function makeVista(day: number, theme: Theme, time: Time, morning: 
 export interface Vistas {
   v: 1;
   theme: string;
+  /** The theme's name, which the day card shows in place of the island's. */
+  name: {en: string; pt: string; es: string};
   /** A JPEG a time, base64. */
   times: Record<Time, string>;
 }

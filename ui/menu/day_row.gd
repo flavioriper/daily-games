@@ -130,10 +130,8 @@ var _day_n := 1
 func set_day(n: int, island: String) -> void:
 	_day_n = n
 	_day.text = tr("MENU_DAY") % n
-	_island.text = island
-	_island.visible = island != ""
 	_island_key = island
-	Vistas.set_day_vista(_vista, island, Pal.ACCENT)
+	_show_place()
 	if not is_in_group(ThemedVistas.GROUP):
 		add_to_group(ThemedVistas.GROUP)
 
@@ -141,9 +139,19 @@ var _island_key := ""
 
 ## The day's own vistas came in behind this card (world/main.gd).
 func vistas_arrived() -> void:
+	_show_place()
+
+## The island's name and vista, or on a themed day the theme's name over its
+## own afternoon (core/themed_vistas.gd).
+func _show_place() -> void:
+	var theme := ThemedVistas.title()
+	_island.text = theme if theme != "" else _island_key
+	_island.visible = _island.text != ""
 	Vistas.set_day_vista(_vista, _island_key, Pal.ACCENT)
 
 ## "Day %d" is formatted, so it cannot re-translate itself like the kicker.
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_TRANSLATION_CHANGED and _day != null:
 		_day.text = tr("MENU_DAY") % _day_n
+		if _island != null:
+			_show_place()

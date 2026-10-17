@@ -151,7 +151,7 @@ export async function publishVistas(db: Firestore, day: number): Promise<boolean
     if (typeof jpg !== "string" || jpg === "") return false;
     times[time] = jpg;
   }
-  const made: Vistas = {v: 1, theme: theme.id, times: times as Vistas["times"]};
+  const made: Vistas = {v: 1, theme: theme.id, name: theme.name, times: times as Vistas["times"]};
   try {
     await doc.create({json: JSON.stringify(made)});
   } catch (e) {

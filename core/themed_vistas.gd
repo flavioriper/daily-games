@@ -22,19 +22,33 @@ const GROUP := "themed_vistas"
 
 static var _day := 0
 static var _tex := {}
+static var _name := {}
 
 ## The vista of `time` for today, or null.
 static func texture(time: String) -> Texture2D:
 	var today := Daily.date_key()
 	if today != _day:
 		_day = today
-		_tex = _decoded(Backend.cached_day(GAME, today)) if Backend.started() else {}
+		_take(Backend.cached_day(GAME, today) if Backend.started() else {})
 	return _tex.get(time)
+
+## The day's theme by name in the player's language, "" with no vistas: the
+## day card shows it in place of the island's.
+static func title() -> String:
+	if texture(TIMES[0]) == null:
+		return ""
+	var lang := TranslationServer.get_locale().substr(0, 2)
+	return str(_name.get(lang, _name.get("en", ""))).strip_edges()
 
 ## The day's four from a document in hand, for a probe that runs offline.
 static func adopt(doc: Dictionary) -> void:
 	_day = Daily.date_key()
+	_take(doc)
+
+static func _take(doc: Dictionary) -> void:
 	_tex = _decoded(doc)
+	var names = doc.get("name")
+	_name = names if names is Dictionary and not _tex.is_empty() else {}
 
 ## Forgets what was decoded, for the document that just arrived.
 static func reload() -> void:

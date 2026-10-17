@@ -101,10 +101,8 @@ func _build() -> void:
 
 func set_day(n: int, island: String) -> void:
 	_day.text = tr("MENU_DAY") % n
-	_island.text = island
-	_island.visible = island != ""
 	_island_key = island
-	Vistas.set_day_vista(_vista, island, Pal.ACCENT)
+	_show_place()
 	if not is_in_group(ThemedVistas.GROUP):
 		add_to_group(ThemedVistas.GROUP)
 
@@ -112,6 +110,14 @@ var _island_key := ""
 
 ## The day's own vistas came in behind this card (world/main.gd).
 func vistas_arrived() -> void:
+	_show_place()
+
+## The island's name and vista, or on a themed day the theme's name over its
+## own afternoon (core/themed_vistas.gd).
+func _show_place() -> void:
+	var theme := ThemedVistas.title()
+	_island.text = theme if theme != "" else _island_key
+	_island.visible = _island.text != ""
 	Vistas.set_day_vista(_vista, _island_key, Pal.ACCENT)
 
 ## Today's boards solved, of the three that keep the streak.

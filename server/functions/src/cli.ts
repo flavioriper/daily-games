@@ -203,7 +203,7 @@ async function main(): Promise<void> {
       }
       day.vistaTries = tries;
       if (Object.keys(times).length === VISTA_TIMES.length) {
-        day.vistas = {v: 1, theme: day.theme.id, times} as Vistas;
+        day.vistas = {v: 1, theme: day.theme.id, name: day.theme.name, times} as Vistas;
       } else {
         delete day.vistas;
       }
