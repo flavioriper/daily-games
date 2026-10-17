@@ -4131,3 +4131,41 @@ runs while shut); the card sits after Tally on the tab's second page.
   out (`owned` is saved apart from the rank).
 - **Not done**: a phone; the sounds heard; pt and es read by a speaker;
   `reduce` shot; es shot; offline progress (a call).
+
+### Start over on every Arcade game (2026-10-17)
+
+The user: "all arcade games must have a button to reset all progress". Every
+card of the Arcade list that opens a screen (the fifteen games and the
+Factory) shows Start over on its settings sheet, as Nightlight has since
+2026-10-06. It is wired once, in `ui/menu.gd`'s `_ask_start_over`, not in
+each screen: the menu sets `settings_sheet.with_reset` and `reset_asks` (the
+game's name) as it opens the screen.
+
+- **It asks over the sheet** (`ui/hud/start_over_sheet.gd`, opened by the
+  settings sheet as Credits is), so every game stays paused behind it the way
+  it does for the sheet. It names the game, says the gold stays and that
+  nothing comes back; Keep lands back on the settings sheet.
+- **The yes closes, wipes and reopens** (`_start_over`): the screen is freed
+  at once (so whatever it saves on its way out lands before the wipe), then
+  `ArcadeRecord.wipe(game)` erases the game's section of `user://arcade.cfg`
+  (best, plays, best stage, the boosted leaf, Peapod's pick, Eddy's bank and
+  upgrade levels), a kept game's own file goes (Furrow, Griddle, Tally,
+  Bagatelle: their `Sim.path`), and the game opens again as on its first
+  visit. Rebuilding the screen rather than resetting it in place means no
+  screen's state can be missed.
+- **Factory** goes through its owner: `factory_tab.start_over()` makes a new
+  land and saves it over the old file before the screen borrows it again
+  (the tab would otherwise write the old land back on its next save).
+- **Nightlight keeps its own card** (`NL_RESET_*`), which starts the star
+  over in place; `reset_asks` stays empty there.
+- **Marigold has none**: it is a daily board on this tab, whose progress is
+  the day's done marks in `core/progress.gd`, not a kept game.
+- Gold, boosters and the tutorial's seen mark are not touched. One analytics
+  event, `arcade_reset` with `{game}`.
+
+Proved by `tests/_probe_start_over.gd` (Firefly, Bagatelle, Factory through
+the menu: asked first, Keep keeps, the yes reopens it empty, and back on the
+list Firefly's card says No score yet; the Mac's own arcade.cfg put back):
+0 failed, and 0 failed again with `-- reduce` (the sheets close at once, so
+only `CONNECT_DEFERRED` keeps the free out of the press). Suite 248522 passed, 0 failed. Unseen on a
+screen and on the phone.

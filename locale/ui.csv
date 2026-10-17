@@ -1080,6 +1080,10 @@ NL_RESET_TITLE,Start over?,Recomeçar do zero?,¿Empezar de cero?
 NL_RESET_BODY,"A new star of one Sun takes this one's place. Its light, everything bought in the shop, its powers, the stardust and the perks are gone for good.","Uma estrela nova, de uma massa solar, fica no lugar desta. A luz, tudo o que foi comprado na loja, os poderes, a poeira estelar e as vantagens se perdem de vez.","Una estrella nueva, de una masa solar, ocupa el lugar de esta. La luz, todo lo comprado en la tienda, los poderes, el polvo estelar y las ventajas se pierden para siempre."
 NL_RESET_NO,Keep my star,Manter minha estrela,Conservar mi estrella
 NL_RESET_YES,Start over,Recomeçar,Empezar de cero
+ARC_RESET_TITLE,Start over?,Recomeçar do zero?,¿Empezar de cero?
+ARC_RESET_BODY,"All progress in %s goes back to nothing: its best score, its coins, its upgrades and every level reached. Your gold stays. This cannot be undone.","Todo o progresso em %s volta a zero: o recorde, as moedas, as melhorias e cada nível alcançado. Seu ouro fica. Não dá para desfazer.","Todo el progreso en %s vuelve a cero: el récord, las monedas, las mejoras y cada nivel alcanzado. Tu oro se queda. No se puede deshacer."
+ARC_RESET_NO,Keep my progress,Manter meu progresso,Conservar mi progreso
+ARC_RESET_YES,Start over,Recomeçar,Empezar de cero
 NL_PERK_CORE,Dense core,Núcleo denso,Núcleo denso
 NL_PERK_CORE_FX,gravity +15%,gravidade +15%,gravedad +15%
 NL_PERK_DISC,Bright disc,Disco brilhante,Disco brillante

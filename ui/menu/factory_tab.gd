@@ -108,6 +108,18 @@ func returned() -> void:
 	refresh()
 	_wake()
 
+## Start over (ui/menu.gd's `_start_over`): a new land in place of the
+## one held, kept at once so the file never holds the old one again. The
+## card's drawing (`_world`, mounted in `_card`) still stands on the old
+## land: this tab is never shown since 2026-10-13, so it is left as it is.
+func start_over() -> void:
+	sim = Sim.new(randi())
+	sim.save()
+	sim.events.clear()
+	_life.stale()
+	_fitted_for = -1
+	refresh()
+
 ## Called as the tab is shown: the land as it stands now.
 func refresh() -> void:
 	if sim == null:

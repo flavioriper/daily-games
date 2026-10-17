@@ -61,6 +61,14 @@ static func keep(game: String, values: Dictionary) -> void:
 		cfg.set_value(game, key, int(values[key]))
 	cfg.save(PATH)
 
+## Everything kept for `game` gone: its best, its plays, its pick and what
+## it keeps between runs (Start over, ui/hud/start_over_sheet.gd).
+static func wipe(game: String) -> void:
+	var cfg := _load()
+	if cfg.has_section(game):
+		cfg.erase_section(game)
+		cfg.save(PATH)
+
 ## A score as the player's language groups it: 12,340 or 12.340.
 static func grouped(n: int) -> String:
 	return Locale.number(n)

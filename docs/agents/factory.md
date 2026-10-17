@@ -1642,3 +1642,11 @@ table and every beat).
     energy while nothing in the valley spends wood; a player who skips
     Fortune reaches Pine two days sooner than the grove did before the
     tree.
+
+### Start over (2026-10-17)
+
+The settings sheet's Start over puts the land back to nothing (the user: "all
+arcade games must have a button to reset all progress"); the whole story is in
+`docs/agents/arcade.md`, "Start over on every Arcade game". The land is the
+tab's, so the new one is made there (`factory_tab.start_over()`, saved at
+once) and the screen reopens on it.

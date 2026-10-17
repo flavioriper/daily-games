@@ -76,6 +76,11 @@ const PeapodScreen = preload("res://arcade/peapod_screen.gd")
 const PosyScreen = preload("res://arcade/posy_screen.gd")
 const NightlightScreen = preload("res://arcade/nightlight_screen.gd")
 const FactoryTab = preload("res://ui/menu/factory_tab.gd")
+const ArcadeRecord = preload("res://arcade/arcade_record.gd")
+const FurrowSim = preload("res://arcade/furrow_sim.gd")
+const GriddleSim = preload("res://arcade/griddle_sim.gd")
+const TallySim = preload("res://arcade/tally_sim.gd")
+const BagatelleSim = preload("res://arcade/bagatelle_sim.gd")
 const FactoryScreen = preload("res://factory/screen.gd")
 const Streak = preload("res://core/streak.gd")
 const FriendsSheet = preload("res://ui/menu/friends_sheet.gd")
@@ -1669,9 +1674,51 @@ func _open_arcade(game: String) -> void:
 		elif not _switching:
 			_show_list("arcade"))
 	add_child(screen)
+	_ask_start_over(screen, game)
 	_raise_card()
 	screen.tutor.first_play()
 	_list_root.visible = false
+
+## Every Arcade game can be put back to nothing from its settings sheet (the
+## user, 2026-10-17: "all arcade games must have a button to reset all
+## progress"). The sheet asks first (ui/hud/start_over_sheet.gd); on its yes
+## the screen goes, keeping what it keeps as it leaves, then what it kept is
+## wiped and the game opens again as on its first visit. Nightlight asks
+## and starts its star over itself, as it did first (2026-10-06).
+func _ask_start_over(screen: Control, game: String) -> void:
+	if game == "nightlight":
+		return
+	var sheet: Control = screen.settings_sheet
+	sheet.with_reset = true
+	sheet.reset_asks = ArcadeTab.NAMES[game]
+	sheet.start_over.connect(_start_over.bind(screen, game), CONNECT_DEFERRED | CONNECT_ONE_SHOT)
+
+func _start_over(screen: Control, game: String) -> void:
+	if not is_instance_valid(screen):
+		return
+	Analytics.track("arcade_reset", {"game": game})
+	# freed here, not queued: its last save lands before the wipe below
+	remove_child(screen)
+	screen.free()
+	ArcadeRecord.wipe(game)
+	if game == "factory":
+		factory_tab.returned()
+		factory_tab.start_over()
+		_open_factory(game)
+		return
+	var kept := ""
+	match game:
+		"furrow":
+			kept = FurrowSim.path
+		"griddle":
+			kept = GriddleSim.path
+		"tally":
+			kept = TallySim.path
+		"bagatelle":
+			kept = BagatelleSim.path
+	if not kept.is_empty() and FileAccess.file_exists(kept):
+		DirAccess.remove_absolute(kept)
+	_open_arcade(game)
 
 ## Factory, a card of the Arcade list (a tab of its own until 2026-10-13):
 ## its own screen over the list, and back to Arcade when it closes. The
@@ -1689,6 +1736,7 @@ func _open_factory(_game: String) -> void:
 		if not _switching:
 			_show_list("arcade"))
 	add_child(screen)
+	_ask_start_over(screen, "factory")
 	_raise_card()
 	screen.tutor.first_play()
 	_list_root.visible = false

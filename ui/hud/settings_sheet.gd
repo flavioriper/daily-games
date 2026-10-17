@@ -19,6 +19,7 @@ const Icons = preload("res://ui/icons.gd")
 const Sound = preload("res://core/sound.gd")
 const Haptics = preload("res://core/haptics.gd")
 const CreditsSheet = preload("res://ui/hud/credits_sheet.gd")
+const StartOverSheet = preload("res://ui/hud/start_over_sheet.gd")
 const Analytics = preload("res://core/analytics.gd")
 
 ## The language dropdown's rows, and the chevron and check drawn on them.
@@ -63,6 +64,12 @@ var with_reset := false:
 		with_reset = on
 		if _buttons != null:
 			_pack_buttons()
+## The game Start over names when it asks first, over this sheet
+## (ui/hud/start_over_sheet.gd); `start_over` then comes only on its yes. An
+## Arcade game the menu reopens from nothing (ui/menu.gd) sets it; Nightlight
+## asks with a card of its own and leaves it empty.
+var reset_asks := ""
+var start_over_sheet: Control
 var toggle: CheckButton
 var sound_toggle: CheckButton
 var haptics_toggle: CheckButton
@@ -113,7 +120,11 @@ func _build_sheet(col: VBoxContainer) -> void:
 		close_then(new_puzzle.emit))
 	reset_button = _small_button("reset", "SETTINGS_START_OVER", Pal.SURFACE)
 	reset_button.pressed.connect(func() -> void:
-		close_then(start_over.emit))
+		if reset_asks.is_empty():
+			close_then(start_over.emit)
+		else:
+			start_over_sheet.game_title = reset_asks
+			start_over_sheet.open())
 	ads_button = _small_button("no_ads", "ADS_TAB", ADS_TINT)
 	ads_button.pressed.connect(func() -> void: close_then(remove_ads.emit))
 	privacy_button = _small_button("eye", "SETTINGS_PRIVACY", Pal.SURFACE)
@@ -205,8 +216,14 @@ func _ready() -> void:
 	credits_sheet = CreditsSheet.new()
 	credits_sheet.name = "CreditsSheet"
 	add_child(credits_sheet)
+	start_over_sheet = StartOverSheet.new()
+	start_over_sheet.name = "StartOverSheet"
+	start_over_sheet.confirmed.connect(func() -> void: close_then(start_over.emit))
+	add_child(start_over_sheet)
 
 func _on_open() -> void:
+	# Android's back shuts this sheet with the question still up over it.
+	start_over_sheet.visible = false
 	_set_switch(toggle, Motion.reduce)
 	_set_switch(sound_toggle, Sound.on)
 	_set_switch(haptics_toggle, Haptics.on)
