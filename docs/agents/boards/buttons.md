@@ -883,3 +883,18 @@ draws no hop (the button hangs over it). `_probe_buttons_board.gd` caught
 it before the fix (five days stuck, a pick held, not run for c53bcbe6) and
 finishes every day after; its two `zoom` failures on band 2 are there with
 and without the fix.
+
+## A pale socket on a dark patch (2026-10-17)
+
+- **The user**: "since the empty slot is dark, when there is empty slot on
+  darker backgrounds colors, it's impossible to see". The socket's ring was
+  the patch colour darkened 0.34 (owed since 2026-10-14 as "faint" on
+  `dark`). Under `SOCKET_DARK` (0.42 luminance: dark 0.21, navy 0.30,
+  maroon 0.32, brown, forest and purple 0.40) the ring is the colour
+  lightened 0.34 and the floor darkened 0.22, a pale lip round a sunk
+  floor; every other colour is as it was. Still a shape, not a state told
+  by a shade alone. `Art.socket` is shared, so the menu card's swatch
+  follows.
+- **Checked**: a throwaway sheet of every bead colour's bare patch at 40
+  and 60 px, windowed: the ring reads on all six dark ones. Not seen in a
+  game with a bare dark patch, nor on a phone.

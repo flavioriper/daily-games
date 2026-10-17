@@ -53,6 +53,9 @@ const HOLE_AT := 0.085
 const RISE := 0.03
 ## The socket's outer radius, and the shadow a loose button throws.
 const SOCKET := 0.235
+## Under this luminance a patch's socket is ringed pale, not dark: dark,
+## navy, maroon, brown, forest and purple.
+const SOCKET_DARK := 0.42
 const SHADOW_R := 0.41
 const SHADOW_DOWN := 0.06
 ## The facets' light: the top one lifted, the sides a little, the bottom
@@ -118,8 +121,14 @@ static func socket(b, at: Vector2, cell: float, col: Color, sides: int) -> void:
 	var r := cell * SOCKET
 	var rim := maxf(2.0, cell * 0.06)
 	var tip := cell * TIP * 0.5
-	_raw(b, tile(at, r, tip, sides > 12), col.darkened(0.34))
-	_raw(b, tile(at + Vector2(0.0, cell * 0.018), r - rim, maxf(1.0, tip - rim * 0.5), sides > 12), col.darkened(0.1))
+	# on a dark patch a darker ring is lost (the user, 2026-10-17: "on
+	# darker backgrounds colors, it's impossible to see"): its rim is lit
+	# instead, a pale lip round a sunk floor
+	var dark := col.get_luminance() < SOCKET_DARK
+	var edge := col.lightened(0.34) if dark else col.darkened(0.34)
+	var floor_ := col.darkened(0.22) if dark else col.darkened(0.1)
+	_raw(b, tile(at, r, tip, sides > 12), edge)
+	_raw(b, tile(at + Vector2(0.0, cell * 0.018), r - rim, maxf(1.0, tip - rim * 0.5), sides > 12), floor_)
 
 ## A button sewn on: it has gone into the cloth, and its square is the
 ## colour whole, a hair over the cell so that neighbours leave no seam.
