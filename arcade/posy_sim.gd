@@ -2,7 +2,7 @@ extends RefCounted
 
 ## Posy as pure data (spec docs/superpowers/specs/2026-09-27-arcade-posy-design.md):
 ## a garden bed eight by eight of flowers, leaves, drops, mushrooms, berries
-## (and acorns from day five). Swap two neighbours to line up three or more
+## (and acorns from day twenty-two). Swap two neighbours to line up three or more
 ## of a kind and they are picked; four in a line leave a breeze that sweeps
 ## a row or a column, an L or a T a seed bomb that goes off twice, five in a
 ## line a rainbow posy that picks every one of a kind. Each day asks for so
@@ -12,10 +12,11 @@ extends RefCounted
 ##
 ## Four in a square leave a bee, which picks the four tiles round it and
 ## flies off to the tile that does the day most good. A special can also be
-## tapped to set it off, for a move. From day three the bed grows weeds under
-## its tiles, stones and creeping moss among them, and from day four its
-## shape changes; a day can ask for them cleared. Out of moves short of the
-## goals, once a game the player is offered five more (`keep_going()`).
+## tapped to set it off, for a move. From day four the bed grows weeds under
+## its tiles, later stones and creeping moss among them, and from day seven
+## its shape changes (`FROM`); a day can ask for them cleared. Out of moves
+## short of the goals, once a game the player is offered five more
+## (`keep_going()`).
 ##
 ## The screen (arcade/posy_screen.gd) calls `swap()`, `fire()` and `use()` and drains
 ## `events`; a move resolves at once, every cascade step an event of its
@@ -157,29 +158,58 @@ func _new_tile(k: int, sp := Sp.NONE) -> Dictionary:
 
 # --- days ---
 
-## How a day is set: kinds in the bed, goals and moves. Day one asks for two
-## kinds, every day after for three; the counts climb and the moves do not,
-## and a sixth kind comes into the bed on day five.
-## From day three one obstacle comes in, weeds, stones and moss in turn, and
-## takes one of the three goals; from day four every other day's bed has a
-## shape cut out of it.
+## The day each thing first comes into the game, three days apart so a
+## player meets one at a time: a third goal, weeds, shaped beds, stones, moss,
+## weeds two layers deep, stones that take two knocks, and last the sixth kind.
+const FROM := {"third": 3, "weeds": 4, "shape": 7, "stones": 10, "moss": 13,
+	"thick": 16, "hard": 19, "acorn": 22}
+
+## How a day is set: kinds in the bed, goals and moves. Day one and two ask
+## for two kinds, every day after for three; the counts and the moves climb
+## together, slowly, so the days grow harder by what comes in (`FROM`) more
+## than by how much they ask. The day an obstacle comes in it is the day's,
+## and asks a fifth less of the rest (the sixth kind's day too); after that the ones in the game take
+## turns, every third day is a day without, and odd days from `FROM.shape`
+## have a shape cut out of the bed.
 static func day_plan(d: int) -> Dictionary:
-	var n := 2 if d == 1 else 3
-	var need := mini(12 + 4 * (d - 1), 60)
-	var mv := 20 if d < 5 else 24
+	var n := 2 if d < FROM.third else 3
+	var need := mini(12 + (3 * (d - 1)) / 2, 60)
+	var mv := mini(20 + (d - 1) / 2, 34)
 	var obstacle := ""
+	var fresh := false
+	for o: String in ["weeds", "stones", "moss"]:
+		if d == FROM[o]:
+			obstacle = o
+			fresh = true
+	if obstacle == "" and d % 3 != 0:
+		var open: Array = []
+		for o: String in ["weeds", "stones", "moss"]:
+			if d >= FROM[o]:
+				open.append(o)
+		if not open.is_empty():
+			# counted over the days that have one, so each takes its turn
+			obstacle = open[(d - d / 3) % open.size()]
 	var amount := 0
-	if d >= 3:
-		obstacle = ["weeds", "stones", "moss"][(d - 3) % 3]
-		match obstacle:
-			"weeds":
-				amount = mini(10 + 2 * (d - 3), 24)
-			"stones":
-				amount = mini(6 + (d - 4) / 3, 12)
-			"moss":
-				amount = mini(3 + (d - 5) / 3, 6)
-	return {"kinds": 5 if d < 5 else 6, "goals": n, "need": need, "moves": mv,
-		"obstacle": obstacle, "amount": amount, "shape": d >= 4 and d % 2 == 0}
+	match obstacle:
+		"weeds":
+			amount = mini(8 + (d - FROM.weeds) / 2, 24)
+		"stones":
+			amount = mini(5 + (d - FROM.stones) / 3, 12)
+		"moss":
+			amount = mini(3 + (d - FROM.moss) / 4, 6)
+	# the sixth kind makes lines rarer: its day is a fresh one, and the days
+	# after ask less in more moves
+	if d == FROM.acorn:
+		fresh = true
+	if d >= FROM.acorn:
+		need -= 8
+		mv += 4
+	if fresh:
+		need = need * 4 / 5
+	return {"kinds": 5 if d < FROM.acorn else 6, "goals": n, "need": need, "moves": mv,
+		"obstacle": obstacle, "amount": amount, "fresh": fresh,
+		"shape": d >= FROM.shape and d % 2 == 1 and not fresh,
+		"thick": d >= FROM.thick, "hard": d >= FROM.hard}
 
 func _start_day() -> void:
 	var plan := day_plan(day)
@@ -239,7 +269,7 @@ func _lay_bed(plan: Dictionary) -> void:
 					if live(p + d) and not patch.has(p + d):
 						frontier.append(p + d)
 			for p: Vector2i in patch:
-				weed[p.x][p.y] = 2 if day >= 6 and rng.randf() < 0.4 else 1
+				weed[p.x][p.y] = 2 if bool(plan.thick) and rng.randf() < 0.4 else 1
 		"stones":
 			# in the lower half, where they sit in the way of the fall
 			var n := 0
@@ -249,7 +279,7 @@ func _lay_bed(plan: Dictionary) -> void:
 				if p.y < 3:
 					continue
 				block[p.x][p.y] = Block.STONE
-				hp[p.x][p.y] = 2 if day >= 7 and rng.randf() < 0.5 else 1
+				hp[p.x][p.y] = 2 if bool(plan.hard) and rng.randf() < 0.5 else 1
 				n += 1
 		"moss":
 			var n := 0

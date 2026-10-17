@@ -4169,3 +4169,38 @@ list Firefly's card says No score yet; the Mac's own arcade.cfg put back):
 0 failed, and 0 failed again with `-- reduce` (the sheets close at once, so
 only `CONNECT_DEFERRED` keeps the free out of the press). Suite 248522 passed, 0 failed. Unseen on a
 screen and on the phone.
+
+### Posy's slower days (2026-10-17)
+
+The user: "arcade games are too hard, for example the posy game skilled
+players lose at day 6, it should have a way more slow progression, to spread
+hardness as the days goes with new mechanics". The old curve asked four more
+of each kind every day on flat moves (20, 24 from day five) and brought in
+everything by day seven: the third goal (2), weeds (3), shaped beds (4), the
+sixth kind (5), two-layer weeds (6), two-knock stones (7). The count, not
+the mechanics, was the wall: about 1.2 tiles a move on day one, 3.5 on day
+six.
+
+- **`Sim.FROM` holds the day each thing first comes in**, three days apart:
+  third goal 3, weeds 4, shaped beds 7, stones 10, moss 13, two-layer weeds
+  16, two-knock stones 19, the acorn (sixth kind) 22. `_lay_bed` reads the
+  plan's `thick` and `hard` instead of its own day thresholds, and the
+  tutorial's days and `tests/_shot_posy.gd`'s obstacle days come from it.
+- **Counts and moves climb together**: need `12 + 1.5 (d - 1)` to 60, moves
+  `20 + (d - 1) / 2` to 34. The day an obstacle comes in it is the day's and
+  the kinds ask a fifth less (`fresh` in the plan); the acorn's day is fresh
+  too, and from it the kinds ask 8 less in 4 more moves.
+- **Every third day has no obstacle**; the others take turns among the ones
+  in the game, counted over the days that have one (a plain `d % n` put
+  weeds on the rest days for ever once three were in). Odd days from 7 have
+  a shape, but not on a fresh day.
+- `TUT_POSY_BLOCKERS_BODY` no longer says "a kind a day" (en/pt/es).
+- `tests/_probe_posy.gd -- 100 <skill> 1 <games>`, before -> after:
+  random 4-5 (old spec) -> 5-23, median ~11; the hint-follower 3-8, median
+  6 (the user's skilled player) -> 8-27, median ~19; the one-move-lookahead
+  bot 6-11 -> 25-57 (12 games). Suite 248522 passed 0 failed; the harness
+  runs to its end headless (no pictures without a window).
+- A saved best day from before means less than one after; not migrated.
+- **Open**: nothing new comes in after day 22, and the lookahead bot plays
+  into the 50s. New things for the late days (two obstacles at once, a new
+  blocker) are new rules: a concept page first.

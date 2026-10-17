@@ -245,11 +245,11 @@ func _process(delta: float) -> bool:
 				_at = _t
 				_step = 20
 		20:
-			if not _s.busy() and _t > _at + 0.5 and _s.sim.day < 3:
+			if not _s.busy() and _t > _at + 0.5 and _s.sim.day < Sim.FROM.weeds:
 				_finish_day()
 				_at = _t
 			elif not _s.busy() and _t > _at + 0.5:
-				_shot("14_day3_weeds")
+				_shot("14_weeds_day")
 				# a square of four waiting on one swap, where the bed has room
 				var o := Vector2i(2, 5)
 				for r in range(Sim.ROWS - 2, -1, -1):
@@ -295,11 +295,11 @@ func _process(delta: float) -> bool:
 				_at = _t
 				_step = 25
 		25:
-			if not _s.busy() and _t > _at + 0.5 and _s.sim.day < 4:
+			if not _s.busy() and _t > _at + 0.5 and _s.sim.day < Sim.FROM.stones:
 				_finish_day()
 				_at = _t
 			elif not _s.busy() and _t > _at + 0.5:
-				_shot("17_day4_stones")
+				_shot("17_stones_day")
 				_at = _t
 				_step = 26
 		26:
@@ -310,11 +310,11 @@ func _process(delta: float) -> bool:
 				_at = _t
 				_step = 27
 		27:
-			if not _s.busy() and _t > _at + 0.5 and _s.sim.day < 5:
+			if not _s.busy() and _t > _at + 0.5 and _s.sim.day < Sim.FROM.moss:
 				_finish_day()
 				_at = _t
 			elif not _s.busy() and _t > _at + 0.5:
-				_shot("19_day5_moss")
+				_shot("19_moss_day")
 				_at = _t
 				_step = 28
 		28:
@@ -363,7 +363,7 @@ func _process(delta: float) -> bool:
 			if _t > _at + 0.5:
 				_restore()
 				return true
-	if _t > 150.0:
+	if _t > 240.0:
 		print("timed out at step ", _step)
 		_restore()
 		return true
