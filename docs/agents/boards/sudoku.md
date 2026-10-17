@@ -189,3 +189,11 @@ digits. The tray's wood is on the host's margin: a cell is 107.5 on the
   6 x 6 out and the 9 x 9 in, both right mid-slide.
 - Decided for the user, unconfirmed: no Check; the larger cells. Owed: a
   phone.
+
+## 2026-10-17: a bigger, bolder pad
+
+The user, of the six-digit pad: "make sudoku keyboard bit bigger, numbers are
+too thin on keyboard". `ui/flat/digit_pad.gd`: `CHIP_H` 88 -> 104 (the pad
+32 taller; the host measures its slot off `HEIGHT`), `FONT_SIZE` 56 -> 66,
+and the digits at Fredoka 700 (the face's heaviest, key_board.gd's weight)
+instead of 600. `_shot_sudoku.gd rest` on Easy and Hard: draw calls peak 77.

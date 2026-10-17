@@ -43,7 +43,7 @@ const KeyBoard = preload("res://ui/flat/key_board.gd")
 
 ## The narrowest the pad asks for; it fills whatever it is given.
 const MIN_WIDTH := 600.0
-const CHIP_H := 88.0
+const CHIP_H := 104.0
 const GAP := 10.0
 const LIFT := 10.0
 ## The pad's height: two rows of chips and the gap between them, the room a
@@ -53,7 +53,7 @@ const HEIGHT := CHIP_H * 2.0 + GAP + LIFT + 20.0
 const REMOVE := 9
 const COUNT := 10
 const RADIUS := 20
-const FONT_SIZE := 56
+const FONT_SIZE := 66
 ## How far a spent chip fades. Not hidden: a gap in the row would move every
 ## chip after it, and a row that moves under a thumb is worse than a pale one.
 const SPENT_ALPHA := 0.35
@@ -93,7 +93,7 @@ func _make_inner() -> Container:
 	return box
 
 func _build() -> void:
-	_font = CozyTheme.display(600)
+	_font = CozyTheme.display(700)
 	_paint = Control.new()
 	_paint.name = "Paint"
 	_paint.mouse_filter = Control.MOUSE_FILTER_IGNORE
