@@ -1,14 +1,13 @@
 extends Control
 
-## Quilt's world: the sewing table, seen from above, edge to edge under the
-## board and the host's rows (CLAUDE.md: a game's world fills the screen).
-## Pale birch boards with the window's light lying across the top of them,
-## behind the wordmark; three spools and a thimble stood in the gap of the
-## tools row; and along the foot, under the rack, the things a quilt is made
-## with: a tape measure run out from the left, loose buttons, the menu
-## card's needle with its thread, a spool that rolled, and a pincushion in
-## the right corner. Under the quilt and its rack there is only the wood's
-## faint grain.
+## Quilt's world: the builder's table, seen from above, edge to edge under
+## the board and the host's rows (CLAUDE.md: a game's world fills the
+## screen). Pale birch boards with the window's light lying across the top
+## of them, behind the wordmark; a few small bricks stood in the gap of the
+## tools row; and along the foot, under the rack, loose bricks left out of
+## the tray, turned every which way. Under the quilt and its rack there is
+## only the wood's faint grain. (Until 2026-10-17 it was a sewing table:
+## spools, a thimble, a tape, a needle and a pincushion.)
 ##
 ## The top is light because of what lies over it: the wordmark, the motto
 ## and the win's "Well done!" are ink with no scrim.
@@ -23,7 +22,7 @@ const Motion = preload("res://core/motion.gd")
 const Face = preload("res://ui/faces/face.gd")
 const CardFace = preload("res://ui/menu/cards/card_face.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
-const Cloth = preload("res://ui/faces/patch_cloth.gd")
+const Cloth = preload("res://ui/faces/brick_piece.gd")
 
 ## The screen the picture was drawn on; everything scales with the width.
 const W := 1080.0
@@ -48,29 +47,27 @@ const PANES := [
 ]
 const LIGHT_LEAN := 0.55
 const LIGHT_ALPHA := 0.34
-## The spools in the gap of the tools row: [x, y as shares, radius at W,
-## cloth index], seen from above, and the thimble after them.
-const SPOOLS := [[0.385, 0.2335, 24.0, 2], [0.455, 0.2365, 21.0, 1], [0.522, 0.2330, 23.0, 3]]
-const THIMBLE := [0.600, 0.2360, 15.0]
-## The foot, under the rack; its heights are shares of a 1080 x 1920 screen
-## measured up from the bottom edge (`_foot`), so a taller screen keeps them
-## under the rack. The tape runs out from the left edge.
-const TAPE := Color("f3cf73")
-const TAPE_DEEP := Color("d9ad4c")
-const TAPE_Y := 0.9685
-const TAPE_TO := 0.36
-const TAPE_W := 34.0
-## Loose buttons: [x, y, radius at W, cloth index].
-const BUTTONS := [[0.415, 0.9735, 17.0, 4], [0.462, 0.9610, 13.0, 0], [0.716, 0.9760, 14.0, 6]]
-const NEEDLE_AT := Vector2(0.575, 0.9690)
-const NEEDLE_DIR := Vector2(0.95, -0.30)
-const NEEDLE_CELL := 190.0
-const ROLLED := [0.660, 0.9600, 22.0, 5]
-const CUSHION_AT := Vector2(0.895, 0.9655)
-const CUSHION_R := 46.0
-const CUSHION := Color("ef938c")
-const CUSHION_DEEP := Color("d6756f")
-const PIN := Color("b9bfc6")
+## The small bricks in the gap of the tools row: [x, y as shares, cell at
+## W, colour index, turn, cells].
+const TOOLS := [
+	[0.392, 0.2330, 22.0, 2, 0.0, [Vector2i(0, 0)]],
+	[0.455, 0.2335, 22.0, 1, 0.0, [Vector2i(0, 0), Vector2i(1, 0)]],
+	[0.548, 0.2330, 22.0, 3, 0.0, [Vector2i(0, 0)]],
+]
+## The loose bricks along the foot: [x, y, cell at W, colour index, turn,
+## cells]. Their heights are shares of a 1080 x 1920 screen measured up from
+## the bottom edge (`_foot`), so a taller screen keeps them under the rack.
+const LOOSE := [
+	[0.035, 0.9640, 30.0, 2, -0.22, [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(3, 0),
+		Vector2i(0, 1), Vector2i(1, 1), Vector2i(2, 1), Vector2i(3, 1)]],
+	[0.215, 0.9710, 30.0, 0, 0.35, [Vector2i(0, 0), Vector2i(1, 0)]],
+	[0.330, 0.9640, 30.0, 6, -0.12, [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1)]],
+	[0.475, 0.9740, 30.0, 4, 0.5, [Vector2i(0, 0)]],
+	[0.560, 0.9650, 30.0, 1, 0.18, [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0)]],
+	[0.735, 0.9620, 30.0, 7, -0.3, [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1)]],
+	[0.865, 0.9700, 30.0, 5, 0.1, [Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(0, 1),
+		Vector2i(1, 1), Vector2i(2, 1)]],
+]
 const SHADOW := 0.10
 ## The dust in the window's light: [x, y, radius at W, alpha].
 const MOTES := [
@@ -135,24 +132,12 @@ func _build() -> void:
 			at + Vector2(sz.x + lean, sz.y), at + Vector2(lean, sz.y)]), Color.WHITE)
 		CardFace.shade(b, first, Color(LIGHT, LIGHT_ALPHA), Color(LIGHT, LIGHT_ALPHA * 0.35),
 			0.0, size.y * 0.17)
-	# The spools and the thimble in the gap of the tools row.
-	for s in SPOOLS:
-		_spool(b, Vector2(s[0], s[1]) * size, float(s[2]) * u, Cloth.cloth(int(s[3])))
-	_thimble(b, Vector2(THIMBLE[0], THIMBLE[1]) * size, float(THIMBLE[2]) * u)
-	# The foot: the tape, the buttons, the needle and its thread, the spool
-	# that rolled, the pincushion.
-	_tape(b, u)
-	for bt in BUTTONS:
-		_button(b, _foot(bt[0], bt[1]), float(bt[2]) * u, Cloth.cloth(int(bt[3])))
-	var rolled := _foot(ROLLED[0], ROLLED[1])
-	var thread := Cloth.cloth(int(ROLLED[3])).lerp(Pal.TEXT, 0.12)
-	var needle := _foot(NEEDLE_AT.x, NEEDLE_AT.y)
-	var eye := needle - NEEDLE_DIR.normalized() * 0.14 * NEEDLE_CELL * u
-	b.stroke(Face.Builder.bezier3(rolled, rolled + Vector2(-26.0, 44.0) * u,
-		eye + Vector2(30.0, 34.0) * u, eye, 16), 4.0 * u, thread, false, true)
-	_spool(b, rolled, float(ROLLED[2]) * u, Cloth.cloth(int(ROLLED[3])))
-	Cloth.needle(b, needle, NEEDLE_DIR, NEEDLE_CELL * u, thread)
-	_cushion(b, _foot(CUSHION_AT.x, CUSHION_AT.y), CUSHION_R * u)
+	# The small bricks in the gap of the tools row, and the loose ones along
+	# the foot.
+	for t in TOOLS:
+		_brick(b, Vector2(t[0], t[1]) * size, float(t[2]) * u, int(t[3]), float(t[4]), t[5])
+	for t in LOOSE:
+		_brick(b, _foot(t[0], t[1]), float(t[2]) * u, int(t[3]), float(t[4]), t[5])
 	_shown = b.mesh()
 	queue_redraw()
 	var mb := Face.Builder.new()
@@ -168,80 +153,15 @@ func _build() -> void:
 func _foot(x: float, y: float) -> Vector2:
 	return Vector2(x * size.x, size.y - (1.0 - y) * 1920.0 * size.x / W)
 
-## A spool stood on its end, seen from above: its shadow, the wooden flange,
-## the wound thread and the hole.
-func _spool(b: Face.Builder, at: Vector2, r: float, thread: Color) -> void:
-	b.ellipse(at + Vector2(r * 0.16, r * 0.26), r * 1.04, r * 1.0, Color(Pal.TEXT, SHADOW))
-	b.disc(at, r, Color("d9b98a"))
-	b.disc(at, r * 0.86, Color("efd9b4"))
-	b.disc(at, r * 0.68, thread.lerp(Pal.TEXT, 0.14))
-	b.disc(at, r * 0.60, thread)
-	b.stroke(Face.Builder.arc_points(at, r * 0.47, -2.5, -1.2), r * 0.09,
-		Color(Color.WHITE, 0.45), false, true)
-	b.disc(at, r * 0.22, Color("c9a876"))
-	b.disc(at, r * 0.12, Color("8a6a45"))
-
-## A thimble on its side of the row, from above: a dimpled steel cap.
-func _thimble(b: Face.Builder, at: Vector2, r: float) -> void:
-	b.ellipse(at + Vector2(r * 0.16, r * 0.26), r * 1.04, r * 1.0, Color(Pal.TEXT, SHADOW))
-	b.disc(at, r, Color("aab1b9"))
-	b.disc(at, r * 0.80, Color("d5dadf"))
-	for i in 6:
-		b.disc(at + Vector2.from_angle(i * TAU / 6.0) * r * 0.46, r * 0.10, Color("aab1b9"))
-	b.disc(at, r * 0.10, Color("aab1b9"))
-
-## The tape measure run out from the left edge along the foot, its end
-## turned up a little, a tick a centimetre and a longer one every fifth.
-func _tape(b: Face.Builder, u: float) -> void:
-	var y := _foot(0.0, TAPE_Y).y
-	var from := Vector2(-size.x, y + 6.0 * u)
-	var bend := Vector2(size.x * (TAPE_TO - 0.12), y + 6.0 * u)
-	var to := Vector2(size.x * TAPE_TO, y - 12.0 * u)
-	var line := PackedVector2Array([from, Vector2(0.0, y + 6.0 * u)])
-	line.append_array(Face.Builder.bezier2(Vector2(0.0, y + 6.0 * u), bend, to, 14))
-	var shade := PackedVector2Array()
-	for p in line:
-		shade.append(p + Vector2(3.0, 6.0) * u)
-	b.stroke(shade, TAPE_W * u, Color(Pal.TEXT, SHADOW), false, false)
-	b.stroke(line, TAPE_W * u, TAPE_DEEP, false, false)
-	b.stroke(line, (TAPE_W - 6.0) * u, TAPE, false, false)
-	var step := 22.0 * u
-	var n := int(size.x * (TAPE_TO - 0.14) / step)
-	for i in n:
-		var x := 14.0 * u + i * step
-		var tall := (0.5 if i % 5 == 0 else 0.28) * TAPE_W * u
-		var top := y + 6.0 * u - (TAPE_W - 6.0) * u * 0.5
-		b.stroke(PackedVector2Array([Vector2(x, top), Vector2(x, top + tall)]), 2.4 * u,
-			Color(Pal.TEXT, 0.5), false, false)
-	# The brass end.
-	var dir := (to - bend).normalized()
-	b.stroke(PackedVector2Array([to - dir * 4.0 * u, to + dir * 10.0 * u]), (TAPE_W + 2.0) * u,
-		Color("c9a04e"), false, false)
-
-## A loose button: its shadow, the rim, the well and two holes.
-func _button(b: Face.Builder, at: Vector2, r: float, cloth: Color) -> void:
-	b.ellipse(at + Vector2(r * 0.14, r * 0.26), r * 1.04, r, Color(Pal.TEXT, SHADOW))
-	b.disc(at, r, cloth.lerp(Pal.TEXT, 0.16))
-	b.disc(at - Vector2(0.0, r * 0.08), r * 0.92, cloth)
-	b.disc(at, r * 0.62, cloth.lerp(Pal.TEXT, 0.08))
-	for sx in [-1.0, 1.0]:
-		b.disc(at + Vector2(sx * r * 0.22, 0.0), r * 0.13, cloth.lerp(Pal.TEXT, 0.5))
-
-## The pincushion from above: a tufted coral round, six pins stuck in it.
-func _cushion(b: Face.Builder, at: Vector2, r: float) -> void:
-	b.ellipse(at + Vector2(r * 0.10, r * 0.20), r * 1.05, r, Color(Pal.TEXT, SHADOW))
-	b.disc(at, r, CUSHION_DEEP)
-	b.disc(at - Vector2(0.0, r * 0.06), r * 0.94, CUSHION)
-	for i in 6:
-		var d := Vector2.from_angle(i * TAU / 6.0 + 0.3)
-		b.stroke(PackedVector2Array([at + d * r * 0.16, at + d * r * 0.90]), r * 0.035,
-			Color(CUSHION_DEEP, 0.7), false, true)
-	b.disc(at, r * 0.10, CUSHION_DEEP)
-	var pins := [[-0.9, 0.55, 0], [-0.25, 0.70, 1], [0.5, 0.52, 3], [1.5, 0.62, 4], [2.6, 0.48, 6], [3.6, 0.66, 0]]
-	for p in pins:
-		var d := Vector2.from_angle(float(p[0]))
-		var foot := at + d * r * float(p[1]) * 0.55
-		var head := at + d * r * (float(p[1]) + 0.42)
-		b.stroke(PackedVector2Array([foot, head]), r * 0.05, PIN, false, true)
-		b.disc(head, r * 0.11, Cloth.cloth(int(p[2])).lerp(Pal.TEXT, 0.1))
-		b.disc(head - Vector2(r * 0.03, r * 0.03), r * 0.045, Color(Color.WHITE, 0.6))
+## A loose brick of `cells` at `at` (its top-left before the turn): its
+## shadow on the wood, then the brick and its studs, turned by `rot` about
+## its middle.
+func _brick(b: Face.Builder, at: Vector2, cell: float, ci: int, rot: float, cells: Array) -> void:
+	var span := Vector2i.ZERO
+	for c: Vector2i in cells:
+		span = Vector2i(maxi(span.x, c.x + 1), maxi(span.y, c.y + 1))
+	var shape := Cloth.loops(cells)
+	Cloth.shadow(b, shape, at, cell, span, Vector2(0.10, 0.22) * cell, SHADOW / Cloth.SHADOW_ALPHA,
+		Vector2.ONE, rot)
+	Cloth.patch(b, shape, at, cell, span, Cloth.cloth(ci), Cloth.cloth_deep(ci), Vector2.ONE, 1.0, rot)
+	Cloth.print_cloth(b, cells, ci, at, cell, span, Vector2.ONE, 1.0, rot)

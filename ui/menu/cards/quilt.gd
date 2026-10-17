@@ -1,20 +1,21 @@
 extends "res://ui/menu/cards/card_face.gd"
 
-## Quilt's card: the paper is the backing cloth, a heather linen with a faint
-## chalked grid, and the quilt is sewn onto its right side and runs off the
-## top, the bottom and the right edge. Its left edge is the frontier the
-## patches' own shapes make, stepping left under the words. Five patches of
-## the board's cloth lie on one grid with no gap between them: a plain butter
-## square in the top right corner, which is the seal's, a sky gingham, a coral
-## sprig, a sage pinstripe and a teal running off the foot. One notch is left
-## in the frontier, three cells in an elbow, and the piece that fits it is the
-## go button: a patch in the card's colour lifted off the notch over its own
-## shadow, hemmed in pale thread, a chevron on its elbow. A needle lies on the
-## bare backing bottom left with its thread behind it.
+## Quilt's card: the paper is the plate, a pale grey with a low stud on
+## every cell, and the bricks are pressed onto its right side and run off
+## the top, the bottom and the right edge. Their left edge is the frontier
+## the bricks' own shapes make, stepping left under the words. Five bricks
+## lie on one grid with no gap between them: a plain yellow square in the
+## top right corner, which is the seal's (no studs, so the seal sits flat), a
+## blue, a red, a green and a teal running off the foot. One notch is left
+## in the frontier, three cells in an elbow, and the piece that fits it is
+## the go button: a brick in the card's colour lifted off the notch over its
+## own shadow, studded, a chevron on its elbow. A loose brick lies on the
+## bare plate bottom left. (Until 2026-10-17 the card was linen, patches of
+## printed cloth and a needle; ui/faces/brick_piece.gd says why.)
 ##
 ## Everything is one mesh; nothing lives on this card.
 
-const Cloth = preload("res://ui/faces/patch_cloth.gd")
+const Cloth = preload("res://ui/faces/brick_piece.gd")
 
 ## The row the card was drawn for (puzzle_card_2d.gd's CARD_H).
 const H := 246.0
@@ -32,8 +33,8 @@ const WORDS := 266.0
 const WORDS_GAP := 8.0
 const WORDS_TOP := 14.0
 
-## The sewn patches as [cloth, printed, cells]. Rows 0 and 5 lie off the
-## card at H. The first is the seal's: plain, no print, no stitch.
+## The bricks as [colour, studded, cells]. Rows 0 and 5 lie off the card at
+## H. The first is the seal's: plain, no studs.
 const PATCHES := [
 	[0, false, [Vector2i(3, 0), Vector2i(4, 0), Vector2i(3, 1), Vector2i(4, 1)]],
 	[1, true, [Vector2i(2, 0), Vector2i(2, 1), Vector2i(2, 2), Vector2i(3, 2)]],
@@ -48,15 +49,16 @@ const GO_MARK := Vector2i(2, 4)
 const GO_LIFT := Vector2(-0.2, -0.14)
 const GO_SHADOW := Vector2(0.07, 0.17)
 
-## The backing: heather linen, lighter at the top, and the chalk of its grid.
-const LINEN_TOP := Color("ebe6f2")
-const LINEN_LOW := Color("dad2e7")
-const CHALK := Color("f6f2fa")
-const CHALK_ALPHA := 0.7
-const BLURB := Color("6d6680")
-## The needle, from the card's bottom left corner at H, and its heading.
-const NEEDLE_AT := Vector2(96.0, 46.0)
-const NEEDLE_DIR := Vector2(0.94, -0.34)
+## The plate: a pale grey, lighter at the top, and its studs.
+const LINEN_TOP := Color("e9ecf0")
+const LINEN_LOW := Color("d8dde4")
+const BLURB := Color("66707e")
+## The loose brick on the bare plate: its top-left from the card's bottom
+## left corner at H, its turn, its colour and its cells.
+const LOOSE_AT := Vector2(70.0, 74.0)
+const LOOSE_TURN := -0.28
+const LOOSE := 4
+const LOOSE_CELLS := [Vector2i(0, 0), Vector2i(1, 0)]
 
 func _k() -> float:
 	return size.y / H
@@ -100,6 +102,25 @@ static func _take(b: Face.Builder, from: Face.Builder, paper: PackedVector2Array
 				moved[v] = b.vertex(from.verts[v], from.cols[v])
 		b.tri(moved[tri[0]], moved[tri[1]], moved[tri[2]])
 
+## `from` onto the paper: its triangles whole on the paper as they are, and
+## the ones the card's edge cuts clipped to it, so a brick running off the
+## card is cut at the edge rather than losing a sliver.
+static func _clip(b: Face.Builder, from: Face.Builder, paper: PackedVector2Array) -> void:
+	for t in range(0, from.idx.size() - 2, 3):
+		var tri := PackedVector2Array([from.verts[from.idx[t]], from.verts[from.idx[t + 1]],
+			from.verts[from.idx[t + 2]]])
+		var col: Color = from.cols[from.idx[t]]
+		var inside := true
+		for v in tri:
+			if not Geometry2D.is_point_in_polygon(v, paper):
+				inside = false
+		if inside:
+			var a := b.vertex(tri[0], col)
+			b.tri(a, b.vertex(tri[1], from.cols[from.idx[t + 1]]), b.vertex(tri[2], from.cols[from.idx[t + 2]]))
+			continue
+		for part in Geometry2D.intersect_polygons(paper, tri):
+			b.polygon(part, col)
+
 static func _span(cells: Array) -> Vector2i:
 	var hi := Vector2i.ZERO
 	for c: Vector2i in cells:
@@ -121,50 +142,46 @@ func _paint(b: Face.Builder) -> void:
 	var first := b.verts.size()
 	b.polygon(paper, Color.WHITE)
 	shade(b, first, LINEN_TOP, LINEN_LOW, 0.0, size.y)
+	# The plate's low studs on every cell clear of the words.
 	var marks := Face.Builder.new()
-	# The chalked grid over the bare backing, as far left as the card goes.
-	var chalk := Color(CHALK, CHALK_ALPHA)
-	var width := maxf(1.5, c * 0.026)
 	var col := FIRST_COL
-	while at.x + col * c > 0.0:
+	while at.x + col * c > -c:
 		col -= 1
-	for x in range(col + 1, FIRST_COL + 1):
-		Cloth.stitch(marks, Vector2(at.x + x * c, 0.0), Vector2(at.x + x * c, size.y), width, c * 0.1, c * 0.1, chalk)
-	for y in range(1, ROWS):
-		Cloth.stitch(marks, Vector2(0.0, at.y + y * c), Vector2(at.x + FIRST_COL * c, at.y + y * c), width,
-			c * 0.1, c * 0.1, chalk)
+	var r := Cloth.PLATE_STUD_R * c
+	for y in ROWS:
+		for x in range(col, FIRST_COL + 3):
+			var mid := at + (Vector2(x, y) + Vector2(0.5, 0.5)) * c
+			if mid.x - r < SIDE + WORDS:
+				continue
+			marks.disc(mid + Vector2(0.0, Cloth.PLATE_STUD * c), r, Color(Cloth.PLATE_DEEP, 0.8))
+			marks.disc(mid, r, LINEN_TOP.lerp(Color.WHITE, 0.4))
+			marks.disc(mid + Vector2(0.02, 0.03) * c, r * 0.8, LINEN_TOP.lerp(LINEN_LOW, (mid.y / size.y)))
 	_take(b, marks, paper)
-	# The quilt's weight on the backing, then each patch: lip, cloth, print
-	# and the quilting stitch just inside its edge.
+	# The bricks' weight on the plate, then each brick: side, face, bevel
+	# and studs.
 	for p in PATCHES:
 		for loop: PackedVector2Array in Cloth.loops(p[2]):
-			_on_paper(b, paper, _moved(Cloth.laid(loop, at, c, _span(p[2])), Vector2(-3.0, 4.0) * k),
-				Color(Pal.TEXT, 0.1))
-	marks = Face.Builder.new()
+			_on_paper(b, paper, _moved(Cloth.laid(loop, at, c, _span(p[2])), Vector2(-3.0, 5.0) * k),
+				Color(Pal.TEXT, 0.12))
 	for p in PATCHES:
-		var cloth: int = p[0]
+		var ci: int = p[0]
 		var cells: Array = p[2]
 		var span := _span(cells)
-		for loop: PackedVector2Array in Cloth.loops(cells):
-			var pts := Cloth.laid(loop, at, c, span)
-			_on_paper(b, paper, _moved(pts, Vector2(0.0, Cloth.EDGE * c)), Cloth.cloth_deep(cloth))
-			_on_paper(b, paper, pts, Cloth.cloth(cloth))
-		if not p[1]:
-			continue
-		Cloth.print_cloth(marks, cells, cloth, at, c, span)
-		for loop: PackedVector2Array in Cloth.inset_loops(cells):
-			Cloth.dash_loop(marks, Cloth.laid(loop, at, c, span, Vector2.ONE, 0.0, Cloth.RADIUS - Cloth.QUILT_INSET),
-				c * Cloth.QUILT_W, c * Cloth.QUILT_ON, c * Cloth.QUILT_OFF, Cloth.cloth_thread(cloth))
-	_take(b, marks, paper)
-	# The needle on the bare backing, its thread lying behind it.
-	var eye := Vector2(NEEDLE_AT.x * k, size.y - NEEDLE_AT.y * k)
-	var dir := NEEDLE_DIR.normalized()
-	var thread := Color("f8f4fb")
-	var tail := eye - dir * 0.24 * c
-	b.stroke(Face.Builder.bezier3(tail, tail - dir * 0.5 * c + Vector2(0.0, 0.3 * c),
-		tail - dir * 0.9 * c + Vector2(0.0, -0.22 * c), tail - dir * 1.25 * c + Vector2(0.0, 0.16 * c)),
-		0.03 * c, thread)
-	Cloth.needle(b, eye, dir, c * 1.3, thread)
+		marks = Face.Builder.new()
+		Cloth.patch(marks, Cloth.loops(cells), at, c, span, Cloth.cloth(ci), Cloth.cloth_deep(ci))
+		if p[1]:
+			Cloth.print_cloth(marks, cells, ci, at, c, span)
+		_clip(b, marks, paper)
+	# The loose brick on the bare plate.
+	var loose := Face.Builder.new()
+	var lat := Vector2(LOOSE_AT.x * k, size.y - LOOSE_AT.y * k)
+	var lc := c * 0.62
+	var lspan := _span(LOOSE_CELLS)
+	var lshape := Cloth.loops(LOOSE_CELLS)
+	Cloth.shadow(loose, lshape, lat, lc, lspan, Vector2(0.1, 0.22) * lc, 0.6, Vector2.ONE, LOOSE_TURN)
+	Cloth.patch(loose, lshape, lat, lc, lspan, Cloth.cloth(LOOSE), Cloth.cloth_deep(LOOSE), Vector2.ONE, 1.0, LOOSE_TURN)
+	Cloth.print_cloth(loose, LOOSE_CELLS, LOOSE, lat, lc, lspan, Vector2.ONE, 1.0, LOOSE_TURN)
+	_clip(b, loose, paper)
 	if not soon:
 		_go(b, paper, at + GO_LIFT * c, c)
 
@@ -176,12 +193,12 @@ func _go(b: Face.Builder, paper: PackedVector2Array, at: Vector2, c: float) -> v
 	for loop: PackedVector2Array in Cloth.loops(GO):
 		var pts := Cloth.laid(loop, at, c, span)
 		_on_paper(b, paper, _moved(pts, GO_SHADOW * c), Color(Pal.TEXT, 0.2))
-		_on_paper(b, paper, _moved(pts, Vector2(0.0, Cloth.EDGE * c * 1.4)), deep)
+		_on_paper(b, paper, _moved(pts, Vector2(0.0, Cloth.EDGE * c)), deep)
 		_on_paper(b, paper, pts, colour.lerp(Pal.SURFACE, 0.06))
 	var marks := Face.Builder.new()
-	for loop: PackedVector2Array in Cloth.inset_loops(GO):
-		Cloth.dash_loop(marks, Cloth.laid(loop, at, c, span, Vector2.ONE, 0.0, Cloth.RADIUS - Cloth.QUILT_INSET),
-			c * 0.04, c * Cloth.QUILT_ON, c * Cloth.QUILT_OFF, colour.lerp(Pal.SURFACE, 0.72))
+	for cell: Vector2i in GO:
+		if cell != GO_MARK:
+			Cloth.stud(marks, at + (Vector2(cell) + Vector2(0.5, 0.5)) * c, c, colour.lerp(Pal.SURFACE, 0.06))
 	var mid := at + (Vector2(GO_MARK) + Vector2(0.52, 0.5)) * c
 	var h := c * 0.17
 	marks.stroke(PackedVector2Array([mid + Vector2(-h * 0.55, -h), mid + Vector2(h * 0.55, 0.0),

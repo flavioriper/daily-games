@@ -63,11 +63,13 @@ const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
 const Face = preload("res://ui/faces/face.gd")
-## The cloth itself -- the silhouette, the lip, the stitch and the eight
-## colours -- lives in ui/faces/, because the menu card draws the same patch
+## The piece itself -- the silhouette, the side, the studs and the eight
+## colours -- lives in ui/faces/, because the menu card draws the same piece
 ## and neither should own the other's drawing (ui/faces/mosaic_tile.gd's
-## bargain, and for the same reason).
-const Cloth = preload("res://ui/faces/patch_cloth.gd")
+## bargain, and for the same reason). Since 2026-10-17 it is a building
+## brick (ui/faces/brick_piece.gd), which answers every name the cloth did;
+## the board still says patch, quilt and sew in its own words.
+const Cloth = preload("res://ui/faces/brick_piece.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const NapCat = preload("res://ui/faces/nap_cat.gd")
@@ -105,16 +107,11 @@ const RACK_GAP := 0.6
 const RACK_RATIO := 0.62
 
 # --- the cloth, in cells ---
-## The faint rules between the backing's cells. A patch's corner, its lip
-## and its two ink mixes are `PatchCloth`'s, since the menu card wears them
-## too, and the backing is drawn as one more patch of cloth so it wears the
-## same corner and the same lip rather than a second pair of numbers.
-const RULE_W := 0.022
-const RULE_ALPHA := 0.55
-## The running stitch: its width, and the dash and the gap along it.
-const STITCH_W := 0.05
-const STITCH_ON := 0.15
-const STITCH_OFF := 0.1
+## The seam between two bricks: a dark groove, one run (the cloth's running
+## stitch with a dash longer than any seam and no gap).
+const STITCH_W := 0.04
+const STITCH_ON := 1000.0
+const STITCH_OFF := 0.0001
 ## This board's own two numbers, and the only two it needs. The seam wave's
 ## step per cell of distance from the patch that landed, and how long one
 ## seam's dashes take to run. Nothing else in the game sews, so these would
@@ -148,19 +145,15 @@ const RING_R := 0.9
 const WIN_WAIT := 1.6
 
 # --- the polish (spec amendment, 2026-09-26) ---
-## The backing is a tufted quilt: every cell a soft puff of batting, inset
-## this far, and a tie of thread where four puffs meet.
-const PUFF_INSET := 0.07
-const PUFF_R := 0.2
-const PUFF_ALPHA := 0.26
-const TIE_LEN := 0.055
-const TIE_W := 0.028
-## The rack stands on a felt mat with a stitched border.
+## The rack stands in a plastic sorting tray: a rim, its side under it and
+## a floor a step down inside.
 const MAT_PAD := 14.0
 const MAT_R := 26.0
-const MAT := Color("e4e2c6")
-const MAT_EDGE := Color("cfcaa6")
-const MAT_STITCH := Color("f7f3e4")
+const MAT := Color("dce6f1")
+const MAT_EDGE := Color("b2c1d3")
+const MAT_FLOOR := Color("cfdbe8")
+const MAT_RIM := 12.0
+const MAT_STITCH := Color("f7f9fc")
 ## A patch that has left the rack leaves its outline in tailor's chalk.
 const CHALK_W := 0.05
 const CHALK_ON := 0.14
@@ -265,16 +258,14 @@ const FLUTTER_WOBBLE := 0.22
 ## chalk, since the white of the mat's stitch is lost on the pale backing.
 const CROSS := Color("6f86b0")
 const CROSS_W := 0.06
-## Scrap Basket's wicker: the body, its deep lip, the light of a strand and
-## the rim's twist.
-const WICKER := Color("eddcb6")
-const WICKER_DEEP := Color("c29a62")
-const WICKER_HI := Color("f8eed6")
-const WICKER_LINE := Color("c9a56f")
-const RIM_H := 30.0
-## The basket's woven band along its foot, and the stakes' spacing.
-const BAND_H := 32.0
-const STAKE := 38.0
+## Scrap Basket's tub: a deeper bin of warm sand plastic, ribbed down its
+## sides, with a thick lip along the top.
+const WICKER := Color("efe4cf")
+const WICKER_DEEP := Color("c9b48f")
+const WICKER_HI := Color("faf4e8")
+const WICKER_LINE := Color("dccaa6")
+const RIM_H := 26.0
+const STAKE := 64.0
 
 # --- the rewards (spec 2026-09-30-quilt-polish-design.md, section 4) ---
 ## The streak: a tick a semitone higher from the second good drop, five in
@@ -297,11 +288,12 @@ const LOVE_HEARTS := 4
 const LOVE_TIME := 1.3
 const LOVE_RISE := 0.8
 const LOVE_R := 0.14
-## The button: BUTTON_R of a cell, pearl with a deeper rim, four holes and
-## a cross of the patch's own thread. It pops on once the patch has landed.
-const BUTTON_R := 0.22
-const BUTTON := Color("fbf4e4")
-const BUTTON_DEEP := Color("d6c6a4")
+## The button: since the bricks, a clear round tile BUTTON_R of a cell
+## pressed onto the patch's middle stud, the brick's colour seen through it.
+## It pops on once the patch has landed.
+const BUTTON_R := 0.3
+const BUTTON := Color("f4f8fc")
+const BUTTON_DEEP := Color("c4d0dc")
 ## The boing: a squash, a hop of BOING_HOP cells, a squash on landing.
 const BOING_TIME := 0.56
 const BOING_HOP := 0.32
@@ -1466,7 +1458,9 @@ func _seams() -> Array:
 			for d: Vector2i in [Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)]:
 				var q := _state.patch_at_cell(c + d.x, r + d.y)
 				var off := not _state.in_region(c + d.x, r + d.y)
-				if not off and q == p:
+				if off:
+					continue      # a brick has no hem: its own side is its edge
+				if q == p:
 					continue
 				if not off and q < 0:
 					continue      # a raw edge: there is nothing yet to sew to
@@ -1863,33 +1857,11 @@ func _dead_pulse(b, t: float) -> void:
 		b.polygon(pts, Color(Pal.BAD, 0.16 * level))
 		b.stroke(pts, DEAD_W * cell, Color(Pal.BAD, HALO_ALPHA * level), true)
 
-## The backing, built once a layout: a pale piece of cloth with the
-## patches' own silhouette and lip, the faint rules of the grid the patches
-## snap to, a puff of batting in every cell and a tie of thread wherever four
-## puffs meet. A tufted quilt top, before anything is sewn onto it.
+## The backing, built once a layout: a pale plate with the bricks' own
+## silhouette and a low stud on every cell, the grid the bricks snap to.
 func _build_ground() -> ArrayMesh:
 	var b := Face.Builder.new()
-	var cell := _cell()
-	var o := _origin()
-	Cloth.patch(b, _back_loops, o, cell, Vector2i.ZERO, Pal.QUILT_BACK, Pal.LINE)
-	var rule := Color(Pal.QUILT_RULE, RULE_ALPHA)
-	for pair: Array in _back_rules:
-		b.stroke(PackedVector2Array([o + (pair[0] as Vector2) * cell,
-			o + (pair[1] as Vector2) * cell]), RULE_W * cell, rule, false, false)
-	var puff := Color(Pal.SURFACE, PUFF_ALPHA)
-	for c: Vector2i in _back_cells:
-		b.polygon(Face.Builder.round_rect(o + (Vector2(c) + Vector2.ONE * PUFF_INSET) * cell,
-			Vector2.ONE * (1.0 - 2.0 * PUFF_INSET) * cell, PUFF_R * cell), puff)
-	var tie := Color(Pal.LINE, 0.85)
-	for c: Vector2i in _back_cells:
-		# The tie at this cell's top-left corner, where it meets three others.
-		if not (_state.in_region(c.x - 1, c.y) and _state.in_region(c.x, c.y - 1)
-				and _state.in_region(c.x - 1, c.y - 1)):
-			continue
-		var at := o + Vector2(c) * cell
-		var d := TIE_LEN * cell
-		b.stroke(PackedVector2Array([at + Vector2(-d, -d), at + Vector2(d, d)]), TIE_W * cell, tie)
-		b.stroke(PackedVector2Array([at + Vector2(d, -d), at + Vector2(-d, d)]), TIE_W * cell, tie)
+	Cloth.plate(b, _back_loops, _back_cells, _origin(), _cell())
 	return _mesh(b)
 
 ## The rack: every patch still waiting, any flying home to it, and the faint
@@ -1943,9 +1915,9 @@ func _build_rack(t: float) -> ArrayMesh:
 	_flush(b)
 	return _rm.mesh()
 
-## The felt mat the rack's patches wait on: a soft sage felt with a lip and
-## a stitched border, so the rack reads as a place the cloth is kept and not
-## as patches floating on the card.
+## The sorting tray the rack's bricks wait in: a pale plastic rim with its
+## side under it and a floor a step down, so the rack reads as a place the
+## bricks are kept and not as bricks floating on the table.
 func _mat(b) -> void:
 	var box := _rack_box().grow(MAT_PAD)
 	box.size.y = minf(box.size.y, (_content().end.y + MAT_PAD if _bled else size.y - INSET * 0.5) - box.position.y)
@@ -1954,73 +1926,40 @@ func _mat(b) -> void:
 	if not _state.scraps().is_empty():
 		_basket(b, box)
 		return
-	var pts := Face.Builder.round_rect(box.position, box.size, MAT_R)
-	b.polygon(Cloth._moved(pts, Vector2(0.0, 5.0)), MAT_EDGE)
-	b.polygon(pts, MAT)
-	var inner := box.grow(-12.0)
-	Cloth.dash_loop(b, Face.Builder.round_rect(inner.position, inner.size, MAT_R - 10.0),
-		3.5, 12.0, 8.0, MAT_STITCH)
+	_tray(b, box, MAT, MAT_EDGE, MAT_FLOOR)
 
-## Scrap Basket's rack: the felt mat becomes a wicker basket -- pale straw
-## with faint stakes and weavers, a woven band of over-and-under strands
-## along its foot, and a thick twisted rim along the top -- so the twelve
-## patches read as a basket of cloth with some in it that do not belong. The
-## body is kept pale and faint: it is a ground, and every cloth on it,
-## the yellows included, has to stay the strongest thing on the card.
-func _basket(b, box: Rect2) -> void:
+## A tray: rim, its side, and the floor inset with the rim's shade on its
+## top edge.
+func _tray(b, box: Rect2, rim: Color, side: Color, floor_c: Color) -> void:
 	var pts := Face.Builder.round_rect(box.position, box.size, MAT_R)
-	b.polygon(Cloth._moved(pts, Vector2(0.0, 6.0)), WICKER_DEEP)
-	b.polygon(pts, WICKER)
-	var inner := box.grow(-12.0)
-	inner.position.y += RIM_H * 0.5
-	inner.size.y -= RIM_H * 0.5 + BAND_H
-	# The stakes, upright, and the weavers passing between them: a row of
-	# soft lenses offset by half a stake from the row above, faint.
-	var x := inner.position.x + STAKE * 0.5
-	while x < inner.end.x:
-		b.stroke(PackedVector2Array([Vector2(x, inner.position.y), Vector2(x, inner.end.y)]),
-			2.0, Color(WICKER_LINE, 0.22), false, false)
+	b.polygon(Cloth._moved(pts, Vector2(0.0, 6.0)), side)
+	b.polygon(pts, rim)
+	var inner := box.grow(-MAT_RIM)
+	var floor_pts := Face.Builder.round_rect(inner.position, inner.size, MAT_R - MAT_RIM * 0.6)
+	b.polygon(floor_pts, side.lerp(floor_c, 0.5))
+	b.polygon(Cloth._moved(floor_pts, Vector2(0.0, 5.0)), floor_c)
+	b.stroke(Face.Builder.round_rect(box.position + Vector2(3.0, 3.0), box.size - Vector2(6.0, 6.0),
+		MAT_R - 3.0), 2.5, Color(Color.WHITE, 0.55), true)
+
+## Scrap Basket's rack: the tray becomes a deeper tub of sand plastic,
+## ribbed down its floor and lipped along the top, so the twelve bricks read
+## as a tub of bricks with some in it that do not belong. Kept pale: it is a
+## ground, and every brick on it, the yellows included, has to stay the
+## strongest thing on the card.
+func _basket(b, box: Rect2) -> void:
+	_tray(b, box, WICKER, WICKER_DEEP, WICKER_LINE.lerp(WICKER, 0.6))
+	var inner := box.grow(-MAT_RIM)
+	var x := inner.position.x + STAKE
+	while x < inner.end.x - STAKE * 0.5:
+		b.stroke(PackedVector2Array([Vector2(x, inner.position.y + RIM_H), Vector2(x, inner.end.y - 14.0)]),
+			3.0, Color(WICKER_HI, 0.6), false, true)
 		x += STAKE
-	var row := 0
-	var y := inner.position.y + 4.0
-	while y + 12.0 < inner.end.y:
-		var sx := inner.position.x + (STAKE * 0.5 if row % 2 == 1 else 0.0)
-		while sx < inner.end.x - 6.0:
-			var a := maxf(sx + 3.0, inner.position.x)
-			var z := minf(sx + STAKE - 3.0, inner.end.x)
-			if z - a > 10.0:
-				b.ellipse(Vector2((a + z) * 0.5, y + 6.0), (z - a) * 0.5, 5.0, Color(WICKER_HI, 0.5))
-			sx += STAKE
-		y += 16.0
-		row += 1
-	# The woven band at the foot: short strands alternately across and
-	# upright, a basket weave, in the deeper straw.
-	var band := Rect2(Vector2(box.position.x + 10.0, box.end.y - BAND_H - 10.0),
-		Vector2(box.size.x - 20.0, BAND_H))
-	b.polygon(Face.Builder.round_rect(band.position, band.size, 10.0), Color(WICKER_DEEP, 0.35))
-	var cells := int(floor(band.size.x / BAND_H))
-	var w := band.size.x / float(maxi(cells, 1))
-	for k in cells:
-		var at := Vector2(band.position.x + w * k, band.position.y)
-		for n in 3:
-			var f := (float(n) + 0.5) / 3.0
-			if k % 2 == 0:
-				b.stroke(PackedVector2Array([at + Vector2(5.0, BAND_H * f), at + Vector2(w - 5.0, BAND_H * f)]),
-					BAND_H / 3.0 - 4.0, WICKER_HI, false, true)
-			else:
-				b.stroke(PackedVector2Array([at + Vector2(w * f, 5.0), at + Vector2(w * f, BAND_H - 5.0)]),
-					w / 3.0 - 4.0, WICKER_HI.lerp(WICKER, 0.5), false, true)
-	# The rim: a thick rounded band along the top, its twist drawn as slanted
-	# strokes.
 	var rim := Rect2(box.position - Vector2(4.0, 4.0), Vector2(box.size.x + 8.0, RIM_H))
 	var rp := Face.Builder.round_rect(rim.position, rim.size, RIM_H * 0.5)
-	b.polygon(Cloth._moved(rp, Vector2(0.0, 4.0)), WICKER_DEEP)
+	b.polygon(Cloth._moved(rp, Vector2(0.0, 5.0)), WICKER_DEEP)
 	b.polygon(rp, WICKER_LINE)
-	var tx := rim.position.x + RIM_H * 0.5
-	while tx < rim.end.x - RIM_H * 0.5:
-		b.stroke(PackedVector2Array([Vector2(tx, rim.end.y - 5.0), Vector2(tx + 12.0, rim.position.y + 5.0)]),
-			4.0, Color(WICKER_HI, 0.8), false, true)
-		tx += 16.0
+	b.stroke(PackedVector2Array([rim.position + Vector2(RIM_H * 0.5, 6.0),
+		Vector2(rim.end.x - RIM_H * 0.5, rim.position.y + 6.0)]), 4.0, Color(WICKER_HI, 0.8), false, true)
 
 ## The patch in the hand, alone, so it draws over the quilt and the rack
 ## alike -- and a wrong patch on its way home, which has to pass over both.
@@ -3171,17 +3110,14 @@ func _button(b, p: int, f: Dictionary, k := -1.0) -> void:
 	var at := Cloth.place(_middle_cell(p), f["pos"], cell, _spans[p], f["sc"], float(f.get("rot", 0.0)))
 	var r := BUTTON_R * cell * k
 	var alpha := float(f["alpha"])
-	b.disc(at + Vector2(0.0, r * 0.14), r * 1.04, Color(Pal.TEXT, 0.18 * alpha))
-	b.disc(at, r, Color(BUTTON_DEEP, alpha))
-	b.disc(at + Vector2(0.0, -r * 0.05), r * 0.88, Color(BUTTON, alpha))
-	b.stroke(Face.Builder.ring(at, r * 0.66, r * 0.66), maxf(1.0, r * 0.08), Color(BUTTON_DEEP, 0.8 * alpha), true)
-	var thread := Cloth.cloth_deep(_ci(p))
-	var h := r * 0.26
-	b.stroke(PackedVector2Array([at + Vector2(-h, -h), at + Vector2(h, h)]), r * 0.13, Color(thread, alpha))
-	b.stroke(PackedVector2Array([at + Vector2(h, -h), at + Vector2(-h, h)]), r * 0.13, Color(thread, alpha))
-	for d: Vector2 in [Vector2(-1, -1), Vector2(1, -1), Vector2(-1, 1), Vector2(1, 1)]:
-		b.disc(at + d * h, r * 0.1, Color(Pal.OUTLINE, 0.55 * alpha))
-	b.ellipse(at + Vector2(-0.45, -0.5) * r, r * 0.2, r * 0.1, Color(1.0, 1.0, 1.0, 0.6 * alpha))
+	var tint := Cloth.cloth(_ci(p))
+	b.disc(at + Vector2(0.03, 0.08) * cell * k, r * 1.02, Color(Pal.TEXT, 0.18 * alpha))
+	b.disc(at + Vector2(0.0, 0.05 * cell * k), r, Color(BUTTON_DEEP, 0.9 * alpha))
+	b.disc(at, r, Color(BUTTON.lerp(tint, 0.35), 0.92 * alpha))
+	b.disc(at + Vector2(0.02, 0.03) * cell * k, r * 0.72, Color(BUTTON.lerp(tint, 0.2), alpha))
+	b.stroke(Face.Builder.arc_points(at, r * 0.74, PI * 1.05, PI * 1.5), r * 0.16,
+		Color(1.0, 1.0, 1.0, 0.85 * alpha), false, true)
+	b.disc(at + Vector2(0.3, 0.32) * r, r * 0.1, Color(1.0, 1.0, 1.0, 0.7 * alpha))
 
 ## Every row and column patch `p` has just finished -- each backing cell in
 ## it covered -- runs a glint along it, cell by cell out from the patch.

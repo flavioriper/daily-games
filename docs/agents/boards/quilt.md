@@ -253,3 +253,46 @@ stands centred about 106 inside each side at 1080.
 - Decided for the user, unconfirmed: birch, not the card's heather linen
   (two boards already have cloth); the rack 3% shorter; the empty mat
   travelling with the quilt on the win. Owed: a phone, the level slide.
+
+### Bricks, not cloth (2026-10-17)
+
+The user: "redesign quilt to have a design closer to a brick ... builder
+pieces". A look change only: rules, motion, timings, looks, sounds, the
+id, the title and every `QL_*` line are as they were.
+
+- **`ui/faces/brick_piece.gd`** replaces `patch_cloth.gd` on the board, its
+  world, its card and (by inheritance) its tutorial, and answers every name
+  they called on the cloth; Pinwheel keeps the cloth. It is standalone,
+  not a subclass: GDScript refuses a child redeclaring a parent's const,
+  and the geometry (`loops`, `laid`, `round_loop`, the dash walker) is
+  handed straight through to the cloth file.
+- A brick: corner 0.07 (was 0.17), side `EDGE` 0.13 (was 0.075), a bevel of
+  light along its upper edges, and a **stud on every cell** drawn in the
+  print's slot (`print_cloth`). Eight toy colours (`BRICK`), by the same
+  `cloth_of` index; `Pal.CLOTH` is untouched.
+- **The thread became plastic**: a seam between two bricks is a solid dark
+  groove (`STITCH_ON` 1000, `STITCH_OFF` ~0), the quilting stitch a pale
+  bevel line run round once as the brick presses home (`QUILT_ON` 1000),
+  and `needle()` draws nothing. **Hems are not drawn** (`_seams` skips an
+  edge off the backing): on a brick the dark line sat on the cell boundary,
+  half off the rounded corner, and read detached.
+- The backing is a **plate** (`Brick.plate`): pale grey, a low stud a cell;
+  rules, puffs and ties are gone. The rack's felt mat is a pale-blue
+  **sorting tray** (`_tray`), Scrap Basket's wicker a sand **tub** with
+  ribs and a lip. The button gag is a clear round tile tinted by its brick.
+- The world (`quilt_world.gd`) keeps the birch and the window's light;
+  three small bricks sit in the tools row's gap and seven loose bricks lie
+  along the foot (`TOOLS`, `LOOSE`). The card's linen is a plate, the
+  patches bricks, the needle a loose brick; studs stop short of the words.
+- `opengl3_angle`, 810x1440, `_shot_quilt.gd`: rest 82/82 (81/81 before, same
+  session), right 91, Insane solve 109 (was 92). `_win.gd -- quilt` passes;
+  suite 248522/0.
+- Decided for the user, unconfirmed: the name stays Quilt and the words
+  still say patch, sew and blanket; the prints are gone, so two alike
+  shapes now differ by colour alone (a colour-blind player loses the
+  print's help); grey plate rather than green; hems dropped. Left as cloth
+  and never reached for Quilt: `ui/hud/how_to_play_diagram.gd`'s quilt
+  lesson (the board has `tutorial_pages()`) and `card_art.gd`'s
+  `_draw_quilt` (the entry has a `"card"`). The sounds stand: `place` is
+  already the bank's token. Owed: a phone, the tutorial page looked at
+  (`quilt_tutorial_diagram.gd` parses).
