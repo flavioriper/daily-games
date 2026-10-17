@@ -640,7 +640,9 @@ func _draw_hud() -> void:
 ## The shop's page, laid as the HUD's: the mote a bug drops, the gun's three
 ## cards and the other two, each row beside what it is.
 func _draw_shop() -> void:
-	var C := Sim.Card
+	# the shop's five cards as firefly_art.gd numbers their medallions (the
+	# sim's own list went with the shop; this page is rewritten in Task 4)
+	var C := {"DAMAGE": 0, "SPEED": 1, "CRIT": 2, "ENERGY": 3, "SHOTS": 4}
 	var rows := [[[-1], "TUT_FIREFLY_SHOP_ENERGY"], [[C.DAMAGE, C.SPEED, C.SHOTS], "TUT_FIREFLY_SHOP_GUN"],
 		[[C.CRIT, C.ENERGY], "TUT_FIREFLY_SHOP_MORE"]]
 	var row_h := size.y / rows.size()

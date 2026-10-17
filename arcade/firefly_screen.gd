@@ -13,12 +13,14 @@ extends Control
 ## move and space fires. The game is arcade/firefly_sim.gd, stepped at its
 ## fixed DT; this screen draws it and plays its events.
 ##
-## Energy and the shop (2026-10-06, Peapod's, docs/agents/arcade.md): a bug
-## shot down lets go motes of light that fly to the ENERGY plate
-## (ui/motes.gd, the layer Peapod's flight was lifted into), and a stage
-## cleared opens the shop's card (`_open_shop`) where energy buys the gun.
-## A bug takes more than one shot now: a hit floats what it took (`_nums`)
-## and a wounded bug wears a thin bar under it (`_draw_bars`).
+## In stages (2026-10-17, docs/superpowers/plans/2026-10-17-firefly-stages.md):
+## the screen opens on the stage map (`_open_map`), fifteen stages over the
+## night garden with the difficulty row above them (ui/flat/level_card.gd,
+## fed Firefly's four levels); a tap on an open stage plays that stage at
+## that difficulty, and an attempt ends on the end card (Next stage, Again,
+## Stages). The shop and its energy went with the sim's. A bug may still
+## take more than one shot: a hit floats what it took (`_nums`) and a
+## wounded bug wears a thin bar under it (`_draw_bars`).
 
 signal closed
 
@@ -49,7 +51,8 @@ const BoostCard = preload("res://arcade/boost_card.gd")
 const SecondChance = preload("res://arcade/second_chance.gd")
 const GoldDoubler = preload("res://arcade/gold_doubler.gd")
 const Rewards = preload("res://arcade/rewards.gd")
-const Motes = preload("res://ui/motes.gd")
+const LevelCard = preload("res://ui/flat/level_card.gd")
+const Sheet = preload("res://ui/menu/difficulty_sheet.gd")
 
 const GAME := "firefly"
 const MARGIN := 40
@@ -83,16 +86,17 @@ const WORDS := [[40, "FF_WORD_5"], [30, "FF_WORD_4"], [20, "FF_WORD_3"], [12, "F
 const HEAT := Color("ffb03b")
 ## Every this many points the score is lettered over the field.
 const MILESTONE := 10000
-## The shop's rows, top to bottom, and each card's name (by Sim.Card).
-const SHOP_ORDER := [Sim.Card.DAMAGE, Sim.Card.SPEED, Sim.Card.SHOTS, Sim.Card.CRIT, Sim.Card.ENERGY]
-const SHOP_NAMES := ["PP_CARD_DAMAGE", "FF_CARD_SPEED", "PP_CARD_CRIT", "PP_CARD_ENERGY", "FF_CARD_SHOTS"]
 ## The most hit numbers afloat at once, the seconds one lasts, and the least
 ## seconds between two volleys heard.
 const NUMS_MOST := 24
 const NUM_LIFE := 0.6
 const SHOT_HEARD := 0.09
-## The most motes one bug lets go.
-const MOTES_A_BUG := 10
+## The stage map's tiles a row, the gap between them, and a tile's
+## difficulty marks (radius, gap).
+const MAP_COLS := 4
+const MAP_GAP := 14
+const MARK_R := 9.0
+const MARK_GAP := 8.0
 
 var sim: RefCounted
 ## The run's boosters and whether it was helped (arcade/boosters.gd): a best
@@ -186,18 +190,22 @@ var _flash_col := Color.WHITE
 var _next_milestone := MILESTONE
 var _end_score: Label
 var _end_at := 0.0
-## Energy: the plate's count and its mote, the motes in flight to it, and a
-## second voice that is heard and never felt, for their landing.
-var _energy_l: Label
-var _energy_icon: Control
-var _motes: Control
-var _quiet: Node2D
-## The shop's card while it is up, its rows ({card, button, value, price,
-## row}) and the energy lettered at its head.
-var _shop: Control
-var _shop_rows: Array = []
-var _shop_energy: Label
-## What the hits took, afloat: {pos (field units), text, t, crit, side}.
+## The stage and the difficulty (0 Easy .. 3 Insane) the next attempt
+## plays, the stage map while it is up (over the field), the paper row and
+## the difficulty row that takes its place over the map.
+var _stage := 1
+var _difficulty := 1
+var _map: Control
+var _slot: Control
+var _hud: Control
+var _level_card: Control
+## An attempt's end was recorded (`_finish`), whether it was a new best for
+## its stage and difficulty, and the attempt's number, so an end card asked
+## for by a timer never lands on a later one.
+var _finished := false
+var _better := false
+var _run := 0
+## What the hits took, afloat: {pos (field units), text, t, side}.
 var _nums: Array = []
 var _shot_heard := -10.0
 ## A label's beat, by label: each ends the last (a bump begun inside
@@ -211,6 +219,9 @@ func _ready() -> void:
 	add_to_group("versus_host")
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = CozyTheme.make()
+	# Medium until the player chooses (Record.pick's own default is Easy).
+	_difficulty = clampi(Record.kept(GAME, "pick", 1), 0, Sim.DIFF.size() - 1)
+	_stage = mini(Record.reached(GAME), Sim.stage_count())
 	_build()
 	settings_sheet = SettingsSheet.new(false)
 	settings_sheet.name = "SettingsSheet"
@@ -219,13 +230,11 @@ func _ready() -> void:
 	tutor.wire(top_bar, settings_sheet)
 	Ads.banner_changed.connect(func(_v: bool, _h: float) -> void: _apply_insets())
 	top_bar.enter(0.0)
-	# Before the first run (the boost card may be up): no Undo, no bulb.
-	top_bar.refresh(self)
-	_ask(false)
+	_open_map()
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
-		if sim != null and not sim.is_over() and _end == null and _shop == null:
+		if _playing():
 			_pause(true)
 
 # --- building ---
@@ -255,7 +264,14 @@ func _build() -> void:
 		_pause(true)
 		settings_sheet.open())
 	col.add_child(top_bar)
-	col.add_child(_build_hud())
+	# The paper row while a stage is played; on the map the difficulty row
+	# stands in its place.
+	_slot = VBoxContainer.new()
+	_slot.custom_minimum_size.y = maxf(HUD_H, LevelCard.HEIGHT)
+	col.add_child(_slot)
+	_hud = _build_hud()
+	_hud.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_slot.add_child(_hud)
 
 	var frame := PanelContainer.new()
 	frame.name = "Frame"
@@ -282,9 +298,6 @@ func _build() -> void:
 	_fx = Fx2D.new()
 	_fx.haptics = HAPTICS
 	field.add_child(_fx)
-	_quiet = Fx2D.new()
-	_quiet.buzzes = false
-	field.add_child(_quiet)
 
 	var over := VBoxContainer.new()
 	over.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
@@ -319,12 +332,6 @@ func _build() -> void:
 	_rw = Rewards.new()
 	_rw.set_additive(true)
 	add_child(_rw)
-	# stepped with the screen's own clock, so a pause holds them in the air
-	_motes = Motes.new()
-	_motes.auto = false
-	_motes.target = _energy_icon
-	_motes.landed.connect(_on_motes_landed)
-	add_child(_motes)
 	_apply_insets()
 
 func _build_hud() -> Control:
@@ -332,8 +339,7 @@ func _build_hud() -> Control:
 	row.custom_minimum_size.y = HUD_H
 	row.add_theme_constant_override("separation", 16)
 	var made := []
-	# the energy on the left: the thumb that plays hides the right
-	for key in ["PP_ENERGY", "FF_SCORE", "FF_BEST", "FF_STAGE"]:
+	for key in ["FF_SCORE", "FF_BEST", "FF_STAGE"]:
 		var plate := PanelContainer.new()
 		plate.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		plate.size_flags_stretch_ratio = {"FF_SCORE": 1.25, "FF_STAGE": 0.8}.get(key, 1.0)
@@ -351,23 +357,12 @@ func _build_hud() -> Control:
 		value.text = "0"
 		value.theme_type_variation = "SheetTitle"
 		value.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		if key == "PP_ENERGY":
-			# the mote the count is of, beside it: where the motes fly to
-			var held := HBoxContainer.new()
-			held.alignment = BoxContainer.ALIGNMENT_CENTER
-			held.add_theme_constant_override("separation", 6)
-			_energy_icon = _orb_icon(34.0)
-			held.add_child(_energy_icon)
-			held.add_child(value)
-			words.add_child(held)
-		else:
-			words.add_child(value)
+		words.add_child(value)
 		row.add_child(plate)
 		made.append(value)
-	_energy_l = made[0]
-	_score_l = made[1]
-	_best_l = made[2]
-	_stage_l = made[3]
+	_score_l = made[0]
+	_best_l = made[1]
+	_stage_l = made[2]
 	return row
 
 func _apply_insets() -> void:
@@ -387,8 +382,6 @@ func _layout_field() -> void:
 		return
 	_u = _unit(s)
 	_origin = Vector2((s.x - Sim.W * _u) * 0.5, s.y - Sim.H * _u)
-	if _motes != null:
-		_motes.u = size.x / 810.0 * 2.2
 	_sky = _build_sky()
 	var box: Control = _banner.get_meta("box")
 	box.set_anchors_preset(Control.PRESET_TOP_LEFT)
@@ -406,17 +399,20 @@ func px(p: Vector2) -> Vector2:
 
 # --- the game ---
 
+## An attempt at `_stage` on `_difficulty`, with the boosters chosen.
 func _new_game() -> void:
 	if _end != null:
 		_end.queue_free()
 		_end = null
-	_drop_shop()
-	_motes.clear()
+	_close_map()
 	_nums.clear()
-	sim = Sim.new()
+	sim = Sim.new(0, _stage, _difficulty)
 	Boosters.apply(GAME, sim, _boosts)
 	_boosted = not _boosts.is_empty()
 	_chance_used = false
+	_finished = false
+	_better = false
+	_run += 1
 	_run_gold = 0
 	_acc = 0.0
 	_paused = false
@@ -439,7 +435,7 @@ func _new_game() -> void:
 	_next_milestone = MILESTONE
 	_end_score = null
 	_rw.clear()
-	_best = Record.best(GAME)
+	_best = Record.stage_best(GAME, _stage, _difficulty)
 	_shown_score = -1
 	_started_at = Time.get_ticks_msec()
 	if _pause_card != null:
@@ -448,13 +444,18 @@ func _new_game() -> void:
 	_refresh_hud()
 	top_bar.refresh(self)
 	_fx.cue("start")
-	Analytics.track("arcade_start", {"game": GAME, "boosts": ",".join(_boosts)})
+	Analytics.track("arcade_start", {"game": GAME, "boosts": ",".join(_boosts), "stage": _stage,
+		"difficulty": _difficulty})
 
 func capabilities() -> Array:
 	return []
 
 func is_done() -> bool:
-	return sim != null and sim.is_over()
+	return sim != null and (sim.is_over() or sim.is_won())
+
+## A stage is being played: not on the map, not ended, no end card up.
+func _playing() -> bool:
+	return sim != null and not sim.is_over() and not sim.is_won() and _end == null
 
 func is_solved() -> bool:
 	return false
@@ -518,8 +519,6 @@ func _animate(delta: float) -> void:
 		for n: Dictionary in _nums:
 			n.t += delta
 		_nums = _nums.filter(func(n: Dictionary) -> bool: return n.t < NUM_LIFE)
-	if _motes != null:
-		_motes.step(delta)
 	for bu: Dictionary in _bursts:
 		bu.t += delta
 	_bursts = _bursts.filter(func(bu: Dictionary) -> bool: return bu.t < (0.9 if bu.big else 0.55))
@@ -573,6 +572,9 @@ func _hands() -> void:
 	sim.fire = keys or _touch != -1 or _mouse
 
 func _on_field_input(event: InputEvent) -> void:
+	# on the map the field is only the night behind the tiles
+	if sim == null:
+		return
 	if _paused:
 		if (event is InputEventScreenTouch and event.pressed) or (event is InputEventMouseButton and event.pressed):
 			if _end == null and not settings_sheet.is_open():
@@ -618,7 +620,7 @@ func _slide(at: Vector2) -> void:
 
 ## The tutorial card stops the run and leaves it paused, a tap from going on.
 func _tutor_hold(on: bool) -> void:
-	if on and sim != null and not sim.is_over() and _end == null:
+	if on and _playing():
 		_pause(true)
 
 func _pause(on: bool) -> void:
@@ -690,21 +692,15 @@ func _play_events() -> void:
 				# the firefly is the pop's knock, not a kill.
 				if not bool(ev.get("rammed", false)):
 					_feel(Haptics.BUMP if big else Haptics.TAP)
-				if bool(ev.get("crit", false)):
-					_num(ev.pos + Vector2(0, 9.0), int(ev.dmg), true)
-				_drop_energy(ev.pos, int(ev.get("energy", 0)))
 				_on_kill(ev, colour)
 			"hurt":
 				# every hit floats what it took; it is heard and felt when
-				# the bug shows it (half gone) and when the shot was lucky
-				_num(ev.get("at", ev.pos), int(ev.get("dmg", 1)), bool(ev.get("crit", false)))
+				# the bug shows it (half gone)
+				_num(ev.get("at", ev.pos), int(ev.get("dmg", 1)))
 				if bool(ev.get("half", true)):
 					_fx.cue("hurt")
 					_feel(Haptics.TAP)
 					_fx.sparkle(at, Art.MOTH_HURT)
-				elif bool(ev.get("crit", false)):
-					_fx.cue("hurt", 1.3, -4.0)
-					_feel(Haptics.TAP)
 			"dive":
 				if int(ev.kind) == Sim.Kind.MOTH or randf() < 0.5:
 					_fx.cue("dive", randf_range(0.95, 1.05), -6.0)
@@ -782,12 +778,11 @@ func _play_events() -> void:
 				_fx.cue("clear")
 				_feel(Haptics.BUMP)
 				_stage_cleared()
-			"extra_ship":
-				_fx.cue("extra")
-				_feel(Haptics.GOOD)
-				_extra_ship()
-			"shop":
-				_open_shop()
+			"won":
+				_finish(true)
+			"goal_step", "goal_met", "shield", "twin":
+				# the goal's plate, the buffs and the shield are Task 3b's
+				pass
 			"game_over":
 				# The last firefly's knock is the lose.
 				_feel(Haptics.LOSE)
@@ -918,17 +913,6 @@ func _flyby_result(perfect: bool, bonus: int) -> void:
 		_flash_now(Pal.SUN, 0.6)
 		_shake = maxf(_shake, 0.5)
 
-## An extra firefly: lettered over a sunburst, and lantern motes flying to
-## the spare lanterns in the corner.
-func _extra_ship() -> void:
-	var at := _field_at(0.5, 0.66)
-	_rw.sticker(tr("FF_EXTRA"), at, 70, 1.8, true, Color.WHITE, true, "extra")
-	var left: int = sim.ships - (1 if sim.ship != Sim.Ship.DEAD else 0)
-	var home := _rw.at(field, Vector2(30.0 + clampi(left - 1, 0, 5) * 38.0, field.size.y - 26.0))
-	_rw.spray(at, Art.GLOW, 12, 600.0, "mote", 1.4, 0.2, home)
-	_rw.spray(at, Color("fffaf0"), 10, 600.0, "spark", 1.2)
-	_flash_now(Art.GLOW, 0.3)
-
 ## The score passing a round number, and the best being passed: lettered,
 ## with stars out of the plate.
 func _score_moments() -> void:
@@ -995,10 +979,6 @@ func _refresh_hud(delta := 0.0) -> void:
 		_score_l.text = shown
 		_best_l.text = Record.grouped(maxi(_best, int(_roll)))
 	_stage_l.text = str(sim.stage)
-	# the plate counts what has landed, not what is still in the air
-	var held := Record.grouped(maxi(0, int((sim.energy - ceili(_motes.due - 0.001)) / float(Sim.ORBS))))
-	if _energy_l.text != held:
-		_energy_l.text = held
 
 # --- drawing ---
 
@@ -1495,18 +1475,14 @@ func _draw_bars(b: Face.Builder) -> void:
 		var left := maxf(h, w * clampf(float(e.hp) / float(e.max), 0.0, 1.0))
 		b.fan(Face.Builder.round_rect(at, Vector2(left, h), h * 0.5), Art.GLOW_HOT)
 
-## A hit's number: `dmg` afloat from `at` (field units), a lucky one bigger,
-## gold and with a "!". The oldest plain one makes room past NUMS_MOST.
-func _num(at: Vector2, dmg: int, crit: bool) -> void:
-	if dmg <= 0:
+## A hit's number: `dmg` afloat from `at` (field units); none past
+## NUMS_MOST.
+func _num(at: Vector2, dmg: int) -> void:
+	if dmg <= 0 or _nums.size() >= NUMS_MOST:
 		return
-	if _nums.size() >= NUMS_MOST:
-		if not crit:
-			return
-		_nums.pop_front()
 	# thrown a little apart, or a volley on one bug letters one blot
-	_nums.append({"pos": at + Vector2(randf_range(-6.0, 6.0), randf_range(-3.0, 2.0)), "text": ("%d!" % dmg) if crit else str(dmg),
-		"t": 0.0, "crit": crit, "side": randf_range(-1.0, 1.0)})
+	_nums.append({"pos": at + Vector2(randf_range(-6.0, 6.0), randf_range(-3.0, 2.0)), "text": str(dmg),
+		"t": 0.0, "side": randf_range(-1.0, 1.0)})
 
 ## The hits' numbers hop up and out from where the shot landed and fade.
 ## One size a look and no transform of their own, so they batch: the dark
@@ -1518,16 +1494,15 @@ func _draw_nums() -> void:
 	var laid: Array = []
 	for n: Dictionary in _nums:
 		var u: float = n.t / NUM_LIFE
-		var crit: bool = n.crit
-		var size := 40 if crit else 26
-		var rise := (30.0 if crit else 22.0) * (1.0 - pow(1.0 - u, 2.0))
+		var size := 26
+		var rise := 22.0 * (1.0 - pow(1.0 - u, 2.0))
 		var at := px(n.pos) + Vector2(float(n.side) * 14.0 * u, -rise - 6.0)
 		var w := font.get_string_size(n.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
-		laid.append([at + Vector2(-w * 0.5, 0), n.text, size, 1.0 - clampf((u - 0.6) / 0.4, 0.0, 1.0), crit])
+		laid.append([at + Vector2(-w * 0.5, 0), n.text, size, 1.0 - clampf((u - 0.6) / 0.4, 0.0, 1.0)])
 	for l: Array in laid:
 		field.draw_string_outline(font, l[0], l[1], HORIZONTAL_ALIGNMENT_LEFT, -1, l[2], 8, Color(0.16, 0.12, 0.3, 0.85 * float(l[3])))
 	for l: Array in laid:
-		field.draw_string(font, l[0], l[1], HORIZONTAL_ALIGNMENT_LEFT, -1, l[2], Color(Pal.SUN if l[4] else Color("fffaf0"), l[3]))
+		field.draw_string(font, l[0], l[1], HORIZONTAL_ALIGNMENT_LEFT, -1, l[2], Color(Color("fffaf0"), l[3]))
 
 ## The ships in reserve as small lanterns in the bottom-left corner, each
 ## breathing its glow, and a flag a stage in the bottom-right, waving.
@@ -1558,232 +1533,50 @@ func _draw_ships_left(b: Face.Builder) -> void:
 			foot + Vector2(-1.0, -h + 15.0)]), cloth)
 		x -= 27.0 if big else 22.0
 
-# --- energy and the shop ---
-
-## A bug gone at `at` (field units): its `orbs` of energy drift out of it as
-## motes and fly to the plate.
-func _drop_energy(at: Vector2, orbs: int) -> void:
-	if orbs <= 0 or _motes == null:
-		return
-	_motes.drop(field.get_global_transform() * (px(at) + _shake_off), float(orbs), mini(orbs, MOTES_A_BUG))
-
-## Motes came down on the plate: its count swells, and each landing is a
-## low tick a semitone up a short run of five, heard and never felt.
-func _on_motes_landed(_count: int, note: int) -> void:
-	if _energy_l.scale.x <= 1.01:
-		_energy_l.pivot_offset = _energy_l.size * 0.5
-		_beat(_energy_l, 0.16, 0.16)
-	if note >= 0:
-		_quiet.cue("shoot", pow(2.0, mini(note, 5) / 12.0), -9.0)
-
 ## A beat on `node` that ends the last one on it.
 func _beat(node: Control, amount: float, time: float) -> void:
 	Motion.stop(_beats.get(node))
 	node.scale = Vector2.ONE
 	_beats[node] = Motion.bump(node, amount, time)
 
-## A stage is over and there is energy for something: the shop's card over
-## the night, the run waiting behind it until Go.
-func _open_shop() -> void:
-	if _shop != null:
-		return
-	_touch = -1
-	_mouse = false
-	sim.target_x = NAN
-	# whatever is in the air is counted before the card letters it
-	_motes.clear()
-	_shop = _build_shop()
-	add_child(_shop)
-	_refresh_shop()
-	Motion.appear(_shop, 0.0, 1.0, 0.2)
-	_fx.cue("extra", 0.9, -5.0)
-
-func _close_shop() -> void:
-	if _shop == null:
-		return
-	_drop_shop()
-	sim.leave_shop()
-	_play_events()
-	_fx.buzz(Haptics.TAP)
-
-func _drop_shop() -> void:
-	if _shop != null:
-		_shop.queue_free()
-		_shop = null
-	_shop_rows.clear()
-
-func _build_shop() -> Control:
-	var scrim := Dialog.scrim()
-	scrim.name = "Shop"
-	var center := CenterContainer.new()
-	center.name = "Center"
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	scrim.add_child(center)
-	var card := Dialog.card(820)
-	center.add_child(card)
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 16)
-	card.add_child(col)
-	# the energy held, on a pill at the head's right
-	var pill := PanelContainer.new()
-	pill.add_theme_stylebox_override("panel", Dialog.tile(Pal.SURFACE, 14))
-	var held := HBoxContainer.new()
-	held.add_theme_constant_override("separation", 10)
-	pill.add_child(held)
-	held.add_child(_orb_icon(46.0))
-	_shop_energy = Label.new()
-	_shop_energy.theme_type_variation = "SheetTitle"
-	held.add_child(_shop_energy)
-	col.add_child(Dialog.head("PP_SHOP", "trend", pill))
-	var line := Label.new()
-	line.text = tr("FF_SHOP_LINE") % sim.stage
-	line.theme_type_variation = "SheetBodyDim"
-	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	col.add_child(line)
-	_shop_rows.clear()
-	for card_id: int in SHOP_ORDER:
-		col.add_child(_shop_row(card_id))
-	var go := Dialog.primary("play", tr("FF_SHOP_GO"))
-	go.name = "Go"
-	go.pressed.connect(_close_shop)
-	Dialog.buttons(col, go)
-	return scrim
-
-## A shop card's medallion, `side` pixels square.
-func _card_icon(card: int, side: float) -> Control:
-	var icon := Control.new()
-	icon.custom_minimum_size = Vector2(side, side)
-	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	icon.draw.connect(func() -> void:
-		icon.draw_mesh(Art.card_token(card, side), null, Transform2D(0.0, icon.size * 0.5)))
-	return icon
-
-## A mote of energy, `side` pixels square: what a price is counted in.
-func _orb_icon(side: float) -> Control:
-	var icon := Control.new()
-	icon.custom_minimum_size = Vector2(side, side)
-	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	icon.draw.connect(func() -> void:
-		var sc := Motes.icon_scale(side)
-		icon.draw_mesh(Motes.orb(), null, Transform2D(0.0, Vector2(sc, sc), 0.0, icon.size * 0.5)))
-	return icon
-
-## One card of the shop: the whole row is the button. Its medallion, its
-## name over what it is now and what one more makes it, and its price.
-func _shop_row(card: int) -> Button:
-	var b := Button.new()
-	b.name = "Card%d" % card
-	b.custom_minimum_size = Vector2(0, 132)
-	b.focus_mode = Control.FOCUS_NONE
-	for st in ["normal", "hover"]:
-		b.add_theme_stylebox_override(st, Dialog.tile(Pal.SURFACE, 16))
-	b.add_theme_stylebox_override("pressed", Dialog.tile(Pal.SURFACE.darkened(0.06), 16))
-	b.add_theme_stylebox_override("disabled", Dialog.tile(Color(Pal.SURFACE, 0.5), 16))
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 12)
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	b.add_child(row)
-	row.anchor_right = 1.0
-	row.anchor_bottom = 1.0
-	row.offset_left = 22.0
-	row.offset_right = -26.0
-	row.add_child(_card_icon(card, 88.0))
-	var words := VBoxContainer.new()
-	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	words.alignment = BoxContainer.ALIGNMENT_CENTER
-	words.add_theme_constant_override("separation", -4)
-	words.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(words)
-	var title := Label.new()
-	title.text = SHOP_NAMES[card]
-	title.theme_type_variation = "SheetTitle"
-	title.clip_text = true
-	words.add_child(title)
-	var value := Label.new()
-	value.theme_type_variation = "SheetBodyDim"
-	# a long language's line is cut, never the price pushed off the card
-	value.clip_text = true
-	value.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	words.add_child(value)
-	row.add_child(_orb_icon(34.0))
-	var cost := Label.new()
-	cost.theme_type_variation = "SheetTitle"
-	cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	cost.custom_minimum_size.x = 62
-	row.add_child(cost)
-	b.pressed.connect(_buy.bind(card))
-	_shop_rows.append({"card": card, "button": b, "value": value, "price": cost, "row": row})
-	return b
-
-## What `card` is now and what one more makes it, in figures only.
-func _card_value(card: int) -> String:
-	match card:
-		Sim.Card.DAMAGE:
-			return "x%d  >  x%d" % [sim.power, sim.power + 1]
-		Sim.Card.SPEED:
-			return tr("PP_CARD_SPEED_LINE") % [_fig(sim.rate()), _fig(sim.rate() + Sim.RATE_STEP)]
-		Sim.Card.CRIT:
-			var lv: int = sim.crit_lv
-			var line := tr("PP_CARD_CRIT_LINE") % [Sim.crit_mult(lv), Sim.crit_mult(lv + 1), roundi(Sim.crit_chance(lv + 1) * 100.0)]
-			# with none bought there is no crit to go on from
-			return line if lv > 0 else line.substr(line.find(">") + 1).strip_edges()
-		Sim.Card.SHOTS:
-			return tr("FF_CARD_SHOTS_LINE") % [sim.volley, sim.volley + 1]
-	return tr("PP_CARD_ENERGY_LINE") % [roundi(sim.energy_lv * Sim.ENERGY_STEP * 100.0), roundi((sim.energy_lv + 1) * Sim.ENERGY_STEP * 100.0)]
-
-## A figure as the shop letters it: whole when it is, else to a tenth, with
-## a comma where the language writes one.
-static func _fig(v: float) -> String:
-	if absf(v - roundf(v)) < 0.05:
-		return str(roundi(v))
-	var text := "%.1f" % v
-	return text if TranslationServer.get_locale().begins_with("en") else text.replace(".", ",")
-
-func _refresh_shop() -> void:
-	_shop_energy.text = Record.grouped(int(sim.energy / float(Sim.ORBS)))
-	for r: Dictionary in _shop_rows:
-		var card: int = r.card
-		var open: bool = sim.can_buy(card)
-		(r.value as Label).text = _card_value(card)
-		(r.price as Label).text = Record.grouped(int(sim.price(card) / float(Sim.ORBS)))
-		(r.button as Button).disabled = not open
-		(r.row as Control).modulate.a = 1.0 if open else 0.45
-
-func _buy(card: int) -> void:
-	if not sim.buy(card):
-		return
-	_fx.cue("docked", minf(1.0 + 0.04 * int(sim.bought[card]), CLIMB_TOP), -4.0)
-	_fx.buzz(Haptics.TAP)
-	for r: Dictionary in _shop_rows:
-		if int(r.card) == card:
-			var b: Button = r.button
-			b.pivot_offset = b.size * 0.5
-			_beat(b, 0.05, 0.2)
-	_refresh_shop()
-
 # --- the end ---
 
 func _game_over() -> void:
 	if _offer_chance():
 		return
+	_finish(false)
+
+## An attempt is over, cleared (the sim's `won`) or not (the last firefly
+## lost, the Second chance spent or declined): recorded for its stage and
+## difficulty, paid (an attempt's gold, and the best's only on the first
+## clear of that stage at that difficulty), and the end card once the
+## moment has been seen.
+func _finish(cleared: bool) -> void:
+	if _finished or sim == null:
+		return
+	_finished = true
 	_touch = -1
 	_mouse = false
-	var better := Record.add(GAME, sim.score, sim.stage, _boosted)
-	_run_gold = Wallet.pay_run(better)
+	sim.target_x = NAN
+	var got: Dictionary = Record.add_stage(GAME, sim.stage, sim.difficulty, sim.score, cleared, _boosted)
+	_better = bool(got.better)
+	_run_gold = Wallet.pay_run(bool(got.first_clear))
 	var secs := int((Time.get_ticks_msec() - _started_at) / 1000.0)
-	Analytics.track("arcade_end", {"game": GAME, "score": sim.score, "stage": sim.stage,
-		"seconds": secs, "fired": sim.fired, "hits": sim.hits, "kills": sim.kills, "best": better})
+	Analytics.track("arcade_end", {"game": GAME, "score": sim.score, "stage": sim.stage, "difficulty": sim.difficulty,
+		"seconds": secs, "fired": sim.fired, "hits": sim.hits, "kills": sim.kills, "best": _better})
 	Ads.note_finished()
-	_show_banner(tr("FF_GAME_OVER"), "", 1.6)
+	if not cleared:
+		_show_banner(tr("FF_GAME_OVER"), "", 1.6)
 	top_bar.refresh(self)
-	get_tree().create_timer(1.8).timeout.connect(_show_end.bind(better))
+	# a cleared stage's Clear! and a flyby's tally are seen out first
+	var wait := 1.8 if not cleared else (3.2 if sim.challenge() else 2.2)
+	get_tree().create_timer(wait).timeout.connect(_show_end.bind(_run))
 
-func _show_end(better: bool) -> void:
-	if sim == null or not sim.is_over() or _end != null:
+func _show_end(run: int) -> void:
+	if sim == null or not _finished or _end != null or run != _run:
 		return
-	_fx.cue("new_best" if better else "game_over")
+	var better := _better
+	_fx.cue("new_best" if better else ("clear" if sim.is_won() else "game_over"))
 	_end = _build_end(better)
 	add_child(_end)
 	# the rewards (their rain and bursts) stay over the card
@@ -1829,7 +1622,7 @@ func _build_end(better: bool) -> Control:
 	col.add_child(seat)
 	_seat = seat
 	var head := Label.new()
-	head.text = "FF_NEW_BEST" if better else "FF_GAME_OVER_CARD"
+	head.text = "FF_NEW_BEST" if better else ("FF_CLEARED_CARD" if sim.is_won() else "FF_GAME_OVER_CARD")
 	head.theme_type_variation = "WellDone"
 	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(head)
@@ -1866,18 +1659,40 @@ func _build_end(better: bool) -> Control:
 	col.add_child(stats)
 	var line := Label.new()
 	var acc := int(round(100.0 * sim.hits / maxf(1.0, sim.fired)))
-	line.text = "%s  ·  %s" % [tr("FF_ACCURACY") % acc, tr("FF_BEST_LINE") % Record.grouped(Record.best(GAME))]
+	line.text = "%s  ·  %s" % [tr("FF_ACCURACY") % acc, tr("FF_BEST_LINE") % Record.grouped(Record.stage_best(GAME, sim.stage, sim.difficulty))]
 	line.theme_type_variation = "SheetBodyDim"
 	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(line)
-	var again := Dialog.primary("reset", tr("FF_AGAIN"))
+	# Next stage leads when there is one to go on to; Again plays this one
+	# once more and Stages goes back to the map.
+	var next: Button = null
+	if sim.is_won() and sim.stage < Sim.stage_count():
+		next = Dialog.primary("chevron_right", tr("FF_NEXT_STAGE"))
+		next.name = "Next"
+		next.pressed.connect(_next_stage)
+	var again: Button
+	if next != null:
+		again = Dialog.secondary("reset", tr("FF_AGAIN"))
+	else:
+		again = Dialog.primary("reset", tr("FF_AGAIN"))
 	again.name = "Again"
 	again.pressed.connect(_ask)
-	var back := Dialog.secondary("chevron_left", tr("FF_BACK"))
-	back.pressed.connect(_on_back)
-	Dialog.buttons(col, again, back, GoldDoubler.new(_run_gold) if _run_gold > 0 else null)
+	var stages := Dialog.secondary("chevron_left", tr("FF_STAGES"))
+	stages.name = "Stages"
+	stages.pressed.connect(_to_map)
+	var gold: Control = GoldDoubler.new(_run_gold) if _run_gold > 0 else null
+	if next == null:
+		Dialog.buttons(col, again, stages, gold)
+	else:
+		var stack := Dialog.buttons(col, next, again, gold)
+		stages.size_flags_horizontal = Control.SIZE_FILL
+		stack.add_child(stages)
 	return scrim
+
+func _next_stage() -> void:
+	_stage = mini(sim.stage + 1, Sim.stage_count())
+	_ask()
 
 ## A stat plate pops in after the score has run up, one after another.
 func _pop_in(plate: Control, i: int) -> void:
@@ -1924,31 +1739,274 @@ func _celebrate(better: bool) -> void:
 	_end.add_child(fx)
 	var cols := [Art.GLOW, Art.BEETLE_SHELL, Art.MOTH_WING, Art.GNAT_BODY, Pal.FLOWER, Pal.SUN_RAY]
 	var mid := size * 0.5
+	# on the puffs' own tweens, so a card left early takes them with it
 	for k in 8:
 		var at := mid + Vector2.from_angle(TAU * k / 8.0 - PI * 0.5) * Vector2(400.0, 330.0)
-		var t := get_tree().create_timer(0.25 + 0.14 * k)
-		t.timeout.connect(func() -> void:
-			if is_instance_valid(fx):
-				fx.puff(at, cols[k % cols.size()], 12))
+		fx.create_tween().tween_callback(fx.puff.bind(at, cols[k % cols.size()], 12)).set_delay(0.25 + 0.14 * k)
+
+# --- the stage map ---
+
+## Firefly's four difficulties as the level card reads a board's levels.
+func _levels() -> Dictionary:
+	var levels := []
+	for d in Sim.DIFF.size():
+		levels.append({"difficulty": d, "name": String(Sim.DIFF[d].name)})
+	return {"levels": levels}
+
+## A difficulty's cell is checked when every stage is cleared at it.
+func _difficulty_done(d: int) -> bool:
+	for n in range(1, Sim.stage_count() + 1):
+		if not Record.stage_cleared(GAME, n, d):
+			return false
+	return true
+
+## The difficulty row, made again on every visit to the map so its checks
+## are today's.
+func _make_level_card() -> void:
+	if _level_card != null:
+		_slot.remove_child(_level_card)
+		_level_card.queue_free()
+	_level_card = LevelCard.new(_levels(), _difficulty, _difficulty_done)
+	_level_card.name = "LevelCard"
+	_level_card.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_level_card.pick.connect(_on_difficulty)
+	_slot.add_child(_level_card)
+
+## The stage map over the night garden: the difficulty row where the paper
+## row was and the stages under it. Whatever a stage left up (its boost
+## card, Second chance, pause or end card) goes, and so does the stage.
+func _open_map() -> void:
+	for n in ["BoostCard", "SecondChance"]:
+		var card := get_node_or_null(n)
+		if card != null:
+			remove_child(card)
+			card.queue_free()
+	if _end != null:
+		_end.queue_free()
+		_end = null
+	_end_score = null
+	if _pause_card != null:
+		_pause_card.queue_free()
+		_pause_card = null
+	_paused = false
+	_touch = -1
+	_mouse = false
+	sim = null
+	if _beam_voice.playing:
+		_beam_voice.stop()
+	_rw.clear()
+	_pops.clear()
+	_bursts.clear()
+	_nums.clear()
+	_vis.clear()
+	_wake.clear()
+	_shake = 0.0
+	_shake_off = Vector2.ZERO
+	_flash = 0.0
+	_heat = 0.0
+	_chain = 0
+	Motion.stop(_banner_tw)
+	(_banner.get_meta("box") as Control).modulate.a = 0.0
+	_hud.visible = false
+	_make_level_card()
+	_lay_map()
+	if not Motion.reduce:
+		Motion.appear(_map, 0.0, 1.0, 0.2)
+	top_bar.refresh(self)
+	field.queue_redraw()
+
+## The map laid again (a difficulty chosen shows its bests).
+func _lay_map() -> void:
+	if _map != null:
+		field.remove_child(_map)
+		_map.queue_free()
+	_map = _build_map()
+	field.add_child(_map)
+
+func _close_map() -> void:
+	if _map != null:
+		_map.queue_free()
+		_map = null
+	_hud.visible = true
+	if _level_card != null:
+		_level_card.visible = false
+
+func _build_map() -> Control:
+	var map := MarginContainer.new()
+	map.name = "StageMap"
+	map.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	map.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	for side in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
+		map.add_theme_constant_override(side, 24)
+	var col := VBoxContainer.new()
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_theme_constant_override("separation", 18)
+	map.add_child(col)
+	var head := Label.new()
+	head.text = "FF_STAGES"
+	head.theme_type_variation = "SheetTitle"
+	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	head.add_theme_color_override("font_color", Color("fff1d6"))
+	col.add_child(head)
+	var grid := GridContainer.new()
+	grid.name = "Grid"
+	grid.columns = MAP_COLS
+	grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", MAP_GAP)
+	grid.add_theme_constant_override("v_separation", MAP_GAP)
+	col.add_child(grid)
+	var open := mini(Record.reached(GAME), Sim.stage_count())
+	for n in range(1, Sim.stage_count() + 1):
+		grid.add_child(_stage_tile(n, n <= open))
+	grid.add_child(_soon_tile())
+	return map
+
+## One stage's tile: its number and name, a mark a difficulty (filled in
+## that difficulty's tint once cleared at it) and its best at the chosen
+## difficulty. Past the furthest stage open it is dimmed and does nothing.
+func _stage_tile(n: int, open: bool) -> Button:
+	var b := Button.new()
+	b.name = "Stage%d" % n
+	b.focus_mode = Control.FOCUS_NONE
+	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	b.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	b.custom_minimum_size = Vector2(0, 150)
+	var up := CozyTheme.chip(Pal.SURFACE, 22)
+	for st in ["normal", "hover", "focus", "disabled"]:
+		b.add_theme_stylebox_override(st, up)
+	b.add_theme_stylebox_override("pressed", CozyTheme.chip(Pal.SURFACE, 22, Color.TRANSPARENT, 0, true))
+	b.disabled = not open
+	if not open:
+		b.modulate.a = 0.45
+	b.resized.connect(func() -> void: b.pivot_offset = b.size * 0.5)
+	b.pressed.connect(func() -> void:
+		Motion.squash(b, 0.08, 0.18)
+		_pick_stage(n))
+	var col := VBoxContainer.new()
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	col.offset_left = 8.0
+	col.offset_right = -8.0
+	col.alignment = BoxContainer.ALIGNMENT_CENTER
+	col.add_theme_constant_override("separation", 2)
+	b.add_child(col)
+	var num := Label.new()
+	num.text = str(n)
+	num.theme_type_variation = "SheetTitle"
+	num.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	num.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(num)
+	var title := Label.new()
+	title.text = String(Sim.STAGES[n - 1].name)
+	title.theme_type_variation = "SheetBodyDim"
+	title.add_theme_font_size_override("font_size", 20)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	title.max_lines_visible = 2
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(title)
+	var cleared := []
+	for d in Sim.DIFF.size():
+		cleared.append(Record.stage_cleared(GAME, n, d))
+	col.add_child(_marks(cleared))
+	var best := Record.stage_best(GAME, n, _difficulty)
+	var line := Label.new()
+	line.name = "Best"
+	line.text = tr("FF_BEST_LINE") % Record.grouped(best) if best > 0 else " "
+	line.theme_type_variation = "SheetBodyDim"
+	line.add_theme_font_size_override("font_size", 20)
+	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	line.clip_text = true
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(line)
+	return b
+
+## A stage's four clears in a row, Easy to Insane: a filled bead in the
+## difficulty's tint when cleared, its ring when not. One mesh.
+func _marks(cleared: Array) -> Control:
+	var marks := Control.new()
+	marks.name = "Marks"
+	marks.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var n := cleared.size()
+	marks.custom_minimum_size = Vector2(n * MARK_R * 2.0 + (n - 1) * MARK_GAP, MARK_R * 2.0 + 4.0)
+	marks.set_meta("cleared", cleared)
+	marks.draw.connect(func() -> void:
+		var bd := Face.Builder.new()
+		var x0 := (marks.size.x - marks.custom_minimum_size.x) * 0.5 + MARK_R
+		for d in n:
+			var c := Vector2(x0 + d * (MARK_R * 2.0 + MARK_GAP), marks.size.y * 0.5)
+			var ink: Color = Sheet.TINTS[d][2]
+			bd.disc(c, MARK_R, ink)
+			if not bool(cleared[d]):
+				bd.disc(c, MARK_R - 2.5, Pal.SURFACE)
+		marks.draw_mesh(bd.mesh(), null))
+	return marks
+
+## After the last stage, the promise of more.
+func _soon_tile() -> Control:
+	var tile := PanelContainer.new()
+	tile.name = "Soon"
+	tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tile.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	tile.add_theme_stylebox_override("panel", CozyTheme.chip(Color(Pal.SURFACE, 0.55), 22))
+	var words := Label.new()
+	words.text = "FF_MORE_SOON"
+	words.theme_type_variation = "SheetBodyDim"
+	words.add_theme_font_size_override("font_size", 20)
+	words.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	words.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tile.add_child(words)
+	return tile
+
+## Another difficulty chosen on the map: kept, ringed, and the map's bests
+## are that difficulty's.
+func _on_difficulty(d: int) -> void:
+	_difficulty = clampi(d, 0, Sim.DIFF.size() - 1)
+	Record.set_pick(GAME, _difficulty)
+	_level_card.set_current(_difficulty)
+	_lay_map()
+
+## An open stage tapped: it is played, through the boost card.
+func _pick_stage(n: int) -> void:
+	_stage = n
+	_ask()
 
 # --- chrome ---
 
 func _on_reset() -> void:
-	if sim != null and not sim.is_over():
+	if _playing():
 		Analytics.track("board_reset", {"puzzle_id": GAME})
 	_ask()
 
+## The top bar's back: from a stage (or its boost card, or its end) to the
+## map, from the map out of the game. A boost card over the map only goes.
 func _on_back() -> void:
-	if sim != null and not sim.is_over() and sim.score > 0:
-		Analytics.track("arcade_abandon", {"game": GAME, "score": sim.score, "stage": sim.stage})
-	closed.emit()
+	var card := get_node_or_null("BoostCard")
+	if card != null and _map != null:
+		remove_child(card)
+		card.queue_free()
+		return
+	if _map != null:
+		closed.emit()
+		return
+	_to_map()
+
+## Back to the map from a stage: one still going is abandoned, and one left
+## with its Second chance up ends as if it were declined.
+func _to_map() -> void:
+	if _playing():
+		Analytics.track("arcade_abandon", {"game": GAME, "score": sim.score, "stage": sim.stage,
+			"difficulty": sim.difficulty})
+	elif sim != null and sim.is_over() and not _finished:
+		_finish(false)
+	_open_map()
 
 ## Android's back, through the menu: a sheet first, then the screen.
 func go_back() -> void:
 	if tutor.close():
-		return
-	if _shop != null:
-		_close_shop()
 		return
 	if settings_sheet.is_open():
 		settings_sheet.close()
@@ -1957,15 +2015,15 @@ func go_back() -> void:
 
 # --- boosters (arcade/boosters.gd) ---
 
-## Before a run: the boost card, when a booster is held or the gold for one
-## is, else straight in. A run still going when it is asked for stops there.
+## Before an attempt: the boost card, when a booster is held or the gold for
+## one is, else straight in. A stage still going when it is asked for stops
+## there.
 func _ask(by_hand := true) -> void:
 	if get_node_or_null("BoostCard") != null or get_node_or_null("SecondChance") != null:
 		return
 	if _end != null:
 		_end.queue_free()
 		_end = null
-	_drop_shop()
 	if not BoostCard.wanted(GAME):
 		_boosts = []
 		_new_game()

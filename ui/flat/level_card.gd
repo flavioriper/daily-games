@@ -9,6 +9,11 @@ extends "res://ui/hud/panel.gd"
 ##
 ## It is the difficulty sheet's row (ui/menu/difficulty_sheet.gd) cut to a
 ## cell: that sheet's tints, its plaque with the level's sign and its names.
+##
+## A game that keeps its own record (Firefly's stage map, 2026-10-17) hands
+## it `done`, a Callable taking a difficulty and saying whether that level's
+## cell is checked; without one the check is today's `Progress`, as the flat
+## host has it.
 
 ## Another level was tapped.
 signal pick(difficulty: int)
@@ -32,10 +37,12 @@ const NAME_SIZE := 28
 var _entry: Dictionary = {}
 var _current := 0
 var _cells: Dictionary = {}
+var _done := Callable()
 
-func _init(entry: Dictionary = {}, current := 0) -> void:
+func _init(entry: Dictionary = {}, current := 0, done := Callable()) -> void:
 	_entry = entry
 	_current = current
+	_done = done
 	enter_from = Vector2(0, 100)
 
 func _build() -> void:
@@ -104,7 +111,7 @@ func _cell(level: Dictionary, d: int) -> Button:
 	name_label.add_theme_color_override("font_color", Pal.PAPER if night else Pal.TEXT)
 	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(name_label)
-	if Progress.completed(Registry.progress_id(_entry, d)):
+	if _is_done(d):
 		var done := Control.new()
 		done.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		done.set_anchors_preset(Control.PRESET_TOP_RIGHT)
@@ -117,3 +124,9 @@ func _cell(level: Dictionary, d: int) -> Button:
 			Icons.paint(done, "check", Rect2(done.size * 0.22, done.size * 0.56), Pal.TEXT if night else Pal.SURFACE))
 		cell.add_child(done)
 	return cell
+
+## Whether level `d` wears the check: the game's own word, else today's.
+func _is_done(d: int) -> bool:
+	if _done.is_valid():
+		return bool(_done.call(d))
+	return Progress.completed(Registry.progress_id(_entry, d))

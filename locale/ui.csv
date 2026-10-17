@@ -256,6 +256,10 @@ FF_STAT_KILLS,bugs caught,insetos pegos,bichos atrapados
 FF_STAT_CHAIN,best chain,melhor corrente,mejor cadena
 FF_PAUSED,Paused,Pausado,En pausa
 FF_RESUME,Tap to go on,Toque para continuar,Toca para seguir
+FF_STAGES,Stages,Fases,Fases
+FF_NEXT_STAGE,Next stage,Próxima fase,Siguiente fase
+FF_MORE_SOON,More stages soon,Mais fases em breve,Más fases pronto
+FF_CLEARED_CARD,Stage cleared!,Fase vencida!,¡Fase superada!
 HR_K_0,Aphids,Pulgões,Pulgones
 HR_K_1,Ants · quick,Formigas · rápidas,Hormigas · rápidas
 HR_K_2,Gnats · a swarm,Mosquitos · um enxame,Mosquitos · un enjambre
