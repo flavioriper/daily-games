@@ -401,8 +401,10 @@ const FIT = [9, 91];
 /** Pixels of the 256 reading a chunk must hold: LEAST_SQUARES of the
  *  sim's 36-grid with room to spare (a square is about six pixels). */
 const DRAWN_LEAST = 520;
-/** Stickers drawn for one jelly before it is written from words. */
-const DRAWINGS = 3;
+/** Stickers drawn for one jelly before it is written from words, by band:
+ *  Insane's five jellies at three each, with flash's back-offs, would pass
+ *  the themeDay step's half hour. */
+const DRAWINGS = [3, 3, 2, 2];
 /** Pixels the drawing is grown out over the board. */
 const SWELL = 5;
 
@@ -588,7 +590,7 @@ export function readJelly(d: Drawing | Raster, band: number): {parts: Part[]; wh
  *  before 2026-10-16, when no drawing will do. */
 export async function drawJelly(day: number, thing: Thing, band: number, t: JellyTry,
   keep?: (name: string, d: Drawing) => void): Promise<Part[] | null> {
-  for (let n = 0; n < DRAWINGS; n++) {
+  for (let n = 0; n < DRAWINGS[band]; n++) {
     const drawing = await draw(STICKER(thing.draw, band), shapesModel());
     keep?.(`${day}_jelly${band}_${thing.id}_${n}`, drawing);
     const got = readJelly(drawing, band);

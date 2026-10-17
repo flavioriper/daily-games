@@ -683,7 +683,7 @@ of 100: a spiral shell four rings, a barnacle rock a blue blob.
   corners leave no clear seam, and laid as a `soft` shape, the biggest
   outline first (so what lies inside one is laid over it); a flavour's
   shapes are one part when the parts would pass 8. `why()` judges it as
-  before; up to `DRAWINGS` 3 stickers, then the old written way.
+  before; up to `DRAWINGS` stickers (3, 3, 2, 2 by band: Insane's step must end inside its half hour), then the old written way.
   No blind look on a drawn jelly.
 - The phone is unchanged: `from_doc` and `build_parts` take the soft
   outlines as they took the written ones.
