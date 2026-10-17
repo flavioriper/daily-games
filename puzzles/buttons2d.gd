@@ -287,6 +287,7 @@ var _held_anchor := Vector2.ZERO
 ## What the finger went down on: a square, or TIN_HIT and a place.
 var _pressed_tin := -2
 var _pressed := -1
+var _pressed_at := Vector2.ZERO
 var _kept_told := false
 
 var _streak := 0
@@ -1204,8 +1205,18 @@ const TIN_HIT := -3
 ## still a pick, and a bare patch of another colour still says so (two
 ## browns side by side are the puzzle on a big picture; the aim does not
 ## choose between them). Its edge is the patch's, its middle its own.
+## With nothing in hand (the user, 2026-10-17: "the click to get the closest
+## available action so user don't need to be pixel perfect"), a touch on
+## anything but a button that can be picked picks the nearest one within
+## AIM_REACH, and a touch on the tin's wood or a free place the nearest of
+## its buttons within TIN_REACH places.
 const AIM_REACH := 1.5
 const AIM_EDGE := 0.7
+const TIN_REACH := 0.9
+## A finger that wanders this little (of a square, or SLOP_PX on the screen
+## if more) between press and release taps what it went down on.
+const SLOP := 0.6
+const SLOP_PX := 18.0
 ## Two taps on one run within this are the shortcut to the tin (the user,
 ## 2026-10-12: "add some shortcut to send the piece to the case").
 const TWICE := 0.35
@@ -1234,11 +1245,16 @@ func _gui_input(event: InputEvent) -> void:
 		if event is InputEventMouseButton and event.button_index != MOUSE_BUTTON_LEFT:
 			return
 		var over := aim(event.position)
-		var over_tin := _tin_at(event.position)
+		var over_tin := _tin_aim(event.position)
 		if event.pressed:
 			_pressed = over
 			_pressed_tin = over_tin
+			_pressed_at = event.position
 		else:
+			var slop := maxf(SLOP * _cell * zoom.k, SLOP_PX)
+			if event.position.distance_to(_pressed_at) <= slop:
+				over = _pressed
+				over_tin = _pressed_tin
 			if over >= 0 and over == _pressed:
 				tap(over, _now() - _tap_at <= TWICE and _tap_run.has(over))
 			elif over < 0 and over_tin != -2 and _pressed_tin != -2:
@@ -1249,14 +1265,17 @@ func _gui_input(event: InputEvent) -> void:
 			_pressed_tin = -2
 
 ## The square a finger at `at` means: the one under it, or with a pick in
-## hand the bare patch of its colour the finger all but hit (AIM_REACH). -1
+## hand the bare patch of its colour the finger all but hit (AIM_REACH), or
+## with nothing in hand the button that can be picked it all but hit. -1
 ## for none. The tin and what a zoom hides are never aimed past.
 func aim(at: Vector2) -> int:
 	var over := _cell_under(at)
-	if not holding() or _cell <= 0.0 or _tin_at(at) != -2:
+	if _cell <= 0.0 or _tin_at(at) != -2:
 		return over
 	if zoom.zoomed() and not _view.has_point(at):
 		return over
+	if not holding():
+		return _aim_pick(at, over)
 	var reach := AIM_REACH * _cell
 	if over >= 0:
 		if state.cur[over] < 0 and state.slot[over] == _held_c:
@@ -1278,6 +1297,46 @@ func aim(at: Vector2) -> int:
 				best_d = d
 				best = j
 	return best if best >= 0 else over
+
+## With nothing in hand: the square under the finger if its button can be
+## picked, or else the nearest one that can within AIM_REACH (a sewn
+## button, a bare patch and linen have no pick of their own to keep).
+func _aim_pick(at: Vector2, over: int) -> int:
+	if over >= 0 and state.judge(over) == State.OK:
+		return over
+	var lp := zoom.to_layout(at)
+	var p := ((lp - _grid) / _cell).floor()
+	var span := ceili(AIM_REACH)
+	var now := _now()
+	var best := -1
+	var best_d := AIM_REACH * _cell
+	for dy in range(-span, span + 1):
+		for dx in range(-span, span + 1):
+			var j: int = state.at_xy(Vector2i(int(p.x) + dx, int(p.y) + dy))
+			if j < 0 or state.judge(j) != State.OK or now < _arrive[j]:
+				continue
+			var d := cell_centre(j).distance_to(lp)
+			if d <= best_d:
+				best_d = d
+				best = j
+	return best if best >= 0 else over
+
+## The tin a finger at `at` means (`_tin_at`'s answer): on its wood or a
+## free place with no run off the cloth in hand, the nearest place holding
+## a button within TIN_REACH places; a run in hand goes in there anyway.
+func _tin_aim(at: Vector2) -> int:
+	var place := _tin_at(at)
+	if place == -2 or (place >= 0 and state.tin[place] >= 0) or not _held_cells.is_empty():
+		return place
+	var best_d := TIN_REACH * _tin_step
+	for p in _tin_places:
+		if state.tin[p] < 0:
+			continue
+		var d := tin_centre(p).distance_to(at)
+		if d <= best_d:
+			best_d = d
+			place = p
+	return place
 
 ## A pan or a pinch has no button's click under it, so it ticks as it
 ## begins (the tutorial's page is silent).

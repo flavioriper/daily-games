@@ -912,3 +912,33 @@ tin is four places (`tin_base`), drawn four, and its TIN lesson stops at
 "One stays behind" (`HTP_BB_OPEN_CAP` deleted). `BB_RULES_TIN` and
 `HTP_BB_TIN_BODY` rewritten in all three languages; the day's metrics lost
 `tin_open`. `assets/sfx/buttons/open.ogg` is left on disk, unused.
+
+## The aim picks too (2026-10-17)
+
+The user: "we must improve the click to get the closest available action
+so user don't need to be pixel perfect clicking exactly above it". This
+takes back the 2026-10-12 call "the aim never helps a pick, only a place".
+
+- **Nothing in hand** (`_aim_pick`): a touch on a button that can be
+  picked keeps it; a touch on anything else -- a sewn button, a bare
+  patch, linen, the border -- picks the nearest button that can be picked
+  within `AIM_REACH` 1.5 squares (one still flying in is skipped). Nothing
+  in reach: the tap is what it was ("Pick up a button first" on a bare
+  patch, "already home" on a sewn one).
+- **The tin** (`_tin_aim`): with nothing off the cloth in hand, a touch on
+  its wood or a free place picks the nearest place holding a button within
+  `TIN_REACH` 0.9 of a place. With a run off the cloth in hand the wood and
+  free places still stow, as before.
+- **A finger that wanders** less than `SLOP` 0.6 of a square on the screen
+  (`SLOP_PX` 18 px at the least) between press and release taps what it
+  went down on; before, press and release had to aim at one square.
+- With a pick in hand nothing changed: placing wins, and a near miss of
+  another loose button does not switch the pick.
+- **Checked**: the aim section of `tests/_probe_buttons_board.gd` (its old
+  "an empty hand aimed" check flipped): 33 checks, 0 failures. The probe's
+  two zoom failures on band 2 are there on clean main before this change.
+  Rules probe 648 runs, 0; suite 248,522 passed, 0 failed. No window run.
+- **Mine, not the user's**: the full reach for a bare patch and a sewn
+  button with an empty hand (not the 0.7 edge rule placing uses); 0.9 of
+  a place for the tin; 0.6 of a square for the wander. **Not seen**: a
+  finger on a phone.

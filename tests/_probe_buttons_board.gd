@@ -367,10 +367,43 @@ func _aim() -> void:
 			if board.aim(far) < 0:
 				_press(board, far)
 				_aimed(not board.holding(), "band %d: a touch on bare linen far off kept the pick" % band)
-		# nothing in hand: a touch aims at nothing but what is under it
+		# nothing in hand (2026-10-17): a button that can be picked keeps its
+		# tap, and a touch on anything else beside one picks the nearest
 		if board.holding():
 			board._drop()
-		_aimed(board.aim(at + Vector2(0.8, 0.0) * cell) == board._cell_under(at + Vector2(0.8, 0.0) * cell), "band %d: an empty hand aimed" % band)
+		var lo := _loose_in_sight(board)
+		_aimed(board.aim(board.cell_screen(lo)) == lo, "band %d: an empty hand moved off a loose button" % band)
+		for q in st.slot.size():
+			var under_q: int = q
+			if st.judge(q) == st.OK or not board._in_sight(q):
+				continue
+			var got_q: int = board.aim(board.cell_screen(q))
+			var loose_near := false
+			for d: Vector2i in st.NEAR:
+				var j: int = st.at_xy(st.xy(q) + d)
+				if j >= 0 and st.judge(j) == st.OK:
+					loose_near = true
+			if loose_near:
+				_aimed(got_q >= 0 and st.judge(got_q) == st.OK, "band %d: an empty hand by a loose button aimed at %d" % [band, got_q])
+				_press(board, board.cell_screen(under_q))
+				_aimed(board.holding(), "band %d: a touch by a loose button picked nothing" % band)
+				board._drop()
+				break
+		# a finger that wanders a little between press and release still taps
+		var w := _loose_in_sight(board)
+		_touch(board, 0, board.cell_screen(w), true)
+		_touch(board, 0, board.cell_screen(w) + Vector2(0.5 * cell, 0.0), false)
+		_aimed(board.holding(), "band %d: a wandering touch picked nothing" % band)
+		board._drop()
+		# the tin's wood beside a button, nothing in hand: picks it
+		var tp := -1
+		for p in board._tin_places:
+			if st.tin[p] >= 0:
+				tp = p
+				break
+		if tp >= 0:
+			var wood: Vector2 = board.tin_centre(tp) + Vector2(0.0, board._tin_step * 0.55)
+			_aimed(board._tin_aim(wood) >= 0 and st.tin[board._tin_aim(wood)] >= 0, "band %d: the tin's wood by a button aimed at nothing" % band)
 		board.free()
 	print("probe_buttons_board: the aim, %d checks, %d failures" % [_aim_checks, _bad - was])
 
