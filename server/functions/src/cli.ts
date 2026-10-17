@@ -8,6 +8,7 @@ import {makeJellies} from "./jelly";
 import {makeDay as picturesDay} from "./pictures";
 import {makeTheme, themed} from "./theme";
 import {makeWords} from "./words";
+import {makeVista, TIMES as VISTA_TIMES, Vistas} from "./vistas";
 
 /**
  * The night's work by hand (tools/acorn_day.sh, tools/pearl_day.sh,
@@ -36,6 +37,11 @@ import {makeWords} from "./words";
  *       three questions a band, three prompts a day), into the file as
  *       `quizzes`, for the dashboard. The night's reviewer reads them, so
  *       this costs what a published day does.
+ *   node lib/cli.js vistas <day.json>...
+ *       the day's four painted vistas (vistas.ts) for days already made:
+ *       each painting beside the file as <day>_vista-<time>-<try>.jpg, the
+ *       reviewer's word on each in `vistaTries`, and what a phone would be
+ *       sent in `vistas` when all four passed (tools/themed_play.sh).
  *   node lib/cli.js words <day.json>...
  *       Hidden Word's and Word Trail's words (words.ts) for days the
  *       command above made, into each file's pictures document; the
@@ -175,6 +181,36 @@ async function main(): Promise<void> {
       print(`${file}: ${w === null ? "none" : (["en", "pt", "es"] as const).map((l) =>
         `${l} hidden ${w.hiddenword[l].join("/") || "-"} trail ${Object.values(w.wordtrail[l]).flat().join("/") || "-"}`).join("; ")}, US$${cost().toFixed(2)} so far`);
     }
+  } else if (what === "vistas" && args.length >= 1) {
+    // The painted vistas for days already made, the rest untouched.
+    for (const file of args) {
+      const day = JSON.parse(fs.readFileSync(file, "utf8"));
+      if (day.theme === null) continue;
+      const keep = (name: string, d: {bytes: Buffer}) => {
+        const kept = `${day.day}_${name}.jpg`;
+        fs.writeFileSync(path.join(path.dirname(file), kept), d.bytes);
+        return kept;
+      };
+      const times: Record<string, string> = {};
+      const tries: {time: string; name: string; wrong: string}[] = [];
+      let morning = null;
+      for (const time of VISTA_TIMES) {
+        const got = await makeVista(day.day, day.theme, time, morning, keep);
+        tries.push(...got.tries.map((t) => ({time, name: `${day.day}_${t.name}.jpg`, wrong: t.wrong})));
+        if (got.vista === null) break;
+        if (time === "morning") morning = got.vista;
+        times[time] = got.vista.bytes.toString("base64");
+      }
+      day.vistaTries = tries;
+      if (Object.keys(times).length === VISTA_TIMES.length) {
+        day.vistas = {v: 1, theme: day.theme.id, times} as Vistas;
+      } else {
+        delete day.vistas;
+      }
+      fs.writeFileSync(file, JSON.stringify(day));
+      print(`${file}: ${day.vistas ? "four vistas" : `stopped at ${VISTA_TIMES[Object.keys(times).length]}`} in ${tries.length} paintings, ` +
+        tries.filter((t) => t.wrong !== "").map((t) => `${t.time}: ${t.wrong}`).join("; "));
+    }
   } else if (what === "jellies" && args.length >= 1) {
     // Gumdrop's jellies for days already made, their pictures untouched.
     for (const file of args) {
@@ -213,7 +249,7 @@ async function main(): Promise<void> {
     await publishDays(new Date());
     print("published");
   } else {
-    console.error("usage: cli.js day [acorn|pearl] [yyyymmdd] | bank pearl <level> <count> <outfile> | themed <yyyymmdd> <days> <outdir> [themes-dir] | jellies <day.json>... | hoops <day.json>... | words <day.json>... | quizzes <day.json>... | publish");
+    console.error("usage: cli.js day [acorn|pearl] [yyyymmdd] | bank pearl <level> <count> <outfile> | themed <yyyymmdd> <days> <outdir> [themes-dir] | vistas <day.json>... | jellies <day.json>... | hoops <day.json>... | words <day.json>... | quizzes <day.json>... | publish");
     process.exitCode = 2;
   }
 }

@@ -1269,3 +1269,8 @@ says Daily).
   over it; the Stats button's place on the streak card (it stands over the
   top of the signpost picture); Factory's card drawing; the toast's plate.
 - **Owed**: a phone; pt and es at the row's width were not looked at.
+
+- **Themed vistas** (2026-10-17): on a themed day the difficulty sheet's four
+  rows and the day card take the day's own paintings (`Vistas.level_row`,
+  `THEMED_LEVEL`, `THEMED_DAY`; core/themed_vistas.gd), the bundled six
+  otherwise. Spec: `docs/superpowers/specs/2026-10-17-themed-vistas-design.md`.

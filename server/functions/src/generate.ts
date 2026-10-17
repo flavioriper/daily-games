@@ -254,13 +254,13 @@ async function vertexToken(): Promise<string> {
 /** draw(), asked of Vertex AI: the same model family, Google's own dialect,
  *  the picture in `candidates[0].content.parts[].inlineData`. What it cost
  *  is not in the answer, so cost() does not count it. */
-async function drawOnVertex(prompt: string, model = imageModel()): Promise<Drawing> {
-  let res = await askVertex(model, prompt);
+async function drawOnVertex(prompt: string, model = imageModel(), o: DrawOptions = {}): Promise<Drawing> {
+  let res = await askVertex(model, prompt, o);
   // The bigger image models answer 429 to a project's first requests in a
   // row (2026-10-14, gemini-3-pro-image): asked again after a wait, they draw.
   for (let wait = 20; res.status === 429 && wait <= 80; wait *= 2) {
     await new Promise((r) => setTimeout(r, wait * 1000));
-    res = await askVertex(model, prompt);
+    res = await askVertex(model, prompt, o);
   }
   if (!res.ok) {
     throw new Error(`vertex ${model}: HTTP ${res.status} ${(await res.text()).slice(0, 400)}`);
@@ -275,18 +275,28 @@ async function drawOnVertex(prompt: string, model = imageModel()): Promise<Drawi
   throw new Error(`vertex ${model} drew nothing`);
 }
 
-/** A square picture: gemini-3-pro-image answers 1408 by 768 unless told. */
-async function askVertex(model: string, prompt: string): Promise<Response> {
+/** A square picture unless told (gemini-3-pro-image answers 1408 by 768
+ *  when not), with `o.images` laid before the words. */
+async function askVertex(model: string, prompt: string, o: DrawOptions = {}): Promise<Response> {
+  const shown = (o.images ?? []).map((d) => ({inlineData: {mimeType: d.mime, data: d.bytes.toString("base64")}}));
   return fetch(
     `https://aiplatform.googleapis.com/v1/projects/${vertexProject()}/locations/global/publishers/google/models/${model}:generateContent`, {
       method: "POST",
       headers: {"Authorization": `Bearer ${await vertexToken()}`, "Content-Type": "application/json"},
       body: JSON.stringify({
-        contents: [{role: "user", parts: [{text: prompt}]}],
-        generationConfig: {responseModalities: ["TEXT", "IMAGE"], imageConfig: {aspectRatio: "1:1"}},
+        contents: [{role: "user", parts: [...shown, {text: prompt}]}],
+        generationConfig: {responseModalities: ["TEXT", "IMAGE"], imageConfig: {aspectRatio: o.aspect ?? "1:1"}},
       }),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
+}
+
+/** What a drawing is asked with besides its words: pictures the model is
+ *  shown (a style to keep, a drawing to redraw) and the shape it answers
+ *  in ("21:9"; Vertex only, OpenRouter's models draw what they draw). */
+export interface DrawOptions {
+  images?: Drawing[];
+  aspect?: string;
 }
 
 export interface Drawing {
@@ -301,10 +311,12 @@ export interface Drawing {
  * 2026-10-13, the picture is `message.images[0].image_url.url`, a data: URL,
  * and `content` is null. Throws on anything that is not a picture.
  */
-export async function draw(prompt: string, model = imageModel()): Promise<Drawing> {
+export async function draw(prompt: string, model = imageModel(), o: DrawOptions = {}): Promise<Drawing> {
   if (!available()) throw new Error("no model");
-  if (vertexProject() !== "") return drawOnVertex(prompt, model);
-  const res = await post({model, modalities: ["image", "text"], messages: [{role: "user", content: prompt}]});
+  if (vertexProject() !== "") return drawOnVertex(prompt, model, o);
+  const content = o.images === undefined ? prompt : [{type: "text", text: prompt},
+    ...o.images.map((d) => ({type: "image_url", image_url: {url: `data:${d.mime};base64,${d.bytes.toString("base64")}`}}))];
+  const res = await post({model, modalities: ["image", "text"], messages: [{role: "user", content}]});
   if (!res.ok) {
     throw new Error(`${model}: HTTP ${res.status} ${(await res.text()).slice(0, 400)}`);
   }

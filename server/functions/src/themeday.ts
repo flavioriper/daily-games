@@ -5,6 +5,7 @@ import {BANDS as HOOP_BANDS, HoopPicture, makeHoop} from "./hoop";
 import {bySide, Picture, pixelBand, Pictures} from "./pictures";
 import {makeTheme, Theme, themed, validTheme} from "./theme";
 import {makeWords, Words} from "./words";
+import {makeVista, TIMES as VISTA_TIMES, Vistas} from "./vistas";
 
 /**
  * The daily theme at night (docs/superpowers/specs/2026-10-13-daily-theme-
@@ -13,7 +14,11 @@ import {makeWords, Words} from "./words";
  * and the bead pictures, made a step at a time into a staging document,
  * `themes/{day}` (server only: firestore.rules denies it to every client),
  * and published once as the `pictures` content a phone reads
- * (`days/{day}/turns/pictures`, core/themed_pictures.gd).
+ * (`days/{day}/turns/pictures`, core/themed_pictures.gd). The day's four
+ * painted vistas (vistas.ts) are staged a document each under
+ * `themes/{day}/vistas/{time}` (four JPEGs would crowd the day's own
+ * document) and published as `days/{day}/turns/vistas` once all four are
+ * there (core/themed_vistas.gd).
  *
  * Why steps: a pixel picture day took 26 to 39 minutes on the Mac (Vertex
  * draws two a minute), and a scheduled function is given 1,800 s. So
@@ -29,7 +34,8 @@ import {makeWords, Words} from "./words";
 
 /** The steps of a day, in order. */
 export const STEPS: string[] = ["theme", "words",
-  ...MOULDS.map((_, b) => `jelly${b}`), ...HOOP_BANDS.map((_, b) => `hoop${b}`), ...Beads.SIZES.map((s) => `pic${s}`)];
+  ...MOULDS.map((_, b) => `jelly${b}`), ...HOOP_BANDS.map((_, b) => `hoop${b}`), ...Beads.SIZES.map((s) => `pic${s}`),
+  ...VISTA_TIMES.map((_, i) => `vista${i}`)];
 /** Runs a step may have before it is given up on. */
 const TRIES = 2;
 /** A run starts no step past this: the longest step seen is some ten
@@ -125,6 +131,36 @@ export async function publishPictures(db: Firestore, day: number, now: boolean):
   return true;
 }
 
+function vista(db: Firestore, day: number, time: string) {
+  return db.doc(`themes/${day}/vistas/${time}`);
+}
+
+/**
+ * Publishes `day`'s vistas from their staging, once, and only when all four
+ * times were painted: a ladder half the day's and half the bundled vistas
+ * reads as two places. True when the content is there after.
+ */
+export async function publishVistas(db: Firestore, day: number): Promise<boolean> {
+  const doc = db.doc(`days/${day}/turns/vistas`);
+  if ((await doc.get()).exists) return true;
+  const theme = await stagedTheme(db, day);
+  if (theme === null) return false;
+  const times: Record<string, string> = {};
+  for (const time of VISTA_TIMES) {
+    const jpg = (await vista(db, day, time).get()).get("jpg");
+    if (typeof jpg !== "string" || jpg === "") return false;
+    times[time] = jpg;
+  }
+  const made: Vistas = {v: 1, theme: theme.id, times: times as Vistas["times"]};
+  try {
+    await doc.create({json: JSON.stringify(made)});
+  } catch (e) {
+    if (!(await doc.get()).exists) throw e;
+  }
+  console.log(`themeday: day ${day} vistas published`);
+  return true;
+}
+
 /** themed() of the staged days before `day`, newest first. */
 async function recent(db: Firestore, day: Date): Promise<string[]> {
   const out: string[] = [];
@@ -162,6 +198,15 @@ async function runStep(db: Firestore, when: Date, day: number, step: string, s: 
     const band = step.slice("hoop".length);
     const got = await makeHoop(day, theme, Number(band));
     return {save: got === null ? {} : {[`hoops.${band}`]: JSON.stringify(got)}, made: got !== null};
+  }
+  if (step.startsWith("vista")) {
+    const time = VISTA_TIMES[Number(step.slice("vista".length))];
+    const first = time === "morning" ? null : (await vista(db, day, "morning").get()).get("jpg");
+    const morning = typeof first === "string" ? {mime: "image/jpeg", bytes: Buffer.from(first, "base64")} : null;
+    // One painting a run: the step is tried again on a later run (TRIES).
+    const got = await makeVista(day, theme, time, morning, undefined, 1);
+    if (got.vista !== null) await vista(db, day, time).set({jpg: got.vista.bytes.toString("base64")});
+    return {save: {}, made: got.vista !== null};
   }
   const size = step.slice("pic".length);
   const sizes: Record<string, Picture> = {};
@@ -217,7 +262,10 @@ export async function themeWork(db: Firestore, now: Date): Promise<void> {
           ...(over ? {done: [...(s.done ?? []), step]} : {})});
         console.log(`themeday: day ${day}, ${step} ${out.made ? "made" : over ? "given up" : "to try again"} in ${Math.round((Date.now() - t0) / 1000)} s`);
       }
-      if (ahead <= 1) await publishPictures(db, day, false);
+      if (ahead <= 1) {
+        await publishPictures(db, day, false);
+        await publishVistas(db, day);
+      }
     }
   } finally {
     await db.doc("themes/_lease").set({until: 0});

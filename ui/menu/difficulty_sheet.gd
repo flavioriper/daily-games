@@ -106,7 +106,7 @@ func _row(level: Dictionary, d: int, done: bool, on_press: Callable) -> Control:
 	button.pressed.connect(on_press)
 	# The painting, set into the row's right side and washed into its fill.
 	var rim := 3.0 if night else 2.0
-	var plate := Vistas.side_plate(Vistas.LEVELS[d], RADIUS - rim, fill)
+	var plate := Vistas.side_plate(Vistas.level_row(d), RADIUS - rim, fill)
 	plate.anchor_left = PICTURE_FROM
 	plate.anchor_right = 1.0
 	plate.anchor_bottom = 1.0

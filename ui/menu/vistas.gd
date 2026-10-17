@@ -16,6 +16,7 @@ const Pal = preload("res://core/palette.gd")
 const SHADER = preload("res://shaders/painted_plate_2d.gdshader")
 
 const DIR := "res://assets/art/menu/vista_%s.png"
+const Themed = preload("res://core/themed_vistas.gd")
 
 ## [vista, zoom, focus]: zoom 1.0 is cover, and focus is where the crop sits
 ## in the room the zoom leaves (CSS background-position). Copied from the
@@ -148,6 +149,19 @@ const LEVELS := [
 	["night", 1.5, Vector2(0.11, 0.3)],
 ]
 
+## A themed day's own (core/themed_vistas.gd), when this phone holds them:
+## the place painted at a level's time, in the rows' order, and the day card
+## the afternoon. Painted 21:9 at 1024 wide; [zoom, focus] as above.
+const THEMED_LEVEL := [1.15, Vector2(0.5, 0.55)]
+const THEMED_DAY := ["afternoon", 1.0, Vector2(0.5, 0.6)]
+
+## Difficulty `d`'s row: the day's own painting at its time, or LEVELS'.
+static func level_row(d: int) -> Array:
+	var tex := Themed.texture(Themed.TIMES[d])
+	if tex == null:
+		return LEVELS[d]
+	return [tex, THEMED_LEVEL[0], THEMED_LEVEL[1]]
+
 ## Island key (core/progress.gd's ISLANDS) to the vista its name suggests.
 ## Keyed on the key, never the translated name, so every language sees the
 ## same picture.
@@ -202,10 +216,11 @@ static func _plate(radius: float) -> ColorRect:
 	plate.resized.connect(func() -> void: _refit(plate))
 	return plate
 
-## Points `plate` at a vista (or the fallback in `tint`) and re-crops it.
-static func point_at(plate: ColorRect, vista: String, zoom: float, focus: Vector2, tint: Color) -> void:
+## Points `plate` at a vista -- a name, or a themed day's texture -- (or the
+## fallback in `tint`) and re-crops it.
+static func point_at(plate: ColorRect, vista: Variant, zoom: float, focus: Vector2, tint: Color) -> void:
 	var mat := plate.material as ShaderMaterial
-	var tex := texture(vista)
+	var tex: Texture2D = vista if vista is Texture2D else texture(str(vista))
 	mat.set_shader_parameter("fallback", tex == null)
 	mat.set_shader_parameter("vista", tex)
 	mat.set_shader_parameter("tint", tint)
@@ -276,6 +291,10 @@ static func day_plate() -> ColorRect:
 	return plate
 
 static func set_day_vista(plate: ColorRect, island_key: String, tint: Color) -> void:
+	var own := Themed.texture(THEMED_DAY[0])
+	if own != null:
+		point_at(plate, own, THEMED_DAY[1], THEMED_DAY[2], tint)
+		return
 	var vista: String = DAY.get(island_key, "beach")
 	point_at(plate, vista, 1.0, DAY_FOCUS.get(vista, Vector2(0.5, 0.5)), tint)
 

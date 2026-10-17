@@ -7,13 +7,26 @@
 #
 #   tools/themed_play.sh 20261014      # that made day, as today's
 #   tools/themed_play.sh 20261014 pixel   # its pixel art pictures (days/themed-pixel)
+#   tools/themed_play.sh 20261019 vistas  # its painted vistas (days/themed-vistas)
 #   tools/themed_play.sh off
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 cache="$HOME/Library/Application Support/Godot/app_userdata/Peeplet Daily/backend_cache"
 file="$cache/pictures-$(date -u +%Y%m%d)-content.json"
 if [ "${1:-}" = "off" ]; then
-  rm -f "$file"; echo "removed $file"; exit 0
+  rm -f "$file" "$cache/vistas-$(date -u +%Y%m%d)-content.json"; echo "removed $file and today's vistas"; exit 0
+fi
+if [ "${2:-}" = vistas ]; then
+  mkdir -p "$cache"
+  python3 - "$here/days/themed-vistas/$1.json" "$cache/vistas-$(date -u +%Y%m%d)-content.json" <<'PY'
+import json, sys
+day = json.load(open(sys.argv[1]))
+if not day.get("vistas"):
+    sys.exit("that day kept no vistas")
+json.dump(day["vistas"], open(sys.argv[2], "w"))
+print("%s: %s" % (sys.argv[2], day["theme"]["name"]["en"]))
+PY
+  exit 0
 fi
 mkdir -p "$cache"
 dir=themed; [ "${2:-}" = pixel ] && dir=themed-pixel

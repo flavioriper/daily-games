@@ -452,3 +452,12 @@ day, each band after the ones below it, `docs/agents/boards/word-trail.md`); the
 (the lists are the board's own, already fit to deal); Golden Acorn three a
 band asked, Pearl Dive two a level, One Breath seldom any; the theme's name
 is still shown nowhere.
+
+## Themed vistas (2026-10-17)
+
+The day's own paintings for the day card and the difficulty rows: the theme's
+place at morning, afternoon, dusk and night (`server/functions/src/vistas.ts`,
+steps `vista0..3` in themeDay, published as `days/<day>/turns/vistas` only
+when all four pass; `core/themed_vistas.gd` on the phone). Trial day 20261019
+in `tools/days/themed-vistas/`, shown in Themed days. Spec and open calls:
+`docs/superpowers/specs/2026-10-17-themed-vistas-design.md`.

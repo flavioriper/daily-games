@@ -31,7 +31,11 @@ def main() -> None:
     # The same days drawn as pixel art (DAILY_PICTURE_STYLE=pixel), shown
     # beside the first way's.
     pixel = [json.loads(f.read_text()) for f in sorted((DAYS / "themed-pixel").glob("[0-9]*.json"))]
-    data = json.dumps({"index": index, "days": days, "gallery": pictures, "themed": themed, "themedPixel": pixel},
+    # Their painted vistas (`cli.js vistas`): the paintings stay files beside
+    # them, and the JPEGs a phone would be sent are left out of the page.
+    vistas = [{k: v for k, v in json.loads(f.read_text()).items() if k in ("day", "vistaTries")} | {"sent": "vistas" in json.loads(f.read_text())}
+              for f in sorted((DAYS / "themed-vistas").glob("[0-9]*.json"))]
+    data = json.dumps({"index": index, "days": days, "gallery": pictures, "themed": themed, "themedPixel": pixel, "themedVistas": vistas},
                       separators=(",", ":")).replace("</", "<\\/")
     page = (HERE / "dashboard.src.html").read_text().replace("/*BEADS*/", (HERE / "beads.js").read_text(), 1)
     page = page.replace("/*DATA*/", data, 1)

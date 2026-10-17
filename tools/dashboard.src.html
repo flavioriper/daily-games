@@ -616,7 +616,7 @@ addEventListener("paste", e => { if (state.view !== "convert") return;
 // --- the themed days: what the night would make, and what became of it -----
 // tools/themed_days.sh's days (server/functions' `cli.js themed`): the theme,
 // the picture each size came to, and every drawing with its verdicts.
-const THEMED = DATA.themed || [], PIXEL = DATA.themedPixel || [];
+const THEMED = DATA.themed || [], PIXEL = DATA.themedPixel || [], VISTAS = DATA.themedVistas || [];
 const SIZE_FOR = { 10: "Easy", 12: "Medium", 24: "Hard", 32: "Insane, Button Box's Hard", 48: "Button Box's Insane" };
 function themedView() {
   const host = $("themed"); host.textContent = "";
@@ -635,11 +635,34 @@ function themedView() {
     box.append(el("h3", { class: "round" }, d.theme.name.en), el("div", { class: "when" },
       `${fmtDate(d.day)} · ${d.theme.name.pt} · ${d.theme.name.es}`),
       el("p", { class: "scene" }, d.theme.scene));
+    themedVistas(box, VISTAS.find(v => v.day === d.day));
     themedWords(box, px?.pictures?.words || d.pictures?.words);
     themedQuizzes(box, px?.quizzes || d.quizzes);
     themedWay(box, d, only ? "days/themed-pixel/" : "days/themed/", px ? "The first way: a smooth drawing, averaged down" : only ? "Pixel art only" : "");
     if (px) themedWay(box, px, "days/themed-pixel/", "Pixel art: drawn as pixel art and read at its own squares, or that drawing redrawn to size by a text model; things also written from words");
     host.append(box);
+  }
+}
+// The day's painted vistas (server/functions/src/vistas.ts, `cli.js vistas`):
+// the four a phone would be sent, morning to night as the difficulty rows
+// stand, and every turned-down painting with the reviewer's word.
+const VISTA_ROW = { morning: "Easy", afternoon: "Medium · the day card", dusk: "Hard", night: "Insane" };
+function themedVistas(box, v) {
+  box.append(el("div", { class: "way" }, el("b", {}, "Vistas"), !v ? " · none: `cli.js vistas <day.json>` paints them into days/themed-vistas/"
+    : v.sent ? " · the four a phone would be sent" : " · not all four passed: a phone keeps the bundled vistas"));
+  if (!v) return;
+  const levels = el("div", { class: "levels" });
+  for (const time of Object.keys(VISTA_ROW)) {
+    const kept = v.vistaTries.find(t => t.time === time && t.wrong === "");
+    const card = el("div", { class: "pic" + (kept ? "" : " bank") });
+    card.append(kept ? el("img", { src: "days/themed-vistas/" + kept.name, loading: "lazy", alt: time, style: "width:100%;border-radius:8px" })
+      : el("div", { class: "hole" }, "bundled"), el("div", { class: "name" }, time), el("div", { class: "use" }, VISTA_ROW[time]));
+    levels.append(card);
+  }
+  box.append(levels);
+  for (const t of v.vistaTries.filter(t => t.wrong !== "")) {
+    box.append(el("div", { class: "draft" }, el("img", { src: "days/themed-vistas/" + t.name, loading: "lazy", alt: t.time }),
+      el("div", {}, el("div", { class: "what" }, `${t.time} · turned down`), el("div", { class: "use" }, t.wrong))));
   }
 }
 // The word boards' words (server/functions/src/words.ts): Hidden Word's Easy

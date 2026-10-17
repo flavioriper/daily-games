@@ -6,7 +6,7 @@ import {FieldValue, getFirestore} from "firebase-admin/firestore";
 import {asked, makeDay} from "./acorn";
 import {asked as pearlAsked, makeDay as pearlDay} from "./pearl";
 import type {Theme} from "./theme";
-import {publishPictures, stagedTheme, themeWork} from "./themeday";
+import {publishPictures, publishVistas, stagedTheme, themeWork} from "./themeday";
 
 initializeApp();
 const db = getFirestore();
@@ -163,6 +163,8 @@ export async function publishDays(now: Date): Promise<void> {
     // there is, tomorrow's only once every step has run. Not in GAMES: no
     // player submits to it, and it has no tally.
     await publishPictures(db, day, when === now);
+    // Its painted vistas, only ever all four (themeday.ts).
+    await publishVistas(db, day);
   }
 }
 

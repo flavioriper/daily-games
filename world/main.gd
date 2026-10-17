@@ -27,6 +27,12 @@ func _enter_tree() -> void:
 	# one place that runs before any screen builds (ui/theme.gd dress()).
 	CozyTheme.dress(get_tree())
 
+func _fetch_vistas() -> void:
+	var got: Dictionary = await Backend.day_content(ThemedVistas.GAME, Daily.date_key())
+	if got.ok and not got.data.is_empty():
+		ThemedVistas.reload()
+		get_tree().call_group(ThemedVistas.GROUP, "vistas_arrived")
+
 ## Telemetry wakes up here and nowhere else, so only a real launch counts;
 ## tests and harnesses build these screens without ever starting it.
 func _ready() -> void:
@@ -44,6 +50,9 @@ func _ready() -> void:
 	# Cannons, and Gumdrop's jellies (core/themed_pictures.gd): they deal
 	# what is held, never wait.
 	Backend.day_content(ThemedPictures.GAME, Daily.date_key())  # deliberately not awaited
+	# And its painted vistas, for the day card and the difficulty rows
+	# (core/themed_vistas.gd): a card already up is told when they come.
+	_fetch_vistas()
 	# Friends ride on the backend's identity. Started is not connected: it
 	# holds no stream until the player has social (core/social.gd).
 	Social.start(self)
