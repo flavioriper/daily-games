@@ -11,7 +11,7 @@ extends Control
 ##   in.
 ## - SEW: the patches it left are bare, so the next run is picked and a
 ##   bare patch of its colour tapped: sewn. The tin's own go the same way.
-## - TIN: a run longer than the tin has places; a colour whole opens two.
+## - TIN: a run longer than the tin has places.
 ## - HINT: the bulb makes a move.
 ## - ZOOM (Hard and Insane, whose pictures are big): two fingers apart
 ##   bring the picture close, one finger dragged looks around, and the
@@ -36,8 +36,7 @@ const LEGEND := {"r": "red", "g": "green", "y": "yellow"}
 ## Four moves do it: green into the tin, red home, yellow home, and the
 ## green out of the tin.
 const PLAIN := [["rrgg", "rrgg", "yyyy"], ["ggyy", "ggyy", "rrrr"]]
-## Five reds in a run and four places: one stays. Yellow home makes yellow
-## whole, and the tin gains its fifth and sixth places.
+## Five reds in a run and four places: one stays.
 const LONG := [["yyygg", "rrrrr"], ["rrrrr", "yyygg"]]
 ## A picture with something in the middle to come close to; its buttons are
 ## its own rows, two rows down.
@@ -84,9 +83,8 @@ class Small extends "res://puzzles/buttons2d.gd":
 
 	func _ready() -> void:
 		super()
-		# the page is short: one row of six small places, which is all a
-		# tin that starts at four ever shows open here
-		_tin_places = 6
+		# the page is short: one row of four small places, the tin's own
+		_tin_places = 4
 		_tin_step_max = 58.0
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 		fx.buzzes = false  # (the page's finger is not the player's)
@@ -264,9 +262,7 @@ func _start() -> void:
 			_tap(2, "", "", 3.2)
 		Lesson.TIN:
 			_tap(0, "HTP_BB_LONG_CAP", "", 1.0)
-			_tap(TIN, "", "HTP_BB_STAY_CAP", 2.6)
-			_tap(5, "", "", 0.7)
-			_tap(0, "", "HTP_BB_OPEN_CAP", 3.4)
+			_tap(TIN, "", "HTP_BB_STAY_CAP", 3.4)
 		Lesson.HINT:
 			for k in 3:
 				_press_chip()

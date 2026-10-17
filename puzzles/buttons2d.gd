@@ -181,7 +181,6 @@ const HAPTICS := {
 	"run": Haptics.GOOD,
 	"combo": Haptics.TICK,
 	"whole": Haptics.GOOD,
-	"open": Haptics.BUMP,
 	"undo": Haptics.TICK,
 	"reset": Haptics.TAP,
 	"hint": Haptics.GOOD,
@@ -287,8 +286,6 @@ var _held_at := 0.0
 var _held_anchor := Vector2.ZERO
 ## What the finger went down on: a square, or TIN_HIT and a place.
 var _pressed_tin := -2
-var _open_at := -INF
-var _open_places := PackedInt32Array()
 var _pressed := -1
 var _kept_told := false
 
@@ -323,7 +320,7 @@ func rules() -> String:
 		out += " " + tr("BB_RULES_CORNERS")
 	if state.band >= State.BIG_FROM:
 		out += "\n\n" + tr("BB_RULES_BIG")
-	out += "\n\n" + tr("BB_RULES_TIN") % [state.base(), state.places()]
+	out += "\n\n" + tr("BB_RULES_TIN") % state.places()
 	if max_moves > 0:
 		out += "\n\n" + tr("RULES_MOVES_SEQ") % max_moves
 	return out
@@ -449,7 +446,7 @@ func day_dict() -> Dictionary:
 		"payload": {"w": w, "h": h, "picture": state.name_key, "colours": Array(state.colours), "rows": opened},
 		"solution": {"rows": sewn},
 		"metrics": {"w": w, "h": h, "buttons": state.count(), "colours": state.colours.size(), "par": state.par,
-			"sewn_at_start": home, "draws": state.draws, "tin_places": state.places(), "tin_open": state.base(),
+			"sewn_at_start": home, "draws": state.draws, "tin_places": state.places(),
 			"hints": State.hints_for(state.band), "moves": max_moves},
 		"view": {"w": w, "h": h, "puzzle": puzzle, "solution": answer, "legend": Array(state.colours)},
 	}
@@ -478,7 +475,6 @@ func _deal() -> void:
 	_unhold()
 	_streak = 0
 	_combo_n = 0
-	_open_places = PackedInt32Array()
 	_kept_told = false
 	var n: int = state.slot.size()
 	_arrive = _filled(n, -INF)
@@ -950,11 +946,6 @@ func _draw_over() -> void:
 			for p in _held_places:
 				var k := Vector2.ONE * _held_grow(now, _held_lag(p, true))
 				top.append(_tin_units.loose[_held_c], Transform2D(0.0, k, 0.0, _held_pos(p, true, now)))
-	if not Motion.reduce and now - _open_at < Motion.BUMP_TIME * 2.0 and not _open_places.is_empty():
-		busy = true
-		var k := Motion.bump_scale(now - _open_at, 0.3, Motion.BUMP_TIME * 2.0)
-		for p in _open_places:
-			top.append(_tin_units.ring, Transform2D(0.0, Vector2(k, k) * TIN_RING, 0.0, tin_centre(p)))
 	var pic := _pic_xf(now)
 	var zk := pic.get_scale().x
 	var keep: Array = []
@@ -1501,7 +1492,7 @@ func _play(res: Dictionary, at_cell: int, starts: Dictionary) -> void:
 				if not Motion.reduce:
 					fx.confetti(_at_seen(at_cell), 10 + mini(sewn, 12), _cell * 4.0))
 	if not (res.whole as Array).is_empty():
-		_after(last - now, _whole.bind(res.whole, int(res.was), int(res.now), at_cell))
+		_after(last - now, _whole.bind(res.whole, at_cell))
 	_request()
 	note_move()
 	_spend(1, last)
@@ -1526,9 +1517,8 @@ func _landed(kind: int, where: int, nth: int, of: int) -> void:
 	_busy_for(Motion.BUMP_TIME)
 	_request()
 
-## A colour is whole: its buttons hop outward from the tapped patch, and
-## the tin gains its places.
-func _whole(which: Array, was: int, now_open: int, from: int) -> void:
+## A colour is whole: its buttons hop outward from the tapped patch.
+func _whole(which: Array, from: int) -> void:
 	if is_done():
 		return
 	var now := _now()
@@ -1551,20 +1541,7 @@ func _whole(which: Array, was: int, now_open: int, from: int) -> void:
 				fx.sparkle(_at(i), Pal.SUN)
 	fx.cue("whole")
 	_busy_for(Motion.SOLVE_TIME + far * WHOLE_STEP + 0.1)
-	if now_open > was:
-		_tin = null
-		# (the tutorial's small tin draws fewer places than can open)
-		_open_places = PackedInt32Array(range(mini(was, _tin_places), mini(now_open, _tin_places)))
-		_open_at = now + 0.25
-		_after(0.25, func() -> void:
-			fx.cue("open")
-			for p in _open_places:
-				fx.ring(tin_centre(p), _tin_step * 0.5, Pal.SUN)
-			_request())
-		_busy_for(0.25 + Motion.BUMP_TIME * 2.0)
-		_tell(tr("BB_WHOLE_OPEN"), from)
-	else:
-		_tell(tr("BB_WHOLE"), from)
+	_tell(tr("BB_WHOLE"), from)
 	_request()
 
 ## A tap that does nothing says so with the sound and the shiver alone: the

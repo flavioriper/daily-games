@@ -54,16 +54,16 @@ const THEMED_KEY := [10, 12, 32, 48]
 ## blocked ones should be all free after 4 color filled (1/4 each color)"):
 ## a place every CASE_PER buttons, rounded down to an even number, never
 ## under CASE_MIN (the twenty the small pictures had) nor over CASE_CAP
-## (what the foot of a phone holds in places a finger can still tap). Half
-## of them open, and each of the first CASE_WHOLE colours made whole opens
-## a quarter of the rest. `places()`.
+## (what the foot of a phone holds in places a finger can still tap).
+## `places()`.
+##
+## Every place is open from the start (the user, 2026-10-17: "remove the
+## unlock of the bottom case, they are all available since beggining");
+## half opened and each of the first four colours whole opened a quarter of
+## the rest until then.
 const CASE_MIN := 20
 const CASE_PER := 5
 const CASE_CAP := 64
-const CASE_WHOLE := 4
-## The tutorial's small tin (`tin_base`) has this many places past its own,
-## and opens them both with its one colour whole.
-const CASE_OWN := 2
 const BANDS := 4
 const HINTS_BY := [3, 3, 2, 2]
 ## Insane: Hard's two hints (none until 2026-10-13), and the seal for any day sewn. It counted its moves
@@ -101,7 +101,7 @@ static var _bank: Dictionary = {}
 static var _bank_read := false
 
 var band := 0
-## A cloth with a tin of its own (the tutorial's); -1 is the band's.
+## A cloth with a tin of its own size (the tutorial's); -1 is the band's.
 var tin_base := -1
 var w := 0
 var h := 0
@@ -114,7 +114,7 @@ var colours: Array[String] = []
 var slot := PackedInt32Array()
 var cur := PackedInt32Array()
 var start := PackedInt32Array()
-## The tin: `places()` places, -1 empty. Only the first `capacity()` are open.
+## The tin: `places()` places, -1 empty.
 var tin := PackedInt32Array()
 var _places := CASE_MIN
 var taps := 0
@@ -218,7 +218,7 @@ func _lay(pic: Dictionary, legend: Dictionary, rng: RandomNumberGenerator) -> vo
 	for k in slot:
 		if k >= 0:
 			_count += 1
-	_places = tin_base + CASE_OWN if tin_base >= 0 else places_for(_count)
+	_places = tin_base if tin_base >= 0 else places_for(_count)
 	start = _scramble(rng)
 	reset()
 
@@ -345,16 +345,9 @@ static func places_for(buttons: int) -> int:
 func places() -> int:
 	return _places
 
-## The places the tin starts with: half of them.
-func base() -> int:
-	return tin_base if tin_base >= 0 else _places / 2
-
-## The places open in the tin now: the ones it starts with, and a quarter
-## of the rest for each of the first CASE_WHOLE colours whole.
+## The places open in the tin: all of them.
 func capacity() -> int:
-	if tin_base >= 0:
-		return mini(_places, tin_base + CASE_OWN * colours_done())
-	return base() + (_places - base()) * mini(colours_done(), CASE_WHOLE) / CASE_WHOLE
+	return _places
 
 func in_tin() -> int:
 	var out := 0
@@ -465,15 +458,13 @@ func _before() -> Array:
 		whole.append(colour_done(c))
 	return whole
 
-func _after(res: Dictionary, was: int, whole_was: Array) -> Dictionary:
+func _after(res: Dictionary, whole_was: Array) -> Dictionary:
 	taps += 1
 	var whole: Array = []
 	for k in colours.size():
 		if not whole_was[k] and colour_done(k):
 			whole.append(k)
 	res["why"] = OK
-	res["was"] = was
-	res["now"] = capacity()
 	res["whole"] = whole
 	return res
 
@@ -491,7 +482,6 @@ func sew(cells: PackedInt32Array, places: PackedInt32Array, at: int) -> Dictiona
 		return {"why": REFUSED_BARE, "moves": []}
 	if slot[at] != c:
 		return {"why": REFUSED_WRONG, "moves": []}
-	var was := capacity()
 	var whole_was := _before()
 	var order := bare_run(at)
 	var moves: Array = []
@@ -512,7 +502,7 @@ func sew(cells: PackedInt32Array, places: PackedInt32Array, at: int) -> Dictiona
 			moves.append([TO_PATCH, source[k], to, c])
 	if from_tin:
 		_pack(moves)
-	return _after({"moves": moves, "kept": kept}, was, whole_was)
+	return _after({"moves": moves, "kept": kept}, whole_was)
 
 ## Closes the tin's gaps: every button slides back to the first free place
 ## before it, in order, so the groups of a colour stay together. The
@@ -535,8 +525,7 @@ func _pack(moves: Array) -> int:
 func stow(cells: PackedInt32Array) -> Dictionary:
 	if cells.is_empty():
 		return {"why": REFUSED_BARE, "moves": []}
-	var was := capacity()
-	var room := was - in_tin()
+	var room := capacity() - in_tin()
 	if room <= 0:
 		return {"why": REFUSED_FULL, "moves": []}
 	var whole_was := _before()
@@ -565,7 +554,7 @@ func stow(cells: PackedInt32Array) -> Dictionary:
 		room -= 1
 		moves.append([TO_TIN, g, at, c])
 		at += 1
-	return _after({"moves": moves, "kept": kept}, was, whole_was)
+	return _after({"moves": moves, "kept": kept}, whole_was)
 
 ## Takes the last move back. False with nothing to take back.
 func undo() -> bool:

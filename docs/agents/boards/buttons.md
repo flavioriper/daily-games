@@ -898,3 +898,17 @@ and without the fix.
 - **Checked**: a throwaway sheet of every bead colour's bare patch at 40
   and 60 px, windowed: the ring reads on all six dark ones. Not seen in a
   game with a bare dark patch, nor on a phone.
+
+## The whole tin open from the start (2026-10-17)
+
+The user: "on button box, remove the unlock of the bottom case, they are all
+available since beggining". `State.capacity()` is `places()`: every place of
+the tin (`places_for`, 20 to 64) is open on the first tap. `base()`,
+`CASE_WHOLE` and `CASE_OWN` went, and with them the opening on a colour
+whole (`_open_places`, the gold rings, the `open` cue, `BB_WHOLE_OPEN`): a
+colour whole now always says `BB_WHOLE`. The tin still fills, so a run
+bigger than its free places still leaves the rest behind. The tutorial's
+tin is four places (`tin_base`), drawn four, and its TIN lesson stops at
+"One stays behind" (`HTP_BB_OPEN_CAP` deleted). `BB_RULES_TIN` and
+`HTP_BB_TIN_BODY` rewritten in all three languages; the day's metrics lost
+`tin_open`. `assets/sfx/buttons/open.ogg` is left on disk, unused.
