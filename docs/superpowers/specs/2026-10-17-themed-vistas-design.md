@@ -36,6 +36,9 @@ everything else (the header, the board cards, Streak, the store) keeps.
   times: {morning, afternoon, dusk, night}}}` only when all four are there: a
   ladder of half themed, half bundled reads as two places. It is called by
   themeWork for today and tomorrow and by publishDays.
+- `finished()` walks the vista steps too, so a staged day's `pictures` waits
+  for them before it is published ahead of time (up to four more half-hour
+  runs on a day staged fresh); today's publishes with what there is anyway.
 
 ## Phone (core/themed_vistas.gd, ui/menu/vistas.gd)
 
