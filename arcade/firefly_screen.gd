@@ -1859,6 +1859,9 @@ func _build_end(better: bool) -> Control:
 	head.text = "FF_NEW_BEST" if better else ("FF_CLEARED_CARD" if sim.is_won() else "FF_GAME_OVER_CARD")
 	head.theme_type_variation = "WellDone"
 	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	# the night's line is long in every language: it wraps inside the card
+	# rather than widening it past the screen
+	head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(head)
 	var score := Label.new()
 	score.text = Record.grouped(sim.score) if Motion.reduce else "0"

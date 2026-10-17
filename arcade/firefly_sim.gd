@@ -1100,7 +1100,9 @@ func _collide() -> void:
 				break
 			if (s.pos as Vector2).distance_to(e.pos) < ENEMY_R + SHOT_R:
 				_hurt(e, s.pos)
-				hits += 1
+				# a piercing spark is one shot on target, whatever it goes through
+				if int(s.skip) == -1:
+					hits += 1
 				if int(s.pierce) > 0:
 					s.pierce -= 1
 					s.skip = e.id
