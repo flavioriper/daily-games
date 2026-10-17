@@ -26,6 +26,7 @@ var _had := false
 var _reduce := false
 var _lang := ""
 var _seeded := false
+var _burst := false
 const PATH := "user://arcade.cfg"
 
 func _initialize() -> void:
@@ -199,7 +200,11 @@ func _process(delta: float) -> bool:
 				_at = _t
 		10:
 			_bot()
-			if _s.sim.shield:
+			# the shield goes up again if a diver took it while the firefly
+			# stood for the goal's shot (the buff's line lettering in)
+			if not _burst:
+				_burst = true
+				_s.sim.shield = true
 				_s.sim._ship_hit(0)
 			if _t > _at + 0.15:
 				_shot("6b_shield_burst")
