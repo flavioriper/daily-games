@@ -18,7 +18,10 @@ extends Control
 ## night garden with the difficulty row above them (ui/flat/level_card.gd,
 ## fed Firefly's four levels); a tap on an open stage plays that stage at
 ## that difficulty, and an attempt ends on the end card (Next stage, Again,
-## Stages). The shop and its energy went with the sim's. A bug may still
+## Stages). A stage's goal is on its banner and on a plate in the field's
+## corner (`3 / 5`) that turns gold with the buff's icon once it is met; the
+## twin, the silk shield, the piercing spark and the slow seeds are drawn in
+## the live meshes. The shop and its energy went with the sim's. A bug may still
 ## take more than one shot: a hit floats what it took (`_nums`) and a
 ## wounded bug wears a thin bar under it (`_draw_bars`).
 
@@ -53,6 +56,7 @@ const GoldDoubler = preload("res://arcade/gold_doubler.gd")
 const Rewards = preload("res://arcade/rewards.gd")
 const LevelCard = preload("res://ui/flat/level_card.gd")
 const Sheet = preload("res://ui/menu/difficulty_sheet.gd")
+const Icons = preload("res://ui/icons.gd")
 
 const GAME := "firefly"
 const MARGIN := 40
@@ -97,6 +101,25 @@ const MAP_COLS := 4
 const MAP_GAP := 14
 const MARK_R := 9.0
 const MARK_GAP := 8.0
+## The goal's plate in the field's top-left corner: where it sits, its icon's
+## side and its numbers' size.
+const PLATE_AT := Vector2(14.0, 14.0)
+const PLATE_ICON := 34.0
+const PLATE_FS := 30
+## The goal texts by Sim.Goal: a count of one has its own words where the
+## count can be one (`_ONE`/`_N`); a goal with no count has none.
+const GOAL_KEYS := ["FF_GOAL_CATCH", "FF_GOAL_MOTH_DIVE", "FF_GOAL_ESCORT", "FF_GOAL_BREAK", "FF_GOAL_RESCUE",
+	"FF_GOAL_HELD", "FF_GOAL_CHAIN", "FF_GOAL_UNTOUCHED", "FF_GOAL_BEAM_SHOT", ""]
+const GOAL_PAIRED := ["FF_GOAL_MOTH_DIVE", "FF_GOAL_ESCORT", "FF_GOAL_BREAK", "FF_GOAL_BEAM_SHOT"]
+const GOAL_BARE := ["FF_GOAL_RESCUE", "FF_GOAL_HELD"]
+## A buff's name, its line and its icon on the plate, by Sim.Buff (NONE
+## first: a flyby's forty pays points). "twin" and "spark" are drawn here,
+## the rest are ui/icons.gd's.
+const BUFF_KEYS := ["", "FF_BUFF_QUICK", "FF_BUFF_DOUBLE", "FF_BUFF_PIERCE", "FF_BUFF_SHIELD", "FF_BUFF_SLOW",
+	"FF_BUFF_SCORE_15", "FF_BUFF_SCORE_2"]
+const BUFF_LINES := ["", "FF_BUFF_QUICK_LINE", "FF_BUFF_DOUBLE_LINE", "FF_BUFF_PIERCE_LINE", "FF_BUFF_SHIELD_LINE",
+	"FF_BUFF_SLOW_LINE", "FF_BUFF_SCORE_LINE", "FF_BUFF_SCORE_LINE"]
+const BUFF_ICONS := ["check", "flame", "twin", "spark", "shield", "clock", "trend", "crown"]
 
 var sim: RefCounted
 ## The run's boosters and whether it was helped (arcade/boosters.gd): a best
@@ -118,6 +141,11 @@ var _margins: MarginContainer
 var _score_l: Label
 var _best_l: Label
 var _stage_l: Label
+var _stage_k: Label
+## The goal's plate over the field: its count and its icon.
+var _goal_plate: PanelContainer
+var _goal_l: Label
+var _goal_icon: Control
 var _banner: Label
 var _sub: Label
 var _banner_tw: Tween
@@ -298,6 +326,7 @@ func _build() -> void:
 	_fx = Fx2D.new()
 	_fx.haptics = HAPTICS
 	field.add_child(_fx)
+	_build_goal_plate()
 
 	var over := VBoxContainer.new()
 	over.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
@@ -317,6 +346,8 @@ func _build() -> void:
 	_sub.theme_type_variation = "SheetTitle"
 	_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_sub.add_theme_color_override("font_color", Color("e9ecfa"))
+	_sub.add_theme_color_override("font_shadow_color", Color(0.1, 0.08, 0.2, 0.6))
+	_sub.add_theme_constant_override("shadow_offset_y", 3)
 	over.add_child(_sub)
 	over.modulate.a = 0.0
 	_banner.set_meta("box", over)
@@ -342,7 +373,7 @@ func _build_hud() -> Control:
 	for key in ["FF_SCORE", "FF_BEST", "FF_STAGE"]:
 		var plate := PanelContainer.new()
 		plate.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		plate.size_flags_stretch_ratio = {"FF_SCORE": 1.25, "FF_STAGE": 0.8}.get(key, 1.0)
+		plate.size_flags_stretch_ratio = {"FF_SCORE": 1.25}.get(key, 1.0)
 		plate.add_theme_stylebox_override("panel", CozyTheme.lifted(Color("fcf7ef"), 30, 8))
 		var words := VBoxContainer.new()
 		words.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -360,10 +391,99 @@ func _build_hud() -> Control:
 		words.add_child(value)
 		row.add_child(plate)
 		made.append(value)
+		if key == "FF_STAGE":
+			# "STAGE 4" over the difficulty's name
+			_stage_k = kicker
+			value.add_theme_font_size_override("font_size", 40)
 	_score_l = made[0]
 	_best_l = made[1]
 	_stage_l = made[2]
 	return row
+
+## The goal's plate: the paper of the HUD's plates, its icon (the buff to
+## be won, in ink; gold once it is) and the count, `3 / 5`.
+func _build_goal_plate() -> void:
+	_goal_plate = PanelContainer.new()
+	_goal_plate.name = "GoalPlate"
+	_goal_plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_goal_plate.position = PLATE_AT
+	_goal_plate.visible = false
+	_goal_plate.resized.connect(func() -> void: _goal_plate.pivot_offset = _goal_plate.size * 0.5)
+	field.add_child(_goal_plate)
+	var row := HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_theme_constant_override("separation", 8)
+	_goal_plate.add_child(row)
+	_goal_icon = Control.new()
+	_goal_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_goal_icon.custom_minimum_size = Vector2(PLATE_ICON, PLATE_ICON)
+	_goal_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_goal_icon.draw.connect(func() -> void:
+		var m: ArrayMesh = _goal_icon.get_meta("mesh", null)
+		if m != null:
+			_goal_icon.draw_mesh(m, null))
+	row.add_child(_goal_icon)
+	_goal_l = Label.new()
+	_goal_l.theme_type_variation = "SheetTitle"
+	_goal_l.add_theme_font_size_override("font_size", PLATE_FS)
+	_goal_l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_goal_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(_goal_l)
+
+## The plate as the goal stands: paper and ink while it is being counted,
+## gold with the buff's icon once it is met. Its icon is one mesh, made
+## again only here. (The tutorial's garden has none.)
+func _lay_goal_plate() -> void:
+	if _goal_plate == null:
+		return
+	var met: bool = sim.goal_done
+	_goal_plate.add_theme_stylebox_override("panel", CozyTheme.lifted(Pal.SUN if met else Color("fcf7ef"), 22, 8))
+	_goal_l.text = "%d / %d" % [sim.goal_have, sim.goal_need]
+	_goal_l.add_theme_color_override("font_color", Color("5a3a12") if met else Pal.TEXT)
+	var b := Face.Builder.new()
+	var ink := Color("5a3a12") if met else Pal.TEXT_DIM
+	var buff: int = sim.buff if met else int(Sim.STAGES[sim.stage - 1].buff)
+	_buff_glyph(b, buff, Rect2(Vector2.ZERO, Vector2(PLATE_ICON, PLATE_ICON)), ink)
+	_goal_icon.set_meta("mesh", b.mesh())
+	_goal_icon.queue_redraw()
+
+## Buff `buff`'s icon into `b` at `rect`: ui/icons.gd's shape, or for the
+## twin two lanterns side by side and for the piercing spark a spark through
+## a ring.
+static func _buff_glyph(b: Face.Builder, buff: int, rect: Rect2, col: Color) -> void:
+	var xf := Transform2D(0.0, rect.size, 0.0, rect.position)
+	var width := Icons.STROKE * rect.size.x
+	match String(BUFF_ICONS[clampi(buff, 0, BUFF_ICONS.size() - 1)]):
+		"twin":
+			for x: float in [0.28, 0.72]:
+				b.ellipse(xf * Vector2(x, 0.58), rect.size.x * 0.17, rect.size.y * 0.21, col)
+				b.ellipse(xf * Vector2(x, 0.3), rect.size.x * 0.13, rect.size.y * 0.09, col)
+		"spark":
+			b.stroke(xf * Icons.circle(Vector2(0.5, 0.5), 0.22), width * 0.8, col, true)
+			b.stroke(xf * PackedVector2Array([Vector2(0.5, 0.94), Vector2(0.5, 0.06)]), width, col)
+			b.fan(xf * PackedVector2Array([Vector2(0.5, 0.0), Vector2(0.64, 0.2), Vector2(0.36, 0.2)]), col)
+		var icon:
+			var shape := Icons.shape(icon)
+			for poly: PackedVector2Array in shape.polys:
+				b.polygon(xf * poly, col)
+			for line: PackedVector2Array in shape.lines:
+				b.stroke(xf * line, width, col)
+
+## The goal in words, with its count for this difficulty; a flyby says its
+## own line.
+func _goal_text() -> String:
+	var key := String(GOAL_KEYS[sim.goal_kind])
+	var n: int = sim.goal_need
+	if key == "":
+		return tr("FF_FLYBY_LINE")
+	if key in GOAL_BARE:
+		return tr(key)
+	if key in GOAL_PAIRED:
+		return tr(key + "_ONE") if n == 1 else tr(key + "_N") % n
+	return tr(key) % n
+
+static func _buff_name(buff: int) -> String:
+	return TranslationServer.translate(BUFF_KEYS[clampi(buff, 0, BUFF_KEYS.size() - 1)])
 
 func _apply_insets() -> void:
 	var insets := SafeArea.insets(self)
@@ -442,6 +562,9 @@ func _new_game() -> void:
 		_pause_card.queue_free()
 		_pause_card = null
 	_refresh_hud()
+	_lay_goal_plate()
+	_goal_plate.visible = true
+	_goal_plate.scale = Vector2.ONE
 	top_bar.refresh(self)
 	_fx.cue("start")
 	Analytics.track("arcade_start", {"game": GAME, "boosts": ",".join(_boosts), "stage": _stage,
@@ -490,10 +613,18 @@ func _process(delta: float) -> void:
 		return
 	if not _paused:
 		_clock += delta
-		_hands()
+		# a hand on the field plays only while a stage is played: a key held
+		# into the end does nothing under its card
+		if _playing():
+			_hands()
+		else:
+			sim.fire = false
+			sim.axis = 0.0
 		if _freeze > 0.0:
 			_freeze -= delta
-		else:
+		elif _end == null:
+			# the sim runs on to its end card (the last dives fly home, a
+			# rescue in flight may still dock) and stops under it
 			_acc += minf(delta, Sim.DT * MAX_STEPS)
 			while _acc >= Sim.DT:
 				_acc -= Sim.DT
@@ -539,6 +670,9 @@ func _animate(delta: float) -> void:
 		if sim.ship == Sim.Ship.ALIVE:
 			for x: float in sim.ship_xs():
 				_wake.append({"pos": Vector2(x, Sim.PLAYER_Y + 5.0), "t": 0.0})
+		# a rescued firefly, or Double fire's twin, glows its way in
+		if not sim.freed.is_empty():
+			_wake.append({"pos": sim.freed.pos + Vector2(0, 5.0), "t": 0.0})
 	for w: Dictionary in _wake:
 		w.t += delta
 	_wake = _wake.filter(func(w: Dictionary) -> bool: return w.t < 0.4)
@@ -728,7 +862,7 @@ func _play_events() -> void:
 				_fx.cue("docked")
 				_fx.ring(at, 30.0 * _u * 0.3, Art.GLOW)
 				var dock := _in_rw(ev.pos)
-				if sim.pair:
+				if sim.pair and not bool(ev.get("twin", false)):
 					_rw.sticker(tr("FF_DOUBLE"), _in_rw(Vector2(Sim.W * 0.5, Sim.H * 0.55)), 78, 1.6, true, Color.WHITE, true, "double")
 					_flash_now(Art.GLOW, 0.35)
 				_rw.ring(dock, 36.0 * _u, Color(Art.GLOW, 0.9))
@@ -760,7 +894,9 @@ func _play_events() -> void:
 				_show_banner(tr("FF_READY"), "", 1.2)
 				_ready_at = _clock
 			"stage_start":
-				_show_banner(tr("FF_STAGE_N") % ev.stage, "", 1.8)
+				# the stage's name, its goal and what the goal gives
+				var buff_name := _buff_name(int(Sim.STAGES[int(ev.stage) - 1].buff))
+				_show_banner(String(Sim.STAGES[int(ev.stage) - 1].name), "%s\n%s" % [_goal_text(), tr("FF_THEN") % buff_name], 2.4, 34)
 				if int(ev.stage) > 1:
 					_fx.cue("stage")
 			"challenge_start":
@@ -779,10 +915,21 @@ func _play_events() -> void:
 				_feel(Haptics.BUMP)
 				_stage_cleared()
 			"won":
+				# heard as the clear or the flyby's tally, the step before
+				_feel(Haptics.BUMP)
 				_finish(true)
-			"goal_step", "goal_met", "shield", "twin":
-				# the goal's plate, the buffs and the shield are Task 3b's
-				pass
+			"goal_step":
+				_lay_goal_plate()
+				if int(ev.have) > 0 and _goal_plate != null:
+					_beat(_goal_plate, 0.16, 0.24)
+			"goal_met":
+				_goal_met(int(ev.buff))
+			"shield":
+				_shield_burst(ev.pos)
+			"twin":
+				# Double fire's twin sets off from the side to dock
+				_fx.cue("rescue", 1.08, -4.0)
+				_fx.sparkle(at, Art.GLOW)
 			"game_over":
 				# The last firefly's knock is the lose.
 				_feel(Haptics.LOSE)
@@ -801,10 +948,14 @@ func _beam_sound() -> void:
 	elif not open and _beam_voice.playing:
 		_beam_voice.stop()
 
-func _show_banner(text: String, sub: String, hold: float) -> void:
+func _show_banner(text: String, sub: String, hold: float, sub_size := 0) -> void:
 	_banner.text = text
 	_sub.text = sub
 	_sub.visible = sub != ""
+	if sub_size > 0:
+		_sub.add_theme_font_size_override("font_size", sub_size)
+	else:
+		_sub.remove_theme_font_size_override("font_size")
 	var box: Control = _banner.get_meta("box")
 	box.reset_size()
 	box.size.x = field.size.x
@@ -913,6 +1064,39 @@ func _flyby_result(perfect: bool, bonus: int) -> void:
 		_flash_now(Pal.SUN, 0.6)
 		_shake = maxf(_shake, 0.5)
 
+## The goal met: the plate turns gold with the buff's icon and beats, stars
+## fly out of it, and the buff is lettered over the field with its line.
+## A flyby's forty pays points, not a buff: its tally says so.
+func _goal_met(buff: int) -> void:
+	_feel(Haptics.BUMP)
+	if _goal_plate != null:
+		_lay_goal_plate()
+		_beat(_goal_plate, 0.32, 0.42)
+		var at := _rw.at(_goal_plate, _goal_plate.size * 0.5)
+		_rw.ring(at, 120.0, Color(Pal.SUN, 0.9))
+		_rw.spray(at, Pal.SUN, 10, 520.0, "star", 0.9)
+		_rw.spray(at, Color("fffaf0"), 6, 440.0, "spark", 1.0)
+	if buff == Sim.Buff.NONE:
+		return
+	_fx.cue("docked", 1.12, -2.0)
+	_rw.sticker(tr("FF_BUFF_GOT") % _buff_name(buff), _field_at(0.5, 0.42), 76, 1.9, true, Color.WHITE, true, "buff", 24.0)
+	_rw.sticker(tr(BUFF_LINES[buff]), _field_at(0.5, 0.5), 38, 1.9, false, Art.GLOW_HOT, false, "buff_line", 0.0, true)
+	_rw.spray(_field_at(0.5, 0.42), Pal.SUN, 12, 700.0, "star", 1.0)
+	_flash_now(Art.GLOW, 0.3)
+
+## The silk shield took a hit: it bursts in white shards and a ring going
+## out, a warn, and the hurt's sound pitched low.
+func _shield_burst(pos: Vector2) -> void:
+	var at := _in_rw(pos)
+	_fx.cue("hurt", 0.78, -2.0)
+	_feel(Haptics.WARN)
+	_rw.ring(at, 34.0 * _u, Color(Color.WHITE, 0.9))
+	_rw.ring(at, 20.0 * _u, Color(Art.GLOW_HOT, 0.9), 0.06)
+	_rw.spray(at, Color.WHITE, 12, 560.0, "shard", 0.9)
+	_rw.spray(at, Art.GLOW, 6, 420.0, "mote", 1.0)
+	_burst(pos, Color("e9ecfa"), false)
+	_shake = maxf(_shake, 0.35)
+
 ## The score passing a round number, and the best being passed: lettered,
 ## with stars out of the plate.
 func _score_moments() -> void:
@@ -978,7 +1162,9 @@ func _refresh_hud(delta := 0.0) -> void:
 	if _score_l.text != shown:
 		_score_l.text = shown
 		_best_l.text = Record.grouped(maxi(_best, int(_roll)))
-	_stage_l.text = str(sim.stage)
+	# a label set to the text it holds does nothing
+	_stage_k.text = (tr("FF_STAGE_N") % sim.stage).to_upper()
+	_stage_l.text = tr(Sheet.LEVEL_KEYS.get(String(Sim.DIFF[sim.difficulty].name), ""))
 
 # --- drawing ---
 
@@ -1373,6 +1559,21 @@ func _draw_halos(b: Face.Builder) -> void:
 		var c := _ship_at(x) + Vector2(0, 5.2 * _u).rotated(_lean)
 		b.disc(c, (12.0 + 2.5 * pulse) * _u, Color(Art.GLOW, 0.05 + 0.04 * pulse))
 		b.disc(c, 7.0 * _u, Color(Art.GLOW, 0.1 + 0.05 * pulse))
+		if sim.shield:
+			_draw_silk(b, _ship_at(x) + Vector2(0, 1.5 * _u).rotated(_lean))
+
+## The silk shield: a soft ring of silk round the firefly that breathes in
+## its width, never its light (a fade reads as smoke on the night), and
+## three threads turning on it.
+func _draw_silk(b: Face.Builder, c: Vector2) -> void:
+	var breath := 0.0 if Motion.reduce else sin(_clock * 3.1)
+	var r := (12.5 + 0.7 * breath) * _u
+	b.stroke(Face.Builder.ring(c, r, r * 1.06), (1.6 + 0.4 * breath) * _u, Color(BEAM, 0.3), true)
+	b.stroke(Face.Builder.ring(c, r, r * 1.06), 0.5 * _u, Color(Color.WHITE, 0.8), true)
+	var turn := 0.0 if Motion.reduce else _clock * 0.8
+	for k in 3:
+		var a := turn + TAU * k / 3.0
+		b.stroke(Face.Builder.arc_points(c, r * 1.08, a, a + 1.1), 0.45 * _u, Color(Art.SILK, 0.9))
 
 func _draw_shots(b: Face.Builder) -> void:
 	# a big gun's sky is full of them: past a couple of dozen each is its
@@ -1380,16 +1581,26 @@ func _draw_shots(b: Face.Builder) -> void:
 	var plain: bool = sim.shots.size() > 24
 	for s: Dictionary in sim.shots:
 		var at := px(s.pos)
+		# a piercing spark, before and after the bug it went through, is
+		# longer and hotter
+		if int(s.pierce) > 0 or int(s.skip) != -1:
+			_streak(b, at, at + Vector2(0, 20.0 * _u), 3.2 * _u, Color(Art.GLOW_HOT, 0.8))
+			b.ellipse(at, 2.8 * _u, 5.0 * _u, Color(Art.GLOW, 0.3))
+			b.ellipse(at, 1.1 * _u, 3.6 * _u, Color.WHITE)
+			continue
 		_streak(b, at, at + Vector2(0, 11.0 * _u), 2.6 * _u, Color(Art.GLOW, 0.55))
 		if not plain:
 			b.ellipse(at, 2.4 * _u, 3.8 * _u, Color(Art.GLOW, 0.22))
 		b.ellipse(at, 0.9 * _u, 2.4 * _u, SHOT)
 		if not plain:
 			b.ellipse(at + Vector2(0, -0.4 * _u), 0.45 * _u, 1.4 * _u, Color.WHITE)
+	# a slow seed (Slow seeds halve them) drags a longer trail
+	var slow := float(Sim.DIFF[sim.difficulty].seed_speed) * 0.75
 	for bl: Dictionary in sim.bullets:
 		var at := px(bl.pos)
 		var vel: Vector2 = bl.vel
-		_streak(b, at, at - vel.normalized() * 6.0 * _u, 2.2 * _u, Color(BULLET, 0.35))
+		var trail := 15.0 if vel.y < slow else 6.0
+		_streak(b, at, at - vel.normalized() * trail * _u, 2.2 * _u, Color(BULLET, 0.35))
 		var pulse := 0.5 + 0.5 * sin(_clock * 14.0 + at.x)
 		b.disc(at, (2.2 + 0.5 * pulse) * _u, Color(BULLET, 0.22))
 		var spin := _clock * 10.0 + at.x * 0.1
@@ -1563,7 +1774,8 @@ func _finish(cleared: bool) -> void:
 	_run_gold = Wallet.pay_run(bool(got.first_clear))
 	var secs := int((Time.get_ticks_msec() - _started_at) / 1000.0)
 	Analytics.track("arcade_end", {"game": GAME, "score": sim.score, "stage": sim.stage, "difficulty": sim.difficulty,
-		"seconds": secs, "fired": sim.fired, "hits": sim.hits, "kills": sim.kills, "best": _better})
+		"seconds": secs, "fired": sim.fired, "hits": sim.hits, "kills": sim.kills, "best": _better,
+		"cleared": cleared, "goal": sim.goal_done})
 	Ads.note_finished()
 	if not cleared:
 		_show_banner(tr("FF_GAME_OVER"), "", 1.6)
@@ -1664,6 +1876,21 @@ func _build_end(better: bool) -> Control:
 	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(line)
+	# the goal, met with what it gave, or not
+	var goal := Label.new()
+	goal.name = "Goal"
+	if not sim.goal_done:
+		goal.text = tr("FF_GOAL_MISSED")
+	elif sim.buff == Sim.Buff.NONE:
+		goal.text = tr("FF_GOAL_ALL_MET")
+	else:
+		goal.text = tr("FF_GOAL_MET") % _buff_name(sim.buff)
+	goal.theme_type_variation = "SheetBodyDim"
+	if sim.goal_done:
+		goal.add_theme_color_override("font_color", Pal.TEXT)
+	goal.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	goal.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(goal)
 	# Next stage leads when there is one to go on to; Again plays this one
 	# once more and Stages goes back to the map.
 	var next: Button = null
@@ -1808,6 +2035,7 @@ func _open_map() -> void:
 	Motion.stop(_banner_tw)
 	(_banner.get_meta("box") as Control).modulate.a = 0.0
 	_hud.visible = false
+	_goal_plate.visible = false
 	_make_level_card()
 	_lay_map()
 	if not Motion.reduce:
@@ -1940,7 +2168,11 @@ func _marks(cleared: Array) -> Control:
 			bd.disc(c, MARK_R, ink)
 			if not bool(cleared[d]):
 				bd.disc(c, MARK_R - 2.5, Pal.SURFACE)
-		marks.draw_mesh(bd.mesh(), null))
+		# kept until the next draw: a mesh freed as the callback returns
+		# leaves the canvas drawing nothing
+		var m := bd.mesh()
+		marks.set_meta("shown", m)
+		marks.draw_mesh(m, null))
 	return marks
 
 ## After the last stage, the promise of more.

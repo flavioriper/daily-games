@@ -102,7 +102,8 @@ func _beat(game: String, node: String) -> void:
 func _fill(game: String, s: Control) -> void:
 	match game:
 		"firefly":
-			ArcadeRecord.add("firefly", 4321, 7)
+			# a stage record: stage 3 cleared on Medium
+			ArcadeRecord.add_stage("firefly", 3, 1, 4321, true)
 		"bagatelle":
 			s.sim.coins = 123456.0
 			s.sim.save()
@@ -113,7 +114,7 @@ func _fill(game: String, s: Control) -> void:
 func _empty(game: String, s: Control) -> bool:
 	match game:
 		"firefly":
-			return ArcadeRecord.best("firefly") == 0 and ArcadeRecord.plays("firefly") == 0
+			return ArcadeRecord.reached("firefly") == 1 and ArcadeRecord.stage_best("firefly", 3, 1) == 0
 		"bagatelle":
 			return s.sim.coins < 1000.0
 		"factory":
@@ -132,7 +133,7 @@ func _process(delta: float) -> bool:
 		return false
 	if _step == 100:
 		var line: String = _menu.arcade_tab.line("firefly")
-		_check("firefly: the card forgets the best (%s)" % line.replace("\n", " / "), not ("4,321" in line or "4321" in line))
+		_check("firefly: the card forgets the stage cleared (%s)" % line.replace("\n", " / "), not ("Stage 3" in line or "1 of" in line))
 		_step = 4
 	if _step < 4:
 		_beat("firefly", "Firefly")

@@ -911,17 +911,6 @@ func _posy() -> void:
 ## took it off the field).
 func _firefly_bot() -> void:
 	var sim: RefCounted = _s.sim
-	if sim.phase == _s.Sim.Phase.SHOP and _s._shop != null:
-		for card in _s.Sim.Card.size():
-			if sim.can_buy(card):
-				_do("the shop: card %d bought" % card)
-				_s._buy(card)
-				_say()
-		_do("the shop: Go")
-		_s._close_shop()
-		_say()
-		_press(_s.field, _s.field.size * Vector2(0.5, 0.8), true)
-		return
 	var aim: float = sim.px
 	var best := -1.0
 	for e: Dictionary in sim.enemies:
@@ -938,6 +927,12 @@ func _firefly_bot() -> void:
 func _firefly() -> void:
 	var field: Control = _s.field
 	_do("the screen opened")
+	await _wait(0.2)
+	_say()
+	# it opens on the stage map: stage 1, at the difficulty kept (no gold,
+	# so no boost card)
+	_do("stage 1 picked on the map")
+	_s._pick_stage(1)
 	await _wait(0.2)
 	_say()
 	var mid := field.size * Vector2(0.5, 0.8)
@@ -963,15 +958,27 @@ func _firefly() -> void:
 	_bot = true
 	var secs := float(_env("SECS", 60))
 	var t := 0.0
-	while not _s.sim.is_over() and t < secs:
+	while not _s.is_done() and t < secs:
 		await process_frame
 		t += root.get_process_delta_time()
-	print("  -- %d s in: stage %d, score %d, ships %d; the rest are taken away" % [int(t), _s.sim.stage, _s.sim.score, _s.sim.ships])
+	print("  -- %d s in: stage %d, score %d, ships %d, goal %d / %d%s; the rest are taken away" % [int(t), _s.sim.stage,
+		_s.sim.score, _s.sim.ships, _s.sim.goal_have, _s.sim.goal_need, " met" if _s.sim.goal_done else ""])
+	if not _s.is_done():
+		if not _s.sim.goal_done:
+			_do("the goal met (forced)")
+			_s.sim._goal_step(_s.sim.goal_need)
+			await _wait(0.3)
+			_say()
+		_do("a silk shield (forced) takes a hit")
+		_s.sim.shield = true
+		_s.sim._ship_hit(0)
+		await _wait(0.3)
+		_say()
 	_bot = false
 	_s.sim.target_x = NAN
 	_s.sim.ships = mini(_s.sim.ships, 1)
 	t = 0.0
-	while not _s.sim.is_over() and t < 90.0:
+	while not _s.is_done() and t < 90.0:
 		await process_frame
 		t += root.get_process_delta_time()
 	_do("the card (a first best)")
@@ -986,6 +993,11 @@ func _firefly() -> void:
 	root.get_node("Wallet").add_gold(5000, "probe")
 	_press(field, mid, true)
 	await _wait(1.0)
+	_do("a silk shield (forced) takes a hit")
+	_s.sim.shield = true
+	_s.sim._ship_hit(0)
+	await _wait(0.3)
+	_say()
 	print("  -- the run ended by the probe (no pop): the Second chance")
 	_s.sim.ships = 1
 	_s.sim._lose_ship()

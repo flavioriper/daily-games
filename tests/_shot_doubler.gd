@@ -91,6 +91,8 @@ func _process(delta: float) -> bool:
 				_menu._show_tab("arcade")
 				_menu._open_arcade("firefly")
 				_s = _find(root, "firefly_screen.gd")
+				# it opens on the stage map: stage 1 tapped
+				_s._pick_stage(1)
 				_step = 1
 				_at = _t
 		1:
@@ -144,6 +146,7 @@ func _process(delta: float) -> bool:
 		4:
 			if _t > _at + 1.0:
 				_s = _find(root, "firefly_screen.gd")
+				_s._pick_stage(1)
 				_step = 5
 				_at = _t
 		5:

@@ -248,7 +248,7 @@ class Garden extends "res://arcade/firefly_screen.gd":
 	func _knock_now() -> void:
 		_knock = -1
 
-	func _show_banner(_text: String, _sub: String, _hold: float) -> void:
+	func _show_banner(_text: String, _sub: String, _hold: float, _sub_size := 0) -> void:
 		pass
 
 	## No score plate for a kill's stars to fly home to: up out of the garden.

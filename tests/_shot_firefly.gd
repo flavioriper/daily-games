@@ -1,17 +1,19 @@
 extends SceneTree
 
-## The Arcade tab and a game of Firefly, shot at fixed beats:
+## The Arcade tab and Firefly in stages, shot at fixed beats:
 ##
-##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_firefly.gd -- <outdir> [pt|es] [reduce]
+##     godot --resolution 810x1440 --always-on-top --path . --script res://tests/_shot_firefly.gd -- <outdir> [pt|es] [reduce]
 ##
-## 1 the Arcade tab, 2 the stage banner, 3 the swarm flying in, 4 the swarm
-## in its rows, 5 a moth's beam, 6 a pair of fireflies, 6a hits landing
-## (numbers, bars, motes on their way to the plate), 6b the shop as it
-## opens, 6c the shop with all it could buy bought (bought through the
-## card's own buttons, left by its Go), 7 the flyby, 7b a gun grown far past
-## what a run buys, 8 the end card. Prints the draw calls at each shot. The
-## end writes a score to user://arcade.cfg, so the file this machine had is
-## put back, on a timeout too.
+## 1 the Arcade tab, 2 the stage map (its clears drawn), 3 stage 6's
+## banner (its name, its goal and what the goal gives), 4 the swarm flying
+## in with the goal's plate, 5 the swarm in its rows and a moth's beam (the
+## firefly slipped aside, no seed landing), 6 the goal met (forced through
+## the sim: the plate gold, the buff lettered, the silk shield on), 6a a
+## piercing spark and slow seeds live (forced), 6b the shield bursting,
+## 6c Double fire's twin flying in (forced), 7 the end card of a stage
+## cleared, 8 the end card of one failed. Prints the draw calls at each shot.
+## The ends write to user://arcade.cfg, so the file this machine had is put
+## back, on a timeout too.
 
 var _menu: Node
 var _s: Node
@@ -23,12 +25,7 @@ var _before := ""
 var _had := false
 var _reduce := false
 var _lang := ""
-## The shop: when it was first seen up, and which of its shots are taken.
-var _shop_at := -1.0
-var _shop_shot := 0
-var _hits_shot := false
-var _primed := false
-var _big_at := -1.0
+var _seeded := false
 const PATH := "user://arcade.cfg"
 
 func _initialize() -> void:
@@ -93,37 +90,17 @@ func _done() -> void:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(PATH))
 	quit()
 
-## The shop's card, when it is up: shot as it opened, everything it can buy
-## bought through its own buttons one a beat, shot again, and left by Go.
-func _shop() -> bool:
-	if _s._shop == null:
-		_shop_at = -1.0
-		return false
-	if _shop_at < 0.0:
-		_shop_at = _t
-		print("shop after stage %d: energy %d" % [_s.sim.stage, int(_s.sim.energy / 4.0)])
-	if _t < _shop_at + 0.6:
-		return true
-	if _shop_shot == 0:
-		_shop_shot = 1
-		_shot("6b_shop")
-		return true
-	for r: Dictionary in _s._shop_rows:
-		if not (r.button as Button).disabled:
-			(r.button as Button).pressed.emit()
-			return true
-	if _shop_shot == 1:
-		_shop_shot = 2
-		_shot("6c_bought")
-		print("gun: dmg %d rate %.1f crit %d shots %d energy+%d" % [_s.sim.power, _s.sim.rate(), _s.sim.crit_lv, _s.sim.volley, _s.sim.energy_lv])
-		return true
-	(_s._shop.get_node("Center/Card").find_child("Go", true, false) as Button).pressed.emit()
-	return true
-
 func _process(delta: float) -> bool:
 	_t += delta
 	_skip_gold()
-	if _t > 240.0:
+	# the window losing focus pauses the run (a person's click elsewhere):
+	# the beats go on
+	if _s != null and _s._paused:
+		_s._pause(false)
+	# up to the goal's moment no seed lands: the firefly is there to be seen
+	if _step >= 3 and _step <= 8 and _s.sim != null:
+		_s.sim.bullets.clear()
+	if _t > 150.0:
 		print("TIMEOUT at step ", _step)
 		_done()
 		return false
@@ -145,111 +122,130 @@ func _process(delta: float) -> bool:
 				_menu._open_arcade("firefly")
 				_s = _menu.get_node("Firefly")
 				_step = 2
+				_at = _t
 		2:
-			if _t > 2.6:
-				_shot("2_banner")
+			if _t > _at + 1.0:
+				_shot("2_map")
+				# stage 6 on Medium: moths, escorts, hot entrances, Break a
+				# wave for a Silk shield (any stage plays, the map aside)
+				_s._on_difficulty(1)
+				_s._stage = 6
+				_s._ask()
 				_step = 3
+				_at = _t
 		3:
-			if _t > 6.5:
-				_shot("3_entering")
+			if _t > _at + 0.9:
+				_shot("3_banner")
 				_step = 4
 		4:
-			# no shooting: let the swarm settle into its rows
-			if _t > 22.0:
-				_shot("4_rows")
-				_s.sim.ships = 5
+			if _t > _at + 5.0:
+				_shot("4_entering")
+				_s.sim.ships = 6
+				_step = 5
+		5:
+			# no shooting: let the swarm settle into its rows, then a beam
+			if _t > _at + 20.0:
 				var moth := {}
 				for e: Dictionary in _s.sim.enemies:
 					if e.kind == Sim.Kind.MOTH and e.st == Sim.St.FORM:
 						moth = e
 				if not moth.is_empty():
 					_s.sim._dive_beam(moth)
-				_step = 5
-		5:
-			for e: Dictionary in _s.sim.enemies:
-				if e.st == Sim.St.BEAM and e.beam >= 1.0 and _step == 5:
-					_shot("5_beam")
-					_step = 6
-					_at = _t
-			if _t > 40.0:
-				_shot("5_no_beam")
+					# and the firefly slips off to the far side, out of its reach
+					_s.sim.target_x = 30.0 if _s.sim.px > Sim.W * 0.5 else Sim.W - 30.0
 				_step = 6
-				_at = _t
 		6:
-			if _t > _at + 3.0:
-				# a pair, forced
-				_s.sim.pair = true
-				_s.sim.ship = Sim.Ship.ALIVE
-				_bot()
-				if _t > _at + 5.0:
-					_shot("6_pair")
-					_step = 7
-		7:
-			if _shop():
-				return false
-			_bot()
-			if not _hits_shot:
-				# hits landing: numbers afloat, a wounded bug's bar, motes flying.
-				# Stage 1's ladybirds go in one shot, so they are given three.
-				if not _primed:
-					_primed = true
-					for e: Dictionary in _s.sim.enemies:
-						if e.kind == Sim.Kind.BEETLE and int(e.max) < 3:
-							e.hp = 3
-							e.max = 3
-				var wounded := 0
+			var open := false
+			for e: Dictionary in _s.sim.enemies:
+				if e.st == Sim.St.BEAM and e.beam >= 1.0:
+					open = true
+			if open or _t > _at + 30.0:
+				_shot("5_rows_beam" if open else "5_rows")
+				# the beam's moth gone, so nothing hauls a firefly up later
 				for e: Dictionary in _s.sim.enemies:
-					if int(e.hp) < int(e.max):
-						wounded += 1
-				if (wounded >= 2 and _s._nums.size() >= 1 and (_reduce or _s._motes._orbs.size() >= 4)) or _t > _at + 14.0:
-					_hits_shot = true
-					print("hits: wounded %d numbers %d motes %d" % [wounded, _s._nums.size(), _s._motes._orbs.size()])
-					_shot("6a_hits")
-				return false
-			if _s.sim.challenge() and _s.sim.phase == Sim.Phase.PLAY and _s.sim.phase_t > 5.0:
-				_shot("7_flyby")
+					if e.st == Sim.St.BEAM:
+						e.st = Sim.St.DEAD
+				_step = 7
+				_at = _t
+		7:
+			# the goal met, forced: its Silk shield goes up
+			if _t > _at + 1.5:
+				_s.sim._goal_step(_s.sim.goal_need)
+				_step = 8
+				_at = _t
+		8:
+			if _t > _at + 0.7:
+				_shot("6_goal_met")
+				print("goal %d / %d done %s buff %d shield %s" % [_s.sim.goal_have, _s.sim.goal_need, _s.sim.goal_done, _s.sim.buff, _s.sim.shield])
+				_step = 9
+				_at = _t
+		9:
+			# piercing sparks fired and slow seeds falling, the shield still up
+			_bot()
+			_s.sim.buff = Sim.Buff.PIERCE
+			if _t > _at + 0.8 and not _seeded:
+				_seeded = true
+				_s.sim.buff = Sim.Buff.SLOW
+				var n := 0
+				for e: Dictionary in _s.sim.enemies:
+					if e.st == Sim.St.FORM and n < 5:
+						_s.sim._seed(e)
+						n += 1
+				_s.sim.buff = Sim.Buff.PIERCE
+			if _t > _at + 1.6:
+				_shot("6a_pierce_slow")
 				_step = 10
 				_at = _t
-			elif _s.sim.stage < 3 and _t > _at + 90.0:
-				_shot("7_timeout")
-				print("stage ", _s.sim.stage, " enemies ", _s.sim.enemies.size())
-				_step = 8
-			elif _s.sim.stage < 3:
-				# hurry: clear the stage
-				for e: Dictionary in _s.sim.enemies:
-					if e.st == Sim.St.FORM:
-						e.hp = mini(int(e.hp), _s.sim.power)
 		10:
-			# a gun far past what a run buys, for the draw calls and the frame
-			if _big_at < 0.0:
-				_big_at = _t
-				_s.sim.volley = 6
-				_s.sim.rate_lv = 14
-				_s.sim.crit_lv = 4
-				_s.sim.power = 9
-				_s.sim.pair = true
-				for e: Dictionary in _s.sim.enemies:
-					e.hp = 400
-					e.max = 400
 			_bot()
-			if _t > _big_at + 2.5:
-				print("big gun: shots %d numbers %d fps %d" % [_s.sim.shots.size(), _s._nums.size(), int(Performance.get_monitor(Performance.TIME_FPS))])
-				_shot("7b_big_gun")
-				for e: Dictionary in _s.sim.enemies:
-					e.hp = 1
-				_step = 8
-		8:
-			_s._mouse = false
-			_s.sim.ships = 1
-			_s.sim.ship = Sim.Ship.ALIVE
-			# a pair would only lose its twin
-			_s.sim.pair = false
-			_s.sim._ship_hit(0)
-			_step = 9
-			_at = _t
-		9:
+			if _s.sim.shield:
+				_s.sim._ship_hit(0)
+			if _t > _at + 0.15:
+				_shot("6b_shield_burst")
+				_step = 11
+				_at = _t
+		11:
+			# Double fire, forced: the twin sets off from the side
+			_bot()
+			if _t > _at + 1.0 and _step == 11:
+				_s.sim.pair = false
+				_s.sim.freed = {}
+				_s.sim._give(Sim.Buff.DOUBLE)
+				_step = 12
+				_at = _t
+		12:
+			_bot()
+			if _t > _at + 0.6:
+				_shot("6c_twin")
+				_step = 13
+				_at = _t
+		13:
+			# the stage cleared: every bug gone at once
+			_bot()
+			if _t > _at + 2.0 and _s.sim.freed.is_empty():
+				_s._mouse = false
+				_s.sim.enemies.clear()
+				_step = 14
+				_at = _t
+		14:
+			if _t > _at + 4.2:
+				_shot("7_end_cleared")
+				print("cleared: score %d won %s goal %s" % [_s.sim.score, _s.sim.is_won(), _s.sim.goal_done])
+				(_s._end.find_child("Again", true, false) as Button).pressed.emit()
+				_step = 15
+				_at = _t
+		15:
+			# the night wins: the last firefly popped
 			if _t > _at + 3.0:
-				_shot("8_end")
-				print("score ", _s.sim.score, " stage ", _s.sim.stage)
+				_s.sim.ships = 1
+				_s.sim.pair = false
+				_s.sim.ship = Sim.Ship.ALIVE
+				_s.sim._ship_hit(0)
+				_step = 16
+				_at = _t
+		16:
+			if _t > _at + 3.8:
+				_shot("8_end_failed")
+				print("failed: score %d over %s" % [_s.sim.score, _s.sim.is_over()])
 				_done()
 	return false

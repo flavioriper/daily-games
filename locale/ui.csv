@@ -260,6 +260,37 @@ FF_STAGES,Stages,Fases,Fases
 FF_NEXT_STAGE,Next stage,Próxima fase,Siguiente fase
 FF_MORE_SOON,More stages soon,Mais fases em breve,Más fases pronto
 FF_CLEARED_CARD,Stage cleared!,Fase vencida!,¡Fase superada!
+FF_GOAL_CATCH,Catch %d bugs in flight,Pegue %d insetos em voo,Atrapa %d bichos en vuelo
+FF_GOAL_MOTH_DIVE_ONE,Shoot a moth while it dives,Acerte uma mariposa mergulhando,Derriba una polilla en picado
+FF_GOAL_MOTH_DIVE_N,Shoot %d moths while they dive,Acerte %d mariposas mergulhando,Derriba %d polillas en picado
+FF_GOAL_ESCORT_ONE,Shoot a moth after both its escorts,Acerte uma mariposa depois das duas escoltas,Derriba una polilla tras sus dos escoltas
+FF_GOAL_ESCORT_N,Shoot %d moths after their escorts,Acerte %d mariposas depois das escoltas,Derriba %d polillas tras sus escoltas
+FF_GOAL_BREAK_ONE,Break a wave before it sits,Desfaça uma onda antes que pouse,Rompe una oleada antes de que se pose
+FF_GOAL_BREAK_N,Break %d waves before they sit,Desfaça %d ondas antes que pousem,Rompe %d oleadas antes de que se posen
+FF_GOAL_RESCUE,Win a firefly back from a moth,Resgate um vaga-lume de uma mariposa,Rescata una luciérnaga de una polilla
+FF_GOAL_HELD,Bring the held firefly home,Traga o vaga-lume preso de volta,Trae a casa la luciérnaga cautiva
+FF_GOAL_CHAIN,Reach a chain of %d,Faça uma corrente de %d,Logra una cadena de %d
+FF_GOAL_UNTOUCHED,Go untouched for %d seconds,Fique %d segundos sem ser atingido,Aguanta %d segundos sin que te toquen
+FF_GOAL_BEAM_SHOT_ONE,Shoot a moth while its beam is open,Acerte uma mariposa com o feixe aberto,Derriba una polilla con su haz abierto
+FF_GOAL_BEAM_SHOT_N,Shoot %d moths while their beam is open,Acerte %d mariposas com o feixe aberto,Derriba %d polillas con su haz abierto
+FF_THEN,then: %s,depois: %s,luego: %s
+FF_BUFF_QUICK,Quicker gun,Arma mais rápida,Arma más rápida
+FF_BUFF_DOUBLE,Double fire,Tiro duplo,Doble disparo
+FF_BUFF_PIERCE,Piercing spark,Faísca perfurante,Chispa perforante
+FF_BUFF_SHIELD,Silk shield,Escudo de seda,Escudo de seda
+FF_BUFF_SLOW,Slow seeds,Sementes lentas,Semillas lentas
+FF_BUFF_SCORE_15,Score x1.5,"Pontos x1,5","Puntos x1,5"
+FF_BUFF_SCORE_2,Score x2,Pontos x2,Puntos x2
+FF_BUFF_QUICK_LINE,Four and a half volleys a second,Quatro rajadas e meia por segundo,Cuatro ráfagas y media por segundo
+FF_BUFF_DOUBLE_LINE,A twin flies in beside you,Um gêmeo voa ao seu lado,Un gemelo vuela a tu lado
+FF_BUFF_PIERCE_LINE,Each shot goes through a bug,Cada tiro atravessa um inseto,Cada disparo atraviesa un bicho
+FF_BUFF_SHIELD_LINE,The next hit is the silk's,O próximo golpe fica com a seda,El próximo golpe se lo lleva la seda
+FF_BUFF_SLOW_LINE,Seeds fall at half speed,As sementes caem na metade da velocidade,Las semillas caen a media velocidad
+FF_BUFF_SCORE_LINE,Every bug pays more,Cada inseto vale mais,Cada bicho vale más
+FF_BUFF_GOT,%s!,%s!,¡%s!
+FF_GOAL_MET,Goal met: %s,Meta cumprida: %s,Meta cumplida: %s
+FF_GOAL_ALL_MET,Goal met: all forty,Meta cumprida: as quarenta,Meta cumplida: las cuarenta
+FF_GOAL_MISSED,Goal not met,Meta não cumprida,Meta no cumplida
 HR_K_0,Aphids,Pulgões,Pulgones
 HR_K_1,Ants · quick,Formigas · rápidas,Hormigas · rápidas
 HR_K_2,Gnats · a swarm,Mosquitos · um enxame,Mosquitos · un enjambre

@@ -147,6 +147,9 @@ func _process(delta: float) -> bool:
 			_step = 1
 			_at = _t + 0.5
 		1:
+			# Firefly opens on its stage map: a stage tapped asks for the card
+			if g == "firefly" and s.sim == null and s.get_node_or_null("BoostCard") == null:
+				s._pick_stage(1)
 			var card: Node = s.get_node_or_null("BoostCard")
 			# Eddy has no gold boosters: its upgrades are bought with its own drops
 			if _video == "" and not Boosters.of(g).is_empty():
