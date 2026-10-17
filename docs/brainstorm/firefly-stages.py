@@ -75,7 +75,7 @@ S = [
   swarm=FULL_CAST, waves=FULL,
   dives="Up to 3 divers at once, up to 2 seeds each.",
   goal=("Break a wave: shoot every bug of one wave before any of it sits", (1,1,1,2)), buff="Silk shield",
-  m=(1.9,3,2,1.12), entry_from=6,
+  m=(1.7,3,2,1.15), entry_from=6,
   e="Entrance fire stays off on Easy.", h="",
   i="Every entering bug fires once."),
  dict(n=7, name="Flyby, crossing", kind="flyby", cast=(1,1,1),
@@ -105,7 +105,7 @@ S = [
   waves=FULL,
   dives="Up to 3 divers at once, up to 2 seeds each. The moth with the captive dives early, within its first 10 s seated.",
   goal=("Bring the held firefly home", (1,1,1,1)), buff="Silk shield",
-  m=(1.7,3,2,1.18), entry_from=6,
+  m=(1.8,3,2,1.15), entry_from=6,
   e="The captive's moth dives slower.", h="",
   i="The captive's moth dives only once. If it gets home, the captive turns rogue."),
  dict(n=10, name="Busy night", kind="play", cast=(1,1,1),
@@ -114,7 +114,7 @@ S = [
   waves=FULL[:3] + ["<b>Top, both sides at once:</b> 16 gnats, right and left halves together."],
   dives="Up to 5 divers at once, up to 2 seeds each.",
   goal=("Reach a chain", (8,12,12,20)), buff="Quicker gun",
-  m=(1.4,5,2,1.21), entry_from=6,
+  m=(1.5,5,2,1.20), entry_from=6,
   e="", h="",
   i="Dives don't wait for the swarm to sit at all."),
  dict(n=11, name="Flyby, the long way", kind="flyby", cast=(1,1,1),
@@ -133,9 +133,9 @@ S = [
  dict(n=12, name="Seed rain", kind="play", cast=(1,1,1),
   new="Divers drop up to 3 seeds each, and a ladybird drops its seeds in a fan of three.",
   swarm=FULL_CAST, waves=FULL,
-  dives="Up to 4 divers at once, up to 3 seeds each.",
+  dives="Up to 3 divers at once, up to 2 seeds each.",
   goal=("Go untouched for a stretch once the swarm is seated (seconds)", (20,30,30,45)), buff="Slow seeds",
-  m=(1.5,4,3,1.24), entry_from=6,
+  m=(2.2,3,2,1.18), entry_from=6,
   e="No fans: ladybirds drop single seeds.", h="",
   i="Seeds are aimed where you are going, not where you are."),
  dict(n=13, name="Moths first", kind="play", cast=(1,1,1),
@@ -146,9 +146,9 @@ S = [
          "<b>Right side, low:</b> 8 ladybirds.",
          "<b>Top, right:</b> 8 gnats.",
          "<b>Top, left:</b> 8 gnats."],
-  dives="Up to 4 divers at once, up to 3 seeds each.",
+  dives="Up to 4 divers at once, up to 2 seeds each.",
   goal=("Shoot moths while their beam is open", (1,2,2,3)), buff="Piercing spark",
-  m=(1.4,4,3,1.27), entry_from=6,
+  m=(1.5,4,2,1.25), entry_from=6,
   e="The beam doesn't drift.", h="",
   i="Two moths can beam at the same time."),
  dict(n=14, name="No rest", kind="play", cast=(1,1,1),
@@ -159,9 +159,9 @@ S = [
          "<b>Right side, low:</b> 8 ladybirds.",
          "<b>Top, centre:</b> 4 ladybirds and 4 gnats.",
          "<b>Left side, low:</b> the 4 moths with their ladybirds."],
-  dives="Up to 5 divers at once, up to 3 seeds each.",
+  dives="Up to 5 divers at once, up to 2 seeds each.",
   goal=("Catch bugs in flight", (10,15,15,20)), buff="Double fire",
-  m=(1.3,5,3,1.30), entry_from=6,
+  m=(1.6,5,2,1.22), entry_from=6,
   e="Bugs flying home don't fire.", h="",
   i="No pause after the stage banner. The first wave dives as it arrives."),
  dict(n=15, name="Full moon", kind="play", cast=(1,1,1),
@@ -170,9 +170,9 @@ S = [
   waves=["<b>Top centre + left side together:</b> 4 ladybirds and 4 gnats, then the 4 moths with their ladybirds.",
          "<b>Right side + top right together:</b> 8 ladybirds and 8 gnats.",
          "<b>Top, left:</b> 8 gnats."],
-  dives="Up to 6 divers at once, up to 3 seeds each. Clearing it opens stage 16 and the first new element.",
+  dives="Up to 4 divers at once, up to 2 seeds each. Clearing it opens stage 16 and the first new element.",
   goal=("Break waves", (1,2,2,3)), buff="Score ×2",
-  m=(1.2,6,3,1.33), entry_from=6,
+  m=(1.9,4,2,1.15), entry_from=6,
   e="Waves come one at a time.", h="",
   i="The swarm's breathing is wider, so seated bugs are harder to line up, and moths take 7 shots."),
 ]
@@ -180,8 +180,8 @@ S = [
 DIFF = [
  ("Easy",   4, (1,1,2), 0.85, 1.4,  -1, -1, 0.0),
  ("Medium", 3, (1,2,3), 1.00, 1.0,   0,  0, 0.25),
- ("Hard",   3, (1,2,4), 1.12, 0.8,   1,  1, 0.4),
- ("Insane", 2, (2,3,5), 1.25, 0.65,  2,  2, 0.5),
+ ("Hard",   3, (1,2,4), 1.06, 0.8,   1,  1, 0.4),
+ ("Insane", 2, (2,3,5), 1.25, 0.75,  1,  1, 0.5),
 ]
 SEED_SPEED = {"Easy":125,"Medium":150,"Hard":170,"Insane":195}
 
@@ -425,10 +425,10 @@ page = f"""<title>Firefly Stages 1–15</title>
   <div class="tbl"><table><thead><tr><th></th><th class="n">Easy</th><th class="n">Medium</th><th class="n">Hard</th><th class="n">Insane</th></tr></thead><tbody>
     <tr><td>Fireflies</td><td class="n">4</td><td class="n">3</td><td class="n">3</td><td class="n">2</td></tr>
     <tr><td>Shots: gnat / ladybird / moth</td><td class="n">1 / 1 / 2</td><td class="n">1 / 2 / 3</td><td class="n">1 / 2 / 4</td><td class="n">2 / 3 / 5</td></tr>
-    <tr><td>Swarm speed</td><td class="n">×0.85</td><td class="n">stage's</td><td class="n">×1.12</td><td class="n">×1.25</td></tr>
-    <tr><td>Time between dives</td><td class="n">×1.4</td><td class="n">stage's</td><td class="n">×0.8</td><td class="n">×0.65</td></tr>
-    <tr><td>Divers at once</td><td class="n">−1 (at least 1)</td><td class="n">stage's</td><td class="n">+1</td><td class="n">+2</td></tr>
-    <tr><td>Seeds a dive</td><td class="n">−1</td><td class="n">stage's</td><td class="n">+1</td><td class="n">+2 (at most 4)</td></tr>
+    <tr><td>Swarm speed</td><td class="n">×0.85</td><td class="n">stage's</td><td class="n">×1.06</td><td class="n">×1.25</td></tr>
+    <tr><td>Time between dives</td><td class="n">×1.4</td><td class="n">stage's</td><td class="n">×0.8</td><td class="n">×0.75</td></tr>
+    <tr><td>Divers at once</td><td class="n">−1 (at least 1)</td><td class="n">stage's</td><td class="n">+1</td><td class="n">+1</td></tr>
+    <tr><td>Seeds a dive</td><td class="n">−1</td><td class="n">stage's</td><td class="n">+1</td><td class="n">+1 (at most 4)</td></tr>
     <tr><td>Seed speed</td><td class="n">125</td><td class="n">150</td><td class="n">170</td><td class="n">195</td></tr>
     <tr><td>Bugs that fire while flying in</td><td class="n">never</td><td class="n">1 in 4 from stage 6</td><td class="n">2 in 5 from stage 6</td><td class="n">1 in 2 from stage 2</td></tr>
   </tbody></table></div>
