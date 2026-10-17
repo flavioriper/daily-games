@@ -88,7 +88,7 @@ static func _got(i: int) -> int:
 
 ## Where a run between islets `i` and `j` meets their beaches, as the board's
 ## `_lane_ends` reads it: a level run at the tops' own height, a climbing one
-## from under the upper drum to the lower islet's back edge.
+## from rim to rim, the islets being round from above.
 func _ends(i: int, j: int) -> Dictionary:
 	var a := _at(i)
 	var c := _at(j)
@@ -97,8 +97,8 @@ func _ends(i: int, j: int) -> Dictionary:
 		var lo := minf(a.x, c.x) + r
 		var hi := maxf(a.x, c.x) - r
 		return {"horiz": true, "a": Vector2(lo, a.y), "b": Vector2(hi, a.y)}
-	var top := minf(a.y, c.y) + r * (Board.TOP_Y + Board.SIDE)
-	var bot := maxf(a.y, c.y) - r * Board.TOP_Y
+	var top := minf(a.y, c.y) + r
+	var bot := maxf(a.y, c.y) - r
 	return {"horiz": false, "a": Vector2(a.x, top), "b": Vector2(a.x, bot)}
 
 func _paint(b: Face.Builder) -> void:
@@ -112,7 +112,7 @@ func _paint(b: Face.Builder) -> void:
 	# The shallows round each islet, then the runs, then the islets over
 	# their ends, the far one first.
 	for i in ISLETS.size():
-		Scenery.soft_disc(b, _at(i) + Vector2(0.0, r * 0.62), r * 1.62, r * 1.0, Color(SHALLOWS, SHALLOWS_ALPHA))
+		Scenery.soft_disc(b, _at(i), r * 1.6, r * 1.6, Color(SHALLOWS, SHALLOWS_ALPHA))
 	for run in RUNS:
 		_run(b, _ends(run[0], run[1]), int(run[2]), run[0] * 7 + run[1])
 	_nums.clear()
@@ -131,7 +131,7 @@ func _wave(b: Face.Builder, at: Vector2, length: float, k: float) -> void:
 	b.stroke(PackedVector2Array([under, under + Vector2(length * 0.3, -2.5 * k), under + Vector2(length * 0.6, 0.0)]),
 		2.5 * k, Color(ink, WAVE_ALPHA * 0.7))
 
-## A run of `count` planks between `g`'s ends, on its pilings, as
+## A run of `count` planks between `g`'s ends, as
 ## Board._planks lays one at rest.
 func _run(b: Face.Builder, g: Dictionary, count: int, seed_i: int) -> void:
 	var s := _cell()
@@ -153,33 +153,22 @@ func _run(b: Face.Builder, g: Dictionary, count: int, seed_i: int) -> void:
 		var tone := (Board._hash(seed_i, i) - 0.5) * 2.0 * Board.PLANK_TONE
 		var face: Color = Pal.DECK.lightened(tone) if tone > 0.0 else Pal.DECK.darkened(-tone)
 		_plank(b, at, box, horiz, face, Pal.WOOD_DEEP, 2.0 * k, s * Board.SLAT_STEP)
-	# The pilings: one each side of the run at both ends.
-	var pr := s * Board.POST_R * PLANK_K
-	var along := Vector2.RIGHT if horiz else Vector2.DOWN
-	var across := Vector2.DOWN if horiz else Vector2.RIGHT
-	var lit: Color = Pal.DECK.lerp(Pal.SURFACE, Board.POST_LIT)
-	for end in 2:
-		var base: Vector2 = (a + along * pr * Board.POST_OUT) if end == 0 else (e - along * pr * Board.POST_OUT)
-		for sgn: float in [-1.0, 1.0]:
-			var at: Vector2 = base + across * sgn * (total * 0.5 + pr * 1.2)
-			b.disc(at + Vector2(1.5, 3.0) * k, pr * 1.1, Color(shadow, 0.3))
-			b.disc(at, pr, Pal.WOOD_DEEP)
-			b.disc(at - Vector2(0.0, pr * 0.28), pr * 0.72, lit)
 
-## A plank, as Board._plank cuts one: `deep` under `face` with a lip `lip`
-## along its lower edge (its right on a climbing one), the light along the
-## other, and slats across it every `step`, none within `clear` of its
-## middle.
+## A plank, as Board._plank cuts one from above: `deep` showing as an even
+## edge of half `lip` along both long sides, `face` between, lit along its
+## top (its left on a climbing one), and slats across it every `step`, none
+## within `clear` of its middle.
 func _plank(b: Face.Builder, at: Vector2, box: Vector2, horiz: bool, face: Color, deep: Color, lip: float,
 		step: float, clear := 0.0) -> void:
 	var thick := minf(box.x, box.y)
 	var round := thick * Board.PLANK_RADIUS
 	b.fan(Face.Builder.round_rect(at, box, round), deep)
-	var top := Vector2(box.x, box.y - lip) if horiz else Vector2(box.x - lip, box.y)
-	b.fan(Face.Builder.round_rect(at, top, round), face)
+	var edge := Vector2(0.0, lip * 0.5) if horiz else Vector2(lip * 0.5, 0.0)
+	var top := box - edge * 2.0
+	b.fan(Face.Builder.round_rect(at + edge, top, round * 0.8), face)
 	var bevel := maxf(1.5, thick * Board.PLANK_BEVEL)
 	var strip := Vector2(top.x - round, bevel) if horiz else Vector2(bevel, top.y - round)
-	var strip_at := at + (Vector2(round * 0.5, 0.0) if horiz else Vector2(0.0, round * 0.5))
+	var strip_at := at + edge + (Vector2(round * 0.5, 0.0) if horiz else Vector2(0.0, round * 0.5))
 	b.fan(Face.Builder.round_rect(strip_at, strip, bevel * 0.5), face.lerp(Pal.SURFACE, Board.PLANK_LIT))
 	var ink := Color(deep, Board.SLAT_ALPHA)
 	var span := box.x if horiz else box.y
@@ -193,45 +182,32 @@ func _plank(b: Face.Builder, at: Vector2, box: Vector2, horiz: bool, face: Color
 				b.stroke(PackedVector2Array([at + Vector2(bevel + 1.0, s), at + Vector2(top.x - 1.5, s)]), wide, ink)
 		s += step
 
-## Islet `i` about `mid`, as Board._islet stands one: its shadow on the
-## water, the earth drum, the moss and its sprouts, the paper coin washed
-## for its count, and the ring of sockets round the coin.
+## Islet `i` about `mid`, as Board._islet_body lays one from above: its
+## shadow down and right on the water, the wet sand and the dry, the moss lit
+## from the top left, the inlay washed for its count, and the ring of
+## grooves on the sand round it.
 func _islet(b: Face.Builder, i: int, mid: Vector2, r: float) -> void:
 	var want := _want(i)
 	var got := _got(i) if not soon else _want(i)
-	var top_y := r * Board.TOP_Y
-	var depth := r * Board.SIDE
-	Scenery.soft_disc(b, mid + Vector2(0.0, depth + top_y * 0.55), r * Board.SHADOW_RX, r * Board.SHADOW_RY,
+	Scenery.soft_disc(b, mid + Vector2(r, r) * Board.ISLET_SHADOW, r * 1.12, r * 1.12,
 		Color(Pal.WATER.lerp(Pal.TEXT, Board.SEA_SHADE), Board.SHADOW_ALPHA))
-	var sx := r * Board.SIDE_R
-	var sy := top_y * Board.SIDE_R
-	b.ellipse(mid + Vector2(0.0, depth), sx, sy, Pal.BED_FURROW)
-	b.fan(Face.Builder.round_rect(mid - Vector2(sx, 0.0), Vector2(2.0 * sx, depth * Board.WET_AT), 0.0), Pal.CAMP_SOIL)
-	b.ellipse(mid + Vector2(0.0, depth * Board.WET_AT), sx, sy, Pal.CAMP_SOIL)
-	# The moss: its hanging lip, its lit rim, its face.
+	b.fan(_moss(mid, r, r, i + 3), Board.SAND_WET)
+	b.fan(_moss(mid, r * Board.SAND_DRY, r * Board.SAND_DRY, i + 5), Board.SAND)
 	var tone := (Board._hash(i, 3) - 0.5) * 2.0 * Board.TONE
 	var turf: Color = Pal.BANK.lightened(tone) if tone > 0.0 else Pal.BANK.darkened(-tone)
-	b.fan(_moss(mid + Vector2(0.0, r * Board.TURF_DROP), r, top_y, i), Pal.BANK.lerp(Pal.TEXT, Board.BANK_DEEP))
-	b.fan(_moss(mid, r, top_y, i), turf.lerp(Pal.LEAF_LIGHT, Board.TURF_LIT))
-	b.ellipse(mid + Vector2(0.0, top_y * Board.TURF_TOP), r * Board.TURF_R, top_y * Board.TURF_R, turf)
-	# Two sprouts on the back edge, clear of a plank that climbs away.
-	var sprout: Color = Pal.LEAF_DEEP.lerp(Pal.BANK, 0.3)
-	for sgn: float in [-1.0, 1.0]:
-		var a := -PI * 0.5 + sgn * (0.62 + 0.2 * Board._hash(i, 5 + int(sgn)))
-		var root := mid + Vector2(cos(a) * r * 0.8, sin(a) * top_y * 0.8)
-		var h := r * Board.TUFT_H
-		_leaf(b, root, -PI * 0.5 - 0.55, h * 0.8, h * 0.42, sprout)
-		_leaf(b, root, -PI * 0.5 + 0.55, h * 0.8, h * 0.42, sprout.lerp(Pal.LEAF_LIGHT, 0.3))
-		_leaf(b, root, -PI * 0.5, h, h * 0.36, sprout.lerp(Pal.LEAF_LIGHT, 0.15))
+	var tr := r * Board.TURF_R
+	var shift := r * Board.TURF_SHIFT
+	b.fan(_moss(mid, tr, tr, i), turf.lerp(Pal.TEXT, Board.TURF_DEEP))
+	b.fan(_moss(mid - Vector2(shift, shift), tr - shift * 1.4, tr - shift * 1.4, i), turf)
+	Scenery.soft_disc(b, mid - Vector2(r, r) * 0.3, r * 0.42, r * 0.42, Color(Pal.LEAF_LIGHT, Board.TURF_LIT))
 	# The coin and the number on it.
 	var met := got == want
 	var coin: Color = Pal.LEAF_TILE.lerp(Pal.GOOD, Board.COIN_MET) if met else Pal.SURFACE
 	var cr := r * Board.COIN_R
 	var at := mid - Vector2(0.0, r * Board.COIN_LIFT)
-	Scenery.soft_disc(b, mid + Vector2(0.0, r * Board.COIN_LIP * 0.8), cr * 1.14 + 1.0, cr * 1.08,
-		Color(Pal.TEXT, Board.COIN_SHADOW))
-	b.ellipse(at + Vector2(0.0, r * Board.COIN_LIP), cr, cr, coin.lerp(Pal.TEXT, Board.COIN_EDGE))
-	b.ellipse(at, cr, cr, coin)
+	Scenery.soft_disc(b, at + Vector2(0.0, cr * 0.04), cr * 1.12, cr * 1.12, Color(Pal.TEXT, Board.COIN_SHADOW))
+	b.ellipse(at, cr, cr, coin.lerp(Pal.TEXT, Board.COIN_EDGE))
+	b.ellipse(at, cr * Board.COIN_FACE, cr * Board.COIN_FACE, coin)
 	_nums.append([mid + Vector2(0.0, r * (Board.NUMBER_AT - Board.COIN_LIFT)), str(want),
 		Pal.LEAF_DEEP if met else Pal.TEXT])
 	# The sockets, one per plank asked for, filled as they come.
@@ -242,9 +218,7 @@ func _islet(b: Face.Builder, i: int, mid: Vector2, r: float) -> void:
 	for n in want:
 		var a0 := -PI * 0.5 + step * float(n) + gap * 0.5
 		var pts := Face.Builder.arc_points(at, ring, a0, a0 + step - gap)
-		var ink: Color = (Pal.LEAF_DEEP if met else Pal.DECK) if n < got else Pal.BANK.lerp(Pal.TEXT, 0.38)
-		if n < got:
-			b.stroke(pts, w + 2.0, ink.darkened(0.25) if met else Pal.WOOD_DEEP)
+		var ink: Color = (Pal.LEAF_DEEP if met else Pal.WOOD_DEEP) if n < got else Board.SAND.lerp(Pal.TEXT, 0.24)
 		b.stroke(pts, w, ink)
 
 ## The moss's lumpy outline about `c`, as Board._moss wobbles it.
@@ -255,13 +229,8 @@ static func _moss(c: Vector2, rx: float, ry: float, seed_i: int) -> PackedVector
 	pts.resize(n)
 	for q in n:
 		var a := TAU * float(q) / float(n)
-		pts[q] = c + Vector2(cos(a) * rx, sin(a) * ry) * (1.0 + 0.045 * sin(9.0 * a + ph))
+		pts[q] = c + Vector2(cos(a) * rx, sin(a) * ry) * (1.0 + Board.MOSS_WOB * sin(5.0 * a + ph) + Board.MOSS_WOB * 0.5 * sin(3.0 * a + ph * 2.0))
 	return pts
-
-static func _leaf(b: Face.Builder, root: Vector2, ang: float, lng: float, wide: float, col: Color) -> void:
-	var dir := Vector2.from_angle(ang)
-	var side := dir.orthogonal() * wide * 0.5
-	b.fan(PackedVector2Array([root, root + dir * lng * 0.5 + side, root + dir * lng, root + dir * lng * 0.5 - side]), col)
 
 ## The go button: the span `g` still wants, one wide plank in the card's
 ## colour over its shadow, a chevron at its middle.

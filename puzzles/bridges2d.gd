@@ -16,7 +16,7 @@ extends "res://core/puzzle_base.gd"
 ## mesh carries the sea (its basin, shallows, sandbars and ripples), a small
 ## one the laps spreading on it while one is, and one `ArrayMesh` everything
 ## else with no glyph on it -- the lit lane under the finger, a refusal's
-## band, the hint glows, the planks and their pilings, the islets and their
+## band, the hint glows, the planks, the islets and their
 ## coins -- and the numbers go over the top as `draw_string` commands, because
 ## a glyph in a mesh cache key multiplies every state by ten. With it comes
 ## Word Trail's hard-won rule: **a canvas command holds a mesh by RID and not
@@ -89,8 +89,8 @@ signal leave
 ## lantern) its number asks for, filling as they come: its radius off the
 ## coin, its thickness in islet radii (with a floor for the 11x11), and the
 ## gap between slots in radians.
-const SLOT_R := 1.22
-const SLOT_W := 0.17
+const SLOT_R := 1.48
+const SLOT_W := 0.12
 const SLOT_MIN := 4.5
 const SLOT_GAP := 0.28
 ## The coin flips over COIN_FLIP when its number comes right.
@@ -196,8 +196,8 @@ const FIELD_PAD := 12.0
 ## A plank's thickness and the air between two of them, in cells: three planks
 ## span 0.59 of a cell, wide enough to read as three at 84 px and narrow
 ## enough to leave water either side.
-const PLANK := 0.115
-const PLANK_GAP := 0.095
+const PLANK := 0.17
+const PLANK_GAP := 0.06
 ## This board's own two, and the only two it needs: how long the solve wave's
 ## front takes to cross one run, and how long it rests on an islet. The wave
 ## itself is the board's signature and lands with the motion pass; `win_delay`
@@ -227,31 +227,26 @@ const RIPPLE_BOW := 8.0
 ## (the polish, 2026-09-26): a soft shadow on the sea, a wet-sand foot under a
 ## dry beach lit along its top, a turf crown standing proud of the beach with
 ## its own lit rim, and a paper coin on the turf that carries the number.
-const ISLET_R := 0.43
-## The islet is drawn from a little above (the reference, 2026-09-26): its
-## top is an ellipse TOP_Y as tall as it is wide, and under it the drum's side
-## shows SIDE of a radius deep, SIDE_R as wide as the top, wet from WET_AT of
-## the way down.
-const TOP_Y := 0.86
-const SIDE := 0.52
-const SIDE_R := 0.94
-const WET_AT := 0.62
-## The shadow the drum throws on the water: how wide and tall.
-const SHADOW_RX := 1.2
-const SHADOW_RY := 0.5
-const SHADOW_ALPHA := 0.34
-## The moss on top: the hanging lip TURF_DROP under it in BANK_DEEP, the lit
-## rim toward LEAF_LIGHT by TURF_LIT, and the face TURF_R of the top, sitting
-## TURF_TOP down, toned off the islet's hash within TONE.
-const TURF_R := 0.86
-const TURF_DROP := 0.06
-const TURF_TOP := 0.07
-const TURF_LIT := 0.5
+const ISLET_R := 0.45
+## Since 2026-10-17 it is seen straight from above, like the water it
+## stands in: its shadow lies ISLET_SHADOW of a radius down and right; the
+## wet sand is the whole radius and the dry SAND_DRY of it; the moss is
+## TURF_R of it, its shade TURF_DEEP toward ink at the rim and its lit face
+## shifted TURF_SHIFT up and left, with a soft LEAF_LIGHT bloom TURF_LIT
+## through on the lit side; each islet toned off its hash within TONE.
+const ISLET_SHADOW := 0.14
+const SHADOW_ALPHA := 0.26
+const SAND := Color("f0dfba")
+const SAND_WET := Color("dcc391")
+const SAND_DRY := 0.92
+const TURF_R := 0.8
+const TURF_DEEP := 0.16
+const TURF_SHIFT := 0.04
+const TURF_LIT := 0.32
 const TONE := 0.035
-## The sprouts on the moss's back edge, TUFT_H of a radius tall, and the
-## share of islets that carry a flower.
-const TUFT_H := 0.3
-const FLOWER_SHARE := 0.3
+## How far an outline wanders from round: two slow waves, so an islet is
+## a pebble, never a cog (nine quick ones read as one).
+const MOSS_WOB := 0.018
 ## **The number stands on a paper coin**, as every other board's clues stand on
 ## paper: COIN_R of the islet, lifted COIN_LIFT over its own edge, which shows
 ## COIN_LIP under it in COIN_EDGE toward ink, with a soft shadow on the turf.
@@ -261,11 +256,14 @@ const FLOWER_SHARE := 0.3
 ## once the solve's wave has reached it. **It replaces the standing ring** the
 ## first cut drew round a met islet: a wash on the thing carrying the number
 ## reads at a glance on the 11x11, where a 4 px ring was a hair.
-const COIN_R := 0.58
-const COIN_LIFT := 0.08
-const COIN_LIP := 0.11
-const COIN_EDGE := 0.20
-const COIN_SHADOW := 0.16
+## Since 2026-10-17 the coin is an inlay, flat in the moss with no lip: a
+## rim COIN_EDGE toward ink, its face COIN_FACE of it, a hair of COIN_SHADOW
+## round it. COIN_LIFT stays for the lantern, which still stands on it.
+const COIN_R := 0.6
+const COIN_LIFT := 0.0
+const COIN_EDGE := 0.14
+const COIN_FACE := 0.9
+const COIN_SHADOW := 0.12
 ## LEAF_TILE alone sat too close to the paper coin beside it to read as a
 ## change of state at a glance, so a met coin is carried COIN_MET toward GOOD.
 const COIN_MET := 0.22
@@ -288,17 +286,16 @@ const GRAB := 1.25
 ## and a gold ring round the far islet, both drawn off `_aim` and `_aim_dir`
 ## in `_draw` -- a variable and a `queue_redraw`, never a node.
 ##
-## The band is 0.62 of a cell wide, which is the mock's own number and which
-## is what makes it read at **both ends of the band table**: 81 px on the 7x7
-## and 52 px on the 11x11, against runs of 15 and 10. It is wider than a run
-## of three planks (0.59 of a cell) by a hair, so a lit lane never reads as a
-## run that is already there.
-const BEAM_W := 0.62
+## Since 2026-10-17 the band is a soft pale wash, not gold, and 0.42 of a
+## cell wide: a hair wider than a run of two planks (0.40), so the ghost of
+## the plank the drag would lay sits on it and a lit lane never reads as a
+## run that is already there. It was 0.62 in gold, which read as a beige bar.
+const BEAM_W := 0.42
 const BEAM_RADIUS := 0.4
 ## How far the lit lane is let in under the two islets it joins, in islet
 ## radii, so it meets the turf instead of stopping short of it.
 const BEAM_TUCK := 0.4
-const BEAM_ALPHA := 0.86
+const BEAM_ALPHA := 0.42
 ## **The aim ring, and it is not the satisfied ring.** The gold band the drag
 ## throws round the islet the finger is about to join, for as long as the
 ## finger is down: its radius and its thickness in islet radii, the floor
@@ -308,8 +305,8 @@ const BEAM_ALPHA := 0.86
 ## and the 5 px floor is what saves it. A met islet wears no standing ring
 ## since the polish (2026-09-26): its coin is washed instead.
 const BEAM_RING := 1.22
-const BEAM_RING_W := 0.14
-const BEAM_RING_MIN := 5.0
+const BEAM_RING_W := 0.09
+const BEAM_RING_MIN := 4.0
 const BEAM_RING_ALPHA := 0.9
 ## A refusal's own band, and the highlight under the run that is in the way.
 ## Both are **plain `BAD` at a fading alpha**, which the pale sea is what
@@ -324,8 +321,8 @@ const BLOCKER_ALPHA := 0.95
 ## Its corner as a fraction of its own thickness, the lip the deck stands on,
 ## the shadow it throws on the water and where, and the slats across it.
 const PLANK_RADIUS := 0.34
-const PLANK_EDGE := 4.0
-const PLANK_SHADOW := Vector2(3.0, 7.0)
+const PLANK_EDGE := 1.5
+const PLANK_SHADOW := Vector2(5.0, 7.0)
 const PLANK_SHADOW_ALPHA := 0.22
 const SLAT_STEP := 0.30
 const SLAT_ALPHA := 0.28
@@ -338,11 +335,6 @@ const SLAT_MIN := 2.0
 const PLANK_LIT := 0.38
 const PLANK_BEVEL := 0.2
 const PLANK_TONE := 0.06
-## The pilings a run stands on: one each side of it at both ends, POST_R of a
-## cell, stood POST_OUT of their own radius out into the water from the beach.
-const POST_R := 0.052
-const POST_OUT := 1.3
-const POST_LIT := 0.34
 ## **A plank is laid across from the islet the finger left** (the polish's
 ## signature): it rolls out along the lane over LAY_TIME with the cubic ease,
 ## lifted LAY_LIFT of its thickness while it travels, and lands on the far
@@ -454,6 +446,10 @@ const FOAM_ALPHA := 0.55
 ## Every islet stands in a patch of paler water, SANDBAR radii across, with a
 ## ring of white FOOT_RING radii out at its waterline.
 const SANDBAR := 1.8
+## The open water's shallows round an islet (2026-10-17): how far out, in
+## islet radii, and how much SURFACE each of its two soft discs lets through.
+const SHALLOWS := 1.75
+const SHALLOWS_ALPHA := 0.16
 const SANDBAR_ALPHA := 0.7
 const FOOT_RING := 1.28
 const FOOT_RING_ALPHA := 0.45
@@ -980,10 +976,12 @@ func _deal() -> void:
 func _pool() -> Rect2:
 	var row := _heart_row()
 	if _bled:
-		# The lattice itself, on the host's side margin at the top of the
-		# span the rows leave, under the hearts' strip.
-		var g := maxf(0.0, minf(size.x - 2.0 * _margin(), size.y - _clear.x - _clear.y - row))
-		return Rect2((size.x - g) * 0.5, _clear.x + row, g, g)
+		# The lattice itself, on the host's side margin, under the hearts'
+		# strip and centred down the span the rows leave: with the beach gone
+		# (2026-10-17) a lattice at the top left a third of bare sea under it.
+		var span := size.y - _clear.x - _clear.y - row
+		var g := maxf(0.0, minf(size.x - 2.0 * _margin(), span))
+		return Rect2((size.x - g) * 0.5, _clear.x + row + maxf(0.0, (span - g) * 0.5), g, g)
 	return Rect2(INSET, INSET + row, maxf(0.0, size.x - 2.0 * INSET),
 		maxf(0.0, size.y - 2.0 * INSET - row))
 
@@ -1073,8 +1071,8 @@ func _lane_ends(key: String) -> Dictionary:
 		var lo := minf(a.x, b.x) + r
 		var hi := maxf(a.x, b.x) - r
 		return {"horiz": true, "a": Vector2(lo, a.y), "b": Vector2(hi, a.y)}
-	var top := minf(a.y, b.y) + r * (TOP_Y + SIDE)
-	var bot := maxf(a.y, b.y) - r * TOP_Y
+	var top := minf(a.y, b.y) + r
+	var bot := maxf(a.y, b.y) - r
 	return {"horiz": false, "a": Vector2(a.x, top), "b": Vector2(a.x, bot)}
 
 ## Every pixel it is given: the pool fills the card and the lattice is centred
@@ -1481,10 +1479,6 @@ func _put_islet(i: int, look: Array, t: float) -> void:
 	var got: int = look[6]
 	var xf := Transform2D(0.0, sc, 0.0, mid)
 	_rm_islets.put(SHAPE_BODY + i * 2 + int(over), [], xf)
-	var k: float = look[3]
-	if k > 0.01:
-		var foot := Vector2(r * 0.55, -r * TOP_Y * 0.55)
-		_rm_islets.put(SHAPE_FLAG + _hue_of(cell), [], xf * Transform2D(0.0, Vector2(k, k), 0.0, foot))
 	var coin: Color = look[4]
 	var turn: float = look[5]
 	if state.lanterns.has(cell):
@@ -1518,10 +1512,7 @@ func _shape(id: int) -> Face.Builder:
 		_lantern_draw(b, Vector2(0.0, -r * COIN_LIFT), r, r, 1.0,
 			[RunMesh.slot(0), RunMesh.slot(1), RunMesh.slot(2), RunMesh.slot(3), RunMesh.slot(4)])
 	elif id == SHAPE_COIN:
-		var cx := r * COIN_R
-		Scenery.soft_disc(b, Vector2(0.0, r * COIN_LIP * 0.8), cx * 1.14 + 1.0, cx * 1.08, RunMesh.slot(0))
-		b.ellipse(Vector2(0.0, r * (COIN_LIP - COIN_LIFT)), cx, cx, RunMesh.slot(1))
-		b.ellipse(Vector2(0.0, -r * COIN_LIFT), cx, cx, RunMesh.slot(2))
+		_inlay(b, Vector2.ZERO, r * COIN_R, r * COIN_R, RunMesh.slot(0), RunMesh.slot(1), RunMesh.slot(2))
 	elif id >= SHAPE_FLAG:
 		_pennant_draw(b, Vector2.ZERO, r * FLAG_H, r, id - SHAPE_FLAG)
 	else:
@@ -1663,11 +1654,11 @@ func _aim_band(b) -> void:
 	if _aim == "" or _from == State.NOWHERE or not state.lanes.has(_aim):
 		return
 	var r := _islet_r()
-	_band(b, _lane_ends(_aim), r * BEAM_TUCK, Color(Pal.SUN, BEAM_ALPHA))
+	_band(b, _lane_ends(_aim), r * BEAM_TUCK, Color(Pal.SURFACE, BEAM_ALPHA))
 	var lane: Dictionary = state.lanes[_aim]
 	var other: Vector2i = lane.b if lane.a == _from else lane.a
 	b.stroke(Face.Builder.ring(_at(other), r * BEAM_RING, r * BEAM_RING),
-		maxf(BEAM_RING_MIN, r * BEAM_RING_W), Color(Pal.SUN, BEAM_RING_ALPHA), true)
+		maxf(BEAM_RING_MIN, r * BEAM_RING_W), Color(Pal.SURFACE, BEAM_RING_ALPHA), true)
 
 ## A refused drag: the lane flashes in BAD, and on a crossed lane the run in
 ## the way flashes under it, so the refusal names the plank the finger has to
@@ -1855,7 +1846,7 @@ func _build_sea() -> ArrayMesh:
 	_depths(b, water)
 	var r := _islet_r()
 	for cell in state.islets:
-		var foot := _at(cell) + Vector2(0.0, r * (SIDE + 0.1))
+		var foot := _at(cell)
 		Scenery.soft_disc(b, foot, r * SANDBAR, r * SANDBAR * 0.8, Color(pale, SANDBAR_ALPHA))
 		b.stroke(Face.Builder.ring(foot, r * FOOT_RING, r * FOOT_RING * 0.8), r * 0.07,
 			Color(Pal.SURFACE, FOOT_RING_ALPHA), true)
@@ -1874,17 +1865,13 @@ func _build_open_sea() -> ArrayMesh:
 	if p.size.x <= 0.0:
 		return null
 	var b := Face.Builder.new()
-	var pale: Color = Pal.WATER_HI.lerp(Pal.PAPER, SEA_PALE)
 	var water := p.grow(_cell() * 0.15)
-	_depths(b, water)
 	var r := _islet_r()
+	# Since 2026-10-17 the open water carries nothing but the shallows round
+	# each islet, a pale halo fading out: no ripples, no pads, no blots.
 	for cell in state.islets:
-		var foot := _at(cell) + Vector2(0.0, r * (SIDE + 0.1))
-		Scenery.soft_disc(b, foot, r * SANDBAR, r * SANDBAR * 0.8, Color(pale, SANDBAR_ALPHA))
-		b.stroke(Face.Builder.ring(foot, r * FOOT_RING, r * FOOT_RING * 0.8), r * 0.07,
-			Color(Pal.SURFACE, FOOT_RING_ALPHA), true)
-	_ripples(b, water)
-	_dress(b, p, water)
+		Scenery.soft_disc(b, _at(cell), r * SHALLOWS, r * SHALLOWS, Color(Pal.SURFACE, SHALLOWS_ALPHA))
+		Scenery.soft_disc(b, _at(cell), r * 1.3, r * 1.3, Color(Pal.SURFACE, SHALLOWS_ALPHA))
 	if not state.lanterns.is_empty():
 		_night(b, water)
 	return b.mesh() if not b.verts.is_empty() else null
@@ -2224,7 +2211,7 @@ func _lap(t: float) -> void:
 	_next_lap = t + LAP_EVERY * _lap_rng.randf_range(0.8, 1.2)
 
 ## One run as it stands: the halo if a hint laid it, then a plank per count,
-## each on its own coloured shadow, and the pilings at its ends. Three recipes
+## each on its own coloured shadow. Three recipes
 ## meet on a run and every one of them is read as a curve -- a plank that has
 ## just been laid is still rolling out across the lane, a run the last Check
 ## marked blushes toward BAD with `flash_level` and rattles across its own lane
@@ -2340,7 +2327,7 @@ func _side(key: String, src: Vector2i) -> int:
 	var q := _at(other)
 	return 1 if p.x + p.y < q.x + q.y else -1
 
-## The planks themselves, and the pilings at their ends. `look` says how they
+## The planks themselves (no pilings since 2026-10-17). `look` says how they
 ## stand, every key optional:
 ## - `grow`: closes them about their own centres (a ghost leaving);
 ## - `since`, `first_new`, `src`: which of them are still rolling out, from
@@ -2352,7 +2339,6 @@ func _side(key: String, src: Vector2i) -> int:
 ## - `shine`: the win's light crossing the deck;
 ## - `alpha`, `faint_from`: the preview -- the whole run faint, or the planks
 ##   from that index on;
-## - `posts`: the pilings' own scale when a ghost takes them away.
 func _planks(b, key: String, count: int, look: Dictionary) -> void:
 	var s := _cell()
 	var g := _lane_ends(key)
@@ -2426,44 +2412,6 @@ func _planks(b, key: String, count: int, look: Dictionary) -> void:
 		var toned: Color = face.lightened(tone) if tone > 0.0 else face.darkened(-tone)
 		_plank(b, at, box, horiz, r, Color(toned.lerp(Pal.SURFACE, shine * SHINE * 0.5), a),
 			Color(deep, a), wave)
-	_posts(b, g, total, shake, look, since, side)
-
-## The pilings a run stands on: one each side of it at both of its ends, out
-## in the water off the beach. A run rolling out drives the posts at the islet
-## it came from first and the far pair as the plank lands; a ghost takes them
-## with it at `look.posts`.
-func _posts(b, g: Dictionary, total: float, shake: Vector2, look: Dictionary,
-		since: float, side: int) -> void:
-	var horiz: bool = g.horiz
-	var pr := _cell() * POST_R
-	var alpha: float = look.get("alpha", 1.0)
-	if int(look.get("first_new", 1)) == 0 and int(look.get("faint_from", 99)) == 0:
-		alpha *= PREVIEW_ALPHA
-	var along := Vector2(1.0, 0.0) if horiz else Vector2(0.0, 1.0)
-	var across := Vector2(0.0, 1.0) if horiz else Vector2(1.0, 0.0)
-	var ends: Array = [g.a, g.b]
-	# g.a is the low end whichever way the lane is stored.
-	if horiz and g.a.x > g.b.x or not horiz and g.a.y > g.b.y:
-		ends = [g.b, g.a]
-	var shade: Color = Pal.WATER.lerp(Pal.TEXT, SEA_SHADE)
-	var lit: Color = Pal.DECK.lerp(Pal.SURFACE, POST_LIT)
-	for e in 2:
-		var inward := along if e == 0 else -along
-		# Which end the plank lands at: the far one from the islet it left, or
-		# both at once when it grew from its middle.
-		var far := side == 0 or (side > 0) == (e == 1)
-		var grow: float = look.get("posts", 1.0)
-		if int(look.get("first_new", 1)) == 0 and not Motion.reduce and since < 1.0e8:
-			grow *= Motion.pop_in_scale(since - (LAY_TIME * LAND_AT if far else 0.0)).x
-		if grow <= 0.001:
-			continue
-		var base: Vector2 = Vector2(ends[e]) + inward * pr * POST_OUT + shake
-		for sgn in [-1.0, 1.0]:
-			var at: Vector2 = base + across * sgn * (total * 0.5 + pr * 1.2)
-			var rr := pr * grow
-			b.disc(at + PLANK_SHADOW * 0.5, rr * 1.1, Color(shade, PLANK_SHADOW_ALPHA * alpha))
-			b.disc(at, rr, Color(Pal.WOOD_DEEP, alpha))
-			b.disc(at - Vector2(0.0, rr * 0.28), rr * 0.72, Color(lit, alpha))
 
 ## A plank: WOOD_DEEP under DECK, with a lip along its lower edge, the light
 ## along its upper one and slats across it. `wave` lays the solve wave's gold
@@ -2471,13 +2419,17 @@ func _posts(b, g: Dictionary, total: float, shake: Vector2, look: Dictionary,
 ## came in at, so the light runs along the plank rather than switching it on.
 func _plank(b, at: Vector2, box: Vector2, horiz: bool, r: float, face: Color,
 		deep: Color, wave: Dictionary) -> void:
+	# Seen from above (2026-10-17): the deep wood shows as an even rope of
+	# PLANK_EDGE along both long sides, the deck between, lit along its top
+	# or left edge.
 	b.fan(Face.Builder.round_rect(at, box, r), deep)
-	var top := Vector2(box.x, box.y - PLANK_EDGE) if horiz else Vector2(box.x - PLANK_EDGE, box.y)
-	b.fan(Face.Builder.round_rect(at, top, r), face)
-	var bevel := maxf(1.5, minf(box.x, box.y) * PLANK_BEVEL)
+	var across := Vector2(0.0, PLANK_EDGE) if horiz else Vector2(PLANK_EDGE, 0.0)
+	var top := box - across * 2.0
+	b.fan(Face.Builder.round_rect(at + across, top, r * 0.8), face)
+	var bevel := maxf(1.5, minf(top.x, top.y) * PLANK_BEVEL)
 	var lit := Color(Color(face, 1.0).lerp(Pal.SURFACE, PLANK_LIT), face.a)
 	var strip := Vector2(top.x, bevel) if horiz else Vector2(bevel, top.y)
-	b.fan(Face.Builder.round_rect(at, strip, bevel * 0.5), lit)
+	b.fan(Face.Builder.round_rect(at + across, strip, bevel * 0.5), lit)
 	var ink := Color(deep, SLAT_ALPHA * deep.a)
 	var wide := maxf(SLAT_MIN, _cell() * SLAT_W)
 	var step := _cell() * SLAT_STEP
@@ -2486,11 +2438,11 @@ func _plank(b, at: Vector2, box: Vector2, horiz: bool, r: float, face: Color,
 	while s < span - step * 0.3:
 		var line := PackedVector2Array()
 		if horiz:
-			line.append(at + Vector2(s, 2.0))
-			line.append(at + Vector2(s, box.y - 5.0))
+			line.append(at + Vector2(s, PLANK_EDGE))
+			line.append(at + Vector2(s, box.y - PLANK_EDGE))
 		else:
-			line.append(at + Vector2(2.0, s))
-			line.append(at + Vector2(box.x - 5.0, s))
+			line.append(at + Vector2(PLANK_EDGE, s))
+			line.append(at + Vector2(box.x - PLANK_EDGE, s))
 		b.stroke(line, wide, ink)
 		s += step
 	var u: float = float(wave.get("u", 0.0))
@@ -2503,9 +2455,9 @@ func _plank(b, at: Vector2, box: Vector2, horiz: bool, r: float, face: Color,
 		lit_at += Vector2(run * (1.0 - u), 0.0) if horiz else Vector2(0.0, run * (1.0 - u))
 	b.fan(Face.Builder.round_rect(lit_at, lit_box, r),
 		Color(Pal.WOOD_DEEP.lerp(Pal.SUN_RAY, WAVE_DEEP), face.a))
-	var lit_top := Vector2(lit_box.x, lit_box.y - PLANK_EDGE) if horiz \
-		else Vector2(lit_box.x - PLANK_EDGE, lit_box.y)
-	b.fan(Face.Builder.round_rect(lit_at, lit_top, r),
+	var lit_top := lit_box - across * 2.0
+	lit_at += across
+	b.fan(Face.Builder.round_rect(lit_at, lit_top, r * 0.8),
 		Color(Pal.DECK.lerp(Pal.SUN_RAY, WAVE_GOLD), face.a))
 	var gold_strip := Vector2(lit_top.x, bevel) if horiz else Vector2(bevel, lit_top.y)
 	b.fan(Face.Builder.round_rect(lit_at, gold_strip, bevel * 0.5),
@@ -2552,7 +2504,6 @@ func _islet(b, cell: Vector2i, t: float) -> void:
 	var got: int = state.count(cell)
 	var over := got > want
 	_islet_body(b, cell, mid, rx, ry, over)
-	_pennant(b, cell, mid, rx, ry * TOP_Y, t)
 	# The coin: its shadow on the moss, its edge, its face. It flips over
 	# when its number comes right and spins a turn for the twirl gag, both
 	# read off its horizontal scale; a lantern stands a paper lantern on the
@@ -2564,54 +2515,38 @@ func _islet(b, cell: Vector2i, t: float) -> void:
 	if state.lanterns.has(cell):
 		_lantern(b, cell, at, rx, ry, coin, t)
 	else:
-		Scenery.soft_disc(b, mid + Vector2(0.0, ry * COIN_LIP * 0.8), absf(cx) * 1.14 + 1.0, cy * 1.08,
-			Color(Pal.TEXT, COIN_SHADOW))
 		if absf(cx) > 0.5:
-			b.ellipse(at + Vector2(0.0, ry * COIN_LIP), absf(cx), cy, coin.lerp(Pal.TEXT, COIN_EDGE))
-			b.ellipse(at, absf(cx), cy, coin)
+			_inlay(b, at, absf(cx), cy, Color(Pal.TEXT, COIN_SHADOW), coin.lerp(Pal.TEXT, COIN_EDGE), coin)
 	if _solved_at == -INF:
 		_slots(b, at, rx * COIN_R * SLOT_R, ry * COIN_R * SLOT_R, want, got, r)
 
-## The islet under its coin: its shadow on the water, the drum, the moss and
-## its sprouts and flower, about `mid` at radii `rx` and `ry`.
+## The islet under its coin, seen straight from above (the redesign of
+## 2026-10-17): its shadow thrown down and right on the water, a ring of
+## sand -- wet at the waterline, dry inside -- and a crown of moss, lit from
+## the top left, with no outline and nothing standing on it. Drawn about
+## `mid` at radii `rx` and `ry`.
 func _islet_body(b, cell: Vector2i, mid: Vector2, rx: float, ry: float, over: bool) -> void:
-	var r := _islet_r()
 	var seed_i := cell.x * 17 + cell.y * 5
-	var top_y := ry * TOP_Y
-	var depth := ry * SIDE
-	Scenery.soft_disc(b, mid + Vector2(0.0, depth + top_y * 0.55), rx * SHADOW_RX,
-		ry * SHADOW_RY, Color(Pal.WATER.lerp(Pal.TEXT, SEA_SHADE), SHADOW_ALPHA))
-	# The drum's side: its foot dark with wet, then the soil over it.
-	var sx := rx * SIDE_R
-	var sy := top_y * SIDE_R
-	b.ellipse(mid + Vector2(0.0, depth), sx, sy, Pal.BED_FURROW)
-	b.fan(Face.Builder.round_rect(mid - Vector2(sx, 0.0), Vector2(2.0 * sx, depth * WET_AT), 0.0),
-		Pal.CAMP_SOIL)
-	b.ellipse(mid + Vector2(0.0, depth * WET_AT), sx, sy, Pal.CAMP_SOIL)
-	for k in 2:
-		var y := mid.y + depth * (0.35 + 0.3 * k) + sy * 0.55
-		var x0 := mid.x + sx * (-0.7 + 0.5 * _hash(seed_i, 61 + k))
-		b.stroke(PackedVector2Array([Vector2(x0, y), Vector2(x0 + sx * 0.45, y + sy * 0.06)]),
-			maxf(1.0, r * 0.05), Color(Pal.BED_FURROW, 0.55))
-	# The mossy top: its hanging lip in shade, the lit moss, then its face.
+	Scenery.soft_disc(b, mid + Vector2(rx, ry) * ISLET_SHADOW, rx * 1.12, ry * 1.12,
+		Color(Pal.WATER.lerp(Pal.TEXT, SEA_SHADE), SHADOW_ALPHA))
+	b.fan(_moss(mid, rx, ry, seed_i + 3, false), SAND_WET)
+	b.fan(_moss(mid, rx * SAND_DRY, ry * SAND_DRY, seed_i + 5, false), SAND)
 	var tone := (_hash(cell.x, cell.y) - 0.5) * 2.0 * TONE
 	var turf: Color = Pal.BANK.lightened(tone) if tone > 0.0 else Pal.BANK.darkened(-tone)
 	if over:
 		turf = turf.lerp(Pal.BAD, OVER_MIX)
-	b.fan(_moss(mid + Vector2(0.0, ry * TURF_DROP), rx, top_y, seed_i, true),
-		Pal.BANK.lerp(Pal.TEXT, BANK_DEEP))
-	b.fan(_moss(mid, rx, top_y, seed_i, false), turf.lerp(Pal.LEAF_LIGHT, TURF_LIT))
-	b.ellipse(mid + Vector2(0.0, top_y * TURF_TOP), rx * TURF_R, top_y * TURF_R, turf)
-	# Sprouts on the back edge, and a flower on some.
-	var sprouts := 2 + int(_hash(seed_i, 63) * 2.0)
-	for k in sprouts:
-		var a := -PI * 0.5 + (float(k) - (sprouts - 1) * 0.5) * 0.5 \
-			+ (_hash(seed_i, 65 + k) - 0.5) * 0.3
-		var root := mid + Vector2(cos(a) * rx * 0.8, sin(a) * top_y * 0.8)
-		_sprout(b, root, r * TUFT_H * ry / r, Pal.LEAF_DEEP.lerp(Pal.BANK, 0.3))
-	if _hash(seed_i, 67) < FLOWER_SHARE:
-		var side := -1.0 if _hash(seed_i, 69) < 0.5 else 1.0
-		_flower(b, mid + Vector2(side * rx * 0.72, top_y * 0.3), r * 0.16)
+	b.fan(_moss(mid, rx * TURF_R, ry * TURF_R, seed_i, false), turf.lerp(Pal.TEXT, TURF_DEEP))
+	b.fan(_moss(mid - Vector2(rx, ry) * TURF_SHIFT, rx * (TURF_R - TURF_SHIFT * 1.4),
+		ry * (TURF_R - TURF_SHIFT * 1.4), seed_i, false), turf)
+	Scenery.soft_disc(b, mid - Vector2(rx, ry) * 0.3, rx * 0.42, ry * 0.42,
+		Color(Pal.LEAF_LIGHT, TURF_LIT))
+
+## The number's inlay, flat in the moss: a hair of shade round it, a thin
+## rim toward ink and its face.
+func _inlay(b, at: Vector2, rx: float, ry: float, shade: Color, edge: Color, face: Color) -> void:
+	Scenery.soft_disc(b, at + Vector2(0.0, ry * 0.04), rx * 1.12, ry * 1.12, shade)
+	b.ellipse(at, rx, ry, edge)
+	b.ellipse(at, rx * COIN_FACE, ry * COIN_FACE, face)
 
 ## The slots round a coin: one arc per plank the number asks for (per islet,
 ## on a lantern), set round its lower half and filled in wood as they come,
@@ -2632,17 +2567,15 @@ func _slots(b, at: Vector2, rx: float, ry: float, want: int, got: int, r: float,
 		for q in segs + 1:
 			var a := lerpf(a0, a1, float(q) / float(segs))
 			pts.append(at + Vector2(cos(a) * rx, sin(a) * ry))
-		# An empty slot is a socket pressed into the moss; a filled one is a
+		# An empty slot is a groove pressed into the sand; a filled one is a
 		# plank's end in wood; a met islet's all go leaf; over, all rose.
 		var ink: Color
 		if over:
 			ink = Pal.BAD
 		elif k < got:
-			ink = Pal.DECK if got < want else Pal.LEAF_DEEP
+			ink = Pal.WOOD_DEEP if got < want else Pal.LEAF_DEEP
 		else:
-			ink = Pal.BANK.lerp(Pal.TEXT, 0.38)
-		if k < got or over:
-			b.stroke(pts, w + 2.0, Pal.WOOD_DEEP if not over and got < want else ink.darkened(0.25))
+			ink = SAND.lerp(Pal.TEXT, 0.24)
 		b.stroke(pts, w, ink)
 
 ## How wide the coin stands, 1 face on: it flips over (|cos|, through zero)
@@ -2751,18 +2684,12 @@ func _moss(c: Vector2, rx: float, ry: float, seed_i: int, drips: bool) -> Packed
 	pts.resize(n)
 	for k in n:
 		var a := TAU * float(k) / float(n)
-		var wob := 1.0 + 0.045 * sin(9.0 * a + ph)
+		var wob := 1.0 + MOSS_WOB * sin(5.0 * a + ph) + MOSS_WOB * 0.5 * sin(3.0 * a + ph * 2.0)
 		var p := c + Vector2(cos(a) * rx, sin(a) * ry) * wob
 		if drips and sin(a) > 0.0:
 			p.y += ry * 0.1 * maxf(0.0, sin(4.0 * a + ph)) * sin(a)
 		pts[k] = p
 	return pts
-
-## A sprout: three small leaves out of `root`, standing up.
-func _sprout(b, root: Vector2, h: float, col: Color) -> void:
-	_leaf(b, root, -PI * 0.5 - 0.55, h * 0.8, h * 0.42, col)
-	_leaf(b, root, -PI * 0.5 + 0.55, h * 0.8, h * 0.42, col.lerp(Pal.LEAF_LIGHT, 0.3))
-	_leaf(b, root, -PI * 0.5, h, h * 0.36, col.lerp(Pal.LEAF_LIGHT, 0.15))
 
 ## What an islet's coin is washed with at `t`: paper, LEAF_TILE met, BAD_TILE
 ## over, gold as the wave reaches it (with the wave's flare on the way), and

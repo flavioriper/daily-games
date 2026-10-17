@@ -173,3 +173,48 @@ water just under it.
   mist, not the card's dark teal. Seen and left: the win's grey line
   under "Well done!" is faint on the blue. Owed: a phone, Insane's dusk
   over the beach, the level slide.
+
+### Seen from above (2026-10-17)
+
+The user, of the 2026-10-13 world: "i hate bridges design, it looks like a
+old flash game made in canvas or something like this, nothing elegant". Of
+three directions (calm top-down water, a nautical chart, a lantern lake at
+dusk) they picked **calm top-down water**. Rules, generator, state, sound
+and motion are untouched; only the drawing changed.
+
+- **One point of view.** The islets were side-on drums under a moss lip and
+  a lipped coin, on a top-down sea, beside an angled beach. Now everything is
+  straight from above: an islet (`_islet_body`) is its shadow thrown down
+  and right (`ISLET_SHADOW`), wet sand, dry sand (`SAND_DRY`), moss
+  (`TURF_R`) shaded at its rim and lit up and left, outlines wandering only
+  `MOSS_WOB` from round on two slow waves (nine quick ones read as a cog).
+  No sprouts, flowers or pennant. The number sits in a flat inlay
+  (`_inlay`, `COIN_FACE`, `COIN_LIFT` 0); the slots are grooves on the sand
+  ring (`SLOT_R` 1.48), wood when filled, leaf when met, rose when over, and
+  an empty one is `SAND` toward ink by 0.24: at 0.12 it vanished.
+- **The planks** are 0.17 of a cell with 0.06 between (two read as a deck,
+  not two hairs); the deep wood shows as an even `PLANK_EDGE` of 1.5 px along
+  both long sides; **no pilings** (`_posts` is gone, so are `POST_*`). Their
+  shadow lies down and right like the islets'.
+- **The drag's lane** is a pale wash (`SURFACE` at 0.42), 0.42 of a cell, a
+  hair wider than two planks, so the ghost plank sits on it; it was a gold
+  band 0.62 wide that read as a beige bar on the blue. The aim ring is pale
+  and thinner (0.09, floor 4 px).
+- **The open water** (`_build_open_sea`) carries only the shallows round each
+  islet (`SHALLOWS`, two soft discs). Ripples, pads, blots are not drawn
+  bled; the tutorial's framed pool still uses them.
+- **The world** (`bridges_world.gd`) is mist over water easing from a clear
+  blue to a deeper teal at the foot, three broad patches of light breathing
+  (the old glint child), and three lily pads at the screen's edges. The
+  beach, jetty, lantern post, planks, dinghy, oar, rocks, tufts, starfish,
+  ripples, glints and buoy are gone.
+- **The lattice is centred** down the span the rows leave (`_pool`, bled);
+  at the top it left a third of bare sea under it once the beach went.
+- **The menu card** (`ui/menu/cards/bridges.gd`) draws the same islet,
+  inlay, grooves and plank; it keeps its own dark lagoon.
+- `opengl3_angle`, 810x1440, `_shot_anim.gd -- bridges`: 80 draw calls at
+  rest (was 85), Insane (`d=3`) 80; `tests/_win.gd -- bridges` passes with
+  real drags; suite 248522/0.
+- Decided for the user, unconfirmed: the lattice centred; the pennant
+  dropped (the coin's wash and the grooves already say "met"); the menu
+  card's lagoon left dark. Owed: a phone, the user's eye on Insane's dusk.
