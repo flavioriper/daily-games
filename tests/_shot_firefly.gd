@@ -174,7 +174,8 @@ func _process(delta: float) -> bool:
 				_step = 8
 				_at = _t
 		8:
-			if _t > _at + 0.7:
+			# once the buff's line has lettered itself in whole
+			if _t > _at + 1.3:
 				_shot("6_goal_met")
 				print("goal %d / %d done %s buff %d shield %s" % [_s.sim.goal_have, _s.sim.goal_need, _s.sim.goal_done, _s.sim.buff, _s.sim.shield])
 				_step = 9

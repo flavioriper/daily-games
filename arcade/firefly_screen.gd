@@ -101,6 +101,12 @@ const MAP_COLS := 4
 const MAP_GAP := 14
 const MARK_R := 9.0
 const MARK_GAP := 8.0
+## A stage not yet open: its tile's paper, the night showing through it
+## mixed in but nothing behind seen, and how far its words are dimmed.
+const LOCKED_PAPER := Color("b9b5cf")
+const LOCKED_INK := 0.72
+## Seconds a buff's line stands whole, once lettered in, before it goes.
+const BUFF_READ := 1.6
 ## The goal's plate in the field's top-left corner: where it sits, its icon's
 ## side and its numbers' size.
 const PLATE_AT := Vector2(14.0, 14.0)
@@ -167,6 +173,8 @@ var _mouse := false
 var _u := 4.0
 var _origin := Vector2.ZERO
 var _sky: ArrayMesh
+## The moon and its halo, out of the sky so the stage map hides them.
+var _moon: ArrayMesh
 var _live: ArrayMesh
 var _back: ArrayMesh
 var _beam_voice: AudioStreamPlayer
@@ -482,6 +490,11 @@ func _goal_text() -> String:
 		return tr(key + "_ONE") if n == 1 else tr(key + "_N") % n
 	return tr(key) % n
 
+## Stage `n`'s name, in the player's words (the sim's STAGES keep the
+## English for the probes).
+static func _stage_name(n: int) -> String:
+	return TranslationServer.translate("FF_STAGE_NAME_%d" % n)
+
 static func _buff_name(buff: int) -> String:
 	return TranslationServer.translate(BUFF_KEYS[clampi(buff, 0, BUFF_KEYS.size() - 1)])
 
@@ -602,7 +615,7 @@ func tutorial_pages() -> Array:
 	for step in [[Diagram.Lesson.MOVE, "TUT_FIREFLY_MOVE"], [Diagram.Lesson.SWARM, "TUT_FIREFLY_SWARM"],
 			[Diagram.Lesson.DIVE, "TUT_FIREFLY_DIVE"], [Diagram.Lesson.ESCORT, "TUT_FIREFLY_ESCORT"],
 			[Diagram.Lesson.BEAM, "TUT_FIREFLY_BEAM"], [Diagram.Lesson.FLYBY, "TUT_FIREFLY_FLYBY"],
-			[Diagram.Lesson.SHOP, "TUT_FIREFLY_SHOP"], [Diagram.Lesson.HUD, "TUT_FIREFLY_HUD"]]:
+			[Diagram.Lesson.GOALS, "TUT_FIREFLY_GOALS"], [Diagram.Lesson.HUD, "TUT_FIREFLY_HUD"]]:
 		var d: Control = Diagram.new()
 		d.lesson = step[0]
 		pages.append({"diagram": d, "title": step[1], "body": tr(String(step[1]) + "_BODY")})
@@ -896,7 +909,7 @@ func _play_events() -> void:
 			"stage_start":
 				# the stage's name, its goal and what the goal gives
 				var buff_name := _buff_name(int(Sim.STAGES[int(ev.stage) - 1].buff))
-				_show_banner(String(Sim.STAGES[int(ev.stage) - 1].name), "%s\n%s" % [_goal_text(), tr("FF_THEN") % buff_name], 2.4, 34)
+				_show_banner(_stage_name(int(ev.stage)), "%s\n%s" % [_goal_text(), tr("FF_THEN") % buff_name], 2.4, 34)
 				if int(ev.stage) > 1:
 					_fx.cue("stage")
 			"challenge_start":
@@ -1079,8 +1092,12 @@ func _goal_met(buff: int) -> void:
 	if buff == Sim.Buff.NONE:
 		return
 	_fx.cue("docked", 1.12, -2.0)
-	_rw.sticker(tr("FF_BUFF_GOT") % _buff_name(buff), _field_at(0.5, 0.42), 76, 1.9, true, Color.WHITE, true, "buff", 24.0)
-	_rw.sticker(tr(BUFF_LINES[buff]), _field_at(0.5, 0.5), 38, 1.9, false, Art.GLOW_HOT, false, "buff_line", 0.0, true)
+	# a sticker letters itself in, a letter every 35 ms: the line stands
+	# whole for BUFF_READ after its last letter, and the name leaves with it
+	var line := tr(BUFF_LINES[buff])
+	var life := BUFF_READ + line.length() * 0.035 + 0.3
+	_rw.sticker(tr("FF_BUFF_GOT") % _buff_name(buff), _field_at(0.5, 0.42), 76, life, true, Color.WHITE, true, "buff", 24.0)
+	_rw.sticker(line, _field_at(0.5, 0.5), 38, life, false, Art.GLOW_HOT, false, "buff_line", 0.0, true)
 	_rw.spray(_field_at(0.5, 0.42), Pal.SUN, 12, 700.0, "star", 1.0)
 	_flash_now(Art.GLOW, 0.3)
 
@@ -1169,7 +1186,7 @@ func _refresh_hud(delta := 0.0) -> void:
 # --- drawing ---
 
 ## The still backdrop, built on resize: the sky with a dusk glow over the
-## hills, the moon, the far hills and the near hedge. The grass and the
+## hills, the far hills and the near hedge, and the moon on its own. The grass and the
 ## flowers on the hedge are laid out here but drawn live, so they sway.
 func _build_sky() -> ArrayMesh:
 	var b := Face.Builder.new()
@@ -1178,14 +1195,17 @@ func _build_sky() -> ArrayMesh:
 	_quad(b, Vector2.ZERO, s, SKY_TOP, SKY_LOW)
 	# A warm glow along the horizon, under the hills.
 	_quad(b, Vector2(0, s.y - 230.0), Vector2(s.x, 130.0), Color(DUSK, 0.0), Color(DUSK, 0.32))
-	# The moon, with a soft halo.
+	# The moon, with a soft halo: its own mesh, drawn only under a stage
+	# (on the map it would peep between the tiles).
+	var mb := Face.Builder.new()
 	var moon := Vector2(s.x * 0.8, s.y * 0.1)
 	var r := s.x * 0.06
 	for k in 4:
-		b.disc(moon, r * (2.6 - k * 0.4), Color(Pal.MOON, 0.04 + k * 0.02))
-	b.disc(moon, r, Color("f6f1e6"))
-	b.disc(moon + Vector2(r * 0.35, -r * 0.2), r * 0.25, Color("e6dfcf"))
-	b.disc(moon + Vector2(-r * 0.3, r * 0.35), r * 0.16, Color("e6dfcf"))
+		mb.disc(moon, r * (2.6 - k * 0.4), Color(Pal.MOON, 0.04 + k * 0.02))
+	mb.disc(moon, r, Color("f6f1e6"))
+	mb.disc(moon + Vector2(r * 0.35, -r * 0.2), r * 0.25, Color("e6dfcf"))
+	mb.disc(moon + Vector2(-r * 0.3, r * 0.35), r * 0.16, Color("e6dfcf"))
+	_moon = mb.mesh()
 	# Far hills and the near hedge along the bottom, the firefly flying over.
 	var far := PackedVector2Array()
 	var mid := PackedVector2Array()
@@ -1322,6 +1342,8 @@ func _draw_field() -> void:
 		field.draw_mesh(_sky, null)
 	if sim == null:
 		return
+	if _moon != null:
+		field.draw_mesh(_moon, null)
 	# The backdrop's live layer, which never shakes.
 	_draw_stars()
 	_draw_clouds()
@@ -2100,13 +2122,13 @@ func _stage_tile(n: int, open: bool) -> Button:
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	b.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	b.custom_minimum_size = Vector2(0, 150)
-	var up := CozyTheme.chip(Pal.SURFACE, 22)
+	# a locked tile is paper too, greyed, never see-through: the moon and
+	# its halo stay behind the map
+	var up := CozyTheme.chip(Pal.SURFACE if open else LOCKED_PAPER, 22)
 	for st in ["normal", "hover", "focus", "disabled"]:
 		b.add_theme_stylebox_override(st, up)
 	b.add_theme_stylebox_override("pressed", CozyTheme.chip(Pal.SURFACE, 22, Color.TRANSPARENT, 0, true))
 	b.disabled = not open
-	if not open:
-		b.modulate.a = 0.45
 	b.resized.connect(func() -> void: b.pivot_offset = b.size * 0.5)
 	b.pressed.connect(func() -> void:
 		Motion.squash(b, 0.08, 0.18)
@@ -2118,6 +2140,8 @@ func _stage_tile(n: int, open: bool) -> Button:
 	col.offset_right = -8.0
 	col.alignment = BoxContainer.ALIGNMENT_CENTER
 	col.add_theme_constant_override("separation", 2)
+	if not open:
+		col.modulate.a = LOCKED_INK
 	b.add_child(col)
 	var num := Label.new()
 	num.text = str(n)
@@ -2126,7 +2150,7 @@ func _stage_tile(n: int, open: bool) -> Button:
 	num.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(num)
 	var title := Label.new()
-	title.text = String(Sim.STAGES[n - 1].name)
+	title.text = _stage_name(n)
 	title.theme_type_variation = "SheetBodyDim"
 	title.add_theme_font_size_override("font_size", 20)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

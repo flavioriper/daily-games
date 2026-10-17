@@ -23,8 +23,8 @@ extends Control
 ## - BEAM: a moth's beam carries the firefly off; shot in its next dive, the
 ##   firefly comes back and the two fire together.
 ## - FLYBY: a stream passes through without firing and is caught whole.
-## - SHOP: no garden: the mote a bug drops and the shop's five cards, drawn
-##   as they are beside what each is.
+## - GOALS: no garden: the goal's plate and the six buffs a goal can give,
+##   drawn as they are beside what each does.
 ## - HUD: the top bar's Reset, the gear and the ?, and the boosters, drawn as
 ##   they are beside what each does.
 
@@ -35,11 +35,11 @@ const Icons = preload("res://ui/icons.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Sim = preload("res://arcade/firefly_sim.gd")
 const BoosterIcon = preload("res://arcade/booster_icon.gd")
-const Art = preload("res://arcade/firefly_art.gd")
-const Motes = preload("res://ui/motes.gd")
+const Screen = preload("res://arcade/firefly_screen.gd")
 
-## SHOP is last so the old numbers stand; the screen lays it before HUD.
-enum Lesson { MOVE, SWARM, DIVE, ESCORT, BEAM, FLYBY, HUD, SHOP }
+## GOALS (the shop's page, once) is last so the old numbers stand; the
+## screen lays it before HUD.
+enum Lesson { MOVE, SWARM, DIVE, ESCORT, BEAM, FLYBY, HUD, GOALS }
 
 ## The wooden frame round the garden, as the field's own.
 const FRAME := 10.0
@@ -90,7 +90,8 @@ var _frame_shown: ArrayMesh
 var _hud_shown: ArrayMesh
 
 ## The game, with the swarm seated in the page's view and nothing planned:
-## the page lays its own bugs and sends each dive itself.
+## the page lays its own bugs and sends each dive itself. Its night is
+## stage 1 on Medium, and its goal is never counted: no page wins a buff.
 class Night extends "res://arcade/firefly_sim.gd":
 	## Where the swarm's top row sits, and the top of what the page shows.
 	const SEAT_TOP := 224.0
@@ -102,6 +103,7 @@ class Night extends "res://arcade/firefly_sim.gd":
 		phase = Phase.PLAY
 		phase_t = 0.0
 		_sway_amp = 0.0
+		goal_done = true
 
 	func home(slot: Vector2i) -> Vector2:
 		return super(slot) + Vector2(0, SEAT_TOP - FORM_TOP)
@@ -113,10 +115,6 @@ class Night extends "res://arcade/firefly_sim.gd":
 	## blushing at the first, whatever stage the page says it is.
 	func hp_of(kind: int) -> int:
 		return 2 if kind == Kind.MOTH else 1
-
-	## No shop on a page.
-	func _after_stage() -> void:
-		_start_stage()
 
 	## Only a flyby is tallied: a lesson's last bug is not a stage cleared.
 	func _check_clear() -> void:
@@ -258,6 +256,11 @@ class Garden extends "res://arcade/firefly_screen.gd":
 	func _game_over() -> void:
 		pass
 
+	## A flyby's forty caught is the lesson, not a stage won: nothing is
+	## recorded, paid or carded.
+	func _finish(_cleared: bool) -> void:
+		pass
+
 	func _pause(_on: bool) -> void:
 		pass
 
@@ -324,7 +327,7 @@ func _ready() -> void:
 
 ## A page with no garden: drawn, standing still.
 func _drawn() -> bool:
-	return lesson == Lesson.HUD or lesson == Lesson.SHOP
+	return lesson == Lesson.HUD or lesson == Lesson.GOALS
 
 func _enter_tree() -> void:
 	# A page turned back to starts its lesson again.
@@ -346,7 +349,7 @@ func _layout() -> void:
 				(c as Control).position = Vector2(HUD_X + n * (disc + HUD_GAP), size.y * 5.0 / 6.0 - disc * 0.5)
 				n += 1
 		return
-	if lesson == Lesson.SHOP:
+	if lesson == Lesson.GOALS:
 		return
 	var u := minf((size.x - FRAME * 2.0) / Sim.W, (size.y - FRAME * 2.0) / Garden.VIEW)
 	_garden.size = Vector2(Sim.W * u, Garden.VIEW * u).floor()
@@ -585,8 +588,8 @@ func _draw() -> void:
 	if lesson == Lesson.HUD:
 		_draw_hud()
 		return
-	if lesson == Lesson.SHOP:
-		_draw_shop()
+	if lesson == Lesson.GOALS:
+		_draw_goals()
 		return
 	# the garden's wooden frame
 	var b := Face.Builder.new()
@@ -637,35 +640,40 @@ func _draw_hud() -> void:
 		var tall := font.get_multiline_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, room, 30).y
 		draw_multiline_string(font, Vector2(tx, row_h * (k + 0.5) - tall * 0.5 + 30.0 * 0.82), line, HORIZONTAL_ALIGNMENT_LEFT, room, 30, -1, Pal.TEXT)
 
-## The shop's page, laid as the HUD's: the mote a bug drops, the gun's three
-## cards and the other two, each row beside what it is.
-func _draw_shop() -> void:
-	# the shop's five cards as firefly_art.gd numbers their medallions (the
-	# sim's own list went with the shop; this page is rewritten in Task 4)
-	var C := {"DAMAGE": 0, "SPEED": 1, "CRIT": 2, "ENERGY": 3, "SHOTS": 4}
-	var rows := [[[-1], "TUT_FIREFLY_SHOP_ENERGY"], [[C.DAMAGE, C.SPEED, C.SHOTS], "TUT_FIREFLY_SHOP_GUN"],
-		[[C.CRIT, C.ENERGY], "TUT_FIREFLY_SHOP_MORE"]]
+## The goals' page, laid as the HUD's: the goal's plate as it stands in the
+## field's corner (the paper, the buff to be won, the count), then the six
+## buffs on paper chips, three a row, each row beside what they do.
+func _draw_goals() -> void:
+	var B := Sim.Buff
+	var rows := [[[], "TUT_FIREFLY_GOALS_PLATE"], [[B.QUICK, B.DOUBLE, B.PIERCE], "TUT_FIREFLY_GOALS_GUN"],
+		[[B.SHIELD, B.SLOW, B.SCORE_2], "TUT_FIREFLY_GOALS_MORE"]]
 	var row_h := size.y / rows.size()
 	var disc := minf(84.0, row_h * 0.6)
 	var gap := 8.0
 	var col := disc * 3.0 + gap * 2.0
-	for k in rows.size():
+	var font: Font = CozyTheme.display(700)
+	var b := Face.Builder.new()
+	# the plate: paper, the first stage's buff in ink, and its count
+	var plate := Rect2(Vector2(HUD_X, row_h * 0.5 - disc * 0.42), Vector2(col, disc * 0.84))
+	b.polygon(Face.Builder.round_rect(plate.position + Vector2(0, 6.0), plate.size, 22.0), Color(Pal.TEXT, 0.16))
+	b.polygon(Face.Builder.round_rect(plate.position, plate.size, 22.0), Color("fcf7ef"))
+	var glyph := plate.size.y * 0.56
+	Screen._buff_glyph(b, B.QUICK, Rect2(plate.position + Vector2(plate.size.y * 0.3, (plate.size.y - glyph) * 0.5), Vector2(glyph, glyph)), Pal.TEXT_DIM)
+	for k in range(1, rows.size()):
 		var cy := row_h * (k + 0.5)
 		var icons: Array = rows[k][0]
-		var wide := icons.size() * disc + (icons.size() - 1) * gap
 		for i in icons.size():
-			var c := Vector2(HUD_X + (col - wide) * 0.5 + i * (disc + gap) + disc * 0.5, cy)
-			if int(icons[i]) < 0:
-				# a mote, on a slip of the night it is seen against
-				var b := Face.Builder.new()
-				b.disc(c, disc * 0.5, Color("2a2c5a"))
-				_hud_shown = b.mesh()
-				draw_mesh(_hud_shown, null)
-				var sc := Motes.icon_scale(disc * 0.8)
-				draw_mesh(Motes.orb(), null, Transform2D(0.0, Vector2(sc, sc), 0.0, c))
-			else:
-				draw_mesh(Art.card_token(int(icons[i]), disc), null, Transform2D(0.0, c))
-	var font: Font = CozyTheme.display(700)
+			var r := Rect2(Vector2(HUD_X + i * (disc + gap), cy - disc * 0.5), Vector2(disc, disc))
+			b.polygon(Face.Builder.round_rect(r.position + Vector2(0, 5.0), r.size, 22.0), Color(Pal.TEXT, 0.16))
+			b.polygon(Face.Builder.round_rect(r.position, r.size, 22.0), Pal.SURFACE)
+			Screen._buff_glyph(b, int(icons[i]), Rect2(r.get_center() - r.size * 0.29, r.size * 0.58), Pal.TEXT)
+	_hud_shown = b.mesh()
+	draw_mesh(_hud_shown, null)
+	var count := "3 / 5"
+	var fs := int(plate.size.y * 0.48)
+	var cw := font.get_string_size(count, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+	var gx := plate.position.x + plate.size.y * 0.3 + glyph
+	draw_string(font, Vector2(gx + (plate.end.x - gx - cw) * 0.5, plate.get_center().y + fs * 0.36), count, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Pal.TEXT)
 	var tx := HUD_X + col + 28.0
 	var room := size.x - tx - 24.0
 	for k in rows.size():
