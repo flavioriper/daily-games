@@ -210,6 +210,8 @@ ARC_FIREFLY_BLURB,"Hold back the night swarm: slide to fly, hold to shoot, and w
 ARC_BEST,Best %s,Recorde %s,Récord %s
 ARC_NO_BEST,No score yet,Ainda sem pontos,Aún sin puntos
 ARC_BEST_STAGE,Furthest: stage %d,Mais longe: fase %d,Más lejos: fase %d
+ARC_STAGES_ONE,Stage %d · 1 of %d cleared,Fase %d · 1 de %d vencida,Fase %d · 1 de %d superada
+ARC_STAGES_N,Stage %d · %d of %d cleared,Fase %d · %d de %d vencidas,Fase %d · %d de %d superadas
 ARC_SOON,More arcade soon,Mais fliperama em breve,Más arcade pronto
 ARC_SOON_LINE,New games to play on your own are on the way.,Novos jogos para jogar sozinho estão a caminho.,Nuevos juegos para jugar solo están en camino.
 FF_MOTTO,Keep the garden lit,Mantenha o jardim aceso,Mantén el jardín encendido

@@ -54,7 +54,9 @@ const GAP := 20
 const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "nightlight", "beeline", "deckchair", "eddy", "furrow", "griddle", "trivet", "tally", "bagatelle", "factory", "marigold"]
 const NAMES := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Lucky Thirteen", "posy": "Posy", "peapod": "Peapod", "nightlight": "Nightlight", "beeline": "Beeline", "deckchair": "Deckchair", "eddy": "Eddy", "furrow": "Furrow", "griddle": "Griddle", "trivet": "Trivet", "tally": "Tally", "bagatelle": "Bagatelle", "factory": "Factory", "marigold": "Marigold"}
 ## How far a game went, in its own words: a stage, a wave, or a streak.
-const FURTHEST := {"firefly": "ARC_BEST_STAGE", "molehill": "ARC_BEST_STREAK", "stackwood": "ARC_BEST_BLOCK", "thirteen": "ARC_BEST_NUMBER", "posy": "ARC_BEST_DAY", "peapod": "ARC_BEST_WAVE", "deckchair": "ARC_BEST_HOME", "eddy": "ARC_BEST_LEVEL", "trivet": "ARC_BEST_TRIVET"}
+const FURTHEST := {"molehill": "ARC_BEST_STREAK", "stackwood": "ARC_BEST_BLOCK", "thirteen": "ARC_BEST_NUMBER", "posy": "ARC_BEST_DAY", "peapod": "ARC_BEST_WAVE", "deckchair": "ARC_BEST_HOME", "eddy": "ARC_BEST_LEVEL", "trivet": "ARC_BEST_TRIVET"}
+## Firefly's clears in all: fifteen stages at four difficulties.
+const FIREFLY_CLEARS := 60
 
 ## What each card says under its name, by game, and which bests were made
 ## with boosters (the leaf after the score).
@@ -162,6 +164,13 @@ func refresh() -> void:
 			var stars := int(board.stars)
 			_say(game, tr("BG_CARD_NEW") if bool(board.new) else (tr("BG_CARD_STAR_ONE") if stars == 1 else tr("BG_CARD_STAR_N") % Record.grouped(stars)),
 				"" if bool(board.new) else tr("BG_CARD_TIER") % tr("BG_TIER_" + String(BagatelleSim.TIER_IDS[int(board.tier)]).to_upper()))
+			continue
+		# Firefly is played a stage at a time: its line is the furthest
+		# stage cleared and how many of the stages' clears are done
+		if game == "firefly":
+			var done := Record.clears(game)
+			_say(game, tr("ARC_NO_BEST") if done == 0 else (tr("ARC_STAGES_ONE") % [Record.reached(game) - 1, FIREFLY_CLEARS] if done == 1
+				else tr("ARC_STAGES_N") % [Record.reached(game) - 1, done, FIREFLY_CLEARS]))
 			continue
 		var best := Record.best(game)
 		var st := Record.best_stage(game)
