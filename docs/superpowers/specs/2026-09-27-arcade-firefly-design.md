@@ -218,3 +218,121 @@ has a most, a price moves only when its card is bought). Stage 1 is the
 game as section 2 wrote it. Peapod's pods and rack did not come over. The
 numbers, the bots and what is not done are in `docs/agents/arcade.md`,
 under Firefly.
+
+## 11. Amendment: stages (2026-10-17)
+
+The user: "firefly will be a staged arcade, with stage 1 - N", "instead of
+having upgrades, let's keep only the points for every stage so user can
+replay to try getting more points, let's add a easy, medium, hard and
+insane clear for each stage, and the upgrades comes as goals for each
+phase for skilled players ... reward player with a buff for that stage".
+Then: "B is what I meant" (four difficulties a stage, each its own best),
+"let's do the first 15 stage", and of the proposal page: "all good, let's
+build it now". The plan is `docs/superpowers/plans/2026-10-17-firefly-stages.md`;
+the design as data is `docs/brainstorm/firefly-stages.py` and its page
+`docs/brainstorm/firefly-stages.html`.
+
+**What the game is now.** Section 10's energy and shop are gone, and with
+them the growing bugs, the crit and the extra fireflies from points. An
+attempt is one stage at one difficulty (Easy, Medium, Hard, Insane): it
+ends won (the swarm shot down, or a flyby flown) or lost (the last
+firefly), and a stage is replayed for a better score. The gun is the same
+everywhere: one shot a volley, 3 volleys a second. Fifteen stages, each
+with its swarm, its waves, its Medium numbers (seconds between dives,
+divers at once, seeds a dive, swarm speed) and one new rule; flybys on 3,
+7 and 11. Every stage has a goal (catch in flight, shoot moths diving, an
+escorted moth, break a wave, win a firefly back, bring the held one home,
+a chain, untouched seconds, moths shot with the beam open; all forty on a
+flyby), met once an attempt, and a buff for the rest of the stage (quicker
+gun, double fire, piercing spark, silk shield, slow seeds, score x1.5 and
+x2). The screen opens on a stage map over the night garden under the level
+card fed Firefly's four difficulties.
+
+**The calls** (the page's, settled by "all good", and the plan's):
+
+- A stage reached has all four difficulties open; clearing it at any
+  difficulty opens the next.
+- Flybys cannot be failed on Easy, Medium and Hard; on Insane a passer that
+  flies into you costs a firefly.
+- No extra fireflies from points. Spare firefly and Twin start apply to one
+  attempt; Second chance gives one firefly back on the stage being played.
+- Gold: 5 an attempt, 20 more only on the first clear of a stage at a
+  difficulty, under the Arcade's daily 60.
+- Double fire won while already a pair is a Silk shield instead.
+- Break a wave on stages 10 and 15 counts each seat group of a pair of
+  waves as its own wave.
+- The record keeps a best, a clear and a boosted flag a stage and
+  difficulty (`s<stage>d<difficulty>_` keys, `reached`, `clears`); the
+  Arcade card says the furthest stage cleared and how many of the 60 clears
+  are done.
+
+**The bot pass.** `tests/_probe_firefly.gd -- all all 48 <skill>` plays
+every stage and difficulty 48 times. Clear rates before the pass (the
+page's numbers) and after:
+
+| | skill 1 E / M / H / I before | after | skill 0.6 E / M / H / I before | after |
+|---|---|---|---|---|
+| 1 | 100 / 100 / 100 / 100 | 100 / 100 / 100 / 100 | 100 / 100 / 100 / 88 | 100 / 100 / 100 / 96 |
+| 2 | 100 / 100 / 100 / 96 | 100 / 100 / 100 / 100 | 100 / 100 / 100 / 38 | 100 / 100 / 100 / 38 |
+| 3 flyby | 100 / 100 / 100 / 100 | 100 / 100 / 100 / 100 | 100 / 100 / 100 / 100 | 100 / 100 / 100 / 100 |
+| 4 | 100 / 100 / 100 / 98 | 100 / 100 / 100 / 98 | 100 / 100 / 100 / 6 | 100 / 100 / 100 / 21 |
+| 5 | 100 / 100 / 100 / 88 | 100 / 100 / 100 / 96 | 100 / 100 / 100 / 8 | 100 / 100 / 100 / 10 |
+| 6 | 100 / 100 / 100 / 75 | 100 / 100 / 100 / 96 | 100 / 79 / 54 / 2 | 100 / 85 / 73 / 8 |
+| 7 flyby | 100 / 100 / 100 / 100 | 100 / 100 / 100 / 100 | 100 / 100 / 100 / 100 | 100 / 100 / 100 / 100 |
+| 8 | 100 / 100 / 100 / 42 | 100 / 100 / 98 / 85 | 100 / 69 / 56 / 2 | 100 / 69 / 69 / 0 |
+| 9 | 100 / 100 / 98 / 58 | 100 / 100 / 98 / 98 | 100 / 79 / 52 / 0 | 100 / 75 / 58 / 2 |
+| 10 | 100 / 100 / 100 / 8 | 100 / 100 / 98 / 58 | 100 / 77 / 52 / 0 | 100 / 81 / 58 / 2 |
+| 11 flyby | 100 / 100 / 100 / 100 | 100 / 100 / 100 / 100 | 100 / 100 / 100 / 100 | 100 / 100 / 100 / 100 |
+| 12 | 100 / 98 / 81 / 6 | 100 / 100 / 94 / 44 | 100 / 33 / 6 / 0 | 100 / 79 / 33 / 0 |
+| 13 | 100 / 100 / 96 / 10 | 100 / 100 / 100 / 48 | 100 / 56 / 15 / 0 | 100 / 75 / 44 / 2 |
+| 14 | 100 / 98 / 65 / 0 | 100 / 100 / 98 / 35 | 100 / 56 / 13 / 0 | 100 / 77 / 31 / 0 |
+| 15 | 100 / 90 / 54 / 0 | 100 / 96 / 98 / 29 | 100 / 17 / 4 / 0 | 100 / 56 / 25 / 0 |
+
+**The skill-1 bot cannot be calibrated against.** It sits under the lowest
+bug, fires every frame and steps aside from every seed and diver it sees,
+so it dies only when two threats land at once or a beam takes it. Swept on
+stage 6 at Medium, it cleared 100% at 0.9 s between dives, 6 divers and 4
+seeds at x1.33 (the page had 1.9 s, 3, 2, x1.12), where the 0.6 bot
+cleared 31%; on stage 5 it cleared 100% at every number tried. Only stage
+15's paired waves bring it to ~60%, and only with 4 seeds a dive. A
+Medium curve from 95% down to 60% for it would need numbers no person
+could play, so the curve was shaped on the 0.6 bot instead, where the
+stages answer: Medium from 100% on 1-5 through 85, 69, 75, 81, 79, 75, 77
+to 56% on 15 (68% over 96 seeds: 48 is still about seven points either
+way). The 0.6 bot does not die early either, so stages 1-5 stay at 100%
+and their dips are not measured. Hard sits 0-12 points under Medium to
+stage 8 and 17-46 after; Insane, at skill 1, 29-100% on every stage
+(it was 0 on 14 and 15), and near 0 at skill 0.6. Easy and every E-H flyby
+are 100% at both.
+
+What moved: the Medium numbers of stages 6 (1.7 s, 3, 2, x1.15), 9 (1.8 s,
+x1.15), 10 (1.5 s, x1.20), 12 (2.2 s, 3 divers, 2 seeds, x1.18), 13 (1.5 s,
+2 seeds, x1.25), 14 (1.6 s, 2 seeds, x1.22) and 15 (1.9 s, 4 divers, 2
+seeds, x1.15): seed rain, moths first, no rest and the full moon were
+eased (the 0.6 bot cleared 17-56% of them), stage 6 made harder. And two
+rows of the shared scaling, each off across a whole difficulty: **Hard's
+swarm speed x1.12 to x1.06** (it fell 35-45 points under Medium from stage
+10 on at 0.6; at x1.06 about 25), and **Insane's dive gap x0.65 to x0.75,
+divers +2 to +1 and seeds +2 to +1** (the skill-1 bot cleared 0-10% of
+stages 10-15; +2 seeds sat on the cap of 4 on most late stages, and a
+seeds count of n above 1 is 0 to n, so +2 doubled the late seed rain).
+`docs/brainstorm/firefly-stages.py` holds the same numbers.
+
+Goal rates measure the bot more than the stage: catch in flight, break a
+wave, untouched, win a firefly back, an escort and moths shot in the beam
+are near 0% or 100% by how the bot plays (it never chases an escort or a
+beam moth and stands under the lowest bug). They were not tuned toward.
+
+**Measured at 810x1440** (`tests/_shot_firefly.gd`, two runs): the tab
+159, the map 116, stage 6's banner 72, the swarm flying in 84-85, the rows
+and a beam 110, the goal met with the shield on 115-118, a piercing spark
+and slow seeds 118-132, the shield bursting 126-139, the twin flying in
+138, the end card cleared 116-122 and failed 122.
+
+**Not done**: a phone; no person has played a stage or any difficulty;
+the curve of stages 1-5 is unmeasured (both bots clear them all); nothing
+heard (no new sound); the failed end card's "The night wins this time"
+lays the card wider than the screen at 810x1440; the end card's accuracy
+passes 100% with the piercing spark (a shot that goes on through a bug
+counts two hits); a chain's word can land over the buff's line; stage 16
+and its new element.

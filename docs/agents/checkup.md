@@ -512,7 +512,7 @@ settings.
 | dominoes | 5 | three tiles laid where the numbers match, the moon answering; a tile that fits both ends picked up and a place chosen, then a double across; two tiles drawn and the one that fits laid; the last tile laid and the other hand turned up; the bulb, Reset, no undo, online |
 | boats | 5 | laying the five boats out; a throw and its ring or cross; following a hit along its line; a boat sunk on each side and how it ends; the bulb, Reset, online |
 | hockey | 5 | a finger leads the mallet, up to the line; a swing into the far slot; a still mallet stops it, a moving one sends it back; off a long rail when the way is shut; two players (built with the game, 2026-10-08) |
-| firefly | 7 | slide and hold; the swarm's worth; dives and seeds; a moth's escorts; the silk beam and the rescue; the flyby; lanterns and buttons |
+| firefly | 8 | slide and hold; the swarm's worth; dives and seeds; a moth's escorts; the silk beam and the rescue; the flyby (3, 7, 11, only Insane's passers hurt); goals and buffs (the plate and the six buffs: was Energy and the shop, 2026-10-06 to 2026-10-17); lanterns and buttons (the map, difficulties, Restart replays the stage) |
 | molehill | 7 | a whack and the quick bonus; gold and flowerpots; the rabbit; the streak; the last ten seconds; boosters; the buttons |
 | stackwood | 7 | slide and let go; merges; chains; the line; acorns and the rainbow block; zap and bomb; the bar and boosters |
 | thirteen | 6 | a chain; the last one grows; the 13; a stuck tray and Swap; the five tools and their climbing prices; Restart and boosters |

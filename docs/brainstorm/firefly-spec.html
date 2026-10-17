@@ -86,12 +86,12 @@ td.n{text-align:right;white-space:nowrap}
   <div class="wrap">
     <div class="eyebrow">Arcade · first card · id <code style="background:rgba(255,255,255,.12);color:#fff6c9">firefly</code></div>
     <h1>Firefly</h1>
-    <p>A formation shooter in a night garden. You are a firefly with a lantern tail; a swarm of gnats, ladybirds and moths flies in, takes its seats and peels off to dive at you. Slide to fly, hold to shoot, and win back a firefly the moths carry off.</p>
+    <p>A formation shooter in a night garden, played in stages. You are a firefly with a lantern tail; a swarm of gnats, ladybirds and moths flies in, takes its seats and peels off to dive at you. Slide to fly, hold to shoot, and win back a firefly the moths carry off. Fifteen stages, each at Easy, Medium, Hard and Insane with its own best, each with a goal that wins a buff.</p>
     <div class="meta">
       <span class="chip">Built 2026-09-27</span>
-      <span class="chip">Energy + shop 2026-10-06</span>
       <span class="chip">Sounds blended 2026-10-10</span>
-      <span class="chip warn">No phone run · sounds unheard · curve unplayed by a person</span>
+      <span class="chip">Stages 2026-10-17: 15 stages × 4 difficulties</span>
+      <span class="chip warn">No phone run · sounds unheard · curve set by a bot, unplayed by a person</span>
     </div>
     <!-- The swarm in its seats: 10 columns, moths cols 3-6 row 0, ladybirds cols 1-8 rows 1-2, gnats cols 0-9 rows 3-4 (firefly_sim.gd _plan_stage). -->
     <svg class="swarm" viewBox="0 0 480 260" role="img" aria-label="The forty seats of the swarm: four moths on top, sixteen ladybirds in two rows of eight, twenty gnats in two rows of ten, and the firefly at the bottom">
@@ -115,7 +115,7 @@ td.n{text-align:right;white-space:nowrap}
 <nav class="toc" aria-label="Contents"><div class="wrap"><ol>
   <li><a href="#rules">Rules</a></li><li><a href="#cast">Cast</a></li><li><a href="#controls">Controls</a></li>
   <li><a href="#stage">A stage</a></li><li><a href="#dives">Dives</a></li><li><a href="#beam">Silk beam</a></li>
-  <li><a href="#score">Scoring</a></li><li><a href="#shop">Energy &amp; shop</a></li><li><a href="#boost">Boosters &amp; gold</a></li>
+  <li><a href="#score">Scoring</a></li><li><a href="#shop">Stages &amp; goals</a></li><li><a href="#boost">Boosters &amp; gold</a></li>
   <li><a href="#rewards">Rewards</a></li><li><a href="#look">Look &amp; motion</a></li><li><a href="#sound">Sound &amp; haptics</a></li>
   <li><a href="#tutorial">Tutorial</a></li><li><a href="#card">Tab card</a></li><li><a href="#data">Records &amp; analytics</a></li>
   <li><a href="#build">Build</a></li><li><a href="#history">History</a></li><li><a href="#open">Open</a></li>
@@ -128,15 +128,15 @@ td.n{text-align:right;white-space:nowrap}
   <h2>Rules of the name</h2>
   <p class="src">Spec <code>docs/superpowers/specs/2026-09-27-arcade-firefly-design.md</code> · notes <code>docs/agents/arcade.md</code> (Firefly)</p>
   <p>The game follows a 1981 arcade formation shooter. The design spec names that game once, to forbid it. <strong>It is called Firefly and nothing else</strong>, in code, comments, commits and on screen. This page doesn't name the original either.</p>
-  <p>Built in one sitting from the brief “add a new arcade bottomnav, we gonna add some arcade solo games … Build it, include sfx.” It was the first game on the Arcade tab. Like every Arcade game it is not a <code>Registry.PUZZLES</code> entry and it has no levels. The run just gets harder as it goes.</p>
+  <p>Built in one sitting from the brief “add a new arcade bottomnav, we gonna add some arcade solo games … Build it, include sfx.” It was the first game on the Arcade tab. Like every Arcade game it is not a <code>Registry.PUZZLES</code> entry. Since 2026-10-17 it is played in stages (the user: “firefly will be a staged arcade, with stage 1 - N … let's add a easy, medium, hard and insane clear for each stage, and the upgrades comes as goals for each phase for skilled players”): an attempt is one stage at one difficulty, replayed for a better score.</p>
   <h3>What was kept from the arcade genre</h3>
   <ul>
     <li>A ship at the bottom that moves sideways. The arcade limit of two volleys in the air was dropped on 2026-10-06 for a fire rate.</li>
     <li>A swarm of forty flies in along looping paths in five waves and takes its seats. It sways while it gathers and breathes in and out once it has.</li>
     <li>Bugs peel off and dive in curves, firing, then come back in over the top. A boss dives with up to two escorts.</li>
     <li>The capture beam, the rescue that makes a pair, and the captive that turns rogue.</li>
-    <li>A bonus stage on stage 3 and every fourth stage after it.</li>
-    <li>Extra ships at 20,000, 90,000 and every 70,000 after that. You start with three.</li>
+    <li>A bonus stage (the flyby) on stages 3, 7 and 11.</li>
+    <li>Extra ships from points were dropped on 2026-10-17: a stage is a minute or two. You start with 4 / 3 / 3 / 2 fireflies (Easy to Insane).</li>
   </ul>
 </section>
 
@@ -145,17 +145,17 @@ td.n{text-align:right;white-space:nowrap}
   <h2>The garden's night shift</h2>
   <p class="src"><code>arcade/firefly_art.gd</code>: builder meshes at the origin facing up, two wing frames, cached per look, frame and scale, turned by the draw transform and never rebuilt to move. Shared with the tab's card.</p>
   <div class="tbl"><table>
-    <thead><tr><th>Who</th><th>Code</th><th>Look</th><th>Seats</th><th>Shots to kill</th><th>Energy</th></tr></thead>
+    <thead><tr><th>Who</th><th>Code</th><th>Look</th><th>Seats</th><th>Shots to kill</th><th>Since</th></tr></thead>
     <tbody>
-      <tr><td><span class="dot" style="background:#56618a"></span><b>Firefly</b> (you)</td><td><code>Look.FIREFLY</code></td><td>slate body <code>#56618a</code>, coral shield <code>#ef8a62</code>, lantern tail <code>#ffe27a</code></td><td>bottom, y 348</td><td class="n">—</td><td class="n">—</td></tr>
-      <tr><td><span class="dot" style="background:#f4c94f"></span><b>Gnat</b></td><td><code>Kind.GNAT</code></td><td>yellow, brown stripes</td><td>20, rows 3–4</td><td class="n">×1</td><td class="n">1</td></tr>
-      <tr><td><span class="dot" style="background:#e2645c"></span><b>Ladybird</b></td><td><code>Kind.BEETLE</code></td><td>red shell, deep red seam</td><td>16, rows 1–2</td><td class="n">×2</td><td class="n">1</td></tr>
-      <tr><td><span class="dot" style="background:#9aa6e6"></span><b>Moth</b> (boss)</td><td><code>Kind.MOTH</code></td><td>lilac wings, cream fur. It blushes pink <code>#e58fb5</code> at half health</td><td>4, row 0</td><td class="n">×4</td><td class="n">2</td></tr>
-      <tr><td><span class="dot" style="background:#b8577a"></span><b>Rogue</b></td><td><code>Kind.ROGUE</code></td><td>a captured firefly turned rose</td><td>over its moth</td><td class="n">×2</td><td class="n">2</td></tr>
-      <tr><td><span class="dot" style="background:#fff"></span><b>Captive</b></td><td><code>Look.CAPTIVE</code></td><td>your firefly wound in silk, hanging under its moth</td><td>—</td><td class="n">1 hit frees it</td><td class="n">—</td></tr>
+      <tr><td><span class="dot" style="background:#56618a"></span><b>Firefly</b> (you)</td><td><code>Look.FIREFLY</code></td><td>slate body <code>#56618a</code>, coral shield <code>#ef8a62</code>, lantern tail <code>#ffe27a</code></td><td>bottom, y 348</td><td class="n">—</td><td class="n">stage 1</td></tr>
+      <tr><td><span class="dot" style="background:#f4c94f"></span><b>Gnat</b></td><td><code>Kind.GNAT</code></td><td>yellow, brown stripes</td><td>20, rows 3–4</td><td class="n">1 / 1 / 1 / 2</td><td class="n">stage 1</td></tr>
+      <tr><td><span class="dot" style="background:#e2645c"></span><b>Ladybird</b></td><td><code>Kind.BEETLE</code></td><td>red shell, deep red seam</td><td>16, rows 1–2</td><td class="n">1 / 2 / 2 / 3</td><td class="n">stage 2</td></tr>
+      <tr><td><span class="dot" style="background:#9aa6e6"></span><b>Moth</b> (boss)</td><td><code>Kind.MOTH</code></td><td>lilac wings, cream fur. It blushes pink <code>#e58fb5</code> at half health</td><td>4, row 0</td><td class="n">2 / 3 / 4 / 5 (7 on stage 15 Insane)</td><td class="n">stage 4</td></tr>
+      <tr><td><span class="dot" style="background:#b8577a"></span><b>Rogue</b></td><td><code>Kind.ROGUE</code></td><td>a captured firefly turned rose</td><td>over its moth</td><td class="n">as a ladybird</td><td class="n">stage 8</td></tr>
+      <tr><td><span class="dot" style="background:#fff"></span><b>Captive</b></td><td><code>Look.CAPTIVE</code></td><td>your firefly wound in silk, hanging under its moth</td><td>—</td><td class="n">1 hit frees it</td><td class="n">stage 8</td></tr>
     </tbody>
   </table></div>
-  <p>The code still says <code>BEETLE</code>. Every word the player sees says <em>ladybird</em>. Shots to kill is the multiplier on the stage's base (see <a href="#shop">Energy &amp; shop</a>); on stage 1 that gives 1, 1 and 2.</p>
+  <p>The code still says <code>BEETLE</code>. Every word the player sees says <em>ladybird</em>. Shots to kill are Easy / Medium / Hard / Insane, the same on every stage (see <a href="#shop">Stages, goals and buffs</a>); a flyby's passers take one (half of them two on stage 11 Insane).</p>
 </section>
 
 <section id="controls">
@@ -167,7 +167,7 @@ td.n{text-align:right;white-space:nowrap}
     <div class="box"><b>Keyboard</b><p>Arrows or A/D move; space fires.</p></div>
     <div class="box"><b>Pause</b><p>Leaving the app, the settings sheet or the tutorial card pauses. A tap on the field resumes (“Tap to go on”).</p></div>
   </div>
-  <p>Top bar: back, the title, Restart (grey until a run exists; a restart doesn't count the run in play) and settings. The settings sheet also has <strong>Start over</strong>, which wipes Firefly's <code>arcade.cfg</code> section (2026-10-17, <code>ui/hud/start_over_sheet.gd</code>). Android's back reaches the screen through the <code>versus_host</code> group.</p>
+  <p>Top bar: back (from a stage to the stage map, from the map out of the game), the title, Restart (replays the same stage at the same difficulty; grey until an attempt exists; the attempt in play is not counted) and settings. The settings sheet also has <strong>Start over</strong>, which wipes Firefly's <code>arcade.cfg</code> section (2026-10-17, <code>ui/hud/start_over_sheet.gd</code>). Android's back reaches the screen through the <code>versus_host</code> group.</p>
 </section>
 
 <section id="stage">
@@ -182,11 +182,11 @@ td.n{text-align:right;white-space:nowrap}
       <tr><td>Pair spacing</td><td>±8 from centre</td></tr>
       <tr><td>Shot</td><td>420 u/s, r 2; a volley's shots side by side 5 apart, the row closing up past 18 wide</td></tr>
       <tr><td>Bug</td><td>r 7; seats 20 × 17 apart, ten columns, the top row at y 46</td></tr>
-      <tr><td>Seed (bullet)</td><td>r 2, 150 u/s × (1 + 0.03 · min(level, 12)), sideways speed clamped to ±55</td></tr>
+      <tr><td>Seed (bullet)</td><td>r 2, 125 / 150 / 170 / 195 u/s (Easy to Insane), half with Slow seeds, sideways speed clamped to ±55</td></tr>
     </tbody>
   </table></div>
   <h3>Phases</h3>
-  <p><code>INTRO</code> (1.2 s banner) → <code>PLAY</code> → <code>CLEAR</code> (1.6 s) or a flyby's <code>RESULT</code> (3.2 s) → <code>SHOP</code> if anything can be bought, where the sim stands still until <code>leave_shop()</code> → the next stage. <code>OVER</code> on the last firefly.</p>
+  <p><code>INTRO</code> (the banner: the stage's name, its goal, what the goal gives) → <code>PLAY</code> → <code>WON</code> (the swarm shot down, or a flyby flown) or <code>OVER</code> (the last firefly lost). One stage an attempt: there is no next stage inside a run.</p>
   <h3>The five waves</h3>
   <ol>
     <li>From the top: 4 ladybirds and, mirrored, 4 gnats (the middle columns).</li>
@@ -196,28 +196,28 @@ td.n{text-align:right;white-space:nowrap}
     <li>From the top: 8 gnats on the left.</li>
   </ol>
   <p>Paths are Catmull-Rom curves through fractions of the field. Each bug walks its path by arc length with a cursor, so a step never re-walks from the start. Bugs in a wave leave 0.12 s apart.</p>
-  <div class="formula">level()        = stage − ⌊(stage + 1) / 4⌋          # flybys don't count
-wave gap       = max(2.2, 2.9 − 0.06 · level) s
-pace (speed)   = 1 + 0.045 · min(level, 16)          # bugs enter at 120 · pace
-entry fire     = 0 at level ≤ 1, else min(0.5, 0.12 + 0.05 · level) chance of one seed
+  <div class="formula">wave gap       = 2.9 s (2.6 on a stage with entrance fire)
+pace (speed)   = the stage's Medium swarm speed × 0.85 / 1 / 1.06 / 1.25   # bugs enter at 120 · pace
+entry fire     = never / 1 in 4 from stage 6 / 2 in 5 from stage 6 / 1 in 2 from stage 2
 sway           = sin(t · 1.15) · 10 while gathering, fading to 0
-breathe        = spread 1 + 0.13 · (½ − ½cos(t · 1.7)) once seated</div>
+breathe        = spread 1 + 0.13 · (½ − ½cos(t · 1.7)) once seated (wider on stage 15 Insane)</div>
   <h3>The flyby</h3>
-  <p>Stage 3, then every fourth stage (7, 11, 15…). Five waves of eight pass straight through, 3.4 s apart, mixing two kinds each. They never fire and never dive, and every bug takes one shot whatever the stage. Banner: “Flyby! They won't shoot: catch all forty.”</p>
+  <p>Stages 3, 7 and 11. Five waves of eight pass straight through (3.4, 2.8 and 2.4 s apart on Medium), each wave its own paths and kinds. They never fire and never dive, and a passer takes one shot. On Easy, Medium and Hard a flyby cannot be failed; on Insane a passer that flies into you costs a firefly. Banner: “Flyby! They won't shoot: catch all forty.” The waves of every stage are drawn in <code>docs/brainstorm/firefly-stages.html</code>.</p>
 </section>
 
 <section id="dives">
   <div class="eyebrow">Sim</div>
   <h2>Dives and seeds</h2>
-  <p>Dives start only once the whole swarm is seated, and only while the firefly is alive. Seats on the swarm's edge are picked before seats in the middle.</p>
-  <div class="formula">next dive in   = rand(0.7, 1.3) · max(0.45, (1.6 − 0.1 · level) · (0.6 if ≤ 6 left))
-divers at once ≤ min(2 + ⌊level/2⌋, 7)  (+2 if ≤ 6 left)
+  <p>Dives start once the whole swarm is seated (from two thirds seated on stage 10, from the first wave on stage 14, at once on their Insane), and only while the firefly is alive. Seats on the swarm's edge are picked before seats in the middle.</p>
+  <div class="formula">next dive in   = rand(0.7, 1.3) · stage gap · (1.4 / 1 / 0.8 / 0.75) · (0.6 if ≤ 6 left)
+divers at once ≤ stage divers + (−1 / 0 / +1 / +1), at least 1  (+2 if ≤ 6 left)
 who dives      : moth 24% · rogue 8% · ladybird 30% · gnat the rest
-dive speed     = 100 · pace;  seeds a dive = 0 … min(1 + ⌊level/3⌋, 3)</div>
+dive speed     = 100 · pace
+seeds a dive   = stage seeds + (−1 / 0 / +1 / +1), 0..4: exactly 1 where it is 1, else 0 up to it</div>
   <ul>
     <li><strong>A moth</strong> spins a beam (55%) when it has no captive, you are not a pair and no captive or rogue exists. Otherwise it dives with up to two ladybirds from the row below it, within one column.</li>
     <li>Seeds are aimed where the firefly is and dropped at 30%, 40% and 50% of the field's height. None are dropped within 60 units of the firefly.</li>
-    <li>A bug that flies into the firefly dies with it (<code>rammed</code>). It still pays its points and energy, but it doesn't tap the phone.</li>
+    <li>A bug that flies into the firefly dies with it (<code>rammed</code>). It still pays its points, but it doesn't tap the phone.</li>
     <li>A diver that leaves the bottom comes back in over the top to its seat.</li>
   </ul>
 </section>
@@ -249,45 +249,63 @@ dive speed     = 100 · pace;  seeds a dive = 0 … min(1 + ⌊level/3⌋, 3)</d
       <tr><td>Any flyby bug</td><td class="n" colspan="2">100</td><td>at the end the flyby pays hits × 100 again, or <strong>10,000</strong> for all forty (“Perfect!”)</td></tr>
     </tbody>
   </table></div>
-  <p><strong>Extra fireflies</strong> at 20,000, then 90,000, then every 70,000 (“Extra firefly!”). Three to start. Spare fireflies show as lanterns in the field's bottom-left corner; stage flags wave in the bottom-right, with a sun flag for ten.</p>
-  <p>The end card shows the score, stage, bugs caught, best chain, accuracy (“% on target”, counting shots, not volleys) and the best.</p>
+  <p><strong>No extra fireflies from points</strong> since 2026-10-17 (a stage is short; the 20,000 mark was seldom reached). Fireflies to start: 4 / 3 / 3 / 2, Easy to Insane. Spare fireflies show as lanterns in the field's bottom-left corner. Score ×1.5 and ×2 (stages 5 and 15's buffs) multiply every kill after the goal is met.</p>
+  <p>The end card says Cleared! or that the night wins, counts the score up, and shows the best for this stage and difficulty, the goal met or not, and Next stage (when cleared and there is one), Again and Stages.</p>
 </section>
 
 <section id="shop">
-  <div class="eyebrow">Economy · 2026-10-06</div>
-  <h2>Energy and the shop</h2>
-  <p>The user's words were “implement same upgrades and energy logic from peapod into firefly”. Asked which way, they chose bugs whose shots grow plus a shop of the other cards, without Peapod's pods and rack. Stage 1 plays as the original build did.</p>
-  <h3>Bugs grow</h3>
-  <div class="formula">hp_base(level) = 0.6 · 1.4^(min(level,10) − 1) · 1.16^max(0, level − 10)
-shots to kill  = max(1, round(kind × hp_base))      # gnat ×1, ladybird ×2, moth ×4</div>
+  <div class="eyebrow">Stages · 2026-10-17</div>
+  <h2>Stages, goals and buffs</h2>
+  <p class="src">Design as data: <code>docs/brainstorm/firefly-stages.py</code>, its page <code>docs/brainstorm/firefly-stages.html</code> (each stage's waves, dives, goal and numbers). Sim: <code>STAGES</code>, <code>DIFF</code>, <code>rules_of()</code> in <code>arcade/firefly_sim.gd</code>. Plan: <code>docs/superpowers/plans/2026-10-17-firefly-stages.md</code>.</p>
+  <p>The user: “instead of having upgrades, let's keep only the points for every stage so user can replay to try getting more points, let's add a easy, medium, hard and insane clear for each stage, and the upgrades comes as goals for each phase for skilled players … reward player with a buff for that stage”. Then “B is what I meant” (four difficulties a stage, each its own best), “let's do the first 15 stage”. The energy and shop of 2026-10-06 are gone: the gun is the same on every stage (one shot a volley, 3 volleys a second) and bugs do not grow.</p>
+  <h3>The map</h3>
+  <p>The screen opens on a stage map over the night garden: fifteen tiles (number, name, four marks for the four clears in <code>difficulty_sheet.gd</code>'s tints, the chosen difficulty's best), locked past the furthest stage open, and a “more stages soon” tile. The difficulty row above it is <code>ui/flat/level_card.gd</code> fed Firefly's four levels, told which are done through its optional <code>done</code> Callable. A stage reached has all four difficulties open; clearing it at any difficulty opens the next.</p>
+  <h3>The fifteen</h3>
   <div class="tbl"><table>
-    <thead><tr><th>Stage</th><th class="n">Level</th><th class="n">Gnat</th><th class="n">Ladybird</th><th class="n">Moth</th></tr></thead>
+    <thead><tr><th class="n">#</th><th>Stage</th><th>New</th><th>Goal (E / M / H / I)</th><th>Buff</th></tr></thead>
     <tbody>
-      <tr><td>1</td><td class="n">1</td><td class="n">1</td><td class="n">1</td><td class="n">2</td></tr>
-      <tr><td>5</td><td class="n">4</td><td class="n">2</td><td class="n">3</td><td class="n">7</td></tr>
-      <tr><td>10</td><td class="n">8</td><td class="n">6</td><td class="n">13</td><td class="n">25</td></tr>
-      <tr><td>13</td><td class="n">10</td><td class="n">12</td><td class="n">25</td><td class="n">50</td></tr>
-      <tr><td>20</td><td class="n">15</td><td class="n">26</td><td class="n">52</td><td class="n">104</td></tr>
-      <tr><td>24</td><td class="n">18</td><td class="n">41</td><td class="n">81</td><td class="n">163</td></tr>
+      <tr><td class="n">1</td><td>First light</td><td>20 gnats, no seeds</td><td>catch in flight 4 / 5 / 6 / 8</td><td>Quicker gun</td></tr>
+      <tr><td class="n">2</td><td>Ladybirds</td><td>ladybirds and seeds</td><td>catch in flight 6 / 8 / 10 / 12</td><td>Double fire</td></tr>
+      <tr><td class="n">3</td><td>Flyby</td><td>passers</td><td>all forty</td><td>10,000 points</td></tr>
+      <tr><td class="n">4</td><td>Moths</td><td>moths</td><td>shoot moths diving 1 / 2 / 2 / 3</td><td>Piercing spark</td></tr>
+      <tr><td class="n">5</td><td>Escorts</td><td>a moth dives with ladybirds</td><td>an escorted moth at 1,600: 1 / 1 / 1 / 2</td><td>Score ×1.5</td></tr>
+      <tr><td class="n">6</td><td>Hot entrances</td><td>bugs fire flying in</td><td>break a wave 1 / 1 / 1 / 2</td><td>Silk shield</td></tr>
+      <tr><td class="n">7</td><td>Flyby, crossing</td><td>passers both ways</td><td>all forty</td><td>10,000 points</td></tr>
+      <tr><td class="n">8</td><td>The silk beam</td><td>the beam and the rescue</td><td>win a firefly back 1</td><td>Quicker gun</td></tr>
+      <tr><td class="n">9</td><td>Held</td><td>starts with a captive</td><td>bring the held firefly home 1</td><td>Silk shield</td></tr>
+      <tr><td class="n">10</td><td>Busy night</td><td>dives from two thirds seated</td><td>a chain 8 / 12 / 12 / 20</td><td>Quicker gun</td></tr>
+      <tr><td class="n">11</td><td>Flyby, the long way</td><td>long paths</td><td>all forty</td><td>10,000 points</td></tr>
+      <tr><td class="n">12</td><td>Seed rain</td><td>a ladybird's seeds fan in three</td><td>untouched 20 / 30 / 30 / 45 s</td><td>Slow seeds</td></tr>
+      <tr><td class="n">13</td><td>Moths first</td><td>beams more often, drifting</td><td>shoot moths with the beam open 1 / 2 / 2 / 3</td><td>Piercing spark</td></tr>
+      <tr><td class="n">14</td><td>No rest</td><td>reversed order, dives early, seeds flying home</td><td>catch in flight 10 / 15 / 15 / 20</td><td>Double fire</td></tr>
+      <tr><td class="n">15</td><td>Full moon</td><td>waves in pairs</td><td>break a wave 1 / 2 / 2 / 3</td><td>Score ×2</td></tr>
     </tbody>
   </table></div>
-  <p>A bug left with half its health or less is <code>hurt</code> (a moth blushes) and wears a thin bar. Each hit floats what it took (24 numbers at most; a lucky hit is gold with a “!”).</p>
-  <h3>Energy</h3>
-  <p>Every bug shot down pays energy: 1 for a gnat or a ladybird, 2 for a moth or a rogue, plus 10% a level of the Energy card. It is counted internally in orbs (4 to one energy) so fractions carry over. A stage pays about <strong>44</strong> energy, the same every stage. Motes fly to the ENERGY plate on the left of the paper row (the playing thumb hides the right). Energy you don't spend is kept.</p>
-  <h3>The cards</h3>
-  <p>A price moves only when that card is bought. <strong>No card has a maximum.</strong> Shown in this order:</p>
+  <p>Each stage has its own twists on Easy and Insane (and Hard on none yet), each a flag the stage names; the page lists them.</p>
+  <h3>The difficulties</h3>
   <div class="tbl"><table>
-    <thead><tr><th>Card</th><th>Does</th><th class="n">First price</th><th class="n">+ each buy</th></tr></thead>
+    <thead><tr><th></th><th class="n">Easy</th><th class="n">Medium</th><th class="n">Hard</th><th class="n">Insane</th></tr></thead>
     <tbody>
-      <tr><td>Heavier shot</td><td>+1 damage a shot</td><td class="n">11</td><td class="n">+70%</td></tr>
-      <tr><td>Quicker gun</td><td>3 volleys/s, +0.5 a level</td><td class="n">14</td><td class="n">+90%</td></tr>
-      <tr><td>One more shot</td><td>+1 shot a volley</td><td class="n">80</td><td class="n">+150%</td></tr>
-      <tr><td>Lucky shot</td><td>none before level 1; then 10% chance at ×3, +5% every 5th level (max 50%), +1× a level</td><td class="n">14</td><td class="n">+90%</td></tr>
-      <tr><td>More energy</td><td>+10% energy a bug</td><td class="n">12</td><td class="n">+60%</td></tr>
+      <tr><td>Fireflies</td><td class="n">4</td><td class="n">3</td><td class="n">3</td><td class="n">2</td></tr>
+      <tr><td>Shots: gnat / ladybird / moth</td><td class="n">1 / 1 / 2</td><td class="n">1 / 2 / 3</td><td class="n">1 / 2 / 4</td><td class="n">2 / 3 / 5</td></tr>
+      <tr><td>Swarm speed</td><td class="n">×0.85</td><td class="n">stage's</td><td class="n">×1.06</td><td class="n">×1.25</td></tr>
+      <tr><td>Time between dives</td><td class="n">×1.4</td><td class="n">stage's</td><td class="n">×0.8</td><td class="n">×0.75</td></tr>
+      <tr><td>Divers at once</td><td class="n">−1</td><td class="n">stage's</td><td class="n">+1</td><td class="n">+1</td></tr>
+      <tr><td>Seeds a dive</td><td class="n">−1</td><td class="n">stage's</td><td class="n">+1</td><td class="n">+1</td></tr>
+      <tr><td>Seed speed</td><td class="n">125</td><td class="n">150</td><td class="n">170</td><td class="n">195</td></tr>
     </tbody>
   </table></div>
-  <div class="formula">price(card) = round(base · (1 + step · times_bought))      # in energy</div>
-  <p>Lucky hits roll on their own dice (<code>_luck</code>) so they never move the swarm's. The shop card is Peapod's, <strong>built again in this screen, not shared</strong>: a change to it has to be made in both. Its heading is “Stage N done. Spend your energy on the firefly.” and its button is “Next stage”.</p>
+  <p>Hard's swarm speed (×1.12) and Insane's dive gap (×0.65), divers and seeds (+2, +2) were the page's first numbers; the bot pass of 2026-10-17 moved them (see <a href="#build">Where the bots end</a>).</p>
+  <h3>Goals and buffs</h3>
+  <p>A goal is counted in the sim (<code>goal_step</code>, <code>goal_met</code>), met once an attempt, and shown on the banner and on a small plate at the top of the field (3 / 5) that beats each step and turns gold with the buff's icon once met. The buff lasts until the stage ends.</p>
+  <ul>
+    <li><b>Quicker gun</b>: 4.5 volleys a second, up from 3.</li>
+    <li><b>Double fire</b>: a twin flies in from the side and docks as a rescue does. Won while already a pair, it is a Silk shield instead.</li>
+    <li><b>Piercing spark</b>: a shot goes on through its first bug; drawn longer and brighter.</li>
+    <li><b>Silk shield</b>: a silk ring round the firefly takes the next hit, a seed or a bug, and bursts.</li>
+    <li><b>Slow seeds</b>: every seed, in the air and to come, at half speed, with a longer trail.</li>
+    <li><b>Score ×1.5 / ×2</b>: every kill after the goal.</li>
+  </ul>
 </section>
 
 <section id="boost">
@@ -297,12 +315,12 @@ shots to kill  = max(1, round(kind × hp_base))      # gnat ×1, ladybird ×2, m
   <div class="tbl"><table>
     <thead><tr><th>Item</th><th>When</th><th>Effect</th><th class="n">Gold</th></tr></thead>
     <tbody>
-      <tr><td>Spare firefly <code>ff_spare</code></td><td>before a run</td><td>start with four fireflies</td><td class="n">120</td></tr>
-      <tr><td>Twin start <code>ff_twin</code></td><td>before a run</td><td>start as a pair</td><td class="n">120</td></tr>
-      <tr><td>Second chance</td><td>at game over, once a run</td><td>one firefly back on the stage you reached; energy and the gun are kept</td><td class="n">200</td></tr>
+      <tr><td>Spare firefly <code>ff_spare</code></td><td>before a stage</td><td>one more firefly for that attempt</td><td class="n">120</td></tr>
+      <tr><td>Twin start <code>ff_twin</code></td><td>before a stage</td><td>start that attempt as a pair</td><td class="n">120</td></tr>
+      <tr><td>Second chance</td><td>at the last firefly, once an attempt</td><td>one firefly back on the stage being played (the sim's <code>revive()</code>)</td><td class="n">200</td></tr>
     </tbody>
   </table></div>
-  <p>A run pays 5 gold, plus 20 for a new best, inside the Arcade's daily cap of 60. A rewarded video on the end card can double the gold (never the score). A boosted run is marked as helped in the record. The booster tint is <code>#5b5fa8</code>.</p>
+  <p>An attempt pays 5 gold, plus 20 the first time a stage is cleared at a difficulty (not on every new best, which every first attempt would be), inside the Arcade's daily cap of 60. A rewarded video on the end card can double the gold (never the score). A boosted run is marked as helped in the record. The booster tint is <code>#5b5fa8</code>.</p>
 </section>
 
 <section id="rewards">
@@ -312,7 +330,7 @@ shots to kill  = max(1, round(kind × hp_base))      # gnat ×1, ladybird ×2, m
   <ul>
     <li><strong>Every kill</strong> throws scraps of the bug's colour and sparks, and letters its points. A moth or a rogue throws gold stars and a ring, and three stars fly home into the score plate.</li>
     <li><strong>The chain</strong> counts kills within 1.5 s of each other. From 3 it shows <code>Chain xN</code>. At 6, 12, 20, 30 and 40 it shows a word: <em>Nice! · Great! · Glowing! · Bug-tastic! · Legendary!</em> From Great! a sunburst plays, and from Bug-tastic! a rain. From 6 a warm glow beats round the field. Losing a firefly breaks the chain.</li>
-    <li><strong>Named moments</strong>: Escort bonus, Rogue down!, Saved!, Double fire!, Oh no!, Ouch!, Clear!, the flyby bonus, Extra firefly!, every 10,000 points, and A new best!</li>
+    <li><strong>Named moments</strong>: Escort bonus, Rogue down!, Saved!, Double fire!, Oh no!, Ouch!, Clear!, the flyby bonus, the goal met and its buff (Quicker gun! and its line), every 10,000 points, and A new best!</li>
     <li><strong>Sunbursts are added, not laid over</strong> (<code>set_additive</code>). Laid over the navy sky, pale gold reads as grey haze.</li>
     <li>A sticker that would cover a live one lands under it, except the chain count.</li>
     <li>Reduce motion keeps the words (still) and drops the bits, rays, rain, flash, glow and count.</li>
@@ -342,18 +360,18 @@ shots to kill  = max(1, round(kind × hp_base))      # gnat ×1, ladybird ×2, m
     <li><strong>2026-09-27</strong>: a soft 8-bit style (<code>ARCADE</code> in <code>tools/gen_sfx.py</code>).</li>
     <li><strong>2026-10-10 redo</strong>: <code>shoot</code> became a light wooden button, <code>pop</code> a cork on felt, <code>pop_moth</code> two muffled notes, the dive a gust and the beam a loop of air. Nothing above −8 dB. Pitch climbs stop at five semitones.</li>
     <li><strong>2026-10-10 blend</strong> (the user: “were better before, mix the current lofi sounds with it”): the seven replaced cues carry their old take again under the new one.</li>
-    <li>The shop has no sound of its own: opening is <code>extra</code> low and quiet, a card bought is <code>docked</code>, a mote landing is <code>shoot</code> a semitone up each.</li>
+    <li>Since 2026-10-17 the shop's borrowed cues are gone. A goal met with a buff is <code>docked</code> a little up, the shield bursting <code>hurt</code> pitched low, the twin setting off <code>rescue</code> quiet, a stage won <code>clear</code> (or the flyby's tally). No new sound.</li>
   </ul>
   <h3>Haptics: one knock a frame, the strongest</h3>
   <p>The sim steps twice a frame and a step can pop three bugs, so events ask through <code>_feel(kind)</code> and <code>_knock_now</code> plays the frame's strongest.</p>
   <div class="tbl"><table>
     <thead><tr><th>Knock</th><th>For</th></tr></thead>
     <tbody>
-      <tr><td>tap</td><td>a bug shot down; the blow that leaves a bug half gone; a lucky hit; a run starting from Restart, Play again or the boost card</td></tr>
-      <tr><td>bump</td><td>a moth or rogue down; a chain word; a stage cleared; a perfect flyby; the best passed mid-run</td></tr>
-      <tr><td>warn</td><td>the beam catches the firefly; a shot pops your own captive</td></tr>
+      <tr><td>tap</td><td>a bug shot down; the blow that leaves a bug half gone; an attempt starting from Restart, Play again or the boost card</td></tr>
+      <tr><td>bump</td><td>a moth or rogue down; a chain word; a goal met (<code>goal_met</code>); a stage won (<code>won</code>); a perfect flyby; the best passed mid-run</td></tr>
+      <tr><td>warn</td><td>the beam catches the firefly; a shot pops your own captive; the silk shield takes a hit (<code>shield</code>)</td></tr>
       <tr><td>bad / lose</td><td>the firefly carried off or popped; lose on the last one</td></tr>
-      <tr><td>good</td><td>a captive shot free; an extra firefly; a Second chance taken</td></tr>
+      <tr><td>good</td><td>a captive shot free; a Second chance taken</td></tr>
       <tr><td>win</td><td>the end card shows a new best (the only mapped cue)</td></tr>
     </tbody>
   </table></div>
@@ -366,39 +384,39 @@ shots to kill  = max(1, round(kind × hp_base))      # gnat ×1, ladybird ×2, m
   <p class="src"><code>ui/hud/firefly_tutorial_diagram.gd</code> through <code>ui/hud/screen_tutor.gd</code>; keys <code>TUT_FIREFLY_*</code> in en, pt and es</p>
   <ol>
     <li><b>Slide to fly, hold to fire</b></li>
-    <li><b>The swarm</b>: gnat 50, ladybird 80, moth 150; clear it all to reach the next stage</li>
+    <li><b>The swarm</b>: gnat 50, ladybird 80, moth 150; clear it all to clear the stage</li>
     <li><b>Dives</b>: double while diving; a seed or a bug that touches you costs one</li>
     <li><b>A moth and its escorts</b>: 400 → 800 → 1,600</li>
     <li><b>The silk beam</b>: shoot the moth in its dive, not its seat</li>
-    <li><b>The flyby</b>: 100 each, 10,000 for all forty</li>
-    <li><b>Energy and the shop</b>: a mote and the five medallions</li>
-    <li><b>Lanterns and buttons</b>: extras at 20,000 / 90,000 / +70,000, Reset, pause, boosters</li>
+    <li><b>The flyby</b>: stages 3, 7 and 11, 100 each, 10,000 for all forty; only on Insane does a passer cost a firefly</li>
+    <li><b>Goals and buffs</b> (was Energy and the shop): the goal's plate and the six buffs</li>
+    <li><b>Lanterns and buttons</b>: the map, its difficulties and bests, Restart, pause, boosters</li>
   </ol>
-  <p>A page's little night keeps stage 1's bugs and never opens a shop.</p>
+  <p>A page's little night stays stage 1 at Medium.</p>
 </section>
 
 <section id="card">
   <div class="eyebrow">Menu</div>
   <h2>The Arcade tab card</h2>
   <p class="src"><code>ui/menu/cards/arc_firefly.gd</code> · <code>ui/menu/arcade_tab.gd</code> · <code>ui/menu/vistas.gd</code></p>
-  <p>The first card of the Arcade tab, a night card in cream ink, two cards a row. Its go button is the firefly itself. Under the name it shows the best and “Furthest: stage N”, or “No score yet”. Blurb: “Hold back the night swarm: slide to fly, hold to shoot, and win back a firefly the moths carry off.” Motto: “Keep the garden lit”.</p>
+  <p>The first card of the Arcade tab, a night card in cream ink, two cards a row. Its go button is the firefly itself. Under the name it shows the furthest stage cleared and how many of the 60 clears are done (“Stage N · K of 60 cleared”, <code>ARC_STAGES_ONE</code>/<code>_N</code>), or “No score yet”. Blurb: “Hold back the night swarm: slide to fly, hold to shoot, and win back a firefly the moths carry off.” Motto: “Keep the garden lit”.</p>
 </section>
 
 <section id="data">
   <div class="eyebrow">Data</div>
   <h2>Records and analytics</h2>
-  <p>Scores stay on the device in <code>user://arcade.cfg</code> (<code>arcade/arcade_record.gd</code>, section <code>firefly</code>: best score, furthest stage, helped). They are never sent.</p>
+  <p>Scores stay on the device in <code>user://arcade.cfg</code> (<code>arcade/arcade_record.gd</code>, section <code>firefly</code>). Since 2026-10-17 a cell a stage and difficulty: <code>s&lt;stage&gt;d&lt;difficulty&gt;_best</code>, <code>_clear</code>, <code>_boosted</code>, beside <code>reached</code> (the highest stage open), <code>clears</code>, <code>plays</code> and <code>pick</code> (the difficulty last chosen, Medium before one); <code>stage_best</code>, <code>stage_cleared</code>, <code>reached</code>, <code>clears</code>, <code>add_stage</code> in <code>arcade/arcade_record.gd</code>. The old run's <code>best</code> and <code>best_stage</code> are left unread. They are never sent.</p>
   <div class="tbl"><table>
     <thead><tr><th>Event</th><th>Fields</th></tr></thead>
     <tbody>
-      <tr><td><code>arcade_start</code></td><td>game, boosts</td></tr>
-      <tr><td><code>arcade_end</code></td><td>game, score, stage, seconds, fired, hits, kills, best</td></tr>
-      <tr><td><code>arcade_abandon</code></td><td>game, score, stage</td></tr>
+      <tr><td><code>arcade_start</code></td><td>game, boosts, stage, difficulty</td></tr>
+      <tr><td><code>arcade_end</code></td><td>game, score, stage, difficulty, seconds, fired, hits, kills, best, cleared, goal</td></tr>
+      <tr><td><code>arcade_abandon</code></td><td>game, score, stage, difficulty</td></tr>
       <tr><td><code>board_reset</code></td><td>puzzle_id = firefly (Restart)</td></tr>
       <tr><td><code>arcade_reset</code></td><td>Start over</td></tr>
     </tbody>
   </table></div>
-  <p><code>arcade_end</code> says nothing about what was bought in the shop.</p>
+  <p><code>arcade_end</code>'s <code>goal</code> says whether the stage's goal was met, not which buff it gave.</p>
 </section>
 
 <section id="build">
@@ -407,49 +425,63 @@ shots to kill  = max(1, round(kind × hp_base))      # gnat ×1, ladybird ×2, m
   <div class="tbl"><table>
     <thead><tr><th>File</th><th class="n">Lines</th><th>Holds</th></tr></thead>
     <tbody>
-      <tr><td><code>arcade/firefly_sim.gd</code></td><td class="n">979</td><td>the whole game as data</td></tr>
-      <tr><td><code>arcade/firefly_screen.gd</code></td><td class="n">2,004</td><td>top bar, paper row, field, shop card, end card, events → sound, fx, haptics</td></tr>
-      <tr><td><code>arcade/firefly_art.gd</code></td><td class="n">267</td><td>the cast's meshes</td></tr>
-      <tr><td><code>ui/hud/firefly_tutorial_diagram.gd</code></td><td class="n">672</td><td>the tutorial's drawings</td></tr>
+      <tr><td><code>arcade/firefly_sim.gd</code></td><td class="n">1,447</td><td>the whole game as data: <code>STAGES</code>, <code>DIFF</code>, goals and buffs</td></tr>
+      <tr><td><code>arcade/firefly_screen.gd</code></td><td class="n">2,318</td><td>top bar, paper row, stage map, field, goal plate, end card, events → sound, fx, haptics</td></tr>
+      <tr><td><code>arcade/firefly_art.gd</code></td><td class="n">203</td><td>the cast's meshes</td></tr>
+      <tr><td><code>ui/hud/firefly_tutorial_diagram.gd</code></td><td class="n">682</td><td>the tutorial's drawings</td></tr>
       <tr><td><code>ui/menu/cards/arc_firefly.gd</code></td><td class="n">142</td><td>the tab card</td></tr>
     </tbody>
   </table></div>
   <p>Drawing: the sky, moon and hedges are one mesh built on resize. Stars, shots, seeds, beams and corner marks are one live mesh a frame. Each bug is one <code>draw_mesh</code>. Past two dozen shots in the air, each is drawn as its streak and head only.</p>
   <h3>Harnesses</h3>
   <ul>
-    <li><code>tests/_probe_firefly.gd -- [seed] [minutes] [skill] [shopper]</code>: a bot plays and tallies events. Shopper 0 buys the best value, 1–5 one card only, 6 Energy twice first, 7 at random, 8 nothing.</li>
-    <li><code>tests/_shot_firefly.gd -- &lt;outdir&gt; [pt|es|en] [reduce]</code>: shoots every beat, buys through the card's own buttons and restores <code>user://arcade.cfg</code>.</li>
+    <li><code>tests/_probe_firefly.gd -- [stage|all] [difficulty|all] [seeds] [skill]</code>: a bot plays one stage a seed and prints, a stage and difficulty, the clear rate, the goal rate, the median score and seconds.</li>
+    <li><code>tests/_shot_firefly.gd -- &lt;outdir&gt; [pt|es|en] [reduce]</code>: the tab, the map, stage 6's banner and goal plate, the goal met with the shield, a piercing spark, the shield bursting, the twin, both end cards; restores <code>user://arcade.cfg</code>.</li>
     <li><code>tests/_probe_arcade_buzz.gd -- firefly [rm]</code>: a run through the real screen, printing each event against the knock that landed.</li>
     <li><code>tests/_probe_start_over.gd</code>: proves Start over.</li>
   </ul>
   <h3>Measured at 810×1440</h3>
+  <p><code>tests/_shot_firefly.gd</code>, 2026-10-17, two runs (the second after the harness learnt to wait for a live firefly before the twin).</p>
   <div class="tbl"><table>
     <thead><tr><th>State</th><th class="n">Draw calls</th></tr></thead>
     <tbody>
-      <tr><td>Stage banner</td><td class="n">62</td></tr>
-      <tr><td>Flyby</td><td class="n">69</td></tr>
-      <tr><td>Gun far past a real run (~90 shots in the air)</td><td class="n">78–108</td></tr>
-      <tr><td>End card</td><td class="n">111</td></tr>
-      <tr><td>Hits landing, reduce motion</td><td class="n">118</td></tr>
-      <tr><td>Shop up</td><td class="n">121–123</td></tr>
-      <tr><td>Hits landing, motes flying</td><td class="n">132–138</td></tr>
-      <tr><td>Forced pile-up of rewards (a whole stage killed in one frame)</td><td class="n">~420</td></tr>
+      <tr><td>Stage 6's banner</td><td class="n">72</td></tr>
+      <tr><td>The swarm flying in, goal plate</td><td class="n">84–85</td></tr>
+      <tr><td>Rows and an open beam</td><td class="n">110</td></tr>
+      <tr><td>The stage map</td><td class="n">116</td></tr>
+      <tr><td>Goal met, silk shield up</td><td class="n">115–118</td></tr>
+      <tr><td>Piercing spark and slow seeds</td><td class="n">118–132</td></tr>
+      <tr><td>End card, cleared / failed</td><td class="n">116–122 / 122</td></tr>
+      <tr><td>Shield bursting</td><td class="n">126–139</td></tr>
+      <tr><td>Double fire's twin flying in</td><td class="n">138</td></tr>
+      <tr><td>The Arcade tab</td><td class="n">159</td></tr>
+      <tr><td>Forced pile-up of rewards (2026-09-27)</td><td class="n">~420</td></tr>
       <tr><td><strong>Budget</strong></td><td class="n"><strong>855</strong></td></tr>
     </tbody>
   </table></div>
-  <h3>Where the bots end</h3>
+  <h3>Where the bots clear</h3>
+  <p><code>_probe_firefly.gd -- all all 48 &lt;skill&gt;</code> after the bot pass of 2026-10-17: clear %, Easy / Medium / Hard / Insane. The before and after tables are in the spec's section 11.</p>
   <div class="tbl"><table>
-    <thead><tr><th>Bot</th><th>Ends on</th></tr></thead>
+    <thead><tr><th>Stage</th><th class="n">Skill 1</th><th class="n">Skill 0.6</th></tr></thead>
     <tbody>
-      <tr><td>Skill 1, before the shop</td><td>stage 13–20 in 5–8 min</td></tr>
-      <tr><td>Skill 1, best buy</td><td>stage 21–25 in 7½–9 min</td></tr>
-      <tr><td>Skill 1, random buys</td><td>10–14</td></tr>
-      <tr><td>Skill 1, Heavier shot only</td><td>10–12</td></tr>
-      <tr><td>Skill 1, buys nothing</td><td>4–5</td></tr>
-      <tr><td>Skill 0.6, best buy (8 seeds)</td><td>2–9</td></tr>
+      <tr><td>1</td><td class="n">100 / 100 / 100 / 100</td><td class="n">100 / 100 / 100 / 96</td></tr>
+      <tr><td>2</td><td class="n">100 / 100 / 100 / 100</td><td class="n">100 / 100 / 100 / 38</td></tr>
+      <tr><td>3 flyby</td><td class="n">100 / 100 / 100 / 100</td><td class="n">100 / 100 / 100 / 100</td></tr>
+      <tr><td>4</td><td class="n">100 / 100 / 100 / 98</td><td class="n">100 / 100 / 100 / 21</td></tr>
+      <tr><td>5</td><td class="n">100 / 100 / 100 / 96</td><td class="n">100 / 100 / 100 / 10</td></tr>
+      <tr><td>6</td><td class="n">100 / 100 / 100 / 96</td><td class="n">100 / 85 / 73 / 8</td></tr>
+      <tr><td>7 flyby</td><td class="n">100 / 100 / 100 / 100</td><td class="n">100 / 100 / 100 / 100</td></tr>
+      <tr><td>8</td><td class="n">100 / 100 / 98 / 85</td><td class="n">100 / 69 / 69 / 0</td></tr>
+      <tr><td>9</td><td class="n">100 / 100 / 98 / 98</td><td class="n">100 / 75 / 58 / 2</td></tr>
+      <tr><td>10</td><td class="n">100 / 100 / 98 / 58</td><td class="n">100 / 81 / 58 / 2</td></tr>
+      <tr><td>11 flyby</td><td class="n">100 / 100 / 100 / 100</td><td class="n">100 / 100 / 100 / 100</td></tr>
+      <tr><td>12</td><td class="n">100 / 100 / 94 / 44</td><td class="n">100 / 79 / 33 / 0</td></tr>
+      <tr><td>13</td><td class="n">100 / 100 / 100 / 48</td><td class="n">100 / 75 / 44 / 2</td></tr>
+      <tr><td>14</td><td class="n">100 / 100 / 98 / 35</td><td class="n">100 / 77 / 31 / 0</td></tr>
+      <tr><td>15</td><td class="n">100 / 96 / 98 / 29</td><td class="n">100 / 56 / 25 / 0</td></tr>
     </tbody>
   </table></div>
-  <p>The bot sits under the lowest bug and never tires. Nobody knows yet where a person's run ends.</p>
+  <p><strong>The skill-1 bot clears every Medium stage whatever the numbers</strong> (stage 6 at 0.9 s, 6 divers, 4 seeds, ×1.33: 100%), so the curve was shaped on the 0.6 bot; it does not die on stages 1–5 either, so their curve is unmeasured. What moved: stages 6, 9, 10 and 12–15's Medium numbers, Hard's swarm ×1.12 → ×1.06, Insane's dive gap ×0.65 → ×0.75 and its divers and seeds +2 → +1. Goal rates for catch in flight, break a wave, untouched, a firefly won back, escorts and beam shots are the bot's habits (it stands under the lowest bug and fires nonstop), not the stage's. Nobody knows yet where a person's clears fall.</p>
 </section>
 
 <section id="history">
@@ -464,7 +496,7 @@ shots to kill  = max(1, round(kind × hp_base))      # gnat ×1, ladybird ×2, m
     <li><time>2026-10-06</time><span>Peapod's energy and shop. Bugs grow, the two-volley limit goes, an eighth tutorial page (<code>d971834e</code>).</span></li>
     <li><time>2026-10-10</time><span>Sounds redone against the cozy rules, then blended with the old takes (<code>6fe2ae75</code>). No touch is silent (<code>481f0a00</code>).</span></li>
     <li><time>2026-10-13</time><span>Custom card face on the paged Arcade tab.</span></li>
-    <li><time>2026-10-17</time><span>Start over on every Arcade game (<code>74c68871</code>).</span></li>
+    <li><time>2026-10-17</time><span>Start over on every Arcade game (<code>74c68871</code>). Then stages: fifteen stages at four difficulties, goals and buffs, the stage map; the shop and energy out; the numbers set by a bot pass (branch <code>feat/firefly-stages</code>, unmerged).</span></li>
   </ul>
 </section>
 
@@ -473,12 +505,14 @@ shots to kill  = max(1, round(kind × hp_base))      # gnat ×1, ladybird ×2, m
   <h2>Open and unconfirmed</h2>
   <div class="open">
     <ul>
-      <li>No phone run. The dive rate, seed speed and 1.35× slide gain were tuned by a bot, not a thumb.</li>
-      <li>Nothing heard: the 2026-10-10 blend and the shop's borrowed cues are waiting for the user's listen.</li>
-      <li>No person has played the HP curve or the shop prices.</li>
+      <li>No phone run. The stages' numbers, the slide gain and the seed speeds were set by a bot, not a thumb; no person has played a stage at any difficulty.</li>
+      <li>The skill-1 bot cannot be failed on Medium, and neither bot fails stages 1–5, so their dips are unmeasured.</li>
+      <li>Nothing heard: the 2026-10-10 blend and the cues reused for goals, the shield and the twin.</li>
+      <li>The failed end card's “The night wins this time” lays the card wider than the screen at 810×1440.</li>
+      <li>Accuracy passes 100% with the piercing spark (a shot through two bugs counts two hits). A chain's word can land over the buff's line.</li>
       <li>Haptics mapped but never seen in a probe: <code>rescue</code>, <code>captive_lost</code>, the perfect flyby, the best passed mid-run. Device verdict pending.</li>
-      <li>The end card says nothing about the gun, and <code>arcade_end</code> doesn't carry what was bought.</li>
-      <li>The shop card is a copy of Peapod's. A change has to be made in both.</li>
+      <li><code>arcade_end</code> says whether the goal was met, not which buff.</li>
+      <li>Stage 16 and its new element.</li>
       <li>The pt and es strings are machine-fluent and haven't been read by a native speaker.</li>
     </ul>
   </div>

@@ -213,7 +213,10 @@ func _process(delta: float) -> bool:
 		11:
 			# Double fire, forced: the twin sets off from the side
 			_bot()
-			if _t > _at + 1.0 and _step == 11:
+			# with a firefly up: a twin won while it is down waits off the
+			# field until it is back, and the shot would show none
+			if _t > _at + 1.0 and _step == 11 and _s.sim.ship == Sim.Ship.ALIVE:
+				_s.sim.bullets.clear()
 				_s.sim.pair = false
 				_s.sim.freed = {}
 				_s.sim._give(Sim.Buff.DOUBLE)
