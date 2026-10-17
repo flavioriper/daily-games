@@ -217,6 +217,16 @@ function vertexProject(): string {
   return (process.env.VERTEX_PROJECT ?? "").trim();
 }
 
+/** The model the boards whose pictures are shapes draw with (Yarn Hoop's
+ *  low-poly, Gumdrop's stickers; DAILY_SHAPES_MODEL): flash on Vertex,
+ *  whose quota is not the pixel pictures' (gemini-3-pro-image answered 429
+ *  for an hour after a day's drawings, 2026-10-16), and which draws flat
+ *  facets and stickers as cleanly. */
+export function shapesModel(): string {
+  return (process.env.DAILY_SHAPES_MODEL ?? "").trim() ||
+    (vertexProject() !== "" ? DEFAULT_VERTEX_IMAGE_MODEL : DEFAULT_IMAGE_MODEL);
+}
+
 export function imageModel(): string {
   return (process.env.DAILY_IMAGE_MODEL ?? "").trim() ||
     (vertexProject() !== "" ? DEFAULT_VERTEX_IMAGE_MODEL : DEFAULT_IMAGE_MODEL);
@@ -244,8 +254,7 @@ async function vertexToken(): Promise<string> {
 /** draw(), asked of Vertex AI: the same model family, Google's own dialect,
  *  the picture in `candidates[0].content.parts[].inlineData`. What it cost
  *  is not in the answer, so cost() does not count it. */
-async function drawOnVertex(prompt: string): Promise<Drawing> {
-  const model = imageModel();
+async function drawOnVertex(prompt: string, model = imageModel()): Promise<Drawing> {
   let res = await askVertex(model, prompt);
   // The bigger image models answer 429 to a project's first requests in a
   // row (2026-10-14, gemini-3-pro-image): asked again after a wait, they draw.
@@ -292,10 +301,9 @@ export interface Drawing {
  * 2026-10-13, the picture is `message.images[0].image_url.url`, a data: URL,
  * and `content` is null. Throws on anything that is not a picture.
  */
-export async function draw(prompt: string): Promise<Drawing> {
+export async function draw(prompt: string, model = imageModel()): Promise<Drawing> {
   if (!available()) throw new Error("no model");
-  if (vertexProject() !== "") return drawOnVertex(prompt);
-  const model = imageModel();
+  if (vertexProject() !== "") return drawOnVertex(prompt, model);
   const res = await post({model, modalities: ["image", "text"], messages: [{role: "user", content: prompt}]});
   if (!res.ok) {
     throw new Error(`${model}: HTTP ${res.status} ${(await res.text()).slice(0, 400)}`);

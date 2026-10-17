@@ -681,10 +681,11 @@ func _knit_part(k: int) -> Array:
 	if _knit.has(k):
 		return _knit[k]
 	var outline := _outline_px(k)
-	var base: Color = Pal.PG_BEADS.get(state.colours[state.colour[k]], Pal.LINE)
+	var base: Color = State.ink(state.colours[state.colour[k]])
 	# the tile is grey about 0.8, so the colour is lifted to read true
 	base = base.lightened(0.12)
-	var h := float((k * 2654435761) % 1000) / 500.0 - 1.0
+	# a drawn picture's facets are already shaded by the drawing
+	var h := 0.0 if state.drawn else float((k * 2654435761) % 1000) / 500.0 - 1.0
 	var lit := base.lightened(FACET * h) if h > 0.0 else base.darkened(FACET * -h)
 	var c := Vector2.ZERO
 	for p in outline:
@@ -713,7 +714,8 @@ func _knit_part(k: int) -> Array:
 ## colour, lighter than the knit, with its twist (the reference's panels
 ## are rimmed so). `colour` -1 is the player's yarn.
 func _yarn_part(s: int, colour: int) -> Array:
-	var key := s * 64 + colour + 1
+	# a drawn picture can hold a colour a panel, a few hundred
+	var key := s * 1024 + colour + 1
 	if _yarn.has(key):
 		return _yarn[key]
 	var a := _px[state.sides[s].x]
@@ -728,7 +730,7 @@ func _yarn_part(s: int, colour: int) -> Array:
 func _rope_colours(colour: int) -> Array:
 	if colour < 0:
 		return [YARN, Color(YARN_DEEP, 0.7)]
-	var base: Color = Pal.PG_BEADS.get(state.colours[colour], Pal.LINE)
+	var base: Color = State.ink(state.colours[colour])
 	return [base.lightened(0.3), Color(base.darkened(0.25), 0.55)]
 
 func _rope_into(b, a: Vector2, c: Vector2, colour: int) -> void:
@@ -1482,7 +1484,7 @@ func _close(k: int, from: Vector2, now: float) -> void:
 	_after(0.0 if Motion.reduce else FILL * 0.5, func() -> void:
 		fx.cue("fill", pow(2.0, step / 12.0) * randf_range(0.98, 1.02))
 		if not Motion.reduce:
-			var col: Color = Pal.PG_BEADS.get(state.colours[state.colour[k]], Pal.LINE)
+			var col: Color = State.ink(state.colours[state.colour[k]])
 			fx.puff(_at(c), col.lightened(0.25), 6))
 	if _stroke >= COMBO_FROM:
 		_combo_popped = _combo_n < COMBO_FROM or _combo_out_at > -INF

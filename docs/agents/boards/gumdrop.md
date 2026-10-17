@@ -658,3 +658,37 @@ hold.
   same-for-all before and the proportional, 4.7 times as long on 306
   squares as on 14 by the rate, 2.5 by the measured hold since a tint
   spreads); the stalk as the anchor. Unseen by the user, no phone.
+
+### The jelly is drawn, then read (2026-10-16)
+
+The user: "images on gumdrop and yarn hoop are terrible, i want you to
+deeply polish it to make a great image in any difficulty based on theme".
+The night's jellies were a text model placing ellipses and boxes on a field
+of 100: a spiral shell four rings, a barnacle rock a blue blob.
+
+- **Each jelly is drawn as a sticker first** (`jelly.ts` `STICKER`,
+  `drawJelly`, `readJelly`): the thing in only the six flavours' own
+  colours, big rounded shapes touching, on the green screen
+  (`facets.ts` `KEY_WORDS`; on white, the flash model's white spots and
+  sticker border joined the board and bit holes in a mushroom's cap), Easy
+  in exactly 2 colours and 2-4 shapes, Medium 3 and 3-6, Hard 3-4 and 4-8,
+  Insane 4-6 and 6-12, the band's mixed flavours asked by name.
+- **Read**: each pixel the nearest flavour; the drawing grown 5 pixels out
+  over the board (`SWELL`, which joins a claw drawn a hair from the body
+  and fattens a thin limb into something to pour in), seams and specks
+  dissolved, chunks under `DRAWN_LEAST` (520 of the 256 reading, LEAST_SQUARES
+  with room) joined to a neighbour, then the nearest until the band's most
+  chunks, a joined chunk keeping the bigger one's flavour. Each region's
+  outline is simplified to at most 16 points, grown 0.9 so the soft
+  corners leave no clear seam, and laid as a `soft` shape, the biggest
+  outline first (so what lies inside one is laid over it); a flavour's
+  shapes are one part when the parts would pass 8. `why()` judges it as
+  before; up to `DRAWINGS` 3 stickers, then the old written way.
+  No blind look on a drawn jelly.
+- The phone is unchanged: `from_doc` and `build_parts` take the soft
+  outlines as they took the written ones.
+- Drawn on `DAILY_SHAPES_MODEL` (flash on Vertex), as Yarn Hoop's
+  (`docs/agents/boards/hoop.md`, 2026-10-16). Made on this Mac for
+  20261019; **the deployed `themeDay` writes the old way until the user
+  deploys the functions**. Unconfirmed: the user's eye, the green screen,
+  the swell, no blind look.

@@ -313,3 +313,59 @@ done push to main").
 - Unconfirmed: the user's verdict, the shares above, the break's sound
   (a low `pick`, no new take), the HOLD page seen moving, pt/es read on a
   phone. The `day_dict` metric `quads` is now `corners_3_to_7`.
+
+## 2026-10-16: the picture is drawn as low-poly art, not cut from beads
+
+The user: "images on gumdrop and yarn hoop are terrible, i want you to
+deeply polish it to make a great image in any difficulty based on theme".
+Rendered headless, the day's cut was a blob: the bead pictures' readable
+parts are one-square lines (a shell's spiral, a fish's eye and spots), and
+the carve, dissolve and family join that make a 24-48 side picture
+threadable take exactly those away. No tuning of the cut fixes that.
+
+- **The night draws the band's thing as a low-poly illustration**
+  (`server/functions/src/hoop.ts`, `facets.ts`): flat facets, each one
+  colour, shaded light/mid/shadow by the facet, on a green screen
+  (`KEY_WORDS`: asked for white, a white teapot's lit facets came at 250,
+  the board's own shade; asked for magenta, the flash model paints a hot
+  pink that ate a red thing's edge). Easy is asked 25-35 large facets,
+  Medium 40-55, Hard 70-90, Insane 130-170 small. The thing is the theme's
+  `objects[band + 1]` (Easy the second thing, Insane the fifth).
+- **Read back as geometry on the night**: the board is flooded from the
+  edge (its colour the edge's median, joined across steps under `STEP` so
+  it follows the screen's shading and stops at the thing's sharp edge); a
+  patch of the board's colour enclosed by the thing is the board too (a
+  mug's handle); facets are grown at a flat colour (`grow`, 16), the soft
+  pixels along their seams dissolved, a region round another cut through
+  the middle (`unring`); regions under a band's floor joined to the
+  neighbour nearest in colour, except one that stands out from all of them
+  by `SALIENT` (a seed, an eye), which is grown to the floor instead; then
+  the nearest colours joined (keeping the bigger one's colour: averaged,
+  they went to mud) until the panels come to the band's most (40, 60, 95,
+  170). The outlines are one network (`network`): a corner where three
+  regions meet is a pin of all of them, and each run between such corners
+  is simplified once, so neighbours share their pins exactly. Pins nearer
+  than the band's `least` (13, 10, 8, 6 of 256) along a side are made one,
+  never so a facet is left under 3 corners; a region over 7 corners or bent
+  in is ear-clipped and joined back into convex panels of 3-7 (Hertel and
+  Mehlhorn). A cut where any pin lies inside another panel (a sliver whose
+  simplified outline folds across its neighbour) has the smallest region
+  caught joined to its neighbour and is cut again. 0.2-1.2 s a picture.
+- **Shipped as `hoops` in the `pictures` document** (`{id, name, pins,
+  panels: [{k, c}]}`, pins in a square of 100, `c` "#rrggbb"), a themeDay
+  step a band (`hoop0`..`hoop3`). `ThemedPictures.hoop()` checks it (3-7
+  corners, no pin twice, no side three panels share) and
+  `HoopState.adopt_drawn()` lays it as it came; `colours` holds the hex,
+  `HoopState.ink()` reads a bead name or a hex, and a drawn picture's knit
+  gets no per-panel shade of its own (`drawn`: the facets carry the
+  drawing's). Without a `hoops` band the bead picture is cut as before.
+- **The image model is `DAILY_SHAPES_MODEL`**, default
+  `gemini-2.5-flash-image` on Vertex: the pixel pictures'
+  `gemini-3-pro-image` answered 429 for over half an hour once a day's
+  drawings had run on this Mac, and flash drew the facets as cleanly (a
+  teapot tray, 167 panels; a watermelon with its seeds, 59).
+- `YH_LVL_*` and `YH_RULES_INSANE` now say about 35, 55, 85 and 150 panels.
+- Made on this Mac for 20261019 (Picnic on the Hill); **the deployed
+  `themeDay` does not have the steps until the user deploys the functions**.
+  Unconfirmed: the user's eye, the counts, the green screen, Easy being the
+  theme's second thing.

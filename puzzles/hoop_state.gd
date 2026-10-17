@@ -96,6 +96,9 @@ static var _bank_read := false
 
 var band := 0
 var name_key := ""
+## Whether the panels are a drawing read on the night (adopt_drawn), which
+## carries its own facet shading.
+var drawn := false
 ## The bead picture the panels were cut from, a colour index a square.
 var w := 0
 var h := 0
@@ -162,6 +165,12 @@ func setup(rng: RandomNumberGenerator, difficulty: int, daily_key := 0) -> void:
 	# The bank's pick is drawn either way, so the cut that follows is the same
 	# on a phone with the day and one without.
 	var pic: Dictionary = pics[rng.randi_range(0, pics.size() - 1)]
+	# the night's low-poly drawing of the band's thing, laid as it was read
+	# (server/functions/src/hoop.ts); the bead picture is cut only without it
+	var drawn := ThemedPictures.hoop(daily_key, band)
+	if not drawn.is_empty():
+		adopt_drawn(drawn)
+		return
 	var themed := ThemedPictures.picture(daily_key, THEMED_SIDE[band])
 	if themed.is_empty() and band == INSANE:
 		themed = ThemedPictures.picture(daily_key, 32)
@@ -186,6 +195,7 @@ func _read(pic: Dictionary, legend: Dictionary) -> void:
 	h = rows.size()
 	w = String(rows[0]).length()
 	name_key = String(pic.get("name", ""))
+	drawn = false
 	colours = []
 	picture = PackedInt32Array()
 	picture.resize(w * h)
@@ -957,6 +967,7 @@ func adopt_laid(pin_list: Array, panel_list: Array, named: Array) -> void:
 	w = 1
 	h = 1
 	name_key = ""
+	drawn = false
 	picture = PackedInt32Array()
 	colours = []
 	pins = PackedVector2Array(pin_list)
@@ -971,6 +982,38 @@ func adopt_laid(pin_list: Array, panel_list: Array, named: Array) -> void:
 		colour.append(c)
 	_link()
 	reset()
+
+## A picture drawn as low-poly art and read on the night
+## (ThemedPictures.hoop): its pins and panels laid as they come, each panel
+## its facet's own colour ("#rrggbb" in `colours`), so the shading is the
+## drawing's and the board adds none of its own (`drawn`).
+func adopt_drawn(got: Dictionary) -> void:
+	w = 100
+	h = 100
+	name_key = String(got.name)
+	picture = PackedInt32Array()
+	colours = []
+	drawn = true
+	pins = got.pins
+	panels = []
+	colour = PackedInt32Array()
+	for k in (got.panels as Array).size():
+		panels.append(got.panels[k])
+		var named := String(got.inks[k])
+		var c := colours.find(named)
+		if c < 0:
+			c = colours.size()
+			colours.append(named)
+		colour.append(c)
+	_link()
+	reset()
+
+## A colour of `colours` as a Color: a bead's name, or a drawn facet's
+## "#rrggbb".
+static func ink(named: String) -> Color:
+	if named.begins_with("#"):
+		return Color(named)
+	return Pal.PG_BEADS.get(named, Pal.LINE)
 
 ## Everything unthreaded.
 func reset() -> void:

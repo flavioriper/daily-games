@@ -1,7 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import {makeDay as acornDay} from "./acorn";
-import {cost} from "./generate";
+import {cost, Drawing} from "./generate";
+import {BANDS as HOOP_BANDS, HoopPicture, makeHoop} from "./hoop";
 import {bankPrompts, cleaned, makeDay as pearlDay, Prompt} from "./pearl";
 import {makeJellies} from "./jelly";
 import {makeDay as picturesDay} from "./pictures";
@@ -72,6 +73,11 @@ async function growBank(level: number, count: number, outfile: string): Promise<
   const all = [...held, ...fresh].map((p) => cleaned(p)).filter((p): p is Prompt => p !== null);
   fs.writeFileSync(outfile, `[\n${all.map((p) => JSON.stringify(p)).join(",\n")}\n]\n`);
   return `${outfile}: ${fresh.length} new, ${all.length} in all`;
+}
+
+/** Keeps each drawing as a file beside the day's, for the dashboard. */
+function drawingsBeside(file: string): (name: string, d: Drawing) => void {
+  return (name, d) => fs.writeFileSync(path.join(path.dirname(file), `${name}.${d.mime === "image/png" ? "png" : "jpg"}`), d.bytes);
 }
 
 /** The days from `first`, each told the themes before it. */
@@ -174,7 +180,7 @@ async function main(): Promise<void> {
     for (const file of args) {
       const day = JSON.parse(fs.readFileSync(file, "utf8"));
       if (day.theme === null) continue;
-      const jelly = await makeJellies(day.day, day.theme);
+      const jelly = await makeJellies(day.day, day.theme, undefined, drawingsBeside(file));
       if (Object.keys(jelly.jellies).length > 0) {
         day.pictures = {...(day.pictures ?? {v: 1, theme: day.theme.id, sizes: {}}), jellies: jelly.jellies};
       } else if (day.pictures) {
@@ -184,6 +190,22 @@ async function main(): Promise<void> {
       fs.writeFileSync(file, JSON.stringify(day));
       print(`${file}: ${Object.entries(jelly.jellies).map(([b, l]) => `${b}:${l.length}`).join(" ") || "none"} in ${jelly.tries.length} tries, US$${cost().toFixed(2)} so far`);
     }
+  } else if (what === "hoops" && args.length >= 1) {
+    // Yarn Hoop's low-poly pictures for days already made (hoop.ts).
+    for (const file of args) {
+      const day = JSON.parse(fs.readFileSync(file, "utf8"));
+      if (day.theme === null) continue;
+      const hoops: Record<string, HoopPicture> = {};
+      for (let band = 0; band < HOOP_BANDS.length; band++) {
+        const got = await makeHoop(day.day, day.theme, band, drawingsBeside(file));
+        if (got !== null) hoops[band] = got;
+      }
+      if (Object.keys(hoops).length > 0) {
+        day.pictures = {...(day.pictures ?? {v: 1, theme: day.theme.id, sizes: {}}), hoops};
+      }
+      fs.writeFileSync(file, JSON.stringify(day));
+      print(`${file}: hoops ${Object.entries(hoops).map(([b, h]) => `${b}:${h.id} ${h.panels.length}`).join(" ") || "none"}`);
+    }
   } else if (what === "publish") {
     // Loaded here and not at the top: index.ts wakes the admin SDK, which a
     // dry run has no credentials for and no use of.
@@ -191,7 +213,7 @@ async function main(): Promise<void> {
     await publishDays(new Date());
     print("published");
   } else {
-    console.error("usage: cli.js day [acorn|pearl] [yyyymmdd] | bank pearl <level> <count> <outfile> | themed <yyyymmdd> <days> <outdir> [themes-dir] | jellies <day.json>... | words <day.json>... | quizzes <day.json>... | publish");
+    console.error("usage: cli.js day [acorn|pearl] [yyyymmdd] | bank pearl <level> <count> <outfile> | themed <yyyymmdd> <days> <outdir> [themes-dir] | jellies <day.json>... | hoops <day.json>... | words <day.json>... | quizzes <day.json>... | publish");
     process.exitCode = 2;
   }
 }

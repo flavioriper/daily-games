@@ -1,13 +1,15 @@
 import type {Firestore} from "firebase-admin/firestore";
 import Beads = require("./beads");
 import {makeJellies, MOULDS, Jelly} from "./jelly";
+import {BANDS as HOOP_BANDS, HoopPicture, makeHoop} from "./hoop";
 import {bySide, Picture, pixelBand, Pictures} from "./pictures";
 import {makeTheme, Theme, themed, validTheme} from "./theme";
 import {makeWords, Words} from "./words";
 
 /**
  * The daily theme at night (docs/superpowers/specs/2026-10-13-daily-theme-
- * design.md, stage 4): the theme, the word boards' words, Gumdrop's jellies
+ * design.md, stage 4): the theme, the word boards' words, Gumdrop's jellies,
+ * Yarn Hoop's low-poly pictures (hoop.ts)
  * and the bead pictures, made a step at a time into a staging document,
  * `themes/{day}` (server only: firestore.rules denies it to every client),
  * and published once as the `pictures` content a phone reads
@@ -27,7 +29,7 @@ import {makeWords, Words} from "./words";
 
 /** The steps of a day, in order. */
 export const STEPS: string[] = ["theme", "words",
-  ...MOULDS.map((_, b) => `jelly${b}`), ...Beads.SIZES.map((s) => `pic${s}`)];
+  ...MOULDS.map((_, b) => `jelly${b}`), ...HOOP_BANDS.map((_, b) => `hoop${b}`), ...Beads.SIZES.map((s) => `pic${s}`)];
 /** Runs a step may have before it is given up on. */
 const TRIES = 2;
 /** A run starts no step past this: the longest step seen is some ten
@@ -43,6 +45,7 @@ interface Staged {
   theme?: string;
   words?: string;
   jellies?: Record<string, string>;
+  hoops?: Record<string, string>;
   pictures?: Record<string, string>;
   tries?: Record<string, number>;
   done?: string[];
@@ -89,6 +92,12 @@ function content(s: Staged): Pictures | null {
     if (list !== null && list.length > 0) jellies[band] = list;
   }
   if (Object.keys(jellies).length > 0) doc.jellies = jellies;
+  const hoops: Record<string, HoopPicture> = {};
+  for (const [band, json] of Object.entries(s.hoops ?? {})) {
+    const h = parsed<HoopPicture>(json);
+    if (h !== null) hoops[band] = h;
+  }
+  if (Object.keys(hoops).length > 0) doc.hoops = hoops;
   const words = parsed<Words>(s.words);
   if (words !== null) doc.words = words;
   return doc;
@@ -148,6 +157,11 @@ async function runStep(db: Firestore, when: Date, day: number, step: string, s: 
     const got = await makeJellies(day, theme, Number(band));
     const list = got.jellies[band] ?? [];
     return {save: list.length === 0 ? {} : {[`jellies.${band}`]: JSON.stringify(list)}, made: list.length > 0};
+  }
+  if (step.startsWith("hoop")) {
+    const band = step.slice("hoop".length);
+    const got = await makeHoop(day, theme, Number(band));
+    return {save: got === null ? {} : {[`hoops.${band}`]: JSON.stringify(got)}, made: got !== null};
   }
   const size = step.slice("pic".length);
   const sizes: Record<string, Picture> = {};

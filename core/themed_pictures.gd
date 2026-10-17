@@ -14,7 +14,10 @@ extends RefCounted
 ## band's range (RULES.side), and the boards lay whatever side they are
 ## handed (Pixel Garden by rows.size(), the other two by w and h).
 ##
-## Gumdrop's jellies ride in the same document, a mould each (`jellies`).
+## Gumdrop's jellies ride in the same document, a mould each (`jellies`),
+## and Yarn Hoop's low-poly pictures, a band each (`hoops`, since
+## 2026-10-16): pins and panels read off a drawing on the night
+## (server/functions/src/hoop.ts), laid here as they are.
 ##
 ## Only what this phone already holds is read (Backend.cached_day): no board
 ## waits on the network for a picture. world/main.gd asks for the day behind
@@ -95,6 +98,72 @@ static func jellies(date_key: int, band: int) -> Array:
 		if Mould.unfit(m, band) == "" and not out.any(func(x: Dictionary) -> bool: return x.id == m.id):
 			out.append(m)
 	return out
+
+## Yarn Hoop's drawn picture for `band` of the daily of `date_key`:
+## {id, name, pins, panels, inks} (pins a PackedVector2Array in a square of
+## 100, panels an Array of PackedInt32Array, inks a colour "#rrggbb" a
+## panel), or {} when there is none or any of it will not do (a panel of
+## under 3 or over HOOP_CORNERS corners, a pin used twice in one, a side
+## three panels share).
+const HOOP_CORNERS := 7
+const HOOP_MOST := 400
+static func hoop(date_key: int, band: int) -> Dictionary:
+	if date_key == 0 or not Backend.started():
+		return {}
+	var doc: Dictionary = Backend.cached_day(GAME, date_key)
+	var all = doc.get("hoops")
+	if int(doc.get("v", 0)) != 1 or not all is Dictionary or not all.get(str(band)) is Dictionary:
+		return {}
+	return hoop_of(all[str(band)])
+
+## A drawn Yarn Hoop picture as the night writes it, read and checked; {}
+## when it will not do.
+static func hoop_of(got: Dictionary) -> Dictionary:
+	var flat = got.get("pins")
+	var list = got.get("panels")
+	if not flat is Array or not list is Array or (flat as Array).size() % 2 == 1:
+		return {}
+	var count: int = (flat as Array).size() / 2
+	if count < 4 or count > HOOP_MOST * 2 or (list as Array).size() < 4 or (list as Array).size() > HOOP_MOST:
+		return {}
+	var pins := PackedVector2Array()
+	for i in count:
+		var x = flat[2 * i]
+		var y = flat[2 * i + 1]
+		if not (x is float or x is int) or not (y is float or y is int) or not is_finite(float(x)) or not is_finite(float(y)):
+			return {}
+		pins.append(Vector2(clampf(float(x), -10.0, 110.0), clampf(float(y), -10.0, 110.0)))
+	var panels: Array = []
+	var inks: Array = []
+	var sides := {}
+	for p in list:
+		if not p is Dictionary or not p.get("k") is Array or not p.get("c") is String:
+			return {}
+		var k: Array = p.k
+		if k.size() < 3 or k.size() > HOOP_CORNERS or not Color.html_is_valid(p.c):
+			return {}
+		var corners := PackedInt32Array()
+		for v in k:
+			if not (v is float or v is int) or int(v) < 0 or int(v) >= count or corners.has(int(v)):
+				return {}
+			corners.append(int(v))
+		for m in corners.size():
+			var a := corners[m]
+			var b := corners[(m + 1) % corners.size()]
+			var key := mini(a, b) * 65536 + maxi(a, b)
+			sides[key] = int(sides.get(key, 0)) + 1
+			if sides[key] > 2:
+				return {}
+		panels.append(corners)
+		inks.append(String(p.c))
+	var id := String(got.get("id", ""))
+	var shown := id.replace("_", " ")
+	var names = got.get("name")
+	if names is Dictionary:
+		var lang := TranslationServer.get_locale().substr(0, 2)
+		shown = String(names.get(lang, names.get("en", shown)))
+	shown = shown.strip_edges()
+	return {"id": "themed_" + id, "name": shown.left(1).to_upper() + shown.substr(1), "pins": pins, "panels": panels, "inks": inks}
 
 ## The word boards' themed words for the daily of `date_key`, in the
 ## language the boards' lists follow (Locale.current()), the best first, or

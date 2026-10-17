@@ -1,4 +1,5 @@
-import {ask, available} from "./generate";
+import {ask, available, draw, Drawing, shapesModel} from "./generate";
+import {board, KEY_WORDS, compact, dissolve, fewer, join, touching, outlines, raster, Raster, Regions, simplify, split, area as signedArea} from "./facets";
 import {DEFAULT_ROWS_MODEL, lookThing, Tried} from "./pictures";
 import {Theme, Thing} from "./theme";
 
@@ -46,6 +47,8 @@ export interface Jelly {
 
 export interface JellyTry {
   band: number;
+  /** Drawn as a sticker and read (since 2026-10-16), or written as shapes. */
+  route?: "drawn" | "written";
   what: string;
   parts?: Part[];
   /** What the rules found, "" when it keeps them. */
@@ -316,16 +319,31 @@ export const MOULDS = [2, 3, 4, 5];
  *  list a band in the theme's order, and what became of every try. A thing
  *  whose tries all fail is left out of its band's list, and the board fills
  *  its place from the twenty-nine. Never throws. */
-export async function makeJellies(day: number, theme: Theme, only?: number): Promise<{jellies: Record<string, Jelly[]>; tries: JellyTry[]}> {
+export async function makeJellies(day: number, theme: Theme, only?: number,
+  keep?: (name: string, d: Drawing) => void): Promise<{jellies: Record<string, Jelly[]>; tries: JellyTry[]}> {
   const jellies: Record<string, Jelly[]> = {};
   const tries: JellyTry[] = [];
   if (!available()) return {jellies, tries};
   const model = (process.env.DAILY_ROWS_MODEL ?? "").trim() || DEFAULT_ROWS_MODEL;
-  // One jelly: up to TRIES writes, each told why the last was turned down.
+  // One jelly: drawn as a sticker first (the picture a model can draw is a
+  // far better thing than the ellipses it writes); then up to TRIES writes,
+  // each told why the last was turned down.
   const one = async (band: number, thing: Thing): Promise<Jelly | null> => {
+    const d: JellyTry = {band, what: thing.id, route: "drawn", why: "", kept: false};
+    tries.push(d);
+    try {
+      const parts = await drawJelly(day, thing, band, d, keep);
+      if (parts !== null) {
+        d.kept = true;
+        return {id: thing.id, name: {en: thing.name, pt: thing.pt, es: thing.es}, parts};
+      }
+    } catch (e) {
+      d.error = String(e).slice(0, 300);
+      console.error(`jelly: day ${day}, band ${band}, ${thing.id}, drawing failed`, e);
+    }
     let last = "";
     for (let n = 0; n < TRIES; n++) {
-      const t: JellyTry = {band, what: thing.id, why: "", kept: false};
+      const t: JellyTry = {band, what: thing.id, route: "written", why: "", kept: false};
       tries.push(t);
       try {
         const got = await ask<{parts: Part[]}>({system: SYSTEM, prompt: asked(thing, band, last), schema: SCHEMA, model});
@@ -363,4 +381,224 @@ export async function makeJellies(day: number, theme: Theme, only?: number): Pro
   const kept = Object.entries(jellies).map(([b, l]) => `${b}:${l.length}`).join(" ");
   console.log(`jelly: day ${day} (${theme.id}), kept ${kept || "none"} in ${tries.length} tries`);
   return {jellies, tries};
+}
+
+// --- a jelly drawn (2026-10-16) ---
+
+/** The flavours' colours, puzzles/gumdrop_sim.gd FLAVOURS. */
+const INKS = [[0xe2, 0x49, 0x5a], [0xf3, 0x92, 0x37], [0xf4, 0xd4, 0x4a], [0x79, 0xc9, 0x4f], [0x4a, 0x86, 0xdf], [0x9a, 0x62, 0xd2]];
+const INK_NAMES = ["cherry red #e2495a", "orange #f39237", "lemon yellow #f4d44a", "lime green #79c94f", "blueberry blue #4a86df", "grape purple #9a62d2"];
+/** By band: the colours the sticker is asked in, and how many shapes. */
+const DRAWN = [
+  {colours: "exactly 2", shapes: "2 to 4 big"},
+  {colours: "exactly 3", shapes: "3 to 6 big"},
+  {colours: "3 or 4", shapes: "4 to 8"},
+  {colours: "4 to 6", shapes: "6 to 12"},
+];
+/** Where the thing is laid in the field of 100: inside EDGE, with room for
+ *  the soft corners' and the grown outline's play. */
+const FIT = [9, 91];
+/** Pixels of the 256 reading a chunk must hold: LEAST_SQUARES of the
+ *  sim's 36-grid with room to spare (a square is about six pixels). */
+const DRAWN_LEAST = 520;
+/** Stickers drawn for one jelly before it is written from words. */
+const DRAWINGS = 3;
+/** Pixels the drawing is grown out over the board. */
+const SWELL = 5;
+
+export const STICKER = (what: string, band: number) => {
+  const rule = RULES[band];
+  const mixed = rule.mixed === 0 ? "" : ` At least ${rule.mixed} of the colours you use must be orange, lime green or grape purple.`;
+  return `A cute ${what} drawn as a flat children's sticker of ${DRAWN[band].shapes} smooth rounded shapes, using ${DRAWN[band].colours} of these six exact flat colours and no others: ${INK_NAMES.join(", ")}.${mixed} Each shape one solid colour, shapes touching edge to edge with no gaps. No outlines, no black, no white or grey inside it, no shading, no gradients, no highlights, no texture, no thin lines or small dots: every shape big and chunky. A bold silhouette a child names at once. Any spots or small details in one of the six colours too. One thing only, centred and large, filling most of the picture, on ${KEY_WORDS}, nothing else, no white sticker border round it, no shadow, no text. A square picture.`;
+};
+
+/** A drawing's regions in the six flavours: each pixel the flavour nearest
+ *  it, the seams and specks dissolved, chunks under DRAWN_LEAST joined to
+ *  their neighbour, and the fewest joins that bring the chunks to `most`. */
+function flavoured(r: Raster, most: number): {reg: Regions; flavour: number[]} {
+  const n = r.n;
+  const bg = board(r);
+  // the white sticker border the model draws round the thing however it is
+  // asked not to: pale, unsaturated, and joined to the board, it is board
+  // (read as a flavour it was a lemon ring round every jelly)
+  const pale = (i: number) => {
+    const a = r.rgb[i * 3], b = r.rgb[i * 3 + 1], c = r.rgb[i * 3 + 2];
+    return Math.min(a, b, c) > 185 && Math.max(a, b, c) - Math.min(a, b, c) < 60;
+  };
+  const rim: number[] = [];
+  for (let i = 0; i < n * n; i++) if (bg[i]) rim.push(i);
+  while (rim.length > 0) {
+    const i = rim.pop() as number;
+    const x = i % n, y = (i - x) / n;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const px = x + dx, py = y + dy;
+      if (px < 0 || py < 0 || px >= n || py >= n) continue;
+      const j = py * n + px;
+      if (!bg[j] && pale(j)) { bg[j] = 1; rim.push(j); }
+    }
+  }
+  const label = new Int32Array(n * n).fill(-1);
+  for (let i = 0; i < n * n; i++) {
+    if (bg[i]) continue;
+    let best = 0, bestD = Infinity;
+    for (let f = 0; f < INKS.length; f++) {
+      const d = Math.hypot(r.rgb[i * 3] - INKS[f][0], r.rgb[i * 3 + 1] - INKS[f][1], r.rgb[i * 3 + 2] - INKS[f][2]);
+      if (d < bestD) { bestD = d; best = f; }
+    }
+    label[i] = best;
+  }
+  const inked: Raster = {n, rgb: new Float32Array(n * n * 3).fill(255)};
+  for (let i = 0; i < n * n; i++) if (label[i] >= 0) for (let c = 0; c < 3; c++) inked.rgb[i * 3 + c] = INKS[label[i]][c];
+  let reg = split(compact(n, label, inked));
+  // grown out over the board a few pixels, which joins the pieces a
+  // sticker draws a hair apart (a crab's claws beside its body) into one
+  // jelly and fattens a thin limb into a chunk that can be poured
+  for (let ring = 0; ring < SWELL; ring++) {
+    const next = reg.label.slice();
+    for (let i = 0; i < n * n; i++) {
+      if (reg.label[i] >= 0) continue;
+      const x = i % n, y = (i - x) / n;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const px = x + dx, py = y + dy;
+        if (px < 0 || py < 0 || px >= n || py >= n) continue;
+        const l = reg.label[py * n + px];
+        if (l >= 0) {
+          next[i] = l;
+          for (let c = 0; c < 3; c++) inked.rgb[i * 3 + c] = reg.colour[l][c];
+          break;
+        }
+      }
+    }
+    reg.label = next;
+  }
+  reg = split(compact(n, reg.label, null, reg.colour));
+  reg = dissolve(reg, inked, 60, 2);
+  reg = fewer(reg, inked, most, DRAWN_LEAST, true);
+  const flavour = reg.colour.map((c) => {
+    let best = 0, bestD = Infinity;
+    INKS.forEach((k, f) => { const d = Math.hypot(c[0] - k[0], c[1] - k[1], c[2] - k[2]); if (d < bestD) { bestD = d; best = f; } });
+    return best;
+  });
+  return {reg, flavour};
+}
+
+/** An outline grown outward by `by` along each corner's mean normal
+ *  (clockwise on screen: the outside is to the left of each side). */
+function grown(p: number[][], by: number): number[][] {
+  return p.map((q, i) => {
+    const a = p[(i + p.length - 1) % p.length], b = p[(i + 1) % p.length];
+    const n1 = [q[1] - a[1], -(q[0] - a[0])], n2 = [b[1] - q[1], -(b[0] - q[0])];
+    const l1 = Math.hypot(n1[0], n1[1]) || 1, l2 = Math.hypot(n2[0], n2[1]) || 1;
+    const nx = n1[0] / l1 + n2[0] / l2, ny = n1[1] / l1 + n2[1] / l2;
+    const l = Math.hypot(nx, ny) || 1;
+    return [q[0] + nx / l * by, q[1] + ny / l * by];
+  });
+}
+
+/**
+ * A sticker drawing read as a jelly's parts: each region an outline of up to
+ * MOST_POINTS soft corners, the biggest outline laid first so what lies
+ * inside one is laid over it; a flavour's regions one part where the
+ * parts would be more than MOST_PARTS. `why` says what the band's rules
+ * find wrong, "" nothing.
+ */
+export function readJelly(d: Drawing | Raster, band: number): {parts: Part[]; why: string} {
+  const r = "rgb" in d ? d : raster(d);
+  const rule = RULES[band];
+  const {reg, flavour} = flavoured(r, rule.chunks[1]);
+  // a sticker in more flavours than the band takes loses its least-used
+  // one into the chunks round it, a mixed one spared while the band still
+  // needs it (asked for two colours, the model often adds a third)
+  for (;;) {
+    const area = new Map<number, number>();
+    reg.size.forEach((sz, l) => { if (sz > 0) area.set(flavour[l], (area.get(flavour[l]) ?? 0) + sz); });
+    if (area.size <= rule.flavours[1]) break;
+    const mixedHeld = [...area.keys()].filter((f) => f % 2 === 1).length;
+    const spare = [...area.keys()].filter((f) => f % 2 === 0 || mixedHeld > rule.mixed);
+    if (spare.length === 0) break;
+    const least = spare.reduce((a, b) => ((area.get(a) as number) <= (area.get(b) as number) ? a : b));
+    const near = touching(reg);
+    for (let l = 0; l < reg.size.length; l++) {
+      if (reg.size[l] === 0 || flavour[l] !== least) continue;
+      let to = -1, most = 0;
+      for (const [b, shared] of near[l]) if (reg.size[b] > 0 && flavour[b] !== least && shared > most) { most = shared; to = b; }
+      if (to < 0) {
+        for (let i = 0; i < reg.label.length; i++) if (reg.label[i] === l) reg.label[i] = -1;
+        reg.size[l] = 0;
+        continue;
+      }
+      const keep = reg.colour[to];
+      join(reg, to, l);
+      reg.colour[to] = keep;
+    }
+  }
+  const lines = outlines(reg);
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const line of lines) for (const [x, y] of line) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
+  if (!Number.isFinite(x0)) return {parts: [], why: "nothing drawn"};
+  const s = (FIT[1] - FIT[0]) / Math.max(x1 - x0, y1 - y0);
+  const ox = 50 - (x1 - x0) * s / 2, oy = 50 - (y1 - y0) * s / 2;
+  const shapes: {f: number; pts: number[][]; area: number}[] = [];
+  lines.forEach((line, l) => {
+    if (line.length < 3 || reg.size[l] === 0) return;
+    const pts = line.map(([x, y]) => [(x - x0) * s + ox, (y - y0) * s + oy]);
+    let kept: number[][] = pts;
+    for (let tol = 0.5; tol < 20; tol *= 1.25) {
+      // a closed outline: simplified as two runs from its first point and
+      // the point farthest from it
+      let far = 0, farD = -1;
+      pts.forEach((p, i) => { const dd = Math.hypot(p[0] - pts[0][0], p[1] - pts[0][1]); if (dd > farD) { farD = dd; far = i; } });
+      const one = pts.slice(0, far + 1), two = [...pts.slice(far), pts[0]];
+      const k1 = simplify(one, tol), k2 = simplify(two, tol);
+      kept = [...one.filter((_, i) => k1[i]), ...two.slice(1, -1).filter((_, i) => k2[i + 1])];
+      if (kept.length <= MOST_POINTS) break;
+    }
+    if (kept.length < 3) return;
+    // y down: the walk keeps the region on its left, anticlockwise on screen
+    const cw = signedArea(kept) > 0 ? kept : kept.slice().reverse();
+    // grown a little, so the soft corners' rounding leaves no clear seam
+    // between two chunks, and held inside EDGE
+    const out = grown(cw, 0.9).map(([x, y]) => [
+      Math.round(Math.min(EDGE[1] - 0.5, Math.max(EDGE[0] + 0.5, x)) * 10) / 10,
+      Math.round(Math.min(EDGE[1] - 0.5, Math.max(EDGE[0] + 0.5, y)) * 10) / 10]);
+    shapes.push({f: flavour[l], pts: out, area: Math.abs(signedArea(out))});
+  });
+  shapes.sort((a, b) => b.area - a.area);
+  // a part a shape, or a flavour's shapes together when that is too many
+  let parts: Part[] = shapes.map((sh) => ({flavour: FLAVOURS[sh.f], shapes: [{kind: "soft" as const, n: sh.pts.flat()}]}));
+  if (parts.length > MOST_PARTS) {
+    const byFlavour = new Map<string, Part>();
+    parts = [];
+    for (const sh of shapes) {
+      const name = FLAVOURS[sh.f];
+      let part = byFlavour.get(name);
+      if (part === undefined) {
+        part = {flavour: name, shapes: []};
+        byFlavour.set(name, part);
+        parts.push(part);
+      }
+      part.shapes.push({kind: "soft", n: sh.pts.flat()});
+    }
+  }
+  return {parts, why: why(parts, band)};
+}
+
+/** A thing of the theme drawn as a sticker in the flavours and read as a
+ *  band's jelly, up to TRIES drawings; the parts written from words, as
+ *  before 2026-10-16, when no drawing will do. */
+export async function drawJelly(day: number, thing: Thing, band: number, t: JellyTry,
+  keep?: (name: string, d: Drawing) => void): Promise<Part[] | null> {
+  for (let n = 0; n < DRAWINGS; n++) {
+    const drawing = await draw(STICKER(thing.draw, band), shapesModel());
+    keep?.(`${day}_jelly${band}_${thing.id}_${n}`, drawing);
+    const got = readJelly(drawing, band);
+    t.parts = got.parts;
+    t.why = got.why;
+    if (got.why !== "") {
+      console.log(`jelly: day ${day}, band ${band}, ${thing.id} drawing ${n}: ${got.why}`);
+      continue;
+    }
+    return got.parts;
+  }
+  return null;
 }
