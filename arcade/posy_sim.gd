@@ -168,7 +168,8 @@ const FROM := {"third": 3, "weeds": 4, "shape": 7, "stones": 10, "moss": 13,
 ## for two kinds, every day after for three; the counts and the moves climb
 ## together, slowly, so the days grow harder by what comes in (`FROM`) more
 ## than by how much they ask. The day an obstacle comes in it is the day's,
-## and asks a fifth less of the rest (the sixth kind's day too); after that the ones in the game take
+## and asks a fifth less of the rest (the sixth kind's day too, which has
+## no obstacle); after that the ones in the game take
 ## turns, every third day is a day without, and odd days from `FROM.shape`
 ## have a shape cut out of the bed.
 static func day_plan(d: int) -> Dictionary:
@@ -181,7 +182,7 @@ static func day_plan(d: int) -> Dictionary:
 		if d == FROM[o]:
 			obstacle = o
 			fresh = true
-	if obstacle == "" and d % 3 != 0:
+	if obstacle == "" and d % 3 != 0 and d != FROM.acorn:
 		var open: Array = []
 		for o: String in ["weeds", "stones", "moss"]:
 			if d >= FROM[o]:

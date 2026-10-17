@@ -4189,7 +4189,7 @@ six.
 - **Counts and moves climb together**: need `12 + 1.5 (d - 1)` to 60, moves
   `20 + (d - 1) / 2` to 34. The day an obstacle comes in it is the day's and
   the kinds ask a fifth less (`fresh` in the plan); the acorn's day is fresh
-  too, and from it the kinds ask 8 less in 4 more moves.
+  too and has no obstacle, and from it the kinds ask 8 less in 4 more moves.
 - **Every third day has no obstacle**; the others take turns among the ones
   in the game, counted over the days that have one (a plain `d % n` put
   weeds on the rest days for ever once three were in). Odd days from 7 have
@@ -4197,7 +4197,7 @@ six.
 - `TUT_POSY_BLOCKERS_BODY` no longer says "a kind a day" (en/pt/es).
 - `tests/_probe_posy.gd -- 100 <skill> 1 <games>`, before -> after:
   random 4-5 (old spec) -> 5-23, median ~11; the hint-follower 3-8, median
-  6 (the user's skilled player) -> 8-27, median ~19; the one-move-lookahead
+  6 (the user's skilled player) -> 8-29, median ~19; the one-move-lookahead
   bot 6-11 -> 25-57 (12 games). Suite 248522 passed 0 failed; the harness
   runs to its end headless (no pictures without a window).
 - A saved best day from before means less than one after; not migrated.
