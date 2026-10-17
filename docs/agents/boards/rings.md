@@ -144,13 +144,12 @@ Built straight in Godot (no concept tab: the reference set the rules).
   design box widens to 1236 and the board scales to ~0.81), every ring under
   a top dealt face down (`Gen.HIDDEN`, bit 8 over the colour). A face-down
   ring is a slate ring with a question mark (`VEIL`, `Emblem.QUESTION`),
-  never a shade of its own colour. It turns face up for good when it is a
+  never a shade of its own colour. It turns face up when a drop leaves it a
   peg's top (or its peg locks): `_reveal_at` squashes it to its edge and
   opens it face up, on the old `tumble` cue. **A run stops at a face-down
   ring**, and the solver plays by that rule, so a deal is proved under it
-  and a hint never lifts what the player could not. Undo and Reset never
-  turn a ring back down (Reset keeps the face-down count of each peg's foot:
-  a face-down ring has never moved). Measured on the Mac over 40 seeds:
+  and a hint never lifts what the player could not. Undo leaves a ring up;
+  Reset deals every ring face down again (2026-10-17, below). Measured on the Mac over 40 seeds:
   Insane deals 6.6 ms mean, 25 ms worst; the solver's lines 25-48.
 - **Gone**: Tumble (two-tone rings, `flip`, the somersault), its bank
   (`content/insane/rings.json`) and miner (`tools/insane/rings_tumble_mine.py`),
@@ -193,3 +192,12 @@ Built straight in Godot (no concept tab: the reference set the rules).
   peak 89 draw calls at scale 0.81, Hard 84 at 0.93; `_win.gd -- rings`
   passes (Easy). Decided for the user: these heights and colour counts
   (Medium drops to four colours so its taller towers stay gentle).
+- **Reveal on the drop, Reset hides again** (2026-10-17, the user: "when
+  user click to lift a piece without moving, it reveals the next hidden one.
+  It should only reveal the next when player moves it. Also after reseting
+  board, the already revealed pieces are kept revealed"): `State.lift` no
+  longer turns the uncovered ring up; `drop` turns the source peg's new top
+  up and sets `turned_up`, and the board's flip (`_turn_over`) moved from
+  the lift tap to the drop, `ARC_TIME * 0.5` on. A put-back shows nothing.
+  `reset_board` (Reset and Try again) is the deal as dealt, face down.
+  Undo still leaves a seen ring up (unchanged, unasked).

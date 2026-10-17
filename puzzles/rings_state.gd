@@ -30,8 +30,10 @@ extends RefCounted
 ## lands as many of them as the peg has room for -- the rest go back where
 ## they came from. A move in the log is (from, to, rings carried). Insane
 ## deals the rings under each top face down (`Gen.HIDDEN`); a ring turns face
-## up for good once it is a peg's top, or once its peg locks, and neither an
-## undo nor a reset turns it back down. Tumble and its bank went the same day.
+## up once a drop leaves it a peg's top, or once its peg locks; an undo
+## leaves it up, a reset deals it face down again (the user, 2026-10-17: a
+## lift alone revealed the next ring, and a reset kept the seen ones up).
+## Tumble and its bank went the same day.
 ## Spec: docs/superpowers/specs/2026-09-20-rings-flat-design.md and
 ## docs/superpowers/specs/2026-10-01-rings-polish-design.md.
 ## Concept page: docs/brainstorm/concepts.html#rings.
@@ -65,7 +67,7 @@ var hints_used := 0
 ## Hints given on top of HINTS (a rewarded video's, core/ads.gd).
 var hints_extra := 0
 var difficulty := 0
-## Whether the last lift turned a face-down ring up (the board turns it over).
+## Whether the last drop turned a face-down ring up (the board turns it over).
 var turned_up := false
 ## Kept for the board's dormant hearts: no band judges.
 var judged := false
@@ -137,8 +139,8 @@ func locked(i: int) -> bool:
 func can_lift(i: int) -> bool:
 	return not holding() and not (pegs[i] as Array).is_empty() and not locked(i)
 
-## Takes the run on top of peg `i` into the hand and turns the ring it
-## leaves on top face up. Refused (and `false`) on an empty peg, a locked
+## Takes the run on top of peg `i` into the hand; the ring it uncovers stays
+## face down until a drop lands (a put-back never shows it). Refused (and `false`) on an empty peg, a locked
 ## peg, or with a run already in hand.
 func lift(i: int) -> bool:
 	if not can_lift(i):
@@ -148,12 +150,11 @@ func lift(i: int) -> bool:
 	held_from = i
 	held = src.slice(src.size() - n)
 	src.resize(src.size() - n)
-	turned_up = not src.is_empty() and Gen.hidden(int(src.back()))
-	_turn_up(i)
+	turned_up = false
 	return true
 
 ## Puts the run in hand back where it came from. Not a move: the log never
-## sees it. The ring it uncovered stays face up.
+## sees it, and the ring it covers again was never turned up.
 func put_back() -> void:
 	if not holding():
 		return
@@ -191,8 +192,9 @@ func refusal(j: int) -> String:
 
 ## Lands what fits of the run in hand on peg `j` and puts the rest back on
 ## the peg it came from. Refused (returns -1) when nothing would land. On
-## success, logs the move, clears the hand, and returns the slot the lowest
-## landed ring sits in (`log.back().z` is how many landed).
+## success, logs the move, clears the hand, turns the peg it came from's new
+## top face up (`turned_up`), and returns the slot the lowest landed ring
+## sits in (`log.back().z` is how many landed).
 func drop(j: int) -> int:
 	var k := lands(j)
 	if k == 0:
@@ -203,6 +205,9 @@ func drop(j: int) -> int:
 	held.resize(held.size() - k)
 	var from := held_from
 	put_back()
+	var src: Array = pegs[from]
+	turned_up = not src.is_empty() and Gen.hidden(int(src.back()))
+	_turn_up(from)
 	log.append(Vector3i(from, j, k))
 	if locked(j):
 		_turn_up_all(j)
@@ -248,24 +253,14 @@ func is_solved() -> bool:
 func is_stuck() -> bool:
 	return not is_solved() and Gen.moves_from(pegs, cap).is_empty()
 
-## Back to the dealt position in one step, not one undo at a time. A ring
-## seen face up stays face up: a face-down ring has never moved, so the
-## face-down rings at the foot of each peg now are the same rings at the foot
-## of the same peg as dealt.
+## Back to the dealt position in one step, not one undo at a time, face
+## down as dealt: the rings seen on the way are hidden again.
 func reset_board() -> void:
 	put_back()
-	var down: Array = []
-	for s: Array in pegs:
-		var n := 0
-		while n < s.size() and Gen.hidden(int(s[n])):
-			n += 1
-		down.append(n)
 	pegs = []
-	for i in deal.size():
-		var peg: Array = (deal[i] as Array).duplicate()
-		for k in range(int(down[i]), peg.size()):
-			peg[k] = Gen.top(int(peg[k]))
-		pegs.append(peg)
+	for s in deal:
+		pegs.append((s as Array).duplicate())
+	turned_up = false
 	log = []
 
 ## Plays the solver's own next move, spending one hint. Returns (-1, -1, 0)

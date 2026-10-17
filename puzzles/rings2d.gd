@@ -997,7 +997,6 @@ func _tap(i: int) -> void:
 		if _state.lift(i):
 			_held_at = _now()
 			_pops(_state.held.size(), 0.0, "lift")
-			_turn_over(i, RISE_TIME * 0.5)
 			_say(tr("RG_HELD") if _state.held.size() == 1 else tr("RG_HELD_RUN") % _state.held.size(), Face.Expr.HAPPY)
 		elif src.is_empty():
 			_shake_at[i] = _now()
@@ -1033,6 +1032,7 @@ func _tap(i: int) -> void:
 			var stay := codes.slice(0, codes.size() - k)
 			_held_at = -100.0
 			_pops(k, ARC_TIME + THREAD_TIME * 0.6, "drop", RUN_STEP)
+			_turn_over(from, ARC_TIME * 0.5)
 			fx.buzz(Haptics.TAP)
 			# The flight has to exist before note_move()'s check_solved() can
 			# fire solved -- _on_solved reads the flights for the landing
@@ -1061,7 +1061,7 @@ func _pops(n: int, lead: float, cue := "drop", step := BUMP_STEP * 2.0) -> void:
 			if gen == _gen:
 				fx.cue(cue, randf_range(0.94, 1.06) * pow(2.0, float(q) / 12.0)))
 
-## Peg `i`'s new top turns over `after` seconds on, when the lift that
+## Peg `i`'s new top turns over `after` seconds on, when the drop that
 ## uncovered it (a tap's or a hint's) turned a face-down ring up.
 func _turn_over(i: int, after: float) -> void:
 	if not _state.turned_up:
