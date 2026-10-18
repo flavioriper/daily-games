@@ -83,9 +83,9 @@ const CAP_FS := 20
 const TITLE_FS := 24
 const PILL_OFF := 14.0
 const PILL_POP := 0.18
-const PILL_ICON := {"turn": "turn", "lift": "bin", "info": "help", "place": "check", "cancel": "cross"}
-const PILL_CAP := {"turn": "TL_TURN", "lift": "TL_LIFT", "info": "TL_INFO", "place": "TL_PLACE", "cancel": "TL_CANCEL"}
-const PILL_PITCH := {"turn": 1.02, "lift": 0.92, "info": 1.0, "place": 1.08, "cancel": 0.9}
+const PILL_ICON := {"turn": "turn", "flip": "flip", "lift": "bin", "info": "help", "place": "check", "cancel": "cross"}
+const PILL_CAP := {"turn": "TL_TURN", "flip": "TL_FLIP", "lift": "TL_LIFT", "info": "TL_INFO", "place": "TL_PLACE", "cancel": "TL_CANCEL"}
+const PILL_PITCH := {"turn": 1.02, "flip": 1.04, "lift": 0.92, "info": 1.0, "place": 1.08, "cancel": 0.9}
 ## How far along its last square a token riding into an operator is drawn.
 const OP_STOP := 0.72
 ## A starving side's pulse ring takes this long a beat.
@@ -257,6 +257,11 @@ func play(ev: Dictionary) -> void:
 			_dirty = true
 		"turn":
 			_spin[ev.tile] = [_clock, (int(ev.face) + 3) % 4]
+			_dirty = true
+		"flip":
+			var tiles: Array = ev.tiles
+			for j in tiles.size():
+				_pop[tiles[j]] = _clock + j * 0.02
 			_dirty = true
 		"lift":
 			_gone.append([int(ev.kind), 0, ev.tile, _clock])
@@ -866,6 +871,9 @@ func _open_piece_pill(t: Vector2i) -> void:
 	t = sim.root_of(t)
 	var kd: int = sim.kind_at(t)
 	var buttons := ["lift", "info"]
+	if kd == Sim.BELT:
+		# a belt turns its whole line round with Flip
+		buttons.push_front("flip")
 	if kd == Sim.BELT or TURNS.has(kd):
 		buttons.push_front("turn")
 	_ghost = {}
@@ -915,6 +923,9 @@ func _pill_press(name: String) -> void:
 				# a turn with no room is refused by the sim's own event
 				if sim.turn(t):
 					_pill.tile = sim.root_of(t)
+		"flip":
+			sim.mark()
+			sim.flip_line(t)
 		"lift":
 			sim.mark()
 			sim.remove(t)

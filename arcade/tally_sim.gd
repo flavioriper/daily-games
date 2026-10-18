@@ -673,16 +673,14 @@ static func path_faces(tiles: Array, f_last: int) -> PackedByteArray:
 		faces[j] = f
 	return faces
 
-## What a traced path would do: {tiles, faces, cut, merge, turned}. A path
-## begun on a piece starts past its edge (its squares dropped: a dig is
-## three wide, the box six), and so does one begun on a belt across its
-## way, but for a line's loose end, which turns to go on with the path (the
-## corner); one begun along a line turns it its way. A path that then starts beside something that takes numbers
-## (the box, a machine's A or B square from behind, a crate, or the belt it
-## was begun on) and has nothing giving at its start nor taking at its end
-## is turned round (`turned`): it was drawn out of what it feeds, and it
-## runs into it, its last square facing in. Its last square faces into the
-## box, a machine or a crate beside it the same way. `cut` is where it
+## What a traced path would do: {tiles, faces, cut, merge}. It always runs
+## the way the finger went. A path begun on a piece starts past its edge
+## (its squares dropped: a dig is three wide, the box six), and so does one
+## begun on a belt across its way, but for a line's loose end, which turns
+## to go on with the path (the corner); one begun along a line turns it its
+## way. Its last square faces into the box, a machine or a crate beside it
+## when nothing takes ahead of it; a square laid alone faces into the box
+## beside it, or away from a dig. `cut` is where it
 ## stops: a square that cannot take belt, a belt it would cross that more
 ## than its back feeds (a crossing there would cut those off), or a belt
 ## across its last square, which it then runs into the side of (`merge`, a
@@ -709,22 +707,15 @@ func trim_path(tiles: Array, f_last: int) -> Dictionary:
 	while ts.size() > 1 and not can_lay(ts[-1]):
 		ts.pop_back()
 		fs.pop_back()
-	var turned := false
-	if not extend and not ts.is_empty() and inside(ts[0]):
-		var prev: Vector2i = ts[1] if ts.size() > 1 else NOWHERE
-		var into := _taker_beside(ts[0], prev, begun)
-		var away := _giver_beside(ts[0], prev)
-		# the end already runs into something: on it, past it or beside it
-		var lands := ts.size() > 1 and (_takes(ts[-1], int(fs[-2])) or _takes(ts[-1] + DIRS[int(fs[-1])], int(fs[-1])) \
-				or _taker_beside(ts[-1], ts[-2], NOWHERE) >= 0)
-		if into >= 0 and away < 0 and not lands:
-			ts.reverse()
-			fs = Array(path_faces(ts, into))
-			fs[-1] = into
-			turned = true
-		elif ts.size() == 1 and away >= 0 and into < 0:
+	if ts.size() == 1 and inside(ts[0]):
+		# a square set alone faces into the box beside it, or away from a dig
+		var into := _taker_beside(ts[0], NOWHERE, begun)
+		var away := _giver_beside(ts[0], NOWHERE)
+		if into >= 0:
+			fs[0] = into
+		elif away >= 0:
 			fs[0] = opp(away)
-	if not turned and ts.size() > 1 and not _takes(ts[-1] + DIRS[int(fs[-1])], int(fs[-1])):
+	if ts.size() > 1 and not _takes(ts[-1] + DIRS[int(fs[-1])], int(fs[-1])):
 		var into := _taker_beside(ts[-1], ts[-2], NOWHERE)
 		if into >= 0:
 			fs[-1] = into
@@ -749,7 +740,7 @@ func trim_path(tiles: Array, f_last: int) -> Dictionary:
 			# head on into a line's front (not a line drawn back along itself)
 			cut = j
 			break
-	return {"tiles": ts, "faces": fs, "cut": cut, "extend": extend, "merge": merge, "turned": turned}
+	return {"tiles": ts, "faces": fs, "cut": cut, "extend": extend, "merge": merge}
 
 ## Whether a token going `d` into `t` would be taken there.
 func _takes(t: Vector2i, d: int) -> bool:
@@ -853,6 +844,81 @@ func lay_path(tiles: Array, f_last: int) -> int:
 		_wire()
 		_emit("lay", {"n": n, "tiles": laid})
 	return n
+
+## The slots of the line through the belt on `t`, in the way it runs: back
+## while a slot has one feeder and forward while the next is fed by it alone
+## (through a crossing's lane, never past a join).
+func line_through(t: Vector2i) -> Array:
+	if kind_at(t) != BELT:
+		return []
+	var s0 := _i(t)
+	var line := [s0]
+	var seen := {s0: true}
+	var s := s0
+	while true:
+		var fd: PackedInt32Array = feeders.get(s, PackedInt32Array())
+		if fd.size() != 1 or seen.has(fd[0]):
+			break
+		var p := int(fd[0])
+		var pk := int(kind[p % N])
+		if pk != BELT and pk != BRIDGE or (feeders.get(p, PackedInt32Array()) as PackedInt32Array).size() > 1:
+			break
+		s = p
+		seen[s] = true
+		line.push_front(s)
+	s = s0
+	while true:
+		var o: PackedInt32Array = outs.get(s, PackedInt32Array())
+		if o.size() != 1:
+			break
+		var nx := o[0] >> 2
+		if nx >= N2 or seen.has(nx) or (feeders.get(nx, PackedInt32Array()) as PackedInt32Array).size() != 1:
+			break
+		s = nx
+		seen[s] = true
+		line.append(s)
+	return line
+
+## The way slot `s` runs: a belt's or a crossing's lane's.
+func _slot_face(s: int) -> int:
+	return int(face2[s - N]) if s >= N else int(face[s])
+
+func _set_slot_face(s: int, f: int) -> void:
+	if s >= N:
+		face2[s - N] = f
+	else:
+		face[s] = f
+
+## The line through the belt on `t` turned round: each square runs back to
+## the one that fed it, the first the way it came, then faced into the box,
+## a machine or a crate beside it if it ends there.
+func flip_line(t: Vector2i) -> bool:
+	var line := line_through(t)
+	if line.is_empty():
+		return false
+	var fs := []
+	for k in line.size():
+		var s := int(line[k])
+		if k == 0:
+			fs.append(opp(_slot_face(s)))
+		else:
+			fs.append(DIRS.find(tile_of(int(line[k - 1]) % N) - tile_of(s % N)))
+	var head: Vector2i = tile_of(int(line[0]) % N)
+	if kind_at(head) == BELT:
+		var prev: Vector2i = tile_of(int(line[1]) % N) if line.size() > 1 else NOWHERE
+		var into := _taker_beside(head, prev, NOWHERE)
+		if into >= 0 and not _takes(head + DIRS[int(fs[0])], int(fs[0])):
+			fs[0] = into
+	var tiles := []
+	for k in line.size():
+		var s := int(line[k])
+		_record(s % N)
+		_set_slot_face(s, int(fs[k]))
+		_drop(s % N)
+		tiles.append(tile_of(s % N))
+	_wire()
+	_emit("flip", {"tiles": tiles, "tile": t})
+	return true
 
 ## Turns what stands on `t` a quarter clockwise: a machine about its root,
 ## when every square it would cover then is free.

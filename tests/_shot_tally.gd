@@ -368,18 +368,20 @@ func _process(delta: float) -> bool:
 			if _t > _at + 2.4:
 				_grow(sim)
 				_s.board.look_at_square(Vector2(Sim.HUB_AT) + Vector2(3, 4), true)
-				# a path in hand begun on the box and drawn out of it: its ghost
-				# is turned to run into the box
+				# a line drawn out of the box runs the finger's way; Flip turns it
+				# round into the box, and its pill stays up
 				var hb := Sim.HUB_AT + Vector2i(Sim.HUB - 1, Sim.HUB - 1)
-				_s.board._path = [hb, hb + Vector2i(1, 0), hb + Vector2i(1, 1), hb + Vector2i(1, 2), hb + Vector2i(1, 3)]
-				_s.board._trace_f = 1
+				var out := [hb, hb + Vector2i(1, 0), hb + Vector2i(1, 1), hb + Vector2i(1, 2), hb + Vector2i(1, 3)]
+				sim.lay_path(out, 1)
+				_check("the line drawn out of the box runs the finger's way", sim.face_at(hb + Vector2i(1, 0)) == 1 and sim.face_at(hb + Vector2i(1, 3)) == 1)
+				_s.board._open_piece_pill(hb + Vector2i(1, 2))
+				_s.board._pill_press("flip")
+				_check("Flip turned the line round into the box", sim.face_at(hb + Vector2i(1, 3)) == 3 and sim.face_at(hb + Vector2i(1, 0)) == 2 and (_s.board._pill.buttons as Array).has("flip"))
 				_next()
 		9:
 			if _t > _at + 6.0:
 				_shot("5_grown")
-				var tp: Dictionary = sim.trim_path(_s.board._path, 1)
-				_check("the path drawn out of the box is turned to run into it", bool(tp.turned) and int((tp.faces as Array)[-1]) == 2)
-				_s.board._path = []
+				_s.board._close_pill()
 				_s.board.k = 150.0
 				_s.board.look_at_square(Vector2(Sim.HUB_AT + Vector2i(-4, 1)) + Vector2(2.0, 0.5), true)
 				_next()

@@ -10,7 +10,7 @@ const NAMES := ["chevron_left", "chevron_right", "undo", "reset", "bulb", "gear"
 	"calendar", "home", "trophy", "bars", "heart", "heart_line", "pencil",
 	"puzzle", "flame", "cloud", "mountain", "sparkle", "trend", "crown", "no_ads", "versus", "arcade", "play",
 	"coin", "gift", "clock", "shield", "acorn", "run", "music", "buzz", "globe", "swords", "gamepad",
-	"friends", "copy", "share", "undo_back", "bin"]
+	"friends", "copy", "share", "undo_back", "bin", "flip"]
 const SEGMENTS := 24
 const FEATHERED := ["heart"]
 ## Stroke width of polylines as a fraction of the icon's width.
@@ -35,6 +35,8 @@ static func shape(name: String) -> Dictionary:
 			return _undo_back()
 		"bin":
 			return _bin()
+		"flip":
+			return _flip()
 		"bulb":
 			return _bulb()
 		"gear":
@@ -429,6 +431,14 @@ static func _turn() -> Dictionary:
 		end + along * 0.15, end + across * 0.11 - along * 0.02, end - across * 0.11 - along * 0.02,
 	])
 	return {"polys": [block, head], "lines": [sweep]}
+
+## Two arrows, one over the other, going opposite ways: turn a line round.
+static func _flip() -> Dictionary:
+	var top := PackedVector2Array([Vector2(0.18, 0.34), Vector2(0.7, 0.34)])
+	var low := PackedVector2Array([Vector2(0.82, 0.66), Vector2(0.3, 0.66)])
+	var head_r := PackedVector2Array([Vector2(0.86, 0.34), Vector2(0.66, 0.2), Vector2(0.66, 0.48)])
+	var head_l := PackedVector2Array([Vector2(0.14, 0.66), Vector2(0.34, 0.52), Vector2(0.34, 0.8)])
+	return {"polys": [head_r, head_l], "lines": [top, low]}
 
 ## An almond outline with a filled pupil: hold to see through the scenery.
 static func _eye() -> Dictionary:

@@ -390,7 +390,7 @@ func _play_events() -> void:
 				_feel(Haptics.TAP)
 				_changed()
 				_undo_at = -10.0
-			"turn":
+			"turn", "flip":
 				_fx.cue("turn", randf_range(0.96, 1.04))
 				_feel(Haptics.TICK)
 				_changed()

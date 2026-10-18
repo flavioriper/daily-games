@@ -9,8 +9,8 @@ extends SceneTree
 ## its back square, B on its other, and puts out of its answer square's
 ## front alone; a belt never splits, a line drawn onto another joins it and
 ## they take turns, a loose end holds its token at its middle; a crossing
-## carries both lanes across; a path drawn out of the box is turned to run
-## into it; a crate keeps one number; a
+## carries both lanes across; a path runs the way it was drawn and Flip
+## turns its line round; a crate keeps one number; a
 ## full output stops a machine; upgrades spend the tally and go faster; the
 ## ladder only climbs and never passes the top; the paper is printed the same
 ## from the same seed with 1s near the box and no 10; and a paper saved comes
@@ -372,31 +372,41 @@ func _path() -> void:
 	_run(r, Vector2i(5, 5), Vector2i(9, 5), E)
 	r.lay_path([Vector2i(9, 5), Vector2i(8, 5), Vector2i(7, 5), Vector2i(6, 5), Vector2i(5, 5)], Wd)
 	_check("a path along a line reverses it", r.face_at(Vector2i(5, 5)) == Wd and r.face_at(Vector2i(9, 5)) == Wd)
-	# a path begun on a line's belt and drawn away runs back into its side
+	# a path begun on a line's belt and drawn away starts beside it, the finger's way
 	var mj = _blank(3)
 	_dig1(mj, Vector2i(4, 5), 1)
 	_run(mj, Vector2i(5, 5), Vector2i(9, 5), E)
 	mj.lay_path([Vector2i(7, 5), Vector2i(7, 6), Vector2i(7, 7)], S)
-	_check("a path begun on a line and drawn away joins it", mj.face_at(Vector2i(7, 5)) == E and mj.face_at(Vector2i(7, 7)) == Nd and mj.face_at(Vector2i(7, 6)) == Nd)
+	_check("a path begun on a line and drawn away runs the finger's way", mj.face_at(Vector2i(7, 5)) == E and mj.face_at(Vector2i(7, 6)) == S and mj.face_at(Vector2i(7, 7)) == S)
 	# a second stroke begun on a line's loose end turns it into the corner
 	var x = _blank(3)
 	_run(x, Vector2i(5, 9), Vector2i(9, 9), E)
 	x.lay_path([Vector2i(9, 9), Vector2i(9, 10), Vector2i(9, 11)], S)
 	_check("a path begun on a line's loose end goes on from it round the corner", x.face_at(Vector2i(9, 9)) == S and x.face_at(Vector2i(9, 11)) == S and (x.outs[Sim._i(Vector2i(8, 9))] as PackedInt32Array).size() == 1)
-	# drawn out of the box, a path is turned round to run into it
+	# drawn out of the box, a path runs the finger's way; Flip turns it round
 	var bx = _blank(3)
 	var left := Vector2i(Sim.HUB_AT.x - 1, Sim.HUB_AT.y + 1)
-	var down := [left]
+	var down := [Vector2i(Sim.HUB_AT.x, Sim.HUB_AT.y + 1), left]
 	for y in range(1, 9):
 		down.append(left + Vector2i(0, y))
 	bx.lay_path(down, S)
-	_check("a path drawn away from beside the box is turned to run into it", bx.face_at(left) == E and bx.face_at(left + Vector2i(0, 4)) == Nd and bx.face_at(left + Vector2i(0, 8)) == Nd)
-	var g = _blank(3)
-	var into := [Vector2i(Sim.HUB_AT.x, Sim.HUB_AT.y + 1), left]
-	for y in range(1, 7):
-		into.append(left + Vector2i(0, y))
-	g.lay_path(into, S)
-	_check("begun on the box, one square out and down: turned, its last square into the box", g.kind_at(Vector2i(Sim.HUB_AT.x, Sim.HUB_AT.y + 1)) == Sim.BOX and g.face_at(left) == E and g.face_at(left + Vector2i(0, 3)) == Nd)
+	_check("a path drawn out of the box runs the way the finger went", bx.face_at(left) == S and bx.face_at(left + Vector2i(0, 4)) == S and bx.kind_at(Vector2i(Sim.HUB_AT.x, Sim.HUB_AT.y + 1)) == Sim.BOX)
+	bx.mark()
+	_check("Flip turns the whole line round", bx.flip_line(left + Vector2i(0, 3)) and bx.face_at(left + Vector2i(0, 8)) == Nd and bx.face_at(left + Vector2i(0, 1)) == Nd)
+	_check("the flipped line's end faces into the box beside it", bx.face_at(left) == E and (bx.outs[Sim._i(left)] as PackedInt32Array).size() == 1)
+	_check("one step back unflips it", bx.undo() and bx.face_at(left) == S and bx.face_at(left + Vector2i(0, 8)) == S)
+	# a flip goes through a crossing's lane and stops at a join
+	var fx = _blank(1)
+	_dig1(fx, Vector2i(4, 20), 1)
+	_run(fx, Vector2i(5, 20), Vector2i(14, 20), E)
+	_run(fx, Vector2i(9, 16), Vector2i(9, 24), S)
+	fx.lay_path([Vector2i(12, 17), Vector2i(12, 18), Vector2i(12, 19), Vector2i(12, 20)], S)
+	var vl: Array = fx.line_through(Vector2i(9, 16))
+	_check("a line runs through a crossing's lane (%d slots)" % vl.size(), vl.size() == 9 and fx.kind_at(Vector2i(9, 20)) == Sim.BRIDGE)
+	fx.flip_line(Vector2i(9, 18))
+	_check("flipped, the crossing's other lane keeps its way", fx.face2[Sim._i(Vector2i(9, 20))] == Nd and fx.face[Sim._i(Vector2i(9, 20))] == E and fx.face_at(Vector2i(9, 24)) == Nd)
+	var hl: Array = fx.line_through(Vector2i(13, 20))
+	_check("a line's run stops at a join (%d slots)" % hl.size(), hl.size() == 2)
 	var tp = _blank(3)
 	tp.lay_path([left], S)
 	_check("a belt tapped beside the box faces into it", tp.face_at(left) == E)
