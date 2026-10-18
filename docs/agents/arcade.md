@@ -4126,21 +4126,21 @@ sounds and wins. Also, game progression is insanely bad ... 1 -> 2, 2 -> 3,
 10, 10 - 20, 20 - 50". Branch `feat/bagatelle-redesign`.
 
 - **One spawner** (`Sim.drop_x`): every marble comes out of the dropper.
-  It glides over the middle band on its own (`GLIDE`, `GLIDE_SPAN`); a tap
-  on the board darts it to the tap's across at `DART` field units a second
-  and it lets go as it arrives (`drop` queues `_want`, `_move_dropper`);
-  it parks `PARK` after a tap, then picks the glide up from where it is,
-  the way it was going (`_ph` from `asin`). Drop and the auto let go from
-  wherever it stands (`drop_here`). The board draws it a touch behind the
-  sim's with a lean into a dart. Two marbles never leave closer than
-  `RELEASE_GAP`.
-- **Auto changed meaning**: a landed marble rests `auto_every()` and is let
-  go again by itself (`_due`), so every marble owned is in play, at most
-  `MAX_AIR` (60) in the air at once; a marble asleep in the jar (bought,
-  loaded, or there when Auto was bought) is queued too. The queue holds at
-  most MAX_AIR entries: the first draft walked the whole jar a tick and a
-  jar of two million marbles hung the sim. Locale `BG_UP_AUTO_LINE`,
-  `BG_SECONDS` ("again after %s s").
+  It glides over the middle band on its own (`GLIDE`, `GLIDE_SPAN`) and
+  nothing steers it: a tap on the board, Drop and Auto each let a marble
+  go from wherever it stands (`drop`, `drop_here`, `_want`; two never
+  leave closer than `RELEASE_GAP`). For a morning a tap darted it to the
+  tap's across; the user: "player should not be able to move the dropper,
+  clicking on screen only drop a ball it moves by itself always". The
+  board draws it a touch behind the sim's, leaning a little into its
+  glide. The "Every marble is rolling" sticker on an empty-jar tap is
+  gone on the same word ("remove the message"); the soft no stays.
+- **Auto** lets one marble go every `auto_every()` from wherever the
+  dropper stands, when the jar has one and fewer than `MAX_AIR` (60) are in
+  the air. For a morning it meant "every landed marble goes again after a
+  rest, so every marble owned is in play"; the user: "auto drop is wrong,
+  it should auto drop 1 ball, not all". (That draft also walked the whole
+  jar a tick and a jar of two million marbles hung the sim.)
 - **Fins between the cups** (`FIN_W`, `FIN_TOP`, `Art.fins`): brass walls
   a marble on top of is sent to a side, so a landing is always inside a
   cup (the probe checks every landing against the fins). The marble is
@@ -4164,7 +4164,11 @@ sounds and wins. Also, game progression is insanely bad ... 1 -> 2, 2 -> 3,
   into the nap with a cast shadow; glass marbles (lower crescent, rim
   light, window) over a contact shadow, with a two-ghost trail past
   `TRAIL_FROM`; sparks off struck pins (`_sparks`); dust motes drifting in
-  the light (`MOTES`); a glow in a cup's mouth as a marble drops in; the
+  the light (`MOTES`); a glow in a cup's mouth as a marble drops in and a
+  soft light rising out of the cup (`Art.cup_light`, `_draw_lights`,
+  `LIGHT_LIFE`; the user: "change the animation when ball enters the jar
+  to be a light coming from the box"; taller and brighter for a big pay,
+  the cup's squash cut to a breath); the
   multiplier engraved on the plate; coin floats that pop in, bigger for a
   big pay. Reduce motion: no motes, trails, sparks, glows or settle.
 - **Sound**: `land` is pitched by the cup (×0.5 four steps down, ×2 four

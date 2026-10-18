@@ -140,7 +140,7 @@ func _process(delta: float) -> bool:
 		4:
 			if _t > _at + 0.6:
 				_shot("3_falling")
-				_check("the dropper let them go where it was sent", sim.balls.size() == 3 and sim.in_jar() == 0 and is_equal_approx(sim.drop_x, 580.0))
+				_check("the dropper let them go from its glide", sim.balls.size() == 3 and sim.in_jar() == 0 and sim.drop_x >= Sim.W * Sim.AIM_LO - 1.0 and sim.drop_x <= Sim.W * Sim.AIM_HI + 1.0)
 				_tap(_field(Vector2(500.0, 300.0)))
 				_check("a tap with the jar empty drops nothing", sim.balls.size() <= 3 and sim._want == 0)
 				_next()

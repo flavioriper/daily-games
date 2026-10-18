@@ -357,10 +357,12 @@ func _play_events() -> void:
 				_rw.ring(_board_rw(Sim.pin_pos(int(ev.to))), 50.0, Art.HALO)
 				_changed()
 			"empty":
+				# no sticker (the user, 2026-10-18: "remove the message that
+				# shows when all balls are dropped"): a soft no, at most
+				# every 1.4 s
 				if _once("empty", 1.4):
 					_fx.cue("nope")
 					_feel(Haptics.WARN)
-					_rw.sticker(tr("BG_SAY_EMPTY"), _top() + Vector2(0, 120.0), 34, 1.8, false, Color("fffaf0"), false, "nope", 20.0)
 
 func _on_land(ev: Dictionary, coins_before: float) -> void:
 	var c := int(ev.cup)

@@ -269,6 +269,30 @@ static func fins() -> ArrayMesh:
 		b.disc(Vector2(x - 1.0, top + Sim.FIN_W), Sim.FIN_W * 0.45, Color(BRASS_HI, 0.9))
 	return _keep("fins", b)
 
+## The light that rises out of a cup as a marble drops in (the user,
+## 2026-10-18: "a light coming from the box"): a soft column, bright at
+## the mouth and nothing at its top, its foot at (0, 0) and its top at
+## -LIGHT_H (laid under a scale and an alpha; no rays, no shape).
+const LIGHT_H := 300.0
+static func cup_light() -> ArrayMesh:
+	if _cache.has("light"):
+		return _cache["light"]
+	var b := Face.Builder.new()
+	var w := Sim.CUP_W - 16.0
+	for layer: Array in [[w * 0.5, 1.0, 0.3], [w * 0.3, 0.85, 0.42], [w * 0.14, 0.6, 0.55]]:
+		var hw: float = layer[0]
+		var top: float = -LIGHT_H * float(layer[1])
+		var a: float = layer[2]
+		var foot := Color(HALO, a)
+		var head := Color(HALO, 0.0)
+		var p0 := b.vertex(Vector2(-hw * 0.7, top), head)
+		var p1 := b.vertex(Vector2(hw * 0.7, top), head)
+		var p2 := b.vertex(Vector2(hw, 0.0), foot)
+		var p3 := b.vertex(Vector2(-hw, 0.0), foot)
+		b.tri(p0, p1, p2)
+		b.tri(p0, p2, p3)
+	return _keep("light", b)
+
 ## The glow in a cup's mouth as a marble drops in (laid with an alpha).
 static func mouth_glow() -> ArrayMesh:
 	if _cache.has("mouth"):

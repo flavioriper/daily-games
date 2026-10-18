@@ -45,14 +45,21 @@ func _physics(seed_v: int) -> void:
 	s.owned[0] = 3
 	s.jar[0] = 3
 	s.drop(400.0)
-	_check("a tap asks the dropper, nothing falls yet", s.in_jar() == 3 and s.balls.is_empty() and s.darting())
+	_check("a tap asks the dropper, nothing falls yet", s.in_jar() == 3 and s.balls.is_empty())
+	var x0: float = s.drop_x
 	_run(s, 0.5)
-	_check("the dropper arrives and lets one go", s.in_jar() == 2 and s.balls.size() == 1 and is_equal_approx(s.drop_x, 400.0) and not s.darting())
+	var let_x := -1.0
+	for ev: Dictionary in s.events:
+		if ev.type == "drop":
+			let_x = float(ev.x)
+	_check("the dropper lets one go where it is, not at the tap", s.in_jar() == 2 and s.balls.size() == 1 and absf(let_x - x0) < 20.0 and absf(x0 - 400.0) > 60.0)
+	s.drop(900.0)
 	s.drop(900.0)
 	_run(s, 0.5)
-	_check("a tap past the band lets go at the band's edge", s.balls.size() == 2 and is_equal_approx(s.drop_x, Sim.W * Sim.AIM_HI))
-	s.jar[0] += 1
-	s.owned[0] += 1
+	_check("two quick taps let two go, never past the band", s.balls.size() == 3 and float(s.balls[2].p.x) <= Sim.W * Sim.AIM_HI + 1.0 and float(s.balls[2].p.x) >= Sim.W * Sim.AIM_LO - 1.0)
+	s.jar[0] += 2
+	s.owned[0] += 2
+	s.balls.pop_back()
 	s.balls.pop_back()
 	var landed := false
 	var secs := 0.0
@@ -67,7 +74,7 @@ func _physics(seed_v: int) -> void:
 			break
 	_check("the marble lands (%.2f s)" % secs, landed and secs > 0.6 and secs < 8.0)
 	_check("and rolls back to the jar", s.in_jar() == 3)
-	_check("the dropper glides again once parked", _glides(s))
+	_check("the dropper glides on its own", _glides(s))
 	_check("paid coins", s.coins > 0.0)
 	var hits: Vector2i = s.take_pins()
 	_check("touched pins (%d)" % hits.x, hits.x >= 4)
@@ -95,13 +102,13 @@ func _physics(seed_v: int) -> void:
 			if xd > 1.0 and xd < Sim.W - 1.0 and absf(x - xd) < Sim.BALL_R + Sim.FIN_W - 0.5:
 				in_cup = false
 	_check("every landing is inside a cup, never on a fin", in_cup)
-	# Auto: a landed marble goes again by itself, every marble in the jar in play
+	# Auto: one marble every 2.4 s at rank 1, never more
 	var s3 = Sim.new(seed_v + 2)
 	s3.owned[0] = 6
 	s3.jar[0] = 6
 	s3.up.auto = 1
 	_run(s3, 20.0)
-	_check("auto lets every marble go again (%d drops in 20 s)" % s3.drops, s3.drops >= 12 and s3.balls.size() + s3.in_jar() == 6)
+	_check("auto lets one marble go every %.1f s (%d drops in 20 s)" % [Sim.AUTO_FIRST, s3.drops], s3.drops >= 7 and s3.drops <= 9 and s3.balls.size() + s3.in_jar() == 6)
 	s3.up.auto = 0
 	_run(s3, 10.0)
 	var n3: int = s3.drops
@@ -110,7 +117,6 @@ func _physics(seed_v: int) -> void:
 
 ## Whether the dropper, left alone, moves on its glide.
 func _glides(s) -> bool:
-	_run(s, Sim.PARK + 0.1)
 	var x0: float = s.drop_x
 	_run(s, 0.5)
 	return absf(s.drop_x - x0) > 5.0

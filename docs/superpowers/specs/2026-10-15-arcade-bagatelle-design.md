@@ -170,10 +170,12 @@ middle, balls sometimes falls outside the multiplier buckets ... game
 progression is insanely bad ... 3 -> 10, 10 - 20, 20 - 50". What changed
 (the detail is in `docs/agents/arcade.md`, "Bagatelle redrawn"):
 
-- Call 2 stands, and the dropper is now the only place a marble comes
-  from: a tap darts it there, Drop and Auto let go where it is.
-- Auto means a landed marble goes again by itself after a rest; every
-  marble owned is in play, sixty in the air at most.
+- Call 2 is over: the dropper is the only place a marble comes from, it
+  glides on its own and nothing steers it; a tap, Drop and Auto each let
+  one go where it is. The empty-jar sticker is gone.
+- Auto lets one marble go at a time, from the dropper; sixty marbles in
+  the air at most (a draft that re-dropped every landed marble was
+  refused: "it should auto drop 1 ball, not all").
 - Brass fins between the cups: a marble always lands inside one, and is
   seen settling into it.
 - The jar climbs 1, 2, 3, 5, 10, 20, 50, 100 ...; a rank's price follows

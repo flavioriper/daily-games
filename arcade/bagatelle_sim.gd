@@ -12,12 +12,13 @@ extends RefCounted
 ## the best one the jar holds, a landing rolls it back. **Every marble
 ## comes out of the dropper** (2026-10-18, the user: "there is a element
 ## moving at top but ball spawn always at middle"): it glides over the
-## middle band on its own; a tap darts it to the tap's across and lets go
-## there (`drop`); Drop and the auto let go from wherever it stands
-## (`drop_here`). With Auto bought, a marble that lands is let go again
-## `auto_every()` after it came back, so every marble owned stays in play
-## (at most MAX_AIR in the air at once). Brass fins stand between the
-## cups: a marble always lands inside one. A landing pays
+## middle band on its own and nothing moves it ("player should not be able
+## to move the dropper, clicking on screen only drop a ball"); a tap, Drop
+## and Auto each let a marble go from wherever it stands (`drop`,
+## `drop_here`). Auto lets one marble go every `auto_every()` seconds
+## (the user, 2026-10-18: "it should auto drop 1 ball, not all"); at most
+## MAX_AIR are in the air at once. Brass fins stand between the cups: a
+## marble always lands inside one. A landing pays
 ## value × worth(tier) × the cup's multiplier × the marble's pin bonus ×
 ## polish in coins, and a point to its cup, which goes up a level at
 ## `need(lv)` points. Coins buy the run's four upgrades; a cash out turns
@@ -74,13 +75,10 @@ const STILL := 0.25
 ## at the wall would feed the edge cup all day).
 const AIM_LO := 0.36
 const AIM_HI := 0.64
-## The dropper's glide (radians a second of its sway, and how far), how
-## fast it darts to a tap, how long it parks after one before gliding
-## again, and the least time between two marbles let go.
+## The dropper's glide (radians a second of its sway, and how far), and
+## the least time between two marbles let go.
 const GLIDE := 0.55
 const GLIDE_SPAN := 0.14
-const DART := 3200.0
-const PARK := 0.7
 const RELEASE_GAP := 0.07
 
 ## The tiers: ten of one merge into one of the next; tier k is worth WORTH^k.
@@ -93,7 +91,7 @@ const TIER_IDS := ["clay", "glass", "agate", "swirl", "cats_eye", "opal", "moons
 ## A Marbles rank takes the jar up the 1-2-5 ladder (`marbles_at`: 1, 2,
 ## 3, 5, 10, 20, 50, 100 ...; the user, 2026-10-18: "3 -> 10, 10 -> 20,
 ## 20 -> 50"), so its price climbs as steeply; Value is the cheap first
-## buy; Auto is the rest a landed marble takes before it is let go again.
+## buy; Auto lets one marble go every so often.
 const UPS := ["marbles", "value", "auto", "weight"]
 const UP_FIRST := {"marbles": 10.0, "value": 2.0, "auto": 30.0, "weight": 60.0}
 const UP_GROWTH := {"marbles": 4.25, "value": 1.6, "auto": 1.3, "weight": 1.45}
@@ -170,18 +168,13 @@ var landed := 0
 ## Pins touched since the holder last read them, and the lowest row one was on.
 var pin_hits := 0
 var pin_row := 0
-## The dropper: where it is, where a tap sent it (NAN: none), marbles
-## waiting to be let go there, its glide's phase and way, how long it has
-## been parked, and when it last let one go.
+## The dropper: where it is, marbles asked for and not yet let go, its
+## glide's phase, and when it last let one go.
 var drop_x := W * 0.5
-var _aim := NAN
 var _want := 0
 var _ph := 0.0
-var _dir := 1.0
-var _parked := PARK
 var _let_at := -10.0
-## When each landed marble is due to be let go again (Auto), in order.
-var _due: Array = []
+var _auto_t := 0.0
 var _acc := 0.0
 var _next_id := 0
 var _could := {}
@@ -213,9 +206,8 @@ func _new_run() -> void:
 	jar[0] = owned[0]
 	cup_lv.fill(WARM_STEP * int(shop.warm))
 	cup_pts.fill(0)
-	_due.clear()
+	_auto_t = 0.0
 	_want = 0
-	_aim = NAN
 	_place_bonus()
 	for id: String in UPS:
 		_could[id] = false
@@ -528,16 +520,11 @@ func best_in_jar() -> int:
 
 # --- dropping ---
 
-## A tap at `x`: the dropper darts there (kept in the middle band) and lets
-## a marble go as it arrives. False when the jar is empty.
-func drop(x: float, aimed := true) -> bool:
-	if in_jar() - _want <= 0:
-		_say({"type": "empty"})
-		return false
-	_aim = clampf(x, W * AIM_LO, W * AIM_HI) if aimed else clampf(x, BALL_R, W - BALL_R)
-	_want += 1
-	_parked = 0.0
-	return true
+## A tap: a marble let go from wherever the dropper stands (the tap's
+## across is not used: the dropper is never steered). False when the jar
+## is empty.
+func drop(_x := 0.0, _aimed := true) -> bool:
+	return drop_here()
 
 ## Drop: a marble let go from wherever the dropper stands.
 func drop_here() -> bool:
@@ -546,14 +533,6 @@ func drop_here() -> bool:
 		return false
 	_want += 1
 	return true
-
-## Where the dropper is going, or where it is.
-func aim_x() -> float:
-	return drop_x if is_nan(_aim) else _aim
-
-## Whether the dropper is darting to a tap.
-func darting() -> bool:
-	return not is_nan(_aim) and absf(drop_x - _aim) > 1.0
 
 ## Lets the best marble in the jar go from the dropper (and its twin).
 func _release(aimed: bool) -> bool:
@@ -586,32 +565,19 @@ func step(dt: float) -> void:
 func _tick() -> void:
 	t += STEP
 	_move_dropper()
-	# the marbles asked for by a finger, once the dropper is there
-	if _want > 0 and not darting() and t - _let_at >= RELEASE_GAP and balls.size() < MAX_AIR + 20:
+	# the marbles asked for by a finger, one at a time
+	if _want > 0 and t - _let_at >= RELEASE_GAP and balls.size() < MAX_AIR + 20:
 		_want -= 1
 		if not _release(true):
 			_want = 0
-		if _want == 0:
-			_aim = NAN
-	# Auto: a landed marble rests, then goes again; a marble asleep in the
-	# jar (bought, loaded, or there when Auto was) is queued too. The queue
-	# holds at most MAX_AIR: past that the jar has more than the air takes,
-	# and a jar of millions (the twelfth tier is ten to the eleventh clay)
-	# must not be walked
+	# Auto: one marble every `every`, from wherever the dropper stands,
+	# when the jar has one and the air has room
 	var every := auto_every()
 	if every > 0.0:
-		var asleep := in_jar() - _want - _due.size()
-		while asleep > 0 and _due.size() < MAX_AIR:
-			var last: float = float(_due[-1]) if not _due.is_empty() else t
-			_due.append(maxf(last, t) + (every if _due.is_empty() else RELEASE_GAP))
-			asleep -= 1
-		while not _due.is_empty() and float(_due[0]) <= t and t - _let_at >= RELEASE_GAP and balls.size() < MAX_AIR and _want == 0:
-			_due.pop_front()
-			if not _release(false):
-				_due.clear()
-				break
-	elif not _due.is_empty():
-		_due.clear()
+		_auto_t = minf(_auto_t + STEP, every)
+		if _auto_t >= every and in_jar() - _want > 0 and balls.size() < MAX_AIR and t - _let_at >= RELEASE_GAP:
+			_auto_t = 0.0
+			_release(false)
 	var g := gravity()
 	var i := 0
 	while i < balls.size():
@@ -627,28 +593,10 @@ func _tick() -> void:
 			_say({"type": "ready", "id": id})
 		_could[id] = now
 
-## The dropper: darts to a tap, parks there a moment, then glides on from
-## where it is, the way it was going.
+## The dropper glides, and nothing else moves it.
 func _move_dropper() -> void:
-	if not is_nan(_aim):
-		var d := _aim - drop_x
-		var step := DART * STEP
-		if absf(d) <= step:
-			drop_x = _aim
-		else:
-			drop_x += signf(d) * step
-			_dir = signf(d)
-		return
-	if _parked < PARK:
-		_parked += STEP
-		if _parked >= PARK:
-			# pick the glide up from here
-			var u := clampf((drop_x / W - 0.5) / GLIDE_SPAN, -1.0, 1.0)
-			_ph = asin(u) if _dir > 0.0 else PI - asin(u)
-		return
 	_ph += GLIDE * STEP
 	drop_x = glide_x(_ph)
-	_dir = signf(cos(_ph))
 
 ## Moves one marble a step. True when it is in a cup.
 func _move(b: Dictionary, g: float) -> bool:
@@ -747,8 +695,6 @@ func _land(b: Dictionary) -> void:
 	lifetime += pay
 	landed += 1
 	cup_pts[c] += 1
-	if auto_every() > 0.0 and _due.size() < MAX_AIR * 2:
-		_due.append(t + auto_every())
 	_say({"type": "land", "cup": c, "pay": pay, "tier": k, "x": (b.p as Vector2).x, "boost": float(b.boost), "vx": (b.v as Vector2).x})
 	if cup_pts[c] >= need(cup_lv[c]):
 		cup_pts[c] -= need(cup_lv[c])

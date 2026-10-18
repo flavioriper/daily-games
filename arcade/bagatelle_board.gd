@@ -6,9 +6,9 @@ extends Control
 ## inside `view` (the room between the screen's plates and its tray) at the
 ## scale that fits it.
 ##
-## A press asks the dropper for a marble at the press's across (the sim
-## darts it there and lets go); held, it keeps asking every HOLD_EVERY. A
-## press on a bonus pin picks it up instead: drawn after the finger, it is
+## A press asks the dropper for a marble (it glides on its own and is
+## never steered); held, it keeps asking every HOLD_EVERY. A press on a
+## bonus pin picks it up instead: drawn after the finger, it is
 ## set on the pin nearest where it is let go (or goes back if that cannot
 ## take it); a press on one let go at once is a drop.
 ##
@@ -16,8 +16,9 @@ extends Control
 ## drifts in the lamplight; a marble casts a shadow on the velvet and
 ## leaves a short trail as it falls; a struck pin glows and throws two
 ## sparks; a landed marble is seen dropping into its cup, rolling to the
-## middle and sinking into the felt, under a glow in the cup's mouth, while
-## the cup squashes and its plate hops; the coins float up out of the cup.
+## middle and sinking into the felt, and a soft light rises out of the cup
+## (the user: "a light coming from the box"; taller and brighter for a big
+## pay) while its plate hops; the coins float up out of the cup.
 ##
 ## Draw calls: the velvet, the rails, the pins, the fins, the cups' backs
 ## and the bonus pins are cached meshes; the motes, the halos, every marble
@@ -48,6 +49,9 @@ const TAP := 14.0
 const FLOAT_GAP := 0.14
 const FLOATS := 22
 const FLOAT_LIFE := 1.1
+## The light out of a cup: how long it lives, how much bigger for a big pay.
+const LIGHT_LIFE := 0.6
+const LIGHT_BIG := 1.4
 ## A landed marble's settle: how long it is seen in the cup, where it rests.
 const SETTLE := 0.55
 const REST_Y := Sim.CUP_TOP + 52.0
@@ -83,6 +87,7 @@ var _hold := 0.0
 var _carry := -1
 var _carry_at := Vector2.ZERO
 var _cup_hit := PackedFloat32Array()
+var _cup_big := PackedByteArray()
 var _cup_up := PackedFloat32Array()
 ## How full each cup's bar is drawn, 0..1, easing after `cup_pts`.
 var _fill := PackedFloat32Array()
@@ -96,13 +101,15 @@ var _sparks: Array = []
 var _seen_glow := PackedFloat32Array()
 ## The motes: {p, drift, phase} in field units.
 var _motes: Array = []
-## Where the dropper is drawn (eases after the sim's), and its lean.
+## Where the dropper is drawn (eases after the sim's), and its lean into
+## its glide.
 var _drop_vis := Sim.W * 0.5
 var _drop_lean := 0.0
 var _flat_cache := {}
 var _motes_live: ArrayMesh
 var _halos_live: ArrayMesh
 var _balls_live: ArrayMesh
+var _lights_live: ArrayMesh
 var _bonus_live: ArrayMesh
 var _chips_live: ArrayMesh
 var _bars_live: ArrayMesh
@@ -112,6 +119,7 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP if interactive else Control.MOUSE_FILTER_IGNORE
 	_cup_hit.resize(Sim.CUPS)
 	_cup_hit.fill(-10.0)
+	_cup_big.resize(Sim.CUPS)
 	_cup_up.resize(Sim.CUPS)
 	_cup_up.fill(-10.0)
 	_fill.resize(Sim.CUPS)
@@ -161,6 +169,7 @@ func play(ev: Dictionary) -> void:
 		"land":
 			var c := int(ev.cup)
 			_cup_hit[c] = _clock
+			_cup_big[c] = 1 if (int(ev.tier) >= 3 or float(ev.pay) >= 20.0 * float(sim.value()) * float(sim.polish())) else 0
 			_pending[c] += float(ev.pay)
 			if _clock - _pending_at[c] >= FLOAT_GAP:
 				_float_cup(c)
@@ -200,12 +209,13 @@ func tick(delta: float) -> void:
 		_sparks.pop_front()
 	_ease_fills(delta)
 	if sim != null:
-		# the dropper drawn a touch behind the sim's, leaning into a dart
+		# the dropper drawn a touch behind the sim's, leaning a little the
+		# way it glides
 		var target: float = sim.drop_x
 		var was := _drop_vis
 		_drop_vis = target if Motion.reduce else lerpf(_drop_vis, target, 1.0 - exp(-26.0 * delta))
 		var vx := (_drop_vis - was) / maxf(delta, 0.001)
-		_drop_lean = 0.0 if Motion.reduce else lerpf(_drop_lean, clampf(vx / 9000.0, -0.22, 0.22), 1.0 - exp(-14.0 * delta))
+		_drop_lean = 0.0 if Motion.reduce else lerpf(_drop_lean, clampf(vx / 2400.0, -0.08, 0.08), 1.0 - exp(-8.0 * delta))
 		_new_sparks()
 		if not Motion.reduce:
 			for m: Dictionary in _motes:
@@ -264,12 +274,13 @@ func _draw() -> void:
 	# the dropper, over the marbles it lets go
 	draw_mesh(Art.dropper(), null, xf * Transform2D(_drop_lean, Vector2(_drop_vis, Sim.DROP_Y)))
 	_draw_worths()
-	# the cups' fronts, each squashed as a marble lands in it
+	# the cups' fronts, each with a breath as a marble lands in it
 	for c in Sim.CUPS:
 		var e := _clock - _cup_hit[c]
-		var sq := 0.0 if Motion.reduce or e > 0.24 else sin(e / 0.24 * PI) * 0.06
+		var sq := 0.0 if Motion.reduce or e > 0.24 else sin(e / 0.24 * PI) * 0.025
 		var at := Vector2((c + 0.5) * Sim.CUP_W, Sim.CUP_TOP)
 		draw_mesh(Art.cup(c), null, xf * Transform2D(0.0, Vector2(1.0 + sq, 1.0 - sq * 0.6), 0.0, at))
+	_draw_lights(xf)
 	_draw_bars(xf)
 	_draw_words()
 	_draw_jar()
@@ -386,6 +397,27 @@ func _draw_marbles(xf: Transform2D) -> void:
 	_balls_live = mb.mesh()
 	if _balls_live != null:
 		draw_mesh(_balls_live, null)
+
+## The light out of each cup a marble just dropped into: it rises fast
+## and fades, one mesh for all.
+func _draw_lights(xf: Transform2D) -> void:
+	if Motion.reduce:
+		return
+	var fb := Face.FlatBuilder.new(_flat_cache)
+	var light := Art.cup_light()
+	for c in Sim.CUPS:
+		var e := _clock - _cup_hit[c]
+		if e < 0.0 or e > LIGHT_LIFE:
+			continue
+		var u := e / LIGHT_LIFE
+		var grow := 1.0 - pow(1.0 - u, 3.0)
+		var big := LIGHT_BIG if _cup_big[c] == 1 else 1.0
+		var a := (1.0 - u) * (1.0 if _cup_big[c] == 1 else 0.8)
+		var at := Vector2((c + 0.5) * Sim.CUP_W, Sim.CUP_TOP + 6.0)
+		fb.append(light, xf * Transform2D(0.0, Vector2(big * (0.9 + 0.1 * grow), big * (0.35 + 0.65 * grow)), 0.0, at), Color(1, 1, 1, a))
+	_lights_live = fb.mesh()
+	if _lights_live != null:
+		draw_mesh(_lights_live, null)
 
 ## Each cup's way to its next level, a track and a fill, one mesh for the seven.
 func _draw_bars(xf: Transform2D) -> void:
@@ -567,8 +599,8 @@ func release(p: Vector2) -> void:
 				touched.emit(0.86)
 	_finger = -99
 
-func _drop_at(p: Vector2) -> void:
-	sim.drop(field_of(p).x)
+func _drop_at(_p: Vector2) -> void:
+	sim.drop_here()
 
 ## Lets go of any finger (a card opened over the board).
 func let_go() -> void:

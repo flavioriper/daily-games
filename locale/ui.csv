@@ -2006,11 +2006,11 @@ BG_UP_MARBLES_LINE,More marbles in the jar,Mais bolinhas no pote,Más canicas en
 BG_UP_VALUE,Value,Valor,Valor
 BG_UP_VALUE_LINE,Every marble pays one more,Toda bolinha paga uma a mais,Cada canica paga una más
 BG_UP_AUTO,Auto drop,Soltar sozinho,Soltar solo
-BG_UP_AUTO_LINE,A landed marble rolls out again by itself,Uma bolinha que caiu sai de novo sozinha,Una canica que cayó vuelve a salir sola
+BG_UP_AUTO_LINE,The dropper lets marbles go by itself,O dispenser solta bolinhas sozinho,El dispensador suelta canicas solo
 BG_UP_WEIGHT,Weight,Peso,Peso
 BG_UP_WEIGHT_LINE,Heavier marbles fall faster,Bolinhas mais pesadas caem mais rápido,Las canicas pesadas caen más rápido
 BG_OFF,off,desligado,apagado
-BG_SECONDS,again after %s s,de novo após %s s,de nuevo tras %s s
+BG_SECONDS,every %s s,a cada %s s,cada %s s
 BG_RANK,Rank %d · %s → %s,Nível %d · %s → %s,Nivel %d · %s → %s
 BG_TOP,Top rank · %s,Nível máximo · %s,Nivel máximo · %s
 BG_JAR,The jar,O pote,El frasco
