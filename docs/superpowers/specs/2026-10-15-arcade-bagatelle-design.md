@@ -161,3 +161,25 @@ words.
 6. **No away progress**, no gold, no ads in the game.
 7. **No concept tab** (the user said "do everything autonomous").
 8. **No mascot**: the marbles are pieces, not characters.
+
+## Amendment, 2026-10-18: the redesign
+
+The user: "polish and redesign bagatelle to something more cozier and
+elegant ... there is a element moving at top but ball spawn always at
+middle, balls sometimes falls outside the multiplier buckets ... game
+progression is insanely bad ... 3 -> 10, 10 - 20, 20 - 50". What changed
+(the detail is in `docs/agents/arcade.md`, "Bagatelle redrawn"):
+
+- Call 2 stands, and the dropper is now the only place a marble comes
+  from: a tap darts it there, Drop and Auto let go where it is.
+- Auto means a landed marble goes again by itself after a rest; every
+  marble owned is in play, sixty in the air at most.
+- Brass fins between the cups: a marble always lands inside one, and is
+  seen settling into it.
+- The jar climbs 1, 2, 3, 5, 10, 20, 50, 100 ...; a rank's price follows
+  the ladder to a power. Value is +1 a rank still.
+- The field is 1150 tall with thirteen rows.
+- The look is redrawn (lamplight, walnut, domed pins, glass marbles,
+  trails, sparks, motes, cup glows); `land` pitched by the cup, a big
+  landing is the jar coin with a kalimba fifth under it.
+- A pace test times every buy; see the arcade notes for the ratios.

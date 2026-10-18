@@ -130,16 +130,19 @@ func _process(delta: float) -> bool:
 		3:
 			if _t > _at + 1.2:
 				_shot("2_new")
-				_check("a new board holds three clay marbles", sim.in_jar() == 3)
+				_check("a new board holds one clay marble", sim.in_jar() == 1)
+				sim.owned[0] = 3
+				sim.jar[0] = 3
 				for x in [420.0, 500.0, 580.0]:
 					_tap(_field(Vector2(x, 300.0)))
-				_check("three real taps drop three marbles", sim.balls.size() == 3 and sim.in_jar() == 0)
+				_check("three real taps ask the dropper for three marbles", sim.balls.size() + sim._want == 3)
 				_next()
 		4:
 			if _t > _at + 0.6:
 				_shot("3_falling")
+				_check("the dropper let them go where it was sent", sim.balls.size() == 3 and sim.in_jar() == 0 and is_equal_approx(sim.drop_x, 580.0))
 				_tap(_field(Vector2(500.0, 300.0)))
-				_check("a tap with the jar empty drops nothing", sim.balls.size() <= 3)
+				_check("a tap with the jar empty drops nothing", sim.balls.size() <= 3 and sim._want == 0)
 				_next()
 		5:
 			if _t > _at + 7.0:

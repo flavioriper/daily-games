@@ -12,6 +12,9 @@ const Sim = preload("res://arcade/bagatelle_sim.gd")
 
 var _fails := 0
 
+## With "nocash" the bot never cashes out: the raw curve of one run.
+var _no_cash := false
+
 func _check(what: String, ok: bool) -> void:
 	print(("ok   " if ok else "FAIL ") + what)
 	if not ok:
@@ -23,6 +26,7 @@ func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
 	var seed_v := int(args[0]) if args.size() > 0 else 7
 	var minutes := float(args[1]) if args.size() > 1 else 0.0
+	_no_cash = args.size() > 2 and args[2] == "nocash"
 	_physics(seed_v)
 	_spread(seed_v)
 	_rules(seed_v)
@@ -35,9 +39,19 @@ func _initialize() -> void:
 
 func _physics(seed_v: int) -> void:
 	var s = Sim.new(seed_v)
-	_check("starts with 3 clay marbles", s.in_jar() == 3 and s.owned[0] == 3)
-	s.drop(500.0)
-	_check("a drop takes one from the jar", s.in_jar() == 2 and s.balls.size() == 1)
+	_check("starts with 1 clay marble", s.in_jar() == 1 and s.owned[0] == 1)
+	s.owned[0] = 3
+	s.jar[0] = 3
+	s.drop(400.0)
+	_check("a tap asks the dropper, nothing falls yet", s.in_jar() == 3 and s.balls.is_empty() and s.darting())
+	_run(s, 0.5)
+	_check("the dropper arrives and lets one go", s.in_jar() == 2 and s.balls.size() == 1 and is_equal_approx(s.drop_x, 400.0) and not s.darting())
+	s.drop(900.0)
+	_run(s, 0.5)
+	_check("a tap past the band lets go at the band's edge", s.balls.size() == 2 and is_equal_approx(s.drop_x, Sim.W * Sim.AIM_HI))
+	s.jar[0] += 1
+	s.owned[0] += 1
+	s.balls.pop_back()
 	var landed := false
 	var secs := 0.0
 	while secs < 12.0:
@@ -51,6 +65,7 @@ func _physics(seed_v: int) -> void:
 			break
 	_check("the marble lands (%.2f s)" % secs, landed and secs > 0.6 and secs < 8.0)
 	_check("and rolls back to the jar", s.in_jar() == 3)
+	_check("the dropper glides again once parked", _glides(s))
 	_check("paid coins", s.coins > 0.0)
 	var hits: Vector2i = s.take_pins()
 	_check("touched pins (%d)" % hits.x, hits.x >= 4)
@@ -59,7 +74,7 @@ func _physics(seed_v: int) -> void:
 	s2.owned[0] = 200
 	s2.jar[0] = 200
 	for i in 200:
-		s2.drop(s2.rng.randf_range(0.0, Sim.W), false)
+		s2._let(0, s2.rng.randf_range(Sim.BALL_R, Sim.W - Sim.BALL_R), false)
 	var t := 0.0
 	while s2.balls.size() > 0 and t < 15.0:
 		s2.step(1.0 / 30.0)
@@ -70,6 +85,40 @@ func _physics(seed_v: int) -> void:
 		if ev.type == "land" and (float(ev.x) < 0.0 or float(ev.x) > Sim.W):
 			inside = false
 	_check("every landing is on the board", inside)
+	var in_cup := true
+	for ev: Dictionary in s2.events:
+		if ev.type == "land":
+			var x := float(ev.x)
+			var xd: float = round(x / Sim.CUP_W) * Sim.CUP_W
+			if xd > 1.0 and xd < Sim.W - 1.0 and absf(x - xd) < Sim.BALL_R + Sim.FIN_W - 0.5:
+				in_cup = false
+	_check("every landing is inside a cup, never on a fin", in_cup)
+	# Auto: a landed marble goes again by itself, every marble in the jar in play
+	var s3 = Sim.new(seed_v + 2)
+	s3.owned[0] = 6
+	s3.jar[0] = 6
+	s3.up.auto = 1
+	_run(s3, 20.0)
+	_check("auto lets every marble go again (%d drops in 20 s)" % s3.drops, s3.drops >= 12 and s3.balls.size() + s3.in_jar() == 6)
+	s3.up.auto = 0
+	_run(s3, 10.0)
+	var n3: int = s3.drops
+	_run(s3, 10.0)
+	_check("auto off, nothing drops", s3.drops == n3 and s3.in_jar() == 6)
+
+## Whether the dropper, left alone, moves on its glide.
+func _glides(s) -> bool:
+	_run(s, Sim.PARK + 0.1)
+	var x0: float = s.drop_x
+	_run(s, 0.5)
+	return absf(s.drop_x - x0) > 5.0
+
+## Runs the sim `secs` on, a frame at a time (a step clamps at 0.25 s).
+static func _run(s, secs: float) -> void:
+	var t := 0.0
+	while t < secs:
+		s.step(1.0 / 60.0)
+		t += 1.0 / 60.0
 
 func _spread(seed_v: int) -> void:
 	for at: Array in [["middle", 500.0, true], ["aimed left", 0.0, true], ["wall", 0.0, false]]:
@@ -78,8 +127,9 @@ func _spread(seed_v: int) -> void:
 		s.jar[0] = 1000
 		var tally := PackedInt32Array()
 		tally.resize(Sim.CUPS)
+		var x := clampf(float(at[1]), Sim.W * Sim.AIM_LO, Sim.W * Sim.AIM_HI) if bool(at[2]) else clampf(float(at[1]), Sim.BALL_R, Sim.W - Sim.BALL_R)
 		for i in 1000:
-			s.drop(float(at[1]), bool(at[2]))
+			s._let(0, x, bool(at[2]))
 		var t := 0.0
 		while not s.balls.is_empty() and t < 30.0:
 			s.step(1.0 / 30.0)
@@ -104,17 +154,20 @@ func _rules(seed_v: int) -> void:
 	_check("max buy stops at auto's top (%d)" % n, int(s.up.auto) == Sim.UP_TOP.auto)
 	_check("auto every at least 0.1 s", s.auto_every() >= Sim.AUTO_LEAST - 0.0001)
 	s.buy("marbles", 5)
-	_check("marbles adds to the jar (1, 1, 2, 2, 3)", s.owned[0] == 12 and s.jar[0] == 12 and Sim.marbles_at(5) == 12)
+	_check("marbles climbs the ladder (1, 2, 3, 5, 10, 20)", s.owned[0] == 20 and s.jar[0] == 20 and Sim.marbles_at(5) == 20 and Sim.marbles_at(9) == 500 and Sim.marble_gain(3) == 5)
 	s.jar[0] = 25
 	s.owned[0] = 25
 	_check("merge all makes two glass", s.merge_all() == 2 and s.owned[1] == 2 and s.jar[0] == 5)
 	_check("best tier noted", s.best_tier == 1)
-	_check("drop takes the best first", s.drop(500.0) and int(s.balls[0].tier) == 1)
+	s.up.auto = 0
+	s.drop(500.0)
+	_run(s, 0.5)
+	_check("drop takes the best first", s.balls.size() == 1 and int(s.balls[0].tier) == 1)
 	s.earned = 1e6
 	_check("stars for 1M earned is 15", s.stars_for() == 15)
 	_check("next star past 1M", s.next_star_at() > 1e6 and s.stars_for(s.next_star_at() * 1.0001) == 16)
 	_check("cash out pays 15", s.cash_out() == 15 and s.stars == 15)
-	_check("a cash out resets the run", s.coins == 0.0 and int(s.up.value) == 0 and s.owned_all() == 3 and s.balls.is_empty())
+	_check("a cash out resets the run", s.coins == 0.0 and int(s.up.value) == 0 and s.owned_all() == 1 and s.balls.is_empty())
 	_check("a plus pin bought stands on the board", s.shop_buy("plus") and s.bonus.size() == 1)
 	var from: int = s.bonus.keys()[0]
 	var to := Sim.pin_id(8, 6)
@@ -140,6 +193,7 @@ func _kept(seed_v: int) -> void:
 	s.cup_lv[3] = 12
 	s.best_tier = 2
 	s.drop(500.0)
+	_run(s, 0.5)
 	s.save()
 	var l = Sim.load_saved()
 	_check("kept coins", is_equal_approx(l.coins, 1234.5))
@@ -155,7 +209,7 @@ func _pace(seed_v: int, minutes: float) -> void:
 	var t := 0.0
 	var tap := 0.0
 	var marks := {}
-	var next_print := 300.0
+	var next_print := 60.0
 	var dt := 1.0 / 30.0
 	var buys := {}
 	while t < minutes * 60.0:
@@ -190,7 +244,7 @@ func _pace(seed_v: int, minutes: float) -> void:
 		if s.cashouts >= 1 and not marks.has("cash1"):
 			marks["cash1"] = t
 		if t >= next_print:
-			next_print += 300.0
+			next_print += 60.0
 			print("  %4.0f min  coins %s/s-ish  earned %s  stars %d (ever %d, outs %d)  up %s  tiers %s  cups %s" % [t / 60.0, Sim.short(s.earned / maxf(1.0, t)), Sim.short(s.earned), s.stars, s.stars_ever, s.cashouts, str(s.up), str(s.owned), str(s.cup_lv)])
 	for k: String in marks:
 		print("  %s at %.1f min" % [k, float(marks[k]) / 60.0])
@@ -252,8 +306,6 @@ func _bot_buy(s) -> void:
 	for id: String in Sim.UPS:
 		if not s.can_buy(id):
 			continue
-		if id == "marbles" and s.in_jar() > maxi(3, air):
-			continue
 		var p: float = s.price(id)
 		if p < bp:
 			bp = p
@@ -261,7 +313,7 @@ func _bot_buy(s) -> void:
 	if best != "":
 		s.buy(best)
 	var could: int = s.stars_for()
-	if could >= maxi(3, s.stars_ever / 2):
+	if not _no_cash and could >= maxi(3, s.stars_ever / 2):
 		s.cash_out()
 		var bought := true
 		while bought:

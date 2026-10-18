@@ -16,10 +16,13 @@ extends Control
 ## screen is left. The board runs only while it is on screen.
 ##
 ## The moments (arcade/rewards.gd over everything): a pin touched glows and
-## plips, quieter as the marble falls; a cup squashes and floats its coins;
-## a big landing sends coins up to the plate; a cup's level rings it; a
-## bonus pin rings the marble; a new tier is named with confetti; a cash
-## out rains stars.
+## plips, quieter as the marble falls; a cup squashes and floats its coins,
+## the landing's pop pitched by the cup (the edges high); a big landing is
+## the jar coin with a chime under it, coins sent up to the plate and a
+## ring; an edge cup rings too; a cup's level rings it; a bonus pin rings
+## the marble; a new tier is named with confetti; a cash out rains stars.
+## Drop lets a marble go from wherever the dropper stands on its glide
+## (2026-10-18: it used to drop from the middle while the dropper moved).
 
 signal closed
 
@@ -366,16 +369,22 @@ func _on_land(ev: Dictionary, coins_before: float) -> void:
 	_chip_at["coins"] = _clock
 	if _busy():
 		return
-	if _once("land", LAND_GAP):
-		# the edges pay most and pop a little higher
-		var semis := absf(c - 3) * 1.2 + randf_range(-0.3, 0.3)
-		_fx.cue("land", pow(2.0, semis / 12.0))
-		_feel(Haptics.TICK)
+	var mult: float = sim.cup_mult(c)
 	var big := int(ev.tier) >= 3 or (coins_before > 50.0 and pay >= coins_before * BIG_SHARE)
+	if _once("land", LAND_GAP):
+		# the pop follows the cup: ×0.5 four steps down, ×2 four up
+		var semis := clampf(4.0 * log(mult / float(Sim.CUP_BASE[3])) / log(2.0), -6.0, 9.0) + randf_range(-0.3, 0.3)
+		_fx.cue("land", pow(2.0, semis / 12.0), -2.0 if mult < 1.0 else 0.0)
+		_feel(Haptics.TICK)
+	var from := _rw.at(board, board.cup_mid(c))
 	if big and _once("big", 0.35):
-		var from := _rw.at(board, board.cup_mid(c))
-		_rw.spray(from, Color("f5c04a"), 6, 520.0, "coin", 0.9, 0.0, _coins_rw())
-		_rw.ring(from, 70.0, Color("ffe08a"))
+		_fx.cue("coin", randf_range(0.97, 1.03))
+		_fx.cue("chime", 1.0, -4.0, 0.0)
+		_feel(Haptics.GOOD)
+		_rw.spray(from, Color("f5c04a"), 7, 540.0, "coin", 0.9, 0.0, _coins_rw())
+		_rw.ring(from, 80.0 * board.k, Color("ffe08a"))
+	elif mult >= 2.0 * float(Sim.CUP_BASE[3]) and _once("edge%d" % c, 0.3) and not Motion.reduce:
+		_rw.ring(from, 56.0 * board.k, Color("ffe08a"), 0.0, 0.35)
 	_changed()
 
 func _on_cup(c: int, level: int) -> void:
@@ -611,10 +620,10 @@ func _on_tray_input(event: InputEvent) -> void:
 		if was == slot and slot > 0:
 			press_slot(slot)
 
-## Drop: a marble from the middle of the board, a little to either side.
+## Drop: a marble from wherever the dropper stands.
 func _drop_button() -> void:
 	_chip_at["drop"] = _clock
-	sim.drop(Sim.W * 0.5 + randf_range(-60.0, 60.0))
+	sim.drop_here()
 
 ## A press on one of the round buttons (the tray, or a harness).
 func press_slot(i: int) -> void:

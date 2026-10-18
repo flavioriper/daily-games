@@ -4115,6 +4115,86 @@ runs while shut); the card sits after Tally on the tab's second page.
 - **Not done**: a phone; the sounds heard; pt and es read by a speaker;
   `reduce` shot; es shot; offline progress (a call).
 
+### Bagatelle redrawn, one spawner, the marble ladder (2026-10-18)
+
+The user: "polish and redesign bagatelle to something more cozier and
+elegant, right now animations are terrible, for example there is a element
+moving at top but ball spawn always at middle, balls sometimes falls outside
+the multiplier buckets, we need something polished, with deep, effects, cozy
+sounds and wins. Also, game progression is insanely bad ... 1 -> 2, 2 -> 3,
+3 -> 5, but them we need to start giving way more initial balls like 3 ->
+10, 10 - 20, 20 - 50". Branch `feat/bagatelle-redesign`.
+
+- **One spawner** (`Sim.drop_x`): every marble comes out of the dropper.
+  It glides over the middle band on its own (`GLIDE`, `GLIDE_SPAN`); a tap
+  on the board darts it to the tap's across at `DART` field units a second
+  and it lets go as it arrives (`drop` queues `_want`, `_move_dropper`);
+  it parks `PARK` after a tap, then picks the glide up from where it is,
+  the way it was going (`_ph` from `asin`). Drop and the auto let go from
+  wherever it stands (`drop_here`). The board draws it a touch behind the
+  sim's with a lean into a dart. Two marbles never leave closer than
+  `RELEASE_GAP`.
+- **Auto changed meaning**: a landed marble rests `auto_every()` and is let
+  go again by itself (`_due`), so every marble owned is in play, at most
+  `MAX_AIR` (60) in the air at once; a marble asleep in the jar (bought,
+  loaded, or there when Auto was bought) is queued too. The queue holds at
+  most MAX_AIR entries: the first draft walked the whole jar a tick and a
+  jar of two million marbles hung the sim. Locale `BG_UP_AUTO_LINE`,
+  `BG_SECONDS` ("again after %s s").
+- **Fins between the cups** (`FIN_W`, `FIN_TOP`, `Art.fins`): brass walls
+  a marble on top of is sent to a side, so a landing is always inside a
+  cup (the probe checks every landing against the fins). The marble is
+  then seen dropping past the rim, rolling to the middle and sinking into
+  the felt (`_settled`, `SETTLE`, `REST_Y`), between the cup's back and its
+  front (`Art.cups_back`, one mesh, and `Art.cup(c)` the front wall, brass
+  band and engraved plate, each under its squash).
+- **The ladder**: `START_MARBLES` 1 and `marbles_at(n)` 1, 2, 3, 5, 10, 20,
+  50, 100, 200, 500 ... (`MARBLE_LADDER`, then 1-2-5 a decade every three
+  ranks; top rank 36 is 5e11, the twelfth tier in clay). A rank's price is
+  `10 × (marbles_at(n + 1) / 2) ^ MARBLE_POW`. Value stays +1 a rank: a
+  multiplier (×1.5) with the ladder ran the bot to a million a second in
+  two minutes.
+- **The field is taller** (H 1150, 13 rows 62 apart, cups at 1030, gravity
+  3000): at 810x1440 the old 1000-tall board left a hand of bare velvet
+  over the head bar. From the middle the cups now come out
+  105/143/174/185/163/129/101 in a thousand.
+- **The look** (`arcade/bagatelle_art.gd`): deep plum velvet in three
+  stops, a pool of lamplight (a fan of vertex colours) and a vignette;
+  walnut side rails and a head bar with the brass slot; domed pins pressed
+  into the nap with a cast shadow; glass marbles (lower crescent, rim
+  light, window) over a contact shadow, with a two-ghost trail past
+  `TRAIL_FROM`; sparks off struck pins (`_sparks`); dust motes drifting in
+  the light (`MOTES`); a glow in a cup's mouth as a marble drops in; the
+  multiplier engraved on the plate; coin floats that pop in, bigger for a
+  big pay. Reduce motion: no motes, trails, sparks, glows or settle.
+- **Sound**: `land` is pitched by the cup (×0.5 four steps down, ×2 four
+  up, `CUP_BASE[3]` the root); a big landing is `coin` (the jar coin as
+  Factory's sale, three down, 6 kHz) with `chime` under it (the kalimba, a
+  fifth; the user liked a celesta fourth under the coin and there is no
+  celesta in the bank, so this stands in, unheard) and `Haptics.GOOD`; an
+  edge cup rings. Both new cues are bank takes, nothing bought.
+- **The pace test** (`tests/_probe_bagatelle.gd -- <seed> <minutes>
+  [nocash]`): every buy and cash out is timed and the first run's gaps are
+  printed an upgrade a line with a first-half/second-half ratio (the user:
+  "checking interval of bot upgrades, if there is a grow on time, we
+  probably have a issue"). `nocash` holds the bot from cashing out, for
+  the raw curve. The old economy read Marbles 17/44/118/286/556 s (ratio
+  7.8). Where it landed, seed 7, `MARBLE_POW` 1.7 (1.45 ran the bot to
+  billions a second by minute twelve without a cash out; 1.9 stalled
+  Marbles at four minutes a rank): without a cash out, earned ×10 about
+  every four minutes (9.7K at 5 min, 105K at 9, 1.5M at 13, 3.7M at 15),
+  Marbles ranks at 41/54/86/170/249/384/524/623/753 s (a rank about every
+  two minutes from the fourth on), Value's gaps double (it is +1 a rank
+  against ×1.6 a price, and meant to fall behind), Auto and Weight flat
+  (1.15, 1.07). With the bot cashing out at three stars: first cash out at
+  7.0 min, then every four, 28 stars ever by thirty minutes. A human holds
+  Drop at six a second and will run ahead of this bot's four taps.
+- **Draw calls** on `opengl3_angle` at 810x1440: 79 new, 81 to 116 in play
+  (seven to thirty-seven marbles), 138 to 218 under a card, 140 to 154 for
+  the tutorial. `_shot_bagatelle` 0 failed, probe 0 failed, suite 248522/0.
+- **Not done**: a phone; the sounds heard; pt and es read by a speaker; a
+  `reduce` shot; the Arcade card's picture (unchanged).
+
 ### Start over on every Arcade game (2026-10-17)
 
 The user: "all arcade games must have a button to reset all progress". Every

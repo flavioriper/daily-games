@@ -26,13 +26,13 @@ enum Lesson { DROP, CUPS, JAR, STARS }
 ## Each lesson's finger: [second, target, down from here on]. A target is a
 ## point of the field ([x, y] in field units) or "jar".
 const SCRIPTS := {
-	Lesson.DROP: [[0.0, [500, 1100], false], [0.7, [420, 40], false], [0.8, [420, 40], true], [0.95, [420, 40], false],
-		[1.6, [520, 40], false], [1.7, [520, 40], true], [1.85, [520, 40], false], [2.5, [600, 40], false], [2.6, [600, 40], true], [2.75, [600, 40], false], [3.6, [500, 1100], false]],
-	Lesson.CUPS: [[0.0, [500, 1100], false]],
-	Lesson.JAR: [[0.0, [500, 1100], false], [0.8, "jar", false], [1.0, "jar", true], [1.2, "jar", false], [2.2, [500, 40], false], [2.3, [500, 40], true], [2.45, [500, 40], false],
-		[3.1, [480, 40], false], [3.2, [480, 40], true], [3.35, [480, 40], false], [4.2, [500, 1100], false]],
-	Lesson.STARS: [[0.0, [500, 1100], false], [0.7, [269, 390], false], [0.9, [269, 390], true], [1.6, [500, 390], true], [1.75, [500, 390], false],
-		[2.3, [500, 40], false], [2.4, [500, 40], true], [2.55, [500, 40], false], [2.9, [500, 40], true], [3.05, [500, 40], false], [3.4, [500, 40], true], [3.55, [500, 40], false], [4.4, [500, 1100], false]],
+	Lesson.DROP: [[0.0, [500, 1250], false], [0.7, [420, 40], false], [0.8, [420, 40], true], [0.95, [420, 40], false],
+		[1.6, [520, 40], false], [1.7, [520, 40], true], [1.85, [520, 40], false], [2.5, [600, 40], false], [2.6, [600, 40], true], [2.75, [600, 40], false], [3.6, [500, 1250], false]],
+	Lesson.CUPS: [[0.0, [500, 1250], false]],
+	Lesson.JAR: [[0.0, [500, 1250], false], [0.8, "jar", false], [1.0, "jar", true], [1.2, "jar", false], [2.2, [500, 40], false], [2.3, [500, 40], true], [2.45, [500, 40], false],
+		[3.1, [480, 40], false], [3.2, [480, 40], true], [3.35, [480, 40], false], [4.2, [500, 1250], false]],
+	Lesson.STARS: [[0.0, [500, 1250], false], [0.7, [269, 390], false], [0.9, [269, 390], true], [1.6, [500, 390], true], [1.75, [500, 390], false],
+		[2.3, [500, 40], false], [2.4, [500, 40], true], [2.55, [500, 40], false], [2.9, [500, 40], true], [3.05, [500, 40], false], [3.4, [500, 40], true], [3.55, [500, 40], false], [4.4, [500, 1250], false]],
 }
 const LENGTHS := {Lesson.DROP: 7.0, Lesson.CUPS: 9.0, Lesson.JAR: 8.0, Lesson.STARS: 8.0}
 

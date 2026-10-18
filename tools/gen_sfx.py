@@ -3605,6 +3605,13 @@ SETS = {
         "cashout":   ("one soft short note on a kalimba, muffled and kind", 0.6, -8, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.13:2,4,6,7,9", "cut:1.2"),
         # The board opened: two notes up, quieter than anything it leads to.
         "start":     ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:5,9", "cut:0.8"),
+        # 2026-10-18, a big landing (a fine marble, or a fifth of the coins
+        # held at once): the jar coin as Factory's sale has it, three steps
+        # down and rolled off at 6 kHz, with `chime` under it, a kalimba
+        # fifth (the user liked a celesta fourth under the coin; there is no
+        # celesta in the bank, so the house kalimba stands in, unheard).
+        "coin":      ('one coin dropped into a small glass jar that holds a few coins, one short soft clink, close', 0.7, -11, FOLEY, "bank:jar", "warm:6000", "cut:0.6", "ease:0.004", "tight", "notes:0:-3"),
+        "chime":     ("one soft short note on a kalimba, muffled and kind", 0.6, -14, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.07:0,7", "cut:0.5"),
     },
     # Gumdrop (arcade/gumdrop_screen.gd, 2026-10-10): clear jelly in a mould
     # coloured with a dropper of syrup. Made against the cozy rules from the
