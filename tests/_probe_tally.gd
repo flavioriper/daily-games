@@ -7,8 +7,8 @@ extends SceneTree
 ## belt to the box fills the belt at the belt's speed and no faster; a level
 ## counts only its target and hands over its reward; each operator takes A on
 ## its back square, B on its other, and puts out of its answer square's
-## front alone; a belt never splits, a line drawn onto another joins it and
-## they take turns, a loose end holds its token at its middle; a crossing
+## front alone; a belt hands to a side only where a path was begun on it (a
+## fork, taking turns), a line drawn onto another joins it and they take turns, a loose end holds its token at its middle; a crossing
 ## carries both lanes across; a path runs the way it was drawn and Flip
 ## turns its line round; a crate keeps one number; a
 ## full output stops a machine; upgrades spend the tally and go faster; the
@@ -378,6 +378,18 @@ func _path() -> void:
 	_run(mj, Vector2i(5, 5), Vector2i(9, 5), E)
 	mj.lay_path([Vector2i(7, 5), Vector2i(7, 6), Vector2i(7, 7)], S)
 	_check("a path begun on a line and drawn away runs the finger's way", mj.face_at(Vector2i(7, 5)) == E and mj.face_at(Vector2i(7, 6)) == S and mj.face_at(Vector2i(7, 7)) == S)
+	# ... and forks the line there: the square keeps its way and hands to both by turns
+	var fk = _blank(3)
+	_dig1(fk, Vector2i(4, 40), 1)
+	_run(fk, Vector2i(5, 40), Vector2i(12, 40), E)
+	fk.mark()
+	fk.lay_path([Vector2i(8, 40), Vector2i(8, 41), Vector2i(8, 42), Vector2i(8, 43)], S)
+	var fi := Sim._i(Vector2i(8, 40))
+	_check("a path begun across a line forks it there", fk.face_at(Vector2i(8, 40)) == E and fk.fork[fi] == (1 << S) and (fk.outs[fi] as PackedInt32Array).size() == 2 and fk.face_at(Vector2i(8, 41)) == S)
+	fk.step(30.0)
+	_check("both ways of a fork fill", fk.occ[Sim._i(Vector2i(12, 40))] == 1 and fk.occ[Sim._i(Vector2i(8, 43))] == 1)
+	_check("a branch's line stops at its fork (%d slots)" % fk.line_through(Vector2i(8, 42)).size(), fk.line_through(Vector2i(8, 42)).size() == 3)
+	_check("one step back lifts the branch and the fork", fk.undo() and fk.fork[fi] == 0 and fk.kind_at(Vector2i(8, 41)) == Sim.EMPTY and (fk.outs[fi] as PackedInt32Array).size() == 1)
 	# a second stroke begun on a line's loose end turns it into the corner
 	var x = _blank(3)
 	_run(x, Vector2i(5, 9), Vector2i(9, 9), E)
@@ -535,11 +547,13 @@ func _kept() -> void:
 	s.place(Sim.DIG, dig_at, E)
 	s.place(Sim.ADD, Vector2i(2, 2), S)
 	_run(s, Vector2i(0, 0), Vector2i(5, 0), E)
+	s.lay_path([Vector2i(4, 0), Vector2i(4, 1), Vector2i(4, 2)], S)
 	s.save()
 	var r = Sim.load_saved()
 	_check("a saved paper comes back: level, count, made", r.level == 9 and r.got == 33 and r.made == 1234)
 	_check("its upgrades and tally", int(r.lv.belt) == 4 and r.held(19) == 50)
 	_check("its pieces", r.kind_at(dig_at) == Sim.DIG and r.kind_at(Vector2i(2, 2)) == Sim.ADD and r.face_at(Vector2i(2, 2)) == S and r.kind_at(Vector2i(3, 0)) == Sim.BELT)
+	_check("a fork comes back", r.fork[Sim._i(Vector2i(4, 0))] == (1 << S) and (r.outs[Sim._i(Vector2i(4, 0))] as PackedInt32Array).size() == 2)
 	_check("a machine comes back whole", r.kind_at(Vector2i(1, 1)) == Sim.ADD and int(r.root[Sim._i(Vector2i(1, 1))]) == Sim._i(Vector2i(2, 2)) and r.machines.size() == 1)
 	# a sheet kept before the footprints keeps its progress and drops its pieces
 	var cfg := ConfigFile.new()

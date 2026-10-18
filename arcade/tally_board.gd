@@ -348,6 +348,9 @@ func _rebuild() -> void:
 			for d: int in [Sim.left_of(f), Sim.right_of(f)]:
 				if bits & (1 << d) and d != a:
 					beds.append(Art.bed(d, f), Transform2D(0.0, at))
+				# a fork's bend out of a side, the way the branch goes
+				if int(sim.fork[i]) & (1 << d):
+					beds.append(Art.bed(a, d), Transform2D(0.0, at))
 			beds.append(Art.bed(a, f), Transform2D(0.0, at))
 		elif kd == Sim.BRIDGE:
 			# a crossing: the up-and-down lane's bed, the + plate over it
@@ -469,6 +472,10 @@ func _build_chevrons() -> ArrayMesh:
 				continue
 			var pos := Art.path(at, a, f, p)
 			fb.append(chev, Transform2D(Art.path_tan(a, f, p).angle(), pos))
+			# a fork's chevrons bend off into its branch past the middle
+			for d in 4:
+				if int(sim.fork[i]) & (1 << d) and d != f and p > 0.5:
+					fb.append(chev, Transform2D(Art.path_tan(a, d, p).angle(), Art.path(at, a, d, p)))
 	return fb.mesh()
 
 func _build_tokens(under: bool) -> ArrayMesh:
@@ -648,6 +655,7 @@ func _build_live() -> ArrayMesh:
 		var faces: Array = p.faces
 		var cut := int(p.cut)
 		var merge := bool(p.merge)
+		var forks := bool(p.get("fork", false))
 		for j in tiles.size():
 			var at := Art.mid(tiles[j])
 			var f := int(faces[j])
@@ -656,6 +664,9 @@ func _build_live() -> ArrayMesh:
 			var c := Color(Art.GHOST, 0.55) if ok else Color(Art.WARN, 0.45)
 			# from the edge it is entered by (a corner bends at the middle) to the one it leaves by
 			var entry := at - Art.dir_v(f) * U * 0.5
+			if j == 0 and forks:
+				# a fork leaves the line from its middle
+				entry = at
 			if j > 0:
 				var back: int = Sim.DIRS.find((tiles[j - 1] as Vector2i) - (tiles[j] as Vector2i))
 				if back >= 0:

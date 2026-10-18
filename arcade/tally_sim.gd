@@ -179,7 +179,8 @@ var clock := 0.0
 ## Ranks that could be bought when last looked, so `ready` is said once.
 var _could := {}
 var _looked := 0.0
-## What the last gesture changed: square -> [kind, face, face2] before it.
+## What the last gesture changed: square -> [kind, face, face2, root, role,
+## fork] before it.
 var _undo := {}
 ## The belt tool keeps to straight lines (the hand's toggle, kept with the paper).
 var straight := true
@@ -193,6 +194,9 @@ var kind := PackedByteArray()
 var face := PackedByteArray()
 ## A bridge's up-and-down lane's way; the across lane's is `face`.
 var face2 := PackedByteArray()
+## A belt's forks: a bit for each side way it also hands on to, by turns
+## with its own way (a path begun on a line across it branches it there).
+var fork := PackedByteArray()
 var root := PackedInt32Array()
 var role := PackedByteArray()
 var dep := PackedInt32Array()
@@ -224,6 +228,7 @@ func _init(rng_seed := 0) -> void:
 	kind.resize(N)
 	face.resize(N)
 	face2.resize(N)
+	fork.resize(N)
 	root.resize(N)
 	root.fill(-1)
 	role.resize(N)
@@ -675,10 +680,11 @@ static func path_faces(tiles: Array, f_last: int) -> PackedByteArray:
 
 ## What a traced path would do: {tiles, faces, cut, merge}. It always runs
 ## the way the finger went. A path begun on a piece starts past its edge
-## (its squares dropped: a dig is three wide, the box six), and so does one
-## begun on a belt across its way, but for a line's loose end, which turns
-## to go on with the path (the corner); one begun along a line turns it its
-## way. Its last square faces into the box, a machine or a crate beside it
+## (its squares dropped: a dig is three wide, the box six); one begun on a
+## belt across its way forks the line there (`fork`: the square keeps its
+## way and hands to the path by turns; the user, 2026-10-18: "this should
+## join convey"), but for a line's loose end, which turns to go on with
+## the path (the corner); one begun along a line turns it its way. Its last square faces into the box, a machine or a crate beside it
 ## when nothing takes ahead of it; a square laid alone faces into the box
 ## beside it, or away from a dig. `cut` is where it
 ## stops: a square that cannot take belt, a belt it would cross that more
@@ -689,6 +695,7 @@ func trim_path(tiles: Array, f_last: int) -> Dictionary:
 	var ts := tiles.duplicate()
 	var fs := Array(path_faces(ts, f_last))
 	var extend := false
+	var forks := false
 	var begun := NOWHERE
 	if not ts.is_empty() and inside(ts[0]):
 		var i0 := _i(ts[0])
@@ -697,6 +704,9 @@ func trim_path(tiles: Array, f_last: int) -> Dictionary:
 		if ts.size() > 1 and k0 == BELT and int(face[i0]) != f0 and int(face[i0]) != opp(f0) and _dangles(i0):
 			# begun on a line's loose end: the path goes on from it, its end the corner
 			extend = true
+		elif ts.size() > 1 and k0 == BELT and int(face[i0]) % 2 != f0 % 2:
+			# begun on a line across its way: the line forks there
+			forks = true
 		elif ts.size() > 1 and (not can_lay(ts[0]) or k0 == BRIDGE or (k0 == BELT and int(face[i0]) % 2 != f0 % 2)):
 			begun = ts[0]
 			var at := root_of(ts[0])
@@ -707,6 +717,9 @@ func trim_path(tiles: Array, f_last: int) -> Dictionary:
 	while ts.size() > 1 and not can_lay(ts[-1]):
 		ts.pop_back()
 		fs.pop_back()
+	if forks and ts.size() < 2:
+		# nothing past the line to fork to
+		return {"tiles": ts, "faces": fs, "cut": 0, "extend": false, "fork": false, "merge": false}
 	if ts.size() == 1 and inside(ts[0]):
 		# a square set alone faces into the box beside it, or away from a dig
 		var into := _taker_beside(ts[0], NOWHERE, begun)
@@ -729,7 +742,7 @@ func trim_path(tiles: Array, f_last: int) -> Dictionary:
 			break
 		var i := _i(t)
 		var f := int(fs[j])
-		if int(kind[i]) == BELT and int(face[i]) % 2 != f % 2 and not (j == 0 and extend):
+		if int(kind[i]) == BELT and int(face[i]) % 2 != f % 2 and not (j == 0 and (extend or forks)):
 			if j > 0 and j < last and _fed_straight(i):
 				continue
 			# a line across the last square: the path runs into its side
@@ -740,7 +753,7 @@ func trim_path(tiles: Array, f_last: int) -> Dictionary:
 			# head on into a line's front (not a line drawn back along itself)
 			cut = j
 			break
-	return {"tiles": ts, "faces": fs, "cut": cut, "extend": extend, "merge": merge}
+	return {"tiles": ts, "faces": fs, "cut": cut, "extend": extend, "fork": forks, "merge": merge}
 
 ## Whether a token going `d` into `t` would be taken there.
 func _takes(t: Vector2i, d: int) -> bool:
@@ -811,7 +824,13 @@ func lay_path(tiles: Array, f_last: int) -> int:
 		var i := _i(t)
 		var k := int(kind[i])
 		var across := f % 2 == 0
-		if k == EMPTY:
+		if j == 0 and bool(p.fork):
+			if int(fork[i]) & (1 << f):
+				continue
+			_record(i)
+			fork[i] = int(fork[i]) | (1 << f)
+			to_d[i] = NONE
+		elif k == EMPTY:
 			_record(i)
 			kind[i] = BELT
 			face[i] = f
@@ -822,6 +841,7 @@ func lay_path(tiles: Array, f_last: int) -> int:
 			_record(i)
 			if int(face[i]) % 2 == f % 2 or (j == 0 and bool(p.extend)):
 				face[i] = f
+				fork[i] = 0
 				to_d[i] = NONE
 			else:
 				var other := int(face[i])
@@ -862,6 +882,9 @@ func line_through(t: Vector2i) -> Array:
 		var p := int(fd[0])
 		var pk := int(kind[p % N])
 		if pk != BELT and pk != BRIDGE or (feeders.get(p, PackedInt32Array()) as PackedInt32Array).size() > 1:
+			break
+		if (outs.get(p, PackedInt32Array()) as PackedInt32Array).size() != 1:
+			# a fork: the line is the branch begun there, not the one it forks
 			break
 		s = p
 		seen[s] = true
@@ -950,6 +973,7 @@ func turn(t: Vector2i) -> bool:
 		return true
 	_record(i)
 	face[i] = (int(face[i]) + 1) % 4
+	fork[i] = 0
 	to_d[i] = NONE
 	_wire()
 	_emit("turn", {"kind": k, "tile": t, "face": int(face[i])})
@@ -986,7 +1010,7 @@ func mark() -> void:
 
 func _record(i: int) -> void:
 	if not _undo.has(i):
-		_undo[i] = [int(kind[i]), int(face[i]), int(face2[i]), int(root[i]), int(role[i])]
+		_undo[i] = [int(kind[i]), int(face[i]), int(face2[i]), int(root[i]), int(role[i]), int(fork[i])]
 
 func can_undo() -> bool:
 	return not _undo.is_empty()
@@ -1003,6 +1027,7 @@ func undo() -> bool:
 		face2[i] = int(was[2])
 		root[i] = int(was[3])
 		role[i] = int(was[4])
+		fork[i] = int(was[5])
 		n += 1
 	_undo = {}
 	_wire()
@@ -1112,9 +1137,15 @@ func _wire() -> void:
 			var e := _end_into(t + DIRS[f], f)
 			if e >= 0:
 				o.append(e)
+			for d in 4:
+				if int(fork[i]) & (1 << d) and d != f:
+					var e2 := _end_into(t + DIRS[d], d)
+					if e2 >= 0:
+						o.append(e2)
 			lanes.append(i)
 			outs[i] = o
 		elif k == BRIDGE:
+			fork[i] = 0
 			for lane in 2:
 				var s := i + lane * N
 				var f := int(face[i]) if lane == 0 else int(face2[i])
@@ -1127,6 +1158,7 @@ func _wire() -> void:
 		else:
 			occ[i] = 0
 			occ[i + N] = 0
+			fork[i] = 0
 			if k == DIG and (int(root[i]) < 0 or int(root[i]) == i):
 				if not digs.has(i):
 					digs[i] = {"budget": 0.0, "rr": 0}
@@ -1475,6 +1507,11 @@ func save() -> void:
 	cfg.set_value("paper", "made", made)
 	cfg.set_value("paper", "lv", lv)
 	cfg.set_value("paper", "pieces", pieces)
+	var forks := PackedInt32Array()
+	for i in N:
+		if int(kind[i]) == BELT and int(fork[i]) != 0:
+			forks.append_array([i, int(fork[i])])
+	cfg.set_value("paper", "forks", forks)
 	cfg.set_value("paper", "keys", keys)
 	cfg.set_value("paper", "counts", counts)
 	cfg.set_value("paper", "crates", crate_rows)
@@ -1511,6 +1548,11 @@ static func load_saved(rng_seed := 0) -> RefCounted:
 			continue
 		s._stamp(k, tile_of(i), f)
 		s.face2[i] = clampi(pieces[j + 3], 0, 3)
+	var forks: PackedInt32Array = cfg.get_value("paper", "forks", PackedInt32Array()) if fresh else PackedInt32Array()
+	for j in range(0, forks.size() - 1, 2):
+		var i := forks[j]
+		if i >= 0 and i < N and int(s.kind[i]) == BELT:
+			s.fork[i] = forks[j + 1] & 15
 	var keys: PackedInt64Array = cfg.get_value("paper", "keys", PackedInt64Array())
 	var counts: PackedInt64Array = cfg.get_value("paper", "counts", PackedInt64Array())
 	for j in mini(keys.size(), counts.size()):

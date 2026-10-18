@@ -259,6 +259,8 @@ func _grow(sim) -> void:
 	sim.lay_path([s + Vector2i(1, -1), s + Vector2i(1, 0)], 1)
 	put.call(b + Vector2i(-3, 6), 3)
 	route.call([b + Vector2i(-3, 8), s + Vector2i(-3, 3)])
+	# a stroke begun on the 1s line and drawn south forks it there
+	sim.lay_path([s + Vector2i(-5, 0), s + Vector2i(-5, 1), s + Vector2i(-5, 2), s + Vector2i(-5, 3)], 1)
 	# a subtractor south-east of the box fed on A alone: it starves on B
 	var w := b + Vector2i(8, 10)
 	sim.place(Sim.SUB, w, 2)

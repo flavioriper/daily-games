@@ -3933,6 +3933,30 @@ under a card (the same cached mesh a kind). Unconfirmed: whether the notch
 and spout read on a phone at the usual zoom (about 55 px a square, the
 spout's chevron about 9 px), and the 0.72 stop.
 
+#### Tally forks: a path begun on a line branches it (2026-10-18)
+
+The user, with a phone shot of a line drawn up from another that stood a
+square off it: "this should join convey, right now even clicking on the
+convey to branch and starting a new convey, it create a new convey next to
+it instead of joining both". Branching died with the splitter (7b7be5e8):
+`trim_path` dropped a first square that was a belt across the path's way,
+and a belt had one out. Now that square is a **fork**: `Sim.fork[i]` holds
+a bit for each side the belt also hands to, `_wire` adds those ends after
+its own, and `_choose` takes them by turns (a full way is passed over, as
+the old splitter's were). The square keeps its way; the path is laid from
+the next square. A loose end across the path is still the corner, and a
+path begun along a line still turns it. A fork goes with a Turn, with a
+path laid along it, and when the square stops being a belt; Undo puts it
+back (`_undo` rows carry it); it is kept in `paper/forks` (a sheet from
+before has none, VER unchanged). `line_through` stops at a fork, so Flip
+on a branch turns the branch alone. Drawn as a bend from the bed's way in
+to the side under the main bed, a T, with chevrons bending into it past
+the middle; the traced ghost leaves from the square's middle. Probe 0
+failed (five fork checks), `_shot_tally` windowed `opengl3_angle` 0 failed
+with a fork on the grown paper (72 to 82 draws in play), suite 248522/0.
+Unconfirmed: whether one-to-one turns are what the user wants from a
+branch (it fills both ways evenly, not one first).
+
 #### Tally spread out: the six-square box, the three-square dig (2026-10-18)
 
 The user: "main number collector should be a matrix of 6x6, numbers mine
@@ -4443,6 +4467,24 @@ eight-item star shop, twins, polish, warm cups, shine) is gone.
   `_probe_start_over` 0 failed, suite 248522/0.
 - **Not done**: Supreme and the generators (the user: later); a phone; the
   new moments heard; pt and es read by a speaker; a `reduce` shot.
+
+#### More balls without a top, cup xp that climbs (2026-10-18)
+
+The user: "the more balls upgrade has a flat 1 star cost and is uncaped,
+player can buy as many he wants. Also, XP for upgrade cup must increase at
+each level, not flat". The sheet had more balls at five levels for 1 / 3 /
+8 / 20 / 45 SP; it is now `BALLS_STEP` 5 marbles a level for `BALLS_PRICE`
+1 SP, no top (the shop row reads `BG_RANK`, "Level n · +5n → +5(n+1)", and
+is left out of the Shop chip's count, which it would light for good). A
+cup's xp to its next level was `ceil(5 × 1.035^lv)`, which reads 5, 6, 6,
+6, 6, 6, 7 on the cup; `NEED_STEP` 2 a level is added, so every level asks
+more (5, 8, 10, 12 ... 128 at level 50, 5,265 at 200).
+
+The pace moved, and it is a call: the probe's bot (seed 7) buys the
+cheapest shop item first, so it puts nearly every SP into marbles; its
+first investment came at 60 min with the flat balls alone (35 before) and
+at 70 with the cup curve too, the second at 160. Neither `SP_DIV` nor the
+bot's policy was touched.
 
 ### Start over on every Arcade game (2026-10-17)
 
