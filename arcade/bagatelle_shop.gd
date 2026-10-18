@@ -499,8 +499,10 @@ func _shop(id: String) -> void:
 	_refresh()
 
 func _shop_now(id: String, n: int) -> String:
+	if id == "balls":
+		return "+%d" % (Sim.BALLS_STEP * n)
 	if n <= 0:
-		return "+0" if id == "balls" else "×1"
+		return "×1"
 	var v := float(Sim.SHOP_LEVELS[id][n - 1])
 	return ("+%d" % int(v)) if id == "balls" else "×" + String.num(v, 1).trim_suffix(".0")
 
@@ -722,6 +724,12 @@ func _refresh() -> void:
 					_status(b).text = tr("BG_SHOP_SHUT")
 					_count(b).text = "—"
 					_dim(b, false)
+					continue
+				if id == "balls":
+					# no top: a level for the same SP, as many as are bought
+					_status(b).text = tr("BG_RANK") % [n, _shop_now(id, n), _shop_now(id, n + 1)]
+					_count(b).text = Sim.short(sim.shop_price(id))
+					_dim(b, sim.can_shop(id))
 					continue
 				var most := (Sim.SHOP_PRICES[id] as Array).size()
 				if sim.shop_top(id):

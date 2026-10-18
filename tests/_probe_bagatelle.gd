@@ -215,6 +215,13 @@ func _rules(seed_v: int) -> void:
 	_check("cash out pays 700", s.cash_out() == 700 and is_equal_approx(s.sp, 700.0))
 	_check("a cash out resets the run", s.coins == 0.0 and int(s.up.value) == 0 and s.owned_all() == 1 and s.balls.is_empty() and s.cup_lv[0] == 0)
 	_check("the shop: more balls 5 for 1 SP", s.shop_buy("balls") and s.owned_all() == 6 and is_equal_approx(s.sp, 699.0))
+	for k in 7:
+		s.shop_buy("balls")
+	_check("more balls has no top and stays 1 SP: eight bought, +40", int(s.shop.balls) == 8 and s.owned_all() == 41 and is_equal_approx(s.sp, 692.0) and s.can_shop("balls"))
+	var rises := true
+	for lv in 300:
+		rises = rises and Sim.need(lv + 1) > Sim.need(lv)
+	_check("a cup's xp to its next level rises every level", rises and Sim.need(0) == 5.0)
 	_check("mega balls value shut until investment 7", not s.can_shop("mega"))
 	s.shop_buy("bonus")
 	_check("shop bonus 1.5x on SP", is_equal_approx(s.sp_mult(), 1.5))

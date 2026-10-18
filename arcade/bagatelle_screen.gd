@@ -579,7 +579,8 @@ func _dot(id: String) -> int:
 		"shop":
 			var n := 0
 			for s: String in Sim.SHOP:
-				if sim.can_shop(s):
+				# more balls is always for sale: it would light the chip for good
+				if s != "balls" and sim.can_shop(s):
 					n += 1
 			return n + (1 if sim.can_cash_out() else 0)
 		"invest":

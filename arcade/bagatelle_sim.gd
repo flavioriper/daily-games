@@ -68,9 +68,13 @@ const MAX_AIR := 60
 ## LV 217 ×44.2 in the middle).
 const CUP_BASE := [1.5, 1.0, 0.8, 1.0, 1.5]
 const CUP_STEP := 0.2
-## A cup's xp to its next level: NEED_FIRST × NEED_GROWTH^level.
+## A cup's xp to its next level: NEED_FIRST × NEED_GROWTH^level +
+## NEED_STEP a level, so every level asks more than the one before (the
+## user, 2026-10-18: "XP for upgrade cup must increase at each level, not
+## flat"; the growth alone read 5, 6, 6, 6, 6, 6, 7 ...).
 const NEED_FIRST := 5.0
 const NEED_GROWTH := 1.035
+const NEED_STEP := 2.0
 ## The physics: gravity, how much of a blow's speed comes back, the scatter
 ## a pin adds along its face, the fastest a marble falls.
 const GRAVITY := 3000.0
@@ -130,18 +134,21 @@ const MEGA_TOP := 14
 
 ## The shop, bought with SP: level n of each is SHOP_LEVELS[id][n - 1], for
 ## SHOP_PRICES[id][n - 1]. "mega" (the merged marbles' worth) opens with
-## the seventh investment.
+## the seventh investment. More balls is off the tables: BALLS_STEP marbles
+## a level for BALLS_PRICE SP each, as many as are bought (the user,
+## 2026-10-18: "the more balls upgrade has a flat 1 star cost and is
+## uncaped, player can buy as many he wants"; the sheet's was 5 levels).
 const SHOP := ["xp", "balls", "drop", "bonus", "mega"]
+const BALLS_STEP := 5
+const BALLS_PRICE := 1.0
 const SHOP_LEVELS := {
 	"xp": [2.0, 3.0, 5.0, 8.0, 10.0],
-	"balls": [5, 10, 15, 20, 25],
 	"drop": [2.0, 4.0, 6.0, 8.0, 10.0],
 	"bonus": [1.5, 2.0, 3.0, 4.0, 5.0],
 	"mega": [2.0, 4.0, 6.0, 8.0, 10.0],
 }
 const SHOP_PRICES := {
 	"xp": [1, 3, 8, 20, 45],
-	"balls": [1, 3, 8, 20, 45],
 	"drop": [2, 5, 12, 28, 65],
 	"bonus": [2, 5, 12, 30, 80],
 	"mega": [500, 1500, 4000, 10000, 25000],
@@ -343,7 +350,7 @@ static func worth(tier: int) -> float:
 	return pow(WORTH, tier)
 
 static func need(lv: int) -> float:
-	return ceil(NEED_FIRST * pow(NEED_GROWTH, lv))
+	return ceil(NEED_FIRST * pow(NEED_GROWTH, lv) + NEED_STEP * lv)
 
 ## An upgrade's figure at level `n`.
 static func up_at(id: String, n: int) -> float:
@@ -356,8 +363,10 @@ func cup_mult(c: int) -> float:
 ## The shop's figure for `id` (its level's, or what nothing gives).
 func shop_at(id: String) -> float:
 	var n := int(shop[id])
+	if id == "balls":
+		return float(BALLS_STEP * n)
 	if n <= 0:
-		return 0.0 if id == "balls" else 1.0
+		return 1.0
 	return float(SHOP_LEVELS[id][n - 1])
 
 func ascend_at(id: String) -> float:
@@ -515,9 +524,11 @@ func shop_open(id: String) -> bool:
 	return id != "mega" or has_invest("mega_shop")
 
 func shop_top(id: String) -> bool:
-	return int(shop[id]) >= (SHOP_PRICES[id] as Array).size()
+	return id != "balls" and int(shop[id]) >= (SHOP_PRICES[id] as Array).size()
 
 func shop_price(id: String) -> float:
+	if id == "balls":
+		return BALLS_PRICE
 	if shop_top(id):
 		return 0.0
 	return float(SHOP_PRICES[id][int(shop[id])])
@@ -953,7 +964,7 @@ static func load_saved(rng_seed := 0) -> RefCounted:
 	var s = new(int(cfg.get_value("board", "seed", rng_seed)))
 	var sh: Dictionary = cfg.get_value("sp", "shop", {})
 	for id: String in SHOP:
-		s.shop[id] = clampi(int(sh.get(id, 0)), 0, (SHOP_PRICES[id] as Array).size())
+		s.shop[id] = maxi(0, int(sh.get(id, 0))) if id == "balls" else clampi(int(sh.get(id, 0)), 0, (SHOP_PRICES[id] as Array).size())
 	var a: Dictionary = cfg.get_value("sp", "asc", {})
 	for id: String in ASCEND:
 		s.asc[id] = clampi(int(a.get(id, 0)), 0, ASCEND_TOP)
