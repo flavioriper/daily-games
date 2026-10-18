@@ -142,9 +142,12 @@ No event a piece placed, a belt laid or a number delivered. `rules_opened`
 carries `puzzle_id` tally.
 
 **Bagatelle (2026-10-15)** is kept like Tally, so no `arcade_start` or
-`arcade_end`: `bagatelle_enter` (stars: ever earned, tier: the best marble's
-index), `bagatelle_leave` (seconds, stars, tier), `bagatelle_upgrade` (id:
-marbles, value, auto or weight; level), `bagatelle_shop` (id, level),
+`arcade_end`: `bagatelle_enter` (sp: ever earned, invested, ascends, tier:
+the best marble's index), `bagatelle_leave` (seconds, sp, invested, tier),
+`bagatelle_upgrade` (id: marbles, value, auto, weight or xp; level),
+`bagatelle_shop` (id: xp, balls, drop, bonus or mega; level),
 `bagatelle_tier` (tier, a marble never had before), `bagatelle_cashout`
-(stars, outs). No event a drop or a landing. `rules_opened` carries
+(sp, outs), `bagatelle_invest` (id, n: 1 to 10, outs), `bagatelle_ascend`
+(n) and `bagatelle_raise` (id: coin, balls, prestige or speed; level); stars
+became SP on 2026-10-18. No event a drop or a landing. `rules_opened` carries
 `puzzle_id` bagatelle.
