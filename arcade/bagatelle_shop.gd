@@ -271,7 +271,7 @@ func _buy(id: String) -> void:
 func _up_now(id: String, n: int) -> String:
 	match id:
 		"marbles":
-			return str(Sim.marbles_at(n))
+			return Sim.short(float(Sim.marbles_at(n)))
 		"value":
 			return Sim.short(float(1 + n))
 		"auto":

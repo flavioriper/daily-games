@@ -82,6 +82,9 @@ the old takes in each set's `build/sfx_raw/<set>/old_ticks/`. Two read
 `faint`, Stackwood's `move` and Penny Drop's `tick`, at the levels the user
 asked down to. My calls, not the user's: the place two steps under the
 button, the pill's count as the wrap, the one-step offset between boards.
+2026-10-18: Bagatelle's `coin` (the jar coin as Factory's sale) and `chime`
+(a kalimba fifth under it, standing in for rule 4's celesta fourth, which
+is not in the bank) are bank takes, unheard.
 
 ### The cozy rules of 2026-10-09 (history)
 

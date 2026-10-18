@@ -14,6 +14,8 @@ var _fails := 0
 
 ## With "nocash" the bot never cashes out: the raw curve of one run.
 var _no_cash := false
+## A run's second-half gaps past this many times its first half's is FLAG.
+const FLAT_RATIO := 1.3
 
 func _check(what: String, ok: bool) -> void:
 	print(("ok   " if ok else "FAIL ") + what)
@@ -278,13 +280,25 @@ func _gaps(buys: Dictionary) -> void:
 			if i < 24:
 				line += " %.0f" % float(ts[i])
 		print(line + (" ..." if gaps.size() > 24 else ""))
-		if gaps.size() >= 4:
-			var head := _mean(gaps.slice(0, gaps.size() / 2))
-			var tail := _mean(gaps.slice(gaps.size() / 2))
+		# the verdict skips the first three ranks (cheap, bought in seconds)
+		# and reads the rest: a second half slower than FLAT_RATIO times
+		# the first is a price curve outrunning the income. Value is +1 a
+		# rank against x1.6 a price and meant to fall behind: noted, not
+		# flagged.
+		var late := gaps.slice(mini(3, gaps.size()))
+		if late.size() >= 4:
+			var head := _mean(late.slice(0, late.size() / 2))
+			var tail := _mean(late.slice(late.size() / 2))
 			var worst := 0.0
-			for g in gaps:
+			for g in late:
 				worst = maxf(worst, g)
-			print("    gaps: first half %.0fs  second half %.0fs  longest %.0fs  (ratio %.2f)" % [head, tail, worst, tail / maxf(head, 0.01)])
+			var ratio := tail / maxf(head, 0.01)
+			var verdict := "ok  " if ratio <= FLAT_RATIO else ("note" if id == "value" else "FLAG")
+			print("    %s gaps from the 4th buy: first half %.0fs  second half %.0fs  longest %.0fs  (ratio %.2f)" % [verdict, head, tail, worst, ratio])
+		elif gaps.size() >= 2:
+			var all_head := _mean(gaps.slice(0, gaps.size() / 2))
+			var all_tail := _mean(gaps.slice(gaps.size() / 2))
+			print("    gaps: first half %.0fs  second half %.0fs  (too few past the 3rd buy to judge)" % [all_head, all_tail])
 
 static func _mean(a: PackedFloat32Array) -> float:
 	if a.is_empty():
