@@ -157,9 +157,21 @@ func _pace(seed_v: int, minutes: float) -> void:
 	var marks := {}
 	var next_print := 300.0
 	var dt := 1.0 / 30.0
+	var buys := {}
 	while t < minutes * 60.0:
 		s.step(dt)
 		t += dt
+		for ev: Dictionary in s.events:
+			if String(ev.type) == "upgrade":
+				var id := String(ev.id)
+				if not buys.has(id):
+					buys[id] = []
+				for _n in int(ev.n):
+					(buys[id] as Array).append(t)
+			elif String(ev.type) == "cashout":
+				if not buys.has("cashout"):
+					buys["cashout"] = []
+				(buys["cashout"] as Array).append(t)
 		s.events.clear()
 		tap += dt
 		if tap >= 0.25:
@@ -182,6 +194,51 @@ func _pace(seed_v: int, minutes: float) -> void:
 			print("  %4.0f min  coins %s/s-ish  earned %s  stars %d (ever %d, outs %d)  up %s  tiers %s  cups %s" % [t / 60.0, Sim.short(s.earned / maxf(1.0, t)), Sim.short(s.earned), s.stars, s.stars_ever, s.cashouts, str(s.up), str(s.owned), str(s.cup_lv)])
 	for k: String in marks:
 		print("  %s at %.1f min" % [k, float(marks[k]) / 60.0])
+	_gaps(buys)
+
+## The pace of the buys: when each rank of each upgrade was bought, and the
+## gaps between them. A gap that keeps growing is the price curve outrunning
+## the income: the game stalls.
+func _gaps(buys: Dictionary) -> void:
+	var outs: Array = buys.get("cashout", [])
+	for id: String in buys:
+		var ts: Array = buys[id]
+		if id == "cashout":
+			var line := "  cashouts x%d:" % ts.size()
+			for v in ts:
+				line += " %.0f" % float(v)
+			print(line)
+			continue
+		# the first run only: a cash out starts the prices over, and the
+		# burst of cheap ranks after it would hide the curve
+		var end := float(outs[0]) if not outs.is_empty() else INF
+		var line := "  %s x%d (first run):" % [id, ts.size()]
+		var prev := 0.0
+		var gaps := PackedFloat32Array()
+		for i in ts.size():
+			if float(ts[i]) > end:
+				break
+			var g := float(ts[i]) - prev
+			gaps.append(g)
+			prev = float(ts[i])
+			if i < 24:
+				line += " %.0f" % float(ts[i])
+		print(line + (" ..." if gaps.size() > 24 else ""))
+		if gaps.size() >= 4:
+			var head := _mean(gaps.slice(0, gaps.size() / 2))
+			var tail := _mean(gaps.slice(gaps.size() / 2))
+			var worst := 0.0
+			for g in gaps:
+				worst = maxf(worst, g)
+			print("    gaps: first half %.0fs  second half %.0fs  longest %.0fs  (ratio %.2f)" % [head, tail, worst, tail / maxf(head, 0.01)])
+
+static func _mean(a: PackedFloat32Array) -> float:
+	if a.is_empty():
+		return 0.0
+	var s := 0.0
+	for v in a:
+		s += v
+	return s / a.size()
 
 func _bot_buy(s) -> void:
 	# merge while the jar keeps more than twice what is in the air
