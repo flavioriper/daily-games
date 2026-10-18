@@ -3976,6 +3976,31 @@ numbers into a way bigger grid". The adder was already 2x2 and is unchanged.
   at the start, as before), the 120 sheet's walk for slow early belts, the
   dig's look, the snap, `K_START` 62; a phone.
 
+#### Tally belts follow the finger, Flip turns a line (2026-10-18)
+
+The user, of a path drawn down from beside the box that came out running up
+into it: "convey should always follow direction of the user movement, also
+add a button to change convey direction (all connnected convey also change
+direction)".
+
+- The `turned` reversal in `trim_path` is gone: a path runs the way the
+  finger went. Kept: a path's last square faces into the box, a machine or a
+  crate beside it when nothing takes ahead of it, and a square laid alone
+  faces into the box beside it or away from a dig.
+- **Flip** is a button on a belt's pill (after Turn; glyph `flip` in
+  `ui/icons.gd`, `TL_FLIP`). `Sim.flip_line(t)` turns round the line
+  `line_through(t)` gives: back while a slot has one feeder (never into a
+  join square), forward while the next is fed by it alone, through a
+  crossing's lane (the other lane keeps its way). Each square then runs back
+  to the one that fed it; the old first square runs the way it came, or into
+  the box/machine/crate beside it. One undo step; the `flip` event pops the
+  squares and plays the turn cue.
+- The Belts tutorial text names Flip instead of the reversal.
+- Measured: probe 0 failed, `_shot_tally` 0 failed headless and windowed
+  opengl3_angle (5_grown with the Flip pill up, 80 draws), suite 248522/0.
+- **Open**: a join square is never flipped (the branch and the trunk flip
+  apart); Flip on a crossing itself is not offered.
+
 #### Tally joins and crossings drawn, splitter and combiner gone (2026-10-18)
 
 The user: "Remove the current splitter, combiner and bridge ... the convey
