@@ -493,6 +493,21 @@ func token_at(s: int) -> Vector2:
 		p *= OP_STOP
 	return Art.path(Art.mid(t), int(sim.from_d[s]), x, p)
 
+## Where a machine drawn from `at` (its root's middle) goes turned by
+## `rot`: about the middle of the squares it covers, so a square one spins
+## in place.
+func _about(kd: int, t: Vector2i, f: int, at: Vector2, rot: float) -> Vector2:
+	if rot == 0.0 or not Sim.is_op(kd):
+		return at
+	var sq: Array = Sim.footprint(kd, t, f)
+	var lo := Vector2.INF
+	var hi := -Vector2.INF
+	for q: Array in sq:
+		lo = lo.min(Art.mid(q[0]))
+		hi = hi.max(Art.mid(q[0]))
+	var c := (lo + hi) * 0.5
+	return c + (at - c).rotated(rot)
+
 ## How much a piece is grown as it is set down (0 to 1, with a bounce).
 func _grow(t: Vector2i) -> float:
 	if Motion.reduce or not _pop.has(t):
@@ -551,7 +566,7 @@ func _build_pieces() -> ArrayMesh:
 			if _spin.has(t) and not Motion.reduce:
 				var u := clampf((_clock - float(_spin[t][0])) / SPIN, 0.0, 1.0)
 				rot -= (1.0 - (1.0 - pow(1.0 - u, 3.0))) * PI * 0.5
-		fb.append(m, Transform2D(rot, sc, 0.0, at))
+		fb.append(m, Transform2D(rot, sc, 0.0, _about(kd, t, int(sim.face[i]), at, rot)))
 	for g: Array in _gone:
 		var u := (_clock - float(g[3])) / GONE
 		if Motion.reduce or u >= 1.0:
@@ -672,7 +687,7 @@ func _build_live() -> ArrayMesh:
 		else:
 			m = Art.icon(kd)
 			rot = 0.0
-		b.append(m, Transform2D(rot, Vector2.ONE * 0.96, 0.0, Art.mid(t)), Color(1, 1, 1, 0.7))
+		b.append(m, Transform2D(rot, Vector2.ONE * 0.96, 0.0, _about(kd, t, gf, Art.mid(t), rot)), Color(1, 1, 1, 0.7))
 	# the square under a pill wears a sun ring
 	if not _pill.is_empty():
 		var t: Vector2i = _pill.tile
@@ -888,7 +903,12 @@ func _pill_press(name: String) -> void:
 	match name:
 		"turn":
 			if build:
-				_ghost.face = (int(_ghost.face) + 1) % 4
+				# a square machine turns on the squares it stands on
+				var nf := (int(_ghost.face) + 1) % 4
+				var nt := Sim.turned_root(int(_ghost.kind), _ghost.tile, int(_ghost.face), nf)
+				_ghost.face = nf
+				_ghost.tile = nt
+				_pill.tile = nt
 				_ghost_spin = _clock
 			else:
 				sim.mark()

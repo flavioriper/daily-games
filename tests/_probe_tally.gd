@@ -244,6 +244,16 @@ func _operators() -> void:
 	_check("a turn onto a belt is refused", not s2.turn(Vector2i(9, 10)) and s2.face_at(Vector2i(10, 10)) == Nd and s2.kind_at(Vector2i(10, 9)) == Sim.BELT)
 	s2.remove(Vector2i(10, 9))
 	_check("with room it turns about its answer square", s2.turn(Vector2i(11, 10)) and s2.kind_at(Vector2i(10, 9)) == Sim.MUL and s2.kind_at(Vector2i(9, 10)) == Sim.EMPTY)
+	for kd: int in [Sim.ADD, Sim.DIV]:
+		var sq = _blank()
+		sq.place(kd, Vector2i(20, 20), Nd)
+		var was: Array = sq.piece_squares(Vector2i(20, 20))
+		var same := true
+		for n in 4:
+			sq.turn(was[0])
+			for q: Vector2i in was:
+				same = same and sq.kind_at(q) == kd
+		_check("a square machine (%s) turns on the squares it stands on, faced round" % Sim.KIND_IDS[kd], same and sq.machines.size() == 1 and sq.face[sq.machines.keys()[0]] == Nd)
 	_check("a lift from an input square lifts it all", s2.remove(Vector2i(10, 9)) and s2.machines.is_empty() and s2.kind_at(Vector2i(10, 10)) == Sim.EMPTY)
 	_check("a machine is refused where it would cover a dig", (func() -> bool:
 		var q = _blank()

@@ -368,10 +368,18 @@ func _process(delta: float) -> bool:
 			if _t > _at + 2.4:
 				_grow(sim)
 				_s.board.look_at_square(Vector2(Sim.HUB_AT) + Vector2(3, 4), true)
+				# a path in hand begun on the box and drawn out of it: its ghost
+				# is turned to run into the box
+				var hb := Sim.HUB_AT + Vector2i(Sim.HUB - 1, Sim.HUB - 1)
+				_s.board._path = [hb, hb + Vector2i(1, 0), hb + Vector2i(1, 1), hb + Vector2i(1, 2), hb + Vector2i(1, 3)]
+				_s.board._trace_f = 1
 				_next()
 		9:
 			if _t > _at + 6.0:
 				_shot("5_grown")
+				var tp: Dictionary = sim.trim_path(_s.board._path, 1)
+				_check("the path drawn out of the box is turned to run into it", bool(tp.turned) and int((tp.faces as Array)[-1]) == 2)
+				_s.board._path = []
 				_s.board.k = 150.0
 				_s.board.look_at_square(Vector2(Sim.HUB_AT + Vector2i(-4, 1)) + Vector2(2.0, 0.5), true)
 				_next()
@@ -504,6 +512,7 @@ func _process(delta: float) -> bool:
 		27:
 			if _t > _at + 5.2:
 				var page: Control = _card._pages[3].diagram
+				_shot("13_tut_belts")
 				_check("the Belts page's trace across the line made a crossing", page._sim.kind_at(Vector2i(50, 59)) == Sim.BRIDGE)
 				_check("the Belts page's 2s joined the 1s line", page._sim.kind_at(Vector2i(54, 59)) == Sim.BELT and page._sim.face_at(Vector2i(54, 59)) == 0 and page._sim.face_at(Vector2i(54, 58)) == 1 and page._sim.held(2) > 0)
 				_card.free()

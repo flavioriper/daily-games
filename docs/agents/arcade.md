@@ -3976,6 +3976,64 @@ numbers into a way bigger grid". The adder was already 2x2 and is unchanged.
   at the start, as before), the 120 sheet's walk for slow early belts, the
   dig's look, the snap, `K_START` 62; a phone.
 
+#### Tally joins and crossings drawn, splitter and combiner gone (2026-10-18)
+
+The user: "Remove the current splitter, combiner and bridge ... the convey
+goes till the half of the final cell ... When convey ends in the same cell of
+another one, they merge like shapes L, F, E, H. If convey cross it, it auto
+places a + component that acts like a bridge ... if user start drawing a line
+that start right next to a component ... the convey should auto connect to
+it ... This way we can also solve this problem where player can't turn a
+convey on the very first cell". Then: "the rotate from the sum tool is wrong,
+it's a square shape so rotate should only turn it inplace".
+
+- **No splitter, no combiner** in the tray (rows now Look, Belt, Dig, Rotate,
+  Remove / Crate and the five operators). A combiner was mechanically a belt
+  already. Splitting is gone with the splitter, branch-by-drawing too: a
+  number is shared only where a dig or crate feeds every belt off its edge.
+  `SPLIT`/`JOIN` stay in the enum so old saves read: their squares load as
+  belts (no VER bump).
+- **A loose end stops at its middle**: `sim.dead[s]` marks a slot with no
+  end; its token waits at `prog` 0.5 and `Art.stub(d)` draws a bed from each
+  feeding edge to the middle with a round end (one stub, an L, a T). The
+  traced ghost draws its last square the same way.
+- **Join**: a path whose last square is a line across it is cut there with
+  `merge` true; the square before runs into the line's side (the T). The
+  ghost draws the merge square green to its middle.
+- **Crossing**: drawing across a line in the middle makes a `BRIDGE` from
+  level 1 (`UNLOCK[BRIDGE]` gone; level 4's reward slot is now 0, empty).
+  Not where the crossed belt is fed from a side (`_fed_straight`): a + there
+  would cut that join off, so the path is cut instead. `Art.cross()` is a
+  bolted brass plate, a + pressed in it, the across lane's walnut on top;
+  the other lane runs under it. Named "Crossing" on its card.
+- **Turned round** (`trim_path`'s `turned`): after a begun-on piece's squares
+  are dropped (all of the box's, all of a dig's), a path that starts beside
+  something taking numbers (the box, an A/B square from behind, a crate, or
+  the belt it was begun on) with nothing giving at its start and nothing
+  taking at its end is reversed, its last square facing in. So drawing out
+  of the box (images 6 and 7) lays a line running into it; a path begun on
+  a line and drawn away joins it. A tap beside the box faces into it; a path
+  ending beside the box, a machine or a crate turns its last square in.
+- **Fed from the side**: a dig or crate also feeds a belt running along its
+  edge with nothing behind it (a line's first belt), so a line started
+  beside a dig and drawn along it works.
+- A line drawn back along itself still reverses it; drawing head-on into a
+  line's front is still refused there.
+- **Square machines turn in place**: `Sim.turned_root` keeps the middle of
+  the squares a machine covers, so the adder and the divider turn on their
+  own four squares (in `turn()` and on the build ghost, whose tile moves);
+  the turn's spin is drawn about that middle (`_about`). The three-square
+  machines' bounding box keeps its middle too. The tutorial's Machine page
+  now taps (54, 58).
+- Tutorial Belts page is "Joins and crossings": the 2s end on the 1s line,
+  the trace across it makes a crossing and ends loose.
+- Measured: probe 0 failed, `_shot_tally` 0 failed headless and windowed
+  opengl3_angle (play 58-82 draws, cards/tutorial 115-139; new shots
+  `13_tut_belts` and a turned ghost in `5_grown`), suite 248522/0.
+- **Open**: the other reading of "till the half of the final cell" (a traced
+  square only claimed once the finger passes its middle) was not built; the
+  crossing plate's look; level 4 has no reward now; no phone.
+
 #### Tally made easier to handle: footprints, junctions, Rotate, Straight (2026-10-15)
 
 The user, with three shots of the reference: "we need to make tally game way

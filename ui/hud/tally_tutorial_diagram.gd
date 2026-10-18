@@ -49,7 +49,7 @@ const SCRIPTS := {
 		[2.8, Vector2(51.5, 59.5), false], [3.0, Vector2(51.5, 59.5), true], [3.9, Vector2(56.5, 59.5), true], [4.05, Vector2(56.5, 59.5), false],
 		[4.7, Vector2(54.5, 63.5), false]],
 	Lesson.BOX: [[0.0, Vector2(54.5, 64.0), false]],
-	Lesson.MACHINE: [[0.0, Vector2(51.5, 63.5), false], [0.8, Vector2(55.5, 58.5), false], [1.0, Vector2(55.5, 58.5), true], [1.15, Vector2(55.5, 58.5), false],
+	Lesson.MACHINE: [[0.0, Vector2(51.5, 63.5), false], [0.8, Vector2(54.5, 58.5), false], [1.0, Vector2(54.5, 58.5), true], [1.15, Vector2(54.5, 58.5), false],
 		[1.9, "turn", false], [2.05, "turn", true], [2.2, "turn", false],
 		[3.0, "place", false], [3.15, "place", true], [3.3, "place", false], [4.1, Vector2(51.5, 63.5), false]],
 	Lesson.BELTS: [[0.0, Vector2(46.5, 62.5), false], [3.4, Vector2(50.5, 57.5), false], [3.6, Vector2(50.5, 57.5), true], [4.6, Vector2(50.5, 61.5), true], [4.75, Vector2(50.5, 61.5), false],

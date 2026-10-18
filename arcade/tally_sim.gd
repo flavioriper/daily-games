@@ -558,6 +558,23 @@ static func footprint(k: int, t: Vector2i, f: int) -> Array:
 		out.append([t + across * int(c[0]) + back * int(c[1]), int(c[2])])
 	return out
 
+## Where the root of `k` on `t` facing `f` goes when it is turned to face
+## `nf`: the squares it covers keep their middle, so a square machine (the
+## adder, the divider) turns in place on the squares it stood on.
+static func turned_root(k: int, t: Vector2i, f: int, nf: int) -> Vector2i:
+	var lo := Vector2i(1 << 20, 1 << 20)
+	var hi := -lo
+	var lo2 := lo
+	var hi2 := hi
+	for c: Array in footprint(k, t, f):
+		lo = lo.min(c[0])
+		hi = hi.max(c[0])
+	for c: Array in footprint(k, t, nf):
+		lo2 = lo2.min(c[0])
+		hi2 = hi2.max(c[0])
+	var d := (lo + hi) - (lo2 + hi2)
+	return t + Vector2i(floori(d.x / 2.0), floori(d.y / 2.0))
+
 ## Why `k` cannot go on `t` facing `f`, or "" when it can. Every square it
 ## would cover must be on the paper and hold nothing but belt (`mine` the
 ## root of a machine whose own squares do not count, for a turn).
@@ -848,8 +865,8 @@ func turn(t: Vector2i) -> bool:
 		return false
 	if is_op(k):
 		var r := int(root[i])
-		var at := tile_of(r)
 		var f := (int(face[r]) + 1) % 4
+		var at := turned_root(k, tile_of(r), int(face[r]), f)
 		var why := why_not(k, at, f, r)
 		if why != "":
 			_emit("refused", {"why": "no_room", "tile": at, "v": 0})

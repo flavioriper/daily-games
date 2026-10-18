@@ -179,8 +179,9 @@ static func stub(a: int) -> ArrayMesh:
 		b.disc(Vector2.ZERO, w * 0.5, pass_w[1])
 	return _keep(key, b)
 
-## A crossing's plate about the origin: a brass + over the up-and-down
-## lane (which runs under it), the across lane's walnut on its long arm.
+## A crossing's plate about the origin: a bolted brass square over the
+## up-and-down lane (which runs under it), a + pressed in it, the across
+## lane's walnut over its long arm.
 static func cross(across: int) -> ArrayMesh:
 	var key := ["cross", across % 2]
 	if _cache.has(key):
@@ -189,18 +190,16 @@ static func cross(across: int) -> ArrayMesh:
 	var horiz := across % 2 == 0
 	var long := Vector2(U * 0.5, 0) if horiz else Vector2(0, U * 0.5)
 	var side := Vector2(0, U * 0.5) if horiz else Vector2(U * 0.5, 0)
-	var arm := U * 0.4
-	var sh := Vector2(0, 7.0)
-	# the shadow, then the brass +: both arms, the edge a shade darker
-	for bar: Array in [[long, arm], [side * 0.86, arm * 0.9]]:
-		b.polygon(_leg(-bar[0] + sh, bar[0] + sh, bar[1], 0.0), SHADE)
-	for bar: Array in [[side * 0.86, arm * 0.9], [long, arm]]:
-		b.polygon(_leg(-bar[0], bar[0], bar[1], 0.0), BRASS.darkened(0.2))
-		b.polygon(_leg(-bar[0], bar[0], bar[1] - 8.0, -4.0), BRASS)
-	# the across lane rides on the long arm, the other's way pressed in brass
-	b.polygon(_leg(-side * 0.7, side * 0.7, U * 0.08, 0.0), BRASS.lightened(0.22))
-	b.polygon(_leg(-long, long, BED_IN * 0.78, 0.0), WALNUT)
-	b.disc(Vector2.ZERO, U * 0.07, BRASS.darkened(0.1))
+	var h := U * 0.47
+	b.polygon(Face.Builder.round_rect(Vector2(-h, -h + 7.0), Vector2.ONE * h * 2.0, 12.0), SHADE)
+	b.polygon(Face.Builder.round_rect(Vector2(-h, -h), Vector2.ONE * h * 2.0, 12.0), BRASS.darkened(0.22))
+	b.polygon(Face.Builder.round_rect(Vector2(-h + 5.0, -h + 5.0), Vector2.ONE * (h * 2.0 - 10.0), 9.0), BRASS)
+	for c: Vector2 in [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]:
+		b.disc(c * (h - 11.0), 4.5, BRASS.darkened(0.35))
+	# the other lane's way pressed in, the across lane riding over
+	b.polygon(_leg(-side * 0.86, side * 0.86, U * 0.26, 0.0), BRASS.darkened(0.14))
+	b.polygon(_leg(-long, long, U * 0.42, 0.0), WALNUT_EDGE)
+	b.polygon(_leg(-long, long, U * 0.32, 0.0), WALNUT)
 	return _keep(key, b)
 
 # --- tokens ---
