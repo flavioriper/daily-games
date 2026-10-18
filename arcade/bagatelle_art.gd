@@ -35,12 +35,16 @@ const INK := Color("3b3028")
 const SHADE := Color(0.05, 0.02, 0.08, 0.42)
 const PLUS := Color("f5c542")
 const TIMES := Color("f08aa0")
+## The fifth and tenth investments' pegs: the +100 in jade, the ×5 in violet.
+const MEGA := Color("6fd6a8")
+const ULT := Color("b48cf2")
 const HALO := Color("ffe2a6")
-## The tiers' colours, Clay to Star.
+## The tiers' colours, Clay to Sun.
 const TIER := [
 	Color("eadbc4"), Color("8fd0e6"), Color("e8a07a"), Color("97c785"),
 	Color("f2cd5c"), Color("c6b0e6"), Color("dfe7f0"), Color("f6e1e6"),
 	Color("e2645c"), Color("9fdcd2"), Color("7f93d6"), Color("f5a623"),
+	Color("7fe0b0"), Color("f58fd0"), Color("5b4a86"), Color("ffe27a"),
 ]
 ## The rails' width (the right one holds the return tube), and where the
 ## head bar lies.
@@ -99,6 +103,7 @@ static func marble(k: int, r := Sim.BALL_R) -> ArrayMesh:
 	if k >= 1:
 		b.stroke(Face.Builder.ring(Vector2(-r * 0.04, -r * 0.06), r * 0.74, r * 0.74), maxf(1.5, r * 0.08), Color(1, 1, 1, 0.14), true)
 	# bands from the fourth tier: one, then two from the seventh, then three
+	# (the last four tiers wear three)
 	var bands := 0 if k < 3 else (1 if k < 6 else (2 if k < 9 else 3))
 	for i in bands:
 		var a := -0.5 + 1.1 * i
@@ -138,7 +143,7 @@ static func boost_ring(kind: String, r := Sim.BALL_R) -> ArrayMesh:
 	if _cache.has(key):
 		return _cache[key]
 	var b := Face.Builder.new()
-	b.stroke(Face.Builder.ring(Vector2.ZERO, r + 5.0, r + 5.0), 3.5, PLUS if kind == "plus" else TIMES, true)
+	b.stroke(Face.Builder.ring(Vector2.ZERO, r + 5.0, r + 5.0), 3.5, peg_colour(kind), true)
 	return _keep(key, b)
 
 # --- pins ---
@@ -172,18 +177,31 @@ static func pins() -> ArrayMesh:
 				_pin_into(b, Sim.pin_at(r, i), Sim.PIN_R, BRASS)
 	return _keep("pins", b)
 
-## A bonus pin: a larger pin of its colour with a soft halo and its mark.
+static func peg_colour(kind: String) -> Color:
+	match kind:
+		"times":
+			return TIMES
+		"mega":
+			return MEGA
+		"ult":
+			return ULT
+	return PLUS
+
+## A bonus pin: a larger pin of its colour with a soft halo and its mark
+## (a + for the adding pegs, a × for the multiplying ones; the mega and
+## ultimate pegs a size bigger).
 static func bonus_pin(kind: String) -> ArrayMesh:
 	var key := ["bonus", kind]
 	if _cache.has(key):
 		return _cache[key]
 	var b := Face.Builder.new()
-	var col := PLUS if kind == "plus" else TIMES
-	b.disc(Vector2.ZERO, Sim.PIN_R * 2.8, Color(col, 0.14))
-	b.disc(Vector2.ZERO, Sim.PIN_R * 2.0, Color(col, 0.2))
-	_pin_into(b, Vector2.ZERO, Sim.PIN_R * 1.35, col)
-	var s := Sim.PIN_R * 0.55
-	if kind == "plus":
+	var col := peg_colour(kind)
+	var big := 1.2 if kind == "mega" or kind == "ult" else 1.0
+	b.disc(Vector2.ZERO, Sim.PIN_R * 2.8 * big, Color(col, 0.14))
+	b.disc(Vector2.ZERO, Sim.PIN_R * 2.0 * big, Color(col, 0.2))
+	_pin_into(b, Vector2.ZERO, Sim.PIN_R * 1.35 * big, col)
+	var s := Sim.PIN_R * 0.55 * big
+	if kind == "plus" or kind == "mega":
 		b.stroke(PackedVector2Array([Vector2(-s, 0), Vector2(s, 0)]), 2.6, INK)
 		b.stroke(PackedVector2Array([Vector2(0, -s), Vector2(0, s)]), 2.6, INK)
 	else:

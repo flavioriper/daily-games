@@ -158,11 +158,11 @@ func refresh() -> void:
 			_say(game, tr("TL_CARD_NEW") if lvl == 0 else tr("TL_CARD_LEVEL") % lvl,
 				"" if int(paper.made) == 0 else tr("TL_CARD_MADE") % Record.grouped(int(paper.made)))
 			continue
-		# and Bagatelle: its line is the stars it has earned and its best marble
+		# and Bagatelle: its line is the SP it has earned and its best marble
 		if game == "bagatelle":
 			var board: Dictionary = BagatelleSim.kept()
-			var stars := int(board.stars)
-			_say(game, tr("BG_CARD_NEW") if bool(board.new) else (tr("BG_CARD_STAR_ONE") if stars == 1 else tr("BG_CARD_STAR_N") % Record.grouped(stars)),
+			var sp := int(board.sp)
+			_say(game, tr("BG_CARD_NEW") if bool(board.new) else tr("BG_CARD_SP") % BagatelleSim.short(float(sp)),
 				"" if bool(board.new) else tr("BG_CARD_TIER") % tr("BG_TIER_" + String(BagatelleSim.TIER_IDS[int(board.tier)]).to_upper()))
 			continue
 		# Firefly is played a stage at a time: its line is the furthest

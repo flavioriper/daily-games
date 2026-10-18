@@ -185,3 +185,10 @@ progression is insanely bad ... 3 -> 10, 10 - 20, 20 - 50". What changed
   trails, sparks, motes, cup glows); `land` pitched by the cup, a big
   landing is the jar coin with a kalimba fifth under it.
 - A pace test times every buy; see the arcade notes for the ratios.
+
+## Amended 2026-10-18: the user's progression sheet
+
+The economy above (upgrade curves, stars, the star shop) was replaced on
+the user's sheet of upgrade tables, shop, investments and Ascend: see
+"Bagatelle on the user's progression sheet (2026-10-18)" in
+`docs/agents/arcade.md`.

@@ -10,9 +10,10 @@ extends Control
 ##   the cups pay.
 ## - CUPS: the dropper left to itself, a cup one marble short of its level.
 ## - JAR: twenty-two clay marbles; the finger taps the jar, twenty merge
-##   into two glass, and glass falls worth twenty clay.
-## - STARS: a gold pin carried to the middle; every marble that touches it
-##   wears its ring and pays half again.
+##   into two glass, and glass falls worth ten clay.
+## - STARS (the cash out and invest page): the first investment's gold peg
+##   carried to the middle; every marble that touches it wears its ring and
+##   pays ten more.
 
 const Motion = preload("res://core/motion.gd")
 const CozyTheme = preload("res://ui/theme.gd")
@@ -95,22 +96,24 @@ func _reset() -> void:
 	_sim = Sim.new(11)
 	match lesson:
 		Lesson.DROP:
+			_sim.auto_off = true
 			_sim.owned[0] = 3
 			_sim.jar[0] = 3
 		Lesson.CUPS:
 			_sim.owned[0] = 30
 			_sim.jar[0] = 30
-			_sim.up.auto = 30
+			_sim.up.auto = 10
 			for c in Sim.CUPS:
 				_sim.cup_lv[c] = 4
-				_sim.cup_pts[c] = Sim.need(4) - 1
+				_sim.cup_xp[c] = Sim.need(4) - 1.0
 		Lesson.JAR:
+			_sim.auto_off = true
 			_sim.owned[0] = 22
 			_sim.jar[0] = 22
 		Lesson.STARS:
 			_sim.owned[0] = 12
 			_sim.jar[0] = 12
-			_sim.shop.plus = 1
+			_sim.invested = 1
 			_sim.bonus = {Sim.pin_near(Vector2(269, 390), Sim.DX): "plus"}
 	_sim.events.clear()
 	_board.sim = _sim
@@ -160,7 +163,7 @@ func _process(delta: float) -> void:
 	for ev: Dictionary in _sim.events:
 		_board.play(ev)
 		if String(ev.type) == "bonus":
-			_said = "+50%"
+			_said = "+10"
 			_said_at = _t
 		elif String(ev.type) == "cup":
 			_said = tr("BG_CUP_LV") % int(ev.level)

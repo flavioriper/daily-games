@@ -1975,81 +1975,58 @@ TUT_TALLY_UPGRADE,Upgrades,Melhorias,Mejoras
 TUT_TALLY_UPGRADE_BODY,"Upgrades are paid in numbers the box has had: tap a branch of the tree, deliver what it asks and press Up. Faster belts, digs on more belts, quicker machines.","Melhorias são pagas com números que a caixa recebeu: toque num ramo da árvore, entregue o que ele pede e aperte Subir. Esteiras mais rápidas, extratores em mais esteiras, máquinas mais ágeis.","Las mejoras se pagan con números que la caja recibió: toca una rama del árbol, entrega lo que pide y pulsa Subir. Cintas más rápidas, extractores en más cintas, máquinas más ágiles."
 BG_MOTTO,Marbles through the pins,Bolinhas entre os pinos,Canicas entre los clavos
 BG_HINT_START,Tap the board to drop a marble,Toque no tabuleiro para soltar uma bolinha,Toca el tablero para soltar una canica
-BG_SAY_EMPTY,Every marble is rolling,Todas as bolinhas estão rolando,Todas las canicas están rodando
 BG_CUP_LV,Lv %d,Nv %d,Nv %d
 BG_CUP_UP,Cup level %d · %s,Copo nível %d · %s,Vaso nivel %d · %s
-BG_UPGRADED,"%s, rank %d","%s, nível %d","%s, nivel %d"
-BG_UPGRADED_N,"%s, rank %d (+%d)","%s, nível %d (+%d)","%s, nivel %d (+%d)"
+BG_UPGRADED,"%s, level %d","%s, nível %d","%s, nivel %d"
+BG_UPGRADED_N,"%s, level %d (+%d)","%s, nível %d (+%d)","%s, nivel %d (+%d)"
 BG_READY,%s can be bought,%s pode ser comprado,%s se puede comprar
 BG_NEW_TIER,New marble: %s!,Bolinha nova: %s!,¡Canica nueva: %s!
 BG_TIER_WORTH,Worth %s clay marbles,Vale %s bolinhas de barro,Vale %s canicas de barro
-BG_CASHED_ONE,+1 star!,+1 estrela!,¡+1 estrella!
-BG_CASHED_N,+%d stars!,+%d estrelas!,¡+%d estrellas!
-BG_CASHED_LINE,"A fresh board, and the stars are kept","Tabuleiro novo, e as estrelas ficam","Tablero nuevo, y las estrellas se quedan"
+BG_CASHED_N,+%s SP!,+%s PL!,¡+%s PT!
+BG_CASHED_LINE,"A fresh board, and the shop points are kept","Tabuleiro novo, e os pontos de loja ficam","Tablero nuevo, y los puntos de tienda se quedan"
 BG_PER_SECOND,%s a second,%s por segundo,%s por segundo
-BG_CASH_PLATE,Cash out +%d,Resgatar +%d,Canjear +%d
-BG_NEXT_STAR,A star at %s,Estrela em %s,Estrella en %s
+BG_CASH_PLATE,Cash out +%s,Resgatar +%s,Canjear +%s
+BG_NEXT_STAR,SP at %s,PL em %s,PT en %s
 BG_DROP,Drop,Soltar,Soltar
 BG_TRAY_UP,Upgrades,Melhorias,Mejoras
 BG_TRAY_JAR,Jar,Pote,Frasco
-BG_TRAY_STARS,Stars,Estrelas,Estrellas
 BG_BUY_ONE,Buy ×1,Comprar ×1,Comprar ×1
 BG_BUY_MAX,Buy max,Comprar máx.,Comprar máx.
 BG_UPGRADES,Upgrades,Melhorias,Mejoras
-BG_UP_MARBLES,Marbles,Bolinhas,Canicas
-BG_UP_MARBLES_LINE,More marbles in the jar,Mais bolinhas no pote,Más canicas en el frasco
+BG_UP_MARBLES,Ball count,Bolinhas,Canicas
+BG_UP_MARBLES_LINE,Marbles in the jar,Bolinhas no pote,Canicas en el frasco
 BG_UP_VALUE,Value,Valor,Valor
-BG_UP_VALUE_LINE,Every marble pays one more,Toda bolinha paga uma a mais,Cada canica paga una más
+BG_UP_VALUE_LINE,What every marble pays,Quanto cada bolinha paga,Lo que paga cada canica
 BG_UP_AUTO,Auto drop,Soltar sozinho,Soltar solo
-BG_UP_AUTO_LINE,The dropper lets marbles go by itself,O dispenser solta bolinhas sozinho,El dispensador suelta canicas solo
-BG_UP_WEIGHT,Weight,Peso,Peso
+BG_UP_AUTO_LINE,The dropper lets a marble go every so often,O dispenser solta uma bolinha de tempos em tempos,El dispensador suelta una canica cada tanto
+BG_UP_WEIGHT,Ball weight,Peso da bolinha,Peso de la canica
 BG_UP_WEIGHT_LINE,Heavier marbles fall faster,Bolinhas mais pesadas caem mais rápido,Las canicas pesadas caen más rápido
 BG_OFF,off,desligado,apagado
 BG_SECONDS,every %s s,a cada %s s,cada %s s
-BG_RANK,Rank %d · %s → %s,Nível %d · %s → %s,Nivel %d · %s → %s
-BG_TOP,Top rank · %s,Nível máximo · %s,Nivel máximo · %s
+BG_RANK,Level %d · %s → %s,Nível %d · %s → %s,Nivel %d · %s → %s
+BG_TOP,Top level · %s,Nível máximo · %s,Nivel máximo · %s
 BG_JAR,The jar,O pote,El frasco
-BG_JAR_LINE,"Ten marbles of a kind make one of the next, worth twenty. Fewer marbles drop at a time: keep enough to roll.","Dez bolinhas iguais viram uma da próxima, que vale vinte. Menos bolinhas caem por vez: guarde o bastante para rolar.","Diez canicas iguales forman una de la siguiente, que vale veinte. Caen menos a la vez: guarda las suficientes para rodar."
-BG_JAR_ROW,%s in the jar of %s · worth %s,%s no pote de %s · vale %s,%s en el frasco de %s · vale %s
+BG_JAR_LINE,"Ten marbles of a kind make one of the next, worth ten. More worth falls through the pins at once: merge when the jar holds more than the air.","Dez bolinhas iguais viram uma da próxima, que vale dez. Mais valor cai pelos pinos de uma vez: junte quando o pote tiver mais do que cabe no ar.","Diez canicas iguales hacen una de la siguiente, que vale diez. Más valor cae por los clavos a la vez: junta cuando el frasco tenga más de lo que cabe en el aire."
+BG_JAR_TILE,%s/%s · ×%s,%s/%s · ×%s,%s/%s · ×%s
 BG_MERGE,Merge 10,Juntar 10,Juntar 10
 BG_MERGE_ALL,Merge all,Juntar todas,Juntar todas
-BG_STARS,Stars,Estrelas,Estrellas
-BG_STAR_SHOP,THE STAR SHOP · KEPT FOR EVER,LOJA DE ESTRELAS · PARA SEMPRE,TIENDA DE ESTRELLAS · PARA SIEMPRE
-BG_CASH_LINE,"This board has earned %s. Cash out for %d stars: the coins, upgrades, cups and marbles start again.","Este tabuleiro rendeu %s. Resgate %d estrelas: moedas, melhorias, copos e bolinhas recomeçam.","Este tablero ganó %s. Canjea %d estrellas: monedas, mejoras, vasos y canicas empiezan de nuevo."
-BG_CASH_NOT_YET,The first star comes at %s coins earned.,A primeira estrela vem com %s moedas ganhas.,La primera estrella llega con %s monedas ganadas.
-BG_CASH_OUT,Cash out +%d,Resgatar +%d,Canjear +%d
+BG_CASH_LINE,"You hold %s coins. Cash out for %s SP: the coins, upgrades, cups and marbles start again.","Você tem %s moedas. Resgate %s PL: moedas, melhorias, copos e bolinhas recomeçam.","Tienes %s monedas. Canjea %s PT: monedas, mejoras, vasos y canicas empiezan de nuevo."
+BG_CASH_NOT_YET,The first SP comes at %s coins held.,O primeiro PL vem com %s moedas na mão.,El primer PT llega con %s monedas en mano.
+BG_CASH_OUT,Cash out +%s,Resgatar +%s,Canjear +%s
 BG_CASH_OUT_NONE,Not yet,Ainda não,Aún no
-BG_CASH_SURE,Sure? Tap for +%d,Certeza? Toque: +%d,¿Seguro? Toca: +%d
-BG_SHOP_RANK,%d of %d,%d de %d,%d de %d
-BG_SHOP_PLUS,Gold pin,Pino dourado,Clavo dorado
-BG_SHOP_PLUS_LINE,"Touched, a marble pays half again. Hold to move.","Tocou, paga metade a mais. Segure para mover.","Al tocarlo, paga la mitad más. Mantén para mover."
-BG_SHOP_TIMES,Rose pin,Pino rosa,Clavo rosa
-BG_SHOP_TIMES_LINE,"Touched, a marble pays twice. Hold to move.","Tocou, paga o dobro. Segure para mover.","Al tocarlo, paga el doble. Mantén para mover."
-BG_SHOP_POLISH,Polish,Polimento,Pulido
-BG_SHOP_POLISH_LINE,Every coin a quarter more,Toda moeda vale um quarto a mais,Cada moneda vale un cuarto más
-BG_SHOP_JAR,Full jar,Pote cheio,Frasco lleno
-BG_SHOP_JAR_LINE,Three more clay marbles to start,Mais três bolinhas de barro no começo,Tres canicas de barro más al empezar
-BG_SHOP_FINER,Finer marbles,Bolinhas finas,Canicas finas
-BG_SHOP_FINER_LINE,Marbles bought come a kind better,Bolinhas compradas vêm um tipo melhor,Las canicas compradas vienen un tipo mejor
-BG_SHOP_TWINS,Twins,Gêmeas,Gemelas
-BG_SHOP_TWINS_LINE,"A drop lets two go, one time in five more","Uma em cada cinco vezes a mais, saem duas","Una vez más de cada cinco, salen dos"
-BG_SHOP_WARM,Warm cups,Copos quentes,Vasos cálidos
-BG_SHOP_WARM_LINE,Cups start five levels up,Copos começam cinco níveis acima,Los vasos empiezan cinco niveles arriba
-BG_SHOP_SHINE,Shine,Brilho,Brillo
-BG_SHOP_SHINE_LINE,A quarter more stars from a cash out,Um quarto a mais de estrelas por resgate,Un cuarto más de estrellas al canjear
+BG_CASH_SURE,Sure? Tap for +%s,Certeza? Toque: +%s,¿Seguro? Toca: +%s
+BG_SHOP_RANK,%d of %d · %s → %s,%d de %d · %s → %s,%d de %d · %s → %s
 BG_CARD_NEW,A fresh board,Um tabuleiro novo,Un tablero nuevo
-BG_CARD_STAR_ONE,1 star,1 estrela,1 estrella
-BG_CARD_STAR_N,%s stars,%s estrelas,%s estrellas
 BG_CARD_TIER,Best marble: %s,Melhor bolinha: %s,Mejor canica: %s
 BG_TUT_MERGED,10 clay → 1 glass,10 de barro → 1 de vidro,10 de barro → 1 de vidrio
 TUT_BAGATELLE_DROP,Drop a marble,Solte uma bolinha,Suelta una canica
 TUT_BAGATELLE_DROP_BODY,"Tap the board, or hold Drop, and a marble falls through the pins into a cup. The cup pays its number times the marble's worth.","Toque no tabuleiro, ou segure Soltar, e uma bolinha cai pelos pinos até um copo. O copo paga seu número vezes o valor da bolinha.","Toca el tablero, o mantén Soltar, y una canica cae entre los clavos a un vaso. El vaso paga su número por el valor de la canica."
 TUT_BAGATELLE_CUPS,Cups grow,Copos crescem,Los vasos crecen
-TUT_BAGATELLE_CUPS_BODY,"Every marble that lands is a point to its cup. Cups go up in levels and pay more. The middle fills fastest, the edges pay most.","Cada bolinha que cai é um ponto para o copo. Os copos sobem de nível e pagam mais. O meio enche mais rápido, as pontas pagam mais.","Cada canica que cae es un punto para su vaso. Los vasos suben de nivel y pagan más. El centro se llena antes, los bordes pagan más."
+TUT_BAGATELLE_CUPS_BODY,"Every marble that lands gives its cup xp. Cups go up in levels and pay more. The middle fills fastest, the edges pay most.","Cada bolinha que cai dá xp ao seu copo. Os copos sobem de nível e pagam mais. O meio enche mais rápido, as pontas pagam mais.","Cada canica que cae da xp a su vaso. Los vasos suben de nivel y pagan más. El centro se llena antes, los bordes pagan más."
 TUT_BAGATELLE_JAR,The jar,O pote,El frasco
-TUT_BAGATELLE_JAR_BODY,Your marbles roll back to the jar. Ten of a kind merge into one finer marble worth twenty: tap the jar. Keep enough to keep rolling.,Suas bolinhas voltam para o pote. Dez iguais viram uma mais fina que vale vinte: toque no pote. Guarde o bastante para continuar rolando.,Tus canicas vuelven al frasco. Diez iguales forman una más fina que vale veinte: toca el frasco. Guarda las suficientes para seguir rodando.
-TUT_BAGATELLE_STARS,Stars,Estrelas,Estrellas
-TUT_BAGATELLE_STARS_BODY,"Cash out a board for stars, kept for ever. They buy gold pins, which you hold and move, and more. Every star earned adds to every coin.","Resgate um tabuleiro por estrelas, que ficam para sempre. Elas compram pinos dourados, que você segura e move, e mais. Cada estrela ganha soma a toda moeda.","Canjea un tablero por estrellas, que se quedan para siempre. Compran clavos dorados, que mantienes y mueves, y más. Cada estrella ganada suma a cada moneda."
+TUT_BAGATELLE_JAR_BODY,Your marbles roll back to the jar. Ten of a kind merge into one finer marble worth ten: tap the jar. Keep enough to keep rolling.,Suas bolinhas voltam para o pote. Dez iguais viram uma bolinha melhor que vale dez: toque no pote. Guarde o bastante para continuar rolando.,Tus canicas vuelven al frasco. Diez iguales se juntan en una mejor que vale diez: toca el frasco. Guarda suficientes para seguir rodando.
+TUT_BAGATELLE_STARS,Cash out and invest,Resgatar e investir,Canjear e invertir
+TUT_BAGATELLE_STARS_BODY,"Cash out a board for shop points (SP), which buy the shop. An investment spends them all for something kept, like a gold peg you hold and move.","Resgate um tabuleiro por pontos de loja (PL), que compram na loja. Um investimento gasta todos por algo que fica, como um pino dourado que você segura e move.","Canjea un tablero por puntos de tienda (PT), que compran en la tienda. Una inversión los gasta todos por algo que se queda, como un clavo dorado que sostienes y mueves."
 BG_TIER_CLAY,Clay,Barro,Barro
 BG_TIER_GLASS,Glass,Vidro,Vidrio
 BG_TIER_AGATE,Agate,Ágata,Ágata
@@ -2062,3 +2039,63 @@ BG_TIER_EMBER,Ember,Brasa,Brasa
 BG_TIER_FROST,Frost,Geada,Escarcha
 BG_TIER_COMET,Comet,Cometa,Cometa
 BG_TIER_STAR,Star,Estrela,Estrella
+BG_UP_XP,Ball xp,XP da bolinha,XP de la canica
+BG_UP_XP_LINE,The xp a landing gives its cup,O xp que uma bolinha dá ao copo,El xp que una canica da a su vaso
+BG_UP_WAITS,Level 10 · %s · investment 8 opens more,Nível 10 · %s · o investimento 8 abre mais,Nivel 10 · %s · la inversión 8 abre más
+BG_TRAY_SHOP,Shop,Loja,Tienda
+BG_TRAY_INVEST,Invest,Investir,Invertir
+BG_SHOP,Cash out,Resgate,Canje
+BG_SHOP_KICKER,THE SHOP · SPEND SP,A LOJA · GASTE PL,LA TIENDA · GASTA PT
+BG_SHOP_SHUT,Opens with investment 7,Abre com o investimento 7,Se abre con la inversión 7
+BG_SHOP_XP,XP multiplier,Multiplicador de xp,Multiplicador de xp
+BG_SHOP_XP_LINE,Every landing gives its cup more xp,Cada bolinha dá mais xp ao copo,Cada canica da más xp a su vaso
+BG_SHOP_BALLS,More balls,Mais bolinhas,Más canicas
+BG_SHOP_BALLS_LINE,Clay marbles added to every board,Bolinhas de barro a mais em todo tabuleiro,Canicas de barro de más en cada tablero
+BG_SHOP_DROP,Drop multiplier,Multiplicador de queda,Multiplicador de caída
+BG_SHOP_DROP_LINE,"Every coin a landing pays, multiplied","Toda moeda que uma bolinha paga, multiplicada","Cada moneda que paga una canica, multiplicada"
+BG_SHOP_BONUS,Shop bonus,Bônus de loja,Bono de tienda
+BG_SHOP_BONUS_LINE,More SP from every cash out,Mais PL a cada resgate,Más PT en cada canje
+BG_SHOP_MEGA,Mega balls value,Valor das megabolinhas,Valor de las megacanicas
+BG_SHOP_MEGA_LINE,Merged marbles are worth more,Bolinhas juntadas valem mais,Las canicas juntadas valen más
+BG_INVEST,Invest,Investir,Invertir
+BG_INVEST_LINE,"An investment spends every SP and starts the shop and the board again. What it gives is kept. One at a time, each opening the next.","Um investimento gasta todos os PL e recomeça a loja e o tabuleiro. O que ele dá fica. Um de cada vez, cada um abre o próximo.","Una inversión gasta todos los PT y empieza de nuevo la tienda y el tablero. Lo que da se queda. De una en una, cada una abre la siguiente."
+BG_INVEST_NTH,Investment %d,Investimento %d,Inversión %d
+BG_INVEST_SURE,Investment %d · sure? Tap again,Investimento %d · certeza? Toque de novo,Inversión %d · ¿seguro? Toca otra vez
+BG_INVEST_ALL,All ten investments made,Os dez investimentos feitos,Las diez inversiones hechas
+BG_INVESTED,Investment %d!,Investimento %d!,¡Inversión %d!
+BG_INV_PEG,Bonus peg,Pino bônus,Clavo bono
+BG_INV_PEG_LINE,A gold peg: +10 to the value of a marble that touches it. Hold to move.,Um pino dourado: +10 no valor da bolinha que tocar. Segure para mover.,Un clavo dorado: +10 al valor de la canica que lo toque. Mantén para mover.
+BG_INV_TIMES_PEG,Multiplier peg,Pino multiplicador,Clavo multiplicador
+BG_INV_TIMES_PEG_LINE,A rose peg: a marble's value ×2. Hold to move.,Um pino rosa: valor da bolinha ×2. Segure para mover.,Un clavo rosa: valor de la canica ×2. Mantén para mover.
+BG_INV_MEGA_XP,Mega xp,Mega xp,Mega xp
+BG_INV_MEGA_XP_LINE,Cups get ten times the xp,Os copos ganham dez vezes o xp,Los vasos ganan diez veces el xp
+BG_INV_DOUBLE,Double balls,Bolinhas em dobro,Canicas dobles
+BG_INV_DOUBLE_LINE,Twice the marbles,O dobro de bolinhas,El doble de canicas
+BG_INV_SP_BOOST,SP boost,Impulso de PL,Impulso de PT
+BG_INV_SP_BOOST_LINE,Five times the SP from a cash out,Cinco vezes os PL de um resgate,Cinco veces los PT de un canje
+BG_INV_MEGA_PEG,Mega bonus peg,Megapino bônus,Megaclavo bono
+BG_INV_MEGA_PEG_LINE,A jade peg: +100 to a marble's value. Hold to move.,Um pino de jade: +100 no valor da bolinha. Segure para mover.,Un clavo de jade: +100 al valor de la canica. Mantén para mover.
+BG_INV_MEGA_SHOP,Mega shop tier,Loja mega,Tienda mega
+BG_INV_MEGA_SHOP_LINE,Opens Mega balls value in the shop,Abre o Valor das megabolinhas na loja,Abre el Valor de las megacanicas en la tienda
+BG_INV_MEGA_UP,Mega upgrades,Megamelhorias,Megamejoras
+BG_INV_MEGA_UP_LINE,Four more levels of every upgrade,Mais quatro níveis de cada melhoria,Cuatro niveles más de cada mejora
+BG_INV_AUTO_CASH,Auto cash out,Resgate automático,Canje automático
+BG_INV_AUTO_CASH_LINE,"A tenth of a cash out's SP every second, the board kept","Um décimo dos PL de um resgate por segundo, sem perder o tabuleiro","Un décimo de los PT de un canje por segundo, sin perder el tablero"
+BG_INV_ULT_PEG,Ultimate peg,Pino supremo,Clavo supremo
+BG_INV_ULT_PEG_LINE,A violet peg: a marble's value ×5. Hold to move.,Um pino violeta: valor da bolinha ×5. Segure para mover.,Un clavo violeta: valor de la canica ×5. Mantén para mover.
+BG_ASCEND,Ascend,Ascender,Ascender
+BG_ASCEND_GO,Ascend,Ascender,Ascender
+BG_ASCEND_SURE,Sure? Tap to ascend,Certeza? Toque para ascender,¿Seguro? Toca para ascender
+BG_ASCEND_SHUT,"Opens after the tenth investment (%d to go). It starts everything again, the investments too, for an ascend point.","Abre depois do décimo investimento (faltam %d). Recomeça tudo, os investimentos também, por um ponto de ascensão.","Se abre tras la décima inversión (faltan %d). Empieza todo de nuevo, las inversiones también, por un punto de ascenso."
+BG_ASCEND_READY,"Everything starts again, the investments too, for an ascend point to spend below.","Tudo recomeça, os investimentos também, por um ponto de ascensão para gastar abaixo.","Todo empieza de nuevo, las inversiones también, por un punto de ascenso para gastar abajo."
+BG_ASCENDED,Ascended!,Ascendeu!,¡Ascendiste!
+BG_ASCENDED_LINE,An ascend point to spend,Um ponto de ascensão para gastar,Un punto de ascenso para gastar
+BG_ASC_COIN,Coin value,Valor das moedas,Valor de las monedas
+BG_ASC_BALLS,Ball count,Bolinhas,Canicas
+BG_ASC_PRESTIGE,Prestige,Prestígio,Prestigio
+BG_ASC_SPEED,Drop speed,Velocidade de queda,Velocidad de caída
+BG_CARD_SP,%s SP earned,%s PL ganhos,%s PT ganados
+BG_TIER_AURORA,Aurora,Aurora,Aurora
+BG_TIER_NOVA,Nova,Nova,Nova
+BG_TIER_ECLIPSE,Eclipse,Eclipse,Eclipse
+BG_TIER_SUN,Sun,Sol,Sol

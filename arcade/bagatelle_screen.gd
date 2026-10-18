@@ -4,11 +4,12 @@ extends Control
 ## brass pins into wooden cups (spec docs/superpowers/specs/2026-10-15-
 ## arcade-bagatelle-design.md). **The velvet is the whole screen**, edge to
 ## edge (the rule since 2026-10-10), and the board -- the dropper's rail,
-## the pins, the seven cups -- is laid in the room between the plate row and
+## the pins, the five cups -- is laid in the room between the plate row and
 ## the tray (arcade/bagatelle_board.gd). Over it lie the flat boards' top
-## bar, a plate row (the coins and their pace; the stars and what a cash
-## out would pay) and the tray: Drop on the left (the thumb's side), then
-## Upgrades, the Jar and Stars, each with a dot when it has something.
+## bar, a plate row (the coins and their pace; the SP and what a cash out
+## would pay) and the tray: Drop on the left (the thumb's side), then
+## Upgrades, the Jar, the Shop and Invest, each with a dot when it has
+## something.
 ##
 ## **A kept game, like Tally**: no run end, no end card, no gold. The sim
 ## (arcade/bagatelle_sim.gd) is loaded when the screen opens and saved after
@@ -20,7 +21,8 @@ extends Control
 ## the landing's pop pitched by the cup (the edges high); a big landing is
 ## the jar coin with a chime under it, coins sent up to the plate and a
 ## ring; an edge cup rings too; a cup's level rings it; a bonus pin rings
-## the marble; a new tier is named with confetti; a cash out rains stars.
+## the marble; a new tier is named with confetti; a cash out rains stars;
+## an investment and an ascend rain more.
 ## Drop lets a marble go from wherever the dropper stands on its glide
 ## (2026-10-18: it used to drop from the middle while the dropper moved).
 
@@ -60,10 +62,10 @@ const CUP_GAP := 0.45
 ## A landing worth this share of the coins held (or a fourth tier) sends
 ## coins up to the plate.
 const BIG_SHARE := 0.2
-## The tray: Drop, then three round buttons.
-const TRAY := ["drop", "up", "jar", "stars"]
-const DROP_W := 0.38
-const BTN_R := 50.0
+## The tray: Drop, then four round buttons.
+const TRAY := ["drop", "up", "jar", "shop", "invest"]
+const DROP_W := 0.3
+const BTN_R := 46.0
 
 var sim: RefCounted
 var top_bar: Control
@@ -116,7 +118,7 @@ func _ready() -> void:
 	_opened_at = Time.get_ticks_msec()
 	_fx.cue("start")
 	_first_hint.call_deferred()
-	Analytics.track("bagatelle_enter", {"stars": sim.stars_ever, "tier": sim.best_tier})
+	Analytics.track("bagatelle_enter", {"sp": int(sim.sp_ever), "invested": sim.invested, "ascends": sim.ascends, "tier": sim.best_tier})
 
 func _notification(what: int) -> void:
 	if sim == null:
@@ -126,7 +128,7 @@ func _notification(what: int) -> void:
 
 ## A new board says where to begin, once.
 func _first_hint() -> void:
-	if sim.drops == 0 and sim.stars_ever == 0 and _rw != null:
+	if sim.drops == 0 and sim.sp_ever <= 0.0 and _rw != null:
 		_rw.sticker(tr("BG_HINT_START"), _rw.at(self, size * Vector2(0.5, 0.42)), 40, 4.0, false, Color("fff4c2"), false, "hint", 0.0, true)
 
 # --- building ---
@@ -344,11 +346,21 @@ func _play_events() -> void:
 			"tier":
 				_on_tier(int(ev.tier))
 			"cashout":
-				_on_cashout(int(ev.stars))
+				_on_cashout(int(ev.sp))
+			"invest":
+				_on_invest(String(ev.id), int(ev.n))
+			"ascend":
+				_on_ascend(int(ev.n))
+			"raise":
+				_fx.cue("star_buy", 1.12)
+				_feel(Haptics.GOOD)
+				_chip_at["invest"] = _clock
+				Analytics.track("bagatelle_raise", {"id": String(ev.id), "level": int(ev.level)})
+				_changed()
 			"shop":
 				_fx.cue("star_buy")
 				_feel(Haptics.GOOD)
-				_chip_at["stars"] = _clock
+				_chip_at["shop"] = _clock
 				Analytics.track("bagatelle_shop", {"id": String(ev.id), "level": int(ev.level)})
 				_changed()
 			"moved":
@@ -403,9 +415,9 @@ func _on_bonus(ev: Dictionary) -> void:
 	if _busy():
 		return
 	var at := _board_rw(Sim.pin_pos(int(ev.pin)))
-	_rw.ring(at, 44.0 * board.k, Art.PLUS if String(ev.kind) == "plus" else Art.TIMES, 0.0, 0.35)
+	_rw.ring(at, 44.0 * board.k, Art.peg_colour(String(ev.kind)), 0.0, 0.35)
 	if _once("bonus", 0.12):
-		_fx.cue("bonus", randf_range(0.97, 1.05) * (1.12 if String(ev.kind) == "times" else 1.0), -3.0)
+		_fx.cue("bonus", randf_range(0.97, 1.05) * (1.12 if Sim.PEG_MUL.has(String(ev.kind)) else 1.0), -3.0)
 
 func _on_upgrade(id: String, level: int, n: int) -> void:
 	_fx.cue("buy", randf_range(0.97, 1.03))
@@ -438,18 +450,47 @@ func _on_tier(k: int) -> void:
 	Analytics.track("bagatelle_tier", {"tier": k})
 	_save()
 
-func _on_cashout(stars: int) -> void:
+func _on_cashout(sp: int) -> void:
 	_fx.cue("cashout")
 	_feel(Haptics.WIN)
 	board.let_go()
 	var at := _top()
-	_rw.sticker(tr("BG_CASHED_ONE") if stars == 1 else tr("BG_CASHED_N") % stars, at, 66, 2.6, true, Color.WHITE, true, "cash")
+	_rw.sticker(tr("BG_CASHED_N") % Sim.short(float(sp)), at, 66, 2.6, true, Color.WHITE, true, "cash")
 	_rw.sticker(tr("BG_CASHED_LINE"), at + Vector2(0, 90.0), 34, 2.8, false, Color("fff4c2"), false, "cash_line", 0.0, true)
 	_rw.rain(1.8, ["star", "confetti"], Rewards.CONFETTI)
 	_rw.spray(at, Pal.SUN, 16, 640.0, "star", 1.1, 0.0, _stars_rw())
 	_shown_coins = 0.0
 	_rate = 0.0
-	Analytics.track("bagatelle_cashout", {"stars": stars, "outs": sim.cashouts})
+	Analytics.track("bagatelle_cashout", {"sp": sp, "outs": sim.cashouts})
+	_save()
+
+func _on_invest(id: String, n: int) -> void:
+	_fx.cue("cashout", 0.9)
+	_fx.cue("tier", 1.0, -4.0, 0.0)
+	_feel(Haptics.WIN)
+	board.let_go()
+	var at := _top()
+	_rw.sticker(tr("BG_INVESTED") % n, at, 62, 2.8, true, Color.WHITE, true, "invest")
+	_rw.sticker(tr("BG_INV_" + id.to_upper()), at + Vector2(0, 88.0), 36, 3.0, false, Color("fff4c2"), false, "invest_line", 0.0, true)
+	_rw.rain(2.0, ["star", "confetti"], Rewards.CONFETTI)
+	_shown_coins = 0.0
+	_rate = 0.0
+	_chip_at["invest"] = _clock
+	Analytics.track("bagatelle_invest", {"id": id, "n": n, "outs": sim.cashouts})
+	_save()
+
+func _on_ascend(n: int) -> void:
+	_fx.cue("cashout", 0.8)
+	_fx.cue("tier", 0.9, -2.0, 0.0)
+	_feel(Haptics.WIN)
+	board.let_go()
+	var at := _top()
+	_rw.sticker(tr("BG_ASCENDED"), at, 70, 3.0, true, Color.WHITE, true, "ascend")
+	_rw.sticker(tr("BG_ASCENDED_LINE"), at + Vector2(0, 92.0), 34, 3.2, false, Color("fff4c2"), false, "ascend_line", 0.0, true)
+	_rw.rain(2.4, ["star", "confetti"], Rewards.CONFETTI)
+	_shown_coins = 0.0
+	_rate = 0.0
+	Analytics.track("bagatelle_ascend", {"n": n})
 	_save()
 
 # --- the plate row ---
@@ -482,11 +523,11 @@ func _draw_hud() -> void:
 	hud.draw_mesh(Art.coin(34.0), null, Transform2D(0.0, Vector2.ONE * hop, 0.0, cm))
 	hud.draw_string(_font, cr.position + Vector2(118.0, 62.0), Sim.short(_shown_coins), HORIZONTAL_ALIGNMENT_LEFT, cr.size.x - 130.0, 48, Pal.TEXT)
 	hud.draw_string(_font, cr.position + Vector2(120.0, 98.0), tr("BG_PER_SECOND") % Sim.short(_rate), HORIZONTAL_ALIGNMENT_LEFT, cr.size.x - 130.0, 24, Pal.TEXT_DIM)
-	var shop := Motion.bump_scale(_clock - float(_chip_at.get("stars", -10.0)), 0.1, 0.2)
+	var shop := Motion.bump_scale(_clock - float(_chip_at.get("shop", -10.0)), 0.1, 0.2)
 	var sm := sr.position + Vector2(58.0, sr.size.y * 0.5)
 	hud.draw_mesh(Art.star(36.0), null, Transform2D(0.0, Vector2.ONE * shop, 0.0, sm))
-	hud.draw_string(_font, sr.position + Vector2(104.0, 62.0), Sim.short(float(sim.stars)), HORIZONTAL_ALIGNMENT_LEFT, sr.size.x - 112.0, 44, Pal.TEXT)
-	var line := tr("BG_CASH_PLATE") % sim.stars_for() if can else tr("BG_NEXT_STAR") % Sim.short(sim.next_star_at())
+	hud.draw_string(_font, sr.position + Vector2(104.0, 62.0), Sim.short(sim.sp), HORIZONTAL_ALIGNMENT_LEFT, sr.size.x - 112.0, 44, Pal.TEXT)
+	var line := tr("BG_CASH_PLATE") % Sim.short(float(sim.sp_for())) if can else tr("BG_NEXT_STAR") % Sim.short(sim.next_sp_at())
 	hud.draw_string(_font, sr.position + Vector2(106.0, 98.0), line, HORIZONTAL_ALIGNMENT_LEFT, sr.size.x - 112.0, 22, Color("8a5fae") if can else Pal.TEXT_DIM)
 
 func _on_hud_input(event: InputEvent) -> void:
@@ -505,7 +546,7 @@ func _on_hud_input(event: InputEvent) -> void:
 		_hud_down = which
 	elif which == _hud_down and which >= 0:
 		_hud_down = -1
-		open_card("stars" if which == 1 else "up")
+		open_card("shop" if which == 1 else "up")
 
 # --- the tray ---
 
@@ -514,7 +555,7 @@ func _slot_rect(i: int) -> Rect2:
 	if i == 0:
 		return Rect2(Vector2(0, 8.0), Vector2(w * DROP_W, TRAY_H - 16.0))
 	var rest := w * (1.0 - DROP_W) - 10.0
-	var cw := rest / 3.0
+	var cw := rest / (TRAY.size() - 1)
 	return Rect2(Vector2(w * DROP_W + 10.0 + cw * (i - 1), 0.0), Vector2(cw, TRAY_H))
 
 func _slot_mid(i: int) -> Vector2:
@@ -535,12 +576,18 @@ func _dot(id: String) -> int:
 				if sim.jar[k] >= Sim.MERGE:
 					n += 1
 			return n
-		"stars":
+		"shop":
 			var n := 0
 			for s: String in Sim.SHOP:
 				if sim.can_shop(s):
 					n += 1
 			return n + (1 if sim.can_cash_out() else 0)
+		"invest":
+			var n := 0
+			for a: String in Sim.ASCEND:
+				if sim.can_raise(a):
+					n += 1
+			return n + (1 if sim.can_invest() else 0) + (1 if sim.can_ascend() else 0)
 	return 0
 
 func _draw_tray() -> void:
@@ -555,7 +602,7 @@ func _draw_tray() -> void:
 	var dsz := dr.size * dp
 	b.polygon(Face.Builder.round_rect(dc - dsz * 0.5 + Vector2(0, 7), dsz, dsz.y * 0.5), Pal.SUN_DEEP)
 	b.polygon(Face.Builder.round_rect(dc - dsz * 0.5, dsz, dsz.y * 0.5), Pal.SUN)
-	for i in range(1, 4):
+	for i in range(1, TRAY.size()):
 		var id: String = TRAY[i]
 		var at := _slot_mid(i)
 		var sc := 0.94 if _slot_down == i else (1.0 if still else Motion.bump_scale(_clock - float(_chip_at.get(id, -10.0)), 0.12, 0.2))
@@ -564,8 +611,8 @@ func _draw_tray() -> void:
 		var n := _dot(id)
 		if n > 0:
 			var beat := 0.0 if still else 1.5 * sin(_clock * 4.0)
-			b.disc(at + Vector2(38, -38), 20.0, Color("fffaf0"))
-			b.disc(at + Vector2(38, -38), 16.0 + beat, Pal.SUN if id != "stars" else Color("b07fd0"))
+			b.disc(at + Vector2(36, -36), 20.0, Color("fffaf0"))
+			b.disc(at + Vector2(36, -36), 16.0 + beat, Pal.SUN if id == "up" or id == "jar" else Color("b07fd0"))
 	_tray_live = b.mesh()
 	tray.draw_mesh(_tray_live, null)
 	# the marks
@@ -575,7 +622,8 @@ func _draw_tray() -> void:
 	Icons.paint(tray, "trend", Rect2(_slot_mid(1) - Vector2(24, 24), Vector2(48, 48)), Pal.TEXT)
 	tray.draw_mesh(Art.marble(maxi(1, mini(sim.best_tier, Sim.TIERS - 1))), null, Transform2D(0.0, Vector2.ONE * 1.7, 0.0, _slot_mid(2)))
 	tray.draw_mesh(Art.star(26.0), null, Transform2D(0.0, _slot_mid(3)))
-	for i in range(1, 4):
+	Icons.paint(tray, "crown", Rect2(_slot_mid(4) - Vector2(24, 24), Vector2(48, 48)), Pal.TEXT)
+	for i in range(1, TRAY.size()):
 		var id: String = TRAY[i]
 		var r := _slot_rect(i)
 		tray.draw_string(_font, Vector2(r.position.x, _slot_mid(i).y + BTN_R + 30.0), tr("BG_TRAY_" + id.to_upper()), HORIZONTAL_ALIGNMENT_CENTER, r.size.x, 22, Art.CREAM)
@@ -583,7 +631,7 @@ func _draw_tray() -> void:
 		if n > 0:
 			var s := str(n)
 			var w := _font.get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, 19).x
-			tray.draw_string(_font, _slot_mid(i) + Vector2(38.0 - w * 0.5, -38.0 + 19.0 * 0.36), s, HORIZONTAL_ALIGNMENT_LEFT, -1, 19, Pal.TEXT)
+			tray.draw_string(_font, _slot_mid(i) + Vector2(36.0 - w * 0.5, -36.0 + 19.0 * 0.36), s, HORIZONTAL_ALIGNMENT_LEFT, -1, 19, Pal.TEXT)
 
 func _slot_at(p: Vector2) -> int:
 	for i in TRAY.size():
@@ -634,8 +682,10 @@ func press_slot(i: int) -> void:
 			open_card("up")
 		"jar":
 			open_card("jar")
-		"stars":
-			open_card("stars")
+		"shop":
+			open_card("shop")
+		"invest":
+			open_card("invest")
 
 # --- cards ---
 
@@ -664,7 +714,7 @@ func open_card(mode: String) -> void:
 
 func _on_back() -> void:
 	sim.save()
-	Analytics.track("bagatelle_leave", {"seconds": int((Time.get_ticks_msec() - _opened_at) / 1000.0), "stars": sim.stars_ever, "tier": sim.best_tier})
+	Analytics.track("bagatelle_leave", {"seconds": int((Time.get_ticks_msec() - _opened_at) / 1000.0), "sp": int(sim.sp_ever), "invested": sim.invested, "tier": sim.best_tier})
 	closed.emit()
 
 ## Android's back, through the menu: a sheet first, then the screen.

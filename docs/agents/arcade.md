@@ -4370,6 +4370,80 @@ the light that come from inside the cup".
   (two more than before: the tube's glass and the foot bar's share). `_shot_bagatelle` 0 failed, suite 248522/0.
   Not yet on `opengl3_angle`, a phone, or a `reduce` shot.
 
+### Bagatelle on the user's progression sheet (2026-10-18)
+
+The user sent a nine-page sheet (`~/Downloads/spec.pdf`, "follow this
+shape": tables of upgrade levels, the shop, ten investments, Ascend, and
+shots of the reference's Unify, Cash out and Supreme cards) and answered
+the open points: "1.3k, its -99.5%, cashout convert ernings into sp [the
+reference's Cash out card], ball xp level up cups, everything should be
+redo to match the spec. Supreme can came later, do everything yourself,
+push everything to main when done". Branch `feat/bagatelle-spec`. The old
+economy (four growth-curve upgrades, the 1-2-5 marble ladder, stars, the
+eight-item star shop, twins, polish, warm cups, shine) is gone.
+
+- **Four layers** (`arcade/bagatelle_sim.gd`): a run's coins buy five
+  upgrades a level at a time off fixed tables (`UP_LEVELS`, `UP_PRICES`,
+  the sheet's figures: Ball count 1 to 300, Value 1 to 3000, Auto drop
+  3.5 s to 0.12 s, Ball weight ×1 to ×9, Ball xp 1 to 600; levels 11-14 to
+  2800 / 500K / 0.04 s / ×20 / 16K open with the eighth investment); a
+  cash out turns the coins held into SP, which buy the shop's five items
+  (XP multiplier, More balls, Drop multiplier, Shop bonus, Mega balls
+  value, five levels each, Mega shut until the seventh investment); an
+  investment (ten, in order, 30 to 30K SP) spends every SP and starts the
+  shop and the run again; Ascend, open once the tenth is made, starts
+  everything but itself again for one point, which buys a level of Coin
+  value, Ball count, Prestige or Drop speed (five each).
+- **Taken from the reference's shots**: five cups (seven until now) with
+  bases 1.5 / 1 / 0.8 / 1 / 1.5 and a multiplier of base + 0.2 a level,
+  which every LV / × pair in the shots fits exactly; sixteen marble tiers
+  (Base and Tier I to XV), ten merging into one worth ten (was twelve, ×20;
+  the four new ones Aurora, Nova, Eclipse, Sun); SP from the **coins
+  held**, not earned (the card reads "CURRENT COINS"), as a square root
+  with a bar to the next.
+- **Ball count** is the clay marbles the figures say a run holds
+  (`count_target`: the level's figure + More balls, ×2 with the fourth
+  investment, + Ascend's); `given` tracks what was handed out, so a merged
+  jar is topped up only by the difference. **Ball weight** runs a marble's
+  own time `sqrt(weight)` times as fast (more steps of STEP a tick), so the
+  path and the cups' spread are the same and nothing tunnels a pin.
+  **Auto drop** never stops (3.5 s at level 0) and has no finger gap: its
+  fastest levels let up to `AUTO_BURST` go a step; `MAX_AIR` stays 60.
+  **Ball xp** is what a landing gives its cup (× the shop's XP, ×10 with
+  the third investment); a cup needs `5 × 1.035^level` to rise.
+- **The pegs**: investments 1, 2, 6 and 10 each put one peg on the board
+  (gold +10, rose ×2, jade +100, violet ×5, `PEG_AT`), held and moved as
+  the gold pins were; a marble takes each peg once, the adds counting
+  before the multipliers. An ascend takes them off.
+- **SP_DIV is a call**: the reference's card works out to 2e4 (4.87B coins,
+  +2.5K SP under ×5, 19.74M to the next SP), and with it the probe's bot
+  made all ten investments in 78 minutes. A sweep (seed 7, seven hours,
+  `-- 7 420 x <div> <pow>`): 1e6 had the tenth at 2.75 h, 1e7 at 3.8 h
+  (first cash out ~10 min, first investment 35 min, fifth 2.7 h, ascends
+  every ~30 min after), a cube or fourth root came out between. **1e7.**
+  The bot cashes out hundreds of times: a square root pays small runs
+  best, as the reference's does.
+- **Read as**: "+10% cashout passive sec" (the ninth) is a tenth of what a
+  cash out would pay, every second, the run kept (`AUTO_CASH`). "5 more
+  upgrade tier" (the eighth) lists four levels: the four are built. A cash
+  out takes the merged marbles with the run (the card says coins,
+  upgrades and slot levels; the marbles come from the count upgrade).
+- **The cards** (`arcade/bagatelle_shop.gd`): Upgrades (five rows, ×1 /
+  Max), Jar (tiles two a row), Shop (the cash out, asked twice, then the
+  five items), Invest (the ten as a strip, the next as a row asked twice,
+  then Ascend's panel and its four stats). The tray is Drop + Upgrades,
+  Jar, Shop, Invest; the SP plate opens the Shop. An investment and an
+  ascend each rain confetti with the cash out's and the tier's cues
+  (bank takes already in the set; unheard together).
+- **Kept**: `VER` 2; a file from before (stars) is not read and the board
+  starts again. The Arcade card says the SP earned.
+- **Draw calls** on `opengl3_angle` at 810x1440: 77 to 99 in play, 117 to
+  242 under a card (242 the invest card with Ascend's rows), 130 to 137
+  the tutorial. Probe 0 failed, `_shot_bagatelle` 0 failed (windowed),
+  `_probe_start_over` 0 failed, suite 248522/0.
+- **Not done**: Supreme and the generators (the user: later); a phone; the
+  new moments heard; pt and es read by a speaker; a `reduce` shot.
+
 ### Start over on every Arcade game (2026-10-17)
 
 The user: "all arcade games must have a button to reset all progress". Every

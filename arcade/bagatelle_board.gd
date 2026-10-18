@@ -116,7 +116,7 @@ var _carry_at := Vector2.ZERO
 var _cup_hit := PackedFloat32Array()
 var _cup_big := PackedByteArray()
 var _cup_up := PackedFloat32Array()
-## How full each cup's bar is drawn, 0..1, easing after `cup_pts`.
+## How full each cup's bar is drawn, 0..1, easing after `cup_xp`.
 var _fill := PackedFloat32Array()
 var _floats: Array = []
 var _pending := PackedFloat64Array()
@@ -209,7 +209,7 @@ func play(ev: Dictionary) -> void:
 		"land":
 			var c := int(ev.cup)
 			_cup_hit[c] = _clock
-			_cup_big[c] = 1 if (int(ev.tier) >= 3 or float(ev.pay) >= 20.0 * float(sim.value()) * float(sim.polish())) else 0
+			_cup_big[c] = 1 if (int(ev.tier) >= 3 or float(ev.pay) >= 20.0 * float(sim.unit())) else 0
 			_pending[c] += float(ev.pay)
 			if _clock - _pending_at[c] >= FLOAT_GAP:
 				_float_cup(c)
@@ -234,7 +234,7 @@ func _float_cup(c: int) -> void:
 	_pending_at[c] = _clock
 	if _floats.size() >= FLOATS:
 		_floats.pop_front()
-	_floats.append({"text": "+" + Sim.short(_pending[c]), "c": c, "t": _clock, "dx": randf_range(-16.0, 16.0), "big": _pending[c] >= 20.0 * float(sim.value()) * float(sim.polish())})
+	_floats.append({"text": "+" + Sim.short(_pending[c]), "c": c, "t": _clock, "dx": randf_range(-16.0, 16.0), "big": _pending[c] >= 20.0 * float(sim.unit())})
 	_pending[c] = 0.0
 
 func tick(delta: float) -> void:
@@ -295,7 +295,7 @@ func _ease_fills(delta: float) -> void:
 	if sim == null:
 		return
 	for c in Sim.CUPS:
-		var want := clampf(float(sim.cup_pts[c]) / float(Sim.need(sim.cup_lv[c])), 0.0, 1.0)
+		var want := clampf(float(sim.cup_xp[c]) / Sim.need(sim.cup_lv[c]), 0.0, 1.0)
 		if _clock - _cup_up[c] < BAR_HOLD and not Motion.reduce:
 			continue
 		if _fill[c] < 0.0 or want < _fill[c] or Motion.reduce:
@@ -420,9 +420,8 @@ func _draw_marbles(xf: Transform2D) -> void:
 		var ang := v.angle() - PI * 0.5 if v.length() > 1.0 else 0.0
 		var bx := xf * Transform2D(ang, Vector2(1.0 / sqrt(st), st), 0.0, p)
 		mb.append(Art.marble(tier), bx)
-		if float(b.boost) > 1.0:
-			var kind := "times" if float(b.boost) >= Sim.TIMES else "plus"
-			mb.append(Art.boost_ring(kind), xf * Transform2D(0.0, p))
+		if String(b.peg) != "":
+			mb.append(Art.boost_ring(String(b.peg)), xf * Transform2D(0.0, p))
 	# the marbles settling: they drop past the rim, roll toward the middle
 	# and sink into the felt
 	for s: Dictionary in _settled:
@@ -570,12 +569,11 @@ func _draw_words() -> void:
 func _draw_worths() -> void:
 	if font == null:
 		return
-	var base: float = sim.value() * sim.polish()
 	for b: Dictionary in sim.balls:
 		if (b.p as Vector2).y < Sim.DROP_Y + Sim.BALL_R:
 			continue
 		var tier := int(b.tier)
-		var text := Sim.short(base * Sim.worth(tier) * float(b.boost))
+		var text := Sim.short(sim.ball_worth(b))
 		var fs := int(round((20.0 if text.length() <= 2 else (17.0 if text.length() == 3 else 13.0)) * k))
 		var c := Art.tier_colour(tier)
 		var ink := Art.WOOD_DEEP.darkened(0.4) if c.get_luminance() > 0.5 else Color(Art.CREAM, 0.95)
