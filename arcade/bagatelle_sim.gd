@@ -134,12 +134,12 @@ const MEGA_TOP := 14
 
 ## The shop, bought with SP: level n of each is SHOP_LEVELS[id][n - 1], for
 ## SHOP_PRICES[id][n - 1]. "mega" (the merged marbles' worth) opens with
-## the seventh investment. More balls is off the tables: BALLS_STEP marbles
+## the seventh investment. More balls is off the tables: BALLS_STEP marble
 ## a level for BALLS_PRICE SP each, as many as are bought (the user,
 ## 2026-10-18: "the more balls upgrade has a flat 1 star cost and is
 ## uncaped, player can buy as many he wants"; the sheet's was 5 levels).
 const SHOP := ["xp", "balls", "drop", "bonus", "mega"]
-const BALLS_STEP := 5
+const BALLS_STEP := 1
 const BALLS_PRICE := 1.0
 const SHOP_LEVELS := {
 	"xp": [2.0, 3.0, 5.0, 8.0, 10.0],

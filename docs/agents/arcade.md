@@ -4473,8 +4473,8 @@ eight-item star shop, twins, polish, warm cups, shine) is gone.
 The user: "the more balls upgrade has a flat 1 star cost and is uncaped,
 player can buy as many he wants. Also, XP for upgrade cup must increase at
 each level, not flat". The sheet had more balls at five levels for 1 / 3 /
-8 / 20 / 45 SP; it is now `BALLS_STEP` 5 marbles a level for `BALLS_PRICE`
-1 SP, no top (the shop row reads `BG_RANK`, "Level n · +5n → +5(n+1)", and
+8 / 20 / 45 SP; it is now `BALLS_STEP` 1 marble a level for `BALLS_PRICE`
+1 SP, no top (the shop row reads `BG_RANK`, "Level n · +n → +(n+1)"; the user, 16:37: "+1 ball for each sp not 5", and
 is left out of the Shop chip's count, which it would light for good). A
 cup's xp to its next level was `ceil(5 × 1.035^lv)`, which reads 5, 6, 6,
 6, 6, 6, 7 on the cup; `NEED_STEP` 2 a level is added, so every level asks
