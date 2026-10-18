@@ -11,7 +11,7 @@ extends SceneTree
 ## to the box in one gesture, round the route's corner (the run is laid and
 ## leads into the box), the undo chip pressed (the run is gone) and the path
 ## traced again, 3 the first 1s riding, 4 level 1 done, 5 a grown paper
-## close (digs, an adder, a multiplier, a divider, a bridge and a crate,
+## close (digs, an adder, a multiplier, a divider, a crossing and a crate,
 ## every token sliding), 6 the same far after a real two-finger pinch out,
 ## 7 the adder's pill by a real tap with Look (shot 6b) and its card by a
 ## tap on Info, 8 the box's card by a real tap on the plate, 9 the upgrades,
@@ -195,8 +195,8 @@ func _route(dig: Vector2i) -> Array:
 ## A grown paper laid by hand, the pieces spread round the box with room
 ## between them: three-wide digs with numbers written for the harness, an
 ## adder (2 by 2), a multiplier (1 by 3), a divider (2 by 2) with its
-## remainder into a crate, a splitter, a combiner and a bridge on a 1s line,
-## and a subtractor fed on A alone.
+## remainder into a crate, a 2s line joining a 1s line and a 3s line
+## crossing it to a loose end, and a subtractor fed on A alone.
 func _grow(sim) -> void:
 	sim.level = 23
 	var b := Sim.HUB_AT
@@ -249,17 +249,14 @@ func _grow(sim) -> void:
 	route.call([b + Vector2i(7, 3), b + Vector2i(6, 3)])
 	sim.lay_path([b + Vector2i(7, 2)], 2)
 	sim.place(Sim.CRATE, b + Vector2i(6, 2), 0)
-	# a 1s line south of the box: a splitter sends every other 1 down an arm,
-	# a combiner takes 2s in from the north, a 3s line crosses on a bridge
+	# a 1s line south of the box: 2s come down onto it and join it, a 3s line
+	# crosses it and ends loose
 	var s := b + Vector2i(0, 10)
 	put.call(s + Vector2i(-8, 0), 1)
 	route.call([s + Vector2i(-6, 0), s + Vector2i(2, 0)])
 	route.call([s + Vector2i(3, 0), s + Vector2i(3, -4)])
-	route.call([s + Vector2i(-5, 1), s + Vector2i(-5, 3)])
-	sim.place(Sim.SPLIT, s + Vector2i(-5, 0), 0)
 	put.call(b + Vector2i(1, 7), 2)
-	sim.lay_path([s + Vector2i(1, -1)], 1)
-	sim.place(Sim.JOIN, s + Vector2i(1, 0), 0)
+	sim.lay_path([s + Vector2i(1, -1), s + Vector2i(1, 0)], 1)
 	put.call(b + Vector2i(-3, 6), 3)
 	route.call([b + Vector2i(-3, 8), s + Vector2i(-3, 3)])
 	# a subtractor south-east of the box fed on A alone: it starves on B
@@ -507,8 +504,8 @@ func _process(delta: float) -> bool:
 		27:
 			if _t > _at + 5.2:
 				var page: Control = _card._pages[3].diagram
-				_check("the Belts page's trace across the line made a bridge", page._sim.kind_at(Vector2i(50, 59)) == Sim.BRIDGE)
-				_check("the Belts page's splitter sent 1s down its arm and the combiner took 2s", page._sim.held(1) > 0 or page._sim.occ[Sim._i(Vector2i(51, 61))] == 1 or page._sim.occ[Sim._i(Vector2i(52, 61))] == 1)
+				_check("the Belts page's trace across the line made a crossing", page._sim.kind_at(Vector2i(50, 59)) == Sim.BRIDGE)
+				_check("the Belts page's 2s joined the 1s line", page._sim.kind_at(Vector2i(54, 59)) == Sim.BELT and page._sim.face_at(Vector2i(54, 59)) == 0 and page._sim.face_at(Vector2i(54, 58)) == 1 and page._sim.held(2) > 0)
 				_card.free()
 				return _done()
 	return false

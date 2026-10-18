@@ -7,8 +7,10 @@ extends SceneTree
 ## belt to the box fills the belt at the belt's speed and no faster; a level
 ## counts only its target and hands over its reward; each operator takes A on
 ## its back square, B on its other, and puts out of its answer square's
-## front alone; a belt never splits, a splitter shares evenly over three, a
-## combiner and a T take turns; a bridge carries both lanes across; a crate keeps one number; a
+## front alone; a belt never splits, a line drawn onto another joins it and
+## they take turns, a loose end holds its token at its middle; a crossing
+## carries both lanes across; a path drawn out of the box is turned to run
+## into it; a crate keeps one number; a
 ## full output stops a machine; upgrades spend the tally and go faster; the
 ## ladder only climbs and never passes the top; the paper is printed the same
 ## from the same seed with 1s near the box and no 10; and a paper saved comes
@@ -286,60 +288,50 @@ func _split_merge() -> void:
 	# a belt whose back touches (9, 30)'s side, going north: no split
 	_run(s, Vector2i(9, 29), Vector2i(9, 26), Nd)
 	_check("a belt hands only to its front: no split to a side", (s.outs[Sim._i(Vector2i(9, 30))] as PackedInt32Array).size() == 1)
-	# a splitter there hands to all three
-	_check("a splitter goes on a belt", s.place(Sim.SPLIT, Vector2i(9, 30), E))
-	_run(s, Vector2i(9, 31), Vector2i(9, 34), S)
-	_check("a splitter's ends: front and both sides", (s.outs[Sim._i(Vector2i(9, 30))] as PackedInt32Array).size() == 3)
-	s.step(40.0)
-	var on := [0, 0, 0]
-	for x in range(10, 13):
-		on[0] += s.occ[Sim._i(Vector2i(x, 30))]
-	for y in range(26, 30):
-		on[1] += s.occ[Sim._i(Vector2i(9, y))]
-	for y in range(31, 35):
-		on[2] += s.occ[Sim._i(Vector2i(9, y))]
-	_check("every arm of a splitter fills %s" % str(on), on == [3, 4, 4])
-	_check("a splitter takes nothing from a side", (func() -> bool:
-		var q = _blank()
-		q.place(Sim.SPLIT, Vector2i(10, 10), E)
-		_run(q, Vector2i(10, 13), Vector2i(10, 11), Nd)
-		return (q.outs[Sim._i(Vector2i(10, 11))] as PackedInt32Array).is_empty()).call())
-	# a combiner: two digs into one, the box at the end
-	var c = _blank()
-	_dig1(c, Vector2i(10, 30), 1)
-	_dig1(c, Vector2i(16, 34), 2)
-	_run(c, Vector2i(11, 30), Vector2i(15, 30), E)
-	c.place(Sim.JOIN, Vector2i(16, 30), E)
-	_run(c, Vector2i(16, 33), Vector2i(16, 31), Nd)
-	_route(c, [Vector2i(17, 30), Vector2i(58, 30), Vector2i(58, 56)])
-	c.step(60.0)
-	var r := float(c.held(1)) / maxf(1.0, float(c.held(2)))
-	_check("a combiner takes turns (%d 1s, %d 2s)" % [c.held(1), c.held(2)], r > 0.8 and r < 1.25)
-	_check("a combined belt runs full (%d)" % c.made, c.made >= 30)
-	# a belt's front into another's side still joins it
+	# a line drawn to end on another runs into its side: a join, taking turns
 	var m = _blank()
 	_dig1(m, Vector2i(10, 30), 1)
 	_dig1(m, Vector2i(16, 34), 2)
 	_route(m, [Vector2i(11, 30), Vector2i(58, 30), Vector2i(58, 56)])
-	_run(m, Vector2i(16, 33), Vector2i(16, 31), Nd)
+	var p: Dictionary = m.trim_path([Vector2i(16, 33), Vector2i(16, 32), Vector2i(16, 31), Vector2i(16, 30)], Nd)
+	_check("a path ending on a line across it joins it (cut %d, merge %s)" % [p.cut, p.merge], int(p.cut) == 3 and bool(p.merge))
+	m.lay_path([Vector2i(16, 33), Vector2i(16, 32), Vector2i(16, 31), Vector2i(16, 30)], Nd)
+	_check("the join leaves the line as it was", m.kind_at(Vector2i(16, 30)) == Sim.BELT and m.face_at(Vector2i(16, 30)) == E and m.face_at(Vector2i(16, 31)) == Nd)
 	m.step(60.0)
 	var r2 := float(m.held(1)) / maxf(1.0, float(m.held(2)))
-	_check("a T still joins and takes turns (%d 1s, %d 2s)" % [m.held(1), m.held(2)], r2 > 0.8 and r2 < 1.25)
+	_check("a join takes turns (%d 1s, %d 2s)" % [m.held(1), m.held(2)], r2 > 0.8 and r2 < 1.25)
+	_check("a joined belt runs full (%d)" % m.made, m.made >= 30)
+	# a line's loose end holds its token at its middle
+	var d = _blank()
+	_dig1(d, Vector2i(10, 10), 1)
+	_run(d, Vector2i(11, 10), Vector2i(13, 10), E)
+	d.step(10.0)
+	var end := Sim._i(Vector2i(13, 10))
+	_check("a loose end's token waits at its middle (%.2f)" % d.prog[end], d.occ[end] == 1 and absf(d.prog[end] - 0.5) < 0.01 and d.dead[end] == 1)
+	_run(d, Vector2i(14, 10), Vector2i(15, 10), E)
+	d.step(1.0)
+	_check("drawn on, it goes on", d.dead[end] == 0 and d.occ[Sim._i(Vector2i(15, 10))] == 1)
 
 func _bridge() -> void:
-	var s = _blank(3)
+	var s = _blank(1)
 	_dig1(s, Vector2i(5, 12), 1)
 	_run(s, Vector2i(6, 12), Vector2i(20, 12), E)
 	_run(s, Vector2i(12, 8), Vector2i(12, 16), S)
-	_check("before bridges, a run across a belt stops before it and never turns it", s.kind_at(Vector2i(12, 12)) == Sim.BELT and s.face_at(Vector2i(12, 12)) == E and s.kind_at(Vector2i(12, 11)) == Sim.BELT and s.kind_at(Vector2i(12, 13)) == Sim.EMPTY)
+	_check("from level 1 a run across a belt makes a crossing", s.kind_at(Vector2i(12, 12)) == Sim.BRIDGE and s.kind_at(Vector2i(12, 13)) == Sim.BELT)
 	var b = _blank(6)
 	_dig1(b, Vector2i(5, 12), 1)
 	_dig1(b, Vector2i(12, 4), 3)
 	_route(b, [Vector2i(6, 12), Vector2i(58, 12), Vector2i(58, 56)])
 	_route(b, [Vector2i(12, 5), Vector2i(12, 20), Vector2i(59, 20), Vector2i(59, 56)])
-	_check("a run across a belt makes a bridge", b.kind_at(Vector2i(12, 12)) == Sim.BRIDGE and b.kind_at(Vector2i(58, 20)) == Sim.BRIDGE)
+	_check("a run across a belt makes a crossing", b.kind_at(Vector2i(12, 12)) == Sim.BRIDGE and b.kind_at(Vector2i(58, 20)) == Sim.BRIDGE)
 	b.step(80.0)
 	_check("both lanes cross (%d 1s, %d 3s)" % [b.held(1), b.held(3)], b.held(1) > 20 and b.held(3) > 20)
+	# a belt a side line joins is never crossed: its join would be cut off
+	var j = _blank(1)
+	_run(j, Vector2i(5, 12), Vector2i(20, 12), E)
+	_run(j, Vector2i(10, 8), Vector2i(10, 11), S)
+	j.lay_path([Vector2i(10, 15), Vector2i(10, 14), Vector2i(10, 13), Vector2i(10, 12), Vector2i(10, 11), Vector2i(10, 10)], Nd)
+	_check("a run never crosses a belt a join comes into", j.kind_at(Vector2i(10, 12)) == Sim.BELT and j.face_at(Vector2i(10, 11)) == S)
 
 ## A traced path: each square faces the next, a belt along the way takes the
 ## path's facing, the ends start beside a dig and face into the box, and
@@ -370,23 +362,42 @@ func _path() -> void:
 	_run(r, Vector2i(5, 5), Vector2i(9, 5), E)
 	r.lay_path([Vector2i(9, 5), Vector2i(8, 5), Vector2i(7, 5), Vector2i(6, 5), Vector2i(5, 5)], Wd)
 	_check("a path along a line reverses it", r.face_at(Vector2i(5, 5)) == Wd and r.face_at(Vector2i(9, 5)) == Wd)
-	# a path begun on a belt across its way branches it and never turns it
-	r.lay_path([Vector2i(7, 5), Vector2i(7, 6), Vector2i(7, 7)], S)
-	_check("a path begun on a belt across its way branches it, its way kept", r.kind_at(Vector2i(7, 5)) == Sim.SPLIT and r.face_at(Vector2i(7, 5)) == Wd and r.kind_at(Vector2i(7, 6)) == Sim.BELT and r.face_at(Vector2i(7, 6)) == S)
-	# a second stroke begun on a line's loose end turns it into the corner;
-	# begun on a belt mid-line it starts beside it
+	# a path begun on a line's belt and drawn away runs back into its side
+	var mj = _blank(3)
+	_dig1(mj, Vector2i(4, 5), 1)
+	_run(mj, Vector2i(5, 5), Vector2i(9, 5), E)
+	mj.lay_path([Vector2i(7, 5), Vector2i(7, 6), Vector2i(7, 7)], S)
+	_check("a path begun on a line and drawn away joins it", mj.face_at(Vector2i(7, 5)) == E and mj.face_at(Vector2i(7, 7)) == Nd and mj.face_at(Vector2i(7, 6)) == Nd)
+	# a second stroke begun on a line's loose end turns it into the corner
 	var x = _blank(3)
 	_run(x, Vector2i(5, 9), Vector2i(9, 9), E)
 	x.lay_path([Vector2i(9, 9), Vector2i(9, 10), Vector2i(9, 11)], S)
 	_check("a path begun on a line's loose end goes on from it round the corner", x.face_at(Vector2i(9, 9)) == S and x.face_at(Vector2i(9, 11)) == S and (x.outs[Sim._i(Vector2i(8, 9))] as PackedInt32Array).size() == 1)
-	# a stroke begun mid-line and leaving it by a side branches it: a splitter there
-	var br = _blank(3)
-	_dig1(br, Vector2i(4, 20), 1)
-	_run(br, Vector2i(5, 20), Vector2i(12, 20), E)
-	br.lay_path([Vector2i(8, 20), Vector2i(8, 21), Vector2i(8, 22), Vector2i(8, 23)], S)
-	_check("a stroke out of a line's side makes a splitter there, the line still going on", br.kind_at(Vector2i(8, 20)) == Sim.SPLIT and br.face_at(Vector2i(8, 20)) == E and br.face_at(Vector2i(8, 21)) == S and (br.outs[Sim._i(Vector2i(8, 20))] as PackedInt32Array).size() == 2)
-	br.step(20.0)
-	_check("the branch fills and the line goes on (%d, %d)" % [br.occ[Sim._i(Vector2i(8, 23))], br.occ[Sim._i(Vector2i(11, 20))]], br.occ[Sim._i(Vector2i(8, 23))] == 1 and br.occ[Sim._i(Vector2i(11, 20))] == 1)
+	# drawn out of the box, a path is turned round to run into it
+	var bx = _blank(3)
+	var left := Vector2i(Sim.HUB_AT.x - 1, Sim.HUB_AT.y + 1)
+	var down := [left]
+	for y in range(1, 9):
+		down.append(left + Vector2i(0, y))
+	bx.lay_path(down, S)
+	_check("a path drawn away from beside the box is turned to run into it", bx.face_at(left) == E and bx.face_at(left + Vector2i(0, 4)) == Nd and bx.face_at(left + Vector2i(0, 8)) == Nd)
+	var g = _blank(3)
+	var into := [Vector2i(Sim.HUB_AT.x, Sim.HUB_AT.y + 1), left]
+	for y in range(1, 7):
+		into.append(left + Vector2i(0, y))
+	g.lay_path(into, S)
+	_check("begun on the box, one square out and down: turned, its last square into the box", g.kind_at(Vector2i(Sim.HUB_AT.x, Sim.HUB_AT.y + 1)) == Sim.BOX and g.face_at(left) == E and g.face_at(left + Vector2i(0, 3)) == Nd)
+	var tp = _blank(3)
+	tp.lay_path([left], S)
+	_check("a belt tapped beside the box faces into it", tp.face_at(left) == E)
+	# a line's first belt along a dig's edge is fed by it
+	var sd = _blank(3)
+	sd.dep[Sim._i(Vector2i(20, 20))] = 1
+	sd.place(Sim.DIG, Vector2i(20, 20), E)
+	sd.lay_path([Vector2i(22, 19), Vector2i(22, 20), Vector2i(22, 21), Vector2i(22, 22), Vector2i(22, 23)], S)
+	_check("a line begun beside a dig and going along it is fed only at its start", (sd.digs[Sim._i(Vector2i(20, 20))].outs as PackedInt32Array).size() == 1)
+	sd.step(10.0)
+	_check("its numbers ride it (%d)" % sd.occ[Sim._i(Vector2i(22, 23))], sd.occ[Sim._i(Vector2i(22, 23))] == 1)
 	_check("a belt lying beside a line still takes nothing from it", (func() -> bool:
 		var q = _blank(3)
 		_run(q, Vector2i(5, 20), Vector2i(12, 20), E)

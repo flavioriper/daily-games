@@ -8,15 +8,14 @@ extends RefCounted
 ##
 ## - a **belt** carries one token a square at `belt_speed()` squares a
 ##   second, to the square in front and nowhere else (it never splits); it
-##   takes from its back and its sides, never its front (a corner, a T);
-## - a **splitter** is a belt square that takes from its back alone and
-##   hands out in turn to its front and its two sides;
-## - a **combiner** is a belt square that takes from its back and both
-##   sides in turn and hands out of its front;
-## - a **bridge** is two belts crossing, each lane straight on;
+##   takes from its back and its sides, never its front (a corner, a join:
+##   a line drawn to end on another runs into its side); one that hands
+##   nothing on holds its token at its middle, where its drawn bed ends;
+## - a **bridge** (a crossing) is two belts crossing, each lane straight
+##   on: made by drawing across a line, never set down;
 ## - a **dig** covers the three by three squares round a printed number
-##   and puts it on every belt leading away from its edge, `dig_belts()`
-##   belts' worth;
+##   and puts it on every belt leading away from its edge (and on a line's
+##   first belt running along it), `dig_belts()` belts' worth;
 ## - the five **operators** cover two to four squares (`SHAPES`, after the
 ##   reference's footprints): an A square and a B square that take from
 ##   their back edge alone, and answer squares that hand out of their front
@@ -54,9 +53,11 @@ const HUB_AT := Vector2i(57, 57)
 
 enum { EMPTY, BELT, BRIDGE, DIG, ADD, MUL, SUB, DIV, POW, CRATE, BOX, SPLIT, JOIN }
 const OPS := [ADD, MUL, SUB, DIV, POW]
-const KIND_IDS := {BELT: "belt", BRIDGE: "bridge", DIG: "dig", ADD: "add", MUL: "mul", SUB: "sub", DIV: "div", POW: "pow", CRATE: "crate", BOX: "box", SPLIT: "split", JOIN: "join"}
+const KIND_IDS := {BELT: "belt", BRIDGE: "bridge", DIG: "dig", ADD: "add", MUL: "mul", SUB: "sub", DIV: "div", POW: "pow", CRATE: "crate", BOX: "box"}
 ## The level whose end hands a piece over (it is had from the level after).
-const UNLOCK := {BELT: 0, DIG: 0, SPLIT: 0, JOIN: 0, ADD: 1, BRIDGE: 4, MUL: 7, SUB: 13, DIV: 16, POW: 19, CRATE: 22}
+## SPLIT and JOIN were pieces once (a save's own may still hold them: read
+## as belts); a crossing is had from the start.
+const UNLOCK := {BELT: 0, DIG: 0, ADD: 1, MUL: 7, SUB: 13, DIV: 16, POW: 19, CRATE: 22}
 
 ## What an operator's square is.
 enum { R_NONE, R_A, R_B, R_OUT, R_REM }
@@ -78,6 +79,8 @@ const SHAPES := {
 ## East, south, west, north: clockwise, +y down.
 const DIRS := [Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)]
 const NONE := 255
+## No square: a path begun on nothing.
+const NOWHERE := Vector2i(-1, -1)
 
 ## A machine's room a side and for what waits to go out.
 const QUEUE := 4
@@ -100,7 +103,7 @@ const FLOOR := -2147483648
 ## Each level: the sample target, the count, the reward (a piece's kind, a
 ## number now dug, or 0). From level 6 the target is drawn round the sample.
 const LADDER := [
-	[1, 10, ADD], [2, 15, 0], [3, 20, -2], [5, 25, BRIDGE], [10, 30, -3],
+	[1, 10, ADD], [2, 15, 0], [3, 20, -2], [5, 25, 0], [10, 30, -3],
 	[19, 50, -4], [27, 75, MUL], [36, 120, -5], [47, 160, -6], [50, 200, 0],
 	[82, 250, -7], [174, 300, -8], [248, 400, SUB], [324, 500, -9], [466, 650, -11],
 	[594, 800, DIV], [631, 900, -12], [727, 1000, -13], [891, 1100, POW], [928, 1200, -14],
@@ -201,6 +204,8 @@ var from_d := PackedByteArray()
 var to_d := PackedByteArray()
 var rr_in := PackedByteArray()
 var rr_out := PackedByteArray()
+## 1 for a slot that hands nothing on.
+var dead := PackedByteArray()
 
 ## The slots tokens ride, and where each hands on.
 var lanes := PackedInt32Array()
@@ -231,6 +236,7 @@ func _init(rng_seed := 0) -> void:
 	to_d.fill(NONE)
 	rr_in.resize(N2)
 	rr_out.resize(N2)
+	dead.resize(N2)
 	for id: String in TRACKS:
 		lv[id] = 1
 	for y in HUB:
@@ -650,45 +656,64 @@ static func path_faces(tiles: Array, f_last: int) -> PackedByteArray:
 		faces[j] = f
 	return faces
 
-## What a traced path would do: {tiles, faces, cut}. The path's facings are
-## worked out first, then a first square that cannot take belt (with the
-## rest of its piece the path crosses) or holds a belt across the way is
-## dropped (the path starts beside a dig, a machine, the box or a line it
-## would otherwise turn) and so is a last square that cannot (the square
-## before faces into it); `cut` is where the path stops:
-## at a square that cannot take belt, or a belt across its way where no
-## bridge can go (before bridges are had, or at the path's end). A belt
-## across the way is never turned, but for a line's loose end the path is
-## begun on (`extend`): it turns to go on with the path, the corner; and a
-## path begun on a line and leaving it by a side branches it (`branch`):
-## that square becomes a splitter facing the line's way, so a branch is
-## drawn and never made by two belts lying side by side.
+## What a traced path would do: {tiles, faces, cut, merge, turned}. A path
+## begun on a piece starts past its edge (its squares dropped: a dig is
+## three wide, the box six), and so does one begun on a belt across its
+## way, but for a line's loose end, which turns to go on with the path (the
+## corner); one begun along a line turns it its way. A path that then starts beside something that takes numbers
+## (the box, a machine's A or B square from behind, a crate, or the belt it
+## was begun on) and has nothing giving at its start nor taking at its end
+## is turned round (`turned`): it was drawn out of what it feeds, and it
+## runs into it, its last square facing in. Its last square faces into the
+## box, a machine or a crate beside it the same way. `cut` is where it
+## stops: a square that cannot take belt, a belt it would cross that more
+## than its back feeds (a crossing there would cut those off), or a belt
+## across its last square, which it then runs into the side of (`merge`, a
+## join). A belt crossed in the middle becomes a crossing (a bridge).
 func trim_path(tiles: Array, f_last: int) -> Dictionary:
-	var faces := path_faces(tiles, f_last)
 	var ts := tiles.duplicate()
-	var fs := Array(faces)
+	var fs := Array(path_faces(ts, f_last))
 	var extend := false
-	var branch := false
-	if ts.size() > 1:
+	var begun := NOWHERE
+	if not ts.is_empty() and inside(ts[0]):
 		var i0 := _i(ts[0])
-		if inside(ts[0]) and int(kind[i0]) == BELT and int(face[i0]) % 2 != int(fs[0]) % 2 and _dangles(i0):
+		var k0 := int(kind[i0])
+		var f0 := int(fs[0])
+		if ts.size() > 1 and k0 == BELT and int(face[i0]) != f0 and int(face[i0]) != opp(f0) and _dangles(i0):
 			# begun on a line's loose end: the path goes on from it, its end the corner
 			extend = true
-		elif inside(ts[0]) and int(kind[i0]) == BELT and int(face[i0]) % 2 != int(fs[0]) % 2 and _fed_straight(i0) and has(SPLIT):
-			# begun on a line and leaving it by a side: a branch, the square a splitter
-			branch = true
-		elif not can_lay(ts[0]) or (inside(ts[0]) and int(kind[i0]) == BELT and int(face[i0]) % 2 != int(fs[0]) % 2):
-			# begun on a piece: the path starts past its edge (a dig is three wide)
+		elif ts.size() > 1 and (not can_lay(ts[0]) or k0 == BRIDGE or (k0 == BELT and int(face[i0]) % 2 != f0 % 2)):
+			begun = ts[0]
 			var at := root_of(ts[0])
-			ts.pop_front()
-			fs.pop_front()
-			while ts.size() > 1 and not can_lay(ts[0]) and root_of(ts[0]) == at and int(kind[_i(ts[0])]) != BOX:
+			while ts.size() > 1 and inside(ts[0]) and (ts[0] == begun or (not can_lay(ts[0]) and (root_of(ts[0]) == at or (k0 == BOX and kind_at(ts[0]) == BOX)))):
 				ts.pop_front()
 				fs.pop_front()
-	if ts.size() > 1 and not can_lay(ts[-1]):
+	# ended on a piece: the square before faces into it
+	while ts.size() > 1 and not can_lay(ts[-1]):
 		ts.pop_back()
 		fs.pop_back()
+	var turned := false
+	if not extend and not ts.is_empty() and inside(ts[0]):
+		var prev: Vector2i = ts[1] if ts.size() > 1 else NOWHERE
+		var into := _taker_beside(ts[0], prev, begun)
+		var away := _giver_beside(ts[0], prev)
+		# the end already runs into something: on it, past it or beside it
+		var lands := ts.size() > 1 and (_takes(ts[-1], int(fs[-2])) or _takes(ts[-1] + DIRS[int(fs[-1])], int(fs[-1])) \
+				or _taker_beside(ts[-1], ts[-2], NOWHERE) >= 0)
+		if into >= 0 and away < 0 and not lands:
+			ts.reverse()
+			fs = Array(path_faces(ts, into))
+			fs[-1] = into
+			turned = true
+		elif ts.size() == 1 and away >= 0 and into < 0:
+			fs[0] = opp(away)
+	if not turned and ts.size() > 1 and not _takes(ts[-1] + DIRS[int(fs[-1])], int(fs[-1])):
+		var into := _taker_beside(ts[-1], ts[-2], NOWHERE)
+		if into >= 0:
+			fs[-1] = into
 	var cut := ts.size()
+	var merge := false
+	var last := ts.size() - 1
 	for j in ts.size():
 		var t: Vector2i = ts[j]
 		if not can_lay(t):
@@ -696,14 +721,60 @@ func trim_path(tiles: Array, f_last: int) -> Dictionary:
 			break
 		var i := _i(t)
 		var f := int(fs[j])
-		if int(kind[i]) == BELT and int(face[i]) % 2 != f % 2 and not (j == 0 and (extend or branch)):
-			if j == 0 or j == ts.size() - 1 or not has(BRIDGE):
-				cut = j
-				break
-	return {"tiles": ts, "faces": fs, "cut": cut, "extend": extend, "branch": branch}
+		if int(kind[i]) == BELT and int(face[i]) % 2 != f % 2 and not (j == 0 and extend):
+			if j > 0 and j < last and _fed_straight(i):
+				continue
+			# a line across the last square: the path runs into its side
+			cut = j
+			merge = j > 0 and j == last
+			break
+		if j > 0 and j == last and int(kind[i]) == BELT and int(face[i]) == opp(f) and kind_at(ts[j - 1]) != BELT:
+			# head on into a line's front (not a line drawn back along itself)
+			cut = j
+			break
+	return {"tiles": ts, "faces": fs, "cut": cut, "extend": extend, "merge": merge, "turned": turned}
+
+## Whether a token going `d` into `t` would be taken there.
+func _takes(t: Vector2i, d: int) -> bool:
+	return _end_into(t, d) >= 0
+
+## The way from `t` into the box, a machine's A or B square from behind or a
+## crate beside it (not `prev`), or -1; the piece the path was begun on
+## (`begun`) first, which may be a belt.
+func _taker_beside(t: Vector2i, prev: Vector2i, begun: Vector2i) -> int:
+	var best := -1
+	for d in 4:
+		var u: Vector2i = t + DIRS[d]
+		if u == prev or not inside(u) or not _takes(u, d):
+			continue
+		var k := int(kind[_i(u)])
+		if begun != NOWHERE and (u == begun or root_of(u) == root_of(begun) or (k == BOX and kind_at(begun) == BOX)):
+			return d
+		if best < 0 and (k == BOX or k == CRATE or is_op(k)):
+			best = d
+	return best
+
+## The way from `t` to a dig, a crate, a machine's answer square facing it
+## or a belt handing into it beside it (not `prev`), or -1.
+func _giver_beside(t: Vector2i, prev: Vector2i) -> int:
+	for d in 4:
+		var u: Vector2i = t + DIRS[d]
+		if u == prev or not inside(u):
+			continue
+		var i := _i(u)
+		var k := int(kind[i])
+		if k == DIG or k == CRATE:
+			return d
+		if is_op(k) and (int(role[i]) == R_OUT or int(role[i]) == R_REM) and int(face[i]) == opp(d):
+			return d
+		if k == BELT and int(face[i]) == opp(d):
+			return d
+		if k == BRIDGE and (int(face[i]) == opp(d) or int(face2[i]) == opp(d)):
+			return d
+	return -1
 
 ## Whether every belt handing into square `i` comes in at its back (or none
-## does): a splitter there would take what the belt took.
+## does): a crossing there keeps what the belt took.
 func _fed_straight(i: int) -> bool:
 	var f := int(face[i])
 	for s: int in feeders.get(i, PackedInt32Array()):
@@ -719,7 +790,7 @@ func _dangles(i: int) -> bool:
 ## Lays a traced path (4-connected squares in order; `f_last` the way the
 ## finger went last, for a path of one square) after `trim_path`. Belts
 ## along the way take the path's facing; a belt across it in the middle
-## becomes a bridge. Returns the squares laid or changed.
+## becomes a crossing. Returns the squares laid or changed.
 func lay_path(tiles: Array, f_last: int) -> int:
 	var p := trim_path(tiles, f_last)
 	var ts: Array = p.tiles
@@ -732,12 +803,7 @@ func lay_path(tiles: Array, f_last: int) -> int:
 		var i := _i(t)
 		var k := int(kind[i])
 		var across := f % 2 == 0
-		if j == 0 and bool(p.branch):
-			# the line keeps its way; the square shares it with the branch
-			_record(i)
-			kind[i] = SPLIT
-			to_d[i] = NONE
-		elif k == EMPTY:
+		if k == EMPTY:
 			_record(i)
 			kind[i] = BELT
 			face[i] = f
@@ -890,12 +956,10 @@ func _end_into(t2: Vector2i, d: int) -> int:
 		return -1
 	var i := _i(t2)
 	match int(kind[i]):
-		BELT, JOIN:
+		BELT:
 			if int(face[i]) == opp(d):
 				return -1
 			return (i << 2) | d
-		SPLIT:
-			return (i << 2) | d if int(face[i]) == d else -1
 		BRIDGE:
 			if d % 2 == 0:
 				return (i << 2) | d if int(face[i]) == d else -1
@@ -917,7 +981,8 @@ func _end_into(t2: Vector2i, d: int) -> int:
 	return -1
 
 ## The belts leading away from the piece on `t` (a dig's, a crate's): a
-## belt, a splitter or a combiner beside any of its squares facing away.
+## belt beside any of its squares facing away, or running along its edge
+## with nothing behind it (a line's first belt, drawn from beside it).
 func _away_from(t: Vector2i) -> PackedInt32Array:
 	var o := PackedInt32Array()
 	var mine := piece_squares(t)
@@ -926,9 +991,12 @@ func _away_from(t: Vector2i) -> PackedInt32Array:
 			var u: Vector2i = q + DIRS[d]
 			if not inside(u) or mine.has(u):
 				continue
-			var k := int(kind[_i(u)])
-			if (k == BELT or k == SPLIT or k == JOIN) and int(face[_i(u)]) == d:
-				o.append((_i(u) << 2) | d)
+			var i := _i(u)
+			if int(kind[i]) != BELT:
+				continue
+			var f := int(face[i])
+			if f == d or (f != opp(d) and kind_at(u - DIRS[f]) == EMPTY):
+				o.append((i << 2) | d)
 	return o
 
 ## The ends a machine's squares of `want` hand out to, from their front edge.
@@ -955,15 +1023,12 @@ func _wire() -> void:
 	for i in N:
 		var k := int(kind[i])
 		var t := tile_of(i)
-		if k == BELT or k == JOIN or k == SPLIT:
+		if k == BELT:
 			var f := int(face[i])
 			var o := PackedInt32Array()
-			# a belt and a combiner hand on straight; a splitter to its front and both sides
-			var ways := [f, left_of(f), right_of(f)] if k == SPLIT else [f]
-			for sd: int in ways:
-				var e := _end_into(t + DIRS[sd], sd)
-				if e >= 0:
-					o.append(e)
+			var e := _end_into(t + DIRS[f], f)
+			if e >= 0:
+				o.append(e)
 			lanes.append(i)
 			outs[i] = o
 		elif k == BRIDGE:
@@ -994,7 +1059,10 @@ func _wire() -> void:
 				machines[i].rems = _mouths(i, R_REM)
 		if k != BRIDGE:
 			occ[i + N] = 0
+	dead.fill(0)
 	for s: int in lanes:
+		if (outs[s] as PackedInt32Array).is_empty():
+			dead[s] = 1
 		for e: int in outs[s]:
 			_feed(e >> 2, s)
 		if to_d[s] != NONE and int(to_d[s]) >= (outs[s] as PackedInt32Array).size():
@@ -1156,6 +1224,10 @@ func _step_once(d: float) -> void:
 		if occ[s] == 0:
 			continue
 		var p := prog[s] + adv
+		if dead[s] == 1:
+			# a line's loose end: the token waits at its middle
+			prog[s] = minf(p, 0.5)
+			continue
 		if p >= 0.5 and to_d[s] == NONE:
 			_choose(s)
 		if p >= 1.0:
@@ -1347,6 +1419,9 @@ static func load_saved(rng_seed := 0) -> RefCounted:
 		var k := pieces[j + 1]
 		if i < 0 or i >= N or k <= EMPTY or k == BOX or k > JOIN:
 			continue
+		if k == SPLIT or k == JOIN:
+			# a splitter's or a combiner's square, kept from before: a belt
+			k = BELT
 		var f := clampi(pieces[j + 2], 0, 3)
 		var why: String = s.why_not(k, tile_of(i), f)
 		if why != "" and not (k == DIG and why == "not_yet"):

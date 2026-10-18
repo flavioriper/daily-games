@@ -17,9 +17,9 @@ extends Control
 ## - MACHINE: the adder's ghost (four squares) is dropped facing north, Turn
 ##   faces it east, Place sets it down, and 3 into the back of its A square
 ##   and 4 into the back of its B square make 7.
-## - BELTS: a splitter on the 1s line sends every other token down its side
-##   arm, the 2s come into a combiner on the line taking turns, and a path
-##   traced across the line makes a bridge.
+## - BELTS: the 2s line ends on the 1s line and joins it, the two taking
+##   turns, and a path traced across the 1s line makes a crossing; its loose
+##   end goes as far as its last square's middle.
 ## - UPGRADE: the 1s coming in fill the belt's upgrade (drawn as the
 ##   upgrades card draws a row); the finger presses Up and the belts run
 ##   twice as fast.
@@ -178,13 +178,8 @@ func _reset() -> void:
 			_dig(Vector2i(49, 55), 3)
 			_sim._wire()
 			_run(Vector2i(49, 59), Vector2i(56, 59), 0)
-			# a splitter on the line sends every other token down its side arm
-			_run(Vector2i(51, 60), Vector2i(51, 60), 1)
-			_run(Vector2i(51, 61), Vector2i(56, 61), 0)
-			_sim.place(Sim.SPLIT, Vector2i(51, 59), 0)
-			# the 2s come down into a combiner on the line: they take turns
-			_run(Vector2i(54, 57), Vector2i(54, 58), 1)
-			_sim.place(Sim.JOIN, Vector2i(54, 59), 0)
+			# the 2s come down onto the line and join it: they take turns
+			_sim.lay_path([Vector2i(54, 57), Vector2i(54, 58), Vector2i(54, 59)], 1)
 		Lesson.UPGRADE:
 			_sim.level = 2
 			_sim.ledger[1] = 36

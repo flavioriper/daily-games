@@ -43,8 +43,7 @@ const AMBER := Color("f2a13a")
 const PAINT := {
 	Sim.ADD: Color("8fbf7a"), Sim.MUL: Color("7fa7d6"), Sim.SUB: Color("b48cc4"),
 	Sim.DIV: Color("e0956a"), Sim.POW: Color("d6b25c"), Sim.DIG: Color("c46a5a"),
-	Sim.CRATE: Color("6fb3a8"), Sim.BOX: Color("4f9fa0"), Sim.BELT: WALNUT, Sim.BRIDGE: Color("c99a6c"),
-	Sim.SPLIT: BRASS, Sim.JOIN: BRASS,
+	Sim.CRATE: Color("6fb3a8"), Sim.BOX: Color("4f9fa0"), Sim.BELT: WALNUT, Sim.BRIDGE: BRASS,
 }
 
 static var _cache := {}
@@ -165,20 +164,43 @@ static func chevron() -> ArrayMesh:
 	b.stroke(PackedVector2Array([Vector2(-s, -s * 1.3), Vector2(s * 0.6, 0), Vector2(-s, s * 1.3)]), U * 0.06, Color(BRASS, 0.9))
 	return _keep("chev", b)
 
-## A bridge's deck: the across lane lifted on a light plank over the other.
-static func deck(across: int) -> ArrayMesh:
-	var key := ["deck", across % 2]
+## A line's loose end about the origin: the bed from the edge it is
+## entered by (`a` the way it goes) to the middle, ended round there.
+static func stub(a: int) -> ArrayMesh:
+	var key := ["stub", a]
+	if _cache.has(key):
+		return _cache[key]
+	var b := Face.Builder.new()
+	b.feather = 2.4
+	var e := -dir_v(a) * U * 0.5
+	for pass_w: Array in [[BED_W, WALNUT_EDGE], [BED_IN, WALNUT]]:
+		var w: float = pass_w[0]
+		b.polygon(_leg(e, Vector2.ZERO, w, 0.0), pass_w[1])
+		b.disc(Vector2.ZERO, w * 0.5, pass_w[1])
+	return _keep(key, b)
+
+## A crossing's plate about the origin: a brass + over the up-and-down
+## lane (which runs under it), the across lane's walnut on its long arm.
+static func cross(across: int) -> ArrayMesh:
+	var key := ["cross", across % 2]
 	if _cache.has(key):
 		return _cache[key]
 	var b := Face.Builder.new()
 	var horiz := across % 2 == 0
 	var long := Vector2(U * 0.5, 0) if horiz else Vector2(0, U * 0.5)
-	var wide := Vector2(0, U * 0.36) if horiz else Vector2(U * 0.36, 0)
-	b.polygon(PackedVector2Array([-long - wide + Vector2(0, 10), long - wide + Vector2(0, 10), long + wide + Vector2(0, 10), -long + wide + Vector2(0, 10)]), SHADE)
-	b.polygon(PackedVector2Array([-long - wide, long - wide, long + wide, -long + wide]), Color("c99a6c"))
-	b.polygon(PackedVector2Array([-long - wide * 0.78, long - wide * 0.78, long + wide * 0.78, -long + wide * 0.78]), WALNUT)
-	for side in [-1.0, 1.0]:
-		b.polygon(_bar(-long + wide * side * 0.9, long + wide * side * 0.9, 6.0), Color("a87b50"))
+	var side := Vector2(0, U * 0.5) if horiz else Vector2(U * 0.5, 0)
+	var arm := U * 0.4
+	var sh := Vector2(0, 7.0)
+	# the shadow, then the brass +: both arms, the edge a shade darker
+	for bar: Array in [[long, arm], [side * 0.86, arm * 0.9]]:
+		b.polygon(_leg(-bar[0] + sh, bar[0] + sh, bar[1], 0.0), SHADE)
+	for bar: Array in [[side * 0.86, arm * 0.9], [long, arm]]:
+		b.polygon(_leg(-bar[0], bar[0], bar[1], 0.0), BRASS.darkened(0.2))
+		b.polygon(_leg(-bar[0], bar[0], bar[1] - 8.0, -4.0), BRASS)
+	# the across lane rides on the long arm, the other's way pressed in brass
+	b.polygon(_leg(-side * 0.7, side * 0.7, U * 0.08, 0.0), BRASS.lightened(0.22))
+	b.polygon(_leg(-long, long, BED_IN * 0.78, 0.0), WALNUT)
+	b.disc(Vector2.ZERO, U * 0.07, BRASS.darkened(0.1))
 	return _keep(key, b)
 
 # --- tokens ---
@@ -381,31 +403,6 @@ static func _spout_at(b: Face.Builder, at: Vector2, v: Vector2, s: float) -> voi
 	var q := U * 0.04 * s
 	b.stroke(PackedVector2Array([c - v * q + n * w, c + v * q, c - v * q - n * w]), U * 0.05 * s, BRASS)
 
-## A splitter's or a combiner's plate over its belt square, facing `f`: a
-## brass square with three chevrons, pointing out to the front and both
-## sides (a splitter) or in from the back and both sides (a combiner).
-static func junction(k: int, f: int) -> ArrayMesh:
-	var key := ["junction", k, f]
-	if _cache.has(key):
-		return _cache[key]
-	var b := Face.Builder.new()
-	var h := U * 0.25
-	b.polygon(_rect(Rect2(-h, -h, h * 2.0, h * 2.0), Vector2(0, 6.0)), SHADE)
-	b.polygon(_rect(Rect2(-h, -h, h * 2.0, h * 2.0), Vector2.ZERO), BRASS)
-	b.polygon(_rect(Rect2(-h + 5.0, -h + 5.0, h * 2.0 - 10.0, h * 2.0 - 10.0), Vector2.ZERO), BRASS.lightened(0.18))
-	var ways := [f, Sim.left_of(f), Sim.right_of(f)] if k == Sim.SPLIT else [f, Sim.left_of(f), Sim.right_of(f)]
-	for d: int in ways:
-		var v := dir_v(d)
-		var n := v.orthogonal()
-		# a splitter's point away from the middle; a combiner's toward the front
-		var pv := v if k == Sim.SPLIT else dir_v(f)
-		var at := v * U * 0.13 if k == Sim.SPLIT else -v * U * 0.13 + (dir_v(f) * U * 0.26 if d == f else Vector2.ZERO)
-		if k == Sim.JOIN and d != f:
-			pv = -v
-		var pn := pv.orthogonal()
-		b.stroke(PackedVector2Array([at - pv * U * 0.04 + pn * U * 0.06, at + pv * U * 0.04, at - pv * U * 0.04 - pn * U * 0.06]), U * 0.045, WALNUT_EDGE)
-	return _keep(key, b)
-
 ## An operator's sign about `at`, `r` its half size.
 static func sign_into(b: Face.Builder, k: int, at: Vector2, r: float, c: Color) -> void:
 	var w := r * 0.36
@@ -511,16 +508,7 @@ static func icon(k: int) -> ArrayMesh:
 			b.append(crate(), Transform2D.IDENTITY)
 		Sim.BRIDGE:
 			bed_into(b, Vector2.ZERO, 1, 1)
-			b.append(deck(0), Transform2D.IDENTITY)
-		Sim.SPLIT, Sim.JOIN:
-			bed_into(b, Vector2.ZERO, 0, 0)
-			if k == Sim.SPLIT:
-				bed_into(b, Vector2.ZERO, 0, 1)
-				bed_into(b, Vector2.ZERO, 0, 3)
-			else:
-				bed_into(b, Vector2.ZERO, 1, 0)
-				bed_into(b, Vector2.ZERO, 3, 0)
-			b.append(junction(k, 0), Transform2D.IDENTITY)
+			b.append(cross(0), Transform2D.IDENTITY)
 		_:
 			# a machine facing north, drawn to fit one square
 			var cs := cells(k, 3)

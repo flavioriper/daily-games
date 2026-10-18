@@ -71,9 +71,9 @@ const GONE := 0.22
 const CHEV_FROM := 30.0
 ## A numeral smaller than this many pixels is not written.
 const FS_MIN := 8
-const TOOL_KINDS := {"belt": Sim.BELT, "dig": Sim.DIG, "crate": Sim.CRATE, "split": Sim.SPLIT, "join": Sim.JOIN, "add": Sim.ADD, "mul": Sim.MUL, "sub": Sim.SUB, "div": Sim.DIV, "pow": Sim.POW}
+const TOOL_KINDS := {"belt": Sim.BELT, "dig": Sim.DIG, "crate": Sim.CRATE, "add": Sim.ADD, "mul": Sim.MUL, "sub": Sim.SUB, "div": Sim.DIV, "pow": Sim.POW}
 ## The kinds set down with a ghost and turned before they go.
-const TURNS := [Sim.SPLIT, Sim.JOIN, Sim.ADD, Sim.MUL, Sim.SUB, Sim.DIV, Sim.POW]
+const TURNS := [Sim.ADD, Sim.MUL, Sim.SUB, Sim.DIV, Sim.POW]
 ## A pill: round buttons this wide, their captions under, in a paper capsule
 ## PILL_OFF pixels off the square, which wears a sun ring while it is up.
 const BTN := 84.0
@@ -322,7 +322,18 @@ func _rebuild() -> void:
 	var decks := Face.FlatBuilder.new(_flat_cache)
 	for i in Sim.N:
 		var kd := int(sim.kind[i])
-		if kd == Sim.BELT:
+		if kd == Sim.BELT and int(sim.dead[i]) == 1:
+			# a line's loose end goes as far as its middle: a stub from each
+			# edge it is fed by (a join's L or T), or from its back
+			var f := int(sim.face[i])
+			var at := Art.mid(Sim.tile_of(i))
+			var bits := int(_ins.get(i, 0))
+			if bits == 0:
+				bits = 1 << f
+			for d in 4:
+				if bits & (1 << d):
+					beds.append(Art.stub(d), Transform2D(0.0, at))
+		elif kd == Sim.BELT:
 			var f := int(sim.face[i])
 			var at := Art.mid(Sim.tile_of(i))
 			var a := _entry(i, f)
@@ -333,22 +344,13 @@ func _rebuild() -> void:
 				if bits & (1 << d) and d != a:
 					beds.append(Art.bed(d, f), Transform2D(0.0, at))
 			beds.append(Art.bed(a, f), Transform2D(0.0, at))
-		elif kd == Sim.SPLIT or kd == Sim.JOIN:
-			# its three arms always drawn, the plate over them
-			var f := int(sim.face[i])
-			var at := Art.mid(Sim.tile_of(i))
-			if kd == Sim.SPLIT:
-				for d: int in [Sim.left_of(f), Sim.right_of(f), f]:
-					beds.append(Art.bed(f, d), Transform2D(0.0, at))
-			else:
-				for d: int in [Sim.left_of(f), Sim.right_of(f), f]:
-					beds.append(Art.bed(d, f), Transform2D(0.0, at))
-			decks.append(Art.junction(kd, f), Transform2D(0.0, at))
 		elif kd == Sim.BRIDGE:
+			# a crossing: the up-and-down lane's bed, the + plate over it
+			# carrying the across lane
 			var at := Art.mid(Sim.tile_of(i))
 			var v := int(sim.face2[i])
 			beds.append(Art.bed(v, v), Transform2D(0.0, at))
-			decks.append(Art.deck(int(sim.face[i])), Transform2D(0.0, at))
+			decks.append(Art.cross(int(sim.face[i])), Transform2D(0.0, at))
 	_beds = beds.mesh()
 	_decks = decks.mesh()
 	_layers.ground.queue_redraw()
@@ -455,8 +457,11 @@ func _build_chevrons() -> ArrayMesh:
 		var f := int(sim.face[i])
 		var a := _entry(i, f)
 		var at := Art.mid(t)
+		var dead := int(sim.dead[i]) == 1
 		for h in [0.0, 0.5]:
 			var p := fposmod(_phase + h, 1.0)
+			if dead and p > 0.4:
+				continue
 			var pos := Art.path(at, a, f, p)
 			fb.append(chev, Transform2D(Art.path_tan(a, f, p).angle(), pos))
 	return fb.mesh()
@@ -622,10 +627,12 @@ func _build_live() -> ArrayMesh:
 		var tiles: Array = p.tiles
 		var faces: Array = p.faces
 		var cut := int(p.cut)
+		var merge := bool(p.merge)
 		for j in tiles.size():
 			var at := Art.mid(tiles[j])
 			var f := int(faces[j])
-			var ok := j < cut
+			# the square a path runs into the side of is drawn to its middle, green
+			var ok := j < cut or (merge and j == cut)
 			var c := Color(Art.GHOST, 0.55) if ok else Color(Art.WARN, 0.45)
 			# from the edge it is entered by (a corner bends at the middle) to the one it leaves by
 			var entry := at - Art.dir_v(f) * U * 0.5
@@ -633,8 +640,11 @@ func _build_live() -> ArrayMesh:
 				var back: int = Sim.DIRS.find((tiles[j - 1] as Vector2i) - (tiles[j] as Vector2i))
 				if back >= 0:
 					entry = at + Art.dir_v(back) * U * 0.5
-			b.stroke(PackedVector2Array([entry, at, at + Art.dir_v(f) * U * 0.5]), U * 0.6, c, false, false)
-			if ok:
+			# a loose end goes as far as its middle, as it will be laid
+			var stops: bool = (merge and j == cut) or (j == cut - 1 and not merge and not sim._takes(tiles[j] + Sim.DIRS[f], f))
+			var pts := PackedVector2Array([entry, at]) if stops else PackedVector2Array([entry, at, at + Art.dir_v(f) * U * 0.5])
+			b.stroke(pts, U * 0.6, c, false, false)
+			if ok and not (merge and j == cut):
 				var n := Art.dir_v(f).orthogonal() * U * 0.14
 				var tip := at + Art.dir_v(f) * U * 0.16
 				b.stroke(PackedVector2Array([tip - Art.dir_v(f) * U * 0.2 + n, tip, tip - Art.dir_v(f) * U * 0.2 - n]), U * 0.07, Color(Art.CREAM, 0.95))
@@ -656,9 +666,6 @@ func _build_live() -> ArrayMesh:
 		var m: ArrayMesh
 		if Sim.is_op(kd):
 			m = Art.machine(kd, gf)
-		elif kd == Sim.SPLIT or kd == Sim.JOIN:
-			m = Art.icon(kd)
-			rot += gf * PI * 0.5
 		elif kd == Sim.DIG:
 			m = Art.dig()
 			rot = 0.0

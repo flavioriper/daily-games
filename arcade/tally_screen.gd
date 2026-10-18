@@ -59,9 +59,9 @@ const HIT_GAP := 0.14
 const OP_GAP := 0.16
 ## The open shop catches up with the tally at most this often.
 const SHOP_EVERY := 0.25
-## The tray's two rows: the hands and the belt pieces, then what is set
-## down on the paper. A slot is row * ROW + its place in the row.
-const TOOLS := [["move", "belt", "turn", "remove", "split", "join"], ["dig", "crate", "add", "mul", "sub", "div", "pow"]]
+## The tray's two rows: the hands, the belt and the dig, then what is set
+## down on the paper after. A slot is row * ROW + its place in the row.
+const TOOLS := [["move", "belt", "dig", "turn", "remove"], ["crate", "add", "mul", "sub", "div", "pow"]]
 const ROW := 8
 const HAPTICS := {}
 ## The undo chip: how long it rests, its disc's radius, how far it stands
@@ -807,8 +807,7 @@ func _draw_tray() -> void:
 		var kd := tool_kind(id)
 		if kd >= 0 and _tool_open(id):
 			var sc := 1.0 if still else Motion.bump_scale(_clock - float(_chip_at.get(slot, -10.0)), 0.16, 0.22)
-			var fit := 0.46 if kd == Sim.SPLIT or kd == Sim.JOIN else 0.62
-			tray.draw_mesh(Art.icon(kd), null, Transform2D(0.0, Vector2.ONE * fit * sc, 0.0, at))
+			tray.draw_mesh(Art.icon(kd), null, Transform2D(0.0, Vector2.ONE * 0.62 * sc, 0.0, at))
 		var cap := tr("TL_TOOL_" + id.to_upper()) if _tool_open(id) else tr("TL_LEVEL_SHORT") % (int(Sim.UNLOCK[kd]) + 1)
 		var w: float = tray.size.x / float((TOOLS[slot / ROW] as Array).size())
 		var col := Art.INK if board.tool == id else Color(Art.INK, 0.7)

@@ -126,8 +126,7 @@ func _draw_piece() -> void:
 	var kd: int = sim.kind_at(t)
 	var i := Sim._i(t)
 	var at := Vector2(100, 110)
-	var rot := int(sim.face[i]) * PI * 0.5 if kd == Sim.SPLIT or kd == Sim.JOIN else 0.0
-	c.draw_mesh(Art.icon(kd), null, Transform2D(rot, Vector2.ONE * 1.5, 0.0, at))
+	c.draw_mesh(Art.icon(kd), null, Transform2D(0.0, Vector2.ONE * 1.5, 0.0, at))
 	var x := 240.0
 	if Sim.is_op(kd):
 		if not sim.machines.has(i):
