@@ -4,7 +4,8 @@ extends RefCounted
 ## 2026-10-18 (the user: "something more cozier and elegant ... with
 ## deep"): a deep plum velvet under a pool of lamplight with a vignette at
 ## the edges; walnut rails at the sides and a walnut head bar the dropper's
-## carriage rides; domed brass pins set into the nap, each with its cast
+## little cannon rides, a glass return tube up the right rail and along
+## the head bar; domed brass pins set into the nap, each with its cast
 ## shadow; glass marbles with a contact shadow, a lower crescent, a rim
 ## light and a bright window; seven turned walnut cups with a brass band
 ## and an engraved brass plate, drawn in two halves (back and front) so a
@@ -41,10 +42,31 @@ const TIER := [
 	Color("f2cd5c"), Color("c6b0e6"), Color("dfe7f0"), Color("f6e1e6"),
 	Color("e2645c"), Color("9fdcd2"), Color("7f93d6"), Color("f5a623"),
 ]
-## The rails' width, and where the head bar lies.
+## The rails' width (the right one holds the return tube), and where the
+## head bar lies.
 const RAIL := 18.0
-const HEAD_Y := Sim.DROP_Y - 74.0
-const HEAD_H := 30.0
+const RAIL_R := 44.0
+const HEAD_Y := Sim.DROP_Y - 82.0
+const HEAD_H := 38.0
+## The foot bar under the cups, mirroring the head bar.
+const FOOT_Y := Sim.H + 12.0
+const FOOT_H := 38.0
+## The return tube (the user, 2026-10-18: "a vacuum pipe that come from
+## the bottom and connect to the dropper"): a glass tube along the foot bar
+## under every cup, up the right rail and along the head bar to its capped
+## end, the marbles in it laid at PIPE_K. Its bore's half width, the
+## corners' radius, where it runs, and where it starts and ends.
+const PIPE_R := 15.0
+const PIPE_K := 0.7
+const PIPE_X := Sim.W + RAIL_R * 0.5
+const PIPE_Y := HEAD_Y + HEAD_H * 0.5
+const PIPE_FOOT := FOOT_Y + FOOT_H * 0.5
+const PIPE_CORNER := 26.0
+const PIPE_START := Sim.CUP_W * 0.5 - 24.0
+const PIPE_CAP := Sim.W * Sim.AIM_LO - 70.0
+## The dropper's housing round the tube, half its width: the queue starts
+## at its side.
+const HOUSING := 32.0
 
 static var _cache := {}
 
@@ -270,9 +292,11 @@ static func fins() -> ArrayMesh:
 	return _keep("fins", b)
 
 ## The light that rises out of a cup as a marble drops in (the user,
-## 2026-10-18: "a light coming from the box"): a soft column, bright at
-## the mouth and nothing at its top, its foot at (0, 0) and its top at
-## -LIGHT_H (laid under a scale and an alpha; no rays, no shape).
+## 2026-10-18: "a light coming from the box", then "it should only show
+## the light that come from inside the cup"): a soft column, bright at
+## its foot and nothing at its top, its foot at (0, 0) and its top at
+## -LIGHT_H (laid under a scale and an alpha, its foot down inside the cup
+## behind the front wall; no rays, no shape).
 const LIGHT_H := 300.0
 static func cup_light() -> ArrayMesh:
 	if _cache.has("light"):
@@ -293,73 +317,146 @@ static func cup_light() -> ArrayMesh:
 		b.tri(p0, p2, p3)
 	return _keep("light", b)
 
-## The glow in a cup's mouth as a marble drops in (laid with an alpha).
-static func mouth_glow() -> ArrayMesh:
-	if _cache.has("mouth"):
-		return _cache["mouth"]
-	var b := Face.Builder.new()
-	b.ellipse(Vector2.ZERO, 64.0, 22.0, Color(HALO, 0.16))
-	b.ellipse(Vector2.ZERO, 44.0, 14.0, Color(HALO, 0.3))
-	b.ellipse(Vector2.ZERO, 22.0, 7.0, Color(CREAM, 0.6))
-	return _keep("mouth", b)
-
 # --- the rails and the dropper ---
 
-## The walnut rails at the sides and the head bar across the top, with
-## the brass slot the dropper's carriage rides in.
+## The walnut rails at the sides and the head bar across the top; the
+## right rail and the head bar carry the return tube's seat and dark bore
+## (its glass is `pipe_front`, laid over the marbles in it).
 static func rails() -> ArrayMesh:
 	if _cache.has("rails"):
 		return _cache["rails"]
 	var b := Face.Builder.new()
 	var top := HEAD_Y - 6.0
-	var bottom := Sim.H + 12.0
+	var bottom := FOOT_Y + 6.0
 	for side in 2:
 		var x := -RAIL if side == 0 else Sim.W
-		b.polygon(PackedVector2Array([Vector2(x - 2.0, top), Vector2(x + RAIL + 2.0, top), Vector2(x + RAIL + 2.0, bottom), Vector2(x - 2.0, bottom)]), SHADE)
-		b.polygon(PackedVector2Array([Vector2(x, top), Vector2(x + RAIL, top), Vector2(x + RAIL, bottom), Vector2(x, bottom)]), WALNUT_DEEP)
+		var w := RAIL if side == 0 else RAIL_R
+		b.polygon(PackedVector2Array([Vector2(x - 2.0, top), Vector2(x + w + 2.0, top), Vector2(x + w + 2.0, bottom), Vector2(x - 2.0, bottom)]), SHADE)
+		b.polygon(PackedVector2Array([Vector2(x, top), Vector2(x + w, top), Vector2(x + w, bottom), Vector2(x, bottom)]), WALNUT_DEEP)
 		var in_x := x + 3.0
-		b.polygon(PackedVector2Array([Vector2(in_x, top + 3.0), Vector2(in_x + RAIL - 6.0, top + 3.0), Vector2(in_x + RAIL - 6.0, bottom), Vector2(in_x, bottom)]), WALNUT)
-		var hx := x + 4.0 if side == 0 else x + RAIL - 7.0
+		b.polygon(PackedVector2Array([Vector2(in_x, top + 3.0), Vector2(in_x + w - 6.0, top + 3.0), Vector2(in_x + w - 6.0, bottom), Vector2(in_x, bottom)]), WALNUT)
+		var hx := x + 4.0 if side == 0 else x + w - 7.0
 		b.polygon(PackedVector2Array([Vector2(hx, top + 4.0), Vector2(hx + 3.0, top + 4.0), Vector2(hx + 3.0, bottom), Vector2(hx, bottom)]), Color(WALNUT_HI, 0.5))
-	# the head bar, and the slot
-	b.polygon(Face.Builder.round_rect(Vector2(-RAIL - 2.0, HEAD_Y + 5.0), Vector2(Sim.W + RAIL * 2.0 + 4.0, HEAD_H + 4.0), 8.0), SHADE)
-	b.polygon(Face.Builder.round_rect(Vector2(-RAIL, HEAD_Y), Vector2(Sim.W + RAIL * 2.0, HEAD_H), 8.0), WALNUT_DEEP)
-	b.polygon(Face.Builder.round_rect(Vector2(-RAIL + 3.0, HEAD_Y + 3.0), Vector2(Sim.W + RAIL * 2.0 - 6.0, HEAD_H - 8.0), 6.0), WALNUT)
-	b.polygon(Face.Builder.round_rect(Vector2(-RAIL + 6.0, HEAD_Y + 4.0), Vector2(Sim.W + RAIL * 2.0 - 12.0, 5.0), 2.5), Color(WALNUT_HI, 0.55))
-	var sy := HEAD_Y + HEAD_H * 0.5 + 2.0
-	b.polygon(Face.Builder.round_rect(Vector2(Sim.W * Sim.AIM_LO - 40.0, sy - 4.0), Vector2(Sim.W * (Sim.AIM_HI - Sim.AIM_LO) + 80.0, 8.0), 4.0), Color(0.05, 0.02, 0.05, 0.6))
-	b.polygon(Face.Builder.round_rect(Vector2(Sim.W * Sim.AIM_LO - 38.0, sy - 2.5), Vector2(Sim.W * (Sim.AIM_HI - Sim.AIM_LO) + 76.0, 5.0), 2.5), BRASS_DEEP)
-	# brass nails at the corners
-	for p: Vector2 in [Vector2(-RAIL * 0.5, HEAD_Y + HEAD_H * 0.5), Vector2(Sim.W + RAIL * 0.5, HEAD_Y + HEAD_H * 0.5)]:
+	# the head bar
+	var span := Sim.W + RAIL + RAIL_R
+	b.polygon(Face.Builder.round_rect(Vector2(-RAIL - 2.0, HEAD_Y + 5.0), Vector2(span + 4.0, HEAD_H + 4.0), 8.0), SHADE)
+	b.polygon(Face.Builder.round_rect(Vector2(-RAIL, HEAD_Y), Vector2(span, HEAD_H), 8.0), WALNUT_DEEP)
+	b.polygon(Face.Builder.round_rect(Vector2(-RAIL + 3.0, HEAD_Y + 3.0), Vector2(span - 6.0, HEAD_H - 8.0), 6.0), WALNUT)
+	b.polygon(Face.Builder.round_rect(Vector2(-RAIL + 6.0, HEAD_Y + 4.0), Vector2(span - 12.0, 5.0), 2.5), Color(WALNUT_HI, 0.55))
+	# the foot bar
+	b.polygon(Face.Builder.round_rect(Vector2(-RAIL - 2.0, FOOT_Y + 5.0), Vector2(span + 4.0, FOOT_H + 4.0), 8.0), SHADE)
+	b.polygon(Face.Builder.round_rect(Vector2(-RAIL, FOOT_Y), Vector2(span, FOOT_H), 8.0), WALNUT_DEEP)
+	b.polygon(Face.Builder.round_rect(Vector2(-RAIL + 3.0, FOOT_Y + 3.0), Vector2(span - 6.0, FOOT_H - 8.0), 6.0), WALNUT)
+	b.polygon(Face.Builder.round_rect(Vector2(-RAIL + 6.0, FOOT_Y + 4.0), Vector2(span - 12.0, 5.0), 2.5), Color(WALNUT_HI, 0.55))
+	# the tube's seat and its bore
+	var path := pipe_path()
+	b.stroke(path, PIPE_R * 2.0 + 10.0, Color(0.05, 0.02, 0.05, 0.5))
+	b.stroke(path, PIPE_R * 2.0 + 6.0, BRASS_DEEP)
+	b.stroke(path, PIPE_R * 2.0, Color("140d18"))
+	b.stroke(_offset(path, PIPE_R * 0.45), 6.0, Color(VELVET_TOP, 0.55))
+	# brass nails at the left corners
+	for p: Vector2 in [Vector2(-RAIL * 0.5, HEAD_Y + HEAD_H * 0.5), Vector2(-RAIL * 0.5, FOOT_Y + FOOT_H * 0.5)]:
 		b.disc(p + Vector2(1.0, 1.5), 5.0, SHADE)
 		b.disc(p, 5.0, BRASS_DEEP)
 		b.disc(p + Vector2(-0.6, -0.8), 3.8, BRASS)
 		b.disc(p + Vector2(-1.4, -1.6), 1.4, BRASS_HI)
 	return _keep("rails", b)
 
-## The dropper: a brass carriage on the slot, a stem and a funnel whose
-## mouth is at (0, 0).
+## The return tube's centreline, from its capped start under the first cup
+## along the foot bar, up the right rail and round to its capped end on the
+## head bar.
+static func pipe_path() -> PackedVector2Array:
+	if _cache.has("pipe_path"):
+		return _cache["pipe_path"]
+	var pts := PackedVector2Array([Vector2(PIPE_START, PIPE_FOOT)])
+	var low := Vector2(PIPE_X - PIPE_CORNER, PIPE_FOOT - PIPE_CORNER)
+	for i in 9:
+		pts.append(low + Vector2.from_angle(lerpf(PI * 0.5, 0.0, i / 8.0)) * PIPE_CORNER)
+	var c := Vector2(PIPE_X - PIPE_CORNER, PIPE_Y + PIPE_CORNER)
+	for i in 9:
+		pts.append(c + Vector2.from_angle(lerpf(0.0, -PI * 0.5, i / 8.0)) * PIPE_CORNER)
+	pts.append(Vector2(PIPE_CAP, PIPE_Y))
+	_cache["pipe_path"] = pts
+	return pts
+
+## A line moved `d` to the left of its way along it.
+static func _offset(pts: PackedVector2Array, d: float) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	out.resize(pts.size())
+	for i in pts.size():
+		var a := pts[maxi(i - 1, 0)]
+		var z := pts[mini(i + 1, pts.size() - 1)]
+		var t := (z - a).normalized()
+		out[i] = pts[i] + Vector2(t.y, -t.x) * d
+	return out
+
+## The tube's glass over the marbles in it: a faint tint, a long bright
+## streak along its lit side, brass bands, a brass socket under each cup
+## and a cap at each end.
+static func pipe_front() -> ArrayMesh:
+	if _cache.has("pipe_front"):
+		return _cache["pipe_front"]
+	var b := Face.Builder.new()
+	var path := pipe_path()
+	b.stroke(path, PIPE_R * 2.0, Color(LAMP, 0.07))
+	b.stroke(_offset(path, -PIPE_R * 0.55), 3.5, Color(CREAM, 0.38))
+	b.stroke(_offset(path, PIPE_R * 0.6), 2.0, Color(CREAM, 0.12))
+	# bands up the rail and along the head bar
+	for y in [Sim.H - 200.0, Sim.H - 560.0, Sim.H - 900.0]:
+		_band(b, Vector2(PIPE_X, y), false)
+	for x in [Sim.W - 120.0, Sim.W * 0.5 + 230.0]:
+		_band(b, Vector2(x, PIPE_Y), true)
+	# the sockets a cup lets its marbles down through
+	for c in Sim.CUPS:
+		var x := (c + 0.5) * Sim.CUP_W
+		b.polygon(Face.Builder.round_rect(Vector2(x - 20.0, PIPE_FOOT - PIPE_R - 6.0), Vector2(40.0, 10.0), 4.0), BRASS_DEEP)
+		b.polygon(Face.Builder.round_rect(Vector2(x - 18.0, PIPE_FOOT - PIPE_R - 5.0), Vector2(36.0, 4.0), 2.0), BRASS)
+	# the caps
+	for at: Vector2 in [Vector2(PIPE_CAP, PIPE_Y), Vector2(PIPE_START, PIPE_FOOT)]:
+		b.polygon(Face.Builder.round_rect(Vector2(at.x - 8.0, at.y - PIPE_R - 4.0), Vector2(14.0, PIPE_R * 2.0 + 8.0), 4.0), BRASS_DEEP)
+		b.polygon(Face.Builder.round_rect(Vector2(at.x - 6.0, at.y - PIPE_R - 2.0), Vector2(6.0, PIPE_R * 2.0 + 2.0), 3.0), BRASS)
+	return _keep("pipe_front", b)
+
+static func _band(b: Face.Builder, at: Vector2, across: bool) -> void:
+	var sz := Vector2(10.0, PIPE_R * 2.0 + 8.0) if across else Vector2(PIPE_R * 2.0 + 8.0, 10.0)
+	b.polygon(Face.Builder.round_rect(at - sz * 0.5, sz, 3.0), BRASS_DEEP)
+	var hi := Vector2(4.0, sz.y - 4.0) if across else Vector2(sz.x - 4.0, 4.0)
+	b.polygon(Face.Builder.round_rect(at - sz * 0.5 + Vector2(2.0, 2.0), hi, 2.0), BRASS)
+
+## The dropper, a little brass cannon: a housing clamped round the tube on
+## the head bar and a barrel under it, its bore wide enough for a marble
+## (`Sim.SPAWN_Y` lies inside it), its muzzle's mouth at (0, 0).
 static func dropper() -> ArrayMesh:
 	if _cache.has("dropper"):
 		return _cache["dropper"]
 	var b := Face.Builder.new()
-	var cy := HEAD_Y + HEAD_H * 0.5 + 2.0 - Sim.DROP_Y
-	# the carriage
-	b.polygon(Face.Builder.round_rect(Vector2(-18.0, cy - 7.0), Vector2(36.0, 16.0), 6.0), SHADE)
-	b.polygon(Face.Builder.round_rect(Vector2(-19.0, cy - 10.0), Vector2(38.0, 18.0), 7.0), BRASS_DEEP)
-	b.polygon(Face.Builder.round_rect(Vector2(-16.0, cy - 8.0), Vector2(32.0, 12.0), 5.0), BRASS)
-	b.polygon(Face.Builder.round_rect(Vector2(-13.0, cy - 7.0), Vector2(26.0, 4.0), 2.0), Color(BRASS_HI, 0.6))
-	# the stem
-	b.polygon(PackedVector2Array([Vector2(-4.0, cy + 6.0), Vector2(4.0, cy + 6.0), Vector2(4.0, -34.0), Vector2(-4.0, -34.0)]), BRASS_DEEP)
-	b.polygon(PackedVector2Array([Vector2(-2.0, cy + 6.0), Vector2(1.0, cy + 6.0), Vector2(1.0, -34.0), Vector2(-2.0, -34.0)]), Color(BRASS, 0.9))
-	# the funnel
-	b.polygon(PackedVector2Array([Vector2(-24.0, -32.0), Vector2(28.0, -30.0), Vector2(11.0, 3.0), Vector2(-7.0, 3.0)]), SHADE)
-	b.polygon(PackedVector2Array([Vector2(-28.0, -36.0), Vector2(28.0, -36.0), Vector2(10.0, 0.0), Vector2(-10.0, 0.0)]), BRASS_DEEP)
-	b.polygon(PackedVector2Array([Vector2(-24.0, -34.0), Vector2(24.0, -34.0), Vector2(8.0, -2.0), Vector2(-8.0, -2.0)]), BRASS)
-	b.polygon(PackedVector2Array([Vector2(-20.0, -32.0), Vector2(-10.0, -32.0), Vector2(-3.0, -8.0), Vector2(-7.0, -8.0)]), Color(BRASS_HI, 0.55))
-	b.polygon(Face.Builder.round_rect(Vector2(-31.0, -42.0), Vector2(62.0, 10.0), 5.0), BRASS_DEEP)
-	b.polygon(Face.Builder.round_rect(Vector2(-29.0, -41.0), Vector2(58.0, 6.0), 3.0), BRASS_HI)
-	b.ellipse(Vector2(0.0, 0.0), 9.0, 3.5, Color(0.05, 0.02, 0.05, 0.8))
+	var ty := PIPE_Y - Sim.DROP_Y
+	var bw := Sim.BALL_R + 9.0
+	var top := ty + 14.0
+	# the barrel's shadow, then the barrel
+	b.polygon(Face.Builder.round_rect(Vector2(-bw + 4.0, top + 6.0), Vector2(bw * 2.0, -top), 8.0), SHADE)
+	b.polygon(Face.Builder.round_rect(Vector2(-bw, top), Vector2(bw * 2.0, -top - 4.0), 6.0), BRASS_DEEP)
+	b.polygon(Face.Builder.round_rect(Vector2(-bw + 3.0, top), Vector2(bw * 2.0 - 6.0, -top - 8.0), 5.0), BRASS)
+	b.polygon(Face.Builder.round_rect(Vector2(-bw + 6.0, top + 2.0), Vector2(6.0, -top - 12.0), 3.0), Color(BRASS_HI, 0.6))
+	b.polygon(Face.Builder.round_rect(Vector2(bw - 9.0, top + 2.0), Vector2(5.0, -top - 12.0), 2.5), Color(BRASS_DEEP, 0.7))
+	# a band round the middle
+	b.polygon(Face.Builder.round_rect(Vector2(-bw - 2.0, top * 0.45 - 4.0), Vector2(bw * 2.0 + 4.0, 8.0), 3.0), BRASS_DEEP)
+	b.polygon(Face.Builder.round_rect(Vector2(-bw - 1.0, top * 0.45 - 3.0), Vector2(bw * 2.0 + 2.0, 3.0), 1.5), BRASS_HI)
+	# the muzzle and the bore seen inside it
+	b.polygon(Face.Builder.round_rect(Vector2(-bw - 4.0, -12.0), Vector2(bw * 2.0 + 8.0, 13.0), 5.0), BRASS_DEEP)
+	b.polygon(Face.Builder.round_rect(Vector2(-bw - 2.0, -11.0), Vector2(bw * 2.0 + 4.0, 5.0), 2.5), BRASS_HI)
+	b.ellipse(Vector2(0.0, 0.5), Sim.BALL_R + 3.0, 4.0, Color("140d18"))
+	# the housing round the tube
+	var hy := ty - PIPE_R - 9.0
+	var hh := PIPE_R * 2.0 + 18.0
+	b.polygon(Face.Builder.round_rect(Vector2(-HOUSING + 3.0, hy + 5.0), Vector2(HOUSING * 2.0, hh), 9.0), SHADE)
+	b.polygon(Face.Builder.round_rect(Vector2(-HOUSING, hy), Vector2(HOUSING * 2.0, hh), 9.0), BRASS_DEEP)
+	b.polygon(Face.Builder.round_rect(Vector2(-HOUSING + 3.0, hy + 2.0), Vector2(HOUSING * 2.0 - 6.0, hh - 6.0), 7.0), BRASS)
+	b.polygon(Face.Builder.round_rect(Vector2(-HOUSING + 6.0, hy + 3.0), Vector2(HOUSING * 2.0 - 12.0, 6.0), 3.0), Color(BRASS_HI, 0.6))
+	# its rivets
+	for x in [-HOUSING + 9.0, HOUSING - 9.0]:
+		b.disc(Vector2(x, ty + 2.0), 3.6, BRASS_DEEP)
+		b.disc(Vector2(x - 0.6, ty + 1.2), 2.4, BRASS_HI)
 	return _keep("dropper", b)
 
 # --- the velvet ---

@@ -384,16 +384,14 @@ func _on_land(ev: Dictionary, coins_before: float) -> void:
 		_fx.cue("chime", 1.0, -4.0, 0.0)
 		_feel(Haptics.GOOD)
 		_rw.spray(from, Color("f5c04a"), 7, 540.0, "coin", 0.9, 0.0, _coins_rw())
-		_rw.ring(from, 80.0 * board.k, Color("ffe08a"))
-	elif mult >= 2.0 * float(Sim.CUP_BASE[3]) and _once("edge%d" % c, 0.3) and not Motion.reduce:
-		_rw.ring(from, 56.0 * board.k, Color("ffe08a"), 0.0, 0.35)
+	# no ring on the cup (the user, 2026-10-18: "it should only show the
+	# light that come from inside the cup"): the board's light is the moment
 	_changed()
 
 func _on_cup(c: int, level: int) -> void:
 	var at := _rw.at(board, board.cup_mid(c))
 	if not _once("cup%d" % c, 0.1) or _busy():
 		return
-	_rw.ring(at, 80.0 * board.k, Color("ffe08a"))
 	if _once("cup", CUP_GAP):
 		_fx.cue("cup", minf(pow(2.0, mini(level, 60) / 48.0), 1.8))
 		_feel(Haptics.TAP)

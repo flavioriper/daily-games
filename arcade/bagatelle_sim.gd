@@ -43,6 +43,9 @@ const PIN_R := 8.0
 const BALL_R := 17.0
 ## Where a marble is let go, and where it is in a cup.
 const DROP_Y := 60.0
+## A marble is let go inside the dropper's barrel, above its mouth at
+## DROP_Y, and is seen falling out of it.
+const SPAWN_Y := DROP_Y - 30.0
 const CUP_TOP := 1030.0
 const LAND_Y := 1075.0
 const CUPS := 7
@@ -544,13 +547,14 @@ func _release(aimed: bool) -> bool:
 	if twin_chance() > 0.0 and rng.randf() < twin_chance():
 		var k2 := best_in_jar()
 		if k2 >= 0:
-			_let(k2, clampf(drop_x + rng.randf_range(-24.0, 24.0), BALL_R, W - BALL_R), aimed)
+			# behind the first, down the same barrel
+			_let(k2, clampf(drop_x + rng.randf_range(-24.0, 24.0) * 0.1, BALL_R, W - BALL_R), aimed, SPAWN_Y - BALL_R * 2.0)
 	return true
 
-func _let(k: int, x: float, aimed := true) -> void:
+func _let(k: int, x: float, aimed := true, y := SPAWN_Y) -> void:
 	jar[k] -= 1
 	_next_id += 1
-	balls.append({"p": Vector2(x, DROP_Y), "v": Vector2(rng.randf_range(-20.0, 20.0), 0.0), "tier": k, "boost": 1.0, "seen": [], "id": _next_id})
+	balls.append({"p": Vector2(x, y), "v": Vector2(rng.randf_range(-20.0, 20.0), 0.0), "tier": k, "boost": 1.0, "seen": [], "id": _next_id})
 	drops += 1
 	_say({"type": "drop", "x": x, "tier": k, "aimed": aimed})
 

@@ -4164,7 +4164,8 @@ sounds and wins. Also, game progression is insanely bad ... 1 -> 2, 2 -> 3,
   into the nap with a cast shadow; glass marbles (lower crescent, rim
   light, window) over a contact shadow, with a two-ghost trail past
   `TRAIL_FROM`; sparks off struck pins (`_sparks`); dust motes drifting in
-  the light (`MOTES`); a glow in a cup's mouth as a marble drops in and a
+  the light (`MOTES`); a glow in a cup's mouth as a marble drops in (gone
+  since the cannon pass below) and a
   soft light rising out of the cup (`Art.cup_light`, `_draw_lights`,
   `LIGHT_LIFE`; the user: "change the animation when ball enters the jar
   to be a light coming from the box"; taller and brighter for a big pay,
@@ -4198,6 +4199,52 @@ sounds and wins. Also, game progression is insanely bad ... 1 -> 2, 2 -> 3,
   the tutorial. `_shot_bagatelle` 0 failed, probe 0 failed, suite 248522/0.
 - **Not done**: a phone; the sounds heard; pt and es read by a speaker; a
   `reduce` shot; the Arcade card's picture (unchanged).
+
+### Bagatelle's cannon and return tube (2026-10-18)
+
+The user: "it should look like it's coming from the dropper cannon, right
+now it just spawn midair, cannon drop size do not even fit the ball
+inside. Let's add like a vacuum pipe that come from the bottom and connect
+to the dropper, so when ball goes down the cup, it come back from the pipe
+and queue at the canon. Also polish the cup ball entering animation, right
+now it shows a circle that make no sense on the cup, it should only show
+the light that come from inside the cup".
+
+- **The cannon** (`Art.dropper`): a brass housing clamped round the tube on
+  the head bar and a barrel under it, bore `2 * BALL_R + 6`, its muzzle's
+  mouth at `DROP_Y`. A marble is let go at `Sim.SPAWN_Y` (`DROP_Y - 30`,
+  inside the barrel) and is seen falling out of it; a twin goes down the
+  same barrel a marble behind (its across offset is a tenth of what it was,
+  the rng still drawn so the stream is unchanged). While in the barrel a
+  marble rides the drawn dropper (`_seen_at`), and its worth is not
+  written. The barrel kicks up `KICK_UP` as one goes.
+- **The tube**: a walnut foot bar under the cups mirrors the head bar; the
+  right rail is `RAIL_R` 44 wide. One glass tube (`Art.pipe_path`) runs
+  along the foot bar under every cup (a brass socket under each), up the
+  right rail and along the head bar to a cap left of the dropper's glide.
+  Its seat and bore are in the cached `rails()`; its glass, bands and caps
+  are `Art.pipe_front()`, one more cached mesh over the marbles. Marbles in
+  it are laid at `PIPE_K` 0.7 inside the marbles' FlatBuilder (no call).
+- **Riders and the queue** (board only; the sim's jar is unchanged and
+  still takes a marble back the moment it lands): `PIPE_UNDER` after a
+  landing the marble drops into the tube under its own cup and rides at
+  `PIPE_SPEED`, eased in, to the queue's tail (at most `RIDERS`). The queue
+  waits at the housing's side, the jar's best first, showing `in_jar()`
+  less the riders, at most `QUEUE` 9; it steps up one (`QUEUE_STEP`) as
+  each is let go. `Motion.reduce`: no riders, the queue stands.
+- **The cup**: the three-ellipse mouth glow is gone, and so are the
+  screen's rings on a landing (big pays and the edge cups) and on a level;
+  the coin spray on a big pay stays. The light is drawn before the cups'
+  fronts with its foot `LIGHT_FOOT` 40 inside the cup, so it is seen coming
+  up out of it; a level makes it `LIGHT_LEVEL` 1.7.
+- **Decided for the user**: the tube climbs the right rail; the board is about 3% smaller
+  for the right rail and the foot bar; a returning marble can still be
+  dropped before its rider reaches the queue (the jar is the sim's; moving
+  the jar into the tube would move the pace test); the big pay's coin spray
+  kept.
+- **Draw calls** (default driver, 810x1440): 81 new, 83 to 107 in play
+  (two more than before: the tube's glass and the foot bar's share). `_shot_bagatelle` 0 failed, suite 248522/0.
+  Not yet on `opengl3_angle`, a phone, or a `reduce` shot.
 
 ### Start over on every Arcade game (2026-10-17)
 
