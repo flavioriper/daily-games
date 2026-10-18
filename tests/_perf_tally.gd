@@ -20,8 +20,9 @@ func _initialize() -> void:
 		var row := []
 		for x in range(1, Sim.W):
 			row.append(Vector2i(x, y))
+		# a one-square dig written straight on: a three-wide one would not fit every other row
 		s.dep[Sim._i(Vector2i(0, y))] = 1
-		s.place(Sim.DIG, Vector2i(0, y), 0)
+		s.kind[Sim._i(Vector2i(0, y))] = Sim.DIG
 		belts += s.lay_run(row, 0)
 	for x in range(3, Sim.W - 3, 6):
 		s.place(Sim.ADD, Vector2i(x, 1), 0)

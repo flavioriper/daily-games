@@ -426,17 +426,33 @@ static func sign_into(b: Face.Builder, k: int, at: Vector2, r: float, c: Color) 
 		Sim.POW:
 			b.stroke(PackedVector2Array([at + Vector2(-r * 0.85, r * 0.5), at + Vector2(0, -r * 0.65), at + Vector2(r * 0.85, r * 0.5)]), w, c)
 
-## A dig: a squat brick block with a dark mouth, the number it digs written
-## over it by the board.
+## A dig over its three by three squares about the middle one: a squat
+## brick block, a bolt in each corner and a dark mouth, the number it digs
+## written over it by the board.
 static func dig() -> ArrayMesh:
 	if _cache.has("dig"):
 		return _cache["dig"]
 	var b := Face.Builder.new()
 	var col: Color = PAINT[Sim.DIG]
+	var s := U * 3.0 - CELL_IN * 2.0
+	block_into(b, s, col)
+	for c: Vector2 in [Vector2(-1, -1), Vector2(1, -1), Vector2(-1, 1), Vector2(1, 1)]:
+		b.disc(c * U * 1.12, U * 0.11, col.darkened(0.3))
+		b.disc(c * U * 1.12 + Vector2(0, -3), U * 0.08, col.lightened(0.12))
+	b.disc(Vector2(0, 0), U * 0.72, col.darkened(0.35))
+	b.disc(Vector2(0, -5), U * 0.62, FACE)
+	return _keep("dig", b)
+
+## The dig as one square, for the tray and the cards.
+static func dig_small() -> ArrayMesh:
+	if _cache.has("dig_small"):
+		return _cache["dig_small"]
+	var b := Face.Builder.new()
+	var col: Color = PAINT[Sim.DIG]
 	block_into(b, BLOCK, col)
 	b.disc(Vector2(0, 0), U * 0.27, col.darkened(0.35))
 	b.disc(Vector2(0, -2), U * 0.23, FACE)
-	return _keep("dig", b)
+	return _keep("dig_small", b)
 
 ## A crate: a teal box with slats; its number and count written by the board.
 static func crate() -> ArrayMesh:
@@ -490,7 +506,7 @@ static func icon(k: int) -> ArrayMesh:
 			b.append(c, Transform2D(0.0, Vector2(-U * 0.18, 0)))
 			b.append(c, Transform2D(0.0, Vector2(U * 0.14, 0)))
 		Sim.DIG:
-			b.append(dig(), Transform2D.IDENTITY)
+			b.append(dig_small(), Transform2D.IDENTITY)
 		Sim.CRATE:
 			b.append(crate(), Transform2D.IDENTITY)
 		Sim.BRIDGE:

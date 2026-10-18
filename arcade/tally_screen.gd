@@ -416,7 +416,7 @@ func _play_events() -> void:
 				_fx.cue("nope", 1.0, -6.0)
 				_feel(Haptics.WARN)
 				_rw.sticker(tr("TL_SAY_NOT_TARGET") % [Sim.short(int(ev.v)), Sim.short(int(ev.came))],
-					_square_rw(Sim.HUB_AT + Vector2i(2, 2)) + Vector2(0, -70.0), 36, 3.2, false, Color("fffaf0"), false, "say", 20.0)
+					_square_rw(Sim.HUB_AT + Vector2i.ONE * (Sim.HUB >> 1)) + Vector2(0, -70.0), 36, 3.2, false, Color("fffaf0"), false, "say", 20.0)
 			"hit":
 				if _clock - _hit_at > HIT_GAP and not _busy():
 					_hit_at = _clock
@@ -441,7 +441,7 @@ func _on_level(n: int) -> void:
 	_rw.sticker(tr("TL_LEVEL_DONE") % (n - 1), at, 72, 2.2, true, Color.WHITE, true, "level")
 	_rw.sticker(tr("TL_NOW_ASKS") % [Sim.short(sim.target()), Sim.short(sim.count())], at + Vector2(0, 92.0), 40, 2.4, false, Color("fff4c2"), false, "asks", 0.0, true)
 	_rw.rain(1.4, ["confetti", "star"], Rewards.CONFETTI)
-	_rw.spray(_square_rw(Sim.HUB_AT + Vector2i(2, 2)), Pal.SUN, 14, 600.0, "star", 1.0)
+	_rw.spray(_square_rw(Sim.HUB_AT + Vector2i.ONE * (Sim.HUB >> 1)), Pal.SUN, 14, 600.0, "star", 1.0)
 	Analytics.track("tally_level", {"level": n, "made": sim.made})
 	_save()
 

@@ -52,8 +52,9 @@ const U := Art.U
 ## The desk shown round the paper, in squares.
 const RIM := 3.0
 const SLOP := 14.0
-## The zoom: the default pixels a square and the closest.
-const K_START := 74.0
+## The zoom: the default pixels a square (about thirteen squares across the
+## phone, the six-square box and some paper round it) and the closest.
+const K_START := 62.0
 const K_MOST := 160.0
 const WHEEL := 1.12
 const EASE := 12.0
@@ -658,6 +659,9 @@ func _build_live() -> ArrayMesh:
 		elif kd == Sim.SPLIT or kd == Sim.JOIN:
 			m = Art.icon(kd)
 			rot += gf * PI * 0.5
+		elif kd == Sim.DIG:
+			m = Art.dig()
+			rot = 0.0
 		else:
 			m = Art.icon(kd)
 			rot = 0.0
@@ -700,9 +704,13 @@ func _draw_words() -> void:
 				if v == 0 or (kd != Sim.EMPTY and kd != Sim.DIG):
 					continue
 				var col: Color = Art.PENCIL if sim.can_dig(v) else Art.PENCIL_SHUT
+				if kd == Sim.DIG and int(sim.root[i]) >= 0 and int(sim.root[i]) != i:
+					continue
 				if kd == Sim.DIG:
-					col = Art.INK
-				_write(str(v), screen_of(Vector2(x, y) + Vector2(0.5, 0.5)), printed if kd == Sim.EMPTY else int(printed * 0.85), col.darkened(0.15) if kd == Sim.EMPTY else col)
+					# the dig's face is three squares' worth: its numeral grows with it
+					_write(str(v), screen_of(Vector2(x, y) + Vector2(0.5, 0.45)), int(clampf(k * (0.62 if v < 10 else 0.5), 0.0, 120.0)), Art.INK)
+					continue
+				_write(str(v), screen_of(Vector2(x, y) + Vector2(0.5, 0.5)), printed, col.darkened(0.15))
 	# crates: the number kept and how many
 	if printed >= FS_MIN:
 		for i: int in sim.crates:
@@ -817,6 +825,16 @@ func _pill_button_at(p: Vector2) -> String:
 	return ""
 
 ## Why the ghost cannot be set down where it is, or "" when it can.
+## A dig's ghost goes onto the printed number under it or beside it (the
+## dig is three wide about its number); anything else where it is.
+func _snap(kd: int, t: Vector2i) -> Vector2i:
+	if kd != Sim.DIG or sim.dep_at(t) != 0:
+		return t
+	for d: Vector2i in [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(-1, -1), Vector2i(1, -1), Vector2i(1, 1), Vector2i(-1, 1)]:
+		if sim.dep_at(t + d) != 0:
+			return t + d
+	return t
+
 func _ghost_why() -> String:
 	if _ghost.is_empty():
 		return "taken"
@@ -1103,7 +1121,7 @@ func drag(p: Vector2, was := Vector2.INF) -> void:
 				_lift_at(was.lerp(p, float(j) / steps))
 		_:
 			if _drag_ghost:
-				var t := tile_under(p)
+				var t := _snap(int(_ghost.kind), tile_under(p))
 				if Sim.inside(t) and t != Vector2i(_ghost.tile):
 					_ghost.tile = t
 					_pill.tile = t
@@ -1306,7 +1324,7 @@ func _tap(p: Vector2) -> void:
 			var want := int(TOOL_KINDS[tool])
 			if kd == Sim.EMPTY or kd == Sim.BELT or kd == Sim.BRIDGE:
 				var f := int(_ghost.face) if not _ghost.is_empty() else place_face
-				_set_ghost(want, t, f)
+				_set_ghost(want, _snap(want, t), f)
 			else:
 				_open_piece_pill(t)
 

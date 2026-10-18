@@ -14,8 +14,9 @@ extends RefCounted
 ## - a **combiner** is a belt square that takes from its back and both
 ##   sides in turn and hands out of its front;
 ## - a **bridge** is two belts crossing, each lane straight on;
-## - a **dig** stands on a printed number and puts it on every belt leading
-##   away from it, `dig_belts()` belts' worth;
+## - a **dig** covers the three by three squares round a printed number
+##   and puts it on every belt leading away from its edge, `dig_belts()`
+##   belts' worth;
 ## - the five **operators** cover two to four squares (`SHAPES`, after the
 ##   reference's footprints): an A square and a B square that take from
 ##   their back edge alone, and answer squares that hand out of their front
@@ -39,15 +40,17 @@ extends RefCounted
 ## Actions return whether they did anything; `events` is for the holder to
 ## drain. `step(dt)` takes any `dt`.
 
-## 2: the operators' footprints and the bigger paper; a sheet kept under 1
-## keeps its level, tally and upgrades, and its pieces are not read.
-const VER := 2
-const W := 80
-const H := 80
+## 2: the operators' footprints and the bigger paper; 3: the six-square
+## box, the three-square dig and the numbers spread over a bigger sheet. A
+## sheet kept under VER keeps its level, tally and upgrades, and its pieces
+## are not read.
+const VER := 3
+const W := 120
+const H := 120
 const N := W * H
 const N2 := N * 2
-const HUB := 4
-const HUB_AT := Vector2i(38, 38)
+const HUB := 6
+const HUB_AT := Vector2i(57, 57)
 
 enum { EMPTY, BELT, BRIDGE, DIG, ADD, MUL, SUB, DIV, POW, CRATE, BOX, SPLIT, JOIN }
 const OPS := [ADD, MUL, SUB, DIV, POW]
@@ -67,6 +70,9 @@ const SHAPES := {
 	SUB: [[0, 0, R_OUT], [1, 0, R_A], [0, 1, R_B]],
 	DIV: [[0, 0, R_OUT], [1, 0, R_REM], [0, 1, R_A], [1, 1, R_B]],
 	POW: [[0, 0, R_OUT], [-1, 0, R_A], [0, 1, R_B]],
+	# the dig, its root the printed number in the middle
+	DIG: [[0, 0, R_NONE], [-1, -1, R_NONE], [0, -1, R_NONE], [1, -1, R_NONE], [-1, 0, R_NONE],
+		[1, 0, R_NONE], [-1, 1, R_NONE], [0, 1, R_NONE], [1, 1, R_NONE]],
 }
 
 ## East, south, west, north: clockwise, +y down.
@@ -122,14 +128,15 @@ const MOST := 60
 
 ## [value, how many, nearest, furthest]: squares from the box's edge.
 const DEPOSITS := [
-	[1, 6, 4, 10], [2, 5, 6, 13], [3, 4, 8, 15], [4, 4, 9, 17], [5, 4, 10, 18],
-	[6, 3, 11, 20], [7, 3, 12, 21], [8, 3, 13, 22], [9, 3, 14, 23],
+	[1, 6, 7, 15], [2, 5, 9, 19], [3, 4, 11, 22], [4, 4, 13, 25], [5, 4, 14, 27],
+	[6, 3, 16, 30], [7, 3, 17, 32], [8, 3, 19, 34], [9, 3, 20, 35],
 ]
 ## Past 9: two of each from 11 to 39, one or two from 40 to MOST.
-const FAR := [[11, 19, 2, 16, 27], [20, 39, 2, 21, 32], [40, 60, 1, 26, 36]]
+const FAR := [[11, 19, 2, 24, 40], [20, 39, 2, 31, 47], [40, 60, 1, 38, 53]]
 ## No printed number has another, or the box, within this many squares:
-## room between them for an operator and its belts.
-const APART := 3
+## two digs side by side leave APART - 3 squares between them, room for an
+## operator and its belts.
+const APART := 6
 
 # --- the upgrades ---
 
@@ -534,7 +541,7 @@ func op_speed(k: int) -> float:
 # --- building ---
 
 ## The squares piece `k` covers set down on `t` facing `f`, each as
-## [square, role]: one for every piece but an operator.
+## [square, role]: one for every piece but an operator and the dig.
 static func footprint(k: int, t: Vector2i, f: int) -> Array:
 	if not SHAPES.has(k):
 		return [[t, R_NONE]]
@@ -644,10 +651,11 @@ static func path_faces(tiles: Array, f_last: int) -> PackedByteArray:
 	return faces
 
 ## What a traced path would do: {tiles, faces, cut}. The path's facings are
-## worked out first, then a first square that cannot take belt or holds a
-## belt across the way is dropped (the path starts beside a dig, a machine,
-## the box or a line it would otherwise turn) and so is a last square that
-## cannot (the square before faces into it); `cut` is where the path stops:
+## worked out first, then a first square that cannot take belt (with the
+## rest of its piece the path crosses) or holds a belt across the way is
+## dropped (the path starts beside a dig, a machine, the box or a line it
+## would otherwise turn) and so is a last square that cannot (the square
+## before faces into it); `cut` is where the path stops:
 ## at a square that cannot take belt, or a belt across its way where no
 ## bridge can go (before bridges are had, or at the path's end). A belt
 ## across the way is never turned, but for a line's loose end the path is
@@ -670,8 +678,13 @@ func trim_path(tiles: Array, f_last: int) -> Dictionary:
 			# begun on a line and leaving it by a side: a branch, the square a splitter
 			branch = true
 		elif not can_lay(ts[0]) or (inside(ts[0]) and int(kind[i0]) == BELT and int(face[i0]) % 2 != int(fs[0]) % 2):
+			# begun on a piece: the path starts past its edge (a dig is three wide)
+			var at := root_of(ts[0])
 			ts.pop_front()
 			fs.pop_front()
+			while ts.size() > 1 and not can_lay(ts[0]) and root_of(ts[0]) == at and int(kind[_i(ts[0])]) != BOX:
+				ts.pop_front()
+				fs.pop_front()
 	if ts.size() > 1 and not can_lay(ts[-1]):
 		ts.pop_back()
 		fs.pop_back()
@@ -903,17 +916,19 @@ func _end_into(t2: Vector2i, d: int) -> int:
 			return ((N2 + i * 4 + 3) << 2) | d
 	return -1
 
-## The belts leading away from square `t` (a dig's, a crate's): a belt, a
-## splitter or a combiner beside it facing away.
+## The belts leading away from the piece on `t` (a dig's, a crate's): a
+## belt, a splitter or a combiner beside any of its squares facing away.
 func _away_from(t: Vector2i) -> PackedInt32Array:
 	var o := PackedInt32Array()
-	for d in 4:
-		var u: Vector2i = t + DIRS[d]
-		if not inside(u):
-			continue
-		var k := int(kind[_i(u)])
-		if (k == BELT or k == SPLIT or k == JOIN) and int(face[_i(u)]) == d:
-			o.append((_i(u) << 2) | d)
+	var mine := piece_squares(t)
+	for q: Vector2i in mine:
+		for d in 4:
+			var u: Vector2i = q + DIRS[d]
+			if not inside(u) or mine.has(u):
+				continue
+			var k := int(kind[_i(u)])
+			if (k == BELT or k == SPLIT or k == JOIN) and int(face[_i(u)]) == d:
+				o.append((_i(u) << 2) | d)
 	return o
 
 ## The ends a machine's squares of `want` hand out to, from their front edge.
@@ -964,7 +979,7 @@ func _wire() -> void:
 		else:
 			occ[i] = 0
 			occ[i + N] = 0
-			if k == DIG:
+			if k == DIG and (int(root[i]) < 0 or int(root[i]) == i):
 				if not digs.has(i):
 					digs[i] = {"budget": 0.0, "rr": 0}
 				digs[i].outs = _away_from(t)
@@ -1323,8 +1338,8 @@ static func load_saved(rng_seed := 0) -> RefCounted:
 	var levels: Dictionary = cfg.get_value("paper", "lv", {})
 	for id: String in TRACKS:
 		s.lv[id] = clampi(int(levels.get(id, 1)), 1, int(TRACK_TOP[id]))
-	# a sheet kept before the footprints was laid on smaller paper: its
-	# pieces and crates are not read
+	# a sheet kept before VER was laid on other paper: its pieces and
+	# crates are not read
 	var fresh := int(cfg.get_value("paper", "ver", 1)) >= VER
 	var pieces: PackedInt32Array = cfg.get_value("paper", "pieces", PackedInt32Array()) if fresh else PackedInt32Array()
 	for j in range(0, pieces.size() - 3, 4):
@@ -1333,7 +1348,8 @@ static func load_saved(rng_seed := 0) -> RefCounted:
 		if i < 0 or i >= N or k <= EMPTY or k == BOX or k > JOIN:
 			continue
 		var f := clampi(pieces[j + 2], 0, 3)
-		if s.why_not(k, tile_of(i), f) != "" and k != DIG:
+		var why: String = s.why_not(k, tile_of(i), f)
+		if why != "" and not (k == DIG and why == "not_yet"):
 			continue
 		s._stamp(k, tile_of(i), f)
 		s.face2[i] = clampi(pieces[j + 3], 0, 3)

@@ -37,23 +37,24 @@ const Board = preload("res://arcade/tally_board.gd")
 
 enum Lesson { DIG, BOX, MACHINE, BELTS, UPGRADE }
 
-## The squares seen across the page, and where the page looks.
-const ACROSS := 9.5
-const LOOK := {Lesson.DIG: Vector2(37.2, 39.8), Lesson.BOX: Vector2(37.2, 40.0), Lesson.MACHINE: Vector2(35.6, 40.0),
-	Lesson.BELTS: Vector2(35.5, 39.5), Lesson.UPGRADE: Vector2(36.8, 40.0)}
+## The squares seen across the page, and where the page looks. The box
+## stands on (57, 57) to (62, 62); a dig covers the squares round its number.
+const ACROSS := 13.0
+const LOOK := {Lesson.DIG: Vector2(54.6, 59.4), Lesson.BOX: Vector2(54.8, 60.0), Lesson.MACHINE: Vector2(53.0, 59.2),
+	Lesson.BELTS: Vector2(52.4, 58.6), Lesson.UPGRADE: Vector2(54.6, 59.6)}
 ## Each lesson's finger: [second, square (its middle is + 0.5), down].
 const SCRIPTS := {
-	Lesson.DIG: [[0.0, Vector2(35.5, 41.5), false], [0.8, Vector2(33.5, 39.5), false], [1.0, Vector2(33.5, 39.5), true], [1.15, Vector2(33.5, 39.5), false],
+	Lesson.DIG: [[0.0, Vector2(54.5, 63.5), false], [0.8, Vector2(50.5, 59.5), false], [1.0, Vector2(50.5, 59.5), true], [1.15, Vector2(50.5, 59.5), false],
 		[1.7, "place", false], [1.85, "place", true], [2.0, "place", false],
-		[2.8, Vector2(34.5, 39.5), false], [3.0, Vector2(34.5, 39.5), true], [3.9, Vector2(37.5, 39.5), true], [4.05, Vector2(37.5, 39.5), false],
-		[4.7, Vector2(35.5, 41.5), false]],
-	Lesson.BOX: [[0.0, Vector2(35.5, 42.0), false]],
-	Lesson.MACHINE: [[0.0, Vector2(33.5, 41.5), false], [0.8, Vector2(36.5, 39.5), false], [1.0, Vector2(36.5, 39.5), true], [1.15, Vector2(36.5, 39.5), false],
+		[2.8, Vector2(51.5, 59.5), false], [3.0, Vector2(51.5, 59.5), true], [3.9, Vector2(56.5, 59.5), true], [4.05, Vector2(56.5, 59.5), false],
+		[4.7, Vector2(54.5, 63.5), false]],
+	Lesson.BOX: [[0.0, Vector2(54.5, 64.0), false]],
+	Lesson.MACHINE: [[0.0, Vector2(51.5, 63.5), false], [0.8, Vector2(55.5, 58.5), false], [1.0, Vector2(55.5, 58.5), true], [1.15, Vector2(55.5, 58.5), false],
 		[1.9, "turn", false], [2.05, "turn", true], [2.2, "turn", false],
-		[3.0, "place", false], [3.15, "place", true], [3.3, "place", false], [4.1, Vector2(33.5, 41.5), false]],
-	Lesson.BELTS: [[0.0, Vector2(30.5, 41.5), false], [3.4, Vector2(33.5, 38.5), false], [3.6, Vector2(33.5, 38.5), true], [4.6, Vector2(33.5, 41.5), true], [4.75, Vector2(33.5, 41.5), false],
-		[5.4, Vector2(30.5, 41.5), false]],
-	Lesson.UPGRADE: [[0.0, Vector2(35.0, 42.0), false]],
+		[3.0, "place", false], [3.15, "place", true], [3.3, "place", false], [4.1, Vector2(51.5, 63.5), false]],
+	Lesson.BELTS: [[0.0, Vector2(46.5, 62.5), false], [3.4, Vector2(50.5, 57.5), false], [3.6, Vector2(50.5, 57.5), true], [4.6, Vector2(50.5, 61.5), true], [4.75, Vector2(50.5, 61.5), false],
+		[5.4, Vector2(46.5, 62.5), false]],
+	Lesson.UPGRADE: [[0.0, Vector2(54.0, 64.0), false]],
 }
 ## When the tool in hand changes: [second, tool].
 const TOOLS := {
@@ -117,10 +118,8 @@ func _layout() -> void:
 
 ## A dig written straight onto the paper, past the ladder's rules.
 func _dig(t: Vector2i, v: int) -> void:
-	var i := Sim._i(t)
-	_sim.dep[i] = v
-	_sim.kind[i] = Sim.DIG
-	_sim.face[i] = 0
+	_sim.dep[Sim._i(t)] = v
+	_sim._stamp(Sim.DIG, t, 0)
 
 func _run(a: Vector2i, b: Vector2i, f: int) -> void:
 	var tiles := []
@@ -147,53 +146,53 @@ func _reset() -> void:
 	match lesson:
 		Lesson.DIG:
 			_sim.lv.belt = 3
-			_sim.dep[Sim._i(Vector2i(33, 39))] = 1
-			_sim.dep[Sim._i(Vector2i(34, 42))] = 1
-			_sim.dep[Sim._i(Vector2i(35, 37))] = 2
+			_sim.dep[Sim._i(Vector2i(50, 59))] = 1
+			_sim.dep[Sim._i(Vector2i(52, 63))] = 1
+			_sim.dep[Sim._i(Vector2i(53, 55))] = 2
 		Lesson.BOX:
 			_sim.lv.belt = 3
 			_sim.got = 5
-			_dig(Vector2i(33, 39), 1)
-			_dig(Vector2i(34, 41), 3)
+			_dig(Vector2i(50, 58), 1)
+			_dig(Vector2i(50, 62), 3)
 			_sim._wire()
-			_run(Vector2i(34, 39), Vector2i(37, 39), 0)
-			_run(Vector2i(35, 41), Vector2i(37, 41), 0)
+			_run(Vector2i(52, 58), Vector2i(56, 58), 0)
+			_run(Vector2i(52, 62), Vector2i(56, 62), 0)
 		Lesson.MACHINE:
 			_sim.level = 2
 			_sim.lv.belt = 3
 			_sim.lv.add = 8
-			# 3 and 4 come along to where the adder's A and B squares will be;
+			# 3 and 4 come round to where the adder's A and B squares will be;
 			# its answer squares' belts lead into the box
-			_dig(Vector2i(32, 39), 3)
-			_dig(Vector2i(32, 40), 4)
+			_dig(Vector2i(49, 57), 3)
+			_dig(Vector2i(49, 61), 4)
 			_sim._wire()
-			_run(Vector2i(33, 39), Vector2i(34, 39), 0)
-			_run(Vector2i(33, 40), Vector2i(34, 40), 0)
-			_run(Vector2i(37, 39), Vector2i(37, 39), 0)
-			_run(Vector2i(37, 40), Vector2i(37, 40), 0)
+			_sim.lay_path([Vector2i(51, 57), Vector2i(52, 57), Vector2i(52, 58), Vector2i(53, 58)], 0)
+			_sim.lay_path([Vector2i(51, 61), Vector2i(52, 61), Vector2i(52, 60), Vector2i(52, 59), Vector2i(53, 59)], 0)
+			_run(Vector2i(56, 58), Vector2i(56, 58), 0)
+			_run(Vector2i(56, 59), Vector2i(56, 59), 0)
 		Lesson.BELTS:
 			_sim.level = 6
 			_sim.lv.belt = 3
-			_dig(Vector2i(31, 39), 1)
-			_dig(Vector2i(36, 37), 2)
-			_dig(Vector2i(33, 37), 3)
+			_dig(Vector2i(47, 59), 1)
+			_dig(Vector2i(54, 55), 2)
+			_dig(Vector2i(49, 55), 3)
 			_sim._wire()
-			_run(Vector2i(32, 39), Vector2i(37, 39), 0)
+			_run(Vector2i(49, 59), Vector2i(56, 59), 0)
 			# a splitter on the line sends every other token down its side arm
-			_run(Vector2i(34, 40), Vector2i(34, 40), 1)
-			_run(Vector2i(34, 41), Vector2i(37, 41), 0)
-			_sim.place(Sim.SPLIT, Vector2i(34, 39), 0)
+			_run(Vector2i(51, 60), Vector2i(51, 60), 1)
+			_run(Vector2i(51, 61), Vector2i(56, 61), 0)
+			_sim.place(Sim.SPLIT, Vector2i(51, 59), 0)
 			# the 2s come down into a combiner on the line: they take turns
-			_run(Vector2i(36, 38), Vector2i(36, 38), 1)
-			_sim.place(Sim.JOIN, Vector2i(36, 39), 0)
+			_run(Vector2i(54, 57), Vector2i(54, 58), 1)
+			_sim.place(Sim.JOIN, Vector2i(54, 59), 0)
 		Lesson.UPGRADE:
 			_sim.level = 2
 			_sim.ledger[1] = 36
-			_dig(Vector2i(34, 38), 1)
-			_dig(Vector2i(34, 39), 1)
+			_dig(Vector2i(51, 57), 1)
+			_dig(Vector2i(51, 61), 1)
 			_sim._wire()
-			_run(Vector2i(35, 38), Vector2i(37, 38), 0)
-			_run(Vector2i(35, 39), Vector2i(37, 39), 0)
+			_run(Vector2i(53, 57), Vector2i(56, 57), 0)
+			_run(Vector2i(53, 61), Vector2i(56, 61), 0)
 	_sim.events.clear()
 	_board.sim = _sim
 	_board.place_face = 3 if lesson == Lesson.MACHINE else 0
@@ -206,7 +205,7 @@ func _reset() -> void:
 func _script() -> Array:
 	if lesson != Lesson.UPGRADE:
 		return SCRIPTS[lesson]
-	var rest := Vector2(33.5, 40.5)
+	var rest := Vector2(52.5, 63.5)
 	if _up_t < 0.0:
 		return [[0.0, rest, false]]
 	var up: Vector2 = _board.squares_at(_up_button().get_center())

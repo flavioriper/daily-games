@@ -3933,6 +3933,49 @@ under a card (the same cached mesh a kind). Unconfirmed: whether the notch
 and spout read on a phone at the usual zoom (about 55 px a square, the
 spout's chevron about 9 px), and the 0.72 stop.
 
+#### Tally spread out: the six-square box, the three-square dig (2026-10-18)
+
+The user: "main number collector should be a matrix of 6x6, numbers mine
+are 3x3, sum is 2x2. this by itself will improve the spacings, spread
+numbers into a way bigger grid". The adder was already 2x2 and is unchanged.
+
+- **The box** is `Sim.HUB` 6 at `HUB_AT` (57, 57) on a **120 by 120** sheet;
+  `Art.box` and `box_panel` follow `HUB` on their own.
+- **The dig is a footprint** (`SHAPES[DIG]`, nine squares, its root the
+  printed number in the middle): placing, lifting, undo and the pill's sun
+  ring come from the machines' code. `_wire` makes one dig per root (a
+  square with root -1 is still a one-square dig: the probe's `_dig1` and
+  `_perf_tally.gd` write those straight on). `_away_from` walks every
+  square of the piece, so a belt leaving any of the dig's twelve edges
+  takes its number. `trim_path` drops every square of the piece a path is
+  begun on, so a trace begun on the dig's middle starts past its edge.
+- **The numbers spread**: `APART` 6 (two digs side by side leave three
+  squares between them); 1s 7 to 15 squares from the box, 9s 20 to 35, the
+  far ones 24 to 53. Every one of 59 numbers prints on 60 seeds out of 60
+  (117 to 128 squares a sheet).
+- **Drawn**: `Art.dig` is one block three squares wide with a bolt in each
+  corner and a face 0.62 of a square, its numeral written 0.62 of a square
+  (0.5 past 9); the tray, the cards and the fade use `Art.dig_small`, the
+  old one-square look. The Dig ghost shows the whole block and **snaps** to
+  a printed number under or beside the square tapped or dragged to
+  (`Board._snap`). `K_START` 74 to 62: about thirteen squares across.
+- **Save `VER` 3**: a kept sheet keeps level, tally and upgrades and drops
+  its pieces and crates again (the box moved and the digs grew). A kept dig
+  is read back only where `why_not` allows it but for "not_yet".
+- **The tutorial's pages** were laid again round the box at 57
+  (`ACROSS` 13); Machine brings 3 and 4 from digs four rows apart round
+  into A and B; Belts crosses the 1s line at its second square, so the dig
+  keeps its belt.
+- Checked: probe 106 checks 0 failed; `_shot_tally.gd` headless and once
+  windowed on `opengl3_angle` 810x1440, 0 failed, 62 to 89 draw calls in
+  play, 120 to 144 under a card or the tutorial; `_shot_tally_tree.gd` 0
+  failed; suite 248522/0. `_perf_tally.gd`, 6,664 belts (2,923 on the old
+  sheet): builders 3.8 to 4.5 ms a frame, the still layers' rebuild 21.5 ms
+  (9.1). `_grow` in the shot harness clears the box's surroundings first.
+- **Unconfirmed, the user's**: the spread (the first 1 is barely on screen
+  at the start, as before), the 120 sheet's walk for slow early belts, the
+  dig's look, the snap, `K_START` 62; a phone.
+
 #### Tally made easier to handle: footprints, junctions, Rotate, Straight (2026-10-15)
 
 The user, with three shots of the reference: "we need to make tally game way
@@ -3961,11 +4004,9 @@ default**. Built on `feat/tally-easier`.
   (takes from its back alone, hands round robin to front and both sides)
   and **combiner** (takes from back and sides in turn, hands to its front)
   are lanes like a belt, so tokens ride across them; both from level 1.
-- **Paper 80 by 80**, the box at (38, 38); number bands pushed out (1s
-  within 10 squares, the far ones 26 to 36) and `APART` 3: no printed
-  number within 3 squares of another. Save `VER` 2: a sheet kept under 1
-  keeps level, tally and upgrades and drops its pieces and crates (the
-  user's phone sheet lost its layout).
+- **Paper 80 by 80**, the box at (38, 38), `APART` 3 and save `VER` 2 in
+  this pass; all four were changed again on 2026-10-18 (below: 120 by 120,
+  a six-square box, a three-square dig, `APART` 6, `VER` 3).
 - **Square belts**: `Art.bed_into` is two straight legs of polygons meeting
   in the middle, `Art.path` two straight legs; no stroke joins.
 - **Machines drawn as they lie**: `Art.machine(k, f)` cached per facing so A,

@@ -56,6 +56,15 @@ func _blank(lvl := 30) -> RefCounted:
 	s.lv.belt = 8
 	return s
 
+## A one-square dig written straight onto the paper, past the footprint:
+## for the machines' and belts' checks, where digs stand close.
+func _dig1(s: RefCounted, at: Vector2i, v: int) -> void:
+	var i := Sim._i(at)
+	s.dep[i] = v
+	s.kind[i] = Sim.DIG
+	s.face[i] = E
+	s._wire()
+
 func _run(s: RefCounted, from: Vector2i, to: Vector2i, f: int) -> void:
 	var tiles := []
 	var t := from
@@ -97,7 +106,7 @@ func _paper() -> void:
 		if v == 10:
 			tens += 1
 		most = maxi(most, v)
-	_check("six 1s within ten squares of the box (%d, furthest %d)" % [ones, far_one], ones == 6 and far_one <= 10)
+	_check("six 1s within %d squares of the box (%d, furthest %d)" % [int(Sim.DEPOSITS[0][3]), ones, far_one], ones == 6 and far_one <= int(Sim.DEPOSITS[0][3]))
 	var near := 99
 	for i in Sim.N:
 		if int(a.dep[i]) == 0:
@@ -124,14 +133,15 @@ func _paper() -> void:
 func _belt_to_box() -> void:
 	var s = _blank(1)
 	s.lv.belt = 1
-	var dig_at := Vector2i(31, 39)
+	var dig_at := Vector2i(40, 58)
 	s.dep[Sim._i(dig_at)] = 1
-	_check("a dig is refused off a number", not s.place(Sim.DIG, Vector2i(30, 39), E))
+	_check("a dig is refused off a number", not s.place(Sim.DIG, Vector2i(39, 58), E))
 	_check("a dig goes on a 1 at level 1", s.place(Sim.DIG, dig_at, E))
-	_run(s, Vector2i(32, 39), Vector2i(37, 39), E)
-	_check("the run leads away from the dig", (s.digs[Sim._i(dig_at)].outs as PackedInt32Array).size() == 1)
+	_check("a dig covers three by three", s.kind_at(dig_at + Vector2i(1, 1)) == Sim.DIG and s.kind_at(dig_at + Vector2i(-1, -1)) == Sim.DIG and s.digs.size() == 1)
+	_run(s, Vector2i(42, 58), Vector2i(56, 58), E)
+	_check("the run leads away from the dig's edge", (s.digs[Sim._i(dig_at)].outs as PackedInt32Array).size() == 1)
 	s.events.clear()
-	s.step(8.0)
+	s.step(20.0)
 	var d1: int = s.made
 	s.step(10.0)
 	var rate := float(s.made - d1) / 10.0
@@ -165,7 +175,7 @@ func _route(s: RefCounted, pts: Array) -> void:
 	s.lay_path(tiles, f_last)
 
 ## From `from` north to row `row`, east to column `col`, south into the box.
-func _to_box(s: RefCounted, from: Vector2i, row: int, col := 38) -> void:
+func _to_box(s: RefCounted, from: Vector2i, row: int, col := Sim.HUB_AT.x + 1) -> void:
 	_route(s, [from, Vector2i(from.x, row), Vector2i(col, row), Vector2i(col, Sim.HUB_AT.y)])
 
 ## The squares of a machine of `k` at `m` facing `f` with role `want`.
@@ -184,9 +194,7 @@ func _two_digs(s: RefCounted, k: int, va: int, vb: int, to_box := true) -> Vecto
 	s.place(k, m, Nd)
 	for side in 2:
 		var u: Vector2i = _role(k, m, Nd, Sim.R_A if side == 0 else Sim.R_B)[0]
-		var at := Vector2i(u.x, 14)
-		s.dep[Sim._i(at)] = va if side == 0 else vb
-		s.place(Sim.DIG, at, E)
+		_dig1(s, Vector2i(u.x, 14), va if side == 0 else vb)
 		_run(s, Vector2i(u.x, 13), u + Vector2i(0, 1), Nd)
 	if to_box:
 		_to_box(s, m + Vector2i(0, -1), 5)
@@ -259,7 +267,7 @@ func _divider() -> void:
 	var mm: Dictionary = s2.machines[Sim._i(m)]
 	_check("7 ÷ 2 with nothing for the remainder stops once two wait", (mm.rem as Array).size() == Sim.OUT and s2.held(3) <= 3)
 	# the remainder taken off its own square's front, over the answer's belt
-	_to_box(s2, m + Vector2i(1, -1), 7, 39)
+	_to_box(s2, m + Vector2i(1, -1), 7, Sim.HUB_AT.x + 2)
 	s2.step(80.0)
 	_check("with the remainder taken: 3 and 1 both come (had %s)" % str(_came(s2)), _came(s2) == [1, 3])
 	var s3 = _blank()
@@ -273,8 +281,7 @@ func _divider() -> void:
 
 func _split_merge() -> void:
 	var s = _blank()
-	s.dep[Sim._i(Vector2i(5, 30))] = 1
-	s.place(Sim.DIG, Vector2i(5, 30), E)
+	_dig1(s, Vector2i(5, 30), 1)
 	_run(s, Vector2i(6, 30), Vector2i(12, 30), E)
 	# a belt whose back touches (9, 30)'s side, going north: no split
 	_run(s, Vector2i(9, 29), Vector2i(9, 26), Nd)
@@ -299,25 +306,21 @@ func _split_merge() -> void:
 		return (q.outs[Sim._i(Vector2i(10, 11))] as PackedInt32Array).is_empty()).call())
 	# a combiner: two digs into one, the box at the end
 	var c = _blank()
-	c.dep[Sim._i(Vector2i(10, 30))] = 1
-	c.dep[Sim._i(Vector2i(16, 34))] = 2
-	c.place(Sim.DIG, Vector2i(10, 30), E)
-	c.place(Sim.DIG, Vector2i(16, 34), E)
+	_dig1(c, Vector2i(10, 30), 1)
+	_dig1(c, Vector2i(16, 34), 2)
 	_run(c, Vector2i(11, 30), Vector2i(15, 30), E)
 	c.place(Sim.JOIN, Vector2i(16, 30), E)
 	_run(c, Vector2i(16, 33), Vector2i(16, 31), Nd)
-	_route(c, [Vector2i(17, 30), Vector2i(38, 30), Vector2i(38, 37)])
+	_route(c, [Vector2i(17, 30), Vector2i(58, 30), Vector2i(58, 56)])
 	c.step(60.0)
 	var r := float(c.held(1)) / maxf(1.0, float(c.held(2)))
 	_check("a combiner takes turns (%d 1s, %d 2s)" % [c.held(1), c.held(2)], r > 0.8 and r < 1.25)
 	_check("a combined belt runs full (%d)" % c.made, c.made >= 30)
 	# a belt's front into another's side still joins it
 	var m = _blank()
-	m.dep[Sim._i(Vector2i(10, 30))] = 1
-	m.dep[Sim._i(Vector2i(16, 34))] = 2
-	m.place(Sim.DIG, Vector2i(10, 30), E)
-	m.place(Sim.DIG, Vector2i(16, 34), E)
-	_route(m, [Vector2i(11, 30), Vector2i(38, 30), Vector2i(38, 37)])
+	_dig1(m, Vector2i(10, 30), 1)
+	_dig1(m, Vector2i(16, 34), 2)
+	_route(m, [Vector2i(11, 30), Vector2i(58, 30), Vector2i(58, 56)])
 	_run(m, Vector2i(16, 33), Vector2i(16, 31), Nd)
 	m.step(60.0)
 	var r2 := float(m.held(1)) / maxf(1.0, float(m.held(2)))
@@ -325,19 +328,16 @@ func _split_merge() -> void:
 
 func _bridge() -> void:
 	var s = _blank(3)
-	s.dep[Sim._i(Vector2i(5, 12))] = 1
-	s.place(Sim.DIG, Vector2i(5, 12), E)
+	_dig1(s, Vector2i(5, 12), 1)
 	_run(s, Vector2i(6, 12), Vector2i(20, 12), E)
 	_run(s, Vector2i(12, 8), Vector2i(12, 16), S)
 	_check("before bridges, a run across a belt stops before it and never turns it", s.kind_at(Vector2i(12, 12)) == Sim.BELT and s.face_at(Vector2i(12, 12)) == E and s.kind_at(Vector2i(12, 11)) == Sim.BELT and s.kind_at(Vector2i(12, 13)) == Sim.EMPTY)
 	var b = _blank(6)
-	b.dep[Sim._i(Vector2i(5, 12))] = 1
-	b.dep[Sim._i(Vector2i(12, 4))] = 3
-	b.place(Sim.DIG, Vector2i(5, 12), E)
-	b.place(Sim.DIG, Vector2i(12, 4), E)
-	_route(b, [Vector2i(6, 12), Vector2i(38, 12), Vector2i(38, 37)])
-	_route(b, [Vector2i(12, 5), Vector2i(12, 20), Vector2i(39, 20), Vector2i(39, 37)])
-	_check("a run across a belt makes a bridge", b.kind_at(Vector2i(12, 12)) == Sim.BRIDGE and b.kind_at(Vector2i(38, 20)) == Sim.BRIDGE)
+	_dig1(b, Vector2i(5, 12), 1)
+	_dig1(b, Vector2i(12, 4), 3)
+	_route(b, [Vector2i(6, 12), Vector2i(58, 12), Vector2i(58, 56)])
+	_route(b, [Vector2i(12, 5), Vector2i(12, 20), Vector2i(59, 20), Vector2i(59, 56)])
+	_check("a run across a belt makes a bridge", b.kind_at(Vector2i(12, 12)) == Sim.BRIDGE and b.kind_at(Vector2i(58, 20)) == Sim.BRIDGE)
 	b.step(80.0)
 	_check("both lanes cross (%d 1s, %d 3s)" % [b.held(1), b.held(3)], b.held(1) > 20 and b.held(3) > 20)
 
@@ -346,18 +346,25 @@ func _bridge() -> void:
 ## one step back puts it all as it was.
 func _path() -> void:
 	var s = _blank(3)
-	s.dep[Sim._i(Vector2i(33, 35))] = 1
-	s.place(Sim.DIG, Vector2i(33, 35), E)
-	# begun on the dig, east three, south to the box's row, east into the box
-	var path := [Vector2i(33, 35), Vector2i(34, 35), Vector2i(35, 35), Vector2i(36, 35), Vector2i(36, 36), Vector2i(36, 37), Vector2i(36, 38), Vector2i(37, 38), Vector2i(38, 38)]
+	var dig_at := Vector2i(50, 52)
+	s.dep[Sim._i(dig_at)] = 1
+	s.place(Sim.DIG, dig_at, E)
+	# begun on the dig's middle, east out of it, south to the box's row, east into the box
+	var path := []
+	for x in range(50, 55):
+		path.append(Vector2i(x, 52))
+	for y in range(53, 59):
+		path.append(Vector2i(54, y))
+	for x in range(55, 59):
+		path.append(Vector2i(x, 58))
 	s.mark()
 	var n: int = s.lay_path(path, E)
-	_check("a traced path drops the dig and the box at its ends (%d laid)" % n, n == 7 and s.kind_at(Vector2i(33, 35)) == Sim.DIG)
-	_check("each square faces the next and the corner turns south", s.face_at(Vector2i(34, 35)) == E and s.face_at(Vector2i(36, 35)) == S and s.face_at(Vector2i(36, 37)) == S)
-	_check("the last square faces into the box", s.face_at(Vector2i(37, 38)) == E)
+	_check("a traced path drops the dig and the box at its ends (%d laid)" % n, n == 11 and s.kind_at(dig_at) == Sim.DIG)
+	_check("each square faces the next and the corner turns south", s.face_at(Vector2i(52, 52)) == E and s.face_at(Vector2i(54, 52)) == S and s.face_at(Vector2i(54, 56)) == S)
+	_check("the last square faces into the box", s.face_at(Vector2i(56, 58)) == E)
 	s.step(20.0)
 	_check("the 1s ride the corner into the box (%d)" % s.made, s.made >= 10)
-	_check("one step back lifts the whole path", s.undo() and s.lanes.is_empty() and s.kind_at(Vector2i(33, 35)) == Sim.DIG and not s.can_undo())
+	_check("one step back lifts the whole path", s.undo() and s.lanes.is_empty() and s.kind_at(dig_at) == Sim.DIG and not s.can_undo())
 	# a path drawn back along a line reverses it
 	var r = _blank(3)
 	_run(r, Vector2i(5, 5), Vector2i(9, 5), E)
@@ -374,8 +381,7 @@ func _path() -> void:
 	_check("a path begun on a line's loose end goes on from it round the corner", x.face_at(Vector2i(9, 9)) == S and x.face_at(Vector2i(9, 11)) == S and (x.outs[Sim._i(Vector2i(8, 9))] as PackedInt32Array).size() == 1)
 	# a stroke begun mid-line and leaving it by a side branches it: a splitter there
 	var br = _blank(3)
-	br.dep[Sim._i(Vector2i(4, 20))] = 1
-	br.place(Sim.DIG, Vector2i(4, 20), E)
+	_dig1(br, Vector2i(4, 20), 1)
 	_run(br, Vector2i(5, 20), Vector2i(12, 20), E)
 	br.lay_path([Vector2i(8, 20), Vector2i(8, 21), Vector2i(8, 22), Vector2i(8, 23)], S)
 	_check("a stroke out of a line's side makes a splitter there, the line still going on", br.kind_at(Vector2i(8, 20)) == Sim.SPLIT and br.face_at(Vector2i(8, 20)) == E and br.face_at(Vector2i(8, 21)) == S and (br.outs[Sim._i(Vector2i(8, 20))] as PackedInt32Array).size() == 2)
@@ -399,22 +405,20 @@ func _path() -> void:
 	var a = _blank()
 	var m := Vector2i(10, 10)
 	a.place(Sim.ADD, m, Nd)
-	a.dep[Sim._i(Vector2i(10, 14))] = 1
-	a.place(Sim.DIG, Vector2i(10, 14), E)
+	_dig1(a, Vector2i(10, 14), 1)
 	_run(a, Vector2i(10, 13), Vector2i(10, 12), Nd)
 	_to_box(a, m + Vector2i(0, -1), 5)
 	a.step(10.0)
 	_check("an adder fed on A alone makes nothing and starves on B", a.made == 0 and a.starving(Sim._i(m)) == 1)
-	a.dep[Sim._i(Vector2i(11, 14))] = 1
-	a.place(Sim.DIG, Vector2i(11, 14), E)
+	_dig1(a, Vector2i(11, 14), 1)
 	_run(a, Vector2i(11, 13), Vector2i(11, 12), Nd)
 	a.step(10.0)
 	_check("fed on both it works and starves no more", a.starving(Sim._i(m)) == -1 and bool(a.machines[Sim._i(m)].has_last))
 	# twenty non-targets with no hit: the box says so once
 	var o = _blank(2)
-	o.dep[Sim._i(Vector2i(33, 39))] = 1
-	o.place(Sim.DIG, Vector2i(33, 39), E)
-	_run(o, Vector2i(34, 39), Vector2i(37, 39), E)
+	o.dep[Sim._i(Vector2i(51, 58))] = 1
+	o.place(Sim.DIG, Vector2i(51, 58), E)
+	_run(o, Vector2i(53, 58), Vector2i(56, 58), E)
 	o.events.clear()
 	o.step(40.0)
 	var said := 0
@@ -425,10 +429,8 @@ func _path() -> void:
 
 func _crate() -> void:
 	var s = _blank()
-	s.dep[Sim._i(Vector2i(5, 40))] = 1
-	s.dep[Sim._i(Vector2i(5, 42))] = 2
-	s.place(Sim.DIG, Vector2i(5, 40), E)
-	s.place(Sim.DIG, Vector2i(5, 42), E)
+	_dig1(s, Vector2i(5, 40), 1)
+	_dig1(s, Vector2i(5, 42), 2)
 	_run(s, Vector2i(6, 40), Vector2i(8, 40), E)
 	s.place(Sim.CRATE, Vector2i(9, 40), E)
 	_run(s, Vector2i(6, 42), Vector2i(8, 42), E)
@@ -436,7 +438,7 @@ func _crate() -> void:
 	s.step(20.0)
 	var c: Dictionary = s.crates[Sim._i(Vector2i(9, 40))]
 	_check("a crate keeps the first number only (%d of %d)" % [int(c.n), int(c.v)], int(c.v) == 1 and int(c.n) > 10)
-	_run(s, Vector2i(10, 40), Vector2i(37, 40), E)
+	_route(s, [Vector2i(10, 40), Vector2i(56, 40), Vector2i(56, 58), Vector2i(57, 58)])
 	s.step(60.0)
 	_check("a crate lets its number out to the box", s.held(1) > 10)
 
