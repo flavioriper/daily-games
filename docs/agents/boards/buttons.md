@@ -1043,3 +1043,8 @@ move by 2x"). `FLY_TIME` 0.15 (0.3), `RUN_STEP` 0.06 (0.12),
 chain at twice the pace, a stow of twenty landing its last at 1.35 s. The
 pick's wave and the slides are as they were. Board probe 26 days, the same
 two band-2 zoom failures; not seen.
+
+**07:17, "double speed again"**: `FLY_TIME` 0.075, `RUN_STEP` 0.03,
+`RUN_STEP_CAP` 0.6, four times the first cut. A landing's tick is held to
+one in `TICK_GAP` 0.075 s, so from here only every other jewel of a run
+ticks. Board probe as before; not seen.
