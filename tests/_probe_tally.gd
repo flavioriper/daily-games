@@ -40,6 +40,7 @@ func _initialize() -> void:
 	_ladder()
 	_upgrades()
 	_kept()
+	_templates()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(Sim.path))
 	print("%d failed" % _fails)
 	quit(1 if _fails > 0 else 0)
@@ -564,3 +565,39 @@ func _kept() -> void:
 	_check("an old sheet keeps its level and tally, not its pieces", old.level == 9 and old.held(19) == 50 and old.machines.is_empty() and old.lanes.is_empty())
 	_check("the same paper is printed", r.dep == s.dep and r.target_of(30) == s.target_of(30))
 	_check("the card reads it", Sim.kept().level == 9)
+
+## Picked pieces as a template: set down turned, plain pieces after, undone
+## whole; a part saved from them; a picked lot lifted and put back.
+func _templates() -> void:
+	var s = Sim.new(23)
+	s.level = 3
+	s.place(Sim.ADD, Vector2i(12, 12), S)
+	_run(s, Vector2i(10, 10), Vector2i(14, 10), E)
+	var pick := []
+	for y in range(9, 15):
+		for x in range(9, 16):
+			pick.append(Vector2i(x, y))
+	var d: Dictionary = s.template_of(pick)
+	_check("a template holds the adder and the run", (d.pieces as Array).size() == 6 and int(d.w) >= 5)
+	var at := Vector2i(30, 30)
+	_check("it can go on bare paper", s.why_not_template(d, at, 0) == "")
+	s.mark()
+	var laid: Array = s.stamp_template(d, at, 1)
+	var ops := 0
+	for t: Vector2i in laid:
+		if Sim.is_op(s.kind_at(t)) and int(s.root[Sim._i(t)]) == Sim._i(t):
+			ops += 1
+	_check("set down turned: one adder, its run turned south", ops == 1 and s.machines.size() == 2 and s.face_at(at + Vector2i(int(d.h) - 1, 0)) == S)
+	_check("it cannot go on itself again", s.why_not_template(d, at, 1) == "taken")
+	s.undo()
+	_check("undo takes the whole stamp back", s.machines.size() == 1 and s.kind_at(at + Vector2i(int(d.h) - 1, 0)) == Sim.EMPTY)
+	var id: int = s.save_part(pick)
+	_check("a part saved from the pick", id > 0 and s.defs.has(id))
+	s.stamp_template(s.defs[id], at, 0)
+	s.mark()
+	s.turn(Vector2i(10, 10))
+	_check("a set-down part shares nothing: the first run turned, the copy not", s.face_at(Vector2i(10, 10)) == S and s.face_at(at) == E)
+	s.mark()
+	_check("a pick lifted whole", s.lift_all(pick) > 0 and s.machines.size() == 1 and s.kind_at(Vector2i(12, 12)) == Sim.EMPTY)
+	s.undo()
+	_check("and put back by undo", s.machines.size() == 2 and s.kind_at(Vector2i(12, 12)) == Sim.ADD)

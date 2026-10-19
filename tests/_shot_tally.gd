@@ -8,15 +8,17 @@ extends SceneTree
 ## touches: the Dig tool from the tray, a tap on the nearest 1 (its ghost
 ## and the builder pill come up: shot 2b) and a tap on the pill's Place (a
 ## dig stands there), the Belt tool and a path traced from beside the dig
-## to the box in one gesture, round the route's corner (it stays a draft
-## with its pill, nothing laid; Turn four times brings it home, 2c the
-## draft; Place lays it and it leads into the box), the undo chip pressed
-## (the run is gone) and the path traced again, its draft dragged away and
-## back by a real drag and placed, 3 the first 1s riding, 4 level 1 done, 5 a grown paper
+## to the box in one gesture, round the route's corner (laid as the finger
+## lifts, no pill; 2c the run, leading into the box), the undo chip pressed
+## (the run is gone) and the path traced again, 3 the first 1s riding, 4
+## level 1 done, 5 a grown paper
 ## close (digs, an adder, a multiplier, a divider, a crossing and a crate,
 ## every token sliding), 6 the same far after a real two-finger pinch out,
 ## 7 the adder's pill by a real tap with Look (shot 6b) and its card by a
-## tap on Info, 8 the box's card by a real tap on the plate, 9 the upgrades,
+## tap on Info, then a real hold under Look picking the adder and its run
+## (6c the pick pill): Remove and the Undo pill bring it back, Save as part
+## keeps a part, Duplicate puts its ghost beside and Place sets it down,
+## and the Parts card by a real tap on its slot (6d), 8 the box's card by a real tap on the plate, 9 the upgrades,
 ## one bought (8b the flow sheet by a real tap on the bars plate before
 ## them), 10 the tray, one row docked to the foot with no shut tool, slid by
 ## a real drag and its last slot tapped, then the tutorial: 11 its Dig page with the
@@ -117,10 +119,15 @@ func _trace(pts: Array) -> void:
 			_drag_ev(p0.lerp(p1, float(s) / n))
 	_touch(_square(pts[-1]), false)
 
-## A path traced, then laid by a real tap on its draft's Place.
-func _trace_place(pts: Array) -> void:
-	_trace(pts)
-	_tap_pill("place")
+## A real hold under Look from square `a`, dragged to `b` and let go: a
+## pick. Pressed now; `_pick_to` drags and lets go once HOLD has passed.
+func _pick_from(a: Vector2i) -> void:
+	_touch(_square(a), true)
+
+func _pick_to(a: Vector2i, b: Vector2i) -> void:
+	for j in 4:
+		_drag_ev(_square(a).lerp(_square(b), (j + 1) / 4.0))
+	_touch(_square(b), false)
 
 ## A square from `near` with six free squares east of it and the row under,
 ## for the straight-line beat (the paper's seed is new each run).
@@ -332,22 +339,13 @@ func _process(delta: float) -> bool:
 				_check("a real tap on the chip turns Straight off", not sim.straight)
 				var lanes0: int = sim.lanes.size()
 				_trace(_route_points(_dig))
-				_check("the traced path stays a draft with its pill, nothing laid", sim.lanes.size() == lanes0 and _s.board.pill_open() and _s.board.pill_button_rect("place").size.x > 0.0)
-				# Turn spins the draft about its first square; four turns bring it home
-				var d0: Array = (_s.board._ghost.path as Array).duplicate()
-				_tap_pill("turn")
-				var d1: Array = _s.board._ghost.path
-				_check("a real tap on the draft's Turn turns it a quarter", d1.size() == d0.size() and d1[0] == d0[0] and (d0.size() < 2 or d1[1] != d0[1]))
-				for j in 3:
-					_tap_pill("turn")
-				_check("four turns bring the draft back", _s.board._ghost.path == d0)
+				_check("the traced path is laid as the finger lifts, no pill", sim.lanes.size() > lanes0 and not _s.board.pill_open())
 				_step = 31
 				_at = _t
 		31:
-			# the draft drawn a frame after it went up
+			# the run drawn a frame after it was laid
 			if _t > _at + 0.2:
-				_shot("2c_draft")
-				_tap_pill("place")
+				_shot("2c_laid")
 				var outs: PackedInt32Array = sim.digs[Sim._i(_dig)].outs
 				_check("the traced path laid a run leading away from the dig (%d belts)" % sim.lanes.size(), outs.size() == 1 and sim.lanes.size() >= 2)
 				var pts: Array = _route_points(_dig)
@@ -363,32 +361,19 @@ func _process(delta: float) -> bool:
 				_tap(_win(_s.undo_chip, _s.undo_chip.size * 0.5))
 				_check("a real tap on the chip takes the path back (%d belts)" % sim.lanes.size(), sim.lanes.size() == 0 and not sim.can_undo())
 				_trace(_route_points(_dig))
-				# a real drag from the draft moves it whole, and back
-				var dd: Array = (_s.board._ghost.path as Array).duplicate()
-				_touch(_square(dd[0]), true)
-				for j in 4:
-					_drag_ev(_square(dd[0]).lerp(_square(dd[0] + Vector2i(0, -2)), (j + 1) / 4.0))
-				_touch(_square(dd[0] + Vector2i(0, -2)), false)
-				var moved: Array = _s.board._ghost.path
-				_check("a real drag from the draft moves it whole", moved.size() == dd.size() and moved[0] == dd[0] + Vector2i(0, -2) and moved[-1] == dd[-1] + Vector2i(0, -2))
-				_touch(_square(moved[0]), true)
-				for j in 4:
-					_drag_ev(_square(moved[0]).lerp(_square(dd[0]), (j + 1) / 4.0))
-				_touch(_square(dd[0]), false)
-				_tap_pill("place")
 				_check("traced again, the run is back (%d belts)" % sim.lanes.size(), sim.lanes.size() >= 2)
 				# Straight on again: a drag along a row then off it lays one L,
 				# its corner where the finger left the row
 				_tap(_win(_s.line_chip, _s.line_chip.size * 0.5))
 				var w0 := _clear_row(sim, _dig + Vector2i(-6, -5))
 				var before: int = sim.lanes.size()
-				_trace_place([w0, w0 + Vector2i(4, 0), w0 + Vector2i(4, 1)])
+				_trace([w0, w0 + Vector2i(4, 0), w0 + Vector2i(4, 1)])
 				var straight_ok: bool = sim.straight and sim.lanes.size() - before == 6
 				for j in 4:
 					straight_ok = straight_ok and sim.kind_at(w0 + Vector2i(j, 0)) == Sim.BELT and sim.face_at(w0 + Vector2i(j, 0)) == 0
 				_check("with Straight on, a drag off the row lays one L (%d belts)" % (sim.lanes.size() - before), straight_ok and sim.face_at(w0 + Vector2i(4, 0)) == 1 and sim.kind_at(w0 + Vector2i(4, 1)) == Sim.BELT)
 				# a second stroke from the run's loose end turns it into the corner
-				_trace_place([w0 + Vector2i(4, 0), w0 + Vector2i(4, 3)])
+				_trace([w0 + Vector2i(4, 0), w0 + Vector2i(4, 3)])
 				_check("a stroke begun on the run's loose end makes the corner", sim.face_at(w0 + Vector2i(4, 0)) == 1 and sim.kind_at(w0 + Vector2i(4, 3)) == Sim.BELT)
 				_s.undo()
 				sim.mark()
@@ -473,7 +458,65 @@ func _process(delta: float) -> bool:
 			if _t > _at + 0.6:
 				_shot("7_card")
 				_close("Card")
-				_next()
+				_pick_from(Sim.HUB_AT + Vector2i(-6, 0))
+				_step = 40
+				_at = _t
+		40:
+			# held still past HOLD, the pick begins; dragged over the adder, let go
+			if _t > _at + 0.6:
+				_check("a real hold under Look begins a pick", _s.board.picking())
+				_pick_to(Sim.HUB_AT + Vector2i(-6, 0), Sim.HUB_AT + Vector2i(-3, 3))
+				var bt: Array = _s.board._pill.get("buttons", [])
+				_check("let go, the pick pill: Copy, Duplicate, Remove, Save part (%s)" % str(bt), bt == ["copy", "dup", "lift", "save"])
+				_step = 41
+				_at = _t
+		41:
+			if _t > _at + 0.3:
+				_shot("6c_pick")
+				var m0: int = sim.machines.size()
+				_tap_pill("lift")
+				_check("a real tap on Remove lifts the pick whole", sim.machines.size() == m0 - 1 and sim.kind_at(Sim.HUB_AT + Vector2i(-4, 1)) == Sim.EMPTY)
+				_check("and an Undo pill stands where it was, the chip too", _s.board.pill_button_rect("undo").size.x > 0.0)
+				_tap_pill("undo")
+				_check("a real tap on Undo puts it back", sim.machines.size() == m0 and Sim.is_op(sim.kind_at(Sim.HUB_AT + Vector2i(-4, 1))))
+				_pick_from(Sim.HUB_AT + Vector2i(-6, 0))
+				_step = 42
+				_at = _t
+		42:
+			if _t > _at + 0.6:
+				_pick_to(Sim.HUB_AT + Vector2i(-6, 0), Sim.HUB_AT + Vector2i(-3, 3))
+				var n0: int = sim.defs.size()
+				_tap_pill("save")
+				_check("a real tap on Save part keeps a part", sim.defs.size() == n0 + 1 and not _s.board.pill_open())
+				_pick_from(Sim.HUB_AT + Vector2i(-6, 0))
+				_step = 43
+				_at = _t
+		43:
+			if _t > _at + 0.6:
+				_pick_to(Sim.HUB_AT + Vector2i(-6, 0), Sim.HUB_AT + Vector2i(-3, 3))
+				_tap_pill("dup")
+				var g: Dictionary = _s.board._ghost
+				_check("a real tap on Duplicate puts its ghost beside the pick", not g.is_empty() and int(g.kind) == Sim.PART and _s.board.pill_button_rect("place").size.x > 0.0)
+				_step = 44
+				_at = _t
+		44:
+			if _t > _at + 0.3:
+				_shot("6c_dup")
+				var m0: int = sim.machines.size()
+				var green: bool = _s.board._ghost_why() == ""
+				_tap_pill("place")
+				_check("Place sets the duplicate down as plain pieces (%s)" % ("green" if green else "red"), green and sim.machines.size() == m0 + 1 and _s.board._ghost.is_empty())
+				_s.undo()
+				_tap_tray(_s.slot_of("parts"))
+				_check("a real tap on Parts opens the card with the part", _s.get_node_or_null("Parts") != null)
+				_step = 45
+				_at = _t
+		45:
+			if _t > _at + 0.5:
+				_shot("6d_parts")
+				_close("Parts")
+				_step = 14
+				_at = _t
 		14:
 			if _t > _at + 0.4:
 				_tap(_win(_s.hud, _s._goal_rect().get_center()))
