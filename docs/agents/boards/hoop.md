@@ -378,3 +378,15 @@ press) whenever the thread goes on to a new pin, whether it lays a side
 (over the `stitch` pop) or walks along one already threaded (silent
 before). A quick drag over several pins in one frame plays it once
 (`CUE_GAP`). Unheard by the user.
+
+## 2026-10-19: a pin stands while a panel round it is open
+
+The user: "the dots should only disappear when it's not connected to any
+other dot ... if there is a 5 dots area ... it should show all 5 dots,
+even the ones already connect by something". A pin popped off once every
+side it had was threaded, so an open panel could show 3 of its 5 corners.
+Now `HoopState.pin_live` counts the unfilled panels round each pin; a pin
+stands (drawn, taken by a press, a drag or the magnet) while one is left
+and pops off when the last of them fills. A standing pin with every side
+threaded is reached by walking its threads. Probe solves every band;
+unseen on screen.

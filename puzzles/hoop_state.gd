@@ -124,6 +124,9 @@ var filled := PackedByteArray()
 ## The sides of a panel not threaded yet, and of a pin.
 var open_sides := PackedInt32Array()
 var pin_open := PackedInt32Array()
+## The panels round a pin not filled yet: a pin stands while one is left,
+## so an open panel shows every corner, threaded or not.
+var pin_live := PackedInt32Array()
 var done := 0
 var threads := 0
 ## Threads asked for that are no panel's side.
@@ -1027,6 +1030,11 @@ func reset() -> void:
 	pin_open = PackedInt32Array()
 	for p in pins.size():
 		pin_open.append((pin_sides[p] as PackedInt32Array).size())
+	pin_live = PackedInt32Array()
+	pin_live.resize(pins.size())
+	for k in panels.size():
+		for c in panels[k]:
+			pin_live[c] += 1
 	done = 0
 	threads = 0
 	refused = 0
@@ -1059,6 +1067,8 @@ func lay_side(s: int) -> PackedInt32Array:
 		if open_sides[k] == 0 and not filled[k]:
 			filled[k] = 1
 			done += 1
+			for c in panels[k]:
+				pin_live[c] -= 1
 			closed.append(k)
 	return closed
 

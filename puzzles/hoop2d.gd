@@ -917,7 +917,7 @@ func _pins_mesh() -> ArrayMesh:
 	_pins_stale = false
 	var b := _builder()
 	for v in state.pins.size():
-		if state.pin_open[v] > 0:
+		if state.pin_live[v] > 0:
 			_pin_into(b, _px[v], _pin_r)
 		elif not _gone.has(v):
 			_knot_into(b, _px[v], _pin_colour(v))
@@ -1032,7 +1032,7 @@ func _moving_meshes(now: float, since: float) -> Array:
 	var b := _builder()
 	if _entering(since):
 		for v in state.pins.size():
-			if state.pin_open[v] <= 0:
+			if state.pin_live[v] <= 0:
 				continue
 			var e := since - Motion.ENTER_POP * 0.5 - Motion.stagger(_enter_order(v), Motion.ENTER_STAGGER, 0.8)
 			if e <= 0.0:
@@ -1063,7 +1063,7 @@ func _moving_meshes(now: float, since: float) -> Array:
 	var knitting := _combine(parts)
 	var under := b.mesh() if not b.idx.is_empty() else null
 	b = _builder()
-	# pins whose every side is threaded pop off
+	# pins whose every panel is filled pop off
 	for v: int in _gone.keys():
 		var e := now - float(_gone[v])
 		if e >= PIN_GONE or Motion.reduce:
@@ -1297,7 +1297,7 @@ func pin_at(at: Vector2, but := -1, reach := false, within := -1.0) -> int:
 	var next_d := INF
 	var lp := zoom.to_layout(at)
 	for v in _px.size():
-		if v == but or state.pin_open[v] <= 0:
+		if v == but or state.pin_live[v] <= 0:
 			continue
 		var d := _px[v].distance_to(lp)
 		if d < best_d:
@@ -1366,7 +1366,7 @@ func _target_at(at: Vector2, from: int) -> int:
 	for s in state.pin_sides[from]:
 		var sd: Vector2i = state.sides[s]
 		var v: int = sd.y if sd.x == from else sd.x
-		if state.pin_open[v] <= 0:
+		if state.pin_live[v] <= 0:
 			continue
 		var d := _px[v].distance_to(lp)
 		if d < best_d and (d < reach or (d < held and d < _px[v].distance_to(_px[from]))):
@@ -1446,7 +1446,7 @@ func _step(v: int) -> void:
 	_lay(s, was, v)
 
 ## Side `s` threaded from pin `a` to pin `b`: its thread draws in, the
-## panels it closed knit in, and the pins with nothing left to thread pop
+## panels it closed knit in, and the pins with no open panel left pop
 ## off.
 func _lay(s: int, a: int, b: int) -> void:
 	var now := _now()
@@ -1458,12 +1458,12 @@ func _lay(s: int, a: int, b: int) -> void:
 	_pins_stale = true
 	var semis := mini(_stroke_threads - 1, 10) * STITCH_STEP
 	fx.cue("stitch", pow(2.0, minf(semis, 5.0) / 12.0) * randf_range(0.97, 1.03))
-	for v in [a, b]:
-		if state.pin_open[v] <= 0:
-			_gone[v] = now
 	var mid := (_px[a] + _px[b]) * 0.5
 	for k in closed:
 		_close(k, mid, now)
+		for v in state.panels[k]:
+			if state.pin_live[v] <= 0:
+				_gone[v] = now
 	if closed.size() == 2:
 		_after(0.0 if Motion.reduce else 0.06, fx.cue.bind("double"))
 	if not closed.is_empty():
