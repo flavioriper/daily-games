@@ -16,9 +16,12 @@ extends Control
 ## tap never turns or places anything by itself. "move" (Look) pans with a
 ## fling, and a tap on a piece opens its **piece pill** (Turn, Remove,
 ## Info); "belt" traces a 4-connected path of squares shown as a ghost
-## (green where it can be laid, red from the first square it cannot) and
-## lays it on release, each square facing the next, and a tap lays one belt
-## facing the last trace and opens its pill; "remove" lifts what the finger
+## (green where it can be laid, red from the first square it cannot), and
+## on release the path stays as a **draft** with the builder pill (Turn,
+## Flip, Place, Cancel), dragged whole from any of its squares and laid only
+## by Place (the user, 2026-10-19: "it should be placed as reference so user
+## can drag, move, rotate or do changes before clicking on the flag"); a tap
+## makes a draft of one belt facing the last; "remove" lifts what the finger
 ## crosses; a machine's tool (and "dig", "crate") drops a **ghost** of the
 ## piece on a tap with the **builder pill** (Turn, Place, Cancel), moved by a
 ## drag from it or a tap elsewhere, and pans on a drag from anywhere else.
@@ -757,67 +760,15 @@ func _live_rest(b: Face.Builder, r: Rect2i) -> void:
 					var u := fposmod(_clock, STARVE_BEAT) / STARVE_BEAT
 					var pc := Art.notch_mid(at, v)
 					b.stroke(Face.Builder.ring(pc, U * (0.14 + 0.16 * u), U * (0.14 + 0.16 * u)), U * 0.04 * (1.0 - u), Color(Art.AMBER, 0.9 * (1.0 - u)), true)
-	# the path traced in hand, as it would be laid
+	# the path traced in hand, as it would be laid; else the draft up
 	if not _path.is_empty():
-		var p: Dictionary = sim.trim_path(_path, _trace_f)
-		var tiles: Array = p.tiles
-		var faces: Array = p.faces
-		var cut := int(p.cut)
-		var merge := bool(p.merge)
-		var forks := bool(p.get("fork", false))
-		for j in tiles.size():
-			var at := Art.mid(tiles[j])
-			var f := int(faces[j])
-			# the square a path runs into the side of is drawn to its middle, green
-			var ok := j < cut or (merge and j == cut)
-			var c := Color(Art.GHOST, 0.55) if ok else Color(Art.WARN, 0.45)
-			# from the edge it is entered by (a corner bends at the middle) to the one it leaves by
-			var entry := at - Art.dir_v(f) * U * 0.5
-			if j == 0 and forks:
-				# a fork leaves the line from its middle
-				entry = at
-			if j > 0:
-				var back: int = Sim.DIRS.find((tiles[j - 1] as Vector2i) - (tiles[j] as Vector2i))
-				if back >= 0:
-					entry = at + Art.dir_v(back) * U * 0.5
-			# a loose end goes as far as its middle, as it will be laid
-			var stops: bool = (merge and j == cut) or (j == cut - 1 and not merge and not sim._takes(tiles[j] + Sim.DIRS[f], f))
-			var pts := PackedVector2Array([entry, at]) if stops else PackedVector2Array([entry, at, at + Art.dir_v(f) * U * 0.5])
-			b.stroke(pts, U * 0.6, c, false, false)
-			if ok and not (merge and j == cut):
-				var n := Art.dir_v(f).orthogonal() * U * 0.14
-				var tip := at + Art.dir_v(f) * U * 0.16
-				b.stroke(PackedVector2Array([tip - Art.dir_v(f) * U * 0.2 + n, tip, tip - Art.dir_v(f) * U * 0.2 - n]), U * 0.07, Color(Art.CREAM, 0.95))
+		_path_into(b, _path, _trace_f)
+	elif _has_draft():
+		_path_into(b, _ghost.path, int(_ghost.face))
 	# the builder's ghost: the square green where the piece can go, red where
 	# not, and the piece itself seen through
-	if not _ghost.is_empty():
-		var t: Vector2i = _ghost.tile
-		var kd := int(_ghost.kind)
-		var gf := int(_ghost.face)
-		var ok := _ghost_why() == ""
-		var c := Color(Art.GHOST, 0.45) if ok else Color(Art.WARN, 0.4)
-		# every square it would cover, green where it can go, red where not
-		for sq: Vector2i in _ghost_squares():
-			b.polygon(Face.Builder.round_rect(Art.mid(sq) - Vector2.ONE * U * 0.48, Vector2.ONE * U * 0.96, 6.0), c)
-		var rot := 0.0
-		if not Motion.reduce:
-			var u := clampf((_clock - _ghost_spin) / SPIN, 0.0, 1.0)
-			rot -= (1.0 - (1.0 - pow(1.0 - u, 3.0))) * PI * 0.5
-		var m: ArrayMesh
-		if kd == Sim.PART:
-			var pid := int(_ghost.def)
-			var sz: Vector2i = sim.part_size(pid, gf)
-			b.append(Art.lid(sz.x, sz.y, sim.part_ports(pid, gf)), Transform2D(0.0, Vector2(t) * U), Color(1, 1, 1, 0.7))
-		elif Sim.is_op(kd):
-			m = Art.machine(kd, gf)
-		elif kd == Sim.DIG:
-			m = Art.dig()
-			rot = 0.0
-		else:
-			m = Art.icon(kd)
-			rot = 0.0
-		if m != null:
-			b.append(m, Transform2D(rot, Vector2.ONE * 0.96, 0.0, _about(kd, t, gf, Art.mid(t), rot)), Color(1, 1, 1, 0.7))
+	if not _ghost.is_empty() and not _has_draft():
+		_ghost_into(b)
 	# the square under a pill wears a sun ring
 	if not _pill.is_empty():
 		var t: Vector2i = _pill.tile
@@ -835,6 +786,69 @@ func _live_rest(b: Face.Builder, r: Rect2i) -> void:
 	if tool == "remove" and _finger != -99 and not _consumed:
 		var t := tile_under(_at)
 		b.stroke(Face.Builder.round_rect(Art.mid(t) - Vector2.ONE * U * 0.47, Vector2.ONE * U * 0.94, 18.0), 8.0, Color(Art.WARN, 0.8), true)
+
+## A belt path as it would be laid: green to where it is cut, red past it,
+## corners bent at the middle, a cream chevron each square.
+func _path_into(b: Face.Builder, path: Array, pf: int) -> void:
+	var p: Dictionary = sim.trim_path(path, pf)
+	var tiles: Array = p.tiles
+	var faces: Array = p.faces
+	var cut := int(p.cut)
+	var merge := bool(p.merge)
+	var forks := bool(p.get("fork", false))
+	for j in tiles.size():
+		var at := Art.mid(tiles[j])
+		var f := int(faces[j])
+		# the square a path runs into the side of is drawn to its middle, green
+		var ok := j < cut or (merge and j == cut)
+		var c := Color(Art.GHOST, 0.55) if ok else Color(Art.WARN, 0.45)
+		# from the edge it is entered by (a corner bends at the middle) to the one it leaves by
+		var entry := at - Art.dir_v(f) * U * 0.5
+		if j == 0 and forks:
+			# a fork leaves the line from its middle
+			entry = at
+		if j > 0:
+			var back: int = Sim.DIRS.find((tiles[j - 1] as Vector2i) - (tiles[j] as Vector2i))
+			if back >= 0:
+				entry = at + Art.dir_v(back) * U * 0.5
+		# a loose end goes as far as its middle, as it will be laid
+		var stops: bool = (merge and j == cut) or (j == cut - 1 and not merge and not sim._takes(tiles[j] + Sim.DIRS[f], f))
+		var pts := PackedVector2Array([entry, at]) if stops else PackedVector2Array([entry, at, at + Art.dir_v(f) * U * 0.5])
+		b.stroke(pts, U * 0.6, c, false, false)
+		if ok and not (merge and j == cut):
+			var n := Art.dir_v(f).orthogonal() * U * 0.14
+			var tip := at + Art.dir_v(f) * U * 0.16
+			b.stroke(PackedVector2Array([tip - Art.dir_v(f) * U * 0.2 + n, tip, tip - Art.dir_v(f) * U * 0.2 - n]), U * 0.07, Color(Art.CREAM, 0.95))
+
+## The builder's ghost of a piece.
+func _ghost_into(b: Face.Builder) -> void:
+	var t: Vector2i = _ghost.tile
+	var kd := int(_ghost.kind)
+	var gf := int(_ghost.face)
+	var ok := _ghost_why() == ""
+	var c := Color(Art.GHOST, 0.45) if ok else Color(Art.WARN, 0.4)
+	# every square it would cover, green where it can go, red where not
+	for sq: Vector2i in _ghost_squares():
+		b.polygon(Face.Builder.round_rect(Art.mid(sq) - Vector2.ONE * U * 0.48, Vector2.ONE * U * 0.96, 6.0), c)
+	var rot := 0.0
+	if not Motion.reduce:
+		var u := clampf((_clock - _ghost_spin) / SPIN, 0.0, 1.0)
+		rot -= (1.0 - (1.0 - pow(1.0 - u, 3.0))) * PI * 0.5
+	var m: ArrayMesh
+	if kd == Sim.PART:
+		var pid := int(_ghost.def)
+		var sz: Vector2i = sim.part_size(pid, gf)
+		b.append(Art.lid(sz.x, sz.y, sim.part_ports(pid, gf)), Transform2D(0.0, Vector2(t) * U), Color(1, 1, 1, 0.7))
+	elif Sim.is_op(kd):
+		m = Art.machine(kd, gf)
+	elif kd == Sim.DIG:
+		m = Art.dig()
+		rot = 0.0
+	else:
+		m = Art.icon(kd)
+		rot = 0.0
+	if m != null:
+		b.append(m, Transform2D(rot, Vector2.ONE * 0.96, 0.0, _about(kd, t, gf, Art.mid(t), rot)), Color(1, 1, 1, 0.7))
 
 ## The numerals, in this Control's pixels: printed numbers, the digs', the
 ## crates', the tokens' (one size a run), and the box's panel.
@@ -1037,6 +1051,9 @@ func _snap(kd: int, t: Vector2i) -> Vector2i:
 func _ghost_why() -> String:
 	if _ghost.is_empty():
 		return "taken"
+	if int(_ghost.kind) == Sim.BELT:
+		# a draft lays as far as it can, as a traced path did
+		return "" if int(sim.trim_path(_ghost.path, int(_ghost.face)).cut) > 0 else "taken"
 	if int(_ghost.kind) == Sim.PART:
 		return sim.part_why_not(int(_ghost.def), _ghost.tile, int(_ghost.face))
 	return sim.why_not(int(_ghost.kind), _ghost.tile, int(_ghost.face))
@@ -1047,6 +1064,8 @@ func _ghost_squares() -> Array:
 	if _ghost.is_empty():
 		return out
 	var t: Vector2i = _ghost.tile
+	if int(_ghost.kind) == Sim.BELT:
+		return (_ghost.path as Array).duplicate()
 	if int(_ghost.kind) == Sim.PART:
 		var sz: Vector2i = sim.part_size(int(_ghost.def), int(_ghost.face))
 		for y in sz.y:
@@ -1091,6 +1110,60 @@ func _set_ghost(kd: int, t: Vector2i, f: int) -> void:
 		_pop[t] = _clock
 	touched.emit(1.0)
 
+## A belt path up as a draft: nothing is laid until Place. The pill stands
+## by its last square, where the finger let go.
+func _set_draft(path: Array, f: int) -> void:
+	_ghost = {"kind": Sim.BELT, "path": path.duplicate(), "tile": path[-1], "face": f, "def": -1}
+	_pill = {"kind": "build", "tile": path[-1], "buttons": ["turn", "flip", "place", "cancel"]}
+	_pill_at = _clock
+	touched.emit(1.0)
+
+func _has_draft() -> bool:
+	return not _ghost.is_empty() and int(_ghost.kind) == Sim.BELT
+
+## The draft moved so its first square is `to`, when all of it stays on the
+## sheet.
+func _move_draft(to: Vector2i) -> bool:
+	var path: Array = _ghost.path
+	var d: Vector2i = to - (path[0] as Vector2i)
+	if d == Vector2i.ZERO:
+		return false
+	var out := []
+	for t: Vector2i in path:
+		if not Sim.inside(t + d):
+			return false
+		out.append(t + d)
+	_ghost.path = out
+	_ghost.tile = out[-1]
+	_pill.tile = out[-1]
+	return true
+
+## The draft turned a quarter clockwise about its first square, or its way
+## reversed (Flip): a path of one turns end for end.
+func _turn_draft(flip: bool) -> void:
+	var path: Array = _ghost.path
+	var out := []
+	var f := int(_ghost.face)
+	if flip:
+		out = path.duplicate()
+		out.reverse()
+		f = Sim.DIRS.find((out[-1] as Vector2i) - (out[-2] as Vector2i)) if out.size() >= 2 else (f + 2) % 4
+	else:
+		var p0: Vector2i = path[0]
+		for t: Vector2i in path:
+			var v: Vector2i = t - p0
+			var u := p0 + Vector2i(-v.y, v.x)
+			if not Sim.inside(u):
+				refused.emit("no_room", screen_of(Vector2(t) + Vector2(0.5, 0.5)), 0)
+				return
+			out.append(u)
+		f = (f + 1) % 4
+	_ghost.path = out
+	_ghost.face = f
+	_ghost.tile = out[-1]
+	_pill.tile = out[-1]
+	_ghost_spin = _clock
+
 func _close_pill() -> void:
 	_pill = {}
 	_pill_hit = ""
@@ -1104,11 +1177,13 @@ func _pill_press(name: String) -> void:
 	_btn_at[name] = _clock
 	# a button whose deed the sim names (turn, lift, place) is heard through
 	# that event alone; the others are heard here
-	if name == "info" or name == "cancel" or (name == "turn" and build):
+	if name == "info" or name == "cancel" or (build and (name == "turn" or name == "flip")):
 		touched.emit(float(PILL_PITCH.get(name, 1.0)))
 	match name:
 		"turn":
-			if build:
+			if build and _has_draft():
+				_turn_draft(false)
+			elif build:
 				# a square machine turns on the squares it stands on
 				var nf := (int(_ghost.face) + 1) % 4
 				var nt: Vector2i
@@ -1131,8 +1206,11 @@ func _pill_press(name: String) -> void:
 					else:
 						_pill.tile = sim.root_of(t)
 		"flip":
-			sim.mark()
-			sim.flip_line(t)
+			if build and _has_draft():
+				_turn_draft(true)
+			else:
+				sim.mark()
+				sim.flip_line(t)
 		"lift":
 			sim.mark()
 			sim.remove(t)
@@ -1160,6 +1238,13 @@ func _pill_press(name: String) -> void:
 				return
 			var kd := int(_ghost.kind)
 			var f := int(_ghost.face)
+			if kd == Sim.BELT:
+				belt_face = f
+				sim.mark()
+				sim.lay_path(_ghost.path, f)
+				_ghost = {}
+				_close_pill()
+				return
 			sim.mark()
 			if kd == Sim.PART:
 				sim.place_part(int(_ghost.def), t, f)
@@ -1348,7 +1433,10 @@ func press(p: Vector2, id := -1) -> void:
 	match tool:
 		"belt":
 			var t := tile_under(p)
-			if Sim.inside(t):
+			if _has_draft() and (_ghost.path as Array).has(t):
+				_drag_ghost = true
+				_grab = t - ((_ghost.path as Array)[0] as Vector2i)
+			elif Sim.inside(t):
 				_path = [t]
 		"remove":
 			sim.mark()
@@ -1371,7 +1459,10 @@ func drag(p: Vector2, was := Vector2.INF) -> void:
 		return
 	match tool:
 		"belt":
-			_trace_to(tile_under(p))
+			if _drag_ghost:
+				_move_draft(tile_under(p) - _grab)
+			else:
+				_trace_to(tile_under(p))
 		"remove":
 			# every square crossed since the last event, so a quick swipe misses none
 			var steps := int(ceilf(was.distance_to(p) / maxf(k * 0.3, 4.0)))
@@ -1405,7 +1496,9 @@ func release(p: Vector2) -> void:
 		return
 	match tool:
 		"belt":
-			if moved:
+			if _drag_ghost:
+				pass
+			elif moved:
 				_lay_traced(p)
 			else:
 				_tap(p)
@@ -1432,7 +1525,7 @@ func release(p: Vector2) -> void:
 ## While a path is traced or a swipe lifts near the view's edge, the view
 ## moves that way.
 func _edge_pan(delta: float) -> void:
-	if _finger == -99 or not _moved or _consumed or (tool != "belt" and tool != "remove"):
+	if _finger == -99 or not _moved or _consumed or _drag_ghost or (tool != "belt" and tool != "remove"):
 		return
 	var push := Vector2.ZERO
 	if _at.x < view.position.x + EDGE:
@@ -1528,8 +1621,9 @@ func _trace_straight(t: Vector2i) -> void:
 	elif n != 0:
 		_trace_f = Sim.DIRS.find(step)
 
-## The traced path laid, each square facing the next; a path that cannot
-## begin where it was drawn is refused there.
+## The traced path put up as a draft, each square facing the next; Place
+## lays it (a path that cannot begin where it is shows red and Place is
+## dim).
 func _lay_traced(p: Vector2) -> void:
 	if _path.is_empty():
 		return
@@ -1539,15 +1633,7 @@ func _lay_traced(p: Vector2) -> void:
 			_trace_f = 0 if swipe.x >= 0.0 else 2
 		else:
 			_trace_f = 1 if swipe.y >= 0.0 else 3
-	var trimmed: Dictionary = sim.trim_path(_path, _trace_f)
-	if int(trimmed.cut) <= 0:
-		var tiles: Array = trimmed.tiles
-		var t: Vector2i = tiles[0] if not tiles.is_empty() else _path[0]
-		refused.emit("taken", screen_of(Vector2(t) + Vector2(0.5, 0.5)), 0)
-		return
-	belt_face = _trace_f
-	sim.mark()
-	sim.lay_path(_path, _trace_f)
+	_set_draft(_path, _trace_f)
 
 func _lift_at(p: Vector2) -> void:
 	var t := tile_under(p)
@@ -1597,10 +1683,13 @@ func _tap(p: Vector2) -> void:
 			else:
 				touched.emit(0.9)
 		"belt":
-			if kd == Sim.EMPTY:
-				sim.mark()
-				if sim.lay_path([t], belt_face) > 0:
-					_open_piece_pill(t)
+			if kd == Sim.EMPTY and _has_draft():
+				# a tap elsewhere moves the draft there, as a machine's ghost goes
+				_move_draft(t)
+				_pill_at = _clock
+				touched.emit(1.0)
+			elif kd == Sim.EMPTY:
+				_set_draft([t], belt_face)
 			else:
 				_open_piece_pill(t)
 		"remove":

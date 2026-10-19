@@ -113,6 +113,11 @@ func _trace(pts: Array) -> void:
 			_drag_ev(p0.lerp(p1, float(s) / n))
 	_touch(_square(pts[-1]), false)
 
+## A path traced, then laid by a real tap on its draft's Place.
+func _trace_place(pts: Array) -> void:
+	_trace(pts)
+	_tap_pill("place")
+
 ## A square from `near` with six free squares east of it and the row under,
 ## for the straight-line beat (the paper's seed is new each run).
 func _clear_row(sim, near: Vector2i) -> Vector2i:
@@ -319,7 +324,19 @@ func _process(delta: float) -> bool:
 				# curves for the one-gesture route round its corner
 				_tap(_win(_s.line_chip, _s.line_chip.size * 0.5))
 				_check("a real tap on the chip turns Straight off", not sim.straight)
+				var lanes0: int = sim.lanes.size()
 				_trace(_route_points(_dig))
+				_check("the traced path stays a draft with its pill, nothing laid", sim.lanes.size() == lanes0 and _s.board.pill_open() and _s.board.pill_button_rect("place").size.x > 0.0)
+				# Turn spins the draft about its first square; four turns bring it home
+				var d0: Array = (_s.board._ghost.path as Array).duplicate()
+				_tap_pill("turn")
+				var d1: Array = _s.board._ghost.path
+				_check("a real tap on the draft's Turn turns it a quarter", d1.size() == d0.size() and d1[0] == d0[0] and (d0.size() < 2 or d1[1] != d0[1]))
+				for j in 3:
+					_tap_pill("turn")
+				_check("four turns bring the draft back", _s.board._ghost.path == d0)
+				_shot("2c_draft")
+				_tap_pill("place")
 				var outs: PackedInt32Array = sim.digs[Sim._i(_dig)].outs
 				_check("the traced path laid a run leading away from the dig (%d belts)" % sim.lanes.size(), outs.size() == 1 and sim.lanes.size() >= 2)
 				var pts: Array = _route_points(_dig)
@@ -335,19 +352,32 @@ func _process(delta: float) -> bool:
 				_tap(_win(_s.undo_chip, _s.undo_chip.size * 0.5))
 				_check("a real tap on the chip takes the path back (%d belts)" % sim.lanes.size(), sim.lanes.size() == 0 and not sim.can_undo())
 				_trace(_route_points(_dig))
+				# a real drag from the draft moves it whole, and back
+				var dd: Array = (_s.board._ghost.path as Array).duplicate()
+				_touch(_square(dd[0]), true)
+				for j in 4:
+					_drag_ev(_square(dd[0]).lerp(_square(dd[0] + Vector2i(0, -2)), (j + 1) / 4.0))
+				_touch(_square(dd[0] + Vector2i(0, -2)), false)
+				var moved: Array = _s.board._ghost.path
+				_check("a real drag from the draft moves it whole", moved.size() == dd.size() and moved[0] == dd[0] + Vector2i(0, -2) and moved[-1] == dd[-1] + Vector2i(0, -2))
+				_touch(_square(moved[0]), true)
+				for j in 4:
+					_drag_ev(_square(moved[0]).lerp(_square(dd[0]), (j + 1) / 4.0))
+				_touch(_square(dd[0]), false)
+				_tap_pill("place")
 				_check("traced again, the run is back (%d belts)" % sim.lanes.size(), sim.lanes.size() >= 2)
 				# Straight on again: a drag along a row then off it lays one L,
 				# its corner where the finger left the row
 				_tap(_win(_s.line_chip, _s.line_chip.size * 0.5))
 				var w0 := _clear_row(sim, _dig + Vector2i(-6, -5))
 				var before: int = sim.lanes.size()
-				_trace([w0, w0 + Vector2i(4, 0), w0 + Vector2i(4, 1)])
+				_trace_place([w0, w0 + Vector2i(4, 0), w0 + Vector2i(4, 1)])
 				var straight_ok: bool = sim.straight and sim.lanes.size() - before == 6
 				for j in 4:
 					straight_ok = straight_ok and sim.kind_at(w0 + Vector2i(j, 0)) == Sim.BELT and sim.face_at(w0 + Vector2i(j, 0)) == 0
 				_check("with Straight on, a drag off the row lays one L (%d belts)" % (sim.lanes.size() - before), straight_ok and sim.face_at(w0 + Vector2i(4, 0)) == 1 and sim.kind_at(w0 + Vector2i(4, 1)) == Sim.BELT)
 				# a second stroke from the run's loose end turns it into the corner
-				_trace([w0 + Vector2i(4, 0), w0 + Vector2i(4, 3)])
+				_trace_place([w0 + Vector2i(4, 0), w0 + Vector2i(4, 3)])
 				_check("a stroke begun on the run's loose end makes the corner", sim.face_at(w0 + Vector2i(4, 0)) == 1 and sim.kind_at(w0 + Vector2i(4, 3)) == Sim.BELT)
 				_s.undo()
 				sim.mark()
@@ -515,7 +545,8 @@ func _process(delta: float) -> bool:
 				_card._turn(1)
 				_next()
 		27:
-			if _t > _at + 5.2:
+			# the trace ends at 4.75 s and its Place is pressed at 5.45 s
+			if _t > _at + 6.0:
 				var page: Control = _card._pages[3].diagram
 				_shot("13_tut_belts")
 				_check("the Belts page's trace across the line made a crossing", page._sim.kind_at(Vector2i(50, 59)) == Sim.BRIDGE)
