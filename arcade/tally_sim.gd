@@ -183,6 +183,9 @@ const COUNT_UP := 100
 const ADDER := [0.25, 0.3333, 0.4, 0.5, 0.6667, 1.0, 1.5, 2.0]
 
 static var path := "user://tally.cfg"
+## The flow into the box is counted over this many seconds, a bucket a
+## second (not saved: it fills again as the paper runs).
+const FLOW_FOR := 30
 
 var seed_v := 0
 var level := 1
@@ -192,6 +195,12 @@ var lv := {}
 var ledger := {}
 var events: Array = []
 var clock := 0.0
+## What came into the box, a {value: count} bucket a second over the last
+## FLOW_FOR seconds; `_flow_sec` the second the newest is for, `_flow_t0`
+## when counting began.
+var _flow: Array = []
+var _flow_sec := -1
+var _flow_t0 := 0.0
 ## Ranks that could be bought when last looked, so `ready` is said once.
 var _could := {}
 var _looked := 0.0
@@ -1812,6 +1821,9 @@ func _wake(id: int, stack: Array) -> void:
 func _deliver(v: int, _i_box: int) -> void:
 	ledger[v] = held(v) + 1
 	made += 1
+	_flow_roll()
+	var bk: Dictionary = _flow[_flow_sec % FLOW_FOR]
+	bk[v] = int(bk.get(v, 0)) + 1
 	if v == target():
 		got += 1
 		_emit("hit", {"v": v})
@@ -1990,6 +2002,42 @@ func exit_dir(s: int) -> int:
 	return int(face2[i]) if s >= N else int(face[i])
 
 ## The numbers the box has had, most first, with the current target first.
+## The flow's buckets brought up to this second: the seconds gone by since
+## the last are emptied.
+func _flow_roll() -> void:
+	var sec := int(floorf(clock))
+	if _flow.is_empty():
+		_flow.resize(FLOW_FOR)
+		for j in FLOW_FOR:
+			_flow[j] = {}
+		_flow_sec = sec
+		_flow_t0 = clock
+		return
+	if sec - _flow_sec >= FLOW_FOR:
+		for j in FLOW_FOR:
+			_flow[j] = {}
+		_flow_sec = sec
+		return
+	while _flow_sec < sec:
+		_flow_sec += 1
+		_flow[_flow_sec % FLOW_FOR] = {}
+
+## The numbers coming into the box a second, over the last FLOW_FOR seconds
+## (or since counting began, when that is less): [[value, per second], ...],
+## the quickest first.
+func flow() -> Array:
+	_flow_roll()
+	var sum := {}
+	for bk: Dictionary in _flow:
+		for v: int in bk:
+			sum[v] = int(sum.get(v, 0)) + int(bk[v])
+	var span := clampf(minf(clock - _flow_t0, FLOW_FOR - 1.0 + fposmod(clock, 1.0)), 1.0, float(FLOW_FOR))
+	var rows := []
+	for v: int in sum:
+		rows.append([v, float(sum[v]) / span])
+	rows.sort_custom(func(a: Array, b: Array) -> bool: return float(a[1]) > float(b[1]) or (float(a[1]) == float(b[1]) and int(a[0]) < int(b[0])))
+	return rows
+
 func tally_rows(most := 12) -> Array:
 	var rows := []
 	for v: int in ledger:

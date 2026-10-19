@@ -151,6 +151,8 @@ func _close(node: String) -> void:
 	var n: Node = _s.get_node_or_null(node)
 	if n != null:
 		n.closed.emit()
+		# out of the tree at once, so the next card may open this frame
+		n.get_parent().remove_child(n)
 		n.queue_free()
 
 func _done() -> bool:
@@ -335,6 +337,11 @@ func _process(delta: float) -> bool:
 				for j in 3:
 					_tap_pill("turn")
 				_check("four turns bring the draft back", _s.board._ghost.path == d0)
+				_step = 31
+				_at = _t
+		31:
+			# the draft drawn a frame after it went up
+			if _t > _at + 0.2:
 				_shot("2c_draft")
 				_tap_pill("place")
 				var outs: PackedInt32Array = sim.digs[Sim._i(_dig)].outs
@@ -476,9 +483,17 @@ func _process(delta: float) -> bool:
 					sim.ledger[int(a[0])] = int(a[1]) + 5
 				for a: Array in sim.asks("add"):
 					sim.ledger[int(a[0])] = int(a[1]) / 2
+				# the flow sheet by a real tap on its plate: what comes in a second
+				_tap(_win(_s.hud, _s._flow_rect().get_center()))
+				var fl: Node = _s.get_node_or_null("Flow")
+				var rows: Array = sim.flow()
+				_check("a real tap on the bars plate opens the flow sheet (%d numbers coming in, %s/s first)" % [rows.size(), "%.2f" % float(rows[0][1]) if not rows.is_empty() else "-"], fl != null and not rows.is_empty() and float(rows[0][1]) > 0.0)
 				_next()
 		16:
-			if _t > _at + 0.3:
+			if _t > _at + 0.6:
+				_shot("8b_flow")
+				_close("Flow")
+				_check("the flow sheet shuts", _s.get_node_or_null("Flow") == null)
 				_tap(_win(_s.hud, _s._up_rect().get_center()))
 				_check("a real tap on the upgrades button opens them", _s.get_node_or_null("Shop") != null)
 				_next()

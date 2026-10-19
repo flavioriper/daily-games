@@ -1951,6 +1951,12 @@ TL_SIDE_A,A,A,A
 TL_SIDE_B,B,B,B
 TL_MAKES,Made %s,Fez %s,Hizo %s
 TL_PER_S,%s/s,%s/s,%s/s
+TL_FLOW,Into the box,Entrando na caixa,Entrando en la caja
+TL_FLOW_TOTAL,%s a second into the box,%s por segundo na caixa,%s por segundo en la caja
+TL_FLOW_TARGET,%s a second of the %s it asks for,%s por segundo do %s que ela pede,%s por segundo del %s que pide
+TL_FLOW_NONE,Nothing is coming into the box yet,Nada está entrando na caixa ainda,Todavía no entra nada en la caja
+TL_FLOW_OVER,Over the last %d seconds,Nos últimos %d segundos,En los últimos %d segundos
+TL_FLOW_MORE,And %d more numbers,E mais %d números,Y %d números más
 TL_BELTS,%s belts,%s esteiras,%s cintas
 TL_DIG_BELTS,%d belts of %d,%d esteiras de %d,%d cintas de %d
 TL_CRATE_HOLDS,%d of %d,%d de %d,%d de %d

@@ -4,7 +4,9 @@ extends Control
 ## of squared paper (spec docs/superpowers/specs/2026-10-15-arcade-tally-design.md).
 ## **The paper is the whole screen**, edge to edge (the rule since
 ## 2026-10-10). Over it lie the flat boards' top bar, a plate row (the
-## counting box's goal, and the upgrades with a dot when one can be bought)
+## counting box's goal, the flow sheet's bars -- what comes into the box a
+## second, arcade/tally_flow.gd -- and the upgrades with a dot when one can
+## be bought)
 ## and at the foot the tray: one row docked to the screen's bottom edge, the
 ## tools handed over so far (Look, Belt, Dig, Rotate, Remove, Parts, the
 ## Crate, the five operators, as they open), sliding sideways under a finger
@@ -42,6 +44,7 @@ const Art = preload("res://arcade/tally_art.gd")
 const Board = preload("res://arcade/tally_board.gd")
 const Shop = preload("res://arcade/tally_shop.gd")
 const Parts = preload("res://arcade/tally_parts.gd")
+const Flow = preload("res://arcade/tally_flow.gd")
 const Card = preload("res://arcade/tally_card.gd")
 const FlatTopBar = preload("res://ui/flat/flat_top_bar.gd")
 const SettingsSheet = preload("res://ui/hud/settings_sheet.gd")
@@ -325,7 +328,7 @@ func hints_left() -> int:
 # --- the frame ---
 
 func _busy() -> bool:
-	return get_node_or_null("Card") != null or get_node_or_null("Shop") != null or get_node_or_null("Parts") != null
+	return get_node_or_null("Card") != null or get_node_or_null("Shop") != null or get_node_or_null("Parts") != null or get_node_or_null("Flow") != null
 
 ## The sim the hand is at: the bench's, or the paper's.
 func here() -> RefCounted:
@@ -586,7 +589,15 @@ func _on_refused(why: String, at: Vector2, n: int) -> void:
 # --- the plate row ---
 
 func _goal_rect() -> Rect2:
-	return Rect2(Vector2.ZERO, Vector2(hud.size.x - HUD_H - 20.0, hud.size.y))
+	if bench != null:
+		return Rect2(Vector2.ZERO, Vector2(hud.size.x - HUD_H - 20.0, hud.size.y))
+	return Rect2(Vector2.ZERO, Vector2(hud.size.x - HUD_H * 2.0 - 40.0, hud.size.y))
+
+## The flow sheet's plate, between the goal and the upgrades (not on the bench).
+func _flow_rect() -> Rect2:
+	if bench != null:
+		return Rect2()
+	return Rect2(Vector2(hud.size.x - HUD_H * 2.0 - 20.0, 0.0), Vector2(HUD_H, hud.size.y))
 
 func _up_rect() -> Rect2:
 	return Rect2(Vector2(hud.size.x - HUD_H, 0.0), Vector2(HUD_H, hud.size.y))
@@ -599,9 +610,15 @@ func _draw_hud() -> void:
 		return
 	var g := _goal_rect()
 	var u := _up_rect()
+	var fr := _flow_rect()
 	hud.draw_style_box(CozyTheme.lifted(Color("fcf7ef"), 30, 8), g)
+	hud.draw_style_box(CozyTheme.lifted(Color("fcf7ef"), 30, 8), fr)
 	hud.draw_style_box(CozyTheme.lifted(Color("fcf7ef"), 30, 8), u)
 	var b := Face.Builder.new()
+	var fpress := 1.0 if Motion.reduce else Motion.bump_scale(_clock - float(_chip_at.get(-3, -10.0)), 0.14, 0.2)
+	var fm := fr.get_center()
+	b.disc(fm + Vector2(0, 4.0), 40.0 * fpress, Color(Pal.TEXT, 0.16))
+	b.disc(fm, 40.0 * fpress, Color("f3ead6"))
 	var mid := Vector2(g.position.x + 70.0, g.get_center().y)
 	var bar := Rect2(Vector2(g.position.x + 140.0, g.end.y - 34.0), Vector2(g.size.x - 170.0, 14.0))
 	b.polygon(Face.Builder.round_rect(bar.position, bar.size, 7.0), Color(Pal.TEXT, 0.1))
@@ -631,6 +648,7 @@ func _draw_hud() -> void:
 	hud.draw_string(_font, Vector2(bar.position.x, g.position.y + 40.0), tr("TL_LEVEL") % sim.level, HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Pal.ACCENT_2)
 	hud.draw_string(_font, Vector2(bar.position.x, g.position.y + 76.0), tr("TL_GOAL") % [Sim.short(sim.got), Sim.short(sim.count()), Sim.short(sim.target())], HORIZONTAL_ALIGNMENT_LEFT, bar.size.x, 30, Pal.TEXT)
 	Icons.paint(hud, "trend", Rect2(um - Vector2(22, 22) * press, Vector2(44, 44) * press), Pal.SURFACE)
+	Icons.paint(hud, "bars", Rect2(fm - Vector2(22, 22) * fpress, Vector2(44, 44) * fpress), Art.INK)
 
 ## The bench's plate row: the part's name and size, and Done.
 func _draw_bench_hud() -> void:
@@ -668,7 +686,7 @@ func _on_hud_input(event: InputEvent) -> void:
 		down = (event as InputEventMouseButton).pressed
 	else:
 		return
-	var which := 1 if _up_rect().has_point(at) else (0 if _goal_rect().has_point(at) else -1)
+	var which := 1 if _up_rect().has_point(at) else (2 if _flow_rect().has_point(at) else (0 if _goal_rect().has_point(at) else -1))
 	if down:
 		_hud_down = which
 	elif which == _hud_down and which >= 0:
@@ -681,6 +699,8 @@ func _on_hud_input(event: InputEvent) -> void:
 				open_bench_card()
 		elif which == 1:
 			open_shop()
+		elif which == 2:
+			open_flow()
 		else:
 			_show_box()
 
@@ -1032,6 +1052,23 @@ func _show_box() -> void:
 	card.name = "Card"
 	card.sim = sim
 	card.box = true
+	card.closed.connect(func() -> void:
+		_fx.touch(0.94)
+		_fx.buzz(Haptics.TAP))
+	add_child(card)
+	move_child(_rw, get_child_count() - 1)
+
+## The flow sheet: what comes into the box a second.
+func open_flow() -> void:
+	if _busy():
+		return
+	_chip_at[-3] = _clock
+	_fx.touch()
+	_feel(Haptics.TAP)
+	board.let_go()
+	var card := Flow.new()
+	card.name = "Flow"
+	card.sim = sim
 	card.closed.connect(func() -> void:
 		_fx.touch(0.94)
 		_fx.buzz(Haptics.TAP))

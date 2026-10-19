@@ -4028,6 +4028,55 @@ asking; names are "Part n"; no tutorial page yet. Seen on `opengl3_angle`
 810x1440: bench 57, paper with a copy 66, the Parts card 134 draw calls.
 Probe 0 failed, `_shot_tally` headless 0 failed, suite 248522/0.
 
+#### Tally drafts, the one-row tray, the flow sheet (2026-10-19)
+
+The user: "we need a button to show a sheet with numbers by seconds of
+numbers going into the core. Also, change the bottom menu to be a fixed
+bottom menu with just 1 row, and scrollable to left. Only show unlocked
+ones. ... when user click to place a item (even convey), it should not be
+placed right away, it should be placed as reference so user can drag,
+move, rotate or do changes before clicking on the flag to properly place
+it". Branch `feat/tally-drafts`.
+
+- **A belt path is a draft** (`tally_board.gd`): on release a traced path
+  (or a tap: a draft of one belt facing the last) is `_ghost` with kind
+  BELT and a `path`, drawn by `_path_into` as the trace was (green to the
+  cut, red past it), with the builder pill Turn, Flip, Place, Cancel by its
+  last square. Turn is a quarter clockwise about its first square (refused
+  with "no room" off the sheet), Flip reverses its way; a drag begun on any
+  of its squares moves it whole, a tap on bare paper moves it there (as a
+  machine's ghost goes), a new trace replaces it, a tap on a piece drops it
+  for that piece's pill. Place is `mark()` + `lay_path` (undo chip and the
+  lay cue as before); Place is dim when the path cannot begin where it is.
+  The tutorial's Dig and Belts pages press Place after the trace, the Dig
+  body says so (en, pt, es).
+- **The tray** (`tally_screen.gd`) is one row docked to the bottom edge,
+  the full width over the safe inset (`TRAY_H` 148, top corners round),
+  holding only the tools handed over (`_tools()` filters `_tool_open`);
+  slots share the width while they fit, else `SLOT_W` 122 each and a
+  finger past 14 px slides the row (`_tray_x`, with a fling); a slot is a
+  place among the open tools, so `tool_of`, `slot_of` (-1 while shut),
+  `slots`, `_slot_mid` keep their meaning for the harness. A tool handed
+  over slides into sight (`scroll_to`) and hops.
+- **The flow sheet** (`arcade/tally_flow.gd`), from a third plate (bars)
+  between the goal and the upgrades: `Sim.flow()` counts what `_deliver`
+  takes in a bucket a second over `FLOW_FOR` 30 s (since counting began
+  when less; not saved), the quickest first; rows a token (the target's in
+  its sun), "n/s", a bar against the quickest (green for the target) and
+  the share; the head says the whole flow and the target's. Refreshed four
+  times a second, as tall as its rows.
+- Seen on `opengl3_angle` 810x1440, two windowed runs: 62 to 94 draw calls
+  in play (71 with a draft and its pill), 122 to 126 with the flow sheet,
+  149 at most (the tree). `_shot_tally` 0 failed headless and windowed,
+  with new beats (the draft before Place, Turn four times home, a real drag
+  moving it whole; the tray docked, no shut tool, a real slide 408 of 408
+  px and its last slot tapped; the sheet by a real tap). Probe 0 failed.
+- **Mine, the user's to call**: Turn on a draft turns about its first
+  square; a tap elsewhere moves the draft rather than starting a new one;
+  the pill may cover part of a long draft (it stands by the last square);
+  the window is 30 s; the Remove tool still lifts at once (not a draft);
+  the flow sheet is the paper's only (not on the bench). Phone unseen.
+
 #### Tally forks: a path begun on a line branches it (2026-10-18)
 
 The user, with a phone shot of a line drawn up from another that stood a
