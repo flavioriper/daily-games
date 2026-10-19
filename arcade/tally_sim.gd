@@ -25,7 +25,17 @@ extends RefCounted
 ##   and `role` what each square is;
 ## - a **crate** keeps up to CRATE_MAX of the first number it gets and lets
 ##   them out on every belt leading away;
-## - the **box** takes everything from every side.
+## - the **box** takes everything from every side;
+## - a **part** is the player's own piece (the user, 2026-10-19: "create a
+##   submodule with operations inside it ... define input and output"): a
+##   grid of `w` by `h` squares built on the bench (a blank sheet, `blank`,
+##   whose `frame` is the grid) with belts and operators, its **ports** on
+##   the grid's edge squares, each a way out of the grid and in or out. A
+##   copy set down on the paper covers its grid's squares (turned by `rot`
+##   quarter turns) and its inside is written onto them, tagged with the
+##   copy's anchor in `part`, so it runs as any belts and machines do; a
+##   token crosses a copy's edge only at a port, the way the port goes
+##   (`gates`). A part's inside changed is written again into every copy.
 ##
 ## A slot is where a token rides: `s` < N is a square's own (a belt, a
 ## bridge's across lane), `s` >= N a bridge's up-and-down lane. A slot's
@@ -51,13 +61,19 @@ const N2 := N * 2
 const HUB := 6
 const HUB_AT := Vector2i(57, 57)
 
-enum { EMPTY, BELT, BRIDGE, DIG, ADD, MUL, SUB, DIV, POW, CRATE, BOX, SPLIT, JOIN }
+enum { EMPTY, BELT, BRIDGE, DIG, ADD, MUL, SUB, DIV, POW, CRATE, BOX, SPLIT, JOIN, PART }
 const OPS := [ADD, MUL, SUB, DIV, POW]
 const KIND_IDS := {BELT: "belt", BRIDGE: "bridge", DIG: "dig", ADD: "add", MUL: "mul", SUB: "sub", DIV: "div", POW: "pow", CRATE: "crate", BOX: "box"}
 ## The level whose end hands a piece over (it is had from the level after).
 ## SPLIT and JOIN were pieces once (a save's own may still hold them: read
 ## as belts); a crossing is had from the start.
 const UNLOCK := {BELT: 0, DIG: 0, ADD: 1, MUL: 7, SUB: 13, DIV: 16, POW: 19, CRATE: 22}
+
+## A port's way: tokens come in, or go out.
+enum { P_IN, P_OUT }
+## A part's grid, a side.
+const PART_LEAST := 2
+const PART_MOST := 12
 
 ## What an operator's square is.
 enum { R_NONE, R_A, R_B, R_OUT, R_REM }
@@ -200,6 +216,23 @@ var fork := PackedByteArray()
 var root := PackedInt32Array()
 var role := PackedByteArray()
 var dep := PackedInt32Array()
+## The anchor square of the copy of a part covering each square, or -1.
+var part := PackedInt32Array()
+## The parts: id -> {name, w, h, pieces: [[x, y, kind, face, face2, fork]],
+## ports: [[x, y, way, io]]} on the grid as built (an operator by its root).
+var defs := {}
+var next_def := 1
+## The copies set down: anchor square -> [id, rot].
+var copies := {}
+## Every copy's ports: (square << 2) | way out of the copy -> P_IN or P_OUT.
+var gates := {}
+## The copies as they were before the gesture since `mark()`, or null.
+var _undo_copies = null
+## A bench: a blank sheet (no box, no numbers) for building one part's
+## inside within `frame`, its ports as Vector3i(x, y, way) -> io.
+var blank := false
+var frame := Rect2i()
+var bench_ports := {}
 
 var occ := PackedByteArray()
 var val := PackedInt64Array()
@@ -223,8 +256,9 @@ var _targets: Array = []
 var _trng := RandomNumberGenerator.new()
 var _seqs := {}
 
-func _init(rng_seed := 0) -> void:
+func _init(rng_seed := 0, blank_sheet := false) -> void:
 	seed_v = rng_seed if rng_seed != 0 else (randi() | 1)
+	blank = blank_sheet
 	kind.resize(N)
 	face.resize(N)
 	face2.resize(N)
@@ -233,6 +267,8 @@ func _init(rng_seed := 0) -> void:
 	root.fill(-1)
 	role.resize(N)
 	dep.resize(N)
+	part.resize(N)
+	part.fill(-1)
 	occ.resize(N2)
 	val.resize(N2)
 	prog.resize(N2)
@@ -244,12 +280,13 @@ func _init(rng_seed := 0) -> void:
 	dead.resize(N2)
 	for id: String in TRACKS:
 		lv[id] = 1
-	for y in HUB:
-		for x in HUB:
-			kind[_i(HUB_AT + Vector2i(x, y))] = BOX
 	_trng.seed = seed_v
-	_print_paper()
 	_draw_seqs()
+	if not blank:
+		for y in HUB:
+			for x in HUB:
+				kind[_i(HUB_AT + Vector2i(x, y))] = BOX
+		_print_paper()
 	_wire()
 
 func _emit(type: String, more := {}) -> void:
@@ -590,12 +627,14 @@ func why_not(k: int, t: Vector2i, f := 0, mine := -1) -> String:
 		return "locked"
 	for c: Array in footprint(k, t, f):
 		var u: Vector2i = c[0]
-		if not inside(u):
+		if not inside(u) or (blank and not frame.has_point(u)):
 			return "edge"
 		var i := _i(u)
 		var here := int(kind[i])
 		if here == BOX:
 			return "box"
+		if int(part[i]) >= 0:
+			return "taken"
 		if mine >= 0:
 			# a turn takes no belt: only its own squares and empty ones
 			if int(root[i]) != mine and here != EMPTY:
@@ -636,6 +675,8 @@ func _stamp(k: int, t: Vector2i, f: int) -> void:
 ## The squares of the piece standing on `t` (all of a machine's).
 func piece_squares(t: Vector2i) -> Array:
 	var i := _i(t)
+	if int(part[i]) >= 0:
+		return copy_squares(int(part[i]))
 	var r := int(root[i])
 	if r < 0:
 		return [t]
@@ -646,12 +687,14 @@ func piece_squares(t: Vector2i) -> Array:
 
 ## The root square of the piece on `t`: a machine's, or `t`.
 func root_of(t: Vector2i) -> Vector2i:
+	if inside(t) and int(part[_i(t)]) >= 0:
+		return tile_of(int(part[_i(t)]))
 	var r := int(root[_i(t)]) if inside(t) else -1
 	return tile_of(r) if r >= 0 else t
 
 ## Whether a run of belt may go over `t`.
 func can_lay(t: Vector2i) -> bool:
-	if not inside(t):
+	if not inside(t) or (blank and not frame.has_point(t)) or int(part[_i(t)]) >= 0:
 		return false
 	var k := int(kind[_i(t)])
 	return k == EMPTY or k == BELT or k == BRIDGE
@@ -724,7 +767,10 @@ func trim_path(tiles: Array, f_last: int) -> Dictionary:
 		# a square set alone faces into the box beside it, or away from a dig
 		var into := _taker_beside(ts[0], NOWHERE, begun)
 		var away := _giver_beside(ts[0], NOWHERE)
-		if into >= 0:
+		if away >= 0 and _takes(ts[0] + DIRS[opp(away)], opp(away)):
+			# straight on from what gives into what takes
+			fs[0] = opp(away)
+		elif into >= 0:
 			fs[0] = into
 		elif away >= 0:
 			fs[0] = opp(away)
@@ -771,7 +817,7 @@ func _taker_beside(t: Vector2i, prev: Vector2i, begun: Vector2i) -> int:
 		var k := int(kind[_i(u)])
 		if begun != NOWHERE and (u == begun or root_of(u) == root_of(begun) or (k == BOX and kind_at(begun) == BOX)):
 			return d
-		if best < 0 and (k == BOX or k == CRATE or is_op(k)):
+		if best < 0 and (k == BOX or k == CRATE or is_op(k) or int(part[_i(u)]) >= 0):
 			best = d
 	return best
 
@@ -783,6 +829,11 @@ func _giver_beside(t: Vector2i, prev: Vector2i) -> int:
 		if u == prev or not inside(u):
 			continue
 		var i := _i(u)
+		if int(part[i]) >= 0:
+			# a copy's out port facing `t`
+			if int(gates.get((i << 2) | opp(d), -1)) == P_OUT:
+				return d
+			continue
 		var k := int(kind[i])
 		if k == DIG or k == CRATE:
 			return d
@@ -875,6 +926,7 @@ func line_through(t: Vector2i, bare := false) -> Array:
 	var s0 := _i(t)
 	var line := [s0]
 	var seen := {s0: true}
+	var room := int(part[s0])
 	var s := s0
 	while true:
 		var fd: PackedInt32Array = feeders.get(s, PackedInt32Array())
@@ -884,7 +936,7 @@ func line_through(t: Vector2i, bare := false) -> Array:
 		var pk := int(kind[p % N])
 		if pk != BELT and pk != BRIDGE or (feeders.get(p, PackedInt32Array()) as PackedInt32Array).size() > 1:
 			break
-		if bare and pk != BELT:
+		if bare and pk != BELT or int(part[p % N]) != room:
 			break
 		if (outs.get(p, PackedInt32Array()) as PackedInt32Array).size() != 1:
 			# a fork: the line is the branch begun there, not the one it forks
@@ -900,7 +952,7 @@ func line_through(t: Vector2i, bare := false) -> Array:
 		var nx := o[0] >> 2
 		if nx >= N2 or seen.has(nx) or (feeders.get(nx, PackedInt32Array()) as PackedInt32Array).size() != 1:
 			break
-		if bare and int(kind[nx % N]) != BELT:
+		if bare and int(kind[nx % N]) != BELT or int(part[nx % N]) != room:
 			break
 		s = nx
 		seen[s] = true
@@ -998,6 +1050,8 @@ func turn(t: Vector2i) -> bool:
 	if not inside(t):
 		return false
 	var i := _i(t)
+	if int(part[i]) >= 0:
+		return _turn_copy(int(part[i]))
 	var k := int(kind[i])
 	if k == EMPTY or k == BOX or k == DIG or k == CRATE or k == BRIDGE:
 		return false
@@ -1033,6 +1087,14 @@ func remove(t: Vector2i) -> bool:
 	if not inside(t):
 		return false
 	var i := _i(t)
+	if int(part[i]) >= 0:
+		var a := int(part[i])
+		var rot := int(copies[a][1])
+		_keep_copies()
+		_unstamp_copy(a)
+		_wire()
+		_emit("lift", {"kind": PART, "tile": tile_of(a), "face": rot})
+		return true
 	var k := int(kind[i])
 	if k == EMPTY or k == BOX:
 		return false
@@ -1049,6 +1111,323 @@ func remove(t: Vector2i) -> bool:
 	_emit("lift", {"kind": k, "tile": at, "face": f})
 	return true
 
+# --- parts ---
+
+## Whether parts can be built: from the adder on.
+func parts_open() -> bool:
+	return has(ADD)
+
+## A part's grid turned `rot` quarters clockwise, as squares across and down.
+static func turned_size(w: int, h: int, rot: int) -> Vector2i:
+	return Vector2i(w, h) if rot % 2 == 0 else Vector2i(h, w)
+
+## Square (x, y) of a `w` by `h` grid, the grid turned `rot` quarters
+## clockwise: where it lands from the turned grid's corner.
+static func turned_at(x: int, y: int, w: int, h: int, rot: int) -> Vector2i:
+	match rot % 4:
+		1:
+			return Vector2i(h - 1 - y, x)
+		2:
+			return Vector2i(w - 1 - x, h - 1 - y)
+		3:
+			return Vector2i(y, w - 1 - x)
+	return Vector2i(x, y)
+
+## A fork's bits turned with the square.
+static func turned_bits(bits: int, rot: int) -> int:
+	rot %= 4
+	return ((bits << rot) | (bits >> (4 - rot))) & 15
+
+## The size of part `id` turned `rot`.
+func part_size(id: int, rot: int) -> Vector2i:
+	var d: Dictionary = defs[id]
+	return turned_size(int(d.w), int(d.h), rot)
+
+## Its ports turned `rot`, as [x, y, way, io] from the turned grid's corner.
+func part_ports(id: int, rot: int) -> Array:
+	var d: Dictionary = defs[id]
+	var out := []
+	for q: Array in d.ports:
+		var at := turned_at(int(q[0]), int(q[1]), int(d.w), int(d.h), rot)
+		out.append([at.x, at.y, (int(q[2]) + rot) % 4, int(q[3])])
+	return out
+
+## A part's ports named as they read left to right, then top to bottom, by
+## where each meets the paper outside the grid: the ins A, B, C..., the
+## outs = (or =1, =2... when there are more).
+static func port_names(ports: Array, _w: int, _h: int) -> Array:
+	var order := []
+	for j in ports.size():
+		var q: Array = ports[j]
+		var at: Vector2i = Vector2i(int(q[0]), int(q[1])) + DIRS[int(q[2])]
+		order.append([at.x, at.y, j])
+	order.sort()
+	var names := []
+	names.resize(ports.size())
+	var outs := 0
+	for q: Array in ports:
+		if int(q[3]) == P_OUT:
+			outs += 1
+	var ni := 0
+	var no := 0
+	for o: Array in order:
+		var j := int(o[2])
+		if int(ports[j][3]) == P_IN:
+			names[j] = String.chr(65 + ni % 26)
+			ni += 1
+		else:
+			no += 1
+			names[j] = "=" if outs == 1 else "=%d" % no
+	return names
+
+## Where the copy anchored on `t` goes when turned to `nr`: the squares it
+## covers keep their middle.
+func part_turned_anchor(id: int, t: Vector2i, rot: int, nr: int) -> Vector2i:
+	var a := part_size(id, rot)
+	var b := part_size(id, nr)
+	var d := (a - b)
+	return t + Vector2i(floori(d.x / 2.0), floori(d.y / 2.0))
+
+## Why a copy of `id` cannot go on `t` turned `rot` (`mine` the anchor of a
+## copy whose own squares do not count, for a turn), or "".
+func part_why_not(id: int, t: Vector2i, rot: int, mine := -1) -> String:
+	if not defs.has(id):
+		return "taken"
+	if not parts_open():
+		return "locked"
+	var sz := part_size(id, rot)
+	for y in sz.y:
+		for x in sz.x:
+			var u := t + Vector2i(x, y)
+			if not inside(u):
+				return "edge"
+			var i := _i(u)
+			var here := int(kind[i])
+			if here == BOX:
+				return "box"
+			if mine >= 0 and int(part[i]) == mine:
+				continue
+			if int(part[i]) >= 0 or (here != EMPTY and here != BELT and here != BRIDGE):
+				return "taken"
+	return ""
+
+## A copy of part `id` set down on `t` turned `rot`.
+func place_part(id: int, t: Vector2i, rot: int) -> bool:
+	var why := part_why_not(id, t, rot)
+	if why != "":
+		_emit("refused", {"why": why, "tile": t, "v": 0})
+		return false
+	_keep_copies()
+	_stamp_copy(_i(t), id, rot)
+	_wire()
+	_emit("place", {"kind": PART, "tile": t})
+	return true
+
+## The squares of the copy anchored on `a`.
+func copy_squares(a: int) -> Array:
+	var out := []
+	if not copies.has(a):
+		return [tile_of(a)]
+	var c: Array = copies[a]
+	var sz := part_size(int(c[0]), int(c[1]))
+	for y in sz.y:
+		for x in sz.x:
+			out.append(tile_of(a) + Vector2i(x, y))
+	return out
+
+## Part `id`'s inside written onto the squares from `a`, turned `rot`, each
+## tagged with `a`; what stood there cleared.
+func _stamp_copy(a: int, id: int, rot: int) -> void:
+	var d: Dictionary = defs[id]
+	var w := int(d.w)
+	var h := int(d.h)
+	var t0 := tile_of(a)
+	var sz := turned_size(w, h, rot)
+	for y in sz.y:
+		for x in sz.x:
+			var i := _i(t0 + Vector2i(x, y))
+			_record(i)
+			_clear(i)
+			kind[i] = EMPTY
+			root[i] = -1
+			role[i] = R_NONE
+			fork[i] = 0
+			part[i] = a
+	for pc: Array in d.pieces:
+		var at := t0 + turned_at(int(pc[0]), int(pc[1]), w, h, rot)
+		var k := int(pc[2])
+		var f := (int(pc[3]) + rot) % 4
+		if is_op(k):
+			_stamp(k, at, f)
+		elif k == BELT or k == BRIDGE:
+			var i := _i(at)
+			kind[i] = k
+			face[i] = f
+			face2[i] = (int(pc[4]) + rot) % 4
+			fork[i] = turned_bits(int(pc[5]), rot) if k == BELT else 0
+	copies[a] = [id, rot]
+
+## The copy anchored on `a` lifted off its squares.
+func _unstamp_copy(a: int) -> void:
+	for t: Vector2i in copy_squares(a):
+		var i := _i(t)
+		if int(part[i]) != a:
+			continue
+		_record(i)
+		_clear(i)
+		kind[i] = EMPTY
+		root[i] = -1
+		role[i] = R_NONE
+		fork[i] = 0
+		part[i] = -1
+	copies.erase(a)
+
+func _turn_copy(a: int) -> bool:
+	var c: Array = copies[a]
+	var id := int(c[0])
+	var rot := int(c[1])
+	var nr := (rot + 1) % 4
+	var at := part_turned_anchor(id, tile_of(a), rot, nr)
+	if part_why_not(id, at, nr, a) != "":
+		_emit("refused", {"why": "no_room", "tile": at, "v": 0})
+		return false
+	_keep_copies()
+	_unstamp_copy(a)
+	_stamp_copy(_i(at), id, nr)
+	_wire()
+	_emit("turn", {"kind": PART, "tile": at, "face": nr})
+	return true
+
+## Every copy's ports as gates on their squares.
+func _gate_copies() -> void:
+	gates = {}
+	for a: int in copies:
+		var c: Array = copies[a]
+		if not defs.has(int(c[0])):
+			continue
+		var t0 := tile_of(a)
+		for q: Array in part_ports(int(c[0]), int(c[1])):
+			gates[(_i(t0 + Vector2i(int(q[0]), int(q[1]))) << 2) | int(q[2])] = int(q[3])
+
+## A new, empty part `w` by `h`; its id.
+func new_part(w: int, h: int) -> int:
+	var id := next_def
+	next_def += 1
+	defs[id] = {"name": "%d" % id, "w": clampi(w, PART_LEAST, PART_MOST), "h": clampi(h, PART_LEAST, PART_MOST), "pieces": [], "ports": []}
+	return id
+
+## Part `id`'s inside and ports as built on a bench, written again into
+## every copy of it (tokens riding in them fall off; nothing to undo).
+func set_part(id: int, pieces: Array, ports: Array) -> void:
+	if not defs.has(id):
+		return
+	defs[id].pieces = pieces
+	defs[id].ports = ports
+	for a: int in copies.keys():
+		if int(copies[a][0]) == id:
+			var rot := int(copies[a][1])
+			_unstamp_copy(a)
+			_stamp_copy(a, id, rot)
+	mark()
+	_wire()
+	_emit("part", {"id": id})
+
+## Part `id` thrown away with every copy of it.
+func drop_part(id: int) -> void:
+	for a: int in copies.keys():
+		if int(copies[a][0]) == id:
+			_unstamp_copy(a)
+	defs.erase(id)
+	mark()
+	_wire()
+	_emit("part", {"id": id})
+
+## How many copies of part `id` are set down.
+func copies_of(id: int) -> int:
+	var n := 0
+	for a: int in copies:
+		if int(copies[a][0]) == id:
+			n += 1
+	return n
+
+# --- the bench ---
+
+## A bench for part `d`'s inside: a blank sheet, its grid in the middle, the
+## pieces written in; `lvl` says which operators may go in.
+static func bench_for(d: Dictionary, lvl: int) -> RefCounted:
+	var s = new(1, true)
+	s.level = lvl
+	var w := int(d.w)
+	var h := int(d.h)
+	@warning_ignore("integer_division")
+	s.frame = Rect2i(Vector2i((W - w) / 2, (H - h) / 2), Vector2i(w, h))
+	var t0: Vector2i = s.frame.position
+	for pc: Array in d.pieces:
+		var at := t0 + Vector2i(int(pc[0]), int(pc[1]))
+		var k := int(pc[2])
+		if is_op(k):
+			if s.why_not(k, at, int(pc[3])) == "":
+				s._stamp(k, at, int(pc[3]))
+		elif (k == BELT or k == BRIDGE) and s.can_lay(at):
+			var i := _i(at)
+			s.kind[i] = k
+			s.face[i] = int(pc[3])
+			s.face2[i] = int(pc[4])
+			s.fork[i] = int(pc[5]) if k == BELT else 0
+	for q: Array in d.ports:
+		s.bench_ports[Vector3i(int(q[0]), int(q[1]), int(q[2]))] = int(q[3])
+	s._wire()
+	s._undo = {}
+	return s
+
+## The bench's grid read back: [pieces, ports] as `defs` keeps them.
+func bench_read() -> Array:
+	var pieces := []
+	for y in frame.size.y:
+		for x in frame.size.x:
+			var i := _i(frame.position + Vector2i(x, y))
+			var k := int(kind[i])
+			if k == BELT:
+				pieces.append([x, y, k, int(face[i]), 0, int(fork[i])])
+			elif k == BRIDGE:
+				pieces.append([x, y, k, int(face[i]), int(face2[i]), 0])
+			elif is_op(k) and int(root[i]) == i:
+				pieces.append([x, y, k, int(face[i]), 0, 0])
+	var ports := []
+	for key: Vector3i in bench_ports:
+		ports.append([key.x, key.y, key.z, int(bench_ports[key])])
+	return [pieces, ports]
+
+## The port nearest `q` (squares, fractional) on the bench grid's edge
+## turned on to in, then out, then off. Returns whether it changed.
+func toggle_port_at(q: Vector2) -> bool:
+	if not blank:
+		return false
+	var f := Rect2(frame)
+	var c := Vector2(clampf(q.x, f.position.x + 0.01, f.end.x - 0.01), clampf(q.y, f.position.y + 0.01, f.end.y - 0.01))
+	var u := Vector2i(c.floor())
+	var best := -1
+	var near := INF
+	# the grid's sides the square stands on, the nearest to the touch
+	var sides := [[0, u.x == frame.end.x - 1, absf(q.x - f.end.x)], [1, u.y == frame.end.y - 1, absf(q.y - f.end.y)],
+		[2, u.x == frame.position.x, absf(q.x - f.position.x)], [3, u.y == frame.position.y, absf(q.y - f.position.y)]]
+	for sd: Array in sides:
+		if bool(sd[1]) and float(sd[2]) < near:
+			near = float(sd[2])
+			best = int(sd[0])
+	if best < 0 or near > 1.5:
+		return false
+	var key := Vector3i(u.x - frame.position.x, u.y - frame.position.y, best)
+	var was := int(bench_ports.get(key, -1))
+	if was == P_IN:
+		bench_ports[key] = P_OUT
+	elif was == P_OUT:
+		bench_ports.erase(key)
+	else:
+		bench_ports[key] = P_IN
+	_emit("port", {"tile": u, "way": best, "io": int(bench_ports.get(key, -1))})
+	return true
+
 # --- one step back ---
 
 ## The holder calls `mark()` as a gesture begins; every square the gesture
@@ -1056,10 +1435,16 @@ func remove(t: Vector2i) -> bool:
 ## were (tokens riding there fall off, a crate's contents are not kept).
 func mark() -> void:
 	_undo = {}
+	_undo_copies = null
 
 func _record(i: int) -> void:
 	if not _undo.has(i):
-		_undo[i] = [int(kind[i]), int(face[i]), int(face2[i]), int(root[i]), int(role[i]), int(fork[i])]
+		_undo[i] = [int(kind[i]), int(face[i]), int(face2[i]), int(root[i]), int(role[i]), int(fork[i]), int(part[i])]
+
+## The copies written down once a gesture, before it changes them.
+func _keep_copies() -> void:
+	if _undo_copies == null:
+		_undo_copies = copies.duplicate(true)
 
 func can_undo() -> bool:
 	return not _undo.is_empty()
@@ -1077,8 +1462,12 @@ func undo() -> bool:
 		root[i] = int(was[3])
 		role[i] = int(was[4])
 		fork[i] = int(was[5])
+		part[i] = int(was[6])
 		n += 1
 	_undo = {}
+	if _undo_copies != null:
+		copies = _undo_copies
+		_undo_copies = null
 	_wire()
 	_emit("undo", {"n": n})
 	return true
@@ -1112,6 +1501,15 @@ func _end_into(t2: Vector2i, d: int) -> int:
 	if not inside(t2):
 		return -1
 	var i := _i(t2)
+	var from: Vector2i = t2 - DIRS[d]
+	var fi := _i(from) if inside(from) else -1
+	var pf := int(part[fi]) if fi >= 0 else -1
+	if pf != int(part[i]):
+		# a copy's edge is crossed at its ports alone, the way each goes
+		if int(part[i]) >= 0 and int(gates.get((i << 2) | opp(d), -1)) != P_IN:
+			return -1
+		if pf >= 0 and int(gates.get((fi << 2) | d, -1)) != P_OUT:
+			return -1
 	match int(kind[i]):
 		BELT:
 			if int(face[i]) == opp(d):
@@ -1126,8 +1524,7 @@ func _end_into(t2: Vector2i, d: int) -> int:
 			# can accept in at any face of the A and B"), never from their own
 			# machine's squares
 			var r := int(root[i])
-			var from: Vector2i = t2 - DIRS[d]
-			if inside(from) and int(root[_i(from)]) == r:
+			if fi >= 0 and int(root[fi]) == r:
 				return -1
 			if int(role[i]) == R_A:
 				return ((N2 + r * 4) << 2) | d
@@ -1153,6 +1550,8 @@ func _away_from(t: Vector2i) -> PackedInt32Array:
 				continue
 			var i := _i(u)
 			if int(kind[i]) != BELT:
+				continue
+			if int(part[i]) >= 0 and int(gates.get((i << 2) | opp(d), -1)) != P_IN:
 				continue
 			var f := int(face[i])
 			if f == d or (f != opp(d) and kind_at(u - DIRS[f]) == EMPTY):
@@ -1193,6 +1592,7 @@ func _feed(id: int, s: int) -> void:
 
 ## Works out every slot's ends again after the paper changed.
 func _wire() -> void:
+	_gate_copies()
 	lanes = PackedInt32Array()
 	outs = {}
 	feeders = {}
@@ -1551,13 +1951,13 @@ func tally_rows(most := 12) -> Array:
 # --- kept ---
 
 func save() -> void:
-	if path == "":
+	if path == "" or blank:
 		return
 	var cfg := ConfigFile.new()
 	var pieces := PackedInt32Array()
 	for i in N:
 		var k := int(kind[i])
-		if k != EMPTY and k != BOX and (int(root[i]) < 0 or int(root[i]) == i):
+		if k != EMPTY and k != BOX and int(part[i]) < 0 and (int(root[i]) < 0 or int(root[i]) == i):
 			pieces.append_array([i, k, int(face[i]), int(face2[i])])
 	var keys := PackedInt64Array()
 	var counts := PackedInt64Array()
@@ -1577,13 +1977,19 @@ func save() -> void:
 	cfg.set_value("paper", "pieces", pieces)
 	var forks := PackedInt32Array()
 	for i in N:
-		if int(kind[i]) == BELT and int(fork[i]) != 0:
+		if int(kind[i]) == BELT and int(fork[i]) != 0 and int(part[i]) < 0:
 			forks.append_array([i, int(fork[i])])
 	cfg.set_value("paper", "forks", forks)
 	cfg.set_value("paper", "keys", keys)
 	cfg.set_value("paper", "counts", counts)
 	cfg.set_value("paper", "crates", crate_rows)
 	cfg.set_value("hand", "straight", straight)
+	var placed := PackedInt32Array()
+	for a: int in copies:
+		placed.append_array([a, int(copies[a][0]), int(copies[a][1])])
+	cfg.set_value("parts", "defs", defs)
+	cfg.set_value("parts", "next", next_def)
+	cfg.set_value("parts", "copies", placed)
 	cfg.save(path)
 
 static func load_saved(rng_seed := 0) -> RefCounted:
@@ -1621,6 +2027,21 @@ static func load_saved(rng_seed := 0) -> RefCounted:
 		var i := forks[j]
 		if i >= 0 and i < N and int(s.kind[i]) == BELT:
 			s.fork[i] = forks[j + 1] & 15
+	var kept_defs: Dictionary = cfg.get_value("parts", "defs", {})
+	for id in kept_defs:
+		var d: Dictionary = kept_defs[id]
+		if d.has("w") and d.has("h") and d.has("pieces") and d.has("ports"):
+			s.defs[int(id)] = d
+	s.next_def = maxi(int(cfg.get_value("parts", "next", 1)), 1)
+	for id: int in s.defs:
+		s.next_def = maxi(s.next_def, id + 1)
+	var placed: PackedInt32Array = cfg.get_value("parts", "copies", PackedInt32Array()) if fresh else PackedInt32Array()
+	for j in range(0, placed.size() - 2, 3):
+		var a := placed[j]
+		var id := placed[j + 1]
+		var rot := placed[j + 2] & 3
+		if a >= 0 and a < N and s.part_why_not(id, tile_of(a), rot) == "":
+			s._stamp_copy(a, id, rot)
 	var keys: PackedInt64Array = cfg.get_value("paper", "keys", PackedInt64Array())
 	var counts: PackedInt64Array = cfg.get_value("paper", "counts", PackedInt64Array())
 	for j in mini(keys.size(), counts.size()):

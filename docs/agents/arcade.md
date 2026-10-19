@@ -3933,6 +3933,89 @@ under a card (the same cached mesh a kind). Unconfirmed: whether the notch
 and spout read on a phone at the usual zoom (about 55 px a square, the
 spout's chevron about 9 px), and the 0.72 stop.
 
+#### Tally parts, any-face ports, the L, erasing a line (2026-10-19)
+
+The user, with a shot of four adders fed by two lines: "player should be
+able to create custom components ... a submodule with operations inside it
+(it's just a plain grid like the game board), define input and output.
+Also, all modules should accept in/out in any face", then "it should have
+the same grid size of the selected grid on submodule", "if I want to
+change something to make it better, I can just change the submodule and it
+change everywhere", "on the straight line helper, if user moves finger up
+or down, it make a L shape" and "on convey click, user should be able to
+erase all linked convey, or all convey section (a section change when
+convey turns)" -- "stop on joins or cross to avoid issue. Build
+everything, no need for concepts".
+
+**Any face** (b69d8f1c). `_end_into` takes into A or B from any edge but
+the machine's own squares; `_mouths` hands an answer (and a remainder)
+out of every free edge, into a machine, crate or box beside it or into a
+belt leading away as a dig's do (facing away, or a line's first belt
+running along the edge), so a line merely passing an answer square is not
+fed (the call that keeps a passing line from looping answers back).
+`_giver_beside` takes an answer from any side. `Art.machine(k, f, ins,
+outs)` draws a notch where a side is fed and a spout where an answer goes
+out, bits `cell * 4 + way` worked out by the board in `_work_ins`; a side
+with none wears the old back notch and front spout. A square laid alone
+between a giver and a taker runs straight on from the giver when that
+leads in (the subtractor beside a dig on the grown paper had turned into
+B, which now takes from the side).
+
+**The L.** With Straight on, the run follows its first axis and bends once
+when the finger goes off it: the second leg is the finger's offset across
+the axis, measured from the finger itself with a quarter square of slack
+(`floor(|off| + 0.25)`), so it starts once the finger is three quarters
+of the way into the next row. `_shot_tally`'s wobble check became an L
+check.
+
+**Erasing.** A belt's pill is Flip, Remove, Section, Line, Info.
+`line_squares(t, section)` is `line_through(t, bare)`, which with `bare`
+stops at a crossing as well as at joins and forks (and always at a part's
+edge); a section is the straight run about the tapped square to the turns
+either side, the corner square being the run it turns into.
+`Sim.erase(tiles)` lifts them, wires once, emits `erase` (the lift cue).
+
+**Parts.** A part is `defs[id] = {name, w, h, pieces, ports}`, 2 to 12 a
+side; pieces `[x, y, kind, face, face2, fork]` (an operator by its root),
+ports `[x, y, way, io]` on an edge square, `way` out of the grid. A copy
+on the paper (`copies[anchor] = [id, rot]`) covers its grid's squares
+turned `rot`, each tagged `part[i] = anchor`, and its inside is written
+onto them (`_stamp_copy`), so it runs at the paper's speeds and
+upgrades. `_wire` makes `gates` from every copy's ports, and `_end_into`
+lets a token across a copy's edge only at a port, the port's way. Belts
+may not be laid on a copy; Rotate turns it about its middle, Remove lifts
+it whole, Undo restores both the squares (`_undo` rows carry `part`) and
+`copies` (`_undo_copies`). Saved under `[parts]` (defs, next, copies),
+re-stamped on load; the paper's own pieces and forks skip copy squares.
+The **bench** is a Sim built `blank` (no box, no prints, never saved)
+with the part's grid as `frame` in the middle; `why_not`/`can_lay`
+refuse outside it, `toggle_port_at` cycles the edge port nearest a touch
+(in, out, off), `bench_read` gives the pieces and ports back. The screen
+swaps `board.sim` to it (`open_bench`/`close_bench`; `here()`), the tray
+becomes Look, Belt, Rotate, Remove, Ports and the operators, the plate
+row names the part with a green Done; Done or back writes it with
+`set_part`, which writes every copy again (tokens in them fall off, undo
+cleared). The tray's sixth slot, Parts (open from the adder), opens
+`arcade/tally_parts.gd`: a row a part (lid, name, size, how many placed,
+Place, Edit, bin) and a size stepper with New. Placing is the `part` tool:
+a ghost of the lid with Turn, Place, Cancel. A tap on a copy opens Edit,
+Turn, Remove. Drawn as one `lids` layer between the pieces and the live
+layer: `Art.lid` (a slate block, a sunk panel, a notch a in port, a spout
+an out port) and on the bench `Art.bench_frame` (a frame and a green or
+amber tab a port); the name and the port letters are written in screen
+space, ins A, B, C left to right then top to bottom as built (a turned
+copy keeps them), outs `=`. Tokens inside a copy are not drawn or
+numbered, nor its machines' arcs. Locale rows in en, pt and es.
+
+Calls of mine, unconfirmed: a copy is closed (nothing inside is seen
+running); a part's size is fixed once made (a change would collide with
+what stands round its copies); parts open with the adder (level 2); a part
+holds belts and operators only (no digs or crates); the bench does not run
+(nothing feeds it); the bin on a part takes every copy with it without
+asking; names are "Part n"; no tutorial page yet. Seen on `opengl3_angle`
+810x1440: bench 57, paper with a copy 66, the Parts card 134 draw calls.
+Probe 0 failed, `_shot_tally` headless 0 failed, suite 248522/0.
+
 #### Tally forks: a path begun on a line branches it (2026-10-18)
 
 The user, with a phone shot of a line drawn up from another that stood a

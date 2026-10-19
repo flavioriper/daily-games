@@ -44,7 +44,11 @@ const PAINT := {
 	Sim.ADD: Color("8fbf7a"), Sim.MUL: Color("7fa7d6"), Sim.SUB: Color("b48cc4"),
 	Sim.DIV: Color("e0956a"), Sim.POW: Color("d6b25c"), Sim.DIG: Color("c46a5a"),
 	Sim.CRATE: Color("6fb3a8"), Sim.BOX: Color("4f9fa0"), Sim.BELT: WALNUT, Sim.BRIDGE: BRASS,
+	Sim.PART: Color("7a8aa6"),
 }
+## A port's tab on the bench: in, out.
+const PORT_IN := Color("7cb06b")
+const PORT_OUT := Color("f2a13a")
 
 static var _cache := {}
 
@@ -362,6 +366,64 @@ static func ways(mask: int, ci: int, f: int) -> Array:
 			out.append(d)
 	return out if not out.is_empty() else [f]
 
+## A copy of a part, closed (the user, 2026-10-19: "a custom closed
+## submodule"): one block of the part's paint over its `w` by `h` squares
+## from their top-left corner, a sunk panel on its top, a dark spout out of
+## each out port's square, a notch with a chevron into each in port's.
+## `ports` as Sim.part_ports gives them. The names go on in screen space.
+static func lid(w: int, h: int, ports: Array) -> ArrayMesh:
+	var key := ["lid", w, h, ports]
+	if _cache.has(key):
+		return _cache[key]
+	var b := Face.Builder.new()
+	var col: Color = PAINT[Sim.PART]
+	for q: Array in ports:
+		if int(q[3]) == Sim.P_OUT:
+			_spout_at(b, Vector2(int(q[0]) + 0.5, int(q[1]) + 0.5) * U, dir_v(int(q[2])), 1.0)
+	var at := Vector2.ONE * CELL_IN
+	var sz := Vector2(w, h) * U - Vector2.ONE * CELL_IN * 2.0
+	b.polygon(Face.Builder.round_rect(at + Vector2(0, 12.0), sz, 18.0), SHADE)
+	b.polygon(Face.Builder.round_rect(at + Vector2(0, 6.0), sz, 18.0), col.darkened(0.22))
+	b.polygon(Face.Builder.round_rect(at, sz, 18.0), col)
+	b.polygon(Face.Builder.round_rect(at + Vector2(8.0, 6.0), Vector2(sz.x - 16.0, minf(sz.y * 0.22, U * 0.3)), 10.0), Color(1, 1, 1, 0.16))
+	var inset := U * 0.32
+	if sz.x > inset * 2.0 + 20.0 and sz.y > inset * 2.0 + 20.0:
+		b.polygon(Face.Builder.round_rect(at + Vector2.ONE * inset, sz - Vector2.ONE * inset * 2.0, 14.0), col.darkened(0.12))
+		b.polygon(Face.Builder.round_rect(at + Vector2.ONE * inset + Vector2(0, 4.0), sz - Vector2.ONE * inset * 2.0 - Vector2(0, 4.0), 14.0), col.lightened(0.06))
+	for c: Vector2 in [at + Vector2(16, 16), at + Vector2(sz.x - 16, 16), at + Vector2(16, sz.y - 16), at + sz - Vector2(16, 16)]:
+		b.disc(c, 6.0, col.darkened(0.3))
+	for q: Array in ports:
+		if int(q[3]) == Sim.P_IN:
+			var c := Vector2(int(q[0]) + 0.5, int(q[1]) + 0.5) * U
+			var v := dir_v(Sim.opp(int(q[2])))
+			b.polygon(notch_poly(c, v), WALNUT_EDGE)
+			for ch: PackedVector2Array in notch_chevrons(c, v, 1):
+				b.stroke(ch, MOUTH_W, TOKEN)
+	return _keep(key, b)
+
+## The bench's grid: a pencil frame round its `w` by `h` squares from their
+## top-left corner, and a tab outside the edge for each port, green with a
+## chevron in for an in, amber with a chevron out for an out.
+static func bench_frame(w: int, h: int, ports: Array) -> ArrayMesh:
+	var key := ["bench", w, h, ports]
+	if _cache.has(key):
+		return _cache[key]
+	var b := Face.Builder.new()
+	var col: Color = PAINT[Sim.PART]
+	b.stroke(Face.Builder.round_rect(Vector2(-6, -6), Vector2(w, h) * U + Vector2(12, 12), 16.0), 10.0, col, true)
+	for q: Array in ports:
+		var v := dir_v(int(q[2]))
+		var n := v.orthogonal()
+		var c := Vector2(int(q[0]) + 0.5, int(q[1]) + 0.5) * U + v * U * 0.82
+		var into := int(q[3]) == Sim.P_IN
+		var tab := PackedVector2Array([c - v * U * 0.28 - n * U * 0.3, c - v * U * 0.28 + n * U * 0.3, c + v * U * 0.22 + n * U * 0.3, c + v * U * 0.22 - n * U * 0.3])
+		b.polygon(tab, PORT_IN if into else PORT_OUT)
+		var w2 := U * 0.12
+		var d := -v if into else v
+		var m := c - v * U * 0.2
+		b.stroke(PackedVector2Array([m - d * U * 0.06 + n * w2, m + d * U * 0.06, m - d * U * 0.06 - n * w2]), U * 0.05, CREAM)
+	return _keep(key, b)
+
 ## A machine's square block as the dig's, the waist that joins two, and the
 ## cream of a face.
 const BLOCK := U - CELL_IN * 2.0
@@ -526,6 +588,9 @@ static func icon(k: int) -> ArrayMesh:
 		Sim.BRIDGE:
 			bed_into(b, Vector2.ZERO, 1, 1)
 			b.append(cross(0), Transform2D.IDENTITY)
+		Sim.PART:
+			# a two by two copy with an in and an out, fitted to one square
+			b.append(lid(2, 2, [[0, 1, 2, Sim.P_IN], [1, 0, 0, Sim.P_OUT]]), Transform2D(0.0, Vector2.ONE * 0.42, 0.0, -Vector2.ONE * U * 0.42))
 		_:
 			# a machine facing north, drawn to fit one square
 			var cs := cells(k, 3)

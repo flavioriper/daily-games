@@ -137,7 +137,8 @@ paid). No event a sale, a cut or a cow milked. `rules_opened` carries
 **Tally (2026-10-15)** is kept like Griddle, so no `arcade_start` or
 `arcade_end`: `tally_enter` (level, made: numbers the box has taken),
 `tally_leave` (seconds, level, made), `tally_level` (level reached, made),
-`tally_upgrade` (tile: the track, belt, dig, add, mul, sub or pow; level).
+`tally_upgrade` (tile: the track, belt, dig, add, mul, sub or pow; level),
+`tally_bench` (part: the part's id, copies: how many stand on the paper).
 No event a piece placed, a belt laid or a number delivered. `rules_opened`
 carries `puzzle_id` tally.
 

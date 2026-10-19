@@ -1895,6 +1895,8 @@ TL_TOOL_SUB,Take,Tirar,Restar
 TL_TOOL_DIV,Divide,Dividir,Dividir
 TL_TOOL_POW,Power,Potência,Potencia
 TL_TOOL_TURN,Rotate,Girar,Girar
+TL_TOOL_PARTS,Parts,Peças,Piezas
+TL_TOOL_PORT,Ports,Portas,Puertos
 TL_STRAIGHT_ON,Straight,Reta,Recta
 TL_STRAIGHT_OFF,Curves,Curvas,Curvas
 TL_SAY_NO_ROOM,No room to turn it,Sem espaço para girar,No hay sitio para girarlo
@@ -1908,6 +1910,7 @@ TL_PIECE_SUB,Subtractor,Subtrator,Restador
 TL_PIECE_DIV,Divider,Divisor,Divisor
 TL_PIECE_POW,Raiser,Potenciador,Potenciador
 TL_PIECE_CRATE,Crate,Caixote,Cajón
+TL_PIECE_PART,Part,Peça,Pieza
 TL_PIECE_BOX,The counting box,A caixa de contagem,La caja de conteo
 TL_PIECE_BELT_LINE,Carries one number a square.,Leva um número por casa.,Lleva un número por casilla.
 TL_PIECE_BRIDGE_LINE,"Made by drawing across a belt: both lines go straight on.","Feito ao traçar por cima de uma esteira: as duas linhas seguem reto.","Se hace al trazar sobre una cinta: las dos líneas siguen rectas."
@@ -1923,6 +1926,20 @@ TL_FLIP,Flip,Inverter,Invertir
 TL_LIFT,Remove,Remover,Quitar
 TL_ERASE_RUN,Section,Trecho,Tramo
 TL_ERASE_LINE,Line,Linha,Línea
+TL_EDIT,Edit,Editar,Editar
+TL_PARTS,Your parts,Suas peças,Tus piezas
+TL_PARTS_NONE,"Build your own piece: choose its size, lay belts and machines inside it, mark its ins and outs, then set copies of it anywhere. Change it once and every copy changes.","Monte sua própria peça: escolha o tamanho, coloque esteiras e máquinas dentro, marque entradas e saídas e espalhe cópias pelo papel. Mude uma vez e todas as cópias mudam.","Arma tu propia pieza: elige su tamaño, pon cintas y máquinas dentro, marca entradas y salidas y coloca copias donde quieras. Cámbiala una vez y cambian todas las copias."
+TL_PART_NAME,Part %s,Peça %s,Pieza %s
+TL_PART_SIZE,%d × %d,%d × %d,%d × %d
+TL_PART_COPIES_ONE,1 placed,1 no papel,1 colocada
+TL_PART_COPIES_N,%d placed,%d no papel,%d colocadas
+TL_PART_PLACE,Place,Colocar,Colocar
+TL_PART_NEW,New,Nova,Nueva
+TL_PART_WIDE,Across,Largura,Ancho
+TL_PART_TALL,Down,Altura,Alto
+TL_BENCH,Building a part,Montando uma peça,Armando una pieza
+TL_BENCH_LINE,"Ports: tap the edge for in, again for out","Portas: toque na borda para entrada, de novo para saída","Puertos: toca el borde para entrada, otra vez para salida"
+TL_SAY_PORT_EDGE,Ports go on the edge,Portas ficam na borda,Los puertos van en el borde
 TL_EMPTY,Empty it,Esvaziar,Vaciar
 TL_DONE,Done,Pronto,Listo
 TL_SIDE_A,A,A,A

@@ -41,6 +41,8 @@ signal refused(why: String, at: Vector2, n: int)
 signal touched(pitch: float)
 signal asked(t: Vector2i)
 signal box_asked
+## The pill's Edit on a copy of a part: open that part on the bench.
+signal edit_part(id: int)
 
 const Sim = preload("res://arcade/tally_sim.gd")
 const Art = preload("res://arcade/tally_art.gd")
@@ -83,9 +85,9 @@ const CAP_FS := 20
 const TITLE_FS := 24
 const PILL_OFF := 14.0
 const PILL_POP := 0.18
-const PILL_ICON := {"turn": "turn", "flip": "flip", "lift": "bin", "run": "span", "line": "bends", "info": "help", "place": "check", "cancel": "cross"}
-const PILL_CAP := {"turn": "TL_TURN", "flip": "TL_FLIP", "lift": "TL_LIFT", "run": "TL_ERASE_RUN", "line": "TL_ERASE_LINE", "info": "TL_INFO", "place": "TL_PLACE", "cancel": "TL_CANCEL"}
-const PILL_PITCH := {"turn": 1.02, "flip": 1.04, "lift": 0.92, "run": 0.9, "line": 0.88, "info": 1.0, "place": 1.08, "cancel": 0.9}
+const PILL_ICON := {"edit": "pencil", "turn": "turn", "flip": "flip", "lift": "bin", "run": "span", "line": "bends", "info": "help", "place": "check", "cancel": "cross"}
+const PILL_CAP := {"edit": "TL_EDIT", "turn": "TL_TURN", "flip": "TL_FLIP", "lift": "TL_LIFT", "run": "TL_ERASE_RUN", "line": "TL_ERASE_LINE", "info": "TL_INFO", "place": "TL_PLACE", "cancel": "TL_CANCEL"}
+const PILL_PITCH := {"edit": 1.06, "turn": 1.02, "flip": 1.04, "lift": 0.92, "run": 0.9, "line": 0.88, "info": 1.0, "place": 1.08, "cancel": 0.9}
 ## How far along its last square a token riding into an operator is drawn.
 const OP_STOP := 0.72
 ## A starving side's pulse ring takes this long a beat.
@@ -95,6 +97,8 @@ var sim: RefCounted
 var tool := "move"
 var place_face := 0
 var belt_face := 0
+## The part the "part" tool sets copies of.
+var part_id := -1
 var interactive := true
 var view := Rect2()
 var cam := Vector2(Sim.HUB_AT) + Vector2(Sim.HUB, Sim.HUB) * 0.5
@@ -112,6 +116,8 @@ var _paper: ArrayMesh
 var _prints: ArrayMesh
 var _beds: ArrayMesh
 var _decks: ArrayMesh
+## The copies' lids, or the bench's frame and ports.
+var _lids: ArrayMesh
 var _live := {}
 var _flat_cache := {}
 var _dirty := true
@@ -149,6 +155,8 @@ var _pill_at := -10.0
 var _btn_at := {}       # button -> when pressed
 var _ghost_spin := -10.0
 var _drag_ghost := false
+## Where on the ghost the finger took it, from its root.
+var _grab := Vector2i.ZERO
 var _consumed := false
 
 # moments
@@ -173,7 +181,7 @@ func _ready() -> void:
 	_world = Node2D.new()
 	_world.name = "Paper"
 	add_child(_world)
-	for nm in ["ground", "beds", "chev", "under", "decks", "tokens", "pieces", "live"]:
+	for nm in ["ground", "beds", "chev", "under", "decks", "tokens", "pieces", "lids", "live"]:
 		var l := Node2D.new()
 		l.name = nm
 		_world.add_child(l)
@@ -274,7 +282,7 @@ func play(ev: Dictionary) -> void:
 			for j in tiles.size():
 				_pop[tiles[j]] = _clock + j * 0.02
 			_dirty = true
-		"undo":
+		"undo", "port", "part":
 			_dirty = true
 		"op":
 			_squash[Sim.tile_of(int(ev.i))] = _clock
@@ -287,6 +295,17 @@ func play(ev: Dictionary) -> void:
 ## Something about the paper changed without an event (a load, a harness).
 func relay() -> void:
 	_dirty = true
+	_printed_at = -1
+
+## The view put at once on square point `t` at `scale` pixels a square (the
+## bench opened, or left for the paper).
+func show_at(t: Vector2, scale: float) -> void:
+	k = scale
+	_clamp_k()
+	cam = t
+	_cam_to = Vector2.INF
+	_vel = Vector2.ZERO
+	_place()
 
 func tick(delta: float) -> void:
 	_clock += delta
@@ -368,9 +387,25 @@ func _rebuild() -> void:
 			decks.append(Art.cross(int(sim.face[i])), Transform2D(0.0, at))
 	_beds = beds.mesh()
 	_decks = decks.mesh()
+	var lids := Face.FlatBuilder.new(_flat_cache)
+	if sim.blank:
+		var fr: Rect2i = sim.frame
+		var ports := []
+		for key: Vector3i in sim.bench_ports:
+			ports.append([key.x, key.y, key.z, int(sim.bench_ports[key])])
+		ports.sort()
+		lids.append(Art.bench_frame(fr.size.x, fr.size.y, ports), Transform2D(0.0, Vector2(fr.position) * U))
+	for a: int in sim.copies:
+		var c: Array = sim.copies[a]
+		if not sim.defs.has(int(c[0])):
+			continue
+		var sz: Vector2i = sim.part_size(int(c[0]), int(c[1]))
+		lids.append(Art.lid(sz.x, sz.y, sim.part_ports(int(c[0]), int(c[1]))), Transform2D(0.0, Vector2(Sim.tile_of(a)) * U))
+	_lids = lids.mesh()
 	_layers.ground.queue_redraw()
 	_layers.beds.queue_redraw()
 	_layers.decks.queue_redraw()
+	_layers.lids.queue_redraw()
 
 ## Which ways tokens come into each slot, as bits of their way of going,
 ## and which edges each machine is fed by and hands out of.
@@ -497,6 +532,9 @@ func _draw_layer(nm: String, l: Node2D) -> void:
 			_draw_mesh_live(l, nm, _build_tokens(false))
 		"pieces":
 			_draw_mesh_live(l, nm, _build_pieces())
+		"lids":
+			if _lids != null:
+				l.draw_mesh(_lids, null)
 		"live":
 			_draw_mesh_live(l, nm, _build_live())
 
@@ -600,7 +638,8 @@ func _build_pieces() -> ArrayMesh:
 		if u >= 0.0 and u < 1.0:
 			bump = 1.0 + 0.035 * sin(u * PI)
 	var half := Sim.HUB * U * 0.5
-	fb.append(Art.box(), Transform2D(0.0, Vector2(bump, bump), 0.0, bx + Vector2(half, half) - Vector2(half, half) * bump))
+	if not sim.blank:
+		fb.append(Art.box(), Transform2D(0.0, Vector2(bump, bump), 0.0, bx + Vector2(half, half) - Vector2(half, half) * bump))
 	# a machine is drawn from its root, seen when any of it may be
 	var wide := r.grow(2)
 	var roots: Array = []
@@ -643,7 +682,7 @@ func _build_pieces() -> ArrayMesh:
 		if Motion.reduce or u >= 1.0:
 			continue
 		var kd := int(g[0])
-		var m: ArrayMesh = Art.icon(kd) if kd != Sim.BELT else null
+		var m: ArrayMesh = Art.icon(kd) if kd != Sim.BELT and kd != Sim.PART else null
 		if m != null:
 			fb.append(m, Transform2D(0.0, Vector2.ONE * (1.0 - u), 0.0, Art.mid(g[2])), Color(1, 1, 1, 1.0 - u))
 	return fb.mesh()
@@ -658,7 +697,7 @@ func _build_live() -> ArrayMesh:
 		if not _sees(t, r):
 			continue
 		var m: Dictionary = sim.machines[i]
-		if bool(m.busy):
+		if bool(m.busy) and int(sim.part[i]) < 0:
 			var kd := int(sim.kind[i])
 			var at := Art.mid(t) + Art.face_mid(kd, int(sim.face[i]))
 			var u := clampf(float(m.t), 0.0, 1.0)
@@ -666,6 +705,12 @@ func _build_live() -> ArrayMesh:
 				var ar := U * (0.34 if kd == Sim.ADD else 0.31)
 				b.stroke(Face.Builder.arc_points(at, ar, -PI * 0.5, -PI * 0.5 + TAU * u), U * 0.05, Color(Art.CREAM, 0.85), false)
 	# the box: its bar, and a glow when a level is done
+	if not sim.blank:
+		_live_box(b)
+	_live_rest(b, r)
+	return b.mesh() if not b.verts.is_empty() else null
+
+func _live_box(b: Face.Builder) -> void:
 	var panel := Art.box_panel()
 	var bx := Vector2(Sim.HUB_AT) * U
 	var bar := Rect2(bx + panel.position + Vector2(36, panel.size.y - 64), Vector2(panel.size.x - 72, 22))
@@ -678,6 +723,8 @@ func _build_live() -> ArrayMesh:
 		if u >= 0.0 and u < 1.0:
 			var c := bx + Vector2.ONE * Sim.HUB * U * 0.5
 			b.stroke(Face.Builder.ring(c, Sim.HUB * U * (0.55 + 0.5 * u), Sim.HUB * U * (0.55 + 0.5 * u)), 18.0 * (1.0 - u), Color(Art.TARGET, 1.0 - u), true)
+
+func _live_rest(b: Face.Builder, r: Rect2i) -> void:
 	# a belt just laid: a puff of dust round it
 	if not Motion.reduce:
 		for t: Vector2i in _pop:
@@ -688,7 +735,7 @@ func _build_live() -> ArrayMesh:
 	# a machine waiting on one side: that side's mouth in amber, with a slow pulse
 	for i: int in sim.machines:
 		var side: int = sim.starving(i)
-		if side < 0:
+		if side < 0 or int(sim.part[i]) >= 0:
 			continue
 		var t := Sim.tile_of(i)
 		if not _sees(t, r.grow(2)):
@@ -750,14 +797,18 @@ func _build_live() -> ArrayMesh:
 		var ok := _ghost_why() == ""
 		var c := Color(Art.GHOST, 0.45) if ok else Color(Art.WARN, 0.4)
 		# every square it would cover, green where it can go, red where not
-		for sq: Array in Sim.footprint(kd, t, gf):
-			b.polygon(Face.Builder.round_rect(Art.mid(sq[0]) - Vector2.ONE * U * 0.48, Vector2.ONE * U * 0.96, 6.0), c)
+		for sq: Vector2i in _ghost_squares():
+			b.polygon(Face.Builder.round_rect(Art.mid(sq) - Vector2.ONE * U * 0.48, Vector2.ONE * U * 0.96, 6.0), c)
 		var rot := 0.0
 		if not Motion.reduce:
 			var u := clampf((_clock - _ghost_spin) / SPIN, 0.0, 1.0)
 			rot -= (1.0 - (1.0 - pow(1.0 - u, 3.0))) * PI * 0.5
 		var m: ArrayMesh
-		if Sim.is_op(kd):
+		if kd == Sim.PART:
+			var pid := int(_ghost.def)
+			var sz: Vector2i = sim.part_size(pid, gf)
+			b.append(Art.lid(sz.x, sz.y, sim.part_ports(pid, gf)), Transform2D(0.0, Vector2(t) * U), Color(1, 1, 1, 0.7))
+		elif Sim.is_op(kd):
 			m = Art.machine(kd, gf)
 		elif kd == Sim.DIG:
 			m = Art.dig()
@@ -765,15 +816,14 @@ func _build_live() -> ArrayMesh:
 		else:
 			m = Art.icon(kd)
 			rot = 0.0
-		b.append(m, Transform2D(rot, Vector2.ONE * 0.96, 0.0, _about(kd, t, gf, Art.mid(t), rot)), Color(1, 1, 1, 0.7))
+		if m != null:
+			b.append(m, Transform2D(rot, Vector2.ONE * 0.96, 0.0, _about(kd, t, gf, Art.mid(t), rot)), Color(1, 1, 1, 0.7))
 	# the square under a pill wears a sun ring
 	if not _pill.is_empty():
 		var t: Vector2i = _pill.tile
 		var sqs: Array = [t]
 		if String(_pill.kind) == "build" and not _ghost.is_empty():
-			sqs = []
-			for sq: Array in Sim.footprint(int(_ghost.kind), t, int(_ghost.face)):
-				sqs.append(sq[0])
+			sqs = _ghost_squares()
 		elif Sim.inside(t):
 			sqs = sim.piece_squares(t)
 		var lo := Vector2(sqs[0] as Vector2i)
@@ -785,7 +835,6 @@ func _build_live() -> ArrayMesh:
 	if tool == "remove" and _finger != -99 and not _consumed:
 		var t := tile_under(_at)
 		b.stroke(Face.Builder.round_rect(Art.mid(t) - Vector2.ONE * U * 0.47, Vector2.ONE * U * 0.94, 18.0), 8.0, Color(Art.WARN, 0.8), true)
-	return b.mesh() if not b.verts.is_empty() else null
 
 ## The numerals, in this Control's pixels: printed numbers, the digs', the
 ## crates', the tokens' (one size a run), and the box's panel.
@@ -825,7 +874,7 @@ func _draw_words() -> void:
 	# the tokens, a run of glyphs a size
 	var runs := {}
 	for s: int in sim.lanes:
-		if sim.occ[s] == 0:
+		if sim.occ[s] == 0 or int(sim.part[s % Sim.N]) >= 0:
 			continue
 		var t := Sim.tile_of(s % Sim.N)
 		if not _sees(t, r):
@@ -842,6 +891,9 @@ func _draw_words() -> void:
 	for fs: int in runs:
 		for w: Array in runs[fs]:
 			_write(w[0], w[1], fs, Art.INK)
+	_write_parts(r)
+	if sim.blank:
+		return
 	# the box's panel: the number asked, how many, the level
 	var panel := Art.box_panel()
 	var bx := Vector2(Sim.HUB_AT) * U
@@ -856,6 +908,42 @@ func _draw_words() -> void:
 		_write(txt, top + Vector2(span.x * 0.5, span.y * 0.46), big, Art.INK)
 		_write("%s / %s" % [Sim.short(sim.got), Sim.short(sim.count())], top + Vector2(span.x * 0.5, span.y * 0.7), int(span.y * 0.12), Color(Art.INK, 0.75))
 
+## A copy's name on its lid and its ports' letters by them; on the bench,
+## the ports' letters on their tabs.
+func _write_parts(r: Rect2i) -> void:
+	var fs := int(clampf(k * 0.26, 0.0, 40.0))
+	if fs < FS_MIN:
+		return
+	if sim.blank:
+		var fr: Rect2i = sim.frame
+		var ports := []
+		for key: Vector3i in sim.bench_ports:
+			ports.append([key.x, key.y, key.z, int(sim.bench_ports[key])])
+		var names := Sim.port_names(ports, fr.size.x, fr.size.y)
+		for j in ports.size():
+			var q: Array = ports[j]
+			var c := Vector2(fr.position) + Vector2(int(q[0]) + 0.5, int(q[1]) + 0.5) + Vector2(Sim.DIRS[int(q[2])]) * 0.82
+			_write(names[j], screen_of(c - Vector2(Sim.DIRS[int(q[2])]) * 0.05), fs, Art.CREAM)
+		return
+	for a: int in sim.copies:
+		var t0 := Sim.tile_of(a)
+		var c: Array = sim.copies[a]
+		var id := int(c[0])
+		if not sim.defs.has(id):
+			continue
+		var sz: Vector2i = sim.part_size(id, int(c[1]))
+		if not r.intersects(Rect2i(t0, sz)):
+			continue
+		_write(part_name(id), screen_of(Vector2(t0) + Vector2(sz) * 0.5), int(clampf(k * 0.3, 0.0, 44.0)), Art.CREAM)
+		# named as built, so a turned copy keeps its letters
+		var ports: Array = sim.part_ports(id, int(c[1]))
+		var names := Sim.port_names(sim.defs[id].ports, 0, 0)
+		for j in ports.size():
+			var q: Array = ports[j]
+			# the letter sits inside the lid, by its edge
+			var at := Vector2(t0) + Vector2(int(q[0]) + 0.5, int(q[1]) + 0.5) - Vector2(Sim.DIRS[int(q[2])]) * 0.12
+			_write(names[j], screen_of(at), fs, Art.CREAM)
+
 ## A string centred on `at` (its middle), `fs` pixels.
 func _write(text: String, at: Vector2, fs: int, col: Color) -> void:
 	if fs < FS_MIN:
@@ -864,6 +952,12 @@ func _write(text: String, at: Vector2, fs: int, col: Color) -> void:
 	_words.draw_string(font, Vector2(at.x - w * 0.5, at.y + fs * 0.36), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, col)
 
 # --- the pills ---
+
+## Part `id`'s name as the player reads it.
+func part_name(id: int) -> String:
+	if not sim.defs.has(id):
+		return tr("TL_PIECE_PART")
+	return tr("TL_PART_NAME") % String(sim.defs[id].name)
 
 func pill_open() -> bool:
 	return not _pill.is_empty()
@@ -884,8 +978,13 @@ func _pill_title() -> String:
 	var kd: int
 	if String(_pill.kind) == "build":
 		kd = int(_ghost.kind)
+		if kd == Sim.PART:
+			return part_name(int(_ghost.def))
 	else:
 		var t: Vector2i = _pill.tile
+		if Sim.inside(t) and int(sim.part[Sim._i(t)]) >= 0:
+			var c: Array = sim.copies.get(int(sim.part[Sim._i(t)]), [0, 0])
+			return part_name(int(c[0]))
 		kd = sim.kind_at(t)
 		if Sim.is_op(kd):
 			var side: int = sim.starving(Sim._i(sim.root_of(t)))
@@ -938,10 +1037,35 @@ func _snap(kd: int, t: Vector2i) -> Vector2i:
 func _ghost_why() -> String:
 	if _ghost.is_empty():
 		return "taken"
+	if int(_ghost.kind) == Sim.PART:
+		return sim.part_why_not(int(_ghost.def), _ghost.tile, int(_ghost.face))
 	return sim.why_not(int(_ghost.kind), _ghost.tile, int(_ghost.face))
+
+## The squares the ghost would cover.
+func _ghost_squares() -> Array:
+	var out := []
+	if _ghost.is_empty():
+		return out
+	var t: Vector2i = _ghost.tile
+	if int(_ghost.kind) == Sim.PART:
+		var sz: Vector2i = sim.part_size(int(_ghost.def), int(_ghost.face))
+		for y in sz.y:
+			for x in sz.x:
+				out.append(t + Vector2i(x, y))
+		return out
+	for sq: Array in Sim.footprint(int(_ghost.kind), t, int(_ghost.face)):
+		out.append(sq[0])
+	return out
 
 func _open_piece_pill(t: Vector2i) -> void:
 	t = sim.root_of(t)
+	if int(sim.part[Sim._i(t)]) >= 0:
+		# a copy of a part: open its part, turn it, lift it
+		_ghost = {}
+		_pill = {"kind": "piece", "tile": t, "buttons": ["edit", "turn", "lift"]}
+		_pill_at = _clock
+		touched.emit(1.0)
+		return
 	var kd: int = sim.kind_at(t)
 	var buttons := ["lift", "info"]
 	if kd == Sim.BELT:
@@ -957,9 +1081,9 @@ func _open_piece_pill(t: Vector2i) -> void:
 
 func _set_ghost(kd: int, t: Vector2i, f: int) -> void:
 	var fresh := _ghost.is_empty() or Vector2i(_ghost.tile) != t or int(_ghost.kind) != kd
-	_ghost = {"kind": kd, "tile": t, "face": f}
+	_ghost = {"kind": kd, "tile": t, "face": f, "def": part_id}
 	var buttons := ["place", "cancel"]
-	if TURNS.has(kd):
+	if TURNS.has(kd) or kd == Sim.PART:
 		buttons.push_front("turn")
 	_pill = {"kind": "build", "tile": t, "buttons": buttons}
 	if fresh:
@@ -987,16 +1111,25 @@ func _pill_press(name: String) -> void:
 			if build:
 				# a square machine turns on the squares it stands on
 				var nf := (int(_ghost.face) + 1) % 4
-				var nt := Sim.turned_root(int(_ghost.kind), _ghost.tile, int(_ghost.face), nf)
+				var nt: Vector2i
+				if int(_ghost.kind) == Sim.PART:
+					nt = sim.part_turned_anchor(int(_ghost.def), _ghost.tile, int(_ghost.face), nf)
+				else:
+					nt = Sim.turned_root(int(_ghost.kind), _ghost.tile, int(_ghost.face), nf)
 				_ghost.face = nf
 				_ghost.tile = nt
 				_pill.tile = nt
 				_ghost_spin = _clock
 			else:
 				sim.mark()
+				var copy := int(sim.part[Sim._i(t)]) >= 0
 				# a turn with no room is refused by the sim's own event
 				if sim.turn(t):
-					_pill.tile = sim.root_of(t)
+					if copy:
+						# a copy's corner moves as it turns
+						_close_pill()
+					else:
+						_pill.tile = sim.root_of(t)
 		"flip":
 			sim.mark()
 			sim.flip_line(t)
@@ -1011,6 +1144,11 @@ func _pill_press(name: String) -> void:
 		"info":
 			_close_pill()
 			asked.emit(t)
+		"edit":
+			var a := int(sim.part[Sim._i(t)])
+			_close_pill()
+			if sim.copies.has(a):
+				edit_part.emit(int(sim.copies[a][0]))
 		"cancel":
 			_ghost = {}
 			_close_pill()
@@ -1023,7 +1161,10 @@ func _pill_press(name: String) -> void:
 			var kd := int(_ghost.kind)
 			var f := int(_ghost.face)
 			sim.mark()
-			sim.place(kd, t, f)
+			if kd == Sim.PART:
+				sim.place_part(int(_ghost.def), t, f)
+			else:
+				sim.place(kd, t, f)
 			place_face = f
 			_ghost = {}
 			_close_pill()
@@ -1212,8 +1353,9 @@ func press(p: Vector2, id := -1) -> void:
 		"remove":
 			sim.mark()
 		_:
-			if not _ghost.is_empty() and tile_under(p) == Vector2i(_ghost.tile):
+			if not _ghost.is_empty() and _ghost_squares().has(tile_under(p)):
 				_drag_ghost = true
+				_grab = tile_under(p) - Vector2i(_ghost.tile)
 
 func drag(p: Vector2, was := Vector2.INF) -> void:
 	if was == Vector2.INF:
@@ -1237,7 +1379,7 @@ func drag(p: Vector2, was := Vector2.INF) -> void:
 				_lift_at(was.lerp(p, float(j) / steps))
 		_:
 			if _drag_ghost:
-				var t := _snap(int(_ghost.kind), tile_under(p))
+				var t := _snap(int(_ghost.kind), tile_under(p) - _grab)
 				if Sim.inside(t) and t != Vector2i(_ghost.tile):
 					_ghost.tile = t
 					_pill.tile = t
@@ -1271,7 +1413,7 @@ func release(p: Vector2) -> void:
 			if not moved:
 				var t := tile_under(p)
 				var kd: int = sim.kind_at(t)
-				if kd == Sim.EMPTY or kd < 0:
+				if (kd == Sim.EMPTY or kd < 0) and not (Sim.inside(t) and int(sim.part[Sim._i(t)]) >= 0):
 					touched.emit(0.85)
 				elif kd == Sim.BOX:
 					box_asked.emit()
@@ -1360,7 +1502,11 @@ func _trace_straight(t: Vector2i) -> void:
 			return
 		_axis = 0 if absi(d.x) >= absi(d.y) else 1
 	var n := d.x if _axis == 0 else d.y
-	var m := d.y if _axis == 0 else d.x
+	# off the axis by the finger itself, not its square: a quarter square of
+	# slack past a row's edge before the line bends into it
+	var off := squares_at(_at) - (Vector2(p0) + Vector2(0.5, 0.5))
+	var across := off.y if _axis == 0 else off.x
+	var m := int(signf(across) * floorf(absf(across) + 0.25))
 	var step := Vector2i(signi(n), 0) if _axis == 0 else Vector2i(0, signi(n))
 	var step2 := Vector2i(0, signi(m)) if _axis == 0 else Vector2i(signi(m), 0)
 	_path = [p0]
@@ -1409,7 +1555,12 @@ func _lift_at(p: Vector2) -> void:
 		return
 	_lifted[t] = true
 	var kd := int(sim.kind[Sim._i(t)])
-	if kd != Sim.EMPTY and kd != Sim.BOX:
+	if int(sim.part[Sim._i(t)]) >= 0:
+		# a copy goes whole, once a swipe
+		for u: Vector2i in sim.piece_squares(t):
+			_lifted[u] = true
+		sim.remove(t)
+	elif kd != Sim.EMPTY and kd != Sim.BOX:
 		sim.remove(t)
 
 ## A tap: what it does is the tool's. It never turns or places by itself:
@@ -1424,6 +1575,18 @@ func _tap(p: Vector2) -> void:
 	var at := screen_of(Vector2(t) + Vector2(0.5, 0.5))
 	if kd == Sim.BOX:
 		box_asked.emit()
+		return
+	if tool == "port":
+		# the bench's edge: a port on, turned, off
+		if not sim.toggle_port_at(squares_at(p)):
+			refused.emit("port_edge", at, 0)
+		return
+	if int(sim.part[i]) >= 0 and tool != "remove":
+		if tool == "turn":
+			sim.mark()
+			sim.turn(t)
+		else:
+			_open_piece_pill(t)
 		return
 	match tool:
 		"move":
@@ -1442,6 +1605,12 @@ func _tap(p: Vector2) -> void:
 				_open_piece_pill(t)
 		"remove":
 			pass
+		"part":
+			if kd == Sim.EMPTY or kd == Sim.BELT or kd == Sim.BRIDGE:
+				var f := int(_ghost.face) if not _ghost.is_empty() else 0
+				_set_ghost(Sim.PART, t, f)
+			else:
+				_open_piece_pill(t)
 		"turn":
 			# the Rotate tool: a tap turns what it lands on, a quarter clockwise
 			if kd == Sim.EMPTY:

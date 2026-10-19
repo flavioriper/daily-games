@@ -23,6 +23,14 @@ extends Control
 ## a number now dug lights its pencil rings; an upgrade that can be bought
 ## rings its button; the box's tick is heard for a target coming in, quietly
 ## and not too often.
+##
+## **Parts** (the user, 2026-10-19): the tray's Parts slot opens their card
+## (arcade/tally_parts.gd); Place hands the board copies of one, Edit and New
+## open the **bench**: the same board on a blank sheet (`bench`, a Sim with
+## `blank`) with the part's grid framed in the middle, the tray's tools for
+## its inside (Look, Belt, Rotate, Remove, Ports and the operators), the
+## plate row naming the part with a Done button. Done (or back) writes the
+## grid's inside into the part and every copy of it on the paper.
 
 signal closed
 
@@ -30,6 +38,7 @@ const Sim = preload("res://arcade/tally_sim.gd")
 const Art = preload("res://arcade/tally_art.gd")
 const Board = preload("res://arcade/tally_board.gd")
 const Shop = preload("res://arcade/tally_shop.gd")
+const Parts = preload("res://arcade/tally_parts.gd")
 const Card = preload("res://arcade/tally_card.gd")
 const FlatTopBar = preload("res://ui/flat/flat_top_bar.gd")
 const SettingsSheet = preload("res://ui/hud/settings_sheet.gd")
@@ -61,7 +70,9 @@ const OP_GAP := 0.16
 const SHOP_EVERY := 0.25
 ## The tray's two rows: the hands, the belt and the dig, then what is set
 ## down on the paper after. A slot is row * ROW + its place in the row.
-const TOOLS := [["move", "belt", "dig", "turn", "remove"], ["crate", "add", "mul", "sub", "div", "pow"]]
+const TOOLS := [["move", "belt", "dig", "turn", "remove", "parts"], ["crate", "add", "mul", "sub", "div", "pow"]]
+## The tray on the bench.
+const BENCH_TOOLS := [["move", "belt", "turn", "remove", "port"], ["add", "mul", "sub", "div", "pow"]]
 const ROW := 8
 const HAPTICS := {}
 ## The undo chip: how long it rests, its disc's radius, how far it stands
@@ -74,6 +85,11 @@ const LINE_W := 220.0
 const LINE_H := 64.0
 
 var sim: RefCounted
+## The bench while a part's inside is built, and the part's id.
+var bench: RefCounted
+var bench_id := -1
+var _paper_cam := Vector2.ZERO
+var _paper_k := 0.0
 var top_bar: Control
 var settings_sheet: Control
 var tutor: RefCounted
@@ -164,6 +180,7 @@ func _build() -> void:
 		_feel(Haptics.TAP))
 	board.asked.connect(_show_piece)
 	board.box_asked.connect(_show_box)
+	board.edit_part.connect(open_bench)
 	add_child(board)
 	_fx = Fx2D.new()
 	_fx.haptics = HAPTICS
@@ -285,7 +302,15 @@ func hints_left() -> int:
 # --- the frame ---
 
 func _busy() -> bool:
-	return get_node_or_null("Card") != null or get_node_or_null("Shop") != null
+	return get_node_or_null("Card") != null or get_node_or_null("Shop") != null or get_node_or_null("Parts") != null
+
+## The sim the hand is at: the bench's, or the paper's.
+func here() -> RefCounted:
+	return bench if bench != null else sim
+
+## Too busy for the paper's own sounds: a card up, or the bench out.
+func _quiet() -> bool:
+	return _busy() or bench != null
 
 func _process(delta: float) -> void:
 	if sim == null:
@@ -313,7 +338,7 @@ func _process(delta: float) -> void:
 			n += 1
 	_ready_n = n
 	_ready_on = n > 0
-	var chip_up: bool = sim.can_undo() and _clock - _undo_at < UNDO_FOR and not _busy()
+	var chip_up: bool = here().can_undo() and _clock - _undo_at < UNDO_FOR and not _busy()
 	if undo_chip.visible != chip_up:
 		undo_chip.visible = chip_up
 		_undo_down = false
@@ -373,12 +398,18 @@ func _top() -> Vector2:
 	return _rw.at(self, size * Vector2(0.5, 0.4))
 
 func _play_events() -> void:
-	if sim.events.is_empty():
+	_play_from(sim)
+	if bench != null:
+		_play_from(bench)
+
+func _play_from(src: RefCounted) -> void:
+	if src.events.is_empty():
 		return
-	var evs: Array = sim.events.duplicate()
-	sim.events.clear()
+	var evs: Array = src.events.duplicate()
+	src.events.clear()
 	for ev: Dictionary in evs:
-		board.play(ev)
+		if board.sim == src:
+			board.play(ev)
 		match String(ev.type):
 			"lay":
 				_fx.cue("lay", randf_range(0.96, 1.04) * pow(2.0, mini(int(ev.n) - 1, 5) / 24.0))
@@ -409,8 +440,13 @@ func _play_events() -> void:
 				_feel(Haptics.TICK)
 				_changed()
 				_undo_at = -10.0
+			"port":
+				_fx.cue("place", 1.1 if int(ev.io) >= 0 else 0.9)
+				_feel(Haptics.TAP)
+			"part":
+				_changed()
 			"op":
-				if _once("op", OP_GAP) and not _busy():
+				if _once("op", OP_GAP) and not _quiet():
 					_fx.cue("op", randf_range(0.95, 1.05) * pow(2.0, mini(str(absi(int(ev.v))).length() - 1, 4) / 12.0))
 			"off_target":
 				_fx.cue("nope", 1.0, -6.0)
@@ -418,7 +454,7 @@ func _play_events() -> void:
 				_rw.sticker(tr("TL_SAY_NOT_TARGET") % [Sim.short(int(ev.v)), Sim.short(int(ev.came))],
 					_square_rw(Sim.HUB_AT + Vector2i.ONE * (Sim.HUB >> 1)) + Vector2(0, -70.0), 36, 3.2, false, Color("fffaf0"), false, "say", 20.0)
 			"hit":
-				if _clock - _hit_at > HIT_GAP and not _busy():
+				if _clock - _hit_at > HIT_GAP and not _quiet():
 					_hit_at = _clock
 					_chip_at[-2] = _clock
 					_fx.cue("deliver", randf_range(0.97, 1.03), -4.0)
@@ -510,6 +546,8 @@ func _on_refused(why: String, at: Vector2, n: int) -> void:
 			text = tr("TL_SAY_NO_ROOM")
 		"no_turn":
 			text = tr("TL_SAY_NO_TURN")
+		"port_edge":
+			text = tr("TL_SAY_PORT_EDGE")
 		_:
 			text = tr("TL_SAY_TAKEN")
 	_fx.cue("nope")
@@ -526,6 +564,9 @@ func _up_rect() -> Rect2:
 
 func _draw_hud() -> void:
 	if hud.size.x <= 0.0:
+		return
+	if bench != null:
+		_draw_bench_hud()
 		return
 	var g := _goal_rect()
 	var u := _up_rect()
@@ -562,6 +603,28 @@ func _draw_hud() -> void:
 	hud.draw_string(_font, Vector2(bar.position.x, g.position.y + 76.0), tr("TL_GOAL") % [Sim.short(sim.got), Sim.short(sim.count()), Sim.short(sim.target())], HORIZONTAL_ALIGNMENT_LEFT, bar.size.x, 30, Pal.TEXT)
 	Icons.paint(hud, "trend", Rect2(um - Vector2(22, 22) * press, Vector2(44, 44) * press), Pal.SURFACE)
 
+## The bench's plate row: the part's name and size, and Done.
+func _draw_bench_hud() -> void:
+	var g := _goal_rect()
+	var u := _up_rect()
+	hud.draw_style_box(CozyTheme.lifted(Color("fcf7ef"), 30, 8), g)
+	hud.draw_style_box(CozyTheme.lifted(Color("fcf7ef"), 30, 8), u)
+	var b := Face.Builder.new()
+	var press := 1.0 if Motion.reduce else Motion.bump_scale(_clock - float(_chip_at.get(-1, -10.0)), 0.14, 0.2)
+	var um := u.get_center()
+	b.disc(um + Vector2(0, 4.0), 40.0 * press, Color(Pal.TEXT, 0.16))
+	b.disc(um, 40.0 * press, Pal.GOOD)
+	_hud_live = b.mesh()
+	hud.draw_mesh(_hud_live, null)
+	var mid := Vector2(g.position.x + 70.0, g.get_center().y)
+	hud.draw_mesh(Art.icon(Sim.PART), null, Transform2D(0.0, Vector2.ONE * 0.8, 0.0, mid))
+	var d: Dictionary = sim.defs.get(bench_id, {"name": "", "w": 0, "h": 0})
+	var x := g.position.x + 140.0
+	hud.draw_string(_font, Vector2(x, g.position.y + 40.0), tr("TL_BENCH") , HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Pal.ACCENT_2)
+	hud.draw_string(_font, Vector2(x, g.position.y + 76.0), tr("TL_PART_NAME") % String(d.name) + "  ·  " + tr("TL_PART_SIZE") % [int(d.w), int(d.h)], HORIZONTAL_ALIGNMENT_LEFT, g.size.x - 160.0, 30, Pal.TEXT)
+	hud.draw_string(_font, Vector2(x, g.position.y + 104.0), tr("TL_BENCH_LINE"), HORIZONTAL_ALIGNMENT_LEFT, g.size.x - 160.0, 18, Pal.TEXT_DIM)
+	Icons.paint(hud, "check", Rect2(um - Vector2(22, 22) * press, Vector2(44, 44) * press), Pal.SURFACE)
+
 func _on_hud_input(event: InputEvent) -> void:
 	var at := Vector2(-1, -1)
 	var down := false
@@ -578,36 +641,46 @@ func _on_hud_input(event: InputEvent) -> void:
 		_hud_down = which
 	elif which == _hud_down and which >= 0:
 		_hud_down = -1
-		if which == 1:
+		if bench != null:
+			if which == 1:
+				_chip_at[-1] = _clock
+				close_bench()
+		elif which == 1:
 			open_shop()
 		else:
 			_show_box()
 
 # --- the tray ---
 
+## The tray's tools: the paper's, or the bench's.
+func _tools() -> Array:
+	return BENCH_TOOLS if bench != null else TOOLS
+
 func _slot_mid(slot: int) -> Vector2:
 	@warning_ignore("integer_division")
 	var row := slot / ROW
-	var n: int = TOOLS[row].size()
+	var n: int = _tools()[row].size()
 	return Vector2(tray.size.x * ((slot % ROW) + 0.5) / n, 14.0 + ROW_H * row + 50.0)
 
 ## The tool in `slot`.
-static func tool_of(slot: int) -> String:
+func tool_of(slot: int) -> String:
 	@warning_ignore("integer_division")
-	return TOOLS[slot / ROW][slot % ROW]
+	return _tools()[slot / ROW][slot % ROW]
 
 ## Every slot, row by row.
-static func slots() -> Array:
+func slots() -> Array:
 	var out := []
-	for row in TOOLS.size():
-		for j in TOOLS[row].size():
+	var tools := _tools()
+	for row in tools.size():
+		for j in tools[row].size():
 			out.append(row * ROW + j)
 	return out
 
 ## The slot of tool `id`, or -1.
-static func slot_of(id: String) -> int:
-	for row in TOOLS.size():
-		var j: int = TOOLS[row].find(id)
+func slot_of(id: String) -> int:
+	var tools := _tools()
+	for row in tools.size():
+		var j: int = tools[row].find(id)
 		if j >= 0:
 			return row * ROW + j
 	return -1
@@ -617,8 +690,19 @@ static func tool_kind(id: String) -> int:
 	return int(Board.TOOL_KINDS.get(id, -1))
 
 func _tool_open(id: String) -> bool:
+	if id == "parts":
+		return sim.parts_open()
 	var kd := tool_kind(id)
 	return kd < 0 or sim.has(kd)
+
+## The level a shut tool comes at, as the tray and its sticker say it.
+func _open_at(id: String) -> int:
+	var kd := Sim.ADD if id == "parts" else tool_kind(id)
+	return int(Sim.UNLOCK.get(kd, 0)) + 1
+
+## Whether `id` is the tool in hand (Parts while copies are being set).
+func _holding(id: String) -> bool:
+	return board.tool == id or (id == "parts" and board.tool == "part")
 
 func _on_tray_input(event: InputEvent) -> void:
 	var at := Vector2(-1, -1)
@@ -635,7 +719,7 @@ func _on_tray_input(event: InputEvent) -> void:
 	else:
 		return
 	var row := clampi(int((at.y - 14.0) / ROW_H), 0, 1)
-	var n: int = TOOLS[row].size()
+	var n: int = _tools()[row].size()
 	var slot := row * ROW + clampi(int(at.x / (tray.size.x / n)), 0, n - 1)
 	if down:
 		if _slot_down < 0:
@@ -656,7 +740,16 @@ func press_slot(slot: int) -> void:
 	if not _tool_open(id):
 		_fx.cue("nope")
 		_feel(Haptics.WARN)
-		_rw.sticker(tr("TL_SAY_LOCKED") % (int(Sim.UNLOCK[tool_kind(id)]) + 1), _rw.at(tray, _slot_mid(slot) + Vector2(0, -90.0)), 34, 1.6, false, Color("fffaf0"), false, "nope", 20.0)
+		_rw.sticker(tr("TL_SAY_LOCKED") % _open_at(id), _rw.at(tray, _slot_mid(slot) + Vector2(0, -90.0)), 34, 1.6, false, Color("fffaf0"), false, "nope", 20.0)
+		return
+	if id == "parts":
+		if board.tool == "part":
+			board.set_tool("move")
+			_chip_at[0] = _clock
+			_fx.touch(0.94)
+			_feel(Haptics.TAP)
+			return
+		open_parts()
 		return
 	if board.tool == id and id != "move":
 		board.set_tool("move")
@@ -758,6 +851,8 @@ func _on_line_input(event: InputEvent) -> void:
 ## Straight lines on or off for the belt tool (the chip, or a harness).
 func toggle_straight() -> void:
 	sim.straight = not sim.straight
+	if bench != null:
+		bench.straight = sim.straight
 	_line_at = _clock
 	_fx.touch(1.06 if sim.straight else 0.94)
 	_feel(Haptics.TAP)
@@ -765,10 +860,10 @@ func toggle_straight() -> void:
 
 ## The last gesture taken back (the chip, or a harness).
 func undo() -> void:
-	if not sim.can_undo():
+	if not here().can_undo():
 		return
 	board.let_go()
-	sim.undo()
+	here().undo()
 	_undo_at = -10.0
 
 func _draw_tray() -> void:
@@ -781,7 +876,7 @@ func _draw_tray() -> void:
 	for slot: int in slots():
 		var id := tool_of(slot)
 		var at := _slot_mid(slot)
-		var on: bool = board.tool == id
+		var on: bool = _holding(id)
 		var sc := 1.0 if still else Motion.bump_scale(_clock - float(_chip_at.get(slot, -10.0)), 0.16, 0.22)
 		var open := _tool_open(id)
 		if on:
@@ -796,6 +891,8 @@ func _draw_tray() -> void:
 			Art.eraser_into(marks, at, 24.0 * sc)
 		elif id == "turn":
 			Art.glyph_into(marks, "turn", Rect2(at - Vector2.ONE * 24.0 * sc, Vector2.ONE * 48.0 * sc), Pal.TEXT_DIM)
+		elif id == "port":
+			Art.glyph_into(marks, "share", Rect2(at - Vector2.ONE * 24.0 * sc, Vector2.ONE * 48.0 * sc), Pal.TEXT_DIM)
 	_tray_live = b.mesh()
 	tray.draw_mesh(_tray_live, null)
 	_marks_live = marks.mesh() if not marks.verts.is_empty() else null
@@ -804,13 +901,13 @@ func _draw_tray() -> void:
 	for slot: int in slots():
 		var id := tool_of(slot)
 		var at := _slot_mid(slot)
-		var kd := tool_kind(id)
+		var kd := Sim.PART if id == "parts" else tool_kind(id)
 		if kd >= 0 and _tool_open(id):
 			var sc := 1.0 if still else Motion.bump_scale(_clock - float(_chip_at.get(slot, -10.0)), 0.16, 0.22)
 			tray.draw_mesh(Art.icon(kd), null, Transform2D(0.0, Vector2.ONE * 0.62 * sc, 0.0, at))
-		var cap := tr("TL_TOOL_" + id.to_upper()) if _tool_open(id) else tr("TL_LEVEL_SHORT") % (int(Sim.UNLOCK[kd]) + 1)
-		var w: float = tray.size.x / float((TOOLS[slot / ROW] as Array).size())
-		var col := Art.INK if board.tool == id else Color(Art.INK, 0.7)
+		var cap := tr("TL_TOOL_" + id.to_upper()) if _tool_open(id) else tr("TL_LEVEL_SHORT") % _open_at(id)
+		var w: float = tray.size.x / float((_tools()[slot / ROW] as Array).size())
+		var col := Art.INK if _holding(id) else Color(Art.INK, 0.7)
 		tray.draw_string(_font, Vector2(at.x - w * 0.5, at.y + 44.0 + 30.0), cap, HORIZONTAL_ALIGNMENT_CENTER, w, 22, col)
 
 # --- cards ---
@@ -823,7 +920,7 @@ func _show_piece(t: Vector2i) -> void:
 	board.let_go()
 	var card := Card.new()
 	card.name = "Card"
-	card.sim = sim
+	card.sim = here()
 	card.tile = t
 	card.closed.connect(func() -> void:
 		_fx.touch(0.94)
@@ -833,15 +930,16 @@ func _show_piece(t: Vector2i) -> void:
 	move_child(_rw, get_child_count() - 1)
 
 func _on_card(id: String, t: Vector2i) -> void:
+	var s := here()
 	match id:
 		"turn":
-			sim.mark()
-			sim.turn(t)
+			s.mark()
+			s.turn(t)
 		"lift":
-			sim.mark()
-			sim.remove(t)
+			s.mark()
+			s.remove(t)
 		"empty":
-			sim.empty_crate(t)
+			s.empty_crate(t)
 
 func _show_box() -> void:
 	if _busy():
@@ -875,9 +973,90 @@ func open_shop() -> void:
 	add_child(shop)
 	move_child(_rw, get_child_count() - 1)
 
+# --- parts ---
+
+func open_parts() -> void:
+	if _busy():
+		return
+	_chip_at[slot_of("parts")] = _clock
+	_fx.touch()
+	_feel(Haptics.TAP)
+	board.let_go()
+	var card := Parts.new()
+	card.name = "Parts"
+	card.sim = sim
+	card.closed.connect(func() -> void:
+		_fx.touch(0.94)
+		_fx.buzz(Haptics.TAP))
+	card.chose.connect(_on_parts)
+	add_child(card)
+	move_child(_rw, get_child_count() - 1)
+
+func _on_parts(what: String, id: int, sz: Vector2i) -> void:
+	match what:
+		"place":
+			board.part_id = id
+			board.set_tool("part")
+		"edit":
+			open_bench.call_deferred(id)
+		"new":
+			var made: int = sim.new_part(sz.x, sz.y)
+			_changed()
+			open_bench.call_deferred(made)
+		"drop":
+			sim.drop_part(id)
+			_fx.cue("lift", 0.9)
+			_feel(Haptics.TICK)
+			if board.part_id == id and board.tool == "part":
+				board.set_tool("move")
+			_save()
+
+## The bench out for part `id`: its grid framed in the middle of a blank
+## sheet, the tray's bench tools.
+func open_bench(id: int) -> void:
+	if bench != null or not sim.defs.has(id):
+		return
+	board.let_go()
+	bench = Sim.bench_for(sim.defs[id], sim.level)
+	bench.straight = sim.straight
+	bench_id = id
+	_paper_cam = board.cam
+	_paper_k = board.k
+	board.sim = bench
+	board.set_tool("move")
+	board.relay()
+	var fr: Rect2i = bench.frame
+	var fit := minf(board.view.size.x / (fr.size.x + 3.0), board.view.size.y / (fr.size.y + 3.0))
+	board.show_at(Vector2(fr.position) + Vector2(fr.size) * 0.5, minf(fit, Board.K_MOST))
+	_undo_at = -10.0
+	_fx.cue("place", 1.05)
+	_feel(Haptics.TAP)
+	Analytics.track("tally_bench", {"part": id, "copies": sim.copies_of(id)})
+
+## The bench put away: its grid written into the part and every copy.
+func close_bench() -> void:
+	if bench == null:
+		return
+	board.let_go()
+	var got: Array = bench.bench_read()
+	sim.set_part(bench_id, got[0], got[1])
+	bench = null
+	bench_id = -1
+	board.sim = sim
+	board.set_tool("move")
+	board.relay()
+	board.show_at(_paper_cam, _paper_k)
+	_undo_at = -10.0
+	_fx.cue("place", 0.95)
+	_feel(Haptics.GOOD)
+	_save()
+
 # --- chrome ---
 
 func _on_back() -> void:
+	if bench != null:
+		close_bench()
+		return
 	sim.save()
 	Analytics.track("tally_leave", {"seconds": int((Time.get_ticks_msec() - _opened_at) / 1000.0), "level": sim.level, "made": sim.made})
 	closed.emit()
@@ -889,10 +1068,13 @@ func go_back() -> void:
 	if settings_sheet.is_open():
 		settings_sheet.close()
 		return
-	for nm in ["Shop", "Card"]:
+	for nm in ["Shop", "Card", "Parts"]:
 		var sheet := get_node_or_null(nm)
 		if sheet != null and not sheet.is_queued_for_deletion():
 			sheet.closed.emit()
 			sheet.queue_free()
 			return
+	if bench != null:
+		close_bench()
+		return
 	_on_back()

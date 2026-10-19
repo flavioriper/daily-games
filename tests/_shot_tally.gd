@@ -336,15 +336,16 @@ func _process(delta: float) -> bool:
 				_check("a real tap on the chip takes the path back (%d belts)" % sim.lanes.size(), sim.lanes.size() == 0 and not sim.can_undo())
 				_trace(_route_points(_dig))
 				_check("traced again, the run is back (%d belts)" % sim.lanes.size(), sim.lanes.size() >= 2)
-				# Straight on again: a drag that wobbles a square off its row lays one straight run
+				# Straight on again: a drag along a row then off it lays one L,
+				# its corner where the finger left the row
 				_tap(_win(_s.line_chip, _s.line_chip.size * 0.5))
 				var w0 := _clear_row(sim, _dig + Vector2i(-6, -5))
 				var before: int = sim.lanes.size()
-				_trace([w0, w0 + Vector2i(2, 0), w0 + Vector2i(2, 1), w0 + Vector2i(4, 1)])
-				var straight_ok: bool = sim.straight and sim.lanes.size() - before == 5
-				for j in 5:
+				_trace([w0, w0 + Vector2i(4, 0), w0 + Vector2i(4, 1)])
+				var straight_ok: bool = sim.straight and sim.lanes.size() - before == 6
+				for j in 4:
 					straight_ok = straight_ok and sim.kind_at(w0 + Vector2i(j, 0)) == Sim.BELT and sim.face_at(w0 + Vector2i(j, 0)) == 0
-				_check("with Straight on, a wobbly drag lays one straight run (%d belts)" % (sim.lanes.size() - before), straight_ok and sim.kind_at(w0 + Vector2i(4, 1)) == Sim.EMPTY)
+				_check("with Straight on, a drag off the row lays one L (%d belts)" % (sim.lanes.size() - before), straight_ok and sim.face_at(w0 + Vector2i(4, 0)) == 1 and sim.kind_at(w0 + Vector2i(4, 1)) == Sim.BELT)
 				# a second stroke from the run's loose end turns it into the corner
 				_trace([w0 + Vector2i(4, 0), w0 + Vector2i(4, 3)])
 				_check("a stroke begun on the run's loose end makes the corner", sim.face_at(w0 + Vector2i(4, 0)) == 1 and sim.kind_at(w0 + Vector2i(4, 3)) == Sim.BELT)
