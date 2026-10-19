@@ -369,3 +369,12 @@ threadable take exactly those away. No tuning of the cut fixes that.
   `themeDay` does not have the steps until the user deploys the functions**.
   Unconfirmed: the user's eye, the counts, the green screen, Easy being the
   theme's second thing.
+
+## 2026-10-19: a pebble for every pin reached
+
+The user: "on yarn hoop, add a tap sound when a new dot is selected".
+`_step` cues `pick` (the pebble, 0.94-1.06 at random, the same as a
+press) whenever the thread goes on to a new pin, whether it lays a side
+(over the `stitch` pop) or walks along one already threaded (silent
+before). A quick drag over several pins in one frame plays it once
+(`CUE_GAP`). Unheard by the user.

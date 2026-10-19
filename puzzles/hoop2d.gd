@@ -1439,6 +1439,8 @@ func _step(v: int) -> void:
 	var was := _cur
 	_cur = v
 	_moved = true
+	# every new pin the thread reaches is a select, laid or walked along
+	fx.cue("pick", randf_range(0.94, 1.06))
 	if state.laid[s]:
 		return
 	_lay(s, was, v)
