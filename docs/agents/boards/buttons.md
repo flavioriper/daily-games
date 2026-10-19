@@ -1055,3 +1055,8 @@ and `PICK_CAP` 0: `_held_lag` is 0 for every jewel, on the picture and in
 the case, so the whole run lifts together; this takes back "The wave"
 (2026-10-11) for the pick only. The run still leaves one jewel after
 another. Board probe as before; not seen.
+
+**07:24, "slow it down 25%"**: the speed at three quarters, so the times
+at four thirds: `FLY_TIME` 0.1, `RUN_STEP` 0.04, `RUN_STEP_CAP` 0.8.
+Every other jewel of a run still ticks (`TICK_GAP` 0.075). Board probe as
+before; not seen.

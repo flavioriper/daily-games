@@ -100,9 +100,10 @@ const HELD_BOB_MAX := 48
 ## a stow of twenty keeps the step. Twice as fast since 2026-10-19 (the
 ## user: "increase speed of pieces move by 2x"): the flight, the step and
 ## the cap all halved (0.3, 0.12, 2.4), so the chain reads the same; then
-## "double speed again": 0.075, 0.03, 0.6.
-const RUN_STEP := 0.03
-const RUN_STEP_CAP := 0.6
+## "double speed again": 0.075, 0.03, 0.6; then "slow it down 25%": the
+## speed at three quarters, so 0.1, 0.04, 0.8.
+const RUN_STEP := 0.04
+const RUN_STEP_CAP := 0.8
 ## The case's own sliding along a place go one after another too, this
 ## far apart, the whole pack no longer than SLIDE_CAP (a pack on Insane
 ## can slide sixty places, and a place is not pickable until its jewel has
@@ -118,7 +119,7 @@ const SLIDE_CAP := 0.3
 ## says when a big pick may stand still.
 const PICK_STEP := 0.0
 const PICK_CAP := 0.0
-const FLY_TIME := 0.075
+const FLY_TIME := 0.1
 ## A button of the tin sliding along to the next place (State.SLIDE).
 const SLIDE_TIME := 0.18
 const FLY_ARC := 0.55
