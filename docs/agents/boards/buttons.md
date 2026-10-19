@@ -1067,3 +1067,28 @@ on easier difficulties should have the same shape of the empty slot").
 floor) in place of two discs; on the picture it is scaled 0.82 as before,
 a hair over the seat, and on the case `TIN_RING` is 0.955 so it is the
 hollow's size (0.824 was the old disc's). Seen on Easy `play`, one window.
+
+## The case as the reference's (2026-10-19, 07:33)
+
+The user: "check what is the proportion between the case box and the
+size of the board", then "make it match". Measured on their two play
+shots (705 x 1600): the board 91-92% of the screen's width; the case 87%,
+twelve places a row at a step of 7.2% of the width whatever the picture's
+square (27 px on a 24 board, 40 on a 16 board), rows as the places need
+(three for 36, four for 48), the panel hugging them (about 0 px at the
+sides, 10 above and below); the gap from board to case is what the
+centred picture leaves. Built: `TIN_ROW` 12, `TIN_WIDE` 0.87, the step
+`TIN_STEP_K` of `size.x` (58.7 px at 810; `_tin_step_max` still caps the
+tutorial's), `TIN_PAD_X` 2 and `TIN_PAD_Y` 10, rows `ceil(places / 12)`,
+a short last row centred as before. `TIN_ROWS`, `TIN_SMALL` and `TIN_PAD`
+are gone: there is no longer a row cap nor a longer-row-first search, so
+"a bigger tin has longer rows before it has more of them" (2026-10-13) is
+taken back. By band: Easy and Medium 20 places are 12 and 8; Hard 20-32
+two or three rows; Insane's 64 are six rows (five of twelve and four),
+about 23% of the screen's height, and the picture gives up the room (a
+48-square themed day is 11.7 px a square whole, zoomable as before). Seen
+on `opengl3_angle` at 810x1440: Easy `play` 96 draw calls peak, Insane
+`rest` on the Mac's 48-square themed pie 115. Board probe 26 days, the
+same two band-2 zoom failures. Mine: the six rows on Insane rather than a
+cap (the user was offered a cap of five rows or Insane keeping its 46 px
+places and said "make it match"); the pads.

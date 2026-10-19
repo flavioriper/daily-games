@@ -57,14 +57,18 @@ const PAD := 34.0
 const HUD_ROW := 76.0
 const GAP := 26.0
 const BORDER := 18.0
-const TIN_ROW := 10
-## A bigger tin has longer rows before it has more of them: the fewest rows
-## that keep a place at TIN_SMALL of what it is ten to a row, and TIN_ROWS
-## at the most (Insane's sixty-four are four rows of sixteen).
-const TIN_ROWS := 4
-const TIN_SMALL := 0.75
+## The case as the reference's (measured on the user's shots, 2026-10-19,
+## "make it match"): twelve places a row, a place TIN_STEP_K of the
+## screen's width whatever the picture's square, the panel TIN_WIDE of the
+## width, and as many rows as the places need (Insane's sixty-four are six
+## rows: the picture gives up the room). The panel hugs the places,
+## TIN_PAD_X at the sides and TIN_PAD_Y above and below.
+const TIN_ROW := 12
+const TIN_WIDE := 0.87
+const TIN_STEP_K := TIN_WIDE / TIN_ROW
 const TIN_STEP := 96.0
-const TIN_PAD := 18.0
+const TIN_PAD_X := 2.0
+const TIN_PAD_Y := 10.0
 const CELL_MAX := 84.0
 ## A button in the tin, as a share of a place: the size it had there before
 ## the cloth's buttons changed, twice smaller and then the gem tile (0.86 of
@@ -541,17 +545,11 @@ func _layout() -> void:
 		return
 	var top := _clear.x
 	var foot := size.y - _clear.y
-	var tin_wide := size.x - 2.0 * PAD - 2.0 * TIN_PAD
-	var full := minf(_tin_step_max, tin_wide / mini(TIN_ROW, _tin_places))
-	var tin_rows := 1
-	while true:
-		_tin_per = ceili(float(_tin_places) / tin_rows)
-		_tin_step = minf(full, tin_wide / _tin_per)
-		if _tin_step >= full * TIN_SMALL or tin_rows >= TIN_ROWS:
-			break
-		tin_rows += 1
+	_tin_step = minf(_tin_step_max, size.x * TIN_STEP_K)
+	_tin_per = mini(TIN_ROW, _tin_places)
+	var tin_rows := ceili(float(_tin_places) / _tin_per)
 	var per_row := _tin_per
-	var tin_size := Vector2(per_row * _tin_step + 2.0 * TIN_PAD, tin_rows * _tin_step + 2.0 * TIN_PAD)
+	var tin_size := Vector2(per_row * _tin_step + 2.0 * TIN_PAD_X, tin_rows * _tin_step + 2.0 * TIN_PAD_Y)
 	_tin_rect = Rect2(Vector2((size.x - tin_size.x) * 0.5, foot - tin_size.y - GAP * 0.5), tin_size)
 	var head := top if _won else top + HUD_ROW
 	var floor_y := foot if _won else _tin_rect.position.y - GAP
