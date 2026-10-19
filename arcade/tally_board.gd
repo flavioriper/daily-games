@@ -1685,9 +1685,11 @@ func _tap(p: Vector2) -> void:
 		"belt":
 			if kd == Sim.EMPTY and _has_draft():
 				# a tap elsewhere moves the draft there, as a machine's ghost goes
-				_move_draft(t)
-				_pill_at = _clock
-				touched.emit(1.0)
+				if _move_draft(t):
+					_pill_at = _clock
+					touched.emit(1.0)
+				else:
+					refused.emit("no_room", at, 0)
 			elif kd == Sim.EMPTY:
 				_set_draft([t], belt_face)
 			else:

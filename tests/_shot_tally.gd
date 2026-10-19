@@ -8,14 +8,18 @@ extends SceneTree
 ## touches: the Dig tool from the tray, a tap on the nearest 1 (its ghost
 ## and the builder pill come up: shot 2b) and a tap on the pill's Place (a
 ## dig stands there), the Belt tool and a path traced from beside the dig
-## to the box in one gesture, round the route's corner (the run is laid and
-## leads into the box), the undo chip pressed (the run is gone) and the path
-## traced again, 3 the first 1s riding, 4 level 1 done, 5 a grown paper
+## to the box in one gesture, round the route's corner (it stays a draft
+## with its pill, nothing laid; Turn four times brings it home, 2c the
+## draft; Place lays it and it leads into the box), the undo chip pressed
+## (the run is gone) and the path traced again, its draft dragged away and
+## back by a real drag and placed, 3 the first 1s riding, 4 level 1 done, 5 a grown paper
 ## close (digs, an adder, a multiplier, a divider, a crossing and a crate,
 ## every token sliding), 6 the same far after a real two-finger pinch out,
 ## 7 the adder's pill by a real tap with Look (shot 6b) and its card by a
 ## tap on Info, 8 the box's card by a real tap on the plate, 9 the upgrades,
-## one bought, 10 a refusal, then the tutorial: 11 its Dig page with the
+## one bought (8b the flow sheet by a real tap on the bars plate before
+## them), 10 the tray, one row docked to the foot with no shut tool, slid by
+## a real drag and its last slot tapped, then the tutorial: 11 its Dig page with the
 ## finger on the pill's Place, 12 its Machine page with the adder's ghost
 ## turned (and what each page's own paper ends with is checked). Prints the
 ## draw calls at each shot.

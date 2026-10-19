@@ -1848,6 +1848,8 @@ func _level_up() -> void:
 		_emit("unlock", {"reward": r})
 
 func step(dt: float) -> void:
+	# the flow counts from the paper's first tick, quiet seconds too
+	_flow_roll()
 	var left := dt
 	while left > 0.0:
 		var d := minf(left, STEP)

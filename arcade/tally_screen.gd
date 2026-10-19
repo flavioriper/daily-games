@@ -165,6 +165,8 @@ func _ready() -> void:
 	tutor = ScreenTutor.new(self, puzzle_id(), "Tally")
 	tutor.wire(top_bar, settings_sheet)
 	Ads.banner_changed.connect(func(_v: bool, _h: float) -> void: _apply_insets())
+	# the tray is laid by hand, so a new size lays it again
+	resized.connect(_apply_insets)
 	top_bar.enter(0.0)
 	top_bar.refresh(self)
 	_opened_at = Time.get_ticks_msec()
