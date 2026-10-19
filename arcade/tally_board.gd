@@ -527,7 +527,7 @@ func _build_tokens(under: bool) -> ArrayMesh:
 			continue
 		var t := Sim.tile_of(s % Sim.N)
 		if not _sees(t, r) or sim.op[s % Sim.N] != 0:
-			# one under a machine is drawn over it (_build_live)
+			# a machine covers the belts under it, tokens and all
 			continue
 		fb.append(ringed if int(sim.val[s]) == aim else plain, Transform2D(0.0, token_at(s)))
 	return fb.mesh()
@@ -641,14 +641,6 @@ func _build_live() -> ArrayMesh:
 			if u > 0.02:
 				var ar := U * (0.34 if kd == Sim.ADD else 0.31)
 				b.stroke(Face.Builder.arc_points(at, ar, -PI * 0.5, -PI * 0.5 + TAU * u), U * 0.05, Color(Art.CREAM, 0.85), false)
-	# the tokens on the belts under a machine, over it: what waits at its A
-	# and B, what it made riding out
-	var lod := 0 if k >= 100.0 else (1 if k >= 40.0 else 2)
-	var aim: int = sim.target()
-	for s: int in sim.lanes:
-		if sim.occ[s] == 0 or sim.op[s % Sim.N] == 0 or not _sees(Sim.tile_of(s % Sim.N), r):
-			continue
-		b.append(Art.token(int(sim.val[s]) == aim, lod), Transform2D(0.0, token_at(s)))
 	# the box: its bar, and a glow when a level is done
 	_live_box(b)
 	_live_rest(b, r)
@@ -871,7 +863,7 @@ func _draw_words() -> void:
 		if sim.occ[s] == 0:
 			continue
 		var t := Sim.tile_of(s % Sim.N)
-		if not _sees(t, r):
+		if not _sees(t, r) or sim.op[s % Sim.N] != 0:
 			continue
 		var txt := Sim.short(int(sim.val[s]))
 		var n := txt.length()

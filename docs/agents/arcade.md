@@ -4028,6 +4028,17 @@ asking; names are "Part n"; no tutorial page yet. Seen on `opengl3_angle`
 810x1440: bench 57, paper with a copy 66, the Parts card 134 draw calls.
 Probe 0 failed, `_shot_tally` headless 0 failed, suite 248522/0.
 
+#### Tally machines cover their tokens (2026-10-19, night)
+
+The user, a phone shot of four adders over a run of 1s and 2s: "tally still
+has a bug, numbers are showing above module". The machines' layer drew
+every token on a slot under a machine over it, discs and numerals. Now a
+machine covers the belts under it, tokens and all: `_build_tokens` skips
+them, `_build_live` no longer draws them, `_draw_words` writes no numeral
+for them. What waits at A and B and what rides out is seen only once it
+leaves the machine's squares (the card still names `m.a`/`m.b`). Probe 0
+failed, `_shot_tally` 0 failed headless; not seen on the phone.
+
 #### Tally machines on a layer of their own (2026-10-19, night)
 
 The user, a phone shot of mirrored adders beside a column of belts with
@@ -4066,8 +4077,8 @@ below (the templates' digs stand). Branch `feat/tally-machine-layer`.
   a crate, another machine's A or B, given one too). Saved: machines as
   their own rows after the paper's, `layers` true; VER unchanged.
 - **Drawn**: the belts' beds and chevrons under a machine are hidden by it;
-  every token on a slot under a machine is drawn over it in the live layer
-  (the 3 waiting at A, the 7 riding out); notches and spouts from
+  every token on a slot under a machine was drawn over it in the live layer
+  (the 3 waiting at A, the 7 riding out; hidden since, see above); notches and spouts from
   `Sim.ports` (the way belts ride in, the way an answer's belt leaves).
   Tokens no longer stop short of a machine's edge (`OP_STOP` gone).
 - The harness's grown paper and the tutorial's Machine page lay their lines
