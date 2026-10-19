@@ -1,18 +1,19 @@
 extends "res://core/puzzle_base.gd"
 
-## Button Box as a flat board: a sewing table laid with linen from edge to
-## edge (`"bleed": true` in ui/registry.gd), a little picture of cloth
-## patches on it, each the colour of the button it wants and joined with its
-## neighbours of that colour, with a button of the wrong colour on every one, and a
-## wooden tin at the foot. A move is two taps: the first picks a button and
-## every one of its colour touching it, and they lift and draw together;
-## the second says where they go -- a bare patch of their colour, where
-## they are sewn, or the tin. Nothing lands by itself (the user,
-## 2026-10-11). The rules are in puzzles/buttons_state.gd, which this only
-## draws.
+## Jewel Box as a flat board (Button Box until 2026-10-19, and the code
+## keeps its words: a button is a jewel, a patch a slot, the tin the case,
+## sewn is set): a cream page from edge to edge (`"bleed": true` in
+## ui/registry.gd), a picture of slots on it, each the colour of the jewel
+## it wants and joined with its neighbours of that colour, with a jewel of
+## the wrong colour on every one, and a white case at the foot. A move is
+## two taps: the first picks a jewel and every one of its colour touching
+## it, and they lift and draw together; the second says where they go -- a
+## bare slot of their colour, where they are set, or the case. Nothing
+## lands by itself (the user, 2026-10-11). The rules are in
+## puzzles/buttons_state.gd, which this only draws.
 ##
-## How it is drawn. `_bg` is the linen (a layout); `_still` the stitched
-## border and the patches; `_tin` the tin, rebuilt when it gains places.
+## How it is drawn. `_bg` is the page (a layout); `_still` the picture's
+## edge and the slots; `_tin` the case, rebuilt when it gains places.
 ## The buttons are unit meshes under transforms baked with Face.FlatBuilder:
 ## the ones at rest into a mesh a block of the cloth (`_blocks`, rebuilt
 ## only when a button of the block changes: Insane's picture is a thousand
@@ -27,7 +28,9 @@ extends "res://core/puzzle_base.gd"
 ##
 ## How it moves. The flat boards' vocabulary (core/motion.gd,
 ## docs/art/flat-motion.md) read as curves. This board's own: a run leaving
-## one button after another, each in an arc; a button settling into its
+## one jewel after another, each in an arc, far enough apart that each is
+## seen to go (the user, 2026-10-19: "pieces should move one after another
+## to make it more cozier"); a button settling into its
 ## socket as it lands (the drop's back ease, from a hair above) and, on its
 ## own colour, the square filling out from under it (the user, 2026-10-14:
 ## "the button slide in the slot and make it full when color is right"); a
@@ -89,9 +92,20 @@ const LOD_OUT := 42.0
 const HELD_BOB_MAX := 48
 
 # --- motion: what is this board's own ---
-## One button of a run leaves this long after the one before it.
-const RUN_STEP := 0.06
-const RUN_STEP_CAP := 0.9
+## One jewel of a run leaves this long after the one before it: with a
+## flight of FLY_TIME, two or three are in the air at once and each landing
+## is its own (0.06 and a cap of 0.9 s kept five up and read as a stream;
+## the user, 2026-10-19: "pieces should move one after another"). The cap
+## only squeezes the case's biggest stows (64 on Insane); a stretch set or
+## a stow of twenty keeps the step.
+const RUN_STEP := 0.12
+const RUN_STEP_CAP := 2.4
+## The case's own sliding along a place go one after another too, this
+## far apart, the whole pack no longer than SLIDE_CAP (a pack on Insane
+## can slide sixty places, and a place is not pickable until its jewel has
+## landed).
+const SLIDE_STEP := 0.02
+const SLIDE_CAP := 0.3
 ## A pick comes up as a wave out of the tapped button: each one this long
 ## after its neighbour nearer the tap, the farthest no later than the cap
 ## (the user, 2026-10-11: "start pushing them in sequence on linked ones
@@ -313,7 +327,7 @@ var _final_taps := 0
 var _final_left := 0
 
 func puzzle_id() -> String: return "buttons"
-func title() -> String: return "Button Box"
+func title() -> String: return "Jewel Box"
 
 func rules() -> String:
 	var out := tr("BB_RULES")
@@ -664,12 +678,12 @@ func _cell_under(at: Vector2) -> int:
 func _field_px() -> Rect2:
 	return Rect2(_grid, Vector2(state.w, state.h) * _cell)
 
-## The stitched border and a patch a square, each in its button's colour
-## with a socket: one mesh, and the patches of one colour join in it.
+## The picture's edge and a slot a square, each in its jewel's colour with
+## a seat: one mesh, and the slots of one colour join in it.
 func _build_still() -> ArrayMesh:
 	var b := Face.Builder.new()
 	var field := _field_px().grow(BORDER * 0.6)
-	Art.stitches(b, field, 22.0, Color(Pal.PLAQUE, 0.55))
+	Art.frame(b, field)
 	for i in state.slot.size():
 		if state.slot[i] >= 0:
 			Art.patch(b, cell_centre(i), _cell, Art.colour(state.colours[state.slot[i]]), _cell < Art.SMALL)
@@ -894,7 +908,8 @@ func _build_live(now: float) -> bool:
 		if loose:
 			rest.append(u.loose[c], Transform2D(0.0, sc, 0.0, at - Vector2(0.0, lift)))
 		if home and not settling:
-			var k := lerpf(Art.RIM * 2.0 + 0.04, 1.0, fill)
+			# the set gem grows from the loose one's width to its square
+			var k := lerpf(Art.RIM / Art.SET_RIM, 1.0, fill)
 			rest.append(u.sewn[c], Transform2D(0.0, sc * k, 0.0, at - Vector2(0.0, lift)))
 	_live_mesh = rest.mesh()
 	# all still: back to the blocks (the pick stays out while it is held)
@@ -1472,22 +1487,30 @@ func _play(res: Dictionary, at_cell: int, starts: Dictionary) -> void:
 	var step := minf(RUN_STEP, RUN_STEP_CAP / maxf(1.0, moves_.size()))
 	var fly := 0.0 if Motion.reduce else FLY_TIME
 	var order := 0
+	var slides := 0
+	var sliding := 0
+	for m: Array in moves_:
+		if int(m[0]) == State.SLIDE:
+			sliding += 1
+	var slide_step := minf(SLIDE_STEP, SLIDE_CAP / maxf(1.0, sliding))
 	var sewn := 0
 	var last := now
 	var tin_k := _tin_step * TIN_FIT / _cell
 	for m: Array in moves_:
 		var kind := int(m[0])
 		if kind == State.SLIDE:
-			# a button of the tin moved along a place: a short hop, all of
-			# them at once, with no tick of their own (one still picked hangs
-			# over its new place instead)
+			# a jewel of the case moved along a place: a short hop, one after
+			# another a slide_step apart, with no tick of their own (one
+			# still picked hangs over its new place instead)
 			if _held_places.has(int(m[2])):
 				continue
 			var hop := 0.0 if Motion.reduce else SLIDE_TIME
-			_flights.append({"c": int(m[3]), "time": hop, "at": now, "k0": tin_k, "k1": tin_k, "fc": false, "tc": false,
+			var from_ := now + (0.0 if Motion.reduce else slides * slide_step)
+			slides += 1
+			_flights.append({"c": int(m[3]), "time": hop, "at": from_, "k0": tin_k, "k1": tin_k, "fc": false, "tc": false,
 				"from": tin_centre(int(m[1])), "to": tin_centre(int(m[2]))})
-			_tin_arrive[int(m[2])] = now + hop
-			last = maxf(last, now + hop)
+			_tin_arrive[int(m[2])] = from_ + hop
+			last = maxf(last, from_ + hop)
 			continue
 		var at := now + (0.0 if Motion.reduce else order * step)
 		# `fc` and `tc`: the end is on the cloth (in the picture's own
@@ -1734,7 +1757,7 @@ func restore_completed_board() -> void:
 
 func share_glyphs() -> String:
 	var out: String = state.share_glyphs()
-	out += "\n🧵 %d" % _final_taps
+	out += "\n💎 %d" % _final_taps
 	if max_moves > 0:
 		out += " " + "⭐".repeat(mini(_final_left, 10))
 	return out

@@ -1044,13 +1044,15 @@ const PUZZLES := [
 	{
 		"id": "buttons",
 		"kind": "puzzle",
-		"title": "Button Box",
+		# Jewel Box since 2026-10-19 (Button Box before; the id and the
+		# BB_ keys stay, so a player's progress is kept)
+		"title": "Jewel Box",
 		"blurb": "BB_BLURB",
 		"short": "BB_SHORT",
 		"motto": "BB_MOTTO",
-		"footer": "Lift · Sew · Reveal",
-		# The sewing table is the whole screen (`bleed`, ui/flat/flat_host.gd):
-		# the picture and the tin lie on its linen, so there is no tray and no
+		"footer": "Lift · Set · Reveal",
+		# The page is the whole screen (`bleed`, ui/flat/flat_host.gd): the
+		# picture and the case lie on it, so there is no tray and no
 		# actions row, and Undo, the bulb and Reset ride up into the top bar.
 		# The board's own toast says what the tip card would.
 		"script": "res://puzzles/buttons2d.gd",

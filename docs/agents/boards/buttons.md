@@ -1,4 +1,10 @@
-# Button Box
+# Jewel Box (Button Box until 2026-10-19)
+
+The board is **Jewel Box** on screen since 2026-10-19 ("The jewel box" at
+the foot of this file); its id is still `buttons`, its keys `BB_`, its files
+`puzzles/buttons*.gd` and `ui/faces/button_art.gd`, and this file's older
+sections say button, patch, tin and sewn for jewel, slot, case and set.
+The code keeps those words too.
 
 - **Button Box is the thirty-seventh card** (2026-10-11, `puzzles/buttons2d.gd`,
   `puzzles/buttons_state.gd`, `ui/faces/button_art.gd`; no spec and no
@@ -942,3 +948,91 @@ takes back the 2026-10-12 call "the aim never helps a pick, only a place".
   button with an empty hand (not the 0.7 edge rule placing uses); 0.9 of
   a place for the tin; 0.6 of a square for the wander. **Not seen**: a
   finger on a phone.
+
+## The jewel box (2026-10-19)
+
+The user, with four phone shots of the mosaic game this board follows:
+"do some redesign on button box to be a jewel box and have a closer design
+board to this, also pieces should move one after another to make it more
+cozier". Built on their word with no questions (they were not at the
+keyboard); the calls that were mine are listed at the foot.
+
+- **The title is Jewel Box** (`ui/registry.gd`, `title()`, the footer
+  "Lift · Set · Reveal"), and every `BB_` and `HTP_BB_` line says jewel,
+  slot, case and set in en, pt (joia, encaixe, caixa, encaixar; a case
+  place is a lugar) and es (joya, casilla, caja, encajar; a case place is a
+  hueco). The id, the keys and the file names are as they were, so a
+  player's progress is kept. The code's words (button, patch, tin, sew)
+  are unchanged. `CLAUDE.md`'s two mentions and the vista's comment say
+  Jewel Box. pt and es are mine, unread.
+- **The gem is the reference's cut** (`Art.gem`, `facets`, `corners`): a
+  rounded square with a dark rim (`EDGE` 0.035 of the cell, 1.2 px at the
+  least) and the two diagonals cutting it into four facets, top lifted
+  0.26, left 0.07, right sunk 0.09, bottom 0.27 (`FACET`), a sliver of
+  gloss under the top edge. No holes. `corners(at, r, tip, n)` lays a
+  rounded square `n` points to a corner, odd so the corner's middle point
+  is on the diagonal: 5 for the fine look, 3 for a big picture seen whole
+  (`PLAIN`). The old bevel-to-flat-face gem, its holes and `FACE` as a face
+  are gone; `FACE` and `RISE` stay for the menu card's chevron seat and the
+  loose gem's base. `tile` is `corners` with 5 or 3.
+- **A set jewel is a gem too, grown to its square** (`Art.sewn` is
+  `gem(set)`: `SET_RIM` 0.47, so a seam of 0.06 of a square lies between
+  neighbours and the mosaic has its grid, as the reference's does; facets
+  at `SET_FACET` 0.72 of the contrast, no base, no shadow). This takes back
+  "a sewn button is its square in the colour, whole" (2026-10-11): with the
+  picture a mosaic of gems, a set jewel stays a jewel, and the picture
+  still reads from afar because the gems of one colour run together. Loose
+  is the gem at `RIM` 0.4 (0.8 across, the user's 80%) standing a hair
+  above a darker base on a soft shadow, with the slot's colour all round
+  it; so loose and set still differ by a shape (size, base, shadow,
+  seam), never a shade. The landing's fill grows the set gem from the
+  loose one's width (`RIM / SET_RIM`) to its square.
+- **The seat is the gem's footprint** (`Art.socket`, `SOCKET` 0.36): a
+  sunk rounded square, lip and floor as before (pale lip under
+  `SOCKET_DARK`), in place of the small tile ring, so an empty slot reads
+  as an empty seat the way the case's hollows do.
+- **The page, the edge and the case** (`Art.linen` is a flat cream
+  `PAGE` f5eee4, no weave; `Art.frame` a white panel with a soft shadow
+  round the picture's field, in place of the running stitch, so a cut-out
+  subject stands on white as the reference's win card has it; `Art.tin` a
+  white panel on a soft shadow with a rim of `CASE_RIM` and grey hollows
+  `HOLLOW` over `HOLLOW_FLOOR`, the reference's tray). `stitches` and the
+  linen colours are gone; the menu card lost its hem and stitched border
+  for the same page and edge.
+- **One after another** (`RUN_STEP` 0.12 s, was 0.06; `RUN_STEP_CAP` 2.4
+  s, was 0.9): with a flight of 0.3 s two or three jewels are in the air
+  at once and each landing is its own, where five up read as a stream. A
+  set of twenty keeps the step (2.4 s to the last landing); only Insane's
+  stows of up to 64 squeeze (0.0375 s apart). The case's slides along a
+  place go one after another too (`SLIDE_STEP` 0.02 s, the whole pack
+  within `SLIDE_CAP` 0.3 s: a pack on Insane can slide sixty places, and
+  a place is not pickable until its jewel has landed). The share line's
+  count is marked with a gem now, not a reel of thread. The tutorial's
+  lessons wait at least 1.88 s after a stow of four and 3.88 after the
+  five, over the 0.66 and 0.78 s the chains take, so none of its taps is
+  dropped. The pick's wave is
+  as it was. `tests/_win.gd`'s hand waits for `_last_land` before its next
+  pick: a tap on a jewel still in the air is dropped, and the chains are
+  long enough now to reach its next move.
+- **Read on `opengl3_angle`, 810x1440** (`tests/_shot_buttons.gd`):
+  Medium `play` (a 12-square bird, 70 jewels) peak 100 draw calls, the
+  second of two readings (106 before the gem); Insane `big` (the watering can, 559) 110 whole
+  at rest, 101 going close, 99 to 101 close, to the case and panned, 110
+  whole again (149 whole before the gem). Seen: the loose gems as the
+  reference's cut at 50 and 84 px, and as small faceted squares at 28 px
+  with the slot's colour round each; the set gems a calmer mosaic; the
+  empty seats on blue, yellow, sky and white; the white case with its grey
+  hollows; a stow of ten leaving one after another.
+- **Checked**: `tests/_probe_buttons.gd` 648 runs, 0 failures;
+  `tests/_probe_buttons_board.gd -- days=4` 26 days and the aim's 33
+  checks, 0 failures, and the zoom's two band-2 failures that predate
+  this (the probe still expects Hard not to zoom).
+- **Mine, not the user's**: the title's words and the three languages'
+  vocabulary; a set jewel staying a gem (the user asked for the flat colour
+  on 2026-10-11; the reference's finished picture is gems); the seam of
+  0.06; the facet lights; the white panel under the picture (the
+  reference's play board has a hairline and a shadow, its win card a
+  frame); 0.12 s as "one after another"; the slides' stagger. **Not
+  seen**: a phone; the win, the tutorial and the menu card after the
+  change; the sounds with the new spacing (every landing clears
+  `TICK_GAP` now, so a run of ten ticks ten times).

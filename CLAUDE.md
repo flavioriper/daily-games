@@ -91,7 +91,7 @@ that area**, and add new history there rather than here.
   code, comments, commits or on screen (Hidden Word, Word Trail,
   Bridges, Quilt, Paper Planes, Pinwheel, Caterpillar, Sunbeam, Knight,
   Hedgehogs, Marigold, Drumbeat, Trestle, Horse Pen, Firefly, Molehill,
-  Stackwood, Lucky Thirteen, Posy, Peapod, Nightlight, Beeline, Deckchair, Eddy, Furrow, Griddle, Trivet, Tally, Bagatelle, Gumdrop, Grove, How Big?, Golden Acorn, Pearl Dive, Lattice, Toy Boats, Penny Drop, Button Box, Toy Cannons, Yarn Hoop). The spec names the original once, to
+  Stackwood, Lucky Thirteen, Posy, Peapod, Nightlight, Beeline, Deckchair, Eddy, Furrow, Griddle, Trivet, Tally, Bagatelle, Gumdrop, Grove, How Big?, Golden Acorn, Pearl Dive, Lattice, Toy Boats, Penny Drop, Jewel Box, Toy Cannons, Yarn Hoop). The spec names the original once, to
   forbid it.
 - **A game's world fills the screen** (the user, 2026-10-10, of Eddy: "the
   screen should fit everything, just like the factory does, it's gonna be a
@@ -99,7 +99,7 @@ that area**, and add new history there rather than here.
   the top bar, plates and controls lie over it, as `factory/screen.gd` and
   `arcade/eddy_screen.gd` do. No paper page with the game in a frame. A
   daily board asks the flat host for it with `"bleed": true` in the
-  registry (Gumdrop, Button Box, Toy Cannons; `docs/agents/flat-screens.md`).
+  registry (Gumdrop, Jewel Box, Toy Cannons; `docs/agents/flat-screens.md`).
 - **A new board** is a `Registry.PUZZLES` entry; the suite's parse guard walks
   the registry. `godot --headless --check-only --script puzzles/<board>2d.gd`
   before a harness. Text goes through locale keys (`locale/ui.csv`,

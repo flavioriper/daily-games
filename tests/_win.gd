@@ -716,7 +716,9 @@ func _solve_buttons() -> void:
 		else:
 			_tap_local(_puzzle.tin_centre(mini(st.in_tin(), st.capacity() - 1)))
 		_hud_ok = _hud_ok and st.taps == before + 1
-		await create_timer(0.45).timeout
+		# a run leaves one jewel after another, and a tap on one still in
+		# the air is dropped: wait for the last to land
+		await create_timer(maxf(0.45, _puzzle._last_land - _puzzle._now() + 0.3)).timeout
 	_hud_ok = _hud_ok and st.is_solved() and st.in_tin() == 0
 	var wait := 0
 	while not _puzzle.is_done() and wait < 600:

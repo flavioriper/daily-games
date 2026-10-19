@@ -73,7 +73,7 @@ const CARDS := {
 	"pearl": ["beach", 1.6, Vector2(0.28, 0.60)],
 	# Lattice's slats stand in a garden: the meadow, by its cottages.
 	"lattice": ["meadow", 1.5, Vector2(0.42, 0.30)],
-	# Button Box is sewn indoors, by the cottages of the same meadow.
+	# Jewel Box is set indoors, by the cottages of the same meadow.
 	"buttons": ["meadow", 1.6, Vector2(0.58, 0.34)],
 	# Toy Cannons is played on a playroom floor, by the same cottages.
 	"train": ["meadow", 1.6, Vector2(0.50, 0.36)],
