@@ -5,9 +5,12 @@ extends Control
 ## **The paper is the whole screen**, edge to edge (the rule since
 ## 2026-10-10). Over it lie the flat boards' top bar, a plate row (the
 ## counting box's goal, and the upgrades with a dot when one can be bought)
-## and at the foot the tray: two rows of tools, Look, Belt, Dig, Rotate,
-## Remove and Parts, then the Crate and the five operators. A tool not handed over yet is a lock
-## with the level it comes at; the held tool pressed again is put down. The
+## and at the foot the tray: one row docked to the screen's bottom edge, the
+## tools handed over so far (Look, Belt, Dig, Rotate, Remove, Parts, the
+## Crate, the five operators, as they open), sliding sideways under a finger
+## when they outgrow the screen (the user, 2026-10-19: "a fixed bottom menu
+## with just 1 row, and scrollable to left. Only show unlocked ones"); the
+## held tool pressed again is put down. The
 ## board's hand (arcade/tally_board.gd) traces paths and drops ghosts with
 ## pills; after a path laid or a lift an **undo chip** (a round paper button
 ## at the tray's top-left corner) rests for UNDO_FOR seconds and takes that
@@ -59,7 +62,11 @@ const MARGIN := 40
 const GAP := 20
 const HUD_H := 120.0
 const ROW_H := 128.0
-const TRAY_H := ROW_H * 2.0 + 20.0
+const TRAY_H := ROW_H + 20.0
+## A slot's width once the tools outgrow the tray, and the room at its ends.
+const SLOT_W := 122.0
+const TRAY_PAD := 12.0
+const TRAY_SLOP := 14.0
 const SAVE_EVERY := 20.0
 const SAVE_AFTER := 4.0
 ## The box's tick for a target coming in, at most this often.
@@ -68,12 +75,11 @@ const HIT_GAP := 0.14
 const OP_GAP := 0.16
 ## The open shop catches up with the tally at most this often.
 const SHOP_EVERY := 0.25
-## The tray's two rows: the hands, the belt and the dig, then what is set
-## down on the paper after. A slot is row * ROW + its place in the row.
-const TOOLS := [["move", "belt", "dig", "turn", "remove", "parts"], ["crate", "add", "mul", "sub", "div", "pow"]]
+## The tray's tools in order: the hands, the belt and the dig, then what is
+## set down on the paper after. A slot is a place among those open.
+const TOOLS := ["move", "belt", "dig", "turn", "remove", "parts", "crate", "add", "mul", "sub", "div", "pow"]
 ## The tray on the bench.
-const BENCH_TOOLS := [["move", "belt", "turn", "remove", "port"], ["add", "mul", "sub", "div", "pow"]]
-const ROW := 8
+const BENCH_TOOLS := ["move", "belt", "turn", "remove", "port", "add", "mul", "sub", "div", "pow"]
 const HAPTICS := {}
 ## The undo chip: how long it rests, its disc's radius, how far it stands
 ## over the tray's top-left corner.
@@ -113,6 +119,15 @@ var _shop_at := -10.0
 var _chip_at := {}
 var _slot_down := -1
 var _slot_touch := -2
+## The tray slid this far left; where the finger went down on it, whether it
+## is sliding, and how fast it was going when let go.
+var _tray_x := 0.0
+var _tray_from := Vector2.ZERO
+var _tray_x0 := 0.0
+var _tray_slid := false
+var _tray_vel := 0.0
+var _tray_moved_at := 0
+var _tray_style: StyleBoxFlat
 var _hud_down := -1
 var _hud_live: ArrayMesh
 var _tray_live: ArrayMesh
@@ -211,18 +226,19 @@ func _build() -> void:
 	hud.draw.connect(_draw_hud)
 	hud.gui_input.connect(_on_hud_input)
 	col.add_child(hud)
-	var open := Control.new()
-	open.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	open.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	col.add_child(open)
 
+	# the tray is docked to the bottom edge, the full width, under the margins
 	tray = Control.new()
 	tray.name = "Tray"
-	tray.custom_minimum_size.y = TRAY_H
 	tray.mouse_filter = Control.MOUSE_FILTER_STOP
+	tray.clip_contents = true
 	tray.draw.connect(_draw_tray)
 	tray.gui_input.connect(_on_tray_input)
-	col.add_child(tray)
+	add_child(tray)
+	_tray_style = CozyTheme.lifted(Color("fcf7ef"), 36, 8)
+	_tray_style.corner_radius_bottom_left = 0
+	_tray_style.corner_radius_bottom_right = 0
+	_tray_style.shadow_offset = Vector2(0.0, -4.0)
 
 	undo_chip = Control.new()
 	undo_chip.name = "UndoChip"
@@ -261,10 +277,13 @@ func _lay_board() -> void:
 		return
 	var insets := SafeArea.insets(self)
 	var top := MARGIN + insets.x + FlatTopBar.HEIGHT + GAP + HUD_H + GAP
-	var foot := MARGIN + insets.y + TRAY_H + GAP
+	var foot := insets.y + TRAY_H + GAP
 	board.set_view(Rect2(0.0, top, size.x, maxf(60.0, size.y - top - foot)))
+	tray.position = Vector2(0.0, size.y - insets.y - TRAY_H)
+	tray.size = Vector2(size.x, TRAY_H + insets.y)
+	_tray_x = clampf(_tray_x, 0.0, _tray_most())
 	# the undo chip's disc stands on the tray's top-left corner
-	var corner := Vector2(MARGIN, size.y - MARGIN - insets.y - TRAY_H)
+	var corner := Vector2(MARGIN, size.y - insets.y - TRAY_H)
 	undo_chip.position = corner + Vector2(UNDO_R, 0.0) + UNDO_OVER - undo_chip.size * 0.5
 	# the Straight toggle on its top-right corner
 	var right := Vector2(size.x - MARGIN, corner.y)
@@ -346,6 +365,12 @@ func _process(delta: float) -> void:
 	if undo_chip.visible != chip_up:
 		undo_chip.visible = chip_up
 		_undo_down = false
+	if _slot_touch == -2 and absf(_tray_vel) > 1.0:
+		# the tray's fling runs down
+		_tray_x = clampf(_tray_x + _tray_vel * minf(delta, 0.05), 0.0, _tray_most())
+		_tray_vel *= exp(-6.0 * delta)
+		if _tray_x <= 0.0 or _tray_x >= _tray_most():
+			_tray_vel = 0.0
 	hud.queue_redraw()
 	tray.queue_redraw()
 	if chip_up:
@@ -493,13 +518,13 @@ func _on_unlock(r: int) -> void:
 		_rw.sticker(tr("TL_NEW_DIG") % -r, at, 44, 2.6, false, Color("fff4c2"), false, "unlock", 0.0, true)
 		return
 	_rw.sticker(tr("TL_NEW_PIECE") % tr("TL_PIECE_" + String(Sim.KIND_IDS[r]).to_upper()), at, 48, 2.6, true, Color.WHITE, true, "unlock", 0.0, true)
-	for row in TOOLS.size():
-		var j: int = TOOLS[row].find(String(Sim.KIND_IDS[r]))
-		if j >= 0:
-			var slot: int = row * ROW + j
-			_chip_at[slot] = _clock
-			_rw.ring(_rw.at(tray, _slot_mid(slot)), 90.0, Pal.SUN)
-			_rw.spray(_rw.at(tray, _slot_mid(slot)), Pal.SUN, 10, 380.0, "star", 0.9)
+	var slot := slot_of(String(Sim.KIND_IDS[r]))
+	if slot >= 0:
+		# the new tool slides into sight and hops
+		scroll_to(slot, true)
+		_chip_at[slot] = _clock
+		_rw.ring(_rw.at(tray, _slot_mid(slot)), 90.0, Pal.SUN)
+		_rw.spray(_rw.at(tray, _slot_mid(slot)), Pal.SUN, 10, 380.0, "star", 0.9)
 
 func _on_upgrade(id: String, level: int) -> void:
 	_fx.cue("buy", randf_range(0.97, 1.03))
@@ -661,38 +686,49 @@ func _on_hud_input(event: InputEvent) -> void:
 
 # --- the tray ---
 
-## The tray's tools: the paper's, or the bench's.
+## The tray's tools, the paper's or the bench's, those handed over only.
 func _tools() -> Array:
-	return BENCH_TOOLS if bench != null else TOOLS
+	return (BENCH_TOOLS if bench != null else TOOLS).filter(_tool_open)
+
+## A slot's width: the tray shared out while the tools fit, else SLOT_W.
+func _slot_w() -> float:
+	var n := maxi(1, _tools().size())
+	return maxf(SLOT_W, (tray.size.x - TRAY_PAD * 2.0) / n)
+
+## How far the tray can slide.
+func _tray_most() -> float:
+	if tray == null:
+		return 0.0
+	return maxf(0.0, TRAY_PAD * 2.0 + _tools().size() * _slot_w() - tray.size.x)
 
 func _slot_mid(slot: int) -> Vector2:
-	@warning_ignore("integer_division")
-	var row := slot / ROW
-	var n: int = _tools()[row].size()
-	return Vector2(tray.size.x * ((slot % ROW) + 0.5) / n, 14.0 + ROW_H * row + 50.0)
+	return Vector2(TRAY_PAD + _slot_w() * (slot + 0.5) - _tray_x, 14.0 + 50.0)
 
 ## The tool in `slot`.
 func tool_of(slot: int) -> String:
-	@warning_ignore("integer_division")
-	return _tools()[slot / ROW][slot % ROW]
+	return _tools()[slot]
 
-## Every slot, row by row.
+## Every slot shown, left to right.
 func slots() -> Array:
-	var out := []
-	var tools := _tools()
-	for row in tools.size():
-		for j in tools[row].size():
-			out.append(row * ROW + j)
-	return out
+	return range(_tools().size())
 
-## The slot of tool `id`, or -1.
+## The slot of tool `id`, or -1 while it is shut.
 func slot_of(id: String) -> int:
-	var tools := _tools()
-	for row in tools.size():
-		var j: int = tools[row].find(id)
-		if j >= 0:
-			return row * ROW + j
-	return -1
+	return _tools().find(id)
+
+## The tray slid so `slot` is wholly in sight.
+func scroll_to(slot: int, at_once := false) -> void:
+	var w := _slot_w()
+	var lo := TRAY_PAD + w * slot
+	var to := clampf(_tray_x, lo + w - tray.size.x + TRAY_PAD, lo - TRAY_PAD)
+	to = clampf(to, 0.0, _tray_most())
+	if at_once or Motion.reduce:
+		_tray_x = to
+		_tray_vel = 0.0
+	else:
+		_tray_vel = 0.0
+		var tw := create_tween()
+		tw.tween_property(self, "_tray_x", to, 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
 ## The kind a tool places, or -1 for Move and Remove.
 static func tool_kind(id: String) -> int:
@@ -704,7 +740,7 @@ func _tool_open(id: String) -> bool:
 	var kd := tool_kind(id)
 	return kd < 0 or sim.has(kd)
 
-## The level a shut tool comes at, as the tray and its sticker say it.
+## The level a shut tool comes at, as its sticker says it.
 func _open_at(id: String) -> int:
 	var kd := Sim.ADD if id == "parts" else tool_kind(id)
 	return int(Sim.UNLOCK.get(kd, 0)) + 1
@@ -713,10 +749,21 @@ func _open_at(id: String) -> int:
 func _holding(id: String) -> bool:
 	return board.tool == id or (id == "parts" and board.tool == "part")
 
+## A finger on the tray: a press and release on one slot picks it; a finger
+## that goes sideways past TRAY_SLOP slides the tray instead, with a fling.
 func _on_tray_input(event: InputEvent) -> void:
 	var at := Vector2(-1, -1)
-	var down := false
 	var id := -2
+	if event is InputEventScreenDrag:
+		var e := event as InputEventScreenDrag
+		if e.index == _slot_touch:
+			_tray_drag(e.position)
+		return
+	if event is InputEventMouseMotion:
+		if _slot_touch == -1:
+			_tray_drag((event as InputEventMouseMotion).position)
+		return
+	var down := false
 	if event is InputEventScreenTouch:
 		at = (event as InputEventScreenTouch).position
 		down = (event as InputEventScreenTouch).pressed
@@ -727,18 +774,43 @@ func _on_tray_input(event: InputEvent) -> void:
 		id = -1
 	else:
 		return
-	var row := clampi(int((at.y - 14.0) / ROW_H), 0, 1)
-	var n: int = _tools()[row].size()
-	var slot := row * ROW + clampi(int(at.x / (tray.size.x / n)), 0, n - 1)
+	var slot := _slot_at(at)
 	if down:
-		if _slot_down < 0:
+		if _slot_touch == -2:
 			_slot_down = slot
 			_slot_touch = id
-	elif id == _slot_touch and _slot_down >= 0:
+			_tray_from = at
+			_tray_x0 = _tray_x
+			_tray_slid = false
+			_tray_vel = 0.0
+			_tray_moved_at = Time.get_ticks_msec()
+	elif id == _slot_touch:
 		var was := _slot_down
 		_slot_down = -1
-		if was == slot:
+		_slot_touch = -2
+		if _tray_slid:
+			_tray_slid = false
+			if Time.get_ticks_msec() - _tray_moved_at > 90 or Motion.reduce:
+				_tray_vel = 0.0
+		elif was >= 0 and was == slot:
 			press_slot(slot)
+
+func _tray_drag(p: Vector2) -> void:
+	if not _tray_slid and absf(p.x - _tray_from.x) < TRAY_SLOP:
+		return
+	if not _tray_slid:
+		_tray_slid = true
+		_slot_down = -1
+	var was := _tray_x
+	_tray_x = clampf(_tray_x0 - (p.x - _tray_from.x), 0.0, _tray_most())
+	var now := Time.get_ticks_msec()
+	_tray_vel = lerpf(_tray_vel, (_tray_x - was) / maxf(0.008, (now - _tray_moved_at) / 1000.0), 0.5)
+	_tray_moved_at = now
+
+## The slot under `at` (the tray's pixels), or -1.
+func _slot_at(at: Vector2) -> int:
+	var j := int(floorf((at.x + _tray_x - TRAY_PAD) / _slot_w()))
+	return j if j >= 0 and j < _tools().size() else -1
 
 ## A press on the tray: picks the tool; the held tool pressed again is put
 ## down (Look). Nothing here turns anything (the user, 2026-10-15: a tap
@@ -767,7 +839,7 @@ func press_slot(slot: int) -> void:
 		_feel(Haptics.TAP)
 		return
 	board.set_tool(id)
-	_fx.touch(1.0 + 0.03 * (slot % ROW) + 0.1 * (slot / ROW))
+	_fx.touch(1.0 + 0.03 * slot)
 	_feel(Haptics.TAP)
 
 # --- the undo chip ---
@@ -878,7 +950,7 @@ func undo() -> void:
 func _draw_tray() -> void:
 	if tray.size.x <= 0.0:
 		return
-	tray.draw_style_box(CozyTheme.lifted(Color("fcf7ef"), 36, 8), Rect2(Vector2.ZERO, tray.size))
+	tray.draw_style_box(_tray_style, Rect2(Vector2(0.0, 0.0), tray.size + Vector2(0.0, 40.0)))
 	var still := Motion.reduce
 	var b := Face.Builder.new()
 	var marks := Face.Builder.new()
@@ -915,7 +987,7 @@ func _draw_tray() -> void:
 			var sc := 1.0 if still else Motion.bump_scale(_clock - float(_chip_at.get(slot, -10.0)), 0.16, 0.22)
 			tray.draw_mesh(Art.icon(kd), null, Transform2D(0.0, Vector2.ONE * 0.62 * sc, 0.0, at))
 		var cap := tr("TL_TOOL_" + id.to_upper()) if _tool_open(id) else tr("TL_LEVEL_SHORT") % _open_at(id)
-		var w: float = tray.size.x / float((_tools()[slot / ROW] as Array).size())
+		var w := _slot_w()
 		var col := Art.INK if _holding(id) else Color(Art.INK, 0.7)
 		tray.draw_string(_font, Vector2(at.x - w * 0.5, at.y + 44.0 + 30.0), cap, HORIZONTAL_ALIGNMENT_CENTER, w, 22, col)
 

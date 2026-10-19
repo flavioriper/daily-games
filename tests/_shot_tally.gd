@@ -502,12 +502,24 @@ func _process(delta: float) -> bool:
 				_next()
 		19:
 			if _t > _at + 0.4:
-				_tap_tray(_s.slot_of("pow"))
+				_close("Card")
+				# the tray is one row of the tools handed over; it slides under a real drag
+				_check("a shut tool is not in the tray", sim.has(Sim.POW) or _s.slot_of("pow") == -1)
+				_check("the tray is one row docked to the foot", _s.tray.size.x == _s.size.x and absf(_s.tray.get_global_rect().end.y - _s.size.y) < 1.0)
+				var most: float = _s._tray_most()
+				var y: float = _s._slot_mid(0).y
+				_touch(_win(_s.tray, Vector2(_s.tray.size.x - 60.0, y)), true)
+				for j in 8:
+					_drag_ev(_win(_s.tray, Vector2(_s.tray.size.x - 60.0 - (j + 1) * 80.0, y)))
+				_touch(_win(_s.tray, Vector2(_s.tray.size.x - 700.0, y)), false)
+				_check("a real drag slides the tray (%.0f of %.0f, %d tools, tray %.0f)" % [_s._tray_x, most, _s.slots().size(), _s.tray.size.x], most <= 0.0 or _s._tray_x > 0.0)
+				var last: int = _s.slots().size() - 1
+				_tap_tray(last)
+				_check("a real tap on the last slot, slid into sight, picks %s" % _s.tool_of(last), _s.board.tool == _s.tool_of(last))
 				_next()
 		20:
 			if _t > _at + 0.4:
-				_shot("10_say")
-				_close("Card")
+				_shot("10_tray")
 				_s.tutor.show()
 				_card = _s.get_node_or_null("HowToPlay")
 				_check("the tutorial card opens", _card != null)
