@@ -395,8 +395,14 @@ func bare_run(at: int) -> PackedInt32Array:
 	return out
 
 ## The run a tap on `i` picks: `i` and every button of its colour out of
-## place that touches it (`near`), nearest first. Empty for a bare
-## patch or a sewn button.
+## place that touches it (`near`), nearest first -- and the ones standing
+## on the same colour of patch as `i` before the rest (the user,
+## 2026-10-19: "if user click on the red in the blue slot, even tho all red
+## appears linked, when moving it should prioritize first all the red on
+## the blue slot before going to red on green"). `sew` and `stow` take the
+## run in this order, so a move that takes only part of it takes those
+## first, and what they bare is one colour. Empty for a bare patch or a
+## sewn button.
 func run_of(i: int) -> PackedInt32Array:
 	var out := PackedInt32Array()
 	if i < 0 or slot[i] < 0 or cur[i] < 0 or cur[i] == slot[i]:
@@ -413,7 +419,16 @@ func run_of(i: int) -> PackedInt32Array:
 			if j >= 0 and not seen.has(j) and cur[j] == c and slot[j] != c:
 				seen[j] = true
 				out.append(j)
-	return out
+	var under := slot[i]
+	var first := PackedInt32Array()
+	var rest := PackedInt32Array()
+	for j in out:
+		if slot[j] == under:
+			first.append(j)
+		else:
+			rest.append(j)
+	first.append_array(rest)
+	return first
 
 ## The places of the tin that hold colour `c`.
 func tin_of(c: int) -> PackedInt32Array:

@@ -1092,3 +1092,18 @@ on `opengl3_angle` at 810x1440: Easy `play` 96 draw calls peak, Insane
 same two band-2 zoom failures. Mine: the six rows on Insane rather than a
 cap (the user was offered a cap of five rows or Insane keeping its 46 px
 places and said "make it match"); the pads.
+
+## A pick goes by the slot it was tapped on (2026-10-19, 07:36)
+
+The user: "let's say the red took place of blue and green, and they are
+close to each other within the same red link. If user click on the red in
+the blue slot, even tho all red appears linked, when moving it should
+prioritize first all the red on the blue slot before going to red on
+green". `State.run_of(i)` still gathers the run nearest first, then puts
+the jewels standing on the same colour of slot as `i` ahead of the rest,
+each part in its nearness order. `sew` and `stow` take the run in that
+order, so a move that takes only part of it (a short stretch, a nearly
+full case) takes the ones on the tapped slot's colour first, and what
+they bare is one colour. The pick's lift and the hand's own `_tidy` are
+unchanged. Rules probe 648 runs and board probe 26 days, 0 failures but
+the two band-2 zoom failures; not seen on a screen.
