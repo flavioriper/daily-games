@@ -113,8 +113,11 @@ const SLIDE_CAP := 0.3
 ## after its neighbour nearer the tap, the farthest no later than the cap
 ## (the user, 2026-10-11: "start pushing them in sequence on linked ones
 ## like a wave").
-const PICK_STEP := 0.045
-const PICK_CAP := 0.5
+## Gone to 0 on 2026-10-19 (the user: "linked ones should select at once
+## instead of into a wave"): the whole run lifts together; PICK_CAP only
+## says when a big pick may stand still.
+const PICK_STEP := 0.0
+const PICK_CAP := 0.0
 const FLY_TIME := 0.075
 ## A button of the tin sliding along to the next place (State.SLIDE).
 const SLIDE_TIME := 0.18

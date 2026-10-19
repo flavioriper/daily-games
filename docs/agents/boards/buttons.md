@@ -1048,3 +1048,10 @@ two band-2 zoom failures; not seen.
 `RUN_STEP_CAP` 0.6, four times the first cut. A landing's tick is held to
 one in `TICK_GAP` 0.075 s, so from here only every other jewel of a run
 ticks. Board probe as before; not seen.
+
+**07:19, the pick lifts at once** (the user: "when I click on a color,
+linked ones should select at once instead of into a wave"). `PICK_STEP` 0
+and `PICK_CAP` 0: `_held_lag` is 0 for every jewel, on the picture and in
+the case, so the whole run lifts together; this takes back "The wave"
+(2026-10-11) for the pick only. The run still leaves one jewel after
+another. Board probe as before; not seen.
