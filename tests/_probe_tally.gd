@@ -6,8 +6,7 @@ extends SceneTree
 ## zero remainder is not put out, A^0 is 1 and a negative power 0; a dig on a
 ## belt to the box fills the belt at the belt's speed and no faster; a level
 ## counts only its target and hands over its reward; each operator takes A on
-## its back square, B on its other, and puts out of its answer square's
-## front alone; a belt hands to a side only where a path was begun on it (a
+## its A square and B on its B square, from any edge; a belt hands to a side only where a path was begun on it (a
 ## fork, taking turns), a line drawn onto another joins it and they take turns, a loose end holds its token at its middle; a crossing
 ## carries both lanes across; a path runs the way it was drawn and Flip
 ## turns its line round; a crate keeps one number; a
@@ -679,3 +678,31 @@ func _over_belts() -> void:
 	_check("off a number it cannot go", s5.why_not_template(dd, Vector2i(39, 60), 0) == "no_number")
 	s5.dep[Sim._i(Vector2i(40, 70))] = 2
 	_check("on one it goes, digging that number", not s5.stamp_template(dd, Vector2i(39, 69), 0).is_empty() and s5.digs.has(Sim._i(Vector2i(40, 70))) and s5.kind_at(Vector2i(43, 70)) == Sim.BELT)
+
+	# two adders stacked touching, a line under the top one's first answer
+	# square alone: the other answer square does not hand into the adder below
+	var s6 = _blank()
+	_dig1(s6, Vector2i(18, 30), 2)
+	_dig1(s6, Vector2i(18, 31), 3)
+	_run(s6, Vector2i(19, 30), Vector2i(30, 30), E)
+	_run(s6, Vector2i(19, 31), Vector2i(24, 31), E)
+	s6.place(Sim.ADD, Vector2i(25, 30), E)
+	s6.place(Sim.ADD, Vector2i(25, 32), E)
+	for n in 400:
+		s6.step(1.0 / 30.0)
+	var low: Dictionary = s6.machines[Sim._i(Vector2i(25, 32))]
+	_check("a stacked adder below is not fed by the bare answer square above", (low.a as Array).is_empty() and (low.b as Array).is_empty() and int(s6.machines[Sim._i(Vector2i(25, 30))].last) == 5)
+	# a belt under an answer square running into its own machine is as none
+	var s7 = _blank()
+	s7.place(Sim.SUB, Vector2i(25, 30), Nd)
+	s7.lay_path([Vector2i(25, 30), Vector2i(26, 30)], E)
+	_dig1(s7, Vector2i(26, 27), 7)
+	_run(s7, Vector2i(26, 28), Vector2i(26, 29), S)
+	_dig1(s7, Vector2i(25, 34), 2)
+	_run(s7, Vector2i(25, 33), Vector2i(25, 32), Nd)
+	_run(s7, Vector2i(24, 30), Vector2i(20, 30), Wd)
+	var sr := Sim._i(Vector2i(25, 30))
+	var fr: PackedInt32Array = s7.machines[sr].fronts
+	for n in 400:
+		s7.step(1.0 / 30.0)
+	_check("an answer square whose belt runs into its own machine hands out as before", not fr.has((sr << 2) | E) and not s7.lanes.has(sr) and int(s7.machines[sr].last) == 5)

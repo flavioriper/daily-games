@@ -4052,6 +4052,11 @@ extractor". Branch `feat/tally-machines-over-belts`; no concept tab.
   way on (`exit_dir` reads `under`); with nowhere to go it waits there and
   the machine stops when its two out places fill. An answer square with no
   belt under it hands out of any free edge as before, so older papers run.
+  **Per role** (`_rides_out`, after review): where any answer square has a
+  belt under it leading out, those alone give, so a bare answer square
+  beside them does not feed a machine stacked against it (the user's two
+  adders touching); a belt under an answer square running into its own
+  machine (a line laid across a multiplier's row) counts as none.
 - **Drawing over machines**: `can_lay` is true on an operator's squares;
   `lay_path` writes `under`. A path begun on an answer square is laid under
   it, so the line can turn on the very next square (the user's image 8); a
@@ -4070,7 +4075,7 @@ extractor". Branch `feat/tally-machines-over-belts`; no concept tab.
 - **Saved** as extra `[i, BELT, way, 0]` rows under a machine's square, laid
   before the machines on load; VER unchanged.
 - Machine cards' lines (`TL_PIECE_*_LINE`) say it in en, pt and es.
-- Measured: probe 0 failed (15 new checks, the turn check now over a belt), `_shot_tally` 0 failed headless
+- Measured: probe 0 failed (17 new checks, the turn check now over a belt), `_shot_tally` 0 failed headless
   and windowed `opengl3_angle` (the grown paper's adder is now set over two
   lines run into the box: 80 draw calls in `5b_close`), suite 248522/0.
 - **Mine, the user's to call**: operators only (digs, crates and the box are
@@ -4078,7 +4083,11 @@ extractor". Branch `feat/tally-machines-over-belts`; no concept tab.
   edge, not at the middle); the pick's Remove takes the belts under machines
   with them, a machine's Remove leaves them; a dig in a template must land on
   any number it can dig, not the same one; the ghost snaps two squares.
-  Phone unseen.
+  Phone unseen. Not done: a Remove-tool drag that lifts a machine can lift
+  the belts it uncovers in the same stroke; an answer drawn over its
+  machine ran windowed but was not caught in a shot; `_shot_tally`'s
+  corner-facing beat (level 1, no machines) failed once in five headless
+  runs, the belt-drag flake already noted.
 
 #### Tally picks, parts as templates, belts laid on release (2026-10-19, later)
 

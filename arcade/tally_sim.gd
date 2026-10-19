@@ -1440,24 +1440,36 @@ func _away_from(t: Vector2i) -> PackedInt32Array:
 				o.append((i << 2) | d)
 	return o
 
-## The ends a machine's squares of `want` hand out to. A square with a belt
-## under it puts out on that belt, at the square's middle (its own slot, the
-## user, 2026-10-19: "the result spawns within the result cells where there
-## is a convey to carry on"); one without hands out of any free edge (the
+## Whether answer square `qi` has a belt under it leading out of its
+## machine (not into its own squares): what is made there rides it.
+func _rides_out(qi: int) -> bool:
+	if int(under[qi]) == 0:
+		return false
+	var nx: Vector2i = tile_of(qi) + DIRS[int(under[qi]) - 1]
+	return not inside(nx) or int(root[_i(nx)]) != int(root[qi])
+
+## The ends a machine's squares of `want` hand out to. Where any of them has
+## a belt under it leading out, those put out on their belts alone, at the
+## square's middle (its own slot, the user, 2026-10-19: "the result spawns
+## within the result cells where there is a convey to carry on"), so nothing
+## beside them is fed. Where none has, they hand out of any free edge (the
 ## user, 2026-10-19: "out in any free face on result center"): into a
 ## machine's A or B beside it, a crate, the box, or a belt leading away as a
 ## dig's do (facing away, or a line's first belt along the edge), so a line
 ## only passing by is not fed.
 func _mouths(r: int, want: int) -> PackedInt32Array:
 	var o := PackedInt32Array()
-	for c: Array in footprint(int(kind[r]), tile_of(r), int(face[r])):
+	var fp := footprint(int(kind[r]), tile_of(r), int(face[r]))
+	for c: Array in fp:
+		var qi := _i(c[0])
+		if int(c[1]) == want and _rides_out(qi):
+			o.append((qi << 2) | (int(under[qi]) - 1))
+	if not o.is_empty():
+		return o
+	for c: Array in fp:
 		if int(c[1]) != want:
 			continue
 		var q: Vector2i = c[0]
-		var qi := _i(q)
-		if int(under[qi]) > 0:
-			o.append((qi << 2) | (int(under[qi]) - 1))
-			continue
 		for d in 4:
 			var u: Vector2i = q + DIRS[d]
 			if not inside(u) or int(root[_i(u)]) == r:
@@ -1511,7 +1523,7 @@ func _wire() -> void:
 					o.append(e)
 				lanes.append(s)
 				outs[s] = o
-		elif is_op(k) and int(under[i]) > 0 and (int(role[i]) == R_OUT or int(role[i]) == R_REM):
+		elif is_op(k) and (int(role[i]) == R_OUT or int(role[i]) == R_REM) and _rides_out(i):
 			# the belt under an answer square: what is made rides it out
 			var f := int(under[i]) - 1
 			var o := PackedInt32Array()
