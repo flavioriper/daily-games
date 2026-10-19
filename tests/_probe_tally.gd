@@ -14,7 +14,9 @@ extends SceneTree
 ## full output stops a machine; upgrades spend the tally and go faster; the
 ## ladder only climbs and never passes the top; the paper is printed the same
 ## from the same seed with 1s near the box and no 10; and a paper saved comes
-## back as it was.
+## back as it was. A machine stands over belts: they stay under it, its
+## answer rides out on the belt under its answer square, and a lift, a save
+## and a template keep them; a template takes its digs onto numbers.
 
 const Sim = preload("res://arcade/tally_sim.gd")
 
@@ -41,6 +43,7 @@ func _initialize() -> void:
 	_upgrades()
 	_kept()
 	_templates()
+	_over_belts()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(Sim.path))
 	print("%d failed" % _fails)
 	quit(1 if _fails > 0 else 0)
@@ -242,9 +245,7 @@ func _operators() -> void:
 	var s2 = _blank()
 	s2.place(Sim.MUL, Vector2i(10, 10), Nd)
 	_run(s2, Vector2i(10, 9), Vector2i(10, 9), Nd)
-	_check("a turn onto a belt is refused", not s2.turn(Vector2i(9, 10)) and s2.face_at(Vector2i(10, 10)) == Nd and s2.kind_at(Vector2i(10, 9)) == Sim.BELT)
-	s2.remove(Vector2i(10, 9))
-	_check("with room it turns about its answer square", s2.turn(Vector2i(11, 10)) and s2.kind_at(Vector2i(10, 9)) == Sim.MUL and s2.kind_at(Vector2i(9, 10)) == Sim.EMPTY)
+	_check("with room it turns about its answer square, over a belt, kept under it", s2.turn(Vector2i(11, 10)) and s2.kind_at(Vector2i(10, 9)) == Sim.MUL and int(s2.under[Sim._i(Vector2i(10, 9))]) == Nd + 1 and s2.kind_at(Vector2i(9, 10)) == Sim.EMPTY)
 	for kd: int in [Sim.ADD, Sim.DIV]:
 		var sq = _blank()
 		sq.place(kd, Vector2i(20, 20), Nd)
@@ -601,3 +602,80 @@ func _templates() -> void:
 	_check("a pick lifted whole", s.lift_all(pick) > 0 and s.machines.size() == 1 and s.kind_at(Vector2i(12, 12)) == Sim.EMPTY)
 	s.undo()
 	_check("and put back by undo", s.machines.size() == 2 and s.kind_at(Vector2i(12, 12)) == Sim.ADD)
+
+## A machine set over belts (the user, 2026-10-19: "it goes on top of the
+## convey"): the belts stay under it, A and B take what rides in, the answer
+## comes out at its square's middle and rides the belt under it on; a line
+## drawn from an answer square turns at once; a lift leaves the belts; the
+## belts under it are saved and copied with it; a dig goes in a template.
+func _over_belts() -> void:
+	var s = _blank()
+	_dig1(s, Vector2i(18, 30), 2)
+	_dig1(s, Vector2i(18, 31), 3)
+	_run(s, Vector2i(19, 30), Vector2i(30, 30), E)
+	_run(s, Vector2i(19, 31), Vector2i(30, 31), E)
+	_check("an adder set over two lines", s.place(Sim.ADD, Vector2i(25, 30), E))
+	var a := Sim._i(Vector2i(24, 30))
+	var o := Sim._i(Vector2i(25, 30))
+	var o2 := Sim._i(Vector2i(25, 31))
+	_check("the belts are kept under it", int(s.under[a]) == E + 1 and int(s.under[o]) == E + 1 and int(s.under[o2]) == E + 1)
+	_check("its answer squares are lanes it puts out on", s.lanes.has(o) and s.lanes.has(o2) and (s.machines[o].fronts as PackedInt32Array).size() == 2)
+	var seen := {}
+	var mid := true
+	for n in 400:
+		s.step(1.0 / 30.0)
+		for j in [o, o2]:
+			if s.occ[j] == 1 and s.prog[j] < 0.5:
+				mid = false
+		for x in range(26, 31):
+			for y in [30, 31]:
+				var j := Sim._i(Vector2i(x, y))
+				if s.occ[j] == 1:
+					seen[int(s.val[j])] = true
+	_check("2 + 3 rides out past it on both lines (%s)" % str(seen.keys()), seen.has(5) and seen.size() == 1)
+	_check("an answer comes out at its square's middle", mid)
+	Sim.path = "user://_probe_tally.cfg"
+	s.save()
+	var l = Sim.load_saved()
+	_check("saved and read with the belts under it", l.kind_at(Vector2i(25, 30)) == Sim.ADD and int(l.under[o]) == E + 1 and int(l.under[a]) == E + 1 and l.lanes.has(o2))
+	var pick := []
+	for y in range(30, 32):
+		for x in range(24, 27):
+			pick.append(Vector2i(x, y))
+	var d: Dictionary = s.template_of(pick)
+	var st: Array = s.stamp_template(d, Vector2i(24, 50), 0)
+	_check("a template carries the belts under its machine", not st.is_empty() and s.kind_at(Vector2i(25, 50)) == Sim.ADD and int(s.under[Sim._i(Vector2i(25, 50))]) == E + 1 and s.kind_at(Vector2i(26, 51)) == Sim.BELT)
+	s.mark()
+	s.remove(Vector2i(24, 30))
+	_check("a lift leaves the belts it stood on", s.kind_at(Vector2i(24, 30)) == Sim.BELT and s.kind_at(Vector2i(25, 31)) == Sim.BELT and s.face_at(Vector2i(25, 30)) == E)
+	s.undo()
+	_check("and undo sets it back over them", s.kind_at(Vector2i(25, 30)) == Sim.ADD and int(s.under[o]) == E + 1)
+	# a line drawn out of an answer square turns at once (the user, 2026-10-19:
+	# "right now user can't turn convey after a module")
+	var s3 = _blank()
+	s3.place(Sim.ADD, Vector2i(25, 30), E)
+	s3.lay_path([Vector2i(25, 30), Vector2i(26, 30), Vector2i(26, 31), Vector2i(26, 32)], S)
+	_check("a line begun on an answer square is laid under it and turns", int(s3.under[o]) == E + 1 and s3.face_at(Vector2i(26, 30)) == S and (s3.outs[o] as PackedInt32Array).size() == 1)
+	s3.lay_path([Vector2i(20, 31), Vector2i(21, 31), Vector2i(22, 31), Vector2i(23, 31), Vector2i(24, 31)], E)
+	var bi := Sim._i(Vector2i(23, 31))
+	_check("a line drawn into B ends at its middle, under it", int(s3.under[Sim._i(Vector2i(24, 31))]) == E + 1 and (s3.outs[bi] as PackedInt32Array).size() == 1 and ((s3.outs[bi] as PackedInt32Array)[0] >> 2) >= Sim.N2)
+	s3.lay_path([Vector2i(28, 31), Vector2i(27, 31), Vector2i(26, 31), Vector2i(25, 31)], Wd)
+	_check("a line ended on an answer square stops before it", int(s3.under[o2]) == 0)
+	# a dig in a template goes onto a number it can dig
+	var s5 = _blank()
+	s5.dep[Sim._i(Vector2i(40, 40))] = 1
+	s5.place(Sim.DIG, Vector2i(40, 40), E)
+	_run(s5, Vector2i(42, 40), Vector2i(44, 40), E)
+	var pk := []
+	for y in range(39, 42):
+		for x in range(39, 45):
+			pk.append(Vector2i(x, y))
+	var dd: Dictionary = s5.template_of(pk)
+	var digs := 0
+	for pc: Array in dd.pieces:
+		if int(pc[2]) == Sim.DIG:
+			digs += 1
+	_check("a template keeps the dig, once", digs == 1 and int(dd.w) == 6 and int(dd.h) == 3)
+	_check("off a number it cannot go", s5.why_not_template(dd, Vector2i(39, 60), 0) == "no_number")
+	s5.dep[Sim._i(Vector2i(40, 70))] = 2
+	_check("on one it goes, digging that number", not s5.stamp_template(dd, Vector2i(39, 69), 0).is_empty() and s5.digs.has(Sim._i(Vector2i(40, 70))) and s5.kind_at(Vector2i(43, 70)) == Sim.BELT)

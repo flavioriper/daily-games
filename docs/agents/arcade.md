@@ -4028,6 +4028,58 @@ asking; names are "Part n"; no tutorial page yet. Seen on `opengl3_angle`
 810x1440: bench 57, paper with a copy 66, the Parts card 134 draw calls.
 Probe 0 failed, `_shot_tally` headless 0 failed, suite 248522/0.
 
+#### Tally machines stand over belts; digs go in templates (2026-10-19, evening)
+
+The user, with phone shots of two adders fed by parallel lines: "right now
+user can't turn convey after a module ... it show a message that is already
+a component there or create a bridge ... the module should behave exactly
+like the bottom schema ... user has two parallel convey and place a sum, it
+goes on top of the convey (instead of behaving like something that attach
+to the convey), it keep what is in A and B stopped till the loading is done
+and the result spawns within the result cells where there is a convey to
+carry on ... Another fix is that duplicate schema should also include
+extractor". Branch `feat/tally-machines-over-belts`; no concept tab.
+
+- **An operator stands over belts** (`tally_sim.gd`): `under[i]` keeps the
+  belt (way + 1) of each square it is set on (`_stamp`; a crossing gives its
+  across lane). `remove` and `turn` leave the paper as it was under it
+  (`_vacate`: the belt comes back); a turn may now go over belts. The pick's
+  Remove (`lift_all`) wipes the region, belts under machines too.
+- **A and B take what rides in** from any edge, as before (the queue of 4,
+  the token waiting at the notch). **An answer square with a belt under it
+  is a lane** (`_wire`): `_mouths` gives its own slot, `_put` sets the
+  answer down at `prog` 0.5 (the square's middle) and it rides the belt's
+  way on (`exit_dir` reads `under`); with nowhere to go it waits there and
+  the machine stops when its two out places fill. An answer square with no
+  belt under it hands out of any free edge as before, so older papers run.
+- **Drawing over machines**: `can_lay` is true on an operator's squares;
+  `lay_path` writes `under`. A path begun on an answer square is laid under
+  it, so the line can turn on the very next square (the user's image 8); a
+  path begun on A or B still drops the machine's squares and is turned round
+  as before; one ended on A or B is laid to its middle under it; one ended
+  on an answer square stops before it.
+- **Drawn**: the belts under a machine are hidden by it; an answer riding
+  out over it is drawn in the live layer, above the machine; the spout is on
+  the side its belt leaves by (`_mark_out`).
+- **Templates take digs** (`TEMPLATE_KINDS` + DIG): `template_of` keeps the
+  dig once (its root; the rows were `is_op` only) and the belts under
+  machines as belt rows first; `template_blocked` says `no_number` or
+  `not_yet` where a dig would not stand on a number it can dig. The ghost
+  snaps (`_snap_template`, two squares about the finger) to where every dig
+  is on a diggable number; Duplicate looks out to 14 squares about the pick.
+- **Saved** as extra `[i, BELT, way, 0]` rows under a machine's square, laid
+  before the machines on load; VER unchanged.
+- Machine cards' lines (`TL_PIECE_*_LINE`) say it in en, pt and es.
+- Measured: probe 0 failed (15 new checks, the turn check now over a belt), `_shot_tally` 0 failed headless
+  and windowed `opengl3_angle` (the grown paper's adder is now set over two
+  lines run into the box: 80 draw calls in `5b_close`), suite 248522/0.
+- **Mine, the user's to call**: operators only (digs, crates and the box are
+  still pieces belts end at); A and B are not lanes (a token is taken at the
+  edge, not at the middle); the pick's Remove takes the belts under machines
+  with them, a machine's Remove leaves them; a dig in a template must land on
+  any number it can dig, not the same one; the ghost snaps two squares.
+  Phone unseen.
+
 #### Tally picks, parts as templates, belts laid on release (2026-10-19, later)
 
 The user: "On convey instead of showing a confirm dialog to place, just

@@ -17,10 +17,14 @@ extends RefCounted
 ##   and puts it on every belt leading away from its edge (and on a line's
 ##   first belt running along it), `dig_belts()` belts' worth;
 ## - the five **operators** cover two to four squares (`SHAPES`, after the
-##   reference's footprints): an A square and a B square that take from
-##   any edge, and answer squares that hand out of any free edge (the
-##   divider's remainder square too); 4 waiting a side and
-##   2 to go out. Every square of one carries its kind and facing; `root`
+##   reference's footprints) and stand *over* the belts (the user,
+##   2026-10-19: "it goes on top of the convey (instead of behaving like
+##   something that attach to the convey)"): a belt under a square is kept
+##   in `under` and comes back when the machine goes. An A square and a B
+##   square take from any edge; an answer square (the divider's remainder
+##   square too) puts what it makes on the belt under it, at its middle,
+##   to ride on the belt's way, or with no belt under it hands out of any
+##   free edge as before; 4 waiting a side and 2 to go out. Every square of one carries its kind and facing; `root`
 ##   names the square the machine is kept under (its first answer square)
 ##   and `role` what each square is;
 ## - a **crate** keeps up to CRATE_MAX of the first number it gets and lets
@@ -66,9 +70,10 @@ const KIND_IDS := {BELT: "belt", BRIDGE: "bridge", DIG: "dig", ADD: "add", MUL: 
 ## as belts); a crossing is had from the start.
 const UNLOCK := {BELT: 0, DIG: 0, ADD: 1, MUL: 7, SUB: 13, DIV: 16, POW: 19, CRATE: 22}
 
-## The kinds a picked piece may be copied or saved as a part with: a dig
-## belongs to its printed number and stays behind.
-const TEMPLATE_KINDS := [BELT, BRIDGE, ADD, MUL, SUB, DIV, POW, CRATE]
+## The kinds a picked piece may be copied or saved as a part with. A dig
+## goes too (the user, 2026-10-19: "duplicate schema should also include
+## extractor"): set down, it must stand on a printed number it can dig.
+const TEMPLATE_KINDS := [BELT, BRIDGE, DIG, ADD, MUL, SUB, DIV, POW, CRATE]
 
 ## What an operator's square is.
 enum { R_NONE, R_A, R_B, R_OUT, R_REM }
@@ -220,6 +225,8 @@ var fork := PackedByteArray()
 var root := PackedInt32Array()
 var role := PackedByteArray()
 var dep := PackedInt32Array()
+## The belt under an operator's square: its way + 1, 0 for none.
+var under := PackedByteArray()
 ## The parts: id -> {name, w, h, pieces: [[x, y, kind, face, face2, fork]]}
 ## from the template's corner (an operator by its root).
 var defs := {}
@@ -257,6 +264,7 @@ func _init(rng_seed := 0) -> void:
 	root.fill(-1)
 	role.resize(N)
 	dep.resize(N)
+	under.resize(N)
 	occ.resize(N2)
 	val.resize(N2)
 	prog.resize(N2)
@@ -621,8 +629,8 @@ func why_not(k: int, t: Vector2i, f := 0, mine := -1) -> String:
 		if here == BOX:
 			return "box"
 		if mine >= 0:
-			# a turn takes no belt: only its own squares and empty ones
-			if int(root[i]) != mine and here != EMPTY:
+			# a turn goes over belts (they stay under it), not other pieces
+			if int(root[i]) != mine and here != EMPTY and here != BELT and here != BRIDGE:
 				return "taken"
 			continue
 		if here != EMPTY and here != BELT and here != BRIDGE:
@@ -645,13 +653,17 @@ func place(k: int, t: Vector2i, f: int) -> bool:
 	_emit("place", {"kind": k, "tile": t})
 	return true
 
-## Piece `k` written on every square it covers, what stood there cleared.
+## Piece `k` written on every square it covers, what stood there cleared;
+## an operator keeps a belt it is set on under it (a crossing's across lane).
 func _stamp(k: int, t: Vector2i, f: int) -> void:
 	var r := _i(t) if SHAPES.has(k) else -1
 	for c: Array in footprint(k, t, f):
 		var i := _i(c[0])
 		_record(i)
 		_clear(i)
+		var here := int(kind[i])
+		under[i] = int(face[i]) + 1 if is_op(k) and (here == BELT or here == BRIDGE) else 0
+		fork[i] = 0
 		kind[i] = k
 		face[i] = f
 		root[i] = r
@@ -672,12 +684,36 @@ func root_of(t: Vector2i) -> Vector2i:
 	var r := int(root[_i(t)]) if inside(t) else -1
 	return tile_of(r) if r >= 0 else t
 
-## Whether a run of belt may go over `t`.
+## Whether a run of belt may go over `t`: under a machine too.
 func can_lay(t: Vector2i) -> bool:
 	if not inside(t):
 		return false
 	var k := int(kind[_i(t)])
-	return k == EMPTY or k == BELT or k == BRIDGE
+	return k == EMPTY or k == BELT or k == BRIDGE or is_op(k)
+
+## Whether `t` is a machine's A or B square / its answer or remainder square.
+func _intake(t: Vector2i) -> bool:
+	if not inside(t) or not is_op(int(kind[_i(t)])):
+		return false
+	var r := int(role[_i(t)])
+	return r == R_A or r == R_B
+
+func _outlet(t: Vector2i) -> bool:
+	return inside(t) and is_op(int(kind[_i(t)])) and not _intake(t)
+
+## The square `i` a machine (or anything) stood on left as the paper under
+## it: the belt kept under a machine, or nothing.
+func _vacate(i: int) -> void:
+	_clear(i)
+	if int(under[i]) > 0:
+		kind[i] = BELT
+		face[i] = int(under[i]) - 1
+	else:
+		kind[i] = EMPTY
+	under[i] = 0
+	fork[i] = 0
+	root[i] = -1
+	role[i] = R_NONE
 
 ## Lays belt over `tiles` (a straight run, in order) going `f`: a path whose
 ## every square faces `f`. Returns the squares laid or changed.
@@ -730,14 +766,17 @@ func trim_path(tiles: Array, f_last: int) -> Dictionary:
 		elif ts.size() > 1 and k0 == BELT and int(face[i0]) % 2 != f0 % 2:
 			# begun on a line across its way: the line forks there
 			forks = true
-		elif ts.size() > 1 and (not can_lay(ts[0]) or k0 == BRIDGE or (k0 == BELT and int(face[i0]) % 2 != f0 % 2)):
+		elif ts.size() > 1 and (not can_lay(ts[0]) or _intake(ts[0]) or k0 == BRIDGE or (k0 == BELT and int(face[i0]) % 2 != f0 % 2)):
+			# begun on a piece, or on a machine's A or B (a path begun on an
+			# answer square is laid under it, the way it goes out)
 			begun = ts[0]
 			var at := root_of(ts[0])
-			while ts.size() > 1 and inside(ts[0]) and (ts[0] == begun or (not can_lay(ts[0]) and (root_of(ts[0]) == at or (k0 == BOX and kind_at(ts[0]) == BOX)))):
+			while ts.size() > 1 and inside(ts[0]) and (ts[0] == begun or ((not can_lay(ts[0]) or _intake(ts[0])) and (root_of(ts[0]) == at or (k0 == BOX and kind_at(ts[0]) == BOX)))):
 				ts.pop_front()
 				fs.pop_front()
-	# ended on a piece: the square before faces into it
-	while ts.size() > 1 and not can_lay(ts[-1]):
+	# ended on a piece or a machine's answer square: the square before faces
+	# into it (one ended on an A or B square is laid to its middle, under it)
+	while ts.size() > 1 and (not can_lay(ts[-1]) or _outlet(ts[-1])):
 		ts.pop_back()
 		fs.pop_back()
 	if forks and ts.size() < 2:
@@ -883,6 +922,13 @@ func lay_path(tiles: Array, f_last: int) -> int:
 				face[i] = f
 			else:
 				face2[i] = f
+			_drop(i)
+		elif is_op(k):
+			# under the machine: an answer square puts out on it
+			if int(under[i]) == f + 1:
+				continue
+			_record(i)
+			under[i] = f + 1
 			_drop(i)
 		laid.append(t)
 		n += 1
@@ -1035,13 +1081,10 @@ func turn(t: Vector2i) -> bool:
 		if why != "":
 			_emit("refused", {"why": "no_room", "tile": at, "v": 0})
 			return false
-		for u: Vector2i in piece_squares(at):
+		for u: Vector2i in piece_squares(tile_of(r)):
 			var j := _i(u)
 			_record(j)
-			_clear(j)
-			kind[j] = EMPTY
-			root[j] = -1
-			role[j] = R_NONE
+			_vacate(j)
 		_stamp(k, at, f)
 		_wire()
 		_emit("turn", {"kind": k, "tile": at, "face": f})
@@ -1064,13 +1107,11 @@ func remove(t: Vector2i) -> bool:
 		return false
 	var at := root_of(t)
 	var f := int(face[_i(at)])
+	# a machine lifted leaves the belts it stood on
 	for u: Vector2i in piece_squares(t):
 		var j := _i(u)
 		_record(j)
-		_clear(j)
-		kind[j] = EMPTY
-		root[j] = -1
-		role[j] = R_NONE
+		_vacate(j)
 	_wire()
 	_emit("lift", {"kind": k, "tile": at, "face": f})
 	return true
@@ -1119,8 +1160,9 @@ func picked(tiles: Array) -> Array:
 				out.append(u)
 	return out
 
-## The picked squares as a template: {w, h, pieces} from their corner,
-## digs left behind; {} when nothing can be kept.
+## The picked squares as a template: {w, h, pieces} from their corner, the
+## belts first (those under machines too, so a machine set down keeps
+## them under it); {} when nothing can be kept.
 func template_of(tiles: Array) -> Dictionary:
 	var lo := Vector2i(W, H)
 	var hi := Vector2i(-1, -1)
@@ -1135,6 +1177,7 @@ func template_of(tiles: Array) -> Dictionary:
 	if keep.is_empty():
 		return {}
 	var pieces := []
+	var rest := []
 	for t: Vector2i in keep:
 		var i := _i(t)
 		var k := int(kind[i])
@@ -1143,8 +1186,12 @@ func template_of(tiles: Array) -> Dictionary:
 			pieces.append([at.x, at.y, k, int(face[i]), 0, int(fork[i])])
 		elif k == BRIDGE:
 			pieces.append([at.x, at.y, k, int(face[i]), int(face2[i]), 0])
-		elif not is_op(k) or int(root[i]) == i:
-			pieces.append([at.x, at.y, k, int(face[i]), 0, 0])
+		else:
+			if is_op(k) and int(under[i]) > 0:
+				pieces.append([at.x, at.y, BELT, int(under[i]) - 1, 0, 0])
+			if int(root[i]) < 0 or int(root[i]) == i:
+				rest.append([at.x, at.y, k, int(face[i]), 0, 0])
+	pieces.append_array(rest)
 	var sz := hi - lo + Vector2i.ONE
 	return {"w": sz.x, "h": sz.y, "pieces": pieces}
 
@@ -1155,7 +1202,7 @@ func template_squares(d: Dictionary, t: Vector2i, rot: int) -> Array:
 	for pc: Array in d.pieces:
 		var at := t + turned_at(int(pc[0]), int(pc[1]), int(d.w), int(d.h), rot)
 		var k := int(pc[2])
-		if is_op(k):
+		if SHAPES.has(k):
 			for c: Array in footprint(k, at, (int(pc[3]) + rot) % 4):
 				out.append([c[0], pc])
 		else:
@@ -1179,6 +1226,17 @@ func template_blocked(d: Dictionary, t: Vector2i, rot: int) -> Dictionary:
 			bad[u] = "taken"
 		elif is_op(k) and not has(k):
 			bad[u] = "locked"
+	# a dig stands on a printed number it can dig
+	for pc: Array in d.pieces:
+		if int(pc[2]) != DIG:
+			continue
+		var at := t + turned_at(int(pc[0]), int(pc[1]), int(d.w), int(d.h), rot)
+		if not inside(at):
+			continue
+		if dep[_i(at)] == 0:
+			bad[at] = "no_number"
+		elif not can_dig(dep[_i(at)]):
+			bad[at] = "not_yet"
 	return bad
 
 ## Why template `d` cannot be set down on `t` turned `rot`, or "".
@@ -1207,7 +1265,7 @@ func stamp_template(d: Dictionary, t: Vector2i, rot: int) -> Array:
 		var at := t + turned_at(int(pc[0]), int(pc[1]), int(d.w), int(d.h), rot)
 		var k := int(pc[2])
 		var f := (int(pc[3]) + rot) % 4
-		if is_op(k) or k == CRATE:
+		if SHAPES.has(k) or k == CRATE:
 			_stamp(k, at, f)
 			for c: Array in footprint(k, at, f):
 				tiles.append(c[0])
@@ -1230,6 +1288,7 @@ func stamp_template(d: Dictionary, t: Vector2i, rot: int) -> Array:
 ## wired once). Returns how many squares.
 func lift_all(tiles: Array) -> int:
 	var sq := picked(tiles)
+	# a region wiped: the belts under its machines go with them
 	for u: Vector2i in sq:
 		var j := _i(u)
 		_record(j)
@@ -1238,6 +1297,7 @@ func lift_all(tiles: Array) -> int:
 		fork[j] = 0
 		root[j] = -1
 		role[j] = R_NONE
+		under[j] = 0
 	if sq.is_empty():
 		return 0
 	_wire()
@@ -1278,7 +1338,7 @@ func mark() -> void:
 
 func _record(i: int) -> void:
 	if not _undo.has(i):
-		_undo[i] = [int(kind[i]), int(face[i]), int(face2[i]), int(root[i]), int(role[i]), int(fork[i])]
+		_undo[i] = [int(kind[i]), int(face[i]), int(face2[i]), int(root[i]), int(role[i]), int(fork[i]), int(under[i])]
 
 func can_undo() -> bool:
 	return not _undo.is_empty()
@@ -1296,6 +1356,7 @@ func undo() -> bool:
 		root[i] = int(was[3])
 		role[i] = int(was[4])
 		fork[i] = int(was[5])
+		under[i] = int(was[6])
 		n += 1
 	_undo = {}
 	_wire()
@@ -1379,8 +1440,11 @@ func _away_from(t: Vector2i) -> PackedInt32Array:
 				o.append((i << 2) | d)
 	return o
 
-## The ends a machine's squares of `want` hand out to, from any free edge
-## (the user, 2026-10-19: "out in any free face on result center"): into a
+## The ends a machine's squares of `want` hand out to. A square with a belt
+## under it puts out on that belt, at the square's middle (its own slot, the
+## user, 2026-10-19: "the result spawns within the result cells where there
+## is a convey to carry on"); one without hands out of any free edge (the
+## user, 2026-10-19: "out in any free face on result center"): into a
 ## machine's A or B beside it, a crate, the box, or a belt leading away as a
 ## dig's do (facing away, or a line's first belt along the edge), so a line
 ## only passing by is not fed.
@@ -1390,6 +1454,10 @@ func _mouths(r: int, want: int) -> PackedInt32Array:
 		if int(c[1]) != want:
 			continue
 		var q: Vector2i = c[0]
+		var qi := _i(q)
+		if int(under[qi]) > 0:
+			o.append((qi << 2) | (int(under[qi]) - 1))
+			continue
 		for d in 4:
 			var u: Vector2i = q + DIRS[d]
 			if not inside(u) or int(root[_i(u)]) == r:
@@ -1443,6 +1511,20 @@ func _wire() -> void:
 					o.append(e)
 				lanes.append(s)
 				outs[s] = o
+		elif is_op(k) and int(under[i]) > 0 and (int(role[i]) == R_OUT or int(role[i]) == R_REM):
+			# the belt under an answer square: what is made rides it out
+			var f := int(under[i]) - 1
+			var o := PackedInt32Array()
+			var e := _end_into(t + DIRS[f], f)
+			if e >= 0:
+				o.append(e)
+			lanes.append(i)
+			outs[i] = o
+			if int(root[i]) == i:
+				if not machines.has(i):
+					machines[i] = _machine()
+				machines[i].fronts = _mouths(i, R_OUT)
+				machines[i].rems = _mouths(i, R_REM)
 		else:
 			occ[i] = 0
 			occ[i + N] = 0
@@ -1457,7 +1539,7 @@ func _wire() -> void:
 				crates[i].outs = _away_from(t)
 			elif is_op(k) and int(root[i]) == i:
 				if not machines.has(i):
-					machines[i] = {"a": [], "b": [], "out": [], "rem": [], "busy": false, "t": 0.0, "x": 0, "y": 0, "last": 0, "has_last": false, "a_since": -1.0, "b_since": -1.0, "rr": 0, "rr_rem": 0}
+					machines[i] = _machine()
 				machines[i].fronts = _mouths(i, R_OUT)
 				machines[i].rems = _mouths(i, R_REM)
 		if k != BRIDGE:
@@ -1470,6 +1552,9 @@ func _wire() -> void:
 			_feed(e >> 2, s)
 		if to_d[s] != NONE and int(to_d[s]) >= (outs[s] as PackedInt32Array).size():
 			to_d[s] = NONE
+
+func _machine() -> Dictionary:
+	return {"a": [], "b": [], "out": [], "rem": [], "busy": false, "t": 0.0, "x": 0, "y": 0, "last": 0, "has_last": false, "a_since": -1.0, "b_since": -1.0, "rr": 0, "rr_rem": 0}
 
 # --- tokens moving ---
 
@@ -1495,7 +1580,8 @@ func _put(e: int, v: int, over: float) -> void:
 	if id < N2:
 		occ[id] = 1
 		val[id] = v
-		prog[id] = clampf(over, 0.0, 0.95)
+		# made on an answer square: it comes out at the square's middle
+		prog[id] = 0.5 if id < N and is_op(int(kind[id])) else clampf(over, 0.0, 0.95)
 		from_d[id] = e & 3
 		to_d[id] = NONE
 		return
@@ -1762,6 +1848,8 @@ func exit_dir(s: int) -> int:
 	if to_d[s] != NONE and int(to_d[s]) < o.size():
 		return o[int(to_d[s])] & 3
 	var i := s % N
+	if s < N and is_op(int(kind[i])):
+		return maxi(int(under[i]) - 1, 0)
 	return int(face2[i]) if s >= N else int(face[i])
 
 ## The numbers the box has had, most first, with the current target first.
@@ -1820,6 +1908,9 @@ func save() -> void:
 		var k := int(kind[i])
 		if k != EMPTY and k != BOX and (int(root[i]) < 0 or int(root[i]) == i):
 			pieces.append_array([i, k, int(face[i]), int(face2[i])])
+		if is_op(k) and int(under[i]) > 0:
+			# the belt under a machine's square, laid before the machine on load
+			pieces.append_array([i, BELT, int(under[i]) - 1, 0])
 	var keys := PackedInt64Array()
 	var counts := PackedInt64Array()
 	for v: int in ledger:
@@ -1865,7 +1956,14 @@ static func load_saved(rng_seed := 0) -> RefCounted:
 	# crates are not read
 	var fresh := int(cfg.get_value("paper", "ver", 1)) >= VER
 	var pieces: PackedInt32Array = cfg.get_value("paper", "pieces", PackedInt32Array()) if fresh else PackedInt32Array()
+	# belts first, so a machine set on them keeps them under it
+	var order := []
+	var rest := []
 	for j in range(0, pieces.size() - 3, 4):
+		var k := pieces[j + 1]
+		(order if k == BELT or k == BRIDGE or k == SPLIT or k == JOIN else rest).append(j)
+	order.append_array(rest)
+	for j: int in order:
 		var i := pieces[j]
 		var k := pieces[j + 1]
 		if i < 0 or i >= N or k <= EMPTY or k == BOX or k > JOIN:

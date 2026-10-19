@@ -448,7 +448,10 @@ func _mark_out(r: int, e: int) -> void:
 	var id := e >> 2
 	var d := e & 3
 	var to: Vector2i
-	if id < Sim.N2:
+	if id < Sim.N and int(sim.root[id]) == r:
+		# onto the belt under its own answer square: the spout on that square
+		to = Sim.tile_of(id) + Sim.DIRS[d]
+	elif id < Sim.N2:
 		to = Sim.tile_of(id % Sim.N)
 	else:
 		var q := (id - Sim.N2) & 3
@@ -579,7 +582,8 @@ func _build_tokens(under: bool) -> ArrayMesh:
 		if (s >= Sim.N) != under or sim.occ[s] == 0:
 			continue
 		var t := Sim.tile_of(s % Sim.N)
-		if not _sees(t, r):
+		if not _sees(t, r) or Sim.is_op(int(sim.kind[s % Sim.N])):
+			# one made on an answer square is drawn over the machine (_build_live)
 			continue
 		fb.append(ringed if int(sim.val[s]) == aim else plain, Transform2D(0.0, token_at(s)))
 	return fb.mesh()
@@ -697,6 +701,13 @@ func _build_live() -> ArrayMesh:
 			if u > 0.02:
 				var ar := U * (0.34 if kd == Sim.ADD else 0.31)
 				b.stroke(Face.Builder.arc_points(at, ar, -PI * 0.5, -PI * 0.5 + TAU * u), U * 0.05, Color(Art.CREAM, 0.85), false)
+	# what a machine made, riding out over it on the belt under its answer square
+	var lod := 0 if k >= 100.0 else (1 if k >= 40.0 else 2)
+	var aim: int = sim.target()
+	for s: int in sim.lanes:
+		if s >= Sim.N or sim.occ[s] == 0 or not Sim.is_op(int(sim.kind[s])) or not _sees(Sim.tile_of(s), r):
+			continue
+		b.append(Art.token(int(sim.val[s]) == aim, lod), Transform2D(0.0, token_at(s)))
 	# the box: its bar, and a glow when a level is done
 	_live_box(b)
 	_live_rest(b, r)
@@ -856,6 +867,8 @@ func _template_into(b: Face.Builder) -> void:
 		var f := (int(pc[3]) + rot) % 4
 		if Sim.is_op(kd):
 			b.append(Art.machine(kd, f), Transform2D(0.0, Vector2.ONE * 0.96, 0.0, _about(kd, at, f, Art.mid(at), 0.0)), Color(1, 1, 1, 0.7))
+		elif kd == Sim.DIG:
+			b.append(Art.dig(), Transform2D(0.0, Vector2.ONE * 0.96, 0.0, Art.mid(at)), Color(1, 1, 1, 0.7))
 		elif kd == Sim.CRATE:
 			b.append(Art.crate(), Transform2D(0.0, Art.mid(at)), Color(1, 1, 1, 0.7))
 		else:
@@ -1102,7 +1115,8 @@ func _set_ghost(kd: int, t: Vector2i, f: int) -> void:
 ## A template's ghost with its corner on `t`, turned `rot`, and the builder
 ## pill; `once`: it goes after one Place (Duplicate), else the hand keeps
 ## the template for the next tap.
-func _set_template(d: Dictionary, t: Vector2i, rot: int, once := false) -> void:
+func _set_template(d: Dictionary, t0: Vector2i, rot: int, once := false) -> void:
+	var t := _snap_template(d, t0, rot, 2)
 	var fresh := _ghost.is_empty() or Vector2i(_ghost.tile) != t
 	_ghost = {"kind": Sim.PART, "tile": t, "face": rot, "tpl": d, "once": once}
 	_pill = {"kind": "build", "tile": _template_mid(), "buttons": ["turn", "place", "cancel"]}
@@ -1121,10 +1135,39 @@ func _template_mid() -> Vector2i:
 	var sz := Sim.turned_size(int(_ghost.tpl.w), int(_ghost.tpl.h), int(_ghost.face))
 	return Vector2i(_ghost.tile) + Vector2i(sz.x >> 1, sz.y - 1)
 
-## The template ghost's corner moved to `t`.
+## The template ghost's corner moved to `t`: with a dig in it, onto the
+## nearest corner within two squares where its digs stand on numbers.
 func _move_template(t: Vector2i) -> void:
-	_ghost.tile = t
+	_ghost.tile = _snap_template(_ghost.tpl, t, int(_ghost.face), 2)
 	_pill.tile = _template_mid()
+
+## Where template `d` near `t` turned `rot` has every dig on a number it can
+## dig, looking `reach` squares about `t` (nearest first); `t` with none.
+func _snap_template(d: Dictionary, t: Vector2i, rot: int, reach: int) -> Vector2i:
+	var digs := []
+	for pc: Array in d.pieces:
+		if int(pc[2]) == Sim.DIG:
+			digs.append(Sim.turned_at(int(pc[0]), int(pc[1]), int(d.w), int(d.h), rot))
+	if digs.is_empty():
+		return t
+	var best := t
+	var far := 1 << 30
+	for dy in range(-reach, reach + 1):
+		for dx in range(-reach, reach + 1):
+			var c := t + Vector2i(dx, dy)
+			var n := dx * dx + dy * dy
+			if n >= far:
+				continue
+			var ok := true
+			for at: Vector2i in digs:
+				var v: int = sim.dep_at(c + at) if Sim.inside(c + at) else 0
+				if v == 0 or not sim.can_dig(v):
+					ok = false
+					break
+			if ok:
+				best = c
+				far = n
+	return best
 
 func _close_pill() -> void:
 	_pill = {}
@@ -1203,6 +1246,12 @@ func _beside_pick(d: Dictionary) -> Vector2i:
 	for t: Vector2i in tries:
 		if sim.why_not_template(d, t, 0) == "":
 			return t
+	# with a dig in it: the nearest place about those where it can go
+	for reach in [4, 8, 14]:
+		for t: Vector2i in tries:
+			var c := _snap_template(d, t, 0, reach)
+			if sim.why_not_template(d, c, 0) == "":
+				return c
 	return tries[0]
 
 ## A pill button let go on: what it does.

@@ -240,15 +240,14 @@ func _grow(sim) -> void:
 				tiles.append(at)
 		var f: int = Sim.DIRS.find((tiles[-1] as Vector2i) - (tiles[-2] as Vector2i)) if tiles.size() > 1 else 0
 		sim.lay_path(tiles, f)
-	# an adder west of the box facing east: 3 and 4 round into its back, 7 out of both answer squares
+	# an adder west of the box facing east, set over two lines run into the
+	# box: 3 and 4 into its A and B, 7 out on the belts under both answer squares
 	var m := b + Vector2i(-4, 1)
-	sim.place(Sim.ADD, m, 0)
 	put.call(b + Vector2i(-10, -2), 3)
 	put.call(b + Vector2i(-10, 5), 4)
-	route.call([b + Vector2i(-8, -2), b + Vector2i(-7, -2), b + Vector2i(-7, 1), b + Vector2i(-6, 1)])
-	route.call([b + Vector2i(-8, 5), b + Vector2i(-7, 5), b + Vector2i(-7, 2), b + Vector2i(-6, 2)])
-	route.call([b + Vector2i(-3, 1), b + Vector2i(-1, 1)])
-	route.call([b + Vector2i(-3, 2), b + Vector2i(-1, 2)])
+	route.call([b + Vector2i(-8, -2), b + Vector2i(-7, -2), b + Vector2i(-7, 1), b + Vector2i(-1, 1)])
+	route.call([b + Vector2i(-8, 5), b + Vector2i(-7, 5), b + Vector2i(-7, 2), b + Vector2i(-1, 2)])
+	sim.place(Sim.ADD, m, 0)
 	# a multiplier north of the box facing south: 6 and 5 down into it, 30 down into the box
 	var x := b + Vector2i(2, -4)
 	sim.place(Sim.MUL, x, 1)
@@ -420,6 +419,9 @@ func _process(delta: float) -> bool:
 				sim.step(4.0)
 				_check("the subtractor fed on A alone is starving on B", sim.starving(Sim._i(Sim.HUB_AT + Vector2i(8, 10))) == 1)
 				_check("the grown paper's machines all stand (%s)" % str(sim.machines.keys().map(func(i: int) -> String: return Sim.KIND_IDS[int(sim.kind[i])])), sim.machines.size() == 4)
+				# an adder takes a few seconds a sum at its first rank: one more made and on its way
+				sim.step(2.0)
+				_check("the adder set over two lines kept them under it and puts 7 out on them", int(sim.under[Sim._i(Sim.HUB_AT + Vector2i(-4, 1))]) == 1 and int(sim.under[Sim._i(Sim.HUB_AT + Vector2i(-5, 2))]) == 1 and int(sim.machines[Sim._i(Sim.HUB_AT + Vector2i(-4, 1))].last) == 7 and (sim.outs[Sim._i(Sim.HUB_AT + Vector2i(-4, 1))] as PackedInt32Array).size() == 1)
 				_shot("5b_close")
 				_s.board.k = 74.0
 				_s.board.look_at_square(Vector2(Sim.HUB_AT) + Vector2(3, 4), true)
