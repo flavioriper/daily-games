@@ -47,8 +47,8 @@ extends RefCounted
 ## to 1 (the edge it leaves by, the way of `outs[s][to_d[s]]`).
 ##
 ## An end (`_end_into`) is where a token can be handed: `(id << 2) | dir`,
-## `id` a slot, or N2 + square * 4 + q for a machine's A (0) or B (1) side, a
-## crate (2) or the box (3); `dir` is the way the token is going.
+## `id` a slot, or N2 + square * 4 + q for a crate (2) or the box (3)
+## (0 and 1 were a machine's sides once); `dir` is the way the token is going.
 ##
 ## Actions return whether they did anything; `events` is for the holder to
 ## drain. `step(dt)` takes any `dt`.
@@ -101,8 +101,7 @@ const NONE := 255
 ## No square: a path begun on nothing.
 const NOWHERE := Vector2i(-1, -1)
 
-## A machine's room a side and for what waits to go out.
-const QUEUE := 4
+## A machine's room for what waits to go out.
 const OUT := 2
 const CRATE_MAX := 500
 ## The longest step taken in one go: a token at 20 squares a second moves
@@ -256,7 +255,7 @@ var dead := PackedByteArray()
 ## The slots tokens ride, and where each hands on.
 var lanes := PackedInt32Array()
 var outs := {}          # slot -> PackedInt32Array of ends
-var feeders := {}       # slot or machine side id -> PackedInt32Array of slots
+var feeders := {}       # slot, crate or box end id -> PackedInt32Array of slots
 var machines := {}      # square -> {a, b, out, rem, busy, t, x, y, last}
 var digs := {}          # square -> {budget, rr, outs}
 var crates := {}        # square -> {v, n, rr, outs}

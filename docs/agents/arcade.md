@@ -4083,7 +4083,9 @@ below (the templates' digs stand). Branch `feat/tally-machine-layer`.
 - **Mine, the user's to call**: a machine's A/B takes one token each and
   holds the line behind it (no queue of 4); an answer waits for a free
   slot; a belt under an answer square that runs back into A feeds it (it is
-  only a belt); `tests/_pace_tally.gd` still builds one-square machines
+  only a belt); kept papers adopted on load, tried on a save made by this
+  build with the key removed, not on a real older `tally.cfg`;
+  `tests/_pace_tally.gd` still builds one-square machines
   from before the footprints and was not touched.
 
 #### Tally machines stand over belts; digs go in templates (2026-10-19, evening)
