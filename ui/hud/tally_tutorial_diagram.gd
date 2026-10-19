@@ -161,15 +161,15 @@ func _reset() -> void:
 			_sim.level = 2
 			_sim.lv.belt = 3
 			_sim.lv.add = 8
-			# 3 and 4 come round to where the adder's A and B squares will be;
-			# its answer squares' belts lead into the box
+			# 3 and 4 come round under where the adder's A and B squares will
+			# be; the belts under its answer squares lead into the box
 			_dig(Vector2i(49, 57), 3)
 			_dig(Vector2i(49, 61), 4)
 			_sim._wire()
-			_sim.lay_path([Vector2i(51, 57), Vector2i(52, 57), Vector2i(52, 58), Vector2i(53, 58)], 0)
-			_sim.lay_path([Vector2i(51, 61), Vector2i(52, 61), Vector2i(52, 60), Vector2i(52, 59), Vector2i(53, 59)], 0)
-			_run(Vector2i(56, 58), Vector2i(56, 58), 0)
-			_run(Vector2i(56, 59), Vector2i(56, 59), 0)
+			_sim.lay_path([Vector2i(51, 57), Vector2i(52, 57), Vector2i(52, 58), Vector2i(53, 58), Vector2i(54, 58)], 0)
+			_sim.lay_path([Vector2i(51, 61), Vector2i(52, 61), Vector2i(52, 60), Vector2i(52, 59), Vector2i(53, 59), Vector2i(54, 59)], 0)
+			_run(Vector2i(55, 58), Vector2i(56, 58), 0)
+			_run(Vector2i(55, 59), Vector2i(56, 59), 0)
 		Lesson.BELTS:
 			_sim.level = 6
 			_sim.lv.belt = 3

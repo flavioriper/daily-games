@@ -4028,6 +4028,64 @@ asking; names are "Part n"; no tutorial page yet. Seen on `opengl3_angle`
 810x1440: bench 57, paper with a copy 66, the Parts card 134 draw calls.
 Probe 0 failed, `_shot_tally` headless 0 failed, suite 248522/0.
 
+#### Tally machines on a layer of their own (2026-10-19, night)
+
+The user, a phone shot of mirrored adders beside a column of belts with
+crossings where lines met their answer squares: "tally still wrong, the
+convey changes behavior when there is a module near. Modules are literally
+just a visual representation of the operation, it should not really exist
+on the game grid ... it's literally just something that takes what is on
+input, and spawn the result on output, convey should not even see it or
+interact with it in any way". Supersedes the `under` half of the section
+below (the templates' digs stand). Branch `feat/tally-machine-layer`.
+
+- **The machines' layer** (`tally_sim.gd`): `op`, `oface`, `oroot`,
+  `orole` on every square an operator covers; `kind`/`face`/`face2`/`fork`
+  /`root`/`role` are the paper's alone (belts, crossings, digs, crates, the
+  box). Nothing that lays, joins, crosses, trims, turns round, forks or
+  wires belts reads the machines' layer (`belt_at`, `_root_b`,
+  `_squares_b`; `_end_into` has no machine case, `can_lay` no machine
+  case). `kind_at`, `face_at`, `root_of`, `piece_squares` are what is
+  *seen*: a machine first, for the board, the card and the pills.
+- **What a machine does**: `_wire` gives it the slots of the belts under
+  its squares (`ins` per side, `fronts`, `rems`); a slot under an A or B
+  square is `intake`, so its token stops at the middle like a loose end's.
+  When a token waits at A and one at B and fewer than 2 answers wait, it
+  takes both (`_waiting`, the feeders woken) and works; what it makes is
+  set down at the middle of a free slot under an answer square
+  (`_set_out`), riding the belt's way. No hidden queue: `m.a`/`m.b` are the
+  token waiting at each side, for the card. A square with no belt under it
+  does nothing; a line merely run up to a machine is a loose end.
+- Placing: over belts and crossings, never over a dig, a crate or another
+  machine; a dig or a crate is refused under a machine. Remove and Turn
+  move only the machine. The pick and its Remove take both layers; a
+  template keeps the paper's pieces and the machines over them.
+- **Kept papers** (no `paper/layers` key): `_adopt` gives each machine's
+  bare A or B square a belt the way the belt into it ran, and each bare
+  answer square one out to what it handed to (a belt leading away, the box,
+  a crate, another machine's A or B, given one too). Saved: machines as
+  their own rows after the paper's, `layers` true; VER unchanged.
+- **Drawn**: the belts' beds and chevrons under a machine are hidden by it;
+  every token on a slot under a machine is drawn over it in the live layer
+  (the 3 waiting at A, the 7 riding out); notches and spouts from
+  `Sim.ports` (the way belts ride in, the way an answer's belt leaves).
+  Tokens no longer stop short of a machine's edge (`OP_STOP` gone).
+- The harness's grown paper and the tutorial's Machine page lay their lines
+  under the machines; `TUT_TALLY_MACHINE_BODY` and the five
+  `TL_PIECE_*_LINE` rows say it in en, pt and es.
+- Measured: probe 0 failed (machine checks rewritten: a belt run up to a
+  machine is a loose end, one under A holds its token, a line through a
+  machine crosses as anywhere, a kept paper adopted), `_shot_tally` 0
+  failed headless and on the second windowed `opengl3_angle` reading (the
+  first failed the level-1 corner beat, no machine in play: the known
+  belt-drag flake), 80 draws `5b_close`, 124 the tutorial's Machine page;
+  suite 248522/0.
+- **Mine, the user's to call**: a machine's A/B takes one token each and
+  holds the line behind it (no queue of 4); an answer waits for a free
+  slot; a belt under an answer square that runs back into A feeds it (it is
+  only a belt); `tests/_pace_tally.gd` still builds one-square machines
+  from before the footprints and was not touched.
+
 #### Tally machines stand over belts; digs go in templates (2026-10-19, evening)
 
 The user, with phone shots of two adders fed by parallel lines: "right now

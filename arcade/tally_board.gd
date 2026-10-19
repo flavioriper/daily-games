@@ -95,7 +95,6 @@ const PILL_ICON := {"copy": "copy", "dup": "plus", "save": "puzzle", "undo": "un
 const PILL_CAP := {"copy": "TL_COPY", "dup": "TL_DUPLICATE", "save": "TL_SAVE_PART", "undo": "TL_UNDO", "turn": "TL_TURN", "flip": "TL_FLIP", "lift": "TL_LIFT", "run": "TL_ERASE_RUN", "line": "TL_ERASE_LINE", "info": "TL_INFO", "place": "TL_PLACE", "cancel": "TL_CANCEL"}
 const PILL_PITCH := {"copy": 1.06, "dup": 1.06, "save": 1.1, "undo": 0.9, "turn": 1.02, "flip": 1.04, "lift": 0.92, "run": 0.9, "line": 0.88, "info": 1.0, "place": 1.08, "cancel": 0.9}
 ## How far along its last square a token riding into an operator is drawn.
-const OP_STOP := 0.72
 ## How long a finger rests still on the paper under Look before a pick
 ## begins, and how long the Undo pill stays after a pick is removed.
 const HOLD := 0.42
@@ -413,12 +412,7 @@ func _work_ins() -> void:
 		for e: int in sim.outs[s]:
 			_mark(e)
 	for i: int in sim.machines:
-		for e: int in sim.machines[i].fronts:
-			_mark(e)
-			_mark_out(i, e)
-		for e: int in sim.machines[i].rems:
-			_mark(e)
-			_mark_out(i, e)
+		_mouth[i] = sim.ports(i)
 	for i: int in sim.digs:
 		for e: int in sim.digs[i].outs:
 			_mark(e)
@@ -432,56 +426,6 @@ func _mark(e: int) -> void:
 	var id := e >> 2
 	if id < Sim.N2:
 		_ins[id] = int(_ins.get(id, 0)) | (1 << (e & 3))
-		return
-	# a machine's A or B fed: its one square of that role, from that way
-	var q := (id - Sim.N2) & 3
-	if q > 1:
-		return
-	var r := (id - Sim.N2) >> 2
-	var ci := _cell_of(r, Sim.R_A if q == 0 else Sim.R_B)
-	if ci >= 0:
-		_mouth_bit(r, 0, ci * 4 + (e & 3))
-
-## Machine `r`'s answer handing out by end `e`: from the square before
-## what it hands into.
-func _mark_out(r: int, e: int) -> void:
-	var id := e >> 2
-	var d := e & 3
-	var to: Vector2i
-	if id < Sim.N and int(sim.root[id]) == r:
-		# onto the belt under its own answer square: the spout on that square
-		to = Sim.tile_of(id) + Sim.DIRS[d]
-	elif id < Sim.N2:
-		to = Sim.tile_of(id % Sim.N)
-	else:
-		var q := (id - Sim.N2) & 3
-		var j := (id - Sim.N2) >> 2
-		if q <= 1:
-			var cj := _cell_of(j, Sim.R_A if q == 0 else Sim.R_B)
-			if cj < 0:
-				return
-			to = Sim.footprint(int(sim.kind[j]), Sim.tile_of(j), int(sim.face[j]))[cj][0]
-		else:
-			to = Sim.tile_of(j)
-	var from: Vector2i = to - Sim.DIRS[d]
-	var fp := Sim.footprint(int(sim.kind[r]), Sim.tile_of(r), int(sim.face[r]))
-	for ci in fp.size():
-		if fp[ci][0] == from:
-			_mouth_bit(r, 1, ci * 4 + d)
-			return
-
-## The footprint index of machine `r`'s square of `want`, or -1.
-func _cell_of(r: int, want: int) -> int:
-	var fp := Sim.footprint(int(sim.kind[r]), Sim.tile_of(r), int(sim.face[r]))
-	for ci in fp.size():
-		if int(fp[ci][1]) == want:
-			return ci
-	return -1
-
-func _mouth_bit(r: int, side: int, bit: int) -> void:
-	if not _mouth.has(r):
-		_mouth[r] = [0, 0]
-	_mouth[r][side] = int(_mouth[r][side]) | (1 << bit)
 
 ## The way a belt's bed comes in: from its back, or round from the one side
 ## that feeds it alone.
@@ -582,21 +526,17 @@ func _build_tokens(under: bool) -> ArrayMesh:
 		if (s >= Sim.N) != under or sim.occ[s] == 0:
 			continue
 		var t := Sim.tile_of(s % Sim.N)
-		if not _sees(t, r) or Sim.is_op(int(sim.kind[s % Sim.N])):
-			# one made on an answer square is drawn over the machine (_build_live)
+		if not _sees(t, r) or sim.op[s % Sim.N] != 0:
+			# one under a machine is drawn over it (_build_live)
 			continue
 		fb.append(ringed if int(sim.val[s]) == aim else plain, Transform2D(0.0, token_at(s)))
 	return fb.mesh()
 
-## Where the token in slot `s` is, in mesh units. One riding into an
-## operator stops short of its edge, so the token waiting there and its
-## numeral leave the notch it goes in by in sight.
+## Where the token in slot `s` is, in mesh units.
 func token_at(s: int) -> Vector2:
 	var t := Sim.tile_of(s % Sim.N)
 	var x: int = sim.exit_dir(s)
 	var p := clampf(sim.prog[s], 0.0, 1.0)
-	if Sim.is_op(sim.kind_at(t + Sim.DIRS[x])):
-		p *= OP_STOP
 	return Art.path(Art.mid(t), int(sim.from_d[s]), x, p)
 
 ## Where a machine drawn from `at` (its root's middle) goes turned by
@@ -650,7 +590,7 @@ func _build_pieces() -> ArrayMesh:
 		var t := Sim.tile_of(i)
 		if not _sees(t, wide):
 			continue
-		var kd := int(sim.kind[i])
+		var kd: int = sim.kind_at(t)
 		var at := Art.mid(t)
 		var g := _grow(t)
 		if g <= 0.01:
@@ -669,11 +609,11 @@ func _build_pieces() -> ArrayMesh:
 			m = Art.crate()
 		else:
 			var mo: Array = _mouth.get(i, [0, 0])
-			m = Art.machine(kd, int(sim.face[i]), int(mo[0]), int(mo[1]))
+			m = Art.machine(kd, sim.face_at(t), int(mo[0]), int(mo[1]))
 			if _spin.has(t) and not Motion.reduce:
 				var u := clampf((_clock - float(_spin[t][0])) / SPIN, 0.0, 1.0)
 				rot -= (1.0 - (1.0 - pow(1.0 - u, 3.0))) * PI * 0.5
-		fb.append(m, Transform2D(rot, sc, 0.0, _about(kd, t, int(sim.face[i]), at, rot)))
+		fb.append(m, Transform2D(rot, sc, 0.0, _about(kd, t, sim.face_at(t), at, rot)))
 	for g: Array in _gone:
 		var u := (_clock - float(g[3])) / GONE
 		if Motion.reduce or u >= 1.0:
@@ -695,17 +635,18 @@ func _build_live() -> ArrayMesh:
 			continue
 		var m: Dictionary = sim.machines[i]
 		if bool(m.busy):
-			var kd := int(sim.kind[i])
-			var at := Art.mid(t) + Art.face_mid(kd, int(sim.face[i]))
+			var kd: int = sim.kind_at(t)
+			var at := Art.mid(t) + Art.face_mid(kd, sim.face_at(t))
 			var u := clampf(float(m.t), 0.0, 1.0)
 			if u > 0.02:
 				var ar := U * (0.34 if kd == Sim.ADD else 0.31)
 				b.stroke(Face.Builder.arc_points(at, ar, -PI * 0.5, -PI * 0.5 + TAU * u), U * 0.05, Color(Art.CREAM, 0.85), false)
-	# what a machine made, riding out over it on the belt under its answer square
+	# the tokens on the belts under a machine, over it: what waits at its A
+	# and B, what it made riding out
 	var lod := 0 if k >= 100.0 else (1 if k >= 40.0 else 2)
 	var aim: int = sim.target()
 	for s: int in sim.lanes:
-		if s >= Sim.N or sim.occ[s] == 0 or not Sim.is_op(int(sim.kind[s])) or not _sees(Sim.tile_of(s), r):
+		if sim.occ[s] == 0 or sim.op[s % Sim.N] == 0 or not _sees(Sim.tile_of(s % Sim.N), r):
 			continue
 		b.append(Art.token(int(sim.val[s]) == aim, lod), Transform2D(0.0, token_at(s)))
 	# the box: its bar, and a glow when a level is done
@@ -743,9 +684,9 @@ func _live_rest(b: Face.Builder, r: Rect2i) -> void:
 		var t := Sim.tile_of(i)
 		if not _sees(t, r.grow(2)):
 			continue
-		var f := int(sim.face[i])
+		var f: int = sim.face_at(t)
 		var want := Sim.R_A if side == 0 else Sim.R_B
-		var fp := Sim.footprint(int(sim.kind[i]), t, f)
+		var fp := Sim.footprint(sim.kind_at(t), t, f)
 		var mo: Array = _mouth.get(i, [0, 0])
 		for ci in fp.size():
 			if int(fp[ci][1]) != want:
@@ -903,7 +844,7 @@ func _draw_words() -> void:
 				var i := y * Sim.W + x
 				var v := int(sim.dep[i])
 				var kd := int(sim.kind[i])
-				if v == 0 or (kd != Sim.EMPTY and kd != Sim.DIG):
+				if v == 0 or (kd != Sim.EMPTY and kd != Sim.DIG) or sim.op[i] != 0:
 					continue
 				var col: Color = Art.PENCIL if sim.can_dig(v) else Art.PENCIL_SHUT
 				if kd == Sim.DIG and int(sim.root[i]) >= 0 and int(sim.root[i]) != i:
@@ -1756,7 +1697,7 @@ func _lift_at(p: Vector2) -> void:
 	if _lifted.has(t) or not Sim.inside(t):
 		return
 	_lifted[t] = true
-	var kd := int(sim.kind[Sim._i(t)])
+	var kd: int = sim.kind_at(t)
 	if kd != Sim.EMPTY and kd != Sim.BOX:
 		sim.remove(t)
 
@@ -1768,7 +1709,7 @@ func _tap(p: Vector2) -> void:
 	if not Sim.inside(t):
 		return
 	var i := Sim._i(t)
-	var kd := int(sim.kind[i])
+	var kd: int = sim.kind_at(t)
 	var at := screen_of(Vector2(t) + Vector2(0.5, 0.5))
 	if kd == Sim.BOX:
 		box_asked.emit()

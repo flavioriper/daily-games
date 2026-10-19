@@ -191,20 +191,20 @@ func _role(k: int, m: Vector2i, f: int, want: int) -> Array:
 			out.append(c[0])
 	return out
 
-## A machine at (10, 10) facing north, A and B each fed from straight
-## behind by a dig on row 14, its answer led north to row 5 (and into the
-## box when `to_box`).
+## A machine at (10, 10) facing north over belts: A and B each a line from
+## a dig on row 14 ending under it, its answer square's line led north to
+## row 5 (and into the box when `to_box`).
 func _two_digs(s: RefCounted, k: int, va: int, vb: int, to_box := true) -> Vector2i:
 	var m := Vector2i(10, 10)
 	s.place(k, m, Nd)
 	for side in 2:
 		var u: Vector2i = _role(k, m, Nd, Sim.R_A if side == 0 else Sim.R_B)[0]
 		_dig1(s, Vector2i(u.x, 14), va if side == 0 else vb)
-		_run(s, Vector2i(u.x, 13), u + Vector2i(0, 1), Nd)
+		_run(s, Vector2i(u.x, 13), u, Nd)
 	if to_box:
-		_to_box(s, m + Vector2i(0, -1), 5)
+		_to_box(s, m, 5)
 	else:
-		_run(s, m + Vector2i(0, -1), Vector2i(m.x, 5), Nd)
+		_run(s, m, Vector2i(m.x, 5), Nd)
 	return m
 
 ## The numbers the box has had besides any in `but`.
@@ -228,23 +228,22 @@ func _operators() -> void:
 		s.place(int(row[0]), Vector2i(10, 10), E)
 		var n := 0
 		for i in Sim.N:
-			if int(s.kind[i]) == int(row[0]):
+			if int(s.op[i]) == int(row[0]):
 				n += 1
 		_check("%s covers %d squares (%d)" % [Sim.KIND_IDS[int(row[0])], row[1], n], n == int(row[1]) and s.machines.size() == 1)
-	# a belt into an input's side is taken (any face), into the answer square not
+	# a machine is not seen by belts: one run up to it is a loose end, one
+	# run under its A square holds its token there for it
 	var s1 = _blank()
 	s1.place(Sim.MUL, Vector2i(10, 10), Nd)
 	_run(s1, Vector2i(6, 10), Vector2i(8, 10), E)
-	_check("a belt into A's side is taken", not (s1.outs[Sim._i(Vector2i(8, 10))] as PackedInt32Array).is_empty())
-	_run(s1, Vector2i(10, 13), Vector2i(10, 11), Nd)
-	_check("a belt into the answer square's back hands nothing", (s1.outs[Sim._i(Vector2i(10, 11))] as PackedInt32Array).is_empty())
-	_run(s1, Vector2i(9, 13), Vector2i(9, 11), Nd)
-	_check("a belt into A's back is taken", (s1.outs[Sim._i(Vector2i(9, 11))] as PackedInt32Array).size() == 1)
+	_check("a belt run up to a machine's square is a loose end", (s1.outs[Sim._i(Vector2i(8, 10))] as PackedInt32Array).is_empty())
+	_run(s1, Vector2i(9, 13), Vector2i(9, 10), Nd)
+	_check("a belt run under A hands into it and holds its token for it", (s1.outs[Sim._i(Vector2i(9, 11))] as PackedInt32Array) == PackedInt32Array([(Sim._i(Vector2i(9, 10)) << 2) | Nd]) and int(s1.intake[Sim._i(Vector2i(9, 10))]) == 1)
 	# a turn needs room and takes no belt; a lift from any square takes it all
 	var s2 = _blank()
 	s2.place(Sim.MUL, Vector2i(10, 10), Nd)
 	_run(s2, Vector2i(10, 9), Vector2i(10, 9), Nd)
-	_check("with room it turns about its answer square, over a belt, kept under it", s2.turn(Vector2i(11, 10)) and s2.kind_at(Vector2i(10, 9)) == Sim.MUL and int(s2.under[Sim._i(Vector2i(10, 9))]) == Nd + 1 and s2.kind_at(Vector2i(9, 10)) == Sim.EMPTY)
+	_check("with room it turns about its answer square, over a belt left as it was", s2.turn(Vector2i(11, 10)) and s2.kind_at(Vector2i(10, 9)) == Sim.MUL and s2.belt_at(Vector2i(10, 9)) == Sim.BELT and s2.kind_at(Vector2i(9, 10)) == Sim.EMPTY)
 	for kd: int in [Sim.ADD, Sim.DIV]:
 		var sq = _blank()
 		sq.place(kd, Vector2i(20, 20), Nd)
@@ -254,8 +253,8 @@ func _operators() -> void:
 			sq.turn(was[0])
 			for q: Vector2i in was:
 				same = same and sq.kind_at(q) == kd
-		_check("a square machine (%s) turns on the squares it stands on, faced round" % Sim.KIND_IDS[kd], same and sq.machines.size() == 1 and sq.face[sq.machines.keys()[0]] == Nd)
-	_check("a lift from an input square lifts it all", s2.remove(Vector2i(10, 9)) and s2.machines.is_empty() and s2.kind_at(Vector2i(10, 10)) == Sim.EMPTY)
+		_check("a square machine (%s) turns on the squares it stands on, faced round" % Sim.KIND_IDS[kd], same and sq.machines.size() == 1 and sq.oface[sq.machines.keys()[0]] == Nd)
+	_check("a lift from an input square lifts it all, the belt under it left", s2.remove(Vector2i(10, 9)) and s2.machines.is_empty() and s2.kind_at(Vector2i(10, 10)) == Sim.EMPTY and s2.kind_at(Vector2i(10, 9)) == Sim.BELT)
 	_check("a machine is refused where it would cover a dig", (func() -> bool:
 		var q = _blank()
 		q.dep[Sim._i(Vector2i(11, 11))] = 1
@@ -279,16 +278,21 @@ func _divider() -> void:
 	s2.step(30.0)
 	var mm: Dictionary = s2.machines[Sim._i(m)]
 	_check("7 ÷ 2 with nothing for the remainder stops once two wait", (mm.rem as Array).size() == Sim.OUT and s2.held(3) <= 3)
-	# the remainder taken off its own square's front, over the answer's belt
-	_to_box(s2, m + Vector2i(1, -1), 7, Sim.HUB_AT.x + 2)
+	# the remainder taken by a line from under its own square, over the answer's
+	_to_box(s2, m + Vector2i(1, 0), 7, Sim.HUB_AT.x + 2)
 	s2.step(80.0)
 	_check("with the remainder taken: 3 and 1 both come (had %s)" % str(_came(s2)), _came(s2) == [1, 3])
 	var s3 = _blank()
 	var m3 := Vector2i(10, 10)
 	s3.place(Sim.DIV, m3, E)
+	for side in 2:
+		var u: Vector2i = _role(Sim.DIV, m3, E, Sim.R_A if side == 0 else Sim.R_B)[0]
+		s3.lay_path([u], E)
+		var j := Sim._i(u)
+		s3.occ[j] = 1
+		s3.val[j] = 9 if side == 0 else 0
+		s3.prog[j] = 0.5
 	var mm3: Dictionary = s3.machines[Sim._i(m3)]
-	mm3.a.append(9)
-	mm3.b.append(0)
 	s3.step(6.0)
 	_check("9 ÷ 0 puts out 0 and 9 for the remainder", mm3.out == [0] and mm3.rem == [9])
 
@@ -444,18 +448,18 @@ func _path() -> void:
 	u.place(Sim.DIV, Vector2i(10, 10), E)
 	u.mark()
 	u.remove(Vector2i(9, 11))
-	_check("undo puts a lifted divider back whole", u.undo() and u.machines.size() == 1 and u.kind_at(Vector2i(9, 11)) == Sim.DIV and int(u.root[Sim._i(Vector2i(9, 11))]) == Sim._i(Vector2i(10, 10)))
+	_check("undo puts a lifted divider back whole", u.undo() and u.machines.size() == 1 and u.kind_at(Vector2i(9, 11)) == Sim.DIV and int(u.oroot[Sim._i(Vector2i(9, 11))]) == Sim._i(Vector2i(10, 10)))
 	# a one-sided adder makes nothing and says which side starves
 	var a = _blank()
 	var m := Vector2i(10, 10)
 	a.place(Sim.ADD, m, Nd)
 	_dig1(a, Vector2i(10, 14), 1)
-	_run(a, Vector2i(10, 13), Vector2i(10, 12), Nd)
-	_to_box(a, m + Vector2i(0, -1), 5)
+	_run(a, Vector2i(10, 13), Vector2i(10, 11), Nd)
+	_to_box(a, m, 5)
 	a.step(10.0)
 	_check("an adder fed on A alone makes nothing and starves on B", a.made == 0 and a.starving(Sim._i(m)) == 1)
 	_dig1(a, Vector2i(11, 14), 1)
-	_run(a, Vector2i(11, 13), Vector2i(11, 12), Nd)
+	_run(a, Vector2i(11, 13), Vector2i(11, 11), Nd)
 	a.step(10.0)
 	_check("fed on both it works and starves no more", a.starving(Sim._i(m)) == -1 and bool(a.machines[Sim._i(m)].has_last))
 	# twenty non-targets with no hit: the box says so once
@@ -492,7 +496,7 @@ func _stall() -> void:
 	# the run north of the machine leads nowhere: it fills and the adder stops
 	s.step(200.0)
 	var mm: Dictionary = s.machines[Sim._i(m)]
-	_check("a full output stops the machine: %d out, %d a side" % [(mm.out as Array).size(), (mm.a as Array).size()], (mm.out as Array).size() == Sim.OUT and (mm.a as Array).size() == Sim.QUEUE)
+	_check("a full output stops the machine: %d out, %d a side" % [(mm.out as Array).size(), (mm.a as Array).size()], (mm.out as Array).size() == Sim.OUT and (mm.a as Array).size() == 1)
 	s.remove(Vector2i(10, 7))
 	_check("a lifted belt drops its token", s.occ[Sim._i(Vector2i(10, 7))] == 0)
 
@@ -555,7 +559,7 @@ func _kept() -> void:
 	_check("its upgrades and tally", int(r.lv.belt) == 4 and r.held(19) == 50)
 	_check("its pieces", r.kind_at(dig_at) == Sim.DIG and r.kind_at(Vector2i(2, 2)) == Sim.ADD and r.face_at(Vector2i(2, 2)) == S and r.kind_at(Vector2i(3, 0)) == Sim.BELT)
 	_check("a fork comes back", r.fork[Sim._i(Vector2i(4, 0))] == (1 << S) and (r.outs[Sim._i(Vector2i(4, 0))] as PackedInt32Array).size() == 2)
-	_check("a machine comes back whole", r.kind_at(Vector2i(1, 1)) == Sim.ADD and int(r.root[Sim._i(Vector2i(1, 1))]) == Sim._i(Vector2i(2, 2)) and r.machines.size() == 1)
+	_check("a machine comes back whole", r.kind_at(Vector2i(1, 1)) == Sim.ADD and int(r.oroot[Sim._i(Vector2i(1, 1))]) == Sim._i(Vector2i(2, 2)) and r.machines.size() == 1)
 	# a sheet kept before the footprints keeps its progress and drops its pieces
 	var cfg := ConfigFile.new()
 	cfg.load(Sim.path)
@@ -585,7 +589,7 @@ func _templates() -> void:
 	var laid: Array = s.stamp_template(d, at, 1)
 	var ops := 0
 	for t: Vector2i in laid:
-		if Sim.is_op(s.kind_at(t)) and int(s.root[Sim._i(t)]) == Sim._i(t):
+		if Sim.is_op(s.kind_at(t)) and int(s.oroot[Sim._i(t)]) == Sim._i(t):
 			ops += 1
 	_check("set down turned: one adder, its run turned south", ops == 1 and s.machines.size() == 2 and s.face_at(at + Vector2i(int(d.h) - 1, 0)) == S)
 	_check("it cannot go on itself again", s.why_not_template(d, at, 1) == "taken")
@@ -617,7 +621,7 @@ func _over_belts() -> void:
 	var a := Sim._i(Vector2i(24, 30))
 	var o := Sim._i(Vector2i(25, 30))
 	var o2 := Sim._i(Vector2i(25, 31))
-	_check("the belts are kept under it", int(s.under[a]) == E + 1 and int(s.under[o]) == E + 1 and int(s.under[o2]) == E + 1)
+	_check("the belts run on under it", s.belt_at(Vector2i(24, 30)) == Sim.BELT and s.belt_at(Vector2i(25, 30)) == Sim.BELT and s.belt_at(Vector2i(25, 31)) == Sim.BELT and int(s.intake[a]) == 1)
 	_check("its answer squares are lanes it puts out on", s.lanes.has(o) and s.lanes.has(o2) and (s.machines[o].fronts as PackedInt32Array).size() == 2)
 	var seen := {}
 	var mid := true
@@ -636,30 +640,28 @@ func _over_belts() -> void:
 	Sim.path = "user://_probe_tally.cfg"
 	s.save()
 	var l = Sim.load_saved()
-	_check("saved and read with the belts under it", l.kind_at(Vector2i(25, 30)) == Sim.ADD and int(l.under[o]) == E + 1 and int(l.under[a]) == E + 1 and l.lanes.has(o2))
+	_check("saved and read with the belts under it", l.kind_at(Vector2i(25, 30)) == Sim.ADD and l.belt_at(Vector2i(25, 30)) == Sim.BELT and l.belt_at(Vector2i(24, 30)) == Sim.BELT and l.lanes.has(o2) and l.machines.size() == 1)
 	var pick := []
 	for y in range(30, 32):
 		for x in range(24, 27):
 			pick.append(Vector2i(x, y))
 	var d: Dictionary = s.template_of(pick)
 	var st: Array = s.stamp_template(d, Vector2i(24, 50), 0)
-	_check("a template carries the belts under its machine", not st.is_empty() and s.kind_at(Vector2i(25, 50)) == Sim.ADD and int(s.under[Sim._i(Vector2i(25, 50))]) == E + 1 and s.kind_at(Vector2i(26, 51)) == Sim.BELT)
+	_check("a template carries the belts under its machine", not st.is_empty() and s.kind_at(Vector2i(25, 50)) == Sim.ADD and s.belt_at(Vector2i(25, 50)) == Sim.BELT and s.kind_at(Vector2i(26, 51)) == Sim.BELT)
 	s.mark()
 	s.remove(Vector2i(24, 30))
 	_check("a lift leaves the belts it stood on", s.kind_at(Vector2i(24, 30)) == Sim.BELT and s.kind_at(Vector2i(25, 31)) == Sim.BELT and s.face_at(Vector2i(25, 30)) == E)
 	s.undo()
-	_check("and undo sets it back over them", s.kind_at(Vector2i(25, 30)) == Sim.ADD and int(s.under[o]) == E + 1)
+	_check("and undo sets it back over them", s.kind_at(Vector2i(25, 30)) == Sim.ADD and s.belt_at(Vector2i(25, 30)) == Sim.BELT)
 	# a line drawn out of an answer square turns at once (the user, 2026-10-19:
 	# "right now user can't turn convey after a module")
 	var s3 = _blank()
 	s3.place(Sim.ADD, Vector2i(25, 30), E)
 	s3.lay_path([Vector2i(25, 30), Vector2i(26, 30), Vector2i(26, 31), Vector2i(26, 32)], S)
-	_check("a line begun on an answer square is laid under it and turns", int(s3.under[o]) == E + 1 and s3.face_at(Vector2i(26, 30)) == S and (s3.outs[o] as PackedInt32Array).size() == 1)
+	_check("a line begun on an answer square is laid under it and turns", s3.belt_at(Vector2i(25, 30)) == Sim.BELT and int(s3.face[o]) == E and s3.face_at(Vector2i(26, 30)) == S and (s3.outs[o] as PackedInt32Array).size() == 1)
 	s3.lay_path([Vector2i(20, 31), Vector2i(21, 31), Vector2i(22, 31), Vector2i(23, 31), Vector2i(24, 31)], E)
 	var bi := Sim._i(Vector2i(23, 31))
-	_check("a line drawn into B ends at its middle, under it", int(s3.under[Sim._i(Vector2i(24, 31))]) == E + 1 and (s3.outs[bi] as PackedInt32Array).size() == 1 and ((s3.outs[bi] as PackedInt32Array)[0] >> 2) >= Sim.N2)
-	s3.lay_path([Vector2i(28, 31), Vector2i(27, 31), Vector2i(26, 31), Vector2i(25, 31)], Wd)
-	_check("a line ended on an answer square stops before it", int(s3.under[o2]) == 0)
+	_check("a line drawn into B ends at its middle, under it, held there", s3.belt_at(Vector2i(24, 31)) == Sim.BELT and ((s3.outs[bi] as PackedInt32Array)[0] >> 2) == Sim._i(Vector2i(24, 31)) and int(s3.intake[Sim._i(Vector2i(24, 31))]) == 2)
 	# a dig in a template goes onto a number it can dig
 	var s5 = _blank()
 	s5.dep[Sim._i(Vector2i(40, 40))] = 1
@@ -692,17 +694,22 @@ func _over_belts() -> void:
 		s6.step(1.0 / 30.0)
 	var low: Dictionary = s6.machines[Sim._i(Vector2i(25, 32))]
 	_check("a stacked adder below is not fed by the bare answer square above", (low.a as Array).is_empty() and (low.b as Array).is_empty() and int(s6.machines[Sim._i(Vector2i(25, 30))].last) == 5)
-	# a belt under an answer square running into its own machine is as none
+	# a line drawn across a machine's middle runs as if it were not there
 	var s7 = _blank()
-	s7.place(Sim.SUB, Vector2i(25, 30), Nd)
-	s7.lay_path([Vector2i(25, 30), Vector2i(26, 30)], E)
-	_dig1(s7, Vector2i(26, 27), 7)
-	_run(s7, Vector2i(26, 28), Vector2i(26, 29), S)
-	_dig1(s7, Vector2i(25, 34), 2)
-	_run(s7, Vector2i(25, 33), Vector2i(25, 32), Nd)
-	_run(s7, Vector2i(24, 30), Vector2i(20, 30), Wd)
-	var sr := Sim._i(Vector2i(25, 30))
-	var fr: PackedInt32Array = s7.machines[sr].fronts
-	for n in 400:
-		s7.step(1.0 / 30.0)
-	_check("an answer square whose belt runs into its own machine hands out as before", not fr.has((sr << 2) | E) and not s7.lanes.has(sr) and int(s7.machines[sr].last) == 5)
+	s7.place(Sim.ADD, Vector2i(25, 30), E)
+	_run(s7, Vector2i(20, 31), Vector2i(30, 31), E)
+	_run(s7, Vector2i(25, 27), Vector2i(25, 34), S)
+	_check("a line laid through a machine is a plain line, crossings and all", s7.belt_at(Vector2i(25, 30)) == Sim.BELT and s7.belt_at(Vector2i(25, 31)) == Sim.BRIDGE and s7.belt_at(Vector2i(24, 31)) == Sim.BELT and s7.kind_at(Vector2i(25, 31)) == Sim.ADD)
+	# a paper kept before the machines' layer: belts given under its machines
+	var s8 = _blank()
+	s8.place(Sim.MUL, Vector2i(10, 10), Nd)
+	_run(s8, Vector2i(9, 13), Vector2i(9, 11), Nd)
+	_run(s8, Vector2i(10, 9), Vector2i(10, 6), Nd)
+	Sim.path = "user://_probe_tally.cfg"
+	s8.save()
+	var cfg := ConfigFile.new()
+	cfg.load(Sim.path)
+	cfg.erase_section_key("paper", "layers")
+	cfg.save(Sim.path)
+	var old = Sim.load_saved()
+	_check("a kept paper's machine gets belts under its A and answer squares", old.belt_at(Vector2i(9, 10)) == Sim.BELT and int(old.face[Sim._i(Vector2i(9, 10))]) == Nd and old.belt_at(Vector2i(10, 10)) == Sim.BELT and int(old.face[Sim._i(Vector2i(10, 10))]) == Nd and old.belt_at(Vector2i(11, 10)) == Sim.EMPTY)

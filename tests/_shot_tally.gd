@@ -253,18 +253,18 @@ func _grow(sim) -> void:
 	sim.place(Sim.MUL, x, 1)
 	put.call(b + Vector2i(7, -10), 6)
 	put.call(b + Vector2i(-3, -10), 5)
-	route.call([b + Vector2i(7, -8), b + Vector2i(7, -7), b + Vector2i(3, -7), b + Vector2i(3, -5)])
-	route.call([b + Vector2i(-3, -8), b + Vector2i(-3, -6), b + Vector2i(1, -6), b + Vector2i(1, -5)])
-	route.call([b + Vector2i(2, -3), b + Vector2i(2, -1)])
+	route.call([b + Vector2i(7, -8), b + Vector2i(7, -7), b + Vector2i(3, -7), b + Vector2i(3, -4)])
+	route.call([b + Vector2i(-3, -8), b + Vector2i(-3, -6), b + Vector2i(1, -6), b + Vector2i(1, -4)])
+	route.call([b + Vector2i(2, -4), b + Vector2i(2, -1)])
 	# a divider east of the box facing west: 9 ÷ 2, the answer into the box, the remainder into a crate
 	var d := b + Vector2i(8, 3)
 	sim.place(Sim.DIV, d, 2)
 	put.call(b + Vector2i(14, 6), 9)
 	put.call(b + Vector2i(14, -1), 2)
-	route.call([b + Vector2i(12, 6), b + Vector2i(11, 6), b + Vector2i(11, 3), b + Vector2i(10, 3)])
-	route.call([b + Vector2i(12, -1), b + Vector2i(11, -1), b + Vector2i(11, 2), b + Vector2i(10, 2)])
-	route.call([b + Vector2i(7, 3), b + Vector2i(6, 3)])
-	sim.lay_path([b + Vector2i(7, 2)], 2)
+	route.call([b + Vector2i(12, 6), b + Vector2i(11, 6), b + Vector2i(11, 3), b + Vector2i(9, 3)])
+	route.call([b + Vector2i(12, -1), b + Vector2i(11, -1), b + Vector2i(11, 2), b + Vector2i(9, 2)])
+	route.call([b + Vector2i(8, 3), b + Vector2i(6, 3)])
+	route.call([b + Vector2i(8, 2), b + Vector2i(7, 2)])
 	sim.place(Sim.CRATE, b + Vector2i(6, 2), 0)
 	# a 1s line south of the box: 2s come down onto it and join it, a 3s line
 	# crosses it and ends loose
@@ -282,7 +282,7 @@ func _grow(sim) -> void:
 	var w := b + Vector2i(8, 10)
 	sim.place(Sim.SUB, w, 2)
 	put.call(w + Vector2i(3, -1), 3)
-	sim.lay_path([w + Vector2i(1, -1)], 2)
+	route.call([w + Vector2i(1, -1), w + Vector2i(0, -1)])
 	sim.events.clear()
 	_s.board.relay()
 
@@ -418,10 +418,10 @@ func _process(delta: float) -> bool:
 				# the sim's clock lags a slow frame's (steps are capped): hurry it past the 3 s
 				sim.step(4.0)
 				_check("the subtractor fed on A alone is starving on B", sim.starving(Sim._i(Sim.HUB_AT + Vector2i(8, 10))) == 1)
-				_check("the grown paper's machines all stand (%s)" % str(sim.machines.keys().map(func(i: int) -> String: return Sim.KIND_IDS[int(sim.kind[i])])), sim.machines.size() == 4)
+				_check("the grown paper's machines all stand (%s)" % str(sim.machines.keys().map(func(i: int) -> String: return Sim.KIND_IDS[int(sim.op[i])])), sim.machines.size() == 4)
 				# an adder takes a few seconds a sum at its first rank: one more made and on its way
 				sim.step(2.0)
-				_check("the adder set over two lines kept them under it and puts 7 out on them", int(sim.under[Sim._i(Sim.HUB_AT + Vector2i(-4, 1))]) == 1 and int(sim.under[Sim._i(Sim.HUB_AT + Vector2i(-5, 2))]) == 1 and int(sim.machines[Sim._i(Sim.HUB_AT + Vector2i(-4, 1))].last) == 7 and (sim.outs[Sim._i(Sim.HUB_AT + Vector2i(-4, 1))] as PackedInt32Array).size() == 1)
+				_check("the adder set over two lines kept them under it and puts 7 out on them", sim.belt_at(Sim.HUB_AT + Vector2i(-4, 1)) == Sim.BELT and sim.belt_at(Sim.HUB_AT + Vector2i(-5, 2)) == Sim.BELT and int(sim.machines[Sim._i(Sim.HUB_AT + Vector2i(-4, 1))].last) == 7 and (sim.outs[Sim._i(Sim.HUB_AT + Vector2i(-4, 1))] as PackedInt32Array).size() == 1)
 				_shot("5b_close")
 				_s.board.k = 74.0
 				_s.board.look_at_square(Vector2(Sim.HUB_AT) + Vector2(3, 4), true)
