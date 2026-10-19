@@ -1036,3 +1036,10 @@ keyboard); the calls that were mine are listed at the foot.
   seen**: a phone; the win, the tutorial and the menu card after the
   change; the sounds with the new spacing (every landing clears
   `TICK_GAP` now, so a run of ten ticks ten times).
+
+**2026-10-19, 07:15: twice as fast** (the user: "increase speed of pieces
+move by 2x"). `FLY_TIME` 0.15 (0.3), `RUN_STEP` 0.06 (0.12),
+`RUN_STEP_CAP` 1.2 (2.4): the same two or three in the air at once, the
+chain at twice the pace, a stow of twenty landing its last at 1.35 s. The
+pick's wave and the slides are as they were. Board probe 26 days, the same
+two band-2 zoom failures; not seen.

@@ -97,9 +97,11 @@ const HELD_BOB_MAX := 48
 ## is its own (0.06 and a cap of 0.9 s kept five up and read as a stream;
 ## the user, 2026-10-19: "pieces should move one after another"). The cap
 ## only squeezes the case's biggest stows (64 on Insane); a stretch set or
-## a stow of twenty keeps the step.
-const RUN_STEP := 0.12
-const RUN_STEP_CAP := 2.4
+## a stow of twenty keeps the step. Twice as fast since 2026-10-19 (the
+## user: "increase speed of pieces move by 2x"): the flight, the step and
+## the cap all halved (0.3, 0.12, 2.4), so the chain reads the same.
+const RUN_STEP := 0.06
+const RUN_STEP_CAP := 1.2
 ## The case's own sliding along a place go one after another too, this
 ## far apart, the whole pack no longer than SLIDE_CAP (a pack on Insane
 ## can slide sixty places, and a place is not pickable until its jewel has
@@ -112,7 +114,7 @@ const SLIDE_CAP := 0.3
 ## like a wave").
 const PICK_STEP := 0.045
 const PICK_CAP := 0.5
-const FLY_TIME := 0.3
+const FLY_TIME := 0.15
 ## A button of the tin sliding along to the next place (State.SLIDE).
 const SLIDE_TIME := 0.18
 const FLY_ARC := 0.55
