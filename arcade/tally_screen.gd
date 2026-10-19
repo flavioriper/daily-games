@@ -5,8 +5,8 @@ extends Control
 ## **The paper is the whole screen**, edge to edge (the rule since
 ## 2026-10-10). Over it lie the flat boards' top bar, a plate row (the
 ## counting box's goal, and the upgrades with a dot when one can be bought)
-## and at the foot the tray: two rows of tools, Look, Belt, Dig, Crate and
-## Remove, then the five operators. A tool not handed over yet is a lock
+## and at the foot the tray: two rows of tools, Look, Belt, Dig, Rotate,
+## Remove and Parts, then the Crate and the five operators. A tool not handed over yet is a lock
 ## with the level it comes at; the held tool pressed again is put down. The
 ## board's hand (arcade/tally_board.gd) traces paths and drops ghosts with
 ## pills; after a path laid or a lift an **undo chip** (a round paper button
@@ -159,6 +159,10 @@ func _notification(what: int) -> void:
 	if sim == null:
 		return
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
+		if bench != null:
+			# a part half built is kept as it stands, the bench left out
+			var got: Array = bench.bench_read()
+			sim.set_part(bench_id, got[0], got[1])
 		sim.save()
 
 ## A new paper says where to begin, once.

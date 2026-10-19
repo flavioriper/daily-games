@@ -3995,7 +3995,8 @@ swaps `board.sim` to it (`open_bench`/`close_bench`; `here()`), the tray
 becomes Look, Belt, Rotate, Remove, Ports and the operators, the plate
 row names the part with a green Done; Done or back writes it with
 `set_part`, which writes every copy again (tokens in them fall off, undo
-cleared). The tray's sixth slot, Parts (open from the adder), opens
+cleared); the app losing focus writes an open bench the same way before
+saving, the bench left out. The tray's sixth slot, Parts (open from the adder), opens
 `arcade/tally_parts.gd`: a row a part (lid, name, size, how many placed,
 Place, Edit, bin) and a size stepper with New. Placing is the `part` tool:
 a ghost of the lid with Turn, Place, Cancel. A tap on a copy opens Edit,
