@@ -70,9 +70,9 @@ const CELL_MAX := 84.0
 ## the cloth's buttons changed, twice smaller and then the gem tile (0.86 of
 ## the old 0.8 across: 0.335 / Art.RIM).
 const TIN_FIT := 0.838
-## The tin's ring, which is cut with the tin's buttons, kept at its own size
-## (0.69 / TIN_FIT).
-const TIN_RING := 0.824
+## The tin's ring, which is cut with the tin's buttons, at the hollow's
+## own size (0.4 of a place over the unit's 0.5 x TIN_FIT).
+const TIN_RING := 0.955
 ## The zoom button's close: a square about this big on the screen (and
 ## CELL_MAX at the closest a pinch goes).
 const NEAR_PX := 60.0

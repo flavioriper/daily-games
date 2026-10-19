@@ -1060,3 +1060,10 @@ another. Board probe as before; not seen.
 at four thirds: `FLY_TIME` 0.1, `RUN_STEP` 0.04, `RUN_STEP_CAP` 0.8.
 Every other jewel of a run still ticks (`TICK_GAP` 0.075). Board probe as
 before; not seen.
+
+**07:26, the guide ring is the seat's shape** (the user: "the indicator
+on easier difficulties should have the same shape of the empty slot").
+`units().ring` is a rounded square (`corners`, a sun lip round a pale
+floor) in place of two discs; on the picture it is scaled 0.82 as before,
+a hair over the seat, and on the case `TIN_RING` is 0.955 so it is the
+hollow's size (0.824 was the old disc's). Seen on Easy `play`, one window.

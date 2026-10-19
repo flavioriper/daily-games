@@ -233,9 +233,13 @@ static func units(cell: float, colours: Array, look := FULL) -> Dictionary:
 		b.polygon(corners(Vector2(0.0, cell * SHADOW_DOWN + 2.0), cell * (SHADOW_R + 0.03), cell * TIP * 1.4, 5), Color(Pal.TEXT, 0.07))
 		b.polygon(corners(Vector2(0.0, cell * SHADOW_DOWN), cell * (SHADOW_R - 0.02), cell * TIP * 1.2, 5), Color(Pal.TEXT, 0.13))
 	out.shade = b.mesh()
+	# the ring that says where a pick may go is the seat's own shape (the
+	# user, 2026-10-19: "the indicator on easier difficulties should have
+	# the same shape of the empty slot"): a sun lip round a pale floor,
+	# scaled by the board to the seat
 	b = Face.Builder.new()
-	b.disc(Vector2.ZERO, cell * 0.5, Pal.SUN)
-	b.disc(Vector2.ZERO, cell * 0.43, Color(Pal.SUN_TILE, 0.9))
+	b.polygon(corners(Vector2.ZERO, cell * 0.5, cell * TIP * 1.3, 5), Pal.SUN)
+	_raw(b, corners(Vector2.ZERO, cell * 0.43, cell * TIP * 1.1, 5), Color(Pal.SUN_TILE, 0.9))
 	out.ring = b.mesh()
 	var n := 3 if look == PLAIN else 5
 	for named in colours:
