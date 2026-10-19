@@ -162,7 +162,7 @@ func _notification(what: int) -> void:
 		if bench != null:
 			# a part half built is kept as it stands, the bench left out
 			var got: Array = bench.bench_read()
-			sim.set_part(bench_id, got[0], got[1])
+			sim.set_part(bench_id, got[0], got[1], bench.frame.size)
 		sim.save()
 
 ## A new paper says where to begin, once.
@@ -623,11 +623,14 @@ func _draw_bench_hud() -> void:
 	var mid := Vector2(g.position.x + 70.0, g.get_center().y)
 	hud.draw_mesh(Art.icon(Sim.PART), null, Transform2D(0.0, Vector2.ONE * 0.8, 0.0, mid))
 	var d: Dictionary = sim.defs.get(bench_id, {"name": "", "w": 0, "h": 0})
+	var fr: Vector2i = bench.frame.size
 	var x := g.position.x + 140.0
 	hud.draw_string(_font, Vector2(x, g.position.y + 40.0), tr("TL_BENCH") , HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Pal.ACCENT_2)
-	hud.draw_string(_font, Vector2(x, g.position.y + 76.0), tr("TL_PART_NAME") % String(d.name) + "  ·  " + tr("TL_PART_SIZE") % [int(d.w), int(d.h)], HORIZONTAL_ALIGNMENT_LEFT, g.size.x - 160.0, 30, Pal.TEXT)
-	hud.draw_string(_font, Vector2(x, g.position.y + 104.0), tr("TL_BENCH_LINE"), HORIZONTAL_ALIGNMENT_LEFT, g.size.x - 160.0, 18, Pal.TEXT_DIM)
+	hud.draw_string(_font, Vector2(x, g.position.y + 76.0), Sim.part_title(d) + "  ·  " + tr("TL_PART_SIZE") % [fr.x, fr.y], HORIZONTAL_ALIGNMENT_LEFT, g.size.x - 220.0, 30, Pal.TEXT)
+	hud.draw_string(_font, Vector2(x, g.position.y + 104.0), tr("TL_BENCH_LINE"), HORIZONTAL_ALIGNMENT_LEFT, g.size.x - 220.0, 18, Pal.TEXT_DIM)
 	Icons.paint(hud, "check", Rect2(um - Vector2(22, 22) * press, Vector2(44, 44) * press), Pal.SURFACE)
+	# the plate opens the part's card: a pencil says so
+	Icons.paint(hud, "pencil", Rect2(Vector2(g.end.x - 58.0, g.get_center().y - 20.0), Vector2(40, 40)), Pal.TEXT_DIM)
 
 func _on_hud_input(event: InputEvent) -> void:
 	var at := Vector2(-1, -1)
@@ -649,6 +652,8 @@ func _on_hud_input(event: InputEvent) -> void:
 			if which == 1:
 				_chip_at[-1] = _clock
 				close_bench()
+			else:
+				open_bench_card()
 		elif which == 1:
 			open_shop()
 		else:
@@ -1037,13 +1042,50 @@ func open_bench(id: int) -> void:
 	_feel(Haptics.TAP)
 	Analytics.track("tally_bench", {"part": id, "copies": sim.copies_of(id)})
 
-## The bench put away: its grid written into the part and every copy.
+## The bench's part card: its name and its grid's size (a tap on the plate).
+func open_bench_card() -> void:
+	if bench == null or _busy():
+		return
+	_fx.touch()
+	_feel(Haptics.TAP)
+	board.let_go()
+	var card := Parts.new()
+	card.name = "Parts"
+	card.sim = sim
+	card.bench = bench_id
+	card.bench_size = bench.frame.size
+	card.closed.connect(func() -> void:
+		_fx.touch(0.94)
+		_fx.buzz(Haptics.TAP))
+	card.edited.connect(_on_bench_card)
+	add_child(card)
+	move_child(_rw, get_child_count() - 1)
+
+func _on_bench_card(nm: String, sz: Vector2i) -> void:
+	if bench == null or not sim.defs.has(bench_id):
+		return
+	var d: Dictionary = sim.defs[bench_id]
+	# the name as shown left alone keeps "Part n" in every language
+	if nm != "" and nm != Sim.part_title(d):
+		d.name = nm
+		_changed()
+	if sz != bench.frame.size:
+		bench.bench_resize(sz.x, sz.y)
+		board.relay()
+		var fr: Rect2i = bench.frame
+		var fit := minf(board.view.size.x / (fr.size.x + 3.0), board.view.size.y / (fr.size.y + 3.0))
+		board.show_at(Vector2(fr.position) + Vector2(fr.size) * 0.5, minf(fit, Board.K_MOST))
+
+## The bench put away: its grid written into the part and every copy (one
+## its new size has no room for is lifted, and said).
 func close_bench() -> void:
 	if bench == null:
 		return
 	board.let_go()
 	var got: Array = bench.bench_read()
-	sim.set_part(bench_id, got[0], got[1])
+	var lifted: int = sim.set_part(bench_id, got[0], got[1], bench.frame.size)
+	if lifted > 0:
+		_rw.sticker(tr("TL_SAY_PART_LIFTED_ONE") if lifted == 1 else tr("TL_SAY_PART_LIFTED_N") % lifted, _top(), 36, 2.6, false, Color("fffaf0"), false, "say", 20.0)
 	bench = null
 	bench_id = -1
 	board.sim = sim

@@ -4008,9 +4008,20 @@ space, ins A, B, C left to right then top to bottom as built (a turned
 copy keeps them), outs `=`. Tokens inside a copy are not drawn or
 numbered, nor its machines' arcs. Locale rows in en, pt and es.
 
+**Rename and resize** (the user, same day, on the bench: "i should be
+able to rename it and change grid"). A tap on the bench's plate (a pencil
+on it) opens the part's card, `tally_parts.gd` with `bench` set: a name
+field (18 letters; left as shown, "Part n" stays translated,
+`Sim.part_title`) and the grid's size, across and down. A new size is
+made on the bench at once (`bench_resize`: the same top-left corner,
+pieces left outside lifted, a port on the right or bottom edge moved with
+it, one with no edge left under it dropped); Done writes it with
+`set_part(..., size)`, which grows or shrinks every copy from its corner
+and lifts one with no room, said by a sticker (`TL_SAY_PART_LIFTED_*`).
+
 Calls of mine, unconfirmed: a copy is closed (nothing inside is seen
-running); a part's size is fixed once made (a change would collide with
-what stands round its copies); parts open with the adder (level 2); a part
+running); a resized copy keeps its top-left corner and is lifted (not
+moved) when it has no room; parts open with the adder (level 2); a part
 holds belts and operators only (no digs or crates); the bench does not run
 (nothing feeds it); the bin on a part takes every copy with it without
 asking; names are "Part n"; no tutorial page yet. Seen on `opengl3_angle`

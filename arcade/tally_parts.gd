@@ -7,10 +7,17 @@ extends Control
 ## takes copies of it), Edit (the bench opens on it) and a bin (the part and
 ## every copy go); under them the size of a new part, across and down, and
 ## New. The screen mounts it (`sim`) and does what `chose` asks.
+##
+## With `bench` set (the part on the bench, the user, 2026-10-19: "i should
+## be able to rename it and change grid") it is that part's card instead: a
+## field for its name and its grid's size, across and down, from `bench_size`;
+## Done says them through `edited`.
 
 signal closed
 ## "place", "edit" or "drop" with a part's id; "new" with its size.
 signal chose(what: String, id: int, size: Vector2i)
+## The bench's part named and sized.
+signal edited(name: String, size: Vector2i)
 
 const Sim = preload("res://arcade/tally_sim.gd")
 const Art = preload("res://arcade/tally_art.gd")
@@ -26,12 +33,20 @@ const LIST_MOST := 620.0
 const ROW_H := 84.0
 ## A new part's size as first offered.
 const START := Vector2i(4, 4)
+const NAME_MOST := 18
+const FIELD_H := 96.0
 
 static var _size := START
 
 var sim: RefCounted
+## The part on the bench, or -1, and its grid's size there.
+var bench := -1
+var bench_size := START
 var _wide_l: Label
 var _tall_l: Label
+var _field: LineEdit
+## The size the steppers hold.
+var _sz := START
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -45,6 +60,68 @@ func _ready() -> void:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 18)
 	card.add_child(col)
+	if bench >= 0:
+		_bench_card(col)
+	else:
+		_list_card(col)
+	if not Motion.reduce:
+		card.pivot_offset = Vector2(WIDE * 0.5, 300)
+		card.scale = Vector2.ONE * 0.9
+		card.create_tween().tween_property(card, "scale", Vector2.ONE, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		Motion.appear(self, 0.0, 1.0, 0.2)
+
+## The bench's part: its name and its grid's size.
+func _bench_card(col: VBoxContainer) -> void:
+	_sz = bench_size
+	col.add_child(Dialog.head("TL_PART_EDIT", "pencil"))
+	_field = LineEdit.new()
+	_field.name = "Name"
+	_field.custom_minimum_size.y = FIELD_H
+	_field.max_length = NAME_MOST
+	_field.text = Sim.part_title(sim.defs[bench])
+	_field.select_all_on_focus = true
+	_field.context_menu_enabled = false
+	_field.add_theme_font_override("font", CozyTheme.display(700))
+	_field.add_theme_font_size_override("font_size", 44)
+	_field.add_theme_color_override("font_color", Pal.TEXT)
+	_field.add_theme_color_override("caret_color", Pal.ACCENT_2)
+	_field.add_theme_stylebox_override("normal", CozyTheme.card(Pal.SURFACE, 28, Pal.LINE, 3, 20))
+	_field.add_theme_stylebox_override("focus", CozyTheme.card(Pal.SURFACE, 28, Pal.SUN, 4, 20))
+	_field.text_submitted.connect(func(_t: String) -> void: _field.release_focus())
+	# a touch is not a click here: only a click gives a LineEdit the keyboard
+	_field.gui_input.connect(func(ev: InputEvent) -> void:
+		if ev is InputEventScreenTouch and ev.pressed:
+			_field.edit())
+	col.add_child(_field)
+	var tile := PanelContainer.new()
+	tile.add_theme_stylebox_override("panel", Dialog.tile(Pal.SURFACE, 14))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	tile.add_child(row)
+	_wide_l = _stepper(row, "TL_PART_WIDE", 0)
+	_tall_l = _stepper(row, "TL_PART_TALL", 1)
+	col.add_child(tile)
+	_show_size()
+	var many: int = sim.copies_of(bench)
+	if many > 0:
+		var note := Label.new()
+		note.text = tr("TL_PART_RESIZE_NOTE_ONE") if many == 1 else tr("TL_PART_RESIZE_NOTE_N") % many
+		note.theme_type_variation = "CardBlurb"
+		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		note.custom_minimum_size.x = WIDE - 120
+		col.add_child(note)
+	var done := Dialog.primary("check", tr("TL_DONE"))
+	done.pressed.connect(func() -> void:
+		var nm := _field.text.strip_edges()
+		edited.emit(nm, _sz)
+		closed.emit()
+		queue_free())
+	Dialog.buttons(col, done)
+
+## The parts, and New.
+func _list_card(col: VBoxContainer) -> void:
+	_sz = _size
 	col.add_child(Dialog.head("TL_PARTS", "puzzle"))
 	var ids: Array = sim.defs.keys()
 	ids.sort()
@@ -70,11 +147,6 @@ func _ready() -> void:
 	var done := Dialog.secondary("check", tr("TL_DONE"))
 	done.pressed.connect(_pick.bind("", -1))
 	Dialog.buttons(col, done)
-	if not Motion.reduce:
-		card.pivot_offset = Vector2(WIDE * 0.5, 300)
-		card.scale = Vector2.ONE * 0.9
-		card.create_tween().tween_property(card, "scale", Vector2.ONE, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		Motion.appear(self, 0.0, 1.0, 0.2)
 
 ## One part's row: its lid small, its name and size, Place, Edit, the bin.
 func _row(id: int) -> Control:
@@ -93,8 +165,11 @@ func _row(id: int) -> Control:
 	words.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_child(words)
 	var name_l := Label.new()
-	name_l.text = tr("TL_PART_NAME") % String(d.name)
+	name_l.text = Sim.part_title(d)
 	name_l.theme_type_variation = "CardTitle"
+	name_l.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	name_l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	name_l.custom_minimum_size.x = 120
 	words.add_child(name_l)
 	var many: int = sim.copies_of(id)
 	var line := Label.new()
@@ -142,7 +217,7 @@ func _maker() -> Control:
 	make.custom_minimum_size = Vector2(0, ROW_H)
 	make.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	make.pressed.connect(func() -> void:
-		chose.emit("new", -1, _size)
+		chose.emit("new", -1, _sz)
 		closed.emit()
 		queue_free())
 	row.add_child(make)
@@ -180,14 +255,16 @@ func _stepper(row: HBoxContainer, key: String, axis: int) -> Label:
 
 func _step(axis: int, by: int) -> void:
 	if axis == 0:
-		_size.x = clampi(_size.x + by, Sim.PART_LEAST, Sim.PART_MOST)
+		_sz.x = clampi(_sz.x + by, Sim.PART_LEAST, Sim.PART_MOST)
 	else:
-		_size.y = clampi(_size.y + by, Sim.PART_LEAST, Sim.PART_MOST)
+		_sz.y = clampi(_sz.y + by, Sim.PART_LEAST, Sim.PART_MOST)
+	if bench < 0:
+		_size = _sz
 	_show_size()
 
 func _show_size() -> void:
-	_wide_l.text = str(_size.x)
-	_tall_l.text = str(_size.y)
+	_wide_l.text = str(_sz.x)
+	_tall_l.text = str(_sz.y)
 
 func _pick(what: String, id: int) -> void:
 	if what != "":

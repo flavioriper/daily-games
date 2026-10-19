@@ -1316,21 +1316,40 @@ func new_part(w: int, h: int) -> int:
 	defs[id] = {"name": "%d" % id, "w": clampi(w, PART_LEAST, PART_MOST), "h": clampi(h, PART_LEAST, PART_MOST), "pieces": [], "ports": []}
 	return id
 
-## Part `id`'s inside and ports as built on a bench, written again into
-## every copy of it (tokens riding in them fall off; nothing to undo).
-func set_part(id: int, pieces: Array, ports: Array) -> void:
+## Part `id`'s inside and ports as built on a bench (and its grid's size
+## when `sz` is given), written again into every copy of it from the same
+## corner (tokens riding in them fall off; nothing to undo). A copy the new
+## size has no room for is lifted. Returns how many were.
+func set_part(id: int, pieces: Array, ports: Array, sz := Vector2i.ZERO) -> int:
 	if not defs.has(id):
-		return
+		return 0
 	defs[id].pieces = pieces
 	defs[id].ports = ports
+	if sz != Vector2i.ZERO:
+		defs[id].w = clampi(sz.x, PART_LEAST, PART_MOST)
+		defs[id].h = clampi(sz.y, PART_LEAST, PART_MOST)
+	var mine := []
 	for a: int in copies.keys():
 		if int(copies[a][0]) == id:
-			var rot := int(copies[a][1])
+			mine.append([a, int(copies[a][1])])
 			_unstamp_copy(a)
-			_stamp_copy(a, id, rot)
+	var lifted := 0
+	for c: Array in mine:
+		if part_why_not(id, tile_of(int(c[0])), int(c[1])) == "":
+			_stamp_copy(int(c[0]), id, int(c[1]))
+		else:
+			lifted += 1
 	mark()
 	_wire()
 	_emit("part", {"id": id})
+	return lifted
+
+## Part `d`'s name as the player reads it: one they gave it, or "Part n".
+static func part_title(d: Dictionary) -> String:
+	var nm := String(d.get("name", ""))
+	if nm.is_valid_int():
+		return TranslationServer.translate("TL_PART_NAME") % nm
+	return nm
 
 ## Part `id` thrown away with every copy of it.
 func drop_part(id: int) -> void:
@@ -1379,6 +1398,37 @@ static func bench_for(d: Dictionary, lvl: int) -> RefCounted:
 	s._wire()
 	s._undo = {}
 	return s
+
+## The bench's grid made `w` by `h` from the same corner: a piece left
+## outside it is lifted, a port on the right or bottom edge goes with that
+## edge, and one with no edge left under it goes.
+func bench_resize(w: int, h: int) -> void:
+	var nf := Rect2i(frame.position, Vector2i(clampi(w, PART_LEAST, PART_MOST), clampi(h, PART_LEAST, PART_MOST)))
+	var all := frame.merge(nf)
+	for y in range(all.position.y, all.end.y):
+		for x in range(all.position.x, all.end.x):
+			var t := Vector2i(x, y)
+			if kind_at(t) == EMPTY:
+				continue
+			for u: Vector2i in piece_squares(t):
+				if not nf.has_point(u):
+					remove(t)
+					break
+	var kept := {}
+	for key: Vector3i in bench_ports:
+		var at := Vector2i(key.x, key.y)
+		match key.z:
+			0:
+				at.x = nf.size.x - 1
+			1:
+				at.y = nf.size.y - 1
+		if at.x < nf.size.x and at.y < nf.size.y:
+			kept[Vector3i(at.x, at.y, key.z)] = bench_ports[key]
+	bench_ports = kept
+	frame = nf
+	mark()
+	_wire()
+	_emit("port", {"tile": frame.position, "way": 0, "io": -1})
 
 ## The bench's grid read back: [pieces, ports] as `defs` keeps them.
 func bench_read() -> Array:

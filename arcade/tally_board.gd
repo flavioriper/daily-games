@@ -957,7 +957,7 @@ func _write(text: String, at: Vector2, fs: int, col: Color) -> void:
 func part_name(id: int) -> String:
 	if not sim.defs.has(id):
 		return tr("TL_PIECE_PART")
-	return tr("TL_PART_NAME") % String(sim.defs[id].name)
+	return Sim.part_title(sim.defs[id])
 
 func pill_open() -> bool:
 	return not _pill.is_empty()

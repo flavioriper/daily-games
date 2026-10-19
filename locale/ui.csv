@@ -1938,8 +1938,13 @@ TL_PART_NEW,New,Nova,Nueva
 TL_PART_WIDE,Across,Largura,Ancho
 TL_PART_TALL,Down,Altura,Alto
 TL_BENCH,Building a part,Montando uma peça,Armando una pieza
-TL_BENCH_LINE,"Ports: tap the edge for in, again for out","Portas: toque na borda para entrada, de novo para saída","Puertos: toca el borde para entrada, otra vez para salida"
+TL_BENCH_LINE,Tap here to rename or resize. Ports: tap the edge,Toque aqui para renomear ou redimensionar. Portas: toque na borda,Toca aquí para renombrar o redimensionar. Puertos: toca el borde
 TL_SAY_PORT_EDGE,Ports go on the edge,Portas ficam na borda,Los puertos van en el borde
+TL_PART_EDIT,This part,Esta peça,Esta pieza
+TL_PART_RESIZE_NOTE_ONE,"Its copy grows or shrinks from its top-left corner; if it no longer fits there, it is lifted.","A cópia cresce ou encolhe a partir do canto de cima à esquerda; se não couber mais, ela é retirada.","Su copia crece o se encoge desde la esquina superior izquierda; si ya no cabe, se retira."
+TL_PART_RESIZE_NOTE_N,Its %d copies grow or shrink from their top-left corner; any that no longer fits is lifted.,As %d cópias crescem ou encolhem a partir do canto de cima à esquerda; as que não couberem são retiradas.,Sus %d copias crecen o se encogen desde la esquina superior izquierda; las que ya no caben se retiran.
+TL_SAY_PART_LIFTED_ONE,1 copy had no room and was lifted,1 cópia ficou sem espaço e foi retirada,1 copia no tenía espacio y se retiró
+TL_SAY_PART_LIFTED_N,%d copies had no room and were lifted,%d cópias ficaram sem espaço e foram retiradas,%d copias no tenían espacio y se retiraron
 TL_EMPTY,Empty it,Esvaziar,Vaciar
 TL_DONE,Done,Pronto,Listo
 TL_SIDE_A,A,A,A
