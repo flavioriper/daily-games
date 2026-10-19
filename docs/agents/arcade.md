@@ -4028,6 +4028,68 @@ asking; names are "Part n"; no tutorial page yet. Seen on `opengl3_angle`
 810x1440: bench 57, paper with a copy 66, the Parts card 134 draw calls.
 Probe 0 failed, `_shot_tally` headless 0 failed, suite 248522/0.
 
+#### Tally picks, parts as templates, belts laid on release (2026-10-19, later)
+
+The user: "On convey instead of showing a confirm dialog to place, just
+keep it as preview until user release, no confirm dialog. When no tool is
+selected, if user hold touch it start a selection ... copy, duplicate,
+delete (make sure it show a revert after it to avoid mistakes) and a
+button to save submodule ... no more closed box or edit grid needed, now
+submodule will be just a building template saved that user can use to
+spawn. User can only place or delete a submodule, no edit. Also submodule
+no more share state". Branch `feat/tally-picks`.
+
+- **Belts are laid on release again** (`tally_board.gd` `_lay_traced`, the
+  pre-draft code): the trace is the preview, the lift lays it, a tap on bare
+  paper lays one belt and opens its pill. The draft, its Turn/Flip/Place
+  pill and dragging it are gone; machines, digs and crates keep their
+  ghost and builder pill. The tutorial's Dig and Belts pages and the Dig
+  body went back to before the drafts.
+- **The pick** (Look in hand, "no tool selected"): a finger held still
+  `HOLD` 0.42 s begins a rectangle from its square (`_hold_pick` from
+  `tick`, with a touch cue), a drag grows it (the view edge-pans), and on
+  release `sim.picked` (every square of every piece touching it, a machine
+  whole, never the box) gets the **pick pill** under the rectangle (over it
+  when low; `_pill.rect`): Copy, Duplicate, Remove, Save part (Save from
+  the adder on, as Parts; Copy, Duplicate and Save only when a template
+  can be made). Drawn in the live mesh: a sun-edged rectangle, picked
+  squares washed.
+  - **Remove** is `sim.lift_all` (one wire, one `erase`), then an **Undo
+    pill** where the pick was for `UNDO_PILL` 6 s (`"undone"`, "Removed n"),
+    as well as the tray's undo chip.
+  - **Duplicate**: one template ghost beside the pick (right, below, left,
+    above: the first that fits), the builder pill titled Duplicate; drag it
+    or tap bare paper to move it, Place sets it once. **Copy**: the same
+    ghost, but the hand takes the template (`clip`, tool `part`,
+    `part_id` -1) so a tap drops it again anywhere, as a part's does. The
+    view glides to a ghost off the view.
+  - **Save part**: `sim.save_part` keeps the template as "Part n", said by
+    a sticker; the Parts slot hops.
+- **Parts are templates** (`tally_sim.gd`): `defs[id] = {name, w, h,
+  pieces}` from the pick's corner; `template_of`, `template_squares`,
+  `template_blocked`, `why_not_template` (a square must be empty or belt,
+  as `why_not` says) and `stamp_template` (plain pieces, `_record`ed, one
+  wire, one `lay` event, so the lay cue and the undo chip follow). Turned a
+  quarter about its middle by Turn. Nothing ties set-down pieces to their
+  part. Gone: `part[]`, `copies`, `gates`, ports, the bench (`blank`,
+  `frame`, `bench_*`, `toggle_port_at`), `set_part`, the Ports tool, the
+  lids layer, `Art.bench_frame`, rename and resize. The Parts card
+  (`tally_parts.gd`) is a list: block, name, size and pieces, Place, bin.
+  A save from before keeps its parts (ports dropped) and **its copies stay
+  on the paper as plain pieces**; VER unchanged.
+- Seen on `opengl3_angle` 810x1440 (one windowed run): 89 draw calls with
+  the pick pill, 89 with a Duplicate ghost, 113 with the Parts card.
+  `_shot_tally` 0 failed headless and windowed with the new beats (a real
+  hold begins a pick; the pill's four buttons; Remove then Undo; Save;
+  Duplicate then Place, green); probe 0 failed with seven template checks;
+  suite 248522/0.
+- **Mine, the user's to call**: Copy keeps the template in hand, Duplicate
+  is one ghost; digs are left out of a template (a dig belongs to its
+  printed number) but a pick's Remove lifts them; a template may go over
+  belts (they are replaced, as a machine's ghost does); parts keep "Part
+  n" names (no rename, as asked: no edit); the pick needs Look in hand.
+  Phone unseen.
+
 #### Tally drafts, the one-row tray, the flow sheet (2026-10-19)
 
 The user: "we need a button to show a sheet with numbers by seconds of

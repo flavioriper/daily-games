@@ -1934,7 +1934,7 @@ TL_PICKED_ONE,1 piece picked,1 peça escolhida,1 pieza elegida
 TL_PICKED_N,%d pieces picked,%d peças escolhidas,%d piezas elegidas
 TL_REMOVED_N,Removed %d,%d removidas,%d quitadas
 TL_COPY_HELD,Copy,Cópia,Copia
-TL_SAY_PART_SAVED,Saved as %s: find it under Parts,Salva como %s: está em Peças,Guardada como %s: está en Piezas
+TL_SAY_PART_SAVED,Saved as %s,Salva como %s,Guardada como %s
 TL_PART_PIECES_ONE,1 piece,1 peça,1 pieza
 TL_PART_PIECES_N,%d pieces,%d peças,%d piezas
 TL_PART_NAME,Part %s,Peça %s,Pieza %s

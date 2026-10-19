@@ -986,6 +986,8 @@ func _pill_title() -> String:
 		"build":
 			kd = int(_ghost.kind)
 			if kd == Sim.PART:
+				if bool(_ghost.get("once", false)):
+					return tr("TL_DUPLICATE")
 				return part_name(part_id) if part_id >= 0 else tr("TL_COPY_HELD")
 		_:
 			var t: Vector2i = _pill.tile
@@ -1275,6 +1277,10 @@ func _pill_press(name: String) -> void:
 				part_id = -1
 				tool = "part"
 			_set_template(d, at, 0, name == "dup")
+			# the ghost may stand off the view: the view goes to it
+			var sz := Vector2(int(d.w), int(d.h))
+			if not view.grow(-40.0).encloses(Rect2(screen_of(Vector2(at)), sz * k)):
+				look_at_square(Vector2(at) + sz * 0.5)
 		"save":
 			var id: int = sim.save_part(_picked)
 			_close_pill()
