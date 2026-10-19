@@ -285,8 +285,13 @@ static func cells(k: int, f: int) -> Array:
 ## chevrons pointing in (one, two); the answer its dark spout out of the
 ## front edge with a brass chevron pointing away. Drawn as it lies (the
 ## letters and the sign stay upright, so a mesh a facing).
-static func machine(k: int, f := 0) -> ArrayMesh:
-	var key := ["machine", k, f]
+##
+## A and B take from any edge and the answers hand out of any free one:
+## `ins` and `outs` hold, for square `c` of the footprint (in `cells`'
+## order), bits `c * 4 + way` for each way a token goes in or out there.
+## A square with no bits wears the notch at its back, the spout at its front.
+static func machine(k: int, f := 0, ins := 0, outs := 0) -> ArrayMesh:
+	var key := ["machine", k, f, ins, outs]
 	if _cache.has(key):
 		return _cache[key]
 	var b := Face.Builder.new()
@@ -295,9 +300,11 @@ static func machine(k: int, f := 0) -> ArrayMesh:
 	var cs := cells(k, f)
 	var h := BLOCK * 0.5
 	# spouts first: they come out from under the block
-	for c: Array in cs:
+	for ci in cs.size():
+		var c: Array = cs[ci]
 		if int(c[1]) == Sim.R_OUT or int(c[1]) == Sim.R_REM:
-			_spout_at(b, c[0], v, 1.0 if int(c[1]) == Sim.R_OUT else 0.8)
+			for d: int in ways(outs, ci, f):
+				_spout_at(b, c[0], dir_v(d), 1.0 if int(c[1]) == Sim.R_OUT else 0.8)
 	# the waists between neighbouring squares, once a pair
 	var waists := []
 	for i in cs.size():
@@ -318,22 +325,24 @@ static func machine(k: int, f := 0) -> ArrayMesh:
 		b.polygon(Face.Builder.round_rect((c[0] as Vector2) + Vector2(-h + 8.0, -h + 6.0), Vector2(BLOCK - 16.0, BLOCK * 0.22), 10.0), Color(1, 1, 1, 0.16))
 	# the answer's face, the dig's: a dark rim and a cream disc, the sign in ink
 	var mid := face_mid(k, f)
-	var outs := 0
+	var n_out := 0
 	for c: Array in cs:
 		if int(c[1]) == Sim.R_OUT:
-			outs += 1
-	var fr := U * (0.3 if outs > 1 else 0.27)
+			n_out += 1
+	var fr := U * (0.3 if n_out > 1 else 0.27)
 	b.disc(mid, fr, col.darkened(0.35))
 	b.disc(mid + Vector2(0, -2), fr - U * 0.04, FACE)
-	sign_into(b, k, mid + Vector2(0, -2), U * (0.17 if outs > 1 else 0.14), col.darkened(0.45))
-	for c: Array in cs:
+	sign_into(b, k, mid + Vector2(0, -2), U * (0.17 if n_out > 1 else 0.14), col.darkened(0.45))
+	for ci in cs.size():
+		var c: Array = cs[ci]
 		var at: Vector2 = c[0]
 		match int(c[1]):
 			Sim.R_A, Sim.R_B:
 				var many := 1 if int(c[1]) == Sim.R_A else 2
-				b.polygon(notch_poly(at, v), WALNUT_EDGE)
-				for ch: PackedVector2Array in notch_chevrons(at, v, many):
-					b.stroke(ch, MOUTH_W, TOKEN)
+				for d: int in ways(ins, ci, f):
+					b.polygon(notch_poly(at, dir_v(d)), WALNUT_EDGE)
+					for ch: PackedVector2Array in notch_chevrons(at, dir_v(d), many):
+						b.stroke(ch, MOUTH_W, TOKEN)
 				var fa := at + v * U * 0.1
 				b.disc(fa, U * 0.19, col.darkened(0.35))
 				b.disc(fa + Vector2(0, -2), U * 0.16, FACE)
@@ -343,6 +352,15 @@ static func machine(k: int, f := 0) -> ArrayMesh:
 				b.disc(at + Vector2(0, -2), U * 0.16, FACE)
 				letter_into(b, "R", at + Vector2(0, -2), U * 0.1, col.darkened(0.45))
 	return _keep(key, b)
+
+## The ways square `ci`'s bits in `mask` name, or the machine's own way
+## `f` when it has none.
+static func ways(mask: int, ci: int, f: int) -> Array:
+	var out := []
+	for d in 4:
+		if mask & (1 << (ci * 4 + d)):
+			out.append(d)
+	return out if not out.is_empty() else [f]
 
 ## A machine's square block as the dig's, the waist that joins two, and the
 ## cream of a face.

@@ -1921,6 +1921,8 @@ TL_PIECE_CRATE_LINE,"Keeps the first number it gets, up to 500, and lets them ou
 TL_TURN,Turn,Girar,Girar
 TL_FLIP,Flip,Inverter,Invertir
 TL_LIFT,Remove,Remover,Quitar
+TL_ERASE_RUN,Section,Trecho,Tramo
+TL_ERASE_LINE,Line,Linha,Línea
 TL_EMPTY,Empty it,Esvaziar,Vaciar
 TL_DONE,Done,Pronto,Listo
 TL_SIDE_A,A,A,A

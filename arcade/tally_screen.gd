@@ -395,7 +395,7 @@ func _play_events() -> void:
 				_feel(Haptics.TICK)
 				_changed()
 				_undo_at = -10.0
-			"lift":
+			"lift", "erase":
 				_fx.cue("lift", randf_range(0.95, 1.05))
 				_feel(Haptics.TICK)
 				_changed()

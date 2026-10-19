@@ -228,11 +228,11 @@ func _operators() -> void:
 			if int(s.kind[i]) == int(row[0]):
 				n += 1
 		_check("%s covers %d squares (%d)" % [Sim.KIND_IDS[int(row[0])], row[1], n], n == int(row[1]) and s.machines.size() == 1)
-	# a belt into an input's side, or into the answer square, is not taken
+	# a belt into an input's side is taken (any face), into the answer square not
 	var s1 = _blank()
 	s1.place(Sim.MUL, Vector2i(10, 10), Nd)
 	_run(s1, Vector2i(6, 10), Vector2i(8, 10), E)
-	_check("a belt into A's side hands nothing", (s1.outs[Sim._i(Vector2i(8, 10))] as PackedInt32Array).is_empty())
+	_check("a belt into A's side is taken", not (s1.outs[Sim._i(Vector2i(8, 10))] as PackedInt32Array).is_empty())
 	_run(s1, Vector2i(10, 13), Vector2i(10, 11), Nd)
 	_check("a belt into the answer square's back hands nothing", (s1.outs[Sim._i(Vector2i(10, 11))] as PackedInt32Array).is_empty())
 	_run(s1, Vector2i(9, 13), Vector2i(9, 11), Nd)

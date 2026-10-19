@@ -18,8 +18,8 @@ extends RefCounted
 ##   first belt running along it), `dig_belts()` belts' worth;
 ## - the five **operators** cover two to four squares (`SHAPES`, after the
 ##   reference's footprints): an A square and a B square that take from
-##   their back edge alone, and answer squares that hand out of their front
-##   edge alone (the divider's remainder square too); 4 waiting a side and
+##   any edge, and answer squares that hand out of any free edge (the
+##   divider's remainder square too); 4 waiting a side and
 ##   2 to go out. Every square of one carries its kind and facing; `root`
 ##   names the square the machine is kept under (its first answer square)
 ##   and `role` what each square is;
@@ -63,8 +63,8 @@ const UNLOCK := {BELT: 0, DIG: 0, ADD: 1, MUL: 7, SUB: 13, DIV: 16, POW: 19, CRA
 enum { R_NONE, R_A, R_B, R_OUT, R_REM }
 ## Each operator's squares as [across, back, role] facing north: across +1
 ## is the right hand, back +1 the square behind; [0, 0] is the root, an
-## answer square. A and B take from their back edge, OUT and REM give from
-## their front edge.
+## answer square. A and B take from any edge, OUT and REM give from any
+## free edge (facing north matters only to the shape).
 const SHAPES := {
 	ADD: [[0, 0, R_OUT], [1, 0, R_OUT], [0, 1, R_A], [1, 1, R_B]],
 	MUL: [[-1, 0, R_A], [0, 0, R_OUT], [1, 0, R_B]],
@@ -759,8 +759,8 @@ func trim_path(tiles: Array, f_last: int) -> Dictionary:
 func _takes(t: Vector2i, d: int) -> bool:
 	return _end_into(t, d) >= 0
 
-## The way from `t` into the box, a machine's A or B square from behind or a
-## crate beside it (not `prev`), or -1; the piece the path was begun on
+## The way from `t` into the box, a machine's A or B square or a crate
+## beside it (not `prev`), or -1; the piece the path was begun on
 ## (`begun`) first, which may be a belt.
 func _taker_beside(t: Vector2i, prev: Vector2i, begun: Vector2i) -> int:
 	var best := -1
@@ -786,7 +786,7 @@ func _giver_beside(t: Vector2i, prev: Vector2i) -> int:
 		var k := int(kind[i])
 		if k == DIG or k == CRATE:
 			return d
-		if is_op(k) and (int(role[i]) == R_OUT or int(role[i]) == R_REM) and int(face[i]) == opp(d):
+		if is_op(k) and (int(role[i]) == R_OUT or int(role[i]) == R_REM):
 			return d
 		if k == BELT and int(face[i]) == opp(d):
 			return d
@@ -867,8 +867,9 @@ func lay_path(tiles: Array, f_last: int) -> int:
 
 ## The slots of the line through the belt on `t`, in the way it runs: back
 ## while a slot has one feeder and forward while the next is fed by it alone
-## (through a crossing's lane, never past a join).
-func line_through(t: Vector2i) -> Array:
+## (through a crossing's lane, never past a join; `bare`: not into a
+## crossing either).
+func line_through(t: Vector2i, bare := false) -> Array:
 	if kind_at(t) != BELT:
 		return []
 	var s0 := _i(t)
@@ -883,6 +884,8 @@ func line_through(t: Vector2i) -> Array:
 		var pk := int(kind[p % N])
 		if pk != BELT and pk != BRIDGE or (feeders.get(p, PackedInt32Array()) as PackedInt32Array).size() > 1:
 			break
+		if bare and pk != BELT:
+			break
 		if (outs.get(p, PackedInt32Array()) as PackedInt32Array).size() != 1:
 			# a fork: the line is the branch begun there, not the one it forks
 			break
@@ -896,6 +899,8 @@ func line_through(t: Vector2i) -> Array:
 			break
 		var nx := o[0] >> 2
 		if nx >= N2 or seen.has(nx) or (feeders.get(nx, PackedInt32Array()) as PackedInt32Array).size() != 1:
+			break
+		if bare and int(kind[nx % N]) != BELT:
 			break
 		s = nx
 		seen[s] = true
@@ -941,6 +946,50 @@ func flip_line(t: Vector2i) -> bool:
 		tiles.append(tile_of(s % N))
 	_wire()
 	_emit("flip", {"tiles": tiles, "tile": t})
+	return true
+
+## The squares of the line through the belt on `t`, stopping at a join, a
+## fork or a crossing (the user, 2026-10-19: "stop on joins or cross to
+## avoid issue"); with `section`, only its straight run about `t`, to the
+## turns either side (a corner square is the run it turns into).
+func line_squares(t: Vector2i, section := false) -> Array:
+	var line := line_through(t, true)
+	if line.is_empty():
+		return []
+	var at := line.find(_i(t))
+	var lo := 0
+	var hi := line.size() - 1
+	if section:
+		var f := int(face[_i(t)])
+		lo = at
+		hi = at
+		while lo > 0 and int(face[int(line[lo - 1])]) == f:
+			lo -= 1
+		while hi < line.size() - 1 and int(face[int(line[hi + 1])]) == f:
+			hi += 1
+	var out := []
+	for j in range(lo, hi + 1):
+		out.append(tile_of(int(line[j])))
+	return out
+
+## Lifts the belts on `tiles` in one go (the paper wired once).
+func erase(tiles: Array) -> bool:
+	var n := 0
+	for t: Vector2i in tiles:
+		var i := _i(t)
+		if int(kind[i]) != BELT:
+			continue
+		_record(i)
+		_clear(i)
+		kind[i] = EMPTY
+		fork[i] = 0
+		root[i] = -1
+		role[i] = R_NONE
+		n += 1
+	if n == 0:
+		return false
+	_wire()
+	_emit("erase", {"n": n, "tiles": tiles, "tile": tiles[0]})
 	return true
 
 ## Turns what stands on `t` a quarter clockwise: a machine about its root,
@@ -1073,10 +1122,13 @@ func _end_into(t2: Vector2i, d: int) -> int:
 				return (i << 2) | d if int(face[i]) == d else -1
 			return ((i + N) << 2) | d if int(face2[i]) == d else -1
 		ADD, MUL, SUB, DIV, POW:
-			# A and B take only from behind: the token goes the way the machine faces
-			if d != int(face[i]):
-				return -1
+			# A and B take from any edge (the user, 2026-10-19: "the multiplier
+			# can accept in at any face of the A and B"), never from their own
+			# machine's squares
 			var r := int(root[i])
+			var from: Vector2i = t2 - DIRS[d]
+			if inside(from) and int(root[_i(from)]) == r:
+				return -1
 			if int(role[i]) == R_A:
 				return ((N2 + r * 4) << 2) | d
 			if int(role[i]) == R_B:
@@ -1107,13 +1159,29 @@ func _away_from(t: Vector2i) -> PackedInt32Array:
 				o.append((i << 2) | d)
 	return o
 
-## The ends a machine's squares of `want` hand out to, from their front edge.
+## The ends a machine's squares of `want` hand out to, from any free edge
+## (the user, 2026-10-19: "out in any free face on result center"): into a
+## machine's A or B beside it, a crate, the box, or a belt leading away as a
+## dig's do (facing away, or a line's first belt along the edge), so a line
+## only passing by is not fed.
 func _mouths(r: int, want: int) -> PackedInt32Array:
 	var o := PackedInt32Array()
-	var f := int(face[r])
-	for c: Array in footprint(int(kind[r]), tile_of(r), f):
-		if int(c[1]) == want:
-			var e := _end_into((c[0] as Vector2i) + DIRS[f], f)
+	for c: Array in footprint(int(kind[r]), tile_of(r), int(face[r])):
+		if int(c[1]) != want:
+			continue
+		var q: Vector2i = c[0]
+		for d in 4:
+			var u: Vector2i = q + DIRS[d]
+			if not inside(u) or int(root[_i(u)]) == r:
+				continue
+			var k := int(kind[_i(u)])
+			if k == BELT:
+				var f := int(face[_i(u)])
+				if not (f == d or (f != opp(d) and kind_at(u - DIRS[f]) == EMPTY)):
+					continue
+			elif k == BRIDGE:
+				continue
+			var e := _end_into(u, d)
 			if e >= 0:
 				o.append(e)
 	return o

@@ -10,7 +10,7 @@ const NAMES := ["chevron_left", "chevron_right", "undo", "reset", "bulb", "gear"
 	"calendar", "home", "trophy", "bars", "heart", "heart_line", "pencil",
 	"puzzle", "flame", "cloud", "mountain", "sparkle", "trend", "crown", "no_ads", "versus", "arcade", "play",
 	"coin", "gift", "clock", "shield", "acorn", "run", "music", "buzz", "globe", "swords", "gamepad",
-	"friends", "copy", "share", "undo_back", "bin", "flip"]
+	"friends", "copy", "share", "undo_back", "bin", "flip", "span", "bends"]
 const SEGMENTS := 24
 const FEATHERED := ["heart"]
 ## Stroke width of polylines as a fraction of the icon's width.
@@ -37,6 +37,10 @@ static func shape(name: String) -> Dictionary:
 			return _bin()
 		"flip":
 			return _flip()
+		"span":
+			return _span()
+		"bends":
+			return _bends()
 		"bulb":
 			return _bulb()
 		"gear":
@@ -439,6 +443,20 @@ static func _flip() -> Dictionary:
 	var head_r := PackedVector2Array([Vector2(0.86, 0.34), Vector2(0.66, 0.2), Vector2(0.66, 0.48)])
 	var head_l := PackedVector2Array([Vector2(0.14, 0.66), Vector2(0.34, 0.52), Vector2(0.34, 0.8)])
 	return {"polys": [head_r, head_l], "lines": [top, low]}
+
+## A straight run between two stops, struck through: a belt's section lifted.
+static func _span() -> Dictionary:
+	var run := PackedVector2Array([Vector2(0.2, 0.5), Vector2(0.8, 0.5)])
+	var l := PackedVector2Array([Vector2(0.14, 0.32), Vector2(0.14, 0.68)])
+	var r := PackedVector2Array([Vector2(0.86, 0.32), Vector2(0.86, 0.68)])
+	var x := PackedVector2Array([Vector2(0.36, 0.2), Vector2(0.64, 0.8)])
+	return {"polys": [], "lines": [run, l, r, x]}
+
+## A line with its bends, struck through: a belt's whole line lifted.
+static func _bends() -> Dictionary:
+	var run := PackedVector2Array([Vector2(0.16, 0.22), Vector2(0.16, 0.62), Vector2(0.5, 0.62), Vector2(0.5, 0.38), Vector2(0.84, 0.38), Vector2(0.84, 0.8)])
+	var x := PackedVector2Array([Vector2(0.3, 0.86), Vector2(0.7, 0.14)])
+	return {"polys": [], "lines": [run, x]}
 
 ## An almond outline with a filled pupil: hold to see through the scenery.
 static func _eye() -> Dictionary:

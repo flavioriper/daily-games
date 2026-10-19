@@ -83,9 +83,9 @@ const CAP_FS := 20
 const TITLE_FS := 24
 const PILL_OFF := 14.0
 const PILL_POP := 0.18
-const PILL_ICON := {"turn": "turn", "flip": "flip", "lift": "bin", "info": "help", "place": "check", "cancel": "cross"}
-const PILL_CAP := {"turn": "TL_TURN", "flip": "TL_FLIP", "lift": "TL_LIFT", "info": "TL_INFO", "place": "TL_PLACE", "cancel": "TL_CANCEL"}
-const PILL_PITCH := {"turn": 1.02, "flip": 1.04, "lift": 0.92, "info": 1.0, "place": 1.08, "cancel": 0.9}
+const PILL_ICON := {"turn": "turn", "flip": "flip", "lift": "bin", "run": "span", "line": "bends", "info": "help", "place": "check", "cancel": "cross"}
+const PILL_CAP := {"turn": "TL_TURN", "flip": "TL_FLIP", "lift": "TL_LIFT", "run": "TL_ERASE_RUN", "line": "TL_ERASE_LINE", "info": "TL_INFO", "place": "TL_PLACE", "cancel": "TL_CANCEL"}
+const PILL_PITCH := {"turn": 1.02, "flip": 1.04, "lift": 0.92, "run": 0.9, "line": 0.88, "info": 1.0, "place": 1.08, "cancel": 0.9}
 ## How far along its last square a token riding into an operator is drawn.
 const OP_STOP := 0.72
 ## A starving side's pulse ring takes this long a beat.
@@ -119,6 +119,8 @@ var _printed_at := -1
 var _clock := 0.0
 var _phase := 0.0
 var _ins := {}
+## Each machine's mouths as drawn: root -> [ins, outs], Art.machine's bits.
+var _mouth := {}
 
 # fingers
 var _touch := {}
@@ -267,6 +269,11 @@ func play(ev: Dictionary) -> void:
 			_gone.append([int(ev.kind), 0, ev.tile, _clock])
 			_pop[ev.tile] = _clock
 			_dirty = true
+		"erase":
+			var tiles: Array = ev.tiles
+			for j in tiles.size():
+				_pop[tiles[j]] = _clock + j * 0.02
+			_dirty = true
 		"undo":
 			_dirty = true
 		"op":
@@ -365,17 +372,21 @@ func _rebuild() -> void:
 	_layers.beds.queue_redraw()
 	_layers.decks.queue_redraw()
 
-## Which ways tokens come into each slot, as bits of their way of going.
+## Which ways tokens come into each slot, as bits of their way of going,
+## and which edges each machine is fed by and hands out of.
 func _work_ins() -> void:
 	_ins = {}
+	_mouth = {}
 	for s: int in sim.lanes:
 		for e: int in sim.outs[s]:
 			_mark(e)
 	for i: int in sim.machines:
 		for e: int in sim.machines[i].fronts:
 			_mark(e)
+			_mark_out(i, e)
 		for e: int in sim.machines[i].rems:
 			_mark(e)
+			_mark_out(i, e)
 	for i: int in sim.digs:
 		for e: int in sim.digs[i].outs:
 			_mark(e)
@@ -389,6 +400,53 @@ func _mark(e: int) -> void:
 	var id := e >> 2
 	if id < Sim.N2:
 		_ins[id] = int(_ins.get(id, 0)) | (1 << (e & 3))
+		return
+	# a machine's A or B fed: its one square of that role, from that way
+	var q := (id - Sim.N2) & 3
+	if q > 1:
+		return
+	var r := (id - Sim.N2) >> 2
+	var ci := _cell_of(r, Sim.R_A if q == 0 else Sim.R_B)
+	if ci >= 0:
+		_mouth_bit(r, 0, ci * 4 + (e & 3))
+
+## Machine `r`'s answer handing out by end `e`: from the square before
+## what it hands into.
+func _mark_out(r: int, e: int) -> void:
+	var id := e >> 2
+	var d := e & 3
+	var to: Vector2i
+	if id < Sim.N2:
+		to = Sim.tile_of(id % Sim.N)
+	else:
+		var q := (id - Sim.N2) & 3
+		var j := (id - Sim.N2) >> 2
+		if q <= 1:
+			var cj := _cell_of(j, Sim.R_A if q == 0 else Sim.R_B)
+			if cj < 0:
+				return
+			to = Sim.footprint(int(sim.kind[j]), Sim.tile_of(j), int(sim.face[j]))[cj][0]
+		else:
+			to = Sim.tile_of(j)
+	var from: Vector2i = to - Sim.DIRS[d]
+	var fp := Sim.footprint(int(sim.kind[r]), Sim.tile_of(r), int(sim.face[r]))
+	for ci in fp.size():
+		if fp[ci][0] == from:
+			_mouth_bit(r, 1, ci * 4 + d)
+			return
+
+## The footprint index of machine `r`'s square of `want`, or -1.
+func _cell_of(r: int, want: int) -> int:
+	var fp := Sim.footprint(int(sim.kind[r]), Sim.tile_of(r), int(sim.face[r]))
+	for ci in fp.size():
+		if int(fp[ci][1]) == want:
+			return ci
+	return -1
+
+func _mouth_bit(r: int, side: int, bit: int) -> void:
+	if not _mouth.has(r):
+		_mouth[r] = [0, 0]
+	_mouth[r][side] = int(_mouth[r][side]) | (1 << bit)
 
 ## The way a belt's bed comes in: from its back, or round from the one side
 ## that feeds it alone.
@@ -574,7 +632,8 @@ func _build_pieces() -> ArrayMesh:
 		elif kd == Sim.CRATE:
 			m = Art.crate()
 		else:
-			m = Art.machine(kd, int(sim.face[i]))
+			var mo: Array = _mouth.get(i, [0, 0])
+			m = Art.machine(kd, int(sim.face[i]), int(mo[0]), int(mo[1]))
 			if _spin.has(t) and not Motion.reduce:
 				var u := clampf((_clock - float(_spin[t][0])) / SPIN, 0.0, 1.0)
 				rot -= (1.0 - (1.0 - pow(1.0 - u, 3.0))) * PI * 0.5
@@ -635,19 +694,22 @@ func _build_live() -> ArrayMesh:
 		if not _sees(t, r.grow(2)):
 			continue
 		var f := int(sim.face[i])
-		var v := Art.dir_v(f)
 		var want := Sim.R_A if side == 0 else Sim.R_B
-		for c: Array in Sim.footprint(int(sim.kind[i]), t, f):
-			if int(c[1]) != want:
+		var fp := Sim.footprint(int(sim.kind[i]), t, f)
+		var mo: Array = _mouth.get(i, [0, 0])
+		for ci in fp.size():
+			if int(fp[ci][1]) != want:
 				continue
-			var at := Art.mid(c[0])
-			b.polygon(Art.notch_poly(at, v), Art.AMBER)
-			for ch: PackedVector2Array in Art.notch_chevrons(at, v, side + 1):
-				b.stroke(ch, Art.MOUTH_W, Art.INK)
-			if not Motion.reduce:
-				var u := fposmod(_clock, STARVE_BEAT) / STARVE_BEAT
-				var pc := Art.notch_mid(at, v)
-				b.stroke(Face.Builder.ring(pc, U * (0.14 + 0.16 * u), U * (0.14 + 0.16 * u)), U * 0.04 * (1.0 - u), Color(Art.AMBER, 0.9 * (1.0 - u)), true)
+			var at := Art.mid(fp[ci][0])
+			for d: int in Art.ways(int(mo[0]), ci, f):
+				var v := Art.dir_v(d)
+				b.polygon(Art.notch_poly(at, v), Art.AMBER)
+				for ch: PackedVector2Array in Art.notch_chevrons(at, v, side + 1):
+					b.stroke(ch, Art.MOUTH_W, Art.INK)
+				if not Motion.reduce:
+					var u := fposmod(_clock, STARVE_BEAT) / STARVE_BEAT
+					var pc := Art.notch_mid(at, v)
+					b.stroke(Face.Builder.ring(pc, U * (0.14 + 0.16 * u), U * (0.14 + 0.16 * u)), U * 0.04 * (1.0 - u), Color(Art.AMBER, 0.9 * (1.0 - u)), true)
 	# the path traced in hand, as it would be laid
 	if not _path.is_empty():
 		var p: Dictionary = sim.trim_path(_path, _trace_f)
@@ -883,8 +945,9 @@ func _open_piece_pill(t: Vector2i) -> void:
 	var kd: int = sim.kind_at(t)
 	var buttons := ["lift", "info"]
 	if kd == Sim.BELT:
-		# a belt turns its whole line round with Flip
-		buttons.push_front("flip")
+		# a belt turns its whole line round with Flip, and lifts its straight
+		# run or its whole line (to a join or a crossing) in one go
+		buttons = ["flip", "lift", "run", "line", "info"]
 	if kd == Sim.BELT or TURNS.has(kd):
 		buttons.push_front("turn")
 	_ghost = {}
@@ -940,6 +1003,10 @@ func _pill_press(name: String) -> void:
 		"lift":
 			sim.mark()
 			sim.remove(t)
+			_close_pill()
+		"run", "line":
+			sim.mark()
+			sim.erase(sim.line_squares(t, name == "run"))
 			_close_pill()
 		"info":
 			_close_pill()
@@ -1281,7 +1348,10 @@ func _trace_to(t: Vector2i) -> void:
 
 ## Straight: the path is the run from its first square along the axis the
 ## finger first left it by, as far as the finger has gone along that axis;
-## going back over the first square turns it round.
+## going back over the first square turns it round. A finger gone off that
+## axis bends it once (the user, 2026-10-19: "if user moves finger up or
+## down, it make a L shape"): the run to the finger's square along it, then
+## a second leg across to the finger; back on the axis, the leg goes.
 func _trace_straight(t: Vector2i) -> void:
 	var p0: Vector2i = _path[0]
 	var d := t - p0
@@ -1290,14 +1360,26 @@ func _trace_straight(t: Vector2i) -> void:
 			return
 		_axis = 0 if absi(d.x) >= absi(d.y) else 1
 	var n := d.x if _axis == 0 else d.y
+	var m := d.y if _axis == 0 else d.x
 	var step := Vector2i(signi(n), 0) if _axis == 0 else Vector2i(0, signi(n))
+	var step2 := Vector2i(0, signi(m)) if _axis == 0 else Vector2i(signi(m), 0)
 	_path = [p0]
+	var out := false
 	for j in absi(n):
 		var nxt: Vector2i = (_path[-1] as Vector2i) + step
 		if not Sim.inside(nxt):
+			out = true
 			break
 		_path.append(nxt)
-	if n != 0:
+	if not out:
+		for j in absi(m):
+			var nxt: Vector2i = (_path[-1] as Vector2i) + step2
+			if not Sim.inside(nxt):
+				break
+			_path.append(nxt)
+	if m != 0 and not out:
+		_trace_f = Sim.DIRS.find(step2)
+	elif n != 0:
 		_trace_f = Sim.DIRS.find(step)
 
 ## The traced path laid, each square facing the next; a path that cannot
