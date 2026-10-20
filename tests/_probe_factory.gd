@@ -15,9 +15,16 @@ extends SceneTree
 ## and the bridge carry as they did; a belt sold gives its price back; a save
 ## reads back as the same floor and plays on the same; a file of another
 ## version, or none, or nonsense, is refused and the sim is left alone.
+## The robots: the three of a new floor and their faults (the Picker walks
+## with no gripper, the Boxer drops its box a tile short, the Shipper stops
+## at a loose wire), the three fixes and the first full box; a loop's cost
+## and the pause to charge; an insert after the last node, a cycle that
+## never passes the body, a bump, a part taken off mid node, an edit that
+## keeps the charge, a tow and a robot with no cell.
 ## Everything runs on a throwaway file.
 
 const Sim = preload("res://factory/sim.gd")
+const Bots = preload("res://factory/bots.gd")
 
 const T := Vector2i(4, 5)     # the pack table
 const D := Vector2i(8, 5)     # the deliver pad
@@ -40,6 +47,7 @@ func _process(_delta: float) -> bool:
 	_check_floor()
 	_check_belts()
 	_check_kept()
+	_check_robots()
 	print("probe_factory: %d checks, %d failed" % [_checks, _fails])
 	DirAccess.remove_absolute(Sim.path)
 	quit(1 if _fails > 0 else 0)
@@ -103,6 +111,30 @@ func _belt_row(sim: RefCounted, from: Vector2i, n: int, facing: int) -> void:
 	for i in n:
 		sim.lay_belt(from + Sim.DIRS[facing] * i, facing)
 
+## A floor with no robot on it, for the floor's and the belts' own rules.
+func _bare(with_seed: int) -> RefCounted:
+	var sim: RefCounted = Sim.new(with_seed)
+	sim.robots = []
+	return sim
+
+## Ticks until an event of `type` (of robot `robot`, -1 any), or -1 past
+## `most`; the event is put in `found`.
+func _until_event(sim: RefCounted, type: String, most: int, robot := -1, found: Array = []) -> int:
+	for i in most:
+		for e: Dictionary in _tick(sim):
+			if e.type == type and (robot < 0 or int(e.get("robot", -1)) == robot):
+				found.append(e)
+				return i + 1
+	return -1
+
+## Ticks until robot `i` stands at node `id`; false past `most`.
+func _until_pc(sim: RefCounted, i: int, id: String, most: int) -> bool:
+	for k in most:
+		if sim.robots[i].pc == id:
+			return true
+		sim.step(Sim.TICK)
+	return sim.robots[i].pc == id
+
 func _refused(sim: RefCounted, why: String) -> bool:
 	var e: Dictionary = sim.events.back() if not sim.events.is_empty() else {}
 	return e.get("type", "") == "refused" and e.get("why", "") == why
@@ -111,9 +143,11 @@ func _refused(sim: RefCounted, why: String) -> bool:
 
 func _check_floor() -> void:
 	var sim: RefCounted = Sim.new(7)
-	_ok("a new floor is version 5, 10 x 8, nothing on it, no coins, a gripper in the bin", Sim.VERSION == 5 and Sim.COLS == 10 and Sim.ROWS == 8
-		and sim.coins == 0 and sim.earned == 0 and sim.queue == 0 and sim.table.is_empty() and sim.items.is_empty() and sim.belts.is_empty()
-		and sim.robots.is_empty() and sim.bin == {"gripper": 1})
+	_ok("a new floor is version 5, 10 x 8, nothing on it, no coins, three robots, a gripper in the bin", Sim.VERSION == 5 and Sim.COLS == 10
+		and Sim.ROWS == 8 and sim.coins == 0 and sim.earned == 0 and sim.queue == 0 and sim.table.is_empty() and sim.items.is_empty()
+		and sim.belts.is_empty() and sim.robots.size() == 3 and sim.bin == {"gripper": 1})
+	# the floor's own rules, with no robot walking it
+	sim.robots = []
 	_ok("floor stations", sim.station_at(T) == "table" and sim.station_at(B) == "charger" and sim.station_at(Vector2i(2, 2)) == ""
 		and sim.station_at(I) == "intake" and sim.station_at(S) == "stack" and sim.station_at(D) == "deliver" and sim.stations.size() == 5 and Sim.BAY == B)
 	_ok("the floor's edge", sim.on_floor(Vector2i(0, 0)) and sim.on_floor(Vector2i(9, 7)) and not sim.on_floor(Vector2i(10, 0))
@@ -166,7 +200,7 @@ func _check_floor() -> void:
 	_ok("but with a square queued the queue goes first", sim.take(I).kind == "square" and _lying(sim, I) == 1 and sim.take(I).id == lay.id)
 
 func _check_belts() -> void:
-	var sim: RefCounted = Sim.new(7)
+	var sim: RefCounted = _bare(7)
 	sim.coins = 100
 	var box: Dictionary = sim.take(S)
 	sim.put(T, box)
@@ -195,7 +229,7 @@ func _check_belts() -> void:
 	_ok("a belt into the deliver pad sells", _until(sim, "sale", 100) > 0 and sim.coins == c + 1 and sim.items.is_empty())
 	# into the intake pad, the bay or the stack nothing goes: the belt waits
 	for at: Vector2i in [I, B, S]:
-		var w: RefCounted = Sim.new(1)
+		var w: RefCounted = _bare(1)
 		w.coins = 10
 		var from: Vector2i = at + Vector2i(1, 0)
 		w.lay_belt(from, 2)
@@ -203,12 +237,12 @@ func _check_belts() -> void:
 		_run(w, 50)
 		_ok("a belt into the %s waits" % w.station_at(at), _lying(w, from) == 1 and is_equal_approx(float(w.items[from][0].at), 1.0) and _lying(w, at) == 0)
 	# a belt flipped beside the table runs into it
-	var f: RefCounted = Sim.new(1)
+	var f: RefCounted = _bare(1)
 	f.coins = 10
 	_belt_row(f, Vector2i(4, 6), 3, 0)
 	_ok("a line flipped by the table ends into it", f.flip_line(Vector2i(5, 6)) and int(f.belts[Vector2i(4, 6)]) == 3 and int(f.belts[Vector2i(5, 6)]) == 2)
 	# the fast belt and the bridge
-	var k: RefCounted = Sim.new(1)
+	var k: RefCounted = _bare(1)
 	k.coins = 1000
 	_belt_row(k, Vector2i(2, 2), 3, 0)
 	for i in 3:
@@ -219,7 +253,7 @@ func _check_belts() -> void:
 	_run(k, 20)
 	_ok("so in two seconds", k.items.has(Vector2i(3, 2)) and k.items.has(Vector2i(4, 3)), str(k.items.keys()))
 	k.items.clear()
-	var bk: RefCounted = Sim.new(1)
+	var bk: RefCounted = _bare(1)
 	bk.coins = 1000
 	_belt_row(bk, Vector2i(2, 3), 5, 0)
 	_belt_row(bk, Vector2i(5, 1), 2, 1)
@@ -326,6 +360,128 @@ func _check_kept() -> void:
 	f.store_string("not a config at all {{{")
 	f.close()
 	_ok("and so is nonsense", not fresh.load_saved() and var_to_str(fresh.pack()) == was)
+
+func _check_robots() -> void:
+	var sim: RefCounted = Sim.new(3)
+	_ok("three on the bay", sim.robots.size() == 3 and sim.robots.all(func(b: Dictionary) -> bool: return b.tile == Sim.BAY and b.charge == Sim.CELL))
+	_ok("picker lacks pick", not Bots.can(sim.robots[0], "pick") and Bots.walk(sim.robots[0]).closed and Bots.can(sim.robots[1], "pick"))
+	_ok("shipper loose", not Bots.walk(sim.robots[2]).closed and Bots.walk(sim.robots[2]).ids.size() == 3)
+	# with no gripper the Picker's Release is skipped where it stands, at the table
+	var found: Array = []
+	_ok("picker walks empty", _until_event(sim, "skip", 400, 0, found) > 0 and found[0].id == "c" and sim.robots[0].held.is_empty()
+		and sim.robots[0].tile == T and sim.robots[0].bubble == "!")
+	_ok("boxer litters (4,4)", _until_event(sim, "release", 400, 1) > 0 and sim.items.has(Vector2i(4, 4)) and sim.items[Vector2i(4, 4)][0].kind == "box")
+	_run(sim, 200)
+	_ok("shipper stops ?", sim.robots[2].stuck == "?" and sim.robots[2].bubble == "?" and sim.robots[2].tile == T)
+	# the fixes
+	_ok("gripper from the bin", sim.fit(0, "gripper") and sim.bin.gripper == 0 and sim.robots[0].tile == Sim.BAY and sim.robots[0].pc == Sim.BODY)
+	_ok("and none left to fit twice", not sim.fit(1, "treads") and not sim.fit(2, "gripper"))
+	var pick_id: String = sim.add_node(0, Bots.walk(sim.robots[0]).ids[0], "out", "pick")
+	_ok("pick inserted after move down", pick_id.begins_with("n") and Bots.walk(sim.robots[0]).ids[1] == pick_id and Bots.walk(sim.robots[0]).closed)
+	_ok("picker holds a square and waits", _until_event(sim, "wait", 600, 0) > 0 and sim.robots[0].held.get("kind", "") == "square"
+		and sim.robots[0].tile == T and sim.robots[0].bubble == "wait")
+	_ok("boxer fixed", sim.set_move(1, "c", 1, 4) and sim.set_move(1, "e", 3, 4) and Bots.net(sim.robots[1]) == Vector2i.ZERO
+		and not sim.set_move(1, "e", 3, 4))
+	_ok("shipper wired", not sim.set_next(2, "c", "out", "c") and sim.set_next(2, "c", "out", "d") and Bots.walk(sim.robots[2]).closed
+		and sim.robots[2].stuck == "")
+	var took := _until_event(sim, "sale", 3000)
+	_ok("first full box pays 6", took > 0 and sim.coins == 6, "%d ticks" % took)
+	# costs and charging
+	_ok("picker loop costs 16", Bots.cost(sim.robots[0]) == 16 and Bots.cost(sim.robots[1]) == 16 and Bots.cost(sim.robots[2]) == 24)
+	_ok("charges at the bay", _until_event(sim, "charging", 400, 0) > 0 and sim.robots[0].tile == Sim.BAY and sim.robots[0].charging
+		and _until_event(sim, "charged", 40, 0) > 0 and sim.robots[0].charge == Sim.CELL and not sim.robots[0].charging)
+	var sales := 0
+	for i in 3000:
+		for e: Dictionary in _tick(sim):
+			sales += 1 if e.type == "sale" and e.amount == Sim.PAY_FULL else 0
+	_ok("and full boxes keep coming", sales >= 3, "%d in 3000 ticks" % sales)
+	# robots round trip mid loop, and a robot that is no robot is refused
+	sim.save()
+	var back: RefCounted = Sim.new(1)
+	var same: bool = back.load_saved() and var_to_str(back.pack()) == var_to_str(sim.pack())
+	for i in 500:
+		sim.step(Sim.TICK)
+		back.step(Sim.TICK)
+	_ok("robots round trip mid loop", same and var_to_str(back.pack()) == var_to_str(sim.pack()))
+	var bad: Dictionary = sim.pack()
+	bad.robots[0].nodes["a"].kind = "fly"
+	_write(bad, Sim.VERSION)
+	var fresh: RefCounted = Sim.new(3)
+	var was := var_to_str(fresh.pack())
+	_ok("a robot with a node there is none of is refused", not fresh.load_saved() and var_to_str(fresh.pack()) == was)
+	bad = sim.pack()
+	bad.robots[1].pc = "zz"
+	_write(bad, Sim.VERSION)
+	_ok("so is one running a node it has not", not fresh.load_saved() and var_to_str(fresh.pack()) == was)
+	DirAccess.remove_absolute(Sim.path)
+	# an insert after the last node, and a node taken out
+	var s2: RefCounted = Sim.new(3)
+	var last: String = Bots.walk(s2.robots[0]).ids.back()
+	_ok("no node the parts do not give", s2.add_node(0, last, "out", "pick") == "")
+	s2.fit(0, "gripper")
+	var nid: String = s2.add_node(0, last, "out", "release")
+	_ok("insert after last keeps loop", nid != "" and s2.robots[0].next[nid].out == Sim.BODY and s2.robots[0].next[last].out == nid
+		and Bots.walk(s2.robots[0]).closed)
+	_ok("a node taken out is wired round", s2.remove_node(0, nid) and s2.robots[0].next[last].out == Sim.BODY and not s2.robots[0].nodes.has(nid)
+		and Bots.walk(s2.robots[0]).closed and not s2.robots[0].order.has(nid))
+	# a cycle that never passes the body runs the cell flat
+	var s3: RefCounted = Sim.new(3)
+	var ids: Array = Bots.walk(s3.robots[0]).ids
+	s3.set_next(0, ids.back(), "out", ids[0])
+	var w: Dictionary = Bots.walk(s3.robots[0])
+	var flat := _until_event(s3, "flat", 1200, 0)
+	_ok("cycle off the body goes flat", not w.closed and w.ids.size() == 5 and flat > 0 and s3.robots[0].stuck == "flat" and s3.robots[0].charge == 0,
+		"flat at %d" % flat)
+	_run(s3, 20)
+	_ok("and stays where it stopped", s3.robots[0].stuck == "flat" and s3.robots[0].charge == 0)
+	_ok("tow arrives empty", not s3.tow(1) and s3.tow(0) and s3.robots[0].tile == Sim.BAY and s3.robots[0].charge == 0
+		and s3.robots[0].pc == Sim.BODY and _until_event(s3, "charging", 3, 0) > 0)
+	# a bump drops the rest of a Move
+	var s4: RefCounted = Sim.new(3)
+	var bot: Dictionary = Bots.new_robot("Bumper", ["treads", "battery"], [["move", 2, 4], ["move", 0, 1]])
+	bot.dock = Vector2i(2, 3)
+	bot.tile = bot.dock
+	bot.was = bot.dock
+	s4.robots = [bot]
+	_until_pc(s4, 0, "a", 10)
+	var before: int = bot.charge
+	var bumps := 0
+	for i in 40:
+		for e: Dictionary in _tick(s4):
+			bumps += 1 if e.type == "bump" else 0
+		if bot.pc != "a":
+			break
+	_ok("bump mid move", bot.tile == Vector2i(0, 3) and before - bot.charge == 3 and bumps == 1 and bot.pc == "b",
+		"%s %d %d %s" % [bot.tile, before - bot.charge, bumps, bot.pc])
+	# a part taken off while its node runs
+	var s5: RefCounted = Sim.new(3)
+	_until_pc(s5, 1, "b", 100)
+	var gi: int = s5.robots[1].parts.find("gripper")
+	_ok("unfit sends home", s5.unfit(1, gi) and s5.robots[1].tile == Sim.BAY and s5.robots[1].pc == Sim.BODY and s5.bin.gripper == 2
+		and not s5.robots[1].parts.has("gripper"))
+	_until_pc(s5, 1, "b", 200)
+	var cb: int = s5.robots[1].charge
+	var skipped := false
+	for i in 20:
+		for e: Dictionary in _tick(s5):
+			skipped = skipped or (e.type == "skip" and e.robot == 1 and e.id == "b")
+		if s5.robots[1].pc != "b":
+			break
+	_ok("unfit mid node", skipped and cb - s5.robots[1].charge == 1 and s5.robots[1].held.is_empty())
+	# an edit keeps the charge
+	var s6: RefCounted = Sim.new(3)
+	_run(s6, 20)
+	var c6: int = s6.robots[0].charge
+	_ok("edit keeps charge", c6 < Sim.CELL and s6.set_move(0, "a", 1, 3) and s6.robots[0].charge == c6 and s6.robots[0].tile == Sim.BAY
+		and s6.events.back().type == "edited")
+	_ok("a count is kept to 1..9", s6.set_move(0, "a", 1, 40) and s6.robots[0].nodes.a.n == 9 and s6.set_move(0, "a", 1, 0) and s6.robots[0].nodes.a.n == 1)
+	# no cell
+	var s7: RefCounted = Sim.new(3)
+	_tick(s7)
+	_ok("no cell", s7.unfit(0, s7.robots[0].parts.find("battery")) and s7.bin.battery == 1 and _tick(s7).any(func(e: Dictionary) -> bool: return e.type == "stuck")
+		and s7.robots[0].stuck == "nocell" and _after(s7, 30).robots[0].tile == Sim.BAY)
+	_ok("and runs with it back", s7.fit(0, "battery") and s7.bin.battery == 0 and _after(s7, 30).robots[0].stuck == "" and s7.robots[0].tile != Sim.BAY)
+	_ok("a priced part waits for its milestone", not s7.fit(0, "fast") and _refused(s7, "later"))
 
 ## A floor's Dictionary into the throwaway file, as `save()` writes one.
 func _write(d: Dictionary, version: int) -> void:

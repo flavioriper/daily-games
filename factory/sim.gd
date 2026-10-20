@@ -38,7 +38,8 @@ extends RefCounted
 ##
 ## Money.
 ##   coins, earned: int       earned: every coin a sale ever paid
-##   bin: Dictionary          part -> spares (robots' parts, Task 3)
+##   bin: Dictionary          part -> spares lying in the bin (PARTS)
+##   part_price(part) -> int  PARTS' price, 0 under `no_cost`
 ##   unlocked(kind) -> bool   a belt kind: open (milestone 1, Task 4)
 ##   price(kind) -> int       PRICE: flat, however many are laid
 ##   no_cost: bool            everything `price` knows costs nothing: the
@@ -53,7 +54,7 @@ extends RefCounted
 ##   queue: int               squares waiting at the intake pad, QUEUE_MOST
 ##                            at most, one more every FEED_TICKS
 ##   table: Dictionary        {} or the box on the pack table
-##   robots: Array            (Task 3)
+##   robots: Array            the robots, in chip order (below)
 ##
 ## An item is {id, kind "square" | "box", n (a box's squares, 0..BOX_FULL),
 ## at, from, was}. On a belt `at` (0..1) runs along the tile and `from` is
@@ -69,7 +70,7 @@ extends RefCounted
 ##   item_pos(tile, item) -> Vector2    where to draw it now (uses `alpha`)
 ##   front_of_tile(tile) -> Dictionary  a belt's front item, {} for none
 ##
-## A hand (a robot's Pick and Release, Task 3; a harness's).
+## A hand (a robot's Pick and Release; a harness's).
 ##   gives(tile) -> Dictionary          what a Pick would take now, {} for
 ##                            nothing: the intake's next square while
 ##                            `queue` > 0, a new empty box at the stack, the
@@ -82,6 +83,37 @@ extends RefCounted
 ##                            at its back; anywhere else on the floor anything
 ##   put(tile, item) -> bool            does it: the table's rule, the
 ##                            deliver pad's sale, onto a belt, else it lies
+##
+## A robot is a Dictionary (its rules are factory/bots.gd's, `Bots`):
+##   name                     the chip's
+##   dock, tile, was: Vector2i          the bay; where it stands; the tile it
+##                            stepped from: mid-step while `was != tile`,
+##                            `Bots.pos(b, alpha)` says where to draw it
+##   parts: Array             PARTS ids fitted, in the order fitted
+##   nodes: {id: {kind, facing, n}}     kind a NODES key; a Move's facing and
+##                            count (1..9)
+##   order: Array             every node id, the order they were made
+##   next: {id: {"out": id | BODY | ""}}  the wires; BODY has a row too
+##   pc: String               the node running, BODY at rest; t the ticks
+##                            into it, left a Move's tiles to go (-1 bumping)
+##   held: Dictionary         {} or the item in its hand
+##   charge: int, charging: bool        units in the cell; pausing to charge
+##   stuck: String            "" | "?" (a loose wire) | "flat" | "nocell"
+##   bubble: String, bubble_t: int      "" | "wait" | "!" | "?" | "flat" |
+##                            "nocell", and the ticks it has left (0: held)
+##   counters: Dictionary     the Repeat's (none yet)
+## Each of these edits returns whether it did anything; one that did sends
+## the robot home (`Bots.home`: on the bay at the body, its charge and what
+## it holds kept) and pushes {type "edited", robot}.
+##   set_next(i, from, port, to)        a wire; `to` "" cuts it
+##   add_node(i, after, port, kind) -> String   a node into the wire out of
+##                            `after`, its id ("" refused: a kind no part
+##                            fitted gives)
+##   remove_node(i, id)       the wires into it go where it went
+##   set_move(i, id, facing, n)
+##   fit(i, part)             from the bin, else bought; unfit(i, index) back
+##                            to the bin
+##   tow(i)                   a flat robot onto the bay, charge still 0
 ##
 ## Acting. Each returns whether it did anything; when it did not it pushes
 ## {type "refused", why, tile}.
@@ -107,6 +139,13 @@ extends RefCounted
 ##   sold_back {tile, kind, amount, items}
 ##   sold_line {tile, tiles, amount}  belts sold back in one go
 ##   refused {why, tile}
+## The robots' (`robot` its index in `robots`):
+##   step {robot, from, to}  bump {robot, tile}  skip {robot, id}
+##   pick {robot, tile, kind}  release {robot, tile, kind}  ("" for nothing)
+##   wait {robot}             a Release the tile will not take, once
+##   stuck {robot, why}       "?" or "nocell"
+##   flat {robot, tile}  charging {robot, units}  charged {robot}
+##   edited {robot}  towed {robot}
 ## ---------------------------------------------------------------------------
 
 ## The sim's tick, real seconds.
@@ -136,6 +175,31 @@ const PAY_FULL := 6
 const PAY_SQUARE := 1
 const ITEM_KINDS := ["square", "box"]
 
+## A robot's parts: what each gives (the nodes it can run), a Move's ticks a
+## tile, the battery's cell and the units a tick it charges by on the bay.
+## A row with a price is bought into the bin from milestone `from`.
+const PARTS := {
+	"treads": {"gives": ["move"], "step": 4},
+	"gripper": {"gives": ["pick", "release"]},
+	"battery": {"cell": 30, "rate": 1},
+	"fast": {"gives": ["move"], "step": 2, "price": 30, "from": 1},
+	"plug": {"rate": 2, "price": 40, "from": 1},
+}
+## The program's nodes: the part that gives each and its out ports.
+const NODES := {
+	"move": {"part": "treads", "ports": ["out"]},
+	"pick": {"part": "gripper", "ports": ["out"]},
+	"release": {"part": "gripper", "ports": ["out"]},
+}
+## The body's id in a program: where a loop starts and comes back to.
+const BODY := "body"
+## A full cell; the ticks a Pick, a Release, a skip and a bump take; the
+## body's.
+const CELL := 30
+const ACT_TICKS := 4
+const BODY_TICKS := 2
+const STUCK := ["", "?", "flat", "nocell"]
+
 ## What a belt costs, the first and every one after (the user, 2026-10-12:
 ## "they stay flat").
 const PRICE := {"belt": 1, "fast": 4, "bridge": 25}
@@ -158,6 +222,8 @@ const ROOM := 2
 ## past the last they lie on it.
 const LIE: Array[Vector2] = [Vector2(-0.16, 0.1), Vector2(0.16, -0.1)]
 
+const Bots = preload("res://factory/bots.gd")
+
 ## A harness points this elsewhere before it makes a sim.
 static var path := "user://factory.cfg"
 
@@ -176,6 +242,8 @@ var over := {}
 var items := {}
 var robots: Array = []
 var bin := {}
+## The milestones open (the pace's to raise; 0 until then).
+var milestone := 0
 var tick_n := 0
 var events: Array = []
 var dirty := false
@@ -209,8 +277,8 @@ func new_floor(with_seed: int) -> void:
 	kinds = {}
 	over = {}
 	items = {}
-	robots = []
 	bin = {"gripper": 1}
+	milestone = 0
 	tick_n = 0
 	events = []
 	picked = ""
@@ -220,7 +288,22 @@ func new_floor(with_seed: int) -> void:
 	_turn = {}
 	_order_stale = true
 	_stand_stations()
+	_stand_robots()
 	dirty = true
+
+## The three robots of the first session (spec 8), each with a fault: the
+## Picker has no gripper (it lies in the bin), the Boxer's down Move stops a
+## tile short of the table, the Shipper's wire after its Pick is loose.
+func _stand_robots() -> void:
+	robots = [
+		Bots.new_robot("Picker", ["treads", "battery"],
+			[["move", 1, 4], ["move", 0, 3], ["release"], ["move", 2, 3], ["move", 3, 4]]),
+		Bots.new_robot("Boxer", ["treads", "gripper", "battery"],
+			[["move", 0, 3], ["pick"], ["move", 1, 3], ["release"], ["move", 3, 3], ["move", 2, 3]]),
+		Bots.new_robot("Shipper", ["treads", "gripper", "battery"],
+			[["move", 0, 3], ["move", 1, 4], ["pick"], ["move", 0, 4], ["release"], ["move", 2, 4], ["move", 3, 4], ["move", 2, 3]]),
+	]
+	Bots.loose_after(robots[2], "c")
 
 func _stand_stations() -> void:
 	stations = {}
@@ -916,9 +999,148 @@ func _tick() -> void:
 	_pace()
 	dirty = true
 
-## The robots walk their programs a tick (Task 3).
+## The robots walk their programs a tick, in chip order.
 func _run_robots() -> void:
-	pass
+	for b: Dictionary in robots:
+		Bots.tick(self, b)
+
+# --- editing a robot ---
+
+func part_price(part: String) -> int:
+	return 0 if no_cost else int(PARTS.get(part, {}).get("price", 0))
+
+## Robot `i`, or {} with a refusal pushed.
+func _robot(i: int) -> Dictionary:
+	if i < 0 or i >= robots.size():
+		_no("robot", NONE)
+		return {}
+	return robots[i]
+
+## Every edit ends here: home, keeping its charge and what it holds.
+func _edited(i: int) -> void:
+	Bots.home(robots[i])
+	events.append({"type": "edited", "robot": i})
+	dirty = true
+
+## The wire out of `from`'s `port` to `to` (a node or BODY; "" cuts it).
+func set_next(i: int, from: String, port: String, to: String) -> bool:
+	var b := _robot(i)
+	if b.is_empty():
+		return false
+	if not b.next.has(from) or not b.next[from].has(port):
+		return _no("node", b.tile)
+	if from == to or (to != "" and to != BODY and not b.nodes.has(to)):
+		return _no("wire", b.tile)
+	if b.next[from][port] == to:
+		return false
+	b.next[from][port] = to
+	_edited(i)
+	return true
+
+## A new node of `kind` into the wire out of `after`'s `port`: it takes what
+## that wire went to on its own out. Its id, or "" when refused.
+func add_node(i: int, after: String, port: String, kind: String) -> String:
+	var b := _robot(i)
+	if b.is_empty():
+		return ""
+	if not b.next.has(after) or not b.next[after].has(port):
+		_no("node", b.tile)
+		return ""
+	if not NODES.has(kind) or not Bots.can(b, kind):
+		_no("part", b.tile)
+		return ""
+	var id := "n%d" % _next_id
+	_next_id += 1
+	b.nodes[id] = {"kind": kind, "facing": 0, "n": 1}
+	b.next[id] = {"out": b.next[after][port]}
+	b.next[after][port] = id
+	b.order.append(id)
+	_edited(i)
+	return id
+
+## Node `id` out of the program: every wire into it goes where it went.
+func remove_node(i: int, id: String) -> bool:
+	var b := _robot(i)
+	if b.is_empty():
+		return false
+	if not b.nodes.has(id):
+		return _no("node", b.tile)
+	var to: String = b.next[id].out
+	for from: String in b.next:
+		for port: String in b.next[from]:
+			if b.next[from][port] == id:
+				b.next[from][port] = to
+	b.nodes.erase(id)
+	b.next.erase(id)
+	b.order.erase(id)
+	_edited(i)
+	return true
+
+## A Move's facing and count (1..9).
+func set_move(i: int, id: String, facing: int, n: int) -> bool:
+	var b := _robot(i)
+	if b.is_empty():
+		return false
+	if not b.nodes.has(id) or b.nodes[id].kind != "move" or facing < 0 or facing > 3:
+		return _no("node", b.tile)
+	var node: Dictionary = b.nodes[id]
+	n = clampi(n, 1, 9)
+	if int(node.facing) == facing and int(node.n) == n:
+		return false
+	node.facing = facing
+	node.n = n
+	_edited(i)
+	return true
+
+## `part` onto robot `i`: a spare from the bin, else bought at its price once
+## its milestone is open. A part already fitted is not fitted twice.
+func fit(i: int, part: String) -> bool:
+	var b := _robot(i)
+	if b.is_empty():
+		return false
+	if not PARTS.has(part):
+		return _no("part", b.tile)
+	if b.parts.has(part):
+		return _no("fitted", b.tile)
+	if int(bin.get(part, 0)) > 0:
+		bin[part] = int(bin[part]) - 1
+	elif not PARTS[part].has("price"):
+		return _no("none", b.tile)
+	elif milestone < int(PARTS[part].from):
+		return _no("later", b.tile)
+	elif coins < part_price(part):
+		return _no("coins", b.tile)
+	else:
+		coins -= part_price(part)
+	b.parts.append(part)
+	_edited(i)
+	return true
+
+## The part at `index` of robot `i`'s parts back into the bin.
+func unfit(i: int, index: int) -> bool:
+	var b := _robot(i)
+	if b.is_empty():
+		return false
+	if index < 0 or index >= b.parts.size():
+		return _no("part", b.tile)
+	var part: String = b.parts[index]
+	b.parts.remove_at(index)
+	bin[part] = int(bin.get(part, 0)) + 1
+	_edited(i)
+	return true
+
+## A flat robot carried onto the bay, free, at the body with the charge it
+## had (none) and what it held: it charges a whole cell before it moves.
+func tow(i: int) -> bool:
+	var b := _robot(i)
+	if b.is_empty():
+		return false
+	if b.stuck != "flat":
+		return _no("tow", b.tile)
+	Bots.home(b)
+	events.append({"type": "towed", "robot": i})
+	dirty = true
+	return true
 
 ## The pace window and the milestones' hold (Task 4).
 func _pace() -> void:
@@ -1026,6 +1248,44 @@ static func _sound(d: Dictionary) -> bool:
 	for t: Variant in d.turn:
 		if not (t is Vector2i) or not (d.turn[t] is Vector2i):
 			return false
+	for b: Variant in d.robots:
+		if not _sound_robot(b):
+			return false
+	return true
+
+const _ROBOT_SHAPES := {
+	"name": TYPE_STRING, "dock": TYPE_VECTOR2I, "tile": TYPE_VECTOR2I, "was": TYPE_VECTOR2I, "parts": TYPE_ARRAY,
+	"nodes": TYPE_DICTIONARY, "order": TYPE_ARRAY, "next": TYPE_DICTIONARY, "pc": TYPE_STRING, "t": TYPE_INT,
+	"left": TYPE_INT, "held": TYPE_DICTIONARY, "charge": TYPE_INT, "charging": TYPE_BOOL, "stuck": TYPE_STRING,
+	"bubble": TYPE_STRING, "bubble_t": TYPE_INT, "counters": TYPE_DICTIONARY,
+}
+
+static func _sound_robot(b: Variant) -> bool:
+	if not (b is Dictionary):
+		return false
+	for key: String in _ROBOT_SHAPES:
+		if not b.has(key) or typeof(b[key]) != _ROBOT_SHAPES[key]:
+			return false
+	if not STUCK.has(b.stuck) or b.charge < 0 or (not b.held.is_empty() and not _sound_item(b.held)):
+		return false
+	for part: Variant in b.parts:
+		if not (part is String) or not PARTS.has(part):
+			return false
+	for id: Variant in b.nodes:
+		var node: Variant = b.nodes[id]
+		if not (id is String) or id == BODY or not (node is Dictionary) or not node.has_all(["kind", "facing", "n"]) \
+				or not NODES.has(node.kind) or not (node.facing is int) or node.facing < 0 or node.facing > 3 \
+				or not (node.n is int) or node.n < 1 or node.n > 9:
+			return false
+	if not b.next.has(BODY) or (b.pc != BODY and not b.nodes.has(b.pc)):
+		return false
+	for id: Variant in b.next:
+		var ports: Variant = b.next[id]
+		if not (id is String) or (id != BODY and not b.nodes.has(id)) or not (ports is Dictionary) or not ports.has("out"):
+			return false
+		for port: Variant in ports:
+			if not (ports[port] is String):
+				return false
 	return true
 
 func _unpack(d: Dictionary) -> void:
