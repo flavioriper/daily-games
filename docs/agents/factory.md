@@ -646,6 +646,17 @@ visible, so the land now runs only on its own screen; the wide card with
 the land running on it is built and never seen (its nodes are a cost left
 standing; cutting the tab down to the owner is owed).
 
+**The card for the robots (2026-10-20, `feat/factory-rewired`).**
+`arc_factory.gd` is drawn again: the floor's paper and dots, a run of belt
+with two squares on it, and a robot (`Art.robot()` in the Picker's tint,
+`Art.face("")`) carrying a box (`Art.box(4)`) toward the go disc; one
+mesh. Its line (`arcade_tab.gd`) is the coins and the pace,
+`FACTORY_CARD_COINS` + ` · ` + `Art.pace_text(sim)` (the screen's pill reads
+the same helper: "a box every N s", or "no box yet" under two sales).
+`FACTORY_CARD_BLURB`, `FACTORY_BLURB` and `FACTORY_MOTTO` say the robots
+now. `tests/_shot_factory_menu.gd` turns to the list's second page, sets a
+floor that sold two boxes and checks the line and the card's.
+
 ### Tally's belt helpers (2026-10-20)
 
 The user, 2026-10-20: "redo the arcade factory to have some helpers to

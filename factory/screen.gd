@@ -486,9 +486,7 @@ func _pace_pill() -> Control:
 ## What the pace pill says: a full box every so many seconds, or that none
 ## has been sold often enough to say (the sim reads nothing under two).
 func pace_text() -> String:
-	if sim.pace_ticks() <= 0:
-		return tr("FACTORY_PACE_NONE")
-	return tr("FACTORY_PACE") % Art.amount(snappedf(sim.pace_s(), 0.1), Art.comma())
+	return Art.pace_text(sim)
 
 ## A white round face for a button that keeps its own size.
 static func _round(b: Button, r: int) -> void:

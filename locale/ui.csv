@@ -1021,9 +1021,9 @@ FRIENDS_NOT_NOW,Not now,Agora não,Ahora no
 FRIENDS_NEW_TITLE,New friend,Nova amizade,Nueva amistad
 FRIENDS_NEW_BODY,You are friends now. Ask for a game any time.,Vocês agora são amigos. Chame para jogar quando quiser.,Ahora son amigos. Invita a jugar cuando quieras.
 FACTORY_CARD_COINS,%s coins,%s moedas,%s monedas
-FACTORY_CARD_BLURB,"Logs, belts and a market","Toras, esteiras e um mercado","Troncos, cintas y un mercado"
-FACTORY_MOTTO,Nothing here is in a hurry,Aqui nada tem pressa,Aquí nada tiene prisa
-FACTORY_BLURB,"Tap the forest for logs, lay belts and sell at the market. The land only runs while you watch it.","Toque na floresta para ter toras, monte esteiras e venda no mercado. A terra só anda enquanto você olha.","Toca el bosque para sacar troncos, tiende cintas y vende en el mercado. La tierra solo anda mientras la miras."
+FACTORY_CARD_BLURB,"Three robots, a sheet of nodes","Três robôs, uma folha de nós","Tres robots, una hoja de nodos"
+FACTORY_MOTTO,Every loop walks back to the bay,Toda volta caminha de volta à base,Cada vuelta camina de regreso a la base
+FACTORY_BLURB,"Three robots, a sheet of nodes: wire what each one does, and every loop walks back to the bay. The floor only runs while you watch it.","Três robôs, uma folha de nós: ligue o que cada um faz, e toda volta caminha de volta à base. O piso só anda enquanto você olha.","Tres robots, una hoja de nodos: conecta lo que hace cada uno, y cada vuelta camina de regreso a la base. El suelo solo anda mientras lo miras."
 FACTORY_BELT,Belt,Esteira,Cinta
 FACTORY_FAST,Fast belt,Esteira rápida,Cinta rápida
 FACTORY_BRIDGE,Bridge,Ponte,Puente

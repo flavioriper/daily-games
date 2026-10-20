@@ -822,6 +822,14 @@ static func comma() -> bool:
 static func decimal(text: String) -> String:
 	return text.replace(".", ",") if comma() else text
 
+## What the pace pill and the Arcade card say of `sim`'s pace: a full box
+## every so many seconds, or that none has been sold often enough to say (the
+## sim reads nothing under two).
+static func pace_text(sim: RefCounted) -> String:
+	if sim.pace_ticks() <= 0:
+		return TranslationServer.translate("FACTORY_PACE_NONE")
+	return TranslationServer.translate("FACTORY_PACE") % amount(snappedf(sim.pace_s(), 0.1), comma())
+
 ## What a chop takes, which may be a half: 1, 1.5, 2, 31.5, and past a
 ## thousand as `short` writes it. `comma` for a language that writes 1,5.
 static func amount(v: float, comma := false) -> String:

@@ -6,6 +6,10 @@ extends VBoxContainer
 ## the owner of the one land; its card and the stepping below only run if
 ## it is shown again.
 ##
+## (Since 2026-10-20 the floor is three robots, not a land of logs; the
+## blurb below says so, and the Arcade card that people see is
+## ui/menu/cards/arc_factory.gd.)
+##
 ## The Factory tab: one card as wide as the column, with the land on it as
 ## it stands and goes (the whole board fitted to the card and drawn by the
 ## game's own path, factory/life.gd, so a glance shows the belts running),

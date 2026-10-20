@@ -119,11 +119,12 @@ func refresh() -> void:
 		# day's levels, as in the Puzzles grid.
 		if not Registry.arcade(game).is_empty():
 			continue
-		# Factory is a land looked in on (a tab of its own until 2026-10-13):
-		# its line is the coins held, or the blurb before the land exists.
+		# Factory is a floor looked in on (a tab of its own until 2026-10-13):
+		# its line is the coins held and the pace, or the blurb before the
+		# floor exists.
 		if game == "factory":
 			var held: RefCounted = factory.sim if factory != null else null
-			_say(game, "" if held == null else tr("FACTORY_CARD_COINS") % FactoryArt.short(held.coins))
+			_say(game, "" if held == null else tr("FACTORY_CARD_COINS") % FactoryArt.short(held.coins) + " · " + FactoryArt.pace_text(held))
 			continue
 		# Nightlight is kept, not scored: its line is the star as it stands
 		if game == "nightlight":

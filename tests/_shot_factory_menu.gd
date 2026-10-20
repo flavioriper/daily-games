@@ -15,13 +15,23 @@ var _i := 0
 var _out := "/tmp"
 var _tmp: Array = []
 var _fails := 0
-const STEPS := [[1.5, "tab"], [2.2, "shot", "m1_tab"], [2.3, "play"], [3.2, "shot", "m2_screen"],
-	[3.3, "leave"], [4.1, "shot", "m3_tab_after"], [4.2, "quit"]]
+const STEPS := [[1.5, "tab"], [1.6, "page"], [2.6, "sold"], [3.1, "shot", "m1_card"], [3.15, "unsell"], [3.2, "play"],
+	[4.1, "shot", "m2_screen"], [4.2, "leave"], [5.0, "shot", "m3_tab_after"], [5.1, "quit"]]
 
 func _check(ok: bool, what: String) -> void:
 	print("%s %s" % ["PASS" if ok else "FAIL", what])
 	if not ok:
 		_fails += 1
+
+## The Factory card's face on the Arcade page, or null.
+func _factory_card() -> Control:
+	var stack: Array[Node] = [_menu]
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		if n is Control and n.get("entry") is Dictionary and n.get("entry").get("id", "") == "factory" and n.get("_line_said") != null:
+			return n
+		stack.append_array(n.get_children())
+	return null
 
 func _initialize() -> void:
 	load("res://ui/hud/screen_tutor.gd").no_first_play = true
@@ -75,6 +85,25 @@ func _process(delta: float) -> bool:
 				_menu._show_tab("arcade")
 				_check(_menu.arcade_tab.GAMES.has("factory") and not _menu.factory_tab.is_visible_in_tree(),
 					"Arcade lists Factory and its tab stays hidden")
+			"page":
+				# Factory is the fourteenth card: the Arcade list's second page
+				_menu._turn_page(1)
+			"sold":
+				# a floor that sold two boxes, five seconds apart: the Arcade
+				# line says the coins and the pace
+				var sim: RefCounted = _menu.factory_tab.sim
+				sim.coins = 7
+				sim.sold_at.assign([100, 150])
+				_menu.arcade_tab.refresh()
+				_menu._refresh_cards()
+				var want: String = tr("FACTORY_CARD_COINS") % "7" + " \u00b7 " + tr("FACTORY_PACE") % "5"
+				_check(_menu.arcade_tab.line("factory") == want,
+					"the Arcade line says the coins and the pace (%s)" % _menu.arcade_tab.line("factory"))
+				var card: Control = _factory_card()
+				_check(card != null and card.get("_line_said") == want, "the Factory card carries that line")
+			"unsell":
+				_menu.factory_tab.sim.coins = 0
+				_menu.factory_tab.sim.sold_at.clear()
 			"play":
 				_menu.arcade_tab.play.emit("factory")
 				_s = _menu.get_node_or_null("Factory")
