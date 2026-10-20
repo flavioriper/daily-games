@@ -6,7 +6,8 @@ extends RefCounted
 ## both draw theirs with it (the user, 2026-10-20: the Factory's belts get
 ## "some helpers ... based on the tally convey"). The owner keeps what the
 ## pill is for, which buttons it has and what they do; this lays the pill
-## out by the piece, draws it and says which button a point is on.
+## out by the piece, draws it and says which button a point is on. The
+## Factory's program sheet (factory/sheet.gd) stands one by its nodes too.
 
 const Face = preload("res://ui/faces/face.gd")
 const Icons = preload("res://ui/icons.gd")
@@ -25,7 +26,7 @@ const POP := 0.18
 const INK := Color("4a3626")
 const SUN := Color("f2b53a")
 const PAPER := Color("fcf7ef")
-const ICON := {"copy": "copy", "dup": "plus", "save": "puzzle", "undo": "undo_back", "turn": "turn", "flip": "flip", "lift": "bin", "sell": "bin", "run": "span", "line": "bends", "info": "help", "place": "check", "cancel": "cross"}
+const ICON := {"copy": "copy", "dup": "plus", "save": "puzzle", "undo": "undo_back", "turn": "turn", "flip": "flip", "lift": "bin", "sell": "bin", "run": "span", "line": "bends", "info": "help", "place": "check", "cancel": "cross", "minus": "minus", "plus": "plus"}
 
 ## Button name to the locale key of its caption.
 var caps: Dictionary

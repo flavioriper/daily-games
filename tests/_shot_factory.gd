@@ -25,6 +25,17 @@ extends SceneTree
 ## chip tapped and a robot tapped, the pace pill blank, the drawer empty
 ## before milestone 1, then a belt traced from the intake pad to the table,
 ## shot and its draw calls held under the budget.
+##
+## The sheet (factory/sheet.gd on a new floor's screen, its mouse off as the
+## field's is; its touches handed to its own `_gui_input` in its own pixels,
+## as the field's are to the field): the Picker's sheet opened from the
+## screen, the robot kept above it, the chain left to right, the tray off a
+## `+` with Pick locked, the Gripper fitted from the bin through the parts'
+## `+`, a Pick put into the wire after the first Move, a Move's pill and its
+## More; then the Shipper's, shot with its loose wire, a wire dragged from
+## its loose dot, a dot armed by a tap and wired by the next, shot again and
+## the sheet's draw calls (with it shown, less without) held to a handful;
+## a swipe down from the handle closes it.
 
 const SEED := 7
 const SAVE := "user://factory_harness.cfg"
@@ -152,6 +163,44 @@ func _press_button(b: Button) -> void:
 	b.pressed.emit()
 	await _frames(2)
 
+## The same hand on the sheet, in the sheet's pixels.
+func _sheet_touch(pos: Vector2, pressed: bool) -> void:
+	var e := InputEventScreenTouch.new()
+	e.index = 0
+	e.position = pos
+	e.pressed = pressed
+	_screen.sheet._gui_input(e)
+
+func _sheet_tap(pos: Vector2) -> void:
+	_sheet_touch(pos, true)
+	await _frames(2)
+	_sheet_touch(pos, false)
+	await _frames(2)
+
+func _sheet_drag(from: Vector2, to: Vector2, steps := 8) -> void:
+	_sheet_touch(from, true)
+	await _frames(2)
+	for k in range(1, steps + 1):
+		var e := InputEventScreenDrag.new()
+		e.index = 0
+		e.position = from.lerp(to, float(k) / steps)
+		_screen.sheet._gui_input(e)
+		await process_frame
+	await _frames(2)
+	_sheet_touch(to, false)
+	await _frames(2)
+
+## The draw calls of a frame with the sheet shown, less those of one without.
+func _sheet_calls() -> int:
+	await _frames(3)
+	var with_it := RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME)
+	_screen.sheet.visible = false
+	await _frames(3)
+	var without := RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME)
+	_screen.sheet.visible = true
+	await _frames(2)
+	return with_it - without
+
 # --- the run ---
 
 func _run() -> void:
@@ -160,6 +209,7 @@ func _run() -> void:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE))
 	await _floor()
 	await _screen_part()
+	await _sheet_part()
 	if FileAccess.file_exists(SAVE):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE))
 	print("%s  %d failed" % ["DONE" if _fails == 0 else "DONE WITH FAILURES", _fails])
@@ -312,5 +362,74 @@ func _screen_part() -> void:
 	await _frames(4)
 	var draws: int = await _shot("screen_start")
 	_ok("under budget", draws > 0 and draws < BUDGET, str(draws))
+	_screen.queue_free()
+	await _frames(3)
+
+## The sheet on a new floor's screen, played by touches handed to it.
+func _sheet_part() -> void:
+	_sim = Sim.new(SEED)
+	_screen = load("res://factory/screen.gd").new()
+	_screen.name = "Factory"
+	_screen.setup(_sim)
+	root.add_child(_screen)
+	await _frames(4)
+	_screen.field.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sheet: Control = _screen.sheet
+	sheet.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var robots: Array = _sim.robots
+
+	_screen.open_sheet(0)
+	_ok("sheet open", sheet.is_open() and sheet.robot == 0)
+	_ok("chain laid out", sheet.node_rect("a").position.x < sheet.node_rect("b").position.x
+		and sheet.node_rect("body").end.x < sheet.node_rect("a").position.x, "%s %s" % [sheet.node_rect("a"), sheet.node_rect("b")])
+	await _wait(0.9)
+	var above: float = _screen.to_field(_screen.life.robot_pos(0)).y
+	_ok("the robot stands above the sheet, under the chips", above < sheet.position.y and above > _screen.robot_chip_rect(0).end.y,
+		"robot at %.0f, sheet at %.0f" % [above, sheet.position.y])
+	var draws: int = await _shot("sheet_picker")
+	_ok("under budget with the sheet", draws > 0 and draws < BUDGET, str(draws))
+
+	await _sheet_tap(sheet.plus_rect("a").get_center())
+	_ok("tray opens", sheet.tray_rect("move").size.x > 0 and sheet.tray_rect("pick").size.x > 0)
+	_ok("pick locked without a gripper", sheet.tray_locked("pick") and not sheet.tray_locked("move"))
+	await _shot("sheet_tray")
+	await _sheet_tap(sheet.parts_plus_rect().get_center())
+	await _sheet_tap(sheet.tray_rect("gripper").get_center())
+	_ok("gripper fitted", robots[0].parts.has("gripper") and int(_sim.bin.get("gripper", 0)) == 0, str(robots[0].parts))
+	await _sheet_tap(sheet.plus_rect("a").get_center())
+	await _sheet_tap(sheet.tray_rect("pick").get_center())
+	var ids: Array = Bots.walk(robots[0]).ids
+	_ok("pick inserted", ids.size() > 1 and String(ids[1]).begins_with("n") and robots[0].nodes[ids[1]].kind == "pick", str(ids))
+	await _sheet_tap(sheet.node_rect("b").get_center())
+	_ok("move pill", sheet.pill_button_rect("plus").size.x > 0)
+	draws = await _shot("sheet_pill")
+	_ok("under budget with the pill", draws > 0 and draws < BUDGET, str(draws))
+	await _sheet_tap(sheet.pill_button_rect("plus").get_center())
+	_ok("plus counts", int(robots[0].nodes["b"].n) == 4, str(robots[0].nodes["b"]))
+
+	_screen.open_sheet(2)
+	await _wait(0.9)
+	_ok("the shipper's sheet", sheet.robot == 2 and _screen.selected == 2)
+	draws = await _shot("sheet_open")
+	_ok("under budget", draws > 0 and draws < BUDGET, str(draws))
+	await _sheet_drag(sheet.out_port("c"), sheet.node_rect("d").get_center())
+	_ok("wire dragged", robots[2].next["c"].out == "d" and Bots.walk(robots[2]).closed, str(robots[2].next["c"]))
+	# d already goes to e: the tap-tap wires it past e to f, and back
+	await _sheet_tap(sheet.out_port("d"))
+	_ok("a tap arms the dot", sheet._armed == "d")
+	await _sheet_tap(sheet.node_rect("f").get_center())
+	_ok("tap-tap wires", robots[2].next["d"].out == "f" and sheet._armed == "", str(robots[2].next["d"]))
+	await _sheet_tap(sheet.out_port("d"))
+	await _sheet_tap(sheet.node_rect("e").get_center())
+	_ok("and back", robots[2].next["d"].out == "e")
+	draws = await _shot("sheet_wired")
+	_ok("under budget wired", draws > 0 and draws < BUDGET, str(draws))
+	var own: int = await _sheet_calls()
+	_ok("sheet is one mesh", own <= 6, "%d draw calls" % own)
+
+	await _sheet_drag(Vector2(sheet.size.x * 0.5, 24.0), Vector2(sheet.size.x * 0.5, 320.0))
+	_ok("a swipe down the handle closes it", not sheet.is_open())
+	await _wait(0.5)
+	_ok("and it is gone", not sheet.visible)
 	_screen.queue_free()
 	await _frames(3)

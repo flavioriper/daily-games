@@ -63,6 +63,7 @@ const Fx2D = preload("res://ui/fx2d.gd")
 const Haptics = preload("res://core/haptics.gd")
 const Analytics = preload("res://core/analytics.gd")
 const PiecePill = preload("res://ui/hud/piece_pill.gd")
+const Sheet = preload("res://factory/sheet.gd")
 
 const GAME := "factory"
 const MARGIN := 40
@@ -139,6 +140,8 @@ var tutor: RefCounted
 var field: Control
 var life: RefCounted
 var world: Node2D
+## The program sheet (factory/sheet.gd), over the field's lower part.
+var sheet: Control
 ## The robot the chips mark: the one tapped last.
 var selected := 0
 
@@ -407,6 +410,12 @@ func _build() -> void:
 		_free_b.draw.connect(_draw_free_button)
 		_free_b.pressed.connect(_on_free_button)
 		add_child(_free_b)
+	# over the drawer and its buttons, under the settings and the tutor
+	sheet = Sheet.new()
+	sheet.name = "Sheet"
+	sheet.setup(sim, _fx)
+	sheet.closed.connect(func() -> void: _chips_l.queue_redraw())
+	add_child(sheet)
 	_apply_insets()
 	_layout_field()
 
@@ -509,6 +518,8 @@ func _apply_insets() -> void:
 	_drawer.offset_right = 28.0 + DRAWER_W
 	_drawer.offset_bottom = -foot - DRAWER_B - 16.0
 	_drawer.offset_top = _drawer.offset_bottom
+	if field != null and field.size.y > 0.0:
+		sheet.fit_to(field.size, insets.y)
 
 ## The wash and the light are baked for the field's size, and the near zoom
 ## is the one at which the whole floor is as wide as the field.
@@ -519,6 +530,7 @@ func _layout_field() -> void:
 	_water = Art.water(s, 0.0)
 	_light = Art.light(s)
 	_near = s.x / (Sim.COLS * Art.TILE)
+	sheet.fit_to(s, SafeArea.insets(self).y)
 	if not _laid_out:
 		_laid_out = true
 		_zoom = _near
@@ -553,6 +565,10 @@ func tile_under(pos: Vector2) -> Vector2:
 ## own tiles and POND tiles past them.
 func _clamp(v: Vector2) -> Vector2:
 	var box: Rect2 = (life.tile_bounds() as Rect2).grow(POND)
+	if sheet != null and sheet.is_open():
+		# the sheet hides the lower part of the field: the view may go as
+		# far down as it covers, so a robot on the last row can stand above it
+		box.size.y += sheet.size.y / (_zoom * Art.TILE)
 	return life.seen((life.tile_at(v) as Vector2).clamp(box.position, box.end))
 
 ## The far zoom shows twice as much; the near one the floor across the field.
@@ -618,6 +634,7 @@ func _tutor_hold(on: bool) -> void:
 	_held_back = on
 	if on:
 		_let_go()
+		sheet.let_go()
 
 # --- time ---
 
@@ -629,6 +646,8 @@ func _process(delta: float) -> void:
 	_play_events()
 	_step_hand(delta)
 	_edge_pan(delta)
+	if sheet.is_open():
+		_keep_in_view(false)
 	_step_view(delta)
 	if not _piece.is_empty() and not sim.belts.has(_piece.tile):
 		_close_piece()
@@ -651,6 +670,7 @@ func _process(delta: float) -> void:
 func _play_events() -> void:
 	for e: Dictionary in sim.events:
 		life.event(e)
+		sheet.event(e)
 		match String(e.type):
 			"laid":
 				_quiet.cue("chop", 0.84 * _vary(), -6.0)
@@ -803,15 +823,41 @@ func _draw_chips() -> void:
 			_chips_l.draw_circle(at, DOT_R + 4.0, Pal.SURFACE, true, -1.0, true)
 			_chips_l.draw_circle(at, DOT_R, Pal.BAD, true, -1.0, true)
 
-## The robot's sheet, where its program is read and changed. Until the sheet
-## is built a tap only picks the robot: its chip is marked.
+## The robot's sheet, where its program is read and changed: it slides up
+## over the field's lower part (or turns to this robot if it is up), the
+## chips stay over it, and the view goes where the robot stands in the strip
+## of floor left between them.
 func open_sheet(i: int) -> void:
 	if i < 0 or i >= sim.robots.size():
 		return
 	_let_go()
+	if _drawer.visible:
+		close_drawer()
+	if sim.picked != "":
+		pick("")
 	selected = i
 	_fx.touch()
 	_chips_l.queue_redraw()
+	sheet.open(i)
+	_keep_in_view(true)
+
+## With the sheet up the picked robot is kept in the strip of floor between
+## the chips and the sheet: at once (`now`, as it opens) or, as it walks,
+## once it nears either edge. Only the view's height moves.
+func _keep_in_view(now: bool) -> void:
+	if _mode == "pan" and _moved:
+		return
+	var top := _chips_l.get_global_rect().end.y - field.get_global_rect().position.y
+	var foot := field.size.y - sheet.size.y
+	# where the robot will stand once the view has come to rest
+	var at: Vector2 = life.robot_pos(selected)
+	var y := field.size.y * CENTRE.y + (at.y - _cam_to.y) * _zoom
+	var edge := (foot - top) * 0.2
+	if not now and y > top + edge and y < foot - edge:
+		return
+	var want := (top + foot) * 0.5
+	_cam_raw = _clamp(Vector2(_cam_to.x, at.y - (want - field.size.y * CENTRE.y) / _zoom))
+	_cam_to = _cam_raw
 
 # --- the drawer ---
 
@@ -1632,6 +1678,9 @@ func _save() -> void:
 ## The floor is kept and the screen stops stepping it before it says it is
 ## closed: from here on it is the tab's again.
 func _on_back() -> void:
+	if sheet.is_open():
+		sheet.close()
+		return
 	sim.picked = ""
 	_save()
 	_left = true
@@ -1647,6 +1696,9 @@ func go_back() -> void:
 		return
 	if settings_sheet.is_open():
 		settings_sheet.close()
+		return
+	if sheet.is_open():
+		sheet.close()
 		return
 	if not _piece.is_empty():
 		_close_piece()
