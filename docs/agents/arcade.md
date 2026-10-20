@@ -4122,6 +4122,15 @@ it. The save walked the sheet twice as well.
   left it out of the retained draw list: its chevrons (drawn every frame)
   showed with no walnut under them. The template itself was copied
   square for square; the sim was never wrong.
+- **A template turned a quarter keeps its crossings working** (the user,
+  2026-10-20, after the redraw fix: "problem still happens but only when
+  trying to place it on 90 rotation"). A crossing keeps its across lane
+  in `face` and its up-and-down lane in `face2` (`_end_into` hands E/W to
+  the square's slot, N/S to slot + N); `stamp_template` turned both in
+  place, so at 90 and 270 every crossing held its lanes in the wrong slots
+  and took nothing: six more dead ends on a test factory with three
+  crossings. It now swaps them on an odd turn; all four turns wire the
+  same as the original.
 - **Per frame**: `_lanes_seen` reads the chunks' lists (never the visible
   squares), the numerals walk `printed`, and each numeral is a `TextLine`
   shaped once a text and size (`_lines`, cleared past `LINES_MOST`) and

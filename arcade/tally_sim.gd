@@ -1407,6 +1407,11 @@ func stamp_template(d: Dictionary, t: Vector2i, rot: int) -> Array:
 			kind[i] = k
 			face[i] = f
 			face2[i] = (int(pc[4]) + rot) % 4
+			if k == BRIDGE and f % 2 == 1:
+				# a crossing keeps its across lane in face, its up-and-down
+				# one in face2: a quarter turn swaps them
+				face[i] = face2[i]
+				face2[i] = f
 			fork[i] = turned_bits(int(pc[5]), rot) if k == BELT else 0
 			root[i] = -1
 			role[i] = R_NONE
