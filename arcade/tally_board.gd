@@ -273,8 +273,10 @@ func set_view(r: Rect2) -> void:
 	_clamp_k()
 	_place()
 
+## Far out the view holds about a hundred squares across: the sheet is
+## four screens wide then, and nothing under a belt's bed is drawn.
 func k_least() -> float:
-	return maxf(14.0, size.x / (Sim.W + RIM))
+	return maxf(8.0, size.x / (Sim.W + RIM))
 
 func _clamp_k() -> void:
 	k = clampf(k, k_least(), K_MOST)
@@ -410,6 +412,8 @@ func tick(delta: float) -> void:
 # --- building the still layers ---
 
 func _rebuild() -> void:
+	if sim == null:
+		return
 	if _paper == null:
 		_paper = Art.paper(Sim.W, Sim.H, RIM)
 	if _dirty_all:

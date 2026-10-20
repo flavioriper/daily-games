@@ -54,12 +54,14 @@ extends RefCounted
 ## drain. `step(dt)` takes any `dt`.
 
 ## 2: the operators' footprints and the bigger paper; 3: the six-square
-## box, the three-square dig and the numbers spread over a bigger sheet. A
-## sheet kept under VER keeps its level, tally and upgrades, and its pieces
-## are not read.
-const VER := 3
-const W := 120
-const H := 120
+## box, the three-square dig and the numbers spread over a bigger sheet;
+## 4: the 400 by 400 sheet, the box in its middle, the numbers printed by
+## rings, small near the box and bigger towards the edge. A sheet kept
+## under VER keeps its level, tally and upgrades, and its pieces are not
+## read.
+const VER := 4
+const W := 400
+const H := 400
 const N := W * H
 const N2 := N * 2
 ## The sheet in chunks of CH by CH squares (`cells`): the board draws and
@@ -68,7 +70,7 @@ const CH := 20
 const CW := W / CH
 const CHUNKS := CW * (H / CH)
 const HUB := 6
-const HUB_AT := Vector2i(57, 57)
+const HUB_AT := Vector2i(197, 197)
 
 enum { EMPTY, BELT, BRIDGE, DIG, ADD, MUL, SUB, DIV, POW, CRATE, BOX, SPLIT, JOIN, PART }
 const OPS := [ADD, MUL, SUB, DIV, POW]
@@ -161,20 +163,36 @@ const MOST := 60
 
 # --- the paper ---
 
-## [value, how many, nearest, furthest]: squares from the box's edge.
-const DEPOSITS := [
-	[1, 6, 7, 15], [2, 5, 9, 19], [3, 4, 11, 22], [4, 4, 13, 25], [5, 4, 14, 27],
-	[6, 3, 16, 30], [7, 3, 17, 32], [8, 3, 19, 34], [9, 3, 20, 35],
-]
-## Past 9: two of each from 11 to 39, one or two from 40 to MOST.
-const FAR := [[11, 19, 2, 24, 40], [20, 39, 2, 31, 47], [40, 60, 1, 38, 53]]
-## No printed number has another, or the box, within this many squares:
-## two digs side by side leave APART - 3 squares between them, room for an
-## operator and its belts.
-const APART := 6
+## Where a value prints (the user, 2026-10-20: "more sparse numbers from
+## each other, and smaller numbers near center, bigger and bigger numbers
+## near edges"): `band(v)` the rings (squares from the box's edge) its
+## copies lie in, a schedule that moves out with the value, the steps wide
+## where the small numbers are (APART keeps them apart, and the rings near
+## the box are short) and closer further out, where the rings are long;
+## `copies(v)` how many of it. 1s at 8 to 16, 5s at 26 to 36, 9s at 42 to
+## 52, 19s at 70 to 84, 39s at 114 to 130, 60s at 156 to 182.
+const NEAR := [[1, 8.0, 0.0, 8], [5, 14.0, 4.0, 10], [9, 30.0, 4.0, 10], [19, 46.0, 3.0, 14], [39, 72.0, 2.2, 16], [60, 114.0, 2.1, 26]]
+## No printed number has another within this many squares: two digs side
+## by side leave APART - 3 squares between them, room for machines and
+## their belts.
+const APART := 12
 ## A written square wires the slots this far round it again (a dig's belts
 ## leading away read two squares past its edge: three from its root).
 const REWIRE := 3
+
+## [near, far]: the rings the copies of `v` print on.
+static func band(v: int) -> Vector2i:
+	var first := 1
+	for row: Array in NEAR:
+		var last := int(row[0])
+		if v <= last:
+			var near := roundi(float(row[1]) + float(row[2]) * (v - first))
+			return Vector2i(near, mini(near + int(row[3]), HUB_AT.x - 2))
+		first = last + 1
+	return Vector2i(HUB_AT.x - 12, HUB_AT.x - 2)
+
+static func copies(v: int) -> int:
+	return 4 if v == 1 else 3
 
 # --- the upgrades ---
 
@@ -404,35 +422,50 @@ static func ring(t: Vector2i) -> int:
 	var dy := maxi(HUB_AT.y - t.y, t.y - (HUB_AT.y + HUB - 1))
 	return maxi(maxi(dx, dy), 0)
 
-## Prints the numbers on the paper: each value its count of squares in its
-## band of rings, none next to another or to the box.
+## Prints the numbers on the paper: each value its copies on rings in its
+## band, none within APART of another.
 func _print_paper() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_v ^ 0x5eed
-	var rows: Array = DEPOSITS.duplicate()
-	for f: Array in FAR:
-		for v in range(int(f[0]), int(f[1]) + 1):
-			var many: int = f[2] if f[2] > 1 else (2 if rng.randf() < 0.4 else 1)
-			rows.append([v, many, f[3], f[4]])
-	for r: Array in rows:
-		var placed := 0
+	var placed: Array = []
+	for v in range(1, MOST + 1):
+		if v == 10:
+			continue
+		var b := band(v)
+		var put := 0
 		var tries := 0
-		while placed < int(r[1]) and tries < 8000:
+		while put < copies(v) and tries < 600:
 			tries += 1
-			var t := Vector2i(rng.randi_range(0, W - 1), rng.randi_range(0, H - 1))
-			var d := ring(t)
-			if d < int(r[2]) or d > int(r[3]) or not _clear_round(t):
+			var t := _on_ring(rng.randi_range(b.x, b.y), rng.randf())
+			if t.x < 1 or t.y < 1 or t.x > W - 2 or t.y > H - 2 or not _clear_round(t, placed):
 				continue
-			dep[_i(t)] = int(r[0])
+			dep[_i(t)] = v
 			printed.append(_i(t))
-			placed += 1
+			placed.append(t)
+			put += 1
 
-func _clear_round(t: Vector2i) -> bool:
-	for dy in range(-APART, APART + 1):
-		for dx in range(-APART, APART + 1):
-			var u := t + Vector2i(dx, dy)
-			if inside(u) and (dep[_i(u)] != 0 or kind[_i(u)] == BOX):
-				return false
+## A square on the ring `d` squares from the box's edge, `u` (0 to 1) of
+## the way round it.
+static func _on_ring(d: int, u: float) -> Vector2i:
+	var x0 := HUB_AT.x - d
+	var y0 := HUB_AT.y - d
+	var l := HUB + 2 * d - 1
+	var p := int(u * 4.0 * l) % (4 * l)
+	var side := p / l
+	var o := p % l
+	match side:
+		0:
+			return Vector2i(x0 + o, y0)
+		1:
+			return Vector2i(x0 + l, y0 + o)
+		2:
+			return Vector2i(x0 + l - o, y0 + l)
+	return Vector2i(x0, y0 + l - o)
+
+static func _clear_round(t: Vector2i, placed: Array) -> bool:
+	for q: Vector2i in placed:
+		if maxi(absi(q.x - t.x), absi(q.y - t.y)) <= APART:
+			return false
 	return true
 
 # --- numbers ---

@@ -30,6 +30,8 @@ extends SceneTree
 ## (`Sim.path`), so this machine's paper is never touched.
 
 const Sim = preload("res://arcade/tally_sim.gd")
+## The tutorial's lessons were laid round a box at (57, 57).
+const O := Sim.HUB_AT - Vector2i(57, 57)
 
 var _menu: Node
 var _s: Node
@@ -602,8 +604,8 @@ func _process(delta: float) -> bool:
 		24:
 			if _t > _at + 3.5:
 				var page: Control = _card._pages[0].diagram
-				var dug: bool = page._sim.kind_at(Vector2i(50, 59)) == Sim.DIG
-				var laid: bool = page._sim.kind_at(Vector2i(52, 59)) == Sim.BELT and page._sim.kind_at(Vector2i(56, 59)) == Sim.BELT and page._sim.face_at(Vector2i(56, 59)) == 0
+				var dug: bool = page._sim.kind_at((Vector2i(50, 59) + O)) == Sim.DIG
+				var laid: bool = page._sim.kind_at((Vector2i(52, 59) + O)) == Sim.BELT and page._sim.kind_at((Vector2i(56, 59) + O)) == Sim.BELT and page._sim.face_at((Vector2i(56, 59) + O)) == 0
 				_check("the Dig page placed the dig through Place and traced the belt to the box", dug and laid)
 				_card._turn(1)
 				_card._turn(1)
@@ -618,7 +620,7 @@ func _process(delta: float) -> bool:
 		26:
 			if _t > _at + 1.4:
 				var page: Control = _card._pages[2].diagram
-				_check("the Machine page placed the adder facing east", page._sim.kind_at(Vector2i(55, 58)) == Sim.ADD and page._sim.face_at(Vector2i(55, 58)) == 0 and page._sim.kind_at(Vector2i(54, 59)) == Sim.ADD)
+				_check("the Machine page placed the adder facing east", page._sim.kind_at((Vector2i(55, 58) + O)) == Sim.ADD and page._sim.face_at((Vector2i(55, 58) + O)) == 0 and page._sim.kind_at((Vector2i(54, 59) + O)) == Sim.ADD)
 				_card._turn(1)
 				_next()
 		27:
@@ -626,8 +628,8 @@ func _process(delta: float) -> bool:
 			if _t > _at + 6.0:
 				var page: Control = _card._pages[3].diagram
 				_shot("13_tut_belts")
-				_check("the Belts page's trace across the line made a crossing", page._sim.kind_at(Vector2i(50, 59)) == Sim.BRIDGE)
-				_check("the Belts page's 2s joined the 1s line", page._sim.kind_at(Vector2i(54, 59)) == Sim.BELT and page._sim.face_at(Vector2i(54, 59)) == 0 and page._sim.face_at(Vector2i(54, 58)) == 1 and page._sim.held(2) > 0)
+				_check("the Belts page's trace across the line made a crossing", page._sim.kind_at((Vector2i(50, 59) + O)) == Sim.BRIDGE)
+				_check("the Belts page's 2s joined the 1s line", page._sim.kind_at((Vector2i(54, 59) + O)) == Sim.BELT and page._sim.face_at((Vector2i(54, 59) + O)) == 0 and page._sim.face_at((Vector2i(54, 58) + O)) == 1 and page._sim.held(2) > 0)
 				_card.free()
 				return _done()
 	return false

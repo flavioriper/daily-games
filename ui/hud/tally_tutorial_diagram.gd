@@ -40,6 +40,8 @@ enum Lesson { DIG, BOX, MACHINE, BELTS, UPGRADE }
 ## The squares seen across the page, and where the page looks. The box
 ## stands on (57, 57) to (62, 62); a dig covers the squares round its number.
 const ACROSS := 13.0
+## The lessons were laid round a box at (57, 57): shifted to where it stands.
+const O := Sim.HUB_AT - Vector2i(57, 57)
 const LOOK := {Lesson.DIG: Vector2(54.6, 59.4), Lesson.BOX: Vector2(54.8, 60.0), Lesson.MACHINE: Vector2(53.0, 59.2),
 	Lesson.BELTS: Vector2(52.4, 58.6), Lesson.UPGRADE: Vector2(54.6, 59.6)}
 ## Each lesson's finger: [second, square (its middle is + 0.5), down].
@@ -111,7 +113,7 @@ func _layout() -> void:
 	_board.size = size
 	_board.set_view(Rect2(Vector2.ZERO, size))
 	_board.k = size.x / ACROSS
-	_board.look_at_square(LOOK[lesson], true)
+	_board.look_at_square(LOOK[lesson] + Vector2(O), true)
 	_over_l.size = size
 	if not _begun:
 		_reset()
@@ -146,48 +148,48 @@ func _reset() -> void:
 	match lesson:
 		Lesson.DIG:
 			_sim.lv.belt = 3
-			_sim.dep[Sim._i(Vector2i(50, 59))] = 1
-			_sim.dep[Sim._i(Vector2i(52, 63))] = 1
-			_sim.dep[Sim._i(Vector2i(53, 55))] = 2
+			_sim.dep[Sim._i((Vector2i(50, 59) + O))] = 1
+			_sim.dep[Sim._i((Vector2i(52, 63) + O))] = 1
+			_sim.dep[Sim._i((Vector2i(53, 55) + O))] = 2
 		Lesson.BOX:
 			_sim.lv.belt = 3
 			_sim.got = 5
-			_dig(Vector2i(50, 58), 1)
-			_dig(Vector2i(50, 62), 3)
+			_dig((Vector2i(50, 58) + O), 1)
+			_dig((Vector2i(50, 62) + O), 3)
 			_sim._wire()
-			_run(Vector2i(52, 58), Vector2i(56, 58), 0)
-			_run(Vector2i(52, 62), Vector2i(56, 62), 0)
+			_run((Vector2i(52, 58) + O), (Vector2i(56, 58) + O), 0)
+			_run((Vector2i(52, 62) + O), (Vector2i(56, 62) + O), 0)
 		Lesson.MACHINE:
 			_sim.level = 2
 			_sim.lv.belt = 3
 			_sim.lv.add = 8
 			# 3 and 4 come round under where the adder's A and B squares will
 			# be; the belts under its answer squares lead into the box
-			_dig(Vector2i(49, 57), 3)
-			_dig(Vector2i(49, 61), 4)
+			_dig((Vector2i(49, 57) + O), 3)
+			_dig((Vector2i(49, 61) + O), 4)
 			_sim._wire()
-			_sim.lay_path([Vector2i(51, 57), Vector2i(52, 57), Vector2i(52, 58), Vector2i(53, 58), Vector2i(54, 58)], 0)
-			_sim.lay_path([Vector2i(51, 61), Vector2i(52, 61), Vector2i(52, 60), Vector2i(52, 59), Vector2i(53, 59), Vector2i(54, 59)], 0)
-			_run(Vector2i(55, 58), Vector2i(56, 58), 0)
-			_run(Vector2i(55, 59), Vector2i(56, 59), 0)
+			_sim.lay_path([(Vector2i(51, 57) + O), (Vector2i(52, 57) + O), (Vector2i(52, 58) + O), (Vector2i(53, 58) + O), (Vector2i(54, 58) + O)], 0)
+			_sim.lay_path([(Vector2i(51, 61) + O), (Vector2i(52, 61) + O), (Vector2i(52, 60) + O), (Vector2i(52, 59) + O), (Vector2i(53, 59) + O), (Vector2i(54, 59) + O)], 0)
+			_run((Vector2i(55, 58) + O), (Vector2i(56, 58) + O), 0)
+			_run((Vector2i(55, 59) + O), (Vector2i(56, 59) + O), 0)
 		Lesson.BELTS:
 			_sim.level = 6
 			_sim.lv.belt = 3
-			_dig(Vector2i(47, 59), 1)
-			_dig(Vector2i(54, 55), 2)
-			_dig(Vector2i(49, 55), 3)
+			_dig((Vector2i(47, 59) + O), 1)
+			_dig((Vector2i(54, 55) + O), 2)
+			_dig((Vector2i(49, 55) + O), 3)
 			_sim._wire()
-			_run(Vector2i(49, 59), Vector2i(56, 59), 0)
+			_run((Vector2i(49, 59) + O), (Vector2i(56, 59) + O), 0)
 			# the 2s come down onto the line and join it: they take turns
-			_sim.lay_path([Vector2i(54, 57), Vector2i(54, 58), Vector2i(54, 59)], 1)
+			_sim.lay_path([(Vector2i(54, 57) + O), (Vector2i(54, 58) + O), (Vector2i(54, 59) + O)], 1)
 		Lesson.UPGRADE:
 			_sim.level = 2
 			_sim.ledger[1] = 36
-			_dig(Vector2i(51, 57), 1)
-			_dig(Vector2i(51, 61), 1)
+			_dig((Vector2i(51, 57) + O), 1)
+			_dig((Vector2i(51, 61) + O), 1)
 			_sim._wire()
-			_run(Vector2i(53, 57), Vector2i(56, 57), 0)
-			_run(Vector2i(53, 61), Vector2i(56, 61), 0)
+			_run((Vector2i(53, 57) + O), (Vector2i(56, 57) + O), 0)
+			_run((Vector2i(53, 61) + O), (Vector2i(56, 61) + O), 0)
 	_sim.reprint()
 	_sim.events.clear()
 	_board.sim = _sim
@@ -200,12 +202,19 @@ func _reset() -> void:
 ## the row is met.
 func _script() -> Array:
 	if lesson != Lesson.UPGRADE:
-		return SCRIPTS[lesson]
-	var rest := Vector2(52.5, 63.5)
+		return _shifted(SCRIPTS[lesson])
+	var rest := Vector2(52.5, 63.5) + Vector2(O)
 	if _up_t < 0.0:
 		return [[0.0, rest, false]]
 	var up: Vector2 = _board.squares_at(_up_button().get_center())
 	return [[0.0, rest, false], [_up_t + 0.7, up, false], [_up_t + 0.9, up, true], [_up_t + 1.1, up, false], [_up_t + 1.9, rest, false]]
+
+## A script's squares moved with the box.
+static func _shifted(script: Array) -> Array:
+	var out := []
+	for e: Array in script:
+		out.append([e[0], (e[1] as Vector2) + Vector2(O) if e[1] is Vector2 else e[1], e[2]])
+	return out
 
 func _process(delta: float) -> void:
 	if _sim == null or not is_visible_in_tree():

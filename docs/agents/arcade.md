@@ -4028,6 +4028,51 @@ asking; names are "Part n"; no tutorial page yet. Seen on `opengl3_angle`
 810x1440: bench 57, paper with a copy 66, the Parts card 134 draw calls.
 Probe 0 failed, `_shot_tally` headless 0 failed, suite 248522/0.
 
+#### Tally's 400 sheet, the numbers out by rings (2026-10-20, later)
+
+The user: "game grid itself is way too small, we need a at least 10x
+bigger grid board, with more sparse numbers from each other, and smaller
+numbers near center, bigger and bigger numbers near edges".
+
+- **The sheet is 400 by 400** (`Sim.W`, `H`; eleven times the squares of
+  the 120 sheet), the box at `HUB_AT` (197, 197), its middle (200, 200).
+  Twenty by twenty chunks of 20. `VER` 4: a kept sheet keeps its level,
+  tally and upgrades and drops its pieces again, as VER 3 did.
+- **The numbers print by rings** (`band(v)`, squares from the box's edge,
+  the schedule `NEAR`): 1s at 8 to 16, 2s at 14 to 24 on to 5s at 26 to
+  36, 6s to 9s 30 to 52, 11 to 19 at 46 to 84, 20 to 39 at 72 to 130, 40
+  to 60 at 114 to 182. The steps are wide where the numbers are small (the
+  rings near the box are short and `APART` 12 keeps them apart) and
+  closer further out. `copies(v)`: four 1s, three of every other value,
+  178 numbers a sheet. A copy is drawn on a ring in its band (`_on_ring`)
+  and kept when no number lies within APART of it (`_clear_round` against
+  the placed list, not the sheet); eight seeds print every copy of every
+  value (a probe check), on seed 5 the 1s lie at rings 8 to 9, the 9s at
+  43 to 52, the 60s at 157 to 175. `DEPOSITS` and `FAR` are gone.
+- **Far out**: `k_least` 8 (a hundred squares across, the sheet four
+  screens wide); tokens are not drawn under k 12.
+- **Shifted with the box**: the tutorial's lessons
+  (`ui/hud/tally_tutorial_diagram.gd`, `O` = HUB_AT - (57, 57) on every
+  square and the finger's scripts), the probe's box-bound routes (the rest
+  of its literals stand on blank paper) and the shot harness's tutorial
+  checks. The perf harness lays a belt across every fourth row: 39,102
+  belts, builders 0.7 ms a frame (fewer in view than before), the sim's
+  step 2.1 ms (it walks every lane: the one per-frame cost that grows with
+  the factory), an edit's wire 0.27 ms and rebuild 1.0, the view's chunks
+  from nothing 7.3 ms, **a save 32 ms** (the ConfigFile's text of 39,000
+  pieces: a hitch every 20 s on a factory that size; a smaller one saves
+  in a few ms).
+- Checked: probe 0 failed; `_shot_tally` headless and windowed on
+  `opengl3_angle` 810x1440, 0 failed, 62 to 156 draw calls (87 close, 85
+  far); `_shot_tally_tree` 0 failed. **Not seen**: the phone; the walk
+  across a sheet this wide (a 60 is 160 squares from the box; belts cost
+  the same a square); whether four 1s at 8 to 16 squares make the start
+  too slow or too easy. **A runaway to know**: a harness whose `_process`
+  errors every frame and never quits writes Godot's own log
+  (`user://logs/godot.log`) without bound: one filled the Mac's disk
+  (3.2 GB) in ten minutes. Headless runs here go under `ulimit -f` and
+  `timeout`.
+
 #### Tally edits cost what they touch (2026-10-20, later)
 
 The user: "check why tally is lagging so much as user goes into the game

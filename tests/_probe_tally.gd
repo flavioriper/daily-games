@@ -163,7 +163,32 @@ func _paper() -> void:
 		if v == 10:
 			tens += 1
 		most = maxi(most, v)
-	_check("six 1s within %d squares of the box (%d, furthest %d)" % [int(Sim.DEPOSITS[0][3]), ones, far_one], ones == 6 and far_one <= int(Sim.DEPOSITS[0][3]))
+	_check("%d 1s within %d squares of the box (%d, furthest %d)" % [Sim.copies(1), Sim.band(1).y, ones, far_one], ones == Sim.copies(1) and far_one <= Sim.band(1).y)
+	# the small numbers close, the big ones at the edge: each value's
+	# copies in its band, and the bands' near edges growing with the value
+	var off_band := 0
+	var rings := {}
+	for i in Sim.N:
+		var v := int(a.dep[i])
+		if v == 0:
+			continue
+		var d := Sim.ring(Sim.tile_of(i))
+		if d < Sim.band(v).x or d > Sim.band(v).y:
+			off_band += 1
+		rings[v] = maxf(float(rings.get(v, 0.0)), float(d))
+	_check("every printed number lies in its value's band (%d off)" % off_band, off_band == 0)
+	var short := []
+	for sd in range(1, 9):
+		var q = Sim.new(sd)
+		var seen := {}
+		for i: int in q.printed:
+			seen[int(q.dep[i])] = int(seen.get(int(q.dep[i]), 0)) + 1
+		for v in range(1, Sim.MOST + 1):
+			if v != 10 and int(seen.get(v, 0)) < Sim.copies(v):
+				short.append([sd, v])
+	_check("eight seeds print every copy of every number %s" % [short], short.is_empty())
+	_check("a 1 is never nearer than %d squares, a 60 never under %d" % [Sim.band(1).x, Sim.band(60).x], Sim.band(1).x >= 8 and Sim.band(60).x > Sim.band(30).x and Sim.band(30).x > Sim.band(9).x and Sim.band(9).x > Sim.band(1).x)
+	_check("the furthest 60 lies past the furthest 9, that past the furthest 1 (%d, %d, %d)" % [int(rings.get(1, 0)), int(rings.get(9, 0)), int(rings.get(60, 0))], float(rings.get(60, 0)) > float(rings.get(9, 0)) and float(rings.get(9, 0)) > float(rings.get(1, 0)))
 	var near := 99
 	for i in Sim.N:
 		if int(a.dep[i]) == 0:
@@ -190,12 +215,12 @@ func _paper() -> void:
 func _belt_to_box() -> void:
 	var s = _blank(1)
 	s.lv.belt = 1
-	var dig_at := Vector2i(40, 58)
+	var dig_at := Sim.HUB_AT + Vector2i(-17, 1)
 	s.dep[Sim._i(dig_at)] = 1
-	_check("a dig is refused off a number", not s.place(Sim.DIG, Vector2i(39, 58), E))
+	_check("a dig is refused off a number", not s.place(Sim.DIG, dig_at + Vector2i(-1, 0), E))
 	_check("a dig goes on a 1 at level 1", s.place(Sim.DIG, dig_at, E))
 	_check("a dig covers three by three", s.kind_at(dig_at + Vector2i(1, 1)) == Sim.DIG and s.kind_at(dig_at + Vector2i(-1, -1)) == Sim.DIG and s.digs.size() == 1)
-	_run(s, Vector2i(42, 58), Vector2i(56, 58), E)
+	_run(s, dig_at + Vector2i(2, 0), Sim.HUB_AT + Vector2i(-1, 1), E)
 	_check("the run leads away from the dig's edge", (s.digs[Sim._i(dig_at)].outs as PackedInt32Array).size() == 1)
 	s.events.clear()
 	s.step(20.0)
@@ -359,7 +384,7 @@ func _split_merge() -> void:
 	var m = _blank()
 	_dig1(m, Vector2i(10, 30), 1)
 	_dig1(m, Vector2i(16, 34), 2)
-	_route(m, [Vector2i(11, 30), Vector2i(58, 30), Vector2i(58, 56)])
+	_route(m, [Vector2i(11, 30), Vector2i(Sim.HUB_AT.x + 1, 30), Sim.HUB_AT + Vector2i(1, -1)])
 	var p: Dictionary = m.trim_path([Vector2i(16, 33), Vector2i(16, 32), Vector2i(16, 31), Vector2i(16, 30)], Nd)
 	_check("a path ending on a line across it joins it (cut %d, merge %s)" % [p.cut, p.merge], int(p.cut) == 3 and bool(p.merge))
 	m.lay_path([Vector2i(16, 33), Vector2i(16, 32), Vector2i(16, 31), Vector2i(16, 30)], Nd)
@@ -388,9 +413,9 @@ func _bridge() -> void:
 	var b = _blank(6)
 	_dig1(b, Vector2i(5, 12), 1)
 	_dig1(b, Vector2i(12, 4), 3)
-	_route(b, [Vector2i(6, 12), Vector2i(58, 12), Vector2i(58, 56)])
-	_route(b, [Vector2i(12, 5), Vector2i(12, 20), Vector2i(59, 20), Vector2i(59, 56)])
-	_check("a run across a belt makes a crossing", b.kind_at(Vector2i(12, 12)) == Sim.BRIDGE and b.kind_at(Vector2i(58, 20)) == Sim.BRIDGE)
+	_route(b, [Vector2i(6, 12), Vector2i(Sim.HUB_AT.x + 1, 12), Sim.HUB_AT + Vector2i(1, -1)])
+	_route(b, [Vector2i(12, 5), Vector2i(12, 20), Vector2i(Sim.HUB_AT.x + 2, 20), Sim.HUB_AT + Vector2i(2, -1)])
+	_check("a run across a belt makes a crossing", b.kind_at(Vector2i(12, 12)) == Sim.BRIDGE and b.kind_at(Vector2i(Sim.HUB_AT.x + 1, 20)) == Sim.BRIDGE)
 	b.step(80.0)
 	_check("both lanes cross (%d 1s, %d 3s)" % [b.held(1), b.held(3)], b.held(1) > 20 and b.held(3) > 20)
 	# a belt a side line joins is never crossed: its join would be cut off
@@ -405,22 +430,23 @@ func _bridge() -> void:
 ## one step back puts it all as it was.
 func _path() -> void:
 	var s = _blank(3)
-	var dig_at := Vector2i(50, 52)
+	var off := Sim.HUB_AT - Vector2i(57, 57)
+	var dig_at := Vector2i(50, 52) + off
 	s.dep[Sim._i(dig_at)] = 1
 	s.place(Sim.DIG, dig_at, E)
 	# begun on the dig's middle, east out of it, south to the box's row, east into the box
 	var path := []
 	for x in range(50, 55):
-		path.append(Vector2i(x, 52))
+		path.append(Vector2i(x, 52) + off)
 	for y in range(53, 59):
-		path.append(Vector2i(54, y))
+		path.append(Vector2i(54, y) + off)
 	for x in range(55, 59):
-		path.append(Vector2i(x, 58))
+		path.append(Vector2i(x, 58) + off)
 	s.mark()
 	var n: int = s.lay_path(path, E)
 	_check("a traced path drops the dig and the box at its ends (%d laid)" % n, n == 11 and s.kind_at(dig_at) == Sim.DIG)
-	_check("each square faces the next and the corner turns south", s.face_at(Vector2i(52, 52)) == E and s.face_at(Vector2i(54, 52)) == S and s.face_at(Vector2i(54, 56)) == S)
-	_check("the last square faces into the box", s.face_at(Vector2i(56, 58)) == E)
+	_check("each square faces the next and the corner turns south", s.face_at(Vector2i(52, 52) + off) == E and s.face_at(Vector2i(54, 52) + off) == S and s.face_at(Vector2i(54, 56) + off) == S)
+	_check("the last square faces into the box", s.face_at(Vector2i(56, 58) + off) == E)
 	s.step(20.0)
 	_check("the 1s ride the corner into the box (%d)" % s.made, s.made >= 10)
 	_check("one step back lifts the whole path", s.undo() and s.lanes.is_empty() and s.kind_at(dig_at) == Sim.DIG and not s.can_undo())
@@ -516,9 +542,9 @@ func _path() -> void:
 	_check("fed on both it works and starves no more", a.starving(Sim._i(m)) == -1 and bool(a.machines[Sim._i(m)].has_last))
 	# twenty non-targets with no hit: the box says so once
 	var o = _blank(2)
-	o.dep[Sim._i(Vector2i(51, 58))] = 1
-	o.place(Sim.DIG, Vector2i(51, 58), E)
-	_run(o, Vector2i(53, 58), Vector2i(56, 58), E)
+	o.dep[Sim._i(Sim.HUB_AT + Vector2i(-6, 1))] = 1
+	o.place(Sim.DIG, Sim.HUB_AT + Vector2i(-6, 1), E)
+	_run(o, Sim.HUB_AT + Vector2i(-4, 1), Sim.HUB_AT + Vector2i(-1, 1), E)
 	o.events.clear()
 	o.step(40.0)
 	var said := 0
@@ -538,7 +564,7 @@ func _crate() -> void:
 	s.step(20.0)
 	var c: Dictionary = s.crates[Sim._i(Vector2i(9, 40))]
 	_check("a crate keeps the first number only (%d of %d)" % [int(c.n), int(c.v)], int(c.v) == 1 and int(c.n) > 10)
-	_route(s, [Vector2i(10, 40), Vector2i(56, 40), Vector2i(56, 58), Vector2i(57, 58)])
+	_route(s, [Vector2i(10, 40), Vector2i(Sim.HUB_AT.x - 1, 40), Sim.HUB_AT + Vector2i(-1, 1), Sim.HUB_AT + Vector2i(0, 1)])
 	s.step(60.0)
 	_check("a crate lets its number out to the box", s.held(1) > 10)
 

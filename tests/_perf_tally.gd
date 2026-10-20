@@ -1,8 +1,9 @@
 extends SceneTree
 
-## Times Tally's board on a crowded paper, headless: a sheet with belts in
-## most rows, every one full, and the per-frame builders (chevrons, tokens,
-## pieces, live) and the sim's step, at the default zoom and far out.
+## Times Tally's board on a crowded paper, headless: a sheet with a full
+## belt across every fourth row (about 40,000 belts on the 400 sheet), and
+## the per-frame builders (chevrons, tokens, pieces, live), the sim's step,
+## an edit's wire and rebuild and a save, at the default zoom and far out.
 ##   godot --headless --path . --script tests/_perf_tally.gd
 
 const Sim = preload("res://arcade/tally_sim.gd")
@@ -14,7 +15,7 @@ func _initialize() -> void:
 	s.level = 40
 	s.dep.fill(0)
 	var belts := 0
-	for y in range(0, Sim.H, 2):
+	for y in range(0, Sim.H, 4):
 		if y >= Sim.HUB_AT.y - 1 and y <= Sim.HUB_AT.y + Sim.HUB:
 			continue
 		var row := []
