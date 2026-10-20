@@ -4028,6 +4028,78 @@ asking; names are "Part n"; no tutorial page yet. Seen on `opengl3_angle`
 810x1440: bench 57, paper with a copy 66, the Parts card 134 draw calls.
 Probe 0 failed, `_shot_tally` headless 0 failed, suite 248522/0.
 
+#### Tally's visors: the operation played on the machine (2026-10-20)
+
+The user: "on tally, create some good looking operation module effect
+using some visor, different animations on adiction, multiplier, etc, based
+on each operation, for example on what I say, the sum smash two numbers
+together". Built unattended; the calls below are mine.
+
+- **The visor** (`Art.visor_rect`, `visor_into`, `glass_into`,
+  `glint_into`, `tally_art.gd`) replaces the answer's cream face: a dark
+  glass pane (`GLASS`, lighter at its foot by a gradient quad) in a rim of
+  the paint with a thin brass bezel and a glint along its top. It spans the
+  answer squares' middles, `VISOR_H` 0.58 across and `VISOR_PAD` 0.34 past
+  each end (one square: 0.68 by 0.58; the adder's two: 1.6 by 0.58, lying
+  up and down when its squares do), and the waist joining a machine's
+  squares grew to 0.64 to carry it. Resting, the sign glows in it in the
+  paint's light (`Art.lit`). A and B keep their small cream faces.
+- **At work** (`_live_visors` and the `_beat_*` in `tally_board.gd`), the
+  board paints the bare glass over the sign and plays the cycle on it,
+  phased by the sim's `t` and never the clock, so a four-second adder and
+  a half-second one play the same beats: to `V_IN` 0.32 the two numbers
+  ride in from their A and B squares as cream chips (a token's look, a
+  fifth of a square, 0.143 on a one-square pane so two sit apart) and
+  pop up at the pane's ends; the strike comes at `V_HIT` 0.6, and the
+  answer is up from then to the end. Each kind its own strike: the **sum**
+  draws both chips back and rushes them together, the sum popping out of
+  the hit with a squash, a ring and six sparks and the glass lit cream;
+  the **difference** draws B back past the pane's end and rams A, which
+  shivers and slides to the middle as the difference while B bounces off
+  shrinking and three crumbs fall; the **product** folds B into A and fans
+  copies of A (one a count, four at most) out of it on an orbit that spins
+  up and folds back in, the product popping larger with eight sparks; the
+  **quotient** slides A to the middle while B thins into a blade that
+  drops through it, the chip parts in two and comes together as the
+  quotient, and a remainder (when the sim puts one out) leaves as a small
+  chip towards the R square; the **power** settles A low with B shrunk
+  into its shoulder, stacks copies of A into a tower (B - 1, three at
+  most) that is pressed down into one, the power popping up with
+  sparkles rising. After the `op` event the answer stays on the glass
+  `SHOWN` 0.5 s fading, under a thin `FLASH` 0.35 s (`_shown`, set in
+  `play("op")` beside the squash, since the sim can begin the next pair
+  the same tick it finishes one). `Motion.reduce` shows the chips at the
+  pane's ends and the answer from the strike, nothing moving.
+- **The numerals** ride the words layer: `_vis` holds each frame's chips
+  (`[at, r, text, colour]`), and `_draw_words` adds them to the tokens'
+  runs sized to their chip, so a one-square pane's operands are about 9
+  px at the usual zoom (k 55) and the answer 11, growing with the zoom;
+  below `FS_MIN` they are left out, as a token's are. Below `VISOR_FROM`
+  k 32 nothing is drawn on the panes at all (a speck, as the chevrons).
+- **Cost**: the panes, glint, flash, chips, half chips and bursts are
+  cached meshes (`Art.visor_part`, `Art.chip`, `Art.burst`) appended
+  through a `FlatBuilder` into a mesh of their own, drawn under the live
+  layer's (`_live_flat`, one more draw call while a machine works);
+  only the crumbs, the sparkles and the blade's line are cut live. The
+  flash and the burst are baked at eight alpha steps (`_a8`) because a
+  `FlatBuilder` tints a vertex at a time in script. A throwaway probe
+  with thirty busy adders in view: the live layer 1.5 ms a frame on the
+  ride in, 2.6 at the strike (11.4 and 7.6 when every shape was cut live).
+  `_perf_tally` builders 1.50 ms at k 74 (1.46 before). Probe 0 failed;
+  `_shot_tally` 0 failed headless and windowed on `opengl3_angle`, 80
+  draws `5b_close` (80 before), 131 the tutorial's Machine page (127).
+  Sheets of each kind at eleven moments of its cycle read as above.
+- **Open, the user's**: the look and the beats on a phone (the chips on
+  a one-square pane are small at the usual zoom; a wider pane would need
+  the block widened); between `VISOR_FROM` k 32 and about k 48 a
+  one-square pane's operand numerals fall under `FS_MIN`, so the chips
+  slide bare there (my call: the motion still says work); whether the
+  hand-out flash should be felt or heard (the `op` cue is unchanged); the
+  sign hidden while the machine works. The tray's five icons and the
+  piece card carry the visor at their sizes (`Art.icon` draws
+  `machine(k, 3)`), the sign lit on dark glass; seen in `10_tray` and
+  `7_card`, readable.
+
 #### Tally draws only the belts in view (2026-10-20)
 
 The user: "on tally, performance is really poor when user pass number 30

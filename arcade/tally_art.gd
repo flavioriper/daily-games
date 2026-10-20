@@ -326,16 +326,12 @@ static func machine(k: int, f := 0, ins := 0, outs := 0) -> ArrayMesh:
 			b.polygon(Face.Builder.round_rect((c[0] as Vector2) + Vector2(-h, -h) + off, Vector2(BLOCK, BLOCK), 16.0), paint)
 	for c: Array in cs:
 		b.polygon(Face.Builder.round_rect((c[0] as Vector2) + Vector2(-h + 8.0, -h + 6.0), Vector2(BLOCK - 16.0, BLOCK * 0.22), 10.0), Color(1, 1, 1, 0.16))
-	# the answer's face, the dig's: a dark rim and a cream disc, the sign in ink
-	var mid := face_mid(k, f)
-	var n_out := 0
-	for c: Array in cs:
-		if int(c[1]) == Sim.R_OUT:
-			n_out += 1
-	var fr := U * (0.3 if n_out > 1 else 0.27)
-	b.disc(mid, fr, col.darkened(0.35))
-	b.disc(mid + Vector2(0, -2), fr - U * 0.04, FACE)
-	sign_into(b, k, mid + Vector2(0, -2), U * (0.17 if n_out > 1 else 0.14), col.darkened(0.45))
+	# the answer's visor: a dark glass pane in the paint's rim, the sign lit
+	# in it while the machine rests (the board paints the work over it)
+	var vr := visor_rect(k, f)
+	visor_into(b, vr, col)
+	sign_into(b, k, vr.get_center(), minf(U * 0.17, vr.size.y * 0.3), lit(col))
+	glint_into(b, vr)
 	for ci in cs.size():
 		var c: Array = cs[ci]
 		var at: Vector2 = c[0]
@@ -402,8 +398,143 @@ static func lid(w: int, h: int, ports: Array) -> ArrayMesh:
 ## A machine's square block as the dig's, the waist that joins two, and the
 ## cream of a face.
 const BLOCK := U - CELL_IN * 2.0
-const WAIST := U * 0.5
+const WAIST := U * 0.64
 const FACE := Color("fbe9d0")
+
+## The visor (the user, 2026-10-20: "some good looking operation module
+## effect using some visor, different animations on addition, multiplier,
+## etc"): the answer's window, a dark glass pane in a rim of the machine's
+## paint with a thin brass bezel and a glint along its top. Resting, the
+## sign glows in it in the paint's light; at work the board draws the
+## operation on it (`_live_visors` in tally_board.gd): the numbers ride in
+## from A and B as chips and the sum smashes them together, the
+## difference knocks B away, the product fans copies out and folds them
+## in, the quotient cuts the chip in two, the power stacks a tower.
+const GLASS := Color("2a211d")
+const GLASS_LOW := Color("3d2e27")
+const GLINT := Color(1, 1, 1, 0.14)
+const VISOR_H := U * 0.58
+const VISOR_PAD := U * 0.34
+const VISOR_MAX := U * 1.6
+const VISOR_R := U * 0.14
+
+## The visor's rect about the root's middle: the answer squares' middles
+## spanned, VISOR_H across and VISOR_PAD past each end (the adder's two
+## answer squares make one wide pane, capped at VISOR_MAX; a pane lying
+## up and down when the squares do).
+static func visor_rect(k: int, f: int) -> Rect2:
+	var lo := Vector2.INF
+	var hi := -Vector2.INF
+	for c: Array in cells(k, f):
+		if int(c[1]) == Sim.R_OUT:
+			lo = lo.min(c[0])
+			hi = hi.max(c[0])
+	if lo == Vector2.INF:
+		lo = Vector2.ZERO
+		hi = Vector2.ZERO
+	var span := hi - lo
+	var sz: Vector2
+	if span.y > span.x:
+		sz = Vector2(VISOR_H, minf(span.y + VISOR_PAD * 2.0, VISOR_MAX))
+	else:
+		sz = Vector2(minf(span.x + VISOR_PAD * 2.0, VISOR_MAX), VISOR_H)
+	return Rect2((lo + hi) * 0.5 - sz * 0.5, sz)
+
+## The colour a sign or a number glows in on the glass: the paint's light.
+static func lit(col: Color) -> Color:
+	return col.lightened(0.45)
+
+## The pane's rim (the paint's dark, with its lip), its brass bezel and its
+## glass. The caller writes on the glass, then `glint_into` lays the shine.
+static func visor_into(b: Face.Builder, r: Rect2, col: Color) -> void:
+	var rim := U * 0.05
+	b.polygon(Face.Builder.round_rect(r.position - Vector2.ONE * rim + Vector2(0, 5.0), r.size + Vector2.ONE * rim * 2.0, VISOR_R + rim), col.darkened(0.35))
+	b.polygon(Face.Builder.round_rect(r.position - Vector2.ONE * rim, r.size + Vector2.ONE * rim * 2.0, VISOR_R + rim), col.darkened(0.35))
+	var bz := U * 0.025
+	b.polygon(Face.Builder.round_rect(r.position - Vector2.ONE * bz, r.size + Vector2.ONE * bz * 2.0, VISOR_R + bz), BRASS.darkened(0.12))
+	glass_into(b, r)
+
+## The glass alone: dark, a little lighter low down. The board paints it
+## over the resting sign before it draws the work.
+static func glass_into(b: Face.Builder, r: Rect2) -> void:
+	b.polygon(Face.Builder.round_rect(r.position, r.size, VISOR_R), GLASS)
+	# a gradient quad inside the corners, dark at the top to lit at the foot
+	var inset := VISOR_R * 0.45
+	var p0 := r.position + Vector2(inset, r.size.y * 0.35)
+	var p1 := r.end - Vector2(inset, inset)
+	var top := Color(GLASS, 0.0)
+	var i0 := b.vertex(p0, top)
+	var i1 := b.vertex(Vector2(p1.x, p0.y), top)
+	var i2 := b.vertex(p1, GLASS_LOW)
+	var i3 := b.vertex(Vector2(p0.x, p1.y), GLASS_LOW)
+	b.tri(i0, i1, i2)
+	b.tri(i0, i2, i3)
+
+## The shine along the pane's top, over whatever is written on it.
+static func glint_into(b: Face.Builder, r: Rect2) -> void:
+	var g := Rect2(r.position + Vector2(U * 0.05, U * 0.035), Vector2(r.size.x - U * 0.1, r.size.y * 0.24))
+	b.polygon(Face.Builder.round_rect(g.position, g.size, g.size.y * 0.5), GLINT)
+
+## The pane's parts the board lays each frame on a working machine, cached
+## a kind and facing so a frame appends them (`FlatBuilder`) instead of
+## cutting them: `"glass"` the bare glass over the resting sign, `"glint"`
+## the shine over the work, `"flash"` the pane in cream, to be tinted thin
+## at a strike. About the root's middle. `a8` is the flash's alpha in
+## eighths, baked in: a FlatBuilder tints a vertex at a time in script, so
+## a fading mesh is cheaper cached a step than tinted.
+static func visor_part(what: String, k: int, f: int, a8 := 8) -> ArrayMesh:
+	var key := ["visor", what, k, f, a8]
+	if _cache.has(key):
+		return _cache[key]
+	var b := Face.Builder.new()
+	var r := visor_rect(k, f)
+	match what:
+		"glass":
+			glass_into(b, r)
+		"glint":
+			glint_into(b, r)
+		"flash":
+			b.polygon(Face.Builder.round_rect(r.position, r.size, VISOR_R), Color(CREAM, a8 / 8.0))
+	return _keep(key, b)
+
+## A number's chip on a pane, CHIP_R about the origin: a cream token with
+## its shade, rim and face, scaled by the board to the chip it wants.
+## `half` is its +x half alone, for the divider's cut.
+const CHIP_R := U * 0.2
+static func chip(half := false) -> ArrayMesh:
+	var key := ["chip", half]
+	if _cache.has(key):
+		return _cache[key]
+	var b := Face.Builder.new()
+	b.feather = 1.0
+	b.detail = 0.5
+	var r := CHIP_R
+	if half:
+		b.polygon(Face.Builder.arc_points(Vector2(0, r * 0.12), r, -PI * 0.5, PI * 0.5), TOKEN_SHADE)
+		b.polygon(Face.Builder.arc_points(Vector2.ZERO, r, -PI * 0.5, PI * 0.5), TOKEN_RIM)
+		b.polygon(Face.Builder.arc_points(Vector2(0, -r * 0.06), r * 0.85, -PI * 0.5, PI * 0.5), TOKEN)
+	else:
+		b.disc(Vector2(0, r * 0.12), r, TOKEN_SHADE)
+		b.disc(Vector2.ZERO, r, TOKEN_RIM)
+		b.disc(Vector2(0, -r * 0.06), r * 0.85, TOKEN)
+	return _keep(key, b)
+
+## A strike's burst about the origin, cached a spark count and an alpha in
+## eighths: a cream ring of BURST_R and `n` sparks past it, scaled up by
+## the board as it goes.
+const BURST_R := U * 0.3
+static func burst(n: int, a8: int) -> ArrayMesh:
+	var key := ["burst", n, a8]
+	if _cache.has(key):
+		return _cache[key]
+	var b := Face.Builder.new()
+	b.detail = 0.6
+	var a := a8 / 8.0
+	b.stroke(Face.Builder.ring(Vector2.ZERO, BURST_R, BURST_R, 0.6), U * 0.035, Color(CREAM, a), true)
+	for j in n:
+		var v := Vector2.from_angle(TAU * (j + 0.5) / n)
+		b.stroke(PackedVector2Array([v * BURST_R * 1.25, v * (BURST_R * 1.25 + U * 0.08)]), U * 0.035, Color(TARGET, a))
+	return _keep(key, b)
 
 ## The middle of an operator's answer face about its root, facing `f`: the
 ## answer square, or between the adder's two.
