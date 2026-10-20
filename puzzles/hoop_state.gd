@@ -46,6 +46,10 @@ const INSANE := 3
 ## see what to connect").
 const SPACING := [0.09, 0.075, 0.066, 0.042]
 const SPACING_MIN := 1.15
+## The least distance between two pins of a drawn picture, of its 100 (the
+## night's `least` of 256 a band, server/functions/src/hoop.ts): Easy ~39
+## px at the whole, Insane ~18 before the zoom.
+const DRAWN_LEAST := [5.1, 3.9, 3.1, 2.3]
 ## The cut's tolerance, in the picture's squares: how far a traced edge
 ## may stray from the drawing.
 const TOLERANCE := [0.6, 0.7, 0.75, 0.8]
@@ -961,7 +965,7 @@ func _link() -> void:
 			own.append(s)
 		panel_sides.append(own)
 
-func _key(a: int, b: int) -> int:
+static func _key(a: int, b: int) -> int:
 	return mini(a, b) * 65536 + maxi(a, b)
 
 ## A hand-made picture (the tutorial's): pins and panels as given, colours
@@ -997,12 +1001,13 @@ func adopt_drawn(got: Dictionary) -> void:
 	picture = PackedInt32Array()
 	colours = []
 	drawn = true
-	pins = got.pins
+	var welded := weld(got.pins, got.panels, got.inks, DRAWN_LEAST[band])
+	pins = welded.pins
 	panels = []
 	colour = PackedInt32Array()
-	for k in (got.panels as Array).size():
-		panels.append(got.panels[k])
-		var named := String(got.inks[k])
+	for k in (welded.panels as Array).size():
+		panels.append(welded.panels[k])
+		var named := String(welded.inks[k])
 		var c := colours.find(named)
 		if c < 0:
 			c = colours.size()
@@ -1010,6 +1015,106 @@ func adopt_drawn(got: Dictionary) -> void:
 		colour.append(c)
 	_link()
 	reset()
+
+## Pins of a drawn picture nearer than `least` (of its 100) made one, the
+## nearest first, the pin more panels meet at staying where it is; a panel
+## left under 3 corners (a sliver whose short side closed) is let go, and
+## its neighbours meet along what was its long side. The night's read only
+## joined pins along a side and never one that closed a panel, so a sliver
+## kept two pins a pixel apart and three facets meeting kept a knot of
+## three (the user, 2026-10-20: "still grouping points together").
+static func weld(given: PackedVector2Array, list: Array, inks: Array, least: float) -> Dictionary:
+	var n := given.size()
+	var root := PackedInt32Array()
+	var meets := PackedInt32Array()
+	root.resize(n)
+	meets.resize(n)
+	for i in n:
+		root[i] = i
+	# a pin on the picture's edge (a side only one panel has) stays before
+	# one inside it, so the thing's outline is kept and the inside gives
+	for corners in list:
+		for i in corners:
+			meets[i] += 1
+	var once := {}
+	for corners in list:
+		for m in corners.size():
+			var key := _key(corners[m], corners[(m + 1) % corners.size()])
+			once[key] = not once.has(key)
+	for key in once:
+		if once[key]:
+			meets[key / 65536] += 1000
+			meets[key % 65536] += 1000
+	var near: Array = []
+	for a in n:
+		for b in range(a + 1, n):
+			var d := given[a].distance_to(given[b])
+			if d < least:
+				near.append([d, a, b])
+	near.sort_custom(func(x, y): return x[0] < y[0])
+	for got in near:
+		var ra := _root(root, got[1])
+		var rb := _root(root, got[2])
+		if ra == rb or given[ra].distance_to(given[rb]) >= least:
+			continue
+		var keep := ra if meets[ra] > meets[rb] or (meets[ra] == meets[rb] and ra < rb) else rb
+		var gone := rb if keep == ra else ra
+		root[gone] = keep
+		meets[keep] += meets[gone]
+	var out_pins := PackedVector2Array()
+	var out_panels: Array = []
+	var out_inks: Array = []
+	var number := {}
+	for k in list.size():
+		var ids := PackedInt32Array()
+		for i in list[k]:
+			var r := _root(root, i)
+			if ids.is_empty() or ids[ids.size() - 1] != r:
+				ids.append(r)
+		while ids.size() > 1 and ids[0] == ids[ids.size() - 1]:
+			ids.remove_at(ids.size() - 1)
+		for loop in _simple_loops(ids):
+			if loop.size() < 3:
+				continue
+			var shape := PackedVector2Array()
+			for i in loop:
+				shape.append(given[i])
+			if absf(_signed_area(shape)) < least * least * 0.05:
+				continue
+			var corners := PackedInt32Array()
+			for i in loop:
+				if not number.has(i):
+					number[i] = out_pins.size()
+					out_pins.append(given[i])
+				corners.append(number[i])
+			out_panels.append(corners)
+			out_inks.append(inks[k])
+	return {"pins": out_pins, "panels": out_panels, "inks": out_inks}
+
+static func _root(root: PackedInt32Array, i: int) -> int:
+	while root[i] != i:
+		i = root[i]
+	return i
+
+## An outline that passes a pin twice (pinched to a point by a weld) as the
+## loops either side of the pinch.
+static func _simple_loops(ids: PackedInt32Array) -> Array:
+	var out: Array = []
+	var stack := PackedInt32Array()
+	for i in ids:
+		var at := stack.find(i)
+		if at >= 0:
+			out.append(stack.slice(at))
+			stack = stack.slice(0, at)
+		stack.append(i)
+	out.append(stack)
+	return out
+
+static func _signed_area(shape: PackedVector2Array) -> float:
+	var sum := 0.0
+	for m in shape.size():
+		sum += shape[m].cross(shape[(m + 1) % shape.size()])
+	return sum * 0.5
 
 ## A colour of `colours` as a Color: a bead's name, or a drawn facet's
 ## "#rrggbb".

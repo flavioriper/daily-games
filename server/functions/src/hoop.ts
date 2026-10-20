@@ -145,9 +145,9 @@ function glue(a: number[], b: number[]): number[] | null {
 }
 
 /**
- * The regions' outlines as pins and panels. Pins nearer than `least` along
- * a side are made one (where four facets meet the drawing often has two
- * corners a pixel apart); an outline left under three corners is let go.
+ * The regions' outlines as pins and panels. Pins nearer than `least` are
+ * made one (where four facets meet the drawing often has two corners a
+ * pixel apart); an outline left under three corners is let go.
  */
 export function panels(reg: Regions, tol: number, least: number): {pins: P[]; panels: {k: number[]; region: number}[]} {
   const net = network(reg, tol);
@@ -172,33 +172,44 @@ export function panels(reg: Regions, tol: number, least: number): {pins: P[]; pa
     loops.push({ids, region: regionOf(reg, loop)});
     void idx;
   });
-  // pins too near along a side made one, the side shortest first
+  // pins too near made one, the nearest first, whether a side joins them
+  // or not, and even where an outline closes under 3 corners (it is let go
+  // below, its neighbours meeting along its long side): kept, a sliver left
+  // two pins a pixel apart and three facets meeting a knot of three (the
+  // user, 2026-10-20: "still grouping points together")
   const root = pins.map((_, i) => i);
   const find = (i: number): number => (root[i] === i ? i : (root[i] = find(root[i])));
   const near: [number, number, number][] = [];
-  for (const {ids} of loops) {
-    for (let i = 0; i < ids.length; i++) {
-      const a = ids[i], b = ids[(i + 1) % ids.length];
+  for (let a = 0; a < pins.length; a++) {
+    for (let b = a + 1; b < pins.length; b++) {
       const d = Math.hypot(pins[a][0] - pins[b][0], pins[a][1] - pins[b][1]);
       if (d < least) near.push([d, a, b]);
     }
   }
   near.sort((x, y) => x[0] - y[0]);
-  // which outlines each pin is on, so no join leaves one under 3 corners
-  const on = pins.map(() => new Set<number>());
-  loops.forEach(({ids}, li) => { for (const i of ids) on[i].add(li); });
-  const corners = (li: number, ra: number, rb: number) => new Set(loops[li].ids.map((i) => { const r = find(i); return r === rb ? ra : r; })).size;
+  // the pin more outlines meet at stays where it is (moved, it would drag
+  // the sides of every outline on it across their neighbours), and before
+  // that one on the picture's edge, so the thing's outline is kept
+  const meets = pins.map(() => 0);
+  const once = new Map<string, boolean>();
+  for (const {ids} of loops) {
+    for (let i = 0; i < ids.length; i++) {
+      const a = ids[i], b = ids[(i + 1) % ids.length];
+      meets[a] += 1;
+      const key = a < b ? `${a},${b}` : `${b},${a}`;
+      once.set(key, !once.has(key));
+    }
+  }
+  for (const [key, edge] of once) {
+    if (!edge) continue;
+    for (const i of key.split(",")) meets[Number(i)] += 1000;
+  }
   for (const [, a, b] of near) {
     const ra = find(a), rb = find(b);
     if (ra === rb) continue;
     if (Math.hypot(pins[ra][0] - pins[rb][0], pins[ra][1] - pins[rb][1]) >= least) continue;
-    let crushes = false;
-    for (const li of on[ra]) if (on[rb].has(li) && corners(li, ra, rb) < 3) { crushes = true; break; }
-    if (crushes) continue;
-    // the pin more outlines meet at stays where it is (moved, it would
-    // drag the sides of every outline on it across their neighbours)
-    const [keep, gone] = on[ra].size >= on[rb].size ? [ra, rb] : [rb, ra];
-    for (const li of on[gone]) on[keep].add(li);
+    const [keep, gone] = meets[ra] > meets[rb] || (meets[ra] === meets[rb] && ra < rb) ? [ra, rb] : [rb, ra];
+    meets[keep] += meets[gone];
     root[gone] = keep;
   }
   const out: {k: number[]; region: number}[] = [];

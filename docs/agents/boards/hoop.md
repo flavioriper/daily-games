@@ -390,3 +390,34 @@ stands (drawn, taken by a press, a drag or the magnet) while one is left
 and pops off when the last of them fills. A standing pin with every side
 threaded is reached by walking its threads. Probe solves every band;
 unseen on screen.
+
+## 2026-10-20: a drawn picture's pins welded at the band's spacing
+
+The user, with a phone shot of the 21st's Easy snail: "yarn hoop still
+grouping points together, making UX terrible". The 2026-10-15 fix (no pin
+within 0.75 spacing) lived in the bead cut; the drawn path only had the
+night's `least`, and that joined pins **along a side** and **never where
+an outline would close under 3 corners**, so a sliver facet (a leaf
+stem, a snail's foot) kept two pins a pixel apart and three facets
+meeting kept a knot of three. Measured on the cached 20th and 21st
+(of 100): closest pairs 0.45-3.3, 3 to 55 pairs a band under 3.
+
+- **The phone welds as it lays** (`HoopState.weld`, from `adopt_drawn`,
+  `DRAWN_LEAST` 5.1/3.9/3.1/2.3 of 100, the night's 13/10/8/6 of 256):
+  every pair under it, nearest first, keeps the pin on the picture's edge
+  (a side only one panel has), then the one more panels meet at; a panel
+  closed under 3 corners or pinched is let go or split, its neighbours
+  meeting along its long side. So days already written are fixed by the
+  APK alone. On the 20th and 21st: least now 2.42-7.79 (every band at or
+  over its spacing), no side three panels share, no pin inside a panel,
+  0-8% of the picture lost (thin stems under the spacing, which no finger
+  could thread), every band solves by hints.
+- **The night does the same** (`panels()` in `server/functions/src/hoop.ts`:
+  all pairs, no crush guard, edge pins kept). Read back from the cached
+  pictures re-rendered on green: 0 pairs under the spacing (old reader on
+  the same input: 1-21 a band), no overlaps; that re-render (an already
+  simplified picture) left Medium's cabbage and frog at 22-23 panels, under
+  `LEAST_PANELS` 26, which a real 40-55 facet drawing should clear.
+  **Needs the user's functions deploy.**
+- Unconfirmed: the phone, the user's verdict on what thin features the
+  weld takes away.
