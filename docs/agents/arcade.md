@@ -5162,3 +5162,16 @@ six.
 - **Open**: nothing new comes in after day 22, and the lookahead bot plays
   into the 50s. New things for the late days (two obstacles at once, a new
   blocker) are new rules: a concept page first.
+
+### The tab re-sorted by popularity (2026-10-20)
+
+The user: "reorder the lists so the best ones come first". `arcade_tab.gd`'s
+GAMES now runs by the size of each game's genre on the stores: Deckchair
+(solitaire, the evergreen card app), Posy (match-3 leads puzzle revenue,
+$2.5B in H1 2026), Trivet (hexa sort, the sort boom), Stackwood and Lucky
+Thirteen (merge, the fastest-growing puzzle kind), Beeline, Eddy (the hole
+game back at ~500k a day in 2025), Peapod, Marigold, Firefly, Molehill,
+Furrow, Tally and Factory (the belt games: well reviewed on Steam, small),
+Bagatelle, Griddle, Nightlight (the black-hole idle apps run to thousands).
+**Marigold's `slot` in ui/registry.gd is 8**, its new index; every card
+recoloured.

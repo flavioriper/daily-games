@@ -43,7 +43,7 @@ func _initialize() -> void:
 		DirAccess.remove_absolute(f)
 	ads.reload_state()
 	var reg = load("res://ui/registry.gd")
-	_entry = reg.PUZZLES[0]
+	_entry = reg.find("binairo")
 	progress.mark_tutorial_seen(String(_entry.id))
 	var main: Node = load("res://world/main.tscn").instantiate()
 	root.add_child(main)

@@ -271,7 +271,7 @@ func _process(delta: float) -> bool:
 			# Over a board, and Not now through Android's back.
 			if _beat(1.2, func() -> void:
 					_menu._show_tab("home")
-					_menu._open_at(Registry.PUZZLES[0], 1)
+					_menu._open_at(Registry.find("binairo"), 1)
 					Social._invites[FIVE[0]] = "checkers"
 					Social.hub().invited.emit(FIVE[0], "checkers"), "18_invite_over_board"):
 				_check("the card is the menu's last child", _menu.get_child(_menu.get_child_count() - 1) == _card())

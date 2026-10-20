@@ -12,7 +12,7 @@ func _initialize() -> void:
 func _process(_delta: float) -> bool:
 	_frames += 1
 	if _frames == 20:
-		_menu._open(load("res://ui/registry.gd").PUZZLES[0])
+		_menu._open(load("res://ui/registry.gd").find("binairo"))
 	if _frames == 40:
 		var host = _menu.get_child(_menu.get_child_count() - 1)
 		_puzzle = host._puzzle

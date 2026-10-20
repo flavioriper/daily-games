@@ -1442,3 +1442,11 @@ rules or `Match`'s clocks.
   `SNK_RIVAL_TURN`) are machine-fluent and want a native eye.
 
 - **The tab's cards (2026-10-13)**: each game's card is a face of its own, `ui/menu/cards/vs_<game>.gd`; see `docs/agents/first-screen.md`, "A card of its own". A new Versus game needs a face file, or its card will not load.
+
+## The tab re-sorted by popularity (2026-10-20)
+
+The user: "reorder the lists so the best ones come first". `versus_tab.gd`'s
+GAMES (and `invite_card.gd`'s, the same less Air Hockey) now run Snooker
+(the pool app passed 1B downloads), Chess, Dominoes, Checkers, Penny Drop,
+Reversi, Toy Boats, Air Hockey. Only pool had hard numbers on the web; the
+rest is how often each is named among the classics.

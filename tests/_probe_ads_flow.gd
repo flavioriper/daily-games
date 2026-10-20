@@ -39,7 +39,7 @@ func _initialize() -> void:
 	ads.pacing.merge({"grace_days": 0, "after_hearts": 0, "min_games_today": 1,
 		"minutes_between": 0, "games_between": 1})
 	var reg = load("res://ui/registry.gd")
-	_entry = reg.PUZZLES[0]
+	_entry = reg.find("binairo")
 	progress.mark_tutorial_seen(String(_entry.id))
 	var main: Node = load("res://world/main.tscn").instantiate()
 	root.add_child(main)

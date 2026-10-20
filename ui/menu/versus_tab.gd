@@ -43,7 +43,9 @@ const RADIUS := 36
 ## player -- online, or for a game in LOCAL_GAMES across the same phone.
 const LEVELS := [["DIFF_EASY", 0], ["DIFF_MEDIUM", 1], ["DIFF_HARD", 2], ["VS_ONLINE", Record.ONLINE]]
 const LEVELS_LOCAL := [["DIFF_EASY", 0], ["DIFF_MEDIUM", 1], ["DIFF_HARD", 2], ["VS_TWO", Record.LOCAL]]
-const GAMES := ["snooker", "chess", "checkers", "hockey", "boats", "penny", "dominoes", "reversi"]
+## Best first by how many play each game on the stores (2026-10-20,
+## docs/agents/versus.md).
+const GAMES := ["snooker", "chess", "dominoes", "checkers", "penny", "reversi", "boats", "hockey"]
 ## The games with no game online (and so none against a friend): their fourth
 ## chip is two players on this phone.
 const LOCAL_GAMES := ["hockey"]

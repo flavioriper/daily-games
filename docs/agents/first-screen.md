@@ -1274,3 +1274,28 @@ says Daily).
   rows and the day card take the day's own paintings (`Vistas.level_row`,
   `THEMED_LEVEL`, `THEMED_DAY`; core/themed_vistas.gd), the bundled six
   otherwise. Spec: `docs/superpowers/specs/2026-10-17-themed-vistas-design.md`.
+
+## The grid re-sorted by popularity (2026-10-20)
+
+The user: "check on web what are the top rating games we have, and reorder
+the lists so the best ones come first". Read as popularity of the genre each
+board follows (downloads, store chart places), since the app has no store
+ratings of its own yet. `Registry.PUZZLES` now runs, best first:
+
+1. Hidden Word, Sudoku -- the most-played daily game and the evergreen.
+2. Rings (sort: Sensor Tower's record 166M sort downloads in April 2026),
+   Paper Planes (arrows: 100M+, #2 free US puzzle, the H1 2026 trend),
+   Quilt (block fit: the #2 download of H1 2026), Jewel Box (#8 free US
+   puzzle, 4.9).
+3. Queens (83% of LinkedIn's surveyed players' favourite), Nonogram (50M+
+   for the leading app), Super Slider (the sliding-block leader 50M+, "100M"),
+   Hedgehogs, Word Trail, Toy Cannons, Yarn Hoop, Golden Acorn.
+4. Caterpillar, Binairo, Mini Golf, Fairy Lights, Untangle, Bridges, Pixel
+   Garden, Lattice, Gumdrop, Light Up, Shikaku.
+5. No store data found, or niche: How Big?, Horse Pen, Pearl Dive, Knight,
+   Pinwheel, Sunbeam, Trestle (the bridge builder sold ~0.7M on PC),
+   Drumbeat.
+
+**A card's colour comes off its index, so every card recoloured** (as on
+2026-10-13). Tests that meant Binairo by `PUZZLES[0]` now ask
+`Registry.find("binairo")`.
