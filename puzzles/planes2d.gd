@@ -1502,7 +1502,7 @@ func _panel(b) -> void:
 	b.fan(Face.Builder.round_rect(inner + Vector2(0.0, 3.0), isz - Vector2(0.0, 3.0), ir),
 		Pal.SURFACE.lerp(Pal.PARCHMENT, 0.45))
 	if not _state.shape.is_empty():
-		# Insane's shape, a shade deeper than the paper round it, a run of
+		# The day's shape, a shade deeper than the paper round it, a run of
 		# cells a rect, so the thing reads under its planes and its gaps.
 		var tint := Pal.SURFACE.lerp(Pal.PARCHMENT, 0.45).lerp(Pal.ACORN, 0.22)
 		for y in _state.rows:

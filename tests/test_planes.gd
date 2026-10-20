@@ -145,8 +145,9 @@ static func _test_generator(t) -> void:
 		var b: Dictionary = State.band(difficulty)
 		for s in range(1, 41):
 			var st := _built(s, difficulty)
-			t.eq(st.cols, int(b["cols"]), "band %d seed %d: columns" % [difficulty, s])
-			t.eq(st.rows, int(b["rows"]), "band %d seed %d: rows" % [difficulty, s])
+			t.check(not st.shape.is_empty() and st.shape_id != "", "band %d seed %d: cut from a thing" % [difficulty, s])
+			t.check(st.cols <= int(b["cols"]) and st.rows <= int(b["rows"]), "band %d seed %d: inside the box" % [difficulty, s])
+			t.check(st.shape.size() >= int(b["least"]), "band %d seed %d: the shape holds its floor" % [difficulty, s])
 			t.check(st.planes.size() >= 8, "band %d seed %d: a board worth playing" % [difficulty, s])
 			var seen := {}
 			for i in st.planes.size():
@@ -155,7 +156,7 @@ static func _test_generator(t) -> void:
 					"band %d seed %d: plane %d is within the band's lengths" % [difficulty, s, i])
 				for j in cells.size():
 					var c: Vector2i = cells[j]
-					t.check(st.in_board(c), "band %d seed %d: plane %d stays on the board" % [difficulty, s, i])
+					t.check(st.in_board(c) and st.live(c), "band %d seed %d: plane %d stays on the shape" % [difficulty, s, i])
 					t.check(not seen.has(c), "band %d seed %d: plane %d shares no cell with another" % [difficulty, s, i])
 					seen[c] = true
 					if j > 0:

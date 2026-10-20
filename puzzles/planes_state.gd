@@ -66,13 +66,14 @@ const CLOUD := -2
 ## lift so the skies do not all come out the same. Easy draws fewest and
 ## shakes most -- it is where the rule is learnt.
 ##
-## **Insane is a shaped maze** (the user, 2026-10-16: "paper planes insane
-## should not have the clouds anymore, it should only be a bigger harder
-## board, also it could carry different shapes based on the day theme"):
-## Hard's carve, no wind, inside a silhouette (`shape`) of up to
-## `box` = SHAPE_BOX cells -- the day's themed thing when this phone holds
-## one, else a thing off Pixel Garden's bank of single things, the same on
-## every phone for the day. A plane only stands inside the shape (`live`);
+## **Every band is a shaped maze** (the user, 2026-10-16, of Insane: "it
+## could carry different shapes based on the day theme"; 2026-10-20: "paper
+## planes should have a themed shape on all difficulties"): the band's
+## carve, no wind, inside a silhouette (`shape`) of up to the row's `box`
+## cells and no fewer than its `least` -- the day's themed thing when this
+## phone holds one, else a thing off Pixel Garden's bank of single things,
+## the same on every phone for the day. Easy, Medium and Hard's boxes are
+## the grids they dealt before; Insane's is SHAPE_BOX. A plane only stands inside the shape (`live`);
 ## its lane still runs to the edge of the grid, over the bare sky round it.
 ## From 2026-10-12 to then Insane was Windy Day, Hard's maze with clouds
 ## stood over it (`_stand_clouds`); that engine and `WINDY_SMALL` (the small
@@ -80,13 +81,17 @@ const CLOUD := -2
 ## the bank's own tests) are still here, and no band deals them.
 const BANDS: Array[Dictionary] = [
 	{"cols": 12, "rows": 17, "min_len": 2, "max_len": 15, "maze": true, "skew": 1.3, "straight": 0.6,
-		"floor": 0.93, "picks": 3, "noise": 1.5, "tries": 120},
+		"floor": 0.93, "picks": 3, "noise": 1.5, "tries": 120,
+		"box": Vector2i(12, 17), "least": 12 * 17 / 2},
 	{"cols": 16, "rows": 23, "min_len": 2, "max_len": 22, "maze": true, "skew": 1.3, "straight": 0.65,
-		"floor": 0.93, "picks": 6, "noise": 1.0, "tries": 120},
+		"floor": 0.93, "picks": 6, "noise": 1.0, "tries": 120,
+		"box": Vector2i(16, 23), "least": 16 * 23 / 2},
 	{"cols": 21, "rows": 30, "min_len": 2, "max_len": 29, "maze": true, "skew": 1.3, "straight": 0.7,
-		"floor": 0.93, "picks": 10, "noise": 0.6, "tries": 120},
+		"floor": 0.93, "picks": 10, "noise": 0.6, "tries": 120,
+		"box": Vector2i(21, 30), "least": 21 * 30 / 2},
 	{"cols": 30, "rows": 42, "min_len": 2, "max_len": 29, "maze": true, "skew": 1.3, "straight": 0.7,
-		"floor": 0.9, "picks": 10, "noise": 0.6, "tries": 120, "shaped": true},
+		"floor": 0.9, "picks": 10, "noise": 0.6, "tries": 120,
+		"box": Vector2i(30, 42), "least": 21 * 30},
 ]
 ## The most cells a side Insane's shape is scaled up to, cols x rows: a cell
 ## stays about 27 px wide on an 810 px screen (Hard's are about 38). The
@@ -95,20 +100,22 @@ const SHAPE_BOX := Vector2i(30, 42)
 ## The themed picture sizes a shape is read from, the first the phone holds:
 ## the larger, the smoother the outline once scaled.
 const SHAPE_SIZES := [24, 32, 48, 16, 12, 10]
-## The fewest cells a shape may hold: Hard's whole board, so Insane is never
-## the smaller sky. A thing too flat or thin to reach it in the box (a
+## The fewest cells Insane's shape may hold: Hard's whole board, so Insane
+## is never the smaller sky (its row's `least`; the other bands ask half
+## their box). A thing too flat or thin to reach it in the box (a
 ## watermelon slice cuts 30 x 18) is passed over for one that does.
 const SHAPE_MIN := 21 * 30
 ## The most of its own box a shape may fill: a scene drawn edge to edge cuts
 ## a plain block, which is no shape at all.
 const SHAPE_FILL := 0.9
 
-## Whether a cut is a shape Insane may deal: big enough, and not a block.
-static func shape_fits(cut: Dictionary) -> bool:
+## Whether a cut is a shape a band may deal: at least `least` cells, and
+## not a block.
+static func shape_fits(cut: Dictionary, least := SHAPE_MIN) -> bool:
 	if cut.is_empty():
 		return false
 	var n := (cut.cells as Dictionary).size()
-	return n >= SHAPE_MIN and float(n) <= SHAPE_FILL * float(int(cut.cols) * int(cut.rows))
+	return n >= least and float(n) <= SHAPE_FILL * float(int(cut.cols) * int(cut.rows))
 const WINDY_SMALL := {"cols": 10, "rows": 14, "min_len": 3, "max_len": 7, "weights": [4, 5, 5, 4, 3], "floor": 0.70,
 	"picks": 16, "noise": 0.3, "clouds": 8, "wind_w": 1.0, "maze": false}
 ## How many draws of the clouds a count of them gets before one fewer is
@@ -159,8 +166,8 @@ var gusts := 0
 var banked := false
 ## Whether the sky is a maze with the clouds stood over it (`_stand_clouds`).
 var mazed := false
-## Insane's shape: the cells a plane may stand on (empty on every other band,
-## where every cell may hold one), and the thing it was cut from.
+## The sky's shape: the cells a plane may stand on (empty when no thing cut
+## to the band, where every cell may hold one), and the thing it was cut from.
 var shape: Dictionary = {}
 var shape_id := ""
 var _occupant: Dictionary = {}   # Vector2i -> plane index, planes still on the board
@@ -422,15 +429,16 @@ func hint_plane() -> int:
 	var free := free_planes()
 	return -1 if free.is_empty() else free[0]
 
-## Deals the sky for `difficulty`. Easy, Medium and Hard are carved live;
-## Insane is Hard's maze with the wind over it, carved live like the rest
-## (`_bank_step` is PuzzleBase's and unread since the bank was retired).
+## Deals the sky for `difficulty`: every band is carved live inside the
+## day's shape cut to its box (`bank_step` picks a bank thing past the
+## day's first deal).
 func build(rng: RandomNumberGenerator, p_difficulty: int, bank_step := 0, daily_key := 0) -> void:
 	difficulty = clampi(p_difficulty, 0, BANDS.size() - 1)
 	banked = false
 	var knobs := {}
-	if bool(band(difficulty).get("shaped", false)):
-		var cut := shape_for(rng, daily_key, bank_step)
+	var b := band(difficulty)
+	if b.has("box"):
+		var cut := shape_for(rng, daily_key, bank_step, b.box, int(b.least))
 		if not cut.is_empty():
 			knobs = {"cols": cut.cols, "rows": cut.rows, "shape": cut.cells}
 			shape_id = cut.id
@@ -438,43 +446,65 @@ func build(rng: RandomNumberGenerator, p_difficulty: int, bank_step := 0, daily_
 	judged = hearts_for(difficulty) > 0
 	undo_allowed = not windy()
 
-## Insane's shape for the day: {id, cols, rows, cells (a set)}, or {}. The
-## day's themed thing when this phone holds one (a daily, first dealt), else
-## a single thing off Pixel Garden's bank, picked by the day so every phone
-## cuts the same, or by `rng` when there is no day.
-static func shape_for(rng: RandomNumberGenerator, daily_key := 0, bank_step := 0) -> Dictionary:
+## The day's shape cut to `box`: {id, cols, rows, cells (a set)}, or {}.
+## The day's themed thing when this phone holds one (a daily, first dealt),
+## else a single thing off Pixel Garden's bank, picked by the day so every
+## phone cuts the same, or by `rng` when there is no day.
+static func shape_for(rng: RandomNumberGenerator, daily_key := 0, bank_step := 0,
+		box := SHAPE_BOX, least := SHAPE_MIN) -> Dictionary:
 	if bank_step == 0:
 		for size in SHAPE_SIZES:
 			var pic := ThemedPictures.picture(daily_key, size)
 			if not pic.is_empty():
-				var cut := cut_shape(pic.rows, SHAPE_BOX)
-				if shape_fits(cut):
+				var cut := cut_shape(pic.rows, box)
+				if shape_fits(cut, least):
 					cut["id"] = String(pic.id)
 					return cut
-	var things := bank_shapes()
-	if things.is_empty():
+	# The pick is made among the things every band's box holds, so a day's
+	# four bands cut the same thing.
+	var ids := shared_things()
+	if ids.is_empty():
 		return {}
-	var pick := rng.randi_range(0, things.size() - 1)
+	var pick := rng.randi_range(0, ids.size() - 1)
 	if daily_key != 0:
-		pick = posmod(Daily.fnv1a("planes_shape|%d|%d" % [daily_key, bank_step]), things.size())
-	return things[pick]
+		pick = posmod(Daily.fnv1a("planes_shape|%d|%d" % [daily_key, bank_step]), ids.size())
+	for cut in bank_shapes(box, least):
+		if cut.id == ids[pick]:
+			return cut
+	return {}
 
-static var _bank_shapes: Array = []
+## The ids of the bank's things every band's box deals, in the bank's order.
+static func shared_things() -> Array:
+	var ids: Array = []
+	for cut in bank_shapes(band(0).box, int(band(0).least)):
+		ids.append(cut.id)
+	for d in range(1, BANDS.size()):
+		var here := {}
+		for cut in bank_shapes(band(d).box, int(band(d).least)):
+			here[cut.id] = true
+		ids = ids.filter(func(id): return here.has(id))
+	return ids
+
+## box -> the bank's things cut to it.
+static var _bank_shapes: Dictionary = {}
 
 ## Pixel Garden's single things (its 10 and 12 bands; its 24 and 32 are
-## scenes that fill the square) cut to the box, those holding SHAPE_MIN.
-static func bank_shapes() -> Array:
-	if _bank_shapes.is_empty():
+## scenes that fill the square) cut to `box`, those holding `least`.
+static func bank_shapes(box := SHAPE_BOX, least := SHAPE_MIN) -> Array:
+	var key := Vector3i(box.x, box.y, least)
+	if not _bank_shapes.has(key):
 		var doc = JSON.parse_string(FileAccess.get_file_as_string(PIXEL_BANK))
 		if not doc is Dictionary or not doc.get("bands") is Array or (doc.bands as Array).size() < 2:
 			return []
+		var cuts: Array = []
 		for b in [0, 1]:
 			for pic in doc.bands[b]:
-				var cut := cut_shape(pic.rows, SHAPE_BOX)
-				if shape_fits(cut):
+				var cut := cut_shape(pic.rows, box)
+				if shape_fits(cut, least):
 					cut["id"] = String(pic.id)
-					_bank_shapes.append(cut)
-	return _bank_shapes
+					cuts.append(cut)
+		_bank_shapes[key] = cuts
+	return _bank_shapes[key]
 
 ## The filled cells of a picture's `rows` ("." bare), trimmed to what they
 ## cover and scaled, cell centre by cell centre, to fill `box` with their

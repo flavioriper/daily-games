@@ -380,3 +380,32 @@ and the tutorial's WIND page and Reset-only page follow `windy()`.
   `max_len` 29 as Hard, the tint, undo back. Owed: a phone, a themed day
   seen (none checked on this Mac), the shape read on a 12-side bank thing
   scaled 2.5 times is blocky.
+
+### Every band is the day's shape (2026-10-20)
+
+The user: "paper planes should have a themed shape on all difficulties".
+Each `BANDS` row now carries a `box` and a `least`: Easy, Medium and Hard
+cut the day's thing into the grid they dealt before (12 x 17, 16 x 23,
+21 x 30, so their cells keep their size) and ask half the box; Insane keeps
+`SHAPE_BOX` and `SHAPE_MIN` (Hard's whole board). `build` cuts for any row
+with a `box`, so the `shaped` flag is gone. The bank fallback now picks among
+`shared_things()`, the things every band's box deals (23 of the bank), so
+a day's four bands cut the same thing; this changes which bank thing
+Insane deals on a given day. The themed thing is tried at each size per band
+as before, so a themed thing too thin for one box drops that band to the bank.
+
+- Twelve seeds on the Mac, planes (old rectangles in brackets): Easy 16-26,
+  102-142 cells; Medium 22-38 (shapes 192-247 cells); Hard 37-62 (old
+  68-78), 326-440 cells; Insane 75-106. Carve 4-7 / 7-13 / 19-33 / 46-62 ms.
+  Every stored order replays.
+- Days 20261014/15/18/19/20 headless (no Backend, so the bank): gnome,
+  pear, acorn, pepper, honey pot, the same thing on all four bands.
+- `_shot_planes.gd d=0 rest` on opengl3_angle: 76 draw calls peak; the
+  shape reads, blocky at 12 cells across.
+- `test_planes` checks each band's deal for a shape, the box, the floor
+  and planes on live cells; its check count fell 208319 -> 122934 (smaller
+  boards), the suite 248522 -> 163137, 0 failed.
+- Decided for the user, unconfirmed: the boxes stay the old grids (so the
+  lower bands hold about 60% of their old planes; a bigger box would mean
+  smaller cells), half the box as the floor. Owed: a phone, a themed day
+  seen.
