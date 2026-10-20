@@ -15,8 +15,10 @@ extends RefCounted
 ##
 ## The floor between ticks: a step begins the tick `tile` moves on, with
 ## `was` the tile it left, and lasts `step_ticks` ticks; while `was != tile`
-## it is mid-step, and `pos(b, alpha)` is where to draw it. A robot standing
-## still has `was == tile`.
+## it is mid-step, and `pos(b, alpha)` is where to draw it. The tick a step's
+## last tick is done `t` is back at 0 but `was` is kept, so the slide's last
+## stretch is drawn too; the next tick lets it go (`tick`, first thing). A
+## robot standing still has `was == tile`.
 
 const Sim = preload("res://factory/sim.gd")
 
@@ -127,18 +129,27 @@ static func home(b: Dictionary) -> void:
 
 ## Where to draw it, in tile units (a tile's middle at tile + (0.5, 0.5)):
 ## between `was` and `tile` through a step, by the ticks into it and `alpha`.
+## A step of `step_ticks` ticks is drawn over as many frames' worth of ticks,
+## the frame after its first tick at `was` and the frame before the next
+## step's first at `tile`, so a walk of many tiles slides on without a stop
+## at each (it stood a tick a tile until 2026-10-20).
 static func pos(b: Dictionary, alpha: float) -> Vector2:
 	var to := Vector2(b.tile) + Vector2(0.5, 0.5)
 	if b.was == b.tile:
 		return to
-	var span := maxi(step_ticks(b) - 1, 1)
-	var f := clampf((float(b.t) - 1.0 + alpha) / float(span), 0.0, 1.0)
+	var span := maxi(step_ticks(b), 1)
+	# t is 1..span - 1 through the step, and back at 0 once its last tick ran
+	var done := int(b.t) - 1 if int(b.t) > 0 else span - 1
+	var f := clampf((float(done) + alpha) / float(span), 0.0, 1.0)
 	return (Vector2(b.was) + Vector2(0.5, 0.5)).lerp(to, f)
 
 # --- the tick ---
 
 ## A tick of its program (spec 5 and 6).
 static func tick(sim: RefCounted, b: Dictionary) -> void:
+	# a step whose last tick ran the tick before is over
+	if int(b.t) == 0 and b.was != b.tile:
+		b.was = b.tile
 	if int(b.bubble_t) > 0:
 		b.bubble_t = int(b.bubble_t) - 1
 		if b.bubble_t == 0:
@@ -205,8 +216,8 @@ static func _move(sim: RefCounted, b: Dictionary, node: Dictionary) -> void:
 	b.t = int(b.t) + 1
 	if b.t < (Sim.ACT_TICKS if b.left == -1 else step_ticks(b)):
 		return
+	# `was` is kept a tick more, for the slide's last stretch (`pos`)
 	b.t = 0
-	b.was = b.tile
 	if b.left == -1:
 		_advance(sim, b)
 		return

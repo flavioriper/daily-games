@@ -40,9 +40,9 @@ const RADIUS := 36
 const PILL_H := 84.0
 const ART_H_MIN := 260.0
 const FILL := Color("fcf7ef")
-## The land keeps this much water round it on the card (view units of the
-## land's own size are fitted into what is left), more over its back edge
-## for the crowns that stand there and under its front for the earth.
+## The floor keeps this much water round it on the card (the floor's view
+## units are fitted into what is left), more over its top edge for the
+## bubbles over a robot there.
 const SHORE := 26.0
 const SHORE_TOP := 70.0
 const SHORE_FOOT := 60.0
@@ -60,7 +60,7 @@ var _light_l: Control
 var _water: ArrayMesh
 var _light: ArrayMesh
 var _coins_l: Label
-var _fitted_for := -1
+var _fitted := false
 var _since_save := 0.0
 
 func _init() -> void:
@@ -75,7 +75,6 @@ func _ready() -> void:
 	sim = Sim.new(randi())
 	sim.load_saved()
 	sim.events.clear()
-	_life.plus = false
 	add_child(_card())
 	visibility_changed.connect(_wake)
 	_wake()
@@ -104,7 +103,7 @@ func returned() -> void:
 	lent = false
 	sim.events.clear()
 	_life.stale()
-	_fitted_for = -1
+	_fitted = false
 	refresh()
 	_wake()
 
@@ -117,7 +116,7 @@ func start_over() -> void:
 	sim.save()
 	sim.events.clear()
 	_life.stale()
-	_fitted_for = -1
+	_fitted = false
 	refresh()
 
 ## Called as the tab is shown: the land as it stands now.
@@ -212,7 +211,7 @@ func _process(delta: float) -> void:
 		_life.event(e)
 	sim.events.clear()
 	_life.step(delta)
-	if _fitted_for != sim.plates.size():
+	if not _fitted:
 		_fit()
 	_write_coins()
 	_since_save += delta
@@ -241,14 +240,14 @@ func _layout_art() -> void:
 	_art.queue_redraw()
 	_light_l.queue_redraw()
 
-## The whole board, as big as the picture's room lets it be, water all round.
+## The whole floor, as big as the picture's room lets it be, water all round.
 func _fit() -> void:
 	var s := _art.size
 	if s.x <= 0.0 or s.y <= 0.0 or _world == null:
 		return
-	_fitted_for = sim.plates.size()
+	_fitted = true
 	var box: Rect2 = _life.bounds()
 	var room := Vector2(s.x - SHORE * 2.0, s.y - SHORE_TOP - SHORE_FOOT)
-	var u := minf(room.x / box.size.x, room.y / (box.size.y + Art.DEPTH))
+	var u := minf(room.x / box.size.x, room.y / box.size.y)
 	_world.scale = Vector2(u, u)
-	_world.position = Vector2(s.x * 0.5, SHORE_TOP + (room.y - (box.size.y + Art.DEPTH) * u) * 0.5) - Vector2(box.get_center().x, box.position.y) * u
+	_world.position = Vector2(s.x * 0.5, SHORE_TOP + (room.y - box.size.y * u) * 0.5) - Vector2(box.get_center().x, box.position.y) * u

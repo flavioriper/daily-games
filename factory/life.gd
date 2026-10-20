@@ -1,229 +1,186 @@
 extends RefCounted
 
-## What is seen of Factory's land, for whoever shows it (the screen, the
-## tab's card, the tutorial's pages): the plates on the pond, the belts and
-## what rides them, a forest's trees and the shadow each throws, the beaver
-## that bites one for every log taken, the market and the machines. It began
-## as the Grove's valley/grove_life.gd (the beaver, the bite and the chips
-## are that file's, tuned on 2026-10-06; the fall, the stump and the burst
-## of leaves went on 2026-10-11, when a forest became a closed plate whose
-## trees are never felled) and it took the rest of the board in so that
-## three holders draw one land by one path.
-## The rules stay the sim's (factory/sim.gd), the drawings the art's
-## (factory/art.gd, ui/faces/beaver.gd).
+## What is seen of Factory's floor, for whoever shows it (the screen, the
+## tab's card, the tutorial's pages): the floor from straight above with its
+## pads, the bay and the two belts of its own, the belts the player lays and
+## what rides them, the squares and the boxes, the robots with their faces,
+## their charge and their bubbles. It drew the isometric land of plates,
+## trees and machines until 2026-10-20 (git has that); the layers, the
+## holder's contract and the belts' MultiMeshes are that file's. The rules
+## stay the sim's (factory/sim.gd, factory/bots.gd), the drawings the art's
+## (factory/art.gd).
 ##
 ## A holder calls `mount(parent, sim)` once and is handed `world`, a Node2D
-## drawn in the art's view units: the holder pans and zooms the land by that
-## node's position and scale and nothing else (every layer under it has a
-## box of its own, or the engine culls it by its meshes' untransformed
+## drawn in the art's view units: the holder pans and zooms the floor by
+## that node's position and scale and nothing else (every layer under it has
+## a box of its own, or the engine culls it by its meshes' untransformed
 ## boxes). Then, every frame after it stepped the sim: `event(e)` for each of
 ## the sim's events and `step(delta)`. A holder that did not see the events
-## (the tab, while the screen had the land) calls `stale()` and everything
+## (the tab, while the screen had the floor) calls `stale()` and everything
 ## is read from the tables again; nothing here needs an event to be right,
 ## only to be lively.
 ##
-## - **A beaver** pops up left of an even tree and right of an odd one on
-##   the sim's `chop` (a log into that forest's stock, by the hand or by the
-##   forest itself), its teeth in and a chip or two flying, the tree
-##   squashed; it stays `STAY` for the next and goes.
-## - **A forest's stock is a pile at each gate that has land beyond it.**
-## - **What stands is sorted by `Art.depth`** across trees and buildings. Only
-##   trees wear the wind, so the sorted list is cut into runs of one kind and
-##   each run drawn on its own layer, windy and plain by turns.
-## - **Belts are a MultiMesh a shape**: the beds (straight, and a quarter
-##   bend from either side for a belt fed by its side alone: `shape`), lifted
-##   `Art.BELT_UP` under the one belt material, and under them the legs and
-##   edges (`Art.belt_under`, `belt_under_bend`), all filled back to front.
-##   They stay flat layers under everything that stands. An item on a bend
-##   is drawn round its arc (`item_at`); the sim knows no bends. What lies or rides is one
-##   MultiMesh a kind, an item on a belt lifted onto its bed.
+## Layers, back to front: the ground (one mesh: the floor, the two fixed
+## belts, the five pads), the fixed belts' chevrons (a Batch), the laid
+## belts (a MultiMesh a shape under the belt material, their shade under
+## them, a bridge's deck and what crosses it over them), what lies and rides
+## (a Batch a mesh: squares, boxes by their count), the robots (a Batch for
+## the bodies, one a face, one a mesh for what they hold), the charge bars
+## and the bubbles (a Batch each), and the holder's ghosts. Draw calls: about
+## twenty on a new floor.
 ##
-## - **The view turns by quarters** (`turn`, 2026-10-10: "add a button to
-##   rotate the view, so user can click to rotate and see something being
-##   blocked"). The sim's tiles never change; only where a tile is seen
-##   does. Tile space is turned about its origin before `Art.at`, so whole
-##   tiles go to whole tiles and plates to plates. **Everything that places
-##   or reads a position goes through one pair, `seen(t)` and `tile_at(v)`**
-##   (and `seen_tile`, `seen_plate`, `seen_facing`, `depth` built on the same
-##   turn): never `Art.at` on a sim coordinate. The market's art has one
-##   face and keeps it toward the eye at every turn, the leaves of its
-##   hatch with it; the ground's washes, pebbles and tufts are a
-##   plate's own and do not turn with the land.
+## - **Everything placed goes through `seen(t)`** (tile space to view units,
+##   `Art.at`) and back through `tile_at(v)`. No turn: the floor is square
+##   and a Move's arrow on the sheet is the way a robot walks on screen.
+## - **A robot is drawn where `Bots.pos` has it** (`robot_pos`), sliding
+##   between tiles by the sim's `alpha`. Robots share tiles freely, so the
+##   ones on one tile stand side by side, a little smaller, eased there and
+##   back (`robot_at`).
+## - **The intake's queue** lies up the intake belt from the intake pad, the
+##   newest sliding in; **a sale** rides the deliver belt off the top.
 ##
-## Under reduce motion a beaver is there or not and only changes its face,
-## no chip flies, a plate and a module are there at once and smoke stands
-## still.
+## Under reduce motion nothing slides in or rides off, the chevrons and the
+## slats lie still, a robot's seat is taken at once and its bubbles do not
+## pop.
 
 const Art = preload("res://factory/art.gd")
 const Sim = preload("res://factory/sim.gd")
-const Beaver = preload("res://ui/faces/beaver.gd")
+const Bots = preload("res://factory/bots.gd")
+const Batch = preload("res://ui/hud/batch.gd")
 const Motion = preload("res://core/motion.gd")
+const Face = preload("res://ui/faces/face.gd")
 
-## Seconds a hit tree's squash lasts.
-const SQUASH := 0.16
-## A beaver's seconds in and out, how long it stays by its tree after a
-## bite, and a bite's length.
-const SHOW_IN := 0.16
-const SHOW_OUT := 0.14
-const STAY := 0.7
-const BITE := 0.26
-## Chips in the air at most, and how fast they come down.
-const BITS := 48
-const FALLS := 900.0
-## Seconds a tree takes to come up, and a plate out of the pond; how far
-## under it starts (view units) and the part of the rise its trees wait.
-const GROW := 0.6
-const RISE := 3.0
-const SUNK := 90.0
-const RISE_BARE := 0.7
-## The market's hatch. A sale is played over SALE of the market's interval,
-## SALE_MOST seconds at most, and of that: the leaves swing down over
-## OPEN, the thing falls from FALL_FROM to FALL_TO (FALL view units, into
-## the dark), the coin comes up at COIN_AT and the leaves are shut again
-## from SHUT_FROM to SHUT_TO. What comes next rides in from the belt's edge
-## over SLIDE of the interval, once the leaves are shut. A coin hops
-## COIN_UP and is gone in COIN seconds; DROPS sales of one market are played
-## at once.
-const SALE := 0.7
-const SALE_MOST := 0.62
-const OPEN := 0.3
-const FALL_FROM := 0.2
-const FALL_TO := 0.7
-const FALL := 38.0
-const COIN_AT := 0.55
-const SHUT_FROM := 0.7
-const SHUT_TO := 0.95
-const SLIDE := 0.3
-const SLIDE_MOST := 0.9
-const COIN := 0.75
-const COIN_UP := 64.0
-const DROPS := 4
-## Every layer's box: a board of a dozen plates either way and the pond
-## round it. The engine culls a layer by this and not by what it draws.
+## Every layer's box: the floor and far round it. The engine culls a layer
+## by this and not by what it draws.
 const BOX := Rect2(-40000.0, -40000.0, 80000.0, 80000.0)
 const MID := Vector2(0.5, 0.5)
-const ITEMS := ["log", "stone", "lime", "charcoal", "plank", "chair"]
-## Turns a second: an engine's flywheel at full shaft, and a saw's blade at
-## full share.
-const WHEEL_TURNS := 0.5
-const BLADE_TURNS := 1.6
+## The squares queued at the intake lie this far apart up its belt (tiles),
+## and one comes in or moves up over FEED_SLIDE seconds.
+const QUEUE_GAP := 0.42
+const FEED_SLIDE := 0.3
+## A thing sold: seconds from the pad onto the deliver belt, then tiles a
+## second up it, and how many ride at once at most.
+const OFF_PAD := 0.25
+const OFF_SPEED := 2.5
+const GONE_MOST := 8
+## Things lying in a stack past the sim's two spots are drawn this much
+## higher each (view units).
+const PILE_UP := 8.0
+## Robots on one tile: how far apart (tiles), how big by how many share it,
+## and how fast they ease to their seats (a rate a second).
+const SPREAD := 0.34
+const SHARED := [1.0, 0.88, 0.76]
+const SEAT_RATE := 12.0
+## A robot is drawn this much bigger than the art's own measures (its
+## bubble and its bar with it), to read on a phone's tile of about 108 px.
+const ROBOT_SIZE := 1.15
+## How high a walking robot bobs (view units), and a bubble's pop (seconds).
+const BOB := 4.0
+const POP := 0.2
+## A robot's tint, by its place in the chips' order (pale, so the face and
+## the bars stay the loudest; no state is said by them).
+const TINTS := [Color("d9efeb"), Color("fbe3cf"), Color("e6def6"), Color("e4efd2")]
+const FACES := ["", "?", "flat", "nocell"]
+const BUBBLES := ["?", "!", "wait", "flat", "nocell", "charge"]
 
-## The land, in view units: the holder's to place and scale.
+## The floor, in view units: the holder's to place and scale.
 var world: Node2D
 var sim: RefCounted
-## Quarters the view is turned clockwise, 0 to 3: set by `set_turn`. A view
-## preference of the holder's, never the sim's and never kept.
-var turn := 0
-## Whether the plus of every free edge is drawn (not on the tab's card).
-var plus := true
-## The holder's own flat things, over the belts and under what stands:
-## [mesh, transform] each, and a tint if there is a third (a ghost under
-## the finger, the run of belts a swipe would lay).
+## The holder's own flat things, over everything: [mesh, transform] each,
+## and a tint if there is a third (a ghost under the finger, the run of
+## belts a swipe would lay).
 var ghosts: Array = []
 
 var _ground_l: Node2D
-var _grass_l: Node2D
+var _chev_l: Node2D
 var _under_l: Node2D
 var _belt_l: Node2D
 var _fast_l: Node2D
-var _flat_l: Node2D
-var _shade_l: Node2D
+var _deck_l: Node2D
 var _item_l: Node2D
-var _stand: Node2D
+var _robot_l: Node2D
 var _air_l: Node2D
-var _pool: Array[Node2D] = []
-## What a run of the standing list is drawn under, by its `wear`.
-enum { PLAIN, WINDY, BED, BED_FAST }
-var _wears: Array = []
-var _runs: Array = []
-var _order: Array = []      # [plate as seen, kind, sides as seen, variant, plate], back to front
-var _edges: Array = []
-var _plates_n := -1
+var _flat_l: Node2D
+static var _ground: ArrayMesh
+var _chevs: Batch
 ## The beds by shape (straight, a bend fed from the side toward its facing
-## plus a quarter, one fed from the other side) and what is under them by
-## shape as drawn ("s", or a bend's corner), a MultiMesh each; a belt's
-## shape, by tile, read off its feeders whenever belts change.
+## plus a quarter, one fed from the other side) and the shade under them by
+## shape ("s", or a bend's corner), a MultiMesh each; a belt's shape, by
+## tile, read off its feeders whenever belts change.
 var _bed_mms: Array[MultiMesh] = []
 var _fast_mms: Array[MultiMesh] = []
 var _under_mms := {}
 var _shapes := {}
 var _belts_stale := true
-## The belts on the tile right in front of a building, as `_lay_belts` found
-## them: [tile, bed mesh, fast, bed transform, under mesh, under transform].
-var _fronts: Array = []
 var _belt_n := -1
-var _item_mm := {}          # kind -> MultiMesh
-var _item_n := {}           # kind -> how many are seen
-var _shade_mat: ShaderMaterial
-var _t := 0.0
-var _hit := {}        # tree id -> seconds since it was hit
-var _born := {}       # tree id -> seconds since it came up (under 0: not yet)
-var _wob := {}        # tile -> seconds since it was shaken
-var _rise := {}       # plate -> seconds since it was bought
-var _beavers := {}    # tree id -> {tile, look, side, show, rising, seen, bite, age, size}
-var _bits: Array = []     # {pos, vel, t, life, turn, spin, col, size, weight}: view units
-var _bit_mm: MultiMesh
-var _spun := {}       # module id -> how far its wheel or blade has turned (radians)
-var _lying := {}      # market id -> what lies on its hatch: {from (the way it came), t}
-var _drops: Array = []    # sales being played: {id (the market's), tile, kind, amount, t, len, off (tiles from the middle), paid}
-var _rng := RandomNumberGenerator.new()
-
-## A sale's coin is up: when the holder counts it, says "+N" and is heard.
-## At once under reduce motion.
-signal coined(amount: int, tile: Vector2i)
+## Bridges' decks, [mesh, transform] each, laid with the belts.
+var _decks: Array = []
+## What lies and rides, and what the robots hold: a Batch a mesh.
+var _squares: Batch
+var _boxes: Array[Batch] = []
+var _held_squares: Batch
+var _held_boxes: Array[Batch] = []
+var _bodies: Batch
+var _faces := {}
+var _track: Batch
+var _charge: Batch
+var _bubbles := {}
+## Seconds since the queue grew, and since one was taken off it.
+var _fed := 99.0
+var _took := 99.0
+## Sold things riding off: {kind, n, t}.
+var _gone: Array = []
+## Each robot's seat: {off (view units), size, bubble, popped}.
+var _seats: Array = []
 
 func _init() -> void:
-	_rng.seed = 20261010
-	_shade_mat = Art.shade_wind()
+	_chevs = Batch.new(Art.chevron())
+	_squares = Batch.new(Art.square())
+	_held_squares = Batch.new(Art.square())
+	for n in Sim.BOX_FULL + 1:
+		_boxes.append(Batch.new(Art.box(n)))
+		_held_boxes.append(Batch.new(Art.box(n)))
+	_bodies = Batch.new(Art.robot())
+	for stuck: String in FACES:
+		_faces[stuck] = Batch.new(Art.face(stuck))
+	_track = Batch.new(Art.bar())
+	_charge = Batch.new(Art.bar())
+	for kind: String in BUBBLES:
+		_bubbles[kind] = Batch.new(Art.bubble(kind))
 
-## Builds the land's layers under `parent` and returns `world`.
+## Builds the floor's layers under `parent` and returns `world`.
 func mount(parent: Node, with_sim: RefCounted) -> Node2D:
 	sim = with_sim
 	world = Node2D.new()
 	world.name = "World"
 	parent.add_child(world)
 	_ground_l = layer(_draw_ground)
-	_grass_l = layer(_draw_grass, Art.wind(true))
+	_chev_l = layer(_draw_chevrons)
 	_under_l = layer(_draw_under)
 	_belt_l = layer(_draw_belts, Art.belt_material())
 	_fast_l = layer(_draw_fast, Art.belt_material(true))
-	_wears = [null, Art.wind(), _belt_l.material, _fast_l.material]
-	_flat_l = layer(_draw_flat)
-	_shade_l = layer(_draw_shade, _shade_mat)
+	_deck_l = layer(_draw_decks)
 	_item_l = layer(_draw_items)
-	_stand = Node2D.new()
-	_stand.name = "Stand"
-	world.add_child(_stand)
+	_robot_l = layer(_draw_robots)
 	_air_l = layer(_draw_air)
+	_flat_l = layer(_draw_flat)
 	for mesh: ArrayMesh in [Art.belt(), Art.belt_bend(false), Art.belt_bend(true)]:
 		_bed_mms.append(_many(mesh))
 		_fast_mms.append(_many(mesh))
-	for kind: String in ITEMS:
-		var mm := MultiMesh.new()
-		mm.transform_format = MultiMesh.TRANSFORM_2D
-		mm.mesh = Art.item(kind)
-		mm.instance_count = 16
-		mm.visible_instance_count = 0
-		_item_mm[kind] = mm
-		_item_n[kind] = 0
 	stale()
 	return world
 
-## Another land in the same layers (a tutorial page starting over).
+## Another floor in the same layers (a tutorial page starting over).
 func hold(with_sim: RefCounted) -> void:
 	sim = with_sim
-	_hit.clear()
-	_born.clear()
-	_wob.clear()
-	_rise.clear()
-	_beavers.clear()
-	_bits.clear()
-	_lying.clear()
-	_drops.clear()
+	_gone.clear()
+	_seats.clear()
+	_fed = 99.0
+	_took = 99.0
 	stale()
 
-## A layer of the land over the ones there are, drawn by `draws(layer)`: the
-## holder's own (the figures over the market, a ring) go on top this way.
+## A layer of the floor over the ones there are, drawn by `draws(layer)`:
+## the holder's own (a ring, the figures over a sale) go on top this way.
 func layer(draws: Callable, material: Material = null, into: Node = null) -> Node2D:
 	var c := Node2D.new()
 	c.material = material
@@ -234,313 +191,77 @@ func layer(draws: Callable, material: Material = null, into: Node = null) -> Nod
 
 ## Everything is read from the sim's tables again at the next step.
 func stale() -> void:
-	_plates_n = -1
 	_belts_stale = true
 
-# --- the turn: where a tile is seen ---
-
-## A point of tile space turned `q` quarters about the origin: a quarter
-## takes (x, y) to (-y, x), so +x (down the screen and right) becomes +y
-## (down and left) and the land goes round clockwise under the eye.
-static func _spin(t: Vector2, q: int) -> Vector2:
-	match posmod(q, 4):
-		1:
-			return Vector2(-t.y, t.x)
-		2:
-			return -t
-		3:
-			return Vector2(t.y, -t.x)
-	return t
+# --- where a tile is seen ---
 
 ## A point of the sim's tile space (a tile's middle is tile + (0.5, 0.5)),
-## in view units, as the view is turned now. THE way from the sim to the eye.
+## in view units. THE way from the sim to the eye.
 func seen(t: Vector2) -> Vector2:
-	return Art.at(_spin(t, turn))
+	return Art.at(t)
 
 ## The point of the sim's tile space under a point of the view: the way back.
 func tile_at(v: Vector2) -> Vector2:
-	return _spin(Art.tile_at(v), -turn)
+	return Art.tile_at(v)
 
-## The tile of the art's grid a sim tile is drawn on (its lowest corner).
-func seen_tile(tile: Vector2i) -> Vector2i:
-	return Vector2i(_spin(Vector2(tile) + MID, turn).floor())
-
-## The same for a plate of the lattice.
-func seen_plate(p: Vector2i) -> Vector2i:
-	return Vector2i((_spin((Vector2(p) + MID) * Art.PLATE, turn) / Art.PLATE).floor())
-
-## The facing a sim facing is drawn at.
-func seen_facing(facing: int) -> int:
-	return posmod(facing + turn, 4)
-
-## What a point of the sim's tile space is sorted by, back to front.
-func depth(t: Vector2) -> float:
-	return Art.depth(_spin(t, turn))
-
-## Turns the view to `quarters`; everything is laid out again.
-func set_turn(quarters: int) -> void:
-	turn = posmod(quarters, 4)
-	stale()
-
-## The land's box in view units: every plate's diamond and the earth under
-## it, with nothing added for what stands.
+## The floor's box in view units.
 func bounds() -> Rect2:
-	var box := Rect2()
-	var first := true
-	for p: Vector2i in sim.plates:
-		var back := Art.at(Vector2(seen_plate(p) * Art.PLATE))
-		var r := Rect2(back.x - Art.HALF, back.y, Art.HALF * 2.0, Art.HALF * 2.0 * Art.DEEP)
-		box = r if first else box.merge(r)
-		first = false
-	return box
+	return Rect2(Vector2.ZERO, Vector2(Sim.COLS, Sim.ROWS) * Art.TILE)
 
-## The board's box in tile space: from its first plate's first tile to past
-## its last one's last.
+## The floor's box in tile space.
 func tile_bounds() -> Rect2:
-	var box := Rect2()
-	var first := true
-	for p: Vector2i in sim.plates:
-		var r := Rect2(Vector2(p * Art.PLATE), Vector2(Art.PLATE, Art.PLATE))
-		box = r if first else box.merge(r)
-		first = false
-	return box
+	return Rect2(Vector2.ZERO, Vector2(Sim.COLS, Sim.ROWS))
 
 ## The middle of a tile, in view units.
 func mid(tile: Vector2i) -> Vector2:
 	return seen(Vector2(tile) + MID)
 
-## Where a plate's plus lies, in view units.
-func plus_at(p: Vector2i) -> Vector2:
-	return seen(Vector2(p * Art.PLATE) + Vector2(Art.PLATE, Art.PLATE) * 0.5)
+## Where robot `i` is, in view units: between the tile it stepped from and
+## the one it steps to, by the sim's `alpha`.
+func robot_pos(i: int) -> Vector2:
+	return seen(Bots.pos(sim.robots[i], float(sim.alpha)))
 
-## The lowest tile corner of a module's footprint and its size in tiles, in
-## whatever grid `root` and `facing` are given in: the sim's, or the art's
-## (`seen_tile`, `seen_facing`) for a thing drawn.
-static func footprint(kind: String, root: Vector2i, facing: int) -> Array:
-	if Sim.SINGLE.has(kind):
-		return [root, Vector2i.ONE]
-	var front := root + Art.DIRS[facing]
-	return [Vector2i(mini(root.x, front.x), mini(root.y, front.y)), Vector2i.ONE + (front - root).abs()]
+## Where robot `i` is drawn: `robot_pos` and its seat beside the others on
+## its tile. For a tap on it.
+func robot_at(i: int) -> Vector2:
+	var at := robot_pos(i)
+	if i < _seats.size():
+		at += _seats[i].off as Vector2
+	return at
 
 # --- the sim's events ---
 
 func event(e: Dictionary) -> void:
 	match String(e.type):
-		"chop":
-			_on_chop(int(e.id))
-		"laid", "turned", "flipped", "sold_back", "sold_line", "placed", "built":
+		"laid", "turned", "flipped", "sold_back", "sold_line":
 			_belts_stale = true
-		"brought":
-			_lying[int(e.id)] = {"from": int(e.from), "t": 0.0}
+		"queued":
+			_fed = 0.0
+		"took":
+			if e.tile == Sim.STATIONS.intake:
+				_took = 0.0
 		"sale":
-			_on_sale(e)
-		"plate":
-			_plates_n = -1
-			if not Motion.reduce:
-				var p: Vector2i = e.plate
-				_rise[p] = 0.0
-				for id: int in sim.trees:
-					if Sim.plate_of(sim.trees[id].tile) == p:
-						_born[id] = -RISE * RISE_BARE
-
-## The hatch opens under what was lying on it. Past DROPS at once at one
-## market, and under reduce motion, only the coin is told.
-func _on_sale(e: Dictionary) -> void:
-	var id := int(e.id)
-	var off := _lying_off(id)
-	_lying.erase(id)
-	var playing := 0
-	for d: Dictionary in _drops:
-		if int(d.id) == id:
-			playing += 1
-	if Motion.reduce or playing >= DROPS or not sim.modules.has(id):
-		coined.emit(int(e.amount), e.tile)
-		return
-	_drops.append({"id": id, "tile": e.tile, "kind": String(e.kind), "amount": int(e.amount), "t": 0.0, "off": off, "paid": false,
-		"len": clampf(float(sim.market_interval(sim.modules[id])) * SALE, 0.1, SALE_MOST)})
-
-## How far from the middle of market `id`'s hatch the thing lying on it
-## still is, in sim tiles: it rides in from the edge it came over.
-func _lying_off(id: int) -> Vector2:
-	if not _lying.has(id) or Motion.reduce or not sim.modules.has(id):
-		return Vector2.ZERO
-	var time := clampf(float(sim.market_interval(sim.modules[id])) * SLIDE, 0.05, SLIDE_MOST)
-	var k := clampf(float(_lying[id].t) / time, 0.0, 1.0)
-	return -Vector2(Art.DIRS[int(_lying[id].from)]) * 0.5 * (1.0 - k) * (1.0 - k)
-
-## How far the leaves of market `id`'s hatch hang, 0 to 1: the most any sale
-## of its own wants.
-func _hatch(id: int) -> float:
-	var open := 0.0
-	for d: Dictionary in _drops:
-		if int(d.id) != id:
-			continue
-		var k := float(d.t) / float(d.len)
-		open = maxf(open, smoothstep(0.0, OPEN, k) * (1.0 - smoothstep(SHUT_FROM, SHUT_TO, k)))
-	return open
-
-## What stands on `tile` shakes its head: a tap it did not take.
-func shake(tile: Vector2i) -> void:
-	if not Motion.reduce:
-		_wob[tile] = 0.0
-
-## A log off the tree: it is squashed and a beaver's teeth are in, a chip or
-## two flying.
-func _on_chop(id: int) -> void:
-	if not sim.trees.has(id):
-		return
-	var tr: Dictionary = sim.trees[id]
-	_hit[id] = 0.0
-	var b := _beaver(tr)
-	b.bite = 0.0
-	b.seen = 0.0
-	if Motion.reduce:
-		return
-	var side: float = b.side
-	var at := mid(tr.tile) + Vector2(side * girth(tr), -22.0 * float(b.size))
-	var rock := is_rock(tr)
-	for i in 2:
-		var tone: Color = (Art.ROCK_LIT if i == 0 else Art.ROCK_SHADE) if rock else (Art.PITH if i == 0 else Art.BARK.lightened(0.25))
-		_bit(at, Vector2(side * _rng.randf_range(40.0, 150.0), -_rng.randf_range(120.0, 260.0)), 0.42,
-			tone, _rng.randf_range(0.5, 0.8), 1.3 if rock else 1.0)
-
-func _beaver(tr: Dictionary) -> Dictionary:
-	var id: int = tr.id
-	if not _beavers.has(id):
-		_beavers[id] = {"tile": tr.tile, "look": int(tr.look), "side": -1.0 if id % 2 == 0 else 1.0, "show": 0.0,
-			"rising": true, "seen": 0.0, "bite": 10.0, "age": 0.0, "girth": girth(tr),
-			"size": 0.82 if is_rock(tr) else 0.7 + 0.004 * float(Art.RADIUS[int(tr.look)])}
-	return _beavers[id]
-
-## Whether a row of the sim's `trees` is a mine's rock: the plate says.
-func is_rock(tr: Dictionary) -> bool:
-	return sim.is_mine(tr.tile)
-
-## Half the width of a tree's trunk or a rock's body, where a beaver's teeth go.
-func girth(tr: Dictionary) -> float:
-	return float(Art.ROCK_R[int(tr.look) % Art.ROCK_R.size()]) * 0.8 if is_rock(tr) else Art.girth(tr.look)
-
-## How tall a tree or a rock stands and how far it reaches, for a tap on it.
-func tall(tr: Dictionary) -> float:
-	return float(Art.ROCK_TALL[int(tr.look) % Art.ROCK_TALL.size()]) if is_rock(tr) else Art.height(tr.look)
-
-func reach(tr: Dictionary) -> float:
-	return float(Art.ROCK_R[int(tr.look) % Art.ROCK_R.size()]) if is_rock(tr) else float(Art.RADIUS[int(tr.look)]) * Art.TREE_SCALE
-
-func _bit(at: Vector2, vel: Vector2, life: float, colour: Color, size: float, weight: float) -> void:
-	if _bits.size() >= BITS:
-		return
-	_bits.append({"pos": at, "vel": vel, "t": 0.0, "life": life, "turn": _rng.randf() * TAU,
-		"spin": _rng.randf_range(-9.0, 9.0), "col": colour, "size": size, "weight": weight})
+			if not Motion.reduce and _gone.size() < GONE_MOST:
+				_gone.append({"kind": String(e.kind), "n": int(e.n), "t": 0.0})
 
 # --- time ---
 
 ## `delta` seconds pass, after the sim's own step and its events.
 func step(delta: float) -> void:
-	_t += delta
-	Art.blow()
 	# one clock for every holder: the belts' material is shared
 	Art.belt_run(Time.get_ticks_msec() / 1000.0)
-	for table: Dictionary in [_hit, _born, _wob, _rise]:
-		for key: Variant in table.keys():
-			table[key] += delta
-	for id: int in _hit.keys():
-		if _hit[id] > SQUASH:
-			_hit.erase(id)
-	for id: int in _born.keys():
-		if _born[id] > GROW:
-			_born.erase(id)
-	for tile: Vector2i in _wob.keys():
-		if _wob[tile] > Motion.WOBBLE_TIME:
-			_wob.erase(tile)
-	# wheels and blades turn as fast as they are driven
-	if not Motion.reduce:
-		for id: int in sim.modules:
-			var m: Dictionary = sim.modules[id]
-			if m.kind == "engine" and m.built and float(m.share) > 0.0:
-				_spun[id] = fposmod(float(_spun.get(id, 0.0)) + delta * TAU * WHEEL_TURNS * (0.12 + float(m.draw) / Sim.ENGINE_SHAFT), TAU)
-			elif m.kind == "saw" and sim.working(m) and float(m.share) > 0.0:
-				_spun[id] = fposmod(float(_spun.get(id, 0.0)) + delta * TAU * BLADE_TURNS * (0.3 + float(m.share)), TAU)
-	var rising := not _rise.is_empty()
-	for p: Vector2i in _rise.keys():
-		if _rise[p] > RISE:
-			_rise.erase(p)
-	for id: int in _beavers.keys():
-		var b: Dictionary = _beavers[id]
-		b.seen += delta
-		b.bite += delta
-		b.age += delta
-		var want: bool = b.seen < STAY
-		b.rising = want
-		b.show = move_toward(float(b.show), 1.0 if want else 0.0, delta / (SHOW_IN if want else SHOW_OUT))
-		if not want and float(b.show) <= 0.0:
-			_beavers.erase(id)
-	for bit: Dictionary in _bits:
-		bit.t += delta
-		var vel: Vector2 = bit.vel
-		vel.y += FALLS * float(bit.weight) * delta
-		vel.x *= 1.0 - minf(1.0, delta * 1.6)
-		bit.vel = vel
-		bit.pos = (bit.pos as Vector2) + vel * delta
-		bit.turn = float(bit.turn) + float(bit.spin) * delta
-	_bits = _bits.filter(func(bit: Dictionary) -> bool: return bit.t < bit.life)
-	for d: Dictionary in _drops:
-		d.t += delta
-		if not d.paid and float(d.t) >= float(d.len) * COIN_AT:
-			d.paid = true
-			coined.emit(int(d.amount), d.tile)
-	_drops = _drops.filter(func(d: Dictionary) -> bool: return d.t < maxf(float(d.len) * SHUT_TO, float(d.len) * COIN_AT + COIN))
-	# what comes next waits at the edge until the leaves are shut
-	for id: int in _lying.keys():
-		if not sim.modules.has(id):
-			_lying.erase(id)
-		elif _hatch(id) <= 0.02:
-			_lying[id].t += delta
-	if _plates_n != sim.plates.size():
-		_lay_plates()
-		rising = true
+	_fed += delta
+	_took += delta
+	for g: Dictionary in _gone:
+		g.t = float(g.t) + delta
+	_gone = _gone.filter(func(g: Dictionary) -> bool: return _gone_at(g).y > -0.7)
 	if _belts_stale or _belt_n != sim.belts.size() + sim.kinds.size() * 1000:
 		_lay_belts()
+	_fill_chevrons()
 	_fill_items()
-	_fill_stand()
-	if rising:
-		_ground_l.queue_redraw()
-		_grass_l.queue_redraw()
-	_flat_l.queue_redraw()
-	_shade_l.queue_redraw()
-	_item_l.queue_redraw()
-	_air_l.queue_redraw()
-
-## How far out of the pond a plate is, 0 to 1.
-func _risen(p: Vector2i) -> float:
-	if not _rise.has(p):
-		return 1.0
-	return smoothstep(0.0, 1.0, clampf(float(_rise[p]) / RISE, 0.0, 1.0))
-
-## Whether what stands on `tile` is seen yet: not on a plate still coming up.
-func _up(tile: Vector2i) -> bool:
-	if _rise.is_empty():
-		return true
-	var p: Vector2i = Sim.plate_of(tile)
-	return not _rise.has(p) or float(_rise[p]) >= RISE * RISE_BARE
-
-func _lay_plates() -> void:
-	_plates_n = sim.plates.size()
-	_order.clear()
-	for p: Vector2i in sim.plates:
-		var sides := 0
-		for i in 4:
-			if sim.plates.has(p + Art.DIRS[i]):
-				# the side it is joined on, as the view is turned
-				sides |= 1 << seen_facing(i)
-		_order.append([seen_plate(p), String(sim.plates[p]), sides, posmod(p.x * 3 + p.y * 5, 4), p])
-	_order.sort_custom(func(a: Array, b: Array) -> bool:
-		var da: int = a[0].x + a[0].y
-		var db: int = b[0].x + b[0].y
-		return da < db or (da == db and a[0].x < b[0].x))
-	_edges = sim.free_edges()
-	_ground_l.queue_redraw()
-	_grass_l.queue_redraw()
+	_fill_robots(delta)
+	for l: Node2D in [_chev_l, _deck_l, _item_l, _robot_l, _air_l, _flat_l]:
+		l.queue_redraw()
 
 func _many(mesh: ArrayMesh) -> MultiMesh:
 	var mm := MultiMesh.new()
@@ -550,19 +271,31 @@ func _many(mesh: ArrayMesh) -> MultiMesh:
 	mm.visible_instance_count = 0
 	return mm
 
+## The floor's own: its ground, the two belts down its first and last
+## columns and the five pads, one mesh for every holder.
+static func _ground_mesh() -> ArrayMesh:
+	if _ground == null:
+		var b := Face.Builder.new()
+		b.append(Art.floor_mesh(Sim.COLS, Sim.ROWS), Transform2D.IDENTITY)
+		b.append(Art.fixed_belt(Sim.ROWS, false), Transform2D.IDENTITY)
+		b.append(Art.fixed_belt(Sim.ROWS, true), Transform2D(0.0, Vector2((Sim.COLS - 1) * Art.TILE, 0.0)))
+		for kind: String in Sim.STATIONS:
+			b.append(Art.pad(kind), Transform2D(0.0, Art.at(Vector2(Sim.STATIONS[kind]) + MID)))
+		_ground = b.mesh()
+	return _ground
+
+# --- belts ---
+
 ## The shape of the belt on `tile`: 0 straight, 1 a quarter bend fed from
 ## the side its facing plus a quarter looks to, 2 from the other side. A
-## belt is a bend only when its one feeder (a belt pointing into it, or the
-## way out of a kiln or a retort) comes in by a side; fed from behind, from
-## both sides or by nothing it is straight, and a side belt butts into it.
-## Read off the sim's tables every time, never kept there.
+## belt is a bend only when its one feeder comes in by a side; fed from
+## behind, from both sides or by nothing it is straight, and a side belt
+## butts into it. Read off the sim's tables every time, never kept there.
 func shape(tile: Vector2i) -> int:
 	if not sim.belts.has(tile):
 		return 0
 	var f: int = sim.belts[tile]
 	var fed := [false, false, false, false]   # by the quarter the feeder lies to, from the facing
-	if sim.kinds.get(tile, "") == "splitter":
-		return 0
 	for q in range(1, 4):
 		var d := (f + q) % 4
 		fed[q] = sim.feeds(tile + Art.DIRS[d], tile)
@@ -593,43 +326,28 @@ func item_at(tile: Vector2i, it: Dictionary) -> Vector2:
 func _lay_belts() -> void:
 	_belts_stale = false
 	_belt_n = sim.belts.size() + sim.kinds.size() * 1000
-	# the back first: a nearer belt's legs and edge are over a further one's
-	var tiles: Array = sim.belts.keys()
-	tiles.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return depth(Vector2(a)) < depth(Vector2(b)))
-	var lift := Transform2D(0.0, Art.BELT_LIFT)
 	var beds := [[], [], []]
 	var fast := [[], [], []]
 	var unders := {}
 	_shapes.clear()
-	_fronts.clear()
-	# the tiles a building stands on, as seen
-	var stood := {}
-	for id: int in sim.modules:
-		var m: Dictionary = sim.modules[id]
-		var foot := footprint(m.kind, seen_tile(m.root), seen_facing(m.facing))
-		for x in (foot[1] as Vector2i).x:
-			for y in (foot[1] as Vector2i).y:
-				stood[(foot[0] as Vector2i) + Vector2i(x, y)] = true
-	for tile: Vector2i in tiles:
+	_decks.clear()
+	for tile: Vector2i in sim.belts:
 		var bend := shape(tile)
-		var vf := seen_facing(int(sim.belts[tile]))
+		var f: int = int(sim.belts[tile])
 		var key: Variant = "s"
 		if bend != 0:
 			_shapes[tile] = bend
-			key = Art.DIRS[vf] + Art.DIRS[(vf + (1 if bend == 1 else 3)) % 4]
-		var quick: bool = sim.kinds.get(tile, "") == "fast"
-		var bed := lift * Art.flat(Vector2(seen_tile(tile)), vf)
-		((fast if quick else beds)[bend] as Array).append(bed)
+			key = Art.DIRS[f] + Art.DIRS[(f + (1 if bend == 1 else 3)) % 4]
+		var kind: String = sim.kinds.get(tile, "")
+		((fast if kind == "fast" else beds)[bend] as Array).append(Art.flat(Vector2(tile), f))
 		if not unders.has(key):
 			unders[key] = []
 		(unders[key] as Array).append(Transform2D(0.0, mid(tile)))
-		var st := seen_tile(tile)
-		if stood.has(st + Vector2i(-1, 0)) or stood.has(st + Vector2i(0, -1)) or stood.has(st + Vector2i(-1, -1)):
-			_fronts.append([tile, _bed_mms[bend].mesh, quick, bed, Art.belt_under() if key is String else Art.belt_under_bend(key), Transform2D(0.0, mid(tile))])
+		if kind == "bridge":
+			_decks.append([Art.bridge(f), Transform2D(0.0, mid(tile))])
 	for i in 3:
 		_fill(_bed_mms[i], beds[i])
 		_fill(_fast_mms[i], fast[i])
-	_fast_l.queue_redraw()
 	for key: Variant in unders:
 		if not _under_mms.has(key):
 			_under_mms[key] = _many(Art.belt_under() if key is String else Art.belt_under_bend(key))
@@ -637,6 +355,7 @@ func _lay_belts() -> void:
 		_fill(_under_mms[key], unders.get(key, []))
 	_under_l.queue_redraw()
 	_belt_l.queue_redraw()
+	_fast_l.queue_redraw()
 
 func _fill(mm: MultiMesh, xfs: Array) -> void:
 	if mm.instance_count < xfs.size():
@@ -645,384 +364,202 @@ func _fill(mm: MultiMesh, xfs: Array) -> void:
 		mm.set_instance_transform_2d(i, xfs[i])
 	mm.visible_instance_count = xfs.size()
 
-## How far up an item at `pos` (sim tile space) is drawn: on a belt's bed,
-## or on the ground.
-func _lifted(pos: Vector2) -> float:
-	return Art.BELT_UP if sim.belts.has(Vector2i(pos.floor())) else 0.0
-
-## What lies and what rides, a MultiMesh a kind, each where the sim has it
-## between two ticks.
-func _fill_items() -> void:
-	var lists := {}
-	for kind: String in ITEMS:
-		lists[kind] = []
-	for tile: Vector2i in sim.items:
-		for it: Dictionary in sim.items[tile]:
-			if lists.has(it.kind):
-				# onto the bed or off it over the tick it crosses, not at a jump
-				var up := lerpf(_lifted((it.was as Vector2).lerp(Vector2(tile) + MID, 0.02)), Art.BELT_UP if sim.belts.has(tile) else 0.0, float(sim.alpha))
-				(lists[it.kind] as Array).append(seen(item_at(tile, it)) + Vector2(0.0, -up))
-	for kind: String in ITEMS:
-		var at: Array = lists[kind]
-		var mm: MultiMesh = _item_mm[kind]
-		if mm.instance_count < at.size():
-			mm.instance_count = at.size() * 2
-		# the back first, so one riding in front of another is over it
-		at.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.y < b.y)
-		for i in at.size():
-			mm.set_instance_transform_2d(i, Transform2D(0.0, at[i]))
-		mm.visible_instance_count = at.size()
-		_item_n[kind] = at.size()
-
-# --- what stands ---
-
-## How big a standing tree is drawn: grown in, and squashed if just hit.
-## Nothing while its plate is still coming up.
-func _size(id: int) -> Vector2:
-	var size := Art.TREE_SCALE
-	if _born.has(id) and not Motion.reduce:
-		var age: float = _born[id]
-		if age < 0.0:
-			return Vector2.ZERO
-		size *= 0.15 + 0.85 * Motion.back_out(clampf(age / GROW, 0.0, 1.0))
-	var squash := 0.0
-	if _hit.has(id) and not Motion.reduce:
-		squash = sin(float(_hit[id]) / SQUASH * PI) * 0.16
-	return Vector2(size * (1.0 + squash), size * (1.0 - squash))
-
-func _turned(tile: Vector2i) -> float:
-	return Motion.wobble_angle(float(_wob[tile])) if _wob.has(tile) else 0.0
-
-## Everything that stands, [depth, wear, mesh, transform, tint] each, sorted
-## from the back and cut into runs for the layers. `wear` is the material a
-## run is drawn under: PLAIN, WINDY (a tree), BED and BED_FAST (a belt's bed).
-##
-## A belt on the tile right in front of a building is in the list too, over
-## the flat one: the flat layers lie under everything that stands, and a
-## market behind a belt drew its wall over the bed and what rode it (the
-## user, 2026-10-12: "the market showed above convey even tho it was after
-## it"). Its legs, its bed and its riders, a hair behind its tile's own depth
-## so a splitter or a bridge on it is still over them.
-func _fill_stand() -> void:
-	var list: Array = []
-	var white := Color.WHITE
-	for id: int in sim.trees:
-		var tr: Dictionary = sim.trees[id]
-		var tile: Vector2i = tr.tile
-		if not _up(tile):
-			continue
-		var size := _size(id)
-		if size.x > 0.0:
-			var rock := is_rock(tr)
-			list.append([depth(Vector2(tile) + MID), 0 if rock else 1, Art.rock(tr.look) if rock else Art.tree(tr.look), Transform2D(_turned(tile), size, 0.0, mid(tile)), white])
-	for id: int in _beavers:
-		_add_beaver(list, _beavers[id])
-	for p: Vector2i in sim.sources:
-		var held: int = sim.sources[p].stock
-		if held <= 0 or not _up(p * Art.PLATE):
-			continue
-		# what it holds, lying by every gate that leads on to land
-		for side in 4:
-			if sim.plates.has(p + Art.DIRS[side]):
-				var g: Vector2i = Sim.gate(p, side)
-				list.append([depth(Vector2(g) + MID), 0, Art.rubble(held) if sim.is_mine(g) else Art.pile(held), Transform2D(0.0, mid(g)), white])
-	for tile: Vector2i in sim.kinds:
-		if not _up(tile):
-			continue
-		if sim.kinds[tile] == "splitter":
-			list.append([depth(Vector2(tile) + MID), 0, Art.splitter(seen_facing(int(sim.belts[tile]))), Transform2D(_turned(tile), mid(tile)), white])
-		elif sim.kinds[tile] == "bridge":
-			# its deck over what rides under it, and on the deck what crosses
-			var d := depth(Vector2(tile) + MID)
-			list.append([d, 0, Art.bridge(seen_facing(int(sim.belts[tile]))), Transform2D(_turned(tile), mid(tile)), white])
-			if sim.over.has(tile):
-				var lane: Dictionary = sim.over[tile]
-				var riders: Array = (lane.items as Array).duplicate()
-				riders.sort_custom(func(x: Dictionary, y: Dictionary) -> bool: return depth(sim.item_pos(tile, x)) < depth(sim.item_pos(tile, y)))
-				for i in riders.size():
-					var it: Dictionary = riders[i]
-					var pos: Vector2 = sim.item_pos(tile, it)
-					var along := 0.5 + (pos - (Vector2(tile) + MID)).dot(Vector2(Art.DIRS[int(lane.dir)]))
-					list.append([d + 0.01 + 0.001 * i, 0, Art.item(it.kind), Transform2D(0.0, seen(pos) + Vector2(0.0, -Art.bridge_lift(along))), white])
-	for id: int in sim.modules:
-		_add_module(list, sim.modules[id])
-	# a rider is its tile's from the tick it sets out for it, so the ones on
-	# the belts either side are drawn again too, each once
-	var again := {}
-	for fr: Array in _fronts:
-		var tile: Vector2i = fr[0]
-		if not _up(tile):
-			continue
-		var d := depth(Vector2(tile) + MID)
-		list.append([d - 0.004, PLAIN, fr[4], fr[5], white])
-		list.append([d - 0.003, BED_FAST if fr[2] else BED, fr[1], fr[3], white])
-		for near: Vector2i in [tile, tile + Art.DIRS[0], tile + Art.DIRS[1], tile + Art.DIRS[2], tile + Art.DIRS[3]]:
-			if again.has(near) or not sim.items.has(near) or not sim.belts.has(near):
+## The fixed belts' chevrons, a row down each, run by the clock: the intake
+## down its column, the deliver belt up its own. They fade in and out at
+## the floor's top and foot.
+func _fill_chevrons() -> void:
+	_chevs.n = 0
+	var run := 0.0 if Motion.reduce else fposmod(Time.get_ticks_msec() / 1000.0 * Art.FIXED_SPEED, Art.CHEVRON_GAP)
+	var long := float(Sim.ROWS)
+	var k := 0
+	while k * Art.CHEVRON_GAP <= long:
+		for up: bool in [false, true]:
+			var y := k * Art.CHEVRON_GAP + (long - run if up else run)
+			y = fposmod(y, long + Art.CHEVRON_GAP)
+			var fade := clampf(minf(y, long - y) / 0.3, 0.0, 1.0)
+			if fade <= 0.0:
 				continue
-			again[near] = true
-			for it: Dictionary in sim.items[near]:
-				if ITEMS.has(it.kind):
-					var up := lerpf(_lifted((it.was as Vector2).lerp(Vector2(near) + MID, 0.02)), Art.BELT_UP, float(sim.alpha))
-					var at := seen(item_at(near, it))
-					list.append([d - 0.002 + 0.000001 * at.y, PLAIN, Art.item(it.kind), Transform2D(0.0, at + Vector2(0.0, -up)), white])
-	list.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
-	var run := -1
-	var wear := -1
-	for e: Array in list:
-		if int(e[1]) != wear:
-			wear = e[1]
-			run += 1
-			if _pool.size() <= run:
-				_runs.append([])
-				_pool.append(layer(_draw_run.bind(run), null, _stand))
-			(_runs[run] as Array).clear()
-			if _pool[run].material != _wears[wear]:
-				_pool[run].material = _wears[wear]
-		(_runs[run] as Array).append(e)
-	for i in range(run + 1, _pool.size()):
-		(_runs[i] as Array).clear()
-	for c in _pool:
-		c.queue_redraw()
+			var x := (float(Sim.COLS) - 0.5) if up else 0.5
+			_chevs.put(Transform2D(0.0, Vector2(1.0, -1.0 if up else 1.0), 0.0, seen(Vector2(x, y))), Color(1.0, 1.0, 1.0, fade))
+		k += 1
 
-## A market that stands built: its box, the two leaves of its hatch, what
-## lies on it, what is falling through it behind the box's near side, and
-## the coins. The box has one face and keeps it toward the eye at every
-## turn; what lies on it rides in from the side it came by as the view has it.
-func _add_market(list: Array, m: Dictionary) -> void:
-	var id: int = m.id
-	var root: Vector2i = m.root
-	var tile := Vector2(root) + MID
-	var d := depth(tile)
-	var box := Transform2D(_turned(root), seen(tile))
-	var white := Color.WHITE
-	var level: int = m.level
-	list.append([d, 0, Art.market(level), box, white])
-	var open := _hatch(id)
-	var shade := 1.0 - 0.34 * open
-	for side in 2:
-		list.append([d + 0.001 * (side + 1), 0, Art.market_door(level), box * Art.market_leaf(side, open), Color(shade, shade, shade)])
-	var falling := false
-	for drop: Dictionary in _drops:
-		if int(drop.id) != id:
-			continue
-		var k := float(drop.t) / float(drop.len)
-		if k < FALL_TO:
-			# to the middle as the leaves give, then down into the dark
-			var fall := smoothstep(FALL_FROM, FALL_TO, k)
-			fall *= fall
-			var off: Vector2 = (drop.off as Vector2) * (1.0 - smoothstep(0.0, OPEN, k))
-			var size := 1.0 - 0.2 * fall
-			var dark := 1.0 - 0.55 * fall
-			list.append([d + 0.003, 0, Art.item(drop.kind),
-				Transform2D(0.0, Vector2(size, size), 0.0, seen(tile + off) + Art.MARKET_TOP + Vector2(0.0, FALL * fall)),
-				Color(dark, dark, dark, 1.0 - smoothstep(0.6, 1.0, fall))])
-			falling = true
-	if falling:
-		list.append([d + 0.004, 0, Art.market_front(level), box, white])
-	var wait: Array = m.wait
-	if not wait.is_empty():
-		list.append([d + 0.005, 0, Art.item(wait[0]), Transform2D(0.0, seen(tile + _lying_off(id)) + Art.MARKET_TOP), white])
-	for drop: Dictionary in _drops:
-		if int(drop.id) != id:
-			continue
-		var t := float(drop.t) - float(drop.len) * COIN_AT
-		if t < 0.0 or t >= COIN:
-			continue
-		# a hop: up, a little way back down, and gone
-		var k := t / COIN
-		var u := k * 0.72
-		var size := 0.34 * (0.5 + 0.5 * Motion.back_out(clampf(k / 0.25, 0.0, 1.0)))
-		list.append([d + 0.006, 0, Art.icon("coin"),
-			Transform2D(0.0, Vector2(size * cos(k * TAU), size), 0.0, seen(tile) + Art.MARKET_TOP + Vector2(0.0, -10.0 - COIN_UP * 4.0 * u * (1.0 - u))),
-			Color(1.0, 1.0, 1.0, 1.0 - smoothstep(0.55, 1.0, k))])
+# --- what lies and rides ---
 
-## A beaver by its tree, looking at it: popped in, its teeth in the wood on
-## a chop.
-func _add_beaver(list: Array, b: Dictionary) -> void:
-	var show: float = b.show
-	if show <= 0.0:
-		return
-	var tile: Vector2i = b.tile
-	var side: float = b.side
-	var s: float = b.size
-	var grow := 1.0
-	var snap := 0.0
-	if not Motion.reduce:
-		grow = Motion.back_out(show) if b.rising else show
-		snap = pow(1.0 - clampf(float(b.bite) / BITE, 0.0, 1.0), 2.0)
-	var reach: float = float(b.girth) + (Beaver.NECK.x + Beaver.TEETH.x - 2.0) * s
-	var at := mid(tile) + Vector2(side * (reach - 3.0 * snap * s), 3.0)
-	# it looks at the trunk: right when it sits on the left
-	var xf := Transform2D(0.0, Vector2(-side * s * grow * (1.0 + 0.06 * snap), s * grow * (1.0 - 0.06 * snap)), 0.0, at)
-	var wag := 0.04 * sin(float(b.age) * 3.0) - 0.12 * snap
-	var d := depth(Vector2(tile) + MID) + 0.01
-	var nod := 0.22 * snap
-	var neck := Beaver.NECK + Vector2(3.0 * snap, 0.0)
-	list.append([d, 1, Beaver.tail(), xf * Transform2D(wag, Beaver.TAIL_AT), Color.WHITE])
-	list.append([d + 0.001, 1, Beaver.body(), xf, Color.WHITE])
-	list.append([d + 0.002, 1, Beaver.head(float(b.bite) < BITE * 0.6), xf * Transform2D(nod, neck), Color.WHITE])
+## An item into the batches by its mesh: a square, or a box by its count.
+func _put(it: Dictionary, xf: Transform2D, held := false, tint := Color.WHITE) -> void:
+	if String(it.get("kind", "")) == "box":
+		(_held_boxes if held else _boxes)[clampi(int(it.get("n", 0)), 0, Sim.BOX_FULL)].put(xf, tint)
+	else:
+		(_held_squares if held else _squares).put(xf, tint)
 
-## A machine: its frame while it is built (rising, the machine coming in
-## under it), then itself and the part of it that says its draw: the fire
-## in the box's mouth, the kiln's port, the retort's smoke.
-func _add_module(list: Array, m: Dictionary) -> void:
-	var root: Vector2i = m.root
-	if not _up(root):
-		return
-	var kind: String = m.kind
-	if kind == "market" and m.built:
-		_add_market(list, m)
-		return
-	# the facing it is drawn at: its ways in and out turn with the view
-	var f: int = seen_facing(m.facing)
-	var at := mid(root)
-	var d := depth(Vector2(root) + MID)
-	if not Sim.SINGLE.has(kind):
-		d += 0.5 * maxf(0.0, Art.depth(Vector2(Art.DIRS[f])))
-	var mesh: ArrayMesh = Art.module(kind, f, int(m.level))
-	var xf := Transform2D(_turned(root), at)
-	if not m.built:
-		var k := clampf(float(m.build), 0.0, 1.0)
-		var foot := footprint(kind, seen_tile(root), f)
-		var corner := Art.at(Vector2(foot[0] as Vector2i))
-		var middle := Art.at(Vector2(foot[0] as Vector2i) + Vector2(foot[1] as Vector2i) * 0.5)
-		if Motion.reduce:
-			list.append([d, 0, Art.frame(foot[1].x, foot[1].y), Transform2D(0.0, corner), Color.WHITE])
-			return
-		list.append([d, 0, mesh, xf, Color(1.0, 1.0, 1.0, smoothstep(0.35, 1.0, k))])
-		# the frame grows up from the footprint's middle on the ground
-		var tall := 0.3 + 0.7 * minf(1.0, k * 1.6)
-		list.append([d + 0.004, 0, Art.frame(foot[1].x, foot[1].y),
-			Transform2D(0.0, Vector2(1.0, tall), 0.0, Vector2(corner.x, middle.y + (corner.y - middle.y) * tall)), Color.WHITE])
-		return
-	list.append([d, 0, mesh, xf, Color.WHITE])
-	var still := Motion.reduce
-	match kind:
-		"engine":
-			list.append([d + 0.005, 0, Art.wheel(), Art.on_wall(at + Art._p(Art.ENGINE_WHEEL, Art.ENGINE_WHEEL_UP), Art.ENGINE_WHEEL_R, float(_spun.get(m.id, 0.4)), 0), Color.WHITE])
-			if float(m.share) > 0.0:
-				# steam off the stack, more the harder it works
-				var hard := clampf(float(m.draw) / Sim.ENGINE_SHAFT, 0.0, 1.0)
-				for i in 2:
-					var k := 0.25 + 0.5 * i if still else fposmod(_t * 0.4 + 0.5 * i + root.y * 0.31, 1.0)
-					var s := 0.5 + 0.7 * k
-					list.append([d + 0.006 + 0.001 * i, 0, Art.smoke(),
-						Transform2D(0.0, Vector2(s, s), 0.0, at + Art._p(Vector2(-0.1, -0.1), 100.0) + Vector2(4.0 + 10.0 * k, -6.0 - 40.0 * k)),
-						Color(1.0, 1.0, 1.0, (0.25 + 0.55 * hard) * sin(k * PI))])
-		"saw":
-			list.append([d + 0.005, 0, Art.wheel(true), Art.on_wall(at + Art.saw_hub(f), Art.SAW_R, float(_spun.get(m.id, 0.0)), f), Color.WHITE])
-		"joiner":
-			if sim.working(m) and float(m.share) > 0.0:
-				for i in 2:
-					var k := 0.3 + 0.4 * i if still else fposmod(_t * 0.9 + 0.5 * i + root.x * 0.37, 1.0)
-					var s := 0.22 + 0.3 * k
-					list.append([d + 0.005 + 0.001 * i, 0, Art.smoke(),
-						Transform2D(0.0, Vector2(s, s), 0.0, at + Art.joiner_dust(f) + Vector2((6.0 if i == 0 else -8.0) * k, -18.0 * k)),
-						Color(0.96, 0.87, 0.68, 0.7 * sin(k * PI))])
-		"firebox":
-			if m.get("stoker", false):
-				list.append([d + 0.004, 0, Art.stoker(), xf, Color.WHITE])
-			var mouth := at + Art.FIREBOX_MOUTH
-			if m.lit:
-				var roar := clampf(float(m.draw) / maxf(1.0, float(m.cap)), 0.0, 1.0)
-				var s := 0.6 + 0.6 * roar + (0.0 if still else 0.05 * sin(_t * 9.0 + root.x))
-				list.append([d + 0.005, 0, Art.fire(), Transform2D(0.0, Vector2(s, s), 0.0, mouth),
-					Color(1.0, 1.0, 1.0, 0.55 + 0.45 * sim.fuel_left(m))])
-			elif not (m.hopper as Array).is_empty():
-				# fuel waits and the fire is out: an ember asks for the tap
-				var a := 0.5 if still else 0.38 + 0.22 * sin(_t * 3.0)
-				list.append([d + 0.005, 0, Art.glow(), Transform2D(0.0, Vector2(0.55, 0.55), 0.0, mouth), Color(1.0, 0.56, 0.3, a)])
-		"kiln":
-			if sim.working(m) and float(m.share) > 0.0 and f != 3:
-				var a := 0.45 + 0.55 * float(m.share) + (0.0 if still else 0.06 * sin(_t * 5.0 + root.y))
-				list.append([d + 0.005, 0, Art.glow(), Transform2D(0.0, Vector2(0.8, 0.8), 0.0, at + Art.KILN_GLOW[f]), Color(1.0, 0.72, 0.4, a)])
-		"retort":
-			if sim.working(m) and float(m.share) > 0.0:
-				for i in 2:
-					var k := 0.25 + 0.5 * i if still else fposmod(_t * 0.35 + 0.5 * i + root.x * 0.37, 1.0)
-					var s := 0.6 + 0.8 * k
-					list.append([d + 0.005 + 0.001 * i, 0, Art.smoke(),
-						Transform2D(0.0, Vector2(s, s), 0.0, at + Art.RETORT_SMOKE[f] + Vector2(4.0 + 12.0 * k, -8.0 - 46.0 * k)),
-						Color(0.93, 0.93, 0.9, (0.3 + 0.6 * float(m.share)) * sin(k * PI))])
+## What lies on the floor and rides the belts, each where the sim has it
+## between two ticks; the box on the table; the intake's queue up its belt;
+## what was sold, riding off.
+func _fill_items() -> void:
+	_squares.n = 0
+	for bx: Batch in _boxes:
+		bx.n = 0
+	for tile: Vector2i in sim.items:
+		var arr: Array = sim.items[tile]
+		var lying: bool = not sim.belts.has(tile)
+		for i in arr.size():
+			var at := seen(item_at(tile, arr[i]))
+			if lying and i >= Sim.LIE.size():
+				at.y -= PILE_UP * (i - Sim.LIE.size() + 1)
+			_put(arr[i], Transform2D(0.0, at))
+	if not sim.table.is_empty():
+		_put(sim.table, Transform2D(0.0, seen(sim.item_pos(Sim.STATIONS.table, sim.table))))
+	# the queue: the front square by the pad, the rest up the belt behind it
+	var pad: Vector2 = Vector2(0.5, float(Sim.STATIONS.intake.y) + 0.5)
+	var moved := 0.0 if Motion.reduce else 1.0 - smoothstep(0.0, FEED_SLIDE, _took)
+	var came := 0.0 if Motion.reduce else 1.0 - smoothstep(0.0, FEED_SLIDE, _fed)
+	for k in int(sim.queue):
+		var up := float(k) + moved
+		if k == int(sim.queue) - 1:
+			up += came
+		_put({"kind": "square"}, Transform2D(0.0, seen(pad - Vector2(0.0, up * QUEUE_GAP))))
+	for g: Dictionary in _gone:
+		var at := _gone_at(g)
+		_put(g, Transform2D(0.0, seen(at)), false, Color(1.0, 1.0, 1.0, clampf((at.y + 0.6) / 0.6, 0.0, 1.0)))
+
+## Where a thing sold is now, in tile space: off the deliver pad onto the
+## belt to its right, then up it and off the top.
+func _gone_at(g: Dictionary) -> Vector2:
+	var from := Vector2(Sim.STATIONS.deliver) + MID
+	var belt := Vector2(float(Sim.COLS) - 0.5, from.y)
+	var t: float = g.t
+	if t < OFF_PAD:
+		return from.lerp(belt, smoothstep(0.0, 1.0, t / OFF_PAD))
+	return belt - Vector2(0.0, (t - OFF_PAD) * OFF_SPEED)
+
+# --- the robots ---
+
+## Every robot: its body tinted by its place, its face by `stuck`, what it
+## holds, its charge and its bubble. The ones on one tile sit side by side.
+func _fill_robots(delta: float) -> void:
+	_bodies.n = 0
+	_held_squares.n = 0
+	for bx: Batch in _held_boxes:
+		bx.n = 0
+	for kind: String in _faces:
+		(_faces[kind] as Batch).n = 0
+	_track.n = 0
+	_charge.n = 0
+	for kind: String in _bubbles:
+		(_bubbles[kind] as Batch).n = 0
+	var robots: Array = sim.robots
+	while _seats.size() < robots.size():
+		_seats.append({"off": Vector2.ZERO, "size": 1.0, "bubble": "", "popped": POP, "new": true})
+	_seats.resize(robots.size())
+	# who shares a tile, by where each is drawn now
+	var by_tile := {}
+	var pos: Array[Vector2] = []
+	for i in robots.size():
+		var p := Bots.pos(robots[i], float(sim.alpha))
+		pos.append(p)
+		var key := Vector2i(p.floor())
+		if not by_tile.has(key):
+			by_tile[key] = []
+		(by_tile[key] as Array).append(i)
+	var ease := 1.0 if Motion.reduce else 1.0 - exp(-SEAT_RATE * delta)
+	for key: Vector2i in by_tile:
+		var them: Array = by_tile[key]
+		var k := them.size()
+		for j in k:
+			var seat: Dictionary = _seats[them[j]]
+			var want_off := Vector2((j - (k - 1) * 0.5) * SPREAD * Art.TILE, 0.0)
+			var want_size: float = SHARED[mini(k, SHARED.size()) - 1]
+			var e := 1.0 if seat.new else ease
+			seat.off = (seat.off as Vector2).lerp(want_off, e)
+			seat.size = lerpf(float(seat.size), want_size, e)
+			seat.new = false
+	# the ones further up the screen first, so a nearer one is over them
+	var order: Array = range(robots.size())
+	order.sort_custom(func(a: int, b: int) -> bool: return pos[a].y < pos[b].y or (pos[a].y == pos[b].y and a < b))
+	for i: int in order:
+		var b: Dictionary = robots[i]
+		var seat: Dictionary = _seats[i]
+		var at := seen(pos[i]) + (seat.off as Vector2)
+		if b.was != b.tile and not Motion.reduce:
+			var along := pos[i].distance_to(Vector2(b.was) + MID)
+			at.y -= BOB * absf(sin(along * PI))
+		var s: float = float(seat.size) * ROBOT_SIZE
+		var xf := Transform2D(0.0, Vector2(s, s), 0.0, at)
+		_bodies.put(xf, TINTS[i % TINTS.size()])
+		var stuck := String(b.stuck)
+		(_faces[stuck if _faces.has(stuck) else ""] as Batch).put(xf)
+		if not (b.held as Dictionary).is_empty():
+			_put(b.held, xf * Transform2D(0.0, Vector2(Art.HELD_SCALE, Art.HELD_SCALE), 0.0, Art.HELD_AT), true)
+		var bar := xf * Transform2D(0.0, Art.BAR_AT)
+		_track.put(bar * Art.battery_bar(1.0), Art.TRACK)
+		var full := Bots.cell(b)
+		var f := float(b.charge) / float(full) if full > 0 else 0.0
+		if f > 0.0:
+			_charge.put(bar * Art.battery_bar(f), Art.battery_tone(f))
+		var said := String(b.bubble)
+		if said == "" and b.charging:
+			said = "charge"
+		if said != String(seat.bubble):
+			seat.bubble = said
+			seat.popped = 0.0
+		seat.popped = float(seat.popped) + delta
+		if _bubbles.has(said):
+			var pop := 1.0 if Motion.reduce else 0.5 + 0.5 * Motion.back_out(clampf(float(seat.popped) / POP, 0.0, 1.0))
+			(_bubbles[said] as Batch).put(xf * Transform2D(0.0, Vector2(pop, pop), 0.0, Art.BUBBLE_AT))
 
 # --- drawing ---
 
-func _draw_ground(ci: CanvasItem) -> void:
-	for o: Array in _order:
-		var k := _risen(o[4])
-		ci.draw_mesh(Art.plate(o[1], o[2], o[3]), null,
-			Transform2D(0.0, Art.at(Vector2((o[0] as Vector2i) * Art.PLATE)) + Vector2(0.0, (1.0 - k) * SUNK)),
-			Color(1.0, 1.0, 1.0, minf(1.0, k * 3.0)))
+func _draw_ground(ci: Node2D) -> void:
+	ci.draw_mesh(_ground_mesh(), null)
 
-## The grass, plate by plate, on the ones that are up.
-func _draw_grass(ci: CanvasItem) -> void:
-	for o: Array in _order:
-		if _risen(o[4]) < 1.0:
-			continue
-		ci.draw_set_transform(Art.at(Vector2((o[0] as Vector2i) * Art.PLATE)))
-		for mm: MultiMesh in Art.grass(o[1], o[3]):
-			if mm.instance_count > 0:
-				ci.draw_multimesh(mm, null)
+func _draw_chevrons(ci: Node2D) -> void:
+	_chevs.draw(ci)
 
-func _draw_under(ci: CanvasItem) -> void:
+func _draw_under(ci: Node2D) -> void:
 	for key: Variant in _under_mms:
 		if (_under_mms[key] as MultiMesh).visible_instance_count > 0:
 			ci.draw_multimesh(_under_mms[key], null)
 
-func _draw_belts(ci: CanvasItem) -> void:
+func _draw_belts(ci: Node2D) -> void:
 	for mm in _bed_mms:
 		if mm.visible_instance_count > 0:
 			ci.draw_multimesh(mm, null)
 
-func _draw_fast(ci: CanvasItem) -> void:
+func _draw_fast(ci: Node2D) -> void:
 	for mm in _fast_mms:
 		if mm.visible_instance_count > 0:
 			ci.draw_multimesh(mm, null)
 
-func _draw_flat(ci: CanvasItem) -> void:
-	if plus:
-		for p: Vector2i in _edges:
-			ci.draw_mesh(Art.plus(), null, Transform2D(0.0, plus_at(p)))
+## A bridge's deck over its belt, and what crosses it over the deck.
+func _draw_decks(ci: Node2D) -> void:
+	for d: Array in _decks:
+		ci.draw_mesh(d[0], null, d[1])
+	for tile: Vector2i in sim.over:
+		var lane: Dictionary = sim.over[tile]
+		for it: Dictionary in lane.items:
+			var pos: Vector2 = sim.item_pos(tile, it)
+			var along := 0.5 + (pos - (Vector2(tile) + MID)).dot(Vector2(Art.DIRS[int(lane.dir)]))
+			ci.draw_mesh(Art.item(it), null, Transform2D(0.0, seen(pos) - Vector2(0.0, Art.bridge_lift(along))))
+
+func _draw_items(ci: Node2D) -> void:
+	_squares.draw(ci)
+	for bx: Batch in _boxes:
+		bx.draw(ci)
+
+func _draw_robots(ci: Node2D) -> void:
+	_bodies.draw(ci)
+	for kind: String in _faces:
+		(_faces[kind] as Batch).draw(ci)
+	_held_squares.draw(ci)
+	for bx: Batch in _held_boxes:
+		bx.draw(ci)
+
+func _draw_air(ci: Node2D) -> void:
+	_track.draw(ci)
+	_charge.draw(ci)
+	for kind: String in _bubbles:
+		(_bubbles[kind] as Batch).draw(ci)
+
+func _draw_flat(ci: Node2D) -> void:
 	for g: Array in ghosts:
 		ci.draw_mesh(g[0], null, g[1], g[2] if g.size() > 2 else Color.WHITE)
-
-## The shadows, each under its own tree's lean and no other.
-func _draw_shade(ci: CanvasItem) -> void:
-	for id: int in sim.trees:
-		var tr: Dictionary = sim.trees[id]
-		if not _up(tr.tile) or is_rock(tr):
-			continue
-		var size := _size(id)
-		if size.x > 0.0:
-			ci.draw_mesh(Art.shade(tr.look), null, Art.cast(mid(tr.tile), size))
-
-func _draw_items(ci: CanvasItem) -> void:
-	for kind: String in ITEMS:
-		if int(_item_n[kind]) > 0:
-			ci.draw_multimesh(_item_mm[kind], null)
-
-func _draw_run(ci: CanvasItem, i: int) -> void:
-	for e: Array in _runs[i]:
-		ci.draw_mesh(e[2], null, e[3], e[4])
-
-## Chips, one MultiMesh.
-func _draw_air(ci: CanvasItem) -> void:
-	if _bits.is_empty():
-		return
-	if _bit_mm == null:
-		_bit_mm = MultiMesh.new()
-		_bit_mm.transform_format = MultiMesh.TRANSFORM_2D
-		_bit_mm.use_colors = true
-		_bit_mm.mesh = Art.leaf()
-		_bit_mm.instance_count = BITS
-	var n := 0
-	for bit: Dictionary in _bits:
-		var t: float = bit.t
-		var a := clampf((float(bit.life) - t) / 0.2, 0.0, 1.0)
-		var flat := 0.35 + 0.65 * absf(cos(t * 9.0 + float(bit.turn)))
-		var s: float = bit.size
-		_bit_mm.set_instance_transform_2d(n, Transform2D(float(bit.turn), Vector2(s, s * flat), 0.0, bit.pos))
-		_bit_mm.set_instance_color(n, Color(bit.col as Color, a))
-		n += 1
-	_bit_mm.visible_instance_count = n
-	ci.draw_multimesh(_bit_mm, null)
