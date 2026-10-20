@@ -363,6 +363,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <button data-tab="knots">Untangle &middot; knots</button>
     <button data-tab="valley">Valley &middot; grove</button>
     <button data-tab="nightlight">Nightlight &middot; arcade</button>
+    <button data-tab="factory">Factory &middot; rewired</button>
   </nav>
 </header>
 
@@ -4122,6 +4123,166 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <li><b>Left out of the first build:</b> a black hole and anything past a star, a tutorial, sounds and haptics, reduce motion, any ad.</li>
   </ul>
 </section>
+<section class="tab-panel" id="tab-factory">
+<style>
+#tab-factory{
+  --floor:#efe8d9; --panel:#fffaf1; --ink:#2f2a25; --muted:#6f655b; --line:#e3d8c6; --dot:#d8ccb6;
+  --belt:#5f3c25; --card:#c68a44; --card-ink:#7a4e1c; --red:#d9574a; --green:#4e9e62; --yellow:#e2b23a;
+  --node:#ffffff; --wire:#8a7f72; --live:#c68a44; --sel:#3f7fd6;
+  --f-display:"Fredoka","Trebuchet MS",system-ui,sans-serif; --f-body:-apple-system,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif; --f-mono:ui-monospace,Menlo,monospace;
+  h2,h3{margin:0;padding:0;border:0;font-family:var(--f-display);font-weight:600;line-height:1.15}
+  h2{font-size:1.4rem} h3{font-size:1.05rem}
+  p{margin:0;max-width:62ch} ul,ol{margin:0;padding-left:1.1em} .lede{font-size:1.02rem;color:var(--muted);max-width:62ch}
+  .muted{color:var(--muted)} .mono{font-family:var(--f-mono);font-size:.85em}
+  .guess{font-size:.74rem;font-family:var(--f-mono);color:var(--card-ink);border:1px dashed var(--card);border-radius:6px;padding:0 6px;white-space:nowrap}
+  button{font:inherit;color:inherit;background:var(--node);border:1.5px solid var(--line);border-radius:10px;padding:6px 12px;cursor:pointer;line-height:1.2}
+  .fr-wrap{display:flex;flex-direction:column;gap:36px;margin-top:18px}
+/* stage */
+.fr-stage{display:grid;grid-template-columns:400px minmax(240px,1fr);gap:28px;align-items:start}
+@media (max-width:760px){.fr-stage{grid-template-columns:1fr}}
+.fr-phone{width:100%;max-width:400px;justify-self:center;background:var(--panel);border:7px solid #2A3136;border-radius:34px;overflow:hidden;position:relative;
+  box-shadow:0 20px 50px -20px rgba(0,0,0,.45);user-select:none;-webkit-user-select:none}
+.fr-floor-wrap{position:relative;background:var(--floor)}
+.fr-floor-wrap canvas{display:block;width:100%;height:auto;aspect-ratio:400/320;touch-action:none}
+.tutor{position:absolute;left:10px;top:10px;right:84px;background:var(--node);border:1px solid var(--line);border-radius:12px;padding:7px 10px;font-size:.78rem;line-height:1.3;pointer-events:none}
+.tutor b{font-family:var(--f-display);font-weight:500;display:block;font-size:.86rem}
+.coins{position:absolute;right:10px;top:10px;background:var(--node);border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-family:var(--f-mono);font-size:.78rem;font-variant-numeric:tabular-nums}
+.coins.flash{border-color:var(--live);box-shadow:0 0 0 3px color-mix(in srgb,var(--live) 35%,transparent)}
+.sheet{background:var(--panel);border-top:1px solid var(--line);display:flex;flex-direction:column}
+.tabs{display:flex;gap:6px;padding:8px 10px 0;align-items:center}
+.tabs button{border-radius:999px;padding:4px 12px;font-size:.82rem;font-family:var(--f-display);font-weight:500}
+.tabs button.on{border-color:var(--ink);background:var(--ink);color:var(--panel)}
+.tabs .fault{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--red);margin-left:5px;vertical-align:middle}
+.pane{overflow-x:auto;overflow-y:hidden;height:336px;background-image:radial-gradient(var(--dot) 1px,transparent 1.2px);background-size:16px 16px;touch-action:pan-x}
+.graph{position:relative;height:336px}
+.graph svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
+.graph svg path{fill:none;stroke:var(--wire);stroke-width:2}
+.graph svg path.sub{stroke-dasharray:4 5}
+.graph svg path.temp{stroke:var(--sel);stroke-dasharray:4 4}
+.node{position:absolute;background:var(--node);border:1.5px solid var(--line);border-radius:12px;display:flex;align-items:center;justify-content:center;gap:4px;
+  font-family:var(--f-display);font-weight:500;cursor:pointer;touch-action:none}
+.node.sel{border-color:var(--sel);box-shadow:0 0 0 3px color-mix(in srgb,var(--sel) 25%,transparent)}
+.node.run{border-color:var(--live);box-shadow:0 0 0 3px color-mix(in srgb,var(--live) 35%,transparent)}
+.node.dead{border-style:dashed;color:var(--muted)}
+.node.body{border-radius:16px}
+.node.part{border-radius:50%}
+.node .lbl{position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:5px;font-family:var(--f-body);font-weight:600;font-size:.72rem;white-space:nowrap;color:var(--ink);pointer-events:none}
+.node .lbl small{display:block;font-weight:400;color:var(--muted);font-size:.66rem;text-align:center}
+.node .mv{font-size:1.15rem;line-height:1;display:flex;align-items:center;gap:5px;font-variant-numeric:tabular-nums}
+.node .mv .n{font-family:var(--f-mono);font-size:.95rem}
+.port{position:absolute;background:var(--wire);cursor:pointer;touch-action:none}
+.port.in{left:-5px;top:50%;width:6px;height:18px;margin-top:-9px;border-radius:2px}
+.port.in::after{content:"";position:absolute;inset:-10px}
+.port.out{right:-7px;top:50%;width:14px;height:14px;margin-top:-7px;border-radius:50%}
+.port.out::after{content:"";position:absolute;inset:-12px}
+.port.out.loose{box-shadow:0 0 0 3px color-mix(in srgb,var(--red) 40%,transparent);background:var(--red)}
+.port.out.arm{box-shadow:0 0 0 4px color-mix(in srgb,var(--sel) 40%,transparent);background:var(--sel)}
+.port.sub{left:50%;bottom:-7px;width:10px;height:10px;margin-left:-5px;transform:rotate(45deg);border-radius:2px;background:var(--sel)}
+.port.subin{left:50%;top:-6px;width:10px;height:10px;margin-left:-5px;transform:rotate(45deg);border-radius:2px;background:var(--sel)}
+.plabel{position:absolute;font-size:.6rem;color:var(--muted);transform:translateX(-50%);pointer-events:none;font-family:var(--f-mono)}
+.plus{position:absolute;width:22px;height:22px;border:1.5px solid var(--wire);border-radius:5px;background:var(--panel);color:var(--wire);display:flex;align-items:center;justify-content:center;
+  font-size:16px;line-height:1;cursor:pointer;font-family:var(--f-mono)}
+.plus::after{content:"";position:absolute;inset:-9px}
+.plus.mid{width:18px;height:18px;border-radius:50%;font-size:13px;opacity:.85}
+.plus:hover,.plus.hot{border-color:var(--sel);color:var(--sel)}
+.bolt{position:absolute;left:-18px;top:50%;margin-top:-9px;color:var(--live);font-size:14px;pointer-events:none}
+.strip{min-height:74px;border-top:1px solid var(--line);padding:8px 10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:.8rem}
+.strip .title{font-family:var(--f-display);font-weight:500;font-size:.86rem;margin-right:4px}
+.strip button{padding:6px 10px;font-size:.8rem}
+.strip button small{color:var(--muted);font-size:.68rem}
+.strip button.on{border-color:var(--ink);background:var(--ink);color:var(--panel)}
+.strip button.lock{opacity:.5;cursor:default}
+.strip button.danger{border-color:color-mix(in srgb,var(--red) 50%,var(--line))}
+.strip .seg{display:inline-flex;align-items:center;border:1.5px solid var(--line);border-radius:10px;overflow:hidden}
+.strip .seg button{border:0;border-radius:0;min-width:34px}
+.strip .seg .val{font-family:var(--f-mono);min-width:28px;text-align:center;font-variant-numeric:tabular-nums}
+.strip .hint{color:var(--muted);flex-basis:100%}
+.strip .hint.sel{color:var(--sel)}
+
+/* steps */
+.fr-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.fr-steps li{display:grid;grid-template-columns:30px 1fr;gap:10px;padding:10px 12px;border-radius:12px;border:1px solid transparent;color:var(--muted);transition:background .2s}
+.fr-steps li .n{width:26px;height:26px;border-radius:50%;border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;font-family:var(--f-mono);font-size:.74rem}
+.fr-steps li.now{background:var(--panel);border-color:var(--line);color:var(--ink)}
+.fr-steps li.now .n{border-color:var(--live);background:var(--live);color:#fff}
+.fr-steps li.done{color:var(--ink)}
+.fr-steps li.done .n{border-color:var(--green);background:var(--green);color:#fff}
+.fr-steps li h3{font-size:.98rem}
+.fr-steps li p{font-size:.86rem;max-width:40ch}
+.fr-steps li .act{margin-top:6px;display:flex;gap:6px;flex-wrap:wrap}
+.fr-steps li .act button{font-size:.8rem;padding:5px 10px}
+
+/* notes */
+.fr-notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:28px}
+.fr-note{display:flex;flex-direction:column;gap:12px;min-width:0}
+.closeup{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;overflow-x:auto}
+.closeup svg{display:block;max-width:100%;height:auto}
+.closeup text{font-family:var(--f-body);font-size:11.5px;fill:var(--ink)}
+.closeup text.m{fill:var(--muted)}
+.closeup .nb{fill:var(--node);stroke:var(--line);stroke-width:1.5}
+.closeup .w{fill:none;stroke:var(--wire);stroke-width:2}
+.closeup .cl{fill:none;stroke:var(--sel);stroke-width:1;stroke-dasharray:3 3}
+.tbl{border:1px solid var(--line);border-radius:10px;background:var(--panel);overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+th,td{text-align:left;padding:8px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--f-mono);font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500}
+tr:last-child td{border-bottom:0}
+/* road */
+.fr-road{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:0;position:relative}
+.fr-road::before{content:"";position:absolute;left:19px;top:20px;bottom:20px;width:2px;background:var(--line)}
+.fr-road li{display:grid;grid-template-columns:40px 1fr;gap:14px;padding:14px 0;align-items:start}
+.fr-road .dot{width:40px;height:40px;border-radius:50%;background:var(--panel);border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-family:var(--f-mono);font-size:.8rem;position:relative;z-index:1}
+.fr-road li.now .dot{border-color:var(--live);background:var(--live);color:#fff}
+.fr-road .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:grid;grid-template-columns:1fr 1fr;gap:10px 22px;min-width:0}
+@media (max-width:640px){.fr-road .card{grid-template-columns:1fr}}
+.fr-road .card h3{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:baseline;gap:10px}
+.fr-road .card h3 .when{font-family:var(--f-mono);font-size:.72rem;font-weight:500;color:var(--card-ink);border:1px dashed var(--card);border-radius:6px;padding:0 6px}
+.fr-road .k{font-family:var(--f-mono);font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:3px}
+.fr-road .card p{font-size:.9rem;max-width:none}
+.fr-road .card .chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px}
+.chip{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-mono);font-size:.74rem;padding:1px 8px;border-radius:999px;background:var(--node);border:1.5px solid var(--line);white-space:nowrap}
+.chip.part{border-color:var(--sel)}
+.chip.node{border-color:var(--wire)}
+.chip.thing{border-color:var(--card)}
+.fr-road .break{grid-column:1/-1;border-top:1px dashed var(--line);padding-top:8px}
+}
+</style>
+<div class="fr-wrap">
+<div style="display:flex;flex-direction:column;gap:8px">
+  <h2>Factory &middot; rewired <span class="pill blue">concept</span></h2>
+  <p class="lede">One floor, three robots, three faults. A robot is a body with parts fitted under it; each part puts a kind of node on its sheet, and the sheet is the robot's whole program. Every loop walks back to one charging bay, so a wasteful route is paid twice. Nothing stops you wiring something useless. Spec: <code>docs/superpowers/specs/2026-10-20-factory-rewired-design.md</code>.</p>
+  <p class="muted" style="font-size:.9rem">Grey squares only, no truck, no levels; the pack table lets go of a box only when it holds four. Colours, stamps and shapes are milestones 3 and 4 of the road below. Pick the tab with <code>#factory</code>.</p>
+</div>
+<section class="fr-stage">
+  <div class="fr-phone" id="fr-phone">
+    <div class="fr-floor-wrap">
+      <canvas id="fr-floor" width="400" height="320" aria-label="the factory floor"></canvas>
+      <div class="tutor" id="fr-tutor"></div>
+      <div class="coins" id="fr-coins">0 coins</div>
+    </div>
+    <div class="sheet">
+      <div class="tabs" id="fr-tabs"></div>
+      <div class="pane" id="fr-pane"><div class="graph" id="fr-graph"><svg id="fr-wires"></svg></div></div>
+      <div class="strip" id="fr-strip"></div>
+    </div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
+    <h2 style="font-size:1.2rem">The first session, step by step</h2>
+    <ol class="fr-steps" id="fr-steps"></ol>
+    <p class="muted" style="font-size:.84rem">Every step can be done by hand on the phone, or watched with <i>Show me</i>. The floor keeps running while you edit. Changing a robot sends it back to its dock and restarts its program. <span class="guess">my call</span></p>
+  </div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:14px">
+  <h2>The road ahead</h2>
+  <p class="lede" style="font-size:.98rem">Each milestone waits until the player is comfortable, then puts one new thing on the floor that the current programs handle badly. A new part gives the node that handles it. Nothing is a level: the floor only grows.</p>
+  <ol class="fr-road" id="fr-road"></ol>
+  <p class="muted" style="font-size:.84rem">A milestone opens on pace, never on a total: the line has to ship at that rate for a whole minute, so waiting with a slow line never gets there. The rates are placeholders to tune in play. <span class="guess">my call: the numbers</span></p>
+</section>
+
+</div>
+</section>
+
 </main>
 
 <script>
@@ -23618,6 +23779,306 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
   labels(); caption(); requestAnimationFrame(frame);
 })();
 
+</script>
+
+<script>
+/* ---------- the factory rewired mock: robots, parts, a node sheet, the bay ---------- */
+(function(){
+  const panel=document.getElementById("tab-factory");if(!panel)return;const $=id=>panel.querySelector("#fr-"+id);
+  const css=n=>getComputedStyle(panel).getPropertyValue(n).trim();
+  const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // ---------- floor ----------
+  const TS=40,COLS=10,ROWS=8,STEP_S=.3,ACT_S=.35;
+  const S={charger:[1,1],intake:[1,5],stack:[4,1],table:[4,5],deliver:[8,5]};
+  const BAY=S.charger;
+  const D={"→":[1,0],"←":[-1,0],"↓":[0,1],"↑":[0,-1]};
+  const DIRS=["←","↑","↓","→"];
+  const PARTS={
+    treads:{name:"Treads",gives:["move"],glyph:"⚙"},
+    gripper:{name:"Gripper",gives:["pick","release"],glyph:"✊"},
+    battery:{name:"Battery",gives:[],glyph:"▮",sub:"standard plug"},
+    fast:{name:"Fast treads",gives:["move"],glyph:"⚡",price:30,note:"Move twice as fast"},
+    plug:{name:"Fast plug",gives:[],glyph:"⌁",price:40,note:"charges twice as fast at the bay"},
+    body2:{name:"Second body",gives:[],glyph:"☺",price:60,note:"a fourth robot"},
+    counter:{name:"Counter",gives:["repeat"],glyph:"#",later:true,note:"Repeat"},
+    scan:{name:"Scan",gives:["if"],glyph:"◉",later:true,note:"If colour"}};
+  const NODES={move:{name:"Move",part:"treads"},pick:{name:"Pick",part:"gripper"},release:{name:"Release",part:"gripper"}};
+  const chain=(ids,loose)=>{const nx={body:ids[0]};ids.forEach((id,i)=>nx[id]=loose===id?null:(ids[i+1]||"body"));return nx};
+  const BOTS=[
+    {name:"Picker",dock:BAY,parts:["treads","battery"],
+     nodes:{a:{t:"move",d:"↓",n:4},b:{t:"move",d:"→",n:3},c:{t:"release"},d:{t:"move",d:"←",n:3},e:{t:"move",d:"↑",n:4}},order:["a","b","c","d","e"],next:chain(["a","b","c","d","e"])},
+    {name:"Boxer",dock:BAY,parts:["treads","gripper","battery"],
+     nodes:{a:{t:"move",d:"→",n:3},b:{t:"pick"},c:{t:"move",d:"↓",n:3},d:{t:"release"},e:{t:"move",d:"↑",n:3},f:{t:"move",d:"←",n:3}},order:["a","b","c","d","e","f"],next:chain(["a","b","c","d","e","f"])},
+    {name:"Shipper",dock:BAY,parts:["treads","gripper","battery"],
+     nodes:{a:{t:"move",d:"→",n:3},b:{t:"move",d:"↓",n:4},c:{t:"pick"},d:{t:"move",d:"→",n:4},e:{t:"release"},f:{t:"move",d:"←",n:4},g:{t:"move",d:"↑",n:4},h:{t:"move",d:"←",n:3}},order:["a","b","c","d","e","f","g","h"],next:chain(["a","b","c","d","e","f","g","h"],"c")},
+  ];
+  const bin={gripper:1};
+  let coins=0,queue=6,table=null,floor={},feed=0,flash=0,speed=1,boxOnTableEver=false,shipped=[],uid=0;
+  const key=(x,y)=>x+","+y;
+  function stationAt(x,y){for(const k in S)if(S[k][0]===x&&S[k][1]===y)return k;return null}
+  function walk(b){const ids=[];let id=b.next.body;while(id&&id!=="body"&&!ids.includes(id)&&b.nodes[id]){ids.push(id);id=b.next[id]}return{ids,closed:id==="body"}}
+  function can(b,t){const p=NODES[t].part;return b.parts.includes(p)||(p==="treads"&&b.parts.includes("fast"))}
+  function net(b){let x=0,y=0;walk(b).ids.forEach(id=>{const n=b.nodes[id];if(n.t==="move"&&can(b,"move")){x+=D[n.d][0]*n.n;y+=D[n.d][1]*n.n}});return x===0&&y===0}
+  function bubble(b,s,t){b.bub=s;b.bubT=t||.9}
+  const CAP=30,CH=.08; // battery units; seconds to put one unit back at the bay
+  function onDock(b){return b.tx===b.dock[0]&&b.ty===b.dock[1]}
+  const rate=b=>CH/(b.parts.includes("plug")?2:1);
+  function home(b){b.tx=b.dock[0];b.ty=b.dock[1];b.x=b.tx;b.y=b.ty;b.held=null;b.pc="body";b.stuck=false;b.flat=false;b.bub="";b.bat=CAP;begin(b)}
+  function begin(b){const n=b.pc==="body"?null:b.nodes[b.pc];b.t=0;b.charging=false;
+    if(!b.parts.includes("battery")){b.stuck=true;bubble(b,"no cell",1e9);return}
+    if(!n){if(onDock(b)&&b.bat<CAP){b.charging=true;b.bat0=b.bat;b.dur=(CAP-b.bat)*rate(b)}else b.dur=.15;return}
+    if(n.t==="move"){b.left=n.n;b.dur=STEP_S/(b.parts.includes("fast")?2:1)}else b.dur=ACT_S}
+  function drain(b){b.bat-=1;if(b.bat<=0){b.bat=0;b.stuck=true;b.flat=true;bubble(b,"flat",1e9);return true}return false}
+  function advance(b){if(b.charging){b.bat=CAP;b.charging=false}const nx=b.next[b.pc];
+    if(nx===null||nx===undefined||(nx!=="body"&&!b.nodes[nx])){b.stuck=true;bubble(b,"?",1e9);return}
+    b.pc=nx;begin(b)}
+  let boxTimes=[];
+  function paceText(){boxTimes=boxTimes.filter(t=>T-t<60);if(boxTimes.length<2)return"";const gap=(boxTimes[boxTimes.length-1]-boxTimes[0])/(boxTimes.length-1);return" · a box every "+Math.round(gap)+" s"}
+  function showCoins(){const s=coins+(coins===1?" coin":" coins")+paceText();if($("coins").textContent!==s)$("coins").textContent=s}
+  function pay(it){if(it.k==="sq")coins+=1;else if(it.n>=4){coins+=6;flash=1;boxTimes.push(T)}else coins+=it.n;showCoins()}
+  function act(b,n){const here=key(b.tx,b.ty),st=stationAt(b.tx,b.ty);
+    if(n.t==="pick"){if(b.held)return true;
+      if(st==="intake"){if(queue>0){queue--;b.held={k:"sq"}}return true}
+      if(st==="stack"){b.held={k:"box",n:0};return true}
+      if(st==="table"){if(table&&table.n>=4){b.held=table;table=null}return true}
+      const f=floor[here];if(f&&f.length)b.held=f.pop();return true}
+    if(n.t==="release"){if(!b.held)return true;
+      if(st==="table"){
+        if(b.held.k==="box"){if(table)return false;table=b.held;b.held=null;boxOnTableEver=true;return true}
+        if(!table||table.n>=4)return false;table.n++;b.held=null;return true}
+      if(st==="deliver"){pay(b.held);shipped.push({y:5,it:b.held});b.held=null;return true}
+      (floor[here]=floor[here]||[]).push(b.held);b.held=null;return true}
+    return true}
+  function tick(b,dt){
+    if(b.bub&&b.bubT<1e8){b.bubT-=dt;if(b.bubT<=0)b.bub=""}
+    if(b.stuck)return;
+    b.t+=dt;const n=b.pc==="body"?null:b.nodes[b.pc];
+    if(b.charging){b.bat=b.bat0+(CAP-b.bat0)*Math.min(1,b.t/b.dur);bubble(b,"⚡",.2)}
+    if(n&&n.t==="move"&&can(b,"move")){
+      const d=D[n.d],nx=b.tx+d[0],ny=b.ty+d[1];
+      if(nx<0||nx>=COLS||ny<0||ny>=ROWS){if(b.t>=ACT_S){if(!drain(b)){bubble(b,"!");advance(b)}}return}
+      const k=Math.min(1,b.t/b.dur);b.x=b.tx+d[0]*k;b.y=b.ty+d[1]*k;
+      if(b.t>=b.dur){b.tx=nx;b.ty=ny;b.x=nx;b.y=ny;b.left--;if(drain(b))return;if(b.left>0)b.t=0;else advance(b)}
+      return}
+    if(b.t>=b.dur){
+      if(!n){advance(b);return}
+      if(!can(b,n.t)){if(!drain(b)){bubble(b,"!");advance(b)}return}
+      if(act(b,n)){if(!drain(b))advance(b)}else{b.t=b.dur-.3;bubble(b,"…",.4)}}
+  }
+  BOTS.forEach(home);
+  // drawing
+  const cv=$("floor"),ctx=cv.getContext("2d");
+  function rr(x,y,w,h,r){ctx.beginPath();ctx.roundRect(x,y,w,h,r)}
+  function item(it,x,y,s){
+    if(it.k==="sq"){ctx.fillStyle=css("--muted");rr(x-s*.32,y-s*.32,s*.64,s*.64,3);ctx.fill();return}
+    ctx.fillStyle=css("--card");rr(x-s/2,y-s/2,s,s,5);ctx.fill();ctx.strokeStyle=css("--card-ink");ctx.lineWidth=1.5;ctx.stroke();
+    for(let i=0;i<Math.min(4,it.n||0);i++){ctx.fillStyle=css("--muted");rr(x-s/2+4+(i%2)*(s/2-2),y-s/2+4+Math.floor(i/2)*(s/2-2),s/2-6,s/2-6,2);ctx.fill()}}
+  function pad(k,label){const [x,y]=S[k];ctx.fillStyle=css("--panel");ctx.strokeStyle=css("--line");ctx.lineWidth=2;rr(x*TS+2,y*TS+2,TS-4,TS-4,8);ctx.fill();ctx.stroke();
+    ctx.fillStyle=css("--muted");ctx.font="600 10px Nunito Sans, sans-serif";ctx.textAlign="center";ctx.fillText(label,x*TS+TS/2,y*TS+TS+11)}
+  function belt(col,dir,t){ctx.fillStyle=css("--belt");ctx.fillRect(col*TS+6,0,TS-12,ROWS*TS);ctx.strokeStyle=css("--floor");ctx.lineWidth=2;
+    const off=((t*40*dir)%20+20)%20;for(let y=-20;y<ROWS*TS+20;y+=20){const yy=y+off;ctx.beginPath();ctx.moveTo(col*TS+12,yy-4*dir);ctx.lineTo(col*TS+TS/2,yy+4*dir);ctx.lineTo(col*TS+TS-12,yy-4*dir);ctx.stroke()}}
+  let selected=0,T=0;
+  function draw(){
+    const W=cv.width,H=cv.height;ctx.clearRect(0,0,W,H);ctx.fillStyle=css("--floor");ctx.fillRect(0,0,W,H);
+    ctx.fillStyle=css("--dot");for(let x=TS;x<W;x+=TS)for(let y=TS;y<H;y+=TS){ctx.beginPath();ctx.arc(x,y,1.2,0,7);ctx.fill()}
+    belt(0,1,T);belt(9,-1,T);
+    for(let i=0;i<queue;i++)item({k:"sq"},TS/2,TS*5.5-i*22,22);
+    shipped.forEach(s=>item(s.it,9*TS+TS/2,s.y*TS+TS/2,26));
+    pad("intake","intake");pad("stack","boxes");pad("table","pack table");pad("deliver","deliver");
+    pad("charger","charger");ctx.fillStyle=css("--live");ctx.font="700 18px Nunito Sans, sans-serif";ctx.textAlign="center";ctx.fillText("⚡",BAY[0]*TS+TS/2,BAY[1]*TS+TS/2+7);
+    ctx.strokeStyle=css("--belt");ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(BAY[0]*TS+4,BAY[1]*TS+TS/2);ctx.lineTo(0,BAY[1]*TS+TS/2);ctx.stroke();
+    for(let i=0;i<3;i++)item({k:"box",n:0},S.stack[0]*TS+TS/2,S.stack[1]*TS+TS/2-i*4,26);
+    if(table)item(table,S.table[0]*TS+TS/2,S.table[1]*TS+TS/2,28);
+    for(const k in floor){const [x,y]=k.split(",").map(Number);floor[k].forEach((it,i)=>item(it,x*TS+TS/2+i*3,y*TS+TS/2-i*3,20))}
+    BOTS.forEach((b,i)=>{const x=b.x*TS+TS/2,y=b.y*TS+TS/2;
+      ctx.fillStyle=css("--ink");rr(x-13,y+6,26,8,3);ctx.fill();
+      ctx.fillStyle=css("--node");ctx.strokeStyle=i===selected?css("--sel"):css("--ink");ctx.lineWidth=i===selected?3:2;rr(x-12,y-12,24,22,8);ctx.fill();ctx.stroke();
+      ctx.fillStyle=css("--ink");ctx.beginPath();ctx.arc(x-4,y-3,2,0,7);ctx.arc(x+4,y-3,2,0,7);ctx.fill();
+      if(b.held)item(b.held,x+12,y-14,18);
+      const f=b.bat/CAP;ctx.fillStyle=css("--line");rr(x-9,y-20,18,4,2);ctx.fill();
+      ctx.fillStyle=f>.5?css("--green"):f>.25?css("--yellow"):css("--red");if(f>0){rr(x-9,y-20,18*f,4,2);ctx.fill()}
+      if(b.bub){const bad=b.bub==="?"||b.bub==="flat",bw=b.bub.length>1&&b.bub!=="…"?30:18;ctx.fillStyle=css("--node");ctx.strokeStyle=bad?css("--red"):b.bub==="⚡"?css("--live"):css("--line");ctx.lineWidth=1.5;rr(x-bw/2,y-42,bw,18,6);ctx.fill();ctx.stroke();
+        ctx.fillStyle=bad?css("--red"):b.bub==="⚡"?css("--live"):css("--ink");ctx.font="700 11px Nunito Sans, sans-serif";ctx.textAlign="center";ctx.fillText(b.bub,x,y-29)}
+      if(b.pc==="body"||b.stuck){ctx.fillStyle=css("--muted");ctx.font="600 9px Nunito Sans, sans-serif";ctx.textAlign="center";ctx.fillText(b.name,x,y+24)}});
+  }
+  cv.addEventListener("pointerdown",e=>{const r=cv.getBoundingClientRect();const px=(e.clientX-r.left)*cv.width/r.width,py=(e.clientY-r.top)*cv.height/r.height;
+    let best=-1,bd=30;BOTS.forEach((b,i)=>{const d=Math.hypot(b.x*TS+TS/2-px,b.y*TS+TS/2-py);if(d<bd){bd=d;best=i}});if(best>=0)select(best)});
+
+  // ---------- sheet ----------
+  const graph=$("graph"),wires=$("wires"),strip=$("strip");
+  let sel=null,mode=null,pending=null,drag=null;
+  function select(i){selected=i;sel=null;mode=null;pending=null;render();check()}
+  function layout(b){const w=walk(b);const ids=w.ids.concat(b.order.filter(i=>!w.ids.includes(i)));
+    let x=20+64+40;const pos={body:{x:20,y:96,w:64,h:64}};
+    ids.forEach(id=>{const wd=b.nodes[id].t==="move"?72:56;pos[id]={x,y:100,w:wd,h:56};x+=wd+40});
+    return{ids,pos,width:Math.max(380,x+40)}}
+  function glyph(t){return t==="pick"?`<svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 3v6M11 9l-5 5M11 9l5 5"/><rect x="7" y="15" width="8" height="5" rx="1.5" fill="currentColor" stroke="none"/></svg>`
+    :t==="release"?`<svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 3v5M11 8l-6 3M11 8l6 3"/><rect x="7" y="15" width="8" height="5" rx="1.5" fill="currentColor" stroke="none"/></svg>`:""}
+  function faulty(b){return !walk(b).closed||walk(b).ids.some(id=>!can(b,b.nodes[id].t))||!walk(b).ids.some(id=>b.nodes[id].t==="pick")}
+  function render(){
+    const b=BOTS[selected];const L=layout(b);const P=L.pos;const cy=128;
+    $("tabs").innerHTML=BOTS.map((x,i)=>`<button class="${i===selected?"on":""}" data-i="${i}">${x.name}${faulty(x)?`<span class="fault"></span>`:""}</button>`).join("")+`<span class="muted" style="margin-left:auto;font-size:.72rem">program sheet</span>`;
+    $("tabs").querySelectorAll("button").forEach(el=>el.onclick=()=>select(+el.dataset.i));
+    graph.style.width=L.width+"px";
+    let h="",w="";
+    h+=`<div class="node body ${sel==="body"?"sel":""}" data-node="body" style="left:20px;top:96px;width:64px;height:64px;font-size:20px"><span class="bolt">⚡</span>• •<span class="port in" data-in="body"></span><span class="port out ${b.next.body==null?"loose":""} ${pending==="body"?"arm":""}" data-out="body"></span><span class="port sub"></span><span class="lbl">${b.name}<small>body</small></span></div>`;
+    h+=`<div class="plabel" style="left:52px;top:170px">parts</div>`;
+    L.ids.forEach(id=>{const n=b.nodes[id],p=P[id],dead=!can(b,n.t);
+      const inner=n.t==="move"?`<span class="mv">${n.d}<span class="n">${n.n}</span></span>`:glyph(n.t);
+      h+=`<div class="node ${sel===id?"sel":""} ${dead?"dead":""}" data-node="${id}" style="left:${p.x}px;top:${p.y}px;width:${p.w}px;height:${p.h}px"><span class="port in" data-in="${id}"></span>${inner}<span class="port out ${b.next[id]==null?"loose":""} ${pending===id?"arm":""}" data-out="${id}"></span><span class="lbl">${NODES[n.t].name}${dead?`<small>needs ${PARTS[NODES[n.t].part].name}</small>`:""}</span></div>`});
+    ["body"].concat(L.ids).forEach(id=>{const p=P[id],nx=b.next[id],x1=p.x+p.w;
+      if(nx&&nx!=="body"&&P[nx]){const x2=P[nx].x,mx=(x1+x2)/2;w+=`<path d="M${x1} ${cy} C${mx} ${cy} ${mx} ${cy} ${x2} ${cy}"/>`;
+        if(x2-x1>30)h+=`<div class="plus mid" data-after="${id}" style="left:${mx-9}px;top:${cy-9}px">+</div>`}
+      else if(nx==="body"){w+=`<path d="M${x1} ${cy} L${x1+14} ${cy} Q${x1+26} ${cy} ${x1+26} ${cy-12} L${x1+26} 48 Q${x1+26} 38 ${x1+16} 38 L18 38 Q8 38 8 48 L8 ${cy-10} Q8 ${cy} 18 ${cy} L20 ${cy}" marker-end="url(#ah)"/>`;h+=`<div class="plabel" style="left:${(x1+34)/2}px;top:22px">again</div>`}
+      else h+=`<div class="plus ${mode&&mode.after===id?"hot":""}" data-after="${id}" style="left:${x1+11}px;top:${cy-11}px">+</div>`});
+    b.parts.forEach((pk,i)=>{const x=20+i*66,y=236;const p=PARTS[pk];
+      w+=`<path class="sub" d="M52 160 L52 190 Q52 204 66 204 L${x+10} 204 Q${x+24} 204 ${x+24} 218 L${x+24} 236"/>`;
+      h+=`<div class="node part ${sel==="p"+i?"sel":""}" data-part="${i}" style="left:${x}px;top:${y}px;width:48px;height:48px;font-size:17px"><span class="port subin"></span>${p.glyph}<span class="lbl">${p.name}<small>${p.gives.map(g=>NODES[g]?NODES[g].name:g).join(", ")||p.sub||p.note||"&nbsp;"}</small></span></div>`});
+    {const x=20+b.parts.length*66;w+=`<path class="sub" d="M52 160 L52 190 Q52 204 66 204 L${x+10} 204 Q${x+24} 204 ${x+24} 218 L${x+24} 236"/>`;
+      h+=`<div class="plus ${mode&&mode.parts?"hot":""}" data-parts="1" style="left:${x+13}px;top:249px">+</div>`}
+    wires.innerHTML=`<defs><marker id="ah" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="var(--wire)" stroke="none"/></marker></defs>`+w+`<path class="temp" id="fr-temp" d=""/>`;
+    graph.querySelectorAll(".node, .plus, .plabel").forEach(el=>el.remove());
+    graph.insertAdjacentHTML("beforeend",h);
+    bind(b);renderStrip(b);markRun();
+  }
+  function bind(b){
+    graph.querySelectorAll("[data-node]").forEach(el=>el.addEventListener("click",e=>{
+      if(e.target.closest(".port"))return;const id=el.dataset.node;
+      if(pending&&pending!==id){connect(b,pending,id);return}
+      sel=id;mode=null;pending=null;render()}));
+    graph.querySelectorAll("[data-part]").forEach(el=>el.onclick=()=>{sel="p"+el.dataset.part;mode=null;pending=null;render()});
+    graph.querySelectorAll("[data-after]").forEach(el=>el.onclick=()=>{mode={after:el.dataset.after};sel=null;pending=null;render()});
+    graph.querySelectorAll("[data-parts]").forEach(el=>el.onclick=()=>{mode={parts:true};sel=null;pending=null;render()});
+    graph.querySelectorAll("[data-in]").forEach(el=>el.onclick=e=>{e.stopPropagation();if(pending&&pending!==el.dataset.in)connect(b,pending,el.dataset.in)});
+    graph.querySelectorAll("[data-out]").forEach(el=>{
+      el.addEventListener("pointerdown",e=>{e.preventDefault();e.stopPropagation();el.setPointerCapture(e.pointerId);
+        const g=graph.getBoundingClientRect(),r=el.getBoundingClientRect();drag={from:el.dataset.out,x0:e.clientX,y0:e.clientY,moved:false,sx:r.left-g.left+7,sy:r.top-g.top+7}});
+      el.addEventListener("pointermove",e=>{if(!drag)return;if(Math.hypot(e.clientX-drag.x0,e.clientY-drag.y0)>6)drag.moved=true;
+        if(!drag.moved)return;const g=graph.getBoundingClientRect();const x=e.clientX-g.left,y=e.clientY-g.top;
+        $("temp").setAttribute("d",`M${drag.sx} ${drag.sy} C${(drag.sx+x)/2} ${drag.sy} ${(drag.sx+x)/2} ${y} ${x} ${y}`)});
+      el.addEventListener("pointerup",e=>{if(!drag)return;const d=drag;drag=null;
+        if(!d.moved){pending=pending===d.from?null:d.from;sel=null;mode=null;render();return}
+        const t=document.elementFromPoint(e.clientX,e.clientY);const nd=t&&t.closest("[data-node]");
+        if(nd&&nd.dataset.node!==d.from)connect(b,d.from,nd.dataset.node);else render()});
+      el.addEventListener("click",e=>e.stopPropagation())});
+  }
+  function edited(b){home(b);pending=null;render();check()}
+  function connect(b,from,to){if(from===to)return;b.next[from]=to;sel=null;mode=null;edited(b)}
+  function addNode(b,t){const after=mode.after;const id="n"+(uid++);b.nodes[id]={t,d:"→",n:1};b.order.push(id);
+    b.next[id]=b.next[after]==null?null:b.next[after];b.next[after]=id;mode=null;sel=id;edited(b)}
+  function removeNode(b,id){for(const k in b.next)if(b.next[k]===id)b.next[k]=b.next[id]==null?null:b.next[id];delete b.next[id];delete b.nodes[id];b.order=b.order.filter(x=>x!==id);sel=null;edited(b)}
+  function fit(b,pk){const p=PARTS[pk];if(p.later)return;
+    if(bin[pk]>0)bin[pk]--;else if(p.price!=null&&coins>=p.price){coins-=p.price;showCoins()}else return;
+    if(pk==="body2"){bin.body2=(bin.body2||0)+1;mode=null;render();return}
+    b.parts.push(pk);mode=null;sel="p"+(b.parts.length-1);edited(b)}
+  function unfit(b,i){const pk=b.parts[i];b.parts.splice(i,1);bin[pk]=(bin[pk]||0)+1;sel=null;edited(b)}
+  function renderStrip(b){let s="";
+    if(pending){s=`<span class="hint sel">Now tap the node this wire should go to. Tap the dot again to cancel.</span>`}
+    else if(mode&&mode.after!=null){
+      s=`<span class="title">Add a node</span>`+Object.keys(NODES).map(t=>{const ok=can(b,t);return `<button class="${ok?"":"lock"}" data-add="${t}" ${ok?"":"disabled"}>${NODES[t].name}${ok?"":` <small>needs ${PARTS[NODES[t].part].name}</small>`}</button>`}).join("")+`<button data-cancel="1">Cancel</button>`}
+    else if(mode&&mode.parts){
+      s=`<span class="title">Fit a part</span>`+Object.keys(PARTS).map(pk=>{const p=PARTS[pk];const have=bin[pk]>0;const buy=!have&&p.price!=null;const ok=have||(buy&&coins>=p.price);
+        return `<button class="${ok?"":"lock"}" data-fit="${pk}" ${ok?"":"disabled"}>${p.name}${have?` <small>in the bin</small>`:p.later?` <small>later</small>`:buy?` <small>${p.price}¢</small>`:` <small>none spare</small>`}</button>`}).join("")+`<button data-cancel="1">Cancel</button>`}
+    else if(sel==="body"){const used=walk(b).ids.reduce((a,id)=>a+(b.nodes[id].t==="move"?b.nodes[id].n:1),0);
+      s=`<span class="title">${b.name}</span><span class="mono" style="font-size:.78rem">battery <span id="fr-batv">${Math.round(b.bat)}</span>/${CAP}</span>${b.flat?`<span style="color:var(--red)">flat, away from the bay</span>`:""}<button data-home="1">Tow to the bay</button><span class="hint">Every step and every grab costs 1. It charges when the loop comes round while it stands on the bay (⚡): this program uses ${used} a loop, so about ${(used*rate(b)).toFixed(1)} s plugged in each time.${used>CAP?" That is more than the cell holds, so it will go flat on the way.":""}</span>`}
+    else if(sel&&sel[0]==="p"){const i=+sel.slice(1);const p=PARTS[b.parts[i]];s=`<span class="title">${p.name}</span><span class="muted">gives ${p.gives.map(g=>NODES[g]?NODES[g].name:g).join(", ")||"nothing yet"}</span><button class="danger" data-unfit="${i}">Take off</button>`}
+    else if(sel&&b.nodes[sel]){const n=b.nodes[sel];
+      if(n.t==="move"){s=`<span class="title">Move</span><span class="seg">${DIRS.map(d=>`<button class="${n.d===d?"on":""}" data-dir="${d}">${d}</button>`).join("")}</span><span class="seg"><button data-step="-1">−</button><span class="val">${n.n}</span><button data-step="1">+</button></span><button class="danger" data-rm="1">Remove</button>`}
+      else s=`<span class="title">${NODES[n.t].name}</span><span class="muted">${n.t==="pick"?"takes what is on this tile":"puts down what it holds"}</span><button class="danger" data-rm="1">Remove</button>`}
+    else s=`<span class="hint">Tap a node to change it, + to add one, or drag a dot onto the next node.</span>`;
+    strip.innerHTML=s;
+    strip.querySelectorAll("[data-add]").forEach(el=>el.onclick=()=>addNode(b,el.dataset.add));
+    strip.querySelectorAll("[data-fit]").forEach(el=>el.onclick=()=>fit(b,el.dataset.fit));
+    strip.querySelectorAll("[data-cancel]").forEach(el=>el.onclick=()=>{mode=null;render()});
+    strip.querySelectorAll("[data-unfit]").forEach(el=>el.onclick=()=>unfit(b,+el.dataset.unfit));
+    strip.querySelectorAll("[data-dir]").forEach(el=>el.onclick=()=>{const id=sel;b.nodes[id].d=el.dataset.dir;edited(b);sel=id;render()});
+    strip.querySelectorAll("[data-step]").forEach(el=>el.onclick=()=>{const id=sel,n=b.nodes[id];n.n=Math.max(1,Math.min(9,n.n+ +el.dataset.step));edited(b);sel=id;render()});
+    strip.querySelectorAll("[data-rm]").forEach(el=>el.onclick=()=>removeNode(b,sel));
+    strip.querySelectorAll("[data-home]").forEach(el=>el.onclick=()=>{home(b);render()});
+  }
+  function markRun(){const b=BOTS[selected];graph.querySelectorAll("[data-node]").forEach(el=>el.classList.toggle("run",el.dataset.node===b.pc&&!b.stuck));
+    const bv=$("batv");if(bv)bv.textContent=Math.round(b.bat)}
+
+  // ---------- tutor ----------
+  const STEPS=[
+    {t:"Power on",c:"All three robots sit on the charging bay, and all three show a fault. Squares queue at the intake, boxes wait on the stack. Every loop starts and ends at the bay. Tap the Picker.",
+     done:()=>selected===0&&sel!==null||selected===0&&mode!==null,show:()=>{select(0);sel="body";render()}},
+    {t:"Picker has no gripper",c:"Its program walks down to the intake, over to the table and back, carrying nothing. Fit the Gripper from the bin under its body, then tap the + after Move ↓ 4 and add Pick.",
+     done:()=>!!(BOTS[0].held&&BOTS[0].held.k==="sq"),show:()=>{const b=BOTS[0];if(!b.parts.includes("gripper"))fit(b,"gripper");if(!walk(b).ids.some(id=>b.nodes[id].t==="pick")){mode={after:walk(b).ids[0]||"body"};addNode(b,"pick")}select(0)}},
+    {t:"Boxer stops a tile short",c:"The Picker now holds a square with nowhere to put it: no box on the table. The Boxer's Move ↓ 3 ends one tile above the table, so boxes land on the floor. Make both vertical Moves 4.",
+     done:()=>boxOnTableEver&&walk(BOTS[1]).closed&&net(BOTS[1]),show:()=>{const b=BOTS[1];walk(b).ids.forEach(id=>{const n=b.nodes[id];if(n.t==="move"&&(n.d==="↓"||n.d==="↑"))n.n=4});select(1);home(b);render()}},
+    {t:"Shipper's wire is loose",c:"The wire after its Pick ends nowhere, so it stops with a ?. Drag the red dot onto the Move node, or tap the dot and then the node.",
+     done:()=>walk(BOTS[2]).closed,show:()=>{const b=BOTS[2];const ids=walk(b).ids;const last=ids.length?ids[ids.length-1]:"body";const orphan=b.order.find(id=>!ids.includes(id));b.next[last]=orphan||"body";select(2);home(b);render()}},
+    {t:"The first box",c:"Four squares in, the table lets the box go, the Shipper carries it to the belt. A full box pays 6. Watch the ⚡ pause at the bay: that is charging, and every extra step makes it longer.",
+     done:()=>coins>=6,show:()=>{speed=4;setTimeout(()=>{speed=1},8000)}},
+    {t:"Spend",c:"The parts bin now sells things. A Fast plug for the Battery first (half the time on the bay), then Fast treads, then a second body. Counter (Repeat) and Scan (If) come with the milestones below.",
+     done:()=>false,show:()=>{mode={parts:true};sel=null;pending=null;render()}},
+  ];
+  let step=0;
+  function renderSteps(){$("steps").innerHTML=STEPS.map((s,i)=>`<li class="${i<step?"done":i===step?"now":""}"><span class="n">${i<step?"✓":i+1}</span><div><h3>${s.t}</h3><p>${s.c}</p>${i===step?`<div class="act"><button data-show="1">Show me</button>${i===STEPS.length-1?`<button data-reset="1">Start over</button>`:""}</div>`:""}</div></li>`).join("");
+    const b=$("steps").querySelector("[data-show]");if(b)b.onclick=()=>{STEPS[step].show();check()};
+    const r=$("steps").querySelector("[data-reset]");if(r)r.onclick=()=>(location.hash="#factory",location.reload());
+    const parts=STEPS[step].c.split(". ");$("tutor").innerHTML=`<b>${step+1}. ${STEPS[step].t}</b>${parts[parts.length-1]}`}
+  function check(){let g=0,was=step;while(step<STEPS.length-1&&STEPS[step].done()&&g++<6)step++;if(step!==was||!$("steps").children.length)renderSteps()}
+
+  // ---------- the road ----------
+  const ROAD=[
+    {n:"0",name:"The broken line",when:"day one",
+     floor:"Intake belt of grey squares, box stack, pack table, deliver belt, one charging bay. Three robots with faults.",
+     parts:[["part","Treads"],["node","Move"],["part","Gripper"],["node","Pick"],["node","Release"],["part","Battery"]],
+     breaks:"Nothing works yet. The player learns to read a loop: a missing node, a wrong count, a loose wire. Then watches every loop walk back to the bay.",
+     pays:"full box 6"},
+    {n:"1",name:"Walk less",when:"a box every 30 s",
+     floor:"Belts, traced the Tally way. The parts bin opens.",
+     parts:[["part","Fast plug"],["part","Fast treads"],["thing","belts"]],
+     breaks:"The pause at the bay is the thing to beat. Same three programs, shorter walks, more boxes an hour. No new node: the lesson is that layout is part of the program.",
+     pays:"same, more often"},
+    {n:"2",name:"Do it again",when:"a box every 15 s",
+     floor:"A second body in the bin. Big cell for the Battery.",
+     parts:[["part","Counter"],["node","Repeat N"],["part","Big cell"],["part","Second body"]],
+     breaks:"Every program gets rewritten: Repeat 4 around pick, carry, release, then one walk to the bay. How many trips fit in one cell is the first real sum. A fourth robot needs a job and a lane.",
+     pays:"same, far more often"},
+    {n:"3",name:"Colours",when:"a box every 8 s",
+     floor:"The intake belt starts mixing red, blue and yellow squares in with the grey. A tag press beside the deliver belt stamps a box with a colour. A second pack table.",
+     parts:[["part","Scan"],["node","If colour?"],["thing","tag press"],["thing","second table"]],
+     breaks:"A box pays full only when its four squares share a colour and the stamp matches. Yesterday's picker fills a mixed box. Now: pick, scan, if red go to table A else table B, keep the tables organised so the stamp tells the truth, and the shipper's loop goes through the press.",
+     pays:"stamped same-colour box 10 · mixed box 2 · colour box without a stamp 4"},
+    {n:"4",name:"Shapes",when:"a stamped box every 6 s",
+     floor:"Circles and triangles arrive in the same colours. The tag press stamps shape too. An orders board asks for things like four blue circles.",
+     parts:[["part","Scan: colour or shape"],["node","If shape?"],["part","Wide scan"],["thing","orders board"]],
+     breaks:"A Scan sees one thing at a time, so the sorting that worked mis-sorts: a red circle lands on the red square table and spoils the stamp. Two Ifs in a row, or a Wide scan that sees both, and more tables. The player changes a working line without stopping it.",
+     pays:"order filled 25"},
+    {n:"5",name:"Quality",when:"an order every 30 s",
+     floor:"Cracked pieces on the intake. A scrap bin. Returns: a box with a wrong stamp comes back on the intake belt.",
+     parts:[["node","If cracked?"],["thing","scrap bin"],["thing","returns"]],
+     breaks:"Every pick now wants a check and a path to the bin, and a return has to be opened and re-sorted. Mistakes stop being free.",
+     pays:"a cracked piece in a box 1"},
+    {n:"6",name:"Teams",when:"an order every 15 s",
+     floor:"A hand-off shelf between pickers and packers. A second bay. Induction plug.",
+     parts:[["part","Bell"],["node","Send bell"],["node","Wait for bell"],["part","Induction plug"],["thing","shelf"]],
+     breaks:"Six robots on one table bump and queue at one bay. Signals let a picker fill a shelf and a packer wait for it. Routines (one saved graph used by many robots) come after this.",
+     pays:"same, with six hands"},
+  ];
+  $("road").innerHTML=ROAD.map((m,i)=>`<li class="${i===0?"now":""}"><span class="dot">${m.n}</span><div class="card">
+    <h3>${m.name}<span class="when">opens at: ${m.when}${i?", held for a minute":""}</span></h3>
+    <div><span class="k">Added to the floor</span><p>${m.floor}</p></div>
+    <div><span class="k">New parts and nodes</span><div class="chips">${m.parts.map(c=>`<span class="chip ${c[0]}">${c[1]}</span>`).join("")}</div><span class="k" style="margin-top:8px">Pays</span><p>${m.pays}</p></div>
+    <div class="break"><span class="k">What stops working, what the player has to change</span><p>${m.breaks}</p></div></div></li>`).join("");
+
+  // ---------- loop ----------
+  let last=performance.now();
+  function frame(now){if(!panel.classList.contains("active")){if(!reduce)requestAnimationFrame(frame);last=now;return}const dt=Math.min(.05,(now-last)/1000)*speed;last=now;T+=dt;
+    feed+=dt;if(feed>.9){feed=0;if(queue<6)queue++}
+    BOTS.forEach(b=>tick(b,dt));
+    shipped.forEach(s=>s.y-=dt*2.2);shipped=shipped.filter(s=>s.y>-1);
+    if(flash>0){flash-=dt;$("coins").classList.add("flash")}else $("coins").classList.remove("flash");
+    showCoins();
+    draw();markRun();
+    if(STEPS[step].done())check();
+    if(!reduce)requestAnimationFrame(frame)}
+  render();renderSteps();
+  if(reduce)setInterval(()=>frame(performance.now()),100);else requestAnimationFrame(frame);
+})();
 </script>
 </body>
 </html>
