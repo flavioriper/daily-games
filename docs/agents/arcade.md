@@ -4028,6 +4028,23 @@ asking; names are "Part n"; no tutorial page yet. Seen on `opengl3_angle`
 810x1440: bench 57, paper with a copy 66, the Parts card 134 draw calls.
 Probe 0 failed, `_shot_tally` headless 0 failed, suite 248522/0.
 
+#### Tally draws only the belts in view (2026-10-20)
+
+The user: "on tally, performance is really poor when user pass number 30
+because of the conveys". Four per-frame passes (chevrons, both token
+layers, the token numerals) each walked every entry of `sim.lanes` on the
+whole 120 by 120 sheet and culled afterwards, so a frame cost grew with the
+factory, not the screen. `Board._lanes_seen()` now walks the visible rect's
+squares once a frame (a belt's lane, both of a crossing's, in the sim's
+order) and all four read it. Measured on a 6,664-belt sheet, Mac headless,
+at k 74: chevrons 2.57 -> 0.84 ms, tokens 1.88 -> 0.47, under-tokens 0.34
+-> 0.01, the words pass ~2.6 -> ~0.3-0.8; `_perf_tally.gd` builders 4.60 ->
+1.45 ms (k 74), 3.72 -> 2.40 (k 22). What is drawn is unchanged.
+**Not touched**: an edit still costs `_wire` ~14 ms plus the still layers'
+rebuild ~25 ms on that sheet (a hitch per belt laid, several times that
+on a phone). Probe 0 failed, `_shot_tally` headless 0 failed; no windowed
+run, not seen on the phone.
+
 #### Tally machines cover their tokens (2026-10-19, night)
 
 The user, a phone shot of four adders over a run of 1s and 2s: "tally still

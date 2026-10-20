@@ -135,6 +135,11 @@ var _printed_at := -1
 var _clock := 0.0
 var _phase := 0.0
 var _ins := {}
+## The lanes on the squares in view, in the sim's order, worked out once a
+## frame for the chevrons, both token layers and the numerals: walking all
+## of `sim.lanes` four times a frame grew with the whole factory.
+var _seen := PackedInt32Array()
+var _seen_key := []
 ## Each machine's mouths as drawn: root -> [ins, outs], Art.machine's bits.
 var _mouth := {}
 
@@ -453,6 +458,25 @@ func _visible() -> Rect2i:
 func _sees(t: Vector2i, r: Rect2i) -> bool:
 	return r.has_point(t)
 
+## Every lane on a square in view: a belt's, and both of a crossing's.
+func _lanes_seen() -> PackedInt32Array:
+	var r := _visible()
+	var key := [Engine.get_process_frames(), r, sim.lanes.size(), sim]
+	if key == _seen_key:
+		return _seen
+	_seen_key = key
+	_seen = PackedInt32Array()
+	for y in range(maxi(r.position.y, 0), mini(r.end.y, Sim.H)):
+		for x in range(maxi(r.position.x, 0), mini(r.end.x, Sim.W)):
+			var i := y * Sim.W + x
+			var kd := int(sim.kind[i])
+			if kd == Sim.BELT:
+				_seen.append(i)
+			elif kd == Sim.BRIDGE:
+				_seen.append(i)
+				_seen.append(i + Sim.N)
+	return _seen
+
 func _draw_layer(nm: String, l: Node2D) -> void:
 	if sim == null:
 		return
@@ -491,13 +515,12 @@ func _build_chevrons() -> ArrayMesh:
 		return null
 	var fb := Face.FlatBuilder.new(_flat_cache)
 	var chev := Art.chevron()
-	var r := _visible()
-	for s: int in sim.lanes:
+	for s: int in _lanes_seen():
 		if s >= Sim.N:
 			continue
 		var i := s
 		var t := Sim.tile_of(i)
-		if not _sees(t, r) or int(sim.kind[i]) != Sim.BELT:
+		if int(sim.kind[i]) != Sim.BELT:
 			continue
 		var f := int(sim.face[i])
 		var a := _entry(i, f)
@@ -521,12 +544,10 @@ func _build_tokens(under: bool) -> ArrayMesh:
 	var plain := Art.token(false, lod)
 	var ringed := Art.token(true, lod)
 	var aim: int = sim.target()
-	var r := _visible()
-	for s: int in sim.lanes:
+	for s: int in _lanes_seen():
 		if (s >= Sim.N) != under or sim.occ[s] == 0:
 			continue
-		var t := Sim.tile_of(s % Sim.N)
-		if not _sees(t, r) or sim.op[s % Sim.N] != 0:
+		if sim.op[s % Sim.N] != 0:
 			# a machine covers the belts under it, tokens and all
 			continue
 		fb.append(ringed if int(sim.val[s]) == aim else plain, Transform2D(0.0, token_at(s)))
@@ -859,11 +880,8 @@ func _draw_words() -> void:
 			_write("×%d" % int(c.n), at + Vector2(0, k * 0.27), int(printed * 0.45), Color(Art.CREAM, 0.95))
 	# the tokens, a run of glyphs a size
 	var runs := {}
-	for s: int in sim.lanes:
-		if sim.occ[s] == 0:
-			continue
-		var t := Sim.tile_of(s % Sim.N)
-		if not _sees(t, r) or sim.op[s % Sim.N] != 0:
+	for s: int in _lanes_seen():
+		if sim.occ[s] == 0 or sim.op[s % Sim.N] != 0:
 			continue
 		var txt := Sim.short(int(sim.val[s]))
 		var n := txt.length()
