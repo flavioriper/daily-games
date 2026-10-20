@@ -108,9 +108,11 @@ const HELD_BOB_MAX := 48
 ## speed at three quarters, so 0.1, 0.04, 0.8. Then slower and smoother
 ## (the user, 2026-10-20: "reduce piece movement speed, and make it way
 ## smoother and more satisfact to watch"): 0.28, 0.08, 1.6, so each landing
-## clears TICK_GAP and ticks on its own.
-const RUN_STEP := 0.08
-const RUN_STEP_CAP := 1.6
+## clears TICK_GAP and ticks on its own. Then the gap halved, the flight
+## kept ("keep current flight time, but reduce gap between gems"): 0.04,
+## 0.8, so every other landing ticks.
+const RUN_STEP := 0.04
+const RUN_STEP_CAP := 0.8
 ## The case's own sliding along a place go one after another too, this
 ## far apart, the whole pack no longer than SLIDE_CAP (a pack on Insane
 ## can slide sixty places, and a place is not pickable until its jewel has

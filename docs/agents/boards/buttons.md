@@ -1120,3 +1120,9 @@ clears `TICK_GAP` again, so each one ticks. Medium `play` on
 `opengl3_angle`: peak 96 draw calls, the tilt seen mid-flight in one
 window. Board probe 26 days, the same two band-2 zoom failures. Mine,
 unconfirmed: every number; no phone.
+
+**07:16, the gap halved** (the user: "keep current flight time, but
+reduce gap between gems"): `RUN_STEP` 0.04, `RUN_STEP_CAP` 0.8, the
+flight still 0.28 s, so six or seven gems are in the air at once and a
+run of twenty lands its last at about 1.04 s. Below `TICK_GAP` 0.075
+again: every other landing ticks.
