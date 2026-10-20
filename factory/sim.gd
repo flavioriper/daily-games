@@ -86,7 +86,7 @@ extends RefCounted
 ## Acting. Each returns whether it did anything; when it did not it pushes
 ## {type "refused", why, tile}.
 ##   can_lay(tile)            fits a belt (coins not looked at): on the
-##                            floor, never on a station
+##                            floor, never on a station nor in column 0 or 9
 ##   lay_belt(tile, facing, kind)       "belt" 1 coin, "fast" 4, "bridge" 25;
 ##                            on a belt of that kind already there it only
 ##                            re-faces
@@ -280,6 +280,7 @@ func take(tile: Vector2i) -> Dictionary:
 			it = _new_item("box", _mid(tile), true)
 		"table":
 			it = table
+			it.was = item_pos(tile, it)
 			table = {}
 	if it.is_empty() and belts.has(tile):
 		var lane: Array = items.get(tile, [])
@@ -375,6 +376,9 @@ func _lay_why(tile: Vector2i) -> String:
 		return "off"
 	if stations.has(tile):
 		return "station"
+	# the drawn intake and deliver belts (robots still walk there)
+	if tile.x == 0 or tile.x == COLS - 1:
+		return "edge"
 	return ""
 
 ## The kind of the belt on `tile`: "belt", "fast", "bridge"; "" for none.
@@ -749,6 +753,9 @@ func _still(it: Dictionary, tile: Vector2i) -> void:
 ## Where an item is at the end of the tick, in tile units.
 func _pos(tile: Vector2i, it: Dictionary) -> Vector2:
 	var c := _mid(tile)
+	# the table's box sits in its middle (nothing else lies on the table)
+	if station_at(tile) == "table":
+		return c
 	if not belts.has(tile):
 		var i: int = (items.get(tile, []) as Array).find(it)
 		return c + LIE[clampi(i, 0, LIE.size() - 1)]
@@ -901,6 +908,8 @@ func _tick() -> void:
 	for tile: Vector2i in over:
 		for it: Dictionary in over[tile].items:
 			it.was = _pos(tile, it)
+	if not table.is_empty():
+		table.was = _pos(STATIONS.table, table)
 	_feed()
 	_move_belts()
 	_run_robots()

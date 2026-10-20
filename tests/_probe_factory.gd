@@ -119,6 +119,8 @@ func _check_floor() -> void:
 	_ok("the floor's edge", sim.on_floor(Vector2i(0, 0)) and sim.on_floor(Vector2i(9, 7)) and not sim.on_floor(Vector2i(10, 0))
 		and not sim.on_floor(Vector2i(0, 8)) and not sim.on_floor(Vector2i(-1, 3)))
 	_ok("no belt on a station", not sim.can_lay(T) and sim.can_lay(Vector2i(2, 5)) and not sim.can_lay(Vector2i(10, 5)))
+	_ok("no belt on the drawn intake and deliver columns", not sim.can_lay(Vector2i(0, 3)) and not sim.can_lay(Vector2i(Sim.COLS - 1, 3))
+		and sim.can_lay(Vector2i(1, 3)) and sim.can_lay(Vector2i(Sim.COLS - 2, 3)))
 	sim.coins = 10
 	_ok("and one tried there is refused", not sim.lay_belt(T, 0) and _refused(sim, "station") and sim.belts.is_empty() and sim.coins == 10)
 	sim.coins = 0
@@ -129,6 +131,13 @@ func _check_floor() -> void:
 	var sq: Dictionary = _square(sim)
 	_ok("the stack is never empty and each box is new", box.kind == "box" and int(box.n) == 0 and sim.take(S).id != box.id)
 	_ok("table takes a box then squares", sim.put(T, box) and not sim.takes(T, box) and sim.takes(T, sq) and sim.put(T, sq) and sim.table.n == 1)
+	_run(sim, 3)
+	sim.alpha = 0.0
+	var at0: Vector2 = sim.item_pos(T, sim.table)
+	sim.alpha = 1.0
+	var at1: Vector2 = sim.item_pos(T, sim.table)
+	sim.step(0.0)
+	_ok("the table's box rests in the table's middle", at0 == at1 and at0 == Vector2(T) + Vector2(0.5, 0.5), "%s %s" % [at0, at1])
 	_ok("table gives only a full box", sim.gives(T).is_empty() and sim.take(T).is_empty() and _fill(sim, 3) and sim.gives(T).kind == "box")
 	_ok("and a fifth square is not taken", not sim.takes(T, _square(sim)) and int(sim.table.n) == Sim.BOX_FULL)
 	var full_box: Dictionary = sim.take(T)
