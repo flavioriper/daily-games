@@ -329,7 +329,9 @@ func _process(delta: float) -> void:
 		return
 	_clock += delta
 	if not tutor.is_open():
-		sim.step(minf(delta, 0.25))
+		# a long frame is not caught up on: two sub-steps at most, the
+		# paper falls behind instead of snowballing
+		sim.step(minf(delta, Sim.STEP * 2.0))
 	_play_events()
 	_follow_shop()
 	board.tick(delta)

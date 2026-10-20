@@ -283,6 +283,7 @@ func _grow(sim) -> void:
 	sim.place(Sim.SUB, w, 2)
 	put.call(w + Vector2i(3, -1), 3)
 	route.call([w + Vector2i(1, -1), w + Vector2i(0, -1)])
+	sim.reprint()
 	sim.events.clear()
 	_s.board.relay()
 

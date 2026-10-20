@@ -4028,6 +4028,62 @@ asking; names are "Part n"; no tutorial page yet. Seen on `opengl3_angle`
 810x1440: bench 57, paper with a copy 66, the Parts card 134 draw calls.
 Probe 0 failed, `_shot_tally` headless 0 failed, suite 248522/0.
 
+#### Tally edits cost what they touch (2026-10-20, later)
+
+The user: "check why tally is lagging so much as user goes into the game
+and create more conveys and extractors, my phone is extremely powerful and
+everything is lagging". Measured on the Mac (`tests/_perf_tally.gd`, the
+6,664-belt sheet): a frame's builders cost 1.6 ms and the sim's step 0.7,
+but **every edit** (a run laid, a piece set down or lifted, a turn, an
+undo) ran `_wire()` over all 14,400 squares (13 ms) and then rebuilt every
+belt's bed on the whole sheet into one mesh (27 ms): about 40 ms a swipe
+here, a few times that on a phone, at any factory size, and growing with
+it. The save walked the sheet twice as well.
+
+- **The sim keeps a sparse index**: `used` (every square with a piece, or
+  a machine's root), `cells` (the belts and crossings of each `CH` 20 by 20
+  chunk), `printed` (the squares with a number). Every write goes through
+  `_record` (or `touch(i)` from a test that writes `kind` straight on, and
+  `reprint()` after writing `dep`), which notes the square in `_touched`;
+  `changed` keeps the same for the board until it clears it.
+- **`_wire()` is incremental**: the written squares and their neighbours
+  (`REWIRE` 3 round each, a dig's belts leading away read two squares past
+  its edge) get their ends worked out again (`_lane_outs`, `_unfeed`,
+  `_lanes_add`/`_lanes_drop` keep `lanes` sorted), digs and crates in reach
+  their belts, machines over written squares their sides (`_mouth`,
+  `_unmouth` releasing the `intake` marks, also when a machine is lifted
+  or picked away). `_wire_all()` wires the whole sheet from the index and
+  must give the same answer: the probe wires each of its twelve papers
+  again at the end and compares lanes, outs, feeders, dead, intake, the
+  machines' sides and the digs' and crates' belts (`_wiring`). An edit's
+  wire on the 6,664-belt sheet: 13.3 -> 0.33 ms.
+- **The board's beds and decks are per chunk** (`_beds_c`, `_decks_c`,
+  built by `_build_chunk` for the chunks in sight that are missing or
+  dirty; a changed square dirties the chunks within `REACH` 3 of it, so a
+  bend's or a stub's neighbour in the next chunk is drawn again too). A
+  belt's ways in (`_ways_in`) come from `feeders` and the digs and crates
+  beside it, for the chunk's belts alone; the machines' mouths (`_mouths`)
+  only when something changed. The still layers' rebuild after an edit:
+  27 -> 1.3 ms; the view's chunks from nothing 12.9 ms (a load, a
+  `relay()`).
+- **Per frame**: `_lanes_seen` reads the chunks' lists (never the visible
+  squares), the numerals walk `printed`, and each numeral is a `TextLine`
+  shaped once a text and size (`_lines`, cleared past `LINES_MOST`) and
+  drawn from the cache, where `draw_string` shaped it twice a frame. Tokens
+  are not drawn under `TOKENS_FROM` k 12 (chevrons stop at 30).
+- The screen steps the sim `Sim.STEP * 2` a frame at most: a long frame is
+  not caught up on, the paper falls behind instead of snowballing.
+- `save()` walks the index. The perf harness prints an edit's wire and
+  rebuild and a save (4.8 ms, 6,664 belts, the ConfigFile's write).
+- Checked: probe 0 failed (the wiring check included); `_shot_tally`
+  headless and windowed on `opengl3_angle` 810x1440, 0 failed, 62 to 157
+  draw calls (87 at `5b_close`, 81 far: a few more than before, the
+  chunks' meshes); `_shot_tally_tree` 0 failed. **Not measured**: the
+  phone, and anything the Mac headless does not see (the GPU's upload of
+  the five per-frame meshes, the words' draw). The pace bot gives up at
+  level 1 before and after this change (noted 2026-10-19: it still builds
+  one-square machines).
+
 #### Tally's visors: the operation played on the machine (2026-10-20)
 
 The user: "on tally, create some good looking operation module effect

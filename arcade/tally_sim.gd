@@ -62,6 +62,11 @@ const W := 120
 const H := 120
 const N := W * H
 const N2 := N * 2
+## The sheet in chunks of CH by CH squares (`cells`): the board draws and
+## culls by them, so nothing walks every square of the sheet.
+const CH := 20
+const CW := W / CH
+const CHUNKS := CW * (H / CH)
 const HUB := 6
 const HUB_AT := Vector2i(57, 57)
 
@@ -167,6 +172,9 @@ const FAR := [[11, 19, 2, 24, 40], [20, 39, 2, 31, 47], [40, 60, 1, 38, 53]]
 ## two digs side by side leave APART - 3 squares between them, room for an
 ## operator and its belts.
 const APART := 6
+## A written square wires the slots this far round it again (a dig's belts
+## leading away read two squares past its edge: three from its root).
+const REWIRE := 3
 
 # --- the upgrades ---
 
@@ -273,6 +281,19 @@ var _targets: Array = []
 var _trng := RandomNumberGenerator.new()
 var _seqs := {}
 
+## The sparse index: no edit, wire, save or draw walks the whole sheet.
+## `used` is every square with a piece on the paper's layer (but the box)
+## or a machine's root over it; `cells[c]` the belts and crossings of chunk
+## `c`; `printed` the squares with a number printed. `_touched` is every
+## square written since the last `_wire` (every write goes through
+## `_record`, or `touch` from outside); `changed` the same, kept for the
+## board until it clears it.
+var used := {}
+var cells: Array = []
+var printed := PackedInt32Array()
+var _touched := {}
+var changed := PackedInt32Array()
+
 func _init(rng_seed := 0) -> void:
 	seed_v = rng_seed if rng_seed != 0 else (randi() | 1)
 	kind.resize(N)
@@ -298,6 +319,9 @@ func _init(rng_seed := 0) -> void:
 	rr_in.resize(N2)
 	rr_out.resize(N2)
 	dead.resize(N2)
+	cells.resize(CHUNKS)
+	for c in CHUNKS:
+		cells[c] = PackedInt32Array()
 	for id: String in TRACKS:
 		lv[id] = 1
 	_trng.seed = seed_v
@@ -321,6 +345,22 @@ static func _i(t: Vector2i) -> int:
 static func tile_of(i: int) -> Vector2i:
 	@warning_ignore("integer_division")
 	return Vector2i(i % W, i / W)
+
+## The chunk square `i` lies in.
+static func chunk_of(i: int) -> int:
+	return (i / W) / CH * CW + (i % W) / CH
+
+## A square written past the sim's own actions (a test's, a harness's):
+## the next `_wire` reads it again.
+func touch(i: int) -> void:
+	_touched[i] = true
+
+## `printed` again from `dep`, after numbers were written straight on.
+func reprint() -> void:
+	printed = PackedInt32Array()
+	for i in N:
+		if dep[i] != 0:
+			printed.append(i)
 
 static func inside(t: Vector2i) -> bool:
 	return t.x >= 0 and t.y >= 0 and t.x < W and t.y < H
@@ -384,6 +424,7 @@ func _print_paper() -> void:
 			if d < int(r[2]) or d > int(r[3]) or not _clear_round(t):
 				continue
 			dep[_i(t)] = int(r[0])
+			printed.append(_i(t))
 			placed += 1
 
 func _clear_round(t: Vector2i) -> bool:
@@ -759,7 +800,9 @@ func _lift_op(r: int) -> void:
 		oface[j] = 0
 		oroot[j] = -1
 		orole[j] = R_NONE
-	machines.erase(r)
+	if machines.has(r):
+		_unmouth(r)
+		machines.erase(r)
 
 ## Lays belt over `tiles` (a straight run, in order) going `f`: a path whose
 ## every square faces `f`. Returns the squares laid or changed.
@@ -1351,7 +1394,9 @@ func lift_all(tiles: Array) -> int:
 		fork[j] = 0
 		root[j] = -1
 		role[j] = R_NONE
-		machines.erase(int(oroot[j]))
+		if machines.has(int(oroot[j])):
+			_unmouth(int(oroot[j]))
+			machines.erase(int(oroot[j]))
 		op[j] = 0
 		oface[j] = 0
 		oroot[j] = -1
@@ -1395,6 +1440,7 @@ func mark() -> void:
 	_undo = {}
 
 func _record(i: int) -> void:
+	_touched[i] = true
 	if not _undo.has(i):
 		_undo[i] = [int(kind[i]), int(face[i]), int(face2[i]), int(root[i]), int(role[i]), int(fork[i]), int(op[i]), int(oface[i]), int(oroot[i]), int(orole[i])]
 
@@ -1407,6 +1453,7 @@ func undo() -> bool:
 	var n := 0
 	for i: int in _undo:
 		var was: Array = _undo[i]
+		_touched[i] = true
 		_clear(i)
 		kind[i] = int(was[0])
 		face[i] = int(was[1])
@@ -1491,45 +1538,127 @@ func _feed(id: int, s: int) -> void:
 		feeders[id] = PackedInt32Array()
 	feeders[id].append(s)
 
-## Works out every slot's ends again after the paper changed.
+## Wires the paper again where it changed: every slot written since the
+## last wire and the ones beside it get their ends worked out again
+## (`outs`, the `feeders` handing into them, `dead`), a dig or a crate
+## within reach its belts leading away, a machine over a written square
+## its sides; the rest of the sheet is left as it was, so an edit costs
+## what it touched and not the factory. `_wire_all` does the whole sheet
+## from the index, the same answer, for checks.
 func _wire() -> void:
+	var touched := _touched.keys()
+	_touched = {}
+	# the index: in or out of it, and a square no longer a belt forgets its
+	# token and its fork
+	for i: int in touched:
+		var k := int(kind[i])
+		var on_paper := k != EMPTY and k != BOX
+		var is_root := op[i] != 0 and int(oroot[i]) == i
+		if on_paper or is_root:
+			used[i] = true
+		else:
+			used.erase(i)
+		var c := chunk_of(i)
+		var cell: PackedInt32Array = cells[c]
+		var at := cell.find(i)
+		var laned := k == BELT or k == BRIDGE
+		if laned and at < 0:
+			cell.append(i)
+		elif not laned and at >= 0:
+			cell.remove_at(at)
+		if not laned:
+			occ[i] = 0
+			occ[i + N] = 0
+			fork[i] = 0
+		elif k != BRIDGE:
+			occ[i + N] = 0
+		changed.append(i)
+	# the slots whose ends may have changed: the written squares' and their
+	# neighbours' (a belt's end is the square in front of it)
+	var slots := {}
+	var pieces := {}
+	var roots := {}
+	for i: int in touched:
+		var t := tile_of(i)
+		for dy in range(-REWIRE, REWIRE + 1):
+			for dx in range(-REWIRE, REWIRE + 1):
+				var u := t + Vector2i(dx, dy)
+				if not inside(u):
+					continue
+				var j := _i(u)
+				var kj := int(kind[j])
+				if maxi(absi(dx), absi(dy)) <= 1 and (kj == BELT or kj == BRIDGE or j == i):
+					slots[j] = true
+				if kj == DIG:
+					pieces[j if int(root[j]) < 0 else int(root[j])] = true
+				elif kj == CRATE:
+					pieces[j] = true
+		if op[i] != 0:
+			roots[int(oroot[i])] = true
+	for sq: int in slots:
+		for s0: int in [sq, sq + N]:
+			_unfeed(s0)
+			var e: Variant = _lane_outs(s0)
+			if e == null:
+				outs.erase(s0)
+				_lanes_drop(s0)
+				continue
+			outs[s0] = e
+			_lanes_add(s0)
+			dead[s0] = 1 if (e as PackedInt32Array).is_empty() else 0
+			for end: int in e:
+				_feed(end >> 2, s0)
+			if to_d[s0] != NONE and int(to_d[s0]) >= (e as PackedInt32Array).size():
+				to_d[s0] = NONE
+	for r: int in pieces:
+		var kr := int(kind[r])
+		if kr == DIG and (int(root[r]) < 0 or int(root[r]) == r):
+			if not digs.has(r):
+				digs[r] = {"budget": 0.0, "rr": 0, "eff": 0.0, "at": -10.0, "e": -1}
+			digs[r].outs = _away_from(tile_of(r))
+		elif kr == CRATE:
+			if not crates.has(r):
+				crates[r] = {"v": 0, "n": 0, "rr": 0, "eff": 0.0, "at": -10.0}
+			crates[r].outs = _away_from(tile_of(r))
+		else:
+			digs.erase(r)
+			crates.erase(r)
+	# the machines over the written squares: lifted ones go, the rest take
+	# the belts under their squares again
+	for r: int in machines.keys():
+		if op[r] == 0 or int(oroot[r]) != r:
+			_unmouth(r)
+			machines.erase(r)
+	for r: int in roots:
+		if op[r] == 0 or int(oroot[r]) != r:
+			continue
+		if machines.has(r):
+			_unmouth(r)
+		else:
+			machines[r] = _machine()
+		_mouth(r)
+
+## The whole sheet wired from nothing, as `_wire` leaves it piece by piece.
+func _wire_all() -> void:
+	_wire()
 	lanes = PackedInt32Array()
 	outs = {}
 	feeders = {}
 	var roots := []
-	for i in N:
+	var walk := PackedInt32Array(used.keys())
+	walk.sort()
+	for i: int in walk:
 		var k := int(kind[i])
 		var t := tile_of(i)
 		if op[i] != 0 and int(oroot[i]) == i:
 			roots.append(i)
-		if k == BELT:
-			var f := int(face[i])
-			var o := PackedInt32Array()
-			var e := _end_into(t + DIRS[f], f)
-			if e >= 0:
-				o.append(e)
-			for d in 4:
-				if int(fork[i]) & (1 << d) and d != f:
-					var e2 := _end_into(t + DIRS[d], d)
-					if e2 >= 0:
-						o.append(e2)
-			lanes.append(i)
-			outs[i] = o
-		elif k == BRIDGE:
-			fork[i] = 0
-			for lane in 2:
-				var s := i + lane * N
-				var f := int(face[i]) if lane == 0 else int(face2[i])
-				var o := PackedInt32Array()
-				var e := _end_into(t + DIRS[f], f)
-				if e >= 0:
-					o.append(e)
-				lanes.append(s)
-				outs[s] = o
+		if k == BELT or k == BRIDGE:
+			for s0: int in [i, i + N]:
+				var e: Variant = _lane_outs(s0)
+				if e != null:
+					lanes.append(s0)
+					outs[s0] = e
 		else:
-			occ[i] = 0
-			occ[i + N] = 0
-			fork[i] = 0
 			if k == DIG and (int(root[i]) < 0 or int(root[i]) == i):
 				if not digs.has(i):
 					digs[i] = {"budget": 0.0, "rr": 0, "eff": 0.0, "at": -10.0, "e": -1}
@@ -1538,17 +1667,15 @@ func _wire() -> void:
 				if not crates.has(i):
 					crates[i] = {"v": 0, "n": 0, "rr": 0, "eff": 0.0, "at": -10.0}
 				crates[i].outs = _away_from(t)
-		if k != BRIDGE:
-			occ[i + N] = 0
+	lanes.sort()
 	dead.fill(0)
-	for s: int in lanes:
-		if (outs[s] as PackedInt32Array).is_empty():
-			dead[s] = 1
-		for e: int in outs[s]:
-			_feed(e >> 2, s)
-		if to_d[s] != NONE and int(to_d[s]) >= (outs[s] as PackedInt32Array).size():
-			to_d[s] = NONE
-	# the machines over the paper: the slots of the belts under their squares
+	for s0: int in lanes:
+		if (outs[s0] as PackedInt32Array).is_empty():
+			dead[s0] = 1
+		for e: int in outs[s0]:
+			_feed(e >> 2, s0)
+		if to_d[s0] != NONE and int(to_d[s0]) >= (outs[s0] as PackedInt32Array).size():
+			to_d[s0] = NONE
 	intake.fill(0)
 	for r: int in machines.keys():
 		if op[r] == 0 or int(oroot[r]) != r:
@@ -1556,23 +1683,91 @@ func _wire() -> void:
 	for r: int in roots:
 		if not machines.has(r):
 			machines[r] = _machine()
-		var m: Dictionary = machines[r]
-		m.ins = [PackedInt32Array(), PackedInt32Array()]
-		m.fronts = PackedInt32Array()
-		m.rems = PackedInt32Array()
-		for c: Array in footprint(int(op[r]), tile_of(r), int(oface[r])):
-			var q := _i(c[0])
-			var slots: Array = [q] if int(kind[q]) == BELT else ([q, q + N] if int(kind[q]) == BRIDGE else [])
-			for s: int in slots:
-				match int(c[1]):
-					R_A, R_B:
-						var side := 0 if int(c[1]) == R_A else 1
-						intake[s] = 1 + side
-						m.ins[side].append(s)
-					R_OUT:
-						m.fronts.append(s)
-					R_REM:
-						m.rems.append(s)
+		_mouth(r)
+
+## Slot `s0`'s ends, or null when its square carries no such lane.
+func _lane_outs(s0: int):
+	var i := s0 % N
+	var k := int(kind[i])
+	var t := tile_of(i)
+	if k == BELT:
+		if s0 >= N:
+			return null
+		var f := int(face[i])
+		var o := PackedInt32Array()
+		var e := _end_into(t + DIRS[f], f)
+		if e >= 0:
+			o.append(e)
+		for d in 4:
+			if int(fork[i]) & (1 << d) and d != f:
+				var e2 := _end_into(t + DIRS[d], d)
+				if e2 >= 0:
+					o.append(e2)
+		return o
+	if k == BRIDGE:
+		fork[i] = 0
+		var f := int(face[i]) if s0 < N else int(face2[i])
+		var o := PackedInt32Array()
+		var e := _end_into(t + DIRS[f], f)
+		if e >= 0:
+			o.append(e)
+		return o
+	return null
+
+## Slot `s0` taken off the feeders of what it handed into.
+func _unfeed(s0: int) -> void:
+	if not outs.has(s0):
+		return
+	for e: int in outs[s0]:
+		var id := e >> 2
+		if not feeders.has(id):
+			continue
+		var fs: PackedInt32Array = feeders[id]
+		var at := fs.find(s0)
+		if at >= 0:
+			fs.remove_at(at)
+		if fs.is_empty():
+			feeders.erase(id)
+
+func _lanes_add(s0: int) -> void:
+	var at := lanes.bsearch(s0)
+	if at >= lanes.size() or lanes[at] != s0:
+		lanes.insert(at, s0)
+
+func _lanes_drop(s0: int) -> void:
+	var at := lanes.bsearch(s0)
+	if at < lanes.size() and lanes[at] == s0:
+		lanes.remove_at(at)
+	dead[s0] = 0
+
+## Machine `r` takes the slots of the belts under its squares.
+func _mouth(r: int) -> void:
+	var m: Dictionary = machines[r]
+	m.ins = [PackedInt32Array(), PackedInt32Array()]
+	m.fronts = PackedInt32Array()
+	m.rems = PackedInt32Array()
+	var held := PackedInt32Array()
+	for c: Array in footprint(int(op[r]), tile_of(r), int(oface[r])):
+		var q := _i(c[0])
+		var slots: Array = [q] if int(kind[q]) == BELT else ([q, q + N] if int(kind[q]) == BRIDGE else [])
+		for s0: int in slots:
+			match int(c[1]):
+				R_A, R_B:
+					var side := 0 if int(c[1]) == R_A else 1
+					intake[s0] = 1 + side
+					held.append(s0)
+					m.ins[side].append(s0)
+				R_OUT:
+					m.fronts.append(s0)
+				R_REM:
+					m.rems.append(s0)
+	m.held = held
+
+## Machine `r` lets go of the slots it held.
+func _unmouth(r: int) -> void:
+	var m: Dictionary = machines[r]
+	for s0: int in m.get("held", PackedInt32Array()):
+		intake[s0] = 0
 
 func _machine() -> Dictionary:
 	return {"a": [], "b": [], "out": [], "rem": [], "busy": false, "t": 0.0, "x": 0, "y": 0, "last": 0, "has_last": false, "a_since": -1.0, "b_since": -1.0, "rr": 0, "rr_rem": 0, "ins": [PackedInt32Array(), PackedInt32Array()], "fronts": PackedInt32Array(), "rems": PackedInt32Array(), "eff": 0.0}
@@ -1977,7 +2172,9 @@ func save() -> void:
 		return
 	var cfg := ConfigFile.new()
 	var pieces := PackedInt32Array()
-	for i in N:
+	var walk := PackedInt32Array(used.keys())
+	walk.sort()
+	for i: int in walk:
 		var k := int(kind[i])
 		if k != EMPTY and k != BOX and (int(root[i]) < 0 or int(root[i]) == i):
 			pieces.append_array([i, k, int(face[i]), int(face2[i])])
@@ -2002,7 +2199,7 @@ func save() -> void:
 	cfg.set_value("paper", "pieces", pieces)
 	cfg.set_value("paper", "layers", true)
 	var forks := PackedInt32Array()
-	for i in N:
+	for i: int in walk:
 		if int(kind[i]) == BELT and int(fork[i]) != 0:
 			forks.append_array([i, int(fork[i])])
 	cfg.set_value("paper", "forks", forks)
@@ -2021,7 +2218,7 @@ func save() -> void:
 ## so a kept factory runs on over the machines' layer.
 func _adopt() -> void:
 	var roots := []
-	for i in N:
+	for i: int in _touched.keys():
 		if op[i] != 0 and int(oroot[i]) == i:
 			roots.append(i)
 	for r: int in roots:
@@ -2051,6 +2248,7 @@ func _adopt() -> void:
 					break
 
 func _lay_bare(i: int, f: int) -> void:
+	_touched[i] = true
 	kind[i] = BELT
 	face[i] = f
 	fork[i] = 0

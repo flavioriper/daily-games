@@ -188,6 +188,7 @@ func _reset() -> void:
 			_sim._wire()
 			_run(Vector2i(53, 57), Vector2i(56, 57), 0)
 			_run(Vector2i(53, 61), Vector2i(56, 61), 0)
+	_sim.reprint()
 	_sim.events.clear()
 	_board.sim = _sim
 	_board.place_face = 3 if lesson == Lesson.MACHINE else 0

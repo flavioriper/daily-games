@@ -25,6 +25,9 @@ const Wd := 2
 const Nd := 3
 
 var _fails := 0
+## Every paper the checks build: at the end each is wired again from
+## nothing and must come out as the edits left it, piece by piece.
+var _sims: Array = []
 
 func _initialize() -> void:
 	Sim.path = "user://_probe_tally.cfg"
@@ -43,6 +46,7 @@ func _initialize() -> void:
 	_kept()
 	_templates()
 	_over_belts()
+	_wiring()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(Sim.path))
 	print("%d failed" % _fails)
 	quit(1 if _fails > 0 else 0)
@@ -59,7 +63,54 @@ func _blank(lvl := 30) -> RefCounted:
 	s.level = lvl
 	# the paper is wide: runs to the box are long, so belts go 8 a second
 	s.lv.belt = 8
+	_sims.append(s)
 	return s
+
+## The wiring as the edits left it, in a shape that does not mind the order
+## the feeders were found in.
+func _wiring_of(s: RefCounted) -> Dictionary:
+	var feeders := {}
+	for id in s.feeders:
+		var fs: PackedInt32Array = (s.feeders[id] as PackedInt32Array).duplicate()
+		fs.sort()
+		feeders[id] = fs
+	var machines := {}
+	for r in s.machines:
+		var m: Dictionary = s.machines[r]
+		var a: PackedInt32Array = (m.ins[0] as PackedInt32Array).duplicate()
+		var b: PackedInt32Array = (m.ins[1] as PackedInt32Array).duplicate()
+		var fr: PackedInt32Array = (m.fronts as PackedInt32Array).duplicate()
+		var rm: PackedInt32Array = (m.rems as PackedInt32Array).duplicate()
+		a.sort()
+		b.sort()
+		fr.sort()
+		rm.sort()
+		machines[r] = [a, b, fr, rm]
+	var digs := {}
+	for r in s.digs:
+		var o: PackedInt32Array = (s.digs[r].outs as PackedInt32Array).duplicate()
+		o.sort()
+		digs[r] = o
+	var crates := {}
+	for r in s.crates:
+		var o: PackedInt32Array = (s.crates[r].outs as PackedInt32Array).duplicate()
+		o.sort()
+		crates[r] = o
+	var lanes: PackedInt32Array = s.lanes.duplicate()
+	lanes.sort()
+	return {"lanes": lanes, "outs": s.outs.duplicate(true), "feeders": feeders, "dead": s.dead.duplicate(), "intake": s.intake.duplicate(), "machines": machines, "digs": digs, "crates": crates}
+
+func _wiring() -> void:
+	var n := 0
+	for s in _sims:
+		var was := _wiring_of(s)
+		s._wire_all()
+		var now := _wiring_of(s)
+		for key: String in was:
+			if was[key] != now[key]:
+				_check("paper %d wired piece by piece differs from the whole in %s" % [n, key], false)
+		n += 1
+	_check("%d papers wired piece by piece match the whole sheet wired again" % n, true)
 
 ## A one-square dig written straight onto the paper, past the footprint:
 ## for the machines' and belts' checks, where digs stand close.
@@ -68,6 +119,7 @@ func _dig1(s: RefCounted, at: Vector2i, v: int) -> void:
 	s.dep[i] = v
 	s.kind[i] = Sim.DIG
 	s.face[i] = E
+	s.touch(i)
 	s._wire()
 
 func _run(s: RefCounted, from: Vector2i, to: Vector2i, f: int) -> void:
@@ -502,6 +554,7 @@ func _stall() -> void:
 
 func _ladder() -> void:
 	var s = Sim.new(3)
+	_sims.append(s)
 	var last := 0
 	var ok := true
 	var t0 := Time.get_ticks_msec()
@@ -539,6 +592,7 @@ func _upgrades() -> void:
 
 func _kept() -> void:
 	var s = Sim.new(21)
+	_sims.append(s)
 	s.level = 9
 	s.got = 33
 	s.made = 1234
@@ -574,6 +628,7 @@ func _kept() -> void:
 ## whole; a part saved from them; a picked lot lifted and put back.
 func _templates() -> void:
 	var s = Sim.new(23)
+	_sims.append(s)
 	s.level = 3
 	s.place(Sim.ADD, Vector2i(12, 12), S)
 	_run(s, Vector2i(10, 10), Vector2i(14, 10), E)

@@ -77,6 +77,13 @@ const SQUASH := 0.22
 const GONE := 0.22
 ## Chevrons are drawn from this many pixels a square.
 const CHEV_FROM := 30.0
+## Far out a token is a speck under its belt's bed: none are drawn.
+const TOKENS_FROM := 12.0
+## A changed square's beds and feeding reach this far (a dig's belts two
+## squares off, a bend one): the chunks that far round it are built again.
+const REACH := 3
+## The numerals' shaped lines are kept up to this many before they go.
+const LINES_MOST := 3000
 ## A numeral smaller than this many pixels is not written.
 const FS_MIN := 8
 const TOOL_KINDS := {"belt": Sim.BELT, "dig": Sim.DIG, "crate": Sim.CRATE, "add": Sim.ADD, "mul": Sim.MUL, "sub": Sim.SUB, "div": Sim.DIV, "pow": Sim.POW}
@@ -150,8 +157,11 @@ var _pill_cache := {}
 var _pill_live := {}
 var _paper: ArrayMesh
 var _prints: ArrayMesh
-var _beds: ArrayMesh
-var _decks: ArrayMesh
+var _beds_c := {}        # chunk -> the beds of its belts, one mesh (or null)
+var _decks_c := {}       # chunk -> its crossings' plates
+var _dirty_c := {}       # chunks to build again
+var _dirty_all := true
+var _lines := {}         # [text, fs] -> TextLine
 var _live := {}
 var _flat_cache := {}
 var _dirty := true
@@ -358,6 +368,7 @@ func play(ev: Dictionary) -> void:
 ## Something about the paper changed without an event (a load, a harness).
 func relay() -> void:
 	_dirty = true
+	_dirty_all = true
 	_printed_at = -1
 
 func tick(delta: float) -> void:
@@ -374,8 +385,7 @@ func tick(delta: float) -> void:
 	_place()
 	if String(_pill.get("kind", "")) == "undone" and _clock - _pill_at > UNDO_PILL:
 		_close_pill()
-	if _dirty:
-		_rebuild()
+	_rebuild()
 	for nm in ["chev", "under", "tokens", "pieces", "live"]:
 		_layers[nm].queue_redraw()
 	_words.queue_redraw()
@@ -400,21 +410,56 @@ func tick(delta: float) -> void:
 # --- building the still layers ---
 
 func _rebuild() -> void:
-	_dirty = false
 	if _paper == null:
 		_paper = Art.paper(Sim.W, Sim.H, RIM)
+	if _dirty_all:
+		_dirty_all = false
+		_dirty = false
+		_beds_c = {}
+		_decks_c = {}
+		_dirty_c = {}
+		_ins = {}
+		_mouths()
+		sim.changed.clear()
+	elif _dirty or not sim.changed.is_empty():
+		_dirty = false
+		# the chunks the changed squares reach into
+		for i: int in sim.changed:
+			var t := Sim.tile_of(i)
+			for cy in range(maxi(t.y - REACH, 0) / Sim.CH, mini(t.y + REACH, Sim.H - 1) / Sim.CH + 1):
+				for cx in range(maxi(t.x - REACH, 0) / Sim.CH, mini(t.x + REACH, Sim.W - 1) / Sim.CH + 1):
+					_dirty_c[cy * Sim.CW + cx] = true
+		sim.changed.clear()
+		_mouths()
 	if _printed_at != sim.level:
 		_printed_at = sim.level
 		var b := Face.Builder.new()
-		for i in Sim.N:
+		for i: int in sim.printed:
 			var v := int(sim.dep[i])
 			if v > 0:
 				Art.print_ring(b, Art.mid(Sim.tile_of(i)), sim.can_dig(v))
 		_prints = b.mesh() if not b.verts.is_empty() else null
-	_work_ins()
+		_layers.ground.queue_redraw()
+	# the chunks in sight are built when missing, the dirty ones again
+	var built := false
+	for c: int in _chunks_seen():
+		if _dirty_c.has(c) or not _beds_c.has(c):
+			_build_chunk(c)
+			_dirty_c.erase(c)
+			built = true
+	if built:
+		_layers.beds.queue_redraw()
+		_layers.decks.queue_redraw()
+
+## One chunk's beds and crossing plates, each one mesh; its belts' ways in
+## worked out first.
+func _build_chunk(c: int) -> void:
 	var beds := Face.FlatBuilder.new(_flat_cache)
 	var decks := Face.FlatBuilder.new(_flat_cache)
-	for i in Sim.N:
+	var cell: PackedInt32Array = sim.cells[c]
+	for i: int in cell:
+		_ins[i] = _ways_in(i)
+	for i: int in cell:
 		var kd := int(sim.kind[i])
 		if kd == Sim.BELT and int(sim.dead[i]) == 1:
 			# a line's loose end goes as far as its middle: a stub from each
@@ -448,35 +493,42 @@ func _rebuild() -> void:
 			var v := int(sim.face2[i])
 			beds.append(Art.bed(v, v), Transform2D(0.0, at))
 			decks.append(Art.cross(int(sim.face[i])), Transform2D(0.0, at))
-	_beds = beds.mesh()
-	_decks = decks.mesh()
-	_layers.ground.queue_redraw()
-	_layers.beds.queue_redraw()
-	_layers.decks.queue_redraw()
+	_beds_c[c] = beds.mesh() if not cell.is_empty() else null
+	_decks_c[c] = decks.mesh() if not cell.is_empty() else null
 
-## Which ways tokens come into each slot, as bits of their way of going,
-## and which edges each machine is fed by and hands out of.
-func _work_ins() -> void:
-	_ins = {}
-	_mouth = {}
-	for s: int in sim.lanes:
+## Which ways tokens come into belt `i`, as bits of their way of going:
+## from the belts handing into it, and from a dig or a crate beside it.
+func _ways_in(i: int) -> int:
+	var bits := 0
+	for s: int in sim.feeders.get(i, PackedInt32Array()):
 		for e: int in sim.outs[s]:
-			_mark(e)
+			if (e >> 2) == i:
+				bits |= 1 << (e & 3)
+	var t := Sim.tile_of(i)
+	for d in 4:
+		var u: Vector2i = t + Sim.DIRS[d]
+		if not Sim.inside(u):
+			continue
+		var j := Sim._i(u)
+		var kd := int(sim.kind[j])
+		var o: PackedInt32Array
+		if kd == Sim.DIG:
+			var r := int(sim.root[j])
+			r = j if r < 0 else r
+			if sim.digs.has(r):
+				o = sim.digs[r].outs
+		elif kd == Sim.CRATE and sim.crates.has(j):
+			o = sim.crates[j].outs
+		for e: int in o:
+			if (e >> 2) == i:
+				bits |= 1 << (e & 3)
+	return bits
+
+## Which edges each machine is fed by and hands out of.
+func _mouths() -> void:
+	_mouth = {}
 	for i: int in sim.machines:
 		_mouth[i] = sim.ports(i)
-	for i: int in sim.digs:
-		for e: int in sim.digs[i].outs:
-			_mark(e)
-	for i: int in sim.crates:
-		for e: int in sim.crates[i].outs:
-			_mark(e)
-
-func _mark(e: int) -> void:
-	if e < 0:
-		return
-	var id := e >> 2
-	if id < Sim.N2:
-		_ins[id] = int(_ins.get(id, 0)) | (1 << (e & 3))
 
 ## The way a belt's bed comes in: from its back, or round from the one side
 ## that feeds it alone.
@@ -504,7 +556,17 @@ func _visible() -> Rect2i:
 func _sees(t: Vector2i, r: Rect2i) -> bool:
 	return r.has_point(t)
 
-## Every lane on a square in view: a belt's, and both of a crossing's.
+## The chunks the view touches, row by row.
+func _chunks_seen() -> Array:
+	var r := _visible()
+	var out := []
+	for cy in range(maxi(r.position.y, 0) / Sim.CH, mini(r.end.y - 1, Sim.H - 1) / Sim.CH + 1):
+		for cx in range(maxi(r.position.x, 0) / Sim.CH, mini(r.end.x - 1, Sim.W - 1) / Sim.CH + 1):
+			out.append(cy * Sim.CW + cx)
+	return out
+
+## Every lane on a square in view: a belt's, and both of a crossing's,
+## read off the chunks' lists, so a frame costs what is on screen.
 func _lanes_seen() -> PackedInt32Array:
 	var r := _visible()
 	var key := [Engine.get_process_frames(), r, sim.lanes.size(), sim]
@@ -512,14 +574,12 @@ func _lanes_seen() -> PackedInt32Array:
 		return _seen
 	_seen_key = key
 	_seen = PackedInt32Array()
-	for y in range(maxi(r.position.y, 0), mini(r.end.y, Sim.H)):
-		for x in range(maxi(r.position.x, 0), mini(r.end.x, Sim.W)):
-			var i := y * Sim.W + x
-			var kd := int(sim.kind[i])
-			if kd == Sim.BELT:
-				_seen.append(i)
-			elif kd == Sim.BRIDGE:
-				_seen.append(i)
+	for c: int in _chunks_seen():
+		for i: int in sim.cells[c]:
+			if not r.has_point(Sim.tile_of(i)):
+				continue
+			_seen.append(i)
+			if int(sim.kind[i]) == Sim.BRIDGE:
 				_seen.append(i + Sim.N)
 	return _seen
 
@@ -533,15 +593,19 @@ func _draw_layer(nm: String, l: Node2D) -> void:
 			if _prints != null:
 				l.draw_mesh(_prints, null)
 		"beds":
-			if _beds != null:
-				l.draw_mesh(_beds, null)
+			for c: int in _chunks_seen():
+				var m: ArrayMesh = _beds_c.get(c)
+				if m != null:
+					l.draw_mesh(m, null)
 		"chev":
 			_draw_mesh_live(l, nm, _build_chevrons())
 		"under":
 			_draw_mesh_live(l, nm, _build_tokens(true))
 		"decks":
-			if _decks != null:
-				l.draw_mesh(_decks, null)
+			for c: int in _chunks_seen():
+				var m: ArrayMesh = _decks_c.get(c)
+				if m != null:
+					l.draw_mesh(m, null)
 		"tokens":
 			_draw_mesh_live(l, nm, _build_tokens(false))
 		"pieces":
@@ -587,6 +651,8 @@ func _build_chevrons() -> ArrayMesh:
 	return fb.mesh()
 
 func _build_tokens(under: bool) -> ArrayMesh:
+	if k < TOKENS_FROM:
+		return null
 	var fb := Face.FlatBuilder.new(_flat_cache)
 	var lod := 0 if k >= 100.0 else (1 if k >= 40.0 else 2)
 	var plain := Art.token(false, lod)
@@ -1296,25 +1362,28 @@ func _draw_words() -> void:
 	var printed := int(clampf(k * 0.4, 0.0, 64.0))
 	var aim: int = sim.target()
 	if printed >= FS_MIN:
-		for y in range(maxi(r.position.y, 0), mini(r.end.y, Sim.H)):
-			for x in range(maxi(r.position.x, 0), mini(r.end.x, Sim.W)):
-				var i := y * Sim.W + x
-				var v := int(sim.dep[i])
-				var kd := int(sim.kind[i])
-				if v == 0 or (kd != Sim.EMPTY and kd != Sim.DIG) or sim.op[i] != 0:
-					continue
-				var col: Color = Art.PENCIL if sim.can_dig(v) else Art.PENCIL_SHUT
-				if kd == Sim.DIG and int(sim.root[i]) >= 0 and int(sim.root[i]) != i:
-					continue
-				if kd == Sim.DIG:
-					# the dig's face is three squares' worth: its numeral grows with
-					# it, hops with the thump, and its efficiency is written under it
-					var hop := _thump(i) * 1.2
-					_write(str(v), screen_of(Vector2(x, y) + Vector2(0.5, 0.45 - hop)), int(clampf(k * (0.62 if v < 10 else 0.5) * (1.0 + hop), 0.0, 120.0)), Art.INK)
-					if k >= VISOR_FROM and sim.digs.has(i):
-						_write("%d%%" % roundi(float(sim.digs[i].eff) * 100.0), screen_of(Vector2(x, y) + Vector2(0.5, 0.86)), int(k * 0.15), Color(Art.INK, 0.6))
-					continue
-				_write(str(v), screen_of(Vector2(x, y) + Vector2(0.5, 0.5)), printed, col.darkened(0.15))
+		for i: int in sim.printed:
+			var t := Sim.tile_of(i)
+			if not r.has_point(t):
+				continue
+			var x := t.x
+			var y := t.y
+			var v := int(sim.dep[i])
+			var kd := int(sim.kind[i])
+			if v == 0 or (kd != Sim.EMPTY and kd != Sim.DIG) or sim.op[i] != 0:
+				continue
+			var col: Color = Art.PENCIL if sim.can_dig(v) else Art.PENCIL_SHUT
+			if kd == Sim.DIG and int(sim.root[i]) >= 0 and int(sim.root[i]) != i:
+				continue
+			if kd == Sim.DIG:
+				# the dig's face is three squares' worth: its numeral grows with
+				# it, hops with the thump, and its efficiency is written under it
+				var hop := _thump(i) * 1.2
+				_write(str(v), screen_of(Vector2(x, y) + Vector2(0.5, 0.45 - hop)), int(clampf(k * (0.62 if v < 10 else 0.5) * (1.0 + hop), 0.0, 120.0)), Art.INK)
+				if k >= VISOR_FROM and sim.digs.has(i):
+					_write("%d%%" % roundi(float(sim.digs[i].eff) * 100.0), screen_of(Vector2(x, y) + Vector2(0.5, 0.86)), int(k * 0.15), Color(Art.INK, 0.6))
+				continue
+			_write(str(v), screen_of(Vector2(x, y) + Vector2(0.5, 0.5)), printed, col.darkened(0.15))
 	# crates: the number kept and how many
 	if printed >= FS_MIN:
 		for i: int in sim.crates:
@@ -1372,8 +1441,17 @@ func _draw_words() -> void:
 func _write(text: String, at: Vector2, fs: int, col: Color) -> void:
 	if fs < FS_MIN:
 		return
-	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-	_words.draw_string(font, Vector2(at.x - w * 0.5, at.y + fs * 0.36), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, col)
+	# shaped once a text and size, drawn from the cache every frame after
+	var key := [text, fs]
+	var line: TextLine = _lines.get(key)
+	if line == null:
+		if _lines.size() >= LINES_MOST:
+			_lines = {}
+		line = TextLine.new()
+		line.add_string(text, font, fs)
+		_lines[key] = line
+	var w := line.get_line_width()
+	line.draw(_words.get_canvas_item(), Vector2(at.x - w * 0.5, at.y + fs * 0.36 - line.get_line_ascent()), col)
 
 # --- the pills ---
 

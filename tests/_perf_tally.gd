@@ -23,6 +23,7 @@ func _initialize() -> void:
 		# a one-square dig written straight on: a three-wide one would not fit every other row
 		s.dep[Sim._i(Vector2i(0, y))] = 1
 		s.kind[Sim._i(Vector2i(0, y))] = Sim.DIG
+		s.touch(Sim._i(Vector2i(0, y)))
 		belts += s.lay_run(row, 0)
 	for x in range(3, Sim.W - 3, 6):
 		s.place(Sim.ADD, Vector2i(x, 1), 0)
@@ -72,7 +73,24 @@ func _process(_d: float) -> bool:
 		s.step(1.0 / 60.0)
 	print("sim step %.2f ms a frame" % ((Time.get_ticks_usec() - t2) / 30000.0))
 	var t3 := Time.get_ticks_usec()
-	b._dirty = true
+	b.relay()
 	b._rebuild()
-	print("rebuild of the still layers %.2f ms" % ((Time.get_ticks_usec() - t3) / 1000.0))
+	print("rebuild of the still layers in view, from nothing %.2f ms" % ((Time.get_ticks_usec() - t3) / 1000.0))
+	# an edit: a short run laid at the view's middle, wired, and the board's rebuild after it
+	var mid := Vector2i(Sim.HUB_AT) + Vector2i(-8, Sim.HUB + 2)
+	var t4 := Time.get_ticks_usec()
+	var run := []
+	for n in 6:
+		run.append(mid + Vector2i(n, 0))
+	s.lay_path(run, 0)
+	var t5 := Time.get_ticks_usec()
+	b._rebuild()
+	var t6 := Time.get_ticks_usec()
+	print("an edit: wire %.2f ms, rebuild %.2f ms" % [(t5 - t4) / 1000.0, (t6 - t5) / 1000.0])
+	Sim.path = "user://_perf_tally.cfg"
+	var t7 := Time.get_ticks_usec()
+	s.save()
+	print("save %.2f ms" % ((Time.get_ticks_usec() - t7) / 1000.0))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(Sim.path))
+	Sim.path = ""
 	return true
