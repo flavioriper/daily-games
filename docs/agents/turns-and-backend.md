@@ -148,6 +148,24 @@ as the functions' service account, which needs Vertex AI User there:
 `tools/vertex_identity.sh`, run by a person. Without it every picture step
 fails twice and the bead boards deal their banks; the rest still publishes.
 
+**The day waits for its theme** (2026-10-20, the user, whose 21:00 BRT open
+found no theme: "make sure the game challenges only switch when next theme
+is fully done"). The server was not late: `days/20261020/turns/pictures`
+and `vistas` were created 2026-10-19 00:00:40 UTC, a day early, as every
+day is. The phone was: `world/main.gd` fetched today's documents once, at
+boot, and nothing fetched the new day's on a resume or across 00:00 UTC,
+while the boards read only what the phone holds. Now `Daily.date_key()`
+answers `Daily.held` (the day before) while the new UTC day's `pictures`
+and `vistas` are not on the phone; `_watch_day` (boot, resume, every
+minute) fetches them, lets the day in once both are held or a 404, tells
+the menu (group `daily_day`) and the vista cards, and fetches tomorrow's
+four (`pictures`, `vistas`, `acorn`, `pearl`) ahead, so the next rollover
+finds them already here and never holds. The hold lapses by itself
+`Daily.HOLD_S` (3 h 30) past 00:00 UTC, after publishDay's 03:00 repair,
+so an offline phone still rolls over; `submitTurn` takes yesterday's turns
+all day. `InsaneBank.day_ordinal()` follows the hold; `Daily.utc_key()` is
+the day regardless.
+
 **Since 2026-10-14 the night writes on Anthropic's own API** (the user, after
 OpenRouter's balance ran out mid-run: "i allow you to replace it, use the opus
 to check quiz and jelly"). With `ANTHROPIC_API_KEY` set, `ask()` sends every

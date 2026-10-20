@@ -43,7 +43,8 @@ static var day_override := -1
 static func day_ordinal() -> int:
 	if day_override >= 0:
 		return day_override
-	return int(Time.get_unix_time_from_system()) / 86400
+	# A day held back (Daily.holding) holds the bank's turn too.
+	return int(Time.get_unix_time_from_system()) / 86400 - (1 if Daily.holding() else 0)
 
 static func pick(puzzle_id: String, step: int) -> Dictionary:
 	var pool := boards(puzzle_id)

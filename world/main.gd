@@ -26,12 +26,54 @@ func _enter_tree() -> void:
 	# Every paper face in the HUD takes its painted wash from here on, the
 	# one place that runs before any screen builds (ui/theme.gd dress()).
 	CozyTheme.dress(get_tree())
+	# Before the menu, a child, reads the day: a new UTC day whose theme
+	# this phone does not hold yet is held back until _watch_day has it
+	# (core/daily.gd `held`).
+	_hold_day()
 
-func _fetch_vistas() -> void:
-	var got: Dictionary = await Backend.day_content(ThemedVistas.GAME, Daily.date_key())
-	if got.ok and not got.data.is_empty():
-		ThemedVistas.reload()
-		get_tree().call_group(ThemedVistas.GROUP, "vistas_arrived")
+## What makes a day's theme, fetched before the day is let in.
+const THEMED := [ThemedPictures.GAME, ThemedVistas.GAME]
+## Everything a day reads off the server, fetched a day ahead: the night
+## publishes tomorrow's theme by 00:00 UTC and its quizzes at 03:00.
+const AHEAD := [ThemedPictures.GAME, ThemedVistas.GAME, "acorn", "pearl"]
+var _watched := 0
+var _watching := false
+
+func _hold_day() -> void:
+	var today := Daily.utc_key()
+	Daily.held = Daily.utc_key(-1) if THEMED.any(func(g: String) -> bool:
+		return Backend.cached_day(g, today).is_empty()) else 0
+
+## Today's theme onto this phone, then the day let in, then tomorrow's
+## fetched ahead so the next 00:00 UTC finds it here. At boot, on resume
+## and every minute; a day whose fetch failed (offline, an error) is
+## tried again on the next.
+func _watch_day() -> void:
+	var today := Daily.utc_key()
+	if _watching or today == _watched:
+		return
+	_watching = true
+	_hold_day()
+	var known := true
+	for g: String in THEMED:
+		if Backend.cached_day(g, today).is_empty():
+			var got: Dictionary = await Backend.day_content(g, today)
+			# A day the night made no theme for is a 404: nothing to wait on.
+			known = known and (got.ok or got.error == "HTTP 404")
+	if known:
+		_watched = today
+		Daily.held = 0
+		for g: String in AHEAD:
+			Backend.day_content(g, Daily.utc_key(1))  # deliberately not awaited
+	_watching = false
+	if not known:
+		return
+	ThemedVistas.reload()
+	get_tree().call_group(ThemedVistas.GROUP, "vistas_arrived")
+	get_tree().call_group(DAY_GROUP, "_check_day")
+
+## The screens told when the held day is let in (ui/menu.gd).
+const DAY_GROUP := "daily_day"
 
 ## Telemetry wakes up here and nowhere else, so only a real launch counts;
 ## tests and harnesses build these screens without ever starting it.
@@ -43,16 +85,21 @@ func _ready() -> void:
 	Backend.start(self)  # first: Ads.start() reads remote config through it
 	# Golden Acorn's questions for today, fetched behind the menu so its card
 	# opens on them at once (puzzles/acorn2d.gd waits a moment when it must).
-	Backend.day_content("acorn", Daily.date_key())  # deliberately not awaited
+	Backend.day_content("acorn", Daily.utc_key())  # deliberately not awaited
 	# Pearl Dive's prompts ride the same way (puzzles/pearl2d.gd).
-	Backend.day_content("pearl", Daily.date_key())  # deliberately not awaited
+	Backend.day_content("pearl", Daily.utc_key())  # deliberately not awaited
 	# The day's themed bead pictures, for Pixel Garden, Button Box and Toy
-	# Cannons, and Gumdrop's jellies (core/themed_pictures.gd): they deal
-	# what is held, never wait.
-	Backend.day_content(ThemedPictures.GAME, Daily.date_key())  # deliberately not awaited
-	# And its painted vistas, for the day card and the difficulty rows
-	# (core/themed_vistas.gd): a card already up is told when they come.
-	_fetch_vistas()
+	# Cannons, and Gumdrop's jellies (core/themed_pictures.gd), and its
+	# painted vistas, for the day card and the difficulty rows
+	# (core/themed_vistas.gd): the boards deal what is held, never wait, so
+	# _watch_day fetches them before the day is let in, and tomorrow's
+	# ahead; a card already up is told when they come.
+	var watch := Timer.new()
+	watch.wait_time = 60.0
+	watch.autostart = true
+	watch.timeout.connect(_watch_day)
+	add_child(watch)
+	_watch_day()
 	# Friends ride on the backend's identity. Started is not connected: it
 	# holds no stream until the player has social (core/social.gd).
 	Social.start(self)
@@ -75,6 +122,7 @@ func _ready() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_RESUMED and is_node_ready():
 		_take_link()
+		_watch_day()
 
 ## A friend link the game was opened with (core/deep_link.gd hands each out
 ## once): whoever opens it is the sender's friend from here on, with nothing

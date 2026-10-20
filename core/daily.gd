@@ -5,9 +5,30 @@ extends RefCounted
 ## puzzle, which is the whole point of a daily. Seeds are derived from the
 ## UTC date so the puzzle rolls over at the same instant worldwide.
 
+## The day held back (2026-10-20, the user, whose 21:00 BRT open found no
+## theme: "make sure the game challenges only switch when next theme is
+## fully done"). While world/main.gd has not yet got the new UTC day's
+## themed pictures and vistas onto this phone, date_key() answers `held`,
+## the day before; it lets go as soon as both are held or known not to
+## exist, and by itself HOLD_S past 00:00 UTC, so an offline phone still
+## rolls over (publishDay's 03:00 repair has run by then, and submitTurn
+## takes yesterday's turns all day). 0 is no hold: the suite and every
+## harness never set one.
+const HOLD_S := 3 * 3600 + 1800
+static var held := 0
+
 static func date_key(dt: Dictionary = {}) -> int:
-	var d := dt if not dt.is_empty() else Time.get_datetime_dict_from_system(true)
-	return int(d.year) * 10000 + int(d.month) * 100 + int(d.day)
+	if dt.is_empty():
+		return held if holding() else utc_key()
+	return int(dt.year) * 10000 + int(dt.month) * 100 + int(dt.day)
+
+## The UTC day `offset` days from now, whatever is held.
+static func utc_key(offset := 0) -> int:
+	return date_key(Time.get_datetime_dict_from_unix_time(int(Time.get_unix_time_from_system()) + offset * 86400))
+
+## Whether date_key() is answering the day before today's UTC one.
+static func holding() -> bool:
+	return held != 0 and held < utc_key() and int(Time.get_unix_time_from_system()) % 86400 < HOLD_S
 
 static func seed_for(puzzle_id: String, round_index: int, dt: Dictionary = {}) -> int:
 	# Mix the date, the puzzle identity and the round so two puzzles on the

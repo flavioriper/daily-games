@@ -389,6 +389,8 @@ func _ready() -> void:
 	day_timer.autostart = true
 	day_timer.timeout.connect(_check_day)
 	add_child(day_timer)
+	# And at once when world/main.gd lets a held day in (core/daily.gd).
+	add_to_group("daily_day")
 	_show_list()
 
 ## A resumed app, or one brought back to the front, may be on a new day.
