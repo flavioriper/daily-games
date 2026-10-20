@@ -328,7 +328,7 @@ func event(e: Dictionary) -> void:
 	match String(e.type):
 		"chop":
 			_on_chop(int(e.id))
-		"laid", "turned", "sold_back", "placed", "built":
+		"laid", "turned", "flipped", "sold_back", "sold_line", "placed", "built":
 			_belts_stale = true
 		"brought":
 			_lying[int(e.id)] = {"from": int(e.from), "t": 0.0}

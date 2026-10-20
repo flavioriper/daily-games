@@ -24,11 +24,16 @@ extends Control
 ## the desktop mouse read beside them. A press that moves under TAP pixels
 ## is a tap: on a forest or a fire box with fuel waiting it is the labour;
 ## on a plus, the market, a machine or a forest's badge it opens the card; on a belt
-## it turns it a quarter. A drag pans, unless Belt is picked in the drawer
-## (hold and swipe: a straight run of belts is shown from the pressed tile
-## to the finger with the way it will flow, and laid as the finger lifts) or a
-## machine is (its ghost follows the finger and the release stands it). A
-## finger held still for HOLD on a belt or a machine sells it back.
+## it opens the belt's **pill** (Turn, Flip, Sell, Section, Line: the
+## pill of Tally's paper, ui/hud/piece_pill.gd). A drag pans, unless a belt
+## is picked in the drawer: then the finger **traces a path** as Tally's
+## belt tool does (the user, 2026-10-20: "helpers to create convey based on
+## the tally convey"), shown with the way it will flow and laid as the
+## finger lifts, each belt facing the next; with **Straight** on (the chip
+## over the drawer) the path is a line with at most one bend, the L. A
+## splitter or a bridge goes one at a time, or a machine is picked (its
+## ghost follows the finger and the release stands it). A finger held
+## still for HOLD on a belt or a machine sells it back.
 
 signal closed
 
@@ -49,6 +54,7 @@ const SafeArea = preload("res://ui/safe_area.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
 const Haptics = preload("res://core/haptics.gd")
 const Analytics = preload("res://core/analytics.gd")
+const PiecePill = preload("res://ui/hud/piece_pill.gd")
 
 const GAME := "factory"
 const MARGIN := 40
@@ -112,6 +118,17 @@ const COIN_GAP := 140
 ## The tap is a selection moved; a tree down is a piece set down; a thing
 ## bought is something finished; one that cannot be is a not yet.
 const HAPTICS := {"buy": Haptics.BUMP, "no": Haptics.WARN}
+## The belt pill's buttons and captions; Tally's words where they are the same.
+const PILL_PLAIN := ["turn", "flip", "sell", "run", "line"]
+const PILL_ONE := ["turn", "sell"]
+const PILL_CAP := {"turn": "TL_TURN", "flip": "TL_FLIP", "sell": "FACTORY_PILL_SELL", "run": "TL_ERASE_RUN", "line": "TL_ERASE_LINE"}
+## The Straight chip over the drawer's button.
+const LINE_W := 210.0
+const LINE_H := 84.0
+## A finger this near the field's edge while tracing a path moves the view,
+## this many pixels a second.
+const EDGE := 70.0
+const EDGE_SPEED := 620.0
 
 var sim: RefCounted
 var top_bar: Control
@@ -182,6 +199,26 @@ var _facing := 0
 var _pinch := 0.0
 var _ghost_wob := 10.0
 var _held_back := false
+## The path a finger traces with a belt picked: tiles in the order drawn,
+## the axis Straight holds it to (-1 till the finger leaves the first tile)
+## and the way its last step went.
+var _path: Array = []
+var _axis := -1
+var _trace_f := 0
+## The belt pill: {tile, buttons, at} while it is up; the button a press
+## landed on; whether the press was the pill's.
+var _piece := {}
+var _piece_hit := ""
+var _consumed := false
+var _btn_at := {}
+var _clock := 0.0
+var _pill_ui: PiecePill
+var _pill_l: Control
+var _line_b: Button
+var _line_at := -10.0
+## Straight lines for the path, on from the start (Tally's default, the
+## user, 2026-10-15); kept while the app runs.
+static var straight := true
 
 var _left := false
 var _since_save := 0.0
@@ -262,6 +299,13 @@ func _build() -> void:
 	_coin_fx._puzzle = "factory"
 	field.add_child(_coin_fx)
 	life.coined.connect(_on_coin)
+	_pill_ui = PiecePill.new(PILL_CAP)
+	_pill_l = Control.new()
+	_pill_l.name = "Pill"
+	_pill_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_pill_l.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_pill_l.draw.connect(_draw_piece)
+	field.add_child(_pill_l)
 	_light_l = Control.new()
 	_light_l.name = "Light"
 	_light_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -351,6 +395,16 @@ func _build() -> void:
 	_drawer_b.draw.connect(_draw_drawer_button)
 	_drawer_b.pressed.connect(_on_drawer_button)
 	add_child(_drawer_b)
+	_line_b = Button.new()
+	_line_b.name = "Straight"
+	_line_b.focus_mode = Control.FOCUS_NONE
+	_line_b.flat = true
+	_line_b.visible = false
+	_line_b.custom_minimum_size = Vector2(LINE_W, LINE_H)
+	_line_b.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	_line_b.draw.connect(_draw_line_chip)
+	_line_b.pressed.connect(toggle_straight)
+	add_child(_line_b)
 	if OS.is_debug_build():
 		# never in a release: the phone's test builds are debug exports
 		_free_b = Button.new()
@@ -430,6 +484,10 @@ func _apply_insets() -> void:
 		_free_b.offset_right = _free_b.offset_left + FREE_B
 		_free_b.offset_bottom = -foot - (DRAWER_B - FREE_B) * 0.5
 		_free_b.offset_top = _free_b.offset_bottom - FREE_B
+	_line_b.offset_left = 28.0
+	_line_b.offset_right = 28.0 + LINE_W
+	_line_b.offset_bottom = -foot - DRAWER_B - 16.0
+	_line_b.offset_top = _line_b.offset_bottom - LINE_H
 	_drawer.offset_left = 28.0
 	_drawer.offset_right = 28.0 + DRAWER_W
 	_drawer.offset_bottom = -foot - DRAWER_B - 16.0
@@ -576,10 +634,14 @@ func _tutor_hold(on: bool) -> void:
 func _process(delta: float) -> void:
 	if sim == null or _left:
 		return
+	_clock += delta
 	sim.step(delta)
 	_play_events()
 	_step_hand(delta)
+	_edge_pan(delta)
 	_step_view(delta)
+	if not _piece.is_empty() and not sim.belts.has(_piece.tile):
+		_close_piece()
 	life.ghosts = _ghosts()
 	life.step(delta)
 	for n: Dictionary in _nums:
@@ -594,6 +656,7 @@ func _process(delta: float) -> void:
 	if sim.dirty and _since_save >= SAVE_GAP:
 		_save()
 	_over_l.queue_redraw()
+	_pill_l.queue_redraw()
 
 func _play_events() -> void:
 	for e: Dictionary in sim.events:
@@ -607,7 +670,7 @@ func _play_events() -> void:
 					_fx.cue("chop", _vary())
 			"laid":
 				_quiet.cue("chop", 0.84 * _vary(), -6.0)
-			"turned":
+			"turned", "flipped":
 				_quiet.cue("chop", 1.12 * _vary(), -6.0)
 			"lit":
 				_fx.cue("chop", 0.7, -2.0)
@@ -620,7 +683,7 @@ func _play_events() -> void:
 				Motion.bump(_drawer_b, 0.12, 0.3)
 			"built":
 				_quiet.cue("buy", 1.0, -8.0)
-			"sold_back":
+			"sold_back", "sold_line":
 				_fx.cue("buy", 0.9)
 			"plate":
 				_fx.cue("buy")
@@ -761,6 +824,48 @@ func pick(kind: String) -> void:
 	sim.picked = kind
 	_let_go()
 	_refresh_drawer()
+	_line_b.visible = traces()
+
+## Whether the hand traces paths: a belt or a fast belt picked (a splitter
+## and a bridge go one at a time).
+func traces() -> bool:
+	return Sim.BELTS.has(sim.picked) and not Sim.ONE_TILE.has(sim.picked)
+
+## Straight lines on or off for the path (the chip, or a harness).
+func toggle_straight() -> void:
+	straight = not straight
+	_line_at = _clock
+	_fx.touch(1.06 if straight else 0.94)
+	_line_b.queue_redraw()
+
+## The Straight chip, Tally's: a paper capsule, a ruler line and its
+## caption; on, it wears the sun and the line is straight; off, it bends.
+func _draw_line_chip() -> void:
+	var r := Rect2(Vector2.ZERO, _line_b.size)
+	var sc := 1.0 if Motion.reduce else Motion.bump_scale(_clock - _line_at, 0.12, 0.2)
+	var c := r.get_center()
+	_line_b.draw_set_transform(c - c * sc, 0.0, Vector2(sc, sc))
+	var ink := PiecePill.INK
+	var rad := LINE_H * 0.5
+	_line_b.draw_style_box(_chip_box(Color(Pal.TEXT, 0.16), rad), Rect2(r.position + Vector2(0, 5.0), r.size))
+	_line_b.draw_style_box(_chip_box(Pal.SUN if straight else PiecePill.PAPER, rad), r)
+	var g := Vector2(r.position.x + 40.0, c.y)
+	var col := ink if straight else Color(ink, 0.55)
+	if straight:
+		_line_b.draw_line(g + Vector2(-16, 12), g + Vector2(16, -12), col, 7.0, true)
+	else:
+		_line_b.draw_polyline(PackedVector2Array([g + Vector2(-16, 12), g + Vector2(-16, -8), g + Vector2(16, -8)]), col, 7.0, true)
+	var font := get_theme_font("font", "SheetTitle")
+	var cap := tr("TL_STRAIGHT_ON") if straight else tr("TL_STRAIGHT_OFF")
+	_line_b.draw_string(font, Vector2(r.position.x + 66.0, c.y + 9.0), cap, HORIZONTAL_ALIGNMENT_CENTER, r.size.x - 80.0, 26, col)
+	_line_b.draw_set_transform(Vector2.ZERO)
+
+func _chip_box(fill: Color, rad: float) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = fill
+	sb.set_corner_radius_all(int(rad))
+	sb.anti_aliasing = true
+	return sb
 
 ## The button says what is picked (and wears a cross: press to put it down),
 ## or shows the belt, the first thing a drawer here holds.
@@ -825,13 +930,27 @@ func _press(finger: int, pos: Vector2) -> void:
 	_held = 0.0
 	_run = {}
 	_long = {}
+	_path = []
+	_axis = -1
 	_vel = Vector2.ZERO
 	_cam_raw = _cam
 	_cam_to = _cam
+	_piece_hit = ""
+	_consumed = false
+	if not _piece.is_empty():
+		# a press on the pill is its button's; anywhere else it closes the pill
+		_consumed = true
+		_mode = "pill"
+		_piece_hit = PiecePill.button_at(_piece_layout(), pos)
+		if _piece_hit == "":
+			_close_piece()
+			_fx.touch(0.84)
+		return
 	var picked: String = sim.picked
 	if Sim.BELTS.has(picked):
 		_mode = "belt"
 		_belt_tile = Vector2i(tile_under(pos).floor())
+		_path = [_belt_tile]
 	elif picked != "":
 		_mode = "place"
 	else:
@@ -876,7 +995,11 @@ func _drag(finger: int, pos: Vector2) -> void:
 				_cam = _cam_to
 		"belt":
 			if _moved:
-				_run = _run_to(tile_under(pos))
+				if traces():
+					_trace_to(Vector2i(tile_under(pos).floor()))
+					_run = _path_run()
+				else:
+					_run = _run_to(tile_under(pos))
 
 func _release(finger: int, pos: Vector2) -> void:
 	if not _touches.has(finger):
@@ -893,6 +1016,11 @@ func _release(finger: int, pos: Vector2) -> void:
 	_mode = ""
 	_long = {}
 	match mode:
+		"pill":
+			if _piece_hit != "" and PiecePill.button_at(_piece_layout(), pos) == _piece_hit:
+				_piece_press(_piece_hit)
+			_piece_hit = ""
+			_consumed = false
 		"pan":
 			if _moved:
 				# the view runs on a little and comes to rest inside its bounds
@@ -904,10 +1032,16 @@ func _release(finger: int, pos: Vector2) -> void:
 				_tap(pos)
 		"belt":
 			if _moved:
-				_lay_run(_run_to(tile_under(pos)))
+				if traces():
+					_at = pos
+					_trace_to(Vector2i(tile_under(pos).floor()))
+					_lay_path(_path_run())
+				else:
+					_lay_run(_run_to(tile_under(pos)))
 			else:
 				_tap(pos)
 			_run = {}
+			_path = []
 		"place":
 			_place(pos)
 
@@ -918,7 +1052,9 @@ func _let_go() -> void:
 	_mode = ""
 	_long = {}
 	_run = {}
+	_path = []
 	_cam_raw = _cam_to
+	_close_piece()
 
 ## What is under a point of the field: {what, tile} and for a module its
 ## `id`, for a plus its `plate`. What stands is tried by its body, the
@@ -995,11 +1131,12 @@ func _tap(pos: Vector2) -> void:
 			open_plate(h.plate)
 			_fx.touch()
 		"belt":
-			# a belt of another kind than the one in hand becomes it, as it lies
+			# a belt of another kind than the one in hand becomes it, as it
+			# lies; else the tap opens its pill and never turns it by itself
 			if Sim.BELTS.has(sim.picked) and sim.belt_kind(tile) != sim.picked:
 				sim.lay_belt(tile, int(sim.belts[tile]), sim.picked)
 			else:
-				sim.turn(tile)
+				_open_piece(tile)
 		"ground":
 			if Sim.BELTS.has(sim.picked) and sim.can_lay(tile):
 				# a run of one: it flows as what it meets says, else as the last did
@@ -1041,7 +1178,11 @@ func _run_to(to: Vector2) -> Dictionary:
 	if tiles.is_empty():
 		return {}
 	var swipe := Art.DIRS.find(step) if n > 0 else _facing
-	return {"tiles": tiles, "lay": lay, "facing": run_facing(sim, tiles, swipe)}
+	var f := run_facing(sim, tiles, swipe)
+	var faces: Array = []
+	faces.resize(tiles.size())
+	faces.fill(f)
+	return {"tiles": tiles, "lay": lay, "facing": f, "faces": faces}
 
 ## Whether the belt on `tile` hands on to something: a belt, the market, a
 ## fire box, or the way in of a kiln or a retort in front of it.
@@ -1126,6 +1267,250 @@ func _lay_run(run: Dictionary) -> void:
 		sim.lay_belt(tiles[int(run.lay)], f, kind)
 	_facing = f
 
+# --- the traced path (Tally's belt tool) ---
+
+## The path follows the finger to tile `t`: between the path's end and `t`
+## it steps the larger axis first, then the other, a tile at a time. A step
+## onto a tile already on the path takes the path back to it.
+func _trace_to(t: Vector2i) -> void:
+	if _path.is_empty():
+		_path = [t]
+		return
+	if straight:
+		_trace_straight(t)
+		return
+	var cur: Vector2i = _path[-1]
+	var d := t - cur
+	if d == Vector2i.ZERO:
+		return
+	var along_x := absi(d.x) >= absi(d.y)
+	var first := Vector2i(signi(d.x), 0) if along_x else Vector2i(0, signi(d.y))
+	var second := Vector2i(0, signi(d.y)) if along_x else Vector2i(signi(d.x), 0)
+	var steps := []
+	for j in (absi(d.x) if along_x else absi(d.y)):
+		steps.append(first)
+	for j in (absi(d.y) if along_x else absi(d.x)):
+		steps.append(second)
+	for st: Vector2i in steps:
+		var nxt: Vector2i = (_path[-1] as Vector2i) + st
+		var at := _path.find(nxt)
+		if at >= 0:
+			_path.resize(at + 1)
+		else:
+			_path.append(nxt)
+		if _path.size() >= 2:
+			_trace_f = Art.DIRS.find((_path[-1] as Vector2i) - (_path[-2] as Vector2i))
+
+## Straight: the run from the first tile along the axis the finger first
+## left it by, as far as the finger has gone along it; a finger gone off
+## that axis bends it once into a second leg across to the finger (Tally's
+## L, the user, 2026-10-19: "if user moves finger up or down, it make a L
+## shape"); back on the axis, the leg goes.
+func _trace_straight(t: Vector2i) -> void:
+	var p0: Vector2i = _path[0]
+	var d := t - p0
+	if _axis < 0:
+		if d == Vector2i.ZERO:
+			return
+		_axis = 0 if absi(d.x) >= absi(d.y) else 1
+	var n := d.x if _axis == 0 else d.y
+	# off the axis by the finger itself, not its tile: a quarter tile of
+	# slack past a row's edge before the line bends into it
+	var off: Vector2 = tile_under(_at) - (Vector2(p0) + Vector2(0.5, 0.5))
+	var across := off.y if _axis == 0 else off.x
+	var m := int(signf(across) * floorf(absf(across) + 0.25))
+	var step := Vector2i(signi(n), 0) if _axis == 0 else Vector2i(0, signi(n))
+	var step2 := Vector2i(0, signi(m)) if _axis == 0 else Vector2i(signi(m), 0)
+	_path = [p0]
+	for j in absi(n):
+		_path.append((_path[-1] as Vector2i) + step)
+	for j in absi(m):
+		_path.append((_path[-1] as Vector2i) + step2)
+	if m != 0:
+		_trace_f = Art.DIRS.find(step2)
+	elif n != 0:
+		_trace_f = Art.DIRS.find(step)
+
+## What the traced path would lay: {tiles, faces, acts, lay}. The path is
+## cut at the first tile a belt cannot go on, and its last belt then faces
+## into that tile (the market, a fire box, a kiln's way in). Each belt faces
+## the next, the finger's way: a path never flows against the finger (the
+## user in Tally, 2026-10-18, belts "always follow the finger"); Flip on the
+## pill turns a line round. The last faces the way of the last step, or
+## into what takes things beside it. What it does to each tile (`acts`):
+## "lay" a new belt; "face" a belt it starts on that led nowhere, turned
+## into it (the corner of an L); "kind" a belt of another kind, made the
+## kind in hand as it lies; "bridge" a belt crossed straight across, made a
+## bridge when the bridge is open (Tally's crossings); "keep" any other
+## belt, left as it lies (a path never turns a belt it crosses). `lay` is
+## how many of them, from the start, the coins reach.
+func _path_run() -> Dictionary:
+	var kind: String = sim.picked if traces() else "belt"
+	var tiles: Array = []
+	var f_last := _trace_f
+	for i in _path.size():
+		var t: Vector2i = _path[i]
+		if not sim.can_lay(t):
+			if i > 0:
+				f_last = Art.DIRS.find(t - (_path[i - 1] as Vector2i))
+			break
+		tiles.append(t)
+	if tiles.is_empty():
+		return {}
+	var n := tiles.size()
+	if n == 1 and _path.size() == 1:
+		# a swipe inside one tile: the way the finger went
+		var sw: Vector2 = tile_under(_at) - tile_under(_start)
+		if absf(sw.x) >= absf(sw.y):
+			f_last = 0 if sw.x >= 0.0 else 2
+		else:
+			f_last = 1 if sw.y >= 0.0 else 3
+	var last: Vector2i = tiles[n - 1]
+	var prev: Vector2i = tiles[n - 2] if n > 1 else Sim.NONE
+	if not _takes(sim, last + Art.DIRS[f_last]):
+		for d in 4:
+			var to: Vector2i = last + Art.DIRS[d]
+			if to != prev and _takes_in(sim, to):
+				f_last = d
+				break
+	var faces: Array = []
+	for i in n - 1:
+		faces.append(Art.DIRS.find((tiles[i + 1] as Vector2i) - (tiles[i] as Vector2i)))
+	faces.append(f_last)
+	var acts: Array = []
+	var lay := 0
+	var coins: int = sim.coins
+	for i in n:
+		var t: Vector2i = tiles[i]
+		var act := "lay"
+		var cost: int = sim.price(kind)
+		if sim.belts.has(t):
+			var was: String = sim.belt_kind(t)
+			var plain := not Sim.ONE_TILE.has(was)
+			var into: int = faces[i - 1] if i > 0 else faces[i]
+			act = "keep"
+			cost = 0
+			if plain and i > 0 and i < n - 1 and into == int(faces[i]) and int(sim.belts[t]) % 2 != into % 2:
+				if sim.unlocked("bridge"):
+					act = "bridge"
+					cost = sim.price("bridge") - sim.price(was)
+			elif plain and (n == 1 or (i == 0 and not _feeds(sim, t))) and int(sim.belts[t]) != int(faces[i]):
+				act = "face"
+				cost = sim.price(kind) - sim.price(was) if was != kind else 0
+			elif plain and was != kind:
+				act = "kind"
+				cost = sim.price(kind) - sim.price(was)
+		acts.append(act)
+		coins -= cost
+		if coins >= 0:
+			lay = i + 1
+	return {"tiles": tiles, "faces": faces, "acts": acts, "lay": lay, "facing": f_last}
+
+## The traced path laid as the finger lifts (Tally: "keep it as preview
+## until user release, no confirm dialog"), as far as the coins reach; the
+## sim refuses the first tile past them, and the pill says so.
+func _lay_path(run: Dictionary) -> void:
+	if run.is_empty():
+		return
+	var kind: String = sim.picked if traces() else "belt"
+	var tiles: Array = run.tiles
+	var reach := mini(int(run.lay) + 1, tiles.size())
+	for i in reach:
+		var t: Vector2i = tiles[i]
+		var f: int = run.faces[i]
+		match String(run.acts[i]):
+			"lay":
+				sim.lay_belt(t, f, kind)
+			"face":
+				sim.lay_belt(t, f, kind)
+			"kind":
+				sim.lay_belt(t, int(sim.belts[t]), kind)
+			"bridge":
+				sim.lay_belt(t, int(sim.belts[t]), "bridge")
+	_facing = int(run.facing)
+
+## While a path is traced near the field's edge, the view moves that way
+## and the path follows the finger on.
+func _edge_pan(delta: float) -> void:
+	if _mode != "belt" or not _moved or _finger == NO_FINGER or not traces():
+		return
+	var push := Vector2.ZERO
+	var s := field.size
+	if _at.x < EDGE:
+		push.x = -1.0
+	elif _at.x > s.x - EDGE:
+		push.x = 1.0
+	if _at.y < EDGE:
+		push.y = -1.0
+	elif _at.y > s.y - EDGE:
+		push.y = 1.0
+	if push == Vector2.ZERO:
+		return
+	_cam_raw = _clamp(_cam_to + push * EDGE_SPEED * delta / _zoom)
+	_cam_to = _cam_raw
+	_cam = _cam_to
+	_place_world()
+	_trace_to(Vector2i(tile_under(_at).floor()))
+	_run = _path_run()
+
+# --- the belt pill ---
+
+func piece_open() -> bool:
+	return not _piece.is_empty()
+
+func _open_piece(tile: Vector2i) -> void:
+	var one: bool = Sim.ONE_TILE.has(sim.belt_kind(tile))
+	_piece = {"tile": tile, "buttons": PILL_ONE if one else PILL_PLAIN, "at": _clock}
+	_fx.touch()
+
+func _close_piece() -> void:
+	_piece = {}
+	_piece_hit = ""
+
+## Where the belt pill stands: by its belt's bed, kept between the chrome
+## at the top and the drawer at the foot.
+func _piece_layout() -> Dictionary:
+	if _piece.is_empty() or field == null:
+		return {}
+	var m := to_field(life.mid(_piece.tile) + Art.BELT_LIFT)
+	var half := Vector2(0.0, Art.K * Art.DEEP * _zoom)
+	var top := _goal_b.get_global_rect().end.y - field.get_global_rect().position.y
+	var foot: float = field.size.y - SafeArea.insets(self).y - DRAWER_UP * 0.5
+	var view := Rect2(0.0, top, field.size.x, maxf(foot - top, 1.0))
+	return PiecePill.layout(_piece.buttons, m - half, m + half, view)
+
+## Where pill button `name` is in the field's pixels (a harness presses it).
+func piece_button_rect(name: String) -> Rect2:
+	var lay := _piece_layout()
+	return Rect2() if lay.is_empty() else lay.buttons.get(name, Rect2())
+
+## A pill button let go on: what it does. Turn and Flip leave the pill up;
+## the sales close it.
+func _piece_press(name: String) -> void:
+	if _piece.is_empty():
+		return
+	var tile: Vector2i = _piece.tile
+	_btn_at[name] = _clock
+	# every button is heard through its deed's event (turned, flipped, sold)
+	match name:
+		"turn":
+			sim.turn(tile)
+		"flip":
+			sim.flip_line(tile)
+		"sell":
+			_close_piece()
+			sim.sell(tile)
+		"run", "line":
+			_close_piece()
+			sim.sell_belts(sim.line_tiles(tile, name == "run"))
+
+func _draw_piece() -> void:
+	var lay := _piece_layout()
+	if lay.is_empty():
+		return
+	var title := tr(String(NAMES.get(sim.belt_kind(_piece.tile), "FACTORY_BELT")))
+	_pill_ui.draw(_pill_l, lay, _piece.buttons, title, get_theme_font("font", "SheetTitle"), _clock, float(_piece.at), _btn_at, false)
+
 ## The facing a machine picked would stand at on `tile`: the last belt's,
 ## or the next quarter it fits.
 func _fit(kind: String, tile: Vector2i) -> int:
@@ -1168,10 +1553,13 @@ func _run_ghosts() -> Array:
 	var lift := Transform2D(0.0, Art.BELT_LIFT)
 	for i in tiles.size():
 		var tile: Vector2i = tiles[i]
-		if sim.belts.has(tile) and (sim.belt_kind(tile) == sim.picked or Sim.ONE_TILE.has(sim.picked)):
+		if _run.has("acts"):
+			if String(_run.acts[i]) == "keep":
+				continue
+		elif sim.belts.has(tile) and (sim.belt_kind(tile) == sim.picked or Sim.ONE_TILE.has(sim.picked)):
 			continue
 		var short: bool = i >= int(_run.lay)
-		out.append([Art.belt(), lift * Art.flat(Vector2(life.seen_tile(tile)), life.seen_facing(int(_run.facing))),
+		out.append([Art.belt(), lift * Art.flat(Vector2(life.seen_tile(tile)), life.seen_facing(int(_run.faces[i]))),
 			Color(1.0, 0.5, 0.45, 0.8) if short else Color(1.0, 1.0, 1.0, 0.92)])
 	return out
 
@@ -1541,6 +1929,11 @@ func _draw_over(ci: CanvasItem) -> void:
 		ci.draw_mesh(mesh, null, Transform2D(0.0, life.mid(tile) + Vector2(Motion.shiver_offset(_ghost_wob, 5.0, 0.3), 0.0)), Color(1.0, 1.0, 1.0, 0.6))
 	if _mode == "belt" and not _run.is_empty():
 		_draw_flow(ci)
+	if not _piece.is_empty():
+		# the belt the pill is for wears a sun ring
+		ci.draw_set_transform(life.mid(_piece.tile) + Art.BELT_LIFT, 0.0, Vector2(1.0, Art.DEEP))
+		ci.draw_arc(Vector2.ZERO, Art.K * 0.95, 0.0, TAU, 48, Color(Pal.SUN, 0.95), 8.0, true)
+		ci.draw_set_transform(Vector2.ZERO)
 	if not _long.is_empty() and _held >= HOLD_SHOWS:
 		var k := clampf((_held - HOLD_SHOWS) / (HOLD - HOLD_SHOWS), 0.0, 1.0)
 		ci.draw_set_transform(life.mid(_long.tile), 0.0, Vector2(1.0, Art.DEEP))
@@ -1582,34 +1975,38 @@ func _draw_badge(ci: CanvasItem, font: Font, p: Vector2i) -> void:
 	ci.draw_string_outline(font, foot, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 38, 8, Color(ink, 0.7))
 	ci.draw_string(font, foot, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 38, Color.WHITE)
 
-## The direction reference line of a run being swiped: a soft line along
-## its beds and a chevron a tile pointing the way things will move, the last
-## one a full arrowhead. Drawn, not lettered: the fonts have no arrow.
+## The direction reference line of a run or a path being laid: a soft line
+## along its beds and a chevron a tile pointing the way things will move
+## there, the last one a full arrowhead in the sun. Drawn, not lettered:
+## the fonts have no arrow.
 func _draw_flow(ci: CanvasItem) -> void:
 	var tiles: Array = _run.tiles
-	var f: int = _run.facing
-	var d := Vector2(Art.DIRS[f])
+	var faces: Array = _run.faces
+	var n := tiles.size()
 	var pts := PackedVector2Array()
 	for tile: Vector2i in tiles:
 		pts.append(life.mid(tile) + Art.BELT_LIFT)
-	# the way of the flow on the screen, and half a tile of it
-	var half: Vector2 = (life.seen(Vector2(tiles[0]) + Vector2(0.5, 0.5) + d * 0.5) + Art.BELT_LIFT) - pts[0]
-	var way := half.normalized()
-	var across := Vector2(-way.y, way.x)
-	var first := pts[0]
-	var last := pts[pts.size() - 1]
-	if (last - first).dot(way) < 0.0:
-		first = last
-		last = pts[0]
-	var line := PackedVector2Array([first - half * 0.7, last + half * 0.7])
+	# half a tile of the way each belt flows, on the screen
+	var halves: Array = []
+	for i in n:
+		var d := Vector2(Art.DIRS[int(faces[i])])
+		halves.append((life.seen(Vector2(tiles[i]) + Vector2(0.5, 0.5) + d * 0.5) + Art.BELT_LIFT) - pts[i])
+	var line := PackedVector2Array()
+	var into0: Vector2 = halves[0] if n == 1 else (pts[1] - pts[0]).normalized() * (halves[0] as Vector2).length()
+	line.append(pts[0] - into0 * 0.7)
+	for p in pts:
+		line.append(p)
+	line.append(pts[n - 1] + (halves[n - 1] as Vector2) * 0.7)
 	var ink := Color(0.23, 0.19, 0.16, 0.45)
 	ci.draw_polyline(line, ink, 13.0, true)
 	ci.draw_polyline(line, Color(1.0, 1.0, 1.0, 0.92), 6.0, true)
-	for i in pts.size():
-		var p := pts[i]
-		var head := p == last
+	for i in n:
+		var half: Vector2 = halves[i]
+		var way := half.normalized()
+		var across := Vector2(-way.y, way.x)
+		var head := i == n - 1
 		var size := 1.5 if head else 1.0
-		var c: Vector2 = p + (half * 0.7 if head else Vector2.ZERO)
+		var c: Vector2 = pts[i] + (half * 0.7 if head else Vector2.ZERO)
 		var arrow := PackedVector2Array([c - way * 13.0 * size + across * 15.0 * size, c + way * 5.0 * size, c - way * 13.0 * size - across * 15.0 * size])
 		ci.draw_polyline(arrow, ink, 13.0, true)
 		ci.draw_polyline(arrow, Color(1.0, 1.0, 1.0, 0.95) if not head else Pal.SUN, 6.0, true)
@@ -1643,6 +2040,9 @@ func go_back() -> void:
 		return
 	if _card.visible:
 		close_card()
+		return
+	if not _piece.is_empty():
+		_close_piece()
 		return
 	if _drawer.visible:
 		close_drawer()

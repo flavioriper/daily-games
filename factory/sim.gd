@@ -136,8 +136,10 @@ extends RefCounted
 ##                                    tree `id` at `tile`; `auto`: its own
 ##   log {tile, from, kind}           out of the gate `from` into `tile`
 ##   laid {tile, facing}  turned {tile, facing}
+##   flipped {tile, tiles}            a line of belts turned round
 ##   placed {tile, id, kind}  built {tile, id, kind}
 ##   sold_back {tile, kind, amount, items}
+##   sold_line {tile, tiles, amount}  belts sold back in one go
 ##   fed {tile, id, kind}             a fuel into a hopper
 ##   lit {tile, id, kind}  dim {tile, id}
 ##   made {tile, id, kind}            a kiln or a retort done with one
@@ -689,6 +691,10 @@ func _drop_over(tile: Vector2i) -> void:
 		_spill([tile], it.kind)
 
 func _face_belt(tile: Vector2i, facing: int) -> void:
+	_face_quiet(tile, facing)
+	events.append({"type": "turned", "tile": tile, "facing": facing})
+
+func _face_quiet(tile: Vector2i, facing: int) -> void:
 	_drop_over(tile)
 	belts[tile] = facing
 	_order_stale = true
@@ -696,7 +702,6 @@ func _face_belt(tile: Vector2i, facing: int) -> void:
 		it.from = -1
 		it.erase("to")
 		it.was = _pos(tile, it)
-	events.append({"type": "turned", "tile": tile, "facing": facing})
 	dirty = true
 
 ## What lies on a tile takes its places on the belt just laid there, or on
@@ -759,6 +764,100 @@ func feeds(from: Vector2i, to: Vector2i) -> bool:
 		return outs(from).has(to)
 	var m := module_at(from)
 	return not m.is_empty() and RECIPE.has(m.kind) and out_tile(m) == to
+
+## How many things hand on into `tile`: belts pointing at it, splitters
+## beside it, a kiln or a retort whose way out it is.
+func _feeders(tile: Vector2i) -> int:
+	var n := 0
+	for d in 4:
+		if feeds(tile + DIRS[d], tile):
+			n += 1
+	return n
+
+## Whether the belt on `tile` is a plain one a line runs through (a belt or
+## a fast belt; a splitter and a bridge end a line).
+func _plain(tile: Vector2i) -> bool:
+	return belts.has(tile) and not ONE_TILE.has(belt_kind(tile))
+
+## The belts of the line through the plain belt on `tile`, in the way
+## things ride it, stopping at a join (a belt fed by two), a splitter, a
+## bridge or anything not a belt (Tally's rule, the user, 2026-10-19: "stop
+## on joins or cross to avoid issue"). [] when `tile` holds no plain belt.
+func line_through(tile: Vector2i) -> Array:
+	if not _plain(tile):
+		return []
+	var seen := {tile: true}
+	var back: Array = []
+	var cur := tile
+	while _feeders(cur) == 1:
+		var prev := NONE
+		for d in 4:
+			if feeds(cur + DIRS[d], cur):
+				prev = cur + DIRS[d]
+		if not _plain(prev) or seen.has(prev):
+			break
+		seen[prev] = true
+		back.push_front(prev)
+		cur = prev
+	var line := back
+	line.append(tile)
+	cur = tile
+	while true:
+		var nxt: Vector2i = cur + DIRS[int(belts[cur])]
+		if not _plain(nxt) or seen.has(nxt) or _feeders(nxt) != 1:
+			break
+		seen[nxt] = true
+		line.append(nxt)
+		cur = nxt
+	return line
+
+## The belts of the line through `tile`; with `section`, only its straight
+## run about `tile`, to the turns either side (a corner belt is the run it
+## turns into).
+func line_tiles(tile: Vector2i, section := false) -> Array:
+	var line := line_through(tile)
+	if line.is_empty() or not section:
+		return line
+	var at := line.find(tile)
+	var f: int = belts[tile]
+	var lo := at
+	var hi := at
+	while lo > 0 and int(belts[line[lo - 1]]) == f:
+		lo -= 1
+	while hi < line.size() - 1 and int(belts[line[hi + 1]]) == f:
+		hi += 1
+	return line.slice(lo, hi + 1)
+
+## The line through the belt on `tile` turned round: each belt runs back to
+## the one that fed it; the first, now the last, the way it came, or into
+## the market, a fire box or a kiln's or retort's way in beside it.
+func flip_line(tile: Vector2i) -> bool:
+	var line := line_through(tile)
+	if line.is_empty():
+		return _no("nothing", tile)
+	var fs: Array = []
+	for k in line.size():
+		if k == 0:
+			var t0: Vector2i = line[0]
+			var f0 := (int(belts[t0]) + 2) % 4
+			var after: Vector2i = line[1] if line.size() > 1 else NONE
+			for d in 4:
+				var to: Vector2i = t0 + DIRS[d]
+				if to != after and _takes_in(to) and not _takes_in(t0 + DIRS[f0]):
+					f0 = d
+			fs.append(f0)
+		else:
+			fs.append(DIRS.find((line[k - 1] as Vector2i) - (line[k] as Vector2i)))
+	for k in line.size():
+		_face_quiet(line[k], int(fs[k]))
+	events.append({"type": "flipped", "tile": tile, "tiles": line})
+	return true
+
+## Whether `tile` is somewhere a belt delivers into but a belt: the market,
+## a fire box, the way in of a kiln or a retort.
+func _takes_in(tile: Vector2i) -> bool:
+	var m := module_at(tile)
+	return not m.is_empty() and (m.kind == "firebox" or m.kind == "market" or (RECIPE.has(m.kind) and m.root == tile))
 
 ## The belts, front of each chain first: a belt comes after every belt it
 ## feeds, so one pass moves a chain as one and no item moves twice. A ring of
@@ -1117,14 +1216,8 @@ func sell(tile: Vector2i) -> bool:
 		return _no("market", tile)
 	if belts.has(tile):
 		var kind := belt_kind(tile)
-		belts.erase(tile)
-		_set_kind(tile, "belt")
-		_order_stale = true
-		_turn.erase(tile)
-		coins += price(kind)
-		_settle(tile)
-		events.append({"type": "sold_back", "tile": tile, "kind": kind, "amount": price(kind), "items": _count(tile)})
-		dirty = true
+		var back := _sell_belt(tile)
+		events.append({"type": "sold_back", "tile": tile, "kind": kind, "amount": back, "items": _count(tile)})
 		return true
 	var m := module_at(tile)
 	if m.is_empty():
@@ -1149,6 +1242,32 @@ func sell(tile: Vector2i) -> bool:
 		_spill(m.tiles, kind)
 	events.append({"type": "sold_back", "tile": m.root, "kind": m.kind, "amount": int(m.paid), "items": held.size(), "id": m.id})
 	dirty = true
+	return true
+
+## The belt on `tile` back for its price, with no event; what it carried
+## lies there. Returns the coins given back.
+func _sell_belt(tile: Vector2i) -> int:
+	var back := price(belt_kind(tile))
+	belts.erase(tile)
+	_set_kind(tile, "belt")
+	_order_stale = true
+	_turn.erase(tile)
+	coins += back
+	_settle(tile)
+	dirty = true
+	return back
+
+## The belts on `tiles` sold back in one go, one event for them all.
+func sell_belts(tiles: Array) -> bool:
+	var back := 0
+	var sold: Array = []
+	for t: Vector2i in tiles:
+		if belts.has(t):
+			back += _sell_belt(t)
+			sold.append(t)
+	if sold.is_empty():
+		return _no("nothing", tiles[0] if not tiles.is_empty() else NONE)
+	events.append({"type": "sold_line", "tile": sold[0], "tiles": sold, "amount": back})
 	return true
 
 ## The price of the next level of `target` (a fire box's or a market's

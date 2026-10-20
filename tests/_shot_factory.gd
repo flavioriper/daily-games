@@ -349,6 +349,10 @@ func _first_belts() -> void:
 	for y in 3:
 		_sim.sell(Vector2i(5, y))
 	await _frames(2)
+	# the finger past the screen's top edge moved the view (the edge pan,
+	# 2026-10-20): the drags from here on are inside the screen
+	await _look(Vector2(4.0, 2.5))
+	cam = _screen._cam
 	# hold and swipe: a straight run down from the tile past the gate, nothing
 	# laid until the finger lifts; then a second from its corner to the market
 	await _hold([_at(Vector2(3.5, 0.5)), _at(Vector2(3.5, 6.5))])
@@ -379,12 +383,19 @@ func _first_belts() -> void:
 	await _wait(0.25)
 	await _shot("sold")
 	await _hatch()
-	# a tap on a laid belt turns it a quarter, and back round
+	# a tap on a laid belt opens its pill (Tally's, 2026-10-20); Turn turns
+	# it a quarter, and four bring it round
 	await _tap(_at(Vector2(3.5, 2.5)))
-	_check("a tap on a belt turns it a quarter", _sim.belts[Vector2i(3, 2)] == 2, str(_sim.belts[Vector2i(3, 2)]))
+	_check("a tap on a belt opens its pill and leaves it as it lies", _screen.piece_open() and _sim.belts[Vector2i(3, 2)] == 1)
+	await _shot("belt_pill")
+	var turn_at: Vector2 = _screen.piece_button_rect("turn").get_center()
+	await _tap(turn_at)
+	_check("the pill's Turn turns it a quarter", _sim.belts[Vector2i(3, 2)] == 2, str(_sim.belts[Vector2i(3, 2)]))
 	for i in 3:
-		await _tap(_at(Vector2(3.5, 2.5)))
-	_check("and four taps bring it round", _sim.belts[Vector2i(3, 2)] == 1)
+		await _tap(turn_at)
+	_check("and four bring it round", _sim.belts[Vector2i(3, 2)] == 1)
+	await _tap(_at(Vector2(6.5, 1.5)))
+	_check("a press off the pill shuts it", not _screen.piece_open())
 	await _press_button(_screen._drawer_b)
 	_check("the drawer's button puts the belt down", _sim.picked == "")
 
@@ -901,14 +912,17 @@ func _swipes() -> void:
 		_touch(_at(Vector2(6.6, 17.9)), false)
 		await _frames(2)
 		_check(say + "a swipe of four tiles lays four belts in a line facing the swipe", _line(Vector2i(3, 17), Vector2i(6, 17), 0, had), str(_sim.belts.size() - had))
-		# from behind the run's tail, dragged away from it: it flows into the run
+		# from behind the run's tail, dragged away from it: it follows the
+		# finger (Tally's rule since 2026-10-20; the pill's Flip turns it round)
 		had = _sim.belts.size()
 		await _hold([_mid(Vector2i(2, 17)), _mid(Vector2i(0, 17))])
-		_check(say + "held, the line already points into the placed belt", _screen._run.get("facing", -1) == 0 and _screen._run.tiles.size() == 3, str(_screen._run))
+		_check(say + "held, the line points the finger's way", _screen._run.get("facing", -1) == 2 and _screen._run.tiles.size() == 3, str(_screen._run))
 		await _shot("swipe_settled_turn_%d" % turn)
 		_touch(_mid(Vector2i(0, 17)), false)
 		await _frames(2)
-		_check(say + "a swipe away from a placed belt's tail flows into it", _line(Vector2i(0, 17), Vector2i(2, 17), 0, had), str(_sim.belts))
+		_check(say + "a swipe away from a placed belt's tail flows the finger's way", _line(Vector2i(0, 17), Vector2i(2, 17), 2, had), str(_sim.belts))
+		_sim.flip_line(Vector2i(1, 17))
+		_check(say + "and Flip turns that line round into the run", _sim.belts.get(Vector2i(0, 17), -1) == 0 and _sim.belts.get(Vector2i(2, 17), -1) == 0, str(_sim.belts))
 		# from the run's front, off to the side: it flows on from it
 		had = _sim.belts.size()
 		await _drag([_mid(Vector2i(7, 17)), _mid(Vector2i(7, 20))])
@@ -942,7 +956,7 @@ func _swipes() -> void:
 		await _frames(2)
 		had = _sim.belts.size()
 		await _drag([_mid(Vector2i(6, 5)), _mid(Vector2i(6, 3))])
-		_check(say + "a swipe from the market's edge, dragged away, still flows into it", _line(Vector2i(6, 3), Vector2i(6, 5), 1, had), str(_sim.belts))
+		_check(say + "a swipe from the market's edge, dragged away, flows the finger's way", _line(Vector2i(6, 3), Vector2i(6, 5), 3, had), str(_sim.belts))
 		_unlay(Vector2i(6, 3), Vector2i(6, 5))
 		# the rule itself, as the one function has it
 		var rule: bool = _screen.run_facing(_sim, [Vector2i(2, 22), Vector2i(3, 22)], 0) == 0 \

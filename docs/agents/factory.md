@@ -646,6 +646,72 @@ visible, so the land now runs only on its own screen; the wide card with
 the land running on it is built and never seen (its nodes are a cost left
 standing; cutting the tab down to the owner is owed).
 
+### Tally's belt helpers (2026-10-20)
+
+The user, 2026-10-20: "redo the arcade factory to have some helpers to
+create convey based on the tally convey" ("tally has a more mature
+convey"). Branch `feat/factory-belt-helpers`. Laying a belt now works the
+way Tally's belt tool does (`docs/agents/arcade.md`, "Tally drafts", "Tally
+picks", "Tally joins"):
+
+- **The finger traces a path** (`_trace_to`, `_trace_straight`, ported
+  from `arcade/tally_board.gd`), shown with its arrows and laid as the
+  finger lifts, each belt facing the next. **Straight** (a chip over the
+  drawer's button, on by default, Tally's) keeps it to a line with at most
+  one bend, the L; off ("Curves") the path follows the finger round any
+  turns. The chip shows only with Belt or Fast picked; it is a screen
+  `static var`, kept while the app runs, not saved. Splitters and bridges
+  still go one at a time (`_run_to`, unchanged).
+- **A path follows the finger.** The 2026-10-10 rule that turned a swipe
+  round to meet the belt it touched (`run_facing`) is gone from drags: the
+  user rejected that auto-reverse in Tally on 2026-10-18 ("belts must
+  always follow the finger"), and Flip on the pill turns a line round. A
+  tap on bare ground (a path of one, no direction) still uses
+  `run_facing`. Two harness checks changed with it (`_swipes`: a swipe
+  away from a run's tail, and one from the market's edge dragged away, now
+  flow the finger's way).
+- What a path does to the tiles it covers (`_path_run`): a new belt on
+  bare ground; the belt it starts on, when that led nowhere, turned into it
+  (the L's corner, as before); a belt of another kind made the kind in hand;
+  a belt crossed straight across **made a bridge when the bridge is open**
+  (Tally's auto crossing; shut, the crossed belt is left and the path joins
+  it); every other belt left as it lies. It is cut at the first tile a belt
+  cannot go on, and its last belt then faces into it (the market, a fire
+  box, a kiln's way in), or into such a thing beside it. Coins as before:
+  the run is laid as far as they reach and the next tile is refused.
+- **A tap on a belt opens its pill** (it no longer turns it): Turn, Flip,
+  Sell, Section, Line for a belt or a fast belt; Turn and Sell for a
+  splitter or a bridge. Flip and Section/Line read the line through the
+  belt (`Sim.line_through`), which stops at a join, a splitter, a bridge
+  or a machine (Tally's "stop on joins or cross"). Section sells the
+  straight run about the belt, Line the whole line, in one event
+  (`sold_line`, one coin cue); Flip is one event (`flipped`). A press
+  anywhere off the pill shuts it; back shuts it too. Holding still on a
+  belt still sells it, as before. A tap on a belt with another belt kind
+  in hand still makes it that kind.
+- **The pill is Tally's own code**: `ui/hud/piece_pill.gd`, lifted out of
+  `arcade/tally_board.gd`, which now draws through it too (layout, draw,
+  hit). Captions reuse Tally's words (`TL_TURN`, `TL_FLIP`,
+  `TL_ERASE_RUN`, `TL_ERASE_LINE`, `TL_STRAIGHT_ON/OFF`); Sell is
+  `FACTORY_PILL_SELL`. `TUT_FACTORY_BELT_BODY` was rewritten for paths,
+  Straight and the pill.
+- **Edge pan**: a path traced within 70 px of the field's edge moves the
+  view that way and the path follows on (Tally's).
+
+Not brought over: Tally's pick rectangle (Copy, Duplicate, Save part) and
+its undo chip; Factory has neither, and a sale gives coins back where Tally
+has no prices.
+
+Checks: `tests/_probe_factory.gd` 244/0; a throwaway touch probe (the L,
+a wiggle under Straight, Curves round two turns, a crossing shut and open,
+the pill's Turn, a line stopping at a join, Flip and back, Section, Line,
+a path off a dead end) 0 failed; `tests/_shot_factory.gd` windowed 0
+failed (one earlier run lost a hold to what looked like a focus-out), 132
+draw calls with the pill up, 176 with a seven-tile path held, 283 to 288
+with a four-tile path on the seventh plate; Tally's probe 0 failed and
+`_shot_tally` windowed 0 failed after the pill moved. Owed: the phone, and
+the user's verdict on following the finger over the old auto-direction.
+
 ## The Valley and the Grove (dropped 2026-10-10)
 
 **What follows is history.** The Valley tab and the Grove were removed on

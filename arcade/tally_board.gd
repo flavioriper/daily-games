@@ -55,6 +55,7 @@ const Art = preload("res://arcade/tally_art.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Motion = preload("res://core/motion.gd")
 const CozyTheme = preload("res://ui/theme.gd")
+const PiecePill = preload("res://ui/hud/piece_pill.gd")
 
 const U := Art.U
 ## The desk shown round the paper, in squares.
@@ -89,16 +90,10 @@ const FS_MIN := 8
 const TOOL_KINDS := {"belt": Sim.BELT, "dig": Sim.DIG, "crate": Sim.CRATE, "add": Sim.ADD, "mul": Sim.MUL, "sub": Sim.SUB, "div": Sim.DIV, "pow": Sim.POW}
 ## The kinds set down with a ghost and turned before they go.
 const TURNS := [Sim.ADD, Sim.MUL, Sim.SUB, Sim.DIV, Sim.POW]
-## A pill: round buttons this wide, their captions under, in a paper capsule
-## PILL_OFF pixels off the square, which wears a sun ring while it is up.
-const BTN := 84.0
-const PILL_PAD := 16.0
-const PILL_GAP := 14.0
-const CAP_FS := 20
-const TITLE_FS := 24
-const PILL_OFF := 14.0
-const PILL_POP := 0.18
-const PILL_ICON := {"copy": "copy", "dup": "plus", "save": "puzzle", "undo": "undo_back", "turn": "turn", "flip": "flip", "lift": "bin", "run": "span", "line": "bends", "info": "help", "place": "check", "cancel": "cross"}
+## A pill (ui/hud/piece_pill.gd, the Factory's too): round buttons this
+## wide, their captions under, in a paper capsule off the square, which
+## wears a sun ring while it is up.
+const BTN := PiecePill.BTN
 const PILL_CAP := {"copy": "TL_COPY", "dup": "TL_DUPLICATE", "save": "TL_SAVE_PART", "undo": "TL_UNDO", "turn": "TL_TURN", "flip": "TL_FLIP", "lift": "TL_LIFT", "run": "TL_ERASE_RUN", "line": "TL_ERASE_LINE", "info": "TL_INFO", "place": "TL_PLACE", "cancel": "TL_CANCEL"}
 const PILL_PITCH := {"copy": 1.06, "dup": 1.06, "save": 1.1, "undo": 0.9, "turn": 1.02, "flip": 1.04, "lift": 0.92, "run": 0.9, "line": 0.88, "info": 1.0, "place": 1.08, "cancel": 0.9}
 ## How far along its last square a token riding into an operator is drawn.
@@ -152,9 +147,7 @@ var _world: Node2D
 var _layers := {}
 var _words: Node2D
 var _pills: Node2D
-var _pill_box: StyleBoxFlat
-var _pill_cache := {}
-var _pill_live := {}
+var _pill_ui: PiecePill
 var _paper: ArrayMesh
 var _prints: ArrayMesh
 var _beds_c := {}        # chunk -> the beds of its belts, one mesh (or null)
@@ -334,7 +327,7 @@ func _ready() -> void:
 	_pills.name = "Pills"
 	add_child(_pills)
 	_pills.draw.connect(_draw_pills)
-	_pill_box = CozyTheme.lifted(Color("fcf7ef"), 36, 8)
+	_pill_ui = PiecePill.new(PILL_CAP)
 	resized.connect(_on_resized)
 
 func _on_resized() -> void:
@@ -1605,11 +1598,6 @@ func _pill_title() -> String:
 func _pill_layout() -> Dictionary:
 	if _pill.is_empty():
 		return {}
-	var names: Array = _pill.buttons
-	var n := names.size()
-	var w := PILL_PAD * 2.0 + n * BTN + (n - 1) * PILL_GAP
-	var title_h := TITLE_FS + 10.0
-	var h := PILL_PAD + title_h + BTN + 6.0 + CAP_FS + PILL_PAD * 0.75
 	var top: Vector2
 	var foot: Vector2
 	if _pill.has("rect"):
@@ -1621,25 +1609,10 @@ func _pill_layout() -> Dictionary:
 		var m := screen_of(Vector2(_pill.tile) + Vector2(0.5, 0.5))
 		top = m - Vector2(0, k * 0.5)
 		foot = m + Vector2(0, k * 0.5)
-	var c := (top + foot) * 0.5
-	var low := foot.y > view.position.y + view.size.y * 2.0 / 3.0
-	var y := top.y - PILL_OFF - h if low else foot.y + PILL_OFF
-	var r := Rect2(c.x - w * 0.5, y, w, h)
-	r.position.x = clampf(r.position.x, view.position.x + 8.0, maxf(view.position.x + 8.0, view.end.x - w - 8.0))
-	r.position.y = clampf(r.position.y, view.position.y + 8.0, maxf(view.position.y + 8.0, view.end.y - h - 8.0))
-	var btns := {}
-	for j in n:
-		btns[names[j]] = Rect2(r.position.x + PILL_PAD + j * (BTN + PILL_GAP), r.position.y + PILL_PAD + title_h, BTN, BTN + 6.0 + CAP_FS)
-	return {"rect": r, "buttons": btns, "title_at": r.position + Vector2(w * 0.5, PILL_PAD + TITLE_FS * 0.8)}
+	return PiecePill.layout(_pill.buttons, top, foot, view)
 
 func _pill_button_at(p: Vector2) -> String:
-	var lay := _pill_layout()
-	if lay.is_empty():
-		return ""
-	for nm: String in lay.buttons:
-		if (lay.buttons[nm] as Rect2).grow(6.0).has_point(p):
-			return nm
-	return ""
+	return PiecePill.button_at(_pill_layout(), p)
 
 ## Why the ghost cannot be set down where it is, or "" when it can.
 ## A dig's ghost goes onto the printed number under it or beside it (the
@@ -1949,55 +1922,8 @@ func _draw_pills() -> void:
 	var lay := _pill_layout()
 	if lay.is_empty() or sim == null:
 		return
-	var r: Rect2 = lay.rect
-	var pop := 1.0
-	if not Motion.reduce:
-		var u := clampf((_clock - _pill_at) / PILL_POP, 0.0, 1.0)
-		pop = lerpf(0.86, 1.0, Motion.back_out(u))
-	var c := r.get_center()
-	_pills.draw_set_transform(c - c * pop, 0.0, Vector2(pop, pop))
-	_pills.draw_style_box(_pill_box, r)
 	var names: Array = _pill.buttons
-	var dim := names.has("place") and _ghost_why() != ""
-	var key := [String(_pill.kind), names, dim]
-	var m: ArrayMesh = _pill_cache.get(key)
-	if m == null:
-		var b := Face.Builder.new()
-		for j in names.size():
-			var nm: String = names[j]
-			var at := Vector2(PILL_PAD + j * (BTN + PILL_GAP) + BTN * 0.5, BTN * 0.5)
-			var off := nm == "place" and dim
-			var fill := Color("f3ead6")
-			if nm == "place":
-				fill = Color("e4dccb") if off else Art.TARGET
-			b.disc(at + Vector2(0, 4.0), BTN * 0.5, Color(Art.INK, 0.14))
-			b.disc(at, BTN * 0.5, fill)
-			Art.glyph_into(b, String(PILL_ICON[nm]), Rect2(at - Vector2.ONE * 21.0, Vector2.ONE * 42.0), Color(Art.INK, 0.35 if off else 1.0))
-		m = b.mesh()
-		_pill_cache[key] = m
-	var origin: Vector2 = (lay.buttons[names[0]] as Rect2).position
-	_pills.draw_mesh(m, null, Transform2D(0.0, origin))
-	# a button just pressed sinks and rings
-	var live := Face.Builder.new()
-	for nm: String in names:
-		var u := (_clock - float(_btn_at.get(nm, -10.0))) / 0.3
-		if u < 0.0 or u >= 1.0 or Motion.reduce:
-			continue
-		var at: Vector2 = (lay.buttons[nm] as Rect2).position + Vector2(BTN * 0.5, BTN * 0.5)
-		live.stroke(Face.Builder.ring(at, BTN * (0.5 + 0.3 * u), BTN * (0.5 + 0.3 * u)), 6.0 * (1.0 - u), Color(Art.TARGET, 1.0 - u), true)
-	_pill_live["ring"] = live.mesh() if not live.verts.is_empty() else null
-	if _pill_live["ring"] != null:
-		_pills.draw_mesh(_pill_live["ring"], null)
-	for nm: String in names:
-		var cap := tr(String(PILL_CAP[nm]))
-		var br: Rect2 = lay.buttons[nm]
-		var col := Color(Art.INK, 0.4 if nm == "place" and dim else 0.85)
-		_pills.draw_string(font, Vector2(br.position.x - 20.0, br.position.y + BTN + 6.0 + CAP_FS * 0.9), cap, HORIZONTAL_ALIGNMENT_CENTER, BTN + 40.0, CAP_FS, col)
-	var title := _pill_title()
-	var tw := font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, TITLE_FS).x
-	var title_at: Vector2 = lay.title_at
-	_pills.draw_string(font, Vector2(title_at.x - tw * 0.5, title_at.y), title, HORIZONTAL_ALIGNMENT_LEFT, -1, TITLE_FS, Art.INK)
-	_pills.draw_set_transform(Vector2.ZERO)
+	_pill_ui.draw(_pills, lay, names, _pill_title(), font, _clock, _pill_at, _btn_at, names.has("place") and _ghost_why() != "")
 
 # --- fingers ---
 

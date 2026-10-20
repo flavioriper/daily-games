@@ -3866,7 +3866,9 @@ view"):
   and the harness; the square ringed in sun; a press elsewhere closes a
   piece pill and is consumed. A card going up calls `let_go`, which drops
   a ghost and its pill. A pill's Turn, Remove and Place are heard once,
-  through the sim's own cue. A starving side's pips are amber with a 1.4 s
+  through the sim's own cue. (2026-10-20: the pill's layout, drawing and hit
+  moved to `ui/hud/piece_pill.gd`, shared with the Factory's belt pill;
+  `docs/agents/factory.md`, "Tally's belt helpers".) A starving side's pips are amber with a 1.4 s
   pulse ring (still under `Motion.reduce`); the card says "Waiting for B
   on its two-dot side". The screen: the held tool pressed again is put
   down; the **undo chip** (`UndoChip`, a round paper disc R 46 with
