@@ -1026,64 +1026,13 @@ FACTORY_MOTTO,Nothing here is in a hurry,Aqui nada tem pressa,Aquí nada tiene p
 FACTORY_BLURB,"Tap the forest for logs, lay belts and sell at the market. The land only runs while you watch it.","Toque na floresta para ter toras, monte esteiras e venda no mercado. A terra só anda enquanto você olha.","Toca el bosque para sacar troncos, tiende cintas y vende en el mercado. La tierra solo anda mientras la miras."
 FACTORY_BELT,Belt,Esteira,Cinta
 FACTORY_FAST,Fast belt,Esteira rápida,Cinta rápida
-FACTORY_SPLITTER,Splitter,Divisor,Divisor
 FACTORY_BRIDGE,Bridge,Ponte,Puente
-FACTORY_ENGINE,Engine,Motor a vapor,Motor de vapor
-FACTORY_SAW,Saw,Serra,Sierra
-FACTORY_JOINER,Joiner,Marcenaria,Carpintería
-FACTORY_STOKER,Stoker,Alimentador,Alimentador
-FACTORY_ENGINE_MAKES,"Takes heat from a lit fire box that touches it, and turns the saw or joiner that touches it.","Recebe calor da fornalha acesa encostada nele e gira a serra ou a marcenaria encostada nele.","Toma calor del fogón encendido que lo toca y mueve la sierra o la carpintería que lo toca."
-FACTORY_SAW_MAKES,"A log in at the back, four planks out at the front. An engine must touch it.","Entra uma tora por trás, saem quatro tábuas pela frente. Um motor precisa encostar nela.","Entra un tronco por detrás, salen cuatro tablas por delante. Un motor debe tocarla."
-FACTORY_JOINER_MAKES,"Three planks in at the back, a chair out at the front. An engine must touch it.","Entram três tábuas por trás, sai uma cadeira pela frente. Um motor precisa encostar nela.","Entran tres tablas por detrás, sale una silla por delante. Un motor debe tocarla."
-FACTORY_NEEDS_ENGINE,"Needs an engine beside it, on a lit fire box.","Precisa de um motor ao lado, com a fornalha acesa.","Necesita un motor al lado, con el fogón encendido."
-FACTORY_ENGINE_TURNS,Turning at %d of 100 of its power.,Girando a %d de 100 da sua força.,Girando al %d de 100 de su fuerza.
-FACTORY_STOKER_FOR,A stoker for %s: it lights itself,Alimentador por %s: acende sozinha,Alimentador por %s: se enciende solo
-FACTORY_STOKER_ON,It lights the next fuel by itself.,Acende o próximo combustível sozinha.,Enciende el siguiente combustible solo.
-FACTORY_GOALS,Goals,Metas,Metas
-FACTORY_GOALS_LINE,"Sell these at the market. Each goal opens something new in the drawer, for good.","Venda estas coisas no mercado. Cada meta abre algo novo na gaveta, para sempre.","Vende estas cosas en el mercado. Cada meta abre algo nuevo en el cajón, para siempre."
-FACTORY_FIREBOX,Fire box,Fornalha,Fogón
-FACTORY_KILN,Kiln,Forno,Horno
-FACTORY_RETORT,Retort,Retorta,Retorta
-FACTORY_MARKET,Market,Mercado,Mercado
-FACTORY_FOREST,Forest,Floresta,Bosque
-FACTORY_NEUTRAL,Neutral,Neutro,Neutro
-FACTORY_FOREST_LINE,"Gives logs at a gate on every side","Dá toras por um portão em cada lado","Da troncos por un portón en cada lado"
-FACTORY_NEUTRAL_LINE,Open ground to build on,Chão livre para construir,Suelo libre para construir
-FACTORY_FOREST_MAKES,"Tap it for a log. Logs leave by the gate on each side; nothing is built inside.","Toque nela para ter uma tora. As toras saem pelo portão de cada lado; nada se constrói dentro.","Tócalo para sacar un tronco. Los troncos salen por el portón de cada lado; dentro no se construye nada."
-FACTORY_FOREST_HAND,It makes none by itself yet.,Sozinha ainda não faz nenhuma.,Solo todavía no hace ninguno.
-FACTORY_FOREST_RATE_ONE,Makes a log a second by itself.,Faz uma tora por segundo sozinha.,Hace un tronco por segundo solo.
-FACTORY_FOREST_RATE_N,Makes %d logs a second by itself.,Faz %d toras por segundo sozinha.,Hace %d troncos por segundo solo.
-FACTORY_FOREST_HOLDS,Holds %d of %d logs.,Guarda %d de %d toras.,Guarda %d de %d troncos.
-FACTORY_FOREST_AUTO_FOR,A log a second for %s,Uma tora por segundo por %s,Un tronco por segundo por %s
-FACTORY_MINE,Mine,Mina,Mina
-FACTORY_MINE_LINE,"Gives stone at a gate on every side","Dá pedra por um portão em cada lado","Da piedra por un portón en cada lado"
-FACTORY_MINE_MAKES,"Tap it for a stone. Stones leave by the gate on each side; nothing is built inside. A kiln burns stone into lime.","Toque nela para ter uma pedra. As pedras saem pelo portão de cada lado; nada se constrói dentro. Um forno queima a pedra em cal.","Tócala para sacar una piedra. Las piedras salen por el portón de cada lado; dentro no se construye nada. Un horno quema la piedra en cal."
-FACTORY_MINE_HAND,It makes none by itself yet.,Sozinha ainda não faz nenhuma.,Sola todavía no hace ninguna.
-FACTORY_MINE_RATE_ONE,Makes a stone a second by itself.,Faz uma pedra por segundo sozinha.,Hace una piedra por segundo sola.
-FACTORY_MINE_RATE_N,Makes %d stones a second by itself.,Faz %d pedras por segundo sozinha.,Hace %d piedras por segundo sola.
-FACTORY_MINE_HOLDS,Holds %d of %d stones.,Guarda %d de %d pedras.,Guarda %d de %d piedras.
-FACTORY_MINE_AUTO_FOR,A stone a second for %s,Uma pedra por segundo por %s,Una piedra por segundo por %s
-FACTORY_PLATE_TITLE,New land,Terra nova,Tierra nueva
-FACTORY_FIREBOX_MAKES,"Burns a log or charcoal a belt brings, and heats the kiln or retort that touches it.","Queima a tora ou o carvão que a esteira traz e aquece o forno ou a retorta ao lado.","Quema el tronco o el carbón que trae la cinta y calienta el horno o la retorta de al lado."
-FACTORY_KILN_MAKES,"Stone in at the back, lime out at the front.","Entra pedra por trás, sai cal pela frente.","Entra piedra por detrás, sale cal por delante."
-FACTORY_RETORT_MAKES,"A log in at the back, charcoal out at the front.","Entra tora por trás, sai carvão pela frente.","Entra un tronco por detrás, sale carbón por delante."
-FACTORY_MARKET_MAKES,Sells whatever a belt brings to it.,Vende tudo o que a esteira trouxer.,Vende todo lo que la cinta le traiga.
-FACTORY_RETORT_NOTE,"In a fire box, charcoal lasts 10 minutes and a log 22.","Na fornalha, o carvão dura 10 minutos e a tora 22.","En el fogón, el carbón dura 10 minutos y un tronco 22."
-FACTORY_TURN,Turn,Girar,Girar
-FACTORY_SELL_FOR,Sell for %s,Vender por %s,Vender por %s
+FACTORY_PACE,a box every %s s,uma caixa a cada %s s,una caja cada %s s
+FACTORY_PACE_NONE,no box yet,nenhuma caixa ainda,ninguna caja aún
+FACTORY_PICKER,Picker,Coletor,Recolector
+FACTORY_BOXER,Boxer,Embalador,Empacador
+FACTORY_SHIPPER,Shipper,Expedidor,Expedidor
 FACTORY_PILL_SELL,Sell,Vender,Vender
-FACTORY_LEVEL_FOR,Level %d for %s,Nível %d por %s,Nivel %d por %s
-FACTORY_LEVEL,Level %d,Nível %d,Nivel %d
-FACTORY_FIRE_LEVEL,"Level %d, up to %d kW","Nível %d, até %d kW","Nivel %d, hasta %d kW"
-FACTORY_MARKET_RATE,One sale every %s,Uma venda a cada %s,Una venta cada %s
-FACTORY_BUILDING,"Being built, %d of 100","Em construção, %d de 100","En construcción, %d de 100"
-FACTORY_FIRE_LIT,"Burning at %d of %d kW, %d waiting","Queimando a %d de %d kW, %d à espera","Ardiendo a %d de %d kW, %d en espera"
-FACTORY_FIRE_TAP,Fuel is waiting. Tap the fire box to light it.,Há lenha à espera. Toque na fornalha para acender.,Hay leña esperando. Toca el fogón para encenderlo.
-FACTORY_FIRE_EMPTY,"The fire is out. Bring it a log on a belt, then tap it.","O fogo apagou. Traga uma tora pela esteira e toque nela.","El fuego se apagó. Tráele un tronco por la cinta y tócalo."
-FACTORY_NEEDS_FIRE,Needs a lit fire box beside it.,Precisa de uma fornalha acesa ao lado.,Necesita un fogón encendido al lado.
-FACTORY_CYCLE,Makes one every %s,Faz um a cada %s,Hace uno cada %s
-FACTORY_MIN_S,%d min %d s,%d min %d s,%d min %d s
-FACTORY_S,%s s,%s s,%s s
 TUT_FACTORY_TREE,Tap the forest,Toque na floresta,Toca el bosque
 TUT_FACTORY_TREE_BODY,"Every tap is a log. It comes out of the gate in the forest's side. Nothing is built inside a forest: the arrow over it opens its upgrades.","Cada toque é uma tora. Ela sai pelo portão na lateral da floresta. Nada se constrói dentro dela: a seta em cima abre as melhorias.","Cada toque es un tronco. Sale por el portón del lado del bosque. Dentro no se construye nada: la flecha de arriba abre sus mejoras."
 TUT_FACTORY_BELT,Swipe a belt to the market,Deslize uma esteira até o mercado,Desliza una cinta hasta el mercado

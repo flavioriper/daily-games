@@ -1,50 +1,58 @@
 extends Control
 
-## Factory: the land, played. Plates in a pond seen corner on, a closed
-## forest a tap takes a log from, logs that leave it by its gates and ride
-## the belts a finger drags to the market, coins that buy belts, plates, a
-## forest's levels and from the first plate bought a fire and a retort. Spec
-## docs/superpowers/specs/2026-10-10-factory-board-and-hand-era-design.md;
-## the rules and every number are factory/sim.gd's, the drawings
-## factory/art.gd's, and what is seen of the land factory/life.gd's.
+## Factory: the robot floor, played. Ten tiles by eight seen from straight
+## above, three robots that walk their programs over it from the bay, the
+## stations they work (the intake, the box stack, the pack table, the deliver
+## pad that sells), and from milestone 1 the belts a finger traces. Spec
+## docs/superpowers/specs/2026-10-20-factory-rewired-design.md; the rules
+## and every number are factory/sim.gd's and factory/bots.gd's, the drawings
+## factory/art.gd's, and what is seen of the floor factory/life.gd's. It
+## played the isometric land of plates, forests and machines until
+## 2026-10-20 (git has that).
 ##
-## **It never makes or reads a land.** ui/menu/factory_tab.gd owns the one
+## **It never makes or reads a floor.** ui/menu/factory_tab.gd owns the one
 ## sim; whoever mounts this screen hands it over with `setup(sim)` before it
 ## enters the tree (a harness makes its own). While it is mounted it is the
-## one stepping the land and draining its events, and it keeps it: every two
-## seconds while something changed, at once when the app is paused or
+## one stepping the floor and draining its events, and it keeps it: every
+## two seconds while something changed, at once when the app is paused or
 ## closed, and as it leaves.
 ##
 ## Like a Versus or Arcade screen it is its own host: it joins the
 ## `versus_host` group so Android's back reaches it (the tutorial, the
-## settings, a card, the drawer, a picked tile, then the screen). It has no
+## settings, the pill, the drawer, a picked belt, then the screen). It has no
 ## round, no score and no end.
 ##
-## The hand (spec section 6). Every finger is a ScreenTouch or a ScreenDrag,
-## the desktop mouse read beside them. A press that moves under TAP pixels
-## is a tap: on a forest or a fire box with fuel waiting it is the labour;
-## on a plus, the market, a machine or a forest's badge it opens the card; on a belt
-## it opens the belt's **pill** (Turn, Flip, Sell, Section, Line: the
-## pill of Tally's paper, ui/hud/piece_pill.gd). A drag pans, unless a belt
-## is picked in the drawer: then the finger **traces a path** as Tally's
-## belt tool does (the user, 2026-10-20: "helpers to create convey based on
-## the tally convey"), shown with the way it will flow and laid as the
-## finger lifts, each belt facing the next; with **Straight** on (the chip
-## over the drawer) the path is a line with at most one bend, the L. A
-## splitter or a bridge goes one at a time, or a machine is picked (its
-## ghost follows the finger and the release stands it). A finger held
-## still for HOLD on a belt or a machine sells it back.
+## The chrome lies over the floor: the top bar, the coins and the pace (a
+## box every so many seconds, from the sim's rolling window) on two pills
+## with the zoom beside them, and a row of **robot chips**, one a robot in
+## the floor's own tints, a red dot on the chip of a robot with a fault the
+## player can see from its program (a loose wire, a node its parts do not
+## give, stuck). A tap on a chip or on a robot on the floor picks it and
+## opens its sheet.
+##
+## The hand. Every finger is a ScreenTouch or a ScreenDrag, the desktop
+## mouse read beside them. A press that moves under TAP pixels is a tap: on
+## a chip or a robot it picks the robot; on a belt it opens the belt's
+## **pill** (Turn, Flip, Sell, Section, Line: the pill of Tally's paper,
+## ui/hud/piece_pill.gd). A drag pans, unless a belt is picked in the
+## drawer: then the finger **traces a path** as Tally's belt tool does (the
+## user, 2026-10-20: "helpers to create convey based on the tally convey"),
+## shown with the way it will flow and laid as the finger lifts, each belt
+## facing the next; with **Straight** on (the chip over the drawer) the path
+## is a line with at most one bend, the L. A bridge goes one at a time. A
+## finger held still for HOLD on a belt sells it back. The drawer has
+## nothing in it until milestone 1, and its button is not shown till then.
 
 signal closed
 
 const Art = preload("res://factory/art.gd")
 const Sim = preload("res://factory/sim.gd")
+const Bots = preload("res://factory/bots.gd")
 const Life = preload("res://factory/life.gd")
 const Tile = preload("res://factory/tile.gd")
 const FlatTopBar = preload("res://ui/flat/flat_top_bar.gd")
 const SettingsSheet = preload("res://ui/hud/settings_sheet.gd")
 const ScreenTutor = preload("res://ui/hud/screen_tutor.gd")
-const Dialog = preload("res://ui/hud/dialog.gd")
 const IconButton = preload("res://ui/hud/icon_button.gd")
 const Icons = preload("res://ui/icons.gd")
 const CozyTheme = preload("res://ui/theme.gd")
@@ -60,6 +68,12 @@ const GAME := "factory"
 const MARGIN := 40
 const PILL_H := 84.0
 const ZOOM_B := 96.0
+## The robot chips under the pills: a chip's height and width, the air
+## between two, and the red dot of a fault on a chip's corner.
+const CHIP_H := 84.0
+const CHIP_W := 236.0
+const CHIP_GAP := 16.0
+const DOT_R := 12.0
 ## The drawer: its round button on the left edge, this far up from the foot
 ## of the screen (the right thumb works the lower right), and its tiles.
 const DRAWER_B := 128.0
@@ -68,32 +82,21 @@ const FREE_B := 96.0
 const DRAWER_UP := 250.0
 const DRAWER_W := 196.0
 const DRAWER_TILE := 206.0
-const DRAWER_TILES := ["belt", "fast", "splitter", "bridge", "firebox", "kiln", "retort", "engine", "saw", "joiner", "market"]
+const DRAWER_TILES := ["belt", "fast", "bridge"]
 ## The drawer stands this many tiles tall before it takes another column.
 const DRAWER_ROWS := 5
-## The goal chip under the view's buttons: the next thing to sell for.
-const GOAL_W := 330.0
-const GOAL_H := 78.0
-const NAMES := {"belt": "FACTORY_BELT", "fast": "FACTORY_FAST", "splitter": "FACTORY_SPLITTER", "bridge": "FACTORY_BRIDGE", "engine": "FACTORY_ENGINE", "saw": "FACTORY_SAW", "joiner": "FACTORY_JOINER",
-	"stoker": "FACTORY_STOKER", "firebox": "FACTORY_FIREBOX", "kiln": "FACTORY_KILN", "retort": "FACTORY_RETORT",
-	"market": "FACTORY_MARKET", "forest": "FACTORY_FOREST", "mine": "FACTORY_MINE", "neutral": "FACTORY_NEUTRAL"}
-## A forest's badge, the way to its card (a tap on the forest itself is a
-## log): how far over the plate's middle it floats and how big it is, in
-## view units.
-const BADGE_UP := 250.0
-const BADGE_R := 46.0
-const CARD_W := 1000.0
-const CARD_INSET := 26
-const PLATE_TILE := 372.0
-## A press that moves less than this is a tap, in the screen's own units.
+const NAMES := {"belt": "FACTORY_BELT", "fast": "FACTORY_FAST", "bridge": "FACTORY_BRIDGE"}
+## A press that moves less than this is a tap, in the screen's own units; a
+## robot is tapped within twice it of where it is drawn.
 const TAP := 24.0
-## A finger held still this long on a belt or a machine sells it back; its
-## ring starts to close after HOLD_SHOWS, so a plain tap shows none.
+## A finger held still this long on a belt sells it back; its ring starts to
+## close after HOLD_SHOWS, so a plain tap shows none.
 const HOLD := 0.5
 const HOLD_SHOWS := 0.12
-## Where the land's middle sits down the screen: under the bar and the pill.
+## Where the floor's middle sits down the screen: under the bar, the pills
+## and the chips.
 const CENTRE := Vector2(0.5, 0.55)
-## The view's middle goes this many tiles past the board's own and no
+## The view's middle goes this many tiles past the floor's own and no
 ## further, and a drag past that gives this much of what the finger asks.
 const POND := 2.0
 const SOFT := 0.35
@@ -108,15 +111,14 @@ const SAVE_GAP := 2.0
 const MOUSE := -2
 const NO_FINGER := -99
 ## A refusal that is not a no: the tap simply did nothing.
-const QUIET := ["busy", "nothing", "same", "lit", "wait", "top"]
+const QUIET := ["nothing", "same", "station", "edge", "off"]
 const TICK_VARY := 0.06
 ## A sale's coin: the factory's own `coin` (assets/sfx/factory/) at its own
 ## pitch and level, and the milliseconds between two of them at least.
 const COIN_PITCH := 1.0
 const COIN_DB := 0.0
 const COIN_GAP := 140
-## The tap is a selection moved; a tree down is a piece set down; a thing
-## bought is something finished; one that cannot be is a not yet.
+## A thing bought is something finished; one that cannot be is a not yet.
 const HAPTICS := {"buy": Haptics.BUMP, "no": Haptics.WARN}
 ## The belt pill's buttons and captions; Tally's words where they are the same.
 const PILL_PLAIN := ["turn", "flip", "sell", "run", "line"]
@@ -137,6 +139,8 @@ var tutor: RefCounted
 var field: Control
 var life: RefCounted
 var world: Node2D
+## The robot the chips mark: the one tapped last.
+var selected := 0
 
 var _fx: Node2D
 var _quiet: Node2D
@@ -149,21 +153,16 @@ var _light_l: Control
 var _over_l: Node2D
 var _pill: PanelContainer
 var _coins_l: Label
+var _pace_l: Label
+var _chips_l: Control
+var _chips_key := ""
 var _zoom_b: Button
-var _turn_b: Button
 var _drawer_b: Button
 var _free_b: Button
 var _drawer: GridContainer
-var _goal_b: Button
-var _goal_key := ""
 var _drawer_catch: Control
 var _tiles := {}        # drawer tile -> Tile
 var _hud_key := ""
-var _card: Control
-var _card_slot: CenterContainer
-var _card_tick := Callable()
-var _card_for := ""
-var _card_coins: Label
 var _shown := 0.0
 var _warn := 0.0
 var _bump: Tween
@@ -179,25 +178,24 @@ var _zoom := 1.0
 var _near := 1.0
 var _far := false
 var _laid_out := false
-var _turn_tw: Tween
 
 # the hand
 var _touches := {}      # finger -> where it is
 var _finger := NO_FINGER
-var _mode := ""         # "pan", "belt", "place", "pinch", "done"
+var _mode := ""         # "pan", "belt", "chip", "pinch", "pill", "done"
 var _start := Vector2.ZERO
 var _at := Vector2.ZERO
 var _moved := false
 var _moved_at := 0
 var _held := 0.0
 var _long := {}         # what a held finger would sell: {tile}
+var _chip_down := -1    # the chip a press landed on
 ## The tile a swipe with Belt picked began on, and the run it would lay now:
 ## {tiles, lay (how many of them the coins reach, from the start), facing}.
 var _belt_tile := Vector2i.ZERO
 var _run := {}
 var _facing := 0
 var _pinch := 0.0
-var _ghost_wob := 10.0
 var _held_back := false
 ## The path a finger traces with a belt picked: tiles in the order drawn,
 ## the axis Straight holds it to (-1 till the finger leaves the first tile)
@@ -225,7 +223,7 @@ var _since_save := 0.0
 var _opened_at := 0
 var _earned_at_open := 0
 
-## The land this screen plays, handed over before it enters the tree.
+## The floor this screen plays, handed over before it enters the tree.
 func setup(with_sim: RefCounted) -> void:
 	sim = with_sim
 
@@ -237,7 +235,7 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = CozyTheme.make()
 	if sim == null:
-		push_error("factory/screen.gd: setup(sim) was not called; the screen makes no land of its own")
+		push_error("factory/screen.gd: setup(sim) was not called; the screen makes no floor of its own")
 		set_process(false)
 		return
 	sim.picked = ""
@@ -259,7 +257,7 @@ func _ready() -> void:
 	top_bar.enter(0.0)
 	top_bar.refresh(self)
 	_refresh_hud(0.0)
-	Analytics.track("factory_enter", {"plates": sim.plates.size(), "coins": sim.coins})
+	Analytics.track("factory_enter", {"milestone": sim.milestone, "coins": sim.coins})
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
@@ -286,8 +284,8 @@ func _build() -> void:
 	field.resized.connect(_layout_field)
 	_fx = Fx2D.new()
 	_fx.haptics = HAPTICS
-	# the Grove's four sounds, kept (spec section 10); the screen's own id is
-	# the tutorial's and the analytics'
+	# the Grove's sounds, kept till the floor has its own; the screen's own
+	# id is the tutorial's and the analytics'
 	_fx._puzzle = "grove"
 	field.add_child(_fx)
 	_quiet = Fx2D.new()
@@ -298,7 +296,6 @@ func _build() -> void:
 	_coin_fx.buzzes = false
 	_coin_fx._puzzle = "factory"
 	field.add_child(_coin_fx)
-	life.coined.connect(_on_coin)
 	_pill_ui = PiecePill.new(PILL_CAP)
 	_pill_l = Control.new()
 	_pill_l.name = "Pill"
@@ -330,38 +327,32 @@ func _build() -> void:
 		_let_go()
 		settings_sheet.open())
 	col.add_child(top_bar)
-	col.add_child(_coin_pill())
-	# the zoom and the turn, side by side under the pill, each its own size
-	var view_row := HBoxContainer.new()
-	view_row.name = "View"
-	view_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	view_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	view_row.add_theme_constant_override("separation", 18)
-	col.add_child(view_row)
+	# the coins, the pace and the zoom, side by side, each its own size
+	var pills := HBoxContainer.new()
+	pills.name = "Pills"
+	pills.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pills.alignment = BoxContainer.ALIGNMENT_CENTER
+	pills.add_theme_constant_override("separation", 18)
+	col.add_child(pills)
+	pills.add_child(_coin_pill())
+	pills.add_child(_pace_pill())
 	_zoom_b = IconButton.new("minus", "", "IconButton")
 	_zoom_b.name = "Zoom"
 	_zoom_b.pressed.connect(func() -> void: set_far(not _far))
-	_turn_b = IconButton.new("turn", "", "IconButton")
-	_turn_b.name = "Turn"
-	_turn_b.pressed.connect(turn_view)
-	for b: Button in [_zoom_b, _turn_b]:
-		b.custom_minimum_size = Vector2(ZOOM_B, ZOOM_B)
-		b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		_round(b, int(ZOOM_B * 0.5))
-		view_row.add_child(b)
+	_zoom_b.custom_minimum_size = Vector2(ZOOM_B, ZOOM_B)
+	_zoom_b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_zoom_b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_round(_zoom_b, int(ZOOM_B * 0.5))
+	pills.add_child(_zoom_b)
 
-	# the next goal, under them: what to sell and what it opens
-	_goal_b = Button.new()
-	_goal_b.name = "Goal"
-	_goal_b.focus_mode = Control.FOCUS_NONE
-	_goal_b.custom_minimum_size = Vector2(GOAL_W, GOAL_H)
-	_goal_b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	_round(_goal_b, int(GOAL_H * 0.5))
-	_goal_b.resized.connect(func() -> void: _goal_b.pivot_offset = _goal_b.size * 0.5)
-	_goal_b.draw.connect(_draw_goal)
-	_goal_b.pressed.connect(open_goals)
-	col.add_child(_goal_b)
+	# the robot chips: drawn, not buttons, so a finger on one reaches the
+	# field and is read there with every other (`_press`, `robot_chip_rect`)
+	_chips_l = Control.new()
+	_chips_l.name = "Chips"
+	_chips_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_chips_l.custom_minimum_size.y = CHIP_H
+	_chips_l.draw.connect(_draw_chips)
+	col.add_child(_chips_l)
 
 	_drawer_catch = Control.new()
 	_drawer_catch.name = "DrawerCatch"
@@ -416,24 +407,10 @@ func _build() -> void:
 		_free_b.draw.connect(_draw_free_button)
 		_free_b.pressed.connect(_on_free_button)
 		add_child(_free_b)
-
-	_card = Dialog.scrim()
-	_card.name = "CardScrim"
-	_card.visible = false
-	_card.gui_input.connect(func(event: InputEvent) -> void:
-		if (event is InputEventScreenTouch or event is InputEventMouseButton) and event.pressed:
-			close_card()
-			_fx.touch(0.84))
-	_card_slot = CenterContainer.new()
-	_card_slot.name = "Center"
-	_card_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_card_slot.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_card.add_child(_card_slot)
-	add_child(_card)
 	_apply_insets()
 	_layout_field()
 
-## The coins held, at the top middle: the coin and the count on a white pill.
+## The coins held: the coin and the count on a white pill.
 func _coin_pill() -> Control:
 	_pill = PanelContainer.new()
 	_pill.name = "Coins"
@@ -459,6 +436,46 @@ func _coin_pill() -> Control:
 	tail.custom_minimum_size.x = 18
 	row.add_child(tail)
 	return _pill
+
+## The pace: a full box and how often one is sold, from the sim's rolling
+## window ("a box every 37 s"), on a white pill beside the coins.
+func _pace_pill() -> Control:
+	var pill := PanelContainer.new()
+	pill.name = "Pace"
+	pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pill.custom_minimum_size = Vector2(0, PILL_H)
+	pill.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	pill.add_theme_stylebox_override("panel", CozyTheme.lifted(Pal.SURFACE, int(PILL_H * 0.5), 8))
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 10)
+	pill.add_child(row)
+	var lead := Control.new()
+	lead.custom_minimum_size.x = 6
+	row.add_child(lead)
+	var box := Control.new()
+	box.custom_minimum_size = Vector2(54.0, 54.0)
+	box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.draw.connect(func() -> void:
+		box.draw_mesh(Art.icon("box"), null, Transform2D(0.0, Vector2(0.56, 0.56), 0.0, box.size * 0.5)))
+	row.add_child(box)
+	_pace_l = Label.new()
+	_pace_l.name = "Value"
+	_pace_l.theme_type_variation = "SheetBody"
+	_pace_l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(_pace_l)
+	var tail := Control.new()
+	tail.custom_minimum_size.x = 18
+	row.add_child(tail)
+	return pill
+
+## What the pace pill says: a full box every so many seconds, or that none
+## has been sold often enough to say (the sim reads nothing under two).
+func pace_text() -> String:
+	if sim.pace_ticks() <= 0:
+		return tr("FACTORY_PACE_NONE")
+	return tr("FACTORY_PACE") % Art.amount(snappedf(sim.pace_s(), 0.1), Art.comma())
 
 ## A white round face for a button that keeps its own size.
 static func _round(b: Button, r: int) -> void:
@@ -493,21 +510,20 @@ func _apply_insets() -> void:
 	_drawer.offset_bottom = -foot - DRAWER_B - 16.0
 	_drawer.offset_top = _drawer.offset_bottom
 
-## The pond and the light are baked for the field's size, and the near zoom
-## is the one at which a plate is as wide as the field.
+## The wash and the light are baked for the field's size, and the near zoom
+## is the one at which the whole floor is as wide as the field.
 func _layout_field() -> void:
 	var s := field.size
 	if s.x <= 0.0 or s.y <= 0.0 or _light_l == null:
 		return
 	_water = Art.water(s, 0.0)
 	_light = Art.light(s)
-	_near = s.x / (Art.HALF * 2.0)
+	_near = s.x / (Sim.COLS * Art.TILE)
 	if not _laid_out:
 		_laid_out = true
 		_zoom = _near
-		# a new land is two plates: the seam between the market's and the
-		# forest behind it, so the gate, the forest's badge and the market are seen
-		_cam = life.seen(Vector2(Art.PLATE * 0.5, 0.0))
+		# the floor's middle, the whole of it in view
+		_cam = life.seen(Vector2(Sim.COLS * 0.5, Sim.ROWS * 0.5))
 		_cam_to = _cam
 		_cam_raw = _cam
 	_place_world()
@@ -533,15 +549,13 @@ func screen_of(t: Vector2) -> Vector2:
 func tile_under(pos: Vector2) -> Vector2:
 	return life.tile_at((pos - world.position) / _zoom)
 
-## A point of the view held to where the view's middle may go: the board's
-## own tiles and POND tiles of pond past them, measured along the land (a
-## box on the screen would leave the view's middle far out on open water
-## off a diamond's corners).
+## A point of the view held to where the view's middle may go: the floor's
+## own tiles and POND tiles past them.
 func _clamp(v: Vector2) -> Vector2:
 	var box: Rect2 = (life.tile_bounds() as Rect2).grow(POND)
 	return life.seen((life.tile_at(v) as Vector2).clamp(box.position, box.end))
 
-## The far zoom shows twice as much; the near one a plate across the field.
+## The far zoom shows twice as much; the near one the floor across the field.
 func set_far(on: bool) -> void:
 	_far = on
 	(_zoom_b as IconButton).set_icon("plus" if on else "minus")
@@ -553,30 +567,6 @@ func _zoom_by_hand(on: bool) -> void:
 		return
 	set_far(on)
 	_fx.touch(1.0 if on else 0.84)
-
-## The view goes round a quarter, clockwise, so that what a tree or a
-## building hid is seen (the user, 2026-10-10). Only the view: the turn is
-## the life's (factory/life.gd, `seen` and `tile_at`), the sim's tiles and
-## facings are what they were, and the tile under the middle of the screen
-## stays under it. Nothing is tweened round: the land is laid out again at
-## once and comes back in out of a short dip. A preference of this screen,
-## not kept: it opens at no turn.
-func turn_view() -> void:
-	var under: Vector2 = life.tile_at(_cam)
-	var going: Vector2 = life.tile_at(_cam_to)
-	_let_go()
-	life.set_turn(int(life.turn) + 1)
-	_cam = life.seen(under)
-	_cam_to = life.seen(going)
-	_cam_raw = _cam_to
-	_place_world()
-	Motion.stop(_turn_tw)
-	_turn_tw = Motion.appear(world, 0.3, 1.0, 0.16)
-
-## The view goes to show plate `p`.
-func look_at_plate(p: Vector2i) -> void:
-	_cam_raw = life.plus_at(p)
-	_cam_to = _cam_raw
 
 func _step_view(delta: float) -> void:
 	var want := _near * (0.5 if _far else 1.0)
@@ -648,74 +638,61 @@ func _process(delta: float) -> void:
 		n.t += delta
 	_nums = _nums.filter(func(n: Dictionary) -> bool: return n.t < NUM)
 	_warn = maxf(0.0, _warn - delta)
-	_ghost_wob += delta
 	_refresh_hud(delta)
-	if _card_tick.is_valid() and _card.visible:
-		_card_tick.call()
 	_since_save += delta
 	if sim.dirty and _since_save >= SAVE_GAP:
 		_save()
 	_over_l.queue_redraw()
 	_pill_l.queue_redraw()
 
+## The sim's events, to the life and to the ear. The robots' hands are a
+## quiet click (felt by no one: they are not the player's), a sale is the
+## coin.
 func _play_events() -> void:
 	for e: Dictionary in sim.events:
 		life.event(e)
 		match String(e.type):
-			"chop":
-				# the hand's log is heard; the forest's own, a second apart, only just
-				if e.auto:
-					_quiet.cue("chop", 0.9 * _vary(), -10.0)
-				else:
-					_fx.cue("chop", _vary())
 			"laid":
 				_quiet.cue("chop", 0.84 * _vary(), -6.0)
 			"turned", "flipped":
 				_quiet.cue("chop", 1.12 * _vary(), -6.0)
-			"lit":
-				_fx.cue("chop", 0.7, -2.0)
-			"placed", "level":
-				_fx.cue("buy")
-			"goal":
-				# a goal reached: what it opens is in the drawer now
+			"sold_back", "sold_line":
+				_fx.cue("buy", 0.9)
+			"milestone":
+				# what it opens is in the drawer now
 				_fx.cue("buy", 1.12)
 				_hud_key = ""
 				Motion.bump(_drawer_b, 0.12, 0.3)
-			"built":
-				_quiet.cue("buy", 1.0, -8.0)
-			"sold_back", "sold_line":
-				_fx.cue("buy", 0.9)
-			"plate":
-				_fx.cue("buy")
-				look_at_plate(e.plate)
+			"pick", "release":
+				if String(e.kind) != "":
+					_quiet.touch(_vary())
+			"sale":
+				_on_coin(int(e.amount), e.tile)
 			"refused":
-				_on_refused(String(e.why), e.tile)
+				_on_refused(String(e.why))
 	sim.events.clear()
 
-## A sale's coin has come up out of the hatch (`life.coined`): a coin is
-## heard, a real one dropped into a velvet drawer, ten steps lower, the one
-## the user picked by ear from nine on 2026-10-11 (of the wallet's wooden
-## tock there: "something that sound closer to a coin", and of a wooden run
-## of notches: "not a general wood toc ... some coin clank ... in a cozier
-## way"), never two inside
-## COIN_GAP at a market that sells many a second, and the count is on its
-## way up beside it.
+## A sale on the deliver pad: a coin is heard, a real one dropped into a
+## velvet drawer, ten steps lower, the one the user picked by ear from nine
+## on 2026-10-11, never two inside COIN_GAP, and the count is on its way up
+## over the pad.
 func _on_coin(amount: int, tile: Vector2i) -> void:
 	var now := Time.get_ticks_msec()
 	if now - _coin_at >= COIN_GAP:
 		_coin_at = now
 		_coin_fx.cue("coin", COIN_PITCH * _vary(), COIN_DB)
-	var hatch: Vector2 = life.seen(Vector2(tile) + Life.MID) + Art.MARKET_TOP
-	_nums.append({"at": hatch + Vector2(_rng.randf_range(40.0, 52.0), -30.0), "text": "+" + Art.short(amount), "t": 0.0})
+	if amount <= 0:
+		return
+	var over: Vector2 = life.mid(tile) + Vector2(0.0, -Art.TILE * 0.45)
+	_nums.append({"at": over + Vector2(_rng.randf_range(-6.0, 6.0), 0.0), "text": "+" + Art.short(amount), "t": 0.0})
 	_kick()
 
-## The sim did not do it. Most of the time that is a no: the thing shakes
-## its head, and when it was the coins the pill does too.
-func _on_refused(why: String, tile: Vector2i) -> void:
+## The sim did not do it. Most of the time that is a no, and when it was the
+## coins the pill shakes its head.
+func _on_refused(why: String) -> void:
 	if QUIET.has(why):
 		return
 	_fx.cue("no")
-	life.shake(tile)
 	if why == "coins":
 		_warn = 0.7
 		Motion.shiver(_pill, 7.0)
@@ -740,18 +717,101 @@ func _refresh_hud(delta: float) -> void:
 	if _coins_l.text != text:
 		_coins_l.text = text
 	_coins_l.add_theme_color_override("font_color", Pal.BAD if _warn > 0.0 else Pal.TEXT)
-	if _card_coins != null and is_instance_valid(_card_coins):
-		_card_coins.text = text
-	var key := "%d|%d|%d|%s|%d" % [sim.coins, sim.plates.size(), sim.modules.size(), sim.picked, sim.earned]
+	var pace := pace_text()
+	if _pace_l.text != pace:
+		_pace_l.text = pace
+	var key := "%d|%d|%s|%d|%s" % [sim.coins, sim.milestone, sim.picked, sim.earned, sim.no_cost]
 	if key != _hud_key:
 		_hud_key = key
 		_refresh_drawer()
-	var goal: Dictionary = sim.next_goal()
-	var goal_key := "" if goal.is_empty() else "%s|%s" % [goal.id, sim.sold]
-	if goal_key != _goal_key:
-		_goal_key = goal_key
-		_goal_b.visible = not goal.is_empty()
-		_goal_b.queue_redraw()
+	var chips := _chips_state()
+	if chips != _chips_key:
+		_chips_key = chips
+		_chips_l.queue_redraw()
+
+# --- the robot chips ---
+
+## Where robot `i`'s chip is, in the field's pixels (`Rect2()` for no such
+## robot): the chips stand in a row under the pills, in the middle.
+func robot_chip_rect(i: int) -> Rect2:
+	if _chips_l == null or i < 0 or i >= sim.robots.size():
+		return Rect2()
+	var off := _chips_l.get_global_rect().position - field.get_global_rect().position
+	return Rect2(off + _chip_at(i).position, _chip_at(i).size)
+
+## Chip `i` in the chips' own row.
+func _chip_at(i: int) -> Rect2:
+	var n: int = sim.robots.size()
+	var whole := n * CHIP_W + (n - 1) * CHIP_GAP
+	var x0 := (_chips_l.size.x - whole) * 0.5
+	return Rect2(Vector2(x0 + i * (CHIP_W + CHIP_GAP), 0.0), Vector2(CHIP_W, CHIP_H))
+
+## The chip under a point of the field, -1 for none.
+func _chip_under(pos: Vector2) -> int:
+	for i in sim.robots.size():
+		if robot_chip_rect(i).has_point(pos):
+			return i
+	return -1
+
+## Whether robot `i` has a fault the player can see from its program: its
+## chain does not come back to the body (a loose wire), it runs a node no
+## part of it gives, or it is stuck. A fault of the floor (a Move a tile
+## short) is not one: nothing but watching it says so.
+func robot_fault(i: int) -> bool:
+	var b: Dictionary = sim.robots[i]
+	if String(b.stuck) != "":
+		return true
+	var w: Dictionary = Bots.walk(b)
+	if not w.closed:
+		return true
+	for id: String in w.ids:
+		if not Bots.can(b, String(b.nodes[id].kind)):
+			return true
+	return false
+
+## What the chips show, as a key that changes only when they would.
+func _chips_state() -> String:
+	var key := "%d|%d" % [selected, sim.robots.size()]
+	for i in sim.robots.size():
+		key += "|%s%s" % [sim.robots[i].stuck, "!" if robot_fault(i) else ""]
+	return key
+
+## A chip a robot: a white capsule ringed in the accent when it is the one
+## picked, the robot in its floor tint with its face, its name, and a red dot
+## on the corner while it has a fault.
+func _draw_chips() -> void:
+	var font := get_theme_font("font", "SheetTitle")
+	for i in sim.robots.size():
+		var b: Dictionary = sim.robots[i]
+		var r := _chip_at(i)
+		var rad := CHIP_H * 0.5
+		_chips_l.draw_style_box(_chip_box(Color(Pal.TEXT, 0.16), rad), Rect2(r.position + Vector2(0.0, 5.0), r.size))
+		var face := _chip_box(Pal.SURFACE, rad)
+		if i == selected:
+			face.border_color = Pal.ACCENT
+			face.set_border_width_all(6)
+		_chips_l.draw_style_box(face, r)
+		var xf := Transform2D(0.0, Vector2(0.66, 0.66), 0.0, r.position + Vector2(rad + 4.0, rad + 4.0))
+		_chips_l.draw_mesh(Art.robot(), null, xf, Life.TINTS[i % Life.TINTS.size()])
+		_chips_l.draw_mesh(Art.face(String(b.stuck)), null, xf)
+		var key := "FACTORY_" + String(b.name).to_upper()
+		var name := tr(key) if tr(key) != key else String(b.name)
+		_chips_l.draw_string(font, Vector2(r.position.x + CHIP_H + 6.0, r.position.y + rad + 11.0), name,
+			HORIZONTAL_ALIGNMENT_LEFT, CHIP_W - CHIP_H - 20.0, 32, Pal.TEXT)
+		if robot_fault(i):
+			var at := r.position + Vector2(r.size.x - DOT_R * 0.6, DOT_R * 0.6)
+			_chips_l.draw_circle(at, DOT_R + 4.0, Pal.SURFACE, true, -1.0, true)
+			_chips_l.draw_circle(at, DOT_R, Pal.BAD, true, -1.0, true)
+
+## The robot's sheet, where its program is read and changed. Until the sheet
+## is built a tap only picks the robot: its chip is marked.
+func open_sheet(i: int) -> void:
+	if i < 0 or i >= sim.robots.size():
+		return
+	_let_go()
+	selected = i
+	_fx.touch()
+	_chips_l.queue_redraw()
 
 # --- the drawer ---
 
@@ -760,6 +820,8 @@ func _refresh_drawer() -> void:
 	for kind: String in DRAWER_TILES:
 		if sim.unlocked(kind):
 			shown += 1
+	# nothing to lay before milestone 1: no button for an empty drawer
+	_drawer_b.visible = shown > 0 or sim.picked != ""
 	# a column of five, then another beside it
 	var columns := maxi(1, ceili(shown / float(DRAWER_ROWS)))
 	if _drawer.columns != columns:
@@ -819,15 +881,15 @@ func _on_drawer_tile(kind: String) -> void:
 	pick(kind)
 	close_drawer()
 
-## What the hand lays now: "belt", a machine, or "" for nothing.
+## What the hand lays now: a belt kind, or "" for nothing.
 func pick(kind: String) -> void:
 	sim.picked = kind
 	_let_go()
 	_refresh_drawer()
 	_line_b.visible = traces()
 
-## Whether the hand traces paths: a belt or a fast belt picked (a splitter
-## and a bridge go one at a time).
+## Whether the hand traces paths: a belt or a fast belt picked (a bridge
+## goes one at a time).
 func traces() -> bool:
 	return Sim.BELTS.has(sim.picked) and not Sim.ONE_TILE.has(sim.picked)
 
@@ -881,7 +943,6 @@ func _draw_drawer_button() -> void:
 		_drawer_b.draw_circle(at, 22.0, Pal.ACCENT, true, -1.0, true)
 		Icons.paint(_drawer_b, "cross", Rect2(at - Vector2(13.0, 13.0), Vector2(26.0, 26.0)), Pal.SURFACE)
 
-# --- the hand ---
 
 ## A finger is a ScreenTouch and never a mouse button: the project turned
 ## mouse-from-touch off on 2026-09-22, and the Grove could not be chopped on
@@ -908,6 +969,7 @@ func _on_field_input(event: InputEvent) -> void:
 			_zoom_by_hand(false)
 	elif event is InputEventMouseMotion and _touches.has(MOUSE):
 		_drag(MOUSE, (event as InputEventMouseMotion).position)
+
 
 func _press(finger: int, pos: Vector2) -> void:
 	if _held_back:
@@ -946,19 +1008,20 @@ func _press(finger: int, pos: Vector2) -> void:
 			_close_piece()
 			_fx.touch(0.84)
 		return
-	var picked: String = sim.picked
-	if Sim.BELTS.has(picked):
+	# a chip lies over the floor: a press on it is the chip's, belt or none
+	_chip_down = _chip_under(pos)
+	if _chip_down >= 0:
+		_mode = "chip"
+		return
+	if Sim.BELTS.has(sim.picked):
 		_mode = "belt"
 		_belt_tile = Vector2i(tile_under(pos).floor())
 		_path = [_belt_tile]
-	elif picked != "":
-		_mode = "place"
 	else:
 		_mode = "pan"
-	if _mode != "place":
-		var h := hit(pos)
-		if h.what == "belt" or h.what == "module":
-			_long = {"tile": h.tile}
+	var h := hit(pos)
+	if h.what == "belt":
+		_long = {"tile": h.tile}
 
 func _drag(finger: int, pos: Vector2) -> void:
 	if not _touches.has(finger):
@@ -1001,6 +1064,7 @@ func _drag(finger: int, pos: Vector2) -> void:
 				else:
 					_run = _run_to(tile_under(pos))
 
+
 func _release(finger: int, pos: Vector2) -> void:
 	if not _touches.has(finger):
 		return
@@ -1021,6 +1085,10 @@ func _release(finger: int, pos: Vector2) -> void:
 				_piece_press(_piece_hit)
 			_piece_hit = ""
 			_consumed = false
+		"chip":
+			if not _moved and _chip_under(pos) == _chip_down:
+				open_sheet(_chip_down)
+			_chip_down = -1
 		"pan":
 			if _moved:
 				# the view runs on a little and comes to rest inside its bounds
@@ -1042,8 +1110,6 @@ func _release(finger: int, pos: Vector2) -> void:
 				_tap(pos)
 			_run = {}
 			_path = []
-		"place":
-			_place(pos)
 
 ## Every finger is let go: a card went up, the app lost the focus.
 func _let_go() -> void:
@@ -1053,83 +1119,37 @@ func _let_go() -> void:
 	_long = {}
 	_run = {}
 	_path = []
+	_chip_down = -1
 	_cam_raw = _cam_to
 	_close_piece()
 
-## What is under a point of the field: {what, tile} and for a module its
-## `id`, for a plus its `plate`. What stands is tried by its body, the
-## nearest to the eye first (a crown is tapped a good way over its tile);
-## then what lies flat on the tile under the point.
+## What is under a point of the field: {what, tile} and for a robot its
+## index as `id`. A chip first (it lies over the floor), then a robot within
+## twice TAP of where it is drawn, the nearest, then a belt, then the floor.
 func hit(pos: Vector2) -> Dictionary:
-	var v: Vector2 = (pos - world.position) / _zoom
-	var best := {}
-	var best_d := -INF
-	for p: Vector2i in sim.sources:
-		if (v - badge_at(p)).length() <= BADGE_R + 10.0:
-			return {"what": "badge", "tile": p * Art.PLATE, "plate": p}
-	for id: int in sim.trees:
-		var tr: Dictionary = sim.trees[id]
-		var tall: float = life.tall(tr)
-		var wide: float = life.reach(tr) + 12.0
-		var rel: Vector2 = v - (life.mid(tr.tile) - Vector2(0.0, tall * 0.5))
-		if pow(rel.x / wide, 2.0) + pow(rel.y / (tall * 0.5 + 12.0), 2.0) > 1.0:
-			continue
-		var d: float = life.depth(Vector2(tr.tile) + Vector2(0.5, 0.5))
-		if d > best_d:
+	var tile := Vector2i(tile_under(pos).floor())
+	var chip := _chip_under(pos)
+	if chip >= 0:
+		return {"what": "chip", "id": chip, "tile": tile}
+	var best := -1
+	var best_d := TAP * 2.0
+	for i in sim.robots.size():
+		var d := pos.distance_to(to_field(life.robot_at(i)))
+		if d <= best_d:
+			best = i
 			best_d = d
-			best = {"what": "source", "tile": tr.tile}
-	# a building's body covers the ground behind it: the tiles a little
-	# further down the screen are asked whose body this point is on
-	for lift: float in [84.0, 56.0, 28.0, 0.0]:
-		var t := Vector2i((life.tile_at(v + Vector2(0.0, lift)) as Vector2).floor())
-		var found := {}
-		var m: Dictionary = sim.module_at(t)
-		if not m.is_empty() and (lift <= 56.0 or m.kind == "market"):
-			found = {"what": "module", "tile": m.root, "id": int(m.id)}
-		var td: float = life.depth(Vector2(t) + Vector2(0.5, 0.5))
-		if not found.is_empty() and td > best_d:
-			best_d = td
-			best = found
-	if not best.is_empty():
-		return best
-	# a belt's bed stands over its tile: the bed under the point first
-	var bed := Vector2i((life.tile_at(v - Art.BELT_LIFT) as Vector2).floor())
-	if sim.belts.has(bed):
-		return {"what": "belt", "tile": bed}
-	var tile := Vector2i((life.tile_at(v) as Vector2).floor())
+	if best >= 0:
+		return {"what": "robot", "id": best, "tile": tile}
 	if sim.belts.has(tile):
 		return {"what": "belt", "tile": tile}
-	for p: Vector2i in sim.free_edges():
-		var rel: Vector2 = v - life.plus_at(p)
-		if pow(rel.x / 104.0, 2.0) + pow(rel.y / (104.0 * Art.DEEP), 2.0) <= 1.0:
-			return {"what": "plus", "tile": p * Art.PLATE, "plate": p}
-	if sim.is_source(tile):
-		return {"what": "source", "tile": tile}
 	return {"what": "ground", "tile": tile}
-
-## Where forest `p`'s badge floats, in view units: over the middle of it.
-func badge_at(p: Vector2i) -> Vector2:
-	return life.plus_at(p) + Vector2(0.0, -BADGE_UP)
 
 func _tap(pos: Vector2) -> void:
 	var h := hit(pos)
 	var tile: Vector2i = h.tile
 	match String(h.what):
-		"source":
-			sim.tap(tile)
-		"badge":
-			open_forest(h.plate)
-			_fx.touch()
-		"module":
-			var m: Dictionary = sim.modules[int(h.id)]
-			if m.kind == "firebox" and m.built and not m.lit and not (m.hopper as Array).is_empty():
-				sim.tap(tile)
-			else:
-				open_module(int(h.id))
-				_fx.touch()
-		"plus":
-			open_plate(h.plate)
-			_fx.touch()
+		"chip", "robot":
+			open_sheet(int(h.id))
 		"belt":
 			# a belt of another kind than the one in hand becomes it, as it
 			# lies; else the tap opens its pill and never turns it by itself
@@ -1184,16 +1204,16 @@ func _run_to(to: Vector2) -> Dictionary:
 	faces.fill(f)
 	return {"tiles": tiles, "lay": lay, "facing": f, "faces": faces}
 
-## Whether the belt on `tile` hands on to something: a belt, the market, a
-## fire box, or the way in of a kiln or a retort in front of it.
+## Whether the belt on `tile` hands on to something: a belt, the table or
+## the deliver pad in front of it.
 static func _feeds(land: RefCounted, tile: Vector2i) -> bool:
 	return _takes(land, tile + Art.DIRS[int(land.belts[tile])])
 
-## Whether `tile` is somewhere a belt may deliver into: the market, a fire
-## box, the way in of a kiln or a retort.
+## Whether `tile` is somewhere a belt delivers into but a belt: the table,
+## the deliver pad (the sim's own rule, `_takes_in`).
 static func _takes_in(land: RefCounted, tile: Vector2i) -> bool:
-	var m: Dictionary = land.module_at(tile)
-	return not m.is_empty() and (m.kind == "firebox" or m.kind == "market" or (Sim.RECIPE.has(m.kind) and m.root == tile))
+	var s: String = land.station_at(tile)
+	return s == "table" or s == "deliver"
 
 static func _takes(land: RefCounted, tile: Vector2i) -> bool:
 	return land.belts.has(tile) or _takes_in(land, tile)
@@ -1208,10 +1228,10 @@ static func _takes(land: RefCounted, tile: Vector2i) -> bool:
 ##
 ## Each end of the run is asked what it meets, the start first (where the
 ## two disagree the start wins), and the first answer at an end stands:
-## 1. the tile beyond it, along the line, is a belt pointing into it, or a
-##    kiln or retort whose way out it is: the run flows AWAY from this end;
-## 2. the tile beyond it is a belt that does not point into it, the market,
-##    a fire box, or a kiln's or retort's way in: the run flows TOWARD it;
+## 1. the tile beyond it, along the line, is a belt pointing into it: the
+##    run flows AWAY from this end;
+## 2. the tile beyond it is a belt that does not point into it, the table or
+##    the deliver pad: the run flows TOWARD it;
 ## 3. the end tile is itself a laid belt (and the run is longer than it):
 ##    pointing along the run already, or leading nowhere, the run carries on
 ##    from it, AWAY; leading on to something else, the run joins it, TOWARD;
@@ -1226,9 +1246,6 @@ static func run_facing(land: RefCounted, tiles: Array, swipe: int) -> int:
 		var beyond: Vector2i = e + Art.DIRS[out]
 		if land.belts.has(beyond):
 			return away if int(land.belts[beyond]) == (out + 2) % 4 else out
-		var m: Dictionary = land.module_at(beyond)
-		if not m.is_empty() and Sim.RECIPE.has(m.kind) and land.out_tile(m) == e:
-			return away
 		if _takes_in(land, beyond):
 			return out
 		if tiles.size() > 1 and land.belts.has(e):
@@ -1333,7 +1350,7 @@ func _trace_straight(t: Vector2i) -> void:
 
 ## What the traced path would lay: {tiles, faces, acts, lay}. The path is
 ## cut at the first tile a belt cannot go on, and its last belt then faces
-## into that tile (the market, a fire box, a kiln's way in). Each belt faces
+## into that tile (the table, the deliver pad). Each belt faces
 ## the next, the finger's way: a path never flows against the finger (the
 ## user in Tally, 2026-10-18, belts "always follow the finger"); Flip on the
 ## pill turns a line round. The last faces the way of the last step, or
@@ -1453,6 +1470,7 @@ func _edge_pan(delta: float) -> void:
 	_trace_to(Vector2i(tile_under(_at).floor()))
 	_run = _path_run()
 
+
 # --- the belt pill ---
 
 func piece_open() -> bool:
@@ -1467,14 +1485,14 @@ func _close_piece() -> void:
 	_piece = {}
 	_piece_hit = ""
 
-## Where the belt pill stands: by its belt's bed, kept between the chrome
-## at the top and the drawer at the foot.
+## Where the belt pill stands: by its belt, kept between the chips at the
+## top and the drawer at the foot.
 func _piece_layout() -> Dictionary:
 	if _piece.is_empty() or field == null:
 		return {}
-	var m := to_field(life.mid(_piece.tile) + Art.BELT_LIFT)
-	var half := Vector2(0.0, Art.K * Art.DEEP * _zoom)
-	var top := _goal_b.get_global_rect().end.y - field.get_global_rect().position.y
+	var m := to_field(life.mid(_piece.tile))
+	var half := Vector2(0.0, Art.TILE * 0.5 * _zoom)
+	var top := _chips_l.get_global_rect().end.y - field.get_global_rect().position.y
 	var foot: float = field.size.y - SafeArea.insets(self).y - DRAWER_UP * 0.5
 	var view := Rect2(0.0, top, field.size.x, maxf(foot - top, 1.0))
 	return PiecePill.layout(_piece.buttons, m - half, m + half, view)
@@ -1511,46 +1529,15 @@ func _draw_piece() -> void:
 	var title := tr(String(NAMES.get(sim.belt_kind(_piece.tile), "FACTORY_BELT")))
 	_pill_ui.draw(_pill_l, lay, _piece.buttons, title, get_theme_font("font", "SheetTitle"), _clock, float(_piece.at), _btn_at, false)
 
-## The facing a machine picked would stand at on `tile`: the last belt's,
-## or the next quarter it fits.
-func _fit(kind: String, tile: Vector2i) -> int:
-	for q in 4:
-		var f := (_facing + q) % 4
-		if sim.can_place(kind, tile, f):
-			return f
-	return _facing
-
-func _place(pos: Vector2) -> void:
-	var kind: String = sim.picked
-	var tile := Vector2i(tile_under(pos).floor())
-	if sim.place(kind, tile, _fit(kind, tile)):
-		pick("")
-	else:
-		_ghost_wob = 0.0
-
-## The ghost of a machine held over the land: its footprint, green where it
-## fits and the coins reach, and it shivers when a release placed nothing.
-func _ghosts() -> Array:
-	if _mode == "belt" and not _run.is_empty():
-		return _run_ghosts()
-	if _mode != "place" or _finger == NO_FINGER:
-		return []
-	var kind: String = sim.picked
-	var tile := Vector2i(tile_under(_at).floor())
-	var f := _fit(kind, tile)
-	# the footprint as it is seen: a machine of two tiles lies the other way a quarter on
-	var foot: Array = Life.footprint(kind, life.seen_tile(tile), life.seen_facing(f))
-	var ok: bool = sim.can_place(kind, tile, f) and sim.coins >= sim.price(kind)
-	var shift := Vector2(Motion.shiver_offset(_ghost_wob, 0.06, 0.3), 0.0)
-	return [[Art.ghost(foot[1].x, foot[1].y, ok), Art.flat(Vector2(foot[0] as Vector2i) + shift)]]
 
 ## The run a swipe would lay, as beds on their way: paper where a belt will
 ## go, the warn tone past what the coins reach, nothing over a belt that is
 ## there already.
-func _run_ghosts() -> Array:
+func _ghosts() -> Array:
+	if _mode != "belt" or _run.is_empty():
+		return []
 	var out: Array = []
 	var tiles: Array = _run.tiles
-	var lift := Transform2D(0.0, Art.BELT_LIFT)
 	for i in tiles.size():
 		var tile: Vector2i = tiles[i]
 		if _run.has("acts"):
@@ -1559,11 +1546,11 @@ func _run_ghosts() -> Array:
 		elif sim.belts.has(tile) and (sim.belt_kind(tile) == sim.picked or Sim.ONE_TILE.has(sim.picked)):
 			continue
 		var short: bool = i >= int(_run.lay)
-		out.append([Art.belt(), lift * Art.flat(Vector2(life.seen_tile(tile)), life.seen_facing(int(_run.faces[i]))),
+		out.append([Art.belt(), Art.flat(Vector2(tile), int(_run.faces[i])),
 			Color(1.0, 0.5, 0.45, 0.8) if short else Color(1.0, 1.0, 1.0, 0.92)])
 	return out
 
-## A finger held still on a belt or a machine sells it back.
+## A finger held still on a belt sells it back.
 func _step_hand(delta: float) -> void:
 	if _long.is_empty() or _finger == NO_FINGER:
 		return
@@ -1575,405 +1562,29 @@ func _step_hand(delta: float) -> void:
 		_finger = NO_FINGER
 		sim.sell(tile)
 
-# --- the cards ---
-
-func card_open() -> bool:
-	return _card.visible
-
-func close_card() -> void:
-	_card.visible = false
-	_card_tick = Callable()
-	_card_for = ""
-	for c in _card_slot.get_children():
-		_card_slot.remove_child(c)
-		c.queue_free()
-
-## A card on the scrim: its head (the title, the coins held, an X) and what
-## `fill(col)` puts under it.
-func _open_card(title: String, what: String, fill: Callable) -> void:
-	close_card()
-	close_drawer()
-	_let_go()
-	_card_for = what
-	var card := Dialog.card(CARD_W, CARD_INSET)
-	card.mouse_filter = Control.MOUSE_FILTER_STOP
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 22)
-	card.add_child(col)
-	var head := HBoxContainer.new()
-	head.add_theme_constant_override("separation", 16)
-	var title_l := Label.new()
-	title_l.theme_type_variation = "SheetTitle"
-	title_l.text = title
-	title_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title_l.clip_text = true
-	head.add_child(title_l)
-	var pill := PanelContainer.new()
-	pill.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	pill.add_theme_stylebox_override("panel", Dialog.tile(Pal.SURFACE, 12))
-	var held := HBoxContainer.new()
-	held.add_theme_constant_override("separation", 10)
-	pill.add_child(held)
-	held.add_child(Tile.coin(46.0))
-	_card_coins = Label.new()
-	_card_coins.theme_type_variation = "SheetTitle"
-	_card_coins.text = _coins_l.text
-	held.add_child(_card_coins)
-	head.add_child(pill)
-	var x := IconButton.new("cross", "", "IconButton")
-	x.name = "Close"
-	x.custom_minimum_size = Vector2(Dialog.X_SIZE, Dialog.X_SIZE)
-	x.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_round(x, int(Dialog.X_SIZE * 0.5))
-	x.pressed.connect(close_card)
-	head.add_child(x)
-	col.add_child(head)
-	fill.call(col)
-	_card_slot.add_child(card)
-	_card.visible = true
-	Motion.appear(_card, 0.0, 1.0, 0.2)
-
-## The plate card: the two kinds, each a tile with its picture, its name,
-## a line and the price on its bar. Pressing one buys the plate at `p`.
-func open_plate(p: Vector2i) -> void:
-	_open_card(tr("FACTORY_PLATE_TITLE"), "plate", func(col: VBoxContainer) -> void:
-		var row := HBoxContainer.new()
-		row.name = "Kinds"
-		row.add_theme_constant_override("separation", 16)
-		col.add_child(row)
-		var made := {}
-		for kind: String in Sim.KINDS:
-			var t := Tile.make(kind, NAMES[kind], PLATE_TILE, 70.0, 64.0, NAMES[kind] + "_LINE")
-			(t.button as Button).size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			(t.button as Button).pressed.connect(func() -> void:
-				if sim.buy_plate(p, kind):
-					close_card()
-				else:
-					Motion.shiver(t.button, 6.0))
-			row.add_child(t.button)
-			made[kind] = t
-		_card_tick = func() -> void:
-			for kind: String in made:
-				Tile.price(made[kind], Art.short(sim.plate_price()), sim.coins >= sim.plate_price())
-		_card_tick.call())
-
-## A machine's card: its picture, what it makes from what, its cycle at the
-## heat it has now, its level and the next one's price where it has levels,
-## Turn for a machine of two tiles, and Sell for all that was paid. A
-## market's is one of them: the seconds a sale, its own level, and Sell
-## unless it is the last one standing.
-func open_module(id: int) -> void:
-	if not sim.modules.has(id):
-		return
-	var kind: String = sim.modules[id].kind
-	_open_card(tr(NAMES[kind]), "market" if kind == "market" else "module", func(col: VBoxContainer) -> void:
-		var lines := _card_body(col, kind, [tr(NAMES[kind] + "_MAKES"), "", tr("FACTORY_RETORT_NOTE") if kind == "retort" else ""])
-		var row := HBoxContainer.new()
-		row.name = "Buttons"
-		row.alignment = BoxContainer.ALIGNMENT_CENTER
-		row.add_theme_constant_override("separation", 16)
-		col.add_child(row)
-		var up: Button = null
-		var stoke: Button = null
-		if kind == "firebox" or kind == "market":
-			up = _card_button(row, "trend", "", "PrimaryButton")
-			up.pressed.connect(func() -> void:
-				if not sim.upgrade(sim.modules[id].root):
-					Motion.shiver(up, 6.0))
-		elif not Sim.SINGLE.has(kind):
-			_card_button(row, "turn", tr("FACTORY_TURN"), "IconButton").pressed.connect(func() -> void: sim.turn(sim.modules[id].root))
-		if kind == "firebox":
-			# the stoker, on a row of its own once its goal is reached
-			var second := HBoxContainer.new()
-			second.name = "Stoker"
-			second.alignment = BoxContainer.ALIGNMENT_CENTER
-			col.add_child(second)
-			stoke = _card_button(second, "trend", "", "PrimaryButton")
-			stoke.custom_minimum_size.x = 600
-			stoke.pressed.connect(func() -> void:
-				if not sim.fit_stoker(sim.modules[id].root):
-					Motion.shiver(stoke, 6.0))
-		var sell := _card_button(row, "coin", "", "IconButton")
-		sell.pressed.connect(func() -> void:
-			var root: Vector2i = sim.modules[id].root
-			close_card()
-			sim.sell(root))
-		_card_tick = func() -> void:
-			if not sim.modules.has(id):
-				close_card()
-				return
-			var m: Dictionary = sim.modules[id]
-			var pic: Control = col.find_child("Picture", true, false)
-			var shown := Art.icon_name(kind, int(m.level))
-			if pic != null and String(pic.get_meta("kind")) != shown:
-				pic.set_meta("kind", shown)
-				pic.queue_redraw()
-			(lines[1] as Label).text = _state_line(m)
-			_say(sell, tr("FACTORY_SELL_FOR") % Art.short(sim.sell_price(m.root)))
-			if kind == "market":
-				# the last market standing is not sold: nothing would sell
-				var more := false
-				for other: int in sim.modules:
-					more = more or (other != id and sim.modules[other].kind == "market")
-				sell.visible = more
-			if up != null:
-				var cost: int = sim.upgrade_price(m.root)
-				up.visible = cost >= 0
-				if cost >= 0:
-					_say(up, tr("FACTORY_LEVEL_FOR") % [int(m.level) + 1, Art.short(cost)])
-				(lines[2] as Label).text = tr("FACTORY_LEVEL") % int(m.level) if kind == "market" else tr("FACTORY_FIRE_LEVEL") % [int(m.level), int(m.cap)] + ("  " + tr("FACTORY_STOKER_ON") if m.get("stoker", false) else "")
-			if stoke != null:
-				(stoke.get_parent() as Control).visible = sim.unlocked("stoker") and not m.get("stoker", false)
-				_say(stoke, tr("FACTORY_STOKER_FOR") % Art.short(sim.price("stoker")))
-		_card_tick.call())
-
-## A forest's card: what a tap gives, what it makes by itself, what it holds
-## of what it can, and the next level's price. Nothing else is done to a
-## forest: it is not built in, turned or sold.
-func open_forest(p: Vector2i) -> void:
-	if not sim.sources.has(p):
-		return
-	# a mine's words are the forest's keys with MINE in them
-	var kind := String(sim.plates[p])
-	var key := "FACTORY_" + kind.to_upper()
-	_open_card(tr(key), kind, func(col: VBoxContainer) -> void:
-		var lines := _card_body(col, kind, [tr(key + "_MAKES"), "", ""])
-		var row := HBoxContainer.new()
-		row.name = "Buttons"
-		row.alignment = BoxContainer.ALIGNMENT_CENTER
-		col.add_child(row)
-		var up := _card_button(row, "trend", "", "PrimaryButton")
-		up.pressed.connect(func() -> void:
-			if not sim.upgrade(p * Art.PLATE):
-				Motion.shiver(up, 6.0))
-		_card_tick = func() -> void:
-			var f: Dictionary = sim.sources[p]
-			var rate := int(sim.source_rate(p))
-			(lines[1] as Label).text = tr(key + "_HAND") if rate == 0 else (tr(key + "_RATE_ONE") if rate == 1 else tr(key + "_RATE_N") % rate)
-			(lines[2] as Label).text = tr(key + "_HOLDS") % [int(f.stock), Sim.SOURCE_ROOM]
-			var cost: int = sim.upgrade_price(p * Art.PLATE)
-			up.visible = cost >= 0
-			if cost >= 0:
-				if int(f.level) == 0:
-					_say(up, tr(key + "_AUTO_FOR") % Art.short(cost))
-				else:
-					_say(up, tr("FACTORY_LEVEL_FOR") % [int(f.level) + 1, Art.short(cost)])
-		_card_tick.call())
-
-## The next goal on its chip: what to sell, how many of how many, and what
-## that opens. Pictures and figures only, so no language has to count.
-func _draw_goal() -> void:
-	var g: Dictionary = sim.next_goal()
-	if g.is_empty():
-		return
-	var font := get_theme_font("font", "SheetTitle")
-	var h := _goal_b.size.y
-	var x := 20.0
-	for kind: String in g.need:
-		_goal_b.draw_mesh(Art.icon(kind), null, Transform2D(0.0, Vector2(0.5, 0.5), 0.0, Vector2(x + 26.0, h * 0.5)))
-		x += 58.0
-		var text := "%d/%d" % [mini(int(sim.sold.get(kind, 0)), int(g.need[kind])), int(g.need[kind])]
-		_goal_b.draw_string(font, Vector2(x, h * 0.5 + 12.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 34, Pal.TEXT)
-		x += font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 34).x + 14.0
-	var ink := Color(Pal.TEXT, 0.55)
-	_goal_b.draw_polyline(PackedVector2Array([Vector2(x, h * 0.5 - 11.0), Vector2(x + 11.0, h * 0.5), Vector2(x, h * 0.5 + 11.0)]), ink, 5.0, true)
-	x += 28.0
-	for kind: String in g.gives:
-		_goal_b.draw_mesh(Art.icon(kind), null, Transform2D(0.0, Vector2(0.52, 0.52), 0.0, Vector2(x + 26.0, h * 0.5)))
-		x += 58.0
-	# the chip is as wide as what it says
-	if absf(_goal_b.custom_minimum_size.x - (x + 12.0)) > 1.0:
-		_goal_b.custom_minimum_size.x = x + 12.0
-
-## The goals' card: each a row, what to sell and how far it is, and what it
-## opens; the ones reached wear a tick.
-func open_goals() -> void:
-	_fx.touch()
-	_open_card(tr("FACTORY_GOALS"), "goals", func(col: VBoxContainer) -> void:
-		var say := Label.new()
-		say.theme_type_variation = "SheetBody"
-		say.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		say.text = tr("FACTORY_GOALS_LINE")
-		col.add_child(say)
-		var rows: Array = []
-		for g: Dictionary in Sim.GOALS:
-			var row := PanelContainer.new()
-			row.name = "Goal_" + String(g.id)
-			row.custom_minimum_size.y = 108.0
-			row.add_theme_stylebox_override("panel", Dialog.tile(Pal.SURFACE, 12))
-			var pic := Control.new()
-			pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			row.add_child(pic)
-			pic.draw.connect(_draw_goal_row.bind(pic, g))
-			col.add_child(row)
-			rows.append(pic)
-		var seen := [""]
-		_card_tick = func() -> void:
-			var now := str(sim.sold)
-			if now != seen[0]:
-				seen[0] = now
-				for pic: Control in rows:
-					pic.queue_redraw()
-		_card_tick.call())
-
-func _draw_goal_row(pic: Control, g: Dictionary) -> void:
-	var font := get_theme_font("font", "SheetTitle")
-	var body := get_theme_font("font", "SheetBody")
-	var h := pic.size.y
-	var done: bool = sim.goal_done(g)
-	var x := 12.0
-	for kind: String in g.need:
-		pic.draw_mesh(Art.icon(kind), null, Transform2D(0.0, Vector2(0.62, 0.62), 0.0, Vector2(x + 34.0, h * 0.5)))
-		x += 76.0
-		var text := "%d/%d" % [mini(int(sim.sold.get(kind, 0)), int(g.need[kind])), int(g.need[kind])]
-		pic.draw_string(font, Vector2(x, h * 0.5 + 13.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 38, Pal.TEXT if not done else Color(Pal.TEXT, 0.5))
-		x += font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 38).x + 18.0
-	# what it opens, from the right: the names, then the pictures before them
-	var right := pic.size.x - 12.0
-	if done:
-		Icons.paint(pic, "check", Rect2(Vector2(right - 44.0, h * 0.5 - 22.0), Vector2(44.0, 44.0)), Pal.ACCENT)
-		right -= 58.0
-	var gives: Array = g.gives
-	for i in range(gives.size() - 1, -1, -1):
-		var name := tr(NAMES.get(gives[i], ""))
-		var w := body.get_string_size(name, HORIZONTAL_ALIGNMENT_LEFT, -1, 30).x
-		pic.draw_string(body, Vector2(right - w, h * 0.5 + 11.0), name, HORIZONTAL_ALIGNMENT_LEFT, -1, 30, Pal.TEXT)
-		right -= w + 10.0
-		pic.draw_mesh(Art.icon(gives[i]), null, Transform2D(0.0, Vector2(0.6, 0.6), 0.0, Vector2(right - 32.0, h * 0.5)))
-		right -= 74.0
-	var ink := Color(Pal.TEXT, 0.45)
-	var mid := (x + right) * 0.5
-	pic.draw_polyline(PackedVector2Array([Vector2(mid - 6.0, h * 0.5 - 12.0), Vector2(mid + 6.0, h * 0.5), Vector2(mid - 6.0, h * 0.5 + 12.0)]), ink, 5.0, true)
-
-## A card's body: the picture on a disc at the left and three lines beside
-## it (an empty one is hidden until it is written). Returns the lines.
-func _card_body(col: VBoxContainer, kind: String, texts: Array) -> Array:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 28)
-	col.add_child(row)
-	var pic := Control.new()
-	pic.name = "Picture"
-	pic.custom_minimum_size = Vector2(220, 220)
-	pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# what it shows may change while the card is up: a thing looks its level
-	pic.set_meta("kind", kind)
-	pic.draw.connect(func() -> void: Tile.picture(pic, String(pic.get_meta("kind")), 104.0))
-	row.add_child(pic)
-	var words := VBoxContainer.new()
-	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	words.alignment = BoxContainer.ALIGNMENT_CENTER
-	words.add_theme_constant_override("separation", 8)
-	row.add_child(words)
-	var lines := []
-	for i in texts.size():
-		var l := Label.new()
-		l.theme_type_variation = "SheetBody" if i < 2 else "SheetBodyDim"
-		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		l.text = texts[i]
-		words.add_child(l)
-		lines.append(l)
-	return lines
-
-## A button on a card's row, at its own size.
-func _card_button(row: HBoxContainer, icon: String, text: String, look: String) -> Button:
-	var b := IconButton.new(icon, text, look)
-	b.custom_minimum_size = Vector2(430, 112)
-	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	row.add_child(b)
-	return b
-
-## A button's words, written only when they change (it measures itself).
-static func _say(b: Button, text: String) -> void:
-	if (b as IconButton).label_text != text:
-		(b as IconButton).set_label(text)
-
-## What a machine is doing now, in a line.
-func _state_line(m: Dictionary) -> String:
-	if not m.built:
-		return tr("FACTORY_BUILDING") % int(float(m.build) * 100.0)
-	if m.kind == "market":
-		return tr("FACTORY_MARKET_RATE") % _seconds(sim.market_interval(m))
-	if m.kind == "firebox":
-		var held: int = (m.hopper as Array).size()
-		if m.lit:
-			return tr("FACTORY_FIRE_LIT") % [int(round(float(m.draw))), int(m.cap), held]
-		return tr("FACTORY_FIRE_TAP") if held > 0 else tr("FACTORY_FIRE_EMPTY")
-	if m.kind == "engine":
-		if float(m.share) <= 0.0:
-			return tr("FACTORY_NEEDS_FIRE")
-		return tr("FACTORY_ENGINE_TURNS") % int(round(float(m.share) * 100.0))
-	var secs: float = sim.cycle_seconds(m)
-	if secs < 0.0:
-		return tr("FACTORY_NEEDS_ENGINE") if Sim.wants_power(m.kind) == "shaft" else tr("FACTORY_NEEDS_FIRE")
-	return tr("FACTORY_CYCLE") % _seconds(secs)
-
-## Seconds as the card writes them: "4 s", "2.5 s", "3 min 50 s".
-func _seconds(secs: float) -> String:
-	if secs >= 60.0:
-		var whole := int(round(secs))
-		@warning_ignore("integer_division")
-		return tr("FACTORY_MIN_S") % [whole / 60, whole % 60]
-	return tr("FACTORY_S") % Art.amount(snappedf(secs, 0.1), Art.comma())
-
 # --- drawing ---
 
-## Over the land and moving with it: the ghost's machine, the ring of a
-## finger held on something it would sell, and what a sale was worth.
+## Over the floor and moving with it: the way a path being laid will flow,
+## the sun ring of the belt the pill is for, the ring of a finger held on a
+## belt it would sell, and what a sale was worth.
 func _draw_over(ci: CanvasItem) -> void:
-	if _mode == "place" and _finger != NO_FINGER:
-		var kind: String = sim.picked
-		var tile := Vector2i(tile_under(_at).floor())
-		var f := _fit(kind, tile)
-		var vf: int = life.seen_facing(f)
-		var mesh: ArrayMesh = Art.module(kind, vf)
-		ci.draw_mesh(mesh, null, Transform2D(0.0, life.mid(tile) + Vector2(Motion.shiver_offset(_ghost_wob, 5.0, 0.3), 0.0)), Color(1.0, 1.0, 1.0, 0.6))
 	if _mode == "belt" and not _run.is_empty():
 		_draw_flow(ci)
 	if not _piece.is_empty():
-		# the belt the pill is for wears a sun ring
-		ci.draw_set_transform(life.mid(_piece.tile) + Art.BELT_LIFT, 0.0, Vector2(1.0, Art.DEEP))
-		ci.draw_arc(Vector2.ZERO, Art.K * 0.95, 0.0, TAU, 48, Color(Pal.SUN, 0.95), 8.0, true)
-		ci.draw_set_transform(Vector2.ZERO)
+		ci.draw_arc(life.mid(_piece.tile), Art.TILE * 0.48, 0.0, TAU, 48, Color(Pal.SUN, 0.95), 8.0, true)
 	if not _long.is_empty() and _held >= HOLD_SHOWS:
 		var k := clampf((_held - HOLD_SHOWS) / (HOLD - HOLD_SHOWS), 0.0, 1.0)
-		ci.draw_set_transform(life.mid(_long.tile), 0.0, Vector2(1.0, Art.DEEP))
-		ci.draw_arc(Vector2.ZERO, 74.0, 0.0, TAU, 48, Color(1.0, 1.0, 1.0, 0.35), 9.0, true)
-		ci.draw_arc(Vector2.ZERO, 74.0, -PI * 0.5, -PI * 0.5 + TAU * k, 48, Pal.ACCENT, 9.0, true)
-		ci.draw_set_transform(Vector2.ZERO)
+		var at: Vector2 = life.mid(_long.tile)
+		ci.draw_arc(at, Art.TILE * 0.44, 0.0, TAU, 48, Color(1.0, 1.0, 1.0, 0.35), 9.0, true)
+		ci.draw_arc(at, Art.TILE * 0.44, -PI * 0.5, -PI * 0.5 + TAU * k, 48, Pal.ACCENT, 9.0, true)
 	var font := get_theme_font("font", "SheetTitle")
-	for p: Vector2i in sim.sources:
-		_draw_badge(ci, font, p)
 	for n: Dictionary in _nums:
 		var k: float = float(n.t) / NUM
 		var w := font.get_string_size(n.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 46).x
 		var at: Vector2 = (n.at as Vector2) + Vector2(-w * 0.5, 0.0 if Motion.reduce else -k * 60.0)
 		var a := 1.0 - k * k * k
 		ci.draw_string_outline(font, at, n.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 46, 8, Color(0.23, 0.19, 0.16, 0.7 * a))
-		ci.draw_string(font, at, n.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 46, Color(Art.MARK, a))
-
-## A forest's badge: a round sign over it with an arrow up, the sun's own
-## when the coins reach the next level and paper when they do not, the price
-## under it; at the last level a plain one with its level. A tap opens the
-## forest's card.
-func _draw_badge(ci: CanvasItem, font: Font, p: Vector2i) -> void:
-	var at := badge_at(p)
-	var cost: int = sim.upgrade_price(p * Art.PLATE)
-	var can: bool = cost >= 0 and sim.coins >= cost
-	var ink := Color(0.23, 0.19, 0.16)
-	ci.draw_circle(at + Vector2(0.0, 5.0), BADGE_R, Color(ink, 0.28))
-	ci.draw_circle(at, BADGE_R, Pal.SUN if can else Art.PRICE_OFF)
-	ci.draw_arc(at, BADGE_R, 0.0, TAU, 40, Color(ink, 0.5), 3.0, true)
-	if cost < 0:
-		var top := str(int(sim.sources[p].level))
-		ci.draw_string(font, at + Vector2(-font.get_string_size(top, HORIZONTAL_ALIGNMENT_LEFT, -1, 46).x * 0.5, 16.0), top, HORIZONTAL_ALIGNMENT_LEFT, -1, 46, ink)
-		return
-	var arrow := Color(ink, 0.9 if can else 0.5)
-	ci.draw_polyline(PackedVector2Array([at + Vector2(-17.0, 2.0), at + Vector2(0.0, -17.0), at + Vector2(17.0, 2.0)]), arrow, 8.0, true)
-	ci.draw_line(at + Vector2(0.0, -13.0), at + Vector2(0.0, 21.0), arrow, 8.0, true)
-	var text := Art.short(cost)
-	var foot := at + Vector2(-font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 38).x * 0.5, BADGE_R + 40.0)
-	ci.draw_string_outline(font, foot, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 38, 8, Color(ink, 0.7))
-	ci.draw_string(font, foot, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 38, Color.WHITE)
+		ci.draw_string(font, at, n.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 46, Color(Art.GOLD_HI, a))
 
 ## The direction reference line of a run or a path being laid: a soft line
 ## along its beds and a chevron a tile pointing the way things will move
@@ -1985,12 +1596,11 @@ func _draw_flow(ci: CanvasItem) -> void:
 	var n := tiles.size()
 	var pts := PackedVector2Array()
 	for tile: Vector2i in tiles:
-		pts.append(life.mid(tile) + Art.BELT_LIFT)
+		pts.append(life.mid(tile))
 	# half a tile of the way each belt flows, on the screen
 	var halves: Array = []
 	for i in n:
-		var d := Vector2(Art.DIRS[int(faces[i])])
-		halves.append((life.seen(Vector2(tiles[i]) + Vector2(0.5, 0.5) + d * 0.5) + Art.BELT_LIFT) - pts[i])
+		halves.append(Vector2(Art.DIRS[int(faces[i])]) * Art.TILE * 0.5)
 	var line := PackedVector2Array()
 	var into0: Vector2 = halves[0] if n == 1 else (pts[1] - pts[0]).normalized() * (halves[0] as Vector2).length()
 	line.append(pts[0] - into0 * 0.7)
@@ -2019,7 +1629,7 @@ func _save() -> void:
 	sim.save()
 	_since_save = 0.0
 
-## The land is kept and the screen stops stepping it before it says it is
+## The floor is kept and the screen stops stepping it before it says it is
 ## closed: from here on it is the tab's again.
 func _on_back() -> void:
 	sim.picked = ""
@@ -2027,19 +1637,16 @@ func _on_back() -> void:
 	_left = true
 	set_process(false)
 	Analytics.track("factory_leave", {"seconds": int((Time.get_ticks_msec() - _opened_at) / 1000.0),
-		"earned": sim.earned - _earned_at_open, "plates": sim.plates.size()})
+		"earned": sim.earned - _earned_at_open, "milestone": sim.milestone})
 	closed.emit()
 
 ## Android's back, through the menu: a card or a sheet first, then the
-## drawer, what is picked, and the screen.
+## pill, the drawer, what is picked, and the screen.
 func go_back() -> void:
 	if tutor.close():
 		return
 	if settings_sheet.is_open():
 		settings_sheet.close()
-		return
-	if _card.visible:
-		close_card()
 		return
 	if not _piece.is_empty():
 		_close_piece()

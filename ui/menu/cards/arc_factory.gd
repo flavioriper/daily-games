@@ -1,17 +1,19 @@
 extends "res://ui/menu/cards/card_face.gd"
 
-## Factory's card: a morning over the land's own green, three of the game's
-## trees along the right (factory/art.gd's own meshes: a birch, an oak and
-## a pine), a heap of logs at their feet and a run of belt carrying it off
-## toward the card's foot. The go button stands where the belt ends, as the
-## market does on the land: a disc in the card's colour with a chevron.
-## The name stands top left, with the coins held (set from outside) under it.
+## Factory's card, plain for now: the floor's own paper, one of the game's
+## robots (factory/art.gd's mesh, in the Picker's tint) by a run of belt,
+## and the go button where the belt ends: a disc in the card's colour with a
+## chevron. The name stands top left, with the coins held (set from outside)
+## under it. It showed the land's trees and a heap of logs until the floor
+## of robots took the land's place on 2026-10-20; the robots' own card is
+## still to be drawn.
 ##
 ## Factory had a tab of its own, with the whole land running on one wide
 ## card, until the bottom bar left on 2026-10-13; this card took its place
 ## on the Arcade list. Everything is one mesh and nothing lives on it.
 
 const Art = preload("res://factory/art.gd")
+const Life = preload("res://factory/life.gd")
 
 ## The row the card was drawn for (puzzle_card_2d.gd's CARD_H).
 const H := 246.0
@@ -19,13 +21,10 @@ const H := 246.0
 ## card's width caps the scale so the trees never start under them.
 const WORDS_END := 240.0
 const REACH := 250.0
-## The trees at H, back to front: [look, in from the right, up from the
-## foot, scale].
-const TREES := [[3, 196.0, 92.0, 0.78], [2, 112.0, 84.0, 0.9], [1, 40.0, 70.0, 0.8]]
-## The heap: how many logs, where its foot is, and how big.
-const HEAP_N := 6
-const HEAP_AT := Vector2(150.0, 52.0)
-const HEAP_K := 1.25
+## The robot at H: where it stands, in from the right and up from the
+## foot, and how big.
+const ROBOT_AT := Vector2(170.0, 74.0)
+const ROBOT_K := 1.1
 ## The belt: from under the heap to the go button, its width and its slats.
 const BELT_FROM := Vector2(236.0, 40.0)
 const BELT_TO := Vector2(96.0, 40.0)
@@ -47,11 +46,12 @@ const SIDE := 22.0
 const WORDS := 215.0
 const WORDS_TOP := 14.0
 
-## The morning: sky over the land's green, the far rise and the blurb's ink.
-const SKY := Color("eef6f0")
-const LAND := Color("dcecc4")
-const RISE := Color("cfe3b4")
-const BLURB := Color("5f6b4a")
+## The paper of the floor, a shade deeper at the foot, the far rise and the
+## blurb's ink.
+const SKY := Color("f6f1e6")
+const LAND := Art.FLOOR
+const RISE := Color("e6dcc8")
+const BLURB := Color("6f655b")
 
 func _k() -> float:
 	return minf(size.y / H, maxf(size.x - WORDS_END, 1.0) / REACH)
@@ -67,17 +67,19 @@ func _paint(b: Face.Builder) -> void:
 	b.polygon(ground(), Color.WHITE)
 	shade(b, first, SKY, LAND, 0.0, size.y)
 	_rise(b)
-	for row: Array in TREES:
-		var foot := _at(Vector2(row[1], row[2]))
-		var s: float = float(row[3]) * k
-		b.ellipse(foot + Vector2(8.0, 2.0) * s, 40.0 * s, 11.0 * s, Art.CAST)
-		b.append(Art.tree(int(row[0])), Transform2D(0.0, Vector2(s, s), 0.0, foot))
 	_belt(b, k)
-	b.append(Art.pile(HEAP_N), Transform2D(0.0, Vector2(HEAP_K * k, HEAP_K * k), 0.0, _at(HEAP_AT)))
+	var s := ROBOT_K * k
+	var bot := Transform2D(0.0, Vector2(s, s), 0.0, _at(ROBOT_AT))
+	var first_bot := b.verts.size()
+	b.append(Art.robot(), bot)
+	# the robot's white shell in the Picker's tint, as on the floor
+	for i in range(first_bot, b.verts.size()):
+		b.cols[i] = b.cols[i] * Life.TINTS[0]
+	b.append(Art.face(""), bot)
 	if not soon:
 		_go(b, _at(GO_AT), GO * k)
 
-## One soft far rise, sunk under the words and highest behind the trees.
+## One soft far rise, sunk under the words and highest behind the robot.
 func _rise(b: Face.Builder) -> void:
 	var k := size.y / H
 	var pts := PackedVector2Array()

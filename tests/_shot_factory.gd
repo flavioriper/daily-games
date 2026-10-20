@@ -18,6 +18,13 @@ extends SceneTree
 ## floor shot and its draw calls held under the budget, the Shipper's "?"
 ## batched over it; then things lying, a box on the floor, a belt from the
 ## intake pad to the table with a square on it, shot again.
+##
+## The screen (factory/screen.gd built by hand on a new floor, the field's
+## mouse off so the real pointer cannot reach it): three robot chips under
+## the top bar, a dot on the chip of each robot with a fault a rule sees, a
+## chip tapped and a robot tapped, the pace pill blank, the drawer empty
+## before milestone 1, then a belt traced from the intake pad to the table,
+## shot and its draw calls held under the budget.
 
 const SEED := 7
 const SAVE := "user://factory_harness.cfg"
@@ -152,6 +159,7 @@ func _run() -> void:
 	if FileAccess.file_exists(SAVE):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE))
 	await _floor()
+	await _screen_part()
 	if FileAccess.file_exists(SAVE):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE))
 	print("%s  %d failed" % ["DONE" if _fails == 0 else "DONE WITH FAILURES", _fails])
@@ -257,4 +265,52 @@ func _floor() -> void:
 	draws = await _shot("floor_things")
 	_ok("draw calls under budget with things about", draws > 0 and draws < BUDGET, str(draws))
 	_field.queue_free()
+	await _frames(3)
+
+## The screen on a new floor, played by touches handed to its field.
+func _screen_part() -> void:
+	_sim = Sim.new(SEED)
+	_screen = load("res://factory/screen.gd").new()
+	_screen.name = "Factory"
+	_screen.setup(_sim)
+	root.add_child(_screen)
+	await _frames(4)
+	_screen.field.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var field: Vector2 = _screen.field.size
+	_ok("the whole floor fits the width", is_equal_approx(_screen._near, field.x / (Sim.COLS * Art.TILE)),
+		"near %.3f" % _screen._near)
+	_ok("three chips", _screen.robot_chip_rect(2).size.x > 0 and _screen.robot_chip_rect(3).size.x == 0,
+		str(_screen.robot_chip_rect(2)))
+	# the brief asked a dot on all three; the Boxer's fault is a short count,
+	# which no rule of the dot's sees (its loop is closed and it can do it all)
+	_ok("fault dots on the Picker and the Shipper, none on the Boxer",
+		_screen.robot_fault(0) and not _screen.robot_fault(1) and _screen.robot_fault(2))
+	await _tap(_screen.robot_chip_rect(1).get_center())
+	_ok("chip selects", _screen.selected == 1)
+	# the floor held still while the finger is down on a robot, so where it
+	# is drawn is where it is tapped
+	_screen.set_process(false)
+	await _tap(_screen.to_field(_screen.life.robot_at(0)))
+	_screen.set_process(true)
+	_ok("robot tap selects", _screen.selected == 0)
+	_ok("pace pill reads none", _screen.pace_text() == tr("FACTORY_PACE_NONE"), _screen.pace_text())
+	var shown := 0
+	for kind: String in _screen.DRAWER_TILES:
+		if (_screen._tiles[kind].button as Control).visible:
+			shown += 1
+	_ok("drawer locked before milestone 1", shown == 0 and not _screen._drawer_b.visible, "%d shown" % shown)
+
+	_sim.milestone = 1
+	_sim.coins = 10
+	await _frames(2)
+	_screen.pick("belt")
+	await _frames(2)
+	await _drag([_screen.screen_of(Vector2(2.5, 5.5)), _screen.screen_of(Vector2(3.5, 5.5))])
+	_ok("belt traced", int(_sim.belts.get(Vector2i(2, 5), -1)) == 0 and int(_sim.belts.get(Vector2i(3, 5), -1)) == 0
+		and _sim.belts.size() == 2 and _sim.coins == 8, "%s, %d coins" % [_sim.belts, _sim.coins])
+	_screen.pick("")
+	await _frames(4)
+	var draws: int = await _shot("screen_start")
+	_ok("under budget", draws > 0 and draws < BUDGET, str(draws))
+	_screen.queue_free()
 	await _frames(3)
