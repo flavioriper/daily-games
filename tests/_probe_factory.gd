@@ -48,6 +48,7 @@ func _process(_delta: float) -> bool:
 	_check_belts()
 	_check_kept()
 	_check_robots()
+	_check_pace()
 	print("probe_factory: %d checks, %d failed" % [_checks, _fails])
 	DirAccess.remove_absolute(Sim.path)
 	quit(1 if _fails > 0 else 0)
@@ -115,6 +116,7 @@ func _belt_row(sim: RefCounted, from: Vector2i, n: int, facing: int) -> void:
 func _bare(with_seed: int) -> RefCounted:
 	var sim: RefCounted = Sim.new(with_seed)
 	sim.robots = []
+	sim.milestone = 1   # belts are laid on a bare floor
 	return sim
 
 ## Ticks until an event of `type` (of robot `robot`, -1 any), or -1 past
@@ -139,6 +141,15 @@ func _refused(sim: RefCounted, why: String) -> bool:
 	var e: Dictionary = sim.events.back() if not sim.events.is_empty() else {}
 	return e.get("type", "") == "refused" and e.get("why", "") == why
 
+## The three fixes of the first session on `sim`, in any order: the Picker's
+## gripper and its Pick, the Boxer's two vertical Moves, the Shipper's wire.
+func _fix_all(sim: RefCounted) -> bool:
+	var ok: bool = sim.fit(0, "gripper")
+	ok = ok and sim.add_node(0, Bots.walk(sim.robots[0]).ids[0], "out", "pick") != ""
+	ok = ok and sim.set_move(1, "c", 1, 4) and sim.set_move(1, "e", 3, 4)
+	ok = ok and sim.set_next(2, "c", "out", "d")
+	return ok
+
 # --- the checks ---
 
 func _check_floor() -> void:
@@ -148,6 +159,7 @@ func _check_floor() -> void:
 		and sim.belts.is_empty() and sim.robots.size() == 3 and sim.bin == {"gripper": 1})
 	# the floor's own rules, with no robot walking it
 	sim.robots = []
+	sim.milestone = 1   # belts are open (the lock is _check_pace's)
 	_ok("floor stations", sim.station_at(T) == "table" and sim.station_at(B) == "charger" and sim.station_at(Vector2i(2, 2)) == ""
 		and sim.station_at(I) == "intake" and sim.station_at(S) == "stack" and sim.station_at(D) == "deliver" and sim.stations.size() == 5 and Sim.BAY == B)
 	_ok("the floor's edge", sim.on_floor(Vector2i(0, 0)) and sim.on_floor(Vector2i(9, 7)) and not sim.on_floor(Vector2i(10, 0))
@@ -289,6 +301,7 @@ func _check_belts() -> void:
 func _check_kept() -> void:
 	var sim: RefCounted = Sim.new(7)
 	sim.coins = 100
+	sim.milestone = 1   # it lays belts and a bridge
 	_run(sim, 70)
 	sim.put(T, sim.take(S))
 	_fill(sim, 2)
@@ -492,3 +505,131 @@ func _write(d: Dictionary, version: int) -> void:
 	cfg.set_value("factory", "version", version)
 	cfg.set_value("factory", "state", Marshalls.variant_to_base64(d))
 	cfg.save(Sim.path)
+
+## A full box on the deliver pad (a throwaway floor's).
+func _sell_full(sim: RefCounted) -> void:
+	sim.put(T, sim.take(S))
+	_fill(sim, Sim.BOX_FULL)
+	sim.put(D, sim.take(T))
+
+func _check_pace() -> void:
+	var sim: RefCounted = Sim.new(3)
+	_ok("pace blank under two", sim.pace_ticks() == 0 and sim.pace_s() == 0.0 and sim.sold_at.is_empty() and sim.milestone == 0 and sim.held_for == 0)
+	_ok("milestone 0 is the start", Sim.MILESTONES[0].id == "line" and sim.milestone_open(0) and not sim.milestone_open(1))
+	# a total never opens it: one full box sold, then nothing
+	var one: RefCounted = Sim.new(5)
+	one.robots = []
+	_sell_full(one)
+	_run(one, 2000)
+	_ok("a total never opens it", one.sold_at.size() == 1 and one.pace_ticks() == 0 and one.milestone == 0 and one.held_for == 0)
+	var two: RefCounted = Sim.new(5)
+	two.robots = []
+	_sell_full(two)
+	_run(two, 5)
+	_sell_full(two)
+	_ok("two sold close together read a gap of the five ticks between", two.sold_at.size() == 2 and two.pace_ticks() == 5)
+	_run(two, 3000)
+	_ok("and a pace not kept up opens nothing", two.milestone == 0 and two.held_for == 0 and two.sold_at.size() == 2)
+	# the fresh floor: belts locked
+	_ok("belts locked before 1", not sim.unlocked("belt") and not sim.unlocked("fast") and not sim.unlocked("bridge")
+		and not sim.lay_belt(Vector2i(2, 5), 0) and _refused(sim, "locked") and sim.belts.is_empty())
+	var rows: Array = sim.bin_rows()
+	var by: Dictionary = {}
+	for r: Dictionary in rows:
+		by[r.part] = r
+	_ok("the bin before 1: the gripper spare, fast and plug later, the rest none",
+		rows.size() == Sim.PARTS.size() and by.gripper.state == "spare" and by.gripper.n == 1 and by.fast.state == "later" and by.plug.state == "later"
+		and by.treads.state == "none" and by.battery.state == "none" and by.fast.price == 30 and by.plug.price == 40)
+	# the pace bot: the three fixes on a fresh floor, then run
+	_ok("the three fixes apply", _fix_all(sim))
+	var opened := _until_event(sim, "milestone", 60000)
+	var reading: int = sim.pace_ticks()
+	print("pace: %d ticks a box after the three fixes (%.1f s)" % [sim.pace_ticks(), sim.pace_s()])
+	_ok("milestone 1 opens from the three fixes alone", opened > 0 and sim.milestone == 1 and sim.milestone_open(1) and not sim.milestone_open(2),
+		"%d ticks" % opened)
+	# which is seen again on a long run: how the gaps lie
+	var gaps: Array = []
+	var last: int = sim.sold_at.back() if not sim.sold_at.is_empty() else 0
+	for i in 6000:
+		for e: Dictionary in _tick(sim):
+			if e.type == "sale" and e.amount == Sim.PAY_FULL:
+				gaps.append(sim.tick_n - last)
+				last = sim.tick_n
+	print("pace: gaps over 6000 more ticks ", gaps)
+	_ok("belts open at 1", sim.unlocked("belt") and sim.unlocked("fast") and sim.unlocked("bridge") and sim.coins >= 1 and sim.lay_belt(Vector2i(2, 5), 0))
+	_ok("and the bin shows fast and plug at their price", sim.bin_rows().filter(func(r: Dictionary) -> bool: return r.state == "price").size() == 2)
+	# a stall: held_for climbs, then a starved floor takes it back to 0
+	var st: RefCounted = Sim.new(3)
+	_fix_all(st)
+	var climbed := 0
+	for i in 6000:
+		st.step(Sim.TICK)
+		if st.held_for > 0:
+			break
+	# the floor is emptied where it stands: nothing more is sold
+	st.feed_on = false
+	st.queue = 0
+	st.table = {}
+	st.items = {}
+	for b: Dictionary in st.robots:
+		b.held = {}
+	for i in 700:
+		st.step(Sim.TICK)
+		climbed = maxi(climbed, st.held_for)
+	_ok("hold resets on a stall", climbed >= 300 and st.held_for == 0 and st.milestone == 0, "peak %d, now %d" % [climbed, st.held_for])
+	# the rates are what the bot read
+	var lax: int = Sim.MILESTONES[1].every
+	_ok("rate 1 sits 20% over the bot's reading (to 10 ticks), rate 2 is half of it", lax == roundi(reading * 1.2 / 10.0) * 10 and Sim.MILESTONES[2].every * 2 == lax,
+		"reading %d, rates %d and %d" % [reading, lax, Sim.MILESTONES[2].every])
+	# Fast plug halves the pause, Fast treads halve the walk
+	sim.coins = 200
+	var span1 := _charge_span(sim, 0)
+	_ok("a charge pause is units long", span1 > 0, "%d ticks" % span1)
+	var coins: int = sim.coins
+	_ok("fast plug is bought", sim.fit(0, "plug") and sim.coins == coins - 40 and sim.robots[0].parts.has("plug") and sim.bin_rows().any(
+		func(r: Dictionary) -> bool: return r.part == "plug" and r.state == "price"))
+	var span2 := _charge_span(sim, 0)
+	_ok("fast plug halves the pause", span2 > 0 and absi(span2 * 2 - span1) <= 2, "%d -> %d ticks" % [span1, span2])
+	_ok("fast treads halve the walk", Bots.step_ticks(sim.robots[0]) == 4 and sim.fit(0, "fast") and Bots.step_ticks(sim.robots[0]) == 2)
+	var twice: bool = not sim.fit(0, "fast") and _refused(sim, "fitted")
+	sim.coins = 0
+	_ok("a part is not bought twice, nor without coins", twice and not sim.fit(1, "fast") and _refused(sim, "coins"))
+	# a floor saved mid hold plays on as the original does
+	var rt: RefCounted = Sim.new(3)
+	_fix_all(rt)
+	for i in 6000:
+		rt.step(Sim.TICK)
+		if rt.held_for > 0:
+			break
+	_run(rt, 137)
+	var held_at: int = rt.held_for
+	rt.save()
+	var back: RefCounted = Sim.new(1)
+	var same: bool = back.load_saved() and var_to_str(back.pack()) == var_to_str(rt.pack())
+	_ok("the pace is kept: stamps, hold and milestone", same and held_at > 0 and back.held_for == held_at and back.sold_at == rt.sold_at and back.sold_at.size() >= 2
+		and back.pack().has_all(["sold_at", "held_for", "milestone"]))
+	for i in 500:
+		rt.step(Sim.TICK)
+		back.step(Sim.TICK)
+	_ok("round trip mid loop", var_to_str(back.pack()) == var_to_str(rt.pack()), "held %d, milestone %d" % [rt.held_for, rt.milestone])
+	# the load guard
+	var fresh: RefCounted = Sim.new(3)
+	var was := var_to_str(fresh.pack())
+	for bad_key: Array in [["milestone", 7], ["milestone", -1], ["held_for", -3], ["held_for", Sim.HOLD + 1], ["sold_at", ["x"]]]:
+		var bad: Dictionary = rt.pack()
+		bad[bad_key[0]] = bad_key[1]
+		_write(bad, Sim.VERSION)
+		_ok("a floor with %s %s is refused" % [bad_key[0], bad_key[1]], not fresh.load_saved() and var_to_str(fresh.pack()) == was)
+	var gone: Dictionary = rt.pack()
+	gone.erase("sold_at")
+	_write(gone, Sim.VERSION)
+	_ok("so is one that kept no stamps", not fresh.load_saved())
+	DirAccess.remove_absolute(Sim.path)
+
+## The ticks of robot `i`'s next pause to charge: from its `charging` event to
+## its `charged` one, -1 past 2000 ticks.
+func _charge_span(sim: RefCounted, i: int) -> int:
+	if _until_event(sim, "charging", 2000, i) < 0:
+		return -1
+	var n := _until_event(sim, "charged", 2000, i)
+	return n

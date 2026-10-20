@@ -40,10 +40,26 @@ extends RefCounted
 ##   coins, earned: int       earned: every coin a sale ever paid
 ##   bin: Dictionary          part -> spares lying in the bin (PARTS)
 ##   part_price(part) -> int  PARTS' price, 0 under `no_cost`
-##   unlocked(kind) -> bool   a belt kind: open (milestone 1, Task 4)
+##   unlocked(kind) -> bool   a belt kind: open from milestone 1
 ##   price(kind) -> int       PRICE: flat, however many are laid
 ##   no_cost: bool            everything `price` knows costs nothing: the
 ##                            debug button's, never kept in the save
+##   bin_rows() -> Array      the tray's rows, one a part of PARTS, each
+##                            {part, state, price, n}: "spare" (n lying in
+##                            the bin), "price" (bought now at `price`),
+##                            "later" (its milestone is not open) or "none"
+##                            (no spare and none to buy)
+##
+## Pace. The sim stamps the tick of every full box sold (`sold_at`, the
+## last WINDOW ticks, never fewer than the two newest); a milestone opens
+## when its rate has held for HOLD ticks running.
+##   milestone: int           the milestones open (0..MILESTONES.size() - 1)
+##   sold_at: Array[int]      the stamps; held_for: ticks the next
+##                            milestone's rate has been met
+##   pace_ticks() -> int      the mean gap of `sold_at`, 0 under two
+##   pace_s() -> float        the same in seconds, for the pace pill
+##   milestone_open(n) -> bool
+##   feed_on: bool            a harness's switch to starve the intake; not kept
 ##
 ## The floor.
 ##   stations: Dictionary     tile -> "charger" | "intake" | "stack" |
@@ -139,6 +155,7 @@ extends RefCounted
 ##   sold_back {tile, kind, amount, items}
 ##   sold_line {tile, tiles, amount}  belts sold back in one go
 ##   refused {why, tile}
+##   milestone {id}                   a milestone opened (MILESTONES' id)
 ## The robots' (`robot` its index in `robots`):
 ##   step {robot, from, to}  bump {robot, tile}  skip {robot, id}
 ##   pick {robot, tile, kind}  release {robot, tile, kind}  ("" for nothing)
@@ -174,6 +191,22 @@ const BOX_FULL := 4
 const PAY_FULL := 6
 const PAY_SQUARE := 1
 const ITEM_KINDS := ["square", "box"]
+
+## Pace and the milestones (my call, 2026-10-20). The sim stamps every full
+## box sold and keeps the last WINDOW ticks of stamps (always the two newest,
+## or a box every ~375 ticks would leave the window holding one stamp and
+## the pace unreadable). A milestone's rate, `every` (ticks a full box at
+## most), counts as met when the mean gap of the stamps is within it and the
+## newest stamp is no older than it either, so a stall breaks the hold at
+## once and a total of boxes never opens anything. Met for HOLD ticks running
+## opens it ("held for a minute"). Row 0 is the start; its `every` is unused.
+## The rates are read off the pace bot (tests/_probe_factory.gd, `_check_pace`:
+## the three fixes of the first session on a new floor): 2026-10-20 it read a
+## full box every 366 ticks (36.6 s), steady to the tick. Milestone 1 is that
+## plus 20 % rounded to 10 ticks (440, 44 s); milestone 2 is half of it (220).
+const WINDOW := 600
+const HOLD := 600
+const MILESTONES := [{"id": "line", "every": 0}, {"id": "belts", "every": 440}, {"id": "again", "every": 220}]
 
 ## A robot's parts: what each gives (the nodes it can run), a Move's ticks a
 ## tile, the battery's cell and the units a tick it charges by on the bay.
@@ -242,8 +275,14 @@ var over := {}
 var items := {}
 var robots: Array = []
 var bin := {}
-## The milestones open (the pace's to raise; 0 until then).
+## The milestones open (the pace's to raise; 0 until then; kept).
 var milestone := 0
+## The tick of every full box sold in the last WINDOW ticks (at least the two
+## newest), and the ticks the next milestone's rate has been met running.
+var sold_at: Array[int] = []
+var held_for := 0
+## A harness's switch: off, the intake queues nothing more. Not kept.
+var feed_on := true
 var tick_n := 0
 var events: Array = []
 var dirty := false
@@ -279,6 +318,8 @@ func new_floor(with_seed: int) -> void:
 	items = {}
 	bin = {"gripper": 1}
 	milestone = 0
+	sold_at = []
+	held_for = 0
 	tick_n = 0
 	events = []
 	picked = ""
@@ -320,9 +361,9 @@ func on_floor(tile: Vector2i) -> bool:
 func tile_free(tile: Vector2i) -> bool:
 	return on_floor(tile) and not stations.has(tile) and not belts.has(tile)
 
-## Belts open at milestone 1 (Task 4); until then every kind is.
+## Every belt kind (belt, fast belt, bridge) opens together at milestone 1.
 func unlocked(kind: String) -> bool:
-	return BELTS.has(kind)
+	return BELTS.has(kind) and milestone >= 1
 
 func price(kind: String) -> int:
 	return 0 if no_cost else int(PRICE.get(kind, 0))
@@ -438,13 +479,15 @@ func _sell(it: Dictionary) -> int:
 		amount = PAY_FULL if n >= BOX_FULL else n
 	coins += amount
 	earned += amount
+	if it.kind == "box" and n >= BOX_FULL:
+		sold_at.append(tick_n)
 	events.append({"type": "sale", "tile": STATIONS.deliver, "kind": it.kind, "n": n, "amount": amount, "coins": coins})
 	dirty = true
 	return amount
 
 ## The intake's queue: one square every FEED_TICKS, QUEUE_MOST at most.
 func _feed() -> void:
-	if tick_n % FEED_TICKS != 0 or queue >= QUEUE_MOST:
+	if not feed_on or tick_n % FEED_TICKS != 0 or queue >= QUEUE_MOST:
 		return
 	queue += 1
 	events.append({"type": "queued", "tile": STATIONS.intake, "queue": queue})
@@ -1143,9 +1186,56 @@ func tow(i: int) -> bool:
 	dirty = true
 	return true
 
-## The pace window and the milestones' hold (Task 4).
+# --- pace ---
+
+## The mean gap, in ticks, between the stamps in `sold_at`; 0 under two.
+func pace_ticks() -> int:
+	if sold_at.size() < 2:
+		return 0
+	return roundi(float(sold_at.back() - sold_at[0]) / float(sold_at.size() - 1))
+
+## The same in seconds, for the pace pill ("a box every N s"); 0 under two.
+func pace_s() -> float:
+	return pace_ticks() * TICK
+
+func milestone_open(n: int) -> bool:
+	return milestone >= n
+
+## The tray's rows for the bin, one a part: what lies spare, what can be
+## bought now and at what, what waits for a milestone, what is neither.
+func bin_rows() -> Array:
+	var rows: Array = []
+	for part: String in PARTS:
+		var row: Dictionary = PARTS[part]
+		var state := "none"
+		var cost := 0
+		var n := int(bin.get(part, 0))
+		if n > 0:
+			state = "spare"
+		elif row.has("price"):
+			state = "price" if milestone >= int(row.from) else "later"
+			cost = part_price(part)
+		rows.append({"part": part, "state": state, "price": cost, "n": n})
+	return rows
+
+## Once a tick: drops the stamps older than WINDOW (keeping the two newest),
+## counts the ticks the next milestone's rate is met and opens it at HOLD.
 func _pace() -> void:
-	pass
+	while sold_at.size() > 2 and tick_n - sold_at[0] > WINDOW:
+		sold_at.pop_front()
+	var next := milestone + 1
+	if next >= MILESTONES.size():
+		held_for = 0
+		return
+	var every: int = MILESTONES[next].every
+	if sold_at.size() >= 2 and pace_ticks() <= every and tick_n - sold_at.back() <= every:
+		held_for += 1
+	else:
+		held_for = 0
+	if held_for >= HOLD:
+		milestone = next
+		held_for = 0
+		events.append({"type": "milestone", "id": MILESTONES[next].id})
 
 func _no(why: String, tile: Vector2i) -> bool:
 	events.append({"type": "refused", "why": why, "tile": tile})
@@ -1162,6 +1252,7 @@ func pack() -> Dictionary:
 		"table": table.duplicate(true), "belts": belts.duplicate(true), "kinds": kinds.duplicate(true),
 		"over": over.duplicate(true), "items": items.duplicate(true), "robots": robots.duplicate(true),
 		"bin": bin.duplicate(true), "turn": _turn.duplicate(true),
+		"milestone": milestone, "sold_at": sold_at.duplicate(), "held_for": held_for,
 	}
 
 ## The floor goes into the file as bytes (base64), not as text: a float
@@ -1206,6 +1297,7 @@ const _SHAPES := {
 	"acc": TYPE_FLOAT, "next_id": TYPE_INT, "picked": TYPE_STRING, "tick_n": TYPE_INT, "queue": TYPE_INT,
 	"table": TYPE_DICTIONARY, "belts": TYPE_DICTIONARY, "kinds": TYPE_DICTIONARY, "over": TYPE_DICTIONARY,
 	"items": TYPE_DICTIONARY, "robots": TYPE_ARRAY, "bin": TYPE_DICTIONARY, "turn": TYPE_DICTIONARY,
+	"milestone": TYPE_INT, "sold_at": TYPE_ARRAY, "held_for": TYPE_INT,
 }
 const _ITEM_KEYS := ["id", "kind", "at", "from", "was"]
 
@@ -1221,6 +1313,11 @@ static func _sound(d: Dictionary) -> bool:
 			return false
 	if d.version != VERSION or d.coins < 0 or d.queue < 0 or d.queue > QUEUE_MOST or d.tick_n < 0:
 		return false
+	if d.milestone < 0 or d.milestone >= MILESTONES.size() or d.held_for < 0 or d.held_for > HOLD:
+		return false
+	for at: Variant in d.sold_at:
+		if not (at is int):
+			return false
 	if not d.table.is_empty() and (not _sound_item(d.table) or d.table.kind != "box"):
 		return false
 	for t: Variant in d.belts:
@@ -1309,6 +1406,9 @@ func _unpack(d: Dictionary) -> void:
 	robots = (d.robots as Array).duplicate(true)
 	bin = (d.bin as Dictionary).duplicate(true)
 	_turn = (d.turn as Dictionary).duplicate(true)
+	milestone = d.milestone
+	sold_at.assign(d.sold_at)
+	held_for = d.held_for
 	_stand_stations()
 	events = []
 	_order_stale = true
