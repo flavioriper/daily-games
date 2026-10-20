@@ -138,7 +138,7 @@ func _draw_piece() -> void:
 		_tokens(c, mm.b, Vector2(x + 110, 120))
 		var made := tr("TL_MAKES") % (Sim.short(int(mm.last)) if bool(mm.has_last) else "–")
 		_text(c, made, Vector2(x, 205), 28, Pal.TEXT)
-		_text(c, tr("TL_PER_S") % String.num(sim.op_speed(kd), 2).trim_suffix("0").trim_suffix("."), Vector2(x + 380, 205), 26, Pal.TEXT_DIM)
+		_text(c, "%s · %d%%" % [tr("TL_PER_S") % String.num(sim.op_speed(kd), 2).trim_suffix("0").trim_suffix("."), roundi(float(mm.eff) * 100.0)], Vector2(x + 380, 205), 26, Pal.TEXT_DIM)
 		# a side it has waited on: said in amber, as the board shows its pips
 		var side: int = sim.starving(i)
 		if side >= 0:

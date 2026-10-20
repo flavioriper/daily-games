@@ -330,7 +330,7 @@ static func machine(k: int, f := 0, ins := 0, outs := 0) -> ArrayMesh:
 	# in it while the machine rests (the board paints the work over it)
 	var vr := visor_rect(k, f)
 	visor_into(b, vr, col)
-	sign_into(b, k, vr.get_center(), minf(U * 0.17, vr.size.y * 0.3), lit(col))
+	sign_into(b, k, vr.get_center() + Vector2(0, -U * 0.04), minf(U * 0.17, vr.size.y * 0.3), lit(col))
 	glint_into(b, vr)
 	for ci in cs.size():
 		var c: Array = cs[ci]
@@ -469,6 +469,8 @@ static func glass_into(b: Face.Builder, r: Rect2) -> void:
 	var i3 := b.vertex(Vector2(p0.x, p1.y), GLASS_LOW)
 	b.tri(i0, i1, i2)
 	b.tri(i0, i2, i3)
+	# the gauge's trough along the pane's foot
+	trough_into(b, pane_gauge(r))
 
 ## The shine along the pane's top, over whatever is written on it.
 static func glint_into(b: Face.Builder, r: Rect2) -> void:
@@ -623,7 +625,50 @@ static func dig() -> ArrayMesh:
 		b.disc(c * U * 1.12 + Vector2(0, -3), U * 0.08, col.lightened(0.12))
 	b.disc(Vector2(0, 0), U * 0.72, col.darkened(0.35))
 	b.disc(Vector2(0, -5), U * 0.62, FACE)
+	# the gauge's trough along the foot, between the bolts
+	trough_into(b, dig_gauge())
 	return _keep("dig", b)
+
+## Where the dig's gauge lies about its middle, and the pane's at its foot.
+static func dig_gauge() -> Rect2:
+	return Rect2(Vector2(-U * 0.8, U * 1.0), Vector2(U * 1.6, GAUGE_H))
+
+static func pane_gauge(r: Rect2) -> Rect2:
+	return Rect2(r.position + Vector2(U * 0.08, r.size.y - GAUGE_H - U * 0.04), Vector2(r.size.x - U * 0.16, GAUGE_H))
+
+## The efficiency gauge (the user, 2026-10-20: "add a indicator to
+## modules (exclude core) showing the eficiency"): a dark trough baked
+## into the piece, and a lit strip the board lays in it each frame, as
+## long as the piece's `eff`: green from GAUGE_GOOD, amber from GAUGE_FAIR,
+## warn below.
+const GAUGE_H := U * 0.1
+const GAUGE_GOOD := 0.75
+const GAUGE_FAIR := 0.35
+const GAUGE_COLS := [WARN, AMBER, Color("7cb06b")]
+
+static func trough_into(b: Face.Builder, r: Rect2) -> void:
+	b.polygon(Face.Builder.round_rect(r.position, r.size, r.size.y * 0.5), Color(0, 0, 0, 0.42))
+	b.polygon(Face.Builder.round_rect(r.position + Vector2(0, 2.0), r.size - Vector2(0, 2.0), r.size.y * 0.5), Color(0, 0, 0, 0.18))
+
+## Which strip `eff` earns: 0 warn, 1 amber, 2 green.
+static func gauge_level(eff: float) -> int:
+	return 2 if eff >= GAUGE_GOOD else (1 if eff >= GAUGE_FAIR else 0)
+
+## The gauge's strip, U long by GAUGE_H from the origin, cached a level;
+## the board scales it along x to the trough's length times `eff`. Its
+## ends are square so a scaled strip keeps its shape; the trough's rounded
+## ends hide them at full length.
+static func gauge(level: int) -> ArrayMesh:
+	var key := ["gauge", level]
+	if _cache.has(key):
+		return _cache[key]
+	var b := Face.Builder.new()
+	b.feather = 1.0
+	var col: Color = GAUGE_COLS[level]
+	var inset := 2.0
+	b.polygon(PackedVector2Array([Vector2(0, inset), Vector2(U, inset), Vector2(U, GAUGE_H - inset), Vector2(0, GAUGE_H - inset)]), col)
+	b.polygon(PackedVector2Array([Vector2(0, inset), Vector2(U, inset), Vector2(U, GAUGE_H * 0.5), Vector2(0, GAUGE_H * 0.5)]), Color(1, 1, 1, 0.22))
+	return _keep(key, b)
 
 ## The dig as one square, for the tray and the cards.
 static func dig_small() -> ArrayMesh:
@@ -646,7 +691,12 @@ static func crate() -> ArrayMesh:
 	for y in [-0.24, 0.24]:
 		b.polygon(_bar(Vector2(-U * 0.36, U * y), Vector2(U * 0.36, U * y), 7.0), col.darkened(0.15))
 	b.polygon(Face.Builder.round_rect(Vector2(-U * 0.3, -U * 0.17), Vector2(U * 0.6, U * 0.32), 10.0), Color("fbf3e2"))
+	trough_into(b, crate_gauge())
 	return _keep("crate", b)
+
+## Where the crate's gauge lies about its middle: along its foot.
+static func crate_gauge() -> Rect2:
+	return Rect2(Vector2(-U * 0.3, U * 0.31), Vector2(U * 0.6, GAUGE_H))
 
 ## The counting box over HUB by HUB squares from its top left corner at the
 ## origin: a teal chest with a wooden rim and a cream panel the board writes

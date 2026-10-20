@@ -4100,6 +4100,62 @@ together". Built unattended; the calls below are mine.
   `machine(k, 3)`), the sign lit on dark glass; seen in `10_tray` and
   `7_card`, readable.
 
+#### Tally's digs thump, numbers fly into the box, every producer wears a gauge (2026-10-20)
+
+The user, after the visors: "add animation also to extractor and the
+numbers going into core. Another improve is to add a indicator to modules
+(exclude core) showing the eficiency", then "we need efficiency indicator
+to all modules that has output". Built unattended; the calls are mine.
+
+- **Efficiency is the sim's** (`eff` on each dig, crate and machine
+  record, 0 to 1, not saved): an exponential average over `EFF_T` 3 s of
+  "producing this tick". A dig is producing unless its budget is full and
+  nothing could be put (a full belt), or it has no belt (`held`); a
+  machine while `busy` (it re-arms the same tick it finishes, so full
+  speed reads 1; starving or a full out falls to 0); a crate while it
+  holds numbers and its last hand-out is within `CRATE_FRESH` 1.5 of the
+  interval its belts take one at (a crate hands out as its belts accept,
+  so a put is a spike and a rate would jitter on a slow belt). A
+  throwaway check after 10 s: a draining dig 0.95, a held one 0.06, a
+  beltless one 0, a starving adder 0, a draining crate 0.96. The dig also
+  stamps `at` (the sim's clock) and `e` (the end) on every put, for the
+  board.
+- **The gauge** (`Art.trough_into`, `Art.gauge(level)`, `dig_gauge`,
+  `crate_gauge`, `pane_gauge`): a dark trough baked into the dig's foot
+  between its bolts, the crate's foot (its "×n" moved up to 0.21) and the
+  pane's foot inside the glass (the resting sign lifted 0.04 above it);
+  the board lays a lit strip in it each frame as long as `eff`, from a
+  cached unit strip scaled along x, green from `GAUGE_GOOD` 0.75, amber
+  from `GAUGE_FAIR` 0.35, warn below (three cached colours, nothing
+  tinted). `GAUGE_H` 0.1 of a square, 5.5 px at the usual zoom. The dig
+  writes its percent under its number (`k * 0.15`, ink at 0.6); the
+  piece card's rate line says "0.25/s · 92%". Machines and crates carry
+  the strip alone. Nothing below `VISOR_FROM`. The box has no gauge.
+- **The dig's work**: a thump as each token is put out (`_thump`, scale
+  (1 + w, 1 - w) over `THUMP` 0.22 read off `sim.clock - at`, its numeral
+  hopping with it), and a puff of dust (the burst's ring, cached) at the
+  edge the token left by, one a `PUFF_GAP` 0.3 so a rank-8 dig does not
+  shimmer. A held dig sits still, which doubles as the gauge's cue.
+- **Numbers into the box**: `_try_move` emits `in` with the value and the
+  slot for every delivery (hits and misses); the board (`_fly`, `FLY_MAX`
+  32, oldest dropped) flies a chip from the slot's edge toward the box to
+  the panel's number over `FLY` 0.42 in an arc, shrinking and fading,
+  landing with a small ring; the target's chip a size larger. The start is
+  the slot's edge, not `token_at`, since `_wake` can refill the slot the
+  same tick. Numerals through `_vis` under key -1. No new sound (the
+  deliver cue and `HIT_GAP` stand).
+- Measured: probe 0 failed; `_shot_tally` 0 failed headless and windowed
+  on `opengl3_angle`, 84 draws `5b_close` (80 before: the gauges' mesh and
+  the percent's font size), 78 `6_far`, 139 the tutorial's Machine page;
+  `_perf_tally` builders 1.63 ms at k 74 (1.50 before: a gauge is one
+  FlatBuilder append a piece in view, about 10 µs); thirty busy adders in
+  view 1.85 ms riding in, 3.2 at the strike (1.5 and 2.6 before). Frames
+  of a dig draining and one held, and of chips into the box, read as
+  above (throwaway harness, not kept).
+- **Open, the user's**: the thump, puff and fly-in on a phone; the
+  crate's freshness slack; whether the strip wants a percent on machines
+  (no room on the pane at the usual zoom; the card has it).
+
 #### Tally draws only the belts in view (2026-10-20)
 
 The user: "on tally, performance is really poor when user pass number 30

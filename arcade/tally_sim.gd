@@ -113,6 +113,15 @@ const STARVE_AFTER := 3.0
 ## Non-target numbers into the box, with none of the target, before the
 ## box says they do not count.
 const OFF_SAY := 20
+## A dig's and a machine's `eff`, 0 to 1: how much of the last EFF_T
+## seconds it spent producing (a dig: its budget spent, not held up by a
+## full belt or no belt; a machine: busy), an exponential average the
+## board's gauges show. Not saved. A crate is producing while it holds
+## numbers and its last hand-out is fresh: within CRATE_FRESH of the
+## interval its belts take one at (a crate hands out as its belts accept,
+## so a put is a spike and a rate would jitter).
+const EFF_T := 3.0
+const CRATE_FRESH := 1.5
 const LIMIT := 2147483647
 const FLOOR := -2147483648
 
@@ -1523,11 +1532,11 @@ func _wire() -> void:
 			fork[i] = 0
 			if k == DIG and (int(root[i]) < 0 or int(root[i]) == i):
 				if not digs.has(i):
-					digs[i] = {"budget": 0.0, "rr": 0}
+					digs[i] = {"budget": 0.0, "rr": 0, "eff": 0.0, "at": -10.0, "e": -1}
 				digs[i].outs = _away_from(t)
 			elif k == CRATE:
 				if not crates.has(i):
-					crates[i] = {"v": 0, "n": 0, "rr": 0}
+					crates[i] = {"v": 0, "n": 0, "rr": 0, "eff": 0.0, "at": -10.0}
 				crates[i].outs = _away_from(t)
 		if k != BRIDGE:
 			occ[i + N] = 0
@@ -1566,7 +1575,7 @@ func _wire() -> void:
 						m.rems.append(s)
 
 func _machine() -> Dictionary:
-	return {"a": [], "b": [], "out": [], "rem": [], "busy": false, "t": 0.0, "x": 0, "y": 0, "last": 0, "has_last": false, "a_since": -1.0, "b_since": -1.0, "rr": 0, "rr_rem": 0, "ins": [PackedInt32Array(), PackedInt32Array()], "fronts": PackedInt32Array(), "rems": PackedInt32Array()}
+	return {"a": [], "b": [], "out": [], "rem": [], "busy": false, "t": 0.0, "x": 0, "y": 0, "last": 0, "has_last": false, "a_since": -1.0, "b_since": -1.0, "rr": 0, "rr_rem": 0, "ins": [PackedInt32Array(), PackedInt32Array()], "fronts": PackedInt32Array(), "rems": PackedInt32Array(), "eff": 0.0}
 
 # --- tokens moving ---
 
@@ -1650,6 +1659,9 @@ func _try_move(s0: int) -> void:
 		occ[s] = 0
 		to_d[s] = NONE
 		_put(o[j], v, over)
+		if (o[j] >> 2) >= N2 and ((o[j] >> 2) - N2) & 3 == 3:
+			# into the box, from slot `s`: the board flies it in
+			_emit("in", {"v": v, "s": s})
 		_wake(s, stack)
 
 ## The slots waiting to hand into `id` (a slot, or a machine side's id) go
@@ -1788,6 +1800,7 @@ func _step_machines(d: float) -> void:
 		var b_empty := sb < 0 and sa >= 0 and not bool(m.busy)
 		m.a_since = (float(m.a_since) if float(m.a_since) >= 0.0 else clock) if a_empty else -1.0
 		m.b_since = (float(m.b_since) if float(m.b_since) >= 0.0 else clock) if b_empty else -1.0
+		m.eff = lerpf(float(m.eff), 1.0 if bool(m.busy) else 0.0, minf(1.0, d / EFF_T))
 
 ## Machine `r`'s notches and spouts as [ins, outs], bits `cell * 4 + way`
 ## (its footprint's order): an A or B square the way tokens ride in on the
@@ -1863,11 +1876,14 @@ func _step_digs(d: float) -> void:
 		var g: Dictionary = digs[i]
 		var o: PackedInt32Array = g.outs
 		var n := mini(o.size(), dig_belts())
+		var ease := minf(1.0, d / EFF_T)
 		if n == 0:
 			g.budget = 0.0
+			g.eff = lerpf(float(g.eff), 0.0, ease)
 			continue
 		g.budget = minf(float(g.budget) + n * speed * d, float(n))
 		var v := int(dep[i])
+		var held := false
 		while float(g.budget) >= 1.0:
 			var put := false
 			for k in o.size():
@@ -1875,14 +1891,19 @@ func _step_digs(d: float) -> void:
 				if _accepts(o[j], v):
 					_put(o[j], v, 0.0)
 					g.rr = (j + 1) % o.size()
+					g.at = clock
+					g.e = o[j]
 					put = true
 					break
 			if not put:
+				held = true
 				break
 			g.budget = float(g.budget) - 1.0
+		g.eff = lerpf(float(g.eff), 0.0 if held else 1.0, ease)
 	for i: int in crates:
 		var c: Dictionary = crates[i]
 		var o: PackedInt32Array = c.outs
+		var puts := 0
 		for k in o.size():
 			if int(c.n) <= 0:
 				break
@@ -1891,6 +1912,10 @@ func _step_digs(d: float) -> void:
 				_put(o[j], int(c.v), 0.0)
 				c.n = int(c.n) - 1
 				c.rr = (j + 1) % o.size()
+				puts += 1
+				c.at = clock
+		var fresh := o.size() > 0 and int(c.n) > 0 and (puts > 0 or clock - float(c.get("at", -10.0)) <= CRATE_FRESH / (speed * o.size()))
+		c.eff = lerpf(float(c.get("eff", 0.0)), 1.0 if fresh else 0.0, minf(1.0, d / EFF_T))
 
 ## Which way the token in `s` leaves: its chosen end's, or the lane's own.
 func exit_dir(s: int) -> int:

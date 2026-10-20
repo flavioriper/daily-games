@@ -115,6 +115,16 @@ const FLASH := 0.35
 ## to the end, so a four-second adder and a half-second one read alike).
 const V_IN := 0.32
 const V_HIT := 0.6
+## The dig's work (the user, 2026-10-20: "add animation also to extractor
+## and the numbers going into core"): a thump as each token is put out,
+## read off the sim's clock, and a puff of dust at the edge it left by, at
+## most one a PUFF_GAP. A number into the box flies from the rim to the
+## panel over FLY, FLY_MAX of them at once.
+const THUMP := 0.22
+const PUFF := 0.3
+const PUFF_GAP := 0.3
+const FLY := 0.42
+const FLY_MAX := 32
 
 var sim: RefCounted
 var tool := "move"
@@ -203,6 +213,8 @@ var _gone: Array = [] # [kind, face, square, when]
 var _shown := {}     # machine root -> [when, the answer handed out]
 var _vis := {}       # machine root -> this frame's chips on its visor: [at, r, text, colour]
 var _live_flat: ArrayMesh  # the visors' panes and chips this frame, cached meshes appended
+var _puff := {}      # dig root -> [when, the sim's stamp it answers, where]
+var _fly: Array = [] # numbers into the box: [when, value, from, hit]
 var _box_bump := -10.0
 var _box_glow := -10.0
 var _shown_got := 0
@@ -328,6 +340,15 @@ func play(ev: Dictionary) -> void:
 		"op":
 			_squash[Sim.tile_of(int(ev.i))] = _clock
 			_shown[int(ev.i)] = [_clock, int(ev.v)]
+		"in":
+			# from the slot's edge toward the box (the slot may hold the next
+			# token already); the panel's number is where it lands
+			var sl := int(ev.s)
+			var tl := Sim.tile_of(sl % Sim.N)
+			var f := int(sim.face2[sl % Sim.N]) if sl >= Sim.N else int(sim.face[sl % Sim.N])
+			_fly.append([_clock, int(ev.v), Art.mid(tl) + Art.dir_v(f) * U * 0.5, int(ev.v) == sim.target()])
+			while _fly.size() > FLY_MAX:
+				_fly.pop_front()
 		"hit":
 			_box_bump = _clock
 		"level":
@@ -367,6 +388,10 @@ func tick(delta: float) -> void:
 	for i in _shown.keys():
 		if _clock - float(_shown[i][0]) > 1.0:
 			_shown.erase(i)
+	for i in _puff.keys():
+		if _clock - float(_puff[i][0]) > 1.0:
+			_puff.erase(i)
+	_fly = _fly.filter(func(f: Array) -> bool: return _clock - float(f[0]) < FLY)
 	for t in _spin.keys():
 		if _clock - float(_spin[t][0]) > 1.0:
 			_spin.erase(t)
@@ -598,6 +623,16 @@ func _about(kd: int, t: Vector2i, f: int, at: Vector2, rot: float) -> Vector2:
 	var c := (lo + hi) * 0.5
 	return c + (at - c).rotated(rot)
 
+## How far dig `i` is squashed by its thump, a token just put out: 0 at
+## rest, read off the sim's clock against the dig's last put.
+func _thump(i: int) -> float:
+	if Motion.reduce or not sim.digs.has(i):
+		return 0.0
+	var u := (float(sim.clock) - float(sim.digs[i].at)) / THUMP
+	if u < 0.0 or u >= 1.0:
+		return 0.0
+	return sin(u * PI) * 0.04
+
 ## How much a piece is grown as it is set down (0 to 1, with a bounce).
 func _grow(t: Vector2i) -> float:
 	if Motion.reduce or not _pop.has(t):
@@ -649,6 +684,8 @@ func _build_pieces() -> ArrayMesh:
 		var m: ArrayMesh
 		if kd == Sim.DIG:
 			m = Art.dig()
+			var w := _thump(i)
+			sc *= Vector2(1.0 + w, 1.0 - w)
 		elif kd == Sim.CRATE:
 			m = Art.crate()
 		else:
@@ -676,6 +713,8 @@ func _build_live() -> ArrayMesh:
 	# appended whole, drawn under this mesh)
 	var fb := Face.FlatBuilder.new(_flat_cache)
 	_live_visors(fb, b, r)
+	_live_digs(fb, r)
+	_live_fly(fb)
 	_live_flat = fb.mesh()
 	# the box: its bar, and a glow when a level is done
 	_live_box(b)
@@ -784,19 +823,22 @@ func _live_visors(fb: Face.FlatBuilder, b: Face.Builder, r: Rect2i) -> void:
 			after = _clock - float(_shown[i][0])
 			if after >= SHOWN:
 				after = -1.0
-		if not busy and after < 0.0:
-			continue
 		var kd := int(sim.op[i])
 		var f := int(sim.oface[i])
 		var at := Art.mid(t)
 		var vr: Rect2 = Art.visor_rect(kd, f)
 		vr.position += at
+		if busy or after >= 0.0:
+			fb.append(Art.visor_part("glass", kd, f), Transform2D(0.0, at))
+		# the gauge in the pane's foot, at rest and at work
+		_gauge(fb, Art.pane_gauge(vr), float(m.eff))
+		if not busy and after < 0.0:
+			continue
 		var chips: Array = []
-		fb.append(Art.visor_part("glass", kd, f), Transform2D(0.0, at))
 		if after >= 0.0:
 			# the answer handed out stays on the glass and fades, under a flash
 			var v := after / SHOWN
-			_chip(fb, chips, vr.get_center(), _chip_r(vr) * 1.25, Sim.short(int(_shown[i][1])), 1.0 - v * v)
+			_chip(fb, chips, vr.get_center(), _chip_r(vr) * 1.15, Sim.short(int(_shown[i][1])), 1.0 - v * v)
 			if anim and after < FLASH:
 				fb.append(Art.visor_part("flash", kd, f, _a8(0.35 * (1.0 - after / FLASH))), Transform2D(0.0, at))
 		if busy:
@@ -808,6 +850,75 @@ func _live_visors(fb: Face.FlatBuilder, b: Face.Builder, r: Rect2i) -> void:
 ## so two sit apart at its ends (its numeral still FS_MIN at the usual zoom).
 func _chip_r(vr: Rect2) -> float:
 	return minf(U * 0.2, maxf(vr.size.x, vr.size.y) * 0.21)
+
+## The efficiency gauge's strip in its trough `r`, `eff` of its length.
+func _gauge(fb: Face.FlatBuilder, r: Rect2, eff: float) -> void:
+	var w := r.size.x * clampf(eff, 0.0, 1.0)
+	if w < 3.0:
+		return
+	fb.append(Art.gauge(Art.gauge_level(eff)), Transform2D(0.0, Vector2(w / U, 1.0), 0.0, r.position))
+
+## Each dig in view: its gauge along its foot, and a puff of dust at the
+## edge a token just left by (one a PUFF_GAP, so a fast dig does not
+## shimmer; the thump is in `_build_pieces`). Each crate's gauge too (the
+## user: "efficiency indicator to all modules that has output").
+func _live_digs(fb: Face.FlatBuilder, r: Rect2i) -> void:
+	if k < VISOR_FROM:
+		return
+	var wide := r.grow(2)
+	for i: int in sim.crates:
+		var t := Sim.tile_of(i)
+		if not _sees(t, wide):
+			continue
+		var gr := Art.crate_gauge()
+		gr.position += Art.mid(t)
+		_gauge(fb, gr, float(sim.crates[i].get("eff", 0.0)))
+	for i: int in sim.digs:
+		var t := Sim.tile_of(i)
+		if not _sees(t, wide):
+			continue
+		var g: Dictionary = sim.digs[i]
+		var at := Art.mid(t)
+		var gr := Art.dig_gauge()
+		gr.position += at
+		_gauge(fb, gr, float(g.eff))
+		if Motion.reduce or int(g.e) < 0:
+			continue
+		var stamp := float(g.at)
+		var p: Array = _puff.get(i, [])
+		if p.is_empty() or (float(p[1]) != stamp and _clock - float(p[0]) >= PUFF_GAP):
+			var e := int(g.e) >> 2
+			var to := Art.mid(Sim.tile_of(e % Sim.N))
+			p = [_clock, stamp, at.lerp(to, 0.78)]
+			_puff[i] = p
+		var u := (_clock - float(p[0])) / PUFF
+		if u < 1.0:
+			var sc := U * (0.1 + 0.3 * (1.0 - (1.0 - u) * (1.0 - u))) / Art.BURST_R
+			fb.append(Art.burst(0, _a8(0.8 * (1.0 - u))), Transform2D(0.0, Vector2.ONE * sc, 0.0, p[2]))
+
+## The numbers into the box: each flies from the rim it came in by to the
+## panel's number, up in an arc, shrinking and fading, and lands with a
+## small ring. Their numerals go through `_vis` under the box's key.
+func _live_fly(fb: Face.FlatBuilder) -> void:
+	if _fly.is_empty() or k < VISOR_FROM:
+		return
+	var panel := Art.box_panel()
+	var to := Vector2(Sim.HUB_AT) * U + panel.position + Vector2(panel.size.x * 0.5, panel.size.y * 0.46)
+	var chips: Array = []
+	for f: Array in _fly:
+		var u := clampf((_clock - float(f[0])) / FLY, 0.0, 1.0)
+		if Motion.reduce:
+			u = 1.0 if u > 0.5 else 0.0
+		var e := _ss(u)
+		var at: Vector2 = (f[2] as Vector2).lerp(to, e) + Vector2(0, -U * 0.35 * sin(u * PI))
+		var r := U * (0.24 if bool(f[3]) else 0.2) * (1.0 - 0.5 * e)
+		var a := 1.0 - _span(u, 0.7, 1.0)
+		_chip(fb, chips, at, r, Sim.short(int(f[1])), a)
+		var land := _span(u, 0.8, 1.0)
+		if land > 0.0 and land < 1.0 and not Motion.reduce:
+			var sc := U * (0.1 + 0.25 * land) / Art.BURST_R
+			fb.append(Art.burst(0, _a8(1.0 - land)), Transform2D(0.0, Vector2.ONE * sc, 0.0, to))
+	_vis[-1] = chips
 
 ## One beat of machine `i`'s cycle: the chips in from A and B over V_IN,
 ## then the kind's own strike.
@@ -845,7 +956,7 @@ func _beat(fb: Face.FlatBuilder, b: Face.Builder, chips: Array, i: int, kd: int,
 		_chip(fb, chips, pb.lerp(rb, w), cr * g, sb)
 		return
 	var res := int(Sim.divide(x, y)[0]) if kd == Sim.DIV else Sim.apply(kd, x, y)
-	var d := {"u": u, "x": x, "y": y, "c": c, "cr": cr, "rr": cr * 1.25, "ax": ax, "hw": hw, "hh": hh,
+	var d := {"u": u, "x": x, "y": y, "c": c, "cr": cr, "rr": cr * 1.15, "ax": ax, "hw": hw, "hh": hh,
 		"ra": ra, "rb": rb, "pr": pr, "sa": sa, "sb": sb, "sr": Sim.short(res), "anim": anim, "vr": vr,
 		"kd": kd, "f": f, "at": at}
 	match kd:
@@ -1196,8 +1307,12 @@ func _draw_words() -> void:
 				if kd == Sim.DIG and int(sim.root[i]) >= 0 and int(sim.root[i]) != i:
 					continue
 				if kd == Sim.DIG:
-					# the dig's face is three squares' worth: its numeral grows with it
-					_write(str(v), screen_of(Vector2(x, y) + Vector2(0.5, 0.45)), int(clampf(k * (0.62 if v < 10 else 0.5), 0.0, 120.0)), Art.INK)
+					# the dig's face is three squares' worth: its numeral grows with
+					# it, hops with the thump, and its efficiency is written under it
+					var hop := _thump(i) * 1.2
+					_write(str(v), screen_of(Vector2(x, y) + Vector2(0.5, 0.45 - hop)), int(clampf(k * (0.62 if v < 10 else 0.5) * (1.0 + hop), 0.0, 120.0)), Art.INK)
+					if k >= VISOR_FROM and sim.digs.has(i):
+						_write("%d%%" % roundi(float(sim.digs[i].eff) * 100.0), screen_of(Vector2(x, y) + Vector2(0.5, 0.86)), int(k * 0.15), Color(Art.INK, 0.6))
 					continue
 				_write(str(v), screen_of(Vector2(x, y) + Vector2(0.5, 0.5)), printed, col.darkened(0.15))
 	# crates: the number kept and how many
@@ -1210,7 +1325,7 @@ func _draw_words() -> void:
 			var at := screen_of(Vector2(t) + Vector2(0.5, 0.5))
 			if int(c.n) > 0:
 				_write(Sim.short(int(c.v)), at + Vector2(0, -k * 0.02), int(printed * 0.7), Art.INK)
-			_write("×%d" % int(c.n), at + Vector2(0, k * 0.27), int(printed * 0.45), Color(Art.CREAM, 0.95))
+			_write("×%d" % int(c.n), at + Vector2(0, k * 0.21), int(printed * 0.45), Color(Art.CREAM, 0.95))
 	# the tokens, a run of glyphs a size
 	var runs := {}
 	for s: int in _lanes_seen():
