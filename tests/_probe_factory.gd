@@ -424,6 +424,9 @@ func _check_robots() -> void:
 		and Bots.walk(s2.robots[0]).closed)
 	_ok("a node taken out is wired round", s2.remove_node(0, nid) and s2.robots[0].next[last].out == Sim.BODY and not s2.robots[0].nodes.has(nid)
 		and Bots.walk(s2.robots[0]).closed and not s2.robots[0].order.has(nid))
+	var s8: RefCounted = Sim.new(3)
+	s8.set_next(0, "b", "out", "a")
+	_ok("a node taken out of a ring of two leaves a loose wire, not a node wired to itself", s8.remove_node(0, "b") and s8.robots[0].next.a.out == "")
 	# a cycle that never passes the body runs the cell flat
 	var s3: RefCounted = Sim.new(3)
 	var ids: Array = Bots.walk(s3.robots[0]).ids

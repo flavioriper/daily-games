@@ -1058,7 +1058,8 @@ func add_node(i: int, after: String, port: String, kind: String) -> String:
 	_edited(i)
 	return id
 
-## Node `id` out of the program: every wire into it goes where it went.
+## Node `id` out of the program: every wire into it goes where it went
+## (cut loose instead where that would wire a node to itself).
 func remove_node(i: int, id: String) -> bool:
 	var b := _robot(i)
 	if b.is_empty():
@@ -1069,7 +1070,7 @@ func remove_node(i: int, id: String) -> bool:
 	for from: String in b.next:
 		for port: String in b.next[from]:
 			if b.next[from][port] == id:
-				b.next[from][port] = to
+				b.next[from][port] = "" if from == to else to
 	b.nodes.erase(id)
 	b.next.erase(id)
 	b.order.erase(id)
