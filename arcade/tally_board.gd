@@ -160,6 +160,7 @@ var _prints: ArrayMesh
 var _beds_c := {}        # chunk -> the beds of its belts, one mesh (or null)
 var _decks_c := {}       # chunk -> its crossings' plates
 var _dirty_c := {}       # chunks to build again
+var _drawn_c := []       # the chunks the beds and decks were last drawn with
 var _dirty_all := true
 var _lines := {}         # [text, fs] -> TextLine
 var _live := {}
@@ -444,14 +445,18 @@ func _rebuild() -> void:
 				Art.print_ring(b, Art.mid(Sim.tile_of(i)), sim.can_dig(v))
 		_prints = b.mesh() if not b.verts.is_empty() else null
 		_layers.ground.queue_redraw()
-	# the chunks in sight are built when missing, the dirty ones again
-	var built := false
-	for c: int in _chunks_seen():
+	# the chunks in sight are built when missing, the dirty ones again; the
+	# layers draw again when the view comes onto other chunks too, or a
+	# chunk built before shows its chevrons with no bed under them
+	var seen := _chunks_seen()
+	var built := seen != _drawn_c
+	for c: int in seen:
 		if _dirty_c.has(c) or not _beds_c.has(c):
 			_build_chunk(c)
 			_dirty_c.erase(c)
 			built = true
 	if built:
+		_drawn_c = seen
 		_layers.beds.queue_redraw()
 		_layers.decks.queue_redraw()
 

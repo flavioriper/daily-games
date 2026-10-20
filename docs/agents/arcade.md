@@ -4115,6 +4115,13 @@ it. The save walked the sheet twice as well.
   only when something changed. The still layers' rebuild after an edit:
   27 -> 1.3 ms; the view's chunks from nothing 12.9 ms (a load, a
   `relay()`).
+- **The beds and decks layers draw again when the chunks in sight change**
+  (`_drawn_c`), not only when one is built (the user, 2026-10-20: "I
+  clicked to save template and pasted it, the original bugged and the
+  pasted one is incomplete"). Before, a pan onto a chunk built earlier
+  left it out of the retained draw list: its chevrons (drawn every frame)
+  showed with no walnut under them. The template itself was copied
+  square for square; the sim was never wrong.
 - **Per frame**: `_lanes_seen` reads the chunks' lists (never the visible
   squares), the numerals walk `printed`, and each numeral is a `TextLine`
   shaped once a text and size (`_lines`, cleared past `LINES_MOST`) and
