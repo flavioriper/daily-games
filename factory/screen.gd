@@ -414,7 +414,11 @@ func _build() -> void:
 	sheet = Sheet.new()
 	sheet.name = "Sheet"
 	sheet.setup(sim, _fx)
-	sheet.closed.connect(func() -> void: _chips_l.queue_redraw())
+	sheet.closed.connect(func() -> void:
+		# the view may have gone down under the sheet: back inside the floor's
+		_cam_raw = _clamp(_cam_to)
+		_cam_to = _cam_raw
+		_chips_l.queue_redraw())
 	add_child(sheet)
 	_apply_insets()
 	_layout_field()

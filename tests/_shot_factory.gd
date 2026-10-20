@@ -429,6 +429,7 @@ func _sheet_part() -> void:
 
 	await _sheet_drag(Vector2(sheet.size.x * 0.5, 24.0), Vector2(sheet.size.x * 0.5, 320.0))
 	_ok("a swipe down the handle closes it", not sheet.is_open())
+	_ok("the view comes back inside the floor's bounds", _screen._clamp(_screen._cam_to).is_equal_approx(_screen._cam_to))
 	await _wait(0.5)
 	_ok("and it is gone", not sheet.visible)
 	_screen.queue_free()
