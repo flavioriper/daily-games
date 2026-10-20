@@ -391,8 +391,12 @@ cut the day's thing into the grid they dealt before (12 x 17, 16 x 23,
 with a `box`, so the `shaped` flag is gone. The bank fallback now picks among
 `shared_things()`, the things every band's box deals (23 of the bank), so
 a day's four bands cut the same thing; this changes which bank thing
-Insane deals on a given day. The themed thing is tried at each size per band
-as before, so a themed thing too thin for one box drops that band to the bank.
+Insane deals on a given day. The themed thing is taken at the first of
+`SHAPE_SIZES` that cuts a shape in every band's box, else the day falls to
+the bank on all four, so the bands never split between the two. Easy-Hard's
+level labels (`PP_LVL_0..2`) now read "The day's shape: a maze up to ...",
+as Insane's did. A completed board restores by solving the fresh deal, so a
+board finished on the old rectangle reopens solved on the shape.
 
 - Twelve seeds on the Mac, planes (old rectangles in brackets): Easy 16-26,
   102-142 cells; Medium 22-38 (shapes 192-247 cells); Hard 37-62 (old

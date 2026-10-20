@@ -452,14 +452,15 @@ func build(rng: RandomNumberGenerator, p_difficulty: int, bank_step := 0, daily_
 ## phone cuts the same, or by `rng` when there is no day.
 static func shape_for(rng: RandomNumberGenerator, daily_key := 0, bank_step := 0,
 		box := SHAPE_BOX, least := SHAPE_MIN) -> Dictionary:
+	# The themed thing is taken at the first size that cuts a shape in every
+	# band's box, so a day's four bands are the same thing or none of them.
 	if bank_step == 0:
 		for size in SHAPE_SIZES:
 			var pic := ThemedPictures.picture(daily_key, size)
-			if not pic.is_empty():
+			if not pic.is_empty() and BANDS.all(func(row): return shape_fits(cut_shape(pic.rows, row.box), int(row.least))):
 				var cut := cut_shape(pic.rows, box)
-				if shape_fits(cut, least):
-					cut["id"] = String(pic.id)
-					return cut
+				cut["id"] = String(pic.id)
+				return cut
 	# The pick is made among the things every band's box holds, so a day's
 	# four bands cut the same thing.
 	var ids := shared_things()
