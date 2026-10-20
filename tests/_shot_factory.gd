@@ -36,6 +36,12 @@ extends SceneTree
 ## its loose dot, a dot armed by a tap and wired by the next, shot again and
 ## the sheet's draw calls (with it shown, less without) held to a handful;
 ## a swipe down from the handle closes it.
+##
+## The tutor (ui/hud/factory_tutorial_diagram.gd, six pages): each page's
+## diagram mounted 700 by 500 and played to its telling moment, shot and its
+## draw calls held under 200, its edit seen on the sim it plays; the titles
+## and bodies in all three languages; then again under reduce motion, each
+## page standing at once; and the card itself over a screen, on its second page.
 
 const SEED := 7
 const SAVE := "user://factory_harness.cfg"
@@ -210,6 +216,7 @@ func _run() -> void:
 	await _floor()
 	await _screen_part()
 	await _sheet_part()
+	await _pages_part()
 	if FileAccess.file_exists(SAVE):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE))
 	print("%s  %d failed" % ["DONE" if _fails == 0 else "DONE WITH FAILURES", _fails])
@@ -442,3 +449,102 @@ func _sheet_part() -> void:
 	_ok("and it is gone", not sheet.visible)
 	_screen.queue_free()
 	await _frames(3)
+
+## The tutor's six pages, each on a holder 700 by 500 on a white ground.
+func _pages_part() -> void:
+	_sim = Sim.new(SEED)
+	_screen = load("res://factory/screen.gd").new()
+	_screen.name = "Factory"
+	_screen.setup(_sim)
+	root.add_child(_screen)
+	await _frames(4)
+	var pages: Array = _screen.tutorial_pages()
+	_ok("six pages", pages.size() == 6 and pages.all(func(p: Dictionary) -> bool: return String(p.title).begins_with("TUT_FACTORY_")))
+	_ok("every page has its words", pages.all(func(p: Dictionary) -> bool: return tr(String(p.title)) != String(p.title) and String(p.body) != "" and not String(p.body).begins_with("TUT_FACTORY_")))
+	var words := {}
+	for locale in ["en", "pt", "es"]:
+		TranslationServer.set_locale(locale)
+		var got := []
+		for k in range(1, 7):
+			got.append([tr("TUT_FACTORY_%d" % k), tr("TUT_FACTORY_%d_BODY" % k)])
+		words[locale] = got
+	TranslationServer.set_locale("en")
+	for locale in ["pt", "es"]:
+		var told := true
+		for k in 6:
+			for j in 2:
+				var text: String = words[locale][k][j]
+				told = told and text != "" and not text.begins_with("TUT_FACTORY_") and (text != words["en"][k][j] or k == 5 and j == 0)
+		_ok("six pairs in " + locale, told)
+	_screen.queue_free()
+	await _frames(3)
+
+	await _tutor_run(false)
+	await _tutor_run(true)
+
+	# the card itself, over a screen, on its second page
+	Motion.reduce = false
+	_sim = Sim.new(SEED)
+	_screen = load("res://factory/screen.gd").new()
+	_screen.name = "Factory"
+	_screen.setup(_sim)
+	root.add_child(_screen)
+	await _frames(4)
+	_screen.tutor.show()
+	await _frames(3)
+	var card: Control = _screen.get_node("HowToPlay")
+	card._turn(1)
+	await _wait(3.2)
+	await _shot("tutor_card")
+	card._continue()
+	await _frames(3)
+	_screen.queue_free()
+	await _frames(3)
+
+## Plays the six diagrams one after the other on a 700 by 500 holder, each to
+## its telling moment (STILL), or, under reduce motion, as they open.
+func _tutor_run(reduce: bool) -> void:
+	Motion.reduce = reduce
+	var Diagram: GDScript = load("res://ui/hud/factory_tutorial_diagram.gd")
+	var tag := "still" if reduce else "tutor"
+	for lesson in 6:
+		var holder := ColorRect.new()
+		holder.color = Color("fffaf1")
+		holder.size = Vector2(700.0, 500.0)
+		holder.position = (root.get_visible_rect().size - holder.size) * 0.5
+		root.add_child(holder)
+		var d: Control = Diagram.new()
+		d.lesson = lesson
+		d.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		holder.add_child(d)
+		await _frames(3)
+		if not reduce:
+			# a moment after the edit has landed, where the page has one
+			var until := maxf(float(Diagram.STILL[lesson]), Diagram.EDIT + 1.2 if lesson in [1, 2, 3, 5] else 0.0)
+			await _until(func() -> bool: return d._t >= until, until + 3.0)
+		await _frames(2)
+		var draws: int = await _shot("%s_%d" % [tag, lesson + 1])
+		_ok("page %d draws under 200%s" % [lesson + 1, " (reduce motion)" if reduce else ""], draws > 0 and draws < 200, str(draws))
+		var sim: RefCounted = d._sim
+		if reduce:
+			_ok("page %d stands at its moment%s" % [lesson + 1, ", the finger on show" if lesson != 4 else ""],
+				is_equal_approx(d._t, float(Diagram.STILL[lesson])) and sim.tick_n > 0 and (lesson == 4 or d._shows), "t %.2f tick %d" % [d._t, sim.tick_n])
+			holder.queue_free()
+			await _frames(2)
+			continue
+		match lesson:
+			0:
+				_ok("power: three robots out, the Shipper at its \"?\"", sim.robots[2].stuck == "?" or sim.tick_n < 30, "tick %d" % sim.tick_n)
+			1:
+				_ok("picker: gripper fitted and a pick inserted", sim.robots[0].parts.has("gripper") and Bots.walk(sim.robots[0]).ids.size() > 4, str(sim.robots[0].parts))
+			2:
+				_ok("boxer: both vertical moves 4", int(sim.robots[1].nodes["c"].n) == 4 and int(sim.robots[1].nodes["e"].n) == 4)
+			3:
+				_ok("shipper: the wire lands", sim.robots[2].next["c"].out == "d")
+			4:
+				_ok("box: the first sale", int(sim.earned) >= Sim.PAY_FULL and int(sim.coins) >= Sim.PAY_FULL, "earned %d" % sim.earned)
+			5:
+				_ok("spend: a Fast plug bought", sim.robots[0].parts.has("plug") and int(sim.coins) == Diagram.SPEND_COINS - 40, "coins %d" % sim.coins)
+		holder.queue_free()
+		await _frames(2)
+	Motion.reduce = false

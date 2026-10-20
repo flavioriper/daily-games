@@ -1,73 +1,88 @@
 extends Control
 
-## One page of Factory's tutorial (factory/screen.gd's `tutorial_pages`): a
-## stretch of the pond and the land drawn by the game's own path
-## (factory/life.gd) and played by the game's own sim (factory/sim.gd) with a
-## finger that does what the page says. `lesson` picks the page, set before
-## it enters the tree:
+## One page of Factory's tutorial (factory/screen.gd's `tutorial_pages`): the
+## robot floor drawn by the game's own path (factory/life.gd), played by the
+## game's own sim (factory/sim.gd) and, on the pages that change a program,
+## the program sheet drawn small beside it (factory/sheet.gd's preview), with
+## a finger that does what the page says. Every page plays on a sim of its
+## own, so it never touches the player's floor. `lesson` picks the page, set
+## before it enters the tree:
 ##
-## - TREE: three taps on the forest, a log each, out of its gate.
-## - BELT: Belt picked, the finger swipes a straight run down from the gate
-##   and a second from its corner to the market; each is laid as the finger
-##   lifts, and the logs ride and are sold.
-## - PLATE: from further off, a tap on a plus and a plate comes up.
-## - GOAL: a forest that works by itself sells its logs; the goal chip
-##   (drawn here as the screen draws it) counts them to thirty, the splitter
-##   is opened, and a finger makes a belt of the line one and lays a second
-##   way to the market from its side.
+## - POWER: the floor as it opens, the three robots out on their loops and
+##   the three faults showing; a finger taps the Picker.
+## - PICKER: its program on the sheet, a Gripper fitted and a Pick inserted
+##   after its first Move; the Picker then walks off with a square.
+## - BOXER: the box lying at the table's foot ringed on the floor, and both
+##   vertical Moves set to 4 on the sheet; the Picker is already fixed.
+## - SHIPPER: its loose wire dragged from the Pick onto the next Move; the
+##   Picker and the Boxer are already fixed.
+## - BOX: all three fixed, the floor run to a few seconds before the first
+##   sale; the box pays, the coins count it, the Shipper pauses on the bay.
+## - SPEND: the bin's parts on the sheet with the second milestone's rows
+##   priced; a finger buys the Fast plug.
 ##
-## A page starts over every LENGTH seconds on a land of the same seed, so it
+## A page starts over every LENGTH seconds on a floor of the same seed, so it
 ## is the same little film each time. Under reduce motion it stands still at
-## its telling moment (STILL).
+## its telling moment (STILL): the fault in view and the finger on what to
+## change, before the edit lands.
 
 const Sim = preload("res://factory/sim.gd")
 const Art = preload("res://factory/art.gd")
 const Life = preload("res://factory/life.gd")
+const Sheet = preload("res://factory/sheet.gd")
 const Motion = preload("res://core/motion.gd")
 const Pal = preload("res://core/palette.gd")
 
-enum Lesson { TREE, BELT, PLATE, GOAL }
+enum Lesson { POWER, PICKER, BOXER, SHIPPER, BOX, SPEND }
 
 const SEED := 7
-const LENGTH := {Lesson.TREE: 6.5, Lesson.BELT: 28.0, Lesson.PLATE: 7.0, Lesson.GOAL: 20.0}
-const STILL := {Lesson.TREE: 2.4, Lesson.BELT: 6.0, Lesson.PLATE: 5.5, Lesson.GOAL: 14.0}
-## What each page looks at, in tile space, and how many view units it shows
-## across.
-const LOOK := {Lesson.TREE: Vector2(3.5, -2.2), Lesson.BELT: Vector2(4.0, 3.0), Lesson.PLATE: Vector2(6.5, 1.5), Lesson.GOAL: Vector2(4.6, 2.4)}
-const ACROSS := {Lesson.TREE: 1000.0, Lesson.BELT: 1250.0, Lesson.PLATE: 2900.0, Lesson.GOAL: 1300.0}
-## Where the pages tap the forest (the new land's, behind the market's
-## plate), and the belt's way from its gate to the market: [tile, facing]
-## each, the corner at CORNER.
-const TREE := Vector2i(3, -4)
-const TAPS := [1.1, 1.8, 2.5]
-const WAY := [[Vector2i(3, 0), 1], [Vector2i(3, 1), 1], [Vector2i(3, 2), 1], [Vector2i(3, 3), 1], [Vector2i(3, 4), 1],
-	[Vector2i(3, 5), 1], [Vector2i(3, 6), 0], [Vector2i(4, 6), 0], [Vector2i(5, 6), 0]]
-const CORNER := 6
-const DRAG_FROM := 1.2
-const DRAG_TIME := 1.8
-const DRAG_REST := 0.6
-const NEW_PLATE := Vector2i(1, 0)
-## The goal's page: how many logs are sold as it opens, the belt of the way
-## that is made a splitter, and the second way from its side to the market.
-const GOAL_SOLD := 22
-const SPLIT := Vector2i(3, 3)
-const SIDE := [[Vector2i(4, 3), 0], [Vector2i(5, 3), 0], [Vector2i(6, 3), 1], [Vector2i(6, 4), 1], [Vector2i(6, 5), 1]]
+const LENGTH := {Lesson.POWER: 9.0, Lesson.PICKER: 10.0, Lesson.BOXER: 10.0, Lesson.SHIPPER: 10.0, Lesson.BOX: 13.0, Lesson.SPEND: 7.0}
+const STILL := {Lesson.POWER: 5.0, Lesson.PICKER: 1.6, Lesson.BOXER: 1.6, Lesson.SHIPPER: 1.6, Lesson.BOX: 5.5, Lesson.SPEND: 1.6}
+## The moment a page's edit lands (Picker's fit and Pick, Boxer's Moves,
+## Shipper's wire, Spend's purchase), in seconds into the page.
+const EDIT := 2.0
+## The pages that draw a sheet beside the floor, and the robot it shows, and
+## the node it brings to its middle.
+const SHEETS := {Lesson.PICKER: [0, "a"], Lesson.BOXER: [1, "d"], Lesson.SHIPPER: [2, "c"], Lesson.SPEND: [0, "a"]}
+## How much of the page's width the floor takes when a sheet shares it, and
+## how many pixels wide the sheet is drawn before it is scaled to fit (the
+## bin's page needs the taller sheet, for its tray under the parts).
+const FLOOR_SHARE := 0.42
+const ACROSS := 760.0
+const ACROSS_TRAY := 940.0
+const PAD := 14.0
+## Ticks run before a page opens, so the fault it is about already shows:
+## the Boxer's box lies at the table, the Shipper stands with its "?".
+const WARM := {Lesson.BOXER: 40, Lesson.SHIPPER: 40}
+## How many seconds before the first sale the BOX page opens.
+const BOX_LEAD := 4.5
+const SPEND_COINS := 100
+## The box that lies at the table's foot, ringed on the Boxer's page.
+const LITTER := Vector2i(4, 4)
 
-var lesson: int = Lesson.TREE
+## Tick of the first sale once the three faults are fixed (found once).
+static var _sale_tick := -1
+
+var lesson: int = Lesson.POWER
 
 var _sim: RefCounted
 var _life: RefCounted
 var _world: Node2D
+var _sheet: Control
+var _over: Control
 var _water: ArrayMesh
 var _t := 0.0
 var _done := 0
-## The finger: where it is (tile space) and how long ago it pressed.
+var _sheet_rect := Rect2()
+## The finger: where it is (the page's pixels), how long ago it pressed and
+## whether it is on show; a wire dragged from `_drag_from` when it is set.
 var _finger := Vector2.ZERO
 var _pressed := 10.0
 var _shows := false
-var _finger_l: Node2D
-var _chip: Control
-var _reached := -1.0
+var _drag_from := Vector2.INF
+## The coins as the chip counts them, and when they last changed.
+var _count := 0.0
+var _coined := -10.0
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -76,60 +91,117 @@ func _ready() -> void:
 		if _water != null:
 			draw_mesh(_water, null))
 	_life = Life.new()
-	_life.plus = lesson == Lesson.PLATE
 	_start()
 	_world = _life.mount(self, _sim)
-	_finger_l = _life.layer(_draw_finger)
-	if lesson == Lesson.GOAL:
-		_chip = Control.new()
-		_chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_chip.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		_chip.draw.connect(_draw_chip)
-		add_child(_chip)
+	if SHEETS.has(lesson):
+		_sheet = Sheet.new()
+		_sheet.name = "Sheet"
+		add_child(_sheet)
+	_over = Control.new()
+	_over.name = "Over"
+	_over.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_over.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_over.draw.connect(_draw_over)
+	add_child(_over)
 	resized.connect(_layout)
 	_layout()
+	_open_sheet()
 	if Motion.reduce:
 		_advance(float(STILL[lesson]))
 		set_process(false)
 
+## The floor fitted to its share of the page and stood in its middle; the
+## sheet's rect beside it.
 func _layout() -> void:
 	if size.x <= 0.0 or size.y <= 0.0:
 		return
 	_water = Art.water(size, 28.0)
-	var u: float = size.x / float(ACROSS[lesson])
+	var room := Rect2(Vector2.ZERO, size)
+	_sheet_rect = Rect2()
+	if SHEETS.has(lesson):
+		var w := roundf(size.x * FLOOR_SHARE)
+		room = Rect2(0.0, 0.0, w, size.y)
+		_sheet_rect = Rect2(w, PAD, size.x - w - PAD, size.y - 2.0 * PAD)
+	var box: Rect2 = _life.bounds()
+	var u := minf((room.size.x - 2.0 * PAD) / box.size.x, (room.size.y - 2.0 * PAD) / box.size.y)
 	_world.scale = Vector2(u, u)
-	_world.position = size * 0.5 - Art.at(LOOK[lesson]) * u
+	_world.position = room.get_center() - box.get_center() * u
+	_open_sheet()
 	queue_redraw()
 
-## The page's land, as it opens: for the belt's page two logs lie past the
-## gate; for the plate's the coins are there.
+## The sheet drawn into its rect on the sim as it stands.
+func _open_sheet() -> void:
+	if _sheet == null or _sheet_rect.size.x <= 0.0:
+		return
+	var row: Array = SHEETS[lesson]
+	_sheet.setup(_sim, null)
+	var tray := lesson == Lesson.SPEND
+	_sheet.show_preview(int(row[0]), _sheet_rect, ACROSS_TRAY if tray else ACROSS, String(row[1]), tray)
+
+## The page's floor, as it opens: the faults other pages fixed are fixed, the
+## ticks it needs already run.
 func _start() -> void:
 	_t = 0.0
 	_done = 0
 	_pressed = 10.0
 	_shows = false
+	_drag_from = Vector2.INF
 	_sim = Sim.new(SEED)
-	if lesson == Lesson.BELT:
-		for i in 2:
-			_sim.tap(TREE)
-			_sim.step(Sim.TICK)
-	elif lesson == Lesson.PLATE:
-		_sim.coins = _sim.plate_price()
-	elif lesson == Lesson.GOAL:
-		# the way laid, the forest at work, a market that sells a log a second
-		_reached = -1.0
-		_sim.coins = 2000
-		for step: Array in WAY:
-			_sim.lay_belt(step[0], step[1])
-		_sim.upgrade(TREE)
-		for i in 3:
-			_sim.upgrade("market")
-		for i in 200:
-			_sim.step(Sim.TICK)
-		_sim.sold["log"] = GOAL_SOLD
+	var warm: int = WARM.get(lesson, 0)
+	match lesson:
+		Lesson.BOXER:
+			_fix_picker(_sim)
+		Lesson.SHIPPER:
+			_fix_picker(_sim)
+			_fix_boxer(_sim)
+		Lesson.BOX:
+			_fix_picker(_sim)
+			_fix_boxer(_sim)
+			_fix_shipper(_sim)
+			warm = maxi(0, first_sale() - roundi(BOX_LEAD / Sim.TICK))
+		Lesson.SPEND:
+			_fix_picker(_sim)
+			_fix_boxer(_sim)
+			_fix_shipper(_sim)
+			_sim.milestone = 1
+			_sim.coins = SPEND_COINS
+	for i in warm:
+		_sim.step(Sim.TICK)
+		_sim.events.clear()
 	_sim.events.clear()
+	_count = float(_sim.coins)
+	_coined = -10.0
 	if _world != null:
 		_life.hold(_sim)
+		_open_sheet()
+
+static func _fix_picker(sim: RefCounted) -> void:
+	sim.fit(0, "gripper")
+	sim.add_node(0, "a", "out", "pick")
+
+static func _fix_boxer(sim: RefCounted) -> void:
+	sim.set_move(1, "c", 1, 4)
+	sim.set_move(1, "e", 3, 4)
+
+static func _fix_shipper(sim: RefCounted) -> void:
+	sim.set_next(2, "c", "out", "d")
+
+## The tick the first box is sold on once the three faults are fixed.
+static func first_sale() -> int:
+	if _sale_tick < 0:
+		var sim := Sim.new(SEED)
+		_fix_picker(sim)
+		_fix_boxer(sim)
+		_fix_shipper(sim)
+		_sale_tick = 1200
+		for i in 3000:
+			sim.step(Sim.TICK)
+			var sold := sim.events.any(func(e: Dictionary) -> bool: return String(e.type) == "sale")
+			sim.events.clear()
+			if sold:
+				_sale_tick = int(sim.tick_n)
+				break
+	return _sale_tick
 
 func _process(delta: float) -> void:
 	_advance(minf(delta, 0.1))
@@ -144,127 +216,142 @@ func _advance(delta: float) -> void:
 			_start()
 		_act()
 		_pressed += dt
+		var coins := int(_sim.coins)
 		_sim.step(dt)
+		if int(_sim.coins) != coins:
+			_coined = _t
+		_count = float(_sim.coins) if Motion.reduce else move_toward(_count, float(_sim.coins), 90.0 * dt)
 		for e: Dictionary in _sim.events:
 			_life.event(e)
+			if _sheet != null:
+				_sheet.event(e)
 		_sim.events.clear()
 		_life.step(dt)
-	if _finger_l != null:
-		_finger_l.queue_redraw()
-	if _chip != null:
-		_chip.queue_redraw()
+	if _over != null:
+		_over.queue_redraw()
 
-## What the finger does at this moment of the page.
+# --- what the finger does ---
+
+## A point of the floor's view space, in the page's pixels.
+func _floor_px(v: Vector2) -> Vector2:
+	return _world.position + v * _world.scale.x
+
+## A point of the sheet's pixels, in the page's pixels.
+func _sheet_px(v: Vector2) -> Vector2:
+	return _sheet.position + v * _sheet.scale.x
+
+## A point part way along `keys` ([[seconds, point], ...]) at `_t`, eased
+## between one key and the next.
+func _along(keys: Array) -> Vector2:
+	if _t <= float(keys[0][0]):
+		return keys[0][1]
+	for k in range(1, keys.size()):
+		if _t <= float(keys[k][0]):
+			var a: Array = keys[k - 1]
+			var b: Array = keys[k]
+			var f := smoothstep(0.0, 1.0, (_t - float(a[0])) / maxf(0.001, float(b[0]) - float(a[0])))
+			return (a[1] as Vector2).lerp(b[1], f)
+	return keys[keys.size() - 1][1]
+
+## Presses the finger once, `at` seconds in.
+func _press(at: float, slot: int) -> void:
+	if _done <= slot and _t >= at:
+		_done = slot + 1
+		_pressed = 0.0
+
 func _act() -> void:
 	match lesson:
-		Lesson.TREE:
-			_finger = Vector2(TREE) + Vector2(0.5, 0.5)
-			_shows = _t > 0.5 and _t < 3.4
-			if _done < TAPS.size() and _t >= float(TAPS[_done]):
-				_done += 1
-				_pressed = 0.0
-				_sim.tap(TREE)
-		Lesson.BELT:
-			# two swipes, each laid as the finger lifts: down from the gate,
-			# then from the corner to the market
-			_life.ghosts = []
-			var down := (_t - DRAG_FROM) / DRAG_TIME
-			var over := (_t - DRAG_FROM - DRAG_TIME - DRAG_REST) / (DRAG_TIME * 0.5)
-			var first: Vector2 = Vector2(WAY[0][0]) + Vector2(0.5, 0.5)
-			var corner: Vector2 = Vector2(WAY[CORNER][0]) + Vector2(0.5, 0.5)
-			var last: Vector2 = Vector2(WAY[WAY.size() - 1][0]) + Vector2(0.5, 0.5)
-			_shows = (_t > 0.5 and down < 1.0) or (over > -0.4 and over < 1.0)
-			if down < 1.0:
-				_finger = first.lerp(corner, clampf(down, 0.0, 1.0))
-				if down > 0.0:
-					_pressed = 0.1
-					for i in CORNER + 1:
-						if Vector2(WAY[i][0]).y <= _finger.y:
-							_life.ghosts.append([Art.belt(), Transform2D(0.0, Art.BELT_LIFT) * Art.flat(Vector2(WAY[i][0]), 1), Color(1.0, 1.0, 1.0, 0.72)])
+		Lesson.POWER:
+			# the Picker is tapped as its fault shows
+			_shows = _t > 3.6 and _t < 7.6
+			_finger = _floor_px(_life.robot_pos(0))
+			_press(5.0, 0)
+		Lesson.PICKER:
+			if _t < EDIT:
+				_finger = _along([[0.3, _sheet_px(_sheet.plus_rect("a").get_center()) + Vector2(60.0, 50.0)], [1.4, _sheet_px(_sheet.plus_rect("a").get_center())]])
+			_shows = _t > 0.3 and _t < 3.2
+			_press(1.5, 0)
+			_edit(func() -> void: _fix_picker(_sim))
+		Lesson.BOXER:
+			if _t < EDIT:
+				_finger = _along([[0.3, _sheet_px(_sheet.node_rect("c").get_center()) + Vector2(60.0, 50.0)], [0.9, _sheet_px(_sheet.node_rect("c").get_center())],
+					[1.4, _sheet_px(_sheet.node_rect("e").get_center())]])
+			_shows = _t > 0.3 and _t < 3.2
+			_press(0.9, 0)
+			_press(1.4, 1)
+			_edit(func() -> void: _fix_boxer(_sim))
+		Lesson.SHIPPER:
+			if _t < EDIT:
+				var from := _sheet_px(_sheet.out_port("c"))
+				var to := _sheet_px(_sheet.in_port("d"))
+				_finger = _along([[0.3, from + Vector2(60.0, 50.0)], [0.8, from], [1.0, from], [1.9, to]])
+				_drag_from = from if _t >= 1.0 else Vector2.INF
 			else:
-				if _done == 0:
-					_done = 1
-					for i in CORNER + 1:
-						_sim.lay_belt(WAY[i][0], 1)
-				_finger = corner.lerp(last, clampf(over, 0.0, 1.0))
-				if over > 0.0 and over < 1.0:
-					_pressed = 0.1
-					for i in range(CORNER + 1, WAY.size()):
-						if Vector2(WAY[i][0]).x <= _finger.x:
-							_life.ghosts.append([Art.belt(), Transform2D(0.0, Art.BELT_LIFT) * Art.flat(Vector2(WAY[i][0]), 0), Color(1.0, 1.0, 1.0, 0.72)])
-				if _done == 1 and over >= 1.0:
-					_done = 2
-					for i in range(CORNER, WAY.size()):
-						_sim.lay_belt(WAY[i][0], 0)
-		Lesson.GOAL:
-			if _reached < 0.0:
-				_shows = false
-				if _sim.unlocked("splitter"):
-					_reached = _t
-				return
-			# the goal reached: a tap makes the belt a splitter, a second lays its side way
-			var since := _t - _reached
-			_finger = Vector2(SPLIT) + Vector2(0.5, 0.5) if since < 2.4 else Vector2(SIDE[SIDE.size() - 1][0]) + Vector2(0.5, 0.5)
-			_shows = since > 0.6 and since < 4.6
-			if _done == 0 and since >= 1.4:
-				_done = 1
-				_pressed = 0.0
-				_sim.lay_belt(SPLIT, 1, "splitter")
-			if _done == 1 and since >= 3.4:
-				_done = 2
-				_pressed = 0.0
-				for step: Array in SIDE:
-					_sim.lay_belt(step[0], step[1])
-		Lesson.PLATE:
-			_finger = Vector2(NEW_PLATE * Art.PLATE) + Vector2(Art.PLATE, Art.PLATE) * 0.5
-			_shows = _t > 0.6 and _t < 2.6
-			if _done == 0 and _t >= 1.6:
-				_done = 1
-				_pressed = 0.0
-				_sim.buy_plate(NEW_PLATE, "neutral")
+				_drag_from = Vector2.INF
+			_shows = _t > 0.3 and _t < 3.2
+			_press(0.9, 0)
+			_edit(func() -> void: _fix_shipper(_sim))
+		Lesson.SPEND:
+			if _t < EDIT:
+				var chip := _sheet_px(_sheet.tray_rect("plug").get_center())
+				_finger = _along([[0.3, chip + Vector2(60.0, 50.0)], [1.2, chip]])
+			_shows = _t > 0.3 and _t < 3.2
+			_press(1.5, 0)
+			_edit(func() -> void: _sim.fit(0, "plug"))
 
-## The finger: a pale ring that closes on a dot as it presses, drawn over the
-## land at a size the page's scale leaves readable.
-func _draw_finger(ci: CanvasItem) -> void:
-	if not _shows:
-		return
-	var s: float = 1.0 / maxf(0.01, _world.scale.x)
-	var at := Art.at(_finger)
-	var down := 1.0 - clampf(_pressed / 0.3, 0.0, 1.0)
-	var r := (30.0 - 8.0 * down) * s
-	ci.draw_circle(at, r, Color(1.0, 1.0, 1.0, 0.35 + 0.3 * down), true, -1.0, true)
-	ci.draw_arc(at, r, 0.0, TAU, 40, Color(0.23, 0.19, 0.16, 0.7), 4.0 * s, true)
-	ci.draw_circle(at, 8.0 * s, Pal.ACCENT, true, -1.0, true)
+## Makes the page's edit as EDIT passes, once.
+func _edit(change: Callable) -> void:
+	if _t >= EDIT and _done < 8:
+		_done = 8
+		change.call()
+		_pressed = 0.0
 
-## The goal chip as the screen draws it (factory/screen.gd's `_draw_goal`),
-## at the page's top: the log, how many of thirty are sold, and the
-## splitter it opens; the sun's own once it is reached.
+# --- drawing over the floor ---
+
+func _draw_over() -> void:
+	if lesson == Lesson.BOXER and _t < 4.5:
+		_draw_ring(_floor_px(_life.mid(LITTER)))
+	if _drag_from != Vector2.INF:
+		var pts := PackedVector2Array([_drag_from, _finger])
+		_over.draw_polyline(pts, Color(Pal.ACCENT, 0.85), 5.0, true)
+	if _shows:
+		var down := 1.0 - clampf(_pressed / 0.3, 0.0, 1.0)
+		var r := 28.0 - 7.0 * down
+		_over.draw_circle(_finger, r, Color(1.0, 1.0, 1.0, 0.35 + 0.3 * down), true, -1.0, true)
+		_over.draw_arc(_finger, r, 0.0, TAU, 40, Color(0.23, 0.19, 0.16, 0.7), 4.0, true)
+		_over.draw_circle(_finger, 8.0, Pal.ACCENT, true, -1.0, true)
+	if lesson == Lesson.BOX or lesson == Lesson.SPEND:
+		_draw_chip()
+
+## A ring that breathes round a tile of the floor.
+func _draw_ring(at: Vector2) -> void:
+	var u: float = _world.scale.x
+	var pulse := 0.0 if Motion.reduce else 0.5 + 0.5 * sin(_t * TAU / 1.1)
+	var r := Art.TILE * u * (0.62 + 0.1 * pulse)
+	_over.draw_circle(at, r, Color(Pal.ACCENT, 0.16), true, -1.0, true)
+	_over.draw_arc(at, r, 0.0, TAU, 40, Pal.ACCENT, 5.0, true)
+
+## The coins held, as the screen's pill shows them: the coin and the count
+## on a white pill, kicked as it changes.
 func _draw_chip() -> void:
 	var font := get_theme_font("font", "SheetTitle")
-	var need: int = Sim.GOALS[0].need.log
-	var have := mini(int(_sim.sold.get("log", 0)), need)
-	var text := "%d/%d" % [have, need]
-	var w := 20.0 + 58.0 + font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 34).x + 14.0 + 28.0 + 58.0 + 12.0
-	var h := 78.0
+	var text := Art.amount(roundf(_count), Art.comma())
+	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 34).x
+	var h := 62.0
+	var w := 14.0 + 46.0 + 10.0 + tw + 20.0
 	var grow := 1.0
-	if _reached >= 0.0 and not Motion.reduce:
-		grow += 0.12 * maxf(0.0, 1.0 - (_t - _reached) / 0.4)
-	var box := Rect2(Vector2((size.x - w) * 0.5, 22.0), Vector2(w, h))
-	_chip.draw_set_transform(box.get_center(), 0.0, Vector2(grow, grow))
-	var local := Rect2(-box.size * 0.5, box.size)
+	if not Motion.reduce:
+		grow += 0.14 * maxf(0.0, 1.0 - (_t - _coined) / 0.4)
+	var box := Rect2(Vector2(16.0, 16.0), Vector2(w, h))
+	_over.draw_set_transform(Vector2(16.0, 16.0 + h * 0.5), 0.0, Vector2(grow, grow))
+	var local := Rect2(Vector2(0.0, -h * 0.5), box.size)
 	var face := StyleBoxFlat.new()
-	face.bg_color = Pal.SUN if have >= need else Pal.SURFACE
+	face.bg_color = Pal.SURFACE
 	face.set_corner_radius_all(int(h * 0.5))
 	face.shadow_color = Color(0.23, 0.19, 0.16, 0.18)
 	face.shadow_size = 6
 	face.shadow_offset = Vector2(0.0, 3.0)
-	_chip.draw_style_box(face, local)
-	var x := local.position.x + 20.0
-	_chip.draw_mesh(Art.icon("log"), null, Transform2D(0.0, Vector2(0.5, 0.5), 0.0, Vector2(x + 26.0, 0.0)))
-	x += 58.0
-	_chip.draw_string(font, Vector2(x, 12.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 34, Pal.TEXT)
-	x += font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 34).x + 14.0
-	_chip.draw_polyline(PackedVector2Array([Vector2(x, -11.0), Vector2(x + 11.0, 0.0), Vector2(x, 11.0)]), Color(Pal.TEXT, 0.55), 5.0, true)
-	x += 28.0
-	_chip.draw_mesh(Art.icon("splitter"), null, Transform2D(0.0, Vector2(0.52, 0.52), 0.0, Vector2(x + 26.0, 0.0)))
-	_chip.draw_set_transform(Vector2.ZERO)
+	_over.draw_style_box(face, local)
+	_over.draw_mesh(Art.icon("coin"), null, Transform2D(0.0, Vector2(0.5, 0.5), 0.0, Vector2(14.0 + 23.0, 0.0)))
+	_over.draw_string(font, Vector2(14.0 + 46.0 + 10.0, 12.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 34, Pal.TEXT)
+	_over.draw_set_transform(Vector2.ZERO)

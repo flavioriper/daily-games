@@ -34,6 +34,10 @@ extends Control
 ## transform. Face.Builder has no text, so the names under the nodes are
 ## lettered over the mesh with TextLines drawn one font size after the other
 ## (each size is one glyph batch).
+##
+## `preview` is the tutorial's: the same sheet drawn small into a rect of a
+## diagram (`show_preview`), with no input, no slide and no handle to pull,
+## on a sim of the page's own (ui/hud/factory_tutorial_diagram.gd).
 
 signal closed
 
@@ -142,6 +146,8 @@ const DIGITS := {
 }
 
 var sim: RefCounted
+## Drawn into a tutorial page: it takes no input and stays where it is put.
+var preview := false
 ## The robot whose program is up.
 var robot := 0
 ## The screen's cues: a touch, a no.
@@ -191,6 +197,7 @@ var _lines := {}         # [text, fs] -> TextLine
 func setup(with_sim: RefCounted, fx: Node2D) -> void:
 	sim = with_sim
 	_fx = fx
+	_dirty = true
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -216,6 +223,35 @@ func fit_to(field_size: Vector2, inset: float) -> void:
 
 func is_open() -> bool:
 	return _open
+
+## Robot `i`'s program drawn into `rect` of the parent (a tutorial page): the
+## sheet is `across` pixels wide and scaled down to fit, panned to bring node
+## `focus` (when it has one) to the middle. Its hand is off, so a page can
+## play it with edits of the sim; `tray` stands the bin's parts up.
+func show_preview(i: int, rect: Rect2, across: float, focus := "", tray := false) -> void:
+	preview = true
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	robot = i
+	_open = true
+	_sel = ""
+	_info = false
+	_armed = ""
+	_tray = {"parts": true} if tray else {}
+	_tray_key = ""
+	_pan = 0.0
+	var k := rect.size.x / across
+	size = Vector2(across, rect.size.y / k)
+	scale = Vector2(k, k)
+	position = rect.position
+	_paper = null
+	_band = null
+	if focus != "":
+		var r := node_rect(focus)
+		if r.size.x > 0.0:
+			_pan = _clamp_pan(across * 0.5 - r.get_center().x)
+	_dirty = true
+	visible = true
+	queue_redraw()
 
 ## Robot `i`'s program, sliding up if the sheet was down; on another robot
 ## the picks, the tray and the pan start over.
@@ -569,7 +605,7 @@ func _no() -> void:
 # --- the hand ---
 
 func _gui_input(event: InputEvent) -> void:
-	if not _open:
+	if not _open or preview:
 		return
 	if event is InputEventScreenTouch:
 		var t := event as InputEventScreenTouch
