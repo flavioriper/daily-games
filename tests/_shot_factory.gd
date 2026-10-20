@@ -481,6 +481,7 @@ func _pages_part() -> void:
 
 	await _tutor_run(false)
 	await _tutor_run(true)
+	await _late_size()
 
 	# the card itself, over a screen, on its second page
 	Motion.reduce = false
@@ -548,3 +549,34 @@ func _tutor_run(reduce: bool) -> void:
 		holder.queue_free()
 		await _frames(2)
 	Motion.reduce = false
+
+## Under reduce motion a page whose holder is sized only after `_ready` (the
+## card's slot may be) puts its finger where a page sized from the start does.
+func _late_size() -> void:
+	Motion.reduce = true
+	var Diagram: GDScript = load("res://ui/hud/factory_tutorial_diagram.gd")
+	for lesson in [0, 1, 2, 3, 5]:
+		var fixed := await _holder_page(Diagram, lesson, true)
+		var late := await _holder_page(Diagram, lesson, false)
+		_ok("page %d, sized after _ready, has its finger where a sized page has it" % [lesson + 1],
+			late.shows and fixed.shows and late.finger.distance_to(fixed.finger) < 1.0 and late.finger.x > 20.0, "%s vs %s" % [late.finger, fixed.finger])
+	Motion.reduce = false
+
+## A page on a holder 700 by 500 from the start, or one that is 0 by 0 until a
+## frame after the page is ready; its finger and whether it shows.
+func _holder_page(Diagram: GDScript, lesson: int, sized: bool) -> Dictionary:
+	var holder := Control.new()
+	holder.size = Vector2(700.0, 500.0) if sized else Vector2.ZERO
+	root.add_child(holder)
+	var d: Control = Diagram.new()
+	d.lesson = lesson
+	d.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	holder.add_child(d)
+	await _frames(2)
+	if not sized:
+		holder.size = Vector2(700.0, 500.0)
+		await _frames(2)
+	var got := {"finger": d._finger, "shows": d._shows}
+	holder.queue_free()
+	await _frames(2)
+	return got

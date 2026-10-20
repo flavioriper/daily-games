@@ -73,6 +73,7 @@ var _over: Control
 var _water: ArrayMesh
 var _t := 0.0
 var _done := 0
+var _stood := false
 var _sheet_rect := Rect2()
 ## The finger: where it is (the page's pixels), how long ago it pressed and
 ## whether it is on show; a wire dragged from `_drag_from` when it is set.
@@ -107,8 +108,10 @@ func _ready() -> void:
 	_layout()
 	_open_sheet()
 	if Motion.reduce:
-		_advance(float(STILL[lesson]))
 		set_process(false)
+		# stands up at its moment once it has a size (a card may size it later)
+		if size.x > 0.0 and size.y > 0.0:
+			_stand()
 
 ## The floor fitted to its share of the page and stood in its middle; the
 ## sheet's rect beside it.
@@ -128,6 +131,18 @@ func _layout() -> void:
 	_world.position = room.get_center() - box.get_center() * u
 	_open_sheet()
 	queue_redraw()
+	if Motion.reduce:
+		_stand()
+
+## Under reduce motion: plays to STILL once, and on any later layout puts the
+## finger and the ring where the new layout has them.
+func _stand() -> void:
+	if not _stood:
+		_stood = true
+		_advance(float(STILL[lesson]))
+	else:
+		_act()
+		_over.queue_redraw()
 
 ## The sheet drawn into its rect on the sim as it stands.
 func _open_sheet() -> void:
