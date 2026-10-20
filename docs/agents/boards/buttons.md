@@ -1107,3 +1107,16 @@ full case) takes the ones on the tapped slot's colour first, and what
 they bare is one colour. The pick's lift and the hand's own `_tidy` are
 unchanged. Rules probe 648 runs and board probe 26 days, 0 failures but
 the two band-2 zoom failures; not seen on a screen.
+
+**2026-10-20: slower and smoother** (the user: "reduce piece movement
+speed, and make it way smoother and more satisfact to watch").
+`FLY_TIME` 0.28 (0.1), `RUN_STEP` 0.08 (0.04), `RUN_STEP_CAP` 1.6 (0.8),
+`SLIDE_TIME` 0.26, `SLIDE_STEP` 0.03, `SLIDE_CAP` 0.45. A flight eases on
+the smootherstep (was smoothstep), rises on a parabola over the distance
+covered (was a sine over time), leans into its way by up to `FLY_TILT`
+0.2 rad (by its sideways reach, full at three squares) and comes upright
+to land; its shadow shrinks a third at the top. Every landing of a run
+clears `TICK_GAP` again, so each one ticks. Medium `play` on
+`opengl3_angle`: peak 96 draw calls, the tilt seen mid-flight in one
+window. Board probe 26 days, the same two band-2 zoom failures. Mine,
+unconfirmed: every number; no phone.

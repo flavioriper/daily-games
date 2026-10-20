@@ -105,15 +105,18 @@ const HELD_BOB_MAX := 48
 ## user: "increase speed of pieces move by 2x"): the flight, the step and
 ## the cap all halved (0.3, 0.12, 2.4), so the chain reads the same; then
 ## "double speed again": 0.075, 0.03, 0.6; then "slow it down 25%": the
-## speed at three quarters, so 0.1, 0.04, 0.8.
-const RUN_STEP := 0.04
-const RUN_STEP_CAP := 0.8
+## speed at three quarters, so 0.1, 0.04, 0.8. Then slower and smoother
+## (the user, 2026-10-20: "reduce piece movement speed, and make it way
+## smoother and more satisfact to watch"): 0.28, 0.08, 1.6, so each landing
+## clears TICK_GAP and ticks on its own.
+const RUN_STEP := 0.08
+const RUN_STEP_CAP := 1.6
 ## The case's own sliding along a place go one after another too, this
 ## far apart, the whole pack no longer than SLIDE_CAP (a pack on Insane
 ## can slide sixty places, and a place is not pickable until its jewel has
 ## landed).
-const SLIDE_STEP := 0.02
-const SLIDE_CAP := 0.3
+const SLIDE_STEP := 0.03
+const SLIDE_CAP := 0.45
 ## A pick comes up as a wave out of the tapped button: each one this long
 ## after its neighbour nearer the tap, the farthest no later than the cap
 ## (the user, 2026-10-11: "start pushing them in sequence on linked ones
@@ -123,10 +126,14 @@ const SLIDE_CAP := 0.3
 ## says when a big pick may stand still.
 const PICK_STEP := 0.0
 const PICK_CAP := 0.0
-const FLY_TIME := 0.1
+## A flight eases out and in on the smootherstep (no jolt at either end),
+## rises on a parabola over the distance covered, leans into its way by up
+## to FLY_TILT and back upright to land, its shadow shrinking as it climbs.
+const FLY_TIME := 0.28
 ## A button of the tin sliding along to the next place (State.SLIDE).
-const SLIDE_TIME := 0.18
-const FLY_ARC := 0.55
+const SLIDE_TIME := 0.26
+const FLY_ARC := 0.6
+const FLY_TILT := 0.2
 const FLY_GROW := 0.18
 ## A flight to a patch ends this much of a square above its socket, still
 ## at HELD_SCALE, and the button settles in from there: the drop's back
@@ -977,11 +984,12 @@ func _draw_over() -> void:
 		keep.append(f)
 		busy = true
 		var t := clampf(e / float(f.time), 0.0, 1.0)
-		var s := t * t * (3.0 - 2.0 * t)
-		var arc := sin(PI * t)
+		var s := t * t * t * (t * (t * 6.0 - 15.0) + 10.0)
+		var arc := 4.0 * s * (1.0 - s)
 		# an end on the cloth is where the zoom has it this frame
 		var from: Vector2 = pic * (f.from as Vector2) if bool(f.fc) else f.from
 		var to: Vector2 = pic * (f.to as Vector2) if bool(f.tc) else f.to
+		var tilt := arc * FLY_TILT * clampf((to.x - from.x) / (_cell * 3.0), -1.0, 1.0)
 		var k_from := float(f.k0) * (zk if bool(f.fc) else 1.0)
 		var k_to := float(f.k1) * (zk if bool(f.tc) else 1.0)
 		var at := from.lerp(to, s)
@@ -990,8 +998,9 @@ func _draw_over() -> void:
 		# a flight to a patch ends a hair above the socket, to settle in
 		if bool(f.tc):
 			lift += SETTLE_DROP * _cell * zk * s
-		top.append(u.shade, Transform2D(0.0, Vector2(grow, grow), 0.0, at + Vector2(0.0, lift * 0.2)))
-		top.append(u.loose[int(f.c)], Transform2D(0.0, Vector2(grow, grow), 0.0, at - Vector2(0.0, lift)))
+		var low := grow * (1.0 - arc * 0.3)
+		top.append(u.shade, Transform2D(0.0, Vector2(low, low), 0.0, at + Vector2(0.0, lift * 0.2)))
+		top.append(u.loose[int(f.c)], Transform2D(tilt, Vector2(grow, grow), 0.0, at - Vector2(0.0, lift)))
 	_flights = keep
 	_top = top.mesh()
 	_shown_over = [_top]
