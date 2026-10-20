@@ -48,55 +48,59 @@ const PiecePill = preload("res://ui/hud/piece_pill.gd")
 ## The sheet's height (of the field's), the body's box, a node's height and
 ## the widths of a Pick or Release and of a Move, the air between two nodes,
 ## a port's hit zone, a part's disc, the tray's band, the slide in and the
-## pixels a press on an output dot moves before it pulls a wire.
+## pixels a press on an output dot moves before it pulls a wire. The spec
+## gives its sizes in an 810-wide space; the canvas is 1080 wide, so they are
+## K times the spec's here (the controller, 2026-10-20), and every size below
+## is in the canvas's pixels.
+const K := 4.0 / 3.0
 const HEIGHT := 0.58
-const BODY := 112.0
-const NODE_H := 96.0
-const NODE_W := 96.0
-const MOVE_W := 128.0
-const GAP := 40.0
-const PORT_HIT := 80.0
-const PART := 84.0
-const TRAY_H := 110.0
+const BODY := 150.0
+const NODE_H := 128.0
+const NODE_W := 128.0
+const MOVE_W := 170.0
+const GAP := 80.0
+const PORT_HIT := 107.0
+const PART := 112.0
+const TRAY_H := 147.0
 const SLIDE := 0.26
 const DRAG := 6.0
 
 ## The handle's band at the top (a swipe down from it closes the sheet, once
 ## it has gone CLOSE_PULL), and a press that moves less than TAP is a tap
 ## (the screen's).
-const HANDLE_H := 64.0
-const CLOSE_PULL := 110.0
+const HANDLE_H := 80.0
+const CLOSE_PULL := 146.0
 const TAP := 24.0
 ## The graph in the pane: the loop-back's lane LANE under the content's top,
 ## the chain's middle DROP under the lane, the body LEFT in from the left; a
 ## wire back turns up RISE past its output dot and comes down LOOP_IN before
 ## the box it goes to; corners of CORNER. After a node whose wire does not
 ## go to the next box the air is WIDE, room for a loose `+` or a wire's rise.
-const LANE := 60.0
-const DROP := 140.0
-const LEFT := 76.0
-const RISE := 22.0
-const LOOP_IN := 38.0
-const CORNER := 16.0
-const WIDE := 92.0
+const LANE := 80.0
+const DROP := 187.0
+const LEFT := 100.0
+const RISE := 36.0
+const LOOP_IN := 50.0
+const CORNER := 21.0
+const WIDE := 123.0
 ## The parts: the dashed bus BUS under the body, the parts BUS under it, a
 ## part every PART_STEP.
-const BUS := 46.0
-const PART_STEP := 136.0
+const BUS := 61.0
+const PART_STEP := 181.0
 ## The `+` past a loose output, the round one on a wire, and how near a
 ## press must come to either; the output dot, the input bar, the grid's
 ## pitch and a box's corner.
-const PLUS := 40.0
-const PLUS_MID := 28.0
-const PLUS_HIT := 64.0
-const DOT_R := 11.0
-const BAR := Vector2(10.0, 34.0)
-const GRID := 32.0
-const ROUND := 18.0
+const PLUS := 53.0
+const PLUS_MID := 37.0
+const PLUS_HIT := 85.0
+const DOT_R := 15.0
+const BAR := Vector2(13.0, 45.0)
+const GRID := 40.0
+const ROUND := 24.0
 ## Lettering, and the tray's chips.
-const FS := 24
-const FS_SMALL := 18
-const CHIP_W := 240.0
+const FS := 32
+const FS_SMALL := 24
+const CHIP_W := 300.0
 ## The running node's glow breathes once a GLOW_S seconds.
 const GLOW_S := 1.2
 
@@ -317,7 +321,7 @@ func _layout() -> Dictionary:
 	if b.is_empty():
 		return lay
 	var pane := _pane()
-	var tall := LANE + DROP + BODY * 0.5 + BUS * 2.0 + PART + 64.0
+	var tall := LANE + DROP + BODY * 0.5 + BUS * 2.0 + PART + 85.0
 	var top := pane.position.y + maxf(0.0, (pane.size.y - tall) * 0.12)
 	var lane := top + LANE
 	var cy := lane + DROP
@@ -349,7 +353,7 @@ func _layout() -> Dictionary:
 		var c := Vector2.ZERO
 		var disc := true
 		if out == "" or (out != Sim.BODY and not rects.has(out)):
-			c = Vector2(x1 + 16.0 + PLUS * 0.5, cy)
+			c = Vector2(x1 + 21.0 + PLUS * 0.5, cy)
 			disc = false
 		elif out == Sim.BODY or (rects[out] as Rect2).position.x <= x1:
 			c = Vector2(x1 + RISE, (lane + cy) * 0.5)
@@ -376,8 +380,8 @@ func _layout() -> Dictionary:
 
 ## A wire forward past other boxes arches over them: its point at `t`.
 static func _arch_at(a: Vector2, z: Vector2, lane: float, t: float) -> Vector2:
-	var c0 := Vector2(a.x + 90.0, lane + 24.0)
-	var c1 := Vector2(z.x - 90.0, lane + 24.0)
+	var c0 := Vector2(a.x + 120.0, lane + 32.0)
+	var c1 := Vector2(z.x - 120.0, lane + 32.0)
 	var u := 1.0 - t
 	return a * (u * u * u) + c0 * (3.0 * u * u * t) + c1 * (3.0 * u * t * t) + z * (t * t * t)
 
@@ -464,10 +468,10 @@ func tray_locked(kind: String) -> bool:
 
 func _chip_at(k: int, n: int) -> Rect2:
 	var band := _band_rect()
-	var w := minf(CHIP_W, (size.x - 48.0 - (n - 1) * 12.0) / maxf(1.0, n))
-	var whole := n * w + (n - 1) * 12.0
+	var w := minf(CHIP_W, (size.x - 48.0 - (n - 1) * 16.0) / maxf(1.0, n))
+	var whole := n * w + (n - 1) * 16.0
 	var x0 := (size.x - whole) * 0.5
-	return Rect2(x0 + k * (w + 12.0), band.position.y + 34.0, w, TRAY_H - 44.0)
+	return Rect2(x0 + k * (w + 16.0), band.position.y + 45.0, w, TRAY_H - 59.0)
 
 # --- the pill ---
 
@@ -494,7 +498,7 @@ func _pill_layout() -> Dictionary:
 		return {}
 	var r := _sel_rect()
 	# it stands under the words under the box, not over them
-	var words := 0.0 if _sel == Sim.BODY else (56.0 if _sel.begins_with("p") else 36.0)
+	var words := 0.0 if _sel == Sim.BODY else (75.0 if _sel.begins_with("p") else 48.0)
 	return PiecePill.layout(names, Vector2(r.get_center().x, r.position.y), Vector2(r.get_center().x, r.end.y + words), _pane())
 
 ## Where pill button `button` is, in the sheet's pixels; Rect2() with no pill
@@ -589,8 +593,9 @@ func _gui_input(event: InputEvent) -> void:
 	accept_event()
 
 ## What is under `p`: {what, id}. The pill and the tray first (they lie over
-## the graph), then the handle, then the output dot or `+` nearest `p`
-## within their zones, then a box, a part, the pane.
+## the graph), then the handle, then a box (its own dot only right by the
+## dot), then the output dot or `+` nearest `p` within their zones outside
+## the boxes, then a box's reach, a part, the pane.
 func _hit(p: Vector2) -> Dictionary:
 	var pill := _pill_layout()
 	if not pill.is_empty():
@@ -610,6 +615,17 @@ func _hit(p: Vector2) -> Dictionary:
 		return {"what": "handle"}
 	var lay := _layout()
 	var off := _off()
+	# inside a box the box wins, but for its own dot within two of the dot's
+	# radii; with a dot armed, anywhere inside another box takes the wire
+	for id: String in lay.rects:
+		var r: Rect2 = lay.rects[id]
+		if not Rect2(r.position + off, r.size).has_point(p):
+			continue
+		if _armed != "" and id != _armed:
+			return {"what": "node", "id": id}
+		if p.distance_to(Vector2(r.end.x, r.get_center().y) + off) <= DOT_R * 2.0:
+			return {"what": "out", "id": id}
+		return {"what": "node", "id": id}
 	var best := {}
 	var best_d := INF
 	for id: String in lay.rects:
@@ -634,7 +650,7 @@ func _hit(p: Vector2) -> Dictionary:
 		return {"what": "node", "id": into}
 	for i in (lay.parts as Array).size():
 		var r: Rect2 = lay.parts[i]
-		if Rect2(r.position + off, r.size).grow(10.0).has_point(p):
+		if Rect2(r.position + off, r.size).grow(13.0).has_point(p):
 			return {"what": "part", "id": str(i)}
 	return {"what": "pane"}
 
@@ -644,7 +660,7 @@ func _box_at(lay: Dictionary, p: Vector2) -> String:
 	var off := _off()
 	for id: String in lay.rects:
 		var r: Rect2 = lay.rects[id]
-		if Rect2(r.position + off, r.size).grow(8.0).has_point(p):
+		if Rect2(r.position + off, r.size).grow(11.0).has_point(p):
 			return id
 	for id: String in lay.rects:
 		var r: Rect2 = lay.rects[id]
@@ -814,7 +830,7 @@ func _draw() -> void:
 	if String(b.stuck) == "" and lay.rects.has(String(b.pc)):
 		var r: Rect2 = lay.rects[String(b.pc)]
 		var a := 0.7 if Motion.reduce else 0.5 + 0.35 * sin(_clock * TAU / GLOW_S)
-		draw_mesh(_glow(r.size, 30.0 if b.pc == Sim.BODY else ROUND), null, Transform2D(0.0, r.position + off), Color(1.0, 1.0, 1.0, a))
+		draw_mesh(_glow(r.size, 40.0 if b.pc == Sim.BODY else ROUND), null, Transform2D(0.0, r.position + off), Color(1.0, 1.0, 1.0, a))
 	_letter(_labels, off)
 	if not _wire.is_empty() and lay.rects.has(String(_wire.from)):
 		var r: Rect2 = lay.rects[String(_wire.from)]
@@ -824,8 +840,8 @@ func _draw() -> void:
 		var mx := (a.x + z.x) * 0.5
 		var pts := Face.Builder.bezier3(a, Vector2(mx, a.y), Vector2(mx, z.y), z)
 		pts.append(z)
-		_dashed(wb, pts, 5.0, SEL, 12.0, 9.0)
-		wb.disc(z, 9.0, SEL)
+		_dashed(wb, pts, 6.0, SEL, 16.0, 12.0)
+		wb.disc(z, 12.0, SEL)
 		_wire_mesh = wb.mesh()
 		draw_mesh(_wire_mesh, null)
 	if not _tray.is_empty():
@@ -871,7 +887,7 @@ func _bake_paper() -> ArrayMesh:
 	var h := size.y + 40.0
 	pb.polygon(Face.Builder.round_rect(Vector2(0.0, -2.0), Vector2(w, h), 36.0), Color(INK, 0.12))
 	pb.polygon(Face.Builder.round_rect(Vector2(0.0, 0.0), Vector2(w, h), 36.0), PAPER)
-	pb.polygon(Face.Builder.round_rect(Vector2(w * 0.5 - 46.0, 18.0), Vector2(92.0, 10.0), 5.0), Color(INK, 0.18))
+	pb.polygon(Face.Builder.round_rect(Vector2(w * 0.5 - 56.0, 24.0), Vector2(112.0, 12.0), 6.0), Color(INK, 0.18))
 	pb.stroke(PackedVector2Array([Vector2(28.0, HANDLE_H - 1.0), Vector2(w - 28.0, HANDLE_H - 1.0)]), 2.0, Color(LINE, 0.7))
 	return pb.mesh()
 
@@ -880,8 +896,8 @@ func _glow(box: Vector2, r: float) -> ArrayMesh:
 	var key := "%d|%d|%d" % [box.x, box.y, r]
 	if not _glows.has(key):
 		var gb := Face.Builder.new()
-		gb.stroke(Face.Builder.round_rect(Vector2(-7.0, -7.0), box + Vector2(14.0, 14.0), r + 7.0), 9.0, Color(LIVE, 0.55), true)
-		gb.stroke(Face.Builder.round_rect(Vector2(-2.0, -2.0), box + Vector2(4.0, 4.0), r + 2.0), 4.0, LIVE, true)
+		gb.stroke(Face.Builder.round_rect(Vector2(-9.0, -9.0), box + Vector2(18.0, 18.0), r + 9.0), 12.0, Color(LIVE, 0.55), true)
+		gb.stroke(Face.Builder.round_rect(Vector2(-3.0, -3.0), box + Vector2(6.0, 6.0), r + 3.0), 5.0, LIVE, true)
 		_glows[key] = gb.mesh()
 	return _glows[key]
 
@@ -911,8 +927,8 @@ func _bake(b: Dictionary, lay: Dictionary) -> ArrayMesh:
 			pts.append_array(Face.Builder.arc_points(Vector2(bcx + CORNER, bus - CORNER), CORNER, PI, PI * 0.5))
 			pts.append_array(Face.Builder.arc_points(Vector2(px - CORNER, bus + CORNER), CORNER, -PI * 0.5, 0.0))
 			pts.append(Vector2(px, r.position.y))
-		_dashed(gb, pts, 3.5, WIRE, 9.0, 8.0)
-	_labels.append([tr("FACTORY_PARTS"), Vector2(bcx + 14.0, foot + BUS * 0.62), FS_SMALL, MUTED, 1])
+		_dashed(gb, pts, 4.5, WIRE, 12.0, 10.0)
+	_labels.append([tr("FACTORY_PARTS"), Vector2(bcx + 19.0, foot + BUS * 0.62), FS_SMALL, MUTED, 1])
 	# the wires
 	for k in order.size():
 		var id: String = order[k]
@@ -932,17 +948,17 @@ func _bake(b: Dictionary, lay: Dictionary) -> ArrayMesh:
 			pts.append_array(Face.Builder.arc_points(Vector2(up - CORNER, lane + CORNER), CORNER, 0.0, -PI * 0.5))
 			pts.append_array(Face.Builder.arc_points(Vector2(down + CORNER, lane + CORNER), CORNER, -PI * 0.5, -PI))
 			pts.append_array(Face.Builder.arc_points(Vector2(down + CORNER, cy - CORNER), CORNER, PI, PI * 0.5))
-			pts.append(z - Vector2(6.0, 0.0))
+			pts.append(z - Vector2(8.0, 0.0))
 			if out == Sim.BODY:
-				_labels.append([tr("FACTORY_AGAIN"), Vector2((up + down) * 0.5, lane - 12.0), FS_SMALL, MUTED])
+				_labels.append([tr("FACTORY_AGAIN"), Vector2((up + down) * 0.5, lane - 16.0), FS_SMALL, MUTED])
 		elif k + 1 < order.size() and order[k + 1] == out:
-			pts = PackedVector2Array([a, z - Vector2(6.0, 0.0)])
+			pts = PackedVector2Array([a, z - Vector2(8.0, 0.0)])
 		else:
 			for s in 25:
 				pts.append(_arch_at(a, z, lane, s / 24.0))
-		gb.stroke(pts, 4.0, WIRE)
+		gb.stroke(pts, 5.0, WIRE)
 		var tip: Vector2 = pts[pts.size() - 1]
-		gb.polygon(PackedVector2Array([tip + Vector2(-10.0, -8.0), tip + Vector2(4.0, 0.0), tip + Vector2(-10.0, 8.0)]), WIRE)
+		gb.polygon(PackedVector2Array([tip + Vector2(-13.0, -11.0), tip + Vector2(5.0, 0.0), tip + Vector2(-13.0, 11.0)]), WIRE)
 	# the boxes
 	_body(gb, b, rects[Sim.BODY])
 	for id: String in ids:
@@ -950,7 +966,7 @@ func _bake(b: Dictionary, lay: Dictionary) -> ArrayMesh:
 	# the ports
 	for id: String in order:
 		var r: Rect2 = rects[id]
-		gb.polygon(Face.Builder.round_rect(Vector2(r.position.x - BAR.x * 0.5, cy - BAR.y * 0.5), BAR, 3.0), WIRE)
+		gb.polygon(Face.Builder.round_rect(Vector2(r.position.x - BAR.x * 0.5, cy - BAR.y * 0.5), BAR, 4.0), WIRE)
 		var out := String(b.next.get(id, {}).get("out", ""))
 		var at := Vector2(r.end.x, cy)
 		var c := WIRE
@@ -959,7 +975,7 @@ func _bake(b: Dictionary, lay: Dictionary) -> ArrayMesh:
 		elif out == "" or not rects.has(out):
 			c = RED
 		if c != WIRE:
-			gb.disc(at, DOT_R + 7.0, Color(c, 0.3))
+			gb.disc(at, DOT_R + 9.0, Color(c, 0.3))
 		gb.disc(at, DOT_R, c)
 	# the `+`s
 	for id: String in lay.plus:
@@ -974,7 +990,7 @@ func _bake(b: Dictionary, lay: Dictionary) -> ArrayMesh:
 ## Dots a GRID apart over `area`, as plain quads (no feather: a feathered
 ## dot is nine vertices, and there are hundreds).
 func _grid(gb: Face.Builder, area: Rect2) -> void:
-	var half := 2.0
+	var half := 2.5
 	var x0 := area.position.x + GRID * 0.5
 	var y0 := area.position.y + GRID * 0.5
 	var cols := int(area.size.x / GRID)
@@ -1011,33 +1027,33 @@ func _grid(gb: Face.Builder, area: Rect2) -> void:
 ## A box's paper: a soft shadow, the white, the rim (blue picked, dashed and
 ## grey when its part is not fitted).
 func _box(gb: Face.Builder, r: Rect2, rad: float, picked: bool, dead: bool) -> void:
-	gb.polygon(Face.Builder.round_rect(r.position + Vector2(0.0, 5.0), r.size, rad), Color(INK, 0.1))
+	gb.polygon(Face.Builder.round_rect(r.position + Vector2(0.0, 6.0), r.size, rad), Color(INK, 0.1))
 	var shape := Face.Builder.round_rect(r.position, r.size, rad)
 	if picked:
-		gb.stroke(Face.Builder.round_rect(r.position - Vector2(6.0, 6.0), r.size + Vector2(12.0, 12.0), rad + 6.0), 8.0, Color(SEL, 0.25), true)
+		gb.stroke(Face.Builder.round_rect(r.position - Vector2(8.0, 8.0), r.size + Vector2(16.0, 16.0), rad + 8.0), 10.0, Color(SEL, 0.25), true)
 	gb.polygon(shape, DEAD if dead else Color.WHITE)
 	if dead:
 		var ring := shape.duplicate()
 		ring.append(shape[0])
-		_dashed(gb, ring, 3.0, MUTED, 10.0, 8.0)
+		_dashed(gb, ring, 4.0, MUTED, 13.0, 10.0)
 	else:
-		gb.stroke(shape, 4.0 if picked else 3.0, SEL if picked else LINE, true)
+		gb.stroke(shape, 5.0 if picked else 4.0, SEL if picked else LINE, true)
 
 func _body(gb: Face.Builder, b: Dictionary, r: Rect2) -> void:
-	_box(gb, r, 30.0, _sel == Sim.BODY, false)
+	_box(gb, r, 40.0, _sel == Sim.BODY, false)
 	var c := r.get_center()
 	var tint: Color = Life.TINTS[robot % Life.TINTS.size()]
-	var xf := Transform2D(0.0, Vector2(0.86, 0.86), 0.0, c + Vector2(0.0, 6.0))
+	var xf := Transform2D(0.0, Vector2(0.86, 0.86) * K, 0.0, c + Vector2(0.0, 8.0))
 	gb.append(Art.robot(), xf, tint)
 	gb.append(Art.face(String(b.stuck)), xf)
 	# the bolt: the bay is where a loop charges
-	var bolt := r.position + Vector2(4.0, 4.0)
-	gb.disc(bolt + Vector2(0.0, 2.0), 19.0, Color(INK, 0.12))
-	gb.disc(bolt, 19.0, LIVE)
-	Art._bolt(gb, bolt, 0.95, Color.WHITE)
+	var bolt := r.position + Vector2(5.0, 5.0)
+	gb.disc(bolt + Vector2(0.0, 3.0), 25.0, Color(INK, 0.12))
+	gb.disc(bolt, 25.0, LIVE)
+	Art._bolt(gb, bolt, 0.95 * K, Color.WHITE)
 	# the parts' diamond port
-	_diamond(gb, Vector2(c.x, r.end.y), 9.0, SEL)
-	_labels.append([_robot_name(b), Vector2(c.x, r.position.y - 14.0), FS, INK])
+	_diamond(gb, Vector2(c.x, r.end.y), 12.0, SEL)
+	_labels.append([_robot_name(b), Vector2(c.x, r.position.y - 19.0), FS, INK])
 
 func _node(gb: Face.Builder, b: Dictionary, id: String, r: Rect2) -> void:
 	var node: Dictionary = b.nodes[id]
@@ -1048,19 +1064,19 @@ func _node(gb: Face.Builder, b: Dictionary, id: String, r: Rect2) -> void:
 	var c := r.get_center()
 	if kind == "move":
 		var d := Vector2(Sim.DIRS[int(node.facing)])
-		var ac := c + Vector2(-22.0, 0.0)
-		var tail := ac - d * 22.0
-		var head := ac + d * 22.0
+		var ac := c + Vector2(-29.0, 0.0)
+		var tail := ac - d * 29.0
+		var head := ac + d * 29.0
 		var side := Vector2(-d.y, d.x)
-		gb.stroke(PackedVector2Array([tail, head - d * 4.0]), 8.0, ink)
-		gb.stroke(PackedVector2Array([head - d * 15.0 + side * 15.0, head, head - d * 15.0 - side * 15.0]), 8.0, ink)
-		_digit(gb, int(node.n), Rect2(c + Vector2(20.0, -22.0), Vector2(26.0, 44.0)), 7.0, ink)
+		gb.stroke(PackedVector2Array([tail, head - d * 5.0]), 10.0, ink)
+		gb.stroke(PackedVector2Array([head - d * 20.0 + side * 20.0, head, head - d * 20.0 - side * 20.0]), 10.0, ink)
+		_digit(gb, int(node.n), Rect2(c + Vector2(27.0, -29.0), Vector2(35.0, 59.0)), 9.0, ink)
 	else:
-		_hand(gb, kind == "pick", c, 2.5, ink)
-	_labels.append([tr(String(NODE_KEY.get(kind, kind))), Vector2(c.x, r.end.y + 30.0), FS, ink])
+		_hand(gb, kind == "pick", c, 2.5 * K, ink)
+	_labels.append([tr(String(NODE_KEY.get(kind, kind))), Vector2(c.x, r.end.y + 40.0), FS, ink])
 	if dead:
 		var part := String(Sim.NODES[kind].part)
-		_labels.append([tr("FACTORY_NEEDS") % tr(String(PART_KEY.get(part, part))), Vector2(c.x, r.end.y + 54.0), FS_SMALL, RED])
+		_labels.append([tr("FACTORY_NEEDS") % tr(String(PART_KEY.get(part, part))), Vector2(c.x, r.end.y + 72.0), FS_SMALL, RED])
 
 ## The prototype's claw over a box: closing (Pick) or open (Release), from a
 ## 22-unit drawing scaled `s` about `c`.
@@ -1109,27 +1125,30 @@ static func _plus(gb: Face.Builder, r: Rect2, disc: bool, hot: bool) -> void:
 	var ink := SEL if hot else WIRE
 	var arm := r.size.x * 0.24
 	if disc:
-		gb.disc(c, r.size.x * 0.5 + 2.0, ink)
+		gb.disc(c, r.size.x * 0.5 + 3.0, ink)
 		gb.disc(c, r.size.x * 0.5 - 1.0, PAPER)
 	else:
-		var shape := Face.Builder.round_rect(r.position, r.size, 9.0)
+		var shape := Face.Builder.round_rect(r.position, r.size, 12.0)
 		gb.polygon(shape, PAPER)
-		gb.stroke(shape, 3.0, ink, true)
-	gb.stroke(PackedVector2Array([c - Vector2(arm, 0.0), c + Vector2(arm, 0.0)]), 3.5, ink)
-	gb.stroke(PackedVector2Array([c - Vector2(0.0, arm), c + Vector2(0.0, arm)]), 3.5, ink)
+		gb.stroke(shape, 4.0, ink, true)
+	gb.stroke(PackedVector2Array([c - Vector2(arm, 0.0), c + Vector2(arm, 0.0)]), 4.5, ink)
+	gb.stroke(PackedVector2Array([c - Vector2(0.0, arm), c + Vector2(0.0, arm)]), 4.5, ink)
 
 ## Part `part` in its disc, with its name and what it gives under.
 func _part(gb: Face.Builder, part: String, r: Rect2, picked: bool) -> void:
 	var c := r.get_center()
 	_box(gb, r, PART * 0.5, picked, false)
-	_diamond(gb, Vector2(c.x, r.position.y), 8.0, SEL)
-	_part_glyph(gb, part, c, INK)
-	_labels.append([tr(String(PART_KEY.get(part, part))), Vector2(c.x, r.end.y + 28.0), FS_SMALL, INK])
+	_diamond(gb, Vector2(c.x, r.position.y), 11.0, SEL)
+	# drawn at the spec's size and grown K, as one piece
+	var pg := Face.Builder.new()
+	_part_glyph(pg, part, Vector2.ZERO, INK)
+	gb.append(pg.mesh(), Transform2D(0.0, Vector2(K, K), 0.0, c))
+	_labels.append([tr(String(PART_KEY.get(part, part))), Vector2(c.x, r.end.y + 37.0), FS_SMALL, INK])
 	var gives: Array = []
 	for kind: String in Sim.PARTS.get(part, {}).get("gives", []):
 		gives.append(tr(String(NODE_KEY.get(kind, kind))))
 	if not gives.is_empty():
-		_labels.append([", ".join(gives), Vector2(c.x, r.end.y + 50.0), FS_SMALL, MUTED])
+		_labels.append([", ".join(gives), Vector2(c.x, r.end.y + 67.0), FS_SMALL, MUTED])
 
 ## A part's mark, about 48 across: treads, a claw, a cell, the fast treads'
 ## lines, a plug.
@@ -1209,29 +1228,29 @@ func _draw_tray() -> void:
 		var tb := Face.Builder.new()
 		_tray_words = []
 		var band := _band_rect()
-		_tray_words.append([tr("FACTORY_ADD_NODE" if _tray.has("after") else "FACTORY_FIT_PART"), Vector2(28.0, band.position.y + 25.0), FS_SMALL, MUTED, 1])
+		_tray_words.append([tr("FACTORY_ADD_NODE" if _tray.has("after") else "FACTORY_FIT_PART"), Vector2(37.0, band.position.y + 33.0), FS_SMALL, MUTED, 1])
 		for k in rows.size():
 			var row: Array = rows[k]
 			var r := _chip_at(k, rows.size())
 			var locked := bool(row[1])
-			var shape := Face.Builder.round_rect(r.position, r.size, 16.0)
-			tb.polygon(Face.Builder.round_rect(r.position + Vector2(0.0, 4.0), r.size, 16.0), Color(INK, 0.1 if not locked else 0.04))
+			var shape := Face.Builder.round_rect(r.position, r.size, 21.0)
+			tb.polygon(Face.Builder.round_rect(r.position + Vector2(0.0, 5.0), r.size, 21.0), Color(INK, 0.1 if not locked else 0.04))
 			tb.polygon(shape, Color("f1ebdf") if locked else Color.WHITE)
-			tb.stroke(shape, 3.0, LINE, true)
+			tb.stroke(shape, 4.0, LINE, true)
 			var what := String(row[0])
 			var title := tr(String(NODE_KEY.get(what, PART_KEY.get(what, what))))
 			var sub := String(row[2])
 			var col := Color(INK, 0.45) if locked else INK
 			var c := r.get_center()
-			var y := c.y + (-4.0 if sub != "" else 8.0)
+			var y := c.y + (-5.0 if sub != "" else 11.0)
 			_tray_words.append([title, Vector2(c.x, y), FS, col])
 			if sub.begins_with("$"):
 				var price := sub.substr(1)
 				var tw := _line(price, FS_SMALL).get_line_width()
-				Art._coin_into(tb, Vector2(c.x - tw * 0.5 - 6.0, c.y + 17.0), 9.0)
-				_tray_words.append([price, Vector2(c.x + 10.0, c.y + 23.0), FS_SMALL, Color(MUTED, 0.6 if locked else 1.0)])
+				Art._coin_into(tb, Vector2(c.x - tw * 0.5 - 8.0, c.y + 23.0), 12.0)
+				_tray_words.append([price, Vector2(c.x + 13.0, c.y + 31.0), FS_SMALL, Color(MUTED, 0.6 if locked else 1.0)])
 			elif sub != "":
-				_tray_words.append([sub, Vector2(c.x, c.y + 23.0), FS_SMALL, RED if _tray.has("after") and locked else Color(MUTED, 0.8)])
+				_tray_words.append([sub, Vector2(c.x, c.y + 31.0), FS_SMALL, RED if _tray.has("after") and locked else Color(MUTED, 0.8)])
 		_tray_mesh = tb.mesh()
 	draw_mesh(_band_mesh(), null)
 	draw_mesh(_tray_mesh, null)
@@ -1244,7 +1263,7 @@ func _draw_info(b: Dictionary) -> void:
 	var band := _band_rect()
 	var cost: int = Bots.cost(b)
 	var line := tr("FACTORY_BATTERY_LINE") % [int(b.charge), Bots.cell(b), cost, cost * Sim.TICK / maxf(1.0, Bots.rate(b))]
-	var rows: Array = [[line, Vector2(size.x * 0.5, band.position.y + 50.0), FS, INK]]
+	var rows: Array = [[line, Vector2(size.x * 0.5, band.position.y + 67.0), FS, INK]]
 	if String(b.stuck) == "flat":
-		rows.append([tr("FACTORY_FLAT"), Vector2(size.x * 0.5, band.position.y + 82.0), FS_SMALL, RED])
+		rows.append([tr("FACTORY_FLAT"), Vector2(size.x * 0.5, band.position.y + 109.0), FS_SMALL, RED])
 	_letter(rows, Vector2.ZERO)

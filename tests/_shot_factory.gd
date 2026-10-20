@@ -414,14 +414,22 @@ func _sheet_part() -> void:
 	_ok("under budget", draws > 0 and draws < BUDGET, str(draws))
 	await _sheet_drag(sheet.out_port("c"), sheet.node_rect("d").get_center())
 	_ok("wire dragged", robots[2].next["c"].out == "d" and Bots.walk(robots[2]).closed, str(robots[2].next["c"]))
-	# d already goes to e: the tap-tap wires it past e to f, and back
+	# d already goes to e: the tap-tap wires it past e to f, and back; the
+	# second tap lands on the target's right side, by its own dot
 	await _sheet_tap(sheet.out_port("d"))
 	_ok("a tap arms the dot", sheet._armed == "d")
 	await _sheet_tap(sheet.node_rect("f").get_center())
 	_ok("tap-tap wires", robots[2].next["d"].out == "f" and sheet._armed == "", str(robots[2].next["d"]))
 	await _sheet_tap(sheet.out_port("d"))
-	await _sheet_tap(sheet.node_rect("e").get_center())
-	_ok("and back", robots[2].next["d"].out == "e")
+	var right: Rect2 = sheet.node_rect("e")
+	await _sheet_tap(Vector2(right.end.x - 14.0, right.get_center().y))
+	_ok("tap-tap onto the target's right side wires", robots[2].next["d"].out == "e" and sheet._armed == "", str(robots[2].next["d"]))
+	# unarmed, a tap on a box's right quarter picks the box (the wire moved
+	# the boxes: read it again)
+	right = sheet.node_rect("e")
+	await _sheet_tap(Vector2(right.end.x - 38.0, right.get_center().y))
+	_ok("a box's right side picks it", sheet._sel == "e" and sheet._armed == "", "sel %s armed %s" % [sheet._sel, sheet._armed])
+	await _sheet_tap(Vector2(sheet.size.x * 0.5, sheet.size.y - 260.0))
 	draws = await _shot("sheet_wired")
 	_ok("under budget wired", draws > 0 and draws < BUDGET, str(draws))
 	var own: int = await _sheet_calls()

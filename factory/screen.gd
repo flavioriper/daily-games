@@ -534,7 +534,8 @@ func _layout_field() -> void:
 	_water = Art.water(s, 0.0)
 	_light = Art.light(s)
 	_near = s.x / (Sim.COLS * Art.TILE)
-	sheet.fit_to(s, SafeArea.insets(self).y)
+	if sheet != null:
+		sheet.fit_to(s, SafeArea.insets(self).y)
 	if not _laid_out:
 		_laid_out = true
 		_zoom = _near
