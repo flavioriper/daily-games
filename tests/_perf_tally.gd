@@ -58,7 +58,7 @@ func _process(_d: float) -> bool:
 	var full := _full
 	b.size = Vector2(810, 1440)
 	b.set_view(Rect2(0, 370, 810, 760))
-	for k in [74.0, 22.0]:
+	for k in [74.0, 22.0, 8.0]:
 		b.k = k
 		b.tick(0.016)
 		var t0 := Time.get_ticks_usec()

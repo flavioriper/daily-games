@@ -1399,9 +1399,9 @@ func _draw_words() -> void:
 			if int(c.n) > 0:
 				_write(Sim.short(int(c.v)), at + Vector2(0, -k * 0.02), int(printed * 0.7), Art.INK)
 			_write("×%d" % int(c.n), at + Vector2(0, k * 0.21), int(printed * 0.45), Color(Art.CREAM, 0.95))
-	# the tokens, a run of glyphs a size
+	# the tokens, a run of glyphs a size (none far out: no lane is walked)
 	var runs := {}
-	for s: int in _lanes_seen():
+	for s: int in (_lanes_seen() if k * 0.36 >= FS_MIN else PackedInt32Array()):
 		if sim.occ[s] == 0 or sim.op[s % Sim.N] != 0:
 			continue
 		var txt := Sim.short(int(sim.val[s]))

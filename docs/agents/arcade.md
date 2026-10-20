@@ -4050,7 +4050,11 @@ numbers near center, bigger and bigger numbers near edges".
   value (a probe check), on seed 5 the 1s lie at rings 8 to 9, the 9s at
   43 to 52, the 60s at 157 to 175. `DEPOSITS` and `FAR` are gone.
 - **Far out**: `k_least` 8 (a hundred squares across, the sheet four
-  screens wide); tokens are not drawn under k 12.
+  screens wide); tokens are not drawn under k 12, and under k 22 (their
+  numerals too small) the words pass walks no lane at all. The perf
+  harness times k 8 as well: builders 0.18 ms a frame on 39,102 belts; the
+  view's chunks from nothing there 34 ms (a load or a `relay()` at the
+  floor, once).
 - **Shifted with the box**: the tutorial's lessons
   (`ui/hud/tally_tutorial_diagram.gd`, `O` = HUB_AT - (57, 57) on every
   square and the finger's scripts), the probe's box-bound routes (the rest
