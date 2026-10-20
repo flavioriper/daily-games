@@ -63,9 +63,9 @@ func _process(_d: float) -> bool:
 		b.tick(0.016)
 		var t0 := Time.get_ticks_usec()
 		for n in 20:
-			b._build_chevrons()
-			b._build_tokens(false)
-			b._build_pieces()
+			b._fill_chevrons()
+			b._fill_tokens(false)
+			b._fill_pieces()
 			b._build_live()
 		var t1 := Time.get_ticks_usec()
 		print("k %d: %d belts, %d tokens: builders %.2f ms a frame" % [k, belts, full, (t1 - t0) / 20000.0])

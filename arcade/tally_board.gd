@@ -165,6 +165,14 @@ var _dirty_all := true
 var _lines := {}         # [text, fs] -> TextLine
 var _live := {}
 var _flat_cache := {}
+## The chevrons, the tokens and the pieces are cached drawings set down
+## many times a frame: each is a MultiMesh a layer (`_batches[layer][mesh]`,
+## kept for good), whose mesh stays on the GPU while a frame uploads only
+## its instances' transforms and tints, as ui/motes.gd does. Building them
+## into one fresh mesh a frame sent hundreds of thousands of vertices
+## (an adder is 11,352 triangle vertices, a dig 5,805) through GDScript
+## and up to the GPU every frame: the phone's lag (the user, 2026-10-20).
+var _batches := {}
 var _dirty := true
 var _printed_at := -1
 var _clock := 0.0
@@ -230,6 +238,74 @@ var _box_bump := -10.0
 var _box_glow := -10.0
 var _shown_got := 0
 var _shown_target := 0
+
+## One cached drawing's instances this frame: a MultiMesh whose buffer is
+## written in place (twelve floats an instance: the 2D transform and a
+## tint) and grown by doubling, never made again.
+class Batch extends RefCounted:
+	var mm: MultiMesh
+	var buf := PackedFloat32Array()
+	var n := 0
+
+	func _init(m: ArrayMesh) -> void:
+		mm = MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_2D
+		mm.use_colors = true
+		mm.mesh = m
+		mm.instance_count = 64
+		buf.resize(64 * 12)
+
+	func put(xf: Transform2D, col := Color.WHITE) -> void:
+		if n >= mm.instance_count:
+			mm.instance_count = n * 2
+			buf.resize(n * 24)
+		var i := n * 12
+		buf[i] = xf.x.x
+		buf[i + 1] = xf.y.x
+		buf[i + 3] = xf.origin.x
+		buf[i + 4] = xf.x.y
+		buf[i + 5] = xf.y.y
+		buf[i + 7] = xf.origin.y
+		buf[i + 8] = col.r
+		buf[i + 9] = col.g
+		buf[i + 10] = col.b
+		buf[i + 11] = col.a
+		n += 1
+
+	func draw(l: Node2D) -> void:
+		if n == 0:
+			return
+		mm.visible_instance_count = n
+		mm.buffer = buf
+		l.draw_multimesh(mm, null)
+
+## Layer `nm`'s batch of `m`, emptied for this frame on its first use.
+func _batch(nm: String, m: ArrayMesh) -> Batch:
+	var d: Dictionary = _batches.get(nm, {})
+	if d.is_empty():
+		_batches[nm] = d
+	var b: Batch = d.get(m)
+	if b == null:
+		b = Batch.new(m)
+		d[m] = b
+	return b
+
+## Every batch of layer `nm` emptied, before a frame's fill.
+func _clear_batches(nm: String) -> void:
+	for b: Batch in _batches.get(nm, {}).values():
+		b.n = 0
+
+## Layer `nm`'s batches drawn, in the order they were first used.
+func _draw_batches(nm: String, l: Node2D) -> void:
+	for b: Batch in _batches.get(nm, {}).values():
+		b.draw(l)
+
+## How many instances layer `nm` holds this frame (the harnesses read it).
+func batched(nm: String) -> int:
+	var n := 0
+	for b: Batch in _batches.get(nm, {}).values():
+		n += b.n
+	return n
 
 ## The desk under everything, past the paper's own rim of it.
 func _draw() -> void:
@@ -607,18 +683,24 @@ func _draw_layer(nm: String, l: Node2D) -> void:
 				if m != null:
 					l.draw_mesh(m, null)
 		"chev":
-			_draw_mesh_live(l, nm, _build_chevrons())
+			_fill_chevrons()
+			_draw_batches(nm, l)
 		"under":
-			_draw_mesh_live(l, nm, _build_tokens(true))
+			_fill_tokens(true)
+			_draw_batches(nm, l)
 		"decks":
 			for c: int in _chunks_seen():
 				var m: ArrayMesh = _decks_c.get(c)
 				if m != null:
 					l.draw_mesh(m, null)
 		"tokens":
-			_draw_mesh_live(l, nm, _build_tokens(false))
+			_fill_tokens(false)
+			_draw_batches(nm, l)
 		"pieces":
-			_draw_mesh_live(l, nm, _build_pieces())
+			# the box first: the pieces round it stand over its shadow
+			l.draw_mesh(Art.box(), null, _box_xf())
+			_fill_pieces()
+			_draw_batches(nm, l)
 		"live":
 			var m := _build_live()
 			_draw_mesh_live(l, "live_flat", _live_flat)
@@ -630,12 +712,14 @@ func _draw_mesh_live(l: Node2D, nm: String, m: ArrayMesh) -> void:
 	if m != null:
 		l.draw_mesh(m, null)
 
-func _build_chevrons() -> ArrayMesh:
+## The chevrons on the belts in view, this frame's instances of the one
+## chevron drawing.
+func _fill_chevrons() -> void:
+	_clear_batches("chev")
 	# far out a chevron is a speck: the tokens show the way
 	if k < CHEV_FROM:
-		return null
-	var fb := Face.FlatBuilder.new(_flat_cache)
-	var chev := Art.chevron()
+		return
+	var fb := _batch("chev", Art.chevron())
 	for s: int in _lanes_seen():
 		if s >= Sim.N:
 			continue
@@ -652,20 +736,23 @@ func _build_chevrons() -> ArrayMesh:
 			if dead and p > 0.4:
 				continue
 			var pos := Art.path(at, a, f, p)
-			fb.append(chev, Transform2D(Art.path_tan(a, f, p).angle(), pos))
+			fb.put(Transform2D(Art.path_tan(a, f, p).angle(), pos))
 			# a fork's chevrons bend off into its branch past the middle
 			for d in 4:
 				if int(sim.fork[i]) & (1 << d) and d != f and p > 0.5:
-					fb.append(chev, Transform2D(Art.path_tan(a, d, p).angle(), Art.path(at, a, d, p)))
-	return fb.mesh()
+					fb.put(Transform2D(Art.path_tan(a, d, p).angle(), Art.path(at, a, d, p)))
 
-func _build_tokens(under: bool) -> ArrayMesh:
+## The tokens on the lanes in view (the crossings' second lanes when
+## `under`), instances of the plain and the ringed token at this zoom's
+## detail.
+func _fill_tokens(under: bool) -> void:
+	var nm := "under" if under else "tokens"
+	_clear_batches(nm)
 	if k < TOKENS_FROM:
-		return null
-	var fb := Face.FlatBuilder.new(_flat_cache)
+		return
 	var lod := 0 if k >= 100.0 else (1 if k >= 40.0 else 2)
-	var plain := Art.token(false, lod)
-	var ringed := Art.token(true, lod)
+	var plain := _batch(nm, Art.token(false, lod))
+	var ringed := _batch(nm, Art.token(true, lod))
 	var aim: int = sim.target()
 	for s: int in _lanes_seen():
 		if (s >= Sim.N) != under or sim.occ[s] == 0:
@@ -673,8 +760,7 @@ func _build_tokens(under: bool) -> ArrayMesh:
 		if sim.op[s % Sim.N] != 0:
 			# a machine covers the belts under it, tokens and all
 			continue
-		fb.append(ringed if int(sim.val[s]) == aim else plain, Transform2D(0.0, token_at(s)))
-	return fb.mesh()
+		(ringed if int(sim.val[s]) == aim else plain).put(Transform2D(0.0, token_at(s)))
 
 ## Where the token in slot `s` is, in mesh units.
 func token_at(s: int) -> Vector2:
@@ -719,10 +805,9 @@ func _grow(t: Vector2i) -> float:
 		return 1.0
 	return 1.0 + sin(u * PI) * 0.16 * (1.0 - u) - (1.0 - u) * (1.0 - u) * 0.6
 
-func _build_pieces() -> ArrayMesh:
-	var fb := Face.FlatBuilder.new(_flat_cache)
-	var r := _visible()
-	# the box first: the pieces round it stand over its shadow
+## Where the box is drawn: swollen about its middle for a beat as a number
+## comes in.
+func _box_xf() -> Transform2D:
 	var bx := Vector2(Sim.HUB_AT) * U
 	var bump := 1.0
 	if not Motion.reduce:
@@ -730,7 +815,14 @@ func _build_pieces() -> ArrayMesh:
 		if u >= 0.0 and u < 1.0:
 			bump = 1.0 + 0.035 * sin(u * PI)
 	var half := Sim.HUB * U * 0.5
-	fb.append(Art.box(), Transform2D(0.0, Vector2(bump, bump), 0.0, bx + Vector2(half, half) - Vector2(half, half) * bump))
+	return Transform2D(0.0, Vector2(bump, bump), 0.0, bx + Vector2(half, half) - Vector2(half, half) * bump)
+
+## The digs, crates and machines in view, each an instance of its cached
+## drawing under its own transform: set down, squashed, turned and thumped
+## by the transform, gone by the tint.
+func _fill_pieces() -> void:
+	_clear_batches("pieces")
+	var r := _visible()
 	# a machine is drawn from its root, seen when any of it may be
 	var wide := r.grow(2)
 	var roots: Array = []
@@ -769,7 +861,7 @@ func _build_pieces() -> ArrayMesh:
 			if _spin.has(t) and not Motion.reduce:
 				var u := clampf((_clock - float(_spin[t][0])) / SPIN, 0.0, 1.0)
 				rot -= (1.0 - (1.0 - pow(1.0 - u, 3.0))) * PI * 0.5
-		fb.append(m, Transform2D(rot, sc, 0.0, _about(kd, t, sim.face_at(t), at, rot)))
+		_batch("pieces", m).put(Transform2D(rot, sc, 0.0, _about(kd, t, sim.face_at(t), at, rot)))
 	for g: Array in _gone:
 		var u := (_clock - float(g[3])) / GONE
 		if Motion.reduce or u >= 1.0:
@@ -777,8 +869,7 @@ func _build_pieces() -> ArrayMesh:
 		var kd := int(g[0])
 		var m: ArrayMesh = Art.icon(kd) if kd != Sim.BELT and kd != Sim.PART else null
 		if m != null:
-			fb.append(m, Transform2D(0.0, Vector2.ONE * (1.0 - u), 0.0, Art.mid(g[2])), Color(1, 1, 1, 1.0 - u))
-	return fb.mesh()
+			_batch("pieces", m).put(Transform2D(0.0, Vector2.ONE * (1.0 - u), 0.0, Art.mid(g[2])), Color(1, 1, 1, 1.0 - u))
 
 func _build_live() -> ArrayMesh:
 	var b := Face.Builder.new()

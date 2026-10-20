@@ -4028,6 +4028,50 @@ asking; names are "Part n"; no tutorial page yet. Seen on `opengl3_angle`
 810x1440: bench 57, paper with a copy 66, the Parts card 134 draw calls.
 Probe 0 failed, `_shot_tally` headless 0 failed, suite 248522/0.
 
+#### Tally's pieces, tokens and chevrons are MultiMeshes (2026-10-20, afternoon)
+
+The user, with a phone shot of a level 10 sheet at the usual zoom (about
+sixteen machines, a dozen digs and three hundred tokens in view): "my
+phone still lagg completely (it's a rog phone 6, very strong) check how to
+optmize tally performance". The phone had the chunked-beds build (every
+CI run of the day green). The Mac's perf harness laid its machines out of
+view, so it never saw the cost: **the pieces layer rebuilt every machine
+and dig in view into one fresh mesh a frame**. An adder is 11,352 triangle
+vertices, a dig 5,805, the box 7,344: about 400,000 vertices flattened,
+transformed and appended in GDScript and uploaded to the GPU every frame
+for things that never move, plus the chevrons (two a belt, 180 vertices
+each) and the tokens (774 at the middle detail) the same way. Headless the
+CPU side alone was 15 ms a frame at k 30 (pieces 4.2, the sim's step 2 to
+6, chevrons 2.6, tokens 1.0, numerals 0.8); the phone paid the uploads on
+top, which the Mac headless never measures.
+
+- **A cached drawing set down many times is a MultiMesh** (`Board.Batch`,
+  `_batches[layer][mesh]`, as `ui/motes.gd` does): the mesh stays on the
+  GPU, a frame writes twelve floats an instance (the 2D transform and a
+  tint) into a buffer grown by doubling and never made again, and the
+  layer draws one `draw_multimesh` a variant. `_fill_chevrons`,
+  `_fill_tokens(under)` and `_fill_pieces` replace the `_build_*` that
+  returned a mesh; the box is one `draw_mesh` under `_box_xf()` first, for
+  its shadow. The thump, the grow, the squash and the spin ride the
+  instance's transform, a lifted piece's fade its tint. The live layer
+  (rings, ghosts, visors) is still built a frame: it is small.
+- **`tests/_perf_tally_screen.gd`** lays the phone's paper: sixteen fed
+  adders and their digs in view, belt rows of tokens across it, 1,800
+  belts of tokens out of sight, at k 30 and 62. After: 4.7 ms a frame at
+  k 30 (pieces 4.2 -> 0.26, chevrons 2.6 -> 1.1, tokens 1.0 -> 0.47; 548
+  chevrons, 244 tokens, 52 pieces as instances), 3.2 at k 62. **What is
+  left** is the sim's step, 1.9 ms on 2,122 jammed tokens: every token
+  at a belt's end behind another is tried again every step
+  (`_try_move`); a sleep flag woken by `_wake` would cut it, measured on
+  the phone first. The numerals' pass is 0.9 ms (a `TextLine` a token).
+- **The phone's APK is a debug export** (`.github/workflows/android.yml`,
+  `--export-debug`; no release keystore in `export_presets.cfg`): the
+  engine's debug checks ride every frame. A multiplier, not the cause.
+- Checked: probe 0 failed; `_shot_tally` windowed on `opengl3_angle`
+  810x1440 0 failed, 62 to 159 draw calls (90 at `5b_close`, 87 far: a
+  few more than before, one a variant), the close and far shots looked
+  at; suite 248522 passed, 0 failed. **Not seen**: the phone.
+
 #### Tally's 400 sheet, the numbers out by rings (2026-10-20, later)
 
 The user: "game grid itself is way too small, we need a at least 10x
