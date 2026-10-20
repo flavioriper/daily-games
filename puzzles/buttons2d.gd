@@ -143,9 +143,11 @@ const FLY_GROW := 0.18
 ## at HELD_SCALE, and the button settles in from there: the drop's back
 ## ease down and the release's back to size over RELEASE_TIME, so it sinks
 ## a hair past the socket and comes back. On its own colour the square
-## then fills out from under it, from the button's width to the whole
-## square, with the sine over LIFT_TIME.
+## then merges into it (the user, 2026-10-20: "when the piece is on the
+## right slot, merge it into it"): the slot's flat square covers the seat
+## and the gem sinks into it, shrinking to nothing over MERGE_TIME.
 const SETTLE_DROP := 0.1
+const MERGE_TIME := 0.22
 ## A button out of the tin leaves once its patch is bare.
 const TIN_LAG := 0.16
 const WHOLE_STEP := 0.03
@@ -901,9 +903,10 @@ func _build_live(now: float) -> bool:
 				settling = true
 				sc *= lerpf(HELD_SCALE, 1.0, Motion.back_out(landed / Motion.RELEASE_TIME))
 				lift += Motion.drop_in_lift(landed, SETTLE_DROP * _cell, Motion.RELEASE_TIME)
-			elif home and landed < Motion.RELEASE_TIME + Motion.LIFT_TIME:
+			elif home and landed < Motion.RELEASE_TIME + MERGE_TIME:
 				moving = true
-				fill = sin((landed - Motion.RELEASE_TIME) / Motion.LIFT_TIME * PI * 0.5)
+				var m := (landed - Motion.RELEASE_TIME) / MERGE_TIME
+				fill = m * m * (3.0 - 2.0 * m)
 			var hop := now - _hop_at[i]
 			if hop >= 0.0 and hop < Motion.SOLVE_TIME:
 				moving = true
@@ -918,15 +921,16 @@ func _build_live(now: float) -> bool:
 			busy = true
 		else:
 			still += 1
-		var loose := not home or settling or fill < 1.0
+		var loose := not home or settling
 		if loose or lift > 0.5:
 			rest.append(u.shade, Transform2D(0.0, sc, 0.0, at))
 		if loose:
 			rest.append(u.loose[c], Transform2D(0.0, sc, 0.0, at - Vector2(0.0, lift)))
-		if home and not settling:
-			# the set gem grows from the loose one's width to its square
-			var k := lerpf(Art.RIM / Art.SET_RIM, 1.0, fill)
-			rest.append(u.sewn[c], Transform2D(0.0, sc * k, 0.0, at - Vector2(0.0, lift)))
+		else:
+			# merged: the slot's square over the seat, the gem sinking into it
+			rest.append(u.sewn[c], Transform2D(0.0, sc, 0.0, at - Vector2(0.0, lift)))
+			if fill < 1.0:
+				rest.append(u.loose[c], Transform2D(0.0, sc * (1.0 - fill), 0.0, at - Vector2(0.0, lift)))
 	_live_mesh = rest.mesh()
 	# all still: back to the blocks (the pick stays out while it is held)
 	if not busy and still > 0:
@@ -1564,7 +1568,7 @@ func _play(res: Dictionary, at_cell: int, starts: Dictionary) -> void:
 		order += 1
 	_last_land = last
 	_bump_pill()
-	_busy_for(last - now + Motion.RELEASE_TIME + Motion.LIFT_TIME + 0.1)
+	_busy_for(last - now + Motion.RELEASE_TIME + MERGE_TIME + 0.1)
 	# the streak: moves in a row that each sewed something
 	if sewn > 0:
 		_streak += 1

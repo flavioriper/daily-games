@@ -1131,3 +1131,18 @@ again: every other landing ticks.
 half"): `FLY_TIME` 0.56 (0.28), the gap kept at 0.04 s, so about fourteen
 gems are in the air at once and a run of twenty lands its last at about
 1.32 s. Slides as they were.
+
+**07:20, a set jewel merges into its slot** (the user: "when the piece is
+on the right slot, merge it into it, players are complaining it's too
+hard to see wrong pieces near the end of game"). `Art.sewn` (and
+`gem(set=true)`, which the menu cards draw) is the slot's own flat square
+over the seat, so a set area reads as flat picture and the only gems left
+standing are the loose ones; `SET_RIM` and `SET_FACET` are gone. This takes
+back "a set jewel stays a gem" of 2026-10-19 (my call then). The landing:
+the settle as before, then the flat square covers the seat and the gem
+shrinks into it over `MERGE_TIME` 0.22 s on the smoothstep (was the set
+gem growing to its square over LIFT_TIME). Medium `play` on
+`opengl3_angle`: peak 109 draw calls; seen: set brown and yellow runs flat,
+bare seats and loose gems apart. Board probe 26 days, the two old band-2
+zoom failures. Not seen: Insane zoomed, the win's hop of flat squares, the
+menu card, the tutorial.

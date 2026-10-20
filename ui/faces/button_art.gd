@@ -16,13 +16,16 @@ extends RefCounted
 ## coloured by index, so nothing about it is said by a shade of its colour
 ## alone: a bare slot has a seat sunk in its middle (`socket`), loose is a
 ## gem of RIM standing on a shadow with the slot's colour all round it, and
-## set is the gem grown to its square (`sewn`), flush with its neighbours
-## and no shadow under it. The gem is the reference's cut: a rounded square
+## set is merged into its slot (`sewn`): the slot's flat square, no gem
+## left, so that near the end the only gems on the picture are the wrong
+## ones (the user, 2026-10-20: "when the piece is on the right slot, merge
+## it into it, players are complaining it's too hard to see wrong pieces
+## near the end of game"). The gem is the reference's cut: a rounded square
 ## with a dark rim and the two diagonals cutting it into four facets lit
 ## from the top (`facets`), a sliver of gloss along the top one. It takes
 ## back the bevel-to-flat-face gem of 2026-10-14 and the flat sewn square
-## of 2026-10-11: with the picture a mosaic of gems, as the reference's is,
-## a set jewel stays a jewel.
+## of 2026-10-11 (the set gem it brought in on 2026-10-19 went again on
+## 2026-10-20, above).
 
 const Pal = preload("res://core/palette.gd")
 const Face = preload("res://ui/faces/face.gd")
@@ -30,12 +33,10 @@ const Scenery = preload("res://ui/flat/scenery.gd")
 
 ## Sizes as a share of the cell. A loose gem is RIM out from its middle to
 ## each side, 0.8 of its square across (the user, 2026-10-14: "keep it like
-## 80% of the cell"); a set one SET_RIM, so a seam of 0.06 of a square lies
-## between neighbours and the mosaic has its grid. TIP rounds the corners,
+## 80% of the cell"). TIP rounds the corners,
 ## EDGE is the dark rim's width. RIM stays over SOCKET: the seat is what
 ## says bare, and a jewel must hide it.
 const RIM := 0.4
-const SET_RIM := 0.47
 const TIP := 0.12
 const EDGE := 0.035
 ## The seat a card's chevron sits in (ui/menu/cards/buttons.gd), and how
@@ -49,10 +50,8 @@ const SOCKET := 0.36
 const SOCKET_DARK := 0.42
 const SHADOW_R := 0.41
 const SHADOW_DOWN := 0.06
-## The facets' light: top, left, right, bottom; a set gem at SET_FACET of
-## it, calmer in the mosaic.
+## The facets' light: top, left, right, bottom.
 const FACET := [0.26, 0.07, -0.09, -0.27]
-const SET_FACET := 0.72
 ## The page, the case and its hollows.
 const PAGE := Color("f5eee4")
 const CASE_RIM := Color("e4dcd0")
@@ -119,11 +118,11 @@ static func socket(b, at: Vector2, cell: float, col: Color, sides: int) -> void:
 	_raw(b, corners(at, r, tip, n), edge)
 	_raw(b, corners(at + Vector2(0.0, cell * 0.018), r - rim, maxf(1.0, tip - rim), n), floor_)
 
-## A jewel set in its square: the gem grown to SET_RIM, flush with its
-## neighbours, no shadow and no base under it. (The name is the board's
-## word for a jewel home.)
+## A jewel set in its square: merged into it, the slot's own flat square
+## over the seat, so a set area reads as the picture and only a wrong gem
+## stands up. (The name is the board's word for a jewel home.)
 static func sewn(b, at: Vector2, cell: float, col: Color) -> void:
-	gem(b, at, cell, col, true, 3 if cell < SMALL else 5)
+	square(b, at, cell, col)
 
 ## A rounded square about `at`, `r` from its middle to each side, its
 ## corners rounded by `tip`, `n` points to a corner (odd, so the corner's
@@ -171,18 +170,19 @@ static func facets(b, at: Vector2, r: float, tip: float, n: int, col: Color, k :
 		_raw(b, poly, col.lightened(lift) if lift >= 0.0 else col.darkened(-lift))
 
 ## A gem about `at`: its dark rim, the four facets inside it and a sliver
-## of gloss along the top one. `set` is the jewel in its square, calmer and
-## flush; loose it stands on a darker base, a hair below.
+## of gloss along the top one, standing on a darker base a hair below.
+## `set` is the jewel merged into its square (`sewn`).
 static func gem(b, at: Vector2, cell: float, col: Color, set: bool, n: int) -> void:
-	var r := cell * (SET_RIM if set else RIM)
+	if set:
+		sewn(b, at, cell, col)
+		return
+	var r := cell * RIM
 	var tip := cell * TIP
 	var edge := maxf(1.2, cell * EDGE)
-	var k := SET_FACET if set else 1.0
-	var up := at
-	if not set:
-		up = at - Vector2(0.0, cell * RISE)
-		_raw(b, corners(at + Vector2(0.0, cell * RISE), r, tip, n), col.darkened(0.5))
-	_raw(b, corners(up, r, tip, n), col.darkened(0.4 if set else 0.36))
+	var k := 1.0
+	var up := at - Vector2(0.0, cell * RISE)
+	_raw(b, corners(at + Vector2(0.0, cell * RISE), r, tip, n), col.darkened(0.5))
+	_raw(b, corners(up, r, tip, n), col.darkened(0.36))
 	facets(b, up, r - edge, maxf(0.5, tip - edge), n, col, k)
 	# the gloss: a sliver under the top edge, most of its width
 	var g := r - edge
