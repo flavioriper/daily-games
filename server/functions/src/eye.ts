@@ -97,7 +97,7 @@ const rgb = (hex: string): number[] => [1, 3, 5].map((i) => parseInt(hex.slice(i
 
 /** Fills a polygon (points already in pixels) a row at a time, a pixel
  *  covered when its centre is inside. */
-function scan(pts: number[][], size: number, paint: (x: number, y: number) => void): void {
+export function scan(pts: number[][], size: number, paint: (x: number, y: number) => void): void {
   for (let y = 0; y < size; y++) {
     const xs: number[] = [];
     for (let i = 0; i < pts.length; i++) {

@@ -44,8 +44,8 @@ export const BANDS = [
   {facets: "130 to 170 small", most: 170, least: 6, tol: 1.2},
 ];
 /** The fewest panels a band's picture may come to. */
-const LEAST_PANELS = [16, 26, 40, 80];
-const MOST_CORNERS = 7;
+export const LEAST_PANELS = [16, 26, 40, 80];
+export const MOST_CORNERS = 7;
 const TRIES = 2;
 
 export const PROMPT = (what: string, band: number, key: Key, creature: boolean) => `A low-poly illustration of ${what}, built from at least 150 and about 200 small flat polygon facets (mostly triangles) on every band, the big surfaces broken into many small facets too: a soft, muted, harmonious palette of gentle earthy pastels; each facet is ONE flat solid colour; neighbouring facets shift subtly in tone as if lit softly from the top left (a light, a mid and a shadow tone of each colour); crisp straight edges; no outlines, no lines between facets, no gradient inside a facet, no texture. ${creature ? "" : "It is an object: no face, no eyes, no mouth. "}One thing only, centred and large, filling most of the picture, on ${keyWords(key)}; no cast shadow, no ground, nothing else, no text. A square picture.`;
@@ -58,7 +58,7 @@ function cross(o: P, a: P, b: P): number {
 
 /** Whether a clockwise-on-screen polygon bends nowhere inward (a straight
  *  corner allowed). */
-function convex(p: P[]): boolean {
+export function convex(p: P[]): boolean {
   for (let i = 0; i < p.length; i++) {
     if (cross(p[i], p[(i + 1) % p.length], p[(i + 2) % p.length]) < -1e-6) return false;
   }
@@ -79,7 +79,7 @@ function inTri(p: P, a: P, b: P, c: P): boolean {
 
 /** Ears clipped, the best-shaped ear first, of a clockwise-on-screen
  *  polygon given as pin indexes; [] when it will not go. */
-function ears(ids: number[], pins: P[]): number[][] {
+export function ears(ids: number[], pins: P[]): number[][] {
   const left = ids.slice();
   const out: number[][] = [];
   while (left.length > 3) {
@@ -107,7 +107,7 @@ function ears(ids: number[], pins: P[]): number[][] {
 
 /** Pieces of one region joined back across their shared sides while the
  *  join stays convex and within MOST_CORNERS: Hertel and Mehlhorn's way. */
-function regroup(pieces: number[][], pins: P[]): number[][] {
+export function regroup(pieces: number[][], pins: P[]): number[][] {
   let list = pieces.map((p) => p.slice());
   for (let changed = true; changed;) {
     changed = false;
