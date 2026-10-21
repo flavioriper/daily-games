@@ -134,84 +134,77 @@ judge(day, theme, thing, game, render: Drawing, source?: Drawing)
   share of the picture (under 12% of the raster, or a thing split into
   parts of which the biggest is under half, is `why`-refused before the
   eye sees it).
-- **The picture is finer than the panels.** `readHoop` keeps the fine
-  regions it has before `join` brings them to the band's `most`, and
-  ships them: `facets: [{k: [pin indices or own points], c, p: panel}]`,
-  each fine facet tagged with the panel it ended in. The pins, the
-  panels and their counts are exactly today's. The fine facets' corners
-  are their own points in the square of 100 (they need not be pins), and
-  **the night clips each facet to its panel's outline** before shipping,
-  so a panel's facets tile the panel exactly. The phone's weld
-  (`HoopState.adopt_drawn` `weld`) moves a pin a few units at most on a
-  new day, since the night welds at the same spacing; a facet's spill of
-  under a unit past the welded outline lies under the panel's rope and
-  is accepted. A panel the weld drops hands its facets to the panel that
-  took its area.
-  Budget: about 250 facets a picture, the document stays well under
-  Firestore's limit (today's Insane hoop is ~6 KB; 250 facets of ~6
-  points at 2 decimals is ~12 KB).
-- **The render the eye sees** is the fine facets filled in their colours
-  over bare linen, pins not drawn.
-- **The phone**: `ThemedPictures.hoop()` checks `facets` (each `p` a
-  panel, points inside the square, 3+ corners) and `HoopState.adopt_drawn`
-  keeps them; `hoop2d.gd` `_knit_part(k)` builds a panel's knit from its
-  facets (each a fan of vertices in its own colour, the tile UVs as
-  today) instead of one flat colour, so Easy knits in as the reference
-  looks. A panel with no facets (a bank cut, or an old day) knits as
-  today. Draw calls do not change (the chunk mesh holds more vertices,
-  not more draws). The facet shade (`FACET`) stays off for drawn
-  pictures, as now.
-- **The viewer** draws `facets` when a hoop has them, panels otherwise.
+- **The model writes the map** (the 16:03 spike, below). The drawing
+  on its key goes to the reviewer model with a numbered grid laid over
+  it (`grid.ts`, new: N cells a side by band, 20/24/30/40, the numbers
+  along all four edges, drawn with `pngjs`), and the model answers pins
+  (id, x, y in grid units) and panels (pin ids in order, a colour). The
+  ask states the band's most panels and the rules the phone checks (3-7
+  corners, convex, neighbours sharing whole sides, no overlap, no gap,
+  the whole thing and nothing of the background, every facet of the
+  drawing kept, the whole panel budget used). **Repair** (`mesh.ts`,
+  new): grid units to the square of 100 centred on the thing's box as
+  today; pins snapped within 0.35 of a cell; a panel's repeated or
+  unknown pins dropped, a panel under 3 corners dropped; a pin lying on
+  another panel's side (a T-junction) inserted into that side; a
+  concave panel ear-clipped and joined back into convex panels of 3-7
+  as `hoop.ts` does now; pins nearer than the band's `least` welded as
+  the night welds now. **Checks** after repair, each a `why`: a pin
+  inside another panel, a side three panels share, a panel over 7, a
+  picture under the band's least panels; a refused map is asked again
+  with the refusal folded in, up to 2 asks a drawing. **Colours** are
+  the drawing's mean over each panel, never the model's hex.
+- **The render the eye sees** is the repaired map as polygons with the
+  panel outlines drawn as the board's ropes are, on linen.
+- **The fallback** is today's pixel reader (`readHoop`) when every ask
+  of every drawing is refused; its cut goes through the eye too.
+- **The phone and the viewer change nothing for the hoop**: the map is
+  the `hoops` document as it is (`pins`, `panels: [{k, c}]`), which
+  `ThemedPictures.hoop()` checks and `HoopState.adopt_drawn()` lays.
 - **A style reference goes with the prompt**: a crop of the user's
   reference picture (the low-poly snail of 2026-10-21, kept in the
   functions as `vista_style.png` is) handed to `draw()` as `images`, as
   the vistas do. In the spike the snail drawn with it matched the
   reference and read at 7; the same prompt in words alone drew a
   textured, near-photographic snail the reader shredded (5).
-- **What the fine facets buy, honestly**: Easy and Medium animals (the
-  snail drew 109 fine regions over 40 panels, the frog 208 over 55). A
-  simple object draws few facets however many are asked (the umbrella
-  20 on Hard), and on Insane the cut splits big regions into more
-  convex panels than there are facets (the kettle 65 fine, 121 panels),
-  so there the knit is the panels either way.
-- Tries: up to 3 drawings a band, each reviewed once; the best kept.
-  The spike measured about 42 s a drawing, read and review, so three a
-  band fits the half-hour step with room.
+- Tries: up to 2 drawings a band, each mapped up to twice and reviewed
+  once; the best kept. A drawing is ~15 s, a map 45-175 s on Opus, a
+  review a few seconds: the worst case is under the half-hour step.
 
 ## The Gumdrop port (`jelly.ts`)
 
 - **Rules untouched**: flavours, mixed and chunks a band stay. (Easy in
   two flavours cannot be the reference's glossy snail; the user decides
   whether Easy's counts rise. Not in this design.)
-- **Sharper silhouettes**: the grown outline falls from 0.9 to 0.5 and
-  `SWELL` from 5 to 3 pixels; the sticker prompt asks for "a clean,
-  sharp, well-drawn silhouette with its true proportions" instead of
-  "chunky". **The 16-point outline cap stays** (`MOST_POINTS`, and
-  `gumdrop_mould.gd` `from_doc` refuses a shape over it): raising it
-  would have an unpatched phone refuse every new jelly and deal from the
-  bank until the APK is on the stores, so the day the functions deploy
-  Gumdrop would get worse. Raising it on both sides is offered to the
-  user with the counts question below.
-- **The render the eye sees** is the parts as soft shapes in the flavour
-  inks on the board's cream, drawn as the viewer draws them.
-- **The gummy finish goes on the card's picture** (`Art.picture`, the
-  flat flavour polygons that match the viewer's blob) and on the viewer
-  (an SVG filter: a highlight along the top-left edge, a darker rim, a
-  soft inner glow). Not on the tint: the user turned lighting on the
-  syrup down on 2026-10-11 and 2026-10-14 ("every fold a crease of
-  foil", "no light outline anywhere"), and the mould's gel is glossy
-  already (`Art.gloss_of`). The finish is still, so `Motion.reduce` has
-  nothing new to honour.
-- **The reader must handle what flash draws however it is asked**: a
-  white sticker border, dark outlines, white eyes and cream bodies. In
-  the spike the second run's prompt forbade all of them and flash drew
-  them anyway on three of four; the reader mapped the white to lemon
-  (a kettle's handle a yellow blob) or dropped pale parts with the
-  border (a frog's head). The eye scored those 4 to 6 and would have
-  refused them all at 7, which is right, but a floor is meaningful only
-  once a clean sticker can reach it: white and near-white pixels inside
-  the thing become the flavour round them, a dark outline is dissolved
-  into its neighbour, and only then is the jelly's floor set.
+- **The model writes the jelly** (the 16:13 spike, below). The sticker
+  drawing with a 0-100 grid over it goes to the reviewer model, which
+  answers parts (`{flavour, shapes: [{kind: "soft", n}]}`) under the
+  band's rules **stated in full in the ask**: flavours and mixed counts,
+  chunks, at most 8 parts and 8 shapes a part, 6-16 points a polygon,
+  inside 10-90, one connected piece, cover 20-75% of the field, every
+  chunk at least 9 squares of the sim's 36-grid, nothing thinner than
+  6 units; the white border, outlines, highlights and shading of the
+  drawing ignored, each region the flavour nearest its colour. `why()`
+  judges the parts; a refusal is folded into the next ask, up to 3 asks
+  a drawing. The sticker prompt stays the source, with the key colour
+  chosen a thing as the hoop's is (never near one of the six inks).
+- **The render the eye sees** is the parts as soft shapes in the inks on
+  the board's cream, drawn as the card draws them.
+- **The fallback** is today's pixel reader (`readJelly`) and then the
+  written parts, both through the eye.
+- **The gummy finish goes on the card's picture in the game**
+  (`gumdrop_art.gd` `picture()`: the user, 2026-10-21, of the viewer's
+  gummy jelly: "i loved the gumdrop with the gummy finish look, would
+  love if we could add the same view to the ingame") and on the viewer
+  (an SVG filter). The finish is the spike's: a soft shadow under the
+  jelly, a darker rim along the inside of the outline (the outline's
+  inner offsets, `Geometry2D.offset_polygon`, in a translucent dark),
+  a specular highlight along the upper left (a soft sheen and a small
+  glint, as `gloss_of` lays them on the gel), all in the one picture
+  mesh. Not on the tint: the user turned lighting on the syrup down on
+  2026-10-11 and 2026-10-14 ("every fold a crease of foil", "no light
+  outline anywhere"), and the mould's gel is glossy already. The finish
+  is still, so `Motion.reduce` has nothing new to honour.
 - Tries: `DRAWINGS` as today (3, 3, 2, 2), each reviewed. **The written
   fallback stays** (`makeJellies.one`'s Opus-written parts, up to
   `TRIES` 2) and goes through the eye with no source, competing on score
@@ -380,12 +373,10 @@ The four spike scripts are kept beside this document in
 checks and renders; their pages and drawings were in the session's
 scratchpad only.
 
-## Open for the user
+## Decided at approval (2026-10-21, 16:16)
 
-1. Should Gumdrop's Easy and Medium colour and shape counts rise, and
-   the 16-point outline cap with them, so the jelly can carry more of the
-   thing? Both change the phone (`RULES`/`THEMED`, `from_doc`), so the
-   functions must deploy only once that APK is on the stores.
-2. Should the hoop's fine facets also be drawn under the **unfilled**
-   panels, faintly, as a hint of the picture, or stay hidden until a
-   panel knits in (as today)?
+The user: "amazing, apply it". Both open calls fall to the defaults:
+Gumdrop's counts and the 16-point cap stay (the Medium snail at 3 parts
+read as a snail once the model wrote it), and the hoop's picture stays
+hidden until a panel knits in. The fine-facets idea is gone: the panels
+are the drawing's facets now.
