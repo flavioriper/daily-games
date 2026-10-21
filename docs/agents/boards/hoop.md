@@ -529,13 +529,15 @@ Vertex yet**.
   board is cut from the bank as before.**
 - **The clock** (ruling, the controller's): the brief had no clock, and a
   band 3 map ask runs about 200 s while a run may start a step 15 minutes
-  in, so `HOOP_BUDGET_MS` is 12 minutes from `makeHoop`'s start, past which
-  no new draw, ask, judge or reader begins; the first try skipped is
-  recorded with `why: "out of time"`. The spec's anti-goal (a night that
+  in, so `HOOP_BUDGET_MS` is 12 minutes from `makeHoop`'s start, or the
+  run's own limit if that comes first (`until`, themeday.ts: 6 minutes
+  before the 30-minute lease ends, 2026-10-21 review fix), past which no new
+  draw, ask or reader begins; the judge of a map already asked still runs.
+  The first try skipped is recorded with `why: "out of time"`. The spec's anti-goal (a night that
   runs out of its half-hour step) binds over the ask count. Cost if wrong:
   Insane falls to the reader more often on a slow night. The deadline
   bounds when a call begins, not how long it runs: a 240 s ask begun at
-  11:59 reaches about 16 minutes.
+  11:59 reaches about 16 minutes, inside the run's 6 minutes of room.
 - **Rulings on the repair** (the controller's, Task 4): the brief's "why ''
   on all four spike fixtures" was wrong, since the umbrella (26 panels,
   band 2 least 40) and the kettle (75, band 3 least 80) are under the

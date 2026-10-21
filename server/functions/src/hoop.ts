@@ -369,10 +369,12 @@ export const HOOP_DRAWINGS = 2;
 export const MAP_ASKS = 2;
 /** A kept try scored this well is not bettered by more asks. */
 const ENOUGH = 9;
-/** Past this long from makeHoop's start no draw, ask, judge or reader try
- *  begins: a run may start the step 15 minutes into its 30-minute lease
- *  (themeday.ts), and a step killed mid-way is never written or given up
- *  on, so every step after it would wait. */
+/** Past this long from makeHoop's start no draw, ask or reader try begins
+ *  (the judge of a map already asked still runs: it costs seconds, and the
+ *  map was the dear part). The run's own limit (`until`, themeday.ts) can
+ *  come sooner: a run may start the step 15 minutes into its 30-minute
+ *  lease, and a step the platform kills mid-way is never counted, so it is
+ *  redone, Opus and all, and the run's publish never comes. */
 export const HOOP_BUDGET_MS = 12 * 60 * 1000;
 const BAND_NAMES = ["Easy", "Medium", "Hard", "Insane"];
 /** The render the eye is shown: the board's linen and its ropes along every
@@ -450,7 +452,8 @@ interface Ctx {
   thing: Thing;
   band: number;
   key: Key;
-  /** When no new call may begin (HOOP_BUDGET_MS from the start). */
+  /** When no new draw, ask or reader try may begin: HOOP_BUDGET_MS from
+   *  the start, or the run's limit if that comes first. */
   deadline: number;
   /** A try has been recorded as out of time: the first skipped is said
    *  once on the port, the rest are simply not made. */
@@ -469,9 +472,10 @@ interface Best {
 /** Pins and panels drawn as the eye sees them and judged beside the drawing,
  *  into `t`; the render, or null when the eye could not be asked. */
 async function judged(c: Ctx, drawing: Drawing, pins: number[], panels: HoopPanel[], t: PortTry): Promise<Buffer | null> {
-  if (Date.now() > c.deadline) {
-    t.why = "out of time";
-    c.out = true;
+  // the phone drops the whole band for one colour Color.html_is_valid
+  // refuses (core/themed_pictures.gd), so a try with one is never kept
+  if (panels.some((p) => !/^#[0-9a-f]{6}$/i.test(p.c))) {
+    t.why = "a panel's colour";
     return null;
   }
   try {
@@ -548,11 +552,13 @@ const logTry = (c: Ctx, t: PortTry) => logLine("hoop", c.day, c.band, c.thing.id
  * best the eye keeps wins. When none is kept the pixel reader on the last
  * drawing is one more try. `picture` is null when nothing was kept, and the
  * board cuts the day's bead picture as before; `port` records every try.
- * `keep` is handed each drawing (the dashboard's files).
+ * `keep` is handed each drawing (the dashboard's files). `until` is the
+ * run's own limit, absolute ms, when it comes before HOOP_BUDGET_MS does.
  */
-export async function makeHoop(day: number, theme: Theme, band: number, keep?: (name: string, d: Drawing) => void): Promise<{picture: HoopPicture | null; port: Port}> {
+export async function makeHoop(day: number, theme: Theme, band: number, keep?: (name: string, d: Drawing) => void,
+  until?: number): Promise<{picture: HoopPicture | null; port: Port}> {
   const thing: Thing = theme.objects[Math.min(band + 1, theme.objects.length - 1)];
-  const deadline = Date.now() + HOOP_BUDGET_MS;
+  const deadline = Math.min(Date.now() + HOOP_BUDGET_MS, until ?? Infinity);
   // keyFor never throws by design; caught all the same, so nothing before
   // the tries can lose the port
   let key: Key = "green", creature = false;

@@ -1,4 +1,4 @@
-import {Raster} from "./facets";
+import {boardKey, Raster} from "./facets";
 import {scan} from "./eye";
 import {BANDS, convex, ears, HoopPanel, LEAST_PANELS, MOST_CORNERS, overlaps, regroup} from "./hoop";
 
@@ -301,36 +301,74 @@ export function repairMesh(got: ModelMap, n: number, band: number): Mesh {
 }
 
 const rgbOf = (hex: string): number[] => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+const onBoard = (a: number[], b: number[]) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) <= 60;
 
 /**
  * Each panel coloured with the drawing's mean over it (the model's hex is
  * a guess; the drawing is the truth), read off the raster through the box.
- * A panel that comes out within 60 of the key colour is the background the
+ * A panel that comes out within 60 of the board is the background the
  * model took for part of the thing, and is dropped with any pin only it
- * used, and what is left placed in the square again. Returns how many
- * were dropped. `why` is left as repairMesh found it: the caller has the
- * band, and checks again with checkMesh.
+ * used, and what is left placed in the square again. The board is measured
+ * twice: as the drawing painted it, the median of the raster's edge (the
+ * reader's boardKey: flash paints the key muted, a sage for green, a shaded
+ * pink for magenta, far more than 60 from the pure hex), and as the key's
+ * own hex. A panel too thin to cover any pixel's centre takes the mean of
+ * the measured neighbours it shares a side with, and with none the pixel
+ * under its middle, so it never keeps the model's string (which may be no
+ * colour at all, and the phone drops a band with one bad colour). Returns
+ * how many were dropped. `why` is left as repairMesh found it: the caller
+ * has the band, and checks again with checkMesh.
  */
 export function colourFrom(r: Raster, mesh: Mesh, key: string): number {
-  const bg = rgbOf(key);
+  const boards = [boardKey(r), rgbOf(key)];
   const px = r.n / 100;
-  const kept: HoopPanel[] = [];
-  for (const p of mesh.panels) {
-    const pts = p.k.map((i) => [(mesh.pins[2 * i] / mesh.box.s + mesh.box.x0) * px, (mesh.pins[2 * i + 1] / mesh.box.s + mesh.box.y0) * px]);
+  const pixelsOf = (p: HoopPanel) => p.k.map((i) => [(mesh.pins[2 * i] / mesh.box.s + mesh.box.x0) * px, (mesh.pins[2 * i + 1] / mesh.box.s + mesh.box.y0) * px]);
+  const means: (number[] | null)[] = mesh.panels.map((p) => {
     const sum = [0, 0, 0];
     let count = 0;
-    scan(pts, r.n, (x, y) => {
+    scan(pixelsOf(p), r.n, (x, y) => {
       const at = (y * r.n + x) * 3;
       for (let c = 0; c < 3; c++) sum[c] += r.rgb[at + c];
       count++;
     });
-    if (count > 0) {
-      const mean = sum.map((v) => v / count);
-      if (Math.hypot(mean[0] - bg[0], mean[1] - bg[1], mean[2] - bg[2]) <= 60) continue;
-      p.c = "#" + mean.map((v) => Math.round(v).toString(16).padStart(2, "0")).join("");
+    return count > 0 ? sum.map((v) => v / count) : null;
+  });
+  // the thin ones from their neighbours' measures, never from another thin
+  // one's borrowed colour, so the order they come in changes nothing
+  const bySide = new Map<string, number[]>();
+  mesh.panels.forEach((p, j) => {
+    for (let s = 0; s < p.k.length; s++) {
+      const a = p.k[s], b = p.k[(s + 1) % p.k.length];
+      const side = a < b ? `${a},${b}` : `${b},${a}`;
+      bySide.set(side, [...(bySide.get(side) ?? []), j]);
     }
+  });
+  const colours = mesh.panels.map((p, j) => {
+    if (means[j] !== null) return means[j]!;
+    const sum = [0, 0, 0];
+    let count = 0;
+    for (let s = 0; s < p.k.length; s++) {
+      const a = p.k[s], b = p.k[(s + 1) % p.k.length];
+      for (const o of bySide.get(a < b ? `${a},${b}` : `${b},${a}`) ?? []) {
+        const m = means[o];
+        if (o === j || m === null || boards.some((bg) => onBoard(m, bg))) continue;
+        for (let c = 0; c < 3; c++) sum[c] += m[c];
+        count++;
+      }
+    }
+    if (count > 0) return sum.map((v) => v / count);
+    const pts = pixelsOf(p);
+    const at = (v: number) => Math.max(0, Math.min(r.n - 1, Math.floor(v / pts.length)));
+    const x = at(pts.reduce((t, q) => t + q[0], 0)), y = at(pts.reduce((t, q) => t + q[1], 0));
+    return [0, 1, 2].map((c) => r.rgb[(y * r.n + x) * 3 + c]);
+  });
+  const kept: HoopPanel[] = [];
+  mesh.panels.forEach((p, j) => {
+    const mean = colours[j];
+    if (boards.some((bg) => onBoard(mean, bg))) return;
+    p.c = "#" + mean.map((v) => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, "0")).join("");
     kept.push(p);
-  }
+  });
   const dropped = mesh.panels.length - kept.length;
   const w: Work = {pins: [], panels: kept};
   for (let i = 0; i < mesh.pins.length; i += 2) w.pins.push([mesh.pins[i], mesh.pins[i + 1]]);

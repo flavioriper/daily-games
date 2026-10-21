@@ -65,12 +65,12 @@ function GumDefs() {
 }
 
 // One port's record under its game: the picture it read and the render of what
-// the night made of it (the kept try's), with that try's score and notes.
+// the night made of it (the kept try's), with that try's score and notes; with
+// nothing kept, how its last try ended.
 function PortRow({port}) {
   if (!port) return null;
   const kept = port.tries.find((t) => t.kept);
   const last = port.tries[port.tries.length - 1];
-  const shown = kept ?? last;
   const verdict = kept?.verdict;
   return (
     <div className="port">
@@ -78,15 +78,27 @@ function PortRow({port}) {
       {port.render && <img src={`data:image/jpeg;base64,${port.render}`} alt="render" />}
       <div className="verdict">
         {kept ? <>
-          <b>{verdict ? `score ${verdict.score}` : "no verdict"}</b> · try {kept.n} of {port.tries.length}
+          <b>{verdict ? `score ${verdict.score}` : "no verdict"}</b> · try {kept.n + 1} of {port.tries.length}
           {verdict?.notes && <span>{verdict.notes}</span>}
           {kept.route === "reader" && <span>fell back to the pixel reader</span>}
         </> : <>
-          <b>nothing kept</b> · {port.tries.length} {port.tries.length === 1 ? "try" : "tries"}
-          {shown && <span>{shown.error ?? shown.why}</span>}
+          <b>nothing kept</b> · {port.tries.length} {port.tries.length === 1 ? "try" : "tries"} · fell back to the bank
+          {last && <span>{last.error ?? last.why}</span>}
+          {last?.verdict && <span>score {last.verdict.score}, took it for {last.verdict.pick}: {last.verdict.notes}</span>}
         </>}
       </div>
     </div>
+  );
+}
+
+// A port with no picture of its own on the day (every try failed, or the clock
+// ran out): the board dealt its place from the bank, and only the record shows.
+function Orphan({port}) {
+  return (
+    <figure className={port.game === "jelly" ? "card small" : "card"}>
+      <figcaption><b>{port.thing}</b> · {BANDS[port.band]} · no picture</figcaption>
+      <PortRow port={port} />
+    </figure>
   );
 }
 
@@ -230,13 +242,17 @@ export default function App() {
     setPorts({});
     readDay(day).then((d) => live && setGot(d), (e) => live && setError(String(e)));
     // The ports are extra: a read that fails leaves the page as it was.
-    readPorts(day).then((p) => live && setPorts(p), () => {});
+    readPorts(day).then((p) => live && setPorts(p), (e) => console.warn(`ports of ${day} not read`, e));
     return () => { live = false; };
   }, [day]);
 
   const pictures = got?.pictures;
   const vistas = got?.vistas;
   const theme = vistas?.name?.[lang] ?? pictures?.theme;
+  // the ports whose thing has no picture on the day, by game and band
+  const orphans = (game, band) => Object.entries(ports).filter(([, p]) => p.game === game && p.band === band &&
+    (game === "hoop" ? pictures?.hoops?.[band]?.id !== p.thing : !(pictures?.jellies?.[band] ?? []).some((j) => j.id === p.thing)));
+  const ported = (game) => Object.values(ports).some((p) => p.game === game);
 
   return (
     <main>
@@ -266,15 +282,25 @@ export default function App() {
             <BeadPicture key={size} pic={pic} size={Number(size)} />)}</div>
         </Section>}
 
-        {pictures?.hoops && <Section title="Yarn Hoop">
-          <div className="row">{Object.entries(pictures.hoops).map(([b, hoop]) => <Hoop key={b} hoop={hoop} band={Number(b)} port={ports[`hoop${b}_${hoop.id}`]} />)}</div>
+        {(pictures?.hoops || ported("hoop")) && <Section title="Yarn Hoop">
+          <div className="row">{BANDS.map((_, b) => {
+            const hoop = pictures?.hoops?.[b];
+            return [hoop && <Hoop key={b} hoop={hoop} band={b} port={ports[`hoop${b}_${hoop.id}`]} />,
+              ...orphans("hoop", b).map(([id, port]) => <Orphan key={id} port={port} />)];
+          })}</div>
         </Section>}
 
-        {pictures?.jellies && <Section title="Gumdrop jellies">
+        {(pictures?.jellies || ported("jelly")) && <Section title="Gumdrop jellies">
           <GumDefs />
-          {Object.entries(pictures.jellies).map(([b, list]) => (
-            <div key={b}><h3>{BANDS[b]}</h3><div className="row">{list.map((j, i) => <Jelly key={i} jelly={j} port={ports[`jelly${b}_${j.id}`]} />)}</div></div>
-          ))}
+          {BANDS.map((_, b) => {
+            const list = pictures?.jellies?.[b] ?? [];
+            const lost = orphans("jelly", b);
+            if (list.length === 0 && lost.length === 0) return null;
+            return <div key={b}><h3>{BANDS[b]}</h3><div className="row">
+              {list.map((j, i) => <Jelly key={i} jelly={j} port={ports[`jelly${b}_${j.id}`]} />)}
+              {lost.map(([id, port]) => <Orphan key={id} port={port} />)}
+            </div></div>;
+          })}
         </Section>}
 
         {pictures?.words && <>

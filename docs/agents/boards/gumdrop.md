@@ -755,7 +755,10 @@ port beside Yarn Hoop's (`docs/agents/boards/hoop.md`, 2026-10-21).
   eye calls where the first draft made 9 and 7.)
 - **The clock** (ruling, the controller's, superseding the pre-flight idea
   of 5 minutes a thing): `JELLY_BUDGET_MS` 12 minutes from the start of the
-  band's loop; past it no draw, ask, judge or written try begins. A thing
+  band's loop, or the run's own limit if that comes first (`until`,
+  themeday.ts: 6 minutes before the 30-minute lease ends, 2026-10-21 review
+  fix); past it no draw, ask, reader or written try begins, and the judge of
+  one already asked still runs. A thing
   not reached is recorded as one try with `why: "out of time"` and the board
   fills its place from the bank. The worst case, Insane (5 things x 2
   drawings x 3 asks and the reviews), would pass the 30-minute lease

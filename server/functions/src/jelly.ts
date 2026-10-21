@@ -329,9 +329,11 @@ export const MOULDS = [2, 3, 4, 5];
  *  list a band in the theme's order, what became of every try, and a Port a
  *  thing with every ask behind it. A thing whose tries all fail, or that
  *  the band's JELLY_BUDGET_MS does not reach, is left out of its band's
- *  list, and the board fills its place from the twenty-nine. Never throws. */
+ *  list, and the board fills its place from the twenty-nine. `until` is the
+ *  run's own limit, absolute ms, when it comes before the band's budget
+ *  does. Never throws. */
 export async function makeJellies(day: number, theme: Theme, only?: number,
-  keep?: (name: string, d: Drawing) => void): Promise<{jellies: Record<string, Jelly[]>; tries: JellyTry[]; ports: Port[]}> {
+  keep?: (name: string, d: Drawing) => void, until?: number): Promise<{jellies: Record<string, Jelly[]>; tries: JellyTry[]; ports: Port[]}> {
   const jellies: Record<string, Jelly[]> = {};
   const tries: JellyTry[] = [];
   const ports: Port[] = [];
@@ -343,7 +345,7 @@ export async function makeJellies(day: number, theme: Theme, only?: number,
   for (let band = 0; band < RULES.length; band++) {
     if (only !== undefined && band !== only) continue;
     // the budget runs from the band's start: the night writes a band a step
-    const deadline = Date.now() + JELLY_BUDGET_MS;
+    const deadline = Math.min(Date.now() + JELLY_BUDGET_MS, until ?? Infinity);
     const list: Jelly[] = [];
     for (const thing of theme.objects.slice(0, MOULDS[band])) {
       const d: JellyTry = {band, what: thing.id, route: "drawn", why: "", kept: false};
@@ -568,10 +570,13 @@ export function readJelly(d: Drawing | Raster, band: number): {parts: Part[]; wh
 
 /** Asks of the reviewer model a drawing: each told why the last fell short. */
 export const JELLY_ASKS = 3;
-/** Past this long from a band's start no draw, ask, judge or written try
- *  begins: a run may start the step 15 minutes into its 30-minute lease
- *  (themeday.ts), and a step killed mid-way is never written or given up
- *  on, so every step after it would wait. */
+/** Past this long from a band's start no draw, ask, reader or written try
+ *  begins (the judge of one already asked still runs: it costs seconds,
+ *  and the ask was the dear part). The run's own limit (`until`,
+ *  themeday.ts) can come sooner: a run may start the step 15 minutes into
+ *  its 30-minute lease, and a step the platform kills mid-way is never
+ *  counted, so it is redone, Opus and all, and the run's publish never
+ *  comes. */
 export const JELLY_BUDGET_MS = 12 * 60 * 1000;
 /** The fewest points a polygon is asked for (the checker takes three), so
  *  the soft rounding has corners to follow the drawing by. */
@@ -654,7 +659,8 @@ interface Ctx {
   theme: Theme;
   thing: Thing;
   band: number;
-  /** When no new call may begin (JELLY_BUDGET_MS from the band's start). */
+  /** When no new draw, ask, reader or written try may begin:
+   *  JELLY_BUDGET_MS from the band's start, or the run's limit if sooner. */
   deadline: number;
   port: Port;
 }
@@ -711,10 +717,6 @@ function checked(parts: Part[] | null, band: number, t: PortTry): boolean {
  *  order, and judged (beside the sticker when there is one) into `t`; the
  *  render, or null when it could not be made or the eye asked. */
 async function judged(c: Ctx, parts: Part[], t: PortTry, drawing?: Drawing): Promise<Buffer | null> {
-  if (Date.now() > c.deadline) {
-    t.why = "out of time";
-    return null;
-  }
   let png: Buffer;
   try {
     const polys = parts.flatMap((p) => p.shapes.map((s) => ({pts: polygon(s), fill: INK_HEX[FLAVOURS.indexOf(p.flavour)]})));

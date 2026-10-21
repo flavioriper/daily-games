@@ -86,14 +86,18 @@ export async function judge(day: number, theme: Theme, thing: Thing, game: Game,
     images: source === undefined ? [render] : [render, source],
   });
   const pick = String(got.pick ?? "").trim().toLowerCase();
-  const score = Number.isFinite(Number(got.score)) ? Number(got.score) : 0;
+  // the schema asks for 0 to 10 but cannot hold the model to it, and a 12
+  // would outrank every honest score in the hoop's best-of
+  const score = Number.isFinite(Number(got.score)) ? Math.max(0, Math.min(10, Number(got.score))) : 0;
   const wrong = String(got.wrong ?? "").trim();
   const notes = String(got.notes ?? "").trim();
   console.log(`eye: ${day}, ${game}, ${thing.name}: ${pick} ${score} — ${notes}`);
   return {pick, score, wrong, notes, ok: pick === thing.name.toLowerCase() && wrong === ""};
 }
 
-const rgb = (hex: string): number[] => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+/** A "#rrggbb" as numbers; anything else a loud magenta, so a bad colour
+ *  shows on the render the eye judges instead of painting it black. */
+const rgb = (hex: string): number[] => /^#[0-9a-f]{6}$/i.test(hex) ? [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)) : [255, 0, 255];
 
 /** Fills a polygon (points already in pixels) a row at a time, a pixel
  *  covered when its centre is inside. */

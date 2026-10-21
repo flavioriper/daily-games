@@ -47,6 +47,11 @@ const TRIES = 2;
 const START_BUDGET_MS = 15 * 60 * 1000;
 /** How long a run holds the lease (the function's own timeout). */
 const LEASE_MS = 30 * 60 * 1000;
+/** The room a run keeps before its lease ends, past the last call a port
+ *  begins: a map ask begun just before then may run its 240 s timeout with
+ *  the SDK's retries, and the step must still be counted, the lease let go
+ *  and the run's publish made before the platform ends the function. */
+const RUN_ROOM_MS = 6 * 60 * 1000;
 /** Days back a new theme is told of. */
 const RECENT = 30;
 
@@ -203,8 +208,9 @@ async function stage(db: Firestore, day: number, ports: Port[]): Promise<void> {
   }
 }
 
-/** One step of `day`; what it saves, and whether it made anything. */
-async function runStep(db: Firestore, when: Date, day: number, step: string, s: Staged):
+/** One step of `day`; what it saves, and whether it made anything. `until`
+ *  is when the ports must begin their last call (absolute ms). */
+async function runStep(db: Firestore, when: Date, day: number, step: string, s: Staged, until: number):
   Promise<{save: Record<string, unknown>; made: boolean}> {
   if (step === "theme") {
     const theme = await makeTheme(day, (await recent(db, when)).slice(0, 60));
@@ -218,14 +224,14 @@ async function runStep(db: Firestore, when: Date, day: number, step: string, s: 
   }
   if (step.startsWith("jelly")) {
     const band = step.slice("jelly".length);
-    const got = await makeJellies(day, theme, Number(band));
+    const got = await makeJellies(day, theme, Number(band), undefined, until);
     await stage(db, day, got.ports);
     const list = got.jellies[band] ?? [];
     return {save: list.length === 0 ? {} : {[`jellies.${band}`]: JSON.stringify(list)}, made: list.length > 0};
   }
   if (step.startsWith("hoop")) {
     const band = step.slice("hoop".length);
-    const {picture, port} = await makeHoop(day, theme, Number(band));
+    const {picture, port} = await makeHoop(day, theme, Number(band), undefined, until);
     await stage(db, day, [port]);
     return {save: picture === null ? {} : {[`hoops.${band}`]: JSON.stringify(picture)}, made: picture !== null};
   }
@@ -263,6 +269,7 @@ async function lease(db: Firestore, now: number): Promise<boolean> {
  */
 export async function themeWork(db: Firestore, now: Date): Promise<void> {
   const t0 = Date.now();
+  const until = t0 + LEASE_MS - RUN_ROOM_MS;
   if (!(await lease(db, t0))) {
     console.log("themeday: another run holds the lease");
     return;
@@ -280,7 +287,7 @@ export async function themeWork(db: Firestore, now: Date): Promise<void> {
         const tries = (s.tries?.[step] ?? 0) + 1;
         let out: {save: Record<string, unknown>; made: boolean} = {save: {}, made: false};
         try {
-          out = await runStep(db, when, day, step, s);
+          out = await runStep(db, when, day, step, s, until);
         } catch (e) {
           console.error(`themeday: day ${day}, ${step} failed`, e);
         }

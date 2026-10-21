@@ -542,8 +542,8 @@ note), **not pushed, not deployed**.
   every half-hour run and tries `create()` on each, for every day in the
   window (check the published ids first); one port that cannot be copied
   skips the rest until the next run; a port re-staged after publish is
-  never updated; `judge` does not clamp the score to 0-10 and a thing not in
-  `theme.objects` can never be `ok`; `keyFor` is called once per `makeHoop`
+  never updated; a thing not in `theme.objects` can never be `ok` (the
+  score is clamped to 0-10 since the review fix); `keyFor` is called once per `makeHoop`
   and per `drawJelly`, not memoised by thing, so a hoop and a jelly of one
   thing may get different keys.
 
