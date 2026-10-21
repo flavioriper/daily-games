@@ -412,7 +412,7 @@ func _sheet_part() -> void:
 	_ok("under budget with the sheet", draws > 0 and draws < BUDGET, str(draws))
 
 	await _sheet_tap(sheet.plus_rect("a").get_center())
-	_ok("tray opens", sheet.tray_rect("move").size.x > 0 and sheet.tray_rect("pick").size.x > 0)
+	_ok("tray opens", sheet.tray_rect("move").size.x > 0 and sheet.tray_rect("turn").size.x > 0 and sheet.tray_rect("pick").size.x > 0)
 	_ok("pick locked without a gripper", sheet.tray_locked("pick") and not sheet.tray_locked("move"))
 	await _shot("sheet_tray")
 	await _sheet_tap(sheet.parts_plus_rect().get_center())
@@ -423,34 +423,39 @@ func _sheet_part() -> void:
 	var ids: Array = Bots.walk(robots[0]).ids
 	_ok("pick inserted", ids.size() > 1 and String(ids[1]).begins_with("n") and robots[0].nodes[ids[1]].kind == "pick", str(ids))
 	await _sheet_tap(sheet.node_rect("b").get_center())
-	_ok("move pill", sheet.pill_button_rect("plus").size.x > 0)
+	_ok("turn pill: flip, no count", sheet.pill_button_rect("flip").size.x > 0 and sheet.pill_button_rect("plus").size.x == 0)
+	await _shot("sheet_turn_pill")
+	await _sheet_tap(sheet.pill_button_rect("flip").get_center())
+	_ok("flip turns it the other way", int(robots[0].nodes["b"].facing) == Sim.RIGHT, str(robots[0].nodes["b"]))
+	await _sheet_tap(sheet.node_rect("a").get_center())
+	_ok("move pill: a count, no flip", sheet.pill_button_rect("plus").size.x > 0 and sheet.pill_button_rect("flip").size.x == 0)
 	draws = await _shot("sheet_pill")
 	_ok("under budget with the pill", draws > 0 and draws < BUDGET, str(draws))
 	await _sheet_tap(sheet.pill_button_rect("plus").get_center())
-	_ok("plus counts", int(robots[0].nodes["b"].n) == 4, str(robots[0].nodes["b"]))
+	_ok("plus counts", int(robots[0].nodes["a"].n) == 5, str(robots[0].nodes["a"]))
 
 	_screen.open_sheet(2)
 	await _wait(0.9)
 	_ok("the shipper's sheet", sheet.robot == 2 and _screen.selected == 2)
 	draws = await _shot("sheet_open")
 	_ok("under budget", draws > 0 and draws < BUDGET, str(draws))
-	await _sheet_drag(sheet.out_port("c"), sheet.node_rect("d").get_center())
-	_ok("wire dragged", robots[2].next["c"].out == "d" and Bots.walk(robots[2]).closed, str(robots[2].next["c"]))
-	# d already goes to e: the tap-tap wires it past e to f, and back; the
+	await _sheet_drag(sheet.out_port("d"), sheet.node_rect("e").get_center())
+	_ok("wire dragged", robots[2].next["d"].out == "e" and Bots.walk(robots[2]).closed, str(robots[2].next["d"]))
+	# e already goes to f: the tap-tap wires it past f to g, and back; the
 	# second tap lands on the target's right side, by its own dot
-	await _sheet_tap(sheet.out_port("d"))
-	_ok("a tap arms the dot", sheet._armed == "d")
-	await _sheet_tap(sheet.node_rect("f").get_center())
-	_ok("tap-tap wires", robots[2].next["d"].out == "f" and sheet._armed == "", str(robots[2].next["d"]))
-	await _sheet_tap(sheet.out_port("d"))
-	var right: Rect2 = sheet.node_rect("e")
+	await _sheet_tap(sheet.out_port("e"))
+	_ok("a tap arms the dot", sheet._armed == "e")
+	await _sheet_tap(sheet.node_rect("g").get_center())
+	_ok("tap-tap wires", robots[2].next["e"].out == "g" and sheet._armed == "", str(robots[2].next["e"]))
+	await _sheet_tap(sheet.out_port("e"))
+	var right: Rect2 = sheet.node_rect("f")
 	await _sheet_tap(Vector2(right.end.x - 14.0, right.get_center().y))
-	_ok("tap-tap onto the target's right side wires", robots[2].next["d"].out == "e" and sheet._armed == "", str(robots[2].next["d"]))
+	_ok("tap-tap onto the target's right side wires", robots[2].next["e"].out == "f" and sheet._armed == "", str(robots[2].next["e"]))
 	# unarmed, a tap on a box's right quarter picks the box (the wire moved
 	# the boxes: read it again)
-	right = sheet.node_rect("e")
+	right = sheet.node_rect("f")
 	await _sheet_tap(Vector2(right.end.x - 38.0, right.get_center().y))
-	_ok("a box's right side picks it", sheet._sel == "e" and sheet._armed == "", "sel %s armed %s" % [sheet._sel, sheet._armed])
+	_ok("a box's right side picks it", sheet._sel == "f" and sheet._armed == "", "sel %s armed %s" % [sheet._sel, sheet._armed])
 	await _sheet_tap(Vector2(sheet.size.x * 0.5, sheet.size.y - 260.0))
 	draws = await _shot("sheet_wired")
 	_ok("under budget wired", draws > 0 and draws < BUDGET, str(draws))
@@ -552,11 +557,11 @@ func _tutor_run(reduce: bool) -> void:
 			0:
 				_ok("power: three robots out, the Shipper at its \"?\"", sim.robots[2].stuck == "?" or sim.tick_n < 30, "tick %d" % sim.tick_n)
 			1:
-				_ok("picker: gripper fitted and a pick inserted", sim.robots[0].parts.has("gripper") and Bots.walk(sim.robots[0]).ids.size() > 4, str(sim.robots[0].parts))
+				_ok("picker: gripper fitted and a pick inserted", sim.robots[0].parts.has("gripper") and Bots.walk(sim.robots[0]).ids.size() > 9, str(sim.robots[0].parts))
 			2:
-				_ok("boxer: both vertical moves 4", int(sim.robots[1].nodes["c"].n) == 4 and int(sim.robots[1].nodes["e"].n) == 4)
+				_ok("boxer: both vertical moves 4", int(sim.robots[1].nodes["e"].n) == 4 and int(sim.robots[1].nodes["j"].n) == 4)
 			3:
-				_ok("shipper: the wire lands", sim.robots[2].next["c"].out == "d")
+				_ok("shipper: the wire lands", sim.robots[2].next["d"].out == "e")
 			4:
 				_ok("box: the first sale", int(sim.earned) >= Sim.PAY_FULL and int(sim.coins) >= Sim.PAY_FULL, "earned %d" % sim.earned)
 			5:

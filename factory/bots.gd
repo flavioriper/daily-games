@@ -11,7 +11,9 @@ extends RefCounted
 ## after `id` ("" for a loose wire, BODY to loop back), `next[BODY].out` the
 ## first. `pc` is the node running ("body" at rest), `t` the ticks into it
 ## (into the tile being stepped, for a Move) and `left` the tiles a Move has
-## still to walk (-1 while it bumps).
+## still to walk (-1 while it bumps). A Move walks the way the robot faces;
+## a Turn turns it a quarter, right or left, in ACT_TICKS and a unit, and
+## the facing is kept when the loop comes round again.
 ##
 ## The floor between ticks: a step begins the tick `tile` moves on, with
 ## `was` the tile it left, and lasts `step_ticks` ticks; while `was != tile`
@@ -25,13 +27,13 @@ const Sim = preload("res://factory/sim.gd")
 ## The ticks a bubble is shown for; one not here is held until cleared.
 const BUBBLE_TICKS := {"wait": 4, "!": 9}
 
-## A new robot on the bay with `parts` fitted, a full cell and `chain` as its
-## program: rows of [kind, facing, n] (a Pick or a Release needs only
-## [kind]), given the ids "a", "b", ... in order and wired body -> a -> b ->
-## ... -> body.
+## A new robot on the bay facing HOME_FACING with `parts` fitted, a full
+## cell and `chain` as its program: rows of ["move", n], ["turn", way]
+## (Sim.RIGHT or Sim.LEFT), ["pick"] or ["release"], given the ids "a", "b",
+## ... in order and wired body -> a -> b -> ... -> body.
 static func new_robot(name: String, parts: Array, chain: Array) -> Dictionary:
 	var b := {
-		"name": name, "dock": Sim.BAY, "tile": Sim.BAY, "was": Sim.BAY, "parts": parts.duplicate(),
+		"name": name, "dock": Sim.BAY, "tile": Sim.BAY, "was": Sim.BAY, "facing": Sim.HOME_FACING, "parts": parts.duplicate(),
 		"nodes": {}, "order": [], "next": {Sim.BODY: {"out": Sim.BODY}}, "pc": Sim.BODY, "t": 0, "left": 0,
 		"held": {}, "charge": 0, "charging": false, "stuck": "", "bubble": "", "bubble_t": 0, "counters": {},
 	}
@@ -39,7 +41,8 @@ static func new_robot(name: String, parts: Array, chain: Array) -> Dictionary:
 	for k in chain.size():
 		var row: Array = chain[k]
 		var id := String.chr("a".unicode_at(0) + k)
-		b.nodes[id] = {"kind": String(row[0]), "facing": int(row[1]) if row.size() > 1 else 0, "n": int(row[2]) if row.size() > 2 else 1}
+		var kind := String(row[0])
+		b.nodes[id] = {"kind": kind, "facing": int(row[1]) if kind == "turn" else 0, "n": int(row[1]) if kind == "move" else 1}
 		b.order.append(id)
 		b.next[prev].out = id
 		b.next[id] = {"out": Sim.BODY}
@@ -104,20 +107,42 @@ static func cost(b: Dictionary) -> int:
 		units += int(node.n) if node.kind == "move" else 1
 	return units
 
-## Where the chain as it runs ends up from where it starts (bumps aside).
-static func net(b: Dictionary) -> Vector2i:
+## The way the robot faces at each node of the chain as it runs, setting
+## off facing `from` (HOME_FACING, as after an edit): a Move's is the way it
+## walks, a Turn's the way it faces once turned. {ways: {id: facing}, end:
+## the facing it comes back to the body with}.
+static func ways(b: Dictionary, from := Sim.HOME_FACING) -> Dictionary:
+	var f := from
+	var out := {}
+	for id: String in walk(b).ids:
+		var node: Dictionary = b.nodes[id]
+		if node.kind == "turn":
+			f = (f + int(node.facing)) % 4
+		out[id] = f
+	return {"ways": out, "end": f}
+
+## Where the chain as it runs ends up from where it starts (bumps aside),
+## setting off facing `from`.
+static func net(b: Dictionary, from := Sim.HOME_FACING) -> Vector2i:
 	var to := Vector2i.ZERO
+	var w: Dictionary = ways(b, from).ways
 	for id: String in walk(b).ids:
 		var node: Dictionary = b.nodes[id]
 		if node.kind == "move":
-			to += Sim.DIRS[int(node.facing)] * int(node.n)
+			to += Sim.DIRS[int(w[id])] * int(node.n)
 	return to
+
+## Whether the chain as it runs comes back to the body facing the way it
+## set off, so the next loop walks the same ring.
+static func faces_home(b: Dictionary) -> bool:
+	return int(ways(b).end) == Sim.HOME_FACING
 
 ## On the bay at the body: what an edit and a tow do. What it holds and the
 ## charge it has are kept (an edit never refills a cell).
 static func home(b: Dictionary) -> void:
 	b.tile = b.dock
 	b.was = b.dock
+	b.facing = Sim.HOME_FACING
 	b.pc = Sim.BODY
 	b.t = 0
 	b.left = 0
@@ -142,6 +167,17 @@ static func pos(b: Dictionary, alpha: float) -> Vector2:
 	var done := int(b.t) - 1 if int(b.t) > 0 else span - 1
 	var f := clampf((float(done) + alpha) / float(span), 0.0, 1.0)
 	return (Vector2(b.was) + Vector2(0.5, 0.5)).lerp(to, f)
+
+## The way to draw it facing, in quarters (0 +x, 1 +y, ...; not wrapped):
+## through a Turn it swings from the facing it had to the one it turns to,
+## by the ticks into it and `alpha`, the way `pos` slides a step.
+static func heading(b: Dictionary, alpha: float) -> float:
+	var f := float(b.facing)
+	if b.pc == Sim.BODY or b.stuck != "" or not b.nodes.has(b.pc) or b.nodes[b.pc].kind != "turn" or int(b.t) == 0:
+		return f
+	var way := 1.0 if int(b.nodes[b.pc].facing) == Sim.RIGHT else -1.0
+	# t is 1..ACT_TICKS - 1 between the tick it began and the one it is done
+	return f + way * clampf((float(int(b.t) - 1) + alpha) / float(Sim.ACT_TICKS - 1), 0.0, 1.0)
 
 # --- the tick ---
 
@@ -173,7 +209,9 @@ static func tick(sim: RefCounted, b: Dictionary) -> void:
 	if not can(b, node.kind):
 		_skip(sim, b)
 	elif node.kind == "move":
-		_move(sim, b, node)
+		_move(sim, b)
+	elif node.kind == "turn":
+		_turn(sim, b, node)
 	else:
 		_hand(sim, b, node.kind)
 
@@ -197,14 +235,14 @@ static func _body(sim: RefCounted, b: Dictionary) -> void:
 
 ## A Move: a tile every `step_ticks`, a unit a tile; a step off the floor is
 ## a bump, ACT_TICKS and a unit, and the rest of the Move is dropped.
-static func _move(sim: RefCounted, b: Dictionary, node: Dictionary) -> void:
+static func _move(sim: RefCounted, b: Dictionary) -> void:
 	if b.t == 0:
 		if int(b.left) == 0:
 			_advance(sim, b)
 			return
 		if not _spend(sim, b):
 			return
-		var to: Vector2i = b.tile + Sim.DIRS[int(node.facing)]
+		var to: Vector2i = b.tile + Sim.DIRS[int(b.facing)]
 		var i := _index(sim, b)
 		if not sim.on_floor(to):
 			b.left = -1
@@ -224,6 +262,18 @@ static func _move(sim: RefCounted, b: Dictionary, node: Dictionary) -> void:
 	b.left = int(b.left) - 1
 	if b.left == 0:
 		_advance(sim, b)
+
+## A Turn: a unit as it begins, ACT_TICKS, then it faces a quarter round
+## (`heading` swings it there in between).
+static func _turn(sim: RefCounted, b: Dictionary, node: Dictionary) -> void:
+	if b.t == 0 and not _spend(sim, b):
+		return
+	b.t = int(b.t) + 1
+	if b.t < Sim.ACT_TICKS:
+		return
+	b.facing = (int(b.facing) + int(node.facing)) % 4
+	sim.events.append({"type": "pivot", "robot": _index(sim, b), "facing": b.facing})
+	_advance(sim, b)
 
 ## A Pick or a Release: ACT_TICKS, then the hand. A Pick costs its unit as it
 ## begins and takes nothing into a full hand; a Release costs its unit only

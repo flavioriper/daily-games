@@ -86,8 +86,11 @@ extends RefCounted
 ##                       square, box, market, engine.
 ##
 ## A ROBOT, standing on (0, 0) as the land's buildings stood, in view units.
-##   robot()             a round body on two treads, white for a tint, a
-##                       lamp on a stalk; its shadow in it.
+##   robot(quarter)      a round body on two treads, white for a tint, a
+##                       lamp on a stalk; its shadow in it. The treads run
+##                       the way it faces, `quarter` (0 +x, 1 +y, ...).
+##   nose()              the arrow on its lid that points the way it faces,
+##                       pointing +x from (0, 0): drawn turned about LID.
 ##   face(stuck)         its eyes and mouth (ui/faces/face.gd's own
 ##                       `face_parts`) on its front: content, puzzled ("?"),
 ##                       asleep ("flat") or worried ("nocell").
@@ -693,6 +696,11 @@ const BAR_H := 10.0
 const BAR_AT := Vector2(0.0, -100.0)
 const BUBBLE_AT := Vector2(0.0, -110.0)
 const HELD_AT := Vector2(32.0, -6.0)
+## The middle of a robot's lid, where its nose turns.
+const LID := Vector2(0.0, -BODY_TOP)
+## The steps a quarter turn of the treads is cut into (each a mesh of its
+## own, made the first time it is drawn).
+const TREAD_STEPS := 8
 const HELD_SCALE := 0.7
 ## Where the robot's soft shadow lies, from its feet.
 const SHADOW_AT := Vector2(7.0, 5.0)
@@ -791,12 +799,19 @@ static func table() -> ArrayMesh:
 		_one["table"] = b.mesh()
 	return _one["table"]
 
-## A robot standing on (0, 0): its shadow, two treads, a round body white
-## for the holder's tint with a band round it, and a lamp on a short stalk.
-## Round, so it reads the same at every turn of the view and needs no
-## facing. The face is `face`.
-static func robot() -> ArrayMesh:
-	if not _one.has("robot"):
+## A robot standing on (0, 0) facing `quarter` (0 +x, 1 +y, ...; a Turn
+## swings it between): its shadow, two treads along the way it faces, a
+## round body white for the holder's tint with a band round it, and a lamp
+## on a short stalk. The body is round and its face is always toward the
+## viewer (a "?" or a sleeping face is a signal to read at any facing), so
+## the treads and the nose (`nose`) are what turn. The face is `face`.
+static func robot(quarter := 0.0) -> ArrayMesh:
+	var step := posmod(roundi(quarter * TREAD_STEPS), 4 * TREAD_STEPS)
+	var key := "robot%d" % step
+	if not _one.has(key):
+		var a := float(step) / TREAD_STEPS * PI * 0.5
+		var u := Vector2(cos(a), sin(a))
+		var v := Vector2(-u.y, u.x)
 		var b := Face.Builder.new()
 		var r := BODY_R
 		# a soft round shadow about its footprint, thrown a little right and
@@ -805,21 +820,40 @@ static func robot() -> ArrayMesh:
 		var reach := r * K * 2.0 * 1.3
 		_glow(b, SHADOW_AT, reach, reach * 0.8, Color(CAST.r, CAST.g, CAST.b), 0.62)
 		var tread := [INK.lightened(0.3), INK.lightened(0.16), INK]
-		# the far tread, the body, then the near one over its foot
-		_block(b, Vector2(0.0, -0.2), Vector2(0.27, 0.075), 0.0, 14.0, tread)
+		# the far tread (or both, side by side), the body, then the near one
+		# over its foot with its wheels
+		var sides := [-v * 0.2, v * 0.2]
+		sides.sort_custom(func(p: Vector2, q: Vector2) -> bool: return p.y < q.y)
+		var near: Array = sides.filter(func(p: Vector2) -> bool: return p.y > 0.05)
+		for c: Vector2 in sides:
+			if not near.has(c):
+				_turned_block(b, c, u, Vector2(0.27, 0.075), 0.0, 14.0, tread)
 		var white := [Color.WHITE, Color.WHITE, Color(0.93, 0.93, 0.93), Color(0.8, 0.8, 0.8)]
 		_drum(b, Vector2.ZERO, r, BODY_FOOT, BODY_TOP, white)
 		b.stroke(_round(Vector2.ZERO, r * 1.01, 20.0, 0.06, PI - 0.06, 16), 4.0, Color(0.72, 0.72, 0.72), false, false)
 		b.stroke(_round(Vector2.ZERO, r * 0.7, BODY_TOP, 0.0, TAU, 24), 2.0, Color(0.84, 0.84, 0.84), true, false)
-		_block(b, Vector2(0.0, 0.2), Vector2(0.27, 0.075), 0.0, 14.0, tread)
-		for k in 4:
-			b.disc(_p(Vector2(-0.2 + 0.133 * k, 0.275), 7.0), 3.2, INK.lightened(0.4))
+		for c: Vector2 in near:
+			_turned_block(b, c, u, Vector2(0.27, 0.075), 0.0, 14.0, tread)
+			var out := c.normalized() * 0.076
+			for k in 4:
+				b.disc(_p(c + out + u * (-0.2 + 0.133 * k), 7.0), 3.2, INK.lightened(0.4))
 		# the stalk and its lamp
 		b.stroke(PackedVector2Array([_p(Vector2.ZERO, BODY_TOP - 2.0), _p(Vector2.ZERO, LAMP_UP - 4.0)]), 4.0, INK)
 		b.disc(_p(Vector2.ZERO, LAMP_UP), 6.5, LIVE)
 		b.disc(_p(Vector2.ZERO, LAMP_UP) + Vector2(-2.0, -2.0), 2.2, LIVE.lightened(0.5))
-		_one["robot"] = b.mesh()
-	return _one["robot"]
+		_one[key] = b.mesh()
+	return _one[key]
+
+## The arrow on a robot's lid, pointing +x from (0, 0) out to the lid's rim:
+## drawn at LID turned to the way it faces.
+static func nose() -> ArrayMesh:
+	if not _one.has("nose"):
+		var b := Face.Builder.new()
+		var head := PackedVector2Array([Vector2(12.0, -9.0), Vector2(25.0, 0.0), Vector2(12.0, 9.0)])
+		b.stroke(head, 8.0, INK)
+		b.stroke(head, 4.0, LIVE)
+		_one["nose"] = b.mesh()
+	return _one["nose"]
 
 ## Its eyes and mouth by `stuck` (the sim's: "", "?", "flat", "nocell"),
 ## from the house's face builder: content, puzzled, asleep, worried. On the
@@ -1239,6 +1273,20 @@ static func _ground_shade(b: Face.Builder, blocks: Array) -> void:
 ## sun), its +x side (in shade; seen edge on from above, so nothing of it
 ## shows top-down) and its top.
 ## `tones`: [top, lit, shaded].
+## `_block` laid along `u` (a unit floor vector) instead of +x: its sides
+## that face the viewer (+y on the floor), then its top.
+static func _turned_block(b: Face.Builder, c: Vector2, u: Vector2, half: Vector2, z0: float, z1: float, tones: Array) -> void:
+	var v := Vector2(-u.y, u.x)
+	var q := [c - u * half.x - v * half.y, c + u * half.x - v * half.y, c + u * half.x + v * half.y, c - u * half.x + v * half.y]
+	for k in 4:
+		var p0: Vector2 = q[k]
+		var p1: Vector2 = q[(k + 1) % 4]
+		var n := (p0 + p1) * 0.5 - c
+		if n.y <= 0.001:
+			continue
+		b.polygon(PackedVector2Array([_p(p0, z0), _p(p1, z0), _p(p1, z1), _p(p0, z1)]), tones[2] if n.normalized().x > 0.5 else tones[1])
+	b.polygon(PackedVector2Array([_p(q[0], z1), _p(q[1], z1), _p(q[2], z1), _p(q[3], z1)]), tones[0])
+
 static func _block(b: Face.Builder, c: Vector2, half: Vector2, z0: float, z1: float, tones: Array) -> void:
 	var x0 := c.x - half.x
 	var x1 := c.x + half.x
@@ -1671,7 +1719,7 @@ static func pace_text(sim: RefCounted) -> String:
 		return TranslationServer.translate("FACTORY_PACE_ONE" if sim.sold_at.size() == 1 else "FACTORY_PACE_NONE")
 	return TranslationServer.translate("FACTORY_PACE") % amount(snappedf(sim.pace_s(), 0.1), comma())
 
-## What the next milestone asks ("next: a box every 44 s"), "" when the
+## What the next milestone asks ("next: a box every 51 s"), "" when the
 ## next is past what this build fills (Sim.BUILT).
 static func next_text(sim: RefCounted) -> String:
 	var next: int = sim.milestone + 1

@@ -194,11 +194,11 @@ static func _fix_picker(sim: RefCounted) -> void:
 	sim.add_node(0, "a", "out", "pick")
 
 static func _fix_boxer(sim: RefCounted) -> void:
-	sim.set_move(1, "c", 1, 4)
-	sim.set_move(1, "e", 3, 4)
+	sim.set_move(1, "e", 4)
+	sim.set_move(1, "j", 4)
 
 static func _fix_shipper(sim: RefCounted) -> void:
-	sim.set_next(2, "c", "out", "d")
+	sim.set_next(2, "d", "out", "e")
 
 ## The tick the first box is sold on once the three faults are fixed.
 static func first_sale() -> int:

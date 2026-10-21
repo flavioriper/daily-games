@@ -1038,6 +1038,7 @@ FACTORY_MILESTONE_AGAIN,Do it again,Faça de novo,Hazlo otra vez
 FACTORY_ROBOT,Robot %d,Robô %d,Robot %d
 FACTORY_PILL_SELL,Sell,Vender,Vender
 FACTORY_MOVE,Move,Mover,Mover
+FACTORY_TURN,Turn,Virar,Girar
 FACTORY_PICK,Pick,Pegar,Tomar
 FACTORY_RELEASE,Release,Soltar,Soltar
 FACTORY_TREADS,Treads,Lagartas,Orugas

@@ -15,7 +15,7 @@ extends Control
 ## factory/screen.gd mounts it over its field and hands it the one sim with
 ## `setup`; `open(i)` shows robot `i`'s program. Every change goes through
 ## the sim's editing API (`set_next`, `add_node`, `remove_node`, `set_move`,
-## `fit`, `unfit`, `tow`), which sends the robot home; the screen forwards
+## `set_turn`, `fit`, `unfit`, `tow`), which sends the robot home; the screen forwards
 ## the sim's events (`event`) so an edit made from elsewhere redraws it too.
 ##
 ## The hand. Every finger is a ScreenTouch or a ScreenDrag, the desktop mouse
@@ -38,7 +38,11 @@ extends Control
 ## A Move's arrow points the way the robot walks on screen: the floor is
 ## square tiles seen from above, so it is the facing itself, right, down,
 ## left or up (it was drawn on the diagonal while the floor was seen corner
-## on, for part of 2026-10-21).
+## on, for part of 2026-10-21). Since the Turn node (2026-10-21) a Move has
+## no way of its own: it walks the way the robot faces, and its arrow is
+## that facing as the chain reaches it from the bay (`Bots.ways`), so the
+## sheet still reads as a map. A Turn's glyph is a quarter arc bending
+## right or left.
 ##
 ## `preview` is the tutorial's: the same sheet drawn small into a rect of a
 ## diagram (`show_preview`), with no input, no slide and no handle to pull,
@@ -126,12 +130,12 @@ const MUTED := Color("6f655b")
 const DEAD := Color("f4efe6")
 
 ## Names the player reads, by node kind and by part.
-const NODE_KEY := {"move": "FACTORY_MOVE", "pick": "FACTORY_PICK", "release": "FACTORY_RELEASE"}
+const NODE_KEY := {"move": "FACTORY_MOVE", "turn": "FACTORY_TURN", "pick": "FACTORY_PICK", "release": "FACTORY_RELEASE"}
 const PART_KEY := {"treads": "FACTORY_TREADS", "gripper": "FACTORY_GRIPPER", "battery": "FACTORY_BATTERY",
 	"fast": "FACTORY_FAST_TREADS", "plug": "FACTORY_FAST_PLUG"}
 ## The pill's buttons and their captions; `lift` is Remove on a node and
 ## Take off on a part (`_pill_names`).
-const PILL_CAP := {"turn": "TL_TURN", "minus": "FACTORY_FEWER", "plus": "FACTORY_MORE", "lift": "FACTORY_REMOVE",
+const PILL_CAP := {"flip": "TL_FLIP", "minus": "FACTORY_FEWER", "plus": "FACTORY_MORE", "lift": "FACTORY_REMOVE",
 	"info": "FACTORY_INFO", "place": "FACTORY_TOW"}
 const MOUSE := -2
 const NO_FINGER := -99
@@ -534,7 +538,12 @@ func _pill_names() -> Array:
 		return ["lift"]
 	if not b.nodes.has(_sel):
 		return []
-	return ["turn", "minus", "plus", "lift"] if String(b.nodes[_sel].kind) == "move" else ["lift"]
+	match String(b.nodes[_sel].kind):
+		"move":
+			return ["minus", "plus", "lift"]
+		"turn":
+			return ["flip", "lift"]
+	return ["lift"]
 
 func _sel_rect() -> Rect2:
 	if _sel.begins_with(PART_SEL):
@@ -586,19 +595,17 @@ func _pill_press(button: String) -> void:
 		return
 	_btn_at[button] = _clock
 	match button:
-		"turn", "minus", "plus":
-			var node: Dictionary = b.nodes[_sel]
-			var f := int(node.facing)
-			var n := int(node.n)
-			if button == "turn":
-				f = (f + 1) % 4
-			else:
-				n += 1 if button == "plus" else -1
+		"minus", "plus":
+			var n := int(b.nodes[_sel].n) + (1 if button == "plus" else -1)
 			if n < 1 or n > 9:
 				_no()
 				return
-			if sim.set_move(robot, _sel, f, n):
-				_fx.touch(1.0 + (n - 5) * 0.03 if button != "turn" else 1.06)
+			if sim.set_move(robot, _sel, n):
+				_fx.touch(1.0 + (n - 5) * 0.03)
+		"flip":
+			var way := Sim.LEFT if int(b.nodes[_sel].facing) == Sim.RIGHT else Sim.RIGHT
+			if sim.set_turn(robot, _sel, way):
+				_fx.touch(1.06)
 		"lift":
 			var done: bool = sim.unfit(robot, int(_sel.substr(PART_SEL.length()))) if _sel.begins_with(PART_SEL) else sim.remove_node(robot, _sel)
 			if done:
@@ -1120,7 +1127,7 @@ func _node(gb: Face.Builder, b: Dictionary, id: String, r: Rect2) -> void:
 	var ink := MUTED if dead else INK
 	var c := r.get_center()
 	if kind == "move":
-		var d := arrow_of(int(node.facing))
+		var d := arrow_of(int(Bots.ways(b).ways.get(id, Sim.HOME_FACING)))
 		var ac := c + Vector2(-29.0, 0.0)
 		var tail := ac - d * 29.0
 		var head := ac + d * 29.0
@@ -1128,12 +1135,30 @@ func _node(gb: Face.Builder, b: Dictionary, id: String, r: Rect2) -> void:
 		gb.stroke(PackedVector2Array([tail, head - d * 5.0]), 10.0, ink)
 		gb.stroke(PackedVector2Array([head - d * 20.0 + side * 20.0, head, head - d * 20.0 - side * 20.0]), 10.0, ink)
 		_digit(gb, int(node.n), Rect2(c + Vector2(27.0, -29.0), Vector2(35.0, 59.0)), 9.0, ink)
+	elif kind == "turn":
+		_bend(gb, int(node.facing) == Sim.RIGHT, c, ink)
 	else:
 		_hand(gb, kind == "pick", c, 2.5 * K, ink)
 	_labels.append([tr(String(NODE_KEY.get(kind, kind))), Vector2(c.x, r.end.y + 40.0), FS, ink])
 	if dead:
 		var part := String(Sim.NODES[kind].part)
 		_labels.append([tr("FACTORY_NEEDS") % tr(String(PART_KEY.get(part, part))), Vector2(c.x, r.end.y + 72.0), FS_SMALL, RED])
+
+## A Turn's glyph: a quarter arc rising from the box's foot and bending
+## right (or left) into an arrowhead, the way a robot facing up the sheet
+## would turn.
+static func _bend(gb: Face.Builder, right: bool, c: Vector2, ink: Color) -> void:
+	var s := 1.0 if right else -1.0
+	var r := 30.0
+	# the arc's middle sits off to the side it bends away from
+	var mid := c + Vector2(s * 14.0, 16.0)
+	var pts := PackedVector2Array()
+	for k in 13:
+		var a := PI + (PI * 0.5) * k / 12.0
+		pts.append(mid + Vector2(cos(a) * r * s, sin(a) * r))
+	gb.stroke(pts, 10.0, ink)
+	var tip := mid + Vector2(0.0, -r) + Vector2(s * 10.0, 0.0)
+	gb.stroke(PackedVector2Array([tip + Vector2(-s * 18.0, -17.0), tip, tip + Vector2(-s * 18.0, 17.0)]), 10.0, ink)
 
 ## The prototype's claw over a box: closing (Pick) or open (Release), from a
 ## 22-unit drawing scaled `s` about `c`.

@@ -106,9 +106,12 @@ extends RefCounted
 ##   dock, tile, was: Vector2i          the bay; where it stands; the tile it
 ##                            stepped from: mid-step while `was != tile`,
 ##                            `Bots.pos(b, alpha)` says where to draw it
+##   facing: int              the way it faces, a Move's way; HOME_FACING on
+##                            the bay after an edit, else kept loop to loop
 ##   parts: Array             PARTS ids fitted, in the order fitted
-##   nodes: {id: {kind, facing, n}}     kind a NODES key; a Move's facing and
-##                            count (1..9)
+##   nodes: {id: {kind, facing, n}}     kind a NODES key; a Move's count
+##                            (1..9, its facing unused); a Turn's facing the
+##                            quarters it turns by, RIGHT or LEFT
 ##   order: Array             every node id, the order they were made
 ##   next: {id: {"out": id | BODY | ""}}  the wires; BODY has a row too
 ##   pc: String               the node running, BODY at rest; t the ticks
@@ -127,7 +130,8 @@ extends RefCounted
 ##                            `after`, its id ("" refused: a kind no part
 ##                            fitted gives)
 ##   remove_node(i, id)       the wires into it go where it went
-##   set_move(i, id, facing, n)
+##   set_move(i, id, n)       a Move's count
+##   set_turn(i, id, way)     a Turn's way, RIGHT or LEFT
 ##   fit(i, part)             from the bin, else bought; unfit(i, index) back
 ##                            to the bin
 ##   tow(i)                   a flat robot onto the bay, charge still 0
@@ -159,6 +163,7 @@ extends RefCounted
 ##   milestone {id}                   a milestone opened (MILESTONES' id)
 ## The robots' (`robot` its index in `robots`):
 ##   step {robot, from, to}  bump {robot, tile}  skip {robot, id}
+##   pivot {robot, facing}    a Turn done, the way it faces now
 ##   pick {robot, tile, kind}  release {robot, tile, kind}  ("" for nothing)
 ##   wait {robot}             a Release the tile will not take, once
 ##   stuck {robot, why}       "?" or "nocell"
@@ -171,7 +176,7 @@ const TICK := 0.1
 ## The longest frame a holder steps by: a longer one is a hitch, not play.
 const STEP_MOST := 0.25
 const EPS := 0.000001
-const VERSION := 6
+const VERSION := 7
 
 const COLS := 10
 const ROWS := 12
@@ -209,11 +214,13 @@ const ITEM_KINDS := ["square", "box"]
 ## opens it ("held for a minute"). Row 0 is the start; its `every` is unused.
 ## The rates are read off the pace bot (tests/_probe_factory.gd, `_check_pace`:
 ## the three fixes of the first session on a new floor): 2026-10-20 it read a
-## full box every 366 ticks (36.6 s), steady to the tick. Milestone 1 is that
-## plus 20 % rounded to 10 ticks (440, 44 s); milestone 2 is half of it (220).
+## full box every 366 ticks (36.6 s), steady to the tick; 2026-10-21, with the
+## Turn node's corners in every loop, 426 (42.6 s). Milestone 1 is that plus
+## 20 % rounded to 10 ticks (510, 51 s; it was 440); milestone 2 is half of
+## it (255).
 const WINDOW := 600
 const HOLD := 600
-const MILESTONES := [{"id": "line", "every": 0}, {"id": "belts", "every": 440}, {"id": "again", "every": 220}]
+const MILESTONES := [{"id": "line", "every": 0}, {"id": "belts", "every": 510}, {"id": "again", "every": 255}]
 ## The last milestone this build fills: "again" keeps its row for the save
 ## but nothing is behind it yet, so the pace never opens it.
 const BUILT := 1
@@ -222,20 +229,29 @@ const BUILT := 1
 ## tile, the battery's cell and the units a tick it charges by on the bay.
 ## A row with a price is bought into the bin from milestone `from`.
 const PARTS := {
-	"treads": {"gives": ["move"], "step": 4},
+	"treads": {"gives": ["move", "turn"], "step": 4},
 	"gripper": {"gives": ["pick", "release"]},
 	"battery": {"cell": 30, "rate": 1},
-	"fast": {"gives": ["move"], "step": 2, "price": 30, "from": 1},
+	"fast": {"gives": ["move", "turn"], "step": 2, "price": 30, "from": 1},
 	"plug": {"rate": 2, "price": 40, "from": 1},
 }
 ## The program's nodes: the part that gives each and its out ports.
 const NODES := {
 	"move": {"part": "treads", "ports": ["out"]},
+	"turn": {"part": "treads", "ports": ["out"]},
 	"pick": {"part": "gripper", "ports": ["out"]},
 	"release": {"part": "gripper", "ports": ["out"]},
 }
 ## The body's id in a program: where a loop starts and comes back to.
 const BODY := "body"
+## A Turn's ways, the quarters it adds to the facing (a quarter clockwise on
+## the screen is a turn to the robot's right), and the way a robot faces on
+## the bay after an edit: down, toward the work row (the user, 2026-10-21:
+## "add a turn node so bot has to turn before moving"; the facing is kept
+## from one loop to the next, so a program must end the way it began).
+const RIGHT := 1
+const LEFT := 3
+const HOME_FACING := 1
 ## A full cell; the ticks a Pick, a Release, a skip and a bump take; the
 ## body's.
 const CELL := 30
@@ -346,17 +362,23 @@ func new_floor(with_seed: int) -> void:
 ## first (it picks squares) has no gripper (it lies in the bin), the
 ## second's (it boxes) down Move stops a tile short of the table, the
 ## third's (it ships) wire after its Pick is loose. They are one body with
-## other parts and programs, named by their place, not a job.
+## other parts and programs, named by their place, not a job. Each sets
+## off facing down and walks a ring that ends facing down again: the first
+## and third turn left at every corner, the second, stack before table,
+## right, and twice more on the bay.
 func _stand_robots() -> void:
 	robots = [
 		Bots.new_robot("1", ["treads", "battery"],
-			[["move", 1, 4], ["move", 0, 3], ["release"], ["move", 2, 3], ["move", 3, 4]]),
+			[["move", 4], ["turn", LEFT], ["move", 3], ["release"], ["turn", LEFT], ["move", 4], ["turn", LEFT],
+				["move", 3], ["turn", LEFT]]),
 		Bots.new_robot("2", ["treads", "gripper", "battery"],
-			[["move", 0, 3], ["pick"], ["move", 1, 3], ["release"], ["move", 3, 3], ["move", 2, 3]]),
+			[["turn", LEFT], ["move", 3], ["pick"], ["turn", RIGHT], ["move", 3], ["release"], ["turn", RIGHT],
+				["move", 3], ["turn", RIGHT], ["move", 3], ["turn", RIGHT], ["turn", RIGHT]]),
 		Bots.new_robot("3", ["treads", "gripper", "battery"],
-			[["move", 0, 3], ["move", 1, 4], ["pick"], ["move", 0, 4], ["release"], ["move", 2, 4], ["move", 3, 4], ["move", 2, 3]]),
+			[["move", 4], ["turn", LEFT], ["move", 3], ["pick"], ["move", 4], ["release"], ["turn", LEFT],
+				["move", 4], ["turn", LEFT], ["move", 7], ["turn", LEFT]]),
 	]
-	Bots.loose_after(robots[2], "c")
+	Bots.loose_after(robots[2], "d")
 
 func _stand_stations() -> void:
 	stations = {}
@@ -1106,7 +1128,7 @@ func add_node(i: int, after: String, port: String, kind: String) -> String:
 		return ""
 	var id := "n%d" % _next_id
 	_next_id += 1
-	b.nodes[id] = {"kind": kind, "facing": 0, "n": 1}
+	b.nodes[id] = {"kind": kind, "facing": RIGHT if kind == "turn" else 0, "n": 1}
 	b.next[id] = {"out": b.next[after][port]}
 	b.next[after][port] = id
 	b.order.append(id)
@@ -1132,19 +1154,32 @@ func remove_node(i: int, id: String) -> bool:
 	_edited(i)
 	return true
 
-## A Move's facing and count (1..9).
-func set_move(i: int, id: String, facing: int, n: int) -> bool:
+## A Move's count (1..9).
+func set_move(i: int, id: String, n: int) -> bool:
 	var b := _robot(i)
 	if b.is_empty():
 		return false
-	if not b.nodes.has(id) or b.nodes[id].kind != "move" or facing < 0 or facing > 3:
+	if not b.nodes.has(id) or b.nodes[id].kind != "move":
 		return _no("node", b.tile)
 	var node: Dictionary = b.nodes[id]
 	n = clampi(n, 1, 9)
-	if int(node.facing) == facing and int(node.n) == n:
+	if int(node.n) == n:
 		return false
-	node.facing = facing
 	node.n = n
+	_edited(i)
+	return true
+
+## A Turn's way: RIGHT or LEFT.
+func set_turn(i: int, id: String, way: int) -> bool:
+	var b := _robot(i)
+	if b.is_empty():
+		return false
+	if not b.nodes.has(id) or b.nodes[id].kind != "turn" or (way != RIGHT and way != LEFT):
+		return _no("node", b.tile)
+	var node: Dictionary = b.nodes[id]
+	if int(node.facing) == way:
+		return false
+	node.facing = way
 	_edited(i)
 	return true
 
@@ -1367,7 +1402,7 @@ static func _sound(d: Dictionary) -> bool:
 	return true
 
 const _ROBOT_SHAPES := {
-	"name": TYPE_STRING, "dock": TYPE_VECTOR2I, "tile": TYPE_VECTOR2I, "was": TYPE_VECTOR2I, "parts": TYPE_ARRAY,
+	"name": TYPE_STRING, "dock": TYPE_VECTOR2I, "tile": TYPE_VECTOR2I, "was": TYPE_VECTOR2I, "facing": TYPE_INT, "parts": TYPE_ARRAY,
 	"nodes": TYPE_DICTIONARY, "order": TYPE_ARRAY, "next": TYPE_DICTIONARY, "pc": TYPE_STRING, "t": TYPE_INT,
 	"left": TYPE_INT, "held": TYPE_DICTIONARY, "charge": TYPE_INT, "charging": TYPE_BOOL, "stuck": TYPE_STRING,
 	"bubble": TYPE_STRING, "bubble_t": TYPE_INT, "counters": TYPE_DICTIONARY,
@@ -1379,7 +1414,7 @@ static func _sound_robot(b: Variant) -> bool:
 	for key: String in _ROBOT_SHAPES:
 		if not b.has(key) or typeof(b[key]) != _ROBOT_SHAPES[key]:
 			return false
-	if not STUCK.has(b.stuck) or b.charge < 0 or (not b.held.is_empty() and not _sound_item(b.held)):
+	if not STUCK.has(b.stuck) or b.charge < 0 or b.facing < 0 or b.facing > 3 or (not b.held.is_empty() and not _sound_item(b.held)):
 		return false
 	for part: Variant in b.parts:
 		if not (part is String) or not PARTS.has(part):
@@ -1388,7 +1423,7 @@ static func _sound_robot(b: Variant) -> bool:
 		var node: Variant = b.nodes[id]
 		if not (id is String) or id == BODY or not (node is Dictionary) or not node.has_all(["kind", "facing", "n"]) \
 				or not NODES.has(node.kind) or not (node.facing is int) or node.facing < 0 or node.facing > 3 \
-				or not (node.n is int) or node.n < 1 or node.n > 9:
+				or not (node.n is int) or node.n < 1 or node.n > 9 or (node.kind == "turn" and node.facing != RIGHT and node.facing != LEFT):
 			return false
 	if not b.next.has(BODY) or (b.pc != BODY and not b.nodes.has(b.pc)):
 		return false

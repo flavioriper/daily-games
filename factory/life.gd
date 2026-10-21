@@ -738,9 +738,11 @@ func _add_robot(list: Array, i: int, stood: Dictionary) -> void:
 	var pos := Bots.pos(b, float(sim.alpha))
 	var d := depth(pos) + 0.1 + 0.001 * i
 	var xf := _robot_xf(i)
-	list.append([d, PLAIN, Art.robot(), xf, TINTS[i % TINTS.size()]])
+	var quarter: float = Bots.heading(b, float(sim.alpha)) if not Motion.reduce else float(b.facing)
+	list.append([d, PLAIN, Art.robot(quarter), xf, TINTS[i % TINTS.size()]])
 	var stuck := String(b.stuck)
 	list.append([d + 0.0002, PLAIN, Art.face(stuck if FACES.has(stuck) else ""), xf, Color.WHITE])
+	list.append([d + 0.0003, PLAIN, Art.nose(), xf * Transform2D(quarter * PI * 0.5, Art.LID), Color.WHITE])
 	if not (b.held as Dictionary).is_empty():
 		list.append([d + 0.0004, PLAIN, Art.item(b.held, false), xf * Transform2D(0.0, Vector2(Art.HELD_SCALE, Art.HELD_SCALE), 0.0, Art.HELD_AT), Color.WHITE])
 	stood[b.tile as Vector2i] = true

@@ -780,8 +780,10 @@ func _refresh_hud(delta: float) -> void:
 ## chain does not come back to the body (a loose wire), it runs a node no
 ## part of it gives, or it is stuck. A fault of the floor (a Move a tile
 ## short) is not one: nothing but watching it says so.
+## A loop that comes back to the bay facing another way than it set off is
+## one: the next loop walks another ring.
 func robot_fault(i: int) -> bool:
-	return String(sim.robots[i].stuck) != "" or not chain_whole(i)
+	return String(sim.robots[i].stuck) != "" or not chain_whole(i) or not Bots.faces_home(sim.robots[i])
 
 ## Whether robot `i`'s chain closes back on its body with every node on it
 ## one its parts can do.

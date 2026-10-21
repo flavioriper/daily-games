@@ -49,6 +49,7 @@ func _process(_delta: float) -> bool:
 	_check_belts()
 	_check_kept()
 	_check_robots()
+	_check_turns()
 	_check_pace()
 	print("probe_factory: %d checks, %d failed" % [_checks, _fails])
 	DirAccess.remove_absolute(Sim.path)
@@ -147,15 +148,15 @@ func _refused(sim: RefCounted, why: String) -> bool:
 func _fix_all(sim: RefCounted) -> bool:
 	var ok: bool = sim.fit(0, "gripper")
 	ok = ok and sim.add_node(0, Bots.walk(sim.robots[0]).ids[0], "out", "pick") != ""
-	ok = ok and sim.set_move(1, "c", 1, 4) and sim.set_move(1, "e", 3, 4)
-	ok = ok and sim.set_next(2, "c", "out", "d")
+	ok = ok and sim.set_move(1, "e", 4) and sim.set_move(1, "j", 4)
+	ok = ok and sim.set_next(2, "d", "out", "e")
 	return ok
 
 # --- the checks ---
 
 func _check_floor() -> void:
 	var sim: RefCounted = Sim.new(7)
-	_ok("a new floor is version 6, 10 x 12, nothing on it, no coins, three robots, a gripper in the bin", Sim.VERSION == 6 and Sim.COLS == 10
+	_ok("a new floor is version 7, 10 x 12, nothing on it, no coins, three robots, a gripper in the bin", Sim.VERSION == 7 and Sim.COLS == 10
 		and Sim.ROWS == 12 and sim.coins == 0 and sim.earned == 0 and sim.queue == 0 and sim.table.is_empty() and sim.items.is_empty()
 		and sim.belts.is_empty() and sim.robots.size() == 3 and sim.bin == {"gripper": 1})
 	# the floor's own rules, with no robot walking it
@@ -321,7 +322,7 @@ func _check_kept() -> void:
 	_ok("round trip", back.load_saved() and var_to_str(back.pack()) == var_to_str(sim.pack()) and back.picked == "belt" and back.queue == sim.queue
 		and int(back.table.n) == 2 and back.station_at(T) == "table")
 	var kept: Dictionary = back.pack()
-	_ok("the save is version 6 and holds the floor, nothing of the land", kept.version == 6 and kept.has_all(["queue", "table", "robots", "bin", "tick_n"])
+	_ok("the save is version 7 and holds the floor, nothing of the land", kept.version == 7 and kept.has_all(["queue", "table", "robots", "bin", "tick_n"])
 		and not kept.has("plates") and not kept.has("modules") and not kept.has("sources") and not kept.has("sold"))
 	back.save()
 	_ok("which saves as the same file", FileAccess.get_file_as_string(Sim.path) == a)
@@ -375,14 +376,63 @@ func _check_kept() -> void:
 	f.close()
 	_ok("and so is nonsense", not fresh.load_saved() and var_to_str(fresh.pack()) == was)
 
+## The Turn node: a unit and ACT_TICKS, a quarter right or left, Moves walk
+## the way the robot faces, and the facing is kept loop to loop.
+func _check_turns() -> void:
+	var sim: RefCounted = Sim.new(3)
+	var bot: Dictionary = Bots.new_robot("Turner", ["treads", "battery"], [["turn", Sim.RIGHT], ["move", 1]])
+	bot.dock = Vector2i(5, 5)
+	bot.tile = bot.dock
+	bot.was = bot.dock
+	sim.robots = [bot]
+	_ok("a new robot faces down", bot.facing == Sim.HOME_FACING and Sim.HOME_FACING == 1)
+	_until_pc(sim, 0, "a", 10)
+	var c0: int = bot.charge
+	var ticks := 0
+	var pivots: Array = []
+	var mid := -1.0
+	while bot.pc == "a" and ticks < 20:
+		for e: Dictionary in _tick(sim):
+			if e.type == "pivot":
+				pivots.append(e)
+		ticks += 1
+		if ticks == 2:
+			mid = Bots.heading(bot, 0.5)
+	_ok("a Turn takes ACT_TICKS and a unit", ticks == Sim.ACT_TICKS and c0 - bot.charge == 1, "%d ticks, %d units" % [ticks, c0 - bot.charge])
+	_ok("and turns a quarter right: down to left", bot.facing == 2 and pivots.size() == 1 and pivots[0].facing == 2)
+	_ok("swinging there in between", mid > 1.0 and mid < 2.0, str(mid))
+	_until_pc(sim, 0, Sim.BODY, 20)
+	_ok("a Move walks the way it faces", bot.tile == Vector2i(4, 5))
+	_until_pc(sim, 0, "a", 10)
+	_until_pc(sim, 0, Sim.BODY, 40)
+	_ok("and the facing is kept into the next loop", bot.facing == 3 and bot.tile == Vector2i(4, 4), "%d %s" % [bot.facing, bot.tile])
+	_ok("a ring that does not face home is told", not Bots.faces_home(bot) and Bots.ways(bot).end == 2)
+	var nid: String = sim.add_node(0, "b", "out", "turn")
+	_ok("a Turn added is a right one and the robot goes home facing down", nid != "" and bot.nodes[nid].facing == Sim.RIGHT
+		and bot.facing == Sim.HOME_FACING and bot.tile == bot.dock and Bots.ways(bot).end == 3)
+	_ok("a left turn", sim.set_turn(0, nid, Sim.LEFT) and Bots.ways(bot).end == 1 and Bots.faces_home(bot))
+	var no_treads: RefCounted = Sim.new(3)
+	_ok("Turn is the treads'", Bots.can(no_treads.robots[0], "turn") and Sim.NODES.turn.part == "treads")
+	var bad: Dictionary = sim.pack()
+	bad.robots[0].nodes[nid].facing = 2
+	_write(bad, Sim.VERSION)
+	var fresh: RefCounted = Sim.new(3)
+	var was := var_to_str(fresh.pack())
+	_ok("a Turn of two quarters is refused on load", not fresh.load_saved() and var_to_str(fresh.pack()) == was)
+	bad = sim.pack()
+	bad.robots[0].erase("facing")
+	_write(bad, Sim.VERSION)
+	_ok("so is a robot with no facing (a version 6 floor)", not fresh.load_saved() and var_to_str(fresh.pack()) == was)
+	DirAccess.remove_absolute(Sim.path)
+
 func _check_robots() -> void:
 	var sim: RefCounted = Sim.new(3)
 	_ok("three on the bay", sim.robots.size() == 3 and sim.robots.all(func(b: Dictionary) -> bool: return b.tile == Sim.BAY and b.charge == Sim.CELL))
 	_ok("picker lacks pick", not Bots.can(sim.robots[0], "pick") and Bots.walk(sim.robots[0]).closed and Bots.can(sim.robots[1], "pick"))
-	_ok("shipper loose", not Bots.walk(sim.robots[2]).closed and Bots.walk(sim.robots[2]).ids.size() == 3)
+	_ok("shipper loose", not Bots.walk(sim.robots[2]).closed and Bots.walk(sim.robots[2]).ids.size() == 4)
 	# with no gripper the Picker's Release is skipped where it stands, at the table
 	var found: Array = []
-	_ok("picker walks empty", _until_event(sim, "skip", 400, 0, found) > 0 and found[0].id == "c" and sim.robots[0].held.is_empty()
+	_ok("picker walks empty", _until_event(sim, "skip", 400, 0, found) > 0 and found[0].id == "d" and sim.robots[0].held.is_empty()
 		and sim.robots[0].tile == T and sim.robots[0].bubble == "!")
 	_ok("the second robot litters (4,10)", _until_event(sim, "release", 400, 1) > 0 and sim.items.has(Vector2i(4, 10)) and sim.items[Vector2i(4, 10)][0].kind == "box")
 	_run(sim, 200)
@@ -394,14 +444,16 @@ func _check_robots() -> void:
 	_ok("pick inserted after move down", pick_id.begins_with("n") and Bots.walk(sim.robots[0]).ids[1] == pick_id and Bots.walk(sim.robots[0]).closed)
 	_ok("picker holds a square and waits", _until_event(sim, "wait", 600, 0) > 0 and sim.robots[0].held.get("kind", "") == "square"
 		and sim.robots[0].tile == T and sim.robots[0].bubble == "wait")
-	_ok("boxer fixed", sim.set_move(1, "c", 1, 4) and sim.set_move(1, "e", 3, 4) and Bots.net(sim.robots[1]) == Vector2i.ZERO
-		and not sim.set_move(1, "e", 3, 4))
-	_ok("shipper wired", not sim.set_next(2, "c", "out", "c") and sim.set_next(2, "c", "out", "d") and Bots.walk(sim.robots[2]).closed
+	_ok("boxer fixed", sim.set_move(1, "e", 4) and sim.set_move(1, "j", 4) and Bots.net(sim.robots[1]) == Vector2i.ZERO
+		and not sim.set_move(1, "j", 4))
+	_ok("shipper wired", not sim.set_next(2, "d", "out", "d") and sim.set_next(2, "d", "out", "e") and Bots.walk(sim.robots[2]).closed
 		and sim.robots[2].stuck == "")
 	var took := _until_event(sim, "sale", 3000)
 	_ok("first full box pays 6", took > 0 and sim.coins == 6, "%d ticks" % took)
 	# costs and charging
-	_ok("picker loop costs 16", Bots.cost(sim.robots[0]) == 16 and Bots.cost(sim.robots[1]) == 16 and Bots.cost(sim.robots[2]) == 24)
+	_ok("loops cost 20, 22 and 28, a Turn a unit", Bots.cost(sim.robots[0]) == 20 and Bots.cost(sim.robots[1]) == 22 and Bots.cost(sim.robots[2]) == 28,
+		"%d %d %d" % [Bots.cost(sim.robots[0]), Bots.cost(sim.robots[1]), Bots.cost(sim.robots[2])])
+	_ok("every first-session loop comes home facing down", sim.robots.all(func(b: Dictionary) -> bool: return Bots.faces_home(b) and Bots.net(b) == Vector2i.ZERO))
 	_ok("charges at the bay", _until_event(sim, "charging", 400, 0) > 0 and sim.robots[0].tile == Sim.BAY and sim.robots[0].charging
 		and _until_event(sim, "charged", 40, 0) > 0 and sim.robots[0].charge == Sim.CELL and not sim.robots[0].charging)
 	var sales := 0
@@ -447,7 +499,7 @@ func _check_robots() -> void:
 	s3.set_next(0, ids.back(), "out", ids[0])
 	var w: Dictionary = Bots.walk(s3.robots[0])
 	var flat := _until_event(s3, "flat", 1200, 0)
-	_ok("cycle off the body goes flat", not w.closed and w.ids.size() == 5 and flat > 0 and s3.robots[0].stuck == "flat" and s3.robots[0].charge == 0,
+	_ok("cycle off the body goes flat", not w.closed and w.ids.size() == 9 and flat > 0 and s3.robots[0].stuck == "flat" and s3.robots[0].charge == 0,
 		"flat at %d" % flat)
 	_run(s3, 20)
 	_ok("and stays where it stopped", s3.robots[0].stuck == "flat" and s3.robots[0].charge == 0)
@@ -455,43 +507,46 @@ func _check_robots() -> void:
 		and s3.robots[0].pc == Sim.BODY and _until_event(s3, "charging", 3, 0) > 0)
 	# a bump drops the rest of a Move
 	var s4: RefCounted = Sim.new(3)
-	var bot: Dictionary = Bots.new_robot("Bumper", ["treads", "battery"], [["move", 2, 4], ["move", 0, 1]])
+	var bot: Dictionary = Bots.new_robot("Bumper", ["treads", "battery"], [["turn", Sim.RIGHT], ["move", 4], ["turn", Sim.LEFT], ["move", 1]])
 	bot.dock = Vector2i(2, 9)
 	bot.tile = bot.dock
 	bot.was = bot.dock
 	s4.robots = [bot]
-	_until_pc(s4, 0, "a", 10)
+	_until_pc(s4, 0, "b", 10)
 	var before: int = bot.charge
 	var bumps := 0
 	for i in 40:
 		for e: Dictionary in _tick(s4):
 			bumps += 1 if e.type == "bump" else 0
-		if bot.pc != "a":
+		if bot.pc != "b":
 			break
-	_ok("bump mid move", bot.tile == Vector2i(0, 9) and before - bot.charge == 3 and bumps == 1 and bot.pc == "b",
+	_ok("bump mid move", bot.tile == Vector2i(0, 9) and before - bot.charge == 3 and bumps == 1 and bot.pc == "c",
 		"%s %d %d %s" % [bot.tile, before - bot.charge, bumps, bot.pc])
 	# a part taken off while its node runs
 	var s5: RefCounted = Sim.new(3)
-	_until_pc(s5, 1, "b", 100)
+	_until_pc(s5, 1, "c", 100)
 	var gi: int = s5.robots[1].parts.find("gripper")
 	_ok("unfit sends home", s5.unfit(1, gi) and s5.robots[1].tile == Sim.BAY and s5.robots[1].pc == Sim.BODY and s5.bin.gripper == 2
 		and not s5.robots[1].parts.has("gripper"))
-	_until_pc(s5, 1, "b", 200)
+	_until_pc(s5, 1, "c", 200)
 	var cb: int = s5.robots[1].charge
 	var skipped := false
 	for i in 20:
 		for e: Dictionary in _tick(s5):
-			skipped = skipped or (e.type == "skip" and e.robot == 1 and e.id == "b")
-		if s5.robots[1].pc != "b":
+			skipped = skipped or (e.type == "skip" and e.robot == 1 and e.id == "c")
+		if s5.robots[1].pc != "c":
 			break
 	_ok("unfit mid node", skipped and cb - s5.robots[1].charge == 1 and s5.robots[1].held.is_empty())
 	# an edit keeps the charge
 	var s6: RefCounted = Sim.new(3)
 	_run(s6, 20)
 	var c6: int = s6.robots[0].charge
-	_ok("edit keeps charge", c6 < Sim.CELL and s6.set_move(0, "a", 1, 3) and s6.robots[0].charge == c6 and s6.robots[0].tile == Sim.BAY
+	_ok("edit keeps charge", c6 < Sim.CELL and s6.set_move(0, "a", 3) and s6.robots[0].charge == c6 and s6.robots[0].tile == Sim.BAY
 		and s6.events.back().type == "edited")
-	_ok("a count is kept to 1..9", s6.set_move(0, "a", 1, 40) and s6.robots[0].nodes.a.n == 9 and s6.set_move(0, "a", 1, 0) and s6.robots[0].nodes.a.n == 1)
+	_ok("a count is kept to 1..9", s6.set_move(0, "a", 40) and s6.robots[0].nodes.a.n == 9 and s6.set_move(0, "a", 0) and s6.robots[0].nodes.a.n == 1)
+	_ok("set_move is a Move's, set_turn a Turn's, and a Turn only right or left", not s6.set_move(0, "b", 2) and not s6.set_turn(0, "a", Sim.RIGHT)
+		and not s6.set_turn(0, "b", 2) and not s6.set_turn(0, "b", Sim.LEFT) and s6.set_turn(0, "b", Sim.RIGHT) and s6.robots[0].nodes.b.facing == Sim.RIGHT
+		and not Bots.faces_home(s6.robots[0]))
 	# no cell
 	var s7: RefCounted = Sim.new(3)
 	_tick(s7)
@@ -525,7 +580,7 @@ func _check_pace() -> void:
 	_ok("a total never opens it", one.sold_at.size() == 1 and one.pace_ticks() == 0 and one.milestone == 0 and one.held_for == 0)
 	_ok("one box sold reads one, not none", Art.pace_text(one) == TranslationServer.translate("FACTORY_PACE_ONE")
 		and Art.pace_text(sim) == TranslationServer.translate("FACTORY_PACE_NONE") and Art.pace_text(one) != Art.pace_text(sim), Art.pace_text(one))
-	_ok("the next milestone's ask", Art.next_text(sim) == TranslationServer.translate("FACTORY_PACE_NEXT") % "44"
+	_ok("the next milestone's ask", Art.next_text(sim) == TranslationServer.translate("FACTORY_PACE_NEXT") % "51"
 		and Art.milestone_name("belts") == TranslationServer.translate("FACTORY_MILESTONE_BELTS"), Art.next_text(sim))
 	var two: RefCounted = Sim.new(5)
 	two.robots = []
