@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "260608109943",
+    "firebase_url": "https://daily-games-420bf-default-rtdb.firebaseio.com",
+    "project_id": "daily-games-420bf",
+    "storage_bucket": "daily-games-420bf.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:260608109943:android:cc54665867638bf150c572",
+        "android_client_info": {
+          "package_name": "com.peeplet.daily"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "260608109943-2c7v983va8q2ub2547hjd6kltapvg6es.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBO9CzURkJ326A6L74FI3EuiYTvAUA2cyY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "260608109943-2c7v983va8q2ub2547hjd6kltapvg6es.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "260608109943-8nlq4bt1jqh7riqfakf606l83ousn59k.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.peeplet.daily",
+                "app_store_id": "6817076313"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

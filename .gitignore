@@ -102,3 +102,7 @@ tools/how_big/.venv/
 # Made by tools/export_days.gd and tools/build_dashboard.py, not written
 tools/days/
 tools/dashboard.html
+
+# Firebase iOS frameworks (~135 MB), built by the Godotx Firebase plugin
+# (addons/godotx_firebase/VENDORED.md); never in git.
+/ios/plugins/firebase_*/

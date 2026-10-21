@@ -113,6 +113,8 @@ func start() -> void:
 	if not AgeGate.known():
 		return
 	_started = true
+	# Firebase's ad consent signals follow the same band as the requests below.
+	Analytics.apply_consent()
 	_fetch_remote()
 	_configure_requests()
 	_consent()

@@ -2,10 +2,54 @@
 
 ## Analytics
 
-Gameplay events go to Firebase (project `daily-games-420bf`) over the GA4
-Measurement Protocol, in `core/analytics.gd`. No native SDK of its own --
-the Android export moved to the Gradle path for AdMob's and godot-iap's,
-see "Ads and the purchase" below.
+Gameplay events go to Firebase (project `daily-games-420bf`) from
+`core/analytics.gd`. **Since 2026-10-21 (branch `feat/firebase-native`) the
+phones use the native Firebase SDK** (the user: "I want to be able to debug
+what needed and to see analytics properly"); the GA4 Measurement Protocol
+path below is now only what a desktop run with a secret uses.
+
+- **The native SDK is the Godotx Firebase addon** (`addons/godotx_firebase`,
+  github.com/godot-x/firebase @ 4cbe0806, MIT; `VENDORED.md` there says what
+  was changed and how to rebuild): Core, Analytics, Crashlytics on Android
+  and iOS, Firebase iOS SDK 12.16.0, Android firebase-analytics 23.2.0 and
+  firebase-crashlytics(-ndk) 20.1.0. Its Android AARs are in git inside the
+  addon (the repo ignores `/android/`); its iOS plugins
+  (`ios/plugins/firebase_{core,analytics,crashlytics}`, ~135 MB) are not, and
+  must be built on this Mac before an iOS export. **Their frameworks must be
+  unsigned** (`find ios/plugins -name _CodeSignature -prune -exec rm -rf {} +`,
+  the addon's own `unsign-sdk`), and the iOS project re-exported after: a
+  signed Firebase framework fails the archive with seven
+  "signature-collection failed" errors.
+- **Apps and config**: Android `1:260608109943:android:cc54665867638bf150c572`,
+  iOS `1:260608109943:ios:aa10db999648274f50c572` (registered 2026-10-21 with
+  App Store id 6817076313). `google-services.json` and
+  `GoogleService-Info.plist` sit at the project root, in git (they hold no
+  secret the code did not already carry), and the presets point at them
+  (`firebase/android_config_file`, `firebase/ios_config_file`). Android also
+  needs the google-services and Crashlytics Gradle plugins, which
+  `tools/patch_android_template.sh` adds to the template (CI runs it).
+- **What the native path does**: `Analytics.start()` sees the
+  `GodotxFirebaseCore` singleton, starts Core, then Analytics and Crashlytics.
+  Every `track()` is logged unchanged (same names and params, plus `locale`;
+  the SDK supplies sessions, first_open, platform and version itself, so
+  `session_id` and `engagement_time_msec` are not added) and also left as a
+  Crashlytics breadcrumb. Events tracked before Analytics is up wait and are
+  sent once it is. `core/crash_log.gd` is an `OS.add_logger` Logger that
+  queues the engine's errors and warnings (with the script frame, thanks to
+  `debug/settings/gdscript/always_track_call_stacks`) and Analytics drains
+  them into Crashlytics' log once a second, capped at 200 lines a session
+  (`errors_dropped` counts the rest). Custom key `locale`.
+- **Consent**: the export's privacy-safe defaults ship collection and every
+  consent signal off; `Analytics.apply_consent()` turns them on per age band
+  -- analytics storage always, ad storage and ad user data unless a child,
+  ad personalisation for adults only -- once Analytics is up and again from
+  `Ads.start()` when the band is known. The player counts as a child before
+  the age screen is answered.
+- **DebugView**: Android `adb shell setprop debug.firebase.analytics.app
+  com.peeplet.daily`; iOS the `-FIRDebugEnabled` launch argument in Xcode.
+  Crashlytics shows a device's first report only after the app is relaunched.
+
+The Measurement Protocol notes that follow are kept for the desktop path:
 
 - **Nothing sends unless `Analytics.start()` runs**, and only `world/main.gd`
   calls it. Tests and harnesses build the same screens and stay silent; keep

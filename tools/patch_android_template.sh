@@ -102,3 +102,33 @@ else
   grep -q 'android:name="\.FriendLink"' "$manifest"
   echo "patch_android_template: FriendLink alias added"
 fi
+
+# Firebase (addons/godotx_firebase): the Google Services plugin turns
+# google-services.json (the export copies it in from the project root) into
+# the app's Firebase resources, and the Crashlytics plugin stamps the build id
+# Crashlytics refuses to start without. Versions are the addon's.
+settings=android/build/settings.gradle
+app_gradle=android/build/build.gradle
+[[ -f "$settings" && -f "$app_gradle" ]] || { echo "patch_android_template: $settings or $app_gradle not found" >&2; exit 1; }
+if grep -q "com.google.gms.google-services" "$settings"; then
+  echo "patch_android_template: Firebase plugin versions already there"
+else
+  if ! grep -q "id 'org.jetbrains.kotlin.android' version versions.kotlinVersion" "$settings"; then
+    echo "patch_android_template: expected the kotlin plugin line in $settings's pluginManagement" >&2
+    exit 1
+  fi
+  perl -pi -e "s{^(\s*)(id 'org\.jetbrains\.kotlin\.android' version versions\.kotlinVersion)\s*\$}{\$1\$2\n\$1id 'com.google.gms.google-services' version '4.4.4'\n\$1id 'com.google.firebase.crashlytics' version '3.0.6'\n}" "$settings"
+  grep -q "com.google.firebase.crashlytics" "$settings"
+  echo "patch_android_template: Firebase plugin versions added"
+fi
+if grep -q "id 'com.google.gms.google-services'" "$app_gradle"; then
+  echo "patch_android_template: Firebase plugins already applied"
+else
+  if [[ "$(grep -c "^    id 'org.jetbrains.kotlin.android'\$" "$app_gradle")" != "1" ]]; then
+    echo "patch_android_template: expected one kotlin plugin id in $app_gradle's plugins block" >&2
+    exit 1
+  fi
+  perl -pi -e "s{^(    id 'org\.jetbrains\.kotlin\.android')\$}{\$1\n    id 'com.google.gms.google-services'\n    id 'com.google.firebase.crashlytics'}" "$app_gradle"
+  grep -q "id 'com.google.firebase.crashlytics'" "$app_gradle"
+  echo "patch_android_template: Firebase plugins applied"
+fi

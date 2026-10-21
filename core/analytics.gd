@@ -1,9 +1,14 @@
 extends RefCounted
 
-## Fire-and-forget gameplay telemetry, sent to Firebase over the GA4
-## Measurement Protocol. Firebase Analytics is GA4 underneath, so an app
-## stream accepts `firebase_app_id` + an API secret over plain HTTPS; that
-## keeps the Android export on the fast non-gradle path with no native SDK.
+## Fire-and-forget gameplay telemetry, sent to Firebase.
+##
+## On a phone the export carries the native Firebase SDK
+## (addons/godotx_firebase: Core, Analytics, Crashlytics), and that is the
+## path: sessions, first opens, retention and the platform come from the SDK,
+## every event below is logged through it unchanged, and each one is also left
+## as a Crashlytics breadcrumb beside the engine's own errors
+## (core/crash_log.gd). Anywhere else -- a desktop run -- the old path stays:
+## the GA4 Measurement Protocol over plain HTTPS, live only with an API secret.
 ##
 ## Nothing sends until `start()` runs, and only the live game calls it: the
 ## test suite and the harnesses build these same screens and stay silent. A
@@ -30,6 +35,8 @@ const ID_PATH := "user://analytics.cfg"
 ## The locale every event's `locale` param reads, so a report can be split by
 ## language without a second system to join against.
 const Locale = preload("res://core/locale.gd")
+const AgeGate = preload("res://core/age_gate.gd")
+const CrashLog = preload("res://core/crash_log.gd")
 ## GA4 drops events whose parameters run long.
 const MAX_PARAMS := 25
 const MAX_VALUE_LEN := 100
@@ -47,10 +54,23 @@ static var validate: bool = false
 ## rather than waiting hours for the normal reports.
 static var debug_mode: bool = false
 
-## Wakes telemetry up under `host`, which must be in the tree. Without an API
-## secret this returns quietly and every later `track()` is a no-op.
+## The native SDK's GodotxFirebaseAnalytics and GodotxFirebaseCrashlytics,
+## each set once its module reports itself ready. Events tracked before
+## Analytics is ready wait in `_pending`, so the launch's `game_open` is kept.
+static var _fa: Object = null
+static var _fc: Object = null
+static var _native := false
+static var _pending: Array = []
+static var _crash_log: CrashLog = null
+
+## Wakes telemetry up under `host`, which must be in the tree. On a phone it
+## starts the native SDK; elsewhere, without an API secret, it returns quietly
+## and every later `track()` is a no-op.
 static func start(host: Node) -> void:
 	if _node != null and is_instance_valid(_node):
+		return
+	if Engine.has_singleton("GodotxFirebaseCore"):
+		_start_native(host)
 		return
 	_secret = _read_secret()
 	if _secret.is_empty():
@@ -78,11 +98,108 @@ static func stop() -> void:
 	if _node != null and is_instance_valid(_node):
 		_node.queue_free()
 	_node = null
+	if _crash_log != null:
+		OS.remove_logger(_crash_log)
+		_crash_log = null
+
+## Core first; Analytics and Crashlytics only once it says Firebase is up.
+## The export's privacy-safe defaults hold collection and every consent signal
+## off until the game opens them here (see `apply_consent`).
+static func _start_native(host: Node) -> void:
+	_native = true
+	var n := Node.new()
+	n.name = "Analytics"
+	host.add_child(n)
+	_node = n
+	_crash_log = CrashLog.new()
+	OS.add_logger(_crash_log)
+	var t := Timer.new()
+	t.wait_time = 1.0
+	t.autostart = true
+	t.timeout.connect(_drain_crash_log)
+	n.add_child(t)
+	var core: Object = Engine.get_singleton("GodotxFirebaseCore")
+	core.core_initialized.connect(_on_core_ready, CONNECT_ONE_SHOT)
+	core.initialize()
+
+static func _on_core_ready(ok: bool) -> void:
+	if not ok:
+		return
+	if Engine.has_singleton("GodotxFirebaseCrashlytics"):
+		var fc: Object = Engine.get_singleton("GodotxFirebaseCrashlytics")
+		fc.crashlytics_initialized.connect(_on_crashlytics_ready, CONNECT_ONE_SHOT)
+		fc.initialize()
+	if Engine.has_singleton("GodotxFirebaseAnalytics"):
+		var fa: Object = Engine.get_singleton("GodotxFirebaseAnalytics")
+		fa.analytics_initialized.connect(_on_analytics_ready, CONNECT_ONE_SHOT)
+		fa.initialize()
+
+static func _on_crashlytics_ready(ok: bool) -> void:
+	if not ok:
+		return
+	_fc = Engine.get_singleton("GodotxFirebaseCrashlytics")
+	_fc.set_crashlytics_collection_enabled(true)
+	_fc.set_custom_value_string("locale", Locale.current())
+	_drain_crash_log()
+
+static func _on_analytics_ready(ok: bool) -> void:
+	if not ok:
+		return
+	_fa = Engine.get_singleton("GodotxFirebaseAnalytics")
+	_fa.set_analytics_collection_enabled(true)
+	apply_consent()
+	for e in _pending:
+		_fa.log_event(e[0], e[1])
+	_pending.clear()
+
+## Firebase's consent signals from the player's age band: gameplay stats are
+## always on (the privacy policy's first section), ad storage and ad user data
+## are off for a child, and ad personalisation is for adults only -- the same
+## line core/ads.gd draws for AdMob. Before the age screen is answered the
+## player counts as a child. Ads.start() calls this again once the band is
+## known; Google's consent form still has the last word in the EEA through
+## the TCF string Firebase reads on its own.
+static func apply_consent() -> void:
+	if _fa == null:
+		return
+	var b := AgeGate.band() if AgeGate.known() else AgeGate.CHILD
+	_fa.set_consent({
+		"analytics_storage": true,
+		"ad_storage": b != AgeGate.CHILD,
+		"ad_user_data": b != AgeGate.CHILD,
+		"ad_personalization": b == AgeGate.ADULT,
+	})
+
+## One line in the next crash report's log. Free to call anywhere; it does
+## nothing until Crashlytics is up, and nothing at all off a phone.
+static func breadcrumb(text: String) -> void:
+	if _fc != null:
+		_fc.log_message(text.substr(0, CrashLog.MAX_LEN))
+
+## Moves the engine errors core/crash_log.gd queued into Crashlytics' log, on
+## the main thread.
+static func _drain_crash_log() -> void:
+	if _fc == null or _crash_log == null:
+		return
+	var got: Array = _crash_log.drain()
+	for line in got[0]:
+		_fc.log_message(line)
+	if got[1] > 0:
+		_fc.set_custom_value_int("errors_dropped", got[1])
 
 ## Records one event. `params` values must be numbers, bools or short strings;
 ## anything else is stringified and clipped.
 static func track(event: String, params: Dictionary = {}) -> void:
 	if _node == null or not is_instance_valid(_node):
+		return
+	if _native:
+		var np := _clean(params)
+		np["locale"] = Locale.current()
+		if _fa == null:
+			_pending.append([event, np])
+		else:
+			_fa.log_event(event, np)
+		breadcrumb("%s %s" % [event, JSON.stringify(np)])
 		return
 	var p := _clean(params)
 	# GA4 only counts an event towards a session and its engagement when the

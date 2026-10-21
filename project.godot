@@ -42,6 +42,10 @@ Ads="*res://core/ads.gd"
 Wallet="*res://core/wallet.gd"
 GodotIapPlugin="*uid://c8xt82r1xtwn0"
 
+[debug]
+
+settings/gdscript/always_track_call_stacks=true
+
 [display]
 
 window/size/viewport_width=1080
@@ -52,7 +56,7 @@ window/handheld/orientation=1
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/godot_mcp/plugin.cfg", "res://addons/admob/plugin.cfg", "res://addons/godot-iap/plugin.cfg")
+enabled=PackedStringArray("res://addons/godot_mcp/plugin.cfg", "res://addons/admob/plugin.cfg", "res://addons/godot-iap/plugin.cfg", "res://addons/godotx_firebase/plugin.cfg")
 
 [godot_mcp]
 
