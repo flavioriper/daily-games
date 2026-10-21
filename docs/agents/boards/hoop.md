@@ -421,3 +421,175 @@ meeting kept a knot of three. Measured on the cached 20th and 21st
   **Needs the user's functions deploy.**
 - Unconfirmed: the phone, the user's verdict on what thin features the
   weld takes away.
+
+## 2026-10-21: the map written by a model
+
+The user, with the day viewer open on 20261021, of the pixel pictures
+(Jewel Box) "are amazing, love them", of Yarn Hoop "is terrible", and
+beside it a reference of what was expected (a few hundred small muted
+facets, softly lit: a rain boot, a snail with its spiral, a frog with its
+green body, a kettle without a face): "We can use the llm to make sure
+high quality outcome, check how can we use them to make sure we have a
+specific port for each game to have a high quality sharp picture game on
+each". Then, with run 2's snail beside its shredded cut: "can we send the
+image, some mapping field, and ask a model to generate the yarn hoop
+map?" and, at the end: "amazing, apply it". Spec
+`docs/superpowers/specs/2026-10-21-picture-ports-design.md`; the four
+throwaway spike scripts, the four spike maps and the style crop are kept in
+`docs/superpowers/specs/2026-10-21-picture-ports-spike/`. Built on
+`feat/picture-ports`, **not pushed, not deployed, nothing of it run on
+Vertex yet**.
+
+- **The shape of it** (`server/functions/src/hoop.ts` `makeHoop`, one per
+  band, returning `{picture, port}`): the night draws the band's thing,
+  hands the drawing with a numbered grid over it to the reviewer model,
+  which writes pins and panels in grid units; the mesh is repaired and
+  checked as the phone checks it, coloured off the drawing, **rendered as
+  the player will see it** and shown to a reviewer (the eye,
+  `docs/agents/turns-and-backend.md`, "Picture ports"), which names the
+  thing and scores it. The pixel reader (`readHoop`) is now only the
+  fallback.
+- **The key colour is chosen a thing** (`key.ts` `keyFor`): the write model
+  is asked, from `thing.draw`, which of green, magenta and cyan
+  (`KEY_HEX`) is farthest from the thing, and `keyWords(key)` replaces the
+  old fixed `KEY_WORDS` sentence (`facets.ts` keeps `KEY_WORDS =
+  keyWords("green")`, byte for byte). Why: the spike showed the green key
+  was the hoop's fault, not the reader's. Flash paints green as a muted
+  sage and the board flood ate every pale part near it (the snail's cream
+  body, the umbrella's yellow middle, a lime frog whole); on magenta and
+  cyan the umbrella read 8 and 8, the frog 8 and 6. With no model (or an
+  answer out of the three) a word fallback picks: green, lime, teal, mint,
+  olive, turquoise give magenta; pink, magenta, purple, violet, red, rose
+  give cyan; else green. `keyFor` also answers `creature` (`Thing.creature?`
+  in `theme.ts`, optional so a theme written before the field works): the
+  prompt asks for a face only when the thing is a creature.
+- **The prompt is the reference's** (`PROMPT(what, band, key, creature)`): a
+  low-poly illustration of at least 150, about 200 flat facets **on every
+  band** (`BANDS[].facets` is kept and unused), each one colour, a muted
+  earthy pastel palette, soft light from the top left with light, mid and
+  shadow tones, no outlines, no gradient or texture, no cast shadow or
+  ground, square. "Cute cozy style" is gone. **A style reference goes with
+  it**: `lib/hoop_style.png` (a crop of the user's low-poly snail, copied
+  into `lib/` by `npm run build` from the spike folder, as
+  `vista_style.png` is) is handed to `draw()` as `images`. In the spike the
+  snail drawn with it matched the reference and read 7; the same prompt in
+  words alone drew a textured, near-photographic snail the reader shredded
+  (5).
+- **The mapping field** (`grid.ts` `gridOver`): the drawing is scaled to
+  1000 px on white with a 44 px margin, lines 0..N (`GRID_N` 20, 24, 30, 40
+  by band, about each band's pin spacing), every fifth darker, the numbers
+  along all four edges (every line to 24, every other past it).
+- **The model's map** (`mapHoop`, `role: "review"`, Opus): the `MAPPER`
+  system text states the rules the phone checks (3-7 corners, convex,
+  neighbours sharing whole sides, no overlap, no gap, nothing of the
+  background, every facet kept) and two things the first spike maps
+  taught: a thin part (a handle, a stalk, a shaft) is drawn at least one
+  grid cell wide because nearer pins are welded and it would vanish (the
+  umbrella's shaft was snapped away in the spike), and the whole panel
+  budget is used (the model simplifies: 30 of 40, 75 of 170) with fewer
+  than the band's `LEAST_PANELS` (16, 26, 40, 80) refused. The answer is
+  type-checked (`asMap`): only a pin with an id and finite x and y counts.
+- **The repair and the checks** (`mesh.ts` `repairMesh`, `colourFrom`,
+  `checkMesh`): grid units to the square of 100 centred on the thing's box
+  as before; pins within 0.35 of a cell made one; a panel's repeated or
+  unknown pins dropped, a panel under 3 corners dropped; a pin lying on
+  another panel's side (a T-junction) inserted into that side; pins nearer
+  than the band's `least` welded as the night and the phone weld; a panel
+  laid over others (a side three panels share) dropped, the one on most
+  such sides first (`unstack`, added in the build: the spike's frog and
+  kettle had triangles listed over the quads beside them); a concave or
+  over-7 panel ear-clipped and joined back into convex panels
+  (`ears`, `regroup` from `hoop.ts`). Then the `why`: a panel not 3-7
+  corners, a pin twice in a panel, a pin inside another panel, a side
+  three panels share, under `LEAST_PANELS`, over the band's most. **The
+  colours are the drawing's mean over each panel, never the model's hex**
+  (`colourFrom`); a panel within 60 of the key (Euclidean rgb) is the
+  background and is dropped, the mesh is **placed again** after it (the
+  box moved: the long axis spans 0..100 and the other is centred) and
+  re-checked by `checkMesh`, since losing background panels can bring a
+  count under the least. A refused map is asked again with the refusal
+  folded in.
+- **The render the eye sees**: the repaired map as polygons, 600 px, the
+  panels outlined as the board's ropes are (`#7a4a3a`, width 0.6) on linen
+  `#efe2c6` (`eye.ts` `renderPolygons`). The spike showed the eye a
+  256-px raster scaled up and a third of its complaints were "jagged",
+  "stair-stepped" edges the player never sees; a cream handle also
+  "vanished into the cream background" that a rope outlines.
+- **The tries** (`HOOP_DRAWINGS` 2, `MAP_ASKS` 2): each drawing is mapped
+  up to twice; a refusal or the eye's complaint ("scored N, took it for X,
+  and said: ...") is the next ask's lesson (`lesson`); **a try is kept when
+  the eye named the thing, found nothing wrong and scored at least
+  `FLOOR.hoop` 7; the best score of the kept tries wins, across drawings
+  and asks**, and the tries stop once one scores 9. When none is kept, one
+  `reader` try on the last drawing: `readHoop`, judged only when it passed
+  its own `why` (a refused cut can never be kept). The score gates, the
+  pick alone does not: the spike's eye named every broken read (an umbrella
+  with no middle at 3, a frog with no head at 2), so the pick alone only
+  catches a thing that is not there. **No kept try: no picture, and the
+  board is cut from the bank as before.**
+- **The clock** (ruling, the controller's): the brief had no clock, and a
+  band 3 map ask runs about 200 s while a run may start a step 15 minutes
+  in, so `HOOP_BUDGET_MS` is 12 minutes from `makeHoop`'s start, past which
+  no new draw, ask, judge or reader begins; the first try skipped is
+  recorded with `why: "out of time"`. The spec's anti-goal (a night that
+  runs out of its half-hour step) binds over the ask count. Cost if wrong:
+  Insane falls to the reader more often on a slow night. The deadline
+  bounds when a call begins, not how long it runs: a 240 s ask begun at
+  11:59 reaches about 16 minutes.
+- **Rulings on the repair** (the controller's, Task 4): the brief's "why ''
+  on all four spike fixtures" was wrong, since the umbrella (26 panels,
+  band 2 least 40) and the kettle (75, band 3 least 80) are under the
+  band's least and are refused, which is the spec's under-count check
+  working (a refused map is re-asked); `unstack` is within the spec's
+  repair pass; a part thinner than the snap (0.35 cell) or the band's weld
+  spacing cannot be a panel on the board (the phone's finger spacing), so
+  the ask says so (cost if wrong: thin objects read chunkier than the
+  drawing); `colourFrom` cannot re-check the band's counts (no band on the
+  mesh), so `makeHoop` re-runs `checkMesh` after it.
+- **The phone and the viewer's hoop are unchanged**: the map is the `hoops`
+  document as it is (`pins`, `panels: [{k, c}]`), which
+  `ThemedPictures.hoop()` checks and `HoopState.adopt_drawn()` lays, welding
+  at `DRAWN_LEAST` as it lays (2026-10-20, above). Only the **picture** got
+  finer; the play (35/55/85/150 panels' worth of pins, counts, spacing) is
+  as it was, and the density is the picture's, never bought by crowding
+  pins. The spec's "fine facets with their own corner points" was dropped
+  at approval: the panels are the drawing's facets now.
+- **What the spike measured** (2026-10-21, 15:25-16:03, flash drawings,
+  Opus map, the eye scoring against the old crude render so the hoop's are
+  low by some). Run 2, hoop snail/frog/umbrella/kettle, with/without the
+  style reference: 7/5, 6/8, 8/8, 6/4. The model's maps against the pixel
+  reader's cuts of the same drawings (score, panels):
+
+  | Card | Model's map | Reader's cut |
+  |---|---|---|
+  | snail, Easy | 30 panels, 45 pins, 6 | 40 panels, 5 |
+  | frog, Medium | 56 panels, 78 pins, 7 | 55 panels, 6 |
+  | umbrella, Hard | 25 panels, 47 pins, 5 | 29 panels, 5 |
+  | kettle, Insane | 75 panels, 114 pins, 7 | 121 panels, 5 |
+
+  The model's meshes were clean (0 overlaps, no panel over 7 corners, one
+  T-junction and two sides shared by three in all four); the reader's cuts
+  jagged, hole-ridden, losing eye stalks, a knob, a shaft. Missed: fine
+  features past the panel budget (the shell's spiral folded into a dome at
+  30 panels, the shaft, 1 panel, dropped) and the counts came under the
+  band's most. A map was 45-175 s and $0.11-0.42 on Opus.
+- **As built** (Task 5, Step 3, the one real ask made): Easy snail on the
+  style crop, one Opus ask, **90 s, $0.22, 45 pins and 40 panels**, the
+  whole budget used, a clear snail with its spiral, two eye stalks, none
+  dropped by repair or by `colourFrom`. Band 3 (a 40-grid map of up to 170
+  panels) is **not measured**: the 20-grid ask took 90 s, an ask times out
+  at 240 s and caps at 16,000 tokens, and 2 drawings x 2 asks + judges is
+  the worst case the 12-minute budget exists for.
+- **Not built**: the spec's floor in `readHoop` on the thing's share of the
+  picture (under 12% of the raster, or a thing split into parts of which
+  the biggest is under half, `why`-refused before the eye sees it). The
+  eye's score does that job; `readHoop` is as it was.
+- **Unconfirmed**: nothing has run on Vertex. The drawing check is the
+  user's: `build/port_hoop.js` (git-ignored; Rainy Day, bands 0 and 3,
+  drawings to `build/port_hoop/`), the command in
+  `.superpowers/sdd/2026-10-21-picture-ports/task-5-report.md`. The
+  phone's picture on screen, the user's eye on the first night's hoops, the
+  keys chosen, band 3's time, how often Insane falls to the reader. **The
+  deployed `themeDay` makes pictures the old way until the user deploys the
+  functions** (the deploy list, `docs/agents/turns-and-backend.md`, which
+  also carries the 2026-10-20 pin weld, never deployed).

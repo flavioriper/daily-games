@@ -692,3 +692,177 @@ of 100: a spiral shell four rings, a barnacle rock a blue blob.
   20261019; **the deployed `themeDay` writes the old way until the user
   deploys the functions**. Unconfirmed: the user's eye, the green screen,
   the swell, no blind look.
+
+### The jelly is written by a model, under an eye (2026-10-21)
+
+The user, 2026-10-21, with the day viewer open on 20261021: Gumdrop's
+pictures "is even worse" (than Yarn Hoop's), beside a reference of glossy,
+shaded gummy things; then "We can use the llm to make sure high quality
+outcome ... a specific port for each game"; after the hoop's spike, "let's
+try to do something similar for the other games and the gumdrop"; and
+"amazing, apply it". Spec
+`docs/superpowers/specs/2026-10-21-picture-ports-design.md` ("The jelly
+written by a model"); the spike script is `spike_jelly_map.js` in
+`docs/superpowers/specs/2026-10-21-picture-ports-spike/`. Built on
+`feat/picture-ports`, not pushed, not deployed, **nothing run on Vertex
+yet**. The other picture boards on the night's drawn path are the bead
+boards, already model-written and model-reviewed, so Gumdrop is the second
+port beside Yarn Hoop's (`docs/agents/boards/hoop.md`, 2026-10-21).
+
+- **The rules are untouched**: `RULES` (flavours, mixed, chunks a band),
+  `MOULDS`, `DRAWINGS` `[3, 3, 2, 2]`, the 16-point cap. The user's two
+  open calls fell to the defaults at approval: Easy's counts do not rise
+  (two flavours cannot be the reference's glossy snail, but the Medium
+  snail at 3 parts read as a snail once the model wrote it) and the cap
+  stays.
+- **The model writes the jelly** (`jelly.ts` `mapJelly`, `role: "review"`,
+  Opus): the sticker drawing (`STICKER(what, band, key)`, the key colour
+  chosen a thing as the hoop's is, `key.ts`; "a sharp, true silhouette",
+  white, cream or grey forbidden outright) with a 0-100 grid over it
+  (`gridOver(d, JELLY_GRID_N 20, 5)`, labels 0..100) goes to the model,
+  which answers parts (`{flavour, shapes: [{kind: "soft", n}]}`) under the
+  band's rules **stated in full in the ask** (`mapRules(band)`, every
+  number from the constants `why()` uses): flavours and mixed counts,
+  chunks, at most `MOST_PARTS` 8 parts and `MOST_SHAPES` 8 shapes a part,
+  `LEAST_POINTS` 6 to `MOST_POINTS` 16 points a polygon, inside `FIT`
+  9-91 (the spec said 10-90), one connected piece, **`COVER` 20-75% of the field**, **every
+  chunk at least `LEAST_SQUARES` 9 of the sim's 36-grid** (a frog's eye dot
+  cannot be a chunk of its own), nothing thinner than `THINNEST` 6 units,
+  at most `CELLS_TOP` cells once cut; the white border, outlines,
+  highlights and shading of the drawing ignored, each region the flavour
+  nearest its colour. Why so much: in the spike **every refusal was a rule
+  the prompt had not stated** ("covers 18%" twice, "a chunk too small to
+  pour in", "a soft's numbers"); the second try repeated "covers 18%"
+  because the ask never named the floor.
+- **The answer is type-checked** (`asParts`, never throws; anything else is
+  `null`, the try's why "a shape's numbers"), then `why()` judges it as it
+  always has, then the parts are rendered and the eye scores them. A
+  refusal is folded into the next ask as the brief's sentence ("Your last
+  answer was refused by the board's checker: ...") and the eye's complaint
+  as "A reviewer scored your last answer N of 10[, took it for X], and
+  said: ... Write it again, mending that." Up to `JELLY_ASKS` 3 asks a
+  drawing.
+- **The render the eye sees**: the parts as soft shapes in the six inks on
+  the board's cream `#f3ead8`, 600 px, no outline, in the order the board
+  lays them (`renderPolygons` of `polygon(s)`), as the card draws them.
+- **First kept wins** (ruling, the controller's; the hoop keeps the best
+  of its tries): a try is kept when the eye named the thing, found nothing
+  wrong and scored at least `FLOOR.jelly` 7, and **the first kept try ends
+  that thing's asks, its drawings and its written fallback**. A Hard band of
+  four things at up to 6 maps + 6 eyes a thing would blow the budget and send
+  the later things to the bank. Cost if wrong: a 7 ships where a later try
+  might have been an 8. (Checked with the model stubbed: 4 map asks and 2
+  eye calls where the first draft made 9 and 7.)
+- **The clock** (ruling, the controller's, superseding the pre-flight idea
+  of 5 minutes a thing): `JELLY_BUDGET_MS` 12 minutes from the start of the
+  band's loop; past it no draw, ask, judge or written try begins. A thing
+  not reached is recorded as one try with `why: "out of time"` and the board
+  fills its place from the bank. The worst case, Insane (5 things x 2
+  drawings x 3 asks and the reviews), would pass the 30-minute lease
+  unbounded; the spec's anti-goal (a night that runs out of its step) binds
+  over the ask count. Cost if wrong: Insane bands lose things on a slow
+  night.
+- **The fallbacks**: when no drawn try was kept, `readJelly` (the pixel
+  reader, 2026-10-16 above) on the last drawing as a `reader` try through
+  `why()` and the eye; and when that is not kept, **the written way**
+  (`writeJelly`: Opus writes the parts, `TRIES` 2, `DAILY_ROWS_MODEL`, now
+  through `asParts`, `why()` and the eye with no source). The written
+  fallback no longer takes the bead look (`lookThing` is gone from this
+  route and `JellyTry.look` with it, which nothing read; the eye names the
+  thing too, and a second gate on top would be one gate too many).
+  `makeJellies` returns `{jellies, tries, ports}`, a `Port` a thing.
+- **What the spike measured** (2026-10-21, 16:13, run 2's sticker drawings,
+  a 0-100 grid, Opus, one refusal folded into one retry; 7-20 s and
+  US$0.02-0.04 a try):
+
+  | Card | Model's jelly | Checker | Reader's parts |
+  |---|---|---|---|
+  | rain boot, Easy | 2 parts, score 6 | refused twice, "covers 18%" | score 5 |
+  | snail, Medium | 3 parts, score 7 | passed | score 6 |
+  | frog, Hard | 4 parts, score 7 | refused, "a soft's numbers" then "a chunk too small to pour in" | score 4 (refused) |
+  | kettle, Insane | 5 parts, score 6 | the same two refusals | score 4 (refused) |
+
+  The silhouettes were whole, clean and true to the sticker, the eyes and
+  cheeks placed as drawn; the reader's parts of the same drawings were
+  lumpy blobs with the head or sole lost. Scored against the cruder
+  render, so the numbers are low by some.
+- **Checked offline** (Task 6; `check_jelly.js` and two stubbed flows, no
+  model): the snail and frog spike maps through `why()` (`""` and "a chunk
+  too small to pour in"), `asParts` on a dozen bad shapes, the clock
+  pushed past the budget (every port exactly one "out of time" try, no
+  calls), a flow where try 0 is a null number, try 1 "1 flavours", try 2
+  scored 6 (not kept) and try 3 scored 8 (kept).
+- **Unconfirmed**: nothing has run on Vertex. The user's check is
+  `build/port_jelly.js` (git-ignored; Rainy Day, band 2, its five things,
+  drawings to `build/port_jelly/`; command in
+  `.superpowers/sdd/2026-10-21-picture-ports/task-6-report.md`), expecting 3
+  of 4 things kept at 7 or more or a logged fallback. The phone's
+  jellies, and how often a thing comes from the bank. `jelly.ts` is 902
+  lines, and its port section (about 290) is a clean seam for a
+  `jelly_port.ts`. **The deployed `themeDay` writes jellies the old way
+  until the functions are deployed** (the deploy list,
+  `docs/agents/turns-and-backend.md`).
+
+### The gummy finish on the card's picture (2026-10-21)
+
+The user, 2026-10-21, of the day viewer's gummy jelly: "i loved the gumdrop
+with the gummy finish look, would love if we could add the same view to the
+ingame". The viewer's finish is an SVG filter (`GumDefs` in
+`tools/day_viewer/src/App.jsx`, the spike's `GUM`: a specular highlight
+from a point light at (20, -10), a dark inner rim, a soft shadow); the
+game's is `gumdrop_art.gd` `picture()`.
+
+- **Where it is**: `Art.picture()` only, the jelly **on the level card**
+  (the picture the player matches). Laid in one `ArrayMesh`, as before,
+  back to front: a soft shadow (the outline moved `(1.5, 2.5)u`,
+  `Color(0.35, 0.23, 0.16, 0.25)`, replacing the old ink rim shadow; the
+  white rim is `Mould.RIM` 1.6 so the shadow shows past it on the lower
+  right), the white rim and the cells, **a dark rim** (two bands inside the
+  outline, d = 1.2u at alpha 0.18 and d = 2.4u at 0.1, in
+  `(0.23, 0.1, 0.19)`; each is the outline minus its inner offset
+  `Geometry2D.offset_polygon(-d)`, drawn as a closed stroke of width d on
+  the centreline at -d/2), **the sheen** (a stroke of width 1.4u, white at
+  0.28, moved `(+0.9, +1.2)u`, each quad mitred per vertex and clipped to
+  the outline with `Geometry2D.intersect_polygons`, the builder's feather
+  set to 0 for those pieces so shared edges leave no ticks) and **the
+  glint** (`gloss_of`'s nine-point search for the spot, its glint ellipse at
+  0.35 and its small hot spot at 0.55; the broad 0.12 ellipse left out,
+  the stroke is the sheen now). `floor_of` and `gloss_of` are untouched.
+- **The brief's sheen sign was wrong, and the build's stands** (ruling, the
+  controller's): the brief moved the stroke `(-0.9, -1.2)u`; a clipped
+  stroke 1.4u wide sitting 1.5u outside the body along the upper left
+  keeps nothing there, only a band inside the lower-right edge, the
+  opposite of "along the upper left". `floor_of` can move up and left
+  because the gel covers its stroke, and here the stroke is clipped to the
+  inside. The flipped sign agrees with the shadow's light direction and the
+  spike's light. The glint alphas (0.35 and 0.55) are the implementer's.
+- **The menu card gets it too** (ruling, the controller's): `ui/menu/
+  card_art.gd` calls the same `picture()`, so the card on the Puzzles
+  grid wears the finish; one picture, one look, accepted and **unviewed**.
+  Cost if wrong: the menu card's jelly looks different from what the user
+  approved there.
+- **Where it is not: the tint, the gel, the pour.** The user turned
+  lighting on the syrup down twice: 2026-10-11 (lighting the dye from its
+  slope "made every fold a crease of foil", above; the user: the jelly
+  "should not have borders, it should be a real jelly") and 2026-10-14
+  ("right now borders make it look weird ..."; the notes' rule: "no light
+  outline anywhere", the grey strokes and light seam lines were the
+  "borders"), and the mould's gel is glossy already (`floor_of`, `gloss_of`, the dark glossy gel of
+  2026-10-14). The finish is on the picture to match, not on the colour
+  you pour. It is still, so `Motion.reduce` has nothing new to honour.
+- **Measured** (`opengl3_angle`, 810x1440, band 1, run twice, the second
+  reading): ready 119, squeeze 120, flop 119, again 115, served 122, mid
+  118, win 82/77/75, redo 121, **identical with and without the finish**
+  (the commit stashed): it adds no draw. The 115-122 of play is the
+  2026-10-14 night's figure; the older 100-112 figures above predate it
+  and this branch. Well under the 855 budget. `godot --headless
+  --check-only` on `gumdrop_art.gd` is clean. Seen as a windowed shot and
+  its 4x crop: the dark inner rim, the sheen along the upper-left edges, the
+  glint on a boot's cuff and the shadow to the lower right; the tray, gel
+  and mould as before.
+- **Unconfirmed**: the card's picture is about 90 px, so the finish is
+  subtle at phone scale and **not seen on a phone**. Known small
+  faults left: sheen quads have no mitre compensation at sharp corners;
+  parts thinner than 2.4u lose the outer rim band; a feather-0 piece still
+  appends a feather ring. Ships with the APK through the push to `main`
+  (the only phone-side file of the picture ports).

@@ -461,3 +461,51 @@ steps `vista0..3` in themeDay, published as `days/<day>/turns/vistas` only
 when all four pass; `core/themed_vistas.gd` on the phone). Trial day 20261019
 in `tools/days/themed-vistas/`, shown in Themed days. Spec and open calls:
 `docs/superpowers/specs/2026-10-17-themed-vistas-design.md`.
+
+## The day viewer shows what a port did (2026-10-21)
+
+`tools/day_viewer` (a local React page, `npm run dev` there, built
+2026-10-21 beside the dashboard: a day's theme, pictures and answers read
+from Firestore as the phone reads them, one anonymous identity) gained the
+picture ports' record (`docs/agents/turns-and-backend.md`, "Picture ports").
+Spec goal 4: the user can judge the port itself, from the original
+drawing, the render the reviewer saw, the verdict and the score. Built on `feat/picture-ports`; the viewer needs no
+deploy.
+
+- **`day.js` `readPorts(day)`** lists `days/{day}/ports?pageSize=50` and
+  answers `{id: {game, band, thing, tries, source, render}}` (the tries
+  parsed from their JSON string, `band` read as `integerValue` or
+  `doubleValue`); a 403 or 404 answers `{}`, anything else throws. The
+  page reads it beside `readDay` and **swallows a failure** (the page
+  stays as it was; a `console.warn` would help, deferred).
+- **`App.jsx` `PortRow`**, under each Yarn Hoop card (`hoop{band}_{id}`) and
+  each Gumdrop jelly (`jelly{band}_{id}`): the kept try's source drawing
+  and render as images, its score ("score 8 · try 2 of 2"), the reviewer's
+  notes, and "fell back to the pixel reader" when the kept try's route is
+  `reader`. A port with no kept try shows "nothing kept", the try count and
+  the last try's error or why. A card with no port shows nothing.
+- **Jelly cards wear the gummy finish**: one SVG filter (`GumDefs`, the
+  spike's `GUM`: a specular highlight from a point light at (20, -10), a
+  dark inner rim, a soft shadow) under the jellies heading, each jelly's
+  polygons in one `<g filter="url(#gum)">`, strokes now the flavour's own
+  colour (they were a brown outline). The game's version of the same finish
+  is `gumdrop_art.gd` `picture()` (`docs/agents/boards/gumdrop.md`). The
+  hoop cards are as they were: the spec's "fine facets" idea was dropped at
+  approval, and the model's panels are the facets.
+- **`hoopPorts` and `jellyPorts` in the day JSON** (`server/functions/src/
+  cli.ts`): each a list of `Port`s without `source` and `render` (already
+  in the document), written by `themedDays` as `[]` for the hoop and by
+  the `jellies` and `hoops` commands, so a day made on this Mac keeps its
+  tries beside its pictures.
+- **Seen**: Chrome on a dev server, 20261021 live: 27 cards, 14 jellies
+  with the filter and its glossy rim and highlight, **0 port rows** (the
+  ports request answered 403 and was handled silently), no error text.
+  With hand-made ports in component state (removed again): 12 port rows,
+  two images, "score 8 · try 2 of 2" and the notes, "fell back to the pixel
+  reader", "nothing kept · 1 try / refused by the checker" (after a
+  "1 tries" plural was fixed). `vite build` passes.
+- **Unconfirmed**: a real kept try's JPEGs (the rule is not deployed, so
+  nothing is published; the fake images were solid squares); the viewer
+  with a day's real ports. Small faults left: `readPorts` and `readDay` call
+  `token()` concurrently on a first visit and sign up twice; `band` is
+  parsed and unused; a port's unparsable score shows as 0.

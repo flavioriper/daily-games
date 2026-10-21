@@ -434,6 +434,146 @@ curated by hand to the English rules; the accept lists are every five-letter
 word `wordfreq` knows, folded, because being told a real word is not a word
 is still the worst thing that board can do.
 
+### Picture ports: the eye, the ports collection and the deploy list (2026-10-21)
+
+The user, 2026-10-21, with the day viewer open on 20261021, of the pixel
+pictures (Jewel Box) "are amazing, love them"; of Yarn Hoop "is terrible";
+of Gumdrop "is even worse"; and: "We can use the llm to make sure high
+quality outcome, check how can we use them to make sure we have a specific
+port for each game to have a high quality sharp picture game on each."
+Then, "amazing, apply it". Spec
+`docs/superpowers/specs/2026-10-21-picture-ports-design.md`; the games' own
+sides are in `docs/agents/boards/hoop.md` and `boards/gumdrop.md` (both
+2026-10-21), the viewer's in `docs/agents/days-dashboard.md`. A **port** is
+a path through `themeWork` that draws the thing in a game's own style, reads
+it into the game's geometry, **renders the geometry as the player will see
+it** and has a reviewer look at that render before it is kept: the eye is on
+the output, not the source. What Jewel Box's `pictures.ts` already did (Opus
+writes rows, a reviewer must name the thing among decoys) is why it is
+loved; Yarn Hoop and Gumdrop shipped a flash drawing read by geometry with
+no eye on it, which is why the frog had no body and the kettle had fangs.
+Built on `feat/picture-ports` (commits `01d2e393`..`2ae16866` and this
+note), **not pushed, not deployed**.
+
+- **The key colour a thing** (`key.ts` `keyFor`): the write model picks
+  green, magenta or cyan, whichever is farthest from the thing's colours,
+  and says whether the thing is a creature (`Thing.creature?`, optional so
+  a theme written before the field works); a word fallback when there is no
+  model. The hoop's drawings and the jelly's stickers both ask for it.
+- **The eye** (`eye.ts` `judge(day, theme, thing, game, render, source?)`,
+  `game` `"hoop" | "jelly" | "pixel"`): one `role: "review"` call (Opus
+  through the Anthropic key, as today) shown the render first and, when
+  there is one, the source drawing beside it (shrunk as the vistas are). It
+  names the thing among the day's things plus a decoy (`DECOYS`, shuffled
+  by `fnv1a(day + game + name)`; `lookThing` shuffled by the rows' count
+  before, so which pixel pictures are kept is not guaranteed bit-for-bit
+  what it was on a borderline day), and answers `{pick, wrong, score 0-10,
+  notes}` against a rubric a game states (hoop: the whole thing with every
+  part a child expects, true colours, facets reading as light and shade, no
+  face on an object, nothing but the thing; jelly: a silhouette a child
+  names at once, parts big and clean, no stray blobs or slivers; pixel: as
+  before), and, with a source, whether the render still shows what the
+  source shows (the check the frog failed: the source had a body, the cut
+  took it). `Verdict.ok` is: named it, nothing `wrong`. **The score gates,
+  the pick alone does not**: `FLOOR` is `{hoop: 7, jelly: 7, pixel: 0}`
+  and a port keeps only a try that is `ok` and at or above it (the spike's
+  eye named every broken read, an umbrella with no middle at 3, a frog with
+  no head at 2). A reviewer that passes anything is the anti-goal: the
+  pick-among-decoys test stays and the score only ranks. `judge` has no
+  try/catch of its own; every caller wraps it (`error: "judge: ..."` on a
+  try).
+- **The render** is drawn in node (`renderPolygons`, `pngjs`) **as
+  polygons with the panel outlines drawn as the board's ropes are**: the
+  spike showed the eye a 256-px raster scaled up, and a third of its
+  complaints were "jagged" edges the player never sees; a score against the
+  wrong render is worth nothing. The mapping field the model writes on
+  (`grid.ts`) and the repair and checks (`mesh.ts`) are in the hoop's note.
+- **Jewel Box goes through the eye** with `game: "pixel"` (`lookThing`,
+  Task 8): it keeps its pick-among-decoys and gains a score and notes on
+  `Tried.look`; **nothing gates on the score** (`FLOOR.pixel` 0), the drafts
+  and sizes it keeps are chosen as today (the first that passes), and no
+  drawing is saved. Seen once against the published 20261021 rain boot:
+  `{said: "rain boot", ok: true, score: 7}`. Its reviewer now runs under
+  the eye's stricter framing and a day-wide shuffle seed (plan-mandated),
+  and an unparsable score maps to 0, which the viewer could read as a real
+  low score.
+- **`days/{day}/ports/{game}{band}_{thing}`, a document a picture**
+  (`ports.ts`; the spec says why: a jelly band has up to five things
+  and five sources and renders would pass a document's 1 MiB). `Port`
+  `{game, band, thing (the id), tries: PortTry[], source?, render?}`;
+  `PortTry` `{n, route: "map" | "reader" | "written", why, verdict?, kept,
+  error?}`; the document's fields are `game`, `band`, `thing`, `tries` as one
+  JSON string, `source` and `render` (the kept try's drawing and render,
+  base64 JPEG shrunk as the vistas are, only when there is one). The night
+  had no `tries` log before (`runStep` handed `pixelBand` an empty drafts
+  list and dropped `makeJellies`' tries), so it is built, not extended: each
+  port returns its tries and `themeday.ts` stages them.
+- **Staging and publishing**: `runStep` stages a step's ports under
+  `themes/{day}/ports/{id}` (`stagePorts`, `set()`, a port made again
+  replaces its document; a staging failure is logged and the picture is not
+  lost); `publishPictures` publishes them with the pictures and, when the
+  pictures were already published, on every later run so a late port still
+  lands (`publishPorts`, `create()` never `set()` as the pictures are, a
+  port already there is left however it got there; a failure is logged and
+  does not undo the pictures). The phone never reads it; it is the
+  dashboard's.
+- **The rule**: `server/firestore.rules` opens `match /days/{day}/ports/{doc}`
+  to read for any signed-in client, write false, as `days/{day}/turns/**`
+  is. A separate block beside the turns', since turns is `/turns/{game}` and
+  ports cannot nest in it. `themes/**` stays server-only, so the day after
+  tomorrow's theme is never readable. Checked on the emulator (Java 21+
+  needed: `JAVA_HOME=/opt/homebrew/opt/openjdk`; the default `java` here is
+  17): 2 ports staged, published -> 2; a third staged, republished -> 3, the
+  first two skipped; the document has the expected fields.
+- **`cli.ts`**: the day's JSON (what the viewer and `tools/` read) gains
+  `hoopPorts` and `jellyPorts` (the `Port`s without `source` and `render`);
+  `themedDays` writes both as `[]` (it makes no hoop pictures), the
+  `jellies` and `hoops` commands fill theirs.
+- **What was not run on Vertex**: nothing night-side. The drawing checks of
+  Tasks 5 and 6 are the user's (`build/port_hoop.js`, `build/port_jelly.js`,
+  the commands in `.superpowers/sdd/2026-10-21-picture-ports/task-5-report.md`
+  and `task-6-report.md`; flash only, serially, since pro's quota is
+  production's); the one real map made was an Easy snail in one Opus ask,
+  90 s, US$0.22, 40 panels (the hoop's note), and the one real eye call
+  came back `{pick: snail, score: 7}` on the spike's snail. Every
+  throwaway check of the other parts used stubs or fixtures.
+- **Deferred minors** (the controller's list, none a blocker):
+  `publishPorts` re-reads every staged port in full (base64 included) on
+  every half-hour run and tries `create()` on each, for every day in the
+  window (check the published ids first); one port that cannot be copied
+  skips the rest until the next run; a port re-staged after publish is
+  never updated; `judge` does not clamp the score to 0-10 and a thing not in
+  `theme.objects` can never be `ok`; `keyFor` is called once per `makeHoop`
+  and per `drawJelly`, not memoised by thing, so a hoop and a jelly of one
+  thing may get different keys.
+
+**The deploy list** (all the user's to run; every one changes production,
+and nothing here was run):
+
+1. **`tools/deploy_functions.sh`**: the three functions **and**
+   `firestore:rules` in one `firebase deploy --only functions,firestore:rules
+   --project daily-games-420bf` (after `npm ci && npm run build`, which
+   copies `lib/hoop_style.png` from the spike folder, so that file stays in
+   the tree). It carries the picture ports (`themeDay` writes hoops and
+   jellies the new way) **and the 2026-10-20 hoop pin weld** (`panels()` in
+   `hoop.ts`, `docs/agents/boards/hoop.md`), which was never deployed (the
+   functions were last deployed before it).
+2. **The rules**: `cd server && firebase deploy --only firestore:rules
+   --project daily-games-420bf` deploys the `days/{day}/ports` read rule
+   alone; the script above already includes it, so this is for a rules-only
+   deploy (or if the functions deploy is held back; the viewer then still
+   shows no port rows, because nothing has published any).
+3. **The APK**, through the push to `main` (`.github/workflows/android.yml`,
+   which also builds an APK and sends it to Firebase App Distribution): only
+   `puzzles/gumdrop_art.gd` is phone-side (the card's gummy finish).
+   **The day viewer needs no deploy** (`tools/day_viewer`, a local page: `npm
+   run dev` there).
+
+**Until the functions and the rules are deployed, the night makes pictures
+the old way** (a green-screen drawing read by `readHoop` and `readJelly`, no
+eye, no ports), **and the viewer shows no port rows** (the read is refused,
+and the page carries on as it was).
+
 Roadmap: `docs/brainstorm/single-turn-roadmap.md`. Phase 0's design:
 `docs/superpowers/specs/2026-09-17-single-turn-foundation-design.md`.
 
