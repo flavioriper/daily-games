@@ -99,6 +99,45 @@ Events `factory_fix`, `factory_milestone`, `factory_part` beside
 `factory_enter` / `factory_leave` (`docs/agents/analytics.md`). Unheard,
 unfelt: no phone, no ear.
 
+**The Turn node (2026-10-21).** The user: "add a turn node so bot has to
+turn before moving"; asked, they chose left or right only (no half turn),
+4 ticks and a unit like a Pick, and the facing kept from one loop to the
+next (not reset by the bay).
+- **Rules** (`sim.gd`, `bots.gd`): a robot has a `facing`, `HOME_FACING`
+  (down) when new and whenever an edit sends it home. A Move has no way of
+  its own and walks the facing; a Turn (`NODES.turn`, the treads' and the
+  fast treads') turns it a quarter, `RIGHT` (+1, clockwise on screen) or
+  `LEFT` (+3), in `ACT_TICKS` and a unit, and pushes `pivot`. Edits:
+  `set_move(i, id, n)` (count only) and `set_turn(i, id, way)`; a new Turn
+  is a right one. `Bots.ways` walks the chain's facings from the bay,
+  `net` and `faces_home` read it; `heading(b, alpha)` swings a turn for
+  drawing. Save `VERSION` 7 (a 6 floor has no facings and starts anew).
+- **The first robots** walk rings with corners, their faults kept: 1
+  [Move 4, Left, Move 3, Release, Left, Move 4, Left, Move 3, Left]; 2
+  [Left, Move 3, Pick, Right, Move 3 (one short), Release, Right, Move 3,
+  Right, Move 3, Right, Right]; 3 [Move 4, Left, Move 3, Pick (loose wire
+  after it), Move 4, Release, Left, Move 4, Left, Move 7, Left]. The tutor's
+  fixes are now 2's `e` and `j` to 4 and 3's `d` wired to `e`. Fixed loops
+  cost 20, 22 and 28 of the cell's 30.
+- **Pace re-read**: the pace bot reads a box every 426 ticks (was 366), so
+  milestone 1 is 510 (51 s, was 440) and 2 is 255 (was 220).
+- **The sheet**: a Move's arrow is the facing the chain reaches it with
+  from the bay, so it still reads as a map ("Move ↓ 4" in the tutor stays
+  true); a Turn is a quarter arc bending right or left; its pill is Flip
+  and Remove, a Move's Fewer, More and Remove.
+- **The floor**: the treads run the way the robot faces (`Art.robot(q)`,
+  cached in eighths of a quarter) and an orange nose on the lid points it
+  (`Art.nose`); the face stays toward the viewer, as its expressions are
+  signals. A robot whose loop does not come home facing down wears the
+  fault dot.
+- **Calls, unconfirmed**: no sound for a Turn (steps have none either);
+  Robot 3's loop at 28 of 30 leaves little slack; the tutor pages say
+  nothing of turning yet.
+- **Measured** (810x1440, default driver, one windowed run): probe 133/0,
+  suite 163137/0; `_shot_factory` all pass but one, the pace pill's "44 s"
+  string (fixed to 51 after the run, not run again), the floor 28 to 31
+  draw calls, the screen 61 to 63, the sheet 65 to 71. Unseen by the user.
+
 **The view, no water (2026-10-21, third pass).** The user, on the
 top-down build below: "redesign it so it has no water showing, both side
 convey should take the full height, the convey that receive queue item at

@@ -362,7 +362,7 @@ func _screen_part() -> void:
 	_ok("the sheet goes down, the view back on the floor's foot", not _screen.sheet.is_open()
 		and absf(_screen.to_field(_screen.life.bounds().end).y - _screen.field.size.y) < 40.0)
 	_ok("pace pill reads none", _screen.pace_text() == tr("FACTORY_PACE_NONE"), _screen.pace_text())
-	_ok("pace pill says what milestone 1 asks", _screen._next_l.visible and _screen._next_l.text == tr("FACTORY_PACE_NEXT") % "44", _screen._next_l.text)
+	_ok("pace pill says what milestone 1 asks", _screen._next_l.visible and _screen._next_l.text == tr("FACTORY_PACE_NEXT") % "51", _screen._next_l.text)
 	var shown := 0
 	for kind: String in _screen.DRAWER_TILES:
 		if (_screen._tiles[kind].button as Control).visible:
