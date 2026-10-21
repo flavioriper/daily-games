@@ -1,6 +1,7 @@
 import jpeg from "jpeg-js";
 import {PNG} from "pngjs";
 import Beads = require("./beads");
+import {DECOYS, fnv1a} from "./eye";
 import {ask, available, draw, Drawing} from "./generate";
 import type {HoopPicture} from "./hoop";
 import type {Jelly} from "./jelly";
@@ -78,10 +79,6 @@ export interface Draft {
  *  things must end inside the function's 1,800 seconds. */
 export const DRAFTS = 3;
 
-/** Named beside the day's three things, so a reviewer who cannot tell has
- *  somewhere to be wrong. */
-const DECOYS = ["umbrella", "bicycle", "guitar", "rocket", "anchor", "teapot", "kite", "snail"];
-
 /** The colours a thing is asked to be drawn in, by the size it is for: the
  *  most its band lets a picture have. */
 const INKS: Record<number, string> = {10: "four", 12: "five", 16: "seven"};
@@ -129,15 +126,6 @@ const ROWS_SCHEMA = {
 };
 
 const SCENE = (what: string) => `Draw this scene as a flat children's illustration that fills the whole square picture from edge to edge, with no border, no frame and no white margin: ${what} Flat solid colours with thick dark brown outlines, a few big simple shapes, eight to ten clearly different colours and no one colour over a third of the picture. No shading, no gradients, no text or letters, no faces.`;
-
-function fnv1a(s: string): number {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 0x01000193) >>> 0;
-  }
-  return h >>> 0;
-}
 
 /** A drawing's pixels, whichever of the two formats the model answered in. */
 export function decoded(d: Drawing): {data: Uint8Array; width: number; height: number} {
