@@ -1195,3 +1195,8 @@ The seat stays hidden under a gem (its corner reaches 0.435 of a cell
 along the diagonal, the gem's 0.491) and the gloss stays inside the
 rounded top. Medium `play` shot: seen rounded, like the reference. Big
 pictures seen whole keep three points a corner.
+
+**12:26, flights twice as quick.** The user: "make flying time 2x faster".
+`FLY_TIME` 0.56 to 0.28; a flight with an end in the case scales off it
+(0.28 to 0.56 s by length) and halves with it. The gap stays 0.05 s, so five
+or six gems are in the air at once on a long run.

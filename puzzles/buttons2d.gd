@@ -136,8 +136,9 @@ const PICK_CAP := 0.0
 ## rises on a parabola over the distance covered, leans into its way by up
 ## to FLY_TILT and back upright to land, its shadow shrinking as it climbs.
 ## Half the speed since 2026-10-20 (the user: "slow flight time by half"):
-## 0.28 to 0.56.
-const FLY_TIME := 0.56
+## 0.28 to 0.56. Back to 0.28 on 2026-10-21 (the user: "make flying time
+## 2x faster"); a case flight scales off it, so it halves too.
+const FLY_TIME := 0.28
 ## A flight with an end in the case covers far more ground than a hop on
 ## the cloth, and on FLY_TIME alone it shot past (the user, 2026-10-21: "pieces
 ## from case box are flying way faster than pieces from the board, make it
