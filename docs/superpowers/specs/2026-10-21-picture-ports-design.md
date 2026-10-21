@@ -340,6 +340,46 @@ than the panels" as the way to the reference look: the panels
 themselves are the drawing's facets, whole and placed where the drawing
 has them. The user decides.
 
+## The jelly written by a model (2026-10-21, 16:13)
+
+The user: "let's try to do something similar for the other games and
+the gumdrop". The other boards that take a drawn picture are the bead
+boards, already on the model-written, model-reviewed pixel path; so a
+fourth throwaway (`spike_jelly_map.js`) did it for Gumdrop: run 2's
+sticker drawing with a 0-100 grid went to Opus, which wrote the parts
+(flavour + soft polygons) under the band's rules as the prompt stated
+them; the night's own `why()` judged them, one refusal folded into one
+retry; the eye scored the render beside the pixel reader's parts.
+
+| Card | Model's jelly | Checker | Reader's parts |
+|---|---|---|---|
+| rain boot, Easy | 2 parts, score 6 | refused twice, "covers 18%" | score 5 |
+| snail, Medium | 3 parts, score 7 | passed | score 6 |
+| frog, Hard | 4 parts, score 7 | refused, "a soft's numbers" then "a chunk too small to pour in" | score 4 (refused) |
+| kettle, Insane | 5 parts, score 6 | the same two refusals | score 4 (refused) |
+
+- **The silhouettes are what the reference asks**: whole, clean, true
+  to the sticker, the eyes and cheeks placed as drawn; 7-20 s and
+  $0.02-0.04 a try. The reader's parts of the same drawings are lumpy
+  blobs with the head or sole lost.
+- **Every refusal was a rule the prompt had not stated**: the jelly
+  must cover 20-75% of the field (`COVER`), a chunk must show at least
+  `LEAST_SQUARES` 9 of the sim's 36-grid (a frog's eye dot cannot be a
+  chunk of its own), a soft polygon has 6-16 points. Stated in the ask
+  and folded into the retry as the hoop's are, these pass; the spike's
+  second try repeated "covers 18%" because the ask never said the
+  floor.
+- So **the Gumdrop port's reader is also the model writing the map**,
+  with the pixel reader as the fallback, the band's rules stated in
+  full in the ask (counts, mixed, cover, chunk size, points), `why()`
+  as the checker, and the eye over the render. The sticker drawing
+  stays the source. The rules themselves stay (open question 1).
+
+The four spike scripts are kept beside this document in
+`2026-10-21-picture-ports-spike/` as the record of the prompts, grids,
+checks and renders; their pages and drawings were in the session's
+scratchpad only.
+
 ## Open for the user
 
 1. Should Gumdrop's Easy and Medium colour and shape counts rise, and
