@@ -59,6 +59,9 @@ func _ready() -> void:
 		b.add_theme_font_size_override("font_size", 36)
 		b.custom_minimum_size = Vector2(0, 96)
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		# A drag that starts on a year still scrolls the list (the years
+		# fill it, so without this a finger never reaches past 7 rows).
+		b.mouse_filter = Control.MOUSE_FILTER_PASS
 		b.pressed.connect(_pick.bind(y))
 		grid.add_child(b)
 		_buttons[y] = b
