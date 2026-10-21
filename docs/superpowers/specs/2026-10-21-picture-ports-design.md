@@ -69,7 +69,12 @@ judge(day, theme, thing, game, render: Drawing, source?: Drawing)
 ```
 
 - `render` is a PNG of the game's own geometry, drawn in node with
-  `pngjs` (polygons scan-filled; the pixel path keeps `shown()`).
+  `pngjs` **as polygons, with the panel outlines drawn as the board's
+  ropes are** (the pixel path keeps `shown()`). The spike showed the eye
+  a 256-pixel raster scaled up, and a third of its complaints were
+  "jagged", "stair-stepped", "pixelated" edges the player never sees; a
+  cream handle also "vanished into the cream background" that a rope
+  would outline. A score against the wrong render is worth nothing.
   `source` is the model's drawing when there is one, shrunk as the
   vistas are.
 - The reviewer (`role: "review"`, Opus via the Anthropic key as today)
@@ -86,9 +91,13 @@ judge(day, theme, thing, game, render: Drawing, source?: Drawing)
   source is shown, whether the render still shows what the source shows
   (this is the check the frog failed: the source had a body, the read
   took it).
-- A port keeps the **best scoring** of its tries that was named and not
-  wrong and scored at least the port's floor (7 by default, a constant a
-  port). A try that fails the pick or is wrong is dropped; its `notes`
+- A port keeps the **best scoring** of its tries that was named, not
+  wrong and scored at least the port's floor: **the score gates, the
+  pick alone does not** (the spike's eye named every broken read, an
+  umbrella with no middle at 3 and a frog with no head at 2; the pick
+  catches only a thing that is not there). The floor is a constant a
+  port (hoop 7; jelly set once its reader handles white and outlines,
+  see below). A try that fails the pick or is wrong is dropped; its `notes`
   are folded into the next drawing's prompt ("the last drawing was
   turned down because: ...").
 - Everything a try produced (name, pick, score, wrong, notes) and the
@@ -153,7 +162,21 @@ judge(day, theme, thing, game, render: Drawing, source?: Drawing)
   not more draws). The facet shade (`FACET`) stays off for drawn
   pictures, as now.
 - **The viewer** draws `facets` when a hoop has them, panels otherwise.
+- **A style reference goes with the prompt**: a crop of the user's
+  reference picture (the low-poly snail of 2026-10-21, kept in the
+  functions as `vista_style.png` is) handed to `draw()` as `images`, as
+  the vistas do. In the spike the snail drawn with it matched the
+  reference and read at 7; the same prompt in words alone drew a
+  textured, near-photographic snail the reader shredded (5).
+- **What the fine facets buy, honestly**: Easy and Medium animals (the
+  snail drew 109 fine regions over 40 panels, the frog 208 over 55). A
+  simple object draws few facets however many are asked (the umbrella
+  20 on Hard), and on Insane the cut splits big regions into more
+  convex panels than there are facets (the kettle 65 fine, 121 panels),
+  so there the knit is the panels either way.
 - Tries: up to 3 drawings a band, each reviewed once; the best kept.
+  The spike measured about 42 s a drawing, read and review, so three a
+  band fits the half-hour step with room.
 
 ## The Gumdrop port (`jelly.ts`)
 
@@ -179,6 +202,16 @@ judge(day, theme, thing, game, render: Drawing, source?: Drawing)
   foil", "no light outline anywhere"), and the mould's gel is glossy
   already (`Art.gloss_of`). The finish is still, so `Motion.reduce` has
   nothing new to honour.
+- **The reader must handle what flash draws however it is asked**: a
+  white sticker border, dark outlines, white eyes and cream bodies. In
+  the spike the second run's prompt forbade all of them and flash drew
+  them anyway on three of four; the reader mapped the white to lemon
+  (a kettle's handle a yellow blob) or dropped pale parts with the
+  border (a frog's head). The eye scored those 4 to 6 and would have
+  refused them all at 7, which is right, but a floor is meaningful only
+  once a clean sticker can reach it: white and near-white pixels inside
+  the thing become the flavour round them, a dark outline is dissolved
+  into its neighbour, and only then is the jelly's floor set.
 - Tries: `DRAWINGS` as today (3, 3, 2, 2), each reviewed. **The written
   fallback stays** (`makeJellies.one`'s Opus-written parts, up to
   `TRIES` 2) and goes through the eye with no source, competing on score
@@ -241,6 +274,28 @@ judge(day, theme, thing, game, render: Drawing, source?: Drawing)
 - Test shape: the suite's parse guard and the existing hoop and jelly
   probes (`tests/_probe_hoop.gd`) must pass with a `facets` document and
   without one; a throwaway node check renders a known hoop document.
+
+## What the spike showed (2026-10-21, 15:25-15:47)
+
+Two runs of a throwaway (`scratchpad/spike/spike_ports.js`, flash on
+Vertex, the reviewer Opus, one drawing a card): Yarn Hoop on every band
+twice (with and without the style reference), Gumdrop once a band.
+
+- **The mechanism works.** The eye's complaints named the real fault
+  every time ("the pale cream body nearly vanishes", "restore the frog's
+  green body silhouette", "the handle as a clear arched loop instead of
+  a big blob").
+- **The green key was the hoop's fault, and it is fixed by the key a
+  thing.** Flash paints the key as a muted sage, and the board flood ate
+  every pale part near it: the snail's cream body, the umbrella's yellow
+  middle, and in the jelly a lime frog whole. On magenta and cyan in run
+  2 the umbrella read at 8 and 8, the frog 8 and 6, the snail 7.
+- **Run 2's scores**: hoop snail 7/5, frog 6/8, umbrella 8/8, kettle
+  6/4 (ref/words); jelly boot 5, snail 6, frog 4, kettle 4. Against the
+  cruder render, so the hoop's are low by some.
+- **Neither of the user's two open calls is informed by it.** The Medium
+  snail jelly at 3 parts in today's counts did read as a snail when the
+  read worked, mild evidence the counts can stay.
 
 ## Open for the user
 
