@@ -36,9 +36,9 @@ the Arcade list" still stand, both used by the floor.
   belts, market, engine, tray; new: the robot as a code character, faces,
   bubbles, the square, the box, the box heap; `pace_text`, `short`,
   `amount`), `factory/life.gd` (the floor drawn for every holder: screen,
-  card, tutor pages; the turn), `factory/screen.gd` (camera, hand, belt
-  drawer, the turn button, the robot chips with their fault dot, the coin
-  and pace pills, the sounds),
+  card, tutor pages; the ground past it, the robots' fault dots),
+  `factory/screen.gd` (camera, hand, belt drawer, the coin and pace
+  pills, the faults it marks, the sounds),
   `factory/sheet.gd` (the program sheet over the field's lower part, one
   mesh; sizes are the spec's 810-space values times 4/3, `K`),
   `factory/tile.gd`, `ui/menu/factory_tab.gd` (the owner),

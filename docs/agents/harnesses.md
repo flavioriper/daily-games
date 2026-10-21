@@ -366,7 +366,12 @@ has (no new test files). Run each windowed one alone, under `ulimit -f` and
 - `tests/_probe_factory.gd` (headless, `--headless --path . --script`):
   the sim alone; prints `probe_factory: N checks, 0 failed` last.
 
-On `opengl3_angle`, 2026-10-21, the land's pieces on the top-down grid
+On `opengl3_angle`, 2026-10-21, the third pass (no water, 10 by 12, no
+chips; one run each): `_shot_factory.gd` 79 pass, 0 failed, 26 to 105 draw
+calls (the floor 26 to 28, the screen 58 to 60, the tutorial card 105);
+`_shot_factory_menu.gd` 0 failed, the Arcade page 147, the screen 57.
+
+Before it, the land's pieces on the top-down grid
 (one run each): `_shot_factory.gd` 77 pass, 0 failed, 27 to 135 draw calls
 (the floor 27 to 28, the screen 90 to 92, the tutorial card 135);
 `_shot_factory_menu.gd` 0 failed, the Arcade page 147, the screen 85.
