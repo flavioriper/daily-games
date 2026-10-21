@@ -595,3 +595,22 @@ Vertex yet**.
   deployed `themeDay` makes pictures the old way until the user deploys the
   functions** (the deploy list, `docs/agents/turns-and-backend.md`, which
   also carries the 2026-10-20 pin weld, never deployed).
+- **The first Vertex check, 2026-10-21** (`build/ports_check.log`): Easy's
+  snail kept at 7; Insane's kettle failed every try (maps 4/4/6/5, the
+  reader 5) and the board fell back to the bead cut. Two causes, two
+  fixes, both unrun on Vertex:
+  - **A thin part tinted by the key.** The handle's panels, mapped a
+    little wider than the handle, averaged dark grey with the sage round
+    it to `(87,109,76)`, 99 from the board, so they were kept green.
+    `colourFrom` now leaves out every pixel of the key's hue (within 25
+    degrees of the measured board or the key's hex, chroma at least 12;
+    tight because cyan is under 30 degrees from a blue thing) before it
+    takes the mean, and a panel over nothing but the key is the board and
+    is dropped. On the kettle's drawing the same handle panel reads
+    `#2b2a2c`.
+  - **Holes in the body at Insane's 40 grid.** `mapHoop` adds `FINE` for
+    band 3: every grid cell of the thing under a panel, no hole, thin parts
+    a whole cell wide joining the body at each end. Not yet known whether
+    the holes were the model's or the mending's: each map try now carries
+    `mended` (asked, kept, dropped, board, clipped, tees, snapped) on the
+    port and in its log line, so the next run says.

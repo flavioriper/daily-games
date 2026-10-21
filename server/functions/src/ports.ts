@@ -28,6 +28,10 @@ export interface PortTry {
   kept: boolean;
   /** What was thrown, when something was. */
   error?: string;
+  /** A map's mending: the panels the model asked, those kept, and what
+   *  repairMesh and colourFrom let go ("board" the background panels), so
+   *  a hole in the render is traced to the map or to the mending. */
+  mended?: {asked: number; kept: number; snapped: number; dropped: number; tees: number; clipped: number; board: number};
 }
 
 export interface Port {
@@ -49,7 +53,10 @@ export function said(e: unknown): string {
  *  the eye made of it. */
 export function logTry(game: Port["game"], day: number, band: number, thing: string, t: PortTry): void {
   const what = t.error ?? (t.why !== "" ? t.why : `${t.verdict?.pick} ${t.verdict?.score}${t.kept ? ", kept" : ""}`);
-  console.log(`${game}: day ${day}, band ${band}, ${thing} try ${t.n} (${t.route}): ${what}`);
+  const m = t.mended;
+  const mended = m === undefined ? "" :
+    ` [asked ${m.asked}, kept ${m.kept}, dropped ${m.dropped}, board ${m.board}, clipped ${m.clipped}, tees ${m.tees}, snapped ${m.snapped}]`;
+  console.log(`${game}: day ${day}, band ${band}, ${thing} try ${t.n} (${t.route}): ${what}${mended}`);
 }
 
 /** A port's document id, the same staged and published. */

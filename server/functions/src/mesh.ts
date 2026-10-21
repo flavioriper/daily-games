@@ -303,10 +303,28 @@ export function repairMesh(got: ModelMap, n: number, band: number): Mesh {
 const rgbOf = (hex: string): number[] => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
 const onBoard = (a: number[], b: number[]) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) <= 60;
 
+/** A colour's hue in degrees and its chroma (max less min, 0..255). */
+function hueOf(r: number, g: number, b: number): {hue: number; chroma: number} {
+  const hi = Math.max(r, g, b), chroma = hi - Math.min(r, g, b);
+  if (chroma === 0) return {hue: 0, chroma};
+  const h = hi === r ? ((g - b) / chroma + 6) % 6 : hi === g ? (b - r) / chroma + 2 : (r - g) / chroma + 4;
+  return {hue: h * 60, chroma};
+}
+/** A pixel this near a board's hue, and this coloured, is the key: the
+ *  board itself, or a thin part's edge blended into it (the kettle's
+ *  handle, 2026-10-21: a dark grey edged in sage read as green). The
+ *  window is tight, since cyan is under 30 degrees from a blue thing; the
+ *  floor is chroma, not saturation, so a near-black edge is never taken. */
+const KEY_HUE = 25;
+const KEY_CHROMA = 12;
+
 /**
  * Each panel coloured with the drawing's mean over it (the model's hex is
- * a guess; the drawing is the truth), read off the raster through the box.
- * A panel that comes out within 60 of the board is the background the
+ * a guess; the drawing is the truth), read off the raster through the box,
+ * leaving out every pixel of the key's hue (isKey), so a thin part mapped
+ * a little wider than it is keeps its own colour, not one tinted by the
+ * board round it. A panel over nothing but the key, or whose mean comes
+ * out within 60 of the board, is the background the
  * model took for part of the thing, and is dropped with any pin only it
  * used, and what is left placed in the square again. The board is measured
  * twice: as the drawing painted it, the median of the raster's edge (the
@@ -321,16 +339,25 @@ const onBoard = (a: number[], b: number[]) => Math.hypot(a[0] - b[0], a[1] - b[1
  */
 export function colourFrom(r: Raster, mesh: Mesh, key: string): number {
   const boards = [boardKey(r), rgbOf(key)];
+  const hues = boards.map((b) => hueOf(b[0], b[1], b[2])).filter((h) => h.chroma >= KEY_CHROMA).map((h) => h.hue);
+  const isKey = (at: number) => {
+    const {hue, chroma} = hueOf(r.rgb[at], r.rgb[at + 1], r.rgb[at + 2]);
+    return chroma >= KEY_CHROMA && hues.some((h) => Math.min(Math.abs(hue - h), 360 - Math.abs(hue - h)) <= KEY_HUE);
+  };
   const px = r.n / 100;
   const pixelsOf = (p: HoopPanel) => p.k.map((i) => [(mesh.pins[2 * i] / mesh.box.s + mesh.box.x0) * px, (mesh.pins[2 * i + 1] / mesh.box.s + mesh.box.y0) * px]);
   const means: (number[] | null)[] = mesh.panels.map((p) => {
     const sum = [0, 0, 0];
-    let count = 0;
+    let count = 0, covered = 0;
     scan(pixelsOf(p), r.n, (x, y) => {
       const at = (y * r.n + x) * 3;
+      covered++;
+      if (isKey(at)) return;
       for (let c = 0; c < 3; c++) sum[c] += r.rgb[at + c];
       count++;
     });
+    // a panel over nothing but the key is the board, and is dropped below
+    if (covered > 0 && count === 0) return boards[0];
     return count > 0 ? sum.map((v) => v / count) : null;
   });
   // the thin ones from their neighbours' measures, never from another thin
