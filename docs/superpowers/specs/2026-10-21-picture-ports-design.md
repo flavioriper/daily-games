@@ -297,6 +297,49 @@ twice (with and without the style reference), Gumdrop once a band.
   snail jelly at 3 parts in today's counts did read as a snail when the
   read worked, mild evidence the counts can stay.
 
+## The map written by a model (2026-10-21, 16:03)
+
+The user, with run 2's snail beside its shredded cut: "can we send the
+image, some mapping field, and ask a model to generate the yarn hoop
+map?" A third throwaway (`spike_map.js`) tried it on run 2's drawings:
+each drawing with a numbered grid over it (20, 24, 30, 40 cells a side
+by band, about the band's pin spacing) went to Opus, which wrote pins and
+panels in grid coordinates; the mesh was snapped, checked as the phone
+checks a map, coloured by the drawing's mean over each panel, rendered
+and scored by the eye, beside the pixel reader's playable cut of the
+same drawing scored the same way.
+
+| Card | Model's map | Reader's cut |
+|---|---|---|
+| snail, Easy | 30 panels, 45 pins, score 6 | 40 panels, score 5 |
+| frog, Medium | 56 panels, 78 pins, score 7 | 55 panels, score 6 |
+| umbrella, Hard | 25 panels, 47 pins, score 5 | 29 panels, score 5 |
+| kettle, Insane | 75 panels, 114 pins, score 7 | 121 panels, score 5 |
+
+- **The model's meshes are clean and valid**: 0 overlaps on all four,
+  one T-junction and two sides shared by three panels in all, no panel
+  over 7 corners; silhouettes faithful and whole, panels coherent, the
+  look the reference has. The reader's cuts are jagged, hole-ridden and
+  drop parts (eye stalks, a knob, a shaft).
+- **What it misses**: fine features the drawing has but the panel
+  budget does not (the shell's spiral folded into a dome at 30 panels,
+  the umbrella's thin shaft, 1 panel, dropped). The counts came under
+  the band's most (30 of 40, 75 of 170): the model simplifies.
+- **Cost and time**: 45-175 s and $0.11-0.42 a map on Opus; a band's
+  three tries fit the half-hour step.
+
+So the hoop port's reader becomes **the model writing the map**, with
+the pixel reader as the fallback: the drawing on its key, the grid laid
+over it, the mesh checked and repaired (snap, drop a panel under 3, a
+T-junction's pin inserted into the side it lies on, a concave panel
+ear-clipped as the night does now), coloured off the drawing, the eye
+scoring the render, the complaint folded into the next ask ("the shaft
+is missing; the shell's spiral is missing: keep every facet of the
+drawing, use the whole panel budget"). This replaces "the picture finer
+than the panels" as the way to the reference look: the panels
+themselves are the drawing's facets, whole and placed where the drawing
+has them. The user decides.
+
 ## Open for the user
 
 1. Should Gumdrop's Easy and Medium colour and shape counts rise, and
