@@ -334,7 +334,7 @@ func _screen_part() -> void:
 	await _frames(4)
 	_screen.field.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var field: Vector2 = _screen.field.size
-	_ok("the whole floor fits the width", is_equal_approx(_screen._near, field.x / (Sim.COLS * Art.TILE)),
+	_ok("the whole floor fits the width", is_equal_approx(_screen._near, field.x / (_screen.life.bounds() as Rect2).size.x),
 		"near %.3f" % _screen._near)
 	_ok("three chips", _screen.robot_chip_rect(2).size.x > 0 and _screen.robot_chip_rect(3).size.x == 0,
 		str(_screen.robot_chip_rect(2)))
@@ -347,7 +347,7 @@ func _screen_part() -> void:
 	# the floor held still while the finger is down on a robot, so where it
 	# is drawn is where it is tapped
 	_screen.set_process(false)
-	await _tap(_screen.to_field(_screen.life.robot_at(0)))
+	await _tap(_screen.to_field(_screen.life.robot_at(0) + _screen.ROBOT_MID))
 	_screen.set_process(true)
 	_ok("robot tap selects", _screen.selected == 0)
 	_ok("pace pill reads none", _screen.pace_text() == tr("FACTORY_PACE_NONE"), _screen.pace_text())
@@ -373,6 +373,21 @@ func _screen_part() -> void:
 	await _frames(4)
 	var draws: int = await _shot("screen_start")
 	_ok("under budget", draws > 0 and draws < BUDGET, str(draws))
+	# the view's quarter turn (2026-10-21: the land's view is back): the
+	# tile under the middle stays there, the sheet's arrows turn with it
+	if _screen.sheet.is_open():
+		_screen.sheet.close()
+		await _wait(0.5)
+	var under: Vector2 = _screen.life.tile_at(_screen._cam_to)
+	_screen.turn_view()
+	await _frames(4)
+	_ok("the view turns a quarter", int(_screen.life.turn) == 1 and int(_screen.sheet.turn) == 1
+		and (_screen.life.tile_at(_screen._cam_to) as Vector2).distance_to(under) < 0.05, "%d %d %s %s" % [_screen.life.turn, _screen.sheet.turn, under, _screen.life.tile_at(_screen._cam_to)])
+	draws = await _shot("screen_turned")
+	_ok("under budget turned", draws > 0 and draws < BUDGET, str(draws))
+	for i in 3:
+		_screen.turn_view()
+	await _frames(2)
 	_screen.queue_free()
 	await _frames(3)
 

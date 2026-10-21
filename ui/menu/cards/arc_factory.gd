@@ -1,16 +1,20 @@
 extends "res://ui/menu/cards/card_face.gd"
 
-## Factory's card: the floor's own paper with its dots, a run of belt with
-## two squares riding it, and one of the game's robots (factory/art.gd's mesh
-## in the Picker's tint, its content face) walking a full box toward the go
-## button, a disc in the card's colour with a chevron. The name stands top
+## Factory's card: a morning over the floor's land (main's card's sky, its
+## green and its far rise), drawn with the floor's own pieces seen corner on
+## (factory/art.gd's meshes): the bay's engine at the back, one of the
+## game's robots in the Picker's tint with its content face carrying a full
+## box, and a run of belt with two grey squares riding it toward the go
+## button, which stands where the belt ends, as the market does on the
+## floor: a disc in the card's colour with a chevron. The name stands top
 ## left, with the coins and the pace (set from outside) under it.
 ##
 ## The land of logs and trees it showed until 2026-10-20 went with the land;
-## the floor of three robots took its place. Factory had a tab of its own,
-## with the whole land running on one wide card, until the bottom bar left on
-## 2026-10-13; this card took its place on the Arcade list. Everything is one
-## mesh and nothing lives on it.
+## the robots took its place, drawn top-down for a day and corner on again
+## since 2026-10-21 (the user: "use at most the elements factory already
+## had"). Factory had a tab of its own until the bottom bar left on
+## 2026-10-13; this card took its place on the Arcade list. Everything is
+## one mesh and nothing lives on it.
 
 const Art = preload("res://factory/art.gd")
 const Life = preload("res://factory/life.gd")
@@ -21,21 +25,24 @@ const H := 246.0
 ## card's width caps the scale so the robot never starts under them.
 const WORDS_END := 205.0
 const REACH := 250.0
-## The robot at H: where it stands, in from the right and up from the
+## The engine at the back: in from the right, up from the foot, its scale
+## (its flywheel with it).
+const ENGINE_AT := Vector2(204.0, 96.0)
+const ENGINE_K := 0.78
+## The robot at H: where its feet are, in from the right and up from the
 ## foot, and how big; the box it carries is Art's HELD_AT, one with four
 ## squares in it.
-const ROBOT_AT := Vector2(148.0, 78.0)
-const ROBOT_K := 1.1
+const ROBOT_AT := Vector2(132.0, 62.0)
+const ROBOT_K := 1.0
 const CARRIED := 4
 ## The belt: from the left of the picture to the go button, its width and
-## its slats, and the two squares riding it (in from the right, and how big
-## against Art's SQUARE).
+## its slats, and the two squares riding it (in from the right, and how big).
 const BELT_FROM := Vector2(244.0, 40.0)
 const BELT_TO := Vector2(96.0, 40.0)
 const BELT_W := 26.0
 const SLATS := 6
-const RIDERS: Array[float] = [232.0, 206.0]
-const RIDER_K := 0.5
+const RIDERS: Array[float] = [228.0, 194.0]
+const RIDER_K := 0.62
 const BED := Color("5b5450")
 const RAIL := Color("8a7f76")
 const SLAT := Color("746b65")
@@ -44,23 +51,19 @@ const SLAT := Color("746b65")
 const GO := 30.0
 const GO_AT := Vector2(52.0, 46.0)
 const GO_SHADOW := 0.22
-## The floor's dots, as Art.floor_mesh lays them: how far apart, how big, and
-## the corner of the block they fill (in from the right, up from the foot)
-## and its columns and rows.
-const DOT_GAP := 40.0
-const DOT_R := 3.0
-const DOTS_AT := Vector2(264.0, 14.0)
-const DOT_COLS := 7
-const DOT_ROWS := 3
+## The far rise's crest and foot at H.
+const RISE_TOP := 120.0
+const RISE_FOOT := 172.0
 ## The words' margin, their room and how far down they start.
 const SIDE := 22.0
 const WORDS := 215.0
 const WORDS_TOP := 14.0
 
-## The paper of the floor, a shade deeper at the foot, and the blurb's ink.
-const SKY := Color("f6f1e6")
-const LAND := Art.FLOOR
-const BLURB := Color("6f655b")
+## The morning: sky over the land's green, the far rise and the blurb's ink.
+const SKY := Color("eef6f0")
+const LAND := Color("dcecc4")
+const RISE := Color("cfe3b4")
+const BLURB := Color("5f6b4a")
 
 func _k() -> float:
 	return minf(size.y / H, maxf(size.x - WORDS_END, 1.0) / REACH)
@@ -75,27 +78,40 @@ func _paint(b: Face.Builder) -> void:
 	var first := b.verts.size()
 	b.polygon(ground(), Color.WHITE)
 	shade(b, first, SKY, LAND, 0.0, size.y)
-	_dots(b, k)
+	_rise(b)
+	var e := ENGINE_K * k
+	var engine := Transform2D(0.0, Vector2(e, e), 0.0, _at(ENGINE_AT))
+	b.append(Art.engine(), engine)
+	b.append(Art.wheel(), engine * Art.on_wall(Art._p(Art.ENGINE_WHEEL, Art.ENGINE_WHEEL_UP), Art.ENGINE_WHEEL_R, 0.4, 0))
 	_belt(b, k)
 	for x in RIDERS:
-		b.append(Art.square(), Transform2D(0.0, Vector2(RIDER_K, RIDER_K) * k, 0.0, _at(Vector2(x, BELT_FROM.y))))
+		b.append(Art.square(), Transform2D(0.0, Vector2(RIDER_K, RIDER_K) * k, 0.0, _at(Vector2(x, BELT_FROM.y - 4.0))))
 	var s := ROBOT_K * k
 	var bot := Transform2D(0.0, Vector2(s, s), 0.0, _at(ROBOT_AT))
-	var first_bot := b.verts.size()
-	b.append(Art.robot(), bot)
-	# the robot's white shell in the Picker's tint, as on the floor
-	for i in range(first_bot, b.verts.size()):
-		b.cols[i] = b.cols[i] * Life.TINTS[0]
+	b.append(Art.robot(), bot, Life.TINTS[0])
 	b.append(Art.face(""), bot)
-	b.append(Art.box(CARRIED), bot * Transform2D(0.0, Vector2(Art.HELD_SCALE, Art.HELD_SCALE), 0.0, Art.HELD_AT))
+	b.append(Art.box(CARRIED, false), bot * Transform2D(0.0, Vector2(Art.HELD_SCALE, Art.HELD_SCALE), 0.0, Art.HELD_AT))
 	if not soon:
 		_go(b, _at(GO_AT), GO * k)
 
-## The floor's dots: a few rows of them, as the floor is laid.
-func _dots(b: Face.Builder, k: float) -> void:
-	for c in DOT_COLS:
-		for r in DOT_ROWS:
-			b.disc(_at(DOTS_AT - Vector2(c, -r) * DOT_GAP), DOT_R * k, Art.FLOOR_DOT)
+## One soft far rise, sunk under the words and highest behind the engine.
+func _rise(b: Face.Builder) -> void:
+	var k := size.y / H
+	var pts := PackedVector2Array()
+	var steps := 28
+	for i in steps + 1:
+		var t := float(i) / steps
+		pts.append(Vector2(lerpf(EDGE, size.x - EDGE, t),
+			lerpf(RISE_FOOT, RISE_TOP, pow(sin(t * PI * 0.64), 2.0)) * k))
+	var first := b.verts.size()
+	var low := RISE_FOOT * k + 14.0 * k
+	pts.append(Vector2(size.x - EDGE, low))
+	pts.append(Vector2(EDGE, low))
+	b.polygon(pts, Color.WHITE)
+	# Clear at its foot, so it melts into the land.
+	for i in range(first, b.verts.size()):
+		var a := clampf(inverse_lerp(low, RISE_TOP * k, b.verts[i].y), 0.0, 1.0)
+		b.cols[i] = Color(RISE, a * 0.9)
 
 ## The belt: a bed between two rails, slats across it.
 func _belt(b: Face.Builder, k: float) -> void:
