@@ -119,6 +119,8 @@ const TICK_VARY := 0.06
 const COIN_PITCH := 1.0
 const COIN_DB := 0.0
 const COIN_GAP := 140
+## Seconds a milestone's name stays on the pace pill once it opens.
+const NAMED := 4.0
 ## The player's own hand is felt (docs/agents/haptics.md): a node set down,
 ## a wire landed, a part fitted, a refusal; a sale's coin and a milestone are
 ## played by hand (`buzz`), since neither rings under its own name here. The
@@ -166,6 +168,7 @@ var _over_l: Node2D
 var _pill: PanelContainer
 var _coins_l: Label
 var _pace_l: Label
+var _next_l: Label
 var _chips_l: Control
 var _chips_key := ""
 var _zoom_b: Button
@@ -177,6 +180,8 @@ var _tiles := {}        # drawer tile -> Tile
 var _hud_key := ""
 var _shown := 0.0
 var _warn := 0.0
+var _named := 0.0       # seconds left of a milestone's name on the pace pill
+var _named_text := ""
 var _bump: Tween
 var _nums: Array = []   # {at, text, t}: view units
 var _rng := RandomNumberGenerator.new()
@@ -463,7 +468,8 @@ func _coin_pill() -> Control:
 	return _pill
 
 ## The pace: a full box and how often one is sold, from the sim's rolling
-## window ("a box every 37 s"), on a white pill beside the coins.
+## window ("a box every 37 s"), on a white pill beside the coins; under it,
+## small, what the next milestone asks, or the name of one just opened.
 func _pace_pill() -> Control:
 	var pill := PanelContainer.new()
 	pill.name = "Pace"
@@ -485,11 +491,22 @@ func _pace_pill() -> Control:
 	box.draw.connect(func() -> void:
 		box.draw_mesh(Art.icon("box"), null, Transform2D(0.0, Vector2(0.56, 0.56), 0.0, box.size * 0.5)))
 	row.add_child(box)
+	var lines := VBoxContainer.new()
+	lines.alignment = BoxContainer.ALIGNMENT_CENTER
+	lines.add_theme_constant_override("separation", -6)
+	lines.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(lines)
 	_pace_l = Label.new()
 	_pace_l.name = "Value"
 	_pace_l.theme_type_variation = "SheetBody"
 	_pace_l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	row.add_child(_pace_l)
+	lines.add_child(_pace_l)
+	_next_l = Label.new()
+	_next_l.name = "Next"
+	_next_l.theme_type_variation = "SheetBodyDim"
+	_next_l.add_theme_font_size_override("font_size", 24)
+	_next_l.visible = false
+	lines.add_child(_next_l)
 	var tail := Control.new()
 	tail.custom_minimum_size.x = 18
 	row.add_child(tail)
@@ -499,6 +516,11 @@ func _pace_pill() -> Control:
 ## has been sold often enough to say (the sim reads nothing under two).
 func pace_text() -> String:
 	return Art.pace_text(sim)
+
+## The pace pill's second line: a milestone's name for NAMED seconds after it
+## opens, else what the next one asks, "" past what this build fills.
+func next_text() -> String:
+	return _named_text if _named > 0.0 else Art.next_text(sim)
 
 ## A white round face for a button that keeps its own size.
 static func _round(b: Button, r: int) -> void:
@@ -669,6 +691,7 @@ func _process(delta: float) -> void:
 		n.t += delta
 	_nums = _nums.filter(func(n: Dictionary) -> bool: return n.t < NUM)
 	_warn = maxf(0.0, _warn - delta)
+	_named = maxf(0.0, _named - delta)
 	_refresh_hud(delta)
 	_since_save += delta
 	if sim.dirty and _since_save >= SAVE_GAP:
@@ -696,6 +719,8 @@ func _play_events() -> void:
 				_fx.buzz(HAPTICS.milestone)
 				_hud_key = ""
 				Motion.bump(_drawer_b, 0.12, 0.3)
+				_named = NAMED
+				_named_text = Art.milestone_name(String(e.id))
 				Analytics.track("factory_milestone", {"id": String(e.id)})
 			"pick", "release":
 				if String(e.kind) != "":
@@ -718,13 +743,13 @@ func _play_events() -> void:
 ## by ear on 2026-10-15 (docs/agents/sound.md), and felt, never two inside
 ## COIN_GAP, and the count is on its way up over the pad.
 func _on_coin(amount: int, tile: Vector2i) -> void:
+	if amount <= 0:
+		return
 	var now := Time.get_ticks_msec()
 	if now - _coin_at >= COIN_GAP:
 		_coin_at = now
 		_floor_fx.cue("coin", COIN_PITCH * _vary(), COIN_DB)
 		_fx.buzz(HAPTICS.coin)
-	if amount <= 0:
-		return
 	var over: Vector2 = life.mid(tile) + Vector2(0.0, -Art.TILE * 0.45)
 	_nums.append({"at": over + Vector2(_rng.randf_range(-6.0, 6.0), 0.0), "text": "+" + Art.short(amount), "t": 0.0})
 	_kick()
@@ -762,6 +787,10 @@ func _refresh_hud(delta: float) -> void:
 	var pace := pace_text()
 	if _pace_l.text != pace:
 		_pace_l.text = pace
+	var next := next_text()
+	if _next_l.text != next:
+		_next_l.text = next
+		_next_l.visible = next != ""
 	var key := "%d|%d|%s|%d|%s" % [sim.coins, sim.milestone, sim.picked, sim.earned, sim.no_cost]
 	if key != _hud_key:
 		_hud_key = key

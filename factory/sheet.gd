@@ -161,12 +161,15 @@ var _slide: Tween
 var _clock := 0.0
 
 ## The pane's sideways pan (0 or less) and what is picked: "" for nothing,
-## "body", a node's id, or "p<i>" for part i. `_tray` is {} closed,
+## "body", a node's id, or PART_SEL + i for part i. `_tray` is {} closed,
 ## {"after": id} for a node into the wire out of `id`, {"parts": true} for
 ## the bin; `_armed` the output dot armed by a tap; `_wire` the wire a finger
 ## pulls, {from, at}.
 var _pan := 0.0
 var _sel := ""
+## A part's pick, never a node's id (node ids are the sim's and may start
+## with any letter).
+const PART_SEL := "part:"
 var _sel_at := 0.0
 var _info := false
 var _tray := {}
@@ -318,8 +321,8 @@ func _keep_valid() -> void:
 	var b := _bot()
 	if b.is_empty():
 		return
-	if _sel.begins_with("p"):
-		if int(_sel.substr(1)) >= (b.parts as Array).size():
+	if _sel.begins_with(PART_SEL):
+		if int(_sel.substr(PART_SEL.length())) >= (b.parts as Array).size():
 			_sel = ""
 	elif _sel != "" and _sel != Sim.BODY and not b.nodes.has(_sel):
 		_sel = ""
@@ -518,15 +521,15 @@ func _pill_names() -> Array:
 		return []
 	if _sel == Sim.BODY:
 		return ["info", "place"] if String(b.stuck) == "flat" else ["info"]
-	if _sel.begins_with("p"):
+	if _sel.begins_with(PART_SEL):
 		return ["lift"]
 	if not b.nodes.has(_sel):
 		return []
 	return ["turn", "minus", "plus", "lift"] if String(b.nodes[_sel].kind) == "move" else ["lift"]
 
 func _sel_rect() -> Rect2:
-	if _sel.begins_with("p"):
-		return part_rect(int(_sel.substr(1)))
+	if _sel.begins_with(PART_SEL):
+		return part_rect(int(_sel.substr(PART_SEL.length())))
 	return node_rect(_sel)
 
 func _pill_layout() -> Dictionary:
@@ -535,7 +538,7 @@ func _pill_layout() -> Dictionary:
 		return {}
 	var r := _sel_rect()
 	# it stands under the words under the box, not over them
-	var words := 0.0 if _sel == Sim.BODY else (75.0 if _sel.begins_with("p") else 48.0)
+	var words := 0.0 if _sel == Sim.BODY else (75.0 if _sel.begins_with(PART_SEL) else 48.0)
 	return PiecePill.layout(names, Vector2(r.get_center().x, r.position.y), Vector2(r.get_center().x, r.end.y + words), _pane())
 
 ## Where pill button `button` is, in the sheet's pixels; Rect2() with no pill
@@ -548,8 +551,8 @@ func _pill_title() -> String:
 	var b := _bot()
 	if _sel == Sim.BODY:
 		return _robot_name(b)
-	if _sel.begins_with("p"):
-		var part := String(b.parts[int(_sel.substr(1))])
+	if _sel.begins_with(PART_SEL):
+		var part := String(b.parts[int(_sel.substr(PART_SEL.length()))])
 		return tr(String(PART_KEY.get(part, part)))
 	var kind := String(b.nodes[_sel].kind)
 	return tr(String(NODE_KEY.get(kind, kind)))
@@ -587,7 +590,7 @@ func _pill_press(button: String) -> void:
 			if sim.set_move(robot, _sel, f, n):
 				_fx.touch(1.0 + (n - 5) * 0.03 if button != "turn" else 1.06)
 		"lift":
-			var done: bool = sim.unfit(robot, int(_sel.substr(1))) if _sel.begins_with("p") else sim.remove_node(robot, _sel)
+			var done: bool = sim.unfit(robot, int(_sel.substr(PART_SEL.length()))) if _sel.begins_with(PART_SEL) else sim.remove_node(robot, _sel)
 			if done:
 				_fx.touch(0.9)
 			_sel = ""
@@ -815,7 +818,7 @@ func _tap(down: Dictionary, p: Vector2) -> void:
 			_pick(id)
 			_fx.touch()
 		"part":
-			_pick("p" + id)
+			_pick(PART_SEL + id)
 			_fx.touch()
 		"pane", "handle":
 			if _sel != "" or not _tray.is_empty() or _armed != "":
@@ -893,7 +896,7 @@ func _draw() -> void:
 		_draw_info(b)
 	var pill := _pill_layout()
 	if not pill.is_empty():
-		_pill_ui.caps["lift"] = "FACTORY_TAKE_OFF" if _sel.begins_with("p") else "FACTORY_REMOVE"
+		_pill_ui.caps["lift"] = "FACTORY_TAKE_OFF" if _sel.begins_with(PART_SEL) else "FACTORY_REMOVE"
 		_pill_ui.draw(self, pill, _pill_names(), _pill_title(), _font(), _clock, _sel_at, _btn_at, false)
 
 func _font() -> Font:
@@ -1027,7 +1030,7 @@ func _bake(b: Dictionary, lay: Dictionary) -> ArrayMesh:
 	_plus(gb, lay.parts_plus, false, _tray.has("parts"))
 	# the parts
 	for i in (lay.parts as Array).size():
-		_part(gb, String(b.parts[i]), lay.parts[i], _sel == "p%d" % i)
+		_part(gb, String(b.parts[i]), lay.parts[i], _sel == PART_SEL + str(i))
 	return gb.mesh()
 
 ## Dots a GRID apart over `area`, as plain quads (no feather: a feathered

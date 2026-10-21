@@ -351,15 +351,19 @@ func _screen_part() -> void:
 	_screen.set_process(true)
 	_ok("robot tap selects", _screen.selected == 0)
 	_ok("pace pill reads none", _screen.pace_text() == tr("FACTORY_PACE_NONE"), _screen.pace_text())
+	_ok("pace pill says what milestone 1 asks", _screen._next_l.visible and _screen._next_l.text == tr("FACTORY_PACE_NEXT") % "44", _screen._next_l.text)
 	var shown := 0
 	for kind: String in _screen.DRAWER_TILES:
 		if (_screen._tiles[kind].button as Control).visible:
 			shown += 1
 	_ok("drawer locked before milestone 1", shown == 0 and not _screen._drawer_b.visible, "%d shown" % shown)
+	await _shot("screen_pace")
 
 	_sim.milestone = 1
+	_sim.events.append({"type": "milestone", "id": "belts"})
 	_sim.coins = 10
 	await _frames(2)
+	_ok("the milestone's name on the pace pill", _screen._next_l.visible and _screen._next_l.text == tr("FACTORY_MILESTONE_BELTS"), _screen._next_l.text)
 	_screen.pick("belt")
 	await _frames(2)
 	await _drag([_screen.screen_of(Vector2(2.5, 5.5)), _screen.screen_of(Vector2(3.5, 5.5))])

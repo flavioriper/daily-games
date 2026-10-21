@@ -25,6 +25,7 @@ extends SceneTree
 
 const Sim = preload("res://factory/sim.gd")
 const Bots = preload("res://factory/bots.gd")
+const Art = preload("res://factory/art.gd")
 
 const T := Vector2i(4, 5)     # the pack table
 const D := Vector2i(8, 5)     # the deliver pad
@@ -522,6 +523,10 @@ func _check_pace() -> void:
 	_sell_full(one)
 	_run(one, 2000)
 	_ok("a total never opens it", one.sold_at.size() == 1 and one.pace_ticks() == 0 and one.milestone == 0 and one.held_for == 0)
+	_ok("one box sold reads one, not none", Art.pace_text(one) == TranslationServer.translate("FACTORY_PACE_ONE")
+		and Art.pace_text(sim) == TranslationServer.translate("FACTORY_PACE_NONE") and Art.pace_text(one) != Art.pace_text(sim), Art.pace_text(one))
+	_ok("the next milestone's ask", Art.next_text(sim) == TranslationServer.translate("FACTORY_PACE_NEXT") % "44"
+		and Art.milestone_name("belts") == TranslationServer.translate("FACTORY_MILESTONE_BELTS"), Art.next_text(sim))
 	var two: RefCounted = Sim.new(5)
 	two.robots = []
 	_sell_full(two)
@@ -594,6 +599,21 @@ func _check_pace() -> void:
 	var twice: bool = not sim.fit(0, "fast") and _refused(sim, "fitted")
 	sim.coins = 0
 	_ok("a part is not bought twice, nor without coins", twice and not sim.fit(1, "fast") and _refused(sim, "coins"))
+	# milestone 2 has nothing behind it in this build: a floor that keeps its
+	# rate never opens it
+	sim.coins = 500
+	for i in [1, 2]:
+		sim.fit(i, "fast")
+		sim.fit(i, "plug")
+	var opened2 := 0
+	for i in 3000:
+		for e: Dictionary in _tick(sim):
+			if e.type == "milestone":
+				opened2 += 1
+	print("pace: %d ticks a box with fast treads and plug on all three" % sim.pace_ticks())
+	_ok("nothing asked past BUILT", Art.next_text(sim) == "", Art.next_text(sim))
+	_ok("the pace stops at BUILT", Sim.BUILT == 1 and opened2 == 0 and sim.milestone == Sim.BUILT and sim.held_for == 0
+		and sim.pace_ticks() > 0 and sim.pace_ticks() <= Sim.MILESTONES[2].every, "pace %d, milestone %d" % [sim.pace_ticks(), sim.milestone])
 	# a floor saved mid hold plays on as the original does
 	var rt: RefCounted = Sim.new(3)
 	_fix_all(rt)

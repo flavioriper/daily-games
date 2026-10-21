@@ -207,6 +207,9 @@ const ITEM_KINDS := ["square", "box"]
 const WINDOW := 600
 const HOLD := 600
 const MILESTONES := [{"id": "line", "every": 0}, {"id": "belts", "every": 440}, {"id": "again", "every": 220}]
+## The last milestone this build fills: "again" keeps its row for the save
+## but nothing is behind it yet, so the pace never opens it.
+const BUILT := 1
 
 ## A robot's parts: what each gives (the nodes it can run), a Move's ticks a
 ## tile, the battery's cell and the units a tick it charges by on the bay.
@@ -1219,12 +1222,13 @@ func bin_rows() -> Array:
 	return rows
 
 ## Once a tick: drops the stamps older than WINDOW (keeping the two newest),
-## counts the ticks the next milestone's rate is met and opens it at HOLD.
+## counts the ticks the next milestone's rate is met and opens it at HOLD
+## (never past BUILT).
 func _pace() -> void:
 	while sold_at.size() > 2 and tick_n - sold_at[0] > WINDOW:
 		sold_at.pop_front()
 	var next := milestone + 1
-	if next >= MILESTONES.size():
+	if next > BUILT or next >= MILESTONES.size():
 		held_for = 0
 		return
 	var every: int = MILESTONES[next].every

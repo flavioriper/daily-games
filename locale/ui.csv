@@ -1030,6 +1030,11 @@ FACTORY_FAST,Fast belt,Esteira rápida,Cinta rápida
 FACTORY_BRIDGE,Bridge,Ponte,Puente
 FACTORY_PACE,a box every %s s,uma caixa a cada %s s,una caja cada %s s
 FACTORY_PACE_NONE,no box yet,nenhuma caixa ainda,ninguna caja aún
+FACTORY_PACE_ONE,one box so far,uma caixa até agora,una caja hasta ahora
+FACTORY_PACE_NEXT,next: a box every %s s,próximo: uma caixa a cada %s s,siguiente: una caja cada %s s
+FACTORY_MILESTONE_LINE,The broken line,A linha quebrada,La línea rota
+FACTORY_MILESTONE_BELTS,Walk less,Ande menos,Camina menos
+FACTORY_MILESTONE_AGAIN,Do it again,Faça de novo,Hazlo otra vez
 FACTORY_PICKER,Picker,Coletor,Recolector
 FACTORY_BOXER,Boxer,Embalador,Empacador
 FACTORY_SHIPPER,Shipper,Expedidor,Expedidor
@@ -1037,7 +1042,6 @@ FACTORY_PILL_SELL,Sell,Vender,Vender
 FACTORY_MOVE,Move,Mover,Mover
 FACTORY_PICK,Pick,Pegar,Tomar
 FACTORY_RELEASE,Release,Soltar,Soltar
-FACTORY_BODY,Body,Corpo,Cuerpo
 FACTORY_TREADS,Treads,Lagartas,Orugas
 FACTORY_GRIPPER,Gripper,Garra,Pinza
 FACTORY_BATTERY,Battery,Bateria,Batería

@@ -823,12 +823,25 @@ static func decimal(text: String) -> String:
 	return text.replace(".", ",") if comma() else text
 
 ## What the pace pill and the Arcade card say of `sim`'s pace: a full box
-## every so many seconds, or that none has been sold often enough to say (the
-## sim reads nothing under two).
+## every so many seconds, or that one or none has been sold (the sim reads
+## nothing under two).
 static func pace_text(sim: RefCounted) -> String:
 	if sim.pace_ticks() <= 0:
-		return TranslationServer.translate("FACTORY_PACE_NONE")
+		return TranslationServer.translate("FACTORY_PACE_ONE" if sim.sold_at.size() == 1 else "FACTORY_PACE_NONE")
 	return TranslationServer.translate("FACTORY_PACE") % amount(snappedf(sim.pace_s(), 0.1), comma())
+
+## What the next milestone asks ("next: a box every 44 s"), "" when the
+## next is past what this build fills (Sim.BUILT).
+static func next_text(sim: RefCounted) -> String:
+	var next: int = sim.milestone + 1
+	if next > sim.BUILT or next >= sim.MILESTONES.size():
+		return ""
+	var every: float = float(sim.MILESTONES[next].every) * sim.TICK
+	return TranslationServer.translate("FACTORY_PACE_NEXT") % amount(snappedf(every, 0.1), comma())
+
+## A milestone's name by its id (Sim.MILESTONES): "Walk less".
+static func milestone_name(id: String) -> String:
+	return TranslationServer.translate("FACTORY_MILESTONE_" + id.to_upper())
 
 ## A figure that may have a tenth: 1, 1.5, 2, 31.5 (a pace, a pause on the
 ## bay), and past a thousand as `short` writes it. `comma` for a language

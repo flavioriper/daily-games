@@ -64,7 +64,14 @@ the Arcade list" still stand, both used by the floor.
   minute with the floor on screen. A total of boxes never opens anything,
   and a milestone once open stays open. `MILESTONES[1].every` is 440 ticks
   (the three fixes alone read 366 on the pace bot, 2026-10-20) and
-  `[2]` 220 (its bin rows are the next pass).
+  `[2]` 220 (its bin rows are the next pass). `BUILT` (1) is the last
+  milestone this build fills: `_pace` never opens past it, so "again" keeps
+  its row for the save but never opens empty (Fast treads and plug on all
+  three read 198 a box, under 220, and stay at 1). The pace pill's second,
+  small line says what the next milestone asks ("next: a box every 44 s",
+  `Art.next_text`), or for 4 s the name of one just opened (`Walk less`);
+  nothing past `BUILT`. One full box sold reads "one box so far", not "no
+  box yet" (2026-10-20, the final review).
 - **The quiet wipe.** `user://factory.cfg`, section `factory`, `VERSION`
   5. A version 4 file (the land), or a `version` that is not this int,
   is not read: `load_saved` returns false, the tab starts a new floor and
