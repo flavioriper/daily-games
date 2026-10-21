@@ -694,6 +694,8 @@ const BAR_AT := Vector2(0.0, -100.0)
 const BUBBLE_AT := Vector2(0.0, -110.0)
 const HELD_AT := Vector2(32.0, -6.0)
 const HELD_SCALE := 0.7
+## Where the robot's soft shadow lies, from its feet.
+const SHADOW_AT := Vector2(7.0, 5.0)
 
 ## A grey square standing on (0, 0): a small block, lit on its top and on
 ## the side that looks down the screen. `shade` lays its shadow under it (not
@@ -797,7 +799,11 @@ static func robot() -> ArrayMesh:
 	if not _one.has("robot"):
 		var b := Face.Builder.new()
 		var r := BODY_R
-		_ground_shade(b, [[Vector2.ZERO, Vector2(0.3, 0.3), BODY_TOP * 0.8]])
+		# a soft round shadow about its footprint, thrown a little right and
+		# down as the land's shadows fall (a projected box read as a hard
+		# grey slab once the floor was seen from above)
+		var reach := r * K * 2.0 * 1.3
+		_glow(b, SHADOW_AT, reach, reach * 0.8, Color(CAST.r, CAST.g, CAST.b), 0.62)
 		var tread := [INK.lightened(0.3), INK.lightened(0.16), INK]
 		# the far tread, the body, then the near one over its foot
 		_block(b, Vector2(0.0, -0.2), Vector2(0.27, 0.075), 0.0, 14.0, tread)

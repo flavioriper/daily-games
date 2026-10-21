@@ -126,6 +126,15 @@ stay. Spec section 3's second amendment:
   so the engine shows over the robots charging in front of it; a belt is
   drawn again over what stands on the tile above it (its raised bed is in
   front of that thing's foot).
+- **The bay** (the coordinator's review, 2026-10-21): the engine stands at
+  the back right of its tile (`BAY_ENGINE` (24, -24)) and the robots
+  charging on it queue off to its front left (`BAY_SEAT` (-20, 22), each
+  next one `BAY_STEP` 24 further left, a little over the intake belt's
+  edge with three), so its body and flywheel read while they charge. The
+  robot's shadow is a soft round glow thrown right and down (`SHADOW_AT`),
+  no longer a projected box: the floor, the chips, the sheet's body node
+  and the card all draw it. After it: `_shot_factory` 77 pass, 0 failed,
+  27 to 135 draw calls (the screen 90 to 92, the sheet 85 to 95).
 - **Measured** (810x1440, `opengl3_angle`, one windowed run each):
   `tests/_shot_factory.gd` 77 pass, 0 failed, the floor 27 to 28 draw
   calls, the screen 90 to 92, the sheet open 85 to 95, the tutor's pages

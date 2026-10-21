@@ -89,6 +89,13 @@ const SEAT_FORE := Vector2(0.0, 22.0)
 ## back of its tile, so a robot standing on the tile stands in front of it.
 const STATION_K := 0.82
 const STATION_BACK := Vector2(0.0, -24.0)
+## The bay is shared by an engine and robots that stand charging: the
+## engine stands at the back right of its tile, its flywheel on its front
+## clear, and the robots on it stand at the front left, beside it rather
+## than in front of it, so the engine reads while they charge.
+const BAY_ENGINE := Vector2(24.0, -24.0)
+const BAY_SEAT := Vector2(-20.0, 22.0)
+const BAY_STEP := 24.0
 ## A robot is drawn this much as big as the art's own measures (its
 ## bubble and its bar with it), to read on a phone.
 const ROBOT_SIZE := 1.0
@@ -260,7 +267,7 @@ func mid(tile: Vector2i) -> Vector2:
 ## Where a station's piece stands, in view units: toward the back of its
 ## tile (STATION_BACK), the front left for a robot.
 func station_at(kind: String) -> Vector2:
-	return mid(Sim.STATIONS[kind]) + STATION_BACK
+	return mid(Sim.STATIONS[kind]) + (BAY_ENGINE if kind == "charger" else STATION_BACK)
 
 ## Where robot `i` is, in view units: between the tile it stepped from and
 ## the one it steps to, by the sim's `alpha`.
@@ -520,10 +527,15 @@ func _fill_robots(delta: float) -> void:
 	for key: Vector2i in by_tile:
 		var them: Array = by_tile[key]
 		var k := them.size()
-		var fore := SEAT_FORE if sim.station_at(key) != "" else Vector2.ZERO
+		var station := String(sim.station_at(key))
+		var fore := (BAY_SEAT if station == "charger" else SEAT_FORE) if station != "" else Vector2.ZERO
 		for j in k:
 			var seat: Dictionary = _seats[them[j]]
 			var want_off := Vector2((j - (k - 1) * 0.5) * SPREAD * Art.TILE.x, 0.0) + fore
+			if station == "charger":
+				# on the bay they queue off to the left of the engine, the
+				# first beside it, so its body and flywheel stay clear
+				want_off = fore - Vector2(j * BAY_STEP, 0.0)
 			var want_size: float = SHARED[mini(k, SHARED.size()) - 1]
 			var e := 1.0 if seat.new else ease
 			seat.off = (seat.off as Vector2).lerp(want_off, e)
