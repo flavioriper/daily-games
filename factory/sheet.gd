@@ -566,9 +566,10 @@ func _pill_title() -> String:
 	var kind := String(b.nodes[_sel].kind)
 	return tr(String(NODE_KEY.get(kind, kind)))
 
-func _robot_name(b: Dictionary) -> String:
-	var key := "FACTORY_" + String(b.name).to_upper()
-	return tr(key) if tr(key) != key else String(b.name)
+## A robot is called by its place in the list: the three are the same body
+## with other parts under it, so none has a job's name (the user, 2026-10-21).
+func _robot_name(_b: Dictionary) -> String:
+	return tr("FACTORY_ROBOT") % (robot + 1)
 
 func _pick(what: String) -> void:
 	_sel = what

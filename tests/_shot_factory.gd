@@ -20,9 +20,9 @@ extends SceneTree
 ## intake pad to the table with a square on it, shot again.
 ##
 ## The screen (factory/screen.gd built by hand on a new floor, the field's
-## mouse off so the real pointer cannot reach it): three robot chips under
-## the top bar, a dot on the chip of each robot with a fault a rule sees, a
-## chip tapped and a robot tapped, the pace pill blank, the drawer empty
+## mouse off so the real pointer cannot reach it): no chips and no zoom, the floor's foot on the field's and
+## the ground under the whole field, a dot on each robot with a fault a rule
+## sees, a robot tapped, the pace pill blank, the drawer empty
 ## before milestone 1, then a belt traced from the intake pad to the table,
 ## shot and its draw calls held under the budget.
 ##
@@ -304,13 +304,13 @@ func _floor() -> void:
 	# belt from the intake pad to the table with a square riding it
 	_sim.no_cost = true
 	_sim.milestone = 1
-	var laid: bool = _sim.lay_belt(Vector2i(2, 5), 0) and _sim.lay_belt(Vector2i(3, 5), 0)
-	laid = _sim.lay_belt(Vector2i(6, 3), 1) and _sim.lay_belt(Vector2i(6, 4), 0) and _sim.lay_belt(Vector2i(7, 4), 0) and laid
-	_sim.put(Vector2i(2, 5), {"id": 9001, "kind": "square", "at": 0.5, "from": -1, "was": Vector2.INF})
-	_sim.put(Vector2i(6, 2), {"id": 9002, "kind": "box", "n": 3, "at": 0.5, "from": -1, "was": Vector2.INF})
-	_sim.put(Vector2i(2, 2), {"id": 9003, "kind": "square", "at": 0.5, "from": -1, "was": Vector2.INF})
-	_sim.put(Vector2i(2, 2), {"id": 9004, "kind": "square", "at": 0.5, "from": -1, "was": Vector2.INF})
-	_sim.put(Vector2i(6, 3), {"id": 9005, "kind": "box", "n": 1, "at": 0.5, "from": -1, "was": Vector2.INF})
+	var laid: bool = _sim.lay_belt(Vector2i(2, 11), 0) and _sim.lay_belt(Vector2i(3, 11), 0)
+	laid = _sim.lay_belt(Vector2i(6, 9), 1) and _sim.lay_belt(Vector2i(6, 10), 0) and _sim.lay_belt(Vector2i(7, 10), 0) and laid
+	_sim.put(Vector2i(2, 11), {"id": 9001, "kind": "square", "at": 0.5, "from": -1, "was": Vector2.INF})
+	_sim.put(Vector2i(6, 8), {"id": 9002, "kind": "box", "n": 3, "at": 0.5, "from": -1, "was": Vector2.INF})
+	_sim.put(Vector2i(2, 8), {"id": 9003, "kind": "square", "at": 0.5, "from": -1, "was": Vector2.INF})
+	_sim.put(Vector2i(2, 8), {"id": 9004, "kind": "square", "at": 0.5, "from": -1, "was": Vector2.INF})
+	_sim.put(Vector2i(6, 9), {"id": 9005, "kind": "box", "n": 1, "at": 0.5, "from": -1, "was": Vector2.INF})
 	_ticks(6)
 	await _frames(2)
 	var lying: int = _life._squares.n
@@ -336,20 +336,31 @@ func _screen_part() -> void:
 	var field: Vector2 = _screen.field.size
 	_ok("the whole floor fits the width", is_equal_approx(_screen._near, field.x / (_screen.life.bounds() as Rect2).size.x),
 		"near %.3f" % _screen._near)
-	_ok("three chips", _screen.robot_chip_rect(2).size.x > 0 and _screen.robot_chip_rect(3).size.x == 0,
-		str(_screen.robot_chip_rect(2)))
-	# the brief asked a dot on all three; the Boxer's fault is a short count,
-	# which no rule of the dot's sees (its loop is closed and it can do it all)
-	_ok("fault dots on the Picker and the Shipper, none on the Boxer",
-		_screen.robot_fault(0) and not _screen.robot_fault(1) and _screen.robot_fault(2))
-	await _tap(_screen.robot_chip_rect(1).get_center())
-	_ok("chip selects", _screen.selected == 1)
+	_ok("no chips, no zoom: the top is the bar and the pills", _screen.find_child("Chips", true, false) == null
+		and _screen.find_child("Zoom", true, false) == null)
+	_ok("the floor's foot on the field's, the ground over the whole field",
+		absf(_screen.to_field(_screen.life.bounds().end).y - field.y) < 40.0
+		and Rect2(_screen.to_field(_screen.life.ground_bounds().position), _screen.life.ground_bounds().size * _screen._zoom).encloses(Rect2(Vector2.ZERO, field)),
+		"foot at %.0f of %.0f" % [_screen.to_field(_screen.life.bounds().end).y, field.y])
+	# the second robot's fault is a short count, which no rule of the dot's
+	# sees (its loop is closed and it can do it all)
+	await _frames(2)
+	_ok("fault dots on robots 1 and 3, none on 2", _screen.robot_fault(0) and not _screen.robot_fault(1) and _screen.robot_fault(2)
+		and _screen.life.marked == [0, 2], str(_screen.life.marked))
+	_screen.set_process(false)
+	await _tap(_screen.to_field(_screen.life.robot_at(1) + _screen.ROBOT_MID))
+	_screen.set_process(true)
+	_ok("a robot tapped opens its sheet", _screen.selected == 1 and _screen.sheet.is_open())
 	# the floor held still while the finger is down on a robot, so where it
 	# is drawn is where it is tapped
 	_screen.set_process(false)
 	await _tap(_screen.to_field(_screen.life.robot_at(0) + _screen.ROBOT_MID))
 	_screen.set_process(true)
 	_ok("robot tap selects", _screen.selected == 0)
+	_screen.sheet.close()
+	await _wait(1.0)
+	_ok("the sheet goes down, the view back on the floor's foot", not _screen.sheet.is_open()
+		and absf(_screen.to_field(_screen.life.bounds().end).y - _screen.field.size.y) < 40.0)
 	_ok("pace pill reads none", _screen.pace_text() == tr("FACTORY_PACE_NONE"), _screen.pace_text())
 	_ok("pace pill says what milestone 1 asks", _screen._next_l.visible and _screen._next_l.text == tr("FACTORY_PACE_NEXT") % "44", _screen._next_l.text)
 	var shown := 0
@@ -366,8 +377,8 @@ func _screen_part() -> void:
 	_ok("the milestone's name on the pace pill", _screen._next_l.visible and _screen._next_l.text == tr("FACTORY_MILESTONE_BELTS"), _screen._next_l.text)
 	_screen.pick("belt")
 	await _frames(2)
-	await _drag([_screen.screen_of(Vector2(2.5, 5.5)), _screen.screen_of(Vector2(3.5, 5.5))])
-	_ok("belt traced", int(_sim.belts.get(Vector2i(2, 5), -1)) == 0 and int(_sim.belts.get(Vector2i(3, 5), -1)) == 0
+	await _drag([_screen.screen_of(Vector2(2.5, 11.5)), _screen.screen_of(Vector2(3.5, 11.5))])
+	_ok("belt traced", int(_sim.belts.get(Vector2i(2, 11), -1)) == 0 and int(_sim.belts.get(Vector2i(3, 11), -1)) == 0
 		and _sim.belts.size() == 2 and _sim.coins == 8, "%s, %d coins" % [_sim.belts, _sim.coins])
 	_screen.pick("")
 	await _frames(4)
@@ -395,7 +406,7 @@ func _sheet_part() -> void:
 		and sheet.node_rect("body").end.x < sheet.node_rect("a").position.x, "%s %s" % [sheet.node_rect("a"), sheet.node_rect("b")])
 	await _wait(0.9)
 	var above: float = _screen.to_field(_screen.life.robot_pos(0)).y
-	_ok("the robot stands above the sheet, under the chips", above < sheet.position.y and above > _screen.robot_chip_rect(0).end.y,
+	_ok("the robot stands above the sheet, under the pills", above < sheet.position.y and above > _screen.chrome_foot(),
 		"robot at %.0f, sheet at %.0f" % [above, sheet.position.y])
 	var draws: int = await _shot("sheet_picker")
 	_ok("under budget with the sheet", draws > 0 and draws < BUDGET, str(draws))

@@ -841,6 +841,16 @@ static func face(stuck: String) -> ArrayMesh:
 		_faces[stuck] = b.mesh()
 	return _faces[stuck]
 
+## The dot a robot wears on its shoulder while its program has a fault the
+## player can see (the screen's `robot_fault`): the red of the old chip's
+## dot in a white ring, its middle on (0, 0).
+static func fault_dot() -> ArrayMesh:
+	var b := Face.Builder.new()
+	b.disc(Vector2(0.0, 2.0), 14.0, Color(INK, 0.16))
+	b.disc(Vector2.ZERO, 14.0, Color.WHITE)
+	b.disc(Vector2.ZERO, 10.0, Pal.BAD)
+	return b.mesh()
+
 ## A bubble over a robot, the tip of its tail on (0, 0): white with a rim
 ## that says how bad it is, and in it `kind`'s mark: "?" (a loose wire), "!"
 ## (a node skipped), "wait" (a Release the tile will not take yet), "flat"

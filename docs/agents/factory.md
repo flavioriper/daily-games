@@ -1,12 +1,14 @@
 ## Factory, rewired (2026-10-20)
 
-**What stands.** One floor of 10 by 8 square tiles seen from above, drawn
-with the land's pieces (one plate on the pond; 2026-10-21, below), full bleed under the
-top bar, the pills and the robot chips: down column 0 an intake belt that
-queues grey squares (one a 10 ticks, six at most), up column 9 the
-deliver belt, and between them the stack of empty boxes, the pack table,
-the deliver pad that sells and the charging bay. Three robots stand on the bay, the
-Picker, the Boxer and the Shipper, each a body with parts under it
+**What stands.** One floor of 10 by 12 square tiles seen from above, drawn
+with the land's pieces on ground that fills the screen (no water; 2026-10-21,
+"The view, no water", below), under the top bar and the pills: down column 0
+the whole floor's height an intake belt that queues grey squares at its end
+(one a 10 ticks, six at most), up column 9 the deliver belt, and on the
+bottom row between them the intake pad, the pack table and the deliver pad
+that sells, with the charging bay and the stack of empty boxes four rows
+above. Three robots stand on the bay, Robot 1, 2 and 3 (no job names), each
+a body with parts under it
 (Treads give Move, a Gripper gives Pick and Release, a Battery holds the
 charge) and a program: a chain of nodes wired from the body back to it,
 run forever. On a new floor each program has a fault (no gripper, a Move
@@ -96,6 +98,52 @@ still the Grove's `chop`. Haptics per `docs/agents/haptics.md`, row 62.
 Events `factory_fix`, `factory_milestone`, `factory_part` beside
 `factory_enter` / `factory_leave` (`docs/agents/analytics.md`). Unheard,
 unfelt: no phone, no ear.
+
+**The view, no water (2026-10-21, third pass).** The user, on the
+top-down build below: "redesign it so it has no water showing, both side
+convey should take the full height, the convey that receive queue item at
+end, the conveyh that delivers finished boxes keep running up. Also,
+remove the bots types at top, user click on bot to check node, there is no
+distinction between pick, deliver, since they are all the same with
+different submodules". Spec section 3's third amendment.
+- **The ground goes on**: `Life.margin` (`Life.GROUND`, 2 tiles either
+  side, 16 above and below) draws the neutral plate past the floor with
+  sides 15 (cut straight, no shore, no earth). The screen and the tutor's
+  pages set it; with no margin the floor is the plate with its shore, as
+  the never-shown tab and the harness's bare floor still draw it. No
+  `Art.water` on the screen or the pages.
+- **The floor is 10 by 12**, `Sim.WORK_ROW` (11) the bottom row with the
+  intake pad, table and deliver pad, the bay and the stack `WORK_UP` (4)
+  rows above: the programs, the tutor's words and the pace bot's 366 are
+  the 10 by 8 floor's. 12 rows is about the field below the pills at
+  810x1440 at the floor's width; a taller phone shows more ground and
+  belt above. `VERSION` 6 (a 5 is quietly wiped).
+- **The belts** (`Life._fixed()`): column 0 straight down from the
+  margin's top to row 11, no bend; column 9 a bend at (9, 11) fed from the
+  market, then straight up through the margin. The queue waits at the
+  intake belt's end, the front square `QUEUE_FRONT` 0.3 up from it.
+- **The view**: the floor as wide as the field, no far zoom (its button,
+  the pinch and the wheel went: zoomed out the view would show past the
+  ground). It opens with the floor's foot on the field's (over the safe
+  area, `FOOT_AIR` 24 px of ground under it) and pans only up to the
+  floor's top row just under the pills (`_clamp_tiles`); the sheet's
+  push down under it is kept. The tutor's pages frame `Life.work_bounds()`
+  (the floor's width, from a row over the bay to the foot) with the foot
+  on the page's.
+- **No chips**: `robot_chip_rect`, the chips' row and the "chip" press
+  went; a robot is tapped on the floor (`hit`), and the screen's
+  `chrome_foot()` (the pills' foot) is where the old chips' foot was for
+  the sheet's strip and the belt pill. A robot with a fault the player can
+  see (`robot_fault`) wears `Art.fault_dot()` on its shoulder
+  (`Life.marked`, `DOT_AT`). The sheet names a robot `FACTORY_ROBOT`
+  ("Robot %d") by its place; the sim's names are "1", "2", "3";
+  `factory_fix` sends the place.
+- **Measured** (810x1440, `opengl3_angle`, 2026-10-21, one windowed run
+  each): `tests/_shot_factory.gd` 79 pass, 0 failed, the floor 26 to 28
+  draw calls, the screen 58 to 60, the sheet open 63 to 68, the tutor's
+  pages 27 to 43, the tutorial card over the screen 105;
+  `tests/_shot_factory_menu.gd` 0 failed, the Arcade page 147, the screen
+  57. Probe 119/0, suite 163137/0. Unseen by the user; no phone.
 
 **The view, top-down with the land's pieces (2026-10-21, second pass).**
 The user, on the corner-on build below: "now redesign it again to keep

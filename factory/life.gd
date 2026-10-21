@@ -5,9 +5,10 @@ extends RefCounted
 ## 2026-10-21: "factory redesign is wrong, it was suppose to use at most the
 ## elements factory already had on design"), on the square top-down grid
 ## (the user, the same day: "keep current visual elements, but make it
-## topdown like the previous version"; factory/art.gd's `at`). One plate on
-## the pond, the two belts of
-## its own (the intake's down column 0, the deliver belt up column 9), the
+## topdown like the previous version"; factory/art.gd's `at`). One plate,
+## the two belts of
+## its own (the intake's down column 0 the floor's whole height, the
+## deliver belt up column 9 from the market's side), the
 ## belts the player lays and what rides them, the stations as the land's own
 ## pieces (the bay is the engine, the deliver pad the market's hatch, the
 ## pack table the tray, the box stack a heap of empty boxes), and the robots
@@ -41,8 +42,8 @@ extends RefCounted
 ##   stand side by side, a little smaller, eased there and back (`robot_at`);
 ##   on a station's tile they stand at its front, the station's piece pushed
 ##   to the back of the tile.
-## - **The intake's queue** waits on the intake belt, the front one at the
-##   intake pad; **a sale** falls through the market's hatch and its coin
+## - **The intake's queue** waits at the intake belt's end, beside the
+##   intake pad, the rest back up the belt; **a sale** falls through the market's hatch and its coin
 ##   hops.
 ##
 ## Under reduce motion nothing slides in, the slats lie still, the flywheel
@@ -59,21 +60,16 @@ const Motion = preload("res://core/motion.gd")
 ## by this and not by what it draws.
 const BOX := Rect2(-40000.0, -40000.0, 80000.0, 80000.0)
 const MID := Vector2(0.5, 0.5)
-## The floor's two belts of its own, [tile, sim facing, shape] (shape as
-## `shape` says): the intake down column 0 and round the corner into the
-## intake pad, the deliver belt fed from the market and up column 9. Drawn,
-## never moved along by the sim.
-const FIXED := [
-	[Vector2i(0, 0), 1, 0], [Vector2i(0, 1), 1, 0], [Vector2i(0, 2), 1, 0], [Vector2i(0, 3), 1, 0], [Vector2i(0, 4), 1, 0],
-	[Vector2i(0, 5), 0, 2],
-	[Vector2i(9, 5), 3, 2],
-	[Vector2i(9, 4), 3, 0], [Vector2i(9, 3), 3, 0], [Vector2i(9, 2), 3, 0], [Vector2i(9, 1), 3, 0], [Vector2i(9, 0), 3, 0],
-]
-## The squares queued at the intake lie this far apart along its belt
-## (tiles) back from the pad, and one comes in or moves up over FEED_SLIDE
-## seconds.
+## The ground past the floor every holder sets as `margin`, in tiles: more
+## than the screen's view shows above the floor on the tallest phone, and
+## below it with the sheet up (the view goes down under the sheet as far as
+## it covers); a card or a tutor's page frames `work_bounds` in it.
+const GROUND := Vector2i(2, 16)
+## The squares queued at the intake lie this far apart up its belt (tiles),
+## the front one QUEUE_FRONT back from the belt's end, and one comes in or
+## moves up over FEED_SLIDE seconds.
 const QUEUE_GAP := 0.42
-const QUEUE_FRONT := 0.12
+const QUEUE_FRONT := 0.3
 const FEED_SLIDE := 0.3
 ## Things lying in a stack past the sim's two spots are drawn this much
 ## higher each (view units: a thing's height).
@@ -101,8 +97,11 @@ const BAY_STEP := 24.0
 const ROBOT_SIZE := 1.0
 ## How high a walking robot bobs (view units), and a bubble's pop (seconds).
 const BOB := 4.0
+## Where a robot's fault dot sits: on its body's upper right, clear of the
+## bubble and the charge bar over its head.
+const DOT_AT := Vector2(26.0, -54.0)
 const POP := 0.2
-## A robot's tint, by its place in the chips' order (pale, so the face and
+## A robot's tint, by its place in the list (pale, so the face and
 ## the bars stay the loudest; no state is said by them).
 const TINTS := [Color("d9efeb"), Color("fbe3cf"), Color("e6def6"), Color("e4efd2")]
 const FACES := ["", "?", "flat", "nocell"]
@@ -134,6 +133,15 @@ var sim: RefCounted
 ## [mesh, transform] each, and a tint if there is a third (the run of belts
 ## a swipe would lay).
 var ghosts: Array = []
+## Tiles of ground past the floor's edges, x either side and y above and
+## below: the screen's ground goes on past what its view can show (no
+## water, the user, 2026-10-21), and the two belts of the floor go on up
+## through it. Zero, the floor is one plate with its shore (a card, a
+## tutor's page). Set before `mount`, or call `stale()` after.
+var margin := Vector2i.ZERO
+## The robots that wear a fault's dot, by index (the screen's to say).
+## (`GROUND`, below, is the margin every holder gives it since 2026-10-21.)
+var marked: Array = []
 
 var _ground_l: Node2D
 var _under_l: Node2D
@@ -168,6 +176,7 @@ var _boxes: Array[Batch] = []
 var _track: Batch
 var _charge: Batch
 var _bubbles := {}
+var _dot: Batch
 ## Seconds since the queue grew, and since one was taken off it.
 var _fed := 99.0
 var _took := 99.0
@@ -186,6 +195,7 @@ func _init() -> void:
 	_charge = Batch.new(Art.bar())
 	for kind: String in BUBBLES:
 		_bubbles[kind] = Batch.new(Art.bubble(kind))
+	_dot = Batch.new(Art.fault_dot())
 
 ## Builds the floor's layers under `parent` and returns `world`.
 func mount(parent: Node, with_sim: RefCounted) -> Node2D:
@@ -250,11 +260,40 @@ func tile_at(v: Vector2) -> Vector2:
 func depth(t: Vector2) -> float:
 	return Art.depth(t)
 
-## The floor's box in view units: its plate and the earth under its front.
+## The floor's box in view units: its tiles, and with no margin the earth
+## under its front.
 func bounds() -> Rect2:
 	var box := Rect2(Art.at(Vector2.ZERO), Art.at(Vector2(Sim.COLS, Sim.ROWS)))
-	box.size.y += Art.DEPTH
+	if margin == Vector2i.ZERO:
+		box.size.y += Art.DEPTH
 	return box
+
+## Where the robots work, in view units: the floor's width, from a row over
+## the bay down to the floor's foot. A card or a tutor's page frames this.
+func work_bounds() -> Rect2:
+	var from := Art.at(Vector2(0.0, Sim.BAY.y - 1))
+	return Rect2(from, Art.at(Vector2(Sim.COLS, Sim.ROWS)) - from)
+
+## The ground's box in view units: the floor and its margin.
+func ground_bounds() -> Rect2:
+	var from := Art.at(-Vector2(margin))
+	return Rect2(from, Art.at(Vector2(Sim.COLS, Sim.ROWS) + Vector2(margin)) - from)
+
+## The floor's two belts of its own, [tile, sim facing, shape] (shape as
+## `shape` says): the intake straight down column 0 the floor's whole
+## height, ending at the work row where its queue waits; the deliver belt a
+## bend at the market's side fed from it, then straight up column 9 (the
+## user, 2026-10-21: "both side convey should take the full height"). Both go
+## on up through the margin. Drawn, never moved along by the sim.
+func _fixed() -> Array:
+	var out := []
+	var last := Sim.ROWS - 1
+	for y in range(-margin.y, last + 1):
+		out.append([Vector2i(0, y), 1, 0])
+	out.append([Vector2i(Sim.COLS - 1, last), 3, 2])
+	for y in range(-margin.y, last):
+		out.append([Vector2i(Sim.COLS - 1, y), 3, 0])
+	return out
 
 ## The floor's box in the sim's tile space.
 func tile_bounds() -> Rect2:
@@ -389,7 +428,7 @@ func _lay_belts() -> void:
 	var rows: Array = []
 	for tile: Vector2i in sim.belts:
 		rows.append([tile, int(sim.belts[tile]), shape(tile), sim.kinds.get(tile, "") == "fast"])
-	for fx: Array in FIXED:
+	for fx: Array in _fixed():
 		rows.append([fx[0], fx[1], fx[2], false])
 	rows.sort_custom(func(a: Array, b: Array) -> bool: return depth(Vector2(a[0])) < depth(Vector2(b[0])))
 	var lift := Transform2D(0.0, Art.BELT_LIFT)
@@ -459,17 +498,11 @@ func _put(it: Dictionary, at: Vector2, tint := Color.WHITE) -> void:
 	else:
 		_squares.put(xf, tint)
 
-## Where the queue's square `s` tiles back from the front is, in the sim's
-## tile space: round the intake belt's bend at (0, 5) from the pad's edge,
-## then up column 0.
+## Where the queue's square `s` tiles back from the intake belt's end is,
+## in the sim's tile space: up column 0 from the foot of the pad's row.
 static func _intake_at(s: float) -> Vector2:
 	var pad: Vector2i = Sim.STATIONS.intake
-	var corner := Vector2(pad)
-	var arc := PI * 0.25
-	if s <= arc:
-		var a := PI * 0.5 + s / 0.5
-		return corner + Vector2(cos(a), sin(a)) * 0.5
-	return Vector2(0.5, float(pad.y) - (s - arc))
+	return Vector2(0.5, float(pad.y + 1) - s)
 
 ## What lies on the floor and rides the belts, each where the sim has it
 ## between two ticks, the back first; the intake's queue on its belt.
@@ -512,6 +545,7 @@ func _fill_robots(delta: float) -> void:
 	_charge.n = 0
 	for kind: String in _bubbles:
 		(_bubbles[kind] as Batch).n = 0
+	_dot.n = 0
 	var robots: Array = sim.robots
 	while _seats.size() < robots.size():
 		_seats.append({"off": Vector2.ZERO, "size": 1.0, "bubble": "", "popped": POP, "new": true})
@@ -561,6 +595,8 @@ func _fill_robots(delta: float) -> void:
 		if _bubbles.has(said):
 			var pop := 1.0 if Motion.reduce else 0.5 + 0.5 * Motion.back_out(clampf(float(seat.popped) / POP, 0.0, 1.0))
 			(_bubbles[said] as Batch).put(xf * Transform2D(0.0, Vector2(pop, pop), 0.0, Art.BUBBLE_AT))
+		if marked.has(i):
+			_dot.put(xf * Transform2D(0.0, DOT_AT))
 
 ## Where robot `i` is drawn: its feet at `robot_at`, bobbing as it walks,
 ## its seat's size.
@@ -736,9 +772,15 @@ func _add_fronts(list: Array, stood: Dictionary) -> void:
 
 # --- drawing ---
 
-## The one plate, the floor's 10 by 8.
+## The one plate: the floor's 10 by 12 with its shore, or with a margin the
+## floor and the ground past it, cut straight on every side (sides 15: no
+## shore, no earth) and bigger than the view can show.
 func _draw_ground(ci: CanvasItem) -> void:
-	ci.draw_mesh(Art.plate("neutral", 0, 0, Sim.COLS, Sim.ROWS), null, Transform2D(0.0, Art.at(Vector2.ZERO)))
+	if margin == Vector2i.ZERO:
+		ci.draw_mesh(Art.plate("neutral", 0, 0, Sim.COLS, Sim.ROWS), null, Transform2D(0.0, Art.at(Vector2.ZERO)))
+		return
+	var size := Vector2i(Sim.COLS, Sim.ROWS) + margin * 2
+	ci.draw_mesh(Art.plate("neutral", 15, 0, size.x, size.y), null, Transform2D(0.0, Art.at(-Vector2(margin))))
 
 func _draw_under(ci: CanvasItem) -> void:
 	for key: Variant in _under_mms:
@@ -773,3 +815,4 @@ func _draw_air(ci: Node2D) -> void:
 	_charge.draw(ci)
 	for kind: String in _bubbles:
 		(_bubbles[kind] as Batch).draw(ci)
+	_dot.draw(ci)

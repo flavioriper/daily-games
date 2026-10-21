@@ -188,6 +188,30 @@ view unit of height (a mild three-quarter oblique: a piece shows its top
 and its front). The plate's earth shows on its front edge only. Everything
 above on the stations and the new art still stands.
 
+**Amended a third time 2026-10-21.** The user, on the top-down build:
+"redesign it so it has no water showing, both side convey should take the
+full height, the convey that receive queue item at end, the conveyh that
+delivers finished boxes keep running up. Also, remove the bots types at
+top, user click on bot to check node, there is no distinction between
+pick, deliver, since they are all the same with different submodules".
+So: **no water anywhere** on the screen or the tutor's pages: the ground
+(the neutral plate cut straight on every side) goes on past the floor
+(`Life.GROUND`, 2 tiles either side, 16 above and below) and the view
+never shows past it; the far zoom (its button, the pinch, the wheel) is
+gone, since the floor is as wide as the screen. **The floor is 10 by 12**
+and the work row (intake, table, deliver) is its bottom row, the bay and
+the stack four rows above (`Sim.WORK_ROW`, `WORK_UP`), so every program
+and the tutor's "Move ↓ 4" are unchanged. **The intake belt runs straight
+down column 0** the floor's whole height, no bend, and the squares queue at
+its end beside the intake pad, back up the belt; **the deliver belt** is a
+bend at the market's side, then straight up column 9; both go on up
+through the ground off the top of the screen. The view stands the floor's
+foot on the screen's and pans only between that and the floor's top row
+under the pills. **The robot chips are gone**: a robot is tapped on the
+floor; a robot with a fault the player can see wears a red dot on its
+shoulder; the robots have no job names ("Robot 1", "Robot 2", "Robot 3"
+on the sheet and in the tutor), keeping their tints. Save `VERSION` 6.
+
 ## 4. Robots, parts, battery, bay
 
 A robot is `{name, dock, parts, nodes, next, pc, tile, held, charge, ...}`.

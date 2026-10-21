@@ -58,7 +58,7 @@ const WARM := {Lesson.BOXER: 40, Lesson.SHIPPER: 40}
 const BOX_LEAD := 4.5
 const SPEND_COINS := 100
 ## The box that lies at the table's foot, ringed on the Boxer's page.
-const LITTER := Vector2i(4, 4)
+const LITTER := Vector2i(4, Sim.WORK_ROW - 1)
 
 ## Tick of the first sale once the three faults are fixed (found once).
 static var _sale_tick := -1
@@ -70,7 +70,6 @@ var _life: RefCounted
 var _world: Node2D
 var _sheet: Control
 var _over: Control
-var _water: ArrayMesh
 var _t := 0.0
 var _done := 0
 var _stood := false
@@ -88,10 +87,9 @@ var _coined := -10.0
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	clip_contents = true
-	draw.connect(func() -> void:
-		if _water != null:
-			draw_mesh(_water, null))
 	_life = Life.new()
+	# the ground edge to edge, as on the screen: no water (2026-10-21)
+	_life.margin = Life.GROUND
 	_start()
 	_world = _life.mount(self, _sim)
 	if SHEETS.has(lesson):
@@ -113,22 +111,23 @@ func _ready() -> void:
 		if size.x > 0.0 and size.y > 0.0:
 			_stand()
 
-## The floor fitted to its share of the page and stood in its middle; the
-## sheet's rect beside it.
+## Where the robots work fitted to the page's share for the floor, its foot
+## on the share's, on ground edge to edge; the sheet's rect beside it.
 func _layout() -> void:
 	if size.x <= 0.0 or size.y <= 0.0:
 		return
-	_water = Art.water(size, 28.0)
 	var room := Rect2(Vector2.ZERO, size)
 	_sheet_rect = Rect2()
 	if SHEETS.has(lesson):
 		var w := roundf(size.x * FLOOR_SHARE)
 		room = Rect2(0.0, 0.0, w, size.y)
 		_sheet_rect = Rect2(w, PAD, size.x - w - PAD, size.y - 2.0 * PAD)
-	var box: Rect2 = _life.bounds()
+	var box: Rect2 = _life.work_bounds()
 	var u := minf((room.size.x - 2.0 * PAD) / box.size.x, (room.size.y - 2.0 * PAD) / box.size.y)
 	_world.scale = Vector2(u, u)
-	_world.position = room.get_center() - box.get_center() * u
+	# the floor's foot on the room's, the belts and the ground going on up
+	# over it, as the screen stands it
+	_world.position = Vector2(room.get_center().x - box.get_center().x * u, room.end.y - PAD - box.end.y * u)
 	_open_sheet()
 	queue_redraw()
 	if Motion.reduce:

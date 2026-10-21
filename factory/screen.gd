@@ -1,8 +1,9 @@
 extends Control
 
-## Factory: the robot floor, played. Ten square tiles by eight seen from
-## above, drawn with the land's pieces (one plate on the pond, the land's
-## belts, market, engine and tray: the user, 2026-10-21, twice), three
+## Factory: the robot floor, played. Ten square tiles by twelve seen from
+## above, drawn with the land's pieces (the land's plate, belts, market,
+## engine and tray: the user, 2026-10-21, twice), filling the screen with
+## no water anywhere (the user, 2026-10-21, a third time), three
 ## robots that walk their programs
 ## over it from the bay, the stations they work (the intake, the box stack,
 ## the pack table, the deliver pad that sells), and from milestone 1 the
@@ -26,17 +27,19 @@ extends Control
 ## settings, the pill, the drawer, a picked belt, then the screen). It has no
 ## round, no score and no end.
 ##
-## The chrome lies over the floor: the top bar, the coins and the pace (a
-## box every so many seconds, from the sim's rolling window) on two pills
-## with the zoom beside them, and a row of **robot chips**, one a robot in
-## the floor's own tints, a red dot on the chip of a robot with a fault the
-## player can see from its program (a loose wire, a node its parts do not
-## give, stuck). A tap on a chip or on a robot on the floor picks it and
-## opens its sheet.
+## The chrome lies over the floor: the top bar, and the coins and the pace
+## (a box every so many seconds, from the sim's rolling window) on two
+## pills. The view is the floor across the screen's width and never zooms
+## out (it would show past the ground); it pans up and down. A robot with a
+## fault the player can see from its program (a loose wire, a node its parts
+## do not give, stuck) wears a red dot over its head (`Life.marked`). A tap
+## on a robot picks it and opens its sheet: the robots have no chips and no
+## job names (the user, 2026-10-21: "they are all the same with different
+## submodules").
 ##
 ## The hand. Every finger is a ScreenTouch or a ScreenDrag, the desktop
 ## mouse read beside them. A press that moves under TAP pixels is a tap: on
-## a chip or a robot it picks the robot; on a belt it opens the belt's
+## a robot it picks the robot; on a belt it opens the belt's
 ## **pill** (Turn, Flip, Sell, Section, Line: the pill of Tally's paper,
 ## ui/hud/piece_pill.gd). A drag pans, unless a belt is picked in the
 ## drawer: then the finger **traces a path** as Tally's belt tool does (the
@@ -57,7 +60,6 @@ const Tile = preload("res://factory/tile.gd")
 const FlatTopBar = preload("res://ui/flat/flat_top_bar.gd")
 const SettingsSheet = preload("res://ui/hud/settings_sheet.gd")
 const ScreenTutor = preload("res://ui/hud/screen_tutor.gd")
-const IconButton = preload("res://ui/hud/icon_button.gd")
 const Icons = preload("res://ui/icons.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Pal = preload("res://core/palette.gd")
@@ -72,13 +74,6 @@ const Sheet = preload("res://factory/sheet.gd")
 const GAME := "factory"
 const MARGIN := 40
 const PILL_H := 84.0
-const ZOOM_B := 96.0
-## The robot chips under the pills: a chip's height and width, the air
-## between two, and the red dot of a fault on a chip's corner.
-const CHIP_H := 84.0
-const CHIP_W := 236.0
-const CHIP_GAP := 16.0
-const DOT_R := 12.0
 ## The drawer: its round button on the left edge, this far up from the foot
 ## of the screen (the right thumb works the lower right), and its tiles.
 const DRAWER_B := 128.0
@@ -101,19 +96,18 @@ const ROBOT_MID := Vector2(0.0, -40.0)
 ## close after HOLD_SHOWS, so a plain tap shows none.
 const HOLD := 0.5
 const HOLD_SHOWS := 0.12
-## Where the floor's middle sits down the screen: under the bar, the pills
-## and the chips.
-const CENTRE := Vector2(0.5, 0.55)
-## The view's middle goes this many tiles past the floor's own and no
-## further, and a drag past that gives this much of what the finger asks.
-const POND := 2.0
+## The view's middle down the screen.
+const CENTRE := Vector2(0.5, 0.5)
+## How much ground the view shows under the floor's foot at most, in the
+## field's pixels: the intake belt ends at the foot, and the ground goes on
+## a little under it.
+const FOOT_AIR := 24.0
+## A drag past where the view may go gives this much of what the finger asks.
 const SOFT := 0.35
 ## How fast the view catches up with where it is going, and how much of a
 ## flick's speed carries on after the finger lifts (seconds of it).
 const CAM_EASE := 9.0
 const FLING := 0.16
-## Two fingers this much further apart, or nearer, change the zoom.
-const PINCH := 1.18
 const NUM := 0.9
 const SAVE_GAP := 2.0
 const MOUSE := -2
@@ -154,7 +148,7 @@ var life: RefCounted
 var world: Node2D
 ## The program sheet (factory/sheet.gd), over the field's lower part.
 var sheet: Control
-## The robot the chips mark: the one tapped last.
+## The robot tapped last, the one the sheet shows.
 var selected := 0
 
 var _fx: Node2D
@@ -168,7 +162,7 @@ var _broken := {}
 var _fix_told := {}
 var _coin_at := -1000
 var _margins: MarginContainer
-var _water: ArrayMesh
+var _pills: Control
 var _light: ArrayMesh
 var _light_l: Control
 var _over_l: Node2D
@@ -176,9 +170,6 @@ var _pill: PanelContainer
 var _coins_l: Label
 var _pace_l: Label
 var _next_l: Label
-var _chips_l: Control
-var _chips_key := ""
-var _zoom_b: Button
 var _drawer_b: Button
 var _free_b: Button
 var _drawer: GridContainer
@@ -200,26 +191,23 @@ var _cam_raw := Vector2.ZERO
 var _vel := Vector2.ZERO
 var _zoom := 1.0
 var _near := 1.0
-var _far := false
 var _laid_out := false
 
 # the hand
 var _touches := {}      # finger -> where it is
 var _finger := NO_FINGER
-var _mode := ""         # "pan", "belt", "chip", "pinch", "pill", "done"
+var _mode := ""         # "pan", "belt", "pinch", "pill", "done"
 var _start := Vector2.ZERO
 var _at := Vector2.ZERO
 var _moved := false
 var _moved_at := 0
 var _held := 0.0
 var _long := {}         # what a held finger would sell: {tile}
-var _chip_down := -1    # the chip a press landed on
 ## The tile a swipe with Belt picked began on, and the run it would lay now:
 ## {tiles, lay (how many of them the coins reach, from the start), facing}.
 var _belt_tile := Vector2i.ZERO
 var _run := {}
 var _facing := 0
-var _pinch := 0.0
 var _held_back := false
 ## The path a finger traces with a belt picked: tiles in the order drawn,
 ## the axis Straight holds it to (-1 till the finger leaves the first tile)
@@ -300,12 +288,10 @@ func _build() -> void:
 	field.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	field.mouse_filter = Control.MOUSE_FILTER_STOP
 	field.clip_contents = true
-	field.draw.connect(func() -> void:
-		if _water != null:
-			field.draw_mesh(_water, null))
 	field.gui_input.connect(_on_field_input)
 	add_child(field)
 	life = Life.new()
+	life.margin = Life.GROUND
 	world = life.mount(field, sim)
 	_over_l = life.layer(_draw_over)
 	field.resized.connect(_layout_field)
@@ -354,8 +340,9 @@ func _build() -> void:
 		_let_go()
 		settings_sheet.open())
 	col.add_child(top_bar)
-	# the coins, the pace and the zoom, side by side, each its own size
+	# the coins and the pace, side by side, each its own size
 	var pills := HBoxContainer.new()
+	_pills = pills
 	pills.name = "Pills"
 	pills.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pills.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -363,24 +350,6 @@ func _build() -> void:
 	col.add_child(pills)
 	pills.add_child(_coin_pill())
 	pills.add_child(_pace_pill())
-	_zoom_b = IconButton.new("minus", "", "IconButton")
-	_zoom_b.name = "Zoom"
-	_zoom_b.pressed.connect(func() -> void: set_far(not _far))
-	for b: Button in [_zoom_b]:
-		b.custom_minimum_size = Vector2(ZOOM_B, ZOOM_B)
-		b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		_round(b, int(ZOOM_B * 0.5))
-		pills.add_child(b)
-
-	# the robot chips: drawn, not buttons, so a finger on one reaches the
-	# field and is read there with every other (`_press`, `robot_chip_rect`)
-	_chips_l = Control.new()
-	_chips_l.name = "Chips"
-	_chips_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_chips_l.custom_minimum_size.y = CHIP_H
-	_chips_l.draw.connect(_draw_chips)
-	col.add_child(_chips_l)
 
 	_drawer_catch = Control.new()
 	_drawer_catch.name = "DrawerCatch"
@@ -442,8 +411,7 @@ func _build() -> void:
 	sheet.closed.connect(func() -> void:
 		# the view may have gone down under the sheet: back inside the floor's
 		_cam_raw = _clamp(_cam_to)
-		_cam_to = _cam_raw
-		_chips_l.queue_redraw())
+		_cam_to = _cam_raw)
 	add_child(sheet)
 	_apply_insets()
 	_layout_field()
@@ -530,14 +498,6 @@ func pace_text() -> String:
 func next_text() -> String:
 	return _named_text if _named > 0.0 else Art.next_text(sim)
 
-## A white round face for a button that keeps its own size.
-static func _round(b: Button, r: int) -> void:
-	var up := CozyTheme.soft_button(Pal.SURFACE, r, false, 0)
-	var down := CozyTheme.soft_button(Pal.SURFACE, r, true, 0)
-	for st in ["normal", "hover", "disabled"]:
-		b.add_theme_stylebox_override(st, up)
-	b.add_theme_stylebox_override("pressed", down)
-
 func _apply_insets() -> void:
 	var insets := SafeArea.insets(self)
 	_margins.add_theme_constant_override("margin_left", MARGIN)
@@ -565,13 +525,12 @@ func _apply_insets() -> void:
 	if field != null and field.size.y > 0.0:
 		sheet.fit_to(field.size, insets.y)
 
-## The pond and the light are baked for the field's size, and the near zoom
-## is the one at which the whole floor is as wide as the field.
+## The light is baked for the field's size, and the zoom is the one at which
+## the floor is as wide as the field: its belts lie along the screen's edges.
 func _layout_field() -> void:
 	var s := field.size
 	if s.x <= 0.0 or s.y <= 0.0 or _light_l == null:
 		return
-	_water = Art.water(s, 0.0)
 	_light = Art.light(s)
 	_near = s.x / (life.bounds() as Rect2).size.x
 	if sheet != null:
@@ -579,8 +538,10 @@ func _layout_field() -> void:
 	if not _laid_out:
 		_laid_out = true
 		_zoom = _near
-		# the floor's middle, the whole of it in view
-		_cam = life.seen(Vector2(Sim.COLS * 0.5, Sim.ROWS * 0.5))
+		# the floor's foot on the screen's, over the safe area: the work row
+		# and the bay in view, the ground and the belts going on above
+		var foot := s.y - SafeArea.insets(self).y - FOOT_AIR
+		_cam = _clamp(life.seen(Vector2(Sim.COLS * 0.5, Sim.ROWS)) + Vector2(0.0, (s.y * CENTRE.y - foot) / _zoom))
 		_cam_to = _cam
 		_cam_raw = _cam
 	_place_world()
@@ -606,8 +567,9 @@ func screen_of(t: Vector2) -> Vector2:
 func tile_under(pos: Vector2) -> Vector2:
 	return life.tile_at((pos - world.position) / _zoom)
 
-## A point of the view held to where the view's middle may go: the floor's
-## own tiles and POND tiles of pond past them.
+## A point of the view held to where the view's middle may go: the field
+## never shows past the ground, and it shows no more than FOOT_AIR of it
+## under the floor's foot (the belts end there).
 func _clamp(v: Vector2) -> Vector2:
 	var inside := _clamp_tiles(v)
 	if sheet != null and sheet.is_open() and v.y > inside.y:
@@ -618,24 +580,24 @@ func _clamp(v: Vector2) -> Vector2:
 	return inside
 
 func _clamp_tiles(v: Vector2) -> Vector2:
-	var box: Rect2 = (life.tile_bounds() as Rect2).grow(POND)
-	return life.seen((life.tile_at(v) as Vector2).clamp(box.position, box.end))
-
-## The far zoom shows twice as much; the near one the floor across the field.
-func set_far(on: bool) -> void:
-	_far = on
-	(_zoom_b as IconButton).set_icon("plus" if on else "minus")
-
-## A pinch or the wheel: the zoom has no button's click under it, so it ticks
-## when it changes.
-func _zoom_by_hand(on: bool) -> void:
-	if on == _far:
-		return
-	set_far(on)
-	_fx.touch(1.0 if on else 0.84)
+	if field == null or _zoom <= 0.0:
+		return v
+	var ground: Rect2 = life.ground_bounds()
+	if _pills == null:
+		return v
+	var floor_box: Rect2 = life.bounds()
+	var half := field.size * 0.5 / _zoom
+	# no higher than the floor's top row just under the pills, no lower than
+	# its foot on the field's
+	var lo := Vector2(ground.position.x, floor_box.position.y - chrome_foot() / _zoom) + half
+	var hi := Vector2(ground.end.x, floor_box.end.y + FOOT_AIR / _zoom) - half
+	var out := v
+	out.x = floor_box.get_center().x if lo.x > hi.x else clampf(v.x, lo.x, hi.x)
+	out.y = hi.y if lo.y > hi.y else clampf(v.y, lo.y, hi.y)
+	return out
 
 func _step_view(delta: float) -> void:
-	var want := _near * (0.5 if _far else 1.0)
+	var want := _near
 	var panning := _mode == "pan" and _moved
 	if Motion.reduce:
 		_zoom = want
@@ -808,34 +770,11 @@ func _refresh_hud(delta: float) -> void:
 	if key != _hud_key:
 		_hud_key = key
 		_refresh_drawer()
-	var chips := _chips_state()
-	if chips != _chips_key:
-		_chips_key = chips
-		_chips_l.queue_redraw()
+	var marked := _marked()
+	if marked != life.marked:
+		life.marked = marked
 
-# --- the robot chips ---
-
-## Where robot `i`'s chip is, in the field's pixels (`Rect2()` for no such
-## robot): the chips stand in a row under the pills, in the middle.
-func robot_chip_rect(i: int) -> Rect2:
-	if _chips_l == null or i < 0 or i >= sim.robots.size():
-		return Rect2()
-	var off := _chips_l.get_global_rect().position - field.get_global_rect().position
-	return Rect2(off + _chip_at(i).position, _chip_at(i).size)
-
-## Chip `i` in the chips' own row.
-func _chip_at(i: int) -> Rect2:
-	var n: int = sim.robots.size()
-	var whole := n * CHIP_W + (n - 1) * CHIP_GAP
-	var x0 := (_chips_l.size.x - whole) * 0.5
-	return Rect2(Vector2(x0 + i * (CHIP_W + CHIP_GAP), 0.0), Vector2(CHIP_W, CHIP_H))
-
-## The chip under a point of the field, -1 for none.
-func _chip_under(pos: Vector2) -> int:
-	for i in sim.robots.size():
-		if robot_chip_rect(i).has_point(pos):
-			return i
-	return -1
+# --- the robots' faults ---
 
 ## Whether robot `i` has a fault the player can see from its program: its
 ## chain does not come back to the body (a loose wire), it runs a node no
@@ -858,8 +797,8 @@ func chain_whole(i: int) -> bool:
 
 ## After an edit of robot `i`: a chain that was open, or held a node its
 ## parts cannot do (at the visit's start or after an edit of the player's
-## own), and is whole now is a fix. That catches the Picker's (no gripper)
-## and the Shipper's (a loose wire); the Boxer's Move one short keeps its
+## own), and is whole now is a fix. That catches the first robot's (no
+## gripper) and the third's (a loose wire); the second's Move one short keeps its
 ## chain whole, so its fix is told by the first box a robot sets down on the
 ## table instead (`_play_events`), which on a floor already working is the
 ## visit's first box there.
@@ -872,51 +811,29 @@ func _check_fix(i: int) -> void:
 		_broken.erase(i)
 		_tell_fix(i)
 
-## `factory_fix` by robot `i`'s name, once a robot a visit.
+## `factory_fix` by robot `i`'s place (1 to 3), once a robot a visit.
 func _tell_fix(i: int) -> void:
 	if i < 0 or i >= sim.robots.size() or _fix_told.has(i):
 		return
 	_fix_told[i] = true
-	Analytics.track("factory_fix", {"robot": String(sim.robots[i].name)})
+	Analytics.track("factory_fix", {"robot": i + 1})
 
-## What the chips show, as a key that changes only when they would.
-func _chips_state() -> String:
-	var key := "%d|%d" % [selected, sim.robots.size()]
-	for i in sim.robots.size():
-		key += "|%s%s" % [sim.robots[i].stuck, "!" if robot_fault(i) else ""]
-	return key
+## Where the chrome over the top of the field ends, in the field's pixels:
+## the foot of the pills.
+func chrome_foot() -> float:
+	return _pills.get_global_rect().end.y - field.get_global_rect().position.y
 
-## A chip a robot: a white capsule ringed in the accent when it is the one
-## picked, the robot in its floor tint with its face, its name, and a red dot
-## on the corner while it has a fault.
-func _draw_chips() -> void:
-	var font := get_theme_font("font", "SheetTitle")
+## The robots that wear a fault's dot over their heads.
+func _marked() -> Array:
+	var out := []
 	for i in sim.robots.size():
-		var b: Dictionary = sim.robots[i]
-		var r := _chip_at(i)
-		var rad := CHIP_H * 0.5
-		_chips_l.draw_style_box(_chip_box(Color(Pal.TEXT, 0.16), rad), Rect2(r.position + Vector2(0.0, 5.0), r.size))
-		var face := _chip_box(Pal.SURFACE, rad)
-		if i == selected:
-			face.border_color = Pal.ACCENT
-			face.set_border_width_all(6)
-		_chips_l.draw_style_box(face, r)
-		# the robot stands on its feet: they go under the chip's middle
-		var xf := Transform2D(0.0, Vector2(0.62, 0.62), 0.0, r.position + Vector2(rad + 4.0, rad + 27.0))
-		_chips_l.draw_mesh(Art.robot(), null, xf, Life.TINTS[i % Life.TINTS.size()])
-		_chips_l.draw_mesh(Art.face(String(b.stuck)), null, xf)
-		var key := "FACTORY_" + String(b.name).to_upper()
-		var said := tr(key) if tr(key) != key else String(b.name)
-		_chips_l.draw_string(font, Vector2(r.position.x + CHIP_H + 6.0, r.position.y + rad + 11.0), said,
-			HORIZONTAL_ALIGNMENT_LEFT, CHIP_W - CHIP_H - 20.0, 32, Pal.TEXT)
 		if robot_fault(i):
-			var at := r.position + Vector2(r.size.x - DOT_R * 0.6, DOT_R * 0.6)
-			_chips_l.draw_circle(at, DOT_R + 4.0, Pal.SURFACE, true, -1.0, true)
-			_chips_l.draw_circle(at, DOT_R, Pal.BAD, true, -1.0, true)
+			out.append(i)
+	return out
 
 ## The robot's sheet, where its program is read and changed: it slides up
 ## over the field's lower part (or turns to this robot if it is up), the
-## chips stay over it, and the view goes where the robot stands in the strip
+## pills stay over it, and the view goes where the robot stands in the strip
 ## of floor left between them.
 func open_sheet(i: int) -> void:
 	if i < 0 or i >= sim.robots.size():
@@ -928,17 +845,16 @@ func open_sheet(i: int) -> void:
 		pick("")
 	selected = i
 	_fx.touch()
-	_chips_l.queue_redraw()
 	sheet.open(i)
 	_keep_in_view(true)
 
 ## With the sheet up the picked robot is kept in the strip of floor between
-## the chips and the sheet: at once (`now`, as it opens) or, as it walks,
+## the pills and the sheet: at once (`now`, as it opens) or, as it walks,
 ## once it nears either edge. Only the view's height moves.
 func _keep_in_view(now: bool) -> void:
 	if _mode == "pan" and _moved:
 		return
-	var top := _chips_l.get_global_rect().end.y - field.get_global_rect().position.y
+	var top := chrome_foot()
 	var foot := field.size.y - sheet.size.y
 	# where the robot will stand once the view has come to rest
 	var at: Vector2 = life.robot_pos(selected)
@@ -1100,10 +1016,6 @@ func _on_field_input(event: InputEvent) -> void:
 				_press(MOUSE, b.position)
 			else:
 				_release(MOUSE, b.position)
-		elif b.pressed and b.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			_zoom_by_hand(true)
-		elif b.pressed and b.button_index == MOUSE_BUTTON_WHEEL_UP:
-			_zoom_by_hand(false)
 	elif event is InputEventMouseMotion and _touches.has(MOUSE):
 		_drag(MOUSE, (event as InputEventMouseMotion).position)
 
@@ -1113,9 +1025,8 @@ func _press(finger: int, pos: Vector2) -> void:
 		return
 	_touches[finger] = pos
 	if _touches.size() == 2:
-		# a second finger: whatever the first was doing is a pinch now
-		var all := _touches.values()
-		_pinch = maxf(1.0, (all[0] as Vector2).distance_to(all[1]))
+		# a second finger: whatever the first was doing stops (the view
+		# has no zoom to pinch)
 		_mode = "pinch"
 		_finger = NO_FINGER
 		_long = {}
@@ -1145,11 +1056,6 @@ func _press(finger: int, pos: Vector2) -> void:
 			_close_piece()
 			_fx.touch(0.84)
 		return
-	# a chip lies over the floor: a press on it is the chip's, belt or none
-	_chip_down = _chip_under(pos)
-	if _chip_down >= 0:
-		_mode = "chip"
-		return
 	if Sim.BELTS.has(sim.picked):
 		_mode = "belt"
 		_belt_tile = Vector2i(tile_under(pos).floor())
@@ -1166,15 +1072,6 @@ func _drag(finger: int, pos: Vector2) -> void:
 	var before: Vector2 = _touches[finger]
 	_touches[finger] = pos
 	if _mode == "pinch":
-		if _touches.size() == 2:
-			var all := _touches.values()
-			var ratio := (all[0] as Vector2).distance_to(all[1]) / _pinch
-			if ratio > PINCH and _far:
-				_zoom_by_hand(false)
-				_mode = "done"
-			elif ratio < 1.0 / PINCH and not _far:
-				_zoom_by_hand(true)
-				_mode = "done"
 		return
 	if finger != _finger:
 		return
@@ -1222,10 +1119,6 @@ func _release(finger: int, pos: Vector2) -> void:
 				_piece_press(_piece_hit)
 			_piece_hit = ""
 			_consumed = false
-		"chip":
-			if not _moved and _chip_under(pos) == _chip_down:
-				open_sheet(_chip_down)
-			_chip_down = -1
 		"pan":
 			if _moved:
 				# the view runs on a little and comes to rest inside its bounds
@@ -1256,19 +1149,15 @@ func _let_go() -> void:
 	_long = {}
 	_run = {}
 	_path = []
-	_chip_down = -1
 	_cam_raw = _cam_to
 	_close_piece()
 
 ## What is under a point of the field: {what, tile} and for a robot its
-## index as `id`. A chip first (it lies over the floor), then a robot within
+## index as `id`. A robot within
 ## twice TAP of the middle of its body, the nearest, then a belt (its bed
 ## stands over its tile: the bed under the point first), then the floor.
 func hit(pos: Vector2) -> Dictionary:
 	var tile := Vector2i(tile_under(pos).floor())
-	var chip := _chip_under(pos)
-	if chip >= 0:
-		return {"what": "chip", "id": chip, "tile": tile}
 	var best := -1
 	var best_d := TAP * 2.0
 	for i in sim.robots.size():
@@ -1289,7 +1178,7 @@ func _tap(pos: Vector2) -> void:
 	var h := hit(pos)
 	var tile: Vector2i = h.tile
 	match String(h.what):
-		"chip", "robot":
+		"robot":
 			open_sheet(int(h.id))
 		"belt":
 			# a belt of another kind than the one in hand becomes it, as it
@@ -1626,14 +1515,14 @@ func _close_piece() -> void:
 	_piece = {}
 	_piece_hit = ""
 
-## Where the belt pill stands: by its belt, kept between the chips at the
+## Where the belt pill stands: by its belt, kept between the pills at the
 ## top and the drawer at the foot.
 func _piece_layout() -> Dictionary:
 	if _piece.is_empty() or field == null:
 		return {}
 	var m := to_field(life.mid(_piece.tile) + Art.BELT_LIFT)
 	var half := Vector2(0.0, Art.K * Art.DEEP * _zoom)
-	var top := _chips_l.get_global_rect().end.y - field.get_global_rect().position.y
+	var top := chrome_foot()
 	var foot: float = field.size.y - SafeArea.insets(self).y - DRAWER_UP * 0.5
 	var view := Rect2(0.0, top, field.size.x, maxf(foot - top, 1.0))
 	return PiecePill.layout(_piece.buttons, m - half, m + half, view)

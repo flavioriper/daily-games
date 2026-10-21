@@ -155,8 +155,8 @@ became SP on 2026-10-18. No event a drop or a landing. `rules_opened` carries
 
 **Factory (the robot floor, 2026-10-20)** is kept, so no `arcade_start` or
 `arcade_end`: `factory_enter` (milestone, coins), `factory_leave` (seconds,
-earned this visit, milestone), `factory_fix` (robot: the robot's name,
-`Picker`, `Boxer` or `Shipper`, at most once a robot a visit: when an edit
+earned this visit, milestone), `factory_fix` (robot: the robot's place,
+1, 2 or 3 (the names Picker, Boxer and Shipper until 2026-10-21), at most once a robot a visit: when an edit
 leaves a chain that was open, or held a node its parts cannot do, closed
 with every node doable, which on a new floor is the Picker's gripper and
 the Shipper's wire; and, for the robot that does it, when a box is first

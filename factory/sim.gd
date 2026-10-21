@@ -1,6 +1,6 @@
 extends RefCounted
 
-## Factory, as pure data: a top-down floor of ten by eight tiles with five
+## Factory, as pure data: a top-down floor of ten by twelve tiles with five
 ## stations on it (an intake that queues grey squares, a stack of empty
 ## boxes, a pack table, a deliver pad that sells, a charging bay), the items
 ## that lie on it or ride its belts, and the belts the player lays. Nothing
@@ -18,7 +18,8 @@ extends RefCounted
 ## on screen; the floor is COLS x ROWS. A facing is an int 0..3 = +x, +y, -x,
 ## -y (`DIRS`); a quarter clockwise is (f + 1) % 4. Positions handed out as
 ## Vector2 are in tile units, a tile's middle at tile + (0.5, 0.5). Column 0
-## is drawn as the intake belt and column 9 as the deliver belt: the view's,
+## is drawn as the intake belt (its end beside the intake pad on the bottom
+## row) and column 9 as the deliver belt: the view's,
 ## not belts the sim moves things along (the intake is a queue, the deliver
 ## pad a sale).
 ##
@@ -170,18 +171,24 @@ const TICK := 0.1
 ## The longest frame a holder steps by: a longer one is a hitch, not play.
 const STEP_MOST := 0.25
 const EPS := 0.000001
-const VERSION := 5
+const VERSION := 6
 
 const COLS := 10
-const ROWS := 8
+const ROWS := 12
 const DIRS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)]
 const NONE := Vector2i(-99999, -99999)
 
-## The floor's stations, each one tile.
-const STATIONS := {"charger": Vector2i(1, 1), "intake": Vector2i(1, 5), "stack": Vector2i(4, 1),
-	"table": Vector2i(4, 5), "deliver": Vector2i(8, 5)}
+## The floor's stations, each one tile (2026-10-21, the third pass): the
+## work row is the floor's bottom row, where the intake belt ends and the
+## deliver belt sets off up column 9, and the bay and the stack stand WORK_UP
+## rows above it, so every program's Moves (and the tutor's "Move ↓ 4") are
+## the ones they were on the 10 by 8 floor.
+const WORK_ROW := ROWS - 1
+const WORK_UP := 4
+const STATIONS := {"charger": Vector2i(1, WORK_ROW - WORK_UP), "intake": Vector2i(1, WORK_ROW),
+	"stack": Vector2i(4, WORK_ROW - WORK_UP), "table": Vector2i(4, WORK_ROW), "deliver": Vector2i(8, WORK_ROW)}
 ## The charging bay: the one place a robot charges.
-const BAY := Vector2i(1, 1)
+const BAY := Vector2i(1, WORK_ROW - WORK_UP)
 ## The intake: squares it holds queued at most, and the ticks between two.
 const QUEUE_MOST := 6
 const FEED_TICKS := 10
@@ -336,15 +343,17 @@ func new_floor(with_seed: int) -> void:
 	dirty = true
 
 ## The three robots of the first session (spec 8), each with a fault: the
-## Picker has no gripper (it lies in the bin), the Boxer's down Move stops a
-## tile short of the table, the Shipper's wire after its Pick is loose.
+## first (it picks squares) has no gripper (it lies in the bin), the
+## second's (it boxes) down Move stops a tile short of the table, the
+## third's (it ships) wire after its Pick is loose. They are one body with
+## other parts and programs, named by their place, not a job.
 func _stand_robots() -> void:
 	robots = [
-		Bots.new_robot("Picker", ["treads", "battery"],
+		Bots.new_robot("1", ["treads", "battery"],
 			[["move", 1, 4], ["move", 0, 3], ["release"], ["move", 2, 3], ["move", 3, 4]]),
-		Bots.new_robot("Boxer", ["treads", "gripper", "battery"],
+		Bots.new_robot("2", ["treads", "gripper", "battery"],
 			[["move", 0, 3], ["pick"], ["move", 1, 3], ["release"], ["move", 3, 3], ["move", 2, 3]]),
-		Bots.new_robot("Shipper", ["treads", "gripper", "battery"],
+		Bots.new_robot("3", ["treads", "gripper", "battery"],
 			[["move", 0, 3], ["move", 1, 4], ["pick"], ["move", 0, 4], ["release"], ["move", 2, 4], ["move", 3, 4], ["move", 2, 3]]),
 	]
 	Bots.loose_after(robots[2], "c")
