@@ -1,7 +1,7 @@
 import jpeg from "jpeg-js";
 import {PNG} from "pngjs";
 import Beads = require("./beads");
-import {DECOYS, fnv1a} from "./eye";
+import {judge as eyeJudge} from "./eye";
 import {ask, available, draw, Drawing} from "./generate";
 import type {HoopPicture} from "./hoop";
 import type {Jelly} from "./jelly";
@@ -55,7 +55,10 @@ export interface Tried {
   rows: string[];
   checks: Beads.Check[];
   /** What the blind look said; absent when the rules already turned it down. */
-  look?: {said: string; wrong: string; ok: boolean};
+  look?: {said: string; wrong: string; ok: boolean;
+    /** The reviewer's score and note on a bead picture: for the record,
+     *  nothing is kept or turned down by them. */
+    score?: number; notes?: string};
   kept: boolean;
 }
 
@@ -158,13 +161,6 @@ export function shown(rows: string[]): string {
 
 const LOOKER = `You are shown one small picture made of coloured squares, from a children's puzzle game: pixel art of very few squares, so it is rough. Say honestly what you see; you are not told what it is meant to be. "wrong" is an empty string unless the picture shows something that does not belong in a game for children, or a letter, a word or a logo. Roughness is not wrong.`;
 
-const PICK_SCHEMA = {
-  type: "object",
-  additionalProperties: false,
-  required: ["pick", "wrong"],
-  properties: {pick: {type: "string"}, wrong: {type: "string"}},
-};
-
 const SEES_SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -179,24 +175,15 @@ const SAME_SCHEMA = {
   properties: {same: {type: "boolean"}},
 };
 
-/** A single thing: the reviewer picks among the day's three and one that
- *  is not the day's. A mug of a hundred squares is named by nobody cold. */
+/** A single thing: the eye picks among the day's three and one that is not
+ *  the day's, and scores the picture too. A mug of a hundred squares is named
+ *  by nobody cold. `ok` is only whether it named the thing and found nothing
+ *  wrong; the score and notes are not gated on (eye.ts FLOOR.pixel). */
 export async function lookThing(day: number, rows: string[], thing: Thing, theme: Theme): Promise<NonNullable<Tried["look"]>> {
-  const names = theme.objects.map((o) => o.name.toLowerCase());
-  const free = DECOYS.filter((d) => !names.some((n) => n.includes(d)));
-  const decoy = free.length > 0 ? free[fnv1a(`${day}`) % free.length] : "none of these";
-  const choices = [...names, decoy].sort((a, b) => fnv1a(`${day}${rows.length}${a}`) - fnv1a(`${day}${rows.length}${b}`));
-  const got = await ask<{pick: string; wrong: string}>({
-    system: LOOKER,
-    prompt: `Which one of these is it? Answer "pick" with exactly one of: ${choices.join(", ")}, or "none" if it is none of them.`,
-    schema: PICK_SCHEMA,
-    role: "review",
-    images: [shown(rows)],
-  });
-  const said = String(got.pick ?? "").trim().toLowerCase();
-  const wrong = String(got.wrong ?? "").trim();
-  return {said, wrong, ok: said === thing.name.toLowerCase() && wrong === ""};
+  const v = await eyeJudge(day, theme, thing, "pixel", shown(rows));
+  return {said: v.pick, wrong: v.wrong, ok: v.ok, score: v.score, notes: v.notes};
 }
+
 /** The scene: the reviewer says what it sees, and a second question, with
  *  no picture, asks whether that is the scene that was asked for. */
 async function lookScene(rows: string[], theme: Theme): Promise<NonNullable<Tried["look"]>> {
