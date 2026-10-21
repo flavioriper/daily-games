@@ -4,7 +4,7 @@ import {DEFAULT_ROWS_MODEL} from "./pictures";
 import {keyFor, keyWords, Key} from "./key";
 import {dataUrl, FLOOR, judge, renderPolygons, Verdict} from "./eye";
 import {gridOver, JELLY_GRID_N} from "./grid";
-import {Port, PortTry} from "./ports";
+import {logTry as logLine, Port, PortTry, said} from "./ports";
 import {shrunk} from "./vistas";
 import {Theme, Thing} from "./theme";
 
@@ -573,8 +573,6 @@ export const JELLY_ASKS = 3;
  *  (themeday.ts), and a step killed mid-way is never written or given up
  *  on, so every step after it would wait. */
 export const JELLY_BUDGET_MS = 12 * 60 * 1000;
-/** A kept try scored this well is not bettered by more asks. */
-const JELLY_ENOUGH = 9;
 /** The fewest points a polygon is asked for (the checker takes three), so
  *  the soft rounding has corners to follow the drawing by. */
 const LEAST_POINTS = 6;
@@ -671,8 +669,6 @@ interface Best {
   drawing?: Drawing;
 }
 
-const said = (e: unknown) => String(e instanceof Error ? e.message : e).slice(0, 300);
-
 /** A try on the thing's port, pushed before its work starts so a throw
  *  never loses it. */
 function fresh(c: Ctx, route: PortTry["route"]): PortTry {
@@ -681,10 +677,7 @@ function fresh(c: Ctx, route: PortTry["route"]): PortTry {
   return t;
 }
 
-function logTry(c: Ctx, t: PortTry): void {
-  const what = t.error ?? (t.why !== "" ? t.why : `${t.verdict?.pick} ${t.verdict?.score}${t.kept ? ", kept" : ""}`);
-  console.log(`jelly: day ${c.day}, band ${c.band}, ${c.thing.id} try ${t.n} (${t.route}): ${what}`);
-}
+const logTry = (c: Ctx, t: PortTry) => logLine("jelly", c.day, c.band, c.thing.id, t);
 
 /** Whether the budget is spent; the first try it stops on the port is
  *  recorded, the rest are simply not made. */
@@ -754,7 +747,7 @@ function lesson(t: PortTry, thing: Thing): string {
 
 /** One ask for a sticker's jelly, checked and judged, into `t`. Never
  *  throws: each stage's error is written on the try. */
-async function mapTry(c: Ctx, drawing: Drawing, refused: string, t: PortTry, seen: (p: Part[]) => void): Promise<Best | null> {
+async function mapTry(c: Ctx, drawing: Drawing, refused: string, t: PortTry, seen: Map<PortTry, Part[]>): Promise<Best | null> {
   let parts: Part[] | null;
   try {
     parts = await mapJelly(drawing, c.thing, c.band, refused);
@@ -762,14 +755,14 @@ async function mapTry(c: Ctx, drawing: Drawing, refused: string, t: PortTry, see
     t.error = `ask: ${said(e)}`;
     return null;
   }
-  if (parts !== null) seen(parts);
+  if (parts !== null) seen.set(t, parts);
   if (!checked(parts, c.band, t)) return null;
   const render = await judged(c, parts!, t, drawing);
   return render === null ? null : {score: t.verdict!.score, verdict: t.verdict!, parts: parts!, render, drawing};
 }
 
 /** The pixel reader on a sticker, judged as a map is, into `t`. */
-async function readerTry(c: Ctx, drawing: Drawing, t: PortTry, seen: (p: Part[]) => void): Promise<Best | null> {
+async function readerTry(c: Ctx, drawing: Drawing, t: PortTry, seen: Map<PortTry, Part[]>): Promise<Best | null> {
   let got: ReturnType<typeof readJelly>;
   try {
     got = readJelly(drawing, c.band);
@@ -779,7 +772,7 @@ async function readerTry(c: Ctx, drawing: Drawing, t: PortTry, seen: (p: Part[])
   }
   // the reader's own why: it says "nothing drawn" where why([]) says "parts"
   const parts = got.parts;
-  seen(parts);
+  seen.set(t, parts);
   t.why = got.why;
   if (t.why !== "") return null;
   const render = await judged(c, parts, t, drawing);
@@ -800,9 +793,12 @@ function keepOnPort(c: Ctx, best: Best): void {
  * A thing of the theme drawn as a sticker in the flavours, DRAWINGS[band]
  * times, each mapped up to JELLY_ASKS times by the reviewer model; every
  * answer checked by the band's rules and the passing ones judged by the
- * eye, the best it keeps winning. When none is kept the pixel reader on the
- * last sticker is one more try. `t` is the drawn route's summary;
- * `port` records every try. Never throws.
+ * eye. The first try the eye keeps ends the thing's asks and drawings (the
+ * controller, 2026-10-21: a kept jelly is good enough, more asks only cost;
+ * the hoop still takes the best of its tries). When none is kept the pixel
+ * reader on the last sticker is one more try. `t` is the drawn route's
+ * summary, of one try: the kept one, or the last; `port` records every
+ * try. Never throws.
  */
 export async function drawJelly(day: number, theme: Theme, thing: Thing, band: number, t: JellyTry,
   keep?: (name: string, d: Drawing) => void, deadline = Date.now() + JELLY_BUDGET_MS): Promise<{parts: Part[] | null; port: Port}> {
@@ -821,10 +817,11 @@ export async function drawJelly(day: number, theme: Theme, thing: Thing, band: n
   } catch (e) {
     console.error(`jelly: day ${day}, band ${band}, ${thing.id}: no key`, e);
   }
-  const seen = (p: Part[]) => { t.parts = p; };
+  // each try's parts, so the summary's parts are the try it describes
+  const seen = new Map<PortTry, Part[]>();
   let best: Best | null = null;
   let last: Drawing | null = null;
-  for (let n = 0; n < DRAWINGS[band] && (best === null || best.score < JELLY_ENOUGH); n++) {
+  for (let n = 0; n < DRAWINGS[band] && best === null; n++) {
     if (late(c, "map")) break;
     let drawing: Drawing;
     try {
@@ -842,12 +839,12 @@ export async function drawJelly(day: number, theme: Theme, thing: Thing, band: n
       console.error(`jelly: day ${day}, band ${band}, ${thing.id}: drawing ${n} not kept`, e);
     }
     let refused = "";
-    for (let a = 0; a < JELLY_ASKS && (best === null || best.score < JELLY_ENOUGH); a++) {
+    for (let a = 0; a < JELLY_ASKS && best === null; a++) {
       if (late(c, "map")) break;
       const tried = fresh(c, "map");
       const got = await mapTry(c, drawing, refused, tried, seen);
       logTry(c, tried);
-      if (tried.kept && got !== null && (best === null || got.score > best.score)) best = got;
+      if (tried.kept && got !== null) best = got;
       refused = lesson(tried, thing);
     }
   }
@@ -858,9 +855,11 @@ export async function drawJelly(day: number, theme: Theme, thing: Thing, band: n
     if (tried.kept && got !== null) best = got;
   }
   if (best === null) {
-    // the summary says how the last try ended
+    // the summary says how the last try ended, never "" for a thing that
+    // failed (a draw that threw has only an error), with that try's parts
     const gone = c.port.tries[c.port.tries.length - 1];
-    Object.assign(t, {why: gone?.why ?? "", error: gone?.error, verdict: gone?.verdict});
+    Object.assign(t, {parts: gone === undefined ? undefined : seen.get(gone), why: (gone?.why || gone?.error) ?? "nothing tried",
+      error: gone?.error, verdict: gone?.verdict});
     return {parts: null, port: c.port};
   }
   keepOnPort(c, best);
@@ -872,12 +871,12 @@ export async function drawJelly(day: number, theme: Theme, thing: Thing, band: n
 /** The jelly written from words, as before 2026-10-16, when no drawing gave
  *  one: up to TRIES writes, each told why the last fell short, the passing
  *  ones judged by the eye on the render alone (there is no drawing), the
- *  best it keeps winning. Each try is on `tries` and on the port. */
+ *  first it keeps ending them. Each try is on `tries` and on the port. */
 async function writeJelly(c: Ctx, tries: JellyTry[]): Promise<Part[] | null> {
   const model = (process.env.DAILY_ROWS_MODEL ?? "").trim() || DEFAULT_ROWS_MODEL;
   let best: Best | null = null;
   let last = "";
-  for (let n = 0; n < TRIES && (best === null || best.score < JELLY_ENOUGH); n++) {
+  for (let n = 0; n < TRIES && best === null; n++) {
     if (late(c, "written")) break;
     const t = fresh(c, "written");
     const j: JellyTry = {band: c.band, what: c.thing.id, route: "written", why: "", kept: false};
@@ -890,10 +889,11 @@ async function writeJelly(c: Ctx, tries: JellyTry[]): Promise<Part[] | null> {
     }
     if (t.error === undefined && checked(parts, c.band, t)) {
       const render = await judged(c, parts!, t);
-      if (t.kept && render !== null && (best === null || t.verdict!.score > best.score)) best = {score: t.verdict!.score, verdict: t.verdict!, parts: parts!, render};
+      if (t.kept && render !== null) best = {score: t.verdict!.score, verdict: t.verdict!, parts: parts!, render};
     }
     logTry(c, t);
-    Object.assign(j, {parts: parts ?? undefined, why: t.why, verdict: t.verdict, kept: t.kept, error: t.error});
+    // never "" for a try that failed: an ask that threw has only an error
+    Object.assign(j, {parts: parts ?? undefined, why: t.why || (t.error ?? ""), verdict: t.verdict, kept: t.kept, error: t.error});
     last = t.why !== "" ? t.why : t.verdict !== undefined && !t.kept ? `shown to someone, they took it for ${t.verdict.pick || "nothing"} and scored it ${t.verdict.score} of 10: ${t.verdict.notes}` : "";
   }
   if (best === null) return null;

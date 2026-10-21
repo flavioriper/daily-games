@@ -4,7 +4,7 @@ import {ask, draw, Drawing, shapesModel} from "./generate";
 import {dataUrl, FLOOR, judge, renderPolygons} from "./eye";
 import {gridOver, GRID_N} from "./grid";
 import {checkMesh, colourFrom, ModelMap, repairMesh} from "./mesh";
-import {Port, PortTry} from "./ports";
+import {logTry as logLine, Port, PortTry, said} from "./ports";
 import {shrunk} from "./vistas";
 import {area, board, compact, dissolve, fewer, grow, join, network, raster, Raster, Regions, SIDE, split, touching, unring, unshadow} from "./facets";
 import {keyFor, keyWords, Key, KEY_HEX} from "./key";
@@ -466,8 +466,6 @@ interface Best {
   render: Buffer;
 }
 
-const said = (e: unknown) => String(e instanceof Error ? e.message : e).slice(0, 300);
-
 /** Pins and panels drawn as the eye sees them and judged beside the drawing,
  *  into `t`; the render, or null when the eye could not be asked. */
 async function judged(c: Ctx, drawing: Drawing, pins: number[], panels: HoopPanel[], t: PortTry): Promise<Buffer | null> {
@@ -541,10 +539,7 @@ function lesson(t: PortTry, thing: Thing): string {
   return "";
 }
 
-function logTry(c: Ctx, t: PortTry): void {
-  const what = t.error ?? (t.why !== "" ? t.why : `${t.verdict?.pick} ${t.verdict?.score}${t.kept ? ", kept" : ""}`);
-  console.log(`hoop: day ${c.day}, band ${c.band}, ${c.thing.id} try ${t.n} (${t.route}): ${what}`);
-}
+const logTry = (c: Ctx, t: PortTry) => logLine("hoop", c.day, c.band, c.thing.id, t);
 
 /**
  * The theme's thing for `band` as a model's map: HOOP_DRAWINGS drawings in
