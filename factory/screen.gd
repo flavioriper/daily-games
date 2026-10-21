@@ -616,8 +616,7 @@ func _step_view(delta: float) -> void:
 func tutorial_pages() -> Array:
 	var Diagram = load("res://ui/hud/factory_tutorial_diagram.gd")
 	var pages := []
-	for lesson: int in [Diagram.Lesson.POWER, Diagram.Lesson.PICKER, Diagram.Lesson.BOXER,
-			Diagram.Lesson.SHIPPER, Diagram.Lesson.BOX, Diagram.Lesson.SPEND]:
+	for lesson: int in Diagram.ORDER:
 		var d: Control = Diagram.new()
 		d.lesson = lesson
 		pages.append({"diagram": d, "title": "TUT_FACTORY_%d" % (lesson + 1), "body": tr("TUT_FACTORY_%d_BODY" % (lesson + 1))})

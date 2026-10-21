@@ -10,10 +10,16 @@ extends Control
 ##
 ## - POWER: the floor as it opens, the three robots out on their loops and
 ##   the three faults showing; a finger taps the Picker.
+## - TURN (shown second, made last so the pages' keys kept their numbers):
+##   the Picker's program with its first Turn in the middle; the finger
+##   rests on the Turn as the Picker, at the intake, turns toward the table,
+##   ringed on the floor. No edit.
 ## - PICKER: its program on the sheet, a Gripper fitted and a Pick inserted
 ##   after its first Move; the Picker then walks off with a square.
 ## - BOXER: the box lying at the table's foot ringed on the floor, and both
-##   vertical Moves set to 4 on the sheet; the Picker is already fixed.
+##   vertical Moves set to 4 on the sheet, which slides from the first to
+##   the second (four nodes apart, past the turns); the Picker is already
+##   fixed.
 ## - SHIPPER: its loose wire dragged from the Pick onto the next Move; the
 ##   Picker and the Boxer are already fixed.
 ## - BOX: all three fixed, the floor run to a few seconds before the first
@@ -33,17 +39,25 @@ const Sheet = preload("res://factory/sheet.gd")
 const Motion = preload("res://core/motion.gd")
 const Pal = preload("res://core/palette.gd")
 
-enum Lesson { POWER, PICKER, BOXER, SHIPPER, BOX, SPEND }
+enum Lesson { POWER, PICKER, BOXER, SHIPPER, BOX, SPEND, TURN }
+## The order the pages are shown in.
+const ORDER := [Lesson.POWER, Lesson.TURN, Lesson.PICKER, Lesson.BOXER, Lesson.SHIPPER, Lesson.BOX, Lesson.SPEND]
 
 const SEED := 7
-const LENGTH := {Lesson.POWER: 9.0, Lesson.PICKER: 10.0, Lesson.BOXER: 10.0, Lesson.SHIPPER: 10.0, Lesson.BOX: 13.0, Lesson.SPEND: 7.0}
-const STILL := {Lesson.POWER: 5.0, Lesson.PICKER: 1.6, Lesson.BOXER: 1.6, Lesson.SHIPPER: 1.6, Lesson.BOX: 5.5, Lesson.SPEND: 1.6}
+const LENGTH := {Lesson.POWER: 9.0, Lesson.PICKER: 10.0, Lesson.BOXER: 10.0, Lesson.SHIPPER: 10.0, Lesson.BOX: 13.0, Lesson.SPEND: 7.0,
+	Lesson.TURN: 5.5}
+const STILL := {Lesson.POWER: 5.0, Lesson.PICKER: 1.6, Lesson.BOXER: 1.6, Lesson.SHIPPER: 1.6, Lesson.BOX: 5.5, Lesson.SPEND: 1.6,
+	Lesson.TURN: 2.05}
 ## The moment a page's edit lands (Picker's fit and Pick, Boxer's Moves,
 ## Shipper's wire, Spend's purchase), in seconds into the page.
 const EDIT := 2.0
 ## The pages that draw a sheet beside the floor, and the robot it shows, and
 ## the node it brings to its middle.
-const SHEETS := {Lesson.PICKER: [0, "a"], Lesson.BOXER: [1, "d"], Lesson.SHIPPER: [2, "c"], Lesson.SPEND: [0, "a"]}
+const SHEETS := {Lesson.PICKER: [0, "a"], Lesson.BOXER: [1, "e"], Lesson.SHIPPER: [2, "d"], Lesson.SPEND: [0, "a"],
+	Lesson.TURN: [0, "b"]}
+## The Turn page's moment: the Picker's first Turn runs from about 1.9 s to
+## 2.2 s on the page's floor (ticks 19 to 22), ringed from TURN_RING on.
+const TURN_RING := Vector2(1.5, 3.2)
 ## How much of the page's width the floor takes when a sheet shares it, and
 ## how many pixels wide the sheet is drawn before it is scaled to fit (the
 ## bin's page needs the taller sheet, for its tray under the parts).
@@ -286,18 +300,25 @@ func _act() -> void:
 			_shows = _t > 0.3 and _t < 3.2
 			_press(1.5, 0)
 			_edit(func() -> void: _fix_picker(_sim))
+		Lesson.TURN:
+			var turn := _sheet_px(_sheet.node_rect("b").get_center())
+			_finger = _along([[0.4, turn + Vector2(60.0, 50.0)], [1.3, turn]])
+			_shows = _t > 0.4 and _t < 3.4
+			_press(1.5, 0)
 		Lesson.BOXER:
+			# the sheet slides from the down Move to the up one under the finger
+			_sheet.preview_slide("e", "j", smoothstep(0.9, 1.6, _t) if _t < 4.0 else 0.0)
 			if _t < EDIT:
-				_finger = _along([[0.3, _sheet_px(_sheet.node_rect("c").get_center()) + Vector2(60.0, 50.0)], [0.9, _sheet_px(_sheet.node_rect("c").get_center())],
-					[1.4, _sheet_px(_sheet.node_rect("e").get_center())]])
+				_finger = _along([[0.3, _sheet_px(_sheet.node_rect("e").get_center()) + Vector2(60.0, 50.0)], [0.8, _sheet_px(_sheet.node_rect("e").get_center())],
+					[1.65, _sheet_px(_sheet.node_rect("j").get_center())]])
 			_shows = _t > 0.3 and _t < 3.2
-			_press(0.9, 0)
-			_press(1.4, 1)
+			_press(0.8, 0)
+			_press(1.7, 1)
 			_edit(func() -> void: _fix_boxer(_sim))
 		Lesson.SHIPPER:
 			if _t < EDIT:
-				var from := _sheet_px(_sheet.out_port("c"))
-				var to := _sheet_px(_sheet.in_port("d"))
+				var from := _sheet_px(_sheet.out_port("d"))
+				var to := _sheet_px(_sheet.in_port("e"))
 				_finger = _along([[0.3, from + Vector2(60.0, 50.0)], [0.8, from], [1.0, from], [1.9, to]])
 				_drag_from = from if _t >= 1.0 else Vector2.INF
 			else:
@@ -325,6 +346,8 @@ func _edit(change: Callable) -> void:
 func _draw_over() -> void:
 	if lesson == Lesson.BOXER and _t < 4.5:
 		_draw_ring(_floor_px(_life.mid(LITTER)))
+	if lesson == Lesson.TURN and _t > TURN_RING.x and _t < TURN_RING.y:
+		_draw_ring(_floor_px(_life.robot_pos(0)))
 	if _drag_from != Vector2.INF:
 		var pts := PackedVector2Array([_drag_from, _finger])
 		_over.draw_polyline(pts, Color(Pal.ACCENT, 0.85), 5.0, true)

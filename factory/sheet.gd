@@ -270,6 +270,18 @@ func show_preview(i: int, rect: Rect2, across: float, focus := "", tray := false
 	visible = true
 	queue_redraw()
 
+## A preview slid part way, `f` 0 to 1, from node `from` in its middle to
+## node `to` in its middle (a tutorial page's finger going along a chain
+## longer than the page).
+func preview_slide(from: String, to: String, f: float) -> void:
+	var at := func(id: String) -> float:
+		var r := node_rect(id)
+		return _clamp_pan(_pan + size.x * 0.5 - r.get_center().x)
+	var a: float = at.call(from)
+	var b: float = at.call(to)
+	_pan = lerpf(a, b, clampf(f, 0.0, 1.0))
+	queue_redraw()
+
 ## Robot `i`'s program, sliding up if the sheet was down; on another robot
 ## the picks, the tray and the pan start over.
 func open(i: int) -> void:

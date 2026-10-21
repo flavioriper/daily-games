@@ -479,23 +479,23 @@ func _pages_part() -> void:
 	root.add_child(_screen)
 	await _frames(4)
 	var pages: Array = _screen.tutorial_pages()
-	_ok("six pages", pages.size() == 6 and pages.all(func(p: Dictionary) -> bool: return String(p.title).begins_with("TUT_FACTORY_")))
+	_ok("seven pages, the Turn's second", pages.size() == 7 and String(pages[1].title) == "TUT_FACTORY_7" and pages.all(func(p: Dictionary) -> bool: return String(p.title).begins_with("TUT_FACTORY_")))
 	_ok("every page has its words", pages.all(func(p: Dictionary) -> bool: return tr(String(p.title)) != String(p.title) and String(p.body) != "" and not String(p.body).begins_with("TUT_FACTORY_")))
 	var words := {}
 	for locale in ["en", "pt", "es"]:
 		TranslationServer.set_locale(locale)
 		var got := []
-		for k in range(1, 7):
+		for k in range(1, 8):
 			got.append([tr("TUT_FACTORY_%d" % k), tr("TUT_FACTORY_%d_BODY" % k)])
 		words[locale] = got
 	TranslationServer.set_locale("en")
 	for locale in ["pt", "es"]:
 		var told := true
-		for k in 6:
+		for k in 7:
 			for j in 2:
 				var text: String = words[locale][k][j]
 				told = told and text != "" and not text.begins_with("TUT_FACTORY_") and (text != words["en"][k][j] or k == 5 and j == 0)
-		_ok("six pairs in " + locale, told)
+		_ok("seven pairs in " + locale, told)
 	_screen.queue_free()
 	await _frames(3)
 
@@ -528,7 +528,7 @@ func _tutor_run(reduce: bool) -> void:
 	Motion.reduce = reduce
 	var Diagram: GDScript = load("res://ui/hud/factory_tutorial_diagram.gd")
 	var tag := "still" if reduce else "tutor"
-	for lesson in 6:
+	for lesson in 7:
 		var holder := ColorRect.new()
 		holder.color = Color("fffaf1")
 		holder.size = Vector2(700.0, 500.0)
@@ -564,6 +564,9 @@ func _tutor_run(reduce: bool) -> void:
 				_ok("shipper: the wire lands", sim.robots[2].next["d"].out == "e")
 			4:
 				_ok("box: the first sale", int(sim.earned) >= Sim.PAY_FULL and int(sim.coins) >= Sim.PAY_FULL, "earned %d" % sim.earned)
+			6:
+				_ok("turn: the Picker turning at the intake, the finger on its Turn", sim.robots[0].pc == "b" and sim.robots[0].tile == Vector2i(1, Sim.WORK_ROW)
+					and d._finger.distance_to(d._sheet_px(d._sheet.node_rect("b").get_center())) < 2.0, "pc %s tile %s" % [sim.robots[0].pc, sim.robots[0].tile])
 			5:
 				_ok("spend: a Fast plug bought", sim.robots[0].parts.has("plug") and int(sim.coins) == Diagram.SPEND_COINS - 40, "coins %d" % sim.coins)
 		holder.queue_free()
@@ -575,7 +578,7 @@ func _tutor_run(reduce: bool) -> void:
 func _late_size() -> void:
 	Motion.reduce = true
 	var Diagram: GDScript = load("res://ui/hud/factory_tutorial_diagram.gd")
-	for lesson in [0, 1, 2, 3, 5]:
+	for lesson in [0, 1, 2, 3, 5, 6]:
 		var fixed := await _holder_page(Diagram, lesson, true)
 		var late := await _holder_page(Diagram, lesson, false)
 		_ok("page %d, sized after _ready, has its finger where a sized page has it" % [lesson + 1],
