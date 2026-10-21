@@ -27,3 +27,8 @@ summary { cursor: pointer; font-weight: 600; }
 .wrong { color: var(--wrong); }
 .why { color: var(--soft); font-style: italic; }
 .error { color: var(--wrong); }
+
+.port { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; max-width: 320px; }
+.card .port img { width: 120px; }
+.verdict { flex: 1 1 100%; font-size: 13px; }
+.verdict span { display: block; color: var(--soft); }

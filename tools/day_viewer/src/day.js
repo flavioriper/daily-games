@@ -72,6 +72,31 @@ export async function readDay(day) {
   return out;
 }
 
+/** `days/<day>/ports/*` by port id (`hoop2_cat`), each `tries` parsed. A day the
+ * night has not ported, or a rule not yet deployed (403), reads as none. */
+export async function readPorts(day) {
+  const res = await fetch(`${DOCS}/days/${day}/ports?pageSize=50`, {
+    headers: {Authorization: `Bearer ${await token()}`},
+  });
+  if (res.status === 403 || res.status === 404) return {};
+  if (!res.ok) throw new Error(`days/${day}/ports: ${res.status}`);
+  const out = {};
+  for (const doc of (await res.json()).documents ?? []) {
+    const f = doc.fields ?? {};
+    const tries = f.tries?.stringValue;
+    if (tries === undefined) continue;
+    out[doc.name.split("/").pop()] = {
+      game: f.game?.stringValue,
+      band: Number(f.band?.integerValue ?? f.band?.doubleValue),
+      thing: f.thing?.stringValue,
+      tries: JSON.parse(tries),
+      source: f.source?.stringValue,
+      render: f.render?.stringValue,
+    };
+  }
+  return out;
+}
+
 export function todayUtc() {
   const d = new Date();
   return d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate();

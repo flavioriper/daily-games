@@ -1,6 +1,6 @@
 import {useEffect, useState} from "react";
 import beadsSource from "../../beads.js?raw";
-import {readDay, shiftDay, todayUtc} from "./day.js";
+import {readDay, readPorts, shiftDay, todayUtc} from "./day.js";
 
 // The bead palette from the one file the dashboard and the functions share.
 const Beads = new Function(`${beadsSource}\nreturn Beads;`)();
@@ -43,7 +43,54 @@ function BeadPicture({pic, size}) {
   );
 }
 
-function Hoop({hoop, band}) {
+// spike_jelly_map.js GUM: the gummy finish, one filter for every jelly on the page.
+function GumDefs() {
+  return (
+    <svg width={0} height={0} style={{position: "absolute"}} aria-hidden="true">
+      <defs>
+        <filter id="gum" x="-20%" y="-20%" width="140%" height="140%" primitiveUnits="userSpaceOnUse">
+          <feGaussianBlur in="SourceAlpha" stdDeviation="2.2" result="bump" />
+          <feSpecularLighting in="bump" surfaceScale="7" specularConstant="0.85" specularExponent="18" lightingColor="#ffffff" result="spec"><fePointLight x="20" y="-10" z="120" /></feSpecularLighting>
+          <feComposite in="spec" in2="SourceAlpha" operator="in" result="specIn" />
+          <feGaussianBlur in="SourceAlpha" stdDeviation="3.5" result="soft" />
+          <feComposite in="soft" in2="SourceAlpha" operator="arithmetic" k2="-1" k3="1" result="innerA" />
+          <feFlood floodColor="#3a1a30" floodOpacity="0.35" result="dark" /><feComposite in="dark" in2="innerA" operator="in" result="rim" />
+          <feGaussianBlur in="SourceAlpha" stdDeviation="2" result="sh" /><feOffset in="sh" dx="1.5" dy="2.5" result="shOff" />
+          <feFlood floodColor="#5a3a2a" floodOpacity="0.25" /><feComposite in2="shOff" operator="in" result="shadow" />
+          <feMerge><feMergeNode in="shadow" /><feMergeNode in="SourceGraphic" /><feMergeNode in="rim" /><feMergeNode in="specIn" /></feMerge>
+        </filter>
+      </defs>
+    </svg>
+  );
+}
+
+// One port's record under its game: the picture it read and the render of what
+// the night made of it (the kept try's), with that try's score and notes.
+function PortRow({port}) {
+  if (!port) return null;
+  const kept = port.tries.find((t) => t.kept);
+  const last = port.tries[port.tries.length - 1];
+  const shown = kept ?? last;
+  const verdict = kept?.verdict;
+  return (
+    <div className="port">
+      {port.source && <img src={`data:image/jpeg;base64,${port.source}`} alt="source" />}
+      {port.render && <img src={`data:image/jpeg;base64,${port.render}`} alt="render" />}
+      <div className="verdict">
+        {kept ? <>
+          <b>{verdict ? `score ${verdict.score}` : "no verdict"}</b> · try {kept.n} of {port.tries.length}
+          {verdict?.notes && <span>{verdict.notes}</span>}
+          {kept.route === "reader" && <span>fell back to the pixel reader</span>}
+        </> : <>
+          <b>nothing kept</b> · {port.tries.length} {port.tries.length === 1 ? "try" : "tries"}
+          {shown && <span>{shown.error ?? shown.why}</span>}
+        </>}
+      </div>
+    </div>
+  );
+}
+
+function Hoop({hoop, band, port}) {
   const p = hoop.pins;
   const points = (k) => k.map((i) => `${p[2 * i] * 3},${p[2 * i + 1] * 3}`).join(" ");
   return (
@@ -52,6 +99,7 @@ function Hoop({hoop, band}) {
         {hoop.panels.map((panel, i) => <polygon key={i} points={points(panel.k)} fill={panel.c} stroke={panel.c} strokeWidth={0.6} />)}
       </svg>
       <figcaption><b>{hoop.name.en}</b> · {BANDS[band]} · {hoop.panels.length} panels · {p.length / 2} pins</figcaption>
+      <PortRow port={port} />
     </figure>
   );
 }
@@ -95,16 +143,19 @@ function outline(s) {
   return p;
 }
 
-function Jelly({jelly}) {
+function Jelly({jelly, port}) {
   const flavours = [...new Set(jelly.parts.map((part) => part.flavour))];
   return (
     <figure className="card small">
       <svg width={200} height={200} viewBox="0 0 100 100">
-        {jelly.parts.flatMap((part, i) => part.shapes.map((s, j) =>
-          <polygon key={`${i}.${j}`} points={outline(s).map((v) => v.join(",")).join(" ")}
-            fill={FLAVOUR[part.flavour]} stroke="#5a3d2b" strokeWidth={0.5} strokeOpacity={0.5} />))}
+        <g filter="url(#gum)">
+          {jelly.parts.flatMap((part, i) => part.shapes.map((s, j) =>
+            <polygon key={`${i}.${j}`} points={outline(s).map((v) => v.join(",")).join(" ")}
+              fill={FLAVOUR[part.flavour]} stroke={FLAVOUR[part.flavour]} strokeWidth={0.4} strokeLinejoin="round" />))}
+        </g>
       </svg>
       <figcaption><b>{jelly.name.en}</b> · {jelly.parts.length} parts · {flavours.join(", ")}</figcaption>
+      <PortRow port={port} />
     </figure>
   );
 }
@@ -169,13 +220,17 @@ export default function App() {
   const [day, setDay] = useState(todayUtc());
   const [lang, setLang] = useState("en");
   const [got, setGot] = useState(null);
+  const [ports, setPorts] = useState({});
   const [error, setError] = useState(null);
 
   useEffect(() => {
     let live = true;
     setGot(null);
     setError(null);
+    setPorts({});
     readDay(day).then((d) => live && setGot(d), (e) => live && setError(String(e)));
+    // The ports are extra: a read that fails leaves the page as it was.
+    readPorts(day).then((p) => live && setPorts(p), () => {});
     return () => { live = false; };
   }, [day]);
 
@@ -212,12 +267,13 @@ export default function App() {
         </Section>}
 
         {pictures?.hoops && <Section title="Yarn Hoop">
-          <div className="row">{Object.entries(pictures.hoops).map(([b, hoop]) => <Hoop key={b} hoop={hoop} band={Number(b)} />)}</div>
+          <div className="row">{Object.entries(pictures.hoops).map(([b, hoop]) => <Hoop key={b} hoop={hoop} band={Number(b)} port={ports[`hoop${b}_${hoop.id}`]} />)}</div>
         </Section>}
 
         {pictures?.jellies && <Section title="Gumdrop jellies">
+          <GumDefs />
           {Object.entries(pictures.jellies).map(([b, list]) => (
-            <div key={b}><h3>{BANDS[b]}</h3><div className="row">{list.map((j, i) => <Jelly key={i} jelly={j} />)}</div></div>
+            <div key={b}><h3>{BANDS[b]}</h3><div className="row">{list.map((j, i) => <Jelly key={i} jelly={j} port={ports[`jelly${b}_${j.id}`]} />)}</div></div>
           ))}
         </Section>}
 
