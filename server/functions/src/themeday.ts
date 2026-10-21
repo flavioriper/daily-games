@@ -5,6 +5,7 @@ import {BANDS as HOOP_BANDS, HoopPicture, makeHoop} from "./hoop";
 import {bySide, Picture, pixelBand, Pictures} from "./pictures";
 import {makeTheme, Theme, themed, validTheme} from "./theme";
 import {makeWords, Words} from "./words";
+import {Port, publishPorts, stagePorts} from "./ports";
 import {makeVista, TIMES as VISTA_TIMES, Vistas} from "./vistas";
 
 /**
@@ -18,7 +19,9 @@ import {makeVista, TIMES as VISTA_TIMES, Vistas} from "./vistas";
  * painted vistas (vistas.ts) are staged a document each under
  * `themes/{day}/vistas/{time}` (four JPEGs would crowd the day's own
  * document) and published as `days/{day}/turns/vistas` once all four are
- * there (core/themed_vistas.gd).
+ * there (core/themed_vistas.gd). The jelly and hoop steps' port records
+ * (ports.ts) are staged a document each under `themes/{day}/ports/{id}` and
+ * published as `days/{day}/ports/{id}` with the pictures.
  *
  * Why steps: a pixel picture day took 26 to 39 minutes on the Mac (Vertex
  * draws two a minute), and a scheduled function is given 1,800 s. So
@@ -117,7 +120,10 @@ function content(s: Staged): Pictures | null {
  */
 export async function publishPictures(db: Firestore, day: number, now: boolean): Promise<boolean> {
   const doc = db.doc(`days/${day}/turns/pictures`);
-  if ((await doc.get()).exists) return true;
+  if ((await doc.get()).exists) {
+    await portsOf(db, day);
+    return true;
+  }
   const s = ((await staging(db, day).get()).data() ?? {}) as Staged;
   if (!now && !finished(s)) return false;
   const made = content(s);
@@ -128,7 +134,19 @@ export async function publishPictures(db: Firestore, day: number, now: boolean):
     if (!(await doc.get()).exists) throw e;
   }
   console.log(`themeday: day ${day} published, ${Object.keys(made.sizes).join("/") || "no"} pictures`);
+  await portsOf(db, day);
   return true;
+}
+
+/** The ports of a day whose pictures are published, so a late one still
+ *  lands. They are the dashboard's, not the phone's: one that cannot be
+ *  published is told of and does not undo the pictures. */
+async function portsOf(db: Firestore, day: number): Promise<void> {
+  try {
+    await publishPorts(db, day);
+  } catch (e) {
+    console.error(`themeday: day ${day}, ports not published`, e);
+  }
 }
 
 function vista(db: Firestore, day: number, time: string) {
@@ -175,6 +193,16 @@ function keyOf(d: Date): number {
   return d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
 }
 
+/** Stages a step's ports; one that cannot be staged is told of and does not
+ *  lose the picture the step made. */
+async function stage(db: Firestore, day: number, ports: Port[]): Promise<void> {
+  try {
+    await stagePorts(db, day, ports);
+  } catch (e) {
+    console.error(`themeday: day ${day}, ports not staged`, e);
+  }
+}
+
 /** One step of `day`; what it saves, and whether it made anything. */
 async function runStep(db: Firestore, when: Date, day: number, step: string, s: Staged):
   Promise<{save: Record<string, unknown>; made: boolean}> {
@@ -191,12 +219,14 @@ async function runStep(db: Firestore, when: Date, day: number, step: string, s: 
   if (step.startsWith("jelly")) {
     const band = step.slice("jelly".length);
     const got = await makeJellies(day, theme, Number(band));
+    await stage(db, day, got.ports);
     const list = got.jellies[band] ?? [];
     return {save: list.length === 0 ? {} : {[`jellies.${band}`]: JSON.stringify(list)}, made: list.length > 0};
   }
   if (step.startsWith("hoop")) {
     const band = step.slice("hoop".length);
-    const {picture} = await makeHoop(day, theme, Number(band));
+    const {picture, port} = await makeHoop(day, theme, Number(band));
+    await stage(db, day, [port]);
     return {save: picture === null ? {} : {[`hoops.${band}`]: JSON.stringify(picture)}, made: picture !== null};
   }
   if (step.startsWith("vista")) {

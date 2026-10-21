@@ -5,6 +5,7 @@ import {cost, Drawing} from "./generate";
 import {BANDS as HOOP_BANDS, HoopPicture, makeHoop} from "./hoop";
 import {bankPrompts, cleaned, makeDay as pearlDay, Prompt} from "./pearl";
 import {makeJellies} from "./jelly";
+import type {Port} from "./ports";
 import {makeDay as picturesDay} from "./pictures";
 import {makeTheme, themed} from "./theme";
 import {makeWords} from "./words";
@@ -86,6 +87,12 @@ function drawingsBeside(file: string): (name: string, d: Drawing) => void {
   return (name, d) => fs.writeFileSync(path.join(path.dirname(file), `${name}.${d.mime === "image/png" ? "png" : "jpg"}`), d.bytes);
 }
 
+/** A night's ports for a day's JSON: the drawing and render are already
+ *  files beside it, so they are left out. */
+function bare(ports: Port[]): Omit<Port, "source" | "render">[] {
+  return ports.map(({source, render, ...rest}) => rest);
+}
+
 /** The days from `first`, each told the themes before it. */
 async function themedDays(first: number, count: number, outdir: string, themesFrom?: string): Promise<string> {
   fs.mkdirSync(outdir, {recursive: true});
@@ -113,7 +120,7 @@ async function themedDays(first: number, count: number, outdir: string, themesFr
       return kept;
     });
     // Gumdrop's jellies ride in the same document (jelly.ts).
-    const jelly = theme === null ? {jellies: {}, tries: []} : await makeJellies(day, theme);
+    const jelly = theme === null ? {jellies: {}, tries: [], ports: []} : await makeJellies(day, theme);
     if (Object.keys(jelly.jellies).length > 0) {
       pictures.doc = {...(pictures.doc ?? {v: 1 as const, theme: theme.id, sizes: {}}), jellies: jelly.jellies};
     }
@@ -123,6 +130,7 @@ async function themedDays(first: number, count: number, outdir: string, themesFr
       pictures.doc = {...(pictures.doc ?? {v: 1 as const, theme: theme.id, sizes: {}}), words: words.words};
     }
     fs.writeFileSync(file, JSON.stringify({day, theme, pictures: pictures.doc, drafts: pictures.drafts, jellyTries: jelly.tries,
+      jellyPorts: bare(jelly.ports), hoopPorts: [],
       wordsTries: words.tries,
       cost: Math.round((cost() - before) * 10000) / 10000, seconds: Math.round((Date.now() - t0) / 1000)}));
     if (theme !== null) recent.unshift(...themed(theme));
@@ -223,6 +231,7 @@ async function main(): Promise<void> {
         delete day.pictures.jellies;
       }
       day.jellyTries = jelly.tries;
+      day.jellyPorts = bare(jelly.ports);
       fs.writeFileSync(file, JSON.stringify(day));
       print(`${file}: ${Object.entries(jelly.jellies).map(([b, l]) => `${b}:${l.length}`).join(" ") || "none"} in ${jelly.tries.length} tries, US$${cost().toFixed(2)} so far`);
     }
@@ -232,10 +241,13 @@ async function main(): Promise<void> {
       const day = JSON.parse(fs.readFileSync(file, "utf8"));
       if (day.theme === null) continue;
       const hoops: Record<string, HoopPicture> = {};
+      const ports: Port[] = [];
       for (let band = 0; band < HOOP_BANDS.length; band++) {
-        const {picture} = await makeHoop(day.day, day.theme, band, drawingsBeside(file));
+        const {picture, port} = await makeHoop(day.day, day.theme, band, drawingsBeside(file));
         if (picture !== null) hoops[band] = picture;
+        ports.push(port);
       }
+      day.hoopPorts = bare(ports);
       if (Object.keys(hoops).length > 0) {
         day.pictures = {...(day.pictures ?? {v: 1, theme: day.theme.id, sizes: {}}), hoops};
       }
