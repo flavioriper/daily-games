@@ -55,7 +55,8 @@ const THEMED_KEY := [10, 12, 32, 48]
 ## a place every CASE_PER buttons, rounded down to an even number, never
 ## under CASE_MIN (the twenty the small pictures had) nor over CASE_CAP
 ## (what the foot of a phone holds in places a finger can still tap).
-## `places()`.
+## `places()`. CASE_CAP 48 since 2026-10-21 (the user: "let's keep cap at
+## 48"): four rows, where 64 was six and every Hard and Insane day hit it.
 ##
 ## Every place is open from the start (the user, 2026-10-17: "remove the
 ## unlock of the bottom case, they are all available since beggining");
@@ -63,7 +64,7 @@ const THEMED_KEY := [10, 12, 32, 48]
 ## the rest until then.
 const CASE_MIN := 20
 const CASE_PER := 5
-const CASE_CAP := 64
+const CASE_CAP := 48
 const BANDS := 4
 const HINTS_BY := [3, 3, 2, 2]
 ## Insane: Hard's two hints (none until 2026-10-13), and the seal for any day sewn. It counted its moves

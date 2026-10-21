@@ -1176,3 +1176,11 @@ from the picture's top to the screen's foot and clipped while zoomed, like
 `_cloth`: a gem bound for a square out of sight above goes under the edge
 instead of over the bar and the pill; it still crosses from the case. Board
 probe 14 days, the two old band-2 zoom failures. Not seen in a window.
+
+**12:17, the case capped at 48.** Measured over twelve days a band, the case
+was 20 on Easy and Medium (the floor) and 64 on Hard and Insane (the cap,
+every day: 478 to 1,024 gems at a place per five), six rows at the foot.
+The user: "let's keep cap at 48". `CASE_CAP` 48, four rows of twelve; Easy
+and Medium untouched. Board probe 38 days (the two old band-2 zoom
+failures), rules probe 648 runs, 0 failures: every day still ends sewn and
+on its par with the smaller case.

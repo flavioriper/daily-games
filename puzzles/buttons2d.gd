@@ -101,7 +101,7 @@ const HELD_BOB_MAX := 48
 ## flight of FLY_TIME, two or three are in the air at once and each landing
 ## is its own (0.06 and a cap of 0.9 s kept five up and read as a stream;
 ## the user, 2026-10-19: "pieces should move one after another"). The cap
-## only squeezes the case's biggest stows (64 on Insane); a stretch set or
+## only squeezes the case's biggest stows (48 on Insane); a stretch set or
 ## a stow of twenty keeps the step. Twice as fast since 2026-10-19 (the
 ## user: "increase speed of pieces move by 2x"): the flight, the step and
 ## the cap all halved (0.3, 0.12, 2.4), so the chain reads the same; then
