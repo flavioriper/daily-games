@@ -35,6 +35,12 @@ extends Control
 ## lettered over the mesh with TextLines drawn one font size after the other
 ## (each size is one glyph batch).
 ##
+## A Move's arrow is drawn on the diagonal the robot walks on screen: the
+## floor is seen corner on (factory/life.gd, since 2026-10-21 again), so a
+## facing is drawn through Art.ISO at the view's quarter turn (`turn`, set by
+## the screen's turn button through `set_turn`), and the graph is rebuilt on
+## a turn. The pill's Turn still turns the sim's facing a quarter.
+##
 ## `preview` is the tutorial's: the same sheet drawn small into a rect of a
 ## diagram (`show_preview`), with no input, no slide and no handle to pull,
 ## on a sim of the page's own (ui/hud/factory_tutorial_diagram.gd).
@@ -190,6 +196,9 @@ var _paper: ArrayMesh
 var _graph: ArrayMesh
 var _labels: Array = []  # [text, at (graph space, centre and baseline), fs, colour]
 var _dirty := true
+## The view's quarter turn, 0 to 3, the life's: a Move's arrow is drawn as
+## the robot walks on screen at it.
+var turn := 0
 var _glows := {}         # "w|h|r" -> ring mesh
 var _wire_mesh: ArrayMesh
 var _tray_mesh: ArrayMesh
@@ -224,6 +233,17 @@ func fit_to(field_size: Vector2, inset: float) -> void:
 	_tray_key = ""
 	_dirty = true
 	queue_redraw()
+
+## The view is turned to `quarters`: the arrows are drawn again.
+func set_turn(quarters: int) -> void:
+	turn = posmod(quarters, 4)
+	_dirty = true
+	queue_redraw()
+
+## The way a Move of sim `facing` goes on screen, a unit vector: its facing
+## turned with the view, through the floor's corner-on projection.
+func arrow_of(facing: int) -> Vector2:
+	return Art.ISO.basis_xform(Vector2(Sim.DIRS[posmod(facing + turn, 4)])).normalized()
 
 func is_open() -> bool:
 	return _open
@@ -1089,7 +1109,8 @@ func _body(gb: Face.Builder, b: Dictionary, r: Rect2) -> void:
 	_box(gb, r, 40.0, _sel == Sim.BODY, false)
 	var c := r.get_center()
 	var tint: Color = Life.TINTS[robot % Life.TINTS.size()]
-	var xf := Transform2D(0.0, Vector2(0.86, 0.86) * K, 0.0, c + Vector2(0.0, 8.0))
+	# the robot stands on its feet: they go under the box's middle
+	var xf := Transform2D(0.0, Vector2(0.86, 0.86) * K, 0.0, c + Vector2(0.0, 50.0))
 	gb.append(Art.robot(), xf, tint)
 	gb.append(Art.face(String(b.stuck)), xf)
 	# the bolt: the bay is where a loop charges
@@ -1109,7 +1130,7 @@ func _node(gb: Face.Builder, b: Dictionary, id: String, r: Rect2) -> void:
 	var ink := MUTED if dead else INK
 	var c := r.get_center()
 	if kind == "move":
-		var d := Vector2(Sim.DIRS[int(node.facing)])
+		var d := arrow_of(int(node.facing))
 		var ac := c + Vector2(-29.0, 0.0)
 		var tail := ac - d * 29.0
 		var head := ac + d * 29.0

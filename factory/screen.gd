@@ -1,14 +1,17 @@
 extends Control
 
-## Factory: the robot floor, played. Ten tiles by eight seen from straight
-## above, three robots that walk their programs over it from the bay, the
-## stations they work (the intake, the box stack, the pack table, the deliver
-## pad that sells), and from milestone 1 the belts a finger traces. Spec
-## docs/superpowers/specs/2026-10-20-factory-rewired-design.md; the rules
-## and every number are factory/sim.gd's and factory/bots.gd's, the drawings
-## factory/art.gd's, and what is seen of the floor factory/life.gd's. It
-## played the isometric land of plates, forests and machines until
-## 2026-10-20 (git has that).
+## Factory: the robot floor, played. Ten tiles by eight seen corner on, as
+## the land was (one plate on the pond, the land's belts, market, engine
+## and tray: the user, 2026-10-21), three robots that walk their programs
+## over it from the bay, the stations they work (the intake, the box stack,
+## the pack table, the deliver pad that sells), and from milestone 1 the
+## belts a finger traces. Spec
+## docs/superpowers/specs/2026-10-20-factory-rewired-design.md (its section
+## 3 amended 2026-10-21); the rules and every number are factory/sim.gd's and
+## factory/bots.gd's, the drawings factory/art.gd's, and what is seen of the
+## floor factory/life.gd's. The land's view and its quarter-turn button are
+## kept: `turn_view` goes round a quarter, and the sheet's Move arrows turn
+## with it so an arrow still points where the robot walks on screen.
 ##
 ## **It never makes or reads a floor.** ui/menu/factory_tab.gd owns the one
 ## sim; whoever mounts this screen hands it over with `setup(sim)` before it
@@ -24,7 +27,7 @@ extends Control
 ##
 ## The chrome lies over the floor: the top bar, the coins and the pace (a
 ## box every so many seconds, from the sim's rolling window) on two pills
-## with the zoom beside them, and a row of **robot chips**, one a robot in
+## with the zoom and the turn beside them, and a row of **robot chips**, one a robot in
 ## the floor's own tints, a red dot on the chip of a robot with a fault the
 ## player can see from its program (a loose wire, a node its parts do not
 ## give, stuck). A tap on a chip or on a robot on the floor picks it and
@@ -90,6 +93,9 @@ const NAMES := {"belt": "FACTORY_BELT", "fast": "FACTORY_FAST", "bridge": "FACTO
 ## A press that moves less than this is a tap, in the screen's own units; a
 ## robot is tapped within twice it of where it is drawn.
 const TAP := 24.0
+## The middle of a robot's body over its feet (view units), where a tap on
+## it is measured from.
+const ROBOT_MID := Vector2(0.0, -40.0)
 ## A finger held still this long on a belt sells it back; its ring starts to
 ## close after HOLD_SHOWS, so a plain tap shows none.
 const HOLD := 0.5
@@ -172,6 +178,8 @@ var _next_l: Label
 var _chips_l: Control
 var _chips_key := ""
 var _zoom_b: Button
+var _turn_b: Button
+var _turn_tw: Tween
 var _drawer_b: Button
 var _free_b: Button
 var _drawer: GridContainer
@@ -359,11 +367,15 @@ func _build() -> void:
 	_zoom_b = IconButton.new("minus", "", "IconButton")
 	_zoom_b.name = "Zoom"
 	_zoom_b.pressed.connect(func() -> void: set_far(not _far))
-	_zoom_b.custom_minimum_size = Vector2(ZOOM_B, ZOOM_B)
-	_zoom_b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	_zoom_b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_round(_zoom_b, int(ZOOM_B * 0.5))
-	pills.add_child(_zoom_b)
+	_turn_b = IconButton.new("turn", "", "IconButton")
+	_turn_b.name = "Turn"
+	_turn_b.pressed.connect(turn_view)
+	for b: Button in [_zoom_b, _turn_b]:
+		b.custom_minimum_size = Vector2(ZOOM_B, ZOOM_B)
+		b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		_round(b, int(ZOOM_B * 0.5))
+		pills.add_child(b)
 
 	# the robot chips: drawn, not buttons, so a finger on one reaches the
 	# field and is read there with every other (`_press`, `robot_chip_rect`)
@@ -557,15 +569,15 @@ func _apply_insets() -> void:
 	if field != null and field.size.y > 0.0:
 		sheet.fit_to(field.size, insets.y)
 
-## The wash and the light are baked for the field's size, and the near zoom
-## is the one at which the whole floor is as wide as the field.
+## The pond and the light are baked for the field's size, and the near zoom
+## is the one at which the whole floor's diamond is as wide as the field.
 func _layout_field() -> void:
 	var s := field.size
 	if s.x <= 0.0 or s.y <= 0.0 or _light_l == null:
 		return
 	_water = Art.water(s, 0.0)
 	_light = Art.light(s)
-	_near = s.x / (Sim.COLS * Art.TILE)
+	_near = s.x / (life.bounds() as Rect2).size.x
 	if sheet != null:
 		sheet.fit_to(s, SafeArea.insets(self).y)
 	if not _laid_out:
@@ -599,13 +611,20 @@ func tile_under(pos: Vector2) -> Vector2:
 	return life.tile_at((pos - world.position) / _zoom)
 
 ## A point of the view held to where the view's middle may go: the floor's
-## own tiles and POND tiles past them.
+## own tiles and POND tiles of pond past them, measured along the floor (a
+## box on the screen would leave the view's middle far out on open water off
+## a diamond's corners).
 func _clamp(v: Vector2) -> Vector2:
-	var box: Rect2 = (life.tile_bounds() as Rect2).grow(POND)
-	if sheet != null and sheet.is_open():
+	var inside := _clamp_tiles(v)
+	if sheet != null and sheet.is_open() and v.y > inside.y:
 		# the sheet hides the lower part of the field: the view may go as
-		# far down as it covers, so a robot on the last row can stand above it
-		box.size.y += sheet.size.y / (_zoom * Art.TILE)
+		# far down as it covers, so a robot on the front row can stand above it
+		var down := minf(v.y - inside.y, sheet.size.y / _zoom)
+		return _clamp_tiles(v - Vector2(0.0, down)) + Vector2(0.0, down)
+	return inside
+
+func _clamp_tiles(v: Vector2) -> Vector2:
+	var box: Rect2 = (life.tile_bounds() as Rect2).grow(POND)
 	return life.seen((life.tile_at(v) as Vector2).clamp(box.position, box.end))
 
 ## The far zoom shows twice as much; the near one the floor across the field.
@@ -620,6 +639,30 @@ func _zoom_by_hand(on: bool) -> void:
 		return
 	set_far(on)
 	_fx.touch(1.0 if on else 0.84)
+
+## The view goes round a quarter, clockwise, so that what a robot or a
+## station hid is seen (the user, 2026-10-10, of the land). Only the view:
+## the turn is the life's (factory/life.gd, `seen` and `tile_at`), the sim's
+## tiles and facings are what they were, the tile under the middle of the
+## screen stays under it, and the sheet's Move arrows turn with it. Nothing
+## is tweened round: the floor is laid out again at once and comes back in
+## out of a short dip. A preference of this screen, not kept: it opens at no
+## turn.
+func turn_view() -> void:
+	var under: Vector2 = life.tile_at(_cam)
+	var going: Vector2 = life.tile_at(_cam_to)
+	_let_go()
+	life.set_turn(int(life.turn) + 1)
+	sheet.set_turn(int(life.turn))
+	_cam = life.seen(under)
+	_cam_to = life.seen(going)
+	_cam_raw = _cam_to
+	_place_world()
+	Motion.stop(_turn_tw)
+	_turn_tw = Motion.appear(world, 0.3, 1.0, 0.16)
+	_fx.touch()
+	if sheet.is_open():
+		_keep_in_view(true)
 
 func _step_view(delta: float) -> void:
 	var want := _near * (0.5 if _far else 1.0)
@@ -750,8 +793,8 @@ func _on_coin(amount: int, tile: Vector2i) -> void:
 		_coin_at = now
 		_floor_fx.cue("coin", COIN_PITCH * _vary(), COIN_DB)
 		_fx.buzz(HAPTICS.coin)
-	var over: Vector2 = life.mid(tile) + Vector2(0.0, -Art.TILE * 0.45)
-	_nums.append({"at": over + Vector2(_rng.randf_range(-6.0, 6.0), 0.0), "text": "+" + Art.short(amount), "t": 0.0})
+	var hatch: Vector2 = life.mid(tile) + Life.STATION_BACK + Art.MARKET_TOP
+	_nums.append({"at": hatch + Vector2(_rng.randf_range(40.0, 52.0), -30.0), "text": "+" + Art.short(amount), "t": 0.0})
 	_kick()
 
 ## The sim did not do it. Most of the time that is a no, and when it was the
@@ -888,7 +931,8 @@ func _draw_chips() -> void:
 			face.border_color = Pal.ACCENT
 			face.set_border_width_all(6)
 		_chips_l.draw_style_box(face, r)
-		var xf := Transform2D(0.0, Vector2(0.66, 0.66), 0.0, r.position + Vector2(rad + 4.0, rad + 4.0))
+		# the robot stands on its feet: they go under the chip's middle
+		var xf := Transform2D(0.0, Vector2(0.62, 0.62), 0.0, r.position + Vector2(rad + 4.0, rad + 27.0))
 		_chips_l.draw_mesh(Art.robot(), null, xf, Life.TINTS[i % Life.TINTS.size()])
 		_chips_l.draw_mesh(Art.face(String(b.stuck)), null, xf)
 		var key := "FACTORY_" + String(b.name).to_upper()
@@ -1248,7 +1292,8 @@ func _let_go() -> void:
 
 ## What is under a point of the field: {what, tile} and for a robot its
 ## index as `id`. A chip first (it lies over the floor), then a robot within
-## twice TAP of where it is drawn, the nearest, then a belt, then the floor.
+## twice TAP of the middle of its body, the nearest, then a belt (its bed
+## stands over its tile: the bed under the point first), then the floor.
 func hit(pos: Vector2) -> Dictionary:
 	var tile := Vector2i(tile_under(pos).floor())
 	var chip := _chip_under(pos)
@@ -1257,12 +1302,15 @@ func hit(pos: Vector2) -> Dictionary:
 	var best := -1
 	var best_d := TAP * 2.0
 	for i in sim.robots.size():
-		var d := pos.distance_to(to_field(life.robot_at(i)))
+		var d := pos.distance_to(to_field(life.robot_at(i) + ROBOT_MID))
 		if d <= best_d:
 			best = i
 			best_d = d
 	if best >= 0:
 		return {"what": "robot", "id": best, "tile": tile}
+	var bed := Vector2i(tile_under(pos - Art.BELT_LIFT * _zoom).floor())
+	if sim.belts.has(bed):
+		return {"what": "belt", "tile": bed}
 	if sim.belts.has(tile):
 		return {"what": "belt", "tile": tile}
 	return {"what": "ground", "tile": tile}
@@ -1613,8 +1661,8 @@ func _close_piece() -> void:
 func _piece_layout() -> Dictionary:
 	if _piece.is_empty() or field == null:
 		return {}
-	var m := to_field(life.mid(_piece.tile))
-	var half := Vector2(0.0, Art.TILE * 0.5 * _zoom)
+	var m := to_field(life.mid(_piece.tile) + Art.BELT_LIFT)
+	var half := Vector2(0.0, Art.K * Art.DEEP * _zoom)
 	var top := _chips_l.get_global_rect().end.y - field.get_global_rect().position.y
 	var foot: float = field.size.y - SafeArea.insets(self).y - DRAWER_UP * 0.5
 	var view := Rect2(0.0, top, field.size.x, maxf(foot - top, 1.0))
@@ -1669,7 +1717,7 @@ func _ghosts() -> Array:
 		elif sim.belts.has(tile) and (sim.belt_kind(tile) == sim.picked or Sim.ONE_TILE.has(sim.picked)):
 			continue
 		var short: bool = i >= int(_run.lay)
-		out.append([Art.belt(), Art.flat(Vector2(tile), int(_run.faces[i])),
+		out.append([Art.belt(), Transform2D(0.0, Art.BELT_LIFT) * Art.flat(Vector2(life.seen_tile(tile)), life.seen_facing(int(_run.faces[i]))),
 			Color(1.0, 0.5, 0.45, 0.8) if short else Color(1.0, 1.0, 1.0, 0.92)])
 	return out
 
@@ -1694,12 +1742,16 @@ func _draw_over(ci: CanvasItem) -> void:
 	if _mode == "belt" and not _run.is_empty():
 		_draw_flow(ci)
 	if not _piece.is_empty():
-		ci.draw_arc(life.mid(_piece.tile), Art.TILE * 0.48, 0.0, TAU, 48, Color(Pal.SUN, 0.95), 8.0, true)
+		# the belt the pill is for wears a sun ring, lying on its bed
+		ci.draw_set_transform(life.mid(_piece.tile) + Art.BELT_LIFT, 0.0, Vector2(1.0, Art.DEEP))
+		ci.draw_arc(Vector2.ZERO, Art.K * 0.95, 0.0, TAU, 48, Color(Pal.SUN, 0.95), 8.0, true)
+		ci.draw_set_transform(Vector2.ZERO)
 	if not _long.is_empty() and _held >= HOLD_SHOWS:
 		var k := clampf((_held - HOLD_SHOWS) / (HOLD - HOLD_SHOWS), 0.0, 1.0)
-		var at: Vector2 = life.mid(_long.tile)
-		ci.draw_arc(at, Art.TILE * 0.44, 0.0, TAU, 48, Color(1.0, 1.0, 1.0, 0.35), 9.0, true)
-		ci.draw_arc(at, Art.TILE * 0.44, -PI * 0.5, -PI * 0.5 + TAU * k, 48, Pal.ACCENT, 9.0, true)
+		ci.draw_set_transform(life.mid(_long.tile) + Art.BELT_LIFT, 0.0, Vector2(1.0, Art.DEEP))
+		ci.draw_arc(Vector2.ZERO, 74.0, 0.0, TAU, 48, Color(1.0, 1.0, 1.0, 0.35), 9.0, true)
+		ci.draw_arc(Vector2.ZERO, 74.0, -PI * 0.5, -PI * 0.5 + TAU * k, 48, Pal.ACCENT, 9.0, true)
+		ci.draw_set_transform(Vector2.ZERO)
 	var font := get_theme_font("font", "SheetTitle")
 	for n: Dictionary in _nums:
 		var k: float = float(n.t) / NUM
@@ -1719,11 +1771,12 @@ func _draw_flow(ci: CanvasItem) -> void:
 	var n := tiles.size()
 	var pts := PackedVector2Array()
 	for tile: Vector2i in tiles:
-		pts.append(life.mid(tile))
+		pts.append(life.mid(tile) + Art.BELT_LIFT)
 	# half a tile of the way each belt flows, on the screen
 	var halves: Array = []
 	for i in n:
-		halves.append(Vector2(Art.DIRS[int(faces[i])]) * Art.TILE * 0.5)
+		var d := Vector2(Art.DIRS[int(faces[i])])
+		halves.append((life.seen(Vector2(tiles[i]) + Vector2(0.5, 0.5) + d * 0.5) + Art.BELT_LIFT) - pts[i])
 	var line := PackedVector2Array()
 	var into0: Vector2 = halves[0] if n == 1 else (pts[1] - pts[0]).normalized() * (halves[0] as Vector2).length()
 	line.append(pts[0] - into0 * 0.7)
