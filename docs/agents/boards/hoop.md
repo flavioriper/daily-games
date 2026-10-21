@@ -614,3 +614,14 @@ Vertex yet**.
     the holes were the model's or the mending's: each map try now carries
     `mended` (asked, kept, dropped, board, clipped, tees, snapped) on the
     port and in its log line, so the next run says.
+  - **The second run said** (`build/port_hoop3.log`, a new drawing with
+    cream bands, maps 3/4/4, $2.09, 15 min): `repairMesh` let go nothing;
+    `colourFrom` dropped 35, 25 and 25 panels as board. The old test, a
+    mean within 60 rgb of the measured sage, took the kettle's grey-blue
+    and cream bands (43 to 55 from it) for background: those were the
+    holes, on both runs. The board is now told by hue alone: a panel
+    three quarters key pixels (`KEY_SHARE`) is dropped, and a mean of the
+    key's hue; nothing is dropped for being near the board in rgb. The
+    same bands now keep their grey-blue. `FINE` lost its "check the map
+    cell by cell", which ran the first ask past its 32,000 tokens (and the
+    time it took left the reader out of time).

@@ -301,7 +301,6 @@ export function repairMesh(got: ModelMap, n: number, band: number): Mesh {
 }
 
 const rgbOf = (hex: string): number[] => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
-const onBoard = (a: number[], b: number[]) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) <= 60;
 
 /** A colour's hue in degrees and its chroma (max less min, 0..255). */
 function hueOf(r: number, g: number, b: number): {hue: number; chroma: number} {
@@ -317,20 +316,23 @@ function hueOf(r: number, g: number, b: number): {hue: number; chroma: number} {
  *  floor is chroma, not saturation, so a near-black edge is never taken. */
 const KEY_HUE = 25;
 const KEY_CHROMA = 12;
+/** A panel with this share of its pixels the key is the background. */
+const KEY_SHARE = 0.75;
 
 /**
  * Each panel coloured with the drawing's mean over it (the model's hex is
  * a guess; the drawing is the truth), read off the raster through the box,
  * leaving out every pixel of the key's hue (isKey), so a thin part mapped
  * a little wider than it is keeps its own colour, not one tinted by the
- * board round it. A panel over nothing but the key, or whose mean comes
- * out within 60 of the board, is the background the
- * model took for part of the thing, and is dropped with any pin only it
- * used, and what is left placed in the square again. The board is measured
- * twice: as the drawing painted it, the median of the raster's edge (the
- * reader's boardKey: flash paints the key muted, a sage for green, a shaded
- * pink for magenta, far more than 60 from the pure hex), and as the key's
- * own hex. A panel too thin to cover any pixel's centre takes the mean of
+ * board round it. A panel whose pixels are KEY_SHARE the key is the
+ * background the model took for part of the thing, and is dropped with any
+ * pin only it used, and what is left placed in the square again. The key is
+ * told by hue, never by distance in rgb: a mean within 60 of the board used
+ * to be the test, and it dropped the kettle's grey-blue and cream bands
+ * (2026-10-21, 25 to 35 panels a map, the holes in the body). The board's
+ * hue is measured twice: as the drawing painted it, the median of the
+ * raster's edge (the reader's boardKey: flash paints the key muted, a sage
+ * for green, a shaded pink for magenta), and as the key's own hex. A panel too thin to cover any pixel's centre takes the mean of
  * the measured neighbours it shares a side with, and with none the pixel
  * under its middle, so it never keeps the model's string (which may be no
  * colour at all, and the phone drops a band with one bad colour). Returns
@@ -340,24 +342,24 @@ const KEY_CHROMA = 12;
 export function colourFrom(r: Raster, mesh: Mesh, key: string): number {
   const boards = [boardKey(r), rgbOf(key)];
   const hues = boards.map((b) => hueOf(b[0], b[1], b[2])).filter((h) => h.chroma >= KEY_CHROMA).map((h) => h.hue);
-  const isKey = (at: number) => {
-    const {hue, chroma} = hueOf(r.rgb[at], r.rgb[at + 1], r.rgb[at + 2]);
+  const isKey = (c: ArrayLike<number>, at = 0) => {
+    const {hue, chroma} = hueOf(c[at], c[at + 1], c[at + 2]);
     return chroma >= KEY_CHROMA && hues.some((h) => Math.min(Math.abs(hue - h), 360 - Math.abs(hue - h)) <= KEY_HUE);
   };
   const px = r.n / 100;
   const pixelsOf = (p: HoopPanel) => p.k.map((i) => [(mesh.pins[2 * i] / mesh.box.s + mesh.box.x0) * px, (mesh.pins[2 * i + 1] / mesh.box.s + mesh.box.y0) * px]);
-  const means: (number[] | null)[] = mesh.panels.map((p) => {
+  const board = mesh.panels.map(() => false);
+  const means: (number[] | null)[] = mesh.panels.map((p, j) => {
     const sum = [0, 0, 0];
     let count = 0, covered = 0;
     scan(pixelsOf(p), r.n, (x, y) => {
       const at = (y * r.n + x) * 3;
       covered++;
-      if (isKey(at)) return;
+      if (isKey(r.rgb, at)) return;
       for (let c = 0; c < 3; c++) sum[c] += r.rgb[at + c];
       count++;
     });
-    // a panel over nothing but the key is the board, and is dropped below
-    if (covered > 0 && count === 0) return boards[0];
+    if (covered > 0 && count <= covered * (1 - KEY_SHARE)) { board[j] = true; return null; }
     return count > 0 ? sum.map((v) => v / count) : null;
   });
   // the thin ones from their neighbours' measures, never from another thin
@@ -371,6 +373,7 @@ export function colourFrom(r: Raster, mesh: Mesh, key: string): number {
     }
   });
   const colours = mesh.panels.map((p, j) => {
+    if (board[j]) return null;
     if (means[j] !== null) return means[j]!;
     const sum = [0, 0, 0];
     let count = 0;
@@ -378,7 +381,7 @@ export function colourFrom(r: Raster, mesh: Mesh, key: string): number {
       const a = p.k[s], b = p.k[(s + 1) % p.k.length];
       for (const o of bySide.get(a < b ? `${a},${b}` : `${b},${a}`) ?? []) {
         const m = means[o];
-        if (o === j || m === null || boards.some((bg) => onBoard(m, bg))) continue;
+        if (o === j || m === null) continue;
         for (let c = 0; c < 3; c++) sum[c] += m[c];
         count++;
       }
@@ -392,7 +395,7 @@ export function colourFrom(r: Raster, mesh: Mesh, key: string): number {
   const kept: HoopPanel[] = [];
   mesh.panels.forEach((p, j) => {
     const mean = colours[j];
-    if (boards.some((bg) => onBoard(mean, bg))) return;
+    if (mean === null || isKey(mean)) return;
     p.c = "#" + mean.map((v) => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, "0")).join("");
     kept.push(p);
   });

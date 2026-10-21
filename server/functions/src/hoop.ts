@@ -392,8 +392,10 @@ Write the map as pins and panels. A pin is a corner, with an integer id. A panel
 The map is checked exactly as the board will lay it, and refused if it breaks any of these: every panel has 3 to 7 corners and is convex; neighbouring panels share whole sides, pin for pin; no two panels overlap and no gap is left between them; no panel covers any of the background; every facet of the drawing is kept. Pins nearer together than about one grid cell are welded into one on the board, so a thin part (a handle, a stalk, a shaft, a leg) is drawn as a panel at least one grid cell wide, never thinner, or it vanishes. Use the whole panel budget: write close to the most panels the board allows, splitting the big facets along their light and shade; a map with fewer than the least it names is refused.`;
 
 /** Insane's grid is fine (40), and its maps came back with holes in the
- *  body and handles cut thinner than a cell (the kettle, 2026-10-21). */
-const FINE = " On a grid this fine, check the map cell by cell before answering: every grid cell the thing covers lies under a panel, with no hole anywhere in the body, the lid or the base, and the outline closes all the way round. Every thin part (a handle, a spout, a stalk, a leg) is at least one whole grid cell wide along all its length and joins the body by a shared side at each end; where the drawing's part is thinner, draw it one cell wide.";
+ *  body and handles cut thinner than a cell (the kettle, 2026-10-21; the
+ *  holes were colourFrom's, the thin parts the map's). Asking for a check
+ *  cell by cell ran an ask past its 32,000 tokens, so it is not asked. */
+const FINE = " On a grid this fine: every grid cell the thing covers lies under a panel, with no hole anywhere in the body, the lid or the base, and the outline closes all the way round. Every thin part (a handle, a spout, a stalk, a leg) is at least one whole grid cell wide along all its length and joins the body by a shared side at each end; where the drawing's part is thinner, draw it one cell wide.";
 
 const MAP_SCHEMA = {type: "object", additionalProperties: false, required: ["pins", "panels"], properties: {
   pins: {type: "array", items: {type: "object", additionalProperties: false, required: ["id", "x", "y"], properties: {id: {type: "integer"}, x: {type: "number"}, y: {type: "number"}}}},
