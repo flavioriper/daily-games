@@ -1,0 +1,253 @@
+# Picture ports: a reviewed path a game, for sharp pictures every night
+
+2026-10-21. The user, with the day viewer open on 20261021: the pixel
+pictures (Jewel Box) "are amazing, love them"; Yarn Hoop "is terrible",
+Gumdrop "is even worse"; beside them two references of what was expected,
+the same viewer cards with the pictures swapped: a Yarn Hoop of a few
+hundred small muted facets, softly lit (a rain boot, a snail with its
+spiral, a frog with its green body, a kettle without a face), and a
+Gumdrop of glossy, shaded gummy things. Then: "We can use the llm to make
+sure high quality outcome, check how can we use them to make sure we have
+a specific port for each game to have a high quality sharp picture game
+on each."
+
+## Intent
+
+Every picture game gets its own **port**: a path through the night
+(`themeWork`, `server/functions/src/themeday.ts`) that draws the thing in
+that game's own style, reads it into that game's geometry, renders the
+geometry **as the player will see it**, and has a reviewer model look at
+that render before it is kept. The eye is on the output, not the source.
+What the pixel path already does (`pictures.ts`: Opus writes rows, a
+reviewer must name the thing among decoys) is why Jewel Box is loved; Yarn
+Hoop and Gumdrop ship a flash drawing read by geometry with no eye on it,
+and that is why the frog has no body and the kettle has fangs.
+
+## Goals
+
+1. **An eye on every picture.** A picture is kept only when a reviewer,
+   shown the game's own render, names the thing and scores it above the
+   game's floor. The reviewer's complaint feeds the next drawing.
+2. **Yarn Hoop looks like the reference on every band**: a fine picture of
+   a few hundred muted, lit facets, while the play (pins, counts, panels
+   by band, 2026-10-15's "difficulty from the picture, not the crowding")
+   stays as it is.
+3. **Gumdrop's silhouettes are sharp** and the viewer and the game show a
+   jelly as a glossy gummy, not a flat blob.
+4. **The day viewer shows what the port did**: the original drawing, the
+   render the reviewer saw, the verdict and score, so the user can judge
+   the port itself.
+5. Jewel Box stays as it is (goal 1 adds a score to its existing look, no
+   change to what it draws).
+
+## Non-goals
+
+- No change to any game's rules, counts or spacing: Yarn Hoop's 35/55/85/
+  150 panels and its pin spacing, Gumdrop's flavours and chunks a band
+  (`jelly.ts` RULES), Jewel Box's sizes.
+- No new image model. Drawings stay on `DAILY_SHAPES_MODEL` (flash on
+  Vertex; pro's quota is production's and shared, never run locally).
+- Not the bank pictures (`content/pixel_garden.json`): the bank is cut as
+  before when a day has no drawn picture.
+
+## Anti-goals
+
+- A night that runs out of its half-hour step: every port is bounded in
+  drawings and reviews a band.
+- A reviewer that passes anything: the pick-among-decoys test stays the
+  gate, the score only ranks what passed.
+- Density bought by crowding pins. The reference's density comes from the
+  **picture**, never from the panels.
+
+## The shared eye (`server/functions/src/eye.ts`, new)
+
+One function every port calls:
+
+```
+judge(day, theme, thing, game, render: Drawing, source?: Drawing)
+  -> {pick, score, wrong, notes}
+```
+
+- `render` is a PNG of the game's own geometry, drawn in node with
+  `pngjs` (polygons scan-filled; the pixel path keeps `shown()`).
+  `source` is the model's drawing when there is one, shrunk as the
+  vistas are.
+- The reviewer (`role: "review"`, Opus via the Anthropic key as today)
+  is shown the render first and, when there is one, the source beside
+  it, and answers one JSON: `pick` among the day's things and one decoy
+  (as `lookThing`, the choices shuffled by the day), `wrong` (empty, or
+  what does not belong in a children's game), `score` 0-10, `notes` one
+  sentence on what to fix. The score's rubric is the port's
+  (`game`): the eye is told what a good picture of that game looks like
+  (hoop: the whole thing present with every part a child expects, its
+  true colours, facets reading as light and shade, no face on an object,
+  nothing but the thing; jelly: a silhouette a child names at once, parts
+  big and clean, no stray blobs or slivers; pixel: as today) and, when a
+  source is shown, whether the render still shows what the source shows
+  (this is the check the frog failed: the source had a body, the read
+  took it).
+- A port keeps the **best scoring** of its tries that was named and not
+  wrong and scored at least the port's floor (7 by default, a constant a
+  port). A try that fails the pick or is wrong is dropped; its `notes`
+  are folded into the next drawing's prompt ("the last drawing was
+  turned down because: ...").
+- Everything a try produced (name, pick, score, wrong, notes) and the
+  kept source and render (JPEG, shrunk as the vistas are) are published
+  **a document a picture** under `days/{day}/ports/{game}{band}_{thing}`
+  when the day is published (a jelly band has up to five things, and
+  five sources and renders would pass a document's 1 MiB). The night
+  keeps no `tries` log today (`runStep` hands `pixelBand` an empty
+  drafts list and drops `makeJellies`' tries), so this log is built, not
+  extended: each port returns its tries and `themeday.ts` stages them
+  beside the picture. `server/firestore.rules` opens `days/{day}/ports/**`
+  to read as `days/{day}/turns/**` is (the `themes/**` staging stays
+  server only, so the day after tomorrow's theme is never readable), and
+  `tools/day_viewer/src/day.js` lists it as it lists the turns. The
+  phone never reads it. The rules deploy and the functions deploy are the
+  user's, as every deploy is.
+
+## The Yarn Hoop port (`hoop.ts`)
+
+- **Prompt** rewritten to the reference: a low-poly illustration of
+  about 150-250 flat facets **on every band**, each facet one colour, a
+  soft harmonious palette (muted, slightly desaturated, the reference's),
+  light from the top left with light, mid and shadow tones, crisp edges,
+  no outlines, no gradient inside a facet, no cast shadow (the game draws
+  its own under the hoop), nothing else. "Cute cozy style" goes; the
+  prompt says a face only when the thing is a creature (the theme writer
+  adds `creature: boolean` to `Thing`; until a theme has it, the port
+  asks the write model once a thing).
+- **The key colour is chosen a thing**: the port asks the write model,
+  from `thing.draw` (the thing with its colours), which of green, magenta
+  and cyan is farthest from the thing, and `KEY_WORDS` takes that colour.
+  The reader's board flood works from the edge's median already, so it
+  needs no change for the colour; `readHoop` gains a floor on the thing's
+  share of the picture (under 12% of the raster, or a thing split into
+  parts of which the biggest is under half, is `why`-refused before the
+  eye sees it).
+- **The picture is finer than the panels.** `readHoop` keeps the fine
+  regions it has before `join` brings them to the band's `most`, and
+  ships them: `facets: [{k: [pin indices or own points], c, p: panel}]`,
+  each fine facet tagged with the panel it ended in. The pins, the
+  panels and their counts are exactly today's. The fine facets' corners
+  are their own points in the square of 100 (they need not be pins), and
+  **the night clips each facet to its panel's outline** before shipping,
+  so a panel's facets tile the panel exactly. The phone's weld
+  (`HoopState.adopt_drawn` `weld`) moves a pin a few units at most on a
+  new day, since the night welds at the same spacing; a facet's spill of
+  under a unit past the welded outline lies under the panel's rope and
+  is accepted. A panel the weld drops hands its facets to the panel that
+  took its area.
+  Budget: about 250 facets a picture, the document stays well under
+  Firestore's limit (today's Insane hoop is ~6 KB; 250 facets of ~6
+  points at 2 decimals is ~12 KB).
+- **The render the eye sees** is the fine facets filled in their colours
+  over bare linen, pins not drawn.
+- **The phone**: `ThemedPictures.hoop()` checks `facets` (each `p` a
+  panel, points inside the square, 3+ corners) and `HoopState.adopt_drawn`
+  keeps them; `hoop2d.gd` `_knit_part(k)` builds a panel's knit from its
+  facets (each a fan of vertices in its own colour, the tile UVs as
+  today) instead of one flat colour, so Easy knits in as the reference
+  looks. A panel with no facets (a bank cut, or an old day) knits as
+  today. Draw calls do not change (the chunk mesh holds more vertices,
+  not more draws). The facet shade (`FACET`) stays off for drawn
+  pictures, as now.
+- **The viewer** draws `facets` when a hoop has them, panels otherwise.
+- Tries: up to 3 drawings a band, each reviewed once; the best kept.
+
+## The Gumdrop port (`jelly.ts`)
+
+- **Rules untouched**: flavours, mixed and chunks a band stay. (Easy in
+  two flavours cannot be the reference's glossy snail; the user decides
+  whether Easy's counts rise. Not in this design.)
+- **Sharper silhouettes**: the grown outline falls from 0.9 to 0.5 and
+  `SWELL` from 5 to 3 pixels; the sticker prompt asks for "a clean,
+  sharp, well-drawn silhouette with its true proportions" instead of
+  "chunky". **The 16-point outline cap stays** (`MOST_POINTS`, and
+  `gumdrop_mould.gd` `from_doc` refuses a shape over it): raising it
+  would have an unpatched phone refuse every new jelly and deal from the
+  bank until the APK is on the stores, so the day the functions deploy
+  Gumdrop would get worse. Raising it on both sides is offered to the
+  user with the counts question below.
+- **The render the eye sees** is the parts as soft shapes in the flavour
+  inks on the board's cream, drawn as the viewer draws them.
+- **The gummy finish goes on the card's picture** (`Art.picture`, the
+  flat flavour polygons that match the viewer's blob) and on the viewer
+  (an SVG filter: a highlight along the top-left edge, a darker rim, a
+  soft inner glow). Not on the tint: the user turned lighting on the
+  syrup down on 2026-10-11 and 2026-10-14 ("every fold a crease of
+  foil", "no light outline anywhere"), and the mould's gel is glossy
+  already (`Art.gloss_of`). The finish is still, so `Motion.reduce` has
+  nothing new to honour.
+- Tries: `DRAWINGS` as today (3, 3, 2, 2), each reviewed. **The written
+  fallback stays** (`makeJellies.one`'s Opus-written parts, up to
+  `TRIES` 2) and goes through the eye with no source, competing on score
+  with the drawings; it runs only when every drawing failed, as today, so
+  the step's budget is today's plus a review a try.
+
+## The Jewel Box port (`pictures.ts`)
+
+- `lookThing` becomes a call to the shared eye with `game: "pixel"`,
+  keeping its pick-among-decoys and adding the score and notes to
+  `Tried`. The drafts and sizes it keeps are chosen as today (the first
+  that passes), so nothing the user loves changes. Its source is the rows
+  themselves; no drawing is saved.
+
+## The day viewer (`tools/day_viewer`)
+
+- Each hoop and jelly card gains, below the game's render, the kept
+  source drawing (from `themes/{day}/pictures/...`), the score and the
+  reviewer's notes; a card whose picture fell back to the bank says so.
+- Hoop cards draw the fine facets.
+- Jelly cards wear the gummy finish.
+
+## Constraints
+
+- The night's steps are bounded: a hoop band is at most 3 drawings and
+  3 reviews, a jelly band at most `DRAWINGS[band]` x the band's things.
+  A review is a few seconds; a flash drawing ten to twenty. A step stays
+  inside its half hour.
+- Nothing night-side reaches a phone until the user deploys the
+  functions (`tools/deploy_functions.sh`, run by a person). The functions
+  were last deployed before the 2026-10-20 pin weld.
+- Local runs of the port use flash only, serially (`cli.ts`), with the
+  drawings kept in the scratchpad or `build/`.
+- The phone must keep reading old days and bank cuts: `facets` is
+  optional in the document.
+- No board name of the game each follows, anywhere.
+
+## Decided by me (the user may overturn)
+
+- The score floor 7 and "best of the tries" (rather than the first
+  that passes): quality over the night's minutes.
+- The key colour chosen among green, magenta and cyan by the write model.
+- The fine facets are shipped with their own corner points, not snapped
+  to pins.
+- Gumdrop's grow 0.5 and swell 3; the 16-point cap kept.
+- The gummy finish on the card's picture, not the tint.
+- The written jelly fallback kept and reviewed.
+- The port's tries, source and render published a document a picture
+  under `days/{day}/ports/`, readable as the turns are; the phone never
+  reads it.
+
+## Left to the builder
+
+- The exact rubric wording a port; the render size (448 px square as
+  `shown()`); the scan-fill.
+- How the shader estimates a normal for the gummy highlight.
+- Whether `creature` is asked of the theme writer's schema or inferred
+  a thing at port time (either is fine; the port must work for a theme
+  written before the field).
+- Test shape: the suite's parse guard and the existing hoop and jelly
+  probes (`tests/_probe_hoop.gd`) must pass with a `facets` document and
+  without one; a throwaway node check renders a known hoop document.
+
+## Open for the user
+
+1. Should Gumdrop's Easy and Medium colour and shape counts rise, and
+   the 16-point outline cap with them, so the jelly can carry more of the
+   thing? Both change the phone (`RULES`/`THEMED`, `from_doc`), so the
+   functions must deploy only once that APK is on the stores.
+2. Should the hoop's fine facets also be drawn under the **unfilled**
+   panels, faintly, as a hint of the picture, or stay hidden until a
+   panel knits in (as today)?
