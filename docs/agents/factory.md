@@ -1,7 +1,7 @@
 ## Factory, rewired (2026-10-20)
 
-**What stands.** One floor of 10 by 8 tiles seen corner on, as the land
-was (one plate on the pond; since 2026-10-21, below), full bleed under the
+**What stands.** One floor of 10 by 8 square tiles seen from above, drawn
+with the land's pieces (one plate on the pond; 2026-10-21, below), full bleed under the
 top bar, the pills and the robot chips: down column 0 an intake belt that
 queues grey squares (one a 10 ticks, six at most), up column 9 the
 deliver belt, and between them the stack of empty boxes, the pack table,
@@ -97,7 +97,46 @@ Events `factory_fix`, `factory_milestone`, `factory_part` beside
 `factory_enter` / `factory_leave` (`docs/agents/analytics.md`). Unheard,
 unfelt: no phone, no ear.
 
-**The view, corner on (2026-10-21).** The user, on the top-down build:
+**The view, top-down with the land's pieces (2026-10-21, second pass).**
+The user, on the corner-on build below: "now redesign it again to keep
+current visual elements, but make it topdown like the previous version".
+The corner-on view is overturned the same day it came in; its pieces
+stay. Spec section 3's second amendment:
+- **Projection**: `Art.at(t) = t * 104` (K 52), square tiles aligned with
+  the screen, +x right, +y down, the ground not foreshortened (`DEEP` 1,
+  `PLANE` for the old `ISO`); what stands rises up the screen a view unit
+  for a view unit of height through `_p` as before (a mild three-quarter
+  oblique: top and front show). Heights were kept as drawn, so the tile
+  size was chosen to keep a piece about as tall against its tile as it
+  stood corner on. The plate's earth shows on its front edge only
+  (`DEPTH` 80, the shore run from its bottom right corner to its bottom
+  left). `RISE` is a tile.
+- **By hand**, where a piece asked what looks at the eye by x + y: a
+  bend's outer edge and ends, a bridge's posts and edge, a box's squares
+  (back first by y), a wall's courses and the market's plank joints on its
+  +x side (seen edge on, dropped).
+- **No turn** (as at fcd4f5f9): `turn_view`, the Turn button,
+  `life.turn`/`set_turn` and the sheet's `set_turn` are gone; a Move's
+  arrow is → ↓ ← ↑ (`sheet.arrow_of`). The tutor's words are fcd4f5f9's
+  again ("Move ↓ 4", "vertical", "one tile above the table") and its ring
+  a round one.
+- **Calls**: robots drawn at 1.0 (1.15 corner on) and 0.36 of a tile
+  apart; stations 0.82 as big (kept), 24 view units toward the back of
+  their tile (was 16) and robots on a station's tile 22 forward (was 12),
+  so the engine shows over the robots charging in front of it; a belt is
+  drawn again over what stands on the tile above it (its raised bed is in
+  front of that thing's foot).
+- **Measured** (810x1440, `opengl3_angle`, one windowed run each):
+  `tests/_shot_factory.gd` 77 pass, 0 failed, the floor 27 to 28 draw
+  calls, the screen 90 to 92, the sheet open 85 to 95, the tutor's pages
+  29 to 45, the tutorial card over the screen 135;
+  `tests/_shot_factory_menu.gd` 0 failed, the Arcade page 147, the screen
+  85 (after the bay's spacing was widened; the shot run was before it).
+  Probe 119/0, suite 163137/0.
+
+**The view, corner on (2026-10-21, overturned the same day; its stations
+and new art stand, its projection and turn do not).** The user, on the
+top-down build:
 "factory redesign is wrong, it was suppose to use at most the elements
 factory already had on design, not recreate them all". The branch's
 top-down paper art was dropped and main's land view grafted back under
@@ -160,7 +199,7 @@ tutor's pages 14 to 31, the tutorial card over the screen 104.
 `tests/_shot_factory_menu.gd` 0 failed, the Arcade page 147, the screen
 69. Suite 163137/0.
 
-**Open.** The user's verdict on the corner-on graft; a phone; every sound
+**Open.** The user's verdict on the top-down re-projection; a phone; every sound
 heard by the user; pt and es read by a speaker; the Arcade line wraps to
 two lines in en; milestone 2's rows (Repeat, Second body, Big cell).
 

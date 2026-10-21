@@ -172,6 +172,22 @@ bubble, battery bar), the node sheet, the grey squares and the boxes, the
 last two corner on in the land's item style. Calls the builder made are in
 `docs/agents/factory.md`.
 
+**Amended again 2026-10-21 (the corner-on view is overturned the same
+day).** The user, on the corner-on build: "now redesign it again to keep
+current visual elements, but make it topdown like the previous version".
+So the grid is this section's own again: **square tiles aligned with the
+screen, +x right, +y down**, the 10 by 8 floor filling the screen, **no
+turn button**, and a Move's arrow on the sheet is → ↓ ← ↑ as the robot
+walks. **The corner-on pieces are kept** (the plate on the pond with its
+earth, the light, the shader belts with their bends, legs and bridge, the
+market's hatch and its sale, the engine and its flywheel, the tray, the
+box heap, the robots, squares, boxes, bubbles and bars), re-projected at
+the root: `Art.at(t) = t * 104` (a tile 104 view units, K 52), the ground
+not foreshortened, and what stands rising up the screen a view unit for a
+view unit of height (a mild three-quarter oblique: a piece shows its top
+and its front). The plate's earth shows on its front edge only. Everything
+above on the stations and the new art still stands.
+
 ## 4. Robots, parts, battery, bay
 
 A robot is `{name, dock, parts, nodes, next, pc, tile, held, charge, ...}`.
@@ -397,6 +413,9 @@ facing turned with the view through `Art.ISO`), and the sheet is redrawn
 on a turn; `turn` on the pill still turns the sim's facing a quarter. See
 section 3's amendment.
 
+**Amended again 2026-10-21.** The diagonal arrow is gone with the
+corner-on view: `arrow_of` is the facing itself, right, down, left or up.
+
 ## 11. What stays, what leaves
 
 `factory/sim.gd` keeps its shape (pure data, 10 Hz, `events`, `dirty`,
@@ -457,6 +476,12 @@ the robot, its face, bubbles and bar, the square, the box and the box heap.
 depth-sorted standing list) with the robots standing among the stations.
 The sheet (section 10) draws a Move's arrow on the screen diagonal at the
 view's turn.
+
+**Amended again 2026-10-21.** The amendment above is overturned where it
+keeps the turn: `turn_view`, the Turn button, `life.turn` and the sheet's
+turned arrows are gone; `factory/art.gd` keeps main's pieces under a
+top-down projection (`at`, `PLANE`, `_p`), as section 3's second amendment
+says.
 
 ## 12. Save
 

@@ -1,8 +1,8 @@
 extends "res://ui/menu/cards/card_face.gd"
 
 ## Factory's card: a morning over the floor's land (main's card's sky, its
-## green and its far rise), drawn with the floor's own pieces seen corner on
-## (factory/art.gd's meshes): the bay's engine at the back, one of the
+## green and its far rise), drawn with the floor's own pieces as the floor
+## projects them (factory/art.gd's meshes): the bay's engine at the back, one of the
 ## game's robots in the Picker's tint with its content face carrying a full
 ## box, and a run of belt with two grey squares riding it toward the go
 ## button, which stands where the belt ends, as the market does on the
@@ -10,9 +10,10 @@ extends "res://ui/menu/cards/card_face.gd"
 ## left, with the coins and the pace (set from outside) under it.
 ##
 ## The land of logs and trees it showed until 2026-10-20 went with the land;
-## the robots took its place, drawn top-down for a day and corner on again
-## since 2026-10-21 (the user: "use at most the elements factory already
-## had"). Factory had a tab of its own until the bottom bar left on
+## the robots took its place: in new top-down paper art on 2026-10-20, in
+## the land's pieces corner on and then on the top-down grid on 2026-10-21
+## (the user: "use at most the elements factory already had", then "keep
+## current visual elements, but make it topdown"). Factory had a tab of its own until the bottom bar left on
 ## 2026-10-13; this card took its place on the Arcade list. Everything is
 ## one mesh and nothing lives on it.
 
