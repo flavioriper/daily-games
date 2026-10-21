@@ -157,14 +157,64 @@ static func gloss_of(m: Dictionary, u: float) -> ArrayMesh:
 	return b.mesh()
 
 ## The card's picture: the jelly as it is wanted, every part its flavour,
-## the one underneath first.
+## the one underneath first, with the gummy finish the day viewer gives it
+## (2026-10-21, the user: "i loved the gumdrop with the gummy finish look,
+## would love if we could add the same view to the ingame"): a soft shadow
+## under it, a darker rim inside its outline, a sheen along the upper left
+## and a glint by it, lit from the upper left as the tray is. Only the
+## picture has it: the tint and the gel keep their own light. Still, and
+## all in the one mesh.
 static func picture(m: Dictionary, u: float) -> ArrayMesh:
 	var b := Face.Builder.new()
-	b.polygon(_moved(_scaled(m.rim, u), Vector2(0.6, 1.0) * u), Color(INK, 0.16))
+	var body := _scaled(m.outline, u)
+	b.polygon(_moved(body, Vector2(1.5, 2.5) * u), Color(0.35, 0.23, 0.16, 0.25))
 	b.polygon(_scaled(m.rim, u), Color("fffdf8"))
 	var want: Array = m.want
 	for c in m.cells.size():
 		b.polygon(_scaled(m.cells[c], u), FLAVOURS[int(want[c])])
+	# the dark rim: the band between the outline and its inner offset, twice,
+	# as a closed stroke down the band's middle as wide as the band
+	for d: Array in [[1.2, 0.18], [2.4, 0.1]]:
+		for mid: PackedVector2Array in Geometry2D.offset_polygon(body, -float(d[0]) * 0.5 * u, Geometry2D.JOIN_ROUND):
+			if mid.size() >= 3:
+				b.stroke(mid, float(d[0]) * u, Color(0.23, 0.1, 0.19, float(d[1])), true)
+	# the sheen: a stroke of the outline moved down and right, kept where it
+	# lies inside the jelly, which is along the upper left (a move up and
+	# left, as the gel's side light has, would keep the lower right here,
+	# the band being clipped to the inside rather than covered)
+	var lit := _moved(body, Vector2(0.9, 1.2) * u)
+	var half := 0.7 * u
+	var n := lit.size()
+	var edge := PackedVector2Array()
+	edge.resize(n * 2)
+	for i in n:
+		var t := (lit[(i + 1) % n] - lit[(i - 1 + n) % n]).normalized()
+		var nrm := Vector2(-t.y, t.x)
+		edge[i * 2] = lit[i] - nrm * half
+		edge[i * 2 + 1] = lit[i] + nrm * half
+	var soft := b.feather
+	b.feather = 0.0
+	for i in n:
+		var j := (i + 1) % n
+		var quad := PackedVector2Array([edge[i * 2], edge[j * 2], edge[j * 2 + 1], edge[i * 2 + 1]])
+		for piece: PackedVector2Array in Geometry2D.intersect_polygons(quad, body):
+			if piece.size() >= 3:
+				b.polygon(piece, Color(1, 1, 1, 0.28))
+	b.feather = soft
+	# the glint, placed as the gel's is (gloss_of)
+	var box := Rect2(body[0], Vector2.ZERO)
+	for q in body:
+		box = box.expand(q)
+	for k in 9:
+		var at := box.position + box.size * Vector2(0.24 + 0.07 * (k % 3), 0.2 + 0.09 * (k / 3))
+		var r := clampf(minf(box.size.x, box.size.y) * 0.1, 3.0 * u, 8.0 * u)
+		var fits := true
+		for dir: Vector2 in [Vector2(-1.6, 0), Vector2(1.6, 0), Vector2(0, -0.8), Vector2(0, 0.8)]:
+			fits = fits and Geometry2D.is_point_in_polygon(at + dir * r, body)
+		if fits:
+			b.ellipse(at + Vector2(-r * 0.4, -r * 0.1), r * 0.6, r * 0.28, Color(1, 1, 1, 0.35))
+			b.ellipse(at + Vector2(r * 1.5, r * 0.55), r * 0.22, r * 0.13, Color(1, 1, 1, 0.55))
+			break
 	return b.mesh()
 
 static func _scaled(p: PackedVector2Array, u: float) -> PackedVector2Array:
