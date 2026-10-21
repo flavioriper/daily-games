@@ -70,7 +70,7 @@ func _build_tab() -> void:
 	tab.minimum_size_changed.connect(_place_tab)
 
 func _on_banner_changed(visible_: bool, _height: float) -> void:
-	tab.visible = visible_
+	tab.visible = visible_ and Store.SELLING
 	_place_tab()
 	queue_redraw()
 
@@ -82,7 +82,7 @@ func _on_banner_changed(visible_: bool, _height: float) -> void:
 func _place_tab() -> void:
 	if tab == null:
 		return
-	var band := maxf(0.0, SafeArea.insets(self).y - Ads.TAB_H) if Ads.is_banner_visible() else 0.0
+	var band := maxf(0.0, SafeArea.insets(self).y - Ads.tab_height()) if Ads.is_banner_visible() else 0.0
 	var w := tab.get_combined_minimum_size().x
 	tab.offset_left = -w * 0.5
 	tab.offset_right = w * 0.5

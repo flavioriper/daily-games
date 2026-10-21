@@ -169,6 +169,8 @@ func _pack_buttons() -> void:
 			on = with_new
 		elif b == reset_button:
 			on = with_reset
+		elif b == ads_button:
+			on = Store.SELLING
 		elif b == privacy_button:
 			on = _privacy
 		if b.get_parent() != null:

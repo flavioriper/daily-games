@@ -153,3 +153,13 @@ stated before the 3D game left.
   disabled, reading "Ads removed". `price_text()` is empty until the store
   answers, so nothing shows a price until a real product exists in Play
   Console or App Store Connect.
+- **Nothing is sold since 2026-10-21** (the user: "let's remove the purchase
+  feature for now since the ads is only covering optional rewarded ads and
+  the bottom one"; it lets iOS ship without the Paid Apps agreement, which
+  waits on a bank account). `Store.SELLING` is false: the banner tab, the
+  header icon and the settings row are gone, and `Ads.tab_height()` is 0, so
+  the banner no longer reserves the tab's 56 px. The sheet, `Store` and
+  `godot-iap` stay in the build untouched, and the launch check still runs,
+  so anyone who bought on Play keeps the banner off. The `remove_ads` IAP
+  in App Store Connect must not be attached to an App Store submission while
+  this holds. `SELLING = true` brings all three doors back.

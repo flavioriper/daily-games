@@ -11,7 +11,7 @@ extends RefCounted
 
 static func insets(control: Control) -> Vector2:
 	var fake := Ads.fake_height() if Ads != null else 0.0
-	var tab := Ads.TAB_H if Ads != null and Ads.is_banner_visible() else 0.0
+	var tab := Ads.tab_height() if Ads != null and Ads.is_banner_visible() else 0.0
 	if not OS.has_feature("mobile"):
 		return Vector2(0.0, fake + tab)
 	var win := DisplayServer.window_get_size()

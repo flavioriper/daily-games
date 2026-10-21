@@ -17,6 +17,12 @@ signal busy_changed(busy: bool)
 
 const Analytics = preload("res://core/analytics.gd")
 const PRODUCT := "remove_ads"
+## False while nothing is sold (the user, 2026-10-21: "let's remove the
+## purchase feature for now", so iOS ships without the Paid Apps
+## agreement): the banner tab, the header icon and the settings row are
+## gone. The launch check still runs, so a player who bought on Play keeps
+## their ads removed. True brings all three doors back.
+const SELLING := false
 const TYPES_PATH := "res://addons/godot-iap/types.gd"
 static var save_path := "user://store.cfg"
 

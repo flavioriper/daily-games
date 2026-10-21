@@ -479,3 +479,7 @@ func _fake_show(kind: String, then: Callable) -> void:
 	get_tree().create_timer(1.5).timeout.connect(func() -> void:
 		layer.queue_free()
 		then.call(_fake_full != "skip"))
+
+## The tab's height, or nothing while the store sells nothing (Store.SELLING).
+func tab_height() -> float:
+	return TAB_H if Store.SELLING else 0.0

@@ -160,8 +160,8 @@ func _build() -> void:
 	no_ads.offset_right = -BUTTON.x * 3.0 - BUTTON_GAP * 3.0
 	no_ads.offset_bottom = BUTTON.y
 	no_ads.pressed.connect(func() -> void: remove_ads.emit())
-	no_ads.visible = not Store.owns_remove_ads()
-	Store.owned_changed.connect(func(owned: bool) -> void: no_ads.visible = not owned)
+	no_ads.visible = Store.SELLING and not Store.owns_remove_ads()
+	Store.owned_changed.connect(func(owned: bool) -> void: no_ads.visible = Store.SELLING and not owned)
 
 	# --- the lettering ---
 	_title_block = VBoxContainer.new()
