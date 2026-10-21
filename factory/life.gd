@@ -1,10 +1,12 @@
 extends RefCounted
 
 ## What is seen of Factory's floor, for whoever shows it (the screen, the
-## tab's card, the tutorial's pages): the land's view of it, corner on, as
-## the land was drawn until 2026-10-20 and again since 2026-10-21 (the user:
-## "factory redesign is wrong, it was suppose to use at most the elements
-## factory already had on design"). One plate on the pond, the two belts of
+## tab's card, the tutorial's pages): the land's pieces (the user,
+## 2026-10-21: "factory redesign is wrong, it was suppose to use at most the
+## elements factory already had on design"), on the square top-down grid
+## (the user, the same day: "keep current visual elements, but make it
+## topdown like the previous version"; factory/art.gd's `at`). One plate on
+## the pond, the two belts of
 ## its own (the intake's down column 0, the deliver belt up column 9), the
 ## belts the player lays and what rides them, the stations as the land's own
 ## pieces (the bay is the engine, the deliver pad the market's hatch, the
@@ -30,13 +32,9 @@ extends RefCounted
 ## bridge's deck, and a belt right in front of something standing drawn
 ## again over it), the air (charge bars and bubbles, a Batch each).
 ##
-## - **The view turns by quarters** (`turn`, 2026-10-10: "add a button to
-##   rotate the view"). The sim's tiles never change; only where a tile is
-##   seen does. **Everything that places or reads a position goes through
-##   `seen(t)` and `tile_at(v)`** (and `seen_tile`, `seen_facing`, `depth`
-##   on the same turn): never `Art.at` on a sim coordinate. The market and
-##   the engine have one face and keep it toward the eye at every turn; the
-##   plate's washes are its own and do not turn.
+## - **Everything that places or reads a position goes through `seen(t)`
+##   and `tile_at(v)`** (and `depth`). There is no turn: on a square floor
+##   a Move's arrow on the sheet is the way a robot walks on screen.
 ## - **A robot stands where `Bots.pos` has it** (`robot_pos`), sliding
 ##   between tiles by the sim's `alpha`, lifted onto a belt's bed when it
 ##   walks over one. Robots share tiles freely, so the ones on one tile
@@ -83,17 +81,17 @@ const PILE_UP := 20.0
 ## Robots on one tile: how far apart (tiles across the screen), how big by
 ## how many share it, and how fast they ease to their seats (a rate a
 ## second); on a station's tile they stand SEAT_FORE nearer the eye.
-const SPREAD := 0.34
+const SPREAD := 0.36
 const SHARED := [1.0, 0.88, 0.76]
 const SEAT_RATE := 12.0
-const SEAT_FORE := Vector2(0.0, 12.0)
+const SEAT_FORE := Vector2(0.0, 22.0)
 ## A station's piece is drawn STATION_K as big and STATION_BACK toward the
 ## back of its tile, so a robot standing on the tile stands in front of it.
 const STATION_K := 0.82
-const STATION_BACK := Vector2(0.0, -16.0)
-## A robot is drawn this much bigger than the art's own measures (its
+const STATION_BACK := Vector2(0.0, -24.0)
+## A robot is drawn this much as big as the art's own measures (its
 ## bubble and its bar with it), to read on a phone.
-const ROBOT_SIZE := 1.15
+const ROBOT_SIZE := 1.0
 ## How high a walking robot bobs (view units), and a bubble's pop (seconds).
 const BOB := 4.0
 const POP := 0.2
@@ -125,9 +123,6 @@ const WHEEL_TURNS := 0.5
 ## The floor, in view units: the holder's to place and scale.
 var world: Node2D
 var sim: RefCounted
-## Quarters the view is turned clockwise, 0 to 3: set by `set_turn`. A view
-## preference of the holder's, never the sim's and never kept.
-var turn := 0
 ## The holder's own flat things, over the belts and under what stands:
 ## [mesh, transform] each, and a tint if there is a third (the run of belts
 ## a swipe would lay).
@@ -233,60 +228,24 @@ func stale() -> void:
 	if _ground_l != null:
 		_ground_l.queue_redraw()
 
-# --- the turn: where a tile is seen ---
-
-## A point of tile space turned `q` quarters about the origin: a quarter
-## takes (x, y) to (-y, x), so +x (down the screen and right) becomes +y
-## (down and left) and the floor goes round clockwise under the eye.
-static func _spin(t: Vector2, q: int) -> Vector2:
-	match posmod(q, 4):
-		1:
-			return Vector2(-t.y, t.x)
-		2:
-			return -t
-		3:
-			return Vector2(t.y, -t.x)
-	return t
+# --- where a tile is seen ---
 
 ## A point of the sim's tile space (a tile's middle is tile + (0.5, 0.5)),
-## in view units, as the view is turned now. THE way from the sim to the eye.
+## in view units. THE way from the sim to the eye.
 func seen(t: Vector2) -> Vector2:
-	return Art.at(_spin(t, turn))
+	return Art.at(t)
 
 ## The point of the sim's tile space under a point of the view: the way back.
 func tile_at(v: Vector2) -> Vector2:
-	return _spin(Art.tile_at(v), -turn)
-
-## The tile of the art's grid a sim tile is drawn on (its lowest corner).
-func seen_tile(tile: Vector2i) -> Vector2i:
-	return Vector2i(_spin(Vector2(tile) + MID, turn).floor())
-
-## The facing a sim facing is drawn at.
-func seen_facing(facing: int) -> int:
-	return posmod(facing + turn, 4)
+	return Art.tile_at(v)
 
 ## What a point of the sim's tile space is sorted by, back to front.
 func depth(t: Vector2) -> float:
-	return Art.depth(_spin(t, turn))
+	return Art.depth(t)
 
-## Turns the view to `quarters`; everything is laid out again.
-func set_turn(quarters: int) -> void:
-	turn = posmod(quarters, 4)
-	stale()
-
-## The floor's box in the art's tile space as the view is turned: its back
-## corner and its size (10 by 8, or 8 by 10 a quarter round).
-func seen_rect() -> Rect2:
-	var a := _spin(Vector2.ZERO, turn)
-	var b := _spin(Vector2(Sim.COLS, Sim.ROWS), turn)
-	return Rect2(Vector2(minf(a.x, b.x), minf(a.y, b.y)), (b - a).abs())
-
-## The floor's box in view units: its diamond and the earth under it.
+## The floor's box in view units: its plate and the earth under its front.
 func bounds() -> Rect2:
-	var r := seen_rect()
-	var box := Rect2(Art.at(r.position), Vector2.ZERO)
-	for c: Vector2 in [Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)]:
-		box = box.expand(Art.at(c))
+	var box := Rect2(Art.at(Vector2.ZERO), Art.at(Vector2(Sim.COLS, Sim.ROWS)))
 	box.size.y += Art.DEPTH
 	return box
 
@@ -436,13 +395,13 @@ func _lay_belts() -> void:
 		var tile: Vector2i = row[0]
 		var bend: int = row[2]
 		var quick: bool = row[3]
-		var vf := seen_facing(int(row[1]))
+		var vf := int(row[1])
 		var key: Variant = "s"
 		if bend != 0:
 			if sim.belts.has(tile):
 				_shapes[tile] = bend
 			key = Art.DIRS[vf] + Art.DIRS[(vf + (1 if bend == 1 else 3)) % 4]
-		var bed := lift * Art.flat(Vector2(seen_tile(tile)), vf)
+		var bed := lift * Art.flat(Vector2(tile), vf)
 		((fast if quick else beds)[bend] as Array).append(bed)
 		if not unders.has(key):
 			unders[key] = []
@@ -626,7 +585,7 @@ func _fill_stand() -> void:
 			continue
 		# its deck over what rides under it, and on the deck what crosses
 		var d := depth(Vector2(tile) + MID)
-		list.append([d, PLAIN, Art.bridge(seen_facing(int(sim.belts[tile]))), Transform2D(0.0, mid(tile)), white])
+		list.append([d, PLAIN, Art.bridge(int(sim.belts[tile])), Transform2D(0.0, mid(tile)), white])
 		if sim.over.has(tile):
 			var lane: Dictionary = sim.over[tile]
 			var riders: Array = (lane.items as Array).duplicate()
@@ -664,7 +623,7 @@ func _add_stations(list: Array, stood: Dictionary) -> void:
 	var white := Color.WHITE
 	var size := Vector2(STATION_K, STATION_K)
 	for kind: String in Sim.STATIONS:
-		stood[seen_tile(Sim.STATIONS[kind])] = true
+		stood[Sim.STATIONS[kind] as Vector2i] = true
 	# the bay: the engine, its wheel turning while a robot charges on it
 	var bay := Sim.STATIONS.charger as Vector2i
 	var d := depth(Vector2(bay) + MID) - 0.3
@@ -736,18 +695,17 @@ func _add_robot(list: Array, i: int, stood: Dictionary) -> void:
 	list.append([d + 0.0002, PLAIN, Art.face(stuck if FACES.has(stuck) else ""), xf, Color.WHITE])
 	if not (b.held as Dictionary).is_empty():
 		list.append([d + 0.0004, PLAIN, Art.item(b.held, false), xf * Transform2D(0.0, Vector2(Art.HELD_SCALE, Art.HELD_SCALE), 0.0, Art.HELD_AT), Color.WHITE])
-	stood[seen_tile(b.tile)] = true
-	stood[seen_tile(b.was)] = true
+	stood[b.tile as Vector2i] = true
+	stood[b.was as Vector2i] = true
 
-## The belts right in front of anything in `stood` (on the art's grid: the
-## tile to its +x, its +y or both), drawn again among what stands with what
-## rides them; each once.
+## The belts right in front of anything in `stood` (the tile under it on
+## the screen, +y: its bed stands over the foot of what is behind it),
+## drawn again among what stands with what rides them; each once.
 func _add_fronts(list: Array, stood: Dictionary) -> void:
 	var white := Color.WHITE
 	var again := {}
 	for tile: Vector2i in _bed_of:
-		var st := seen_tile(tile)
-		if not (stood.has(st + Vector2i(-1, 0)) or stood.has(st + Vector2i(0, -1)) or stood.has(st + Vector2i(-1, -1))):
+		if not stood.has(tile + Vector2i(0, -1)):
 			continue
 		var fr: Array = _bed_of[tile]
 		var d := depth(Vector2(tile) + MID)
@@ -766,10 +724,9 @@ func _add_fronts(list: Array, stood: Dictionary) -> void:
 
 # --- drawing ---
 
-## The one plate, on the floor's box as the view is turned.
+## The one plate, the floor's 10 by 8.
 func _draw_ground(ci: CanvasItem) -> void:
-	var r := seen_rect()
-	ci.draw_mesh(Art.plate("neutral", 0, 0, int(r.size.x), int(r.size.y)), null, Transform2D(0.0, Art.at(r.position)))
+	ci.draw_mesh(Art.plate("neutral", 0, 0, Sim.COLS, Sim.ROWS), null, Transform2D(0.0, Art.at(Vector2.ZERO)))
 
 func _draw_under(ci: CanvasItem) -> void:
 	for key: Variant in _under_mms:

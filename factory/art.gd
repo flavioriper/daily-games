@@ -2,7 +2,7 @@ extends RefCounted
 
 ## Factory's drawings: the land's painted pieces (the plate on the pond, its
 ## shore and washes, the belts, the market's hatch, the engine, the tray),
-## seen corner on, and the robot floor's own few (the robot, its face, its
+## (seen corner on until 2026-10-21, top-down since), and the robot floor's own few (the robot, its face, its
 ## bubbles and its charge, the grey square, the box, the heap of boxes). It
 ## began as the Grove's art (valley/grove_art.gd) on 2026-10-10 and drew the
 ## land of plates, trees and machines; on 2026-10-20 the floor of robots
@@ -15,20 +15,25 @@ extends RefCounted
 ## budget). Nothing here knows the sim: a tile is a Vector2i, a kind a
 ## String.
 ##
-## THE TILE GRID. A point of tile space `t` (a tile's centre is tile +
-## (0.5, 0.5)) is seen at `at(t)`, in view units: +x runs down and right, +y
-## down and left, so the floor's tile (0, 0) corner is its back corner.
-##   K, DEEP             65 view units to half a tile's width, 0.66 as deep.
-##                       TILE is a tile's box, 130 by 85.8.
+## THE TILE GRID (since the second pass of 2026-10-21: the user, on the
+## corner-on build, "keep current visual elements, but make it topdown like
+## the previous version"). A point of tile space `t` (a tile's centre is
+## tile + (0.5, 0.5)) is seen at `at(t)`, in view units: square tiles, +x
+## right, +y down, the floor's tile (0, 0) corner its top left. What stands
+## rises up the screen a view unit for a view unit of height (`_p`), so a
+## piece shows its top and its front and keeps the land's look.
+##   K, DEEP             52 view units to half a tile's width; the ground
+##                       not foreshortened (1). TILE is a tile, 104 square.
 ##   at(t), tile_at(v)   tile space to view units and back (floor it for the
-##                       tile). ISO is at() as a Transform2D.
+##                       tile). PLANE is at() as a Transform2D.
 ##   flat(tile, facing)  the transform that lays a unit-square mesh (belt,
 ##                       ghost) on `tile`, turned to DIRS[facing].
 ##   DIRS                [+x, +y, -x, -y] as Vector2i; a facing is its index.
 ##   depth(t)            what to sort by, back to front (t.x + t.y).
 ##   RISE                view units a tile's length stands tall.
 ##
-## THE GROUND. Draw order: water (fixed to the screen), the plate, flat
+## THE GROUND. Draw order: water (fixed to the screen), the plate (its
+## earth on its front edge only), flat
 ## things (belts, ghosts), what lies, then what stands, sorted by depth(),
 ## then the air (bars, bubbles), then light. A layer that pans and zooms must
 ## be given a box of its own (RenderingServer.canvas_item_set_custom_rect):
@@ -61,7 +66,7 @@ extends RefCounted
 ## THINGS, in view units, origin where they rest on the ground, a soft
 ## shadow in each.
 ##   square(shade), box(n, shade)  a grey square and a box of card seen
-##                       corner on, about 42 and 50 across, the box holding
+##                       in the land's item style, about 33 and 40 across, the box holding
 ##                       `n` squares (0..4); `shade` false for one in a hand.
 ##   item(it)            the mesh for a sim item: a square or a box of its n.
 ##   stack()             the box stack: empty boxes heaped as `HEAP` heaped
@@ -150,20 +155,26 @@ const GROUND := {
 	"neutral": {"grass": Color("f1eee7"), "lit": Color("ffffff"), "deep": Color("cfcac0"), "warm": Color("fffaf0"), "cool": Color("dde0e2"),
 		"lip": Color("c4bfb4"), "lip_lit": Color("e4e0d7")},
 }
-## How the floor is seen: half a tile's width in view units, and how deep
-## the ground is seen for its width.
-const K := 65.0
-const DEEP := 0.66
-const TILE := Vector2(K * 2.0, K * 2.0 * DEEP)
-const ISO := Transform2D(Vector2(K, K * DEEP), Vector2(-K, K * DEEP), Vector2.ZERO)
+## How the floor is seen (2026-10-21, the second pass): square tiles aligned
+## with the screen, +x right and +y down, seen from straight above with what
+## stands rising up the screen, a view unit up for a view unit of height
+## (a mild three-quarter oblique: a thing shows its top and its front, the
+## side looking down the screen, and nothing of its other sides). K is half
+## a tile, 52 view units, so a tile is 104 across: the land's pieces keep
+## the heights they were drawn with (a robot 58 up, a belt's bed 20) and
+## stand about as tall against a tile as they did corner on. DEEP is how
+## deep the ground is seen for its width: 1, the ground is not foreshortened
+## (it was 0.66 corner on). PLANE is at() as a Transform2D.
+const K := 52.0
+const DEEP := 1.0
+const TILE := Vector2(K * 2.0, K * 2.0)
+const PLANE := Transform2D(Vector2(K * 2.0, 0.0), Vector2(0.0, K * 2.0), Vector2.ZERO)
 const DIRS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)]
-## A tile's length standing up, in view units: the eye is 41 degrees over
-## the ground (asin DEEP), so what stands is seen cos of that as tall.
-const RISE := 69.0
-## The earth showing over the water, and how far along each side a corner
-## of the land is rounded off, in tiles: a third of one, so a corner tile
-## still stands on land (the Grove's 96 view units took nearly two).
-const DEPTH := 116.0
+## A tile's length standing up, in view units: as long as it lies.
+const RISE := K * 2.0
+## The earth showing over the water on the floor's front edge, and how far
+## along each side a corner of the land is rounded off, in tiles.
+const DEPTH := 80.0
 const ROUND := 0.34
 ## The side a walk round a plate leaves each corner by, clockwise from the
 ## back corner: back to right is the -y side, right to front the +x.
@@ -218,17 +229,15 @@ static var _fast_mat: ShaderMaterial
 
 ## A point of tile space, in view units.
 static func at(t: Vector2) -> Vector2:
-	return Vector2((t.x - t.y) * K, (t.x + t.y) * K * DEEP)
+	return t * (K * 2.0)
 
 ## The point of tile space under a point of the view.
 static func tile_at(v: Vector2) -> Vector2:
-	var across := v.x / K
-	var deep := v.y / (K * DEEP)
-	return Vector2((deep + across) * 0.5, (deep - across) * 0.5)
+	return v / (K * 2.0)
 
-## What to sort by so the back is drawn first.
+## What to sort by so the back (the top of the screen) is drawn first.
 static func depth(t: Vector2) -> float:
-	return t.x + t.y
+	return t.y + t.x * 0.001
 
 ## Lays a mesh drawn in tile space on the ground: its (0, 0)..(1, 1) on the
 ## tile at `tile`, turned about the tile's middle so its +x runs toward
@@ -236,7 +245,7 @@ static func depth(t: Vector2) -> float:
 static func flat(tile: Vector2, facing := 0) -> Transform2D:
 	var x := Vector2(DIRS[posmod(facing, 4)])
 	var y := Vector2(DIRS[posmod(facing + 1, 4)])
-	return ISO * Transform2D(x, y, tile + Vector2(0.5, 0.5) - (x + y) * 0.5)
+	return PLANE * Transform2D(x, y, tile + Vector2(0.5, 0.5) - (x + y) * 0.5)
 
 ## A patch of soft colour: `alpha` at its middle, nothing at its edge.
 static func _glow(b: Face.Builder, c: Vector2, rx: float, ry: float, colour: Color, alpha: float) -> void:
@@ -369,7 +378,7 @@ static func _rim(sides: int, size: Vector2i) -> Array:
 
 ## A point of a plate's ground at least `inside` view units from its edge.
 static func _on_plate(rng: RandomNumberGenerator, inside: float, size: Vector2i) -> Vector2:
-	var m := clampf(inside / (K * sqrt(2.0)), 0.1, minf(size.x, size.y) * 0.45)
+	var m := clampf(inside / (K * 2.0), 0.1, minf(size.x, size.y) * 0.45)
 	return at(Vector2(rng.randf_range(m, size.x - m), rng.randf_range(m, size.y - m)))
 
 static func _plate_into(b: Face.Builder, kind: String, sides: int, variant: int, size: Vector2i) -> void:
@@ -386,14 +395,15 @@ static func _plate_into(b: Face.Builder, kind: String, sides: int, variant: int,
 	edge_rng.seed = 20261005 + sides * 31 + variant * 977 + kind.length()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 20261010 + variant * 7919 + kind.length() * 131
-	# the front of the land, from its right corner round to its left, in runs
-	# of free shore: where a plate is joined there is no earth to show
+	# the front of the land, its foot seen from above: from its bottom right
+	# corner along to its bottom left, in runs of free shore (where a plate is
+	# joined there is no earth to show)
 	var hi := 0
 	var lo := 0
 	for i in n:
-		if pts[i].x > pts[hi].x:
+		if pts[i].x + pts[i].y > pts[hi].x + pts[hi].y:
 			hi = i
-		if pts[i].x < pts[lo].x:
+		if pts[i].y - pts[i].x > pts[lo].y - pts[lo].x:
 			lo = i
 	var runs: Array[PackedInt32Array] = []
 	var cur := PackedInt32Array()
@@ -625,7 +635,7 @@ static func heap_of(n: int) -> int:
 # The only drawings that are not the land's: the grey square, the box, the
 # robot with its face, bubbles and charge (the user, 2026-10-21: new art
 # "only for the robot, the node sheet, the grey squares and the boxes").
-# Squares and boxes are seen corner on in the style of the land's items:
+# Squares and boxes are drawn in the style of the land's items:
 # standing on (0, 0), about 42 across, a soft shadow in the mesh.
 
 ## A grey square and a box of card, their tones.
@@ -676,17 +686,17 @@ const BODY_R := 0.28
 const BODY_FOOT := 10.0
 const BODY_TOP := 58.0
 const LAMP_UP := 74.0
-const FACE_AT := Vector2(0.0, -25.0)
+const FACE_AT := Vector2(0.0, -6.0)
 const FACE_R := 16.0
 const BAR_W := 56.0
 const BAR_H := 10.0
-const BAR_AT := Vector2(0.0, -94.0)
-const BUBBLE_AT := Vector2(0.0, -104.0)
-const HELD_AT := Vector2(30.0, -12.0)
+const BAR_AT := Vector2(0.0, -100.0)
+const BUBBLE_AT := Vector2(0.0, -110.0)
+const HELD_AT := Vector2(32.0, -6.0)
 const HELD_SCALE := 0.7
 
 ## A grey square standing on (0, 0): a small block, lit on its top and on
-## the side that looks down and left. `shade` lays its shadow under it (not
+## the side that looks down the screen. `shade` lays its shadow under it (not
 ## for one in a hand).
 static func square(shade := true) -> ArrayMesh:
 	var key := "square%d" % int(shade)
@@ -734,7 +744,7 @@ static func box(n: int, shade := true) -> ArrayMesh:
 		var seats: Array[Vector2] = []
 		for i in n:
 			seats.append(IN_AT[i])
-		seats.sort_custom(func(p: Vector2, q: Vector2) -> bool: return p.x + p.y < q.x + q.y)
+		seats.sort_custom(func(p: Vector2, q: Vector2) -> bool: return p.y < q.y)
 		for c: Vector2 in seats:
 			_square_into(b, c, IN_HALF, IN_SEAT, IN_SEAT + IN_TALL)
 		# its two near walls over them, a fold down each corner and the lit rim
@@ -1072,7 +1082,7 @@ static func belt_under_bend(corner: Vector2i) -> ArrayMesh:
 			var a0 := from + PI * 0.5 * i / n
 			var a1 := from + PI * 0.5 * (i + 1) / n
 			var mid := Vector2(cos((a0 + a1) * 0.5), sin((a0 + a1) * 0.5))
-			if mid.x + mid.y <= 0.02:
+			if mid.y <= 0.02:
 				continue
 			var p0 := c + Vector2(cos(a0), sin(a0)) * 0.95
 			var p1 := c + Vector2(cos(a1), sin(a1)) * 0.95
@@ -1083,7 +1093,7 @@ static func belt_under_bend(corner: Vector2i) -> ArrayMesh:
 			var a := from + PI * 0.5 * k
 			var d := Vector2(cos(a), sin(a))
 			var out := (Vector2(corner) - d * Vector2(corner).dot(d)).sign()
-			if out.x + out.y > 0.0:
+			if out.y > 0.0:
 				b.polygon(PackedVector2Array([_p(c + d * 0.05, top), _p(c + d * 0.95, top), _p(c + d * 0.95, foot), _p(c + d * 0.05, foot)]),
 					lit if out.y > 0.0 else dark)
 		_under_bends[corner] = b.mesh()
@@ -1152,7 +1162,7 @@ static func bridge(facing: int) -> ArrayMesh:
 	for i: float in [-1.0, 1.0]:
 		for j: float in [-1.0, 1.0]:
 			posts.append(s * 0.2 * i + a * 0.44 * j)
-	posts.sort_custom(func(p: Vector2, q: Vector2) -> bool: return p.x + p.y < q.x + q.y)
+	posts.sort_custom(func(p: Vector2, q: Vector2) -> bool: return p.y < q.y)
 	for p: Vector2 in posts.slice(0, 2):
 		_block(b, p, Vector2(0.045, 0.045), 0.0, top - 4.0, wood)
 	# the deck in five stretches, each a quad, lit where it is level
@@ -1165,7 +1175,7 @@ static func bridge(facing: int) -> ArrayMesh:
 		var tone := Color("f3deb4") if k == 2 else (Color("d9bb86") if (s.x + s.y) * (k - 2) < 0 else Color("e8cf9e"))
 		b.polygon(PackedVector2Array([_p(s * t0 - a * w, h0), _p(s * t1 - a * w, h1), _p(s * t1 + a * w, h1), _p(s * t0 + a * w, h0)]), tone)
 		# its edge toward the eye, a board thick
-		var e := a * w * (1.0 if a.x + a.y > 0.0 else -1.0)
+		var e := a * w * (1.0 if a.y >= 0.0 else -1.0)
 		b.polygon(PackedVector2Array([_p(s * t0 + e, h0), _p(s * t1 + e, h1), _p(s * t1 + e, h1 - 9.0), _p(s * t0 + e, h0 - 9.0)]), PLANK_DEEP.darkened(0.08))
 	for k in 9:
 		var t := -0.44 + 0.11 * k
@@ -1209,8 +1219,9 @@ static func _ground_shade(b: Face.Builder, blocks: Array) -> void:
 	b.polygon(hull, CAST)
 
 ## A block standing on the ground about `c`, `half` its size (tiles), from
-## `z0` up to `z1`: the two sides the eye sees, the one looking down and left
-## in the sun and the one looking down and right in shade, and its top.
+## `z0` up to `z1`: its front (the side looking down the screen, in the
+## sun), its +x side (in shade; seen edge on from above, so nothing of it
+## shows top-down) and its top.
 ## `tones`: [top, lit, shaded].
 static func _block(b: Face.Builder, c: Vector2, half: Vector2, z0: float, z1: float, tones: Array) -> void:
 	var x0 := c.x - half.x
@@ -1243,12 +1254,11 @@ static func _courses(b: Face.Builder, a0: Vector2, a1: Vector2, z0: float, z1: f
 static func _wall(b: Face.Builder, c: Vector2, half: Vector2, z0: float, z1: float, tones: Array, rows: int, joint: Color, brick := 15.0) -> void:
 	_block(b, c, half, z0, z1, tones)
 	_courses(b, c + Vector2(-half.x, half.y), c + half, z0, z1, rows, joint, brick)
-	_courses(b, c + half, c + Vector2(half.x, -half.y), z0, z1, rows, Color(joint, joint.a * 1.3), brick)
 
 ## Points of a circle of `r` tiles lying `z` up about `c`, by the angle on
 ## the screen: 0 its right, a quarter turn its front.
 static func _round(c: Vector2, r: float, z: float, from := 0.0, to := TAU, n := 22) -> PackedVector2Array:
-	var rx := r * K * sqrt(2.0)
+	var rx := r * K * 2.0
 	var o := _p(c, z)
 	var pts := PackedVector2Array()
 	pts.resize(n + 1)
@@ -1291,7 +1301,7 @@ static func _tray(b: Face.Builder, c: Vector2, d: Vector2, along := 0.15, across
 
 ## The engine, 1 by 1, the origin the middle of its tile on the ground: a
 ## vertical boiler of riveted iron on a brick foot, a short stack on it, and
-## on the side that looks down and left the bearing its flywheel turns on
+## on its front the bearing its flywheel turns on
 ## (ENGINE_WHEEL is the hub: draw `wheel()` there under `on_wall`). It has
 ## no facing. The land's engine; the floor's charging bay since 2026-10-21,
 ## its wheel turning while a robot charges.
@@ -1315,7 +1325,7 @@ static func engine() -> ArrayMesh:
 		var lid := _round(Vector2(-0.05, -0.05), 0.25, 72.0)
 		lid.remove_at(lid.size() - 1)
 		b.fan(lid, IRON_LIT)
-		b.ellipse(_p(Vector2(-0.05, -0.05), 76.0), 0.2 * K * sqrt(2.0), 0.2 * K * sqrt(2.0) * DEEP * 0.9, IRON_LIT.lightened(0.1))
+		b.ellipse(_p(Vector2(-0.05, -0.05), 76.0), 0.4 * K, 0.4 * K * 0.9, IRON_LIT.lightened(0.1))
 		_drum(b, Vector2(-0.1, -0.1), 0.07, 74.0, 100.0, [HOLLOW, IRON_LIT, IRON, IRON_SHADE])
 		b.stroke(_round(Vector2(-0.1, -0.1), 0.09, 97.0, 0.0, PI, 10), 3.0, IRON_SHADE, false, false)
 		# a gauge on its lit side
@@ -1374,9 +1384,9 @@ static func wheel(toothed := false) -> ArrayMesh:
 ## The transform that stands `wheel()` on the land: its hub at `hub` (view
 ## units), `r` tiles across its half, turned by `angle`, in the upright plane
 ## that runs along the tile axis `axis` (0: +x, down the screen and right;
-## 1: +y, down and left).
+## 1: +y, seen edge on top-down).
 static func on_wall(hub: Vector2, r: float, angle: float, axis: int) -> Transform2D:
-	var along := Vector2(K, K * DEEP) if axis % 2 == 0 else Vector2(-K, K * DEEP)
+	var along := PLANE.x if axis % 2 == 0 else PLANE.y
 	return Transform2D(along * r / WHEEL, Vector2(0.0, -RISE * r / WHEEL), hub) * Transform2D(angle, Vector2.ZERO)
 
 ## How many looks a thing that has levels has, and the look of a level: a
@@ -1482,7 +1492,6 @@ static func _market_near(b: Face.Builder, tier := 1) -> void:
 		for f: float in [0.25, 0.5, 0.75]:
 			var u := lerpf(-o, o, f)
 			b.stroke(PackedVector2Array([_p(Vector2(u, o), 2.0), _p(Vector2(u, o), MARKET_TALL - 3.0)]), 1.6, Color(PLANK_DEEP, 0.6), false, false)
-			b.stroke(PackedVector2Array([_p(Vector2(o, u), 2.0), _p(Vector2(o, u), MARKET_TALL - 3.0)]), 1.6, Color(PLANK_DEEP.darkened(0.2), 0.6), false, false)
 	# the coin on the wall in the sun, lying in the wall's own plane; at the
 	# last look on a plate of brass
 	var along := at(Vector2(1.0, 0.0)).normalized()
@@ -1542,8 +1551,8 @@ static func market_door(level := 1) -> ArrayMesh:
 static func market_leaf(side: int, open: float) -> Transform2D:
 	var s := -1.0 if side == 0 else 1.0
 	var a := clampf(open, 0.0, 1.0) * HATCH_SWING
-	var across := ISO.x * -s * cos(a) + Vector2(0.0, RISE * sin(a))
-	return Transform2D(across / FINE, ISO.y / FINE, at(Vector2(s * HATCH_HALF, 0.0)) + MARKET_TOP)
+	var across := PLANE.x * -s * cos(a) + Vector2(0.0, RISE * sin(a))
+	return Transform2D(across / FINE, PLANE.y / FINE, at(Vector2(s * HATCH_HALF, 0.0)) + MARKET_TOP)
 
 ## A footprint's highlight while a module is held over the land: `w` by `h`
 ## tiles in tile space, (0, 0) to (w, h), a soft fill inside a rim. Pale
@@ -1578,7 +1587,7 @@ static func icon(named: String) -> ArrayMesh:
 			# two tiles of it, on their legs, the bed over them; the fast one
 			# with its dark bed and two warm chevrons
 			var s := 0.56 / FINE
-			var xf := Transform2D(ISO.x * s, ISO.y * s, BELT_LIFT * 0.56)
+			var xf := Transform2D(PLANE.x * s, PLANE.y * s, BELT_LIFT * 0.56)
 			for i in 2:
 				b.append(belt_under(), Transform2D(0.0, Vector2(0.56, 0.56), 0.0, at(Vector2(i - 0.5, 0.0)) * 0.56))
 			for i in 2:
