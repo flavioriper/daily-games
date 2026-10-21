@@ -132,10 +132,9 @@ next (not reset by the bay).
   fault dot.
 - **Calls, unconfirmed**: no sound for a Turn (steps have none either);
   Robot 3's loop at 28 of 30 leaves little slack; the tutor pages say
-  nothing of turning yet; the all-fast pace (252) sits 3 ticks
-  under milestone 2's 255 (it had 32 under 220... over: 252 never met
-  220), so `_check_pace`'s "stops at BUILT" leans on it when BUILT goes
-  to 2.
+  nothing of turning yet; the all-fast pace (252) now meets
+  milestone 2's 255 with 3 ticks to spare (it never met the old 220), so
+  milestone 2 opens on fast parts alone once BUILT goes to 2.
 - **Measured** (810x1440, default driver, one windowed run): probe 133/0,
   suite 163137/0; `_shot_factory` all pass but one, the pace pill's "44 s"
   string (fixed to 51 after the run, not run again), the floor 28 to 31
