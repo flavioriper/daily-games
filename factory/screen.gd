@@ -700,6 +700,8 @@ func _play_events() -> void:
 			"pick", "release":
 				if String(e.kind) != "":
 					_floor_fx.cue(String(e.type), _vary())
+				if String(e.type) == "release" and String(e.kind) == "box" and e.tile == Sim.STATIONS.table:
+					_tell_fix(int(e.robot))
 			"charging":
 				_floor_fx.cue("charge", _vary())
 			"stuck", "flat":
@@ -812,9 +814,13 @@ func chain_whole(i: int) -> bool:
 			return false
 	return true
 
-## After an edit of robot `i`: a chain that was broken and is whole now is a
-## fix, told once a robot a visit (`factory_fix`, by the robot's name, which
-## on a new floor says which of the three faults it was).
+## After an edit of robot `i`: a chain that was open, or held a node its
+## parts cannot do (at the visit's start or after an edit of the player's
+## own), and is whole now is a fix. That catches the Picker's (no gripper)
+## and the Shipper's (a loose wire); the Boxer's Move one short keeps its
+## chain whole, so its fix is told by the first box a robot sets down on the
+## table instead (`_play_events`), which on a floor already working is the
+## visit's first box there.
 func _check_fix(i: int) -> void:
 	if i < 0 or i >= sim.robots.size():
 		return
@@ -822,9 +828,14 @@ func _check_fix(i: int) -> void:
 		_broken[i] = true
 	elif _broken.has(i):
 		_broken.erase(i)
-		if not _fix_told.has(i):
-			_fix_told[i] = true
-			Analytics.track("factory_fix", {"robot": String(sim.robots[i].name)})
+		_tell_fix(i)
+
+## `factory_fix` by robot `i`'s name, once a robot a visit.
+func _tell_fix(i: int) -> void:
+	if i < 0 or i >= sim.robots.size() or _fix_told.has(i):
+		return
+	_fix_told[i] = true
+	Analytics.track("factory_fix", {"robot": String(sim.robots[i].name)})
 
 ## What the chips show, as a key that changes only when they would.
 func _chips_state() -> String:

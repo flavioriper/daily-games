@@ -156,10 +156,14 @@ became SP on 2026-10-18. No event a drop or a landing. `rules_opened` carries
 **Factory (the robot floor, 2026-10-20)** is kept, so no `arcade_start` or
 `arcade_end`: `factory_enter` (milestone, coins), `factory_leave` (seconds,
 earned this visit, milestone), `factory_fix` (robot: the robot's name,
-`Picker`, `Boxer` or `Shipper`, sent once a robot a visit as an edit leaves
-a chain that was open, or held a node its parts cannot do, closed with
-every node doable; on a new floor the name says which of the three faults
-was fixed), `factory_milestone` (id: `belts` or `again`, as it opens) and
+`Picker`, `Boxer` or `Shipper`, at most once a robot a visit: when an edit
+leaves a chain that was open, or held a node its parts cannot do, closed
+with every node doable, which on a new floor is the Picker's gripper and
+the Shipper's wire; and, for the robot that does it, when a box is first
+set down on the table, which on a new floor is the Boxer's Move fixed,
+since its chain was whole all along. A break the player made and then
+repaired counts as a fix too, and on a floor already working the first
+box on the table each visit sends one for its robot), `factory_milestone` (id: `belts` or `again`, as it opens) and
 `factory_part` (part: the part's id, each time one is fitted from the
 sheet's tray, a spare or bought). No event a sale, a belt or a node.
 `rules_opened` carries `puzzle_id` factory.

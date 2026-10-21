@@ -10,9 +10,9 @@ extends VBoxContainer
 ## blurb below says so, and the Arcade card that people see is
 ## ui/menu/cards/arc_factory.gd.)
 ##
-## The Factory tab: one card as wide as the column, with the land on it as
-## it stands and goes (the whole board fitted to the card and drawn by the
-## game's own path, factory/life.gd, so a glance shows the belts running),
+## The Factory tab: one card as wide as the column, with the floor on it as
+## it stands and goes (the whole floor fitted to the card and drawn by the
+## game's own path, factory/life.gd, so a glance shows the robots working),
 ## the coins held on a pill and the word Play. It takes the Valley tab's
 ## place (ui/menu/valley_tab.gd) and keeps its surface: `play` and
 ## `refresh()`. Spec

@@ -738,7 +738,8 @@ The bottom bar left the first screen (`docs/agents/first-screen.md`, "The
 categories replace the bottom bar") and the user chose "A card inside
 Arcade" for Factory. `ArcadeTab.GAMES` ends with `factory`; the card is
 `ui/menu/cards/arc_factory.gd` (the game's own trees and log heap, a belt, a
-go disc) and its line is the coins held (`FACTORY_CARD_COINS`).
+go disc) and its line is the coins held (`FACTORY_CARD_COINS`, since 2026-10-20 a
+`_ONE` / `_N` pair).
 `ui/menu.gd`'s `_open_arcade` hands it to `_open_factory`, and closing the
 screen goes back to Arcade with no interstitial, as before.
 

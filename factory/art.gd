@@ -703,7 +703,7 @@ static func belt_material(fast := false) -> ShaderMaterial:
 		_belt_mat.set_shader_parameter("speed", BELT_SPEED)
 	return _belt_mat
 
-## Called every frame by whatever shows belts, with the seconds the land has
+## Called every frame by whatever shows belts, with the seconds the floor has
 ## run: the belts' clock, wrapped to one tile's travel so a phone's shader
 ## never takes the fraction of a large number. Under reduce motion the slats
 ## lie still (the items on them still travel: that is the sim's).

@@ -1,6 +1,6 @@
 extends RefCounted
 
-## A tile of Factory's drawer and of its plate card: the Grove's shop tile
+## A tile of Factory's belt drawer: the Grove's shop tile
 ## (valley/grove_screen.gd's `_tile` and `_draw_tile_icon`, 2026-10-06) cut
 ## loose from its shop. Top to bottom: a picture on a disc, the name, a line
 ## where there is one, and the price on a bar along the foot. **The bar
