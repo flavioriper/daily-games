@@ -1200,3 +1200,20 @@ pictures seen whole keep three points a corner.
 `FLY_TIME` 0.56 to 0.28; a flight with an end in the case scales off it
 (0.28 to 0.56 s by length) and halves with it. The gap stays 0.05 s, so five
 or six gems are in the air at once on a long run.
+
+**12:37, a fingertip's reach.** The user: "polish the touch helper, when
+user click somewhere, and it's a missclick, it should try to do the nearest
+available action to avoid needing a perfect click". The aim of 2026-10-17
+was measured in squares only: 1.5 squares of a big picture seen whole on a
+phone is ~30 px, under a fingertip. Now `_reach()` is AIM_REACH squares or
+`AIM_PX` (44) of the screen, whichever is more, for both hands (a pick in
+hand looking for a bare patch of its colour, an empty hand for a button
+to pick). And with a pick in hand, a bare patch of another colour no longer
+keeps its refusal past AIM_EDGE: it reaches as far as linen does and is
+refused only with no patch of the pick's colour in reach (this takes back
+"the aim does not choose between two browns" of 2026-10-12). A button that
+can be picked keeps its middle (AIM_EDGE), so a pick can still be swapped.
+A zoomed picture aims only at squares in sight. Aim probe 33/0, board probe
+38 days (the two old band-2 zoom failures); a throwaway check: 40 px off a
+bare patch in eight ways aims at a patch of the colour, 8/8 on Medium and
+Insane.

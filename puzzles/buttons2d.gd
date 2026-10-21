@@ -1262,7 +1262,15 @@ const TIN_HIT := -3
 ## anything but a button that can be picked picks the nearest one within
 ## AIM_REACH, and a touch on the tin's wood or a free place the nearest of
 ## its buttons within TIN_REACH places.
+## Then (the user, 2026-10-21: "when user click somewhere, and it's a
+## missclick, it should try to do the nearest available action to avoid
+## needing a perfect click"): the reach is never under AIM_PX of the screen,
+## a fingertip, however small the squares (Hard and Insane seen whole have
+## squares of 15 px, and 1.5 of them was under the finger), and a bare
+## patch of another colour with a pick in hand reaches as far as linen does
+## for one of the pick's colour, and is refused only with none in reach.
 const AIM_REACH := 1.5
+const AIM_PX := 44.0
 const AIM_EDGE := 0.7
 const TIN_REACH := 0.9
 ## A finger that wanders this little (of a square, or SLOP_PX on the screen
@@ -1328,11 +1336,11 @@ func aim(at: Vector2) -> int:
 		return over
 	if not holding():
 		return _aim_pick(at, over)
-	var reach := AIM_REACH * _cell
+	var reach := _reach()
 	if over >= 0:
 		if state.cur[over] < 0 and state.slot[over] == _held_c:
 			return over
-		if state.cur[over] < 0 or state.judge(over) == State.OK:
+		if state.judge(over) == State.OK:
 			reach = AIM_EDGE * _cell
 	var lp := zoom.to_layout(at)
 	var p := ((lp - _grid) / _cell).floor()
@@ -1342,7 +1350,7 @@ func aim(at: Vector2) -> int:
 	for dy in range(-span, span + 1):
 		for dx in range(-span, span + 1):
 			var j: int = state.at_xy(Vector2i(int(p.x) + dx, int(p.y) + dy))
-			if j < 0 or state.slot[j] != _held_c or state.cur[j] >= 0:
+			if j < 0 or state.slot[j] != _held_c or state.cur[j] >= 0 or not _in_sight(j):
 				continue
 			var d := cell_centre(j).distance_to(lp)
 			if d <= best_d:
@@ -1358,20 +1366,26 @@ func _aim_pick(at: Vector2, over: int) -> int:
 		return over
 	var lp := zoom.to_layout(at)
 	var p := ((lp - _grid) / _cell).floor()
-	var span := ceili(AIM_REACH)
+	var reach := _reach()
+	var span := ceili(reach / _cell)
 	var now := _now()
 	var best := -1
-	var best_d := AIM_REACH * _cell
+	var best_d := reach
 	for dy in range(-span, span + 1):
 		for dx in range(-span, span + 1):
 			var j: int = state.at_xy(Vector2i(int(p.x) + dx, int(p.y) + dy))
-			if j < 0 or state.judge(j) != State.OK or now < _arrive[j]:
+			if j < 0 or state.judge(j) != State.OK or now < _arrive[j] or not _in_sight(j):
 				continue
 			var d := cell_centre(j).distance_to(lp)
 			if d <= best_d:
 				best_d = d
 				best = j
 	return best if best >= 0 else over
+
+## How far the aim looks, in the picture's own measure: AIM_REACH squares,
+## or a fingertip on the screen if that is more.
+func _reach() -> float:
+	return maxf(AIM_REACH * _cell, AIM_PX / maxf(0.01, zoom.k))
 
 ## The tin a finger at `at` means (`_tin_at`'s answer): on its wood or a
 ## free place with no run off the cloth in hand, the nearest place holding
