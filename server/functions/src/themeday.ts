@@ -196,8 +196,8 @@ async function runStep(db: Firestore, when: Date, day: number, step: string, s: 
   }
   if (step.startsWith("hoop")) {
     const band = step.slice("hoop".length);
-    const got = await makeHoop(day, theme, Number(band));
-    return {save: got === null ? {} : {[`hoops.${band}`]: JSON.stringify(got)}, made: got !== null};
+    const {picture} = await makeHoop(day, theme, Number(band));
+    return {save: picture === null ? {} : {[`hoops.${band}`]: JSON.stringify(picture)}, made: picture !== null};
   }
   if (step.startsWith("vista")) {
     const time = VISTA_TIMES[Number(step.slice("vista".length))];

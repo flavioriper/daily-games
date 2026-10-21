@@ -233,8 +233,8 @@ async function main(): Promise<void> {
       if (day.theme === null) continue;
       const hoops: Record<string, HoopPicture> = {};
       for (let band = 0; band < HOOP_BANDS.length; band++) {
-        const got = await makeHoop(day.day, day.theme, band, drawingsBeside(file));
-        if (got !== null) hoops[band] = got;
+        const {picture} = await makeHoop(day.day, day.theme, band, drawingsBeside(file));
+        if (picture !== null) hoops[band] = picture;
       }
       if (Object.keys(hoops).length > 0) {
         day.pictures = {...(day.pictures ?? {v: 1, theme: day.theme.id, sizes: {}}), hoops};

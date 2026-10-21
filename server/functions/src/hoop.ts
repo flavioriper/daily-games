@@ -1,6 +1,13 @@
-import {draw, Drawing, shapesModel} from "./generate";
+import fs from "node:fs";
+import path from "node:path";
+import {ask, draw, Drawing, shapesModel} from "./generate";
+import {dataUrl, FLOOR, judge, renderPolygons} from "./eye";
+import {gridOver, GRID_N} from "./grid";
+import {checkMesh, colourFrom, ModelMap, repairMesh} from "./mesh";
+import {Port, PortTry} from "./ports";
+import {shrunk} from "./vistas";
 import {area, board, compact, dissolve, fewer, grow, join, network, raster, Raster, Regions, SIDE, split, touching, unring, unshadow} from "./facets";
-import {keyFor, keyWords, Key} from "./key";
+import {keyFor, keyWords, Key, KEY_HEX} from "./key";
 import {Theme, Thing} from "./theme";
 
 /**
@@ -46,7 +53,6 @@ export const BANDS = [
 /** The fewest panels a band's picture may come to. */
 export const LEAST_PANELS = [16, 26, 40, 80];
 export const MOST_CORNERS = 7;
-const TRIES = 2;
 
 export const PROMPT = (what: string, band: number, key: Key, creature: boolean) => `A low-poly illustration of ${what}, built from at least 150 and about 200 small flat polygon facets (mostly triangles) on every band, the big surfaces broken into many small facets too: a soft, muted, harmonious palette of gentle earthy pastels; each facet is ONE flat solid colour; neighbouring facets shift subtly in tone as if lit softly from the top left (a light, a mid and a shadow tone of each colour); crisp straight edges; no outlines, no lines between facets, no gradient inside a facet, no texture. ${creature ? "" : "It is an object: no face, no eyes, no mouth. "}One thing only, centred and large, filling most of the picture, on ${keyWords(key)}; no cast shadow, no ground, nothing else, no text. A square picture.`;
 
@@ -358,28 +364,230 @@ export function readHoop(d: Drawing | Raster, band: number): {pins: number[]; pa
   return {pins, panels: got.panels.map((p) => ({k: p.k, c: hex(cut.colour[p.region])})), why};
 }
 
-/** The theme's thing for `band` drawn and read, up to TRIES drawings; null
- *  when none will do, and the board cuts the day's bead picture as before.
- *  `keep` is handed each drawing (the dashboard's files). */
-export async function makeHoop(day: number, theme: Theme, band: number, keep?: (name: string, d: Drawing) => void): Promise<HoopPicture | null> {
+/** A band's drawings, and the model's asks for the map of each. */
+export const HOOP_DRAWINGS = 2;
+export const MAP_ASKS = 2;
+/** A kept try scored this well is not bettered by more asks. */
+const ENOUGH = 9;
+const BAND_NAMES = ["Easy", "Medium", "Hard", "Insane"];
+/** The render the eye is shown: the board's linen and its ropes along every
+ *  side, as the phone knits the picture. */
+const RENDER_SIZE = 600;
+const LINEN = "#efe2c6";
+const ROPE = {colour: "#7a4a3a", width: 0.6};
+
+/** The spike's ask (2026-10-21), and after it the rules the night checks
+ *  the map by as the phone does: a map that breaks one is refused. */
+const MAPPER = `You are a low-poly artist turning a drawing into the map of a puzzle board. The drawing is a low-poly illustration of one thing on a plain green, magenta or cyan background, with a numbered grid laid over it: the grid lines are numbered 0..N along the top and left (and again along the bottom and right). A point's x is its position along the top numbers and y its position along the left numbers, as decimals (x 7.5 is halfway between lines 7 and 8).
+
+Write the map as pins and panels. A pin is a corner, with an integer id. A panel is one flat facet of the drawing: a list of 3 to 7 pin ids in order round its outline, and its colour as #rrggbb read off the drawing. Rules: the panels tile the THING exactly and nothing of the background: every facet of the drawing is a panel (merge only facets that are the same colour and together make a convex 3-7 sided shape); neighbouring panels share their pins and their whole side (never a corner of one panel lying in the middle of another's side, never two panels overlapping, never a gap); every panel is convex; the thing's outline is traced faithfully, every part of it (a snail's eye stalks, a kettle's spout and knob). Place every pin where the drawing's corners really are, as precisely as the grid allows. Answer with JSON only.
+
+The map is checked exactly as the board will lay it, and refused if it breaks any of these: every panel has 3 to 7 corners and is convex; neighbouring panels share whole sides, pin for pin; no two panels overlap and no gap is left between them; no panel covers any of the background; every facet of the drawing is kept. Pins nearer together than about one grid cell are welded into one on the board, so a thin part (a handle, a stalk, a shaft, a leg) is drawn as a panel at least one grid cell wide, never thinner, or it vanishes. Use the whole panel budget: write close to the most panels the board allows, splitting the big facets along their light and shade; a map with fewer than the least it names is refused.`;
+
+const MAP_SCHEMA = {type: "object", additionalProperties: false, required: ["pins", "panels"], properties: {
+  pins: {type: "array", items: {type: "object", additionalProperties: false, required: ["id", "x", "y"], properties: {id: {type: "integer"}, x: {type: "number"}, y: {type: "number"}}}},
+  panels: {type: "array", items: {type: "object", additionalProperties: false, required: ["pins", "colour"], properties: {pins: {type: "array", items: {type: "integer"}}, colour: {type: "string"}}}},
+}};
+
+const isNumber = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+
+/** The model's answer held to the map's shape: the schema is asked for but
+ *  not trusted, and a pin whose x or y is not a number (null, a string)
+ *  would be read as a pin at 0, so it is let go here. */
+function asMap(got: unknown): ModelMap {
+  const o = (got ?? {}) as {pins?: unknown; panels?: unknown};
+  const pins: ModelMap["pins"] = [];
+  for (const p of Array.isArray(o.pins) ? o.pins : []) {
+    const q = (p ?? {}) as {id?: unknown; x?: unknown; y?: unknown};
+    if (isNumber(q.id) && isNumber(q.x) && isNumber(q.y)) pins.push({id: q.id, x: q.x, y: q.y});
+  }
+  const panels: ModelMap["panels"] = [];
+  for (const p of Array.isArray(o.panels) ? o.panels : []) {
+    const q = (p ?? {}) as {pins?: unknown; colour?: unknown};
+    if (!Array.isArray(q.pins)) continue;
+    panels.push({pins: q.pins.filter(isNumber), colour: String(q.colour ?? "")});
+  }
+  return {pins, panels};
+}
+
+/** The reviewer model's map of a drawing, read off it with the band's
+ *  numbered grid over it. `refused` is what was wrong with its last map of
+ *  the same drawing, "" for a first ask. Throws as `ask` does. */
+export async function mapHoop(drawing: Drawing, thing: Thing, band: number, refused: string): Promise<ModelMap> {
+  const n = GRID_N[band];
+  const grid = gridOver(drawing, n, 1);
+  const most = BANDS[band].most;
+  const again = refused === "" ? "" : ` Your last map of this drawing fell short: ${refused}. Write it again, mending that.`;
+  const got = await ask<unknown>({
+    system: MAPPER,
+    role: "review",
+    schema: MAP_SCHEMA,
+    images: [dataUrl(grid.mime, grid.bytes)],
+    prompt: `The drawing is of ${thing.name}; the grid is ${n} by ${n}. The board takes at most ${most} panels (${BAND_NAMES[band]}) and refuses fewer than ${LEAST_PANELS[band]}: use the whole budget, about ${most}, and cover every facet of the drawing.${again} Write the map.`,
+  });
+  return asMap(got);
+}
+
+let style: Drawing | null = null;
+/** The low-poly snail the drawings are made in the style of, copied beside
+ *  the build (package.json's build). */
+function styleRef(): Drawing {
+  if (style === null) {
+    style = {mime: "image/png", bytes: fs.readFileSync(path.join(__dirname, "hoop_style.png"))};
+  }
+  return style;
+}
+
+/** What one band's tries share. */
+interface Ctx {
+  day: number;
+  theme: Theme;
+  thing: Thing;
+  band: number;
+  key: Key;
+}
+
+/** The best kept try so far. */
+interface Best {
+  score: number;
+  pins: number[];
+  panels: HoopPanel[];
+  drawing: Drawing;
+  render: Buffer;
+}
+
+const said = (e: unknown) => String(e instanceof Error ? e.message : e).slice(0, 300);
+
+/** Pins and panels drawn as the eye sees them and judged beside the drawing,
+ *  into `t`; the render, or null when the eye could not be asked. */
+async function judged(c: Ctx, drawing: Drawing, pins: number[], panels: HoopPanel[], t: PortTry): Promise<Buffer | null> {
+  try {
+    const polys = panels.map((p) => ({pts: p.k.map((i) => [pins[2 * i], pins[2 * i + 1]]), fill: p.c}));
+    const png = renderPolygons(polys, RENDER_SIZE, LINEN, ROPE);
+    t.verdict = await judge(c.day, c.theme, c.thing, "hoop", dataUrl("image/png", png), dataUrl(drawing.mime, drawing.bytes));
+    t.kept = t.verdict.ok && t.verdict.score >= FLOOR.hoop;
+    return png;
+  } catch (e) {
+    t.error = `judge: ${said(e)}`;
+    return null;
+  }
+}
+
+/** One ask for a drawing's map, repaired, coloured off the drawing (its
+ *  background panels dropped), checked again and judged, into `t`. Never
+ *  throws: each stage's error is written on the try. */
+async function mapTry(c: Ctx, drawing: Drawing, refused: string, t: PortTry): Promise<Best | null> {
+  let got: ModelMap;
+  try {
+    got = await mapHoop(drawing, c.thing, c.band, refused);
+  } catch (e) {
+    t.error = `ask: ${said(e)}`;
+    return null;
+  }
+  let pins: number[], panels: HoopPanel[];
+  try {
+    const mesh = repairMesh(got, GRID_N[c.band], c.band);
+    // the background dropped can bring the counts under or within the band
+    colourFrom(raster(drawing), mesh, KEY_HEX[c.key]);
+    t.why = checkMesh(mesh, c.band);
+    pins = mesh.pins;
+    panels = mesh.panels;
+  } catch (e) {
+    t.error = `repair: ${said(e)}`;
+    return null;
+  }
+  if (t.why !== "") return null;
+  const render = await judged(c, drawing, pins, panels, t);
+  return render === null ? null : {score: t.verdict!.score, pins, panels, drawing, render};
+}
+
+/** The pixel reader on a drawing, judged as a map is, into `t`. */
+async function readerTry(c: Ctx, drawing: Drawing, t: PortTry): Promise<Best | null> {
+  let got: ReturnType<typeof readHoop>;
+  try {
+    got = readHoop(drawing, c.band);
+  } catch (e) {
+    t.error = `read: ${said(e)}`;
+    return null;
+  }
+  t.why = got.why;
+  if (got.why !== "") return null;
+  const render = await judged(c, drawing, got.pins, got.panels, t);
+  return render === null ? null : {score: t.verdict!.score, pins: got.pins, panels: got.panels, drawing, render};
+}
+
+/** What the next ask on the same drawing is told of the last one. */
+function lesson(t: PortTry, thing: Thing): string {
+  if (t.why !== "") return `it was refused (${t.why})`;
+  if (t.verdict !== undefined) {
+    const took = t.verdict.pick === thing.name.toLowerCase() ? "" : `, took it for ${t.verdict.pick}`;
+    return `a reviewer scored it ${t.verdict.score} of 10${took}, and said: ${t.verdict.notes}`;
+  }
+  return "";
+}
+
+function logTry(c: Ctx, t: PortTry): void {
+  const what = t.error ?? (t.why !== "" ? t.why : `${t.verdict?.pick} ${t.verdict?.score}${t.kept ? ", kept" : ""}`);
+  console.log(`hoop: day ${c.day}, band ${c.band}, ${c.thing.id} try ${t.n} (${t.route}): ${what}`);
+}
+
+/**
+ * The theme's thing for `band` as a model's map: HOOP_DRAWINGS drawings in
+ * the style of the reference, each mapped up to MAP_ASKS times by the
+ * reviewer model, and every map repaired, coloured, checked and judged; the
+ * best the eye keeps wins. When none is kept the pixel reader on the last
+ * drawing is one more try. `picture` is null when nothing was kept, and the
+ * board cuts the day's bead picture as before; `port` records every try.
+ * `keep` is handed each drawing (the dashboard's files).
+ */
+export async function makeHoop(day: number, theme: Theme, band: number, keep?: (name: string, d: Drawing) => void): Promise<{picture: HoopPicture | null; port: Port}> {
   const thing: Thing = theme.objects[Math.min(band + 1, theme.objects.length - 1)];
   const {key, creature} = await keyFor(thing);
-  for (let n = 0; n < TRIES; n++) {
+  const c: Ctx = {day, theme, thing, band, key};
+  const port: Port = {game: "hoop", band, thing: thing.id, tries: []};
+  const fresh = (route: PortTry["route"]): PortTry => {
+    const t: PortTry = {n: port.tries.length, route, why: "", kept: false};
+    port.tries.push(t);
+    return t;
+  };
+  let best: Best | null = null;
+  let last: Drawing | null = null;
+  for (let d = 0; d < HOOP_DRAWINGS && (best === null || best.score < ENOUGH); d++) {
+    let drawing: Drawing;
     try {
-      const drawing = await draw(PROMPT(thing.draw, band, key, creature), shapesModel());
-      keep?.(`${day}_hoop${band}_${thing.id}_${n}`, drawing);
-      const got = readHoop(drawing, band);
-      if (got.why !== "") {
-        console.log(`hoop: day ${day}, band ${band}, ${thing.id} drawing ${n}: ${got.why}`);
-        continue;
-      }
-      console.log(`hoop: day ${day}, band ${band}, ${thing.id}: ${got.panels.length} panels, ${got.pins.length / 2} pins`);
-      return {id: thing.id, name: {en: thing.name, pt: thing.pt, es: thing.es}, pins: got.pins, panels: got.panels};
+      drawing = await draw(PROMPT(thing.draw, band, key, creature), shapesModel(), {images: [styleRef()]});
     } catch (e) {
-      console.error(`hoop: day ${day}, band ${band}, ${thing.id}, drawing ${n} failed`, e);
+      const t = fresh("map");
+      t.error = `draw: ${said(e)}`;
+      logTry(c, t);
+      continue;
+    }
+    last = drawing;
+    keep?.(`${day}_hoop${band}_${thing.id}_${d}`, drawing);
+    let refused = "";
+    for (let a = 0; a < MAP_ASKS && (best === null || best.score < ENOUGH); a++) {
+      const t = fresh("map");
+      const got = await mapTry(c, drawing, refused, t);
+      logTry(c, t);
+      if (t.kept && got !== null && (best === null || got.score > best.score)) best = got;
+      refused = lesson(t, thing);
     }
   }
-  return null;
+  if (best === null && last !== null) {
+    const t = fresh("reader");
+    const got = await readerTry(c, last, t);
+    logTry(c, t);
+    if (t.kept && got !== null) best = got;
+  }
+  if (best === null) return {picture: null, port};
+  try {
+    port.source = shrunk(best.drawing).bytes.toString("base64");
+    port.render = shrunk({mime: "image/png", bytes: best.render}).bytes.toString("base64");
+  } catch (e) {
+    console.error(`hoop: day ${day}, band ${band}, ${thing.id}: the kept try not shrunk`, e);
+  }
+  console.log(`hoop: day ${day}, band ${band}, ${thing.id}: ${best.panels.length} panels, ${best.pins.length / 2} pins, score ${best.score}`);
+  return {picture: {id: thing.id, name: {en: thing.name, pt: thing.pt, es: thing.es}, pins: best.pins, panels: best.panels}, port};
 }
 
 export {SIDE};
