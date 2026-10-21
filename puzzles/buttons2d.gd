@@ -113,8 +113,10 @@ const HELD_BOB_MAX := 48
 ## kept ("keep current flight time, but reduce gap between gems"): 0.04,
 ## 0.8, so every other landing ticks. Then 0.1 and no cap (the user,
 ## 2026-10-21: "they should fly one after another after 0.1s, not all at
-## once"): the cap had squeezed a run of twenty or more to a burst.
-const RUN_STEP := 0.1
+## once"): the cap had squeezed a run of twenty or more to a burst. Then
+## twice as quick (the user, the same day: "make the gap between pieces 2x
+## faster"): 0.05.
+const RUN_STEP := 0.05
 ## The case's own sliding along a place go one after another too, this
 ## far apart, the whole pack no longer than SLIDE_CAP (a pack on Insane
 ## can slide sixty places, and a place is not pickable until its jewel has

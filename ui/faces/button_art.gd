@@ -33,11 +33,14 @@ const Scenery = preload("res://ui/flat/scenery.gd")
 
 ## Sizes as a share of the cell. A loose gem is RIM out from its middle to
 ## each side, 0.8 of its square across (the user, 2026-10-14: "keep it like
-## 80% of the cell"). TIP rounds the corners,
+## 80% of the cell"). TIP rounds the corners, 0.18 since 2026-10-21 (the
+## user, on the reference's shot: "make the pieces shape more rounded"; it
+## was 0.12), cut in FINE points a corner where the gem is seen close.
 ## EDGE is the dark rim's width. RIM stays over SOCKET: the seat is what
 ## says bare, and a jewel must hide it.
 const RIM := 0.4
-const TIP := 0.12
+const TIP := 0.18
+const FINE := 7
 const EDGE := 0.035
 ## The seat a card's chevron sits in (ui/menu/cards/buttons.gd), and how
 ## far a loose gem stands over its base.
@@ -114,7 +117,7 @@ static func socket(b, at: Vector2, cell: float, col: Color, sides: int) -> void:
 	var dark := col.get_luminance() < SOCKET_DARK
 	var edge := col.lightened(0.34) if dark else col.darkened(0.34)
 	var floor_ := col.darkened(0.22) if dark else col.darkened(0.1)
-	var n := 5 if sides > 12 else 3
+	var n := FINE if sides > 12 else 3
 	_raw(b, corners(at, r, tip, n), edge)
 	_raw(b, corners(at + Vector2(0.0, cell * 0.018), r - rim, maxf(1.0, tip - rim), n), floor_)
 
@@ -147,7 +150,7 @@ static func corners(at: Vector2, r: float, tip: float, n: int) -> PackedVector2A
 ## The rounded square of a gem, for a caller that wants its outline: `fine`
 ## cuts the corners in five points, else three.
 static func tile(at: Vector2, r: float, tip: float, fine := true) -> PackedVector2Array:
-	return corners(at, r, tip, 5 if fine else 3)
+	return corners(at, r, tip, FINE if fine else 3)
 
 ## The gem's four facets: the rounded square `r` out (corners by `tip`, `n`
 ## points each) cut by its two diagonals into top, left, right and bottom,
@@ -193,12 +196,12 @@ static func gem(b, at: Vector2, cell: float, col: Color, set: bool, n: int) -> v
 
 ## A jewel centred on `at`, the fine cut; `sewn` is the jewel set.
 static func button(b, at: Vector2, cell: float, col: Color, sewn: bool) -> void:
-	gem(b, at, cell, col, sewn, 5)
+	gem(b, at, cell, col, sewn, FINE)
 
 ## The jewel of a big picture: seen whole (20 to 40 px across) its corners
 ## are cut in three points, `close` (the picture zoomed) in five.
 static func button_lite(b, at: Vector2, cell: float, col: Color, sewn: bool, close: bool) -> void:
-	gem(b, at, cell, col, sewn, 5 if close else 3)
+	gem(b, at, cell, col, sewn, FINE if close else 3)
 
 static func _gon(at: Vector2, r: float, sides: int) -> PackedVector2Array:
 	var pts := PackedVector2Array()
@@ -230,18 +233,18 @@ static func units(cell: float, colours: Array, look := FULL) -> Dictionary:
 	else:
 		# soft: a wide faint tile under a smaller one, so a gem in the air
 		# does not drag a grey box (feathered by polygon)
-		b.polygon(corners(Vector2(0.0, cell * SHADOW_DOWN + 2.0), cell * (SHADOW_R + 0.03), cell * TIP * 1.4, 5), Color(Pal.TEXT, 0.07))
-		b.polygon(corners(Vector2(0.0, cell * SHADOW_DOWN), cell * (SHADOW_R - 0.02), cell * TIP * 1.2, 5), Color(Pal.TEXT, 0.13))
+		b.polygon(corners(Vector2(0.0, cell * SHADOW_DOWN + 2.0), cell * (SHADOW_R + 0.03), cell * TIP * 1.4, FINE), Color(Pal.TEXT, 0.07))
+		b.polygon(corners(Vector2(0.0, cell * SHADOW_DOWN), cell * (SHADOW_R - 0.02), cell * TIP * 1.2, FINE), Color(Pal.TEXT, 0.13))
 	out.shade = b.mesh()
 	# the ring that says where a pick may go is the seat's own shape (the
 	# user, 2026-10-19: "the indicator on easier difficulties should have
 	# the same shape of the empty slot"): a sun lip round a pale floor,
 	# scaled by the board to the seat
 	b = Face.Builder.new()
-	b.polygon(corners(Vector2.ZERO, cell * 0.5, cell * TIP * 1.3, 5), Pal.SUN)
-	_raw(b, corners(Vector2.ZERO, cell * 0.43, cell * TIP * 1.1, 5), Color(Pal.SUN_TILE, 0.9))
+	b.polygon(corners(Vector2.ZERO, cell * 0.5, cell * TIP * 1.3, FINE), Pal.SUN)
+	_raw(b, corners(Vector2.ZERO, cell * 0.43, cell * TIP * 1.1, FINE), Color(Pal.SUN_TILE, 0.9))
 	out.ring = b.mesh()
-	var n := 3 if look == PLAIN else 5
+	var n := 3 if look == PLAIN else FINE
 	for named in colours:
 		var col := colour(String(named))
 		b = Face.Builder.new()
@@ -267,8 +270,8 @@ static func tin(b, rect: Rect2, places: int, open: int, per_row: int, step: floa
 	for p in places:
 		var at := tin_place(rect, p, per_row, step, places)
 		if p < open:
-			_raw(b, corners(at, step * 0.4, tip, 5), HOLLOW)
-			_raw(b, corners(at + Vector2(0.0, 2.0), step * 0.36, maxf(1.0, tip - step * 0.04), 5), HOLLOW_FLOOR)
+			_raw(b, corners(at, step * 0.4, tip, FINE), HOLLOW)
+			_raw(b, corners(at + Vector2(0.0, 2.0), step * 0.36, maxf(1.0, tip - step * 0.04), FINE), HOLLOW_FLOOR)
 		else:
 			b.stroke(corners(at, step * 0.34, tip * 0.8, 3), 2.0, Color(HOLLOW, 0.7), true)
 

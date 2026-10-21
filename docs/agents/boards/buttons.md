@@ -1184,3 +1184,14 @@ The user: "let's keep cap at 48". `CASE_CAP` 48, four rows of twelve; Easy
 and Medium untouched. Board probe 38 days (the two old band-2 zoom
 failures), rules probe 648 runs, 0 failures: every day still ends sewn and
 on its par with the smaller case.
+
+**12:21, rounder gems and a 0.05 s gap.** The user, with a shot of the
+reference: "make the gap between pieces 2x faster, and make the pieces shape
+more rounded". `RUN_STEP` 0.05. `Art.TIP` 0.12 to 0.18 (a third of the gem's
+half-width to nearly half), and the fine corner cut five points to `FINE`
+(7) so the bigger curve stays smooth; the seat, the shadow, the pick ring,
+the case's hollows and the menu card's chevron all take TIP and follow.
+The seat stays hidden under a gem (its corner reaches 0.435 of a cell
+along the diagonal, the gem's 0.491) and the gloss stays inside the
+rounded top. Medium `play` shot: seen rounded, like the reference. Big
+pictures seen whole keep three points a corner.
