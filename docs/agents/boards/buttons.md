@@ -1163,3 +1163,16 @@ busy time) follows its own time, and `_landed` counts landings as they come
 every-third ring stay in order. Board probe 14 days, the two old band-2 zoom
 failures (same on the unchanged code). Not seen in a window; `FLY_REACH_K`
 is the number to turn by eye.
+
+**11:47, a gem every 0.1 s, and flights kept under the bar.** The user: "when
+I click to move pieces, they should fly one after another after 0.1s, not
+all at once, also when placing a piece that is outside screen it's
+overflowing everything and showing, it should not". `RUN_STEP` 0.1 and
+`RUN_STEP_CAP` gone: the cap (0.8 s for the whole run) had squeezed a run of
+twenty to a 0.04 s burst and a stow of sixty to near nothing; now a run of n
+takes (n - 1) x 0.1 s to leave, and nothing waits on it (a square is
+pickable once its own gem lands). `_over`, the layer of what flies, is laid
+from the picture's top to the screen's foot and clipped while zoomed, like
+`_cloth`: a gem bound for a square out of sight above goes under the edge
+instead of over the bar and the pill; it still crosses from the case. Board
+probe 14 days, the two old band-2 zoom failures. Not seen in a window.

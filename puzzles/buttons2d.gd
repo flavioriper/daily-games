@@ -23,7 +23,8 @@ extends "res://core/puzzle_base.gd"
 ## pictures are 24 and 32 square, can be looked at close: one transform
 ## (`zoom`, ui/flat/pan_zoom.gd) over the same meshes, clipped to the room
 ## between the pill and the tin. What flies between the cloth and the tin
-## is drawn over both, unclipped (`_over`). The pill, the toast and the
+## is drawn over both (`_over`), clipped while zoomed to the picture's top
+## and the screen's foot so it never crosses the bar. The pill, the toast and the
 ## streak's bubble are on a layer of their own and never scale.
 ##
 ## How it moves. The flat boards' vocabulary (core/motion.gd,
@@ -110,9 +111,10 @@ const HELD_BOB_MAX := 48
 ## smoother and more satisfact to watch"): 0.28, 0.08, 1.6, so each landing
 ## clears TICK_GAP and ticks on its own. Then the gap halved, the flight
 ## kept ("keep current flight time, but reduce gap between gems"): 0.04,
-## 0.8, so every other landing ticks.
-const RUN_STEP := 0.04
-const RUN_STEP_CAP := 0.8
+## 0.8, so every other landing ticks. Then 0.1 and no cap (the user,
+## 2026-10-21: "they should fly one after another after 0.1s, not all at
+## once"): the cap had squeezed a run of twenty or more to a burst.
+const RUN_STEP := 0.1
 ## The case's own sliding along a place go one after another too, this
 ## far apart, the whole pack no longer than SLIDE_CAP (a pack on Insane
 ## can slide sixty places, and a place is not pickable until its jewel has
@@ -415,7 +417,6 @@ func _ready() -> void:
 	_over.name = "Over"
 	_over.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_over.z_index = 1
-	_over.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_over.draw.connect(_draw_over)
 	add_child(_over)
 	fx = Fx2D.new()
@@ -583,6 +584,10 @@ func _layout() -> void:
 	_view = Rect2(0.0, head, size.x, maxf(1.0, floor_y - head))
 	_cloth.position = _view.position
 	_cloth.size = _view.size
+	# what flies, from the picture's top to the foot: zoomed, a jewel bound
+	# for a square out of sight goes under the edge, not over the bar
+	_over.position = _view.position
+	_over.size = Vector2(size.x, maxf(1.0, size.y - _view.position.y))
 	var limits := _zoom_limits()
 	zoom.setup(_view, limits.x, limits.y)
 	_zoom_b.position = Vector2(ZOOM_INSET, _view.end.y - ZOOM_INSET - ZOOM_B)
@@ -1020,7 +1025,7 @@ func _draw_over() -> void:
 	_top = top.mesh()
 	_shown_over = [_top]
 	if _top != null:
-		_over.draw_mesh(_top, null)
+		_over.draw_mesh(_top, null, Transform2D(0.0, -_over.position))
 	if busy:
 		_busy_for(0.1)
 
@@ -1513,7 +1518,7 @@ var _ticked_at := {}
 func _play(res: Dictionary, at_cell: int, starts: Dictionary) -> void:
 	var now := _now()
 	var moves_: Array = res.moves
-	var step := minf(RUN_STEP, RUN_STEP_CAP / maxf(1.0, moves_.size()))
+	var step := RUN_STEP
 	var fly := 0.0 if Motion.reduce else FLY_TIME
 	var order := 0
 	var slides := 0
@@ -2013,6 +2018,7 @@ func _process(delta: float) -> void:
 		_request()
 	# a zoomed picture is cut to its room; whole, it may pop and slide past it
 	_cloth.clip_contents = zoom.zoomed()
+	_over.clip_contents = zoom.zoomed()
 	var wanted := _zoom_button_wanted()
 	if _zoom_b.visible != wanted:
 		_zoom_b.visible = wanted
