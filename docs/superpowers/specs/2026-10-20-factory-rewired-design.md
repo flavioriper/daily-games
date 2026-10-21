@@ -391,6 +391,12 @@ top with an "again" label):
   the floor go through Tally's `Batch` (`arcade/tally_board.gd`), which
   moves to a shared file both games preload (same component, same code).
 
+**Amended 2026-10-21.** A Move's arrow is drawn on the screen diagonal
+the robot walks at the view's current quarter turn (`sheet.arrow_of`: the
+facing turned with the view through `Art.ISO`), and the sheet is redrawn
+on a turn; `turn` on the pill still turns the sim's facing a quarter. See
+section 3's amendment.
+
 ## 11. What stays, what leaves
 
 `factory/sim.gd` keeps its shape (pure data, 10 Hz, `events`, `dirty`,

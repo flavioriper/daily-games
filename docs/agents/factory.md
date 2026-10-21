@@ -151,7 +151,9 @@ Calls made by the builder, none judged by the user:
 **Measured** (810x1440, `opengl3_angle`, 2026-10-21, one windowed run of
 `tests/_shot_factory.gd`, 79 pass, 0 failed): the floor 29 to 33 draw
 calls, the screen 98 to 102, turned 100, the sheet open 93 to 103, the
-tutor's pages 31 to 47, the tutorial card over the screen 145. Before the
+tutor's pages 31 to 47, the tutorial card over the screen 145; then one
+windowed `tests/_shot_factory_menu.gd`, 0 failed, the Arcade page 147, the
+screen 93 (the box heap seen at 0.85 there). Before the
 graft (2026-10-20, top-down, the second of two runs): `tests/_shot_factory.gd` 75 pass, 0 failed; the floor 13 to 18 draw
 calls, the screen 78, the sheet open 69 to 79 (the sheet itself 5), the
 tutor's pages 14 to 31, the tutorial card over the screen 104.
@@ -160,8 +162,7 @@ tutor's pages 14 to 31, the tutorial card over the screen 104.
 
 **Open.** The user's verdict on the corner-on graft; a phone; every sound
 heard by the user; pt and es read by a speaker; the Arcade line wraps to
-two lines in en; milestone 2's rows (Repeat, Second body, Big cell); the
-box heap at 0.85 is unshot (it was 0.62 and half spaced in the one run).
+two lines in en; milestone 2's rows (Repeat, Second body, Big cell).
 
 ## The land (dropped 2026-10-20)
 

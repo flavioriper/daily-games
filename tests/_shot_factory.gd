@@ -24,7 +24,9 @@ extends SceneTree
 ## the top bar, a dot on the chip of each robot with a fault a rule sees, a
 ## chip tapped and a robot tapped, the pace pill blank, the drawer empty
 ## before milestone 1, then a belt traced from the intake pad to the table,
-## shot and its draw calls held under the budget.
+## shot and its draw calls held under the budget; then the view turned a
+## quarter (the tile under the middle kept, the sheet's turn with it), shot,
+## and turned back.
 ##
 ## The sheet (factory/sheet.gd on a new floor's screen, its mouse off as the
 ## field's is; its touches handed to its own `_gui_input` in its own pixels,
