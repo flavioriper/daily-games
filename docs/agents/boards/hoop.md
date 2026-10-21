@@ -625,3 +625,9 @@ Vertex yet**.
     same bands now keep their grey-blue. `FINE` lost its "check the map
     cell by cell", which ran the first ask past its 32,000 tokens (and the
     time it took left the reader out of time).
+  - **The third run kept it** (`build/port_hoop3.log`, 46cb5a3a): maps
+    6/7/7/5, board drops 7/0/0/7, `repairMesh` still nothing; try 1 kept
+    at 7, 117 panels (80..170), a whole body, the handle dark all round.
+    The eye still asks for a rounder handle and softer shading. The band
+    ran 15.0 min against HOOP_BUDGET_MS's 12 (a try begun before the
+    deadline runs to its end), $2.07.
