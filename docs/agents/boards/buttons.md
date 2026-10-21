@@ -1146,3 +1146,20 @@ gem growing to its square over LIFT_TIME). Medium `play` on
 bare seats and loose gems apart. Board probe 26 days, the two old band-2
 zoom failures. Not seen: Insane zoomed, the win's hop of flat squares, the
 menu card, the tutorial.
+
+## 2026-10-21: case flights at the board's speed
+
+The user: "on jewel box, for some reason pieces from case box are flying way
+faster than pieces from the board, make it aligned with board". Every flight
+took `FLY_TIME` (0.56 s) whatever its length, and one out of the case (or
+into it) crosses from the foot to the picture, far more ground than a hop on
+the cloth. Now a flight with an end in the case keeps the speed of a hop of
+`FLY_REACH_K` (0.35) of the screen's width in `FLY_TIME`, measured in screen
+px with the zoom applied to its cloth end, and never takes more than
+`FLY_LONG_MAX` (2x) `FLY_TIME`; it never goes under `FLY_TIME`. Hops on the
+cloth are untouched. Its landing (`_arrive` / `_tin_arrive`, `_landed`, the
+busy time) follows its own time, and `_landed` counts landings as they come
+(a shared counter), not by leaving order, so a run's rising pitch and its
+every-third ring stay in order. Board probe 14 days, the two old band-2 zoom
+failures (same on the unchanged code). Not seen in a window; `FLY_REACH_K`
+is the number to turn by eye.

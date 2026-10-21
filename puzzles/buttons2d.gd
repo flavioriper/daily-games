@@ -134,6 +134,13 @@ const PICK_CAP := 0.0
 ## Half the speed since 2026-10-20 (the user: "slow flight time by half"):
 ## 0.28 to 0.56.
 const FLY_TIME := 0.56
+## A flight with an end in the case covers far more ground than a hop on
+## the cloth, and on FLY_TIME alone it shot past (the user, 2026-10-21: "pieces
+## from case box are flying way faster than pieces from the board, make it
+## aligned with board"): it keeps the speed of a FLY_REACH_K-of-the-screen's-
+## width hop in FLY_TIME, so takes longer, never past FLY_LONG_MAX of FLY_TIME.
+const FLY_REACH_K := 0.35
+const FLY_LONG_MAX := 2.0
 ## A button of the tin sliding along to the next place (State.SLIDE).
 const SLIDE_TIME := 0.26
 const FLY_ARC := 0.6
@@ -1518,6 +1525,10 @@ func _play(res: Dictionary, at_cell: int, starts: Dictionary) -> void:
 	var sewn := 0
 	var last := now
 	var tin_k := _tin_step * TIN_FIT / _cell
+	var pic := _pic_xf(now)
+	# landings counted as they come: a case flight is longer than its
+	# neighbours on the cloth, so the order of leaving is not of landing
+	var landed := [0]
 	for m: Array in moves_:
 		var kind := int(m[0])
 		if kind == State.SLIDE:
@@ -1562,9 +1573,18 @@ func _play(res: Dictionary, at_cell: int, starts: Dictionary) -> void:
 				_arrive[int(m[2])] = at + fly
 				_mark(int(m[2]))
 				sewn += 1
+		if fly > 0.0 and not (bool(f.fc) and bool(f.tc)):
+			var a: Vector2 = pic * (f.from as Vector2) if bool(f.fc) else f.from
+			var b: Vector2 = pic * (f.to as Vector2) if bool(f.tc) else f.to
+			f.time = fly * clampf(a.distance_to(b) / (size.x * FLY_REACH_K), 1.0, FLY_LONG_MAX)
+			if kind == State.TO_TIN:
+				_tin_arrive[int(m[2])] = at + f.time
+			else:
+				_arrive[int(m[2])] = at + f.time
 		_flights.append(f)
-		last = maxf(last, at + fly)
-		_after(at + fly - now, _landed.bind(kind, int(m[2]), order, moves_.size()))
+		var lands := at + float(f.time)
+		last = maxf(last, lands)
+		_after(lands - now, _landed.bind(kind, int(m[2]), landed, moves_.size()))
 		order += 1
 	_last_land = last
 	_bump_pill()
@@ -1603,7 +1623,9 @@ func _play(res: Dictionary, at_cell: int, starts: Dictionary) -> void:
 
 ## One button has landed: its tick, a step up the run, and a ring where it
 ## was sewn.
-func _landed(kind: int, where: int, nth: int, of: int) -> void:
+func _landed(kind: int, where: int, landed: Array, of: int) -> void:
+	var nth: int = landed[0]
+	landed[0] += 1
 	var pitch := pow(2.0, minf(RUN_CLIMB_MAX, nth * RUN_CLIMB) / 12.0) * randf_range(TICK_VARY.x, TICK_VARY.y)
 	# A run lands a button every 0.04 s, and all at once with motion reduced:
 	# its ticks and its knocks are a wheel spun, one every TICK_GAP, never a
