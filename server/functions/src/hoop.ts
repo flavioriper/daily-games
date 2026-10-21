@@ -1,5 +1,6 @@
 import {draw, Drawing, shapesModel} from "./generate";
-import {area, board, KEY_WORDS, compact, dissolve, fewer, grow, join, network, raster, Raster, Regions, SIDE, split, touching, unring, unshadow} from "./facets";
+import {area, board, compact, dissolve, fewer, grow, join, network, raster, Raster, Regions, SIDE, split, touching, unring, unshadow} from "./facets";
+import {keyFor, keyWords, Key} from "./key";
 import {Theme, Thing} from "./theme";
 
 /**
@@ -47,7 +48,7 @@ const LEAST_PANELS = [16, 26, 40, 80];
 const MOST_CORNERS = 7;
 const TRIES = 2;
 
-export const PROMPT = (what: string, band: number) => `A low-poly geometric illustration of ${what}, made of about ${BANDS[band].facets} flat polygon facets (mostly triangles). Every facet is ONE single flat solid colour: no gradients, no texture, no outlines, no lines drawn between facets. Neighbouring facets differ in shade to show soft light from the top left: a light, a mid and a shadow tone of each colour. Crisp straight edges. Cute cozy style, ${band < 2 ? "big simple readable shapes, a few bold colours" : "rich colour and small features"}; its little features (eyes, seeds, spots, buttons) drawn ${band < 2 ? "few and large" : "as clear facets"} in a colour that stands out. One thing only, centred and large, filling most of the picture, on ${KEY_WORDS}; no bright pure green in the thing itself, nothing else in the picture, no shadow under it, no text.`;
+export const PROMPT = (what: string, band: number, key: Key, creature: boolean) => `A low-poly illustration of ${what}, built from at least 150 and about 200 small flat polygon facets (mostly triangles) on every band, the big surfaces broken into many small facets too: a soft, muted, harmonious palette of gentle earthy pastels; each facet is ONE flat solid colour; neighbouring facets shift subtly in tone as if lit softly from the top left (a light, a mid and a shadow tone of each colour); crisp straight edges; no outlines, no lines between facets, no gradient inside a facet, no texture. ${creature ? "" : "It is an object: no face, no eyes, no mouth. "}One thing only, centred and large, filling most of the picture, on ${keyWords(key)}; no cast shadow, no ground, nothing else, no text. A square picture.`;
 
 type P = number[];
 
@@ -362,9 +363,10 @@ export function readHoop(d: Drawing | Raster, band: number): {pins: number[]; pa
  *  `keep` is handed each drawing (the dashboard's files). */
 export async function makeHoop(day: number, theme: Theme, band: number, keep?: (name: string, d: Drawing) => void): Promise<HoopPicture | null> {
   const thing: Thing = theme.objects[Math.min(band + 1, theme.objects.length - 1)];
+  const {key, creature} = await keyFor(thing);
   for (let n = 0; n < TRIES; n++) {
     try {
-      const drawing = await draw(PROMPT(thing.draw, band), shapesModel());
+      const drawing = await draw(PROMPT(thing.draw, band, key, creature), shapesModel());
       keep?.(`${day}_hoop${band}_${thing.id}_${n}`, drawing);
       const got = readHoop(drawing, band);
       if (got.why !== "") {

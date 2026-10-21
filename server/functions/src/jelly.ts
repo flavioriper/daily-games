@@ -1,6 +1,7 @@
 import {ask, available, draw, Drawing, shapesModel} from "./generate";
-import {board, KEY_WORDS, compact, dissolve, fewer, join, touching, outlines, raster, Raster, Regions, simplify, split, area as signedArea} from "./facets";
+import {board, compact, dissolve, fewer, join, touching, outlines, raster, Raster, Regions, simplify, split, area as signedArea} from "./facets";
 import {DEFAULT_ROWS_MODEL, lookThing, Tried} from "./pictures";
+import {keyFor, keyWords, Key} from "./key";
 import {Theme, Thing} from "./theme";
 
 /**
@@ -408,10 +409,10 @@ const DRAWINGS = [3, 3, 2, 2];
 /** Pixels the drawing is grown out over the board. */
 const SWELL = 5;
 
-export const STICKER = (what: string, band: number) => {
+export const STICKER = (what: string, band: number, key: Key) => {
   const rule = RULES[band];
   const mixed = rule.mixed === 0 ? "" : ` At least ${rule.mixed} of the colours you use must be orange, lime green or grape purple.`;
-  return `A cute ${what} drawn as a flat children's sticker of ${DRAWN[band].shapes} smooth rounded shapes, using ${DRAWN[band].colours} of these six exact flat colours and no others: ${INK_NAMES.join(", ")}.${mixed} Each shape one solid colour, shapes touching edge to edge with no gaps. No outlines, no black, no white or grey inside it, no shading, no gradients, no highlights, no texture, no thin lines or small dots: every shape big and chunky. A bold silhouette a child names at once. Any spots or small details in one of the six colours too. One thing only, centred and large, filling most of the picture, on ${KEY_WORDS}, nothing else, no white sticker border round it, no shadow, no text. A square picture.`;
+  return `A cute ${what} drawn as a flat children's sticker of ${DRAWN[band].shapes} smooth rounded shapes, using ${DRAWN[band].colours} of these six exact flat colours and no others: ${INK_NAMES.join(", ")}.${mixed} Each shape one solid colour, shapes touching edge to edge with no gaps. No outlines at all, no dark edge lines, no black, and no white, cream or grey anywhere in it (every part of the thing, body included, is one of the six colours), no shading, no gradients, no highlights, no texture, no thin lines or small dots. The shapes are clean and well proportioned: a sharp, true silhouette of the thing that a child names at once, drawn with care. Any spots or small details in one of the six colours too. One thing only, centred and large, filling most of the picture, on ${keyWords(key)}, nothing else, no white sticker border round it, no shadow, no text. A square picture.`;
 };
 
 /** A drawing's regions in the six flavours: each pixel the flavour nearest
@@ -590,8 +591,9 @@ export function readJelly(d: Drawing | Raster, band: number): {parts: Part[]; wh
  *  before 2026-10-16, when no drawing will do. */
 export async function drawJelly(day: number, thing: Thing, band: number, t: JellyTry,
   keep?: (name: string, d: Drawing) => void): Promise<Part[] | null> {
+  const {key} = await keyFor(thing);
   for (let n = 0; n < DRAWINGS[band]; n++) {
-    const drawing = await draw(STICKER(thing.draw, band), shapesModel());
+    const drawing = await draw(STICKER(thing.draw, band, key), shapesModel());
     keep?.(`${day}_jelly${band}_${thing.id}_${n}`, drawing);
     const got = readJelly(drawing, band);
     t.parts = got.parts;

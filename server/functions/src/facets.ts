@@ -1,4 +1,5 @@
 import type {Drawing} from "./generate";
+import {keyWords} from "./key";
 import {decoded} from "./pictures";
 
 /**
@@ -60,12 +61,10 @@ export function dist(a: ArrayLike<number>, ai: number, b: ArrayLike<number>, bi:
 
 const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
-/** The board Yarn Hoop's drawings are asked on: a green screen, since a
- *  low-poly thing may be white (a teapot's lit facets came at 250, the
- *  white board's own shade) and the image model paints "magenta" as a hot
- *  pink that eats a red thing's edge. Gumdrop's stickers stay on white:
- *  none of the six flavours is near it. */
-export const KEY_WORDS = "a plain flat solid pure green-screen chroma key background (#00FF00) filling the whole picture edge to edge";
+/** The green screen Yarn Hoop's drawings were all asked on, kept for a
+ *  caller that has not moved to keyWords(key) (key.ts picks the key a
+ *  thing is drawn on). */
+export const KEY_WORDS = keyWords("green");
 /** The board is flooded from the picture's edge: a pixel near the board's
  *  colour (the edge's median: the model's magenta is a hot pink, shaded)
  *  joins while it differs from the board pixel beside it by under STEP, so

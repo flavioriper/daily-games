@@ -23,6 +23,10 @@ export interface Thing {
   es: string;
   /** What to draw: the thing with its colours. */
   draw: string;
+  /** An animal or a character with a face. Not in the theme writer's
+   *  schema: keyFor (key.ts) answers it when it is missing, so themes
+   *  written before it still parse. */
+  creature?: boolean;
 }
 
 export interface Theme {
