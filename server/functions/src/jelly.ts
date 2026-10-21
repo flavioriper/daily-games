@@ -1,7 +1,11 @@
 import {ask, available, draw, Drawing, shapesModel} from "./generate";
 import {board, compact, dissolve, fewer, join, touching, outlines, raster, Raster, Regions, simplify, split, area as signedArea} from "./facets";
-import {DEFAULT_ROWS_MODEL, lookThing, Tried} from "./pictures";
+import {DEFAULT_ROWS_MODEL} from "./pictures";
 import {keyFor, keyWords, Key} from "./key";
+import {dataUrl, FLOOR, judge, renderPolygons, Verdict} from "./eye";
+import {gridOver, JELLY_GRID_N} from "./grid";
+import {Port, PortTry} from "./ports";
+import {shrunk} from "./vistas";
 import {Theme, Thing} from "./theme";
 
 /**
@@ -12,11 +16,14 @@ import {Theme, Thing} from "./theme";
  * soft polygons puzzles/gumdrop_mould.gd's twenty-nine are made of, so a
  * themed jelly is built and drawn by the same code as theirs.
  *
- * A text model writes the parts; the band's rules below are checked in
- * code on the same shapes the phone builds; and the blind look of the bead
- * pictures (lookThing) is shown the jelly laid as beads in its flavours'
- * colours and has to name the thing. A band whose tries all fail is left
- * out, and the board fills that place from its twenty-nine.
+ * Since 2026-10-21 the thing is drawn as a sticker and a reviewer model,
+ * shown it under a numbered grid, writes the parts (mapJelly); the pixel
+ * reader (readJelly) and a text model writing from words are the
+ * fallbacks. The band's rules below are checked in code on the same shapes
+ * the phone builds, and the eye (eye.ts) is shown the jelly as the phone
+ * lays it and has to name the thing and score it well. A thing whose tries
+ * all fail is left out, and the board fills that place from its
+ * twenty-nine.
  *
  * The rules are written twice, here and in core/themed_pictures.gd
  * (JELLY_RULES): the two change together.
@@ -48,13 +55,15 @@ export interface Jelly {
 
 export interface JellyTry {
   band: number;
-  /** Drawn as a sticker and read (since 2026-10-16), or written as shapes. */
+  /** Drawn as a sticker and mapped or read (since 2026-10-16), or written
+   *  as shapes. Every ask behind it is on the thing's Port. */
   route?: "drawn" | "written";
   what: string;
   parts?: Part[];
   /** What the rules found, "" when it keeps them. */
   why: string;
-  look?: Tried["look"];
+  /** The eye on the parts kept, or on the last it saw. */
+  verdict?: Verdict;
   kept: boolean;
   error?: string;
 }
@@ -75,8 +84,8 @@ export const LEAST_SQUARES = 9;
 export const COVER = [0.2, 0.75];
 /** Every point of every shape inside this much of the field's 100. */
 export const EDGE = [4, 96];
-const MOST_PARTS = 8;
-const MOST_SHAPES = 8;
+export const MOST_PARTS = 8;
+export const MOST_SHAPES = 8;
 /** The phone makes a cell of every piece a later chunk leaves of an
  *  earlier one (gumdrop_mould.gd build_parts, 2026-10-14), a piece under
  *  SLIVER of the field's 100 by 100 going to the chunk that cut it; its
@@ -84,7 +93,7 @@ const MOST_SHAPES = 8;
  *  is dropped there, and so refused here. */
 const CELLS_TOP = 16;
 const SLIVER = 24;
-const MOST_POINTS = 16;
+export const MOST_POINTS = 16;
 const TRIES = 2;
 
 type V = [number, number];
@@ -317,71 +326,38 @@ function asked(thing: Thing, band: number, last: string): string {
 export const MOULDS = [2, 3, 4, 5];
 
 /** The theme's things as jellies, by band ("0" Easy to "3" Insane), a
- *  list a band in the theme's order, and what became of every try. A thing
- *  whose tries all fail is left out of its band's list, and the board fills
- *  its place from the twenty-nine. Never throws. */
+ *  list a band in the theme's order, what became of every try, and a Port a
+ *  thing with every ask behind it. A thing whose tries all fail, or that
+ *  the band's JELLY_BUDGET_MS does not reach, is left out of its band's
+ *  list, and the board fills its place from the twenty-nine. Never throws. */
 export async function makeJellies(day: number, theme: Theme, only?: number,
-  keep?: (name: string, d: Drawing) => void): Promise<{jellies: Record<string, Jelly[]>; tries: JellyTry[]}> {
+  keep?: (name: string, d: Drawing) => void): Promise<{jellies: Record<string, Jelly[]>; tries: JellyTry[]; ports: Port[]}> {
   const jellies: Record<string, Jelly[]> = {};
   const tries: JellyTry[] = [];
-  if (!available()) return {jellies, tries};
-  const model = (process.env.DAILY_ROWS_MODEL ?? "").trim() || DEFAULT_ROWS_MODEL;
-  // One jelly: drawn as a sticker first (the picture a model can draw is a
-  // far better thing than the ellipses it writes); then up to TRIES writes,
-  // each told why the last was turned down.
-  const one = async (band: number, thing: Thing): Promise<Jelly | null> => {
-    const d: JellyTry = {band, what: thing.id, route: "drawn", why: "", kept: false};
-    tries.push(d);
-    try {
-      const parts = await drawJelly(day, thing, band, d, keep);
-      if (parts !== null) {
-        d.kept = true;
-        return {id: thing.id, name: {en: thing.name, pt: thing.pt, es: thing.es}, parts};
-      }
-    } catch (e) {
-      d.error = String(e).slice(0, 300);
-      console.error(`jelly: day ${day}, band ${band}, ${thing.id}, drawing failed`, e);
-    }
-    let last = "";
-    for (let n = 0; n < TRIES; n++) {
-      const t: JellyTry = {band, what: thing.id, route: "written", why: "", kept: false};
-      tries.push(t);
-      try {
-        const got = await ask<{parts: Part[]}>({system: SYSTEM, prompt: asked(thing, band, last), schema: SCHEMA, model});
-        t.parts = got.parts;
-        t.why = why(got.parts, band);
-        last = t.why;
-        if (t.why !== "") continue;
-        t.look = await lookThing(day, beads(got.parts), thing, theme);
-        if (!t.look.ok) {
-          last = `shown to someone, they took it for ${t.look.said || "nothing"}`;
-          continue;
-        }
-        t.kept = true;
-        return {id: thing.id, name: {en: thing.name, pt: thing.pt, es: thing.es}, parts: got.parts};
-      } catch (e) {
-        t.error = String(e).slice(0, 300);
-        console.error(`jelly: day ${day}, band ${band}, ${thing.id}, try ${n} failed`, e);
-      }
-    }
-    return null;
-  };
+  const ports: Port[] = [];
+  if (!available()) return {jellies, tries, ports};
   // Fourteen jellies a day, one request at a time: side by side, the four
   // bands' Opus requests ran past OpenRouter's in-flight credit budget
   // (HTTP 402, 2026-10-14).
   // `only`: that band alone, so the night writes a band a run (index.ts).
   for (let band = 0; band < RULES.length; band++) {
     if (only !== undefined && band !== only) continue;
+    // the budget runs from the band's start: the night writes a band a step
+    const deadline = Date.now() + JELLY_BUDGET_MS;
     const list: Jelly[] = [];
     for (const thing of theme.objects.slice(0, MOULDS[band])) {
-      const got = await one(band, thing);
-      if (got !== null) list.push(got);
+      const d: JellyTry = {band, what: thing.id, route: "drawn", why: "", kept: false};
+      tries.push(d);
+      const got = await drawJelly(day, theme, thing, band, d, keep, deadline);
+      ports.push(got.port);
+      const parts = got.parts ?? await writeJelly({day, theme, thing, band, deadline, port: got.port}, tries);
+      if (parts !== null) list.push({id: thing.id, name: {en: thing.name, pt: thing.pt, es: thing.es}, parts});
     }
     if (list.length > 0) jellies[band] = list;
   }
   const kept = Object.entries(jellies).map(([b, l]) => `${b}:${l.length}`).join(" ");
   console.log(`jelly: day ${day} (${theme.id}), kept ${kept || "none"} in ${tries.length} tries`);
-  return {jellies, tries};
+  return {jellies, tries, ports};
 }
 
 // --- a jelly drawn (2026-10-16) ---
@@ -402,9 +378,10 @@ const FIT = [9, 91];
 /** Pixels of the 256 reading a chunk must hold: LEAST_SQUARES of the
  *  sim's 36-grid with room to spare (a square is about six pixels). */
 const DRAWN_LEAST = 520;
-/** Stickers drawn for one jelly before it is written from words, by band:
- *  Insane's five jellies at three each, with flash's back-offs, would pass
- *  the themeDay step's half hour. */
+/** Stickers drawn for one jelly, each mapped up to JELLY_ASKS times, before
+ *  the reader and then the words are tried, by band: Insane's five jellies
+ *  at three each, with flash's back-offs, would pass the themeDay step's
+ *  half hour (JELLY_BUDGET_MS holds the rest). */
 const DRAWINGS = [3, 3, 2, 2];
 /** Pixels the drawing is grown out over the board. */
 const SWELL = 5;
@@ -586,23 +563,340 @@ export function readJelly(d: Drawing | Raster, band: number): {parts: Part[]; wh
   return {parts, why: why(parts, band)};
 }
 
-/** A thing of the theme drawn as a sticker in the flavours and read as a
- *  band's jelly, up to TRIES drawings; the parts written from words, as
- *  before 2026-10-16, when no drawing will do. */
-export async function drawJelly(day: number, thing: Thing, band: number, t: JellyTry,
-  keep?: (name: string, d: Drawing) => void): Promise<Part[] | null> {
-  const {key} = await keyFor(thing);
-  for (let n = 0; n < DRAWINGS[band]; n++) {
-    const drawing = await draw(STICKER(thing.draw, band, key), shapesModel());
-    keep?.(`${day}_jelly${band}_${thing.id}_${n}`, drawing);
-    const got = readJelly(drawing, band);
-    t.parts = got.parts;
-    t.why = got.why;
-    if (got.why !== "") {
-      console.log(`jelly: day ${day}, band ${band}, ${thing.id} drawing ${n}: ${got.why}`);
+
+// --- the port: a model maps the sticker (2026-10-21) ---
+
+/** Asks of the reviewer model a drawing: each told why the last fell short. */
+export const JELLY_ASKS = 3;
+/** Past this long from a band's start no draw, ask, judge or written try
+ *  begins: a run may start the step 15 minutes into its 30-minute lease
+ *  (themeday.ts), and a step killed mid-way is never written or given up
+ *  on, so every step after it would wait. */
+export const JELLY_BUDGET_MS = 12 * 60 * 1000;
+/** A kept try scored this well is not bettered by more asks. */
+const JELLY_ENOUGH = 9;
+/** The fewest points a polygon is asked for (the checker takes three), so
+ *  the soft rounding has corners to follow the drawing by. */
+const LEAST_POINTS = 6;
+/** The thinnest a shape is asked to be anywhere, in the field's units: a
+ *  thinner one shows under LEAST_SQUARES of the sim's grid. */
+const THINNEST = 6;
+const BAND_NAMES = ["Easy", "Medium", "Hard", "Insane"];
+/** The render the eye is shown: the jelly flat on the card's cream. */
+const RENDER_SIZE = 600;
+const CREAM = "#f3ead8";
+const INK_HEX = INKS.map((c) => "#" + c.map((v) => v.toString(16).padStart(2, "0")).join(""));
+
+/** The spike's ask (spike_jelly_map.js, 2026-10-21); its refusals were all
+ *  rules it had not stated, so the band's rules are stated in full in the
+ *  prompt (mapRules), from the checker's own constants. */
+const MAPPER = `You are a sweet-maker drawing the mould of a jelly for a children's puzzle. You are shown a flat sticker drawing of one thing on a plain green, magenta or cyan background, with a grid over it numbered 0 to 100 along the top and left (and again along the bottom and right). A point's x is read along the top numbers and y along the left numbers, as decimals.
+
+Write the jelly as a list of parts. A part has a flavour, one of: cherry (red), orange, lemon (yellow), lime (green), blueberry (blue), grape (purple), and one to ${MOST_SHAPES} shapes. A shape is {"kind":"soft","n":[x1,y1,x2,y2,...]}: a polygon of ${LEAST_POINTS} to ${MOST_POINTS} points in order round its outline, which is drawn with its corners well rounded. Rules: the parts together make ONE connected piece of jelly in the thing's silhouette, sharp and true to the drawing (every part a child expects, in the drawing's proportions), every shape inside ${FIT[0]} to ${FIT[1]} on both axes; the shapes of neighbouring parts touch or overlap a little so no gap opens between them, and a shape drawn later lies over an earlier one; a shape must be big enough to pour (never thinner than ${THINNEST} units anywhere); ignore any white sticker border, outlines, highlights or shading in the drawing and give each region the flavour nearest its colour. Use the drawing's colours as the flavours, but keep to the band's counts. Answer with JSON only.`;
+
+const MAP_SCHEMA = {type: "object", additionalProperties: false, required: ["parts"], properties: {
+  parts: {type: "array", items: {type: "object", additionalProperties: false, required: ["flavour", "shapes"], properties: {
+    flavour: {type: "string", enum: [...FLAVOURS]},
+    shapes: {type: "array", items: {type: "object", additionalProperties: false, required: ["kind", "n"], properties: {kind: {type: "string", enum: ["soft"]}, n: {type: "array", items: {type: "number"}}}}},
+  }}},
+}};
+
+/** Every rule why() checks for `band`, in words, with its numbers. */
+export function mapRules(band: number): string {
+  const r = RULES[band];
+  const flavours = r.flavours[0] === r.flavours[1] ? `exactly ${r.flavours[0]}` : `${r.flavours[0]} to ${r.flavours[1]}`;
+  const mixed = r.mixed ? `, at least ${r.mixed} of them mixed (orange, lime or grape)` : "";
+  const square = 100 / GRID;
+  return `${flavours} flavours in all${mixed}; ${r.chunks[0]} to ${r.chunks[1]} chunks in all, where a chunk is one connected blob of one flavour (two shapes of one flavour that touch are one chunk); at most ${MOST_PARTS} parts and ${MOST_SHAPES} shapes a part; ${LEAST_POINTS} to ${MOST_POINTS} points a polygon, so "n" holds ${2 * LEAST_POINTS} to ${2 * MOST_POINTS} numbers, an even count; every point inside ${FIT[0]} to ${FIT[1]} on both axes; the whole jelly one connected piece; the jelly covering ${Math.round(COVER[0] * 100)}% to ${Math.round(COVER[1] * 100)}% of the field (${Math.round(COVER[0] * 10000)} to ${Math.round(COVER[1] * 10000)} of its 10000 square units: measure it before you answer); every chunk at least ${LEAST_SQUARES} squares of a ${GRID} by ${GRID} grid of the field (a square is ${square.toFixed(1)} units, so a chunk at least about ${Math.ceil(Math.sqrt(LEAST_SQUARES) * square)} by ${Math.ceil(Math.sqrt(LEAST_SQUARES) * square)} units: a dot is not a chunk); nothing thinner than ${THINNEST} units; and where a later part cuts an earlier chunk into pieces each piece is a cell of its own, at most ${CELLS_TOP} cells in all`;
+}
+
+const isNumber = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+
+/** The model's answer held to the parts' shape: the schema is asked for but
+ *  not trusted. Parts an array, each a flavour string and shapes an array of
+ *  {kind, n} whose n are all finite numbers; null for anything else, which
+ *  the caller refuses as "a shape's numbers". why() judges the rest. */
+export function asParts(got: unknown): Part[] | null {
+  const parts = (got ?? {}) as {parts?: unknown};
+  if (!Array.isArray(parts.parts)) return null;
+  const out: Part[] = [];
+  for (const p of parts.parts) {
+    const q = (p ?? {}) as {flavour?: unknown; shapes?: unknown};
+    if (typeof q.flavour !== "string" || !Array.isArray(q.shapes)) return null;
+    const shapes: Shape[] = [];
+    for (const s of q.shapes) {
+      const k = (s ?? {}) as {kind?: unknown; n?: unknown};
+      if (typeof k.kind !== "string" || !Array.isArray(k.n) || !k.n.every(isNumber)) return null;
+      shapes.push({kind: k.kind as Shape["kind"], n: k.n.slice()});
+    }
+    out.push({flavour: q.flavour as Flavour, shapes});
+  }
+  return out;
+}
+
+/** The reviewer model's jelly of a sticker, read off it under the field's
+ *  numbered grid; null when the answer is not parts at all (asParts).
+ *  `refused` is what the last answer on the same drawing was told, a
+ *  sentence, "" for a first ask. Throws as `ask` does. */
+export async function mapJelly(drawing: Drawing, thing: Thing, band: number, refused: string): Promise<Part[] | null> {
+  const grid = gridOver(drawing, JELLY_GRID_N, 5);
+  const got = await ask<unknown>({
+    system: MAPPER,
+    role: "review",
+    schema: MAP_SCHEMA,
+    images: [dataUrl(grid.mime, grid.bytes)],
+    prompt: `The drawing is of ${thing.name}. The band is ${BAND_NAMES[band]}, and the board's checker refuses a jelly that breaks any of these: ${mapRules(band)}.${refused === "" ? "" : `\n${refused}`}\nWrite the jelly.`,
+  });
+  return asParts(got);
+}
+
+/** What one thing's tries share. */
+interface Ctx {
+  day: number;
+  theme: Theme;
+  thing: Thing;
+  band: number;
+  /** When no new call may begin (JELLY_BUDGET_MS from the band's start). */
+  deadline: number;
+  port: Port;
+}
+
+/** The best kept try so far. */
+interface Best {
+  score: number;
+  verdict: Verdict;
+  parts: Part[];
+  render: Buffer;
+  /** The sticker it was read off; none for a written jelly. */
+  drawing?: Drawing;
+}
+
+const said = (e: unknown) => String(e instanceof Error ? e.message : e).slice(0, 300);
+
+/** A try on the thing's port, pushed before its work starts so a throw
+ *  never loses it. */
+function fresh(c: Ctx, route: PortTry["route"]): PortTry {
+  const t: PortTry = {n: c.port.tries.length, route, why: "", kept: false};
+  c.port.tries.push(t);
+  return t;
+}
+
+function logTry(c: Ctx, t: PortTry): void {
+  const what = t.error ?? (t.why !== "" ? t.why : `${t.verdict?.pick} ${t.verdict?.score}${t.kept ? ", kept" : ""}`);
+  console.log(`jelly: day ${c.day}, band ${c.band}, ${c.thing.id} try ${t.n} (${t.route}): ${what}`);
+}
+
+/** Whether the budget is spent; the first try it stops on the port is
+ *  recorded, the rest are simply not made. */
+function late(c: Ctx, route: PortTry["route"]): boolean {
+  if (Date.now() <= c.deadline) return false;
+  if (!c.port.tries.some((t) => t.why === "out of time")) {
+    const t = fresh(c, route);
+    t.why = "out of time";
+    logTry(c, t);
+  }
+  return true;
+}
+
+/** Parts that came through asParts checked by the band's rules into `t`;
+ *  whether they keep them. */
+function checked(parts: Part[] | null, band: number, t: PortTry): boolean {
+  if (parts === null) {
+    t.why = "a shape's numbers";
+    return false;
+  }
+  try {
+    t.why = why(parts, band);
+  } catch (e) {
+    t.error = `why: ${said(e)}`;
+    return false;
+  }
+  return t.why === "";
+}
+
+/** The parts drawn as the phone lays them, each shape of each part in
+ *  order, and judged (beside the sticker when there is one) into `t`; the
+ *  render, or null when it could not be made or the eye asked. */
+async function judged(c: Ctx, parts: Part[], t: PortTry, drawing?: Drawing): Promise<Buffer | null> {
+  if (Date.now() > c.deadline) {
+    t.why = "out of time";
+    return null;
+  }
+  let png: Buffer;
+  try {
+    const polys = parts.flatMap((p) => p.shapes.map((s) => ({pts: polygon(s), fill: INK_HEX[FLAVOURS.indexOf(p.flavour)]})));
+    png = renderPolygons(polys, RENDER_SIZE, CREAM);
+  } catch (e) {
+    t.error = `render: ${said(e)}`;
+    return null;
+  }
+  try {
+    t.verdict = await judge(c.day, c.theme, c.thing, "jelly", dataUrl("image/png", png),
+      drawing === undefined ? undefined : dataUrl(drawing.mime, drawing.bytes));
+    t.kept = t.verdict.ok && t.verdict.score >= FLOOR.jelly;
+    return png;
+  } catch (e) {
+    t.error = `judge: ${said(e)}`;
+    return null;
+  }
+}
+
+/** What the next ask is told of the last one, a sentence; "" when there
+ *  is nothing to tell. */
+function lesson(t: PortTry, thing: Thing): string {
+  if (t.why !== "" && t.why !== "out of time") return `Your last answer was refused by the board's checker: "${t.why}". Write it again so it passes.`;
+  if (t.verdict !== undefined) {
+    const took = t.verdict.pick === thing.name.toLowerCase() ? "" : `, took it for ${t.verdict.pick}`;
+    return `A reviewer scored your last answer ${t.verdict.score} of 10${took}, and said: ${t.verdict.notes} Write it again, mending that.`;
+  }
+  return "";
+}
+
+/** One ask for a sticker's jelly, checked and judged, into `t`. Never
+ *  throws: each stage's error is written on the try. */
+async function mapTry(c: Ctx, drawing: Drawing, refused: string, t: PortTry, seen: (p: Part[]) => void): Promise<Best | null> {
+  let parts: Part[] | null;
+  try {
+    parts = await mapJelly(drawing, c.thing, c.band, refused);
+  } catch (e) {
+    t.error = `ask: ${said(e)}`;
+    return null;
+  }
+  if (parts !== null) seen(parts);
+  if (!checked(parts, c.band, t)) return null;
+  const render = await judged(c, parts!, t, drawing);
+  return render === null ? null : {score: t.verdict!.score, verdict: t.verdict!, parts: parts!, render, drawing};
+}
+
+/** The pixel reader on a sticker, judged as a map is, into `t`. */
+async function readerTry(c: Ctx, drawing: Drawing, t: PortTry, seen: (p: Part[]) => void): Promise<Best | null> {
+  let got: ReturnType<typeof readJelly>;
+  try {
+    got = readJelly(drawing, c.band);
+  } catch (e) {
+    t.error = `read: ${said(e)}`;
+    return null;
+  }
+  // the reader's own why: it says "nothing drawn" where why([]) says "parts"
+  const parts = got.parts;
+  seen(parts);
+  t.why = got.why;
+  if (t.why !== "") return null;
+  const render = await judged(c, parts, t, drawing);
+  return render === null ? null : {score: t.verdict!.score, verdict: t.verdict!, parts, render, drawing};
+}
+
+/** The kept try's drawing and render on the port, shrunk as the vistas are. */
+function keepOnPort(c: Ctx, best: Best): void {
+  try {
+    if (best.drawing !== undefined) c.port.source = shrunk(best.drawing).bytes.toString("base64");
+    c.port.render = shrunk({mime: "image/png", bytes: best.render}).bytes.toString("base64");
+  } catch (e) {
+    console.error(`jelly: day ${c.day}, band ${c.band}, ${c.thing.id}: the kept try not shrunk`, e);
+  }
+}
+
+/**
+ * A thing of the theme drawn as a sticker in the flavours, DRAWINGS[band]
+ * times, each mapped up to JELLY_ASKS times by the reviewer model; every
+ * answer checked by the band's rules and the passing ones judged by the
+ * eye, the best it keeps winning. When none is kept the pixel reader on the
+ * last sticker is one more try. `t` is the drawn route's summary;
+ * `port` records every try. Never throws.
+ */
+export async function drawJelly(day: number, theme: Theme, thing: Thing, band: number, t: JellyTry,
+  keep?: (name: string, d: Drawing) => void, deadline = Date.now() + JELLY_BUDGET_MS): Promise<{parts: Part[] | null; port: Port}> {
+  const c: Ctx = {day, theme, thing, band, deadline, port: {game: "jelly", band, thing: thing.id, tries: []}};
+  // the clock first: a thing the budget does not reach asks nothing, not
+  // even its key
+  if (late(c, "map")) {
+    t.why = "out of time";
+    return {parts: null, port: c.port};
+  }
+  // keyFor never throws by design; caught all the same, so nothing before
+  // the tries can lose the port
+  let key: Key = "green";
+  try {
+    ({key} = await keyFor(thing));
+  } catch (e) {
+    console.error(`jelly: day ${day}, band ${band}, ${thing.id}: no key`, e);
+  }
+  const seen = (p: Part[]) => { t.parts = p; };
+  let best: Best | null = null;
+  let last: Drawing | null = null;
+  for (let n = 0; n < DRAWINGS[band] && (best === null || best.score < JELLY_ENOUGH); n++) {
+    if (late(c, "map")) break;
+    let drawing: Drawing;
+    try {
+      drawing = await draw(STICKER(thing.draw, band, key), shapesModel());
+    } catch (e) {
+      const failed = fresh(c, "map");
+      failed.error = `draw: ${said(e)}`;
+      logTry(c, failed);
       continue;
     }
-    return got.parts;
+    last = drawing;
+    try {
+      keep?.(`${day}_jelly${band}_${thing.id}_${n}`, drawing);
+    } catch (e) {
+      console.error(`jelly: day ${day}, band ${band}, ${thing.id}: drawing ${n} not kept`, e);
+    }
+    let refused = "";
+    for (let a = 0; a < JELLY_ASKS && (best === null || best.score < JELLY_ENOUGH); a++) {
+      if (late(c, "map")) break;
+      const tried = fresh(c, "map");
+      const got = await mapTry(c, drawing, refused, tried, seen);
+      logTry(c, tried);
+      if (tried.kept && got !== null && (best === null || got.score > best.score)) best = got;
+      refused = lesson(tried, thing);
+    }
   }
-  return null;
+  if (best === null && last !== null && !late(c, "reader")) {
+    const tried = fresh(c, "reader");
+    const got = await readerTry(c, last, tried, seen);
+    logTry(c, tried);
+    if (tried.kept && got !== null) best = got;
+  }
+  if (best === null) {
+    // the summary says how the last try ended
+    const gone = c.port.tries[c.port.tries.length - 1];
+    Object.assign(t, {why: gone?.why ?? "", error: gone?.error, verdict: gone?.verdict});
+    return {parts: null, port: c.port};
+  }
+  keepOnPort(c, best);
+  Object.assign(t, {parts: best.parts, why: "", verdict: best.verdict, kept: true});
+  console.log(`jelly: day ${day}, band ${band}, ${thing.id}: ${best.parts.length} parts, score ${best.score}`);
+  return {parts: best.parts, port: c.port};
+}
+
+/** The jelly written from words, as before 2026-10-16, when no drawing gave
+ *  one: up to TRIES writes, each told why the last fell short, the passing
+ *  ones judged by the eye on the render alone (there is no drawing), the
+ *  best it keeps winning. Each try is on `tries` and on the port. */
+async function writeJelly(c: Ctx, tries: JellyTry[]): Promise<Part[] | null> {
+  const model = (process.env.DAILY_ROWS_MODEL ?? "").trim() || DEFAULT_ROWS_MODEL;
+  let best: Best | null = null;
+  let last = "";
+  for (let n = 0; n < TRIES && (best === null || best.score < JELLY_ENOUGH); n++) {
+    if (late(c, "written")) break;
+    const t = fresh(c, "written");
+    const j: JellyTry = {band: c.band, what: c.thing.id, route: "written", why: "", kept: false};
+    tries.push(j);
+    let parts: Part[] | null = null;
+    try {
+      parts = asParts(await ask<unknown>({system: SYSTEM, prompt: asked(c.thing, c.band, last), schema: SCHEMA, model}));
+    } catch (e) {
+      t.error = `ask: ${said(e)}`;
+    }
+    if (t.error === undefined && checked(parts, c.band, t)) {
+      const render = await judged(c, parts!, t);
+      if (t.kept && render !== null && (best === null || t.verdict!.score > best.score)) best = {score: t.verdict!.score, verdict: t.verdict!, parts: parts!, render};
+    }
+    logTry(c, t);
+    Object.assign(j, {parts: parts ?? undefined, why: t.why, verdict: t.verdict, kept: t.kept, error: t.error});
+    last = t.why !== "" ? t.why : t.verdict !== undefined && !t.kept ? `shown to someone, they took it for ${t.verdict.pick || "nothing"} and scored it ${t.verdict.score} of 10: ${t.verdict.notes}` : "";
+  }
+  if (best === null) return null;
+  keepOnPort(c, best);
+  return best.parts;
 }
