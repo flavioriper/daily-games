@@ -96,7 +96,7 @@ func _process(delta: float) -> bool:
 				sim.sold_at.assign([100, 150])
 				_menu.arcade_tab.refresh()
 				_menu._refresh_cards()
-				var want: String = tr("FACTORY_CARD_COINS") % "7" + " \u00b7 " + tr("FACTORY_PACE") % "5"
+				var want: String = tr("FACTORY_CARD_COINS_N") % "7" + " \u00b7 " + tr("FACTORY_PACE") % "5"
 				_check(_menu.arcade_tab.line("factory") == want,
 					"the Arcade line says the coins and the pace (%s)" % _menu.arcade_tab.line("factory"))
 				var card: Control = _factory_card()

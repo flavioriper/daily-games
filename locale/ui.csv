@@ -1020,7 +1020,8 @@ FRIENDS_INVITED_BODY,wants to play %s,quer jogar %s,quiere jugar %s
 FRIENDS_NOT_NOW,Not now,Agora não,Ahora no
 FRIENDS_NEW_TITLE,New friend,Nova amizade,Nueva amistad
 FRIENDS_NEW_BODY,You are friends now. Ask for a game any time.,Vocês agora são amigos. Chame para jogar quando quiser.,Ahora son amigos. Invita a jugar cuando quieras.
-FACTORY_CARD_COINS,%s coins,%s moedas,%s monedas
+FACTORY_CARD_COINS_ONE,1 coin,1 moeda,1 moneda
+FACTORY_CARD_COINS_N,%s coins,%s moedas,%s monedas
 FACTORY_CARD_BLURB,"Three robots, a sheet of nodes","Três robôs, uma folha de nós","Tres robots, una hoja de nodos"
 FACTORY_MOTTO,Every loop walks back to the bay,Toda volta caminha de volta à base,Cada vuelta camina de regreso a la base
 FACTORY_BLURB,"Three robots, a sheet of nodes: wire what each one does, and every loop walks back to the bay. The floor only runs while you watch it.","Três robôs, uma folha de nós: ligue o que cada um faz, e toda volta caminha de volta à base. O piso só anda enquanto você olha.","Tres robots, una hoja de nodos: conecta lo que hace cada uno, y cada vuelta camina de regreso a la base. El suelo solo anda mientras lo miras."
@@ -1055,7 +1056,7 @@ FACTORY_AGAIN,again,de novo,otra vez
 FACTORY_PARTS,parts,peças,piezas
 FACTORY_ADD_NODE,Add a node,Adicionar um nó,Añadir un nodo
 FACTORY_FIT_PART,Fit a part,Encaixar uma peça,Poner una pieza
-FACTORY_BATTERY_LINE,%d of %d · %d a loop · %.1f s on the bay,%d de %d · %d por volta · %.1f s na base,%d de %d · %d por vuelta · %.1f s en la base
+FACTORY_BATTERY_LINE,%d of %d · %d a loop · %s s on the bay,%d de %d · %d por volta · %s s na base,%d de %d · %d por vuelta · %s s en la base
 FACTORY_FLAT,"flat, away from the bay","sem carga, longe da base","sin carga, lejos de la base"
 TUT_FACTORY_1,Power on,Ligar,Enciende
 TUT_FACTORY_1_BODY,"Three robots stand on the charging bay, and each has a fault. Squares queue at the intake, boxes wait on the stack, and every loop starts and ends at the bay. Watch what goes wrong, then tap the Picker to read its program.","Três robôs esperam na base de carga, e cada um tem um defeito. Quadrados esperam na entrada, caixas esperam na pilha, e todo ciclo começa e termina na base. Veja o que dá errado e toque no Coletor para ler o programa dele.","Tres robots esperan en la base de carga y cada uno tiene un fallo. Los cuadrados hacen cola en la entrada, las cajas esperan en la pila y cada vuelta empieza y acaba en la base. Mira qué sale mal y toca el Recolector para leer su programa."

@@ -3114,9 +3114,28 @@ SETS = {
         # chop's cut, and no row is written from it).
         "no":   ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.3", "notes:0.14:-8,-8", "tight"),
     },
-    # Factory (factory/screen.gd). Everything else it plays is the Grove's
-    # set above; this is the market's sale alone.
+    # Factory (factory/screen.gd, factory/sheet.gd). Since 2026-10-20 a floor
+    # of robots, and every pop of it from the bank (docs/agents/sound.md,
+    # "The house sound"), unheard. The player's own hand: a node set down
+    # and a part fitted are the token two steps under the button (a fit
+    # clicks in twice), a wire landing the pebble, a refusal the tongue.
+    # The robots' hands, heard and never felt: Pick the lip, Release the
+    # token three under, charging one bubble of the wrap riding the pause,
+    # once a pause at -22. A belt laid, turned or flipped is still the
+    # Grove's `chop` through the screen's quiet voice (rule 7: board foley
+    # stays until the user asks). The sale is the jar coin below.
     "factory": {
+        "pick":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -17, FOLEY, "bank:lip", "cut:0.22", "notes:0:1", "tight"),
+        "release":  ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -17, FOLEY, "bank:token", "cut:0.14", "notes:0:-3", "tight"),
+        "node":     ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -13, FOLEY, "bank:token", "cut:0.16", "notes:0:-2", "tight"),
+        "wire":     ('a small pebble dropped into a calm pond, one soft plop, close, very short', 0.6, -15, FOLEY, "bank:pebble", "cut:0.1", "notes:0:2", "tight"),
+        "fit":      ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -12, FOLEY, "bank:token", "cut:0.24", "notes:0.07:-2,1", "tight"),
+        "no":       ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.3", "notes:0:-1", "tight"),
+        "charge":   ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -22, FOLEY, "bank:wrap", "cut:0.12", "notes:0:-2", "tight"),
+        # A milestone reached and a belt sold back: the Grove's `buy`, the
+        # muffled kalimba note as two quiet notes up (its take copied into
+        # build/sfx_raw/factory/, never bought again).
+        "buy":      ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.13:5,9", "cut:0.6"),
         # A thing sold: the coin that hops out of the market's hatch. Third
         # try. The first was the wallet's wooden `coin` as it is, one notch
         # (the user, 2026-10-11: "why the sell sfx has the same sfx of the

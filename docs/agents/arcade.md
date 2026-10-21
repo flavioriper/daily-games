@@ -7,6 +7,16 @@
 > (`puzzles/marigold2d.gd`, the flat host, four levels), not an Arcade
 > screen: no `arcade.cfg` record, no boosters, no best. See
 > `docs/agents/boards/marigold.md`.
+>
+> **Factory's card (2026-10-20, the robot floor)**: the last row of
+> `ArcadeTab.GAMES`, not of `Registry.ARCADE`, owned by the hidden
+> `ui/menu/factory_tab.gd` (the one-sim rule). The card
+> (`ui/menu/cards/arc_factory.gd`) is a robot carrying a box along a belt
+> on the floor's dotted paper, one mesh; its line (`arcade_tab.gd`) is the
+> coins and the pace, `FACTORY_CARD_COINS_ONE` / `_N` + ` · ` +
+> `Art.pace_text(sim)`: "7 coins · a box every 5 s", or "no box yet" under
+> two sales. No `arcade.cfg` record, no best. The Arcade page reads 147
+> draw calls with it. See `docs/agents/factory.md`.
 
 
 **A fifth tab since 2026-09-27**, between Versus and Stats: games played
@@ -5158,7 +5168,7 @@ game's name) as it opens the screen.
   visit. Rebuilding the screen rather than resetting it in place means no
   screen's state can be missed.
 - **Factory** goes through its owner: `factory_tab.start_over()` makes a new
-  land and saves it over the old file before the screen borrows it again
+  floor (a new land before 2026-10-20) and saves it over the old file before the screen borrows it again
   (the tab would otherwise write the old land back on its next save).
 - **Nightlight keeps its own card** (`NL_RESET_*`), which starts the star
   over in place; `reset_asks` stays empty there.

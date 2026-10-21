@@ -1274,7 +1274,9 @@ func load_saved() -> bool:
 	var cfg := ConfigFile.new()
 	if cfg.load(path) != OK:
 		return false
-	if cfg.get_value("factory", "version", VERSION) != VERSION or not cfg.has_section_key("factory", "state"):
+	# a version that is not this one's int (a float, a string) is not read
+	var v: Variant = cfg.get_value("factory", "version", VERSION)
+	if typeof(v) != TYPE_INT or v != VERSION or not cfg.has_section_key("factory", "state"):
 		return false
 	var kept: Variant = cfg.get_value("factory", "state")
 	if not (kept is String) or (kept as String).is_empty():

@@ -119,8 +119,11 @@ const TICK_VARY := 0.06
 const COIN_PITCH := 1.0
 const COIN_DB := 0.0
 const COIN_GAP := 140
-## A thing bought is something finished; one that cannot be is a not yet.
-const HAPTICS := {"buy": Haptics.BUMP, "no": Haptics.WARN}
+## The player's own hand is felt (docs/agents/haptics.md): a node set down,
+## a wire landed, a part fitted, a refusal; a sale's coin and a milestone are
+## played by hand (`buzz`), since neither rings under its own name here. The
+## robots' hands are heard and never felt.
+const HAPTICS := {"node": Haptics.TAP, "wire": Haptics.TICK, "fit": Haptics.BUMP, "coin": Haptics.GOOD, "no": Haptics.WARN, "milestone": Haptics.GOOD}
 ## The belt pill's buttons and captions; Tally's words where they are the same.
 const PILL_PLAIN := ["turn", "flip", "sell", "run", "line"]
 const PILL_ONE := ["turn", "sell"]
@@ -147,7 +150,13 @@ var selected := 0
 
 var _fx: Node2D
 var _quiet: Node2D
-var _coin_fx: Node2D
+## The floor's own voice, felt by no one: the robots' hands, a charge, a
+## fault, the sale's coin.
+var _floor_fx: Node2D
+## Robots whose chain was open or held a node they cannot do, and those
+## whose fix has been told this visit (`factory_fix`, once a robot).
+var _broken := {}
+var _fix_told := {}
 var _coin_at := -1000
 var _margins: MarginContainer
 var _water: ArrayMesh
@@ -260,6 +269,9 @@ func _ready() -> void:
 	top_bar.enter(0.0)
 	top_bar.refresh(self)
 	_refresh_hud(0.0)
+	for i in sim.robots.size():
+		if not chain_whole(i):
+			_broken[i] = true
 	Analytics.track("factory_enter", {"milestone": sim.milestone, "coins": sim.coins})
 
 func _notification(what: int) -> void:
@@ -287,18 +299,18 @@ func _build() -> void:
 	field.resized.connect(_layout_field)
 	_fx = Fx2D.new()
 	_fx.haptics = HAPTICS
-	# the Grove's sounds, kept till the floor has its own; the screen's own
-	# id is the tutorial's and the analytics'
-	_fx._puzzle = "grove"
+	_fx._puzzle = GAME
 	field.add_child(_fx)
+	# a belt laid, turned or flipped is still the Grove's chop, heard and
+	# never felt (docs/agents/sound.md: board foley stays till the user asks)
 	_quiet = Fx2D.new()
 	_quiet.buzzes = false
 	_quiet._puzzle = "grove"
 	field.add_child(_quiet)
-	_coin_fx = Fx2D.new()
-	_coin_fx.buzzes = false
-	_coin_fx._puzzle = "factory"
-	field.add_child(_coin_fx)
+	_floor_fx = Fx2D.new()
+	_floor_fx.buzzes = false
+	_floor_fx._puzzle = GAME
+	field.add_child(_floor_fx)
 	_pill_ui = PiecePill.new(PILL_CAP)
 	_pill_l = Control.new()
 	_pill_l.name = "Pill"
@@ -664,9 +676,9 @@ func _process(delta: float) -> void:
 	_over_l.queue_redraw()
 	_pill_l.queue_redraw()
 
-## The sim's events, to the life and to the ear. The robots' hands are a
-## quiet click (felt by no one: they are not the player's), a sale is the
-## coin.
+## The sim's events, to the life and to the ear. The robots' hands, a charge
+## and a fault are the floor's voice (felt by no one: they are not the
+## player's), a sale is the coin, a milestone the two notes and a knock.
 func _play_events() -> void:
 	for e: Dictionary in sim.events:
 		life.event(e)
@@ -681,26 +693,34 @@ func _play_events() -> void:
 			"milestone":
 				# what it opens is in the drawer now
 				_fx.cue("buy", 1.12)
+				_fx.buzz(HAPTICS.milestone)
 				_hud_key = ""
 				Motion.bump(_drawer_b, 0.12, 0.3)
+				Analytics.track("factory_milestone", {"id": String(e.id)})
 			"pick", "release":
 				if String(e.kind) != "":
-					_quiet.touch(_vary())
+					_floor_fx.cue(String(e.type), _vary())
+			"charging":
+				_floor_fx.cue("charge", _vary())
+			"stuck", "flat":
+				_floor_fx.cue("no", 0.94 * _vary())
+			"edited":
+				_check_fix(int(e.robot))
 			"sale":
 				_on_coin(int(e.amount), e.tile)
 			"refused":
 				_on_refused(String(e.why))
 	sim.events.clear()
 
-## A sale on the deliver pad: a coin is heard, a real one dropped into a
-## velvet drawer, ten steps lower, the one the user picked by ear from nine
-## on 2026-10-11, never two inside COIN_GAP, and the count is on its way up
-## over the pad.
+## A sale on the deliver pad: a coin is heard, the jar coin the user picked
+## by ear on 2026-10-15 (docs/agents/sound.md), and felt, never two inside
+## COIN_GAP, and the count is on its way up over the pad.
 func _on_coin(amount: int, tile: Vector2i) -> void:
 	var now := Time.get_ticks_msec()
 	if now - _coin_at >= COIN_GAP:
 		_coin_at = now
-		_coin_fx.cue("coin", COIN_PITCH * _vary(), COIN_DB)
+		_floor_fx.cue("coin", COIN_PITCH * _vary(), COIN_DB)
+		_fx.buzz(HAPTICS.coin)
 	if amount <= 0:
 		return
 	var over: Vector2 = life.mid(tile) + Vector2(0.0, -Art.TILE * 0.45)
@@ -778,16 +798,33 @@ func _chip_under(pos: Vector2) -> int:
 ## part of it gives, or it is stuck. A fault of the floor (a Move a tile
 ## short) is not one: nothing but watching it says so.
 func robot_fault(i: int) -> bool:
+	return String(sim.robots[i].stuck) != "" or not chain_whole(i)
+
+## Whether robot `i`'s chain closes back on its body with every node on it
+## one its parts can do.
+func chain_whole(i: int) -> bool:
 	var b: Dictionary = sim.robots[i]
-	if String(b.stuck) != "":
-		return true
 	var w: Dictionary = Bots.walk(b)
 	if not w.closed:
-		return true
+		return false
 	for id: String in w.ids:
 		if not Bots.can(b, String(b.nodes[id].kind)):
-			return true
-	return false
+			return false
+	return true
+
+## After an edit of robot `i`: a chain that was broken and is whole now is a
+## fix, told once a robot a visit (`factory_fix`, by the robot's name, which
+## on a new floor says which of the three faults it was).
+func _check_fix(i: int) -> void:
+	if i < 0 or i >= sim.robots.size():
+		return
+	if not chain_whole(i):
+		_broken[i] = true
+	elif _broken.has(i):
+		_broken.erase(i)
+		if not _fix_told.has(i):
+			_fix_told[i] = true
+			Analytics.track("factory_fix", {"robot": String(sim.robots[i].name)})
 
 ## What the chips show, as a key that changes only when they would.
 func _chips_state() -> String:
@@ -815,8 +852,8 @@ func _draw_chips() -> void:
 		_chips_l.draw_mesh(Art.robot(), null, xf, Life.TINTS[i % Life.TINTS.size()])
 		_chips_l.draw_mesh(Art.face(String(b.stuck)), null, xf)
 		var key := "FACTORY_" + String(b.name).to_upper()
-		var name := tr(key) if tr(key) != key else String(b.name)
-		_chips_l.draw_string(font, Vector2(r.position.x + CHIP_H + 6.0, r.position.y + rad + 11.0), name,
+		var said := tr(key) if tr(key) != key else String(b.name)
+		_chips_l.draw_string(font, Vector2(r.position.x + CHIP_H + 6.0, r.position.y + rad + 11.0), said,
 			HORIZONTAL_ALIGNMENT_LEFT, CHIP_W - CHIP_H - 20.0, 32, Pal.TEXT)
 		if robot_fault(i):
 			var at := r.position + Vector2(r.size.x - DOT_R * 0.6, DOT_R * 0.6)

@@ -124,7 +124,8 @@ func refresh() -> void:
 		# floor exists.
 		if game == "factory":
 			var held: RefCounted = factory.sim if factory != null else null
-			_say(game, "" if held == null else tr("FACTORY_CARD_COINS") % FactoryArt.short(held.coins) + " · " + FactoryArt.pace_text(held))
+			var coins: String = "" if held == null else (tr("FACTORY_CARD_COINS_ONE") if held.coins == 1 else tr("FACTORY_CARD_COINS_N") % FactoryArt.short(held.coins))
+			_say(game, "" if held == null else coins + " · " + FactoryArt.pace_text(held))
 			continue
 		# Nightlight is kept, not scored: its line is the star as it stands
 		if game == "nightlight":

@@ -47,6 +47,7 @@ const Art = preload("res://factory/art.gd")
 const Life = preload("res://factory/life.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Motion = preload("res://core/motion.gd")
+const Analytics = preload("res://core/analytics.gd")
 const PiecePill = preload("res://ui/hud/piece_pill.gd")
 
 ## The sheet's height (of the field's), the body's box, a node's height and
@@ -150,7 +151,7 @@ var sim: RefCounted
 var preview := false
 ## The robot whose program is up.
 var robot := 0
-## The screen's cues: a touch, a no.
+## The screen's cues: a touch, a node, a wire, a part fitted, a no.
 var _fx: Node2D
 var _open := false
 var _inset := 0.0
@@ -599,8 +600,13 @@ func _pill_press(button: String) -> void:
 	_dirty = true
 
 func _no() -> void:
+	_cue("no")
+
+## One of the factory set's cues (assets/sfx/factory/), where there is an
+## ear: a tutorial's page has none.
+func _cue(cue_name: String) -> void:
 	if _fx != null:
-		_fx.cue("no")
+		_fx.cue(cue_name)
 
 # --- the hand ---
 
@@ -824,7 +830,7 @@ func _wire_to(from: String, to: String) -> void:
 	_armed = ""
 	_dirty = true
 	if sim.set_next(robot, from, "out", to):
-		_fx.touch(1.12)
+		_cue("wire")
 
 ## A tray chip let go on: a node into the wire the `+` was on, or a part
 ## fitted from the bin. A locked chip is a no.
@@ -837,12 +843,13 @@ func _chip_press(kind: String) -> void:
 		_tray = {}
 		if id != "":
 			_pick(id)
-			_fx.touch()
+			_cue("node")
 	else:
 		# the sim says no to a part it will not fit (coins, later, fitted)
 		if sim.fit(robot, kind):
 			_tray = {}
-			_fx.touch()
+			_cue("fit")
+			Analytics.track("factory_part", {"part": kind})
 	_dirty = true
 
 # --- drawing ---
@@ -1298,7 +1305,9 @@ func _draw_info(b: Dictionary) -> void:
 	draw_mesh(_band_mesh(), null)
 	var band := _band_rect()
 	var cost: int = Bots.cost(b)
-	var line := tr("FACTORY_BATTERY_LINE") % [int(b.charge), Bots.cell(b), cost, cost * Sim.TICK / maxf(1.0, Bots.rate(b))]
+	# the pause in tenths, with the decimal comma where the language writes one
+	var pause := Art.amount(snappedf(cost * Sim.TICK / maxf(1.0, Bots.rate(b)), 0.1), Art.comma())
+	var line := tr("FACTORY_BATTERY_LINE") % [int(b.charge), Bots.cell(b), cost, pause]
 	var rows: Array = [[line, Vector2(size.x * 0.5, band.position.y + 67.0), FS, INK]]
 	if String(b.stuck) == "flat":
 		rows.append([tr("FACTORY_FLAT"), Vector2(size.x * 0.5, band.position.y + 109.0), FS_SMALL, RED])

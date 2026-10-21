@@ -830,8 +830,9 @@ static func pace_text(sim: RefCounted) -> String:
 		return TranslationServer.translate("FACTORY_PACE_NONE")
 	return TranslationServer.translate("FACTORY_PACE") % amount(snappedf(sim.pace_s(), 0.1), comma())
 
-## What a chop takes, which may be a half: 1, 1.5, 2, 31.5, and past a
-## thousand as `short` writes it. `comma` for a language that writes 1,5.
+## A figure that may have a tenth: 1, 1.5, 2, 31.5 (a pace, a pause on the
+## bay), and past a thousand as `short` writes it. `comma` for a language
+## that writes 1,5.
 static func amount(v: float, comma := false) -> String:
 	if v >= 1000.0 or is_equal_approx(v, roundf(v)):
 		return short(roundi(v))
@@ -839,8 +840,8 @@ static func amount(v: float, comma := false) -> String:
 	return text.replace(".", ",") if comma else text
 
 ## A count in a few characters: 999, 1.23K, 45.6K, 789K, 1.2M, and on
-## through B, T and Q. Trees and tiles have no last level, so every number
-## on the screen goes through here.
+## through B, T and Q. Coins have no last level, so every count on the
+## screen goes through here.
 static func short(n: int) -> String:
 	if n < 1000:
 		return str(n)

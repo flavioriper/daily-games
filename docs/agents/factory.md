@@ -1,4 +1,105 @@
-## Factory
+## Factory, rewired (2026-10-20)
+
+**What stands.** One top-down floor of 10 by 8 square tiles, full bleed
+under the top bar, the pills and the robot chips: on the left an intake
+belt that queues grey squares (one a 10 ticks, six at most), on the right
+the deliver belt that sells, and between them the stack of empty boxes,
+the pack table and the charging bay. Three robots stand on the bay, the
+Picker, the Boxer and the Shipper, each a body with parts under it
+(Treads give Move, a Gripper gives Pick and Release, a Battery holds the
+charge) and a program: a chain of nodes wired from the body back to it,
+run forever. On a new floor each program has a fault (no gripper, a Move
+one short, a loose wire) and nothing ships until the player reads the
+three loops and fixes them; the tutor's six pages walk it (power on, the
+three fixes, the first box, spend). A full box pays 6. The pace pill reads
+"a box every N s"; a milestone opens when its rate is held, and opens the
+next things in the drawer and the bin. Spec
+`docs/superpowers/specs/2026-10-20-factory-rewired-design.md`, built on
+branch `feat/factory-rewired`. **The user has seen none of it running, and
+no phone has.** Everything under "The land (dropped 2026-10-20)" below is
+the game this replaced, kept as history; its "Tally's belt helpers" (the
+drawer's belt paths, the belt pill, the auto-bridge) and its "A card of
+the Arcade list" still stand, both used by the floor.
+
+**Where it lives.**
+- `factory/sim.gd`: the floor as pure data, 10 Hz, deterministic, no
+  clock; its header is the API (`robots`, `PARTS`, `NODES`, `STATIONS`,
+  the bin, the intake queue, the sale, `MILESTONES`, the pace window and
+  hold, the belt machinery kept from the land). `factory/bots.gd` walks a
+  program a tick at a time with the soft failures (bump, skip, wait,
+  stuck, flat). Edits (`set_next`, `add_node`, `remove_node`, `set_move`,
+  `fit`, `unfit`, `tow`) home the robot and push `edited`.
+- `factory/art.gd` (the floor, pads, belts, the robot as a code
+  character, faces and bubbles, `pace_text`, `short`, `amount`),
+  `factory/life.gd` (the floor drawn for every holder: screen, card,
+  tutor pages), `factory/screen.gd` (camera, hand, belt drawer, the robot
+  chips with their fault dot, the coin and pace pills, the sounds),
+  `factory/sheet.gd` (the program sheet over the field's lower part, one
+  mesh; sizes are the spec's 810-space values times 4/3, `K`),
+  `factory/tile.gd`, `ui/menu/factory_tab.gd` (the owner),
+  `ui/menu/cards/arc_factory.gd`, `ui/hud/factory_tutorial_diagram.gd`,
+  `ui/hud/batch.gd` (a repeated piece in one MultiMesh).
+- Checks: `tests/_probe_factory.gd` (headless: a new floor, the three
+  faults and fixes, the first box and its coin, flat and towing, the pace
+  window and hold, a belt intake to table, Fast plug and treads felt in the
+  pace, save and load), `tests/_shot_factory.gd` (windowed: the floor, the
+  screen, the sheet opened, a node inserted, a wire dragged, the tutor's
+  pages with and without reduce motion), `tests/_shot_factory_menu.gd`
+  (windowed, through the real menu). Flags in `docs/agents/harnesses.md`,
+  "Factory's harnesses".
+
+**Rules that bite.**
+- **One sim, owned by the tab** (unchanged): `factory_tab.gd` makes and
+  loads it once and `lend()`s it to the screen, which hands it back on
+  `closed`. The screen never makes or loads one. Whoever steps drains
+  `events`.
+- **No catch-up.** Nothing runs while the floor is off screen; no time of
+  day is kept anywhere in the save. Do not add offline progress.
+- **Every duration is in ticks** (`TICK` 0.1): Move 4 a tile (Fast treads
+  2), Pick, Release, a skip and a bump 4, the body 2, charge 1 unit a tick
+  (Fast plug 2) on the bay, battery 30. A number in seconds is the view's.
+- **The pace hold.** The sim keeps the tick of every full box sold in the
+  last `WINDOW` (600) ticks; a milestone opens when its rate has been met
+  for `HOLD` (600) ticks running, which, since nothing runs unseen, is a
+  minute with the floor on screen. A total of boxes never opens anything,
+  and a milestone once open stays open. `MILESTONES[1].every` is 440 ticks
+  (the three fixes alone read 366 on the pace bot, 2026-10-20) and
+  `[2]` 220 (its bin rows are the next pass).
+- **The quiet wipe.** `user://factory.cfg`, section `factory`, `VERSION`
+  5. A version 4 file (the land), or a `version` that is not this int,
+  is not read: `load_saved` returns false, the tab starts a new floor and
+  the next save writes over it. No message, no gift (the user,
+  2026-10-20).
+- **Prices stay flat** (belts and parts): a belt sold back returns its
+  price, a part taken off goes to the bin as a spare.
+- **The robots' hands are heard and never felt.** Three busy robots would
+  buzz the phone without a stop; only the player's own actions knock.
+
+**Sound, haptics, analytics (2026-10-20).** Pops from `tools/sfx_bank/`
+(`docs/agents/sound.md`, the `factory` row): a node set down and a part
+fitted the token, a wire landing the pebble, a refusal the tongue; the
+robots' Pick the lip, Release the token, a charge the wrap once a pause, a
+robot stuck or flat the tongue, all through `_floor_fx` (no buzz); a
+milestone the two kalimba notes (`buy`) and a bump of the drawer's
+button; the sale the jar coin, as before. A belt laid, turned or flipped is
+still the Grove's `chop`. Haptics per `docs/agents/haptics.md`, row 62.
+Events `factory_fix`, `factory_milestone`, `factory_part` beside
+`factory_enter` / `factory_leave` (`docs/agents/analytics.md`). Unheard,
+unfelt: no phone, no ear.
+
+**Measured** (810x1440, `opengl3_angle`, 2026-10-20, the second of two
+runs): `tests/_shot_factory.gd` 75 pass, 0 failed; the floor 13 to 18 draw
+calls, the screen 78, the sheet open 69 to 79 (the sheet itself 5), the
+tutor's pages 14 to 31, the tutorial card over the screen 104.
+`tests/_shot_factory_menu.gd` 0 failed, the Arcade page 147, the screen
+69. Suite 163137/0.
+
+**Open.** A phone; every sound heard by the user; pt and es read by a
+speaker; the Arcade line wraps to two lines in en; milestone 2's rows
+(Repeat, Second body, Big cell); the y-sort of overlapping robots; the
+bay's cable across the intake column (a look call).
+
+## The land (dropped 2026-10-20)
 
 **The sixth tab since 2026-10-10**, in the slot the Valley and its Grove had
 (dropped that day; their history is the second half of this file). A piece
@@ -44,7 +145,8 @@ overrode it for this pass only). **The user has seen none of it running.**
   `ui/hud/factory_tutorial_diagram.gd`.
 - Harnesses: `tests/_shot_factory.gd` (the screen built by hand, 38 checks,
   31 shots, `reduce` after the outdir), `tests/_shot_factory_menu.gd`
-  (through the real menu), `tests/_shot_factory_art.gd` (the art alone).
+  (through the real menu), `tests/_shot_factory_art.gd` (the art alone;
+  deleted 2026-10-20 with the land).
 
 **Rules that bite.**
 - **One sim, owned by the tab.** `factory_tab.gd` makes and loads it once,
@@ -359,7 +461,8 @@ counter of six, a keeper or "sold as it lands".
   `tests/_shot_factory.gd` 140/0 on the default driver and 138/0 on
   `opengl3_angle` with reduce (its five hatch shots are two there), suite
   249804/0. `tests/_shot_factory_menu.gd` and `tests/_shot_factory_art.gd`
-  (its market block rewritten, parse-checked only) were not run.
+  (its market block rewritten, parse-checked only; deleted 2026-10-20) were
+  not run.
 - **Decided for the user and not judged by them**: the square is (6, 6),
   the old stall's back tile, which keeps the first belt's way; one thing on
   the hatch and the rest on the belt; every thing waits its whole interval
@@ -459,7 +562,7 @@ cannot be bought, a drawer of five tiles in one column, `sim.forests`,
   The stoker is bought on the fire box's card (a second row, `Stoker`).
 - **Measured** (810x1440, 2026-10-12, `opengl3_angle`, one run each):
   `tests/_shot_factory.gd` 0 failed, 101 to 278 draw calls;
-  `tests/_shot_factory_works.gd` (new: the mine, the belts, the goals,
+  `tests/_shot_factory_works.gd` (since deleted with the land; then new: the mine, the belts, the goals,
   steam, through real touches where a hand matters) 0 failed, 125 on a new
   mine, 151 to 167 with a splitter, fast belts, an engine, a saw and a
   joiner at work at the four turns, 241 with the eleven-tile drawer open
@@ -651,7 +754,8 @@ standing; cutting the tab down to the owner is owed).
 with two squares on it, and a robot (`Art.robot()` in the Picker's tint,
 `Art.face("")`) carrying a box (`Art.box(4)`) toward the go disc; one
 mesh. Its line (`arcade_tab.gd`) is the coins and the pace,
-`FACTORY_CARD_COINS` + ` · ` + `Art.pace_text(sim)` (the screen's pill reads
+`FACTORY_CARD_COINS_ONE` / `_N` (split 2026-10-20 for "1 coin") + ` · ` +
+`Art.pace_text(sim)` (the screen's pill reads
 the same helper: "a box every N s", or "no box yet" under two sales).
 `FACTORY_CARD_BLURB`, `FACTORY_BLURB` and `FACTORY_MOTTO` say the robots
 now. `tests/_shot_factory_menu.gd` turns to the list's second page, sets a

@@ -108,7 +108,7 @@ func _fill(game: String, s: Control) -> void:
 			s.sim.coins = 123456.0
 			s.sim.save()
 		"factory":
-			s.sim.coins = 98765.0
+			s.sim.coins = 98765
 			s.sim.save()
 
 func _empty(game: String, s: Control) -> bool:

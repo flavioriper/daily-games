@@ -342,3 +342,31 @@ then a bare patch or the tin.
 bank three ways and checks that nothing can be stuck; `tests/_win.gd --
 buttons` and `tests/_probe_perf.gd -- buttons` (`x=buzz`) are the shared
 ones.
+
+## Factory's harnesses (2026-10-20, the robot floor)
+
+Two windowed harnesses and one headless probe, the only checks the floor
+has (no new test files). Run each windowed one alone, under `ulimit -f` and
+`timeout`, the engine flags before `--script`:
+
+    ulimit -f 2000000; timeout 600 caffeinate -d -i -u godot --path . \
+      --resolution 810x1440 --always-on-top [--rendering-driver opengl3_angle] \
+      --script res://tests/_shot_factory.gd -- <outdir> [reduce] > <log> 2>&1
+
+- `tests/_shot_factory.gd`: the floor on a bare Control, then the screen
+  built by hand on a throwaway floor (`Sim.new(7)`, its file deleted as it
+  ends), the sheet opened on the Picker, a node inserted, a wire dragged,
+  the pill, the tutor's six pages moving and still. PASS / FAIL a line and
+  each shot's draw calls; `reduce` after the outdir for reduce motion.
+  `grep -c FAIL` is the verdict, the highest `draw calls` the budget's.
+- `tests/_shot_factory_menu.gd -- <outdir>`: the same flags, through the
+  real menu on throwaway files: the Arcade list's Factory card and its
+  line, Play mounting the screen on the tab's own sim, the tab stopped
+  while it is lent, and the floor handed back.
+- `tests/_probe_factory.gd` (headless, `--headless --path . --script`):
+  the sim alone; prints `probe_factory: N checks, 0 failed` last.
+
+On `opengl3_angle`, 2026-10-20, the second of two runs: `_shot_factory.gd`
+75 pass, 0 failed, 13 to 104 draw calls (the floor 13 to 18, the screen
+78, the sheet open 69 to 79, the tutorial card over the screen 104);
+`_shot_factory_menu.gd` 0 failed, 147 on the Arcade page.
