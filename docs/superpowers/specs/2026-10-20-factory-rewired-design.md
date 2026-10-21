@@ -148,6 +148,30 @@ and are not belts the sim moves items along; the intake is a queue, the
 deliver pad a sale. (My call: this keeps milestone 1 to "a belt from the
 intake pad to the table halves the picker's walk".)
 
+**Amended 2026-10-21 (the user overturns "drawn top-down").** The user,
+on the build: "factory redesign is wrong, it was suppose to use at most the
+elements factory already had on design, not recreate them all", and asked
+to "use the same components (or max we can reuse)". So the floor is seen
+**corner on, as the land was** (`Art.at`, `ISO`, `K`, `DEEP`), one plate of
+10 by 8 on the pond with its shore, washes, `water` and `light`, and the
+**quarter-turn view button is back** (`life.turn`, `seen`/`tile_at`). The
+read-a-loop lesson is kept the other way round: **a Move's arrow on the
+sheet is drawn on the diagonal the robot walks on screen at the current
+turn** (`sheet.arrow_of`, the facing turned with the view through
+`Art.ISO`), and the sheet is redrawn on a turn. The sim is unchanged
+(its tiles, +x and +y, facings and stations). The stations are the land's
+own pieces: the intake and deliver columns are its belts under the belt
+material (the intake down column 0 and round a bend into the intake pad,
+the deliver belt from the market up column 9, both driven for show); the
+deliver pad is the market's hatch, its leaves swinging on each sale; the
+charging bay is the engine, its flywheel turning while a robot charges;
+the pack table is the joiner's out-tray alone on its tile, made big enough
+for a box; the box stack is empty boxes heaped as `HEAP`/`heap_of` heaped
+logs. New art only for the robot (body, treads, face from `ui/faces/`,
+bubble, battery bar), the node sheet, the grey squares and the boxes, the
+last two corner on in the land's item style. Calls the builder made are in
+`docs/agents/factory.md`.
+
 ## 4. Robots, parts, battery, bay
 
 A robot is `{name, dock, parts, nodes, next, pc, tile, held, charge, ...}`.
@@ -415,6 +439,18 @@ Locale: every string through `locale/ui.csv` keys in en, pt and es; the
 64 `FACTORY_*` rows that name logs, plates, forests and goals are retired
 and the new ones added (node names, part names, the tutor's six pages,
 the pace pill, the bin, the milestone names). Titles stay English.
+
+**Amended 2026-10-21.** The paragraph above is overturned where it speaks
+of the view: `factory/screen.gd` keeps `turn_view` and the Turn button
+(beside the zoom), and `to_field`, `screen_of`, `tile_under` and the belt
+tracing are main's corner-on, turn-aware ones. `factory/art.gd` is main's
+land art cut to what the floor needs (plate, water, light, belts, market,
+engine, tray, ghost, icons) with the plate made any size; it gains only
+the robot, its face, bubbles and bar, the square, the box and the box heap.
+`factory/life.gd` is main's (the turn, the belt MultiMeshes, the
+depth-sorted standing list) with the robots standing among the stations.
+The sheet (section 10) draws a Move's arrow on the screen diagonal at the
+view's turn.
 
 ## 12. Save
 

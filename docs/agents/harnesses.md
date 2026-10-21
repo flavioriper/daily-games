@@ -366,6 +366,11 @@ has (no new test files). Run each windowed one alone, under `ulimit -f` and
 - `tests/_probe_factory.gd` (headless, `--headless --path . --script`):
   the sim alone; prints `probe_factory: N checks, 0 failed` last.
 
+On `opengl3_angle`, 2026-10-21, after the floor went corner on again (one
+run): `_shot_factory.gd` 79 pass, 0 failed, 29 to 145 draw calls (the
+floor 29 to 33, the screen 98 to 102, turned a quarter 100, the tutorial
+card over the screen 145).
+
 On `opengl3_angle`, 2026-10-20, the second of two runs: `_shot_factory.gd`
 75 pass, 0 failed, 13 to 104 draw calls (the floor 13 to 18, the screen
 78, the sheet open 69 to 79, the tutorial card over the screen 104);

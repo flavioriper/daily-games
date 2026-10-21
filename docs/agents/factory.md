@@ -1,10 +1,11 @@
 ## Factory, rewired (2026-10-20)
 
-**What stands.** One top-down floor of 10 by 8 square tiles, full bleed
-under the top bar, the pills and the robot chips: on the left an intake
-belt that queues grey squares (one a 10 ticks, six at most), on the right
-the deliver belt that sells, and between them the stack of empty boxes,
-the pack table and the charging bay. Three robots stand on the bay, the
+**What stands.** One floor of 10 by 8 tiles seen corner on, as the land
+was (one plate on the pond; since 2026-10-21, below), full bleed under the
+top bar, the pills and the robot chips: down column 0 an intake belt that
+queues grey squares (one a 10 ticks, six at most), up column 9 the
+deliver belt, and between them the stack of empty boxes, the pack table,
+the deliver pad that sells and the charging bay. Three robots stand on the bay, the
 Picker, the Boxer and the Shipper, each a body with parts under it
 (Treads give Move, a Gripper gives Pick and Release, a Battery holds the
 charge) and a program: a chain of nodes wired from the body back to it,
@@ -29,11 +30,13 @@ the Arcade list" still stand, both used by the floor.
   program a tick at a time with the soft failures (bump, skip, wait,
   stuck, flat). Edits (`set_next`, `add_node`, `remove_node`, `set_move`,
   `fit`, `unfit`, `tow`) home the robot and push `edited`.
-- `factory/art.gd` (the floor, pads, belts, the robot as a code
-  character, faces and bubbles, `pace_text`, `short`, `amount`),
-  `factory/life.gd` (the floor drawn for every holder: screen, card,
-  tutor pages), `factory/screen.gd` (camera, hand, belt drawer, the robot
-  chips with their fault dot, the coin and pace pills, the sounds),
+- `factory/art.gd` (main's land art cut down: the plate, pond, light,
+  belts, market, engine, tray; new: the robot as a code character, faces,
+  bubbles, the square, the box, the box heap; `pace_text`, `short`,
+  `amount`), `factory/life.gd` (the floor drawn for every holder: screen,
+  card, tutor pages; the turn), `factory/screen.gd` (camera, hand, belt
+  drawer, the turn button, the robot chips with their fault dot, the coin
+  and pace pills, the sounds),
   `factory/sheet.gd` (the program sheet over the field's lower part, one
   mesh; sizes are the spec's 810-space values times 4/3, `K`),
   `factory/tile.gd`, `ui/menu/factory_tab.gd` (the owner),
@@ -43,8 +46,8 @@ the Arcade list" still stand, both used by the floor.
   faults and fixes, the first box and its coin, flat and towing, the pace
   window and hold, a belt intake to table, Fast plug and treads felt in the
   pace, save and load), `tests/_shot_factory.gd` (windowed: the floor, the
-  screen, the sheet opened, a node inserted, a wire dragged, the tutor's
-  pages with and without reduce motion), `tests/_shot_factory_menu.gd`
+  screen, the view turned a quarter, the sheet opened, a node inserted, a
+  wire dragged, the tutor's pages with and without reduce motion), `tests/_shot_factory_menu.gd`
   (windowed, through the real menu). Flags in `docs/agents/harnesses.md`,
   "Factory's harnesses".
 
@@ -94,17 +97,71 @@ Events `factory_fix`, `factory_milestone`, `factory_part` beside
 `factory_enter` / `factory_leave` (`docs/agents/analytics.md`). Unheard,
 unfelt: no phone, no ear.
 
-**Measured** (810x1440, `opengl3_angle`, 2026-10-20, the second of two
-runs): `tests/_shot_factory.gd` 75 pass, 0 failed; the floor 13 to 18 draw
+**The view, corner on (2026-10-21).** The user, on the top-down build:
+"factory redesign is wrong, it was suppose to use at most the elements
+factory already had on design, not recreate them all". The branch's
+top-down paper art was dropped and main's land view grafted back under
+the robot floor; the sim and bots are untouched. Spec section 3's
+amendment says what the user decided; what each station is:
+- **Intake**: main's belt meshes under the belt material, column 0 rows
+  0 to 4 running down and a bend at (0, 5) turning into the intake pad
+  (1, 5), which is bare floor; the queue waits on the bed back from the
+  pad's edge (`Life._intake_at`). Rows 6 and 7 of column 0 have no belt.
+- **Deliver**: the market's hatch on (8, 5); a sale opens its leaves, the
+  thing falls in and the coin hops (main's `_add_market`, a fixed 0.62 s
+  since the sim has no market interval); the "+N" rises over the hatch.
+  The deliver belt is a bend at (9, 5) fed from the market and column 9
+  rows 0 to 4 running up, driven for show: nothing rides it.
+- **Charging bay**: main's engine on (1, 1), its flywheel turning while a
+  robot charges on the bay.
+- **Pack table**: main's `_tray` (the joiner's way out) alone on its tile,
+  made 0.3 by 0.34 tiles and 14 high so a box rests on it (`Art.table`,
+  `TABLE_TOP`); the land's was 0.15 by 0.2 and 8 high.
+- **Box stack**: six empty boxes heaped as `HEAP[heap_of(6)]` ([3, 2, 1])
+  heaped logs, each box 0.85 as big (`Art.stack`); the sim's stack never
+  runs out, so the heap never changes.
+- **New art** only for the robot (a round body on two treads, white for the
+  chip tint, a lamp; the face from `ui/faces/face.gd`; bubbles and the
+  charge bar as before, over its head), the sheet, and the square and the
+  box, corner on in the land's item style (a block about 42 across, a box
+  about 50 with its far walls and dark inside seen down the opening, the
+  squares in it poking over the rim, a shadow in the mesh unless held).
+- **Turn**: the Turn button beside the zoom (main's `turn_view`); the
+  sheet's Move arrow is `Art.ISO` of the facing turned with the view
+  (`sheet.arrow_of`), redrawn on a turn. The tutor's text says "Move ↙ 4"
+  where it said "↓" (en, pt, es; the fonts carry no arrow, the system
+  fallback draws it as it drew "↓").
+
+Calls made by the builder, none judged by the user:
+- The ground is main's **neutral** plate (the land's market plate, white
+  with the tiles ruled), one plate of 10 by 8 (8 by 10 a quarter round).
+  It grows no tufts, as it grew none on the land, so the wind and grass
+  went with the trees.
+- Every station's piece is drawn 0.82 as big and 16 view units toward the
+  back of its tile, and a robot on a station's tile stands 12 nearer the
+  eye, so robots and stations share a tile without one inside the other.
+- A belt right in front of a station or a robot is drawn again over it in
+  the sorted list, worked out every frame (main did it for buildings only,
+  once per belt change); robots walking over a bed are lifted onto it.
+- The robot is round so it reads the same at every turn and needs no
+  facing.
+- The sale's coin is heard and counted on the sim's `sale` at once (the
+  branch's wiring), not at the hop (main's `coined` signal is not kept).
+
+**Measured** (810x1440, `opengl3_angle`, 2026-10-21, one windowed run of
+`tests/_shot_factory.gd`, 79 pass, 0 failed): the floor 29 to 33 draw
+calls, the screen 98 to 102, turned 100, the sheet open 93 to 103, the
+tutor's pages 31 to 47, the tutorial card over the screen 145. Before the
+graft (2026-10-20, top-down, the second of two runs): `tests/_shot_factory.gd` 75 pass, 0 failed; the floor 13 to 18 draw
 calls, the screen 78, the sheet open 69 to 79 (the sheet itself 5), the
 tutor's pages 14 to 31, the tutorial card over the screen 104.
 `tests/_shot_factory_menu.gd` 0 failed, the Arcade page 147, the screen
 69. Suite 163137/0.
 
-**Open.** A phone; every sound heard by the user; pt and es read by a
-speaker; the Arcade line wraps to two lines in en; milestone 2's rows
-(Repeat, Second body, Big cell); the y-sort of overlapping robots; the
-bay's cable across the intake column (a look call).
+**Open.** The user's verdict on the corner-on graft; a phone; every sound
+heard by the user; pt and es read by a speaker; the Arcade line wraps to
+two lines in en; milestone 2's rows (Repeat, Second body, Big cell); the
+box heap at 0.85 is unshot (it was 0.62 and half spaced in the one run).
 
 ## The land (dropped 2026-10-20)
 
