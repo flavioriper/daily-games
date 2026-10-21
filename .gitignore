@@ -106,3 +106,5 @@ tools/dashboard.html
 # Firebase iOS frameworks (~135 MB), built by the Godotx Firebase plugin
 # (addons/godotx_firebase/VENDORED.md); never in git.
 /ios/plugins/firebase_*/
+tools/day_viewer/node_modules/
+tools/day_viewer/dist/

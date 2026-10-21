@@ -1,0 +1,29 @@
+:root { --bg: #f4efe6; --ink: #3a2a20; --card: #fff; --soft: #8a7466; --right: #2f7a3f; --wrong: #a83a30; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 system-ui, sans-serif; }
+main { max-width: 1400px; margin: 0 auto; padding: 16px 24px 64px; }
+header { position: sticky; top: 0; background: var(--bg); padding: 10px 0; display: flex; gap: 8px; align-items: center; z-index: 1; }
+header b { font-size: 18px; min-width: 90px; text-align: center; }
+button { font: inherit; border: 1px solid #d8cbbb; background: var(--card); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+button.on { background: var(--ink); color: var(--bg); }
+.langs { margin-left: auto; display: flex; gap: 4px; }
+h1 small, h2 small { color: var(--soft); font-weight: 400; font-size: 14px; }
+h2 { margin: 36px 0 6px; }
+h3 { margin: 14px 0 6px; font-size: 15px; }
+.note { color: var(--soft); margin: 0 0 10px; }
+.row { display: flex; flex-wrap: wrap; gap: 16px; }
+.card { background: var(--card); border-radius: 10px; padding: 10px; margin: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.card img { width: 320px; border-radius: 6px; }
+figcaption { text-align: center; font-size: 13px; }
+figcaption small { display: block; color: var(--soft); }
+.words { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
+.words span { background: var(--card); border-radius: 6px; padding: 3px 10px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.lengths th { text-align: left; padding: 4px 12px 4px 0; color: var(--soft); font-weight: 400; white-space: nowrap; }
+details { background: var(--card); border-radius: 10px; padding: 8px 14px; margin: 8px 0; }
+summary { cursor: pointer; font-weight: 600; }
+.quiz li { margin: 10px 0; }
+.q { font-weight: 600; }
+.q small, .tier small { color: var(--soft); font-weight: 400; margin-right: 6px; }
+.right { color: var(--right); }
+.wrong { color: var(--wrong); }
+.why { color: var(--soft); font-style: italic; }
+.error { color: var(--wrong); }
