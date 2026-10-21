@@ -288,6 +288,15 @@ otherwise two taps on a node skip the pause, which is the game's main
 cost). The floor and the other robots keep running through every edit;
 nothing pauses while the sheet is open.
 
+**Amended 2026-10-21 (the Turn node).** The user: "add a turn node so bot
+has to turn before moving". A robot faces a way (down when new and after
+every edit, kept from one loop to the next). A Move has a count and no
+way: it walks the way the robot faces. A Turn (from the treads) turns it a
+quarter right or left, in 4 ticks and a unit of charge, the same as a Pick.
+A loop that comes back to the bay facing another way wears the fault dot.
+The sheet draws each Move's arrow as the facing the chain reaches it with.
+The rules are in docs/agents/factory.md, "The Turn node".
+
 ## 6. Time
 
 The sim ticks at 10 Hz under the existing `step`/`_tick` (`TICK 0.1`,
