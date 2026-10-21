@@ -307,8 +307,9 @@ const rgbOf = (hex: string): number[] => [1, 3, 5].map((i) => parseInt(hex.slice
  * a guess; the drawing is the truth), read off the raster through the box.
  * A panel that comes out within 60 of the key colour is the background the
  * model took for part of the thing, and is dropped with any pin only it
- * used. Returns how many were dropped. `why` is left as repairMesh found
- * it: the caller has the band, and checks again with checkMesh.
+ * used, and what is left placed in the square again. Returns how many
+ * were dropped. `why` is left as repairMesh found it: the caller has the
+ * band, and checks again with checkMesh.
  */
 export function colourFrom(r: Raster, mesh: Mesh, key: string): number {
   const bg = rgbOf(key);
@@ -334,7 +335,16 @@ export function colourFrom(r: Raster, mesh: Mesh, key: string): number {
   const w: Work = {pins: [], panels: kept};
   for (let i = 0; i < mesh.pins.length; i += 2) w.pins.push([mesh.pins[i], mesh.pins[i + 1]]);
   renumber(w);
-  mesh.pins = w.pins.flat();
+  if (dropped > 0 && w.pins.length > 0) {
+    // placed again, so a background panel dropped at the border leaves the
+    // thing centred and filling the square, not shifted and shrunk
+    for (const q of w.pins) { q[0] = q[0] / mesh.box.s + mesh.box.x0; q[1] = q[1] / mesh.box.s + mesh.box.y0; }
+    const placed = place(w);
+    mesh.pins = placed.pins;
+    mesh.box = placed.box;
+  } else {
+    mesh.pins = w.pins.flat();
+  }
   mesh.panels = kept;
   mesh.stats.kept = kept.length;
   return dropped;

@@ -369,6 +369,11 @@ export const HOOP_DRAWINGS = 2;
 export const MAP_ASKS = 2;
 /** A kept try scored this well is not bettered by more asks. */
 const ENOUGH = 9;
+/** Past this long from makeHoop's start no draw, ask, judge or reader try
+ *  begins: a run may start the step 15 minutes into its 30-minute lease
+ *  (themeday.ts), and a step killed mid-way is never written or given up
+ *  on, so every step after it would wait. */
+export const HOOP_BUDGET_MS = 12 * 60 * 1000;
 const BAND_NAMES = ["Easy", "Medium", "Hard", "Insane"];
 /** The render the eye is shown: the board's linen and its ropes along every
  *  side, as the phone knits the picture. */
@@ -445,6 +450,11 @@ interface Ctx {
   thing: Thing;
   band: number;
   key: Key;
+  /** When no new call may begin (HOOP_BUDGET_MS from the start). */
+  deadline: number;
+  /** A try has been recorded as out of time: the first skipped is said
+   *  once on the port, the rest are simply not made. */
+  out: boolean;
 }
 
 /** The best kept try so far. */
@@ -461,6 +471,11 @@ const said = (e: unknown) => String(e instanceof Error ? e.message : e).slice(0,
 /** Pins and panels drawn as the eye sees them and judged beside the drawing,
  *  into `t`; the render, or null when the eye could not be asked. */
 async function judged(c: Ctx, drawing: Drawing, pins: number[], panels: HoopPanel[], t: PortTry): Promise<Buffer | null> {
+  if (Date.now() > c.deadline) {
+    t.why = "out of time";
+    c.out = true;
+    return null;
+  }
   try {
     const polys = panels.map((p) => ({pts: p.k.map((i) => [pins[2 * i], pins[2 * i + 1]]), fill: p.c}));
     const png = renderPolygons(polys, RENDER_SIZE, LINEN, ROPE);
@@ -542,17 +557,37 @@ function logTry(c: Ctx, t: PortTry): void {
  */
 export async function makeHoop(day: number, theme: Theme, band: number, keep?: (name: string, d: Drawing) => void): Promise<{picture: HoopPicture | null; port: Port}> {
   const thing: Thing = theme.objects[Math.min(band + 1, theme.objects.length - 1)];
-  const {key, creature} = await keyFor(thing);
-  const c: Ctx = {day, theme, thing, band, key};
+  const deadline = Date.now() + HOOP_BUDGET_MS;
+  // keyFor never throws by design; caught all the same, so nothing before
+  // the tries can lose the port
+  let key: Key = "green", creature = false;
+  try {
+    ({key, creature} = await keyFor(thing));
+  } catch (e) {
+    console.error(`hoop: day ${day}, band ${band}, ${thing.id}: no key`, e);
+  }
+  const c: Ctx = {day, theme, thing, band, key, deadline, out: false};
   const port: Port = {game: "hoop", band, thing: thing.id, tries: []};
   const fresh = (route: PortTry["route"]): PortTry => {
     const t: PortTry = {n: port.tries.length, route, why: "", kept: false};
     port.tries.push(t);
     return t;
   };
+  /** Whether the budget is spent; the first try it stops is recorded. */
+  const late = (route: PortTry["route"]): boolean => {
+    if (Date.now() <= deadline) return false;
+    if (!c.out) {
+      c.out = true;
+      const t = fresh(route);
+      t.why = "out of time";
+      logTry(c, t);
+    }
+    return true;
+  };
   let best: Best | null = null;
   let last: Drawing | null = null;
   for (let d = 0; d < HOOP_DRAWINGS && (best === null || best.score < ENOUGH); d++) {
+    if (late("map")) break;
     let drawing: Drawing;
     try {
       drawing = await draw(PROMPT(thing.draw, band, key, creature), shapesModel(), {images: [styleRef()]});
@@ -563,9 +598,14 @@ export async function makeHoop(day: number, theme: Theme, band: number, keep?: (
       continue;
     }
     last = drawing;
-    keep?.(`${day}_hoop${band}_${thing.id}_${d}`, drawing);
+    try {
+      keep?.(`${day}_hoop${band}_${thing.id}_${d}`, drawing);
+    } catch (e) {
+      console.error(`hoop: day ${day}, band ${band}, ${thing.id}: drawing ${d} not kept`, e);
+    }
     let refused = "";
     for (let a = 0; a < MAP_ASKS && (best === null || best.score < ENOUGH); a++) {
+      if (late("map")) break;
       const t = fresh("map");
       const got = await mapTry(c, drawing, refused, t);
       logTry(c, t);
@@ -573,7 +613,7 @@ export async function makeHoop(day: number, theme: Theme, band: number, keep?: (
       refused = lesson(t, thing);
     }
   }
-  if (best === null && last !== null) {
+  if (best === null && last !== null && !late("reader")) {
     const t = fresh("reader");
     const got = await readerTry(c, last, t);
     logTry(c, t);
