@@ -59,7 +59,8 @@ function fold(k: number[]): number[] {
 
 /** The grid read into the image's 0-100, and pins within a third of a
  *  square of one another made one: the model names the same corner twice
- *  where two panels meet. The first pin given an id keeps it. */
+ *  where two panels meet. The first pin given an id keeps it; a pin
+ *  without a number for x or y is let go, and its id is then unknown. */
 function snap(got: ModelMap, n: number, stats: Stats): {pins: P[]; of: Map<number, number>} {
   const near = 0.35 * 100 / n;
   const pins: P[] = [];
@@ -68,6 +69,7 @@ function snap(got: ModelMap, n: number, stats: Stats): {pins: P[]; of: Map<numbe
     const id = Number(p.id);
     if (of.has(id)) { stats.dropped++; continue; }
     const x = Number(p.x) / n * 100, y = Number(p.y) / n * 100;
+    if (!Number.isFinite(x) || !Number.isFinite(y)) { stats.dropped++; continue; }
     let k = pins.findIndex((q) => Math.hypot(q[0] - x, q[1] - y) < near);
     if (k < 0) { k = pins.length; pins.push([x, y]); } else stats.snapped++;
     of.set(id, k);
@@ -111,7 +113,8 @@ function along(pt: P, a: P, b: P, tol: number): number {
 /** A pin lying on another panel's side made a corner of that side: where
  *  two small panels meet a big one the model leaves the big one's side
  *  whole, and the phone sees a pin dropped in the middle of a string. Every
- *  pin on one side goes in, in order along it. */
+ *  pin on one side goes in, in order along it, and never twice into one
+ *  panel (a pin by two sides of a thin panel goes in by the first). */
 function tees(w: Work, stats: Stats): void {
   const used = new Set<number>();
   for (const p of w.panels) for (const i of p.k) used.add(i);
@@ -123,7 +126,7 @@ function tees(w: Work, stats: Stats): void {
       k.push(a);
       const on: [number, number][] = [];
       for (const i of used) {
-        if (p.k.includes(i)) continue;
+        if (p.k.includes(i) || k.includes(i)) continue;
         const t = along(w.pins[i], w.pins[a], w.pins[b], 0.3);
         if (t >= 0) on.push([t, i]);
       }
@@ -232,10 +235,15 @@ function renumber(w: Work): void {
   w.pins = pins;
 }
 
-/** What the phone would refuse, the first of: a pin inside a panel it is
- *  not a corner of, a side three panels share, too few panels, too many;
- *  "" when none. */
+/** What the phone would refuse, the first of: a panel outside 3 to
+ *  MOST_CORNERS corners, a pin twice in one panel, a pin inside a panel it
+ *  is not a corner of, a side three panels share, too few panels, too many;
+ *  "" when none. Checked here rather than trusted to the steps above. */
 function check(w: Work, band: number): string {
+  for (const p of w.panels) {
+    if (p.k.length < 3 || p.k.length > MOST_CORNERS) return `a panel of ${p.k.length} corners`;
+    if (new Set(p.k).size < p.k.length) return "a pin twice in one panel";
+  }
   const inside = overlaps(w.pins, w.panels) as number;
   if (inside > 0) return `${inside} pins inside another panel`;
   const sides = new Map<string, number>();
@@ -252,6 +260,15 @@ function check(w: Work, band: number): string {
   if (count < LEAST_PANELS[band]) return `${count} panels, under ${LEAST_PANELS[band]}`;
   if (count > BANDS[band].most) return `${count} panels, over ${BANDS[band].most}`;
   return "";
+}
+
+/** The same checks on a placed mesh, again after colourFrom has dropped
+ *  the background. "Pins inside" works on the square as on the image: its
+ *  room of 0.05 is a cross product, a hair at either scale. */
+export function checkMesh(mesh: Mesh, band: number): string {
+  const pins: P[] = [];
+  for (let i = 0; i < mesh.pins.length; i += 2) pins.push([mesh.pins[i], mesh.pins[i + 1]]);
+  return check({pins, panels: mesh.panels}, band);
 }
 
 /** Into the square of 100, the thing's box scaled to fill it and centred
@@ -291,7 +308,7 @@ const rgbOf = (hex: string): number[] => [1, 3, 5].map((i) => parseInt(hex.slice
  * A panel that comes out within 60 of the key colour is the background the
  * model took for part of the thing, and is dropped with any pin only it
  * used. Returns how many were dropped. `why` is left as repairMesh found
- * it: the caller has the band to check again.
+ * it: the caller has the band, and checks again with checkMesh.
  */
 export function colourFrom(r: Raster, mesh: Mesh, key: string): number {
   const bg = rgbOf(key);
