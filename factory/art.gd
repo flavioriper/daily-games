@@ -661,7 +661,7 @@ const IN_TALL := 20.0
 ## The box stack: how many empty boxes the heap shows (it never runs out:
 ## the sim's stack always gives one), and how big each is drawn in it.
 const STACK_N := 6
-const STACK_K := 0.62
+const STACK_K := 0.85
 ## The pack table: the land's tray, its half (tiles) and height, and where
 ## the box on it rests.
 const TABLE_ALONG := 0.3
@@ -757,8 +757,8 @@ static func stack() -> ArrayMesh:
 	if not _one.has("stack"):
 		var b := Face.Builder.new()
 		var rows: Array = HEAP[heap_of(STACK_N)]
-		var w := BOX_HALF * 2.0 * K * STACK_K
-		var half := float(rows[0]) * 0.5 * BOX_HALF * 2.0 * STACK_K
+		var w := BOX_HALF * 4.0 * K * STACK_K
+		var half := float(rows[0]) * BOX_HALF * STACK_K
 		_ground_shade(b, [[Vector2.ZERO, Vector2(half, half) * 0.75, BOX_TALL * rows.size() * STACK_K]])
 		for j in rows.size():
 			var m: int = rows[j]
