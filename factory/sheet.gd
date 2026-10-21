@@ -35,11 +35,10 @@ extends Control
 ## lettered over the mesh with TextLines drawn one font size after the other
 ## (each size is one glyph batch).
 ##
-## A Move's arrow is drawn on the diagonal the robot walks on screen: the
-## floor is seen corner on (factory/life.gd, since 2026-10-21 again), so a
-## facing is drawn through Art.ISO at the view's quarter turn (`turn`, set by
-## the screen's turn button through `set_turn`), and the graph is rebuilt on
-## a turn. The pill's Turn still turns the sim's facing a quarter.
+## A Move's arrow points the way the robot walks on screen: the floor is
+## square tiles seen from above, so it is the facing itself, right, down,
+## left or up (it was drawn on the diagonal while the floor was seen corner
+## on, for part of 2026-10-21).
 ##
 ## `preview` is the tutorial's: the same sheet drawn small into a rect of a
 ## diagram (`show_preview`), with no input, no slide and no handle to pull,
@@ -196,9 +195,6 @@ var _paper: ArrayMesh
 var _graph: ArrayMesh
 var _labels: Array = []  # [text, at (graph space, centre and baseline), fs, colour]
 var _dirty := true
-## The view's quarter turn, 0 to 3, the life's: a Move's arrow is drawn as
-## the robot walks on screen at it.
-var turn := 0
 var _glows := {}         # "w|h|r" -> ring mesh
 var _wire_mesh: ArrayMesh
 var _tray_mesh: ArrayMesh
@@ -234,16 +230,9 @@ func fit_to(field_size: Vector2, inset: float) -> void:
 	_dirty = true
 	queue_redraw()
 
-## The view is turned to `quarters`: the arrows are drawn again.
-func set_turn(quarters: int) -> void:
-	turn = posmod(quarters, 4)
-	_dirty = true
-	queue_redraw()
-
-## The way a Move of sim `facing` goes on screen, a unit vector: its facing
-## turned with the view, through the floor's corner-on projection.
+## The way a Move of sim `facing` goes on screen, a unit vector.
 func arrow_of(facing: int) -> Vector2:
-	return Art.ISO.basis_xform(Vector2(Sim.DIRS[posmod(facing + turn, 4)])).normalized()
+	return Vector2(Sim.DIRS[posmod(facing, 4)])
 
 func is_open() -> bool:
 	return _open

@@ -342,12 +342,9 @@ func _draw_over() -> void:
 func _draw_ring(at: Vector2) -> void:
 	var u: float = _world.scale.x
 	var pulse := 0.0 if Motion.reduce else 0.5 + 0.5 * sin(_t * TAU / 1.1)
-	var r := Art.K * u * (1.24 + 0.2 * pulse)
-	# lying on the floor, as its tiles are seen corner on
-	_over.draw_set_transform(at, 0.0, Vector2(1.0, Art.DEEP))
-	_over.draw_circle(Vector2.ZERO, r, Color(Pal.ACCENT, 0.16), true, -1.0, true)
-	_over.draw_arc(Vector2.ZERO, r, 0.0, TAU, 40, Pal.ACCENT, 5.0, true)
-	_over.draw_set_transform(Vector2.ZERO)
+	var r := Art.TILE.x * u * (0.62 + 0.1 * pulse)
+	_over.draw_circle(at, r, Color(Pal.ACCENT, 0.16), true, -1.0, true)
+	_over.draw_arc(at, r, 0.0, TAU, 40, Pal.ACCENT, 5.0, true)
 
 ## The coins held, as the screen's pill shows them: the coin and the count
 ## on a white pill, kicked as it changes.

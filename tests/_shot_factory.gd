@@ -24,9 +24,7 @@ extends SceneTree
 ## the top bar, a dot on the chip of each robot with a fault a rule sees, a
 ## chip tapped and a robot tapped, the pace pill blank, the drawer empty
 ## before milestone 1, then a belt traced from the intake pad to the table,
-## shot and its draw calls held under the budget; then the view turned a
-## quarter (the tile under the middle kept, the sheet's turn with it), shot,
-## and turned back.
+## shot and its draw calls held under the budget.
 ##
 ## The sheet (factory/sheet.gd on a new floor's screen, its mouse off as the
 ## field's is; its touches handed to its own `_gui_input` in its own pixels,
@@ -375,21 +373,6 @@ func _screen_part() -> void:
 	await _frames(4)
 	var draws: int = await _shot("screen_start")
 	_ok("under budget", draws > 0 and draws < BUDGET, str(draws))
-	# the view's quarter turn (2026-10-21: the land's view is back): the
-	# tile under the middle stays there, the sheet's arrows turn with it
-	if _screen.sheet.is_open():
-		_screen.sheet.close()
-		await _wait(0.5)
-	var under: Vector2 = _screen.life.tile_at(_screen._cam_to)
-	_screen.turn_view()
-	await _frames(4)
-	_ok("the view turns a quarter", int(_screen.life.turn) == 1 and int(_screen.sheet.turn) == 1
-		and (_screen.life.tile_at(_screen._cam_to) as Vector2).distance_to(under) < 0.05, "%d %d %s %s" % [_screen.life.turn, _screen.sheet.turn, under, _screen.life.tile_at(_screen._cam_to)])
-	draws = await _shot("screen_turned")
-	_ok("under budget turned", draws > 0 and draws < BUDGET, str(draws))
-	for i in 3:
-		_screen.turn_view()
-	await _frames(2)
 	_screen.queue_free()
 	await _frames(3)
 

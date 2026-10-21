@@ -1,17 +1,18 @@
 extends Control
 
-## Factory: the robot floor, played. Ten tiles by eight seen corner on, as
-## the land was (one plate on the pond, the land's belts, market, engine
-## and tray: the user, 2026-10-21), three robots that walk their programs
+## Factory: the robot floor, played. Ten square tiles by eight seen from
+## above, drawn with the land's pieces (one plate on the pond, the land's
+## belts, market, engine and tray: the user, 2026-10-21, twice), three
+## robots that walk their programs
 ## over it from the bay, the stations they work (the intake, the box stack,
 ## the pack table, the deliver pad that sells), and from milestone 1 the
 ## belts a finger traces. Spec
 ## docs/superpowers/specs/2026-10-20-factory-rewired-design.md (its section
 ## 3 amended 2026-10-21); the rules and every number are factory/sim.gd's and
 ## factory/bots.gd's, the drawings factory/art.gd's, and what is seen of the
-## floor factory/life.gd's. The land's view and its quarter-turn button are
-## kept: `turn_view` goes round a quarter, and the sheet's Move arrows turn
-## with it so an arrow still points where the robot walks on screen.
+## floor factory/life.gd's. The view has no turn (a turn has no purpose on
+## a square floor): a Move's arrow on the sheet is the way the robot walks
+## on screen.
 ##
 ## **It never makes or reads a floor.** ui/menu/factory_tab.gd owns the one
 ## sim; whoever mounts this screen hands it over with `setup(sim)` before it
@@ -27,7 +28,7 @@ extends Control
 ##
 ## The chrome lies over the floor: the top bar, the coins and the pace (a
 ## box every so many seconds, from the sim's rolling window) on two pills
-## with the zoom and the turn beside them, and a row of **robot chips**, one a robot in
+## with the zoom beside them, and a row of **robot chips**, one a robot in
 ## the floor's own tints, a red dot on the chip of a robot with a fault the
 ## player can see from its program (a loose wire, a node its parts do not
 ## give, stuck). A tap on a chip or on a robot on the floor picks it and
@@ -178,8 +179,6 @@ var _next_l: Label
 var _chips_l: Control
 var _chips_key := ""
 var _zoom_b: Button
-var _turn_b: Button
-var _turn_tw: Tween
 var _drawer_b: Button
 var _free_b: Button
 var _drawer: GridContainer
@@ -367,10 +366,7 @@ func _build() -> void:
 	_zoom_b = IconButton.new("minus", "", "IconButton")
 	_zoom_b.name = "Zoom"
 	_zoom_b.pressed.connect(func() -> void: set_far(not _far))
-	_turn_b = IconButton.new("turn", "", "IconButton")
-	_turn_b.name = "Turn"
-	_turn_b.pressed.connect(turn_view)
-	for b: Button in [_zoom_b, _turn_b]:
+	for b: Button in [_zoom_b]:
 		b.custom_minimum_size = Vector2(ZOOM_B, ZOOM_B)
 		b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -570,7 +566,7 @@ func _apply_insets() -> void:
 		sheet.fit_to(field.size, insets.y)
 
 ## The pond and the light are baked for the field's size, and the near zoom
-## is the one at which the whole floor's diamond is as wide as the field.
+## is the one at which the whole floor is as wide as the field.
 func _layout_field() -> void:
 	var s := field.size
 	if s.x <= 0.0 or s.y <= 0.0 or _light_l == null:
@@ -611,9 +607,7 @@ func tile_under(pos: Vector2) -> Vector2:
 	return life.tile_at((pos - world.position) / _zoom)
 
 ## A point of the view held to where the view's middle may go: the floor's
-## own tiles and POND tiles of pond past them, measured along the floor (a
-## box on the screen would leave the view's middle far out on open water off
-## a diamond's corners).
+## own tiles and POND tiles of pond past them.
 func _clamp(v: Vector2) -> Vector2:
 	var inside := _clamp_tiles(v)
 	if sheet != null and sheet.is_open() and v.y > inside.y:
@@ -639,30 +633,6 @@ func _zoom_by_hand(on: bool) -> void:
 		return
 	set_far(on)
 	_fx.touch(1.0 if on else 0.84)
-
-## The view goes round a quarter, clockwise, so that what a robot or a
-## station hid is seen (the user, 2026-10-10, of the land). Only the view:
-## the turn is the life's (factory/life.gd, `seen` and `tile_at`), the sim's
-## tiles and facings are what they were, the tile under the middle of the
-## screen stays under it, and the sheet's Move arrows turn with it. Nothing
-## is tweened round: the floor is laid out again at once and comes back in
-## out of a short dip. A preference of this screen, not kept: it opens at no
-## turn.
-func turn_view() -> void:
-	var under: Vector2 = life.tile_at(_cam)
-	var going: Vector2 = life.tile_at(_cam_to)
-	_let_go()
-	life.set_turn(int(life.turn) + 1)
-	sheet.set_turn(int(life.turn))
-	_cam = life.seen(under)
-	_cam_to = life.seen(going)
-	_cam_raw = _cam_to
-	_place_world()
-	Motion.stop(_turn_tw)
-	_turn_tw = Motion.appear(world, 0.3, 1.0, 0.16)
-	_fx.touch()
-	if sheet.is_open():
-		_keep_in_view(true)
 
 func _step_view(delta: float) -> void:
 	var want := _near * (0.5 if _far else 1.0)
@@ -1717,7 +1687,7 @@ func _ghosts() -> Array:
 		elif sim.belts.has(tile) and (sim.belt_kind(tile) == sim.picked or Sim.ONE_TILE.has(sim.picked)):
 			continue
 		var short: bool = i >= int(_run.lay)
-		out.append([Art.belt(), Transform2D(0.0, Art.BELT_LIFT) * Art.flat(Vector2(life.seen_tile(tile)), life.seen_facing(int(_run.faces[i]))),
+		out.append([Art.belt(), Transform2D(0.0, Art.BELT_LIFT) * Art.flat(Vector2(tile), int(_run.faces[i])),
 			Color(1.0, 0.5, 0.45, 0.8) if short else Color(1.0, 1.0, 1.0, 0.92)])
 	return out
 
