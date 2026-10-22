@@ -43,13 +43,15 @@ Connections, Spelling Bee, Pips, Pinpoint, Clues by Sam.
       coloured bed meets its rule (sum, equal, less than). Reuses Versus
       Dominoes art. Generator moderate (uniqueness check). No pt/es. Time and
       hints only.
-- [ ] **4. Four Shelves** (Connections). Words. 16 words, four hidden groups.
+- [ ] **4. Four Shelves** (Connections). **Waits on the user's deploy**
+      (2026-10-22): skipped for Teacups, since a board on the Acorn
+      pipeline is not playable until the functions are deployed. Words. 16 words, four hidden groups.
       Rides Golden Acorn's pipeline (Haiku writes, Opus reviews), which writes
       en/pt/es; needs a deploy by the user. Quality: mistakes 0-4.
 
 ## The rest, ranked
 
-- [ ] **5. Teacups** (concentration pairs). Memory. Trivial. Quality: flips
+- [x] **5. Teacups** (concentration pairs). Built 2026-10-22, `docs/agents/boards/teacups.md`; cups 12/16/20/20, Insane is Waltz (two hidden cups trade places every second miss). Memory. Trivial. Quality: flips
       vs the minimum.
 - [ ] **6. Picket Sums** (Killer Sudoku cages). Numbers/Logic. Reuses
       Sudoku's grid, pad, generator. Moderate.

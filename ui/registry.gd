@@ -896,6 +896,37 @@ const PUZZLES := [
 		],
 	},
 	{
+		"id": "teacups",
+		"skill": "memory",
+		"kind": "puzzle",
+		"title": "Teacups",
+		"blurb": "TC_BLURB",
+		"short": "TC_SHORT",
+		"motto": "TC_MOTTO",
+		"footer": "Lift · Remember · Pair",
+		# Cups upside down on a garden tea table, a friend under each and
+		# every friend under two; lift two a turn to find the pairs
+		# (puzzles/teacups2d.gd). The table fills the screen and the cups are
+		# its controls, so no tray and no actions row. Only the bulb: a cup
+		# seen cannot be unseen (no Undo), nothing is ever wrong for a Check,
+		# and the bin would hand back a table already remembered.
+		"script": "res://puzzles/teacups2d.gd",
+		"card": "res://ui/menu/cards/teacups.gd",
+		"shell": "flat",
+		"tray": "none",
+		"bleed": true,
+		"level_card": true,
+		"actions": false,
+		"difficulties": [0, 1, 2, 3],
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "TC_LVL_0"},
+			{"difficulty": 1, "name": "Medium", "line": "TC_LVL_1"},
+			{"difficulty": 2, "name": "Hard", "line": "TC_LVL_2"},
+			{"difficulty": 3, "name": "Insane", "line": "TC_LVL_3"},
+		],
+	},
+	{
 		"id": "lattice",
 		"skill": "logic",
 		"kind": "puzzle",

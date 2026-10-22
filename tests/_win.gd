@@ -165,6 +165,9 @@ func _note(id: String) -> String:
 		"patio": return "%dx%d, %d tiles (%d spare), %d beds, unique=%s, %d moves, hints=%d, caps %s, board fit=%s, hud=%s" % [
 			_puzzle._st.cols, _puzzle._st.rows, _puzzle._st.laid_count(), _puzzle._st.tiles.size() - _puzzle._st.laid_count(),
 			_puzzle._st.beds.size(), _puzzle._st.unique, _puzzle.moves, _puzzle.hints_used, _puzzle.capabilities(), _fit_ok, _hud_ok]
+		"teacups": return "%dx%d, %d pairs, %d lifts, %d misses, %d lapses, hints=%d, caps %s, board fit=%s, hud=%s" % [
+			_puzzle._st.cols(), _puzzle._st.rows(), _puzzle._st.pairs(), _puzzle._st.lifts, _puzzle._st.misses,
+			_puzzle._st.lapses, _puzzle.hints_used, _puzzle.capabilities(), _fit_ok, _hud_ok]
 		"birdsong": return "%d drums, %d notes, %d rounds, %d clean, %d slips, hints=%d, caps %s, board fit=%s, hud=%s" % [
 			_puzzle._st.drums(), _puzzle._st.tune.size(), _puzzle._st.rounds(), _puzzle._st.clean, _puzzle._st.slips,
 			_puzzle.hints_used, _puzzle.capabilities(), _fit_ok, _hud_ok]
@@ -241,6 +244,7 @@ func _solve(id: String) -> void:
 		"glimpse": _solve_glimpse()
 		"birdsong": _solve_birdsong()
 		"patio": _solve_patio()
+		"teacups": _solve_teacups()
 		"trestle": _solve_trestle()
 		"minigolf": _solve_minigolf()
 		"horse": _solve_horse()
@@ -1396,6 +1400,51 @@ func _solve_birdsong() -> void:
 			d = (d + 1) % st.drums()
 		_tap_local(_puzzle.drum_to_local(d))
 		_puzzle._process(0.02)
+
+## Teacups: two misses on purpose (on Insane the second sets a waltz going,
+## stepped through on the board's own clock), a cup lifted and the bulb
+## pressed so its partner peeks, then every pair lifted by real touches,
+## each cup's place read from the state as it is now.
+func _solve_teacups() -> void:
+	var st = _puzzle._st
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for s in st.cups():
+		if not slot.has_point(_puzzle.slot_to_local(s)):
+			_fit_ok = false
+	_hud_ok = _puzzle.capabilities() == ["hint"] and _puzzle.hints_left() > 0 and not _puzzle.can_reset()
+	var settle := func() -> void:
+		for i in 200:
+			if _puzzle.phase() == _puzzle.Phase.PLAY or _puzzle.is_done():
+				return
+			_puzzle._process(0.05)
+	# two misses: cup 0 against a cup of another friend, twice
+	for m in 2:
+		var a: int = st.hidden()[0]
+		var b := -1
+		for c in st.hidden():
+			if st.kind[c] != st.kind[a]:
+				b = c
+				break
+		_tap_local(_puzzle.slot_to_local(st.slot[a]))
+		_tap_local(_puzzle.slot_to_local(st.slot[b]))
+		_hud_ok = _hud_ok and _puzzle.phase() == _puzzle.Phase.HOLD
+		_puzzle._process(1.0)
+		settle.call()
+	# a cup in hand, the bulb: its partner peeks and is lifted
+	var first: int = st.hidden()[0]
+	_tap_local(_puzzle.slot_to_local(st.slot[first]))
+	_hud_ok = _hud_ok and _puzzle.hint()
+	_tap_local(_puzzle.slot_to_local(st.slot[st.partner(first)]))
+	_puzzle._process(0.1)
+	for step in 40:
+		if _puzzle.is_done():
+			return
+		settle.call()
+		var a: int = st.hidden()[0]
+		_tap_local(_puzzle.slot_to_local(st.slot[a]))
+		_tap_local(_puzzle.slot_to_local(st.slot[st.partner(a)]))
+		_puzzle._process(0.1)
 
 ## Domino Patio: one bulb through the real button; then each tile of the
 ## answer turned on the rack by taps until it faces its answer's way and

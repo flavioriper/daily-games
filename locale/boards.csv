@@ -3084,3 +3084,37 @@ BRAIN_DP_1,"Start with the tags that leave one choice, like a 0 or a 12 over two
 BRAIN_DP_2,An = bed and a double on the rack: find where the double fits first.,Um canteiro = e uma dupla no suporte: descubra primeiro onde a dupla cabe.,Un parterre = y una doble en el soporte: busca primero dónde cabe la doble.
 BRAIN_DP_3,Count what is left: the rack's spots add up to what the open beds still need.,Conte o que falta: os pontos do suporte somam o que os canteiros abertos ainda pedem.,Cuenta lo que queda: los puntos del soporte suman lo que los parterres abiertos aún piden.
 BRAIN_DP_4,Squares with no tag take anything: fill them last.,Casas sem etiqueta aceitam qualquer coisa: deixe-as para o fim.,Las casillas sin etiqueta aceptan cualquier cosa: déjalas para el final.
+TC_BLURB,"Cups upside down on the tea table, a friend under each. Lift two at a time and find every pair.","Xícaras de cabeça para baixo na mesa do chá, um amiguinho debaixo de cada. Levante duas por vez e encontre todos os pares.","Tazas boca abajo en la mesa del té, un amiguito debajo de cada una. Levanta dos a la vez y encuentra todas las parejas."
+TC_SHORT,"Lift two cups,
+find the pairs.","Levante duas xícaras,
+ache os pares.","Levanta dos tazas,
+halla las parejas."
+TC_MOTTO,Remember where you saw it,Lembre onde você viu,Recuerda dónde lo viste
+TC_LVL_0,"12 cups, 6 pairs","12 xícaras, 6 pares","12 tazas, 6 parejas"
+TC_LVL_1,"16 cups, 8 pairs","16 xícaras, 8 pares","16 tazas, 8 parejas"
+TC_LVL_2,"20 cups, 10 pairs","20 xícaras, 10 pares","20 tazas, 10 parejas"
+TC_LVL_3,Waltz: hidden cups trade places,Valsa: xícaras escondidas trocam de lugar,Vals: las tazas ocultas cambian de sitio
+TC_RULES,"%d cups stand upside down on the table, and under them %d pairs of friends. Tap a cup to lift it, then another. The same friend under both is a pair found; two different friends go back under their cups. Find every pair.","%d xícaras estão de cabeça para baixo na mesa, e debaixo delas %d pares de amiguinhos. Toque numa xícara para levantá-la, depois em outra. O mesmo amiguinho nas duas é um par encontrado; dois diferentes voltam para debaixo das xícaras. Encontre todos os pares.","%d tazas están boca abajo en la mesa, y debajo de ellas %d parejas de amiguitos. Toca una taza para levantarla, luego otra. El mismo amiguito en las dos es una pareja encontrada; dos distintos vuelven bajo sus tazas. Encuentra todas las parejas."
+TC_RULES_LAPSE,Your score counts the partners you had already seen and still missed. A miss you could not have known is only luck.,Sua nota conta os pares que você já tinha visto e mesmo assim errou. Um erro que você não tinha como saber é só sorte.,Tu puntuación cuenta las parejas que ya habías visto y aun así fallaste. Un fallo que no podías saber es solo suerte.
+TC_RULES_WALTZ,"Waltz: after every second miss, two hidden cups trade places while you watch. Follow them.","Valsa: a cada dois erros, duas xícaras escondidas trocam de lugar enquanto você olha. Siga-as.","Vals: cada dos fallos, dos tazas ocultas cambian de sitio mientras miras. Síguelas."
+TC_PAIRS,%d of %d pairs,%d de %d pares,%d de %d parejas
+TC_LIFTS_ONE,%d lift,%d levantada,%d levantada
+TC_LIFTS_N,%d lifts,%d levantadas,%d levantadas
+TC_WIN,Every friend found in %d lifts!,Todos os amiguinhos achados em %d levantadas!,¡Todos los amiguitos hallados en %d levantadas!
+TC_WIN_SHARP,Not one partner forgotten.,Nenhum par esquecido.,Ninguna pareja olvidada.
+TC_WIN_LAPSES_ONE,%d partner slipped your mind.,%d par escapou da memória.,%d pareja se te escapó.
+TC_WIN_LAPSES_N,%d partners slipped your mind.,%d pares escaparam da memória.,%d parejas se te escaparon.
+HTP_TC_LIFT,Lift two cups,Levante duas xícaras,Levanta dos tazas
+HTP_TC_LIFT_BODY,"Tap a cup to see the friend under it, then tap another. Two different friends go back under their cups.","Toque numa xícara para ver o amiguinho embaixo, depois toque em outra. Dois amiguinhos diferentes voltam para debaixo das xícaras.","Toca una taza para ver el amiguito de debajo, luego toca otra. Dos amiguitos distintos vuelven bajo sus tazas."
+HTP_TC_PAIR,Find a pair,Encontre um par,Encuentra una pareja
+HTP_TC_PAIR_BODY,The same friend under both cups is a pair: the cups fly off and the friends stay on their saucers.,O mesmo amiguinho nas duas xícaras é um par: as xícaras saem voando e os amiguinhos ficam nos pires.,El mismo amiguito bajo las dos tazas es una pareja: las tazas salen volando y los amiguitos se quedan en sus platillos.
+HTP_TC_REMEMBER,Remember where,Lembre onde,Recuerda dónde
+HTP_TC_REMEMBER_BODY,"Every friend you see is a clue. When its twin turns up, go back to where you saw it. Partners seen and missed lower your score.","Cada amiguinho que você vê é uma pista. Quando o gêmeo aparecer, volte onde você o viu. Pares vistos e errados baixam sua nota.","Cada amiguito que ves es una pista. Cuando aparezca su gemelo, vuelve a donde lo viste. Las parejas vistas y falladas bajan tu puntuación."
+HTP_TC_WALTZ,Waltz,Valsa,Vals
+HTP_TC_WALTZ_BODY,"On Insane, every second miss sets two hidden cups wiggling, then trading places. Keep your eyes on them.","No Insano, a cada dois erros duas xícaras escondidas balançam e trocam de lugar. Fique de olho nelas.","En Demencial, cada dos fallos dos tazas ocultas se menean y cambian de sitio. No les quites el ojo."
+HTP_TC_HINT,A peek,Uma espiada,Un vistazo
+HTP_TC_HINT_BODY,"The bulb lifts the partner of the cup in your hand for a moment. With no cup up, a hidden pair peeks out.","A lâmpada levanta por um instante o par da xícara na sua mão. Sem xícara levantada, um par escondido dá uma espiada.","La bombilla levanta un momento la pareja de la taza que tienes en la mano. Sin taza levantada, una pareja oculta se asoma."
+BRAIN_TC_1,Name each friend as you lift it: words stick better than pictures alone.,Diga o nome de cada amiguinho ao levantá-lo: palavras grudam melhor que só imagens.,Nombra cada amiguito al levantarlo: las palabras se quedan mejor que solo las imágenes.
+BRAIN_TC_2,"Sweep the table in order, row by row, so you know which cups are still unseen.","Percorra a mesa em ordem, fileira por fileira, para saber quais xícaras ainda não viu.","Recorre la mesa en orden, fila por fila, para saber qué tazas aún no has visto."
+BRAIN_TC_3,"Lift a new cup first: if its twin is one you have seen, you can go straight to it.","Levante primeiro uma xícara nova: se o gêmeo for um que você já viu, pode ir direto nele.","Levanta primero una taza nueva: si su gemelo es uno que ya viste, puedes ir directo a él."
+BRAIN_TC_4,"Tie places to the table: by the corner, the middle of the second row.","Amarre os lugares à mesa: no canto, no meio da segunda fileira.","Ata los sitios a la mesa: en la esquina, en el medio de la segunda fila."
