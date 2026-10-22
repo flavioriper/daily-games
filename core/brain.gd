@@ -81,7 +81,8 @@ static func _median(values: Array) -> float:
 ## skill; an unlogged one (a random New game, a reopened daily) does not.
 ## Returns: skill, scores (skill -> float, -1 untrained), before, after, gain,
 ## first (no earlier solve of this board at this level), mean_t, mean_h,
-## count (earlier solves at this level), tip (1..4), lowest, suggest.
+## count (earlier solves at this level), start (the starting pace), tip
+## (1..4), lowest, suggest.
 static func report(log: Dictionary, id: String, difficulty: int, current: Dictionary) -> Dictionary:
 	var skill := skill_of(id)
 	var ordered := _ordered(log)
@@ -143,6 +144,7 @@ static func report(log: Dictionary, id: String, difficulty: int, current: Dictio
 		"skill": skill, "scores": scores, "before": before, "after": after,
 		"gain": int(round(after)) - int(round(before)) if before >= 0.0 and at >= 0 else 0,
 		"first": count == 0, "mean_t": mean_t, "mean_h": mean_h, "count": count,
+		"start": _median(firsts.get("%s|%d" % [id, difficulty], [])),
 	}
 	out["tip"] = _tip(id, difficulty, current, mean_t, board_solves)
 	var low := _lowest(scores)

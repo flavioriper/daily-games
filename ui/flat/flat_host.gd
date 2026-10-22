@@ -59,6 +59,8 @@ const DigitPad = preload("res://ui/flat/digit_pad.gd")
 const FlatActions = preload("res://ui/flat/flat_actions.gd")
 const LevelCard = preload("res://ui/flat/level_card.gd")
 const WellDone = preload("res://ui/flat/well_done.gd")
+const BrainReport = preload("res://ui/flat/brain_report.gd")
+const Brain = preload("res://core/brain.gd")
 const IconButton = preload("res://ui/hud/icon_button.gd")
 const Icons = preload("res://ui/icons.gd")
 const Streak = preload("res://core/streak.gd")
@@ -108,6 +110,15 @@ var tray: Control
 ## `level_card`), or null.
 var level_card: Control
 var well_done: Control
+## The win's brain report, on a board with a skill (spec 2026-10-22-brain-skills);
+## null on one without (Marigold), whose win keeps the full art.
+var brain_report: Control
+## The win art's height: the compact strip when there is a report.
+var _top_win := TOP_WIN
+## The solve the report is about ({"t", "h", "q"}, and "day" when the log
+## took it), and the report worked out from it.
+var _brain := {}
+var _brain_data := {}
 var stats_card: Control
 var camp_button: Button
 var _top_slot: Control
@@ -316,6 +327,7 @@ func _build_chrome(root: VBoxContainer) -> void:
 	# Flat parchment under the grid, as the mock has it: the paper wash the
 	# rest of the chrome wears reads as a stain across a field of small tiles.
 	_card.material = null
+	var middle := _board_holder
 	if _bleed:
 		# The column's own row stays as the gap between the slots; the board
 		# goes in a slot of the whole screen, under the margins.
@@ -328,6 +340,14 @@ func _build_chrome(root: VBoxContainer) -> void:
 		move_child(_board_holder, 1)
 		_margins.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# The brain report stands in the column's middle row, over the world, the
+	# room the win leaves between the compact art and the bottom rows.
+	if String(_entry.get("skill", "")) != "":
+		brain_report = BrainReport.new()
+		brain_report.name = "BrainReport"
+		brain_report.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		middle.add_child(brain_report)
+		_top_win = WellDone.COMPACT_HEIGHT
 
 	# --- the bottom slot: palette and actions, then the win's stats and buttons ---
 	_bottom_slot = Control.new()
@@ -691,7 +711,7 @@ func _tell_clear() -> void:
 		return
 	var insets := SafeArea.insets(self)
 	var rows := _bottom_win if _won else _bottom_play
-	_puzzle.set_clear(MARGIN + insets.x + (TOP_WIN if _won else _top_play) + GAP,
+	_puzzle.set_clear(MARGIN + insets.x + (_top_win if _won else _top_play) + GAP,
 		MARGIN + insets.y + (rows + GAP if rows > 0.0 else 0.0), _won)
 
 ## A column of rows across the top of `slot`, sized to its own content, so a
@@ -823,6 +843,10 @@ func _spawn(the_seed: int) -> void:
 		_bottom_slot.custom_minimum_size.y = _bottom_play
 		well_done.visible = false
 		_win_stack.visible = false
+		if brain_report != null:
+			brain_report.close()
+		_brain = {}
+		_brain_data = {}
 		for stack in [_top_stack, _bottom_stack]:
 			stack.visible = true
 			stack.modulate.a = 1.0
@@ -855,6 +879,8 @@ func _on_solved() -> void:
 			kept["board"] = record
 	var event := _stats()
 	event["solved"] = true
+	_brain = {"t": float(kept.get("seconds", 0.0)), "h": int(kept.get("hints", 0)), "q": float(kept.get("q", -1.0))}
+	_brain_data = {}
 	if _day_key == 0:
 		Progress.mark_completed(_progress_id(), DailySeed.date_key(), kept)
 	else:
@@ -876,6 +902,7 @@ func _on_solved() -> void:
 			if kept.has("q"):
 				records[-1]["q"] = float(kept["q"])
 			solves[day] = records
+			_brain["day"] = day
 		var after := Streak.hearts(records)
 		var streak := int(Streak.compute(solves, day).current)
 		if after < Streak.KEPT:
@@ -893,6 +920,11 @@ func _on_solved() -> void:
 		if after >= Streak.KEPT and Wallet.hearts_ready(day):
 			_hearts_line += " · " + tr("GIFT_READY")
 	daily_completed.emit(puzzle_id, _day_key if _day_key != 0 else DailySeed.date_key())
+	if brain_report != null:
+		_brain_data = Brain.report(Progress.solve_log(), puzzle_id, _difficulty, _brain)
+		event["skill"] = String(_brain_data.get("skill", ""))
+		event["skill_score"] = int(round(float(_brain_data.get("after", -1.0))))
+		event["p"] = snappedf(_brain_p(), 0.01)
 	Analytics.track("puzzle_complete", event)
 	Ads.note_finished()
 	_refresh()
@@ -942,7 +974,7 @@ func _show_win(hold := 0.0) -> void:
 		_bottom_stack.visible = false)
 	# The slots make room; the VBox slides the board card down between them.
 	_freeze_board()
-	var slots := Motion.slide(_top_slot, "custom_minimum_size:y", _top_play, TOP_WIN, SLOT_TIME, 0.0, false)
+	var slots := Motion.slide(_top_slot, "custom_minimum_size:y", _top_play, _top_win, SLOT_TIME, 0.0, false)
 	if slots == null:
 		_thaw_board()
 	else:
@@ -952,7 +984,10 @@ func _show_win(hold := 0.0) -> void:
 			if is_instance_valid(board) and board == _puzzle:
 				_thaw_board())
 	Motion.slide(_bottom_slot, "custom_minimum_size:y", _bottom_play, bottom_win, SLOT_TIME, 0.0, false)
+	well_done.set_compact(brain_report != null)
 	well_done.enter(ART_DELAY)
+	if brain_report != null:
+		_show_brain(maxf(SLOT_TIME, hold))
 	_win_stack.visible = true
 	Motion.slide(_win_stack, "position:y", 120.0, 0.0, STATS_SLIDE, STATS_DELAY)
 	Motion.appear(_win_stack, 0.0, 1.0, 0.2, STATS_DELAY)
@@ -983,6 +1018,24 @@ func _on_new() -> void:
 ## difficulty for a card that asks which (ui/registry.gd `progress_id`).
 func _progress_id() -> String:
 	return load("res://ui/registry.gd").progress_id(_entry, _difficulty)
+
+## The report over the world: today's solve, or on a finished daily reopened
+## (no live solve) the saved one, which moves no skill.
+func _show_brain(delay: float) -> void:
+	var id := String(_entry.get("id", ""))
+	if _brain.is_empty():
+		var saved := Progress.completed_stats(_progress_id())
+		_brain = {"t": _puzzle.elapsed, "h": _puzzle.hints_used, "q": float(saved.get("q", -1.0))}
+	if _brain_data.is_empty():
+		_brain_data = Brain.report(Progress.solve_log(), id, _difficulty, _brain)
+	brain_report.show_report(id, _brain_data, float(_brain.t), int(_brain.h), float(_brain.q))
+	brain_report.enter(delay)
+
+## This solve's performance, for the analytics event.
+func _brain_p() -> float:
+	var id := String(_entry.get("id", ""))
+	return Brain.perf(id, float(_brain.get("t", 0.0)), int(_brain.get("h", 0)), float(_brain.get("q", -1.0)),
+		float(_brain_data.get("start", 0.0)))
 
 ## "m:ss · N moves · N hints" for the stats card.
 func _stats_text() -> String:

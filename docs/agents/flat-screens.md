@@ -814,3 +814,21 @@ much that it's not fun because of the lack of it".
   not judged there.
 
 Not seen on a phone; no Insane day played by hand with the bulb.
+
+### The brain report on the win (2026-10-22)
+
+The user: "I want this app to not be just another daily puzzle but something
+that sharpens the user's brain skills." Every `Registry.PUZZLES` entry has a
+`skill` (logic, space, planning, focus, words), and its win swaps the full
+art for `WellDone.set_compact(true)` (340 tall, the art at half scale, the
+subtitle kept) and lays `ui/flat/brain_report.gd` in the column's middle row,
+over the world. In order: what the board trains, the skill's score on a
+ring with today against the player's usual, a tip for next time, and all five
+skills with today's gain in green. The eye, held, fades the plate so the solved
+board shows through. Marigold, with no skill, keeps the full art.
+Scores come from `core/brain.gd` over `Progress.solve_log()`. Each record now
+carries `q`, the board's own `skill_quality()` (22 boards have one), so
+nothing new is stored. Tips are `BRAIN_<PFX>_<1..4>` in `locale/boards.csv`.
+Measured on Gumdrop's win: 75 draw calls without the plate, 158 with it,
+not baked. Hoop, Drumbeat and Marigold fail `tests/_win.gd` on main as well (their
+solvers, not this). Spec: `docs/superpowers/specs/2026-10-22-brain-skills-design.md`.

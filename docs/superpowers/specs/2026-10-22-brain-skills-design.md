@@ -330,3 +330,20 @@ minigolf `_state.card` against `par_total()`; horse `state.score()`/`state.best`
 - **Redo's solve** isn't logged (one record per board, level and day), so it
   shows the report with no gain, like a reopened daily.
 - **Motion:** the eases come from `core/motion.gd`'s own helpers.
+
+## 11. As built (2026-10-22)
+
+- A drop in score shows as "−N" in dim ink. Only a gain is green.
+- Draw calls on Gumdrop's win: 75 → 158 with the plate (budget 855). The
+  plate is drawn with plain `draw_*` calls rather than baked into a mesh. Bake it if a
+  heavier board's win ever comes near the budget.
+- Boards whose `flat_win()` sets a cast or a subtitle with no faces hide the sun
+  and the moon (`set_cast`). That was so before this change, and the compact
+  strip keeps it.
+- Trestle's `q` reads `_tests_all` (every Go since the board opened), because `_tests`
+  resets on Try again. Rings' line comes from the solver at the win (its par is 0
+  on every band), and Gumdrop's `sim.marks` holds only passing serves.
+- Verified: the headless suite (163137 passed, 0 failed); `tests/_win.gd` over
+  every board, 30/34, where Hoop, Drumbeat and Marigold fail on main too and
+  Gumdrop passes alone; windowed shots of Sudoku and Gumdrop with seeded
+  history; probes of `Brain.report`.

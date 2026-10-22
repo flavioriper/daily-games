@@ -63,7 +63,7 @@ const FADE := 0.2
 const COMPACT_HEIGHT := 340.0
 const COMPACT_SCALE := 0.5
 const COMPACT_TITLE_Y := 262.0
-const COMPACT_SUB_Y := 314.0
+const COMPACT_SUB_Y := 322.0
 
 var sun: Control
 var moon: Control

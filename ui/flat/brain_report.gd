@@ -76,7 +76,6 @@ func _ready() -> void:
 		var f := _label("CardBody", 30)
 		_facts.append(f)
 	_facts[0].add_theme_font_override("font", CozyTheme.body(800))
-	_facts[0].add_theme_color_override("font_color", Pal.LEAF_DEEP)
 	_tip_head = _label("CardBodyDim", 24)
 	_tip_head.add_theme_font_override("font", CozyTheme.body(800))
 	_tip_head.text = "BRAIN_NEXT_TIME"
@@ -121,7 +120,9 @@ func show_report(id: String, report: Dictionary, seconds: float, hints: int, q: 
 	_title.text = tr("BRAIN_TRAINS") % [board, tr("SKILL_" + _skill.to_upper())]
 	_line.text = "SKILL_%s_LINE" % _skill.to_upper()
 	var gain := int(report.get("gain", 0))
-	_facts[0].text = ("+%d" % gain if gain > 0 else "%d" % gain) if gain != 0 else ""
+	_facts[0].text = ("+%d" % gain if gain > 0 else "−%d" % -gain) if gain != 0 else ""
+	# A gain is news in leaf green; a slip is said quietly.
+	_facts[0].add_theme_color_override("font_color", Pal.LEAF_DEEP if gain > 0 else Pal.TEXT_DIM)
 	var timed := not id in Brain.UNTIMED
 	if bool(report.get("first", false)):
 		_facts[1].text = "BRAIN_START"
@@ -293,6 +294,16 @@ func _set_t(v: float) -> void:
 	var after := float(_report.get("after", -1.0))
 	_score.text = "%d" % int(round(after * v)) if after >= 0.0 else "—"
 	queue_redraw()
+
+## Gone with the win (a New board, Redo), every fade put back.
+func close() -> void:
+	if _peek_tw != null:
+		_peek_tw.kill()
+	visible = false
+	self_modulate.a = 1.0
+	for child in get_children():
+		if child is CanvasItem:
+			child.modulate.a = 1.0
 
 ## Held, the plate fades so the solved board shows; let go, it comes back.
 ## The eye itself stays, so the finger has something to let go of.
