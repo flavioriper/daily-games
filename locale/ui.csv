@@ -2108,3 +2108,28 @@ BG_TIER_AURORA,Aurora,Aurora,Aurora
 BG_TIER_NOVA,Nova,Nova,Nova
 BG_TIER_ECLIPSE,Eclipse,Eclipse,Eclipse
 BG_TIER_SUN,Sun,Sol,Sol
+SKILL_LOGIC,Logic,Lógica,Lógica
+SKILL_LOGIC_LINE,Rule things out until only one answer is left.,Descarte opções até sobrar uma só resposta.,Descarta opciones hasta que quede una sola respuesta.
+SKILL_SPACE,Space,Espaço,Espacio
+SKILL_SPACE_LINE,"See shapes, turns, angles and paths in your head.","Veja formas, giros, ângulos e caminhos de cabeça.","Ve formas, giros, ángulos y caminos en tu cabeza."
+SKILL_PLANNING,Planning,Planejamento,Planificación
+SKILL_PLANNING_LINE,Think a few moves ahead and choose the order.,Pense alguns lances à frente e escolha a ordem.,Piensa unas jugadas por delante y elige el orden.
+SKILL_FOCUS,Focus,Foco,Enfoque
+SKILL_FOCUS_LINE,"Close attention to colour, detail and rhythm.","Atenção de perto a cor, detalhe e ritmo.","Atención de cerca al color, el detalle y el ritmo."
+SKILL_WORDS,Words,Palavras,Palabras
+SKILL_WORDS_LINE,"Vocabulary, recall, knowledge and estimation.","Vocabulário, memória, conhecimento e estimativa.","Vocabulario, memoria, conocimiento y estimación."
+BRAIN_TRAINS,%s trains %s,%s treina %s,%s entrena %s
+BRAIN_START,Your starting point,Seu ponto de partida,Tu punto de partida
+BRAIN_FASTER,%s faster,%s mais rápido,%s más rápido
+BRAIN_SLOWER,%s slower,%s mais lento,%s más lento
+BRAIN_PACE,Your usual pace,Seu ritmo de sempre,Tu ritmo de siempre
+BRAIN_NO_HINTS,No hints,Sem dicas,Sin pistas
+BRAIN_FEWER,fewer than usual,menos que o normal,menos que de costumbre
+BRAIN_MORE,more than usual,mais que o normal,más que de costumbre
+BRAIN_AS_USUAL,as usual,como sempre,como siempre
+BRAIN_PRECISION,Precision %d%%,Precisão %d%%,Precisión %d%%
+BRAIN_NEXT_TIME,Next time try,"Da próxima vez, tente","La próxima vez, prueba"
+BRAIN_YOURS,Your brain,Seu cérebro,Tu cerebro
+BRAIN_LOWEST,%s is your lowest. Try %s.,%s é seu ponto mais fraco. Tente %s.,%s es tu punto más flojo. Prueba %s.
+BRAIN_UNTRAINED,You haven't trained %s yet. Try %s.,Você ainda não treinou %s. Tente %s.,Aún no has entrenado %s. Prueba %s.
+BRAIN_NOT_YET,Not trained yet,Ainda não treinado,Aún sin entrenar

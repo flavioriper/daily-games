@@ -2859,3 +2859,135 @@ HTP_YH_COMBO_CAP,One drag closes them all,Um arrasto fecha todos,Un arrastre los
 HTP_YH_HOLD_CAP,Keep your finger down from pin to pin,Mantenha o dedo apertado de alfinete em alfinete,Mantén el dedo apretado de alfiler en alfiler
 HTP_YH_BREAK_CAP,Let go: the thread breaks off,Soltou: a linha arrebenta,Suelta: el hilo se rompe
 HTP_YH_BULB_CAP,The bulb lays a thread for you,A lâmpada costura uma linha para você,La bombilla cose un hilo por ti
+BRAIN_SD_1,Scan one number across a band of regions to find the only cell left for it.,Siga um número por uma faixa de regiões para achar a única casa que sobra para ele.,Sigue un número por una franja de regiones para hallar la única casilla que le queda.
+BRAIN_SD_2,Look for a cell that can take just one number before asking.,"Antes de pedir, procure uma casa que só aceita um número.","Antes de pedir, busca una casilla que solo admite un número."
+BRAIN_SD_3,"Pencil in candidates, then find two cells in a unit that share the same pair.",Anote os candidatos e procure duas casas de um grupo com o mesmo par.,Anota los candidatos y busca dos casillas de un grupo con el mismo par.
+BRAIN_SD_4,"A hill with no dots is smaller than every neighbour; four dots, larger than all.","Um morro sem pontos é menor que todos os vizinhos; com quatro, maior que todos.","Una colina sin puntos es menor que todos sus vecinos; con cuatro, mayor que todos."
+BRAIN_BN_1,Two alike side by side: the cells at both ends get the other symbol.,Dois iguais lado a lado: as casas nas pontas levam o outro símbolo.,Dos iguales juntos: las casillas de los extremos llevan el otro símbolo.
+BRAIN_BN_2,Two alike with one gap between: the gap gets the other symbol.,Dois iguais com uma casa no meio: o meio leva o outro símbolo.,Dos iguales con un hueco entre ellos: el hueco lleva el otro símbolo.
+BRAIN_BN_3,"Once a line holds half of one symbol, the rest are the other.","Quando uma linha já tem metade de um símbolo, o resto é do outro.","Cuando una línea ya tiene la mitad de un símbolo, el resto es del otro."
+BRAIN_BN_4,"A × means one of each, a = means the same: follow the chains.","Um × quer dizer um de cada, um = quer dizer iguais: siga as correntes.","Una × es uno de cada, un = es iguales: sigue las cadenas."
+BRAIN_QN_1,Start with the smallest colour patch.,Comece pela menor mancha de cor.,Empieza por la mancha de color más pequeña.
+BRAIN_QN_2,A patch that lies in one row or column rules out the rest of that line.,Uma mancha que cabe numa linha ou coluna exclui o resto daquela linha.,Una mancha que cabe en una fila o columna descarta el resto de esa línea.
+BRAIN_QN_3,"If N patches fit inside N rows, every other patch is barred from those rows.","Se N manchas cabem em N linhas, as outras manchas ficam fora dessas linhas.","Si N manchas caben en N filas, las demás quedan fuera de esas filas."
+BRAIN_QN_4,A cell that would cross out a whole patch can never hold a queen.,Uma casa que riscaria uma mancha inteira nunca leva rainha.,Una casilla que tacharía una mancha entera nunca lleva reina.
+BRAIN_LU_1,"A 4, or a 3 against a wall, has only one way to place its lanterns: do those first.","Um 4, ou um 3 encostado na parede, só tem um jeito de pôr as lanternas: faça esses primeiro.","Un 4, o un 3 contra la pared, solo tiene una forma de poner sus faroles: hazlos primero."
+BRAIN_LU_2,A 0 means no lantern next to it: mark all its neighbours off.,Um 0 quer dizer nenhuma lanterna ao lado: risque todos os vizinhos.,Un 0 significa ningún farol al lado: tacha todos sus vecinos.
+BRAIN_LU_3,Find a dark stone only one empty spot can still light: that spot holds a lantern.,Ache uma pedra escura que só um lugar vazio ainda ilumina: ali vai uma lanterna.,Busca una piedra oscura que solo un hueco puede iluminar: ahí va un farol.
+BRAIN_LU_4,"When a number is met, every other cell beside it is empty.","Quando um número está completo, as outras casas ao lado ficam vazias.","Cuando un número está completo, las demás casillas a su lado quedan vacías."
+BRAIN_SK_1,Start with big numbers and numbers in corners: they fit few ways.,Comece pelos números grandes e pelos dos cantos: cabem de poucos jeitos.,Empieza por los números grandes y los de las esquinas: caben de pocas formas.
+BRAIN_SK_2,A cell only one number can reach belongs to that number's plot.,Uma casa que só um número alcança é do lote desse número.,Una casilla que solo un número alcanza es de la parcela de ese número.
+BRAIN_SK_3,A 5 or a 7 can only be a straight line.,Um 5 ou um 7 só pode ser uma linha reta.,Un 5 o un 7 solo puede ser una línea recta.
+BRAIN_SK_4,"Use the square, tall and wide signs to cut the choices.","Use os sinais de quadrado, alto e largo para cortar as opções.","Usa las señales de cuadrado, alto y ancho para recortar opciones."
+BRAIN_BR_1,A number twice its neighbour count needs two planks to each neighbour.,Um número que é o dobro dos vizinhos precisa de duas tábuas para cada um.,Un número que dobla a sus vecinos necesita dos tablas hacia cada uno.
+BRAIN_BR_2,A 3 with two neighbours needs at least one plank to each.,Um 3 com dois vizinhos precisa de pelo menos uma tábua para cada.,Un 3 con dos vecinos necesita al menos una tabla hacia cada uno.
+BRAIN_BR_3,"Two 1s can't link only each other, or they're cut off.","Dois 1 não podem se ligar só entre si, senão ficam isolados.","Dos 1 no pueden unirse solo entre ellos, o quedan aislados."
+BRAIN_BR_4,"Before the last planks, check no group is closed off from the rest.","Antes das últimas tábuas, veja se nenhum grupo ficou isolado.","Antes de las últimas tablas, comprueba que ningún grupo quede aislado."
+BRAIN_NG_1,Slide a run to both ends of its line: cells covered both times are filled.,Empurre um trecho para as duas pontas da linha: as casas cobertas nas duas vezes são cheias.,Desliza un tramo a los dos extremos de su línea: las casillas cubiertas ambas veces van llenas.
+BRAIN_NG_2,Start with lines whose clue nearly fills them.,Comece pelas linhas cuja pista quase as preenche.,Empieza por las líneas cuya pista casi las llena.
+BRAIN_NG_3,Cross out cells you know are empty; they force the runs elsewhere.,Risque as casas que você sabe que são vazias; elas empurram os trechos.,Tacha las casillas que sabes vacías; empujan los tramos a otro lado.
+BRAIN_NG_4,Switch between rows and columns: each pass opens the other.,Alterne linhas e colunas: cada passada abre a outra.,Alterna filas y columnas: cada pasada abre la otra.
+BRAIN_LA_1,Look for two tiles that belong in each other's cells: one swap sends both home.,Procure duas peças que são do lugar uma da outra: uma troca leva as duas para casa.,Busca dos fichas que van en el sitio de la otra: un cambio manda las dos a casa.
+BRAIN_LA_2,A line can't repeat a number: rule out what's already green in its row and column.,Uma linha não repete número: descarte o que já está verde na linha e na coluna.,Una línea no repite número: descarta lo que ya está verde en su fila y columna.
+BRAIN_LA_3,Only swap when at least one tile goes home.,Só troque quando pelo menos uma peça vai para casa.,Cambia solo cuando al menos una ficha vuelve a casa.
+BRAIN_LA_4,"A knot's sum, less the green tiles it points at, tells you what the rest add up to.","A soma de um nó, menos as peças verdes que ele aponta, diz quanto somam as outras.","La suma de un nudo, menos las fichas verdes que señala, dice cuánto suman las demás."
+BRAIN_HH_1,"When a number equals its covered neighbours, they're all hedgehogs.","Quando um número é igual aos vizinhos cobertos, todos são ouriços.","Cuando un número iguala a sus vecinos tapados, todos son erizos."
+BRAIN_HH_2,"When a number's flags are all down, tap it to rake the rest.","Quando todas as bandeiras de um número estão postas, toque nele para varrer o resto.","Cuando todas las banderas de un número están puestas, tócalo para rastrillar el resto."
+BRAIN_HH_3,Compare two neighbouring numbers: the difference speaks about the cells only one touches.,Compare dois números vizinhos: a diferença fala das casas que só um deles toca.,Compara dos números vecinos: la diferencia habla de las casillas que solo uno toca.
+BRAIN_HH_4,Flag early on Sleepwalkers: a flagged hedgehog never walks.,Marque cedo nos Sonâmbulos: ouriço marcado não anda.,Marca pronto en Sonámbulos: un erizo marcado no camina.
+BRAIN_QL_1,Lay the biggest or oddest patch first.,Ponha primeiro o retalho maior ou mais esquisito.,Pon primero el retal más grande o más raro.
+BRAIN_QL_2,Fill corners and narrow gaps early: few shapes fit them.,Preencha cantos e vãos estreitos cedo: poucas formas cabem neles.,Llena pronto las esquinas y huecos estrechos: caben pocas formas.
+BRAIN_QL_3,Count the bare squares and check the patches left add up to it.,Conte as casas vazias e veja se os retalhos que sobram somam isso.,Cuenta las casillas vacías y comprueba que los retales que quedan sumen eso.
+BRAIN_QL_4,"In the Scrap Basket, that count tells you which patches are extras.","Na Cesta de Retalhos, essa conta mostra quais retalhos sobram.","En la Cesta de Retales, esa cuenta te dice qué retales sobran."
+BRAIN_PW_1,Settle corner and edge cells first: few pieces reach them.,Resolva primeiro os cantos e as bordas: poucas peças chegam lá.,Resuelve primero esquinas y bordes: pocas piezas llegan ahí.
+BRAIN_PW_2,A piece pinned fast is a wall to build around.,Uma peça presa é uma parede para montar em volta.,Una pieza fija es una pared para construir alrededor.
+BRAIN_PW_3,Count the quarter turns before you tap: one too many costs three more.,Conte os quartos de volta antes de tocar: um a mais custa mais três.,Cuenta los cuartos de vuelta antes de tocar: uno de más cuesta tres más.
+BRAIN_PW_4,"On Ribbons, work from the top of each ribbon down.","Nas Fitas, trabalhe do alto de cada fita para baixo.","En las Cintas, trabaja desde lo alto de cada cinta hacia abajo."
+BRAIN_UT_1,Move the peg of the rope lying on top: it slides off free.,Mexa o pino da corda que está por cima: ela sai livre.,Mueve la clavija de la cuerda de arriba: sale libre.
+BRAIN_UT_2,Clear ropes that cross only one other rope first.,Solte primeiro as cordas que cruzam só uma outra.,Suelta primero las cuerdas que cruzan solo otra.
+BRAIN_UT_3,Leave the rope underneath for last: moving it wraps it once more.,Deixe a corda de baixo para o fim: mexer nela a enrola mais uma vez.,Deja la cuerda de abajo para el final: moverla la enrolla una vez más.
+BRAIN_UT_4,Short ropes reach only nearby holes: plan them early.,Cordas curtas só alcançam furos perto: planeje-as cedo.,Las cuerdas cortas solo llegan a agujeros cercanos: planéalas pronto.
+BRAIN_FL_1,Start with corners and edges: a piece there can't point off the board.,Comece pelos cantos e bordas: ali a peça não pode apontar para fora.,Empieza por esquinas y bordes: ahí la pieza no puede apuntar fuera.
+BRAIN_FL_2,A piece by the edge often has one way to sit.,Uma peça na borda muitas vezes só tem um jeito de ficar.,Una pieza en el borde a menudo solo tiene una forma de quedar.
+BRAIN_FL_3,Turns only go clockwise: count them before tapping.,Os giros só vão no sentido horário: conte antes de tocar.,Los giros solo van en sentido horario: cuéntalos antes de tocar.
+BRAIN_FL_4,"On Wish Tags, follow the distance numbers back to the post.","Nas Etiquetas, siga os números de distância de volta ao poste.","En las Etiquetas, sigue los números de distancia hasta el poste."
+BRAIN_SB_1,Work back from the bud: which mirror could feed it?,Pense a partir do botão: que espelho poderia alimentá-lo?,Piensa desde el capullo: ¿qué espejo podría alimentarlo?
+BRAIN_SB_2,A cup sends light back one lane over.,Uma concha devolve a luz uma faixa ao lado.,Una concha devuelve la luz un carril más allá.
+BRAIN_SB_3,Hold a piece to see the beam before letting go.,Segure a peça para ver o raio antes de soltar.,Mantén la pieza para ver el rayo antes de soltar.
+BRAIN_SB_4,"On Shy Dew, set every drop's path first and light them in one last move.","No Orvalho Tímido, prepare o caminho de todas as gotas e acenda tudo no último lance.","En el Rocío Tímido, prepara el camino de cada gota y enciéndelas en el último movimiento."
+BRAIN_GF_1,Bank off the kerbs when the cup is blocked.,Tabele nas bordas quando o buraco estiver bloqueado.,Rebota en los bordes cuando el hoyo esté tapado.
+BRAIN_GF_2,Hit softer near sand and water: a short putt is cheaper than a pond.,Bata mais leve perto de areia e água: uma tacada curta custa menos que um lago.,Golpea más suave cerca de arena y agua: un golpe corto cuesta menos que un estanque.
+BRAIN_GF_3,"Leave the ball where the next putt is easy, not just closer.","Deixe a bola onde a próxima tacada é fácil, não só mais perto.","Deja la bola donde el siguiente golpe sea fácil, no solo más cerca."
+BRAIN_GF_4,"On Swing Gates, putt so the gate you need is open when the ball arrives.","Nas Porteiras, bata para que a porteira esteja aberta quando a bola chegar.","En las Compuertas, golpea para que la compuerta esté abierta cuando llegue la bola."
+BRAIN_HP_1,Water and boulders are free walls: spend bales only on the gaps.,Água e pedras são paredes de graça: gaste fardos só nos vãos.,El agua y las rocas son paredes gratis: gasta fardos solo en los huecos.
+BRAIN_HP_2,One bale across a narrow neck seals a whole region.,Um fardo numa passagem estreita fecha uma região inteira.,Un fardo en un paso estrecho cierra una región entera.
+BRAIN_HP_3,Bend the fence out to take in apples and keep beehives out.,Curve a cerca para fora para pegar maçãs e deixar as colmeias de fora.,Curva la cerca hacia fuera para meter manzanas y dejar fuera las colmenas.
+BRAIN_HP_4,"With tunnels, both mouths go inside the pen or both outside.","Com túneis, as duas bocas ficam dentro do cercado ou as duas fora.","Con túneles, las dos bocas van dentro del corral o las dos fuera."
+BRAIN_SL_1,Work back from the gate: which blocks must leave the red block's path?,Pense a partir do portão: que blocos precisam sair do caminho do vermelho?,Piensa desde la puerta: ¿qué bloques deben salir del camino del rojo?
+BRAIN_SL_2,Keep a pocket free for blocks to wait in.,Deixe um cantinho livre para os blocos esperarem.,Deja un hueco libre donde esperen los bloques.
+BRAIN_SL_3,One long drag counts once: beat several short ones.,Um arrasto longo conta uma vez: vale mais que vários curtos.,Un arrastre largo cuenta una vez: mejor que varios cortos.
+BRAIN_SL_4,"On Homesick, clear the way below before the red block comes down.","No Saudade, abra o caminho embaixo antes de descer o vermelho.","En Añoranza, abre el camino de abajo antes de bajar el rojo."
+BRAIN_RG_1,Keep one peg empty as working space.,Deixe um pino vazio para trabalhar.,Deja una varilla vacía para trabajar.
+BRAIN_RG_2,Never start an empty peg with a colour you can't finish soon.,Não comece um pino vazio com uma cor que não vai terminar logo.,No empieces una varilla vacía con un color que no terminarás pronto.
+BRAIN_RG_3,Build the colour that's closest to a full tower first.,Monte primeiro a cor mais perto de uma torre completa.,Monta primero el color más cerca de una torre completa.
+BRAIN_RG_4,"On Hidden, uncover face-down rings early so you can plan.","No Escondido, descubra cedo as argolas viradas para poder planejar.","En Oculto, destapa pronto los aros boca abajo para poder planear."
+BRAIN_PP_1,Start at the rim: planes pointing out near the edge go first.,Comece pela borda: aviões apontando para fora perto da beirada saem primeiro.,Empieza por el borde: los aviones que apuntan fuera cerca del borde salen primero.
+BRAIN_PP_2,"Follow a blocked plane's lane to the one in its way, and clear that.",Siga a pista de um avião travado até o que está na frente e solte esse.,Sigue la pista de un avión bloqueado hasta el que lo tapa y suelta ese.
+BRAIN_PP_3,"Sweep the sky in passes, not at random.","Varra o céu em passadas, não ao acaso.","Barre el cielo en pasadas, no al azar."
+BRAIN_PP_4,"On Windy Day, check where the clouds go next before launching.","No Dia de Vento, veja para onde as nuvens vão antes de lançar.","En Día de Viento, mira adónde van las nubes antes de lanzar."
+BRAIN_KN_1,Never land where a rose knight can hop.,Nunca pare onde um cavalo rosa pode pular.,Nunca caigas donde un caballo rosa puede saltar.
+BRAIN_KN_2,Picture each rose knight's next hop before yours.,Imagine o próximo pulo de cada cavalo rosa antes do seu.,Imagina el próximo salto de cada caballo rosa antes del tuyo.
+BRAIN_KN_3,Work back from the king: plan a route to a square one hop away.,Pense a partir do rei: trace um caminho até uma casa a um pulo dele.,Piensa desde el rey: traza una ruta a una casilla a un salto de él.
+BRAIN_KN_4,"On Brambles, keep open squares behind you; don't box yourself in.","Nos Espinhos, deixe casas livres atrás de você; não se encurrale.","En las Zarzas, deja casillas libres detrás; no te encierres."
+BRAIN_TR_1,Build in triangles: squares fold.,Monte em triângulos: quadrados dobram.,Construye en triángulos: los cuadrados se doblan.
+BRAIN_TR_2,Run diagonals from the road down to the bank pins.,Puxe diagonais da pista até os pinos da margem.,Tira diagonales de la calzada a los pernos de la orilla.
+BRAIN_TR_3,"After a test, add a beam beside the reddest member.","Depois de um teste, ponha uma viga ao lado da peça mais vermelha.","Tras una prueba, añade una viga junto a la pieza más roja."
+BRAIN_TR_4,"At the Tea Party, keep the road flat and well held along its length.","No Chá da Tarde, mantenha a pista reta e bem apoiada de ponta a ponta.","En la Merienda, mantén la calzada plana y bien sujeta de punta a punta."
+BRAIN_TT_1,Send a cannon only when its colour shows on the rug's edge.,Mande um canhão só quando a cor dele aparece na borda do tapete.,Manda un cañón solo cuando su color asoma en el borde de la alfombra.
+BRAIN_TT_2,Keep tray slots free: a parked cannon blocks the space.,Deixe vagas livres na bandeja: canhão parado ocupa espaço.,Deja huecos libres en la bandeja: un cañón aparcado ocupa sitio.
+BRAIN_TT_3,Clear blocks that cover other colours first.,Tire primeiro os blocos que cobrem outras cores.,Quita primero los bloques que tapan otros colores.
+BRAIN_TT_4,Look at what's next in every line before choosing which to fire.,Olhe o próximo de cada fila antes de escolher qual disparar.,Mira el siguiente de cada fila antes de elegir cuál disparar.
+BRAIN_CP_1,"Never leave a square with one open neighbour, unless it's the last leaf.","Nunca deixe uma casa com um só vizinho livre, a não ser a última folha.","Nunca dejes una casilla con un solo vecino libre, salvo la última hoja."
+BRAIN_CP_2,Sweep edges and corners early so they aren't stranded.,Passe cedo pelas bordas e cantos para não ficarem isolados.,Recorre pronto bordes y esquinas para que no queden aislados.
+BRAIN_CP_3,Follow walls and fences in long runs instead of zig-zags.,"Siga paredes e cercas em trechos longos, sem zigue-zague.","Sigue paredes y vallas en tramos largos, sin zigzag."
+BRAIN_CP_4,Count squares like a chessboard to check the next leaf can still be reached.,Conte as casas como num tabuleiro de xadrez para ver se a próxima folha ainda dá.,Cuenta las casillas como en un tablero de ajedrez para ver si llegas a la siguiente hoja.
+BRAIN_PG_1,Drag along rows and columns to lay whole runs at once.,Arraste por linhas e colunas para pôr trechos inteiros de uma vez.,Arrastra por filas y columnas para poner tramos enteros de una vez.
+BRAIN_PG_2,Work one colour at a time.,Trabalhe uma cor de cada vez.,Trabaja un color cada vez.
+BRAIN_PG_3,"If a colour runs out early, one of its beads is in the wrong place.","Se uma cor acaba cedo, uma das contas está no lugar errado.","Si un color se acaba pronto, una de sus cuentas está mal puesta."
+BRAIN_PG_4,Count from a fixed landmark: an edge or the middle.,Conte a partir de um ponto fixo: uma borda ou o meio.,Cuenta desde un punto fijo: un borde o el centro.
+BRAIN_YH_1,Count each panel's corners before you thread it.,Conte os cantos de cada painel antes de costurar.,Cuenta las esquinas de cada panel antes de coserlo.
+BRAIN_YH_2,Thread shared sides: one thread finishes two panels.,Costure os lados em comum: uma linha fecha dois painéis.,Cose los lados compartidos: un hilo cierra dos paneles.
+BRAIN_YH_3,Keep your finger down and chain sides into long runs.,Mantenha o dedo apertado e emende lados em sequências longas.,Mantén el dedo apretado y encadena lados en tramos largos.
+BRAIN_YH_4,"On big pictures, zoom in and finish one patch at a time.","Nos desenhos grandes, dê zoom e termine um pedaço de cada vez.","En los dibujos grandes, haz zoom y termina un trozo cada vez."
+BRAIN_GD_1,Go a little at a time: past the card's shade it only gets darker.,"Vá aos poucos: passou do tom do cartão, só escurece.","Ve poco a poco: pasado el tono de la tarjeta, solo oscurece."
+BRAIN_GD_2,Watch the fill ring on the pink button.,Fique de olho no anel do botão rosa.,Vigila el anillo del botón rosa.
+BRAIN_GD_3,Small pieces darken fast: fill them gently.,Peças pequenas escurecem rápido: encha com calma.,Las piezas pequeñas oscurecen rápido: llénalas con calma.
+BRAIN_GD_4,"To mix, put half of each flavour into the same piece.","Para misturar, ponha metade de cada sabor na mesma peça.","Para mezclar, pon la mitad de cada sabor en la misma pieza."
+BRAIN_BB_1,Set a jewel where it floods the biggest bare patch of its colour.,Ponha a joia onde ela enche a maior área vazia da cor dela.,Pon la joya donde llene la mayor zona vacía de su color.
+BRAIN_BB_2,Runs already touching their own slots finish in one tap.,Grupos que já tocam o próprio encaixe terminam num toque.,Los grupos que ya tocan su hueco terminan de un toque.
+BRAIN_BB_3,"Use the case to join scattered runs, so one tap moves them all.",Use o estojo para juntar grupos espalhados e mover tudo num toque.,Usa el estuche para juntar grupos sueltos y moverlos de un toque.
+BRAIN_BB_4,Don't fill the case with colours whose slots are still blocked.,Não encha o estojo com cores cujos encaixes ainda estão bloqueados.,No llenes el estuche con colores cuyos huecos aún están tapados.
+BRAIN_DB_1,"Watch the ring, not the berries far up the road.","Olhe o anel, não as frutinhas lá no alto da estrada.","Mira el aro, no las bayas que vienen lejos."
+BRAIN_DB_2,Hold through ribbons until they end.,Segure nas fitas até elas acabarem.,Mantén en las cintas hasta que acaben.
+BRAIN_DB_3,Don't tap when nothing is due: stray taps break the combo.,Não toque quando não vem nada: toque solto quebra o combo.,No toques cuando no toca nada: un toque suelto rompe el combo.
+BRAIN_DB_4,"On Echo, repeat the bar you just played from memory.","No Eco, repita de memória o compasso que acabou de tocar.","En Eco, repite de memoria el compás que acabas de tocar."
+BRAIN_HW_1,Open with five different common letters.,Comece com cinco letras comuns e diferentes.,Empieza con cinco letras comunes y distintas.
+BRAIN_HW_2,"Use an early guess to test new letters, not to win.","Use um palpite cedo para testar letras novas, não para ganhar.","Usa un intento temprano para probar letras nuevas, no para ganar."
+BRAIN_HW_3,An amber letter goes somewhere else next time.,Uma letra âmbar vai para outro lugar no próximo palpite.,Una letra ámbar va en otro sitio la próxima vez.
+BRAIN_HW_4,"On Snail Mail, plan two guesses that share no letters.","No Correio Lento, planeje dois palpites sem letras em comum.","En Correo Lento, planea dos intentos sin letras en común."
+BRAIN_WT_1,Start at dead ends: a tile with one open neighbour starts or ends a word.,Comece pelos becos: uma casa com um só vizinho livre começa ou termina uma palavra.,Empieza por los callejones: una casilla con un solo vecino libre empieza o acaba una palabra.
+BRAIN_WT_2,Match the longest word to the long open corridors.,Encaixe a palavra mais longa nos corredores longos.,Encaja la palabra más larga en los pasillos largos.
+BRAIN_WT_3,Don't leave a pocket of tiles no word can fill.,Não deixe um bolsão de casas que nenhuma palavra preenche.,No dejes un hueco de casillas que ninguna palabra llene.
+BRAIN_WT_4,Look for common word endings against the walls.,Procure finais comuns de palavras encostados nas paredes.,Busca finales comunes de palabras junto a las paredes.
+BRAIN_PD_1,The first listed answer ends the prompt: skip the obvious one.,A primeira resposta da lista fecha a pergunta: pule a óbvia.,La primera respuesta de la lista cierra la pregunta: sáltate la obvia.
+BRAIN_PD_2,List a few options in your head before you type.,Faça uma listinha de cabeça antes de digitar.,Haz una listita en tu cabeza antes de escribir.
+BRAIN_PD_3,Wrong answers cost seconds: don't guess wildly.,Resposta errada custa segundos: não chute à toa.,Las respuestas erróneas cuestan segundos: no adivines al azar.
+BRAIN_PD_4,"On narrow prompts, think of the odd corners of the topic.","Nas perguntas estreitas, pense nos cantos esquecidos do tema.","En las preguntas estrechas, piensa en los rincones raros del tema."
+BRAIN_AC_1,Rule out the clearly wrong answers first.,Descarte primeiro as respostas claramente erradas.,Descarta primero las respuestas claramente erróneas.
+BRAIN_AC_2,Save the bulb for a question you're split on.,Guarde a lâmpada para uma pergunta em que você está dividido.,Guarda la bombilla para una pregunta en la que dudes.
+BRAIN_AC_3,Read the line after each answer: topics come back.,Leia a frase depois de cada resposta: os temas voltam.,Lee la frase tras cada respuesta: los temas vuelven.
+BRAIN_AC_4,"On The Climb, slow down as the questions get harder.","Na Escalada, vá com mais calma conforme as perguntas apertam.","En La Escalada, ve más despacio según se ponen difíciles."
+BRAIN_HB_1,"Compare what the bracket measures, not the whole outline.","Compare o que a régua mede, não o contorno inteiro.","Compara lo que mide la regla, no toda la silueta."
+BRAIN_HB_2,Work out how many times bigger before you drag.,Calcule quantas vezes maior antes de arrastar.,Calcula cuántas veces más grande antes de arrastrar.
+BRAIN_HB_3,Within 6% is full marks: don't over-fiddle.,Até 6% já é nota máxima: não fique ajustando demais.,Dentro del 6% ya es la nota máxima: no le des más vueltas.
+BRAIN_HB_4,"On the Ladder, an early miss carries up every rung.","Na Escada, um erro no começo sobe todos os degraus.","En la Escalera, un fallo temprano sube por todos los peldaños."

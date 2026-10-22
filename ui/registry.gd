@@ -92,10 +92,14 @@ extends RefCounted
 ## them. Sudoku's own spec (2026-09-20-sudoku-flat-design.md, section 9)
 ## argued that pager into the day row; the user ruled otherwise and the
 ## strip under the grid is what shipped. See that section's amendments.
+##
+## `skill` is which of core/brain.gd's five skills a board trains, named on
+## its win (docs/superpowers/specs/2026-10-22-brain-skills-design.md).
 
 const PUZZLES := [
 	{
 		"id": "hiddenword",
+		"skill": "words",
 		"kind": "puzzle",
 		"title": "Hidden Word",
 		"blurb": "HW_BLURB",
@@ -129,6 +133,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "sudoku",
+		"skill": "logic",
 		"kind": "puzzle",
 		"title": "Sudoku",
 		"blurb": "SD_BLURB",
@@ -161,6 +166,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "rings",
+		"skill": "planning",
 		"kind": "puzzle",
 		"title": "Rings",
 		"blurb": "RG_BLURB",
@@ -198,6 +204,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "planes",
+		"skill": "planning",
 		"kind": "puzzle",
 		"title": "Paper Planes",
 		"blurb": "PP_BLURB",
@@ -234,6 +241,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "quilt",
+		"skill": "space",
 		"kind": "puzzle",
 		"title": "Quilt",
 		"blurb": "QL_BLURB",
@@ -270,6 +278,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "buttons",
+		"skill": "focus",
 		"kind": "puzzle",
 		# Jewel Box since 2026-10-19 (Button Box before; the id and the
 		# BB_ keys stay, so a player's progress is kept)
@@ -306,6 +315,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "queens",
+		"skill": "logic",
 		"kind": "puzzle",
 		"title": "Queens",
 		"blurb": "QN_BLURB",
@@ -337,6 +347,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "nonogram",
+		"skill": "logic",
 		"kind": "puzzle",
 		"title": "Nonogram",
 		"blurb": "NG_BLURB",
@@ -366,6 +377,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "slider",
+		"skill": "planning",
 		"kind": "puzzle",
 		"title": "Super Slider",
 		"blurb": "SL_BLURB",
@@ -397,6 +409,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "hedgehogs",
+		"skill": "logic",
 		"kind": "puzzle",
 		"title": "Hedgehogs",
 		"blurb": "HH_BLURB",
@@ -427,6 +440,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "wordtrail",
+		"skill": "words",
 		"kind": "puzzle",
 		"title": "Word Trail",
 		"blurb": "WT_BLURB",
@@ -459,6 +473,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "train",
+		"skill": "planning",
 		"kind": "puzzle",
 		"title": "Toy Cannons",
 		"blurb": "TT_BLURB",
@@ -492,6 +507,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "hoop",
+		"skill": "focus",
 		"kind": "puzzle",
 		"title": "Yarn Hoop",
 		"blurb": "YH_BLURB",
@@ -526,6 +542,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "acorn",
+		"skill": "words",
 		"kind": "puzzle",
 		"title": "Golden Acorn",
 		"blurb": "AC_BLURB",
@@ -556,6 +573,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "caterpillar",
+		"skill": "planning",
 		"kind": "puzzle",
 		"title": "Caterpillar",
 		"blurb": "CP_BLURB",
@@ -590,6 +608,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "binairo",
+		"skill": "logic",
 		"kind": "puzzle",
 		"title": "Binairo",
 		"blurb": "BN_BLURB",
@@ -621,6 +640,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "minigolf",
+		"skill": "space",
 		"kind": "puzzle",
 		"title": "Mini Golf",
 		"blurb": "GF_BLURB",
@@ -652,6 +672,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "fairylights",
+		"skill": "space",
 		"kind": "puzzle",
 		"title": "Fairy Lights",
 		"blurb": "FL_BLURB",
@@ -685,6 +706,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "untangle",
+		"skill": "space",
 		"kind": "puzzle",
 		"title": "Untangle",
 		"blurb": "UT_BLURB",
@@ -717,6 +739,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "bridges",
+		"skill": "logic",
 		"kind": "puzzle",
 		"title": "Bridges",
 		"blurb": "BR_BLURB",
@@ -750,6 +773,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "pixelgarden",
+		"skill": "focus",
 		"kind": "puzzle",
 		"title": "Pixel Garden",
 		"blurb": "PG_BLURB",
@@ -781,6 +805,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "lattice",
+		"skill": "logic",
 		"kind": "puzzle",
 		"title": "Lattice",
 		"blurb": "LA_BLURB",
@@ -812,6 +837,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "gumdrop",
+		"skill": "focus",
 		"kind": "puzzle",
 		"title": "Gumdrop",
 		"blurb": "GD_BLURB",
@@ -845,6 +871,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "lightup",
+		"skill": "logic",
 		"kind": "puzzle",
 		"title": "Light Up",
 		"blurb": "LU_BLURB",
@@ -873,6 +900,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "shikaku",
+		"skill": "logic",
 		"kind": "puzzle",
 		"title": "Shikaku",
 		"blurb": "SK_BLURB",
@@ -903,6 +931,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "how_big",
+		"skill": "words",
 		"kind": "puzzle",
 		"title": "How Big?",
 		"blurb": "HB_BLURB",
@@ -933,6 +962,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "horse",
+		"skill": "space",
 		"kind": "puzzle",
 		"title": "Horse Pen",
 		"blurb": "HP_BLURB",
@@ -964,6 +994,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "pearl",
+		"skill": "words",
 		"kind": "puzzle",
 		"title": "Pearl Dive",
 		"blurb": "PD_BLURB",
@@ -996,6 +1027,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "knight",
+		"skill": "planning",
 		"kind": "puzzle",
 		"title": "Knight",
 		"blurb": "KN_BLURB",
@@ -1028,6 +1060,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "pinwheel",
+		"skill": "space",
 		"kind": "puzzle",
 		"title": "Pinwheel",
 		"blurb": "PW_BLURB",
@@ -1060,6 +1093,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "sunbeam",
+		"skill": "space",
 		"kind": "puzzle",
 		"title": "Sunbeam",
 		"blurb": "SB_BLURB",
@@ -1092,6 +1126,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "trestle",
+		"skill": "planning",
 		"kind": "puzzle",
 		"title": "Trestle",
 		"blurb": "TR_BLURB",
@@ -1123,6 +1158,7 @@ const PUZZLES := [
 	},
 	{
 		"id": "drumbeat",
+		"skill": "focus",
 		"kind": "puzzle",
 		"title": "Drumbeat",
 		"blurb": "DB_BLURB",

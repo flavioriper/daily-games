@@ -10,7 +10,8 @@ const NAMES := ["chevron_left", "chevron_right", "undo", "reset", "bulb", "gear"
 	"calendar", "home", "trophy", "bars", "heart", "heart_line", "pencil",
 	"puzzle", "flame", "cloud", "mountain", "sparkle", "trend", "crown", "no_ads", "versus", "arcade", "play",
 	"coin", "gift", "clock", "shield", "acorn", "run", "music", "buzz", "globe", "swords", "gamepad",
-	"friends", "copy", "share", "undo_back", "bin", "flip", "span", "bends"]
+	"friends", "copy", "share", "undo_back", "bin", "flip", "span", "bends",
+	"skill_logic", "skill_space", "skill_planning", "skill_focus", "skill_words"]
 const SEGMENTS := 24
 const FEATHERED := ["heart"]
 ## Stroke width of polylines as a fraction of the icon's width.
@@ -41,6 +42,16 @@ static func shape(name: String) -> Dictionary:
 			return _span()
 		"bends":
 			return _bends()
+		"skill_logic":
+			return _skill_logic()
+		"skill_space":
+			return _skill_space()
+		"skill_planning":
+			return _skill_planning()
+		"skill_focus":
+			return _skill_focus()
+		"skill_words":
+			return _skill_words()
 		"bulb":
 			return _bulb()
 		"gear":
@@ -711,3 +722,54 @@ static func _arcade() -> Dictionary:
 	var stick := PackedVector2Array([Vector2(0.45, 0.36), Vector2(0.55, 0.36), Vector2(0.55, 0.7), Vector2(0.45, 0.7)])
 	return {"polys": [base, stick, circle(Vector2(0.5, 0.3), 0.2), circle(Vector2(0.81, 0.57), 0.085)], "lines": [],
 		"hole": circle(Vector2(0.43, 0.23), 0.065)}
+
+
+# --- the five skills (the win's brain report, spec 2026-10-22-brain-skills) ---
+
+## A 3x3 of dots with one square standing in for the cell that is left: the
+## answer the others were ruled out down to.
+static func _skill_logic() -> Dictionary:
+	var out: Array = []
+	for i in 9:
+		var c := Vector2(0.2 + (i % 3) * 0.3, 0.2 + (i / 3) * 0.3)
+		if i == 5:
+			var h := 0.13
+			out.append(PackedVector2Array([c + Vector2(-h, -h), c + Vector2(h, -h), c + Vector2(h, h), c + Vector2(-h, h)]))
+		else:
+			out.append(circle(c, 0.07, 12))
+	return {"polys": out, "lines": []}
+
+## A cube seen from a corner: its top face filled, the rest outlined.
+static func _skill_space() -> Dictionary:
+	var top := Vector2(0.5, 0.1)
+	var ur := Vector2(0.86, 0.3)
+	var lr := Vector2(0.86, 0.7)
+	var bottom := Vector2(0.5, 0.9)
+	var ll := Vector2(0.14, 0.7)
+	var ul := Vector2(0.14, 0.3)
+	var mid := Vector2(0.5, 0.5)
+	return {"polys": [PackedVector2Array([top, ur, mid, ul])],
+		"lines": [PackedVector2Array([ul, ll, bottom, lr, ur]), PackedVector2Array([mid, bottom])]}
+
+## Steps along a winding path to a flag: the moves thought out ahead.
+static func _skill_planning() -> Dictionary:
+	var dots: Array = []
+	for c in [Vector2(0.16, 0.84), Vector2(0.36, 0.78), Vector2(0.46, 0.6), Vector2(0.6, 0.5)]:
+		dots.append(circle(c, 0.065, 12))
+	dots.append(PackedVector2Array([Vector2(0.74, 0.12), Vector2(0.94, 0.22), Vector2(0.74, 0.32)]))
+	return {"polys": dots, "lines": [PackedVector2Array([Vector2(0.74, 0.12), Vector2(0.74, 0.52)])]}
+
+## A ring with a dot in its middle: attention on one point.
+static func _skill_focus() -> Dictionary:
+	var ring := circle(Vector2(0.5, 0.5), 0.36, 32)
+	ring.append(ring[0])
+	return {"polys": [circle(Vector2(0.5, 0.5), 0.14)], "lines": [ring]}
+
+## A speech bubble with two lines of words in it.
+static func _skill_words() -> Dictionary:
+	var bubble := PackedVector2Array([Vector2(0.2, 0.16), Vector2(0.8, 0.16), Vector2(0.9, 0.26), Vector2(0.9, 0.6),
+		Vector2(0.8, 0.7), Vector2(0.42, 0.7), Vector2(0.24, 0.88), Vector2(0.26, 0.7), Vector2(0.2, 0.7),
+		Vector2(0.1, 0.6), Vector2(0.1, 0.26), Vector2(0.2, 0.16)])
+	return {"polys": [], "lines": [bubble,
+		PackedVector2Array([Vector2(0.3, 0.36), Vector2(0.7, 0.36)]),
+		PackedVector2Array([Vector2(0.3, 0.5), Vector2(0.56, 0.5)])]}
