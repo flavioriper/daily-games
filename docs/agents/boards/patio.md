@@ -22,6 +22,8 @@
   `TAP_PX` lifts it (`_press.moved`), the release lays it at `_drop_at`
   (nearest fitting pair within `REACH`), refuses it over the patio, or
   sends it to its bay. A release without a move is `_tap`, a quarter turn.
+- **A turn on the rack is no move**: it pushes no history, and `undo()`
+  keeps the way a tile still on the rack was turned.
 - The answer is the bulb's only (`hint_move`): solved is the beds' rules
   (`State.solved`). `right(t)` treats a tile turned end for end inside one
   bed as right.
@@ -38,7 +40,9 @@
   calls. `tests/_probe_patio_gen.gd -- n=<seeds>` times the generator.
 - Seen windowed on ANGLE at 810x1440: Medium and Insane at rest, a tile
   held, half laid with ticks, a refusal, a broken bed, the win and its brain
-  report, a solved day reopened, the first tutorial page (Insane), the card.
+  report, a solved day reopened, the first tutorial page (Insane), the card,
+  and a level change from Medium to Hard (`tests/_probe_level_slide.gd --
+  patio to=2`: the world still, the board slid, one board left).
   Draw calls: Medium 114 rest, 132 at most in play, 200 on the win; Insane
   159 rest, 188 in play, 269 on the win. `tests/_probe_insane_hints.gd --
   id=patio seeds=4`: 0 failures, every day carried by the bulb. Not seen: a

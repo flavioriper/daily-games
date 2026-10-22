@@ -104,8 +104,15 @@ func undo() -> bool:
 	if history.is_empty():
 		return false
 	var last: Array = history.pop_back()
+	var was := dir.duplicate()
+	var on_rack := at.duplicate()
 	at.assign(last[0])
 	dir.assign(last[1])
+	# a turn on the rack is no move: a tile on the rack before and after
+	# keeps the way the player turned it
+	for t in tiles.size():
+		if at[t] < 0 and on_rack[t] < 0:
+			dir[t] = was[t]
 	_cover_all()
 	return true
 
