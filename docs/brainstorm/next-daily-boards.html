@@ -1,0 +1,459 @@
+<title>Next Daily Boards</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@400;600;700;800&display=swap">
+<style>
+/* Layout: the game's own paper and pal colours; a unit-square skill gap chart, then a card per board with a drawn board mock. */
+:root {
+  --paper: #f6efe3;
+  --surface: #fffdf8;
+  --tile: #f1e6d2;
+  --line: #b8a892;
+  --ink: #3b3028;
+  --dim: #8a7b6b;
+  --wood: #c8a17a;
+  --accent: #3a7a75;
+  --berry: #e2645c; --sun: #f5a623; --leaf: #7fa84a; --water: #2f8fd6; --moon: #7d8fd9; --cheek: #f4a7a0;
+  --logic: #4c9a94; --space: #e2825f; --planning: #7cb06b; --focus: #9b86c9; --words: #d9605a;
+  --memory: #6bb1d6; --numbers: #d3b04a;
+  --good: #7cb06b; --bad: #d9605a;
+  --display: "Fredoka", "Nunito", ui-rounded, system-ui, sans-serif;
+  --body: "Nunito", ui-rounded, system-ui, -apple-system, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --paper: #221c18; --surface: #2d2620; --tile: #3a3129; --line: #6b5d4e; --ink: #f1e6d2; --dim: #b3a28e; --wood: #9c7b58; --accent: #7cc4bd; color-scheme: dark;
+} }
+:root[data-theme="dark"] {
+  --paper: #221c18; --surface: #2d2620; --tile: #3a3129; --line: #6b5d4e; --ink: #f1e6d2; --dim: #b3a28e; --wood: #9c7b58; --accent: #7cc4bd; color-scheme: dark;
+}
+body { background: var(--paper); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 36px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 36px; }
+h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(30px, 5vw, 46px); line-height: 1.05; }
+h2 { font-size: 22px; }
+h3 { font-size: 21px; line-height: 1.15; }
+p { margin: 0; }
+.lede { max-width: 62ch; color: var(--dim); font-size: 16px; margin-top: 10px; }
+.eyebrow { font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
+
+/* skill gap chart */
+.gap { display: grid; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 20px; }
+.gap-head { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: baseline; justify-content: space-between; }
+.legend { display: flex; gap: 16px; font-size: 13px; color: var(--dim); flex-wrap: wrap; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sq { width: 14px; height: 14px; border-radius: 4px; display: inline-block; flex: none; }
+.sq.have { background: var(--c); }
+.sq.add { border: 2px dashed var(--c); background: transparent; }
+.row { display: grid; grid-template-columns: 150px 1fr 70px; gap: 12px; align-items: center; }
+.row .name { font-weight: 800; display: flex; align-items: center; gap: 8px; }
+.row .name small { font-weight: 600; color: var(--dim); font-size: 12px; }
+.squares { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
+.count { text-align: right; font-variant-numeric: tabular-nums; color: var(--dim); font-size: 13px; }
+.count b { color: var(--ink); }
+.zero { font-size: 12px; font-weight: 800; color: var(--bad); align-self: center; margin-right: 4px; }
+
+/* filters */
+.filters { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font: 700 14px var(--body); border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); padding: 6px 14px; border-radius: 999px; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.chip:hover { border-color: var(--ink); }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.chip:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--c); }
+
+/* cards */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; overflow: hidden; display: grid; grid-template-rows: auto 1fr; min-width: 0; }
+.fig { background: var(--tile); border-bottom: 1px solid var(--line); position: relative; }
+.fig svg { display: block; width: 100%; height: auto; }
+.badge { position: absolute; top: 12px; left: 12px; font: 800 11px var(--body); letter-spacing: .07em; text-transform: uppercase; background: var(--sun); color: #3b3028; padding: 4px 10px; border-radius: 999px; }
+.rank { position: absolute; top: 10px; right: 14px; font: 600 15px var(--display); color: var(--dim); font-variant-numeric: tabular-nums; }
+.body { padding: 18px 20px 20px; display: grid; gap: 12px; align-content: start; }
+.title-row { display: flex; justify-content: space-between; gap: 10px; align-items: start; }
+.follows { font-size: 13px; color: var(--dim); margin-top: 2px; }
+.skill { flex: none; font: 800 12px var(--body); color: var(--c); border: 1.5px solid var(--c); padding: 3px 10px; border-radius: 999px; white-space: nowrap; display: inline-flex; gap: 6px; align-items: center; }
+.play { font-size: 15px; }
+dl { margin: 0; display: grid; grid-template-columns: 92px 1fr; gap: 6px 12px; font-size: 13.5px; border-top: 1px dashed var(--line); padding-top: 12px; }
+dt { color: var(--dim); font-weight: 700; }
+dd { margin: 0; min-width: 0; }
+.cost { display: inline-flex; gap: 3px; vertical-align: -1px; margin-right: 6px; }
+.cost i { width: 8px; height: 8px; border-radius: 2px; background: var(--line); opacity: .45; }
+.cost i.on { background: var(--ink); opacity: 1; }
+
+/* decisions */
+.calls { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+.call { border: 2px solid var(--ink); border-radius: 18px; padding: 20px; display: grid; gap: 10px; background: var(--surface); }
+.call .rec { font-weight: 700; }
+.call .rec::before { content: "Recommend: "; color: var(--accent); }
+.struck { font-size: 14px; color: var(--dim); max-width: 75ch; }
+.struck s { color: var(--ink); }
+@media (max-width: 520px) { .row { grid-template-columns: 1fr 56px; } .row .squares { grid-column: 1 / -1; grid-row: 2; } dl { grid-template-columns: 80px 1fr; } }
+@media (prefers-reduced-motion: no-preference) { .card { transition: transform .15s ease; } .card:hover { transform: translateY(-2px); } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Peeplet Daily · roadmap candidates · 2026-10-22</div>
+    <h1>Twelve boards to fill the brain map</h1>
+    <p class="lede">Today's 33 Puzzles cards train five skills, but none trains memory and none trains arithmetic. Those are the two things every brain-training app leads with. Each board below names the skill it fills, what it reuses, and what the win screen would measure.</p>
+  </header>
+
+  <section class="gap" aria-labelledby="gap-h">
+    <div class="gap-head">
+      <h2 id="gap-h">Boards per skill</h2>
+      <div class="legend">
+        <span><i class="sq have" style="--c:var(--ink)"></i>On the grid today</span>
+        <span><i class="sq add" style="--c:var(--ink)"></i>Proposed here</span>
+      </div>
+    </div>
+    <div id="rows"></div>
+  </section>
+
+  <section style="display:grid;gap:16px">
+    <div class="filters" id="filters" role="group" aria-label="Filter boards"></div>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <section style="display:grid;gap:16px" aria-labelledby="calls-h">
+    <h2 id="calls-h">Two calls before any of these is built</h2>
+    <div class="calls">
+      <div class="call">
+        <h3>Memory as a sixth skill?</h3>
+        <p>The brain report is built for five skills: <code>core/brain.gd</code>, the icons in <code>ui/icons.gd</code>, the <code>SKILL_*</code> rows and the five-spoke map on the win. Memory boards have no honest home today. Focus covers colour, detail and rhythm, and Words already claims recall.</p>
+        <p class="rec">add Memory. One icon, three locale rows, a sixth spoke. Next free colour in <code>Pal.CAT</code> is sky blue.</p>
+      </div>
+      <div class="call">
+        <h3>Arithmetic: its own skill, or inside Logic?</h3>
+        <p>Domino Patio and Picket Sums are deduction with sums. Market Sums is pure arithmetic. All three could sit under Logic if Logic's line mentions numbers.</p>
+        <p class="rec">fold into Logic for now. Make Numbers a skill only if a third arithmetic board ships.</p>
+      </div>
+    </div>
+    <p class="struck">Left out on purpose: <s>code-break</s>, <s>balance scales</s>, <s>tents</s>, <s>one-line drawing</s> and <s>mushroom patch</s> genres, all removed on 2026-10-13 as not good enough, even though they are the cheapest to generate. Most of the big competitors' dailies are covered already: Queens, Binairo, Caterpillar, Shikaku, Sudoku, Hidden Word and Word Trail.</p>
+  </section>
+</div>
+
+<script>
+const SK = {
+  memory:   { name: "Memory",   c: "var(--memory)",   have: 0, note: "new skill?" },
+  numbers:  { name: "Numbers",  c: "var(--numbers)",  have: 0, note: "or Logic" },
+  words:    { name: "Words",    c: "var(--words)",    have: 5 },
+  logic:    { name: "Logic",    c: "var(--logic)",    have: 9 },
+  space:    { name: "Space",    c: "var(--space)",    have: 7 },
+  planning: { name: "Planning", c: "var(--planning)", have: 7 },
+  focus:    { name: "Focus",    c: "var(--focus)",    have: 5 },
+};
+
+/* ---------- drawing helpers ---------- */
+const W = 240, H = 170;
+const svg = (inner) => `<svg viewBox="0 0 ${W} ${H}" role="img" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
+const r = (x, y, w, h, fill, rx = 3, extra = "") => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" style="fill:${fill}" ${extra}/>`;
+const t = (x, y, s, size = 10, fill = "var(--ink)", weight = 700, anchor = "middle") =>
+  `<text x="${x}" y="${y}" text-anchor="${anchor}" dominant-baseline="central" style="fill:${fill};font:${weight} ${size}px Nunito, system-ui, sans-serif">${s}</text>`;
+const circ = (cx, cy, rad, fill, extra = "") => `<circle cx="${cx}" cy="${cy}" r="${rad}" style="fill:${fill}" ${extra}/>`;
+const OUT = `stroke:var(--ink);stroke-width:1.5`;
+
+function pips(x, y, s, n) {
+  const p = { 0: [], 1: [[.5,.5]], 2: [[.27,.27],[.73,.73]], 3: [[.25,.25],[.5,.5],[.75,.75]],
+    4: [[.27,.27],[.73,.27],[.27,.73],[.73,.73]], 5: [[.25,.25],[.75,.25],[.5,.5],[.25,.75],[.75,.75]],
+    6: [[.27,.22],[.73,.22],[.27,.5],[.73,.5],[.27,.78],[.73,.78]] }[n];
+  return p.map(([a, b]) => circ(x + a * s, y + b * s, s * .085, "var(--ink)")).join("");
+}
+
+/* ---------- the twelve boards ---------- */
+const PIC = ["..bb..", ".bssb.", "bsyysb", ".bssb.", "..gg..", ".gggg."];
+const PC = { b: "var(--berry)", s: "var(--cheek)", y: "var(--sun)", g: "var(--leaf)" };
+
+const DRAW = {
+  glimpse() {
+    let s = "", c = 14;
+    const ox1 = 18, ox2 = 138, oy = 34;
+    s += r(ox1 - 6, oy - 6, c * 6 + 12, c * 6 + 12, "var(--surface)", 8, `style="fill:var(--surface);stroke:var(--line)"`);
+    s += r(ox2 - 6, oy - 6, c * 6 + 12, c * 6 + 12, "var(--surface)", 8, `style="fill:var(--surface);stroke:var(--line)"`);
+    let placed = 0;
+    PIC.forEach((row, y) => [...row].forEach((k, x) => {
+      if (k !== ".") s += circ(ox1 + x * c + c / 2, oy + y * c + c / 2, 5.5, PC[k]);
+      s += circ(ox2 + x * c + c / 2, oy + y * c + c / 2, 1.6, "var(--line)");
+      if (k !== "." && y < 3 && placed++ < 9) s += circ(ox2 + x * c + c / 2, oy + y * c + c / 2, 5.5, PC[k]);
+    }));
+    s += `<path d="M18 34 l84 0 l0 84 l-84 0 z" style="fill:var(--paper);opacity:.55"/>`;
+    s += `<path d="M106 76 q14 -12 28 0 q-14 12 -28 0z" style="fill:none;${OUT}"/>` + circ(120, 76, 4, "var(--ink)");
+    s += `<line x1="104" y1="70" x2="136" y2="84" style="${OUT}"/>`;
+    s += t(60, 18, "shown 3 seconds", 10, "var(--dim)") + t(180, 18, "rebuild it", 10, "var(--dim)");
+    s += t(120, 104, "then", 9, "var(--dim)");
+    s += t(180, 146, "9 of 20 beads", 10, "var(--memory)", 800);
+    return svg(s);
+  },
+  birdsong() {
+    let s = `<path d="M10 140 C 70 105, 170 175, 232 128" style="fill:none;stroke:var(--wood);stroke-width:16;stroke-linecap:round"/>`;
+    s += `<path d="M10 140 C 70 105, 170 175, 232 128" style="fill:none;stroke:var(--surface);stroke-width:2;stroke-dasharray:6 7"/>`;
+    const drums = [[44, 120, "var(--berry)"], [96, 132, "var(--sun)"], [148, 142, "var(--leaf)"], [200, 130, "var(--moon)"]];
+    drums.forEach(([x, y, f]) => {
+      s += `<ellipse cx="${x}" cy="${y + 6}" rx="17" ry="7" style="fill:var(--ink);opacity:.2"/>`;
+      s += r(x - 16, y - 12, 32, 16, f, 4) + `<ellipse cx="${x}" cy="${y - 12}" rx="16" ry="6" style="fill:var(--surface);${OUT}"/>`;
+    });
+    const seq = [0, 2, 1, 2, 3];
+    seq.forEach((d, i) => {
+      const x = 46 + i * 30;
+      s += circ(x, 48, 11, drums[d][2], `style="fill:${drums[d][2]};${OUT}"`) + t(x, 48, i + 1, 10, "#fff", 800);
+    });
+    s += circ(196, 48, 11, "var(--surface)", `style="fill:var(--surface);stroke:var(--ink);stroke-width:1.5;stroke-dasharray:3 3"`) + t(196, 48, "?", 12);
+    s += circ(26, 52, 13, "var(--memory)") + circ(30, 48, 2.2, "var(--ink)") + `<path d="M38 52 l9 3 l-9 3z" style="fill:var(--sun)"/>`;
+    s += t(120, 20, "the bird sings, you play it back", 10, "var(--dim)");
+    return svg(s);
+  },
+  teacups() {
+    let s = "";
+    const cup = (x, y, up, f) => {
+      if (up) return `<path d="M${x - 15} ${y - 10} h30 l-4 20 h-22z" style="fill:${f};${OUT}"/>` +
+        `<path d="M${x + 15} ${y - 5} q9 0 6 8 q-2 4 -7 4" style="fill:none;${OUT}"/>` +
+        circ(x - 4, y, 2.5, "var(--surface)") + circ(x + 5, y + 2, 2.5, "var(--surface)") +
+        `<ellipse cx="${x}" cy="${y + 13}" rx="19" ry="3.5" style="fill:var(--surface);${OUT}"/>`;
+      return `<path d="M${x - 11} ${y - 10} h22 l4 20 h-30z" style="fill:var(--wood);${OUT}"/>` +
+        `<ellipse cx="${x}" cy="${y + 12}" rx="17" ry="3.5" style="fill:var(--surface);${OUT}"/>`;
+    };
+    const open = { "0,1": "var(--berry)", "2,2": "var(--berry)", "3,0": "var(--moon)" };
+    for (let row = 0; row < 3; row++) for (let col = 0; col < 4; col++) {
+      const k = `${col},${row}`;
+      s += cup(42 + col * 52, 38 + row * 44, !!open[k], open[k]);
+    }
+    s += `<path d="M42 82 Q 90 140 146 126" style="fill:none;stroke:var(--good);stroke-width:2;stroke-dasharray:4 4"/>`;
+    s += t(120, 162, "a pair found · 14 flips for 6 pairs", 10, "var(--dim)");
+    return svg(s);
+  },
+  domino() {
+    let s = "", c = 26, ox = 55, oy = 14;
+    const reg = [["var(--berry)", [[0,0],[1,0],[0,1]], "Σ 7"], ["var(--water)", [[2,0],[3,0]], "="], ["var(--leaf)", [[1,1],[2,1],[3,1]], "Σ 9"], ["var(--sun)", [[0,2],[1,2]], "< 3"], ["var(--moon)", [[2,2],[3,2],[4,0],[4,1],[4,2]], ""]];
+    reg.forEach(([f, cells, lab], i) => {
+      cells.forEach(([x, y]) => s += r(ox + x * c + 1, oy + y * c + 1, c - 2, c - 2, f, 4, `style="fill:${f};opacity:${i === 4 ? .12 : .32}"`));
+      if (lab) { const [x, y] = cells[0]; s += r(ox + x * c - 4, oy + y * c - 5, 26, 13, f, 6) + t(ox + x * c + 9, oy + y * c + 1.5, lab, 8.5, "#fff", 800); }
+    });
+    const dom = (x, y, a, b, vert) => {
+      const w = vert ? c - 4 : c * 2 - 4, h = vert ? c * 2 - 4 : c - 4;
+      let d = r(x + 2, y + 2, w, h, "var(--surface)", 5, `style="fill:var(--surface);${OUT}"`);
+      d += pips(x + 2, y + 2, c - 4, a) + (vert ? pips(x + 2, y + c, c - 4, b) : pips(x + c, y + 2, c - 4, b));
+      d += vert ? `<line x1="${x + 6}" y1="${y + c}" x2="${x + c - 6}" y2="${y + c}" style="stroke:var(--line)"/>` : `<line x1="${x + c}" y1="${y + 6}" x2="${x + c}" y2="${y + c - 6}" style="stroke:var(--line)"/>`;
+      return d;
+    };
+    s += dom(ox, oy, 4, 2, true) + dom(ox + c * 2, oy, 3, 3, false);
+    s += r(14, 104, 212, 52, "var(--surface)", 10, `style="fill:var(--surface);stroke:var(--line)"`);
+    s += dom(28, 117, 1, 5, false) + dom(94, 117, 6, 0, false) + dom(160, 117, 2, 4, false);
+    return svg(s);
+  },
+  picket() {
+    let s = "", c = 24, ox = 48, oy = 12;
+    const M = ["aabbcc", "deebfc", "dgghfi", "jjghki", "lmmnki", "lopnqq"];
+    const sums = { a: 9, b: 13, c: 7, d: 8, e: 6, f: 11, g: 14, h: 4, i: 12, j: 5, k: 10, l: 9, m: 7, n: 8, o: 3, p: 6, q: 11 };
+    const dig = { "0,0": 4, "1,0": 5, "2,2": 6, "4,3": 3, "1,4": 2, "5,5": 6, "3,1": 1 };
+    s += r(ox - 3, oy - 3, c * 6 + 6, c * 6 + 6, "var(--surface)", 6, `style="fill:var(--surface);${OUT}"`);
+    const seen = {};
+    for (let y = 0; y < 6; y++) for (let x = 0; x < 6; x++) {
+      const k = M[y][x], X = ox + x * c, Y = oy + y * c;
+      if (x === 2 || x === 4) s += `<line x1="${X}" y1="${oy}" x2="${X}" y2="${oy + 6 * c}" style="stroke:var(--line);stroke-width:1"/>`;
+      const e = (cond, x1, y1, x2, y2) => cond ? `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" style="stroke:var(--numbers);stroke-width:1.6;stroke-dasharray:3 2.5"/>` : "";
+      s += e(y === 0 || M[y - 1][x] !== k, X + 3, Y + 3, X + c - 3, Y + 3);
+      s += e(y === 5 || M[y + 1][x] !== k, X + 3, Y + c - 3, X + c - 3, Y + c - 3);
+      s += e(x === 0 || M[y][x - 1] !== k, X + 3, Y + 3, X + 3, Y + c - 3);
+      s += e(x === 5 || M[y][x + 1] !== k, X + c - 3, Y + 3, X + c - 3, Y + c - 3);
+      if (!seen[k]) { seen[k] = 1; s += t(X + 5, Y + 8, sums[k], 7.5, "var(--ink)", 800, "start"); }
+      if (dig[`${x},${y}`]) s += t(X + c / 2 + 2, Y + c / 2 + 2, dig[`${x},${y}`], 13, "var(--accent)", 800);
+    }
+    for (let i = 1; i < 6; i++) if (i % 2 === 0) s += `<line x1="${ox}" y1="${oy + i * c}" x2="${ox + 6 * c}" y2="${oy + i * c}" style="stroke:var(--line);stroke-width:1"/>`;
+    return svg(s);
+  },
+  market() {
+    let s = r(70, 10, 100, 40, "var(--surface)", 10, `style="fill:var(--surface);${OUT}"`);
+    s += t(120, 22, "target", 8.5, "var(--dim)") + t(120, 37, "147", 18, "var(--ink)", 800);
+    const n = [3, 7, 8, 25, 50, 100];
+    n.forEach((v, i) => {
+      const x = 22 + i * 34, used = v === 100 || v === 50;
+      s += r(x, 62, 28, 28, used ? "var(--tile)" : "var(--numbers)", 7, used ? `style="fill:var(--tile);stroke:var(--line);stroke-dasharray:3 2"` : `style="fill:var(--numbers);${OUT}"`);
+      s += t(x + 14, 76, v, v > 9 ? 10 : 13, used ? "var(--dim)" : "#3b3028", 800);
+    });
+    s += r(22, 96, 62, 28, "var(--numbers)", 7, `style="fill:var(--numbers);${OUT}"`) + t(53, 110, "150", 13, "#3b3028", 800);
+    ["+", "−", "×", "÷"].forEach((o, i) => s += circ(110 + i * 30, 110, 12, i === 1 ? "var(--ink)" : "var(--surface)", `style="fill:${i === 1 ? "var(--ink)" : "var(--surface)"};stroke:var(--ink);stroke-width:1.5"`) + t(110 + i * 30, 110, o, 13, i === 1 ? "var(--surface)" : "var(--ink)", 800));
+    s += t(120, 140, "100 + 50 = 150", 10, "var(--dim)") + t(120, 155, "150 − 3 = 147  ✓  2 steps", 10, "var(--good)", 800);
+    return svg(s);
+  },
+  shelves() {
+    let s = "";
+    s += r(12, 10, 216, 30, "var(--sun)", 8) + t(120, 20, "FRUIT", 9, "#3b3028", 800) + t(120, 31, "PEAR · PLUM · FIG · KIWI", 8.5, "#3b3028", 700);
+    const words = ["BARK", "CHEST", "SPRING", "ROOT", "CRATE", "COIL", "LEAF", "CASE", "JACK", "BRANCH", "TRUNK", "BOX"];
+    const sel = ["BARK", "ROOT", "LEAF"];
+    words.forEach((w, i) => {
+      const x = 12 + (i % 4) * 55, y = 46 + Math.floor(i / 4) * 34, on = sel.includes(w);
+      s += r(x, y, 51, 30, on ? "var(--ink)" : "var(--surface)", 7, `style="fill:${on ? "var(--ink)" : "var(--surface)"};stroke:var(--line)"`);
+      s += t(x + 25.5, y + 15, w, w.length > 5 ? 8.5 : 9.5, on ? "var(--surface)" : "var(--ink)", 800);
+    });
+    s += t(64, 156, "mistakes", 9, "var(--dim)", 700, "end");
+    for (let i = 0; i < 4; i++) s += circ(76 + i * 12, 156, 4, i < 1 ? "var(--line)" : "var(--words)");
+    s += r(150, 146, 70, 20, "var(--ink)", 10) + t(185, 156, "Submit", 9.5, "var(--surface)", 800);
+    return svg(s);
+  },
+  honeycomb() {
+    let s = "";
+    const hex = (cx, cy, R, f, letter, centre) => {
+      const pts = [...Array(6)].map((_, i) => { const a = Math.PI / 3 * i; return `${cx + R * Math.cos(a)},${cy + R * Math.sin(a)}`; }).join(" ");
+      return `<polygon points="${pts}" style="fill:${f};${OUT}"/>` + t(cx, cy, letter, 15, centre ? "#3b3028" : "var(--ink)", 800);
+    };
+    const cx = 92, cy = 100, R = 21, dx = R * 1.5 + 2, dy = R * 0.866 * 2 + 2;
+    const ring = [[0, -dy, "R"], [dx, -dy / 2, "D"], [dx, dy / 2, "E"], [0, dy, "N"], [-dx, dy / 2, "L"], [-dx, -dy / 2, "G"]];
+    s += hex(cx, cy, R, "var(--sun)", "A", true);
+    ring.forEach(([x, y, l]) => s += hex(cx + x, cy + y, R, "var(--surface)", l));
+    s += t(92, 18, "G A R D E N", 14, "var(--ink)", 800) + `<line x1="50" y1="28" x2="134" y2="28" style="stroke:var(--ink);stroke-width:1.5"/>`;
+    s += r(160, 40, 68, 96, "var(--surface)", 8, `style="fill:var(--surface);stroke:var(--line)"`);
+    ["GLAD", "LAND", "DEAL", "RANGE", "GARDEN"].forEach((w, i) => s += t(170, 54 + i * 15, w, 9, i === 4 ? "var(--words)" : "var(--ink)", 800, "start"));
+    s += t(194, 150, "23 / 61 words", 9, "var(--dim)");
+    return svg(s);
+  },
+  fiveclues() {
+    let s = "";
+    const clues = ["TRUNK", "RINGS", "BARK"];
+    for (let i = 0; i < 5; i++) {
+      const y = 10 + i * 24, open = i < 3;
+      s += r(30, y, 180, 20, open ? "var(--surface)" : "var(--tile)", 6, `style="fill:${open ? "var(--surface)" : "var(--tile)"};stroke:var(--line)${open ? "" : ";stroke-dasharray:3 3"}"`);
+      s += circ(42, y + 10, 7, open ? "var(--words)" : "var(--line)") + t(42, y + 10, i + 1, 8.5, "#fff", 800);
+      s += t(120, y + 10, open ? clues[i] : "·  ·  ·", 10.5, open ? "var(--ink)" : "var(--dim)", 800);
+    }
+    s += r(30, 134, 136, 26, "var(--surface)", 13, `style="fill:var(--surface);${OUT}"`) + t(42, 147, "parts of a tree|", 10, "var(--ink)", 700, "start");
+    s += circ(190, 147, 13, "var(--good)") + t(190, 147, "✓", 13, "#fff", 800);
+    return svg(s);
+  },
+  pie() {
+    let s = "";
+    const names = ["Ada", "Bo", "Cy", "Dee", "Eli", "Fay", "Gus", "Hal"];
+    const state = { 1: "good", 4: "bad", 6: "good" };
+    names.forEach((n, i) => {
+      const x = 16 + (i % 4) * 54, y = 8 + Math.floor(i / 4) * 58, st = state[i];
+      const f = st === "good" ? "var(--good)" : st === "bad" ? "var(--bad)" : "var(--surface)";
+      s += r(x, y, 48, 52, f, 8, `style="fill:${f};stroke:var(--line);opacity:${st ? .9 : 1}"`);
+      const fx = x + 24, fy = y + 20;
+      s += circ(fx, fy, 12, "var(--wood)") + circ(fx - 4, fy - 2, 1.6, "var(--ink)") + circ(fx + 4, fy - 2, 1.6, "var(--ink)");
+      s += `<path d="M${fx - 4} ${fy + 4} q4 ${st === "bad" ? -3 : 3} 8 0" style="fill:none;stroke:var(--ink);stroke-width:1.3"/>`;
+      s += t(fx, y + 43, n, 9, st ? "#fff" : "var(--ink)", 800);
+    });
+    s += r(16, 128, 208, 34, "var(--surface)", 10, `style="fill:var(--surface);${OUT}"`);
+    s += `<path d="M120 128 l-6 -8 l12 8z" style="fill:var(--surface)"/>`;
+    s += t(120, 139, "Bo: “Exactly one baker", 9.5, "var(--ink)", 700) + t(120, 151, "beside Eli ate the pie.”", 9.5, "var(--ink)", 700);
+    return svg(s);
+  },
+  hoses() {
+    let s = "", c = 28, ox = 50, oy = 12;
+    s += r(ox - 3, oy - 3, c * 5 + 6, c * 5 + 6, "var(--surface)", 8, `style="fill:var(--surface);stroke:var(--line)"`);
+    for (let i = 1; i < 5; i++) s += `<line x1="${ox + i * c}" y1="${oy}" x2="${ox + i * c}" y2="${oy + 5 * c}" style="stroke:var(--tile)"/><line x1="${ox}" y1="${oy + i * c}" x2="${ox + 5 * c}" y2="${oy + i * c}" style="stroke:var(--tile)"/>`;
+    const P = [["var(--berry)", [[0,0],[1,0],[2,0],[3,0],[4,0],[4,1],[4,2]], 1],
+      ["var(--water)", [[0,1],[1,1],[2,1],[3,1],[3,2],[3,3],[4,3],[4,4]], 1],
+      ["var(--sun)", [[0,2],[1,2],[2,2],[2,3],[2,4],[3,4]], 1],
+      ["var(--leaf)", [[0,3],[0,4],[1,4],[1,3]], 0]];
+    const ctr = ([x, y]) => [ox + x * c + c / 2, oy + y * c + c / 2];
+    P.forEach(([f, cells, done]) => {
+      const pts = (done ? cells : cells.slice(0, 2)).map(ctr).map(p => p.join(",")).join(" ");
+      s += `<polyline points="${pts}" style="fill:none;stroke:${f};stroke-width:11;stroke-linecap:round;stroke-linejoin:round"/>`;
+      [cells[0], cells[cells.length - 1]].forEach(e => { const [x, y] = ctr(e); s += circ(x, y, 9, f, `style="fill:${f};${OUT}"`) + circ(x, y, 3, "var(--surface)"); });
+    });
+    s += t(120, 163, "21 / 25 squares watered", 9.5, "var(--dim)");
+    return svg(s);
+  },
+  paperbox() {
+    let s = "", c = 22, ox = 14, oy = 40;
+    const F = { T: "var(--sun)", L: "var(--water)", F: "var(--berry)", R: "var(--leaf)", B: "var(--moon)", D: "var(--wood)" };
+    [["T", 1, 0], ["L", 0, 1], ["F", 1, 1], ["R", 2, 1], ["B", 3, 1], ["D", 1, 2]].forEach(([k, x, y]) =>
+      s += r(ox + x * c, oy + y * c, c, c, F[k], 2, `style="fill:${F[k]};${OUT}"`));
+    s += `<path d="M110 73 h14 m-5 -5 l5 5 l-5 5" style="fill:none;${OUT};stroke-linecap:round"/>`;
+    s += t(56, 22, "fold this", 10, "var(--dim)") + t(184, 22, "which box?", 10, "var(--dim)");
+    const cube = (cx, cy, sz, top, front, right) => {
+      const k = .87 * sz;
+      return `<polygon points="${cx},${cy - sz} ${cx + k},${cy - sz / 2} ${cx},${cy} ${cx - k},${cy - sz / 2}" style="fill:${top};${OUT}"/>` +
+        `<polygon points="${cx - k},${cy - sz / 2} ${cx},${cy} ${cx},${cy + sz} ${cx - k},${cy + sz / 2}" style="fill:${front};${OUT}"/>` +
+        `<polygon points="${cx},${cy} ${cx + k},${cy - sz / 2} ${cx + k},${cy + sz / 2} ${cx},${cy + sz}" style="fill:${right};${OUT}"/>`;
+    };
+    s += cube(150, 64, 17, F.T, F.F, F.L) + cube(196, 64, 17, F.T, F.F, F.R) + cube(173, 122, 17, F.B, F.F, F.R);
+    s += circ(214, 44, 8, "var(--good)") + t(214, 44, "✓", 9, "#fff", 800);
+    return svg(s);
+  },
+};
+
+const BOARDS = [
+  { id: "glimpse", name: "Glimpse", follows: "copy-from-memory", skill: "memory", short: true,
+    play: "Pixel Garden's picture shows for three seconds, then hides. Rebuild it bead by bead from memory.",
+    reuse: "Pixel Garden: board, beads, pictures and the daily theme", gen: 1, lang: "None", proof: "Lumosity, Peak (memory is their lead skill)", q: "Beads right on the first try" },
+  { id: "birdsong", name: "Birdsong", follows: "Simon-style recall", skill: "memory", short: true,
+    play: "A bird plays a growing tune on the drums. Play it back; each round adds one note.",
+    reuse: "Drumbeat's road, drums and the pop sound bank", gen: 1, lang: "None", proof: "Every brain trainer has a sequence-recall game", q: "Longest tune played back without a slip" },
+  { id: "teacups", name: "Teacups", follows: "concentration pairs", skill: "memory",
+    play: "Twelve cups face down. Lift two at a time and find each matching pair in as few lifts as you can.",
+    reuse: "Card flip motion, faces in ui/faces/", gen: 1, lang: "None", proof: "Classic; a staple of every memory app", q: "Flips used vs the minimum possible" },
+  { id: "domino", name: "Domino Patio", follows: "NYT Pips", skill: "numbers", alt: "logic", short: true,
+    play: "Lay every domino on the patio so each coloured bed meets its rule: a sum, all equal, or less than.",
+    reuse: "Versus Dominoes tiles and pips", gen: 3, lang: "None", proof: "NYT's newest logic daily", q: "None; time and hints only" },
+  { id: "picket", name: "Picket Sums", follows: "Killer Sudoku", skill: "numbers", alt: "logic",
+    play: "Sudoku on a 6×6 with fenced plots instead of givens: each plot's numbers add up to its label.",
+    reuse: "Sudoku's grid, pad and generator; Lattice's tiles", gen: 3, lang: "None", proof: "Evergreen; in every big Sudoku app", q: "None; time and hints only" },
+  { id: "market", name: "Market Sums", follows: "the 24 game / NYT Digits", skill: "numbers",
+    play: "Six numbers and a target. Add, take away, multiply and divide your way to it in as few steps as you can.",
+    reuse: "Lattice's number tiles", gen: 1, lang: "None", proof: "Arithmetic is the core of Elevate", q: "Steps vs the shortest solution" },
+  { id: "shelves", name: "Four Shelves", follows: "NYT Connections", skill: "words", short: true,
+    play: "Sixteen words, four hidden groups of four. Pick four, submit, and lose a life on a wrong shelf.",
+    reuse: "Golden Acorn's pipeline (Haiku writes, Opus reviews)", gen: 2, lang: "The pipeline writes en, pt and es", proof: "NYT's second-biggest daily", q: "Mistakes, 0 to 4" },
+  { id: "honeycomb", name: "Honeycomb", follows: "Spelling Bee", skill: "words",
+    play: "Seven letters, one in the middle. Make as many words as you can that use the middle letter.",
+    reuse: "wordfreq lists, already licensed; Hidden Word's keyboard", gen: 2, lang: "Three word lists plus a rude-word filter", proof: "A long-running NYT staple", q: "Share of the day's words found" },
+  { id: "fiveclues", name: "Five Clues", follows: "LinkedIn Pinpoint", skill: "words",
+    play: "Words appear one at a time. Name what they have in common with as few clues as you can.",
+    reuse: "Golden Acorn's pipeline and Pearl Dive's typed answers", gen: 2, lang: "The pipeline writes all three", proof: "One of LinkedIn's three launch games", q: "Clues needed, 1 to 5" },
+  { id: "pie", name: "Who Ate the Pie?", follows: "Clues by Sam", skill: "logic",
+    play: "Eight bakers, some guilty. Each one you clear gives a clue. Every mark must be proven; there is no guessing.",
+    reuse: "Characters in ui/faces/", gen: 4, lang: "Clue sentences from templates, times three", proof: "Indie hit, 50k+ daily players since 2025", q: "Wrong marks" },
+  { id: "hoses", name: "Hosepipes", follows: "Flow Free", skill: "space", alt: "planning",
+    play: "Join each pair of taps with a hose of its colour. Hoses never cross, and every square gets watered.",
+    reuse: "Fairy Lights and Caterpillar's path drawing", gen: 3, lang: "None", proof: "One of the biggest mobile puzzle games", q: "None; time and hints only" },
+  { id: "paperbox", name: "Paper Box", follows: "fold-the-net", skill: "space",
+    play: "A flat paper pattern. Which of the three boxes does it fold into? Five rounds a day.",
+    reuse: "Nothing; new art, but small", gen: 2, lang: "None", proof: "Mental rotation, a brain-trainer staple", q: "Wrong picks" },
+];
+
+/* ---------- gap chart ---------- */
+const add = {};
+BOARDS.forEach(b => add[b.skill] = (add[b.skill] || 0) + 1);
+document.getElementById("rows").innerHTML = Object.entries(SK).map(([k, v]) => {
+  const n = add[k] || 0;
+  const squares = Array(v.have).fill(`<i class="sq have"></i>`).join("") + Array(n).fill(`<i class="sq add"></i>`).join("");
+  return `<div class="row" style="--c:${v.c}">
+    <div class="name"><span class="dot"></span>${v.name}${v.note ? `<small>${v.note}</small>` : ""}</div>
+    <div class="squares">${v.have === 0 ? `<span class="zero">0 today</span>` : ""}${squares}</div>
+    <div class="count"><b>${v.have}</b>${n ? ` + ${n}` : ""}</div></div>`;
+}).join("");
+
+/* ---------- cards ---------- */
+const costLabel = ["", "Trivial", "Easy", "Moderate", "Hard"];
+const dots = n => `<span class="cost" aria-hidden="true">${[1,2,3,4].map(i => `<i class="${i <= n ? "on" : ""}"></i>`).join("")}</span>`;
+document.getElementById("grid").innerHTML = BOARDS.map((b, i) => {
+  const sk = SK[b.skill];
+  return `<article class="card" data-skill="${b.skill}" data-short="${b.short ? 1 : 0}">
+    <div class="fig">${DRAW[b.id]()}${b.short ? `<span class="badge">Shortlist</span>` : ""}<span class="rank">${String(i + 1).padStart(2, "0")}</span></div>
+    <div class="body">
+      <div class="title-row"><div><h3>${b.name}</h3><div class="follows">follows ${b.follows}</div></div>
+        <span class="skill" style="--c:${sk.c}"><span class="dot"></span>${sk.name}${b.alt ? ` / ${SK[b.alt].name}` : ""}</span></div>
+      <p class="play">${b.play}</p>
+      <dl>
+        <dt>Reuses</dt><dd>${b.reuse}</dd>
+        <dt>Generator</dt><dd>${dots(b.gen)}${costLabel[b.gen]}</dd>
+        <dt>pt / es</dt><dd>${b.lang}</dd>
+        <dt>Proof</dt><dd>${b.proof}</dd>
+        <dt>Win measure</dt><dd>${b.q}</dd>
+      </dl>
+    </div></article>`;
+}).join("");
+
+/* ---------- filters ---------- */
+const FILTERS = [["all", "All 12"], ["short", "Shortlist"], ...["memory", "numbers", "words", "logic", "space"].map(k => [k, SK[k].name])];
+const fwrap = document.getElementById("filters");
+fwrap.innerHTML = FILTERS.map(([k, l]) => `<button class="chip" id="f-${k}" data-f="${k}" aria-pressed="${k === "all"}" ${SK[k] ? `style="--c:${SK[k].c}"` : ""}>${SK[k] ? `<span class="dot"></span>` : ""}${l}</button>`).join("");
+fwrap.addEventListener("click", e => {
+  const btn = e.target.closest(".chip"); if (!btn) return;
+  const f = btn.dataset.f;
+  fwrap.querySelectorAll(".chip").forEach(c => c.setAttribute("aria-pressed", c === btn));
+  document.querySelectorAll(".card").forEach(c => {
+    c.hidden = !(f === "all" || (f === "short" ? c.dataset.short === "1" : c.dataset.skill === f));
+  });
+});
+</script>
