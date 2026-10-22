@@ -36,8 +36,6 @@ const Pal = preload("res://core/palette.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
 const Haptics = preload("res://core/haptics.gd")
-const Rewards = preload("res://arcade/rewards.gd")
-const Scenery = preload("res://ui/flat/scenery.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 
 enum Phase { WAIT, LISTEN, PLAY, PAUSE, DONE }
@@ -133,8 +131,8 @@ var _lay_at := -INF
 var _world: Control
 var _branch: ArrayMesh
 var _branch_key := ""
+## The board's sounds and sparks; none on the tutorial's silent board.
 var fx: Node
-var _rw: Node
 
 func puzzle_id() -> String: return "birdsong"
 func title() -> String: return "Birdsong"
@@ -174,14 +172,11 @@ func hints_left() -> int:
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE if demo else Control.MOUSE_FILTER_STOP
-	fx = Fx2D.new()
-	fx.name = "Fx"
-	fx.haptics = HAPTICS
-	if demo:
-		fx.buzzes = false
-	add_child(fx)
-	_rw = Rewards.new()
-	add_child(_rw)
+	if not demo:
+		fx = Fx2D.new()
+		fx.name = "Fx"
+		fx.haptics = HAPTICS
+		add_child(fx)
 	resized.connect(_relayout)
 	if demo:
 		_make_world()
@@ -863,6 +858,7 @@ func restore_completed_board() -> void:
 	_queue.clear()
 	_st.finish(completed_record.get("history", []) as Array)
 	_phase = Phase.DONE
+	_won_at = _t
 	_bird_mood = Bird.Mood.JOY
 	_bird_until = INF
 	_say = ""

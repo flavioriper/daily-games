@@ -63,6 +63,16 @@ func _process(_delta: float) -> bool:
 		return false
 	if _f < 12:
 		return false
+	if _step == 10:
+		if _f == 5005:
+			_menu._open_at(load("res://ui/registry.gd").find("birdsong"), _band)
+			_host = _menu.get_child(_menu.get_child_count() - 1)
+		if _f == 5200:
+			_shot("reopen")
+			_b = _host._puzzle
+			print("reopen done=%s phase=%s bird=%s" % [_b.is_done(), _b.phase(), _b._bird_at()])
+			_step = 7
+		return false
 	if _b == null:
 		_b = _host._puzzle
 	var st = _b.state()
@@ -107,7 +117,11 @@ func _process(_delta: float) -> bool:
 				_shot("won_early")
 			if _f == 3240:
 				_shot("won")
-				_step = 7
+				# the day reopened from its card: the solve kept, the board
+				# put back as it was won
+				_host.closed.emit()
+				_step = 10
+				_f = 5000
 		7:
 			var pages: Array = _b.tutorial_pages()
 			_diag = pages[1].diagram

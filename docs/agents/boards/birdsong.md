@@ -24,7 +24,10 @@
   `tests/_shot_birdsong.gd -- <dir> d=<0..3> [tut|card]` shoots the song,
   a berry played back, a slip, the win, a tutorial page or the card, with
   draw calls.
-- Seen windowed on ANGLE at 810x1440: Medium and Hard play, the win and its
-  brain report, the first tutorial page, the card. 105-115 draw calls in
+- Seen windowed on ANGLE at 810x1440: Easy, Medium, Hard and Insane play
+  through, the win and its brain report, a solved day reopened from its
+  card (the board put back, `restore_completed_board`), the first tutorial
+  page, the card. `tests/_probe_insane_hints.gd -- id=birdsong`: 0
+  failures (the bulb sings again for as long as it is pressed). 105-115 draw calls in
   play, ~156 on the win, ~189 with a tutorial page over it. Not seen: a
   phone, reduce motion, pt/es read by a speaker, the sounds heard.
