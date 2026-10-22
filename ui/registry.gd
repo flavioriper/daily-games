@@ -195,6 +195,38 @@ const PUZZLES := [
 		],
 	},
 	{
+		"id": "market",
+		"skill": "logic",
+		"kind": "puzzle",
+		"title": "Market Sums",
+		"blurb": "MK_BLURB",
+		"short": "MK_SHORT",
+		"motto": "MK_MOTTO",
+		"footer": "Pick · Sign · Make",
+		# Six numbered crates on a garden market stall and an order on the
+		# board under the awning: combine two crates with +, take away,
+		# times or share until one holds the order (puzzles/market2d.gd).
+		# The stall fills the screen and the crates and sign tokens are
+		# inside the board, so no tray and no actions row: Undo, the bin
+		# and the bulb ride the tools row. No Check: the order board says
+		# when it is filled.
+		"script": "res://puzzles/market2d.gd",
+		"card": "res://ui/menu/cards/market.gd",
+		"shell": "flat",
+		"tray": "none",
+		"bleed": true,
+		"level_card": true,
+		"actions": false,
+		"difficulties": [0, 1, 2, 3],
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "MK_LVL_0"},
+			{"difficulty": 1, "name": "Medium", "line": "MK_LVL_1"},
+			{"difficulty": 2, "name": "Hard", "line": "MK_LVL_2"},
+			{"difficulty": 3, "name": "Insane", "line": "MK_LVL_3"},
+		],
+	},
+	{
 		"id": "rings",
 		"skill": "planning",
 		"kind": "puzzle",

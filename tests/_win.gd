@@ -169,6 +169,9 @@ func _note(id: String) -> String:
 		"patio": return "%dx%d, %d tiles (%d spare), %d beds, unique=%s, %d moves, hints=%d, caps %s, board fit=%s, hud=%s" % [
 			_puzzle._st.cols, _puzzle._st.rows, _puzzle._st.laid_count(), _puzzle._st.tiles.size() - _puzzle._st.laid_count(),
 			_puzzle._st.beds.size(), _puzzle._st.unique, _puzzle.moves, _puzzle.hints_used, _puzzle.capabilities(), _fit_ok, _hud_ok]
+		"market": return "%s -> %d, par %d, %d steps, every=%s, hints=%d, caps %s, board fit=%s, hud=%s" % [
+			str(_puzzle._st.numbers), _puzzle._st.target, _puzzle._st.par, _puzzle._st.steps, _puzzle._st.every,
+			_puzzle.hints_used, _puzzle.capabilities(), _fit_ok, _hud_ok]
 		"teacups": return "%dx%d, %d pairs, %d lifts, %d misses, %d lapses, hints=%d, caps %s, board fit=%s, hud=%s" % [
 			_puzzle._st.cols(), _puzzle._st.rows(), _puzzle._st.pairs(), _puzzle._st.lifts, _puzzle._st.misses,
 			_puzzle._st.lapses, _puzzle.hints_used, _puzzle.capabilities(), _fit_ok, _hud_ok]
@@ -250,6 +253,7 @@ func _solve(id: String) -> void:
 		"birdsong": _solve_birdsong()
 		"patio": _solve_patio()
 		"teacups": _solve_teacups()
+		"market": _solve_market()
 		"trestle": _solve_trestle()
 		"minigolf": _solve_minigolf()
 		"horse": _solve_horse()
@@ -1437,6 +1441,67 @@ func _solve_birdsong() -> void:
 			d = (d + 1) % st.drums()
 		_tap_local(_puzzle.drum_to_local(d))
 		_puzzle._process(0.02)
+
+## Market Sums: a share that leaves a remainder refused (crate, sign, crate
+## by real touches), the answer's first step made and taken back with Undo
+## (Easy to Hard), the bulb through the real button, then the rest by the
+## state's own shortest steps, each crate and sign tapped where it stands.
+func _solve_market() -> void:
+	var st = _puzzle._st
+	var Gen = load("res://puzzles/market_gen.gd")
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for s in 6:
+		if not slot.has_point(_puzzle.crate_to_local(s)):
+			_fit_ok = false
+	for o in 4:
+		if not slot.has_point(_puzzle.sign_to_local(o)):
+			_fit_ok = false
+	var settle := func() -> void:
+		for i in 40:
+			if not _puzzle.sliding():
+				return
+			_puzzle._process(0.05)
+	var play := func(from: int, into: int, op: int) -> void:
+		if _puzzle.picked() != from:
+			if _puzzle.picked() >= 0:
+				_tap_local(_puzzle.crate_to_local(_puzzle.picked()))
+			_tap_local(_puzzle.crate_to_local(from))
+		_tap_local(_puzzle.sign_to_local(op))
+		_tap_local(_puzzle.crate_to_local(into))
+		settle.call()
+	# a refused share: nothing changes, nothing is counted
+	for i in range(5, -1, -1):
+		var done := false
+		for j in 6:
+			if i != j and st.would(i, j, Gen.Op.DIV) == Gen.UNEVEN:
+				var before: Array = st.slots.duplicate()
+				play.call(i, j, Gen.Op.DIV)
+				_hud_ok = st.slots == before and st.steps == 0 and _puzzle._say == "MK_SAY_UNEVEN"
+				done = true
+				break
+		if done:
+			break
+	# a step and its Undo
+	if _puzzle.capabilities().has("undo"):
+		var first: Array = st.hint_step()
+		var before: Array = st.slots.duplicate()
+		play.call(first[0], first[1], first[2])
+		_hud_ok = _hud_ok and st.steps == 1 and st.slots != before
+		_press(_host.top_bar.undo_button)
+		settle.call()
+		_hud_ok = _hud_ok and st.slots == before
+	_press(_host.top_bar.hint_button)
+	settle.call()
+	_hud_ok = _hud_ok and _puzzle.hints_used == 1
+	for step in 8:
+		if _puzzle.is_done():
+			return
+		var h: Array = st.hint_step()
+		if h.is_empty():
+			_hud_ok = false
+			return
+		play.call(h[0], h[1], h[2])
 
 ## Teacups: two misses on purpose (on Insane the second sets a waltz going,
 ## stepped through on the board's own clock), a cup lifted and the bulb

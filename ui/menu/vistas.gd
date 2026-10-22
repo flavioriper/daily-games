@@ -68,6 +68,8 @@ const CARDS := {
 	"patio": ["meadow", 1.6, Vector2(0.80, 0.55)],
 	# Teacups' tea table in the meadow's garden, by its hedges.
 	"teacups": ["meadow", 1.6, Vector2(0.45, 0.60)],
+	# Market Sums' stall in the meadow's village, by its cottages.
+	"market": ["meadow", 1.6, Vector2(0.70, 0.55)],
 	# Trestle's river gap under a clear sky.
 	"trestle": ["sky", 1.5, Vector2(0.50, 0.55)],
 	# Mini Golf's course is laid out on the meadow, under its cottages.

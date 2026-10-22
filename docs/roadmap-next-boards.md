@@ -55,7 +55,7 @@ Connections, Spelling Bee, Pips, Pinpoint, Clues by Sam.
       vs the minimum.
 - [x] **6. Picket Sums** (Killer Sudoku cages). Built 2026-10-22, `docs/agents/boards/picket.md`; 6/6/9/9, Hard and Insane banked (120 days each), Insane is Lost Tags (up to six plots lose their tag). Numbers/Logic. Reuses
       Sudoku's grid, pad, generator. Moderate.
-- [ ] **7. Market Sums** (24 game / NYT Digits). Numbers. Six numbers to a
+- [x] **7. Market Sums** (24 game / NYT Digits). Built 2026-10-22, `docs/agents/boards/market.md`; fewest steps 2/3/4/5, Insane is Every Crate (all six into the order), dealt on the phone. Numbers. Six numbers to a
       target. Reuses Lattice's tiles. Trivial. Quality: steps vs shortest.
 - [ ] **8. Honeycomb** (Spelling Bee). Words. wordfreq lists (licensed);
       three word lists plus a rude-word filter. Quality: share found.
