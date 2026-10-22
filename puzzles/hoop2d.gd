@@ -1590,6 +1590,10 @@ func reset_board() -> void:
 func is_solved() -> bool:
 	return state.is_solved()
 
+## The win's brain report: a fifth off for every slip (spec 2026-10-22-brain-skills, section 6).
+func skill_quality() -> float:
+	return 1.0 / (1.0 + 0.2 * float(state.refused))
+
 func completion_record() -> Dictionary:
 	return {"best": _best, "slips": state.refused}
 

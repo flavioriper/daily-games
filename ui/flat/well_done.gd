@@ -57,6 +57,13 @@ const TITLE_Y := 508.0
 const SUB_Y := 582.0
 const SLIDE := 0.4
 const FADE := 0.2
+## The compact form over a board with a skill: the art at half size in a strip,
+## "Well done!" and its line under it, so the brain report has the middle
+## (docs/superpowers/specs/2026-10-22-brain-skills-design.md, section 5).
+const COMPACT_HEIGHT := 340.0
+const COMPACT_SCALE := 0.5
+const COMPACT_TITLE_Y := 262.0
+const COMPACT_SUB_Y := 314.0
 
 var sun: Control
 var moon: Control
@@ -66,6 +73,8 @@ var _cast_labels: Array[Label] = []
 ## right of the art, and the decoration there steps aside (see _draw_art).
 var _cast_wide := false
 var _art: Control
+## Holds the art and its faces, so the compact form can scale them as one.
+var _stage: Control
 var _title: Label
 var _sub: Label
 var _spin: Tween
@@ -74,22 +83,26 @@ var _rock: Tween
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	custom_minimum_size.y = HEIGHT
+	_stage = Control.new()
+	_stage.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_stage)
 	_art = Control.new()
 	_art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_art.draw.connect(_draw_art.bind(_art))
-	add_child(_art)
+	_stage.add_child(_art)
 	sun = SunFace.new()
 	sun.size = Vector2(SUN_SIZE, SUN_SIZE)
 	sun.position = SUN_AT - sun.size * 0.5
 	sun.expression = Face.Expr.JOY
-	add_child(sun)
+	_stage.add_child(sun)
 	moon = MoonFace.new()
 	moon.size = Vector2(MOON_SIZE, MOON_SIZE)
 	moon.position = MOON_AT - moon.size * 0.5
 	moon.expression = Face.Expr.JOY
 	moon.rocks = true
-	add_child(moon)
+	_stage.add_child(moon)
 	_title = Label.new()
 	_title.theme_type_variation = "WellDone"
 	_title.text = "WIN_WELL_DONE"
@@ -108,7 +121,20 @@ func _ready() -> void:
 	_sub.offset_bottom = SUB_Y + 24.0
 	add_child(_sub)
 	resized.connect(_fit_cast)
+	resized.connect(func() -> void: _stage.pivot_offset = Vector2(size.x * 0.5, 0.0))
 	visible = false
+
+## The strip the brain report wants, or the full art.
+func set_compact(on: bool) -> void:
+	custom_minimum_size.y = COMPACT_HEIGHT if on else HEIGHT
+	_stage.pivot_offset = Vector2(size.x * 0.5, 0.0)
+	_stage.scale = Vector2.ONE * (COMPACT_SCALE if on else 1.0)
+	var title_y := COMPACT_TITLE_Y if on else TITLE_Y
+	var sub_y := COMPACT_SUB_Y if on else SUB_Y
+	_title.offset_top = title_y - 60.0
+	_title.offset_bottom = title_y + 60.0
+	_sub.offset_top = sub_y - 24.0
+	_sub.offset_bottom = sub_y + 24.0
 
 ## Two leaves turned outward and three four-point stars in sun, placed
 ## clear of whatever the middle of the art holds.
@@ -157,7 +183,7 @@ func set_cast(faces: Array, subtitle: String, labels: Array = []) -> void:
 	moon.visible = false
 	for face in faces:
 		face.expression = Face.Expr.JOY
-		add_child(face)
+		_stage.add_child(face)
 		_cast.append(face)
 	for i in labels.size():
 		var label := Label.new()
@@ -167,7 +193,7 @@ func set_cast(faces: Array, subtitle: String, labels: Array = []) -> void:
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		add_child(label)
+		_stage.add_child(label)
 		_cast_labels.append(label)
 	_fit_cast()
 	# After _fit_cast, which is what decides whether the row is wide.

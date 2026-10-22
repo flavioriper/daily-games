@@ -2755,6 +2755,13 @@ func stamp_key() -> String:
 			return "UT_STAMP_%d" % (i + 1)
 	return "UT_STAMP_5"
 
+## The win's brain report: the fewest moves against the moves made (spec 2026-10-22-brain-skills, section 6).
+func skill_quality() -> float:
+	var par := int(state.par)
+	if par <= 0:
+		return -1.0
+	return clampf(float(par) / float(maxi(_all_moves, par)), 0.0, 1.0)
+
 func completion_record() -> Dictionary:
 	return {"stamp": stamp_key()} if stamp_key() != "" else {}
 

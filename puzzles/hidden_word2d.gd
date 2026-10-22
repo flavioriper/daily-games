@@ -2649,6 +2649,12 @@ func _reset_row() -> void:
 func can_reset() -> bool:
 	return not (out_of_hearts or state.is_over() or is_done())
 
+## The win's brain report: the rows left unused, out of seven (spec 2026-10-22-brain-skills, section 6).
+func skill_quality() -> float:
+	if state.rows.is_empty():
+		return -1.0
+	return clampf((8.0 - state.rows.size()) / 7.0, 0.0, 1.0)
+
 ## The rows the player committed, oldest first, so a reopened daily can lay
 ## the same ending back down. Plain strings, because it goes through a
 ## ConfigFile.

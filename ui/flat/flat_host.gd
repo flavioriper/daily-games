@@ -844,6 +844,11 @@ func _on_solved() -> void:
 	# to daily_completed for its card state, while a reopened daily can restore
 	# the same time, moves and hints on its finished screen.
 	var kept := _stats()
+	# The solve's quality for the brain report (spec 2026-10-22-brain-skills).
+	if is_instance_valid(_puzzle) and _puzzle.has_method("skill_quality"):
+		var q: float = _puzzle.skill_quality()
+		if q >= 0.0:
+			kept["q"] = q
 	if is_instance_valid(_puzzle) and _puzzle.has_method("completion_record"):
 		var record: Dictionary = _puzzle.completion_record()
 		if not record.is_empty():
@@ -868,6 +873,8 @@ func _on_solved() -> void:
 				"m": int(kept.get("moves", 0)),
 				"h": int(kept.get("hints", 0)),
 			})
+			if kept.has("q"):
+				records[-1]["q"] = float(kept["q"])
 			solves[day] = records
 		var after := Streak.hearts(records)
 		var streak := int(Streak.compute(solves, day).current)

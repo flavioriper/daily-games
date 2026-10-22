@@ -2450,6 +2450,10 @@ func _after(seconds: float, fn: Callable) -> void:
 func busy() -> bool:
 	return out_of_hearts or _revealing
 
+## The win's brain report: half off for every miss (spec 2026-10-22-brain-skills, section 6).
+func skill_quality() -> float:
+	return 1.0 / (1.0 + 0.5 * float(_state.misses))
+
 ## What the host keeps with a solved daily, for the seal on a reopen.
 func completion_record() -> Dictionary:
 	return {"misses": _state.misses, "more": _wish_bought}

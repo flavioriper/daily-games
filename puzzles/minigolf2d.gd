@@ -1629,6 +1629,13 @@ func _on_solved() -> void:
 	_say(_win_line(), Face.Expr.JOY)
 	_party()
 
+## The win's brain report: the card's par against its strokes (spec 2026-10-22-brain-skills, section 6).
+func skill_quality() -> float:
+	var par := _state.par_total()
+	if par <= 0:
+		return -1.0
+	return clampf(float(par) / float(maxi(_state.total(), par)), 0.0, 1.0)
+
 func completion_record() -> Dictionary:
 	return {"card": Array(_state.card), "log": _log, "moves_left": moves_left, "flawless": _flawless}
 

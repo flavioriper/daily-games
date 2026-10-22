@@ -3750,6 +3750,13 @@ static func _quarters(from: int, to: int) -> int:
 func is_solved() -> bool:
 	return state.n > 0 and state.is_solved()
 
+## The win's brain report: the fewest turns against the turns made (spec 2026-10-22-brain-skills, section 6).
+func skill_quality() -> float:
+	var par := state.shortest_solve()
+	if par <= 0:
+		return -1.0
+	return clampf(float(par) / float(maxi(moves, par)), 0.0, 1.0)
+
 ## What a reopened daily needs to look as it was left: the hearts kept, the
 ## pieces a fuse clipped, and whether it was flawless (the seal). Plain
 ## values only (it goes through a ConfigFile).

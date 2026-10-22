@@ -119,12 +119,16 @@ static func log_solve(id: String, difficulty: int, stats: Dictionary = {}, date_
 	var day: Array = cfg.get_value("log", key, [])
 	if _has_record(day, id, difficulty):
 		return false
-	day.append({
+	var record := {
 		"id": id, "d": difficulty,
 		"t": float(stats.get("seconds", 0.0)),
 		"m": int(stats.get("moves", 0)),
 		"h": int(stats.get("hints", 0)),
-	})
+	}
+	# the solve's quality, when the board has one (spec 2026-10-22-brain-skills)
+	if stats.has("q"):
+		record["q"] = float(stats["q"])
+	day.append(record)
 	cfg.set_value("log", key, day)
 	cfg.save(path)
 	return true

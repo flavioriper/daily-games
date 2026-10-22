@@ -1798,6 +1798,13 @@ func _restart() -> void:
 func is_solved() -> bool:
 	return state.is_solved()
 
+## The win's brain report: the fewest taps against the taps made (spec 2026-10-22-brain-skills, section 6).
+func skill_quality() -> float:
+	var par := int(state.par)
+	if par <= 0:
+		return -1.0
+	return clampf(float(par) / float(maxi(state.taps, par)), 0.0, 1.0)
+
 func completion_record() -> Dictionary:
 	return {"taps": state.taps, "left": moves_left}
 

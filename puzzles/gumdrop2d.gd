@@ -173,6 +173,15 @@ func reset_board() -> void:
 		return
 	sim.empty()
 
+## The win's brain report: the moulds' mean served match (spec 2026-10-22-brain-skills, section 6).
+func skill_quality() -> float:
+	if sim == null or sim.marks.is_empty():
+		return -1.0
+	var sum := 0.0
+	for pct in sim.marks:
+		sum += float(pct)
+	return clampf(sum / (100.0 * sim.marks.size()), 0.0, 1.0)
+
 func completion_record() -> Dictionary:
 	return {"pct": sim.marks.duplicate()}
 

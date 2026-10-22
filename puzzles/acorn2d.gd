@@ -1053,6 +1053,12 @@ func reset_board() -> void:
 func is_solved() -> bool:
 	return _settled and state.is_solved()
 
+## The win's brain report: the right answers out of the questions (spec 2026-10-22-brain-skills, section 6).
+func skill_quality() -> float:
+	if state.questions.is_empty():
+		return -1.0
+	return clampf(float(state.rights()) / float(state.questions.size()), 0.0, 1.0)
+
 func completion_record() -> Dictionary:
 	var picks := []
 	var rights := []

@@ -1609,6 +1609,11 @@ func _draw_medal(fm: RunMesh, t: float) -> void:
 				Color(Pal.SURFACE_HI.darkened(0.35), 0.9 * a), Color(Pal.SURFACE_HI, 0.9 * a), Color(1, 1, 1, 0.45 * a)]
 		fm.put(Look.STAR, inks, Transform2D(turn, Vector2.ONE * (s * big), 0.0, _medal_star(i)))
 
+## The win's brain report: one over the tests run since the board opened,
+## the passing one counted (spec 2026-10-22-brain-skills, section 6).
+func skill_quality() -> float:
+	return clampf(1.0 / float(maxi(1, _tests_all)), 0.0, 1.0)
+
 ## The player's own bridge and how many tests it took, kept with the
 ## completion so a reopened daily shows what they built, not the proof.
 func completion_record() -> Dictionary:

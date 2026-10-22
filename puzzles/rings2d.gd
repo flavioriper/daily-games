@@ -2490,6 +2490,16 @@ func _cycle_tip() -> void:
 func is_solved() -> bool:
 	return _state.is_solved()
 
+## The win's brain report: the solver's line from the deal against the
+## moves made (spec 2026-10-22-brain-skills, section 6). The line is a way home and not the shortest.
+func skill_quality() -> float:
+	var line: int = _state.par
+	if line <= 0:
+		line = Gen.solve(_state.deal, Gen.NODE_BUDGET, _state.cap).size()
+	if line <= 0:
+		return -1.0
+	return clampf(float(line) / float(maxi(moves, line)), 0.0, 1.0)
+
 ## What a reopened daily needs to look as it was left: the hearts kept and
 ## whether it was flawless. Plain values only (it goes through a ConfigFile).
 func completion_record() -> Dictionary:

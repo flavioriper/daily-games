@@ -1187,6 +1187,13 @@ func reset_board() -> void:
 func is_solved() -> bool:
 	return _settled and state.is_solved()
 
+## The win's brain report: the rounds' total out of a hundred each (spec 2026-10-22-brain-skills, section 6).
+func skill_quality() -> float:
+	var most: int = state.best_total()
+	if most <= 0:
+		return -1.0
+	return clampf(float(state.total()) / float(most), 0.0, 1.0)
+
 func completion_record() -> Dictionary:
 	var scores := []
 	var guesses := []

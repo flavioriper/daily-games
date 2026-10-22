@@ -1612,6 +1612,13 @@ func win_delay() -> float:
 func tip_line() -> Dictionary:
 	return {"text": tr("DB_TAP_START"), "mood": Face.Expr.HAPPY}
 
+## The win's brain report: the notes' accuracy, an OK half a GOOD (spec 2026-10-22-brain-skills, section 6).
+func skill_quality() -> float:
+	if _st == null:
+		return -1.0
+	var seen := _st.goods + _st.oks + _st.bads
+	return clampf((_st.goods + 0.5 * _st.oks) / float(maxi(1, seen)), 0.0, 1.0)
+
 func completion_record() -> Dictionary:
 	if _st == null:
 		return {}

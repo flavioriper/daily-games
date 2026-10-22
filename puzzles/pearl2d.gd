@@ -1130,6 +1130,13 @@ func reset_board() -> void:
 func is_solved() -> bool:
 	return _settled and state.is_solved()
 
+## The win's brain report: the dive's depth against a Pearl a prompt (spec 2026-10-22-brain-skills, section 6).
+func skill_quality() -> float:
+	var deepest: int = state.floor_depth()
+	if deepest <= 0:
+		return -1.0
+	return clampf(float(state.depth()) / float(deepest), 0.0, 1.0)
+
 func completion_record() -> Dictionary:
 	var given := []
 	var tiers := []

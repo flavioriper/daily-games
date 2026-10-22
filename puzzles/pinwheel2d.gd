@@ -2385,6 +2385,13 @@ func restore_completed_board() -> void:
 func is_solved() -> bool:
 	return _state.is_solved()
 
+## The win's brain report: the fewest taps against the turns made (spec 2026-10-22-brain-skills, section 6).
+func skill_quality() -> float:
+	var par := int(_state.par)
+	if par <= 0:
+		return -1.0
+	return clampf(float(par) / float(maxi(_taps, par)), 0.0, 1.0)
+
 ## What a reopened daily needs to look as it was left: the hearts kept and
 ## whether it was flawless. Plain values only (it goes through a ConfigFile).
 func completion_record() -> Dictionary:

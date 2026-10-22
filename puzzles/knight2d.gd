@@ -2099,6 +2099,13 @@ func share_glyphs() -> String:
 		out += " 🏅 " + tr("BN_FLAWLESS")
 	return out
 
+## The win's brain report: the fewest hops against the hops made (spec 2026-10-22-brain-skills, section 6).
+func skill_quality() -> float:
+	var par := _state.opt()
+	if par <= 0:
+		return -1.0
+	return clampf(float(par) / float(maxi(moves, par)), 0.0, 1.0)
+
 ## What a reopened daily needs: the hearts kept and whether it was flawless.
 func completion_record() -> Dictionary:
 	return {"hearts": hearts, "flawless": _flawless}

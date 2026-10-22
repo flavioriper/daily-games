@@ -2344,6 +2344,10 @@ func _wake_up(face: Control, delay: float) -> void:
 	tw.tween_property(face, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	Motion.hop(face, -_cell * 0.14, 0.4, delay + Motion.POP_IN + 0.5)
 
+## The win's brain report: one over one more than the hedgehogs woken (spec 2026-10-22-brain-skills, section 6).
+func skill_quality() -> float:
+	return 1.0 / (1.0 + float(_state.woken))
+
 ## The hedgehogs a rake woke, so a reopened daily can say how many and wash
 ## the same cells rose. Plain ints, because it goes through a ConfigFile.
 func completion_record() -> Dictionary:

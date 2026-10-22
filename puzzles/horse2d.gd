@@ -1421,6 +1421,12 @@ func _clear_field(now: float) -> void:
 func is_solved() -> bool:
 	return state.is_solved()
 
+## The win's brain report: the pen's score against the day's best (spec 2026-10-22-brain-skills, section 6).
+func skill_quality() -> float:
+	if state.best <= 0:
+		return -1.0
+	return clampf(float(state.score()) / float(state.best), 0.0, 1.0)
+
 func completion_record() -> Dictionary:
 	return {"walls": Array(state.laid), "score": state.score()}
 
