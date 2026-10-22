@@ -66,7 +66,7 @@ Connections, Spelling Bee, Pips, Pinpoint, Clues by Sam.
       every mark), clue templates x3 languages. Quality: wrong marks.
 - [x] **11. Hosepipes** (Flow Free). Built 2026-10-22, `docs/agents/boards/hoses.md`; beds 5/6/7/8 square, Hard and Insane banked (240 and 225 days), Insane is Seedlings (three taps lead to bare seeds any seed hose may water). Space/Planning. Reuses Fairy Lights and
       Caterpillar path drawing. Moderate.
-- [ ] **12. Paper Box** (fold-the-net). Space. Five picks a day, new small
+- [x] **12. Paper Box** (fold-the-net). Built 2026-10-22, `docs/agents/boards/paperbox.md`; boxes 3/3/4/4, every wrong box proven against the box's 24 turns, Insane is Stamped (an arrow on every side). Space. Five picks a day, new small
       art. Quality: wrong picks.
 
 ## Left out on purpose

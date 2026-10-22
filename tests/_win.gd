@@ -181,6 +181,9 @@ func _note(id: String) -> String:
 		"pie": return "%dx%d, %d ate, dish %d, %d marks, %d slips, hints=%d, caps %s, board fit=%s, hud=%s" % [
 			_puzzle._st.cols, _puzzle._st.rows, _puzzle._st.eaters(), _puzzle._st.dish, _puzzle.moves, _puzzle._st.slips,
 			_puzzle.hints_used, _puzzle.capabilities(), _fit_ok, _hud_ok]
+		"paperbox": return "band %d, %d rounds, %d wrong picks %s, hints=%d, caps %s, board fit=%s, hud=%s" % [
+			_puzzle._st.band, _puzzle._st.current, _puzzle._st.wrongs, str(_puzzle._st.wrong_in),
+			_puzzle.hints_used, _puzzle.capabilities(), _fit_ok, _hud_ok]
 		"teacups": return "%dx%d, %d pairs, %d lifts, %d misses, %d lapses, hints=%d, caps %s, board fit=%s, hud=%s" % [
 			_puzzle._st.cols(), _puzzle._st.rows(), _puzzle._st.pairs(), _puzzle._st.lifts, _puzzle._st.misses,
 			_puzzle._st.lapses, _puzzle.hints_used, _puzzle.capabilities(), _fit_ok, _hud_ok]
@@ -262,6 +265,7 @@ func _solve(id: String) -> void:
 		"birdsong": _solve_birdsong()
 		"patio": _solve_patio()
 		"teacups": _solve_teacups()
+		"paperbox": _solve_paperbox()
 		"market": _solve_market()
 		"pie": _solve_pie()
 		"hoses": _solve_hoses()
@@ -1696,6 +1700,39 @@ func _solve_pie() -> void:
 			_hud_ok = false
 			return
 		mark.call(i, st.did_eat(i))
+
+## Paper Box: a wrong box picked on purpose (struck, counted), a tap on it
+## again (nothing), a tap on the mat's foot over a box (nothing), the bulb through the real button (one more struck), then
+## each round's right box picked by a real touch, the fold stepped through on
+## the board's own clock.
+func _solve_paperbox() -> void:
+	var st = _puzzle._st
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for o in st.struck.size():
+		if not slot.has_point(_puzzle.option_to_local(o)):
+			_fit_ok = false
+	_hud_ok = _puzzle.capabilities() == ["hint"] and _puzzle.hints_left() > 0 and not _puzzle.can_reset()
+	var answer := int(st.now().answer)
+	var wrong := 0 if answer != 0 else 1
+	_tap_local(_puzzle.option_to_local(wrong))
+	_hud_ok = _hud_ok and st.struck[wrong] and st.wrongs == 1
+	_tap_local(_puzzle.option_to_local(wrong))
+	_hud_ok = _hud_ok and st.wrongs == 1
+	# the mat's foot, just over a box: no pick
+	var mat: Rect2 = _puzzle._L.mat
+	_tap_local(Vector2(_puzzle.option_to_local(answer).x, mat.end.y - 10.0))
+	_hud_ok = _hud_ok and _puzzle.phase() == _puzzle.Phase.PLAY and st.struck.count(true) == 1
+	_press(_host.top_bar.hint_button)
+	_hud_ok = _hud_ok and _puzzle.hints_used == 1 and st.struck.count(true) == 2
+	for r in 10:
+		if _puzzle.is_done():
+			return
+		_tap_local(_puzzle.option_to_local(int(st.now().answer)))
+		for i in 200:
+			if _puzzle.phase() != _puzzle.Phase.FOLD:
+				break
+			_puzzle._process(0.05)
 
 ## Teacups: two misses on purpose (on Insane the second sets a waltz going,
 ## stepped through on the board's own clock), a cup lifted and the bulb

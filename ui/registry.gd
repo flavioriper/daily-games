@@ -766,6 +766,38 @@ const PUZZLES := [
 		],
 	},
 	{
+		"id": "paperbox",
+		"skill": "space",
+		"kind": "puzzle",
+		"title": "Paper Box",
+		"blurb": "PB_BLURB",
+		"short": "PB_SHORT",
+		"motto": "PB_MOTTO",
+		"footer": "Look · Fold · Pick",
+		# A flat paper net on a cutting mat and three or four boxes under it:
+		# pick the one the net folds into, five rounds a day
+		# (puzzles/paperbox2d.gd). The craft table fills the screen and the
+		# boxes are the board's own controls, so no tray and no actions row.
+		# Only the bulb: a pick cannot be taken back (no Undo), the board
+		# says itself whether a pick was right (no Check), and the bin would
+		# hand back a day already seen.
+		"script": "res://puzzles/paperbox2d.gd",
+		"card": "res://ui/menu/cards/paperbox.gd",
+		"shell": "flat",
+		"tray": "none",
+		"bleed": true,
+		"level_card": true,
+		"actions": false,
+		"difficulties": [0, 1, 2, 3],
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "PB_LVL_0"},
+			{"difficulty": 1, "name": "Medium", "line": "PB_LVL_1"},
+			{"difficulty": 2, "name": "Hard", "line": "PB_LVL_2"},
+			{"difficulty": 3, "name": "Insane", "line": "PB_LVL_3"},
+		],
+	},
+	{
 		"id": "binairo",
 		"skill": "logic",
 		"kind": "puzzle",

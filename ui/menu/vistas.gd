@@ -74,6 +74,8 @@ const CARDS := {
 	"pie": ["meadow", 1.6, Vector2(0.35, 0.50)],
 	# Hosepipes' raised bed on the meadow's lawn, by its hedges.
 	"hoses": ["meadow", 1.6, Vector2(0.25, 0.60)],
+	# Paper Box's craft table by the meadow cottage's window.
+	"paperbox": ["meadow", 1.6, Vector2(0.65, 0.55)],
 	# Honeycomb's comb in the meadow's sun, among its flowers.
 	"honeycomb": ["meadow", 1.6, Vector2(0.60, 0.45)],
 	# Trestle's river gap under a clear sky.

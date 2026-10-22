@@ -3364,3 +3364,38 @@ BRAIN_HC_1,"Look for endings the letters allow, like -ing, -ed or -er, and try t
 BRAIN_HC_2,Shuffle when you are stuck: the same letters in new places show new words.,Embaralhe quando travar: as mesmas letras em outros lugares mostram palavras novas.,Baraja cuando te atasques: las mismas letras en otros sitios muestran palabras nuevas.
 BRAIN_HC_3,Hunt the full comb early: it pours the most honey of any word.,Procure o favo cheio cedo: ele despeja mais mel do que qualquer palavra.,Busca el panal lleno pronto: vierte más miel que cualquier palabra.
 BRAIN_HC_4,Say a word in your head before you send it: guesses that are not words lower your score.,Diga a palavra de cabeça antes de enviar: chutes que não são palavras baixam sua nota.,Di la palabra en tu cabeza antes de enviarla: lo que no es palabra baja tu nota.
+PB_BLURB,"A flat paper net lies on the mat with boxes under it. Pick the box it folds into, five times a day.","Um molde de papel aberto está na mesa com caixas embaixo. Escolha a caixa que ele forma, cinco vezes por dia.","Una plantilla de papel plana está en la mesa con cajas debajo. Elige la caja que forma, cinco veces al día."
+PB_SHORT,"Fold the paper
+in your head.","Dobre o papel
+na cabeça.","Dobla el papel
+en tu cabeza."
+PB_MOTTO,Fold it in your head,Dobre na cabeça,Dóblalo en tu cabeza
+PB_LVL_0,"Simple nets, 3 boxes","Moldes simples, 3 caixas","Plantillas simples, 3 cajas"
+PB_LVL_1,"Any net, 3 boxes","Qualquer molde, 3 caixas","Cualquier plantilla, 3 cajas"
+PB_LVL_2,"Any net, 4 boxes","Qualquer molde, 4 caixas","Cualquier plantilla, 4 cajas"
+PB_LVL_3,Stamped: every side marked,Carimbado: todo lado marcado,Sellado: cada lado marcado
+PB_RULES,%d rounds. A flat paper net lies on the mat and %d boxes stand under it. Fold the net in your head and tap the one box it makes. A wrong box is struck off and counted.,%d rodadas. Um molde de papel aberto está no tapete e %d caixas estão embaixo dele. Dobre o molde na cabeça e toque na única caixa que ele forma. Uma caixa errada é riscada e contada.,%d rondas. Una plantilla de papel plana está en la base y %d cajas están debajo. Dobla la plantilla en tu cabeza y toca la única caja que forma. Una caja equivocada se tacha y se cuenta.
+PB_RULES_TIP,"Two squares with one square between them in a straight row end up on opposite sides, so no box shows both.","Dois quadrados com um quadrado entre eles numa fileira reta ficam em lados opostos, então nenhuma caixa mostra os dois.","Dos cuadrados con uno entre ellos en una fila recta acaban en lados opuestos, así que ninguna caja muestra los dos."
+PB_RULES_STAMPED,Stamped: every square carries a cream arrow. The right box shows each arrow pointing the way the fold turns it.,Carimbado: todo quadrado tem uma seta creme. A caixa certa mostra cada seta apontando para onde a dobra a vira.,Sellado: cada cuadrado lleva una flecha crema. La caja correcta muestra cada flecha apuntando hacia donde el doblez la gira.
+PB_ASK,Which box does it fold into?,Que caixa ele forma?,¿Qué caja forma?
+PB_ROUND,Box %d of %d,Caixa %d de %d,Caja %d de %d
+PB_WRONG_ONE,%d wrong pick,%d escolha errada,%d elección equivocada
+PB_WRONG_N,%d wrong picks,%d escolhas erradas,%d elecciones equivocadas
+PB_WIN,Five boxes folded!,Cinco caixas dobradas!,¡Cinco cajas dobladas!
+PB_WIN_CLEAN,Not one wrong pick.,Nenhuma escolha errada.,Ninguna elección equivocada.
+PB_WIN_WRONG_ONE,%d wrong pick along the way.,%d escolha errada no caminho.,%d elección equivocada por el camino.
+PB_WIN_WRONG_N,%d wrong picks along the way.,%d escolhas erradas no caminho.,%d elecciones equivocadas por el camino.
+HTP_PB_FOLD,Fold it in your head,Dobre na cabeça,Dóblalo en tu cabeza
+HTP_PB_FOLD_BODY,The net on the mat folds into one of the boxes below. Tap it and watch the paper fold into that very box.,O molde no tapete forma uma das caixas embaixo. Toque nela e veja o papel se dobrar exatamente nessa caixa.,La plantilla de la base forma una de las cajas de abajo. Tócala y mira el papel doblarse justo en esa caja.
+HTP_PB_OPPOSITE,Opposite sides,Lados opostos,Lados opuestos
+HTP_PB_OPPOSITE_BODY,Two squares with one between them in a straight row end up on opposite sides. A box that shows both is wrong.,Dois quadrados com um entre eles numa fileira reta ficam em lados opostos. Uma caixa que mostra os dois está errada.,Dos cuadrados con uno entre ellos en una fila recta acaban en lados opuestos. Una caja que muestra los dos está mal.
+HTP_PB_CORNER,Watch the corner,Olhe o canto,Mira la esquina
+HTP_PB_CORNER_BODY,Three sides that meet at a corner go round it in one order. The right colours turned the other way round are a wrong box.,Três lados que se encontram num canto giram em volta dele numa só ordem. As cores certas na ordem contrária são uma caixa errada.,Tres lados que se juntan en una esquina la rodean en un solo orden. Los colores correctos en el orden contrario son una caja equivocada.
+HTP_PB_STAMPS,Stamps,Carimbos,Sellos
+HTP_PB_STAMPS_BODY,On Insane every side carries an arrow. The right box shows each arrow pointing where the fold turns it.,No Insano todo lado tem uma seta. A caixa certa mostra cada seta apontando para onde a dobra a vira.,En Demencial cada lado lleva una flecha. La caja correcta muestra cada flecha apuntando hacia donde el doblez la gira.
+HTP_PB_HINT,A hint,Uma dica,Una pista
+HTP_PB_HINT_BODY,The bulb strikes off one wrong box.,A lâmpada risca uma caixa errada.,La bombilla tacha una caja equivocada.
+BRAIN_PB_1,"Pick one square as the lid and fold its neighbours down around it, one at a time.","Escolha um quadrado como tampa e dobre os vizinhos em volta dele, um de cada vez.","Elige un cuadrado como tapa y dobla sus vecinos a su alrededor, uno a la vez."
+BRAIN_PB_2,Squares two apart in a straight row are opposite sides: rule out any box that shows both.,Quadrados a dois de distância numa fileira reta são lados opostos: descarte qualquer caixa que mostre os dois.,Los cuadrados a dos de distancia en una fila recta son lados opuestos: descarta cualquier caja que muestre los dos.
+BRAIN_PB_3,Two squares that touch in the net share an edge on the box. Follow one edge at a time.,Dois quadrados que se tocam no molde dividem uma aresta na caixa. Siga uma aresta de cada vez.,Dos cuadrados que se tocan en la plantilla comparten una arista en la caja. Sigue una arista a la vez.
+BRAIN_PB_4,Read the corner round in one direction and check the net goes round the same way.,Leia o canto girando num sentido e confira se o molde gira do mesmo jeito.,Lee la esquina girando en un sentido y comprueba que la plantilla gira igual.
