@@ -19,11 +19,15 @@
   cached until the next mark). A clue kind added must be added to
   `constraint` (the sum it is), `_sayable` (when it is true) and
   `clue_text` (its words), or the board and the deal disagree.
+- **`_find` never decides a baker twice**: a baker in `set` (marked, or
+  fixed by `forced` to test the other verdict) is stepped over. Without
+  the guard the second branch flipped a fixed "didn't" back to "ate" and
+  eaters reached only by combining clues were never proven.
 - **Clues are three sums**: SUM (so many of a set), MORE (more of one set
   than another), ODD (odd or even of a set), a bit a baker (20 bits at
   most; `popcount` reads them by a 1024 table).
 - **The deal is a wavefront** and a stalled round is a retry: 365 days a
-  band in `tests/_probe_pie.gd`, none failed, worst 407 ms (Hard) on the
+  band in `tests/_probe_pie.gd`, none failed, worst 341 ms (Insane) on the
   Mac. The phone deals its own day; a bank (as Picket Sums') is the way out
   if a phone hitches on opening.
 - **A marked card is laid differently from an open one** (small face and

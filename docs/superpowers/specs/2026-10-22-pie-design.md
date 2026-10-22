@@ -71,8 +71,14 @@ board judges every mark with the same function.
 
 `tests/_probe_pie.gd` deals 365 days a band and replays each by the
 wavefront: every day dealt (no failed deal) and every baker proven, means
-3.5 / 16 / 58 / 93 ms and worst 8 / 41 / 407 / 328 ms on the Mac; a move's
-proof at worst 17 ms. The phone deals its own day (no bank).
+3.3 / 15 / 52 / 92 ms and worst 8 / 42 / 305 / 341 ms on the Mac; a move's
+proof at worst 20 ms. The phone deals its own day (no bank).
+
+A search fixes the baker it tests and every baker already marked: none of
+them is decided again inside it (the guard at the top of `_find`'s step).
+Without it a baker fixed to "didn't" was flipped back to "ate" by the
+search's second branch, and an eater proven only by combining clues was
+never proven (found in review before the merge, 2026-10-22).
 
 ## 3. The screen
 
@@ -140,7 +146,7 @@ a mark in order, green proven, yellow the bulb's, red a slip.
 Not yet seen or heard: Hard was never shot (Easy, Medium and Insane were);
 the sounds are unheard, pt/es unread by a speaker (the clues in pt/es were
 never seen on a card), reduce motion unseen, nothing played on a phone. The
-deal's worst (407 ms on the Mac, Hard) may be well over a second on a slow
+deal's worst (341 ms on the Mac, Insane) may be well over a second on a slow
 phone: the first thing to look at if opening a level hitches; a bank like
 Picket Sums' is the way out. How hard Hard and Insane feel (whether their
 days need clues combined, not read one at a time) was never measured.

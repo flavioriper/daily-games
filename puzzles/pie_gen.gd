@@ -184,6 +184,9 @@ static func _find(cons: Array, order: PackedInt32Array, k: int, set: int, ate: i
 	if k >= order.size():
 		return ate
 	var bit := 1 << order[k]
+	# a baker already decided (or fixed by the caller) keeps their verdict
+	if set & bit:
+		return _find(cons, order, k + 1, set, ate)
 	# try the cheaper verdict first: most bakers did not eat
 	var w := _find(cons, order, k + 1, set | bit, ate)
 	if w >= 0:
@@ -387,7 +390,12 @@ static func _choose(rng: RandomNumberGenerator, said: Dictionary, w: Array, clue
 	var n := cols * rows
 	if popcount(heard) >= n:
 		# the last to speak: nobody is left to prove
-		return _pick(rng, said, w, i)
+		var last := _pick(rng, said, w, i)
+		for _t in 8:
+			if not clues.has(last):
+				break
+			last = _pick(rng, said, w, i)
+		return last
 	var best := {}
 	var best_got := 999
 	for _t in 10:
