@@ -360,6 +360,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <button data-tab="knight">Knight &middot; flat</button>
     <button data-tab="hedgehogs">Hedgehogs &middot; flat</button>
     <button data-tab="drumbeat">Drumbeat &middot; one road</button>
+    <button data-tab="woodpecker">Birdsong &middot; woodpecker</button>
     <button data-tab="knots">Untangle &middot; knots</button>
     <button data-tab="valley">Valley &middot; grove</button>
     <button data-tab="nightlight">Nightlight &middot; arcade</button>
@@ -3631,6 +3632,71 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <li><b>The glow.</b> The drum the next note wants lights up as the note nears the ring. Is that the right help on Easy and Medium, and should Hard and Insane go without?</li>
     <li><b>Holds over other notes.</b> A ribbon held on one drum has other drums' berries riding over it. Readable, or should a hold own the road until it ends?</li>
     <li><b>The road's speed.</b> A phone held upright gives the road about 890 across where the path had more down; Hard's sixteenths overlap a little, as the reference's do.</li>
+  </ul>
+</section>
+
+<section class="tab-panel" id="tab-woodpecker">
+  <h2>Birdsong &middot; the woodpecker <span class="pill blue">concept &middot; 2026-10-22</span></h2>
+  <p class="lede">The card that went out on 2026-10-22 (pushed f63827ee) had a songbird singing a tune <b>across four drums</b>, and you played back <b>which drum</b>, in order. The redesign keeps the bird and the Memory skill and changes what you remember: a <b>woodpecker knocks a rhythm on the old tree's trunk</b>, and you knock <b>the same rhythm on one drum</b>. Not which drum any more, only <b>when</b>.</p>
+
+  <div class="hero">
+    <div class="noref">
+      <p><b>The user's reference</b> (2026-10-22): &ldquo;change the bird to a woodpecker, and the minigame can be just a single drum that has to follow the same pattern from the woodpecker on hitting the wood&rdquo;, pointing at another game's tree mini-game. In that one, a singing tree hums a short rhythm inside one four-beat bar while a steady beat keeps going, then the player repeats its timing on one button in the next bar. Each beat landed in time counts; missed ones lower the prize. The hardest level has a quick triple in the middle of the bar. From it we take the call and the answer in two bars, one button, the steady beat, and the quick triplets on Hard. We leave out its prize table, the trumpet and its words.</p>
+      <p><b>Playing it here.</b> Press <b>Start</b> on the phone, or <kbd>Space</kbd>. Listen to the woodpecker, then tap the drum (or <kbd>J</kbd> / <kbd>F</kbd>) in the same rhythm. The two switches under the phone are what this page is for: <b>how the day grows</b> and <b>how your taps are judged</b>. If taps feel early or late in <i>On the beat</i>, nudge the timing.</p>
+      <p style="font-size:13.5px;color:var(--muted)">URL parameters for screenshots: <code>?d=0..3</code>, <code>&amp;shape=grow|fresh</code>, <code>&amp;judge=beat|free</code>, <code>&amp;t=</code> seconds in (played by the page, silent, with <i>Watch it play</i> on), <code>&amp;slip=1</code> (the watcher fumbles round two), <code>&amp;freeze=1</code>, <code>&amp;rm=1</code>, <code>&amp;seed=</code>.</p>
+    </div>
+
+    <div class="demo">
+      <div class="phone" style="background:#fbf3e2">
+        <canvas id="wp" width="390" height="720" style="touch-action:none;cursor:pointer"></canvas>
+      </div>
+      <div class="demo-controls">
+        <button id="wp-level">Easy</button>
+        <button id="wp-shape">Day: one bar that fills up</button>
+        <button id="wp-judge">Judged: between your taps</button>
+        <button id="wp-tick">Beat sound: on</button>
+        <button id="wp-auto">Watch it play</button>
+        <button id="wp-restart">New day</button>
+        <button id="wp-off-">&minus;10 ms</button>
+        <span class="lbl" id="wp-off">timing +0 ms</span>
+        <button id="wp-off+">+10 ms</button>
+        <button id="wp-rm">Reduce motion: off</button>
+      </div>
+      <div id="wp-caption" style="max-width:420px;text-align:center;font-size:14px;color:var(--muted);min-height:44px"></div>
+    </div>
+  </div>
+
+  <div class="note"><b>What this page is.</b> The board in the game's 1080-wide design space, scaled to the phone, full bleed like every world since Eddy: the old tree's trunk at the left with the woodpecker on it, the <b>knock card</b> (the bar: the woodpecker's row of holes over your row of beats), the words, the round, and one drum on the lawn where the thumbs are. Sounds are the house's: the peck is <code>tools/sfx_bank/token</code> (a wooden token, the right thing for beak on bark), the drum is Drumbeat's big drum <code>drum_0</code>, the beat a quiet <code>pebble</code>, a feint the <code>lip</code>. Nothing is built in Godot yet.</p>
+
+  <h3>1. What changes, what stays <span class="pill">proposed</span></h3>
+  <table>
+    <tr><th>What</th><th>Now (the songbird)</th><th>The woodpecker</th></tr>
+    <tr><td class="k">The bird</td><td>A songbird on a branch, singing</td><td>A woodpecker clinging to the trunk, knocking; chips fly off each peck (<code>ui/faces/woodpecker.gd</code> replaces <code>songbird.gd</code>)</td></tr>
+    <tr><td class="k">What you remember</td><td>Which drum, in order</td><td>When: the rhythm inside one bar</td></tr>
+    <tr><td class="k">Drums</td><td>3 on Easy, 4 above</td><td>One, the big drum, at every level; tap anywhere on the lawn</td></tr>
+    <tr><td class="k">On screen</td><td>A row of rings filling with berries</td><td>The knock card: four beats of slots; the woodpecker's holes on top, your knocks under, each landing where in the bar you hit it</td></tr>
+    <tr><td class="k">A slip</td><td>A wrong drum</td><td>A missed knock, a knock where there was none, or one too far off its place; the woodpecker knocks the bar again, nothing lost</td></tr>
+    <tr><td class="k">Unchanged</td><td colspan="2">The id <code>birdsong</code> and saved progress, Memory on the brain report, the bulb (knock it again), no Undo and no Check, the bin, a day of 20 to 30 seconds, the morning garden</td></tr>
+  </table>
+
+  <h3>2. The ladder <span class="pill">proposed</span></h3>
+  <table>
+    <tr><th>Level</th><th>Tempo</th><th>Slots in the bar</th><th>Knocks</th><th>Rounds</th><th>The holes on the card</th></tr>
+    <tr><td class="k">Easy</td><td>88 bpm</td><td>8 (eighths)</td><td>2 &rarr; 5</td><td>4</td><td>shown while it knocks and through your turn</td></tr>
+    <tr><td class="k">Medium</td><td>96 bpm</td><td>8</td><td>3 &rarr; 6</td><td>4</td><td>shown while it knocks, gone on your turn</td></tr>
+    <tr><td class="k">Hard</td><td>104 bpm</td><td>16 (a quick triple or pair allowed)</td><td>3 &rarr; 7</td><td>5</td><td>never: by ear</td></tr>
+    <tr><td class="k">Insane &middot; <b>Feints</b></td><td>100 bpm</td><td>16</td><td>3 &rarr; 7</td><td>5</td><td>never; and the woodpecker draws back twice a bar without striking (a soft scrape, no chips). Only the knocks count</td></tr>
+  </table>
+
+  <h3>3. Calls this page is for <span class="pill rose">to judge</span></h3>
+  <ul>
+    <li><b>How the day grows</b> (switch <i>Day</i>). <i>One bar that fills up</i>: the day has one rhythm and each round the woodpecker adds one knock somewhere in it, so you hold a pattern that keeps growing, as the songbird's tune did (a Memory board). <i>A new bar each round</i>: the reference's way, each round a fresh rhythm, one knock busier than the last; less to hold, more to hear. <b>Recommended: fills up</b>, so the card stays Memory.</li>
+    <li><b>How taps are judged</b> (switch <i>Judged</i>). <i>Between your taps</i>: your first knock starts the bar, and the rest are judged by the gaps after it, so the phone's sound delay cancels out and nobody needs a timing test. <i>On the beat</i>: the reference's way, a steady beat runs on and your bar follows the woodpecker's with no pause, judged against the beat; it feels like music but brings back Drumbeat's per-phone timing (<code>user://drumbeat.cfg</code>, the tap-along). <b>Recommended: between your taps</b>.</li>
+    <li><b>The windows.</b> Good within 75 ms, OK within 150 ms on the beat; 90 / 170 ms between taps (a free bar drifts more). Too easy, too tight?</li>
+    <li><b>Insane's rule.</b> Feints (the reference's own idea: only the hums in the bubble count) or keep the songbird's Whisper (only the new knock is played after round one).</li>
+    <li><b>The beat sound.</b> A quiet pebble on each beat, louder on one. Help, or noise under the knocks? (switch <i>Beat sound</i>.)</li>
+    <li><b>The name.</b> The id stays <code>birdsong</code>; the title could stay <b>Birdsong</b>, or become <b>Knock on Wood</b> or <b>Woodpecker</b>.</li>
+    <li><b>The look.</b> The woodpecker (slate back, cream front, red cap), the trunk at the left with the canopy over the top bar, the drum, the knock card as the woodpecker's bubble.</li>
   </ul>
 </section>
 
@@ -24080,5 +24146,446 @@ tr:last-child td{border-bottom:0}
   if(reduce)setInterval(()=>frame(performance.now()),100);else requestAnimationFrame(frame);
 })();
 </script>
+<script>
+/* ---------- the woodpecker mock: Birdsong with one drum ---------- */
+(function(){
+  const cv=document.getElementById('wp'); if(!cv) return;
+  const ctx=cv.getContext('2d');
+  const DPR=Math.min(2,window.devicePixelRatio||1);
+  const CW=390,CH=720,S=CW/1080,W=1080,H=CH/S;
+  cv.width=CW*DPR; cv.height=CH*DPR;
+  const Q=new URLSearchParams(location.search);
+  const MINE=location.hash==='#woodpecker';
+  const qp=(k,d)=>MINE&&Q.get(k)!=null?Q.get(k):d;
+  let RM=qp('rm','0')==='1';
+  const FREEZE=qp('freeze','0')==='1';
+  const T0=parseFloat(qp('t','0'))||0;
+  const SLIPQ=qp('slip','0')==='1';
+
+  const clamp=v=>v<0?0:v>1?1:v;
+  const backOut=u=>{u=clamp(u);const c=1.70158,c3=c+1;return 1+c3*Math.pow(u-1,3)+c*Math.pow(u-1,2);};
+  const hash=(a,b)=>{let h=(a*374761393+b*668265263)^(a*b*1274126177);h=(h^(h>>>13))*1274126177;return ((h^(h>>>16))>>>0)/4294967296;};
+  const mulberry=a=>()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};
+  const shuffle=(A,r)=>{for(let i=A.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[A[i],A[j]]=[A[j],A[i]];}return A;};
+  const FD='Fredoka, "SF Pro Rounded", -apple-system, "Segoe UI", sans-serif';
+  const FB='Nunito, -apple-system, "Segoe UI", Roboto, sans-serif';
+  const C={text:'#3b3028',dim:'#8a7b6b',cream:'#fffaf0',line:'#e3d3b8',good:'#7cb06b',ok:'#f2c14e',bad:'#d9605a',
+    bark:'#9a6a44',barkHi:'#b98a5e',barkDeep:'#6e4630',hole:'#3e2818',
+    slate:'#3d4256',slateHi:'#565c74',chest:'#f4ead6',cap:'#e0503c',beak:'#5f584e',beakHi:'#8f8676',cheek:'#f4a7a0',
+    drum:'#e8604c',drumDeep:'#c24a3a',drumHi:'#f59a84',skin:'#fff6e6',skinDeep:'#e6d4b2',hoop:'#8a5c3a'};
+
+  // ================= the bands =================
+  const LEVELS=['Easy','Medium','Hard','Insane'];
+  const BPM=[88,96,104,100], GRID=[8,8,16,16], PHRASE=[5,6,7,7], START=[2,3,3,3];
+  const SHOW=[2,1,0,0];   // holes on the card: 2 through your turn, 1 while it knocks, 0 never
+  const FEINTS=[0,0,0,2]; // Insane: draws back twice a bar without striking
+  const WIN={beat:[0.075,0.15],free:[0.09,0.17]};
+
+  let level=Math.max(0,Math.min(3,parseInt(qp('d','0'))||0));
+  let shape=qp('shape','grow')==='fresh'?'fresh':'grow';
+  let judge=qp('judge','free')==='beat'?'beat':'free';
+  let tickOn=true, auto=T0>0, offset=0;
+  let seed=parseInt(qp('seed','0'))||(1+(Date.now()/1000|0)%99991);
+  const beat=()=>60/BPM[level], bar=()=>4*beat(), sd=()=>bar()/GRID[level];
+
+  // ================= the day's knocks =================
+  // A set of n slots in the bar, always the downbeat; on 16 slots one or two
+  // quick knocks on the "and" of an eighth already knocked (a pair or a triple).
+  function setOf(n,r){
+    const g=GRID[level], st=g/8, ev=[];
+    for(let i=1;i<8;i++) ev.push(i*st);
+    shuffle(ev,r);
+    const odd=st>1&&n>=4?(r()<0.5?1:2):0;
+    const K=new Set([0]);
+    for(const s of ev){if(K.size>=n-odd) break; K.add(s);}
+    let tries=0;
+    while(K.size<n&&tries<80){tries++; const s=1+2*Math.floor(r()*(g/2)); if(!K.has(s)&&K.has(s-1)) K.add(s);}
+    for(const s of ev){if(K.size>=n) break; K.add(s);}
+    return [...K];
+  }
+  function feintsFor(K,r){
+    const g=GRID[level], st=g/8, out=[];
+    if(!FEINTS[level]) return out;
+    const c=[]; for(let i=1;i<8;i++){const e=i*st; if(!K.includes(e)&&(st===1||(!K.includes(e-1)&&!K.includes(e+1)))) c.push(e);}
+    shuffle(c,r); return c.slice(0,FEINTS[level]);
+  }
+  let rounds=[];
+  function deal(){
+    const r=mulberry(seed*7+level*131+(shape==='fresh'?17:0));
+    rounds=[];
+    const n=PHRASE[level]-START[level]+1;
+    if(shape==='grow'){
+      // one rhythm a day; the order the knocks come in, a quick knock never
+      // before the eighth it hangs on
+      const full=setOf(PHRASE[level],r), rest=shuffle(full.filter(s=>s!==0),r), ord=[0,...rest];
+      for(let i=0;i<ord.length;i++){const s=ord[i]; if(s%2===1&&GRID[level]===16){const j=ord.indexOf(s-1); if(j>i){ord[i]=s-1; ord[j]=s;}}}
+      for(let k=0;k<n;k++){const K=ord.slice(0,START[level]+k).sort((a,b)=>a-b); rounds.push({knocks:K,feints:feintsFor(K,r)});}
+    } else {
+      for(let k=0;k<n;k++){const K=setOf(START[level]+k,r).sort((a,b)=>a-b); rounds.push({knocks:K,feints:feintsFor(K,r)});}
+    }
+  }
+
+  // ================= the sound =================
+  const SND={peck:['../../tools/sfx_bank/token.mp3',0.9],drum:['../../assets/sfx/drumbeat/drum_0.ogg',0.95],
+    tick:['../../tools/sfx_bank/pebble.mp3',0.22],feint:['../../tools/sfx_bank/lip.mp3',0.45],
+    slip:['../../assets/sfx/birdsong/slip.ogg',0.7],round:['../../assets/sfx/birdsong/round.ogg',0.55],
+    solved:['../../assets/sfx/birdsong/solved.ogg',0.8],hush:['../../assets/sfx/birdsong/hush.ogg',0.5]};
+  const pool={};
+  const tabOn=()=>{const p=document.getElementById('tab-woodpecker'); return p&&p.classList.contains('active');};
+  function warm(){for(const k in SND) if(!pool[k]) pool[k]={i:0,a:[0,1,2,3].map(()=>{const a=new Audio(SND[k][0]); a.preload='auto'; return a;})};}
+  let silent=false;
+  function play(k,v){if(silent||!tabOn()) return; warm(); const p=pool[k], a=p.a[p.i++%4];
+    try{a.currentTime=0; a.volume=Math.min(1,(v==null?1:v)*SND[k][1]); a.play().catch(()=>{});}catch(e){}}
+
+  // ================= the round's clock =================
+  // seg: idle, count (a bar of beats), call (the woodpecker's bar), turn
+  // (yours), rest (a breath between, free judging only), won
+  let seg='idle', segT=0, segEnd=0, ri=0;
+  let pecks=[], expect=[], marks=[], anchor=null, slipped=false, slipT=-9;
+  let slipsRound=0, slips=0, clean=0, history=[], goods=0, oks=0;
+  let words='', sub='', flash='', flashT=-9;
+  let lastPeck=-9, lastFeint=-9, lastDrum=-9, nextBeat=0, beatIx=0, lastBeat=-9, lastBeatIx=0;
+  let chips=[], autoTaps=[], wonT=0, nextAt=0;
+
+  function start(t){
+    warm(); deal(); ri=0; slips=0; clean=0; history=[]; goods=0; oks=0; chips=[];
+    seg='count'; segT=t; segEnd=t+bar(); nextBeat=t; beatIx=0;
+    words='Ready…'; sub='listen to the woodpecker'; marks=[]; pecks=[]; expect=[];
+    slipsRound=0;
+  }
+  function startCall(t){
+    const R=rounds[ri]; seg='call'; segT=t; segEnd=t+bar(); slipped=false; marks=[]; expect=[]; anchor=null;
+    if(judge==='free'){nextBeat=t; beatIx=0;}
+    pecks=R.knocks.map(s=>({t:t+s*sd(),slot:s,feint:false,fired:false}))
+      .concat(R.feints.map(s=>({t:t+s*sd(),slot:s,feint:true,fired:false}))).sort((a,b)=>a.t-b.t);
+    words='Listen…'; sub='';
+  }
+  function startTurn(t){
+    const R=rounds[ri]; seg='turn'; segT=t; segEnd=t+bar(); anchor=judge==='beat'?t:null;
+    expect=R.knocks.map(s=>({slot:s,t:anchor==null?null:anchor+s*sd(),hit:null,missed:false}));
+    words='Your turn!'; sub=judge==='beat'?'on the beat, now':'start when you like';
+    autoTaps=[];
+    if(auto){
+      const base=judge==='beat'?t+offset:t+0.45;
+      const drop=SLIPQ&&ri===1&&slipsRound===0?Math.min(2,R.knocks.length-1):-1;
+      R.knocks.forEach((s,i)=>{if(i!==drop) autoTaps.push(base+s*sd()+(hash(ri*31+i,slipsRound+7)-0.5)*0.04);});
+    }
+  }
+  function slip(t){
+    if(slipped) return; slipped=true; slipT=t; slipsRound++; slips++;
+    words='Once more…'; sub='listen again'; play('slip');
+    if(judge==='free'){seg='rest'; segT=t; nextAt=t+1.0;}
+  }
+  function endTurn(t){
+    if(slipped){
+      if(judge==='beat') startCall(t);
+      return;
+    }
+    history.push(slipsRound); if(slipsRound===0) clean++; slipsRound=0;
+    flash='Lovely!'; flashT=t; play('round');
+    if(ri>=rounds.length-1){seg='won'; wonT=t; words='Well knocked!'; sub=''; play('solved'); return;}
+    ri++;
+    if(judge==='beat') startCall(t);
+    else {seg='rest'; segT=t; nextAt=t+0.8; words='Lovely!'; sub='';}
+  }
+
+  function tap(t){
+    lastDrum=t; play('drum');
+    if(seg==='idle'||seg==='won'){if(seg==='won'&&t-wonT<0.8) return; seed++; start(t); return;}
+    if(seg!=='turn'||slipped){if(seg==='call'){flash='Shh… listen'; flashT=t; play('hush');} return;}
+    const [good,ok]=WIN[judge];
+    const tt=judge==='beat'?t-offset:t;
+    if(anchor==null){anchor=tt-expect[0].slot*sd(); expect.forEach(e=>e.t=anchor+e.slot*sd());}
+    let best=null,bd=1e9;
+    for(const e of expect) if(!e.hit&&!e.missed){const d=Math.abs(tt-e.t); if(d<bd){bd=d; best=e;}}
+    const at=(tt-anchor)/sd();
+    if(best&&bd<=ok){
+      best.hit={dt:tt-best.t,grade:bd<=good?'good':'ok'}; if(bd<=good) goods++; else oks++;
+      marks.push({slot:at,grade:best.hit.grade,t});
+    } else {marks.push({slot:at,grade:'bad',t}); slip(t);}
+  }
+
+  function update(t){
+    // the beat
+    const beatsOn=seg!=='idle'&&seg!=='won'&&(judge==='beat'||seg==='count'||seg==='call');
+    if(!beatsOn) nextBeat=Math.max(nextBeat,t);
+    while(beatsOn&&t>=nextBeat){lastBeat=nextBeat; lastBeatIx=beatIx%4; if(tickOn) play('tick',lastBeatIx===0?1.5:1); beatIx++; nextBeat+=beat();}
+    // the woodpecker
+    for(const p of pecks) if(!p.fired&&t>=p.t){p.fired=true;
+      if(p.feint){lastFeint=p.t; play('feint');}
+      else {lastPeck=p.t; play('peck'); chips.push({t:p.t,k:Math.floor(p.t*1000)});}}
+    chips=chips.filter(c=>t-c.t<0.9);
+    // the watcher's hands
+    while(autoTaps.length&&t>=autoTaps[0]){const at=autoTaps.shift(); tap(at);}
+    if(seg==='count'&&t>=segEnd) startCall(segEnd);
+    else if(seg==='call'&&t>=segEnd) startTurn(segEnd);
+    else if(seg==='turn'){
+      const ok=WIN[judge][1], tt=judge==='beat'?t-offset:t;
+      if(!slipped) for(const e of expect) if(e.t!=null&&!e.hit&&!e.missed&&tt>e.t+ok){e.missed=true; slip(t); break;}
+      if(seg==='turn'){
+        if(judge==='beat'){if(t>=segEnd) endTurn(segEnd);}
+        else if(anchor!=null&&expect.every(e=>e.hit||e.missed)&&tt>expect[expect.length-1].t+ok) endTurn(t);
+        else if(anchor==null&&t>segT+6){startCall(t); words='Listen…'; sub='once more';}
+      }
+    }
+    else if(seg==='rest'&&t>=nextAt) startCall(t);
+  }
+
+  // ================= the clock =================
+  let base=performance.now()/1000, frozenAt=null;
+  const now=()=>frozenAt!=null?frozenAt:performance.now()/1000-base;
+  function reset(){base=performance.now()/1000; frozenAt=null; seg='idle'; words='Tap the drum'; sub='to start the day'; pecks=[]; expect=[]; marks=[]; chips=[]; autoTaps=[]; deal(); labels(); caption();}
+
+  // ================= the world, drawn once =================
+  const L=170,BW=810,PAD=30;
+  const slotX=s=>L+PAD+s*(BW-2*PAD)/GRID[level];
+  const cell=()=>(BW-2*PAD)/GRID[level];
+  const CARD={x:70,y:790,w:940,h:300}, ROW1=842, ROW2=960, RH=86;
+  const DRUM={x:560,y:1500,rx:270,ry:92,h:210};
+  const BIRD={x:404,y:700};
+  let world=null;
+  function rr(c,x,y,w,h,r){c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath();}
+  function buildWorld(){
+    world=document.createElement('canvas'); world.width=cv.width; world.height=cv.height;
+    const c=world.getContext('2d'); c.setTransform(DPR*S,0,0,DPR*S,0,0);
+    let g=c.createLinearGradient(0,0,0,1260); g.addColorStop(0,'#fdf5e3'); g.addColorStop(1,'#d9ebf1');
+    c.fillStyle=g; c.fillRect(0,0,W,H);
+    // a low sun
+    g=c.createRadialGradient(930,330,10,930,330,190); g.addColorStop(0,'rgba(255,236,170,.95)'); g.addColorStop(.35,'rgba(255,228,150,.55)'); g.addColorStop(1,'rgba(255,228,150,0)');
+    c.fillStyle=g; c.fillRect(700,100,460,460);
+    // the hills
+    const hill=(y0,amp,col,ph)=>{c.beginPath(); c.moveTo(0,H); for(let x=0;x<=W;x+=20) c.lineTo(x,y0+Math.sin(x/170+ph)*amp+Math.sin(x/61+ph*2)*amp*0.25); c.lineTo(W,H); c.closePath(); c.fillStyle=col; c.fill();};
+    hill(1215,26,'#bcd99c',0.6); hill(1268,20,'#a8cf86',2.1);
+    g=c.createLinearGradient(0,1290,0,H); g.addColorStop(0,'#9fcb76'); g.addColorStop(1,'#86ba5d');
+    c.fillStyle=g; c.fillRect(0,1300,W,H-1300);
+    c.beginPath(); c.moveTo(0,1310); for(let x=0;x<=W;x+=20) c.lineTo(x,1300+Math.sin(x/90)*8); c.lineTo(W,1340); c.lineTo(0,1340); c.fillStyle='#9fcb76'; c.fill();
+    // daisies, kept off the drum
+    for(let i=0;i<34;i++){const x=40+hash(i,3)*1000, y=1360+hash(i,5)*(H-1420);
+      if(Math.abs(x-DRUM.x)<330&&y>1380&&y<1800) continue; if(x<500&&y<1420) continue;
+      const r=9+hash(i,9)*6; c.fillStyle='#ffffff';
+      for(let k=0;k<5;k++){const a=k*Math.PI*2/5+hash(i,11); c.beginPath(); c.ellipse(x+Math.cos(a)*r*0.9,y+Math.sin(a)*r*0.9,r*0.62,r*0.38,a,0,Math.PI*2); c.fill();}
+      c.fillStyle='#f5c043'; c.beginPath(); c.arc(x,y,r*0.42,0,Math.PI*2); c.fill();}
+    // the old tree's trunk, at the left
+    c.beginPath(); c.moveTo(96,-60);
+    for(let y=-60;y<=1300;y+=40) c.lineTo(100+Math.sin(y/140)*10,y);
+    c.quadraticCurveTo(80,1350,20,1395); c.lineTo(520,1395); c.quadraticCurveTo(420,1360,404,1290);
+    for(let y=1290;y>=-60;y-=40) c.lineTo(400+Math.sin(y/170+1)*8,y);
+    c.closePath();
+    g=c.createLinearGradient(90,0,410,0); g.addColorStop(0,'#7a4f31'); g.addColorStop(.45,C.barkHi); g.addColorStop(1,C.bark);
+    c.fillStyle=g; c.fill();
+    c.strokeStyle='rgba(78,48,28,.35)'; c.lineWidth=5; c.lineCap='round';
+    for(let i=0;i<9;i++){const x0=130+i*30+hash(i,1)*14; c.beginPath(); c.moveTo(x0,-40);
+      for(let y=-40;y<1320;y+=60) c.lineTo(x0+Math.sin(y/(90+i*9)+i)*9,y); c.stroke();}
+    // the knot and the woodpecker's spot
+    c.fillStyle='#5a3a24'; c.beginPath(); c.ellipse(232,430,34,52,0,0,Math.PI*2); c.fill();
+    c.fillStyle='#3e2818'; c.beginPath(); c.ellipse(236,436,16,30,0,0,Math.PI*2); c.fill();
+    c.fillStyle=C.hole; c.beginPath(); c.ellipse(396,490,9,12,0,0,Math.PI*2); c.fill();
+    // the canopy over the top bar
+    const blobs=[[40,40,230,'#6ba845'],[280,-30,240,'#6ba845'],[520,10,190,'#78b351'],[740,-60,180,'#78b351'],[160,210,150,'#78b351'],[380,170,120,'#86bf5f'],[90,120,120,'#86bf5f'],[610,110,110,'#8fc46a']];
+    for(const [x,y,r,col] of blobs){c.fillStyle=col; c.beginPath(); c.arc(x,y,r,0,Math.PI*2); c.fill();}
+    c.fillStyle='rgba(255,255,220,.18)'; for(let i=0;i<14;i++){c.beginPath(); c.arc(60+hash(i,21)*700,20+hash(i,23)*260,10+hash(i,25)*16,0,Math.PI*2); c.fill();}
+  }
+
+  // ================= the woodpecker =================
+  // Faces the trunk (to its left); the hip is where the feet grip the bark.
+  // pose 0 rests, 1 has the beak on the bark; cock tilts the head up.
+  function woodpecker(t,pose,cock){
+    const c=ctx; c.save(); c.translate(BIRD.x,BIRD.y); c.scale(1.22,1.22);
+    const bob=RM?0:Math.sin(t*2.2)*3;
+    // tail, pressed to the bark
+    c.fillStyle='#2f3344'; c.beginPath(); c.moveTo(14,-20); c.lineTo(-4,118); c.lineTo(14,110); c.lineTo(26,124); c.lineTo(46,-6); c.closePath(); c.fill();
+    // body: back slate, chest cream toward the trunk
+    c.save(); c.translate(70,-78+bob*0.5); c.rotate(0.16);
+    c.fillStyle=C.slate; c.beginPath(); c.ellipse(0,0,54,94,0,0,Math.PI*2); c.fill();
+    c.fillStyle=C.chest; c.beginPath(); c.ellipse(-22,6,30,74,0.05,0,Math.PI*2); c.fill();
+    // the wing, white bars on slate
+    c.fillStyle=C.slateHi; c.beginPath(); c.ellipse(22,8,30,70,0.1,0,Math.PI*2); c.fill();
+    c.fillStyle='#f6f1e6'; for(let i=0;i<4;i++){c.beginPath(); c.ellipse(26,-34+i*26,14,5,0.2,0,Math.PI*2); c.fill();}
+    c.restore();
+    // the head
+    const hx=128-30*pose, hy=-176+bob+6*pose;
+    c.save(); c.translate(hx,hy+30); c.rotate(-0.1*pose+cock*0.32); c.translate(0,-30);
+    c.fillStyle=C.slate; c.beginPath(); c.arc(0,0,46,0,Math.PI*2); c.fill();
+    c.fillStyle=C.chest; c.beginPath(); c.ellipse(-12,14,32,26,0,0,Math.PI*2); c.fill();
+    c.fillStyle=C.cap; c.beginPath(); c.ellipse(14,-30,30,20,0.5,0,Math.PI*2); c.fill();
+    // beak
+    c.fillStyle=C.beak; c.beginPath(); c.moveTo(-34,-9); c.lineTo(-96,4); c.lineTo(-34,15); c.closePath(); c.fill();
+    c.fillStyle=C.beakHi; c.beginPath(); c.moveTo(-34,-6); c.lineTo(-96,4); c.lineTo(-34,3); c.closePath(); c.fill();
+    // eye and cheek
+    const blink=!RM&&(t%3.4)<0.12;
+    c.fillStyle='#2a2420';
+    if(blink){c.fillRect(-16,-6,18,4);} else {c.beginPath(); c.arc(-8,-4,8,0,Math.PI*2); c.fill(); c.fillStyle='#fff'; c.beginPath(); c.arc(-5,-7,2.6,0,Math.PI*2); c.fill();}
+    c.fillStyle='rgba(244,167,160,.75)'; c.beginPath(); c.ellipse(-2,18,10,6,0,0,Math.PI*2); c.fill();
+    c.restore();
+    // feet on the bark
+    c.strokeStyle='#6c6457'; c.lineWidth=6; c.lineCap='round';
+    for(const fy of [-44,-14]){c.beginPath(); c.moveTo(28,fy); c.lineTo(2,fy+4); c.moveTo(10,fy+2); c.lineTo(-2,fy+14); c.stroke();}
+    c.restore();
+  }
+  function peckPose(t){
+    let p=0;
+    // toward the next strike (forward in time is known: the bar is written)
+    for(const k of pecks){const d=k.t-t, top=k.feint?0.45:1;
+      if(d>=0&&d<0.07) p=Math.max(p,top*(1-d/0.07));
+      const a=t-k.t; if(k.fired&&a>=0&&a<0.16) p=Math.max(p,top*(1-a/0.16));}
+    return RM?p*0.4:p;
+  }
+
+  // ================= the drum =================
+  function drawDrum(t){
+    const c=ctx, d=DRUM, hit=t-lastDrum, sq=RM?0:(hit<0.18?Math.sin(clamp(hit/0.18)*Math.PI)*0.16:0);
+    const ry=d.ry*(1-sq), top=d.y+sq*20;
+    c.fillStyle='rgba(60,90,30,.22)'; c.beginPath(); c.ellipse(d.x,d.y+d.h+10,d.rx+20,d.ry*0.7,0,0,Math.PI*2); c.fill();
+    let g=c.createLinearGradient(d.x-d.rx,0,d.x+d.rx,0); g.addColorStop(0,C.drumDeep); g.addColorStop(.35,C.drum); g.addColorStop(.6,C.drumHi); g.addColorStop(1,C.drumDeep);
+    c.fillStyle=g; c.beginPath(); c.moveTo(d.x-d.rx,top); c.lineTo(d.x-d.rx,d.y+d.h); c.ellipse(d.x,d.y+d.h,d.rx,d.ry,0,Math.PI,0,true); c.lineTo(d.x+d.rx,top); c.closePath(); c.fill();
+    // the rope
+    c.strokeStyle=C.skin; c.lineWidth=7; c.lineJoin='round'; c.beginPath();
+    for(let i=0;i<=12;i++){const u=i/12, a=Math.PI*(1-u), x=d.x+Math.cos(a)*d.rx*0.97, s=Math.sin(a)*d.ry; c.lineTo(x,(i%2?d.y+d.h-20:top+30)+s);}
+    c.stroke();
+    // hoops and skin
+    c.fillStyle=C.hoop; c.beginPath(); c.ellipse(d.x,top,d.rx+8,ry+8,0,0,Math.PI*2); c.fill();
+    g=c.createRadialGradient(d.x-60,top-20,10,d.x,top,d.rx); g.addColorStop(0,'#fffdf6'); g.addColorStop(1,C.skinDeep);
+    c.fillStyle=g; c.beginPath(); c.ellipse(d.x,top,d.rx,ry,0,0,Math.PI*2); c.fill();
+    c.fillStyle=C.drum; c.beginPath(); c.arc(d.x,top,16,0,Math.PI*2); c.fill();
+    // a beat: a faint ring on the skin; a hit: a ring out from the middle
+    const bt=t-lastBeat, beatsOn=seg!=='idle'&&seg!=='won'&&(judge==='beat'||seg==='count'||seg==='call');
+    if(beatsOn&&bt<0.25&&!RM){c.strokeStyle='rgba(194,74,58,'+(0.35*(1-bt/0.25))+')'; c.lineWidth=lastBeatIx===0?8:5; c.beginPath(); c.ellipse(d.x,top,d.rx*0.75,ry*0.75,0,0,Math.PI*2); c.stroke();}
+    if(hit<0.4){const u=hit/0.4; c.strokeStyle='rgba(255,255,255,'+(0.9*(1-u))+')'; c.lineWidth=10*(1-u)+2; c.beginPath(); c.ellipse(d.x,top,d.rx*(0.2+0.8*u),ry*(0.2+0.8*u),0,0,Math.PI*2); c.stroke();}
+    if(seg==='idle'||seg==='won'||(seg==='turn'&&!slipped&&anchor==null)){
+      const p=RM?0.5:0.5+0.5*Math.sin(t*4); c.strokeStyle='rgba(242,193,78,'+(0.35+0.4*p)+')'; c.lineWidth=10; c.beginPath(); c.ellipse(d.x,top,d.rx+26,ry+26,0,0,Math.PI*2); c.stroke();}
+  }
+
+  // ================= the knock card =================
+  function drawCard(t){
+    const c=ctx, g=GRID[level], cw=cell(), r=Math.min(30,cw*0.4);
+    c.save(); c.shadowColor='rgba(70,50,30,.18)'; c.shadowBlur=24; c.shadowOffsetY=8;
+    rr(c,CARD.x,CARD.y,CARD.w,CARD.h,40); c.fillStyle=C.cream; c.fill(); c.restore();
+    // the tail toward the woodpecker
+    c.fillStyle=C.cream; c.beginPath(); c.moveTo(440,CARD.y+4); c.lineTo(470,CARD.y-66); c.lineTo(530,CARD.y+4); c.closePath(); c.fill();
+    // lanes: bark for its knocks, paper for yours
+    rr(c,L,ROW1,BW,RH,26); c.fillStyle=C.barkHi; c.fill();
+    c.save(); rr(c,L,ROW1,BW,RH,26); c.strokeStyle='rgba(110,70,48,.35)'; c.lineWidth=3; c.stroke(); c.restore();
+    c.strokeStyle='rgba(110,70,48,.25)'; c.lineWidth=3; for(let i=0;i<3;i++){c.beginPath(); c.moveTo(L+20,ROW1+22+i*20); for(let x=L+20;x<L+BW-20;x+=30) c.lineTo(x,ROW1+22+i*20+Math.sin(x/40+i)*3); c.stroke();}
+    rr(c,L,ROW2,BW,RH,26); c.fillStyle='#f4e8d2'; c.fill();
+    // beat lines and numbers
+    for(let k=0;k<4;k++){const x=slotX(k*g/4)-cw/2;
+      if(k>0){c.strokeStyle='rgba(138,123,107,.35)'; c.lineWidth=3; c.beginPath(); c.moveTo(x,ROW1+8); c.lineTo(x,ROW2+RH-8); c.stroke();}
+      c.fillStyle=C.dim; c.font='600 26px '+FD; c.textAlign='center'; c.fillText(String(k+1),slotX(k*g/4),CARD.y+38);}
+    // slot dots
+    for(let s=0;s<g;s++){const x=slotX(s), big=s%(g/4)===0; c.fillStyle='rgba(138,123,107,'+(big?0.45:0.25)+')';
+      c.beginPath(); c.arc(x,ROW2+RH/2,big?6:4,0,Math.PI*2); c.fill();}
+    // icons
+    c.save(); c.translate(118,ROW1+RH/2);
+    c.fillStyle=C.slate; c.beginPath(); c.arc(0,0,24,0,Math.PI*2); c.fill(); c.fillStyle=C.cap; c.beginPath(); c.ellipse(8,-15,15,10,0.5,0,Math.PI*2); c.fill();
+    c.fillStyle=C.beak; c.beginPath(); c.moveTo(-18,-3); c.lineTo(-44,2); c.lineTo(-18,7); c.fill(); c.restore();
+    c.save(); c.translate(118,ROW2+RH/2);
+    c.fillStyle=C.drum; c.fillRect(-24,-4,48,24); c.beginPath(); c.ellipse(0,20,24,8,0,0,Math.PI); c.fill();
+    c.fillStyle=C.skin; c.beginPath(); c.ellipse(0,-4,24,9,0,0,Math.PI*2); c.fill(); c.restore();
+    // the woodpecker's holes
+    const show=SHOW[level];
+    let vis=0;
+    if(seg==='call') vis=1;
+    else if(seg==='turn'||seg==='rest') vis=show===2?1:show===1?clamp(1-(t-segT)/0.4):0;
+    if(seg==='turn'&&slipped) vis=0;
+    if(show===0&&seg!=='rest') vis=0;
+    if(seg==='rest'&&!slipped) vis=show>0?1:0;
+    if(vis>0) for(const p of pecks) if(p.fired&&!p.feint){
+      const a=t-p.t, s=RM?1:backOut(a/0.22); const x=slotX(p.slot), y=ROW1+RH/2;
+      c.globalAlpha=vis; c.fillStyle='#8a5a38'; c.beginPath(); c.ellipse(x,y,r*s,r*0.86*s,0,0,Math.PI*2); c.fill();
+      c.fillStyle=C.hole; c.beginPath(); c.ellipse(x+2,y+3,r*0.66*s,r*0.58*s,0,0,Math.PI*2); c.fill(); c.globalAlpha=1;}
+    // after a slip, where the knocks were: dashed rings on your row
+    if(slipped&&(seg==='turn'||seg==='rest')){c.setLineDash([8,8]); c.strokeStyle=C.bad; c.lineWidth=4;
+      for(const e of expect) if(!e.hit){c.beginPath(); c.arc(slotX(e.slot),ROW2+RH/2,r,0,Math.PI*2); c.stroke();}
+      c.setLineDash([]);}
+    // your knocks
+    for(const m of marks){const x=slotX(Math.max(-0.4,Math.min(g-0.6,m.slot))), y=ROW2+RH/2, a=t-m.t, s=RM?1:backOut(a/0.2);
+      if(m.grade==='bad'){c.strokeStyle=C.bad; c.lineWidth=6; c.beginPath(); c.arc(x,y,r*0.8*s,0,Math.PI*2); c.stroke();
+        c.beginPath(); c.moveTo(x-r*0.4,y-r*0.4); c.lineTo(x+r*0.4,y+r*0.4); c.moveTo(x+r*0.4,y-r*0.4); c.lineTo(x-r*0.4,y+r*0.4); c.stroke(); continue;}
+      c.strokeStyle=m.grade==='good'?C.good:C.ok; c.lineWidth=7; c.beginPath(); c.arc(x,y,(r+8)*s,0,Math.PI*2); c.stroke();
+      c.fillStyle=C.drum; c.beginPath(); c.arc(x,y,r*0.86*s,0,Math.PI*2); c.fill();
+      c.fillStyle=C.skin; c.beginPath(); c.arc(x,y,r*0.34*s,0,Math.PI*2); c.fill();}
+    // the playhead
+    let ph=null;
+    if(seg==='call'||seg==='count') ph=(t-segT)/sd();
+    else if(seg==='turn'&&anchor!=null&&!slipped) ph=((judge==='beat'?t-offset:t)-anchor)/sd();
+    if(ph!=null&&ph>=-0.5&&ph<=g-0.5){const x=slotX(ph); c.strokeStyle=seg==='count'?'rgba(138,123,107,.35)':'rgba(59,48,40,.55)'; c.lineWidth=5; c.lineCap='round';
+      c.beginPath(); c.moveTo(x,(seg==='turn'?ROW2:ROW1)+6); c.lineTo(x,(seg==='turn'?ROW2:ROW1)+RH-6); c.stroke();}
+  }
+
+  function draw(t){
+    if(!world) buildWorld();
+    ctx.setTransform(1,0,0,1,0,0); ctx.drawImage(world,0,0);
+    ctx.setTransform(DPR*S,0,0,DPR*S,0,0);
+    // chips off the bark
+    for(const ch of chips){const a=t-ch.t; if(a<0) continue;
+      for(let i=0;i<6;i++){const vx=180+hash(ch.k,i)*320, vy=-260-hash(i,ch.k)*260, x=404+vx*a, y=488+vy*a+900*a*a;
+        ctx.save(); ctx.translate(x,y); ctx.rotate(a*(6+i)); ctx.globalAlpha=clamp(1-a/0.9);
+        ctx.fillStyle=i%2?C.barkHi:'#d9b48a'; ctx.beginPath(); ctx.moveTo(-9,-5); ctx.lineTo(10,-2); ctx.lineTo(-2,7); ctx.closePath(); ctx.fill(); ctx.restore();}}
+    ctx.globalAlpha=1;
+    const cock=clamp(1-(t-slipT)/0.9)*(slipped?1:0);
+    woodpecker(t,peckPose(t),RM?0:cock);
+    drawCard(t);
+    // the top bar's plates over the canopy
+    const plate=(x,y,w,h)=>{ctx.save(); ctx.shadowColor='rgba(60,40,20,.2)'; ctx.shadowBlur=14; ctx.shadowOffsetY=4; rr(ctx,x,y,w,h,h/2); ctx.fillStyle='#fffdf8'; ctx.fill(); ctx.restore();};
+    plate(40,70,104,104); ctx.strokeStyle=C.text; ctx.lineWidth=8; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.beginPath(); ctx.moveTo(104,98); ctx.lineTo(80,122); ctx.lineTo(104,146); ctx.stroke();
+    plate(330,76,420,92); ctx.fillStyle=C.text; ctx.font='600 50px '+FD; ctx.textAlign='center'; ctx.fillText('Birdsong',540,138);
+    plate(936,70,104,104); ctx.fillStyle=C.ok; ctx.beginPath(); ctx.arc(988,114,22,0,Math.PI*2); ctx.fill(); ctx.fillStyle='#d49a2c'; ctx.fillRect(978,136,20,12);
+    // the words beside the woodpecker
+    const fl=t-flashT<0.9?flash:'';
+    ctx.textAlign='center'; ctx.fillStyle=C.text; ctx.font='600 64px '+FD;
+    ctx.fillText(fl||words,760,600);
+    if(!fl&&sub){ctx.fillStyle=C.dim; ctx.font='700 32px '+FB; ctx.fillText(sub,760,650);}
+    // round and beat dots
+    if(rounds.length){ctx.fillStyle=C.dim; ctx.font='700 34px '+FB; ctx.fillText('Round '+(Math.min(ri,rounds.length-1)+1)+' of '+rounds.length,540,1150);}
+    const beatsOn=seg!=='idle'&&seg!=='won'&&(judge==='beat'||seg==='count'||seg==='call');
+    for(let k=0;k<4;k++){const on=beatsOn&&k===lastBeatIx&&t-lastBeat<beat(); ctx.fillStyle=on?C.drum:'rgba(138,123,107,.3)';
+      ctx.beginPath(); ctx.arc(480+k*40,1200,on&&!RM?11:8,0,Math.PI*2); ctx.fill();}
+    drawDrum(t);
+    if(seg==='won'){ctx.fillStyle=C.dim; ctx.font='700 34px '+FB; ctx.fillText(clean+' of '+rounds.length+' rounds clean · tap for a new day',540,1860);}
+  }
+
+  // ================= the fingers =================
+  const pt=e=>{const r=cv.getBoundingClientRect(); return [(e.clientX-r.left)*(CW/r.width)/S,(e.clientY-r.top)*(CH/r.height)/S];};
+  cv.addEventListener('pointerdown',e=>{e.preventDefault(); const p=pt(e); if(p[1]<1250) return; if(frozenAt!=null) return; tap(now());});
+  window.addEventListener('keydown',e=>{if(!tabOn()||e.repeat||e.metaKey||e.ctrlKey) return; const k=e.key.toLowerCase();
+    if(k===' '||k==='j'||k==='f'){e.preventDefault(); if(frozenAt==null) tap(now());}});
+
+  // ================= the page's controls =================
+  const el=id=>document.getElementById(id);
+  function caption(){const e=el('wp-caption'); if(!e) return;
+    e.textContent=LEVELS[level]+' · '+BPM[level]+' bpm · '+GRID[level]+' slots · '+rounds.length+' rounds ('+rounds.map(r=>r.knocks.length).join(' ')+' knocks) · Good '+goods+', OK '+oks+' · slips '+slips+' · clean '+clean;}
+  function labels(){
+    if(el('wp-level')) el('wp-level').textContent=LEVELS[level]+(level===3?' · Feints':'');
+    if(el('wp-shape')) el('wp-shape').textContent='Day: '+(shape==='grow'?'one bar that fills up':'a new bar each round');
+    if(el('wp-judge')) el('wp-judge').textContent='Judged: '+(judge==='free'?'between your taps':'on the beat');
+    if(el('wp-tick')) el('wp-tick').textContent='Beat sound: '+(tickOn?'on':'off');
+    if(el('wp-auto')){el('wp-auto').textContent=auto?'Watching it play':'Watch it play'; el('wp-auto').classList.toggle('on',auto);}
+    if(el('wp-off')) el('wp-off').textContent='timing '+(offset>=0?'+':'')+Math.round(offset*1000)+' ms';
+    if(el('wp-rm')){el('wp-rm').textContent='Reduce motion: '+(RM?'on':'off'); el('wp-rm').classList.toggle('on',RM);}}
+  const on=(id,f)=>{const b=el(id); if(b) b.addEventListener('click',()=>{f(); labels(); caption();});};
+  on('wp-level',()=>{level=(level+1)%4; reset();});
+  on('wp-shape',()=>{shape=shape==='grow'?'fresh':'grow'; reset();});
+  on('wp-judge',()=>{judge=judge==='free'?'beat':'free'; reset();});
+  on('wp-tick',()=>{tickOn=!tickOn;});
+  on('wp-auto',()=>{auto=!auto; if(auto&&seg==='idle') start(now());});
+  on('wp-restart',()=>{seed++; reset(); start(now());});
+  on('wp-off-',()=>{offset-=0.01;});
+  on('wp-off+',()=>{offset+=0.01;});
+  on('wp-rm',()=>{RM=!RM;});
+
+  // ================= go =================
+  reset();
+  if(T0>0){silent=true; start(0); for(let t=0;t<=T0;t+=1/240) update(t); silent=false;
+    base=performance.now()/1000-T0; if(FREEZE) frozenAt=T0;}
+  labels(); caption();
+  let lastCap=0;
+  (function loop(){
+    if(tabOn()){const t=now(); if(frozenAt==null) update(t); draw(t);
+      if(t-lastCap>0.25){lastCap=t; caption();}}
+    requestAnimationFrame(loop);
+  })();
+})();
+</script>
+
 </body>
 </html>
