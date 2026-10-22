@@ -95,6 +95,11 @@ const ENTER_TRAY := 0.2
 ## not after it. WIN_AFTER is how long a board with no win_delay() of its own
 ## is left frozen (_freeze_board) before it is laid out at its new size.
 const WIN_AFTER := 0.8
+## The win's panels (the art, the brain report, the stats and buttons) over
+## everything a board lifts with z_index -- its signs, stamps, Fx and win
+## party, nested up to 5 deep (Binairo's stamp faces), drew over the report
+## at 0 -- and still under the sheets and dialogs at OVER_BOARD.
+const OVER_WIN := preload("res://ui/hud/sheet.gd").OVER_BOARD - 1
 const SLOT_TIME := 0.45
 const CHROME_OUT := 0.25
 const ART_DELAY := 0.2
@@ -302,6 +307,7 @@ func _build_chrome(root: VBoxContainer) -> void:
 	well_done = WellDone.new()
 	well_done.name = "WellDone"
 	well_done.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	well_done.z_index = OVER_WIN
 	_top_slot.add_child(well_done)
 
 	# --- the board card ---
@@ -346,6 +352,7 @@ func _build_chrome(root: VBoxContainer) -> void:
 		brain_report = BrainReport.new()
 		brain_report.name = "BrainReport"
 		brain_report.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		brain_report.z_index = OVER_WIN
 		middle.add_child(brain_report)
 		_top_win = WellDone.COMPACT_HEIGHT
 
@@ -425,6 +432,7 @@ func _build_chrome(root: VBoxContainer) -> void:
 	_win_stack = _stack(_bottom_slot)
 	_win_stack.name = "WinStack"
 	_win_stack.visible = false
+	_win_stack.z_index = OVER_WIN
 	stats_card = FlatDayCard.new()
 	stats_card.name = "StatsCard"
 	_win_stack.add_child(stats_card)
