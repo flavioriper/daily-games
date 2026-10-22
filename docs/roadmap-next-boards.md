@@ -61,7 +61,7 @@ Connections, Spelling Bee, Pips, Pinpoint, Clues by Sam.
       three word lists plus a rude-word filter. Quality: share found.
 - [ ] **9. Five Clues** (LinkedIn Pinpoint). Words. Acorn pipeline, Pearl
       Dive's typed answers. Quality: clues needed 1-5.
-- [ ] **10. Who Ate the Pie?** (Clues by Sam). Logic. No-guess deduction over
+- [x] **10. Who Ate the Pie?** (Clues by Sam). Built 2026-10-22, `docs/agents/boards/pie.md`; bakers 9/12/16/20, Insane is Empty Dish (nobody says how many ate), dealt on the phone. Logic. No-guess deduction over
       eight bakers; faces from `ui/faces/`. Generator hard (solver proves
       every mark), clue templates x3 languages. Quality: wrong marks.
 - [ ] **11. Hosepipes** (Flow Free). Space/Planning. Reuses Fairy Lights and

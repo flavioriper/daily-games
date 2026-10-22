@@ -227,6 +227,37 @@ const PUZZLES := [
 		],
 	},
 	{
+		"id": "pie",
+		"skill": "logic",
+		"kind": "puzzle",
+		"title": "Who Ate the Pie?",
+		"blurb": "PI_BLURB",
+		"short": "PI_SHORT",
+		"motto": "PI_MOTTO",
+		"footer": "Pick · Read · Prove",
+		# Bakers in a grid on the bake-sale table at the village fête, some
+		# of whom ate the pie: mark each one, and each says one true thing;
+		# a mark stands only when the clues prove it (puzzles/pie2d.gd). The
+		# table fills the screen and the cards and the verdict buttons are
+		# inside the board, so no tray and no actions row. Only the bulb: a
+		# proven mark has nothing to undo, and nothing is wrong for a Check.
+		"script": "res://puzzles/pie2d.gd",
+		"card": "res://ui/menu/cards/pie.gd",
+		"shell": "flat",
+		"tray": "none",
+		"bleed": true,
+		"level_card": true,
+		"actions": false,
+		"difficulties": [0, 1, 2, 3],
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "PI_LVL_0"},
+			{"difficulty": 1, "name": "Medium", "line": "PI_LVL_1"},
+			{"difficulty": 2, "name": "Hard", "line": "PI_LVL_2"},
+			{"difficulty": 3, "name": "Insane", "line": "PI_LVL_3"},
+		],
+	},
+	{
 		"id": "rings",
 		"skill": "planning",
 		"kind": "puzzle",

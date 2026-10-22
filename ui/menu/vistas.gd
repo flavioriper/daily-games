@@ -70,6 +70,8 @@ const CARDS := {
 	"teacups": ["meadow", 1.6, Vector2(0.45, 0.60)],
 	# Market Sums' stall in the meadow's village, by its cottages.
 	"market": ["meadow", 1.6, Vector2(0.70, 0.55)],
+	# Who Ate the Pie?'s fête in the meadow's village green, by its hedges.
+	"pie": ["meadow", 1.6, Vector2(0.35, 0.50)],
 	# Trestle's river gap under a clear sky.
 	"trestle": ["sky", 1.5, Vector2(0.50, 0.55)],
 	# Mini Golf's course is laid out on the meadow, under its cottages.

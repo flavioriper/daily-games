@@ -172,6 +172,9 @@ func _note(id: String) -> String:
 		"market": return "%s -> %d, par %d, %d steps, every=%s, hints=%d, caps %s, board fit=%s, hud=%s" % [
 			str(_puzzle._st.numbers), _puzzle._st.target, _puzzle._st.par, _puzzle._st.steps, _puzzle._st.every,
 			_puzzle.hints_used, _puzzle.capabilities(), _fit_ok, _hud_ok]
+		"pie": return "%dx%d, %d ate, dish %d, %d marks, %d slips, hints=%d, caps %s, board fit=%s, hud=%s" % [
+			_puzzle._st.cols, _puzzle._st.rows, _puzzle._st.eaters(), _puzzle._st.dish, _puzzle.moves, _puzzle._st.slips,
+			_puzzle.hints_used, _puzzle.capabilities(), _fit_ok, _hud_ok]
 		"teacups": return "%dx%d, %d pairs, %d lifts, %d misses, %d lapses, hints=%d, caps %s, board fit=%s, hud=%s" % [
 			_puzzle._st.cols(), _puzzle._st.rows(), _puzzle._st.pairs(), _puzzle._st.lifts, _puzzle._st.misses,
 			_puzzle._st.lapses, _puzzle.hints_used, _puzzle.capabilities(), _fit_ok, _hud_ok]
@@ -254,6 +257,7 @@ func _solve(id: String) -> void:
 		"patio": _solve_patio()
 		"teacups": _solve_teacups()
 		"market": _solve_market()
+		"pie": _solve_pie()
 		"trestle": _solve_trestle()
 		"minigolf": _solve_minigolf()
 		"horse": _solve_horse()
@@ -1502,6 +1506,46 @@ func _solve_market() -> void:
 			_hud_ok = false
 			return
 		play.call(h[0], h[1], h[2])
+
+## Who Ate the Pie?: a mark nothing proves yet (refused, free), a mark the
+## clues prove wrong (a slip), the bulb, then every proven baker picked and
+## marked by real touches on the card and the verdict button.
+func _solve_pie() -> void:
+	var st = _puzzle._st
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for i in st.count():
+		if not slot.has_point(_puzzle.card_to_local(i)):
+			_fit_ok = false
+	var mark := func(i: int, eat: bool) -> void:
+		if _puzzle.picked() != i:
+			_tap_local(_puzzle.card_to_local(i))
+		_tap_local(_puzzle.button_to_local(eat))
+		for k in 10:
+			_puzzle._process(0.05)
+	# a baker nothing proves yet: turned away, nothing counted
+	_hud_ok = true
+	for i in st.count():
+		if not st.is_marked(i) and not st.proven(i):
+			mark.call(i, false)
+			_hud_ok = not st.is_marked(i) and st.slips == 0 and _puzzle._say == "PI_SAY_UNPROVEN"
+			break
+	# a proven baker marked the wrong way: a slip
+	var p: int = st.hint_baker(-1)
+	mark.call(p, not st.did_eat(p))
+	_hud_ok = _hud_ok and st.slips == 1 and not st.is_marked(p) and _puzzle._say == "PI_SAY_WRONG"
+	_press(_host.top_bar.hint_button)
+	for k in 10:
+		_puzzle._process(0.05)
+	_hud_ok = _hud_ok and _puzzle.hints_used == 1
+	for step in 30:
+		if _puzzle.is_done():
+			return
+		var i: int = st.hint_baker(-1)
+		if i < 0:
+			_hud_ok = false
+			return
+		mark.call(i, st.did_eat(i))
 
 ## Teacups: two misses on purpose (on Insane the second sets a waltz going,
 ## stepped through on the board's own clock), a cup lifted and the bulb

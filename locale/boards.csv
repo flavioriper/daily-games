@@ -3201,3 +3201,86 @@ BRAIN_MK_1,"Work back from the order: which two numbers near it could make it, a
 BRAIN_MK_2,"Times gets you close fast; add or take away the last little bit.","A multiplicação chega perto rápido; some ou tire o restinho no fim.","Multiplicar te acerca rápido; suma o resta el último poquito."
 BRAIN_MK_3,"Look for a crate that divides the order evenly: the other half is your next goal.","Procure um caixote que divida o pedido certinho: a outra metade é sua próxima meta.","Busca una caja que divida el pedido exacto: la otra parte es tu siguiente meta."
 BRAIN_MK_4,Try a step in your head before you tap: steps you undo still count.,Teste o passo de cabeça antes de tocar: passos desfeitos contam.,Prueba el paso de cabeza antes de tocar: los pasos deshechos cuentan.
+PI_BLURB,"Bakers at the village fête, and somebody ate the pie. Every baker you clear says one true thing. Prove who did it, one baker at a time.","Confeiteiros na festa da vila, e alguém comeu a torta. Cada confeiteiro que você marca diz uma verdade. Prove quem foi, um de cada vez.","Pasteleros en la feria del pueblo, y alguien se comió el pastel. Cada pastelero que marcas dice una verdad. Demuestra quién fue, uno a uno."
+PI_SHORT,"Who ate the pie?
+Prove it, baker by baker.","Quem comeu a torta?
+Prove, um por um.","¿Quién se comió el pastel?
+Demuéstralo, uno a uno."
+PI_MOTTO,"No guessing, only proof","Sem chute, só prova","Sin adivinar, solo pruebas"
+PI_LVL_0,Nine bakers,Nove confeiteiros,Nueve pasteleros
+PI_LVL_1,Twelve bakers,Doze confeiteiros,Doce pasteleros
+PI_LVL_2,Sixteen bakers,Dezesseis confeiteiros,Dieciséis pasteleros
+PI_LVL_3,"Empty Dish: twenty, uncounted","Prato vazio: vinte, sem contagem","Plato vacío: veinte, sin contar"
+PI_RULES,"%d bakers, and some of them ate the pie. Tap a baker and say whether they ate it. Every baker you mark says one true thing about the others.","%d confeiteiros, e alguns comeram a torta. Toque num confeiteiro e diga se ele comeu. Cada um que você marca diz uma verdade sobre os outros.","%d pasteleros, y algunos se comieron el pastel. Toca un pastelero y di si lo comió. Cada uno que marcas dice una verdad sobre los demás."
+PI_RULES_PROOF,"A mark only stands when the clues showing prove it; one they don't prove yet is turned away for free. A mark the clues prove wrong is a slip, and slips lower your score. Neighbours are the eight around a baker.","Uma marca só vale quando as pistas à vista provam; uma que ainda não provam é recusada sem custo. Uma marca que as pistas provam errada é um deslize, e deslizes baixam sua nota. Vizinhos são os oito em volta.","Una marca solo vale cuando las pistas a la vista la prueban; una que aún no prueban se rechaza sin coste. Una marca que las pistas prueban errónea es un desliz, y los deslices bajan tu puntuación. Vecinos son los ocho de alrededor."
+PI_RULES_DISH,The dish says how many slices are gone: that is how many ate.,O prato mostra quantas fatias sumiram: é quantos comeram.,El plato muestra cuántas porciones faltan: son cuántos comieron.
+PI_RULES_EMPTY,Empty Dish: nobody says how many ate. The clues are all you have.,Prato vazio: ninguém diz quantos comeram. Só as pistas contam.,Plato vacío: nadie dice cuántos comieron. Solo cuentan las pistas.
+PI_ASK,Did %s eat the pie?,%s comeu a torta?,¿%s se comió el pastel?
+PI_ATE,Ate pie,Comeu,Comió
+PI_NOT,Didn't,Não comeu,No comió
+PI_PICK,Tap a baker to mark them.,Toque num confeiteiro para marcar.,Toca un pastelero para marcarlo.
+PI_FOUND,%d of %d,%d de %d,%d de %d
+PI_FOUND_Q,%d of ?,%d de ?,%d de ?
+PI_SLIPS_ONE,%d slip,%d deslize,%d desliz
+PI_SLIPS_N,%d slips,%d deslizes,%d deslices
+PI_SAY_UNPROVEN,The clues don't prove that yet.,As pistas ainda não provam isso.,Las pistas aún no lo prueban.
+PI_SAY_WRONG,The clues say otherwise: a slip.,As pistas dizem o contrário: um deslize.,Las pistas dicen lo contrario: un desliz.
+PI_SAY_NONE,Nobody has spoken yet.,Ninguém falou ainda.,Nadie ha hablado aún.
+PI_WIN,"Every baker proven, %d of them with crumbs.","Todos provados, %d com farelos.","Todos probados, %d con migas."
+PI_WIN_CLEAN,Not one slip.,Nenhum deslize.,Ni un desliz.
+PI_WIN_SLIPS_ONE,%d slip on the way.,%d deslize no caminho.,%d desliz por el camino.
+PI_WIN_SLIPS_N,%d slips on the way.,%d deslizes no caminho.,%d deslices por el camino.
+PI_NB_ME_0,None of my neighbours ate pie.,Nenhum dos meus vizinhos comeu torta.,Ninguno de mis vecinos comió pastel.
+PI_NB_ME_ONE,1 of my neighbours ate pie.,1 dos meus vizinhos comeu torta.,1 de mis vecinos comió pastel.
+PI_NB_ME_N,%d of my neighbours ate pie.,%d dos meus vizinhos comeram torta.,%d de mis vecinos comieron pastel.
+PI_NB_0,None of %s's neighbours ate pie.,Nenhum vizinho de %s comeu torta.,Ningún vecino de %s comió pastel.
+PI_NB_ONE,1 of %s's neighbours ate pie.,1 vizinho de %s comeu torta.,1 vecino de %s comió pastel.
+PI_NB_N,%d of %s's neighbours ate pie.,%d vizinhos de %s comeram torta.,%d vecinos de %s comieron pastel.
+PI_ROW_0,Nobody in row %d ate pie.,Ninguém na linha %d comeu torta.,Nadie en la fila %d comió pastel.
+PI_ROW_ONE,1 baker in row %d ate pie.,1 confeiteiro na linha %d comeu torta.,1 pastelero en la fila %d comió pastel.
+PI_ROW_N,%d bakers in row %d ate pie.,%d confeiteiros na linha %d comeram torta.,%d pasteleros en la fila %d comieron pastel.
+PI_COL_0,Nobody in column %s ate pie.,Ninguém na coluna %s comeu torta.,Nadie en la columna %s comió pastel.
+PI_COL_ONE,1 baker in column %s ate pie.,1 confeiteiro na coluna %s comeu torta.,1 pastelero en la columna %s comió pastel.
+PI_COL_N,%d bakers in column %s ate pie.,%d confeiteiros na coluna %s comeram torta.,%d pasteleros en la columna %s comieron pastel.
+PI_ABOVE,above %s,acima de %s,encima de %s
+PI_BELOW,below %s,abaixo de %s,debajo de %s
+PI_LEFT,to the left of %s,à esquerda de %s,a la izquierda de %s
+PI_RIGHT,to the right of %s,à direita de %s,a la derecha de %s
+PI_ABOVE_ME,above me,acima de mim,encima de mí
+PI_BELOW_ME,below me,abaixo de mim,debajo de mí
+PI_LEFT_ME,to my left,à minha esquerda,a mi izquierda
+PI_RIGHT_ME,to my right,à minha direita,a mi derecha
+PI_DIR_0,Nobody %s ate pie.,Ninguém %s comeu torta.,Nadie %s comió pastel.
+PI_DIR_ONE,1 baker %s ate pie.,1 confeiteiro %s comeu torta.,1 pastelero %s comió pastel.
+PI_DIR_N,%d bakers %s ate pie.,%d confeiteiros %s comeram torta.,%d pasteleros %s comieron pastel.
+PI_EDGE_0,Nobody on the edge ate pie.,Ninguém na borda comeu torta.,Nadie en el borde comió pastel.
+PI_EDGE_ONE,1 baker on the edge ate pie.,1 confeiteiro na borda comeu torta.,1 pastelero en el borde comió pastel.
+PI_EDGE_N,%d bakers on the edge ate pie.,%d confeiteiros na borda comeram torta.,%d pasteleros en el borde comieron pastel.
+PI_CORNER_0,Nobody in the four corners ate pie.,Ninguém nos quatro cantos comeu torta.,Nadie en las cuatro esquinas comió pastel.
+PI_CORNER_ONE,1 baker in the four corners ate pie.,1 confeiteiro nos quatro cantos comeu torta.,1 pastelero en las cuatro esquinas comió pastel.
+PI_CORNER_N,%d bakers in the four corners ate pie.,%d confeiteiros nos quatro cantos comeram torta.,%d pasteleros en las cuatro esquinas comieron pastel.
+PI_PAIR_0,Neither %s nor %s ate pie.,Nem %s nem %s comeram torta.,Ni %s ni %s comieron pastel.
+PI_PAIR_ONE,Only one of %s and %s ate pie.,Só um entre %s e %s comeu torta.,Solo uno de %s y %s comió pastel.
+PI_PAIR_TWO,%s and %s both ate pie.,%s e %s comeram torta.,%s y %s comieron pastel.
+PI_ONE_ATE,%s ate pie.,%s comeu torta.,%s comió pastel.
+PI_ONE_NOT,%s didn't eat pie.,%s não comeu torta.,%s no comió pastel.
+PI_MORE_ROW,More bakers ate pie in row %d than in row %d.,Mais confeiteiros comeram torta na linha %d do que na linha %d.,Más pasteleros comieron pastel en la fila %d que en la fila %d.
+PI_MORE_COL,More bakers ate pie in column %s than in column %s.,Mais confeiteiros comeram torta na coluna %s do que na coluna %s.,Más pasteleros comieron pastel en la columna %s que en la columna %s.
+PI_ODD_ROW,An odd number of bakers in row %d ate pie.,Um número ímpar de confeiteiros na linha %d comeu torta.,Un número impar de pasteleros en la fila %d comió pastel.
+PI_EVEN_ROW,An even number of bakers in row %d ate pie.,Um número par de confeiteiros na linha %d comeu torta.,Un número par de pasteleros en la fila %d comió pastel.
+PI_ODD_COL,An odd number of bakers in column %s ate pie.,Um número ímpar de confeiteiros na coluna %s comeu torta.,Un número impar de pasteleros en la columna %s comió pastel.
+PI_EVEN_COL,An even number of bakers in column %s ate pie.,Um número par de confeiteiros na coluna %s comeu torta.,Un número par de pasteleros en la columna %s comió pastel.
+HTP_PI_MARK,Mark a baker,Marque um confeiteiro,Marca un pastelero
+HTP_PI_MARK_BODY,"Tap a baker, then say whether they ate pie. A baker you mark says one true thing about the others.",Toque num confeiteiro e diga se ele comeu torta. Quem você marca diz uma verdade sobre os outros.,Toca un pastelero y di si comió pastel. Quien marcas dice una verdad sobre los demás.
+HTP_PI_CLUES,Read the clues,Leia as pistas,Lee las pistas
+HTP_PI_CLUES_BODY,"Tap a marked baker to read their clue; the bakers it speaks of are ringed. Neighbours are the eight around, and above or below means anywhere in the same column.","Toque num confeiteiro marcado para ler a pista; os confeiteiros de quem ela fala ganham um anel. Vizinhos são os oito em volta, e acima ou abaixo é em qualquer lugar da mesma coluna.","Toca un pastelero marcado para leer su pista; los pasteleros de los que habla se marcan con un aro. Vecinos son los ocho de alrededor, y encima o debajo es en cualquier lugar de la misma columna."
+HTP_PI_PROOF,Only proof,Só com prova,Solo con pruebas
+HTP_PI_PROOF_BODY,"A mark the clues don't prove yet is turned away, free. A mark they prove wrong is a slip, and slips lower your score.","Uma marca que as pistas ainda não provam é recusada, sem custo. Uma que elas provam errada é um deslize, e deslizes baixam sua nota.","Una marca que las pistas aún no prueban se rechaza, gratis. Una que prueban errónea es un desliz, y los deslices bajan tu puntuación."
+HTP_PI_DISH,The dish,O prato,El plato
+HTP_PI_DISH_BODY,The dish shows a slice for every baker who ate. On Insane the dish is empty: nobody says how many.,O prato mostra uma fatia para cada um que comeu. No Insano o prato está vazio: ninguém diz quantos.,El plato muestra una porción por cada uno que comió. En Demencial el plato está vacío: nadie dice cuántos.
+HTP_PI_HINT,A proof,Uma prova,Una prueba
+HTP_PI_HINT_BODY,"The bulb marks one baker the clues already prove, so you can read why.","A lâmpada marca um confeiteiro que as pistas já provam, para você ver por quê.","La bombilla marca un pastelero que las pistas ya prueban, para que veas por qué."
+BRAIN_PI_1,Start from a zero: 'nobody' clues clear a whole group at once.,Comece por um zero: pistas de 'ninguém' liberam um grupo inteiro de uma vez.,Empieza por un cero: las pistas de 'nadie' despejan todo un grupo a la vez.
+BRAIN_PI_2,"When a count matches the bakers left in its group, they all go the same way.","Quando um número bate com os que restam no grupo, todos vão para o mesmo lado.","Cuando un número coincide con los que quedan en su grupo, todos van hacia el mismo lado."
+BRAIN_PI_3,Lay two clues over each other: where their groups overlap is often the answer.,Junte duas pistas: onde os grupos se cruzam costuma estar a resposta.,Junta dos pistas: donde sus grupos se cruzan suele estar la respuesta.
+BRAIN_PI_4,Unsure? Leave that baker and read a clue you haven't used yet.,Na dúvida? Deixe esse confeiteiro e leia uma pista que você ainda não usou.,¿Dudas? Deja ese pastelero y lee una pista que aún no usaste.
