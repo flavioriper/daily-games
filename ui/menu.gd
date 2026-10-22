@@ -139,6 +139,8 @@ const ENTER_BAR := 0.05
 const ENTER_FADE := 0.3
 ## How long a line about an unbuilt thing stays up.
 const TOAST_TIME := 2.6
+## The offline note is a longer read than a tap's line, so it stays longer.
+const OFFLINE_TIME := 6.0
 const TOAST_FADE := 0.25
 ## Where the line sits: this far above the screen's bottom, and this tall.
 ## Over the pager's seam since the bar left the foot of the screen
@@ -328,6 +330,11 @@ var _swipe_from := Vector2.ZERO
 var _swiped := false
 var _toast: Label
 var _toast_tw: Tween
+## Counts lines said, so an earlier line's timer never takes a later one down.
+var _toast_n := 0
+## world/main.gd could not reach the server this launch, and the list has not
+## said so yet (`note_offline`).
+var _offline_due := false
 ## The pager strip: prev, dots, next, between the grid and the bar.
 var _pager: Control
 var _pill: PagerPill
@@ -603,6 +610,9 @@ func _build_list() -> void:
 	# or the toast drifts below the bar it is meant to float over.
 	_toast.offset_top = -TOAST_OVER - TOAST_H - insets.y
 	_toast.offset_bottom = -TOAST_OVER - insets.y
+	# A two-line line (the offline note) is taller than TOAST_H: it grows up
+	# over the grid, never down off the screen.
+	_toast.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	_list_root.add_child(_toast)
 
 	# Built last: _set_pager (called from _build_page) reaches into _pager,
@@ -1254,6 +1264,7 @@ func _show_list(tab := "home") -> void:
 	_show_tab(tab)
 	_enter()
 	_queue_warm(0.9)
+	_tell_offline()
 	# The week's gift, once a day, by itself, once the menu has risen.
 	if tab == "home" and Wallet.calendar_open():
 		get_tree().create_timer(0.9).timeout.connect(func() -> void:
@@ -1303,15 +1314,33 @@ func _enter_pager() -> void:
 	_pager_tw.tween_property(_pager, "modulate:a", 1.0, ENTER_FADE)
 
 ## One line under the grid, for a tap on something that is only drawn.
-func _say(text: String) -> void:
+func _say(text: String, hold := TOAST_TIME) -> void:
 	Motion.stop(_toast_tw)
 	_toast.text = text
 	_toast_tw = Motion.appear(_toast, _toast.modulate.a, 1.0, TOAST_FADE, 0.0)
-	var hide := get_tree().create_timer(TOAST_TIME)
+	_toast_n += 1
+	var n := _toast_n
+	var hide := get_tree().create_timer(hold)
 	hide.timeout.connect(func() -> void:
-		if is_instance_valid(_toast):
+		if is_instance_valid(_toast) and n == _toast_n:
 			Motion.stop(_toast_tw)
 			_toast_tw = Motion.appear(_toast, _toast.modulate.a, 0.0, TOAST_FADE, 0.0))
+
+## world/main.gd could not reach the server at launch: every game still
+## plays, but the day's theme and the rest the night writes do not come, so
+## the list says so once, after its entrance, or on the next showing if a
+## board is up.
+func note_offline() -> void:
+	_offline_due = true
+	_tell_offline()
+
+func _tell_offline() -> void:
+	if not _offline_due:
+		return
+	get_tree().create_timer(0.9).timeout.connect(func() -> void:
+		if _offline_due and is_instance_valid(_toast) and _list_root.visible:
+			_offline_due = false
+			_say(tr("MENU_OFFLINE"), OFFLINE_TIME))
 
 func _on_tab(tab: String) -> void:
 	_show_tab(tab)

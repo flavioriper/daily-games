@@ -72,6 +72,12 @@ func _watch_day() -> void:
 	get_tree().call_group(ThemedVistas.GROUP, "vistas_arrived")
 	get_tree().call_group(DAY_GROUP, "_check_day")
 
+## A launch that cannot sign in to the server tells the menu, once: the
+## games all play offline, but the day's theme does not come (ui/menu.gd).
+func _note_offline() -> void:
+	if (await Backend.token()).is_empty():
+		get_tree().call_group(DAY_GROUP, "note_offline")
+
 ## The screens told when the held day is let in (ui/menu.gd).
 const DAY_GROUP := "daily_day"
 
@@ -103,6 +109,7 @@ func _ready() -> void:
 	watch.timeout.connect(_watch_day)
 	add_child(watch)
 	_watch_day()
+	_note_offline()
 	# Friends ride on the backend's identity. Started is not connected: it
 	# holds no stream until the player has social (core/social.gd).
 	Social.start(self)

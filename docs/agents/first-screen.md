@@ -1312,3 +1312,12 @@ card's first level, Easy, the first time. The level is saved on every
 win's "Try Hard" invite goes through `_open_at` as well. `ui/menu/difficulty_sheet.gd`
 stays, because the Versus sheet extends it. The menu no longer builds one, and
 `tests/_shot_menu.gd` lost its `diff` shot.
+
+- **The offline note** (2026-10-22, the user: the game works offline, but
+  the daily theme needs the internet, so it is not the full experience):
+  when the launch's sign-in fails (`world/main.gd` `_note_offline`, an
+  empty `Backend.token()`), the menu says `MENU_OFFLINE` once in the toast,
+  0.9 s after its entrance, for `OFFLINE_TIME` (6 s), or on the next showing
+  of the list if a board is up. The toast now grows upward, so a two-line
+  line never runs off the screen's foot, and an older line's timer no
+  longer takes a newer line down.

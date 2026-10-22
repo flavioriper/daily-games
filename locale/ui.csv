@@ -1008,6 +1008,7 @@ FRIENDS_STATUS_ONLINE,Online,Online,En línea
 FRIENDS_STATUS_AWAY,Away,Ausente,Ausente
 FRIENDS_EMPTY,No friends yet. Send your link: whoever opens it is your friend.,Nenhum amigo ainda. Envie seu link: quem abrir vira seu amigo.,Aún no tienes amigos. Envía tu enlace: quien lo abra será tu amigo.
 FRIENDS_OFFLINE,Friends need the internet. Check your connection and try again.,Os amigos precisam de internet. Confira sua conexão e tente de novo.,Los amigos necesitan internet. Revisa tu conexión e inténtalo de nuevo.
+MENU_OFFLINE,"You're offline. Every game still plays, but the daily theme and a few extras need the internet.","Você está offline. Todos os jogos funcionam, mas o tema do dia e alguns extras precisam de internet.","Estás sin conexión. Todos los juegos funcionan, pero el tema del día y algunos extras necesitan internet."
 FRIENDS_RETRY,Try again,Tentar de novo,Reintentar
 FRIENDS_PICK_TITLE,Pick a game,Escolha um jogo,Elige un juego
 FRIENDS_PICK_BODY,%s gets an invitation.,%s vai receber um convite.,%s recibirá una invitación.
