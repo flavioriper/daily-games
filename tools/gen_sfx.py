@@ -1706,6 +1706,39 @@ SETS = {
         "party":    ("a short cozy celebratory flourish on a real kalimba and a music box, rising and bright, with a few soft little party blower toots, warm and joyful", 2.0, -8, BEADBOX_TUNE, "warm:2600", "body:300"),
         "purr":     ("one short soft contented chirrup, a little rolling trill with the mouth closed, gentle and happy", 1.0, -12, KITTEN, "warm:2400", "ease:0.01", "body:300"),
     },
+    # Glimpse (puzzle_id "glimpse"), 2026-10-22: Pixel Garden from memory,
+    # so its board's sounds. Every row is Pixel Garden's, of the same takes
+    # (copied into build/sfx_raw/glimpse/, never bought); the bank pops sit a
+    # step over Pixel Garden's (rule 5). Hint, Check, hearts and the held
+    # card are gone with the things that played them. New: `show` (the
+    # picture held up: peek's puff a little higher), `hide` (put back under
+    # its cover: the same puff lower) and `count` (the first show's last
+    # three seconds, a bubble a second, which the board pitches up).
+    # All of it unheard.
+    "glimpse": {
+        "show":     ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -16, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320", "notes:0:2"),
+        "hide":     ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1100", "steep", "ease:0.04", "body:320", "notes:0:-3"),
+        "count":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -15, FOLEY, "bank:wrap", "cut:0.1", "notes:0:1", "tight"),
+        "place":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -16, FOLEY, "bank:token", "cut:0.09", "notes:0:-2", "tight"),
+        "lift":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -17, FOLEY, "bank:lip", "cut:0.09", "notes:0:0", "tight"),
+        "pick":     ('a small pebble dropped into a calm pond, one soft plop, close, very short', 0.6, -15, FOLEY, "bank:pebble", "cut:0.1", "notes:0:2", "tight"),
+        "refuse":   ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.26", "notes:0.1:-3,-3", "tight"),
+        "undo":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -15, FOLEY, "bank:lip", "cut:0.28", "notes:0.11:0,-3", "tight"),
+        "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
+        "enter":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.5", "notes:0.08:-2,1,-2,0,3", "tight"),
+        "iron":     ("a long soft breath of warm breeze that eases, fades and stops, calm", 1.0, -15, BREEZE, "warm:900", "steep", "ease:0.1", "body:320"),
+        "steam":    ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -17, BREEZE, "warm:900", "steep", "ease:0.04", "body:320"),
+        "plate":    ("a small happy flourish, four soft kalimba notes rising with a tiny music box sparkle on top, a little square of bead art finished, proud and cute", 1.2, -8, BEADBOX_TUNE, "warm:7000"),
+        "astray":   ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.4", "notes:0.1:0,-2,-4", "tight"),
+        "combo":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.1", "notes:0:0", "tight"),
+        "steady":   ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -16, FOLEY, "bank:token", "cut:0.3", "notes:0.055:-2,-1,-2,0", "tight"),
+        "confetti": ("a soft little paper confetti pop and flutter with a tiny music box twinkle, cute", 1.0, -10, BEADBOX_TUNE, "warm:7000"),
+        "flutter":  ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -19, BREEZE, "warm:1100", "steep", "ease:0.05", "body:320"),
+        "stamp":    ("one soft note on a kalimba, proud and warm, left to fade", 1.5, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.26:5,1,8"),
+        "solved":   ("a warm short celebratory flourish on a real kalimba and a music box, rising arpeggio ending on a soft hand bell shimmer, joyful and cozy", 2.0, -8, BEADBOX_TUNE, "warm:2600", "body:300"),
+        "party":    ("a short cozy celebratory flourish on a real kalimba and a music box, rising and bright, with a few soft little party blower toots, warm and joyful", 2.0, -8, BEADBOX_TUNE, "warm:2600", "body:300"),
+        "purr":     ("one short soft contented chirrup, a little rolling trill with the mouth closed, gentle and happy", 1.0, -12, KITTEN, "warm:2400", "ease:0.01", "body:300"),
+    },
     # Fairy Lights (puzzle_id "fairylights"): tap a piece of garden wire to
     # turn it; wire joined back to the post runs gold and wakes its lanterns.
     # Hard and Insane blow a fuse on a wrong join; Insane is Wish Tags.

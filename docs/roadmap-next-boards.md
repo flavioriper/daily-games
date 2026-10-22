@@ -23,17 +23,17 @@ Connections, Spelling Bee, Pips, Pinpoint, Clues by Sam.
 
 ## Decide first (the user's calls, open)
 
-- [ ] **Memory as a sixth skill?** Recommended: yes. Touches `core/brain.gd`,
+- [x] **Memory as a sixth skill?** Taken as recommended on 2026-10-22, with Glimpse. Touches `core/brain.gd`,
       a `skill_memory` icon in `ui/icons.gd`, `SKILL_MEMORY*` rows in
       `locale/ui.csv`, the five-spoke map on the win; colour = next free
       `Pal.CAT` (`6bb1d6`). Without it, memory boards have no honest home.
-- [ ] **Arithmetic: own skill or inside Logic?** Recommended: inside Logic,
+- [x] **Arithmetic: own skill or inside Logic?** Taken as recommended on 2026-10-22 (nothing changed yet): inside Logic,
       with Logic's line rewritten to mention numbers; a Numbers skill only
       if a third arithmetic board ships.
 
 ## Shortlist (start here, in this order)
 
-- [ ] **1. Glimpse** (copy-from-memory). Memory. Pixel Garden's picture shows
+- [x] **1. Glimpse** (copy-from-memory). Built 2026-10-22, `docs/agents/boards/glimpse.md`; generated mirrored sprites 6-8 square, not Pixel Garden's bank. Memory. Pixel Garden's picture shows
       3 s, then hides; rebuild it. Reuses Pixel Garden whole. Generator
       trivial, no pt/es cost. Quality: beads right on the first try.
 - [ ] **2. Birdsong** (Simon-style recall). Memory. A growing tune on the

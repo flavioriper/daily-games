@@ -24,6 +24,10 @@ extends Control
 ## - CHECK (Easy and Medium): Check rings a bead out of place; it is lifted.
 ## - UNDO: a run taken back by Undo, then Reset sends every bead home.
 ## - HINT: the bulb puts a peg right, twice (bands with hints).
+## - GLIMPSE (Glimpse's): the picture held up, then covered; a few beads
+##   seated from memory.
+## - LOOK (Glimpse's): a tap on the cover holds the picture up again and
+##   spends a look.
 ##
 ## The board checkup, 2026-10-03: Pixel Garden had only the shared one-page
 ## card. ZOOM took WIND's place on 2026-10-11, when Windblown went and the
@@ -33,7 +37,8 @@ const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const Face = preload("res://ui/faces/face.gd")
 
-enum Lesson { SEAT, KIT, PLATE, PEEK, ZOOM, CHECK, UNDO, HINT }
+enum Lesson { SEAT, KIT, PLATE, PEEK, ZOOM, CHECK, UNDO, HINT, GLIMPSE, LOOK }
+const Glimpse = preload("res://puzzles/glimpse2d.gd")
 
 const FINGER_R := 0.3
 const FINGER_ALPHA := 0.16
@@ -106,6 +111,35 @@ class Board extends "res://puzzles/pixel_garden2d.gd":
 
 	func _open_card() -> void:
 		pass
+
+	## Glimpse's lessons: the pattern card under its cover, with `looks`
+	## pips lit of `looks_most`.
+	var covered := false
+	var looks := 0
+	var looks_most := 0
+	var _cover: ArrayMesh
+	var _cover_key := ""
+
+	func _draw_thumb(xf: Transform2D, seen: float) -> void:
+		if not covered:
+			super(xf, seen)
+			return
+		# Kept until the next one: a mesh dropped as _draw returns is gone
+		# before the frame is drawn.
+		var key := "%d|%d|%s" % [looks, looks_most, str(_thumb.size)]
+		if _cover == null or key != _cover_key:
+			var b := Face.Builder.new()
+			Glimpse.cover(b, Rect2(Vector2.ZERO, _thumb.size), looks, looks_most)
+			_cover = b.mesh()
+			_cover_key = key
+		draw_mesh(_cover, null, xf * Transform2D(0.0, _thumb.position), Color(1.0, 1.0, 1.0, seen))
+
+	## The picture held up (`up`) or put down, as the board's peek does.
+	func hold_up(up: bool) -> void:
+		_peek = up
+		_peek_at = _now()
+		_busy_for(PEEK_TIME)
+		queue_redraw()
 
 	## Only the ZOOM lesson's board zooms, and its pinch makes no sound.
 	var zooms := false
@@ -282,6 +316,11 @@ func _position() -> Dictionary:
 				[0, 4, "pink"], [1, 3, "pink"], [1, 4, "pink"], [2, 4, "green"]], "brush": "pink"}
 		Lesson.PEEK, Lesson.HINT:
 			return {"beads": [[1, 1, "pink"], [1, 2, "pink"], [1, 3, "pink"], [1, 4, "pink"]]}
+		Lesson.GLIMPSE:
+			return {"brush": "pink"}
+		Lesson.LOOK:
+			return {"beads": [[0, 1, "pink"], [1, 1, "pink"], [1, 2, "pink"], [1, 3, "pink"], [1, 4, "pink"]],
+				"brush": "rose"}
 		Lesson.ZOOM:
 			return {"beads": [[0, 1, "pink"], [0, 4, "pink"], [1, 1, "pink"], [1, 2, "pink"], [1, 3, "pink"],
 				[1, 4, "pink"], [2, 1, "pink"], [2, 4, "pink"], [5, 1, "green"], [5, 2, "green"]], "brush": "rose"}
@@ -327,6 +366,35 @@ func _start() -> void:
 			_say_for("HTP_PG_ASTRAY_HEART_CAP" if judged else "HTP_PG_ASTRAY_CAP", 2.8)
 		Lesson.PEEK:
 			_hold_at(func() -> Vector2: return _art.card(), "HTP_PG_PEEK_CAP", 2.0, 1.6)
+		Lesson.GLIMPSE:
+			_loop.tween_callback(func() -> void:
+				_art.covered = false
+				_art.hold_up(true))
+			_say_for("HTP_GL_SHOW_CAP", 2.6)
+			_loop.tween_callback(func() -> void:
+				_art.covered = true
+				_art.hold_up(false))
+			_say_for("HTP_GL_HIDE_CAP", 1.0)
+			_tap(0, 1, "HTP_GL_FROM_MEMORY_CAP", "", 0.6)
+			_run([[1, 1], [1, 2], [1, 3], [1, 4]], "", 1.6)
+		Lesson.LOOK:
+			# The cover is tapped, not held: the board's own press would
+			# peek, so the page lifts it as Glimpse does.
+			_loop.tween_callback(_say.bind("HTP_GL_LOOK_CAP"))
+			_loop.tween_callback(func() -> void: _point_at(_art.card()))
+			_loop.tween_interval(0.45)
+			_loop.tween_callback(func() -> void:
+				_down = true
+				_art.looks = maxi(0, _art.looks_most - 1)
+				_art.covered = false
+				_art.hold_up(true))
+			_loop.tween_interval(0.2)
+			_loop.tween_callback(_lift)
+			_loop.tween_interval(1.6)
+			_loop.tween_callback(func() -> void:
+				_art.covered = true
+				_art.hold_up(false))
+			_tap(2, 2, "HTP_GL_LOOKED_CAP", "", 1.8)
 		Lesson.ZOOM:
 			_pinch(Vector2(0.5, -0.2), Vector2(1.7, -0.7), Vector2.ZERO, "HTP_PG_ZOOM_PINCH_CAP", 1.2)
 			_pinch(Vector2(0.8, -0.3), Vector2(0.8, -0.3), Vector2(1.2, 1.0), "HTP_PG_ZOOM_PAN_CAP", 1.0)
@@ -483,10 +551,14 @@ func _run(pegs: Array, key: String, wait: float) -> void:
 ## with its entrance.
 func _reset(fresh := false) -> void:
 	_art.lay(_position(), band, fresh)
+	_art.covered = lesson == Lesson.LOOK
+	_art.looks_most = Glimpse.LOOKS_BY[clampi(band, 0, 3)]
+	_art.looks = _art.looks_most
 	_lift()
 	_say({Lesson.SEAT: "HTP_PG_PICK_CAP", Lesson.KIT: "HTP_PG_PICK_CAP", Lesson.PLATE: "HTP_PG_LAST_CAP",
 		Lesson.PEEK: "HTP_PG_PEEK_CAP", Lesson.ZOOM: "HTP_PG_ZOOM_PINCH_CAP", Lesson.CHECK: "HTP_PG_CHECK_CAP",
-		Lesson.UNDO: "HTP_PG_RUN_CAP", Lesson.HINT: "HTP_PG_HINT_CAP"}[lesson])
+		Lesson.UNDO: "HTP_PG_RUN_CAP", Lesson.HINT: "HTP_PG_HINT_CAP",
+		Lesson.GLIMPSE: "HTP_GL_SHOW_CAP", Lesson.LOOK: "HTP_GL_LOOK_CAP"}[lesson])
 
 ## Reduce motion: the lesson's point, standing still.
 func _still() -> void:
@@ -521,6 +593,12 @@ func _still() -> void:
 		Lesson.HINT:
 			_art.hint()
 			_say("HTP_PG_HINT_CAP")
+		Lesson.GLIMPSE:
+			_art.covered = false
+			_art.hold_up(true)
+			_say("HTP_GL_SHOW_CAP")
+		Lesson.LOOK:
+			_say("HTP_GL_LOOK_CAP")
 	_art._refresh()
 
 func _tap_now(at: Vector2) -> void:

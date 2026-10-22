@@ -1,14 +1,15 @@
 class_name Brain
 extends RefCounted
 
-## The five skills the daily boards train, and the scores the win's brain
+## The six skills the daily boards train, and the scores the win's brain
 ## report shows: worked out from Progress.solve_log() and never stored, as
 ## PlayerStats is. Spec: docs/superpowers/specs/2026-10-22-brain-skills-design.md.
 
 const Registry = preload("res://ui/registry.gd")
 
 ## In the report's order; each wears Pal.CAT[index].
-const SKILLS := ["logic", "space", "planning", "focus", "words"]
+## Memory, the sixth, came with Glimpse (2026-10-22).
+const SKILLS := ["logic", "space", "planning", "focus", "words", "memory"]
 ## Boards whose time says nothing about how well they were played (section 6's
 ## "T" column): their score is their own measure alone.
 const UNTIMED := ["acorn", "how_big", "pearl", "drumbeat", "gumdrop", "minigolf"]

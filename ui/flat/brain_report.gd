@@ -3,7 +3,7 @@ extends Control
 ## The win's brain report: a paper plate over the board's world, between the
 ## compact art and the bottom rows. What the board trains, the skill's score
 ## on a ring with today against the player's usual, one tip for next time,
-## and all five skills with today's gain. The eye at its top right, held,
+## and every skill with today's gain. The eye at its top right, held,
 ## fades the plate so the solved board shows through.
 ## Spec: docs/superpowers/specs/2026-10-22-brain-skills-design.md, section 5.
 
@@ -31,6 +31,7 @@ const ROW_H := 76.0
 const ROW_MIN := 52.0
 const FOLD_H := 120.0
 const ROW_ICON := 44.0
+
 const NAME_W := 230.0
 const NUM_W := 90.0
 const BAR_H := 18.0
@@ -175,17 +176,21 @@ static func _skill_colour(skill: String) -> Color:
 	var i := Brain.SKILLS.find(skill)
 	return Pal.CAT[i] if i >= 0 else Pal.ACCENT
 
+## A row a skill (six since Memory came, 2026-10-22).
+static func _rows() -> float:
+	return float(Brain.SKILLS.size())
+
 ## The height everything wants at full size.
 static func full_height() -> float:
-	return PAD * 2.0 + HEAD_H + SCORE_H + TIP_H + BRAIN_LABEL_H + ROW_H * 5.0 + LOW_H + GAP * 3.0
+	return PAD * 2.0 + HEAD_H + SCORE_H + TIP_H + BRAIN_LABEL_H + ROW_H * _rows() + LOW_H + GAP * 3.0
 
 func _layout() -> void:
 	var w := size.x
 	var inner := w - PAD * 2.0
 	var fixed := PAD * 2.0 + HEAD_H + SCORE_H + TIP_H + BRAIN_LABEL_H + LOW_H + GAP * 3.0
 	var room := size.y - fixed
-	_row_h = clampf(room / 5.0, ROW_MIN, ROW_H)
-	_folded = room < ROW_MIN * 5.0
+	_row_h = clampf(room / _rows(), ROW_MIN, ROW_H)
+	_folded = room < ROW_MIN * _rows()
 	var y := PAD
 	_eye.position = Vector2(w - PAD - EYE, y)
 	_place(_title, Vector2(PAD + SKILL_ICON + 20.0, y - 4.0), Vector2(inner - SKILL_ICON - 20.0 - EYE - 10.0, 52.0))
@@ -210,7 +215,7 @@ func _layout() -> void:
 	y += BRAIN_LABEL_H
 	for i in Brain.SKILLS.size():
 		if _folded:
-			var cell := inner / 5.0
+			var cell := inner / _rows()
 			_names[i].visible = false
 			_place(_nums[i], Vector2(PAD + cell * i, y + ROW_ICON + 8.0), Vector2(cell, 40.0))
 			_nums[i].horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -222,7 +227,7 @@ func _layout() -> void:
 			_place(_nums[i], Vector2(w - PAD - NUM_W, ry), Vector2(NUM_W, _row_h))
 			_nums[i].vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 			_nums[i].horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	y += FOLD_H if _folded else _row_h * 5.0
+	y += FOLD_H if _folded else _row_h * _rows()
 	_place(_low, Vector2(PAD, y), Vector2(inner, LOW_H))
 	_low.visible = _low.text != ""
 	queue_redraw()
@@ -257,7 +262,7 @@ func _draw() -> void:
 		var s := float(scores.get(k, -1.0))
 		var today := k == _skill
 		if _folded:
-			var cell := inner / 5.0
+			var cell := inner / _rows()
 			Icons.paint(self, Brain.icon(k), Rect2(Vector2(PAD + cell * (i + 0.5) - ROW_ICON * 0.5, y), Vector2(ROW_ICON, ROW_ICON)), col if today or s >= 0.0 else Pal.LINE)
 			continue
 		var ry := y + _row_h * i

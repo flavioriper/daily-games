@@ -143,12 +143,16 @@ func setup(rng: RandomNumberGenerator, difficulty: int, bank_step := 0, daily_ke
 	load_picture(themed if not themed.is_empty() else pics[day_pick(band, pics.size(), bank_step)])
 	_rng.seed = rng.randi()
 
+## The letters' colour names: the bank's palette (Glimpse brings its own).
+func _palette() -> Dictionary:
+	return bank().get("palette", {})
+
 func insane() -> bool:
 	return band == INSANE
 
 ## Takes `pic` (one entry of the bank) as the day's picture, on a bare board.
 func load_picture(pic: Dictionary) -> void:
-	var legend: Dictionary = bank().get("palette", {})
+	var legend: Dictionary = _palette()
 	var rows: Array = pic.get("rows", [])
 	n = rows.size()
 	pic_id = String(pic.get("id", ""))

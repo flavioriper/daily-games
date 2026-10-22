@@ -59,6 +59,8 @@ const CARDS := {
 	# Drumbeat's festival stands in the dusk vista's lantern light.
 	"drumbeat": ["dusk", 1.4, Vector2(0.6, 0.45)],
 	"pixelgarden": ["meadow", 1.6, Vector2(0.30, 0.55)],
+	# Glimpse's mat lies under a clear sky, the memory skill's blue.
+	"glimpse": ["sky", 1.6, Vector2(0.40, 0.45)],
 	# Trestle's river gap under a clear sky.
 	"trestle": ["sky", 1.5, Vector2(0.50, 0.55)],
 	# Mini Golf's course is laid out on the meadow, under its cottages.

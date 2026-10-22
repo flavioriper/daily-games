@@ -2991,3 +2991,33 @@ BRAIN_HB_1,"Compare what the bracket measures, not the whole outline.","Compare 
 BRAIN_HB_2,Work out how many times bigger before you drag.,Calcule quantas vezes maior antes de arrastar.,Calcula cuántas veces más grande antes de arrastrar.
 BRAIN_HB_3,Within 6% is full marks: don't over-fiddle.,Até 6% já é nota máxima: não fique ajustando demais.,Dentro del 6% ya es la nota máxima: no le des más vueltas.
 BRAIN_HB_4,"On the Ladder, an early miss carries up every rung.","Na Escada, um erro no começo sobe todos os degraus.","En la Escalera, un fallo temprano sube por todos los peldaños."
+GL_BLURB,A little picture shows for a few seconds. Rebuild it bead by bead from memory.,Uma figurinha aparece por alguns segundos. Remonte-a conta por conta de memória.,Un dibujito aparece unos segundos. Rehazlo cuenta a cuenta de memoria.
+GL_SHORT,"Look once,\nbead it from memory.","Olhe uma vez,\nmonte de memória.","Mira una vez,\nrehazlo de memoria."
+GL_MOTTO,"Look once, remember","Olhe uma vez, lembre","Mira una vez, recuerda"
+GL_LVL_0,"6 × 6, 2 colours, 5 seconds","6 × 6, 2 cores, 5 segundos","6 × 6, 2 colores, 5 segundos"
+GL_LVL_1,"6 × 6, 3 colours, 6 seconds","6 × 6, 3 cores, 6 segundos","6 × 6, 3 colores, 6 segundos"
+GL_LVL_2,"8 × 8, 3 colours, 6 seconds","8 × 8, 3 cores, 6 segundos","8 × 8, 3 colores, 6 segundos"
+GL_LVL_3,"8 × 8, 4 colours, 7 seconds","8 × 8, 4 cores, 7 segundos","8 × 8, 4 colores, 7 segundos"
+GL_PIC,From memory,De memória,De memoria
+GL_RULES,"The day's little picture is held up over the board for %d seconds, then covered. Copy it onto the pegboard from memory: pick a colour from the box, then tap a peg or drag along a row. The box holds exactly the beads the picture needs.",A figurinha do dia aparece sobre o tabuleiro por %d segundos e depois é coberta. Copie-a no pinboard de memória: escolha uma cor na caixa e toque num pino ou arraste por uma fileira. A caixa tem exatamente as contas que a figura pede.,El dibujito del día se muestra sobre el tablero %d segundos y luego se tapa. Cópialo en el tablero de memoria: elige un color de la caja y toca una clavija o arrastra por una fila. La caja tiene justo las cuentas que pide el dibujo.
+GL_RULES_LOOKS_ONE,Tap the covered card to look once more. You have 1 look.,Toque na carta coberta para olhar de novo. Você tem 1 olhada.,Toca la carta tapada para mirar otra vez. Tienes 1 vistazo.
+GL_RULES_LOOKS_N,Tap the covered card to look again. You have %d looks.,Toque na carta coberta para olhar de novo. Você tem %d olhadas.,Toca la carta tapada para mirar otra vez. Tienes %d vistazos.
+GL_NO_LOOKS,No looks left. Trust your memory!,Sem olhadas. Confie na sua memória!,No quedan vistazos. ¡Confía en tu memoria!
+GL_WIN,Remembered and ironed.,Lembrada e passada a ferro.,Recordado y planchado.
+GL_WIN_FIRST,%d of %d beads right the first time.,%d de %d contas certas de primeira.,%d de %d cuentas bien a la primera.
+GL_WIN_ALL,Every bead right the first time!,Todas as contas certas de primeira!,¡Todas las cuentas bien a la primera!
+HTP_GL_GLIMPSE,"Look, then remember",Olhe e lembre,Mira y recuerda
+HTP_GL_GLIMPSE_BODY,"The day's picture is held up over the board for %d seconds, then hidden under its card. Tap the board to hide it sooner. Then bead it from memory.",A figura do dia aparece sobre o tabuleiro por %d segundos e depois se esconde sob a carta. Toque no tabuleiro para escondê-la antes. Depois monte-a de memória.,El dibujo del día se muestra sobre el tablero %d segundos y luego se esconde bajo su carta. Toca el tablero para esconderlo antes. Luego rehazlo de memoria.
+HTP_GL_PLATE_BODY,"When every bead is on the board, the iron passes. A plate that is right is fused for good; a bead in the wrong place hops back into the box, so you know where your memory slipped.","Quando todas as contas estão no tabuleiro, o ferro passa. Uma placa certa fica fixa de vez; uma conta no lugar errado volta pulando para a caixa, e você vê onde a memória falhou.","Cuando todas las cuentas están en el tablero, pasa la plancha. Una placa correcta queda fija; una cuenta mal puesta vuelve saltando a la caja, y ves dónde falló la memoria."
+HTP_GL_LOOK,Look again,Olhe de novo,Mira otra vez
+HTP_GL_LOOK_BODY_ONE,"Tap the covered card to see the picture once more, for a moment. You have 1 look, and a look costs a little of your score.","Toque na carta coberta para ver a figura mais uma vez, por um instante. Você tem 1 olhada, e cada olhada custa um pouco da sua nota.","Toca la carta tapada para ver el dibujo una vez más, un momento. Tienes 1 vistazo, y cada vistazo cuesta un poco de tu puntuación."
+HTP_GL_LOOK_BODY_N,"Tap the covered card to see the picture again, for a moment. You have %d looks, and each costs a little of your score.","Toque na carta coberta para ver a figura de novo, por um instante. Você tem %d olhadas, e cada uma custa um pouco da sua nota.","Toca la carta tapada para ver el dibujo otra vez, un momento. Tienes %d vistazos, y cada uno cuesta un poco de tu puntuación."
+HTP_GL_SHOW_CAP,Look closely: it won't stay long,Olhe bem: ela não fica muito,Mira bien: no se queda mucho
+HTP_GL_HIDE_CAP,Now it's covered,Agora está coberta,Ahora está tapado
+HTP_GL_FROM_MEMORY_CAP,Bead it from memory,Monte de memória,Rehazlo de memoria
+HTP_GL_LOOK_CAP,Tap the card to look again,Toque na carta para olhar de novo,Toca la carta para mirar otra vez
+HTP_GL_LOOKED_CAP,One look spent: a pip goes hollow,Uma olhada gasta: um ponto se apaga,Un vistazo gastado: un punto se vacía
+BRAIN_GL_1,"Name the shape before it hides: a bug, a lamp, a face. A name is easier to keep than dots.","Dê um nome à forma antes que ela suma: um bicho, um lampião, um rosto. Um nome é mais fácil de guardar que pontos.","Ponle nombre a la forma antes de que se esconda: un bicho, un farol, una cara. Un nombre se guarda mejor que puntos."
+BRAIN_GL_2,"The picture is a mirror: learn one half, and the other is the same, flipped.","A figura é espelhada: aprenda uma metade, e a outra é igual, invertida.","El dibujo es un espejo: aprende una mitad, y la otra es igual, al revés."
+BRAIN_GL_3,"Lay the colour you remember best first, then fill around it.",Ponha primeiro a cor de que você mais se lembra e preencha em volta.,Pon primero el color que mejor recuerdas y rellena alrededor.
+BRAIN_GL_4,"Save your look for the end, when only a few beads are left in doubt.","Guarde sua olhada para o fim, quando só restarem poucas contas em dúvida.","Guarda tu vistazo para el final, cuando queden pocas cuentas en duda."

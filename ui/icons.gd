@@ -11,7 +11,7 @@ const NAMES := ["chevron_left", "chevron_right", "undo", "reset", "bulb", "gear"
 	"puzzle", "flame", "cloud", "mountain", "sparkle", "trend", "crown", "no_ads", "versus", "arcade", "play",
 	"coin", "gift", "clock", "shield", "acorn", "run", "music", "buzz", "globe", "swords", "gamepad",
 	"friends", "copy", "share", "undo_back", "bin", "flip", "span", "bends",
-	"skill_logic", "skill_space", "skill_planning", "skill_focus", "skill_words"]
+	"skill_logic", "skill_space", "skill_planning", "skill_focus", "skill_words", "skill_memory"]
 const SEGMENTS := 24
 const FEATHERED := ["heart"]
 ## Stroke width of polylines as a fraction of the icon's width.
@@ -52,6 +52,8 @@ static func shape(name: String) -> Dictionary:
 			return _skill_focus()
 		"skill_words":
 			return _skill_words()
+		"skill_memory":
+			return _skill_memory()
 		"bulb":
 			return _bulb()
 		"gear":
@@ -764,6 +766,18 @@ static func _skill_focus() -> Dictionary:
 	var ring := circle(Vector2(0.5, 0.5), 0.36, 32)
 	ring.append(ring[0])
 	return {"polys": [circle(Vector2(0.5, 0.5), 0.14)], "lines": [ring]}
+
+## A card of four squares, two of them filled: a little pattern held in
+## mind (Glimpse's picture under its cover).
+static func _skill_memory() -> Dictionary:
+	var sq := func(at: Vector2, s: float) -> PackedVector2Array:
+		return PackedVector2Array([at, at + Vector2(s, 0.0), at + Vector2(s, s), at + Vector2(0.0, s), at])
+	var frame: PackedVector2Array = sq.call(Vector2(0.12, 0.12), 0.76)
+	var a: PackedVector2Array = sq.call(Vector2(0.26, 0.26), 0.2)
+	var d: PackedVector2Array = sq.call(Vector2(0.54, 0.54), 0.2)
+	a.remove_at(4)
+	d.remove_at(4)
+	return {"polys": [a, d], "lines": [frame, sq.call(Vector2(0.56, 0.28), 0.16), sq.call(Vector2(0.28, 0.56), 0.16)]}
 
 ## A speech bubble with two lines of words in it.
 static func _skill_words() -> Dictionary:

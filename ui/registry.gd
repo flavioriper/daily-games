@@ -805,6 +805,37 @@ const PUZZLES := [
 		],
 	},
 	{
+		"id": "glimpse",
+		"skill": "memory",
+		"kind": "puzzle",
+		"title": "Glimpse",
+		"blurb": "GL_BLURB",
+		"short": "GL_SHORT",
+		"motto": "GL_MOTTO",
+		"footer": "Look · Remember · Seat",
+		# Pixel Garden from memory (puzzles/glimpse2d.gd extends its board):
+		# the day's little picture is held up for a few seconds, then
+		# covered. Its shape is Pixel Garden's: the box in the card, no tray,
+		# and only Undo (no hint, no Check, which would read the picture out).
+		"script": "res://puzzles/glimpse2d.gd",
+		"card": "res://ui/menu/cards/glimpse.gd",
+		"shell": "flat",
+		"tray": "none",
+		"bleed": true,
+		"level_card": true,
+		"actions": false,
+		"difficulties": [0, 1, 2, 3],
+		# Asks like Sudoku: each band (glimpse_state.gd's BANDS) is its own
+		# daily with its own done mark.
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "GL_LVL_0"},
+			{"difficulty": 1, "name": "Medium", "line": "GL_LVL_1"},
+			{"difficulty": 2, "name": "Hard", "line": "GL_LVL_2"},
+			{"difficulty": 3, "name": "Insane", "line": "GL_LVL_3"},
+		],
+	},
+	{
 		"id": "lattice",
 		"skill": "logic",
 		"kind": "puzzle",

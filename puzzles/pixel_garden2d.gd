@@ -2339,6 +2339,10 @@ func _draw_head_text(t: float, xf: Transform2D, seen: float) -> void:
 	if max_moves > 0 and seen >= 1.0:
 		_moves_pill.draw(self, xf * Vector2(_right.end.x - pill_w * 0.5 - 4.0, _right.position.y + 17.0),
 			moves_left, t)
+	_draw_thumb(xf, seen)
+
+## The pattern card's picture at rest (Glimpse covers it).
+func _draw_thumb(xf: Transform2D, seen: float) -> void:
 	if _thumb_mesh != null:
 		draw_mesh(_thumb_mesh, null, xf * Transform2D(0.0, _thumb.position), Color(1.0, 1.0, 1.0, seen))
 

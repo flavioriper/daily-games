@@ -2118,6 +2118,8 @@ SKILL_FOCUS,Focus,Foco,Enfoque
 SKILL_FOCUS_LINE,"Close attention to colour, detail and rhythm.","Atenção de perto a cor, detalhe e ritmo.","Atención de cerca al color, el detalle y el ritmo."
 SKILL_WORDS,Words,Palavras,Palabras
 SKILL_WORDS_LINE,"Vocabulary, recall, knowledge and estimation.","Vocabulário, memória, conhecimento e estimativa.","Vocabulario, memoria, conocimiento y estimación."
+SKILL_MEMORY,Memory,Memória,Memoria
+SKILL_MEMORY_LINE,Hold a picture or a pattern in mind and bring it back.,Guarde uma figura ou um padrão na cabeça e traga de volta.,Guarda un dibujo o un patrón en la cabeza y recupéralo.
 BRAIN_TRAINS,%s trains %s,%s treina %s,%s entrena %s
 BRAIN_START,Your starting point,Seu ponto de partida,Tu punto de partida
 BRAIN_FASTER,%s faster,%s mais rápido,%s más rápido
