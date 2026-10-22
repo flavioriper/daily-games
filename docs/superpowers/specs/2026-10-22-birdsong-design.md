@@ -83,3 +83,53 @@ after a slip).
 - The words over the row; "Round n of N" under it.
 - The world's morning garden and the tree at the left.
 - Struck and sung notes are the same voice (two file names).
+
+## 7. Amendment, 2026-10-22 evening: the woodpecker
+
+The user: "redesign the bird game, instead of using drums, let's change the
+bird to a woodpecker, and the minigame can be just a single drum that has
+to follow the same pattern from the woodpecker on hitting the wood". The
+reference was another game's tree mini-game (a tree hums a rhythm in one
+four-beat bar, the player repeats it on one button in the next); it is
+named nowhere. Concept tab `docs/brainstorm/concepts.html#woodpecker`; the
+user's verdict on it: "all great, build it fully", which took every
+recommendation on the page. Sections 1 to 6 above are history where they
+disagree with this one.
+
+- **The game.** A woodpecker clings to the old tree's trunk and knocks a
+  rhythm inside one bar of four beats, a quiet pebble on each beat under
+  it. The player knocks the same rhythm back on one drum, the big drum.
+  The day is one rhythm: each round adds one knock somewhere in the bar
+  (the day "fills up"), and the whole rhythm knocked back is the solve.
+- **Judged between the player's taps.** The first knock starts the bar;
+  the rest are held to their places from it (good within 90 ms, fine within
+  170 ms). A missed place, an extra knock or one too far off is a slip:
+  nothing lost, the woodpecker knocks the round again. No per-phone timing
+  is needed, as a phone's sound delay is the same on every tap.
+- **Bands** (`puzzles/birdsong_state.gd`):
+
+  | | bpm | slots | knocks | first round | rounds | holes on the card | bulbs |
+  |---|---|---|---|---|---|---|---|
+  | Easy | 88 | 8 | 5 | 2 | 4 | while it knocks and on your turn | 3 |
+  | Medium | 96 | 8 | 6 | 3 | 4 | while it knocks | 2 |
+  | Hard | 104 | 16 | 7 | 3 | 5 | never | 1 |
+  | Insane, **Feints** | 100 | 16 | 7 | 3 | 5 | never; twice a bar it draws back without striking | 1 |
+
+  On sixteen slots one or two quick knocks sit on the "and" of an eighth
+  already knocked (a pair, or a triple), never added before that eighth.
+  Whisper is gone.
+- **The screen.** The trunk at the left (`World.trunk_edge`), the
+  woodpecker on its right side (`ui/faces/woodpecker.gd`, a body and a head
+  mesh so a peck is a transform), the words beside it, the knock card (the
+  woodpecker's lane in bark with its holes, the player's lane with a red
+  berry for each knock where it landed, ringed green good / gold fine; a
+  playhead through each bar; dashed rings where knocks were missed after a
+  slip), "Round n of N", and the drum on the lawn: anywhere under the card
+  knocks it.
+- **Sound.** `peck` the bank's token a step up, `tick` the pebble quiet,
+  `feint` the lip, `drum` Drumbeat's `drum_0`; the rest as before. `note_*`,
+  `drum_1..3` and `grow` are gone.
+- **Title** stays Birdsong; the id, saved progress, Memory and
+  `Brain.UNTIMED` are unchanged. Share line: 🪵 and a square a round.
+- **Unconfirmed:** the windows, the tempos, the feints, the look, the
+  sounds heard, a phone.

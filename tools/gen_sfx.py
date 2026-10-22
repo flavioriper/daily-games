@@ -1740,22 +1740,26 @@ SETS = {
         "purr":     ("one short soft contented chirrup, a little rolling trill with the mouth closed, gentle and happy", 1.0, -12, KITTEN, "warm:2400", "ease:0.01", "body:300"),
     },
     # Birdsong (puzzle_id "birdsong"), 2026-10-22: a bird sings a tune on
-    # Drumbeat's drums and the player plays it back. The drums' notes are not
-    # here: `note_0`..`note_3` (sung) and `drum_0`..`drum_3` (struck) are
-    # copies of tools/gen_drumbeat.py's `drum_0`..`drum_3`, one felt-beaten
-    # skin at four pitches, two names each so a struck drum taps and a sung
-    # one only knocks. Every row below is a take already on disk, copied
-    # into build/sfx_raw/birdsong/ from Glimpse's (itself Pixel Garden's),
-    # never bought: `slip` is the tongue's refusal, `hush` the same tongue
-    # lower and quieter (a drum tapped while the bird sings), `round` the
-    # bead plate's flourish (a round played back), `grow` a bubble (the next
-    # note's ring), `hint` the held-up picture's puff (the bird sings
-    # again). All of it unheard.
+    # Drumbeat's drums and the player plays it back. Since the evening of
+    # the same day a woodpecker knocks a rhythm on the old tree and the
+    # player knocks it back on one drum: `drum` is a copy of
+    # tools/gen_drumbeat.py's `drum_0` (the big drum, the felt skin at its
+    # lowest), not here. The woodpecker's `peck` is the bank's wooden token
+    # a step up (a thing struck on wood), the beat under its bar a quiet
+    # `tick` of the pebble, Insane's `feint` (a peck drawn back) a soft lip.
+    # The rest are takes already on disk, copied into
+    # build/sfx_raw/birdsong/ from Glimpse's (itself Pixel Garden's), never
+    # bought: `slip` is the tongue's refusal, `hush` the same tongue lower
+    # and quieter (the drum knocked while the woodpecker knocks), `round`
+    # the bead plate's flourish (a round knocked back), `hint` the held-up
+    # picture's puff (the woodpecker knocks again). All of it unheard.
     "birdsong": {
         "slip":     ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.26", "notes:0.1:-3,-3", "tight"),
         "hush":     ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -21, FOLEY, "bank:tongue", "cut:0.1", "notes:0:-6", "tight"),
         "round":    ("a small happy flourish, four soft kalimba notes rising with a tiny music box sparkle on top, a little square of bead art finished, proud and cute", 1.2, -9, BEADBOX_TUNE, "warm:7000"),
-        "grow":     ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -16, FOLEY, "bank:wrap", "cut:0.1", "notes:0:3", "tight"),
+        "peck":     ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -11, FOLEY, "bank:token", "cut:0.2", "notes:0:1", "tight"),
+        "tick":     ('a small pebble dropped into a calm pond, one soft plop, close, very short', 0.5, -24, FOLEY, "bank:pebble", "cut:0.16", "tight"),
+        "feint":    ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -22, FOLEY, "bank:lip", "cut:0.16", "notes:0:-2", "tight"),
         "hint":     ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -16, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320", "notes:0:2"),
         "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
         "enter":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.5", "notes:0.08:-2,1,-2,0,3", "tight"),

@@ -1,133 +1,290 @@
 extends RefCounted
 
 ## Birdsong's rules, scene-free (spec
-## docs/superpowers/specs/2026-10-22-birdsong-design.md). A little bird sings
-## a tune on the drums under its branch; the player plays it back. Each
-## round the tune is one note longer, and the day's whole tune played back
-## is the solve.
+## docs/superpowers/specs/2026-10-22-birdsong-design.md, amended the same
+## evening for the woodpecker). A woodpecker knocks a rhythm on the old
+## tree's trunk, inside one bar of four beats; the player knocks the same
+## rhythm back on one drum. The day is one rhythm: each round the woodpecker
+## adds one knock somewhere in the bar, and the day's whole rhythm knocked
+## back is the solve.
 ##
-## The tune is the day's, dealt from the host's rng: `length` notes over the
-## band's drums, never the same drum three times running. A round starts at
-## `START` notes and grows to `length`. A slip is never punished beyond the
-## round: the bird sings it again and the player starts it over. Insane
-## (Whisper) has the bird sing only the round's new note once the first
-## round is past; a slip, or the bulb, has it sing the whole tune so far.
+## A bar is `grid()` slots (eighths, or sixteenths on Hard and Insane); a
+## knock sits on a slot. The rhythm is dealt from the host's rng: always the
+## downbeat, the rest on eighths, and on sixteenths one or two quick knocks
+## on the "and" of an eighth already knocked (a pair, or a triple with the
+## eighth after). The order the knocks come in is dealt too, a quick knock
+## never before the eighth it hangs on.
 ##
-## Nothing here knows time or the screen: the board asks `heard(drum)` and
-## acts on what it answers.
+## The player's knocks are judged **between their own taps**, never against
+## a clock the phone has to agree with: the first knock starts the bar, and
+## each one after is held to where the rhythm puts it from there. A phone's
+## sound delay is the same on every tap and cancels out. A knock nearer its
+## place than `GOOD` is good, nearer than `OK` is fine; anything else -- a
+## knock where there is none, or a place passed with no knock -- is a slip,
+## which costs nothing but the round: the woodpecker knocks it again.
+##
+## Times are the board's seconds; nothing here knows the screen.
 
-enum Heard { RIGHT, ROUND, SOLVED, SLIP, IGNORED }
+enum Heard { GOOD, OK, ROUND, SOLVED, SLIP, IGNORED }
 
-## Per band, Easy to Insane: the drums on the branch (Parts.band_drum kinds,
-## Drumbeat's DRUM_KINDS for three: big, hand, tongue; four adds the jingle
-## drum), the tune's length, the first round's length, the seconds between
-## two sung notes, and how many times the bulb has the bird sing again.
-const DRUMS := [[0, 1, 3], [0, 1, 2, 3], [0, 1, 2, 3], [0, 1, 2, 3]]
-const LENGTH := [5, 7, 9, 9]
-const START := [1, 2, 3, 3]
-const GAP := [0.62, 0.55, 0.46, 0.5]
+## Per band, Easy to Insane: the tempo, the slots in a bar, the day's
+## knocks, the first round's knocks, how long the holes stay on the card
+## (2 through the player's turn, 1 while the woodpecker knocks, 0 never),
+## the feints a bar (Insane: the woodpecker draws back without striking)
+## and how many times the bulb has it knock the round again.
+const BPM := [88, 96, 104, 100]
+const GRID := [8, 8, 16, 16]
+const KNOCKS := [5, 6, 7, 7]
+const START := [2, 3, 3, 3]
+const SHOW := [2, 1, 0, 0]
+const FEINTS := [0, 0, 0, 2]
 const HINTS := [3, 2, 1, 1]
-## Insane's rule: from the second round the bird sings the new note alone.
-const WHISPER := [false, false, false, true]
+## How near its place a knock must land, in seconds: good, and fine.
+const GOOD := 0.09
+const OK := 0.17
 
 var band := 0
-var tune: Array[int] = []
-## The round being played: how many notes of the tune it asks for, and how
-## many of them the player has played back so far.
-var round_len := 0
-var pos := 0
-## Slips this round, slips in all, and the rounds played back without one.
+## The day's knocks, in the order the rounds add them (slots in the bar).
+var order: Array[int] = []
+## Each round's feints (Insane), slots with no knock near them.
+var feints: Array = []
+## The round being played (0 based), its knocks sorted by slot, and the
+## knocks the player has landed in it so far.
+var round_ix := 0
+var knocks: Array[int] = []
+var landed := 0
+## When the player's bar began (their first knock, less where it sits), or
+## INF before it.
+var anchor := INF
+## This round's knocks, each one's grade (-1 not yet, 0 good, 1 fine).
+var grades: Array[int] = []
+## The last knock heard: where in the bar it landed (slots, a float) and
+## its grade (0 good, 1 fine, 2 off), kept past the round it ended.
+var last_slot := 0.0
+var last_grade := 0
+## Slips this round, slips in all, rounds knocked back with none, goods and
+## fines in all.
 var slips_round := 0
 var slips := 0
 var clean := 0
-## Each round played back, the slips it took.
+var goods := 0
+var oks := 0
+## Each round knocked back, the slips it took.
 var history: Array[int] = []
 
 func deal(rng: RandomNumberGenerator, the_band: int) -> void:
-	band = clampi(the_band, 0, LENGTH.size() - 1)
-	var n: int = drums()
-	tune.clear()
-	for i in int(LENGTH[band]):
-		var d := rng.randi_range(0, n - 1)
-		# never three of one drum running: two are a little rhythm, three
-		# are a drone
-		while i >= 2 and d == tune[i - 1] and d == tune[i - 2]:
-			d = rng.randi_range(0, n - 1)
-		tune.append(d)
+	band = clampi(the_band, 0, BPM.size() - 1)
+	var g := grid()
+	var st := g / 8
+	var n: int = int(KNOCKS[band])
+	var eighths: Array[int] = []
+	for i in range(1, 8):
+		eighths.append(i * st)
+	_shuffle(eighths, rng)
+	var quick := 0
+	if st > 1:
+		quick = 1 if rng.randf() < 0.5 else 2
+	var chosen: Array[int] = [0]
+	for s in eighths:
+		if chosen.size() >= n - quick:
+			break
+		chosen.append(s)
+	var tries := 0
+	while chosen.size() < n and tries < 200:
+		tries += 1
+		var s := 1 + 2 * rng.randi_range(0, g / 2 - 1)
+		if not chosen.has(s) and chosen.has(s - 1):
+			chosen.append(s)
+	for s in eighths:
+		if chosen.size() >= n:
+			break
+		if not chosen.has(s):
+			chosen.append(s)
+	var rest: Array[int] = []
+	for s in chosen:
+		if s != 0:
+			rest.append(s)
+	_shuffle(rest, rng)
+	order = [0]
+	order.append_array(rest)
+	# a quick knock never comes before the eighth it hangs on
+	for i in order.size():
+		var s: int = order[i]
+		if s % 2 == 1 and st > 1:
+			var j := order.find(s - 1)
+			if j > i:
+				order[i] = s - 1
+				order[j] = s
+	feints.clear()
+	for r in rounds():
+		feints.append(_feints_for(_knocks_of(r), rng))
 	restart()
 
-## The day from the top: the first round, nothing played back.
+static func _shuffle(a: Array[int], rng: RandomNumberGenerator) -> void:
+	for i in range(a.size() - 1, 0, -1):
+		var j := rng.randi_range(0, i)
+		var t := a[i]
+		a[i] = a[j]
+		a[j] = t
+
+func _feints_for(k: Array[int], rng: RandomNumberGenerator) -> Array[int]:
+	var out: Array[int] = []
+	var want: int = int(FEINTS[band])
+	if want <= 0:
+		return out
+	var st := grid() / 8
+	var free: Array[int] = []
+	for i in range(1, 8):
+		var e := i * st
+		if not k.has(e) and (st == 1 or not k.has(e - 1) and not k.has(e + 1)):
+			free.append(e)
+	_shuffle(free, rng)
+	for i in mini(want, free.size()):
+		out.append(free[i])
+	out.sort()
+	return out
+
+## Round `r`'s knocks, sorted by slot.
+func _knocks_of(r: int) -> Array[int]:
+	var out: Array[int] = []
+	for i in mini(int(START[band]) + r, order.size()):
+		out.append(order[i])
+	out.sort()
+	return out
+
+## The day from the top: the first round, nothing knocked back.
 func restart() -> void:
-	round_len = int(START[band])
-	pos = 0
-	slips_round = 0
+	round_ix = 0
 	slips = 0
 	clean = 0
+	goods = 0
+	oks = 0
+	slips_round = 0
 	history.clear()
+	_begin_round()
 
-func drums() -> int:
-	return (DRUMS[band] as Array).size()
+func _begin_round() -> void:
+	knocks = _knocks_of(mini(round_ix, rounds() - 1))
+	begin_turn()
 
-## The Parts.band_drum kind of drum `d` on the branch.
-func kind(d: int) -> int:
-	return int(DRUMS[band][d])
+## The player's bar from its start: nothing landed, no anchor.
+func begin_turn() -> void:
+	landed = 0
+	anchor = INF
+	grades.clear()
+	for k in knocks:
+		grades.append(-1)
+
+func grid() -> int:
+	return int(GRID[band])
+
+func bpm() -> int:
+	return int(BPM[band])
+
+## A beat, a bar and a slot, in seconds.
+func beat() -> float:
+	return 60.0 / float(BPM[band])
+
+func bar() -> float:
+	return beat() * 4.0
+
+func slot_time() -> float:
+	return bar() / float(grid())
 
 func rounds() -> int:
-	return int(LENGTH[band]) - int(START[band]) + 1
+	return int(KNOCKS[band]) - int(START[band]) + 1
 
 ## The round being played, from 1.
 func round_no() -> int:
-	return round_len - int(START[band]) + 1
+	return mini(round_ix, rounds() - 1) + 1
 
-func gap() -> float:
-	return float(GAP[band])
-
-func whisper() -> bool:
-	return bool(WHISPER[band])
-
-func solved() -> bool:
-	return round_len > tune.size()
-
-## The notes the bird sings for this round: the whole round, or under
-## Whisper past the first round only its last, new note. `full` (a slip,
-## the bulb) is always the whole round.
-func sung(full := false) -> Array[int]:
+func round_feints() -> Array[int]:
 	var out: Array[int] = []
-	var from := 0
-	if whisper() and not full and round_len > int(START[band]):
-		from = round_len - 1
-	for i in range(from, mini(round_len, tune.size())):
-		out.append(tune[i])
+	if round_ix < feints.size():
+		for s in feints[round_ix]:
+			out.append(int(s))
 	return out
 
-## The player struck drum `d`.
-func heard(d: int) -> Heard:
-	if solved():
+## How long the holes stay on the card: 2, 1 or 0 (SHOW).
+func show() -> int:
+	return int(SHOW[band])
+
+func solved() -> bool:
+	return round_ix >= rounds()
+
+func started() -> bool:
+	return anchor != INF
+
+## Where knock `i` of the round is due, once the bar has begun.
+func due(i: int) -> float:
+	return anchor + knocks[i] * slot_time()
+
+## Where in the bar (in slots, a float) a knock at `t` landed.
+func slot_at(t: float) -> float:
+	return (t - anchor) / slot_time() if started() else 0.0
+
+## The player knocked at `t`. The first knock starts the bar.
+func heard(t: float) -> Heard:
+	if solved() or knocks.is_empty():
 		return Heard.IGNORED
-	if d != tune[pos]:
-		slips += 1
-		slips_round += 1
-		pos = 0
+	if not started():
+		anchor = t - knocks[0] * slot_time()
+	last_slot = slot_at(t)
+	var best := -1
+	var far := INF
+	for i in knocks.size():
+		if grades[i] >= 0:
+			continue
+		var d := absf(t - due(i))
+		if d < far:
+			far = d
+			best = i
+	if best < 0 or far > OK:
+		last_grade = 2
+		_slip()
 		return Heard.SLIP
-	pos += 1
-	if pos < round_len:
-		return Heard.RIGHT
+	grades[best] = 0 if far <= GOOD else 1
+	last_grade = grades[best]
+	if far <= GOOD:
+		goods += 1
+	else:
+		oks += 1
+	landed += 1
+	if landed < knocks.size():
+		return Heard.GOOD if far <= GOOD else Heard.OK
 	if slips_round == 0:
 		clean += 1
 	history.append(slips_round)
 	slips_round = 0
-	pos = 0
-	round_len += 1
-	return Heard.SOLVED if solved() else Heard.ROUND
+	round_ix += 1
+	if solved():
+		return Heard.SOLVED
+	_begin_round()
+	return Heard.ROUND
 
-## The share of rounds played back without a slip (the brain report).
+## The board's clock reached `t`: a knock's place passed with no knock is a
+## slip. Returns the knock missed, or -1.
+func missed(t: float) -> int:
+	if not started() or solved():
+		return -1
+	for i in knocks.size():
+		if grades[i] < 0 and t > due(i) + OK:
+			_slip()
+			return i
+	return -1
+
+func _slip() -> void:
+	slips += 1
+	slips_round += 1
+
+## The share of rounds knocked back without a slip (the brain report).
 func quality() -> float:
 	return clampf(float(clean) / float(maxi(1, rounds())), 0.0, 1.0)
 
 ## A finished day, put back from its record.
 func finish(the_history: Array) -> void:
-	round_len = tune.size() + 1
-	pos = 0
+	round_ix = rounds()
+	knocks = _knocks_of(rounds() - 1)
 	history.clear()
 	clean = 0
 	slips = 0
@@ -137,7 +294,7 @@ func finish(the_history: Array) -> void:
 		if int(n) == 0:
 			clean += 1
 
-## The day for the share line: a round a square, green played back clean,
+## The day for the share line: a round a square, green knocked back clean,
 ## yellow after a slip.
 func share_glyphs() -> String:
 	var out := ""

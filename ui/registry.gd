@@ -1099,12 +1099,13 @@ const PUZZLES := [
 		"blurb": "BS_BLURB",
 		"short": "BS_SHORT",
 		"motto": "BS_MOTTO",
-		"footer": "Listen · Remember · Play",
-		# A bird sings a tune on Drumbeat's drums, one note longer each round;
-		# play it back (puzzles/birdsong2d.gd). The garden fills the screen;
-		# the drums are its controls, so no tray and no actions row. Only the
-		# bulb: a note heard cannot be undone, and nothing is ever wrong on
-		# the board for a Check to find.
+		"footer": "Listen · Remember · Knock",
+		# A woodpecker knocks a rhythm on the old tree, one knock longer each
+		# round; knock it back on one drum (puzzles/birdsong2d.gd; the
+		# songbird and its four drums went on 2026-10-22's evening). The
+		# garden fills the screen; the drum is its control, so no tray and no
+		# actions row. Only the bulb: a knock heard cannot be undone, and
+		# nothing is ever wrong on the board for a Check to find.
 		"script": "res://puzzles/birdsong2d.gd",
 		"card": "res://ui/menu/cards/birdsong.gd",
 		"shell": "flat",

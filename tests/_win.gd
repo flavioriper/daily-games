@@ -193,9 +193,9 @@ func _note(id: String) -> String:
 		"teacups": return "%dx%d, %d pairs, %d lifts, %d misses, %d lapses, hints=%d, caps %s, board fit=%s, hud=%s" % [
 			_puzzle._st.cols(), _puzzle._st.rows(), _puzzle._st.pairs(), _puzzle._st.lifts, _puzzle._st.misses,
 			_puzzle._st.lapses, _puzzle.hints_used, _puzzle.capabilities(), _fit_ok, _hud_ok]
-		"birdsong": return "%d drums, %d notes, %d rounds, %d clean, %d slips, hints=%d, caps %s, board fit=%s, hud=%s" % [
-			_puzzle._st.drums(), _puzzle._st.tune.size(), _puzzle._st.rounds(), _puzzle._st.clean, _puzzle._st.slips,
-			_puzzle.hints_used, _puzzle.capabilities(), _fit_ok, _hud_ok]
+		"birdsong": return "%d bpm, %d slots, %d knocks, %d rounds, %d clean, %d slips, good %d ok %d, hints=%d, caps %s, board fit=%s, hud=%s" % [
+			_puzzle._st.bpm(), _puzzle._st.grid(), _puzzle._st.order.size(), _puzzle._st.rounds(), _puzzle._st.clean,
+			_puzzle._st.slips, _puzzle._st.goods, _puzzle._st.oks, _puzzle.hints_used, _puzzle.capabilities(), _fit_ok, _hud_ok]
 		"glimpse": return "%dx%d, %d beads, %d right first, looks %d, caps %s, board fit=%s, hud=%s" % [
 			_puzzle._state.n, _puzzle._state.n, _puzzle._state.target, _puzzle._state.first_right(),
 			_puzzle.looks_used, _puzzle.capabilities(), _fit_ok, _hud_ok]
@@ -1436,35 +1436,39 @@ func _solve_glimpse() -> void:
 			if int(st.want[c]) == k and int(st.beads[c]) != k:
 				_tap_local(_puzzle.cell_to_local(c / n, c % n))
 
-## Birdsong: the bird's song run on (the board's own clock stepped) until
-## it is the player's turn, then the round played back by tapping the drums;
-## one wrong drum on the second round, and one bulb, on the way.
+## Birdsong: the woodpecker's bar run on (the board's own clock stepped in
+## 1/120 s) until it is the player's turn, then the round knocked back by
+## tapping the drum on each knock's place; round two's last knock left out
+## (a slip, found by the clock), and one bulb, on the way.
 func _solve_birdsong() -> void:
 	var st = _puzzle._st
 	var slot := Rect2(Vector2.ZERO, _puzzle.size)
-	_fit_ok = true
-	for d in st.drums():
-		if not slot.has_point(_puzzle.drum_to_local(d)):
-			_fit_ok = false
+	_fit_ok = slot.has_point(_puzzle.drum_to_local())
 	_hud_ok = _puzzle.capabilities() == ["hint"] and _puzzle.hints_left() > 0
 	var slipped := false
 	var hinted := false
-	for step in 4000:
+	var dt := 1.0 / 120.0
+	for step in 40000:
 		if _puzzle.is_done():
 			return
 		if _puzzle.phase() != _puzzle.Phase.PLAY:
-			_puzzle._process(0.05)
+			_puzzle._process(dt)
 			continue
-		if not hinted and st.round_no() == 1 and st.pos == 0:
+		if not hinted and st.round_no() == 1:
 			hinted = true
 			_hud_ok = _hud_ok and _puzzle.hint()
 			continue
-		var d: int = st.tune[st.pos]
-		if not slipped and st.round_no() == 2 and st.pos == 1:
+		var next: int = st.landed
+		if st.started() and _puzzle.clock() < _puzzle.knock_due(next):
+			_puzzle._process(dt)
+			continue
+		if not slipped and st.round_no() == 2 and next == st.knocks.size() - 1:
 			slipped = true
-			d = (d + 1) % st.drums()
-		_tap_local(_puzzle.drum_to_local(d))
-		_puzzle._process(0.02)
+			while st.slips == 0:
+				_puzzle._process(dt)
+			continue
+		_tap_local(_puzzle.drum_to_local())
+		_puzzle._process(dt)
 
 ## Market Sums: a share that leaves a remainder refused (crate, sign, crate
 ## by real touches), the answer's first step made and taken back with Undo

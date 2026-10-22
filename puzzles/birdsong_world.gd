@@ -2,13 +2,15 @@ extends Control
 
 ## Birdsong's world: a spring morning in the garden, edge to edge under the
 ## board and the host's rows (CLAUDE.md: a game's world fills the screen).
+## Since the woodpecker (2026-10-22 evening) the old tree is a broad trunk
+## at the left, its right side straight from the leaves to the lawn so the
+## woodpecker clings to it (`trunk_edge`), with a knot hole in its bark.
 ## The sky is cream across the top, where the wordmark, the motto and the
 ## win's "Well done!" are ink with no scrim, and clears to a pale morning
 ## blue at the hills; a low sun, a cloud in the gap of the tools row. The
-## old tree stands at the left edge, its trunk to the foot of the screen
-## and its leaves over the top, and its branch (the board's, which the bird
-## sits on) leaves the trunk across the sky. The lawn runs from the hills
-## past the foot, with daisies and tufts where the drums do not stand.
+## old tree stands at the left edge, its trunk to the lawn and its leaves
+## over the top. The lawn runs from the hills past the foot, with daisies
+## and tufts where the drum does not stand.
 ##
 ## The board says where its lines stand (`set_lines`): the horizon and the
 ## lawn where the drums' feet are. One mesh, built when the rect or a line
@@ -41,8 +43,8 @@ const BLOSSOM := Color("f6c6d0")
 ## How far past the top the sky is drawn, as a share of the height.
 const OVER := 0.6
 ## The trunk's middle, as a share of the width, and its half width at W.
-const TRUNK_X := 0.035
-const TRUNK_W := 58.0
+const TRUNK_X := 0.1
+const TRUNK_W := 120.0
 ## A cloud: [x as a share, y as a share of the horizon, radius at W].
 const CLOUDS := [[0.62, 0.30, 30.0], [0.88, 0.52, 22.0]]
 
@@ -51,6 +53,10 @@ var _lawn := 0.0
 var _built := Vector2(-1, -1)
 var _built_size := Vector2.ZERO
 var _shown: ArrayMesh
+
+## The trunk's right side, where the woodpecker clings, at width `w`.
+static func trunk_edge(w: float) -> float:
+	return w * TRUNK_X + TRUNK_W * w / W
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -101,30 +107,44 @@ func _build() -> void:
 	# the top of the screen (the branch is the board's).
 	var tx := w * TRUNK_X
 	var tw := TRUNK_W * u
+	var foot := _horizon + 40.0 * u
 	var trunk := PackedVector2Array([Vector2(tx - tw, -h * OVER), Vector2(tx + tw, -h * OVER),
-		Vector2(tx + tw * 1.1, _lawn - 30.0 * u), Vector2(tx + tw * 1.7, _lawn + 26.0 * u),
-		Vector2(tx - tw * 1.6, _lawn + 26.0 * u), Vector2(tx - tw * 1.1, _lawn - 30.0 * u)])
-	Scenery.soft_disc(b, Vector2(tx + 30.0 * u, _lawn + 26.0 * u), 120.0 * u, 18.0 * u, Color(TRUNK_DEEP, 0.25))
+		Vector2(tx + tw, foot - 70.0 * u), Vector2(tx + tw * 1.45, foot + 26.0 * u),
+		Vector2(tx - tw * 1.5, foot + 26.0 * u), Vector2(tx - tw * 1.05, foot - 70.0 * u)])
+	Scenery.soft_disc(b, Vector2(tx + 30.0 * u, foot + 26.0 * u), 260.0 * u, 26.0 * u, Color(TRUNK_DEEP, 0.25))
 	b.polygon(trunk, TRUNK_DEEP)
 	b.polygon(_inset(trunk, 8.0 * u), TRUNK)
-	for k in 6:
-		var y := lerpf(_horizon * 0.3, _lawn - 80.0 * u, k / 5.0)
-		b.stroke(PackedVector2Array([Vector2(tx - tw * 0.3, y), Vector2(tx + tw * 0.1, y + 40.0 * u)]), 5.0 * u, Color(BARK, 0.7))
+	# the light down its middle, the bark's long grain
+	b.polygon(PackedVector2Array([Vector2(tx - tw * 0.2, -h * OVER), Vector2(tx + tw * 0.35, -h * OVER),
+		Vector2(tx + tw * 0.35, foot - 40.0 * u), Vector2(tx - tw * 0.2, foot - 40.0 * u)]), Color(BARK, 0.45))
+	for k in 7:
+		var x0 := tx + lerpf(-0.75, 0.75, k / 6.0) * tw
+		var pts := PackedVector2Array()
+		for i in 15:
+			var y := lerpf(-h * 0.1, foot - 50.0 * u, i / 14.0)
+			pts.append(Vector2(x0 + sin(y / (90.0 * u) + k) * 9.0 * u, y))
+		b.stroke(pts, 5.0 * u, Color(TRUNK_DEEP, 0.4))
+	# a knot hole, high on the trunk
+	var knot := Vector2(tx - tw * 0.25, _horizon * 0.33)
+	b.ellipse(knot, 34.0 * u, 52.0 * u, Color("5a3a24"))
+	b.ellipse(knot + Vector2(4.0, 6.0) * u, 17.0 * u, 31.0 * u, Color("3e2818"))
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 31
 	for k in 9:
-		var at := Vector2(tx + rng.randf_range(-40.0, 260.0) * u, rng.randf_range(-h * 0.2, h * 0.06))
+		var at := Vector2(tx + rng.randf_range(-120.0, 420.0) * u, rng.randf_range(-h * 0.2, h * 0.05))
 		var r := rng.randf_range(80.0, 130.0) * u
 		b.disc(at + Vector2(0, 10.0 * u), r, CROWN_DEEP)
 		b.disc(at, r * 0.94, CROWN)
 		b.disc(at + Vector2(-r * 0.3, -r * 0.3), r * 0.4, Color(CROWN_HI, 0.7))
 	for k in 7:
-		var at := Vector2(tx + rng.randf_range(20.0, 300.0) * u, rng.randf_range(0.0, h * 0.07))
+		var at := Vector2(tx + rng.randf_range(20.0, 420.0) * u, rng.randf_range(0.0, h * 0.07))
 		_blossom(b, at, rng.randf_range(9.0, 13.0) * u)
-	# Daisies and tufts on the lawn: under the drums' feet and past them.
-	for k in 22:
-		var at := Vector2(rng.randf_range(0.14, 0.98) * w, rng.randf_range(_horizon + 30.0 * u, h - 20.0 * u))
-		if absf(at.y - _lawn) < 70.0 * u:
+	# Daisies and tufts on the lawn, round the drum and never on it.
+	for k in 26:
+		var at := Vector2(rng.randf_range(0.04, 0.98) * w, rng.randf_range(_horizon + 50.0 * u, h - 20.0 * u))
+		if absf(at.x - w * 0.5) < 320.0 * u and at.y > _lawn - 330.0 * u and at.y < _lawn + 60.0 * u:
+			continue
+		if at.x < tx + tw * 1.6 and at.y < foot + 40.0 * u:
 			continue
 		if k % 3 == 0:
 			Scenery.tuft(b, at, rng.randf_range(16.0, 24.0) * u)

@@ -1,8 +1,8 @@
 extends SceneTree
 
 ## Birdsong shots: `-- <dir> [d=<0..3>]` opens the board on that level and
-## shoots the bird singing (a drum lit), the player's turn with a berry
-## played back, a slip, a tutorial page, and the settled win, with the draw
+## shoots the woodpecker mid-bar (a peck struck), the player's turn with two
+## knocks landed, a slip (a knock left out), a tutorial page, and the settled win, with the draw
 ## calls of each frame. Puts nothing in the player's save.
 
 var _menu: Node
@@ -78,40 +78,39 @@ func _process(_delta: float) -> bool:
 	var st = _b.state()
 	match _step:
 		0:
-			# the bird's song, a drum lit mid-note
-			if _b.phase() == _b.Phase.LISTEN and _b._t - _b._sing_at > 0.1 and _b._t - _b._sing_at < 0.16 and _b._sing_at > 0.0:
+			# the woodpecker's bar, a peck just struck, chips in the air
+			if _b.phase() == _b.Phase.LISTEN and _struck() >= 2 and _b._t - _last_peck() > 0.04 and _b._t - _last_peck() < 0.1:
 				_shot("listen")
 				_step = 1
 		1:
+			# the player's bar, two knocks landed
 			if _b.phase() == _b.Phase.PLAY:
-				_b.demo_strike(st.tune[st.pos])
-				_step = 2
-				_f = 1000
+				_knock_on_time()
+				if st.landed >= 2 and st.round_no() == 1:
+					_shot("played")
+					_step = 2
 		2:
-			if _f == 1006:
-				_shot("played")
-				# play the round out, then slip on the next
-				while _b.phase() == _b.Phase.PLAY and st.round_no() == 1:
-					_b.demo_strike(st.tune[st.pos])
-				_step = 3
-		3:
+			# play the round out, then leave the next round's last knock out
 			if _b.phase() == _b.Phase.PLAY:
-				_b.demo_strike((st.tune[st.pos] + 1) % st.drums())
+				if st.round_no() == 2 and st.landed == st.knocks.size() - 1:
+					_step = 3
+				else:
+					_knock_on_time()
+		3:
+			if st.slips > 0:
 				_step = 4
 				_f = 2000
 		4:
-			if _f == 2008:
+			if _f == 2030:
 				_shot("slip")
 				_step = 5
 		5:
-			# the rest of the day played back
+			# the rest of the day knocked back
 			if _b.is_done():
 				_step = 6
 				_f = 3000
 			elif _b.phase() == _b.Phase.PLAY:
-				_b.demo_strike(st.tune[st.pos])
-			else:
-				_b._process(0.05)
+				_knock_on_time()
 		6:
 			if _f == 3015:
 				_shot("won_early")
@@ -145,3 +144,24 @@ func _process(_delta: float) -> bool:
 				_shot("tut_page1_late")
 				return true
 	return false
+
+## Knocks the drum when the board's clock reaches the next knock's place
+## (the first one at once).
+func _knock_on_time() -> void:
+	var st = _b.state()
+	if not st.started() or _b.clock() >= _b.knock_due(st.landed):
+		_b.demo_knock()
+
+func _struck() -> int:
+	var n := 0
+	for k: Dictionary in _b._pecks:
+		if not k.feint and _b._t >= float(k.at):
+			n += 1
+	return n
+
+func _last_peck() -> float:
+	var at := -INF
+	for k: Dictionary in _b._pecks:
+		if _b._t >= float(k.at):
+			at = maxf(at, float(k.at))
+	return at
