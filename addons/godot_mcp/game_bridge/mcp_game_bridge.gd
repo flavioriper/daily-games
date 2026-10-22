@@ -40,6 +40,10 @@ func _ready() -> void:
 	# not the game's pause state. Children (the sampler) inherit this mode.
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	if not EngineDebugger.is_active():
+		# No debugger (a store build, a harness): nothing will ever drive
+		# it, so it leaves the tree instead of processing every frame
+		# (Peeplet Daily, 2026-10-22; the battery checkup).
+		queue_free()
 		return
 	_logger = _MCPGameLogger.new()
 	OS.add_logger(_logger)

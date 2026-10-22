@@ -546,3 +546,142 @@ column (`_next_piece` reads `piece.col` after the piece is cleared, so "keep
 the last column" never runs); the first play's card opens over the boost
 card when one is due, and Continue leaves the boost card; none of the nine
 was heard, felt or run on a phone or under `opengl3_angle`.
+
+## The battery checkup (2026-10-22)
+
+The user, leaving for the evening: "Check how the app itself performance
+is, I don't want the app to drain users battery." An assessment, no code
+changed. Measured with `tests/_probe_battery.gd` (throwaway, uncommitted
+at the time of writing): opens `world/main.tscn` as a real launch does,
+idles at the menu (1.5 to 6.5 s), opens one board (7 s) and idles on it
+(9 to 14 s), then pauses the tree (14.5 to 18.5 s) for the rendering
+floor, a frame with no script in it. Vsync off, `max_fps` 0, so a frame
+is its real cost on this Mac under `opengl3_angle`; `x=<menu path>` hides
+each child of that node in turn for 1.2 s. Second readings of two:
+
+| screen | frame ms | script ms (frame minus paused) | render-cpu ms | draws | tweens alive | nodes processing |
+|---|---|---|---|---|---|---|
+| menu (Puzzles grid) | 14.4 | ~0 (paused within 0.1 of live, menu-only run) | 13.7 | 166 | 10-11 | 5 of 848 |
+| Binairo Insane | 8.6 | 1.2 | 7.1 | 83 | 38 (faces) | 6 of 1577 |
+| Gumdrop Insane | 19.0 | 2.5-3.5 | 11.5 | 115 | 12 | 7 of 1321 |
+| Factory | 15.0 | 0.9 | 13.1 | 128 | 12 | 8 of 1181 |
+
+**What it says.** Rendering is the whole cost: on every screen the frame
+with the tree paused is within 1-3 ms of the live one. Godot draws every
+frame at the display's rate whatever changed, so the phone's GPU and
+driver work the same whether the player is thinking or moving. The menu
+is the dearest screen we draw (the card grid 5.5 ms of it, the header 2,
+the day row 1.6, each card 0.5-2; nothing stands out, it is simply the
+most on screen), and the menu is where a player sits longest. Gumdrop's
+full-rect syrup pane is the dearest board found. Script is nowhere the
+problem: five nodes process at the menu (`Social`'s hub and its
+`SocialStream`, both early-outs for a player without friends, the day
+Timer, Analytics' crash-log Timer, the MCP bridge), and a board adds its
+own one or two.
+
+**Ranked, what drains, and the change each wants:**
+
+1. **No frame cap.** `project.godot` sets no `application/run/max_fps`
+   (default 0, no limit) and no vsync mode (default Enabled), so a 90 or
+   120 Hz phone can run at its display's top rate (Godot asks for no rate;
+   Android picks the mode, and a game drawing steadily tends to get the
+   top one), 1.5 to 2 times the work of a 60 Hz one for a game where
+   nothing needs it; the phone measurement below is the proof either way. The change:
+   `application/run/max_fps=60` in `[application]`. One line, read at
+   launch; it also steadies the frame on phones whose rate wanders.
+   Nothing depends on the rate: motion is tweens and delta, and every sim
+   that steps without a delta (Gumdrop's table, Peapod, Molehill, Eddy,
+   Beeline, Firefly, Stackwood) does so inside a fixed-`DT` accumulator,
+   so a cap changes no speed. Not applied:
+   the user's call, since it changes how motion feels on a 120 Hz phone.
+2. **Every frame redraws, even at rest.** The lever Godot offers is
+   `application/run/low_processor_mode`, which sleeps between frames and
+   skips the draw when no canvas item changed; it is what an editor-like
+   app uses. It would do nothing here as the game stands: the faces idle
+   on looping tweens (38 alive on Binairo, 10 on the menu: `Face.set_idle`,
+   `Motion.pulse`, the sun's spin), and a tween moving a Control dirties
+   the canvas every frame. Under reduce-motion they stop, and the mode
+   would then save nearly everything on a board at rest. A real saving
+   wants an idle policy: after some seconds with no touch and no board
+   motion, stop the faces' idles (they already know `set_idle(false)`)
+   and drop `Engine.max_fps` to 30; any touch or move restores both. Not
+   built: a design call and a touch to every board's idle, for the
+   roadmap.
+3. **The friends stream.** For a player with friends on
+   (`Social.enable()`), `core/social.gd` opens the live stream at launch
+   and never closes it, and writes presence every 20 s with a read of each
+   friend's presence after it (`_beat`, `refresh_presence`). That is the
+   radio awake for the whole session, on every screen. Invites arrive
+   through the menu's `_on_invited` whether or not a board is open (which
+   is on top was not checked), so the stream cannot simply close on a
+   board. Puzzle-only players (the default) hold no stream. The change:
+   close the stream on background and after some seconds without a touch,
+   reopen on the next one; or scope it to the Friends sheet and the
+   Versus tab if invites may wait. The rest of the backend is quiet online: the day
+   fetches run once a day (`_watch_day` returns on `today == _watched`;
+   offline or on a failed fetch `_watched` stays unset, so a player with no
+   signal retries two fetches every minute, cheap but worth a backoff), Analytics drains a
+   crash log once a second with nothing to send, and Android pauses the
+   main loop in the background, so none of it runs from a pocket.
+4. **`debug/settings/gdscript/always_track_call_stacks=true`** in
+   `[debug]` keeps GDScript call stacks in the release build (the docs:
+   "tracked in release builds, thus allowing
+   `Engine.capture_script_backtraces` to function"), a small tax on every
+   call so Crashlytics gets a script backtrace. Worth keeping while the
+   store builds are young; a flag to drop once crashes are quiet.
+5. **The MCP bridge ships.** `addons/godot_mcp` is not in the export
+   filter, so `MCPGameBridge` is in the APK and processes every frame;
+   its `_process` is three early-outs when no debugger is attached, so the
+   cost is a few microseconds, but it is a development addon in a store
+   build. Excluding the folder from the export alone would break launch
+   (the autoload in `project.godot` would fail to load); either drop the
+   autoload for store exports or leave it, the cost is microseconds.
+
+**Ads, outside this measurement.** The AdMob banner on the menu is the
+largest drain the user controls from outside the code: a WebView
+composited every frame and a network refresh on the interval set in the
+AdMob console (a console knob, not ours); remove-ads takes it away. The
+phone test below should run with and without the banner.
+
+**Non-issues, checked:** no `_physics_process` anywhere but the bridge;
+no shader reads `TIME`; no audio plays at rest (0 players at the menu and
+on each board); the 60 s day watcher and the 1 s crash-log timer do no
+network work on their own; every per-frame hook in the Live stream is
+gated on its state.
+
+**What this did not measure:** the phone. No device was attached (`adb`
+is not on this Mac's PATH and the SDK's platform-tools folder is gone).
+The GPU share is unread (`render-gpu` is 0 under ANGLE), and the Mac's
+driver cost per draw is ANGLE's, not Adreno's or Mali's; the ratios hold,
+the milliseconds do not. The decisive reading is a phone's battery stats
+over twenty minutes at the menu, before and after the cap: Android's
+`dumpsys batterystats` or Settings > Battery, on a 120 Hz phone.
+**A side effect of measuring:** the probe launches `world/main.tscn`, so
+each run started Analytics on the Mac through the Measurement Protocol
+(`analytics_secret.cfg` is here) and sent a `game_open`: about sixteen
+desktop launches on 2026-10-22, to discount in that day's numbers.
+
+**Applied the same evening** (the user: "Apply them all"), on local main:
+`application/run/max_fps=60`; the rest in `core/power.gd`, started by
+`world/main.gd` and skipped under any `--script` run: twenty seconds
+without a touch stop every face's idle where it is (`set_idle(false)`:
+the blinks are one-shots chained anew, which no loop test catches) and
+pause every tween that loops forever (`Tween.get_loops_left() == -1`; a
+one-shot in flight, a sim's hop, plays out), cap the frame at 30 and turn `OS.low_processor_usage_mode` on, a
+minute closes the friends stream (`Social.rest`); a touch, a key, a
+mouse button or the window's return wakes it all (the faces idle again,
+the loops play on) and restores the cap that was there; the app sent to the background rests at once, stream and
+all, the window merely unfocused (the shade, an ad, the purchase sheet)
+only rests the frame; a live online game or a lobby waiting on a friend
+never rests. The `[debug]` call-stack tracking stays, as recommended:
+Crashlytics' script lines are worth the microseconds while the store
+builds are young. The MCP bridge frees itself in `_ready` when no
+debugger is attached, a third way (a one-line patch in
+`addons/godot_mcp/game_bridge/mcp_game_bridge.gd`, to redo if the addon
+is updated). `tests/_probe_battery.gd -- rest` shows the rest land (150
+frames in five seconds at 30, none drawn by the renderer at the menu) and
+the wake restore. Owed on a phone: that the low-processor mode's skipped
+draw also skips the surface's swap (a menu left thirty seconds that
+flickers means delete the `low_processor_usage_mode` line and keep the
+rest; the 30 fps cap is most of the saving), and `REST_AFTER` at 20 s,
+the one tunable, which a Sudoku thought through will reach.

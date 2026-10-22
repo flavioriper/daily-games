@@ -12,6 +12,7 @@ const Progress = preload("res://core/progress.gd")
 const Analytics = preload("res://core/analytics.gd")
 const Backend = preload("res://core/backend.gd")
 const Social = preload("res://core/social.gd")
+const Power = preload("res://core/power.gd")
 const DeepLink = preload("res://core/deep_link.gd")
 const Locale = preload("res://core/locale.gd")
 const CozyTheme = preload("res://ui/theme.gd")
@@ -113,6 +114,9 @@ func _ready() -> void:
 	# Friends ride on the backend's identity. Started is not connected: it
 	# holds no stream until the player has social (core/social.gd).
 	Social.start(self)
+	# The rest after a while without a touch (core/power.gd): tweens
+	# paused, 30 fps, no draw of a frame nothing changed, the stream shut.
+	Power.start(self)
 	if AgeScreen.wanted():
 		var age := AgeScreen.new()
 		age.name = "AgeScreen"

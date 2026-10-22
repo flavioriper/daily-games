@@ -109,6 +109,12 @@ that area**, and add new history there rather than here.
   mouse events are in window coordinates; send the release after a press.
 - **`Analytics.start()`, `Backend`, `Ads.start()` run only from
   `world/main.gd`**, so tests and harnesses stay offline and ad-free.
+- **The game rests** (`core/power.gd`, 2026-10-22): twenty seconds
+  without a touch stop every face's idle and pause every forever-looping
+  tween, cap the frame at 30 and skip unchanged draws; a minute closes the
+  friends stream. A looping look that must run at rest is a `_process`,
+  not a looping tween or a face idle. `Power.start` skips
+  `--script` runs, so a harness never measures a resting game.
 - **After merging a parallel branch**, diff the merge against both parents:
   git has merged boards into parse errors and dropped registry entries
   without a conflict.

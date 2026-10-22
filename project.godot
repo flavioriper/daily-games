@@ -33,6 +33,7 @@ config/features=PackedStringArray("4.7", "GL Compatibility")
 boot_splash/bg_color=Color(0.988235, 0.960784, 0.913725, 1)
 boot_splash/show_image=false
 config/icon="res://assets/icon/icon.png"
+run/max_fps=60
 
 [autoload]
 

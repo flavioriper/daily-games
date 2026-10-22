@@ -96,6 +96,9 @@ static var _enabled := false
 ## The stream has been pointed at this player's document.
 static var _opened := false
 static var _opening := false
+## Resting (core/power.gd): the stream is shut and not reopened until
+## the wake. A live game or a friend being waited on is never rested.
+static var _resting := false
 static var _uid := ""
 static var _code := ""
 ## The code in the file has been looked up on the server this session.
@@ -215,13 +218,15 @@ static func _me() -> String:
 	return uid
 
 static func _open() -> void:
-	if _opened or _opening:
+	if _opened or _opening or _resting:
 		return
 	_opening = true
 	var uid := await _me()
 	_opening = false
 	if uid.is_empty():
 		_retry_t = RETRY
+		return
+	if _resting:
 		return
 	_opened = true
 	hub().stream.open("social/%s" % uid)
@@ -573,8 +578,29 @@ static func _judge() -> bool:
 			hub().invited.emit(from, fresh[from])
 	return said
 
+## The game at rest (core/power.gd, a minute without a touch, or sent to
+## the background): the stream closes and the beats stop with it; the wake
+## opens it again, and the first event is the whole of the data (Live).
+## Does nothing in a live game or while a friend is waited on, whose
+## answers ride this stream.
+static func rest(on: bool) -> void:
+	if _faked or not _started:
+		return
+	if on:
+		if _resting or in_game or busy_with != "":
+			return
+		_resting = true
+		if _opened:
+			hub().stream.close()
+			_opened = false
+	elif _resting:
+		_resting = false
+		_retry_t = 0.0
+		if _enabled:
+			_open()
+
 static func _tick(delta: float) -> void:
-	if not _enabled or _faked:
+	if not _enabled or _faked or _resting:
 		return
 	if not _opened:
 		_retry_t -= delta
