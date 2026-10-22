@@ -49,7 +49,6 @@ func _ready() -> void:
 	_over.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_over.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_over.draw.connect(_draw_over)
-	resized.connect(func() -> void: _over.size = size)
 	add_child(_over)
 	_deal()
 
