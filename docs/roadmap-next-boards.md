@@ -39,7 +39,7 @@ Connections, Spelling Bee, Pips, Pinpoint, Clues by Sam.
 - [x] **2. Birdsong** (Simon-style recall). Built 2026-10-22, `docs/agents/boards/birdsong.md`; drums 3/4/4/4, tunes 5/7/9/9, Insane is Whisper (only the new note sung). Memory. A growing tune on the
       drums, played back. Reuses Drumbeat's road, drums, sound bank. Trivial,
       no pt/es. Quality: longest tune without a slip.
-- [ ] **3. Domino Patio** (NYT Pips). Numbers/Logic. Lay dominoes so each
+- [x] **3. Domino Patio** (NYT Pips). Built 2026-10-22, `docs/agents/boards/patio.md`; Logic, tiles 4/6/8/8, Insane is The Spare (one tile too many). Numbers/Logic. Lay dominoes so each
       coloured bed meets its rule (sum, equal, less than). Reuses Versus
       Dominoes art. Generator moderate (uniqueness check). No pt/es. Time and
       hints only.

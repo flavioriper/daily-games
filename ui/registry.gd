@@ -866,6 +866,36 @@ const PUZZLES := [
 		],
 	},
 	{
+		"id": "patio",
+		"skill": "logic",
+		"kind": "puzzle",
+		"title": "Domino Patio",
+		"blurb": "DP_BLURB",
+		"short": "DP_SHORT",
+		"motto": "DP_MOTTO",
+		"footer": "Lay · Turn · Keep",
+		# Lay the house's dominoes on a patio of flower beds so every bed
+		# keeps the rule on its tag (puzzles/patio2d.gd). The terrace fills
+		# the screen and the rack is inside the board, so no tray and no
+		# actions row: Undo, the bin and the bulb ride the tools row. No
+		# Check: the tags say how each bed stands.
+		"script": "res://puzzles/patio2d.gd",
+		"card": "res://ui/menu/cards/patio.gd",
+		"shell": "flat",
+		"tray": "none",
+		"bleed": true,
+		"level_card": true,
+		"actions": false,
+		"difficulties": [0, 1, 2, 3],
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "DP_LVL_0"},
+			{"difficulty": 1, "name": "Medium", "line": "DP_LVL_1"},
+			{"difficulty": 2, "name": "Hard", "line": "DP_LVL_2"},
+			{"difficulty": 3, "name": "Insane", "line": "DP_LVL_3"},
+		],
+	},
+	{
 		"id": "lattice",
 		"skill": "logic",
 		"kind": "puzzle",

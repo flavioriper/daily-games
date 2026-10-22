@@ -1764,6 +1764,33 @@ SETS = {
         "party":    ("a short cozy celebratory flourish on a real kalimba and a music box, rising and bright, with a few soft little party blower toots, warm and joyful", 2.0, -8, BEADBOX_TUNE, "warm:2600", "body:300"),
         "purr":     ("one short soft contented chirrup, a little rolling trill with the mouth closed, gentle and happy", 1.0, -12, KITTEN, "warm:2400", "ease:0.01", "body:300"),
     },
+    # Domino Patio (puzzle_id "patio"), 2026-10-22: the house's dominoes
+    # laid on a patio of flower beds. Every action is a pop from the bank,
+    # by its job: `pick` the pebble (a tile lifted to carry), `set` the
+    # token (a tile laid; varied 0.94-1.06 at play), `turn` the wrap (a
+    # quarter turn, repeated), `lift` and `back` the lip (a tile taken off
+    # the patio, or carried back to its bay), `undo` the lip lower, `refuse`
+    # and `broken` the tongue (a drop that does not fit; a bed whose rule
+    # breaks), `bed` three wraps rising (a bed kept). The rest are takes
+    # already on disk, copied into build/sfx_raw/patio/ from Birdsong's
+    # (themselves Glimpse's), never bought. All of it unheard.
+    "patio": {
+        "pick":     ('one small pebble dropped into a calm pond, a single soft rounded plop, very short', 0.5, -15, FOLEY, "bank:pebble", "cut:0.2", "notes:0:1", "tight"),
+        "set":      ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.16", "notes:0:-2", "tight"),
+        "turn":     ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -16, FOLEY, "bank:wrap", "cut:0.1", "notes:0:2", "tight"),
+        "lift":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -15, FOLEY, "bank:lip", "cut:0.18", "tight"),
+        "back":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -19, FOLEY, "bank:lip", "cut:0.14", "notes:0:-2", "tight"),
+        "undo":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -16, FOLEY, "bank:lip", "cut:0.16", "notes:0:-3", "tight"),
+        "refuse":   ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.26", "notes:0.1:-3,-3", "tight"),
+        "broken":   ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -17, FOLEY, "bank:tongue", "cut:0.2", "notes:0:-5", "tight"),
+        "bed":      ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.1", "notes:0.07:0,4,7", "tight"),
+        "hint":     ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -16, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320", "notes:0:2"),
+        "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
+        "enter":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.5", "notes:0.08:-2,1,-2,0,3", "tight"),
+        "confetti": ("a soft little paper confetti pop and flutter with a tiny music box twinkle, cute", 1.0, -10, BEADBOX_TUNE, "warm:7000"),
+        "solved":   ("a warm short celebratory flourish on a real kalimba and a music box, rising arpeggio ending on a soft hand bell shimmer, joyful and cozy", 2.0, -8, BEADBOX_TUNE, "warm:2600", "body:300"),
+        "party":    ("a short cozy celebratory flourish on a real kalimba and a music box, rising and bright, with a few soft little party blower toots, warm and joyful", 2.0, -8, BEADBOX_TUNE, "warm:2600", "body:300"),
+    },
     # Fairy Lights (puzzle_id "fairylights"): tap a piece of garden wire to
     # turn it; wire joined back to the post runs gold and wakes its lanterns.
     # Hard and Insane blow a fuse on a wrong join; Insane is Wish Tags.

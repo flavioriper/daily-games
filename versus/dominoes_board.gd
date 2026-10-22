@@ -56,11 +56,12 @@ const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
+const Tile = preload("res://ui/faces/domino_tile.gd")
 
 enum Zone { STOCK, MINE, THEIRS, LINE }
 
 ## Half a tile, a square, in a mesh's own space.
-const H := 100.0
+const H := Tile.H
 ## Half the length of a row of the line, in halves of a tile.
 const ROW := 6.0
 ## The most a half of a tile on the line is drawn, in pixels.
@@ -97,16 +98,15 @@ const DRAG_REACH_MIN := 34.0
 const FELT := Color("5c9c7c")
 const FELT_DEEP := Color("4a8669")
 const FELT_LIT := Color("6fae8d")
-const IVORY := Color("f7f0df")
-const IVORY_EDGE := Color("cbbb97")
-const IVORY_LIT := Color("fffaf0")
-const INK := Color("2c2a33")
-const BRASS := Color("d9a441")
+const IVORY := Tile.IVORY
+const IVORY_EDGE := Tile.IVORY_EDGE
+const IVORY_LIT := Tile.IVORY_LIT
+const INK := Tile.INK
+const BRASS := Tile.BRASS
 const HALO := Color("fff6e0")
 const HINT := Color("f9c04a")
 ## A number's pips, 1 to 6: berry, leaf, dusk blue, pumpkin, plum, teal.
-const PIPS := [Color("2c2a33"), Color("bf4a44"), Color("4f8a31"), Color("5567b8"),
-	Color("c86f22"), Color("8a5aa8"), Color("2f7f7a")]
+const PIPS := Tile.SPOTS
 ## The backs' paint and the sprout stamped on them.
 const BACK := Color("cf6f68")
 const BACK_DEEP := Color("a34f4c")
@@ -1067,60 +1067,30 @@ func _mesh(tile: int, o: int) -> ArrayMesh:
 		_meshes[key] = _build_tile(tile, o)
 	return _meshes[key]
 
-## One tile about the origin: its shadow, its side and top, and face up the
-## line across its middle with a brass pin and each half's pips in their
-## number's colour, a double rimmed in brass; a back is painted, a sprout
-## stamped on it.
+## One tile about the origin: face up, the house's tile
+## (ui/faces/domino_tile.gd) with the low number's half first along it for
+## 0 and 1; a back is painted, a sprout stamped on it.
 static func _build_tile(tile: int, o: int) -> ArrayMesh:
 	var b := Face.Builder.new()
 	var upright := o % 2 == 1
+	if tile >= 0:
+		var first: int = Rules.LO[tile] if o < 2 else Rules.HI[tile]
+		var second: int = Rules.HI[tile] if o < 2 else Rules.LO[tile]
+		Tile.face(b, first, second, upright, Rules.is_double(tile))
+		return b.mesh()
 	var sz := Vector2(H, 2.0 * H) if upright else Vector2(2.0 * H, H)
 	var body := sz - Vector2(8.0, 8.0)
 	var at := -body * 0.5
-	var back := tile < 0
 	b.fan(Face.Builder.round_rect(at + Vector2(1.0, 9.0), body, 16.0), Color(0.1, 0.06, 0.02, 0.26))
-	b.fan(Face.Builder.round_rect(at + Vector2(0.0, 5.0), body, 16.0), BACK_DEEP if back else IVORY_EDGE)
-	b.fan(Face.Builder.round_rect(at, body, 16.0), BACK if back else IVORY)
-	var rim := Color(BACK_LIT, 0.85) if back else (Color(BRASS, 0.95) if Rules.is_double(tile) else Color(IVORY_LIT, 0.9))
-	b.stroke(Face.Builder.round_rect(at + Vector2(5.0, 5.0), body - Vector2(10.0, 10.0), 12.0), 3.0, rim, true)
-	if back:
-		_sprout(b, Vector2(0.0, 10.0), 1.9, STAMP)
-		return b.mesh()
-	var along := Vector2(0.0, 1.0) if upright else Vector2(1.0, 0.0)
-	var cross := Vector2(along.y, along.x)
-	b.stroke(PackedVector2Array([cross * -30.0, cross * 30.0]), 4.0, Color(INK, 0.75))
-	b.disc(Vector2(0.0, 1.0), 8.0, BRASS.darkened(0.25))
-	b.disc(Vector2.ZERO, 7.0, BRASS)
-	b.disc(Vector2(-2.0, -2.0), 2.5, Color(1, 1, 1, 0.6))
-	# the low number's half comes first along the tile for 0 and 1
-	var first: int = Rules.LO[tile] if o < 2 else Rules.HI[tile]
-	var second: int = Rules.HI[tile] if o < 2 else Rules.LO[tile]
-	_pips(b, along * -H * 0.5, first, upright)
-	_pips(b, along * H * 0.5, second, upright)
+	b.fan(Face.Builder.round_rect(at + Vector2(0.0, 5.0), body, 16.0), BACK_DEEP)
+	b.fan(Face.Builder.round_rect(at, body, 16.0), BACK)
+	b.stroke(Face.Builder.round_rect(at + Vector2(5.0, 5.0), body - Vector2(10.0, 10.0), 12.0), 3.0, Color(BACK_LIT, 0.85), true)
+	_sprout(b, Vector2(0.0, 10.0), 1.9, STAMP)
 	return b.mesh()
 
-## A half's pips about `c`: the die's patterns, the six in two lines along
-## the tile.
+## A half's pips about `c` (the house tile's spots).
 static func _pips(b: Face.Builder, c: Vector2, n: int, upright: bool, k := 1.0, grow := 1.0) -> void:
-	var g := 25.0 * k
-	var r := k * grow
-	var spots: Array = []
-	if n % 2 == 1:
-		spots.append(Vector2.ZERO)
-	if n >= 2:
-		spots.append(Vector2(-g, -g))
-		spots.append(Vector2(g, g))
-	if n >= 4:
-		spots.append(Vector2(g, -g))
-		spots.append(Vector2(-g, g))
-	if n == 6:
-		spots.append(Vector2(-g, 0.0))
-		spots.append(Vector2(g, 0.0))
-	for p: Vector2 in spots:
-		var q := p if upright else Vector2(p.y, -p.x)
-		b.disc(c + q + Vector2(0.0, 1.5) * r, 10.0 * r, Color(1, 1, 1, 0.6))
-		b.disc(c + q, 9.5 * r, PIPS[n])
-		b.disc(c + q + Vector2(-3.0, -3.0) * r, 2.6 * r, Color(1, 1, 1, 0.32))
+	Tile.spots(b, c, n, upright, k, grow)
 
 ## A leaf from its foot to its tip, `bulge` wide at the middle.
 static func _leaf(b: Face.Builder, foot: Vector2, tip: Vector2, bulge: float, col: Color) -> void:

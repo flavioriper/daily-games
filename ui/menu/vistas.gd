@@ -63,6 +63,8 @@ const CARDS := {
 	"glimpse": ["sky", 1.6, Vector2(0.40, 0.45)],
 	# Birdsong's garden morning: the meadow, its old tree and lawn.
 	"birdsong": ["meadow", 1.5, Vector2(0.55, 0.40)],
+	# Domino Patio's terrace in the meadow's sun, by its cottages.
+	"patio": ["meadow", 1.6, Vector2(0.80, 0.55)],
 	# Trestle's river gap under a clear sky.
 	"trestle": ["sky", 1.5, Vector2(0.50, 0.55)],
 	# Mini Golf's course is laid out on the meadow, under its cottages.

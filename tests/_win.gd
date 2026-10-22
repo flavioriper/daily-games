@@ -162,6 +162,9 @@ func _note(id: String) -> String:
 		"hedgehogs": return "%dx%d lawn, %d hedgehogs, woken=%d, hints=%d, checks=%d, board fit=%s, hud=%s" % [
 			_puzzle._state.cols(), _puzzle._state.rows(), int(_puzzle._state.g.k), _puzzle._state.woken,
 			_puzzle.hints_used, _puzzle.checks, _fit_ok, _hud_ok]
+		"patio": return "%dx%d, %d tiles (%d spare), %d beds, unique=%s, %d moves, hints=%d, caps %s, board fit=%s, hud=%s" % [
+			_puzzle._st.cols, _puzzle._st.rows, _puzzle._st.laid_count(), _puzzle._st.tiles.size() - _puzzle._st.laid_count(),
+			_puzzle._st.beds.size(), _puzzle._st.unique, _puzzle.moves, _puzzle.hints_used, _puzzle.capabilities(), _fit_ok, _hud_ok]
 		"birdsong": return "%d drums, %d notes, %d rounds, %d clean, %d slips, hints=%d, caps %s, board fit=%s, hud=%s" % [
 			_puzzle._st.drums(), _puzzle._st.tune.size(), _puzzle._st.rounds(), _puzzle._st.clean, _puzzle._st.slips,
 			_puzzle.hints_used, _puzzle.capabilities(), _fit_ok, _hud_ok]
@@ -237,6 +240,7 @@ func _solve(id: String) -> void:
 		"pixelgarden": _solve_pixelgarden()
 		"glimpse": _solve_glimpse()
 		"birdsong": _solve_birdsong()
+		"patio": _solve_patio()
 		"trestle": _solve_trestle()
 		"minigolf": _solve_minigolf()
 		"horse": _solve_horse()
@@ -1392,6 +1396,43 @@ func _solve_birdsong() -> void:
 			d = (d + 1) % st.drums()
 		_tap_local(_puzzle.drum_to_local(d))
 		_puzzle._process(0.02)
+
+## Domino Patio: one bulb through the real button; then each tile of the
+## answer turned on the rack by taps until it faces its answer's way and
+## dragged by a real touch onto its two squares. The first one laid is
+## dragged off the patio again (back to its bay) and laid once more.
+func _solve_patio() -> void:
+	var st = _puzzle._st
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for i in st.bed_of.size():
+		if st.bed_of[i] >= 0 and not slot.has_point(_puzzle._patio_pos(i, 0) - Vector2(_puzzle._l("cell") * 0.5, 0)):
+			_fit_ok = false
+	for t in st.tiles.size():
+		if not slot.has_point(_puzzle._bay(t)):
+			_fit_ok = false
+	_press(_host.top_bar.hint_button)
+	_hud_ok = _puzzle.hints_used == 1
+	var lifted := false
+	for t in st.tiles.size():
+		if _puzzle.is_done():
+			return
+		if st.answer[t].x < 0 or st.right(t):
+			continue
+		var guard := 0
+		while st.dir[t] != st.answer[t].y and guard < 4:
+			guard += 1
+			_tap_local(_puzzle._bay(t))
+		var lift := Vector2(0, _puzzle.HOLD_LIFT * _puzzle._l("cell"))
+		_drag_local(_puzzle._bay(t), _puzzle.answer_to_local(t) + lift)
+		if not lifted and st.right(t):
+			lifted = true
+			# off the patio again, onto the open terrace under the rack
+			_drag_local(_puzzle.answer_to_local(t), Vector2(_puzzle.size.x * 0.5, _puzzle.size.y - 30.0))
+			_hud_ok = _hud_ok and st.at[t] < 0
+			_drag_local(_puzzle._bay(t), _puzzle.answer_to_local(t) + lift)
+		if not st.right(t):
+			_hud_ok = false
 
 func _solve_pixelgarden() -> void:
 	var st = _puzzle._state
