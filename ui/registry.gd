@@ -836,6 +836,36 @@ const PUZZLES := [
 		],
 	},
 	{
+		"id": "birdsong",
+		"skill": "memory",
+		"kind": "puzzle",
+		"title": "Birdsong",
+		"blurb": "BS_BLURB",
+		"short": "BS_SHORT",
+		"motto": "BS_MOTTO",
+		"footer": "Listen · Remember · Play",
+		# A bird sings a tune on Drumbeat's drums, one note longer each round;
+		# play it back (puzzles/birdsong2d.gd). The garden fills the screen;
+		# the drums are its controls, so no tray and no actions row. Only the
+		# bulb: a note heard cannot be undone, and nothing is ever wrong on
+		# the board for a Check to find.
+		"script": "res://puzzles/birdsong2d.gd",
+		"card": "res://ui/menu/cards/birdsong.gd",
+		"shell": "flat",
+		"tray": "none",
+		"bleed": true,
+		"level_card": true,
+		"actions": false,
+		"difficulties": [0, 1, 2, 3],
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "BS_LVL_0"},
+			{"difficulty": 1, "name": "Medium", "line": "BS_LVL_1"},
+			{"difficulty": 2, "name": "Hard", "line": "BS_LVL_2"},
+			{"difficulty": 3, "name": "Insane", "line": "BS_LVL_3"},
+		],
+	},
+	{
 		"id": "lattice",
 		"skill": "logic",
 		"kind": "puzzle",

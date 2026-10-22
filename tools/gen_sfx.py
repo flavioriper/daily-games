@@ -1739,6 +1739,31 @@ SETS = {
         "party":    ("a short cozy celebratory flourish on a real kalimba and a music box, rising and bright, with a few soft little party blower toots, warm and joyful", 2.0, -8, BEADBOX_TUNE, "warm:2600", "body:300"),
         "purr":     ("one short soft contented chirrup, a little rolling trill with the mouth closed, gentle and happy", 1.0, -12, KITTEN, "warm:2400", "ease:0.01", "body:300"),
     },
+    # Birdsong (puzzle_id "birdsong"), 2026-10-22: a bird sings a tune on
+    # Drumbeat's drums and the player plays it back. The drums' notes are not
+    # here: `note_0`..`note_3` (sung) and `drum_0`..`drum_3` (struck) are
+    # copies of tools/gen_drumbeat.py's `drum_0`..`drum_3`, one felt-beaten
+    # skin at four pitches, two names each so a struck drum taps and a sung
+    # one only knocks. Every row below is a take already on disk, copied
+    # into build/sfx_raw/birdsong/ from Glimpse's (itself Pixel Garden's),
+    # never bought: `slip` is the tongue's refusal, `hush` the same tongue
+    # lower and quieter (a drum tapped while the bird sings), `round` the
+    # bead plate's flourish (a round played back), `grow` a bubble (the next
+    # note's ring), `hint` the held-up picture's puff (the bird sings
+    # again). All of it unheard.
+    "birdsong": {
+        "slip":     ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.26", "notes:0.1:-3,-3", "tight"),
+        "hush":     ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -21, FOLEY, "bank:tongue", "cut:0.1", "notes:0:-6", "tight"),
+        "round":    ("a small happy flourish, four soft kalimba notes rising with a tiny music box sparkle on top, a little square of bead art finished, proud and cute", 1.2, -9, BEADBOX_TUNE, "warm:7000"),
+        "grow":     ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -16, FOLEY, "bank:wrap", "cut:0.1", "notes:0:3", "tight"),
+        "hint":     ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -16, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320", "notes:0:2"),
+        "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
+        "enter":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.5", "notes:0.08:-2,1,-2,0,3", "tight"),
+        "confetti": ("a soft little paper confetti pop and flutter with a tiny music box twinkle, cute", 1.0, -10, BEADBOX_TUNE, "warm:7000"),
+        "solved":   ("a warm short celebratory flourish on a real kalimba and a music box, rising arpeggio ending on a soft hand bell shimmer, joyful and cozy", 2.0, -8, BEADBOX_TUNE, "warm:2600", "body:300"),
+        "party":    ("a short cozy celebratory flourish on a real kalimba and a music box, rising and bright, with a few soft little party blower toots, warm and joyful", 2.0, -8, BEADBOX_TUNE, "warm:2600", "body:300"),
+        "purr":     ("one short soft contented chirrup, a little rolling trill with the mouth closed, gentle and happy", 1.0, -12, KITTEN, "warm:2400", "ease:0.01", "body:300"),
+    },
     # Fairy Lights (puzzle_id "fairylights"): tap a piece of garden wire to
     # turn it; wire joined back to the post runs gold and wakes its lanterns.
     # Hard and Insane blow a fuse on a wrong join; Insane is Wish Tags.

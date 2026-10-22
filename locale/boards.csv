@@ -3021,3 +3021,35 @@ BRAIN_GL_1,"Name the shape before it hides: a bug, a lamp, a face. A name is eas
 BRAIN_GL_2,"The picture is a mirror: learn one half, and the other is the same, flipped.","A figura é espelhada: aprenda uma metade, e a outra é igual, invertida.","El dibujo es un espejo: aprende una mitad, y la otra es igual, al revés."
 BRAIN_GL_3,"Lay the colour you remember best first, then fill around it.",Ponha primeiro a cor de que você mais se lembra e preencha em volta.,Pon primero el color que mejor recuerdas y rellena alrededor.
 BRAIN_GL_4,"Save your look for the end, when only a few beads are left in doubt.","Guarde sua olhada para o fim, quando só restarem poucas contas em dúvida.","Guarda tu vistazo para el final, cuando queden pocas cuentas en duda."
+BS_BLURB,A little bird sings a tune on the drums. Play it back; each round it grows by one note.,Um passarinho canta uma melodia nos tambores. Toque-a de volta; a cada rodada ela cresce uma nota.,Un pajarito canta una melodía en los tambores. Tócala de vuelta; cada ronda crece una nota.
+BS_SHORT,"Hear the tune,\nplay it back.","Ouça a melodia,\ntoque de volta.","Escucha la melodía,\ntócala de vuelta."
+BS_MOTTO,"Listen, then play it back",Ouça e toque de volta,Escucha y tócala de vuelta
+BS_LVL_0,"3 drums, 5 notes","3 tambores, 5 notas","3 tambores, 5 notas"
+BS_LVL_1,"4 drums, 7 notes","4 tambores, 7 notas","4 tambores, 7 notas"
+BS_LVL_2,"4 drums, 9 notes, quicker","4 tambores, 9 notas, mais rápido","4 tambores, 9 notas, más rápido"
+BS_LVL_3,Whisper: only the new note is sung,Sussurro: só a nota nova é cantada,Susurro: solo se canta la nota nueva
+BS_RULES,"The bird sings a tune on the %d drums under its branch. When it stops, tap the drums in the same order. Each round the tune is one note longer; play back all %d notes to finish the day.","O pássaro canta uma melodia nos %d tambores sob o galho. Quando ele parar, toque os tambores na mesma ordem. A cada rodada a melodia ganha uma nota; toque as %d notas para terminar o dia.","El pájaro canta una melodía en los %d tambores bajo su rama. Cuando pare, toca los tambores en el mismo orden. Cada ronda la melodía tiene una nota más; toca las %d notas para terminar el día."
+BS_RULES_SLIP,A wrong drum costs nothing but the round: the bird sings it again and you start it over.,Um tambor errado só custa a rodada: o pássaro canta de novo e você recomeça.,Un tambor equivocado solo cuesta la ronda: el pájaro la canta otra vez y empiezas de nuevo.
+BS_RULES_WHISPER,Whisper: after the first round the bird sings only the new note. Keep the rest of the tune in your head.,Sussurro: depois da primeira rodada o pássaro canta só a nota nova. Guarde o resto da melodia na cabeça.,Susurro: tras la primera ronda el pájaro canta solo la nota nueva. Guarda el resto de la melodía en la cabeza.
+BS_LISTEN,Listen…,Ouça…,Escucha…
+BS_YOUR_TURN,Your turn!,Sua vez!,¡Tu turno!
+BS_AGAIN,Once more…,Mais uma vez…,Otra vez…
+BS_NICE,Lovely!,Que lindo!,¡Precioso!
+BS_ROUND,Round %d of %d,Rodada %d de %d,Ronda %d de %d
+BS_WIN,The whole song!,A canção inteira!,¡La canción entera!
+BS_WIN_CLEAN,%d of %d rounds with no slip.,%d de %d rodadas sem errar.,%d de %d rondas sin fallar.
+BS_WIN_ALL,Not one slip!,Nenhum erro!,¡Ni un fallo!
+HTP_BS_LISTEN,Listen to the bird,Ouça o pássaro,Escucha al pájaro
+HTP_BS_LISTEN_BODY,"The bird sings a tune on the drums. Each drum has its own note, colour and mark. Watch and listen.","O pássaro canta uma melodia nos tambores. Cada tambor tem sua nota, cor e marca. Olhe e escute.","El pájaro canta una melodía en los tambores. Cada tambor tiene su nota, su color y su marca. Mira y escucha."
+HTP_BS_PLAY,Play it back,Toque de volta,Tócala de vuelta
+HTP_BS_PLAY_BODY,"When it says your turn, tap the drums in the same order. A berry fills each ring, and the next round adds a note.","Quando aparecer sua vez, toque os tambores na mesma ordem. Uma frutinha enche cada anel, e a próxima rodada ganha uma nota.","Cuando sea tu turno, toca los tambores en el mismo orden. Una baya llena cada anillo, y la siguiente ronda suma una nota."
+HTP_BS_SLIP,A slip,Um erro,Un fallo
+HTP_BS_SLIP_BODY,A wrong drum is no harm: the bird sings the round again and you start it over. Rounds with no slip raise your score.,Um tambor errado não faz mal: o pássaro canta a rodada de novo e você recomeça. Rodadas sem erro sobem sua nota.,Un tambor equivocado no hace daño: el pájaro canta la ronda otra vez y empiezas de nuevo. Las rondas sin fallos suben tu puntuación.
+HTP_BS_WHISPER,Whisper,Sussurro,Susurro
+HTP_BS_WHISPER_BODY,On Insane the bird sings only the new note after the first round. Play the whole tune from memory.,No Insano o pássaro canta só a nota nova depois da primeira rodada. Toque a melodia inteira de memória.,En Insano el pájaro canta solo la nota nueva tras la primera ronda. Toca la melodía entera de memoria.
+HTP_BS_HINT,Sing it again,Cante de novo,Cántala otra vez
+HTP_BS_HINT_BODY,"The bulb has the bird sing the whole round once more, from the top.","A lâmpada faz o pássaro cantar a rodada inteira mais uma vez, do começo.","La bombilla hace que el pájaro cante la ronda entera otra vez, desde el principio."
+BRAIN_BS_1,Hum along in your head: a tune is easier to keep than a list.,Cantarole junto na cabeça: uma melodia se guarda melhor que uma lista.,Tararea por dentro: una melodía se guarda mejor que una lista.
+BRAIN_BS_2,"Group the notes in threes, like a phone number.","Agrupe as notas de três em três, como um número de telefone.","Agrupa las notas de tres en tres, como un número de teléfono."
+BRAIN_BS_3,Only the last note is new each round: hold the rest and wait for it.,Só a última nota é nova a cada rodada: segure o resto e espere por ela.,Solo la última nota es nueva cada ronda: guarda el resto y espérala.
+BRAIN_BS_4,"Say the colours to yourself as they play: red, blue, blue, green.","Diga as cores para si enquanto tocam: vermelho, azul, azul, verde.","Dite los colores mientras suenan: rojo, azul, azul, verde."

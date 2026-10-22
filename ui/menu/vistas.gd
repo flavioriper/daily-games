@@ -61,6 +61,8 @@ const CARDS := {
 	"pixelgarden": ["meadow", 1.6, Vector2(0.30, 0.55)],
 	# Glimpse's mat lies under a clear sky, the memory skill's blue.
 	"glimpse": ["sky", 1.6, Vector2(0.40, 0.45)],
+	# Birdsong's garden morning: the meadow, its old tree and lawn.
+	"birdsong": ["meadow", 1.5, Vector2(0.55, 0.40)],
 	# Trestle's river gap under a clear sky.
 	"trestle": ["sky", 1.5, Vector2(0.50, 0.55)],
 	# Mini Golf's course is laid out on the meadow, under its cottages.
