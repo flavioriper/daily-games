@@ -91,7 +91,7 @@ that area**, and add new history there rather than here.
   code, comments, commits or on screen (Hidden Word, Word Trail,
   Bridges, Quilt, Paper Planes, Pinwheel, Caterpillar, Sunbeam, Knight,
   Hedgehogs, Marigold, Drumbeat, Trestle, Horse Pen, Firefly, Molehill,
-  Stackwood, Lucky Thirteen, Posy, Peapod, Nightlight, Beeline, Deckchair, Eddy, Furrow, Griddle, Trivet, Tally, Bagatelle, Gumdrop, Grove, How Big?, Golden Acorn, Pearl Dive, Lattice, Toy Boats, Penny Drop, Jewel Box, Toy Cannons, Yarn Hoop, Glimpse). The spec names the original once, to
+  Stackwood, Lucky Thirteen, Posy, Peapod, Nightlight, Beeline, Deckchair, Eddy, Furrow, Griddle, Trivet, Tally, Bagatelle, Gumdrop, Grove, How Big?, Golden Acorn, Pearl Dive, Lattice, Toy Boats, Penny Drop, Jewel Box, Toy Cannons, Yarn Hoop, Glimpse, Birdsong). The spec names the original once, to
   forbid it.
 - **A game's world fills the screen** (the user, 2026-10-10, of Eddy: "the
   screen should fit everything, just like the factory does, it's gonna be a

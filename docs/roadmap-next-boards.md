@@ -36,7 +36,7 @@ Connections, Spelling Bee, Pips, Pinpoint, Clues by Sam.
 - [x] **1. Glimpse** (copy-from-memory). Built 2026-10-22, `docs/agents/boards/glimpse.md`; generated mirrored sprites 6-8 square, not Pixel Garden's bank. Memory. Pixel Garden's picture shows
       3 s, then hides; rebuild it. Reuses Pixel Garden whole. Generator
       trivial, no pt/es cost. Quality: beads right on the first try.
-- [ ] **2. Birdsong** (Simon-style recall). Memory. A growing tune on the
+- [x] **2. Birdsong** (Simon-style recall). Built 2026-10-22, `docs/agents/boards/birdsong.md`; drums 3/4/4/4, tunes 5/7/9/9, Insane is Whisper (only the new note sung). Memory. A growing tune on the
       drums, played back. Reuses Drumbeat's road, drums, sound bank. Trivial,
       no pt/es. Quality: longest tune without a slip.
 - [ ] **3. Domino Patio** (NYT Pips). Numbers/Logic. Lay dominoes so each

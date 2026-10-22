@@ -12,7 +12,8 @@ const Registry = preload("res://ui/registry.gd")
 const SKILLS := ["logic", "space", "planning", "focus", "words", "memory"]
 ## Boards whose time says nothing about how well they were played (section 6's
 ## "T" column): their score is their own measure alone.
-const UNTIMED := ["acorn", "how_big", "pearl", "drumbeat", "gumdrop", "minigolf"]
+## Birdsong (2026-10-22) is paced by the bird's singing, not the player.
+const UNTIMED := ["acorn", "how_big", "pearl", "drumbeat", "gumdrop", "minigolf", "birdsong"]
 ## A solve's score by level: the floor and the span its performance fills.
 const BAND_FLOOR := [20.0, 35.0, 50.0, 60.0]
 const BAND_SPAN := [40.0, 45.0, 45.0, 40.0]

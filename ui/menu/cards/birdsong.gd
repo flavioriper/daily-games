@@ -18,7 +18,7 @@ const BRANCH_END := 236.0
 const BRANCH_Y := 70.0
 const BRANCH_TIP_Y := 58.0
 const BIRD_IN := 120.0
-const BIRD_R := 22.0
+const BIRD_R := 26.0
 const QUAVERS := [[178.0, 112.0, 0], [72.0, 104.0, 3]]
 const LAWN_Y := 196.0
 

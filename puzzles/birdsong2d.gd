@@ -336,6 +336,8 @@ func _slip(d: int) -> void:
 	for i in _bead_at.size():
 		_bead_at[i] = -INF
 	_cue("slip")
+	if not demo:
+		fx.puff(_skin(d), Pal.TEXT_DIM, 6)
 	_say_now("BS_AGAIN")
 	_after(AFTER_SLIP, func() -> void: _listen(true))
 
@@ -539,19 +541,21 @@ func _layout_for(top: float, bottom: float) -> Dictionary:
 	var u := w / W
 	var span := maxf(bottom - top, 200.0 * u)
 	var n: int = maxi(1, _st.drums())
-	var step := minf(w * 0.9 / n, 290.0 * u)
-	var drum_r := minf(step * 0.4, 120.0 * u)
+	var step := minf(w * 0.86 / n, 300.0 * u)
+	var drum_r := minf(step * 0.45, 135.0 * u)
 	var foot := bottom - maxf(30.0 * u, span * 0.07)
-	var branch := top + span * 0.2
+	var branch := top + span * 0.24
 	var count: int = maxi(1, _st.tune.size())
-	var gap := minf(w * 0.86 / count, 118.0 * u)
+	var gap := minf(w * 0.8 / count, 118.0 * u)
 	var bead_r := minf(gap * 0.4, 42.0 * u)
-	var row := top + span * 0.46
+	var row := top + span * 0.5
 	return {
 		"u": u, "top": top, "bottom": bottom,
-		"branch": branch, "bird_x": w * 0.56, "bird_r": minf(70.0 * u, span * 0.07),
+		"branch": branch, "bird_x": w * 0.56, "bird_r": minf(92.0 * u, span * 0.085),
 		"row_y": row, "bead_gap": gap, "bead_r": bead_r,
 		"foot": foot, "drum_r": drum_r, "step": step,
+		# the row and the drums stand in the room the old tree's trunk leaves
+		"mid": w * 0.535 if _world != null else w * 0.5,
 		"horizon": foot - drum_r * 2.2,
 	}
 
@@ -570,7 +574,7 @@ func _u() -> float:
 
 func _drum_x(d: int) -> float:
 	var n: int = _st.drums()
-	return size.x * 0.5 + (d - (n - 1) * 0.5) * _l("step")
+	return _l("mid") + (d - (n - 1) * 0.5) * _l("step")
 
 func _drum_foot(d: int) -> Vector2:
 	return Vector2(_drum_x(d), _l("foot"))
@@ -587,7 +591,7 @@ func _bird_at() -> Vector2:
 
 func _slot_at(i: int) -> Vector2:
 	var count: int = _st.tune.size()
-	return Vector2(size.x * 0.5 + (i - (count - 1) * 0.5) * _l("bead_gap"), _l("row_y"))
+	return Vector2(_l("mid") + (i - (count - 1) * 0.5) * _l("bead_gap"), _l("row_y"))
 
 # --- drawing ---
 
@@ -616,13 +620,11 @@ func _draw_branch() -> void:
 			var t := float(i) / 24.0
 			pts.append(Vector2(lerpf(-20.0 * u, end, t), y + 10.0 * u + sin(t * PI) * 16.0 * u - t * 26.0 * u))
 		b.stroke(_moved(pts, Vector2(0, 8.0 * u)), 34.0 * u, Color(World.TRUNK_DEEP, 0.25))
-		# tapered: drawn as strokes narrowing to the tip
-		for k in 4:
-			var from := int(k * 6)
-			var part := pts.slice(from, mini(pts.size(), from + 8))
-			b.stroke(part, (34.0 - k * 7.0) * u, World.TRUNK_DEEP)
-			b.stroke(part, (26.0 - k * 6.0) * u, World.TRUNK)
-		b.stroke(pts.slice(2, 20), 4.0 * u, Color(World.BARK, 0.8))
+		# one tapered limb, thick at the trunk and thin at the tip, its lit
+		# top a lighter wood
+		b.polygon(_limb(pts, 19.0 * u, 6.0 * u), World.TRUNK_DEEP)
+		b.polygon(_limb(_moved(pts, Vector2(0, -2.0 * u)), 14.0 * u, 3.5 * u), World.TRUNK)
+		b.stroke(_moved(pts.slice(1, 21), Vector2(0, -7.0 * u)), 3.0 * u, Color(World.BARK, 0.7))
 		for tw: Array in [[0.3, -1.0], [0.55, 1.0], [0.78, -1.0], [0.97, 1.0]]:
 			var root := pts[int(float(tw[0]) * 24.0)]
 			var tip := root + Vector2(40.0, 46.0 * float(tw[1]) - 20.0) * u
@@ -640,6 +642,26 @@ static func _leaf(b: Face.Builder, at: Vector2, s: float, turn: float) -> void:
 	b.polygon(pts, World.CROWN)
 	b.stroke(PackedVector2Array([at - Vector2(s * 0.8, 0).rotated(turn), at + Vector2(s * 0.7, 0).rotated(turn)]),
 		s * 0.09, Color(World.CROWN_DEEP, 0.8))
+
+## A limb along `pts`, `w0` half wide at its first point narrowing to `w1`
+## at its last, its tip rounded.
+static func _limb(pts: PackedVector2Array, w0: float, w1: float) -> PackedVector2Array:
+	var top := PackedVector2Array()
+	var low := PackedVector2Array()
+	var n := pts.size()
+	for i in n:
+		var a := pts[maxi(i - 1, 0)]
+		var b := pts[mini(i + 1, n - 1)]
+		var nrm := (b - a).normalized().orthogonal()
+		var w := lerpf(w0, w1, float(i) / (n - 1))
+		top.append(pts[i] + nrm * w)
+		low.append(pts[i] - nrm * w)
+	var dir := (pts[n - 1] - pts[n - 2]).normalized()
+	var out := top
+	out.append(pts[n - 1] + dir * w1)
+	low.reverse()
+	out.append_array(low)
+	return out
 
 static func _moved(pts: PackedVector2Array, by: Vector2) -> PackedVector2Array:
 	var out := PackedVector2Array()
@@ -785,7 +807,7 @@ func _draw_quavers() -> void:
 		var e := (_t - float(q.at)) / QUAVER_TIME
 		var a := clampf(1.0 - e, 0.0, 1.0) * clampf(e * 6.0, 0.0, 1.0)
 		var at := Vector2(float(q.x) + sin(e * PI * 2.0) * 14.0 * u, float(q.y) - QUAVER_RISE * u * (1.0 - (1.0 - e) * (1.0 - e)) - 20.0 * u)
-		draw_mesh(Bird.quaver(13.0 * u, Parts.LANE_DEEP[int(q.kind)]), null,
+		draw_mesh(Bird.quaver(20.0 * u, Parts.LANE_DEEP[int(q.kind)]), null,
 			Transform2D(sin(e * 7.0) * 0.2, Vector2.ONE * (0.8 + 0.4 * minf(e * 4.0, 1.0)), 0.0, at), Color(1, 1, 1, a))
 
 ## What the bird is doing, over the row, and which round of how many.

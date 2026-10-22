@@ -51,8 +51,8 @@ func _ready() -> void:
 	_over.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_over.draw.connect(_draw_over)
 	resized.connect(func() -> void: _over.size = size)
-	_deal()
 	add_child(_over)
+	_deal()
 
 func _deal() -> void:
 	if _board != null:
