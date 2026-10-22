@@ -598,6 +598,72 @@ const PUZZLES := [
 		],
 	},
 	{
+		"id": "shelves",
+		"skill": "words",
+		"kind": "puzzle",
+		"title": "Four Shelves",
+		"blurb": "FS_BLURB",
+		"short": "FS_SHORT",
+		"motto": "FS_MOTTO",
+		"footer": "Pick · Shelve · Sort",
+		# Jam jars on a pantry dresser, a word on each, hiding shelves of four
+		# that go together: pick four and Shelve them, a heart lost on a wrong
+		# four (puzzles/shelves2d.gd). The day's puzzles are written at night
+		# by a model and sorted blind by a second (server/functions/src/
+		# shelves.ts), in the player's language; the bank deals a phone that
+		# never reached them (content/shelves.json). The jars and keys are
+		# inside the board, so no tray and no actions row: the bulb rides the
+		# tools row.
+		"script": "res://puzzles/shelves2d.gd",
+		"card": "res://ui/menu/cards/shelves.gd",
+		"shell": "flat",
+		"tray": "none",
+		"bleed": true,
+		"level_card": true,
+		"actions": false,
+		"difficulties": [0, 1, 2, 3],
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "FS_LVL_0"},
+			{"difficulty": 1, "name": "Medium", "line": "FS_LVL_1"},
+			{"difficulty": 2, "name": "Hard", "line": "FS_LVL_2"},
+			{"difficulty": 3, "name": "Insane", "line": "FS_LVL_3"},
+		],
+	},
+	{
+		"id": "clues",
+		"skill": "words",
+		"kind": "puzzle",
+		"title": "Five Clues",
+		"blurb": "FC_BLURB",
+		"short": "FC_SHORT",
+		"motto": "FC_MOTTO",
+		"footer": "Read · Guess · Type",
+		# Clue cards pinned to a cork board on the garden shed's wall, turned
+		# one at a time; type the idea they share (puzzles/clues2d.gd). The
+		# rounds are written at night by a model and named blind by a second
+		# (server/functions/src/clues.ts), in the player's language; the bank
+		# deals a phone that never reached them (content/clues.json). It
+		# types, so its tray is Hidden Word's keyboard, as Pearl Dive's is,
+		# and Enter is every move: no actions row and no tip card.
+		"script": "res://puzzles/clues2d.gd",
+		"card": "res://ui/menu/cards/clues.gd",
+		"shell": "flat",
+		"tray": "keys",
+		"tip": false,
+		"bleed": true,
+		"level_card": true,
+		"actions": false,
+		"difficulties": [0, 1, 2, 3],
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "FC_LVL_0"},
+			{"difficulty": 1, "name": "Medium", "line": "FC_LVL_1"},
+			{"difficulty": 2, "name": "Hard", "line": "FC_LVL_2"},
+			{"difficulty": 3, "name": "Insane", "line": "FC_LVL_3"},
+		],
+	},
+	{
 		"id": "train",
 		"skill": "planning",
 		"kind": "puzzle",

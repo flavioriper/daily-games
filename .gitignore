@@ -90,6 +90,10 @@ server/functions/lib/
 server/functions/src/acorn_bank.json
 # The same for content/pearl.json.
 server/functions/src/pearl_bank.json
+# And content/shelves.json.
+server/functions/src/shelves_bank.json
+# And content/clues.json.
+server/functions/src/clues_bank.json
 # And the two word boards' lists (words.ts).
 server/functions/src/word_lists/
 server/.firebase/

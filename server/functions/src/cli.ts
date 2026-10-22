@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import {makeDay as acornDay} from "./acorn";
+import {bankPuzzles, makeDay as shelvesDay, Puzzle as ShelvesPuzzle} from "./shelves";
+import {bankRounds, makeDay as cluesDay, Round as CluesRound} from "./clues";
 import {cost, Drawing} from "./generate";
 import {BANDS as HOOP_BANDS, HoopPicture, makeHoop} from "./hoop";
 import {bankPrompts, cleaned, makeDay as pearlDay, Prompt} from "./pearl";
@@ -56,6 +58,8 @@ import {makeVista, TIMES as VISTA_TIMES, Vistas} from "./vistas";
 const DAYS: Record<string, (day: number) => Promise<unknown>> = {
   acorn: (day) => acornDay(day),
   pearl: (day) => pearlDay(day),
+  shelves: (day) => shelvesDay(day),
+  clues: (day) => cluesDay(day),
 };
 
 function readList(file: string): Prompt[] {
@@ -80,6 +84,35 @@ async function growBank(level: number, count: number, outfile: string): Promise<
   const all = [...held, ...fresh].map((p) => cleaned(p)).filter((p): p is Prompt => p !== null);
   fs.writeFileSync(outfile, `[\n${all.map((p) => JSON.stringify(p)).join(",\n")}\n]\n`);
   return `${outfile}: ${fresh.length} new, ${all.length} in all`;
+}
+
+/** Four Shelves' bank (content/shelves.json), grown by `count` reviewed
+ *  puzzles of `band`, told every group the bank already uses. */
+async function growShelves(band: number, count: number, into?: string): Promise<string> {
+  const file = into ?? path.join(__dirname, "../../../content/shelves.json");
+  const held: {tiers: ShelvesPuzzle[][]} = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : {tiers: [[], [], [], []]};
+  const taken = held.tiers.flat().flatMap((p) => p.en.groups.map((g) => g.label));
+  let top = 0;
+  for (const p of held.tiers[band]) top = Math.max(top, Number(p.id.slice(2)) || 0);
+  const fresh = await bankPuzzles(band, count, taken, (n) => `${"emhi"[band]}b${String(top + 1 + n).padStart(3, "0")}`);
+  held.tiers[band].push(...fresh);
+  // One puzzle a line: the file is read and mended by hand.
+  fs.writeFileSync(file, `{"tiers": [\n${held.tiers.map((t) => `[\n${t.map((p) => JSON.stringify(p)).join(",\n")}\n]`).join(",\n")}\n]}\n`);
+  return `${file}: band ${band} ${fresh.length} new, ${held.tiers[band].length} in all, US$${cost().toFixed(2)}`;
+}
+
+/** Five Clues' bank (content/clues.json), grown by `count` reviewed rounds
+ *  of `tier`, told every idea the bank already uses. */
+async function growClues(tier: number, count: number, into?: string): Promise<string> {
+  const file = into ?? path.join(__dirname, "../../../content/clues.json");
+  const held: {tiers: CluesRound[][]} = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : {tiers: [[], [], []]};
+  const taken = held.tiers.flat().map((r) => r.en.label);
+  let top = 0;
+  for (const r of held.tiers[tier]) top = Math.max(top, Number(r.id.slice(2)) || 0);
+  const fresh = await bankRounds(tier, count, taken, (n) => `${"emh"[tier]}k${String(top + 1 + n).padStart(3, "0")}`);
+  held.tiers[tier].push(...fresh);
+  fs.writeFileSync(file, `{"tiers": [\n${held.tiers.map((t) => `[\n${t.map((r) => JSON.stringify(r)).join(",\n")}\n]`).join(",\n")}\n]}\n`);
+  return `${file}: tier ${tier} ${fresh.length} new, ${held.tiers[tier].length} in all, US$${cost().toFixed(2)}`;
 }
 
 /** Keeps each drawing as a file beside the day's, for the dashboard. */
@@ -152,6 +185,13 @@ async function main(): Promise<void> {
     const today = now.getUTCFullYear() * 10000 + (now.getUTCMonth() + 1) * 100 + now.getUTCDate();
     const day = args[0] ? Number(args[0]) : today;
     print(JSON.stringify(await DAYS[game](day), null, 1));
+  } else if (what === "bank" && args[0] === "shelves" && (args.length === 3 || args.length === 4)) {
+    // node lib/cli.js bank shelves <band> <count> [file]: grows
+    // content/shelves.json, or [file] (bands grown side by side, merged after)
+    print(await growShelves(Number(args[1]), Number(args[2]), args[3]));
+  } else if (what === "bank" && args[0] === "clues" && (args.length === 3 || args.length === 4)) {
+    // node lib/cli.js bank clues <tier> <count> [file]: grows content/clues.json
+    print(await growClues(Number(args[1]), Number(args[2]), args[3]));
   } else if (what === "bank" && args[0] === "pearl" && args.length === 4) {
     print(await growBank(Number(args[1]), Number(args[2]), args[3]));
   } else if (what === "themed" && (args.length === 3 || args.length === 4)) {

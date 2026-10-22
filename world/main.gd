@@ -35,7 +35,7 @@ func _enter_tree() -> void:
 const THEMED := [ThemedPictures.GAME, ThemedVistas.GAME]
 ## Everything a day reads off the server, fetched a day ahead: the night
 ## publishes tomorrow's theme by 00:00 UTC and its quizzes at 03:00.
-const AHEAD := [ThemedPictures.GAME, ThemedVistas.GAME, "acorn", "pearl"]
+const AHEAD := [ThemedPictures.GAME, ThemedVistas.GAME, "acorn", "pearl", "shelves", "clues"]
 var _watched := 0
 var _watching := false
 
@@ -88,6 +88,9 @@ func _ready() -> void:
 	Backend.day_content("acorn", Daily.utc_key())  # deliberately not awaited
 	# Pearl Dive's prompts ride the same way (puzzles/pearl2d.gd).
 	Backend.day_content("pearl", Daily.utc_key())  # deliberately not awaited
+	# Four Shelves' and Five Clues' (puzzles/shelves2d.gd, clues2d.gd) too.
+	Backend.day_content("shelves", Daily.utc_key())  # deliberately not awaited
+	Backend.day_content("clues", Daily.utc_key())  # deliberately not awaited
 	# The day's themed bead pictures, for Pixel Garden, Button Box and Toy
 	# Cannons, and Gumdrop's jellies (core/themed_pictures.gd), and its
 	# painted vistas, for the day card and the difficulty rows

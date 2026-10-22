@@ -3399,3 +3399,82 @@ BRAIN_PB_1,"Pick one square as the lid and fold its neighbours down around it, o
 BRAIN_PB_2,Squares two apart in a straight row are opposite sides: rule out any box that shows both.,Quadrados a dois de distância numa fileira reta são lados opostos: descarte qualquer caixa que mostre os dois.,Los cuadrados a dos de distancia en una fila recta son lados opuestos: descarta cualquier caja que muestre los dos.
 BRAIN_PB_3,Two squares that touch in the net share an edge on the box. Follow one edge at a time.,Dois quadrados que se tocam no molde dividem uma aresta na caixa. Siga uma aresta de cada vez.,Dos cuadrados que se tocan en la plantilla comparten una arista en la caja. Sigue una arista a la vez.
 BRAIN_PB_4,Read the corner round in one direction and check the net goes round the same way.,Leia o canto girando num sentido e confira se o molde gira do mesmo jeito.,Lee la esquina girando en un sentido y comprueba que la plantilla gira igual.
+FS_BLURB,Jam jars on the pantry dresser hide shelves of four words that go together. Find every shelf.,Potes de geleia na cristaleira da despensa escondem prateleiras de quatro palavras que combinam. Ache todas as prateleiras.,Frascos de mermelada en el aparador de la despensa esconden estantes de cuatro palabras que van juntas. Encuentra todos los estantes.
+FS_SHORT,"Find the four
+that go together.","Ache as quatro
+que combinam.","Halla las cuatro
+que van juntas."
+FS_MOTTO,Four that belong together,Quatro que combinam,Cuatro que van juntas
+FS_LVL_0,"Three shelves, 12 words","Três prateleiras, 12 palavras","Tres estantes, 12 palabras"
+FS_LVL_1,"Four shelves, 16 words","Quatro prateleiras, 16 palavras","Cuatro estantes, 16 palabras"
+FS_LVL_2,"Four shelves, trickier words","Quatro prateleiras, palavras mais traiçoeiras","Cuatro estantes, palabras más engañosas"
+FS_LVL_3,Crowded Pantry: five shelves,Despensa Lotada: cinco prateleiras,Despensa Llena: cinco estantes
+FS_RULES,"%d words on jars hide %d shelves of four that go together. Tap four jars and Shelve them. Four of one shelf go up; anything else costs a heart, and you have %d.","%d palavras nos potes escondem %d prateleiras de quatro que combinam. Toque em quatro potes e guarde-os. Quatro da mesma prateleira sobem; qualquer outra coisa custa um coração, e você tem %d.","%d palabras en los frascos esconden %d estantes de cuatro que van juntas. Toca cuatro frascos y guárdalos. Cuatro del mismo estante suben; cualquier otra cosa cuesta un corazón, y tienes %d."
+FS_RULES_CROWDED,"Crowded Pantry: five shelves hide in twenty words, and words that seem to fit two shelves are everywhere.","Despensa Lotada: cinco prateleiras se escondem em vinte palavras, e há palavras que parecem caber em duas por toda parte.","Despensa Llena: cinco estantes se esconden en veinte palabras, y por todas partes hay palabras que parecen caber en dos."
+FS_REPEAT,You tried those four already.,Você já tentou essas quatro.,Ya probaste esas cuatro.
+FS_CLOSE,Three of those go together.,Três dessas combinam.,Tres de esas van juntas.
+FS_WRONG,Not a shelf.,Não é uma prateleira.,No es un estante.
+FS_OUT_LINE,Out of hearts.,Sem corações.,Sin corazones.
+FS_HEART_BACK,One more heart!,Mais um coração!,¡Un corazón más!
+FS_SHOWN_LINE,There are the shelves. A new pantry tomorrow.,Aí estão as prateleiras. Amanhã tem outra despensa.,Ahí están los estantes. Mañana hay otra despensa.
+FS_OUT_TITLE,Out of hearts,Sem corações,Sin corazones
+FS_OUT_BODY,"Shelves are still hiding. Watch a short video for one more heart, or see the shelves.","Ainda há prateleiras escondidas. Assista a um vídeo curto e ganhe mais um coração, ou veja as prateleiras.","Aún hay estantes escondidos. Mira un video corto y gana un corazón más, o mira los estantes."
+FS_OUT_BODY_REST,Shelves are still hiding. See them now; there's a new pantry tomorrow.,Ainda há prateleiras escondidas. Veja agora; amanhã tem outra despensa.,Aún hay estantes escondidos. Míralos ahora; mañana hay otra despensa.
+FS_ONE_HEART,One more heart,Mais um coração,Un corazón más
+FS_SHOW,Show the shelves,Mostrar as prateleiras,Mostrar los estantes
+FS_WIN,Every shelf filled!,Todas as prateleiras cheias!,¡Todos los estantes llenos!
+FS_WIN_CLEAN,Not one mistake.,Nenhum erro.,Ningún error.
+FS_WIN_MISTAKES_ONE,%d mistake on the way.,%d erro no caminho.,%d error por el camino.
+FS_WIN_MISTAKES_N,%d mistakes on the way.,%d erros no caminho.,%d errores por el camino.
+HTP_FS_PICK,"Pick four, shelve them",Escolha quatro e guarde,Elige cuatro y guárdalas
+HTP_FS_PICK_BODY,"Tap four jars whose words go together, then the tick. Four of one shelf go up to the top of the dresser.",Toque em quatro potes cujas palavras combinam e depois no visto. Quatro da mesma prateleira sobem para o alto da cristaleira.,Toca cuatro frascos cuyas palabras van juntas y luego la palomita. Cuatro del mismo estante suben a lo alto del aparador.
+HTP_FS_CLOSE,"Close, but not quite",Quase,Casi
+HTP_FS_CLOSE_BODY,"A wrong four costs a heart, and you have %d. When three of them go together, the board says so.","Quatro erradas custam um coração, e você tem %d. Quando três delas combinam, o tabuleiro avisa.","Cuatro equivocadas cuestan un corazón, y tienes %d. Cuando tres de ellas van juntas, el tablero te avisa."
+HTP_FS_CROWDED,Crowded Pantry,Despensa Lotada,Despensa Llena
+HTP_FS_CROWDED_BODY,On Insane five shelves hide in twenty words. Find the clearest shelf first: it leaves fewer words to trick you.,"No Insano, cinco prateleiras se escondem em vinte palavras. Ache primeiro a mais clara: sobram menos palavras para te enganar.","En Demencial, cinco estantes se esconden en veinte palabras. Halla primero el más claro: quedan menos palabras para engañarte."
+HTP_FS_HINT,A hint,Uma dica,Una pista
+HTP_FS_HINT_BODY,The bulb picks a word of the clearest shelf still hiding; press it again for one more of the same shelf.,A lâmpada escolhe uma palavra da prateleira mais clara ainda escondida; aperte de novo para mais uma da mesma.,La bombilla elige una palabra del estante más claro que sigue oculto; púlsala otra vez para una más del mismo.
+BRAIN_FS_1,"Before you tap, name a group out loud: if you can't name it, it's probably a trap.","Antes de tocar, diga o nome do grupo: se não conseguir nomear, provavelmente é uma armadilha.","Antes de tocar, di el nombre del grupo: si no puedes nombrarlo, probablemente es una trampa."
+BRAIN_FS_2,"Look for the word that fits two groups, and decide where it goes last.",Procure a palavra que cabe em dois grupos e decida por último onde ela vai.,Busca la palabra que cabe en dos grupos y decide al final dónde va.
+BRAIN_FS_3,Shuffle the jars when you are stuck: a new order shows new pairs.,Embaralhe os potes quando travar: uma nova ordem mostra novos pares.,Baraja los frascos cuando te atasques: un orden nuevo muestra parejas nuevas.
+BRAIN_FS_4,Think of words that go before or after: a group can be a hidden partner word.,Pense em palavras que vêm antes ou depois: um grupo pode ser uma palavra parceira escondida.,Piensa en palabras que van antes o después: un grupo puede ser una palabra compañera escondida.
+FC_BLURB,"Five clue cards turn one at a time, each a thing that belongs to one hidden idea. Name the idea with as few as you can.","Cinco cartas de pista viram uma de cada vez, cada uma uma coisa de uma mesma ideia escondida. Diga a ideia com o mínimo de pistas.","Cinco cartas de pista se voltean una a una, cada una una cosa de una misma idea oculta. Di la idea con las menos pistas posibles."
+FC_SHORT,"Name what the
+clues share.","Diga o que as
+pistas têm em comum.","Di qué tienen
+las pistas en común."
+FC_MOTTO,"The fewer clues, the better","Quanto menos pistas, melhor","Cuantas menos pistas, mejor"
+FC_LVL_0,"3 rounds, everyday ideas","3 rodadas, ideias do dia a dia","3 rondas, ideas cotidianas"
+FC_LVL_1,"3 rounds, trickier first clues","3 rodadas, primeiras pistas mais traiçoeiras","3 rondas, primeras pistas más engañosas"
+FC_LVL_2,"4 rounds, subtle ideas","4 rodadas, ideias sutis","4 rondas, ideas sutiles"
+FC_LVL_3,Three Tries: 4 subtle rounds,Três Tentativas: 4 rodadas sutis,Tres Intentos: 4 rondas sutiles
+FC_RULES,"%d rounds. Five clue cards hide one idea: each card names a thing that belongs to it, the least telling first. Type the idea and press Enter. A wrong idea turns the next card; Enter with nothing typed turns it without a guess. Name it with as few cards as you can.","%d rodadas. Cinco cartas escondem uma ideia: cada carta é uma coisa que pertence a ela, a menos reveladora primeiro. Digite a ideia e aperte Enter. Uma ideia errada vira a próxima carta; Enter sem nada digitado vira a carta sem palpite. Acerte com o mínimo de cartas.","%d rondas. Cinco cartas esconden una idea: cada carta es una cosa que pertenece a ella, la menos reveladora primero. Escribe la idea y pulsa Enter. Una idea equivocada voltea la siguiente carta; Enter sin escribir nada la voltea sin intento. Acierta con las menos cartas posibles."
+FC_RULES_TRIES,"Three Tries: a round also ends after %d wrong ideas, so turn cards with an empty Enter before you guess.","Três Tentativas: uma rodada também acaba depois de %d palpites errados, então vire cartas com Enter vazio antes de chutar.","Tres Intentos: una ronda también termina tras %d intentos equivocados, así que voltea cartas con Enter vacío antes de adivinar."
+FC_ALL_UP,Every card is up: type your idea.,Todas as cartas estão viradas: digite sua ideia.,Todas las cartas están volteadas: escribe tu idea.
+FC_REPEAT,You said that already.,Você já disse isso.,Ya dijiste eso.
+FC_WRONG,Not that one. Next clue!,Não é essa. Próxima pista!,No es esa. ¡Siguiente pista!
+FC_TRIES_ONE,Not that one. %d try left.,Não é essa. Resta %d tentativa.,No es esa. Queda %d intento.
+FC_TRIES_N,Not that one. %d tries left.,Não é essa. Restam %d tentativas.,No es esa. Quedan %d intentos.
+FC_IT_WAS,It was: %s,Era: %s,Era: %s
+FC_FOUND_ONE,Found with %d card,Achada com %d carta,Hallada con %d carta
+FC_FOUND_N,Found with %d cards,Achada com %d cartas,Hallada con %d cartas
+FC_LOST,Not this time,Não desta vez,Esta vez no
+FC_NEXT,Enter for the next,Enter para a próxima,Enter para la siguiente
+FC_DONE,Enter to finish,Enter para terminar,Enter para terminar
+FC_TYPE,Type the idea,Digite a ideia,Escribe la idea
+FC_WIN,%d of %d ideas found.,%d de %d ideias achadas.,%d de %d ideas halladas.
+FC_WIN_CARDS,%.1f cards each.,%.1f cartas cada.,%.1f cartas cada una.
+HTP_FC_GUESS,Name the idea,Diga a ideia,Di la idea
+HTP_FC_GUESS_BODY,Every card is a thing that belongs to one hidden idea. Type the idea and press Enter.,Cada carta é uma coisa de uma ideia escondida. Digite a ideia e aperte Enter.,Cada carta es una cosa de una idea oculta. Escribe la idea y pulsa Enter.
+HTP_FC_WRONG,A wrong idea,Uma ideia errada,Una idea equivocada
+HTP_FC_WRONG_BODY,"A wrong idea turns the next card, which tells you a little more.","Uma ideia errada vira a próxima carta, que conta um pouco mais.","Una idea equivocada voltea la siguiente carta, que cuenta un poco más."
+HTP_FC_TURN,The next clue,A próxima pista,La siguiente pista
+HTP_FC_TURN_BODY,Press Enter with nothing typed to turn the next card without a guess. Fewer cards make a better score.,Aperte Enter sem nada digitado para virar a próxima carta sem chutar. Menos cartas dão uma nota melhor.,Pulsa Enter sin escribir nada para voltear la siguiente carta sin intento. Menos cartas dan mejor puntuación.
+HTP_FC_TRIES,Three Tries,Três Tentativas,Tres Intentos
+HTP_FC_TRIES_BODY,On Insane a round ends after %d wrong ideas. Turn cards with an empty Enter until you are sure.,"No Insano, uma rodada acaba depois de %d palpites errados. Vire cartas com Enter vazio até ter certeza.","En Demencial, una ronda termina tras %d intentos equivocados. Voltea cartas con Enter vacío hasta estar seguro."
+HTP_FC_HINT,A hint,Uma dica,Una pista
+HTP_FC_HINT_BODY,The bulb shows the idea's next letter on the slate.,A lâmpada mostra a próxima letra da ideia na lousa.,La bombilla muestra la siguiente letra de la idea en la pizarra.
+BRAIN_FC_1,"Before you guess, say what the first two cards have in common, out loud.","Antes de chutar, diga em voz alta o que as duas primeiras cartas têm em comum.","Antes de adivinar, di en voz alta qué tienen en común las dos primeras cartas."
+BRAIN_FC_2,"Think of what a thing has, does or goes with, not only what kind it is.","Pense no que a coisa tem, faz ou acompanha, não só no tipo dela.","Piensa en lo que la cosa tiene, hace o acompaña, no solo en qué tipo es."
+BRAIN_FC_3,A short guess is safer: one key word names an idea as well as a sentence.,Um palpite curto é mais seguro: uma palavra-chave diz a ideia tão bem quanto uma frase.,Un intento corto es más seguro: una palabra clave dice la idea tan bien como una frase.
+BRAIN_FC_4,"On a hard round, turn one more card instead of guessing early.","Numa rodada difícil, vire mais uma carta em vez de chutar cedo.","En una ronda difícil, voltea una carta más en vez de adivinar antes."

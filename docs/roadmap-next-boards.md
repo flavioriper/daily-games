@@ -43,7 +43,7 @@ Connections, Spelling Bee, Pips, Pinpoint, Clues by Sam.
       coloured bed meets its rule (sum, equal, less than). Reuses Versus
       Dominoes art. Generator moderate (uniqueness check). No pt/es. Time and
       hints only.
-- [ ] **4. Four Shelves** (Connections). **Waits on the user's deploy**
+- [x] **4. Four Shelves** (Connections). Built 2026-10-22 once the user allowed the deploy, `docs/agents/boards/shelves.md`; shelves 3/4/4/5, written and sorted blind at night (`server/functions/src/shelves.ts`), Insane is Crowded Pantry. Was: **Waits on the user's deploy**
       (2026-10-22): skipped for Teacups, since a board on the Acorn
       pipeline is not playable until the functions are deployed. Words. 16 words, four hidden groups.
       Rides Golden Acorn's pipeline (Haiku writes, Opus reviews), which writes
@@ -59,7 +59,7 @@ Connections, Spelling Bee, Pips, Pinpoint, Clues by Sam.
       target. Reuses Lattice's tiles. Trivial. Quality: steps vs shortest.
 - [x] **8. Honeycomb** (Spelling Bee). Built 2026-10-22, `docs/agents/boards/honeycomb.md`; lines 20/28/36/36% of the day's honey, Insane is Wandering Queen (she flies to a new letter every four words). Words. wordfreq lists (licensed);
       three word lists plus a rude-word filter. Quality: share found.
-- [ ] **9. Five Clues** (LinkedIn Pinpoint). Words. Acorn pipeline, Pearl
+- [x] **9. Five Clues** (LinkedIn Pinpoint). Built 2026-10-22, `docs/agents/boards/clues.md`; rounds 3/3/4/4, written and named blind at night (`server/functions/src/clues.ts`), Insane is Three Tries. Words. Acorn pipeline, Pearl
       Dive's typed answers. Quality: clues needed 1-5.
 - [x] **10. Who Ate the Pie?** (Clues by Sam). Built 2026-10-22, `docs/agents/boards/pie.md`; bakers 9/12/16/20, Insane is Empty Dish (nobody says how many ate), dealt on the phone. Logic. No-guess deduction over
       eight bakers; faces from `ui/faces/`. Generator hard (solver proves

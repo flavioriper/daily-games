@@ -5,6 +5,8 @@ import {getAuth} from "firebase-admin/auth";
 import {FieldValue, getFirestore} from "firebase-admin/firestore";
 import {asked, makeDay} from "./acorn";
 import {asked as pearlAsked, makeDay as pearlDay} from "./pearl";
+import {asked as shelvesAsked, makeDay as shelvesDay} from "./shelves";
+import {asked as cluesAsked, makeDay as cluesDay} from "./clues";
 import type {Theme} from "./theme";
 import {publishPictures, publishVistas, stagedTheme, themeWork} from "./themeday";
 
@@ -55,6 +57,11 @@ export const GAMES: Record<string, (day: number, recent: unknown[], theme: Theme
   // takes twenty-six, and a writer forbidden ten days of them goes looking
   // among moons and cacti.
   pearl: (day, recent, theme) => pearlDay(day, recent.slice(0, 3).flatMap(pearlAsked), theme),
+  // Four Shelves' puzzles (shelves.ts), told the groups of the last ten
+  // days so no idea comes back soon. About five minutes a day on this Mac.
+  shelves: (day, recent, theme) => shelvesDay(day, recent.flatMap(shelvesAsked), theme),
+  // Five Clues' rounds (clues.ts), told the ideas of the last ten days.
+  clues: (day, recent, theme) => cluesDay(day, recent.flatMap(cluesAsked), theme),
 };
 
 /** How many days back a game is shown of itself. */
@@ -149,16 +156,23 @@ export async function publishDays(now: Date): Promise<void> {
     // none has quizzes as ever, never a theme made here (its pictures and
     // its quizzes would not agree).
     const theme = await stagedTheme(db, day);
-    for (const [game, make] of Object.entries(GAMES)) {
+    // The games side by side (2026-10-22, with Four Shelves the fourth
+    // written by a model): one after another they took some twenty minutes
+    // a day, and a night repairing today as well as tomorrow would pass the
+    // run's thirty. make() never throws; a write that fails is thrown once
+    // every game has had its turn.
+    const runs = await Promise.allSettled(Object.entries(GAMES).map(async ([game, make]) => {
       const doc = turnDoc(day, game);
-      if ((await doc.get()).exists) continue;
+      if ((await doc.get()).exists) return;
       const content = await make(day, await recentDays(game, when), theme);
       try {
         await doc.create({json: JSON.stringify(content)});
       } catch (e) {
         if (!(await doc.get()).exists) throw e;
       }
-    }
+    }));
+    const failed = runs.find((r): r is PromiseRejectedResult => r.status === "rejected");
+    if (failed !== undefined) throw failed.reason;
     // The bead pictures, jellies and words (themeday.ts): today's with what
     // there is, tomorrow's only once every step has run. Not in GAMES: no
     // player submits to it, and it has no tally.

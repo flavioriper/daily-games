@@ -180,6 +180,18 @@ Acorn's day in 3 min 21 s (8/9/7/12, none from the bank), Pearl Dive's in
 5 min (8/9/9 of 8/9/9). The first night on it is unseen. What follows is
 the OpenRouter history.
 
+**Four Shelves and Five Clues joined on 2026-10-22** (`shelves.ts`,
+`clues.ts`, a line each in `GAMES`, the user: "I allow you to deploy
+backend functions, do it"). Both are written by Haiku and checked blind by
+Opus (a sort of the shuffled words; a guess of the idea from its clues),
+and both ship a bank (`content/shelves.json`, `content/clues.json`, copied
+beside the sources by `npm run build`, grown with `node lib/cli.js bank
+shelves|clues ...`). With four games written by a model a day took some
+twenty minutes, so **`publishDays` now makes a day's games side by side**
+(`Promise.allSettled`): a night repairing today and tomorrow stays inside
+the run's thirty minutes, and a failed write is thrown once every game has
+had its turn.
+
 **`server/functions/src/generate.ts` is the only place a model is called.**
 It asks through **OpenRouter** (`https://openrouter.ai/api/v1/chat/completions`,
 a plain `fetch`, no SDK), which speaks one dialect for every maker's models,

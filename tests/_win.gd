@@ -181,6 +181,12 @@ func _note(id: String) -> String:
 		"pie": return "%dx%d, %d ate, dish %d, %d marks, %d slips, hints=%d, caps %s, board fit=%s, hud=%s" % [
 			_puzzle._st.cols, _puzzle._st.rows, _puzzle._st.eaters(), _puzzle._st.dish, _puzzle.moves, _puzzle._st.slips,
 			_puzzle.hints_used, _puzzle.capabilities(), _fit_ok, _hud_ok]
+		"clues": return "band %d, %s, results %s, hints=%d, caps %s, board fit=%s, hud=%s" % [
+			_puzzle._st.band, _puzzle._st.source, str(_puzzle._st.results), _puzzle.hints_used,
+			_puzzle.capabilities(), _fit_ok, _hud_ok]
+		"shelves": return "band %d, %s, %d of %d shelves, %d mistakes, %d hearts, hints=%d, caps %s, board fit=%s, hud=%s" % [
+			_puzzle._st.band, _puzzle._st.source, _puzzle._st.shelved.size(), _puzzle._st.count(), _puzzle._st.mistakes,
+			_puzzle._st.hearts, _puzzle.hints_used, _puzzle.capabilities(), _fit_ok, _hud_ok]
 		"paperbox": return "band %d, %d rounds, %d wrong picks %s, hints=%d, caps %s, board fit=%s, hud=%s" % [
 			_puzzle._st.band, _puzzle._st.current, _puzzle._st.wrongs, str(_puzzle._st.wrong_in),
 			_puzzle.hints_used, _puzzle.capabilities(), _fit_ok, _hud_ok]
@@ -266,6 +272,8 @@ func _solve(id: String) -> void:
 		"patio": _solve_patio()
 		"teacups": _solve_teacups()
 		"paperbox": _solve_paperbox()
+		"shelves": _solve_shelves()
+		"clues": _solve_clues()
 		"market": _solve_market()
 		"pie": _solve_pie()
 		"hoses": _solve_hoses()
@@ -1700,6 +1708,102 @@ func _solve_pie() -> void:
 			_hud_ok = false
 			return
 		mark.call(i, st.did_eat(i))
+
+## Five Clues: dealt after its short wait on the network (it awaits and
+## holds the walk), then every key pressed by a real touch on Hidden Word's
+## keyboard: Enter on an empty line (a card turns), a wrong idea (another
+## turns), the bulb through the real button, then the idea's first accepted
+## word and Enter, and Enter again for the next round.
+func _solve_clues() -> void:
+	_waiting = true
+	for i in 600:
+		if _puzzle.dealt():
+			break
+		await process_frame
+	var st = _puzzle._st
+	var tray: Node = _host.tray
+	var enter: Button = tray.find_child("Key_Enter", true, false)
+	var type := func(word: String) -> void:
+		for ch in word:
+			_press(tray.find_child("Key_%s" % ch.to_upper(), true, false))
+		_press(enter)
+	_fit_ok = Rect2(Vector2.ZERO, _puzzle.size).has_point(_puzzle.slate_to_local())
+	_hud_ok = _puzzle.capabilities() == ["hint"] and _puzzle.hints_left() > 0 and not _puzzle.can_reset()
+	_press(enter)
+	_hud_ok = _hud_ok and st.shown == 2
+	var wrong := "PEBBLE" if not st.accepts(st.round_now().accept, "pebble") else "CLOUD"
+	type.call(wrong)
+	_hud_ok = _hud_ok and st.shown == 3 and st.wrongs == 1
+	_press(_host.top_bar.hint_button)
+	_hud_ok = _hud_ok and _puzzle.hints_used == 1 and st.hinted == 1
+	for r in 8:
+		if _puzzle.is_done():
+			break
+		if _puzzle.phase() == _puzzle.Phase.PLAY:
+			type.call(st.norm(String(st.round_now().accept[0])))
+		await process_frame
+		_press(enter)
+		await process_frame
+	for i in 120:
+		await process_frame
+	_waiting = false
+
+## Four Shelves: dealt after its short wait on the network (it awaits and
+## holds the walk), then by real touches: three jars of one shelf and one of
+## another shelved (close, a heart lost), the same four again (refused as
+## tried, free), the picks cleared, the bulb through the real button, then
+## every shelf's jars and the tick.
+func _solve_shelves() -> void:
+	_waiting = true
+	for i in 600:
+		if _puzzle.dealt():
+			break
+		await process_frame
+	var st = _puzzle._st
+	var settle := func() -> void:
+		for i in 120:
+			if not _puzzle.busy():
+				return
+			await process_frame
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for i in st.tiles.size():
+		if not slot.has_point(_puzzle.tile_to_local(i)):
+			_fit_ok = false
+	for k in 3:
+		if not slot.has_point(_puzzle.key_to_local(k)):
+			_fit_ok = false
+	_hud_ok = _puzzle.capabilities() == ["hint"] and _puzzle.hints_left() > 0 and not _puzzle.can_reset()
+	var g0: Array = st.groups[0].words
+	var g1: Array = st.groups[1].words
+	for w in [g0[0], g0[1], g0[2], g1[0]]:
+		_tap_local(_puzzle.word_to_local(w))
+	_tap_local(_puzzle.key_to_local(_puzzle.Key.ENTER))
+	_hud_ok = _hud_ok and st.hearts == st.HEARTS - 1 and st.picked.size() == 4
+	await settle.call()
+	_tap_local(_puzzle.key_to_local(_puzzle.Key.ENTER))
+	_hud_ok = _hud_ok and st.hearts == st.HEARTS - 1
+	_tap_local(_puzzle.key_to_local(_puzzle.Key.DELETE))
+	_hud_ok = _hud_ok and st.picked.is_empty()
+	_press(_host.top_bar.hint_button)
+	_hud_ok = _hud_ok and _puzzle.hints_used == 1 and st.picked.size() == 1
+	for round in 8:
+		if _puzzle.is_done():
+			break
+		await settle.call()
+		var g := -1
+		for k in st.count():
+			if not st.shelved.has(k):
+				g = k
+				break
+		for w in st.groups[g].words:
+			if not st.picked.has(w):
+				_tap_local(_puzzle.word_to_local(w))
+		_tap_local(_puzzle.key_to_local(_puzzle.Key.ENTER))
+		await process_frame
+	for i in 120:
+		await process_frame
+	_waiting = false
 
 ## Paper Box: a wrong box picked on purpose (struck, counted), a tap on it
 ## again (nothing), a tap on the mat's foot over a box (nothing), the bulb through the real button (one more struck), then

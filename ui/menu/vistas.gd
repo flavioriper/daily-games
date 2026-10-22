@@ -78,6 +78,10 @@ const CARDS := {
 	"paperbox": ["meadow", 1.6, Vector2(0.65, 0.55)],
 	# Honeycomb's comb in the meadow's sun, among its flowers.
 	"honeycomb": ["meadow", 1.6, Vector2(0.60, 0.45)],
+	# Four Shelves' pantry in the meadow cottage.
+	"shelves": ["meadow", 1.6, Vector2(0.75, 0.50)],
+	# Five Clues' shed wall by the meadow's garden.
+	"clues": ["meadow", 1.6, Vector2(0.20, 0.50)],
 	# Trestle's river gap under a clear sky.
 	"trestle": ["sky", 1.5, Vector2(0.50, 0.55)],
 	# Mini Golf's course is laid out on the meadow, under its cottages.
