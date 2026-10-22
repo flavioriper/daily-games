@@ -1,13 +1,14 @@
 ## Factory, rewired (2026-10-20)
 
-**What stands.** One floor of 10 by 12 square tiles seen from above, drawn
-with the land's pieces on ground that fills the screen (no water; 2026-10-21,
-"The view, no water", below), under the top bar and the pills: down column 0
+**What stands.** One floor of 10 by 5 square tiles seen from above, a room
+with a back wall ("The room", 2026-10-22, below; it was 10 by 12 on open
+ground from 2026-10-21 to then), drawn
+with the land's pieces, under the top bar and the pills: down column 0
 the whole floor's height an intake belt that queues grey squares at its end
 (one a 10 ticks, six at most), up column 9 the deliver belt, and on the
 bottom row between them the intake pad, the pack table and the deliver pad
 that sells, with the charging bay and the stack of empty boxes four rows
-above. Three robots stand on the bay, Robot 1, 2 and 3 (no job names), each
+above, against the wall. Three robots stand on the bay, Robot 1, 2 and 3 (no job names), each
 a body with parts under it
 (Treads give Move, a Gripper gives Pick and Release, a Battery holds the
 charge) and a program: a chain of nodes wired from the body back to it,
@@ -98,6 +99,87 @@ still the Grove's `chop`. Haptics per `docs/agents/haptics.md`, row 62.
 Events `factory_fix`, `factory_milestone`, `factory_part` beside
 `factory_enter` / `factory_leave` (`docs/agents/analytics.md`). Unheard,
 unfelt: no phone, no ear.
+
+**The room (2026-10-22).** The user, on the 10 by 12 build: "redesign
+factory to be way more elegant, fit the board to the height and make the
+width wider to avoid making it stretched, instead it should be more space
+on landscape. Also, right now the recharge is weird to see, move it to the
+wall somewhere, with some marked area with a lightning, i don't know
+something easy to understad. Also, polish bots way more to be more cozy but
+way better polished, right now is too terrible. We need more polish
+overall to be honest, everything look way too poorly draw". Spec section
+3's fourth amendment. Built unattended on `feat/factory-room`; **the user
+has seen none of it.**
+- **The floor is 10 by 5** (`Sim.ROWS` 5, `WORK_UP` 4): the rows the loops
+  walk and no more, the bay and the stack on row 0 against the back wall,
+  the pads on row 4 at the front. Every program, the pace numbers (426 a
+  box after the fixes, 252 all fast) and the tutor's words are unchanged;
+  the probe's tiles moved up seven rows. Save `VERSION` 8; a 7 floor is
+  quietly wiped (its robots stood on rows that are gone).
+- **The room** (`Art`, "the room"): `wall_behind` under the belts (the
+  wall's shadow on the floor, the dark of each doorway) and `wall` over
+  them in a layer of its own (`Life._room_l`, after the fast belts): the
+  face in two tones with a skirting, `WALL_TALL` 64 up, its top `WALL_TOP`
+  12 deep, cut at a doorway over column 0 and column 9 (a steel frame, a
+  strip curtain the belt is seen through), two windows and a clock along
+  it (`_draw_room` places them by `Sim.COLS`); `wall_sides` the side walls'
+  tops and the kerb; past them the outside, flat `Art.OUTSIDE` over the
+  margin and `Life.FAR` beyond it (the belts' tails above the wall lie
+  under it). `Life.GROUND` is (2, 1): a little either side for the
+  sideways overscroll, the one row above for the belts' way in.
+  `room_bounds()` is the room; `work_bounds()` returns it (the tutor's
+  name for what it frames).
+- **The charging bay**: `Art.pad("bay")` painted on the tile (yellow, a
+  hazard-dashed border, a bolt), `Art.charger()` on the wall over it at
+  `station_at("charger")` (`BAY_WALL`: the wall's foot under the tile's
+  middle), a cable down to a socket on the pad; `charger_lamp()` over it,
+  tinted `CHARGE_OFF`, or `CHARGE_LIT` breathing at `LAMP_RATE` while any
+  robot charges (`_charging`; `_spun` is its clock now, 0..1). The robots
+  charging stand on the pad side by side like on any station
+  (`BAY_SEAT`/`BAY_STEP` went). The engine and its flywheel are drawn
+  nowhere now (`Art.engine`, `wheel`, `on_wall` stay for history); the
+  Arcade card shows a piece of wall with the charger (`arc_factory.gd`
+  `WALL_AT`, `CHARGER_X`). Every other station's tile wears `pad("plain")`.
+- **The view** (`screen.gd`): `_fit_zoom()` is the room's height into the
+  field's free height (`chrome_foot()` + `ROOM_PAD` to the safe area's top
+  less `ROOM_PAD`; with the sheet up, to the sheet's top), eased to by
+  `_step_view` as before, which also re-pins the wall's top under the pills
+  every frame (`_clamp` fixes y and clamps x inside the room, soft past
+  its ends on a drag); it opens on the room's left end and snaps for its
+  first three frames (`_snap`: the pills' rect is not final on the first
+  layout). `FOOT_AIR` and the old down-under-the-sheet pan went;
+  `_keep_in_view` only settles the view. At 810x1440 a tile is about 200
+  px and the room about 2.5 fields wide; with the sheet up the whole room
+  stands over it at about 57 px a tile.
+- **The robots** (`Art.robot`, `_tread`, `face`, `nose`): capsule treads
+  (`TREAD_*`) with wheels on the near one, a chunkier drum (`BODY_R` 0.26,
+  `BODY_TOP` 50) with a bumper round its foot and a soft ring on its lid, a
+  nub and a gold bulb; the face is a cream plate (`PLATE`) on the lid at
+  `FACE_AT` (0, -29) with the house face parts; the heading chevron lies
+  on the floor just past the treads (`NOSE_AT`, `NOSE_OUT`), since the lid
+  carries the face. `BAR_AT` -90, `BUBBLE_AT` -100, `DOT_AT` (28, -42);
+  the fault dot is smaller (11/7.5). The sheet's body node and the card
+  draw the same meshes.
+- **The floor** is a floor of slabs (`_neutral_into`): every tile a lighter
+  inset slab, one in eight warmer, one in ten cooler, grout lines a little
+  darker, a quarter of the old dots.
+- **The tutor's pages** stack the room over the sheet (`ROOM_SHARE` 0.4,
+  the sheet scaled to `SHEET_TALL` 800 / `SHEET_TALL_TRAY` 960 of its own
+  pixels into the rest; `FLOOR_SHARE`, `ACROSS` went) and centre the room
+  on a page without one.
+- **Measured** (810x1440, `opengl3_angle`, 2026-10-22, one windowed run
+  each): `tests/_shot_factory.gd` 86 pass, 0 failed, the floor 36 to 39
+  draw calls, the screen 70 to 72, the sheet open 74 to 79, the tutor's
+  pages 38 to 55, the tutorial card over the screen 134;
+  `tests/_shot_factory_menu.gd` 0 failed, the Arcade page 140, the screen
+  69. Probe 133/0. Suite 163161/0 (run before the last two cosmetic edits,
+  the fault dot's radius and `DOT_AT`; the probe and the menu harness ran
+  after them).
+- **Calls, unconfirmed**: five rows and not six (a front apron for belts
+  was considered and dropped: it shrinks the robots); the room 2.5 fields
+  wide on the phone (the reading of "fit the board to the height"); the
+  chevron on the floor; the windows and the clock; the lamp's breath; the
+  outside's flat tone; the belts at 200 px a tile (chunky).
 
 **The Turn node (2026-10-21).** The user: "add a turn node so bot has to
 turn before moving"; asked, they chose left or right only (no half turn),
@@ -305,7 +387,7 @@ tutor's pages 14 to 31, the tutorial card over the screen 104.
 `tests/_shot_factory_menu.gd` 0 failed, the Arcade page 147, the screen
 69. Suite 163137/0.
 
-**Open.** The user's verdict on the top-down re-projection; a phone; every sound
+**Open.** The user's verdict on the room and its view (2026-10-22); a phone; every sound
 heard by the user; pt and es read by a speaker; the Arcade line wraps to
 two lines in en; milestone 2's rows (Repeat, Second body, Big cell).
 

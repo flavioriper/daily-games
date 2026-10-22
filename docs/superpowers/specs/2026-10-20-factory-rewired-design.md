@@ -212,6 +212,39 @@ floor; a robot with a fault the player can see wears a red dot on its
 shoulder; the robots have no job names ("Robot 1", "Robot 2", "Robot 3"
 on the sheet and in the tutor), keeping their tints. Save `VERSION` 6.
 
+**Amended a fourth time 2026-10-22 (the room).** The user, on the 10 by 12
+build: "redesign factory to be way more elegant, fit the board to the
+height and make the width wider to avoid making it stretched, instead it
+should be more space on landscape. Also, right now the recharge is weird
+to see, move it to the wall somewhere, with some marked area with a
+lightning ... polish bots way more to be more cozy ... everything look way
+too poorly draw". So: **the floor is 10 by 5**, the rows the loops walk
+and no more (`Sim.ROWS` 5, `WORK_UP` 4 unchanged: the bay and the stack on
+row 0, the pads on row 4; every program, the pace numbers and the tutor's
+"Move ↓ 4" unchanged), and **it is a room**: a back wall stands along its
+top edge (`Art.WALL_TALL` 64 view units of face, its top `WALL_TOP` 12
+seen from above) with a doorway over each of the floor's two belts, hung
+with a strip curtain, two windows and a clock; the side walls show their
+tops only and the front a low kerb. **The charger hangs on the back wall**
+over the bay, a cable down to a socket on the bay's pad, its lamp lit
+(breathing) while a robot charges; the bay's tile is a painted charging
+pad, yellow with a hazard border and a bolt; every other station's tile a
+plain painted pad. The land's engine leaves the floor and the Arcade card
+(the card shows the wall and the charger). **The view fits the room's
+height** to the field's free height (under the pills, over the safe area),
+the room wider than the field, and pans sideways only; with the sheet up
+the room shrinks to fit the strip over the sheet, so the whole floor shows
+while a program is edited; it opens on the room's left end (the bay, the
+intake). The tutor's pages stack the room over the sheet. **The robots are
+redrawn** (capsule treads, a chunky drum with a bumper and a lid, a cream
+face plate on the lid, a gold bulb; the heading is a chevron on the floor
+past the treads, since the face took the lid) and the floor is a floor of
+slabs. Save `VERSION` 8 (a 7 floor quietly wiped). Builder's calls, none
+judged by the user: five rows and not six (an apron in front was
+considered); the room's width on screen (about 2.5 fields at 810x1440; a
+smaller tile would shrink the robots); the chevron on the floor; the lamp's
+breath; the windows and the clock.
+
 ## 4. Robots, parts, battery, bay
 
 A robot is `{name, dock, parts, nodes, next, pc, tile, held, charge, ...}`.

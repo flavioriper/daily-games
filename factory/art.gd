@@ -594,18 +594,28 @@ static func _neutral_into(b: Face.Builder, rng: RandomNumberGenerator, size: Vec
 	var tone: Dictionary = GROUND["neutral"]
 	var deep: Color = tone["deep"]
 	var area := float(size.x * size.y) / 64.0
-	for k in roundi(12 * area):
-		var t := Vector2(rng.randi_range(0, size.x - 1), rng.randi_range(0, size.y - 1))
-		b.polygon(PackedVector2Array([at(t + Vector2(0.06, 0.06)), at(t + Vector2(0.94, 0.06)), at(t + Vector2(0.94, 0.94)), at(t + Vector2(0.06, 0.94))]),
-			Color(deep, 0.1) if k % 3 else Color(1.0, 1.0, 1.0, 0.5))
+	# every tile a slab, lighter in from its grout, a few of them a shade
+	# warmer or cooler (the room, 2026-10-22: a floor of tiles rather than
+	# a ruled sheet with dirt on it)
+	for y in size.y:
+		for x in size.x:
+			var t := Vector2(x, y)
+			var slab := Face.Builder.round_rect(at(t + Vector2(0.045, 0.045)), TILE * 0.91, 6.0)
+			var roll := rng.randf()
+			var wash := Color(1.0, 1.0, 1.0, 0.5)
+			if roll < 0.12:
+				wash = Color(tone["warm"], 0.7)
+			elif roll < 0.22:
+				wash = Color(tone["cool"], 0.35)
+			b.polygon(slab, wash)
 	for k in range(1, size.x):
-		b.stroke(PackedVector2Array([at(Vector2(k, 0.12)), at(Vector2(k, size.y - 0.12))]), 1.8, Color(deep, 0.42), false, false)
+		b.stroke(PackedVector2Array([at(Vector2(k, 0.0)), at(Vector2(k, size.y))]), 2.2, Color(deep, 0.5), false, false)
 	for k in range(1, size.y):
-		b.stroke(PackedVector2Array([at(Vector2(0.12, k)), at(Vector2(size.x - 0.12, k))]), 1.8, Color(deep, 0.42), false, false)
-	for k in roundi(90 * area):
+		b.stroke(PackedVector2Array([at(Vector2(0.0, k)), at(Vector2(size.x, k))]), 2.2, Color(deep, 0.5), false, false)
+	for k in roundi(24 * area):
 		var p := _on_plate(rng, 26.0, size)
-		var r := rng.randf_range(1.4, 2.8)
-		b.ellipse(p, r, r * DEEP, Color(deep, rng.randf_range(0.3, 0.6)))
+		var r := rng.randf_range(1.2, 2.2)
+		b.ellipse(p, r, r * DEEP, Color(deep, rng.randf_range(0.2, 0.4)))
 
 ## What lies over the floor: warm light from where the sun is,
 ## and the frame falling away a little toward its edges. One mesh for a
@@ -685,25 +695,249 @@ const TABLE_TOP := Vector2(0.0, -TABLE_TALL)
 ## how high to how high it stands, the treads under it, its lamp, its face
 ## on the front of the body, and over it the charge bar and the bubble; what
 ## it holds at HELD_AT, HELD_SCALE as big.
-const BODY_R := 0.28
-const BODY_FOOT := 10.0
-const BODY_TOP := 58.0
-const LAMP_UP := 74.0
-const FACE_AT := Vector2(0.0, -6.0)
-const FACE_R := 16.0
+const BODY_R := 0.26
+const BODY_FOOT := 9.0
+const BODY_TOP := 50.0
+const LAMP_UP := 64.0
+const FACE_AT := Vector2(0.0, -29.0)
+const FACE_R := 13.0
 const BAR_W := 56.0
 const BAR_H := 10.0
-const BAR_AT := Vector2(0.0, -100.0)
-const BUBBLE_AT := Vector2(0.0, -110.0)
-const HELD_AT := Vector2(32.0, -6.0)
-## The middle of a robot's lid, where its nose turns.
+const BAR_AT := Vector2(0.0, -90.0)
+const BUBBLE_AT := Vector2(0.0, -100.0)
+const HELD_AT := Vector2(30.0, -8.0)
+## The middle of a robot's lid, and where its nose turns: on the floor
+## about its feet, the chevron just past its treads the way it faces (the
+## face is on the lid, so the lid carries no arrow; 2026-10-22).
 const LID := Vector2(0.0, -BODY_TOP)
+const NOSE_AT := Vector2.ZERO
+const NOSE_OUT := 36.0
 ## The steps a quarter turn of the treads is cut into (each a mesh of its
 ## own, made the first time it is drawn).
 const TREAD_STEPS := 8
 const HELD_SCALE := 0.7
 ## Where the robot's soft shadow lies, from its feet.
 const SHADOW_AT := Vector2(7.0, 5.0)
+## A tread: a capsule TREAD_W across, its middle TREAD_H up, TREAD_HALF tiles
+## long either way from its seat, TREAD_OUT tiles out from the body's middle.
+const TREAD_W := 15.0
+const TREAD_H := 7.0
+const TREAD_HALF := 0.21
+const TREAD_OUT := 0.2
+const TREAD := Color("443f3b")
+const TREAD_LIT := Color("625b55")
+const TREAD_WHEEL := Color("8e867e")
+const NUB := Color(0.62, 0.58, 0.54)
+const PLATE := Color("fff8ea")
+const PLATE_RIM := Color("e3d7c3")
+
+# --- the room (2026-10-22) ---
+
+## The floor is a room (the user, 2026-10-22: "move it [the charger] to the
+## wall somewhere, with some marked area with a lightning"). Its back wall
+## stands along the floor's top edge, WALL_TALL up, its top WALL_TOP deep
+## seen from above; the two belts of the floor come in through a doorway
+## each, hung with a strip curtain. The side walls show their tops only
+## (WALL_TOP wide) and the front a low kerb. A station's tile is a painted
+## pad; the bay's is the charging pad, yellow with a bolt, and its charger
+## hangs on the wall over it, a cable down to the pad's socket.
+##   wall_behind(x0, x1, doors)  what lies under the belts: the wall's
+##                       shadow on the floor and the dark of each doorway.
+##   wall(x0, x1, doors, clock)  the wall over the belts: its face from tile
+##                       x `x0` to `x1`, cut at each doorway (a steel frame,
+##                       the curtain's strips over the belt), its top, and a
+##                       clock at tile x `clock`.
+##   wall_sides(cols, rows)  the side walls' tops and the front kerb.
+##   pad(kind)           a station's painted pad on its tile (origin the
+##                       tile's corner): "bay" or "plain".
+##   charger(), charger_lamp()  the wall unit over the bay, origin at the
+##                       wall's foot under the bay's middle: the box, its
+##                       cable down to the socket on the pad; the lamp is a
+##                       white disc at LAMP_AT, tinted by the holder.
+const WALL_TALL := 64.0
+const WALL_TOP := 12.0
+const KERB := 10.0
+const WALL_FACE := Color("f5ecdc")
+const WALL_LOW := Color("eadec8")
+const WALL_SKIRT := Color("cdbfa7")
+const WALL_TOPC := Color("ddd1ba")
+const DOOR_FRAME := Color("8c969e")
+const DOOR_DARK := Color("4a3d36")
+const CURTAIN := Color(0.88, 0.86, 0.82, 0.8)
+const PAD_IN := 0.08
+const PAD_BAY := Color("fbeec3")
+const PAD_BAY_LINE := Color("e9b63f")
+const PAD_PLAIN_LINE := Color("d6cebf")
+const BOLT := Color("e6a325")
+const BOLT_DEEP := Color("b57b14")
+const CHARGER_W := 46.0
+const CHARGER_UP := 16.0
+const CHARGER_TALL := 34.0
+const LAMP_AT := Vector2(13.0, -(CHARGER_UP + CHARGER_TALL * 0.5))
+const SOCKET_DOWN := 24.0
+const CHARGE_LIT := Color("7ed47a")
+const CHARGE_OFF := Color("6d7680")
+## Past the walls: the outside, flat (the view shows it only past the side
+## walls on an overscroll and under the pills over the back wall).
+const OUTSIDE := Color("ded7cb")
+const PANE := Color("d6e9ee")
+const PANE_LIT := Color("eef7f8")
+const SILL := Color("e8dfcc")
+
+static func _rect(x0: float, y0: float, x1: float, y1: float) -> PackedVector2Array:
+	return PackedVector2Array([Vector2(x0, y0), Vector2(x1, y0), Vector2(x1, y1), Vector2(x0, y1)])
+
+static func _door_cuts(doors: Array) -> Array:
+	var cuts: Array = []
+	for d: float in doors:
+		cuts.append([(d + 0.06) * K * 2.0, (d + 0.94) * K * 2.0])
+	cuts.sort_custom(func(a: Array, c: Array) -> bool: return a[0] < c[0])
+	return cuts
+
+static func wall_behind(x0: float, x1: float, doors: Array) -> ArrayMesh:
+	var key := "wallb%s|%s|%s" % [x0, x1, doors]
+	if not _one.has(key):
+		var b := Face.Builder.new()
+		var l := x0 * K * 2.0
+		var r := x1 * K * 2.0
+		for strip: Array in [[0.0, 6.0, 0.11], [6.0, 14.0, 0.06], [14.0, 26.0, 0.025]]:
+			b.polygon(_rect(l, strip[0], r, strip[1]), Color(SHADE, strip[2]))
+		for c: Array in _door_cuts(doors):
+			b.polygon(_rect(c[0], -WALL_TALL + 4.0, c[1], 0.0), DOOR_DARK)
+		_one[key] = b.mesh()
+	return _one[key]
+
+static func wall(x0: float, x1: float, doors: Array, clock := -1.0, windows: Array = []) -> ArrayMesh:
+	var key := "wall%s|%s|%s|%s|%s" % [x0, x1, doors, clock, windows]
+	if not _one.has(key):
+		var b := Face.Builder.new()
+		var l := x0 * K * 2.0
+		var r := x1 * K * 2.0
+		var top := -WALL_TALL
+		var cuts := _door_cuts(doors)
+		var x := l
+		for c: Array in cuts + [[r, r]]:
+			if c[0] > x:
+				b.polygon(_rect(x, top, c[0], 0.0), WALL_FACE)
+				b.polygon(_rect(x, top * 0.46, c[0], 0.0), WALL_LOW)
+				b.stroke(PackedVector2Array([Vector2(x, top * 0.46), Vector2(c[0], top * 0.46)]), 1.6, Color(WALL_SKIRT, 0.45), false, false)
+				b.polygon(_rect(x, -8.0, c[0], 0.0), WALL_SKIRT)
+			x = c[1]
+		for c: Array in cuts:
+			# the curtain's strips over the belt, then the frame round them
+			var n := 7
+			var w: float = (c[1] - c[0]) / n
+			for i in n:
+				var sx: float = c[0] + w * i + w * 0.15
+				var drop := -7.0 if i % 2 == 0 else -4.0
+				b.polygon(_rect(sx, top + 8.0, sx + w * 0.7, drop), CURTAIN)
+			var frame := PackedVector2Array([Vector2(c[0], 0.0), Vector2(c[0], top + 4.0), Vector2(c[1], top + 4.0), Vector2(c[1], 0.0)])
+			b.stroke(frame, 5.0, DOOR_FRAME, false, false)
+			b.stroke(PackedVector2Array([Vector2(c[0] + 2.0, top + 2.0), Vector2(c[1] - 2.0, top + 2.0)]), 2.0, STEEL_LIT, false, false)
+		for wx: float in windows:
+			# a window: its frame, two panes with the sky in them, a sill
+			var wl := wx * K * 2.0 - 30.0
+			var frame := Face.Builder.round_rect(Vector2(wl, top + 9.0), Vector2(60.0, 30.0), 4.0)
+			b.polygon(frame, WALL_SKIRT)
+			b.polygon(_rect(wl + 3.0, top + 12.0, wl + 57.0, top + 36.0), PANE)
+			b.polygon(_rect(wl + 3.0, top + 12.0, wl + 57.0, top + 20.0), PANE_LIT)
+			b.stroke(PackedVector2Array([Vector2(wl + 30.0, top + 12.0), Vector2(wl + 30.0, top + 36.0)]), 3.0, WALL_SKIRT, false, false)
+			b.polygon(_rect(wl - 2.0, top + 36.0, wl + 62.0, top + 40.0), SILL)
+			b.polygon(_rect(wl - 2.0, top + 40.0, wl + 62.0, top + 43.0), Color(SHADE, 0.12))
+		b.polygon(_rect(l, top - WALL_TOP, r, top), WALL_TOPC)
+		b.stroke(PackedVector2Array([Vector2(l, top), Vector2(r, top)]), 2.0, Color(WALL_SKIRT, 0.7), false, false)
+		if clock >= 0.0:
+			var cc := Vector2(clock * K * 2.0, top * 0.66)
+			b.disc(cc + Vector2(1.5, 2.0), 15.0, Color(SHADE, 0.3))
+			b.disc(cc, 15.0, WALL_SKIRT.darkened(0.25))
+			b.disc(cc, 12.5, Color.WHITE)
+			b.stroke(PackedVector2Array([cc, cc + Vector2(0.0, -8.0)]), 2.2, INK)
+			b.stroke(PackedVector2Array([cc, cc + Vector2(5.5, 3.0)]), 2.2, INK)
+			b.disc(cc, 1.6, INK)
+		_one[key] = b.mesh()
+	return _one[key]
+
+static func wall_sides(cols: int, rows: int) -> ArrayMesh:
+	var key := "sides%d|%d" % [cols, rows]
+	if not _one.has(key):
+		var b := Face.Builder.new()
+		var w := cols * K * 2.0
+		var h := rows * K * 2.0
+		var top := -WALL_TALL - WALL_TOP
+		for side: Array in [[-WALL_TOP, 0.0, 0.0, 7.0], [w, w + WALL_TOP, w - 7.0, w]]:
+			b.polygon(_rect(side[0], top, side[1], h + KERB), WALL_TOPC)
+			b.polygon(_rect(side[2], 0.0, side[3], h), Color(SHADE, 0.07))
+		b.polygon(_rect(-WALL_TOP, h, w + WALL_TOP, h + KERB), GROUND["neutral"]["lip"])
+		b.polygon(_rect(-WALL_TOP, h, w + WALL_TOP, h + 3.0), GROUND["neutral"]["lip_lit"])
+		_one[key] = b.mesh()
+	return _one[key]
+
+static func pad(kind: String) -> ArrayMesh:
+	var key := "pad_" + kind
+	if not _one.has(key):
+		var b := Face.Builder.new()
+		var side := K * 2.0
+		var rr := Face.Builder.round_rect(Vector2(PAD_IN, PAD_IN) * side, Vector2(1.0 - 2.0 * PAD_IN, 1.0 - 2.0 * PAD_IN) * side, 14.0)
+		if kind == "bay":
+			b.polygon(rr, PAD_BAY)
+			b.stroke(rr, 7.0, PAD_BAY_LINE, true, false)
+			# the hazard dashes along the line
+			var run := 0.0
+			var n := rr.size()
+			for i in n:
+				var p0 := rr[i]
+				var p1 := rr[(i + 1) % n]
+				var seg := p0.distance_to(p1)
+				var t := 0.0
+				while t < seg:
+					var period := fmod(run + t, 34.0)
+					if period < 17.0:
+						var t1 := minf(seg, t + 17.0 - period)
+						b.stroke(PackedVector2Array([p0.lerp(p1, t / seg), p0.lerp(p1, t1 / seg)]), 7.0, Color("6b655c"), false, false)
+						t = t1
+					else:
+						t = minf(seg, t + 34.0 - period)
+				run += seg
+			var c := Vector2(side * 0.5, side * 0.5)
+			_bolt(b, c + Vector2(2.0, 2.5), 2.4, Color(BOLT_DEEP, 0.55))
+			_bolt(b, c, 2.4, BOLT)
+		else:
+			b.polygon(rr, Color(1.0, 1.0, 1.0, 0.4))
+			b.stroke(rr, 4.0, PAD_PLAIN_LINE, true, false)
+		_one[key] = b.mesh()
+	return _one[key]
+
+static func charger() -> ArrayMesh:
+	if not _one.has("charger"):
+		var b := Face.Builder.new()
+		var top := -(CHARGER_UP + CHARGER_TALL)
+		var box := Face.Builder.round_rect(Vector2(-CHARGER_W * 0.5, top), Vector2(CHARGER_W, CHARGER_TALL), 7.0)
+		b.polygon(Face.Builder.round_rect(Vector2(-CHARGER_W * 0.5 + 2.0, top + 3.0), Vector2(CHARGER_W, CHARGER_TALL), 7.0), Color(SHADE, 0.22))
+		b.polygon(box, STEEL)
+		b.polygon(Face.Builder.round_rect(Vector2(-CHARGER_W * 0.5, top), Vector2(CHARGER_W, 7.0), 4.0), STEEL_LIT)
+		b.polygon(_rect(-CHARGER_W * 0.5 + 4.0, -CHARGER_UP - 4.0, CHARGER_W * 0.5 - 4.0, -CHARGER_UP), STEEL_DEEP)
+		# a window with a small bolt in it, and the lamp's rim
+		var win := Face.Builder.round_rect(Vector2(-CHARGER_W * 0.5 + 6.0, top + 11.0), Vector2(20.0, 15.0), 3.0)
+		b.polygon(win, Color("3a3f44"))
+		_bolt(b, Vector2(-CHARGER_W * 0.5 + 16.0, top + 18.5), 0.5, BOLT)
+		b.disc(LAMP_AT, 6.5, STEEL_DEEP)
+		# the cable down the wall and over the floor to the socket
+		var cable := PackedVector2Array([Vector2(0.0, -CHARGER_UP), Vector2(0.0, -4.0), Vector2(-3.0, 8.0), Vector2(0.0, SOCKET_DOWN - 4.0)])
+		b.stroke(cable, 5.0, Color("4a4542"), false, true)
+		b.stroke(cable, 1.6, Color("6d6762"), false, false)
+		var socket := Face.Builder.round_rect(Vector2(-9.0, SOCKET_DOWN - 6.0), Vector2(18.0, 12.0), 3.0)
+		b.polygon(socket, Color("3a3f44"))
+		b.polygon(_rect(-4.0, SOCKET_DOWN - 2.0, 4.0, SOCKET_DOWN + 1.0), Color("6d7680"))
+		_one["charger"] = b.mesh()
+	return _one["charger"]
+
+static func charger_lamp() -> ArrayMesh:
+	if not _one.has("charger_lamp"):
+		var b := Face.Builder.new()
+		b.disc(LAMP_AT, 4.6, Color.WHITE)
+		b.disc(LAMP_AT + Vector2(-1.4, -1.4), 1.6, Color(1.0, 1.0, 1.0, 0.7))
+		_one["charger_lamp"] = b.mesh()
+	return _one["charger_lamp"]
 
 ## A grey square standing on (0, 0): a small block, lit on its top and on
 ## the side that looks down the screen. `shade` lays its shadow under it (not
@@ -800,11 +1034,13 @@ static func table() -> ArrayMesh:
 	return _one["table"]
 
 ## A robot standing on (0, 0) facing `quarter` (0 +x, 1 +y, ...; a Turn
-## swings it between): its shadow, two treads along the way it faces, a
-## round body white for the holder's tint with a band round it, and a lamp
-## on a short stalk. The body is round and its face is always toward the
-## viewer (a "?" or a sleeping face is a signal to read at any facing), so
-## the treads and the nose (`nose`) are what turn. The face is `face`.
+## swings it between): its shadow, two capsule treads along the way it
+## faces, a chunky round body white for the holder's tint (a bumper round
+## its foot, a lid with a soft ring), and a short nub with a gold bulb on
+## top. The body is round and its face is always toward the viewer (a "?"
+## or a sleeping face is a signal to read at any facing), so the treads and
+## the nose (`nose`) are what turn. The face is `face` (2026-10-22, the
+## room: redrawn cozy, the user: "polish bots way more").
 static func robot(quarter := 0.0) -> ArrayMesh:
 	var step := posmod(roundi(quarter * TREAD_STEPS), 4 * TREAD_STEPS)
 	var key := "robot%d" % step
@@ -815,49 +1051,60 @@ static func robot(quarter := 0.0) -> ArrayMesh:
 		var b := Face.Builder.new()
 		var r := BODY_R
 		# a soft round shadow about its footprint, thrown a little right and
-		# down as the land's shadows fall (a projected box read as a hard
-		# grey slab once the floor was seen from above)
+		# down as the land's shadows fall
 		var reach := r * K * 2.0 * 1.3
-		_glow(b, SHADOW_AT, reach, reach * 0.8, Color(CAST.r, CAST.g, CAST.b), 0.62)
-		var tread := [INK.lightened(0.3), INK.lightened(0.16), INK]
+		_glow(b, SHADOW_AT, reach, reach * 0.8, Color(CAST.r, CAST.g, CAST.b), 0.55)
 		# the far tread (or both, side by side), the body, then the near one
 		# over its foot with its wheels
-		var sides := [-v * 0.2, v * 0.2]
+		var sides := [-v * TREAD_OUT, v * TREAD_OUT]
 		sides.sort_custom(func(p: Vector2, q: Vector2) -> bool: return p.y < q.y)
 		var near: Array = sides.filter(func(p: Vector2) -> bool: return p.y > 0.05)
 		for c: Vector2 in sides:
 			if not near.has(c):
-				_turned_block(b, c, u, Vector2(0.27, 0.075), 0.0, 14.0, tread)
-		var white := [Color.WHITE, Color.WHITE, Color(0.93, 0.93, 0.93), Color(0.8, 0.8, 0.8)]
+				_tread(b, c, u, false)
+		var white := [Color.WHITE, Color.WHITE, Color(0.94, 0.94, 0.94), Color(0.83, 0.83, 0.83)]
 		_drum(b, Vector2.ZERO, r, BODY_FOOT, BODY_TOP, white)
-		b.stroke(_round(Vector2.ZERO, r * 1.01, 20.0, 0.06, PI - 0.06, 16), 4.0, Color(0.72, 0.72, 0.72), false, false)
-		b.stroke(_round(Vector2.ZERO, r * 0.7, BODY_TOP, 0.0, TAU, 24), 2.0, Color(0.84, 0.84, 0.84), true, false)
+		# a bumper round the foot of its front half
+		b.stroke(_round(Vector2.ZERO, r * 1.02, BODY_FOOT + 3.0, 0.08, PI - 0.08, 16), 6.0, Color(0.8, 0.8, 0.8), false, true)
+		# the lid, a soft ring in from its rim
+		b.polygon(_round(Vector2.ZERO, r, BODY_TOP, 0.0, TAU, 24), Color.WHITE)
+		b.stroke(_round(Vector2.ZERO, r * 0.8, BODY_TOP, 0.0, TAU, 24), 2.4, Color(0.87, 0.87, 0.87), true, false)
 		for c: Vector2 in near:
-			_turned_block(b, c, u, Vector2(0.27, 0.075), 0.0, 14.0, tread)
-			var out := c.normalized() * 0.076
-			for k in 4:
-				b.disc(_p(c + out + u * (-0.2 + 0.133 * k), 7.0), 3.2, INK.lightened(0.4))
-		# the stalk and its lamp
-		b.stroke(PackedVector2Array([_p(Vector2.ZERO, BODY_TOP - 2.0), _p(Vector2.ZERO, LAMP_UP - 4.0)]), 4.0, INK)
-		b.disc(_p(Vector2.ZERO, LAMP_UP), 6.5, LIVE)
-		b.disc(_p(Vector2.ZERO, LAMP_UP) + Vector2(-2.0, -2.0), 2.2, LIVE.lightened(0.5))
+			_tread(b, c, u, true)
+		# the nub and its bulb
+		b.stroke(PackedVector2Array([_p(Vector2.ZERO, BODY_TOP - 1.0), _p(Vector2.ZERO, LAMP_UP - 6.0)]), 6.0, NUB)
+		b.disc(_p(Vector2.ZERO, LAMP_UP), 7.5, GOLD_DEEP)
+		b.disc(_p(Vector2.ZERO, LAMP_UP) + Vector2(-0.8, -0.8), 6.2, GOLD)
+		b.disc(_p(Vector2.ZERO, LAMP_UP) + Vector2(-2.6, -2.6), 2.2, GOLD_HI)
 		_one[key] = b.mesh()
 	return _one[key]
 
-## The arrow on a robot's lid, pointing +x from (0, 0) out to the lid's rim:
-## drawn at LID turned to the way it faces.
+## One tread seated at `c` (tiles) along `u`: a dark capsule, a lighter
+## stripe along its top, and on a near one its wheels.
+static func _tread(b: Face.Builder, c: Vector2, u: Vector2, wheels: bool) -> void:
+	var ends := PackedVector2Array([_p(c - u * TREAD_HALF, TREAD_H), _p(c + u * TREAD_HALF, TREAD_H)])
+	b.stroke(ends, TREAD_W, TREAD, false, true)
+	var lit := PackedVector2Array([_p(c - u * TREAD_HALF * 0.9, TREAD_H + 3.5), _p(c + u * TREAD_HALF * 0.9, TREAD_H + 3.5)])
+	b.stroke(lit, TREAD_W * 0.4, TREAD_LIT, false, true)
+	if wheels:
+		for k in 3:
+			b.disc(_p(c + u * (-TREAD_HALF * 0.62 + TREAD_HALF * 0.62 * k), TREAD_H - 1.0), 2.8, TREAD_WHEEL)
+
+## The chevron on the floor just past a robot's treads, pointing +x from
+## (0, 0), NOSE_OUT out: drawn at NOSE_AT turned to the way it faces.
 static func nose() -> ArrayMesh:
 	if not _one.has("nose"):
 		var b := Face.Builder.new()
-		var head := PackedVector2Array([Vector2(12.0, -9.0), Vector2(25.0, 0.0), Vector2(12.0, 9.0)])
-		b.stroke(head, 8.0, INK)
-		b.stroke(head, 4.0, LIVE)
+		var head := PackedVector2Array([Vector2(NOSE_OUT - 7.0, -7.0), Vector2(NOSE_OUT, 0.0), Vector2(NOSE_OUT - 7.0, 7.0)])
+		b.stroke(head, 6.0, Color(NUB, 0.9))
+		b.stroke(head, 2.6, GOLD)
 		_one["nose"] = b.mesh()
 	return _one["nose"]
 
-## Its eyes and mouth by `stuck` (the sim's: "", "?", "flat", "nocell"),
-## from the house's face builder: content, puzzled, asleep, worried. On the
-## front of its body, at FACE_AT.
+## Its face plate and on it its eyes and mouth by `stuck` (the sim's: "",
+## "?", "flat", "nocell"), from the house's face builder: content, puzzled,
+## asleep, worried. On the front of its body, about FACE_AT; the plate is
+## cream and not tinted with the body (it is its own mesh).
 static func face(stuck: String) -> ArrayMesh:
 	if not _faces.has(stuck):
 		var b := Face.Builder.new()
@@ -871,7 +1118,10 @@ static func face(stuck: String) -> ArrayMesh:
 				eye = 0.1
 			"nocell":
 				expr = Face.Expr.WORRIED
-		Face.face_parts(b, FACE_R, FACE_AT, INK, eye, expr)
+		var plate := Face.Builder.round_rect(FACE_AT + Vector2(-21.0, -15.0), Vector2(42.0, 31.0), 11.0)
+		b.polygon(plate, PLATE)
+		b.stroke(plate, 2.0, PLATE_RIM, true, false)
+		Face.face_parts(b, FACE_R, FACE_AT + Vector2(0.0, 1.0), INK, eye, expr)
 		_faces[stuck] = b.mesh()
 	return _faces[stuck]
 
@@ -880,9 +1130,9 @@ static func face(stuck: String) -> ArrayMesh:
 ## dot in a white ring, its middle on (0, 0).
 static func fault_dot() -> ArrayMesh:
 	var b := Face.Builder.new()
-	b.disc(Vector2(0.0, 2.0), 14.0, Color(INK, 0.16))
-	b.disc(Vector2.ZERO, 14.0, Color.WHITE)
-	b.disc(Vector2.ZERO, 10.0, Pal.BAD)
+	b.disc(Vector2(0.0, 1.5), 10.0, Color(INK, 0.16))
+	b.disc(Vector2.ZERO, 10.0, Color.WHITE)
+	b.disc(Vector2.ZERO, 6.8, Pal.BAD)
 	return b.mesh()
 
 ## A bubble over a robot, the tip of its tail on (0, 0): white with a rim

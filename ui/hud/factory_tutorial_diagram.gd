@@ -58,12 +58,14 @@ const SHEETS := {Lesson.PICKER: [0, "a"], Lesson.BOXER: [1, "e"], Lesson.SHIPPER
 ## The Turn page's moment: the Picker's first Turn runs from about 1.9 s to
 ## 2.2 s on the page's floor (ticks 19 to 22), ringed from TURN_RING on.
 const TURN_RING := Vector2(1.5, 3.2)
-## How much of the page's width the floor takes when a sheet shares it, and
-## how many pixels wide the sheet is drawn before it is scaled to fit (the
-## bin's page needs the taller sheet, for its tray under the parts).
-const FLOOR_SHARE := 0.42
-const ACROSS := 760.0
-const ACROSS_TRAY := 940.0
+## How much of the page's height the room takes when a sheet shares it
+## (the room is wide and low since 2026-10-22, so the sheet goes under it,
+## not beside it), and how tall the sheet is in its own pixels before it is
+## scaled to fit the rest (the bin's page needs the taller sheet, for its
+## tray under the parts); it is drawn as wide as that scale lets it.
+const ROOM_SHARE := 0.4
+const SHEET_TALL := 800.0
+const SHEET_TALL_TRAY := 960.0
 const PAD := 14.0
 ## Ticks run before a page opens, so the fault it is about already shows:
 ## the Boxer's box lies at the table, the Shipper stands with its "?".
@@ -125,23 +127,21 @@ func _ready() -> void:
 		if size.x > 0.0 and size.y > 0.0:
 			_stand()
 
-## Where the robots work fitted to the page's share for the floor, its foot
-## on the share's, on ground edge to edge; the sheet's rect beside it.
+## The room fitted to the page's share for it, in its middle, the outside
+## round it edge to edge; the sheet's rect under it.
 func _layout() -> void:
 	if size.x <= 0.0 or size.y <= 0.0:
 		return
 	var room := Rect2(Vector2.ZERO, size)
 	_sheet_rect = Rect2()
 	if SHEETS.has(lesson):
-		var w := roundf(size.x * FLOOR_SHARE)
-		room = Rect2(0.0, 0.0, w, size.y)
-		_sheet_rect = Rect2(w, PAD, size.x - w - PAD, size.y - 2.0 * PAD)
+		var h := roundf(size.y * ROOM_SHARE)
+		room = Rect2(0.0, 0.0, size.x, h)
+		_sheet_rect = Rect2(PAD, h, size.x - 2.0 * PAD, size.y - h - PAD)
 	var box: Rect2 = _life.work_bounds()
 	var u := minf((room.size.x - 2.0 * PAD) / box.size.x, (room.size.y - 2.0 * PAD) / box.size.y)
 	_world.scale = Vector2(u, u)
-	# the floor's foot on the room's, the belts and the ground going on up
-	# over it, as the screen stands it
-	_world.position = Vector2(room.get_center().x - box.get_center().x * u, room.end.y - PAD - box.end.y * u)
+	_world.position = room.get_center() - box.get_center() * u
 	_open_sheet()
 	queue_redraw()
 	if Motion.reduce:
@@ -164,7 +164,8 @@ func _open_sheet() -> void:
 	var row: Array = SHEETS[lesson]
 	_sheet.setup(_sim, null)
 	var tray := lesson == Lesson.SPEND
-	_sheet.show_preview(int(row[0]), _sheet_rect, ACROSS_TRAY if tray else ACROSS, String(row[1]), tray)
+	var tall := SHEET_TALL_TRAY if tray else SHEET_TALL
+	_sheet.show_preview(int(row[0]), _sheet_rect, _sheet_rect.size.x * tall / maxf(_sheet_rect.size.y, 1.0), String(row[1]), tray)
 
 ## The page's floor, as it opens: the faults other pages fixed are fixed, the
 ## ticks it needs already run.

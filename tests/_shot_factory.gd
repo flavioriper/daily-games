@@ -20,8 +20,8 @@ extends SceneTree
 ## intake pad to the table with a square on it, shot again.
 ##
 ## The screen (factory/screen.gd built by hand on a new floor, the field's
-## mouse off so the real pointer cannot reach it): no chips and no zoom, the floor's foot on the field's and
-## the ground under the whole field, a dot on each robot with a fault a rule
+## mouse off so the real pointer cannot reach it): no chips and no zoom, the room as tall as the
+## field under the pills and wider than it, a dot on each robot with a fault a rule
 ## sees, a robot tapped, the pace pill blank, the drawer empty
 ## before milestone 1, then a belt traced from the intake pad to the table,
 ## shot and its draw calls held under the budget.
@@ -304,13 +304,13 @@ func _floor() -> void:
 	# belt from the intake pad to the table with a square riding it
 	_sim.no_cost = true
 	_sim.milestone = 1
-	var laid: bool = _sim.lay_belt(Vector2i(2, 11), 0) and _sim.lay_belt(Vector2i(3, 11), 0)
-	laid = _sim.lay_belt(Vector2i(6, 9), 1) and _sim.lay_belt(Vector2i(6, 10), 0) and _sim.lay_belt(Vector2i(7, 10), 0) and laid
-	_sim.put(Vector2i(2, 11), {"id": 9001, "kind": "square", "at": 0.5, "from": -1, "was": Vector2.INF})
-	_sim.put(Vector2i(6, 8), {"id": 9002, "kind": "box", "n": 3, "at": 0.5, "from": -1, "was": Vector2.INF})
-	_sim.put(Vector2i(2, 8), {"id": 9003, "kind": "square", "at": 0.5, "from": -1, "was": Vector2.INF})
-	_sim.put(Vector2i(2, 8), {"id": 9004, "kind": "square", "at": 0.5, "from": -1, "was": Vector2.INF})
-	_sim.put(Vector2i(6, 9), {"id": 9005, "kind": "box", "n": 1, "at": 0.5, "from": -1, "was": Vector2.INF})
+	var laid: bool = _sim.lay_belt(Vector2i(2, 4), 0) and _sim.lay_belt(Vector2i(3, 4), 0)
+	laid = _sim.lay_belt(Vector2i(6, 2), 1) and _sim.lay_belt(Vector2i(6, 3), 0) and _sim.lay_belt(Vector2i(7, 3), 0) and laid
+	_sim.put(Vector2i(2, 4), {"id": 9001, "kind": "square", "at": 0.5, "from": -1, "was": Vector2.INF})
+	_sim.put(Vector2i(6, 1), {"id": 9002, "kind": "box", "n": 3, "at": 0.5, "from": -1, "was": Vector2.INF})
+	_sim.put(Vector2i(2, 1), {"id": 9003, "kind": "square", "at": 0.5, "from": -1, "was": Vector2.INF})
+	_sim.put(Vector2i(2, 1), {"id": 9004, "kind": "square", "at": 0.5, "from": -1, "was": Vector2.INF})
+	_sim.put(Vector2i(6, 2), {"id": 9005, "kind": "box", "n": 1, "at": 0.5, "from": -1, "was": Vector2.INF})
 	_ticks(6)
 	await _frames(2)
 	var lying: int = _life._squares.n
@@ -334,14 +334,17 @@ func _screen_part() -> void:
 	await _frames(4)
 	_screen.field.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var field: Vector2 = _screen.field.size
-	_ok("the whole floor fits the width", is_equal_approx(_screen._near, field.x / (_screen.life.bounds() as Rect2).size.x),
-		"near %.3f" % _screen._near)
+	var room: Rect2 = _screen.life.room_bounds()
+	var free: float = field.y - _screen.chrome_foot() - 2.0 * _screen.ROOM_PAD
+	_ok("the room stands as tall as the field under the pills", is_equal_approx(_screen._near, free / room.size.y) and room.size.x * _screen._near > field.x,
+		"near %.3f, room %.0f wide on a field %.0f" % [_screen._near, room.size.x * _screen._near, field.x])
 	_ok("no chips, no zoom: the top is the bar and the pills", _screen.find_child("Chips", true, false) == null
 		and _screen.find_child("Zoom", true, false) == null)
-	_ok("the floor's foot on the field's, the ground over the whole field",
-		absf(_screen.to_field(_screen.life.bounds().end).y - field.y) < 40.0
-		and Rect2(_screen.to_field(_screen.life.ground_bounds().position), _screen.life.ground_bounds().size * _screen._zoom).encloses(Rect2(Vector2.ZERO, field)),
-		"foot at %.0f of %.0f" % [_screen.to_field(_screen.life.bounds().end).y, field.y])
+	_ok("the wall's top under the pills, the kerb on the field's foot, the room's left end in view",
+		absf(_screen.to_field(room.position).y - _screen.chrome_foot() - _screen.ROOM_PAD) < 2.0
+		and absf(_screen.to_field(room.end).y - field.y + _screen.ROOM_PAD) < 2.0
+		and absf(_screen.to_field(room.position).x) < 2.0,
+		"top at %.0f, foot at %.0f of %.0f, left at %.0f" % [_screen.to_field(room.position).y, _screen.to_field(room.end).y, field.y, _screen.to_field(room.position).x])
 	# the second robot's fault is a short count, which no rule of the dot's
 	# sees (its loop is closed and it can do it all)
 	await _frames(2)
@@ -377,8 +380,8 @@ func _screen_part() -> void:
 	_ok("the milestone's name on the pace pill", _screen._next_l.visible and _screen._next_l.text == tr("FACTORY_MILESTONE_BELTS"), _screen._next_l.text)
 	_screen.pick("belt")
 	await _frames(2)
-	await _drag([_screen.screen_of(Vector2(2.5, 11.5)), _screen.screen_of(Vector2(3.5, 11.5))])
-	_ok("belt traced", int(_sim.belts.get(Vector2i(2, 11), -1)) == 0 and int(_sim.belts.get(Vector2i(3, 11), -1)) == 0
+	await _drag([_screen.screen_of(Vector2(2.5, 4.5)), _screen.screen_of(Vector2(3.5, 4.5))])
+	_ok("belt traced", int(_sim.belts.get(Vector2i(2, 4), -1)) == 0 and int(_sim.belts.get(Vector2i(3, 4), -1)) == 0
 		and _sim.belts.size() == 2 and _sim.coins == 8, "%s, %d coins" % [_sim.belts, _sim.coins])
 	_screen.pick("")
 	await _frames(4)

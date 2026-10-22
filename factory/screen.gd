@@ -1,10 +1,10 @@
 extends Control
 
-## Factory: the robot floor, played. Ten square tiles by twelve seen from
-## above, drawn with the land's pieces (the land's plate, belts, market,
-## engine and tray: the user, 2026-10-21, twice), filling the screen with
-## no water anywhere (the user, 2026-10-21, a third time), three
-## robots that walk their programs
+## Factory: the robot floor, played. Ten square tiles by five seen from
+## above, a room with a back wall (2026-10-22), drawn with the land's
+## pieces (the land's plate, belts, market and tray: the user, 2026-10-21,
+## twice), filling the screen with no water anywhere (the user,
+## 2026-10-21, a third time), three robots that walk their programs
 ## over it from the bay, the stations they work (the intake, the box stack,
 ## the pack table, the deliver pad that sells), and from milestone 1 the
 ## belts a finger traces. Spec
@@ -29,8 +29,10 @@ extends Control
 ##
 ## The chrome lies over the floor: the top bar, and the coins and the pace
 ## (a box every so many seconds, from the sim's rolling window) on two
-## pills. The view is the floor across the screen's width and never zooms
-## out (it would show past the ground); it pans up and down. A robot with a
+## pills. The view (the room, 2026-10-22: the user, "fit the board to the
+## height and make the width wider") is the room as tall as the field's
+## free height, wider than the field, and pans sideways only; with the
+## sheet up it shrinks to fit over the sheet. A robot with a
 ## fault the player can see from its program (a loose wire, a node its parts
 ## do not give, stuck) wears a red dot over its head (`Life.marked`). A tap
 ## on a robot picks it and opens its sheet: the robots have no chips and no
@@ -98,10 +100,11 @@ const HOLD := 0.5
 const HOLD_SHOWS := 0.12
 ## The view's middle down the screen.
 const CENTRE := Vector2(0.5, 0.5)
-## How much ground the view shows under the floor's foot at most, in the
-## field's pixels: the intake belt ends at the foot, and the ground goes on
-## a little under it.
-const FOOT_AIR := 24.0
+## The room is fitted to the field's height (the user, 2026-10-22: "fit
+## the board to the height and make the width wider"): this much air
+## between the pills' foot and the back wall's top, and between the kerb
+## and the field's foot (or the sheet's top, with the sheet up).
+const ROOM_PAD := 10.0
 ## A drag past where the view may go gives this much of what the finger asks.
 const SOFT := 0.35
 ## How fast the view catches up with where it is going, and how much of a
@@ -191,6 +194,10 @@ var _cam_raw := Vector2.ZERO
 var _vel := Vector2.ZERO
 var _zoom := 1.0
 var _near := 1.0
+## Frames left over which the view snaps to where it should be instead of
+## easing there: the pills' rect (the room's top is pinned under it) is not
+## final on the frame the field is first laid out.
+var _snap := 0
 var _laid_out := false
 
 # the hand
@@ -526,27 +533,40 @@ func _apply_insets() -> void:
 		sheet.fit_to(field.size, insets.y)
 
 ## The light is baked for the field's size, and the zoom is the one at which
-## the floor is as wide as the field: its belts lie along the screen's edges.
+## the room is as tall as the field's free height (`_fit_zoom`): the room is
+## wider than the field and the view pans sideways over it.
 func _layout_field() -> void:
 	var s := field.size
 	if s.x <= 0.0 or s.y <= 0.0 or _light_l == null:
 		return
 	_light = Art.light(s)
-	_near = s.x / (life.bounds() as Rect2).size.x
 	if sheet != null:
 		sheet.fit_to(s, SafeArea.insets(self).y)
+	_near = _fit_zoom()
+	_snap = 3
 	if not _laid_out:
 		_laid_out = true
 		_zoom = _near
-		# the floor's foot on the screen's, over the safe area: the work row
-		# and the bay in view, the ground and the belts going on above
-		var foot := s.y - SafeArea.insets(self).y - FOOT_AIR
-		_cam = _clamp(life.seen(Vector2(Sim.COLS * 0.5, Sim.ROWS)) + Vector2(0.0, (s.y * CENTRE.y - foot) / _zoom))
+		# the room's left end in view: the bay and the intake, where the
+		# tutor's first words point
+		_cam = _clamp((life.room_bounds() as Rect2).position)
 		_cam_to = _cam
 		_cam_raw = _cam
 	_place_world()
 	field.queue_redraw()
 	_light_l.queue_redraw()
+
+## The zoom at which the room stands as tall as the field's free height:
+## under the pills, over the safe area, or over the sheet while it is up.
+func _fit_zoom() -> float:
+	if field == null or field.size.y <= 0.0:
+		return 1.0
+	var top := chrome_foot() + ROOM_PAD
+	var foot := field.size.y - SafeArea.insets(self).y - ROOM_PAD
+	if sheet != null and sheet.is_open():
+		foot = field.size.y - sheet.size.y - ROOM_PAD
+	var room: Rect2 = life.room_bounds()
+	return maxf(foot - top, 60.0) / room.size.y
 
 # --- the view ---
 
@@ -567,40 +587,34 @@ func screen_of(t: Vector2) -> Vector2:
 func tile_under(pos: Vector2) -> Vector2:
 	return life.tile_at((pos - world.position) / _zoom)
 
-## A point of the view held to where the view's middle may go: the field
-## never shows past the ground, and it shows no more than FOOT_AIR of it
-## under the floor's foot (the belts end there).
+## A point of the view held to where the view's middle may go: sideways
+## inside the room, and up and down nowhere, the back wall's top pinned
+## under the pills (the room is as tall as the field's free height at the
+## zoom the view is easing to; while it eases, the top stays pinned at the
+## zoom it has).
 func _clamp(v: Vector2) -> Vector2:
-	var inside := _clamp_tiles(v)
-	if sheet != null and sheet.is_open() and v.y > inside.y:
-		# the sheet hides the lower part of the field: the view may go as
-		# far down as it covers, so a robot on the front row can stand above it
-		var down := minf(v.y - inside.y, sheet.size.y / _zoom)
-		return _clamp_tiles(v - Vector2(0.0, down)) + Vector2(0.0, down)
-	return inside
+	return _clamp_tiles(v)
 
 func _clamp_tiles(v: Vector2) -> Vector2:
-	if field == null or _zoom <= 0.0:
+	if field == null or _zoom <= 0.0 or _pills == null:
 		return v
-	var ground: Rect2 = life.ground_bounds()
-	if _pills == null:
-		return v
-	var floor_box: Rect2 = life.bounds()
-	var half := field.size * 0.5 / _zoom
-	# no higher than the floor's top row just under the pills, no lower than
-	# its foot on the field's
-	var lo := Vector2(ground.position.x, floor_box.position.y - chrome_foot() / _zoom) + half
-	var hi := Vector2(ground.end.x, floor_box.end.y + FOOT_AIR / _zoom) - half
+	var room: Rect2 = life.room_bounds()
+	var half_w := field.size.x * 0.5 / _zoom
+	var lo := room.position.x + half_w
+	var hi := room.end.x - half_w
 	var out := v
-	out.x = floor_box.get_center().x if lo.x > hi.x else clampf(v.x, lo.x, hi.x)
-	out.y = hi.y if lo.y > hi.y else clampf(v.y, lo.y, hi.y)
+	out.x = room.get_center().x if lo > hi else clampf(v.x, lo, hi)
+	out.y = room.position.y + (field.size.y * CENTRE.y - chrome_foot() - ROOM_PAD) / _zoom
 	return out
 
 func _step_view(delta: float) -> void:
+	_near = _fit_zoom()
 	var want := _near
 	var panning := _mode == "pan" and _moved
-	if Motion.reduce:
+	if Motion.reduce or _snap > 0:
+		_snap = maxi(_snap - 1, 0)
 		_zoom = want
+		_cam_to = _clamp(_cam_to)
 		_cam = _cam_to
 	else:
 		var k := 1.0 - exp(-CAM_EASE * delta)
@@ -608,6 +622,8 @@ func _step_view(delta: float) -> void:
 		if absf(_zoom - want) < 0.0005:
 			_zoom = want
 		if not panning:
+			# the wall's top stays pinned as the zoom eases
+			_cam_to = _clamp(_cam_to)
 			_cam = _cam.lerp(_cam_to, k)
 	_place_world()
 
@@ -849,22 +865,14 @@ func open_sheet(i: int) -> void:
 	sheet.open(i)
 	_keep_in_view(true)
 
-## With the sheet up the picked robot is kept in the strip of floor between
-## the pills and the sheet: at once (`now`, as it opens) or, as it walks,
-## once it nears either edge. Only the view's height moves.
-func _keep_in_view(now: bool) -> void:
+## With the sheet up the whole room stands in the strip of field between
+## the pills and the sheet (`_fit_zoom` shrinks it to fit as the sheet
+## opens, and it grows back as it closes), so the picked robot is always in
+## view; nothing more to do than settle the view inside the room.
+func _keep_in_view(_now: bool) -> void:
 	if _mode == "pan" and _moved:
 		return
-	var top := chrome_foot()
-	var foot := field.size.y - sheet.size.y
-	# where the robot will stand once the view has come to rest
-	var at: Vector2 = life.robot_pos(selected)
-	var y := field.size.y * CENTRE.y + (at.y - _cam_to.y) * _zoom
-	var edge := (foot - top) * 0.2
-	if not now and y > top + edge and y < foot - edge:
-		return
-	var want := (top + foot) * 0.5
-	_cam_raw = _clamp(Vector2(_cam_to.x, at.y - (want - field.size.y * CENTRE.y) / _zoom))
+	_cam_raw = _clamp(_cam_to)
 	_cam_to = _cam_raw
 
 # --- the drawer ---
@@ -1089,7 +1097,9 @@ func _drag(finger: int, pos: Vector2) -> void:
 				_moved_at = now
 				_cam_raw -= step
 				var inside := _clamp(_cam_raw)
-				_cam_to = inside + (_cam_raw - inside) * SOFT
+				# soft past the room's ends; up and down the view never goes
+				_cam_to = Vector2(inside.x + (_cam_raw.x - inside.x) * SOFT, inside.y)
+				_cam_raw.y = inside.y
 				_cam = _cam_to
 		"belt":
 			if _moved:

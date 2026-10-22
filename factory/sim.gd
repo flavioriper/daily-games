@@ -176,18 +176,21 @@ const TICK := 0.1
 ## The longest frame a holder steps by: a longer one is a hitch, not play.
 const STEP_MOST := 0.25
 const EPS := 0.000001
-const VERSION := 7
+const VERSION := 8
 
 const COLS := 10
-const ROWS := 12
+const ROWS := 5
 const DIRS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)]
 const NONE := Vector2i(-99999, -99999)
 
-## The floor's stations, each one tile (2026-10-21, the third pass): the
-## work row is the floor's bottom row, where the intake belt ends and the
-## deliver belt sets off up column 9, and the bay and the stack stand WORK_UP
-## rows above it, so every program's Moves (and the tutor's "Move ↓ 4") are
-## the ones they were on the 10 by 8 floor.
+## The floor's stations, each one tile: the work row is the floor's bottom
+## row, where the intake belt ends and the deliver belt sets off up column
+## 9, and the bay and the stack stand WORK_UP rows above it, so every
+## program's Moves (and the tutor's "Move ↓ 4") are the ones they were on
+## the 10 by 8 floor. Since 2026-10-22 (the room) the floor is 10 by 5: the
+## rows the loops walk and no more, the bay and the stack against the back
+## wall, the pads along the front (the user: "fit the board to the height
+## and make the width wider"). VERSION 8; a 7 floor is quietly wiped.
 const WORK_ROW := ROWS - 1
 const WORK_UP := 4
 const STATIONS := {"charger": Vector2i(1, WORK_ROW - WORK_UP), "intake": Vector2i(1, WORK_ROW),

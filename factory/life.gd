@@ -10,9 +10,10 @@ extends RefCounted
 ## its own (the intake's down column 0 the floor's whole height, the
 ## deliver belt up column 9 from the market's side), the
 ## belts the player lays and what rides them, the stations as the land's own
-## pieces (the bay is the engine, the deliver pad the market's hatch, the
-## pack table the tray, the box stack a heap of empty boxes), and the robots
-## among them with their faces, their charge and their bubbles. The rules
+## pieces (the deliver pad the market's hatch, the pack table the tray, the
+## box stack a heap of empty boxes; the bay a painted pad under a charger
+## on the back wall), the room's walls round them (2026-10-22), and the
+## robots among them with their faces, their charge and their bubbles. The rules
 ## stay the sim's (factory/sim.gd, factory/bots.gd), the drawings the art's
 ## (factory/art.gd).
 ##
@@ -59,12 +60,15 @@ const Motion = preload("res://core/motion.gd")
 ## Every layer's box: the floor and far round it. The engine culls a layer
 ## by this and not by what it draws.
 const BOX := Rect2(-40000.0, -40000.0, 80000.0, 80000.0)
+## How far past the ground the outside is painted (view units): further
+## than any view reaches.
+const FAR := 4000.0
 const MID := Vector2(0.5, 0.5)
-## The ground past the floor every holder sets as `margin`, in tiles: more
-## than the screen's view shows above the floor on the tallest phone, and
-## below it with the sheet up (the view goes down under the sheet as far as
-## it covers); a card or a tutor's page frames `work_bounds` in it.
-const GROUND := Vector2i(2, 16)
+## The ground past the floor every holder sets as `margin`, in tiles: a
+## little either side for a sideways overscroll, and the one row above
+## through which the belts come in at the back wall's doorways (the room,
+## 2026-10-22: the view never shows past the wall).
+const GROUND := Vector2i(2, 1)
 ## The squares queued at the intake lie this far apart up its belt (tiles),
 ## the front one QUEUE_FRONT back from the belt's end, and one comes in or
 ## moves up over FEED_SLIDE seconds.
@@ -85,13 +89,10 @@ const SEAT_FORE := Vector2(0.0, 22.0)
 ## back of its tile, so a robot standing on the tile stands in front of it.
 const STATION_K := 0.82
 const STATION_BACK := Vector2(0.0, -24.0)
-## The bay is shared by an engine and robots that stand charging: the
-## engine stands at the back right of its tile, its flywheel on its front
-## clear, and the robots on it stand at the front left, beside it rather
-## than in front of it, so the engine reads while they charge.
-const BAY_ENGINE := Vector2(24.0, -24.0)
-const BAY_SEAT := Vector2(-20.0, 22.0)
-const BAY_STEP := 24.0
+## The charger hangs on the back wall over the bay (the room, 2026-10-22):
+## its origin is the wall's foot under the bay's middle, and the robots
+## charging stand on the pad under it, side by side as on any station.
+const BAY_WALL := Vector2(0.0, -Art.K)
 ## A robot is drawn this much as big as the art's own measures (its
 ## bubble and its bar with it), to read on a phone.
 const ROBOT_SIZE := 1.0
@@ -99,7 +100,7 @@ const ROBOT_SIZE := 1.0
 const BOB := 4.0
 ## Where a robot's fault dot sits: on its body's upper right, clear of the
 ## bubble and the charge bar over its head.
-const DOT_AT := Vector2(26.0, -54.0)
+const DOT_AT := Vector2(27.0, -46.0)
 const POP := 0.2
 ## A robot's tint, by its place in the list (pale, so the face and
 ## the bars stay the loudest; no state is said by them).
@@ -123,8 +124,9 @@ const SHUT_TO := 0.95
 const COIN := 0.75
 const COIN_UP := 64.0
 const DROPS := 4
-## The engine's flywheel: turns a second while a robot charges on the bay.
-const WHEEL_TURNS := 0.5
+## The charger's lamp: lit while a robot charges on the bay, breathing at
+## LAMP_RATE a second; off otherwise.
+const LAMP_RATE := 1.2
 
 ## The floor, in view units: the holder's to place and scale.
 var world: Node2D
@@ -147,6 +149,7 @@ var _ground_l: Node2D
 var _under_l: Node2D
 var _belt_l: Node2D
 var _fast_l: Node2D
+var _room_l: Node2D
 var _flat_l: Node2D
 var _item_l: Node2D
 var _stand: Node2D
@@ -184,8 +187,8 @@ var _took := 99.0
 var _drops: Array = []
 ## Each robot's seat: {off (view units), size, bubble, popped, new}.
 var _seats: Array = []
-## How far the bay's flywheel has turned (radians).
-var _spun := 0.4
+## The charger's lamp's breath, 0..1, moving while a robot charges.
+var _spun := 0.0
 
 func _init() -> void:
 	_squares = Batch.new(Art.square())
@@ -207,6 +210,7 @@ func mount(parent: Node, with_sim: RefCounted) -> Node2D:
 	_under_l = layer(_draw_under)
 	_belt_l = layer(_draw_belts, Art.belt_material())
 	_fast_l = layer(_draw_fast, Art.belt_material(true))
+	_room_l = layer(_draw_room)
 	_wears = [null, _belt_l.material, _fast_l.material]
 	_flat_l = layer(_draw_flat)
 	_item_l = layer(_draw_items)
@@ -268,11 +272,17 @@ func bounds() -> Rect2:
 		box.size.y += Art.DEPTH
 	return box
 
-## Where the robots work, in view units: the floor's width, from a row over
-## the bay down to the floor's foot. A card or a tutor's page frames this.
+## The room, in view units: the floor with its walls, from the back wall's
+## top to the kerb, the side walls' tops either side. The screen fits its
+## height; a card or a tutor's page frames it.
+func room_bounds() -> Rect2:
+	var from := Art.at(Vector2.ZERO) + Vector2(-Art.WALL_TOP, -Art.WALL_TALL - Art.WALL_TOP)
+	var to := Art.at(Vector2(Sim.COLS, Sim.ROWS)) + Vector2(Art.WALL_TOP, Art.KERB)
+	return Rect2(from, to - from)
+
+## Where the robots work: the room (kept by its old name for the tutor).
 func work_bounds() -> Rect2:
-	var from := Art.at(Vector2(0.0, Sim.BAY.y - 1))
-	return Rect2(from, Art.at(Vector2(Sim.COLS, Sim.ROWS)) - from)
+	return room_bounds()
 
 ## The ground's box in view units: the floor and its margin.
 func ground_bounds() -> Rect2:
@@ -306,7 +316,7 @@ func mid(tile: Vector2i) -> Vector2:
 ## Where a station's piece stands, in view units: toward the back of its
 ## tile (STATION_BACK), the front left for a robot.
 func station_at(kind: String) -> Vector2:
-	return mid(Sim.STATIONS[kind]) + (BAY_ENGINE if kind == "charger" else STATION_BACK)
+	return mid(Sim.STATIONS[kind]) + (BAY_WALL if kind == "charger" else STATION_BACK)
 
 ## Where robot `i` is, in view units: between the tile it stepped from and
 ## the one it steps to, by the sim's `alpha`.
@@ -356,11 +366,8 @@ func step(delta: float) -> void:
 	for d: Dictionary in _drops:
 		d.t = float(d.t) + delta
 	_drops = _drops.filter(func(d: Dictionary) -> bool: return float(d.t) < maxf(SALE * SHUT_TO, SALE * COIN_AT + COIN))
-	if not Motion.reduce:
-		for b: Dictionary in sim.robots:
-			if b.charging and b.tile == Sim.BAY:
-				_spun = fposmod(_spun + delta * TAU * WHEEL_TURNS, TAU)
-				break
+	if not Motion.reduce and _charging():
+		_spun = fposmod(_spun + delta * LAMP_RATE, 1.0)
 	if _belts_stale or _belt_n != sim.belts.size() + sim.kinds.size() * 1000:
 		_lay_belts()
 	_fill_items()
@@ -562,14 +569,10 @@ func _fill_robots(delta: float) -> void:
 		var them: Array = by_tile[key]
 		var k := them.size()
 		var station := String(sim.station_at(key))
-		var fore := (BAY_SEAT if station == "charger" else SEAT_FORE) if station != "" else Vector2.ZERO
+		var fore := SEAT_FORE if station != "" else Vector2.ZERO
 		for j in k:
 			var seat: Dictionary = _seats[them[j]]
 			var want_off := Vector2((j - (k - 1) * 0.5) * SPREAD * Art.TILE.x, 0.0) + fore
-			if station == "charger":
-				# on the bay they queue off to the left of the engine, the
-				# first beside it, so its body and flywheel stay clear
-				want_off = fore - Vector2(j * BAY_STEP, 0.0)
 			var want_size: float = SHARED[mini(k, SHARED.size()) - 1]
 			var e := 1.0 if seat.new else ease
 			seat.off = (seat.off as Vector2).lerp(want_off, e)
@@ -664,20 +667,24 @@ func _fill_stand() -> void:
 		c.queue_redraw()
 
 ## The stations, each the land's own piece toward the back of its tile:
-## the bay's engine with its flywheel, the heap of boxes, the tray with the
-## box on it, and the market's hatch with what falls through it and the
-## coin. Their seen tiles go into `stood`.
+## the charger on the wall over the bay with its lamp, the heap of boxes,
+## the tray with the box on it, and the market's hatch with what falls
+## through it and the coin. Their seen tiles go into `stood`.
 func _add_stations(list: Array, stood: Dictionary) -> void:
 	var white := Color.WHITE
 	var size := Vector2(STATION_K, STATION_K)
 	for kind: String in Sim.STATIONS:
 		stood[Sim.STATIONS[kind] as Vector2i] = true
-	# the bay: the engine, its wheel turning while a robot charges on it
+	# the bay: the charger on the wall, its lamp lit while a robot charges
 	var bay := Sim.STATIONS.charger as Vector2i
 	var d := depth(Vector2(bay) + MID) - 0.3
-	var xf := Transform2D(0.0, size, 0.0, station_at("charger"))
-	list.append([d, PLAIN, Art.engine(), xf, white])
-	list.append([d + 0.001, PLAIN, Art.wheel(), xf * Art.on_wall(Art._p(Art.ENGINE_WHEEL, Art.ENGINE_WHEEL_UP), Art.ENGINE_WHEEL_R, _spun, 0), white])
+	var xf := Transform2D(0.0, station_at("charger"))
+	list.append([d, PLAIN, Art.charger(), xf, white])
+	var lamp := Art.CHARGE_OFF
+	if _charging():
+		var breath := 1.0 if Motion.reduce else 0.5 + 0.5 * sin(_spun * TAU)
+		lamp = Art.CHARGE_LIT.lerp(Color.WHITE, 0.35 * (1.0 - breath))
+	list.append([d + 0.001, PLAIN, Art.charger_lamp(), xf, lamp])
 	# the box stack
 	var stack := Sim.STATIONS.stack as Vector2i
 	list.append([depth(Vector2(stack) + MID) - 0.3, PLAIN, Art.stack(), Transform2D(0.0, size, 0.0, station_at("stack")), white])
@@ -742,7 +749,7 @@ func _add_robot(list: Array, i: int, stood: Dictionary) -> void:
 	list.append([d, PLAIN, Art.robot(quarter), xf, TINTS[i % TINTS.size()]])
 	var stuck := String(b.stuck)
 	list.append([d + 0.0002, PLAIN, Art.face(stuck if FACES.has(stuck) else ""), xf, Color.WHITE])
-	list.append([d + 0.0003, PLAIN, Art.nose(), xf * Transform2D(quarter * PI * 0.5, Art.LID), Color.WHITE])
+	list.append([d + 0.0003, PLAIN, Art.nose(), xf * Transform2D(quarter * PI * 0.5, Art.NOSE_AT), Color.WHITE])
 	if not (b.held as Dictionary).is_empty():
 		list.append([d + 0.0004, PLAIN, Art.item(b.held, false), xf * Transform2D(0.0, Vector2(Art.HELD_SCALE, Art.HELD_SCALE), 0.0, Art.HELD_AT), Color.WHITE])
 	stood[b.tile as Vector2i] = true
@@ -774,15 +781,45 @@ func _add_fronts(list: Array, stood: Dictionary) -> void:
 
 # --- drawing ---
 
-## The one plate: the floor's 10 by 12 with its shore, or with a margin the
+## The one plate: the floor's 10 by 5 with its shore, or with a margin the
 ## floor and the ground past it, cut straight on every side (sides 15: no
-## shore, no earth) and bigger than the view can show.
+## shore, no earth); then the stations' painted pads, and what lies under
+## the belts at the back wall (its shadow, the doorways' dark).
 func _draw_ground(ci: CanvasItem) -> void:
 	if margin == Vector2i.ZERO:
 		ci.draw_mesh(Art.plate("neutral", 0, 0, Sim.COLS, Sim.ROWS), null, Transform2D(0.0, Art.at(Vector2.ZERO)))
+	else:
+		var size := Vector2i(Sim.COLS, Sim.ROWS) + margin * 2
+		ci.draw_mesh(Art.plate("neutral", 15, 0, size.x, size.y), null, Transform2D(0.0, Art.at(-Vector2(margin))))
+	for kind: String in Sim.STATIONS:
+		ci.draw_mesh(Art.pad("bay" if kind == "charger" else "plain"), null, Transform2D(0.0, Art.at(Vector2(Sim.STATIONS[kind] as Vector2i))))
+	ci.draw_mesh(Art.wall_behind(-margin.x, Sim.COLS + margin.x, _doors()), null, Transform2D.IDENTITY)
+
+## The back wall over the belts (its windows and clock along it), the side
+## walls' tops and the kerb, and past them the outside, flat over the
+## margin (the belts' tails above the wall are under it).
+func _draw_room(ci: CanvasItem) -> void:
+	ci.draw_mesh(Art.wall(-margin.x, Sim.COLS + margin.x, _doors(), Sim.COLS * 0.5, [Sim.COLS * 0.5 - 2.5, Sim.COLS * 0.5 + 2.5]), null, Transform2D.IDENTITY)
+	ci.draw_mesh(Art.wall_sides(Sim.COLS, Sim.ROWS), null, Transform2D.IDENTITY)
+	if margin == Vector2i.ZERO:
 		return
-	var size := Vector2i(Sim.COLS, Sim.ROWS) + margin * 2
-	ci.draw_mesh(Art.plate("neutral", 15, 0, size.x, size.y), null, Transform2D(0.0, Art.at(-Vector2(margin))))
+	var room: Rect2 = room_bounds()
+	var ground: Rect2 = ground_bounds().grow(FAR)
+	ci.draw_rect(Rect2(ground.position, Vector2(ground.size.x, room.position.y - ground.position.y)), Art.OUTSIDE)
+	ci.draw_rect(Rect2(ground.position.x, room.position.y, room.position.x - ground.position.x, ground.end.y - room.position.y), Art.OUTSIDE)
+	ci.draw_rect(Rect2(room.end.x, room.position.y, ground.end.x - room.end.x, ground.end.y - room.position.y), Art.OUTSIDE)
+	ci.draw_rect(Rect2(room.position.x, room.end.y, room.size.x, ground.end.y - room.end.y), Art.OUTSIDE)
+
+## The tile columns the floor's two belts come in through.
+func _doors() -> Array:
+	return [0.0, float(Sim.COLS - 1)]
+
+## Whether a robot is charging on the bay now.
+func _charging() -> bool:
+	for b: Dictionary in sim.robots:
+		if b.charging:
+			return true
+	return false
 
 func _draw_under(ci: CanvasItem) -> void:
 	for key: Variant in _under_mms:

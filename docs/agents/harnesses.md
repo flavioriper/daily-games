@@ -366,6 +366,11 @@ has (no new test files). Run each windowed one alone, under `ulimit -f` and
 - `tests/_probe_factory.gd` (headless, `--headless --path . --script`):
   the sim alone; prints `probe_factory: N checks, 0 failed` last.
 
+Measured 2026-10-22 (the room, 810x1440, `opengl3_angle`, one run each):
+`_shot_factory.gd` 86 pass, 0 failed, 36 to 134 draw calls;
+`_shot_factory_menu.gd` 0 failed, the Arcade page 140, the screen 69;
+probe 133/0.
+
 On `opengl3_angle`, 2026-10-21, the third pass (no water, 10 by 12, no
 chips; one run each): `_shot_factory.gd` 79 pass, 0 failed, 26 to 105 draw
 calls (the floor 26 to 28, the screen 58 to 60, the tutorial card 105);

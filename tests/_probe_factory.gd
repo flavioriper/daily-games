@@ -27,11 +27,11 @@ const Sim = preload("res://factory/sim.gd")
 const Bots = preload("res://factory/bots.gd")
 const Art = preload("res://factory/art.gd")
 
-const T := Vector2i(4, 11)     # the pack table
-const D := Vector2i(8, 11)     # the deliver pad
-const I := Vector2i(1, 11)     # the intake pad
-const S := Vector2i(4, 7)     # the box stack
-const B := Vector2i(1, 7)     # the charging bay
+const T := Vector2i(4, 4)     # the pack table
+const D := Vector2i(8, 4)     # the deliver pad
+const I := Vector2i(1, 4)     # the intake pad
+const S := Vector2i(4, 0)     # the box stack
+const B := Vector2i(1, 0)     # the charging bay
 
 var _fails := 0
 var _checks := 0
@@ -156,19 +156,19 @@ func _fix_all(sim: RefCounted) -> bool:
 
 func _check_floor() -> void:
 	var sim: RefCounted = Sim.new(7)
-	_ok("a new floor is version 7, 10 x 12, nothing on it, no coins, three robots, a gripper in the bin", Sim.VERSION == 7 and Sim.COLS == 10
-		and Sim.ROWS == 12 and sim.coins == 0 and sim.earned == 0 and sim.queue == 0 and sim.table.is_empty() and sim.items.is_empty()
+	_ok("a new floor is version 8, 10 x 5, nothing on it, no coins, three robots, a gripper in the bin", Sim.VERSION == 8 and Sim.COLS == 10
+		and Sim.ROWS == 5 and sim.coins == 0 and sim.earned == 0 and sim.queue == 0 and sim.table.is_empty() and sim.items.is_empty()
 		and sim.belts.is_empty() and sim.robots.size() == 3 and sim.bin == {"gripper": 1})
 	# the floor's own rules, with no robot walking it
 	sim.robots = []
 	sim.milestone = 1   # belts are open (the lock is _check_pace's)
-	_ok("floor stations", sim.station_at(T) == "table" and sim.station_at(B) == "charger" and sim.station_at(Vector2i(2, 8)) == ""
+	_ok("floor stations", sim.station_at(T) == "table" and sim.station_at(B) == "charger" and sim.station_at(Vector2i(2, 1)) == ""
 		and sim.station_at(I) == "intake" and sim.station_at(S) == "stack" and sim.station_at(D) == "deliver" and sim.stations.size() == 5 and Sim.BAY == B)
-	_ok("the floor's edge", sim.on_floor(Vector2i(0, 0)) and sim.on_floor(Vector2i(9, 11)) and not sim.on_floor(Vector2i(10, 0))
-		and not sim.on_floor(Vector2i(0, 12)) and not sim.on_floor(Vector2i(-1, 3)))
-	_ok("no belt on a station", not sim.can_lay(T) and sim.can_lay(Vector2i(2, 11)) and not sim.can_lay(Vector2i(10, 11)))
-	_ok("no belt on the drawn intake and deliver columns", not sim.can_lay(Vector2i(0, 9)) and not sim.can_lay(Vector2i(Sim.COLS - 1, 3))
-		and sim.can_lay(Vector2i(1, 9)) and sim.can_lay(Vector2i(Sim.COLS - 2, 3)))
+	_ok("the floor's edge", sim.on_floor(Vector2i(0, 0)) and sim.on_floor(Vector2i(9, 4)) and not sim.on_floor(Vector2i(10, 0))
+		and not sim.on_floor(Vector2i(0, 5)) and not sim.on_floor(Vector2i(-1, 3)))
+	_ok("no belt on a station", not sim.can_lay(T) and sim.can_lay(Vector2i(2, 4)) and not sim.can_lay(Vector2i(10, 4)))
+	_ok("no belt on the drawn intake and deliver columns", not sim.can_lay(Vector2i(0, 2)) and not sim.can_lay(Vector2i(Sim.COLS - 1, 3))
+		and sim.can_lay(Vector2i(1, 2)) and sim.can_lay(Vector2i(Sim.COLS - 2, 3)))
 	sim.coins = 10
 	_ok("and one tried there is refused", not sim.lay_belt(T, 0) and _refused(sim, "station") and sim.belts.is_empty() and sim.coins == 10)
 	sim.coins = 0
@@ -201,9 +201,9 @@ func _check_floor() -> void:
 	_ok("a box with two pays two", sim.put(D, half) and sim.coins == 9 and not sim.items.has(D))
 	sq = _square(sim)
 	var sq2: Dictionary = _square(sim)
-	_ok("floor holds a stack", sim.put(Vector2i(2, 8), sq) and sim.put(Vector2i(2, 8), sq2) and sim.gives(Vector2i(2, 8)).id == sq2.id
-		and sim.take(Vector2i(2, 8)).id == sq2.id and _lying(sim, Vector2i(2, 8)) == 1)
-	_ok("a Pick on bare floor with nothing there takes nothing", sim.gives(Vector2i(6, 9)).is_empty() and sim.take(Vector2i(6, 9)).is_empty())
+	_ok("floor holds a stack", sim.put(Vector2i(2, 1), sq) and sim.put(Vector2i(2, 1), sq2) and sim.gives(Vector2i(2, 1)).id == sq2.id
+		and sim.take(Vector2i(2, 1)).id == sq2.id and _lying(sim, Vector2i(2, 1)) == 1)
+	_ok("a Pick on bare floor with nothing there takes nothing", sim.gives(Vector2i(6, 2)).is_empty() and sim.take(Vector2i(6, 2)).is_empty())
 	# the bay, the stack and the intake pad take a Release as floor does
 	var lay: Dictionary = _square(sim)
 	_ok("a Release on the bay lies there", sim.put(B, lay) and _lying(sim, B) == 1 and sim.take(B).id == lay.id)
@@ -219,27 +219,27 @@ func _check_belts() -> void:
 	var box: Dictionary = sim.take(S)
 	sim.put(T, box)
 	# a belt from the intake pad's side to the table carries a square into the box
-	_belt_row(sim, Vector2i(2, 11), 2, 0)   # (2,11),(3,11) facing +x into the table
-	_ok("two belts laid for a coin each", sim.coins == 98 and sim.belt_kind(Vector2i(2, 11)) == "belt" and sim.price("belt") == 1)
+	_belt_row(sim, Vector2i(2, 4), 2, 0)   # (2,4),(3,4) facing +x into the table
+	_ok("two belts laid for a coin each", sim.coins == 98 and sim.belt_kind(Vector2i(2, 4)) == "belt" and sim.price("belt") == 1)
 	var sq3: Dictionary = _square(sim)
-	_ok("belt feeds the table", sim.put(Vector2i(2, 11), sq3) and _until_table_n(sim, 1, 200) and sim.items.is_empty())
-	_ok("a Pick on a belt takes its front", sim.put(Vector2i(2, 11), _square(sim)) and sim.front_of_tile(Vector2i(2, 11)).kind == "square"
-		and sim.take(Vector2i(2, 11)).kind == "square" and sim.front_of_tile(Vector2i(2, 11)).is_empty())
+	_ok("belt feeds the table", sim.put(Vector2i(2, 4), sq3) and _until_table_n(sim, 1, 200) and sim.items.is_empty())
+	_ok("a Pick on a belt takes its front", sim.put(Vector2i(2, 4), _square(sim)) and sim.front_of_tile(Vector2i(2, 4)).kind == "square"
+		and sim.take(Vector2i(2, 4)).kind == "square" and sim.front_of_tile(Vector2i(2, 4)).is_empty())
 	for i in 4:
-		sim.put(Vector2i(2, 11), _square(sim))
+		sim.put(Vector2i(2, 4), _square(sim))
 		_run(sim, 25)
 	_run(sim, 60)
-	var waits: Array = sim.items.get(Vector2i(3, 11), [])
-	_ok("belt waits at a full box", int(sim.table.n) == 4 and waits.size() == 1 and is_equal_approx(float(waits[0].at), 1.0) and not sim.items.has(Vector2i(2, 11)),
+	var waits: Array = sim.items.get(Vector2i(3, 4), [])
+	_ok("belt waits at a full box", int(sim.table.n) == 4 and waits.size() == 1 and is_equal_approx(float(waits[0].at), 1.0) and not sim.items.has(Vector2i(2, 4)),
 		"n %d, %s" % [int(sim.table.n), str(sim.items.keys())])
 	sim.take(T)
 	sim.put(T, sim.take(S))
 	_run(sim, 5)
-	_ok("and goes on into the next box", int(sim.table.n) == 1 and not sim.items.has(Vector2i(3, 11)))
+	_ok("and goes on into the next box", int(sim.table.n) == 1 and not sim.items.has(Vector2i(3, 4)))
 	# a belt into the deliver pad sells
-	_belt_row(sim, Vector2i(6, 11), 2, 0)
+	_belt_row(sim, Vector2i(6, 4), 2, 0)
 	var c: int = sim.coins
-	sim.put(Vector2i(6, 11), _square(sim))
+	sim.put(Vector2i(6, 4), _square(sim))
 	_ok("a belt into the deliver pad sells", _until(sim, "sale", 100) > 0 and sim.coins == c + 1 and sim.items.is_empty())
 	# into the intake pad, the bay or the stack nothing goes: the belt waits
 	for at: Vector2i in [I, B, S]:
@@ -253,41 +253,41 @@ func _check_belts() -> void:
 	# a belt flipped beside the table runs into it
 	var f: RefCounted = _bare(1)
 	f.coins = 10
-	_belt_row(f, Vector2i(4, 10), 3, 0)
-	_ok("a line flipped by the table ends into it", f.flip_line(Vector2i(5, 10)) and int(f.belts[Vector2i(4, 10)]) == 1 and int(f.belts[Vector2i(5, 10)]) == 2)
+	_belt_row(f, Vector2i(4, 3), 3, 0)
+	_ok("a line flipped by the table ends into it", f.flip_line(Vector2i(5, 3)) and int(f.belts[Vector2i(4, 3)]) == 1 and int(f.belts[Vector2i(5, 3)]) == 2)
 	# the fast belt and the bridge
 	var k: RefCounted = _bare(1)
 	k.coins = 1000
-	_belt_row(k, Vector2i(2, 8), 3, 0)
+	_belt_row(k, Vector2i(2, 1), 3, 0)
 	for i in 3:
-		k.lay_belt(Vector2i(2 + i, 9), 0, "fast")
-	_ok("a fast belt is four coins and carries twice as far", k.coins == 1000 - 3 - 12 and k.belt_seconds(Vector2i(2, 9)) == 1.0 and k.unlocked("fast") and k.unlocked("bridge"))
-	k.put(Vector2i(2, 8), _square(k))
-	k.put(Vector2i(2, 9), _square(k))
+		k.lay_belt(Vector2i(2 + i, 2), 0, "fast")
+	_ok("a fast belt is four coins and carries twice as far", k.coins == 1000 - 3 - 12 and k.belt_seconds(Vector2i(2, 2)) == 1.0 and k.unlocked("fast") and k.unlocked("bridge"))
+	k.put(Vector2i(2, 1), _square(k))
+	k.put(Vector2i(2, 2), _square(k))
 	_run(k, 20)
-	_ok("so in two seconds", k.items.has(Vector2i(3, 8)) and k.items.has(Vector2i(4, 9)), str(k.items.keys()))
+	_ok("so in two seconds", k.items.has(Vector2i(3, 1)) and k.items.has(Vector2i(4, 2)), str(k.items.keys()))
 	k.items.clear()
 	var bk: RefCounted = _bare(1)
 	bk.coins = 1000
-	_belt_row(bk, Vector2i(2, 9), 5, 0)
-	_belt_row(bk, Vector2i(5, 7), 2, 1)
-	_belt_row(bk, Vector2i(5, 10), 2, 1)
+	_belt_row(bk, Vector2i(2, 2), 5, 0)
+	_belt_row(bk, Vector2i(5, 0), 2, 1)
+	_belt_row(bk, Vector2i(5, 3), 2, 1)
 	c = bk.coins
-	_ok("a bridge is laid on a belt for the difference", bk.lay_belt(Vector2i(5, 9), 0, "bridge") and bk.belt_kind(Vector2i(5, 9)) == "bridge" and bk.coins == c - 24)
+	_ok("a bridge is laid on a belt for the difference", bk.lay_belt(Vector2i(5, 2), 0, "bridge") and bk.belt_kind(Vector2i(5, 2)) == "bridge" and bk.coins == c - 24)
 	var across := 0
 	var under := 0
 	var wrong := 0
 	for i in 600:
 		if i % 10 == 0 and i < 300:
-			bk.put(Vector2i(2, 9), _square(bk))
-			bk.put(Vector2i(5, 7), bk.take(S))
+			bk.put(Vector2i(2, 2), _square(bk))
+			bk.put(Vector2i(5, 0), bk.take(S))
 		bk.step(Sim.TICK)
-		for end: Vector2i in [Vector2i(6, 9), Vector2i(5, 11)]:
+		for end: Vector2i in [Vector2i(6, 2), Vector2i(5, 4)]:
 			if bk.items.has(end) and float(bk.items[end][0].at) >= 1.0 - 0.001:
 				var it: Dictionary = bk.items[end].pop_front()
 				if bk.items[end].is_empty():
 					bk.items.erase(end)
-				if end == Vector2i(6, 9):
+				if end == Vector2i(6, 2):
 					under += 1 if it.kind == "square" else 0
 					wrong += 0 if it.kind == "square" else 1
 				else:
@@ -295,9 +295,9 @@ func _check_belts() -> void:
 					wrong += 0 if it.kind == "box" else 1
 	_ok("thirty squares under a bridge and thirty boxes over, none mixed", under == 30 and across == 30 and wrong == 0, "%d %d %d" % [under, across, wrong])
 	c = bk.coins
-	_ok("a belt sold gives its price back, what rode it lies", bk.put(Vector2i(2, 9), _square(bk)) and bk.sell(Vector2i(2, 9)) and bk.coins == c + 1
-		and not bk.belts.has(Vector2i(2, 9)) and _lying(bk, Vector2i(2, 9)) == 1)
-	_ok("and a line sold in one go", bk.sell_belts([Vector2i(3, 9), Vector2i(4, 9)]) and bk.coins == c + 3 and bk.events.back().type == "sold_line")
+	_ok("a belt sold gives its price back, what rode it lies", bk.put(Vector2i(2, 2), _square(bk)) and bk.sell(Vector2i(2, 2)) and bk.coins == c + 1
+		and not bk.belts.has(Vector2i(2, 2)) and _lying(bk, Vector2i(2, 2)) == 1)
+	_ok("and a line sold in one go", bk.sell_belts([Vector2i(3, 2), Vector2i(4, 2)]) and bk.coins == c + 3 and bk.events.back().type == "sold_line")
 	_ok("a station is nothing to sell or turn", not bk.sell(T) and not bk.turn(T))
 
 func _check_kept() -> void:
@@ -307,11 +307,11 @@ func _check_kept() -> void:
 	_run(sim, 70)
 	sim.put(T, sim.take(S))
 	_fill(sim, 2)
-	_belt_row(sim, Vector2i(2, 11), 2, 0)
-	sim.lay_belt(Vector2i(6, 9), 0, "bridge")
-	sim.put(Vector2i(2, 11), sim.take(I))
-	sim.put(Vector2i(7, 8), sim.take(S))
-	sim.put(Vector2i(7, 8), sim.take(I))
+	_belt_row(sim, Vector2i(2, 4), 2, 0)
+	sim.lay_belt(Vector2i(6, 2), 0, "bridge")
+	sim.put(Vector2i(2, 4), sim.take(I))
+	sim.put(Vector2i(7, 1), sim.take(S))
+	sim.put(Vector2i(7, 1), sim.take(I))
 	sim.picked = "belt"
 	_run(sim, 7)
 	sim.step(0.04)
@@ -322,7 +322,7 @@ func _check_kept() -> void:
 	_ok("round trip", back.load_saved() and var_to_str(back.pack()) == var_to_str(sim.pack()) and back.picked == "belt" and back.queue == sim.queue
 		and int(back.table.n) == 2 and back.station_at(T) == "table")
 	var kept: Dictionary = back.pack()
-	_ok("the save is version 7 and holds the floor, nothing of the land", kept.version == 7 and kept.has_all(["queue", "table", "robots", "bin", "tick_n"])
+	_ok("the save is version 8 and holds the floor, nothing of the land", kept.version == 8 and kept.has_all(["queue", "table", "robots", "bin", "tick_n"])
 		and not kept.has("plates") and not kept.has("modules") and not kept.has("sources") and not kept.has("sold"))
 	back.save()
 	_ok("which saves as the same file", FileAccess.get_file_as_string(Sim.path) == a)
@@ -336,7 +336,7 @@ func _check_kept() -> void:
 		back.step(Sim.TICK)
 		if i % 300 == 0:
 			for s: RefCounted in [sim, back]:
-				s.put(Vector2i(2, 11), s.take(I))
+				s.put(Vector2i(2, 4), s.take(I))
 			same = same and var_to_str(sim.pack()) == var_to_str(back.pack())
 	_ok("and the floor read back plays on as the floor saved does", same and var_to_str(sim.pack()) == var_to_str(back.pack()))
 	var hitch: RefCounted = Sim.new(1)
@@ -354,7 +354,7 @@ func _check_kept() -> void:
 	var again: RefCounted = Sim.new(3)
 	_ok("the same floor marked 5 is read: the version alone refused it", again.load_saved() and var_to_str(again.pack()) == var_to_str(sim.pack()))
 	var shaped: Dictionary = sim.pack()
-	shaped.items[Vector2i(7, 8)][0].kind = "log"
+	shaped.items[Vector2i(7, 1)][0].kind = "log"
 	_write(shaped, Sim.VERSION)
 	_ok("a floor with a thing there is none of is refused", not fresh.load_saved() and var_to_str(fresh.pack()) == was)
 	shaped = sim.pack()
@@ -381,7 +381,7 @@ func _check_kept() -> void:
 func _check_turns() -> void:
 	var sim: RefCounted = Sim.new(3)
 	var bot: Dictionary = Bots.new_robot("Turner", ["treads", "battery"], [["turn", Sim.RIGHT], ["move", 1]])
-	bot.dock = Vector2i(5, 5)
+	bot.dock = Vector2i(5, 3)
 	bot.tile = bot.dock
 	bot.was = bot.dock
 	sim.robots = [bot]
@@ -402,10 +402,10 @@ func _check_turns() -> void:
 	_ok("and turns a quarter right: down to left", bot.facing == 2 and pivots.size() == 1 and pivots[0].facing == 2)
 	_ok("swinging there in between", mid > 1.0 and mid < 2.0, str(mid))
 	_until_pc(sim, 0, Sim.BODY, 20)
-	_ok("a Move walks the way it faces", bot.tile == Vector2i(4, 5))
+	_ok("a Move walks the way it faces", bot.tile == Vector2i(4, 3))
 	_until_pc(sim, 0, "a", 10)
 	_until_pc(sim, 0, Sim.BODY, 40)
-	_ok("and the facing is kept into the next loop", bot.facing == 3 and bot.tile == Vector2i(4, 4), "%d %s" % [bot.facing, bot.tile])
+	_ok("and the facing is kept into the next loop", bot.facing == 3 and bot.tile == Vector2i(4, 2), "%d %s" % [bot.facing, bot.tile])
 	_ok("a ring that does not face home is told", not Bots.faces_home(bot) and Bots.ways(bot).end == 2)
 	var nid: String = sim.add_node(0, "b", "out", "turn")
 	_ok("a Turn added is a right one and the robot goes home facing down", nid != "" and bot.nodes[nid].facing == Sim.RIGHT
@@ -434,7 +434,7 @@ func _check_robots() -> void:
 	var found: Array = []
 	_ok("picker walks empty", _until_event(sim, "skip", 400, 0, found) > 0 and found[0].id == "d" and sim.robots[0].held.is_empty()
 		and sim.robots[0].tile == T and sim.robots[0].bubble == "!")
-	_ok("the second robot litters (4,10)", _until_event(sim, "release", 400, 1) > 0 and sim.items.has(Vector2i(4, 10)) and sim.items[Vector2i(4, 10)][0].kind == "box")
+	_ok("the second robot litters (4,10)", _until_event(sim, "release", 400, 1) > 0 and sim.items.has(Vector2i(4, 3)) and sim.items[Vector2i(4, 3)][0].kind == "box")
 	_run(sim, 200)
 	_ok("shipper stops ?", sim.robots[2].stuck == "?" and sim.robots[2].bubble == "?" and sim.robots[2].tile == T)
 	# the fixes
@@ -508,7 +508,7 @@ func _check_robots() -> void:
 	# a bump drops the rest of a Move
 	var s4: RefCounted = Sim.new(3)
 	var bot: Dictionary = Bots.new_robot("Bumper", ["treads", "battery"], [["turn", Sim.RIGHT], ["move", 4], ["turn", Sim.LEFT], ["move", 1]])
-	bot.dock = Vector2i(2, 9)
+	bot.dock = Vector2i(2, 2)
 	bot.tile = bot.dock
 	bot.was = bot.dock
 	s4.robots = [bot]
@@ -520,7 +520,7 @@ func _check_robots() -> void:
 			bumps += 1 if e.type == "bump" else 0
 		if bot.pc != "b":
 			break
-	_ok("bump mid move", bot.tile == Vector2i(0, 9) and before - bot.charge == 3 and bumps == 1 and bot.pc == "c",
+	_ok("bump mid move", bot.tile == Vector2i(0, 2) and before - bot.charge == 3 and bumps == 1 and bot.pc == "c",
 		"%s %d %d %s" % [bot.tile, before - bot.charge, bumps, bot.pc])
 	# a part taken off while its node runs
 	var s5: RefCounted = Sim.new(3)
@@ -592,7 +592,7 @@ func _check_pace() -> void:
 	_ok("and a pace not kept up opens nothing", two.milestone == 0 and two.held_for == 0 and two.sold_at.size() == 2)
 	# the fresh floor: belts locked
 	_ok("belts locked before 1", not sim.unlocked("belt") and not sim.unlocked("fast") and not sim.unlocked("bridge")
-		and not sim.lay_belt(Vector2i(2, 11), 0) and _refused(sim, "locked") and sim.belts.is_empty())
+		and not sim.lay_belt(Vector2i(2, 4), 0) and _refused(sim, "locked") and sim.belts.is_empty())
 	var rows: Array = sim.bin_rows()
 	var by: Dictionary = {}
 	for r: Dictionary in rows:
@@ -616,7 +616,7 @@ func _check_pace() -> void:
 				gaps.append(sim.tick_n - last)
 				last = sim.tick_n
 	print("pace: gaps over 6000 more ticks ", gaps)
-	_ok("belts open at 1", sim.unlocked("belt") and sim.unlocked("fast") and sim.unlocked("bridge") and sim.coins >= 1 and sim.lay_belt(Vector2i(2, 11), 0))
+	_ok("belts open at 1", sim.unlocked("belt") and sim.unlocked("fast") and sim.unlocked("bridge") and sim.coins >= 1 and sim.lay_belt(Vector2i(2, 4), 0))
 	_ok("and the bin shows fast and plug at their price", sim.bin_rows().filter(func(r: Dictionary) -> bool: return r.state == "price").size() == 2)
 	# a stall: held_for climbs, then a starved floor takes it back to 0
 	var st: RefCounted = Sim.new(3)

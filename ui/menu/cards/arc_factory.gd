@@ -2,7 +2,7 @@ extends "res://ui/menu/cards/card_face.gd"
 
 ## Factory's card: a morning over the floor's land (main's card's sky, its
 ## green and its far rise), drawn with the floor's own pieces as the floor
-## projects them (factory/art.gd's meshes): the bay's engine at the back, one of the
+## projects them (factory/art.gd's meshes): the back wall's charger at the back, one of the
 ## game's robots in the Picker's tint with its content face carrying a full
 ## box, and a run of belt with two grey squares riding it toward the go
 ## button, which stands where the belt ends, as the market does on the
@@ -26,10 +26,13 @@ const H := 246.0
 ## card's width caps the scale so the robot never starts under them.
 const WORDS_END := 205.0
 const REACH := 250.0
-## The engine at the back: in from the right, up from the foot, its scale
-## (its flywheel with it).
-const ENGINE_AT := Vector2(204.0, 96.0)
-const ENGINE_K := 0.78
+## A piece of the back wall at the back with the charger on it (the room,
+## 2026-10-22): its left end in from the right and its foot up from the
+## foot, its scale, how many tiles of wall, and the charger's tile along it.
+const WALL_AT := Vector2(250.0, 96.0)
+const WALL_K := 0.78
+const WALL_TILES := 2.4
+const CHARGER_X := 0.55
 ## The robot at H: where its feet are, in from the right and up from the
 ## foot, and how big; the box it carries is Art's HELD_AT, one with four
 ## squares in it.
@@ -80,10 +83,12 @@ func _paint(b: Face.Builder) -> void:
 	b.polygon(ground(), Color.WHITE)
 	shade(b, first, SKY, LAND, 0.0, size.y)
 	_rise(b)
-	var e := ENGINE_K * k
-	var engine := Transform2D(0.0, Vector2(e, e), 0.0, _at(ENGINE_AT))
-	b.append(Art.engine(), engine)
-	b.append(Art.wheel(), engine * Art.on_wall(Art._p(Art.ENGINE_WHEEL, Art.ENGINE_WHEEL_UP), Art.ENGINE_WHEEL_R, 0.4, 0))
+	var e := WALL_K * k
+	var wall := Transform2D(0.0, Vector2(e, e), 0.0, _at(WALL_AT))
+	b.append(Art.wall(0.0, WALL_TILES, []), wall)
+	var charger := wall * Transform2D(0.0, Vector2(CHARGER_X * Art.K * 2.0, 0.0))
+	b.append(Art.charger(), charger)
+	b.append(Art.charger_lamp(), charger, Art.CHARGE_LIT)
 	_belt(b, k)
 	for x in RIDERS:
 		b.append(Art.square(), Transform2D(0.0, Vector2(RIDER_K, RIDER_K) * k, 0.0, _at(Vector2(x, BELT_FROM.y - 4.0))))
@@ -95,7 +100,7 @@ func _paint(b: Face.Builder) -> void:
 	if not soon:
 		_go(b, _at(GO_AT), GO * k)
 
-## One soft far rise, sunk under the words and highest behind the engine.
+## One soft far rise, sunk under the words and highest behind the wall.
 func _rise(b: Face.Builder) -> void:
 	var k := size.y / H
 	var pts := PackedVector2Array()
