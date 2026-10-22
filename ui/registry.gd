@@ -166,6 +166,35 @@ const PUZZLES := [
 		],
 	},
 	{
+		"id": "picket",
+		"skill": "logic",
+		"kind": "puzzle",
+		"title": "Picket Sums",
+		"blurb": "PK_BLURB",
+		"short": "PK_SHORT",
+		"motto": "PK_MOTTO",
+		"footer": "Add · Fence · Complete",
+		# Sudoku's grid fenced into garden plots, each adding up to its tag
+		# (puzzles/picket2d.gd, Sudoku's board with the plots laid over it).
+		# The same digit pad, the same bleed world and level card; Hard and
+		# Insane come from banks mined on the Mac (content/insane/picket*.json).
+		"script": "res://puzzles/picket2d.gd",
+		"card": "res://ui/menu/cards/picket.gd",
+		"shell": "flat",
+		"tray": "digits",
+		"bleed": true,
+		"level_card": true,
+		"actions": false,
+		"difficulties": [0, 1, 2, 3],
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "6 × 6"},
+			{"difficulty": 1, "name": "Medium", "line": "6 × 6"},
+			{"difficulty": 2, "name": "Hard", "line": "SD_LVL_2"},
+			{"difficulty": 3, "name": "Insane", "line": "PK_LVL_3"},
+		],
+	},
+	{
 		"id": "rings",
 		"skill": "planning",
 		"kind": "puzzle",

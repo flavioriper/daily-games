@@ -140,6 +140,10 @@ func _note(id: String) -> String:
 			_puzzle.hints_used, _fit_ok, _hud_ok]
 		"sudoku": return "%d givens, %d moves, hints=%d, board fit=%s, hud=%s" % [
 			_puzzle.state.given.size() - _puzzle.state.given.count(0), _puzzle.moves, _puzzle.hints_used, _fit_ok, _hud_ok]
+		"picket": return "%dx%d, %d plots (%d lost), %d givens, %d moves, hints=%d, caps %s, board fit=%s, hud=%s" % [
+			int(sqrt(_puzzle.state.sol.size())), int(sqrt(_puzzle.state.sol.size())), _puzzle.state.plots.size(),
+			_puzzle.state.lost_count(), _puzzle.state.given.size() - _puzzle.state.given.count(0),
+			_puzzle.moves, _puzzle.hints_used, _puzzle.capabilities(), _fit_ok, _hud_ok]
 		"fairylights": return "%dx%d garden, %d lanterns, %d turns, board fit=%s, hud=%s" % [
 			_puzzle.state.n, _puzzle.state.n, _puzzle.state.lanterns().size(),
 			_puzzle.state.turns, _fit_ok, _hud_ok]
@@ -231,6 +235,7 @@ func _solve(id: String) -> void:
 		"planes": _solve_planes()
 		"hiddenword": _solve_hiddenword()
 		"sudoku": _solve_sudoku()
+		"picket": _solve_picket()
 		"quilt": _solve_quilt()
 		"rings": _solve_rings()
 		"fairylights": _solve_fairylights()
@@ -1249,6 +1254,38 @@ func _solve_sudoku() -> void:
 			return
 		var d: int = _puzzle.state.sol[i]
 		if _puzzle.state.grid[i] == d:
+			continue
+		_tap_local(_puzzle.cell_to_local(i / Gen.N, i % Gen.N))
+		_tap_key("Digit%d" % (d - 1))
+
+## Picket Sums: Sudoku's path through the real pad -- the bulb first, then
+## a wrong number into a two-cell plot's cell (its fence turns rose), taken
+## out with the same number, then every cell from the answer.
+func _solve_picket() -> void:
+	var Gen = load("res://puzzles/sudoku_gen.gd")
+	var st = _puzzle.state
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for r in Gen.N:
+		for c in Gen.N:
+			if not slot.has_point(_puzzle.cell_to_local(r, c)):
+				_fit_ok = false
+	_press(_host.top_bar.hint_button)
+	_hud_ok = _puzzle.hints_used == 1
+	for i in Gen.CELLS:
+		if st.grid[i] == 0:
+			var wrong: int = st.sol[i] % Gen.N + 1
+			_tap_local(_puzzle.cell_to_local(i / Gen.N, i % Gen.N))
+			_tap_key("Digit%d" % (wrong - 1))
+			_tap_key("Digit%d" % (wrong - 1))
+			# Let it go again, or the solve's first tap there would.
+			_tap_local(_puzzle.cell_to_local(i / Gen.N, i % Gen.N))
+			break
+	for i in Gen.CELLS:
+		if _puzzle.is_done():
+			return
+		var d: int = st.sol[i]
+		if st.grid[i] == d:
 			continue
 		_tap_local(_puzzle.cell_to_local(i / Gen.N, i % Gen.N))
 		_tap_key("Digit%d" % (d - 1))

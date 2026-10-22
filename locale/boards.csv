@@ -3118,3 +3118,44 @@ BRAIN_TC_1,Name each friend as you lift it: words stick better than pictures alo
 BRAIN_TC_2,"Sweep the table in order, row by row, so you know which cups are still unseen.","Percorra a mesa em ordem, fileira por fileira, para saber quais xícaras ainda não viu.","Recorre la mesa en orden, fila por fila, para saber qué tazas aún no has visto."
 BRAIN_TC_3,"Lift a new cup first: if its twin is one you have seen, you can go straight to it.","Levante primeiro uma xícara nova: se o gêmeo for um que você já viu, pode ir direto nele.","Levanta primero una taza nueva: si su gemelo es uno que ya viste, puedes ir directo a él."
 BRAIN_TC_4,"Tie places to the table: by the corner, the middle of the second row.","Amarre os lugares à mesa: no canto, no meio da segunda fileira.","Ata los sitios a la mesa: en la esquina, en el medio de la segunda fila."
+PK_BLURB,"Sudoku fenced into garden plots: each plot's numbers add up to its tag, and none repeats.","Sudoku cercado em canteiros: os números de cada canteiro somam o da plaquinha, sem repetir.","Sudoku cercado en parcelas: los números de cada parcela suman lo de su etiqueta, sin repetirse."
+PK_SHORT,"Every plot adds up,
+every number once.","Cada canteiro fecha a conta,
+cada número uma vez.","Cada parcela suma justo,
+cada número una vez."
+PK_MOTTO,Every plot adds up,Cada canteiro fecha a conta,Cada parcela suma justo
+PK_LVL_3,Lost Tags: 9 × 9,Plaquinhas perdidas: 9 × 9,Etiquetas perdidas: 9 × 9
+PK_RULES,"Fill the grid so every row, every column and every %d-by-%d region holds the numbers 1 to %d, each exactly once.
+
+The grid is fenced into plots. A plot's numbers add up to the number on its tag, and no number comes twice in one plot.
+
+Tap a cell, then a number. Tapping the number a cell already holds takes it out again. A plot that adds up turns green; one that cannot any more turns rose.","Preencha a grade para que cada linha, cada coluna e cada região de %d por %d tenha os números de 1 a %d, cada um uma vez só.
+
+A grade é cercada em canteiros. Os números de um canteiro somam o número da sua plaquinha, e nenhum número se repete no mesmo canteiro.
+
+Toque numa casa, depois num número. Tocar o número que a casa já tem tira ele de novo. Um canteiro que fecha a conta fica verde; um que não pode mais fechar fica rosa.","Llena la cuadrícula para que cada fila, cada columna y cada región de %d por %d tenga los números del 1 al %d, cada uno una sola vez.
+
+La cuadrícula está cercada en parcelas. Los números de una parcela suman el número de su etiqueta, y ningún número se repite en la misma parcela.
+
+Toca una casilla y luego un número. Tocar el número que la casilla ya tiene lo quita otra vez. Una parcela que suma justo se pone verde; una que ya no puede, rosa."
+PK_RULES_LOST,"Lost Tags: some plots have lost their tag. Their numbers still never repeat, but nothing says what they add up to.","Plaquinhas perdidas: alguns canteiros perderam a plaquinha. Os números ainda não se repetem, mas nada diz quanto somam.","Etiquetas perdidas: algunas parcelas perdieron su etiqueta. Sus números siguen sin repetirse, pero nada dice cuánto suman."
+PK_WIN,Every plot adds up.,Cada canteiro fecha a conta.,Cada parcela suma justo.
+PK_LOST_SEAL,Lost Tags,Plaquinhas perdidas,Etiquetas perdidas
+PK_TIP_SUM,"A plot's numbers add up to its tag, and none comes twice.","Os números de um canteiro somam a plaquinha, sem repetir.","Los números de una parcela suman su etiqueta, sin repetirse."
+PK_TIP_SMALL,Start with small plots and extreme tags: 3 over two cells can only be 1 and 2.,Comece pelos canteiros pequenos e plaquinhas extremas: 3 em duas casas só pode ser 1 e 2.,Empieza por parcelas pequeñas y etiquetas extremas: 3 en dos casillas solo puede ser 1 y 2.
+PK_TIP_UNIT,"Every row, column and region adds up to the same total. Subtract the plots inside it to find what is left.","Toda linha, coluna e região soma o mesmo total. Tire os canteiros de dentro para achar o que sobra.","Toda fila, columna y región suma lo mismo. Resta las parcelas de dentro para hallar lo que falta."
+PK_TIP_LOST,A plot with no tag still never repeats a number.,Um canteiro sem plaquinha também não repete número.,Una parcela sin etiqueta tampoco repite número.
+HTP_PK_PLOT,Plots add up,Canteiros fecham a conta,Las parcelas suman
+HTP_PK_PLOT_BODY,"The grid is fenced into plots. A plot's numbers add up to the number on its tag, and no number comes twice in one plot. A plot that adds up turns green.","A grade é cercada em canteiros. Os números de um canteiro somam o número da plaquinha, e nenhum se repete no mesmo canteiro. Um canteiro que fecha a conta fica verde.","La cuadrícula está cercada en parcelas. Los números de una parcela suman el número de su etiqueta, y ninguno se repite en la misma parcela. Una parcela que suma justo se pone verde."
+HTP_PK_LINES,And every number once,E cada número uma vez,Y cada número una vez
+HTP_PK_LINES_BODY,"As in Sudoku, every row, every column and every box holds the numbers 1 to %d, each exactly once. Tap a cell, then a number in the pad.","Como no Sudoku, cada linha, cada coluna e cada bloco tem os números de 1 a %d, cada um uma vez só. Toque numa casa, depois num número do teclado.","Como en el Sudoku, cada fila, cada columna y cada bloque tiene los números del 1 al %d, cada uno una sola vez. Toca una casilla y luego un número del teclado."
+HTP_PK_RULE_CAP,A plot's numbers add up to its tag,Os números do canteiro somam a plaquinha,Los números de la parcela suman su etiqueta
+HTP_PK_TAG_CAP,This plot is missing one number,Falta um número neste canteiro,A esta parcela le falta un número
+HTP_PK_TAKE_CAP,%d − %d = %d,%d − %d = %d,%d − %d = %d
+HTP_PK_DONE_CAP,It adds up: the plot turns green,Fechou a conta: o canteiro fica verde,Suma justo: la parcela se pone verde
+HTP_PK_LOST_CAP,This plot has lost its tag,Este canteiro perdeu a plaquinha,Esta parcela perdió su etiqueta
+HTP_PK_ONCE_CAP,Its numbers still never repeat,Os números ainda não se repetem,Sus números siguen sin repetirse
+BRAIN_PK_1,"Start with plots that leave one choice: 3 over two cells is 1 and 2, 17 is 8 and 9.","Comece pelos canteiros de uma escolha só: 3 em duas casas é 1 e 2, 17 é 8 e 9.","Empieza por las parcelas de una sola opción: 3 en dos casillas es 1 y 2, 17 es 8 y 9."
+BRAIN_PK_2,"A row, column or region adds up to the same total every time: take away the plots inside it.","Uma linha, coluna ou região sempre soma o mesmo total: tire os canteiros de dentro.","Una fila, columna o región siempre suma lo mismo: resta las parcelas de dentro."
+BRAIN_PK_3,"Pencil the pairs a two-cell plot allows, then cross them out with the row and column.",Anote os pares que um canteiro de duas casas aceita e risque com a linha e a coluna.,Anota los pares que admite una parcela de dos casillas y táchalos con la fila y la columna.
+BRAIN_PK_4,A plot of three cells adding up to 6 or 24 has only one set of numbers.,Um canteiro de três casas que soma 6 ou 24 só tem um conjunto de números.,Una parcela de tres casillas que suma 6 o 24 solo tiene un conjunto de números.

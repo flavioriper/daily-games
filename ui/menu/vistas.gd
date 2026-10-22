@@ -44,6 +44,7 @@ const CARDS := {
 	"hiddenword": ["dusk", 1.5, Vector2(0.55, 0.55)],
 	"wordtrail": ["autumn", 1.6, Vector2(0.40, 0.20)],
 	"sudoku": ["dusk", 1.7, Vector2(0.85, 0.75)],
+	"picket": ["meadow", 1.6, Vector2(0.75, 0.55)],
 	"bridges": ["beach", 1.5, Vector2(0.70, 0.65)],
 	"quilt": ["dusk", 1.8, Vector2(0.92, 0.70)],
 	"fairylights": ["night", 1.6, Vector2(0.20, 0.70)],

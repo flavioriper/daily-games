@@ -53,7 +53,7 @@ Connections, Spelling Bee, Pips, Pinpoint, Clues by Sam.
 
 - [x] **5. Teacups** (concentration pairs). Built 2026-10-22, `docs/agents/boards/teacups.md`; cups 12/16/20/20, Insane is Waltz (two hidden cups trade places every second miss). Memory. Trivial. Quality: flips
       vs the minimum.
-- [ ] **6. Picket Sums** (Killer Sudoku cages). Numbers/Logic. Reuses
+- [x] **6. Picket Sums** (Killer Sudoku cages). Built 2026-10-22, `docs/agents/boards/picket.md`; 6/6/9/9, Hard and Insane banked (120 days each), Insane is Lost Tags (up to six plots lose their tag). Numbers/Logic. Reuses
       Sudoku's grid, pad, generator. Moderate.
 - [ ] **7. Market Sums** (24 game / NYT Digits). Numbers. Six numbers to a
       target. Reuses Lattice's tiles. Trivial. Quality: steps vs shortest.

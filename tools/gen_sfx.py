@@ -3777,6 +3777,17 @@ SETS = {
     },
 }
 
+# Picket Sums (puzzle_id "picket"), 2026-10-22: Sudoku's board with its grid
+# fenced into garden plots (puzzles/picket2d.gd extends sudoku2d.gd), so it
+# plays Sudoku's set, takes and all, copied into build/sfx_raw/picket/ and
+# never bought. Its own cue is `plot`: a plot whose numbers add up to its
+# tag, three wraps rising a step apart (a lighter cousin of Teacups' pair).
+# All of it unheard.
+SETS["picket"] = {
+    **SETS["sudoku"],
+    "plot":     ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -13, FOLEY, "bank:wrap", "cut:0.1", "notes:0.06:2,5,9", "tight"),
+}
+
 
 # Every breath of air, 6 dB under the level its line names: the user,
 # 2026-10-10, of the swipes in the boards and the loops under a puck or a

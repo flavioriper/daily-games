@@ -515,7 +515,7 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = false
 	# The desk first, under the board's own drawing.
-	_world = World.new()
+	_world = _new_world()
 	_world.name = "World"
 	_world.show_behind_parent = true
 	_world.visible = false
@@ -536,6 +536,15 @@ func _ready() -> void:
 	resized.connect(_layout)
 	solved.connect(_on_solved)
 
+## The rules and the desk this board is dealt: Sudoku's own. Picket Sums
+## (puzzles/picket2d.gd) is this board with plots fenced over the grid, and
+## hands its own here.
+func _new_state() -> State:
+	return State.new()
+
+func _new_world() -> Control:
+	return World.new()
+
 ## A full-rect layer over the board, drawn by `draw` (One Line's).
 func _layer(nm: String, z: int, draw: Callable) -> Control:
 	var layer := Control.new()
@@ -549,7 +558,7 @@ func _layer(nm: String, z: int, draw: Callable) -> Control:
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_gen += 1
-	state = State.new()
+	state = _new_state()
 	state.setup(rng, difficulty, bank_step)
 	max_hearts = int(State.HEARTS[state.band])
 	max_moves = state.moves_budget()
