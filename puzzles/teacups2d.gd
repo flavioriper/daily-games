@@ -102,8 +102,10 @@ var _waltz_from: Array[int] = []
 var _waltz_at: Array[float] = []
 var _waltz_dir: Array[float] = []
 var _peek_tok: Array[int] = []
-## The two cups a miss holds up.
+## The two cups a miss holds up, and its token: a hold ended early by a tap
+## leaves its queued cue and its end behind, and they must not touch the next.
 var _held: Array[int] = []
+var _hold_tok := 0
 ## The friends' nodes, "kind:expression" -> Control (never in the tree).
 var _friends := {}
 var _won_at := -INF
@@ -287,11 +289,16 @@ func _tap(s: int) -> void:
 		State.Lifted.MISS:
 			_held = [a, c]
 			_phase = Phase.HOLD
+			var tok := _hold_tok
 			_after(0.22, func() -> void:
+				if tok != _hold_tok:
+					return
 				_cue("miss")
 				for k in [a, c]:
 					_worry_until[k] = _t + WORRY_TIME)
-			_after(MISS_HOLD, _miss_over)
+			_after(MISS_HOLD, func() -> void:
+				if tok == _hold_tok and _phase == Phase.HOLD:
+					_end_hold())
 		State.Lifted.PAIR:
 			_found(a, c)
 		State.Lifted.SOLVED:
@@ -310,12 +317,9 @@ func _found(a: int, c: int) -> void:
 			for k in [a, c]:
 				fx.sparkle(_friend_at(k), Pal.SUN))
 
-func _miss_over() -> void:
-	if _phase == Phase.HOLD:
-		_end_hold()
-
 ## The cups a miss held up go down; on Insane a waltz may follow.
 func _end_hold() -> void:
+	_hold_tok += 1
 	for c in _held:
 		_lower(c)
 		_worry_until[c] = 0.0
@@ -620,7 +624,7 @@ func _draw_friend(c: int) -> void:
 	var at := _friend_at(c)
 	var u := _u()
 	var hop := _t - _hop_at[c]
-	if hop >= 0.0 and hop < HOP_TIME:
+	if hop >= 0.0 and hop < HOP_TIME and not Motion.reduce:
 		at.y += Motion.hop_lift(hop, Motion.SOLVE_HOP * 1.6 * u, HOP_TIME)
 	if won and _won_at > -INF:
 		var wave: float = _t - _won_at - _st.slot[c] * WAVE_STEP
@@ -661,17 +665,17 @@ func _draw_cup(c: int) -> void:
 	if e < 0.0:
 		return
 	var drop := 0.0
-	if e < Motion.DROP_TIME:
+	if e < Motion.DROP_TIME and not Motion.reduce:
 		drop = -Motion.drop_in_lift(e, Motion.DROP * 2.0 * u)
 		a *= Motion.appear_level(e)
 	var squash := 1.0
 	if not _up[c] and _up_at[c] > -INF:
 		var land := _t - _up_at[c] - DROP_TIME
-		if land >= 0.0 and land < Motion.BUMP_TIME:
+		if land >= 0.0 and land < Motion.BUMP_TIME and not Motion.reduce:
 			squash = Motion.bump_scale(land, 0.08)
 	var turn := 0.0
 	var wig := _t - _wiggle_at[c]
-	if wig >= 0.0 and wig < WIGGLE:
+	if wig >= 0.0 and wig < WIGGLE and not Motion.reduce:
 		turn += Motion.wobble_angle(wig, 0.14, WIGGLE)
 	var shadow_k := clampf(1.0 - lift * 0.5, 0.3, 1.0)
 	draw_mesh(Cup.shadow(r), null, Transform2D(0.0, Vector2(shadow_k, shadow_k), 0.0, at), Color(1, 1, 1, a * shadow_k))

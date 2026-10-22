@@ -77,7 +77,11 @@ Motion: cups drop in place by place as the board enters; a lift rides up
 1.25 cup-widths and tips the cup 0.34 rad off its friend (`back_out`); a
 cup put back falls in 0.16 s and lands with a bump; a found pair's cups rise
 and fade; the friends hop; on the win they hop in a wave. Under reduce
-motion a cup is simply up or down.
+motion a cup is simply up or down: no drop-in, bump, wiggle or hop, a waltz
+swaps at once and a found pair's cups are simply gone.
+
+A miss's hold carries a token (`_hold_tok`): a tap that ends it early
+leaves its queued cue and end behind, and they never touch the next miss.
 
 ## 4. Sound and touch
 
