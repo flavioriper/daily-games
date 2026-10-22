@@ -162,6 +162,9 @@ func _note(id: String) -> String:
 		"hedgehogs": return "%dx%d lawn, %d hedgehogs, woken=%d, hints=%d, checks=%d, board fit=%s, hud=%s" % [
 			_puzzle._state.cols(), _puzzle._state.rows(), int(_puzzle._state.g.k), _puzzle._state.woken,
 			_puzzle.hints_used, _puzzle.checks, _fit_ok, _hud_ok]
+		"glimpse": return "%dx%d, %d beads, %d right first, looks %d, caps %s, board fit=%s, hud=%s" % [
+			_puzzle._state.n, _puzzle._state.n, _puzzle._state.target, _puzzle._state.first_right(),
+			_puzzle.looks_used, _puzzle.capabilities(), _fit_ok, _hud_ok]
 		"pixelgarden": return "%s %dx%d, %d beads, %d moves, hints=%d, checks=%d, board fit=%s, hud=%s" % [
 			_puzzle._state.pic_id, _puzzle._state.n, _puzzle._state.n, _puzzle._state.target,
 			_puzzle.moves, _puzzle.hints_used, _puzzle.checks, _fit_ok, _hud_ok]
@@ -229,6 +232,7 @@ func _solve(id: String) -> void:
 		"hedgehogs": _solve_hedgehogs()
 		"slider": _solve_slider()
 		"pixelgarden": _solve_pixelgarden()
+		"glimpse": _solve_glimpse()
 		"trestle": _solve_trestle()
 		"minigolf": _solve_minigolf()
 		"horse": _solve_horse()
@@ -1331,6 +1335,30 @@ func _tap_key(key_name: String) -> void:
 ## board with no wrong beads; then one wrong bead is seated and lifted again
 ## (a tap on a bead of the chosen colour lifts it), and every colour's chip
 ## is tapped and its pegs tapped in turn.
+## Glimpse: the first show put down at once (a tap on the board), then
+## every bead seated by tapping, as Pixel Garden's solve does; no hint or
+## Check to press.
+func _solve_glimpse() -> void:
+	var st = _puzzle._state
+	var n: int = st.n
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for r in n:
+		for c in n:
+			if not slot.has_point(_puzzle.cell_to_local(r, c)):
+				_fit_ok = false
+	_puzzle._first_at = 0.0
+	_puzzle._process(0.0)
+	_tap_local(_puzzle.cell_to_local(n / 2, n / 2))
+	_hud_ok = not _puzzle._showing() and _puzzle.capabilities() == ["undo"]
+	for k in st.names.size():
+		_tap_local(_puzzle.chip_to_local(k))
+		for c in st.size():
+			if _puzzle.is_done():
+				return
+			if int(st.want[c]) == k and int(st.beads[c]) != k:
+				_tap_local(_puzzle.cell_to_local(c / n, c % n))
+
 func _solve_pixelgarden() -> void:
 	var st = _puzzle._state
 	var n: int = st.n

@@ -39,6 +39,10 @@ var _show_until := INF
 var _show_from := 0.0
 var _first_show := false
 var _counted := 0
+## When the first show is due (INF once it has been). It waits for anything
+## the host lays over the board -- the first play's tutorial, the rules, the
+## settings -- which hold the board's clock (`clock_held`).
+var _first_at := INF
 var looks_left := 0
 var looks_used := 0
 var _cover_mesh: ArrayMesh
@@ -94,11 +98,9 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	looks_used = 0
 	_cover_mesh = null
 	super(rng, difficulty)
-	# The picture comes up once the board has popped in.
-	var gen := _gen
-	_after(Motion.ENTER_DELAY + Motion.ENTER_POP + 0.15, func() -> void:
-		if _gen == gen and not is_done():
-			_hold_up(SHOW_BY[_state.band], true))
+	# The picture comes up once the board has popped in and nothing lies
+	# over it.
+	_first_at = _now() + Motion.ENTER_DELAY + Motion.ENTER_POP + 0.15
 
 ## Holds the picture up over the board for `seconds`.
 func _hold_up(seconds: float, first: bool) -> void:
@@ -130,9 +132,18 @@ func _showing() -> bool:
 
 func _process(delta: float) -> void:
 	super(delta)
+	var t := _now()
+	if _first_at != INF and t >= _first_at and not clock_held:
+		_first_at = INF
+		if not is_done() and not _won:
+			_hold_up(SHOW_BY[_state.band], true)
 	if not _showing():
 		return
-	var t := _now()
+	# A sheet laid over the board mid-show stops its time.
+	if clock_held:
+		_show_until += delta
+		_show_from += delta
+		return
 	if t >= _show_until:
 		_put_down()
 		return
@@ -147,6 +158,13 @@ func _press(at: Vector2) -> void:
 	# A tap while the picture is up puts it down: the player has it.
 	if _showing():
 		_put_down()
+		return
+	# Before the first show nothing is played: a tap on the card brings it
+	# now, and spends no look.
+	if _first_at != INF:
+		if _thumb.has_point(at) and not clock_held:
+			_first_at = INF
+			_hold_up(SHOW_BY[_state.band], true)
 		return
 	if _thumb.has_point(at):
 		if is_done() or _won:
@@ -172,9 +190,9 @@ func _pinch_began() -> void:
 	_cancel_stroke()
 	_press_finger = -2
 
-## Nothing is played while the picture is up.
+## Nothing is played while the picture is up, or before it first has been.
 func _blocked() -> bool:
-	return _showing() or super()
+	return _showing() or _first_at != INF or super()
 
 ## The cover over the card, or the picture once the board is won.
 func _draw_thumb(xf: Transform2D, seen: float) -> void:
@@ -278,6 +296,7 @@ func completion_record() -> Dictionary:
 
 ## A finished day reopens with the picture shown, never held up again.
 func restore_completed_board() -> void:
+	_first_at = INF
 	_show_until = INF
 	_peek = false
 	super()
