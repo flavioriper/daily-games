@@ -10,7 +10,7 @@ extends RefCounted
 ## Two meshes, so a peck is a transform and not a new drawing: `body`
 ## (tail, body, wing, feet, the origin at the feet) and `head` (the origin
 ## at the head's middle), laid at `head_at` and moved toward the bark by
-## `STRIKE` for a peck. Both cached per size, as songbird.gd's are.
+## `STRIKE` for a peck. Both cached per size, as drumbeat_parts.gd's are.
 ##
 ## `r` is the body's half height; everything is a share of it.
 
