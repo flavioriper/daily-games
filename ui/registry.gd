@@ -565,6 +565,39 @@ const PUZZLES := [
 		],
 	},
 	{
+		"id": "honeycomb",
+		"skill": "words",
+		"kind": "puzzle",
+		"title": "Honeycomb",
+		"blurb": "HC_BLURB",
+		"short": "HC_SHORT",
+		"motto": "HC_MOTTO",
+		"footer": "Tap · Spell · Pour",
+		# Seven letters on a comb of wax cells, the queen bee on the middle
+		# one: spell words that hold her letter and pour their honey into the
+		# jar until it reaches the day's line (puzzles/honeycomb2d.gd). The
+		# meadow fills the screen and the cells and keys are inside the
+		# board, so no tray and no actions row: the bin and the bulb ride the
+		# tools row. Every band's hives come from banks built on the Mac
+		# (tools/build_honeycomb.py, content/insane/honeycomb*.json), in the
+		# player's language.
+		"script": "res://puzzles/honeycomb2d.gd",
+		"card": "res://ui/menu/cards/honeycomb.gd",
+		"shell": "flat",
+		"tray": "none",
+		"bleed": true,
+		"level_card": true,
+		"actions": false,
+		"difficulties": [0, 1, 2, 3],
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "HC_LVL_0"},
+			{"difficulty": 1, "name": "Medium", "line": "HC_LVL_1"},
+			{"difficulty": 2, "name": "Hard", "line": "HC_LVL_2"},
+			{"difficulty": 3, "name": "Insane", "line": "HC_LVL_3"},
+		],
+	},
+	{
 		"id": "train",
 		"skill": "planning",
 		"kind": "puzzle",

@@ -175,6 +175,9 @@ func _note(id: String) -> String:
 		"hoses": return "%dx%d, %d hoses (%d seeds), %d strokes, hints=%d, caps %s, board fit=%s, hud=%s" % [
 			_puzzle._st.n, _puzzle._st.n, _puzzle._st.count(), _puzzle._st.seeds.size(), _puzzle._st.strokes,
 			_puzzle.hints_used, _puzzle.capabilities(), _fit_ok, _hud_ok]
+		"honeycomb": return "%s/%s, %d words, honey %d of %d (line %d), %d misses, flights %d, hints=%d, caps %s, board fit=%s, hud=%s" % [
+			_puzzle._st.letters, _puzzle._st.first_queen, _puzzle._st.found.size(), _puzzle._st.honey, _puzzle._st.total, _puzzle._st.goal,
+			_puzzle._st.misses, _puzzle._st.flights, _puzzle.hints_used, _puzzle.capabilities(), _fit_ok, _hud_ok]
 		"pie": return "%dx%d, %d ate, dish %d, %d marks, %d slips, hints=%d, caps %s, board fit=%s, hud=%s" % [
 			_puzzle._st.cols, _puzzle._st.rows, _puzzle._st.eaters(), _puzzle._st.dish, _puzzle.moves, _puzzle._st.slips,
 			_puzzle.hints_used, _puzzle.capabilities(), _fit_ok, _hud_ok]
@@ -262,6 +265,7 @@ func _solve(id: String) -> void:
 		"market": _solve_market()
 		"pie": _solve_pie()
 		"hoses": _solve_hoses()
+		"honeycomb": _solve_honeycomb()
 		"trestle": _solve_trestle()
 		"minigolf": _solve_minigolf()
 		"horse": _solve_horse()
@@ -1510,6 +1514,70 @@ func _solve_market() -> void:
 			_hud_ok = false
 			return
 		play.call(h[0], h[1], h[2])
+
+## Honeycomb: an entry without the middle letter refused (cells and the
+## tick by real touches), a letter typed and taken back with the delete key,
+## a shuffle, the bulb through the real button and its word finished, then
+## the day's words spelt cell by cell until the jar reaches its line (on
+## Insane following the queen's flights).
+func _solve_honeycomb() -> void:
+	var st = _puzzle._st
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for i in 7:
+		if not slot.has_point(_puzzle.cell_to_local(i)):
+			_fit_ok = false
+	for k in 3:
+		if not slot.has_point(_puzzle.key_to_local(k)):
+			_fit_ok = false
+	var settle := func() -> void:
+		for i in 40:
+			if not _puzzle.busy():
+				return
+			_puzzle._process(0.05)
+	var spell := func(word: String) -> void:
+		for ch in word:
+			_tap_local(_puzzle.cell_to_local(_puzzle.cell_of(ch)))
+		_tap_local(_puzzle.key_to_local(2))
+		settle.call()
+	# no middle letter: refused, nothing counted
+	var wrong := ""
+	for ch in st.ring:
+		if wrong.length() < 4:
+			wrong += ch
+	spell.call(wrong)
+	_hud_ok = st.found.is_empty() and st.misses == 0 and _puzzle._say == "HC_SAY_QUEEN"
+	# a letter and the delete key
+	_tap_local(_puzzle.cell_to_local(0))
+	_hud_ok = _hud_ok and st.entry == st.queen
+	_tap_local(_puzzle.key_to_local(0))
+	_hud_ok = _hud_ok and st.entry == ""
+	var ring_before: Array = st.ring.duplicate()
+	_tap_local(_puzzle.key_to_local(1))
+	_hud_ok = _hud_ok and st.ring.size() == 6 and _sorted(st.ring) == _sorted(ring_before)
+	# the bulb, and its word spelt to the end
+	_press(_host.top_bar.hint_button)
+	_hud_ok = _hud_ok and _puzzle.hints_used == 1 and st.entry.length() >= 2
+	var hinted: String = st.hinted[0]
+	for k in range(st.entry.length(), hinted.length()):
+		_tap_local(_puzzle.cell_to_local(_puzzle.cell_of(hinted[k])))
+	_tap_local(_puzzle.key_to_local(2))
+	settle.call()
+	_hud_ok = _hud_ok and st.found.has(hinted)
+	for guard in 120:
+		if _puzzle.is_done():
+			return
+		var w: String = st.hint_word()
+		if w == "":
+			_hud_ok = false
+			return
+		st.hinted.append(w)
+		spell.call(w)
+
+func _sorted(a: Array) -> Array:
+	var out := a.duplicate()
+	out.sort()
+	return out
 
 ## Hosepipes: bare soil pressed (heard, nothing changes), a hose drawn,
 ## another dragged across it (cut) and back off (grown back, no stroke

@@ -57,7 +57,7 @@ Connections, Spelling Bee, Pips, Pinpoint, Clues by Sam.
       Sudoku's grid, pad, generator. Moderate.
 - [x] **7. Market Sums** (24 game / NYT Digits). Built 2026-10-22, `docs/agents/boards/market.md`; fewest steps 2/3/4/5, Insane is Every Crate (all six into the order), dealt on the phone. Numbers. Six numbers to a
       target. Reuses Lattice's tiles. Trivial. Quality: steps vs shortest.
-- [ ] **8. Honeycomb** (Spelling Bee). Words. wordfreq lists (licensed);
+- [x] **8. Honeycomb** (Spelling Bee). Built 2026-10-22, `docs/agents/boards/honeycomb.md`; lines 20/28/36/36% of the day's honey, Insane is Wandering Queen (she flies to a new letter every four words). Words. wordfreq lists (licensed);
       three word lists plus a rude-word filter. Quality: share found.
 - [ ] **9. Five Clues** (LinkedIn Pinpoint). Words. Acorn pipeline, Pearl
       Dive's typed answers. Quality: clues needed 1-5.

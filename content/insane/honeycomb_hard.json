@@ -1,0 +1,1470 @@
+{
+ "version": 1,
+ "note": "Honeycomb's hard hives, built by tools/build_honeycomb.py: seven letters and the queen's (whose letter every word holds), each holding 34-58 of the day's words of tier 2 or below.",
+ "boards": [
+  {
+   "letters": "delnotw",
+   "queen": "n"
+  },
+  {
+   "letters": "egmorty",
+   "queen": "o"
+  },
+  {
+   "letters": "agilmnr",
+   "queen": "r"
+  },
+  {
+   "letters": "aimrtuy",
+   "queen": "a"
+  },
+  {
+   "letters": "cdeilpr",
+   "queen": "l"
+  },
+  {
+   "letters": "acdefpr",
+   "queen": "c"
+  },
+  {
+   "letters": "acdehot",
+   "queen": "d"
+  },
+  {
+   "letters": "cehimrt",
+   "queen": "h"
+  },
+  {
+   "letters": "adgilnu",
+   "queen": "a"
+  },
+  {
+   "letters": "abdeorv",
+   "queen": "o"
+  },
+  {
+   "letters": "akmnorw",
+   "queen": "o"
+  },
+  {
+   "letters": "acehimr",
+   "queen": "m"
+  },
+  {
+   "letters": "abdilor",
+   "queen": "l"
+  },
+  {
+   "letters": "defmopr",
+   "queen": "m"
+  },
+  {
+   "letters": "ailmnpt",
+   "queen": "n"
+  },
+  {
+   "letters": "bghortu",
+   "queen": "o"
+  },
+  {
+   "letters": "abeilnt",
+   "queen": "b"
+  },
+  {
+   "letters": "deinouz",
+   "queen": "n"
+  },
+  {
+   "letters": "cdeipru",
+   "queen": "p"
+  },
+  {
+   "letters": "acdemnp",
+   "queen": "n"
+  },
+  {
+   "letters": "adflnow",
+   "queen": "o"
+  },
+  {
+   "letters": "cdehnot",
+   "queen": "d"
+  },
+  {
+   "letters": "aceimpt",
+   "queen": "t"
+  },
+  {
+   "letters": "ailnptu",
+   "queen": "i"
+  },
+  {
+   "letters": "acglmou",
+   "queen": "a"
+  },
+  {
+   "letters": "acinotz",
+   "queen": "n"
+  },
+  {
+   "letters": "eioprty",
+   "queen": "i"
+  },
+  {
+   "letters": "deijnru",
+   "queen": "e"
+  },
+  {
+   "letters": "abegimn",
+   "queen": "g"
+  },
+  {
+   "letters": "achimrt",
+   "queen": "t"
+  },
+  {
+   "letters": "cdelopu",
+   "queen": "c"
+  },
+  {
+   "letters": "eginrvw",
+   "queen": "v"
+  },
+  {
+   "letters": "cehirvw",
+   "queen": "e"
+  },
+  {
+   "letters": "ailnrtv",
+   "queen": "n"
+  },
+  {
+   "letters": "cdeprtx",
+   "queen": "d"
+  },
+  {
+   "letters": "abdeilu",
+   "queen": "a"
+  },
+  {
+   "letters": "efimnrt",
+   "queen": "n"
+  },
+  {
+   "letters": "abdelty",
+   "queen": "t"
+  },
+  {
+   "letters": "enortuv",
+   "queen": "u"
+  },
+  {
+   "letters": "efginrz",
+   "queen": "e"
+  },
+  {
+   "letters": "deioptv",
+   "queen": "d"
+  },
+  {
+   "letters": "achilot",
+   "queen": "h"
+  },
+  {
+   "letters": "cenopty",
+   "queen": "e"
+  },
+  {
+   "letters": "afimnry",
+   "queen": "r"
+  },
+  {
+   "letters": "deimotv",
+   "queen": "i"
+  },
+  {
+   "letters": "cgilnru",
+   "queen": "g"
+  },
+  {
+   "letters": "degnoru",
+   "queen": "u"
+  },
+  {
+   "letters": "cdelrtu",
+   "queen": "c"
+  },
+  {
+   "letters": "aeghort",
+   "queen": "h"
+  },
+  {
+   "letters": "abekrtw",
+   "queen": "b"
+  },
+  {
+   "letters": "adgiknp",
+   "queen": "g"
+  },
+  {
+   "letters": "adilnru",
+   "queen": "r"
+  },
+  {
+   "letters": "ginoprv",
+   "queen": "i"
+  },
+  {
+   "letters": "bceimno",
+   "queen": "m"
+  },
+  {
+   "letters": "cegiknt",
+   "queen": "t"
+  },
+  {
+   "letters": "deloptu",
+   "queen": "u"
+  },
+  {
+   "letters": "acilrty",
+   "queen": "r"
+  },
+  {
+   "letters": "afgilnz",
+   "queen": "g"
+  },
+  {
+   "letters": "acfilrt",
+   "queen": "r"
+  },
+  {
+   "letters": "abelnru",
+   "queen": "u"
+  },
+  {
+   "letters": "aceilrv",
+   "queen": "i"
+  },
+  {
+   "letters": "adehlny",
+   "queen": "a"
+  },
+  {
+   "letters": "aeglmpy",
+   "queen": "l"
+  },
+  {
+   "letters": "elopruv",
+   "queen": "o"
+  },
+  {
+   "letters": "ailntvy",
+   "queen": "a"
+  },
+  {
+   "letters": "cdeklpu",
+   "queen": "d"
+  },
+  {
+   "letters": "abdeflo",
+   "queen": "o"
+  },
+  {
+   "letters": "agilnry",
+   "queen": "l"
+  },
+  {
+   "letters": "ceimnrt",
+   "queen": "m"
+  },
+  {
+   "letters": "cefloru",
+   "queen": "e"
+  },
+  {
+   "letters": "abdilot",
+   "queen": "b"
+  },
+  {
+   "letters": "beilort",
+   "queen": "i"
+  },
+  {
+   "letters": "acginpt",
+   "queen": "t"
+  },
+  {
+   "letters": "abehrtv",
+   "queen": "h"
+  },
+  {
+   "letters": "adegpru",
+   "queen": "p"
+  },
+  {
+   "letters": "acdeotv",
+   "queen": "o"
+  },
+  {
+   "letters": "abcelot",
+   "queen": "e"
+  },
+  {
+   "letters": "beglnrt",
+   "queen": "t"
+  },
+  {
+   "letters": "elmoprt",
+   "queen": "l"
+  },
+  {
+   "letters": "deghitw",
+   "queen": "e"
+  },
+  {
+   "letters": "acdehtw",
+   "queen": "h"
+  },
+  {
+   "letters": "cdeikpr",
+   "queen": "c"
+  },
+  {
+   "letters": "aelmprx",
+   "queen": "l"
+  },
+  {
+   "letters": "ehirtvy",
+   "queen": "t"
+  },
+  {
+   "letters": "hilmnot",
+   "queen": "t"
+  },
+  {
+   "letters": "eimnrtu",
+   "queen": "m"
+  },
+  {
+   "letters": "defilnu",
+   "queen": "i"
+  },
+  {
+   "letters": "acdejnt",
+   "queen": "c"
+  },
+  {
+   "letters": "ceilmnt",
+   "queen": "n"
+  },
+  {
+   "letters": "acdehpr",
+   "queen": "h"
+  },
+  {
+   "letters": "acilpty",
+   "queen": "l"
+  },
+  {
+   "letters": "aeimotv",
+   "queen": "t"
+  },
+  {
+   "letters": "ckloptu",
+   "queen": "o"
+  },
+  {
+   "letters": "befinor",
+   "queen": "e"
+  },
+  {
+   "letters": "acghino",
+   "queen": "i"
+  },
+  {
+   "letters": "aghnotu",
+   "queen": "o"
+  },
+  {
+   "letters": "acehimp",
+   "queen": "c"
+  },
+  {
+   "letters": "eflmory",
+   "queen": "r"
+  },
+  {
+   "letters": "deijnot",
+   "queen": "i"
+  },
+  {
+   "letters": "einortu",
+   "queen": "u"
+  },
+  {
+   "letters": "adeintu",
+   "queen": "i"
+  },
+  {
+   "letters": "einrtuw",
+   "queen": "i"
+  },
+  {
+   "letters": "cgilnop",
+   "queen": "n"
+  },
+  {
+   "letters": "abelprt",
+   "queen": "b"
+  },
+  {
+   "letters": "demnotu",
+   "queen": "d"
+  },
+  {
+   "letters": "cdekorv",
+   "queen": "c"
+  },
+  {
+   "letters": "abcginr",
+   "queen": "g"
+  },
+  {
+   "letters": "finortu",
+   "queen": "o"
+  },
+  {
+   "letters": "acdetuv",
+   "queen": "e"
+  },
+  {
+   "letters": "alnrtuy",
+   "queen": "t"
+  },
+  {
+   "letters": "acefiot",
+   "queen": "t"
+  },
+  {
+   "letters": "adlmnor",
+   "queen": "r"
+  },
+  {
+   "letters": "acelqru",
+   "queen": "l"
+  },
+  {
+   "letters": "acmnopy",
+   "queen": "a"
+  },
+  {
+   "letters": "acdeinu",
+   "queen": "a"
+  },
+  {
+   "letters": "dgilmno",
+   "queen": "l"
+  },
+  {
+   "letters": "afilrty",
+   "queen": "l"
+  },
+  {
+   "letters": "denopux",
+   "queen": "n"
+  },
+  {
+   "letters": "aegilmt",
+   "queen": "t"
+  },
+  {
+   "letters": "dginouw",
+   "queen": "n"
+  },
+  {
+   "letters": "ilnoptu",
+   "queen": "i"
+  },
+  {
+   "letters": "acilmnt",
+   "queen": "m"
+  },
+  {
+   "letters": "abdekln",
+   "queen": "d"
+  },
+  {
+   "letters": "deglorw",
+   "queen": "g"
+  },
+  {
+   "letters": "defilrw",
+   "queen": "f"
+  },
+  {
+   "letters": "bceilnv",
+   "queen": "e"
+  },
+  {
+   "letters": "aeimrtw",
+   "queen": "i"
+  },
+  {
+   "letters": "egilnpr",
+   "queen": "r"
+  },
+  {
+   "letters": "celoptu",
+   "queen": "p"
+  },
+  {
+   "letters": "dginrtu",
+   "queen": "r"
+  },
+  {
+   "letters": "ghlnopy",
+   "queen": "o"
+  },
+  {
+   "letters": "abceily",
+   "queen": "l"
+  },
+  {
+   "letters": "cehinty",
+   "queen": "e"
+  },
+  {
+   "letters": "gimnotu",
+   "queen": "i"
+  },
+  {
+   "letters": "delmnpu",
+   "queen": "e"
+  },
+  {
+   "letters": "acginox",
+   "queen": "n"
+  },
+  {
+   "letters": "cdenovy",
+   "queen": "d"
+  },
+  {
+   "letters": "aeprtxy",
+   "queen": "t"
+  },
+  {
+   "letters": "aginprw",
+   "queen": "a"
+  },
+  {
+   "letters": "degilnv",
+   "queen": "g"
+  },
+  {
+   "letters": "aeglnry",
+   "queen": "n"
+  },
+  {
+   "letters": "abilrty",
+   "queen": "r"
+  },
+  {
+   "letters": "aefortw",
+   "queen": "a"
+  },
+  {
+   "letters": "cdeknou",
+   "queen": "n"
+  },
+  {
+   "letters": "abcdehr",
+   "queen": "c"
+  },
+  {
+   "letters": "abciklt",
+   "queen": "l"
+  },
+  {
+   "letters": "defilty",
+   "queen": "t"
+  },
+  {
+   "letters": "eflntuy",
+   "queen": "e"
+  },
+  {
+   "letters": "defginy",
+   "queen": "g"
+  },
+  {
+   "letters": "aeilntu",
+   "queen": "i"
+  },
+  {
+   "letters": "deiltuz",
+   "queen": "e"
+  },
+  {
+   "letters": "acdehlr",
+   "queen": "h"
+  },
+  {
+   "letters": "deilrwy",
+   "queen": "i"
+  },
+  {
+   "letters": "abdgino",
+   "queen": "o"
+  },
+  {
+   "letters": "aeglnrw",
+   "queen": "n"
+  },
+  {
+   "letters": "efghirt",
+   "queen": "i"
+  },
+  {
+   "letters": "cdemopt",
+   "queen": "m"
+  },
+  {
+   "letters": "fgilnty",
+   "queen": "i"
+  },
+  {
+   "letters": "acdimrt",
+   "queen": "r"
+  },
+  {
+   "letters": "abgiknr",
+   "queen": "b"
+  },
+  {
+   "letters": "acemnrw",
+   "queen": "r"
+  },
+  {
+   "letters": "achlnrt",
+   "queen": "a"
+  },
+  {
+   "letters": "bgilnot",
+   "queen": "t"
+  },
+  {
+   "letters": "agilnpu",
+   "queen": "l"
+  },
+  {
+   "letters": "eimprtv",
+   "queen": "m"
+  },
+  {
+   "letters": "ceginot",
+   "queen": "e"
+  },
+  {
+   "letters": "ghinoru",
+   "queen": "n"
+  },
+  {
+   "letters": "celnrty",
+   "queen": "e"
+  },
+  {
+   "letters": "ailmnor",
+   "queen": "o"
+  },
+  {
+   "letters": "cehiort",
+   "queen": "h"
+  },
+  {
+   "letters": "cdegint",
+   "queen": "g"
+  },
+  {
+   "letters": "cenprty",
+   "queen": "e"
+  },
+  {
+   "letters": "acdehkl",
+   "queen": "l"
+  },
+  {
+   "letters": "eiprtuy",
+   "queen": "t"
+  },
+  {
+   "letters": "abcemnr",
+   "queen": "b"
+  },
+  {
+   "letters": "ehortvw",
+   "queen": "t"
+  },
+  {
+   "letters": "aelntuv",
+   "queen": "t"
+  },
+  {
+   "letters": "acemnpt",
+   "queen": "t"
+  },
+  {
+   "letters": "ehlmnot",
+   "queen": "n"
+  },
+  {
+   "letters": "bdeikln",
+   "queen": "i"
+  },
+  {
+   "letters": "bdegimn",
+   "queen": "g"
+  },
+  {
+   "letters": "eginpry",
+   "queen": "g"
+  },
+  {
+   "letters": "efioprw",
+   "queen": "r"
+  },
+  {
+   "letters": "beginrw",
+   "queen": "e"
+  },
+  {
+   "letters": "adeimxz",
+   "queen": "d"
+  },
+  {
+   "letters": "ehmnopr",
+   "queen": "m"
+  },
+  {
+   "letters": "eimnopt",
+   "queen": "p"
+  },
+  {
+   "letters": "deghinu",
+   "queen": "n"
+  },
+  {
+   "letters": "adegilp",
+   "queen": "i"
+  },
+  {
+   "letters": "ailortu",
+   "queen": "a"
+  },
+  {
+   "letters": "agnrtuy",
+   "queen": "a"
+  },
+  {
+   "letters": "abcelry",
+   "queen": "y"
+  },
+  {
+   "letters": "eflortv",
+   "queen": "f"
+  },
+  {
+   "letters": "aflmoru",
+   "queen": "a"
+  },
+  {
+   "letters": "begilno",
+   "queen": "e"
+  },
+  {
+   "letters": "elprtxy",
+   "queen": "e"
+  },
+  {
+   "letters": "adgimnt",
+   "queen": "g"
+  },
+  {
+   "letters": "bceklor",
+   "queen": "r"
+  },
+  {
+   "letters": "adeiopr",
+   "queen": "i"
+  },
+  {
+   "letters": "deirtxy",
+   "queen": "r"
+  },
+  {
+   "letters": "agilnrt",
+   "queen": "l"
+  },
+  {
+   "letters": "ailrtuv",
+   "queen": "l"
+  },
+  {
+   "letters": "eilmnty",
+   "queen": "n"
+  },
+  {
+   "letters": "aefgilo",
+   "queen": "a"
+  },
+  {
+   "letters": "begilnt",
+   "queen": "g"
+  },
+  {
+   "letters": "bdenorw",
+   "queen": "n"
+  },
+  {
+   "letters": "cehiknt",
+   "queen": "e"
+  },
+  {
+   "letters": "aceimnr",
+   "queen": "c"
+  },
+  {
+   "letters": "acimpry",
+   "queen": "r"
+  },
+  {
+   "letters": "acfinot",
+   "queen": "o"
+  },
+  {
+   "letters": "adglory",
+   "queen": "l"
+  },
+  {
+   "letters": "cdeginx",
+   "queen": "i"
+  },
+  {
+   "letters": "gimnort",
+   "queen": "m"
+  },
+  {
+   "letters": "acginpr",
+   "queen": "g"
+  },
+  {
+   "letters": "aeimntu",
+   "queen": "i"
+  },
+  {
+   "letters": "defhrtu",
+   "queen": "f"
+  },
+  {
+   "letters": "aehlmrt",
+   "queen": "m"
+  },
+  {
+   "letters": "ceginrt",
+   "queen": "g"
+  },
+  {
+   "letters": "acefltu",
+   "queen": "l"
+  },
+  {
+   "letters": "aegimnz",
+   "queen": "m"
+  },
+  {
+   "letters": "dekorvw",
+   "queen": "d"
+  },
+  {
+   "letters": "acilmot",
+   "queen": "o"
+  },
+  {
+   "letters": "aejlnop",
+   "queen": "l"
+  },
+  {
+   "letters": "abcehlr",
+   "queen": "h"
+  },
+  {
+   "letters": "cdeikrt",
+   "queen": "t"
+  },
+  {
+   "letters": "abekmnt",
+   "queen": "e"
+  },
+  {
+   "letters": "cefilty",
+   "queen": "e"
+  },
+  {
+   "letters": "eghimnt",
+   "queen": "n"
+  },
+  {
+   "letters": "adehitw",
+   "queen": "a"
+  },
+  {
+   "letters": "aghilno",
+   "queen": "a"
+  },
+  {
+   "letters": "acimnor",
+   "queen": "c"
+  },
+  {
+   "letters": "aceflru",
+   "queen": "u"
+  },
+  {
+   "letters": "cdeinpt",
+   "queen": "c"
+  },
+  {
+   "letters": "defhlor",
+   "queen": "f"
+  },
+  {
+   "letters": "cdginot",
+   "queen": "g"
+  },
+  {
+   "letters": "aeflrtw",
+   "queen": "f"
+  },
+  {
+   "letters": "ceghinr",
+   "queen": "r"
+  },
+  {
+   "letters": "beghirt",
+   "queen": "h"
+  },
+  {
+   "letters": "eginprt",
+   "queen": "p"
+  },
+  {
+   "letters": "eflntuv",
+   "queen": "e"
+  },
+  {
+   "letters": "eginorv",
+   "queen": "o"
+  },
+  {
+   "letters": "aceghnr",
+   "queen": "n"
+  },
+  {
+   "letters": "admnort",
+   "queen": "n"
+  },
+  {
+   "letters": "abceikr",
+   "queen": "e"
+  },
+  {
+   "letters": "deghilt",
+   "queen": "l"
+  },
+  {
+   "letters": "cdeilnu",
+   "queen": "u"
+  },
+  {
+   "letters": "aelnpty",
+   "queen": "p"
+  },
+  {
+   "letters": "cdeimor",
+   "queen": "i"
+  },
+  {
+   "letters": "demnotw",
+   "queen": "t"
+  },
+  {
+   "letters": "abegmor",
+   "queen": "g"
+  },
+  {
+   "letters": "defgiru",
+   "queen": "f"
+  },
+  {
+   "letters": "cdeilou",
+   "queen": "l"
+  },
+  {
+   "letters": "acelnrv",
+   "queen": "l"
+  },
+  {
+   "letters": "aklnopt",
+   "queen": "l"
+  },
+  {
+   "letters": "agimnry",
+   "queen": "i"
+  },
+  {
+   "letters": "fgilnow",
+   "queen": "g"
+  },
+  {
+   "letters": "degilnp",
+   "queen": "l"
+  },
+  {
+   "letters": "celrtuv",
+   "queen": "l"
+  },
+  {
+   "letters": "acilntu",
+   "queen": "i"
+  },
+  {
+   "letters": "celnopu",
+   "queen": "o"
+  },
+  {
+   "letters": "definot",
+   "queen": "o"
+  },
+  {
+   "letters": "acdehpt",
+   "queen": "p"
+  },
+  {
+   "letters": "ceginrv",
+   "queen": "r"
+  },
+  {
+   "letters": "adegilz",
+   "queen": "l"
+  },
+  {
+   "letters": "cimnotu",
+   "queen": "n"
+  },
+  {
+   "letters": "acilnor",
+   "queen": "n"
+  },
+  {
+   "letters": "abklopy",
+   "queen": "l"
+  },
+  {
+   "letters": "cefiklr",
+   "queen": "l"
+  },
+  {
+   "letters": "adehntu",
+   "queen": "h"
+  },
+  {
+   "letters": "acehlmy",
+   "queen": "l"
+  },
+  {
+   "letters": "acdklop",
+   "queen": "o"
+  },
+  {
+   "letters": "acgiloy",
+   "queen": "o"
+  },
+  {
+   "letters": "acegirt",
+   "queen": "g"
+  },
+  {
+   "letters": "aekmrtw",
+   "queen": "m"
+  },
+  {
+   "letters": "acefrtw",
+   "queen": "c"
+  },
+  {
+   "letters": "dginopr",
+   "queen": "r"
+  },
+  {
+   "letters": "aeirtvy",
+   "queen": "i"
+  },
+  {
+   "letters": "ilmnotu",
+   "queen": "o"
+  },
+  {
+   "letters": "adkorwy",
+   "queen": "r"
+  },
+  {
+   "letters": "bdegiot",
+   "queen": "e"
+  },
+  {
+   "letters": "acilnrv",
+   "queen": "l"
+  },
+  {
+   "letters": "degilmn",
+   "queen": "m"
+  },
+  {
+   "letters": "cdeiptv",
+   "queen": "e"
+  },
+  {
+   "letters": "deiprvw",
+   "queen": "p"
+  },
+  {
+   "letters": "ademoru",
+   "queen": "o"
+  },
+  {
+   "letters": "afgilmn",
+   "queen": "l"
+  },
+  {
+   "letters": "afgilnp",
+   "queen": "g"
+  },
+  {
+   "letters": "defilmn",
+   "queen": "n"
+  },
+  {
+   "letters": "cefinrt",
+   "queen": "c"
+  },
+  {
+   "letters": "aeinorx",
+   "queen": "n"
+  },
+  {
+   "letters": "aijnort",
+   "queen": "n"
+  },
+  {
+   "letters": "achirty",
+   "queen": "t"
+  },
+  {
+   "letters": "aeflnru",
+   "queen": "a"
+  },
+  {
+   "letters": "abeinrw",
+   "queen": "a"
+  },
+  {
+   "letters": "cdefitv",
+   "queen": "e"
+  },
+  {
+   "letters": "cdekopt",
+   "queen": "e"
+  },
+  {
+   "letters": "aefnruy",
+   "queen": "r"
+  },
+  {
+   "letters": "dgilnop",
+   "queen": "g"
+  },
+  {
+   "letters": "achortu",
+   "queen": "c"
+  },
+  {
+   "letters": "cdeflrt",
+   "queen": "f"
+  },
+  {
+   "letters": "ajlmory",
+   "queen": "o"
+  },
+  {
+   "letters": "ceinopt",
+   "queen": "p"
+  },
+  {
+   "letters": "aghilnw",
+   "queen": "a"
+  },
+  {
+   "letters": "aeiltvx",
+   "queen": "t"
+  },
+  {
+   "letters": "adeflnt",
+   "queen": "n"
+  },
+  {
+   "letters": "befgint",
+   "queen": "t"
+  },
+  {
+   "letters": "bdegilo",
+   "queen": "g"
+  },
+  {
+   "letters": "egimnpt",
+   "queen": "e"
+  },
+  {
+   "letters": "aelorvy",
+   "queen": "v"
+  },
+  {
+   "letters": "aefnopr",
+   "queen": "a"
+  },
+  {
+   "letters": "abcdefk",
+   "queen": "a"
+  },
+  {
+   "letters": "cgilnot",
+   "queen": "l"
+  },
+  {
+   "letters": "ailnrtu",
+   "queen": "i"
+  },
+  {
+   "letters": "degopru",
+   "queen": "u"
+  },
+  {
+   "letters": "acimort",
+   "queen": "c"
+  },
+  {
+   "letters": "deilmtu",
+   "queen": "d"
+  },
+  {
+   "letters": "acdenou",
+   "queen": "o"
+  },
+  {
+   "letters": "efilrtz",
+   "queen": "r"
+  },
+  {
+   "letters": "bdelrtu",
+   "queen": "l"
+  },
+  {
+   "letters": "cfilnot",
+   "queen": "l"
+  },
+  {
+   "letters": "aeflmot",
+   "queen": "m"
+  },
+  {
+   "letters": "cdehipr",
+   "queen": "i"
+  },
+  {
+   "letters": "acimnop",
+   "queen": "i"
+  },
+  {
+   "letters": "adelmrv",
+   "queen": "m"
+  },
+  {
+   "letters": "egilnry",
+   "queen": "r"
+  },
+  {
+   "letters": "aceintv",
+   "queen": "c"
+  },
+  {
+   "letters": "beimntu",
+   "queen": "n"
+  },
+  {
+   "letters": "agiklnw",
+   "queen": "l"
+  },
+  {
+   "letters": "abcenry",
+   "queen": "n"
+  },
+  {
+   "letters": "ainqrtu",
+   "queen": "a"
+  },
+  {
+   "letters": "ahmnory",
+   "queen": "o"
+  },
+  {
+   "letters": "einrtuv",
+   "queen": "v"
+  },
+  {
+   "letters": "acehlnv",
+   "queen": "l"
+  },
+  {
+   "letters": "bdginor",
+   "queen": "r"
+  },
+  {
+   "letters": "begilnv",
+   "queen": "e"
+  },
+  {
+   "letters": "adeilno",
+   "queen": "o"
+  },
+  {
+   "letters": "fgilnou",
+   "queen": "o"
+  },
+  {
+   "letters": "belmrtu",
+   "queen": "m"
+  },
+  {
+   "letters": "ehimnot",
+   "queen": "i"
+  },
+  {
+   "letters": "acdeitv",
+   "queen": "a"
+  },
+  {
+   "letters": "adgintu",
+   "queen": "g"
+  },
+  {
+   "letters": "aeoprty",
+   "queen": "y"
+  },
+  {
+   "letters": "abdehor",
+   "queen": "h"
+  },
+  {
+   "letters": "einprtv",
+   "queen": "v"
+  },
+  {
+   "letters": "aefilmn",
+   "queen": "f"
+  },
+  {
+   "letters": "aegiknp",
+   "queen": "g"
+  },
+  {
+   "letters": "abcelpr",
+   "queen": "c"
+  },
+  {
+   "letters": "agimnrw",
+   "queen": "r"
+  },
+  {
+   "letters": "efiortu",
+   "queen": "o"
+  },
+  {
+   "letters": "aefilnt",
+   "queen": "f"
+  },
+  {
+   "letters": "ademprv",
+   "queen": "m"
+  },
+  {
+   "letters": "acintvy",
+   "queen": "t"
+  },
+  {
+   "letters": "eknortw",
+   "queen": "n"
+  },
+  {
+   "letters": "deinorv",
+   "queen": "v"
+  },
+  {
+   "letters": "acfiloy",
+   "queen": "l"
+  },
+  {
+   "letters": "ceilnpr",
+   "queen": "i"
+  },
+  {
+   "letters": "efimnty",
+   "queen": "i"
+  },
+  {
+   "letters": "ceiklru",
+   "queen": "e"
+  },
+  {
+   "letters": "aehinpr",
+   "queen": "a"
+  },
+  {
+   "letters": "cginoru",
+   "queen": "g"
+  },
+  {
+   "letters": "acilnry",
+   "queen": "y"
+  },
+  {
+   "letters": "deilntu",
+   "queen": "u"
+  },
+  {
+   "letters": "acgimnr",
+   "queen": "m"
+  },
+  {
+   "letters": "acdeily",
+   "queen": "y"
+  },
+  {
+   "letters": "ainoptu",
+   "queen": "a"
+  },
+  {
+   "letters": "belnotv",
+   "queen": "n"
+  }
+ ]
+}

@@ -3317,3 +3317,50 @@ BRAIN_HS_1,"Start with the corners and the edges: a square there has few ways in
 BRAIN_HS_2,Two ends side by side on the edge usually hug it: lay that short hose first.,Duas pontas lado a lado na borda costumam seguir a borda: coloque essa mangueira curta primeiro.,Dos extremos juntos en el borde suelen seguirlo: pon esa manguera corta primero.
 BRAIN_HS_3,A hose that runs alongside itself leaves a square no one can reach. Keep hoses from touching themselves.,Uma mangueira encostada nela mesma deixa um quadrado que ninguém alcança. Evite que as mangueiras se toquem.,Una manguera pegada a sí misma deja una casilla que nadie alcanza. Evita que las mangueras se toquen.
 BRAIN_HS_4,Stuck? Find the dry square with the fewest ways in and ask which hose can reach it.,Travou? Ache o quadrado seco com menos entradas e pense em qual mangueira chega nele.,¿Atascado? Busca la casilla seca con menos entradas y piensa qué manguera llega a ella.
+HC_BLURB,"Seven letters on a comb, the queen bee on the middle one. Spell words that hold her letter and pour their honey into the jar.","Sete letras num favo, a abelha rainha na do meio. Forme palavras com a letra dela e despeje o mel no pote.","Siete letras en un panal, la abeja reina en la del centro. Forma palabras con su letra y vierte la miel en el tarro."
+HC_SHORT,"Spell words
+from the comb.","Forme palavras
+com o favo.","Forma palabras
+con el panal."
+HC_MOTTO,Every word is honey,Cada palavra é mel,Cada palabra es miel
+HC_LVL_0,Common words,Palavras comuns,Palabras comunes
+HC_LVL_1,A fuller comb,Um favo mais cheio,Un panal más lleno
+HC_LVL_2,"Rarer words, a higher line","Palavras raras, linha mais alta","Palabras raras, línea más alta"
+HC_LVL_3,Wandering Queen: she flies,Rainha Andarilha: ela voa,Reina Errante: ella vuela
+HC_RULES,"Tap the cells to spell a word of four letters or more, then the tick to send it. Letters can be used more than once, and every word must hold the letter in the middle cell.","Toque nas células para formar uma palavra de quatro letras ou mais e depois no visto para enviar. As letras podem se repetir, e toda palavra precisa ter a letra da célula do meio.","Toca las celdas para formar una palabra de cuatro letras o más y luego la marca para enviarla. Las letras se pueden repetir, y cada palabra debe llevar la letra de la celda del centro."
+HC_RULES_HONEY,"Each word pours honey: one for a four-letter word, one a letter for longer ones, and seven more for a full comb, a word with all seven letters. The day is done when the jar reaches its line.","Cada palavra despeja mel: um por uma palavra de quatro letras, um por letra nas mais longas e sete a mais por um favo cheio, uma palavra com as sete letras. O dia termina quando o pote chega à linha.","Cada palabra vierte miel: uno por una palabra de cuatro letras, uno por letra en las más largas y siete más por un panal lleno, una palabra con las siete letras. El día termina cuando el tarro llega a la línea."
+HC_RULES_WANDER,"Wandering Queen: every %d words the queen flies to another cell, and the words after must hold her new letter.","Rainha Andarilha: a cada %d palavras a rainha voa para outra célula, e as palavras seguintes precisam ter a nova letra dela.","Reina Errante: cada %d palabras la reina vuela a otra celda, y las palabras siguientes deben llevar su nueva letra."
+HC_RULES_SCORE,Your score is the words you found over the words you tried: entries that are not words count against it. Words already found and words too short do not.,Sua nota é as palavras achadas sobre as tentadas: entradas que não são palavras contam contra. Palavras repetidas ou curtas demais não contam.,Tu puntuación son las palabras halladas sobre las intentadas: lo que no es palabra cuenta en contra. Las repetidas y las demasiado cortas no.
+HC_NONE_YET,Your words will gather here,Suas palavras vão aparecer aqui,Tus palabras aparecerán aquí
+HC_MORE,and %d more,e mais %d,y %d más
+HC_WORDS_ONE,%d word,%d palavra,%d palabra
+HC_WORDS_N,%d words,%d palavras,%d palabras
+HC_FLIES_ONE,she flies after the next,ela voa depois da próxima,vuela tras la siguiente
+HC_FLIES_N,she flies in %d,ela voa em %d,vuela en %d
+HC_NICE_1,Good!,Boa!,¡Bien!
+HC_NICE_2,Sweet!,Doce!,¡Dulce!
+HC_NICE_3,Lovely!,Que lindo!,¡Precioso!
+HC_FULL,Full comb!,Favo cheio!,¡Panal lleno!
+HC_SAY_SHORT,Four letters at least.,Pelo menos quatro letras.,Cuatro letras como mínimo.
+HC_SAY_QUEEN,Every word needs the middle letter.,Toda palavra precisa da letra do meio.,Cada palabra necesita la letra del centro.
+HC_SAY_NOT,That is not in the word list.,Essa não está na lista.,Esa no está en la lista.
+HC_SAY_FOUND,Already in the jar.,Essa já está no pote.,Esa ya está en el tarro.
+HC_SAY_FLY,The queen flew to %s!,A rainha voou para o %s!,¡La reina voló a la %s!
+HC_WIN_ONE,"%d word, %d honey.","%d palavra, %d de mel.","%d palabra, %d de miel."
+HC_WIN_N,"%d words, %d honey.","%d palavras, %d de mel.","%d palabras, %d de miel."
+HC_WIN_FULL,A full comb among them.,Com um favo cheio entre elas.,Con un panal lleno entre ellas.
+HC_WIN_CLEAN,Not one word refused.,Nenhuma palavra recusada.,Ninguna palabra rechazada.
+HTP_HC_SPELL,Spell a word,Forme uma palavra,Forma una palabra
+HTP_HC_SPELL_BODY,"Tap the cells to spell a word of four letters or more, then the tick. The word pours its honey into the jar.",Toque nas células para formar uma palavra de quatro letras ou mais e depois no visto. A palavra despeja o mel no pote.,Toca las celdas para formar una palabra de cuatro letras o más y luego la marca. La palabra vierte su miel en el tarro.
+HTP_HC_QUEEN,The queen's letter,A letra da rainha,La letra de la reina
+HTP_HC_QUEEN_BODY,"Every word must hold the letter in the middle cell, where the queen sits. Letters can be used again.","Toda palavra precisa ter a letra da célula do meio, onde a rainha está. As letras podem se repetir.","Cada palabra debe llevar la letra de la celda del centro, donde está la reina. Las letras se pueden repetir."
+HTP_HC_FULL,A full comb,Um favo cheio,Un panal lleno
+HTP_HC_FULL_BODY,Every comb hides a word with all seven letters. It pours seven more honey.,Todo favo esconde uma palavra com as sete letras. Ela despeja sete de mel a mais.,Cada panal esconde una palabra con las siete letras. Vierte siete de miel más.
+HTP_HC_WANDER,Wandering Queen,Rainha Andarilha,Reina Errante
+HTP_HC_WANDER_BODY,"On Insane, every %d words the queen flies to another cell. Her new letter is the one every word must hold.","No Insano, a cada %d palavras a rainha voa para outra célula. A nova letra dela é a que toda palavra precisa ter.","En Demencial, cada %d palabras la reina vuela a otra celda. Su nueva letra es la que debe llevar cada palabra."
+HTP_HC_HINT,Half a word,Meia palavra,Media palabra
+HTP_HC_HINT_BODY,The bulb spells the first half of a word you have not found and shows how long it is. Spell the rest.,A lâmpada escreve a primeira metade de uma palavra que você ainda não achou e mostra o tamanho. Complete o resto.,La bombilla escribe la primera mitad de una palabra que no has hallado y muestra su largo. Completa el resto.
+BRAIN_HC_1,"Look for endings the letters allow, like -ing, -ed or -er, and try them on every word you find.","Procure terminações que as letras permitem, como -ar, -ado ou -inha, e teste em cada palavra achada.","Busca terminaciones que las letras permitan, como -ar, -ado o -ito, y pruébalas en cada palabra."
+BRAIN_HC_2,Shuffle when you are stuck: the same letters in new places show new words.,Embaralhe quando travar: as mesmas letras em outros lugares mostram palavras novas.,Baraja cuando te atasques: las mismas letras en otros sitios muestran palabras nuevas.
+BRAIN_HC_3,Hunt the full comb early: it pours the most honey of any word.,Procure o favo cheio cedo: ele despeja mais mel do que qualquer palavra.,Busca el panal lleno pronto: vierte más miel que cualquier palabra.
+BRAIN_HC_4,Say a word in your head before you send it: guesses that are not words lower your score.,Diga a palavra de cabeça antes de enviar: chutes que não são palavras baixam sua nota.,Di la palabra en tu cabeza antes de enviarla: lo que no es palabra baja tu nota.

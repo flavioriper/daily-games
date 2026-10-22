@@ -1,0 +1,1836 @@
+{
+ "version": 1,
+ "note": "Honeycomb's insane hives, built by tools/build_honeycomb.py: seven letters and the queen's (whose letter every word holds), each holding 30-52 of the day's words of tier 2 or below; `flight` is the order the queen flies in (Wandering Queen).",
+ "boards": [
+  {
+   "letters": "adeiqru",
+   "queen": "q",
+   "flight": "udarei"
+  },
+  {
+   "letters": "abehiru",
+   "queen": "i",
+   "flight": "abuher"
+  },
+  {
+   "letters": "cdegilo",
+   "queen": "g",
+   "flight": "eoldic"
+  },
+  {
+   "letters": "aejlnuv",
+   "queen": "u",
+   "flight": "vleanj"
+  },
+  {
+   "letters": "achilnr",
+   "queen": "h",
+   "flight": "ilrnac"
+  },
+  {
+   "letters": "cefiopr",
+   "queen": "f",
+   "flight": "ecpiro"
+  },
+  {
+   "letters": "abeiltv",
+   "queen": "i",
+   "flight": "etalvb"
+  },
+  {
+   "letters": "adlopuñ",
+   "queen": "p",
+   "flight": "añlduo"
+  },
+  {
+   "letters": "acfipru",
+   "queen": "i",
+   "flight": "frucpa"
+  },
+  {
+   "letters": "cdefino",
+   "queen": "f",
+   "flight": "doeinc"
+  },
+  {
+   "letters": "abegnot",
+   "queen": "g",
+   "flight": "abteno"
+  },
+  {
+   "letters": "acdmnop",
+   "queen": "p",
+   "flight": "amocdn"
+  },
+  {
+   "letters": "adfmoru",
+   "queen": "u",
+   "flight": "rfodam"
+  },
+  {
+   "letters": "aefimrz",
+   "queen": "f",
+   "flight": "zrmeia"
+  },
+  {
+   "letters": "bdeilnu",
+   "queen": "e",
+   "flight": "iudnbl"
+  },
+  {
+   "letters": "cdeopru",
+   "queen": "u",
+   "flight": "preodc"
+  },
+  {
+   "letters": "befilpr",
+   "queen": "e",
+   "flight": "blfpri"
+  },
+  {
+   "letters": "abceotz",
+   "queen": "b",
+   "flight": "acezot"
+  },
+  {
+   "letters": "cdefnou",
+   "queen": "n",
+   "flight": "cfdeou"
+  },
+  {
+   "letters": "cemnouv",
+   "queen": "e",
+   "flight": "cumnov"
+  },
+  {
+   "letters": "eilmnor",
+   "queen": "i",
+   "flight": "rmleno"
+  },
+  {
+   "letters": "deiortu",
+   "queen": "i",
+   "flight": "trueod"
+  },
+  {
+   "letters": "belnort",
+   "queen": "b",
+   "flight": "rnelot"
+  },
+  {
+   "letters": "acnoprv",
+   "queen": "v",
+   "flight": "rpocan"
+  },
+  {
+   "letters": "acdfrtu",
+   "queen": "c",
+   "flight": "dfuart"
+  },
+  {
+   "letters": "aegintv",
+   "queen": "g",
+   "flight": "evnita"
+  },
+  {
+   "letters": "abeilmn",
+   "queen": "b",
+   "flight": "mleian"
+  },
+  {
+   "letters": "aehmnor",
+   "queen": "h",
+   "flight": "anmeor"
+  },
+  {
+   "letters": "aeijqru",
+   "queen": "e",
+   "flight": "qjraui"
+  },
+  {
+   "letters": "abcilou",
+   "queen": "i",
+   "flight": "calbuo"
+  },
+  {
+   "letters": "abgilnv",
+   "queen": "n",
+   "flight": "bvagli"
+  },
+  {
+   "letters": "abeijrt",
+   "queen": "j",
+   "flight": "baeitr"
+  },
+  {
+   "letters": "acdilpt",
+   "queen": "d",
+   "flight": "pltaic"
+  },
+  {
+   "letters": "cefiort",
+   "queen": "f",
+   "flight": "etocir"
+  },
+  {
+   "letters": "cdelotu",
+   "queen": "e",
+   "flight": "dtoucl"
+  },
+  {
+   "letters": "abdeqru",
+   "queen": "b",
+   "flight": "euadrq"
+  },
+  {
+   "letters": "adeimru",
+   "queen": "u",
+   "flight": "idmrae"
+  },
+  {
+   "letters": "adeiloz",
+   "queen": "o",
+   "flight": "zidale"
+  },
+  {
+   "letters": "inortuv",
+   "queen": "i",
+   "flight": "ounvtr"
+  },
+  {
+   "letters": "aeilqtu",
+   "queen": "t",
+   "flight": "qeulai"
+  },
+  {
+   "letters": "aceghnr",
+   "queen": "h",
+   "flight": "rangce"
+  },
+  {
+   "letters": "adilntu",
+   "queen": "u",
+   "flight": "tnadli"
+  },
+  {
+   "letters": "efimnor",
+   "queen": "f",
+   "flight": "irnoem"
+  },
+  {
+   "letters": "acfilnp",
+   "queen": "f",
+   "flight": "pnclia"
+  },
+  {
+   "letters": "aelpqru",
+   "queen": "u",
+   "flight": "lqapre"
+  },
+  {
+   "letters": "aejqrtu",
+   "queen": "u",
+   "flight": "atrqej"
+  },
+  {
+   "letters": "delmorv",
+   "queen": "m",
+   "flight": "orldev"
+  },
+  {
+   "letters": "adinorz",
+   "queen": "z",
+   "flight": "ridnoa"
+  },
+  {
+   "letters": "adfilno",
+   "queen": "f",
+   "flight": "aniodl"
+  },
+  {
+   "letters": "acioprv",
+   "queen": "v",
+   "flight": "racipo"
+  },
+  {
+   "letters": "adilprz",
+   "queen": "d",
+   "flight": "lrpiaz"
+  },
+  {
+   "letters": "ahimnru",
+   "queen": "u",
+   "flight": "anrimh"
+  },
+  {
+   "letters": "acdimnu",
+   "queen": "m",
+   "flight": "cduain"
+  },
+  {
+   "letters": "acdfior",
+   "queen": "f",
+   "flight": "odraic"
+  },
+  {
+   "letters": "ainqrtu",
+   "queen": "u",
+   "flight": "qranit"
+  },
+  {
+   "letters": "elortuv",
+   "queen": "v",
+   "flight": "tleruo"
+  },
+  {
+   "letters": "abcilmu",
+   "queen": "c",
+   "flight": "ambilu"
+  },
+  {
+   "letters": "aceforz",
+   "queen": "f",
+   "flight": "azorec"
+  },
+  {
+   "letters": "dejnoru",
+   "queen": "d",
+   "flight": "euornj"
+  },
+  {
+   "letters": "abdhlor",
+   "queen": "h",
+   "flight": "aolrdb"
+  },
+  {
+   "letters": "ceiprtu",
+   "queen": "c",
+   "flight": "rpeitu"
+  },
+  {
+   "letters": "ilnoprv",
+   "queen": "l",
+   "flight": "iovrnp"
+  },
+  {
+   "letters": "cefmnor",
+   "queen": "m",
+   "flight": "ofnerc"
+  },
+  {
+   "letters": "abehilt",
+   "queen": "i",
+   "flight": "helabt"
+  },
+  {
+   "letters": "ailmnpt",
+   "queen": "p",
+   "flight": "mntila"
+  },
+  {
+   "letters": "adeoprv",
+   "queen": "v",
+   "flight": "doaper"
+  },
+  {
+   "letters": "aegilru",
+   "queen": "u",
+   "flight": "irgael"
+  },
+  {
+   "letters": "deilmpr",
+   "queen": "d",
+   "flight": "eirlpm"
+  },
+  {
+   "letters": "abceilp",
+   "queen": "b",
+   "flight": "aicelp"
+  },
+  {
+   "letters": "acehltu",
+   "queen": "h",
+   "flight": "uaetcl"
+  },
+  {
+   "letters": "acdeorv",
+   "queen": "v",
+   "flight": "eadrco"
+  },
+  {
+   "letters": "abeloqu",
+   "queen": "o",
+   "flight": "beualq"
+  },
+  {
+   "letters": "aceghin",
+   "queen": "g",
+   "flight": "echnai"
+  },
+  {
+   "letters": "acilntu",
+   "queen": "u",
+   "flight": "talcni"
+  },
+  {
+   "letters": "aefintz",
+   "queen": "e",
+   "flight": "fztani"
+  },
+  {
+   "letters": "amnotuv",
+   "queen": "m",
+   "flight": "ountav"
+  },
+  {
+   "letters": "acfilrt",
+   "queen": "f",
+   "flight": "lrtica"
+  },
+  {
+   "letters": "adegilz",
+   "queen": "g",
+   "flight": "izelda"
+  },
+  {
+   "letters": "aceijnr",
+   "queen": "j",
+   "flight": "iaencr"
+  },
+  {
+   "letters": "abdnorz",
+   "queen": "z",
+   "flight": "adonbr"
+  },
+  {
+   "letters": "belmnor",
+   "queen": "n",
+   "flight": "oemrbl"
+  },
+  {
+   "letters": "acdhmno",
+   "queen": "h",
+   "flight": "dmcona"
+  },
+  {
+   "letters": "achiorv",
+   "queen": "v",
+   "flight": "iahorc"
+  },
+  {
+   "letters": "aghnoru",
+   "queen": "n",
+   "flight": "graohu"
+  },
+  {
+   "letters": "afgimru",
+   "queen": "i",
+   "flight": "rfuagm"
+  },
+  {
+   "letters": "adfintu",
+   "queen": "t",
+   "flight": "ufiadn"
+  },
+  {
+   "letters": "adelmpz",
+   "queen": "m",
+   "flight": "lzedap"
+  },
+  {
+   "letters": "agijlrt",
+   "queen": "l",
+   "flight": "graitj"
+  },
+  {
+   "letters": "cdeinou",
+   "queen": "u",
+   "flight": "deonic"
+  },
+  {
+   "letters": "adelopñ",
+   "queen": "d",
+   "flight": "aeñlop"
+  },
+  {
+   "letters": "acelruy",
+   "queen": "u",
+   "flight": "laryce"
+  },
+  {
+   "letters": "abeglop",
+   "queen": "b",
+   "flight": "elaogp"
+  },
+  {
+   "letters": "ainrtuv",
+   "queen": "u",
+   "flight": "nvrait"
+  },
+  {
+   "letters": "abiltuz",
+   "queen": "b",
+   "flight": "tiluza"
+  },
+  {
+   "letters": "acdefio",
+   "queen": "e",
+   "flight": "doafic"
+  },
+  {
+   "letters": "adefiot",
+   "queen": "i",
+   "flight": "daotfe"
+  },
+  {
+   "letters": "eginopt",
+   "queen": "i",
+   "flight": "tnoegp"
+  },
+  {
+   "letters": "cenortv",
+   "queen": "v",
+   "flight": "otnerc"
+  },
+  {
+   "letters": "adilmtu",
+   "queen": "u",
+   "flight": "tmldia"
+  },
+  {
+   "letters": "admnotu",
+   "queen": "u",
+   "flight": "dtnoma"
+  },
+  {
+   "letters": "acdfilo",
+   "queen": "f",
+   "flight": "aliodc"
+  },
+  {
+   "letters": "elnoptx",
+   "queen": "p",
+   "flight": "nxloet"
+  },
+  {
+   "letters": "aflmoru",
+   "queen": "f",
+   "flight": "omlaru"
+  },
+  {
+   "letters": "acilnuv",
+   "queen": "u",
+   "flight": "cinlva"
+  },
+  {
+   "letters": "acegint",
+   "queen": "g",
+   "flight": "niceta"
+  },
+  {
+   "letters": "aceilmu",
+   "queen": "c",
+   "flight": "ilueam"
+  },
+  {
+   "letters": "bdeijno",
+   "queen": "n",
+   "flight": "ioedjb"
+  },
+  {
+   "letters": "abeirtu",
+   "queen": "u",
+   "flight": "tirbae"
+  },
+  {
+   "letters": "adgjoru",
+   "queen": "j",
+   "flight": "oadurg"
+  },
+  {
+   "letters": "egilmnt",
+   "queen": "t",
+   "flight": "imgeln"
+  },
+  {
+   "letters": "ceinoqu",
+   "queen": "o",
+   "flight": "qiunec"
+  },
+  {
+   "letters": "aeilnqu",
+   "queen": "n",
+   "flight": "laeuiq"
+  },
+  {
+   "letters": "acehipt",
+   "queen": "i",
+   "flight": "apchte"
+  },
+  {
+   "letters": "achlnrt",
+   "queen": "h",
+   "flight": "ncrlta"
+  },
+  {
+   "letters": "acdhnou",
+   "queen": "h",
+   "flight": "nocuda"
+  },
+  {
+   "letters": "adnortz",
+   "queen": "z",
+   "flight": "ntadro"
+  },
+  {
+   "letters": "aemnorz",
+   "queen": "z",
+   "flight": "nmroea"
+  },
+  {
+   "letters": "ahimopt",
+   "queen": "o",
+   "flight": "ahmtip"
+  },
+  {
+   "letters": "abclotu",
+   "queen": "u",
+   "flight": "tblcao"
+  },
+  {
+   "letters": "aegmntu",
+   "queen": "u",
+   "flight": "emgnat"
+  },
+  {
+   "letters": "adefjlr",
+   "queen": "d",
+   "flight": "laerjf"
+  },
+  {
+   "letters": "aegilnu",
+   "queen": "u",
+   "flight": "anlegi"
+  },
+  {
+   "letters": "adflnru",
+   "queen": "u",
+   "flight": "aldnrf"
+  },
+  {
+   "letters": "abdelnz",
+   "queen": "d",
+   "flight": "lbanze"
+  },
+  {
+   "letters": "abceftu",
+   "queen": "e",
+   "flight": "fcubta"
+  },
+  {
+   "letters": "aimortz",
+   "queen": "z",
+   "flight": "raoimt"
+  },
+  {
+   "letters": "bceilnr",
+   "queen": "c",
+   "flight": "enrbli"
+  },
+  {
+   "letters": "abcimot",
+   "queen": "b",
+   "flight": "ioatmc"
+  },
+  {
+   "letters": "cejortu",
+   "queen": "u",
+   "flight": "torecj"
+  },
+  {
+   "letters": "adilnuv",
+   "queen": "u",
+   "flight": "ialvdn"
+  },
+  {
+   "letters": "acdehin",
+   "queen": "h",
+   "flight": "cidnae"
+  },
+  {
+   "letters": "egilpru",
+   "queen": "e",
+   "flight": "pgulri"
+  },
+  {
+   "letters": "cefnrtu",
+   "queen": "t",
+   "flight": "unrcef"
+  },
+  {
+   "letters": "efinrtu",
+   "queen": "i",
+   "flight": "turfne"
+  },
+  {
+   "letters": "abcdiou",
+   "queen": "i",
+   "flight": "buoadc"
+  },
+  {
+   "letters": "cilmopu",
+   "queen": "i",
+   "flight": "pcomul"
+  },
+  {
+   "letters": "acefntu",
+   "queen": "u",
+   "flight": "eatfnc"
+  },
+  {
+   "letters": "agilotz",
+   "queen": "g",
+   "flight": "oaitlz"
+  },
+  {
+   "letters": "aelmnrz",
+   "queen": "z",
+   "flight": "lramne"
+  },
+  {
+   "letters": "aeipqru",
+   "queen": "p",
+   "flight": "iaquer"
+  },
+  {
+   "letters": "achinoz",
+   "queen": "h",
+   "flight": "caionz"
+  },
+  {
+   "letters": "deilnou",
+   "queen": "i",
+   "flight": "dnolue"
+  },
+  {
+   "letters": "defnort",
+   "queen": "f",
+   "flight": "dtnero"
+  },
+  {
+   "letters": "aeghoru",
+   "queen": "u",
+   "flight": "gheroa"
+  },
+  {
+   "letters": "acehrtu",
+   "queen": "u",
+   "flight": "trahce"
+  },
+  {
+   "letters": "abelnpu",
+   "queen": "b",
+   "flight": "ueapln"
+  },
+  {
+   "letters": "cdilnou",
+   "queen": "l",
+   "flight": "dnuoci"
+  },
+  {
+   "letters": "beilnor",
+   "queen": "n",
+   "flight": "ilreob"
+  },
+  {
+   "letters": "egilopr",
+   "queen": "g",
+   "flight": "orepli"
+  },
+  {
+   "letters": "abdmotu",
+   "queen": "b",
+   "flight": "moutda"
+  },
+  {
+   "letters": "acefino",
+   "queen": "f",
+   "flight": "onaice"
+  },
+  {
+   "letters": "abceiru",
+   "queen": "u",
+   "flight": "ebairc"
+  },
+  {
+   "letters": "aioprtu",
+   "queen": "u",
+   "flight": "ptoiar"
+  },
+  {
+   "letters": "abefiln",
+   "queen": "i",
+   "flight": "fleban"
+  },
+  {
+   "letters": "elmopru",
+   "queen": "p",
+   "flight": "lemruo"
+  },
+  {
+   "letters": "cdeiorv",
+   "queen": "v",
+   "flight": "iredoc"
+  },
+  {
+   "letters": "ceghino",
+   "queen": "e",
+   "flight": "nhocig"
+  },
+  {
+   "letters": "abchmnr",
+   "queen": "h",
+   "flight": "cbamnr"
+  },
+  {
+   "letters": "egiortv",
+   "queen": "v",
+   "flight": "trgioe"
+  },
+  {
+   "letters": "aefioru",
+   "queen": "f",
+   "flight": "uoriea"
+  },
+  {
+   "letters": "aefgmno",
+   "queen": "e",
+   "flight": "afmong"
+  },
+  {
+   "letters": "adhilmu",
+   "queen": "m",
+   "flight": "ludhai"
+  },
+  {
+   "letters": "abelrtu",
+   "queen": "u",
+   "flight": "raetlb"
+  },
+  {
+   "letters": "abdeiot",
+   "queen": "i",
+   "flight": "tdabeo"
+  },
+  {
+   "letters": "ailnqru",
+   "queen": "l",
+   "flight": "nuraqi"
+  },
+  {
+   "letters": "abeoqru",
+   "queen": "o",
+   "flight": "baqeur"
+  },
+  {
+   "letters": "eilortu",
+   "queen": "i",
+   "flight": "eotlur"
+  },
+  {
+   "letters": "acegnot",
+   "queen": "g",
+   "flight": "acnteo"
+  },
+  {
+   "letters": "bceinot",
+   "queen": "b",
+   "flight": "oentci"
+  },
+  {
+   "letters": "acfijno",
+   "queen": "f",
+   "flight": "acijon"
+  },
+  {
+   "letters": "aeoqrtu",
+   "queen": "u",
+   "flight": "taeroq"
+  },
+  {
+   "letters": "aghortz",
+   "queen": "g",
+   "flight": "zoarht"
+  },
+  {
+   "letters": "aejlrtu",
+   "queen": "j",
+   "flight": "luerat"
+  },
+  {
+   "letters": "cehoprv",
+   "queen": "p",
+   "flight": "eovrch"
+  },
+  {
+   "letters": "ceimnrt",
+   "queen": "c",
+   "flight": "tnerim"
+  },
+  {
+   "letters": "aginorz",
+   "queen": "z",
+   "flight": "nriago"
+  },
+  {
+   "letters": "acdegrt",
+   "queen": "g",
+   "flight": "arectd"
+  },
+  {
+   "letters": "abenpru",
+   "queen": "u",
+   "flight": "anerbp"
+  },
+  {
+   "letters": "deimnpt",
+   "queen": "m",
+   "flight": "nitepd"
+  },
+  {
+   "letters": "cefilot",
+   "queen": "t",
+   "flight": "oliefc"
+  },
+  {
+   "letters": "ailmnoz",
+   "queen": "z",
+   "flight": "loanim"
+  },
+  {
+   "letters": "cdhilor",
+   "queen": "r",
+   "flight": "lidhco"
+  },
+  {
+   "letters": "achlnru",
+   "queen": "u",
+   "flight": "ncrhal"
+  },
+  {
+   "letters": "acefirv",
+   "queen": "f",
+   "flight": "reavic"
+  },
+  {
+   "letters": "cginotv",
+   "queen": "c",
+   "flight": "niovgt"
+  },
+  {
+   "letters": "aglnruz",
+   "queen": "u",
+   "flight": "nazglr"
+  },
+  {
+   "letters": "abdemru",
+   "queen": "b",
+   "flight": "draeum"
+  },
+  {
+   "letters": "aenrtuv",
+   "queen": "u",
+   "flight": "tnarve"
+  },
+  {
+   "letters": "elmnouv",
+   "queen": "l",
+   "flight": "vunmoe"
+  },
+  {
+   "letters": "efinopr",
+   "queen": "f",
+   "flight": "epinro"
+  },
+  {
+   "letters": "acdoruv",
+   "queen": "u",
+   "flight": "ocardv"
+  },
+  {
+   "letters": "acdilvz",
+   "queen": "d",
+   "flight": "lzicva"
+  },
+  {
+   "letters": "ceimnou",
+   "queen": "m",
+   "flight": "neiouc"
+  },
+  {
+   "letters": "adjnoru",
+   "queen": "u",
+   "flight": "aorjnd"
+  },
+  {
+   "letters": "aceinqu",
+   "queen": "u",
+   "flight": "enqaic"
+  },
+  {
+   "letters": "ceflnor",
+   "queen": "f",
+   "flight": "nrcleo"
+  },
+  {
+   "letters": "abejmnr",
+   "queen": "j",
+   "flight": "nmreab"
+  },
+  {
+   "letters": "aeflnot",
+   "queen": "f",
+   "flight": "tneaol"
+  },
+  {
+   "letters": "abehior",
+   "queen": "h",
+   "flight": "brieoa"
+  },
+  {
+   "letters": "abcilmp",
+   "queen": "m",
+   "flight": "cilbpa"
+  },
+  {
+   "letters": "aimnotv",
+   "queen": "v",
+   "flight": "onimta"
+  },
+  {
+   "letters": "acdefho",
+   "queen": "h",
+   "flight": "cfeado"
+  },
+  {
+   "letters": "deioqru",
+   "queen": "u",
+   "flight": "oeiqrd"
+  },
+  {
+   "letters": "abcdfir",
+   "queen": "d",
+   "flight": "afcirb"
+  },
+  {
+   "letters": "adimotz",
+   "queen": "i",
+   "flight": "motdaz"
+  },
+  {
+   "letters": "beilmot",
+   "queen": "i",
+   "flight": "bmolte"
+  },
+  {
+   "letters": "aijlnou",
+   "queen": "n",
+   "flight": "jloaui"
+  },
+  {
+   "letters": "afgortu",
+   "queen": "u",
+   "flight": "ofrgta"
+  },
+  {
+   "letters": "adejmpu",
+   "queen": "m",
+   "flight": "pdajeu"
+  },
+  {
+   "letters": "deilntv",
+   "queen": "t",
+   "flight": "nvdiel"
+  },
+  {
+   "letters": "cginotu",
+   "queen": "n",
+   "flight": "giotcu"
+  },
+  {
+   "letters": "abinotz",
+   "queen": "i",
+   "flight": "zbatno"
+  },
+  {
+   "letters": "aboprtu",
+   "queen": "u",
+   "flight": "ptrbao"
+  },
+  {
+   "letters": "agjloru",
+   "queen": "u",
+   "flight": "orgjla"
+  },
+  {
+   "letters": "acdhimo",
+   "queen": "h",
+   "flight": "odiamc"
+  },
+  {
+   "letters": "abehlmr",
+   "queen": "h",
+   "flight": "lreamb"
+  },
+  {
+   "letters": "aefiorv",
+   "queen": "v",
+   "flight": "oefria"
+  },
+  {
+   "letters": "efginru",
+   "queen": "i",
+   "flight": "gerfun"
+  },
+  {
+   "letters": "acilotu",
+   "queen": "u",
+   "flight": "lcoait"
+  },
+  {
+   "letters": "aejmnpu",
+   "queen": "n",
+   "flight": "upaemj"
+  },
+  {
+   "letters": "aceoruz",
+   "queen": "z",
+   "flight": "cauero"
+  },
+  {
+   "letters": "aelrtuv",
+   "queen": "u",
+   "flight": "teavlr"
+  },
+  {
+   "letters": "acilorz",
+   "queen": "z",
+   "flight": "ocilar"
+  },
+  {
+   "letters": "aeiqruz",
+   "queen": "r",
+   "flight": "iauzeq"
+  },
+  {
+   "letters": "abdlnou",
+   "queen": "u",
+   "flight": "nlobad"
+  },
+  {
+   "letters": "ilmoptu",
+   "queen": "t",
+   "flight": "lpmiuo"
+  },
+  {
+   "letters": "adeiotv",
+   "queen": "e",
+   "flight": "vdiato"
+  },
+  {
+   "letters": "aceghlm",
+   "queen": "m",
+   "flight": "glehac"
+  },
+  {
+   "letters": "abeilrz",
+   "queen": "z",
+   "flight": "briale"
+  },
+  {
+   "letters": "adlmnou",
+   "queen": "u",
+   "flight": "dnloma"
+  },
+  {
+   "letters": "abdilru",
+   "queen": "u",
+   "flight": "daibrl"
+  },
+  {
+   "letters": "aefnorz",
+   "queen": "f",
+   "flight": "naeorz"
+  },
+  {
+   "letters": "acfginr",
+   "queen": "f",
+   "flight": "argcni"
+  },
+  {
+   "letters": "adnoptu",
+   "queen": "u",
+   "flight": "dptoan"
+  },
+  {
+   "letters": "aginovz",
+   "queen": "n",
+   "flight": "ioavzg"
+  },
+  {
+   "letters": "adilmpt",
+   "queen": "d",
+   "flight": "milapt"
+  },
+  {
+   "letters": "aeimnox",
+   "queen": "o",
+   "flight": "miaenx"
+  },
+  {
+   "letters": "afilmno",
+   "queen": "f",
+   "flight": "moalni"
+  },
+  {
+   "letters": "aeimprv",
+   "queen": "v",
+   "flight": "pmeira"
+  },
+  {
+   "letters": "aclmnou",
+   "queen": "u",
+   "flight": "ocnalm"
+  },
+  {
+   "letters": "aeirtxñ",
+   "queen": "i",
+   "flight": "xreñta"
+  },
+  {
+   "letters": "acdimpt",
+   "queen": "i",
+   "flight": "pcdatm"
+  },
+  {
+   "letters": "abefnrt",
+   "queen": "f",
+   "flight": "nbaret"
+  },
+  {
+   "letters": "eimnptu",
+   "queen": "t",
+   "flight": "imunep"
+  },
+  {
+   "letters": "bceimno",
+   "queen": "m",
+   "flight": "ibcoen"
+  },
+  {
+   "letters": "acdglot",
+   "queen": "g",
+   "flight": "oldtca"
+  },
+  {
+   "letters": "acghinr",
+   "queen": "h",
+   "flight": "nicgar"
+  },
+  {
+   "letters": "abcioru",
+   "queen": "u",
+   "flight": "acorbi"
+  },
+  {
+   "letters": "almopuz",
+   "queen": "o",
+   "flight": "aplzum"
+  },
+  {
+   "letters": "acfmnor",
+   "queen": "f",
+   "flight": "nmroca"
+  },
+  {
+   "letters": "abcelpt",
+   "queen": "b",
+   "flight": "teclpa"
+  },
+  {
+   "letters": "efmnprt",
+   "queen": "r",
+   "flight": "nmetfp"
+  },
+  {
+   "letters": "aclnouy",
+   "queen": "n",
+   "flight": "olucya"
+  },
+  {
+   "letters": "amnortu",
+   "queen": "u",
+   "flight": "rotanm"
+  },
+  {
+   "letters": "acdfilu",
+   "queen": "c",
+   "flight": "ufidla"
+  },
+  {
+   "letters": "ceimopt",
+   "queen": "p",
+   "flight": "omtcei"
+  },
+  {
+   "letters": "adefirt",
+   "queen": "f",
+   "flight": "rtiaed"
+  },
+  {
+   "letters": "aegjoru",
+   "queen": "o",
+   "flight": "urgeaj"
+  },
+  {
+   "letters": "afilrtu",
+   "queen": "f",
+   "flight": "ratlui"
+  },
+  {
+   "letters": "abelnop",
+   "queen": "b",
+   "flight": "loneap"
+  },
+  {
+   "letters": "adeirtu",
+   "queen": "u",
+   "flight": "tadrei"
+  },
+  {
+   "letters": "anoptuz",
+   "queen": "o",
+   "flight": "paztun"
+  },
+  {
+   "letters": "celnotu",
+   "queen": "c",
+   "flight": "ntleuo"
+  },
+  {
+   "letters": "adfinot",
+   "queen": "f",
+   "flight": "oiandt"
+  },
+  {
+   "letters": "abelrtz",
+   "queen": "z",
+   "flight": "baerlt"
+  },
+  {
+   "letters": "abeiqru",
+   "queen": "i",
+   "flight": "urebaq"
+  },
+  {
+   "letters": "adeijmn",
+   "queen": "i",
+   "flight": "jaemdn"
+  },
+  {
+   "letters": "adehinr",
+   "queen": "h",
+   "flight": "adreni"
+  },
+  {
+   "letters": "abgloru",
+   "queen": "u",
+   "flight": "obarlg"
+  },
+  {
+   "letters": "bdeilot",
+   "queen": "i",
+   "flight": "lbdeot"
+  },
+  {
+   "letters": "aemntuv",
+   "queen": "u",
+   "flight": "nevmta"
+  },
+  {
+   "letters": "cgilnot",
+   "queen": "l",
+   "flight": "togcni"
+  },
+  {
+   "letters": "adinotu",
+   "queen": "u",
+   "flight": "adtoni"
+  },
+  {
+   "letters": "aceghlu",
+   "queen": "u",
+   "flight": "hgleac"
+  },
+  {
+   "letters": "abemorz",
+   "queen": "z",
+   "flight": "roabme"
+  },
+  {
+   "letters": "acirtuv",
+   "queen": "v",
+   "flight": "uiatrc"
+  },
+  {
+   "letters": "eimnoru",
+   "queen": "u",
+   "flight": "mieorn"
+  },
+  {
+   "letters": "adenorz",
+   "queen": "z",
+   "flight": "oardne"
+  },
+  {
+   "letters": "bcdeinr",
+   "queen": "n",
+   "flight": "dbrcie"
+  },
+  {
+   "letters": "adilotu",
+   "queen": "u",
+   "flight": "dioalt"
+  },
+  {
+   "letters": "aghlmor",
+   "queen": "h",
+   "flight": "olramg"
+  },
+  {
+   "letters": "abehlor",
+   "queen": "h",
+   "flight": "oarbel"
+  },
+  {
+   "letters": "abeortu",
+   "queen": "u",
+   "flight": "raebot"
+  },
+  {
+   "letters": "acefnrt",
+   "queen": "f",
+   "flight": "catner"
+  },
+  {
+   "letters": "abeijru",
+   "queen": "j",
+   "flight": "beraiu"
+  },
+  {
+   "letters": "aejnptu",
+   "queen": "p",
+   "flight": "jaunte"
+  },
+  {
+   "letters": "aelmntu",
+   "queen": "u",
+   "flight": "enmlat"
+  },
+  {
+   "letters": "abcepru",
+   "queen": "u",
+   "flight": "epabcr"
+  },
+  {
+   "letters": "abeilmo",
+   "queen": "i",
+   "flight": "mlbeao"
+  },
+  {
+   "letters": "acdghin",
+   "queen": "h",
+   "flight": "ndagic"
+  },
+  {
+   "letters": "acjnotu",
+   "queen": "u",
+   "flight": "aocjnt"
+  },
+  {
+   "letters": "abeiqtu",
+   "queen": "t",
+   "flight": "uebqia"
+  },
+  {
+   "letters": "bdeilnt",
+   "queen": "n",
+   "flight": "tbdlei"
+  },
+  {
+   "letters": "ilnoptu",
+   "queen": "t",
+   "flight": "liunop"
+  },
+  {
+   "letters": "bcilopu",
+   "queen": "l",
+   "flight": "piobcu"
+  },
+  {
+   "letters": "begilnu",
+   "queen": "e",
+   "flight": "unlibg"
+  },
+  {
+   "letters": "abegilm",
+   "queen": "b",
+   "flight": "ligmea"
+  },
+  {
+   "letters": "adlnorz",
+   "queen": "z",
+   "flight": "daroln"
+  },
+  {
+   "letters": "acilnrz",
+   "queen": "z",
+   "flight": "nalicr"
+  },
+  {
+   "letters": "celmopt",
+   "queen": "p",
+   "flight": "meclto"
+  },
+  {
+   "letters": "cegilot",
+   "queen": "t",
+   "flight": "olgice"
+  },
+  {
+   "letters": "acdefir",
+   "queen": "f",
+   "flight": "dacrie"
+  },
+  {
+   "letters": "abcehrz",
+   "queen": "h",
+   "flight": "earbcz"
+  },
+  {
+   "letters": "aeghmno",
+   "queen": "g",
+   "flight": "ehmnoa"
+  },
+  {
+   "letters": "ailmnru",
+   "queen": "u",
+   "flight": "anmlir"
+  },
+  {
+   "letters": "acehirv",
+   "queen": "v",
+   "flight": "arechi"
+  },
+  {
+   "letters": "adeforu",
+   "queen": "f",
+   "flight": "aeuodr"
+  },
+  {
+   "letters": "aefijmr",
+   "queen": "f",
+   "flight": "mrajei"
+  },
+  {
+   "letters": "abeoprz",
+   "queen": "z",
+   "flight": "aboper"
+  },
+  {
+   "letters": "eilotuv",
+   "queen": "e",
+   "flight": "uvtloi"
+  },
+  {
+   "letters": "abdijou",
+   "queen": "o",
+   "flight": "iujbad"
+  },
+  {
+   "letters": "alnrtuz",
+   "queen": "u",
+   "flight": "lznatr"
+  },
+  {
+   "letters": "acemntu",
+   "queen": "u",
+   "flight": "mctane"
+  },
+  {
+   "letters": "cilnotu",
+   "queen": "t",
+   "flight": "inoluc"
+  },
+  {
+   "letters": "abefjlr",
+   "queen": "j",
+   "flight": "baflre"
+  },
+  {
+   "letters": "cdeilmo",
+   "queen": "c",
+   "flight": "loedim"
+  },
+  {
+   "letters": "cefiorv",
+   "queen": "i",
+   "flight": "fcroev"
+  },
+  {
+   "letters": "adehilr",
+   "queen": "h",
+   "flight": "idrlae"
+  },
+  {
+   "letters": "cefioru",
+   "queen": "i",
+   "flight": "cureof"
+  },
+  {
+   "letters": "adilrtu",
+   "queen": "u",
+   "flight": "ldiatr"
+  },
+  {
+   "letters": "aclnoru",
+   "queen": "u",
+   "flight": "ocrlna"
+  },
+  {
+   "letters": "cdeioru",
+   "queen": "u",
+   "flight": "ceiord"
+  },
+  {
+   "letters": "ceglnou",
+   "queen": "o",
+   "flight": "ungcle"
+  },
+  {
+   "letters": "acimnou",
+   "queen": "u",
+   "flight": "mciano"
+  },
+  {
+   "letters": "aenopru",
+   "queen": "u",
+   "flight": "neaopr"
+  },
+  {
+   "letters": "acenqru",
+   "queen": "u",
+   "flight": "aecqnr"
+  },
+  {
+   "letters": "abdhiln",
+   "queen": "b",
+   "flight": "iahndl"
+  },
+  {
+   "letters": "deijopr",
+   "queen": "i",
+   "flight": "rpejod"
+  },
+  {
+   "letters": "agmoryz",
+   "queen": "g",
+   "flight": "omrazy"
+  },
+  {
+   "letters": "acdefor",
+   "queen": "f",
+   "flight": "arecod"
+  },
+  {
+   "letters": "bceiopr",
+   "queen": "b",
+   "flight": "iproce"
+  },
+  {
+   "letters": "cilnopu",
+   "queen": "n",
+   "flight": "lcoipu"
+  },
+  {
+   "letters": "aceghpu",
+   "queen": "a",
+   "flight": "hecpug"
+  },
+  {
+   "letters": "delnopu",
+   "queen": "d",
+   "flight": "uponle"
+  },
+  {
+   "letters": "egmnrtu",
+   "queen": "t",
+   "flight": "gemrnu"
+  },
+  {
+   "letters": "adilnqu",
+   "queen": "n",
+   "flight": "iudqla"
+  },
+  {
+   "letters": "aefjlnr",
+   "queen": "f",
+   "flight": "eanjlr"
+  },
+  {
+   "letters": "einoqtu",
+   "queen": "n",
+   "flight": "qeuoti"
+  },
+  {
+   "letters": "acgilop",
+   "queen": "g",
+   "flight": "ailocp"
+  },
+  {
+   "letters": "adefipr",
+   "queen": "f",
+   "flight": "ireapd"
+  },
+  {
+   "letters": "abdejlo",
+   "queen": "j",
+   "flight": "abdelo"
+  },
+  {
+   "letters": "adejmru",
+   "queen": "j",
+   "flight": "ramedu"
+  },
+  {
+   "letters": "denprtu",
+   "queen": "p",
+   "flight": "nduert"
+  },
+  {
+   "letters": "acjnoru",
+   "queen": "u",
+   "flight": "ajornc"
+  },
+  {
+   "letters": "abdelpt",
+   "queen": "p",
+   "flight": "laebtd"
+  },
+  {
+   "letters": "ainoprz",
+   "queen": "z",
+   "flight": "oinarp"
+  },
+  {
+   "letters": "abcnruz",
+   "queen": "b",
+   "flight": "znucar"
+  },
+  {
+   "letters": "ailntuz",
+   "queen": "l",
+   "flight": "inuazt"
+  },
+  {
+   "letters": "adilnpu",
+   "queen": "u",
+   "flight": "nldipa"
+  },
+  {
+   "letters": "acdefin",
+   "queen": "f",
+   "flight": "nideac"
+  },
+  {
+   "letters": "acempru",
+   "queen": "u",
+   "flight": "reapcm"
+  },
+  {
+   "letters": "abcdenz",
+   "queen": "d",
+   "flight": "zcbena"
+  },
+  {
+   "letters": "adfilmr",
+   "queen": "f",
+   "flight": "radiml"
+  },
+  {
+   "letters": "cdimopr",
+   "queen": "d",
+   "flight": "rcpmoi"
+  },
+  {
+   "letters": "ademruy",
+   "queen": "u",
+   "flight": "yemadr"
+  },
+  {
+   "letters": "aceiltu",
+   "queen": "i",
+   "flight": "aucelt"
+  },
+  {
+   "letters": "acmnotu",
+   "queen": "u",
+   "flight": "amcton"
+  },
+  {
+   "letters": "filnort",
+   "queen": "t",
+   "flight": "nilrfo"
+  },
+  {
+   "letters": "adegloz",
+   "queen": "d",
+   "flight": "ozgela"
+  },
+  {
+   "letters": "acfinoz",
+   "queen": "f",
+   "flight": "zncioa"
+  },
+  {
+   "letters": "aeimnou",
+   "queen": "e",
+   "flight": "aoimun"
+  },
+  {
+   "letters": "abcfinr",
+   "queen": "f",
+   "flight": "nacbir"
+  },
+  {
+   "letters": "cdoprtu",
+   "queen": "r",
+   "flight": "upotdc"
+  },
+  {
+   "letters": "aenqrtu",
+   "queen": "u",
+   "flight": "aenqrt"
+  },
+  {
+   "letters": "dfilnou",
+   "queen": "d",
+   "flight": "oinufl"
+  },
+  {
+   "letters": "abejmpu",
+   "queen": "a",
+   "flight": "bupmej"
+  }
+ ]
+}
