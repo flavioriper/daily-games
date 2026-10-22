@@ -43,7 +43,6 @@ const Vistas = preload("res://ui/menu/vistas.gd")
 const DayRow = preload("res://ui/menu/day_row.gd")
 const PuzzleCard = preload("res://ui/menu/puzzle_card_2d.gd")
 const CategoryRow = preload("res://ui/menu/category_row.gd")
-const DifficultySheet = preload("res://ui/menu/difficulty_sheet.gd")
 const Icons = preload("res://ui/icons.gd")
 const Analytics = preload("res://core/analytics.gd")
 const StreakTab = preload("res://ui/menu/streak_tab.gd")
@@ -218,7 +217,6 @@ var settings_sheet: Control
 ## The purchase sheet: the header's remove-ads button, settings' row and
 ## (through world/main.gd) the banner's tab all open it.
 var remove_ads_sheet: Control
-var difficulty_sheet: Control
 var versus_sheet: Control
 ## The daily gifts and the shop (spec 2026-09-28-gold-gifts-design.md).
 var gifts_sheet: Control
@@ -361,10 +359,6 @@ func _ready() -> void:
 	add_child(shop_sheet)
 	arcade_tab.shop.connect(func(game: String) -> void: shop_sheet.open_for(game, "arcade"))
 	Wallet.changed.connect(func() -> void: header.set_gifts(Wallet.claimable()))
-	difficulty_sheet = DifficultySheet.new()
-	difficulty_sheet.name = "DifficultySheet"
-	difficulty_sheet.chose.connect(_open_at)
-	add_child(difficulty_sheet)
 	# A Versus card asks who to play on the same sheet's rows.
 	versus_sheet = VersusSheet.new()
 	versus_sheet.name = "VersusSheet"
@@ -1550,14 +1544,30 @@ func go_back() -> void:
 func _open(entry: Dictionary) -> void:
 	if Registry.is_soon(entry) or _swiped:
 		return
-	# A card whose difficulties are different boards (Sudoku's 6x6 and 9x9)
-	# asks which first; the sheet calls _open_at with the answer.
+	# A card with levels opens straight at the one last played there, the
+	# easiest the first time; the board's level card changes it in game (the
+	# user, 2026-10-22: "remove the difficulty sheet from the puzzles since
+	# users can switch difficulty ingame, load gamepage directly").
 	if bool(entry.get("pick_difficulty", false)):
-		difficulty_sheet.ask(entry)
+		_open_at(entry, _start_level(entry))
 		return
 	_open_at(entry, 1)
 
+## The level a card opens at: the last one played on it, if the card still
+## has it, else its first.
+func _start_level(entry: Dictionary) -> int:
+	var levels: Array = entry.get("levels", [])
+	var ds: Array = []
+	for level in levels:
+		ds.append(int(level.get("difficulty", 0)))
+	var last := Progress.last_level(String(entry.get("id", "")))
+	if last in ds:
+		return last
+	return ds[0] if not ds.is_empty() else 0
+
 func _open_at(entry: Dictionary, difficulty: int) -> void:
+	if bool(entry.get("pick_difficulty", false)):
+		Progress.set_last_level(String(entry.get("id", "")), difficulty)
 	var host: Control = FlatHost.new()
 	host.setup(entry, difficulty, Progress.completed(Registry.progress_id(entry, difficulty)))
 	_mount_host(host)

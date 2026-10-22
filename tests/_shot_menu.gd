@@ -96,11 +96,6 @@ func _process(delta: float) -> bool:
 			_menu._turn_page(1)
 			_idle = []
 			_draws = 0
-		elif _tab_arg.begins_with("diff"):
-			var id := _tab_arg.trim_prefix("diff=") if "=" in _tab_arg else "lightup"
-			_menu.difficulty_sheet.ask(preload("res://ui/registry.gd").find(id))
-			_idle = []
-			_draws = 0
 		elif not _tab_arg.is_empty():
 			_menu._show_tab(_tab_arg)
 			# `turn` after an `arcade`: its second page.

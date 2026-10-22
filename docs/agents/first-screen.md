@@ -1299,3 +1299,16 @@ ratings of its own yet. `Registry.PUZZLES` now runs, best first:
 **A card's colour comes off its index, so every card recoloured** (as on
 2026-10-13). Tests that meant Binairo by `PUZZLES[0]` now ask
 `Registry.find("binairo")`.
+
+### The difficulty sheet retired for the puzzles (2026-10-22)
+
+The user: "remove the difficulty sheet from the puzzles since users can switch
+difficulty ingame, load gamepage directly". A card with `pick_difficulty` now
+opens its board at once, at the level last played on that board
+(`Progress.last_level`, the save's `[levels]` section). It falls back to the
+card's first level, Easy, the first time. The level is saved on every
+`_open_at` and on every switch in the board's level card
+(`flat_host._on_level`), so the next open picks up where the player left off. The
+win's "Try Hard" invite goes through `_open_at` as well. `ui/menu/difficulty_sheet.gd`
+stays, because the Versus sheet extends it. The menu no longer builds one, and
+`tests/_shot_menu.gd` lost its `diff` shot.

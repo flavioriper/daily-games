@@ -178,6 +178,20 @@ static func set_stats_difficulty(d: int) -> void:
 	cfg.set_value("stats", "difficulty", clampi(d, 0, 3))
 	cfg.save(path)
 
+## The level a board was last played at, or -1 before its first: a card
+## opens straight at it (2026-10-22, the difficulty sheet retired).
+static func last_level(id: String) -> int:
+	var cfg := ConfigFile.new()
+	cfg.load(path)
+	return int(cfg.get_value("levels", id, -1))
+
+static func set_last_level(id: String, d: int) -> void:
+	var cfg := ConfigFile.new()
+	if not _readable(cfg.load(path)):
+		return
+	cfg.set_value("levels", id, clampi(d, 0, 3))
+	cfg.save(path)
+
 ## A missing file is an empty save; any other load error is a file that
 ## failed to parse, and it is left exactly as it is rather than saved over.
 static func _readable(err: Error) -> bool:

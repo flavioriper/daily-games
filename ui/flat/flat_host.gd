@@ -632,6 +632,7 @@ func _on_level(difficulty: int) -> void:
 	old.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_puzzle = null
 	_difficulty = difficulty
+	Progress.set_last_level(String(_entry.get("id", "")), difficulty)
 	_completed_daily = Progress.completed(_progress_id())
 	_hearts_line = ""
 	_bank_step = 0
