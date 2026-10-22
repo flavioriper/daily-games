@@ -556,17 +556,26 @@ func _layout_field() -> void:
 	field.queue_redraw()
 	_light_l.queue_redraw()
 
-## The zoom at which the room stands as tall as the field's free height:
-## under the pills, over the safe area, or over the sheet while it is up.
+## The zoom at which the room stands as tall as the field's free height,
+## under the pills and over the safe area; while the sheet is up, the one at
+## which the corner the robots work in (`work_bounds`) stands as tall as the
+## strip over the sheet (the whole 30 by 15 room there would leave a robot a
+## few pixels), and the view pans up and down too.
 func _fit_zoom() -> float:
 	if field == null or field.size.y <= 0.0:
 		return 1.0
-	var top := chrome_foot() + ROOM_PAD
-	var foot := field.size.y - SafeArea.insets(self).y - ROOM_PAD
-	if sheet != null and sheet.is_open():
-		foot = field.size.y - sheet.size.y - ROOM_PAD
-	var room: Rect2 = life.room_bounds()
-	return maxf(foot - top, 60.0) / room.size.y
+	var room: Rect2 = life.work_bounds() if _sheet_up() else life.room_bounds()
+	return maxf(_free_foot() - chrome_foot() - ROOM_PAD, 60.0) / room.size.y
+
+func _sheet_up() -> bool:
+	return sheet != null and sheet.is_open()
+
+## The foot of the field's free strip, in its pixels: over the safe area, or
+## over the sheet while it is up.
+func _free_foot() -> float:
+	if _sheet_up():
+		return field.size.y - sheet.size.y - ROOM_PAD
+	return field.size.y - SafeArea.insets(self).y - ROOM_PAD
 
 # --- the view ---
 
@@ -588,10 +597,11 @@ func tile_under(pos: Vector2) -> Vector2:
 	return life.tile_at((pos - world.position) / _zoom)
 
 ## A point of the view held to where the view's middle may go: sideways
-## inside the room, and up and down nowhere, the back wall's top pinned
-## under the pills (the room is as tall as the field's free height at the
-## zoom the view is easing to; while it eases, the top stays pinned at the
-## zoom it has).
+## inside the room, and up and down the back wall's top pinned under the
+## pills (the room is as tall as the field's free height at the zoom the
+## view is easing to; while it eases, the top stays pinned at the zoom it
+## has); with the sheet up, anywhere from that down to the kerb on the
+## sheet's top.
 func _clamp(v: Vector2) -> Vector2:
 	return _clamp_tiles(v)
 
@@ -604,7 +614,9 @@ func _clamp_tiles(v: Vector2) -> Vector2:
 	var hi := room.end.x - half_w
 	var out := v
 	out.x = room.get_center().x if lo > hi else clampf(v.x, lo, hi)
-	out.y = room.position.y + (field.size.y * CENTRE.y - chrome_foot() - ROOM_PAD) / _zoom
+	var top := room.position.y + (field.size.y * CENTRE.y - chrome_foot() - ROOM_PAD) / _zoom
+	var foot := room.end.y - (_free_foot() - field.size.y * CENTRE.y) / _zoom
+	out.y = top if foot <= top else clampf(v.y, top, foot)
 	return out
 
 func _step_view(delta: float) -> void:
@@ -865,13 +877,22 @@ func open_sheet(i: int) -> void:
 	sheet.open(i)
 	_keep_in_view(true)
 
-## With the sheet up the whole room stands in the strip of field between
-## the pills and the sheet (`_fit_zoom` shrinks it to fit as the sheet
-## opens, and it grows back as it closes), so the picked robot is always in
-## view; nothing more to do than settle the view inside the room.
-func _keep_in_view(_now: bool) -> void:
+## With the sheet up the corner the robots work in stands in the strip of
+## field between the pills and the sheet (`_fit_zoom` shrinks the view to
+## it as the sheet opens, and it grows back as it closes); the view is put
+## with the picked robot in the strip's middle as it opens, and again
+## whenever the robot walks out of the strip, held inside the room.
+func _keep_in_view(now: bool) -> void:
 	if _mode == "pan" and _moved:
 		return
+	if _sheet_up() and selected >= 0 and selected < sim.robots.size():
+		var zoom := _fit_zoom()
+		var at: Vector2 = life.robot_pos(selected)
+		var y := field.size.y * CENTRE.y + (at.y - _cam_to.y) * zoom
+		var tile := Art.TILE.y * zoom
+		if now or y < chrome_foot() + tile or y > _free_foot() - tile:
+			var mid_y := (chrome_foot() + _free_foot()) * 0.5
+			_cam_to.y = at.y - (mid_y - field.size.y * CENTRE.y) / zoom
 	_cam_raw = _clamp(_cam_to)
 	_cam_to = _cam_raw
 

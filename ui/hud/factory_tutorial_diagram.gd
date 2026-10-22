@@ -16,12 +16,11 @@ extends Control
 ##   ringed on the floor. No edit.
 ## - PICKER: its program on the sheet, a Gripper fitted and a Pick inserted
 ##   after its first Move; the Picker then walks off with a square.
-## - BOXER: the box lying at the table's foot ringed on the floor, and both
-##   vertical Moves set to 4 on the sheet, which slides from the first to
-##   the second (four nodes apart, past the turns); the Picker is already
+## - BOXER: the stack its gripper falls a tile short of ringed on the
+##   floor, and its first Move set to 2 on the sheet; the Picker is already
 ##   fixed.
-## - SHIPPER: its loose wire dragged from the Pick onto the next Move; the
-##   Picker and the Boxer are already fixed.
+## - SHIPPER: its loose wire dragged from the Pick onto the Turn after it;
+##   the Picker and the Boxer are already fixed.
 ## - BOX: all three fixed, the floor run to a few seconds before the first
 ##   sale; the box pays, the coins count it, the Shipper pauses on the bay.
 ## - SPEND: the bin's parts on the sheet with the second milestone's rows
@@ -53,7 +52,7 @@ const STILL := {Lesson.POWER: 5.0, Lesson.PICKER: 1.6, Lesson.BOXER: 1.6, Lesson
 const EDIT := 2.0
 ## The pages that draw a sheet beside the floor, and the robot it shows, and
 ## the node it brings to its middle.
-const SHEETS := {Lesson.PICKER: [0, "a"], Lesson.BOXER: [1, "e"], Lesson.SHIPPER: [2, "d"], Lesson.SPEND: [0, "a"],
+const SHEETS := {Lesson.PICKER: [0, "a"], Lesson.BOXER: [1, "a"], Lesson.SHIPPER: [2, "g"], Lesson.SPEND: [0, "a"],
 	Lesson.TURN: [0, "b"]}
 ## The Turn page's moment: the Picker's first Turn runs from about 1.9 s to
 ## 2.2 s on the page's floor (ticks 19 to 22), ringed from TURN_RING on.
@@ -68,13 +67,14 @@ const SHEET_TALL := 800.0
 const SHEET_TALL_TRAY := 960.0
 const PAD := 14.0
 ## Ticks run before a page opens, so the fault it is about already shows:
-## the Boxer's box lies at the table, the Shipper stands with its "?".
+## the Boxer has reached for the stack and missed, the Shipper stands with
+## its "?".
 const WARM := {Lesson.BOXER: 40, Lesson.SHIPPER: 40}
 ## How many seconds before the first sale the BOX page opens.
 const BOX_LEAD := 4.5
 const SPEND_COINS := 100
-## The box that lies at the table's foot, ringed on the Boxer's page.
-const LITTER := Vector2i(4, Sim.WORK_ROW - 1)
+## The stack the Boxer falls short of, ringed on its page.
+const STACK: Vector2i = Sim.STATIONS.stack
 
 ## Tick of the first sale once the three faults are fixed (found once).
 static var _sale_tick := -1
@@ -127,8 +127,8 @@ func _ready() -> void:
 		if size.x > 0.0 and size.y > 0.0:
 			_stand()
 
-## The room fitted to the page's share for it, in its middle, the outside
-## round it edge to edge; the sheet's rect under it.
+## The corner the robots work in (`work_bounds`) fitted to the page's share
+## for it, the outside round it edge to edge; the sheet's rect under it.
 func _layout() -> void:
 	if size.x <= 0.0 or size.y <= 0.0:
 		return
@@ -142,6 +142,10 @@ func _layout() -> void:
 	var u := minf((room.size.x - 2.0 * PAD) / box.size.x, (room.size.y - 2.0 * PAD) / box.size.y)
 	_world.scale = Vector2(u, u)
 	_world.position = room.get_center() - box.get_center() * u
+	# a corner narrower than its share stands at the share's left, the
+	# room's floor going on to the right, not the outside round it
+	if box.size.x * u < room.size.x - 2.0 * PAD:
+		_world.position.x = room.position.x + PAD - box.position.x * u
 	_open_sheet()
 	queue_redraw()
 	if Motion.reduce:
@@ -209,11 +213,10 @@ static func _fix_picker(sim: RefCounted) -> void:
 	sim.add_node(0, "a", "out", "pick")
 
 static func _fix_boxer(sim: RefCounted) -> void:
-	sim.set_move(1, "e", 4)
-	sim.set_move(1, "j", 4)
+	sim.set_move(1, "a", 2)
 
 static func _fix_shipper(sim: RefCounted) -> void:
-	sim.set_next(2, "d", "out", "e")
+	sim.set_next(2, "g", "out", "h")
 
 ## The tick the first box is sold on once the three faults are fixed.
 static func first_sale() -> int:
@@ -307,19 +310,16 @@ func _act() -> void:
 			_shows = _t > 0.4 and _t < 3.4
 			_press(1.5, 0)
 		Lesson.BOXER:
-			# the sheet slides from the down Move to the up one under the finger
-			_sheet.preview_slide("e", "j", smoothstep(0.9, 1.6, _t) if _t < 4.0 else 0.0)
 			if _t < EDIT:
-				_finger = _along([[0.3, _sheet_px(_sheet.node_rect("e").get_center()) + Vector2(60.0, 50.0)], [0.8, _sheet_px(_sheet.node_rect("e").get_center())],
-					[1.65, _sheet_px(_sheet.node_rect("j").get_center())]])
+				var move := _sheet_px(_sheet.node_rect("a").get_center())
+				_finger = _along([[0.3, move + Vector2(60.0, 50.0)], [1.2, move]])
 			_shows = _t > 0.3 and _t < 3.2
-			_press(0.8, 0)
-			_press(1.7, 1)
+			_press(1.5, 0)
 			_edit(func() -> void: _fix_boxer(_sim))
 		Lesson.SHIPPER:
 			if _t < EDIT:
-				var from := _sheet_px(_sheet.out_port("d"))
-				var to := _sheet_px(_sheet.in_port("e"))
+				var from := _sheet_px(_sheet.out_port("g"))
+				var to := _sheet_px(_sheet.in_port("h"))
 				_finger = _along([[0.3, from + Vector2(60.0, 50.0)], [0.8, from], [1.0, from], [1.9, to]])
 				_drag_from = from if _t >= 1.0 else Vector2.INF
 			else:
@@ -346,7 +346,7 @@ func _edit(change: Callable) -> void:
 
 func _draw_over() -> void:
 	if lesson == Lesson.BOXER and _t < 4.5:
-		_draw_ring(_floor_px(_life.mid(LITTER)))
+		_draw_ring(_floor_px(_life.mid(STACK)))
 	if lesson == Lesson.TURN and _t > TURN_RING.x and _t < TURN_RING.y:
 		_draw_ring(_floor_px(_life.robot_pos(0)))
 	if _drag_from != Vector2.INF:

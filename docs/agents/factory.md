@@ -1,14 +1,16 @@
 ## Factory, rewired (2026-10-20)
 
-**What stands.** One floor of 10 by 5 square tiles seen from above, a room
-with a back wall ("The room", 2026-10-22, below; it was 10 by 12 on open
-ground from 2026-10-21 to then), drawn
-with the land's pieces, under the top bar and the pills: down column 0
-the whole floor's height an intake belt that queues grey squares at its end
-(one a 10 ticks, six at most), up column 9 the deliver belt, and on the
-bottom row between them the intake pad, the pack table and the deliver pad
-that sells, with the charging bay and the stack of empty boxes four rows
-above, against the wall. Three robots stand on the bay, Robot 1, 2 and 3 (no job names), each
+**What stands.** One floor of 30 by 15 square tiles seen from above, a
+room with a back wall ("The big room", 2026-10-22 evening, below; it was 10
+by 5 that afternoon and 10 by 12 the day before), drawn with the land's
+pieces, under the top bar and the pills. The stations sit in its back left
+corner: down column 0 to row 5 an intake belt that queues grey squares at
+its end (one a 10 ticks, six at most) beside the intake pad, the pack
+table, the stack of empty boxes, the deliver pad that sells with the
+deliver belt up column 6 beside it, and the charging bay's three pads
+against the wall; the rest is open floor. **No two things share a tile**:
+a robot works a station from the tile it faces and waits behind anything
+in its way. Three robots stand each on its own pad, Robot 1, 2 and 3 (no job names), each
 a body with parts under it
 (Treads give Move, a Gripper gives Pick and Release, a Battery holds the
 charge) and a program: a chain of nodes wired from the body back to it,
@@ -99,6 +101,65 @@ still the Grove's `chop`. Haptics per `docs/agents/haptics.md`, row 62.
 Events `factory_fix`, `factory_milestone`, `factory_part` beside
 `factory_enter` / `factory_leave` (`docs/agents/analytics.md`). Unheard,
 unfelt: no phone, no ear.
+
+**The big room, one robot a tile (2026-10-22, evening).** The user, on the
+10 by 5 room: "on factory, make the grid bigger, we want at least 3x more
+cells in the column, it's too close right now. Also, bots should never fill
+the same cell of another bot, or boxes or things like that". Asked, they
+chose 30 by 15 (pans), "reach the tile ahead", "waits until it's free" and
+"three bay pads in a row". Spec section 3's fifth amendment and section
+4's. On local main; **the user has seen none of it.**
+- **The floor is 30 by 15** (`Sim.COLS`, `ROWS`), `VERSION` 9 (an 8 floor
+  quietly wiped). The stations are in the corner `Sim.WORK` (0, 0, 7, 6):
+  `BAYS` (1..3, 0), the charger over the middle one (`STATIONS.charger`,
+  `BAY` (2, 0)), stack (3, 2), table (2, 4), market (5, 4), intake pad
+  (1, 5). The drawn belts end at `INTAKE_END` (0, 5) and `DELIVER_BEND`
+  (6, 4) (`Sim.fixed_belt`; `Life._fixed`, `_doors`); nothing is laid or
+  let go on them. `WORK_ROW` 5 and `WORK_UP` 5 are kept as names only.
+- **One thing a tile** (`Sim.blocked`, `robot_on`; `Bots._move`, `_hand`,
+  `ahead`): a robot never steps onto a station but its own pad, a belt
+  (laid or drawn), a thing lying or another robot (its `tile` or the `was`
+  it is stepping off); the step waits with `...`, for no charge, tried
+  every tick. Pick and Release work the tile faced. `takes` refuses a robot's
+  tile, the pads, the stack, the intake pad and the drawn belts (a Release
+  there waits); `can_lay` refuses a robot's tile ("robot", not in the
+  screen's `QUIET`, so it is the tongue); `tile_free` (where spilled things
+  go) skips them all. A robot charges on its own `dock` only.
+- **The first loops** (`_stand_robots`): 1 [Move 4, Left, Release, Left,
+  Move 4, Right, Right] with no gripper (fix: fit it, Pick after `a`); 2
+  [Move 1 (short), Left, Pick, Right, Move 1, Release, Right, Right, Move 3,
+  Right, Right] (fix: `a` to 2); 3 [Left, Move 1, Right, Move 4, Right,
+  Move 1, Pick (loose after `g`), Left, Left, Move 1, Release, Left, Move 4,
+  Left, Move 1, Left] (fix: `g` to `h`). Lanes columns 1, 2 and 4 + (3, 4):
+  the fixed floor never waits (the probe counts 0 waits, 0 shared tiles
+  over 3000 ticks). Costs 14, 14, 22.
+- **Pace**: 280 a box on the pace bot (gaps 336, 224, 336), so
+  `MILESTONES` 340 and 170; all fast reads 193 (it no longer meets
+  milestone 2, so the probe's "stops at BUILT" no longer shows a met rate
+  held back).
+- **The view**: the room fits the height as before (about 62 px a tile);
+  with the sheet up `_fit_zoom` fits `work_bounds()` (the corner, not the
+  room: the room there would be ~19 px a tile), `_clamp_tiles` lets y run
+  from the wall's top to the kerb, and `_keep_in_view` puts the picked
+  robot in the strip's middle as it opens and whenever it walks out.
+  Stations stand `STATION_BACK` (0, 14), inside their own tile (was -24,
+  back, while robots stood in front). The wall's clock and windows at
+  `Life.CLOCK_AT`, `WINDOWS_AT`.
+- **The tutor**: pages frame `work_bounds()`, a page with a sheet pins the
+  corner to its left; the Boxer's page is one edit on `a` (no slide, the
+  stack ringed: `STACK`), the Shipper's wire `g` to `h`; words
+  `TUT_FACTORY_1/3/4_BODY` rewritten in all three languages (1 now says a
+  robot works from the tile beside).
+- **Measured** (810x1440, `opengl3_angle`, one windowed run each): probe
+  140/0; `_shot_factory.gd` 86 pass, 0 failed, at most 136 draw calls;
+  `_shot_factory_menu.gd` 0 failed, card 140, screen 71; suite 163161/0.
+- **Calls, unconfirmed**: belts are walls to robots (no walking over a
+  belt, so a belt line can fence a robot in); two robots walking into each
+  other wait for good (soft, visible, the player's to fix); the corner is
+  as tight as the old floor (stations a tile apart) with the open floor
+  for belts, rather than the stations spread over the room; the intake
+  belt no longer the floor's full height; the Picker's Pick now comes
+  before its first Turn, facing the intake below it.
 
 **The room (2026-10-22).** The user, on the 10 by 12 build: "redesign
 factory to be way more elegant, fit the board to the height and make the

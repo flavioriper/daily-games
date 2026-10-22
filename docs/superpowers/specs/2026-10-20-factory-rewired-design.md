@@ -245,12 +245,52 @@ considered); the room's width on screen (about 2.5 fields at 810x1440; a
 smaller tile would shrink the robots); the chevron on the floor; the lamp's
 breath; the windows and the clock.
 
+**Amended a fifth time 2026-10-22 evening (the big room, one robot a
+tile).** The user: "make the grid bigger, we want at least 3x more cells in
+the column, it's too close right now. Also, bots should never fill the same
+cell of another bot, or boxes or things like that"; asked, they chose 30 by
+15 (it pans), a robot working a station from the tile it faces, a blocked
+step that waits, and three charging pads. So: **the floor is 30 by 15**,
+fit to height as before (about 62 px a tile at 810x1440, some 13 columns
+in view); the first floor's stations sit in its back left corner
+(`Sim.WORK`, 7 by 6): the three pads on row 0 under the one charger, the
+stack at (3, 2), the table at (2, 4), the market at (5, 4), the intake pad
+at (1, 5) by the intake belt's end; the intake belt comes down column 0 to
+row 5 only, the deliver belt leaves the market's side up column 6 to the
+wall, and the rest of the room is open floor. With the sheet up the view
+fits that corner, not the room, and pans up and down to keep the picked
+robot in the strip; the tutor's pages frame the corner. Save `VERSION` 9.
+Section 4's "robots share tiles freely and never collide" is overturned:
+see its amendment.
+
 ## 4. Robots, parts, battery, bay
 
 A robot is `{name, dock, parts, nodes, next, pc, tile, held, charge, ...}`.
 All three docks are the bay. Robots share tiles freely and never collide
 (my call; it avoids every deadlock before the player has a way to
 coordinate robots).
+
+**Amended 2026-10-22 evening (one robot a tile).** Each robot has its own
+dock, one of the bay's three pads (`Sim.BAYS`), and charges only there. A
+robot never stands on a station (but its own pad), a belt (laid or drawn),
+a thing lying on the floor or another robot (its tile, or the one it is
+stepping off): `Sim.blocked`. A Pick and a Release work the tile the robot
+faces (`Bots.ahead`), never the one it stands on, so every station is
+worked from beside it. A step onto a tile taken waits with the `...`
+bubble, for no charge, and is tried again every tick; two robots walking
+into each other wait for good, which is soft and visible (the anti-goal
+stands as "no crash, nothing hidden"), and is the player's to fix. A belt
+is never laid under a robot (`refused` "robot") and nothing is let go onto
+one. The first floor's three loops each walk a lane of their own and never
+wait on one another once fixed: the Picker down column 1 to face the
+intake, then the table on its right; the Boxer down column 2 to face the
+stack, then the table below it; the Shipper round by column 4 to the
+table's right, then the market. Their faults: the Picker has no gripper
+and no Pick (fix: fit it, Pick after the first Move); the Boxer's first
+Move is 1, a tile short of the stack (fix: 2); the Shipper's wire after
+its Pick is loose (fix: wire it to the Turn after it). Loops cost 14, 14
+and 22 of 30. The pace bot reads 280 ticks a box (gaps 336, 224, 336), so
+milestone 1 is 340 and 2 is 170 (the all fast floor reads 193).
 
 Parts are a list of ids fitted under the body. The first build's parts:
 

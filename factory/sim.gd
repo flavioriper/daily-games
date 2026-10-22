@@ -1,8 +1,9 @@
 extends RefCounted
 
-## Factory, as pure data: a top-down floor of ten by twelve tiles with five
-## stations on it (an intake that queues grey squares, a stack of empty
-## boxes, a pack table, a deliver pad that sells, a charging bay), the items
+## Factory, as pure data: a top-down floor of thirty by fifteen tiles with
+## its stations in the back left corner (an intake that queues grey squares,
+## a stack of empty boxes, a pack table, a deliver pad that sells, a charging
+## bay of three pads), the items
 ## that lie on it or ride its belts, and the belts the player lays. Nothing
 ## here draws, reads the clock or touches a node: whoever holds it (the
 ## screen, the tab's card, the probe) steps it, drains `events` and draws
@@ -18,10 +19,10 @@ extends RefCounted
 ## on screen; the floor is COLS x ROWS. A facing is an int 0..3 = +x, +y, -x,
 ## -y (`DIRS`); a quarter clockwise is (f + 1) % 4. Positions handed out as
 ## Vector2 are in tile units, a tile's middle at tile + (0.5, 0.5). Column 0
-## is drawn as the intake belt (its end beside the intake pad on the bottom
-## row) and column 9 as the deliver belt: the view's,
+## down to INTAKE_END is drawn as the intake belt (its end beside the intake
+## pad) and DELIVER_BEND's column up from it as the deliver belt: the view's,
 ## not belts the sim moves things along (the intake is a queue, the deliver
-## pad a sale).
+## pad a sale); `fixed_belt` says which tiles they take.
 ##
 ## Holding it.
 ##   Sim.new(seed)            a new floor (the same as new_floor(seed))
@@ -63,11 +64,15 @@ extends RefCounted
 ##   feed_on: bool            a harness's switch to starve the intake; not kept
 ##
 ## The floor.
-##   stations: Dictionary     tile -> "charger" | "intake" | "stack" |
-##                            "table" | "deliver" (STATIONS turned round)
+##   stations: Dictionary     tile -> "charger" (each of BAYS) | "intake" |
+##                            "stack" | "table" | "deliver"
 ##   station_at(tile) -> String          "" on open floor
 ##   on_floor(tile) -> bool   inside COLS x ROWS
-##   tile_free(tile) -> bool  open floor: on it, no station, no belt
+##   tile_free(tile) -> bool  open floor: on it, no station, no belt (laid
+##                            or drawn), no robot
+##   robot_on(tile) -> int    the robot on it or stepping off it, -1 none
+##   blocked(tile, b) -> bool robot b may not step there: a station but its
+##                            own pad, a belt, a thing lying, another robot
 ##   queue: int               squares waiting at the intake pad, QUEUE_MOST
 ##                            at most, one more every FEED_TICKS
 ##   table: Dictionary        {} or the box on the pack table
@@ -87,7 +92,7 @@ extends RefCounted
 ##   item_pos(tile, item) -> Vector2    where to draw it now (uses `alpha`)
 ##   front_of_tile(tile) -> Dictionary  a belt's front item, {} for none
 ##
-## A hand (a robot's Pick and Release; a harness's).
+## A hand (a robot's Pick and Release, on the tile it faces; a harness's).
 ##   gives(tile) -> Dictionary          what a Pick would take now, {} for
 ##                            nothing: the intake's next square while
 ##                            `queue` > 0, a new empty box at the stack, the
@@ -97,13 +102,13 @@ extends RefCounted
 ##   takes(tile, item) -> bool          would a Release land: the table an
 ##                            empty box when bare, a square while its box has
 ##                            room; the deliver pad anything; a belt with room
-##                            at its back; anywhere else on the floor anything
+##                            at its back; open floor no robot is on anything
 ##   put(tile, item) -> bool            does it: the table's rule, the
 ##                            deliver pad's sale, onto a belt, else it lies
 ##
 ## A robot is a Dictionary (its rules are factory/bots.gd's, `Bots`):
 ##   name                     the chip's
-##   dock, tile, was: Vector2i          the bay; where it stands; the tile it
+##   dock, tile, was: Vector2i          its pad on the bay; where it stands; the tile it
 ##                            stepped from: mid-step while `was != tile`,
 ##                            `Bots.pos(b, alpha)` says where to draw it
 ##   facing: int              the way it faces, a Move's way; HOME_FACING on
@@ -139,7 +144,7 @@ extends RefCounted
 ## Acting. Each returns whether it did anything; when it did not it pushes
 ## {type "refused", why, tile}.
 ##   can_lay(tile)            fits a belt (coins not looked at): on the
-##                            floor, never on a station nor in column 0 or 9
+##                            floor, never on a station, a drawn belt or a robot
 ##   lay_belt(tile, facing, kind)       "belt" 1 coin, "fast" 4, "bridge" 25;
 ##                            on a belt of that kind already there it only
 ##                            re-faces
@@ -176,27 +181,42 @@ const TICK := 0.1
 ## The longest frame a holder steps by: a longer one is a hitch, not play.
 const STEP_MOST := 0.25
 const EPS := 0.000001
-const VERSION := 8
+const VERSION := 9
 
-const COLS := 10
-const ROWS := 5
+const COLS := 30
+const ROWS := 15
 const DIRS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)]
 const NONE := Vector2i(-99999, -99999)
 
-## The floor's stations, each one tile: the work row is the floor's bottom
-## row, where the intake belt ends and the deliver belt sets off up column
-## 9, and the bay and the stack stand WORK_UP rows above it, so every
-## program's Moves (and the tutor's "Move ↓ 4") are the ones they were on
-## the 10 by 8 floor. Since 2026-10-22 (the room) the floor is 10 by 5: the
-## rows the loops walk and no more, the bay and the stack against the back
-## wall, the pads along the front (the user: "fit the board to the height
-## and make the width wider"). VERSION 8; a 7 floor is quietly wiped.
-const WORK_ROW := ROWS - 1
-const WORK_UP := 4
-const STATIONS := {"charger": Vector2i(1, WORK_ROW - WORK_UP), "intake": Vector2i(1, WORK_ROW),
-	"stack": Vector2i(4, WORK_ROW - WORK_UP), "table": Vector2i(4, WORK_ROW), "deliver": Vector2i(8, WORK_ROW)}
-## The charging bay: the one place a robot charges.
-const BAY := Vector2i(1, WORK_ROW - WORK_UP)
+## The floor's stations, each one tile. Since 2026-10-22 evening the room is
+## 30 by 15 (the user: "make the grid bigger, we want at least 3x more cells
+## in the column, it's too close right now"); the first floor's stations and
+## the loops that work them sit in its back left corner (`WORK`), the bay's
+## three pads against the back wall, and the rest of the room is open floor
+## for belts. A robot never stands on a station, a belt, a thing lying on
+## the floor or another robot (the user, same day: "bots should never fill
+## the same cell of another bot, or boxes or things like that"): it works a
+## station from the tile beside it, facing it. The intake belt comes in down
+## column 0 to the intake pad's side (`INTAKE_END`); the deliver belt leaves
+## the market's side (`DELIVER_BEND`) up its column. VERSION 9; an 8 floor is
+## quietly wiped.
+const WORK_ROW := 5
+const WORK_UP := 5
+## Each robot's own pad on the bay, its dock, side by side under the one
+## charger on the wall over the middle one (`STATIONS.charger`).
+const BAYS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(2, 0), Vector2i(3, 0)]
+const STATIONS := {"charger": Vector2i(2, 0), "intake": Vector2i(1, WORK_ROW),
+	"stack": Vector2i(3, 2), "table": Vector2i(2, 4), "deliver": Vector2i(5, 4)}
+## The middle pad, where the charger hangs.
+const BAY := Vector2i(2, 0)
+## The drawn belts' ends: the intake's last tile (its queue waits there,
+## beside the intake pad) and the deliver belt's bend beside the market.
+const INTAKE_END := Vector2i(0, WORK_ROW)
+const DELIVER_BEND := Vector2i(6, 4)
+## The corner the first floor takes, in tiles: the stations, the drawn belts
+## and the three loops (the view's to frame on a tutor's page and over the
+## program sheet).
+const WORK := Rect2i(0, 0, 7, 6)
 ## The intake: squares it holds queued at most, and the ticks between two.
 const QUEUE_MOST := 6
 const FEED_TICKS := 10
@@ -218,12 +238,14 @@ const ITEM_KINDS := ["square", "box"]
 ## The rates are read off the pace bot (tests/_probe_factory.gd, `_check_pace`:
 ## the three fixes of the first session on a new floor): 2026-10-20 it read a
 ## full box every 366 ticks (36.6 s), steady to the tick; 2026-10-21, with the
-## Turn node's corners in every loop, 426 (42.6 s). Milestone 1 is that plus
-## 20 % rounded to 10 ticks (510, 51 s; it was 440); milestone 2 is half of
-## it (255).
+## Turn node's corners in every loop, 426 (42.6 s); 2026-10-22 evening, on
+## the 30 by 15 room with each station worked from beside it, 280 (gaps of
+## 336, 224, 336 over and over). Milestone 1 is that plus 20 % rounded to 10
+## ticks (340, 34 s; it was 510); milestone 2 is half of it (170: the all
+## fast floor reads 193 and does not meet it).
 const WINDOW := 600
 const HOLD := 600
-const MILESTONES := [{"id": "line", "every": 0}, {"id": "belts", "every": 510}, {"id": "again", "every": 255}]
+const MILESTONES := [{"id": "line", "every": 0}, {"id": "belts", "every": 340}, {"id": "again", "every": 170}]
 ## The last milestone this build fills: "again" keeps its row for the save
 ## but nothing is behind it yet, so the pace never opens it.
 const BUILT := 1
@@ -361,32 +383,37 @@ func new_floor(with_seed: int) -> void:
 	_stand_robots()
 	dirty = true
 
-## The three robots of the first session (spec 8), each with a fault: the
-## first (it picks squares) has no gripper (it lies in the bin), the
-## second's (it boxes) down Move stops a tile short of the table, the
-## third's (it ships) wire after its Pick is loose. They are one body with
-## other parts and programs, named by their place, not a job. Each sets
-## off facing down and walks a ring that ends facing down again: the first
-## and third turn left at every corner, the second, stack before table,
-## right, and twice more on the bay.
+## The three robots of the first session (spec 8), each on its own pad and
+## with a fault: the first (it picks squares) has no gripper (it lies in the
+## bin) and no Pick, the second's (it boxes) first Move stops a tile short
+## of the stack, the third's (it ships) wire after its Pick is loose. They
+## are one body with other parts and programs, named by their place, not a
+## job. Each sets off facing down and walks a lane of its own that ends
+## facing down again, and works each station from beside it: the first
+## down column 1 to face the intake, then the table to its right; the
+## second down column 2 to face the stack, then the table below; the third
+## round by column 4 to the table's right side, then the market. No lane
+## crosses another, so the fixed floor never waits on itself.
 func _stand_robots() -> void:
 	robots = [
-		Bots.new_robot("1", ["treads", "battery"],
-			[["move", 4], ["turn", LEFT], ["move", 3], ["release"], ["turn", LEFT], ["move", 4], ["turn", LEFT],
-				["move", 3], ["turn", LEFT]]),
-		Bots.new_robot("2", ["treads", "gripper", "battery"],
-			[["turn", LEFT], ["move", 3], ["pick"], ["turn", RIGHT], ["move", 3], ["release"], ["turn", RIGHT],
-				["move", 3], ["turn", RIGHT], ["move", 3], ["turn", RIGHT], ["turn", RIGHT]]),
-		Bots.new_robot("3", ["treads", "gripper", "battery"],
-			[["move", 4], ["turn", LEFT], ["move", 3], ["pick"], ["move", 4], ["release"], ["turn", LEFT],
-				["move", 4], ["turn", LEFT], ["move", 7], ["turn", LEFT]]),
+		Bots.new_robot("1", BAYS[0], ["treads", "battery"],
+			[["move", 4], ["turn", LEFT], ["release"], ["turn", LEFT], ["move", 4], ["turn", RIGHT], ["turn", RIGHT]]),
+		Bots.new_robot("2", BAYS[1], ["treads", "gripper", "battery"],
+			[["move", 1], ["turn", LEFT], ["pick"], ["turn", RIGHT], ["move", 1], ["release"], ["turn", RIGHT],
+				["turn", RIGHT], ["move", 3], ["turn", RIGHT], ["turn", RIGHT]]),
+		Bots.new_robot("3", BAYS[2], ["treads", "gripper", "battery"],
+			[["turn", LEFT], ["move", 1], ["turn", RIGHT], ["move", 4], ["turn", RIGHT], ["move", 1], ["pick"],
+				["turn", LEFT], ["turn", LEFT], ["move", 1], ["release"], ["turn", LEFT], ["move", 4], ["turn", LEFT],
+				["move", 1], ["turn", LEFT]]),
 	]
-	Bots.loose_after(robots[2], "d")
+	Bots.loose_after(robots[2], "g")
 
 func _stand_stations() -> void:
 	stations = {}
 	for kind: String in STATIONS:
 		stations[STATIONS[kind]] = kind
+	for pad: Vector2i in BAYS:
+		stations[pad] = "charger"
 
 func station_at(tile: Vector2i) -> String:
 	return String(stations.get(tile, ""))
@@ -394,9 +421,34 @@ func station_at(tile: Vector2i) -> String:
 func on_floor(tile: Vector2i) -> bool:
 	return tile.x >= 0 and tile.x < COLS and tile.y >= 0 and tile.y < ROWS
 
-## Open floor: on it, no station, no belt.
+## Open floor: on it, no station, no belt, no drawn belt, no robot.
 func tile_free(tile: Vector2i) -> bool:
-	return on_floor(tile) and not stations.has(tile) and not belts.has(tile)
+	return on_floor(tile) and not stations.has(tile) and not belts.has(tile) and not fixed_belt(tile) and robot_on(tile) < 0
+
+## Whether `tile` is under one of the two drawn belts: the intake down
+## column 0 to INTAKE_END, the deliver belt up from DELIVER_BEND.
+func fixed_belt(tile: Vector2i) -> bool:
+	return (tile.x == INTAKE_END.x and tile.y <= INTAKE_END.y) or (tile.x == DELIVER_BEND.x and tile.y <= DELIVER_BEND.y)
+
+## The robot standing on `tile` or stepping off it, -1 for none.
+func robot_on(tile: Vector2i) -> int:
+	for i in robots.size():
+		var b: Dictionary = robots[i]
+		if b.tile == tile or b.was == tile:
+			return i
+	return -1
+
+## Whether robot `b` may step onto `tile`: never onto a station but its own
+## pad, a belt (laid or drawn), a thing lying there or another robot.
+func blocked(tile: Vector2i, b: Dictionary) -> bool:
+	if stations.has(tile) and tile != b.dock:
+		return true
+	if belts.has(tile) or fixed_belt(tile):
+		return true
+	if not (items.get(tile, []) as Array).is_empty():
+		return true
+	var r := robot_on(tile)
+	return r >= 0 and not is_same(robots[r], b)
 
 ## Every belt kind (belt, fast belt, bridge) opens together at milestone 1.
 func unlocked(kind: String) -> bool:
@@ -478,7 +530,8 @@ func takes(tile: Vector2i, it: Dictionary) -> bool:
 			return true
 	if belts.has(tile):
 		return _belt_room(tile) >= 0.0
-	return true
+	# never onto a robot, nor onto the bay's pads or the stack
+	return robot_on(tile) < 0 and not stations.has(tile) and not fixed_belt(tile)
 
 ## Does the Release: the table sets an empty box down or packs a square into
 ## its box, the deliver pad sells, a belt carries it on, anywhere else it
@@ -539,9 +592,12 @@ func _lay_why(tile: Vector2i) -> String:
 		return "off"
 	if stations.has(tile):
 		return "station"
-	# the drawn intake and deliver belts (robots still walk there)
-	if tile.x == 0 or tile.x == COLS - 1:
+	# the drawn intake and deliver belts
+	if fixed_belt(tile):
 		return "edge"
+	# never under a robot
+	if robot_on(tile) >= 0:
+		return "robot"
 	return ""
 
 ## The kind of the belt on `tile`: "belt", "fast", "bridge"; "" for none.

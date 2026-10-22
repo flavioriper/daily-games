@@ -13,7 +13,12 @@ extends RefCounted
 ## (into the tile being stepped, for a Move) and `left` the tiles a Move has
 ## still to walk (-1 while it bumps). A Move walks the way the robot faces;
 ## a Turn turns it a quarter, right or left, in ACT_TICKS and a unit, and
-## the facing is kept when the loop comes round again.
+## the facing is kept when the loop comes round again. A Pick and a Release
+## work the tile it faces, never the one it stands on, and a step onto a
+## tile it may not share (`Sim.blocked`: a station, a belt, a thing lying, a
+## robot) waits with a `...` until it is free, for no charge (the user,
+## 2026-10-22: "bots should never fill the same cell of another bot, or
+## boxes or things like that").
 ##
 ## The floor between ticks: a step begins the tick `tile` moves on, with
 ## `was` the tile it left, and lasts `step_ticks` ticks; while `was != tile`
@@ -27,13 +32,13 @@ const Sim = preload("res://factory/sim.gd")
 ## The ticks a bubble is shown for; one not here is held until cleared.
 const BUBBLE_TICKS := {"wait": 4, "!": 9}
 
-## A new robot on the bay facing HOME_FACING with `parts` fitted, a full
-## cell and `chain` as its program: rows of ["move", n], ["turn", way]
+## A new robot on its pad `dock` facing HOME_FACING with `parts` fitted, a
+## full cell and `chain` as its program: rows of ["move", n], ["turn", way]
 ## (Sim.RIGHT or Sim.LEFT), ["pick"] or ["release"], given the ids "a", "b",
 ## ... in order and wired body -> a -> b -> ... -> body.
-static func new_robot(name: String, parts: Array, chain: Array) -> Dictionary:
+static func new_robot(name: String, dock: Vector2i, parts: Array, chain: Array) -> Dictionary:
 	var b := {
-		"name": name, "dock": Sim.BAY, "tile": Sim.BAY, "was": Sim.BAY, "facing": Sim.HOME_FACING, "parts": parts.duplicate(),
+		"name": name, "dock": dock, "tile": dock, "was": dock, "facing": Sim.HOME_FACING, "parts": parts.duplicate(),
 		"nodes": {}, "order": [], "next": {Sim.BODY: {"out": Sim.BODY}}, "pc": Sim.BODY, "t": 0, "left": 0,
 		"held": {}, "charge": 0, "charging": false, "stuck": "", "bubble": "", "bubble_t": 0, "counters": {},
 	}
@@ -215,11 +220,11 @@ static func tick(sim: RefCounted, b: Dictionary) -> void:
 	else:
 		_hand(sim, b, node.kind)
 
-## At the body: on the bay and short of a full cell it charges, `rate` a
+## At the body: on its pad and short of a full cell it charges, `rate` a
 ## tick; else the body's BODY_TICKS and on.
 static func _body(sim: RefCounted, b: Dictionary) -> void:
 	var full := cell(b)
-	if b.tile == Sim.BAY and int(b.charge) < full and b.t == 0:
+	if b.tile == b.dock and int(b.charge) < full and b.t == 0:
 		if not b.charging:
 			b.charging = true
 			sim.events.append({"type": "charging", "robot": _index(sim, b), "units": full - int(b.charge)})
@@ -234,16 +239,26 @@ static func _body(sim: RefCounted, b: Dictionary) -> void:
 		_advance(sim, b)
 
 ## A Move: a tile every `step_ticks`, a unit a tile; a step off the floor is
-## a bump, ACT_TICKS and a unit, and the rest of the Move is dropped.
+## a bump, ACT_TICKS and a unit, and the rest of the Move is dropped; a step
+## onto a tile taken waits, `...` over it and no unit spent, and is tried
+## again every tick.
 static func _move(sim: RefCounted, b: Dictionary) -> void:
 	if b.t == 0:
 		if int(b.left) == 0:
 			_advance(sim, b)
 			return
-		if not _spend(sim, b):
-			return
 		var to: Vector2i = b.tile + Sim.DIRS[int(b.facing)]
 		var i := _index(sim, b)
+		if sim.on_floor(to) and sim.blocked(to, b):
+			if b.bubble != "wait":
+				sim.events.append({"type": "wait", "robot": i})
+			_say(b, "wait")
+			return
+		if not _spend(sim, b):
+			return
+		if b.bubble == "wait":
+			b.bubble = ""
+			b.bubble_t = 0
 		if not sim.on_floor(to):
 			b.left = -1
 			sim.events.append({"type": "bump", "robot": i, "tile": b.tile})
@@ -275,7 +290,8 @@ static func _turn(sim: RefCounted, b: Dictionary, node: Dictionary) -> void:
 	sim.events.append({"type": "pivot", "robot": _index(sim, b), "facing": b.facing})
 	_advance(sim, b)
 
-## A Pick or a Release: ACT_TICKS, then the hand. A Pick costs its unit as it
+## A Pick or a Release: ACT_TICKS, then the hand, on the tile the robot
+## faces (`ahead`). A Pick costs its unit as it
 ## begins and takes nothing into a full hand; a Release costs its unit only
 ## when it lands, and one the tile will not take waits (`...`, no cost) and
 ## is tried again every tick. With nothing held a Release does nothing, for
@@ -292,28 +308,29 @@ static func _hand(sim: RefCounted, b: Dictionary, kind: String) -> void:
 		if b.t < Sim.ACT_TICKS:
 			return
 	var i := _index(sim, b)
+	var at := ahead(b)
 	if kind == "pick":
-		var it: Dictionary = {} if not b.held.is_empty() else sim.take(b.tile)
+		var it: Dictionary = {} if not b.held.is_empty() else sim.take(at)
 		if not it.is_empty():
 			b.held = it
-		sim.events.append({"type": "pick", "robot": i, "tile": b.tile, "kind": String(it.get("kind", ""))})
+		sim.events.append({"type": "pick", "robot": i, "tile": at, "kind": String(it.get("kind", ""))})
 		_advance(sim, b)
 		return
 	var held: Dictionary = b.held
 	if not held.is_empty():
-		if not sim.takes(b.tile, held):
+		if not sim.takes(at, held):
 			if b.bubble != "wait":
 				sim.events.append({"type": "wait", "robot": i})
 			_say(b, "wait")
 			return
 		held.was = Vector2(b.tile) + Vector2(0.5, 0.5)
-		sim.put(b.tile, held)
+		sim.put(at, held)
 		b.held = {}
 	b.charge = int(b.charge) - 1
 	if b.bubble == "wait":
 		b.bubble = ""
 		b.bubble_t = 0
-	sim.events.append({"type": "release", "robot": i, "tile": b.tile, "kind": String(held.get("kind", ""))})
+	sim.events.append({"type": "release", "robot": i, "tile": at, "kind": String(held.get("kind", ""))})
 	_advance(sim, b)
 
 ## A node whose part is not fitted: skipped with a `!`, ACT_TICKS, a unit.
@@ -326,6 +343,10 @@ static func _skip(sim: RefCounted, b: Dictionary) -> void:
 	b.t = int(b.t) + 1
 	if b.t >= Sim.ACT_TICKS:
 		_advance(sim, b)
+
+## The tile it faces: where its hand works.
+static func ahead(b: Dictionary) -> Vector2i:
+	return b.tile + Sim.DIRS[int(b.facing)]
 
 ## The wire out of the node done: on to the next, back to the body, or a `?`
 ## where it is loose.

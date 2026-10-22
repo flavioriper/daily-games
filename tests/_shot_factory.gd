@@ -17,13 +17,13 @@ extends SceneTree
 ## sliding through a step and its last tick without a stop at the tile, the
 ## floor shot and its draw calls held under the budget, the Shipper's "?"
 ## batched over it; then things lying, a box on the floor, a belt from the
-## intake pad to the table with a square on it, shot again.
+## open floor with a square on it, shot again.
 ##
 ## The screen (factory/screen.gd built by hand on a new floor, the field's
 ## mouse off so the real pointer cannot reach it): no chips and no zoom, the room as tall as the
 ## field under the pills and wider than it, a dot on each robot with a fault a rule
 ## sees, a robot tapped, the pace pill blank, the drawer empty
-## before milestone 1, then a belt traced from the intake pad to the table,
+## before milestone 1, then a belt traced on open floor,
 ## shot and its draw calls held under the budget.
 ##
 ## The sheet (factory/sheet.gd on a new floor's screen, its mouse off as the
@@ -304,13 +304,13 @@ func _floor() -> void:
 	# belt from the intake pad to the table with a square riding it
 	_sim.no_cost = true
 	_sim.milestone = 1
-	var laid: bool = _sim.lay_belt(Vector2i(2, 4), 0) and _sim.lay_belt(Vector2i(3, 4), 0)
-	laid = _sim.lay_belt(Vector2i(6, 2), 1) and _sim.lay_belt(Vector2i(6, 3), 0) and _sim.lay_belt(Vector2i(7, 3), 0) and laid
-	_sim.put(Vector2i(2, 4), {"id": 9001, "kind": "square", "at": 0.5, "from": -1, "was": Vector2.INF})
-	_sim.put(Vector2i(6, 1), {"id": 9002, "kind": "box", "n": 3, "at": 0.5, "from": -1, "was": Vector2.INF})
-	_sim.put(Vector2i(2, 1), {"id": 9003, "kind": "square", "at": 0.5, "from": -1, "was": Vector2.INF})
-	_sim.put(Vector2i(2, 1), {"id": 9004, "kind": "square", "at": 0.5, "from": -1, "was": Vector2.INF})
-	_sim.put(Vector2i(6, 2), {"id": 9005, "kind": "box", "n": 1, "at": 0.5, "from": -1, "was": Vector2.INF})
+	var laid: bool = _sim.lay_belt(Vector2i(8, 8), 0) and _sim.lay_belt(Vector2i(9, 8), 0)
+	laid = _sim.lay_belt(Vector2i(12, 2), 1) and _sim.lay_belt(Vector2i(12, 3), 0) and _sim.lay_belt(Vector2i(13, 3), 0) and laid
+	_sim.put(Vector2i(8, 8), {"id": 9001, "kind": "square", "at": 0.5, "from": -1, "was": Vector2.INF})
+	_sim.put(Vector2i(12, 1), {"id": 9002, "kind": "box", "n": 3, "at": 0.5, "from": -1, "was": Vector2.INF})
+	_sim.put(Vector2i(10, 1), {"id": 9003, "kind": "square", "at": 0.5, "from": -1, "was": Vector2.INF})
+	_sim.put(Vector2i(10, 1), {"id": 9004, "kind": "square", "at": 0.5, "from": -1, "was": Vector2.INF})
+	_sim.put(Vector2i(12, 2), {"id": 9005, "kind": "box", "n": 1, "at": 0.5, "from": -1, "was": Vector2.INF})
 	_ticks(6)
 	await _frames(2)
 	var lying: int = _life._squares.n
@@ -365,7 +365,7 @@ func _screen_part() -> void:
 	_ok("the sheet goes down, the view back on the floor's foot", not _screen.sheet.is_open()
 		and absf(_screen.to_field(_screen.life.bounds().end).y - _screen.field.size.y) < 40.0)
 	_ok("pace pill reads none", _screen.pace_text() == tr("FACTORY_PACE_NONE"), _screen.pace_text())
-	_ok("pace pill says what milestone 1 asks", _screen._next_l.visible and _screen._next_l.text == tr("FACTORY_PACE_NEXT") % "51", _screen._next_l.text)
+	_ok("pace pill says what milestone 1 asks", _screen._next_l.visible and _screen._next_l.text == tr("FACTORY_PACE_NEXT") % "34", _screen._next_l.text)
 	var shown := 0
 	for kind: String in _screen.DRAWER_TILES:
 		if (_screen._tiles[kind].button as Control).visible:
@@ -380,8 +380,8 @@ func _screen_part() -> void:
 	_ok("the milestone's name on the pace pill", _screen._next_l.visible and _screen._next_l.text == tr("FACTORY_MILESTONE_BELTS"), _screen._next_l.text)
 	_screen.pick("belt")
 	await _frames(2)
-	await _drag([_screen.screen_of(Vector2(2.5, 4.5)), _screen.screen_of(Vector2(3.5, 4.5))])
-	_ok("belt traced", int(_sim.belts.get(Vector2i(2, 4), -1)) == 0 and int(_sim.belts.get(Vector2i(3, 4), -1)) == 0
+	await _drag([_screen.screen_of(Vector2(8.5, 8.5)), _screen.screen_of(Vector2(9.5, 8.5))])
+	_ok("belt traced", int(_sim.belts.get(Vector2i(8, 8), -1)) == 0 and int(_sim.belts.get(Vector2i(9, 8), -1)) == 0
 		and _sim.belts.size() == 2 and _sim.coins == 8, "%s, %d coins" % [_sim.belts, _sim.coins])
 	_screen.pick("")
 	await _frames(4)
@@ -442,23 +442,23 @@ func _sheet_part() -> void:
 	_ok("the shipper's sheet", sheet.robot == 2 and _screen.selected == 2)
 	draws = await _shot("sheet_open")
 	_ok("under budget", draws > 0 and draws < BUDGET, str(draws))
-	await _sheet_drag(sheet.out_port("d"), sheet.node_rect("e").get_center())
-	_ok("wire dragged", robots[2].next["d"].out == "e" and Bots.walk(robots[2]).closed, str(robots[2].next["d"]))
-	# e already goes to f: the tap-tap wires it past f to g, and back; the
+	await _sheet_drag(sheet.out_port("g"), sheet.node_rect("h").get_center())
+	_ok("wire dragged", robots[2].next["g"].out == "h" and Bots.walk(robots[2]).closed, str(robots[2].next["g"]))
+	# h already goes to i: the tap-tap wires it past i to j, and back; the
 	# second tap lands on the target's right side, by its own dot
-	await _sheet_tap(sheet.out_port("e"))
-	_ok("a tap arms the dot", sheet._armed == "e")
-	await _sheet_tap(sheet.node_rect("g").get_center())
-	_ok("tap-tap wires", robots[2].next["e"].out == "g" and sheet._armed == "", str(robots[2].next["e"]))
-	await _sheet_tap(sheet.out_port("e"))
-	var right: Rect2 = sheet.node_rect("f")
+	await _sheet_tap(sheet.out_port("h"))
+	_ok("a tap arms the dot", sheet._armed == "h")
+	await _sheet_tap(sheet.node_rect("j").get_center())
+	_ok("tap-tap wires", robots[2].next["h"].out == "j" and sheet._armed == "", str(robots[2].next["h"]))
+	await _sheet_tap(sheet.out_port("h"))
+	var right: Rect2 = sheet.node_rect("i")
 	await _sheet_tap(Vector2(right.end.x - 14.0, right.get_center().y))
-	_ok("tap-tap onto the target's right side wires", robots[2].next["e"].out == "f" and sheet._armed == "", str(robots[2].next["e"]))
+	_ok("tap-tap onto the target's right side wires", robots[2].next["h"].out == "i" and sheet._armed == "", str(robots[2].next["h"]))
 	# unarmed, a tap on a box's right quarter picks the box (the wire moved
 	# the boxes: read it again)
-	right = sheet.node_rect("f")
+	right = sheet.node_rect("i")
 	await _sheet_tap(Vector2(right.end.x - 38.0, right.get_center().y))
-	_ok("a box's right side picks it", sheet._sel == "f" and sheet._armed == "", "sel %s armed %s" % [sheet._sel, sheet._armed])
+	_ok("a box's right side picks it", sheet._sel == "i" and sheet._armed == "", "sel %s armed %s" % [sheet._sel, sheet._armed])
 	await _sheet_tap(Vector2(sheet.size.x * 0.5, sheet.size.y - 260.0))
 	draws = await _shot("sheet_wired")
 	_ok("under budget wired", draws > 0 and draws < BUDGET, str(draws))
@@ -560,15 +560,15 @@ func _tutor_run(reduce: bool) -> void:
 			0:
 				_ok("power: three robots out, the Shipper at its \"?\"", sim.robots[2].stuck == "?" or sim.tick_n < 30, "tick %d" % sim.tick_n)
 			1:
-				_ok("picker: gripper fitted and a pick inserted", sim.robots[0].parts.has("gripper") and Bots.walk(sim.robots[0]).ids.size() > 9, str(sim.robots[0].parts))
+				_ok("picker: gripper fitted and a pick inserted", sim.robots[0].parts.has("gripper") and Bots.walk(sim.robots[0]).ids.size() > 7, str(sim.robots[0].parts))
 			2:
-				_ok("boxer: both vertical moves 4", int(sim.robots[1].nodes["e"].n) == 4 and int(sim.robots[1].nodes["j"].n) == 4)
+				_ok("boxer: its first Move 2", int(sim.robots[1].nodes["a"].n) == 2)
 			3:
-				_ok("shipper: the wire lands", sim.robots[2].next["d"].out == "e")
+				_ok("shipper: the wire lands", sim.robots[2].next["g"].out == "h")
 			4:
 				_ok("box: the first sale", int(sim.earned) >= Sim.PAY_FULL and int(sim.coins) >= Sim.PAY_FULL, "earned %d" % sim.earned)
 			6:
-				_ok("turn: the Picker turning at the intake, the finger on its Turn", sim.robots[0].pc == "b" and sim.robots[0].tile == Vector2i(1, Sim.WORK_ROW)
+				_ok("turn: the Picker turning at the intake, the finger on its Turn", sim.robots[0].pc == "b" and sim.robots[0].tile == Sim.STATIONS.intake + Vector2i(0, -1)
 					and d._finger.distance_to(d._sheet_px(d._sheet.node_rect("b").get_center())) < 2.0, "pc %s tile %s" % [sim.robots[0].pc, sim.robots[0].tile])
 			5:
 				_ok("spend: a Fast plug bought", sim.robots[0].parts.has("plug") and int(sim.coins) == Diagram.SPEND_COINS - 40, "coins %d" % sim.coins)

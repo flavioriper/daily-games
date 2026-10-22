@@ -85,10 +85,12 @@ const SPREAD := 0.36
 const SHARED := [1.0, 0.88, 0.76]
 const SEAT_RATE := 12.0
 const SEAT_FORE := Vector2(0.0, 22.0)
-## A station's piece is drawn STATION_K as big and STATION_BACK toward the
-## back of its tile, so a robot standing on the tile stands in front of it.
+## A station's piece is drawn STATION_K as big, its foot STATION_BACK off
+## its tile's middle: a little toward the front, so the piece stands inside
+## its own tile (no robot stands on a station since 2026-10-22, evening; it
+## was 24 toward the back while robots stood in front of it).
 const STATION_K := 0.82
-const STATION_BACK := Vector2(0.0, -24.0)
+const STATION_BACK := Vector2(0.0, 14.0)
 ## The charger hangs on the back wall over the bay (the room, 2026-10-22):
 ## its origin is the wall's foot under the bay's middle, and the robots
 ## charging stand on the pad under it, side by side as on any station.
@@ -127,6 +129,10 @@ const DROPS := 4
 ## The charger's lamp: lit while a robot charges on the bay, breathing at
 ## LAMP_RATE a second; off otherwise.
 const LAMP_RATE := 1.2
+## Along the back wall past the corner the robots work in, in tiles: the
+## clock, and the windows in pairs either side of it and one pair on.
+const CLOCK_AT := 15.0
+const WINDOWS_AT := [10.0, 12.5, 17.5, 20.0, 24.5, 27.0]
 
 ## The floor, in view units: the holder's to place and scale.
 var world: Node2D
@@ -280,9 +286,14 @@ func room_bounds() -> Rect2:
 	var to := Art.at(Vector2(Sim.COLS, Sim.ROWS)) + Vector2(Art.WALL_TOP, Art.KERB)
 	return Rect2(from, to - from)
 
-## Where the robots work: the room (kept by its old name for the tutor).
+## Where the first floor's robots work, in view units: the corner `Sim.WORK`
+## with the back wall over it and the side wall's top beside it. A tutor's
+## page frames it, and the screen fits it over the program sheet (the
+## whole 30 by 15 room would stand there at a fifth of a robot).
 func work_bounds() -> Rect2:
-	return room_bounds()
+	var from := Art.at(Vector2(Sim.WORK.position)) + Vector2(-Art.WALL_TOP, -Art.WALL_TALL - Art.WALL_TOP)
+	var to := Art.at(Vector2(Sim.WORK.end)) + Vector2(0.0, Art.KERB)
+	return Rect2(from, to - from)
 
 ## The ground's box in view units: the floor and its margin.
 func ground_bounds() -> Rect2:
@@ -290,19 +301,20 @@ func ground_bounds() -> Rect2:
 	return Rect2(from, Art.at(Vector2(Sim.COLS, Sim.ROWS) + Vector2(margin)) - from)
 
 ## The floor's two belts of its own, [tile, sim facing, shape] (shape as
-## `shape` says): the intake straight down column 0 the floor's whole
-## height, ending at the work row where its queue waits; the deliver belt a
-## bend at the market's side fed from it, then straight up column 9 (the
-## user, 2026-10-21: "both side convey should take the full height"). Both go
-## on up through the margin. Drawn, never moved along by the sim.
+## `shape` says): the intake straight down column 0 from the back wall to
+## `Sim.INTAKE_END`, where its queue waits by the intake pad; the deliver
+## belt a bend at the market's side (`Sim.DELIVER_BEND`) fed from it, then
+## straight up to the back wall. Both go on up through the margin. Drawn,
+## never moved along by the sim.
 func _fixed() -> Array:
 	var out := []
-	var last := Sim.ROWS - 1
-	for y in range(-margin.y, last + 1):
-		out.append([Vector2i(0, y), 1, 0])
-	out.append([Vector2i(Sim.COLS - 1, last), 3, 2])
-	for y in range(-margin.y, last):
-		out.append([Vector2i(Sim.COLS - 1, y), 3, 0])
+	var into: Vector2i = Sim.INTAKE_END
+	for y in range(-margin.y, into.y + 1):
+		out.append([Vector2i(into.x, y), 1, 0])
+	var bend: Vector2i = Sim.DELIVER_BEND
+	out.append([bend, 3, 2])
+	for y in range(-margin.y, bend.y):
+		out.append([Vector2i(bend.x, y), 3, 0])
 	return out
 
 ## The floor's box in the sim's tile space.
@@ -673,8 +685,8 @@ func _fill_stand() -> void:
 func _add_stations(list: Array, stood: Dictionary) -> void:
 	var white := Color.WHITE
 	var size := Vector2(STATION_K, STATION_K)
-	for kind: String in Sim.STATIONS:
-		stood[Sim.STATIONS[kind] as Vector2i] = true
+	for tile: Vector2i in sim.stations:
+		stood[tile] = true
 	# the bay: the charger on the wall, its lamp lit while a robot charges
 	var bay := Sim.STATIONS.charger as Vector2i
 	var d := depth(Vector2(bay) + MID) - 0.3
@@ -781,7 +793,7 @@ func _add_fronts(list: Array, stood: Dictionary) -> void:
 
 # --- drawing ---
 
-## The one plate: the floor's 10 by 5 with its shore, or with a margin the
+## The one plate: the floor's 30 by 15 with its shore, or with a margin the
 ## floor and the ground past it, cut straight on every side (sides 15: no
 ## shore, no earth); then the stations' painted pads, and what lies under
 ## the belts at the back wall (its shadow, the doorways' dark).
@@ -791,15 +803,15 @@ func _draw_ground(ci: CanvasItem) -> void:
 	else:
 		var size := Vector2i(Sim.COLS, Sim.ROWS) + margin * 2
 		ci.draw_mesh(Art.plate("neutral", 15, 0, size.x, size.y), null, Transform2D(0.0, Art.at(-Vector2(margin))))
-	for kind: String in Sim.STATIONS:
-		ci.draw_mesh(Art.pad("bay" if kind == "charger" else "plain"), null, Transform2D(0.0, Art.at(Vector2(Sim.STATIONS[kind] as Vector2i))))
+	for tile: Vector2i in sim.stations:
+		ci.draw_mesh(Art.pad("bay" if sim.stations[tile] == "charger" else "plain"), null, Transform2D(0.0, Art.at(Vector2(tile))))
 	ci.draw_mesh(Art.wall_behind(-margin.x, Sim.COLS + margin.x, _doors()), null, Transform2D.IDENTITY)
 
 ## The back wall over the belts (its windows and clock along it), the side
 ## walls' tops and the kerb, and past them the outside, flat over the
 ## margin (the belts' tails above the wall are under it).
 func _draw_room(ci: CanvasItem) -> void:
-	ci.draw_mesh(Art.wall(-margin.x, Sim.COLS + margin.x, _doors(), Sim.COLS * 0.5, [Sim.COLS * 0.5 - 2.5, Sim.COLS * 0.5 + 2.5]), null, Transform2D.IDENTITY)
+	ci.draw_mesh(Art.wall(-margin.x, Sim.COLS + margin.x, _doors(), CLOCK_AT, WINDOWS_AT), null, Transform2D.IDENTITY)
 	ci.draw_mesh(Art.wall_sides(Sim.COLS, Sim.ROWS), null, Transform2D.IDENTITY)
 	if margin == Vector2i.ZERO:
 		return
@@ -812,7 +824,7 @@ func _draw_room(ci: CanvasItem) -> void:
 
 ## The tile columns the floor's two belts come in through.
 func _doors() -> Array:
-	return [0.0, float(Sim.COLS - 1)]
+	return [float(Sim.INTAKE_END.x), float(Sim.DELIVER_BEND.x)]
 
 ## Whether a robot is charging on the bay now.
 func _charging() -> bool:
