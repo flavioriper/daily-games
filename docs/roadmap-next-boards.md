@@ -64,7 +64,7 @@ Connections, Spelling Bee, Pips, Pinpoint, Clues by Sam.
 - [x] **10. Who Ate the Pie?** (Clues by Sam). Built 2026-10-22, `docs/agents/boards/pie.md`; bakers 9/12/16/20, Insane is Empty Dish (nobody says how many ate), dealt on the phone. Logic. No-guess deduction over
       eight bakers; faces from `ui/faces/`. Generator hard (solver proves
       every mark), clue templates x3 languages. Quality: wrong marks.
-- [ ] **11. Hosepipes** (Flow Free). Space/Planning. Reuses Fairy Lights and
+- [x] **11. Hosepipes** (Flow Free). Built 2026-10-22, `docs/agents/boards/hoses.md`; beds 5/6/7/8 square, Hard and Insane banked (240 and 225 days), Insane is Seedlings (three taps lead to bare seeds any seed hose may water). Space/Planning. Reuses Fairy Lights and
       Caterpillar path drawing. Moderate.
 - [ ] **12. Paper Box** (fold-the-net). Space. Five picks a day, new small
       art. Quality: wrong picks.

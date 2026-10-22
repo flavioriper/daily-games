@@ -172,6 +172,9 @@ func _note(id: String) -> String:
 		"market": return "%s -> %d, par %d, %d steps, every=%s, hints=%d, caps %s, board fit=%s, hud=%s" % [
 			str(_puzzle._st.numbers), _puzzle._st.target, _puzzle._st.par, _puzzle._st.steps, _puzzle._st.every,
 			_puzzle.hints_used, _puzzle.capabilities(), _fit_ok, _hud_ok]
+		"hoses": return "%dx%d, %d hoses (%d seeds), %d strokes, hints=%d, caps %s, board fit=%s, hud=%s" % [
+			_puzzle._st.n, _puzzle._st.n, _puzzle._st.count(), _puzzle._st.seeds.size(), _puzzle._st.strokes,
+			_puzzle.hints_used, _puzzle.capabilities(), _fit_ok, _hud_ok]
 		"pie": return "%dx%d, %d ate, dish %d, %d marks, %d slips, hints=%d, caps %s, board fit=%s, hud=%s" % [
 			_puzzle._st.cols, _puzzle._st.rows, _puzzle._st.eaters(), _puzzle._st.dish, _puzzle.moves, _puzzle._st.slips,
 			_puzzle.hints_used, _puzzle.capabilities(), _fit_ok, _hud_ok]
@@ -258,6 +261,7 @@ func _solve(id: String) -> void:
 		"teacups": _solve_teacups()
 		"market": _solve_market()
 		"pie": _solve_pie()
+		"hoses": _solve_hoses()
 		"trestle": _solve_trestle()
 		"minigolf": _solve_minigolf()
 		"horse": _solve_horse()
@@ -1506,6 +1510,84 @@ func _solve_market() -> void:
 			_hud_ok = false
 			return
 		play.call(h[0], h[1], h[2])
+
+## Hosepipes: bare soil pressed (heard, nothing changes), a hose drawn,
+## another dragged across it (cut) and back off (grown back, no stroke
+## counted), a stroke and its Undo, the bulb, then every hose the answer has
+## drawn by real drags through its squares.
+func _solve_hoses() -> void:
+	var st = _puzzle._st
+	var n: int = st.n
+	var slot := Rect2(Vector2.ZERO, _puzzle.size)
+	_fit_ok = true
+	for i in n * n:
+		if not slot.has_point(_puzzle.cell_to_local(i)):
+			_fit_ok = false
+	var draw_path := func(path: Array) -> void:
+		var pts: Array[Vector2] = []
+		for v in path:
+			pts.append(_puzzle.cell_to_local(int(v)))
+		_drag_path_local(pts)
+	var settle := func() -> void:
+		for i in 30:
+			if not _puzzle.laying():
+				return
+			_puzzle._process(0.05)
+	_hud_ok = true
+	# a square no end is on, pressed while the bed is bare: nothing changes
+	for i in n * n:
+		if st.end_of(i) < 0 and not st.is_seed(i):
+			_tap_local(_puzzle.cell_to_local(i))
+			_hud_ok = st.history.is_empty() and st.watered() == 0
+			break
+	# the longest hose drawn, the nearest other tap dragged across it and back
+	var order := range(st.count())
+	order.sort_custom(func(x, y): return (st.answer[x] as Array).size() > (st.answer[y] as Array).size())
+	var a: int = order[0]
+	var path_a: Array = st.answer[a]
+	draw_path.call(path_a)
+	_hud_ok = _hud_ok and (st.hoses[a] as Array).size() == path_a.size() and st.strokes == 1
+	var run: Array = load("res://ui/hud/hoses_tutorial_diagram.gd").run_into(st, a)
+	if not run.is_empty():
+		var before: Array = st.hoses.duplicate(true)
+		var touch := func(cell: int, pressed: bool) -> void:
+			var ev := InputEventScreenTouch.new()
+			ev.index = 0
+			ev.pressed = pressed
+			ev.position = _to_global(_puzzle.cell_to_local(cell))
+			root.push_input(ev, true)
+		var move := func(cell: int) -> void:
+			var ev := InputEventScreenDrag.new()
+			ev.index = 0
+			ev.position = _to_global(_puzzle.cell_to_local(cell))
+			root.push_input(ev, true)
+		touch.call(int(run[0]), true)
+		for i in range(1, run.size()):
+			move.call(int(run[i]))
+		var cut: bool = (st.hoses[a] as Array).size() < path_a.size()
+		for i in range(run.size() - 2, -1, -1):
+			move.call(int(run[i]))
+		var regrown: bool = (st.hoses[a] as Array).size() == path_a.size()
+		touch.call(int(run[0]), false)
+		print("hoses: cut %s, regrown %s" % [cut, regrown])
+		_hud_ok = _hud_ok and cut and regrown and st.hoses == before and st.strokes == 1
+	# a stroke and its Undo
+	if _puzzle.capabilities().has("undo"):
+		var b: int = order[1]
+		var before: Array = st.hoses.duplicate(true)
+		draw_path.call(st.answer[b])
+		_hud_ok = _hud_ok and st.joined(b)
+		_press(_host.top_bar.undo_button)
+		_hud_ok = _hud_ok and st.hoses == before
+	_press(_host.top_bar.hint_button)
+	settle.call()
+	_hud_ok = _hud_ok and _puzzle.hints_used == 1 and st.joined_count() >= 1
+	for c in st.count():
+		if _puzzle.is_done():
+			break
+		if not st.joined(c) or st.hoses[c] != st.answer[c]:
+			draw_path.call(st.answer[c])
+	print("hoses: joined %d of %d, watered %d of %d" % [st.joined_count(), st.count(), st.watered(), n * n])
 
 ## Who Ate the Pie?: a mark nothing proves yet (refused, free), a mark the
 ## clues prove wrong (a slip), the bulb, then every proven baker picked and

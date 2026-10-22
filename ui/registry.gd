@@ -700,6 +700,39 @@ const PUZZLES := [
 		],
 	},
 	{
+		"id": "hoses",
+		"skill": "space",
+		"kind": "puzzle",
+		"title": "Hosepipes",
+		"blurb": "HS_BLURB",
+		"short": "HS_SHORT",
+		"motto": "HS_MOTTO",
+		"footer": "Drag · Join · Water",
+		# A raised garden bed: drag a hose from each tap to its flower, hoses
+		# never share a square, and every square is watered
+		# (puzzles/hoses2d.gd). The garden fills the screen and the hoses are
+		# drawn on the bed itself, so no tray and no actions row: Undo, the
+		# bin and the bulb ride the tools row. No Check: a flower opens when
+		# its hose reaches it and the count line says what is still dry.
+		# Easy and Medium are dealt on the phone, Hard and Insane from banks
+		# (content/insane/hoses_hard.json, hoses.json).
+		"script": "res://puzzles/hoses2d.gd",
+		"card": "res://ui/menu/cards/hoses.gd",
+		"shell": "flat",
+		"tray": "none",
+		"bleed": true,
+		"level_card": true,
+		"actions": false,
+		"difficulties": [0, 1, 2, 3],
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "HS_LVL_0"},
+			{"difficulty": 1, "name": "Medium", "line": "HS_LVL_1"},
+			{"difficulty": 2, "name": "Hard", "line": "HS_LVL_2"},
+			{"difficulty": 3, "name": "Insane", "line": "HS_LVL_3"},
+		],
+	},
+	{
 		"id": "binairo",
 		"skill": "logic",
 		"kind": "puzzle",

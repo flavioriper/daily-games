@@ -3284,3 +3284,36 @@ BRAIN_PI_1,Start from a zero: 'nobody' clues clear a whole group at once.,Comece
 BRAIN_PI_2,"When a count matches the bakers left in its group, they all go the same way.","Quando um número bate com os que restam no grupo, todos vão para o mesmo lado.","Cuando un número coincide con los que quedan en su grupo, todos van hacia el mismo lado."
 BRAIN_PI_3,Lay two clues over each other: where their groups overlap is often the answer.,Junte duas pistas: onde os grupos se cruzam costuma estar a resposta.,Junta dos pistas: donde sus grupos se cruzan suele estar la respuesta.
 BRAIN_PI_4,Unsure? Leave that baker and read a clue you haven't used yet.,Na dúvida? Deixe esse confeiteiro e leia uma pista que você ainda não usou.,¿Dudas? Deja ese pastelero y lee una pista que aún no usaste.
+HS_BLURB,"Taps and flowers on a raised garden bed. Drag a hose from each tap to its flower: hoses never cross, and every square must be watered.","Torneiras e flores num canteiro elevado. Arraste uma mangueira de cada torneira até a sua flor: as mangueiras nunca se cruzam, e todo quadrado tem que ser regado.","Grifos y flores en un bancal elevado. Arrastra una manguera de cada grifo a su flor: las mangueras nunca se cruzan, y hay que regar cada casilla."
+HS_SHORT,"Join every tap
+to its flower.","Ligue cada torneira
+à sua flor.","Une cada grifo
+con su flor."
+HS_MOTTO,Water every square,Regue cada quadrado,Riega cada casilla
+HS_LVL_0,Five by five bed,Canteiro cinco por cinco,Bancal de cinco por cinco
+HS_LVL_1,Six by six bed,Canteiro seis por seis,Bancal de seis por seis
+HS_LVL_2,Seven by seven bed,Canteiro sete por sete,Bancal de siete por siete
+HS_LVL_3,Seedlings: eight by eight,Mudinhas: oito por oito,Semilleros: ocho por ocho
+HS_RULES,"Drag a hose from a tap to the flower of the same colour, or from the flower to the tap. Hoses go up, down and sideways, never share a square, and the bed is done when every flower is reached and every square is watered.","Arraste uma mangueira de uma torneira até a flor da mesma cor, ou da flor até a torneira. As mangueiras andam para cima, para baixo e para os lados, nunca dividem um quadrado, e o canteiro termina quando toda flor for alcançada e todo quadrado estiver regado.","Arrastra una manguera de un grifo a la flor del mismo color, o de la flor al grifo. Las mangueras van arriba, abajo y a los lados, nunca comparten casilla, y el bancal está listo cuando cada flor está alcanzada y cada casilla regada."
+HS_RULES_SEEDS,"Seedlings: some taps have no flower, only seeds in bare mounds. A hose from one of those taps may water any seed, and the seed blooms in its colour.","Mudinhas: algumas torneiras não têm flor, só sementes em montinhos de terra. Uma mangueira dessas torneiras pode regar qualquer semente, e a semente floresce na cor dela.","Semilleros: algunos grifos no tienen flor, solo semillas en montoncitos de tierra. Una manguera de esos grifos puede regar cualquier semilla, y la semilla florece de su color."
+HS_RULES_CUT,Dragging across another hose cuts it there; slide back off it and it grows back. Drag from a hose's middle to redraw it from that square.,Arrastar por cima de outra mangueira corta ela ali; volte e ela cresce de novo. Arraste do meio de uma mangueira para redesenhá-la a partir daquele quadrado.,Arrastrar sobre otra manguera la corta ahí; vuelve atrás y vuelve a crecer. Arrastra desde el medio de una manguera para redibujarla desde esa casilla.
+HS_JOINED,%d of %d hoses joined,%d de %d mangueiras ligadas,%d de %d mangueras unidas
+HS_WATERED,%d%% watered,%d%% regado,%d%% regado
+HS_SAY_DRY,"Every flower is reached, but some squares are still dry.","Toda flor foi alcançada, mas ainda há quadrados secos.","Todas las flores están alcanzadas, pero quedan casillas secas."
+HS_WIN_ONE,%d hoses in %d stroke.,%d mangueiras em %d traço.,%d mangueras en %d trazo.
+HS_WIN_N,%d hoses in %d strokes.,%d mangueiras em %d traços.,%d mangueras en %d trazos.
+HS_WIN_PERFECT,Every hose in one go.,Cada mangueira de uma vez só.,Cada manguera de una sola vez.
+HTP_HS_JOIN,Join a flower,Ligue uma flor,Une una flor
+HTP_HS_JOIN_BODY,"Drag from a tap to the flower of its colour. The hose follows your finger, and the flower opens when it arrives.","Arraste de uma torneira até a flor da mesma cor. A mangueira segue o seu dedo, e a flor abre quando ela chega.","Arrastra de un grifo a la flor de su color. La manguera sigue tu dedo, y la flor se abre cuando llega."
+HTP_HS_WATER,Water everything,Regue tudo,Riega todo
+HTP_HS_WATER_BODY,Every flower joined is not enough: every square of the bed must have a hose on it. Hoses wind about to cover the soil.,Ligar todas as flores não basta: todo quadrado do canteiro precisa de uma mangueira. As mangueiras fazem curvas para cobrir a terra.,Unir todas las flores no basta: cada casilla del bancal necesita una manguera. Las mangueras dan vueltas para cubrir la tierra.
+HTP_HS_CUT,Cut and grow back,Corte e volta,Corta y vuelve
+HTP_HS_CUT_BODY,Drag across another hose and it is cut there. Slide back off it in the same drag and it grows back.,Arraste por cima de outra mangueira e ela é cortada ali. Volte no mesmo arrasto e ela cresce de novo.,Arrastra sobre otra manguera y se corta ahí. Vuelve atrás en el mismo arrastre y vuelve a crecer.
+HTP_HS_SEEDS,Seedlings,Mudinhas,Semilleros
+HTP_HS_SEEDS_BODY,"On Insane, some taps lead to seeds instead of flowers. Their hoses may water any seed, and you work out which goes where.","No Insano, algumas torneiras levam a sementes em vez de flores. As mangueiras delas podem regar qualquer semente, e você descobre qual vai para onde.","En Demencial, algunos grifos llevan a semillas en vez de flores. Sus mangueras pueden regar cualquier semilla, y tú averiguas cuál va adónde."
+HTP_HS_HINT,A hose,Uma mangueira,Una manguera
+HTP_HS_HINT_BODY,"The bulb lays one hose the way the answer has it, cutting whatever is in its way.","A lâmpada coloca uma mangueira do jeito da resposta, cortando o que estiver no caminho.","La bombilla coloca una manguera como la tiene la respuesta, cortando lo que esté en medio."
+BRAIN_HS_1,"Start with the corners and the edges: a square there has few ways in, so its hose is often forced.","Comece pelos cantos e bordas: ali um quadrado tem poucas entradas, então a mangueira costuma ser obrigatória.","Empieza por las esquinas y los bordes: ahí una casilla tiene pocas entradas, así que su manguera suele ser obligada."
+BRAIN_HS_2,Two ends side by side on the edge usually hug it: lay that short hose first.,Duas pontas lado a lado na borda costumam seguir a borda: coloque essa mangueira curta primeiro.,Dos extremos juntos en el borde suelen seguirlo: pon esa manguera corta primero.
+BRAIN_HS_3,A hose that runs alongside itself leaves a square no one can reach. Keep hoses from touching themselves.,Uma mangueira encostada nela mesma deixa um quadrado que ninguém alcança. Evite que as mangueiras se toquem.,Una manguera pegada a sí misma deja una casilla que nadie alcanza. Evita que las mangueras se toquen.
+BRAIN_HS_4,Stuck? Find the dry square with the fewest ways in and ask which hose can reach it.,Travou? Ache o quadrado seco com menos entradas e pense em qual mangueira chega nele.,¿Atascado? Busca la casilla seca con menos entradas y piensa qué manguera llega a ella.

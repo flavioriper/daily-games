@@ -1860,6 +1860,37 @@ SETS = {
         "solved":   ("a warm short celebratory flourish on a real kalimba and a music box, rising arpeggio ending on a soft hand bell shimmer, joyful and cozy", 2.0, -8, BEADBOX_TUNE, "warm:2600", "body:300"),
         "party":    ("a short cozy celebratory flourish on a real kalimba and a music box, rising and bright, with a few soft little party blower toots, warm and joyful", 2.0, -8, BEADBOX_TUNE, "warm:2600", "body:300"),
     },
+    # Hosepipes (puzzle_id "hoses"), 2026-10-22: hoses dragged from garden
+    # taps to their flowers across a raised bed. Every action is a pop from
+    # the bank, by its job: `pick` the pebble (a hose taken in hand), `grow`
+    # one wrap a square (the run of pops rides the drag; pitched up along the
+    # hose at play), `back` the lip (a square taken off the hose), `cut` the
+    # lip twice falling (another hose cut), `join` three wraps rising (a
+    # flower reached), `refuse` the tongue (another hose's end, or a seed for
+    # a hose with a flower), `hush` a quiet pebble (bare soil pressed: heard,
+    # nothing happens), `dry` the tongue twice low (every flower joined, some
+    # squares dry), `undo` the lip falling, `reset` a run of tokens falling,
+    # `enter` a run of tokens (the ends laid on the bed). hint, solved,
+    # confetti and party are takes already on disk, copied into
+    # build/sfx_raw/hoses/ from Market Sums' (themselves Teacups'), never
+    # bought. All of it unheard.
+    "hoses": {
+        "pick":     ('one small smooth pebble dropped onto a wooden board, a single soft rounded click, very short', 0.5, -16, FOLEY, "bank:pebble", "cut:0.16", "notes:0:1", "tight"),
+        "grow":     ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -18, FOLEY, "bank:wrap", "cut:0.09", "notes:0:0", "tight"),
+        "back":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -19, FOLEY, "bank:lip", "cut:0.12", "notes:0:-2", "tight"),
+        "cut":      ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -15, FOLEY, "bank:lip", "cut:0.2", "notes:0.07:0,-4", "tight"),
+        "join":     ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.1", "notes:0.07:0,4,7", "tight"),
+        "refuse":   ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -16, FOLEY, "bank:tongue", "cut:0.14", "notes:0:-3", "tight"),
+        "hush":     ('one small smooth pebble dropped onto a wooden board, a single soft rounded click, very short', 0.5, -24, FOLEY, "bank:pebble", "cut:0.12", "notes:0:-2", "tight"),
+        "dry":      ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.2", "notes:0.1:-3,-6", "tight"),
+        "undo":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -17, FOLEY, "bank:lip", "cut:0.18", "notes:0.08:2,-2", "tight"),
+        "reset":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -16, FOLEY, "bank:token", "cut:0.4", "notes:0.05:0,-2,-4,-5,-7,-9", "tight"),
+        "hint":     ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -16, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320", "notes:0:2"),
+        "enter":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.5", "notes:0.05:-2,1,-2,0,3,1,0,2", "tight"),
+        "confetti": ("a soft little paper confetti pop and flutter with a tiny music box twinkle, cute", 1.0, -10, BEADBOX_TUNE, "warm:7000"),
+        "solved":   ("a warm short celebratory flourish on a real kalimba and a music box, rising arpeggio ending on a soft hand bell shimmer, joyful and cozy", 2.0, -8, BEADBOX_TUNE, "warm:2600", "body:300"),
+        "party":    ("a short cozy celebratory flourish on a real kalimba and a music box, rising and bright, with a few soft little party blower toots, warm and joyful", 2.0, -8, BEADBOX_TUNE, "warm:2600", "body:300"),
+    },
     # Fairy Lights (puzzle_id "fairylights"): tap a piece of garden wire to
     # turn it; wire joined back to the post runs gold and wakes its lanterns.
     # Hard and Insane blow a fuse on a wrong join; Insane is Wish Tags.
