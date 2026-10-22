@@ -347,3 +347,6 @@ minigolf `_state.card` against `par_total()`; horse `state.score()`/`state.best`
   every board, 30/34, where Hoop, Drumbeat and Marigold fail on main too and
   Gumdrop passes alone; windowed shots of Sudoku and Gumdrop with seeded
   history; probes of `Brain.report`.
+- The eye is an `IconButton`, so it gets the house click (the wooden token)
+  like every other button. It does not get the pebble from section 5.
+- Redo and a reopened finished daily were probed headless: the plate shows, with no gain.
