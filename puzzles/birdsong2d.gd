@@ -220,7 +220,7 @@ func day_dict() -> Dictionary:
 	return {
 		"source": "generator", "kind": "text",
 		"payload": {"bpm": _st.bpm(), "grid": _st.grid(), "knocks": _st.order.size(),
-			"start": int(State.START[_band]), "feints": int(State.FEINTS[_band]), "show": _st.show()},
+			"start": int(State.START[_band]), "feints": int(State.FEINTS[_band]), "show": _show()},
 		"solution": {"order": Array(_st.order), "feints": _st.feints.duplicate(true)},
 		"metrics": {"knocks": _st.order.size(), "rounds": _st.rounds(), "bpm": _st.bpm(),
 			"grid": _st.grid(), "quick": _quick_knocks(), "bar": snappedf(_st.bar(), 0.01)},
@@ -701,10 +701,10 @@ func _draw_card() -> void:
 		for k: Dictionary in _pecks:
 			if not k.feint and _t >= float(k.at):
 				holes.append(int(k.slot))
-		vis = 1.0 if _st.show() > 0 else 0.0
+		vis = 1.0 if _show() > 0 else 0.0
 	elif _phase == Phase.PLAY:
 		holes = _st.knocks
-		vis = 1.0 if _st.show() == 2 else (clampf(1.0 - (_t - _turn_at) / FADE, 0.0, 1.0) if _st.show() == 1 else 0.0)
+		vis = 1.0 if _show() == 2 else (clampf(1.0 - (_t - _turn_at) / FADE, 0.0, 1.0) if _show() == 1 else 0.0)
 	elif _phase == Phase.PAUSE and not _shown_knocks.is_empty():
 		holes = _shown_knocks
 		vis = 1.0
@@ -750,6 +750,11 @@ func _draw_card() -> void:
 		var rc := _lane(lane)
 		var x := _slot_x(ph)
 		draw_line(Vector2(x, rc.position.y + 8.0 * u), Vector2(x, rc.end.y - 8.0 * u), Color(Pal.TEXT, 0.5), 5.0 * u, true)
+
+## How long the holes stay on the card; the tutorial's board always shows
+## them, so its pages show what their words say.
+func _show() -> int:
+	return 2 if demo else _st.show()
 
 func _beat_index() -> int:
 	return clampi(int(floor((_beat_at - _call_at) / _st.beat() + 0.5)), 0, 3)
@@ -894,7 +899,7 @@ func skill_quality() -> float:
 	return _st.quality()
 
 func share_glyphs() -> String:
-	return "🪵 " + _st.share_glyphs()
+	return "🥁 " + _st.share_glyphs()
 
 func flat_win() -> Dictionary:
 	var line := tr("BS_WIN_ALL") if _st.clean >= _st.rounds() else tr("BS_WIN_CLEAN") % [_st.clean, _st.rounds()]

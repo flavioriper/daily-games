@@ -6,7 +6,7 @@ extends RefCounted
 ## upside down -- its mouth on the saucer, its foot ring up, its handle on the
 ## right -- with its origin at the middle of the mouth, so a lift is a
 ## transform. The saucer is drawn about the same origin. Builder shapes,
-## cached per size, as songbird.gd's are.
+## cached per size, as woodpecker.gd's are.
 ##
 ## Every cup is the same cup: the friend under it is what tells two apart,
 ## and a friend is one of the house's own faces (berry_face.gd and the

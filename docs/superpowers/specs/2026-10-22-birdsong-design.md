@@ -130,6 +130,10 @@ disagree with this one.
   `feint` the lip, `drum` Drumbeat's `drum_0`; the rest as before. `note_*`,
   `drum_1..3` and `grow` are gone.
 - **Title** stays Birdsong; the id, saved progress, Memory and
-  `Brain.UNTIMED` are unchanged. Share line: 🪵 and a square a round.
+  `Brain.UNTIMED` are unchanged. Share line: 🥁 and a square a round.
+- **The windows on sixteen slots.** A sixteenth at 104 bpm is 144 ms,
+  under the 170 ms fine window, so two knocks both near the first of a
+  quick pair both pass. The alternative, if the user wants it: windows as
+  a share of the slot with a floor (fine = min(170 ms, 0.75 slot)).
 - **Unconfirmed:** the windows, the tempos, the feints, the look, the
   sounds heard, a phone.
