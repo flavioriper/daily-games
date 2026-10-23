@@ -163,12 +163,17 @@ static func apply_consent() -> void:
 	if _fa == null:
 		return
 	var b := AgeGate.band() if AgeGate.known() else AgeGate.CHILD
+	# The plugin reads each value as the string "granted"; anything else,
+	# a bool included, is denied.
 	_fa.set_consent({
-		"analytics_storage": true,
-		"ad_storage": b != AgeGate.CHILD,
-		"ad_user_data": b != AgeGate.CHILD,
-		"ad_personalization": b == AgeGate.ADULT,
+		"analytics_storage": _granted(true),
+		"ad_storage": _granted(b != AgeGate.CHILD),
+		"ad_user_data": _granted(b != AgeGate.CHILD),
+		"ad_personalization": _granted(b == AgeGate.ADULT),
 	})
+
+static func _granted(on: bool) -> String:
+	return "granted" if on else "denied"
 
 ## One line in the next crash report's log. Free to call anywhere; it does
 ## nothing until Crashlytics is up, and nothing at all off a phone.
