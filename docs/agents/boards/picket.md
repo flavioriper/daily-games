@@ -29,3 +29,24 @@
   `tests/_shot_picket.gd -- <dir> d=<0..3> [tut=<page>|card]` shoots rest,
   selected, wrong, plot coming right, the win and the reopened day, with
   draw calls (81-84 playing, 148-150 reopened).
+- **The look redone, 2026-10-23** (the user: the card "hard to read ...
+  due to numbers and letters"; the board "more elegant and modern, but
+  keeping cozy ... should not look like a canvas game"). The dashed
+  pickets read as a web page's dashed border: a fence is now one
+  unbroken soft line (`FENCE_W` 2.4, opaque `FENCE`), thicker and in the
+  state's colour when its plot is selected (sun), right (leaf) or past
+  saving (rose). A tag is a small paper pill in the plot's corner with a
+  hairline, its number `TAG_WEIGHT` 700 at `TAG_SIZE` 23; selected, right
+  or past saving it fills with that colour, number in paper. The panels
+  are all plain paper (`_panel_shaded` false: a chequer under the fences
+  read as plots of its own) and the cells' rules faint (`THIN_FAINT`
+  0.38). Sudoku gained the two hooks `_panel_shaded` and `_thin_alpha`
+  for it, defaulting to its own look. The world's fence behind the tools
+  row is lower and paler, so the buttons no longer stand on its posts.
+  `fence_cell`, `tag_pill`, `tag_rect` and `tag_base` are static so the
+  card draws the same fence and tags.
+- **The card is one region, 3x3, at a 64 cell** (`ui/menu/cards/picket.gd`),
+  four plots (8, 15, 6, 16), the go tile in the 16 holding a 9. The
+  nine-by-nine fragment it replaced put its tags over the digits. Sudoku's
+  card gained `_trays` and `_panel` for it. Draw calls: card 9, board
+  81-85 playing, 148-150 reopened (unchanged). Verdict owed.

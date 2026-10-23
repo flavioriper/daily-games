@@ -1125,12 +1125,12 @@ func _glint(b: Face.Builder, now: float, field: float, k: float) -> void:
 func _panels(b: Face.Builder, k: float) -> void:
 	var g := GUTTER * k * 0.5
 	var r := PANEL_R * k
-	var thin := Color(Pal.LINE, THIN_ALPHA)
+	var thin := Color(Pal.LINE, _thin_alpha())
 	var size := Vector2(Gen.BOX_C, Gen.BOX_R) * _cell
 	for br in Gen.N / Gen.BOX_R:
 		for bc in Gen.N / Gen.BOX_C:
 			var at := _grid + Vector2(bc, br) * size
-			var shaded := (br + bc) % 2 == 1
+			var shaded := _panel_shaded(br, bc)
 			var paper: Color = Pal.GRID_TINT if shaded else Pal.SURFACE
 			var tone := _hash(br, bc) * 2.0 - 1.0
 			paper = paper.lightened(tone * PANEL_TONE) if tone > 0.0 else paper.darkened(-tone * PANEL_TONE)
@@ -1146,6 +1146,15 @@ func _panels(b: Face.Builder, k: float) -> void:
 				var y := at.y + rr * _cell
 				b.stroke(PackedVector2Array([Vector2(at.x + g + r * 0.5, y),
 					Vector2(at.x + size.x - g - r * 0.5, y)]), THIN_W * k, thin, false, false)
+
+## How strong the thin rules between a panel's cells are.
+func _thin_alpha() -> float:
+	return THIN_ALPHA
+
+## Whether region (`br`, `bc`) is on the chequer's tinted squares. Picket
+## Sums lays every panel plain, its plots' fences being the pattern there.
+func _panel_shaded(br: int, bc: int) -> bool:
+	return (br + bc) % 2 == 1
 
 ## `i`'s wash: a rounded square WASH_INSET in from its cell under the cell's
 ## own shiver and bump.

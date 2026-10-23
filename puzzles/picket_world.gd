@@ -24,9 +24,11 @@ const LAWN_LOW := Color("d5e4bd")
 const STRIPE := Color("8fb36a")
 const STRIPE_A := 0.07
 const STRIPE_W := 120.0
-const PICKET := Color("fffdf6")
-const PICKET_SHADE := Color("e5ddcc")
-const PICKET_EDGE := Color("b9ab92")
+## The fence behind the tools row is a far one, low and pale, so the
+## buttons stand clear of it rather than on its posts.
+const PICKET := Color("fbfaf1")
+const PICKET_SHADE := Color("ebe8da")
+const PICKET_EDGE := Color("d6cfbd")
 const WOOD := Color("c9a57c")
 const WOOD_DEEP := Color("9c7350")
 const PETAL := Color("fffdf8")
@@ -37,7 +39,7 @@ const LIGHT_AT := Vector2(0.09, 0.02)
 const LIGHT := [[720.0, 0.22], [480.0, 0.22], [280.0, 0.28]]
 ## The fence: its foot as a share of the height, its pickets at W.
 const FENCE_FOOT := 0.262
-const FENCE_H := 66.0
+const FENCE_H := 44.0
 const PICKET_W := 26.0
 const PICKET_STEP := 44.0
 ## Daisies at the fence's foot: [x share, radius at W].

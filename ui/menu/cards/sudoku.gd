@@ -103,47 +103,10 @@ func _paint(b: Face.Builder) -> void:
 	var first := b.verts.size()
 	b.polygon(paper, Color.WHITE)
 	shade(b, first, CLOTH_TOP, CLOTH_LOW, 0.0, size.y)
-	# The tray's shadow on the cloth, its lip, its face and its floor, as
-	# sudoku2d.gd's _tray lays them.
-	var f := Board.FRAME * k
-	var r := (Board.CORNER + Board.FRAME * 0.5) * k
-	var face: Color = Pal.GRID_RULE
-	var floor_ink := face.darkened(Board.FLOOR_DARKEN)
-	for pass_i in 4:
-		for w in WOOD:
-			var at := _at(w[0], w[1])
-			var side := Vector2(w[2], w[3]) * c
-			match pass_i:
-				0:
-					_put(b, paper, Face.Builder.round_rect(at - Vector2(f, f - 9.0 * k), side + Vector2.ONE * 2.0 * f, r),
-						Color(Pal.TEXT, 0.08))
-				1:
-					_put(b, paper, Face.Builder.round_rect(at - Vector2(f, f - Board.TRAY_LIP * k),
-						side + Vector2.ONE * 2.0 * f, r), Pal.WOOD_DEEP)
-				2:
-					_put(b, paper, Face.Builder.round_rect(at - Vector2.ONE * f, side + Vector2.ONE * 2.0 * f, r), face)
-				3:
-					_put(b, paper, Face.Builder.round_rect(at - Vector2.ONE * k, side + Vector2.ONE * 2.0 * k,
-						Board.PANEL_R * k), floor_ink)
+	_trays(b, paper, WOOD, k)
 	# The panels, each over its lip, and the thin rules between their cells.
-	var g := Board.GUTTER * k * 0.5
-	var pr := Board.PANEL_R * k
-	var thin := Color(Pal.LINE, Board.THIN_ALPHA)
-	var thin_w := maxf(Board.THIN_W * k, 1.0)
 	for p in PANELS:
-		var at := _at(p[0], p[1])
-		var side := Vector2(p[2], p[3]) * c
-		var ink: Color = Pal.GRID_TINT if p[4] else Pal.SURFACE
-		var inner := side - Vector2.ONE * 2.0 * g
-		_put(b, paper, Face.Builder.round_rect(at + Vector2(g, g + Board.PANEL_LIP * k), inner, pr),
-			ink.lerp(Pal.GRID_RULE, 0.45))
-		_put(b, paper, Face.Builder.round_rect(at + Vector2.ONE * g, inner, pr), ink)
-		for i in range(1, int(p[2])):
-			var x := at.x + i * c
-			_rule(b, Vector2(x, at.y + g + pr * 0.5), Vector2(x, at.y + side.y - g - pr * 0.5), thin_w, thin)
-		for i in range(1, int(p[3])):
-			var y := at.y + i * c
-			_rule(b, Vector2(at.x + g + pr * 0.5, y), Vector2(at.x + side.x - g - pr * 0.5, y), thin_w, thin)
+		_panel(b, paper, p[0], p[1], p[2], p[3], Pal.GRID_TINT if p[4] else Pal.SURFACE, k)
 	# Every cell shown is a peer of the one that is open: the board's wash,
 	# and the digit over it.
 	_nums = []
@@ -163,6 +126,54 @@ func _paint(b: Face.Builder) -> void:
 			Pal.LEAF_DEEP if d[3] else Pal.TEXT])
 	if not soon:
 		_go(b, _at(GO.x, GO.y), c)
+
+## The trays under `rects` ([column, row, wide, tall] in cells): their
+## shadow on the cloth, lip, face and floor, as sudoku2d.gd's _tray lays
+## them, each pass over all of them so two trays read as one.
+func _trays(b: Face.Builder, paper: PackedVector2Array, rects: Array, k: float) -> void:
+	var c := _cell()
+	var f := Board.FRAME * k
+	var r := (Board.CORNER + Board.FRAME * 0.5) * k
+	var face: Color = Pal.GRID_RULE
+	var floor_ink := face.darkened(Board.FLOOR_DARKEN)
+	for pass_i in 4:
+		for w in rects:
+			var at := _at(w[0], w[1])
+			var side := Vector2(w[2], w[3]) * c
+			match pass_i:
+				0:
+					_put(b, paper, Face.Builder.round_rect(at - Vector2(f, f - 9.0 * k), side + Vector2.ONE * 2.0 * f, r),
+						Color(Pal.TEXT, 0.08))
+				1:
+					_put(b, paper, Face.Builder.round_rect(at - Vector2(f, f - Board.TRAY_LIP * k),
+						side + Vector2.ONE * 2.0 * f, r), Pal.WOOD_DEEP)
+				2:
+					_put(b, paper, Face.Builder.round_rect(at - Vector2.ONE * f, side + Vector2.ONE * 2.0 * f, r), face)
+				3:
+					_put(b, paper, Face.Builder.round_rect(at - Vector2.ONE * k, side + Vector2.ONE * 2.0 * k,
+						Board.PANEL_R * k), floor_ink)
+
+## A paper panel `wide` by `tall` cells from (`col`, `row`), over its lip,
+## with the thin rules between its cells.
+func _panel(b: Face.Builder, paper: PackedVector2Array, col: int, row: int, wide: int, tall: int, ink: Color,
+		k: float, thin_a := Board.THIN_ALPHA) -> void:
+	var c := _cell()
+	var g := Board.GUTTER * k * 0.5
+	var pr := Board.PANEL_R * k
+	var thin := Color(Pal.LINE, thin_a)
+	var thin_w := maxf(Board.THIN_W * k, 1.0)
+	var at := _at(col, row)
+	var side := Vector2(wide, tall) * c
+	var inner := side - Vector2.ONE * 2.0 * g
+	_put(b, paper, Face.Builder.round_rect(at + Vector2(g, g + Board.PANEL_LIP * k), inner, pr),
+		ink.lerp(Pal.GRID_RULE, 0.45))
+	_put(b, paper, Face.Builder.round_rect(at + Vector2.ONE * g, inner, pr), ink)
+	for i in range(1, wide):
+		var x := at.x + i * c
+		_rule(b, Vector2(x, at.y + g + pr * 0.5), Vector2(x, at.y + side.y - g - pr * 0.5), thin_w, thin)
+	for i in range(1, tall):
+		var y := at.y + i * c
+		_rule(b, Vector2(at.x + g + pr * 0.5, y), Vector2(at.x + side.x - g - pr * 0.5, y), thin_w, thin)
 
 ## A thin rule from `a` to `z`, kept on the card.
 func _rule(b: Face.Builder, a: Vector2, z: Vector2, w: float, ink: Color) -> void:

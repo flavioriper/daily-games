@@ -1,111 +1,108 @@
 extends "res://ui/menu/cards/sudoku.gd"
 
-## Picket Sums' card: Sudoku's card (ui/menu/cards/sudoku.gd) -- the row
-## along the foot, the column climbing off the top, the region in the corner
-## between them and the go tile where all three meet -- fenced into plots as
-## the board fences its grid, each with its wooden tag. The go tile's plot
-## reads 9 and holds a 2, so the number it wants is still the 7.
+## Picket Sums' card: one region of the board, whole and big enough to read,
+## standing in Sudoku's tray (ui/menu/cards/sudoku.gd lays the tray and the
+## panel) and fenced into four plots as the board fences its grid, with the
+## board's own fence and tag pills (puzzles/picket2d.gd's fence_cell and
+## tag_pill). Every cell but one is filled; the go tile sits in the plot
+## tagged 16 that already holds a 9, so the number it wants is the 7 -- the
+## one the region is missing too.
+##
+## The first card (2026-10-22) was a nine-by-nine fragment like Sudoku's,
+## its tags over the digits in cells too small for both; the user: "hard to
+## read right now due to numbers and letters". Here a tag sits in its
+## corner and the digit in the middle, with room between them.
 
 const Picket = preload("res://puzzles/picket2d.gd")
 
-## The tags are drawn half as big again as the board's: at a card's cell
-## the board's own would not read.
-const TAG_GROW := 1.5
-
-## The plots over the fragment, as lists of [column, row]; the first is
-## where the tag hangs. Their tags are the digits' sums, the go tile's 7
-## among them.
-const PLOTS := [
-	[[0, 8], [1, 8]], [[2, 8], [3, 8]], [[4, 8], [5, 8]], [[7, 8], [8, 8]],
-	[[6, 7], [6, 8]],
-	[[6, 0], [6, 1]], [[6, 2], [6, 3]], [[6, 4], [6, 5]],
-	[[6, 6], [7, 6], [8, 6]], [[7, 7], [8, 7]],
+## A cell at H, and the region's margin from the card's right side.
+const P_CELL := 64.0
+const P_RIGHT := 30.0
+## The region, as rows of digits; the plots as lists of [column, row], the
+## first where the tag hangs; the go tile and the cells written in leaf.
+const P_GRID := [[5, 3, 8], [4, 9, 1], [2, 7, 6]]
+const P_PLOTS := [
+	[[0, 0], [1, 0]],
+	[[2, 0], [2, 1], [2, 2]],
+	[[0, 1], [0, 2]],
+	[[1, 1], [1, 2]],
 ]
-const GO_DIGIT := 7
+const P_GO := Vector2i(1, 2)
+const P_WRITTEN := [Vector2i(1, 0), Vector2i(2, 1)]
+## The tags a little bigger than the board's, the digits a little smaller,
+## so both read at a card's cell and never meet.
+const P_TAG_GROW := 1.15
+const P_DIGIT := 0.86
 
-func _digit_at(col: int, row: int) -> int:
-	if Vector2i(col, row) == GO:
-		return GO_DIGIT
-	for d in DIGITS:
-		if d[0] == col and d[1] == row:
-			return d[2]
-	return 0
+var _tags: Array = []
+
+func _cell() -> float:
+	var wide := (size.x - SIDE - WORDS - WORDS_GAP - P_RIGHT * _k()) / 3.0
+	return minf(P_CELL * _k(), wide)
+
+func _origin() -> Vector2:
+	var c := _cell()
+	return Vector2(size.x - P_RIGHT * _k() - 3.0 * c, (size.y - 3.0 * c) * 0.5)
 
 func _plot_of(col: int, row: int) -> int:
-	for p in PLOTS.size():
-		for cell in PLOTS[p]:
+	for p in P_PLOTS.size():
+		for cell in P_PLOTS[p]:
 			if cell[0] == col and cell[1] == row:
 				return p
 	return -1
 
 func _paint(b: Face.Builder) -> void:
-	_tags = []
-	super(b)
 	var c := _cell()
 	var k := c / Board.CELL
 	var paper := ground()
-	var ins := Picket.FENCE_INSET * k
-	var w := maxf(Picket.FENCE_W * k, 2.0)
-	for p in PLOTS.size():
-		for cell in PLOTS[p]:
-			var col: int = cell[0]
-			var row: int = cell[1]
-			if Vector2i(col, row) == GO or not _whole(paper, col, row):
+	var first := b.verts.size()
+	b.polygon(paper, Color.WHITE)
+	shade(b, first, CLOTH_TOP, CLOTH_LOW, 0.0, size.y)
+	_trays(b, paper, [[0, 0, 3, 3]], k)
+	_panel(b, paper, 0, 0, 3, 3, Pal.SURFACE, k, Picket.THIN_FAINT)
+	for row in 3:
+		for col in 3:
+			var p := _plot_of(col, row)
+			Picket.fence_cell(b, _at(col, row), c, Picket.FENCE_INSET * k,
+				func(dr: int, dc: int) -> bool: return _plot_of(col + dc, row + dr) == p,
+				maxf(Picket.FENCE_W * k * 1.5, 1.5), Picket.FENCE.darkened(0.12))
+	# The digits, and the tags' pills over the fences' corners.
+	_nums = []
+	var font: Font = CozyTheme.display(600)
+	var px := int(roundf(Board.DIGIT_SIZE * k * P_DIGIT))
+	var rise := font.get_ascent(px) * 0.5
+	for row in 3:
+		for col in 3:
+			if Vector2i(col, row) == P_GO:
 				continue
-			var o := _at(col, row)
-			var same := func(dc: int, dr: int) -> bool: return _plot_of(col + dc, row + dr) == p
-			if not same.call(0, -1):
-				_fence(b, o + Vector2(ins if not same.call(-1, 0) else 0.0, ins),
-					o + Vector2(c - ins if not same.call(1, 0) else c, ins), w, k)
-			if not same.call(0, 1):
-				_fence(b, o + Vector2(ins if not same.call(-1, 0) else 0.0, c - ins),
-					o + Vector2(c - ins if not same.call(1, 0) else c, c - ins), w, k)
-			if not same.call(-1, 0):
-				_fence(b, o + Vector2(ins, ins if not same.call(0, -1) else 0.0),
-					o + Vector2(ins, c - ins if not same.call(0, 1) else c), w, k)
-			if not same.call(1, 0):
-				_fence(b, o + Vector2(c - ins, ins if not same.call(0, -1) else 0.0),
-					o + Vector2(c - ins, c - ins if not same.call(0, 1) else c), w, k)
-	# The tags, over the fences' corners, their numbers with the digits.
-	var font: Font = CozyTheme.body(800)
-	var px := maxi(11, int(roundf(Picket.TAG_SIZE * k * TAG_GROW)))
-	k *= TAG_GROW
-	for p in PLOTS.size():
-		var first: Array = PLOTS[p][0]
-		if not _whole(paper, first[0], first[1]):
-			continue
+			var text := str(P_GRID[row][col])
+			var wide := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px).x
+			_nums.append([_at(col, row) + Vector2(c * 0.5 - wide * 0.5 + c * 0.04, c * 0.56 + rise), text, px,
+				Pal.LEAF_DEEP if Vector2i(col, row) in P_WRITTEN else Pal.TEXT])
+	_tags = []
+	var tk := k * P_TAG_GROW
+	var tfont: Font = CozyTheme.body(Picket.TAG_WEIGHT)
+	var tpx := maxi(13, int(roundf(Picket.TAG_SIZE * tk)))
+	for plot in P_PLOTS:
 		var sum := 0
-		for cell in PLOTS[p]:
-			sum += _digit_at(cell[0], cell[1])
+		for cell in plot:
+			sum += int(P_GRID[cell[1]][cell[0]])
 		var text := str(sum)
-		var wide := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px).x
-		var at := _at(first[0], first[1]) + Picket.TAG_AT * k
-		var sz := Vector2(wide + 2.0 * Picket.TAG_PAD.x * k, font.get_height(px) * 0.82 + 2.0 * Picket.TAG_PAD.y * k)
-		var e := Picket.TAG_EDGE * k
-		b.polygon(Face.Builder.round_rect(at, sz, Picket.TAG_R * k), Pal.WOOD_DEEP)
-		b.polygon(Face.Builder.round_rect(at + Vector2.ONE * e, sz - Vector2.ONE * 2.0 * e,
-			maxf(Picket.TAG_R * k - e, 1.0)), Picket.TAG_FACE)
-		_tags.append([Vector2(at.x + sz.x * 0.5 - wide * 0.5, at.y + sz.y * 0.5 + font.get_ascent(px) * 0.5
-			- font.get_descent(px) * 0.15), text, px])
-
-var _tags: Array = []
-
-func _fence(b: Face.Builder, a: Vector2, z: Vector2, w: float, k: float) -> void:
-	var length := a.distance_to(z)
-	if length <= 0.5:
-		return
-	b.stroke(PackedVector2Array([a, z]), maxf(Picket.RAIL_W * k, 1.0), Color(Picket.FENCE, Picket.RAIL_A), false, false)
-	var dir := (z - a) / length
-	var dash := Picket.PICKET * k
-	var step := dash + Picket.PICKET_GAP * k
-	var count := maxi(1, int(floor((length + Picket.PICKET_GAP * k) / step)))
-	var lead := (length - (count * step - Picket.PICKET_GAP * k)) * 0.5
-	for n in count:
-		var s := lead + n * step
-		b.stroke(PackedVector2Array([a + dir * s, a + dir * minf(s + dash, length)]), w, Picket.FENCE, false, true)
+		var wide := tfont.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, tpx).x
+		var box: Rect2 = Picket.tag_rect(_at(plot[0][0], plot[0][1]) + Picket.TAG_AT * tk, wide, tfont, tpx, tk)
+		Picket.tag_pill(b, box, tk, Picket.TAG_FACE, true)
+		_tags.append([Picket.tag_base(box, wide, tfont, tpx), text, tpx])
+	if not soon:
+		_go(b, _at(P_GO.x, P_GO.y), c)
 
 func _draw() -> void:
 	super()
-	var font: Font = CozyTheme.body(800)
+	var font: Font = CozyTheme.body(Picket.TAG_WEIGHT)
 	for t in _tags:
-		draw_string(font, t[0], t[1], HORIZONTAL_ALIGNMENT_LEFT, -1.0, t[2], Pal.TEXT)
+		draw_string(font, t[0], t[1], HORIZONTAL_ALIGNMENT_LEFT, -1.0, t[2], Picket.TAG_INK)
+
+func _lay() -> void:
+	# The words stand on the cloth, left of the tray, at the card's middle.
+	var c := _cell()
+	var room := _at(0, 0).x - Board.FRAME * c / Board.CELL - SIDE - WORDS_GAP
+	_words(String(entry.get("title", "")), SIDE, size.y * 0.5, room, Pal.TEXT, BLURB)

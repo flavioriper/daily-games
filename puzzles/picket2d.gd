@@ -22,25 +22,28 @@ extends "res://puzzles/sudoku2d.gd"
 const PicketState = preload("res://puzzles/picket_state.gd")
 const PicketWorld = preload("res://puzzles/picket_world.gd")
 
-## The fence: inset from the cell's edge, its pickets (dashes) and the rail
-## under them, at a 100 cell.
-const FENCE_INSET := 7.5
-const FENCE_W := 3.4
-const RAIL_W := 1.6
-const RAIL_A := 0.35
-const PICKET := 8.0
-const PICKET_GAP := 5.0
-const FENCE := Color("8f6a45")
+## The fence: one soft line inset from the cells' rules, unbroken round the
+## plot (a dashed one read as a web page's border, the user's "canvas
+## game"), at a 100 cell. It thickens and takes the state's colour when its
+## plot is selected, right or past saving.
+const FENCE_INSET := 8.0
+const FENCE_W := 2.4
+const FENCE := Color("ac9475")
 const FENCE_SEL := Color("e08a12")
-const FENCE_SEL_W := 1.3
-## The tag: a little wooden plant marker over the plot's top-left corner.
-const TAG_AT := Vector2(2.5, 2.5)
-const TAG_SIZE := 22.0
-const TAG_PAD := Vector2(6.0, 2.0)
-const TAG_R := 5.0
-const TAG_EDGE := 2.0
-const TAG_FACE := Color("fff6e2")
+const FENCE_SEL_W := 1.45
+## The tag: the plot's sum in its top-left corner, on a little paper pill
+## the fence's corner tucks under. Paper while the plot is open; the
+## state's colour, its number in paper, once selected, right or past saving.
+const TAG_AT := Vector2(3.0, 3.0)
+const TAG_SIZE := 23.0
+const TAG_PAD := Vector2(5.0, 1.5)
+const TAG_R := 6.0
+const TAG_INK := Color("6e5a44")
+const TAG_FACE := Color("fffcf5")
+const TAG_WEIGHT := 700
 const TAG_LOST := "?"
+## The cells' rules under the fences.
+const THIN_FAINT := 0.38
 ## A plot come right: its cells light one after another, its tag hops.
 const PLOT_STEP := 0.06
 const TAG_HOP := -11.0
@@ -244,72 +247,81 @@ func _same(p: int, r: int, c: int) -> bool:
 func _build_fences(now: float) -> ArrayMesh:
 	var b := Face.Builder.new()
 	var k := _scale()
-	var ins := FENCE_INSET * k
-	var cl := _cell
-	for i in Gen.CELLS:
-		var p: int = state.cage_of[i]
-		var r := Gen.row_of(i)
-		var c := Gen.col_of(i)
-		var o := _corner_of(i)
-		var ink := _ink_of(p)
-		var w := FENCE_W * k * (FENCE_SEL_W if p == _sel_plot() else 1.0)
-		if not _same(p, r - 1, c):
-			var x0 := ins if not _same(p, r, c - 1) else (-ins if _same(p, r - 1, c - 1) else 0.0)
-			var x1 := cl - ins if not _same(p, r, c + 1) else (cl + ins if _same(p, r - 1, c + 1) else cl)
-			_fence(b, o + Vector2(x0, ins), o + Vector2(x1, ins), w, ink, k)
-		if not _same(p, r + 1, c):
-			var x0 := ins if not _same(p, r, c - 1) else (-ins if _same(p, r + 1, c - 1) else 0.0)
-			var x1 := cl - ins if not _same(p, r, c + 1) else (cl + ins if _same(p, r + 1, c + 1) else cl)
-			_fence(b, o + Vector2(x0, cl - ins), o + Vector2(x1, cl - ins), w, ink, k)
-		if not _same(p, r, c - 1):
-			var y0 := ins if not _same(p, r - 1, c) else (-ins if _same(p, r - 1, c - 1) else 0.0)
-			var y1 := cl - ins if not _same(p, r + 1, c) else (cl + ins if _same(p, r + 1, c - 1) else cl)
-			_fence(b, o + Vector2(ins, y0), o + Vector2(ins, y1), w, ink, k)
-		if not _same(p, r, c + 1):
-			var y0 := ins if not _same(p, r - 1, c) else (-ins if _same(p, r - 1, c + 1) else 0.0)
-			var y1 := cl - ins if not _same(p, r + 1, c) else (cl + ins if _same(p, r + 1, c + 1) else cl)
-			_fence(b, o + Vector2(cl - ins, y0), o + Vector2(cl - ins, y1), w, ink, k)
-	# The tags' markers, over the fences' corners.
-	var font: Font = CozyTheme.body(800)
+	var sel := _sel_plot()
+	# The open plots' fences first, so a lit one is never crossed by a
+	# neighbour's.
+	for lit in [false, true]:
+		for i in Gen.CELLS:
+			var p: int = state.cage_of[i]
+			var ink := _ink_of(p)
+			if (ink != FENCE) != lit:
+				continue
+			var r := Gen.row_of(i)
+			var c := Gen.col_of(i)
+			var w := FENCE_W * k * (FENCE_SEL_W if lit or p == sel else 1.0)
+			fence_cell(b, _corner_of(i), _cell, FENCE_INSET * k,
+				func(dr: int, dc: int) -> bool: return _same(p, r + dr, c + dc), w, ink)
+	var font: Font = CozyTheme.body(TAG_WEIGHT)
 	var px := int(roundf(TAG_SIZE * k))
 	for p in state.plots.size():
-		var box := _tag_box(p, now, font, px)
 		var ink := _ink_of(p)
-		var edge: Color = ink if ink != FENCE else Pal.WOOD_DEEP
-		b.fan(Face.Builder.round_rect(box.position + Vector2(0.0, 1.5 * k), box.size, TAG_R * k),
-			Color(Pal.TEXT, 0.18))
-		b.fan(Face.Builder.round_rect(box.position, box.size, TAG_R * k), edge)
-		var e := TAG_EDGE * k
-		b.fan(Face.Builder.round_rect(box.position + Vector2.ONE * e, box.size - Vector2.ONE * 2.0 * e,
-			maxf(TAG_R * k - e, 1.0)), TAG_FACE)
+		tag_pill(b, _tag_box(p, now, font, px), k, TAG_FACE if ink == FENCE else ink, ink == FENCE)
 	return b.mesh()
 
-## One run of fence from `a` to `z`: a faint rail and the pickets on it.
-func _fence(b: Face.Builder, a: Vector2, z: Vector2, w: float, ink: Color, k: float) -> void:
-	var length := a.distance_to(z)
-	if length <= 0.5:
-		return
-	b.stroke(PackedVector2Array([a, z]), RAIL_W * k, Color(ink, RAIL_A), false, false)
-	var dir := (z - a) / length
-	var dash := PICKET * k
-	var step := dash + PICKET_GAP * k
-	# Pickets centred on the run, so two runs meeting at a corner both end
-	# on a picket.
-	var count := maxi(1, int(floor((length + PICKET_GAP * k) / step)))
-	var lead := (length - (count * step - PICKET_GAP * k)) * 0.5
-	for n in count:
-		var s := lead + n * step
-		b.stroke(PackedVector2Array([a + dir * s, a + dir * minf(s + dash, length)]), w, ink, false, true)
+## The fence round one cell of a plot, cell's top left at `o`, `cl` wide,
+## `ins` in from its rules: a side wherever `same(dr, dc)` says the
+## neighbour is another plot's, each side running on into the next cell's
+## where the plot turns a corner, so the line is unbroken. Shared with the
+## menu card (ui/menu/cards/picket.gd).
+static func fence_cell(b: Face.Builder, o: Vector2, cl: float, ins: float, same: Callable, w: float,
+		ink: Color) -> void:
+	if not same.call(-1, 0):
+		var x0 := ins if not same.call(0, -1) else (-ins if same.call(-1, -1) else 0.0)
+		var x1 := cl - ins if not same.call(0, 1) else (cl + ins if same.call(-1, 1) else cl)
+		b.stroke(PackedVector2Array([o + Vector2(x0, ins), o + Vector2(x1, ins)]), w, ink)
+	if not same.call(1, 0):
+		var x0 := ins if not same.call(0, -1) else (-ins if same.call(1, -1) else 0.0)
+		var x1 := cl - ins if not same.call(0, 1) else (cl + ins if same.call(1, 1) else cl)
+		b.stroke(PackedVector2Array([o + Vector2(x0, cl - ins), o + Vector2(x1, cl - ins)]), w, ink)
+	if not same.call(0, -1):
+		var y0 := ins if not same.call(-1, 0) else (-ins if same.call(-1, -1) else 0.0)
+		var y1 := cl - ins if not same.call(1, 0) else (cl + ins if same.call(1, -1) else cl)
+		b.stroke(PackedVector2Array([o + Vector2(ins, y0), o + Vector2(ins, y1)]), w, ink)
+	if not same.call(0, 1):
+		var y0 := ins if not same.call(-1, 0) else (-ins if same.call(-1, 1) else 0.0)
+		var y1 := cl - ins if not same.call(1, 0) else (cl + ins if same.call(1, 1) else cl)
+		b.stroke(PackedVector2Array([o + Vector2(cl - ins, y0), o + Vector2(cl - ins, y1)]), w, ink)
+
+## A tag's pill in `box`: paper with a hairline while its plot is open
+## (`quiet`), else filled in its state's colour over a soft drop.
+static func tag_pill(b: Face.Builder, box: Rect2, k: float, fill: Color, quiet: bool) -> void:
+	var r := TAG_R * k
+	if quiet:
+		b.fan(Face.Builder.round_rect(box.position, box.size, r), Color(FENCE, 0.55))
+		var e := maxf(1.0 * k, 0.75)
+		b.fan(Face.Builder.round_rect(box.position + Vector2.ONE * e, box.size - Vector2.ONE * 2.0 * e,
+			maxf(r - e, 1.0)), fill)
+	else:
+		b.fan(Face.Builder.round_rect(box.position + Vector2(0.0, 1.5 * k), box.size, r), Color(Pal.TEXT, 0.16))
+		b.fan(Face.Builder.round_rect(box.position, box.size, r), fill)
+
+## The pill round `wide` of a tag's number at `px`, its top left at `at`.
+static func tag_rect(at: Vector2, wide: float, font: Font, px: int, k: float) -> Rect2:
+	return Rect2(at, Vector2(maxf(wide + 2.0 * TAG_PAD.x * k, font.get_height(px) * 0.78 + 2.0 * TAG_PAD.y * k),
+		font.get_height(px) * 0.78 + 2.0 * TAG_PAD.y * k))
+
+## Where a tag's number stands in its pill.
+static func tag_base(box: Rect2, wide: float, font: Font, px: int) -> Vector2:
+	return Vector2(box.get_center().x - wide * 0.5,
+		box.get_center().y + font.get_ascent(px) * 0.5 - font.get_descent(px) * 0.2)
 
 func _tag_text(p: int) -> String:
 	return TAG_LOST if state.sums[p] < 0 else str(state.sums[p])
 
-## The tag's marker, hopped or shaken as its plot's moment says.
+## The tag's pill, hopped or shaken as its plot's moment says.
 func _tag_box(p: int, now: float, font: Font, px: int) -> Rect2:
 	var k := _scale()
-	var text := _tag_text(p)
-	var wide := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px).x
-	var size_ := Vector2(wide + 2.0 * TAG_PAD.x * k, font.get_height(px) * 0.82 + 2.0 * TAG_PAD.y * k)
+	var wide := font.get_string_size(_tag_text(p), HORIZONTAL_ALIGNMENT_LEFT, -1.0, px).x
 	var at := _corner_of(int(state.plots[p][0])) + TAG_AT * k
 	if not Motion.reduce:
 		var hop := now - float(_tag_hop.get(p, -INF))
@@ -318,28 +330,36 @@ func _tag_box(p: int, now: float, font: Font, px: int) -> Rect2:
 		var shake := now - float(_tag_shake.get(p, -INF))
 		if shake < Motion.SHIVER_TIME:
 			at.x += Motion.shiver_offset(shake, Motion.SHIVER_PX * 2.0 * k)
-	return Rect2(at, size_)
+	return tag_rect(at, wide, font, px, k)
 
 func _tag_mid(p: int) -> Vector2:
-	var font: Font = CozyTheme.body(800)
+	var font: Font = CozyTheme.body(TAG_WEIGHT)
 	return _tag_box(p, _now(), font, int(roundf(TAG_SIZE * _scale()))).get_center()
 
 func _draw_tags(now: float, pop: float, centre: Vector2) -> void:
-	var font: Font = CozyTheme.body(800)
+	var font: Font = CozyTheme.body(TAG_WEIGHT)
 	var px := int(roundf(TAG_SIZE * _scale()))
 	if px <= 0:
 		return
 	draw_set_transform(centre * (1.0 - pop), 0.0, Vector2.ONE * pop)
-	var rise := font.get_ascent(px)
 	for p in state.plots.size():
 		var box := _tag_box(p, now, font, px)
-		var ink: Color = Pal.TEXT if state.sums[p] >= 0 else Pal.TEXT_DIM
 		var text := _tag_text(p)
+		var ink: Color = TAG_INK if state.sums[p] >= 0 else Pal.TEXT_DIM
+		if _ink_of(p) != FENCE:
+			ink = TAG_FACE
 		var wide := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px).x
-		var base := Vector2(box.get_center().x - wide * 0.5,
-			box.get_center().y + rise * 0.5 - font.get_descent(px) * 0.15)
-		draw_string(font, base, text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px, ink)
+		draw_string(font, tag_base(box, wide, font, px), text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px, ink)
 	draw_set_transform(Vector2.ZERO)
+
+## Every panel plain paper: the fences are the pattern here, and a chequer
+## under them read as plots of its own.
+func _panel_shaded(_br: int, _bc: int) -> bool:
+	return false
+
+## The cells' rules faint, so a plot's fence is the line the eye follows.
+func _thin_alpha() -> float:
+	return THIN_FAINT
 
 ## Sudoku's pencil marks packed a little tighter and moved off the tag.
 func _note_spot(n: int) -> Vector2:
