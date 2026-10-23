@@ -1243,3 +1243,8 @@ offered.
 The speed at three quarters, so the time at four thirds: `FLY_TIME` 0.14 to
 0.187 (11 frames at 60 fps, was 8). Still the same for every flight; the
 gap stays 0.025 s.
+
+**08:22, a quarter slower again.** The user: "reduce fly time more 25%",
+and asked which way, "slower again". `FLY_TIME` 0.187 to 0.249 (about 15
+frames at 60 fps). Same for every flight; the gap stays 0.025 s, so about
+ten gems are in the air at once on a long run.
