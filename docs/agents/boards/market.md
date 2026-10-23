@@ -39,3 +39,18 @@
   `tests/_shot_market.gd -- <dir> d=<0..3> [tut=<page>|card]` shoots rest,
   picked, refused, sliding, made, undoing, hinted, the win and the reopened
   day.
+- **The look redone, 2026-10-23** (the user, after Picket Sums' pass:
+  "apply same for market sums"). The card is the game in one look: the
+  order board reads 12, crates 5 and 7 on a shelf, the go token's plus
+  between them (a circled times read as a close button). Crates are a
+  rounded box with a lit rim, two soft grooves and faint posts, the label
+  bigger (`LABEL_W` 0.72, `LABEL_H` 0.48) and its numeral
+  `Art.numeral_size`; the picked crate a sun ring with a soft glow, not a
+  slab. **The step strip** under the signs spells the step being built, a
+  slot each for crate, sign and crate ("5 + ?"), and the step just made in
+  full ("5 + 6 = 11", the made number on leaf paper) for `EQ_HOLD` or
+  until a sign is picked; a refusal takes the strip's place on rose paper,
+  and the count under it is plain dim text (no outline). Its mesh is kept
+  in `_strip_shown`: built and dropped in `_draw`, it was freed before the
+  frame drew ("mesh is null"). Draw calls 95-98 playing, 151-156 at the
+  win, card 6. Verdict owed.

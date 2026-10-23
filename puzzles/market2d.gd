@@ -69,9 +69,22 @@ const AWNING := 110.0
 const SHELF := 26.0
 const SHELF_GAP := 78.0
 const COUNTER_FRONT := 54.0
-const COUNT_H := 70.0
-const COUNT_SIZE := 34
-const SAY_SIZE := 32
+## Under the signs: the step strip and the count under it. The strip
+## spells the step being built, a slot each for the crate, the sign and the
+## other crate ("5 + ?"), and the step just made in full ("5 + 6 = 11")
+## until the next is begun; a refusal takes its place, rose. The user,
+## 2026-10-23: "must be easy to understand as a new player".
+const COUNT_H := 168.0
+const COUNT_SIZE := 30
+const SAY_SIZE := 30
+const STRIP_H := 76.0
+const STRIP_TOP := 22.0
+const STRIP_PAD := 14.0
+const STRIP_GAP := 10.0
+const SLOT_W := 92.0
+const STRIP_NUM := 44
+const EQ_HOLD := 2.2
+const COUNT_DROP := 46.0
 ## How high a picked crate rides, in its width.
 const PICK_RISE := 0.08
 ## A crate sliding into another, and how high its arc rides, in crate
@@ -111,6 +124,11 @@ var _say := ""
 var _say_at := -INF
 var _stuck_said := false
 var _filled_at := -INF
+## The step last made, [a, op, b, made, at]; [] when none to show.
+var _eq: Array = []
+## The strip's mesh, kept until the next replaces it (a mesh freed before
+## the frame draws is drawn as nothing).
+var _strip_shown: ArrayMesh
 var _pressing := -2
 ## The layout.
 var _clear := Vector2.ZERO
@@ -259,6 +277,7 @@ func _tap_sign(o: int) -> void:
 ## Crate `from` into crate `into` under `op`, by the player or the bulb.
 func _make(from: int, into: int, op: int, by_hint: bool) -> void:
 	var old: int = _st.slots[into]
+	var was: int = _st.slots[from]
 	var heard: int = _st.make(from, into, op, by_hint)
 	match heard:
 		Made.SAME:
@@ -275,6 +294,12 @@ func _make(from: int, into: int, op: int, by_hint: bool) -> void:
 		moves += 1
 		moved.emit()
 	_say = ""
+	var a := was
+	var z := old
+	if op == Gen.Op.SUB or op == Gen.Op.DIV:
+		a = maxi(was, old)
+		z = mini(was, old)
+	_eq = [a, op, z, _st.slots[into], _t]
 	_shown_v[into] = old
 	_slide = {"from": from, "into": into, "at": _t, "back": false, "value": _st.slots[into]}
 	_pick = -1
@@ -358,6 +383,7 @@ func undo() -> bool:
 	_pick = -1
 	_op = -1
 	_say = ""
+	_eq = []
 	_stuck_said = false
 	_cue("undo")
 	return true
@@ -400,6 +426,7 @@ func reset_board() -> void:
 	_pick = -1
 	_op = -1
 	_say = ""
+	_eq = []
 	_stuck_said = false
 	for i in SLOTS:
 		_shown_v[i] = _st.slots[i]
@@ -583,7 +610,8 @@ func _layout_for(top: float, bottom: float) -> Dictionary:
 		"board_y": board_y, "bw": BOARD_W * s, "bh": BOARD_H * s,
 		"cw": cw, "gap": CRATE_GAP * s, "row0": row0, "row1": row1,
 		"shelf0": shelf0, "shelf1": shelf1, "counter": counter,
-		"tr": tr_, "tokens_y": tokens_y, "count_y": tokens_y + tr_ + 54.0 * s,
+		"tr": tr_, "tokens_y": tokens_y, "strip_y": tokens_y + tr_ + (STRIP_TOP + STRIP_H * 0.5) * s,
+		"count_y": tokens_y + tr_ + (STRIP_TOP + STRIP_H + COUNT_DROP) * s,
 	}
 
 ## A layout value, eased from the play's layout into the win's.
@@ -741,7 +769,7 @@ func _numeral(v: int, xf: Transform2D) -> void:
 	var cw := _l("cw")
 	var font: Font = CozyTheme.display(800)
 	var text := str(v)
-	var fs := roundi(cw * (0.3 if text.length() <= 2 else (0.25 if text.length() == 3 else 0.2)))
+	var fs := Art.numeral_size(text, cw)
 	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 	var asc := font.get_ascent(fs)
 	var at := Art.label_centre(cw) + Vector2(-tw * 0.5, asc * 0.36)
@@ -779,33 +807,109 @@ func _shown_numeral_from() -> int:
 	var last: Array = _st.history[_st.history.size() - 1]
 	return int((last[0] as Array)[int(_slide.from)])
 
-## The steps taken against the fewest, or what was just refused.
+## The step strip, or what was just refused in its place, and the steps
+## taken against the fewest under it.
 func _draw_count() -> void:
 	if demo or _won:
 		return
 	var u := _u()
+	var s := float(_L.get("s", u))
 	var font: Font = CozyTheme.display(700)
-	var y := _l("count_y")
+	var mid := Vector2(size.x * 0.5, _l("strip_y"))
+	var sh := STRIP_H * s
 	if _say != "":
 		var text := tr(_say)
 		var fs := roundi(SAY_SIZE * u)
 		var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 		var pk := Motion.pop_in_scale(_t - _say_at, 0.25).x if _t - _say_at < 0.25 and not Motion.reduce else 1.0
-		draw_set_transform(Vector2(size.x * 0.5, y), 0.0, Vector2.ONE * pk)
-		draw_string_outline(font, Vector2(-tw * 0.5, 0.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, roundi(10 * u), Color(Pal.SURFACE, 0.92))
-		draw_string(font, Vector2(-tw * 0.5, 0.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Pal.TEXT)
+		var b := Face.Builder.new()
+		_pill(b, Vector2(minf(tw + 2.0 * STRIP_PAD * 2.0 * s, size.x - 40.0 * u), sh), Pal.BAD_TILE)
+		draw_set_transform(mid, 0.0, Vector2.ONE * pk)
+		_strip_shown = b.mesh()
+		draw_mesh(_strip_shown, null)
+		draw_string(font, Vector2(-tw * 0.5, font.get_ascent(fs) * 0.36), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Pal.TEXT)
 		draw_set_transform(Vector2.ZERO)
 		return
 	if is_done():
 		return
+	_draw_strip(mid, s)
 	var n: int = _st.steps
 	var text: String = (tr("MK_STEPS_ONE") if n == 1 else tr("MK_STEPS_N")) % n
 	text += "  ·  " + tr("MK_FEWEST") % _st.par
 	var cs := roundi(COUNT_SIZE * u)
 	var cw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, cs).x
-	var at := Vector2(size.x * 0.5 - cw * 0.5, y)
-	draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, cs, roundi(10 * u), Color(Pal.SURFACE, 0.92))
-	draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, cs, Pal.TEXT)
+	draw_string(font, Vector2(size.x * 0.5 - cw * 0.5, _l("count_y")), text, HORIZONTAL_ALIGNMENT_LEFT, -1, cs,
+		Color(Pal.TEXT, 0.72))
+
+## A paper pill `sz` about the origin, on a soft drop, with a hairline.
+func _pill(b: Face.Builder, sz: Vector2, face: Color) -> void:
+	var r := sz.y * 0.5
+	b.fan(Face.Builder.round_rect(-sz * 0.5 + Vector2(0.0, sz.y * 0.07), sz, r), Color(Pal.TEXT, 0.14))
+	b.fan(Face.Builder.round_rect(-sz * 0.5, sz, r), Color(Pal.LINE, 0.7))
+	var e := 1.5 * _u()
+	b.fan(Face.Builder.round_rect(-sz * 0.5 + Vector2.ONE * e, sz - Vector2.ONE * 2.0 * e, r - e), face)
+
+## The strip: [crate][sign][crate] while a step is built, the step just made
+## with its "= made" while nothing new is begun.
+func _draw_strip(mid: Vector2, s: float) -> void:
+	var big: Font = CozyTheme.display(800)
+	var fs := roundi(STRIP_NUM * s)
+	var sh := STRIP_H * s
+	var slot_h := sh - 2.0 * STRIP_GAP * s
+	# the parts: [kind, value] with kind "n" a number (0 = empty), "o" a
+	# sign (-1 = empty), "=" the equals
+	var parts: Array = []
+	var made := not _eq.is_empty() and _op < 0 and _t - float(_eq[4]) < EQ_HOLD
+	if made:
+		parts = [["n", _eq[0]], ["o", _eq[1]], ["n", _eq[2]], ["=", 0], ["n", _eq[3]]]
+	else:
+		parts = [["n", _st.slots[_pick] if _pick >= 0 else 0], ["o", _op], ["n", 0]]
+	var widths: Array = []
+	var total := 0.0
+	for p in parts:
+		var w := slot_h
+		if p[0] == "n":
+			w = maxf(SLOT_W * s, big.get_string_size(str(p[1]), HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x + 24.0 * s)
+		elif p[0] == "=":
+			w = slot_h * 0.6
+		widths.append(w)
+		total += w
+	total += STRIP_GAP * s * (parts.size() - 1)
+	var b := Face.Builder.new()
+	var pill := Vector2(total + 2.0 * STRIP_PAD * s, sh)
+	_pill(b, pill, Pal.SURFACE)
+	var x := -total * 0.5
+	var texts: Array = []
+	for i in parts.size():
+		var p: Array = parts[i]
+		var w: float = widths[i]
+		var c := Vector2(x + w * 0.5, 0.0)
+		var empty: bool = (p[0] == "n" and int(p[1]) <= 0) or (p[0] == "o" and int(p[1]) < 0)
+		if empty:
+			b.fan(Face.Builder.round_rect(c - Vector2(w, slot_h) * 0.5, Vector2(w, slot_h), slot_h * 0.3),
+				Color(Pal.LINE, 0.22))
+		elif p[0] == "o":
+			var lit: bool = not made
+			b.disc(c, slot_h * 0.5, Pal.SUN if lit else Color(Pal.LINE, 0.3))
+			Art.mark(b, c, slot_h * 0.24, int(p[1]), Pal.SURFACE if lit else Pal.TEXT)
+		elif p[0] == "=":
+			var t := slot_h * 0.07
+			for dy in [-slot_h * 0.12, slot_h * 0.12]:
+				b.fan(Face.Builder.round_rect(c + Vector2(-w * 0.32, dy - t * 0.5), Vector2(w * 0.64, t), t * 0.5), Pal.TEXT)
+		else:
+			var last: bool = made and i == parts.size() - 1
+			if last:
+				b.fan(Face.Builder.round_rect(c - Vector2(w, slot_h) * 0.5, Vector2(w, slot_h), slot_h * 0.3), Art.FILLED)
+			texts.append([c, str(p[1])])
+		x += w + STRIP_GAP * s
+	draw_set_transform(mid)
+	_strip_shown = b.mesh()
+	draw_mesh(_strip_shown, null)
+	for t in texts:
+		var tw := big.get_string_size(t[1], HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		draw_string(big, (t[0] as Vector2) + Vector2(-tw * 0.5, big.get_ascent(fs) * 0.36), t[1],
+			HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Pal.TEXT)
+	draw_set_transform(Vector2.ZERO)
 
 # --- the win ---
 

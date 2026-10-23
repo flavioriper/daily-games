@@ -36,12 +36,16 @@ const STRING := Color("9a7b5a")
 const H := 0.84
 const CORNER := 0.1
 const FOOT := 0.08
-const LABEL_W := 0.62
-const LABEL_H := 0.4
+const LABEL_W := 0.72
+const LABEL_H := 0.48
 const LABEL_RISE := 0.02
+## The picked crate's ring: its gap from the crate and its line.
+const HALO_GAP := 0.05
+const HALO_W := 0.03
 
 ## The pieces drawn many times over, about the origin, for a crate `w` wide:
-## {crate, filled, halo, shade}.
+## {crate, filled, halo, shade}. The halo is a ring round the crate, a
+## soft glow outside a sun line, not a slab behind it.
 static func units(w: float) -> Dictionary:
 	var out := {}
 	var b := Face.Builder.new()
@@ -51,40 +55,51 @@ static func units(w: float) -> Dictionary:
 	crate(b, Vector2.ZERO, w, true)
 	out.filled = b.mesh()
 	b = Face.Builder.new()
-	var hs := Vector2(w * 1.12, w * H + w * 0.12)
-	b.fan(Face.Builder.round_rect(-hs * 0.5, hs, w * (CORNER + 0.06)), Color(Pal.SUN, 0.9))
+	var gap := w * HALO_GAP
+	var hs := Vector2(w, w * H) + Vector2.ONE * gap * 2.0
+	var ring := Face.Builder.round_rect(-hs * 0.5, hs, w * CORNER + gap)
+	b.stroke(ring, w * 0.07, Color(Pal.SUN, 0.22), true)
+	b.stroke(ring, w * HALO_W, Pal.SUN, true)
 	out.halo = b.mesh()
 	b = Face.Builder.new()
-	Scenery.soft_disc(b, Vector2(0.0, w * H * 0.5), w * 0.52, w * 0.1, Color(Pal.TEXT, 0.22))
+	Scenery.soft_disc(b, Vector2(0.0, w * H * 0.5), w * 0.52, w * 0.1, Color(Pal.TEXT, 0.18))
 	out.shade = b.mesh()
 	return out
 
-## A crate centred on `at`: posts, slats with dark gaps between them, and
-## the paper label; leaf paper once it holds the order.
+## A crate centred on `at`: a rounded wooden box on a darker foot, a lit
+## rim along its top, two soft grooves for its slats and a faint post at
+## each side, and the paper label over it; leaf paper once it holds the
+## order. (The first crate, 2026-10-22, was dark gaps between three slats
+## and two posts: busy, and the label small among it.)
 static func crate(b, at: Vector2, w: float, filled: bool) -> void:
 	var h := w * H
 	var corner := at - Vector2(w, h) * 0.5
-	b.fan(Face.Builder.round_rect(corner, Vector2(w, h), w * CORNER), CRATE_DEEP)
-	b.fan(Face.Builder.round_rect(corner, Vector2(w, h - w * FOOT), w * CORNER), CRATE_GAP)
-	# three slats across, the gaps between them showing dark
-	var inner := Vector2(w * 0.08, w * 0.07)
-	var slat_h := (h - w * FOOT - inner.y * 2.0 - w * 0.06) / 3.0
-	for i in 3:
-		var y := corner.y + inner.y + i * (slat_h + w * 0.03)
-		b.fan(Face.Builder.round_rect(Vector2(corner.x + inner.x * 0.5, y), Vector2(w - inner.x, slat_h), w * 0.03),
-			CRATE if i != 1 else CRATE_LIT)
-	# the corner posts
+	var r := w * CORNER
+	b.fan(Face.Builder.round_rect(corner, Vector2(w, h), r), CRATE_DEEP)
+	b.fan(Face.Builder.round_rect(corner, Vector2(w, h - w * FOOT), r), CRATE)
+	b.fan(Face.Builder.round_rect(corner + Vector2(w * 0.04, w * 0.03), Vector2(w * 0.92, w * 0.05), w * 0.025),
+		Color(CRATE_LIT, 0.9))
+	var body := h - w * FOOT
+	for i in [1, 2]:
+		var y: float = corner.y + body * i / 3.0
+		b.stroke(PackedVector2Array([Vector2(corner.x + w * 0.05, y), Vector2(corner.x + w * 0.95, y)]),
+			w * 0.018, Color(CRATE_GAP, 0.28), false, true)
 	for side in [0.0, 1.0]:
-		var x: float = corner.x + side * (w - w * 0.14)
-		b.fan(Face.Builder.round_rect(Vector2(x, corner.y), Vector2(w * 0.14, h - w * FOOT), w * CORNER), CRATE_POST)
+		var x: float = corner.x + side * (w - w * 0.1)
+		b.fan(Face.Builder.round_rect(Vector2(x, corner.y), Vector2(w * 0.1, body), r), Color(CRATE_POST, 0.55))
 	var ls := Vector2(w * LABEL_W, w * LABEL_H)
 	var lat := at - ls * 0.5 - Vector2(0.0, w * (LABEL_RISE + FOOT * 0.5))
-	b.fan(Face.Builder.round_rect(lat + Vector2(0.0, w * 0.025), ls, w * 0.07), FILLED_EDGE if filled else LABEL_EDGE)
-	b.fan(Face.Builder.round_rect(lat, ls, w * 0.07), FILLED if filled else LABEL)
+	b.fan(Face.Builder.round_rect(lat + Vector2(0.0, w * 0.02), ls, w * 0.09),
+		Color(FILLED_EDGE if filled else CRATE_GAP, 0.35))
+	b.fan(Face.Builder.round_rect(lat, ls, w * 0.09), FILLED if filled else LABEL)
 
 ## Where a crate's numeral stands, from its centre, for a crate `w` wide.
 static func label_centre(w: float) -> Vector2:
 	return Vector2(0.0, -w * (LABEL_RISE + FOOT * 0.5))
+
+## A crate's numeral size for `text`, a crate `w` wide.
+static func numeral_size(text: String, w: float) -> int:
+	return roundi(w * (0.36 if text.length() <= 2 else (0.3 if text.length() == 3 else 0.24)))
 
 ## A sign token of radius `r` about `at`, its mark drawn on it: wood, or
 ## the sun's when it is the sign picked.
