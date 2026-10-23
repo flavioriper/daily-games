@@ -587,6 +587,32 @@ func _process(delta: float) -> bool:
 		20:
 			if _t > _at + 0.4:
 				_shot("10_tray")
+				# priorities (level 10's reward): a join, the Priority tool, a
+				# real tap by the edge its side line comes in by
+				var jt := Sim.HUB_AT + Vector2i(-12, 14)
+				sim.lay_path([jt + Vector2i(-3, 0), jt + Vector2i(-2, 0), jt + Vector2i(-1, 0), jt, jt + Vector2i(1, 0), jt + Vector2i(2, 0)], 0)
+				sim.lay_path([jt + Vector2i(0, -3), jt + Vector2i(0, -2), jt + Vector2i(0, -1), jt], 1)
+				_s.board.look_at_square(Vector2(jt) + Vector2(0.5, 0.5), true)
+				var ps: int = _s.slot_of("prio")
+				_s.scroll_to(ps, true)
+				_tap_tray(ps)
+				_check("a real tap on Priority holds it", _s.board.tool == "prio")
+				_step = 50
+				_at = _t
+		50:
+			if _t > _at + 0.3 and _step == 50:
+				var jt := Sim.HUB_AT + Vector2i(-12, 14)
+				_s.board.look_at_square(Vector2(jt) + Vector2(0.5, 0.5), true)
+				# by its north edge: a third of a square up from its middle
+				_tap(_win(_s.board, _s.board.screen_of(Vector2(jt) + Vector2(0.5, 0.15))))
+				# 1 + the way the marked feeder goes: south (1)
+				_check("a real tap by the join's north edge marks the line coming down (%d)" % int(sim.prio[Sim._i(jt)]), int(sim.prio[Sim._i(jt)]) == 2)
+				_step = 51
+				_at = _t
+		51:
+			if _t > _at + 0.4:
+				_shot("10b_prio")
+				_tap_tray(_s.slot_of("prio"))
 				_s.tutor.show()
 				_card = _s.get_node_or_null("HowToPlay")
 				_check("the tutorial card opens", _card != null)

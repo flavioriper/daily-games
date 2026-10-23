@@ -4084,6 +4084,44 @@ top, which the Mac headless never measures.
   few more than before, one a variant), the close and far shots looked
   at; suite 248522 passed, 0 failed. **Not seen**: the phone.
 
+#### Tally's crossings at level 4, priorities at level 10 (2026-10-23, later)
+
+The user: "do both copies, bridge at lvl 4 and belt priorities just like
+the reference" (the two kept as Tally's own in the pass below).
+
+- **Crossings are level 4's reward** (`UNLOCK[BRIDGE]` 4, the ladder's
+  reward slot): before, a path drawn across a line stops at its side and
+  joins it (`trim_path`: `cut` there, `merge` so the ghost shows the
+  join); a part holding a crossing is "locked". This overturns the
+  2026-10-18 crossings-from-the-start, at the user's word.
+- **Priorities are level 10's reward** (`PRIO`, an enum past `PART` that
+  is no piece; `KIND_IDS` "prio", `TL_PIECE_PRIO`). The reference's rule:
+  one belt at a junction marked, a green diamond; marked in, it passes all
+  it carries and the others fill its gaps; marked out, it is filled first
+  and the others take what it cannot. `prio[i]` per square: 1 + d a
+  feeder coming in going `d`, 5 + d the way out `d`; cleared wherever a
+  fork is, kept in saves (`prios`) and in undo. `_choose` and `_try_move`
+  send to the marked way out whenever it accepts; `_yields` holds back a
+  feeder while the marked one has a token at 0.9 of its square or more
+  (at 0.5 it reserved the slot through real gaps and the box got a
+  quarter less; 0.75 to 0.97 measure the same). `junction`, `can_prio`,
+  `set_prio(t, side)`: the side is the edge tapped, a feeder in by it
+  first, else the way out by it; the same again clears.
+- **The Priority tool** (`TL_TOOL_PRIO`, after Parts in the tray, a green
+  diamond, shut until level 11): a tap on a junction sets it by the
+  nearest edge; with it in hand every junction in sight wears a faint
+  green ring. Diamonds and rings are drawn on the live layer from k 22
+  (`PRIO_K`), walking the squares in view. Refusals `TL_SAY_NO_PRIO`,
+  `TL_SAY_PRIO_SIDE` (en, pt, es).
+- Checked: probe 0 failed with eleven new checks (the join at level 4,
+  the reward, a join and a fork as junctions, the north-first join: 1,081
+  2s and 360 1s where unmarked it is 723 and 724, east-first fork: 28 and
+  0, save and undo); `_shot_tally` a real tap on Priority and a real tap by
+  a join's north edge (shot `10b_prio`), 0 failed headless and windowed on
+  `opengl3_angle`, 62 to 158 draw calls; suite 163,161 passed. Harness
+  note: a tap offset must be made in the board's squares and passed
+  through `_win`; window pixels are scaled headless.
+
 #### Tally at the reference's pace: its counts, every number to 999 (2026-10-23)
 
 The user, after a side-by-side page of the reference's progression (its fan

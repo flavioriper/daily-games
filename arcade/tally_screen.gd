@@ -79,7 +79,7 @@ const OP_GAP := 0.16
 const SHOP_EVERY := 0.25
 ## The tray's tools in order: the hands, the belt and the dig, then what is
 ## set down on the paper after. A slot is a place among those open.
-const TOOLS := ["move", "belt", "dig", "turn", "remove", "parts", "crate", "add", "mul", "sub", "div", "pow"]
+const TOOLS := ["move", "belt", "dig", "turn", "remove", "parts", "prio", "crate", "add", "mul", "sub", "div", "pow"]
 const HAPTICS := {}
 ## The undo chip: how long it rests, its disc's radius, how far it stands
 ## over the tray's top-left corner.
@@ -439,6 +439,11 @@ func _play_from(src: RefCounted) -> void:
 				_feel(Haptics.TAP)
 				_changed()
 				_undo_at = -10.0
+			"prio":
+				_fx.cue("turn", 1.12 if int(ev.prio) != 0 else 0.9)
+				_feel(Haptics.TICK)
+				_changed()
+				_undo_at = -10.0
 			"turn", "flip":
 				_fx.cue("turn", randf_range(0.96, 1.04))
 				_feel(Haptics.TICK)
@@ -561,6 +566,10 @@ func _on_refused(why: String, at: Vector2, n: int) -> void:
 			text = tr("TL_SAY_NO_ROOM")
 		"no_turn":
 			text = tr("TL_SAY_NO_TURN")
+		"no_prio":
+			text = tr("TL_SAY_NO_PRIO")
+		"no_prio_side":
+			text = tr("TL_SAY_PRIO_SIDE")
 		_:
 			text = tr("TL_SAY_TAKEN")
 	_fx.cue("nope")
@@ -700,12 +709,14 @@ static func tool_kind(id: String) -> int:
 func _tool_open(id: String) -> bool:
 	if id == "parts":
 		return sim.parts_open()
+	if id == "prio":
+		return sim.has(Sim.PRIO)
 	var kd := tool_kind(id)
 	return kd < 0 or sim.has(kd)
 
 ## The level a shut tool comes at, as its sticker says it.
 func _open_at(id: String) -> int:
-	var kd := Sim.ADD if id == "parts" else tool_kind(id)
+	var kd := Sim.ADD if id == "parts" else (Sim.PRIO if id == "prio" else tool_kind(id))
 	return int(Sim.UNLOCK.get(kd, 0)) + 1
 
 ## Whether `id` is the tool in hand (Parts while copies are being set).
@@ -933,6 +944,11 @@ func _draw_tray() -> void:
 			Art.eraser_into(marks, at, 24.0 * sc)
 		elif id == "turn":
 			Art.glyph_into(marks, "turn", Rect2(at - Vector2.ONE * 24.0 * sc, Vector2.ONE * 48.0 * sc), Pal.TEXT_DIM)
+		elif id == "prio" and _tool_open(id):
+			var h := 22.0 * sc
+			var dia := PackedVector2Array([at + Vector2(0, -h), at + Vector2(h, 0), at + Vector2(0, h), at + Vector2(-h, 0)])
+			marks.polygon(dia, Board.PRIO_GREEN)
+			marks.stroke(dia + PackedVector2Array([dia[0]]), 3.0, Art.INK, false)
 	_tray_live = b.mesh()
 	tray.draw_mesh(_tray_live, null)
 	_marks_live = marks.mesh() if not marks.verts.is_empty() else null

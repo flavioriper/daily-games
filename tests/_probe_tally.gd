@@ -38,6 +38,7 @@ func _initialize() -> void:
 	_divider()
 	_split_merge()
 	_bridge()
+	_prios()
 	_path()
 	_crate()
 	_stall()
@@ -411,11 +412,17 @@ func _split_merge() -> void:
 	_check("drawn on, it goes on", d.dead[end] == 0 and d.occ[Sim._i(Vector2i(15, 10))] == 1)
 
 func _bridge() -> void:
-	var s = _blank(1)
+	var n = _blank(4)
+	_dig1(n, Vector2i(5, 12), 1)
+	_run(n, Vector2i(6, 12), Vector2i(20, 12), E)
+	_run(n, Vector2i(12, 8), Vector2i(12, 16), S)
+	_check("before level 5 a run across a belt stops at its side and joins it", n.kind_at(Vector2i(12, 12)) == Sim.BELT and n.face_at(Vector2i(12, 12)) == E and n.face_at(Vector2i(12, 11)) == S and n.kind_at(Vector2i(12, 13)) == Sim.EMPTY)
+	_check("level 4's end hands crossings over", n.reward_of(4) == Sim.BRIDGE and not n.has(Sim.BRIDGE))
+	var s = _blank(5)
 	_dig1(s, Vector2i(5, 12), 1)
 	_run(s, Vector2i(6, 12), Vector2i(20, 12), E)
 	_run(s, Vector2i(12, 8), Vector2i(12, 16), S)
-	_check("from level 1 a run across a belt makes a crossing", s.kind_at(Vector2i(12, 12)) == Sim.BRIDGE and s.kind_at(Vector2i(12, 13)) == Sim.BELT)
+	_check("from level 5 a run across a belt makes a crossing", s.kind_at(Vector2i(12, 12)) == Sim.BRIDGE and s.kind_at(Vector2i(12, 13)) == Sim.BELT)
 	var b = _blank(6)
 	_dig1(b, Vector2i(5, 12), 1)
 	_dig1(b, Vector2i(12, 4), 3)
@@ -497,7 +504,7 @@ func _path() -> void:
 	_check("the flipped line's end faces into the box beside it", bx.face_at(left) == E and (bx.outs[Sim._i(left)] as PackedInt32Array).size() == 1)
 	_check("one step back unflips it", bx.undo() and bx.face_at(left) == S and bx.face_at(left + Vector2i(0, 8)) == S)
 	# a flip goes through a crossing's lane and stops at a join
-	var fx = _blank(1)
+	var fx = _blank(5)
 	_dig1(fx, Vector2i(4, 20), 1)
 	_run(fx, Vector2i(5, 20), Vector2i(14, 20), E)
 	_run(fx, Vector2i(9, 16), Vector2i(9, 24), S)
@@ -573,6 +580,49 @@ func _crate() -> void:
 	_route(s, [Vector2i(10, 40), Vector2i(Sim.HUB_AT.x - 1, 40), Sim.HUB_AT + Vector2i(-1, 1), Sim.HUB_AT + Vector2i(0, 1)])
 	s.step(120.0)
 	_check("a crate lets its number out to the box", s.held(1) > 10)
+
+## Priorities (from level 10): at a join the marked way in goes first and
+## the other fills its gaps; at a split the marked way out is filled first.
+func _prios() -> void:
+	# a join: 1s from the west, 2s from the north, into one belt east to its end
+	var j = _blank(30)
+	_dig1(j, Vector2i(5, 30), 1)
+	_dig1(j, Vector2i(12, 24), 2)
+	_route(j, [Vector2i(6, 30), Vector2i(Sim.HUB_AT.x + 1, 30), Sim.HUB_AT + Vector2i(1, -1)])
+	j.lay_path([Vector2i(12, 25), Vector2i(12, 26), Vector2i(12, 27), Vector2i(12, 28), Vector2i(12, 29), Vector2i(12, 30)], S)
+	_check("a join is a place for a priority, a plain belt is not", j.can_prio(Vector2i(12, 30)) and not j.can_prio(Vector2i(15, 30)))
+	var shut = _blank(10)
+	_run(shut, Vector2i(6, 30), Vector2i(20, 30), E)
+	shut.lay_path([Vector2i(12, 26), Vector2i(12, 27), Vector2i(12, 28), Vector2i(12, 29), Vector2i(12, 30)], S)
+	_check("before level 11 no priority is set", not shut.set_prio(Vector2i(12, 30), 3))
+	_check("tapped by the north edge, the 2s coming down go first", j.set_prio(Vector2i(12, 30), 3) and int(j.prio[Sim._i(Vector2i(12, 30))]) == 1 + S)
+	_check("an edge nothing comes in or goes out by sets nothing", not j.set_prio(Vector2i(12, 30), 1))
+	# both feeders run full: unmarked they take turns (as the join above, about
+	# even); marked, the 2s pass all their line carries and the 1s fill its gaps
+	j.step(120.0)
+	_check("with the north first the 2s pass whole, the 1s fill the gaps (%d 2s, %d 1s)" % [j.held(2), j.held(1)], j.held(2) > j.held(1) * 2 and j.held(1) > 0 and j.held(2) + j.held(1) > 1300)
+	_check("the same tap again clears it", j.set_prio(Vector2i(12, 30), 3) and int(j.prio[Sim._i(Vector2i(12, 30))]) == 0)
+	# a split: one line of 1s, forked at (12, 30) to the south too; east gets first
+	var sp = _blank(30)
+	sp.lv.belt = 1
+	_dig1(sp, Vector2i(5, 30), 1)
+	_run(sp, Vector2i(6, 30), Vector2i(16, 30), E)
+	sp.place(Sim.CRATE, Vector2i(17, 30), E)
+	sp.lay_path([Vector2i(12, 30), Vector2i(12, 31), Vector2i(12, 32), Vector2i(12, 33)], S)
+	sp.place(Sim.CRATE, Vector2i(12, 34), S)
+	_check("a fork is a place for a priority", sp.can_prio(Vector2i(12, 30)))
+	_check("tapped by the east edge, east is filled first", sp.set_prio(Vector2i(12, 30), 0) and int(sp.prio[Sim._i(Vector2i(12, 30))]) == 5 + E)
+	sp.step(40.0)
+	var ce: Dictionary = sp.crates[Sim._i(Vector2i(17, 30))]
+	var cs: Dictionary = sp.crates[Sim._i(Vector2i(12, 34))]
+	_check("east takes all while it has room (%d east, %d south)" % [int(ce.n), int(cs.n)], int(ce.n) > 20 and int(cs.n) == 0)
+	# kept, and undone
+	sp.save()
+	var r = Sim.load_saved()
+	_check("a priority comes back from a save", int(r.prio[Sim._i(Vector2i(12, 30))]) == 5 + E)
+	sp.mark()
+	sp.set_prio(Vector2i(12, 30), 0)
+	_check("one step back puts a cleared priority back", sp.undo() and int(sp.prio[Sim._i(Vector2i(12, 30))]) == 5 + E)
 
 func _stall() -> void:
 	var s = _blank()

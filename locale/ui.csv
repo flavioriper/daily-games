@@ -1881,10 +1881,13 @@ TL_TOOL_DIV,Divide,Dividir,Dividir
 TL_TOOL_POW,Power,Potência,Potencia
 TL_TOOL_TURN,Rotate,Girar,Girar
 TL_TOOL_PARTS,Parts,Peças,Piezas
+TL_TOOL_PRIO,Priority,Prioridade,Prioridad
 TL_STRAIGHT_ON,Straight,Reta,Recta
 TL_STRAIGHT_OFF,Curves,Curvas,Curvas
 TL_SAY_NO_ROOM,No room to turn it,Sem espaço para girar,No hay sitio para girarlo
 TL_SAY_NO_TURN,That one doesn't turn,Esse não gira,Ese no gira
+TL_SAY_NO_PRIO,Priorities go where belts join or split,Prioridade vai onde esteiras se juntam ou se dividem,La prioridad va donde las cintas se unen o se dividen
+TL_SAY_PRIO_SIDE,Tap by the edge a belt comes in or goes out,Toque na borda por onde a esteira entra ou sai,Toca el borde por donde la cinta entra o sale
 TL_PIECE_BELT,Belt,Esteira,Cinta
 TL_PIECE_BRIDGE,Crossing,Cruzamento,Cruce
 TL_PIECE_DIG,Dig,Extrator,Extractor
@@ -1895,6 +1898,7 @@ TL_PIECE_DIV,Divider,Divisor,Divisor
 TL_PIECE_POW,Raiser,Potenciador,Potenciador
 TL_PIECE_CRATE,Crate,Caixote,Cajón
 TL_PIECE_PART,Part,Peça,Pieza
+TL_PIECE_PRIO,Priorities,Prioridades,Prioridades
 TL_PIECE_BOX,The counting box,A caixa de contagem,La caja de conteo
 TL_PIECE_BELT_LINE,Carries one number a square.,Leva um número por casa.,Lleva un número por casilla.
 TL_PIECE_BRIDGE_LINE,"Made by drawing across a belt: both lines go straight on.","Feito ao traçar por cima de uma esteira: as duas linhas seguem reto.","Se hace al trazar sobre una cinta: las dos líneas siguen rectas."

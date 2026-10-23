@@ -87,6 +87,9 @@ const REACH := 3
 const LINES_MOST := 3000
 ## A numeral smaller than this many pixels is not written.
 const FS_MIN := 8
+## The priorities' diamonds are drawn from this zoom up, in this green.
+const PRIO_K := 22.0
+const PRIO_GREEN := Color("5cb85c")
 const TOOL_KINDS := {"belt": Sim.BELT, "dig": Sim.DIG, "crate": Sim.CRATE, "add": Sim.ADD, "mul": Sim.MUL, "sub": Sim.SUB, "div": Sim.DIV, "pow": Sim.POW}
 ## The kinds set down with a ghost and turned before they go.
 const TURNS := [Sim.ADD, Sim.MUL, Sim.SUB, Sim.DIV, Sim.POW]
@@ -365,6 +368,8 @@ func play(ev: Dictionary) -> void:
 		"turn":
 			_spin[ev.tile] = [_clock, (int(ev.face) + 3) % 4]
 			_dirty = true
+		"prio":
+			_pop[ev.tile] = _clock
 		"flip":
 			var tiles: Array = ev.tiles
 			for j in tiles.size():
@@ -889,6 +894,7 @@ func _live_rest(b: Face.Builder, r: Rect2i) -> void:
 					var u := fposmod(_clock, STARVE_BEAT) / STARVE_BEAT
 					var pc := Art.notch_mid(at, v)
 					b.stroke(Face.Builder.ring(pc, U * (0.14 + 0.16 * u), U * (0.14 + 0.16 * u)), U * 0.04 * (1.0 - u), Color(Art.AMBER, 0.9 * (1.0 - u)), true)
+	_live_prios(b, r)
 	# the path traced in hand, as it will be laid
 	if not _path.is_empty():
 		_path_into(b, _path, _trace_f)
@@ -916,6 +922,31 @@ func _live_rest(b: Face.Builder, r: Rect2i) -> void:
 	if tool == "remove" and _finger != -99 and not _consumed:
 		var t := tile_under(_at)
 		b.stroke(Face.Builder.round_rect(Art.mid(t) - Vector2.ONE * U * 0.47, Vector2.ONE * U * 0.94, 18.0), 8.0, Color(Art.WARN, 0.8), true)
+
+## The junctions' priorities: a green diamond by the edge of the line that
+## goes first. With the Priority tool in hand every junction in sight wears
+## a faint ring, so the taps have somewhere to go. Close enough only.
+func _live_prios(b: Face.Builder, r: Rect2i) -> void:
+	if k < PRIO_K:
+		return
+	var hand := tool == "prio"
+	for y in range(maxi(r.position.y, 0), mini(r.end.y, Sim.H)):
+		for x in range(maxi(r.position.x, 0), mini(r.end.x, Sim.W)):
+			var i := y * Sim.W + x
+			if int(sim.kind[i]) != Sim.BELT:
+				continue
+			var t := Vector2i(x, y)
+			var pr := int(sim.prio[i])
+			if hand and sim.can_prio(t):
+				b.stroke(Face.Builder.round_rect(Art.mid(t) - Vector2.ONE * U * 0.46, Vector2.ONE * U * 0.92, 16.0), 5.0, Color(PRIO_GREEN, 0.45), true)
+			if pr == 0:
+				continue
+			var d := Sim.opp(pr - 1) if pr <= 4 else pr - 5
+			var c := Art.mid(t) + Art.dir_v(d) * U * 0.33
+			var h := U * 0.21
+			var dia := PackedVector2Array([c + Vector2(0, -h), c + Vector2(h, 0), c + Vector2(0, h), c + Vector2(-h, 0)])
+			b.polygon(dia, PRIO_GREEN)
+			b.stroke(dia + PackedVector2Array([dia[0]]), 4.0, Art.INK, false)
 
 # --- the visors ---
 
@@ -2280,6 +2311,18 @@ func _tap(p: Vector2) -> void:
 				_set_template(d, t, f)
 			else:
 				_open_piece_pill(t)
+		"prio":
+			# the Priority tool: a tap by a junction's edge marks the line
+			# coming in or going out by it first; the same again clears it
+			if kd == Sim.BELT and sim.can_prio(t):
+				var o := squares_at(p) - Vector2(t) - Vector2(0.5, 0.5)
+				var side := (0 if o.x > 0.0 else 2) if absf(o.x) >= absf(o.y) else (1 if o.y > 0.0 else 3)
+				if not sim.set_prio(t, side):
+					refused.emit("no_prio_side", at, 0)
+			elif kd == Sim.EMPTY:
+				touched.emit(0.9)
+			else:
+				refused.emit("no_prio", at, 0)
 		"turn":
 			# the Rotate tool: a tap turns what it lands on, a quarter clockwise
 			if kd == Sim.EMPTY:

@@ -73,13 +73,15 @@ const CHUNKS := CW * (H / CH)
 const HUB := 6
 const HUB_AT := Vector2i(497, 497)
 
-enum { EMPTY, BELT, BRIDGE, DIG, ADD, MUL, SUB, DIV, POW, CRATE, BOX, SPLIT, JOIN, PART }
+## PRIO is no piece: it is the level 10 reward, priorities at junctions.
+enum { EMPTY, BELT, BRIDGE, DIG, ADD, MUL, SUB, DIV, POW, CRATE, BOX, SPLIT, JOIN, PART, PRIO }
 const OPS := [ADD, MUL, SUB, DIV, POW]
-const KIND_IDS := {BELT: "belt", BRIDGE: "bridge", DIG: "dig", ADD: "add", MUL: "mul", SUB: "sub", DIV: "div", POW: "pow", CRATE: "crate", BOX: "box"}
+const KIND_IDS := {BELT: "belt", BRIDGE: "bridge", DIG: "dig", ADD: "add", MUL: "mul", SUB: "sub", DIV: "div", POW: "pow", CRATE: "crate", BOX: "box", PRIO: "prio"}
 ## The level whose end hands a piece over (it is had from the level after).
 ## SPLIT and JOIN were pieces once (a save's own may still hold them: read
-## as belts); a crossing is had from the start.
-const UNLOCK := {BELT: 0, DIG: 0, ADD: 1, MUL: 7, SUB: 13, DIV: 16, POW: 19, CRATE: 22}
+## as belts). Crossings come at level 4's end and priorities at level 10's,
+## as the reference hands them over.
+const UNLOCK := {BELT: 0, DIG: 0, ADD: 1, BRIDGE: 4, MUL: 7, PRIO: 10, SUB: 13, DIV: 16, POW: 19, CRATE: 22}
 
 ## The kinds a picked piece may be copied or saved as a part with. A dig
 ## goes too (the user, 2026-10-19: "duplicate schema should also include
@@ -138,8 +140,8 @@ const FLOOR := -2147483648
 ## Each level: the sample target, the count, the reward (a piece's kind, a
 ## number now dug, or 0). From level 6 the target is drawn round the sample.
 const LADDER := [
-	[1, 10, ADD], [2, 20, 0], [3, 35, -2], [5, 40, 0], [10, 50, -3],
-	[19, 100, -4], [27, 150, MUL], [36, 300, -5], [47, 450, -6], [50, 500, 0],
+	[1, 10, ADD], [2, 20, 0], [3, 35, -2], [5, 40, BRIDGE], [10, 50, -3],
+	[19, 100, -4], [27, 150, MUL], [36, 300, -5], [47, 450, -6], [50, 500, PRIO],
 	[82, 600, -7], [174, 800, -8], [248, 1000, SUB], [324, 2000, -9], [466, 3000, -11],
 	[594, 4000, DIV], [631, 5000, -12], [727, 6000, -13], [891, 7000, POW], [928, 8000, -14],
 	[1779, 9000, -15], [2805, 10000, CRATE], [3366, 10500, 0], [4860, 11000, 0], [5445, 11500, 0],
@@ -293,6 +295,10 @@ var face2 := PackedByteArray()
 ## A belt's forks: a bit for each side way it also hands on to, by turns
 ## with its own way (a path begun on a line across it branches it there).
 var fork := PackedByteArray()
+## A junction's priority (from level 10, `set_prio`): 0 none, 1 + d the
+## feeder coming in going way `d` goes first (the rest fill its gaps), 5 + d
+## the way out `d` is filled first (the rest take what it cannot).
+var prio := PackedByteArray()
 var root := PackedInt32Array()
 var role := PackedByteArray()
 var dep := PackedInt32Array()
@@ -352,6 +358,7 @@ func _init(rng_seed := 0) -> void:
 	face.resize(N)
 	face2.resize(N)
 	fork.resize(N)
+	prio.resize(N)
 	root.resize(N)
 	root.fill(-1)
 	role.resize(N)
@@ -829,6 +836,7 @@ func _stamp(k: int, t: Vector2i, f: int) -> void:
 		_record(i)
 		_clear(i)
 		fork[i] = 0
+		prio[i] = 0
 		kind[i] = k
 		face[i] = f
 		root[i] = r
@@ -976,11 +984,12 @@ func trim_path(tiles: Array, f_last: int) -> Dictionary:
 		var i := _i(t)
 		var f := int(fs[j])
 		if int(kind[i]) == BELT and int(face[i]) % 2 != f % 2 and not (j == 0 and (extend or forks)):
-			if j > 0 and j < last and _fed_straight(i):
+			if j > 0 and j < last and _fed_straight(i) and has(BRIDGE):
 				continue
-			# a line across the last square: the path runs into its side
+			# a line across the last square (or across its way before
+			# crossings are had): the path runs into its side
 			cut = j
-			merge = j > 0 and j == last
+			merge = j > 0 and (j == last or not has(BRIDGE))
 			break
 		if j > 0 and j == last and int(kind[i]) == BELT and int(face[i]) == opp(f) and belt_at(ts[j - 1]) != BELT:
 			# head on into a line's front (not a line drawn back along itself)
@@ -1073,6 +1082,7 @@ func lay_path(tiles: Array, f_last: int) -> int:
 			if int(face[i]) % 2 == f % 2 or (j == 0 and bool(p.extend)):
 				face[i] = f
 				fork[i] = 0
+				prio[i] = 0
 				to_d[i] = NONE
 			else:
 				var other := int(face[i])
@@ -1214,6 +1224,7 @@ func erase(tiles: Array) -> bool:
 		_clear(i)
 		kind[i] = EMPTY
 		fork[i] = 0
+		prio[i] = 0
 		root[i] = -1
 		role[i] = R_NONE
 		n += 1
@@ -1249,6 +1260,7 @@ func turn(t: Vector2i) -> bool:
 	_record(i)
 	face[i] = (int(face[i]) + 1) % 4
 	fork[i] = 0
+	prio[i] = 0
 	to_d[i] = NONE
 	_wire()
 	_emit("turn", {"kind": k, "tile": t, "face": int(face[i])})
@@ -1279,6 +1291,7 @@ func remove(t: Vector2i) -> bool:
 		_clear(j)
 		kind[j] = EMPTY
 		fork[j] = 0
+		prio[j] = 0
 		root[j] = -1
 		role[j] = R_NONE
 	_wire()
@@ -1406,6 +1419,8 @@ func template_blocked(d: Dictionary, t: Vector2i, rot: int) -> Dictionary:
 				bad[u] = "locked"
 		elif not bare or (op[i] != 0 and k != BELT and k != BRIDGE):
 			bad[u] = "taken"
+		elif k == BRIDGE and not has(BRIDGE):
+			bad[u] = "locked"
 	# a dig stands on a printed number it can dig
 	for pc: Array in d.pieces:
 		if int(pc[2]) != DIG:
@@ -1479,6 +1494,7 @@ func lift_all(tiles: Array) -> int:
 		_clear(j)
 		kind[j] = EMPTY
 		fork[j] = 0
+		prio[j] = 0
 		root[j] = -1
 		role[j] = R_NONE
 		if machines.has(int(oroot[j])):
@@ -1529,7 +1545,7 @@ func mark() -> void:
 func _record(i: int) -> void:
 	_touched[i] = true
 	if not _undo.has(i):
-		_undo[i] = [int(kind[i]), int(face[i]), int(face2[i]), int(root[i]), int(role[i]), int(fork[i]), int(op[i]), int(oface[i]), int(oroot[i]), int(orole[i])]
+		_undo[i] = [int(kind[i]), int(face[i]), int(face2[i]), int(root[i]), int(role[i]), int(fork[i]), int(op[i]), int(oface[i]), int(oroot[i]), int(orole[i]), int(prio[i])]
 
 func can_undo() -> bool:
 	return not _undo.is_empty()
@@ -1548,6 +1564,7 @@ func undo() -> bool:
 		root[i] = int(was[3])
 		role[i] = int(was[4])
 		fork[i] = int(was[5])
+		prio[i] = int(was[10]) if was.size() > 10 else 0
 		op[i] = int(was[6])
 		oface[i] = int(was[7])
 		oroot[i] = int(was[8])
@@ -1657,6 +1674,7 @@ func _wire() -> void:
 			occ[i] = 0
 			occ[i + N] = 0
 			fork[i] = 0
+			prio[i] = 0
 		elif k != BRIDGE:
 			occ[i + N] = 0
 		changed.append(i)
@@ -1793,6 +1811,7 @@ func _lane_outs(s0: int):
 		return o
 	if k == BRIDGE:
 		fork[i] = 0
+		prio[i] = 0
 		var f := int(face[i]) if s0 < N else int(face2[i])
 		var o := PackedInt32Array()
 		var e := _end_into(t + DIRS[f], f)
@@ -1899,6 +1918,10 @@ func _choose(s: int) -> void:
 	if o.size() == 1:
 		to_d[s] = 0
 		return
+	var pj := _prio_out(s, o)
+	if pj >= 0 and _accepts(o[pj], val[s]):
+		to_d[s] = pj
+		return
 	var start := int(rr_out[s]) % o.size()
 	var pick := start
 	for k in o.size():
@@ -1924,6 +1947,10 @@ func _try_move(s0: int) -> void:
 			continue
 		if to_d[s] == NONE:
 			_choose(s)
+		var pj := _prio_out(s, o)
+		if pj >= 0 and to_d[s] != pj and _accepts(o[pj], val[s]):
+			# the way out with priority takes it the moment it has room
+			to_d[s] = pj
 		var j := int(to_d[s])
 		if not _accepts(o[j], val[s]):
 			var found := -1
@@ -1936,6 +1963,8 @@ func _try_move(s0: int) -> void:
 				continue
 			j = found
 			to_d[s] = j
+		if _yields(s, o[j]):
+			continue
 		var v := val[s]
 		var over := prog[s] - 1.0
 		occ[s] = 0
@@ -1945,6 +1974,80 @@ func _try_move(s0: int) -> void:
 			# into the box, from slot `s`: the board flies it in
 			_emit("in", {"v": v, "s": s})
 		_wake(s, stack)
+
+## Which of `o` (slot `s`'s ends) is its priority way out, or -1.
+func _prio_out(s: int, o: PackedInt32Array) -> int:
+	if s >= N or int(prio[s]) < 5:
+		return -1
+	var d := int(prio[s]) - 5
+	for j in o.size():
+		if (o[j] & 3) == d:
+			return j
+	return -1
+
+## Whether slot `s`, about to hand into end `e`, gives way: `e`'s square has
+## priority for a feeder coming in another way, and that one has a token
+## at its edge or about to be: the marked line passes all it carries, the
+## other fills the gaps between its tokens.
+func _yields(s: int, e: int) -> bool:
+	var id := e >> 2
+	if id >= N or int(prio[id]) == 0 or int(prio[id]) > 4:
+		return false
+	var d := int(prio[id]) - 1
+	if (e & 3) == d:
+		return false
+	for f: int in feeders.get(id, PackedInt32Array()):
+		if f == s or occ[f] == 0 or prog[f] < 0.9:
+			continue
+		var fo: PackedInt32Array = outs[f]
+		for j in fo.size():
+			if fo[j] >> 2 == id and (fo[j] & 3) == d and (to_d[f] == NONE or int(to_d[f]) == j):
+				return true
+	return false
+
+## The ways into and out of the belt on square `i`: [ins, outs], each the
+## ways tokens go (a feeder coming in going `d`, a way out `d`).
+func junction(i: int) -> Array:
+	var ins := []
+	var outs_d := []
+	if i < 0 or i >= N or int(kind[i]) != BELT:
+		return [ins, outs_d]
+	for f: int in feeders.get(i, PackedInt32Array()):
+		for e: int in outs.get(f, PackedInt32Array()):
+			if e >> 2 == i and not ins.has(e & 3):
+				ins.append(e & 3)
+	for e: int in outs.get(i, PackedInt32Array()):
+		if not outs_d.has(e & 3):
+			outs_d.append(e & 3)
+	return [ins, outs_d]
+
+## Whether the belt on `t` is a junction a priority can be set on.
+func can_prio(t: Vector2i) -> bool:
+	if not inside(t):
+		return false
+	var jn := junction(_i(t))
+	return (jn[0] as Array).size() > 1 or (jn[1] as Array).size() > 1
+
+## Sets or clears the priority on `t`'s junction by its edge `side` (0 E, 1
+## S, 2 W, 3 N): a feeder coming in by that edge, else the way out by it.
+## The same again clears it; one a junction. Returns whether it did
+## anything.
+func set_prio(t: Vector2i, side: int) -> bool:
+	if not has(PRIO) or not can_prio(t):
+		return false
+	var i := _i(t)
+	var jn := junction(i)
+	var code := 0
+	if (jn[0] as Array).size() > 1 and (jn[0] as Array).has(opp(side)):
+		code = 1 + opp(side)
+	elif (jn[1] as Array).size() > 1 and (jn[1] as Array).has(side):
+		code = 5 + side
+	if code == 0:
+		return false
+	_record(i)
+	prio[i] = 0 if int(prio[i]) == code else code
+	_emit("prio", {"tile": t, "prio": int(prio[i])})
+	return true
 
 ## The slots waiting to hand into `id` (a slot, or a machine side's id) go
 ## on the stack, from the one after the last let in.
@@ -2290,6 +2393,11 @@ func save() -> void:
 		if int(kind[i]) == BELT and int(fork[i]) != 0:
 			forks.append_array([i, int(fork[i])])
 	cfg.set_value("paper", "forks", forks)
+	var prios := PackedInt32Array()
+	for i: int in walk:
+		if int(kind[i]) == BELT and int(prio[i]) != 0:
+			prios.append_array([i, int(prio[i])])
+	cfg.set_value("paper", "prios", prios)
 	cfg.set_value("paper", "keys", keys)
 	cfg.set_value("paper", "counts", counts)
 	cfg.set_value("paper", "crates", crate_rows)
@@ -2339,6 +2447,7 @@ func _lay_bare(i: int, f: int) -> void:
 	kind[i] = BELT
 	face[i] = f
 	fork[i] = 0
+	prio[i] = 0
 	root[i] = -1
 	role[i] = R_NONE
 
@@ -2385,6 +2494,11 @@ static func load_saved(rng_seed := 0) -> RefCounted:
 		var i := forks[j]
 		if i >= 0 and i < N and int(s.kind[i]) == BELT:
 			s.fork[i] = forks[j + 1] & 15
+	var prios: PackedInt32Array = cfg.get_value("paper", "prios", PackedInt32Array()) if fresh else PackedInt32Array()
+	for j in range(0, prios.size() - 1, 2):
+		var i := prios[j]
+		if i >= 0 and i < N and int(s.kind[i]) == BELT:
+			s.prio[i] = clampi(prios[j + 1], 0, 8)
 	var kept_defs: Dictionary = cfg.get_value("parts", "defs", {})
 	for id in kept_defs:
 		var d: Dictionary = kept_defs[id]
