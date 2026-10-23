@@ -101,6 +101,12 @@ func _draw() -> void:
 	for t in _tags:
 		draw_string(font, t[0], t[1], HORIZONTAL_ALIGNMENT_LEFT, -1.0, t[2], Picket.TAG_INK)
 
+## The done seal on the cloth left of the tray's top, clear of its tags
+## (the template's corner is the 15's).
+func seal_centre() -> Vector2:
+	var c := _cell()
+	return Vector2(_at(0, 0).x - Board.FRAME * c / Board.CELL - SEAL_R - 12.0, SEAL_IN)
+
 func _lay() -> void:
 	# The words stand on the cloth, left of the tray, at the card's middle.
 	var c := _cell()

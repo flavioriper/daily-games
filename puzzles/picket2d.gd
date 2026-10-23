@@ -248,6 +248,9 @@ func _build_fences(now: float) -> ArrayMesh:
 	var b := Face.Builder.new()
 	var k := _scale()
 	var sel := _sel_plot()
+	# A solved board keeps its fences thin and its tags paper, numbers in
+	# leaf: twenty-odd filled pills at once shouted over the win.
+	var done: bool = state.is_solved()
 	# The open plots' fences first, so a lit one is never crossed by a
 	# neighbour's.
 	for lit in [false, true]:
@@ -258,14 +261,15 @@ func _build_fences(now: float) -> ArrayMesh:
 				continue
 			var r := Gen.row_of(i)
 			var c := Gen.col_of(i)
-			var w := FENCE_W * k * (FENCE_SEL_W if lit or p == sel else 1.0)
+			var w := FENCE_W * k * (FENCE_SEL_W if (lit and not done) or p == sel else 1.0)
 			fence_cell(b, _corner_of(i), _cell, FENCE_INSET * k,
 				func(dr: int, dc: int) -> bool: return _same(p, r + dr, c + dc), w, ink)
 	var font: Font = CozyTheme.body(TAG_WEIGHT)
 	var px := int(roundf(TAG_SIZE * k))
 	for p in state.plots.size():
 		var ink := _ink_of(p)
-		tag_pill(b, _tag_box(p, now, font, px), k, TAG_FACE if ink == FENCE else ink, ink == FENCE)
+		var quiet: bool = ink == FENCE or (done and p != sel)
+		tag_pill(b, _tag_box(p, now, font, px), k, TAG_FACE if quiet else ink, quiet)
 	return b.mesh()
 
 ## The fence round one cell of a plot, cell's top left at `o`, `cl` wide,
@@ -342,12 +346,13 @@ func _draw_tags(now: float, pop: float, centre: Vector2) -> void:
 	if px <= 0:
 		return
 	draw_set_transform(centre * (1.0 - pop), 0.0, Vector2.ONE * pop)
+	var done: bool = state.is_solved()
 	for p in state.plots.size():
 		var box := _tag_box(p, now, font, px)
 		var text := _tag_text(p)
 		var ink: Color = TAG_INK if state.sums[p] >= 0 else Pal.TEXT_DIM
 		if _ink_of(p) != FENCE:
-			ink = TAG_FACE
+			ink = Pal.LEAF_DEEP if done and p != _sel_plot() else TAG_FACE
 		var wide := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px).x
 		draw_string(font, tag_base(box, wide, font, px), text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px, ink)
 	draw_set_transform(Vector2.ZERO)

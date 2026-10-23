@@ -50,3 +50,7 @@
   nine-by-nine fragment it replaced put its tags over the digits. Sudoku's
   card gained `_trays` and `_panel` for it. Draw calls: card 9, board
   81-85 playing, 148-150 reopened (unchanged). Verdict owed.
+- **A solved board keeps its tags paper**, numbers in leaf, fences thin
+  leaf: every tag filled green at once shouted over the win. The card's
+  done seal stands on the cloth left of the tray's top (`seal_centre`),
+  off the 15's tag in the template's corner.
