@@ -115,8 +115,9 @@ const HELD_BOB_MAX := 48
 ## 2026-10-21: "they should fly one after another after 0.1s, not all at
 ## once"): the cap had squeezed a run of twenty or more to a burst. Then
 ## twice as quick (the user, the same day: "make the gap between pieces 2x
-## faster"): 0.05.
-const RUN_STEP := 0.05
+## faster"): 0.05. Then twice as quick again (the user, 2026-10-23:
+## "double speed of gap between pieces"): 0.025.
+const RUN_STEP := 0.025
 ## The case's own sliding along a place go one after another too, this
 ## far apart, the whole pack no longer than SLIDE_CAP (a pack on Insane
 ## can slide sixty places, and a place is not pickable until its jewel has

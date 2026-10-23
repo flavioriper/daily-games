@@ -1230,3 +1230,11 @@ flight with an end in the case is gone (`FLY_REACH_K`, `FLY_LONG_MAX`): a
 flight out of the case, into it or across the cloth takes `FLY_TIME`
 (0.14 s), so a long one moves faster. Slides inside the case keep
 `SLIDE_TIME`.
+
+**08:17, the gap halved again.** The user: "double speed of gap between
+pieces". `RUN_STEP` 0.05 to 0.025: with every flight 0.14 s, five or six
+gems are in the air at once on a long run, and a run of 48 leaves in about
+1.2 s. The flight's choppiness at 0.14 s (measured 08:13: the board's
+draws cost ~1.2 ms a frame, so it is the few frames a flight has, not
+lag) is still open: a stretch along the way or a longer `FLY_TIME` was
+offered.
