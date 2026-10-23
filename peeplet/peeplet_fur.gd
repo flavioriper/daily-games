@@ -29,8 +29,15 @@ const BELLY_SIZE := 0.84
 # Lit band color from the Blender look-dev ramp; the shader's shadow_tint
 # multiplier produces the dark band.
 const FUR_COLOR := Color(1.0, 0.323, 0.258)
-const OUTLINE_COLOR := Color(0.02, 0.01, 0.015)
-const OUTLINE_WIDTH := 0.018
+# daily: the house ink (Palette.OUTLINE), for the line round the coat when
+# `ink` is on.
+const OUTLINE_COLOR := Color("3b2f28")
+const OUTLINE_WIDTH := 0.022
+## daily (2026-10-23, the cartoon pass): a line of ink round the coat, the
+## feet, the arms and the tail, and round what the peeplet wears. Off, the
+## coat is a clean fill with no line, as the house's drawn characters are.
+## Read when a walker is built; flip it before PeepletWalker.create().
+static var ink := false
 # Keyed top-front so the face stays fully lit; the shadow band wraps the
 # lower back and sides instead of cutting across the eyes.
 const LIGHT_DIRECTION := Vector3(0.3, 0.8, 0.75)
@@ -121,11 +128,10 @@ static func build_chain(
 	outline.set_shader_parameter("outline_width", OUTLINE_WIDTH)
 	outline.set_shader_parameter("fur_length", FUR_LENGTH)
 	outline.set_shader_parameter("outline_color", OUTLINE_COLOR)
-	outline.set_shader_parameter("fur_reach", 1.0)
+	# daily: the hull hugs the coat (no fur to reach past), and is drawn only
+	# when `ink` is on (peeplet_walker._attach_fur_decoration).
+	outline.set_shader_parameter("fur_reach", 0.0)
 	chain.append(outline)
-	# daily: no line at all. The house characters (the menu's sun and moon)
-	# are clean fills with no ink round them, so the hull stays in the chain
-	# for whoever drives its uniforms but is never drawn.
 	return chain
 
 ## Breaks the base coat away from its own shell chain so a caller can put the

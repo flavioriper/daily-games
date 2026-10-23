@@ -125,6 +125,29 @@ static func merge_props(model: Node3D, painted: Material, glass: Material, drop 
 		batch.mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, _weld(group[0]))
 		batch.set_surface_override_material(batch.mesh.get_surface_count() - 1, group[1])
 	model.add_child(batch)
+	# daily (2026-10-23, the cartoon pass): with PeepletFur.ink on, the
+	# painted surface once more as an ink hull round the piece, one draw.
+	if PeepletFur.ink and not opaque.is_empty():
+		var ink := MeshInstance3D.new()
+		ink.name = "Ink"
+		ink.mesh = ArrayMesh.new()
+		ink.mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, batch.mesh.surface_get_arrays(0))
+		ink.set_surface_override_material(0, _ink_material())
+		ink.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		model.add_child(ink)
+
+## Local units of ink round a worn piece (the glbs sit about 0.7 local
+## across); the coat's own line is PeepletFur.OUTLINE_WIDTH.
+const PROP_INK_WIDTH := 0.006
+static var _ink: ShaderMaterial
+
+static func _ink_material() -> ShaderMaterial:
+	if _ink == null:
+		_ink = ShaderMaterial.new()
+		_ink.shader = load("res://world/toon_prop_outline.gdshader")
+		_ink.set_shader_parameter("outline_width", PROP_INK_WIDTH)
+		_ink.set_shader_parameter("outline_color", PeepletFur.OUTLINE_COLOR)
+	return _ink
 
 ## [arrays, transform, colour] parts into one surface's arrays: positions
 ## and normals through the transform, the colour (times any painted vertex

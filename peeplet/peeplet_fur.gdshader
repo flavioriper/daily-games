@@ -216,7 +216,8 @@ void fragment() {
 	vec3 toon_light = soft_cel(world_normal, light_direction, band_wobble, dot(NORMAL, VIEW));
 
 	float belly_facing = dot(normalize(local_position), normalize(belly_direction));
-	float belly = smoothstep(belly_size - 0.06, belly_size + 0.02, belly_facing) * belly_strength;
+	// daily: a hard-edged cream patch, drawn on rather than blended in.
+	float belly = smoothstep(belly_size - 0.004, belly_size + 0.004, belly_facing) * belly_strength;
 	vec3 textured_coat = premium_coat(local_position, fur_color.rgb);
 	vec3 coat = mix(textured_coat, belly_color.rgb, belly);
 	vec4 marking = body_mark(local_position);
@@ -237,7 +238,9 @@ void fragment() {
 	vec3 fire_light = fire_tone * fire_light_energy * fire_falloff * mix(0.35, 1.0, fire_facing);
 
 	vec3 world_light = (ambient_light + sun_color * sun_energy * toon_light + fire_light) / DAY_REFERENCE_LIGHT;
-	vec3 color = coat * base_tone * world_light;
+	// The belly patch stays lit through the shadow band: a cartoon's cream
+	// is one flat cream.
+	vec3 color = coat * base_tone * mix(world_light, vec3(1.0), belly * 0.85);
 	color *= mix(1.0, 0.55, wetness);
 
 	ALBEDO = color;

@@ -3,7 +3,7 @@ extends SceneTree
 ## The Peeplet (ui/peeplet_view.gd) standing over the real game, to judge it
 ## beside the house's own art: the menu, or a board opened from it. Windowed:
 ##
-##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_peeplet_scene.gd -- <menu|board id> out=<png>
+##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_peeplet_scene.gd -- <menu|board id> out=<png> [ink]
 ##
 ## The shot is taken a few seconds in, once the screen's entrance is over.
 
@@ -20,6 +20,8 @@ func _initialize() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("out="):
 			_out = a.substr(4)
+		elif a == "ink":
+			PeepletFur.ink = true
 		else:
 			_id = a
 	var progress_path := "user://_shot_peeplet_progress.cfg"

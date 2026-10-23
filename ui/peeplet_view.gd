@@ -129,8 +129,7 @@ func _rebuild() -> void:
 	walker.rotation.y = deg_to_rad(turn)
 	_viewport.add_child(walker)
 	PeepletFur.set_chain_parameter(walker.chains, "light_direction", SUN)
-	# The house's eyes (the menu's sun and moon): dark dots with one white
-	# glint, not the game's glossy brown irises.
+	# The glb's own small eyes go ink-dark; the cartoon eyes sit over them.
 	for surface in EYE_DARK_SURFACES:
 		walker.body_mesh.set_surface_override_material(surface, PeepletFur.flat_color_material(EYE_INK))
 	for surface in EYE_GLINT_SURFACES:
@@ -141,8 +140,45 @@ func _rebuild() -> void:
 		walker.attach_eyewear(EyewearItemFactory.create_eyewear(eyewear))
 	# The nine face surfaces, flat colours now, as one (PeepletBatch).
 	PeepletBatch.merge_face(walker.body_mesh, 1)
+	walker.body_mesh.add_child(cartoon_eyes())
 	walker.process_mode = PROCESS_MODE_INHERIT if _idle else PROCESS_MODE_DISABLED
 	_since = INF
+
+## daily (2026-10-23, the cartoon pass, after Duolingo's owl): the eyes a
+## drawn mascot has, two white ovals with a big dark pupil and one glint,
+## over the glb's own small eyes (ink-dark under them). Six balls welded
+## into one mesh with the colour in its vertices: one draw for both eyes.
+## Positions in glb object space (the glb eyes sit at x 0.245, y 0.325).
+const EYE_AT := Vector3(0.245, 0.335, 0.47)
+const EYE_SCALE := 1.3
+const EYE_WHITE_R := 0.135
+const EYE_PUPIL_R := 0.095
+const EYE_GLINT_R := 0.028
+
+static func cartoon_eyes() -> MeshInstance3D:
+	var parts := []
+	for side in [-1.0, 1.0]:
+		var at := Vector3(EYE_AT.x * side, EYE_AT.y, EYE_AT.z)
+		parts.append(_ball(EYE_WHITE_R * EYE_SCALE, at, Vector3(1.0, 1.15, 0.55), Color.WHITE))
+		var pupil_at := at + Vector3(0.012 * side, -0.012, 0.07 * EYE_SCALE)
+		parts.append(_ball(EYE_PUPIL_R * EYE_SCALE, pupil_at, Vector3(1.0, 1.2, 0.5), EYE_INK))
+		parts.append(_ball(EYE_GLINT_R * EYE_SCALE,
+			pupil_at + Vector3(-0.03, 0.035, 0.045) * EYE_SCALE, Vector3.ONE, Color.WHITE))
+	var eyes := MeshInstance3D.new()
+	eyes.name = "CartoonEyes"
+	eyes.mesh = ArrayMesh.new()
+	eyes.mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, PeepletBatch._weld(parts))
+	eyes.set_surface_override_material(0, PeepletBatch._flat_vertex_material())
+	eyes.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return eyes
+
+static func _ball(radius: float, at: Vector3, stretch: Vector3, color: Color) -> Array:
+	var sphere := SphereMesh.new()
+	sphere.radius = radius
+	sphere.height = radius * 2.0
+	sphere.radial_segments = 24
+	sphere.rings = 12
+	return [sphere.get_mesh_arrays(), Transform3D(Basis.from_scale(stretch), at), color]
 
 func _aim() -> void:
 	if _camera == null:

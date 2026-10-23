@@ -3,7 +3,7 @@ extends SceneTree
 ## Every coat, hat and eyewear piece the Peeplet (ui/peeplet_view.gd) brought
 ## over from ~/dev/peeplet, a cell each on paper. Windowed:
 ##
-##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_peeplet_wardrobe.gd -- <colors|hats|eyewear> out=<png>
+##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_peeplet_wardrobe.gd -- <colors|hats|eyewear> out=<png> [ink]
 
 const PeepletView = preload("res://ui/peeplet_view.gd")
 const Pal = preload("res://core/palette.gd")
@@ -17,6 +17,8 @@ func _initialize() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("out="):
 			_out = a.substr(4)
+		elif a == "ink":
+			PeepletFur.ink = true
 		else:
 			_page = a
 	var cells := []

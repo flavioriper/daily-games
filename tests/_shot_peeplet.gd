@@ -4,7 +4,7 @@ extends SceneTree
 ## in a SubViewport) in every pose its walker plays without a prop, one cell
 ## each, on paper. Windowed:
 ##
-##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_peeplet.gd -- [live] [out=<dir>]
+##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_peeplet.gd -- [live] [out=<dir>] [ink]
 ##
 ## `live` keeps the window open to watch; otherwise frames at 15 fps for four
 ## seconds go to <dir>/peeplet_<n>.png and it quits, printing the draw calls.
@@ -32,6 +32,8 @@ func _initialize() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a == "live":
 			_live = true
+		elif a == "ink":
+			PeepletFur.ink = true
 		elif a.begins_with("out="):
 			_dir = a.substr(4)
 	var bg := ColorRect.new()

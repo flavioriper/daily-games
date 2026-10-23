@@ -24,8 +24,9 @@ uniform float shadow_soft : hint_range(0.0, 0.5) = 0.13;
 uniform float wetness : hint_range(0.0, 1.0) = 0.0;
 
 void fragment() {
-	// daily: the house's paint (peeplet/soft_paint.gdshaderinc).
-	vec3 fill = paint_wash(house_mute(albedo_tint.rgb), (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz);
+	// daily (2026-10-23, the cartoon pass): the glb colour as it is, no
+	// house mute, no wash: a hat on a cartoon is a flat saturated hat.
+	vec3 fill = albedo_tint.rgb;
 	fill *= mix(vec3(1.0), vec3(0.55, 0.65, 0.60), wetness);
 	ALBEDO = fill;
 	ROUGHNESS = 1.0;
@@ -39,16 +40,16 @@ void light() {
 		// grade on the three-ring pool instead (see toon_cel.gdshaderinc).
 		DIFFUSE_LIGHT += ALBEDO * LIGHT_COLOR / PI * cel_point_pool(ATTENUATION);
 	} else {
-		// daily: the house's soft cel (peeplet/soft_cel.gdshaderinc), so a
-		// worn hat sits in the same light as the coat under it: a soft
-		// terminator, a warm shade rather than ~/dev/peeplet's cool floor,
+		// daily: the coat's cel (peeplet/soft_cel.gdshaderinc), so a worn
+		// hat sits in the same light as the coat under it: one hard band,
+		// the same deep tone on the far side,
 		// and the light written without ALBEDO (toon_cel.gdshaderinc's
 		// gotcha), so the trait colour lands as painted. ui/peeplet_view.gd
 		// lights it with one white sun of energy 1, and LIGHT_COLOR carries
 		// that energy times PI: undivided, every hat came out three times
 		// over and a teal beanie read neon cyan.
-		float lit = cel_band(NORMAL, INV_VIEW_MATRIX, -0.05, 0.22, 0.0);
-		vec3 cel = mix(vec3(0.86, 0.76, 0.76), vec3(1.0), min(lit, open));
+		float lit = cel_band(NORMAL, INV_VIEW_MATRIX, 0.05, 0.01, 0.0);
+		vec3 cel = mix(vec3(0.78, 0.66, 0.70), vec3(1.0), min(lit, open));
 		DIFFUSE_LIGHT += LIGHT_COLOR / PI * cel;
 	}
 }

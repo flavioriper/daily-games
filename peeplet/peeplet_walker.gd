@@ -748,11 +748,19 @@ func _apply_coat(
 func _attach_fur_decoration(
 	instance: MeshInstance3D, chain: Array[ShaderMaterial], decoration_mesh: Mesh
 ) -> void:
+	# daily (2026-10-23, the cartoon pass): no fur shells at all; the coat is
+	# a flat fill with a clean edge. The shell materials stay in the chain
+	# (wind, wetness and the sun still propagate) but nothing draws them.
+	# With PeepletFur.ink on, the same slot carries the ink hull instead: the
+	# coat mesh once more, pushed out along its normals and drawn back-face
+	# in the house ink (peeplet_fur_outline.gdshader, the chain's last).
+	if not PeepletFur.ink:
+		return
 	var decoration := MeshInstance3D.new()
-	decoration.name = instance.name + "Fur"
-	decoration.mesh = PeepletBatch.stack_shells(decoration_mesh, PeepletFur.FUR_SHELL_COUNT)
+	decoration.name = instance.name + "Ink"
+	decoration.mesh = decoration_mesh
 	decoration.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	decoration.set_surface_override_material(0, chain[1])
+	decoration.set_surface_override_material(0, chain[chain.size() - 1])
 	instance.add_child(decoration)
 
 ## Desynchronise idle breathing and footfall across a flock.
