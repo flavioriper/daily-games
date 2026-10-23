@@ -1,0 +1,176 @@
+extends SubViewportContainer
+
+## The real Peeplet from ~/dev/peeplet on a 2D screen: its own walker
+## (peeplet/peeplet_walker.gd), fur chain, eyes and glb, its twelve coats
+## (PeepletPalette), its twenty hats and thirteen eyewear pieces (items/),
+## copied from game/adventure at 401c5557, posed in a small 3D world of its
+## own and shown here as a flat picture through a transparent SubViewport.
+## This is the one place daily loads a model since 2026-09-24, on the user's
+## word (2026-10-23: "get the peeplet gd and use it here as a 2d"), after a
+## hand-drawn port was turned down. Daily's copies are restyled to the house's
+## drawn characters: no ink line, a soft warm shade, cheeks, dot eyes
+## (peeplet/soft_cel.gdshaderinc, world/toon_prop*.gdshader).
+##
+## Drive the walker straight through `walker`: walking, running, sitting,
+## grieving, set_comfort(), trigger_laugh(), trigger_pick(), trigger_snack(),
+## trigger_dig(), trigger_water(), trigger_chop(). A new coat, hat or eyewear
+## builds a fresh walker, as the peeplet lab does.
+
+## Degrees above the horizon. The peeplet lab opens at 18; the RPG camera's
+## top down is 55.
+@export var pitch := 18.0:
+	set(v):
+		pitch = v
+		_aim()
+## Turns the peeplet about its own up, in degrees; 0 faces the camera.
+@export var turn := 0.0:
+	set(v):
+		turn = v
+		if walker != null:
+			walker.rotation.y = deg_to_rad(v)
+		_since = INF
+## Metres of the world the picture is tall; a peeplet stands 0.6.
+@export var frame_height := 0.8:
+	set(v):
+		frame_height = v
+		_aim()
+## One of PeepletPalette.BODY, by index: eight flat coats and four painted
+## ones (candy, midnight, ocean, cloud).
+@export var color_index := 0:
+	set(v):
+		color_index = v
+		_rebuild()
+## A HeadgearItemFactory.kinds() name ("crown", "wizardHat"), or "" for none.
+@export var headgear := "":
+	set(v):
+		headgear = v
+		_rebuild()
+## An EyewearItemFactory.kinds() name ("roundGlasses", "visor"), or "".
+@export var eyewear := "":
+	set(v):
+		eyewear = v
+		_rebuild()
+
+## Frames a second the 3D picture is redrawn at while the peeplet acts
+## (walks, picks, laughs) and while it only breathes. Between redraws the
+## last frame stays up, a single 2D draw; off screen or hidden it is not
+## drawn at all, and at the game's rest (core/power.gd) it holds still.
+@export var busy_fps := 30.0
+@export var idle_fps := 15.0
+
+var walker: PeepletWalker
+var _viewport: SubViewport
+var _camera: Camera3D
+## core/power.gd stops whatever has `_idle` true at rest, through set_idle().
+var _idle := true
+var _since := INF
+
+const TARGET := Vector3(0.0, 0.3, 0.0)
+## The fur's toon band is cut against this uniform, not a light node: the
+## peeplet lab's noon sun (world_lighting.sun_toward_direction() at LAB_HOUR
+## 12, read off the running lab 2026-10-23). The hats and eyewear are lit
+## materials, so a real light stands along it too.
+const SUN := Vector3(-0.449114, 0.821149, 0.352151)
+## peeplet.glb's face surfaces (PeepletFur): 1/5 the eye rims, 2/6 the
+## irises, 3/7 their lower lights, 4/8 the glints.
+const EYE_DARK_SURFACES := [1, 2, 3, 5, 6, 7]
+const EYE_GLINT_SURFACES := [4, 8]
+const EYE_INK := Color("2e211c")
+## The peeplet lab's opening camera: perspective, 2.6 m out.
+const DISTANCE := 2.6
+
+func _init() -> void:
+	stretch = true
+	mouse_filter = MOUSE_FILTER_IGNORE
+	# The fur shells blend into a transparent target, which leaves its colour
+	# premultiplied; laid over the page straight, every soft shell edge reads
+	# grey.
+	var blend := CanvasItemMaterial.new()
+	blend.blend_mode = CanvasItemMaterial.BLEND_MODE_PREMULT_ALPHA
+	material = blend
+	_viewport = SubViewport.new()
+	_viewport.transparent_bg = true
+	_viewport.own_world_3d = true
+	_viewport.msaa_3d = Viewport.MSAA_4X
+	_viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	add_child(_viewport)
+	_camera = Camera3D.new()
+	# The walker carries a bare capsule on layer 11 for the river's contact
+	# camera; the game's own camera never sees that layer, and neither does
+	# this one.
+	_camera.cull_mask = 0xFFFFF & ~(1 << 10)
+	_viewport.add_child(_camera)
+	# One white sun of energy 1 and no ambient: the props' light() writes the
+	# whole of their light from it (world/toon_prop.gdshader). The coat is
+	# unshaded and takes neither.
+	var sun := DirectionalLight3D.new()
+	sun.transform = Transform3D(Basis.looking_at(-SUN, Vector3.UP), Vector3.ZERO)
+	sun.light_energy = 1.0
+	_viewport.add_child(sun)
+	var env := Environment.new()
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color.BLACK
+	env.ambient_light_energy = 0.0
+	var world_env := WorldEnvironment.new()
+	world_env.environment = env
+	_viewport.add_child(world_env)
+
+func _ready() -> void:
+	_rebuild()
+	_aim()
+
+func _rebuild() -> void:
+	if not is_inside_tree():
+		return
+	if walker != null:
+		walker.queue_free()
+	walker = PeepletWalker.create(PeepletPalette.color(color_index),
+		PeepletPalette.premium_mode(color_index))
+	walker.rotation.y = deg_to_rad(turn)
+	_viewport.add_child(walker)
+	PeepletFur.set_chain_parameter(walker.chains, "light_direction", SUN)
+	# The house's eyes (the menu's sun and moon): dark dots with one white
+	# glint, not the game's glossy brown irises.
+	for surface in EYE_DARK_SURFACES:
+		walker.body_mesh.set_surface_override_material(surface, PeepletFur.flat_color_material(EYE_INK))
+	for surface in EYE_GLINT_SURFACES:
+		walker.body_mesh.set_surface_override_material(surface, PeepletFur.flat_color_material(Color.WHITE))
+	if headgear != "":
+		walker.attach_headgear(HeadgearItemFactory.create_headgear(headgear))
+	if eyewear != "":
+		walker.attach_eyewear(EyewearItemFactory.create_eyewear(eyewear))
+	# The nine face surfaces, flat colours now, as one (PeepletBatch).
+	PeepletBatch.merge_face(walker.body_mesh, 1)
+	walker.process_mode = PROCESS_MODE_INHERIT if _idle else PROCESS_MODE_DISABLED
+	_since = INF
+
+func _aim() -> void:
+	if _camera == null:
+		return
+	var p := deg_to_rad(pitch)
+	_camera.fov = rad_to_deg(2.0 * atan(frame_height * 0.5 / DISTANCE))
+	var eye := TARGET + Vector3(0.0, sin(p), cos(p)) * DISTANCE
+	_camera.transform = Transform3D(Basis.looking_at(TARGET - eye, Vector3.UP), eye)
+	_since = INF
+
+func _process(delta: float) -> void:
+	if walker == null or not _idle:
+		return
+	_since += delta
+	if not is_visible_in_tree() or not get_viewport_rect().intersects(get_global_rect()):
+		return
+	if _since >= 1.0 / (busy_fps if _busy() else idle_fps):
+		_since = 0.0
+		_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
+
+func _busy() -> bool:
+	return walker.walking or walker.pick_time >= 0.0 or walker.snack_time >= 0.0 \
+		or walker.laugh_time >= 0.0 or walker.chop_time >= 0.0 or walker.grab_time >= 0.0
+
+## At the game's rest the peeplet holds where it is: the walker stops and the
+## picture keeps its last frame.
+func set_idle(on: bool) -> void:
+	_idle = on
+	if walker != null:
+		walker.process_mode = PROCESS_MODE_INHERIT if on else PROCESS_MODE_DISABLED
+	_since = INF
