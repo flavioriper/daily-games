@@ -4084,6 +4084,56 @@ top, which the Mac headless never measures.
   few more than before, one a variant), the close and far shots looked
   at; suite 248522 passed, 0 failed. **Not seen**: the phone.
 
+#### Tally at the reference's pace: its counts, every number to 999 (2026-10-23)
+
+The user, after a side-by-side page of the reference's progression (its fan
+wiki's Levels and Upgrades tables, one 2024 save) against `tally_sim.gd`:
+"I wanted to make it way closer to [the reference] experience ... make
+everything feel similar, no cap"; asked about the sheet, they picked
+1000 by 1000 over an endless rewrite.
+
+- **The sheet is 1000 by 1000** (`W`, `H`, the box at `HUB_AT` (497, 497)),
+  `VER` 5 (a kept sheet keeps level, tally and upgrades, drops pieces, as
+  VER 3 and 4 did). Measured headless: the sim's arrays 55.5 MB (8.9 at
+  400), `_init` 15 to 18 ms.
+- **Every number to 999 is printed** (`MOST` 999, never 10). 1 to 60 lie
+  where they did (`NEAR`, APART 12, three copies, four 1s); 61 to 999 two
+  copies each on rings by area from `FAR_FROM` 186 to `FAR_TO` 484
+  (`FAR_BAND` 10, `APART_FAR` 9), so the big numbers lie as thick by 61 as
+  by 999: 2,056 numbers a sheet, none short on three seeds, the 999s at
+  rings 488 to 494. `_clear_round` looks only at the cells round a square
+  (a cell APART + 1 wide); against the whole placed list it would crawl.
+- **The ladder asks the reference's counts** (10, 20, 35 ... 14,000 at 30,
+  14,500 from 31 on, `COUNT_TOP`), its targets and rewards as before. Past
+  the table the climb is `GROW` 5% to 25% times (40 / level)^2: level 100
+  near a million, level 1000 near ten million (the reference's players at
+  1000 were never asked nine digits). `TOP` is the 32-bit edge; no level
+  is the last; a number dug every level to 999 at level 1006.
+- **Upgrades ask the reference's own table** (`RANKS`: number and count
+  for ranks 1 to 8 of each track, the wiki's rows; its gaps carried on its
+  slide: the belt's sixth numbers, the dig's eighth third, subtract's first
+  three ranks, 36 then 147 and 640). Past rank 8 a rank drops its oldest
+  number and adds the last times `SEQ_GROW` + 1, each count `COUNT_UP` 500
+  more. A number past `SEQ_KEEP` 30 is drawn within 10% a save, once
+  however many ranks ask it. `asks_at(id, r)` is the one place; the shop's
+  mirror of it is gone.
+- **Caps**: the dig to 12 belts (its twelve edge squares), the crate holds
+  10,000 (`TL_PIECE_CRATE_LINE` says so in en, pt, es).
+- **Kept as Tally's**: crossings from the start (the reference hands a
+  bridge over at level 4; the user's auto crossings of 2026-10-18 stand)
+  and no belt priorities (the reference's level 10). Both the user's call.
+- **The probe** papers go at belt rank 128 (20 a second) and step longer,
+  as their corner routes into the box are a thousand squares now; its
+  spacing check knows the two APARTs. The tutorial's upgrade lesson starts
+  four 1s short of whatever the belt's first rank asks.
+- Checked: probe 0 failed; `_shot_tally` and `_shot_tally_tree` headless 0
+  failed; `_shot_tally` windowed on `opengl3_angle` 810x1440 0 failed, 61
+  to 163 draw calls. `_perf_tally` lays 247,752 belts on this sheet (a
+  belt every fourth row): builders 0.24 to 0.57 ms a frame, the sim's step
+  8.1 ms (it walks every lane), a save 183 ms; a real factory is a small
+  part of that. **Not seen**: the phone (55 MB more), the pace (the bot is
+  stale since the footprints), the walk to a 999 nearly 500 squares out.
+
 #### Tally's 400 sheet, the numbers out by rings (2026-10-20, later)
 
 The user: "game grid itself is way too small, we need a at least 10x

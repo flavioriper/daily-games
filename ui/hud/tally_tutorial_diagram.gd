@@ -184,7 +184,8 @@ func _reset() -> void:
 			_sim.lay_path([(Vector2i(54, 57) + O), (Vector2i(54, 58) + O), (Vector2i(54, 59) + O)], 1)
 		Lesson.UPGRADE:
 			_sim.level = 2
-			_sim.ledger[1] = 36
+			# four short of the belt's first rank: the two digs make them
+			_sim.ledger[1] = int(_sim.asks("belt")[0][1]) - 4
 			_dig((Vector2i(51, 57) + O), 1)
 			_dig((Vector2i(51, 61) + O), 1)
 			_sim._wire()

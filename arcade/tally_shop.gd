@@ -448,24 +448,6 @@ func _speed_text(id: String, l: int) -> String:
 	var s := str(int(v)) if absf(v - roundf(v)) < 0.001 else String.num(v, 2).trim_suffix("0")
 	return tr(UNIT[id]) % s
 
-## What a rank `r` of `id` asks, as the sim's `asks` works it out for the
-## rank its level is on: here for the rank after, so the foot shows the
-## ladder. Nothing is added to the sim for it.
-func _asks_at(id: String, r: int) -> Array:
-	var ks: Array = [0] if r == 1 else ([0, 1] if r == 2 else [r - 3, r - 2, r - 1])
-	var counts: Array
-	if r <= Sim.RANK_COUNTS.size():
-		counts = Sim.RANK_COUNTS[r - 1]
-	else:
-		counts = []
-		for c: int in Sim.RANK_COUNTS[-1]:
-			counts.append(c + Sim.COUNT_UP * (r - Sim.RANK_COUNTS.size()))
-	var f := float(Sim.FIRST[id]) / float(Sim.FIRST["belt"])
-	var out := []
-	for j in ks.size():
-		out.append([sim._seq(id, int(ks[j])), int(round(int(counts[j]) * f / 10.0)) * 10])
-	return out
-
 func _refresh_foot() -> void:
 	if _foot == null or sim == null or _chosen == "":
 		return
@@ -488,7 +470,7 @@ func _refresh_foot() -> void:
 			_then_l.text = "%s  %s" % [tr("TL_THEN"), tr("TL_AT_TOP_SHORT")]
 		else:
 			var parts := PackedStringArray()
-			for a: Array in _asks_at(id, l + 1):
+			for a: Array in sim.asks_at(id, l + 1):
 				parts.append("%s ×%s" % [Sim.short(int(a[0])), Sim.short(int(a[1]))])
 			_then_l.text = "%s  %s" % [tr("TL_THEN"), "  ·  ".join(parts)]
 		var short_of := ""

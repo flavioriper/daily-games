@@ -61,8 +61,9 @@ func _blank(lvl := 30) -> RefCounted:
 	var s = Sim.new(11)
 	s.dep.fill(0)
 	s.level = lvl
-	# the paper is wide: runs to the box are long, so belts go 8 a second
-	s.lv.belt = 8
+	# the paper is wide: runs to the box are long (a thousand squares from
+	# the corner's routes), so belts go at the top rank, 20 a second
+	s.lv.belt = 128
 	_sims.append(s)
 	return s
 
@@ -189,17 +190,22 @@ func _paper() -> void:
 	_check("eight seeds print every copy of every number %s" % [short], short.is_empty())
 	_check("a 1 is never nearer than %d squares, a 60 never under %d" % [Sim.band(1).x, Sim.band(60).x], Sim.band(1).x >= 8 and Sim.band(60).x > Sim.band(30).x and Sim.band(30).x > Sim.band(9).x and Sim.band(9).x > Sim.band(1).x)
 	_check("the furthest 60 lies past the furthest 9, that past the furthest 1 (%d, %d, %d)" % [int(rings.get(1, 0)), int(rings.get(9, 0)), int(rings.get(60, 0))], float(rings.get(60, 0)) > float(rings.get(9, 0)) and float(rings.get(9, 0)) > float(rings.get(1, 0)))
+	# to 60 none within APART of another; past it none within APART_FAR
 	var near := 99
-	for i in Sim.N:
-		if int(a.dep[i]) == 0:
-			continue
+	var near_far := 99
+	for i: int in a.printed:
 		var t := Sim.tile_of(i)
+		var v := int(a.dep[i])
 		for dy in range(-Sim.APART, Sim.APART + 1):
 			for dx in range(-Sim.APART, Sim.APART + 1):
 				var u := t + Vector2i(dx, dy)
 				if u != t and Sim.inside(u) and int(a.dep[Sim._i(u)]) != 0:
-					near = mini(near, maxi(absi(dx), absi(dy)))
-	_check("no two printed numbers within %d squares (nearest %d)" % [Sim.APART, near], near > Sim.APART)
+					var d := maxi(absi(dx), absi(dy))
+					if Sim.apart(v) == Sim.APART and Sim.apart(int(a.dep[Sim._i(u)])) == Sim.APART:
+						near = mini(near, d)
+					else:
+						near_far = mini(near_far, d)
+	_check("no two printed numbers to 60 within %d squares (nearest %d), none past it within %d (nearest %d)" % [Sim.APART, near, Sim.APART_FAR, near_far], near > Sim.APART and near_far > Sim.APART_FAR)
 	_check("no 10 is printed", tens == 0)
 	_check("numbers to %d are printed (%d)" % [Sim.MOST, most], most == Sim.MOST)
 	var printed := {}
@@ -297,7 +303,7 @@ func _operators() -> void:
 	for row: Array in [[Sim.ADD, 7, 3, 10], [Sim.MUL, 7, 3, 21], [Sim.SUB, 7, 3, 4], [Sim.POW, 7, 3, 343]]:
 		var s = _blank()
 		_two_digs(s, int(row[0]), int(row[1]), int(row[2]))
-		s.step(60.0)
+		s.step(120.0)
 		_check("%s of %d and %d gives %d (had %s)" % [Sim.KIND_IDS[int(row[0])], row[1], row[2], row[3], str(_came(s))], _came(s) == [int(row[3])])
 	# the footprints
 	for row: Array in [[Sim.ADD, 4], [Sim.MUL, 3], [Sim.SUB, 3], [Sim.DIV, 4], [Sim.POW, 3]]:
@@ -339,7 +345,7 @@ func _operators() -> void:
 		return not q.place(Sim.ADD, Vector2i(10, 10), Nd)).call())
 	var s4 = _blank()
 	_two_digs(s4, Sim.ADD, 1, 1)
-	s4.step(60.0)
+	s4.step(120.0)
 	var m0: int = s4.made
 	s4.step(40.0)
 	var rate := float(s4.made - m0) / 40.0
@@ -348,7 +354,7 @@ func _operators() -> void:
 func _divider() -> void:
 	var s = _blank()
 	_two_digs(s, Sim.DIV, 8, 2)
-	s.step(80.0)
+	s.step(150.0)
 	_check("8 ÷ 2 gives 4 and no 0 (had %s)" % str(_came(s)), _came(s) == [4])
 	var s2 = _blank()
 	var m := _two_digs(s2, Sim.DIV, 7, 2)
@@ -357,7 +363,7 @@ func _divider() -> void:
 	_check("7 ÷ 2 with nothing for the remainder stops once two wait", (mm.rem as Array).size() == Sim.OUT and s2.held(3) <= 3)
 	# the remainder taken by a line from under its own square, over the answer's
 	_to_box(s2, m + Vector2i(1, 0), 7, Sim.HUB_AT.x + 2)
-	s2.step(80.0)
+	s2.step(150.0)
 	_check("with the remainder taken: 3 and 1 both come (had %s)" % str(_came(s2)), _came(s2) == [1, 3])
 	var s3 = _blank()
 	var m3 := Vector2i(10, 10)
@@ -389,7 +395,7 @@ func _split_merge() -> void:
 	_check("a path ending on a line across it joins it (cut %d, merge %s)" % [p.cut, p.merge], int(p.cut) == 3 and bool(p.merge))
 	m.lay_path([Vector2i(16, 33), Vector2i(16, 32), Vector2i(16, 31), Vector2i(16, 30)], Nd)
 	_check("the join leaves the line as it was", m.kind_at(Vector2i(16, 30)) == Sim.BELT and m.face_at(Vector2i(16, 30)) == E and m.face_at(Vector2i(16, 31)) == Nd)
-	m.step(60.0)
+	m.step(120.0)
 	var r2 := float(m.held(1)) / maxf(1.0, float(m.held(2)))
 	_check("a join takes turns (%d 1s, %d 2s)" % [m.held(1), m.held(2)], r2 > 0.8 and r2 < 1.25)
 	_check("a joined belt runs full (%d)" % m.made, m.made >= 30)
@@ -416,7 +422,7 @@ func _bridge() -> void:
 	_route(b, [Vector2i(6, 12), Vector2i(Sim.HUB_AT.x + 1, 12), Sim.HUB_AT + Vector2i(1, -1)])
 	_route(b, [Vector2i(12, 5), Vector2i(12, 20), Vector2i(Sim.HUB_AT.x + 2, 20), Sim.HUB_AT + Vector2i(2, -1)])
 	_check("a run across a belt makes a crossing", b.kind_at(Vector2i(12, 12)) == Sim.BRIDGE and b.kind_at(Vector2i(Sim.HUB_AT.x + 1, 20)) == Sim.BRIDGE)
-	b.step(80.0)
+	b.step(150.0)
 	_check("both lanes cross (%d 1s, %d 3s)" % [b.held(1), b.held(3)], b.held(1) > 20 and b.held(3) > 20)
 	# a belt a side line joins is never crossed: its join would be cut off
 	var j = _blank(1)
@@ -565,7 +571,7 @@ func _crate() -> void:
 	var c: Dictionary = s.crates[Sim._i(Vector2i(9, 40))]
 	_check("a crate keeps the first number only (%d of %d)" % [int(c.n), int(c.v)], int(c.v) == 1 and int(c.n) > 10)
 	_route(s, [Vector2i(10, 40), Vector2i(Sim.HUB_AT.x - 1, 40), Sim.HUB_AT + Vector2i(-1, 1), Sim.HUB_AT + Vector2i(0, 1)])
-	s.step(60.0)
+	s.step(120.0)
 	_check("a crate lets its number out to the box", s.held(1) > 10)
 
 func _stall() -> void:
@@ -594,17 +600,17 @@ func _ladder() -> void:
 	_check("targets climb to level 1000 and never pass the top (%d, %d ms)" % [last, Time.get_ticks_msec() - t0], ok)
 	_check("level 5 asks 10, which cannot be dug", s.target_of(5) == 10 and Sim.dig_level(10) == -1)
 	_check("level 40's target is near 35,541 (%d)" % s.target_of(40), absf(s.target_of(40) / 35541.0 - 1.0) <= Sim.BAND + 0.001)
-	_check("level 23 hands over 16, level 67 hands over 60", s.reward_of(23) == -16 and s.reward_of(67) == -60 and s.reward_of(68) == 0)
+	_check("level 23 hands over 16, level 1006 hands over 999", s.reward_of(23) == -16 and s.reward_of(1006) == -999 and s.reward_of(1007) == 0)
 	_check("counts stop at %d" % Sim.COUNT_TOP, s.count_of(200) == Sim.COUNT_TOP)
 
 func _upgrades() -> void:
 	var s = _blank(2)
 	s.lv.belt = 1
 	var asks: Array = s.asks("belt")
-	_check("the belt's first rank asks for 40 1s (%s)" % str(asks), asks == [[1, 40]])
+	_check("the belt's first rank asks for 200 1s (%s)" % str(asks), asks == [[1, 200]])
 	_check("short of it, nothing is bought", not s.buy("belt"))
-	s.ledger[1] = 45
-	_check("with 45 1s the belt is bought", s.buy("belt") and int(s.lv.belt) == 2)
+	s.ledger[1] = 205
+	_check("with 205 1s the belt is bought", s.buy("belt") and int(s.lv.belt) == 2)
 	_check("5 1s are left", s.held(1) == 5)
 	_check("belt level 2 runs 2 a second", s.belt_speed() == 2.0)
 	_check("rank two asks two numbers, rank three three", s.asks("belt").size() == 2)
@@ -613,8 +619,8 @@ func _upgrades() -> void:
 	_check("the multiplier's track is shut before level 8", not s.track_open("mul"))
 	_check("the speeds' tops: belt 20, adder 4, others 3", absf(Sim.speed_for("belt", 128) - 20.0) < 0.001 and absf(Sim.speed_for("add", 108) - 4.0) < 0.001 and absf(Sim.speed_for("mul", 108) - 3.0) < 0.001)
 	_check("operators at level 8 do one a second", absf(Sim.speed_for("mul", 8) - 1.0) < 0.001 and absf(Sim.speed_for("mul", 7) - 0.8) < 0.001)
-	s.lv.dig = 4
-	_check("the dig stops at 4", s.at_top("dig") and not s.can_buy("dig"))
+	s.lv.dig = 12
+	_check("the dig stops at 12", s.at_top("dig") and not s.can_buy("dig"))
 
 func _kept() -> void:
 	var s = Sim.new(21)

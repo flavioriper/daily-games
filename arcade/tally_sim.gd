@@ -56,12 +56,13 @@ extends RefCounted
 ## 2: the operators' footprints and the bigger paper; 3: the six-square
 ## box, the three-square dig and the numbers spread over a bigger sheet;
 ## 4: the 400 by 400 sheet, the box in its middle, the numbers printed by
-## rings, small near the box and bigger towards the edge. A sheet kept
-## under VER keeps its level, tally and upgrades, and its pieces are not
-## read.
-const VER := 4
-const W := 400
-const H := 400
+## rings, small near the box and bigger towards the edge; 5: the 1000 by
+## 1000 sheet with every number to 999 and the reference's counts. A sheet
+## kept under VER keeps its level, tally and upgrades, and its pieces are
+## not read.
+const VER := 5
+const W := 1000
+const H := 1000
 const N := W * H
 const N2 := N * 2
 ## The sheet in chunks of CH by CH squares (`cells`): the board draws and
@@ -70,7 +71,7 @@ const CH := 20
 const CW := W / CH
 const CHUNKS := CW * (H / CH)
 const HUB := 6
-const HUB_AT := Vector2i(197, 197)
+const HUB_AT := Vector2i(497, 497)
 
 enum { EMPTY, BELT, BRIDGE, DIG, ADD, MUL, SUB, DIV, POW, CRATE, BOX, SPLIT, JOIN, PART }
 const OPS := [ADD, MUL, SUB, DIV, POW]
@@ -110,7 +111,7 @@ const NOWHERE := Vector2i(-1, -1)
 
 ## A machine's room for what waits to go out.
 const OUT := 2
-const CRATE_MAX := 500
+const CRATE_MAX := 10000
 ## The longest step taken in one go: a token at 20 squares a second moves
 ## two thirds of a square in it.
 const STEP := 1.0 / 30.0
@@ -137,29 +138,31 @@ const FLOOR := -2147483648
 ## Each level: the sample target, the count, the reward (a piece's kind, a
 ## number now dug, or 0). From level 6 the target is drawn round the sample.
 const LADDER := [
-	[1, 10, ADD], [2, 15, 0], [3, 20, -2], [5, 25, 0], [10, 30, -3],
-	[19, 50, -4], [27, 75, MUL], [36, 120, -5], [47, 160, -6], [50, 200, 0],
-	[82, 250, -7], [174, 300, -8], [248, 400, SUB], [324, 500, -9], [466, 650, -11],
-	[594, 800, DIV], [631, 900, -12], [727, 1000, -13], [891, 1100, POW], [928, 1200, -14],
-	[1779, 1300, -15], [2805, 1400, CRATE], [3366, 1500, 0], [4860, 1600, 0], [5445, 1700, 0],
-	[6667, 1800, 0], [7512, 1900, 0], [8133, 2000, 0], [9646, 2100, 0], [10904, 2200, 0],
-	[12675, 2300, 0], [14772, 2400, 0], [18962, 2500, 0], [20158, 2500, 0], [23431, 2500, 0],
-	[24755, 2500, 0], [27432, 2500, 0], [29296, 2500, 0], [32550, 2500, 0], [35541, 2500, 0],
+	[1, 10, ADD], [2, 20, 0], [3, 35, -2], [5, 40, 0], [10, 50, -3],
+	[19, 100, -4], [27, 150, MUL], [36, 300, -5], [47, 450, -6], [50, 500, 0],
+	[82, 600, -7], [174, 800, -8], [248, 1000, SUB], [324, 2000, -9], [466, 3000, -11],
+	[594, 4000, DIV], [631, 5000, -12], [727, 6000, -13], [891, 7000, POW], [928, 8000, -14],
+	[1779, 9000, -15], [2805, 10000, CRATE], [3366, 10500, 0], [4860, 11000, 0], [5445, 11500, 0],
+	[6667, 12000, 0], [7512, 12500, 0], [8133, 13000, 0], [9646, 13500, 0], [10904, 14000, 0],
+	[12675, 14500, 0], [14772, 14500, 0], [18962, 14500, 0], [20158, 14500, 0], [23431, 14500, 0],
+	[24755, 14500, 0], [27432, 14500, 0], [29296, 14500, 0], [32550, 14500, 0], [35541, 14500, 0],
 ]
 ## The band a target is drawn in round the sample, from level BAND_FROM.
 const BAND := 0.12
 const BAND_FROM := 6
-## Past the table: each target the last times 1 + a draw from GROW, the
-## draw halved past SLOW_PAST, never past TOP.
-const GROW := Vector2(0.03, 0.15)
-const SLOW_PAST := 1000000
-const TOP := 99999999
-const COUNT_TOP := 2500
-const COUNT_STEP := 100
+## Past the table: each target the last times 1 + a draw from GROW (the
+## reference's levels 31 to 40 grow 6% to 30%) times (40 / level)^2, so
+## the climb slows as the reference's does: level 100 near a million, level
+## 1000 near ten million (its players at 1000 were never asked nine
+## digits). No level is the last; TOP is only the 32-bit edge.
+const GROW := Vector2(0.05, 0.25)
+const TOP := LIMIT
+## Past the table every level asks the table's last count.
+const COUNT_TOP := 14500
 ## From level 23 each level hands over the number level - DIG_FROM, to the
-## last printed.
+## last printed (999, at level 1006).
 const DIG_FROM := 7
-const MOST := 60
+const MOST := 999
 
 # --- the paper ---
 
@@ -170,12 +173,18 @@ const MOST := 60
 ## where the small numbers are (APART keeps them apart, and the rings near
 ## the box are short) and closer further out, where the rings are long;
 ## `copies(v)` how many of it. 1s at 8 to 16, 5s at 26 to 36, 9s at 42 to
-## 52, 19s at 70 to 84, 39s at 114 to 130, 60s at 156 to 182.
+## 52, 19s at 70 to 84, 39s at 114 to 130, 60s at 156 to 182; past 60 the
+## rings go out by area (`FAR_FROM` to `FAR_TO`), so the big numbers lie
+## as thick on the paper near 60 as near 999.
 const NEAR := [[1, 8.0, 0.0, 8], [5, 14.0, 4.0, 10], [9, 30.0, 4.0, 10], [19, 46.0, 3.0, 14], [39, 72.0, 2.2, 16], [60, 114.0, 2.1, 26]]
-## No printed number has another within this many squares: two digs side
-## by side leave APART - 3 squares between them, room for machines and
-## their belts.
+const FAR_FROM := 186.0
+const FAR_TO := 484.0
+const FAR_BAND := 10
+## No printed number to 60 has another within this many squares: two digs
+## side by side leave APART - 3 squares between them, room for machines
+## and their belts. Past 60, APART_FAR.
 const APART := 12
+const APART_FAR := 9
 ## A written square wires the slots this far round it again (a dig's belts
 ## leading away read two squares past its edge: three from its root).
 const REWIRE := 3
@@ -189,34 +198,59 @@ static func band(v: int) -> Vector2i:
 			var near := roundi(float(row[1]) + float(row[2]) * (v - first))
 			return Vector2i(near, mini(near + int(row[3]), HUB_AT.x - 2))
 		first = last + 1
-	return Vector2i(HUB_AT.x - 12, HUB_AT.x - 2)
+	var u := float(v - first) / float(MOST - first)
+	var near := roundi(sqrt(FAR_FROM * FAR_FROM + u * (FAR_TO * FAR_TO - FAR_FROM * FAR_FROM)))
+	return Vector2i(near, mini(near + FAR_BAND, HUB_AT.x - 2))
 
 static func copies(v: int) -> int:
-	return 4 if v == 1 else 3
+	return 4 if v == 1 else (3 if v <= int(NEAR[-1][0]) else 2)
+
+static func apart(v: int) -> int:
+	return APART if v <= int(NEAR[-1][0]) else APART_FAR
 
 # --- the upgrades ---
 
 const TRACKS := ["belt", "dig", "add", "mul", "sub", "pow"]
 const TRACK_KIND := {"belt": BELT, "dig": DIG, "add": ADD, "mul": MUL, "sub": SUB, "pow": POW}
-const TRACK_TOP := {"belt": 128, "dig": 4, "add": 108, "mul": 108, "sub": 108, "pow": 108}
-## Each track's numbers, near the reference's magnitudes; past the list each
-## the last times SEQ_GROW. The first is kept, the rest drawn within SEQ_BAND.
-const SEQ := {
-	"belt": [1, 16, 22, 34, 121, 247, 562, 854, 1526, 4294, 7891, 9240],
-	"dig": [2, 18, 23, 89, 291, 438],
-	"add": [3, 11, 75, 91, 193, 625, 3447, 9423, 44031],
-	"mul": [15, 20, 257, 690, 3644, 6433, 49514, 97001],
-	"sub": [40, 147, 640, 3103, 8118, 30870, 61589, 227887],
-	"pow": [64, 187, 983, 4563, 5684, 11067, 92927, 8312675],
+## The dig's top is its twelve edge squares, a belt each; the others are
+## the reference's.
+const TRACK_TOP := {"belt": 128, "dig": 12, "add": 108, "mul": 108, "sub": 108, "pow": 108}
+## What each track's ranks 1 to 8 ask, the reference's: [number, count] for
+## one, two, then three numbers. Where its run left a gap (the belt's sixth
+## numbers, the dig's eighth third, subtract's first three ranks) the
+## numbers carry on its slide. Past the table a rank slides on: the oldest
+## number goes, a new one comes (the last times SEQ_GROW), each count
+## COUNT_UP more. A number past SEQ_KEEP is drawn within SEQ_BAND a save.
+const RANKS := {
+	"belt": [[[1, 200]], [[1, 1000], [16, 500]], [[1, 4000], [16, 3000], [22, 1500]],
+		[[34, 9000], [121, 7000], [839, 6000]], [[94, 9000], [247, 7000], [562, 6000]],
+		[[247, 11000], [562, 9000], [854, 8000]], [[854, 15000], [1526, 12000], [7891, 10000]],
+		[[1526, 20000], [7891, 16000], [4294, 12000]]],
+	"dig": [[[2, 300]], [[2, 2000], [18, 1000]], [[2, 5000], [18, 2000], [23, 1000]],
+		[[16, 8000], [22, 3000], [438, 2000]], [[89, 10000], [378, 4000], [787, 3000]],
+		[[291, 12000], [791, 8000], [2319, 4000]], [[791, 15000], [2319, 12000], [7774, 6000]],
+		[[2319, 20000], [7774, 17000], [24879, 20000]]],
+	"add": [[[3, 450]], [[3, 3000], [11, 1500]], [[3, 5000], [11, 4000], [75, 3000]],
+		[[11, 7000], [91, 5000], [193, 4000]], [[91, 12000], [193, 10000], [625, 5000]],
+		[[193, 15000], [625, 12000], [3447, 8000]], [[625, 20000], [3447, 17000], [9423, 10000]],
+		[[3447, 30000], [9423, 20000], [44031, 16000]]],
+	"mul": [[[15, 500]], [[15, 5000], [20, 2500]], [[15, 10000], [20, 7000], [257, 4000]],
+		[[20, 11000], [257, 6000], [690, 5000]], [[257, 17000], [690, 13000], [3644, 6000]],
+		[[690, 22000], [3644, 17000], [6433, 10000]], [[3644, 35000], [6433, 25000], [49514, 17000]],
+		[[6433, 37000], [49514, 30000], [97001, 20000]]],
+	"sub": [[[36, 600]], [[36, 6000], [147, 3000]], [[36, 12000], [147, 8000], [640, 5000]],
+		[[147, 13000], [640, 8000], [3103, 6000]], [[640, 24000], [3103, 16000], [8118, 8000]],
+		[[3103, 32000], [8118, 21000], [30870, 13000]], [[8118, 43000], [30870, 33000], [61589, 26000]],
+		[[30870, 50000], [61589, 40000], [227887, 30000]]],
+	"pow": [[[64, 800]], [[64, 7000], [187, 4000]], [[64, 10000], [187, 6000], [983, 4000]],
+		[[187, 15000], [983, 9000], [4563, 7000]], [[983, 29000], [4563, 18000], [5684, 9000]],
+		[[4563, 37000], [5684, 25000], [6605, 15000]], [[5684, 40000], [11067, 35000], [92927, 26000]],
+		[[11067, 60000], [92927, 50000], [8312675, 40000]]],
 }
 const SEQ_GROW := 1.6
 const SEQ_BAND := 0.1
-## The counts a rank asks for, the belt's; a track's are these times its
-## FIRST over the belt's. Past the table each count is COUNT_UP more a rank.
-const RANK_COUNTS := [[40], [200, 100], [800, 600, 300], [1800, 1400, 1200], [1800, 1400, 1200],
-	[2200, 1800, 1600], [3000, 2400, 2000], [4000, 3200, 2400]]
-const FIRST := {"belt": 40, "dig": 60, "add": 90, "mul": 100, "sub": 120, "pow": 160}
-const COUNT_UP := 100
+const SEQ_KEEP := 30
+const COUNT_UP := 500
 const ADDER := [0.25, 0.3333, 0.4, 0.5, 0.6667, 1.0, 1.5, 2.0]
 
 static var path := "user://tally.cfg"
@@ -427,7 +461,7 @@ static func ring(t: Vector2i) -> int:
 func _print_paper() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_v ^ 0x5eed
-	var placed: Array = []
+	var placed := {}
 	for v in range(1, MOST + 1):
 		if v == 10:
 			continue
@@ -437,11 +471,14 @@ func _print_paper() -> void:
 		while put < copies(v) and tries < 600:
 			tries += 1
 			var t := _on_ring(rng.randi_range(b.x, b.y), rng.randf())
-			if t.x < 1 or t.y < 1 or t.x > W - 2 or t.y > H - 2 or not _clear_round(t, placed):
+			if t.x < 1 or t.y < 1 or t.x > W - 2 or t.y > H - 2 or not _clear_round(t, placed, apart(v)):
 				continue
 			dep[_i(t)] = v
 			printed.append(_i(t))
-			placed.append(t)
+			var c := t / (APART + 1)
+			if not placed.has(c):
+				placed[c] = []
+			placed[c].append(t)
 			put += 1
 
 ## A square on the ring `d` squares from the box's edge, `u` (0 to 1) of
@@ -462,10 +499,16 @@ static func _on_ring(d: int, u: float) -> Vector2i:
 			return Vector2i(x0 + l - o, y0 + l)
 	return Vector2i(x0, y0 + l - o)
 
-static func _clear_round(t: Vector2i, placed: Array) -> bool:
-	for q: Vector2i in placed:
-		if maxi(absi(q.x - t.x), absi(q.y - t.y)) <= APART:
-			return false
+## Whether no placed number lies within `a` squares of `t`: `placed` is
+## kept in cells of APART + 1, so the cells round `t`'s are all there is
+## to look at.
+static func _clear_round(t: Vector2i, placed: Dictionary, a := APART) -> bool:
+	var c := t / (APART + 1)
+	for dy in range(-1, 2):
+		for dx in range(-1, 2):
+			for q: Vector2i in placed.get(c + Vector2i(dx, dy), []):
+				if maxi(absi(q.x - t.x), absi(q.y - t.y)) <= a:
+					return false
 	return true
 
 # --- numbers ---
@@ -543,15 +586,13 @@ func _next_target(n: int) -> int:
 		return maxi(t, last + 1)
 	if last >= TOP:
 		return TOP
-	var g := _trng.randf_range(GROW.x, GROW.y)
-	if last > SLOW_PAST:
-		g *= 0.5
+	var g := _trng.randf_range(GROW.x, GROW.y) * pow(float(LADDER.size()) / n, 2.0)
 	return mini(maxi(int(round(last * (1.0 + g))), last + 1), TOP)
 
 func count_of(n: int) -> int:
 	if n <= LADDER.size():
 		return int(LADDER[n - 1][1])
-	return mini(COUNT_TOP, int(LADDER[-1][1]) + COUNT_STEP * (n - LADDER.size()))
+	return COUNT_TOP
 
 func target() -> int:
 	return target_of(level)
@@ -586,22 +627,25 @@ func can_dig(v: int) -> bool:
 
 # --- the upgrades ---
 
+## Each track's table numbers as this save has them: {number: drawn}, the
+## same number drawn once however many ranks ask it.
 func _draw_seqs() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_v ^ 0x7a11
 	for id: String in TRACKS:
-		_seqs[id] = []
-		for k in SEQ[id].size():
-			var v := int(SEQ[id][k])
-			if k > 0:
-				v = int(round(v * rng.randf_range(1.0 - SEQ_BAND, 1.0 + SEQ_BAND)))
-			_seqs[id].append(v)
+		_seqs[id] = {}
+		for rank: Array in RANKS[id]:
+			for a: Array in rank:
+				var v := int(a[0])
+				if not _seqs[id].has(v):
+					_seqs[id][v] = v if v <= SEQ_KEEP else int(round(v * rng.randf_range(1.0 - SEQ_BAND, 1.0 + SEQ_BAND)))
 
-func _seq(id: String, k: int) -> int:
-	var s: Array = _seqs[id]
-	while s.size() <= k:
-		s.append(int(round(int(s[-1]) * SEQ_GROW)) + 1)
-	return int(s[k])
+## The number past the table's last rank `k` places on (0: its third).
+static func _past(id: String, k: int) -> int:
+	var v := int(RANKS[id][-1][-1][0])
+	for j in k:
+		v = mini(int(round(v * SEQ_GROW)) + 1, LIMIT)
+	return v
 
 func track_open(id: String) -> bool:
 	return has(int(TRACK_KIND[id]))
@@ -612,19 +656,24 @@ func at_top(id: String) -> bool:
 ## What the next rank of `id` asks: [[number, count], ...] (one, two, then
 ## three sliding).
 func asks(id: String) -> Array:
-	var r := int(lv[id])
-	var ks: Array = [0] if r == 1 else ([0, 1] if r == 2 else [r - 3, r - 2, r - 1])
-	var counts: Array
-	if r <= RANK_COUNTS.size():
-		counts = RANK_COUNTS[r - 1]
-	else:
-		counts = []
-		for c: int in RANK_COUNTS[-1]:
-			counts.append(c + COUNT_UP * (r - RANK_COUNTS.size()))
-	var f := float(FIRST[id]) / float(FIRST["belt"])
+	return asks_at(id, int(lv[id]))
+
+## What rank `r` of `id` asks (the upgrades' sheet shows the rank after).
+func asks_at(id: String, r: int) -> Array:
+	var table: Array = RANKS[id]
 	var out := []
-	for j in ks.size():
-		out.append([_seq(id, int(ks[j])), int(round(int(counts[j]) * f / 10.0)) * 10])
+	if r <= table.size():
+		for a: Array in table[r - 1]:
+			out.append([int(_seqs[id][int(a[0])]), int(a[1])])
+		return out
+	# the last rank's three numbers then the new ones, rank 8 + p asking
+	# the p-th to the p+2-th
+	var past := r - table.size()
+	var last: Array = table[-1]
+	for j in 3:
+		var k := past + j
+		var v := int(_seqs[id][int(last[k][0])]) if k < 3 else _past(id, k - 2)
+		out.append([v, int(last[j][1]) + COUNT_UP * past])
 	return out
 
 func held(v: int) -> int:
