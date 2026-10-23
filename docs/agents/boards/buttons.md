@@ -1217,3 +1217,9 @@ A zoomed picture aims only at squares in sight. Aim probe 33/0, board probe
 38 days (the two old band-2 zoom failures); a throwaway check: 40 px off a
 bare patch in eight ways aims at a patch of the colour, 8/8 on Medium and
 Insane.
+
+**2026-10-23, 08:08, flights twice as quick again.** The user: "increase fly
+speed of pieces in jewel box". `FLY_TIME` 0.28 to 0.14; a flight with an end
+in the case scales off it (0.14 to 0.28 s by length). The gap stays 0.05 s,
+so two or three gems are in the air at once on a long run. Not seen in a
+window.
