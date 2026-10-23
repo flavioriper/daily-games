@@ -28,6 +28,7 @@ const Analytics = preload("res://core/analytics.gd")
 const InviteCard = preload("res://ui/menu/invite_card.gd")
 const CodeDialog = preload("res://ui/menu/code_dialog.gd")
 const Dialog = preload("res://ui/hud/dialog.gd")
+const TouchScroll = preload("res://ui/touch_scroll.gd")
 
 enum State { LOADING, READY, OFFLINE }
 
@@ -55,6 +56,7 @@ var retry_button: Button
 var state: int = State.LOADING
 var _body: VBoxContainer
 var _list: VBoxContainer
+var _touch: Node
 var _code_label: Label
 var _code_caption: Label
 var _code := ""
@@ -263,6 +265,7 @@ func _paint_list() -> void:
 	scroll.custom_minimum_size.y = shown * FRIEND_H + (ceilf(shown) - 1.0) * FRIEND_GAP + 12.0
 	scroll.add_child(rows)
 	_list.add_child(scroll)
+	_touch = TouchScroll.attach(scroll)
 
 func _counted(key: String, n: int) -> String:
 	return tr(key + ("_ONE" if n == 1 else "_N")) % n
@@ -416,8 +419,12 @@ func _enter_code() -> void:
 	_dialog = CodeDialog.new()
 	add_child(_dialog)
 
+## The touch now ending scrolled the list, so it picks nothing.
+func _dragged() -> bool:
+	return is_instance_valid(_touch) and _touch.dragged()
+
 func _pick_game(uid: String) -> void:
-	if _up():
+	if _up() or _dragged():
 		return
 	_asking = InviteCard.pick(uid)
 	# versus_friend_invite is Online's, sent as the asking begins.
@@ -426,7 +433,7 @@ func _pick_game(uid: String) -> void:
 	add_child(_asking)
 
 func _ask_remove(uid: String) -> void:
-	if _up():
+	if _up() or _dragged():
 		return
 	_asking = InviteCard.remove(uid)
 	_asking.confirmed.connect(func() -> void:

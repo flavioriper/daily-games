@@ -8,6 +8,8 @@ extends "res://ui/hud/sheet.gd"
 ## it, so closing it lands back there. The engine's licence text is long, so
 ## the body scrolls inside the sheet.
 
+const TouchScroll = preload("res://ui/touch_scroll.gd")
+
 const BODY_H := 1000.0
 
 var close_button: Button
@@ -21,6 +23,7 @@ func _build_sheet(col: VBoxContainer) -> void:
 	scroll.custom_minimum_size.y = BODY_H
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	col.add_child(scroll)
+	TouchScroll.attach(scroll)
 	var body := VBoxContainer.new()
 	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	body.add_theme_constant_override("separation", 10)

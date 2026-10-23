@@ -12,10 +12,12 @@ const AgeGate = preload("res://core/age_gate.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Dialog = preload("res://ui/hud/dialog.gd")
 const Pal = preload("res://core/palette.gd")
+const TouchScroll = preload("res://ui/touch_scroll.gd")
 
 var _chosen := 0
 var _buttons := {}
 var _go: Button
+var _touch: Node
 
 static func wanted() -> bool:
 	if AgeGate.known():
@@ -46,6 +48,7 @@ func _ready() -> void:
 	scroll.custom_minimum_size = Vector2(800, 760)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	col.add_child(scroll)
+	_touch = TouchScroll.attach(scroll)
 	var grid := GridContainer.new()
 	grid.columns = 4
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -60,7 +63,7 @@ func _ready() -> void:
 		b.custom_minimum_size = Vector2(0, 96)
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		# A drag that starts on a year still scrolls the list (the years
-		# fill it, so without this a finger never reaches past 7 rows).
+		# fill it); a finger's drag is ui/touch_scroll.gd's.
 		b.mouse_filter = Control.MOUSE_FILTER_PASS
 		b.pressed.connect(_pick.bind(y))
 		grid.add_child(b)
@@ -81,6 +84,8 @@ func _paint(b: Button, chosen: bool) -> void:
 	b.add_theme_stylebox_override("pressed", down)
 
 func _pick(y: int) -> void:
+	if _touch.dragged():
+		return
 	_chosen = y
 	for k: int in _buttons:
 		_paint(_buttons[k], k == y)

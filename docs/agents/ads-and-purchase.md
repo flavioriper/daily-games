@@ -104,7 +104,11 @@ stated before the 3D game left.
   reading of the year wins). `Ads._configure_requests()` caps everyone at
   PG and a child at G with the child-directed tag, tags anyone under 18
   under-age-of-consent, and every request below 18 goes out `npa=1`. A
-  desktop debug run shows the screen with `AGE_SCREEN=1`. **Pacing**
+  desktop debug run shows the screen with `AGE_SCREEN=1`. The year list
+  scrolls under a finger through `ui/touch_scroll.gd` (2026-10-23): Godot's
+  ScrollContainer drags on mouse events only and `emulate_mouse_from_touch`
+  is off, so until then a phone stopped at 1999; the friends, credits and
+  Tally parts lists carry the same helper. **Pacing**
   (`core/ad_pacing.gd`, pure, saved by `Ads`): the interstitial waits out a
   3-day grace, three hearts that day, six finished games, two games and 4
   minutes since the last one and 4 after a video, at most 4 a day, and

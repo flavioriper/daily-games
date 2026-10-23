@@ -19,6 +19,7 @@ const IconButton = preload("res://ui/hud/icon_button.gd")
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const CozyTheme = preload("res://ui/theme.gd")
+const TouchScroll = preload("res://ui/touch_scroll.gd")
 
 const WIDE := 900.0
 const MINI := 96.0
@@ -26,6 +27,7 @@ const LIST_MOST := 620.0
 const ROW_H := 84.0
 
 var sim: RefCounted
+var _touch: Node
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -63,6 +65,7 @@ func _list_card(col: VBoxContainer) -> void:
 		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 		scroll.custom_minimum_size = Vector2(WIDE - 80, minf(LIST_MOST, ids.size() * (MINI + 40.0)))
 		col.add_child(scroll)
+		_touch = TouchScroll.attach(scroll)
 		var list := VBoxContainer.new()
 		list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		list.add_theme_constant_override("separation", 12)
@@ -122,6 +125,8 @@ func _draw_mini(c: Control, id: int) -> void:
 	c.draw_mesh(Art.lid(w, h, []), null, Transform2D(0.0, Vector2.ONE * s, 0.0, off))
 
 func _pick(what: String, id: int) -> void:
+	if what != "" and _touch != null and _touch.dragged():
+		return
 	if what != "":
 		chose.emit(what, id)
 	closed.emit()
