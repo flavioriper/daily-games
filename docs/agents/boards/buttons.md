@@ -1248,3 +1248,14 @@ gap stays 0.025 s.
 and asked which way, "slower again". `FLY_TIME` 0.187 to 0.249 (about 15
 frames at 60 fps). Same for every flight; the gap stays 0.025 s, so about
 ten gems are in the air at once on a long run.
+
+**08:24, the page is a border around the picture's shape.** The user, with
+a shot of an Insane day: "let's make the white background be just a outline
+border around the picture instead of a flat square". `Art.frame`'s square
+page under the picture is gone from the board; `Art.outline` grows every
+slot's square by `OUTLINE_K` (0.4) of a square, kept within `OUTLINE_MIN`
+4 / `OUTLINE_MAX` 12 px, in `Pal.SURFACE` over the same band in `CASE_RIM`
+set a little low for a lip; both opaque, so overlaps never stack, and the
+corners step like the pixels. All of it is in `_still`, built once. The
+menu card keeps its square frame. Seen in `rest` shots on Medium and
+Insane: draw calls 77 and 107, unchanged.

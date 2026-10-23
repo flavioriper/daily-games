@@ -87,6 +87,24 @@ static func frame(b, rect: Rect2) -> void:
 	b.fan(Face.Builder.round_rect(rect.position + Vector2(0.0, 3.0), rect.size, r), Color(Pal.TEXT, 0.06))
 	b.fan(Face.Builder.round_rect(rect.position, rect.size, r), Pal.SURFACE)
 
+## The picture's edge, a border that follows its shape (the user,
+## 2026-10-23: "make the white background be just a outline border around
+## the picture instead of a flat square"): every slot's square grown by
+## `width` in the page's colour, so they join into one band around the
+## silhouette with stepped corners like the pixels, over the same band in
+## CASE_RIM set a little low for its lip. Opaque both, so the overlaps
+## never stack.
+static func outline(b, centres: PackedVector2Array, cell: float, width: float) -> void:
+	var lip := Vector2(0.0, maxf(1.5, width * 0.35))
+	for layer in 2:
+		var col := CASE_RIM if layer == 0 else Pal.SURFACE
+		var off := lip if layer == 0 else Vector2.ZERO
+		for at in centres:
+			var c := at + off
+			var half := cell * 0.5 + width
+			_raw(b, PackedVector2Array([c + Vector2(-half, -half), c + Vector2(half, -half),
+					c + Vector2(half, half), c + Vector2(-half, half)]), col)
+
 ## A slot centred on `at`: its whole square in `col`, edge to edge (a hair
 ## over, so neighbours of one colour leave no seam and join into one
 ## area), with the seat its jewel goes into. `lite` cuts the seat in fewer

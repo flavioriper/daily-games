@@ -58,6 +58,12 @@ const PAD := 34.0
 const HUD_ROW := 76.0
 const GAP := 26.0
 const BORDER := 18.0
+## The border around the picture's shape: this much of a square wide, kept
+## between OUTLINE_MIN and OUTLINE_MAX px so a big picture's stays seen and
+## a small one's stays a border.
+const OUTLINE_K := 0.4
+const OUTLINE_MIN := 4.0
+const OUTLINE_MAX := 12.0
 ## The case as the reference's (measured on the user's shots, 2026-10-19,
 ## "make it match"): twelve places a row, a place TIN_STEP_K of the
 ## screen's width whatever the picture's square, the panel TIN_WIDE of the
@@ -712,12 +718,16 @@ func _cell_under(at: Vector2) -> int:
 func _field_px() -> Rect2:
 	return Rect2(_grid, Vector2(state.w, state.h) * _cell)
 
-## The picture's edge and a slot a square, each in its jewel's colour with
-## a seat: one mesh, and the slots of one colour join in it.
+## The picture's edge, a border around its own shape, and a slot a square,
+## each in its jewel's colour with a seat: one mesh, and the slots of one
+## colour join in it.
 func _build_still() -> ArrayMesh:
 	var b := Face.Builder.new()
-	var field := _field_px().grow(BORDER * 0.6)
-	Art.frame(b, field)
+	var centres := PackedVector2Array()
+	for i in state.slot.size():
+		if state.slot[i] >= 0:
+			centres.append(cell_centre(i))
+	Art.outline(b, centres, _cell, clampf(_cell * OUTLINE_K, OUTLINE_MIN, OUTLINE_MAX))
 	for i in state.slot.size():
 		if state.slot[i] >= 0:
 			Art.patch(b, cell_centre(i), _cell, Art.colour(state.colours[state.slot[i]]), _cell < Art.SMALL)
