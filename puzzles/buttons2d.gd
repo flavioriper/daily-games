@@ -137,16 +137,12 @@ const PICK_CAP := 0.0
 ## to FLY_TILT and back upright to land, its shadow shrinking as it climbs.
 ## Half the speed since 2026-10-20 (the user: "slow flight time by half"):
 ## 0.28 to 0.56. Back to 0.28 on 2026-10-21 (the user: "make flying time
-## 2x faster"); a case flight scales off it, so it halves too. Halved
+## 2x faster"). Halved
 ## again to 0.14 on 2026-10-23 (the user: "increase fly speed of pieces").
 const FLY_TIME := 0.14
-## A flight with an end in the case covers far more ground than a hop on
-## the cloth, and on FLY_TIME alone it shot past (the user, 2026-10-21: "pieces
-## from case box are flying way faster than pieces from the board, make it
-## aligned with board"): it keeps the speed of a FLY_REACH_K-of-the-screen's-
-## width hop in FLY_TIME, so takes longer, never past FLY_LONG_MAX of FLY_TIME.
-const FLY_REACH_K := 0.35
-const FLY_LONG_MAX := 2.0
+## Every flight takes FLY_TIME, however far it goes (the user, 2026-10-23:
+## "never increase fly time, it should be a constant no matter where"); a
+## flight out of the case or into it no longer stretches by its length.
 ## A button of the tin sliding along to the next place (State.SLIDE).
 const SLIDE_TIME := 0.26
 const FLY_ARC := 0.6
@@ -1548,9 +1544,7 @@ func _play(res: Dictionary, at_cell: int, starts: Dictionary) -> void:
 	var sewn := 0
 	var last := now
 	var tin_k := _tin_step * TIN_FIT / _cell
-	var pic := _pic_xf(now)
-	# landings counted as they come: a case flight is longer than its
-	# neighbours on the cloth, so the order of leaving is not of landing
+	# landings counted as they come, on one shared counter
 	var landed := [0]
 	for m: Array in moves_:
 		var kind := int(m[0])
@@ -1596,14 +1590,6 @@ func _play(res: Dictionary, at_cell: int, starts: Dictionary) -> void:
 				_arrive[int(m[2])] = at + fly
 				_mark(int(m[2]))
 				sewn += 1
-		if fly > 0.0 and not (bool(f.fc) and bool(f.tc)):
-			var a: Vector2 = pic * (f.from as Vector2) if bool(f.fc) else f.from
-			var b: Vector2 = pic * (f.to as Vector2) if bool(f.tc) else f.to
-			f.time = fly * clampf(a.distance_to(b) / (size.x * FLY_REACH_K), 1.0, FLY_LONG_MAX)
-			if kind == State.TO_TIN:
-				_tin_arrive[int(m[2])] = at + f.time
-			else:
-				_arrive[int(m[2])] = at + f.time
 		_flights.append(f)
 		var lands := at + float(f.time)
 		last = maxf(last, lands)

@@ -1223,3 +1223,10 @@ speed of pieces in jewel box". `FLY_TIME` 0.28 to 0.14; a flight with an end
 in the case scales off it (0.14 to 0.28 s by length). The gap stays 0.05 s,
 so two or three gems are in the air at once on a long run. Not seen in a
 window.
+
+**08:10, every flight the same time.** The user: "never increase fly time,
+it should be a constant no matter where". The 2026-10-21 stretch of a
+flight with an end in the case is gone (`FLY_REACH_K`, `FLY_LONG_MAX`): a
+flight out of the case, into it or across the cloth takes `FLY_TIME`
+(0.14 s), so a long one moves faster. Slides inside the case keep
+`SLIDE_TIME`.
