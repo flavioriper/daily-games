@@ -139,8 +139,9 @@ const PICK_CAP := 0.0
 ## Half the speed since 2026-10-20 (the user: "slow flight time by half"):
 ## 0.28 to 0.56. Back to 0.28 on 2026-10-21 (the user: "make flying time
 ## 2x faster"). Halved
-## again to 0.14 on 2026-10-23 (the user: "increase fly speed of pieces").
-const FLY_TIME := 0.14
+## again to 0.14 on 2026-10-23 (the user: "increase fly speed of pieces"),
+## then the speed at three quarters ("reduce fly speed by 25%"): 0.14 x 4/3.
+const FLY_TIME := 0.187
 ## Every flight takes FLY_TIME, however far it goes (the user, 2026-10-23:
 ## "never increase fly time, it should be a constant no matter where"); a
 ## flight out of the case or into it no longer stretches by its length.

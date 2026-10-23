@@ -1238,3 +1238,8 @@ gems are in the air at once on a long run, and a run of 48 leaves in about
 draws cost ~1.2 ms a frame, so it is the few frames a flight has, not
 lag) is still open: a stretch along the way or a longer `FLY_TIME` was
 offered.
+
+**08:20, flights a quarter slower.** The user: "reduce fly speed by 25%".
+The speed at three quarters, so the time at four thirds: `FLY_TIME` 0.14 to
+0.187 (11 frames at 60 fps, was 8). Still the same for every flight; the
+gap stays 0.025 s.
