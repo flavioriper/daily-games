@@ -869,3 +869,111 @@ game's is `gumdrop_art.gd` `picture()`.
   parts thinner than 2.4u lose the outer rim band; a feather-0 piece still
   appends a feather ring. Ships with the APK through the push to `main`
   (the only phone-side file of the picture ports).
+
+### Made fun to play (2026-10-26)
+
+The user, 2026-10-26: "I want your help to make gumdrop experience way
+better to play, and game itself way funnier to play, right now nobody
+likes it", then "skip questions, feel free to use web". Spec
+`docs/superpowers/specs/2026-10-26-gumdrop-fun-design.md`, plan beside it,
+built on `feat/gumdrop-fun` in six tasks (9ed369cd..this section's commit),
+not merged, not pushed. Every call below the brief did not make is the
+builder's and the spec says so.
+
+- **Why nobody liked it** (the spec's section 1, read off the shots and
+  the genre's own reviews): the only verb was holding a thumb (~2.6 s a
+  chunk, up to 14 chunks times 5 moulds, and 3.3 s of settle and show a
+  serve); the serve read as a test ("NEEDS 65% · 1/3", a ? and then a
+  number that meant nothing at 100 or nothing explained at 89); and the
+  jelly did nothing, dark on a dark slab, taking a tint.
+- **Serve never fails.** The mark is gone (`Sim.MARK`, `mark()`,
+  `GD_NEED`, `GD_NEEDED`, `Mould.BANDS`' `"mark"` field, the "needs N%"
+  sentences); the head of this file's 60/65/70/75 marks and "a mould under
+  the mark ... is emptied and poured again" are history. A served mould is
+  taken away whatever it reads; the verdict is `{"pct", "tier", "pass":
+  true, "perfect"}` (`need` kept at 0). **But every piece must have
+  colour**: `can_serve()` is `all_wet()` (every chunk with a square over
+  `Sim.WET`), the gold button greyed until then, and a press on it grey is
+  `nope` (`bank:tongue`) and `Haptics.WARN`, nothing else, no words.
+- **Tiers** (`Sim.tier()`): `TIER_PERFECT` 95 "Perfect!" (`perfect`, the
+  confetti and star rain, the number in `Pal.SUN`), `TIER_GREAT` 80
+  "Great!" (`good`, the number `Pal.LEAF_DEEP`), under 80 "Served!"
+  (`good` at 0.84, the number in ink). The card's line is `GD_OF` ("1 OF
+  3", nothing on a one-mould day) and after the serve the tier's word.
+- **The pour is quick and a chunk lands** (Task 4): `Fluid.RATE` 3.6 ->
+  8.0, about 1.2 s to the card's shade at the 92-square stalk (the root
+  rule kept: a 171-square chunk read 93-95% shown at 1.5 s, raw 97-102);
+  `METER_EASE` 12 -> 20; `SETTLE_T` 0.45, `SHOW_T` 2.0. The frame the
+  **shown** ring reaches `LAND` 0.97 while squeezed, once a fill (re-armed
+  under `LAND_REARM` 0.87): the rim white and the number green for
+  `LAND_SNAP` 0.35 s, `land` (`bank:wrap`), `Haptics.BUMP`, sparkles at the
+  tip in the syrup's colour, a wobble. The table's own `_armed` flags fire
+  it on screen; the sim's `land` event only headless (the probe's).
+- **The jelly wobbles** (Task 3): `_jelly()`, a squash `(1 + w, 1 - w)`
+  with half as much shear about the mould's middle, `w = A sin(2π 4.5 t)
+  e^(-t/0.35)`, inside the tray's `_group()`; the tray, card, pots and
+  buttons never move. `WOB_TAP` 0.02, `WOB_SQUEEZE` 0.03 and a 0.006
+  tremble at 9 Hz while syrup goes in, `WOB_DRAIN` 0.02, `WOB_LAND` 0.04,
+  `WOB_SERVE` 0.09. Still under `Motion.reduce`.
+- **The serve is a reveal** (this task): the needle lifts and the meter
+  fades, the big wobble, then **a sweep of light**: one soft white band
+  `SWEEP_W` 0.28 of the tray wide, `SWEEP_A` 0.35 at its middle (a cos²
+  hump to nothing at its edges), its long edges from upper left to lower
+  right, carried from the jelly's lower-left corner to its upper right over
+  `SWEEP_T` 0.5 s starting `SWEEP_DELAY` 0.1 s after the verdict, its
+  alpha a sine in and out; then the stamp (the `Rewards` stickers) and the
+  card's number; the tray slides off as before. The day's last mould gets
+  it too, under the win's slide. None of it under `Motion.reduce`.
+- **The sweep is in the syrup's shader, not a mesh** (ruling, the
+  builder's; the brief asked for a mesh in `Art` drawn in `_draw_syrup`):
+  `_syrup` carries `gumdrop_syrup_2d.gdshader` as its material, so any mesh
+  drawn on it is coloured as dye (a white texture reads as every pigment
+  at once, a solid slab). Tried first as its own Control between the syrup
+  and the top, clipped to the tray's square: the shot showed the band
+  across the bare dark tray wherever the mould leaves it (most of a duck's
+  tray), light on the tray rather than on the jelly. Now three uniforms
+  (`sweep_at`, `sweep_a`, `sweep_w`) set each frame by `_draw_syrup` light
+  the tint along the band: it lies **only on the coloured jelly**, under
+  the jelly's wobble (the dye quad's transform), under the seams and rim
+  (`_walls` in `_top`), and **costs no draw call**. Gel a tint has not
+  reached gets no light; at a serve every chunk has some.
+- **The serve's wobble stays inside the slab** (checked headless, every
+  `Mould.PICTURES` jelly, `m.rim` under the transform over the first
+  second): at `WOB_SERVE` 0.09 the worst (the rocket) goes 1.32 units past
+  the tray's inner square, onto the lip (2.2 units), and stays 0.88 units
+  inside the slab's outer rounded edge. `WOB_SERVE` kept at 0.09. Themed
+  (nightly) jellies were not checked; they are held to `FIT` 9-91.
+- **Measured** (`opengl3_angle`, 810x1440, `tests/_shot_gumdrop.gd`):
+  band 1 run twice, the second's draw calls: ready 119, squeeze 120,
+  refused 115, served low 120, mid 116, served 122, win 80/168, redo 121
+  (play 115-122, as before; the 168 is the win card). Band 2 with
+  `reveal`: the reveal frames 117 (Served!), 125 (Perfect!), 123 (Great!),
+  82 (the last, under the win); the sweep shader adds nothing. The serve
+  pressed with one chunk wet of 3 (Medium) and of 10 (Hard): `can_serve`
+  false, cue `nope`, **`refused: serves 0`**. Served low at a third of the
+  shade: 51-72% Served!. The day solved every run (`[71, 100, 93]`
+  Medium; `[54, 98, 92, 96]` Hard); under `reduce` the day solves and the
+  shader's `sweep_a` reads 0 at each reveal. The bot's Medium day takes
+  ~50 s (a bot, not a hand). `tests/_win.gd -- gumdrop` PASS, the suite
+  `failed=0`, `_probe_gumdrop.gd` 0 failed.
+- **Seen in the shots**: the band a soft pale stripe across the duck's
+  body under the stamp, the seams over it, the tray slab clean; the
+  "Great!" number in `Pal.LEAF_DEEP` reads clearly on its cream outline
+  (kept); the grey serve button sunk on the refused press with the mould
+  untouched.
+- **The harness** now presses the serve with one chunk wet and asserts it
+  refused (`3_refused`), then has the bot wet every chunk to a third and
+  serve with a real touch (`4_served_low`, its tier printed), then plays
+  on at nine tenths; `reveal` shoots every serve 0.3 s after its verdict.
+  Two old faults fixed: the `5_mid` shot swallowed every later `5_served`
+  shot, and `reduce` was undone by `world/main.gd`'s `load_settings()`
+  (it is now set as the board opens).
+- **Unconfirmed**: the user's eye on all of it; a phone (the sweep's
+  uniforms on a real GLES3 driver, the wobble's feel, the pace); the
+  sounds heard (`pick`, `land`, `nope` are bank copies, unheard); pt and
+  es read by a speaker.
+- **Calls that are the user's** (the spec's section 7): serve never fails
+  against a grid card's "solve" (now "every piece coloured"; one constant
+  and the rows put a mark back); the gel and tray kept dark; a shelf of
+  served jellies across days, free play into a served jelly, and a
+  decision layer for Hard and Insane, all left for a later pass.

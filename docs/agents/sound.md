@@ -573,6 +573,17 @@ Unheard. **The drain (2026-10-14, `docs/agents/boards/gumdrop.md`) is the
 same loop at `DRAIN_PITCH` 0.78**, the syrup drawn back out by the grey
 button, up and down as the pour's is; the button's press is the click a
 little low (`touch` at 0.78). No take of its own. Unheard.
+**The fun pass (2026-10-26, `docs/agents/boards/gumdrop.md`, "Made fun to
+play")** puts three pops of the house sound in: **`pick`** a pot picked
+(`bank:pebble`, the select, -16, cut 0.14 s, varied by `TICK_VARY`) in
+place of the button's click; **`land`** a chunk reaching the card's shade
+(`bank:wrap`, the thing repeated, -14, cut 0.1 s, a second note four steps
+up 0.07 s on, varied); **`nope`** the gold button pressed while a piece is
+still clear (`bank:tongue`, the refusal, -16, cut 0.12 s). **`flop`,
+`game_over` and `new_best` are cued by nothing now** (a serve never fails,
+and the serves never run out); their files stay in the set. `good` at
+0.84 is a plain "Served!", `good` (climbing with the mould) "Great!",
+`perfect` "Perfect!". Bank copies, no new take. Unheard.
 
 **Deckchair has a set since 2026-10-10** (`SETS["deckchair"]`, fifteen
 cues), made against the cozy rules from the start and unheard by the user.
