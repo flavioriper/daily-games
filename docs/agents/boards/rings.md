@@ -249,7 +249,10 @@ unattended, pushed on the user's word.
 - Checks: suite passed=303276 failed=0; `_win.gd -- rings` PASS (Medium, 24
   moves); `_shot_rings.gd` on `opengl3_angle` 810x1440: rest 83 (Medium) /
   88 (Insane), lift 89, Insane solve 81 moves to the party, peak 163;
-  tutorial four pages clean.
+  tutorial four pages clean. A finished day restores by laying the sorted
+  pegs from colours and cap (no log replayed), so the new deals break no
+  saved day; that restore had been throwing on `_state.log = []` (a typed
+  array set from outside) and stopping half way, fixed with `clear()`.
 - Mine, the user's to call: the deal shape on every band (only Insane was
   asked), the four sizes, no ring dealt on its own colour, plum and slate,
   marks on every band, the climbing lock, the bulb's dead-end line. Not on

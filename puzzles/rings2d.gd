@@ -2516,7 +2516,7 @@ func restore_completed_board() -> void:
 	while home.size() < _state.pegs.size():
 		home.append([])
 	_state.pegs = home
-	_state.log = []
+	_state.log.clear()
 	_state.held = []
 	_state.held_from = -1
 	_flights = []

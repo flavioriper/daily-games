@@ -5,8 +5,8 @@ extends SceneTree
 ##
 ##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_rings.gd -- [d=0..3] [mode] [rm] [out=<dir>]
 ##
-## Modes: `rest`, `press` (a finger held on a peg: the dip), `lift` (a ring
-## lifted -- on Insane a two-tone one, its somersault -- then dropped),
+## Modes: `rest`, `press` (a finger held on a peg: the dip), `lift` (a run
+## lifted, then dropped; the two-tone and face-down rings are gone),
 ## `doom` (Hard or Insane: a drop that would doom the pegs -- the wobble, the
 ## heart, the hop back), `out` (dooms until the hearts run out: dusk, the
 ## card, Try again), `right` (drops onto their own colour in a row with each
