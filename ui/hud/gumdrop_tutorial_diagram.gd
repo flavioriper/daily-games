@@ -199,25 +199,28 @@ func _reset() -> void:
 	match lesson:
 		Lesson.FILL:
 			# to the middle of one half, squeezed full a little at a time, then
-			# the other pot and the other half
+			# the other pot and the other half (at Fluid.RATE 8.0 the stalk is
+			# full in about 1.2 s and the cap 1.65 s: 0.45 s a squeeze takes
+			# each up in three or four)
 			game.lay([F.CHERRY, F.BLUEBERRY], [F.CHERRY, F.BLUEBERRY])
 			game.aim(Vector2(50, 22))
 			game._goal = game.tip
 			game.plan = [[0.5, "aim", game.centre_of(0)]]
-			var at := game.pulses(1.4, 5, 1.0, 0.45)
+			var at := game.pulses(1.4, 5, 0.45, 0.45)
 			game.plan.append([at, "pick", 1])
 			game.plan.append([at + 0.3, "aim", game.centre_of(1)])
-			at = game.pulses(at + 1.4, 5, 1.0, 0.45)
+			at = game.pulses(at + 1.4, 5, 0.45, 0.45)
 			_length = at + 1.6
 			_still_at = 5.0
 		Lesson.SOAK:
 			# one long squeeze held still: the tint blooms about the needle and
-			# stays where it is, and a second squeeze makes it stronger
+			# stays where it is, and a second squeeze makes it stronger (the
+			# cap: 1.3 s to about 80% of its shade, 0.7 s more to the top)
 			game.lay([F.LEMON, F.BLUEBERRY], [F.LEMON, F.BLUEBERRY])
 			var by: Vector2 = game.centre_of(1)
-			game.plan = [[0.5, "aim", by], [1.4, "squeeze", true], [4.2, "squeeze", false],
-				[7.4, "squeeze", true], [9.0, "squeeze", false]]
-			_length = 12.0
+			game.plan = [[0.5, "aim", by], [1.4, "squeeze", true], [2.7, "squeeze", false],
+				[7.4, "squeeze", true], [8.1, "squeeze", false]]
+			_length = 11.0
 			_still_at = 6.4
 		Lesson.DRAIN:
 			# the cap poured well past the card's shade, then the grey button
@@ -242,12 +245,14 @@ func _reset() -> void:
 			_still_at = at + 0.6 + Sim.SETTLE_T + 0.8
 		Lesson.MIX:
 			# orange has no pot: half cherry, half lemon, in the same half
+			# (the stalk takes about 1.2 s to its shade and a full chunk no
+			# second flavour: 0.6 s of each is about half of each)
 			game.lay([F.ORANGE, F.BLUEBERRY], [F.CHERRY, F.LEMON, F.BLUEBERRY])
 			game.filled(1, F.BLUEBERRY, 1.0)
 			game.plan = [[0.4, "aim", game.centre_of(0)]]
-			var at := game.pulses(1.3, 3, 0.95, 0.4)
+			var at := game.pulses(1.3, 3, 0.2, 0.4)
 			game.plan.append([at, "pick", 1])
-			at = game.pulses(at + 0.8, 3, 0.95, 0.4)
+			at = game.pulses(at + 0.8, 3, 0.2, 0.4)
 			_length = at + 3.0
 			_still_at = at + 2.0
 	_bench.lay(game)
