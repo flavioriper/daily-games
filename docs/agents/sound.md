@@ -581,7 +581,8 @@ place of the button's click; **`land`** a chunk reaching the card's shade
 up 0.07 s on, varied); **`nope`** the gold button pressed while a piece is
 still clear (`bank:tongue`, the refusal, -16, cut 0.12 s). **`flop`,
 `game_over` and `new_best` are cued by nothing now** (a serve never fails,
-and the serves never run out); their files stay in the set. `good` at
+and the serves never run out); their ogg and import files are gone from
+`assets/sfx/gumdrop/` (git history has them). `good` at
 0.84 is a plain "Served!", `good` (climbing with the mould) "Great!",
 `perfect` "Perfect!". Bank copies, no new take. Unheard.
 

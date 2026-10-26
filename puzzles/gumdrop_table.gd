@@ -572,9 +572,15 @@ func _animate(delta: float) -> void:
 		_level = _level.lerp(read, minf(1.0, delta * METER_EASE))
 		_meter_k = minf(1.0, _meter_k + delta * METER_FADE)
 		# the chunk lands the frame the shown reading reaches LAND of the
-		# card's shade while it is squeezed, once a fill
+		# card's shade while it is squeezed, once a fill; the raw reading
+		# must agree, since the shown one is eased from the chunk the tip
+		# was in: crossing a seam out of a full chunk it reads over LAND
+		# for a frame in a chunk at 91% or more, which must not land then
+		# (the raw reading leads the shown one, so a real landing is never
+		# held back)
 		if sim.squeezing and cell < _armed.size() and _armed[cell] == 1 \
-				and _level.x + _level.y + _level.z >= Sim.LAND * Sim.C_FULL:
+				and _level.x + _level.y + _level.z >= Sim.LAND * Sim.C_FULL \
+				and read.x + read.y + read.z >= Sim.LAND * Sim.C_FULL:
 			_armed[cell] = 0
 			_land(cell)
 	else:
@@ -777,7 +783,7 @@ func _on_deal() -> void:
 		_fx.cue("deal")
 		_feel(Haptics.TICK)
 
-## The mould on the tray is clear again: one under its mark, or Reset.
+## The mould on the tray is clear again: Reset.
 func _on_again() -> void:
 	_cell_pots.clear()
 	_arm()

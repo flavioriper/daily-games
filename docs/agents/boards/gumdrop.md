@@ -891,7 +891,7 @@ builder's and the spec says so.
   sentences); the head of this file's 60/65/70/75 marks and "a mould under
   the mark ... is emptied and poured again" are history. A served mould is
   taken away whatever it reads; the verdict is `{"pct", "tier", "pass":
-  true, "perfect"}` (`need` kept at 0). **But every piece must have
+  true, "perfect"}` (the `need` key went with the mark). **But every piece must have
   colour**: `can_serve()` is `all_wet()` (every chunk with a square over
   `Sim.WET`), the gold button greyed until then, and a press on it grey is
   `nope` (`bank:tongue`) and `Haptics.WARN`, nothing else, no words.
@@ -908,7 +908,12 @@ builder's and the spec says so.
   under `LAND_REARM` 0.87): the rim white and the number green for
   `LAND_SNAP` 0.35 s, `land` (`bank:wrap`), `Haptics.BUMP`, sparkles at the
   tip in the syrup's colour, a wobble. The table's own `_armed` flags fire
-  it on screen; the sim's `land` event only headless (the probe's).
+  it on screen; the sim's `land` event only headless (the probe's). The
+  raw reading must reach `LAND` too (final review): the shown one is eased
+  from the chunk the tip was in, so crossing a seam out of a full chunk
+  into one at 91% or more it read over `LAND` for a frame and landed the
+  chunk early, then nothing at its real 100. Proven only by reading the
+  arithmetic; the crossing is owed to the phone.
 - **The jelly wobbles** (Task 3): `_jelly()`, a squash `(1 + w, 1 - w)`
   with half as much shear about the mould's middle, `w = A sin(2π 4.5 t)
   e^(-t/0.35)`, inside the tray's `_group()`; the tray, card, pots and

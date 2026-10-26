@@ -53,7 +53,10 @@ void fragment() {
 	float along = (UV.x + 1.0 - UV.y) * 0.5;
 	// across the band, in tray widths (the diagonal is sqrt(2) of one)
 	float off = (along - sweep_at) * 1.41421356 / sweep_w;
-	float band = abs(off) < 0.5 ? pow(cos(3.14159265 * off), 2.0) : 0.0;
+	// cos squared by a product: pow() of a negative base is undefined, and a
+	// phone's cos() near pi/2 can come out a hair under nothing
+	float cb = cos(3.14159265 * off);
+	float band = abs(off) < 0.5 ? cb * cb : 0.0;
 	vec3 lit = mix(shade * lip, vec3(1.0), band * sweep_a);
 	COLOR = vec4(lit, cover);
 }

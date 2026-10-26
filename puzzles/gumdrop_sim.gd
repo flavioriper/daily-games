@@ -59,9 +59,10 @@ const RATE := 1.1
 ## 2026-10-15: "bigger spaces to fill should take longer than small ones,
 ## if there is a small circle, it should not take same time to fill as a
 ## big chunck"): the hold to the card's shade grows as the root of the
-## chunk's squares, 2.6 s at SQUARES_REF, the mushroom's stalk, whose pace
-## the user called right; about 1 s on 14 squares, 4.7 s on 306. Before,
-## every chunk of 23 squares or more took the same 2.6 s.
+## chunk's squares, about 1.2 s at SQUARES_REF, the mushroom's stalk, at
+## Fluid.RATE 8.0 (2026-10-26; 2.6 s at the 3.6 the user called right);
+## about 0.45 s on 14 squares, 2.1 s on 306. Before 2026-10-15, every
+## chunk of 23 squares or more took the same time.
 const SQUARES_REF := 92.0
 const WET := 0.02
 ## The match a serve is called perfect at, and great at (`tier`).
