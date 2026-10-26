@@ -2,8 +2,8 @@ extends "res://puzzles/sudoku2d.gd"
 
 ## Picket Sums, flat: Sudoku's grid fenced into garden plots. Every row,
 ## column and region holds each number once, and each plot's numbers add up
-## to the number on its tag, never one twice. Insane is **Lost Tags**: some
-## plots have lost theirs, and only never repeat.
+## to the number on its tag, never one twice. Insane is a harder nine:
+## bigger plots, every tag shown (Lost Tags retired 2026-10-26).
 ##
 ## **This is Sudoku's board** (puzzles/sudoku2d.gd), its tray, panels,
 ## washes, pad, pencil, waves, daisies, undo, hint and party, with the plots
@@ -12,6 +12,14 @@ extends "res://puzzles/sudoku2d.gd"
 ## is its own: the fences, the tags, and what a plot does when it comes
 ## right (its cells light leaf-gold one after another and its tag hops) or
 ## can no longer come true (its fence and tag turn rose and the tag shakes).
+##
+## **What makes it play (2026-10-26, the user: "nobody likes it")**: the
+## plot card under the grid. Tap a square and it says the plot's tag, how
+## many squares and how much are left, and every set of numbers that can
+## still fill it (killer players' table, the sets struck as the plot's own
+## numbers rule them out): "16 in 2" is 7 and 9, read off the card rather
+## than worked out on paper. A plot come right keeps a soft leaf wash, so
+## the garden greens as it is solved.
 ##
 ## **The fences are one mesh** with the tags' wooden markers in it, rebuilt
 ## only when what they show changes: the cell size, the selected plot, a
@@ -54,6 +62,27 @@ const NOTE_PACK := 0.9
 
 const TIPS_PK := ["PK_TIP_SUM", "PK_TIP_SMALL", "PK_TIP_UNIT"]
 
+## A plot come right keeps this wash, inset as Sudoku's washes are.
+const GREEN_A := 0.17
+## The plot card, at W 1080: its height at most, its margins from the tray
+## and the pad, the gap under which it is not drawn; the text, the tag and
+## the sets' chips.
+const CARD_H := 132.0
+const CARD_MARGIN := 10.0
+const CARD_MIN := 70.0
+const CARD_R := 18.0
+const CARD_PAD := 18.0
+const CARD_TEXT := 27
+const CARD_TAG := 34
+const CHIP_TEXT := 30
+const CHIP_H := 46.0
+const CHIP_PAD := 13.0
+const CHIP_GAP := 9.0
+const CARD_W := 1080.0
+## Under this height the sets ride on the line's row, behind a smaller pad.
+const CARD_TWO := 100.0
+const CARD_PAD_ONE := 9.0
+
 ## Each plot's standing as last diffed (PicketState.plot_standing).
 var _stand := PackedInt32Array()
 var _tag_hop: Dictionary = {}     # plot -> at
@@ -61,6 +90,7 @@ var _tag_shake: Dictionary = {}   # plot -> at
 var _fence_mesh: ArrayMesh
 var _fence_shown: ArrayMesh
 var _fence_key := ""
+var _card_shown: ArrayMesh
 
 ## Sudoku's map, and a plot come right bumps as a finished row does
 ## (docs/agents/haptics.md).
@@ -160,7 +190,7 @@ func share_glyphs() -> String:
 	if state == null:
 		return ""
 	if state.band == 3:
-		return "🌙 " + tr("PK_LOST_SEAL") + (" · " + tr("BN_FLAWLESS") if _flawless else "")
+		return "🌙" + (" " + tr("BN_FLAWLESS") if _flawless else "")
 	if _flawless:
 		return "🏅 " + tr("BN_FLAWLESS")
 	return ""
@@ -251,6 +281,15 @@ func _build_fences(now: float) -> ArrayMesh:
 	# A solved board keeps its fences thin and its tags paper, numbers in
 	# leaf: twenty-odd filled pills at once shouted over the win.
 	var done: bool = state.is_solved()
+	# A plot come right keeps a soft leaf wash: the garden greens as it is
+	# solved. Off on the solved board, which has its own wave.
+	if not done:
+		var wi := WASH_INSET * k
+		for i in Gen.CELLS:
+			var p: int = state.cage_of[i]
+			if p < _stand.size() and _stand[p] == 1:
+				b.fan(Face.Builder.round_rect(_corner_of(i) + Vector2.ONE * wi, Vector2.ONE * (_cell - 2.0 * wi),
+					WASH_R * k), Color(Pal.LEAF, GREEN_A))
 	# The open plots' fences first, so a lit one is never crossed by a
 	# neighbour's.
 	for lit in [false, true]:
@@ -356,6 +395,125 @@ func _draw_tags(now: float, pop: float, centre: Vector2) -> void:
 		var wide := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px).x
 		draw_string(font, tag_base(box, wide, font, px), text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px, ink)
 	draw_set_transform(Vector2.ZERO)
+
+## Sudoku's board, then the plot card under it.
+func _draw() -> void:
+	super()
+	_draw_card()
+
+## The plot card's rect: the gap between the tray and the pad, the tray's
+## width; empty when there is no room, nothing is in play, or the board
+## is a tutorial's.
+func _card_rect() -> Rect2:
+	if not _bled or state == null or _won or _cell <= 0.0 or is_done() or state.is_solved():
+		return Rect2()
+	var u := size.x / CARD_W
+	var f := FRAME * _scale()
+	var field: float = _cell * Gen.N
+	var top := _grid.y + field + f + TRAY_LIP + CARD_MARGIN * u
+	var bottom := size.y - _clear.y - CARD_MARGIN * u
+	var h := minf(bottom - top, CARD_H * u)
+	if h < CARD_MIN * u:
+		return Rect2()
+	return Rect2(_grid.x - f, (top + bottom - h) * 0.5, field + 2.0 * f, h)
+
+## What the selected square's plot asks: its tag on the left, a line of
+## what is left, and the sets of numbers it can still hold as chips (as
+## many as fit, then "+n"). No square selected, a quiet line says so.
+func _draw_card() -> void:
+	var box := _card_rect()
+	if box.size.y <= 0.0:
+		return
+	var u := size.x / CARD_W
+	var b := Face.Builder.new()
+	var r := CARD_R * u
+	b.fan(Face.Builder.round_rect(box.position + Vector2(0.0, 2.0 * u), box.size, r), Color(Pal.TEXT, 0.1))
+	b.fan(Face.Builder.round_rect(box.position, box.size, r), Color(FENCE, 0.5))
+	var e := 1.5 * u
+	b.fan(Face.Builder.round_rect(box.position + Vector2.ONE * e, box.size - Vector2.ONE * 2.0 * e, r - e), TAG_FACE)
+	var body: Font = CozyTheme.body(700)
+	var big: Font = CozyTheme.display(800)
+	var ts := roundi(CARD_TEXT * u)
+	var texts: Array = []   # [at, text, font, size, colour]
+	# A card with room for two lines puts the sets under the line; a short
+	# one (the nine, on a phone) keeps them all on one row after it.
+	var two := box.size.y >= CARD_TWO * u
+	var pad := (CARD_PAD if two else CARD_PAD_ONE) * u
+	if _sel < 0:
+		var line := tr("PK_CARD_TAP")
+		var lw := body.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, ts).x
+		texts.append([box.get_center() + Vector2(-lw * 0.5, body.get_ascent(ts) * 0.36), line, body, ts, Pal.TEXT_DIM])
+	else:
+		var p: int = state.cage_of[_sel]
+		var stand: int = _stand[p] if p < _stand.size() else 0
+		# the tag, big, in the state's colour
+		var gs := roundi(CARD_TAG * u)
+		var tag := _tag_text(p)
+		var tw := big.get_string_size(tag, HORIZONTAL_ALIGNMENT_LEFT, -1, gs).x
+		var th := box.size.y - 2.0 * pad
+		var tag_box := Rect2(box.position + Vector2(pad, pad), Vector2(maxf(th, tw + 24.0 * u), th))
+		var fill := Pal.LEAF_DEEP if stand == 1 else (Pal.BAD if stand == -1 else FENCE_SEL)
+		b.fan(Face.Builder.round_rect(tag_box.position, tag_box.size, TAG_R * 2.0 * u), fill)
+		texts.append([tag_box.get_center() + Vector2(-tw * 0.5, big.get_ascent(gs) * 0.36), tag, big, gs, TAG_FACE])
+		var x0 := tag_box.end.x + pad
+		var right := box.end.x - pad
+		var n: int = state.plots[p].size()
+		var empty := 0
+		for i in state.plots[p]:
+			if state.grid[i] == 0:
+				empty += 1
+		var left: int = state.sums[p] - state.sum_now(p)
+		var line: String
+		var ink := Pal.TEXT
+		if state.lost(p):
+			line = tr("PK_TIP_LOST")
+		elif stand == 1:
+			line = tr("PK_CARD_RIGHT")
+			ink = Pal.LEAF_DEEP
+		elif stand == -1:
+			ink = Pal.BAD
+			line = tr("PK_CARD_OVER") % -left if left < 0 else (tr("PK_CARD_SHORT") % left if empty == 0 else tr("PK_CARD_TWICE"))
+		elif two:
+			line = (tr("PK_CARD_LEFT_ONE") if empty == 1 else tr("PK_CARD_LEFT_N")) % [empty, n, left]
+		else:
+			line = tr("PK_CARD_TO_GO") % left
+		var line_y := tag_box.position.y + body.get_ascent(ts) * 0.9
+		if not two:
+			line_y = tag_box.get_center().y + body.get_ascent(ts) * 0.36
+		texts.append([Vector2(x0, line_y), line, body, ts, ink])
+		# the sets, as chips under the line, as many as fit
+		if not state.lost(p) and stand == 0:
+			var sets: Array = state.sets_left(p)
+			var cs := roundi(CHIP_TEXT * u)
+			var ch := minf(CHIP_H * u, th)
+			var cy := tag_box.end.y - ch
+			var x := x0
+			if not two:
+				cy = tag_box.get_center().y - ch * 0.5
+				x = x0 + body.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, ts).x + pad * 2.0
+			var shown := 0
+			if sets.is_empty():
+				texts.append([Vector2(x, cy + ch * 0.5 + big.get_ascent(cs) * 0.36), tr("PK_CARD_NONE"), body, ts, Pal.BAD])
+			for k in sets.size():
+				var digits := PackedStringArray()
+				for d in sets[k]:
+					digits.append(str(d))
+				var text := " ".join(digits)
+				var w := big.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, cs).x + 2.0 * CHIP_PAD * u
+				var more := "+%d" % (sets.size() - k)
+				var mw := big.get_string_size(more, HORIZONTAL_ALIGNMENT_LEFT, -1, cs).x
+				var last := k == sets.size() - 1
+				if x + w > right - (0.0 if last else mw + CHIP_GAP * u):
+					texts.append([Vector2(x, cy + ch * 0.5 + big.get_ascent(cs) * 0.36), more, big, cs, Pal.TEXT_DIM])
+					break
+				b.fan(Face.Builder.round_rect(Vector2(x, cy), Vector2(w, ch), ch * 0.5), Color(FENCE, 0.18))
+				texts.append([Vector2(x + CHIP_PAD * u, cy + ch * 0.5 + big.get_ascent(cs) * 0.36), text, big, cs, TAG_INK])
+				x += w + CHIP_GAP * u
+				shown += 1
+	_card_shown = b.mesh()
+	draw_mesh(_card_shown, null)
+	for t in texts:
+		draw_string(t[2], t[0], t[1], HORIZONTAL_ALIGNMENT_LEFT, -1, t[3], t[4])
 
 ## Every panel plain paper: the fences are the pattern here, and a chequer
 ## under them read as plots of its own.

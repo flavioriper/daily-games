@@ -95,6 +95,49 @@ func plot_standing(p: int) -> int:
 		return 0
 	return 1 if sums[p] < 0 or got == sums[p] else -1
 
+## Every set of `k` different numbers 1..`top` adding up to `total`, each
+## smallest first, the sets in order: what a plot of `k` cells tagged
+## `total` can hold (the plot card's sets, the killer player's table).
+static func sets_for(k: int, total: int, top: int) -> Array:
+	var out: Array = []
+	_sets(k, total, 1, top, PackedInt32Array(), out)
+	return out
+
+static func _sets(k: int, total: int, lo: int, top: int, got: PackedInt32Array, out: Array) -> void:
+	if k == 0:
+		if total == 0:
+			out.append(got.duplicate())
+		return
+	for d in range(lo, top + 1):
+		# the rest are bigger than d, so the smallest they can add is known
+		if d * k + k * (k - 1) / 2 > total:
+			break
+		got.append(d)
+		_sets(k - 1, total - d, d + 1, top, got, out)
+		got.remove_at(got.size() - 1)
+
+## The sets plot `p` can still hold: those with every number already in
+## it. [] for a lost tag, or a plot holding a number twice.
+func sets_left(p: int) -> Array:
+	if sums[p] < 0:
+		return []
+	var have := 0
+	for i in plots[p]:
+		var d := grid[i]
+		if d == 0:
+			continue
+		if have & (1 << d):
+			return []
+		have |= 1 << d
+	var out: Array = []
+	for set: PackedInt32Array in sets_for(plots[p].size(), sums[p], Gen.N):
+		var bits := 0
+		for d in set:
+			bits |= 1 << d
+		if bits & have == have:
+			out.append(set)
+	return out
+
 ## One standing a plot, for the board to diff before and after a move.
 func standings() -> PackedInt32Array:
 	var out := PackedInt32Array()

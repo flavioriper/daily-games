@@ -3138,7 +3138,7 @@ every number once.","Cada canteiro fecha a conta,
 cada número uma vez.","Cada parcela suma justo,
 cada número una vez."
 PK_MOTTO,Every plot adds up,Cada canteiro fecha a conta,Cada parcela suma justo
-PK_LVL_3,Lost Tags: 9 × 9,Plaquinhas perdidas: 9 × 9,Etiquetas perdidas: 9 × 9
+PK_LVL_3,"9 × 9, big plots","9 × 9, canteiros grandes","9 × 9, parcelas grandes"
 PK_RULES,"Fill the grid so every row, every column and every %d-by-%d region holds the numbers 1 to %d, each exactly once.
 
 The grid is fenced into plots. A plot's numbers add up to the number on its tag, and no number comes twice in one plot.
@@ -3159,8 +3159,17 @@ PK_TIP_SUM,"A plot's numbers add up to its tag, and none comes twice.","Os núme
 PK_TIP_SMALL,Start with small plots and extreme tags: 3 over two cells can only be 1 and 2.,Comece pelos canteiros pequenos e plaquinhas extremas: 3 em duas casas só pode ser 1 e 2.,Empieza por parcelas pequeñas y etiquetas extremas: 3 en dos casillas solo puede ser 1 y 2.
 PK_TIP_UNIT,"Every row, column and region adds up to the same total. Subtract the plots inside it to find what is left.","Toda linha, coluna e região soma o mesmo total. Tire os canteiros de dentro para achar o que sobra.","Toda fila, columna y región suma lo mismo. Resta las parcelas de dentro para hallar lo que falta."
 PK_TIP_LOST,A plot with no tag still never repeats a number.,Um canteiro sem plaquinha também não repete número.,Una parcela sin etiqueta tampoco repite número.
+PK_CARD_TAP,Tap a square to see what its plot can hold.,Toque numa casa para ver o que o canteiro aceita.,Toca una casilla para ver qué admite su parcela.
+PK_CARD_LEFT_ONE,"%d of %d squares left, %d to go","%d de %d casas livre, faltam %d","%d de %d casillas libre, faltan %d"
+PK_CARD_LEFT_N,"%d of %d squares left, %d to go","%d de %d casas livres, faltam %d","%d de %d casillas libres, faltan %d"
+PK_CARD_TO_GO,%d to go:,faltam %d:,faltan %d:
+PK_CARD_RIGHT,It adds up.,Fechou a conta.,Suma justo.
+PK_CARD_OVER,Over the tag by %d.,Passou da plaquinha em %d.,Se pasa de la etiqueta por %d.
+PK_CARD_SHORT,Full but short by %d.,Cheio mas faltam %d.,Lleno pero faltan %d.
+PK_CARD_TWICE,A number comes twice.,Um número se repete.,Un número se repite.
+PK_CARD_NONE,No set of numbers fits.,Nenhum conjunto de números serve.,Ningún conjunto de números sirve.
 HTP_PK_PLOT,Plots add up,Canteiros fecham a conta,Las parcelas suman
-HTP_PK_PLOT_BODY,"The grid is fenced into plots. A plot's numbers add up to the number on its tag, and no number comes twice in one plot. A plot that adds up turns green.","A grade é cercada em canteiros. Os números de um canteiro somam o número da plaquinha, e nenhum se repete no mesmo canteiro. Um canteiro que fecha a conta fica verde.","La cuadrícula está cercada en parcelas. Los números de una parcela suman el número de su etiqueta, y ninguno se repite en la misma parcela. Una parcela que suma justo se pone verde."
+HTP_PK_PLOT_BODY,"The grid is fenced into plots. A plot's numbers add up to the number on its tag, and no number comes twice in one plot. A plot that adds up turns green. Tap a square: the card under the grid lists the sets of numbers its plot can still hold.","A grade é cercada em canteiros. Os números de um canteiro somam o número da plaquinha, e nenhum se repete no mesmo canteiro. Um canteiro que fecha a conta fica verde. Toque numa casa: o cartão sob a grade lista os conjuntos de números que o canteiro ainda aceita.","La cuadrícula está cercada en parcelas. Los números de una parcela suman el número de su etiqueta, y ninguno se repite en la misma parcela. Una parcela que suma justo se pone verde. Toca una casilla: la tarjeta bajo la cuadrícula lista los conjuntos de números que su parcela aún admite."
 HTP_PK_LINES,And every number once,E cada número uma vez,Y cada número una vez
 HTP_PK_LINES_BODY,"As in Sudoku, every row, every column and every box holds the numbers 1 to %d, each exactly once. Tap a cell, then a number in the pad.","Como no Sudoku, cada linha, cada coluna e cada bloco tem os números de 1 a %d, cada um uma vez só. Toque numa casa, depois num número do teclado.","Como en el Sudoku, cada fila, cada columna y cada bloque tiene los números del 1 al %d, cada uno una sola vez. Toca una casilla y luego un número del teclado."
 HTP_PK_RULE_CAP,A plot's numbers add up to its tag,Os números do canteiro somam a plaquinha,Los números de la parcela suman su etiqueta

@@ -12,9 +12,12 @@ extends RefCounted
 ## of the answer is written in where the reasoner was least sure, until it
 ## goes through; the fencing that needed fewest of those is the day.
 ##
-## **Insane is Lost Tags**: some plots have lost their tag. Their numbers
-## still never repeat, but nothing says what they add up to. A tag is only
-## taken off while the reasoner still finishes the grid without it.
+## **Insane is a harder nine, every tag shown** (2026-10-26; it was Lost
+## Tags, its own rule, until the user's "a way harder board, not other
+## rules" on Caterpillar and Paper Planes that day): bigger plots, up to
+## five cells, and mined for the days the reasoner needs its pencil most
+## (`pencil_steps`, tools/insane/picket_ladder.gd). A lost tag (-1) is
+## still understood everywhere, `LOST` just takes none off.
 ## Spec: docs/superpowers/specs/2026-10-22-picket-design.md.
 
 const Gen = preload("res://puzzles/sudoku_gen.gd")
@@ -29,8 +32,8 @@ const TIER := [Gen.SINGLES, Gen.PENCIL, Gen.PENCIL, Gen.PENCIL]
 const ATTEMPTS := [6, 6, 4, 4]
 ## A fencing needing this many numbers or fewer is kept at once.
 const GIVENS_OK := [3, 1, 2, 1]
-## Insane's tags taken off, at most.
-const LOST := [0, 0, 0, 6]
+## Tags taken off, at most (none since 2026-10-26).
+const LOST := [0, 0, 0, 0]
 ## The whole call's ceiling at board open, as Sudoku's TIME_BUDGET_MS.
 const TIME_BUDGET_MS := 300
 
@@ -202,6 +205,27 @@ static func _beside(i: int) -> PackedInt32Array:
 ## Whether the reasoner finishes the grid.
 static func deduce(puz: PackedByteArray, plots: Array, sums: PackedInt32Array, tier: int) -> bool:
 	return Gen._settled(candidates(puz, plots, sums, tier))
+
+## How hard a day reasons: the times singles and sums stall and the
+## pencil has to move the grid on before it is settled; -1 when it never
+## settles. The Insane miner's rung.
+static func pencil_steps(puz: PackedByteArray, plots: Array, sums: PackedInt32Array) -> int:
+	var rules := with_sums_of_units(plots, sums, Gen.PENCIL)
+	Gen._tables()
+	var cand := PackedInt32Array()
+	cand.resize(Gen.CELLS)
+	for i in Gen.CELLS:
+		cand[i] = Gen.FULL if puz[i] == 0 else 1 << (puz[i] - 1)
+	var pencils := 0
+	while true:
+		if not _propagate(cand, rules[0], rules[1], Gen.SINGLES):
+			return -1
+		if Gen._settled(cand):
+			return pencils
+		if not Gen._pencil(cand):
+			return -1
+		pencils += 1
+	return pencils
 
 ## The candidates the reasoner leaves: a mask a cell, 0 where it broke.
 static func candidates(puz: PackedByteArray, plots: Array, sums: PackedInt32Array, tier: int) -> PackedInt32Array:

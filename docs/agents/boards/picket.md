@@ -54,3 +54,39 @@
   leaf: every tag filled green at once shouted over the win. The card's
   done seal stands on the cloth left of the tray's top (`seal_centre`),
   off the 15's tag in the template's corner.
+- **Made fun, 2026-10-26** (the user: "make picket sums and market sums
+  experience way better to play, and game itself way funnier to play, right
+  now nobody likes it"). Killer players lean on a table of the sets a cage
+  can hold ("3 in two is 1 and 2"); killer apps put it on screen (a
+  combination panel, the cage's sum left). Here nothing did: a Hard nine
+  opens with two numbers and twenty-seven bare tags.
+  - **The plot card** under the grid (`_draw_card`, in the gap between
+    the tray and the pad, the tray's width; none when the gap is under
+    `CARD_MIN` or on the tutorial's board): no square selected, "Tap a
+    square to see what its plot can hold."; selected, the plot's tag in
+    its state's colour, what is left ("12 to go:" on a short card, "2 of
+    3 squares left, 12 to go" when two lines fit) or what went wrong
+    (over by, short by, a number twice, all rose), and the sets of
+    numbers that can still fill it as chips (`PicketState.sets_for` /
+    `sets_left`: every set of that many different numbers adding to the
+    tag that holds every number the plot already has), as many as fit,
+    then "+n". Only the plot's own numbers strike a set: the rows,
+    columns and regions stay the player's to read. One mesh plus its
+    strings, +2 draw calls.
+  - **The garden greens**: a plot come right keeps a soft leaf wash
+    (`GREEN_A`) in the fence mesh until the board is solved.
+  - **Insane is a harder nine with every tag** (the user's call that day
+    on Caterpillar and Paper Planes: a harder board, not other rules):
+    Lost Tags retired (`LOST` all 0; a -1 tag is still understood, the
+    tutorial's LOST page and `PK_RULES_LOST` are simply never reached).
+    Plots up to five cells; the bank is mined by how hard a day reasons,
+    `PG.pencil_steps` (the times singles and sums stall and the pencil
+    moves the grid on), keeping days above Hard's mean (`HARD_RUNG` 5).
+    A first mine by bigger plots alone (3-5 cells) came out easier than
+    Hard (3.0 pencil steps a day against Hard's 4.6) and was thrown away.
+    Mined `-- picket 120 700` (494 s on 8 threads): 223 of 700 passed the
+    gate, kept the 120 hardest, pencil steps 9-25, 11.8 a day against
+    Hard's 4.6 (`tests/_probe_picket.gd` prints both), givens 1-7, 24
+    plots. Draw calls 83-89 playing, 148-150 at the win. Mine, the user's
+    to call: the card on every band, sets struck only by the plot's own
+    numbers, Lost Tags retired, the pencil-step grading. Not on a phone.

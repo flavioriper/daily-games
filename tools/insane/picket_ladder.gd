@@ -1,18 +1,21 @@
 extends RefCounted
 
-## Picket Sums' Insane (Lost Tags) bank (content/insane/picket.json), mined with the Insane
+## Picket Sums' Insane bank (content/insane/picket.json), mined with the Insane
 ## miner as Sudoku's are. The contract is tools/insane/README.md's.
 ##
 ## A nine fenced into plots and reasoned through (puzzles/picket_gen.gd) costs
 ## half a second to two on the Mac, too slow for a phone at board open, so the
 ## days are mined here and the live deal is only the fallback. Every board is
-## finished by the reasoner, never a guess. The rung is the cells left empty
-## (fewer numbers written in is harder) and `work` the tags lost.
+## finished by the reasoner, never a guess. The rung is the pencil steps the
+## reasoner needs (`PG.pencil_steps`; more is harder) and `work` the cells
+## left empty. Lost Tags retired 2026-10-26.
 
 const Gen = preload("res://puzzles/sudoku_gen.gd")
 const PG = preload("res://puzzles/picket_gen.gd")
 
-const HARD_RUNG := -1
+## Hard's bank needs the pencil 4.6 times a day on average: Insane keeps
+## only days needing it more than this.
+const HARD_RUNG := 5
 
 ## Gen's cell tables are static and shared: built once here, on the main
 ## thread, and never while the miner's threads read them.
@@ -31,4 +34,5 @@ static func grade(board: Dictionary) -> Dictionary:
 		return {"rung": -1, "work": 0, "unique": false}
 	var givens := Gen.givens_of(b.puzzle)
 	var ok := PG.deduce(b.puzzle, b.plots, b.sums, int(PG.TIER[3]))
-	return {"rung": 81 - givens, "work": Array(b.sums).count(-1), "unique": ok, "givens": givens}
+	return {"rung": PG.pencil_steps(b.puzzle, b.plots, b.sums), "work": 81 - givens, "unique": ok,
+		"givens": givens}
