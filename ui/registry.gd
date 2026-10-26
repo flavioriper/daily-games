@@ -155,8 +155,8 @@ const PUZZLES := [
 		"difficulties": [0, 1, 2, 3],
 		# Easy and medium are the 6x6 mini and hard the 9x9, each its own
 		# daily with its own done mark (progress_id below). The card opens at
-		# the level last played (ui/menu.gd `_start_level`; the sheet that
-		# asked first was retired 2026-10-22).
+		# Easy (ui/menu.gd `_start_level`; the sheet that asked first was
+		# retired 2026-10-22).
 		"pick_difficulty": true,
 		"levels": [
 			{"difficulty": 0, "name": "Easy", "line": "6 × 6"},

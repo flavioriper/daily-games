@@ -1321,3 +1321,10 @@ stays, because the Versus sheet extends it. The menu no longer builds one, and
   of the list if a board is up. The toast now grows upward, so a two-line
   line never runs off the screen's foot, and an older line's timer no
   longer takes a newer line down.
+
+**2026-10-26: every card opens at Easy.** The user: "it should always start
+at easy when user first enter". `_start_level` now returns the card's first
+level every time a card is opened from the list; `Progress.last_level` is no
+longer read (the save still writes it). The level card's switch in game and
+the win's invite to the next level are unchanged. Versus (its sheet asks the
+level each time) and Arcade (their own progress) are untouched.

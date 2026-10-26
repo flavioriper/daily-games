@@ -1573,26 +1573,21 @@ func go_back() -> void:
 func _open(entry: Dictionary) -> void:
 	if Registry.is_soon(entry) or _swiped:
 		return
-	# A card with levels opens straight at the one last played there, the
-	# easiest the first time; the board's level card changes it in game (the
-	# user, 2026-10-22: "remove the difficulty sheet from the puzzles since
-	# users can switch difficulty ingame, load gamepage directly").
+	# A card with levels opens straight at its easiest, every time it is
+	# opened from the list (the user, 2026-10-26: "it should always start at
+	# easy when user first enter"; it opened at the level last played from
+	# 2026-10-22); the board's level card changes it in game (the user,
+	# 2026-10-22: "remove the difficulty sheet from the puzzles since users
+	# can switch difficulty ingame, load gamepage directly").
 	if bool(entry.get("pick_difficulty", false)):
 		_open_at(entry, _start_level(entry))
 		return
 	_open_at(entry, 1)
 
-## The level a card opens at: the last one played on it, if the card still
-## has it, else its first.
+## The level a card opens at: its first.
 func _start_level(entry: Dictionary) -> int:
 	var levels: Array = entry.get("levels", [])
-	var ds: Array = []
-	for level in levels:
-		ds.append(int(level.get("difficulty", 0)))
-	var last := Progress.last_level(String(entry.get("id", "")))
-	if last in ds:
-		return last
-	return ds[0] if not ds.is_empty() else 0
+	return int(levels[0].get("difficulty", 0)) if not levels.is_empty() else 0
 
 func _open_at(entry: Dictionary, difficulty: int) -> void:
 	if bool(entry.get("pick_difficulty", false)):
