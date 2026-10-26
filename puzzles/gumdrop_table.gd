@@ -24,8 +24,9 @@ extends Control
 ## Drawing: three Controls one over the other. The field draws the table,
 ## the tray and the mould's floor. The syrup is the fluid's dye texture
 ## (puzzles/gumdrop_fluid.gd, a real fluid on the GPU) drawn once through
-## shaders/gumdrop_syrup_2d.gdshader. The top draws the jelly's skin over
-## it, the card, the pots, the buttons, the needle and one live mesh.
+## shaders/gumdrop_syrup_2d.gdshader, which also lays the serve's sweep of
+## light on it. The top draws the jelly's skin over it, the card, the
+## pots, the buttons, the needle and one live mesh.
 ## Every one of those is a cached mesh under a transform; a mould's three
 ## are built when it is dealt. Each frame the table tells the fluid where
 ## the tip is and whether it is squeezed (`_drive`), and when the sim asks
@@ -126,6 +127,15 @@ const WOB_LAND := 0.04
 const WOB_SERVE := 0.09
 const TREMBLE := 0.006
 const TREMBLE_F := 9.0
+## The serve's sweep of light (spec 2026-10-26 4.4): a soft white band
+## SWEEP_W of the tray wide, SWEEP_A at its middle, carried from the
+## jelly's lower left to its upper right over SWEEP_T, SWEEP_DELAY after
+## the serve is told, fading in and out. The syrup's shader draws it
+## (shaders/gumdrop_syrup_2d.gdshader), on the tint only.
+const SWEEP_T := 0.5
+const SWEEP_DELAY := 0.1
+const SWEEP_W := 0.28
+const SWEEP_A := 0.35
 
 var sim: RefCounted
 ## What of the rect the owner's chrome covers at the top and the foot, and
@@ -208,7 +218,8 @@ var _mix_at := -10.0
 var _cell_pots := {}
 var _pick_at := -10.0
 var _deal_at := -10.0
-var _verdict_at := -10.0
+## When the mould on the tray was served, on the screen's clock (the sweep).
+var _sweep_at := -10.0
 ## The jelly's wobble: a squash with a little shear about the mould's
 ## centre, set off at an amplitude and dying away (spec 2026-10-26 4.2).
 var _wob_a := 0.0
@@ -440,7 +451,7 @@ func lay(game: RefCounted) -> void:
 	_land_at = -10.0
 	_arm()
 	_deal_at = -10.0
-	_verdict_at = -10.0
+	_sweep_at = -10.0
 	_slid = false
 	_shown_index = -1
 	_shown_match = -2
@@ -774,12 +785,12 @@ func _on_again() -> void:
 	_tip = sim.tip
 	_tip_was = sim.tip
 	_bits.clear()
-	_verdict_at = -10.0
+	_sweep_at = -10.0
 	_fx.cue("deal", 0.94)
 	_feel(Haptics.TICK)
 
 func _on_served(ev: Dictionary) -> void:
-	_verdict_at = _clock
+	_sweep_at = _clock
 	var pct := int(ev.pct)
 	var at := _rw.at(field, _tray.get_center())
 	# every serve is a reveal, never a fail: the stamp is the tier (2026-10-26)
@@ -864,8 +875,24 @@ func _draw_field() -> void:
 func _draw_syrup() -> void:
 	if sim == null or _fluid == null:
 		return
+	# the serve's sweep of light lies in the syrup's own shader, so it is
+	# only ever on the coloured jelly, under the seams, and costs no draw
+	var k := _sweep_k()
+	var mat := _syrup.material as ShaderMaterial
+	mat.set_shader_parameter("sweep_at", k)
+	mat.set_shader_parameter("sweep_a", SWEEP_A * sin(PI * k) if k >= 0.0 else 0.0)
+	mat.set_shader_parameter("sweep_w", SWEEP_W)
 	_syrup.draw_set_transform_matrix(_group() * _jelly())
 	_syrup.draw_texture_rect(_fluid.texture(), Rect2(Vector2.ZERO, _tray.size), false)
+
+## How far the serve's sweep has gone, 0 to 1, or -1 when it is not on (not
+## yet, done, or under Motion.reduce).
+func _sweep_k() -> float:
+	# the day's last mould is told as the day ends (DONE), under the win
+	if Motion.reduce or sim == null or sim.phase < Sim.Phase.SHOW:
+		return -1.0
+	var k := (_clock - _sweep_at - SWEEP_DELAY) / SWEEP_T
+	return k if k >= 0.0 and k <= 1.0 else -1.0
 
 func _draw_top() -> void:
 	if sim == null or _walls == null:

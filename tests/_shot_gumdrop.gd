@@ -2,14 +2,20 @@ extends SceneTree
 
 ## Shots of Gumdrop, the daily board, through the real menu and the flat
 ## host. Windowed, one at a time:
-##   godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_gumdrop.gd -- <outdir> [0|1|2|3] [reduce] [en|pt|es] [tutor] [pour|dab|wander] [small|big]
+##   godot --path . --resolution 810x1440 --always-on-top --rendering-driver opengl3_angle --script res://tests/_shot_gumdrop.gd -- <outdir> [0|1|2|3] [reduce] [reveal] [en|pt|es] [tutor] [pour|dab|wander] [small|big]
 ## Opens the card at the band (Easy when none is named), then presses with
 ## real touches through the viewport: a pot, a tap on the tray, the squeeze
-## button held, a drag over the tray, and that first mould served nearly
-## clear (a flop: it is emptied and poured again). A careful bot then
-## plays the day's moulds through the sim, reading the fluid back, and
-## serves each with a real touch; the win is shot, the board left and
-## opened again as a finished day.
+## button held (one chunk wet), a drag over the tray, and the serve button
+## pressed with that one chunk wet: refused, since a jelly is served only
+## when every piece has colour (2026-10-26), so `serves` stays 0
+## (`3_refused`). A careful bot then works the sim, reading the fluid back:
+## every chunk a little (a third of its shade), served with a real touch
+## and its tier printed (`4_served_low`), then the day's moulds to the
+## card's shade, each served through the sim; the win is shot, the board
+## left and opened again as a finished day. With `reveal` every serve is
+## also shot 0.3 s into its telling (from the verdict, which comes SETTLE_T
+## after the press; the last mould's under the win): the sweep of light on
+## the jelly, the stamp landing.
 ## With `tutor` the ? card's pages are shot instead; with `pour` the
 ## squeeze button is held eighteen seconds and let go, then the grey drain
 ## button held three, the tip's chunk read off the dye and the meter at
@@ -45,12 +51,26 @@ var _at := 0.0
 var _play := false
 var _was := Vector2.ZERO
 var _seen := -1
-var _flops := 0
+## `reveal`: a shot of each serve 0.3 s after its verdict, and how many so far.
+var _reveal := false
+## `reduce`: Motion.reduce set as the board opens (world/main.gd loads it
+## from this Mac's settings when it starts, over anything set before).
+var _reduce := false
+var _mid := false
+var _revealed := 0
+## How much of its shade the bot gives each chunk: a third for the low
+## serve, then nine tenths.
+var _target := 0.33
+## The bot serves with a real touch on the gold button (the low serve) or
+## through the sim.
+var _tap_serve := false
 
 func _initialize() -> void:
 	for a: String in OS.get_cmdline_user_args():
 		if a == "reduce":
-			load("res://core/motion.gd").reduce = true
+			_reduce = true
+		elif a == "reveal":
+			_reveal = true
 		elif a == "tutor":
 			_tutor = true
 		elif a == "pour":
@@ -100,6 +120,8 @@ func _shot(name: String) -> void:
 		sim.index if sim != null else -1, sim.serves if sim != null else 0, int(sim.match_all * 100.0) if sim != null else 0])
 
 func _open() -> void:
+	if _reduce:
+		load("res://core/motion.gd").reduce = true
 	_menu._open_at(Registry.find("gumdrop"), _band)
 	_host = root.get_tree().get_first_node_in_group("puzzle_host")
 	_b = _host._puzzle
@@ -131,7 +153,7 @@ func _bot() -> void:
 		var have: float = fills[c] if c < fills.size() else 0.0
 		var key := "%d/%d/%d" % [sim.index, sim.serves, c]
 		for f: int in recipe:
-			upto += float(recipe[f]) * 0.9
+			upto += float(recipe[f]) * _target
 			if have < upto:
 				# a cell that will not take the shade in fourteen seconds is left
 				if not _cell_since.has(key):
@@ -156,7 +178,11 @@ func _bot() -> void:
 	if _t - _done_at > 5.0:
 		var m: Dictionary = _t_._fluid.measure()
 		print("bot serves at %.1f: fill %s near %s all %.2f" % [_t, str(m.fill), str(m.near), m.all])
-		sim.serve()
+		if _tap_serve:
+			_tap_serve = false
+			_tap(_t_._serve_at)
+		else:
+			sim.serve()
 
 const POUR_HELD := [0.5, 1.0, 1.5, 2.5, 4.0, 7.0, 10.0, 14.0, 18.0]
 const POUR_FREE := [0.1, 0.5, 2.0]
@@ -228,6 +254,15 @@ func _tap(at: Vector2) -> void:
 	_touch(true, at)
 	_touch(false, at)
 
+## `reveal`: each serve shot 0.3 s after its verdict, with where the sweep is.
+func _reveal_shot() -> void:
+	if not _reveal or _t_.sim.phase < Sim.Phase.SHOW or _t_._clock - _t_._sweep_at < 0.3 or _t_.sim.serves <= _revealed:
+		return
+	_revealed = _t_.sim.serves
+	_shot("reveal_%d" % _revealed)
+	var mat: ShaderMaterial = _t_._syrup.material
+	print("reveal %d: sweep k %.2f, shader sweep_at %.2f sweep_a %.2f, tier %d" % [_revealed, _t_._sweep_k(), float(mat.get_shader_parameter("sweep_at")), float(mat.get_shader_parameter("sweep_a")), int(_t_.sim.verdict.tier)])
+
 func _process(delta: float) -> bool:
 	_t += delta
 	if _t_ != null and is_instance_valid(_t_):
@@ -296,28 +331,45 @@ func _process(delta: float) -> bool:
 				Input.flush_buffered_events()
 				_touch(false, from + Vector2(-60, 40))
 				print("drag moved the tip: ", _was, " -> ", _t_.sim.tip)
-				# served as it is, nearly clear: a flop
+				# the serve pressed with one chunk wet: refused, nothing served
+				var chunks := 0
+				for n: int in _t_.sim.count:
+					if n > 0:
+						chunks += 1
+				var could: bool = _t_.sim.can_serve()
 				_tap(_t_._serve_at)
-				print("touch served: ", _t_.sim.phase == Sim.Phase.SETTLE, " moves ", _b.moves)
+				print("serve pressed with one chunk wet of %d: can_serve %s, phase play %s, cue %s" % [chunks, str(could), str(_t_.sim.phase == Sim.Phase.PLAY), _t_._fx.last_cue])
 				_step = 5
 		5:
-			if _t_.sim.phase == Sim.Phase.SHOW and _t_.sim.phase_t > 0.6 and _seen < 0:
-				_seen = 0
-				_shot("3_flop")
-			if _t_.sim.phase == Sim.Phase.PLAY and _seen == 0:
-				_flops += 1
-				print("under the mark: emptied, wet %s, index %d" % [str(_t_.sim.wet()), _t_.sim.index])
-				_at = _t
-				_shot("4_again")
-				_play = true
+			# the next frame: the button sunk and greyed, the mould still there
+			_shot("3_refused")
+			if _t_.sim.serves == 0 and _t_.sim.phase == Sim.Phase.PLAY:
+				print("refused: serves 0")
+			else:
+				print("NOT refused: serves %d phase %d" % [_t_.sim.serves, _t_.sim.phase])
+			# every chunk a little, then served with a real touch
+			_target = 0.33
+			_tap_serve = true
+			_play = true
+			_at = _t
+			_step = 12
+		12:
+			_reveal_shot()
+			if _t_.sim.phase == Sim.Phase.SHOW and _t_.sim.phase_t > 0.6 and _t_.sim.serves == 1:
+				print("served low: pct %d tier %d (%s) serves %d" % [int(_t_.sim.verdict.pct), int(_t_.sim.verdict.tier), ["Served!", "Great!", "Perfect!"][int(_t_.sim.verdict.tier)], _t_.sim.serves])
+				_shot("4_served_low")
+				_seen = _t_.sim.serves
+				_target = 0.9
 				_step = 6
 		6:
 			# the bot plays: a shot of each mould served, and one mid-pour
+			_reveal_shot()
 			if _t_.sim.phase == Sim.Phase.SHOW and _t_.sim.phase_t > 0.5 and _t_.sim.serves > _seen:
 				_seen = _t_.sim.serves
 				_shot("5_served_%d" % _t_.sim.index)
-			if _t_.sim.index == 1 and _t_.sim.phase == Sim.Phase.PLAY and _t_.sim.wet() and _fills()[0] > 0.5 and _seen < 100:
-				_seen = 100
+				print("served: pct %d tier %d" % [int(_t_.sim.verdict.pct), int(_t_.sim.verdict.tier)])
+			if _t_.sim.index == 1 and _t_.sim.phase == Sim.Phase.PLAY and _t_.sim.wet() and _fills()[0] > 0.5 and not _mid:
+				_mid = true
 				_shot("5_mid")
 			if _t_._fx.last_cue == "mix" and not _mixed:
 				_mixed = true
@@ -327,6 +379,7 @@ func _process(delta: float) -> bool:
 				_at = _t
 				_step = 7
 		7:
+			_reveal_shot()
 			if _t > _at + 0.25 and _seen < 200:
 				_seen = 200
 				_shot("6_win_sliding")

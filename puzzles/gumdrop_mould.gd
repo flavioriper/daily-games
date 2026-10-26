@@ -52,14 +52,14 @@ const PICTURES := [
 ]
 ## A day's jellies by band (docs/superpowers/specs/
 ## 2026-10-11-gumdrop-daily-design.md, section 1): how many, the rows of
-## PICTURES they are drawn from, how the pots are stood (`Stood`), and the
-## mark each has to be served at.
+## PICTURES they are drawn from and how the pots are stood (`Stood`). (The
+## mark each had to be served at went on 2026-10-26: a serve never fails.)
 enum Stood { PLAIN, ONE_MIXED, THREE_POTS }
 const BANDS := [
-	{"moulds": 2, "rows": [0, 7], "stood": Stood.PLAIN, "mark": 60},
-	{"moulds": 3, "rows": [8, 18], "stood": Stood.PLAIN, "mark": 65},
-	{"moulds": 4, "rows": [11, 26], "stood": Stood.ONE_MIXED, "mark": 70},
-	{"moulds": 5, "rows": [19, 28], "stood": Stood.THREE_POTS, "mark": 75},
+	{"moulds": 2, "rows": [0, 7], "stood": Stood.PLAIN},
+	{"moulds": 3, "rows": [8, 18], "stood": Stood.PLAIN},
+	{"moulds": 4, "rows": [11, 26], "stood": Stood.ONE_MIXED},
+	{"moulds": 5, "rows": [19, 28], "stood": Stood.THREE_POTS},
 ]
 ## The three pots Insane stands by every tray: the pigments themselves.
 const PRIMARIES := [0, 2, 4]

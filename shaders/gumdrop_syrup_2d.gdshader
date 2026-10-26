@@ -29,6 +29,17 @@ const float EDGE_HI = 0.09;
 const float LIP_TO = 0.22;
 const float LIP = 0.92;
 
+// The serve's sweep of light (2026-10-26, spec gumdrop-fun 4.4; the table
+// sets these while a served mould is told): a soft white band
+// `sweep_w` of the tray wide, its long edges from upper left to lower
+// right, its middle `sweep_at` of the way from the tray's lower-left
+// corner to its upper right, `sweep_a` at its middle and nothing at its
+// edges. Here, not a mesh of its own, so it lies on the tint only (never
+// on the bare tray) and the seams' mesh over it; it costs no draw.
+uniform float sweep_at = -1.0;
+uniform float sweep_a = 0.0;
+uniform float sweep_w = 0.28;
+
 void fragment() {
 	vec3 pig = texture(TEXTURE, UV).rgb * AMOUNT_TOP;
 	float c = pig.r + pig.g + pig.b;
@@ -38,5 +49,11 @@ void fragment() {
 	// a little richer where it is deep, as a thick syrup is
 	shade = mix(shade, shade * shade, 0.1 * col.a);
 	float lip = mix(LIP, 1.0, smoothstep(EDGE_HI, LIP_TO, c));
-	COLOR = vec4(shade * lip, cover);
+	// along the tray's diagonal from its lower-left corner, 0 to 1
+	float along = (UV.x + 1.0 - UV.y) * 0.5;
+	// across the band, in tray widths (the diagonal is sqrt(2) of one)
+	float off = (along - sweep_at) * 1.41421356 / sweep_w;
+	float band = abs(off) < 0.5 ? pow(cos(3.14159265 * off), 2.0) : 0.0;
+	vec3 lit = mix(shade * lip, vec3(1.0), band * sweep_a);
+	COLOR = vec4(lit, cover);
 }
