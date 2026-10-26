@@ -68,12 +68,8 @@ const TICKS := [0.045, 0.024, 0.02, 0.02]
 
 ## This board's own motion (the rest is core/motion.gd's).
 const SEND_FLY := 0.24
-## A cork goes on through a run of its colour (2026-10-26): one cork flies
-## (the first block's, with the flash and the smoke) and the blocks behind
-## it burst one after another, PIERCE_STEP apart, as it goes through them;
-## shards thin out once SHARDS_BUSY.x and then .y shots are in the air. A
-## block bursts white for the first part of its burst.
-const PIERCE_STEP := 0.012
+## Shards thin out once SHARDS_BUSY.x and then .y shots are in the air, and
+## a block bursts white for the first part of its burst (2026-10-26).
 const SHARDS_BUSY := Vector2i(60, 150)
 const BLINK := 0.45
 ## The room shakes, a cannon emptied a little and a colour whole more, in
@@ -146,8 +142,8 @@ const RUN_STEP := [1, 3, 4, 4]
 const PICK_GAP := 0.07
 const TICK_VARY := Vector2(0.985, 1.015)
 const COMBO_FROM := 5
-const BIG_RUN := 24
-const RUN_CONFETTI := [25, 50, 100, 150]
+const BIG_RUN := 12
+const RUN_CONFETTI := [20, 40, 60]
 const COMBO_DEFLATE := 0.25
 const COMBO_HOLD := 0.9
 const COMBO_FONT := 44
@@ -971,12 +967,6 @@ func _draw_shot(fb, f: Dictionary, e: float) -> void:
 	var px := float(f.px)
 	var c := int(f.c)
 	var col: Color = _col[c]
-	var lead: bool = f.lead
-	if e < 0.0 or (not lead and e < PICK_FLY):
-		# a block behind the first of a row: it stands till the cork is
-		# through to it
-		fb.append(_blk[c], Transform2D(0.0, to))
-		return
 	if e < PICK_FLY:
 		fb.append(_blk[c], Transform2D(0.0, to))
 		var ck := px / UNIT
@@ -1005,8 +995,6 @@ func _draw_shot(fb, f: Dictionary, e: float) -> void:
 			fb.append(_square, Transform2D(float(sh[2]) * t, Vector2(s, s), 0.0, at),
 				Color(shade if sh[4] else col, fade))
 	# the muzzle: a flash, then a wisp of smoke drifting out
-	if not lead:
-		return
 	if e < FLASH:
 		var fk := px * FLASH_R / UNIT * (1.0 - e / FLASH)
 		fb.append(_disc, Transform2D(0.0, Vector2(fk, fk), 0.0, from + dir * px * 0.04), FLASH_COL)
@@ -1223,7 +1211,7 @@ func _tick() -> void:
 		var e := int(ev[1])
 		match int(ev[0]):
 			State.PICK:
-				_on_pick(e, int(ev[2]), int(ev[3]), now, int(ev[4]))
+				_on_pick(e, int(ev[2]), int(ev[3]), now)
 			State.RUN_END:
 				_on_run_end(e, int(ev[2]))
 			State.FULL:
@@ -1256,7 +1244,7 @@ func _tick() -> void:
 ## A cannon shoots the block it sees: the cork flies to it, the block
 ## bursts where it stands and the cannon kicks back; the tick climbs the
 ## run's scale.
-func _on_pick(e: int, cell: int, n: int, now: float, through := 0) -> void:
+func _on_pick(e: int, cell: int, n: int, now: float) -> void:
 	var w: int = state.w
 	_chunk_stale[(cell / w / CHUNK) * ceili(float(w) / CHUNK) + (cell % w) / CHUNK] = true
 	if not Motion.reduce:
@@ -1266,14 +1254,14 @@ func _on_pick(e: int, cell: int, n: int, now: float, through := 0) -> void:
 		var u := float(state.at[e])
 		var from := loop_at(u) + Vector2.UP.rotated(_heading(u)) * px * 0.5
 		var shards: Array = []
-		# fifty corks a frame through a long row: the shards thin out as the
-		# air fills, so a frame never rebuilds hundreds of them
+		# the shards thin out as the air fills, so a frame never rebuilds
+		# hundreds of them
 		var many := SHARDS if _flights.size() < SHARDS_BUSY.x else (2 if _flights.size() < SHARDS_BUSY.y else 0)
 		for k in many:
 			shards.append([randf_range(-SHARD_SPREAD, SHARD_SPREAD), randf_range(SHARD_SPEED.x, SHARD_SPEED.y),
 				randf_range(-SHARD_SPIN, SHARD_SPIN), randf_range(SHARD_SIZE.x, SHARD_SIZE.y), k % 2 == 1])
-		_flights.append({"c": state.colour[e], "to": to, "px": px, "at": now + through * PIERCE_STEP, "from": from,
-			"dir": (to - from).normalized(), "shards": shards, "lead": through == 0})
+		_flights.append({"c": state.colour[e], "to": to, "px": px, "at": now, "from": from,
+			"dir": (to - from).normalized(), "shards": shards})
 		_bump_at[e] = now
 	# fifty corks a second are one shot heard and one knock in PICK_GAP
 	# (fx.cue holds the sound but knocks every time it is asked): the cannon's
@@ -1303,7 +1291,7 @@ func _on_pick(e: int, cell: int, n: int, now: float, through := 0) -> void:
 			var seen: Array = _seen.get(e, [])
 			if not seen.is_empty():
 				fx.confetti(seen[0], 12, _lane * 3.0)
-	_busy_for(PICK_FLY + SHARD_LIFE + 0.1 + through * PIERCE_STEP)
+	_busy_for(PICK_FLY + SHARD_LIFE + 0.1)
 
 ## A run is over: a long one ends on its two notes and a sparkle.
 func _on_run_end(e: int, n: int) -> void:

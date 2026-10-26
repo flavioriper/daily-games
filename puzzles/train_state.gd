@@ -11,10 +11,8 @@ extends RefCounted
 ## goes round the loop, and round again for as long as a lap takes anything
 ## (since 2026-10-13: it was once round). At every stop it looks straight
 ## across the rug at the nearest block in that line, and takes it if it is
-## its own colour, and the blocks behind it while they are its colour too
-## (since 2026-10-26: the cork flies on through them). An engine with no
-## room left goes home for good. One that comes round from a lap that took
-## nothing waits in the siding, five
+## its own colour. An engine with no room left goes home for good. One
+## that comes round from a lap that took nothing waits in the siding, five
 ## places, to be sent again.
 ##
 ## The loop moves by ticks (`tick`), a stop a tick, so the same taps on the
@@ -71,14 +69,11 @@ const MATS := ["sky", "cream", "lilac", "teal", "tan", "grey"]
 enum { SHED, GATE, LOOP, PARKED, GONE }
 enum { OK, REFUSED_BURIED, REFUSED_BUSY, REFUSED_FULL, REFUSED_OVER }
 ## What a tick says happened, [kind, engine, a, b]:
-## ENTER (engine); PICK (engine, cell, run so far, blocks before it this stop); RUN_END (engine, run);
+## ENTER (engine); PICK (engine, cell, run so far); RUN_END (engine, run);
 ## FULL (engine); PARK (engine, place); HOME (engine, column);
 ## JAM (engine); WHOLE (-1, colour).
 enum { ENTER, PICK, RUN_END, FULL, PARK, HOME, JAM, WHOLE }
 
-## A cork goes on through the blocks behind the one it hits while they are
-## the cannon's colour, a cork a block (2026-10-26).
-static var pierce := true
 ## A picture's colours folded into a few bold ones (2026-10-26, `_bolden`).
 static var bold := true
 
@@ -373,12 +368,9 @@ func _lap(g: PackedInt32Array, c: int, most: int, near = null) -> int:
 		if got >= most:
 			break
 		var i := _seen_from(g, s, deep)
-		while i >= 0 and g[i] == c and got < most:
+		if i >= 0 and g[i] == c:
 			g[i] = -1
 			got += 1
-			if not pierce:
-				break
-			i = _seen_from(g, s, deep)
 	return got
 
 ## The same engine left on the loop: lap after lap until one takes nothing
@@ -671,28 +663,23 @@ func tick() -> Array:
 				loop.append(e)
 	return out
 
-## Engine `e` at its stop: takes the block it sees if it is its colour, and
-## the one behind it while that is its colour too (`pierce`). False when that
-## filled it and it has gone.
+## Engine `e` at its stop: takes the block it sees if it is its colour, one
+## block a stop (the user, 2026-10-26: "it must shot only 1 box at time";
+## a cork that went on through a row was tried that day and taken out).
+## False when that filled it and it has gone.
 func _stop(e: int, out: Array) -> bool:
 	var i := first_seen(grid, at[e])
 	if i < 0 or grid[i] != colour[e]:
 		_run_end(e, out)
 		return true
 	var c := grid[i]
-	var through := 0
-	while i >= 0 and grid[i] == c and room[e] > 0:
-		grid[i] = -1
-		left -= 1
-		left_by[c] -= 1
-		room[e] -= 1
-		run[e] += 1
-		got[e] += 1
-		out.append([PICK, e, i, run[e], through])
-		through += 1
-		if not pierce:
-			break
-		i = first_seen(grid, at[e])
+	grid[i] = -1
+	left -= 1
+	left_by[c] -= 1
+	room[e] -= 1
+	run[e] += 1
+	got[e] += 1
+	out.append([PICK, e, i, run[e]])
 	if room[e] == 0:
 		out.append([RUN_END, e, run[e], 0])
 		run[e] = 0

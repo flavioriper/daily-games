@@ -416,3 +416,25 @@ throwaway counters in a Hard play run (`opengl3_angle`, 810x1440):
   (2 before). A phone is still unmeasured.
 - `tests/_probe_train.gd -- seeds=1` 336 runs, 0 failures; `tests/_win.gd
   -- train` PASS; suite failed=0; the Medium tutorial plays its pages.
+
+### 2026-10-26, evening: one block a shot again
+
+The user, off the fix above: "something still feels wrong, since the cannon
+hit so many times at once, charts are not even moving. It must shot only 1
+box at time". **The pierce rule is gone** (`State.pierce`, the PICK's
+fifth field, `PIERCE_STEP` and the lead cork): a cannon takes the nearest
+block at a stop if it is its colour, one block a stop, as before the
+made-fun pass. `TT_RULES` and `HTP_TT_LINE_BODY` are back to their old
+words; `BIG_RUN` 12 and confetti at 20, 40, 60 again. **Kept from the
+pass**: the bold colours, the bigger cannons, the blink, the shake, the
+halo, the faster end, `EARLY` 0.7 on Insane, the seamed small blocks, and
+the fixes of the section above (a cannon held at the gate till it lands,
+shooting where it stands, shards thinned when busy).
+
+- With bold colours alone a cannon hits at about 18% of its stops on
+  Medium and 14% on Hard (12% and 9% before the pass), the fast hand
+  clears Medium in about 18 s of loop.
+- `tests/_probe_train.gd -- seeds=2`: 672 runs, 0 failures; Insane lost by
+  the hint's hand on 2 deals of 36 and the careless one on 7. Suite
+  failed=0; `tests/_win.gd -- train` PASS (Medium, 30 sent, par 34);
+  Medium play 113 draw calls on `opengl3_angle`.
