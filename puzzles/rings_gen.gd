@@ -26,13 +26,18 @@ extends RefCounted
 ## still (from, to) -- how many rings it carries is the position's to say
 ## (`take`), and `apply` plays it.
 ##
-## **A ring is an int**: its colour in the low three bits (0-7), and on
-## Insane `HIDDEN` over it while it lies face down. Insane deals every ring
-## under a peg's top face down; a ring turns face up for good the moment it is
-## a peg's top, and a run stops at a face-down ring (the player cannot know
-## it is the same colour, so the solver does not move it either). Every rule
-## reads a ring through `top()`, so a face-down ring still counts toward its
-## colour's lock.
+## **A ring is an int**: its colour, 0 to the band's colours less one. Insane
+## dealt face-down rings from 2026-10-16 to 2026-10-26; the user had them
+## taken out ("remove the hidden feature on insane and just make it with
+## more colors, taller and harder"), so every ring lies face up again.
+##
+## **A deal is full pegs and empty ones** (2026-10-26, the made-fun pass):
+## every colour's rings shuffled into pegs filled to the top, and two empty
+## pegs beside them -- the sort games' own deal, where the empty pegs are
+## the whole resource. Until then two pegs' worth of room was spread over
+## every peg, which left a slot on top of nearly everything and runs dealt
+## ready-made: a board with no pinch in it. No ring is dealt on one of its
+## own colour (`_tangled`), so nothing starts as a run.
 ## Spec: docs/superpowers/specs/2026-09-20-rings-flat-design.md, section 3.
 ## Concept page: docs/brainstorm/concepts.html#rings.
 
@@ -42,24 +47,17 @@ extends RefCounted
 ## `cap`, passed to every rule below.
 const CAP := 4
 
-## Colours by band, and always two pegs' worth of slack -- eight free slots,
-## spread over the deal rather than left as two empty pegs. Six over eight is
-## the reference's own three a peg; the other two bands leave a peg or two one
-## short, which is the arithmetic and not a choice.
-## Hard is six colours on **seven** pegs since the 2026-10-01 polish.
-## Insane (2026-10-16) is bigger and blind: eight colours on ten pegs, two
-## rows of five, every ring under a top dealt face down (`hidden`).
-## Towers since 2026-10-16: Medium five high, Hard and Insane six, still two
-## pegs' worth of room free.
+## Colours by band, each peg `cap` rings tall, and `spare` empty pegs.
+## The 2026-10-26 pass made every band a full-peg deal with two empty pegs
+## (the sort games' own climb runs from three colours on five pegs to six on
+## eight) and Insane the biggest: ten colours on twelve pegs, seven high, in
+## two rows of six.
 const BANDS := [
-	{"colours": 4, "pegs": 6, "cap": 4},
-	{"colours": 4, "pegs": 6, "cap": 5},
-	{"colours": 5, "pegs": 7, "cap": 6},
-	{"colours": 8, "pegs": 10, "cap": 6, "hidden": true},
+	{"colours": 4, "cap": 4, "spare": 2},
+	{"colours": 5, "cap": 5, "spare": 2},
+	{"colours": 6, "cap": 6, "spare": 2},
+	{"colours": 10, "cap": 7, "spare": 2},
 ]
-
-## A face-down ring: its colour with this bit over it.
-const HIDDEN := 8
 
 ## Deals tried before the day gives up and takes the last one anyway. Hard on
 ## seven pegs (2026-10-01) needs up to ~30 tries for a proved deal and 40 ran
@@ -71,24 +69,21 @@ const ATTEMPTS := 400
 ## Nodes a single verdict may cost.
 const NODE_BUDGET := 20000
 
-## A ring's colour as it lies, face up or down: what it is matched on.
+## A ring's colour: what it is matched on (the ring itself since the
+## face-down rings went).
 static func top(c: int) -> int:
-	return c & 7
+	return c
 
-## Whether a ring lies face down.
-static func hidden(c: int) -> bool:
-	return c & HIDDEN != 0
-
-## The run on top of `peg`: the face-up rings of the top ring's colour lying
+## The run on top of `peg`: the rings of the top ring's colour lying
 ## together, counted down from the top. 0 on an empty peg.
 static func run(peg: Array) -> int:
 	var n := 0
 	var col := -1
 	for k in range(peg.size() - 1, -1, -1):
 		var c := int(peg[k])
-		if hidden(c) or (col >= 0 and top(c) != col):
+		if col >= 0 and c != col:
 			break
-		col = top(c)
+		col = c
 		n += 1
 	return n
 
@@ -104,10 +99,9 @@ static func take(src: Array, dst: Array, cap := CAP) -> int:
 		return 0
 	return mini(n, room)
 
-## Plays (i -> j) on `pegs`: moves `take` rings, keeping their order, and
-## turns the source's new top face up. Returns [rings moved, the code the
-## source's new top had before it turned] ([0, -1] when nothing moved), which
-## is what `unapply` needs.
+## Plays (i -> j) on `pegs`: moves `take` rings, keeping their order.
+## Returns [rings moved, -1] ([0, -1] when nothing moved), which is what
+## `unapply` needs.
 static func apply(pegs: Array, i: int, j: int, cap := CAP) -> Array:
 	var src: Array = pegs[i]
 	var dst: Array = pegs[j]
@@ -118,38 +112,31 @@ static func apply(pegs: Array, i: int, j: int, cap := CAP) -> Array:
 	for q in k:
 		dst.append(src[start + q])
 	src.resize(start)
-	var was := -1
-	if not src.is_empty():
-		was = int(src.back())
-		src[src.size() - 1] = top(was)
-	return [k, was]
+	return [k, -1]
 
-## Takes `apply` back exactly, face-down ring and all.
+## Takes `apply` back exactly.
 static func unapply(pegs: Array, i: int, j: int, done: Array) -> void:
 	var k: int = done[0]
 	if k == 0:
 		return
 	var src: Array = pegs[i]
 	var dst: Array = pegs[j]
-	if int(done[1]) >= 0:
-		src[src.size() - 1] = int(done[1])
 	var start := dst.size() - k
 	for q in k:
 		src.append(dst[start + q])
 	dst.resize(start)
 
-## The day's deal, proved solvable. `difficulty` is 0 to 3. Insane's rings
-## under each top are dealt face down, and proved under that rule.
+## Pegs a band stands: a full one a colour and its spare empty ones.
+static func pegs_for(band: Dictionary) -> int:
+	return int(band["colours"]) + int(band.get("spare", 2))
+
+## The day's deal, proved solvable. `difficulty` is 0 to 3.
 static func deal(rng: RandomNumberGenerator, difficulty: int) -> Array:
 	var band: Dictionary = BANDS[clampi(difficulty, 0, BANDS.size() - 1)]
 	var last: Array = []
 	var cap: int = band.get("cap", CAP)
 	for attempt in ATTEMPTS:
-		var pegs := _deal_once(rng, int(band["colours"]), int(band["pegs"]), cap)
-		if band.get("hidden", false):
-			for peg: Array in pegs:
-				for k in peg.size() - 1:
-					peg[k] = int(peg[k]) | HIDDEN
+		var pegs := _deal_once(rng, int(band["colours"]), int(band.get("spare", 2)), cap)
 		last = pegs
 		if solved(pegs, cap):
 			continue
@@ -157,28 +144,57 @@ static func deal(rng: RandomNumberGenerator, difficulty: int) -> Array:
 			return pegs
 	return last
 
-## One shuffled deal, as even as the band divides.
-static func _deal_once(rng: RandomNumberGenerator, colours: int, peg_count: int, cap := CAP) -> Array:
+## One shuffled deal: every colour's rings into full pegs, no ring on one of
+## its own colour, and `spare` empty pegs after them.
+static func _deal_once(rng: RandomNumberGenerator, colours: int, spare: int, cap := CAP) -> Array:
 	var bag: Array[int] = []
 	for c in colours:
 		for k in cap:
 			bag.append(c)
 	_shuffle(bag, rng)
-	var base := bag.size() / peg_count
-	var extra := bag.size() - base * peg_count
-	var sizes: Array[int] = []
-	for i in peg_count:
-		sizes.append(base + (1 if i < extra else 0))
-	_shuffle(sizes, rng)
+	_untangle(bag, cap, rng)
 	var out: Array = []
-	var at := 0
-	for s in sizes:
+	for i in colours:
 		var peg: Array[int] = []
-		for k in s:
-			peg.append(bag[at])
-			at += 1
+		for k in cap:
+			peg.append(bag[i * cap + k])
 		out.append(peg)
+	for i in spare:
+		out.append([] as Array[int])
 	return out
+
+## Whether ring `at` of the bag, cut into pegs of `cap`, lies on a ring of
+## its own colour or carries one.
+static func _tangled(bag: Array, at: int, cap: int) -> bool:
+	var k := at % cap
+	if k > 0 and bag[at - 1] == bag[at]:
+		return true
+	return k < cap - 1 and at + 1 < bag.size() and bag[at + 1] == bag[at]
+
+## Swaps rings until none lies on its own colour: a ring that does trades
+## places with one picked at random where neither would. Bounded; a bag it
+## cannot clear (never seen with three colours or more) is left as it is.
+static func _untangle(bag: Array, cap: int, rng: RandomNumberGenerator) -> void:
+	for pass_n in 200:
+		var clean := true
+		for at in bag.size():
+			if not _tangled(bag, at, cap):
+				continue
+			clean = false
+			for tries in 40:
+				var other := rng.randi_range(0, bag.size() - 1)
+				if bag[other] == bag[at]:
+					continue
+				var v = bag[at]
+				bag[at] = bag[other]
+				bag[other] = v
+				if _tangled(bag, at, cap) or _tangled(bag, other, cap):
+					bag[other] = bag[at]
+					bag[at] = v
+					continue
+				break
+		if clean:
+			return
 
 static func _shuffle(a: Array, rng: RandomNumberGenerator) -> void:
 	for i in range(a.size() - 1, 0, -1):

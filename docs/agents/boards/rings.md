@@ -201,3 +201,56 @@ Built straight in Godot (no concept tab: the reference set the rules).
   the lift tap to the drop, `ARC_TIME * 0.5` on. A put-back shows nothing.
   `reset_board` (Reset and Try again) is the deal as dealt, face down.
   Undo still leaves a seen ring up (unchanged, unasked).
+
+### Made fun: full pegs and two empty ones; Insane bigger, not blind (2026-10-26)
+
+The user: "make rings experience way better to play, and game itself way
+funnier to play, right now nobody likes it ... Remove the hidden feature on
+insane and just make it with more colors, taller and harder". Built
+unattended, pushed on the user's word.
+
+- **Measured first** (`tests/_probe_rings_fun.gd`, new: 40 deals a band,
+  the solver's nodes and line, the share of first moves that lose the way,
+  and how often a player tapping any legal move at random, never undoing,
+  sorts the deal). The old deal spread two pegs' worth of room over every
+  peg, so nearly every peg had space on top and runs came dealt: the random
+  player sorted Easy **398/400**, Medium 390, Hard 332, Insane (face down)
+  58. There was no puzzle in the first three bands.
+- **The deal is the sort games' own** (their climb runs from three colours
+  on five pegs to six on eight; spare pegs are the resource): every colour's
+  rings shuffled into pegs filled to the top, two empty pegs after them, and
+  no ring dealt on one of its own colour (`Gen._untangle`, swaps), so
+  nothing starts as a run. `Gen.BANDS` is now `colours`, `cap`, `spare`;
+  `Gen.pegs_for()` counts the pegs. Easy 4 colours x 4 (6 pegs), Medium 5 x 5
+  (7), Hard 6 x 6 (8), **Insane 10 x 7 (12 pegs, two rows of six)**. Random
+  player over 30 deals a shape: 4x4 292/300, 5x5 232, 6x6 132, 10x7 **0**;
+  first moves that already lose the way on Insane 4/300. Deal on the Mac:
+  0.5 / 1.1 / 2.7 / 44 ms mean, Insane 142 ms worst; solver lines 13-21 /
+  23-33 / 33-54 / 76-109.
+- **Hidden is gone**: `Gen.HIDDEN`, `hidden()`, the face-up bookkeeping in
+  `apply`/`unapply`, `State.turned_up`/`_turn_up*`, the board's
+  `_turn_over`, `_reveal_at`, `_flip_pose`, `REVEAL_TIME`, `VEIL`,
+  `Emblem.QUESTION`, `TIPS_HIDDEN`, the tutorial's HIDDEN lesson and eight
+  locale rows. `Gen.top()` is the ring itself now (it was `c & 7`, which
+  would have folded colours 8 and 9 onto 0 and 1). The seal and share line
+  read **Towers** (`RG_TALL_SEAL`, 🗼).
+- **Ten colours**: a plum with a crescent moon (`8a5cb0`, `Emblem.MOON`)
+  and a slate with a cross (`5f6670`, `Emblem.CROSS`), the slate the
+  face-down ring wore. `SHARE_GLYPHS` gave pink 🩷 so plum takes 🟪.
+- **Feel**: the leaf ring marking where the run in hand may land shows on
+  every band (it was Easy and Medium; on twelve pegs finding a legal peg is
+  chores, not the puzzle, and `RG_RULES_SAFE` already promised it). Each
+  colour locking rings a step higher (`LOCK_STEPS`, pentatonic to the
+  octave). A full-peg deal can be lost without being stuck (random walks on
+  Insane reached a proved dead end in 24 of 30), so a bulb that finds no
+  way home says so when `Gen.verdict` proves it (`RG_LOST_WAY`, "No way
+  home from here. Undo a few moves.", 64 ms worst on the Mac) instead of
+  doing nothing. `RG_TIP_AHEAD` (keep an empty peg free) joined the tips.
+- Checks: suite passed=303276 failed=0; `_win.gd -- rings` PASS (Medium, 24
+  moves); `_shot_rings.gd` on `opengl3_angle` 810x1440: rest 83 (Medium) /
+  88 (Insane), lift 89, Insane solve 81 moves to the party, peak 163;
+  tutorial four pages clean.
+- Mine, the user's to call: the deal shape on every band (only Insane was
+  asked), the four sizes, no ring dealt on its own colour, plum and slate,
+  marks on every band, the climbing lock, the bulb's dead-end line. Not on
+  a phone (Insane's deal there, rings at scale 0.68), nothing heard.

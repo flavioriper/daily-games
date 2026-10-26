@@ -81,9 +81,9 @@ extends "res://core/puzzle_base.gd"
 ## **A move carries the run** (2026-10-16, the user's reference): a tap
 ## lifts every ring of the top colour lying together, a drop lands as many
 ## as the peg has room for, and the rest thread back down their own post
-## beside it (`_flights`). Insane is bigger and blind: eight colours on ten
-## pegs, every ring under a top dealt face down -- a slate ring with a
-## question mark -- that turns over when it comes to the top (`_reveal_at`).
+## beside it (`_flights`). Insane was blind for ten days (face-down rings,
+## 2026-10-16); since 2026-10-26 it is the biggest board instead: ten
+## colours on twelve pegs, seven high.
 ##
 ## Spec: docs/superpowers/specs/2026-09-20-rings-flat-design.md (the 2026-09-25
 ## and 2026-09-26 amendments are this drawing). `ui/menu/card_art.gd`'s "rings" branch calls
@@ -201,19 +201,18 @@ const CARD_RADIUS := 32.0
 ## 2026-09-26 (the user's reference): a shape reads at a glance where a count
 ## of dots had to be counted.
 ## Insane's two more (2026-10-16) are a leaf green and a lemon, with a star
-## and a square; `VEIL` is a face-down ring's slate and its question mark,
-## never a shade of a ring's own colour.
+## and a square, and its ten colours (2026-10-26) a plum with a moon and a
+## slate with a cross -- the slate that was the face-down ring's, free once
+## those went.
 const RING_COLOURS := [Pal.BERRY, Pal.SUN, Pal.MOON_INK, Pal.ACORN, Pal.FLOWER, Pal.ACCENT,
-	Pal.LEAF, Color("e6cf3e"), Color("5f5a62")]
-enum Emblem { HEART, SPROUT, CIRCLE, FLOWER, DIAMOND, TRIANGLE, STAR, SQUARE, QUESTION }
+	Pal.LEAF, Color("e6cf3e"), Color("8a5cb0"), Color("5f6670")]
+enum Emblem { HEART, SPROUT, CIRCLE, FLOWER, DIAMOND, TRIANGLE, STAR, SQUARE, MOON, CROSS }
 const EMBLEMS := [Emblem.HEART, Emblem.SPROUT, Emblem.CIRCLE, Emblem.FLOWER, Emblem.DIAMOND, Emblem.TRIANGLE,
-	Emblem.STAR, Emblem.SQUARE, Emblem.QUESTION]
-## A face-down ring's colour and emblem index.
-const VEIL := 8
+	Emblem.STAR, Emblem.SQUARE, Emblem.MOON, Emblem.CROSS]
 
 ## One coloured square per ring colour, in RING_COLOURS' own order, for
 ## share_glyphs() -- the same language Word Trail's green squares speak.
-const SHARE_GLYPHS := ["🟥", "🟧", "🟦", "🟫", "🟪", "🟩", "🟢", "🟨"]
+const SHARE_GLYPHS := ["🟥", "🟧", "🟦", "🟫", "🩷", "🟩", "🟢", "🟨", "🟪", "⬛"]
 
 const TIP_CYCLE := 8.0
 const TIPS := [
@@ -221,10 +220,10 @@ const TIPS := [
 	"RG_TIP_RUN",
 	"RG_TIP_LANDS",
 	"RG_TIP_LOCKS",
+	"RG_TIP_AHEAD",
 	"RG_TIP_UNDO",
 ]
 const TIPS_HEARTS := ["RG_TIP_HEARTS", "RG_TIP_LANDS", "RG_TIP_AHEAD", "RG_TIP_LOCKS"]
-const TIPS_HIDDEN := ["RG_TIP_RUN", "RG_TIP_HIDDEN", "RG_TIP_TURNS", "RG_TIP_LOCKS"]
 
 const STUCK_MSG := "RG_STUCK"
 
@@ -251,11 +250,6 @@ const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
 ## The moves the out-of-moves card's video buys.
 const MOVES_BONUS := 5
 
-# --- a face-down ring coming up ---
-## How long it takes to turn over: it squashes to its edge and opens again
-## face up.
-const REVEAL_TIME := 0.32
-
 # --- a press ---
 ## How far the peg under a finger sinks, and how fast it springs back.
 const PRESS_DIP := 7.0
@@ -272,6 +266,9 @@ const COMBO_FROM := 3
 ## rules, 2026-10-10; it was a pluck up fourteen: [-5, -3, 0, 2, 4, 7, 9]).
 const COMBO_STEPS := [-2, -1, 0, 1, 2, 3]
 const COMBO_DB := -4.0
+## The lock's pitch, in semitones, by how many colours are home: up the
+## pentatonic to the octave, and the octave after.
+const LOCK_STEPS := [0, 2, 4, 7, 9, 12]
 const COMBO_DEFLATE := 0.25
 ## The bubble shows its number this long, then deflates on its own; the
 ## streak itself runs on, and the next right move pops it back in.
@@ -325,7 +322,7 @@ const LOOK_SHADOW := 301      # a stack's shadow, about (cx, ground)
 const LOOK_SOCKET := 302      # an empty peg's socket, about (cx, ground)
 const LOOK_DAISY := 303       # the cap, about its centre, full size
 const LOOK_HOVER := 304       # the soft disc under a ring in the air
-const LOOK_MARK := 305        # Easy and Medium's leaf ring round a post it may land on
+const LOOK_MARK := 305        # the leaf ring round a post it may land on
 const LOOK_POST := 1000       # + its length in whole design px: the dowel from its top
 ## The steps a glint or an emblem fades in, so their paint is kept.
 const FADE_STEPS := 16.0
@@ -408,7 +405,6 @@ var _held_at := -100.0
 ## fit flies its leftover rings home beside it.
 var _flights: Array = []
 ## Peg -> when its top ring turns face up (Insane), for the turn.
-var _reveal_at: Dictionary = {}
 var _land_peg := -1
 var _land_slot := -1
 var _land_at := -100.0
@@ -490,9 +486,7 @@ func title() -> String: return "Rings"
 ## Hard), or the face-down rings (Insane).
 func rules() -> String:
 	var line := tr("RG_RULES") % _state.cap
-	if _state.difficulty == 3:
-		line += "\n\n" + tr("RG_RULES_HIDDEN")
-	elif max_hearts > 0:
+	if max_hearts > 0:
 		line += "\n\n" + tr("RG_RULES_HEARTS") % max_hearts
 	elif max_moves <= 0:
 		line += "\n\n" + tr("RG_RULES_SAFE")
@@ -514,8 +508,6 @@ func tutorial_pages() -> Array:
 		[Diagram.Lesson.LIFT, "HTP_RG_LIFT", tr("HTP_RG_LIFT_BODY")],
 		[Diagram.Lesson.SORT, "HTP_RG_SORT", tr("HTP_RG_SORT_BODY")],
 	]
-	if band == 3:
-		steps.append([Diagram.Lesson.HIDDEN, "RG_HIDDEN_SEAL", tr("HTP_RG_HIDDEN_BODY")])
 	var undo_body := "HTP_RG_UNDO_BODY"
 	if hearts_n > 0:
 		undo_body = "HTP_RG_UNDO_BODY_JUDGED"
@@ -534,8 +526,6 @@ func tutorial_pages() -> Array:
 	return pages
 
 func _tips() -> Array:
-	if _state.difficulty == 3:
-		return TIPS_HIDDEN
 	if max_hearts > 0:
 		return TIPS_HEARTS
 	return TIPS
@@ -675,7 +665,6 @@ func _dealt() -> void:
 	_lock_at = {}
 	_held_at = -100.0
 	_flights = []
-	_reveal_at = {}
 	_land_peg = -1
 	_land_slot = -1
 	_land_at = -100.0
@@ -1032,7 +1021,6 @@ func _tap(i: int) -> void:
 			var stay := codes.slice(0, codes.size() - k)
 			_held_at = -100.0
 			_pops(k, ARC_TIME + THREAD_TIME * 0.6, "drop", RUN_STEP)
-			_turn_over(from, ARC_TIME * 0.5)
 			fx.buzz(Haptics.TAP)
 			# The flight has to exist before note_move()'s check_solved() can
 			# fire solved -- _on_solved reads the flights for the landing
@@ -1060,14 +1048,6 @@ func _pops(n: int, lead: float, cue := "drop", step := BUMP_STEP * 2.0) -> void:
 		_after(at, func() -> void:
 			if gen == _gen:
 				fx.cue(cue, randf_range(0.94, 1.06) * pow(2.0, float(q) / 12.0)))
-
-## Peg `i`'s new top turns over `after` seconds on, when the drop that
-## uncovered it (a tap's or a hint's) turned a face-down ring up.
-func _turn_over(i: int, after: float) -> void:
-	if not _state.turned_up:
-		return
-	_reveal_at[i] = _now() + (0.0 if Motion.reduce else after)
-	_after(0.0 if Motion.reduce else after, fx.cue.bind("tumble"))
 
 ## `cost` moves go off Insane's counter. The last one gone with the pegs
 ## unsorted ends the board once the ring has landed (`land`).
@@ -1204,7 +1184,10 @@ func _settle(j: int, at: float) -> void:
 		fx.sparkle(top_pt, colour)
 		fx.sparkle(top_pt, Pal.SUN)
 		if not _state.is_solved():
-			fx.cue("lock")
+			# Each colour home rings a step higher than the last (2026-10-26):
+			# the board climbs toward its finish.
+			var step: int = LOCK_STEPS[mini(_state.home_count() - 1, LOCK_STEPS.size() - 1)]
+			fx.cue("lock", pow(2.0, float(step) / 12.0))
 			if _by_hand:
 				fx.buzz(Haptics.BUMP)
 			if not Motion.reduce:
@@ -1291,11 +1274,18 @@ func hint() -> bool:
 		if _state.is_stuck():
 			_toast = "RG_STUCK_MOVES" if max_moves > 0 else STUCK_MSG
 			_toast_at = _now()
+		elif hints_left() > 0 and Gen.verdict(_state.pegs, Gen.NODE_BUDGET, _state.cap) == 0:
+			# Moves are left, but none of them leads home: since every deal
+			# is full pegs and two empty ones, a board can be lost without
+			# being stuck, and the bulb is how the player hears it (only on a
+			# proof: a search that ran out of nodes says nothing).
+			_toast = "RG_LOST_WAY"
+			_toast_at = _now()
+			fx.cue("refused")
 		_refresh()
 		return false
 	hints_used += 1
 	fx.cue("hint")
-	_turn_over(m.x, RISE_TIME)
 	var dst: Array = _state.pegs[m.y]
 	var slot := dst.size() - m.z
 	_fly(dst.slice(slot), m.x, m.y, slot, (_state.pegs[m.x] as Array).size(), _now(), true, 0.0, false, INF, RUN_STEP)
@@ -1325,7 +1315,6 @@ func reset_board() -> void:
 	_reset_at = _now()
 	_held_at = -100.0
 	_flights = []
-	_reveal_at = {}
 	_land_peg = -1
 	_land_slot = -1
 	_land_at = -100.0
@@ -1351,9 +1340,6 @@ func _process(delta: float) -> void:
 		moved.emit()
 	_was_busy = b
 	_land_due(t)
-	for j in _reveal_at.keys():
-		if t - float(_reveal_at[j]) < REVEAL_TIME + 0.05:
-			queue_redraw()
 	var redraw := false
 	if _stations_moving(t):
 		redraw = true
@@ -1674,7 +1660,6 @@ func _press_dip(i: int, t: float) -> float:
 ## the key that says when that mesh is stale.
 func _station_look(i: int, t: float, hop: float) -> Dictionary:
 	var turn := 0.0
-	var turn_top := 1.0
 	if _solved_at > -INF and not Motion.reduce:
 		# The solve spins every ring a half turn on its post while it hops.
 		var e := t - _solved_at - Motion.SOLVE_DELAY - Motion.stagger(i, Motion.SOLVE_STAGGER)
@@ -1687,22 +1672,12 @@ func _station_look(i: int, t: float, hop: float) -> Dictionary:
 		if int(f["to"]) == i and t < float(f["at"]) + float(f["dur"]):
 			pegs.resize(mini(pegs.size(), int(f["slot"])))
 			flying = true
-	# A face-down ring coming to the top turns over: still face down until
-	# half way, squashed to its edge, then face up.
-	if _reveal_at.has(i) and not pegs.is_empty() and not Motion.reduce:
-		var u := (t - float(_reveal_at[i])) / REVEAL_TIME
-		if u < 1.0:
-			var fp := _flip_pose(int(pegs.back()) | Gen.HIDDEN, int(pegs.back()), maxf(u, 0.0))
-			pegs[pegs.size() - 1] = fp[0]
-			turn_top = float(fp[1])
 	var scales: Array = []
 	var glints: Array = []
 	var turns: Array = []
 	var stretch := hop / absf(Motion.SOLVE_HOP)
 	for k in pegs.size():
 		var sc := Vector2(1.0 - 0.04 * stretch, 1.0 + 0.07 * stretch)
-		if k == pegs.size() - 1:
-			sc.y *= turn_top
 		if i == _land_peg and k <= _land_slot:
 			var e := t - _land_at - float(_land_slot - k) * BUMP_STEP
 			var amount := 0.14 if k == _land_slot else 0.06
@@ -1970,18 +1945,19 @@ static func _append_emblem(b, kind: int, at: Vector2, s: float, sx: float, colou
 			Emblem.SQUARE:
 				_stroke_to(b, [Vector2(-0.68, -0.68), Vector2(0.68, -0.68), Vector2(0.68, 0.68), Vector2(-0.68, 0.68)],
 					0.3, s, col, to, true)
-			Emblem.QUESTION:
-				# A hook and a dot: what a face-down ring keeps to itself.
-				var hook: Array = []
-				for q in 9:
-					hook.append(Vector2.from_angle(PI * 1.05 + PI * 1.45 * float(q) / 8.0) * 0.48 + Vector2(0.0, -0.42))
-				hook.append(Vector2(0.06, 0.12))
-				hook.append(Vector2(0.06, 0.36))
-				_stroke_to(b, hook, 0.28, s, col, to)
-				var dot := PackedVector2Array()
-				for p in Face.Builder.ring(Vector2(0.06, 0.78), 0.17, 0.17):
-					dot.append(to.call(p))
-				b.fan(dot, col)
+			Emblem.MOON:
+				# A crescent: the outer circle's edge, back along a smaller
+				# one set off to the right.
+				var moon := PackedVector2Array()
+				for q in 17:
+					moon.append(to.call(Vector2.from_angle(PI * 0.226 + PI * 1.548 * float(q) / 16.0) * 0.9))
+				for q in range(1, 12):
+					var u := -PI * 0.349 - PI * 1.302 * float(q) / 12.0
+					moon.append(to.call(Vector2(0.38, 0.0) + Vector2.from_angle(u) * 0.66))
+				b.polygon(moon, col)
+			Emblem.CROSS:
+				_stroke_to(b, [Vector2(0.0, -0.8), Vector2(0.0, 0.8)], 0.32, s, col, to)
+				_stroke_to(b, [Vector2(-0.8, 0.0), Vector2(0.8, 0.0)], 0.32, s, col, to)
 
 ## An emblem's three inks on a ring of `colour`: the shade under it, the
 ## cream inlay and a flower's eye.
@@ -2117,9 +2093,9 @@ func _put_ring(cx: float, yt: float, code: int, sc := Vector2.ONE, tilt := 0.0, 
 	if glint > 0.0:
 		_looks.put(LOOK_GLINT, [Color(Color.WHITE, 0.55 * roundf(glint * FADE_STEPS) / FADE_STEPS)], xf)
 
-## What a ring is drawn as: its colour, or VEIL while it lies face down.
+## What a ring is drawn as: its colour.
 static func _ink(code: int) -> int:
-	return VEIL if Gen.hidden(code) else Gen.top(code)
+	return Gen.top(code)
 
 ## An emblem at `spot` (`_emblem_spot`) on the ring under `xf`, narrowed as
 ## it turns away and faded in steps.
@@ -2153,16 +2129,6 @@ func _build_live(t: float) -> ArrayMesh:
 		_build_flight(f, t)
 	return _looks.mesh()
 
-## A ring turning over at `u` (0..1 across its turn): which face is up -- the
-## `from` code until the middle, the `to` code after -- and how tall it is
-## drawn (it squashes to its edge at the middle).
-static func _flip_pose(from: int, to: int, u: float) -> Array:
-	if from == to or u >= 1.0:
-		return [to, 1.0]
-	if u <= 0.0:
-		return [from, 1.0]
-	return [from if u < 0.5 else to, maxf(absf(cos(PI * u)), 0.08)]
-
 ## A stack of rings `codes` (bottom first) whose top ring's face is at `yt`,
 ## the rest a slot apart under it, all under one squash, lean and turn; the
 ## post from `post_top` goes into the lowest one's hole when it is on one
@@ -2179,8 +2145,8 @@ func _put_stack(cx: float, yt: float, codes: Array, sc: Vector2, tilt: float, tu
 ## The run in hand: up its post on the back ease over RISE_TIME, stretched
 ## while it slides, then breathing BOB px for as long as it waits, its top
 ## ring clear of the post and the rest a slot apart under it. A refusal dips
-## it toward the peg that refused it and shivers it there. On Easy and
-## Medium a soft leaf ring marks every post it may land on. Under reduce
+## it toward the peg that refused it and shivers it there. A soft leaf ring
+## marks every post it may land on. Under reduce
 ## motion it is simply up and still.
 func _build_held(t: float) -> void:
 	var st := _station(_state.held_from)
@@ -2190,13 +2156,14 @@ func _build_held(t: float) -> void:
 	var y := up
 	var sc := Vector2.ONE
 	var codes: Array = _state.held
-	if _state.difficulty <= 1:
-		# Breathing: the look made at rest, scaled about its middle.
-		var k := 1.0 + 0.06 * sin(t * 4.0)
-		for j in _state.pegs.size():
-			if j != _state.held_from and _state.can_drop(j):
-				var sj := _station(j)
-				_looks.put(LOOK_MARK, [], Transform2D(0.0, Vector2(k, k), 0.0, Vector2(float(sj["cx"]), float(sj["top"]) + 6.0)))
+	# Breathing: the look made at rest, scaled about its middle. On every
+	# band since 2026-10-26: on twelve pegs, finding where a ring may go is
+	# chores, not the puzzle.
+	var k := 1.0 + 0.06 * sin(t * 4.0)
+	for j in _state.pegs.size():
+		if j != _state.held_from and _state.can_drop(j):
+			var sj := _station(j)
+			_looks.put(LOOK_MARK, [], Transform2D(0.0, Vector2(k, k), 0.0, Vector2(float(sj["cx"]), float(sj["top"]) + 6.0)))
 	if not Motion.reduce:
 		var since := t - _held_at
 		var from_y := _ring_yt(ground, RING_W, (_state.pegs[_state.held_from] as Array).size() + codes.size() - 1)
@@ -2523,7 +2490,7 @@ func share_glyphs() -> String:
 	if (insane or _flawless) and is_solved():
 		out += "\n"
 	if insane and is_solved():
-		out += "🙈 " + tr("RG_HIDDEN_SEAL") + (" · " + tr("BN_FLAWLESS") if _flawless else "")
+		out += "🗼 " + tr("RG_TALL_SEAL") + (" · " + tr("BN_FLAWLESS") if _flawless else "")
 	elif _flawless and is_solved():
 		out += "🏅 " + tr("BN_FLAWLESS")
 	return out
@@ -2553,7 +2520,6 @@ func restore_completed_board() -> void:
 	_state.held = []
 	_state.held_from = -1
 	_flights = []
-	_reveal_at = {}
 	_lock_at = {}
 	_hop_at = {}
 	_shake_at = {}
@@ -2742,7 +2708,6 @@ func try_again() -> void:
 	_refuse_to = -1
 	_toast = ""
 	_flights = []
-	_reveal_at = {}
 	_land_peg = -1
 	_held_at = -100.0
 	_reset_at = _now()
@@ -3326,7 +3291,7 @@ func _draw_stamp(now: float, shown: Array) -> void:
 	var lines: Array
 	if insane:
 		lines = [[tr("BN_INSANE_SEAL"), 0.27, 0.02],
-			[tr("BN_FLAWLESS") if _flawless else tr("RG_HIDDEN_SEAL"), 0.17, 0.36]]
+			[tr("BN_FLAWLESS") if _flawless else tr("RG_TALL_SEAL"), 0.17, 0.36]]
 	else:
 		lines = [[tr("BN_FLAWLESS"), 0.24, 0.12]]
 	Seal.text(_life_layer, rad, lines)
@@ -3385,10 +3350,7 @@ func day_dict() -> Dictionary:
 		if k >= peg.size():
 			return {}
 		var ring := int(peg[k])
-		var cell := {"c": Gen.top(ring)}
-		if Gen.hidden(ring):
-			cell["note"] = "?"
-		return cell
+		return {"c": Gen.top(ring)}
 	var puzzle: Array = []
 	var answer: Array = []
 	for y in cap:
@@ -3396,7 +3358,7 @@ func day_dict() -> Dictionary:
 			puzzle.append(slot.call(deal[x], cap - 1 - y))
 			answer.append(slot.call(end[x], cap - 1 - y))
 	var metrics := {"pegs": deal.size(), "colours": int(_state.colours), "rings": rings,
-		"cap": cap, "hidden": _state.difficulty == 3, "line": line.size(),
+		"cap": cap, "line": line.size(),
 		"hints": State.hints_for(_state.difficulty), "hearts": max_hearts, "moves": max_moves}
 	if _state.par > 0:
 		metrics["par"] = int(_state.par)

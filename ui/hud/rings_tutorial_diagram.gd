@@ -7,18 +7,17 @@ extends Control
 ## board's own input path (a press on a peg, the release), over a caption
 ## that says what it means. So a ring slides up its post and turns in the
 ## hand, a drop on another colour is refused with a shiver, a drop flies and
-## threads down its post, a full peg glints and wears its daisy, and a
-## face-down ring turns over when it comes to the top, exactly as on the
-## board. `lesson` picks the page (set before it enters the tree):
+## threads down its post and a full peg glints and wears its daisy, exactly
+## as on the board. `lesson` picks the page (set before it enters the tree):
 ##
 ## - LIFT: a run of two lifted together, refused on another colour, set down
 ##   on an empty peg.
 ## - SORT: a run onto its own colour fills a peg, which locks; the last run
 ##   home and the solve wave.
-## - HIDDEN (Insane): a ring lifted off a face-down one turns it face up.
 ## - UNDO: Undo takes a drop back; Reset puts every ring back.
 ## - HINT: the bulb plays a move.
-## (The hearts lesson went with the doomed drop on 2026-10-16.)
+## (The hearts lesson went with the doomed drop on 2026-10-16, and the
+## face-down rings' with them on 2026-10-26.)
 ##
 ## The board checkup, 2026-10-02: Rings had only the shared one-page card.
 
@@ -26,7 +25,7 @@ const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const Face = preload("res://ui/faces/face.gd")
 
-enum Lesson { LIFT, SORT, HIDDEN, UNDO, HINT }
+enum Lesson { LIFT, SORT, UNDO, HINT }
 
 ## The finger: a soft disc and a ring, pressed smaller while it is down.
 const FINGER_R := 20.0
@@ -34,10 +33,9 @@ const FINGER_ALPHA := 0.16
 const CAPTION_H := 92.0
 
 ## The lessons' pegs, bottom ring first, two colours (0 the berry heart, 1
-## the sun sprout); 8 over a colour is a face-down ring.
+## the sun sprout).
 const LIFT_PEGS := [[1, 1, 0, 0], [0, 0, 1, 1], []]
 const SORT_PEGS := [[1, 1, 0, 0], [0, 0], [1, 1]]
-const HIDDEN_PEGS := [[9, 8, 1], [8, 9, 0], []]
 
 var lesson: int = Lesson.LIFT
 ## The band the board behind the page is on.
@@ -204,15 +202,6 @@ func _start() -> void:
 			_loop.tween_interval(0.5)
 			_loop.tween_callback(func() -> void: _art.win())
 			_say_for("HTP_RG_DONE_CAP", 3.0)
-		Lesson.HIDDEN:
-			_play_tap(0, "HTP_RG_UP_CAP")
-			_loop.tween_interval(1.2)
-			_play_tap(2, "")
-			_loop.tween_interval(1.0)
-			_play_tap(1, "HTP_RG_UP_CAP")
-			_loop.tween_interval(1.2)
-			_play_tap(0, "HTP_RG_FACE_CAP")
-			_loop.tween_interval(2.2)
 		Lesson.UNDO:
 			_play_tap(1, "HTP_RG_TAP_CAP")
 			_loop.tween_interval(0.4)
@@ -258,11 +247,10 @@ func _play_tap(i: int, say: String) -> void:
 ## nothing in flight. `fresh` is the first deal, which pops the pegs in with
 ## the board's entrance.
 func _reset(fresh := false) -> void:
-	var pegs: Array = {Lesson.SORT: SORT_PEGS, Lesson.HIDDEN: HIDDEN_PEGS}.get(lesson, LIFT_PEGS)
+	var pegs: Array = {Lesson.SORT: SORT_PEGS}.get(lesson, LIFT_PEGS)
 	_art.lay(band, pegs, 2, fresh)
 	_lift()
 	_say({Lesson.LIFT: "HTP_RG_START_CAP", Lesson.SORT: "HTP_RG_SORT_CAP",
-		Lesson.HIDDEN: "HTP_RG_HIDDEN_CAP",
 		Lesson.UNDO: "HTP_RG_START_CAP", Lesson.HINT: "HTP_RG_HINT_CAP"}[lesson])
 
 ## Reduce-motion: the lesson's answer, standing still.
@@ -277,10 +265,6 @@ func _still() -> void:
 				_art._tap(i)
 			_art.win()
 			_say("HTP_RG_DONE_CAP")
-		Lesson.HIDDEN:
-			_art._tap(0)
-			_art._tap(2)
-			_say("HTP_RG_UP_CAP")
 		Lesson.UNDO:
 			_say("HTP_RG_UNDO_CAP")
 		Lesson.HINT:

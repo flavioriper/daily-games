@@ -283,10 +283,9 @@ const PUZZLES := [
 		"actions": false,
 		"difficulties": [0, 1, 2, 3],
 		# Asks like Sudoku: rings_gen.gd's BANDS, and each is its own daily
-		# with its own done mark. Four rings a peg at every band; a move
-		# carries the run of one colour on top. Insane is Hidden: eight
-		# colours on ten pegs, the rings under each top face down
-		# (rings_gen.gd), dealt live.
+		# with its own done mark. Full pegs and two empty ones, taller up
+		# the bands; a move carries the run of one colour on top. Insane is
+		# ten colours on twelve pegs, seven high (rings_gen.gd), dealt live.
 		"pick_difficulty": true,
 		"levels": [
 			{"difficulty": 0, "name": "Easy", "line": "RG_LVL_0"},

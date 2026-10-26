@@ -31,14 +31,14 @@ static func _rng(seed_value: int) -> RandomNumberGenerator:
 	r.seed = seed_value
 	return r
 
-## Every band deals the right number of rings, four of every colour, onto the
-## right number of pegs, none over CAP.
+## Every band deals a full peg's worth of every colour, onto a full peg a
+## colour and two empty ones after them, none over its cap.
 static func _test_deal_shape(t) -> void:
-	for band in 3:
+	for band in Gen.BANDS.size():
 		var want: Dictionary = Gen.BANDS[band]
 		var cap: int = want["cap"]
 		var pegs := Gen.deal(_rng(band * 100 + 7), band)
-		t.eq(pegs.size(), want["pegs"], "band %d peg count" % band)
+		t.eq(pegs.size(), Gen.pegs_for(want), "band %d peg count" % band)
 		var seen := {}
 		var total := 0
 		for s in pegs:
@@ -51,18 +51,28 @@ static func _test_deal_shape(t) -> void:
 		for c in seen:
 			t.eq(int(seen[c]), cap, "band %d a full peg of colour %d" % [band, c])
 
-## The hard band is five colours of six on seven pegs since 2026-10-16:
-## four or five rings a peg.
+## Since 2026-10-26 a deal is full pegs and two empty ones, and no ring lies
+## on one of its own colour: nothing starts as a run.
 static func _test_hard_band_is_three_a_peg(t) -> void:
-	var pegs := Gen.deal(_rng(11), 2)
-	t.eq(pegs.size(), 7, "seven pegs")
-	for s in pegs:
-		t.check(s.size() == 4 or s.size() == 5, "four or five rings a peg")
+	for band in Gen.BANDS.size():
+		var cap: int = Gen.BANDS[band]["cap"]
+		var pegs := Gen.deal(_rng(11 + band), band)
+		var empty := 0
+		var paired := 0
+		for s: Array in pegs:
+			t.check(s.is_empty() or s.size() == cap, "band %d: a peg full or empty" % band)
+			if s.is_empty():
+				empty += 1
+			for k in s.size() - 1:
+				if s[k] == s[k + 1]:
+					paired += 1
+		t.eq(empty, 2, "band %d: two empty pegs" % band)
+		t.eq(paired, 0, "band %d: no ring on its own colour" % band)
 
 ## Every deal the generator hands over can actually be sorted, and the path it
 ## returns is legal move by move and ends solved.
 static func _test_every_deal_is_solvable(t) -> void:
-	for band in 3:
+	for band in Gen.BANDS.size():
 		for i in 6:
 			var pegs := Gen.deal(_rng(i * 31 + band), band)
 			var cap: int = Gen.BANDS[band]["cap"]

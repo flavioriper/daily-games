@@ -26,14 +26,10 @@ extends RefCounted
 ## **Since 2026-10-04 no band judges** (`HEARTS_BY` is all zero).
 ##
 ## **The hand holds a run** (2026-10-16, the user's reference): `lift` takes
-## every face-up ring of the top colour lying together (`Gen.run`), and `drop`
+## every ring of the top colour lying together (`Gen.run`), and `drop`
 ## lands as many of them as the peg has room for -- the rest go back where
-## they came from. A move in the log is (from, to, rings carried). Insane
-## deals the rings under each top face down (`Gen.HIDDEN`); a ring turns face
-## up once a drop leaves it a peg's top, or once its peg locks; an undo
-## leaves it up, a reset deals it face down again (the user, 2026-10-17: a
-## lift alone revealed the next ring, and a reset kept the seen ones up).
-## Tumble and its bank went the same day.
+## they came from. A move in the log is (from, to, rings carried). Insane's
+## face-down rings (2026-10-16) went on 2026-10-26: every ring lies face up.
 ## Spec: docs/superpowers/specs/2026-09-20-rings-flat-design.md and
 ## docs/superpowers/specs/2026-10-01-rings-polish-design.md.
 ## Concept page: docs/brainstorm/concepts.html#rings.
@@ -67,8 +63,6 @@ var hints_used := 0
 ## Hints given on top of HINTS (a rewarded video's, core/ads.gd).
 var hints_extra := 0
 var difficulty := 0
-## Whether the last drop turned a face-down ring up (the board turns it over).
-var turned_up := false
 ## Kept for the board's dormant hearts: no band judges.
 var judged := false
 var undo_allowed := true
@@ -79,7 +73,7 @@ static func hints_for(band: int) -> int:
 static func hearts_for(band: int) -> int:
 	return HEARTS_BY[clampi(band, 0, HEARTS_BY.size() - 1)]
 
-## The day's deal, proved solvable (Insane's face down). Keeps a duplicate
+## The day's deal, proved solvable. Keeps a duplicate
 ## of it in `deal` so reset_board() can go back to exactly what was dealt,
 ## not to one undo at a time.
 func build(rng: RandomNumberGenerator, band: int, _bank_step := 0) -> void:
@@ -139,9 +133,8 @@ func locked(i: int) -> bool:
 func can_lift(i: int) -> bool:
 	return not holding() and not (pegs[i] as Array).is_empty() and not locked(i)
 
-## Takes the run on top of peg `i` into the hand; the ring it uncovers stays
-## face down until a drop lands (a put-back never shows it). Refused (and `false`) on an empty peg, a locked
-## peg, or with a run already in hand.
+## Takes the run on top of peg `i` into the hand. Refused (and `false`) on
+## an empty peg, a locked peg, or with a run already in hand.
 func lift(i: int) -> bool:
 	if not can_lift(i):
 		return false
@@ -150,11 +143,10 @@ func lift(i: int) -> bool:
 	held_from = i
 	held = src.slice(src.size() - n)
 	src.resize(src.size() - n)
-	turned_up = false
 	return true
 
 ## Puts the run in hand back where it came from. Not a move: the log never
-## sees it, and the ring it covers again was never turned up.
+## sees it.
 func put_back() -> void:
 	if not holding():
 		return
@@ -192,9 +184,8 @@ func refusal(j: int) -> String:
 
 ## Lands what fits of the run in hand on peg `j` and puts the rest back on
 ## the peg it came from. Refused (returns -1) when nothing would land. On
-## success, logs the move, clears the hand, turns the peg it came from's new
-## top face up (`turned_up`), and returns the slot the lowest landed ring
-## sits in (`log.back().z` is how many landed).
+## success, logs the move, clears the hand and returns the slot the lowest
+## landed ring sits in (`log.back().z` is how many landed).
 func drop(j: int) -> int:
 	var k := lands(j)
 	if k == 0:
@@ -205,16 +196,11 @@ func drop(j: int) -> int:
 	held.resize(held.size() - k)
 	var from := held_from
 	put_back()
-	var src: Array = pegs[from]
-	turned_up = not src.is_empty() and Gen.hidden(int(src.back()))
-	_turn_up(from)
 	log.append(Vector3i(from, j, k))
-	if locked(j):
-		_turn_up_all(j)
 	return slot
 
 ## Walks the last move back exactly, including one that finished a peg. No
-## legality check: it was legal on the way out. Face-up rings stay face up.
+## legality check: it was legal on the way out.
 func undo() -> Vector3i:
 	put_back()
 	if log.is_empty():
@@ -224,17 +210,6 @@ func undo() -> Vector3i:
 	(pegs[m.x] as Array).append_array(dst.slice(dst.size() - m.z))
 	dst.resize(dst.size() - m.z)
 	return m
-
-## Turns peg `i`'s top ring face up.
-func _turn_up(i: int) -> void:
-	var peg: Array = pegs[i]
-	if not peg.is_empty():
-		peg[peg.size() - 1] = Gen.top(int(peg.back()))
-
-func _turn_up_all(i: int) -> void:
-	var peg: Array = pegs[i]
-	for k in peg.size():
-		peg[k] = Gen.top(int(peg[k]))
 
 ## Locked pegs, counted fresh every time -- the colours already home.
 func home_count() -> int:
@@ -253,14 +228,12 @@ func is_solved() -> bool:
 func is_stuck() -> bool:
 	return not is_solved() and Gen.moves_from(pegs, cap).is_empty()
 
-## Back to the dealt position in one step, not one undo at a time, face
-## down as dealt: the rings seen on the way are hidden again.
+## Back to the dealt position in one step, not one undo at a time.
 func reset_board() -> void:
 	put_back()
 	pegs = []
 	for s in deal:
 		pegs.append((s as Array).duplicate())
-	turned_up = false
 	log = []
 
 ## Plays the solver's own next move, spending one hint. Returns (-1, -1, 0)
