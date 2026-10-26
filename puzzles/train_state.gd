@@ -11,14 +11,17 @@ extends RefCounted
 ## goes round the loop, and round again for as long as a lap takes anything
 ## (since 2026-10-13: it was once round). At every stop it looks straight
 ## across the rug at the nearest block in that line, and takes it if it is
-## its own colour. An engine with no room left goes home for good. One that
-## comes round from a lap that took nothing waits in the siding, five
+## its own colour, and the blocks behind it while they are its colour too
+## (since 2026-10-26: the cork flies on through them). An engine with no
+## room left goes home for good. One that comes round from a lap that took
+## nothing waits in the siding, five
 ## places, to be sent again.
 ##
 ## The loop moves by ticks (`tick`), a stop a tick, so the same taps on the
 ## same ticks always play the same game and a probe with no screen can prove
 ## a deal. The numbers of a colour's engines add up to exactly its blocks.
 
+const Pal = preload("res://core/palette.gd")
 const BANK := "res://content/pixel_garden.json"
 ## The bank's band a difficulty deals from: 10 squares a side on Easy, then
 ## small ones and a lot of them, 24 on Medium and 32 on Hard and Insane.
@@ -41,8 +44,25 @@ const LOADS := [[3, 9], [10, 36], [16, 60], [20, 80]]
 const REF_PARKED := [1, 2, 3, 4]
 ## How often the deal stands an engine in the shed before its colour is in
 ## sight: it has to come out and wait for the ones behind it to be reached.
-const EARLY := [0.0, 0.15, 0.25, 0.4]
+const EARLY := [0.0, 0.15, 0.25, 0.7]
 const HINTS_BY := [3, 3, 2, 2]
+
+## The bold colours a picture is folded into: every bead the bank paints
+## with, under the one that stands for its family on the rug.
+const FAMILY := {
+	"red": "red", "maroon": "red",
+	"pink": "pink", "coral": "pink", "rose": "pink",
+	"orange": "orange", "rust": "orange",
+	"yellow": "yellow", "butter": "yellow",
+	"white": "white", "cream": "white", "silver": "white",
+	"lilac": "purple", "purple": "purple",
+	"sky": "sky", "blue": "blue", "navy": "blue", "teal": "teal",
+	"lime": "green", "green": "green", "forest": "green",
+	"tan": "brown", "brown": "brown", "dark": "dark", "grey": "grey",
+}
+## The most colours a picture keeps, a band: a cannon has to be told from
+## the next at a glance.
+const BOLD := [4, 6, 7, 8]
 
 ## A picture is laid on a mat of blocks of one more colour, so the rug is
 ## full edge to edge: the first of these the picture does not use.
@@ -51,10 +71,16 @@ const MATS := ["sky", "cream", "lilac", "teal", "tan", "grey"]
 enum { SHED, GATE, LOOP, PARKED, GONE }
 enum { OK, REFUSED_BURIED, REFUSED_BUSY, REFUSED_FULL, REFUSED_OVER }
 ## What a tick says happened, [kind, engine, a, b]:
-## ENTER (engine); PICK (engine, cell, run so far); RUN_END (engine, run);
+## ENTER (engine); PICK (engine, cell, run so far, blocks before it this stop); RUN_END (engine, run);
 ## FULL (engine); PARK (engine, place); HOME (engine, column);
 ## JAM (engine); WHOLE (-1, colour).
 enum { ENTER, PICK, RUN_END, FULL, PARK, HOME, JAM, WHOLE }
+
+## A cork goes on through the blocks behind the one it hits while they are
+## the cannon's colour, a cork a block (2026-10-26).
+static var pierce := true
+## A picture's colours folded into a few bold ones (2026-10-26, `_bolden`).
+static var bold := true
 
 static var _bank := {}
 static var _bank_read := false
@@ -148,6 +174,8 @@ func setup(rng: RandomNumberGenerator, difficulty: int, daily_key := 0) -> void:
 ## Plays `pic` ({name, rows}) with its letters read through `legend`.
 func adopt(pic: Dictionary, legend: Dictionary, rng: RandomNumberGenerator) -> void:
 	_read(pic, legend)
+	if bold:
+		_bolden()
 	_lay_mat()
 	_deal(rng)
 	reset()
@@ -206,6 +234,56 @@ func _read(pic: Dictionary, legend: Dictionary) -> void:
 				k = colours.size()
 				colours.append(named)
 			picture[y * w + x] = k
+
+## Folds the picture's colours into their families, then the nearest two
+## families into one until no more than BOLD are left.
+func _bolden() -> void:
+	var names: Array[String] = []
+	var to := PackedInt32Array()
+	for named in colours:
+		var f := String(FAMILY.get(named, named))
+		if not names.has(f):
+			names.append(f)
+		to.append(names.find(f))
+	var count := PackedInt32Array()
+	count.resize(names.size())
+	count.fill(0)
+	for i in picture.size():
+		if picture[i] >= 0:
+			picture[i] = to[picture[i]]
+			count[picture[i]] += 1
+	var cap: int = BOLD[clampi(band, 0, BOLD.size() - 1)]
+	while names.size() > cap:
+		# the two nearest colours, the smaller into the bigger: an eye or a
+		# beak keeps its colour while two greens become one
+		var least := 0
+		var near := 1
+		var best := INF
+		for i in names.size():
+			for j in range(i + 1, names.size()):
+				var d := _apart(names[i], names[j])
+				if d < best:
+					best = d
+					least = i if count[i] < count[j] else j
+					near = j if least == i else i
+		var into := near - 1 if near > least else near
+		for i in picture.size():
+			if picture[i] == least:
+				picture[i] = into
+			elif picture[i] > least:
+				picture[i] -= 1
+		count[near] += count[least]
+		count.remove_at(least)
+		names.remove_at(least)
+	colours = names
+
+## How far apart two named colours look ("redmean" weighted RGB).
+static func _apart(a: String, b: String) -> float:
+	var x := Pal.PG_BEADS.get(a, Color.GRAY) as Color
+	var y := Pal.PG_BEADS.get(b, Color.GRAY) as Color
+	var r := (x.r + y.r) * 0.5
+	var d := Vector3(x.r - y.r, x.g - y.g, x.b - y.b)
+	return sqrt((2.0 + r) * d.x * d.x + 4.0 * d.y * d.y + (3.0 - r) * d.z * d.z)
 
 func _clear_engines() -> void:
 	colour = PackedInt32Array()
@@ -288,9 +366,12 @@ func _lap(g: PackedInt32Array, c: int, most: int, near = null) -> int:
 		if got >= most:
 			break
 		var i := _seen_from(g, s, deep)
-		if i >= 0 and g[i] == c:
+		while i >= 0 and g[i] == c and got < most:
 			g[i] = -1
 			got += 1
+			if not pierce:
+				break
+			i = _seen_from(g, s, deep)
 	return got
 
 ## The same engine left on the loop: lap after lap until one takes nothing
@@ -578,21 +659,28 @@ func tick() -> Array:
 				loop.append(e)
 	return out
 
-## Engine `e` at its stop: takes the block it sees if it is its colour.
-## False when that filled it and it has gone.
+## Engine `e` at its stop: takes the block it sees if it is its colour, and
+## the one behind it while that is its colour too (`pierce`). False when that
+## filled it and it has gone.
 func _stop(e: int, out: Array) -> bool:
 	var i := first_seen(grid, at[e])
 	if i < 0 or grid[i] != colour[e]:
 		_run_end(e, out)
 		return true
 	var c := grid[i]
-	grid[i] = -1
-	left -= 1
-	left_by[c] -= 1
-	room[e] -= 1
-	run[e] += 1
-	got[e] += 1
-	out.append([PICK, e, i, run[e]])
+	var through := 0
+	while i >= 0 and grid[i] == c and room[e] > 0:
+		grid[i] = -1
+		left -= 1
+		left_by[c] -= 1
+		room[e] -= 1
+		run[e] += 1
+		got[e] += 1
+		out.append([PICK, e, i, run[e], through])
+		through += 1
+		if not pierce:
+			break
+		i = first_seen(grid, at[e])
 	if room[e] == 0:
 		out.append([RUN_END, e, run[e], 0])
 		run[e] = 0

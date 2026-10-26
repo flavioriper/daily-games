@@ -133,8 +133,10 @@ static func block(b, at: Vector2, cell: float, col: Color) -> void:
 	if cell < SMALL:
 		s = cell - 1.0
 		lift = maxf(1.5, cell * 0.1)
-		_bar(b, Rect2(at - Vector2(s, s) * 0.5, Vector2(s, s)), col.darkened(0.24))
-		_bar(b, Rect2(at - Vector2(s, s) * 0.5, Vector2(s, s - lift)), col)
+		# a seam on the right as well as the foot, so a field of them reads
+		# as blocks and not as ruled lines (2026-10-26)
+		_bar(b, Rect2(at - Vector2(s, s) * 0.5, Vector2(s, s)), col.darkened(0.2))
+		_bar(b, Rect2(at - Vector2(s, s) * 0.5, Vector2(s - lift * 0.7, s - lift)), col)
 		return
 	b.polygon(Face.Builder.round_rect(at - Vector2(s, s) * 0.5 + Vector2(0.0, lift * 0.5), Vector2(s, s), r), col.darkened(0.24))
 	b.polygon(Face.Builder.round_rect(at - Vector2(s, s) * 0.5 - Vector2(0.0, lift * 0.5), Vector2(s, s - lift), r), col)

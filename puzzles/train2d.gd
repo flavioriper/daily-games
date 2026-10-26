@@ -42,8 +42,8 @@ const GAP := 14.0
 ## 2026-10-14: "increase the space between the cannon and the drawing, it's
 ## too close, user barely see the shoot": a muzzle stands about fifty canvas
 ## pixels off the picture's edge on every band (it stood two on Hard).
-const EDGE := 3.15
-const REACH := 2.4
+const EDGE := 3.5
+const REACH := 2.6
 const LANE_MIN := 34.0
 const LANE_MAX := 40.0
 ## The track's gauge and a cannon's length on the loop, in lanes.
@@ -51,7 +51,7 @@ const GAUGE := 0.62
 const ENGINE := 1.45
 ## A cannon on the loop is never shorter than this: on the small pictures it
 ## stands from the rug's edge to the picture's, its wheels astride the track.
-const LOOP_MIN := 60.0
+const LOOP_MIN := 74.0
 const CELL_MAX := 62.0
 ## The blocks are kept as a mesh a patch of this many squares a side, so a
 ## block shot rebuilds its patch and not the picture.
@@ -68,6 +68,23 @@ const TICKS := [0.045, 0.024, 0.02, 0.02]
 
 ## This board's own motion (the rest is core/motion.gd's).
 const SEND_FLY := 0.24
+## A cork goes on through a run of its colour (2026-10-26): each cork of the
+## volley leaves this long after the one before, and a block bursts white
+## for the first part of its burst.
+const VOLLEY := 0.028
+const BLINK := 0.45
+## The room shakes, a cannon emptied a little and a colour whole more, in
+## canvas pixels, dying out over SHAKE_TIME.
+const SHAKE_FULL := 5.0
+const SHAKE_WHOLE := 11.0
+const SHAKE_TIME := 0.32
+## Nothing left to choose (the toy box and the tray empty): the loop runs
+## this much faster so the end does not drag.
+const ENDGAME := 0.55
+## The halo under a cannon a tap can send that has a block of its colour in
+## sight now.
+const HALO := Color(1.0, 0.96, 0.7, 0.85)
+const HALO_R := 0.62
 const PARK_FLY := 0.34
 const SHIFT := 0.22
 ## A cork's flight to its block (the cork leaves ghosts behind it, TRAIL of
@@ -126,8 +143,8 @@ const RUN_STEP := [1, 3, 4, 4]
 const PICK_GAP := 0.07
 const TICK_VARY := Vector2(0.985, 1.015)
 const COMBO_FROM := 5
-const BIG_RUN := 12
-const RUN_CONFETTI := [20, 40, 60]
+const BIG_RUN := 24
+const RUN_CONFETTI := [25, 50, 100, 150]
 const COMBO_DEFLATE := 0.25
 const COMBO_HOLD := 0.9
 const COMBO_FONT := 44
@@ -255,6 +272,10 @@ var _shiver_at := {}
 var _flights: Array = []
 
 var _pressed := -1
+var _shake_at := -INF
+var _shake_px := 0.0
+var _sight := {}
+var _sight_left := -1
 var _pick_cue_at := -INF
 var _streak := 0
 var _combo_n := 0
@@ -703,10 +724,11 @@ func _draw() -> void:
 		yard = 0.0 if Motion.reduce else clampf(1.0 - (now - _solved_at - 0.3) / 0.3, 0.0, 1.0)
 		if _won and _slid_at == -INF:
 			yard = 0.0
+	var shake := _shake_off(now)
 	if yard > 0.0 and _yard != null:
-		draw_mesh(_yard, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, yard))
+		draw_mesh(_yard, null, Transform2D(0.0, shake), Color(1.0, 1.0, 1.0, yard))
 		shown.append(_yard)
-	var slide := _slide_xf(now)
+	var slide := Transform2D(0.0, shake) * _slide_xf(now)
 	draw_set_transform_matrix(slide)
 	var ring_k := 1.0
 	if not Motion.reduce and since < Motion.ENTER_POP:
@@ -720,10 +742,42 @@ func _draw() -> void:
 	_draw_blocks(now, shown)
 	if _stamp_at <= now:
 		_draw_stamp(now, shown, slide)
-	draw_set_transform_matrix(Transform2D.IDENTITY)
+	draw_set_transform_matrix(Transform2D(0.0, shake))
 	if yard > 0.0:
 		_draw_engines(now, shown, yard)
+	draw_set_transform_matrix(Transform2D.IDENTITY)
 	_shown = shown
+
+## The room's shake now: two swings that die out, none under reduced motion.
+func _shake_off(now: float) -> Vector2:
+	var e := now - _shake_at
+	if Motion.reduce or e < 0.0 or e >= SHAKE_TIME:
+		return Vector2.ZERO
+	var t := e / SHAKE_TIME
+	return Vector2(sin(t * 31.0), cos(t * 23.0)) * _shake_px * (1.0 - t) * (1.0 - t)
+
+func _shake(px: float) -> void:
+	if Motion.reduce:
+		return
+	var now := _now()
+	var left := now - _shake_at
+	if left < SHAKE_TIME and _shake_px * pow(1.0 - left / SHAKE_TIME, 2.0) > px:
+		return
+	_shake_at = now
+	_shake_px = px
+	_busy_for(SHAKE_TIME)
+
+## The colours a stop sees now, as a set: what a cannon sent would hit.
+func _in_sight() -> Dictionary:
+	if _sight_left == state.left:
+		return _sight
+	_sight_left = state.left
+	_sight = {}
+	for s in state.stops():
+		var i: int = state.first_seen(state.grid, s)
+		if i >= 0:
+			_sight[state.grid[i]] = true
+	return _sight
 
 ## The blocks on the rug. At rest and in play a mesh a patch, and only the
 ## patch a cork lands in rebuilt (a picture is a thousand blocks and loses
@@ -825,6 +879,16 @@ func _draw_engines(now: float, shown: Array, alpha: float) -> void:
 			order.append(e)
 	for e in state.loop:
 		order.append(e)
+	var sight := _in_sight()
+	for e: int in order:
+		var w: int = state.where[e]
+		if w != State.PARKED and not (w == State.SHED and (state.sheds[state.col[e]] as PackedInt32Array).find(e) == 0):
+			continue
+		if _from.has(e) or not sight.has(state.colour[e]):
+			continue
+		var t := _target(e)
+		var hk := 2.0 * float(t[2]) * HALO_R / UNIT
+		fb.append(_disc, Transform2D(0.0, Vector2(hk, hk), 0.0, t[0]), HALO)
 	for e: int in order:
 		var t := _seat(e, now)
 		_seen[e] = t
@@ -858,7 +922,7 @@ func _draw_engines(now: float, shown: Array, alpha: float) -> void:
 		shown.append(m)
 	var font: Font = CozyTheme.display(700)
 	for l: Array in labels:
-		var fs := maxi(12, int(float(l[1]) * 0.27))
+		var fs := maxi(12, int(float(l[1]) * 0.3))
 		var text := str(int(l[2]))
 		var wide := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs).x
 		var rise := (font.get_ascent(fs) - font.get_descent(fs)) * 0.5
@@ -895,6 +959,10 @@ func _draw_shot(fb, f: Dictionary, e: float) -> void:
 	var px := float(f.px)
 	var c := int(f.c)
 	var col: Color = _col[c]
+	if e < 0.0:
+		# a cork of a volley still in the barrel: its block stands
+		fb.append(_blk[c], Transform2D(0.0, to))
+		return
 	if e < PICK_FLY:
 		fb.append(_blk[c], Transform2D(0.0, to))
 		var ck := px / UNIT
@@ -910,6 +978,9 @@ func _draw_shot(fb, f: Dictionary, e: float) -> void:
 		if v < 1.0:
 			var k := 1.0 + BURST_GROW * v
 			fb.append(_blk[c], Transform2D(0.0, Vector2(k, k), 0.0, to), Color(1.0, 1.0, 1.0, 1.0 - v * v))
+			if v < BLINK:
+				var bk := _cell * k * Art.BLOCK / UNIT
+				fb.append(_square, Transform2D(0.0, Vector2(bk, bk), 0.0, to), Color(1.0, 1.0, 1.0, 0.85 * (1.0 - v / BLINK)))
 		var t := e - PICK_FLY
 		var fade := 1.0 - clampf((t / SHARD_LIFE - 0.6) / 0.4, 0.0, 1.0)
 		var shade := col.darkened(0.24)
@@ -1133,7 +1204,7 @@ func _tick() -> void:
 		var e := int(ev[1])
 		match int(ev[0]):
 			State.PICK:
-				_on_pick(e, int(ev[2]), int(ev[3]), now)
+				_on_pick(e, int(ev[2]), int(ev[3]), now, int(ev[4]))
 			State.RUN_END:
 				_on_run_end(e, int(ev[2]))
 			State.FULL:
@@ -1160,12 +1231,14 @@ func _tick() -> void:
 				_on_whole(int(ev[2]))
 	if state.idle():
 		_tag_bump = now
+	var base: float = TICKS[clampi(state.band, 0, TICKS.size() - 1)]
+	_tick_time = base * (ENDGAME if state.ready_engines().is_empty() else 1.0)
 	check_solved()
 
 ## A cannon shoots the block it sees: the cork flies to it, the block
 ## bursts where it stands and the cannon kicks back; the tick climbs the
 ## run's scale.
-func _on_pick(e: int, cell: int, n: int, now: float) -> void:
+func _on_pick(e: int, cell: int, n: int, now: float, through := 0) -> void:
 	var w: int = state.w
 	_chunk_stale[(cell / w / CHUNK) * ceili(float(w) / CHUNK) + (cell % w) / CHUNK] = true
 	if not Motion.reduce:
@@ -1177,7 +1250,7 @@ func _on_pick(e: int, cell: int, n: int, now: float) -> void:
 		for k in SHARDS:
 			shards.append([randf_range(-SHARD_SPREAD, SHARD_SPREAD), randf_range(SHARD_SPEED.x, SHARD_SPEED.y),
 				randf_range(-SHARD_SPIN, SHARD_SPIN), randf_range(SHARD_SIZE.x, SHARD_SIZE.y), k % 2 == 1])
-		_flights.append({"c": state.colour[e], "to": to, "px": px, "at": now, "from": from,
+		_flights.append({"c": state.colour[e], "to": to, "px": px, "at": now + through * VOLLEY, "from": from,
 			"dir": (to - from).normalized(), "shards": shards})
 		_bump_at[e] = now
 	# fifty corks a second are one shot heard and one knock in PICK_GAP
@@ -1208,7 +1281,7 @@ func _on_pick(e: int, cell: int, n: int, now: float) -> void:
 			var seen: Array = _seen.get(e, [])
 			if not seen.is_empty():
 				fx.confetti(seen[0], 12, _lane * 3.0)
-	_busy_for(PICK_FLY + SHARD_LIFE + 0.1)
+	_busy_for(PICK_FLY + SHARD_LIFE + 0.1 + through * VOLLEY)
 
 ## A run is over: a long one ends on its two notes and a sparkle.
 func _on_run_end(e: int, n: int) -> void:
@@ -1232,6 +1305,7 @@ func _on_full(e: int, now: float) -> void:
 	var col: Color = Art.colour(state.colours[state.colour[e]])
 	_after(0.0 if Motion.reduce else PICK_FLY, func() -> void:
 		fx.cue("full", randf_range(0.97, 1.03))
+		_shake(SHAKE_FULL)
 		fx.puff(pos, col.lightened(0.3), 10)
 		fx.ring(pos, _loop_px * 0.8, col))
 	_streak += 1
@@ -1251,6 +1325,7 @@ func _on_whole(_c: int) -> void:
 		if is_done():
 			return
 		fx.cue("whole")
+		_shake(SHAKE_WHOLE)
 		if not Motion.reduce:
 			var n: int = state.stops()
 			for k in 6:

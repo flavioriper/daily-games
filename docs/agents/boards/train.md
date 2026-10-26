@@ -305,3 +305,73 @@ the loads, the clock and the deal.
   the sounds heard, Insane, reduced motion, the win and the jam after the
   change. A `Parse JSON failed ... getting token` line prints in every
   windowed run of the harness, on main before this change too.
+
+## 2026-10-26: made fun -- bold colours, corks that go through
+
+The user: "I want your help to make toy cannon experience way better to
+play, and game itself way funnier to play, right now nobody likes it. Use
+web for reference on how good games does it. Do it autonomous". **This
+section wins over the ones above where they disagree.**
+
+- **What was wrong, measured** (a throwaway probe playing the state's own
+  hand as fast as the loop takes it): a cannon on the loop hit a block at
+  **12% of its stops on Medium and 9% on Hard**; the rest of every lap was
+  rolling. Pictures past Easy had 9 to 12 colours, half of them shades of
+  another (white, cream and silver; red, coral, rose and maroon; three
+  greens), so a cannon's colour was hard to tell from the next one's and few
+  of a colour were ever on the outside. On screen the cannons on the loop
+  were 60 px with 16 px numbers. The web had little: the genre's listings
+  sell "every hit leaves the board crisp", fast one-tap sessions and the
+  tray as the only pressure; players' complaints are repeated levels and
+  ads, not the rules.
+- **Bold colours** (`State._bolden`, `FAMILY`, `BOLD`): a picture's beads
+  are folded into their families (white/cream/silver, red/maroon,
+  pink/coral/rose, orange/rust, yellow/butter, lilac/purple, blue/navy,
+  greens, tan/brown), then the two nearest families (redmean RGB,
+  `_apart`) into one, the smaller into the bigger, until **4, 6, 7, 8**
+  are left (Easy to Insane). Nearest-first keeps an eye or a beak; folding
+  the rarest first lost the duck's beak. Only `adopt` folds: the
+  tutorial's hand-laid rugs (`adopt_laid`) keep their legend. Themed days
+  fold the same.
+- **A cork goes through** (`State.pierce`, `_stop`, `_lap`): at a stop the
+  cannon takes the nearest block if it is its colour, then the next nearest
+  while that is its colour too, a cork a block, while it has corks. The
+  deal and the hint play the same rule, so a colour's loads still add up to
+  its blocks. A PICK carries how many came before it that stop; the screen
+  sends that cork `VOLLEY` (0.028 s) later, the block standing until it
+  leaves, so a stop is a stream of corks down a row.
+- **Measured after** (same probe): hits at **48% of stops on Medium and 46%
+  on Hard**; the fast hand clears Medium in 6.5 s and Hard in 9.7 s of loop
+  (24 and 45 s before); 88 and 105 blocks a second (24 and 23).
+  `tests/_probe_train.gd -- seeds=2`: 672 runs, 0 failures; sends 27-41 on
+  Medium, 35-62 on Hard; the slowest deal 39 ms (it was 114).
+- **Insane** stands more cannons in the box before their colour is in sight
+  (`EARLY` 0.7, it was 0.4): with piercing at 0.4 the careless hand lost 1
+  deal in 18; at 0.7 the hint's hand a cannon at a time loses 3 of 36 and
+  the careless one 3. The tray is still the only way to lose.
+- **The screen**: a cannon on the loop is 74 long (`LOOP_MIN`, 60), its
+  number 0.3 of it (0.27); the rug's edge and the track's reach grew to
+  hold it (`EDGE` 3.5, `REACH` 2.6), the muzzle still 51 px off the
+  picture. A block bursts white for the first 45% of its burst (`BLINK`).
+  **The room shakes** (`_shake`, board's own): 5 px when a cannon empties,
+  11 when a colour is whole, dying over 0.32 s, none under reduced motion;
+  the rug, the blocks, the yard and the cannons shake, the floor does not.
+  **A halo** (`HALO`, pale sun, never the cannon's own shade) under every
+  cannon a tap can send whose colour some stop sees now (`_in_sight`,
+  rebuilt when a block goes). **The end runs faster**: with nothing left in
+  the box or the tray the loop's clock is 0.55 of the band's (`ENDGAME`).
+  Small blocks (under 30 px) have a seam on the right as well as the foot,
+  so a field of them reads as blocks and not as ruled paper. A run's two
+  notes from 24 (12), confetti at 25, 50, 100, 150.
+- **Words**: `TT_RULES` and `HTP_TT_LINE_BODY` say the cork flies on
+  through a row of its colour, in en, pt and es.
+- **Measured on screen** (810x1440, one run each): Medium play peak 120
+  draw calls, the Hard tutorial 155, Hard at rest 110; Hard play 147 on
+  `opengl3_angle`, the same as on desktop gl. `tests/_win.gd -- train` PASS (Medium, 32
+  sent, par 38). Suite failed=0.
+- **Mine, the user's to call**: the pierce rule itself (the genre's is not
+  written anywhere I found); the colour caps and folding a picture's shades
+  together (a shaded picture loses its shading); the halo, which tells
+  which cannons can hit now; the shake; the faster end; Insane's `EARLY`.
+- **Not seen**: a phone, the shake and the volleys in motion (frames only),
+  the sounds at the new rate, pt/es read by a reader, reduced motion.
