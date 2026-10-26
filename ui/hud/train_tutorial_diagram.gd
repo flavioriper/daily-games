@@ -79,6 +79,8 @@ class Small extends "res://puzzles/train2d.gd":
 	## gone round before its caption was read.
 	func _begin() -> void:
 		super()
+		_clock = LESSON_TICK
+		_hurry = false
 		_tick_time = LESSON_TICK
 
 	func _tell(_text: String) -> void:

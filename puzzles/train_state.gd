@@ -184,8 +184,11 @@ func adopt(pic: Dictionary, legend: Dictionary, rng: RandomNumberGenerator) -> v
 func _lay_mat() -> void:
 	var named := ""
 	for m: String in MATS:
-		if not colours.has(m):
-			named = m
+		# folded pictures name families: a cream mat by white blocks is the
+		# shade problem `_bolden` is there to end
+		var f := String(FAMILY.get(m, m)) if bold else m
+		if not colours.has(f):
+			named = f
 			break
 	if named == "" or not picture.has(-1):
 		return

@@ -363,6 +363,12 @@ section wins over the ones above where they disagree.**
   Small blocks (under 30 px) have a seam on the right as well as the foot,
   so a field of them reads as blocks and not as ruled paper. A run's two
   notes from 24 (12), confetti at 25, 50, 100, 150.
+- **The end's clock is `_clock`** (the band's, or the tutorial's
+  `LESSON_TICK`) times `ENDGAME`, and only where `_hurry` (the tutorial
+  sets it false). A volley's corks leave at most `VOLLEY_MOST` (0.18 s)
+  after the first, so a deep run does not keep firing from where the cannon
+  was. Easy's mat is chosen by family (`_lay_mat`), so a cream mat never
+  lands by white blocks; it is one colour over the cap.
 - **Words**: `TT_RULES` and `HTP_TT_LINE_BODY` say the cork flies on
   through a row of its colour, in en, pt and es.
 - **Measured on screen** (810x1440, one run each): Medium play peak 120
@@ -373,5 +379,8 @@ section wins over the ones above where they disagree.**
   written anywhere I found); the colour caps and folding a picture's shades
   together (a shaded picture loses its shading); the halo, which tells
   which cannons can hit now; the shake; the faster end; Insane's `EARLY`.
+- **Frame time**: Hard play's mean frame was 13.3 ms on `opengl3_angle`
+  at this Mac (blocks a second quadrupled, and the flights with them); a
+  phone's is unknown.
 - **Not seen**: a phone, the shake and the volleys in motion (frames only),
   the sounds at the new rate, pt/es read by a reader, reduced motion.

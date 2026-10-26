@@ -72,6 +72,7 @@ const SEND_FLY := 0.24
 ## volley leaves this long after the one before, and a block bursts white
 ## for the first part of its burst.
 const VOLLEY := 0.028
+const VOLLEY_MOST := 0.18
 const BLINK := 0.45
 ## The room shakes, a cannon emptied a little and a colour whole more, in
 ## canvas pixels, dying out over SHAKE_TIME.
@@ -259,6 +260,10 @@ var _toast_mesh_for := ""
 
 # the loop's clock
 var _tick_time := 0.08
+## The band's clock, which `_tick_time` runs at but for the end (ENDGAME).
+var _clock := 0.08
+## Whether the end runs faster (the tutorial's lessons keep their clock).
+var _hurry := true
 var _next_tick := 0.0
 var _tick_from := 0.0
 var _frac := 0.0
@@ -416,7 +421,8 @@ func _begin() -> void:
 	_slid_at = -INF
 	_stamp_at = INF
 	_seal_mesh = null
-	_tick_time = TICKS[clampi(state.band, 0, TICKS.size() - 1)]
+	_clock = TICKS[clampi(state.band, 0, TICKS.size() - 1)]
+	_tick_time = _clock
 	_deal()
 	_layout()
 	_enter()
@@ -436,6 +442,7 @@ func _deal() -> void:
 	_streak = 0
 	_combo_n = 0
 	_combo_e = -1
+	_sight_left = -1
 	_frac = 0.0
 	_blocks_stale = true
 	if _hud_layer != null:
@@ -1231,8 +1238,7 @@ func _tick() -> void:
 				_on_whole(int(ev[2]))
 	if state.idle():
 		_tag_bump = now
-	var base: float = TICKS[clampi(state.band, 0, TICKS.size() - 1)]
-	_tick_time = base * (ENDGAME if state.ready_engines().is_empty() else 1.0)
+	_tick_time = _clock * (ENDGAME if _hurry and state.ready_engines().is_empty() else 1.0)
 	check_solved()
 
 ## A cannon shoots the block it sees: the cork flies to it, the block
@@ -1250,7 +1256,7 @@ func _on_pick(e: int, cell: int, n: int, now: float, through := 0) -> void:
 		for k in SHARDS:
 			shards.append([randf_range(-SHARD_SPREAD, SHARD_SPREAD), randf_range(SHARD_SPEED.x, SHARD_SPEED.y),
 				randf_range(-SHARD_SPIN, SHARD_SPIN), randf_range(SHARD_SIZE.x, SHARD_SIZE.y), k % 2 == 1])
-		_flights.append({"c": state.colour[e], "to": to, "px": px, "at": now + through * VOLLEY, "from": from,
+		_flights.append({"c": state.colour[e], "to": to, "px": px, "at": now + minf(through * VOLLEY, VOLLEY_MOST), "from": from,
 			"dir": (to - from).normalized(), "shards": shards})
 		_bump_at[e] = now
 	# fifty corks a second are one shot heard and one knock in PICK_GAP
@@ -1281,7 +1287,7 @@ func _on_pick(e: int, cell: int, n: int, now: float, through := 0) -> void:
 			var seen: Array = _seen.get(e, [])
 			if not seen.is_empty():
 				fx.confetti(seen[0], 12, _lane * 3.0)
-	_busy_for(PICK_FLY + SHARD_LIFE + 0.1 + through * VOLLEY)
+	_busy_for(PICK_FLY + SHARD_LIFE + 0.1 + VOLLEY_MOST)
 
 ## A run is over: a long one ends on its two notes and a sparkle.
 func _on_run_end(e: int, n: int) -> void:
