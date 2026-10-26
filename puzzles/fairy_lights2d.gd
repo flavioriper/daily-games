@@ -356,6 +356,30 @@ const BRASS := Color("d6a940")
 const BRASS_DEEP := Color("97702a")
 const BRASS_HI := Color("f7e0a0")
 
+# --- the made-fun pass (2026-10-26): strands, rings and stakes ---
+## Wire joined to wire but not yet to the post is a **strand**, and wears one
+## of three cool tints (face, shade), picked by the strand's lowest cell, so
+## a run joined anywhere on the garden shows it is joined -- Hexapipes'
+## coloured groups, never gold, which stays the post's alone. Measured before
+## (tests/_probe_fl_fun.gd): about half of a careful player's right pieces
+## changed nothing on the screen.
+const STRAND_TINTS: Array = [
+	[Color("9db8d6"), Color("7690b0")],  # sky
+	[Color("97c2a0"), Color("6e9a78")],  # mint
+	[Color("b4a3d8"), Color("8a78b8")],  # lilac
+]
+## A closed ring of wire is never the answer (the answer is a tree): its
+## wire runs berry the moment it closes, lit or not, and the sprout says so.
+const RING := Pal.BERRY
+const RING_DEEP := Pal.BERRY_DEEP
+## A hold this long on a piece stakes it (or pulls its stake), and the
+## release turns nothing.
+const HOLD_TIME := 0.42
+## The stake: a wooden garden peg in the stone's top-right corner, its head
+## STAKE_R of the cell, where the clip takes the top-left.
+const STAKE_AT := 0.33
+const STAKE_R := 0.1
+
 # --- Wish Tags (polish section 2) ---
 ## A tag hangs on a thread from its lantern's base and is tucked into the
 ## cell's lower-right corner, where no wire runs and no join sits: its middle
@@ -478,11 +502,14 @@ const TIP_CYCLE := 8.0
 const TIPS := [
 	"FL_TIP_TAP",
 	"FL_TIP_POST",
+	"FL_TIP_STRAND",
+	"FL_TIP_HOLD",
 	"FL_TIP_WARM",
+	"FL_TIP_RING",
 	"FL_TIP_DONE",
 ]
-const TIPS_HEARTS := ["FL_TIP_HEARTS", "FL_TIP_TAP", "FL_TIP_POST", "FL_TIP_WARM", "FL_TIP_DONE"]
-const TIPS_TAGS := ["FL_TIP_TAGS", "FL_TIP_TAGS_2", "FL_TIP_TAP", "FL_TIP_WARM"]
+const TIPS_HEARTS := ["FL_TIP_HEARTS", "FL_TIP_TAP", "FL_TIP_POST", "FL_TIP_STRAND", "FL_TIP_HOLD", "FL_TIP_WARM", "FL_TIP_DONE"]
+const TIPS_TAGS := ["FL_TIP_TAGS", "FL_TIP_TAGS_2", "FL_TIP_HOLD", "FL_TIP_STRAND", "FL_TIP_TAP", "FL_TIP_WARM"]
 
 ## The out-of-hearts card's Back: the host takes the board away.
 signal leave
@@ -628,6 +655,15 @@ var _fuse_end := 0.0
 ## When each cell's clip snapped on (AGO for one that is simply there), and
 ## when each cell goes dark as the hearts run out (FAR: it does not).
 var _clip_at: PackedFloat64Array = PackedFloat64Array()
+## When each stake went in (its pop), and each cell's last strand tint.
+var _stake_at: PackedFloat64Array = PackedFloat64Array()
+var _tint_was: PackedInt32Array = PackedInt32Array()
+## The press under way has staked or unstaked its piece: its release turns
+## nothing.
+var _press_held := false
+## How many rings the wire made after the last turn, so the sprout speaks of
+## a new one only.
+var _rings_were := 0
 var _dark_at: PackedFloat64Array = PackedFloat64Array()
 ## The press: the cell under the finger, when it landed, and when it lifted
 ## (-1 while it is still down).
@@ -738,6 +774,7 @@ func tutorial_pages() -> Array:
 	var steps := [
 		[Diagram.Lesson.TURN, "HTP_FL_TURN", tr("HTP_FL_TURN_BODY")],
 		[Diagram.Lesson.DONE, "HTP_FL_DONE", tr("HTP_FL_DONE_BODY")],
+		[Diagram.Lesson.STAKE, "HTP_FL_STAKE", tr("HTP_FL_STAKE_BODY")],
 	]
 	if judged:
 		steps.append([Diagram.Lesson.HEARTS, "HTP_TN_HEARTS",
@@ -795,6 +832,11 @@ const HAPTICS := {
 	"heart_lost": Haptics.BAD,
 	"out_of_hearts": Haptics.LOSE,
 	"solved": Haptics.WIN,
+	# The made-fun pass: a stake set down taps like a piece, one pulled
+	# ticks, and a ring closing is the one warning the board gives.
+	"stake": Haptics.TAP,
+	"unstake": Haptics.TICK,
+	"ring": Haptics.WARN,
 }
 
 func _ready() -> void:
@@ -919,6 +961,14 @@ func _clear_clocks() -> void:
 	_dark_at = PackedFloat64Array()
 	_dark_at.resize(cells)
 	_dark_at.fill(FAR)
+	_stake_at = PackedFloat64Array()
+	_stake_at.resize(cells)
+	_stake_at.fill(AGO)
+	_tint_was = PackedInt32Array()
+	_tint_was.resize(cells)
+	_tint_was.fill(0)
+	_press_held = false
+	_rings_were = 0
 	_fuse_cell = -1
 	_fuse_at = AGO
 	_fuse_end = 0.0
@@ -1176,6 +1226,9 @@ func _process(delta: float) -> void:
 	if _cell <= 0.0 or state.n <= 0:
 		return
 	var t := _now()
+	# A finger held on a piece stakes it (or pulls its stake).
+	if _held() and t - _press_down >= HOLD_TIME and not _fusing() and not _done:
+		_hold(_press_cell)
 	while not _wake_cues.is_empty() and t >= float(_wake_cues[0].at):
 		var due: Dictionary = _wake_cues.pop_front()
 		fx.cue("wake", float(due.pitch))
@@ -1409,6 +1462,9 @@ func _build(t: float) -> ArrayMesh:
 	_mt.resize(cells)
 	for i in cells:
 		_mt[i] = _matched_of(i)
+	# Strands and rings, derived here like the depths and never kept.
+	var strands: PackedInt32Array = state.strands()
+	var rings: PackedByteArray = state.looped()
 	var frames: Array[Transform2D] = []
 	frames.resize(cells)
 	var pulls := PackedFloat32Array()
@@ -1428,6 +1484,8 @@ func _build(t: float) -> ArrayMesh:
 	shades.resize(cells)
 	var looks := PackedInt32Array()
 	looks.resize(cells)
+	var tints := PackedInt32Array()
+	tints.resize(cells)
 	for i in cells:
 		frames[i] = _frame(i, t)
 		pulls[i] = _spin_pull(i, t)
@@ -1436,7 +1494,15 @@ func _build(t: float) -> ArrayMesh:
 		chase[i] = _chase(i, depths, t)
 		shades[i] = _press_shade(i, t)
 		pops[i] = Motion.bump_scale(t - _live_at[i], BEAD_BUMP) if depths[i] >= 0 else 1.0
+		tints[i] = _tint_now(i, strands[i], depths[i], levels[i])
 		looks[i] = _look(i, frames[i], pulls[i], lifts[i], shades[i], levels[i], chase[i], pops[i], depths, t)
+		if looks[i] >= 0:
+			looks[i] |= (tints[i] << TINT_SHIFT) | (LOOK_RING if rings[i] == 1 else 0)
+			if state.staked[i] == 1:
+				if t - _stake_at[i] < Motion.POP_IN:
+					looks[i] = -1
+				else:
+					looks[i] |= LOOK_STAKE
 	_build_rest(looks)
 	var b := Face.Builder.new()
 	# The light spilling onto the stones: a wash over each lit stone's face,
@@ -1460,7 +1526,7 @@ func _build(t: float) -> ArrayMesh:
 		var lv := levels[i]
 		# A pressed piece sits closer to its stone: its lip shrinks with the dip.
 		var drop := Vector2(0.0, SHADE_DROP * (1.0 - 0.5 * shades[i]) + LIFT_SHADE * lifts[i] / TURN_LIFT)
-		var col: Color = Pal.FLAGSTONE_DEEP.lerp(Pal.SUN_DEEP, lv)
+		var col := _wire_col(rings[i] == 1, tints[i], lv, true)
 		_arms(b, state.grid[i], _mt[i], frames[i], pulls[i], 1.0, col, drop)
 		if Gen.degree(state.grid[i]) >= 3:
 			_dot(b, frames[i] * drop, _cell * WIRE * COLLAR, col)
@@ -1468,13 +1534,13 @@ func _build(t: float) -> ArrayMesh:
 		if looks[i] >= 0:
 			continue
 		var lv := levels[i]
-		var col: Color = Pal.FLAGSTONE.lerp(Pal.SUN, lv)
+		var col := _wire_col(rings[i] == 1, tints[i], lv, false)
 		if shades[i] > 0.0:
 			# The press shades what it sinks (a dip alone is 6%, and 6% of a
 			# wire is not seen): the stone darkens under it, the wire toward
 			# its own shade.
 			_stone_wash(b, cell_centre(i), Color(Pal.TEXT, 0.07 * shades[i]))
-			col = col.lerp(Pal.FLAGSTONE_DEEP.lerp(Pal.SUN_DEEP, lv), PRESS_SHADE * shades[i])
+			col = col.lerp(_wire_col(rings[i] == 1, tints[i], lv, true), PRESS_SHADE * shades[i])
 		_face(b, state.grid[i], _mt[i], frames[i], pulls[i], lv, col)
 	for i in cells:
 		if looks[i] < 0 and levels[i] > 0.0:
@@ -1485,6 +1551,9 @@ func _build(t: float) -> ArrayMesh:
 	for i in cells:
 		if looks[i] < 0 and state.clipped[i] == 1 and t >= _clip_at[i]:
 			_clip(b, frames[i].origin, t - _clip_at[i])
+	for i in cells:
+		if looks[i] < 0 and state.staked[i] == 1:
+			_stake(b, frames[i].origin, t - _stake_at[i])
 	# The post stands level however its own cell is turning, the way a lantern
 	# does: it takes the cell's place, not the cell's turn.
 	if looks[state.post] < 0:
@@ -1500,7 +1569,7 @@ func _build(t: float) -> ArrayMesh:
 	return b.mesh() if not b.verts.is_empty() else null
 
 ## The rest mesh's passes, in the live mesh's paint order: a cell's piece in
-## each is one shape (`_shape`), id `pass << 16 | look`.
+## each is one shape (`_shape`), id `pass << PASS_SHIFT | look`.
 const P_WASH := 0
 const P_PIN := 1
 const P_GLOW := 2  # one a band of GLOWS
@@ -1510,13 +1579,22 @@ const P_BEAD := 7
 const P_CLIP := 8
 const P_POST := 9
 const P_TAG := 10
+const P_STAKE := 11
 ## A look's bits: the stubs (0-3), which of them meet a stub (4-7), lit (8),
 ## no bead in the middle (9), a clip on (10), pinned (11); a tag's reading
-## (12-13) and gold (14).
+## (12-13) and gold (14); on a ring (15), a strand's tint (16-17, 0 none)
+## and staked (18). A shape id is `pass << PASS_SHIFT | look`.
 const LOOK_LIT := 1 << 8
 const LOOK_NO_MID := 1 << 9
 const LOOK_CLIP := 1 << 10
 const LOOK_PIN := 1 << 11
+const LOOK_RING := 1 << 15
+const TINT_SHIFT := 16
+const LOOK_TINT := 3 << TINT_SHIFT
+const LOOK_STAKE := 1 << 18
+const PASS_SHIFT := 20
+## The look bits the wire's shade and face are drawn from.
+const LOOK_WIRE := 0x1ff | LOOK_RING | LOOK_TINT
 
 ## Cell `i`'s look when every piece on it stands as it does at rest -- turned
 ## home, unpressed, still, fully lit or fully dark, no flare, no bead popping,
@@ -1544,6 +1622,47 @@ func _look(i: int, frame: Transform2D, pull: float, lift: float, shade: float,
 			return -1
 		look |= (_tag_seen(i, depths, t) << 12) | (int(gold) << 14)
 	return look
+
+## The tint cell `i`'s wire wears now (0 none, 1-3 a STRAND_TINTS row): its
+## strand's, picked by the strand's lowest cell. A strand just joined to the
+## post keeps the tint it had until the wash has lit it, so the colour runs
+## into gold instead of dropping to grey first; that is the one thing kept
+## (`_tint_was`), and only the colour, never which cells are joined.
+func _tint_now(i: int, strand: int, depth: int, level: float) -> int:
+	var tint := 0
+	if strand >= 0:
+		tint = 1 + posmod(hash(Vector2i(strand, 31 + state.n)), STRAND_TINTS.size())
+	elif depth >= 0 and level < 1.0 and i < _tint_was.size():
+		tint = _tint_was[i]
+	if i < _tint_was.size():
+		_tint_was[i] = tint if depth < 0 or level < 1.0 else 0
+	return tint
+
+## A wire's colour: its face, or with `deep` its shade. A ring is berry lit
+## or not; otherwise the strand's tint (or the flagstone) warming to gold by
+## `lv`.
+func _wire_col(ring: bool, tint: int, lv: float, deep: bool) -> Color:
+	var k := 1 if deep else 0
+	if ring:
+		return RING_DEEP if deep else RING
+	var cold: Color = (Pal.FLAGSTONE_DEEP if deep else Pal.FLAGSTONE) if tint <= 0 \
+		else STRAND_TINTS[tint - 1][k]
+	return cold.lerp(Pal.SUN_DEEP if deep else Pal.SUN, lv)
+
+## The stake on the stone centred on `centre`: a wooden peg's head in the
+## top-right corner with its shade, a lit cap and a ring of twine round it,
+## popping in for `since` seconds after the hold.
+func _stake(b, centre: Vector2, since: float) -> void:
+	var k := Motion.pop_in_scale(since).x
+	if k <= 0.01:
+		return
+	var at := centre + Vector2(1.0, -1.0) * _cell * STAKE_AT
+	var r := _cell * STAKE_R * k
+	_dot(b, at + Vector2(0.0, r * 0.45), r * 1.15, Color(Pal.TEXT, 0.18))
+	b.stroke(Face.Builder.ring(at, r * 1.45, r * 1.45), maxf(1.5, r * 0.28), Color(Pal.WOOD, 0.85), true)
+	_dot(b, at + Vector2(0.0, r * 0.2), r, Pal.WOOD_DEEP)
+	_dot(b, at, r * 0.92, Pal.WOOD)
+	_dot(b, at + Vector2(-0.25, -0.3) * r, r * 0.38, Color(Pal.SURFACE, 0.55))
 
 ## Whether cell `i` wears a bead in its middle: the post and a lantern have
 ## their own light there.
@@ -1573,38 +1692,41 @@ func _build_rest(looks: PackedInt32Array) -> void:
 	_rm.begin()
 	for i in cells:
 		if looks[i] >= 0 and looks[i] & LOOK_LIT:
-			_rm.put(P_WASH << 16, [], Transform2D(0.0, cell_centre(i)))
+			_rm.put(P_WASH << PASS_SHIFT, [], Transform2D(0.0, cell_centre(i)))
 	for i in cells:
 		if state.pinned[i] == 1:
-			_rm.put(P_PIN << 16, [], Transform2D(0.0, cell_centre(i)))
+			_rm.put(P_PIN << PASS_SHIFT, [], Transform2D(0.0, cell_centre(i)))
 	for g in GLOWS.size():
 		for i in cells:
 			if looks[i] >= 0 and looks[i] & LOOK_LIT:
-				_rm.put((P_GLOW + g) << 16 | (looks[i] & 0xff), [], Transform2D(0.0, cell_centre(i)))
+				_rm.put((P_GLOW + g) << PASS_SHIFT | (looks[i] & 0xff), [], Transform2D(0.0, cell_centre(i)))
 	for p in [P_SHADE, P_FACE]:
 		for i in cells:
 			if looks[i] >= 0 and state.grid[i] != 0:
-				_rm.put(p << 16 | (looks[i] & 0x1ff), [], Transform2D(0.0, cell_centre(i)))
+				_rm.put(p << PASS_SHIFT | (looks[i] & LOOK_WIRE), [], Transform2D(0.0, cell_centre(i)))
 	for i in cells:
 		if looks[i] >= 0 and looks[i] & LOOK_LIT:
-			_rm.put(P_BEAD << 16 | (looks[i] & 0x3ff), [], Transform2D(0.0, cell_centre(i)))
+			_rm.put(P_BEAD << PASS_SHIFT | (looks[i] & 0x3ff), [], Transform2D(0.0, cell_centre(i)))
 	for i in cells:
 		if looks[i] >= 0 and looks[i] & LOOK_CLIP:
-			_rm.put(P_CLIP << 16, [], Transform2D(0.0, cell_centre(i)))
+			_rm.put(P_CLIP << PASS_SHIFT, [], Transform2D(0.0, cell_centre(i)))
+	for i in cells:
+		if looks[i] >= 0 and looks[i] & LOOK_STAKE:
+			_rm.put(P_STAKE << PASS_SHIFT, [], Transform2D(0.0, cell_centre(i)))
 	if looks[state.post] >= 0:
-		_rm.put(P_POST << 16, [], Transform2D(0.0, cell_centre(state.post)))
+		_rm.put(P_POST << PASS_SHIFT, [], Transform2D(0.0, cell_centre(state.post)))
 	if state.wish_tags():
 		for key in state.tags:
 			var i := int(key)
 			if looks[i] >= 0:
-				_rm.put(P_TAG << 16 | ((looks[i] >> 12) & 7), [], Transform2D(0.0, cell_centre(i)))
+				_rm.put(P_TAG << PASS_SHIFT | ((looks[i] >> 12) & 7), [], Transform2D(0.0, cell_centre(i)))
 	_rest_mesh = _rm.mesh()
 
-## Shape `id` (`pass << 16 | look`) about a cell's centre at the origin, in
+## Shape `id` (`pass << PASS_SHIFT | look`) about a cell's centre at the origin, in
 ## the colours it is drawn in: what the live passes draw for a piece at rest.
 func _shape(id: int) -> Face.Builder:
 	var b := Face.Builder.new()
-	var pass_ := id >> 16
+	var pass_ := id >> PASS_SHIFT
 	var m := id & 0xf
 	var mt := (id >> 4) & 0xf
 	var lv := 1.0 if id & LOOK_LIT else 0.0
@@ -1618,16 +1740,19 @@ func _shape(id: int) -> Face.Builder:
 			_glow(b, m, mt, Transform2D.IDENTITY, 1.0, g.x, Color(Pal.SUN_RAY, g.y))
 		P_SHADE:
 			var drop := Vector2(0.0, SHADE_DROP)
-			var col: Color = Pal.FLAGSTONE_DEEP.lerp(Pal.SUN_DEEP, lv)
+			var col := _wire_col(id & LOOK_RING != 0, (id & LOOK_TINT) >> TINT_SHIFT, lv, true)
 			_arms(b, m, mt, Transform2D.IDENTITY, 1.0, 1.0, col, drop)
 			if Gen.degree(m) >= 3:
 				_dot(b, drop, _cell * WIRE * COLLAR, col)
 		P_FACE:
-			_face(b, m, mt, Transform2D.IDENTITY, 1.0, lv, Pal.FLAGSTONE.lerp(Pal.SUN, lv))
+			_face(b, m, mt, Transform2D.IDENTITY, 1.0, lv,
+				_wire_col(id & LOOK_RING != 0, (id & LOOK_TINT) >> TINT_SHIFT, lv, false))
 		P_BEAD:
 			_beads(b, m, mt, id & LOOK_NO_MID == 0, Transform2D.IDENTITY, 1.0, 1.0, 0.0, 1.0)
 		P_CLIP:
 			_clip(b, Vector2.ZERO, Motion.POP_IN)
+		P_STAKE:
+			_stake(b, Vector2.ZERO, Motion.POP_IN)
 		P_POST:
 			_post(b, Vector2.ZERO)
 		P_TAG:
@@ -2373,6 +2498,7 @@ func _dress(t: float) -> void:
 	if state.n <= 0:
 		return
 	var depths: PackedInt32Array = state.depths()
+	var strands: PackedInt32Array = state.strands()
 	var done := is_done()
 	# The fuse's brown-out flickers the lanterns with the wire.
 	var flicker := _flicker(t)
@@ -2383,14 +2509,18 @@ func _dress(t: float) -> void:
 		var want := (1.0 if live else 0.0) * flicker
 		if lantern.lit != want:
 			lantern.lit = want
-		if lantern.plain != (not live):
-			lantern.plain = not live
+		# A dark lantern on a strand dozes: eyes shut, waiting for the
+		# power, so a strand shows what it will wake (the made-fun pass). A
+		# strand lantern the wash is about to reach keeps dozing till then.
+		var dozing := not live and (strands[i] >= 0 or (depths[i] >= 0 and _tint_was[i] > 0))
+		if lantern.plain != (not live and not dozing):
+			lantern.plain = not live and not dozing
 			# A lit paper is alive and blinks on a clock of its own; an
-			# unlit one is plain paper with no eyes to blink. set_idle does
-			# nothing under reduce-motion.
+			# unlit one is plain paper or a dozing face, neither blinks.
+			# set_idle does nothing under reduce-motion.
 			lantern.set_idle(live)
-		var expr := Face.Expr.JOY if done else Face.Expr.HAPPY
-		if live and lantern.expression != expr:
+		var expr := Face.Expr.SLEEPY if dozing else (Face.Expr.JOY if done else Face.Expr.HAPPY)
+		if (live or dozing) and lantern.expression != expr:
 			lantern.expression = expr
 		var frame := _frame(i, t)
 		slot.position = frame.origin
@@ -2566,6 +2696,9 @@ func _turn(i: int) -> void:
 		State.CLIPPED:
 			_refuse(i, now, tr("FL_CLIPPED"))
 			return
+		State.STAKED:
+			_refuse(i, now, tr("FL_STAKED"))
+			return
 		State.RIGHT:
 			_fuse(i)
 			return
@@ -2575,6 +2708,7 @@ func _turn(i: int) -> void:
 	_dress(now)
 	_refresh()
 	_speak()
+	_ring_check()
 	_on_turned(i, before)
 	# note_move() counts the turn and ends the board if that was the last
 	# loose end; the host raises the win screen after win_delay().
@@ -2582,6 +2716,40 @@ func _turn(i: int) -> void:
 	# Insane counts every turn; the last one gone ends the garden once the
 	# piece has landed and its wash has run.
 	_spend(1, now + _lag())
+
+## A hold on piece `i`: it stakes it, or pulls the stake it has, and lets the
+## press spring back so its release turns nothing. A piece that cannot turn
+## anyway (a cross, a hint's pin, a clip) is refused as a tap on it would be.
+func _hold(i: int) -> void:
+	_release_press()
+	var now := _now()
+	if not state.stake(i):
+		var line := "FL_CROSS"
+		if state.pinned[i] == 1:
+			line = "FL_PINNED"
+		elif state.clipped[i] == 1:
+			line = "FL_CLIPPED"
+		_refuse(i, now, tr(line))
+		return
+	if state.staked[i] == 1:
+		_stake_at[i] = now
+		fx.cue("stake")
+		_say(tr("FL_STAKE_IN"), Face.Expr.HAPPY)
+	else:
+		_stake_at[i] = AGO
+		fx.cue("unstake")
+		_say(tr("FL_STAKE_OUT"), Face.Expr.HAPPY)
+	_busy_for(Motion.POP_IN + 0.05)
+	_refresh()
+
+## After a move: a ring the wire did not have before is told once, by the
+## sprout and a soft click, as it closes (the berry is drawn off the state).
+func _ring_check() -> void:
+	var rings: int = state.looped().count(1)
+	if rings > _rings_were:
+		_after(JOIN_AT, fx.cue.bind("ring"))
+		_say(tr("FL_RING"), Face.Expr.WORRIED)
+	_rings_were = rings
 
 ## A move the rules will not take: the piece shivers where it stands and the
 ## sprout says why, because a refusal is never a silence.
@@ -3592,6 +3760,7 @@ func undo() -> bool:
 	if i < 0:
 		return false
 	_undo_ever = true
+	_rings_were = state.looped().count(1)
 	_clear_gags()
 	# The same spin the other way round, and the wash runs backwards behind
 	# it for free: the diff is symmetric, so a branch that was reached goes
@@ -3628,6 +3797,7 @@ func hint() -> bool:
 	if at < 0:
 		return false
 	hints_used += 1
+	_rings_were = state.looped().count(1)
 	var now := _now()
 	# However many quarters it needs, in one spin rather than a stutter of
 	# them -- the piece turns straight to where the solver proved it goes.
@@ -3662,7 +3832,9 @@ func reset_board() -> void:
 	var before: PackedInt32Array = state.depths()
 	var grid_before: PackedInt32Array = state.grid.duplicate()
 	state.reset_board()
+	_rings_were = state.looped().count(1)
 	var now := _now()
+	_stake_at.fill(AGO)
 	_reset_spins(grid_before, now)
 	moves = 0
 	# The deal again is the garden from the top, so the moves come back too.

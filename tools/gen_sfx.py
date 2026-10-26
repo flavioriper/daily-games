@@ -2043,9 +2043,18 @@ SETS = {
         "join":     ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -17, FOLEY, "bank:token", "cut:0.09", "notes:0:-4", "tight"),
         # A lantern lit, seventeen in a ripple: the wheel spun, and the board
         # pitches it by the lantern's depth, not past five semitones.
-        "wake":     ("one small light wooden bead set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1500", "cut:0.09", "body:320", "tight"),
+        # Since 2026-10-26 (the made-fun pass) the house sound's wrap: a
+        # lantern waking is a repeated thing, a run the board climbs a
+        # semitone a pop by depth, five at most (WAKE_TOP).
+        "wake":     ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -16, FOLEY, "bank:wrap", "cut:0.1", "tight"),
         # Not there: the note, two quick ones a step down.
-        "refuse":   ("one soft short note on a kalimba, muffled and kind", 0.6, -14, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0.1:6,4", "cut:0.5"),
+        "refuse":   ('a single soft tongue click, close, very short', 0.5, -16, FOLEY, "bank:tongue", "cut:0.12", "tight"),
+        # The made-fun pass (2026-10-26). A stake set down: the token, two
+        # steps up from place; a stake pulled: the lip; a wire ring closing:
+        # the tongue, twice and falling, the one "not like that" it says.
+        "stake":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -15, FOLEY, "bank:token", "cut:0.09", "notes:0:2", "tight"),
+        "unstake":  ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -16, FOLEY, "bank:lip", "cut:0.1", "notes:0:0", "tight"),
+        "ring":     ('a single soft tongue click, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.25", "notes:0.1:0,-3", "tight"),
         # Taken back: place's take, twice and falling.
         "undo":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -15, FOLEY, "bank:lip", "cut:0.28", "notes:0.11:0,-3", "tight"),
         "hint":     ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:4,7,11", "cut:1.0"),

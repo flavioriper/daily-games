@@ -62,6 +62,8 @@ const PINNED := 2
 const RIGHT := 3
 ## A fuse already showed this piece was right: refused for free.
 const CLIPPED := 4
+## The player staked it (a hold): it stays put until the hold comes again.
+const STAKED := 5
 
 ## What a tag reads off the wire as it stands (`tag_state`), never off the
 ## answer.
@@ -80,6 +82,10 @@ var pinned: PackedByteArray = PackedByteArray()  # 1 where a hint settled a cell
 ## for good: no turn, undo or reset moves it. Try again lifts every clip
 ## (`clear_clips`).
 var clipped: PackedByteArray = PackedByteArray()
+## 1 where the player staked a piece they are sure of (a hold on it): a tap
+## is refused for free until another hold pulls the stake. Not a move: it
+## goes in no log and no count. Reset pulls every stake.
+var staked: PackedByteArray = PackedByteArray()
 ## 0 Easy .. 3 Insane: which HINTS and HEARTS row this garden reads.
 var band: int = 0
 ## Whether the garden's one answer is proved: the propagate-only solver's
@@ -130,12 +136,17 @@ func start(rng: RandomNumberGenerator, difficulty: int, bank_step := 0) -> void:
 	proved = bool(out.proved)
 	judged = hearts_for(band) > 0 and proved
 	grid = deal.duplicate()
+	if banked:
+		_break_rings()
 	pinned = PackedByteArray()
 	pinned.resize(n * n)
 	pinned.fill(0)
 	clipped = PackedByteArray()
 	clipped.resize(n * n)
 	clipped.fill(0)
+	staked = PackedByteArray()
+	staked.resize(n * n)
+	staked.fill(0)
 	history = PackedInt32Array()
 	turns = 0
 	hints = 0
@@ -295,6 +306,8 @@ func turn(i: int) -> int:
 		return CROSS
 	if i < clipped.size() and clipped[i] == 1:
 		return CLIPPED
+	if i < staked.size() and staked[i] == 1:
+		return STAKED
 	if judged and m == sol[i]:
 		clipped[i] = 1
 		var kept := PackedInt32Array()
@@ -315,6 +328,9 @@ func undo() -> int:
 		return -1
 	var i: int = history[history.size() - 1]
 	history.resize(history.size() - 1)
+	# Undo is asked for by name, so it may take a staked piece back: the
+	# stake comes out with it.
+	staked[i] = 0
 	grid[i] = Gen.ccw(grid[i])
 	return i
 
@@ -327,6 +343,7 @@ func hint() -> int:
 			continue
 		grid[i] = sol[i]
 		pinned[i] = 1
+		staked[i] = 0
 		hints += 1
 		history = PackedInt32Array()
 		return i
@@ -339,12 +356,127 @@ func reset_board() -> void:
 	for i in n * n:
 		if pinned[i] == 0 and clipped[i] == 0:
 			grid[i] = deal[i]
+	staked.fill(0)
 	history = PackedInt32Array()
 
 ## Lifts every clip, for Try again. Moves nothing: call it **before**
 ## `reset_board()` so the once-clipped pieces go back to the deal too.
 func clear_clips() -> void:
 	clipped.fill(0)
+
+## A banked Wish Tags deal was mined before rings were drawn as mistakes,
+## and 38 of the 150 open with one: turn a piece of each ring a quarter at a
+## time, first in reading order, until the deal has none. Deterministic, so a
+## day is the same garden on every phone; the deal is what Reset goes back to.
+func _break_rings() -> void:
+	for guard in 64:
+		if not Gen.has_ring(n, grid):
+			break
+		var ring := looped()
+		for i in n * n:
+			if ring[i] == 1 and Gen.rotations(grid[i]).size() > 1:
+				var before := ring.count(1)
+				for q in 3:
+					grid[i] = Gen.cw(grid[i])
+					if looped().count(1) < before:
+						break
+				break
+	deal = grid.duplicate()
+
+## A hold on piece `i`: stakes it, or pulls the stake it has. False (and
+## nothing changes) on a piece that cannot turn anyway -- a cross, a hint's
+## pin, a clip.
+func stake(i: int) -> bool:
+	if pinned[i] == 1 or clipped[i] == 1 or grid[i] == Gen.N | Gen.E | Gen.S | Gen.W or grid[i] == 0:
+		return false
+	staked[i] = 1 - staked[i]
+	return true
+
+## Wire joined to wire but not to the post, by strand: per cell, the
+## smallest cell of the joined run it belongs to, or -1 for a cell joined to
+## the post, a cell joined to nothing, or a cell with no wire. Derived from
+## `grid` on every call, like `depths()`.
+func strands() -> PackedInt32Array:
+	var cells := n * n
+	var root := _components()
+	var size := PackedInt32Array()
+	size.resize(cells)
+	for i in cells:
+		size[root[i]] += 1
+	var lowest := PackedInt32Array()
+	lowest.resize(cells)
+	lowest.fill(-1)
+	for i in cells:
+		if lowest[root[i]] < 0:
+			lowest[root[i]] = i
+	var out := PackedInt32Array()
+	out.resize(cells)
+	for i in cells:
+		var r: int = root[i]
+		out[i] = lowest[r] if size[r] >= 2 and r != root[post] else -1
+	return out
+
+## 1 on every cell of a closed ring of joined wire, or of the run between
+## two rings: what is left of the joined wire once every cell with one join
+## or none is stripped, again and again. The answer is a tree, so anything
+## left is wrong wherever it stands. Derived on every call.
+func looped() -> PackedByteArray:
+	var cells := n * n
+	var deg := PackedInt32Array()
+	deg.resize(cells)
+	for i in cells:
+		deg[i] = _bits(grid[i] & ~loose(i))
+	var out := PackedByteArray()
+	out.resize(cells)
+	out.fill(1)
+	var queue := PackedInt32Array()
+	for i in cells:
+		if deg[i] <= 1:
+			out[i] = 0
+			queue.append(i)
+	var head := 0
+	while head < queue.size():
+		var i: int = queue[head]
+		head += 1
+		for d in 4:
+			if not matched(i, 1 << d):
+				continue
+			var j: int = (i / n + Gen.DR[d]) * n + i % n + Gen.DC[d]
+			if out[j] == 0:
+				continue
+			deg[j] -= 1
+			if deg[j] <= 1:
+				out[j] = 0
+				queue.append(j)
+	return out
+
+## Each cell's joined run, as a union-find root.
+func _components() -> PackedInt32Array:
+	var cells := n * n
+	var parent := PackedInt32Array()
+	parent.resize(cells)
+	for i in cells:
+		parent[i] = i
+	for i in cells:
+		for side in [Gen.E, Gen.S]:
+			if not matched(i, side):
+				continue
+			var a := _find(parent, i)
+			var b := _find(parent, i + 1 if side == Gen.E else i + n)
+			if a != b:
+				parent[a] = b
+	for i in cells:
+		parent[i] = _find(parent, i)
+	return parent
+
+static func _find(parent: PackedInt32Array, x: int) -> int:
+	while parent[x] != x:
+		parent[x] = parent[parent[x]]
+		x = parent[x]
+	return x
+
+static func _bits(m: int) -> int:
+	return (m & 1) + ((m >> 1) & 1) + ((m >> 2) & 1) + ((m >> 3) & 1)
 
 ## How many pieces a fuse has clipped.
 func clips() -> int:

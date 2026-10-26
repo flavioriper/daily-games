@@ -19,7 +19,12 @@ extends SceneTree
 ## tapped home in a row: the streak's notes, the bubble from x3, confetti at
 ## x4, a join's spark and the gags) and `solve` (three lanterns off, tapped
 ## home: the chase and the party -- the dance, fireflies, confetti, the tags
-## gold, the cat and the seal). Frames go to <dir>/fl_<mode>_d<level>_<n>.png.
+## gold, the cat and the seal). The made-fun pass (2026-10-26): `strand` (the
+## answer with the post's own branches turned off it, so the garden is
+## strands in their tints with dozing lanterns, then the branches turned home
+## and the wash waking them), `ring` (a 2x2 of pieces turned into a closed
+## ring, berry, then undone) and `stake` (a hold on a piece stakes it, a tap
+## on it is refused, a second hold pulls it). Frames go to <dir>/fl_<mode>_d<level>_<n>.png.
 ## Every mode prints the peak draw calls from 0.5 s on.
 
 const SHOT_DIR := "/tmp"
@@ -310,6 +315,80 @@ func _script() -> void:
 				print("undo: ", _life()))
 			_at(7.62, _shot.bind("_undo"))
 			_end = 7.9
+		"strand":
+			var cut: Array = []
+			_at(0.9, func() -> void:
+				var Gen = load("res://puzzles/fairy_lights_gen.gd")
+				var before: PackedInt32Array = st.depths()
+				st.grid = st.sol.duplicate()
+				var r: int = st.post / st.n
+				var c: int = st.post % st.n
+				for d in 4:
+					var a: int = r + Gen.DR[d]
+					var b: int = c + Gen.DC[d]
+					if a < 0 or b < 0 or a >= st.n or b >= st.n:
+						continue
+					var j: int = a * st.n + b
+					if st.sol[j] != Gen.cw(st.sol[j]) and st.pinned[j] == 0:
+						st.grid[j] = Gen.cw(st.sol[j])
+						cut.append(j)
+				_puzzle._settle(before, _puzzle._now())
+				_puzzle._dress(_puzzle._now())
+				_puzzle._refresh()
+				print("cut %d branches; strands %d cells, rings %d" % [cut.size(),
+					Array(st.strands()).filter(func(x): return x >= 0).size(), st.looped().count(1)]))
+			_at(1.6, _shot.bind("_strands"))
+			_at(1.8, func() -> void:
+				for k in cut.size():
+					for q in 3:
+						_at(_t + 0.05 + k * 0.6 + q * 0.12, _tap.bind(int(cut[k]))))
+			_at(2.25, _shot.bind("_waking"))
+			_at(1.8 + cut.size() * 0.6 + 1.2, _shot.bind("_lit"))
+			_end = 1.8 + cut.size() * 0.6 + 1.4
+		"ring":
+			_at(0.9, func() -> void:
+				var Gen = load("res://puzzles/fairy_lights_gen.gd")
+				var need := [Gen.E | Gen.S, Gen.S | Gen.W, Gen.N | Gen.E, Gen.N | Gen.W]
+				for r in st.n - 1:
+					for c in st.n - 1:
+						var cells := [r * st.n + c, r * st.n + c + 1, (r + 1) * st.n + c, (r + 1) * st.n + c + 1]
+						var masks := []
+						for k in 4:
+							var got := -1
+							for m in Gen.rotations(st.grid[cells[k]]):
+								if m & need[k] == need[k]:
+									got = m
+							masks.append(got)
+						if not masks.has(-1):
+							var before: PackedInt32Array = st.depths()
+							for k in 4:
+								st.grid[cells[k]] = masks[k]
+							_puzzle._settle(before, _puzzle._now())
+							_puzzle._ring_check()
+							_puzzle._dress(_puzzle._now())
+							_puzzle._refresh()
+							print("ring at %s, looped %d" % [str(cells), st.looped().count(1)])
+							return
+				print("no 2x2 to ring"))
+			_at(1.6, _shot.bind("_ring"))
+			_end = 1.8
+		"stake":
+			var i := _wrong_piece()
+			_at(1.5, func() -> void: _mouse(_puzzle.cell_centre(i), true))
+			_at(2.1, func() -> void: _mouse(_puzzle.cell_centre(i), false))
+			_at(2.15, _shot.bind("_pop"))
+			_at(2.6, func() -> void:
+				print("staked %d: %d" % [i, st.staked[i]])
+				var g: int = st.grid[i]
+				_tap(i)
+				print("tap on stake turned it: %s" % (st.grid[i] != g)))
+			_at(2.7, _shot.bind("_refused"))
+			_at(3.2, func() -> void: _mouse(_puzzle.cell_centre(i), true))
+			_at(3.8, func() -> void:
+				_mouse(_puzzle.cell_centre(i), false)
+				print("after second hold: staked %d" % st.staked[i]))
+			_at(4.0, _shot.bind("_pulled"))
+			_end = 4.2
 		"solve":
 			var off: Array = []
 			_at(0.9, func() -> void:

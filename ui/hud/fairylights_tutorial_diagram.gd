@@ -29,7 +29,7 @@ const Face = preload("res://ui/faces/face.gd")
 const Gen = preload("res://puzzles/fairy_lights_gen.gd")
 const State = preload("res://puzzles/fairy_lights_state.gd")
 
-enum Lesson { TURN, DONE, HEARTS, TAGS, UNDO, HINT }
+enum Lesson { TURN, DONE, HEARTS, TAGS, UNDO, HINT, STAKE }
 
 ## The finger: a soft disc and a ring, pressed smaller while it is down.
 const FINGER_R := 20.0
@@ -150,6 +150,9 @@ class Garden extends "res://puzzles/fairy_lights2d.gd":
 		st.clipped = PackedByteArray()
 		st.clipped.resize(N * N)
 		st.clipped.fill(0)
+		st.staked = PackedByteArray()
+		st.staked.resize(N * N)
+		st.staked.fill(0)
 		st.history = PackedInt32Array()
 		state = st
 		hints_used = 0
@@ -285,6 +288,24 @@ func _start() -> void:
 		Lesson.HINT:
 			_loop.tween_callback(func() -> void: _art.hint())
 			_loop.tween_interval(3.0)
+		Lesson.STAKE:
+			# The piece turned home, held till its stake goes in, then tapped:
+			# it shivers and stays.
+			_play_tap(ELBOW, "")
+			_loop.tween_interval(0.4)
+			_play_tap(ELBOW, "")
+			_loop.tween_interval(0.6)
+			_loop.tween_callback(_say.bind("HTP_FL_HOLD_CAP"))
+			_loop.tween_callback(_point.bind(ELBOW))
+			_loop.tween_interval(0.35)
+			_loop.tween_callback(_press.bind(ELBOW))
+			_loop.tween_interval(0.7)
+			_loop.tween_callback(_release.bind(ELBOW))
+			_loop.tween_interval(0.2)
+			_loop.tween_callback(_lift)
+			_say_for("HTP_FL_STAKED_CAP", 0.8)
+			_play_tap(ELBOW, "")
+			_loop.tween_interval(2.0)
 	_loop.tween_callback(_reset)
 
 ## The caption turned to `key` for `hold`.
@@ -325,7 +346,8 @@ func _reset(fresh := false) -> void:
 	_lift()
 	_say({Lesson.TURN: "HTP_FL_WRONG_CAP", Lesson.DONE: "HTP_FL_LOOSE_CAP",
 		Lesson.HEARTS: "HTP_FL_RIGHT_CAP", Lesson.TAGS: "HTP_FL_TAG_CAP",
-		Lesson.UNDO: "HTP_FL_TAP_CAP", Lesson.HINT: "HTP_FL_HINT_CAP"}[lesson])
+		Lesson.UNDO: "HTP_FL_TAP_CAP", Lesson.HINT: "HTP_FL_HINT_CAP",
+		Lesson.STAKE: "HTP_FL_TAP_CAP"}[lesson])
 
 ## Reduce-motion: the lesson's answer, standing still.
 func _still() -> void:
@@ -348,6 +370,11 @@ func _still() -> void:
 			_say("HTP_FL_UNDO_CAP")
 		Lesson.HINT:
 			_art.hint()
+		Lesson.STAKE:
+			_art._turn(ELBOW)
+			_art._turn(ELBOW)
+			_art._hold(ELBOW)
+			_say("HTP_FL_STAKED_CAP")
 	_art._refresh()
 
 ## `key` through tr.

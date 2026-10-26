@@ -297,12 +297,48 @@ static func _scramble(rng: RandomNumberGenerator, n: int, post: int, sol: Packed
 				wrong += 1
 		var lit := _live(n, post, deal)
 		var miss: int = maxi(0, want_wrong - wrong) + maxi(0, lit - live_cap)
+		# The made-fun pass (2026-10-26) draws a closed ring of wire in berry
+		# as the mistake it always is; a deal that opens with one would show
+		# the player a mistake they never made.
+		if has_ring(n, deal):
+			miss += 1
 		if miss == 0:
 			return deal
 		if best_miss < 0 or miss < best_miss:
 			best_miss = miss
 			best = deal
 	return best
+
+## Whether the wire as dealt closes a ring anywhere: more joins than a
+## forest over the same cells can hold.
+static func has_ring(n: int, cur: PackedInt32Array) -> bool:
+	var cells := n * n
+	var parent := PackedInt32Array()
+	parent.resize(cells)
+	for i in cells:
+		parent[i] = i
+	for i in cells:
+		var r: int = i / n
+		var c: int = i % n
+		# East and south only: each join is met once.
+		for d in [1, 2]:
+			var a: int = r + DR[d]
+			var b: int = c + DC[d]
+			if a >= n or b >= n or cur[i] & (1 << d) == 0:
+				continue
+			var j: int = a * n + b
+			if cur[j] & (1 << ((d + 2) % 4)) == 0:
+				continue
+			var x := i
+			while parent[x] != x:
+				x = parent[x]
+			var y := j
+			while parent[y] != y:
+				y = parent[y]
+			if x == y:
+				return true
+			parent[x] = y
+	return false
 
 ## How many cells a breadth-first walk from the post reaches over sides that
 ## are open from both ends. The board derives live the same way after every

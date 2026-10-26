@@ -149,3 +149,58 @@ tweened and no transform is put on the board.
   fairylights` passes.
 - Decided for the user, unconfirmed: evening only at the foot; bare bulbs,
   not paper lanterns (Light Up has those). Owed: a phone, the level slide.
+
+### Made fun (2026-10-26)
+
+The user: "make fairy lights experience way better to play, and game itself
+way funnier to play, right now nobody likes it". Measured first
+(`tests/_probe_fl_fun.gd`, headless, not in the suite): a reading player
+homing pieces in the order the propagate-only solver settles them saw
+**nothing change on 46 / 49 / 56% of right pieces** (Easy / Medium / Hard),
+because only wire joined to the post showed anything. Took the references'
+answers (Hexapipes colours each joined group, marks loops and locks a tile
+on a long press; Simon Tatham's Net locks tiles and flags loops):
+
+- **Strands.** Wire joined to wire but not to the post wears one of three
+  cool tints (`STRAND_TINTS`: sky, mint, lilac), picked by the strand's
+  lowest cell (`State.strands()`, derived every call like `depths()`); a
+  split strand's other half takes its own. Gold stays the post's. A strand
+  just joined to the post keeps its tint until the wash lights it
+  (`_tint_was`, the one thing kept, colour only), so it runs into gold
+  instead of dropping to grey. Silent right pieces now 17 / 20 / 22%.
+- **Dozing lanterns.** A dark lantern on a strand shows its face asleep
+  (`Face.Expr.SLEEPY`, no blink), so a strand shows what it will wake, and
+  joining it to the post wakes them all down the wash.
+- **Rings.** The matched graph's 2-core (`State.looped()`) runs berry,
+  lit or not, and the sprout says `FL_RING` once per new ring with the
+  `ring` cue. A probe player's taps closed 0.8 / 2.6 / 6.2 rings a garden
+  (before the deal fix below). **Deals never open with a ring**:
+  `Gen._scramble` counts `has_ring` as a miss (0 of 600 live deals have
+  one), and a banked Wish Tags deal (38 of 150 had one) has each ring
+  broken at the deal by `State._break_rings` (a ring piece turned until
+  the ring count drops, first in reading order; deterministic). Changes
+  the deal of any live seed that used to open with a ring.
+- **Hold to stake.** A press held `HOLD_TIME` (0.42 s) stakes a piece
+  (`State.staked`, `stake()`; a tap on it is `STAKED`, refused for free with
+  `FL_STAKED`) or pulls its stake; the press springs back at the hold so the
+  release turns nothing. A wooden peg in the stone's top-right corner
+  (`_stake`, `P_STAKE`; the clip has the top-left). Not a move: no log, no
+  count. Undo of a staked piece pulls its stake; Reset pulls every stake; a
+  hint's pin replaces one. A cross, pin or clip refuses the hold. New
+  tutorial page `Lesson.STAKE` on every band (after DONE).
+- Look bits: ring 15, tint 16-17, stake 18; shape ids moved to
+  `pass << PASS_SHIFT` (20). The wire's shade and face key on `LOOK_WIRE`.
+- Sounds (house sound, `bank:`): `wake` is now the wrap (a run, still
+  pitched by depth to `WAKE_TOP`), `refuse` the tongue, new `stake` the
+  token two steps up, `unstake` the lip, `ring` the tongue twice falling.
+  Haptics: stake tap, unstake tick, ring warn.
+- Tips `FL_TIP_STRAND`, `FL_TIP_HOLD`, `FL_TIP_RING`; `FL_RULES` names the
+  hold, the tints and the red ring (en/pt/es).
+- Harness modes `strand`, `ring`, `stake`. opengl3_angle 810x1440: 87 peak
+  (strand wash), 81 (ring), 82 (stake, Insane tags). Suite failed=0,
+  `_win.gd -- fairylights` PASS, 21 tutorial pages headless clean.
+- Mine, the user's to call: the hold gesture (the board had one gesture),
+  the three tints and colouring two-cell strands at the deal (Insane opens
+  colourful), berry for rings on every band, dozing faces, the deal change.
+  Left: tap turns clockwise only (a quarter of pieces need three taps).
+  Not on a phone, nothing heard.
