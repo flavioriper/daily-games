@@ -365,6 +365,7 @@ kbd{background:#eee4d2;border-radius:5px;padding:0 6px;font:13px monospace}
     <button data-tab="valley">Valley &middot; grove</button>
     <button data-tab="nightlight">Nightlight &middot; arcade</button>
     <button data-tab="factory">Factory &middot; rewired</button>
+    <button data-tab="commons">The Commons &middot; four gardeners</button>
   </nav>
 </header>
 
@@ -4347,6 +4348,26 @@ tr:last-child td{border-bottom:0}
 </section>
 
 </div>
+</section>
+
+<!-- ============================ THE COMMONS ============================ -->
+<section class="tab-panel" id="tab-commons">
+<style>
+#tab-commons .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin:18px 0}
+#tab-commons .steps a{display:block;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;text-decoration:none;color:inherit}
+#tab-commons .steps a b{display:block;margin-bottom:4px}
+#tab-commons .steps a span{color:var(--muted);font-size:13.5px}
+</style>
+<h2>The Commons &middot; a cozy four-gardener board-and-cards war</h2>
+<p>Worked out 2026-10-26 from one reference (a cozy single-player fruit-farming card game) and four rounds of visual mocks. Gardeners farm sun and blossom from the plots they hold on a shared island dealt from a seed, hatch critters to push out and shoo each other back, keep a sealed goal, and play simultaneous turns: one message a gardener a turn, resolved in a fixed order. The full design record is <a href="the-commons.md">the-commons.md</a>; the five mock pages below are self-contained and open in a browser.</p>
+<div class="steps">
+  <a href="commons/1-references.html"><b>1 &middot; References</b><span>What the reference actually is, the reference matrix (Manahex, Faeria, Stormbound, Summoner Wars, Snap, Polytopia, more), the turn-based tower-defense gap, three directions.</span></a>
+  <a href="commons/2-allotment-hex-mock.html"><b>2 &middot; Allotment, hex, playable</b><span>Two gardeners on a 5&times;8 hex field with plots that yield, seeds that hold ground, wild slugs and crows, a greedy opponent, 12 turns.</span></a>
+  <a href="commons/3-allotment-storyboard.html"><b>3 &middot; Storyboard</b><span>One scripted game drawn after every turn with the hand and the plays; the four findings that drove the next two steps.</span></a>
+  <a href="commons/4-allotment-island.html"><b>4 &middot; Allotment Island</b><span>Square plots on an isometric island, most under cloud until you hold ground beside them; seed caches and sleeping dens; fanned seed-packet cards.</span></a>
+  <a href="commons/5-the-commons.html"><b>5 &middot; The Commons</b><span>Four gardeners in the corners of a 20&times;20 seeded map you pan; sun and blossom; hedgehogs, bees and snails; sealed goals; season cards; simultaneous turns.</span></a>
+</div>
+<p><b>Needs from the house:</b> a four-seat room with a resolve step on the server (today's live match is two seats taking turns), Tally's sheet camera and culling for the map, a computer gardener for empty seats. Every number is untuned.</p>
 </section>
 
 </main>

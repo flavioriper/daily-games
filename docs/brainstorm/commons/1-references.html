@@ -1,0 +1,369 @@
+<title>Cozy Conquest References</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Nunito:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column on paper, a wide matrix that scrolls in its own tray, and
+   coloured "plot" chips that stand for each game's board shape. */
+:root {
+  --bg: #f6f1e4;        /* linen */
+  --paper: #fffaf0;
+  --ink: #2b2a26;
+  --muted: #6d6758;
+  --line: #e3dac4;
+  --accent: #c8572b;    /* clay, the lemon's shadow side */
+  --accent-soft: #f6dccf;
+  --leaf: #4f7d4a;
+  --leaf-soft: #dfead8;
+  --sky: #3c6e9c;
+  --sky-soft: #dbe6f0;
+  --sun: #d9a52a;
+  --sun-soft: #f7ebc4;
+  --display: "Fraunces", Georgia, "Times New Roman", serif;
+  --body: "Nunito", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1d1b17; --paper: #262320; --ink: #efe7d6; --muted: #aaa08c; --line: #3b362d;
+    --accent: #e8805a; --accent-soft: #4a2c20; --leaf: #8cbf84; --leaf-soft: #263a24;
+    --sky: #86b3dc; --sky-soft: #22313f; --sun: #e9bd4f; --sun-soft: #3d341a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #1d1b17; --paper: #262320; --ink: #efe7d6; --muted: #aaa08c; --line: #3b362d;
+  --accent: #e8805a; --accent-soft: #4a2c20; --leaf: #8cbf84; --leaf-soft: #263a24;
+  --sky: #86b3dc; --sky-soft: #22313f; --sun: #e9bd4f; --sun-soft: #3d341a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 32px 64px;
+}
+main { max-width: 880px; margin: 0 auto; display: grid; gap: 40px; }
+h1, h2, h3 { font-family: var(--display); font-weight: 700; line-height: 1.15; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(2rem, 5vw, 3rem); }
+h2 { font-size: 1.6rem; }
+h3 { font-size: 1.15rem; }
+p { margin: 0; max-width: 68ch; }
+a { color: var(--sky); text-decoration-color: color-mix(in srgb, var(--sky) 40%, transparent); }
+a:hover, a:focus-visible { text-decoration-color: var(--sky); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.eyebrow { font-family: var(--mono); font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+header { display: grid; gap: 14px; }
+header .lede { font-size: 1.15rem; color: var(--muted); max-width: 60ch; }
+section { display: grid; gap: 18px; }
+.stack { display: grid; gap: 12px; }
+.note { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; display: grid; gap: 8px; }
+.note.accent { border-color: var(--accent); background: var(--accent-soft); }
+.note.leaf { border-color: var(--leaf); background: var(--leaf-soft); }
+.scores { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+.score { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; gap: 2px; }
+.score b { font-family: var(--display); font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.score span { font-size: .8rem; color: var(--muted); }
+.score.low b { color: var(--accent); }
+ul { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; max-width: 70ch; }
+.tray { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+table { border-collapse: collapse; width: 100%; min-width: 980px; font-size: .9rem; }
+th, td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--line); min-width: 0; }
+th { font-family: var(--mono); font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 500; position: sticky; top: 0; background: var(--paper); }
+tbody tr:last-child td { border-bottom: 0; }
+td.game { font-weight: 700; white-space: nowrap; }
+td.game small { display: block; font-weight: 400; color: var(--muted); font-family: var(--mono); font-size: .72rem; margin-top: 2px; }
+.chip { display: inline-block; font-family: var(--mono); font-size: .72rem; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); white-space: nowrap; }
+.chip.hex { background: var(--leaf-soft); border-color: var(--leaf); }
+.chip.grid { background: var(--sky-soft); border-color: var(--sky); }
+.chip.lane { background: var(--sun-soft); border-color: var(--sun); }
+.chip.region { background: var(--accent-soft); border-color: var(--accent); }
+.fit { font-family: var(--mono); font-size: .78rem; font-variant-numeric: tabular-nums; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; }
+.card { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; display: grid; gap: 8px; align-content: start; }
+.card h3 { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.card .from { font-size: .8rem; color: var(--muted); }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; font-size: .92rem; }
+.kv dt { color: var(--muted); font-family: var(--mono); font-size: .75rem; padding-top: 3px; }
+.kv dd { margin: 0; min-width: 0; }
+.concept { border-left: 4px solid var(--leaf); }
+.concept.b { border-left-color: var(--sun); }
+.concept.c { border-left-color: var(--accent); }
+.verdict { font-family: var(--display); font-size: 1.2rem; font-weight: 500; }
+code { font-family: var(--mono); font-size: .85em; background: var(--line); padding: 1px 5px; border-radius: 4px; }
+.sources { columns: 2; column-gap: 24px; font-size: .88rem; }
+.sources li { break-inside: avoid; }
+@media (max-width: 560px) { .sources { columns: 1; } .kv { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: no-preference) { a { transition: text-decoration-color .15s; } }
+</style>
+
+<main>
+<header>
+  <div class="eyebrow">Research · 2026-10-26 · for the Versus tab</div>
+  <h1>Cozy Conquest References</h1>
+  <p class="lede">What <em>Life and Lemon</em> actually is, what to borrow from it, and the games that already do "play a card, a piece lands on a board, hold the ground" with two or more people taking turns.</p>
+</header>
+
+<section id="lemon">
+  <div class="eyebrow">1 · The starting point</div>
+  <h2>Life and Lemon is cozy and card-on-field, but not multiplayer, not turns, not conquest</h2>
+  <p><a href="https://finn-truong.itch.io/life-and-lemon">Life and Lemon</a> by Finn Truong (solo, Unity + Illustrator, name-your-price on itch, browser/Windows/Android, "coming to Steam") is a <strong>single-player</strong> cozy fruit-farming card game. You drag crop cards onto an orchard field, wait for growth, press-and-hold to harvest everything, sell, and fuse cards to breed new species (80+ cards, hidden traits, 15+ characters, biomes). There are no turns, no opponent, no win condition and no way to lose. It ran #1 overall at the <a href="https://itch.io/jam/gjl-game-parade-spring-2025/rate/3664255">GJL Game Parade Spring 2025</a> jam (108 entries) on presentation, and 4.5/5 from 176 itch ratings.</p>
+  <div class="scores">
+    <div class="score"><b>#1</b><span>Overall · 4.128</span></div>
+    <div class="score"><b>#1</b><span>Presentation · 4.568</span></div>
+    <div class="score"><b>#3</b><span>Enjoyment · 4.000</span></div>
+    <div class="score low"><b>#24</b><span>Creativity · 3.784</span></div>
+  </div>
+  <div class="note accent">
+    <strong>The gap the judges named is exactly the thing you want to add.</strong>
+    <p>One judge: "lacking depth beyond placement", suggesting terrain bonuses and cross-pollination when crops sit next to each other. A <a href="https://itch.io/t/5754086/looking-for-feedback-on-my-fruit-farming-card-game">feedback-thread</a> commenter: the game "lacks goals and any possibility of defeat". A turn-based opponent contesting the same field is one answer to both.</p>
+  </div>
+  <div class="stack">
+    <h3>Worth borrowing</h3>
+    <ul>
+      <li><strong>Card → thing on the field.</strong> The card is the only control; placement is the whole move. Fits a phone and fits <code>Match</code>'s one-move-a-turn wire.</li>
+      <li><strong>Fusion as progression.</strong> Two cards make a third; the result is a surprise. In a conquest game that is "merge two sprouts on adjacent plots into a stronger plant".</li>
+      <li><strong>Press-and-hold harvest.</strong> The one input players singled out as satisfying. A turn's end-of-turn gather could be the same hold.</li>
+      <li><strong>Register.</strong> Flat Illustrator shapes, fruit icons, smooth jazz, soft pops. Reviewers said "moreish" and "played far longer than I meant to"; that is the tone a cozy Versus board should hit.</li>
+      <li><strong>Avoid its faults.</strong> Fast growth read as "action for the sake of action"; tiny hitboxes; no tutorial; fusion that resets rarity felt punishing.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="matrix">
+  <div class="eyebrow">2 · The reference matrix</div>
+  <h2>Games that already do card-spawns-a-piece, hold-the-board, with turns</h2>
+  <p>Ordered by how close each one sits to "cozy board, turns, cards spawn pieces, win by holding ground". Fit is a judgement, not a score. Facts marked <em>per listing</em> come from one store page and were not cross-checked.</p>
+  <div class="tray">
+  <table>
+    <thead><tr>
+      <th>Game</th><th>Board</th><th>How pieces enter</th><th>What "territory" means</th><th>Turns</th><th>Players</th><th>Win</th><th>Tone</th><th>Fit</th>
+    </tr></thead>
+    <tbody>
+      <tr>
+        <td class="game"><a href="https://www.dekudeals.com/items/manahex">Manahex</a><small>Erik Svedäng · Steam 2024</small></td>
+        <td><span class="chip hex">hex</span> random map; each hex makes one of four mana colours</td>
+        <td>Creatures and structures appear <em>next to your mage</em>; spells act directly</td>
+        <td>Move your mage to an adjacent hex and you own it; owned hexes refresh as mana each turn</td>
+        <td>Online, realtime <em>or async</em>; ranked ladder</td>
+        <td>2–4</td>
+        <td>Last mage standing (12 HP)</td>
+        <td>Hand-painted watercolour, no IAP</td>
+        <td class="fit">closest</td>
+      </tr>
+      <tr>
+        <td class="game"><a href="https://en.wikipedia.org/wiki/Faeria">Faeria</a><small>Abrakam · 2017</small></td>
+        <td><span class="chip hex">hex</span> ocean between two orbs; players <em>build the land</em></td>
+        <td>Creatures summon onto land you own; some cards need N lands of a colour</td>
+        <td>Land placed adjacent to your land or creatures; a creature beside a well earns +1 faeria a turn</td>
+        <td>Sync online; one Power Wheel action a turn (+1 faeria, draw, or place land)</td>
+        <td>2</td>
+        <td>Break the other orb</td>
+        <td>Bright fantasy, DLC model</td>
+        <td class="fit">close</td>
+      </tr>
+      <tr>
+        <td class="game"><a href="https://statelyplay.com/2017/09/27/review-stormbound/">Stormbound</a><small>Paladin Studios · 2017, mobile</small></td>
+        <td><span class="chip lane">4×5 grid</span> between two bases</td>
+        <td>A card drops 1–N soldiers on your side of the <em>front line</em></td>
+        <td>Your front line is the row of your furthest unit; units march a row a turn and push it</td>
+        <td>Sync PvP; mana +1 a turn, hand of 4</td>
+        <td>2</td>
+        <td>Deal 10 to the enemy base</td>
+        <td>Cartoony, F2P (reviews flag P2W)</td>
+        <td class="fit">close · the "tower defense" shape</td>
+      </tr>
+      <tr>
+        <td class="game"><a href="https://www.plaidhatgames.com/games/summoner-wars">Summoner Wars 2e</a><small>Plaid Hat · 2021, browser app</small></td>
+        <td><span class="chip grid">6×8 grid</span></td>
+        <td>Pay magic to summon a card next to a gate you hold</td>
+        <td>Gates and the squares your units stand on; pieces move and attack</td>
+        <td>Async-friendly browser app (subscription)</td>
+        <td>2</td>
+        <td>Kill the other summoner</td>
+        <td>Tabletop fantasy</td>
+        <td class="fit">close</td>
+      </tr>
+      <tr>
+        <td class="game"><a href="https://www.pockettactics.com/how-to-play-marvel-snap">Marvel Snap</a><small>Second Dinner · 2022</small></td>
+        <td><span class="chip region">3 locations</span>, 4 cards a side each</td>
+        <td>Play cards face-down into a location; revealed in order</td>
+        <td>Power total at each location; locations have their own rules, revealed turns 1–3</td>
+        <td>Sync, simultaneous, <strong>6 turns</strong>; energy = turn number</td>
+        <td>2</td>
+        <td>Hold 2 of 3 locations</td>
+        <td>Snappy, 3-minute matches</td>
+        <td class="fit">shape only · fast</td>
+      </tr>
+      <tr>
+        <td class="game"><a href="https://www.pcgamer.com/au/hero-academy-review">Hero Academy</a> (2012)<small>Robot Entertainment</small></td>
+        <td><span class="chip grid">grid</span> with crystals and buff tiles</td>
+        <td>Draw tiles (units/items) into a hand of 6; deploy onto your spawn squares</td>
+        <td>Positions; 5 actions a turn split any way</td>
+        <td><strong>Async</strong> turns (the sequel went real-time); current server status unverified</td>
+        <td>2</td>
+        <td>Kill all units or break the crystals</td>
+        <td>Colourful, light</td>
+        <td class="fit">precedent for async</td>
+      </tr>
+      <tr>
+        <td class="game"><a href="https://en.wikipedia.org/wiki/The_Battle_of_Polytopia">The Battle of Polytopia</a><small>Midjiwan · 2016</small></td>
+        <td><span class="chip grid">square map</span> procedurally generated</td>
+        <td>Cities train units; no cards</td>
+        <td>City borders and conquered cities</td>
+        <td>Async online since 2018; 30-turn score mode or last tribe standing</td>
+        <td>2+ (tournaments)</td>
+        <td>Score at turn 30, or domination</td>
+        <td>"Adorable" low-poly, minimal</td>
+        <td class="fit">tone + 30-turn cap</td>
+      </tr>
+      <tr>
+        <td class="game"><a href="https://apps.apple.com/app/id1415296141">Antiyoy</a><small>Ivan Yakovliev · mobile</small></td>
+        <td><span class="chip hex">hex</span> random maps</td>
+        <td>Buy units from a province's money; no cards</td>
+        <td>Connected provinces; income by hexes owned</td>
+        <td>Hotseat up to 7 (per listing)</td>
+        <td>2–7</td>
+        <td>Own the map</td>
+        <td>Flat colours, tiny file</td>
+        <td class="fit">minimal rule set</td>
+      </tr>
+      <tr>
+        <td class="game"><a href="https://apps.apple.com/app/id364165557">Small World</a><small>Days of Wonder · app</small></td>
+        <td><span class="chip region">regions</span> on a map sized to players</td>
+        <td>Pick a race + power combo; place its tokens</td>
+        <td>Regions held; retire a race into "decline" and pick a new one</td>
+        <td>Hotseat/online, fixed turn count</td>
+        <td>2–5</td>
+        <td>Most coins at the end</td>
+        <td>Whimsical board game</td>
+        <td class="fit">decline = cozy aggression</td>
+      </tr>
+      <tr>
+        <td class="game"><a href="https://en.wikipedia.org/wiki/Spirit_Island_(board_game)">Spirit Island</a><small>Handelabra app · 2020</small></td>
+        <td><span class="chip region">island lands</span></td>
+        <td>Spirits play power cards onto lands</td>
+        <td>Lands with presence; invaders explore→build→ravage on a schedule</td>
+        <td>Turn phases, co-op</td>
+        <td>1–4 co-op</td>
+        <td>Drive the invaders off</td>
+        <td>Nature vs colonisers, heavy</td>
+        <td class="fit">co-op defense shape</td>
+      </tr>
+      <tr>
+        <td class="game"><a href="https://thinkygames.com/news/another-smash-hit-boardgame-goes-digital-kingdomino-is-coming-to-steam/">Kingdomino</a> / <a href="https://en.wikipedia.org/wiki/Carcassonne_%E2%80%93_Tiles_%26_Tactics">Carcassonne</a><small>tile layers, digital</small></td>
+        <td><span class="chip grid">your own 5×5</span> / shared map</td>
+        <td>Draft a domino / draw a tile and lay it</td>
+        <td>Matching terrain scores; Carcassonne shares fields and contests them with meeples</td>
+        <td>Online + pass-and-play, async-friendly</td>
+        <td>2–4 / 2–5</td>
+        <td>Points</td>
+        <td>Cozy, family</td>
+        <td class="fit">cozy, not conquest</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="note">
+    <strong>Also seen, weaker fits.</strong>
+    <p><a href="https://store.steampowered.com/app/4597230/">Spells and Sploobies</a> (hex PvP, summons hold hexes; crude humour, due end 2026), Battleboard (buildings produce unit cards; coming soon, no multiplayer stated), <a href="https://prodigalson.itch.io/attack-on-hex-island">Attack on Hex Island</a> (cute hex capture with dice), Duelyst (grid card tactics, cult classic), Ironclad Tactics (lane cards, no draw luck). Hexarchia: nothing found.</p>
+  </div>
+</section>
+
+<section id="gap">
+  <div class="eyebrow">3 · The finding</div>
+  <h2>"Turn-based tower-defense conquest with cards" is nearly empty</h2>
+  <p>Two searches for a turn-based, multiplayer, card-driven tower-defense conquest game on mobile found only real-time games: <a href="https://alternativeto.net/software/tower-duel/about">Tower Duel</a> (5-minute matches, 5 tower + 5 attacker cards), War of Towers (real-time card PvP), Conquest Tale (merge cards to spawn units, RTS, unreleased). Card Conquest on Steam is a solo roguelite due 2027. Nothing cozy, nothing turn-based, nothing on a shared board.</p>
+  <p>The nearest <em>turn-based</em> mechanics for the same feeling are Stormbound's front line (your pieces push a row forward each turn, your spawn area grows with them) and Spirit Island's invader clock (a threat that advances on a fixed schedule unless you hold the land). Both are a turn apart from tower defense, which is what you want.</p>
+</section>
+
+<section id="fit">
+  <div class="eyebrow">4 · Fit to this codebase</div>
+  <h2>It drops onto the Versus wire as it stands</h2>
+  <div class="cards">
+    <div class="card">
+      <h3>Transport</h3>
+      <p><code>versus/online/match.gd</code> is already a turn's wire: a move, then the other seat's, a minute each, the rules refusing a write out of turn (<code>docs/agents/versus.md</code>). Air Hockey could not go online because it has no turns; a card board has nothing but turns. One message a turn, as Dominoes does.</p>
+    </div>
+    <div class="card">
+      <h3>Friends and strangers</h3>
+      <p>The Friends sheet invites a friend into a live Versus game, and the lobby finds a stranger. A ninth Versus card gets both for free. The live rules are deployed by you (<code>tools/deploy_live.sh</code>), so Online stays off until then.</p>
+    </div>
+    <div class="card">
+      <h3>House rules that bite</h3>
+      <p>Renamed genre: the board never says Faeria, Stormbound or Snap in code or on screen. A house set, not stock pieces. Pieces coloured by seat, so state is a halo or ring, never a shade. World fills the screen. Characters are code (<code>ui/faces/</code>).</p>
+    </div>
+    <div class="card">
+      <h3>Before a spec</h3>
+      <p>A chosen direction gets a tab in <code>docs/brainstorm/concepts.html</code> first, with a playable canvas mock, before any Godot code. The computer opponent comes first (every Versus card has one), the live seat after.</p>
+    </div>
+  </div>
+</section>
+
+<section id="concepts">
+  <div class="eyebrow">5 · Three directions</div>
+  <h2>Concepts that inherit Life and Lemon and borrow one shape each</h2>
+  <div class="stack">
+    <div class="card concept">
+      <h3>A · The Allotment <span class="from">Manahex / Faeria shape</span></h3>
+      <dl class="kv">
+        <dt>board</dt><dd>A hex allotment, ~5 across, two gardeners at opposite corners. Plots are bare soil at first.</dd>
+        <dt>a turn</dt><dd>Play one seed card onto a plot touching ground you hold; it sprouts there. Then every plant grows one step and spreads to an empty neighbour if ripe.</dd>
+        <dt>territory</dt><dd>A plot is yours while your plant stands on it. Ripe plants beside a water plot (the well) draw an extra card.</dd>
+        <dt>fight</dt><dd>No damage numbers. A bigger plant shades a smaller neighbour, which wilts a step a turn. Thorns block spread. Two of your sprouts on adjacent plots can fuse into a tree.</dd>
+        <dt>win</dt><dd>Hold more plots after 12 turns, or hold the other corner.</dd>
+        <dt>why</dt><dd>Closest to L&amp;L's field. Fusion is the progression. Nothing dies violently; it wilts.</dd>
+      </dl>
+    </div>
+    <div class="card concept b">
+      <h3>B · Hedgerow <span class="from">Stormbound shape, the "tower defense" one</span></h3>
+      <dl class="kv">
+        <dt>board</dt><dd>A 4-wide, 6-deep strip between two cottages. Each player's half fills from their end.</dd>
+        <dt>a turn</dt><dd>Play up to your sun (1 on turn 1, +1 a turn, cap 6) in cards onto any row up to your hedge line. Then your critters hop one row toward the other cottage.</dd>
+        <dt>territory</dt><dd>Your hedge line is the furthest row you have a critter on. It is also where you may plant.</dd>
+        <dt>fight</dt><dd>A hopping critter that meets another nudges it back a row (bigger wins, ties stay). Towers are plant cards that do not hop and nudge everything that passes.</dd>
+        <dt>win</dt><dd>Six critters reach the other cottage, or most ground at turn 15.</dd>
+        <dt>why</dt><dd>Reads at once as attack/defend. Fits a 1-minute turn. The only direction the market gap actually names.</dd>
+      </dl>
+    </div>
+    <div class="card concept c">
+      <h3>C · Three Beds <span class="from">Marvel Snap shape, short</span></h3>
+      <dl class="kv">
+        <dt>board</dt><dd>Three flower beds across the screen, each with a hidden soil rule revealed on turns 1, 2, 3 (sandy: roots count double; shaded: nothing above 3 grows).</dd>
+        <dt>a turn</dt><dd>Both players plant face-down at once, then reveal. Energy equals the turn number. Six turns.</dd>
+        <dt>territory</dt><dd>A bed belongs to whoever has more bloom in it at the end.</dd>
+        <dt>fight</dt><dd>None directly; cards buff your bed, wither theirs, or move a plant across beds.</dd>
+        <dt>win</dt><dd>Two beds of three.</dd>
+        <dt>why</dt><dd>Three minutes, async-proof (both move each turn), easiest to balance. Least "board", least "conquest".</dd>
+      </dl>
+    </div>
+  </div>
+  <div class="note leaf">
+    <span class="verdict">Recommendation: B, Hedgerow, with A's fusion as its one twist.</span>
+    <p>It is the only shape that matches "tower defense conquest", it has no numbers to read on a phone (a nudge is a nudge), and Stormbound proved the lane-push loop holds up for years on mobile. A is the better pure board game and the better fallback if B plays too flat in the canvas mock.</p>
+  </div>
+</section>
+
+<section id="sources">
+  <div class="eyebrow">Sources</div>
+  <ul class="sources">
+    <li><a href="https://finn-truong.itch.io/life-and-lemon">Life and Lemon, itch.io page</a></li>
+    <li><a href="https://itch.io/jam/gjl-game-parade-spring-2025/rate/3664255">GJL Game Parade Spring 2025 ratings and judge comments</a></li>
+    <li><a href="https://itch.io/t/5754086/looking-for-feedback-on-my-fruit-farming-card-game">itch.io feedback thread</a></li>
+    <li><a href="https://finn-truong.itch.io/life-and-lemon/devlog/1312344/patch-notes-012">Patch notes 0.1.2</a></li>
+    <li><a href="https://www.dekudeals.com/items/manahex">Manahex listing</a></li>
+    <li><a href="https://en.wikipedia.org/wiki/Faeria">Faeria, Wikipedia</a> · <a href="https://store.steampowered.com/app/397060/Faeria/">Steam</a> · <a href="https://www.heypoorplayer.com/2017/03/22/faeria-review/">Hey Poor Player review</a></li>
+    <li><a href="https://statelyplay.com/2017/09/27/review-stormbound/">Stormbound review, Stately Play</a> · <a href="https://toucharcade.com/2017/09/22/stormbound-first-impressions-tactical-and-smart-but-long-matches/">TouchArcade first impressions</a></li>
+    <li><a href="https://www.plaidhatgames.com/games/summoner-wars">Summoner Wars, Plaid Hat</a> · <a href="https://plaidhatgames.com/news/2024/03/12/march-2024">Summoner Wars Online, March 2024</a></li>
+    <li><a href="https://www.pockettactics.com/how-to-play-marvel-snap">How to play Marvel Snap</a> · <a href="https://www.shacknews.com/article/132689/how-to-play-marvel-snap">Shacknews guide</a></li>
+    <li><a href="https://www.pcgamer.com/au/hero-academy-review">Hero Academy review, PC Gamer</a> · <a href="https://toucharcade.com/2018/01/16/hero-academy-2-out-worldwide">Hero Academy 2 went real-time, TouchArcade</a></li>
+    <li><a href="https://en.wikipedia.org/wiki/The_Battle_of_Polytopia">Battle of Polytopia, Wikipedia</a> · <a href="https://www.pocketgamer.com/articles/076645/r/">Online multiplayer arrival, Pocket Gamer</a></li>
+    <li><a href="https://apps.apple.com/app/id1415296141">Antiyoy, App Store</a></li>
+    <li><a href="https://apps.apple.com/app/id364165557">Small World, App Store</a></li>
+    <li><a href="https://en.wikipedia.org/wiki/Spirit_Island_(board_game)">Spirit Island, Wikipedia</a> · <a href="https://www.pcgamer.com/au/co-op-board-game-spirit-island-now-has-a-nice-digital-edition">PC Gamer on the digital edition</a></li>
+    <li><a href="https://thinkygames.com/news/another-smash-hit-boardgame-goes-digital-kingdomino-is-coming-to-steam/">Kingdomino digital</a> · <a href="https://en.wikipedia.org/wiki/Carcassonne_%E2%80%93_Tiles_%26_Tactics">Carcassonne – Tiles &amp; Tactics</a></li>
+    <li><a href="https://store.steampowered.com/app/4597230/">Spells and Sploobies</a> · <a href="https://prodigalson.itch.io/attack-on-hex-island">Attack on Hex Island</a></li>
+    <li><a href="https://alternativeto.net/software/tower-duel/about">Tower Duel</a> · <a href="https://apps.apple.com/us/app/-/id6736651661">War of Towers</a> · <a href="https://thegdwc.com/games/conquesttale">Conquest Tale</a> · <a href="https://store.steampowered.com/app/3918950/">Card Conquest</a></li>
+  </ul>
+</section>
+</main>

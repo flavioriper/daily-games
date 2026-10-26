@@ -1,0 +1,423 @@
+<title>Allotment Storyboard</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Nunito:wght@400;600;700;800&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: a comic strip. One panel a turn: the board as a picture on the left, the hand and the
+   three phases of the turn on the right. Pieces are coloured by gardener; everything else is a ring. */
+:root {
+  --bg: #efe8d6; --field: #d9c9a3; --paper: #fffaf0; --ink: #2b2a26; --muted: #6d6758; --line: #e0d5bb;
+  --soil: #c9a77a; --soil-ink: #8a6a43; --meadow: #9cc47a; --meadow-ink: #4f7d4a; --pond: #7fb3d5; --pond-ink: #3c6e9c;
+  --berry: #b48bb0; --berry-ink: #6d4a7a; --den: #8c6a4a; --den-ink: #3a2a1c;
+  --clay: #c8572b; --clay-soft: #f6dccf; --sky: #3c6e9c; --sky-soft: #dbe6f0; --sun: #e2b23a; --sun-ink: #3a2a00;
+  --wild: #4a3f36; --mark: #2f8f5b; --hurt: #d23b3b;
+  --display: "Fraunces", Georgia, serif; --body: "Nunito", "Segoe UI", system-ui, sans-serif; --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1d1b17; --field: #3a3426; --paper: #27241f; --ink: #efe7d6; --muted: #aaa08c; --line: #3b362d;
+    --soil: #8a6f4e; --soil-ink: #d9bf96; --meadow: #5f8a4c; --meadow-ink: #c6e3b2; --pond: #4a7ea3; --pond-ink: #bcd8ee;
+    --berry: #7a5a80; --berry-ink: #e0c6e3; --den: #5a4432; --den-ink: #1a110a;
+    --clay: #ee8a62; --clay-soft: #4a2c20; --sky: #86b3dc; --sky-soft: #22313f; --sun: #f0c454; --sun-ink: #3a2a00;
+    --wild: #15110e; --mark: #6fd39a; --hurt: #ff7b7b; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #1d1b17; --field: #3a3426; --paper: #27241f; --ink: #efe7d6; --muted: #aaa08c; --line: #3b362d;
+  --soil: #8a6f4e; --soil-ink: #d9bf96; --meadow: #5f8a4c; --meadow-ink: #c6e3b2; --pond: #4a7ea3; --pond-ink: #bcd8ee;
+  --berry: #7a5a80; --berry-ink: #e0c6e3; --den: #5a4432; --den-ink: #1a110a;
+  --clay: #ee8a62; --clay-soft: #4a2c20; --sky: #86b3dc; --sky-soft: #22313f; --sun: #f0c454; --sun-ink: #3a2a00;
+  --wild: #15110e; --mark: #6fd39a; --hurt: #ff7b7b; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 24px 64px; }
+main { max-width: 980px; margin: 0 auto; display: grid; gap: 36px; }
+h1, h2, h3 { font-family: var(--display); font-weight: 700; line-height: 1.15; margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(1.8rem, 4.5vw, 2.6rem); }
+h2 { font-size: 1.35rem; }
+p { margin: 0; }
+.eyebrow { font-family: var(--mono); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+header { display: grid; gap: 10px; max-width: 70ch; }
+header p { color: var(--muted); font-size: 1.05rem; }
+
+/* key */
+.key { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.key .k { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: grid; grid-template-columns: 44px 1fr; gap: 10px; align-items: center; font-size: .82rem; }
+.key .k svg { width: 44px; height: 44px; overflow: visible; }
+.key .k b { display: block; font-size: .9rem; }
+.key .k span { color: var(--muted); line-height: 1.3; }
+
+/* panels */
+.strip { display: grid; gap: 22px; }
+.panel { background: var(--paper); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; display: grid; grid-template-columns: minmax(240px, 300px) 1fr; }
+.panel .pic { background: var(--field); padding: 10px; display: grid; align-content: start; }
+.panel .pic svg { width: 100%; height: auto; display: block; }
+.panel .side { padding: 16px 18px 18px; display: grid; gap: 14px; align-content: start; min-width: 0; }
+.panel .head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.panel .head .n { font-family: var(--display); font-size: 2.2rem; font-weight: 700; line-height: 1; color: var(--clay); }
+.panel .head h2 { font-size: 1.25rem; }
+.panel .head .sun { margin-left: auto; font-family: var(--mono); font-size: .78rem; background: var(--sun); color: var(--sun-ink); padding: 2px 10px; border-radius: 999px; font-weight: 700; }
+.phases { display: grid; gap: 10px; }
+.phase { display: grid; grid-template-columns: 26px 1fr; gap: 10px; font-size: .9rem; line-height: 1.4; }
+.phase .ic { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: .78rem; font-weight: 800; }
+.phase .ic.a { background: var(--sun); color: var(--sun-ink); } .phase .ic.b { background: var(--clay); color: #fff; } .phase .ic.c { background: var(--sky); color: #fff; } .phase .ic.d { background: var(--wild); color: var(--bg); }
+.phase b { color: var(--ink); }
+.phase .m { color: var(--muted); }
+.hand { display: flex; gap: 6px; flex-wrap: wrap; align-items: flex-end; }
+.card { width: 64px; height: 92px; border-radius: 9px; border: 2px solid var(--line); background: var(--bg); color: var(--ink); display: grid; grid-template-rows: auto 1fr auto; padding: 5px 6px 4px; position: relative; font-size: .6rem; line-height: 1.1; }
+.card .cost { position: absolute; top: -7px; left: -6px; width: 20px; height: 20px; border-radius: 50%; background: var(--sun); color: var(--sun-ink); font-weight: 800; font-size: .72rem; display: grid; place-items: center; border: 2px solid var(--paper); }
+.card .name { font-weight: 800; padding-left: 9px; }
+.card .art { display: grid; place-items: center; } .card .art svg { width: 34px; height: 34px; overflow: visible; }
+.card .where { color: var(--muted); font-size: .55rem; }
+.card.played { border-color: var(--mark); transform: translateY(-8px); box-shadow: 0 0 0 3px color-mix(in srgb, var(--mark) 35%, transparent); background: var(--paper); }
+.card.played .where { color: var(--mark); font-weight: 800; }
+.handlabel { font-family: var(--mono); font-size: .68rem; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; }
+.score { display: flex; gap: 10px; align-items: center; font-family: var(--mono); font-size: .78rem; color: var(--muted); }
+.score i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.final { grid-template-columns: minmax(240px, 300px) 1fr; }
+.final .big { font-family: var(--display); font-size: 1.8rem; font-weight: 700; }
+.tally { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.tally div { border-radius: 12px; padding: 12px 14px; display: grid; gap: 2px; }
+.tally .c { background: var(--clay-soft); } .tally .s { background: var(--sky-soft); }
+.tally b { font-family: var(--display); font-size: 1.8rem; }
+.tally span { font-size: .8rem; color: var(--muted); }
+.why { display: grid; gap: 8px; max-width: 70ch; color: var(--muted); font-size: .95rem; }
+@media (max-width: 640px) { .panel, .final { grid-template-columns: 1fr; } .panel .pic { padding: 8px; } }
+</style>
+
+<main>
+<header>
+  <div class="eyebrow">Storyboard · concept A, the Allotment · one mocked game, Clay against Sky</div>
+  <h1>Allotment Storyboard</h1>
+  <p>Eight turns of one game, drawn after each turn. Clay (orange ring) is the player at the bottom cottage; Sky (blue ring) sits at the top. Green rings mark what Clay placed this turn, dotted arrows show sprouts a tree dropped, dark arrows a wild moving, a red burst a plant being eaten. The last panel is the count at turn 12.</p>
+</header>
+
+<section style="display:grid;gap:12px">
+  <div class="eyebrow">The plots and the pieces</div>
+  <div class="key" id="key"></div>
+</section>
+
+<section class="strip" id="strip"></section>
+
+<section class="why">
+  <div class="eyebrow">Why these rules</div>
+  <p><b>Everything is placement.</b> A card is the only control and the plot it lands on is the whole decision, as in the farming game that started this. The turn fits one message on the Versus wire.</p>
+  <p><b>No damage numbers.</b> A plant beside a bigger plant of the other side wilts a step; a wild eats a step. Three dots on a card is all the arithmetic there is.</p>
+  <p><b>The dens are the tower-defense half.</b> Something comes out every third turn and heads for the nearest plant, whoever owns it. Hedges steer it, scarecrows send it off and pay the owner in cards. The two gardeners share the problem and can leave it to each other.</p>
+  <p><b>Numbers are untuned.</b> Two steps a turn beside a pond, a sprout from every tree on even turns, three sun for a scarecrow: all placeholders until a canvas mock is played a few dozen times.</p>
+</section>
+</main>
+
+<script>
+(function () {
+'use strict';
+// ---------- map and geometry ----------
+const MAP = ["..H..", "m..p.", ".b..m", "p.d..", "...dp", "m..b.", ".p..m", "..C.."];
+const ROWS = MAP.length, COLS = MAP[0].length;
+const T = { '.': 'soil', m: 'meadow', p: 'pond', b: 'berry', d: 'den', H: 'cottage', C: 'cottage' };
+const S = 40, W = Math.sqrt(3) * S, PAD = 10;
+const VW = W * (COLS + 0.5) + PAD * 2, VH = 1.5 * S * (ROWS - 1) + 2 * S + PAD * 2;
+const idx = (c, r) => r * COLS + c;
+const inb = (c, r) => c >= 0 && c < COLS && r >= 0 && r < ROWS;
+let G;
+function nbrs(cell) {
+  const d = cell.row % 2 ? [[1,0],[1,-1],[0,-1],[-1,0],[0,1],[1,1]] : [[1,0],[0,-1],[-1,-1],[-1,0],[-1,1],[0,1]];
+  const out = [];
+  for (const [dc, dr] of d) { const c = cell.col + dc, r = cell.row + dr; if (inb(c, r)) out.push(G.cells[idx(c, r)]); }
+  return out;
+}
+const cube = cell => { const x = cell.col - (cell.row - (cell.row & 1)) / 2, z = cell.row; return [x, -x - z, z]; };
+const dist = (a, b) => { const p = cube(a), q = cube(b); return Math.max(Math.abs(p[0] - q[0]), Math.abs(p[1] - q[1]), Math.abs(p[2] - q[2])); };
+const center = cell => ({ x: PAD + W * (cell.col + 0.5 * (cell.row % 2)) + W / 2, y: PAD + S + cell.row * 1.5 * S });
+const hexPts = (x, y, s) => Array.from({ length: 6 }, (_, i) => { const a = Math.PI / 180 * (60 * i - 30); return (x + s * Math.cos(a)).toFixed(1) + ',' + (y + s * Math.sin(a)).toFixed(1); }).join(' ');
+
+// ---------- cards and plants ----------
+const PLANT = { clover: { name: 'Clover', max: 2, grow: 2 }, apple: { name: 'Apple', max: 3, grow: 1 }, berry: { name: 'Bramble', max: 2, grow: 1 } };
+const CARDS = {
+  clover:    { name: 'Clover seed',  cost: 1, kind: 'seed', plant: 'clover' },
+  apple:     { name: 'Apple seed',   cost: 2, kind: 'seed', plant: 'apple' },
+  berry:     { name: 'Bramble seed', cost: 2, kind: 'seed', plant: 'berry' },
+  thorn:     { name: 'Thorn hedge',  cost: 2, kind: 'thorn' },
+  scarecrow: { name: 'Scarecrow',    cost: 3, kind: 'scarecrow' },
+  graft:     { name: 'Graft',        cost: 1, kind: 'graft' },
+  water:     { name: 'Watering can', cost: 1, kind: 'water' },
+};
+
+// ---------- engine (same rules as the playable mock, every choice deterministic) ----------
+function fresh() {
+  const cells = [];
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) { const ch = MAP[r][c]; cells.push({ col: c, row: r, t: T[ch], home: ch === 'H' ? 'sky' : ch === 'C' ? 'clay' : null, piece: null, wild: null }); }
+  G = { cells, turn: 1, sun: { clay: 0, sky: 0 }, ev: [], wildCount: 0, wildId: 0 };
+}
+const at = (c, r) => G.cells[idx(c, r)];
+const held = (cell, who) => (cell.piece && cell.piece.owner === who) || cell.home === who;
+const plantable = cell => !cell.piece && !cell.wild && (cell.t === 'soil' || cell.t === 'meadow' || cell.t === 'berry');
+const touches = (cell, who) => nbrs(cell).some(n => held(n, who));
+const plots = who => G.cells.filter(c => held(c, who)).length;
+const isPlant = c => c.piece && c.piece.kind === 'plant';
+const ev = (type, a, b) => G.ev.push({ type, a, b });
+function legal(k, cell, who) {
+  const card = CARDS[k];
+  if (card.kind === 'seed' || card.kind === 'thorn' || card.kind === 'scarecrow') return plantable(cell) && touches(cell, who);
+  if (card.kind === 'water') return isPlant(cell) && cell.piece.owner === who && cell.piece.stage < PLANT[cell.piece.type].max;
+  if (card.kind === 'graft') return isPlant(cell) && cell.piece.owner === who && cell.piece.stage < PLANT[cell.piece.type].max && nbrs(cell).some(n => isPlant(n) && n.piece.owner === who);
+  return false;
+}
+const grow = (cell, n) => { cell.piece.stage = Math.min(PLANT[cell.piece.type].max, cell.piece.stage + n); };
+function play(k, cell, who) {
+  const card = CARDS[k];
+  const bad = !legal(k, cell, who) ? 'illegal' : card.cost > G.sun[who] ? 'no sun' : '';
+  if (bad) { if (window.__lenient) { ev('bad', cell, `${who} ${k} ${bad}`); return; } throw new Error(`T${G.turn} ${who} cannot play ${k} at ${cell.col},${cell.row}: ${bad}`); }
+  if (card.kind === 'seed') cell.piece = { kind: 'plant', type: card.plant, owner: who, stage: card.plant === 'clover' && cell.t === 'meadow' ? 2 : 1, wilted: false };
+  else if (card.kind === 'thorn' || card.kind === 'scarecrow') cell.piece = { kind: card.kind, owner: who };
+  else grow(cell, card.kind === 'graft' ? 2 : 1);
+  G.sun[who] -= card.cost;
+  ev('play', cell, who);
+}
+function startTurn(who) {
+  const other = who === 'clay' ? 'sky' : 'clay';
+  G.sun[who] = Math.min(6, 2 + G.cells.filter(c => c.t === 'meadow' && held(c, who)).length);
+  G.draw = 1 + G.cells.filter(c => c.t === 'berry' && isPlant(c) && c.piece.owner === who && c.piece.stage >= 2).length;
+  for (const c of G.cells) {
+    if (!isPlant(c)) continue;
+    if (c.piece.owner !== who) { c.piece.wilted = false; continue; }
+    const shaded = nbrs(c).some(n => isPlant(n) && n.piece.owner === other && n.piece.stage > c.piece.stage);
+    c.piece.wilted = shaded;
+    if (shaded) { c.piece.stage -= 1; ev('wilt', c); if (c.piece.stage <= 0) { c.piece = null; ev('gone', c); } }
+  }
+  for (const c of G.cells) if (isPlant(c) && c.piece.owner === who) { const before = c.piece.stage; grow(c, PLANT[c.piece.type].grow + (nbrs(c).some(n => n.t === 'pond') ? 1 : 0)); if (c.piece.stage > before) ev('grow', c, c.piece.stage); }
+  if (G.turn % 2 === 0) {
+    const enemy = G.cells.find(c => c.home === other);
+    for (const c of G.cells.slice()) {
+      if (!isPlant(c) || c.piece.owner !== who || c.piece.type !== 'apple' || c.piece.stage < 3) continue;
+      if (nbrs(c).some(n => isPlant(n) && n.piece.owner === who && n.piece.stage === 1)) continue;
+      const free = nbrs(c).filter(plantable).sort((a, b) => dist(a, enemy) - dist(b, enemy) || Math.abs(a.col - 2) - Math.abs(b.col - 2));
+      if (free.length) { free[0].piece = { kind: 'plant', type: 'apple', owner: who, stage: 1, wilted: false }; ev('spread', c, free[0]); }
+    }
+  }
+}
+function wildsAct() {
+  for (const c of G.cells) {
+    if (!c.wild) continue;
+    const sc = nbrs(c).find(n => n.piece && n.piece.kind === 'scarecrow');
+    if (sc) { ev('scare', c, sc); c.wild = null; }
+  }
+  const moved = new Set();
+  for (const c of G.cells.slice()) {
+    if (!c.wild || moved.has(c.wild.id)) continue;
+    const w = c.wild; moved.add(w.id);
+    if (isPlant(c)) {
+      c.piece.stage -= 1; ev('eat', c, w.kind);
+      if (c.piece.stage <= 0) { c.piece = null; ev('gone', c); }
+      if (w.kind === 'crow') { c.wild = null; ev('fly', c); }
+      continue;
+    }
+    let cur = c;
+    for (let s = 0; s < (w.kind === 'crow' ? 2 : 1); s++) {
+      const n = stepToward(cur, w.kind); if (!n) break;
+      cur.wild = null; n.wild = w; ev('move', cur, n); cur = n;
+      if (isPlant(cur)) break;
+    }
+  }
+  if (G.turn % 3 === 0) {
+    const den = [at(2, 3), at(3, 4)].find(d => !d.wild);
+    if (den) { const kind = G.wildCount % 2 ? 'crow' : 'slug'; G.wildCount++; den.wild = { kind, id: ++G.wildId }; ev('spawn', den, kind); }
+  }
+}
+function stepToward(from, kind) {
+  const pass = c => !(c.piece && c.piece.kind !== 'plant') && !(kind === 'slug' && c.t === 'pond') && c.t !== 'cottage' && !c.wild;
+  const prev = new Map([[from, null]]); const q = [from]; let goal = null;
+  while (q.length) {
+    const c = q.shift();
+    if (c !== from && isPlant(c)) { goal = c; break; }
+    for (const n of nbrs(c)) { if (prev.has(n) || !pass(n)) continue; prev.set(n, c); q.push(n); }
+  }
+  if (!goal) return null;
+  let c = goal; while (prev.get(c) !== from) c = prev.get(c);
+  return c;
+}
+
+// ---------- the mocked game ----------
+// Each turn: Clay's hand as it stands after the draw, what Clay plays (card, col, row), what Sky plays.
+const SCRIPT = [
+  { hand: ['apple', 'clover', 'thorn', 'graft'], clay: [['apple', 2, 6]], sky: [['clover', 1, 1]] },
+  { hand: ['clover', 'thorn', 'graft', 'berry'], clay: [['berry', 3, 5]], sky: [['apple', 2, 1]] },
+  { hand: ['clover', 'thorn', 'graft', 'scarecrow'], clay: [['thorn', 2, 4]], sky: [['berry', 1, 2]] },
+  { hand: ['clover', 'graft', 'scarecrow', 'water', 'apple'], clay: [['clover', 0, 5], ['water', 1, 5]], sky: [['apple', 3, 2]] },
+  { hand: ['graft', 'scarecrow', 'apple', 'thorn', 'clover'], clay: [['scarecrow', 1, 3]], sky: [['clover', 4, 2]] },
+  { hand: ['graft', 'apple', 'thorn', 'clover', 'water', 'berry'], clay: [['clover', 4, 6], ['graft', 3, 6]], sky: [['apple', 4, 3], ['water', 3, 3]] },
+  { hand: ['apple', 'thorn', 'water', 'berry', 'graft'], clay: [['apple', 3, 7], ['water', 3, 7]], sky: [] },
+  { hand: ['thorn', 'berry', 'graft', 'clover', 'water'], clay: [['water', 1, 7]], sky: [['clover', 0, 1]] },
+  { hand: ['berry', 'graft', 'clover', 'water'], clay: [], sky: [] },
+  { hand: ['berry', 'clover', 'water', 'apple'], clay: [], sky: [] },
+  { hand: ['berry', 'water', 'apple', 'graft'], clay: [], sky: [] },
+  { hand: ['berry', 'apple', 'graft', 'thorn'], clay: [], sky: [] },
+];
+const CAPTION = [
+  { title: 'The first seed goes beside the pond', a: 'Clay wakes with 2 sun. Nothing is held yet but the cottage.', b: 'Apple seed, 2 sun, on the plot that touches both the cottage and the pond. Plants beside water grow two steps a turn, so this one will be a tree by turn 2.', c: 'Sky drops a clover beside its own cottage. Cheap ground, never a tree.', d: 'The dens are quiet.' },
+  { title: 'A tree already, and it drops a sprout', a: 'The apple grew two steps overnight and is a tree. On even turns a tree drops a sprout on the free plot nearest the other cottage.', b: 'The sprout touches the bramble patch, so Clay can reach it: Bramble seed, 2 sun. A bush there draws an extra card every turn.', c: "Sky's turn: an apple seed beside its pond. Sky is copying the opening.", d: 'Quiet still.' },
+  { title: 'Clay fences the dens before anything comes out', a: 'Sun 2. Clay draws a Scarecrow but cannot afford it yet.', b: 'Thorn hedge, 2 sun, on the plot between the two dens and the orchard. Wilds and sprouts cannot pass a hedge.', c: "Sky's apple is a tree now too. Sky takes its own bramble patch.", d: 'Turn 3: a slug comes out of the near den. It will go for the nearest plant, whoever owns it.' },
+  { title: 'Two sun, two cheap cards', a: 'Clay gets 2 sun and 2 cards: one for the turn, one from the bramble bush. The new tree drops a sprout toward the meadow.', b: 'Clover on the meadow (1 sun): starts as a bush there and pays +1 sun a turn from now on. The Watering can (1 sun) pushes the new sprout a step.', c: 'Sky drops a sprout of its own and seeds a second apple by its pond.', d: "The slug crawls onto Sky's sprout. Next round it starts eating." },
+  { title: 'A scarecrow goes up beside the den', a: '3 sun now, thanks to the meadow. The watered sprout is a tree.', b: 'Scarecrow, all 3 sun, on the plot that touches the near den. Any wild beside a scarecrow at the end of the round runs off, and the owner draws 2. Nothing is there yet; this is for whatever comes out next.', c: 'Sky takes its meadow with a clover for sun of its own.', d: "The slug eats a step of Sky's pond apple. The pond grows it two steps back. As long as the slug sits there, that plant is held but ends every round a bush." },
+  { title: 'Fusion on a sprout, clover on the far meadow', a: 'Clay has 6 cards, the most a hand holds, and 3 sun. Even turn: two of Clay’s trees drop sprouts, one toward the left meadow, one to the right of the orchard.', b: 'Clover on the far meadow (1 sun, +1 sun a turn). Graft (1 sun) on the new sprout, which touches a tree: two steps at once, a tree on the spot.', c: 'Sky plants a third apple and waters a sprout. Its trees drop sprouts too; the top half is filling in.', d: 'Turn 6: a crow comes out of the near den, right beside the scarecrow.' },
+  { title: 'The scarecrow earns its keep', a: '4 sun: two meadows. Clay draws 2 (one for the bramble bush). The orchard is five trees deep.', b: 'Apple seed on the plot beside the cottage, then the Watering can on it: a bush at once.', c: 'Sky holds its cards. Everything it owns is as big as it gets this turn.', d: "The crow is beside the scarecrow, so it leaves at once and Clay draws 2 more. The slug keeps eating Sky's apple, which keeps regrowing: a standoff." },
+  { title: 'The back rows fill in', a: 'Even turn: three trees drop sprouts, and the orchard reaches both bottom corners. 4 sun again.', b: 'Watering can on the sprout by the cottage. The rest of the hand waits; there is nowhere left to seed.', c: 'Sky takes its last meadow with a clover: 4 sun a turn for Sky from now on.', d: 'Nothing comes out on turn 8. The slug is still camped on the pond apple.' },
+];
+
+// ---------- run the script, drawing after each turn ----------
+const panels = [];
+fresh();
+for (let t = 0; t < 12; t++) {
+  const s = SCRIPT[t]; G.turn = t + 1; G.ev = [];
+  startTurn('clay');
+  for (const [k, c, r] of s.clay) play(k, at(c, r), 'clay');
+  const handAfter = s.hand.slice(); const playedIdx = [];
+  for (const [k] of s.clay) { const i = s.hand.findIndex((h, j) => h === k && !playedIdx.includes(j)); playedIdx.push(i); }
+  startTurn('sky');
+  for (const [k, c, r] of s.sky) play(k, at(c, r), 'sky');
+  wildsAct();
+  panels.push({ turn: G.turn, hand: handAfter, played: playedIdx, plays: s.clay, cells: JSON.parse(JSON.stringify(G.cells)), ev: G.ev.slice(), pc: plots('clay'), ps: plots('sky'),
+    sun: 2 + G.cells.filter(c => c.t === 'meadow' && (c.piece && c.piece.owner === 'clay')).length });
+}
+// the sun shown is what Clay had at the start of the turn: recompute from the previous panel's board
+for (let i = 0; i < panels.length; i++) {
+  const prev = i ? panels[i - 1].cells : null;
+  panels[i].sunShown = Math.min(6, 2 + (prev ? prev.filter(c => c.t === 'meadow' && c.piece && c.piece.owner === 'clay').length : 0));
+}
+
+// ---------- drawing ----------
+const FILL = { soil: 'var(--soil)', meadow: 'var(--meadow)', pond: 'var(--pond)', berry: 'var(--berry)', den: 'var(--den)', cottage: 'var(--soil)' };
+function plantArt(p, s = 1) {
+  const col = p.owner === 'clay' ? 'var(--clay)' : 'var(--sky)';
+  const leaf = p.type === 'berry' ? 'var(--berry-ink)' : 'var(--meadow-ink)';
+  const r = (6 + p.stage * 5) * s;
+  let g = `<circle r="${(r + 4).toFixed(1)}" fill="none" stroke="${col}" stroke-width="${(3 * s).toFixed(1)}"/>`;
+  if (p.wilted) g += `<circle r="${(r + 9).toFixed(1)}" fill="none" stroke="var(--sun)" stroke-width="2" stroke-dasharray="3 4"/>`;
+  if (p.stage >= 3) g += `<rect x="${-3 * s}" y="${r * 0.3}" width="${6 * s}" height="${r * 0.9}" rx="2" fill="var(--soil-ink)"/>`;
+  g += `<circle cy="${-r * 0.1}" r="${r}" fill="${leaf}"/><circle cx="${-r * 0.5}" cy="${r * 0.2}" r="${r * 0.6}" fill="${leaf}"/><circle cx="${r * 0.5}" cy="${r * 0.2}" r="${r * 0.6}" fill="${leaf}"/>`;
+  if (p.type === 'apple' && p.stage >= 2) g += `<circle cx="${-r * 0.35}" cy="${-r * 0.2}" r="${3 * s}" fill="var(--clay)"/><circle cx="${r * 0.4}" cy="${r * 0.25}" r="${3 * s}" fill="var(--clay)"/>`;
+  if (p.type === 'berry' && p.stage >= 2) g += `<circle cx="${-r * 0.3}" cy="0" r="${2.6 * s}" fill="var(--berry)"/><circle cx="${r * 0.35}" cy="${-r * 0.3}" r="${2.6 * s}" fill="var(--berry)"/><circle cx="${r * 0.1}" cy="${r * 0.45}" r="${2.6 * s}" fill="var(--berry)"/>`;
+  if (p.type === 'clover') g += `<circle cy="${-r * 0.1}" r="${2.2 * s}" fill="var(--paper)"/>`;
+  return g;
+}
+function pieceArt(p, s = 1) {
+  if (p.kind === 'plant') return plantArt(p, s);
+  const col = p.owner === 'clay' ? 'var(--clay)' : 'var(--sky)';
+  if (p.kind === 'thorn') return `<circle r="${18 * s}" fill="none" stroke="${col}" stroke-width="${3 * s}"/><path d="M-14,4 L-8,-8 L-3,4 L3,-8 L8,4 L14,-8" transform="scale(${s})" fill="none" stroke="var(--den-ink)" stroke-width="3" stroke-linejoin="round"/>`;
+  return `<circle r="${18 * s}" fill="none" stroke="${col}" stroke-width="${3 * s}"/><g transform="scale(${s})"><rect x="-1.5" y="-10" width="3" height="24" fill="var(--soil-ink)"/><rect x="-12" y="-4" width="24" height="3" fill="var(--soil-ink)"/><circle cy="-10" r="6" fill="var(--sun)"/><path d="M-9,-13 L9,-13 L5,-20 L-5,-20 Z" fill="var(--den-ink)"/></g>`;
+}
+function wildArt(w, s = 1) {
+  if (w.kind === 'slug') return `<g transform="scale(${s})"><ellipse cx="0" cy="4" rx="13" ry="7" fill="var(--wild)"/><circle cx="9" cy="0" r="5" fill="var(--wild)"/><line x1="11" y1="-4" x2="15" y2="-10" stroke="var(--wild)" stroke-width="2"/><line x1="7" y1="-4" x2="6" y2="-11" stroke="var(--wild)" stroke-width="2"/><circle cx="15" cy="-10" r="1.6" fill="var(--wild)"/><circle cx="6" cy="-11" r="1.6" fill="var(--wild)"/></g>`;
+  return `<g transform="scale(${s})"><path d="M-14,2 Q-4,-10 8,-6 L14,-9 L10,-3 Q12,6 0,8 Q-8,8 -14,2 Z" fill="var(--wild)"/><circle cx="7" cy="-4" r="1.6" fill="var(--paper)"/><path d="M-6,8 L-8,13 M-1,8 L-1,13" stroke="var(--wild)" stroke-width="2"/></g>`;
+}
+function terrainArt(cell, x, y) {
+  const t = cell.t; let g = '';
+  if (t === 'meadow') for (const [dx, dy] of [[-12, -8], [10, -12], [-4, 10], [14, 8]]) g += `<circle cx="${x + dx}" cy="${y + dy}" r="2.2" fill="var(--meadow-ink)"/>`;
+  if (t === 'pond') g += `<ellipse cx="${x}" cy="${y}" rx="22" ry="15" fill="var(--pond-ink)" opacity=".55"/><path d="M${x - 10},${y - 2} q4,-3 8,0 t8,0" stroke="var(--paper)" stroke-width="1.5" fill="none" opacity=".7"/>`;
+  if (t === 'berry') for (const [dx, dy] of [[-12, -6], [8, -12], [-2, 9], [13, 6]]) g += `<circle cx="${x + dx}" cy="${y + dy}" r="2.4" fill="var(--berry-ink)"/>`;
+  if (t === 'den') g += `<ellipse cx="${x}" cy="${y + 4}" rx="16" ry="10" fill="var(--den-ink)"/><path d="M${x - 18},${y + 2} q18,-18 36,0" fill="var(--den)"/>`;
+  if (t === 'cottage') { const col = cell.home === 'clay' ? 'var(--clay)' : 'var(--sky)'; g += `<rect x="${x - 14}" y="${y - 4}" width="28" height="18" rx="2" fill="var(--paper)"/><path d="M${x - 18},${y - 3} L${x},${y - 20} L${x + 18},${y - 3} Z" fill="${col}"/><rect x="${x - 4}" y="${y + 4}" width="8" height="10" fill="${col}"/>`; }
+  return g;
+}
+function arrow(a, b, cls, dashed) {
+  const A = center(a), B = center(b); const dx = B.x - A.x, dy = B.y - A.y, L = Math.hypot(dx, dy); const ux = dx / L, uy = dy / L;
+  const x1 = A.x + ux * 16, y1 = A.y + uy * 16, x2 = B.x - ux * 22, y2 = B.y - uy * 22;
+  const hx = x2 - ux * 8, hy = y2 - uy * 8, px = -uy * 6, py = ux * 6;
+  return `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${cls}" stroke-width="3.5" ${dashed ? 'stroke-dasharray="5 5"' : ''} stroke-linecap="round"/><polygon points="${x2.toFixed(1)},${y2.toFixed(1)} ${(hx + px).toFixed(1)},${(hy + py).toFixed(1)} ${(hx - px).toFixed(1)},${(hy - py).toFixed(1)}" fill="${cls}"/>`;
+}
+function burst(cell) { const { x, y } = center(cell); let p = ''; for (let i = 0; i < 10; i++) { const a = Math.PI * 2 * i / 10, r = i % 2 ? 16 : 26; p += `${(x + r * Math.cos(a)).toFixed(1)},${(y + r * Math.sin(a)).toFixed(1)} `; } return `<polygon points="${p}" fill="none" stroke="var(--hurt)" stroke-width="3" stroke-linejoin="round"/>`; }
+function boardSVG(cells, evs) {
+  const byIdx = (c) => cells[idx(c.col, c.row)];
+  let out = `<svg viewBox="0 0 ${VW.toFixed(0)} ${VH.toFixed(0)}" xmlns="http://www.w3.org/2000/svg" role="img">`;
+  for (const cell of cells) {
+    const { x, y } = center(cell);
+    out += `<polygon points="${hexPts(x, y, S - 2)}" fill="${FILL[cell.t]}" stroke="var(--field)" stroke-width="2"/>` + terrainArt(cell, x, y);
+  }
+  for (const cell of cells) {
+    const { x, y } = center(cell);
+    if (cell.piece) out += `<g transform="translate(${x},${y})">${pieceArt(cell.piece)}</g>`;
+    if (cell.wild) out += `<g transform="translate(${x + (cell.piece ? 12 : 0)},${y + (cell.piece ? 12 : 0)})">${wildArt(cell.wild)}</g>`;
+  }
+  for (const e of evs) {
+    if (e.type === 'play' && e.b === 'clay') { const { x, y } = center(e.a); out += `<polygon points="${hexPts(x, y, S - 5)}" fill="none" stroke="var(--mark)" stroke-width="4"/>`; }
+    if (e.type === 'spread') out += arrow(e.a, e.b, e.a.piece && e.a.piece.owner === 'sky' ? 'var(--sky)' : 'var(--clay)', true);
+    if (e.type === 'move') out += arrow(e.a, e.b, 'var(--wild)', false);
+    if (e.type === 'eat') out += burst(e.a);
+    if (e.type === 'scare') { const { x, y } = center(e.a); out += `<text x="${x}" y="${y - 26}" text-anchor="middle" font-family="var(--mono)" font-size="13" font-weight="700" fill="var(--mark)">ran off, +2 cards</text>`; }
+    if (e.type === 'fly') { const { x, y } = center(e.a); out += `<text x="${x}" y="${y - 30}" text-anchor="middle" font-family="var(--mono)" font-size="13" font-weight="700" fill="var(--ink)">flew off</text>`; }
+    if (e.type === 'spawn') { const { x, y } = center(e.a); out += `<circle cx="${x}" cy="${y}" r="${S - 6}" fill="none" stroke="var(--wild)" stroke-width="3" stroke-dasharray="4 5"/>`; }
+    if (e.type === 'wilt') { const { x, y } = center(e.a); out += `<text x="${x}" y="${y - 28}" text-anchor="middle" font-family="var(--mono)" font-size="12" font-weight="700" fill="var(--sun-ink)">wilts</text>`; }
+  }
+  void byIdx;
+  return out + `</svg>`;
+}
+function cardArt(k) {
+  const c = CARDS[k];
+  if (c.kind === 'seed') return `<svg viewBox="-24 -24 48 48">${plantArt({ type: c.plant, stage: c.plant === 'apple' ? 3 : 2, owner: 'clay' }, 0.8)}</svg>`;
+  if (c.kind === 'thorn' || c.kind === 'scarecrow') return `<svg viewBox="-24 -24 48 48">${pieceArt({ kind: c.kind, owner: 'clay' }, 1)}</svg>`;
+  if (c.kind === 'water') return `<svg viewBox="-24 -24 48 48"><path d="M-14,-4 h20 v16 h-20 z" fill="var(--pond-ink)"/><path d="M6,0 l10,-8 M6,4 l12,-2" stroke="var(--pond-ink)" stroke-width="3"/><path d="M-10,-4 a8,8 0 0 1 12,0" fill="none" stroke="var(--pond-ink)" stroke-width="3"/></svg>`;
+  return `<svg viewBox="-24 -24 48 48"><path d="M-12,14 L-12,-6 Q-12,-16 -2,-14 M-12,2 Q-2,-4 6,-14" fill="none" stroke="var(--meadow-ink)" stroke-width="4" stroke-linecap="round"/><rect x="-16" y="-2" width="8" height="4" fill="var(--sun)"/></svg>`;
+}
+const PLOTWORD = { soil: 'soil', meadow: 'meadow', pond: 'pond', berry: 'bramble patch', den: 'den', cottage: 'cottage' };
+function handHTML(p) {
+  return p.hand.map((k, i) => {
+    const j = p.played.indexOf(i); const c = CARDS[k];
+    let where = c.kind === 'seed' ? 'seed' : c.kind === 'graft' || c.kind === 'water' ? 'on a plant' : 'holds a plot';
+    if (j >= 0) { const [, col, row] = p.plays[j]; const cell = p.cells[idx(col, row)]; where = `→ ${PLOTWORD[cell.t]}`; }
+    return `<div class="card${j >= 0 ? ' played' : ''}"><span class="cost">${c.cost}</span><span class="name">${c.name}</span><span class="art">${cardArt(k)}</span><span class="where">${where}</span></div>`;
+  }).join('');
+}
+function panelHTML(p, i) {
+  const cap = CAPTION[i];
+  return `<article class="panel" id="turn${p.turn}">
+    <div class="pic">${boardSVG(p.cells, p.ev)}</div>
+    <div class="side">
+      <div class="head"><span class="n">${p.turn}</span><h2>${cap.title}</h2><span class="sun">☀ ${p.sunShown} sun</span></div>
+      <div><div class="handlabel">Clay's hand · lifted cards were played</div><div class="hand" style="margin-top:10px">${handHTML(p)}</div></div>
+      <div class="phases">
+        <div class="phase"><span class="ic a">☀</span><div><b>Sun comes up.</b> <span class="m">${cap.a}</span></div></div>
+        <div class="phase"><span class="ic b">C</span><div><b>Clay plays.</b> <span class="m">${cap.b}</span></div></div>
+        <div class="phase"><span class="ic c">S</span><div><b>Sky plays.</b> <span class="m">${cap.c}</span></div></div>
+        <div class="phase"><span class="ic d">✦</span><div><b>The wilds.</b> <span class="m">${cap.d}</span></div></div>
+      </div>
+      <div class="score"><i style="background:var(--clay)"></i> Clay holds ${p.pc} plots <span>·</span> <i style="background:var(--sky)"></i> Sky holds ${p.ps}</div>
+    </div>
+  </article>`;
+}
+const last = panels[11];
+const finalHTML = `<article class="panel final" id="turn12">
+  <div class="pic">${boardSVG(last.cells, [])}</div>
+  <div class="side">
+    <div class="head"><span class="n">12</span><h2>The count</h2></div>
+    <p class="big">${last.pc > last.ps ? 'Clay holds the allotment.' : last.pc < last.ps ? 'Sky holds the allotment.' : 'A shared allotment.'}</p>
+    <div class="tally"><div class="c"><b>${last.pc}</b><span>plots held by Clay: plants, hedges, scarecrow and cottage</span></div><div class="s"><b>${last.ps}</b><span>plots held by Sky</span></div></div>
+    <div class="phases">
+      <div class="phase"><span class="ic a">☀</span><div><b>Turns 9 to 12 in one line.</b> <span class="m">Both gardens are full; the trees drop their last sprouts into the corners. The slug of turn 9 comes out beside Clay's scarecrow and leaves at once for 2 cards; the crow of turn 12 is just out of the den as the count is taken. The first slug never leaves Sky's pond apple.</span></div></div>
+      <div class="phase"><span class="ic d">✦</span><div><b>Who won and why.</b> <span class="m">Clay had a tree by turn 2 off the pond and let it seed the middle for free. The hedge on turn 3 sent the first slug toward Sky. The scarecrow by the near den turned every later wild into cards. Sky mirrored a turn late every time. Nobody fought over the middle; in the real game that is where turns 9 to 12 would go.</span></div></div>
+    </div>
+  </div>
+</article>`;
+
+// ---------- key ----------
+const KEY = [
+  ['plot', 'meadow', 'Meadow', '+1 sun a turn while held'], ['plot', 'pond', 'Pond', '+1 growth to every plant beside it'], ['plot', 'berry', 'Bramble patch', '+1 card a turn with your bush on it'],
+  ['plot', 'den', 'Wild den', 'a slug or a crow every third turn'],
+  ['piece', { kind: 'plant', type: 'apple', owner: 'clay', stage: 3 }, 'Apple tree', 'shades smaller neighbours; drops a sprout on even turns'],
+  ['piece', { kind: 'plant', type: 'clover', owner: 'clay', stage: 2 }, 'Clover bush', 'cheap, fast, never a tree'],
+  ['piece', { kind: 'plant', type: 'berry', owner: 'sky', stage: 2 }, 'Bramble bush', 'Sky’s, blue ring: owner is the ring, never the leaf'],
+  ['piece', { kind: 'thorn', owner: 'clay' }, 'Thorn hedge', 'wilds and sprouts cannot pass'],
+  ['piece', { kind: 'scarecrow', owner: 'clay' }, 'Scarecrow', 'a wild beside it runs off; you draw 2'],
+  ['wild', { kind: 'slug' }, 'Slug', 'crawls 1, eats a step a turn, cannot cross water'],
+  ['wild', { kind: 'crow' }, 'Crow', 'flies 2, pecks once, leaves'],
+];
+document.getElementById('key').innerHTML = KEY.map(([kind, v, name, text]) => {
+  let art;
+  if (kind === 'plot') { const cell = { t: v, home: null, col: 0, row: 0 }; art = `<svg viewBox="-30 -30 60 60"><polygon points="${hexPts(0, 0, 26)}" fill="${FILL[v]}"/>${terrainArt(cell, 0, 0)}</svg>`; }
+  else if (kind === 'piece') art = `<svg viewBox="-28 -28 56 56">${pieceArt(v, 0.95)}</svg>`;
+  else art = `<svg viewBox="-24 -24 48 48">${wildArt(v, 1.2)}</svg>`;
+  return `<div class="k">${art}<div><b>${name}</b><span>${text}</span></div></div>`;
+}).join('');
+document.getElementById('strip').innerHTML = panels.slice(0, 8).map(panelHTML).join('') + finalHTML;
+if (typeof module !== 'undefined') module.exports = { panels };
+})();
+</script>

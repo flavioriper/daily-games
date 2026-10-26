@@ -1,0 +1,396 @@
+<title>Allotment Island</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=Nunito:wght@400;700;800;900&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: a phone frame with an isometric island floating in cloud, HUD plates over it and a fanned hand
+   of seed-packet cards over the bottom; under it, the hidden-plot rules as small island pictures and the deck. */
+:root {
+  --bg: #eef1ea; --paper: #fff9ec; --ink: #2b2a26; --muted: #6d6758; --line: #e3dcc6;
+  --sky1: #cfe6f3; --sky2: #eaf3f8; --cloud: #ffffff; --cloud-shade: #d6e3ec;
+  --earth: #a8793f; --earth-dark: #7d5729; --grass-edge: #b9cf74;
+  --soil: #c99a62; --soil-ink: #8a6a43; --meadow: #a7cf78; --meadow-ink: #4f7d4a; --pond: #86c3e0; --pond-ink: #3c6e9c;
+  --berry: #c7a2c3; --berry-ink: #6d4a7a; --den: #8c6a4a; --den-ink: #3a2a1c; --leaf: #5f9a52; --leaf-dark: #3f7a3b;
+  --clay: #d4602f; --clay-soft: #f6dccf; --sky: #3c6e9c; --sky-soft: #dbe6f0; --sun: #f0b93a; --sun-ink: #3a2a00;
+  --wild: #4a3f36; --mark: #2f8f5b; --wood: #8c5a2b; --wood-light: #d9b27a; --card: #fff6dc; --card-grid: #efe3c2; --ribbon: #3f7a3b;
+  --display: "Fraunces", Georgia, serif; --body: "Nunito", "Segoe UI", system-ui, sans-serif; --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1b1d1a; --paper: #262420; --ink: #efe7d6; --muted: #aaa08c; --line: #3b382f;
+    --sky1: #223445; --sky2: #2d3f4f; --cloud: #c9d4dc; --cloud-shade: #8ea0ad;
+    --earth: #6d4d28; --earth-dark: #4a3218; --grass-edge: #7d9a3e;
+    --soil: #9a7446; --soil-ink: #d9bf96; --meadow: #6f9a4e; --meadow-ink: #c6e3b2; --pond: #4f86aa; --pond-ink: #bcd8ee;
+    --berry: #8a6a8c; --berry-ink: #e0c6e3; --den: #5a4432; --den-ink: #1a110a; --leaf: #5f9a52; --leaf-dark: #3f7a3b;
+    --clay: #ee8a62; --clay-soft: #4a2c20; --sky: #86b3dc; --sky-soft: #22313f; --sun: #f0c454; --sun-ink: #3a2a00;
+    --wild: #15110e; --mark: #6fd39a; --wood: #5e3c1b; --wood-light: #b08b55; --card: #f3e9cf; --card-grid: #e3d5b1; --ribbon: #3f7a3b;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #1b1d1a; --paper: #262420; --ink: #efe7d6; --muted: #aaa08c; --line: #3b382f;
+  --sky1: #223445; --sky2: #2d3f4f; --cloud: #c9d4dc; --cloud-shade: #8ea0ad;
+  --earth: #6d4d28; --earth-dark: #4a3218; --grass-edge: #7d9a3e;
+  --soil: #9a7446; --soil-ink: #d9bf96; --meadow: #6f9a4e; --meadow-ink: #c6e3b2; --pond: #4f86aa; --pond-ink: #bcd8ee;
+  --berry: #8a6a8c; --berry-ink: #e0c6e3; --den: #5a4432; --den-ink: #1a110a; --leaf: #5f9a52; --leaf-dark: #3f7a3b;
+  --clay: #ee8a62; --clay-soft: #4a2c20; --sky: #86b3dc; --sky-soft: #22313f; --sun: #f0c454; --sun-ink: #3a2a00;
+  --wild: #15110e; --mark: #6fd39a; --wood: #5e3c1b; --wood-light: #b08b55; --card: #f3e9cf; --card-grid: #e3d5b1; --ribbon: #3f7a3b;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 24px 64px; }
+main { max-width: 980px; margin: 0 auto; display: grid; gap: 40px; justify-items: center; }
+h1, h2, h3 { font-family: var(--display); font-weight: 800; line-height: 1.12; margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(1.8rem, 4.5vw, 2.6rem); }
+h2 { font-size: 1.4rem; }
+p { margin: 0; }
+button { font: inherit; cursor: pointer; }
+button:focus-visible { outline: 2px solid var(--mark); outline-offset: 2px; }
+.eyebrow { font-family: var(--mono); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+header { display: grid; gap: 10px; max-width: 70ch; justify-self: start; }
+header p { color: var(--muted); font-size: 1.05rem; }
+
+/* the phone */
+.phone { position: relative; width: min(100%, 410px); aspect-ratio: 9 / 17.5; border-radius: 30px; overflow: hidden;
+  background: linear-gradient(to bottom, var(--sky1), var(--sky2) 70%, var(--sky1)); box-shadow: 0 24px 60px -26px rgba(0,0,0,.6), inset 0 0 0 1px rgba(0,0,0,.08); user-select: none; -webkit-user-select: none; }
+.phone svg.world { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.tile { cursor: pointer; }
+.plate { position: absolute; background: var(--wood-light); border: 3px solid var(--wood); border-radius: 12px; padding: 6px 10px; display: grid; gap: 2px; box-shadow: 0 3px 0 var(--wood), 0 6px 14px -8px rgba(0,0,0,.5); font-size: .78rem; font-weight: 900; color: var(--sun-ink); pointer-events: none; }
+.plate .name { font-family: var(--display); font-size: 1rem; font-weight: 800; }
+.plate .bar { height: 10px; background: var(--paper); border-radius: 6px; overflow: hidden; border: 1px solid var(--wood); }
+.plate .bar i { display: block; height: 100%; width: 55%; background: var(--leaf); }
+.plate .sub { display: flex; gap: 8px; font-family: var(--mono); font-weight: 500; font-size: .7rem; }
+.plate.tl { left: 12px; top: 12px; width: 150px; }
+.plate.tr { right: 12px; top: 12px; text-align: right; }
+.plate.tr .big { font-family: var(--display); font-size: 1.4rem; font-weight: 800; line-height: 1; }
+.thumb { position: absolute; left: 12px; top: 45%; display: grid; gap: 8px; }
+.thumb button { width: 56px; height: 56px; border-radius: 50%; border: 3px solid var(--wood); background: var(--wood-light); color: var(--sun-ink); font-weight: 900; font-size: .64rem; line-height: 1.1; box-shadow: 0 3px 0 var(--wood); display: grid; place-items: center; padding: 0; }
+.thumb button.go { background: var(--clay); color: #fff; }
+.thumb button:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--wood); }
+.inspect { position: absolute; left: 12px; right: 12px; bottom: 170px; background: var(--paper); border-radius: 14px; padding: 8px 12px; display: grid; grid-template-columns: 64px 1fr; gap: 2px 12px; align-items: center; box-shadow: 0 8px 20px -10px rgba(0,0,0,.55); border: 1px solid var(--line); }
+.inspect .art { grid-column: 1; grid-row: 1 / span 4; } .inspect > :not(.art) { grid-column: 2; }
+.inspect .kind { font-family: var(--mono); font-size: .6rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.inspect h3 { font-size: 1rem; }
+.inspect .art { height: 54px; display: grid; place-items: center; } .inspect .art svg { width: 70px; height: 54px; overflow: visible; }
+.inspect .text { font-size: .74rem; line-height: 1.35; }
+.inspect .tag { display: inline-block; font-family: var(--mono); font-size: .6rem; padding: 1px 6px; border-radius: 999px; background: var(--line); margin-right: 4px; }
+.inspect .tag.y { background: var(--meadow); color: #1f3a1b; }
+.toast { position: absolute; left: 50%; transform: translateX(-50%); top: 86px; background: var(--ink); color: var(--bg); padding: 6px 12px; border-radius: 999px; font-size: .76rem; font-weight: 800; pointer-events: none; max-width: 80%; text-align: center; }
+
+/* the fanned hand */
+.hand { position: absolute; left: 0; right: 0; bottom: -12px; height: 210px; pointer-events: none; }
+.hand .card { position: absolute; left: 50%; bottom: 0; margin-left: -45px; transform-origin: 50% 230%; pointer-events: auto; transition: transform .15s, filter .15s; }
+.hand .card.sel, .hand .card:hover { filter: drop-shadow(0 8px 10px rgba(0,0,0,.35)); z-index: 5; }
+
+/* a seed-packet card */
+.card { width: 90px; height: 128px; border-radius: 10px; background: var(--card); color: var(--sun-ink); border: 3px solid var(--wood); box-shadow: 0 3px 0 var(--wood);
+  background-image: repeating-linear-gradient(0deg, transparent 0 9px, var(--card-grid) 9px 10px), repeating-linear-gradient(90deg, transparent 0 9px, var(--card-grid) 9px 10px);
+  display: grid; grid-template-rows: 1fr auto auto; padding: 8px 6px 6px; text-align: center; position: relative; overflow: visible; }
+.card .coin { position: absolute; top: -9px; right: -8px; width: 24px; height: 24px; border-radius: 50%; background: var(--sun); border: 2px solid var(--wood); font-weight: 900; font-size: .78rem; display: grid; place-items: center; color: var(--sun-ink); }
+.card .vine { position: absolute; top: -7px; left: -8px; width: 34px; height: 24px; }
+.card .art { display: grid; place-items: center; } .card .art svg { width: 64px; height: 64px; overflow: visible; }
+.card .ribbon { background: var(--ribbon); color: #fff; font-weight: 900; font-size: .6rem; letter-spacing: .04em; text-transform: uppercase; padding: 3px 4px; margin: 0 -10px; position: relative; clip-path: polygon(0 0, 100% 0, 96% 50%, 100% 100%, 0 100%, 4% 50%); }
+.card .type { font-family: var(--mono); font-size: .58rem; letter-spacing: .08em; color: var(--muted); padding-top: 3px; }
+.card.big { width: 150px; height: 212px; padding: 12px 10px 10px; }
+.card.big .art svg { width: 110px; height: 110px; } .card.big .ribbon { font-size: .82rem; padding: 5px 8px; } .card.big .coin { width: 32px; height: 32px; font-size: 1rem; top: -12px; right: -10px; } .card.big .type { font-size: .68rem; } .card.big .vine { width: 48px; height: 34px; top: -10px; left: -12px; }
+
+/* below */
+.below { display: grid; gap: 32px; width: 100%; }
+.rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
+.rule { background: var(--paper); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; display: grid; grid-template-rows: auto 1fr; }
+.rule .pic { background: linear-gradient(to bottom, var(--sky1), var(--sky2)); padding: 6px; } .rule .pic svg { width: 100%; height: auto; display: block; }
+.rule .txt { padding: 12px 14px 14px; display: grid; gap: 4px; font-size: .88rem; } .rule b { font-family: var(--display); font-size: 1.05rem; }
+.rule .txt span { color: var(--muted); line-height: 1.4; }
+.deck { display: flex; flex-wrap: wrap; gap: 22px 18px; justify-content: center; padding-top: 10px; }
+.deckcard { display: grid; gap: 10px; justify-items: center; width: 150px; }
+.deckcard p { font-size: .8rem; color: var(--muted); line-height: 1.35; text-align: center; }
+.deckcard .n { font-family: var(--mono); font-size: .68rem; color: var(--muted); }
+.why { display: grid; gap: 10px; max-width: 72ch; }
+.why p { color: var(--muted); } .why b { color: var(--ink); }
+.under { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.under .u { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; display: grid; grid-template-columns: 54px 1fr; gap: 8px; align-items: center; font-size: .8rem; }
+.under .u svg { width: 54px; height: 44px; } .under .u b { display: block; } .under .u span { color: var(--muted); line-height: 1.3; }
+@media (prefers-reduced-motion: reduce) { .hand .card { transition: none; } }
+</style>
+
+<main>
+<header>
+  <div class="eyebrow">Concept A, polished · the Allotment as an island under cloud · 2 gardeners, 12 turns</div>
+  <h1>Allotment Island</h1>
+  <p>The field is a floating island, not a grid: plots are square, the shape is ragged, and most of it starts under cloud. You see the plots beside your cottage. Every plot you hold lifts the cloud off its neighbours at the start of your turn, so pushing outward is how you find the stream, the meadows, and the dens. Tap any plot or card to read it. <strong>Next turn</strong> lifts the thinning clouds.</p>
+</header>
+
+<div class="phone" id="phone">
+  <svg class="world" id="world" xmlns="http://www.w3.org/2000/svg"></svg>
+  <div class="plate tl"><span class="name">Clay</span><div class="bar"><i></i></div><div class="sub"><span>☀ <b id="sunv">3</b></span><span>✿ <b id="plotv">7</b> plots</span></div></div>
+  <div class="plate tr"><span class="sub" style="justify-content:flex-end">turn</span><span class="big"><span id="turnv">5</span><span style="font-size:.8rem">/12</span></span></div>
+  <div class="thumb"><button class="go" id="btnNext" type="button">Next<br>turn</button><button id="btnReset" type="button">Start<br>over</button></div>
+  <div class="inspect" id="inspect"></div>
+  <div class="toast" id="toast" hidden></div>
+  <div class="hand" id="hand"></div>
+</div>
+
+<div class="below">
+  <section style="display:grid;gap:12px">
+    <div class="eyebrow">What hides under the cloud</div>
+    <div class="under" id="under"></div>
+  </section>
+
+  <section style="display:grid;gap:12px">
+    <h2>How the cloud lifts</h2>
+    <div class="rules" id="rules"></div>
+  </section>
+
+  <section style="display:grid;gap:12px">
+    <h2>The starting deck</h2>
+    <p style="color:var(--muted);max-width:70ch">Twenty-one cards, the same for both gardeners. A card is a seed packet: the picture window shows what it grows. Seeds and the hedge go on free, uncovered ground touching ground you hold. The two tools go on your own plants.</p>
+    <div class="deck" id="deck"></div>
+  </section>
+
+  <section class="why">
+    <h2>What the cloud changes</h2>
+    <p><b>The pond is no longer the guaranteed opening.</b> In the storyboard, apple beside water on turn 1 was a tree by turn 2 and seeded the middle for free, every game. Now you cannot see the stream from the cottage. You find it by holding ground toward it, or you don't.</p>
+    <p><b>Turns 9 to 12 have a job.</b> The middle of the island is uncovered last, by whoever pushed hardest, and it holds the seed caches and the second den. The late game is the contest for what was just revealed, not two full gardens staring at each other.</p>
+    <p><b>Dens are a choice.</b> A hidden den sleeps. The gardener who lifts the cloud off it wakes it, and the first wild heads for the nearest plant, which is usually theirs. Fencing before you push is the tower-defense half, and now it has a reason.</p>
+    <p><b>Caches reward the explorer.</b> Lift the cloud off a seed cache and draw a card on the spot. Cards are the limiting resource after sun, so the gardener who uncovers more plays more.</p>
+    <p><b>Still untuned.</b> Reveal reach (neighbours only, or two deep?), how many caches, and whether a wild can wander under cloud are all placeholders until the canvas mock is played.</p>
+  </section>
+</div>
+</main>
+
+<script>
+(function () {
+'use strict';
+// ---------- geometry ----------
+const TW = 88, TH = 44, D = 16;
+const key = (c, r) => c + ',' + r;
+function project(c, r) { return { x: (c - r) * TW / 2, y: (c + r) * TH / 2 }; }
+function nbrs4(st, cell) { return [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dc, dr]) => st.map.get(key(cell.c + dc, cell.r + dr))).filter(Boolean); }
+
+// ---------- the island ----------
+// Cells live where |c - r| <= 3 on a 9x9, minus a few holes, so the island runs long down the screen.
+const HOLES = new Set(['4,1', '1,4', '7,4', '4,7', '8,5', '5,8', '0,3', '3,0']);
+const TYPE = {   // what is under every cell; everything not listed is soil
+  '0,0': 'cottage:sky', '8,8': 'cottage:clay',
+  '2,1': 'pond', '3,2': 'pond', '4,3': 'pond', '5,4': 'pond', '6,5': 'pond', '6,7': 'pond', '2,3': 'pond',
+  '0,2': 'meadow', '5,2': 'meadow', '3,5': 'meadow', '6,8': 'meadow', '1,3': 'meadow', '7,5': 'meadow',
+  '1,2': 'berry', '8,6': 'berry', '4,6': 'berry', '3,4': 'berry',
+  '6,6': 'den', '2,5': 'den',
+  '4,4': 'cache', '5,7': 'cache', '2,4': 'cache', '6,3': 'cache',
+};
+function island() {
+  const cells = [], map = new Map();
+  for (let c = 0; c <= 8; c++) for (let r = 0; r <= 8; r++) {
+    if (Math.abs(c - r) > 3 || HOLES.has(key(c, r))) continue;
+    const t = (TYPE[key(c, r)] || 'soil').split(':');
+    const cell = { c, r, t: t[0], home: t[1] || null, hidden: true, thin: false, piece: null, wild: null };
+    cells.push(cell); map.set(key(c, r), cell);
+  }
+  return { cells, map, turn: 5, sun: 3, log: [] };
+}
+const held = (cell, who) => (cell.piece && cell.piece.owner === who) || cell.home === who;
+function revealAround(st) { for (const cell of st.cells) if (held(cell, 'clay') || held(cell, 'sky')) for (const n of nbrs4(st, cell)) n.hidden = false; }
+function thinning(st) { for (const cell of st.cells) cell.thin = cell.hidden && nbrs4(st, cell).some(n => !n.hidden && (held(n, 'clay') || held(n, 'sky'))); }
+
+function midgame() {
+  const st = island(); const at = (c, r) => st.map.get(key(c, r));
+  const plant = (c, r, owner, type, stage) => { at(c, r).piece = { kind: 'plant', owner, type, stage }; };
+  // Clay, bottom
+  plant(7, 7, 'clay', 'apple', 3); plant(6, 8, 'clay', 'clover', 2); plant(8, 6, 'clay', 'berry', 2); plant(7, 8, 'clay', 'apple', 1);
+  at(7, 6).piece = { kind: 'thorn', owner: 'clay' };
+  // Sky, top
+  plant(1, 1, 'sky', 'apple', 3); plant(0, 2, 'sky', 'clover', 2); plant(2, 0, 'sky', 'apple', 1); plant(1, 2, 'sky', 'berry', 1);
+  at(2, 2).piece = { kind: 'scarecrow', owner: 'sky' };
+  // the cloud: cottages and holdings see their neighbours; a few more lifted by earlier turns
+  for (const k of ['0,0', '8,8', '7,7', '6,8', '8,6', '7,8', '7,6', '1,1', '0,2', '2,0', '1,2', '2,2', '6,7', '6,6', '2,1', '1,3', '0,1', '1,0', '8,7', '3,1', '3,2']) at(...k.split(',').map(Number)).hidden = false;
+  revealAround(st); thinning(st);
+  at(6, 6).wild = { kind: 'slug' };
+  st.look = at(6, 6); st.sel = null;
+  return st;
+}
+
+// ---------- drawing ----------
+const FILL = { soil: 'var(--soil)', meadow: 'var(--meadow)', pond: 'var(--pond)', berry: 'var(--berry)', den: 'var(--den)', cottage: 'var(--meadow)', cache: 'var(--soil)' };
+const diamond = (x, y, w = TW, h = TH) => `${x},${y - h / 2} ${x + w / 2},${y} ${x},${y + h / 2} ${x - w / 2},${y}`;
+function topDetail(cell, x, y) {
+  const t = cell.t; let g = '';
+  if (t === 'soil' || t === 'cache') g += `<path d="M${x - 24},${y} l10,-5 M${x - 12},${y + 8} l12,-6 M${x + 2},${y + 14} l12,-6 M${x - 10},${y - 6} l12,-6 M${x + 4},${y} l12,-6" stroke="var(--soil-ink)" stroke-width="1.6" fill="none" opacity=".6"/>`;
+  if (t === 'meadow') for (const [dx, dy] of [[-16, -2], [-2, -10], [12, 2], [0, 10], [-10, 8]]) g += `<path d="M${x + dx},${y + dy} l-3,-7 M${x + dx},${y + dy} l0,-9 M${x + dx},${y + dy} l3,-7" stroke="var(--meadow-ink)" stroke-width="1.8" fill="none"/>`;
+  if (t === 'pond') g += `<polygon points="${diamond(x, y, TW - 16, TH - 8)}" fill="var(--pond-ink)" opacity=".45"/><path d="M${x - 14},${y - 3} q5,-4 10,0 t10,0" stroke="var(--cloud)" stroke-width="1.6" fill="none" opacity=".8"/><path d="M${x - 6},${y + 6} q5,-4 10,0 t10,0" stroke="var(--cloud)" stroke-width="1.6" fill="none" opacity=".6"/>`;
+  if (t === 'berry') for (const [dx, dy] of [[-18, 0], [-6, -8], [8, -2], [2, 8], [16, 4]]) g += `<circle cx="${x + dx}" cy="${y + dy}" r="2.6" fill="var(--berry-ink)"/>`;
+  if (t === 'den') g += `<ellipse cx="${x}" cy="${y + 2}" rx="18" ry="9" fill="var(--den-ink)"/><path d="M${x - 20},${y} q20,-16 40,0" fill="var(--earth-dark)"/>`;
+  if (t === 'cache') g += `<g transform="translate(${x},${y - 4})"><path d="M-10,8 q-6,-14 2,-16 l16,0 q8,2 2,16 z" fill="var(--wood-light)" stroke="var(--wood)" stroke-width="2"/><path d="M-9,-8 l18,0" stroke="var(--wood)" stroke-width="3"/><circle cx="0" cy="1" r="3" fill="var(--clay)"/></g>`;
+  if (t === 'cottage') {
+    const col = cell.home === 'clay' ? 'var(--clay)' : 'var(--sky)';
+    g += `<g transform="translate(${x},${y - 8})"><polygon points="-18,0 0,9 0,27 -18,18" fill="var(--paper)" stroke="var(--wood)" stroke-width="1.5"/><polygon points="0,9 18,0 18,18 0,27" fill="var(--card-grid)" stroke="var(--wood)" stroke-width="1.5"/><polygon points="-18,0 -9,-18 9,-18 18,0 0,9" fill="${col}"/><polygon points="-9,-18 9,-18 0,-9" fill="${col}" opacity=".7"/><rect x="-10" y="6" width="6" height="10" fill="${col}" transform="skewY(27)"/></g>`;
+  }
+  return g;
+}
+function plantArt(p, s = 1) {
+  const col = p.owner === 'clay' ? 'var(--clay)' : 'var(--sky)';
+  const leaf = p.type === 'berry' ? 'var(--berry-ink)' : p.type === 'clover' ? 'var(--leaf)' : 'var(--leaf-dark)';
+  const r = (5 + p.stage * 5) * s;
+  let g = `<ellipse cx="0" cy="${8 * s}" rx="${22 * s}" ry="${11 * s}" fill="none" stroke="${col}" stroke-width="${3 * s}"/>`;
+  if (p.stage >= 3) g += `<rect x="${-3 * s}" y="${-r * 0.6}" width="${6 * s}" height="${r * 1.4}" rx="2" fill="var(--wood)"/>`;
+  const cy = p.stage >= 3 ? -r * 0.9 : -r * 0.3;
+  g += `<circle cx="${-r * 0.55}" cy="${cy + r * 0.3}" r="${r * 0.7}" fill="${leaf}"/><circle cx="${r * 0.55}" cy="${cy + r * 0.3}" r="${r * 0.7}" fill="${leaf}"/><circle cx="0" cy="${cy}" r="${r}" fill="${leaf}"/><circle cx="${-r * 0.2}" cy="${cy - r * 0.35}" r="${r * 0.45}" fill="var(--leaf)" opacity=".9"/>`;
+  if (p.type === 'apple' && p.stage >= 2) for (const [dx, dy] of [[-0.45, 0.1], [0.4, -0.2], [0.05, 0.45]]) g += `<circle cx="${dx * r}" cy="${cy + dy * r}" r="${3.2 * s}" fill="var(--clay)"/>`;
+  if (p.type === 'berry' && p.stage >= 2) for (const [dx, dy] of [[-0.4, 0], [0.35, -0.3], [0.1, 0.4], [-0.1, -0.5]]) g += `<circle cx="${dx * r}" cy="${cy + dy * r}" r="${2.6 * s}" fill="var(--berry)"/>`;
+  if (p.type === 'clover') g += `<circle cx="0" cy="${cy}" r="${2.4 * s}" fill="var(--paper)"/>`;
+  return g;
+}
+function pieceArt(p, s = 1) {
+  if (p.kind === 'plant') return plantArt(p, s);
+  const col = p.owner === 'clay' ? 'var(--clay)' : 'var(--sky)';
+  let g = `<ellipse cx="0" cy="${8 * s}" rx="${22 * s}" ry="${11 * s}" fill="none" stroke="${col}" stroke-width="${3 * s}"/>`;
+  if (p.kind === 'thorn') return g + `<path d="M-18,6 L-12,-8 L-6,6 L0,-10 L6,6 L12,-8 L18,6" transform="scale(${s})" fill="none" stroke="var(--wood)" stroke-width="3.5" stroke-linejoin="round"/><path d="M-18,6 L18,6" transform="scale(${s})" stroke="var(--wood)" stroke-width="3"/>`;
+  return g + `<g transform="scale(${s})"><rect x="-1.5" y="-16" width="3" height="26" fill="var(--wood)"/><rect x="-13" y="-8" width="26" height="3" fill="var(--wood)"/><circle cy="-16" r="6" fill="var(--sun)"/><path d="M-9,-19 L9,-19 L5,-26 L-5,-26 Z" fill="var(--den-ink)"/></g>`;
+}
+function wildArt(w, s = 1) {
+  if (w.kind === 'slug') return `<g transform="scale(${s})"><ellipse cx="0" cy="4" rx="13" ry="7" fill="var(--wild)"/><circle cx="9" cy="0" r="5" fill="var(--wild)"/><line x1="11" y1="-4" x2="15" y2="-10" stroke="var(--wild)" stroke-width="2"/><line x1="7" y1="-4" x2="6" y2="-11" stroke="var(--wild)" stroke-width="2"/><circle cx="15" cy="-10" r="1.6" fill="var(--wild)"/><circle cx="6" cy="-11" r="1.6" fill="var(--wild)"/><circle cx="10" cy="-1" r="1.2" fill="var(--paper)"/></g>`;
+  return `<g transform="scale(${s})"><path d="M-14,2 Q-4,-10 8,-6 L14,-9 L10,-3 Q12,6 0,8 Q-8,8 -14,2 Z" fill="var(--wild)"/><circle cx="7" cy="-4" r="1.6" fill="var(--paper)"/><path d="M-6,8 L-8,13 M-1,8 L-1,13" stroke="var(--wild)" stroke-width="2"/></g>`;
+}
+function cloudPuffs(x, y, thin) {
+  const o = thin ? .72 : 1;
+  return `<g opacity="${o}"><ellipse cx="${x}" cy="${y + 10}" rx="30" ry="9" fill="var(--cloud-shade)" opacity=".5"/><circle cx="${x - 16}" cy="${y + 2}" r="13" fill="var(--cloud)"/><circle cx="${x + 2}" cy="${y - 5}" r="16" fill="var(--cloud)"/><circle cx="${x + 18}" cy="${y + 3}" r="12" fill="var(--cloud)"/><circle cx="${x - 2}" cy="${y + 8}" r="13" fill="var(--cloud)"/></g>`;
+}
+function islandSVG(st, opts = {}) {
+  const cells = st.cells.slice().sort((a, b) => (a.c + a.r) - (b.c + b.r) || a.c - b.c);
+  let minx = 1e9, maxx = -1e9, miny = 1e9, maxy = -1e9;
+  for (const cell of cells) { const p = project(cell.c, cell.r); minx = Math.min(minx, p.x - TW / 2); maxx = Math.max(maxx, p.x + TW / 2); miny = Math.min(miny, p.y - TH / 2 - 60); maxy = Math.max(maxy, p.y + TH / 2 + D + 10); }
+  const pad = opts.pad || 20;
+  const vb = `${(minx - pad).toFixed(0)} ${(miny - pad).toFixed(0)} ${(maxx - minx + pad * 2).toFixed(0)} ${(maxy - miny + pad * 2).toFixed(0)}`;
+  let out = `<svg viewBox="${vb}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">`;
+  // the cloud bank the island floats on
+  const cx = (minx + maxx) / 2, cy = maxy + 6;
+  out += `<g opacity=".9">`;
+  for (let i = -3; i <= 3; i++) out += `<ellipse cx="${(cx + i * 70).toFixed(0)}" cy="${(cy + Math.abs(i) * 6).toFixed(0)}" rx="70" ry="26" fill="var(--cloud)"/>`;
+  out += `</g>`;
+  const legal = opts.legal || new Set();
+  for (const cell of cells) {
+    const { x, y } = project(cell.c, cell.r);
+    out += `<g class="tile" data-k="${key(cell.c, cell.r)}">`;
+    out += `<polygon points="${x + TW / 2},${y} ${x},${y + TH / 2} ${x},${y + TH / 2 + D} ${x + TW / 2},${y + D}" fill="var(--earth)"/>`;
+    out += `<polygon points="${x - TW / 2},${y} ${x},${y + TH / 2} ${x},${y + TH / 2 + D} ${x - TW / 2},${y + D}" fill="var(--earth-dark)"/>`;
+    if (cell.hidden) {
+      out += `<polygon points="${diamond(x, y)}" fill="var(--grass-edge)" stroke="var(--cloud-shade)" stroke-width="1.5"/>` + cloudPuffs(x, y, cell.thin);
+      if (cell.thin) out += `<polygon points="${diamond(x, y, TW - 8, TH - 4)}" fill="none" stroke="var(--mark)" stroke-width="2.5" stroke-dasharray="5 5"/>`;
+    } else {
+      out += `<polygon points="${diamond(x, y)}" fill="${FILL[cell.t]}" stroke="var(--grass-edge)" stroke-width="2"/>` + topDetail(cell, x, y);
+      if (legal.has(cell)) out += `<polygon points="${diamond(x, y, TW - 8, TH - 4)}" fill="none" stroke="var(--mark)" stroke-width="3.5"/>`;
+      if (cell.piece) out += `<g transform="translate(${x},${y - 2})">${pieceArt(cell.piece)}</g>`;
+      if (cell.wild) out += `<g transform="translate(${x + (cell.piece ? 16 : 0)},${y + (cell.piece ? 8 : 0)})">${wildArt(cell.wild)}</g>`;
+    }
+    if (st.look === cell) out += `<polygon points="${diamond(x, y, TW + 4, TH + 2)}" fill="none" stroke="var(--ink)" stroke-width="2.5"/>`;
+    out += `</g>`;
+  }
+  return out + `</svg>`;
+}
+
+// ---------- cards ----------
+const CARDS = {
+  apple:     { name: 'Apple seed',   cost: 2, type: 'seed', n: 4, what: 'A sprout on free ground you touch. Grows a step a turn, two beside water. As a tree it shades smaller neighbours and drops a sprout on even turns.' },
+  clover:    { name: 'Clover seed',  cost: 1, type: 'seed', n: 4, what: 'Cheap ground. Grows two steps a turn and never becomes a tree. On a meadow it starts as a bush and pays +1 sun a turn.' },
+  berry:     { name: 'Bramble seed', cost: 2, type: 'seed', n: 3, what: 'A thorny bush. On a bramble patch it draws you an extra card every turn.' },
+  thorn:     { name: 'Thorn hedge',  cost: 2, type: 'hedge', n: 3, what: 'Holds a free plot you touch. Wilds and sprouts cannot pass. Never grows, never wilts.' },
+  scarecrow: { name: 'Scarecrow',    cost: 3, type: 'hedge', n: 2, what: 'Holds a free plot you touch. A wild beside it at the end of the round runs off, and you draw 2.' },
+  graft:     { name: 'Graft',        cost: 1, type: 'tool', n: 2, what: 'One of your plants that touches another of yours grows two steps at once.' },
+  water:     { name: 'Watering can', cost: 1, type: 'tool', n: 3, what: 'One of your plants grows a step.' },
+};
+function packetArt(k) {
+  const c = CARDS[k];
+  let inside = '';
+  if (c.type === 'seed') inside = plantArt({ type: k, stage: k === 'apple' ? 3 : 2, owner: 'clay' }, 0.7).replace(/<ellipse[^>]*\/>/, '');
+  else if (k === 'thorn') inside = `<path d="M-14,8 L-9,-6 L-4,8 L1,-8 L6,8 L11,-6 L16,8" fill="none" stroke="var(--wood)" stroke-width="3" stroke-linejoin="round"/>`;
+  else if (k === 'scarecrow') inside = `<rect x="-1.5" y="-10" width="3" height="22" fill="var(--wood)"/><rect x="-11" y="-3" width="22" height="3" fill="var(--wood)"/><circle cy="-10" r="5" fill="var(--sun)"/><path d="M-8,-13 L8,-13 L4,-19 L-4,-19 Z" fill="var(--den-ink)"/>`;
+  else if (k === 'graft') inside = `<path d="M-6,12 L-6,-4 Q-6,-12 2,-10 M-6,2 Q4,-2 10,-10" fill="none" stroke="var(--leaf-dark)" stroke-width="3.5" stroke-linecap="round"/><rect x="-10" y="-2" width="8" height="4" fill="var(--sun)"/>`;
+  else inside = `<path d="M-12,-2 h18 v14 h-18 z" fill="var(--pond-ink)"/><path d="M6,2 l9,-7 M6,5 l11,-2" stroke="var(--pond-ink)" stroke-width="2.5"/><path d="M-9,-2 a7,7 0 0 1 12,0" fill="none" stroke="var(--pond-ink)" stroke-width="2.5"/>`;
+  const col = c.type === 'seed' ? 'var(--leaf)' : c.type === 'hedge' ? 'var(--wood)' : 'var(--pond-ink)';
+  // a paper seed packet with a torn top and a round picture window
+  return `<svg viewBox="-32 -36 64 72"><path d="M-24,-22 l4,-5 l5,5 l5,-5 l5,5 l5,-5 l5,5 l4,-5 l4,5 v50 q0,4 -4,4 h-42 q-4,0 -4,-4 z" fill="${col}" stroke="var(--wood)" stroke-width="2"/><rect x="-20" y="-14" width="40" height="42" rx="3" fill="var(--paper)" opacity=".35"/><circle cx="0" cy="4" r="17" fill="var(--paper)" stroke="var(--wood)" stroke-width="2"/><g transform="translate(0,6)">${inside}</g></svg>`;
+}
+const vine = `<svg viewBox="0 0 34 24"><path d="M2,22 q10,-16 30,-18" stroke="var(--leaf-dark)" stroke-width="2" fill="none"/><ellipse cx="9" cy="12" rx="6" ry="3.5" transform="rotate(-40 9 12)" fill="var(--leaf)"/><ellipse cx="20" cy="6" rx="6" ry="3.5" transform="rotate(-20 20 6)" fill="var(--leaf)"/></svg>`;
+function cardHTML(k, cls = '') {
+  const c = CARDS[k];
+  return `<div class="card ${cls}" data-k="${k}"><span class="vine">${vine}</span><span class="coin">${c.cost}</span><span class="art">${packetArt(k)}</span><span class="ribbon">${c.name}</span><span class="type">${c.type}</span></div>`;
+}
+
+// ---------- the phone ----------
+let st = midgame();
+const HAND = ['apple', 'clover', 'thorn', 'graft', 'scarecrow'];
+const plantable = cell => !cell.hidden && !cell.piece && !cell.wild && (cell.t === 'soil' || cell.t === 'meadow' || cell.t === 'berry' || cell.t === 'cache');
+function legalFor(k) {
+  const c = CARDS[k];
+  if (c.type === 'tool') return st.cells.filter(x => x.piece && x.piece.kind === 'plant' && x.piece.owner === 'clay' && x.piece.stage < (x.piece.type === 'apple' ? 3 : 2) && (k !== 'graft' || nbrs4(st, x).some(n => n.piece && n.piece.kind === 'plant' && n.piece.owner === 'clay')));
+  return st.cells.filter(x => plantable(x) && nbrs4(st, x).some(n => held(n, 'clay')));
+}
+const PLOT = {
+  soil: ['Soil', 'Plain ground. Anything grows here.', ''], meadow: ['Meadow', '+1 sun a turn while you hold it. Clover planted here starts as a bush.', '+1 sun'],
+  pond: ['The stream', 'Cannot be planted. Every plant beside it grows an extra step a turn. Slugs cannot cross; crows fly over.', '+1 growth'],
+  berry: ['Bramble patch', 'Your bush here draws you an extra card a turn.', '+1 card'], den: ['Wild den', 'Woke when the cloud lifted. A slug or a crow comes out every third turn and heads for the nearest plant.', 'wilds'],
+  cache: ['Seed cache', 'Lifting the cloud off it drew a card. Now plain ground.', '+1 card once'], cottage: ['Cottage', 'Home. Counts as held ground; it sees the plots beside it.', 'held'],
+};
+function inspectData() {
+  if (st.sel) { const c = CARDS[st.sel]; return { kind: 'card in hand', name: c.name, art: packetArt(st.sel), tags: `<span class="tag">${c.cost} sun</span>`, text: c.what + (legalFor(st.sel).length ? ' The outlined plots take it.' : '') }; }
+  const cell = st.look; if (!cell) return null;
+  if (cell.hidden) return { kind: 'under cloud', name: cell.thin ? 'Cloud, thinning' : 'Cloud', art: `<svg viewBox="-40 -30 80 60">${cloudPuffs(0, 0, cell.thin)}</svg>`, tags: cell.thin ? `<span class="tag y">lifts next turn</span>` : '', text: cell.thin ? 'A plot you hold touches it. At the start of your turn the cloud lifts and you see what is there.' : 'Nobody holds a plot beside it yet. It could be soil, meadow, the stream, a bramble patch, a seed cache or a den.' };
+  if (cell.wild) return { kind: 'wild', name: cell.wild.kind === 'slug' ? 'Slug' : 'Crow', art: `<svg viewBox="-24 -24 48 48">${wildArt(cell.wild, 1.3)}</svg>`, tags: `<span class="tag">moves 1</span><span class="tag">eats 1</span>`, text: 'Came out when the den woke. Crawls one plot a turn toward the nearest plant and eats a step of it every turn it sits there. A scarecrow beside it sends it off.' };
+  if (cell.piece) {
+    const p = cell.piece, who = p.owner === 'clay' ? 'Clay' : 'Sky';
+    const name = p.kind === 'plant' ? `${{ apple: 'Apple', clover: 'Clover', berry: 'Bramble' }[p.type]} ${p.stage >= 3 ? 'tree' : p.stage === 2 ? 'bush' : 'sprout'}` : p.kind === 'thorn' ? 'Thorn hedge' : 'Scarecrow';
+    return { kind: `${who}'s`, name, art: `<svg viewBox="-30 -36 60 56">${pieceArt(p, 0.9)}</svg>`, tags: p.kind === 'plant' ? `<span class="tag">${'●'.repeat(p.stage)}${'○'.repeat((p.type === 'apple' ? 3 : 2) - p.stage)}</span><span class="tag y">${PLOT[cell.t][0].toLowerCase()}</span>` : `<span class="tag">holds plot</span>`, text: p.kind === 'plant' ? `${who}'s. Holds the plot and lifts the cloud off its neighbours.` : p.kind === 'thorn' ? 'Wilds and sprouts cannot pass.' : 'A wild beside it at the end of the round runs off; the owner draws 2.' };
+  }
+  const d = PLOT[cell.t];
+  const cp = { ...cell, piece: null, wild: null, hidden: false };
+  return { kind: 'plot', name: d[0], art: `<svg viewBox="-48 -40 96 72"><polygon points="${diamond(0, 0)}" fill="${FILL[cell.t]}" stroke="var(--grass-edge)" stroke-width="2"/>${topDetail(cp, 0, 0)}</svg>`, tags: d[2] ? `<span class="tag y">${d[2]}</span>` : '', text: d[1] };
+}
+function render() {
+  const legal = new Set(st.sel ? legalFor(st.sel) : []);
+  document.getElementById('world').outerHTML = islandSVG(st, { legal, pad: 20 }).replace('<svg ', '<svg class="world" id="world" ');
+  document.getElementById('world').setAttribute('preserveAspectRatio', 'xMidYMin meet');
+  document.getElementById('sunv').textContent = st.sun;
+  document.getElementById('plotv').textContent = st.cells.filter(c => held(c, 'clay')).length;
+  document.getElementById('turnv').textContent = st.turn;
+  const d = inspectData(); const el = document.getElementById('inspect');
+  el.innerHTML = d ? `<div class="kind">${d.kind}</div><h3>${d.name}</h3><div class="art">${d.art}</div><div>${d.tags}</div><div class="text">${d.text}</div>` : `<div class="kind">tap anything</div><div class="text">Plots, clouds, plants, wilds and cards each show their card here.</div>`;
+  const n = HAND.length;
+  document.getElementById('hand').innerHTML = HAND.map((k, i) => { const a = (i - (n - 1) / 2) * 13; const sel = st.sel === k; return cardHTML(k, sel ? 'sel' : '').replace('<div class="card', `<div style="transform:rotate(${a}deg) translateY(${sel ? -26 : 0}px)" class="card`); }).join('');
+  bind();
+}
+function bind() {
+  document.getElementById('world').addEventListener('click', e => { const g = e.target.closest('.tile'); if (!g) return; st.look = st.map.get(g.dataset.k); st.sel = null; render(); });
+  document.querySelectorAll('#hand .card').forEach(c => c.addEventListener('click', () => { st.sel = st.sel === c.dataset.k ? null : c.dataset.k; st.look = null; render(); }));
+}
+let toastT;
+function toast(s) { const t = document.getElementById('toast'); t.textContent = s; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 2200); }
+document.getElementById('btnNext').addEventListener('click', () => {
+  if (st.turn >= 12) { toast('Turn 12 is the last.'); return; }
+  const lifted = st.cells.filter(c => c.thin); const found = [];
+  for (const c of lifted) { c.hidden = false; c.thin = false; if (c.t === 'den') { found.push('a den wakes'); c.wild = { kind: 'crow' }; } if (c.t === 'cache') found.push('a seed cache, +1 card'); if (c.t === 'pond') found.push('the stream'); if (c.t === 'meadow') found.push('a meadow'); }
+  thinning(st); st.turn++; st.sun = Math.min(6, 2 + st.cells.filter(c => c.t === 'meadow' && held(c, 'clay')).length);
+  toast(lifted.length ? `${lifted.length} clouds lift: ${[...new Set(found)].join(', ') || 'soil'}.` : 'Nothing thinning: hold more ground.');
+  st.look = null; st.sel = null; render();
+});
+document.getElementById('btnReset').addEventListener('click', () => { st = midgame(); toast('Back to turn 5.'); render(); });
+render();
+
+// ---------- under the cloud ----------
+const UNDER = [['soil', 'Soil', 'most plots'], ['meadow', 'Meadow', '+1 sun while held'], ['pond', 'The stream', '+1 growth beside it'], ['berry', 'Bramble patch', '+1 card with your bush'], ['cache', 'Seed cache', 'draw a card when the cloud lifts'], ['den', 'Den', 'sleeps until uncovered']];
+document.getElementById('under').innerHTML = UNDER.map(([t, n, s]) => { const cp = { t, home: null }; return `<div class="u"><svg viewBox="-48 -34 96 66"><polygon points="${diamond(0, 0)}" fill="${FILL[t]}" stroke="var(--grass-edge)" stroke-width="2"/>${topDetail(cp, 0, 0)}</svg><div><b>${n}</b><span>${s}</span></div></div>`; }).join('');
+
+// ---------- the rules, as three small islands ----------
+function tinyIsland(setup) {
+  const s = island(); const at = (c, r) => s.map.get(key(c, r));
+  setup(s, at); thinning(s); return islandSVG(s, { pad: 10 });
+}
+const RULES = [
+  ['Turn 1: you see the plots beside your cottage', 'Everything else is cloud. The first seed can only go where you can see, so the opening is about which way to push, not which plot is best.', (s, at) => { for (const k of ['0,0', '8,8']) at(...k.split(',').map(Number)).hidden = false; revealAround(s); }],
+  ['Every plot you hold thins the cloud beside it', 'Dotted clouds lift at the start of your turn. A sprout a tree drops counts too, so an apple tree is also a lantern.', (s, at) => { for (const k of ['0,0', '8,8']) at(...k.split(',').map(Number)).hidden = false; at(7, 7).piece = { kind: 'plant', owner: 'clay', type: 'apple', stage: 3 }; at(6, 8).piece = { kind: 'plant', owner: 'clay', type: 'clover', stage: 2 }; at(1, 1).piece = { kind: 'plant', owner: 'sky', type: 'apple', stage: 2 }; revealAround(s); }],
+  ['Lift the cloud off a den and you wake it', 'The first wild heads for the nearest plant, which is usually yours. Fence first, then push. Or push on the other side and let Sky find it.', (s, at) => { for (const k of ['0,0', '8,8']) at(...k.split(',').map(Number)).hidden = false; at(7, 7).piece = { kind: 'plant', owner: 'clay', type: 'apple', stage: 3 }; at(7, 6).piece = { kind: 'thorn', owner: 'clay' }; at(8, 7).piece = { kind: 'plant', owner: 'clay', type: 'apple', stage: 1 }; at(1, 1).piece = { kind: 'plant', owner: 'sky', type: 'apple', stage: 2 }; revealAround(s); at(6, 6).hidden = false; at(6, 6).wild = { kind: 'slug' }; }],
+];
+document.getElementById('rules').innerHTML = RULES.map(([t, txt, f]) => `<div class="rule"><div class="pic">${tinyIsland(f)}</div><div class="txt"><b>${t}</b><span>${txt}</span></div></div>`).join('');
+
+// ---------- the deck ----------
+document.getElementById('deck').innerHTML = Object.keys(CARDS).map(k => `<div class="deckcard">${cardHTML(k, 'big')}<p>${CARDS[k].what}</p><span class="n">${CARDS[k].n} in the deck</span></div>`).join('');
+})();
+</script>
