@@ -148,6 +148,10 @@ const SLIDE_TIME := 0.09
 const SLIDE_TAU := 0.045
 const LAG_MAX := 2.5
 const CRAWL := 0.035
+## The crawl's pops: the most semitones a run climbs, and how close two may
+## sound on a flick (Fx2D's CUE_GAP is 60 ms, which swallows half of them).
+const CRAWL_CLIMB := 5
+const CRAWL_GAP := 35
 const CRAWL_RATE := 4.2
 const CRAWL_PHASE := 0.7
 const SWAY := 0.13
@@ -204,6 +208,18 @@ const HINT_STEP := 0.08
 const EJECT_AFTER := 0.75
 const SLIP_TIME := 0.22
 const BLUSH := 0.42
+## The free strand tell: the bands that show it, its wash and its fade.
+const STUCK_BANDS := 1
+## The next leaf's ripple: a ring's life and how far it grows.
+const BECKON_TIME := 1.6
+const BECKON_REACH := 1.9
+## A zoom: this many squares crawled inside ZOOM_SPAN seconds; the head
+## grins for ZOOM_HOLD and kicks up a puff every other square.
+const ZOOM_STEPS := 5
+const ZOOM_SPAN := 0.7
+const ZOOM_HOLD := 0.45
+const STUCK_WASH := 0.34
+const STUCK_IN := 0.25
 const BLUSH_TIME := 1.1
 const HEART_ROW := 64.0
 const HEART_TOP := 6.0
@@ -458,6 +474,19 @@ var _busy_until := 0.0
 var _was_busy := false
 ## The wrong step playing out: {"at", "cell", "cells" (the stranded squares)}.
 var _wrong := {}
+## The next leaf's ripple ring, made at the reference cell size.
+var _beckon: ArrayMesh
+var _beckon_cell := 0.0
+## The crawl's last few step times, for the zoom (`_zoomed`).
+var _steps_at: Array[float] = []
+var _zoom_at := AGO
+## Easy and Medium: the squares the body as it lies has stranded, rose until
+## a cut frees them (`_check_stuck`), free of any price; `_unstuck` fades.
+var _stuck := PackedInt32Array()
+var _stuck_at := AGO
+var _unstuck := PackedInt32Array()
+var _unstuck_at := AGO
+var _stuck_body := PackedInt32Array([-1])
 var _hungry_at := AGO
 
 ## The rewards. `force_gag` is the harness's: a Gag kind every eaten leaf
@@ -563,7 +592,7 @@ func _tips() -> Array:
 		return TIPS_PECKISH
 	if max_hearts > 0:
 		return TIPS_HEARTS
-	return TIPS
+	return TIPS + ["CP_TIP_STUCK"] if _state.difficulty <= STUCK_BANDS else TIPS
 
 ## Undo and Hint; Reset is the host's. No Check: nothing wrong can sit here.
 ## Insane counts moves: no Undo (backing up along the body is the take-back,
@@ -713,6 +742,9 @@ func _deal() -> void:
 	_back_at = AGO
 	_busy_until = 0.0
 	_wrong = {}
+	_stuck = PackedInt32Array()
+	_unstuck = PackedInt32Array()
+	_stuck_body = PackedInt32Array([-1])
 	_hungry_at = AGO
 	Motion.stop(_dusk_tw)
 	modulate = Color.WHITE
@@ -1037,7 +1069,9 @@ func _process(delta: float) -> void:
 	_was_busy = b
 	if _animating(t) or _lag(t) > 0.0:
 		_refresh()
-	elif not Motion.reduce and not _state.body.is_empty():
+	elif not Motion.reduce and (not _state.body.is_empty() or not _state.peckish()):
+		# (Before the first press the head is not there to breathe, but
+		# leaf 1 still beckons, `_draw_beckon`.)
 		# At rest only the head moves -- its breath and its blink -- and it is
 		# its own small mesh, so an idle garden rebuilds that and nothing
 		# else. The first cut breathed every segment and rebuilt the whole
@@ -1085,7 +1119,34 @@ func _refresh() -> void:
 	_live_lo = null
 	_live_hi = null
 	_top = null
+	_check_stuck()
 	queue_redraw()
+
+## Easy and Medium say at once when the body strands a square: the squares
+## blush and stay rose, the head worries and the strand note sounds, until
+## backing up frees them. The garden is dealt readable on that sight
+## (`Gen.stuck_at`), so the blush is half of how a day is read.
+func _check_stuck() -> void:
+	if _stuck_body == _state.body:
+		return
+	_stuck_body = _state.body.duplicate()
+	var now := PackedInt32Array()
+	if _state.difficulty <= STUCK_BANDS and not _state.is_solved():
+		now = _state.stranded_now()
+	if now == _stuck:
+		return
+	var t := _now()
+	if _stuck.is_empty():
+		_stuck_at = t
+		if _opened > 0.0 and fx != null:
+			fx.cue("strand")
+			_say(tr("CP_STUCK"), Face.Expr.WORRIED)
+	elif now.is_empty():
+		_unstuck = _stuck
+		_unstuck_at = t
+	_stuck = now
+	_decor_built = false
+	_decor_for(STUCK_IN)
 
 ## What the body covers changed (a leaf, a hint's square, a cut, a deal):
 ## the leaves and badges too.
@@ -1144,6 +1205,7 @@ func _draw() -> void:
 			draw_mesh(m, null, board, tint)
 			shown.append(m)
 	_in_ref = true
+	_draw_beckon(t, board, seen, shown)
 	_draw_numbers(t, board, seen)
 	_in_ref = false
 	if _top != null:
@@ -1356,6 +1418,7 @@ func _build_under(t: float) -> void:
 ## The squares a wrong step stranded: a rose wash that wobbles in and fades,
 ## so the player sees exactly what the heart bought.
 func _blush(b, t: float) -> void:
+	_blush_stuck(b, t)
 	if _wrong.is_empty():
 		return
 	var e := t - float(_wrong["at"])
@@ -1373,6 +1436,26 @@ func _blush(b, t: float) -> void:
 	# The square it stepped onto, ringed.
 	var at := _centre(int(_wrong["cell"]))
 	b.stroke(Face.Builder.ring(at, s * 0.44, s * 0.44), s * 0.05, Color(Pal.FLOWER_DEEP, 0.7 * level), true)
+
+## The squares the body has stranded, washed rose: they wobble in and stay
+## until a cut frees them, then fade.
+func _blush_stuck(b, t: float) -> void:
+	var s := _cell()
+	for pass_i in 2:
+		var cells: PackedInt32Array = _stuck if pass_i == 0 else _unstuck
+		var e := t - (_stuck_at if pass_i == 0 else _unstuck_at)
+		if cells.is_empty() or e < 0.0:
+			continue
+		var level := minf(e / STUCK_IN, 1.0) if pass_i == 0 else 1.0 - e / STUCK_IN
+		if level <= 0.0:
+			continue
+		for i in cells.size():
+			var wob := 0.0 if Motion.reduce or pass_i == 1 else sin(e * 22.0 + float(i)) * maxf(0.0, 1.0 - e / 0.6) * 0.06
+			var r := s * (0.4 + wob)
+			b.fan(Face.Builder.round_rect(_centre(cells[i]) - Vector2.ONE * r, Vector2.ONE * r * 2.0, s * 0.16),
+				Color(Pal.FLOWER, STUCK_WASH * level))
+			b.stroke(Face.Builder.round_rect(_centre(cells[i]) - Vector2.ONE * r, Vector2.ONE * r * 2.0, s * 0.16),
+				s * 0.035, Color(Pal.FLOWER_DEEP, 0.5 * level), true)
 
 ## A fence on the edge between two squares: a soft shadow, a wooden rail with
 ## its lit top and grain, and a capped post at either end and in the middle,
@@ -1907,6 +1990,37 @@ func _badge_frame(c: int, t: float) -> Dictionary:
 	return {"at": _centre(c) + Vector2(Motion.shiver_offset(since) * 3.0 if hot else 0.0, 0.0),
 		"scale": pop * bump, "flash": Motion.flash_level(since) if hot else 0.0}
 
+## The leaf due next (leaf 1 before the first press): two gold rings ripple
+## out of its badge, a beat apart, so the eye always knows where the walk is
+## headed. One cached ring under a transform a ripple; steady under reduce
+## motion. Not on Peckish, whose middle leaves come in any order.
+func _draw_beckon(t: float, xf: Transform2D, seen: float, shown: Array) -> void:
+	if _state.peckish() or _solved_at >= 0.0 or out_of_hearts:
+		return
+	var k: int = _state.eaten()
+	if k >= _state.leaves.size():
+		return
+	var c: int = _state.leaves[k]
+	var f := _badge_frame(c, t)
+	if f.scale.x <= 0.01:
+		return
+	var s := _cell()
+	if _beckon == null or _beckon_cell != s:
+		var b := Face.Builder.new()
+		b.stroke(Face.Builder.ring(Vector2.ZERO, s * BADGE_R, s * BADGE_R), s * 0.04, Pal.SUN, true)
+		_beckon = b.mesh()
+		_beckon_cell = s
+	if Motion.reduce:
+		draw_mesh(_beckon, null, xf * Transform2D(0.0, f.scale * 1.18, 0.0, f.at), Color(1.0, 1.0, 1.0, 0.7 * seen))
+		shown.append(_beckon)
+		return
+	for q in 2:
+		var u := fmod(t / BECKON_TIME + 0.5 * float(q), 1.0)
+		var grow := 1.0 + (BECKON_REACH - 1.0) * (1.0 - (1.0 - u) * (1.0 - u))
+		draw_mesh(_beckon, null, xf * Transform2D(0.0, f.scale * grow, 0.0, f.at),
+			Color(1.0, 1.0, 1.0, (1.0 - u) * 0.85 * seen))
+	shown.append(_beckon)
+
 ## The leaf numbers, over the badges and under the head.
 func _draw_numbers(t: float, xf: Transform2D, seen: float) -> void:
 	var font: Font = CozyTheme.display(700)
@@ -1945,11 +2059,14 @@ func _build_top(t: float) -> ArrayMesh:
 	var strain := String(_refused["kind"]) != "" and since < Motion.SHIVER_TIME * 2.0
 	at.x += Motion.shiver_offset(since) * 4.0 if strain else 0.0
 	var worried := not _wrong.is_empty() and t - float(_wrong["at"]) < EJECT_AFTER + SLIP_TIME
+	var stuck := not _stuck.is_empty() and _solved_at < 0.0
 	var expr := Face.Expr.JOY if _solved_at >= 0.0 else (Face.Expr.STRAIN if strain else Face.Expr.HAPPY)
-	if worried:
+	if worried or (stuck and not strain):
 		expr = Face.Expr.WORRIED
 	elif _asleep:
 		expr = Face.Expr.SLEEPY
+	elif t - _zoom_at < ZOOM_HOLD and not strain and _solved_at < 0.0:
+		expr = Face.Expr.JOY
 	elif _state.peckish() and _solved_at < 0.0 and _state.tummy() <= 1 and not strain:
 		expr = Face.Expr.WORRIED
 	var grow := 1.0 if Motion.reduce else 1.0 + CRAWL * 0.6 * sin(t * CRAWL_RATE + CRAWL_PHASE)
@@ -2230,6 +2347,8 @@ func _step(c: int) -> void:
 		_on_leaf(c)
 	else:
 		fx.cue("step")
+		_crawl_pop()
+		_zoom(c, t)
 		if _state.peckish():
 			_heart_layer.queue_redraw()
 	_rows_filled(c, t)
@@ -2237,6 +2356,38 @@ func _step(c: int) -> void:
 	_spend(1, t + SLIDE_TIME)
 	if _state.is_solved():
 		_release()
+
+## A quick crawl is a zoom: the head grins and every other square kicks up a
+## puff of dust behind it.
+func _zoom(c: int, t: float) -> void:
+	_steps_at.append(t)
+	while _steps_at.size() > ZOOM_STEPS:
+		_steps_at.pop_front()
+	if _steps_at.size() < ZOOM_STEPS or t - _steps_at[0] > ZOOM_SPAN:
+		return
+	_zoom_at = t
+	if not Motion.reduce and _state.body.size() % 2 == 0 and _state.body.size() > 1:
+		fx.puff(_centre(_state.body[_state.body.size() - 2]), Pal.PAPER, 3)
+
+## A square crawled onto: one bubble of the wrap, a semitone higher a square
+## since the last leaf (the run climbs toward the next bite), five at most.
+func _crawl_pop() -> void:
+	var run := 0
+	for i in range(_state.body.size() - 1, -1, -1):
+		if _state.clue[_state.body[i]] != 0:
+			break
+		run += 1
+	var semis := mini(run - 1, CRAWL_CLIMB)
+	_heard("crawl", pow(2.0, float(semis) / 12.0) * randf_range(0.985, 1.015))
+
+## A crawl pop is heard and not felt: a walk knocks on the leaves it
+## reaches, not on each square (docs/agents/haptics.md), and Fx2D would echo
+## an unmapped pop on every one.
+func _heard(cue: String, pitch: float) -> void:
+	var buzzes: bool = fx.buzzes
+	fx.buzzes = false
+	fx.cue(cue, pitch, 0.0, CRAWL_GAP)
+	fx.buzzes = buzzes
 
 ## The head has landed on leaf `c` at `at`: it chews, a bite and a few
 ## crumbs a chew, and swallows.
@@ -2301,6 +2452,7 @@ func _cut(c: int, t: float) -> void:
 		_break_streak()
 		_clear_gags()
 	fx.cue("step")
+	_heard("back", randf_range(0.97, 1.03))
 	_heart_layer.queue_redraw()
 	_dirty()
 	_spend(cost, _walked_at if not Motion.reduce else t)

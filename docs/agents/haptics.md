@@ -179,7 +179,9 @@ Rules:
   (`_by_hand`, kept across a flight landed early by the next tap).
 - **A walk over every square knocks on what it reaches, not on each
   square.** Caterpillar's drag crosses the whole bed, forty to sixty
-  squares in a stroke or two: a bare square says nothing, each leaf eaten
+  squares in a stroke or two: a bare square says nothing (since
+  2026-10-26 it is heard, the `crawl` pop, and still not felt: the board
+  turns Fx2D's echo off for it, `_heard`), each leaf eaten
   taps, and a stroke that reached no leaf (it only walked, or took squares
   back) ticks once as the finger lifts (`_stroke_knocked`). One Line taps
   every plank because there a plank is the move; here the leaf is.

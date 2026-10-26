@@ -6,7 +6,8 @@ extends SceneTree
 ##
 ##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_caterpillar.gd -- [d=0..3] [mode] [rm] [out=<dir>]
 ##
-## Modes: `rest`; `drag` (a flick along the answer two squares an event, the
+## Modes: `rest`; `stuck` (Easy/Medium: half the answer, a step that
+## strands a square -- the free blush -- then backing off it); `drag` (a flick along the answer two squares an event, the
 ## body must keep up square for square; prints the frame cost); `wrong` (Hard
 ## or Insane: half the answer, then a step the judge prices -- blush, heart,
 ## scoot back); `out` (wrong steps until the hearts run out: dusk, the card,
@@ -178,6 +179,18 @@ func _priced() -> int:
 			return m
 	return -1
 
+## A square next to the head that the board allows and that strands one.
+func _stranding() -> int:
+	var st = _puzzle._state
+	var h: int = st.head()
+	for d in [1, -1, st.cols, -st.cols]:
+		var m: int = h + d
+		if m < 0 or m >= st.size() or not st.adjacent(h, m) or st.body.has(m):
+			continue
+		if st.why(m) == "" and not st.stranded(m).is_empty():
+			return m
+	return -1
+
 ## Lays the answer up to `count` squares straight on the state (no input),
 ## then redraws.
 func _lay(count: int) -> void:
@@ -193,6 +206,7 @@ func _script() -> void:
 	match _mode:
 		"rest":
 			_at(1.5, _shot)
+			_at(2.1, _shot)
 		"drag":
 			_end = 3.0
 			_at(0.8, func() -> void:
@@ -214,6 +228,33 @@ func _script() -> void:
 			_at(1.6, _shot)
 			_at(2.2, func() -> void:
 				_mouse(_last, false)
+				_shot())
+		"stuck":
+			# Easy and Medium: a legal step that strands a square blushes it,
+			# free, until the body backs off it.
+			_end = 3.6
+			_at(0.6, func() -> void:
+				# The first square past a third of the answer where some
+				# allowed step strands one.
+				for k in range(st.size() / 3, st.size() - 1):
+					_lay(k)
+					if _stranding() >= 0:
+						return)
+			_at(0.9, func() -> void:
+				var m := _stranding()
+				print("stranding square ", m, " stranded ", st.stranded(m))
+				_mouse(_at_cell(st.head()), true)
+				_motion(_at_cell(m))
+				_mouse(_last, false))
+			_at(1.5, func() -> void:
+				print("stuck ", _puzzle._stuck)
+				_shot())
+			_at(2.0, func() -> void:
+				_mouse(_at_cell(st.head()), true)
+				_motion(_at_cell(st.body[st.body.size() - 2]))
+				_mouse(_last, false))
+			_at(2.8, func() -> void:
+				print("after backing off: stuck ", _puzzle._stuck)
 				_shot())
 		"out":
 			_end = 7.0

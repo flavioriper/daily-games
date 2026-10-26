@@ -192,8 +192,23 @@ func judge(n: int) -> String:
 ## longer reach, and those left with a single way in that are not the last
 ## leaf. Empty when it strands nothing.
 func stranded(n: int) -> PackedInt32Array:
+	return _stranded_from(n, _free_after(n))
+
+## The empty squares the body as it lies has stranded (Easy and Medium blush
+## them, free): empty when it strands nothing, before the first press and
+## on Peckish, whose dead ends are the tummy's.
+func stranded_now() -> PackedInt32Array:
+	if body.is_empty() or hunger > 0:
+		return PackedInt32Array()
+	var free := 0
+	for q in size():
+		free |= 1 << q
+	for q in body:
+		free &= ~(1 << q)
+	return _stranded_from(head(), free)
+
+func _stranded_from(n: int, free: int) -> PackedInt32Array:
 	var out := PackedInt32Array()
-	var free := _free_after(n)
 	if free == 0:
 		return out
 	var c := _ctx

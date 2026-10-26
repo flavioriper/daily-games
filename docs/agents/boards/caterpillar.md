@@ -154,3 +154,63 @@ margin and the 180 cell cap is off (an Easy cell is 190).
   caterpillar` passes.
 - Decided for the user, unconfirmed: the larger Easy cell; the dusk of
   spent moves dimming the world too. Owed: a phone, the level slide.
+
+## Made fun (2026-10-26)
+
+The user: "make catterpillar experience way better to play, and game itself
+way funnier to play, right now nobody likes it". Spec:
+`docs/superpowers/specs/2026-10-26-caterpillar-fun-design.md`.
+
+- **Measured first** (`tests/_probe_cat_fun.gd`, new, headless): a careful
+  player -- one who sees a square a step would strand -- guessing at random
+  at each turn and backing off dead ends crawled 49 squares the answer does
+  not keep on a 25-square Easy, 99 on Medium, 254 on Hard (1152 on Insane's
+  bank). The generator stripped leaves to the fewest that still prove one
+  walk, so a day was trial and error, not reading.
+- **Gardens are dealt readable** (`Gen.stuck_at`, `_make_readable`,
+  `LOOK`): walking the answer, every other way the board allows at a turn
+  must die (strand a square, meet a leaf out of turn or a fence) within
+  `LOOK[band]` squares (3, 4, 6). Where one does not, a leaf goes 2-8
+  squares on (the nearest of a shuffled reach that settles the turn), else a
+  fence on a band with fences, else a leaf on the next square; then leaves
+  come off again while the garden stays proved and readable, down to the
+  band's floor. The look is node-capped (`LOOK_CAP`), never clocked; a
+  capped look counts the way alive, so it never passes an unreadable
+  garden. After: wasted 3.2 / 7.2 / 17.3 (worst 5 / 10 / 35), leaves 9.2 /
+  9.8 / 12.8 (were 7.2 / 8.0 / 9.8), deal worst 14 / 43 / 77 ms;
+  `_probe_cat_gen.gd` re-proves 120 deals uncapped, 0 with two walks.
+  **Insane is untouched**: its Peckish gardens come from the bank, and
+  Insane stays hard on purpose. Its live fallback (no bank) reads Hard's
+  row, look and all.
+- **The strand is shown, free, on Easy and Medium** (`_check_stuck`,
+  `State.stranded_now`, `STUCK_BANDS`): the moment the body strands a
+  square it washes rose with a deep-rose rim, the head worries, `strand`
+  sounds and the tip says `CP_STUCK`; the squares stay rose until a cut
+  frees them, then fade. Nothing is priced and nothing is refused. The
+  reader counts the strand as seen, which is why Easy and Medium can be
+  dealt with fewer leaves. Hard and Insane show nothing, though Hard's
+  look (6) also counts a strand as seen: Hard assumes a sight it does not
+  give, which is part of what makes it Hard. A call. Walking the
+  answer never blushes (0 of 90 answers); 46% of legal side steps blush at
+  once. New tip `CP_TIP_STUCK` on those bands.
+- **The next leaf beckons** (`_draw_beckon`, `BECKON_*`): two gold rings
+  ripple out of the due leaf's badge (leaf 1 before the first press), one
+  cached ring mesh under a transform; steady under reduce motion; not on
+  Peckish. +2 draw calls. Before the first press the board keeps redrawing
+  for it (`_process`; the head's breath does that once there is a body).
+- **The crawl has a sound** (`_crawl_pop`, `CRAWL_CLIMB`, `CRAWL_GAP`):
+  every square grown onto is `crawl`, the wrap two steps under combo's and
+  quieter, climbing a semitone a square from the last leaf, five at most,
+  35 ms apart at closest; a cut is `back`, the lip, low. Both from the bank
+  (`tools/gen_sfx.py caterpillar crawl back`). Heard and not felt
+  (`_heard` turns Fx2D's echo off for them): the haptics rule that a walk
+  knocks on its leaves, not its squares, stands. Unheard by the user.
+- **A zoom** (`_zoom`, `ZOOM_*`): five squares inside 0.7 s and the head
+  grins (JOY) and every other square kicks up a puff behind it.
+- `tests/_shot_caterpillar.gd -- d=0 stuck` shows the blush and its fade.
+  opengl3_angle at 810x1440: 88 peak in `stuck` (Easy, Medium), 105 in a
+  Hard `drag`. Suite failed=0, `_win.gd -- caterpillar` PASS, the 32
+  tutorial pages (four bands) play headless with no error.
+- Mine, the user's to call: the look depths, the free blush on Easy and
+  Medium only, the beckon, the crawl pop's level, the zoom. Not seen on a
+  phone, nothing heard.

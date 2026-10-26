@@ -25,13 +25,22 @@ extends RefCounted
 ## the same field on every device. Spec:
 ## docs/superpowers/specs/2026-09-25-caterpillar-flat-design.md, section 5.
 
+## How many squares past a turn a player must look to see that every other
+## way dies (`stuck_at`): a band deals only gardens read that far, so a day
+## is seen, not guessed. 0 deals the old proved-and-thin garden (Insane's
+## live fallback reads Hard's row).
+const LOOK := [3, 4, 6]
+## The look-ahead's own node cap a way: past it the way counts as alive, so a
+## capped look never passes a garden that is not readable.
+const LOOK_CAP := 4000
+
 ## cols, rows, the leaf-count range and the hedge-count range. Insane's row is
 ## provisional, as every board's is (docs/superpowers/specs/
 ## 2026-09-23-insane-level-design.md).
 const BANDS := [
-	{"cols": 5, "rows": 5, "leaves": [6, 8], "hedges": [0, 0]},
-	{"cols": 6, "rows": 6, "leaves": [7, 9], "hedges": [2, 4]},
-	{"cols": 7, "rows": 7, "leaves": [8, 11], "hedges": [3, 6]},
+	{"cols": 5, "rows": 5, "leaves": [6, 8], "hedges": [0, 0], "look": LOOK[0]},
+	{"cols": 6, "rows": 6, "leaves": [7, 9], "hedges": [2, 4], "look": LOOK[1]},
+	{"cols": 7, "rows": 7, "leaves": [8, 11], "hedges": [3, 6], "look": LOOK[2]},
 	{"cols": 8, "rows": 8, "leaves": [9, 13], "hedges": [4, 8], "cap": 500},
 ]
 
@@ -112,7 +121,14 @@ static func generate(rng: RandomNumberGenerator, difficulty: int) -> Dictionary:
 			else:
 				break
 
-	if unique and idx.size() > target:
+	var look := int(b.get("look", 0))
+	if unique and look > 0:
+		_make_readable(rng, w, h, p, idx, hedges, on_path, look, hedge_max)
+	if unique:
+		# Leaves come off again while the garden stays proved and, on a
+		# band that reads, readable: the fewest leaves that still let a
+		# player see every turn.
+		var floor_k := int(b.leaves[0]) if look > 0 else target
 		var inner: Array = idx.keys().filter(func(v): return v != 0 and v != n - 1)
 		for j in range(inner.size() - 1, 0, -1):
 			var q := rng.randi_range(0, j)
@@ -120,10 +136,13 @@ static func generate(rng: RandomNumberGenerator, difficulty: int) -> Dictionary:
 			inner[j] = inner[q]
 			inner[q] = t
 		for v in inner:
-			if idx.size() <= target:
+			if idx.size() <= floor_k:
 				break
 			idx.erase(v)
-			if not proved(w, h, _leaves_of(p, idx), hedges.keys(), cap):
+			var ok := proved(w, h, _leaves_of(p, idx), hedges.keys(), cap)
+			if ok and look > 0:
+				ok = stuck_at(context(w, h, _leaves_of(p, idx), hedges.keys()), p, look) < 0
+			if not ok:
 				idx[v] = true
 
 	return {"cols": w, "rows": h, "path": p, "leaves": _leaves_of(p, idx),
@@ -375,6 +394,120 @@ static func popcount(x: int) -> int:
 		x &= x - 1
 		c += 1
 	return c
+
+# ---------------------------------------------------------------- the read
+#
+# A garden a player can read: walking the answer, at every turn each other
+# way the board would let the head take dies -- strands a square, or runs
+# into a leaf out of turn or a fence -- within `look` squares, whatever the
+# player does there. The strand is what the board shows on Easy and Medium
+# (the blush), so it counts as seen. Readable implies unique.
+
+## The first step of the answer at which some other way survives `look`
+## squares, or -1 when none does.
+static func stuck_at(ctx: Dictionary, p: PackedInt32Array, look: int) -> int:
+	var n: int = ctx.n
+	var full := -1 if n == 64 else (1 << n) - 1
+	var head := p[0]
+	var next := 2
+	var free := full & ~(1 << head)
+	for i in range(1, n):
+		for mv in _moves(ctx, head, next, free):
+			if int(mv[0]) == p[i]:
+				continue
+			ctx.nodes = 0
+			if _alive(ctx, int(mv[0]), int(mv[1]), int(mv[2]), look - 1):
+				return i
+		if ctx.clue[p[i]] != 0:
+			next += 1
+		head = p[i]
+		free &= ~(1 << head)
+	return -1
+
+## The steps the board allows from `head` that strand nothing: [cell, the
+## next leaf due after it, the free squares after it].
+static func _moves(ctx: Dictionary, head: int, next: int, free: int) -> Array:
+	var out := []
+	var w: int = ctx.w
+	var hb := 1 << head
+	for s in [[ctx.r, 1], [ctx.l, -1], [ctx.d, w], [ctx.u, -w]]:
+		if not (int(s[0]) & hb):
+			continue
+		var m: int = head + int(s[1])
+		var mb := 1 << m
+		if not (free & mb):
+			continue
+		var k: int = ctx.clue[m]
+		if k != 0 and k != next:
+			continue
+		if mb == ctx.end_bit and free != mb:
+			continue
+		var f2 := free & ~mb
+		if f2 != 0 and not _viable(ctx, m, f2):
+			continue
+		out.append([m, next + 1 if k != 0 else next, f2])
+	return out
+
+## Whether some walk from here lasts `depth` more squares (or finishes).
+static func _alive(ctx: Dictionary, head: int, next: int, free: int, depth: int) -> bool:
+	if free == 0 or depth <= 0:
+		return true
+	ctx.nodes += 1
+	if ctx.nodes > LOOK_CAP:
+		return true
+	for mv in _moves(ctx, head, next, free):
+		if _alive(ctx, int(mv[0]), int(mv[1]), int(mv[2]), depth - 1):
+			return true
+	return false
+
+## Lays leaves (and on a band with fences, now and then a fence) until the
+## answer reads at `look`: at each turn a player could not read, a leaf a
+## few squares on that settles it, the nearest that does, else a fence on
+## the stray way's edge, else a leaf on the next square. Adding a clue only
+## kills ways, so the turns before stay read.
+static func _make_readable(rng: RandomNumberGenerator, w: int, h: int, p: PackedInt32Array,
+		idx: Dictionary, hedges: Dictionary, on_path: Dictionary, look: int, hedge_max: int) -> void:
+	var n := w * h
+	for guard in n:
+		var i := stuck_at(context(w, h, _leaves_of(p, idx), hedges.keys()), p, look)
+		if i < 0:
+			return
+		var done := false
+		var reach := [2, 3, 4, 5, 6, 7, 8]
+		for j in range(reach.size() - 1, 0, -1):
+			var q := rng.randi_range(0, j)
+			var t = reach[j]
+			reach[j] = reach[q]
+			reach[q] = t
+		for j in reach:
+			var at: int = i - 1 + j
+			if at <= 0 or at >= n - 1 or idx.has(at):
+				continue
+			idx[at] = true
+			var k := stuck_at(context(w, h, _leaves_of(p, idx), hedges.keys()), p, look)
+			if k < 0 or k > i:
+				done = true
+				break
+			idx.erase(at)
+		if done:
+			continue
+		if hedges.size() < hedge_max:
+			var ctx := context(w, h, _leaves_of(p, idx), hedges.keys())
+			var head := p[i - 1]
+			for c in _nbrs(w, h, head):
+				var e := edge_key(head, c)
+				if c != p[i] and not on_path.has(e) and not hedges.has(e) and p.find(c) > i:
+					hedges[e] = true
+					done = true
+					break
+			if done:
+				continue
+		var q := i
+		while q < n - 1 and idx.has(q):
+			q += 1
+		if q >= n - 1:
+			return
+		idx[q] = true
 
 # --------------------------------------------------------------- Peckish
 #

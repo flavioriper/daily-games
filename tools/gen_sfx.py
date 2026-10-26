@@ -1162,8 +1162,8 @@ SETS = {
         "ribbons":  ("a soft breath of warm breeze that eases, fades and stops, calm, short", 0.8, -17, BREEZE, "warm:900", "steep", "ease:0.05", "body:320"),
     },
     # Caterpillar: drag from leaf 1 and every square grows the caterpillar a
-    # segment; it eats the leaves in order. `step` fires on every square, so
-    # it gets no file (docs/art/sound-direction.md). Re-prompted in the
+    # segment; it eats the leaves in order. `step` still has no file; since
+    # 2026-10-26 a square crawled is `crawl` and one backed off `back`. Re-prompted in the
     # polish (2026-10-01) toward a sunny clover garden (CLOVER in place of
     # the house marimba): no tape-rewind undo, no wooden bonk.
     "caterpillar": {
@@ -1196,6 +1196,12 @@ SETS = {
         # streak. burp: one quiet note. ladybug: three quiet notes, up and
         # back a step. hungry: two low notes alike, a kind 'not yet'.
         "combo":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.055", "notes:0:1", "tight"),
+        # The crawl (2026-10-26, the made-fun pass): every square the body
+        # grows onto is one bubble of the wrap, two steps under combo's and
+        # quieter, the board climbing it a semitone a square from the last
+        # leaf, five at most. A square backed off is the lip, low.
+        "crawl":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -19, FOLEY, "bank:wrap", "cut:0.055", "notes:0:-1", "tight"),
+        "back":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -19, FOLEY, "bank:lip", "cut:0.2", "notes:0:-3", "tight"),
         "confetti": ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
         "burp":     ("one soft short note on a kalimba, muffled and kind", 0.6, -14, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0:5", "cut:0.45"),
         "love":     ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.1:5,5,8", "cut:0.6"),
