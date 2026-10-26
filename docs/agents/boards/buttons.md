@@ -1277,3 +1277,17 @@ only the order changed. A throwaway check over 48 deals: 22,950 runs, every
 jewel after the first touching one taken before it (9,761 did not on the
 old order). Rules probe 648/0, board probe 38 days with the two old band-2
 zoom failures. Not seen on a screen.
+
+## 2026-10-26: a miss puts the pick down
+
+The user: "remove the wrong click, if user miss click and there is nothing
+to be done around it by the helper, just remove selection". With a pick in
+hand, a tap the aim found nothing for -- a bare patch of another colour
+with none of the pick's colour in reach, or a sewn jewel -- puts the pick
+down (`_drop`, its own soft lift cue) instead of refusing it with the
+`locked` cue and a shiver while keeping it; linen already did. With nothing
+in hand a tap on a bare patch or a sewn jewel still refuses, as there is no
+selection to clear. A throwaway check over six Easy days: five wrong-colour
+taps and three on sewn jewels, each leaving nothing held and no move
+counted. Board probe 38 days, the two old band-2 zoom failures. Not seen on
+a screen.

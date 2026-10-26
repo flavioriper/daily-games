@@ -1280,6 +1280,8 @@ const TIN_HIT := -3
 ## squares of 15 px, and 1.5 of them was under the finger), and a bare
 ## patch of another colour with a pick in hand reaches as far as linen does
 ## for one of the pick's colour, and is refused only with none in reach.
+## Since 2026-10-26 a miss like that, or one on a sewn button, with a pick
+## in hand puts the pick down instead of refusing it (`tap`).
 const AIM_REACH := 1.5
 const AIM_PX := 44.0
 const AIM_EDGE := 0.7
@@ -1455,7 +1457,11 @@ func tap(i: int, twice := false) -> void:
 			starts[-1 - p] = _held_pos(p, true, now)
 		var res: Dictionary = state.sew(_held_cells, places, i)
 		if int(res.why) != State.OK:
-			_refuse(i, "BB_REFUSE_WRONG")
+			# a miss the aim found nothing for puts the pick down, no
+			# refusal (the user, 2026-10-26: "if user miss click and there
+			# is nothing to be done around it by the helper, just remove
+			# selection")
+			_drop()
 			return
 		# The ones no patch was left for stay picked, for the next bare patch
 		# (the user, 2026-10-11: "it should keep selected until end or use
@@ -1478,7 +1484,10 @@ func tap(i: int, twice := false) -> void:
 		return
 	match state.judge(i):
 		State.REFUSED_HOME:
-			_refuse(i, "BB_REFUSE_HOME")
+			if holding():
+				_drop()
+			else:
+				_refuse(i, "BB_REFUSE_HOME")
 		State.OK:
 			if twice:
 				# the first tap picked the run, or put it down: either way the
