@@ -77,8 +77,11 @@ const DRAIN_R := 66.0
 ## tip, a segment a pigment, 100% the card's shade, and the number sits
 ## under the drop; more than full climbs a dark ring outside it. It eases
 ## toward the fluid's reading at this rate and fades at this one when the
-## tip is over the tray.
-const METER_EASE := 12.0
+## tip is over the tray (20 since 2026-10-26, so it keeps up with the
+## quick pour). A chunk that lands snaps the rim white and the number green
+## for LAND_SNAP seconds.
+const METER_EASE := 20.0
+const LAND_SNAP := 0.35
 const METER_FADE := 6.0
 const METER_FONT := 28
 ## The needle's length in pixels and how far it leans.
@@ -166,6 +169,8 @@ var _drain_r := DRAIN_R
 ## and its mesh, handed over each frame.
 var _level := Vector3.ZERO
 var _meter_k := 0.0
+## When the last chunk landed, on the screen's clock.
+var _land_at := -10.0
 var _meter: ArrayMesh
 var _table: ArrayMesh
 var _table_of := Vector2.ZERO
@@ -427,6 +432,7 @@ func lay(game: RefCounted) -> void:
 	_drain_by = -1
 	_level = Vector3.ZERO
 	_meter_k = 0.0
+	_land_at = -10.0
 	_deal_at = -10.0
 	_verdict_at = -10.0
 	_slid = false
@@ -546,6 +552,13 @@ func _animate(delta: float) -> void:
 				_cell_pots.erase(cell)
 		_level = _level.lerp(read, minf(1.0, delta * METER_EASE))
 		_meter_k = minf(1.0, _meter_k + delta * METER_FADE)
+		# the chunk lands the frame the shown reading reaches LAND of the
+		# card's shade while it is squeezed, once a fill (the sim's own
+		# land event may have got there first: whichever does sets the flag)
+		if sim.squeezing and cell < sim.landed.size() and sim.landed[cell] == 0 \
+				and _level.x + _level.y + _level.z >= Sim.LAND * Sim.C_FULL:
+			sim.landed[cell] = 1
+			_land(cell)
 	else:
 		_meter_k = maxf(0.0, _meter_k - delta * METER_FADE)
 		if _meter_k <= 0.0:
@@ -709,7 +722,21 @@ func _play_events() -> void:
 				sim.events.clear()
 			"served":
 				_on_served(ev)
+			"land":
+				_land(int(ev.cell))
 		happened.emit(ev)
+
+## A chunk filled to the card's shade (spec 2026-10-26 4.3): a pop, a
+## knock, sparkles at the tip in the picked syrup's colour, a wobble, and
+## the meter's rim white and number green for LAND_SNAP seconds.
+func _land(cell: int) -> void:
+	print("land cell %d at %.2f" % [cell, _clock])
+	_fx.cue("land", randf_range(1.0 - TICK_VARY, 1.0 + TICK_VARY))
+	_fx.buzz(Haptics.BUMP)
+	# _fx is the field's child, so px() (the mould on the field) is its space
+	_fx.sparkle(px(sim.tip), Sim.FLAVOURS[int(sim.pots[sim.picked].flavour)])
+	wobble(WOB_LAND)
+	_land_at = _clock
 
 func _on_deal() -> void:
 	_deal_at = _clock
@@ -885,7 +912,8 @@ func _draw_meter(xf: Transform2D, fade: Color) -> void:
 		return
 	var total: float = (_level.x + _level.y + _level.z) / Sim.C_FULL
 	var alpha := fade * Color(1, 1, 1, _meter_k)
-	_meter = Art.meter(_squeeze_r, _meter_segments(sim.tip_cell(), _level / Sim.C_FULL), total)
+	var snap := _clock - _land_at < LAND_SNAP
+	_meter = Art.meter(_squeeze_r, _meter_segments(sim.tip_cell(), _level / Sim.C_FULL), total, snap)
 	if _meter != null:
 		_top.draw_mesh(_meter, null, xf, alpha)
 	var font: Font = CozyTheme.display(700)
@@ -894,7 +922,7 @@ func _draw_meter(xf: Transform2D, fade: Color) -> void:
 	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs).x
 	var at := xf * Vector2(-tw * 0.5, _squeeze_r * 0.62 + font.get_ascent(fs) * 0.35)
 	_top.draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs,
-		(Art.INK if total > 1.0 + Art.METER_SLACK else Color("fffdf8")) * alpha)
+		(Pal.LEAF_DEEP if snap else Art.INK if total > 1.0 + Art.METER_SLACK else Color("fffdf8")) * alpha)
 
 ## The meter's segments for the chunk: a segment a pot that has gone into
 ## it, in the order they went in, each the share of the reading its

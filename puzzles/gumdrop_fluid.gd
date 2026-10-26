@@ -50,14 +50,16 @@ const JET_LEAN := 0.55
 const JET_TURN := 0.9
 const JET_RATE := 0.7
 ## Pigment a second at the tip's middle into a chunk of Sim.SQUARES_REF
-## squares (of the sim's 36 by 36), 2.6 s of hold to the card's shade;
+## squares (of the sim's 36 by 36), about 1.2 s of hold to the card's
+## shade at 92 squares (2026-10-26, the pour is quick; 3.6 and 2.6 s
+## before);
 ## into a bigger chunk more, as the root of its squares, so a big chunk
 ## takes longer than a small one and a small one is not a flash (Sim.pace,
 ## 2026-10-15; from 2026-10-14 every chunk of 23 squares or more took the
 ## same 2.6 s, and before that 20 into any chunk, the stalk past the
 ## card's shade in half a second). The grey button draws it out at DRAIN
 ## times the same, so a big chunk drains slower too.
-const RATE := 3.6
+const RATE := 8.0
 const DRAIN := 1.0
 ## The most the tip pours a texel up to, in amounts: a little past the
 ## card's shade (1.25), so a pour never goes black under the tip. The dye

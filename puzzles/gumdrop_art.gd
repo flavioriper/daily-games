@@ -349,13 +349,18 @@ const METER_SLACK := 0.08
 ## syrup as shares of the card's shade, laid clockwise from the top along
 ## the button's white rim, a segment a flavour poured in (`segments`,
 ## [flavour, share] in the order they went in, summing to `total`); past
-## full a dark ring climbs outside the rim. Built each frame it is shown.
-static func meter(r: float, segments: Array, total: float) -> ArrayMesh:
+## full a dark ring climbs outside the rim; `snap`, the rim white all
+## round (a chunk just landed). Built each frame it is shown.
+static func meter(r: float, segments: Array, total: float, snap := false) -> ArrayMesh:
 	var b := Face.Builder.new()
 	var from := -PI * 0.5
 	var shown := minf(total, 1.0)
 	var rim := 0.95 * r
 	var w := 0.1 * r
+	# a chunk just landed: the ring snaps white, the whole way round
+	if snap:
+		b.stroke(Face.Builder.arc_points(Vector2.ZERO, rim, from, from + TAU), w, Color.WHITE, true, false)
+		segments = []
 	for seg: Array in segments:
 		var part: float = float(seg[1]) / maxf(total, 0.0001) * shown
 		if part > 0.002:
