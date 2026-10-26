@@ -596,9 +596,10 @@ func _press(index: int, at: Vector2) -> void:
 		if sim.can_serve():
 			sim.serve()
 		else:
-			# nothing in the mould yet: the button answers and says why
-			_fx.touch(0.94)
-			_rw.sticker(tr("GD_NOTHING_YET"), _rw.at(field, _serve_at + Vector2(60.0, -SERVE_R - 30.0)), 40, 1.3, false, Color("fffaf0"), false, "nothing")
+			# a piece still clear: the button waits for every one, and the
+			# tongue, the house refusal, says not yet (2026-10-26)
+			_fx.cue("nope")
+			_fx.buzz(Haptics.WARN)
 		return
 	for i in _pot_at.size():
 		var foot: Vector2 = _pot_at[i]
@@ -696,25 +697,27 @@ func _on_served(ev: Dictionary) -> void:
 	_verdict_at = _clock
 	var pct := int(ev.pct)
 	var at := _rw.at(field, _tray.get_center())
-	if bool(ev.perfect) and bool(ev["pass"]):
-		_wobble = 0.09
-		_fx.cue("perfect")
-		_feel(Haptics.GOOD)
-		_rw.sticker("%d%%" % pct, at, 110, 1.9, true, Color.WHITE, true, "pct")
-		_rw.sticker(tr("GD_PERFECT"), at + Vector2(0, 110.0), 54, 1.9, false, Color("fff4c2"), false, "word")
-		_rw.rain(1.6, ["confetti", "star"], Rewards.CONFETTI)
-	elif bool(ev["pass"]):
-		_wobble = 0.06
-		_fx.cue("good", minf(1.0 + 0.04 * sim.index, CLIMB_TOP))
-		_feel(Haptics.GOOD)
-		_rw.sticker("%d%%" % pct, at, 100, 1.9, false, Color("fffaf0"), true, "pct")
-		_rw.sticker(tr("GD_GOOD"), at + Vector2(0, 104.0), 50, 1.9, false, Color("fff4c2"), false, "word")
-	else:
-		_wobble = 0.03
-		_fx.cue("flop")
-		_feel(Haptics.BAD)
-		_rw.sticker("%d%%" % pct, at, 100, 2.2, false, Color("fffaf0"), false, "pct")
-		_rw.sticker(tr("GD_NEEDED") % int(ev.need), at + Vector2(0, 104.0), 46, 2.2, false, Color("ffd9c2"), false, "word")
+	# every serve is a reveal, never a fail: the stamp is the tier (2026-10-26)
+	match int(ev.tier):
+		2:
+			_wobble = 0.09
+			_fx.cue("perfect")
+			_feel(Haptics.GOOD)
+			_rw.sticker("%d%%" % pct, at, 110, 1.9, true, Color.WHITE, true, "pct")
+			_rw.sticker(tr("GD_PERFECT"), at + Vector2(0, 110.0), 54, 1.9, false, Color("fff4c2"), false, "word")
+			_rw.rain(1.6, ["confetti", "star"], Rewards.CONFETTI)
+		1:
+			_wobble = 0.06
+			_fx.cue("good", minf(1.0 + 0.04 * sim.index, CLIMB_TOP))
+			_feel(Haptics.GOOD)
+			_rw.sticker("%d%%" % pct, at, 100, 1.9, false, Pal.LEAF_DEEP, true, "pct")
+			_rw.sticker(tr("GD_GREAT"), at + Vector2(0, 104.0), 50, 1.9, false, Color("fff4c2"), false, "word")
+		_:
+			_wobble = 0.03
+			_fx.cue("good", 0.84)
+			_feel(Haptics.BUMP)
+			_rw.sticker("%d%%" % pct, at, 100, 1.9, false, Color("fffaf0"), true, "pct")
+			_rw.sticker(tr("GD_GOOD"), at + Vector2(0, 104.0), 50, 1.9, false, Color("fff4c2"), false, "word")
 
 func _ring(at: Vector2, r: float, life: float, col: Color, inward := false) -> void:
 	if Motion.reduce:
@@ -731,11 +734,17 @@ func _refresh_hud() -> void:
 	_shown_match = pct
 	_shown_index = sim.index
 	_match_l.text = "?" if pct < 0 else "%d%%" % pct
-	# over the mark the number is the leaf's green, under it the ink
-	_match_l.add_theme_color_override("font_color", Pal.LEAF_DEEP if pct >= sim.mark() else Art.INK)
-	_need_l.text = tr("GD_NEED") % sim.mark()
-	if sim.moulds.size() > 1:
-		_need_l.text += "  ·  %d/%d" % [sim.index + 1, sim.moulds.size()]
+	# the number wears its tier: the sun's gold at perfect, the leaf's
+	# green at great, the ink for a plain serve (and for the ?)
+	var tier: int = Sim.tier(pct) if pct >= 0 else 0
+	_match_l.add_theme_color_override("font_color", [Art.INK, Pal.LEAF_DEEP, Pal.SUN][tier])
+	# under it, which mould of the day this is; once served, the tier's word
+	if pct >= 0:
+		_need_l.text = tr(["GD_GOOD", "GD_GREAT", "GD_PERFECT"][tier]).to_upper()
+	elif sim.moulds.size() > 1:
+		_need_l.text = tr("GD_OF") % [sim.index + 1, sim.moulds.size()]
+	else:
+		_need_l.text = ""
 	# the card's two lines go with the card on the win
 	_match_l.modulate.a = 1.0 - _win_k()
 	_need_l.modulate.a = _match_l.modulate.a

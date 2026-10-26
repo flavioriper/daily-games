@@ -1494,12 +1494,11 @@ TUT_EDDY_HUD_RESET,A fresh run on a full pond,Uma partida nova num lago cheio,Un
 TUT_EDDY_HUD_GEAR,Settings. The run waits for you,Configurações. A partida espera por você,Ajustes. La partida te espera
 TUT_EDDY_HUD_HELP,"This guide, whenever you like","Este guia, quando você quiser","Esta guía, cuando quieras"
 GD_MOTTO,A little at a time,Um pouquinho de cada vez,Un poquito cada vez
-GD_NEED,NEEDS %d%%,PRECISA DE %d%%,NECESITA %d%%
-GD_NEEDED,It needed %d%%,Precisava de %d%%,Necesitaba %d%%
-GD_NOTHING_YET,Nothing to serve yet,Ainda não há o que servir,Aún no hay nada que servir
 GD_REFUND,Your Gumdrop boosters came back as %d gold,Seus reforços do Gumdrop voltaram como %d de ouro,Tus refuerzos de Gumdrop volvieron como %d de oro
 GD_PERFECT,Perfect!,Perfeito!,¡Perfecto!
 GD_GOOD,Served!,Servido!,¡Servido!
+GD_GREAT,Great!,Ótimo!,¡Genial!
+GD_OF,%d OF %d,%d DE %d,%d DE %d
 GD_CHERRY,Cherry,Cereja,Cereza
 GD_ORANGE,Orange,Laranja,Naranja
 GD_LEMON,Lemon,Limão,Limón
