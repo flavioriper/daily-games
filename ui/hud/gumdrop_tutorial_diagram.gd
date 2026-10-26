@@ -215,7 +215,7 @@ func _reset() -> void:
 		Lesson.SOAK:
 			# one long squeeze held still: the tint blooms about the needle and
 			# stays where it is, and a second squeeze makes it stronger (the
-			# cap: 1.3 s to about 80% of its shade, 0.7 s more to the top)
+			# cap: 1.3 s to about 60% of its shade on the meter (the raw pour is nearer 80), 0.7 s more to the top)
 			game.lay([F.LEMON, F.BLUEBERRY], [F.LEMON, F.BLUEBERRY])
 			var by: Vector2 = game.centre_of(1)
 			game.plan = [[0.5, "aim", by], [1.4, "squeeze", true], [2.7, "squeeze", false],
