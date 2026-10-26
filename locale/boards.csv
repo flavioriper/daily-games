@@ -531,10 +531,10 @@ FL_LVL_3,"Wish Tags: 8 × 8","Etiquetas de Desejo: 8 × 8","Etiquetas de Deseo: 
 PP_BLURB,"Tap a plane whose lane to the edge is clear, and off it goes.","Toque num avião com o caminho livre até a borda, e lá vai ele.","Toca un avión con el camino libre hasta el borde, y allá va."
 PP_SHORT,Send every plane\noff a clear lane.,Solte cada avião\npelo caminho livre.,Lanza cada avión\npor camino libre.
 PP_MOTTO,A clear lane and away,"Caminho livre, e lá vai","Camino libre, y a volar"
-PP_LVL_0,"The day's shape: a maze up to 12 × 17","A forma do dia: labirinto de até 12 × 17","La forma del día: laberinto de hasta 12 × 17"
-PP_LVL_1,"The day's shape: a maze up to 16 × 23","A forma do dia: labirinto de até 16 × 23","La forma del día: laberinto de hasta 16 × 23"
-PP_LVL_2,"The day's shape: a maze up to 21 × 30","A forma do dia: labirinto de até 21 × 30","La forma del día: laberinto de hasta 21 × 30"
-PP_LVL_3,"The day's shape: a maze up to 30 × 42","A forma do dia: labirinto de até 30 × 42","La forma del día: laberinto de hasta 30 × 42"
+PP_LVL_0,"The day's shape: a maze up to 16 × 23","A forma do dia: labirinto de até 16 × 23","La forma del día: laberinto de hasta 16 × 23"
+PP_LVL_1,"The day's shape: a maze up to 21 × 30","A forma do dia: labirinto de até 21 × 30","La forma del día: laberinto de hasta 21 × 30"
+PP_LVL_2,"The day's shape: a maze up to 30 × 42","A forma do dia: labirinto de até 30 × 42","La forma del día: laberinto de hasta 30 × 42"
+PP_LVL_3,"The day's shape: a maze up to 40 × 56","A forma do dia: labirinto de até 40 × 56","La forma del día: laberinto de hasta 40 × 56"
 PW_BLURB,Turn each pinned piece until the frame is full.,Gire cada peça presa até o quadro ficar cheio.,Gira cada pieza fija hasta llenar el marco.
 PW_SHORT,Turn each piece\ntill the frame fills.,Gire as peças até\npreencher o quadro.,Gira las piezas\ny llena el marco.
 PW_MOTTO,Turn it till it fits,Gire até encaixar,Gira hasta que encaje

@@ -83,10 +83,12 @@ const CLOUD := -2
 ## stood over it (`_stand_clouds`); that engine and `WINDY_SMALL` (the small
 ## sky before it, kept for the miner, tools/insane/planes_ladder.gd, and
 ## the bank's own tests) are still here, and no band deals them.
+## **Each band is the one above it was** (the user, 2026-10-26: "right now
+## it's too easy, the insane should be the hard one, and insane should be a
+## way bigger board"): Easy deals what Medium did, Medium Hard's, Hard
+## Insane's 30 x 42, and Insane a box of 40 x 56 carved tighter (more draws
+## a placement, less noise, longer planes).
 const BANDS: Array[Dictionary] = [
-	{"cols": 12, "rows": 17, "min_len": 2, "max_len": 15, "maze": true, "skew": 1.3, "straight": 0.6,
-		"floor": 0.93, "picks": 3, "noise": 1.5, "tries": 120,
-		"box": Vector2i(12, 17), "least": 12 * 17 / 2},
 	{"cols": 16, "rows": 23, "min_len": 2, "max_len": 22, "maze": true, "skew": 1.3, "straight": 0.65,
 		"floor": 0.93, "picks": 6, "noise": 1.0, "tries": 120,
 		"box": Vector2i(16, 23), "least": 16 * 23 / 2},
@@ -96,19 +98,22 @@ const BANDS: Array[Dictionary] = [
 	{"cols": 30, "rows": 42, "min_len": 2, "max_len": 29, "maze": true, "skew": 1.3, "straight": 0.7,
 		"floor": 0.9, "picks": 10, "noise": 0.6, "tries": 120,
 		"box": Vector2i(30, 42), "least": 21 * 30},
+	{"cols": 40, "rows": 56, "min_len": 2, "max_len": 36, "maze": true, "skew": 1.3, "straight": 0.72,
+		"floor": 0.9, "picks": 14, "noise": 0.4, "tries": 120,
+		"box": Vector2i(40, 56), "least": 30 * 42 * 3 / 4},
 ]
 ## The most cells a side Insane's shape is scaled up to, cols x rows: a cell
-## stays about 27 px wide on an 810 px screen (Hard's are about 38). The
-## shape keeps its own proportions inside it.
-const SHAPE_BOX := Vector2i(30, 42)
+## about 20 px wide on an 810 px screen (Hard's about 27). The shape keeps
+## its own proportions inside it.
+const SHAPE_BOX := Vector2i(40, 56)
 ## The themed picture sizes a shape is read from, the first the phone holds:
 ## the larger, the smoother the outline once scaled.
 const SHAPE_SIZES := [24, 32, 48, 16, 12, 10]
-## The fewest cells Insane's shape may hold: Hard's whole board, so Insane
-## is never the smaller sky (its row's `least`; the other bands ask half
-## their box). A thing too flat or thin to reach it in the box (a
-## watermelon slice cuts 30 x 18) is passed over for one that does.
-const SHAPE_MIN := 21 * 30
+## The fewest cells Insane's shape may hold (its row's `least`): three
+## quarters of Hard's whole box, so Insane is never near Hard's sky (Hard
+## asks Medium's whole board, the others half their box). A thing too flat
+## or thin to reach it in the box is passed over for one that does.
+const SHAPE_MIN := 30 * 42 * 3 / 4
 ## The most of its own box a shape may fill: a scene drawn edge to edge cuts
 ## a plain block, which is no shape at all.
 const SHAPE_FILL := 0.9

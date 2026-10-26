@@ -469,3 +469,25 @@ owned a hunt, and the thing unreadable.
   Insane-without-limits ruling stands. Not seen: a themed day's picture
   (headless has no Backend, so every check dealt a bank thing), a phone,
   any sound (none changed).
+
+### Every band one step harder, Insane way bigger (2026-10-26, evening)
+
+The user, the same day: "right now it's too easy, the insane should be the
+hard one, and insane should be a way bigger board (insane is hard, hard is
+medium, medium is easy)". `BANDS` moves down a row: Easy deals Medium's
+16 x 23, Medium Hard's 21 x 30, Hard Insane's 30 x 42 (floor 630), and
+Insane a 40 x 56 box (`SHAPE_BOX`) of at least 945 cells (`SHAPE_MIN`,
+three quarters of Hard's box), carved tighter (picks 14, noise 0.4,
+planes up to 36, straight 0.72). `PP_LVL_0..3` name the new boxes in
+en/pt/es. Hints stay by band (3, 3, 1, 1).
+
+- `tests/_probe_pp_fun.gd`, 12 bank days: Easy 24-47 planes, Medium 41-61,
+  Hard 74-103, Insane 125-167; cover 0.96-0.99; carve worst 17 / 35 / 66 /
+  165 ms on this Mac (Insane's deal on a phone unmeasured); free planes a
+  step 3.4 / 4.0 / 4.3 / 4.9; still 23 shared things.
+- Suite passed=302495 failed=0; `_win.gd -- planes` PASS (Easy, 55
+  planes); `d=3 rest` on opengl3_angle 76 draw calls, 172 planes, cell
+  about 20 px of 810.
+- Mine: the 40 x 56 box, the 945 floor, the tighter carve's knobs. Owed:
+  Insane's ~20 px cells under a thumb on a phone (no zoom), its deal time
+  there.
