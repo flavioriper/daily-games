@@ -47,6 +47,7 @@ const Face = preload("res://ui/faces/face.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
 const Haptics = preload("res://core/haptics.gd")
 const CozyTheme = preload("res://ui/theme.gd")
+const StarLine = preload("res://ui/flat/star_line.gd")
 
 const Made = State.Made
 const SLOTS := State.SLOTS
@@ -107,11 +108,6 @@ const PEEK_FADE := 0.45
 ## (sun) within WARM of it; its bump when a step brings it nearer.
 const NEAR_SIZE := 26
 const WARM := 0.1
-## The stars on the count line: radius and gap at W, a lost one's fall.
-const STAR_R := 17.0
-const STAR_GAP := 8.0
-const STAR_FALL := 0.7
-const STAR_DROP := 70.0
 ## A make pops higher the nearer it brings the stall to the order.
 const NEAR_PITCH := 0.22
 ## How high a picked crate rides, in its width.
@@ -154,16 +150,12 @@ var _say_at := -INF
 var _stuck_said := false
 var _filled_at := -INF
 ## What the stall stands at, read once a move (the solver is a few ms):
-## its stars, the nearest crate's distance, and when a star last fell or
-## came back and the nearest last came nearer.
-var _stars := 3
+## its stars (ui/flat/star_line.gd), the nearest crate's distance, and when
+## the nearest last came nearer.
+var _stars := StarLine.new()
 var _near := 0
-var _star_fell_at := -INF
-var _star_from := 3
-var _star_back_at := -INF
 var _near_at := -INF
 var _peek_shown: ArrayMesh
-var _stars_shown: ArrayMesh
 ## The step last made, [a, op, b, made, at]; [] when none to show.
 var _eq: Array = []
 ## The strip's mesh, kept until the next replaces it (a mesh freed before
@@ -262,8 +254,7 @@ func _fresh() -> void:
 	_stuck_said = false
 	_filled_at = -INF
 	_still_key = ""
-	_star_fell_at = -INF
-	_star_back_at = -INF
+	_stars.clear()
 	_near_at = -INF
 	_rate(false)
 	_relayout()
@@ -376,7 +367,7 @@ func _land() -> void:
 		var at := _st.filled_at()
 		if not demo and fx != null and at >= 0:
 			fx.sparkle(_crate_pos(at), Pal.LEAF)
-	elif not _stuck_said and not is_done() and _stars == 0:
+	elif not _stuck_said and not is_done() and _stars.stars == 0:
 		# the way to the order was lost: say so once, until it is found again
 		_stuck_said = true
 		_say_now("MK_SAY_STUCK")
@@ -386,16 +377,10 @@ func _land() -> void:
 func _rate(heard: bool) -> void:
 	var stars: int = _st.stars()
 	var near: int = int(_st.nearest()[1])
-	if heard:
-		if stars < _stars:
-			_star_fell_at = _t
-			_star_from = _stars
-			_cue("slip")
-		elif stars > _stars:
-			_star_back_at = _t
-		if near < _near:
-			_near_at = _t
-	_stars = stars
+	if _stars.rate(stars, _t, heard) < 0:
+		_cue("slip")
+	if heard and near < _near:
+		_near_at = _t
 	_near = near
 
 ## A slide still running is finished at once (a quick finger never waits).
@@ -963,47 +948,14 @@ func _draw_count() -> void:
 	text += "  ·  " + tr("MK_FEWEST") % _st.par
 	var cs := roundi(COUNT_SIZE * u)
 	var cw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, cs).x
-	var sr := STAR_R * s
-	var stars_w := 3.0 * 2.0 * sr + 2.0 * STAR_GAP * s
+	var sr := StarLine.R * s
+	var stars_w := StarLine.width(s)
 	var gap := 18.0 * s
 	var x0 := size.x * 0.5 - (stars_w + gap + cw) * 0.5
 	var y := _l("count_y")
-	_draw_stars(Vector2(x0 + sr, y - font.get_ascent(cs) * 0.36), sr, s)
+	_stars.draw(self, Vector2(x0 + sr, y - font.get_ascent(cs) * 0.36), s, _t)
 	draw_string(font, Vector2(x0 + stars_w + gap, y), text, HORIZONTAL_ALIGNMENT_LEFT, -1, cs,
 		Color(Pal.TEXT, 0.72))
-
-## The three stars from `at` (the first's middle): sun up to what the stall
-## stands at, hollow past it; a lost one falls away turning, a star won back
-## pops in.
-func _draw_stars(at: Vector2, r: float, s: float) -> void:
-	var b := Face.Builder.new()
-	var step := 2.0 * r + STAR_GAP * s
-	var fell := _t - _star_fell_at
-	var back := _t - _star_back_at
-	for i in 3:
-		var c := at + Vector2(i * step, 0.0)
-		var lit := i < _stars
-		var k := 1.0
-		if lit and i == _stars - 1 and back >= 0.0 and back < Motion.POP_IN and not Motion.reduce:
-			k = Motion.pop_in_scale(back).x
-		_star(b, c, r, 0.0, Color(Pal.LINE, 0.45))
-		if lit:
-			_star(b, c, r * k, 0.0, Pal.SUN)
-		# the stars just lost, falling off their seats
-		if i >= _stars and i < _star_from and fell >= 0.0 and fell < STAR_FALL and not Motion.reduce:
-			var f := fell / STAR_FALL
-			_star(b, c + Vector2(f * r * 0.8, f * f * STAR_DROP * s), r * (1.0 - 0.3 * f), f * 2.4,
-				Color(Pal.SUN, 1.0 - f))
-	_stars_shown = b.mesh()
-	draw_mesh(_stars_shown, null)
-
-## A five-pointed star about `c`, turned `turn`.
-static func _star(b: Face.Builder, c: Vector2, r: float, turn: float, colour: Color) -> void:
-	var pts := PackedVector2Array()
-	for i in 10:
-		var a := turn - PI * 0.5 + i * PI / 5.0
-		pts.append(c + Vector2(cos(a), sin(a)) * (r if i % 2 == 0 else r * 0.46))
-	b.polygon(pts, colour)
 
 ## A paper pill `sz` about the origin, on a soft drop, with a hairline.
 func _pill(b: Face.Builder, sz: Vector2, face: Color) -> void:

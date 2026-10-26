@@ -1538,6 +1538,9 @@ SETS = {
         # Put back where it was lifted: slide's take, lower and quieter.
         "drop":     ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -17, FOLEY, "bank:token", "cut:0.14", "notes:0:-4", "tight"),
         "undo":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -15, FOLEY, "bank:lip", "cut:0.28", "notes:0.11:0,-3", "tight"),
+        # A star of the count line lost (2026-10-26): Market Sums' slip, the
+        # lip twice falling.
+        "star":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -18, FOLEY, "bank:lip", "cut:0.2", "notes:0.09:-1,-5", "tight"),
         "slip":     ("a soft breath of warm breeze that eases, fades and stops, calm, short", 0.8, -17, BREEZE, "warm:900", "steep", "ease:0.05", "body:320"),
         "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
         # The blocks set in the tray: slide's take, five in a row.

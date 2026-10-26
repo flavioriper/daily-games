@@ -13,7 +13,8 @@ extends SceneTree
 ## the head shake -- then a move that strands it: a heart, the slide back);
 ## `streak` (nearer moves with gags forced: twirl, love, butterfly, the
 ## bubble); `solve` (the shortest way dragged out, then the party);
-## `restore`. Frames go to <dir>/sl_<mode>_d<level>_<n>.png; every mode
+## `stars` (Easy: moves that take the big block farther until a star
+## falls, then Undo); `restore`. Frames go to <dir>/sl_<mode>_d<level>_<n>.png; every mode
 ## prints the peak draw calls and the mean frame from 0.5 s on.
 
 const Gen = preload("res://puzzles/slider_gen.gd")
@@ -251,27 +252,41 @@ func _script() -> void:
 			_at(t0 + 0.4, func():
 				var st = _puzzle._state
 				_mouse(_cell_at(st.at(st.big())), false))
-			# then nearer moves until a dead end is one move away, and that move
+			# then a walk in the state, never on screen, to where a dead end is
+			# one move away, and that move dragged
 			var at := t0 + 1.0
-			for k in 60:
-				_at(at, func():
+			_at(at, func():
+				var st = _puzzle._state
+				var r := RandomNumberGenerator.new()
+				r.seed = 5
+				for i in 4000:
+					if not _costly().is_empty() or st.is_solved():
+						break
+					var opts := _all_moves().filter(func(o): return int(o.d) > 0)
+					var o: Dictionary = opts[r.randi_range(0, opts.size() - 1)]
+					st.play(int(o.p), int(o.to))
+				for q in st.blocks.size():
+					_puzzle._disp[q] = _puzzle._still_at(q)
+				_puzzle._refresh())
+			for k in 3:
+				_at(at + 0.3 + 0.8 * k, func():
 					if _done_home or _puzzle.busy() or not _puzzle._drag.is_empty() or _puzzle.is_done():
 						return
 					var m := _costly()
-					if not m.is_empty() and _moves_done >= 2:
+					if not m.is_empty():
 						_done_home = true
 						_drag(m.path, _t, 0.3)
 						_at(_t + 0.55, _shot)
 						_at(_t + 0.95, _shot)
 						_at(_t + 1.6, _shot)
-						_end = _t + 2.2
-						return
-					var h: Dictionary = _puzzle._state.hint_move()
-					if not h.is_empty():
-						_moves_done += 1
-						_drag(h.path, _t, 0.3))
-				at += 0.8
-			_end = at + 1.0
+						# Undo brings the stars back (2026-10-26)
+						_at(_t + 1.8, func(): print("stranded: stars ", _puzzle._stars.stars, " undo ", _puzzle.undo()))
+						_at(_t + 2.4, func():
+							print("after undo: stars ", _puzzle._stars.stars)
+							_shot())
+						_end = _t + 3.0
+						return)
+			_end = at + 4.0
 		"nudge":
 			# Insane: a finger a little below the big block leans it toward an
 			# open cell and must never move it there
@@ -314,6 +329,23 @@ func _script() -> void:
 			_at(0.36, _shot)
 			_at(3.5, func(): print("after: pending ", not _puzzle._pending.is_empty(), " busy ", _puzzle.busy(), " moves ", _puzzle.moves, " hearts ", _puzzle.hearts))
 			_end = 3.6
+		"stars":
+			# moves that take the big block farther, until a star falls, then
+			# Undo (2026-10-26)
+			for k in 6:
+				_at(t0 + float(k) * 0.8, func():
+					if _puzzle._stars.stars < 3 or _puzzle.busy():
+						return
+					var d0: int = _puzzle._state.dist_of(_puzzle._state.key)
+					for m: Dictionary in _all_moves():
+						if int(m.d) > d0:
+							_drag(m.path, _t, 0.3)
+							_at(_t + 0.5, func(): print("moves ", _puzzle.moves, " stars ", _puzzle._stars.stars))
+							_at(_t + 0.62, _shot)
+							return)
+			_at(t0 + 5.2, func(): print("undo ", _puzzle.undo(), " stars ", _puzzle._stars.stars))
+			_at(t0 + 5.45, _shot)
+			_end = t0 + 6.0
 		"streak":
 			_drive(t0, 30.0, func():
 				_puzzle.force_gag = _moves_done % 3

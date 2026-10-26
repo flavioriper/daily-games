@@ -100,3 +100,46 @@ inside the margin.
 - Decided for the user, unconfirmed: a bench, not the lawn; the runner in
   place of the stones. Owed: a phone, the block's walk against the win's
   shrink, the level slide.
+
+### Made fun: the stars (2026-10-26)
+
+The user, 2026-10-26: "make super slide experience way better to play, and
+game itself way funnier to play, right now nobody likes it". Note first: the
+"Insane counts moves" paragraph above is history -- `MOVES_SLACK` has read
+`[0, 0, 0, 0]` since 2026-10-12 (no limit on Insane), so the solver runs on
+every band, Insane's Homesick graph included.
+
+- **Measured first** (`tests/_probe_sl_fun.gd`, new, headless, 30 days a
+  band): a player tapping any legal move at random never solved a day
+  within three times the shortest, Easy included; a third of first moves
+  bring the big block nearer, a quarter leave it where it stood; and the
+  big block itself makes only 11-16% of the moves of a shortest way, so
+  most of a solve showed no progress at all, and the only line said
+  "N moves · shortest P" until the win.
+- **The stars** (after the sliding-block apps' three stars a puzzle, and
+  Market Sums' live line the same day): `State.stars(moves)` rates the way
+  the player is on, the moves made plus the solver's distance from here,
+  against `par`: 3 within a fifth more (two moves at least), 2 within three
+  fifths (six), 1 past (`stars_for`, `star_bound`). A move of a shortest
+  way keeps them, a sideways one spends one move of slack, a farther one
+  two. Read once a move (`_rate`), on undo, hint and reset, and once when
+  the worker finishes (`_stars_known`). A lost star falls off its seat
+  with the `star` cue (Market's slip: the lip twice falling, bank-rendered;
+  tick). **A move taken back still counts** (`moves` was never refunded),
+  so trying a move and undoing it is never free and the stars are no
+  oracle; a hint is a free shortest move.
+- **The line is the shared component**: Market's inline stars moved into
+  `ui/flat/star_line.gd` and both boards draw it.
+- **Homesick says when it is lost**: a big block that can no longer get home
+  puts every star out and the toast says "The red block can't get home from
+  here. Undo a few moves." once (`SL_STRANDED`). **Insane has Undo** (the
+  tutorial's Undo page plays it on every band now).
+- Out in the shortest: `SL_WIN_BEST`. Rows: `SL_RULES_STARS`,
+  `SL_RULES_HOME_STARS`, `HTP_SL_HOMESICK_BODY_STARS`,
+  `HTP_SL_UNDO_BODY_HOME`, `SL_TIP_STARS` (in every tip list; Insane loses
+  `TIP_MOVES_SEQ`), en/pt/es; the four counter-era rows went.
+- `tests/_shot_slider.gd` gains `stars` (Easy: farther moves until a star
+  falls, then Undo) and `home` now walks the state to a dead end and drags
+  it (stars out, the toast, Undo, stars back).
+- Mine, the user's to call: the ladder (a fifth / three fifths), Undo still
+  counting, Undo on Insane, the stranded line.

@@ -75,7 +75,8 @@
     once these crates cannot make it. A step that costs stars drops them
     turning off their seats (`slip`, the lip twice falling, a tick), Undo
     pops them back. Read once a move in `_rate` (the solver is a few ms;
-    never in `_draw`).
+    never in `_draw`). Drawn by `ui/flat/star_line.gd` since the same
+    evening, shared with Super Slider's count line.
   - **An undone step costs nothing**: `steps` is the length of the way
     kept (the bulb's steps too), so the brain score and the win line are
     the way taken against the fewest; the bin starts it at 0 again.

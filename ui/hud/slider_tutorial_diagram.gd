@@ -22,8 +22,8 @@ extends Control
 ##   down a cell too soon it can never get home, and since 2026-10-04 nothing
 ##   says so (no heart, no slide back): Reset puts the tray back. Then a
 ##   move that makes room.
-## - UNDO: a slide, Undo takes it back, Reset puts every block back (Reset
-##   alone on Insane, which has no Undo).
+## - UNDO: a slide, Undo takes it back, Reset puts every block back (on
+##   Insane too since 2026-10-26).
 ## - HINT: the bulb slides the next block of the shortest way, three times,
 ##   and the red block walks out.
 ##
@@ -332,12 +332,11 @@ func _run() -> void:
 			_loop.tween_interval(1.2)
 		Lesson.UNDO:
 			_drag(SLIDE_LINE[0], "HTP_SL_SLIDE_CAP", "", SETTLE + 0.4)
-			if band < 3:
-				_loop.tween_callback(_say.bind("HTP_SL_UNDO_CAP"))
-				_loop.tween_interval(0.6)
-				_loop.tween_callback(func() -> void: _art.undo())
-				_loop.tween_interval(1.2)
-				_drag(SLIDE_LINE[0], "", "", SETTLE)
+			_loop.tween_callback(_say.bind("HTP_SL_UNDO_CAP"))
+			_loop.tween_interval(0.6)
+			_loop.tween_callback(func() -> void: _art.undo())
+			_loop.tween_interval(1.2)
+			_drag(SLIDE_LINE[0], "", "", SETTLE)
 			_drag(SLIDE_LINE[1], "", "", SETTLE + 0.3)
 			_loop.tween_callback(_say.bind("HTP_SL_RESET_CAP"))
 			_loop.tween_interval(0.6)
@@ -427,7 +426,7 @@ func _still() -> void:
 			_say("HTP_SL_SOON_CAP")
 		Lesson.UNDO:
 			_drag_now(SLIDE_LINE[0])
-			_say("HTP_SL_UNDO_CAP" if band < 3 else "HTP_SL_RESET_CAP")
+			_say("HTP_SL_UNDO_CAP")
 		Lesson.HINT:
 			_art.hint()
 			_say("HTP_SL_HINT_CAP")

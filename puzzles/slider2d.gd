@@ -36,6 +36,15 @@ extends "res://core/puzzle_base.gd"
 ## solver's word), and out of moves is the old out-of-hearts ending. A
 ## stranded big block is the player's to notice; Reset is the way back.
 ##
+## The counter itself went on 2026-10-12 (`moves_budget()` is 0 on every
+## band, no limit on Insane). **Made fun, 2026-10-26**: three stars ride the
+## count line on every band (`_rate`, ui/flat/star_line.gd, Market Sums' line): the
+## moves made and the shortest way on from here against the day's shortest,
+## read once a move. A wander spends the slack and a star falls with the
+## lip; a stranded big block puts them all out and the toast says so once;
+## Insane has Undo. A move taken back still counts, so trying a move and
+## undoing it is never free.
+##
 ## How it is drawn. Three meshes:
 ##   still -- the lawn, the path out of the gate and the tray, rebuilt only on
 ##            a relayout;
@@ -70,6 +79,7 @@ const NapCat = preload("res://ui/faces/nap_cat.gd")
 const Cat = preload("res://ui/faces/caterpillar.gd")
 const RunMesh = preload("res://ui/flat/run_mesh.gd")
 const Bench = preload("res://puzzles/slider_world.gd")
+const StarLine = preload("res://ui/flat/star_line.gd")
 const FLAT_HOST := "res://ui/flat/flat_host.gd"
 ## The slide into the win's span (the host's SLOT_TIME), and the air the
 ## tray keeps inside that span.
@@ -85,6 +95,8 @@ const CELL_CAP := 230.0
 const CARD_RADIUS := 32.0
 const COUNT_BAND := 90.0
 const COUNT_FONT := 38
+## The gap between the count line's stars and its words.
+const STAR_GAP := 18.0
 const PATH := 0.9
 
 # --- this board's own motion ---
@@ -133,9 +145,9 @@ const TOAST_FONT := 32
 const TOAST_MARGIN := 66.0
 
 const TIP_CYCLE := 8.0
-const TIPS := ["SL_TIP_DRAG", "SL_TIP_GOAL", "SL_TIP_CORNER"]
+const TIPS := ["SL_TIP_DRAG", "SL_TIP_GOAL", "SL_TIP_STARS", "SL_TIP_CORNER"]
 const TIPS_HEARTS := ["SL_TIP_DRAG", "SL_TIP_FRET", "SL_TIP_HEARTS", "SL_TIP_CORNER"]
-const TIPS_HOME := ["TIP_MOVES_SEQ", "SL_TIP_HOME", "SL_TIP_HOME_PLAN", "SL_TIP_CORNER"]
+const TIPS_HOME := ["SL_TIP_HOME", "SL_TIP_HOME_PLAN", "SL_TIP_STARS", "SL_TIP_CORNER"]
 
 # --- hearts (Knight's, measure for measure) ---
 ## A move that costs a heart lands, holds SLIP_HOLD with the big block upset,
@@ -350,6 +362,11 @@ var _stamp_at := INF
 var _cat: Control
 var _cat_at := INF
 var _cat_curled := false
+## The stars the way stands at (State.stars), read once a move; unknown
+## while the solver is still running. A stranded big block is said once.
+var _stars := StarLine.new()
+var _stars_known := false
+var _stranded_said := false
 
 func puzzle_id() -> String: return "slider"
 func title() -> String: return "Super Slider"
@@ -357,9 +374,9 @@ func title() -> String: return "Super Slider"
 ## The rules, then the band's own closing: Homesick and its move counter
 ## (Insane); the hearts' line is asleep with the hearts.
 func rules() -> String:
-	var out := tr("SL_RULES")
+	var out := tr("SL_RULES") + "\n\n" + tr("SL_RULES_STARS")
 	if _state.homesick:
-		out += "\n\n" + tr("SL_RULES_HOME_MOVES")
+		out += "\n\n" + tr("SL_RULES_HOME_STARS")
 	elif max_hearts > 0:
 		out += "\n\n" + tr("SL_RULES_HEARTS") % max_hearts
 	if max_moves > 0:
@@ -379,13 +396,13 @@ func tutorial_pages() -> Array:
 	var steps := [[Diagram.Lesson.SLIDE, "HTP_SL_SLIDE", tr("HTP_SL_SLIDE_BODY")],
 		[Diagram.Lesson.CORNER, "HTP_SL_CORNER", tr("HTP_SL_CORNER_BODY")]]
 	if band >= 3:
-		steps.append([Diagram.Lesson.HOMESICK, "HTP_SL_HOMESICK", tr("HTP_SL_HOMESICK_BODY_MOVES")
+		steps.append([Diagram.Lesson.HOMESICK, "HTP_SL_HOMESICK", tr("HTP_SL_HOMESICK_BODY_STARS")
 			if hearts_n <= 0 else tr("HTP_SL_HOMESICK_BODY") % hearts_n])
 	elif hearts_n > 0:
 		steps.append([Diagram.Lesson.HEARTS, "HTP_SL_HEARTS", tr("HTP_SL_HEARTS_BODY") % hearts_n])
 	var undo_body := "HTP_SL_UNDO_BODY"
 	if band >= 3:
-		undo_body = "HTP_SL_RESET_BODY_MOVES" if max_moves > 0 else "HTP_SL_RESET_BODY"
+		undo_body = "HTP_SL_UNDO_BODY_HOME"
 	elif hearts_n > 0:
 		undo_body = "HTP_SL_UNDO_BODY_JUDGED"
 	steps.append([Diagram.Lesson.UNDO, "HTP_WT_UNDO", tr(undo_body)])
@@ -410,12 +427,10 @@ func _tips() -> Array:
 	return TIPS
 
 ## Undo and Hint; Reset is the host's. No Check: nothing wrong can sit here.
-## Insane counts moves and has neither.
-## Insane has the bulb again since 2026-10-13, as many hints as Hard: what is
-## said of it above is the history (docs/agents/flat-screens.md).
+## Insane counted moves and had neither; it has the bulb again since 2026-10-13, as many hints as Hard, and
+## Undo since 2026-10-26 (a stranded big block puts the stars out, and Undo
+## is the way back): what is said of it above is the history.
 func capabilities() -> Array[String]:
-	if _state.difficulty >= 3:
-		return ["hint"]
 	return ["undo", "hint"]
 
 ## What the phone does under each cue (docs/agents/haptics.md). A block is
@@ -436,6 +451,7 @@ const HAPTICS := {
 	"slide": Haptics.TAP,
 	"fret": Haptics.TICK,
 	"undo": Haptics.TICK,
+	"star": Haptics.TICK,
 	"reset": Haptics.TAP,
 	"confetti": Haptics.BUMP,
 	"hint": Haptics.GOOD,
@@ -568,6 +584,9 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 ## the whole move budget, every block still, nothing moving.
 func _deal() -> void:
 	_gen += 1
+	_stars.clear()
+	_stars_known = false
+	_stranded_said = false
 	hearts = max_hearts
 	moves_left = max_moves
 	out_of_hearts = false
@@ -945,6 +964,10 @@ func _process(delta: float) -> void:
 	var t := _now()
 	# A costly move lets go of the HUD as it ends: it greyed Undo and Hint.
 	_settle_pending()
+	if not _stars_known and _state.solver_ready():
+		_rate(false)
+	if _stars.busy(t):
+		queue_redraw()
 	var bz := busy()
 	if _was_busy and not bz:
 		moved.emit()
@@ -1396,13 +1419,38 @@ func _knocked(p: int, t: float) -> bool:
 			return true
 	return false
 
-## The count over the tray: moves so far against the day's shortest.
+## The count over the tray: the stars the way stands at (Market Sums'
+## line, ui/flat/star_line.gd), then the moves so far against the day's
+## shortest.
 func _draw_count(alpha: float) -> void:
 	var font: Font = CozyTheme.body(700)
 	var text: String = tr("SL_COUNT_ONE") % _state.par if moves == 1 else tr("SL_COUNT") % [moves, _state.par]
 	var w: float = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, _count_font()).x
-	draw_string(font, _count_spot(w, font), text, HORIZONTAL_ALIGNMENT_LEFT, -1, _count_font(),
+	var s := float(_count_font()) / COUNT_FONT
+	var sw := StarLine.width(s)
+	var gap := STAR_GAP * s
+	var at := _count_spot(w + sw + gap, font)
+	_stars.draw(self, Vector2(at.x + StarLine.R * s, at.y - font.get_ascent(_count_font()) * 0.36), s,
+		_now(), alpha)
+	draw_string(font, at + Vector2(sw + gap, 0.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, _count_font(),
 		Color(Pal.TEXT, 0.75 * alpha))
+
+## The stars read off the solver once a move (`heard`: a star lost falls with
+## the lip, one won back pops in). A big block that can no longer get home
+## puts them all out, and the toast says so once.
+func _rate(heard: bool) -> void:
+	var n: int = _state.stars(moves)
+	_stars_known = n >= 0
+	if n < 0:
+		return
+	if _stars.rate(n, _now(), heard and not is_done()) < 0:
+		fx.cue("star")
+	if n > 0:
+		_stranded_said = false
+	elif heard and not _stranded_said and not is_done():
+		_stranded_said = true
+		_tell("SL_STRANDED", Face.Expr.WORRIED)
+	queue_redraw()
 
 func _count_font() -> int:
 	return COUNT_FONT
@@ -1688,6 +1736,7 @@ func _judge(p: int, before: Array, before_key: int, t: float) -> void:
 			_break_streak()
 	_refresh()
 	note_move()
+	_rate(true)
 	_spend(1, t + SNAP_TIME)
 
 ## `cost` moves go off Insane's counter. The last one gone with the big block
@@ -1870,8 +1919,7 @@ func busy() -> bool:
 	return _now() < _busy_until or _slipping or not _drag.is_empty()
 
 func can_undo() -> bool:
-	return _state.can_undo() and not is_done() and not out_of_hearts and not busy() \
-		and _state.difficulty < 3
+	return _state.can_undo() and not is_done() and not out_of_hearts and not busy()
 
 ## Puts the blocks back as they were before the last move. Counts no move.
 func undo() -> bool:
@@ -1887,6 +1935,7 @@ func undo() -> bool:
 	_settle(before, _now())
 	_tell("SL_UNDONE", Face.Expr.HAPPY)
 	fx.cue("undo")
+	_rate(true)
 	_refresh()
 	moved.emit()
 	return true
@@ -1923,6 +1972,7 @@ func hint() -> bool:
 	_land_puff(p, dur)
 	_tell("SL_HINT", Face.Expr.HAPPY)
 	fx.cue("hint")
+	_rate(true)
 	_refresh()
 	moved.emit()
 	check_solved()
@@ -1953,6 +2003,9 @@ func reset_board() -> void:
 	_won = false
 	moves = 0
 	_running = true
+	_stars.clear()
+	_stranded_said = false
+	_rate(false)
 	_say(tr(_tips()[0]), Face.Expr.HAPPY)
 	fx.cue("reset")
 	_refresh()
@@ -2325,7 +2378,13 @@ func _head(t: float) -> Vector2:
 # --- the win ---
 
 func flat_win() -> Dictionary:
-	return {"faces": [], "subtitle": tr("SL_WIN") % [moves, _state.par]}
+	return {"faces": [], "subtitle": _win_line()}
+
+## Out in the shortest way, or in how many against it.
+func _win_line() -> String:
+	if moves <= _state.par:
+		return tr("SL_WIN_BEST") % moves
+	return tr("SL_WIN") % [moves, _state.par]
 
 ## The win screen waits for the landing, the mat, the doors, the walk out
 ## and the party's moment.
@@ -2384,7 +2443,7 @@ func _on_solved() -> void:
 				fx.sparkle(_pt(c), col))
 	else:
 		fx.cue("solved")
-	_say(tr("SL_WIN") % [moves, _state.par], Face.Expr.JOY)
+	_say(_win_line(), Face.Expr.JOY)
 	_heart_layer.queue_redraw()
 	_party()
 	_refresh()

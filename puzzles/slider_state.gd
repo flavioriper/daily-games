@@ -26,6 +26,13 @@ extends RefCounted
 ## more. Nothing reads the graph there -- no hint, no verdict, no streak --
 ## so an Insane tray starts no solver (docs/agents/flat-screens.md, "Insane
 ## counts moves").
+##
+## The counter went on 2026-10-12 (`MOVES_SLACK` all zero, so the solver
+## runs on every band again). **Made fun, 2026-10-26**: the stars came: `stars()` rates the
+## way the player is on, the moves made and the shortest way on from here,
+## against `par` (`stars_for`). A move of a shortest way keeps them, any
+## other spends the slack; a Homesick tray the big block can no longer get
+## home from is none.
 
 const Gen = preload("res://puzzles/slider_gen.gd")
 
@@ -35,6 +42,12 @@ const HEARTS_BY := [0, 0, 0, 0]
 ## quarter of it, and never fewer than this. 0 on a band that does not count.
 const MOVES_SLACK := [0, 0, 0, 0]
 const MOVES_SHARE := 0.25
+## The stars' slack over the shortest way: three within STAR3 of it more
+## (never fewer than STAR3_MIN moves), two within STAR2 (STAR2_MIN), one past.
+const STAR3 := 0.2
+const STAR3_MIN := 2
+const STAR2 := 0.6
+const STAR2_MIN := 6
 
 var difficulty := 0
 ## Insane's rule: the big block never steps up.
@@ -286,6 +299,29 @@ func reset_board() -> bool:
 	history.append(snapshot())
 	_restore(start_blocks)
 	return true
+
+## The stars a way out of `taken` moves earns.
+func stars_for(taken: int) -> int:
+	if taken <= star_bound(3):
+		return 3
+	return 2 if taken <= star_bound(2) else 1
+
+## The stars the way `made` moves in stands at: those moves and the shortest
+## way on from here. 0 when the big block can no longer get home (Homesick),
+## -1 while the worker is still running (nothing to say yet).
+func stars(made: int) -> int:
+	var d := dist_of(key)
+	if d == -2:
+		return -1
+	if d == -1:
+		return 0
+	return stars_for(made + d)
+
+## The most moves a way out can take and still earn `n` stars (n of 2 or 3).
+func star_bound(n: int) -> int:
+	if n >= 3:
+		return par + maxi(STAR3_MIN, int(ceil(par * STAR3)))
+	return par + maxi(STAR2_MIN, int(ceil(par * STAR2)))
 
 ## How far the tray stands from the gate now, or -1 before the worker is done
 ## (or off the graph, which a legal move cannot reach).
