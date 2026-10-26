@@ -490,6 +490,11 @@ func _layout() -> void:
 		return
 	_edge = EDGE * _lane / _cell
 	_reach = REACH * _lane / _cell
+	# a bend as many stops as it is squares long; never changed under a
+	# cannon on the loop
+	var bend := maxi(0, roundi(PI * 0.5 * (_reach + 0.5)) - 1)
+	if bend != state.bend and state.loop.is_empty() and state.gate.is_empty():
+		state.bend = bend
 	span = Vector2(state.w + 2.0 * _edge, state.h + 2.0 * _edge)
 	var ring := span * _cell
 	_rug = Rect2(Vector2((size.x - ring.x) * 0.5, head + (room.y - ring.y) * 0.5), ring)
@@ -547,56 +552,34 @@ func cell_centre(i: int) -> Vector2:
 	return _grid + (Vector2(state.xy(i)) + Vector2(0.5, 0.5)) * _cell
 
 ## Where a stop is, in squares off the picture's corner.
-func _stop_at(s: int) -> Vector2:
-	var w: int = state.w
-	var h: int = state.h
-	if s < w:
-		return Vector2(s + 0.5, h + _reach)
-	s -= w
-	if s < h:
-		return Vector2(w + _reach, h - 0.5 - s)
-	s -= h
-	if s < w:
-		return Vector2(w - 0.5 - s, -_reach)
-	s -= w
-	return Vector2(-_reach, s + 0.5)
-
-func _side(s: int) -> int:
-	var w: int = state.w
-	var h: int = state.h
-	if s < w:
-		return 0
-	if s < w + h:
-		return 1
-	if s < 2 * w + h:
-		return 2
-	return 3
-
-## The point of the loop at `u` stops along: a whole number a stop, the
-## last to `stops()` the bend at the lower left back to the first (-1 to 0
-## is that bend's second half, the old gate). Between the last stop of a
-## side and the first of the next it goes round the bend.
+## The point of the loop at `u` stops along (any `u`: it goes round), a
+## whole number a stop. A side's stops are a square apart, and the bend
+## after it is a quarter circle walked in `state.bend` + 1 stops.
 func loop_at(u: float) -> Vector2:
 	var w: int = state.w
 	var h: int = state.h
+	var bend: int = state.bend
 	var n: int = state.stops()
+	u = fposmod(u, float(n))
 	var r := _reach + 0.5
-	var p: Vector2
-	if u < 0.0:
-		p = Vector2(0.5, h - 0.5) + Vector2.from_angle(lerpf(PI * 0.75, PI * 0.5, clampf(u + 1.0, 0.0, 1.0))) * r
-	elif u >= n - 1:
-		# the last stop round the whole bend to the first
-		p = Vector2(0.5, h - 0.5) + Vector2.from_angle(lerpf(PI, PI * 0.5, clampf(u - (n - 1), 0.0, 1.0))) * r
-	else:
-		var s := int(floor(u))
-		var f := u - s
-		var side := _side(s)
-		if side == _side(s + 1):
-			p = _stop_at(s).lerp(_stop_at(s + 1), f)
-		else:
-			var centre := [Vector2(w - 0.5, h - 0.5), Vector2(w - 0.5, 0.5), Vector2(0.5, 0.5)][side] as Vector2
-			var a0 := PI * 0.5 - side * PI * 0.5
+	var lens := [w, h, w, h]
+	var a := 0
+	var p := Vector2.ZERO
+	for i in 4:
+		var last: int = a + int(lens[i]) - 1
+		var next: int = last + bend + 1
+		if u <= last:
+			var t := u - a
+			p = [Vector2(t + 0.5, h + _reach), Vector2(w + _reach, h - 0.5 - t),
+				Vector2(w - 0.5 - t, -_reach), Vector2(-_reach, t + 0.5)][i]
+			break
+		if u < next or i == 3:
+			var f := (u - last) / float(bend + 1)
+			var centre := [Vector2(w - 0.5, h - 0.5), Vector2(w - 0.5, 0.5), Vector2(0.5, 0.5), Vector2(0.5, h - 0.5)][i] as Vector2
+			var a0 := PI * 0.5 - i * PI * 0.5
 			p = centre + Vector2.from_angle(lerpf(a0, a0 - PI * 0.5, f)) * r
+			break
+		a = next
 	return _grid + p * _cell
 
 ## The way a cannon at `u` points, as its mesh is turned (muzzle up at 0):
@@ -628,11 +611,9 @@ func _build_ring() -> ArrayMesh:
 	var pts := PackedVector2Array()
 	var n: int = state.stops()
 	var u := 0.0
-	while u < n - 1:
+	while u < n:
 		pts.append(loop_at(u))
 		u += 0.25
-	for k in 16:
-		pts.append(loop_at(n - 1 + k / 16.0))
 	Art.track(b, pts, GAUGE * _lane, true)
 	return b.mesh()
 

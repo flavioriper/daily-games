@@ -116,6 +116,12 @@ var _sheds0: Array = []
 var siding := PackedInt32Array()
 var loop := PackedInt32Array()
 var gate := PackedInt32Array()
+## Stops in each bend of the loop (the screen's, `train2d._layout`: as many
+## as the bend is long in squares, so a cannon rolls round it at the pace of
+## a side; the user, 2026-10-26: "it just increase speed to jump to the
+## other side"). They see nothing, so the deal and the hint play the same
+## with any number.
+var bend := 0
 ## The tick an engine at the gate may roll on from, by engine: the screen
 ## holds one there while it is still flying in from the box (`send`'s
 ## `wait`), so it never shoots from where it is not.
@@ -185,9 +191,11 @@ func _lay_mat() -> void:
 	for m: String in MATS:
 		# folded pictures name families: a cream mat by white blocks is the
 		# shade problem `_bolden` is there to end
+		# (the mat keeps its own soft bead: a lilac mat, never the deep
+		# purple that stands for the family)
 		var f := String(FAMILY.get(m, m)) if bold else m
-		if not colours.has(f):
-			named = f
+		if not colours.has(f) and not colours.has(m):
+			named = m
 			break
 	if named == "" or not picture.has(-1):
 		return
@@ -311,22 +319,32 @@ func _new_engine(c: int, n: int, column: int) -> int:
 # --- the loop ---
 
 ## Stops round the picture: along the foot left to right, up the right
-## side, back along the top, down the left side.
+## side, back along the top, down the left side, with `bend` stops in each
+## of the four bends after a side, where nothing is in sight.
 func stops() -> int:
-	return 2 * (w + h)
+	return 2 * (w + h) + 4 * bend
 
-## The squares a stop looks along, nearest first, as (first, step, count).
+## The squares a stop looks along, nearest first, as (first, step, count);
+## a stop in a bend sees nothing (count 0).
 func _sight(s: int) -> Vector3i:
 	if s < w:
 		return Vector3i((h - 1) * w + s, -w, h)
-	s -= w
+	s -= w + bend
+	if s < 0:
+		return Vector3i.ZERO
 	if s < h:
 		return Vector3i((h - 1 - s) * w + w - 1, -1, w)
-	s -= h
+	s -= h + bend
+	if s < 0:
+		return Vector3i.ZERO
 	if s < w:
 		return Vector3i(w - 1 - s, w, h)
-	s -= w
-	return Vector3i(s * w, 1, w)
+	s -= w + bend
+	if s < 0:
+		return Vector3i.ZERO
+	if s < h:
+		return Vector3i(s * w, 1, w)
+	return Vector3i.ZERO
 
 ## The nearest block a stop sees on `g`, -1 for none.
 func first_seen(g: PackedInt32Array, s: int) -> int:

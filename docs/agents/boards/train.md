@@ -438,3 +438,30 @@ shooting where it stands, shards thinned when busy).
   the hint's hand on 2 deals of 36 and the careless one on 7. Suite
   failed=0; `tests/_win.gd -- train` PASS (Medium, 30 sent, par 34);
   Medium play 113 draw calls on `opengl3_angle`.
+
+### 2026-10-26, evening: the bends at a side's pace
+
+The user: "since the rounded corners are not properly mapped when the cannon
+reach it, it just increase speed to jump to the other side, make it
+smooth". A bend was one stop, so a cannon went round a quarter circle of
+`_reach + 0.5` squares in one tick: about 6 squares' worth on Medium and 9
+on Hard, at the speed of one. **Each bend now has `State.bend` stops**
+(stops that see nothing: `_sight` returns a count of 0), as many as the
+bend is long in squares less one (`_layout`: `round(PI/2 * (reach + 0.5))
+- 1`; 4 on Easy, 8 on Hard at 810x1440), set only while nothing is on the
+loop. `loop_at` walks a side a square a stop and a bend in `bend + 1`
+stops, any `u` taken round (`fposmod`); the ring is drawn off the same
+walk. Measured: a cannon moves 33.8-34.7 px a tick all the way round on
+Easy and 16.1-16.8 on Hard, where a bend was a single jump.
+
+- **A lap is longer** by four bends: 160 stops on a 32 picture (128), so
+  3.2 s on Hard where it was 2.6. The sides keep their pace.
+- **Empty stops change no deal**: a throwaway check dealt every picture of
+  every band with `bend` 0 and 6, the engines, loads and line identical,
+  and the hint's hand won every deal with `bend` 6 (168 runs, 0 bad).
+- **Easy's mat keeps its own soft bead** (`_lay_mat`): chosen by family,
+  but laid as the bead, so a lilac mat is lilac and not the family's deep
+  purple, which the fix above had put under every themed picture with
+  empty squares.
+- `tests/_probe_train.gd -- seeds=1` 336/0; suite failed=0; `tests/_win.gd
+  -- train` PASS; the Insane tutorial plays its pages.
