@@ -169,8 +169,13 @@ var _drain_r := DRAIN_R
 ## and its mesh, handed over each frame.
 var _level := Vector3.ZERO
 var _meter_k := 0.0
-## When the last chunk landed, on the screen's clock.
+## When the last chunk landed, on the screen's clock, and which chunks may
+## land (1): armed once the meter reads one under LAND_REARM of the card's
+## shade, so a chunk lands once a fill and a prefilled one never at once.
+## The screen's own, never the sim's `landed`: the sim's tally is fed the
+## raw reading and would land before the ring shows LAND.
 var _land_at := -10.0
+var _armed := PackedByteArray()
 var _meter: ArrayMesh
 var _table: ArrayMesh
 var _table_of := Vector2.ZERO
@@ -433,6 +438,7 @@ func lay(game: RefCounted) -> void:
 	_level = Vector3.ZERO
 	_meter_k = 0.0
 	_land_at = -10.0
+	_arm()
 	_deal_at = -10.0
 	_verdict_at = -10.0
 	_slid = false
@@ -545,6 +551,8 @@ func _animate(delta: float) -> void:
 	# the tray or the mould is served
 	if playing and not won:
 		var read: Vector3 = _fluid.level(cell)
+		if read.x + read.y + read.z < Sim.LAND_REARM * Sim.C_FULL and cell < _armed.size():
+			_armed[cell] = 1
 		if DisplayServer.get_name() != "headless":
 			sim.learn(cell, read.x + read.y + read.z)
 			# a chunk drawn back to nothing forgets what went into it
@@ -553,11 +561,10 @@ func _animate(delta: float) -> void:
 		_level = _level.lerp(read, minf(1.0, delta * METER_EASE))
 		_meter_k = minf(1.0, _meter_k + delta * METER_FADE)
 		# the chunk lands the frame the shown reading reaches LAND of the
-		# card's shade while it is squeezed, once a fill (the sim's own
-		# land event may have got there first: whichever does sets the flag)
-		if sim.squeezing and cell < sim.landed.size() and sim.landed[cell] == 0 \
+		# card's shade while it is squeezed, once a fill
+		if sim.squeezing and cell < _armed.size() and _armed[cell] == 1 \
 				and _level.x + _level.y + _level.z >= Sim.LAND * Sim.C_FULL:
-			sim.landed[cell] = 1
+			_armed[cell] = 0
 			_land(cell)
 	else:
 		_meter_k = maxf(0.0, _meter_k - delta * METER_FADE)
@@ -723,14 +730,21 @@ func _play_events() -> void:
 			"served":
 				_on_served(ev)
 			"land":
-				_land(int(ev.cell))
+				# headless the sim's tally lands a chunk; on screen the ring does
+				if DisplayServer.get_name() == "headless":
+					_land(int(ev.cell))
 		happened.emit(ev)
+
+## Every chunk of the mould disarmed until the meter reads it low.
+func _arm() -> void:
+	_armed.resize(sim.tank.size() if sim != null else 0)
+	_armed.fill(0)
 
 ## A chunk filled to the card's shade (spec 2026-10-26 4.3): a pop, a
 ## knock, sparkles at the tip in the picked syrup's colour, a wobble, and
 ## the meter's rim white and number green for LAND_SNAP seconds.
 func _land(cell: int) -> void:
-	print("land cell %d at %.2f" % [cell, _clock])
+	print("land cell %d at %.2f shown %d%%" % [cell, _clock, int(round((_level.x + _level.y + _level.z) / Sim.C_FULL * 100.0))])
 	_fx.cue("land", randf_range(1.0 - TICK_VARY, 1.0 + TICK_VARY))
 	_fx.buzz(Haptics.BUMP)
 	# _fx is the field's child, so px() (the mould on the field) is its space
@@ -742,6 +756,7 @@ func _on_deal() -> void:
 	_deal_at = _clock
 	_slid = sim.index > 0
 	_cell_pots.clear()
+	_arm()
 	_fluid.lay(sim.mould)
 	_tip = sim.tip
 	_tip_was = sim.tip
@@ -754,6 +769,7 @@ func _on_deal() -> void:
 ## The mould on the tray is clear again: one under its mark, or Reset.
 func _on_again() -> void:
 	_cell_pots.clear()
+	_arm()
 	_fluid.lay(sim.mould)
 	_tip = sim.tip
 	_tip_was = sim.tip
