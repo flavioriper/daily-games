@@ -166,7 +166,6 @@ class TutorialSky extends "res://puzzles/planes2d.gd":
 		_forget()
 		_deal()
 		_reset_rewards()
-		_place_sprigs()
 		_layout()
 		if enter:
 			_enter()

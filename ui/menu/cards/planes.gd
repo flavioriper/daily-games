@@ -16,7 +16,6 @@ extends "res://ui/menu/cards/card_face.gd"
 ## fold redrawn here because the board's takes a colour by index only.
 
 const PaperPlane = preload("res://ui/faces/paper_plane.gd")
-const Board = preload("res://puzzles/planes2d.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 
 ## The row the card was drawn for (puzzle_card_2d.gd's CARD_H).
@@ -45,6 +44,10 @@ const WORDS_TOP := 14.0
 const WORDS_CLEAR := Vector2(262.0, 132.0)
 ## How far a lane's dots keep from the paper's edge, and from the seal.
 const DOT_EDGE := 9.0
+## A lane's dot, a share of the cell, and its ink's alpha (the board's empty
+## cells wore these until 2026-10-26).
+const LANE_DOT := 0.05
+const LANE_ALPHA := 0.45
 const SEAL_CLEAR := SEAL_IN + SEAL_R + 10.0
 
 const SKY_TOP := Color("cbe4f1")
@@ -83,8 +86,8 @@ func _paint(b: Face.Builder) -> void:
 	if not soon:
 		planes.append(GO)
 	for plane: Dictionary in planes:
-		_lane(b, paper, _pt(plane["pts"][0]), _heading(plane), Color(Pal.LINE, Board.DOT_ALPHA),
-			Board.DOT * CELL * k * 1.3)
+		_lane(b, paper, _pt(plane["pts"][0]), _heading(plane), Color(Pal.LINE, LANE_ALPHA),
+			LANE_DOT * CELL * k * 1.3)
 	# The bodies, then the darts over every body.
 	var cell := CELL * k
 	for plane: Dictionary in BLOCKED:

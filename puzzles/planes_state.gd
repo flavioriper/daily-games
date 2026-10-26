@@ -33,6 +33,10 @@ const DIRS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), 
 const InsaneBank = preload("res://core/insane_bank.gd")
 const ThemedPictures = preload("res://core/themed_pictures.gd")
 const PIXEL_BANK := "res://content/pixel_garden.json"
+## The bold families a picture's beads fold into (Toy Cannons' table): a
+## shade bead (maroon in a red, a cream highlight) is its family's colour, so
+## a picture holds a handful of colours and no one-cell islands of shading.
+const FAMILY: Dictionary = preload("res://puzzles/train_state.gd").FAMILY
 
 ## Per band, Easy .. Insane: the hints a sky starts with, and its hearts (0 is
 ## a band that cannot be lost). Polish spec section 1.
@@ -166,8 +170,11 @@ var gusts := 0
 var banked := false
 ## Whether the sky is a maze with the clouds stood over it (`_stand_clouds`).
 var mazed := false
-## The sky's shape: the cells a plane may stand on (empty when no thing cut
-## to the band, where every cell may hold one), and the thing it was cut from.
+## The sky's shape: the cells a plane may stand on, each to the colour family
+## of the bead it was cut from (empty when no thing cut to the band, where
+## every cell may hold one), and the thing it was cut from. A plane stands on
+## one colour (`tone`), so the planes themselves draw the picture
+## (2026-10-26).
 var shape: Dictionary = {}
 var shape_id := ""
 var _occupant: Dictionary = {}   # Vector2i -> plane index, planes still on the board
@@ -215,6 +222,15 @@ func in_board(c: Vector2i) -> bool:
 ## shaped sky. A lane is not bound by it: it runs to the edge of the board.
 func live(c: Vector2i) -> bool:
 	return in_board(c) and (shape.is_empty() or shape.has(c))
+
+## The colour family `c` was cut from ("" off the shape or on a plain sky).
+func region(c: Vector2i) -> String:
+	return String(shape.get(c, ""))
+
+## The colour family plane `i` stands on ("" on a plain sky): the planes
+## carry the picture's colours.
+func tone(i: int) -> String:
+	return region((planes[i]["cells"] as Array).back())
 
 func plane_at(cell: Vector2i) -> int:
 	return int(_occupant.get(cell, -1))
@@ -509,7 +525,8 @@ static func bank_shapes(box := SHAPE_BOX, least := SHAPE_MIN) -> Array:
 
 ## The filled cells of a picture's `rows` ("." bare), trimmed to what they
 ## cover and scaled, cell centre by cell centre, to fill `box` with their
-## own proportions: {cols, rows, cells}, or {} for a picture with nothing on.
+## own proportions: {cols, rows, cells (cell -> colour family)}, or {} for a
+## picture with nothing on.
 static func cut_shape(pic_rows: Array, box: Vector2i) -> Dictionary:
 	var lo := Vector2i(1 << 20, 1 << 20)
 	var hi := Vector2i(-1, -1)
@@ -533,7 +550,8 @@ static func cut_shape(pic_rows: Array, box: Vector2i) -> Dictionary:
 		for x in c:
 			var sx := lo.x + int(floorf((float(x) + 0.5) * float(w) / float(c)))
 			if sx < row.length() and row[sx] != ".":
-				cells[Vector2i(x, y)] = true
+				var bead := String(ThemedPictures.letters().get(row[sx], row[sx]))
+				cells[Vector2i(x, y)] = String(FAMILY.get(bead, bead))
 	return {"cols": c, "rows": r, "cells": cells}
 
 ## Carves a board backwards out of an empty sky (the flat spec's section 5).
@@ -826,7 +844,7 @@ func _carve_maze(rng: RandomNumberGenerator, b: Dictionary) -> void:
 				for e in DIRS:
 					var q: Vector2i = tail + e
 					if live(q) and not _occupant.has(q) and not mine.has(q) \
-							and _lane_top(q) < _keys[i]:
+							and region(q) == region(tail) and _lane_top(q) < _keys[i]:
 						opts.append(q)
 				if opts.is_empty():
 					break
@@ -852,6 +870,7 @@ func _propose_maze(rng: RandomNumberGenerator, b: Dictionary, head: Vector2i) ->
 		return {}
 	var min_len := int(b["min_len"])
 	var straight := float(b.get("straight", 0.5))
+	var tone_here := region(head)
 	var dirs: Array[Vector2i] = DIRS.duplicate()
 	_shuffle_dirs(dirs, rng)
 	for d in dirs:
@@ -869,7 +888,8 @@ func _propose_maze(rng: RandomNumberGenerator, b: Dictionary, head: Vector2i) ->
 		if lo >= hi:
 			continue
 		var prev: Vector2i = head - d
-		if not live(prev) or _occupant.has(prev) or lane_set.has(prev):
+		if not live(prev) or _occupant.has(prev) or lane_set.has(prev) \
+				or region(prev) != tone_here:
 			continue
 		lo = maxf(lo, _lane_top(prev))
 		if lo >= hi:
@@ -885,7 +905,8 @@ func _propose_maze(rng: RandomNumberGenerator, b: Dictionary, head: Vector2i) ->
 			var ahead := false
 			for e in DIRS:
 				var q: Vector2i = last + e
-				if not live(q) or _occupant.has(q) or used.has(q) or lane_set.has(q):
+				if not live(q) or _occupant.has(q) or used.has(q) or lane_set.has(q) \
+						or region(q) != tone_here:
 					continue
 				if _lane_top(q) >= hi:
 					continue

@@ -27,6 +27,9 @@ const LOW := 3
 ## The pill's two lines, for one and for many: a board whose counted move
 ## has a name of its own (Gumdrop's serves) sets them.
 var keys := ["MOVES_LEFT_ONE", "MOVES_LEFT_N"]
+## The count turns rose from here down; a count that is no danger (Paper
+## Planes' planes left) sets it under zero.
+var low := LOW
 var _shown: ArrayMesh
 var _wide := -1.0
 var _bump_at := -INF
@@ -67,5 +70,5 @@ func draw(layer: Control, centre: Vector2, left: int, now: float) -> void:
 	layer.draw_mesh(_shown, null)
 	var rise := (font.get_ascent(FONT) - font.get_descent(FONT)) * 0.5
 	layer.draw_string(font, Vector2(-tw * 0.5, rise), text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, FONT,
-		Pal.BAD if left <= LOW else Pal.TEXT)
+		Pal.BAD if left <= low else Pal.TEXT)
 	layer.draw_set_transform(Vector2.ZERO)

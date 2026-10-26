@@ -936,10 +936,9 @@ func _experiment() -> void:
 					(t2 - t1) / 1000.0, vc.call(s), mv.size(), _puzzle._state.left(), _puzzle._fly.size()])
 				var B = load("res://ui/faces/face.gd").Builder
 				var p0 := Time.get_ticks_usec()
-				_puzzle._dots(B.new(), _puzzle._covers(t), t)
+				_puzzle._beads(B.new(), t)
 				var p1 := Time.get_ticks_usec()
-				_puzzle._draw_sprigs(B.new(), t)
-				var p2 := Time.get_ticks_usec()
+				var p2 := p1
 				var bb = B.new()
 				for i in _puzzle._fly:
 					_puzzle._contrail(bb, i, t)
@@ -949,7 +948,7 @@ func _experiment() -> void:
 					if _puzzle._fly.has(i) or not _puzzle._state.planes[i]["gone"]:
 						_puzzle._plane(bp, i, t, 0.0)
 				var p4 := Time.get_ticks_usec()
-				print("   dots %.2f sprigs %.2f (%d) contrails %.2f planes %.2f" % [(p1 - p0) / 1000.0, (p2 - p1) / 1000.0, _puzzle._sprigs.size(), (p3 - p2) / 1000.0, (p4 - p3) / 1000.0])
+				print("   beads %.2f contrails %.2f planes %.2f" % [(p1 - p0) / 1000.0, (p3 - p2) / 1000.0, (p4 - p3) / 1000.0])
 		"fl_lanterns":
 			# Every lantern hidden: what the painted lanterns cost.
 			for slot in _puzzle._slots.values():

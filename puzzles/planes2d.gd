@@ -1,7 +1,7 @@
 extends "res://core/puzzle_base.gd"
 
-## Paper Planes as a flat board: a lattice of faint dots with bent ink trails
-## laid over it, each one ending in a folded paper dart. Tap a plane and it
+## Paper Planes as a flat board: bent lines of colour on the open sky, each
+## one ending in a folded paper dart, together drawing the day's thing. Tap a plane and it
 ## launches -- if, and only if, every cell straight ahead of its dart is empty
 ## out to the edge of the board. Clear the sky and the board is done. The
 ## rules live in puzzles/planes_state.gd, which this only draws.
@@ -35,8 +35,8 @@ extends "res://core/puzzle_base.gd"
 ##
 ## How it is drawn. Two meshes and no Controls, because nothing here has a face
 ## on it and a Control per plane would be fifty-two nodes on the hard band. The
-## **still** mesh is the paper panel, the hint's glow and every plane at rest;
-## the **live** one is the dots, the leaves, the refusal's band, the contrails
+## **still** mesh is the hint's glow and every plane at rest; the **live**
+## one is the refusal's band, the contrails, the picture's beads at the win
 ## and every plane that is moving. The still one is rebuilt only when the set
 ## of moving planes changes, so a flight rebuilds one plane and not fifty. The
 ## planes themselves are `ui/faces/paper_plane.gd`'s drawing, which the menu
@@ -96,21 +96,17 @@ const SOCK_ROOM := 28.0
 const WIN_SLIDE := 0.45
 
 # --- the pieces, every one of them a fraction of the cell (spec section 8) ---
-## An empty cell's dot, and how far its LINE is let through. This is what
-## makes the occupancy read at a glance, and it is the one thing the
-## reference's picture gets exactly right.
-const DOT := 0.05
-const DOT_ALPHA := 0.45
-## The paper panel the field is pressed into: how far it stands out round the
-## grid, its rim, and its corner. Pixels, because the card's own inset is.
+## A bead of the picture the solve wave lays down, a share of the cell. No
+## dot, leaf or tint lies under the planes in play: the planes alone draw
+## the day's thing (the user, 2026-10-26: "the picture should be formed by
+## the arrows itself, not needing a background shape").
+const BEAD := 0.8
+## The room the field keeps round the grid (it was a paper panel's, gone
+## 2026-10-26), its rim, and its corner. Pixels, because the card's own
+## inset is.
 const PANEL_PAD := 13.0
 const PANEL_RIM := 7.0
 const PANEL_RADIUS := 22.0
-## Leaves lying between the cells: one lattice corner in this many that has
-## room for one, never fewer than MIN_SPRIGS, and how big one is.
-const SPRIG_EVERY := 4
-const MIN_SPRIGS := 4
-const SPRIG_R := 0.4
 ## The lane band a refusal lays down the cells ahead of a dart. **0.34 was drawn
 ## against 0.86 at the hard band's 58 px cell and kept** (Task 4): a stripe
 ## a third of a cell wide runs down the middle of the lane and leaves the
@@ -487,8 +483,8 @@ var fx: Node2D
 var _cell := 0.0
 var _origin := Vector2.ZERO
 
-## The field: the dots, the hint's wash, the trails, the darts and the
-## creases, in one mesh. Dropped whenever something changed so the next
+## The field: the refusal's band, the contrails, the moving planes and the
+## win's beads, in one mesh. Dropped whenever something changed so the next
 ## _draw rebuilds it.
 var _field: ArrayMesh
 ## The world under the board (puzzles/planes_world.gd), made when the host
@@ -530,21 +526,11 @@ var _rm_still: RunMesh
 ## The live trails' RunMesh: no runs, the still mesh's shapes.
 var _rm_live: RunMesh
 var _still_laid := false
-## The ground at rest: every dot no plane stands on or is flying off, and
-## every leaf no flight goes past, as one mesh made only when that set
-## changes (`_ground_key`), so a frame of flight draws just the dots and
-## leaves it is moving. The key it was built for, and the one last shown.
-var _ground: ArrayMesh
-var _ground_key := ""
-var _ground_shown: ArrayMesh
 ## The trails of the planes that only beat, shiver or flutter: their
 ## looks at rest under a slide, made with the field (`_build_field`), and the
 ## one last shown.
 var _trails: ArrayMesh
 var _trails_shown: ArrayMesh
-## The leaves on the paper: {"at": lattice corner, "ang", "flower"}, chosen
-## once a board off its own layout.
-var _sprigs: Array[Dictionary] = []
 
 var _opened := 0.0
 var _anim_until := 0.0
@@ -600,6 +586,10 @@ var _heart_used := false
 var moves_left := 0
 var max_moves := 0
 var _moves_pill := MovesPill.new()
+## The planes still on the sky, on the moves pill under the field (every
+## arrow game the user sent counts them down), and the count it last drew.
+var _left_pill := MovesPill.new()
+var _left_drawn := -1
 ## Whether a heart has ever been spent on this deal, by a crash or a gust
 ## (the seal reads it in the rewards pass).
 var _lost_ever := false
@@ -830,6 +820,8 @@ const HAPTICS := {
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	_left_pill.keys = ["PP_LEFT_ONE", "PP_LEFT_N"]
+	_left_pill.low = -1
 	# **The card is the wall a plane disappears behind**, and this is the one
 	# flat board that clips: a launch runs its track a whole body-length past
 	# the edge of the grid, which is out of this Control and over the top bar
@@ -895,7 +887,6 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_forget()
 	_deal()
 	_reset_rewards()
-	_place_sprigs()
 	_layout()
 	_enter()
 	_tip_idx = 0
@@ -1160,6 +1151,11 @@ func _process(delta: float) -> void:
 		_heart_layer.queue_redraw()
 	if max_moves > 0 and _moves_pill.animating(t - 0.1):
 		_heart_layer.queue_redraw()
+	if _state.left() != _left_drawn:
+		_left_pill.bump(t)
+		_heart_layer.queue_redraw()
+	elif _left_pill.animating(t - 0.1):
+		_heart_layer.queue_redraw()
 	# The sky: the sock sways for ever on a windy day (one transform, no
 	# rebuild), and a glide or a bump moves the clouds.
 	if _state.windy() and (not Motion.reduce or t - _glide_at < _glide_dur + 0.1
@@ -1195,8 +1191,8 @@ func _animating(t: float) -> bool:
 	if not _crash.is_empty() or _press_target >= 0 or _idle_plane >= 0 or not _ringed.is_empty():
 		return true
 	# The solve wave, which `_retire` clears the frame it runs out; while it
-	# is set, the dots are still hopping (or waiting for the last flight to
-	# land before they start).
+	# is set, the beads are still popping in (or waiting for the last flight
+	# to land before they start).
 	if _solved_at >= 0.0:
 		return true
 	if Motion.reduce:
@@ -1318,7 +1314,6 @@ func _refresh() -> void:
 ## one without a plane starting or stopping (an undo under reduce motion).
 func _refresh_all() -> void:
 	_still = null
-	_ground = null
 	_refresh()
 
 # --- the drawing ---
@@ -1341,15 +1336,9 @@ func _draw() -> void:
 	var grow := Motion.wide_pop_scale(t - _opened - Motion.ENTER_DELAY)
 	var mid := _origin + Vector2(float(_state.cols), float(_state.rows)) * _cell * 0.5
 	var xf := Transform2D(0.0, Vector2.ONE * grow, 0.0, mid * (1.0 - grow))
-	draw_mesh(_still, null, xf)
+	if _still != null:
+		draw_mesh(_still, null, xf)
 	_still_shown = _still
-	var gk := _ground_key_now()
-	if _ground == null or gk != _ground_key:
-		_ground = _build_ground()
-		_ground_key = gk
-	if _ground != null:
-		draw_mesh(_ground, null, xf)
-	_ground_shown = _ground
 	if _trails != null:
 		draw_mesh(_trails, null, xf)
 	_trails_shown = _trails
@@ -1486,36 +1475,9 @@ func _droop_level(t: float) -> float:
 	var u := clampf((t - _droop_at) / DROOP_TIME, 0.0, 1.0)
 	return u * u * (3.0 - 2.0 * u)
 
-## The field pressed into the card: a soft drop under it, a tan rim with a lit
-## inner edge, and a paper a shade creamier than the card's own.
+## The still mesh's ground: nothing but Windy Day's sock pole (the paper
+## panel and the shape's tint under the planes went on 2026-10-26).
 func _panel(b) -> void:
-	var span := Vector2(float(_state.cols), float(_state.rows)) * _cell
-	var at := _origin - Vector2.ONE * (PANEL_PAD + PANEL_RIM)
-	var sz := span + Vector2.ONE * 2.0 * (PANEL_PAD + PANEL_RIM)
-	b.fan(Face.Builder.round_rect(at + Vector2(0.0, 3.0), sz, PANEL_RADIUS),
-		Color(Pal.ACORN_DEEP, 0.18))
-	b.fan(Face.Builder.round_rect(at, sz, PANEL_RADIUS), PaperPlane.rim_colour())
-	var inner := _origin - Vector2.ONE * PANEL_PAD
-	var isz := span + Vector2.ONE * 2.0 * PANEL_PAD
-	var ir := PANEL_RADIUS - PANEL_RIM
-	b.fan(Face.Builder.round_rect(inner, isz, ir), Pal.ACORN.lerp(Pal.STONE_GIVEN, 0.55))
-	b.fan(Face.Builder.round_rect(inner + Vector2(0.0, 3.0), isz - Vector2(0.0, 3.0), ir),
-		Pal.SURFACE.lerp(Pal.PARCHMENT, 0.45))
-	if not _state.shape.is_empty():
-		# The day's shape, a shade deeper than the paper round it, a run of
-		# cells a rect, so the thing reads under its planes and its gaps.
-		var tint := Pal.SURFACE.lerp(Pal.PARCHMENT, 0.45).lerp(Pal.ACORN, 0.22)
-		for y in _state.rows:
-			var x := 0
-			while x < _state.cols:
-				if not _state.live(Vector2i(x, y)):
-					x += 1
-					continue
-				var from := x
-				while x < _state.cols and _state.live(Vector2i(x, y)):
-					x += 1
-				b.fan(Face.Builder.round_rect(_origin + Vector2(float(from), float(y)) * _cell - Vector2.ONE * 0.5,
-					Vector2(float(x - from), 1.0) * _cell + Vector2.ONE, 0.0), tint)
 	if _state.windy():
 		# The wind sock's pole, standing on the rim at the upwind corner: a
 		# little wooden stick and its knob. The sock itself sways on the sky
@@ -1540,13 +1502,12 @@ func _sock_root() -> Vector2:
 		x = _origin.x + span + PANEL_PAD - PANEL_RADIUS * 0.6
 	return Vector2(x, _origin.y - PANEL_PAD - PANEL_RIM - _sock_px() * 0.62)
 
-## The dots, the leaves, the refusal's band, the contrails and every moving
-## plane, rebuilt on every frame something moves.
+## The refusal's band, the contrails, every moving plane and, once the sky
+## is clear, the picture's beads, rebuilt on every frame something moves.
 func _build_field(t: float, moving: Dictionary) -> ArrayMesh:
 	var b := Face.Builder.new()
-	var wave := _solved_at >= 0.0
-	_dots(b, _covers(t), t, not wave)
-	_draw_sprigs(b, t, not wave)
+	if _state.solved():
+		_beads(b, t)
 	if not _refuse.is_empty():
 		var lv := _flash_now(t - float(_refuse["at"]))
 		if lv > 0.0:
@@ -1599,39 +1560,39 @@ func _build_field(t: float, moving: Dictionary) -> ArrayMesh:
 	_trails = rm.mesh()
 	return b.mesh() if not b.verts.is_empty() else null
 
-## A faint dot on every cell no plane stands on, and a **fading** one on
-## every cell a plane is in the act of leaving. This is the lattice, and it
-## is why a launch reads as emptying the board rather than as a jump cut: the
-## cells a plane leaves are places, not holes, and each of them comes back
-## the moment the tail passes over it.
-##
-## The solve wave rides here too: when the sky is empty the dots and the
-## leaves are the only things left on the card, so the family's wave is a hop
-## on each of them, read as a curve off `Motion` -- the whole of it is `_hop`.
-##
-## `moving_only` draws just the dots under a flight (the rest are the
-## ground's, `_build_ground`).
-func _dots(b, cover: Dictionary, t: float, moving_only := false) -> void:
-	var r := DOT * _cell
-	if moving_only:
-		for cell: Vector2i in cover:
-			var shown := 1.0 - float(cover[cell])
-			if shown > 0.004:
-				b.disc(_centre(cell), r, Color(Pal.LINE, DOT_ALPHA * shown))
-		return
+## The picture the planes drew, laid down as beads in the solve wave: every
+## cell of the shape a rounded square of its colour, popping in and hopping
+## out from where the last plane's head stood -- the day's thing, seen whole
+## once the sky is clear, and left lying there under the card. With no wave
+## running (reduce motion, the wave run out, a solved day reopened) every
+## bead simply lies there.
+func _beads(b, t: float) -> void:
+	var side := BEAD * _cell
 	for y in _state.rows:
 		for x in _state.cols:
 			var cell := Vector2i(x, y)
 			if not _state.live(cell):
 				continue
-			var shown := 1.0
-			if cover.has(cell):
-				shown = 1.0 - float(cover[cell])
-			elif _state.plane_at(cell) >= 0:
-				shown = 0.0
-			if shown > 0.004:
-				b.disc(_centre(cell) + Vector2(0.0, _hop(cell, t)), r,
-					Color(Pal.LINE, DOT_ALPHA * shown))
+			var since := FAR
+			if _solved_at >= 0.0:
+				since = t - _solved_at - Motion.SOLVE_DELAY \
+					- Motion.stagger(_king(cell, _solve_from), Motion.SOLVE_STAGGER)
+			var k := Motion.pop_in_scale(since).x
+			if k <= 0.0:
+				continue
+			var sz := Vector2.ONE * side * k
+			var at := _centre(cell) + Vector2(0.0, _hop(cell, t)) - sz * 0.5
+			var bead := _bead(_state.region(cell))
+			# A pale bead (white, cream, butter) keeps an edge on the pale sky.
+			if bead.get_luminance() > 0.75:
+				b.fan(Face.Builder.round_rect(at - Vector2.ONE * 1.5, sz + Vector2.ONE * 3.0,
+					sz.x * 0.3 + 1.5), PaperPlane.edge(bead).lerp(bead, 0.5))
+			b.fan(Face.Builder.round_rect(at, sz, sz.x * 0.3), bead)
+
+## The colour a bead of `tone` is painted, the picture's own (the planes
+## wear it darkened to read on the sky: `_paper`).
+func _bead(tone: String) -> Color:
+	return Pal.PG_BEADS.get(tone, PaperPlane.paper(0))
 
 ## One dot's place in the solve wave: the family's `hop_lift`, handed the
 ## seconds since this cell's own moment began -- `SOLVE_DELAY` after the wave
@@ -1645,162 +1606,6 @@ func _hop(cell: Vector2i, t: float) -> float:
 	return Motion.hop_lift(t - _solved_at - Motion.SOLVE_DELAY
 		- Motion.stagger(_king(cell, _solve_from), Motion.SOLVE_STAGGER),
 		Motion.SOLVE_HOP, Motion.SOLVE_TIME)
-
-## How much of each cell is still under a plane in flight, 0 to 1, for every
-## cell of every flight in the air. The fade is the family's own
-## (`appear_level`), read against the second that plane's **tail** crosses
-## that cell rather than against a distance -- which is how the dot's return
-## costs this board no constant of its own. A flight home runs it backwards:
-## the dot goes out as the tail arrives.
-func _covers(t: float) -> Dictionary:
-	var out: Dictionary = {}
-	for i in _fly:
-		var f: Dictionary = _fly[i]
-		var cells: Array = _state.planes[i]["cells"]
-		var back: bool = f["back"]
-		for j in cells.size():
-			var when := _when(f, float(j))
-			var lv := Motion.appear_level(t - when)
-			out[cells[j]] = lv if back else 1.0 - lv
-	return out
-
-## Leaves lie on lattice corners -- between four cells, never on one -- where
-## no dart's wing can reach, so a resting trail never covers one and a leaf
-## never hides whether a cell is empty. Chosen off the board's own layout, so
-## a day keeps its leaves.
-func _place_sprigs() -> void:
-	_sprigs = []
-	var room: Array[Vector2i] = []
-	# Which way each corner's free cells lie: a leaf points into them, so one
-	# beside a trail lies away from it.
-	var lean: Dictionary = {}
-	for y in range(1, _state.rows):
-		for x in range(1, _state.cols):
-			var free := 0
-			var head := false
-			var toward := Vector2.ZERO
-			var corners := [Vector2i(x - 1, y - 1), Vector2i(x, y - 1), Vector2i(x - 1, y), Vector2i(x, y)]
-			# A leaf lies on the shape, never out in the bare sky round it.
-			if not corners.all(func(c: Vector2i) -> bool: return _state.live(c)):
-				continue
-			for c in corners:
-				var i := _state.plane_at(c)
-				if i < 0:
-					free += 1
-					toward += Vector2(c) + Vector2.ONE * 0.5 - Vector2(x, y)
-				elif (_state.planes[i]["cells"] as Array).back() == c:
-					head = true
-			if free >= 2 and not head:
-				room.append(Vector2i(x, y))
-				lean[Vector2i(x, y)] = toward
-	var want := maxi(MIN_SPRIGS, room.size() / SPRIG_EVERY)
-	var seed_h: int = absi(hash(Vector2i(_state.cols * 31 + _state.rows, _state.planes.size())))
-	var k := 0
-	while not room.is_empty() and _sprigs.size() < want:
-		var h: int = absi(hash(Vector2i(seed_h, k)))
-		var corner: Vector2i = room[h % room.size()]
-		room.erase(corner)
-		k += 1
-		# Never two leaves side by side: a clump reads as a bush, not a leaf.
-		var near := false
-		for sp in _sprigs:
-			if _king(sp["at"], corner) < 2:
-				near = true
-		if near:
-			continue
-		var toward: Vector2 = lean[corner]
-		var ang := float(h % 628) / 100.0
-		if toward.length() > 0.1:
-			ang = toward.angle() + float((h >> 3) % 60 - 30) / 100.0 - 0.45
-		_sprigs.append({"at": corner, "ang": ang,
-			"flower": (h >> 7) % 3 == 0})
-
-## The leaves, each fluttering as a plane goes by and hopping with the dots on
-## the solve.
-##
-## `moving_only` draws just the leaves a flight goes past (the rest are the
-## ground's).
-func _draw_sprigs(b, t: float, moving_only := false) -> void:
-	for sp in _sprigs:
-		if moving_only and not _passed(sp["at"]):
-			continue
-		var corner: Vector2i = sp["at"]
-		var at := _origin + Vector2(corner) * _cell
-		var lift := 0.0
-		if _solved_at >= 0.0:
-			lift = Motion.hop_lift(t - _solved_at - Motion.SOLVE_DELAY
-				- Motion.stagger(_king(corner, _solve_from), Motion.SOLVE_STAGGER),
-				Motion.SOLVE_HOP, Motion.SOLVE_TIME)
-		PaperPlane.sprig(b, at + Vector2(0.0, lift), SPRIG_R * _cell,
-			float(sp["ang"]) + _flutter(corner, t), sp["flower"])
-
-## The ground's key: which planes stand, which have gone and which are in
-## the air (their cells are the live layer's), or the solve wave, when every
-## dot and leaf hops and none is at rest.
-func _ground_key_now() -> String:
-	if _solved_at >= 0.0:
-		return "wave"
-	var k := PackedStringArray()
-	for i in _state.planes.size():
-		k.append("f" if _fly.has(i) else ("g" if _state.planes[i]["gone"] else "."))
-	return "".join(k)
-
-## Every dot at rest -- on a cell no plane stands on and no flight is
-## leaving -- and every leaf no flight goes past, drawn still. Null in the
-## solve wave, when the field draws them all.
-func _build_ground() -> ArrayMesh:
-	if _solved_at >= 0.0:
-		return null
-	var flown: Dictionary = {}
-	for i in _fly:
-		for c in _state.planes[i]["cells"]:
-			flown[c] = true
-	var b := Face.Builder.new()
-	var r := DOT * _cell
-	for y in _state.rows:
-		for x in _state.cols:
-			var cell := Vector2i(x, y)
-			if flown.has(cell) or _state.plane_at(cell) >= 0 or not _state.live(cell):
-				continue
-			b.disc(_centre(cell), r, Color(Pal.LINE, DOT_ALPHA))
-	for sp in _sprigs:
-		if not _passed(sp["at"]):
-			PaperPlane.sprig(b, _origin + Vector2(sp["at"]) * _cell, SPRIG_R * _cell,
-				float(sp["ang"]), sp["flower"])
-	return b.mesh() if not b.verts.is_empty() else null
-
-## Whether any flight in the air goes past the leaf at `corner` (`_flutter`'s
-## reach, without its clock): such a leaf is drawn live.
-func _passed(corner: Vector2i) -> bool:
-	for i in _fly:
-		var cells: Array = _state.planes[i]["cells"]
-		var dir := Vector2(_state.planes[i]["dir"])
-		var rel := Vector2(corner) - (Vector2(cells[cells.size() - 1]) + Vector2.ONE * 0.5)
-		if absf(rel.cross(dir)) <= 0.75 and rel.dot(dir) >= -0.5:
-			return true
-	return false
-
-## How far a leaf is turned by the planes going past it: the family's wobble,
-## timed from the moment a dart's head draws level with it. A leaf beside a
-## lane is passed once on the way out and once again on an undo's way home.
-func _flutter(corner: Vector2i, t: float) -> float:
-	var angle := 0.0
-	for i in _fly:
-		var f: Dictionary = _fly[i]
-		var cells: Array = _state.planes[i]["cells"]
-		var n := cells.size()
-		var dir := Vector2(_state.planes[i]["dir"])
-		var rel := Vector2(corner) - (Vector2(cells[n - 1]) + Vector2.ONE * 0.5)
-		var along := rel.dot(dir)
-		if absf(rel.cross(dir)) > 0.75 or along < -0.5:
-			continue
-		var x := float(n - 1) + along
-		var lp: Dictionary = f.get("loop", {})
-		if not lp.is_empty() and along > float(lp["e0"]):
-			x += float(lp["lp"])
-		var when := _when(f, clampf(x, 0.0, float(f["s_end"])))
-		angle += Motion.wobble_angle(t - when, Motion.WOBBLE_ANGLE * 2.5)
-	return angle
 
 ## The dashed line a launched dart leaves down its lane, each stretch fading
 ## CONTRAIL after the dart went over it. Only on the way out: a plane coming
@@ -1816,7 +1621,7 @@ func _contrail(b, i: int, t: float) -> void:
 	var on := PaperPlane.STITCH_ON * 1.3
 	var gap := PaperPlane.STITCH_OFF * 1.6
 	var e := 0.3
-	var colour := PaperPlane.paper(i)
+	var colour := PaperPlane.paper(_paper(i))
 	while e < reach:
 		var since := t - _when(f, clampf(float(n - 1) + e + 0.3, 0.0, float(f["s_end"])))
 		if since >= 0.0 and since < CONTRAIL:
@@ -1825,13 +1630,13 @@ func _contrail(b, i: int, t: float) -> void:
 				PaperPlane.STITCH_W * _cell * 1.25, Color(colour, a), false, true)
 		e += on + gap
 
-## One plane: its groove and its dart, wearing every moment it is in at once
+## One plane: its line and its dart, wearing every moment it is in at once
 ## -- the entrance's pop about its **head** (that is where the eye is; a body
 ## scaling about its tail swings), the wake's beat across its wings, the lift
 ## off the paper as it launches, and the refusal's shiver under the
 ## whole of it. While it is in the air the body is the slice of its track
 ## between the tail and the head, so the tail follows the head through every
-## bend the plane ever made, and the stitch travels with it.
+## bend the plane ever made.
 ##
 ## The polish adds four more: the crash (a slice of the same track, out to
 ## the bonk and home again, crumpled and rocking), the press (the dart lifts
@@ -1933,12 +1738,19 @@ func _plane(b, i: int, t: float, droop := 0.0, rest := false, part := 3) -> void
 	var xf := Transform2D(0.0, sc, 0.0, head - head * sc + off)
 	var pts: PackedVector2Array = xf * (_body(i, s) if flying else _cell_pts(cells))
 	if part & 1:
-		PaperPlane.trail(b, pts, _cell * sc.x, i, seen, s * _cell, dim)
+		PaperPlane.trail(b, pts, _cell * sc.x, _paper(i), seen, s * _cell, dim)
 	if not part & 2:
 		return
 	var beat := Motion.bump_scale(t - float(_beat.get(i, -1e9)))
-	PaperPlane.dart(b, xf * head, angle, _cell * sc.x, i, seen,
+	PaperPlane.dart(b, xf * head, angle, _cell * sc.x, _paper(i), seen,
 		Vector2(1.0 + (beat - 1.0) * 0.3, beat) * wings, lift, dim)
+
+## Plane `i`'s paper as `PaperPlane` takes it: the colour of the picture
+## under it, inked to read on the sky, on a shaped sky (the planes draw the
+## day's thing); its index, one of the three papers, on a plain one.
+func _paper(i: int) -> Variant:
+	var tone := _state.tone(i)
+	return i if tone == "" else PaperPlane.ink(_bead(tone))
 
 ## A plane met by a refused one shivers across the board, the vocabulary's
 ## own curve and pixels. (The refused plane's own answer is its run, `_bump`;
@@ -2591,7 +2403,7 @@ func _crash_tap(i: int, blocked: int, t: float) -> void:
 		_puffs.append({"at": bonk, "pos": _centre(stop), "i": -1, "colour": Color.WHITE})
 	else:
 		_shiver[blocked] = bonk
-		_puffs.append({"at": bonk, "pos": nose, "i": -1, "colour": PaperPlane.paper(i)})
+		_puffs.append({"at": bonk, "pos": nose, "i": -1, "colour": PaperPlane.paper(_paper(i))})
 	fx.cue("place", 1.0, -4.0)
 	var gen := _gen
 	_after(out_t, func() -> void:
@@ -3438,6 +3250,10 @@ func _build_sock() -> ArrayMesh:
 ## the lost one's halves falling apart, one coming back popping in, and the
 ## whole pill breathing while the clouds have closed in.
 func _draw_hearts() -> void:
+	_left_drawn = _state.left()
+	if _bled and _cell > 0.0 and not _state.solved() and not _won:
+		var foot := _origin.y + float(_state.rows) * _cell + PANEL_PAD + PANEL_RIM + FOOT_ROOM * 0.5
+		_left_pill.draw(_heart_layer, Vector2(size.x * 0.5, foot), _left_drawn, _now())
 	if max_moves > 0 and _cell > 0.0:
 		_moves_pill.draw(_heart_layer, Vector2(size.x * 0.5, _hearts_y), moves_left, _now())
 		return

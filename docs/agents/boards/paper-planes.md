@@ -413,3 +413,59 @@ board finished on the old rectangle reopens solved on the shape.
   lower bands hold about 60% of their old planes; a bigger box would mean
   smaller cells), half the box as the floor. Owed: a phone, a themed day
   seen.
+
+### The planes draw the picture (2026-10-26)
+
+The user: "make paper planes experience way better to play, and game itself
+way funnier to play, right now nobody likes it ... The picture should be
+formed by the arrows itself, not needing a background shape (remove it)",
+with three arrow-maze screenshots (a mushroom in thin black lines, a rabbit
+in coloured lines on dark, a square board coloured by quarters). Before:
+tan grooves with a stitch on a tan panel over a tan tint of the shape, only
+the dart coloured -- on a Hard maze one beige knot, which trail a dart
+owned a hunt, and the thing unreadable.
+
+- **Each plane wears the picture's colour.** `cut_shape` keeps every cell's
+  bead folded to its family (`FAMILY`, Toy Cannons' table: maroon reads
+  red, cream reads white), so `shape` is cell -> family, and the carve keeps
+  a plane on one colour (`region()`: the head's, in `_propose_maze` and the
+  leftover tail growth). `tone(i)` is the plane's colour; the board inks it
+  to read on the sky (`PaperPlane.ink`: luminance at most 0.56, so white
+  comes out a soft grey) and hands it to `PaperPlane` as the paper. A plain
+  sky (the tutorial's, the menu card) keeps the three papers by index.
+- **The look** (`ui/faces/paper_plane.gd`, shared with the card and the
+  tutorial): a line of the paper 0.15 of a cell over a thin dark edge, bends
+  still filleted; the dart is the same colour, a little smaller (tip 0.46,
+  wings 0.31), and casts a shadow only once it lifts. No panel, no tint, no
+  dots, no leaves under the planes: the `_panel` shape is the sock pole
+  alone, the ground mesh, `_dots`, `_covers` and the leaves are gone.
+- **The win lays the picture down.** The solve wave pops every cell of the
+  shape in as a bead of its picture colour (`_beads`, pale beads edged)
+  from where the last plane left, and the beads stay under the card (drawn
+  whenever the state is solved: reduce motion, a reopened day).
+- **"N planes left"** on the moves pill (`ui/flat/moves_pill.gd`, now with
+  a `low` a board may set; this one never turns rose) centred in the foot
+  under the field, bumping on every change; gone at the win.
+  `PP_LEFT_ONE` / `PP_LEFT_N` in en, pt, es.
+- `tests/_probe_pp_fun.gd` (new, headless), 12 bank days a band, before ->
+  after: planes Easy 17-27 -> 17-30, Medium 21-39 -> 24-47, Hard 36-52 ->
+  41-61, Insane 79-107 -> 74-103; cover ~0.97 both; carve worst 6/12/27/67
+  -> 14/16/34/65 ms; free planes a step 3.3/3.1/3.3/4.4 -> 3.8/3.4/4.0/4.3;
+  every plane one colour; 1-4 colours a picture.
+- Suite passed=166379 failed=0 (was 163161); `tests/_win.gd -- planes`
+  PASS; all 32 tutorial pages (four bands) play headless clean;
+  `_shot_planes.gd` on opengl3_angle 810x1440: d=0 rest 78, d=2 rest 74,
+  d=3 rest 76 (twice), d=1 refuse 78, d=2 press 78, d=1 solve 89, d=1
+  restore 81 draw calls peak (d=1 solve rm 151, the brain-skills card over
+  the win). The deal of every seed on every band changes (the colour
+  rule); only completions are saved, and those restore by solving the
+  fresh deal. The world's own faint dot lattice (`planes_world.gd`) still
+  shows behind the planes: a texture, not the shape; the user's to call.
+- Mine, the user's to call: the family fold (shading inside a colour is
+  lost; the picture is 1-4 flat colours), the ink ceiling, the line width,
+  the smaller dart, the beads staying under the card, the pill at the foot.
+  The boxes are unchanged (Easy 12 x 17): a 10-12 pixel bank thing reads
+  blocky at Easy; bigger boxes would mean smaller cells. No hearts: the
+  Insane-without-limits ruling stands. Not seen: a themed day's picture
+  (headless has no Backend, so every check dealt a bank thing), a phone,
+  any sound (none changed).

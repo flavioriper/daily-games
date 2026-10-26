@@ -6,85 +6,101 @@ extends RefCounted
 ## so they are batched into a mesh the way `ui/faces/patch_cloth.gd`'s patches
 ## are.
 ##
-## **Two parts, and only the dart carries a colour.** The body is a groove
-## pressed into the paper -- a tan rim, a paper fill a shade under the field,
-## and a stitched line down its middle -- with every bend rounded, because a
-## trail that turns on a sharp corner reads as a wire and one that curves reads
-## as the path a plane took. The dart at the head is folded paper in one of
-## three colours, one half lit and one in shade off a light standing up and to
-## the left of the board, with a pale fold down the spine and a soft shadow
-## under it that drops away as the plane lifts. **The colour is identity and
+## **Two parts, one colour.** The body is a thin line of the plane's colour
+## with every bend rounded, because a trail that turns on a sharp corner
+## reads as a wire and one that curves reads as the path a plane took. The
+## dart at the head is folded paper of the same colour, one half lit and one
+## in shade off a light standing up and to the left of the board, with a pale
+## fold down the spine and a soft shadow under it once it lifts. Until
+## 2026-10-26 the body was a tan groove with a stitch down it and only the
+## dart was coloured: on a maze of fifty that read as one beige knot, and
+## which dart a trail belonged to was a hunt. **The colour is identity and
 ## never state**: nothing a plane can be in changes it (Quilt's and Pinwheel's
-## rule, for pieces coloured by index).
+## rule, for pieces coloured by index). A paper is one of three by index, or
+## a colour handed in (the board's planes wear the day's picture).
 ## Spec: docs/superpowers/specs/2026-09-20-paper-planes-flat-design.md,
 ## section 17's polish amendment.
 
 const Pal = preload("res://core/palette.gd")
 const Face = preload("res://ui/faces/face.gd")
 
-# --- the groove, every figure a fraction of the cell ---
-const WIDTH := 0.3
-const RIM := 0.045
-## How round a bend is. A quarter of the way to the next cell leaves the groove's
-## inner edge a real curve at WIDTH 0.3 rather than a pinched corner.
+# --- the line, every figure a fraction of the cell ---
+const WIDTH := 0.15
+## The faint dark edge round a line, so a pale paper still holds its edge on
+## a pale sky.
+const EDGE := 0.035
+## How round a bend is. A third of the way to the next cell leaves a line's
+## bend a real curve rather than a pinched corner.
 const BEND := 0.36
-const DROP := 0.035
+## A launch's contrail is dashed in these.
 const STITCH_W := 0.034
 const STITCH_ON := 0.11
 const STITCH_OFF := 0.085
 
 # --- the dart ---
-const TIP := 0.5
-const BACK := 0.32
-const WING := 0.39
-const NOTCH := 0.14
-## The shadow's offset at rest, down and to the right of the light, and how
-## much further it falls per unit of lift.
+const TIP := 0.46
+const BACK := 0.26
+const WING := 0.31
+const NOTCH := 0.11
+## The shadow's offset at a lift of 1, down and to the right of the light,
+## and how much further it falls per unit of lift. A dart lying on the sky
+## casts none: it is drawn flat, as its line is.
 const SHADOW := Vector2(0.05, 0.085)
 const SHADOW_FALL := 2.6
 const SHADOW_ALPHA := 0.2
 ## Where the light stands, for which half of a dart is lit.
 const LIGHT := Vector2(-0.6, -0.8)
 
-static func paper(i: int) -> Color:
-	match posmod(i, 3):
+## The paper `i` names: one of three by index, or `i` itself when it is a
+## colour.
+static func paper(i) -> Color:
+	if i is Color:
+		return i
+	match posmod(int(i), 3):
 		0: return Pal.SUN.lerp(Pal.PUMPKIN, 0.25)
 		1: return Pal.BERRY.lerp(Pal.CHEEK, 0.3)
 		_: return Pal.WATER.lerp(Pal.CLOUD_DEEP, 0.3)
 
-static func lit(i: int) -> Color:
+static func lit(i) -> Color:
 	return paper(i).lerp(Pal.SURFACE, 0.3)
 
-static func shade(i: int) -> Color:
+static func shade(i) -> Color:
 	return paper(i).lerp(Pal.TEXT, 0.12)
 
-## The stitch down a groove takes a little of its dart's colour, so a trail
-## can be followed back to the plane it belongs to on a crowded board.
-static func thread(i: int) -> Color:
+## The line's dark edge: its own paper pressed toward the ink.
+static func edge(i) -> Color:
+	return paper(i).lerp(Pal.TEXT, 0.45)
+
+## A colour pressed toward the ink until it reads on the pale sky: a white,
+## cream or butter bead of the day's picture comes out a soft grey or
+## mustard, a red or a navy stays itself.
+static func ink(c: Color) -> Color:
+	var most := 0.56
+	var lum := c.get_luminance()
+	if lum <= most:
+		return c
+	var floor_lum := Pal.TEXT.get_luminance()
+	return c.lerp(Pal.TEXT, (lum - most) / maxf(lum - floor_lum, 0.01))
+
+## The dashed thread of the world's dotted ways, a little of a paper in it.
+static func thread(i) -> Color:
 	return Pal.ACORN_DEEP.lerp(paper(i), 0.18)
 
-## The groove's own colours: its rim and the paper pressed into it.
+## The tan the menu card's and the tutorial's frames are drawn in.
 static func rim_colour() -> Color:
 	return Pal.STONE_GIVEN.lerp(Pal.ACORN, 0.28)
 
-static func fill_colour() -> Color:
-	return Pal.STONE.lerp(Pal.SURFACE, 0.2)
-
-## A plane's body along `pts` (cell centres, or a slice of its flight):
-## shadow, rim, fill and stitch. `phase` slides the stitch along the groove in
-## pixels, so it travels with a body that is moving.
-static func trail(b, pts: PackedVector2Array, cell: float, i: int, alpha := 1.0,
+## A plane's body along `pts` (cell centres, or a slice of its flight): a
+## line of its paper over a thin dark edge. `phase` is kept for the callers
+## that slid a stitch along it; the line has none.
+static func trail(b, pts: PackedVector2Array, cell: float, i, alpha := 1.0,
 		phase := 0.0, dim := 0.0) -> void:
 	if pts.size() < 2:
 		return
 	var path := fillet(pts, BEND * cell)
-	var w := WIDTH * cell
-	b.stroke(_moved(path, Vector2(0.0, DROP * cell)), w + 1.0,
-		Color(Pal.ACORN_DEEP, 0.2 * alpha))
-	b.stroke(path, w, Color(_dimmed(rim_colour(), dim), alpha))
-	b.stroke(path, w - 2.0 * RIM * cell, Color(_dimmed(fill_colour(), dim), alpha))
-	dashes(b, path, STITCH_W * cell, STITCH_ON * cell, STITCH_OFF * cell, phase,
-		Color(_dimmed(thread(i), dim), 0.85 * alpha), w * 0.35)
+	var w := maxf(2.0, WIDTH * cell)
+	b.stroke(path, w + maxf(1.5, 2.0 * EDGE * cell), Color(_dimmed(edge(i), dim), alpha))
+	b.stroke(path, w, Color(_dimmed(paper(i), dim), alpha))
 
 ## A colour pressed toward the ink by `dim` (0 is the colour itself): the
 ## press dip's shade and the droop when the hearts run out. Every paper
@@ -105,7 +121,7 @@ static func band(b, pts: PackedVector2Array, cell: float, width: float, colour: 
 ## off the paper: bigger, and its shadow further away and fainter. `shadow`
 ## false leaves the shadow out (a dart drawn turning in the air, whose shadow
 ## would turn with it).
-static func dart(b, head: Vector2, angle: float, cell: float, i: int, alpha := 1.0,
+static func dart(b, head: Vector2, angle: float, cell: float, i, alpha := 1.0,
 		wings := Vector2.ONE, lift := 0.0, dim := 0.0, shadow := true) -> void:
 	var s := wings * cell * (1.0 + 0.16 * lift)
 	var turn := Transform2D(angle, head)
@@ -114,9 +130,9 @@ static func dart(b, head: Vector2, angle: float, cell: float, i: int, alpha := 1
 	var notch := turn * (Vector2(-NOTCH, 0.0) * s)
 	var left := turn * (Vector2(-BACK, -WING) * s)
 	var fall := SHADOW * cell * (1.0 + SHADOW_FALL * lift)
-	if shadow:
+	if shadow and lift > 0.0:
 		b.polygon(_moved(PackedVector2Array([tip, right, notch, left]), fall),
-			Color(Pal.TEXT, SHADOW_ALPHA * alpha * (1.0 - 0.45 * lift)))
+			Color(Pal.TEXT, SHADOW_ALPHA * alpha * minf(1.0, 3.0 * lift) * (1.0 - 0.45 * lift)))
 	# Which half faces the light: the wing whose outward side points more
 	# toward it. Only four headings exist, so every plane is one of two cases.
 	var left_out := turn.basis_xform(Vector2(0.0, -1.0))

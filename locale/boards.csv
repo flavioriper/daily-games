@@ -3492,3 +3492,5 @@ BRAIN_FC_1,"Before you guess, say what the first two cards have in common, out l
 BRAIN_FC_2,"Think of what a thing has, does or goes with, not only what kind it is.","Pense no que a coisa tem, faz ou acompanha, não só no tipo dela.","Piensa en lo que la cosa tiene, hace o acompaña, no solo en qué tipo es."
 BRAIN_FC_3,A short guess is safer: one key word names an idea as well as a sentence.,Um palpite curto é mais seguro: uma palavra-chave diz a ideia tão bem quanto uma frase.,Un intento corto es más seguro: una palabra clave dice la idea tan bien como una frase.
 BRAIN_FC_4,"On a hard round, turn one more card instead of guessing early.","Numa rodada difícil, vire mais uma carta em vez de chutar cedo.","En una ronda difícil, voltea una carta más en vez de adivinar antes."
+PP_LEFT_ONE,1 plane left,1 avião restante,Queda 1 avión
+PP_LEFT_N,%d planes left,%d aviões restantes,Quedan %d aviones
