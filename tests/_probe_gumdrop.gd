@@ -217,10 +217,46 @@ func _run() -> void:
 				lands += 1
 		l.events.clear()
 	_check("drained under the re-arm and poured again, it lands again (%d)" % lands, lands == 2)
+	# inside the band: drained to between LAND_REARM and LAND it is still
+	# landed, and squeezed again it does not land a second time
+	var h = _day(0, 7)
+	h.aim(h.centre_of(0))
+	h.squeeze(true)
+	var h_lands := 0
+	for i in 240:
+		h.step()
+		for ev: Dictionary in h.events:
+			if ev.type == "land":
+				h_lands += 1
+		h.events.clear()
+	h.squeeze(false)
+	h.drain(true)
+	var guard := 0
+	while h.tank[0] >= 0.92 * Sim.C_FULL and guard < 600:
+		guard += 1
+		h.step()
+	h.drain(false)
+	var low: float = h.tank[0]
+	h.squeeze(true)
+	for i in 240:
+		h.step()
+		for ev: Dictionary in h.events:
+			if ev.type == "land":
+				h_lands += 1
+		h.events.clear()
+	_check("drained only to %.2f of the shade (over the re-arm) and poured again, it does not land again (%d)" % [low / Sim.C_FULL, h_lands], h_lands == 1 and low >= Sim.LAND_REARM * Sim.C_FULL and low < Sim.LAND * Sim.C_FULL)
 	var p = _day(0, 7)
 	p.filled(0, int(p.mould.want[0]), 1.2)
-	p.step()
-	_check("a prefilled cell never lands", not p.events.any(func(e): return e.type == "land"))
+	p.aim(p.centre_of(0))
+	p.squeeze(true)
+	var p_lands := 0
+	for i in 60:
+		p.step()
+		for ev: Dictionary in p.events:
+			if ev.type == "land":
+				p_lands += 1
+		p.events.clear()
+	_check("a prefilled cell squeezed again never lands (%d)" % p_lands, p_lands == 0)
 
 func _insane() -> void:
 	# a serve never fails since 2026-10-26 (spec 2026-10-26-gumdrop-fun):
