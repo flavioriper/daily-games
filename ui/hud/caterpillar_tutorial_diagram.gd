@@ -201,7 +201,7 @@ func _process(_delta: float) -> void:
 		_over.queue_redraw()
 
 func _peckish() -> bool:
-	return band >= 3
+	return false  # (Insane was Peckish until 2026-10-26; it is the plain game now)
 
 ## The lesson's garden, as Gen deals one.
 func _garden() -> Dictionary:
@@ -276,11 +276,10 @@ func _start() -> void:
 			_loop.tween_interval(0.4)
 			_play_walk([2, 3, 7, 6], "", "")
 			_loop.tween_interval(0.8)
-			if band < 3:
-				_loop.tween_callback(_say.bind("HTP_CP_UNDO_CAP"))
-				_loop.tween_interval(0.6)
-				_loop.tween_callback(func() -> void: _art.undo())
-				_loop.tween_interval(1.6)
+			_loop.tween_callback(_say.bind("HTP_CP_UNDO_CAP"))
+			_loop.tween_interval(0.6)
+			_loop.tween_callback(func() -> void: _art.undo())
+			_loop.tween_interval(1.6)
 			_loop.tween_callback(_say.bind("HTP_CP_RESET_CAP"))
 			_loop.tween_interval(0.6)
 			_loop.tween_callback(func() -> void: _art.reset_board())
@@ -348,7 +347,7 @@ func _still() -> void:
 			_say("HTP_CP_RIGHT_CAP")
 		Lesson.UNDO:
 			_walk_now([0, 1, 2])
-			_say("HTP_CP_UNDO_CAP" if band < 3 else "HTP_CP_RESET_CAP")
+			_say("HTP_CP_UNDO_CAP")
 		Lesson.HINT:
 			_art.hint()
 			_say("HTP_CP_HINT_CAP")

@@ -16,7 +16,6 @@ extends RefCounted
 ## Spec: docs/superpowers/specs/2026-09-25-caterpillar-flat-design.md, section 6.
 
 const Gen = preload("res://puzzles/caterpillar_gen.gd")
-const InsaneBank = preload("res://core/insane_bank.gd")
 
 ## Hints and hearts by band. No band has hearts since 2026-10-04: nothing is
 ## judged as it lands, so `judged()` is false everywhere and `judge()` prices
@@ -64,16 +63,12 @@ static func hints_for(band: int) -> int:
 static func hearts_for(band: int) -> int:
 	return HEARTS_BY[clampi(band, 0, HEARTS_BY.size() - 1)]
 
-## Insane reads a mined Peckish garden from the bank; without one it deals
-## Hard's garden live, plain.
-func build(rng: RandomNumberGenerator, band: int, bank_step := 0) -> void:
+## Every band deals live. Insane is the plain game on the hardest garden
+## (since 2026-10-26; it was Peckish, mined into a bank, which nothing reads
+## now).
+func build(rng: RandomNumberGenerator, band: int, _bank_step := 0) -> void:
 	difficulty = band
-	var g := {}
-	if band >= 3:
-		g = Gen.from_bank(InsaneBank.pick("caterpillar", bank_step))
-	if g.is_empty():
-		g = Gen.generate(rng, mini(band, 2) if band >= 3 else band)
-	setup(g)
+	setup(Gen.generate(rng, clampi(band, 0, Gen.BANDS.size() - 1)))
 
 ## Lays a generated (or banked) garden out, empty.
 func setup(g: Dictionary) -> void:

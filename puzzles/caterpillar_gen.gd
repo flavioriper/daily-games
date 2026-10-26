@@ -27,9 +27,10 @@ extends RefCounted
 
 ## How many squares past a turn a player must look to see that every other
 ## way dies (`stuck_at`): a band deals only gardens read that far, so a day
-## is seen, not guessed. 0 deals the old proved-and-thin garden (Insane's
-## live fallback reads Hard's row).
-const LOOK := [3, 4, 6]
+## is seen, not guessed. 0 would deal the old proved-and-thin garden.
+## Insane is the plain game on 8x8 read twelve deep (2026-10-26: the user
+## asked for "just a way harder board" in place of Peckish's rules).
+const LOOK := [3, 4, 6, 12]
 ## The look-ahead's own node cap a way: past it the way counts as alive, so a
 ## capped look never passes a garden that is not readable.
 const LOOK_CAP := 4000
@@ -41,7 +42,7 @@ const BANDS := [
 	{"cols": 5, "rows": 5, "leaves": [6, 8], "hedges": [0, 0], "look": LOOK[0]},
 	{"cols": 6, "rows": 6, "leaves": [7, 9], "hedges": [2, 4], "look": LOOK[1]},
 	{"cols": 7, "rows": 7, "leaves": [8, 11], "hedges": [3, 6], "look": LOOK[2]},
-	{"cols": 8, "rows": 8, "leaves": [9, 13], "hedges": [4, 8], "cap": 500},
+	{"cols": 8, "rows": 8, "leaves": [8, 11], "hedges": [4, 8], "cap": 2000, "look": LOOK[3]},
 ]
 
 const NODE_CAP := 1000   ## a band may lower it with its own "cap"

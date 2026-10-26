@@ -214,3 +214,22 @@ way funnier to play, right now nobody likes it". Spec:
 - Mine, the user's to call: the look depths, the free blush on Easy and
   Medium only, the beckon, the crawl pop's level, the zoom. Not seen on a
   phone, nothing heard.
+
+## Insane is a harder board, not other rules (2026-10-26)
+
+The user, after the made-fun pass: "on insane, instead of changing the
+game, let's introduce just a way harder board". **Peckish is gone**: Insane
+deals live (`State.build`, no bank) the plain game -- numbered leaves in
+order -- on an 8x8 garden (the generator's masks stop at 64 squares) read
+twelve squares deep (`LOOK[3]`, fences 4-8, proof cap 2000). Measured
+(`_probe_cat_fun.gd`, 12 days): the careful guesser wastes 84 squares
+(Hard 17); the thin minimal garden would have been 757, pure guessing, so
+it was not taken; 9 deep was 49. 15.2 leaves, 8 fences; deal mean 145 ms,
+worst 240-300 ms on this Mac (a phone is slower; unmeasured). 30 seeds
+re-proved uncapped, 0 with two walks. Insane gets Undo back
+(`capabilities`, `can_undo`) and Hard's tutorial pages (the diagram's
+`_peckish()` answers false); `CP_LVL_3` reads "8 × 8 garden, fences, deep
+turns" in en/pt/es. No blush on Insane (as on Hard). The Peckish code, its
+locale rows, `content/insane/caterpillar.json` and
+`tools/insane/caterpillar_ladder.gd` stay in the tree, unread. Mine: the
+depth 12, Undo back on Insane.

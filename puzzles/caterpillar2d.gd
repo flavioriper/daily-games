@@ -551,23 +551,15 @@ func tutorial_pages() -> Array:
 	var hints: int = State.hints_for(band)
 	var hearts_n: int = State.hearts_for(band)
 	var steps := [[Diagram.Lesson.WALK, "HTP_CP_WALK",
-		tr("HTP_CP_WALK_BODY_PECK" if band >= 3 else "HTP_CP_WALK_BODY")]]
-	if band < 3:
-		steps.append([Diagram.Lesson.ORDER, "HTP_CP_ORDER", tr("HTP_CP_ORDER_BODY")])
+		tr("HTP_CP_WALK_BODY")]]
+	steps.append([Diagram.Lesson.ORDER, "HTP_CP_ORDER", tr("HTP_CP_ORDER_BODY")])
 	if band >= 1:
 		steps.append([Diagram.Lesson.FENCE, "HTP_CP_FENCE", tr("HTP_CP_FENCE_BODY")])
 	steps.append([Diagram.Lesson.BACK, "HTP_CP_BACK", tr("HTP_CP_BACK_BODY")])
 	if hearts_n > 0:
 		steps.append([Diagram.Lesson.HEARTS, "HTP_TN_HEARTS",
 			tr("HTP_CP_HEARTS_BODY_PECK" if band >= 3 else "HTP_CP_HEARTS_BODY") % hearts_n])
-	if band >= 3:
-		steps.append([Diagram.Lesson.PECKISH, "CP_PECKISH_SEAL",
-			tr("HTP_CP_PECKISH_BODY") % maxi(_state.hunger, 1)])
-	var undo_body := "HTP_CP_UNDO_BODY"
-	if band >= 3:
-		undo_body = "HTP_CP_RESET_BODY_MOVES" if max_moves > 0 else "HTP_CP_RESET_BODY"
-	elif hearts_n > 0:
-		undo_body = "HTP_CP_UNDO_BODY_JUDGED"
+	var undo_body := "HTP_CP_UNDO_BODY_JUDGED" if hearts_n > 0 else "HTP_CP_UNDO_BODY"
 	steps.append([Diagram.Lesson.UNDO, "HTP_WT_UNDO", tr(undo_body)])
 	if hints > 0:
 		steps.append([Diagram.Lesson.HINT, "HTP_TN_HINT",
@@ -594,14 +586,9 @@ func _tips() -> Array:
 		return TIPS_HEARTS
 	return TIPS + ["CP_TIP_STUCK"] if _state.difficulty <= STUCK_BANDS else TIPS
 
-## Undo and Hint; Reset is the host's. No Check: nothing wrong can sit here.
-## Insane counts moves: no Undo (backing up along the body is the take-back,
-## and it costs a move a square) and no hint.
-## Insane has the bulb again since 2026-10-13, as many hints as Hard: what is
-## said of it above is the history (docs/agents/flat-screens.md).
+## Undo and Hint on every band; Reset is the host's. No Check: nothing wrong
+## can sit here. (Insane lacked Undo while it was Peckish, until 2026-10-26.)
 func capabilities() -> Array[String]:
-	if _state.difficulty >= 3:
-		return ["hint"]
 	return ["undo", "hint"]
 
 ## What the phone does under each cue (docs/agents/haptics.md). The walk is
@@ -2661,11 +2648,10 @@ func tip_line() -> Dictionary:
 
 # --- the HUD's actions ---
 
-## No Undo on Insane: dragging back over the body still takes steps back, but
-## a stroke cannot be wished away.
+## Every band has Undo since 2026-10-26, Insane included (it was Peckish's
+## to lack).
 func can_undo() -> bool:
-	return _state.can_undo() and not is_done() and not out_of_hearts and not busy() \
-		and _state.difficulty < 3
+	return _state.can_undo() and not is_done() and not out_of_hearts and not busy()
 
 ## Puts the body back as it was before the last stroke. Counts no move.
 func undo() -> bool:
