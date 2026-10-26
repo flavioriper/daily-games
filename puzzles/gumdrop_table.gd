@@ -111,6 +111,18 @@ const TICK_VARY := 0.06
 const WIN_TIME := 0.45
 const WIN_FOOT := 24.0
 const DONE_RUN := 5.0
+## The jelly's wobble (spec 2026-10-26 4.2): how fast it swings, how soon
+## it dies away, how hard a touch, a squeeze, a drain, a chunk landing and
+## the serve set it off, and the small fast tremble while syrup goes in.
+const WOB_F := 4.5
+const WOB_TAU := 0.35
+const WOB_TAP := 0.02
+const WOB_SQUEEZE := 0.03
+const WOB_DRAIN := 0.02
+const WOB_LAND := 0.04
+const WOB_SERVE := 0.09
+const TREMBLE := 0.006
+const TREMBLE_F := 9.0
 
 var sim: RefCounted
 ## What of the rect the owner's chrome covers at the top and the foot, and
@@ -187,7 +199,12 @@ var _cell_pots := {}
 var _pick_at := -10.0
 var _deal_at := -10.0
 var _verdict_at := -10.0
-var _wobble := 0.0
+## The jelly's wobble: a squash with a little shear about the mould's
+## centre, set off at an amplitude and dying away (spec 2026-10-26 4.2).
+var _wob_a := 0.0
+var _wob_at := -10.0
+## The tremble while syrup goes in, eased in and out.
+var _tremble := 0.0
 var _slid := false
 ## Rings on the jelly, in mould units: {pos, t, life, r, col}.
 var _bits: Array = []
@@ -350,25 +367,42 @@ func _win_k() -> float:
 	return 1.0 - pow(1.0 - k, 3.0)
 
 ## The tray's own transform: where it lies, slid aside as a served mould
-## leaves and the next comes, shaken as a jelly is when it is judged, and
-## carried to the middle on the win.
+## leaves and the next comes, and carried to the middle on the win. The
+## tray itself stays still; the jelly in it wobbles (_jelly).
 func _group() -> Transform2D:
 	var at := _tray.position
-	var sc := Vector2.ONE
 	if not Motion.reduce:
 		at.x += _slide() * field.size.x
-		var since := _clock - _verdict_at
-		if since >= 0.0 and since < 1.6:
-			var w := _wobble * sin(since * 19.0) * exp(-since * 3.0)
-			sc = Vector2(1.0 + w, 1.0 - w)
-	var mid := _tray.size * 0.5
-	var xf := Transform2D(0.0, sc, 0.0, at + mid - mid * sc)
 	var k := _win_k()
 	if k > 0.0:
 		var grow := lerpf(1.0, _win_tray.size.x / _tray.size.x, k)
-		xf = Transform2D(0.0, Vector2(grow, grow), 0.0, _tray.position.lerp(_win_tray.position, k)) \
-			* Transform2D(0.0, sc, 0.0, mid - mid * sc)
-	return xf
+		return Transform2D(0.0, Vector2(grow, grow), 0.0, _tray.position.lerp(_win_tray.position, k))
+	return Transform2D(0.0, at)
+
+## The jelly's own transform inside the tray's: a squash (wider and lower)
+## with half as much shear, the bottom pushed the way the sides bulge, about
+## the mould's centre, so it sits in the tray and only quivers there.
+func _jelly() -> Transform2D:
+	if Motion.reduce:
+		return Transform2D.IDENTITY
+	var t := _clock - _wob_at
+	var w := _tremble
+	if t >= 0.0 and _wob_a > 0.0:
+		w += _wob_a * sin(TAU * WOB_F * t) * exp(-t / WOB_TAU)
+	if absf(w) < 0.0001:
+		return Transform2D.IDENTITY
+	var mid := _tray.size * 0.5
+	var xa := Vector2(1.0 + w, 0.0)
+	var ya := Vector2(0.5 * w, 1.0 - w)
+	return Transform2D(xa, ya, mid - (xa * mid.x + ya * mid.y))
+
+## Sets the jelly wobbling at amplitude a, unless what it is doing is
+## bigger still.
+func wobble(a: float) -> void:
+	var t := _clock - _wob_at
+	if a > _wob_a * exp(-maxf(t, 0.0) / WOB_TAU):
+		_wob_a = a
+		_wob_at = _clock
 
 ## How far aside the tray is, in screens: off to the left as a mould that
 ## passed is taken away, in from the right as the next is set down.
@@ -490,6 +524,11 @@ func _animate(delta: float) -> void:
 	var playing: bool = sim.phase <= Sim.Phase.PLAY and cell >= 0
 	var pouring: bool = sim.squeezing and playing
 	var draining: bool = sim.draining and not sim.squeezing and playing
+	# the jelly trembles while syrup goes into it
+	if sim.squeezing and cell >= 0:
+		_tremble = TREMBLE * sin(TAU * TREMBLE_F * _clock)
+	else:
+		_tremble = lerpf(_tremble, 0.0, minf(1.0, delta * 16.0))
 	_squash = lerpf(_squash, 1.0 if sim.squeezing else (-0.5 if sim.draining else 0.0), minf(1.0, delta * 16.0))
 	if (pouring or draining) and _clock - _pour_at >= POUR_GAP:
 		_pour_at = _clock
@@ -575,6 +614,7 @@ func _press(index: int, at: Vector2) -> void:
 		if _squeeze_by == -1:
 			_squeeze_by = index
 			sim.squeeze(true)
+			wobble(WOB_SQUEEZE)
 			# in the jelly the first of the syrup is heard; over the tray
 			# nothing comes and the button only clicks
 			if sim.tip_cell() >= 0:
@@ -587,6 +627,7 @@ func _press(index: int, at: Vector2) -> void:
 		if _drain_by == -1:
 			_drain_by = index
 			sim.drain(true)
+			wobble(WOB_DRAIN)
 			_fx.touch(randf_range(1.0 - TICK_VARY, 1.0 + TICK_VARY) * DRAIN_PITCH)
 			_fx.buzz(Haptics.TAP)
 		return
@@ -613,6 +654,7 @@ func _press(index: int, at: Vector2) -> void:
 	if _tray.grow(24.0).has_point(at) and _aim_by == -1:
 		_aim_by = index
 		_aim_moved = 0.0
+		wobble(WOB_TAP)
 		_fx.touch(randf_range(1.0 - TICK_VARY, 1.0 + TICK_VARY))
 		_fx.buzz(Haptics.TICK)
 
@@ -700,24 +742,23 @@ func _on_served(ev: Dictionary) -> void:
 	# every serve is a reveal, never a fail: the stamp is the tier (2026-10-26)
 	match int(ev.tier):
 		2:
-			_wobble = 0.09
 			_fx.cue("perfect")
 			_feel(Haptics.GOOD)
 			_rw.sticker("%d%%" % pct, at, 110, 1.9, true, Color.WHITE, true, "pct")
 			_rw.sticker(tr("GD_PERFECT"), at + Vector2(0, 110.0), 54, 1.9, false, Color("fff4c2"), false, "word")
 			_rw.rain(1.6, ["confetti", "star"], Rewards.CONFETTI)
 		1:
-			_wobble = 0.06
 			_fx.cue("good", minf(1.0 + 0.04 * sim.index, CLIMB_TOP))
 			_feel(Haptics.GOOD)
 			_rw.sticker("%d%%" % pct, at, 100, 1.9, false, Pal.LEAF_DEEP, true, "pct")
 			_rw.sticker(tr("GD_GREAT"), at + Vector2(0, 104.0), 50, 1.9, false, Color("fff4c2"), false, "word")
 		_:
-			_wobble = 0.03
 			_fx.cue("good", 0.84)
 			_feel(Haptics.BUMP)
 			_rw.sticker("%d%%" % pct, at, 100, 1.9, false, Color("fffaf0"), true, "pct")
 			_rw.sticker(tr("GD_GOOD"), at + Vector2(0, 104.0), 50, 1.9, false, Color("fff4c2"), false, "word")
+	# the jelly shakes as it is judged, whatever the tier
+	wobble(WOB_SERVE)
 
 func _ring(at: Vector2, r: float, life: float, col: Color, inward := false) -> void:
 	if Motion.reduce:
@@ -775,19 +816,18 @@ func _draw_field() -> void:
 	_meshes()
 	var xf := _group()
 	field.draw_mesh(Art.tray(_tray.size.x), null, xf)
-	field.draw_mesh(_floor, null, xf)
+	field.draw_mesh(_floor, null, xf * _jelly())
 
 func _draw_syrup() -> void:
 	if sim == null or _fluid == null:
 		return
-	_syrup.draw_set_transform_matrix(_group())
+	_syrup.draw_set_transform_matrix(_group() * _jelly())
 	_syrup.draw_texture_rect(_fluid.texture(), Rect2(Vector2.ZERO, _tray.size), false)
 
 func _draw_top() -> void:
 	if sim == null or _walls == null:
 		return
-	var xf := _group()
-	_top.draw_mesh(_walls, null, xf)
+	_top.draw_mesh(_walls, null, _group() * _jelly())
 	# everything but the tray fades on the win
 	var fade := Color(1, 1, 1, 1.0 - _win_k())
 	if fade.a <= 0.0:
