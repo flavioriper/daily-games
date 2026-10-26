@@ -1259,3 +1259,21 @@ set a little low for a lip; both opaque, so overlaps never stack, and the
 corners step like the pixels. All of it is in `_still`, built once. The
 menu card keeps its square frame. Seen in `rest` shots on Medium and
 Insane: draw calls 77 and 107, unchanged.
+
+## 2026-10-26: a pick goes patch by linked patch
+
+The user: "the linked is wrong, it's properly prioritizing one color, but
+it's not following the rule to only chain linked colors where user
+clicked. It's starting at one point and going to a different point with
+same color, but it should only trigger near ones. If there is no color left
+to jump to, it should select another one". `run_of` (2026-10-19) put every
+jewel of the run standing on the tapped slot's colour ahead of the rest,
+wherever it lay, so a second patch on that colour, joined to the first only
+through jewels on another, flew before the ones between. Now the run is
+taken a patch at a time: the patch of the tapped slot's colour joined to the
+tap, then the next patch touching what is taken (the first queued, so the
+nearest), flooded whole, and so on. The run holds the same jewels as before;
+only the order changed. A throwaway check over 48 deals: 22,950 runs, every
+jewel after the first touching one taken before it (9,761 did not on the
+old order). Rules probe 648/0, board probe 38 days with the two old band-2
+zoom failures. Not seen on a screen.

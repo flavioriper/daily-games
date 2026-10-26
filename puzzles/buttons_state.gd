@@ -396,40 +396,53 @@ func bare_run(at: int) -> PackedInt32Array:
 	return out
 
 ## The run a tap on `i` picks: `i` and every button of its colour out of
-## place that touches it (`near`), nearest first -- and the ones standing
-## on the same colour of patch as `i` before the rest (the user,
-## 2026-10-19: "if user click on the red in the blue slot, even tho all red
-## appears linked, when moving it should prioritize first all the red on
-## the blue slot before going to red on green"). `sew` and `stow` take the
-## run in this order, so a move that takes only part of it takes those
-## first, and what they bare is one colour. Empty for a bare patch or a
-## sewn button.
+## place that touches it (`near`), taken a patch at a time: first the ones
+## standing on the same colour of slot as `i` and joined to it through that
+## colour (the user, 2026-10-19: "if user click on the red in the blue slot,
+## even tho all red appears linked, when moving it should prioritize first
+## all the red on the blue slot before going to red on green"), then,
+## nearest the ones taken, the next patch beside them, and so on -- never a
+## patch of the same slot colour elsewhere in the run before the ones
+## between (the user, 2026-10-26: "it should only trigger near ones. If
+## there is no color left to jump to, it should select another one").
+## `sew` and `stow` take the run in this order, so a move that takes only
+## part of it takes those first, and what they bare is one colour and
+## joined. Empty for a bare patch or a sewn button.
 func run_of(i: int) -> PackedInt32Array:
 	var out := PackedInt32Array()
 	if i < 0 or slot[i] < 0 or cur[i] < 0 or cur[i] == slot[i]:
 		return out
 	var c := cur[i]
-	var seen := {i: true}
-	out.append(i)
+	var taken := {}
+	# a queue of the run's buttons touching the ones taken, nearest first
+	var edge := PackedInt32Array([i])
+	var queued := {i: true}
 	var head := 0
-	while head < out.size():
-		var at := xy(out[head])
+	while head < edge.size():
+		var g := edge[head]
 		head += 1
-		for d: Vector2i in near():
-			var j := at_xy(at + d)
-			if j >= 0 and not seen.has(j) and cur[j] == c and slot[j] != c:
-				seen[j] = true
-				out.append(j)
-	var under := slot[i]
-	var first := PackedInt32Array()
-	var rest := PackedInt32Array()
-	for j in out:
-		if slot[j] == under:
-			first.append(j)
-		else:
-			rest.append(j)
-	first.append_array(rest)
-	return first
+		if taken.has(g):
+			continue
+		# the whole patch of g's slot colour joined to g, flooded at once
+		var under := slot[g]
+		var patch := PackedInt32Array([g])
+		taken[g] = true
+		var ph := 0
+		while ph < patch.size():
+			var p := xy(patch[ph])
+			ph += 1
+			for d: Vector2i in near():
+				var j := at_xy(p + d)
+				if j < 0 or taken.has(j) or cur[j] != c or slot[j] == c:
+					continue
+				if slot[j] == under:
+					taken[j] = true
+					patch.append(j)
+				elif not queued.has(j):
+					queued[j] = true
+					edge.append(j)
+		out.append_array(patch)
+	return out
 
 ## The places of the tin that hold colour `c`.
 func tin_of(c: int) -> PackedInt32Array:
