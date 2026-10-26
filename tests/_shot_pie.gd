@@ -3,7 +3,8 @@ extends SceneTree
 ## Who Ate the Pie? shots: `-- <dir> [d=<0..3>] [tut[=<page>]] [card]` opens
 ## the board on that level and shoots the table at rest, a baker picked, a
 ## refused mark, a card turning, a baker marked and their clue, a slip, the
-## bulb, the win settled and the day reopened from its card, with the draw
+## bulb's lit clues and its mark, an open baker's ringed clues, a caught
+## baker's line, a dimmed clue, the win settled and the day reopened from its card, with the draw
 ## calls of each frame. `tut` shoots a tutorial page played a while; `card`
 ## the menu card beside Market Sums'; `lang=pt` plays it in that language. Puts nothing in the player's save.
 
@@ -17,6 +18,7 @@ var _f := 0
 var _step := 0
 var _diag: Control
 var _lang := ""
+const Gen = preload("res://puzzles/pie_gen.gd")
 
 func _initialize() -> void:
 	for a in OS.get_cmdline_user_args():
@@ -123,7 +125,34 @@ func _process(_delta: float) -> bool:
 			if _f == 3040:
 				_b.hint()
 			if _f == 3080:
+				_shot("nudged")
+				print("nudge %s" % _b.nudge())
+				_b.hint()
+			if _f == 3120:
 				_shot("hinted")
+				_step = 4
+				_f = 4000
+		4:
+			if _f == 4001:
+				# the open baker the most clues speak of
+				var best := -1
+				for i in st.count():
+					if not st.is_marked(i) and (best < 0 or Gen.popcount(st.leads(i)) > Gen.popcount(st.leads(best))):
+						best = i
+				_b.demo_select(best)
+			if _f == 4020:
+				_shot("leads")
+				for i in st.count():
+					if not st.is_marked(i) and st.proven(i) and st.did_eat(i):
+						_b.demo_select(i)
+						_b.demo_mark(true)
+						break
+			if _f == 4050:
+				_shot("quip")
+				_b.demo_select(st.start)
+				_b.demo_select(st.start)
+			if _f == 4070:
+				_shot("dimmed")
 				_step = 5
 				_f = 5000
 		5:

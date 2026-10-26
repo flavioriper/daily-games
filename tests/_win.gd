@@ -1700,10 +1700,17 @@ func _solve_pie() -> void:
 	var p: int = st.hint_baker(-1)
 	mark.call(p, not st.did_eat(p))
 	_hud_ok = _hud_ok and st.slips == 1 and not st.is_marked(p) and _puzzle._say == "PI_SAY_WRONG"
+	# the bulb twice: the clues that prove somebody lit, then that baker marked
 	_press(_host.top_bar.hint_button)
 	for k in 10:
 		_puzzle._process(0.05)
-	_hud_ok = _hud_ok and _puzzle.hints_used == 1
+	var nudge: Dictionary = _puzzle.nudge()
+	_hud_ok = _hud_ok and _puzzle.hints_used == 1 and int(nudge.clues) != 0 and int(nudge.baker) >= 0 \
+		and not st.is_marked(int(nudge.baker))
+	_press(_host.top_bar.hint_button)
+	for k in 10:
+		_puzzle._process(0.05)
+	_hud_ok = _hud_ok and _puzzle.hints_used == 2 and st.is_marked(int(nudge.baker))
 	for step in 30:
 		if _puzzle.is_done():
 			return

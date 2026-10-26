@@ -27,8 +27,40 @@
   than another), ODD (odd or even of a set), a bit a baker (20 bits at
   most; `popcount` reads them by a 1024 table).
 - **The deal is a wavefront** and a stalled round is a retry: 365 days a
-  band in `tests/_probe_pie.gd`, none failed, worst 341 ms (Insane) on the
-  Mac. The phone deals its own day; a bank (as Picket Sums') is the way out
+  band in `tests/_probe_pie.gd`, none failed, worst 240 ms (Hard) on the
+  Mac since 2026-10-26 (341 ms Insane before).
+- **Several bakers open at once (2026-10-26, made fun)**: the user, "make
+  who ate the pie experience way better to play, and game itself way
+  funnier to play, right now nobody likes it". Measured first
+  (`tests/_probe_pie_fun.gd`, 100 days a band, a player marking a random
+  proven baker): 48/55/46/42% of steps had exactly one baker proven, 1.6-2.0
+  on average, and a random tapper was refused 2.2-5.4 times a step, free,
+  so tapping round beat reading. The deal's speakers were chosen to prove
+  nothing ("quiet") but the last of a round. Now every speaker's clue
+  proves 1..`want` bakers beyond what was already proven (`_choose`, the
+  fewest past one when ten tries miss); `want` 3/2/1/1. After: one-baker
+  steps 24/17/12/11%, 2.4/2.7/3.2/3.4 open, refusals a step 1.2/1.7/2.1/2.6,
+  the new clue speaks of a proven baker 76-80% of steps (69-75 before).
+- **The bulb is two presses, a bulb each** (the no-guess dailies' two-step
+  hint): the first rings the fewest clues that prove somebody
+  (`Gen.reasons` drops speakers one at a time while the baker stays proven;
+  `State.nudge` takes the proven baker with the fewest, the picked one on a
+  tie) and says "The glowing clues prove somebody. Who?"; the rings breathe
+  until that baker is marked. A second press while they stand marks the
+  baker. A baker marked while the rings stand counts as the bulb's (yellow
+  in the share). Bulbs 4/3/2/2 (were 3/2/1/1, one press a mark). When
+  the dish alone proves the baker (every eater found, or every other baker
+  cleared) there is no card to light and the first press marks them.
+- **An open baker picked rings every marked clue that speaks of them**
+  (`State.leads`) and the bubble counts them under the question ("2 ringed
+  clues speak of Jo"); the last clue's fading rings are cleared then, or
+  they read as clues about the picked baker. **A marked baker tapped while
+  picked dims their clue** (the player's note that it is spent; not
+  saved). **A caught baker owns up** in the bubble over their clue for
+  `QUIP_TIME` (PI_QUIP_0..7, by place) and wears crumbs on their chin
+  (`Art.crumbs`). The bubble is 252 at W (was 214) for the count line.
+- Calls the user has not made: refusals stay free (as the genre's), the
+  dim is unsaved, the quips' voice, the band wants. The phone deals its own day; a bank (as Picket Sums') is the way out
   if a phone hitches on opening.
 - **A marked card is laid differently from an open one** (small face and
   name on top, the clue under them); the swap happens at the middle of the
@@ -38,10 +70,10 @@
   in its own rect; the diagram picks with `demo_select` and presses with
   `demo_mark`, always on an Easy deal. Lessons MARK, CLUES, PROOF, DISH,
   HINT.
-- **Draw calls**: 123-206 on Easy, 156-270 on Insane (the win's report on
+- **Draw calls**: 151-251 on Hard and 168-276 on Insane since 2026-10-26; before, 123-206 on Easy, 156-270 on Insane (the win's report on
   top is most of the high end), 182-189 a tutorial page, 8 on the card.
 - Harness: `tests/_win.gd -- pie` (real touches: an unproven mark refused,
   a proven baker marked wrong for a slip, the bulb's button, then every
   proven baker picked and marked); `tests/_shot_pie.gd -- <dir> d=<0..3>
   [tut=<page>|card]` shoots rest, picked, refused, turning, marked, slip,
-  hinted, midway, the win and the reopened day, and prints the day's clues.
+  nudged, hinted, leads, quip, dimmed, midway, the win and the reopened day, and prints the day's clues.

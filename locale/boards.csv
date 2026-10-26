@@ -3243,6 +3243,18 @@ PI_SLIPS_N,%d slips,%d deslizes,%d deslices
 PI_SAY_UNPROVEN,The clues don't prove that yet.,As pistas ainda não provam isso.,Las pistas aún no lo prueban.
 PI_SAY_WRONG,The clues say otherwise: a slip.,As pistas dizem o contrário: um deslize.,Las pistas dicen lo contrario: un desliz.
 PI_SAY_NONE,Nobody has spoken yet.,Ninguém falou ainda.,Nadie ha hablado aún.
+PI_NUDGE,The glowing clues prove somebody. Who?,As pistas brilhando provam alguém. Quem?,Las pistas que brillan prueban a alguien. ¿Quién?
+PI_LEADS_0,No clue speaks of %s yet.,Nenhuma pista fala de %s ainda.,Ninguna pista habla de %s todavía.
+PI_LEADS_ONE,1 ringed clue speaks of %s.,1 pista com anel fala de %s.,1 pista con aro habla de %s.
+PI_LEADS_N,%d ringed clues speak of %s.,%d pistas com anel falam de %s.,%d pistas con aro hablan de %s.
+PI_QUIP_0,“Guilty. It was still warm!”,“Culpado. Ainda estava quentinha!”,“Culpable. ¡Aún estaba calentito!”
+PI_QUIP_1,“I only meant to taste the crust…”,“Eu só ia provar a casquinha…”,“Solo iba a probar la masa…”
+PI_QUIP_2,"“Fine, it was me. Cherries are my weakness.”","“Tá bom, fui eu. Cereja é meu fraco.”","“Vale, fui yo. Las cerezas me pierden.”"
+PI_QUIP_3,“Who leaves a pie out like that?”,“Quem deixa uma torta assim dando sopa?”,“¿Quién deja un pastel así a la vista?”
+PI_QUIP_4,“One slice. Maybe two.”,“Uma fatia. Talvez duas.”,“Un trozo. Quizá dos.”
+PI_QUIP_5,“I’d do it again.”,“Faria tudo de novo.”,“Lo volvería a hacer.”
+PI_QUIP_6,“It was looking at me!”,“Ela estava olhando pra mim!”,“¡Me estaba mirando!”
+PI_QUIP_7,“Crumbs. Caught.”,“Farelos. Fui pego.”,“Migas. Me pillaron.”
 PI_WIN,"Every baker proven, %d of them with crumbs.","Todos provados, %d com farelos.","Todos probados, %d con migas."
 PI_WIN_CLEAN,Not one slip.,Nenhum deslize.,Ni un desliz.
 PI_WIN_SLIPS_ONE,%d slip on the way.,%d deslize no caminho.,%d desliz por el camino.
@@ -3290,13 +3302,13 @@ PI_EVEN_COL,An even number of bakers in column %s ate pie.,Um número par de con
 HTP_PI_MARK,Mark a baker,Marque um confeiteiro,Marca un pastelero
 HTP_PI_MARK_BODY,"Tap a baker, then say whether they ate pie. A baker you mark says one true thing about the others.",Toque num confeiteiro e diga se ele comeu torta. Quem você marca diz uma verdade sobre os outros.,Toca un pastelero y di si comió pastel. Quien marcas dice una verdad sobre los demás.
 HTP_PI_CLUES,Read the clues,Leia as pistas,Lee las pistas
-HTP_PI_CLUES_BODY,"Tap a marked baker to read their clue; the bakers it speaks of are ringed. Neighbours are the eight around, and above or below means anywhere in the same column.","Toque num confeiteiro marcado para ler a pista; os confeiteiros de quem ela fala ganham um anel. Vizinhos são os oito em volta, e acima ou abaixo é em qualquer lugar da mesma coluna.","Toca un pastelero marcado para leer su pista; los pasteleros de los que habla se marcan con un aro. Vecinos son los ocho de alrededor, y encima o debajo es en cualquier lugar de la misma columna."
+HTP_PI_CLUES_BODY,Tap a baker: the clues that speak of them are ringed. Tap a marked baker twice to dim a clue you have used. Neighbours are the eight around; above or below is anywhere in the same column.,Toque num confeiteiro: as pistas que falam dele ganham um anel. Toque duas vezes num marcado para apagar uma pista já usada. Vizinhos são os oito em volta; acima ou abaixo é em qualquer lugar da mesma coluna.,Toca un pastelero: las pistas que hablan de él se marcan con un aro. Toca dos veces uno marcado para atenuar una pista ya usada. Vecinos son los ocho de alrededor; encima o debajo es en cualquier lugar de la misma columna.
 HTP_PI_PROOF,Only proof,Só com prova,Solo con pruebas
 HTP_PI_PROOF_BODY,"A mark the clues don't prove yet is turned away, free. A mark they prove wrong is a slip, and slips lower your score.","Uma marca que as pistas ainda não provam é recusada, sem custo. Uma que elas provam errada é um deslize, e deslizes baixam sua nota.","Una marca que las pistas aún no prueban se rechaza, gratis. Una que prueban errónea es un desliz, y los deslices bajan tu puntuación."
 HTP_PI_DISH,The dish,O prato,El plato
 HTP_PI_DISH_BODY,The dish shows a slice for every baker who ate. On Insane the dish is empty: nobody says how many.,O prato mostra uma fatia para cada um que comeu. No Insano o prato está vazio: ninguém diz quantos.,El plato muestra una porción por cada uno que comió. En Demencial el plato está vacío: nadie dice cuántos.
 HTP_PI_HINT,A proof,Uma prova,Una prueba
-HTP_PI_HINT_BODY,"The bulb marks one baker the clues already prove, so you can read why.","A lâmpada marca um confeiteiro que as pistas já provam, para você ver por quê.","La bombilla marca un pastelero que las pistas ya prueban, para que veas por qué."
+HTP_PI_HINT_BODY,The bulb lights the clues that prove somebody; find who. Press it again and it marks them.,A lâmpada acende as pistas que provam alguém; descubra quem. Toque de novo e ela marca.,La bombilla ilumina las pistas que prueban a alguien; descubre a quién. Tócala otra vez y lo marca.
 BRAIN_PI_1,Start from a zero: 'nobody' clues clear a whole group at once.,Comece por um zero: pistas de 'ninguém' liberam um grupo inteiro de uma vez.,Empieza por un cero: las pistas de 'nadie' despejan todo un grupo a la vez.
 BRAIN_PI_2,"When a count matches the bakers left in its group, they all go the same way.","Quando um número bate com os que restam no grupo, todos vão para o mesmo lado.","Cuando un número coincide con los que quedan en su grupo, todos van hacia el mismo lado."
 BRAIN_PI_3,Lay two clues over each other: where their groups overlap is often the answer.,Junte duas pistas: onde os grupos se cruzam costuma estar a resposta.,Junta dos pistas: donde sus grupos se cruzan suele estar la respuesta.

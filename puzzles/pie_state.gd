@@ -10,8 +10,9 @@ extends RefCounted
 
 const Gen = preload("res://puzzles/pie_gen.gd")
 
-## The bulb, by band.
-const HINTS := [3, 2, 1, 1]
+## The bulb, by band: a press rings the clues that prove someone, a second
+## press marks them, a bulb each.
+const HINTS := [4, 3, 2, 2]
 ## How a slip dents the score.
 const SLIP_COST := 0.25
 
@@ -116,6 +117,31 @@ func hint_baker(prefer := -1) -> int:
 		if set & (1 << i):
 			return i
 	return -1
+
+## The bulb's first press: the baker it would mark (`prefer` when proven)
+## and the bakers whose clues prove them, the fewest of any proven baker:
+## {"baker", "clues"}; {} when nobody is proven.
+func nudge(prefer := -1) -> Dictionary:
+	var set := int(proof().get("set", 0))
+	var best := {}
+	var fewest := 999
+	for i in count():
+		if not set & (1 << i):
+			continue
+		var m := Gen.reasons(clues, marked, cols, rows, dish, ate, i)
+		var k := Gen.popcount(m) - (1 if i == prefer else 0)
+		if k < fewest:
+			fewest = k
+			best = {"baker": i, "clues": m}
+	return best
+
+## The marked bakers whose clues speak of baker `i`.
+func leads(i: int) -> int:
+	var m := 0
+	for j in count():
+		if is_marked(j) and about(j) & (1 << i):
+			m |= 1 << j
+	return m
 
 ## The bakers the clue of `i` speaks of.
 func about(i: int) -> int:

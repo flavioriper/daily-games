@@ -12,7 +12,7 @@ extends Control
 ##   bubble says why; then a proven one is marked.
 ## - DISH: proven bakers are marked until one who ate is caught, and a
 ##   slice of the pie turns to crumbs.
-## - HINT: the bulb marks a proven baker.
+## - HINT: the bulb lights the clues that prove a baker, then marks them.
 ##
 ## A page plays until its point is made, waits a moment and starts over.
 ## Under reduce motion the board stands as it is dealt.
@@ -85,7 +85,7 @@ func _deal() -> void:
 		Lesson.DISH:
 			_steps = [Step.CATCH]
 		_:
-			_steps = [Step.BULB]
+			_steps = [Step.BULB, Step.BULB]
 
 func _process(delta: float) -> void:
 	if Motion.reduce:
@@ -129,6 +129,8 @@ func _process(delta: float) -> void:
 		Step.BULB:
 			_steps.pop_front()
 			_bulb_at = _t
+			# the lit clues are read a while before the second press
+			_wait = -1.6
 			_board.hints_extra += 1
 			_board.hint()
 		Step.CATCH:

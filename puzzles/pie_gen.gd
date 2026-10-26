@@ -38,9 +38,9 @@ enum Dir { ABOVE, BELOW, LEFT, RIGHT }
 ## that it does not), and how many bakers a clue should prove on its own
 ## (`want`: fewer is harder). Weights are per kind, in Kind's order.
 const BANDS := [
-	{"cols": 3, "rows": 3, "eaters": [3, 3], "dish": true, "want": 2,
+	{"cols": 3, "rows": 3, "eaters": [3, 3], "dish": true, "want": 3,
 		"w": [5, 3, 3, 0, 0, 0, 3, 1, 0, 0, 0, 0]},
-	{"cols": 3, "rows": 4, "eaters": [4, 5], "dish": true, "want": 1,
+	{"cols": 3, "rows": 4, "eaters": [4, 5], "dish": true, "want": 2,
 		"w": [5, 2, 2, 3, 1, 1, 3, 0, 0, 0, 0, 0]},
 	{"cols": 4, "rows": 4, "eaters": [5, 7], "dish": true, "want": 1,
 		"w": [5, 2, 2, 3, 1, 1, 2, 0, 1, 1, 1, 1]},
@@ -235,6 +235,32 @@ static func forced(cons: Array, n: int, set: int, ate: int) -> Dictionary:
 			proven_ate |= w & bit
 	return {"set": proven, "ate": proven_ate}
 
+## Whether the constraints prove baker `i` (no way gives them the other
+## verdict), `set`/`ate` decided as in `forced`; `eat` is their verdict.
+static func proves(cons: Array, n: int, set: int, ate: int, i: int, eat: bool) -> bool:
+	var bit := 1 << i
+	var order := _order(cons, n, set | bit)
+	return _find(cons, order, 0, set | bit, (ate | bit) if not eat else ate) < 0
+
+## The bulb's first press: a few of the `heard` bakers whose clues alone
+## (with the dish and the marks) still prove baker `i`, as a mask. Each
+## speaker is dropped in turn while `i` stays proven, so what is left is a
+## handful a player can read together.
+static func reasons(clues: Array, heard: int, cols: int, rows: int, dish: int, ate: int, i: int) -> int:
+	var n := cols * rows
+	var keep := 0
+	for j in n:
+		if heard & (1 << j) and not (clues[j] as Dictionary).is_empty():
+			keep |= 1 << j
+	var eat := ate & (1 << i) != 0
+	for j in n:
+		if not keep & (1 << j):
+			continue
+		var cons := constraints(clues, keep & ~(1 << j), cols, rows, dish)
+		if proves(cons, n, heard, ate & heard, i, eat):
+			keep &= ~(1 << j)
+	return keep
+
 ## The constraints of the clues spoken by `heard` bakers, and the dish's.
 static func constraints(clues: Array, heard: int, cols: int, rows: int, dish: int) -> Array:
 	var cons := []
@@ -382,9 +408,12 @@ static func _try_deal(rng: RandomNumberGenerator, b: Dictionary) -> Dictionary:
 	return {"cols": cols, "rows": rows, "ate": ate, "names": names, "faces": faces.slice(0, n),
 		"clues": clues, "start": start, "dish": dish}
 
-## A clue for baker `i`. When `move` is set it must prove someone new with
-## the clues heard so far (`want` or fewer when it can); otherwise any clue
-## that proves little (the chain is pushed by the last speaker of a round).
+## A clue for baker `i` that proves someone new with the clues heard so
+## far, `want` or fewer beyond what was already proven, so a round leaves
+## several bakers open at once (one at a time made every step a hunt for
+## the only one, 2026-10-26). When none of ten tries does, the one proving
+## fewest past one; `move` (the last speaker of a round) never settles for
+## a clue that proves nobody, so the chain never stalls.
 static func _choose(rng: RandomNumberGenerator, said: Dictionary, w: Array, clues: Array, heard: int, i: int,
 		ate: int, cols: int, rows: int, dish: int, want: int, move: bool) -> Dictionary:
 	var n := cols * rows
@@ -396,8 +425,9 @@ static func _choose(rng: RandomNumberGenerator, said: Dictionary, w: Array, clue
 				break
 			last = _pick(rng, said, w, i)
 		return last
+	var base := popcount(int(forced(constraints(clues, heard, cols, rows, dish), n, heard, ate & heard).get("set", 0)))
 	var best := {}
-	var best_got := 999
+	var best_score := 999
 	for _t in 10:
 		if said.is_empty():
 			break
@@ -412,21 +442,16 @@ static func _choose(rng: RandomNumberGenerator, said: Dictionary, w: Array, clue
 		if f.is_empty():
 			continue
 		var got := popcount(int(f.set))
-		if not move:
-			# a quiet clue: keep it if it proves no more than the band wants
-			if got <= want:
-				return clue
-			if got < best_got:
-				best = clue
-				best_got = got
-			continue
-		if got == 0:
-			continue
-		if got <= want:
+		var extra := got - base
+		if extra >= 1 and extra <= want:
 			return clue
-		if got < best_got:
+		if move and got == 0:
+			continue
+		# past the want is better than nothing new; nothing new is last
+		var score := extra - want if extra > want else 100 - got
+		if score < best_score:
 			best = clue
-			best_got = got
+			best_score = score
 	return best
 
 static func _shuffle(rng: RandomNumberGenerator, a: Array) -> void:

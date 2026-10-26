@@ -19,8 +19,13 @@ extends "res://core/puzzle_base.gd"
 ##
 ## A mark flips the card over to its paper (leaf for "didn't", berry for
 ## "ate pie"), its badge pops and the baker hops; the bakers the new clue
-## speaks of are ringed a moment. A refusal shivers the card and says why
-## in the bubble. The bulb marks one baker the clues already prove. No Undo
+## speaks of are ringed a moment, and one caught owns up in the bubble with
+## crumbs on their chin. An open baker picked rings every clue that speaks
+## of them, and the bubble counts those clues; a marked baker picked again
+## dims their clue, the player's note that it is spent. A refusal shivers
+## the card and says why in the bubble. The bulb's first press rings the
+## clues that prove somebody (the fewest that do) and leaves the who to the
+## player; a second press while they stand marks that baker. No Undo
 ## (a mark is proven, so there is nothing to take back) and no bin (a day
 ## started over is a day already reasoned through).
 ##
@@ -58,8 +63,11 @@ const W := 1080.0
 const FLIP_TIME := 0.32
 ## How long the bakers a new clue speaks of stay ringed.
 const SPOKE_TIME := 1.4
-## How long a refusal's words stay in the bubble.
+## How long a refusal's words stay in the bubble, and a caught baker's.
 const SAY_TIME := 2.2
+const QUIP_TIME := 2.6
+## The caught bakers' lines, PI_QUIP_0.. (one a baker by their place).
+const QUIPS := 8
 ## A pressed button's look.
 const PRESS_TIME := 0.14
 ## The win: how long the board's own win plays, and the bakers' wave.
@@ -91,6 +99,18 @@ var _sel_at := -INF
 ## A refusal's words and when they were said.
 var _say := ""
 var _say_at := -INF
+## The marked bakers whose clues speak of the picked open baker.
+var _leads := 0
+## The bulb's first press: the clues it rings, the baker they prove and
+## since when (-1 when no nudge stands).
+var _nudge := 0
+var _nudge_baker := -1
+var _nudge_at := -INF
+## The clues the player dimmed as spent, a bit a baker.
+var _dim := 0
+## A caught baker's line and when they said it.
+var _quip := ""
+var _quip_at := -INF
 ## The verdict button last pressed (0 didn't, 1 ate) and when.
 var _press := -1
 var _press_at := -INF
@@ -194,6 +214,11 @@ func _fresh() -> void:
 	_sel = _st.start
 	_sel_at = -INF
 	_say = ""
+	_leads = 0
+	_nudge = 0
+	_nudge_baker = -1
+	_dim = 0
+	_quip = ""
 	_queue.clear()
 	_phase = Phase.PLAY
 	_relayout()
@@ -270,14 +295,25 @@ func _select(i: int) -> void:
 		return
 	if i == _sel:
 		_hop_at[i] = _t
-		_cue("pick", 0.9)
+		if _st.is_marked(i):
+			# a second tap on a marked baker: their clue spent, or back
+			_dim ^= 1 << i
+			_cue("pick", 0.85 if _dim & (1 << i) else 1.1)
+		else:
+			_cue("pick", 0.9)
 		return
 	_sel = i
 	_sel_at = _t
 	_say = ""
+	_quip = ""
 	_cue("pick", randf_range(0.96, 1.04))
 	if _st.is_marked(i):
+		_leads = 0
 		_ring_spoken(i)
+	else:
+		# only the clues about them, not the last clue's fading rings
+		_spoke = 0
+		_leads = _st.leads(i)
 
 ## The player said the picked baker ate (`eat`) or didn't.
 func _verdict(eat: bool, by_hint := false) -> void:
@@ -286,7 +322,9 @@ func _verdict(eat: bool, by_hint := false) -> void:
 	var i := _sel
 	_press = 1 if eat else 0
 	_press_at = _t
-	var heard: int = _st.mark(i, eat, by_hint)
+	# a baker the bulb's rings prove counts as the bulb's
+	var nudged := i == _nudge_baker
+	var heard: int = _st.mark(i, eat, by_hint or nudged)
 	match heard:
 		State.Marked.IGNORED:
 			return
@@ -304,9 +342,16 @@ func _verdict(eat: bool, by_hint := false) -> void:
 			_cue("slip")
 			return
 	_say = ""
+	_leads = 0
+	if nudged:
+		_nudge = 0
+		_nudge_baker = -1
 	if not by_hint:
 		moves += 1
 		moved.emit()
+	if eat:
+		_quip = "PI_QUIP_%d" % (i % QUIPS)
+		_quip_at = _t + FLIP_TIME
 	_flip_at[i] = _t
 	_hop_at[i] = _t + FLIP_TIME * 0.5
 	if eat:
@@ -342,22 +387,52 @@ func _solved_now() -> void:
 func is_solved() -> bool:
 	return _st.solved()
 
-## The bulb: one baker the clues already prove is marked, the picked one if
-## it is proven.
+## The bulb. The first press rings the fewest clues that prove somebody
+## (the picked baker when they are proven) and leaves the who to the
+## player; a press while those rings stand marks the baker they prove. A
+## bulb a press. When the dish alone proves the baker there is nothing to
+## light and the first press marks them.
 func hint() -> bool:
 	if hints_left() <= 0 or _phase == Phase.DONE or is_done():
 		return false
-	var i: int = _st.hint_baker(_sel)
-	if i < 0:
-		return false
+	var lit := {}
+	if _nudge_baker < 0 or _st.is_marked(_nudge_baker):
+		lit = _st.nudge(_sel)
+		if lit.is_empty():
+			return false
+		if int(lit.clues) == 0:
+			# the dish alone proves them (every eater found, or every other
+			# baker cleared): no card to light, so the press marks them
+			_nudge_baker = int(lit.baker)
+			lit = {}
+	if lit.is_empty():
+		var i := _nudge_baker
+		hints_used += 1
+		_cue("hint")
+		_sel = i
+		_sel_at = _t
+		if not demo:
+			fx.sparkle(_card_centre(i), Pal.SUN)
+		_verdict(_st.did_eat(i), true)
+		return true
 	hints_used += 1
 	_cue("hint")
-	_sel = i
-	_sel_at = _t
+	_nudge = int(lit.clues)
+	_nudge_baker = int(lit.baker)
+	_nudge_at = _t
+	_sel = -1
+	_leads = 0
+	_say = ""
 	if not demo:
-		fx.sparkle(_card_centre(i), Pal.SUN)
-	_verdict(_st.did_eat(i), true)
+		for j in _st.count():
+			if _nudge & (1 << j):
+				fx.sparkle(_card_centre(j), Pal.SUN)
 	return true
+
+## The bulb's rings standing, as {"clues", "baker"} (the tutorial's and the
+## harness's view).
+func nudge() -> Dictionary:
+	return {"clues": _nudge, "baker": _nudge_baker}
 
 func _cue(name: String, pitch := 1.0) -> void:
 	if demo or fx == null:
@@ -509,7 +584,7 @@ func _layout_for(top: float, bottom: float) -> Dictionary:
 	var won := _won
 	var head := 104.0 * u
 	var letters := 32.0 * u
-	var bubble := 0.0 if won else 214.0 * u
+	var bubble := 0.0 if won else 252.0 * u
 	var gutter := 32.0 * u
 	var gap := 10.0 * u
 	var margin := 18.0 * u
@@ -693,6 +768,16 @@ func _draw_card(i: int) -> void:
 	if _spoke & (1 << i) and _t - _spoke_at < SPOKE_TIME and i != _sel and not won:
 		var fade := 1.0 - clampf((_t - _spoke_at - SPOKE_TIME * 0.6) / (SPOKE_TIME * 0.4), 0.0, 1.0)
 		draw_mesh(Art.halo(r.size, Pal.ACCENT, 4.0 * u), null, base, Color(1, 1, 1, a * fade))
+	if _leads & (1 << i) and not won:
+		# a clue that speaks of the picked open baker, for as long as they are picked
+		var k := clampf((_t - _sel_at) / Motion.POP_IN, 0.0, 1.0)
+		draw_mesh(Art.halo(r.size, Pal.ACCENT, 4.0 * u), null, base, Color(1, 1, 1, a * k))
+	if _nudge & (1 << i) and not won:
+		# the bulb's clues breathe until the baker they prove is marked
+		var glow := 0.75 + 0.25 * sin((_t - _nudge_at) * 4.0) if not Motion.reduce else 1.0
+		draw_mesh(Art.halo(r.size, Pal.SUN, 6.0 * u), null, base, Color(1, 1, 1, a * glow))
+	if _dim & (1 << i) and shown and not won:
+		tint.a *= 0.4
 	if sx < 0.15:
 		return
 	var pad := _l("pad")
@@ -717,12 +802,14 @@ func _draw_card(i: int) -> void:
 	var mini := _l("mini")
 	var fc := Vector2(pad + mini * 0.5, pad + mini * 0.6)
 	_draw_baker(f, mini, base, fc, tint)
+	if _st.did_eat(i):
+		draw_mesh(Art.crumbs(mini), null, base * Transform2D(0.0, fc + Vector2(0.0, mini * 0.3)), tint)
 	var nfs := int(_L.name_fs)
 	var body: Font = CozyTheme.body(600)
 	var cfs := int(_L.clue_fs)
 	draw_set_transform_matrix(base)
-	draw_string(font, Vector2(pad + mini * 1.15, fc.y + nfs * 0.36), name, HORIZONTAL_ALIGNMENT_LEFT, r.size.x - pad * 2.0 - mini * 2.0, nfs, Color(Pal.TEXT, a))
-	draw_multiline_string(body, Vector2(pad, pad + mini * 1.08 + cfs * 0.92), _text[i], HORIZONTAL_ALIGNMENT_LEFT, r.size.x - pad * 2.0, cfs, -1, Color(Pal.TEXT, a))
+	draw_string(font, Vector2(pad + mini * 1.15, fc.y + nfs * 0.36), name, HORIZONTAL_ALIGNMENT_LEFT, r.size.x - pad * 2.0 - mini * 2.0, nfs, Color(Pal.TEXT, tint.a))
+	draw_multiline_string(body, Vector2(pad, pad + mini * 1.08 + cfs * 0.92), _text[i], HORIZONTAL_ALIGNMENT_LEFT, r.size.x - pad * 2.0, cfs, -1, Color(Pal.TEXT, tint.a))
 	draw_set_transform_matrix(Transform2D.IDENTITY)
 	if shown:
 		var br := minf(r.size.x, r.size.y) * 0.11
@@ -785,15 +872,29 @@ func _draw_bubble() -> void:
 	var width := b.size.x - pad * 2.0
 	var saying := _say != "" and _t - _say_at < SAY_TIME
 	if _sel < 0:
-		_centred(body, tr("PI_PICK"), b, roundi(32.0 * u), Pal.TEXT_DIM)
+		if _nudge_baker >= 0:
+			_centred(font, tr("PI_NUDGE"), b, roundi(34.0 * u), Pal.TEXT)
+		else:
+			_centred(body, tr("PI_PICK"), b, roundi(32.0 * u), Pal.TEXT_DIM)
 		return
 	var name: String = _st.names[_sel]
 	if _asking():
 		var line: String = tr(_say) if saying else tr("PI_ASK") % name
 		var ink: Color = Pal.BERRY_DEEP if saying and _say == "PI_SAY_WRONG" else (Pal.TEXT_DIM if saying else Pal.TEXT)
 		var fs := roundi(36.0 * u)
-		var top := b.position.y + pad * 0.6 + fs
+		var top := b.position.y + pad * 0.5 + fs
 		draw_string(font, Vector2(b.position.x + pad, top), line, HORIZONTAL_ALIGNMENT_CENTER, width, fs, ink)
+		# how many of the clues showing speak of them: the ringed cards
+		var n := Gen.popcount(_leads)
+		var lead: String
+		if n == 0:
+			lead = tr("PI_LEADS_0") % name
+		elif n == 1:
+			lead = tr("PI_LEADS_ONE") % name
+		else:
+			lead = tr("PI_LEADS_N") % [n, name]
+		var lfs0 := roundi(26.0 * u)
+		draw_string(body, Vector2(b.position.x + pad, top + lfs0 * 1.35), lead, HORIZONTAL_ALIGNMENT_CENTER, width, lfs0, Pal.ACCENT_DEEP if n > 0 else Pal.TEXT_DIM)
 		for eat in [false, true]:
 			var br := _button_rect(eat)
 			var down := _press == int(eat) and _t - _press_at < PRESS_TIME
@@ -815,6 +916,8 @@ func _draw_bubble() -> void:
 	var low := roundi(24.0 * u)
 	var room := b.size.y - pad * 2.0
 	var full := name + ": " + text
+	if _quip != "" and _t - _quip_at < QUIP_TIME and _t >= _quip_at:
+		full = tr(_quip) + "\n" + full
 	while fs > low and body.get_multiline_string_size(full, HORIZONTAL_ALIGNMENT_CENTER, width, fs).y > room:
 		fs -= 1
 	var hgt := body.get_multiline_string_size(full, HORIZONTAL_ALIGNMENT_CENTER, width, fs).y

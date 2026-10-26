@@ -178,6 +178,17 @@ static func _crumbs(b: Face.Builder, at: Vector2, spread: float, n: int) -> void
 		var p := at + Vector2(rng.randf_range(-1.0, 1.0), rng.randf_range(-0.6, 0.6)) * spread
 		b.disc(p, spread * rng.randf_range(0.08, 0.14), CRUMB)
 
+## Crumbs round a caught baker's mouth, `w` the face's width, centred on
+## the origin: one under each cheek and a few on the chin.
+static func crumbs(w: float) -> ArrayMesh:
+	var key := "crumbs:%d" % roundi(w * 2.0)
+	if _cache.has(key):
+		return _cache[key]
+	var b := Face.Builder.new()
+	for p in [Vector2(-w * 0.2, 0.0), Vector2(w * 0.22, w * 0.03), Vector2(0.0, w * 0.1)]:
+		_crumbs(b, p, w * 0.17, 3)
+	return _keep(key, b)
+
 ## A baker's hat: a tall white cook's hat, its band's middle at the origin,
 ## `w` its band's width.
 static func hat(w: float) -> ArrayMesh:
