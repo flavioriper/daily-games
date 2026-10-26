@@ -658,9 +658,6 @@ var _clip_at: PackedFloat64Array = PackedFloat64Array()
 ## When each stake went in (its pop), and each cell's last strand tint.
 var _stake_at: PackedFloat64Array = PackedFloat64Array()
 var _tint_was: PackedInt32Array = PackedInt32Array()
-## The press under way has staked or unstaked its piece: its release turns
-## nothing.
-var _press_held := false
 ## How many rings the wire made after the last turn, so the sprout speaks of
 ## a new one only.
 var _rings_were := 0
@@ -967,7 +964,6 @@ func _clear_clocks() -> void:
 	_tint_was = PackedInt32Array()
 	_tint_was.resize(cells)
 	_tint_was.fill(0)
-	_press_held = false
 	_rings_were = 0
 	_fuse_cell = -1
 	_fuse_at = AGO
