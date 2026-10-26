@@ -23,13 +23,13 @@ const CAP := 9999
 ## The bands: how the six numbers are drawn, how many steps the shortest way
 ## to the order takes, and where the order may fall. `smalls` numbers are
 ## drawn from 1..`small_top` and the rest from `bigs`, all different.
-## Insane (Every Crate) takes all six to the order, and the order cannot be
-## made from four or fewer.
+## Insane takes all six to the order: five steps, none fewer (2026-10-26:
+## the same rule as every band, a longer way, not Every Crate's own rule).
 const BANDS := [
 	{"smalls": 6, "small_top": 9, "bigs": [], "steps": 2, "lo": 12, "hi": 60},
 	{"smalls": 5, "small_top": 10, "bigs": [12, 15, 20, 25], "steps": 3, "lo": 40, "hi": 150},
 	{"smalls": 4, "small_top": 10, "bigs": [11, 12, 13, 15, 16, 18, 20, 24, 25], "steps": 4, "lo": 100, "hi": 450},
-	{"smalls": 4, "small_top": 10, "bigs": [11, 12, 13, 15, 16, 18, 20, 24, 25], "steps": 5, "lo": 100, "hi": 500, "every": true},
+	{"smalls": 4, "small_top": 10, "bigs": [11, 12, 13, 15, 16, 18, 20, 24, 25], "steps": 5, "lo": 100, "hi": 500},
 ]
 
 ## What `a` and `b` make under `op`, the larger always first: a number, or
@@ -134,24 +134,22 @@ static func _unfold(sets: Array, mask: int, value: int, out: Array) -> void:
 	_unfold(sets, mask ^ s, b, out)
 	out.append([a, b, how & 3, value])
 
-## The day: {numbers (six, in stall order), target, par, every, answer}.
+## The day: {numbers (six, in stall order), target, par, answer}.
 static func deal(rng: RandomNumberGenerator, band: int) -> Dictionary:
 	var spec: Dictionary = BANDS[clampi(band, 0, 3)]
-	var every := bool(spec.get("every", false))
 	var k := int(spec.steps)
 	for attempt in 400:
 		var nums := _draw(rng, spec)
-		var sets := reach(nums, 6 if every else k + 1)
+		var sets := reach(nums, k + 1)
 		var fewer := {}
-		var short_k := 4 if every else k
 		for m in range(1, sets.size()):
-			if popcount(m) <= short_k:
+			if popcount(m) <= k:
 				for v in sets[m]:
 					fewer[v] = true
 		var pool: Array[int] = []
 		var masks := {}
 		for m in range(1, sets.size()):
-			if (every and m != sets.size() - 1) or (not every and popcount(m) != k + 1):
+			if popcount(m) != k + 1:
 				continue
 			for v: int in sets[m]:
 				if v >= int(spec.lo) and v <= int(spec.hi) and not fewer.has(v) and not masks.has(v):
@@ -161,12 +159,12 @@ static func deal(rng: RandomNumberGenerator, band: int) -> Dictionary:
 			continue
 		pool.sort()
 		var target: int = pool[rng.randi_range(0, pool.size() - 1)]
-		return {"numbers": nums, "target": target, "par": k, "every": every,
+		return {"numbers": nums, "target": target, "par": k,
 			"answer": steps_of(sets, int(masks[target]), target)}
 	# never reached on any band's numbers; a plain sum keeps the day playable
 	var nums := _draw(rng, spec)
 	var t := int(nums[0]) + int(nums[1]) + int(nums[2])
-	return {"numbers": nums, "target": t, "par": 2, "every": false, "answer": []}
+	return {"numbers": nums, "target": t, "par": 2, "answer": []}
 
 ## Six different numbers for the band, smallest first.
 static func _draw(rng: RandomNumberGenerator, spec: Dictionary) -> Array:

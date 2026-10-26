@@ -169,8 +169,8 @@ func _note(id: String) -> String:
 		"patio": return "%dx%d, %d tiles (%d spare), %d beds, unique=%s, %d moves, hints=%d, caps %s, board fit=%s, hud=%s" % [
 			_puzzle._st.cols, _puzzle._st.rows, _puzzle._st.laid_count(), _puzzle._st.tiles.size() - _puzzle._st.laid_count(),
 			_puzzle._st.beds.size(), _puzzle._st.unique, _puzzle.moves, _puzzle.hints_used, _puzzle.capabilities(), _fit_ok, _hud_ok]
-		"market": return "%s -> %d, par %d, %d steps, every=%s, hints=%d, caps %s, board fit=%s, hud=%s" % [
-			str(_puzzle._st.numbers), _puzzle._st.target, _puzzle._st.par, _puzzle._st.steps, _puzzle._st.every,
+		"market": return "%s -> %d, par %d, %d steps, stars=%d, hints=%d, caps %s, board fit=%s, hud=%s" % [
+			str(_puzzle._st.numbers), _puzzle._st.target, _puzzle._st.par, _puzzle._st.steps, _puzzle._st.stars(),
 			_puzzle.hints_used, _puzzle.capabilities(), _fit_ok, _hud_ok]
 		"hoses": return "%dx%d, %d hoses (%d seeds), %d strokes, hints=%d, caps %s, board fit=%s, hud=%s" % [
 			_puzzle._st.n, _puzzle._st.n, _puzzle._st.count(), _puzzle._st.seeds.size(), _puzzle._st.strokes,

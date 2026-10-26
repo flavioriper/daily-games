@@ -1834,7 +1834,11 @@ SETS = {
     # tokens falling (the crates dropped back on their shelves). The rest
     # are takes already on disk, copied into build/sfx_raw/market/ from
     # Teacups' (themselves Domino Patio's), never bought. All of it unheard.
+    # 2026-10-26 made-fun pass: `slip` the lip twice falling (a step that
+    # cost a star; the star falls off the count line). A step that brings
+    # the stall nearer the order pitches `make` up at play, no new take.
     "market": {
+        "slip":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -18, FOLEY, "bank:lip", "cut:0.2", "notes:0.09:-1,-5", "tight"),
         "pick":     ('one small smooth pebble dropped onto a wooden board, a single soft rounded click, very short', 0.5, -16, FOLEY, "bank:pebble", "cut:0.16", "notes:0:1", "tight"),
         "drop":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -20, FOLEY, "bank:lip", "cut:0.14", "notes:0:-3", "tight"),
         "sign":     ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -16, FOLEY, "bank:token", "cut:0.16", "notes:0:2", "tight"),

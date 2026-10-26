@@ -3182,33 +3182,30 @@ MK_MOTTO,Every number counts,Todo número conta,Cada número cuenta
 MK_LVL_0,Two steps to the order,Dois passos até o pedido,Dos pasos hasta el pedido
 MK_LVL_1,Three steps to the order,Três passos até o pedido,Tres pasos hasta el pedido
 MK_LVL_2,Four steps to the order,Quatro passos até o pedido,Cuatro pasos hasta el pedido
-MK_LVL_3,Every Crate: use all six,Todos os caixotes: use os seis,Todas las cajas: usa las seis
+MK_LVL_3,"Five steps, every crate","Cinco passos, todos os caixotes","Cinco pasos, todas las cajas"
 MK_RULES,"Make the number on the order board from the crates on the stall. Tap a crate, a sign and another crate: the two become one crate holding what they make.","Monte o número do quadro de pedidos com os caixotes da banca. Toque num caixote, num sinal e em outro caixote: os dois viram um caixote com o resultado.","Arma el número de la pizarra de pedidos con las cajas del puesto. Toca una caja, un signo y otra caja: las dos se vuelven una caja con el resultado."
 MK_RULES_SIGNS,"Taking away always takes the smaller from the larger, and two equal crates cannot be taken away. Sharing only works when it shares evenly. Each crate is used once.","Subtrair sempre tira o menor do maior, e dois caixotes iguais não se subtraem. Dividir só vale quando a divisão é exata. Cada caixote é usado uma vez.","Restar siempre quita el menor del mayor, y dos cajas iguales no se restan. Dividir solo vale cuando la división es exacta. Cada caja se usa una vez."
-MK_RULES_EVERY,"Every Crate: the order must be the last crate left, with all six crates used.","Todos os caixotes: o pedido tem que ser o último caixote, com os seis usados.","Todas las cajas: el pedido tiene que ser la última caja, con las seis usadas."
-MK_RULES_FEWEST,Your score compares your steps with the fewest the order can be made in. Steps you undo still count.,Sua nota compara seus passos com o mínimo possível para o pedido. Passos desfeitos também contam.,Tu puntuación compara tus pasos con el mínimo posible para el pedido. Los pasos deshechos también cuentan.
+MK_RULES_FEWEST,"The stars say how your way compares with the fewest steps the order can be made in: three for the fewest, two for one more. A step you undo costs nothing.","As estrelas dizem como seu caminho se compara ao mínimo de passos para o pedido: três no mínimo, duas com um passo a mais. Um passo desfeito não custa nada.","Las estrellas dicen cómo se compara tu camino con el mínimo de pasos para el pedido: tres en el mínimo, dos con un paso más. Un paso deshecho no cuesta nada."
 MK_ORDER,Order,Pedido,Pedido
-MK_EVERY_NOTE,use every crate,use todos os caixotes,usa todas las cajas
 MK_STEPS_ONE,%d step,%d passo,%d paso
 MK_STEPS_N,%d steps,%d passos,%d pasos
 MK_FEWEST,fewest %d,mínimo %d,mínimo %d
+MK_NEAREST,"closest %d, %d off","mais perto %d, faltam %d","más cerca %d, a %d"
 MK_SAY_ZERO,Two equal crates take away to nothing.,Dois caixotes iguais dão zero.,Dos cajas iguales dan cero.
 MK_SAY_UNEVEN,That does not share evenly.,Essa divisão não é exata.,Esa división no es exacta.
 MK_SAY_BIG,That is too big for one crate.,Isso não cabe num caixote.,Eso no cabe en una caja.
 MK_SAY_STUCK,These crates cannot make the order now. Try Undo.,Estes caixotes não fazem mais o pedido. Tente desfazer.,Estas cajas ya no arman el pedido. Prueba deshacer.
-MK_SAY_STUCK_BIN,These crates cannot make the order now. Start over.,Estes caixotes não fazem mais o pedido. Recomece.,Estas cajas ya no arman el pedido. Empieza de nuevo.
 MK_WIN_ONE,%d made in %d step.,%d feito em %d passo.,%d hecho en %d paso.
 MK_WIN_N,%d made in %d steps.,%d feito em %d passos.,%d hecho en %d pasos.
 MK_WIN_FEWEST,Not one step more than needed.,Nenhum passo a mais.,Ni un paso de más.
 MK_WIN_MORE,It can be done in %d.,Dá para fazer em %d.,Se puede hacer en %d.
+MK_WIN_CLOSE,One step past the fewest: %d.,Um passo além do mínimo: %d.,Un paso más que el mínimo: %d.
 HTP_MK_MAKE,Make a crate,Junte caixotes,Junta cajas
-HTP_MK_MAKE_BODY,"Tap a crate, then a sign, then another crate. The first slides into the second and they become one crate with the answer.","Toque num caixote, depois num sinal, depois em outro caixote. O primeiro entra no segundo e os dois viram um caixote com o resultado.","Toca una caja, luego un signo, luego otra caja. La primera entra en la segunda y las dos se vuelven una caja con el resultado."
+HTP_MK_MAKE_BODY,"Tap a crate, then a sign: every other crate shows what it would make. Tap one and the first slides into it, one crate with the answer.","Toque num caixote, depois num sinal: cada outro caixote mostra o que daria. Toque num e o primeiro entra nele, um caixote com o resultado.","Toca una caja, luego un signo: cada otra caja muestra lo que daría. Toca una y la primera entra en ella, una caja con el resultado."
 HTP_MK_SIGNS,The signs,Os sinais,Los signos
 HTP_MK_SIGNS_BODY,"Take away takes the smaller from the larger. Share only works when nothing is left over, or the crates shake.","Subtrair tira o menor do maior. Dividir só vale quando não sobra nada; senão os caixotes tremem.","Restar quita el menor del mayor. Dividir solo vale cuando no sobra nada; si no, las cajas tiemblan."
 HTP_MK_ORDER,Fill the order,Feche o pedido,Completa el pedido
-HTP_MK_ORDER_BODY,"Keep making crates until one holds the number on the board. You don't need every crate, and fewer steps score higher.","Continue juntando até um caixote ter o número do quadro. Não precisa usar todos, e menos passos valem mais.","Sigue juntando hasta que una caja tenga el número de la pizarra. No hace falta usarlas todas, y menos pasos valen más."
-HTP_MK_EVERY,Every Crate,Todos os caixotes,Todas las cajas
-HTP_MK_EVERY_BODY,"On Insane, the order must be the last crate left: all six crates go into it.","No Insano, o pedido tem que ser o último caixote: os seis entram nele.","En Demencial, el pedido tiene que ser la última caja: las seis entran en ella."
+HTP_MK_ORDER_BODY,"Keep making crates until one holds the number on the board; it says which crate is closest. Three stars mean you can still do it in the fewest steps, and Undo wins a lost star back.","Continue juntando até um caixote ter o número do quadro; ele diz qual caixote está mais perto. Três estrelas: ainda dá no mínimo de passos, e desfazer devolve uma estrela perdida.","Sigue juntando hasta que una caja tenga el número de la pizarra; dice qué caja está más cerca. Tres estrellas: aún se puede en el mínimo de pasos, y deshacer devuelve una estrella perdida."
 HTP_MK_HINT,A step,Um passo,Un paso
 HTP_MK_HINT_BODY,"The bulb makes one step of a shortest way to the order. If the crates have lost the way, it walks back first.","A lâmpada faz um passo do caminho mais curto até o pedido. Se os caixotes perderam o caminho, ela volta antes.","La bombilla da un paso del camino más corto al pedido. Si las cajas perdieron el camino, primero vuelve atrás."
 BRAIN_MK_1,"Work back from the order: which two numbers near it could make it, and can the crates make those?","Pense de trás para frente: que dois números perto do pedido o formam, e os caixotes formam esses?","Piensa hacia atrás: ¿qué dos números cerca del pedido lo forman, y las cajas forman esos?"

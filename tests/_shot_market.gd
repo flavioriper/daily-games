@@ -2,7 +2,8 @@ extends SceneTree
 
 ## Market Sums shots: `-- <dir> [d=<0..3>] [tut[=<page>]] [card]` opens the
 ## board on that level and shoots the stall at rest, a crate and a sign
-## picked, a refused share, a crate mid-slide, an Undo, the bulb, the win
+## picked (each other crate's tag of what it would make), a refused share,
+## a crate mid-slide, an Undo, a detour's star falling, the bulb, the win
 ## settled and the day reopened from its card, with the draw calls of each
 ## frame. `tut` shoots a tutorial page played a while; `card` the menu card
 ## beside Teacups'. Puts nothing in the player's save.
@@ -53,6 +54,22 @@ func _places(st, s: Array) -> Array:
 	for i in 6:
 		if i != from and st.slots[i] == int(s[1]):
 			return [from, i, int(s[2])]
+	return []
+
+## A step off every shortest way: [from, into, op], or [].
+func _detour(st) -> Array:
+	for a in 6:
+		for b in 6:
+			if a == b or st.slots[a] <= 0 or st.slots[b] <= 0:
+				continue
+			for op in 4:
+				if st.would(a, b, op) <= 0:
+					continue
+				st.make(a, b, op)
+				var lost: bool = st.stars() < 3
+				st.undo()
+				if lost:
+					return [a, b, op]
 	return []
 
 func _process(_delta: float) -> bool:
@@ -126,14 +143,28 @@ func _process(_delta: float) -> bool:
 				_shot("sliding")
 			if _f == 2050:
 				_shot("made")
-				if _band < 3:
-					_b.undo()
+				_b.undo()
 				_step = 3
 				_f = 3000
 		3:
 			if _f == 3008:
 				_shot("undoing")
-			if _f == 3040:
+			if _f == 3030:
+				# a detour: a step that costs a star, shot as the star falls,
+				# then taken back (the star comes home)
+				var d := _detour(st)
+				if not d.is_empty():
+					_b._pick = -1
+					_b.demo_crate(d[0])
+					_b.demo_sign(d[2])
+					_b.demo_crate(d[1])
+			if _f == 3058:
+				_shot("slip")
+				print("slip stars=%d steps=%d" % [st.stars(), st.steps])
+				_b.undo()
+			if _f == 3072:
+				print("back stars=%d steps=%d" % [st.stars(), st.steps])
+			if _f == 3080:
 				_b.hint()
 			if _f == 3080:
 				_shot("hinted")

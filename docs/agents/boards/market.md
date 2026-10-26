@@ -54,3 +54,40 @@
   in `_strip_shown`: built and dropped in `_draw`, it was freed before the
   frame drew ("mesh is null"). Draw calls 95-98 playing, 151-156 at the
   win, card 6. Verdict owed.
+- **Made fun, 2026-10-26** (the user: "make picket sums and market sums
+  experience way better to play, and game itself way funnier to play, right
+  now nobody likes it"). Measured first (`tests/_probe_mk_fun.gd`, 60 days
+  a band, every legal first step): only 7 / 15 / 21% of first steps kept
+  the fewest steps on Easy / Medium / Hard, and nothing on the stall said
+  which, until the count at the win; on Insane 45% of first steps lost the
+  way outright, with no Undo. Took Digits' (the newspaper numbers game)
+  answers: closeness counts, and three stars rate the way.
+  - **Tags of what a crate would make**: with a crate and a sign in hand
+    every other crate wears a paper tag "= 150" (leaf when it is the
+    order), and a crate the sign would refuse fades (`PEEK_*`,
+    `_draw_peeks`, one mesh). Trying is reading, not sums in the head; the
+    choice of the way stays the player's.
+  - **The order board's line**: "closest 25, 117 off" (`MK_NEAREST`), sun
+    once within `WARM` (a tenth) of the order, bumping when a step brings
+    the stall nearer; that step's `make` pops up to `NEAR_PITCH` higher.
+  - **Three stars on the count line** (`State.stars()`): 3 while the order
+    can still be made in the fewest steps, 2 in one more, 1 past that, 0
+    once these crates cannot make it. A step that costs stars drops them
+    turning off their seats (`slip`, the lip twice falling, a tick), Undo
+    pops them back. Read once a move in `_rate` (the solver is a few ms;
+    never in `_draw`).
+  - **An undone step costs nothing**: `steps` is the length of the way
+    kept (the bulb's steps too), so the brain score and the win line are
+    the way taken against the fewest; the bin starts it at 0 again.
+    `MK_WIN_CLOSE` for one step past the fewest.
+  - **Insane is the same rule, a longer way** (the user's call on
+    Caterpillar and Paper Planes the same day: a harder board, not other
+    rules): Every Crate is gone, Insane deals five steps that need all six
+    crates (nothing from five or fewer makes the order) and has Undo.
+    Its first steps now lose the way 67% of the time (was 45%), which the
+    stars and Undo answer. Deal worst 39 ms on the Mac (Hard 67).
+  - Draw calls 96-104 playing (+4 with the tags), 150-159 at the win.
+    `_shot_market.gd` shoots `slip` (a detour's stars falling, then Undo).
+    Mine, the user's to call: tags on every band, stars that move during
+    play, Every Crate dropped, Undo on Insane. Not seen on a phone, not
+    heard.

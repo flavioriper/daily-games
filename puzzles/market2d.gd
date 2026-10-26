@@ -5,9 +5,9 @@ extends "res://core/puzzle_base.gd"
 ## each, and the order board hung from the awning names a number. Tap a
 ## crate, a sign (+, take away, times, share) and another crate: the first
 ## crate slides into the second and they become one crate holding what they
-## make. A crate holding the order fills it; on Insane (Every Crate) the
-## order must be the one crate left. The rules are puzzles/market_state.gd's
-## and the arithmetic, the solver and the day puzzles/market_gen.gd's.
+## make. A crate holding the order fills it, on every band. The rules are
+## puzzles/market_state.gd's and the arithmetic, the solver and the day
+## puzzles/market_gen.gd's.
 ##
 ## **The stall is the whole screen** (`"bleed": true`): the flat host lays
 ## this board full rect and says what its rows cover (`set_clear`); the
@@ -23,6 +23,15 @@ extends "res://core/puzzle_base.gd"
 ## share with a remainder, a number past the stall's 9999) shivers both
 ## crates and says why. The bulb makes one step of a shortest way on, from
 ## the stall as it stands, after walking back the steps that lost the way.
+##
+## **What makes it play (2026-10-26, the user: "nobody likes it")**: with a
+## crate and a sign in hand every other crate wears a little tag of what it
+## would make (the order's own number on leaf), so trying is reading, not
+## sums in the head. The order board says the crate nearest the order and
+## how far it is, and a step that brings it nearer pops higher. Three stars
+## on the count line say what the stall stands at against the fewest steps:
+## a step that costs one drops a star, and Undo puts it back (an undone step
+## costs nothing).
 ##
 ## The board is also its own tutorial: `demo` set before it enters the tree
 ## makes it silent, deaf and laid in its own rect, and
@@ -48,6 +57,7 @@ const HAPTICS := {
 	"sign": Haptics.TICK,
 	"make": Haptics.TAP,
 	"refuse": Haptics.WARN,
+	"slip": Haptics.TICK,
 	"undo": Haptics.TICK,
 	"reset": Haptics.TAP,
 	"hint": Haptics.GOOD,
@@ -85,6 +95,25 @@ const SLOT_W := 92.0
 const STRIP_NUM := 44
 const EQ_HOLD := 2.2
 const COUNT_DROP := 46.0
+## The tags of what a crate would make, over each other crate while a
+## crate and a sign are in hand: height and numeral at W, how far over the
+## crate's top edge, a crate that would be refused faded.
+const PEEK_H := 66.0
+const PEEK_NUM := 46
+const PEEK_PAD := 16.0
+const PEEK_OVER := 0.62
+const PEEK_FADE := 0.45
+## The order board's line: the crate nearest the order and how far, warm
+## (sun) within WARM of it; its bump when a step brings it nearer.
+const NEAR_SIZE := 26
+const WARM := 0.1
+## The stars on the count line: radius and gap at W, a lost one's fall.
+const STAR_R := 17.0
+const STAR_GAP := 8.0
+const STAR_FALL := 0.7
+const STAR_DROP := 70.0
+## A make pops higher the nearer it brings the stall to the order.
+const NEAR_PITCH := 0.22
 ## How high a picked crate rides, in its width.
 const PICK_RISE := 0.08
 ## A crate sliding into another, and how high its arc rides, in crate
@@ -124,6 +153,17 @@ var _say := ""
 var _say_at := -INF
 var _stuck_said := false
 var _filled_at := -INF
+## What the stall stands at, read once a move (the solver is a few ms):
+## its stars, the nearest crate's distance, and when a star last fell or
+## came back and the nearest last came nearer.
+var _stars := 3
+var _near := 0
+var _star_fell_at := -INF
+var _star_from := 3
+var _star_back_at := -INF
+var _near_at := -INF
+var _peek_shown: ArrayMesh
+var _stars_shown: ArrayMesh
 ## The step last made, [a, op, b, made, at]; [] when none to show.
 var _eq: Array = []
 ## The strip's mesh, kept until the next replaces it (a mesh freed before
@@ -151,8 +191,6 @@ func title() -> String: return "Market Sums"
 func rules() -> String:
 	var out := tr("MK_RULES")
 	out += "\n\n" + tr("MK_RULES_SIGNS")
-	if _st.every:
-		out += "\n\n" + tr("MK_RULES_EVERY")
 	out += "\n\n" + tr("MK_RULES_FEWEST")
 	return out
 
@@ -161,11 +199,9 @@ func tutorial_pages() -> Array:
 	var steps := [
 		[Diagram.Lesson.MAKE, "HTP_MK_MAKE", tr("HTP_MK_MAKE_BODY")],
 		[Diagram.Lesson.SIGNS, "HTP_MK_SIGNS", tr("HTP_MK_SIGNS_BODY")],
-		[Diagram.Lesson.ORDER, "HTP_MK_ORDER", tr("HTP_MK_ORDER_BODY" if not _st.every else "HTP_MK_EVERY_BODY")],
+		[Diagram.Lesson.ORDER, "HTP_MK_ORDER", tr("HTP_MK_ORDER_BODY")],
 		[Diagram.Lesson.HINT, "HTP_MK_HINT", tr("HTP_MK_HINT_BODY")],
 	]
-	if _st.every:
-		steps[2][1] = "HTP_MK_EVERY"
 	var pages := []
 	for step in steps:
 		var d: Control = Diagram.new()
@@ -174,15 +210,14 @@ func tutorial_pages() -> Array:
 		pages.append({"diagram": d, "title": step[1], "body": step[2]})
 	return pages
 
-## Undo and the bulb; Insane keeps no Undo (its seal). No Check: the order
+## Undo and the bulb on every band (Insane's came back 2026-10-26: half its
+## first steps lose the way, and the stars say so). No Check: the order
 ## board says when it is filled, and nothing on the stall is ever wrong.
 func capabilities() -> Array[String]:
-	if _band >= 3:
-		return ["hint"]
 	return ["undo", "hint"]
 
 func can_undo() -> bool:
-	return _band < 3 and not _st.history.is_empty() and not is_done()
+	return not _st.history.is_empty() and not is_done()
 
 func hints_left() -> int:
 	return maxi(0, int(State.HINTS[_band]) + hints_extra - hints_used)
@@ -227,6 +262,10 @@ func _fresh() -> void:
 	_stuck_said = false
 	_filled_at = -INF
 	_still_key = ""
+	_star_fell_at = -INF
+	_star_back_at = -INF
+	_near_at = -INF
+	_rate(false)
 	_relayout()
 
 func day_dict() -> Dictionary:
@@ -234,7 +273,7 @@ func day_dict() -> Dictionary:
 		return {}
 	return {
 		"source": "generator", "kind": "text",
-		"payload": {"numbers": _st.numbers.duplicate(), "target": _st.target, "every": _st.every},
+		"payload": {"numbers": _st.numbers.duplicate(), "target": _st.target},
 		"solution": {"steps": _st.answer.duplicate(true)},
 		"metrics": {"par": _st.par, "target": _st.target},
 	}
@@ -321,7 +360,13 @@ func _land() -> void:
 	else:
 		_shown_v[into] = int(_slide.value)
 		_pop_at[into] = _t
-		_cue("make", randf_range(0.95, 1.05))
+		var was := _near
+		_rate(true)
+		# the nearer the stall comes to the order, the higher the pop
+		var up := 0.0
+		if _near < was and _st.target > 0:
+			up = NEAR_PITCH * (1.0 - clampf(float(_near) / float(_st.target), 0.0, 1.0))
+		_cue("make", randf_range(0.97, 1.03) + up)
 		if not demo and fx != null:
 			fx.ring(_crate_pos(into), _l("cw") * 0.9, Pal.SUN)
 	_shown_v[from] = _st.slots[from]
@@ -331,10 +376,27 @@ func _land() -> void:
 		var at := _st.filled_at()
 		if not demo and fx != null and at >= 0:
 			fx.sparkle(_crate_pos(at), Pal.LEAF)
-	elif not _stuck_said and not is_done() and _st.steps_left() < 0:
+	elif not _stuck_said and not is_done() and _stars == 0:
 		# the way to the order was lost: say so once, until it is found again
 		_stuck_said = true
-		_say_now("MK_SAY_STUCK" if _band < 3 else "MK_SAY_STUCK_BIN")
+		_say_now("MK_SAY_STUCK")
+
+## The stall read once a move: its stars and its nearest crate. `heard`: a
+## star lost or won back, and the nearest come nearer, are shown and heard.
+func _rate(heard: bool) -> void:
+	var stars: int = _st.stars()
+	var near: int = int(_st.nearest()[1])
+	if heard:
+		if stars < _stars:
+			_star_fell_at = _t
+			_star_from = _stars
+			_cue("slip")
+		elif stars > _stars:
+			_star_back_at = _t
+		if near < _near:
+			_near_at = _t
+	_stars = stars
+	_near = near
 
 ## A slide still running is finished at once (a quick finger never waits).
 func _settle() -> void:
@@ -385,6 +447,7 @@ func undo() -> bool:
 	_say = ""
 	_eq = []
 	_stuck_said = false
+	_rate(true)
 	_cue("undo")
 	return true
 
@@ -431,6 +494,7 @@ func reset_board() -> void:
 	for i in SLOTS:
 		_shown_v[i] = _st.slots[i]
 		_drop_at[i] = _t + i * Motion.ENTER_STAGGER
+	_rate(true)
 	_cue("reset")
 
 func _say_now(key: String) -> void:
@@ -653,6 +717,7 @@ func _draw() -> void:
 	for s in SLOTS:
 		_draw_crate(s)
 	_draw_sliding()
+	_draw_peeks()
 	_draw_count()
 
 ## The order board and the sign tokens, one mesh while nothing changes.
@@ -700,11 +765,7 @@ func _draw_order() -> void:
 	draw_set_transform(at + Vector2(0.0, bh * 0.2), 0.0, Vector2.ONE * k)
 	draw_string(big, Vector2(-nw * 0.5, 0.0), n, HORIZONTAL_ALIGNMENT_LEFT, -1, ns, Art.CHALK_INK)
 	draw_set_transform(Vector2.ZERO)
-	if _st.every:
-		var line := tr("MK_EVERY_NOTE")
-		var es := roundi(24 * s)
-		var ew := font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, es).x
-		draw_string(font, at + Vector2(-ew * 0.5, bh * 0.4), line, HORIZONTAL_ALIGNMENT_LEFT, -1, es, Color(Pal.SUN_RAY, 0.95))
+	_draw_near(at, bh, s)
 	if _st.solved() and _filled_at > -INF:
 		var tick := at + Vector2(_l("bw") * 0.36, -bh * 0.18)
 		var pop := Motion.pop_in_scale(fe).x if fe < Motion.POP_IN and not Motion.reduce else 1.0
@@ -712,6 +773,28 @@ func _draw_order() -> void:
 		draw_circle(tick, r, Pal.LEAF)
 		draw_polyline(PackedVector2Array([tick + Vector2(-r * 0.45, 0.0), tick + Vector2(-r * 0.1, r * 0.35), tick + Vector2(r * 0.45, -r * 0.35)]),
 			Pal.SURFACE, 5.0 * s, true)
+
+## Under the order's number: the crate nearest it and how far, in chalk,
+## sun once it is warm; it bumps when a step brings the stall nearer.
+func _draw_near(at: Vector2, bh: float, s: float) -> void:
+	if demo or _st.solved() or _won:
+		return
+	var nb: Array = _st.nearest()
+	if int(nb[0]) < 0:
+		return
+	var font: Font = CozyTheme.display(700)
+	var line: String = tr("MK_NEAREST") % [_st.slots[int(nb[0])], int(nb[1])]
+	var fs := roundi(NEAR_SIZE * s)
+	var lw := font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+	var warm: bool = float(nb[1]) <= maxf(2.0, WARM * float(_st.target))
+	var k := 1.0
+	var e := _t - _near_at
+	if e >= 0.0 and e < Motion.BUMP_TIME and not Motion.reduce:
+		k = Motion.bump_scale(e, 0.2)
+	draw_set_transform(at + Vector2(0.0, bh * 0.4), 0.0, Vector2.ONE * k)
+	draw_string(font, Vector2(-lw * 0.5, 0.0), line, HORIZONTAL_ALIGNMENT_LEFT, -1, fs,
+		Color(Pal.SUN_RAY, 0.95) if warm else Color(Art.CHALK_INK, 0.6))
+	draw_set_transform(Vector2.ZERO)
 
 ## Where the crate at place `s` is drawn now, and how big.
 func _crate_xf(s: int) -> Transform2D:
@@ -762,10 +845,52 @@ func _draw_crate(s: int) -> void:
 	if s == _pick and not is_done():
 		draw_mesh(_units.halo, null, xf)
 	var filled: bool = v == _st.target and _st.solved() and _slide.is_empty()
-	draw_mesh(_units.filled if filled else _units.crate, null, xf)
-	_numeral(v, xf)
+	var tint := Color.WHITE
+	if _peeking() and s != _pick and _st.would(_pick, s, _op) <= 0:
+		tint = Color(1, 1, 1, PEEK_FADE)
+	draw_mesh(_units.filled if filled else _units.crate, null, xf, tint)
+	_numeral(v, xf, tint.a)
 
-func _numeral(v: int, xf: Transform2D) -> void:
+## Whether the tags of what each crate would make are up: a crate and a
+## sign in hand, nothing sliding.
+func _peeking() -> bool:
+	return _pick >= 0 and _op >= 0 and _slide.is_empty() and not is_done() and not _won
+
+## Over each other crate, a little tag of what it would make with the crate
+## and the sign in hand: paper, leaf when it is the order. One mesh.
+func _draw_peeks() -> void:
+	if not _peeking():
+		return
+	var s := float(_L.get("s", 1.0))
+	var font: Font = CozyTheme.display(800)
+	var fs := roundi(PEEK_NUM * s)
+	var h := PEEK_H * s
+	var b := Face.Builder.new()
+	var texts: Array = []
+	for i in SLOTS:
+		if i == _pick or _st.slots[i] <= 0 or not _entered(i):
+			continue
+		var v: int = _st.would(_pick, i, _op)
+		if v <= 0:
+			continue
+		var text := "= " + str(v)
+		var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		var sz := Vector2(tw + 2.0 * PEEK_PAD * s, h)
+		var c := _crate_xf(i).origin - Vector2(0.0, _l("cw") * Art.H * PEEK_OVER)
+		var hit: bool = v == _st.target
+		var r := h * 0.5
+		b.fan(Face.Builder.round_rect(c - sz * 0.5 + Vector2(0.0, h * 0.08), sz, r), Color(Pal.TEXT, 0.16))
+		b.fan(Face.Builder.round_rect(c - sz * 0.5, sz, r), Pal.LEAF_DEEP if hit else Color(Pal.LINE, 0.8))
+		var e := 1.5 * _u()
+		b.fan(Face.Builder.round_rect(c - sz * 0.5 + Vector2.ONE * e, sz - Vector2.ONE * 2.0 * e, r - e),
+			Pal.LEAF if hit else Pal.SURFACE)
+		texts.append([c + Vector2(-tw * 0.5, font.get_ascent(fs) * 0.36), text, Pal.SURFACE if hit else Pal.TEXT])
+	_peek_shown = b.mesh()
+	draw_mesh(_peek_shown, null)
+	for t in texts:
+		draw_string(font, t[0], t[1], HORIZONTAL_ALIGNMENT_LEFT, -1, fs, t[2])
+
+func _numeral(v: int, xf: Transform2D, alpha := 1.0) -> void:
 	var cw := _l("cw")
 	var font: Font = CozyTheme.display(800)
 	var text := str(v)
@@ -774,7 +899,7 @@ func _numeral(v: int, xf: Transform2D) -> void:
 	var asc := font.get_ascent(fs)
 	var at := Art.label_centre(cw) + Vector2(-tw * 0.5, asc * 0.36)
 	draw_set_transform_matrix(xf)
-	draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Pal.TEXT)
+	draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(Pal.TEXT, alpha))
 	draw_set_transform(Vector2.ZERO)
 
 ## The crate in the air: into the other along an arc, or out of it on an
@@ -829,17 +954,56 @@ func _draw_count() -> void:
 		draw_mesh(_strip_shown, null)
 		draw_string(font, Vector2(-tw * 0.5, font.get_ascent(fs) * 0.36), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Pal.TEXT)
 		draw_set_transform(Vector2.ZERO)
-		return
 	if is_done():
 		return
-	_draw_strip(mid, s)
+	if _say == "":
+		_draw_strip(mid, s)
 	var n: int = _st.steps
 	var text: String = (tr("MK_STEPS_ONE") if n == 1 else tr("MK_STEPS_N")) % n
 	text += "  ·  " + tr("MK_FEWEST") % _st.par
 	var cs := roundi(COUNT_SIZE * u)
 	var cw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, cs).x
-	draw_string(font, Vector2(size.x * 0.5 - cw * 0.5, _l("count_y")), text, HORIZONTAL_ALIGNMENT_LEFT, -1, cs,
+	var sr := STAR_R * s
+	var stars_w := 3.0 * 2.0 * sr + 2.0 * STAR_GAP * s
+	var gap := 18.0 * s
+	var x0 := size.x * 0.5 - (stars_w + gap + cw) * 0.5
+	var y := _l("count_y")
+	_draw_stars(Vector2(x0 + sr, y - font.get_ascent(cs) * 0.36), sr, s)
+	draw_string(font, Vector2(x0 + stars_w + gap, y), text, HORIZONTAL_ALIGNMENT_LEFT, -1, cs,
 		Color(Pal.TEXT, 0.72))
+
+## The three stars from `at` (the first's middle): sun up to what the stall
+## stands at, hollow past it; a lost one falls away turning, a star won back
+## pops in.
+func _draw_stars(at: Vector2, r: float, s: float) -> void:
+	var b := Face.Builder.new()
+	var step := 2.0 * r + STAR_GAP * s
+	var fell := _t - _star_fell_at
+	var back := _t - _star_back_at
+	for i in 3:
+		var c := at + Vector2(i * step, 0.0)
+		var lit := i < _stars
+		var k := 1.0
+		if lit and i == _stars - 1 and back >= 0.0 and back < Motion.POP_IN and not Motion.reduce:
+			k = Motion.pop_in_scale(back).x
+		_star(b, c, r, 0.0, Color(Pal.LINE, 0.45))
+		if lit:
+			_star(b, c, r * k, 0.0, Pal.SUN)
+		# the stars just lost, falling off their seats
+		if i >= _stars and i < _star_from and fell >= 0.0 and fell < STAR_FALL and not Motion.reduce:
+			var f := fell / STAR_FALL
+			_star(b, c + Vector2(f * r * 0.8, f * f * STAR_DROP * s), r * (1.0 - 0.3 * f), f * 2.4,
+				Color(Pal.SUN, 1.0 - f))
+	_stars_shown = b.mesh()
+	draw_mesh(_stars_shown, null)
+
+## A five-pointed star about `c`, turned `turn`.
+static func _star(b: Face.Builder, c: Vector2, r: float, turn: float, colour: Color) -> void:
+	var pts := PackedVector2Array()
+	for i in 10:
+		var a := turn - PI * 0.5 + i * PI / 5.0
+		pts.append(c + Vector2(cos(a), sin(a)) * (r if i % 2 == 0 else r * 0.46))
+	b.polygon(pts, colour)
 
 ## A paper pill `sz` about the origin, on a soft drop, with a hairline.
 func _pill(b: Face.Builder, sz: Vector2, face: Color) -> void:
@@ -930,6 +1094,8 @@ func flat_win() -> Dictionary:
 	var line: String
 	if _st.steps <= _st.par:
 		line = tr("MK_WIN_FEWEST")
+	elif _st.steps == _st.par + 1:
+		line = tr("MK_WIN_CLOSE") % _st.par
 	else:
 		line = tr("MK_WIN_MORE") % _st.par
 	var made: String = (tr("MK_WIN_ONE") if _st.steps == 1 else tr("MK_WIN_N")) % [_st.target, _st.steps]
@@ -950,4 +1116,5 @@ func restore_completed_board() -> void:
 	_say = ""
 	_filled_at = -10.0
 	_won_at = -INF
+	_rate(false)
 	queue_redraw()

@@ -5,8 +5,8 @@ extends RefCounted
 ## names a number. Pick a crate, a sign and another crate: the two become
 ## one crate holding what they make, where the second stood. Add, take away
 ## (the smaller from the larger), times and share (only when it shares
-## evenly). A crate holding the order fills it; on Insane (Every Crate) the
-## order must be the last crate left, every crate used.
+## evenly). A crate holding the order fills it, on every band; Insane is a
+## longer way, all six crates (2026-10-26: Every Crate, its own rule, gone).
 
 const Gen = preload("res://puzzles/market_gen.gd")
 const Op = Gen.Op
@@ -21,16 +21,17 @@ enum Made { MADE, SOLVED, ZERO, UNEVEN, BIG, SAME }
 var band := 0
 var target := 0
 var par := 2
-var every := false
 var numbers: Array = []
 var answer: Array = []
 ## The crate in each place, 0 when the place is empty.
 var slots: Array[int] = []
 ## [slots before, from, into, op] per combine, the latest last.
 var history: Array = []
-## Every combine made, the ones undone too: the brain score's count.
+## The combines on the stall's way so far, the bulb's too: an undone one is
+## taken off (2026-10-26: trying a step and taking it back costs nothing),
+## the brain score's count.
 var steps := 0
-## Combines the bulb made (not the player's steps).
+## Combines the bulb made.
 var hinted := 0
 
 func deal(rng: RandomNumberGenerator, the_band: int) -> void:
@@ -39,7 +40,6 @@ func deal(rng: RandomNumberGenerator, the_band: int) -> void:
 	numbers = day.numbers
 	target = int(day.target)
 	par = int(day.par)
-	every = bool(day.every)
 	answer = day.answer
 	restart()
 
@@ -49,6 +49,7 @@ func restart() -> void:
 	for v in numbers:
 		slots.append(int(v))
 	history.clear()
+	steps = 0
 
 func on_stall() -> int:
 	var n := 0
@@ -76,8 +77,7 @@ func make(from: int, into: int, op: int, by_hint := false) -> int:
 	slots[from] = 0
 	if by_hint:
 		hinted += 1
-	else:
-		steps += 1
+	steps += 1
 	return Made.SOLVED if solved() else Made.MADE
 
 ## The last combine taken back: [from, into] it was, or [] when none.
@@ -86,11 +86,10 @@ func undo() -> Array:
 		return []
 	var last: Array = history.pop_back()
 	slots.assign(last[0] as Array)
+	steps = maxi(0, steps - 1)
 	return [int(last[1]), int(last[2])]
 
 func solved() -> bool:
-	if every:
-		return on_stall() == 1 and slots.has(target)
 	return slots.has(target)
 
 ## Where the crate holding the order stands, or -1.
@@ -114,8 +113,6 @@ func steps_left() -> int:
 		return 0
 	var live := _live()
 	var sets := Gen.reach(live[1])
-	if every:
-		return on_stall() - 1 if (sets[sets.size() - 1] as Dictionary).has(target) else -1
 	var m := Gen.smallest(sets, target)
 	return Gen.popcount(m) - 1 if m > 0 else -1
 
@@ -128,7 +125,7 @@ func hint_step() -> Array:
 	var places: Array[int] = live[0]
 	var nums: Array = live[1]
 	var sets := Gen.reach(nums)
-	var m := sets.size() - 1 if every else Gen.smallest(sets, target)
+	var m := Gen.smallest(sets, target)
 	if m <= 0 or not (sets[m] as Dictionary).has(target):
 		return []
 	var first: Array = Gen.steps_of(sets, m, target)[0]
@@ -147,7 +144,34 @@ func hint_step() -> Array:
 		return []
 	return [a, b, int(first[2])]
 
-## The brain score: the fewest steps over the steps taken, undone ones too.
+## The stars the stall stands at: 3 while the order can still be made in
+## the fewest steps, 2 in one more, 1 past that, 0 once these crates cannot
+## make it. Filled, it is the way taken against the fewest.
+func stars() -> int:
+	var left := steps_left()
+	if left < 0:
+		return 0
+	return stars_for(steps + left)
+
+func stars_for(taken: int) -> int:
+	if taken <= par:
+		return 3
+	return 2 if taken == par + 1 else 1
+
+## The crate nearest the order: [place, how far], [-1, 0] on an empty stall.
+func nearest() -> Array:
+	var best := -1
+	var far := 0
+	for i in SLOTS:
+		if slots[i] <= 0:
+			continue
+		var d := absi(slots[i] - target)
+		if best < 0 or d < far:
+			best = i
+			far = d
+	return [best, far]
+
+## The brain score: the fewest steps over the steps of the way taken.
 func quality() -> float:
 	return clampf(float(par) / float(maxi(steps, par)), 0.0, 1.0)
 
