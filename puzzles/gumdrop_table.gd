@@ -605,7 +605,8 @@ func _press(index: int, at: Vector2) -> void:
 		if Rect2(foot.x - POT_GAP * 0.5, foot.y - Art.JAR_H - 16.0, POT_GAP, Art.JAR_H + 44.0).has_point(at):
 			sim.pick(i)
 			_pick_at = _clock
-			_fx.touch(randf_range(1.0 - TICK_VARY, 1.0 + TICK_VARY))
+			# a pot picked is the pebble, the house select (2026-10-26)
+			_fx.cue("pick", randf_range(1.0 - TICK_VARY, 1.0 + TICK_VARY))
 			_fx.buzz(Haptics.TAP)
 			return
 	if _tray.grow(24.0).has_point(at) and _aim_by == -1:

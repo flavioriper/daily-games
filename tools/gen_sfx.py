@@ -3944,8 +3944,11 @@ SETS = {
     # new take is kept: the set is the three measured takes Beeline and Eddy
     # are made of (the light button on felt, the hollow block, one muffled
     # kalimba note), copied into build/sfx_raw/gumdrop/. Nothing here is a
-    # liquid: Eddy's one water take came back at 1.1 kHz. The pots, the
-    # buttons and the tray's touch are the button's own click (fx2d's touch).
+    # liquid: Eddy's one water take came back at 1.1 kHz. The buttons and
+    # the tray's touch are the button's own click (fx2d's touch). Since
+    # 2026-10-26 (the fun pass) the pots pick with the pebble, a chunk
+    # landing at its shade is the wrap and a refused serve the tongue;
+    # flop, game_over and new_best went with the mark.
     "gumdrop": {
         # The dropper squeezed: liquid since 2026-10-11 (it was a button's
         # tock six times a second). `pour` is a loop under everything else,
@@ -3960,18 +3963,21 @@ SETS = {
         # The mould served: one knock, the tray picked up. (Spill, empty and
         # set went on 2026-10-11 with the leak, the limit and the live match.)
         "serve":     ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -13, FOLEY, "bank:token", "cut:0.16", "notes:0:-5", "tight"),
-        # Served over the mark: two notes up a fourth.
+        # Served Good: two notes up a fourth.
         "good":      ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.1:2,7", "cut:0.6"),
         # Served perfect: three up.
         "perfect":   ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.12:2,6,9", "cut:0.8"),
-        # Served under the mark: two slow ones down.
-        "flop":      ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0.3:7,3", "cut:1.0"),
         # A run beginning: three notes up.
         "start":     ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:2,5,9", "cut:0.9"),
-        # The end card: three slow ones down.
-        "game_over": ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0.28:9,5,4", "cut:1.3"),
-        # A best passed: five up a step at a time, the longest rise.
-        "new_best":  ("one soft short note on a kalimba, muffled and kind", 0.6, -8, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.13:2,4,6,7,9", "cut:1.2"),
+        # A pot picked (2026-10-26): the pebble, the house select, in place
+        # of the button's click.
+        "pick":      ('a small pebble dropped into a calm pond, one soft plop, close, very short', 0.6, -16, FOLEY, "bank:pebble", "cut:0.14", "tight"),
+        # A chunk landing at the card's shade (2026-10-26): one wrap, two
+        # pops a third apart.
+        "land":      ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.1", "notes:0.07:0,4", "tight"),
+        # The serve button pressed while greyed (2026-10-26): the tongue,
+        # the house refusal.
+        "nope":      ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -16, FOLEY, "bank:tongue", "cut:0.12", "tight"),
     },
 }
 
