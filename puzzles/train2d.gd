@@ -68,11 +68,13 @@ const TICKS := [0.045, 0.024, 0.02, 0.02]
 
 ## This board's own motion (the rest is core/motion.gd's).
 const SEND_FLY := 0.24
-## A cork goes on through a run of its colour (2026-10-26): each cork of the
-## volley leaves this long after the one before, and a block bursts white
-## for the first part of its burst.
-const VOLLEY := 0.028
-const VOLLEY_MOST := 0.18
+## A cork goes on through a run of its colour (2026-10-26): one cork flies
+## (the first block's, with the flash and the smoke) and the blocks behind
+## it burst one after another, PIERCE_STEP apart, as it goes through them;
+## shards thin out once SHARDS_BUSY.x and then .y shots are in the air. A
+## block bursts white for the first part of its burst.
+const PIERCE_STEP := 0.012
+const SHARDS_BUSY := Vector2i(60, 150)
 const BLINK := 0.45
 ## The room shakes, a cannon emptied a little and a colour whole more, in
 ## canvas pixels, dying out over SHAKE_TIME.
@@ -574,8 +576,9 @@ func _side(s: int) -> int:
 		return 2
 	return 3
 
-## The point of the loop at `u` stops along: -1 is the gate, in the bend at
-## the lower left, and a whole number a stop. Between the last stop of a
+## The point of the loop at `u` stops along: a whole number a stop, the
+## last to `stops()` the bend at the lower left back to the first (-1 to 0
+## is that bend's second half, the old gate). Between the last stop of a
 ## side and the first of the next it goes round the bend.
 func loop_at(u: float) -> Vector2:
 	var w: int = state.w
@@ -586,7 +589,8 @@ func loop_at(u: float) -> Vector2:
 	if u < 0.0:
 		p = Vector2(0.5, h - 0.5) + Vector2.from_angle(lerpf(PI * 0.75, PI * 0.5, clampf(u + 1.0, 0.0, 1.0))) * r
 	elif u >= n - 1:
-		p = Vector2(0.5, h - 0.5) + Vector2.from_angle(lerpf(PI, PI * 0.75, clampf(u - (n - 1), 0.0, 1.0))) * r
+		# the last stop round the whole bend to the first
+		p = Vector2(0.5, h - 0.5) + Vector2.from_angle(lerpf(PI, PI * 0.5, clampf(u - (n - 1), 0.0, 1.0))) * r
 	else:
 		var s := int(floor(u))
 		var f := u - s
@@ -631,10 +635,8 @@ func _build_ring() -> ArrayMesh:
 	while u < n - 1:
 		pts.append(loop_at(u))
 		u += 0.25
-	for k in 8:
-		pts.append(loop_at(n - 1 + k / 8.0))
-	for k in 8:
-		pts.append(loop_at(-1.0 + k / 8.0))
+	for k in 16:
+		pts.append(loop_at(n - 1 + k / 16.0))
 	Art.track(b, pts, GAUGE * _lane, true)
 	return b.mesh()
 
@@ -650,10 +652,13 @@ func _target(e: int) -> Array:
 		State.PARKED:
 			return [siding_pos(state.at[e]), 0.0, _rest, 1.0]
 		State.LOOP:
-			# the tick has it at its stop; it is drawn rolling up to it
-			var u: float = state.at[e] + _frac - 1.0
+			# it shoots at the stop the tick has it at, standing there, and
+			# rolls on to the next before the next tick (it was drawn rolling
+			# up to it, a quarter of the bend away on a side's first stop)
+			var u: float = state.at[e] + _frac
 			return [loop_at(u), _heading(u), _loop_px, 1.0]
-	return [loop_at(-1.0), _heading(-1.0), _loop_px, 1.0]
+	# at the gate: the first stop, where it rolls on from
+	return [loop_at(0.0), _heading(0.0), _loop_px, 1.0]
 
 ## Engine `e` as it is drawn now: on its way from where it was (`_glide`) to
 ## where it belongs, with its bump and its shiver.
@@ -966,8 +971,10 @@ func _draw_shot(fb, f: Dictionary, e: float) -> void:
 	var px := float(f.px)
 	var c := int(f.c)
 	var col: Color = _col[c]
-	if e < 0.0:
-		# a cork of a volley still in the barrel: its block stands
+	var lead: bool = f.lead
+	if e < 0.0 or (not lead and e < PICK_FLY):
+		# a block behind the first of a row: it stands till the cork is
+		# through to it
 		fb.append(_blk[c], Transform2D(0.0, to))
 		return
 	if e < PICK_FLY:
@@ -998,6 +1005,8 @@ func _draw_shot(fb, f: Dictionary, e: float) -> void:
 			fb.append(_square, Transform2D(float(sh[2]) * t, Vector2(s, s), 0.0, at),
 				Color(shade if sh[4] else col, fade))
 	# the muzzle: a flash, then a wisp of smoke drifting out
+	if not lead:
+		return
 	if e < FLASH:
 		var fk := px * FLASH_R / UNIT * (1.0 - e / FLASH)
 		fb.append(_disc, Transform2D(0.0, Vector2(fk, fk), 0.0, from + dir * px * 0.04), FLASH_COL)
@@ -1169,7 +1178,10 @@ func tap(e: int) -> void:
 	var was_idle: bool = state.idle()
 	var column: int = state.col[e]
 	var from_shed: bool = state.where[e] == State.SHED
-	state.send(e)
+	# it rolls on once it has landed at the gate: an idle loop's clock waits
+	# for it anyway
+	var wait := 0 if was_idle or Motion.reduce else ceili(SEND_FLY / _tick_time)
+	state.send(e, wait)
 	_glide(e, SEND_FLY, _rest * 0.35)
 	if from_shed:
 		for m in state.sheds[column]:
@@ -1248,16 +1260,20 @@ func _on_pick(e: int, cell: int, n: int, now: float, through := 0) -> void:
 	var w: int = state.w
 	_chunk_stale[(cell / w / CHUNK) * ceili(float(w) / CHUNK) + (cell % w) / CHUNK] = true
 	if not Motion.reduce:
-		var seen: Array = _seen.get(e, _target(e))
-		var px := float(seen[2])
+		var px := _loop_px
 		var to := cell_centre(cell)
-		var from := (seen[0] as Vector2) + Vector2.UP.rotated(float(seen[1])) * px * 0.5
+		# from the stop whose line it is: the cannon is drawn rolling up to it
+		var u := float(state.at[e])
+		var from := loop_at(u) + Vector2.UP.rotated(_heading(u)) * px * 0.5
 		var shards: Array = []
-		for k in SHARDS:
+		# fifty corks a frame through a long row: the shards thin out as the
+		# air fills, so a frame never rebuilds hundreds of them
+		var many := SHARDS if _flights.size() < SHARDS_BUSY.x else (2 if _flights.size() < SHARDS_BUSY.y else 0)
+		for k in many:
 			shards.append([randf_range(-SHARD_SPREAD, SHARD_SPREAD), randf_range(SHARD_SPEED.x, SHARD_SPEED.y),
 				randf_range(-SHARD_SPIN, SHARD_SPIN), randf_range(SHARD_SIZE.x, SHARD_SIZE.y), k % 2 == 1])
-		_flights.append({"c": state.colour[e], "to": to, "px": px, "at": now + minf(through * VOLLEY, VOLLEY_MOST), "from": from,
-			"dir": (to - from).normalized(), "shards": shards})
+		_flights.append({"c": state.colour[e], "to": to, "px": px, "at": now + through * PIERCE_STEP, "from": from,
+			"dir": (to - from).normalized(), "shards": shards, "lead": through == 0})
 		_bump_at[e] = now
 	# fifty corks a second are one shot heard and one knock in PICK_GAP
 	# (fx.cue holds the sound but knocks every time it is asked): the cannon's
@@ -1287,7 +1303,7 @@ func _on_pick(e: int, cell: int, n: int, now: float, through := 0) -> void:
 			var seen: Array = _seen.get(e, [])
 			if not seen.is_empty():
 				fx.confetti(seen[0], 12, _lane * 3.0)
-	_busy_for(PICK_FLY + SHARD_LIFE + 0.1 + VOLLEY_MOST)
+	_busy_for(PICK_FLY + SHARD_LIFE + 0.1 + through * PIERCE_STEP)
 
 ## A run is over: a long one ends on its two notes and a sparkle.
 func _on_run_end(e: int, n: int) -> void:

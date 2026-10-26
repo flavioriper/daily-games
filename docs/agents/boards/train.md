@@ -384,3 +384,35 @@ section wins over the ones above where they disagree.**
   phone's is unknown.
 - **Not seen**: a phone, the shake and the volleys in motion (frames only),
   the sounds at the new rate, pt/es read by a reader, reduced motion.
+
+### 2026-10-26, later: wrong cells and stalls
+
+The user, off the pushed pass: "cannon is bugged, its shooting on the wrong
+cell while being placed and it stop move when shooting". Measured with
+throwaway counters in a Hard play run (`opengl3_angle`, 810x1440):
+
+- **Shooting while placed**: 274 of 971 shots (28%; 432 of 1,019 in a
+  second run) left while the cannon was still flying in from the toy box,
+  up to 330 px from its stop. The state let it onto the loop at the next
+  tick while the screen drew it gliding for `SEND_FLY`. `State.send(e,
+  wait)` now holds it at the gate until `_land[e]`; the screen asks for
+  `ceil(SEND_FLY / tick)` ticks unless the loop was idle (its clock waits
+  anyway) or motion is reduced. After: 0 shots during a glide.
+- **The wrong cell**: a cannon was drawn rolling *up to* the stop it shot
+  at (`at + frac - 1`), so it shot a stop early, and on a side's first
+  stop that stop was a quarter of the bend away (up to 89 px). It is now
+  drawn at `at + frac`: it shoots standing at its stop and rolls on. The
+  gate is stop 0, and the last stop rolls round the whole bend to the
+  first (`loop_at`, `_build_ring`). The cork leaves from the stop's own
+  point. After: within 15 px (the previous frame's roll).
+- **The stall**: up to 350 shots were in the air at once, each rebuilding
+  a tinted flash and smoke disc (a tinted append recolours vertex by vertex
+  in GDScript), up to 27 ms of a frame on this Mac; a long frame drops
+  ticks (`_process` does not sprint), so the cannons halted while they
+  shot. Now one cork a stop flies with the flash and smoke (`lead`) and the
+  blocks behind burst `PIERCE_STEP` (0.012 s) apart as it goes through;
+  shards are 5, 2 or none as 60 and 150 shots are in the air
+  (`SHARDS_BUSY`). After: 5.3 ms at the worst frame, 0 ticks dropped
+  (2 before). A phone is still unmeasured.
+- `tests/_probe_train.gd -- seeds=1` 336 runs, 0 failures; `tests/_win.gd
+  -- train` PASS; suite failed=0; the Medium tutorial plays its pages.

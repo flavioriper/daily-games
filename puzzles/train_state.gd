@@ -121,6 +121,10 @@ var _sheds0: Array = []
 var siding := PackedInt32Array()
 var loop := PackedInt32Array()
 var gate := PackedInt32Array()
+## The tick an engine at the gate may roll on from, by engine: the screen
+## holds one there while it is still flying in from the box (`send`'s
+## `wait`), so it never shoots from where it is not.
+var _land := {}
 
 var taps := 0
 ## The taps the deal's own line takes.
@@ -510,6 +514,7 @@ func _deal(rng: RandomNumberGenerator) -> void:
 
 ## The table as the day opened it.
 func reset() -> void:
+	_land = {}
 	grid = picture.duplicate()
 	left_by = PackedInt32Array()
 	left_by.resize(colours.size())
@@ -596,8 +601,8 @@ func judge(e: int) -> int:
 	return OK
 
 ## Sends engine `e` to the loop's gate: the front of a column, or one out of
-## the siding.
-func send(e: int) -> int:
+## the siding. It rolls on no sooner than `wait` ticks from now.
+func send(e: int, wait := 0) -> int:
 	var why := judge(e)
 	if why != OK:
 		return why
@@ -612,6 +617,10 @@ func send(e: int) -> int:
 	run[e] = 0
 	got[e] = 0
 	gate.append(e)
+	if wait > 0:
+		_land[e] = ticks + wait
+	else:
+		_land.erase(e)
 	taps += 1
 	return OK
 
@@ -652,7 +661,7 @@ func tick() -> Array:
 		for e in loop:
 			if at[e] < GAP:
 				clear = false
-		if clear:
+		if clear and ticks >= int(_land.get(gate[0], 0)):
 			var e := gate[0]
 			gate.remove_at(0)
 			where[e] = LOOP
