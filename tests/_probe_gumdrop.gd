@@ -9,9 +9,10 @@ extends SceneTree
 ## counted; the colour maths the judge's shader carries word for word; a
 ## band's day (how many moulds, the same off the same seed, what stands by
 ## the tray, every wanted flavour makeable from the pots); and the day's
-## run with the judge answered by hand (a mould served asks to be judged,
-## over the mark the next is set down and the last is the day done, under
-## it the mould is emptied, Insane the same, a finished day put back); and the themed jellies the night wrote
+## run with the judge answered by hand (nothing served until every chunk
+## has colour, every mould served is taken away with its tier and the last
+## is the day done, a chunk held to the card's shade lands once, Insane the
+## same, a finished day put back); and the themed jellies the night wrote
 ## for the days in tools/days/themed-pixel/ (server/functions/src/jelly.ts):
 ## each kept one keeps its band's row here too, and is dealt first.
 
@@ -93,12 +94,18 @@ func _colour() -> void:
 	_check("a pale cherry and a pale lemon are judged alike (%.2f, %.2f)" % [pale_c, pale_l], absf(pale_c - pale_l) < 0.03)
 	_check("clear jelly matches nothing", Sim.nearness(Sim.colour(0, 0, 0), F.CHERRY) == 0.0)
 
-## Serves the mould and answers the judge with `pct` for every cell.
+## A trace of syrup squeezed into every chunk, so the mould can be served.
+func _wet_all(s: RefCounted) -> void:
+	for c in s.count.size():
+		s.aim(s.centre_of(c))
+		s.squeeze(true)
+		for i in 6:
+			s.step()
+		s.squeeze(false)
+
+## Colours every chunk, serves the mould and answers the judge with `pct` for every cell.
 func _serve_as(s: RefCounted, pct: float) -> Dictionary:
-	s.squeeze(true)
-	for i in 6:
-		s.step()
-	s.squeeze(false)
+	_wet_all(s)
 	s.serve()
 	var tally := {}
 	var guard := 0
@@ -138,7 +145,7 @@ func _days() -> void:
 		var mixed_least := 99
 		for seed_value in 200:
 			var s = _day(band, seed_value)
-			ok = ok and s.moulds.size() == int(spec.moulds) and s.mark() == int(spec.mark)
+			ok = ok and s.moulds.size() == int(spec.moulds)
 			for m: Dictionary in s.moulds:
 				cells.append(m.cells.size())
 				pots_most = maxi(pots_most, m.pots.size())
@@ -150,7 +157,7 @@ func _days() -> void:
 					if recipe.size() > 1:
 						mixed += 1
 				mixed_least = mini(mixed_least, mixed)
-		_check("band %d: %d moulds at %d%% on every one of 200 days, %d to %d cells, %d pots at most" % [band, int(spec.moulds), int(spec.mark), cells.min(), cells.max(), pots_most],
+		_check("band %d: %d moulds on every one of 200 days, %d to %d cells, %d pots at most" % [band, int(spec.moulds), cells.min(), cells.max(), pots_most],
 			ok and pots_most <= [2, 3, 4, 3][band])
 		_check("band %d: every wanted flavour is a pot or its two neighbours, both stood by the tray" % band, makeable)
 		if band < 2:
@@ -167,39 +174,64 @@ func _days() -> void:
 
 func _run() -> void:
 	var s = _day(0, 7)
-	_check("nothing to serve until something is squeezed", not s.can_serve())
-	var first: Dictionary = s.mould
-	var tally := _serve_as(s, 0.4)
-	_check("a mould served asks to be judged once and the verdict follows (%s)" % str(tally), int(tally.get("judge", 0)) == 1 and int(tally.get("served", 0)) == 1)
-	_check("40%% under a mark of 60: the same mould, clear again, and the day goes on", is_same(s.mould, first) and not s.wet() and s.phase == Sim.Phase.PLAY and int(tally.get("again", 0)) == 1 and s.index == 0)
-	tally = _serve_as(s, 0.86)
-	_check("86%% is the next mould set down (index %d)" % s.index, s.index == 1 and s.phase == Sim.Phase.PLAY and not is_same(s.mould, first) and int(tally.get("deal", 0)) == 1)
+	_check("nothing to serve until every piece has colour", not s.can_serve())
 	s.squeeze(true)
 	for i in 6:
 		s.step()
 	s.squeeze(false)
-	s.empty()
-	_check("Reset empties the mould on the tray", not s.wet() and s.index == 1)
+	_check("one wet chunk is not enough to serve", not s.can_serve() and s.wet())
+	_wet_all(s)
+	_check("every chunk wet: it can be served", s.can_serve())
+	var first: Dictionary = s.mould
+	var tally := _serve_as(s, 0.3)
+	_check("a mould served at 30%% is taken away all the same, tier 0 (%s)" % str(tally), s.index == 1 and not is_same(s.mould, first) and int(tally.get("deal", 0)) == 1 and int(s.verdict.tier) == 0 and int(tally.get("again", 0)) == 0)
+	_wet_all(s)
 	tally = _serve_as(s, 0.97)
-	_check("the last mould served is the day done, there and then (%s)" % str(s.marks), s.is_done() and int(tally.get("done", 0)) == 1 and s.marks == [86, 97] and s.serves == 3)
+	_check("the last mould served is the day done (%s)" % str(s.marks), s.is_done() and int(tally.get("done", 0)) == 1 and s.marks == [30, 97] and s.serves == 2 and int(s.verdict.tier) == 2)
+	_check("tiers: 79 served, 80 great, 94 great, 95 perfect", Sim.tier(79) == 0 and Sim.tier(80) == 1 and Sim.tier(94) == 1 and Sim.tier(95) == 2)
 	var back = _day(0, 7)
-	back.finish([86, 97])
-	_check("a finished day put back: the last mould, every cell to be filled, its numbers", back.is_done() and back.index == 1 and back.prefill.size() == back.mould.want.size() and back.marks == [86, 97])
+	back.finish([30, 97])
+	_check("a finished day put back keeps a 30 and passes", back.is_done() and back.marks == [30, 97] and bool(back.verdict["pass"]) and int(back.verdict.tier) == 2)
+	# the landing
+	var l = _day(0, 7)
+	l.aim(l.centre_of(0))
+	l.squeeze(true)
+	var lands := 0
+	for i in 240:
+		l.step()
+		for ev: Dictionary in l.events:
+			if ev.type == "land":
+				lands += 1
+		l.events.clear()
+	_check("a chunk held to the card's shade lands once (%d)" % lands, lands == 1)
+	l.squeeze(false)
+	l.drain(true)
+	for i in 60:
+		l.step()
+	l.drain(false)
+	l.squeeze(true)
+	for i in 240:
+		l.step()
+		for ev: Dictionary in l.events:
+			if ev.type == "land":
+				lands += 1
+		l.events.clear()
+	_check("drained under the re-arm and poured again, it lands again (%d)" % lands, lands == 2)
+	var p = _day(0, 7)
+	p.filled(0, int(p.mould.want[0]), 1.2)
+	p.step()
+	_check("a prefilled cell never lands", not p.events.any(func(e): return e.type == "land"))
 
 func _insane() -> void:
-	# Insane counts nothing since 2026-10-12 (no move limit on any Insane
-	# board): a flop there is emptied and poured again, as on every band
+	# a serve never fails since 2026-10-26 (spec 2026-10-26-gumdrop-fun):
+	# every mould served is taken away, whatever it scored
 	var s = _day(3, 11)
-	_serve_as(s, 0.9)
-	var tally := _serve_as(s, 0.3)
-	_check("Insane: a flop is emptied and poured again, never the day lost", s.phase == Sim.Phase.PLAY and s.index == 1 and int(tally.get("again", 0)) == 1 and not s.wet())
-	tally = _serve_as(s, 0.3)
-	_check("Insane: and a second flop the same", s.phase == Sim.Phase.PLAY and s.index == 1 and int(tally.get("again", 0)) == 1)
+	_serve_as(s, 0.3)
 	s.restart()
 	_check("Reset is the day from its first mould, the serves from zero", s.index == 0 and s.serves == 0 and s.marks.is_empty())
 	for i in s.moulds.size():
-		_serve_as(s, 0.8)
-	_check("five moulds at 80%% over a mark of 75 is the day done in five serves", s.is_done() and s.serves == 5)
+		_serve_as(s, 0.3)
+	_check("Insane: five moulds at 30%% are the day done in five serves (%d)" % s.serves, s.is_done() and s.serves == 5 and s.moulds.size() == 5)
 
 func _themed() -> void:
 	var dir := "res://tools/days/themed-pixel/"

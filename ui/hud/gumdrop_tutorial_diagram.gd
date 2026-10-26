@@ -48,7 +48,7 @@ class Round extends "res://puzzles/gumdrop_sim.gd":
 		m.want = want
 		m.pots = stood
 		m.mixed = -1
-		set_day([m], MARK)
+		set_day([m])
 		_goal = tip
 		events.clear()
 

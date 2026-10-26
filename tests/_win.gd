@@ -217,8 +217,8 @@ func _note(id: String) -> String:
 		"acorn": return "band %d, %d questions (%s), %d right, hints=%d, checks=%d, board fit=%s, hud=%s" % [
 			_puzzle.state.band, _puzzle.state.count(), _puzzle.state.source, _puzzle.state.rights(),
 			_puzzle.hints_used, _puzzle.checks, _fit_ok, _hud_ok]
-		"gumdrop": return "band %d, %d moulds at %d%%, served at %s in %d serves, board fit=%s, hud=%s" % [
-			_puzzle.band, _puzzle.sim.moulds.size(), _puzzle.sim.mark(), str(_puzzle.sim.marks), _puzzle.moves, _fit_ok, _hud_ok]
+		"gumdrop": return "band %d, %d moulds, served at %s in %d serves, board fit=%s, hud=%s" % [
+			_puzzle.band, _puzzle.sim.moulds.size(), str(_puzzle.sim.marks), _puzzle.moves, _fit_ok, _hud_ok]
 		"hoop": return "band %d, %d panels (%s), %d pins, %d sides, %d refused, best combo %d, hints=%d, board fit=%s, hud=%s" % [
 			_puzzle.state.band, _puzzle.state.panels.size(), _puzzle.state.name_key, _puzzle.state.pins.size(),
 			_puzzle.state.sides.size(), _puzzle.state.refused, _puzzle._best, _puzzle.hints_used, _fit_ok, _hud_ok]

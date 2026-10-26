@@ -15,8 +15,9 @@ extends "res://core/puzzle_base.gd"
 ## the card when they run out, the finished day put back, the tutorial.
 ##
 ## A serve is the one move there is, so it is what the win's line counts.
-## Easy to Hard cannot be lost: a mould under its mark is emptied and
-## poured again. Insane (Three Pots) has the moulds and one more serve.
+## No band can be lost: since 2026-10-26 every mould served is taken away
+## with its tier (spec 2026-10-26-gumdrop-fun), once every piece of it has
+## colour.
 
 signal leave
 
@@ -43,7 +44,7 @@ func puzzle_id() -> String: return "gumdrop"
 func title() -> String: return "Gumdrop"
 
 func rules() -> String:
-	var out := tr("GD_RULES") % [sim.moulds.size(), sim.mark()]
+	var out := tr("GD_RULES") % [sim.moulds.size()]
 	if band >= 2:
 		out += "\n\n" + tr("GD_RULES_MIX")
 	return out
@@ -124,9 +125,9 @@ func day_dict() -> Dictionary:
 		fills.append({"picture": String(m.id), "fill": fill})
 	return {
 		"source": "generator", "kind": "text",
-		"payload": {"moulds": moulds, "mark": sim.mark()},
+		"payload": {"moulds": moulds, "tiers": [Sim.TIER_GREAT, Sim.TIER_PERFECT]},
 		"solution": {"moulds": fills},
-		"metrics": {"moulds": moulds.size(), "mark": sim.mark(), "perfect": Sim.PERFECT, "cells": cells,
+		"metrics": {"moulds": moulds.size(), "tiers": [Sim.TIER_GREAT, Sim.TIER_PERFECT], "cells": cells,
 			"cells_min": least, "cells_max": most, "flavours": used.size(), "mixed_cells": mixes},
 	}
 
@@ -205,7 +206,7 @@ func tutorial_pages() -> Array:
 		[Diagram.Lesson.FILL, "TUT_GUMDROP_FILL", tr("TUT_GUMDROP_FILL_BODY")],
 		[Diagram.Lesson.SOAK, "TUT_GUMDROP_SOAK", tr("TUT_GUMDROP_SOAK_BODY")],
 		[Diagram.Lesson.DRAIN, "TUT_GUMDROP_DRAIN", tr("TUT_GUMDROP_DRAIN_BODY")],
-		[Diagram.Lesson.MATCH, "TUT_GUMDROP_MATCH", tr("TUT_GUMDROP_MATCH_BODY") % sim.mark()],
+		[Diagram.Lesson.MATCH, "TUT_GUMDROP_MATCH", tr("TUT_GUMDROP_MATCH_BODY")],
 		[Diagram.Lesson.MIX, "TUT_GUMDROP_MIX", tr("TUT_GUMDROP_MIX_BODY")],
 		[Diagram.Lesson.HUD, "TUT_GUMDROP_HUD", tr("TUT_GUMDROP_HUD_BODY")],
 	]

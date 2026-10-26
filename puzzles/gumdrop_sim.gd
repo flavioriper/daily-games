@@ -19,14 +19,18 @@ extends RefCounted
 ## (shaders/gumdrop/fluid.gdshaderinc).
 ##
 ## A day is a band's few moulds, one after the other, with no clock
-## (`set_day`). Served, a mould settles SETTLE_T and the sim asks to be
+## (`set_day`). A mould can be served once every chunk of it has colour
+## (`can_serve`). Served, it settles SETTLE_T and the sim asks to be
 ## judged (`judge` event); the table answers `judge()` with each cell's
-## match and the verdict follows. At the mark or over, the next mould is
-## set down, and the last one served is the day done. Under it the mould
-## is emptied and poured again, on every band: no day can be lost (Insane
-## counted its serves until 2026-10-12, when the user took every move limit
-## off Insane; the count's leftovers went on 2026-10-14). The match is not
-## shown while the mould is played.
+## match and the verdict follows with its tier (`tier`): perfect at
+## TIER_PERFECT, great at TIER_GREAT, served under. A serve never fails
+## since 2026-10-26 (the user: nobody likes it; spec
+## docs/superpowers/specs/2026-10-26-gumdrop-fun-design.md): every mould
+## served is taken away and the next set down, and the last one served is
+## the day done. Until then a mould under the band's mark (60-75%) was
+## emptied and poured again. A chunk squeezed up to LAND of the card's
+## shade lands (`land` event), once a fill. The match is not shown while
+## the mould is played.
 
 const Mould = preload("res://puzzles/gumdrop_mould.gd")
 
@@ -48,8 +52,9 @@ const NEAR_GONE := 0.8
 ## What a chunk of SQUARES_REF squares under the needle gains a second,
 ## in amounts (the card's shade is C_FULL), as this sim reckons it until
 ## the table says what the fluid holds (`learn`); and the amount a chunk
-## is dry under.
-const RATE := 0.5
+## is dry under. 1.1 since 2026-10-26: the screen's pour, 0.5 x 8.0 / 3.6,
+## so a headless hold matches the screen's.
+const RATE := 1.1
 ## A bigger chunk takes longer to fill and a smaller one less (the user,
 ## 2026-10-15: "bigger spaces to fill should take longer than small ones,
 ## if there is a small circle, it should not take same time to fill as a
@@ -59,15 +64,18 @@ const RATE := 0.5
 ## every chunk of 23 squares or more took the same 2.6 s.
 const SQUARES_REF := 92.0
 const WET := 0.02
-## The mark a mould has to be served at when no day says (a tutorial
-## page's), and the match a mould is called perfect at.
-const MARK := 60
-const PERFECT := 95
+## The match a serve is called perfect at, and great at (`tier`).
+const TIER_PERFECT := 95
+const TIER_GREAT := 80
+## A chunk lands when a squeeze takes it to LAND of the card's shade, and
+## can land again once it is under LAND_REARM of it.
+const LAND := 0.97
+const LAND_REARM := 0.87
 
 ## Seconds: the syrup left to settle before it is judged, and the verdict
 ## shown.
-const SETTLE_T := 0.9
-const SHOW_T := 2.4
+const SETTLE_T := 0.45
+const SHOW_T := 2.0
 ## The six flavours' colours, in Mould.Flavour's order, and all three
 ## pigments at once.
 const FLAVOURS := [Color("e2495a"), Color("f39237"), Color("f4d44a"), Color("79c94f"), Color("4a86df"), Color("9a62d2")]
@@ -77,15 +85,14 @@ var phase := Phase.READY
 var phase_t := 0.0
 ## Seconds played.
 var t := 0.0
-## The day: its moulds, which of them is on the tray, the mark each is
-## served at, and each one's match once it passed.
+## The day: its moulds, which of them is on the tray, and each one's
+## match once it was served.
 var moulds: Array = []
 var index := 0
-var need := MARK
 var marks: Array = []
 ## The serves made.
 var serves := 0
-## The last verdict: {pct, need, pass, perfect}.
+## The last verdict: {pct, tier, pass, perfect}; `pass` is always true.
 var verdict := {}
 var events: Array = []
 
@@ -105,6 +112,8 @@ var draining := false
 ## out cannot be served. `poured` is the most of them.
 var poured := 0.0
 var tank := PackedFloat32Array()
+## Whether each chunk has landed this fill (1), so it lands once.
+var landed := PackedByteArray()
 ## Which cell each square is in (-1 the tray), and how many squares each
 ## cell has.
 var reg := PackedInt32Array()
@@ -123,19 +132,17 @@ var _asked := false
 func _init() -> void:
 	var m := Mould.build(Mould.PICTURES[0])
 	m.pots = Mould.flavours(m)
-	set_day([m], MARK)
+	set_day([m])
 
-## The day: these moulds, each served at `mark_at`.
-func set_day(list: Array, mark_at: int) -> void:
+## The day: these moulds.
+func set_day(list: Array) -> void:
 	moulds = list
-	need = mark_at
 	restart()
 
 ## A band's day off the day's seed, the day's themed jellies first when
 ## there are any (Mould.day).
 func deal_day(band: int, from: RandomNumberGenerator, themed: Array = []) -> void:
-	var spec: Dictionary = Mould.BANDS[clampi(band, 0, Mould.BANDS.size() - 1)]
-	set_day(Mould.day(band, from, themed), int(spec.mark))
+	set_day(Mould.day(band, from, themed))
 
 ## The day from its first mould, the serves from zero.
 func restart() -> void:
@@ -151,8 +158,13 @@ func restart() -> void:
 func is_done() -> bool:
 	return phase == Phase.DONE
 
-func mark() -> int:
-	return need
+## A match's tier: 2 perfect, 1 great, 0 served.
+static func tier(pct: int) -> int:
+	if pct >= TIER_PERFECT:
+		return 2
+	if pct >= TIER_GREAT:
+		return 1
+	return 0
 
 ## Moulds still to pass.
 func moulds_left() -> int:
@@ -246,6 +258,8 @@ func _lay() -> void:
 	poured = 0.0
 	tank.resize(cells.size())
 	tank.fill(0.0)
+	landed.resize(cells.size())
+	landed.fill(0)
 	prefill.clear()
 	_asked = false
 
@@ -291,6 +305,8 @@ func filled(c: int, flavour: int, part: float) -> void:
 	var pig: Vector3 = Mould.PIGMENT[flavour]
 	prefill.append({"cell": c, "pigment": pig * part * C_FULL})
 	_tally(c, part * C_FULL)
+	if c >= 0 and c < landed.size():
+		landed[c] = 1
 	if phase == Phase.READY:
 		phase = Phase.PLAY
 
@@ -328,6 +344,8 @@ func learn(c: int, amount: float) -> void:
 	if c < 0 or c >= tank.size():
 		return
 	tank[c] = maxf(0.0, amount)
+	if tank[c] < LAND_REARM * C_FULL:
+		landed[c] = 0
 	poured = 0.0
 	for v in tank:
 		poured = maxf(poured, v)
@@ -336,8 +354,20 @@ func learn(c: int, amount: float) -> void:
 func wet() -> bool:
 	return poured > WET
 
+## Whether every chunk holds more than a trace. A cell with no square of
+## the grid (a sliver a themed jelly's later chunk cuts off) cannot be
+## reached by the tip, so it is not asked for.
+func all_wet() -> bool:
+	if tank.is_empty():
+		return false
+	for c in tank.size():
+		if tank[c] <= WET and count[c] > 0:
+			return false
+	return true
+
+## A mould is served once every chunk of it has colour.
 func can_serve() -> bool:
-	return phase == Phase.PLAY and wet()
+	return phase == Phase.PLAY and all_wet()
 
 func serve() -> void:
 	if not can_serve():
@@ -371,8 +401,13 @@ func step() -> void:
 				# meter stops the pour, and headless this tally does
 				if tank[c] < C_FULL:
 					_tally(c, minf(RATE * pace(count[c]) * DT, C_FULL - tank[c]))
+				if landed[c] == 0 and tank[c] >= LAND * C_FULL:
+					landed[c] = 1
+					events.append({"type": "land", "cell": c})
 			elif draining and c >= 0:
 				_tally(c, -RATE * pace(count[c]) * DT)
+				if tank[c] < LAND_REARM * C_FULL:
+					landed[c] = 0
 			if phase == Phase.PLAY:
 				t += DT
 		Phase.SETTLE:
@@ -384,8 +419,8 @@ func step() -> void:
 				_after()
 
 ## The answer to a `judge` event: each cell's match, 0 to 1, as the fluid
-## measured it. The verdict follows; the day's last mould passed is the
-## day done, there and then.
+## measured it. The verdict follows with its tier; the day's last mould
+## served is the day done, there and then.
 func judge(near: PackedFloat32Array, all: float) -> void:
 	if phase != Phase.SETTLE:
 		return
@@ -393,29 +428,23 @@ func judge(near: PackedFloat32Array, all: float) -> void:
 		cell_match[c] = near[c]
 	match_all = clampf(all, 0.0, 1.0)
 	var pct := int(round(match_all * 100.0))
-	var passed := pct >= mark()
-	var perfect := pct >= PERFECT
-	verdict = {"pct": pct, "need": mark(), "pass": passed, "perfect": perfect}
+	var rank := tier(pct)
+	var perfect := pct >= TIER_PERFECT
+	verdict = {"pct": pct, "tier": rank, "pass": true, "perfect": perfect}
 	phase = Phase.SHOW
 	phase_t = 0.0
-	events.append({"type": "served", "pct": pct, "need": mark(), "pass": passed, "perfect": perfect})
-	if passed:
-		marks.append(pct)
-		if index >= moulds.size() - 1:
-			phase = Phase.DONE
-			events.append({"type": "done"})
+	events.append({"type": "served", "pct": pct, "tier": rank, "pass": true, "perfect": perfect})
+	marks.append(pct)
+	if index >= moulds.size() - 1:
+		phase = Phase.DONE
+		events.append({"type": "done"})
 
+## A served mould is taken away and the next set down.
 func _after() -> void:
-	if bool(verdict.get("pass", false)):
-		index += 1
-		deal(moulds[index])
-		phase = Phase.PLAY
-		phase_t = 0.0
-	else:
-		_lay()
-		phase = Phase.PLAY
-		phase_t = 0.0
-		events.append({"type": "again"})
+	index += 1
+	deal(moulds[index])
+	phase = Phase.PLAY
+	phase_t = 0.0
 
 ## A finished day put back: its last mould on the tray, filled as the card
 ## has it, and the numbers it was served at.
@@ -426,6 +455,6 @@ func finish(pcts: Array) -> void:
 		filled(c, int(mould.want[c]), 1.0)
 	marks = pcts.duplicate()
 	var last := int(pcts[-1]) if not pcts.is_empty() else 100
-	verdict = {"pct": last, "need": mark(), "pass": true, "perfect": last >= PERFECT}
+	verdict = {"pct": last, "tier": tier(last), "pass": true, "perfect": last >= TIER_PERFECT}
 	phase = Phase.DONE
 	phase_t = SHOW_T
