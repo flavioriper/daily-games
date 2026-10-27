@@ -1,6 +1,6 @@
 extends Control
 
-## Hidden Word's world: the sprout's meadow, edge to edge under the board and
+## Hidden Word's world: the board's meadow, edge to edge under the board and
 ## the host's rows (CLAUDE.md: a game's world fills the screen). It is the
 ## menu card's parchment and turf at the size of the screen, and the band the
 ## board used to draw at the foot of its card grown into a place: a pale

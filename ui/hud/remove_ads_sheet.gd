@@ -37,6 +37,10 @@ var close_button: Button
 var _body: Label
 var _note: Label
 var _perks: VBoxContainer
+## The hero plate, and the Peeplet seated on it at the first open: the sheet
+## is built with every board, so its 3D picture waits until it is wanted.
+var _plate: Control
+var _peeplet: Control
 
 func _card_style() -> StyleBox:
 	return CozyTheme.parchment_card()
@@ -107,19 +111,26 @@ func _hero() -> Control:
 		StreakTab._flower(props, c + Vector2(142, -26), 19, Pal.FLOWER_TILE)
 		StreakTab._flower(props, c + Vector2(178, -8), 13, Pal.SURFACE))
 	plate.add_child(props)
-	# The day's second Peeplet, standing: a held portrait, drawn once.
-	var peeplet := PeepletView.new()
-	Cast.dress(peeplet, 1)
-	peeplet.frame_height = 1.0
-	peeplet.aim_y = 0.46
-	peeplet.idle_fps = 0.0
-	peeplet.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	peeplet.offset_left = -64
-	peeplet.offset_right = 64
-	peeplet.offset_top = -146
-	peeplet.offset_bottom = -18
-	plate.add_child(peeplet)
+	_plate = plate
 	return plate
+
+## The day's second Peeplet, standing: a held portrait, drawn once. Built on
+## the sheet's first open (dressed before it enters the tree) and kept, a
+## child of the plate, so it goes with the sheet.
+func _seat_peeplet() -> void:
+	if _peeplet != null or _plate == null:
+		return
+	_peeplet = PeepletView.new()
+	Cast.dress(_peeplet, 1)
+	_peeplet.frame_height = 0.88
+	_peeplet.aim_y = 0.46
+	_peeplet.idle_fps = 0.0
+	_peeplet.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	_peeplet.offset_left = -64
+	_peeplet.offset_right = 64
+	_peeplet.offset_top = -146
+	_peeplet.offset_bottom = -18
+	_plate.add_child(_peeplet)
 
 func open_from(door: String) -> void:
 	if is_open():
@@ -128,6 +139,7 @@ func open_from(door: String) -> void:
 	open()
 
 func _on_open() -> void:
+	_seat_peeplet()
 	# A wrapped label measures its height at the width it has when first
 	# asked; hand it the card's width so the sheet opens at its real height.
 	var w := maxf(content_width(), 1.0)

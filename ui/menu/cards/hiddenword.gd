@@ -217,7 +217,7 @@ func _lay() -> void:
 	var px := SPROUT * k
 	var peeplet := PeepletView.new()
 	Cast.dress(peeplet, 0)
-	peeplet.frame_height = 1.0
+	peeplet.frame_height = 0.88
 	peeplet.aim_y = 0.46
 	peeplet.idle_fps = 0.0
 	peeplet.size = Vector2(px, px)

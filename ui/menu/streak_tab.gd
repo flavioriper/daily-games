@@ -103,7 +103,7 @@ func _init() -> void:
 	# The day's first Peeplet, sat on the rock: a held portrait, drawn once.
 	var peeplet := PeepletView.new()
 	Cast.dress(peeplet, 0)
-	peeplet.frame_height = 1.0
+	peeplet.frame_height = 0.88
 	peeplet.aim_y = 0.46
 	peeplet.idle_fps = 0.0
 	peeplet.seated = true
