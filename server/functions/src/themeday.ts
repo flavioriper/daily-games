@@ -7,7 +7,7 @@ import {makeTheme, Theme, themed, validTheme} from "./theme";
 import {makeWords, Words} from "./words";
 import {Port, publishPorts, stagePorts} from "./ports";
 import {seeded} from "./cast";
-import {makeVista, TIMES as VISTA_TIMES, Vistas} from "./vistas";
+import {HEADER_KEY, makeHeader, makeVista, TIMES as VISTA_TIMES, Vistas} from "./vistas";
 
 /**
  * The daily theme at night (docs/superpowers/specs/2026-10-13-daily-theme-
@@ -36,12 +36,15 @@ import {makeVista, TIMES as VISTA_TIMES, Vistas} from "./vistas";
  * three), then given up on: the board deals its own for that place. The
  * afternoon, dusk and night vistas are edits of the morning: they are not
  * run, and no try is counted, while the morning is neither done nor given up.
+ * The `header` step (the menu header's own painting, the place from farther
+ * away) needs no morning and is staged beside the four; it is optional when
+ * publishing, but a day waits for it like any step.
  */
 
 /** The steps of a day, in order. */
 export const STEPS: string[] = ["theme", "words",
   ...MOULDS.map((_, b) => `jelly${b}`), ...HOOP_BANDS.map((_, b) => `hoop${b}`), ...Beads.SIZES.map((s) => `pic${s}`),
-  ...VISTA_TIMES.map((_, i) => `vista${i}`)];
+  HEADER_KEY, ...VISTA_TIMES.map((_, i) => `vista${i}`)];
 /** Runs a step may have before it is given up on. */
 const TRIES = 3;
 /** A run starts no step past this: the longest step seen is some ten
@@ -172,7 +175,9 @@ function vista(db: Firestore, day: number, time: string) {
 /**
  * Publishes `day`'s vistas from their staging, once, and only when all four
  * times were painted: a ladder half the day's and half the bundled vistas
- * reads as two places. True when the content is there after.
+ * reads as two places. The header's painting rides along when one passed and
+ * is staged; a day without one keeps the phone's dusk behind the header.
+ * True when the content is there after.
  */
 export async function publishVistas(db: Firestore, day: number): Promise<boolean> {
   const doc = db.doc(`days/${day}/turns/vistas`);
@@ -187,12 +192,14 @@ export async function publishVistas(db: Firestore, day: number): Promise<boolean
   }
   const made: Vistas = {v: 1, theme: theme.id, name: theme.name, times: times as Vistas["times"],
     cast: seeded(day)};
+  const head = (await vista(db, day, HEADER_KEY).get()).get("jpg");
+  if (typeof head === "string" && head !== "") made.header = head;
   try {
     await doc.create({json: JSON.stringify(made)});
   } catch (e) {
     if (!(await doc.get()).exists) throw e;
   }
-  console.log(`themeday: day ${day} vistas published`);
+  console.log(`themeday: day ${day} vistas published${made.header === undefined ? "" : " with the header"}`);
   return true;
 }
 
@@ -246,6 +253,11 @@ async function runStep(db: Firestore, when: Date, day: number, step: string, s: 
     const {picture, port} = await makeHoop(day, theme, Number(band), undefined, until);
     await stage(db, day, [port]);
     return {save: picture === null ? {} : {[`hoops.${band}`]: JSON.stringify(picture)}, made: picture !== null};
+  }
+  if (step === HEADER_KEY) {
+    const got = await makeHeader(day, theme, undefined, 2);
+    if (got.vista !== null) await vista(db, day, HEADER_KEY).set({jpg: got.vista.bytes.toString("base64")});
+    return {save: {}, made: got.vista !== null};
   }
   if (step.startsWith("vista")) {
     const time = VISTA_TIMES[Number(step.slice("vista".length))];

@@ -12,7 +12,7 @@ import {makeDay as picturesDay} from "./pictures";
 import {describe, eligible, seeded} from "./cast";
 import {makeTheme, themed} from "./theme";
 import {makeWords} from "./words";
-import {FULL_SUFFIX, makeVista, reviewPainting, rubricHash, shrunk, Time, TIMES as VISTA_TIMES, Vistas, vistaModel} from "./vistas";
+import {FULL_SUFFIX, HEADER_KEY, makeHeader, makeVista, reviewPainting, rubricHash, shrunk, Time, TIMES as VISTA_TIMES, Vistas, vistaModel} from "./vistas";
 
 /**
  * The night's work by hand (tools/acorn_day.sh, tools/pearl_day.sh,
@@ -45,7 +45,12 @@ import {FULL_SUFFIX, makeVista, reviewPainting, rubricHash, shrunk, Time, TIMES 
  *       the day's four painted vistas (vistas.ts) for days already made:
  *       each painting beside the file as <day>_vista-<time>-<try>.jpg, the
  *       reviewer's word on each in `vistaTries`, and what a phone would be
- *       sent in `vistas` when all four passed (tools/themed_play.sh).
+ *       sent in `vistas` when all four passed (tools/themed_play.sh). It also
+ *       paints the menu header's own painting (the same place from farther
+ *       away, <day>_vista-header-<n>.jpg, `vistas.header` when it passed).
+ *   node lib/cli.js header <day.json>...
+ *       only the header painting, for a day that already has `vistas` (the
+ *       same files; `vistas.header` set when it passed): a cheap re-roll.
  *   node lib/cli.js theme <yyyymmdd> <out.json> [recent-day.json | text to avoid]...
  *       the day's theme alone, as {day, theme}, told not to repeat the
  *       themes of the recent files named (the Peeplet bench's days).
@@ -251,6 +256,28 @@ function benchFile(dir: string, file: string): {theme: Day["theme"]; time: Time;
   return {theme: info.theme, time, image: named(full), morning};
 }
 
+/** A try's row in a day's `vistaTries`. */
+interface VistaTry {time: string; name: string; wrong: string; peeplets: number; size: string}
+
+/** Where a day's paintings are kept: beside its file, `<day>_<name>.jpg`, and the
+ *  painter's full-size one (the bench's) as a PNG. */
+function keeper(day: {day: number}, file: string): (name: string, d: {bytes: Buffer}) => string {
+  return (name, d) => {
+    const kept = `${day.day}_${name}.${name.endsWith(FULL_SUFFIX) ? "png" : "jpg"}`;
+    fs.writeFileSync(path.join(path.dirname(file), kept), d.bytes);
+    return kept;
+  };
+}
+
+/** The menu header's painting of `day`, base64 when one passed; its tries are added to `tries`. */
+async function paintedHeader(day: {day: number; theme: import("./theme").Theme}, keep: (name: string, d: {bytes: Buffer}) => string,
+  tries: VistaTry[], print: (s: string) => void): Promise<string | null> {
+  const got = await makeHeader(day.day, day.theme, keep as (name: string, d: Drawing) => string, 2);
+  tries.push(...got.tries.map((t) => ({time: HEADER_KEY, name: `${day.day}_${t.name}.jpg`, wrong: t.wrong, peeplets: t.peeplets, size: t.size})));
+  for (const t of got.tries) print(`  ${HEADER_KEY} ${t.name}: ${t.size}, ${t.peeplets} Peeplets, ${t.wrong === "" ? "passed" : `turned down: ${t.wrong}`}`);
+  return got.vista === null ? null : got.vista.bytes.toString("base64");
+}
+
 interface Day {day: number; theme: import("./theme").Theme; vistaTries: {time: string; name: string; wrong: string; peeplets: number}[]}
 
 /** review-bench: the reviewer over every painting in `dir`, scored, into report.json. */
@@ -420,14 +447,9 @@ async function main(): Promise<void> {
     for (const file of args) {
       const day = JSON.parse(fs.readFileSync(file, "utf8"));
       if (day.theme === null) continue;
-      const keep = (name: string, d: {bytes: Buffer}) => {
-        // The painter's full-size painting (the bench's) is a PNG, the phone's JPEG a JPEG.
-        const kept = `${day.day}_${name}.${name.endsWith(FULL_SUFFIX) ? "png" : "jpg"}`;
-        fs.writeFileSync(path.join(path.dirname(file), kept), d.bytes);
-        return kept;
-      };
+      const keep = keeper(day, file);
       const times: Record<string, string> = {};
-      const tries: {time: string; name: string; wrong: string; peeplets: number; size: string}[] = [];
+      const tries: VistaTry[] = [];
       const pair = seeded(day.day);
       let morning = null;
       for (const time of VISTA_TIMES) {
@@ -438,14 +460,34 @@ async function main(): Promise<void> {
         if (time === "morning") morning = got.vista;
         times[time] = got.vista.bytes.toString("base64");
       }
+      let header: string | null = null;
+      if (Object.keys(times).length === VISTA_TIMES.length) {
+        header = await paintedHeader(day, keep, tries, print);
+      }
       day.vistaTries = tries;
       if (Object.keys(times).length === VISTA_TIMES.length) {
-        day.vistas = {v: 1, theme: day.theme.id, name: day.theme.name, times} as Vistas;
+        day.vistas = {v: 1, theme: day.theme.id, name: day.theme.name, times, ...(header === null ? {} : {header})} as Vistas;
       } else {
         delete day.vistas;
       }
       fs.writeFileSync(file, JSON.stringify(day));
-      print(`${file}: ${day.vistas ? "four vistas" : `stopped at ${VISTA_TIMES[Object.keys(times).length]}`} in ${tries.length} paintings, ` +
+      print(`${file}: ${day.vistas ? `four vistas${header === null ? ", no header" : " and the header"}` : `stopped at ${VISTA_TIMES[Object.keys(times).length]}`} in ${tries.length} paintings, ` +
+        tries.filter((t) => t.wrong !== "").map((t) => `${t.time}: ${t.wrong}`).join("; ") + `; US$${cost().toFixed(2)} so far`);
+    }
+  } else if (what === "header" && args.length >= 1) {
+    // Only the header painting, for days that already have their vistas.
+    for (const file of args) {
+      const day = JSON.parse(fs.readFileSync(file, "utf8"));
+      if (day.theme === null) continue;
+      if (!day.vistas) throw new Error(`${file}: no vistas yet (cli.js vistas paints them, the header with them)`);
+      const keep = keeper(day, file);
+      const tries: VistaTry[] = [];
+      const header = await paintedHeader(day, keep, tries, print);
+      // The header's earlier tries give way to this run's; the four times' stay.
+      day.vistaTries = [...(day.vistaTries ?? []).filter((t: VistaTry) => t.time !== HEADER_KEY), ...tries];
+      if (header !== null) day.vistas.header = header; else delete day.vistas.header;
+      fs.writeFileSync(file, JSON.stringify(day));
+      print(`${file}: ${header === null ? "no header passed" : "the header passed"} in ${tries.length} paintings, ` +
         tries.filter((t) => t.wrong !== "").map((t) => `${t.time}: ${t.wrong}`).join("; ") + `; US$${cost().toFixed(2)} so far`);
     }
   } else if (what === "jellies" && args.length >= 1) {
@@ -495,7 +537,7 @@ async function main(): Promise<void> {
     await publishDays(new Date());
     print("published");
   } else {
-    console.error("usage: cli.js day [acorn|pearl] [yyyymmdd] | bank pearl <level> <count> <outfile> | themed <yyyymmdd> <days> <outdir> [themes-dir] | cast <yyyymmdd> | theme <yyyymmdd> <out.json> [recent.json|text]... | decoys <png> <out-dir> [defect...] | review-bench <bench-dir> [--rescore] [--pass N] [--only <file.jpg>...] | vistas <day.json>... | jellies <day.json>... | hoops <day.json>... | words <day.json>... | quizzes <day.json>... | publish");
+    console.error("usage: cli.js day [acorn|pearl] [yyyymmdd] | bank pearl <level> <count> <outfile> | themed <yyyymmdd> <days> <outdir> [themes-dir] | cast <yyyymmdd> | theme <yyyymmdd> <out.json> [recent.json|text]... | decoys <png> <out-dir> [defect...] | review-bench <bench-dir> [--rescore] [--pass N] [--only <file.jpg>...] | vistas <day.json>... | header <day.json>... | jellies <day.json>... | hoops <day.json>... | words <day.json>... | quizzes <day.json>... | publish");
     process.exitCode = 2;
   }
 }

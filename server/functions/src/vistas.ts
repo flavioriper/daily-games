@@ -22,6 +22,12 @@ import {Theme} from "./theme";
 
 export const TIMES = ["morning", "afternoon", "dusk", "night"] as const;
 export type Time = typeof TIMES[number];
+/** The fifth painting (2026-10-27): the menu header's own, the same theme seen
+ *  from farther away and from another side, so it is not the day card's
+ *  afternoon twice. Not a time of day: it is painted on its own, at golden hour. */
+export const HEADER_KEY = "header";
+/** A painting's place in the day: one of the four times, or the header. */
+export type Slot = Time | typeof HEADER_KEY;
 
 /** What a phone is sent: a JPEG this wide, the drawing's own shape kept
  *  (21:9; a plate crops it with cover, by fractions). */
@@ -65,6 +71,16 @@ const FIRST = (t: Theme, pair: [number, number]) => `Paint a wide landscape back
   `${t.cast ?? "doing something small together that fits the place"}, in the right two thirds of the painting, each about one seventh of the ` +
   `painting's height, small figures in a wide place, never the main subject, painted in the same brushwork as the place. ${NEVER}`;
 
+/** The header: the same place from a rise or its far edge, at golden hour, the
+ *  left half empty for the game's name; no Peeplet sheet, no creatures. */
+const HEADER = (t: Theme) => `Paint a wide landscape background for a cosy puzzle game, of the same place as this: ${t.scene} (The day's theme: ${t.name.en}.) ` +
+  `but seen from a different side and from much farther away than a scene painted at eye level would be: a view across the whole place from a rise or ` +
+  `from its far edge, the horizon low, a big soft sky taking the upper half, golden-hour light (the low sun behind soft clouds, long warm light). ` +
+  `Paint it in exactly the style of the attached picture: a hand-painted storybook illustration, soft painterly brushwork, rich warm saturated ` +
+  `colours, rounded friendly shapes, depth to distant hills or sky. Copy only the style: not the attached picture's place, buildings or things. ` +
+  `The LEFT HALF calm and simple: sky, haze and soft ground only, no building, tree, animal or thing in it, since the game's name is laid over it. ` +
+  `No creatures, no figures, no Peeplets. ${NEVER}`;
+
 /** The others: the morning painted again at `time`. */
 const AGAIN = (time: Time) => `The attached picture is a painting of a place at morning. Paint exactly the same place again, from exactly ` +
   `the same viewpoint and framing, with the same buildings, trees, paths and things in the same spots, with the same two Peeplets in the same ` +
@@ -99,7 +115,7 @@ const REVIEWER = `You check painted backgrounds for a cosy daily puzzle game pla
   `"wrong", or leave it empty when nothing is: if your "limbs" note found any defect in a limb, "wrong" must not be empty. Answer "peeplets" with ` +
   `how many Peeplets you count in the painting being judged.`;
 
-/** The reviewer's two per-call prompts (the morning on its own; an edit beside its morning). */
+/** The reviewer's per-call prompts (the morning on its own; an edit beside its morning; the header on its own). */
 const REVIEW_FIRST = (theme: Theme, time: Time) =>
   `The first picture is the reference sheet of the Peeplet. The second is the painting to judge, of the theme "${theme.name.en}" (${theme.scene}), meant to be at ${time}. Go over each Peeplet's limbs.`;
 const REVIEW_EDIT = (time: Time) =>
@@ -107,11 +123,28 @@ const REVIEW_EDIT = (time: Time) =>
   `First count the Peeplets in the second picture and note each one's body colour and hat; the third must show those same Peeplets, no more, no fewer, no recoloured. ` +
   `Then go over each Peeplet's limbs in the third.`;
 
+/** The header's reviewer: REVIEWER's Peeplet rules (a sheet first, two to three
+ *  Peeplets wanted) would contradict a painting that must have none, so it has
+ *  its own short system prompt. */
+const REVIEWER_HEADER = `You check painted backgrounds for a cosy daily puzzle game played by all ages, and answer in JSON. You are shown one painting ` +
+  `and no reference sheet. Be strict: hunt for any creature, animal, figure or Peeplet (a small round creature with two eyes), any text, ` +
+  `letters or numbers, and any thing standing in the area the brief keeps empty, and say what you find.`;
+
+/** The header is judged alone, with no sheet: a landscape with no creature at all. */
+const REVIEW_HEADER = (theme: Theme) =>
+  `The only picture is the header painting of the theme "${theme.name.en}" (${theme.scene}): a wide landscape of that kind of place, meant to be at golden hour (the low sun, ` +
+  `long warm light), judged on its own, with no other painting beside it and no reference sheet. It must show NO Peeplet and no creature or figure of ` +
+  `any kind: "peeplets" must be 0, and any count above 0 is wrong. Its LEFT HALF must be calm: a building, tree, animal or other thing standing in the left half is wrong ` +
+  `(sky, haze and soft ground are fine). It must be a wide painted landscape of that kind of place, not a close-up or a pattern. The usual hard rules ` +
+  `apply: no text, letters, numbers, logo or signature, no humans or human-shaped figures, nothing frightening, violent or unsuitable for children. ` +
+  `Put what you see of any creature or figure in "limbs" (or "none"), and leave "wrong" empty when nothing is wrong.`;
+
 /**
  * A fingerprint of the reviewer's rubric (its system prompt, its two
  * per-call prompts and its answer schema), so the bench's report.json knows
  * which rubric its verdicts came from. The painter's prompts (FIRST, AGAIN,
  * NEVER) are not in it: they change what is painted, not how it is judged.
+ * REVIEW_HEADER is not in it either: the bench scores the four vistas only.
  */
 export function rubricHash(): string {
   const blank = {name: {en: "", pt: "", es: ""}, scene: ""} as unknown as Theme;
@@ -184,23 +217,29 @@ function dataUrl(d: Drawing): string {
  * Peeplet sheet first and, for an edit, the morning before it. Answers what
  * is wrong ("" when nothing) and how many Peeplets the reviewer counts.
  */
-export async function reviewPainting(theme: Theme, time: Time, drawn: Drawing, morning: Drawing | null):
+export async function reviewPainting(theme: Theme, time: Slot, drawn: Drawing, morning: Drawing | null):
   Promise<{wrong: string; peeplets: number; limbs: string}> {
-  if (time !== "morning" && morning === null) throw new Error(`the ${time} edit needs the morning painting beside it`);
+  if (time !== "morning" && time !== HEADER_KEY && morning === null) throw new Error(`the ${time} edit needs the morning painting beside it`);
+  const header = time === HEADER_KEY;
   const review = await ask<{limbs: string; wrong: string; peeplets: number}>({
-    system: REVIEWER,
-    prompt: time === "morning" ? REVIEW_FIRST(theme, time) : REVIEW_EDIT(time),
-    images: time === "morning" || morning === null ?
+    system: header ? REVIEWER_HEADER : REVIEWER,
+    prompt: header ? REVIEW_HEADER(theme) : time === "morning" ? REVIEW_FIRST(theme, time) : REVIEW_EDIT(time),
+    images: header ? [dataUrl(drawn)] : time === "morning" || morning === null ?
       [dataUrl(sheetRef()), dataUrl(drawn)] : [dataUrl(sheetRef()), dataUrl(morning), dataUrl(drawn)],
     schema: REVIEW_SCHEMA,
     role: "review",
   });
   // Fails closed: a missing or non-numeric count is 0, and a painting passes
-  // only with nothing wrong AND one to three Peeplets counted.
+  // only with nothing wrong AND one to three Peeplets counted. The header is
+  // the other way round: it passes only with nothing wrong AND no Peeplet.
   const n = Number(review.peeplets);
   const peeplets = Number.isFinite(n) ? Math.round(n) : 0;
   let wrong = String(review.wrong ?? "").trim();
-  if (wrong === "" && (peeplets < 1 || peeplets > 3)) wrong = `counted ${peeplets} Peeplets`;
+  if (header) {
+    if (wrong === "" && peeplets !== 0) wrong = `counted ${peeplets} Peeplets in the header`;
+  } else if (wrong === "" && (peeplets < 1 || peeplets > 3)) {
+    wrong = `counted ${peeplets} Peeplets`;
+  }
   // `limbs` is the reviewer's own inspection note, kept for the bench's report.
   return {wrong, peeplets, limbs: String(review.limbs ?? "").trim()};
 }
@@ -252,6 +291,47 @@ export async function makeVista(day: number, theme: Theme, time: Time, morning: 
   return {vista: null, tries: log};
 }
 
+/**
+ * The header painting, shrunk for a phone, or null when none passed: the
+ * theme's place from another side and farther away (HEADER), painted from the
+ * style reference alone (no Peeplet sheet), reviewed on its own and passed only
+ * with nothing wrong and no Peeplet counted. Mirrors makeVista; never throws.
+ */
+export async function makeHeader(day: number, theme: Theme, keep?: (name: string, d: Drawing) => string, tries = 2):
+  Promise<{vista: Drawing | null; tries: {name: string; wrong: string; peeplets: number; size: string}[]}> {
+  const log: {name: string; wrong: string; peeplets: number; size: string}[] = [];
+  if (!available()) return {vista: null, tries: log};
+  const prompt = HEADER(theme);
+  const shown = [styleRef()];
+  for (let attempt = 0; attempt < tries; attempt++) {
+    const name = `vista-${HEADER_KEY}-${attempt}`;
+    let size = "";
+    try {
+      let drawn: Drawing;
+      try {
+        drawn = await draw(prompt, vistaModel(), {images: shown, aspect: ASPECT});
+      } catch (e) {
+        if (vistaModel() === shapesModel()) throw e;
+        console.error(`vistas: day ${day}, ${HEADER_KEY}: ${vistaModel()} would not draw, asking ${shapesModel()}`, e);
+        drawn = await draw(prompt, shapesModel(), {images: shown, aspect: ASPECT});
+      }
+      const px = decoded(drawn);
+      size = `${px.width}x${px.height}`;
+      keep?.(name + FULL_SUFFIX, drawn);
+      const {wrong, peeplets} = await reviewPainting(theme, HEADER_KEY, drawn, null);
+      log.push({name, wrong, peeplets, size});
+      const small = wrong === "" || keep !== undefined ? shrunk(drawn) : null;
+      if (small !== null) keep?.(name, small);
+      if (wrong === "" && small !== null) return {vista: small, tries: log};
+      console.error(`vistas: day ${day}, ${HEADER_KEY}, try ${attempt}: turned down: ${wrong}`);
+    } catch (e) {
+      log.push({name, wrong: `failed: ${String(e).slice(0, 200)}`, peeplets: 0, size});
+      console.error(`vistas: day ${day}, ${HEADER_KEY}, try ${attempt} failed`, e);
+    }
+  }
+  return {vista: null, tries: log};
+}
+
 /** What a phone reads (`days/{day}/turns/vistas`, core/themed_vistas.gd). */
 export interface Vistas {
   v: 1;
@@ -260,6 +340,8 @@ export interface Vistas {
   name: {en: string; pt: string; es: string};
   /** A JPEG a time, base64. */
   times: Record<Time, string>;
+  /** The menu header's own painting (a JPEG, base64), when one passed. */
+  header?: string;
   /** The day's two Peeplets, indices into the persona list (cast.ts). */
   cast: [number, number];
 }
