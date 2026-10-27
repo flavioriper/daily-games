@@ -465,3 +465,56 @@ Easy and 16.1-16.8 on Hard, where a bend was a single jump.
   empty squares.
 - `tests/_probe_train.gd -- seeds=1` 336/0; suite failed=0; `tests/_win.gd
   -- train` PASS; the Insane tutorial plays its pages.
+
+### 2026-10-27: Sand Sweep -- sand pulled from below
+
+The user: "let's change the toy cannon to be something that pull the sand,
+and make particles way more like sand. It should only get from bottom so
+sand keep falling"; then, off the first shots, "make the chart move always
+with the cannon upwards going and backing" and "it should keep pulling
+material going forward and backward". **The board is Sand Sweep** (title,
+registry, card, locale en/pt/es); the id, files and names in code are the
+train's still (an engine is a toy vacuum, its room the grains it has left).
+
+- **Rules** (`train_state.gd`): the picture is sand. A stop pulls only the
+  lowest grain of the column over it (`first_seen`), and everything over it
+  falls a square (`_take`, used by the deal and the play alike, so a deal's
+  line is proved by the same fall). The loop is a belt under the picture:
+  `stops()` is `2 * w + 2 * bend`, a stop under each column along the foot
+  left to right, `bend` stops round the right bend, a stop under each column
+  again on the run back right to left, `bend` round the left bend
+  (`column_of`). **Both runs pull**; the bends see nothing and keep a run
+  going. `near`/`_seen_from` are gone: a grain falls *into* sight, which a
+  cached depth would skip.
+- **Insane keeps 5 colours** (`BOLD` [4, 6, 7, 5]): the hint's own hand lost
+  20 of 36 Insane deals at 6 colours (11 of 18 at 8 before the run back
+  pulled), 3 of 18 at 5. EARLY, REF_PARKED and LOADS were tried first and
+  moved nothing or made it worse.
+- **The gate keeps a vacuum's length** each side (`State.gap`, set by the
+  screen with `bend`: `ceil(74 * 1.1 / cell)`): `GAPS` was never read and the
+  gate used 2 stops, half a vacuum on Hard's squares; it also waits for one
+  coming round the last bend.
+- **Screen**: the belt is a stadium under the foot (`loop_at`), its runs
+  BELT_APART vacuums apart, the nozzle PULL_GAP (30 px) under the sand; the
+  picture gets the width the side loop used to eat. A vacuum always faces
+  up (`_heading` is 0), going and coming back. The sand is a mesh a column,
+  rebuilt only for the column pulled from and drawn falling under a
+  transform (`_fall`, FALL_G, velocity kept when pulls stack); a grain is a
+  square filled edge to edge with four specks in one of SPECKS looks,
+  picked by which grain it is (`_ids` moves with the grid), so the speckle
+  falls with it. A pull is GRAINS specks streaming into the nozzle, chasing
+  it as it rolls, and SPILL that slip and fall; the vacuum gulps. The cannon's
+  `shoot` take is no longer asked for; the `pop` stays.
+- **Tutorial**: PLAIN is green over a red foot row, RINGED red over green.
+- **Card**: the side cannon went; the track runs straight under a settled
+  heap, a rose vacuum pulling its column's bottom grain as specks.
+- Measured: `_probe_train -- seeds=1` 336 runs, 0 failures; fast hand
+  Hard 1,902 ticks (3,250 when only the foot pulled); suite passed=303276
+  failed=0; `_win.gd -- train` PASS; `opengl3_angle` 810x1440 Hard play peak
+  142 draw calls, Medium 131; the tutorial pages play.
+- **Mine, the user's to call**: the name and the vacuum, the belt as a
+  stadium with both runs pulling, 5 colours on Insane, the speckle, the
+  stream and spill, the fall's pace, dropping `shoot`. **Not seen**: a phone,
+  the sounds at this pace, reduced motion, pt/es read by a reader. The old
+  strip in `ui/menu/card_art.gd` (`_draw_train`) still draws a block strip
+  and is left alone.

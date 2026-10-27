@@ -1,19 +1,21 @@
 extends RefCounted
-## Toy Cannons' rules, scene-free (puzzles/train2d.gd draws them;
-## docs/agents/boards/train.md). Built as Toy Train and turned into a
-## shooter a day later: the names here are the train's still. An engine is
-## a cannon, its room the corks it has left, the siding the tray it waits
-## in and the shed the toy box; "takes a block" is "shoots it".
+## Sand Sweep's rules, scene-free (puzzles/train2d.gd draws them;
+## docs/agents/boards/train.md). Built as Toy Train, a shooter (Toy Cannons)
+## a day later, and a sand picture swept from below since 2026-10-27: the
+## names here are the train's still. An engine is a toy vacuum, its room
+## the grains it has left to pull, the siding the tray it waits in and the
+## shed the toy box; "takes a block" is "pulls a grain".
 ##
-## A picture of toy blocks lies on the rug with a loop of track round it.
-## Little engines wait in the shed in columns, each painted one colour and
-## each with a number: the blocks it still has room for. An engine sent out
-## goes round the loop, and round again for as long as a lap takes anything
-## (since 2026-10-13: it was once round). At every stop it looks straight
-## across the rug at the nearest block in that line, and takes it if it is
-## its own colour. An engine with no room left goes home for good. One
-## that comes round from a lap that took nothing waits in the siding, five
-## places, to be sent again.
+## A picture of coloured sand stands on the rug with a belt under its foot
+## (the user, 2026-10-27: "it should only get from bottom so sand keep
+## falling"). Little engines wait in the shed in columns, each painted one
+## colour and each with a number: the grains it still has room for. An
+## engine sent out rides the belt along the foot and back under it, and
+## round again for as long as a lap takes anything. At every stop under a
+## column, going and coming back, it pulls the lowest grain of that column
+## if it is its own colour, and the column falls a square. An
+## engine with no room left goes home for good. One that comes round from a
+## lap that took nothing waits in the siding, five places, to be sent again.
 ##
 ## The loop moves by ticks (`tick`), a stop a tick, so the same taps on the
 ## same ticks always play the same game and a probe with no screen can prove
@@ -28,11 +30,9 @@ const INSANE := 3
 ## Engines on the loop at once, waiting at its gate counted.
 const ON_LOOP := 5
 const SIDING := 5
-## Stops between two engines as they enter.
+## Stops between two engines as they enter, unless the screen says more
+## (`gap`).
 const GAP := 2
-## The same on a band: the squares are small past Easy, and a shooter is
-## two or three of them long.
-const GAPS := [2, 4, 5, 5]
 ## Columns in the shed, a band.
 const SHEDS := [2, 3, 3, 4]
 ## The least and the most a new engine carries, a band.
@@ -58,9 +58,11 @@ const FAMILY := {
 	"lime": "green", "green": "green", "forest": "green",
 	"tan": "brown", "brown": "brown", "dark": "dark", "grey": "grey",
 }
-## The most colours a picture keeps, a band: a cannon has to be told from
-## the next at a glance.
-const BOLD := [4, 6, 7, 8]
+## The most colours a picture keeps, a band: a vacuum has to be told from
+## the next at a glance. Insane keeps five since the sand fell
+## (2026-10-27): with only the foot in reach, six lost the hint's own hand
+## 20 deals of 36 and five lose it 3 of 18 (tests/_probe_train.gd).
+const BOLD := [4, 6, 7, 5]
 
 ## A picture is laid on a mat of blocks of one more colour, so the rug is
 ## full edge to edge: the first of these the picture does not use.
@@ -122,6 +124,11 @@ var gate := PackedInt32Array()
 ## other side"). They see nothing, so the deal and the hint play the same
 ## with any number.
 var bend := 0
+## Stops kept clear on each side of the gate as an engine enters: a
+## vacuum's length in squares, set by the screen as `bend` is (`GAPS`, a
+## band's, was never read, and two stops were half a vacuum on Hard's small
+## squares, 2026-10-27).
+var gap := GAP
 ## The tick an engine at the gate may roll on from, by engine: the screen
 ## holds one there while it is still flying in from the box (`send`'s
 ## `wait`), so it never shoots from where it is not.
@@ -318,91 +325,63 @@ func _new_engine(c: int, n: int, column: int) -> int:
 
 # --- the loop ---
 
-## Stops round the picture: along the foot left to right, up the right
-## side, back along the top, down the left side, with `bend` stops in each
-## of the four bends after a side, where nothing is in sight.
+## Stops round the belt: along the foot left to right, a stop under each
+## column, then `bend` stops round the right-hand bend, back along the lower
+## run right to left, a stop under each column again, and `bend` round the
+## left-hand one. Both runs pull (the user, 2026-10-27: "it should keep
+## pulling material going forward and backward"); the bends see nothing.
 func stops() -> int:
-	return 2 * (w + h) + 4 * bend
+	return 2 * w + 2 * bend
 
-## The squares a stop looks along, nearest first, as (first, step, count);
-## a stop in a bend sees nothing (count 0).
-func _sight(s: int) -> Vector3i:
-	if s < w:
-		return Vector3i((h - 1) * w + s, -w, h)
+## The column stop `s` pulls from, -1 for a stop on a bend.
+func column_of(s: int) -> int:
+	if s >= 0 and s < w:
+		return s
 	s -= w + bend
-	if s < 0:
-		return Vector3i.ZERO
-	if s < h:
-		return Vector3i((h - 1 - s) * w + w - 1, -1, w)
-	s -= h + bend
-	if s < 0:
-		return Vector3i.ZERO
-	if s < w:
-		return Vector3i(w - 1 - s, w, h)
-	s -= w + bend
-	if s < 0:
-		return Vector3i.ZERO
-	if s < h:
-		return Vector3i(s * w, 1, w)
-	return Vector3i.ZERO
+	if s >= 0 and s < w:
+		return w - 1 - s
+	return -1
 
-## The nearest block a stop sees on `g`, -1 for none.
+## The lowest grain of the column stop `s` is under, -1 for none.
 func first_seen(g: PackedInt32Array, s: int) -> int:
-	var v := _sight(s)
-	var i := v.x
-	for n in v.z:
+	var x := column_of(s)
+	if x < 0:
+		return -1
+	var i := (h - 1) * w + x
+	for n in h:
 		if g[i] >= 0:
 			return i
-		i += v.y
+		i -= w
 	return -1
 
-## The same, from where stop `s` last found one: `near` keeps how deep each
-## stop has looked on a rug that only loses blocks (the deal's, 1,024 blocks
-## and a lap a colour for every engine it makes).
-func _seen_from(g: PackedInt32Array, s: int, near: PackedInt32Array) -> int:
-	var v := _sight(s)
-	var d := near[s]
-	var i := v.x + v.y * d
-	while d < v.z:
-		if g[i] >= 0:
-			near[s] = d
-			return i
-		d += 1
-		i += v.y
-	near[s] = d
-	return -1
+## Takes grain `i` off `g`: everything over it in its column falls a square.
+func _take(g: PackedInt32Array, i: int) -> void:
+	var x := i % w
+	var j := i
+	while j >= w:
+		g[j] = g[j - w]
+		j -= w
+	g[x] = -1
 
 ## One engine of colour `c` with room for `most` goes once round `g` alone:
-## the blocks it takes (and takes off `g`). `near` is `_seen_from`'s, for `g`.
-func _lap(g: PackedInt32Array, c: int, most: int, near = null) -> int:
-	var deep: PackedInt32Array
-	if near == null:
-		deep = PackedInt32Array()
-		deep.resize(stops())
-	else:
-		deep = near
+## the grains it pulls (and takes off `g`).
+func _lap(g: PackedInt32Array, c: int, most: int) -> int:
 	var got := 0
 	for s in stops():
 		if got >= most:
 			break
-		var i := _seen_from(g, s, deep)
+		var i := first_seen(g, s)
 		if i >= 0 and g[i] == c:
-			g[i] = -1
+			_take(g, i)
 			got += 1
 	return got
 
-## The same engine left on the loop: lap after lap until one takes nothing
+## The same engine left on the belt: lap after lap until one takes nothing
 ## or it is full, as `tick` has it.
-func _laps(g: PackedInt32Array, c: int, most: int, near = null) -> int:
-	var deep: PackedInt32Array
-	if near == null:
-		deep = PackedInt32Array()
-		deep.resize(stops())
-	else:
-		deep = near
+func _laps(g: PackedInt32Array, c: int, most: int) -> int:
 	var total := 0
 	while total < most:
-		var n := _lap(g, c, most - total, deep)
+		var n := _lap(g, c, most - total)
 		if n <= 0:
 			break
 		total += n
@@ -432,8 +411,6 @@ func _deal(rng: RandomNumberGenerator) -> void:
 	var hi: int = LOADS[band][1]
 	var allow: int = REF_PARKED[band]
 	var parked: Array[int] = []
-	var near := PackedInt32Array()
-	near.resize(stops())
 	var left_room := PackedInt32Array()
 	var order := PackedInt32Array()
 	line = PackedInt32Array()
@@ -442,12 +419,12 @@ func _deal(rng: RandomNumberGenerator) -> void:
 		var best := -1
 		var best_n := 0
 		for e in parked:
-			var n := _laps(g.duplicate(), colour[e], left_room[e], near.duplicate())
+			var n := _laps(g.duplicate(), colour[e], left_room[e])
 			if n > best_n:
 				best_n = n
 				best = e
 		if best >= 0:
-			var n := _laps(g, colour[best], left_room[best], near)
+			var n := _laps(g, colour[best], left_room[best])
 			left_room[best] -= n
 			by[colour[best]] -= n
 			cells -= n
@@ -463,7 +440,7 @@ func _deal(rng: RandomNumberGenerator) -> void:
 		reach.resize(colours.size())
 		var total := 0
 		for c in colours.size():
-			reach[c] = _laps(g.duplicate(), c, free[c], near.duplicate()) if free[c] > 0 else 0
+			reach[c] = _laps(g.duplicate(), c, free[c]) if free[c] > 0 else 0
 			total += reach[c]
 		if total <= 0:
 			break
@@ -498,7 +475,7 @@ func _deal(rng: RandomNumberGenerator) -> void:
 		left_room.append(n)
 		order.append(id)
 		line.append(id)
-		var got := _laps(g, c, n, near)
+		var got := _laps(g, c, n)
 		left_room[id] -= got
 		by[c] -= got
 		cells -= got
@@ -669,7 +646,8 @@ func tick() -> Array:
 	if not gate.is_empty() and not jammed:
 		var clear := true
 		for e in loop:
-			if at[e] < GAP:
+			# one just in, and one coming round the last bend to the gate
+			if at[e] < gap or at[e] > stops() - gap:
 				clear = false
 		if clear and ticks >= int(_land.get(gate[0], 0)):
 			var e := gate[0]
@@ -681,17 +659,19 @@ func tick() -> Array:
 				loop.append(e)
 	return out
 
-## Engine `e` at its stop: takes the block it sees if it is its colour, one
-## block a stop (the user, 2026-10-26: "it must shot only 1 box at time";
-## a cork that went on through a row was tried that day and taken out).
-## False when that filled it and it has gone.
+## Engine `e` at its stop: pulls the lowest grain of the column over it if
+## it is its colour, one grain a stop (the user, 2026-10-26: "it must shot
+## only 1 box at time"), and the column falls. False when that filled it
+## and it has gone.
 func _stop(e: int, out: Array) -> bool:
 	var i := first_seen(grid, at[e])
 	if i < 0 or grid[i] != colour[e]:
-		_run_end(e, out)
+		# a bend keeps a run going: it is only the runs' say
+		if column_of(at[e]) >= 0:
+			_run_end(e, out)
 		return true
 	var c := grid[i]
-	grid[i] = -1
+	_take(grid, i)
 	left -= 1
 	left_by[c] -= 1
 	room[e] -= 1

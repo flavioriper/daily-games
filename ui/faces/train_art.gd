@@ -1,12 +1,13 @@
 extends RefCounted
-## Toy Cannons' drawings (puzzles/train2d.gd, the menu card and the tutorial):
-## the playroom floor, the rug, the wooden track, a toy block, a little
-## cannon seen from above and its cork, the tray and the toy box. Builder shapes and not a
-## Control, as `button_art.gd` is: the board bakes every block into one mesh
-## and every engine into another.
+## Sand Sweep's drawings (puzzles/train2d.gd, the menu card and the
+## tutorial): the playroom floor, the rug, the wooden track, a grain of
+## coloured sand, a toy block (the card's), a little toy vacuum seen from
+## above, a cork (the card's, from the cannons), the tray and the toy box.
+## Builder shapes and not a Control, as `button_art.gd` is: the board bakes
+## the sand into a mesh a column and every engine into one more.
 ##
-## Blocks and cannons are coloured by index, so nothing here says a state
-## with a shade of the piece's own colour: a cannon's corks are its number.
+## Grains and vacuums are coloured by index, so nothing here says a state
+## with a shade of the piece's own colour: a vacuum's grains are its number.
 
 const Pal = preload("res://core/palette.gd")
 const Face = preload("res://ui/faces/face.gd")
@@ -38,6 +39,18 @@ const BLOCK_R := 0.16
 const SMALL := 30.0
 const CORK := Color("f1dcb0")
 const CORK_DEEP := Color("c9a871")
+## A vacuum's nozzle and the neck it hangs on.
+const NOZZLE := Color("5b4a42")
+const NOZZLE_LIP := Color("2f2420")
+const NECK := Color("8a7a70")
+## Where a grain's specks lie on its square (a look each), as fractions of
+## the square about its middle, and whether each is a light one.
+const SPECK_AT := [
+	[Vector2(-0.24, -0.2), Vector2(0.18, 0.06), Vector2(-0.06, 0.28), Vector2(0.3, -0.3)],
+	[Vector2(0.22, -0.24), Vector2(-0.26, 0.1), Vector2(0.08, 0.3), Vector2(-0.1, -0.04)],
+	[Vector2(-0.3, 0.26), Vector2(0.02, -0.28), Vector2(0.28, 0.2), Vector2(-0.12, 0.0)],
+	[Vector2(0.1, 0.12), Vector2(-0.28, -0.28), Vector2(0.3, -0.06), Vector2(-0.2, 0.3)],
+]
 
 static func colour(named: String) -> Color:
 	return Pal.PG_BEADS.get(named, Pal.LINE)
@@ -144,27 +157,47 @@ static func block(b, at: Vector2, cell: float, col: Color) -> void:
 		var shine := Vector2(s * 0.56, s * 0.16)
 		b.polygon(Face.Builder.round_rect(at + Vector2(-s * 0.36, -s * 0.4), shine, shine.y * 0.5), Color(col.lightened(0.35), 0.75))
 
-## A little toy cannon seen from above, about the origin, its muzzle up the
-## screen, `s` long: two wooden wheels, the carriage in its colour, the
-## barrel out of it with an iron band at the muzzle. (`engine` is the name
-## the board's files were built with: docs/agents/boards/train.md.)
+## A grain of coloured sand on a square of `cell` about the origin, in look
+## `speck`: the square filled edge to edge (the picture reads as one heap,
+## not as tiles), a soft shade at its foot and four specks, two lighter and
+## two deeper, where the look puts them.
+static func grain(b, cell: float, col: Color, speck: int) -> void:
+	var s := cell + 0.6
+	_bar(b, Rect2(-Vector2(s, s) * 0.5, Vector2(s, s)), col)
+	_bar(b, Rect2(Vector2(-s * 0.5, s * 0.32), Vector2(s, s * 0.18)), col.darkened(0.08))
+	var dot := maxf(1.5, cell * 0.14)
+	var at: Array = SPECK_AT[posmod(speck, SPECK_AT.size())]
+	for k in at.size():
+		var tone := col.lightened(0.28) if k % 2 == 0 else col.darkened(0.2)
+		var c := (at[k] as Vector2) * cell
+		_bar(b, Rect2(c - Vector2(dot, dot) * 0.5, Vector2(dot, dot)), tone)
+
+## A little toy vacuum seen from above, about the origin, its nozzle up the
+## screen, `s` long: two wooden wheels at the back, the round tank in its
+## colour, a grey neck up to a wide nozzle with its dark mouth along the
+## front. (`engine` is the name the board's files were built with:
+## docs/agents/boards/train.md.)
 static func engine(b, s: float, col: Color) -> void:
-	b.ellipse(Vector2(0.0, s * 0.08), s * 0.42, s * 0.48, Color(Pal.OUTLINE, 0.13))
+	b.ellipse(Vector2(0.0, s * 0.06), s * 0.44, s * 0.5, Color(Pal.OUTLINE, 0.13))
 	for sx in [-1.0, 1.0]:
-		var wheel := Vector2(s * 0.14, s * 0.46)
-		var at := Vector2(sx * s * 0.36, s * 0.14) - wheel * 0.5
+		var wheel := Vector2(s * 0.13, s * 0.3)
+		var at := Vector2(sx * s * 0.34, s * 0.22) - wheel * 0.5
 		b.polygon(Face.Builder.round_rect(at + Vector2(0.0, s * 0.03), wheel, s * 0.06), RAIL_DEEP)
 		b.polygon(Face.Builder.round_rect(at, wheel, s * 0.06), SLEEPER)
-	var body := Vector2(s * 0.6, s * 0.64)
-	var top := Vector2(-body.x * 0.5, -s * 0.16)
-	b.polygon(Face.Builder.round_rect(top + Vector2(0.0, s * 0.045), body, s * 0.2), col.darkened(0.26))
-	b.polygon(Face.Builder.round_rect(top, body - Vector2(0.0, s * 0.02), s * 0.2), col)
-	# the barrel, over the carriage and out past its front
-	var barrel := Vector2(s * 0.3, s * 0.5)
-	b.polygon(Face.Builder.round_rect(Vector2(-barrel.x * 0.5 - s * 0.02, -s * 0.5), barrel + Vector2(s * 0.04, s * 0.03), s * 0.1), col.darkened(0.26))
-	b.polygon(Face.Builder.round_rect(Vector2(-barrel.x * 0.5, -s * 0.5), barrel, s * 0.1), col.lightened(0.16))
-	var band := Vector2(s * 0.38, s * 0.09)
-	b.polygon(Face.Builder.round_rect(Vector2(-band.x * 0.5, -s * 0.5), band, band.y * 0.5), IRON)
+	# the neck, under the tank's front and up to the nozzle
+	var neck := Vector2(s * 0.16, s * 0.3)
+	b.polygon(Face.Builder.round_rect(Vector2(-neck.x * 0.5, -s * 0.4), neck, s * 0.05), NECK)
+	var body := Vector2(s * 0.6, s * 0.6)
+	var top := Vector2(-body.x * 0.5, -s * 0.2)
+	b.polygon(Face.Builder.round_rect(top + Vector2(0.0, s * 0.045), body, s * 0.26), col.darkened(0.26))
+	b.polygon(Face.Builder.round_rect(top, body - Vector2(0.0, s * 0.02), s * 0.26), col)
+	b.polygon(Face.Builder.round_rect(top + Vector2(s * 0.08, s * 0.05), Vector2(s * 0.2, s * 0.08), s * 0.04), Color(col.lightened(0.4), 0.8))
+	# the nozzle: a wide head with its mouth along the front
+	var head := Vector2(s * 0.8, s * 0.16)
+	var at := Vector2(-head.x * 0.5, -s * 0.52)
+	b.polygon(Face.Builder.round_rect(at + Vector2(0.0, s * 0.03), head, s * 0.07), NOZZLE_LIP)
+	b.polygon(Face.Builder.round_rect(at, head, s * 0.07), NOZZLE)
+	b.polygon(Face.Builder.round_rect(at + Vector2(s * 0.06, s * 0.015), Vector2(head.x - s * 0.12, s * 0.05), s * 0.025), NOZZLE_LIP)
 
 ## The plate a cannon's number is written on, about the origin.
 static func plate(b, s: float) -> void:

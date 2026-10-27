@@ -1,25 +1,30 @@
 extends "res://core/puzzle_base.gd"
-## Toy Cannons: a picture of toy blocks on the playroom rug, a loop of
-## wooden track round it, and little cannons that ride it and shoot the
-## picture away with corks (docs/agents/boards/train.md). The rules are
-## puzzles/train_state.gd's; this draws them and keeps the loop's clock.
+## Sand Sweep: a picture of coloured sand standing on the playroom rug, a
+## belt of wooden track under its foot, and little toy vacuums that ride it
+## and pull the sand away from below, the column falling a square each time
+## (docs/agents/boards/train.md). The rules are puzzles/train_state.gd's;
+## this draws them and keeps the belt's clock.
 ##
-## The board was built as Toy Train on 2026-10-12 and turned into a shooter
-## the day after: its id, its files and its names in code are the train's
-## still. An `engine` is a cannon, its `room` the corks it has left, the
-## `siding` the tray it waits in and the `shed` the toy box.
+## The board was built as Toy Train on 2026-10-12, turned into a shooter
+## (Toy Cannons) the day after and into sand on 2026-10-27 (the user: "let's
+## change the toy cannon to be something that pull the sand, and make
+## particles way more like sand. It should only get from bottom so sand keep
+## falling"): its id, its files and its names in code are the train's
+## still. An `engine` is a vacuum, its `room` the grains it has left to
+## pull, the `siding` the tray it waits in and the `shed` the toy box.
 ##
 ## A `bleed` board (ui/flat/flat_host.gd): the floor is the whole screen, the
-## rug and its loop as big as the room between the pill and the yard allows,
-## the tray and the toy box at the foot. Tap a cannon at the front of a
+## rug and its belt as big as the room between the pill and the yard allows,
+## the tray and the toy box at the foot. Tap a vacuum at the front of a
 ## column of the box, or one waiting in the tray, and it goes round and
-## round while a lap hits anything.
+## round while a lap pulls anything.
 ##
 ## Drawn as `_bg` (the floor), `_yard` (the siding and the shed), `_ring`
-## (the rug and the track), the blocks as one mesh rebuilt when one is taken,
-## and the engines as one mesh a frame while anything moves; a number an
-## engine and the pill, the toast and the run's bubble on a layer of their
-## own. No character: the pieces are toys.
+## (the rug and the belt), the sand as a mesh a column (rebuilt when a grain
+## is pulled from it, falling under a transform), and the engines as one
+## mesh a frame while anything moves; a number an engine and the pill, the
+## toast and the run's bubble on a layer of their own. No character: the
+## pieces are toys.
 
 const State = preload("res://puzzles/train_state.gd")
 const Pal = preload("res://core/palette.gd")
@@ -35,44 +40,37 @@ const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 const PAD := 22.0
 const HUD_ROW := 76.0
 const GAP := 14.0
-## From the picture to the rug's edge, and to the track's centre, in lanes:
-## a lane is a square, but never under LANE_MIN pixels nor over LANE_MAX, so
-## the track and the cannons on it keep their size when the squares are
-## small, and the shot's open rug its width when they are big. The user,
-## 2026-10-14: "increase the space between the cannon and the drawing, it's
-## too close, user barely see the shoot": a muzzle stands about fifty canvas
-## pixels off the picture's edge on every band (it stood two on Hard).
-const EDGE := 3.5
-const REACH := 2.6
+## A lane is a square, but never under LANE_MIN pixels nor over LANE_MAX:
+## the track's gauge is a share of it.
 const LANE_MIN := 34.0
 const LANE_MAX := 40.0
-## The track's gauge and a cannon's length on the loop, in lanes.
 const GAUGE := 0.62
-const ENGINE := 1.45
-## A cannon on the loop is never shorter than this: on the small pictures it
-## stands from the rug's edge to the picture's, its wheels astride the track.
+## A vacuum's length on the belt, in canvas pixels, on every band.
 const LOOP_MIN := 74.0
 const CELL_MAX := 62.0
-## The blocks are kept as a mesh a patch of this many squares a side, so a
-## block shot rebuilds its patch and not the picture.
-const CHUNK := 8
+## The belt under the picture (2026-10-27), in canvas pixels: the nozzle of
+## a vacuum on the foot run stands PULL_GAP under the sand, so the grains it
+## pulls are seen on their way; the run back, which pulls too, is BELT_APART
+## vacuums under the foot run, its bends half that round; the rug's border
+## is RUG_PAD.
+const PULL_GAP := 30.0
+const BELT_APART := 1.25
+const RUG_PAD := 14.0
 ## An engine's length at rest in the yard, and the unit its mesh is built at.
 const REST := 84.0
 const UNIT := 100.0
 ## Rows of a column of the shed that are seen; the rest are a count.
 const ROWS := 3
 const BURIED := 0.84
-## Seconds a stop, a band, and a shot a stop: a lap is about two seconds on
-## every one, forty to fifty corks a second past Easy.
+## Seconds a stop, a band: a vacuum pulls at most a grain a stop.
 const TICKS := [0.045, 0.024, 0.02, 0.02]
 
 ## This board's own motion (the rest is core/motion.gd's).
 const SEND_FLY := 0.24
-## Shards thin out once SHARDS_BUSY.x and then .y shots are in the air, and
-## a block bursts white for the first part of its burst (2026-10-26).
+## The pulled grains thin out once SHARDS_BUSY.x and then .y pulls are in
+## the air.
 const SHARDS_BUSY := Vector2i(60, 150)
-const BLINK := 0.45
-## The room shakes, a cannon emptied a little and a colour whole more, in
+## The room shakes, a vacuum filled a little and a colour whole more, in
 ## canvas pixels, dying out over SHAKE_TIME.
 const SHAKE_FULL := 5.0
 const SHAKE_WHOLE := 11.0
@@ -80,42 +78,37 @@ const SHAKE_TIME := 0.32
 ## Nothing left to choose (the toy box and the tray empty): the loop runs
 ## this much faster so the end does not drag.
 const ENDGAME := 0.55
-## The halo under a cannon a tap can send that has a block of its colour in
-## sight now.
+## The halo under a vacuum a tap can send that has a grain of its colour
+## at the foot now.
 const HALO := Color(1.0, 0.96, 0.7, 0.85)
 const HALO_R := 0.62
 const PARK_FLY := 0.34
 const SHIFT := 0.22
-## A cork's flight to its block (the cork leaves ghosts behind it, TRAIL of
-## them TRAIL_STEP apart), the block's burst where it stands, and the
-## cannon's kick back from the shot.
-const PICK_FLY := 0.09
-const TRAIL := 2
-const TRAIL_STEP := 0.016
-const BURST := 0.12
-const BURST_GROW := 0.5
-const RECOIL := 0.1
-const RECOIL_PX := 0.22
-## What a shot leaves (the user, 2026-10-14: "the good part of the game is
-## seeing a lot of particles and things being destroyed fast, so we need way
-## more pixels, animations"): the block bursts into SHARDS flat squares of
-## its two tones that fly on along the shot, fall and fade; the muzzle
-## flashes for FLASH and lets a wisp of smoke drift out for SMOKE. All of it
-## is in the frame's one mesh with the cannons, never a particle node, since
-## fifty shots a second would starve the puff pool (ui/fx2d.gd).
-const SHARDS := 5
-const SHARD_LIFE := 0.42
-const SHARD_SIZE := Vector2(0.24, 0.46)
-const SHARD_SPEED := Vector2(170.0, 360.0)
-const SHARD_SPREAD := 1.1
-const SHARD_GRAVITY := 900.0
-const SHARD_SPIN := 9.0
-const FLASH := 0.05
-const FLASH_R := 0.2
-const FLASH_COL := Color(1.0, 0.97, 0.82)
-const SMOKE := 0.32
-const SMOKE_R := Vector2(0.08, 0.34)
-const SMOKE_COL := Color(0.95, 0.92, 0.86)
+## A grain pulled (2026-10-27, "make particles way more like sand"): it
+## comes apart into GRAINS specks of sand that stream down into the nozzle
+## in PICK_FLY, each a little late (GRAIN_LAG) and wavering, and SPILL more
+## that slip off the column's foot, fall and fade in SPILL_LIFE. The vacuum
+## swells a touch as it swallows (GULP). All of it is in the frame's one
+## mesh with the vacuums, never a particle node, since fifty pulls a second
+## would starve the puff pool (ui/fx2d.gd).
+const PICK_FLY := 0.16
+const GRAINS := 9
+const GRAIN_LAG := 0.06
+const GRAIN_SIZE := Vector2(0.16, 0.3)
+const GRAIN_MIN := 2.5
+const GRAIN_WAVE := 0.35
+const SPILL := 3
+const SPILL_LIFE := 0.34
+const SPILL_SPEED := Vector2(40.0, 140.0)
+const SPILL_GRAVITY := 1400.0
+const GULP := 0.12
+const GULP_K := 0.07
+## A column falls a square when a grain is pulled from under it, as a thing
+## dropped does (canvas pixels a second squared), and lands on its own.
+const FALL_G := 6000.0
+## A grain is drawn in one of SPECKS looks a colour, picked by which grain it
+## is, so the sand keeps its speckle as it falls.
+const SPECKS := 4
 const POP := 0.24
 const WIN_WAIT := 1.5
 const PARTY_EXTRA := 0.6
@@ -130,13 +123,13 @@ const CARD_AFTER := 1.0
 const CARD_AFTER_STILL := 0.3
 const HINT_BEAT := 0.5
 
-## A run: the stops in a row one cannon hits a block at. A shot is two
-## sounds, the cannon's `shoot` as the cork leaves and the block's `pop` as
-## it bursts; the pop climbs a step of this scale every RUN_STEP blocks
-## (semitones, five at the most: docs/agents/sound.md, rule 2). A shot is
-## heard and felt once in PICK_GAP however many corks fly (fifty a second on
-## Hard); the bubble counts the run from COMBO_FROM, and a long one ends on
-## two notes.
+## A run: the grains in a row one vacuum pulls along the foot. A grain
+## pulled is the `pop` as its specks go in (the cannon's `shoot` went with
+## the cannon, 2026-10-27); the pop climbs a step of this scale every
+## RUN_STEP grains (semitones, five at the most: docs/agents/sound.md, rule
+## 2). A pull is heard and felt once in PICK_GAP however many grains go
+## (fifty a second on Hard); the bubble counts the run from COMBO_FROM, and
+## a long one ends on two notes.
 const RUN_SCALE := [0, 2, 4, 5]
 const RUN_STEP := [1, 3, 4, 4]
 const PICK_GAP := 0.07
@@ -162,9 +155,8 @@ const TOAST_FONT := 32
 const TOAST_MARGIN := 24.0
 
 ## What the phone does under each cue (docs/agents/haptics.md). An engine
-## sent is a tap and a block burst a tick (the shot that burst it is the
-## same knock: `shoot` is asked for without one); an engine home full is a
-## small yes, a long run and a colour whole firmer ones.
+## sent is a tap and a grain pulled a tick; an engine home full is a small
+## yes, a long run and a colour whole firmer ones.
 const HAPTICS := {
 	"send": Haptics.TAP,
 	"pop": Haptics.TICK,
@@ -205,8 +197,10 @@ var _won := false
 var _cell := 0.0
 ## The lane (LANE_MIN), and the rug's edge and the track's reach in squares.
 var _lane := 0.0
-var _edge := EDGE
-var _reach := REACH
+## The foot run's centre under the picture's foot, and the bends' radius,
+## in squares.
+var _reach := 1.0
+var _bend_r := 1.0
 var _grid := Vector2.ZERO
 var _rug := Rect2()
 var _siding_rect := Rect2()
@@ -234,14 +228,19 @@ var _yard: ArrayMesh
 var _ring: ArrayMesh
 var _blocks: ArrayMesh
 var _blocks_stale := true
-## The blocks at rest, a mesh a patch (CHUNK), and the patches to rebuild.
-var _chunks := {}
-var _chunk_stale := {}
-var _cork: ArrayMesh
+## The sand at rest, a mesh a column, the columns to rebuild, and how far
+## each still has to fall: [pixels, speed, since].
+var _columns := {}
+var _column_stale := {}
+var _fall := {}
+## Which grain stands in each square (its square when the day was laid),
+## moved as the state's grid is, so a grain keeps its speckle as it falls.
+var _ids := PackedInt32Array()
 ## A white square and a white disc of UNIT, tinted as they are appended: the
-## shards, the flash and the smoke.
+## grains and the halo.
 var _square: ArrayMesh
 var _disc: ArrayMesh
+## A grain's mesh, by colour and look ([colour][speck]).
 var _blk := {}
 var _col := {}
 var _eng := {}
@@ -300,7 +299,7 @@ var _told_home := false
 var _final_taps := 0
 
 func puzzle_id() -> String: return "train"
-func title() -> String: return "Toy Cannons"
+func title() -> String: return "Sand Sweep"
 
 func rules() -> String:
 	var out := tr("TT_RULES") % [State.ON_LOOP, State.SIDING]
@@ -361,8 +360,9 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 
 ## The day as dealt, for tools/export_days.gd (PuzzleBase.day_dict): the
 ## picture of blocks (a row a string, a colour's index in base 36) and the
-## toy box's columns, front first, a cannon [colour, corks]. The answer is
-## the deal's own line, the cannons in the order it sent them, and the rug
+## toy box's columns, front first, a vacuum [colour, grains] (the keys keep
+## the cannons' names). The answer is the deal's own line, the vacuums in
+## the order it sent them, and the rug
 ## it leaves is bare.
 func day_dict() -> Dictionary:
 	if state.picture.is_empty():
@@ -443,6 +443,8 @@ func _deal() -> void:
 	_sight_left = -1
 	_frac = 0.0
 	_blocks_stale = true
+	_fall = {}
+	_ids = PackedInt32Array(range(state.grid.size()))
 	if _hud_layer != null:
 		_hud_layer.queue_redraw()
 
@@ -479,24 +481,29 @@ func _layout() -> void:
 	var room := Vector2(size.x - 2.0 * PAD, foot - head - below)
 	if _beside and not _won:
 		room = Vector2(size.x - siding_size.x - 3.0 * PAD, foot - head - 2.0 * GAP)
-	var span := Vector2(state.w + 2.0 * EDGE, state.h + 2.0 * EDGE)
-	_cell = minf(CELL_MAX, minf(room.x / span.x, room.y / span.y))
-	_lane = clampf(_cell, LANE_MIN, LANE_MAX)
-	if _lane != _cell:
-		# the rug's border keeps its size, small squares or big: the picture
-		# has what is left
-		_cell = minf(CELL_MAX, minf((room.x - 2.0 * EDGE * _lane) / state.w, (room.y - 2.0 * EDGE * _lane) / state.h))
+	# the picture and the belt under it: the bends stand out past the outer
+	# columns by their radius and half a vacuum, the belt's two runs under
+	# the foot (2026-10-27)
+	_loop_px = LOOP_MIN
+	var radius := _loop_px * BELT_APART * 0.5
+	var side := radius + _loop_px * 0.5 + RUG_PAD * 0.6
+	var reach := _loop_px * 0.5 + PULL_GAP
+	var under := reach + 2.0 * radius + _loop_px * 0.5 + RUG_PAD * 0.6
+	var wide := maxf(1.0, state.w - 1.0)
+	_cell = minf(CELL_MAX, minf((room.x - 2.0 * side) / wide, (room.y - RUG_PAD - under) / state.h))
 	if _cell <= 0.0:
 		return
-	_edge = EDGE * _lane / _cell
-	_reach = REACH * _lane / _cell
+	_lane = clampf(_cell, LANE_MIN, LANE_MAX)
+	_reach = reach / _cell
+	_bend_r = radius / _cell
 	# a bend as many stops as it is squares long; never changed under a
-	# cannon on the loop
-	var bend := maxi(0, roundi(PI * 0.5 * (_reach + 0.5)) - 1)
-	if bend != state.bend and state.loop.is_empty() and state.gate.is_empty():
+	# vacuum on the belt
+	var bend := maxi(0, roundi(PI * _bend_r) - 1)
+	if state.loop.is_empty() and state.gate.is_empty():
 		state.bend = bend
-	span = Vector2(state.w + 2.0 * _edge, state.h + 2.0 * _edge)
-	var ring := span * _cell
+		state.gap = maxi(State.GAP, ceili(_loop_px * 1.1 / _cell))
+	var field := Vector2(state.w, state.h) * _cell
+	var ring := Vector2((state.w - 1) * _cell + 2.0 * side, RUG_PAD + field.y + under)
 	_rug = Rect2(Vector2((size.x - ring.x) * 0.5, head + (room.y - ring.y) * 0.5), ring)
 	_siding_rect = Rect2(Vector2((size.x - siding_size.x) * 0.5, _rug.end.y + GAP), siding_size)
 	_shed_rect = Rect2(Vector2((size.x - shed_size.x) * 0.5, _siding_rect.end.y + GAP), shed_size)
@@ -508,8 +515,7 @@ func _layout() -> void:
 		var yard_h := siding_size.y + GAP + shed_size.y
 		_siding_rect.position = Vector2(yard_x - siding_size.x * 0.5, mid_y - yard_h * 0.5)
 		_shed_rect.position = Vector2(yard_x - shed_size.x * 0.5, _siding_rect.end.y + GAP)
-	_grid = _rug.position + Vector2(_edge, _edge) * _cell
-	_loop_px = maxf(ENGINE * _lane, LOOP_MIN)
+	_grid = _rug.position + Vector2(side - 0.5 * _cell, RUG_PAD)
 	_flat_cache = {}
 	_blk = {}
 	_col = {}
@@ -517,16 +523,16 @@ func _layout() -> void:
 	for c in state.colours.size():
 		var col: Color = Art.colour(state.colours[c])
 		_col[c] = col
-		var bb := Face.Builder.new()
-		Art.block(bb, Vector2.ZERO, _cell, col)
-		_blk[c] = bb.mesh()
+		var looks: Array = []
+		for k in SPECKS:
+			var bb := Face.Builder.new()
+			Art.grain(bb, _cell, col, k)
+			looks.append(bb.mesh())
+		_blk[c] = looks
 		var eb := Face.Builder.new()
 		Art.engine(eb, UNIT, col)
 		Art.plate(eb, UNIT)
 		_eng[c] = eb.mesh()
-	var cb := Face.Builder.new()
-	Art.cork(cb, UNIT)
-	_cork = cb.mesh()
 	var sb := Face.Builder.new()
 	sb.fan(PackedVector2Array([Vector2(-0.5, -0.5) * UNIT, Vector2(0.5, -0.5) * UNIT, Vector2(0.5, 0.5) * UNIT, Vector2(-0.5, 0.5) * UNIT]), Color.WHITE)
 	_square = sb.mesh()
@@ -551,41 +557,36 @@ func _field_px() -> Rect2:
 func cell_centre(i: int) -> Vector2:
 	return _grid + (Vector2(state.xy(i)) + Vector2(0.5, 0.5)) * _cell
 
-## Where a stop is, in squares off the picture's corner.
-## The point of the loop at `u` stops along (any `u`: it goes round), a
-## whole number a stop. A side's stops are a square apart, and the bend
-## after it is a quarter circle walked in `state.bend` + 1 stops.
+## The point of the belt at `u` stops along (any `u`: it goes round), a
+## whole number a stop: along the foot run a square a stop under the
+## columns, round the right-hand bend in `state.bend` + 1 stops, back along
+## the lower run and round the left-hand bend to the gate.
 func loop_at(u: float) -> Vector2:
 	var w: int = state.w
 	var h: int = state.h
 	var bend: int = state.bend
-	var n: int = state.stops()
-	u = fposmod(u, float(n))
-	var r := _reach + 0.5
-	var lens := [w, h, w, h]
-	var a := 0
-	var p := Vector2.ZERO
-	for i in 4:
-		var last: int = a + int(lens[i]) - 1
-		var next: int = last + bend + 1
-		if u <= last:
-			var t := u - a
-			p = [Vector2(t + 0.5, h + _reach), Vector2(w + _reach, h - 0.5 - t),
-				Vector2(w - 0.5 - t, -_reach), Vector2(-_reach, t + 0.5)][i]
-			break
-		if u < next or i == 3:
-			var f := (u - last) / float(bend + 1)
-			var centre := [Vector2(w - 0.5, h - 0.5), Vector2(w - 0.5, 0.5), Vector2(0.5, 0.5), Vector2(0.5, h - 0.5)][i] as Vector2
-			var a0 := PI * 0.5 - i * PI * 0.5
-			p = centre + Vector2.from_angle(lerpf(a0, a0 - PI * 0.5, f)) * r
-			break
-		a = next
+	u = fposmod(u, float(state.stops()))
+	var top := h + _reach
+	var mid := top + _bend_r
+	var p: Vector2
+	if u <= w - 1:
+		p = Vector2(u + 0.5, top)
+	elif u < w + bend:
+		var f := (u - (w - 1)) / float(bend + 1)
+		p = Vector2(w - 0.5, mid) + Vector2.from_angle(lerpf(-PI * 0.5, PI * 0.5, f)) * _bend_r
+	elif u <= 2 * w + bend - 1:
+		p = Vector2(w - 0.5 - (u - w - bend), mid + _bend_r)
+	else:
+		var f := (u - (2 * w + bend - 1)) / float(bend + 1)
+		p = Vector2(0.5, mid) + Vector2.from_angle(lerpf(PI * 0.5, PI * 1.5, f)) * _bend_r
 	return _grid + p * _cell
 
-## The way a cannon at `u` points, as its mesh is turned (muzzle up at 0):
-## across the rug, square to the way it rolls.
-func _heading(u: float) -> float:
-	return (loop_at(u + 0.08) - loop_at(u - 0.08)).angle()
+## The way a vacuum at `u` points, as its mesh is turned (nozzle up at 0):
+## always up at the sand, going along the foot and coming back under it,
+## never turned round the bends (the user, 2026-10-27: "make the chart move
+## always with the cannon upwards going and backing").
+func _heading(_u: float) -> float:
+	return 0.0
 
 func siding_pos(place: int) -> Vector2:
 	return Art.siding_place(_siding_rect, place, State.SIDING, _step)
@@ -601,8 +602,7 @@ func _build_yard() -> ArrayMesh:
 	Art.shed(b, _shed_rect, maxi(1, state.sheds.size()), _shed_step)
 	return b.mesh()
 
-## The rug, the mat and the loop of track round it, with its stub of a
-## siding line at the gate.
+## The rug, the mat and the belt of track under the picture.
 func _build_ring() -> ArrayMesh:
 	var b := Face.Builder.new()
 	Art.rug(b, _rug, _field_px(), _lane)
@@ -613,7 +613,7 @@ func _build_ring() -> ArrayMesh:
 	var u := 0.0
 	while u < n:
 		pts.append(loop_at(u))
-		u += 0.25
+		u += 0.25 if _cell < 30.0 else 0.125
 	Art.track(b, pts, GAUGE * _lane, true)
 	return b.mesh()
 
@@ -629,9 +629,8 @@ func _target(e: int) -> Array:
 		State.PARKED:
 			return [siding_pos(state.at[e]), 0.0, _rest, 1.0]
 		State.LOOP:
-			# it shoots at the stop the tick has it at, standing there, and
-			# rolls on to the next before the next tick (it was drawn rolling
-			# up to it, a quarter of the bend away on a side's first stop)
+			# it pulls at the stop the tick has it at, standing there, and
+			# rolls on to the next before the next tick
 			var u: float = state.at[e] + _frac
 			return [loop_at(u), _heading(u), _loop_px, 1.0]
 	# at the gate: the first stop, where it rolls on from
@@ -756,7 +755,7 @@ func _shake(px: float) -> void:
 	_shake_px = px
 	_busy_for(SHAKE_TIME)
 
-## The colours a stop sees now, as a set: what a cannon sent would hit.
+## The colours at the foot now, as a set: what a vacuum sent would pull.
 func _in_sight() -> Dictionary:
 	if _sight_left == state.left:
 		return _sight
@@ -768,9 +767,9 @@ func _in_sight() -> Dictionary:
 			_sight[state.grid[i]] = true
 	return _sight
 
-## The blocks on the rug. At rest and in play a mesh a patch, and only the
-## patch a cork lands in rebuilt (a picture is a thousand blocks and loses
-## fifty a second); while they pop in, one mesh a frame (`_blocks_now`).
+## The sand on the rug. At rest and in play a mesh a column, only the
+## column a grain is pulled from rebuilt, and drawn falling into place
+## (`_fall`); while it pops in, one mesh a frame (`_blocks_now`).
 func _draw_blocks(now: float, shown: Array) -> void:
 	var opening := not Motion.reduce and now < _opened + Motion.ENTER_DELAY + Motion.ENTER_POP * 0.5 \
 			+ Motion.stagger(state.w + state.h, Motion.ENTER_STAGGER, 1.0) + Motion.POP_IN + 0.05
@@ -783,27 +782,42 @@ func _draw_blocks(now: float, shown: Array) -> void:
 	if _blocks_stale:
 		_blocks_stale = false
 		_blocks = null
-		_chunks = {}
-		_chunk_stale = {}
+		_columns = {}
+		_column_stale = {}
 	var w: int = state.w
-	var h: int = state.h
-	var across := ceili(float(w) / CHUNK)
-	for cy in ceili(float(h) / CHUNK):
-		for cx in across:
-			var key := cy * across + cx
-			if _chunk_stale.has(key) or not _chunks.has(key):
-				var fb := Face.FlatBuilder.new(_flat_cache)
-				for y in range(cy * CHUNK, mini(h, (cy + 1) * CHUNK)):
-					for x in range(cx * CHUNK, mini(w, (cx + 1) * CHUNK)):
-						var c: int = state.grid[y * w + x]
-						if c >= 0:
-							fb.append(_blk[c], Transform2D(0.0, cell_centre(y * w + x)))
-				_chunks[key] = fb.mesh()
-			var m: ArrayMesh = _chunks[key]
-			if m != null:
-				draw_mesh(m, null)
-				shown.append(m)
-	_chunk_stale = {}
+	for x in w:
+		if _column_stale.has(x) or not _columns.has(x):
+			var fb := Face.FlatBuilder.new(_flat_cache)
+			for y in state.h:
+				var i: int = y * w + x
+				var c: int = state.grid[i]
+				if c >= 0:
+					fb.append(_grain(c, _ids[i]), Transform2D(0.0, cell_centre(i)))
+			_columns[x] = fb.mesh()
+		var m: ArrayMesh = _columns[x]
+		if m == null:
+			continue
+		draw_mesh(m, null, Transform2D(0.0, Vector2(0.0, -_fallen(x, now))))
+		shown.append(m)
+	_column_stale = {}
+
+## The look of grain `id` (the square it stood in when the day was laid) of
+## colour `c`: it keeps its speckle as it falls.
+func _grain(c: int, id: int) -> ArrayMesh:
+	return (_blk[c] as Array)[(id * 7 + id / maxi(1, state.w) * 3) % SPECKS]
+
+## How far column `x` still stands over where it lies now, in pixels: it
+## falls a square a grain pulled from under it, as a dropped thing does.
+func _fallen(x: int, now: float) -> float:
+	if not _fall.has(x):
+		return 0.0
+	var f: Array = _fall[x]
+	var t := now - float(f[2])
+	var left := float(f[0]) - float(f[1]) * t - 0.5 * FALL_G * t * t
+	if left <= 0.0:
+		_fall.erase(x)
+		return 0.0
+	return left
 
 ## The blocks as one mesh, built a frame at a time while they pop in (the
 ## opening, and the picture put back whole for the win) and kept once the
@@ -836,9 +850,9 @@ func _blocks_now(now: float) -> ArrayMesh:
 			if e <= 0.0:
 				continue
 			var k := Motion.pop_in_scale(e)
-			fb.append(_blk[c], Transform2D(0.0, k, 0.0, at))
+			fb.append(_grain(c, i if whole else _ids[i]), Transform2D(0.0, k, 0.0, at))
 		else:
-			fb.append(_blk[c], Transform2D(0.0, at))
+			fb.append(_grain(c, i if whole else _ids[i]), Transform2D(0.0, at))
 	var m := fb.mesh()
 	if popping:
 		_busy_for(0.1)
@@ -847,19 +861,19 @@ func _blocks_now(now: float) -> ArrayMesh:
 	_blocks_stale = false
 	return m
 
-## The shots in the air (a block stands until its cork lands, then bursts
-## where it stood into its shards; the muzzle flashes and smokes), then every
-## cannon with its number: the ones at rest first, the ones on the loop over
+## The sand in the air (the specks of a grain pulled streaming into the
+## nozzle, and the few that slip off the column and fall), then every
+## vacuum with its number: the ones at rest first, the ones on the belt over
 ## them.
 func _draw_engines(now: float, shown: Array, alpha: float) -> void:
 	var fb := Face.FlatBuilder.new(_flat_cache)
 	var live: Array = []
 	for f: Dictionary in _flights:
 		var e := now - float(f.at)
-		if e >= PICK_FLY + SHARD_LIFE:
+		if e >= maxf(PICK_FLY + GRAIN_LAG, SPILL_LIFE):
 			continue
 		live.append(f)
-		_draw_shot(fb, f, e)
+		_draw_pull(fb, f, e)
 	_flights = live
 	var labels: Array = []
 	var order: Array = []
@@ -886,10 +900,10 @@ func _draw_engines(now: float, shown: Array, alpha: float) -> void:
 		var px := float(t[2])
 		var pos: Vector2 = t[0]
 		if not Motion.reduce:
-			# the kick of a shot, back from the way it points
-			var shot := now - float(_bump_at.get(e, -INF))
-			if shot >= 0.0 and shot < RECOIL:
-				pos -= Vector2.UP.rotated(float(t[1])) * px * RECOIL_PX * (1.0 - shot / RECOIL)
+			# a gulp as the grains go in
+			var gulp := now - float(_bump_at.get(e, -INF))
+			if gulp >= 0.0 and gulp < GULP:
+				px *= 1.0 + GULP_K * sin(PI * gulp / GULP)
 			var shook := now - float(_shiver_at.get(e, -INF))
 			if shook < Motion.SHIVER_TIME:
 				pos.x += Motion.shiver_offset(shook, 5.0)
@@ -940,50 +954,34 @@ func _draw_engines(now: float, shown: Array, alpha: float) -> void:
 	draw_string(font, post + Vector2(-tw * 0.5, (font.get_ascent(tfs) - font.get_descent(tfs)) * 0.5), tag,
 		HORIZONTAL_ALIGNMENT_LEFT, -1.0, tfs, Color(Pal.BAD if on >= State.ON_LOOP else Pal.TEXT, alpha))
 
-## One shot, `e` seconds after the cannon fired it.
-func _draw_shot(fb, f: Dictionary, e: float) -> void:
+## One grain pulled, `e` seconds on: its specks stream from where it lay
+## into the nozzle, speeding up as they go and wavering side to side, and
+## its spill slips off the column's foot and falls.
+func _draw_pull(fb, f: Dictionary, e: float) -> void:
+	var col: Color = _col[int(f.c)]
 	var to: Vector2 = f.to
+	var seen: Array = _seen.get(int(f.e), [])
+	if not seen.is_empty() and state.where[int(f.e)] == State.LOOP:
+		# the nozzle as the vacuum rolls on
+		to = (seen[0] as Vector2) + Vector2.UP.rotated(float(seen[1])) * float(seen[2]) * 0.42
 	var from: Vector2 = f.from
-	var dir: Vector2 = f.dir
-	var px := float(f.px)
-	var c := int(f.c)
-	var col: Color = _col[c]
-	if e < PICK_FLY:
-		fb.append(_blk[c], Transform2D(0.0, to))
-		var ck := px / UNIT
-		var ang := dir.angle() + PI * 0.5
-		for k in range(TRAIL, -1, -1):
-			var t := (e - k * TRAIL_STEP) / PICK_FLY
-			if t <= 0.0:
-				continue
-			fb.append(_cork, Transform2D(ang, Vector2(ck, ck), 0.0, from.lerp(to, t)),
-				Color.WHITE if k == 0 else Color(1.0, 1.0, 1.0, 0.5 / k))
-	else:
-		var v := (e - PICK_FLY) / BURST
-		if v < 1.0:
-			var k := 1.0 + BURST_GROW * v
-			fb.append(_blk[c], Transform2D(0.0, Vector2(k, k), 0.0, to), Color(1.0, 1.0, 1.0, 1.0 - v * v))
-			if v < BLINK:
-				var bk := _cell * k * Art.BLOCK / UNIT
-				fb.append(_square, Transform2D(0.0, Vector2(bk, bk), 0.0, to), Color(1.0, 1.0, 1.0, 0.85 * (1.0 - v / BLINK)))
-		var t := e - PICK_FLY
-		var fade := 1.0 - clampf((t / SHARD_LIFE - 0.6) / 0.4, 0.0, 1.0)
-		var shade := col.darkened(0.24)
-		for sh: Array in f.shards:
-			var vel: Vector2 = dir.rotated(float(sh[0])) * float(sh[1])
-			var at := to + vel * t + Vector2(0.0, 0.5 * SHARD_GRAVITY * t * t)
-			var s := float(sh[3]) * _cell / UNIT
-			fb.append(_square, Transform2D(float(sh[2]) * t, Vector2(s, s), 0.0, at),
-				Color(shade if sh[4] else col, fade))
-	# the muzzle: a flash, then a wisp of smoke drifting out
-	if e < FLASH:
-		var fk := px * FLASH_R / UNIT * (1.0 - e / FLASH)
-		fb.append(_disc, Transform2D(0.0, Vector2(fk, fk), 0.0, from + dir * px * 0.04), FLASH_COL)
-	if e < SMOKE:
-		var u := e / SMOKE
-		var sk := px * lerpf(SMOKE_R.x, SMOKE_R.y, u) / UNIT
-		var at := from + dir * px * (0.06 + 0.3 * u) + Vector2(0.0, -px * 0.12 * u)
-		fb.append(_disc, Transform2D(0.0, Vector2(sk, sk), 0.0, at), Color(SMOKE_COL, 0.55 * (1.0 - u) * (1.0 - u)))
+	var across := (to - from).normalized().orthogonal()
+	for g: Array in f.grains:
+		var t := (e - float(g[0])) / PICK_FLY
+		if t < 0.0:
+			fb.append(_square, Transform2D(0.0, Vector2(g[2], g[2]) / UNIT, 0.0, from + (g[1] as Vector2)), g[3])
+			continue
+		if t >= 1.0:
+			continue
+		var at := (from + (g[1] as Vector2)).lerp(to, t * t) + across * sin(t * PI * 2.0 + float(g[4])) * _cell * GRAIN_WAVE * (1.0 - t)
+		var k := float(g[2]) * (1.0 - 0.45 * t) / UNIT
+		fb.append(_square, Transform2D(0.0, Vector2(k, k), 0.0, at), g[3])
+	if e < SPILL_LIFE:
+		var fade := 1.0 - clampf((e / SPILL_LIFE - 0.5) / 0.5, 0.0, 1.0)
+		for g: Array in f.spill:
+			var at := from + (g[0] as Vector2) * e + Vector2(0.0, 0.5 * SPILL_GRAVITY * e * e)
+			var k := float(g[1]) / UNIT
+			fb.append(_square, Transform2D(0.0, Vector2(k, k), 0.0, at), Color(g[2], fade))
 
 # --- the pill, the toast and the run ---
 
@@ -999,7 +997,7 @@ func _draw_hud() -> void:
 		var text := pill_text()
 		var wide := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, PILL_FONT).x
 		var box := Vector2(wide + 52.0, PILL_H)
-		# the count changes with every cork: the plate only with its width
+		# the count changes with every grain: the plate only with its width
 		if _hud_shown == null or not is_equal_approx(_hud_wide, box.x):
 			var b := Face.Builder.new()
 			b.polygon(Face.Builder.round_rect(-box * 0.5 - Vector2.ONE * 2.0, box + Vector2.ONE * 4.0, box.y * 0.5 + 2.0), Pal.LINE)
@@ -1222,42 +1220,56 @@ func _tick() -> void:
 	_tick_time = _clock * (ENDGAME if _hurry and state.ready_engines().is_empty() else 1.0)
 	check_solved()
 
-## A cannon shoots the block it sees: the cork flies to it, the block
-## bursts where it stands and the cannon kicks back; the tick climbs the
-## run's scale.
+## A vacuum pulls the grain over it: the grain comes apart into specks that
+## stream into its nozzle, a few spill, the column over it falls a square
+## and the tick climbs the run's scale.
 func _on_pick(e: int, cell: int, n: int, now: float) -> void:
 	var w: int = state.w
-	_chunk_stale[(cell / w / CHUNK) * ceili(float(w) / CHUNK) + (cell % w) / CHUNK] = true
-	if not Motion.reduce:
+	var x := cell % w
+	_column_stale[x] = true
+	# the grain ids move as the state's grid did (`State._take`)
+	var j := cell
+	while j >= w:
+		_ids[j] = _ids[j - w]
+		j -= w
+	_ids[x] = -1
+	if Motion.reduce:
+		_fall.erase(x)
+	else:
+		var was := _fallen(x, now)
+		var speed := 0.0
+		if _fall.has(x):
+			speed = float(_fall[x][1]) + FALL_G * (now - float(_fall[x][2]))
+		_fall[x] = [was + _cell, speed, now]
 		var px := _loop_px
-		var to := cell_centre(cell)
-		# from the stop whose line it is: the cannon is drawn rolling up to it
 		var u := float(state.at[e])
-		var from := loop_at(u) + Vector2.UP.rotated(_heading(u)) * px * 0.5
-		var shards: Array = []
-		# the shards thin out as the air fills, so a frame never rebuilds
-		# hundreds of them
-		var many := SHARDS if _flights.size() < SHARDS_BUSY.x else (2 if _flights.size() < SHARDS_BUSY.y else 0)
+		var from := cell_centre(cell)
+		var to := loop_at(u) + Vector2.UP.rotated(_heading(u)) * px * 0.42
+		var col: Color = _col[state.colour[e]]
+		# the specks thin out as the air fills, so a frame never rebuilds
+		# thousands of them
+		var many := GRAINS if _flights.size() < SHARDS_BUSY.x else (3 if _flights.size() < SHARDS_BUSY.y else 1)
+		var grains: Array = []
 		for k in many:
-			shards.append([randf_range(-SHARD_SPREAD, SHARD_SPREAD), randf_range(SHARD_SPEED.x, SHARD_SPEED.y),
-				randf_range(-SHARD_SPIN, SHARD_SPIN), randf_range(SHARD_SIZE.x, SHARD_SIZE.y), k % 2 == 1])
-		_flights.append({"c": state.colour[e], "to": to, "px": px, "at": now, "from": from,
-			"dir": (to - from).normalized(), "shards": shards})
-		_bump_at[e] = now
-	# fifty corks a second are one shot heard and one knock in PICK_GAP
-	# (fx.cue holds the sound but knocks every time it is asked): the cannon's
-	# sound as the cork leaves, with no knock of its own, and the block's pop
-	# with the tick as it bursts
+			var tone := col.lightened(randf_range(0.0, 0.3)) if k % 2 == 0 else col.darkened(randf_range(0.08, 0.3))
+			grains.append([randf_range(0.0, GRAIN_LAG), Vector2(randf_range(-0.42, 0.42), randf_range(-0.42, 0.42)) * _cell,
+				maxf(GRAIN_MIN, randf_range(GRAIN_SIZE.x, GRAIN_SIZE.y) * _cell), tone, randf_range(0.0, TAU)])
+		var spill: Array = []
+		for k in (SPILL if _flights.size() < SHARDS_BUSY.x else 0):
+			var dir := Vector2.from_angle(randf_range(-PI * 0.9, -PI * 0.1)) * Vector2(1.0, -0.6)
+			spill.append([dir * randf_range(SPILL_SPEED.x, SPILL_SPEED.y),
+				maxf(GRAIN_MIN, randf_range(GRAIN_SIZE.x, GRAIN_SIZE.y) * _cell * 0.8), col.darkened(randf_range(0.0, 0.2))])
+		_flights.append({"c": state.colour[e], "e": e, "from": from, "to": to, "at": now, "grains": grains, "spill": spill})
+		_bump_at[e] = now + PICK_FLY * 0.5
+	# fifty grains a second are one pull heard and one knock in PICK_GAP
+	# (fx.cue holds the sound but knocks every time it is asked): the pop
+	# and its tick as the specks go into the nozzle
 	if now - _pick_cue_at >= PICK_GAP:
 		_pick_cue_at = now
 		var step: int = RUN_STEP[clampi(state.band, 0, RUN_STEP.size() - 1)]
 		var semis: int = RUN_SCALE[mini((n - 1) / step, RUN_SCALE.size() - 1)]
-		var buzzed: bool = fx.buzzes
-		fx.buzzes = false
-		fx.cue("shoot", randf_range(0.94, 1.06))
-		fx.buzzes = buzzed
 		var pitch := pow(2.0, semis / 12.0) * randf_range(TICK_VARY.x, TICK_VARY.y)
-		_after(0.0 if Motion.reduce else PICK_FLY, fx.cue.bind("pop", pitch))
+		_after(0.0 if Motion.reduce else PICK_FLY * 0.6, fx.cue.bind("pop", pitch))
 	_bump_pill()
 	if n >= COMBO_FROM:
 		_combo_popped = _combo_n < COMBO_FROM or _combo_out_at > -INF or _combo_e != e
@@ -1272,7 +1284,7 @@ func _on_pick(e: int, cell: int, n: int, now: float) -> void:
 			var seen: Array = _seen.get(e, [])
 			if not seen.is_empty():
 				fx.confetti(seen[0], 12, _lane * 3.0)
-	_busy_for(PICK_FLY + SHARD_LIFE + 0.1)
+	_busy_for(PICK_FLY + GRAIN_LAG + 0.3)
 
 ## A run is over: a long one ends on its two notes and a sparkle.
 func _on_run_end(e: int, n: int) -> void:
@@ -1432,7 +1444,7 @@ func _on_solved() -> void:
 	_combo_n = 0
 	_solved_at = now
 	_final_taps = state.taps
-	var lag := 0.0 if Motion.reduce else PICK_FLY + SHARD_LIFE + POP + 0.1
+	var lag := 0.0 if Motion.reduce else PICK_FLY + GRAIN_LAG + POP + 0.1
 	_win_pop_at = now + lag
 	_blocks_stale = true
 	_after(lag, fx.cue.bind("solved"))
@@ -1612,7 +1624,7 @@ func _process(delta: float) -> void:
 		_frac = clampf((now - _tick_from) / _tick_time, 0.0, 1.0)
 		_request()
 	elif now < _anim_until or now - _slid_at < WIN_SLIDE + 0.1 or not _from.is_empty() \
-			or not _flights.is_empty() or not _pops.is_empty():
+			or not _flights.is_empty() or not _pops.is_empty() or not _fall.is_empty():
 		_request()
 	var since := now - _opened - Motion.ENTER_DELAY
 	if since < Motion.DROP_FADE + 0.1 or now - _pill_bump < Motion.BUMP_TIME + 0.1 \

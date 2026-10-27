@@ -1,8 +1,8 @@
 extends Control
 
-## One page of Toy Cannons' tutorial (the board built as Toy Train: an
-## engine here is a cannon, the siding its tray, the shed the toy box): a
-## small rug played by the board itself.
+## One page of Sand Sweep's tutorial (the board built as Toy Train: an
+## engine here is a toy vacuum, the siding its tray, the shed the toy box):
+## a small rug of sand played by the board itself.
 ## The page holds a `Small` -- train2d.gd with its sounds, buzzes, toast,
 ## pill, party and seal taken out -- laid with a hand-made rug, and plays
 ## the lesson on a loop through the board's own input path (a press on an
@@ -11,8 +11,8 @@ extends Control
 ##
 ## - SEND: the front engine tapped goes round and takes its colour; full, it
 ##   goes home.
-## - LINE: an engine sees only the nearest block of a line, so the colour on
-##   the outside goes first and the one behind it comes into sight.
+## - LINE: an engine pulls only from the foot of the sand, so the colour at
+##   the bottom goes first and the one over it falls into reach.
 ## - SIDING: an engine sent too early comes round with room to spare and
 ##   waits in the siding, to be tapped again.
 ## - JAM (Insane): the same, under the warning that a full siding ends the
@@ -37,13 +37,12 @@ const LEGEND := {"r": "red", "g": "green", "y": "yellow"}
 ## timed).
 const LESSON_TICK := 0.085
 
-## Red along the top and green under it: the red engine fills on its way
-## back along the top, the green one takes the rest. [rows, engines as
+## Green over a row of red at the foot: the red engine fills in one lap,
+## the green falls, and the green one pulls it in two. [rows, engines as
 ## [letter, load, column], columns].
-const PLAIN := [["rrrr", "gggg", "gggg"], [["r", 4, 0], ["g", 8, 1]], 2]
-## One red block inside a ring of green: red sees nothing until green has
-## gone round.
-const RINGED := [["ggg", "grg", "ggg"], [["r", 1, 0], ["g", 8, 1]], 2]
+const PLAIN := [["gggg", "gggg", "rrrr"], [["r", 4, 0], ["g", 8, 1]], 2]
+## Red over green: red is out of reach until green has gone.
+const RINGED := [["rrr", "ggg"], [["r", 3, 0], ["g", 3, 1]], 2]
 
 var lesson: int = Lesson.SEND
 
