@@ -15,9 +15,10 @@ extends Control
 ##   off from every edge, and the pen is closed.
 ## - LEAN: a stream and two boulders already fence most of the field; four
 ##   bales in the gaps pen all nine cells inside.
-## - TARGET: a closed pen of one under a target of three, and Submit shakes
-##   the horse's head; the bales moved out for a pen of four, and Submit ends
-##   the day.
+## - TARGET: a closed pen of one, worth one star; the bales moved out for a
+##   pen of four, three stars, and Submit ends the day. (Until 2026-10-27 a
+##   Submit under the day's target was refused here; any closed pen goes in
+##   now, and the stars rate it.)
 ## - APPLES: a pen that leaves the apple out, then one bale moved to take it
 ##   in.
 ## - BEES: the golden apple and the hive both penned, then the bale moved to
@@ -76,9 +77,9 @@ const PEN_STRAY := 6
 ##      .  S  .  .  .
 const LEAN_MEADOW := {"w": 5, "h": 5, "horse": 12, "water": [0, 1, 2, 3, 5, 10, 15],
 	"stones": [9, 21], "budget": 4, "best": 9, "sol": [14, 19, 22, 23]}
-## TARGET: the best pen is four (14, 22, 23), so the target is three. Bales
-## on 13 and 17 box the horse into a pen of one; lifted, and the three laid
-## further out, four.
+## TARGET: the best pen is four (14, 22, 23), so two stars take three and
+## three take four. Bales on 13 and 17 box the horse into a pen of one, one
+## star; lifted, and the three laid further out, four.
 ##
 ##      .  .  .  .  .
 ##      .  W  W  W  .
@@ -165,6 +166,9 @@ class Meadow extends "res://puzzles/horse2d.gd":
 		pass
 
 	func _speak() -> void:
+		pass
+
+	func _stroll(_at: float) -> void:
 		pass
 
 	## The page is short: the field takes all of it under the pills.
@@ -399,8 +403,7 @@ func _start() -> void:
 			_tap(22, "", "")
 			_tap(23, "", "HTP_HP_LEAN_DONE_CAP", 3.4)
 		Lesson.TARGET:
-			_press_chip("HTP_HP_SUBMIT_CAP", _submit)
-			_say_for("HTP_HP_NOTYET_CAP", 2.0)
+			_say_for("HTP_HP_SMALL_CAP", 1.6)
 			_tap(13, "HTP_HP_BIGGER_CAP", "", 0.3)
 			_tap(17, "", "", 0.3)
 			_tap(14, "", "")

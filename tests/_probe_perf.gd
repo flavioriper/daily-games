@@ -4134,7 +4134,7 @@ func _moves_horse() -> Array:
 
 ## Horse Pen's buzzes: the horse patted, water tapped, a bale dropped and
 ## lifted, Undo, Submit on an open pen, the four cells round the horse baled
-## (the pen closing, under the target) and Submit on that, a hint, the stock
+## (the pen closing, one star), a hint, the stock
 ## spent and one more tapped, Reset. The plain run then lays the answer (the
 ## target reached, the best pen) and submits (the win, the seal).
 func _buzz_horse() -> void:
@@ -4177,10 +4177,9 @@ func _buzz_horse() -> void:
 			ring += 1
 			await create_timer(0.4).timeout
 	await pause.call()
-	_buzzed("%d bales round the horse (closed %s)" % [ring, st.closed()])
-	_host._on_check()
-	await pause.call()
-	_buzzed("Submit, closed %s score %d" % [st.closed(), st.score()])
+	_buzzed("%d bales round the horse (closed %s, %d stars)" % [ring, st.closed(), st.stars()])
+	# (Any closed pen submits since 2026-10-27, so no Submit here: it would end
+	# the day on a pen of one.)
 	if _puzzle.capabilities().has("hint") and _puzzle.hints_left() > 0:
 		_host._on_hint()
 		await pause.call()

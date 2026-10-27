@@ -41,7 +41,8 @@
   Insane is **Tunnels**, 10 by 12, 11 bales, three hives and a tunnel, 90%,
   with the moves counted: a bale laid or lifted costs one and the budget is
   the stock and three more (`State.MOVES_SLACK`,
-  `docs/agents/flat-screens.md`, "Insane counts moves"). No Undo and no bulb
+  `docs/agents/flat-screens.md`, "Insane counts moves"). (Stale since 2026-10-12: no board counts moves on Insane,
+  `MOVES_SLACK` is all zero, and the bulb is back there since 2026-10-13.) No Undo and no bulb
   there; **Submit stays on Insane**, since it is the ending and says nothing
   the score pill does not. Out of moves with no pen worth submitting is the
   loss; out of moves with one, the Submit is still the player's to press.
@@ -127,3 +128,75 @@ binds on Medium to Insane; the pills stay on the margin.
   horse` passes.
 - Decided for the user, unconfirmed: Submit kept; a small yard (the field
   comes to 190 of the bottom). Owed: a phone, the level slide.
+
+### Made fun (2026-10-27)
+
+The user: "make horse pen experience way better to play, and game itself
+way funnier to play, right now nobody likes it", autonomous, push when done.
+
+**Measured first** (`tests/_probe_hp_fun.gd`, headless, 60 meadows a band
+out of the bank, three players: a *plugger* who lays each bale where it
+leaves the fewest ways out and stops when the pen shuts; a *casual*
+`Gen.search` with a short look, 8 pens grown and 60 steps; a *keen* one
+with the phone's own fallback look, 40 and 400). Under the old rule,
+Submit refused until the pen reached the target (80/85/90/90% of the best
+known): the casual player finished the day 53/37/28/24 of 60 on Easy to
+Insane, the keen one 59/48/47/37, the plugger 17/10/6/10, and the plugger
+did not close a pen at all on half the days (30/24/19/20 closed). So on
+Hard and Insane a fair player was refused on most days, Submit after
+Submit, with the bulb the only way through.
+
+**Taken from the daily it follows** (its own design notes, enclose.horse's
+blog, "How we design daily puzzles" and "by the numbers"; players on
+Tildes): there, any closed pen submits and is *graded* (diamond at the
+best, gold 90-99%, silver 70-89%, bronze 50-69%), the header counts walls
+and score against the best, tapping the horse shows its reach, and after
+the submission the optimal pen is shown: "a poor score should prompt 'ah,
+I see what I should have done'".
+
+- **Any closed pen submits; stars grade it** (`State.stars`, `need`,
+  `STAR_SHARES` [0.7, 0.9]): one star for a closed pen worth a point, two
+  at 70% of the best known, three at 90%. `state.target` is now what three
+  stars take, so `day_dict` and `_win.gd` read on. `submit()` still says
+  OPEN for an open pen (the gaps blush, the head shakes) and SMALL only for
+  a pen worth nothing (a hive in a pen of a few cells, `HP_SUBMIT_TINY`).
+  The casual player now finishes 60/56/52/54 days of 60 (stars 1/2/3/best
+  60-55-48-40, 56-44-33-25, 52-36-27-15, 54-37-24-13). Easy to Hard still
+  cannot be lost; Insane has no counter, so nothing can.
+- **The right-hand pill**: open, it counts the ways out (`HP_PILL_WAYS_*`,
+  the edge cells the horse reaches), so each bale that closes one shows;
+  closed, the score and three stars from `ui/flat/star_line.gd` (Market's
+  and Super Slider's), a star won popping in (`star_up`, a ring), one lost
+  falling off (`star_down`). Gold ink and the sun star at the best, leaf at
+  three stars, as before. The sprout's line names the next star
+  (`HP_STAR2_*`, `HP_STAR3_*`), and `HP_READY` names the best at three.
+- **The horse tests the fence.** Left alone `IDLE_ESCAPE` (3.5 s) on an
+  open pen with a bale down, it trots (`WALK_STEP` a cell, a hoof's pop a
+  cell, `trot`) by plain steps (`State.path_out`, never through a tunnel)
+  to the nearest way out, leans over the edge, nickers (`peek`), the cell
+  blushes and the toast says one of six lines (`HP_ESCAPE_0..5`), then it
+  trots back. In a closed pen it waits `IDLE_GRAZE` (6 s) and ambles to the
+  golden apple, an apple or the pen's far corner (`path_graze`) and nibbles.
+  `STROLLS` (2) a pen, so a pen left alone goes quiet; any press or change
+  sends it home in `HOME_TIME`, and the tap still lands. Off under reduce
+  motion, and in the tutorial's meadows. It is drawn where `_walk_pose`
+  puts it; `state.horse` never moves, and a pat is still its home cell.
+- **The best pen after the win**: a day won short of the best shows the
+  bales of the best pen known that the player did without, in older straw
+  at `GHOST_ALPHA`, popping in one by one from `GHOST_AT` (after the
+  flowers); `HP_WIN_SUB_GHOST` says the faint ones are its bales. A
+  reopened day shows them too.
+- Tutorial: the TARGET page is "Earn the stars" -- the pen of one is one
+  star, the bales moved out make it three, Submit ends the day (the refused
+  Submit is gone with `HTP_HP_SUBMIT_CAP` and `HTP_HP_NOTYET_CAP`). Rules,
+  `HP_TIP_BIGGER`, the share line (stars) rewritten; `HP_PILL_OPEN`,
+  `HP_SHORT_*` and `HP_SUBMIT_SMALL_*` removed. en/pt/es.
+- Not changed: the bank (`horse_gen.gd`'s rules are as they were, so
+  `content/horse.json` still proves), the bulb, the bands.
+- Harness: `tests/_shot_horse.gd` `stroll` (the walk out, the peek, the
+  graze, a tap mid-walk) and `notyet` (an open Submit, then a pen of one
+  submitted: one star, the win, the ghosts).
+- **Mine, the user's to call**: the ladder (one star for any closed pen, 70
+  and 90%), Submit on a one-star pen with no second ask, the ways-out count
+  being edge cells rather than holes, the six lines, the strolls' timing and
+  count, the ghosts. Not on a phone; the four new cues unheard.

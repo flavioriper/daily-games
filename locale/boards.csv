@@ -2295,7 +2295,7 @@ HTP_GF_SLOPE_CAP,"Round it, and the slope helps","Desvie, e a rampa ajuda","Rod�
 HTP_GF_SHUT_CAP,This gate is shut for this putt,Este portão está fechado nesta tacada,Esta cancela está cerrada en este golpe
 HTP_GF_OPEN_CAP,Now it is open: through,Agora abriu: passe,Ahora está abierta: pasa
 HTP_GF_GOLD_CAP,Pull until your dots turn gold,Puxe até os pontinhos ficarem dourados,Tira hasta que los puntitos se pongan dorados
-HP_RULES,"Tap grass to drop a hay bale, and tap a bale to lift it. The horse walks up, down, left and right, never through bales, boulders or water. The pale wheat is where it can still go: cut it off from every edge of the field and the pen is closed. Every square of the pen counts one.\n\nYou have %d bales. Close a pen worth %d or more and press Submit. A bigger pen is a better day.","Toque na grama para soltar um fardo de feno, e toque num fardo para tirá-lo. O cavalo anda para cima, para baixo e para os lados, nunca através de fardos, pedras ou água. O trigo claro mostra aonde ele ainda chega: isole-o de todas as bordas do campo e o cercado está fechado. Cada casa do cercado vale um.\n\nVocê tem %d fardos. Feche um cercado que valha %d ou mais e toque em Entregar. Quanto maior o cercado, melhor o dia.","Toca la hierba para soltar un fardo de heno, y toca un fardo para quitarlo. El caballo camina hacia arriba, abajo y a los lados, nunca a través de fardos, rocas o agua. El trigo claro muestra adónde aún llega: sepáralo de todos los bordes del campo y el corral queda cerrado. Cada casilla del corral vale uno.\n\nTienes %d fardos. Cierra un corral que valga %d o más y toca Entregar. Cuanto más grande el corral, mejor el día."
+HP_RULES,"Tap grass to drop a hay bale, and tap a bale to lift it. The horse walks up, down, left and right, never through bales, boulders or water. The pale wheat is where it can still go: cut it off from every edge of the field and the pen is closed. Every square of the pen counts one.\n\nYou have %d bales. Any closed pen can be submitted, and Submit ends the day. Stars rate it: one for a closed pen, two at %d, three at %d. The best pen we know is worth %d.","Toque na grama para soltar um fardo de feno, e toque num fardo para tirá-lo. O cavalo anda para cima, para baixo e para os lados, nunca através de fardos, pedras ou água. O trigo claro mostra aonde ele ainda chega: isole-o de todas as bordas do campo e o cercado está fechado. Cada casa do cercado vale um.\n\nVocê tem %d fardos. Qualquer cercado fechado pode ser entregue, e Entregar encerra o dia. As estrelas o avaliam: uma por um cercado fechado, duas a partir de %d, três a partir de %d. O melhor cercado que conhecemos vale %d.","Toca la hierba para soltar un fardo de heno, y toca un fardo para quitarlo. El caballo camina hacia arriba, abajo y a los lados, nunca a través de fardos, rocas o agua. El trigo claro muestra adónde aún llega: sepáralo de todos los bordes del campo y el corral queda cerrado. Cada casilla del corral vale uno.\n\nTienes %d fardos. Cualquier corral cerrado se puede entregar, y Entregar termina el día. Las estrellas lo califican: una por un corral cerrado, dos desde %d, tres desde %d. El mejor corral que conocemos vale %d."
 HP_RULES_APPLES,An apple inside the pen counts three more.,Uma maçã dentro do cercado vale três a mais.,Una manzana dentro del corral vale tres más.
 HP_RULES_GOLD,"The golden apple counts ten more. A beehive inside the pen takes five away, so keep the bees out if you can.","A maçã dourada vale dez a mais. Uma colmeia dentro do cercado tira cinco, então deixe as abelhas de fora se puder.","La manzana dorada vale diez más. Una colmena dentro del corral quita cinco, así que deja fuera a las abejas si puedes."
 HP_RULES_TUNNEL,"Tunnels: the horse walks in at one mouth and out at the other with the same ribbon, so both ends have to be inside the pen, or neither.","Túneis: o cavalo entra por uma boca e sai pela outra de mesma fita, então as duas pontas precisam ficar dentro do cercado, ou nenhuma.","Túneles: el caballo entra por una boca y sale por la otra de la misma cinta, así que los dos extremos tienen que quedar dentro del corral, o ninguno."
@@ -2307,19 +2307,22 @@ HP_LVL_1,"8 × 10, 8 bales, apples","8 × 10, 8 fardos, maçãs","8 × 10, 8 far
 HP_LVL_2,"9 × 11, golden apple and bees","9 × 11, maçã dourada e abelhas","9 × 11, manzana dorada y abejas"
 HP_LVL_3,"Tunnels: 10 × 12","Túneis: 10 × 12","Túneles: 10 × 12"
 HP_SUBMIT,Submit,Entregar,Entregar
-HP_PILL_OPEN,Open · %d,Aberto · %d,Abierto · %d
+HP_PILL_WAYS_ONE,1 way out,1 saída,1 salida
+HP_PILL_WAYS_N,%d ways out,%d saídas,%d salidas
 HP_TIP_BALE,Tap grass to drop a hay bale. Tap a bale to lift it.,Toque na grama para soltar um fardo. Toque num fardo para tirá-lo.,Toca la hierba para soltar un fardo. Toca un fardo para quitarlo.
 HP_TIP_WHEAT,The pale wheat is everywhere the horse can still walk.,O trigo claro é todo lugar aonde o cavalo ainda chega.,El trigo claro es todo lugar adonde el caballo aún llega.
 HP_TIP_WATER,Water and boulders are free fence. Lean your pen on them.,Água e pedras são cerca de graça. Apoie seu cercado nelas.,El agua y las rocas son cerca gratis. Apoya tu corral en ellas.
-HP_TIP_BIGGER,"Once the pen is closed, try for a bigger one before you submit.","Com o cercado fechado, tente um maior antes de entregar.","Con el corral cerrado, prueba uno más grande antes de entregar."
+HP_TIP_BIGGER,A closed pen earns stars. Move bales for a bigger one before you submit.,Um cercado fechado ganha estrelas. Mude fardos para um maior antes de entregar.,Un corral cerrado gana estrellas. Mueve fardos para uno mayor antes de entregar.
 HP_TIP_APPLE,An apple inside the pen counts three more.,Uma maçã dentro do cercado vale três a mais.,Una manzana dentro del corral vale tres más.
 HP_TIP_GOLD,Golden apple in: ten more. Beehive in: five fewer.,Maçã dourada dentro: dez a mais. Colmeia dentro: cinco a menos.,Manzana dorada dentro: diez más. Colmena dentro: cinco menos.
 HP_TIP_TUNNEL,A tunnel's two mouths are one step apart for the horse.,As duas bocas de um túnel ficam a um passo uma da outra para o cavalo.,Las dos bocas de un túnel están a un paso una de otra para el caballo.
 HP_OPEN,The horse can still reach the edge. Close the gaps.,O cavalo ainda chega à borda. Feche as passagens.,El caballo aún llega al borde. Cierra los huecos.
 HP_OPEN_STOCK,"No bales left, and the horse can still get out. Lift one and try elsewhere.",Acabaram os fardos e o cavalo ainda sai. Tire um e tente em outro lugar.,No quedan fardos y el caballo aún sale. Quita uno y prueba en otro sitio.
-HP_SHORT_ONE,Penned! One more square to reach the target.,Cercado! Falta uma casa para a meta.,¡Encerrado! Falta una casilla para la meta.
-HP_SHORT_N,Penned! %d more to reach the target.,Cercado! Faltam %d para a meta.,¡Encerrado! Faltan %d para la meta.
-HP_READY,"That pen is worth the target. Submit, or try for a bigger one.","Esse cercado vale a meta. Entregue, ou tente um maior.","Ese corral vale la meta. Entrega, o prueba uno más grande."
+HP_STAR2_ONE,Penned! One more square for a second star.,Cercado! Mais uma casa para a segunda estrela.,¡Encerrado! Una casilla más para la segunda estrella.
+HP_STAR2_N,Penned! %d more for a second star.,Cercado! Mais %d para a segunda estrela.,¡Encerrado! %d más para la segunda estrella.
+HP_STAR3_ONE,Two stars! One more square for the third.,Duas estrelas! Mais uma casa para a terceira.,¡Dos estrellas! Una casilla más para la tercera.
+HP_STAR3_N,Two stars! %d more for the third.,Duas estrelas! Mais %d para a terceira.,¡Dos estrellas! %d más para la tercera.
+HP_READY,"Three stars! Submit, or chase the best we know: %d.","Três estrelas! Entregue, ou persiga o melhor que conhecemos: %d.","¡Tres estrellas! Entrega, o persigue el mejor que conocemos: %d."
 HP_BEST,The best pen we know of. Submit it!,O melhor cercado que conhecemos. Entregue!,El mejor corral que conocemos. ¡Entrégalo!
 HP_REFUSE_WATER,A bale would float away there.,Um fardo sairia boiando dali.,Un fardo se iría flotando de ahí.
 HP_REFUSE_STONE,That boulder is already in the way.,Essa pedra já está no caminho.,Esa roca ya estorba el paso.
@@ -2330,12 +2333,18 @@ HP_REFUSE_PINNED,The bulb's bale stays where it is.,O fardo da lâmpada fica ond
 HP_HINTED,"One bale of our best pen, in older straw. It stays put.","Um fardo do nosso melhor cercado, de palha mais velha. Ele fica ali.","Un fardo de nuestro mejor corral, de paja más vieja. Se queda ahí."
 HP_HINT_NONE,Every bale of our best pen is already down.,Todos os fardos do nosso melhor cercado já estão no lugar.,Todos los fardos de nuestro mejor corral ya están puestos.
 HP_SUBMIT_OPEN,Not yet: the horse still gets out where the grass blushes.,Ainda não: o cavalo ainda sai por onde a grama cora.,Todavía no: el caballo aún sale por donde la hierba se sonroja.
-HP_SUBMIT_SMALL_ONE,"Closed, but one square short of the target.","Fechado, mas falta uma casa para a meta.","Cerrado, pero falta una casilla para la meta."
-HP_SUBMIT_SMALL_N,"Closed, but %d short of the target.","Fechado, mas faltam %d para a meta.","Cerrado, pero faltan %d para la meta."
+HP_SUBMIT_TINY,That pen holds nothing worth having. Make it bigger first.,Esse cercado não guarda nada que valha. Aumente-o antes.,Ese corral no guarda nada que valga. Agrándalo antes.
+HP_ESCAPE_0,Just checking the gate…,Só conferindo a porteira…,Solo reviso la tranquera…
+HP_ESCAPE_1,"Ooh, the grass is greener out here.","Ih, a grama aqui fora é mais verde.","Uy, la hierba de aquí afuera es más verde."
+HP_ESCAPE_2,Bye! …just kidding. Unless?,Tchau! …brincadeira. Ou não?,¡Adiós! …es broma. ¿O no?
+HP_ESCAPE_3,"This way's open, by the way.","Por aqui está aberto, viu?","Por aquí está abierto, ¿eh?"
+HP_ESCAPE_4,Freedom smells like clover.,A liberdade cheira a trevo.,La libertad huele a trébol.
+HP_ESCAPE_5,Nobody's watching this gap…,Ninguém está de olho nessa passagem…,Nadie vigila este hueco…
 HP_RESET,A bare meadow again.,O campo limpo de novo.,El prado limpio otra vez.
 HP_WIN,"Penned, with room to graze.","Cercado, e com pasto de sobra.","Encerrado, y con pasto de sobra."
 HP_WIN_SUB,A pen of %d. The best we know is %d.,Um cercado de %d. O melhor que conhecemos é %d.,Un corral de %d. El mejor que conocemos es %d.
 HP_WIN_SUB_BEST,A pen of %d: the best we know!,Um cercado de %d: o melhor que conhecemos!,Un corral de %d: ¡el mejor que conocemos!
+HP_WIN_SUB_GHOST,A pen of %d. The best we know is %d: its bales are the faint ones.,Um cercado de %d. O melhor que conhecemos é %d: os fardos dele são os apagados.,Un corral de %d. El mejor que conocemos es %d: sus fardos son los tenues.
 HP_OUT,The horse dozes off for now.,O cavalo cochilou por agora.,El caballo se echa una siesta por ahora.
 HP_SEAL_BEST,Best pen,Melhor cercado,Mejor corral
 HP_SEAL_TUNNELS,Tunnels,Túneis,Túneles
@@ -2343,8 +2352,8 @@ HTP_HP_PEN,Close the pen,Feche o cercado,Cierra el corral
 HTP_HP_PEN_BODY,Tap grass to drop a hay bale; tap a bale to lift it. The pale wheat is everywhere the horse can still walk. Cut it off from every edge and the pen is closed.,Toque na grama para soltar um fardo; toque num fardo para tirá-lo. O trigo claro é todo lugar aonde o cavalo ainda chega. Separe-o de todas as bordas e o cercado se fecha.,Toca la hierba para soltar un fardo; toca un fardo para quitarlo. El trigo claro es todo lugar adonde el caballo aún llega. Sepáralo de todos los bordes y el corral se cierra.
 HTP_HP_LEAN,Lean on the land,Apoie-se no terreno,Apóyate en el terreno
 HTP_HP_LEAN_BODY,"Water and boulders are fence you get for free. Lean the pen on them and close only the gaps in between, and your bales go much further.","Água e pedras são cerca de graça. Apoie o cercado nelas e feche só os vãos entre elas, e seus fardos rendem muito mais.","El agua y las rocas son cerca gratis. Apoya el corral en ellas y cierra solo los huecos entre ellas, y tus fardos rinden mucho más."
-HTP_HP_TARGET,Reach the target,Alcance a meta,Alcanza la meta
-HTP_HP_TARGET_BODY,"The pill on the right shows your pen against the day's target. Closed and worth the target, Submit ends the day. A bigger pen is better: the win names the best we know.","O marcador da direita mostra seu cercado e a meta do dia. Fechado e valendo a meta, Entregar encerra o dia. Um cercado maior é melhor: a vitória diz o melhor que conhecemos.","El marcador de la derecha muestra tu corral y la meta del día. Cerrado y valiendo la meta, Entregar termina el día. Un corral mayor es mejor: la victoria dice el mejor que conocemos."
+HTP_HP_TARGET,Earn the stars,Ganhe as estrelas,Gana las estrellas
+HTP_HP_TARGET_BODY,"Any closed pen can be submitted, and Submit ends the day. The pill on the right shows the pen's score and its stars: the bigger the pen, the more stars. The win shows the best pen we know.","Qualquer cercado fechado pode ser entregue, e Entregar encerra o dia. O marcador da direita mostra os pontos do cercado e suas estrelas: quanto maior o cercado, mais estrelas. A vitória mostra o melhor cercado que conhecemos.","Cualquier corral cerrado se puede entregar, y Entregar termina el día. El marcador de la derecha muestra los puntos del corral y sus estrellas: cuanto más grande el corral, más estrellas. La victoria muestra el mejor corral que conocemos."
 HTP_HP_APPLES,Apples count,Maçãs contam,Las manzanas cuentan
 HTP_HP_APPLES_BODY,"Every square of the pen counts one. An apple inside the pen counts three more, so it is worth stretching the fence around it.","Cada casa do cercado vale um. Uma maçã dentro do cercado vale três a mais, então compensa esticar a cerca em volta dela.","Cada casilla del corral vale uno. Una manzana dentro del corral vale tres más, así que conviene estirar la cerca a su alrededor."
 HTP_HP_BEES,"Gold in, bees out","Ouro dentro, abelhas fora","Oro dentro, abejas fuera"
@@ -2362,11 +2371,9 @@ HTP_HP_CLOSED_CAP,No way out: the pen is closed,Sem saída: o cercado está fech
 HTP_HP_LEAN_START_CAP,Water and boulders already fence it,Água e pedras já servem de cerca,El agua y las rocas ya hacen de cerca
 HTP_HP_LEAN_GAPS_CAP,Close only the gaps between them,Feche só os vãos entre elas,Cierra solo los huecos entre ellas
 HTP_HP_LEAN_DONE_CAP,"Four bales, a pen of nine","Quatro fardos, um cercado de nove","Cuatro fardos, un corral de nueve"
-HTP_HP_SMALL_CAP,"Closed: a pen of 1, and the target is 3","Fechado: um cercado de 1, e a meta é 3","Cerrado: un corral de 1, y la meta es 3"
-HTP_HP_SUBMIT_CAP,Submit now?,Entregar agora?,¿Entregar ya?
-HTP_HP_NOTYET_CAP,Not yet: the pen is too small,Ainda não: o cercado é pequeno demais,Todavía no: el corral es muy pequeño
+HTP_HP_SMALL_CAP,"Closed: a pen of 1, one star","Fechado: um cercado de 1, uma estrela","Cerrado: un corral de 1, una estrella"
 HTP_HP_BIGGER_CAP,Move the bales for a bigger pen,Mude os fardos para um cercado maior,Mueve los fardos para un corral más grande
-HTP_HP_WORTH_CAP,A pen of 4: worth the target,Um cercado de 4: vale a meta,Un corral de 4: vale la meta
+HTP_HP_WORTH_CAP,A pen of 4: three stars,Um cercado de 4: três estrelas,Un corral de 4: tres estrellas
 HTP_HP_DAY_CAP,Submit ends the day,Entregar encerra o dia,Entregar termina el día
 HTP_HP_APPLE_START_CAP,One bale to go. Where?,Falta um fardo. Onde?,Falta un fardo. ¿Dónde?
 HTP_HP_APPLE_OUT_CAP,"A pen of 6, and the apple left out","Um cercado de 6, e a maçã ficou de fora","Un corral de 6, y la manzana quedó fuera"

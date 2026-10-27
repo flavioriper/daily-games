@@ -8,7 +8,10 @@ extends SceneTree
 ## Modes: `rest` (the entrance and the bare field); `play` (the answer's
 ## bales one at a time: the wheat shrinking, the pen closing, the pills);
 ## `refuse` (water, a boulder, the horse, then the stock spent); `notyet`
-## (Submit on an open pen, then on a closed one under the target); `hint`;
+## (Submit on an open pen, then a pen short of the best submitted: its
+## stars, the win, the best pen's faint bales); `stroll` (half the
+## answer laid and left alone: the horse trots to a way out and peeks; the
+## rest laid: it wanders off to graze; a tap mid-walk sends it home); `hint`;
 ## `solve` (the answer, Submit, the win); `out` (Insane: bales laid and
 ## lifted until the moves are gone, the card, Try again); `reset`;
 ## `restore` (a day reopened already played).
@@ -175,13 +178,54 @@ func _script() -> void:
 			_at(1.75, _shot)
 			_at(1.95, _shot)
 			_at(2.6, func() -> void:
-				# The smallest pen there is: the four cells round the horse.
-				for k: int in st.m.nb[st.horse]:
-					if st.bare(k):
-						_tap(k))
-			_at(3.4, func() -> void: _puzzle.check())
+				# A pen short of the best: what a short search finds (seeds
+				# tried until one is), laid through the input.
+				var Gen = load("res://puzzles/horse_gen.gd")
+				for seed in 40:
+					var rng := RandomNumberGenerator.new()
+					rng.seed = seed
+					var found: Dictionary = Gen.search(rng, st.m, st.budget, 4, 20)
+					if not found.is_empty() and int(found.score) < st.best:
+						print("notyet: a pen of ", found.score, " against ", st.best)
+						for k: int in found.walls:
+							_tap(k)
+						return)
+			_at(3.4, func() -> void: _host._on_check())
 			_at(3.6, _shot)
-			_end = 4.6
+			_at(5.4, _shot)
+			_at(5.6, _shot)
+			_at(6.4, _shot)
+			_end = 7.0
+		"stroll":
+			var half: int = maxi(1, sol.size() / 2)
+			var t := 1.4
+			for k in half:
+				_at(t, _tap.bind(int(sol[k])))
+				t += 0.18
+			# Left alone: IDLE_ESCAPE after the last bale, then the walk out.
+			var off: float = t + _puzzle.IDLE_ESCAPE
+			var out_n: int = (_puzzle.state.path_out() as Array).size()
+			_at(off + 0.1, func() -> void:
+				print("stroll: kind ", _puzzle._walk_kind, " path ", _puzzle._walk.size() - 1, " closed ", st.closed()))
+			_at(off + 0.3, _shot)
+			_at(off + 0.1 + out_n * _puzzle.WALK_STEP + 0.4, _shot)
+			_at(off + 0.1 + out_n * _puzzle.WALK_STEP + 0.6, func() -> void:
+				print("stroll: peeked ", _puzzle._walk_peeked, " toast ", _puzzle._toast))
+			t = off + out_n * (_puzzle.WALK_STEP + _puzzle.WALK_BACK) + _puzzle.PEEK_TIME + 0.8
+			for k in range(half, sol.size()):
+				_at(t, _tap.bind(int(sol[k])))
+				t += 0.18
+			var graze: float = t + _puzzle.IDLE_GRAZE + 0.1
+			_at(graze + 0.2, func() -> void:
+				print("stroll: kind ", _puzzle._walk_kind, " path ", _puzzle._walk.size() - 1, " closed ", st.closed(), " stars ", st.stars()))
+			_at(graze + 0.6, _shot)
+			# A tap mid-walk: the horse goes home and the bale still drops.
+			_at(graze + 0.7, func() -> void:
+				_tap(int(sol[0]))
+				print("stroll: tapped mid-walk, kind ", _puzzle._walk_kind, " bales ", st.bales()))
+			_at(graze + 0.78, _shot)
+			_at(graze + 1.2, _shot)
+			_end = graze + 1.8
 		"hint":
 			_at(1.6, func() -> void: _host._on_hint())
 			_at(1.75, _shot)

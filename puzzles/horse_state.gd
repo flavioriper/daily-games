@@ -8,8 +8,12 @@ extends RefCounted
 ## or water, and a tunnel's two mouths are one step apart. The pen is closed
 ## when the horse can no longer reach an edge cell. Every cell it can still
 ## reach scores one, an apple three more, the golden apple ten more, a
-## beehive five fewer. The day is done when a closed pen worth the target is
-## submitted; until then the player may keep rebuilding for a bigger one.
+## beehive five fewer. Any closed pen may be submitted, which ends the day;
+## until then the player may keep rebuilding for a bigger one. The pen is
+## rated by stars against the best pen known (`stars`): one for any pen worth
+## a point, two at 70% of the best, three at 90%. enclose-the-horse puzzles
+## grade the submission rather than refuse it (2026-10-27: the old target, 80
+## to 90% of the best, was a gate a fair player missed on half the days).
 ##
 ## No band has hearts. Insane counts moves (docs/agents/flat-screens.md,
 ## "Insane counts moves"): a bale laid or lifted costs one, and the stock is
@@ -21,6 +25,8 @@ const BANK := "res://content/horse.json"
 const HINTS_BY := [3, 3, 2, 2]
 ## Insane's spare moves over the stock of bales (`moves_budget`).
 const MOVES_SLACK := [0, 0, 0, 0]
+## The share of the best pen known that earns the second and third star.
+const STAR_SHARES := [0.7, 0.9]
 
 ## What a tap or Submit came to.
 enum { OK, REFUSED_FIXED, REFUSED_STOCK, REFUSED_PINNED, OPEN, SMALL }
@@ -35,6 +41,7 @@ var h := 0
 var horse := -1
 var budget := 0
 var best := 0
+## What three stars take (`need(3)`).
 var target := 0
 ## A byte a cell: 1 where a bale stands.
 var walls := PackedByteArray()
@@ -79,7 +86,7 @@ func adopt(meadow: Dictionary) -> void:
 	horse = int(m.horse)
 	budget = int(m.budget)
 	best = int(m.best)
-	target = Gen.target_for(best, band)
+	target = need(3)
 	reset()
 
 ## The field bare again. Returns the cells that had a bale.
@@ -149,6 +156,92 @@ func score() -> int:
 ## The cells the horse can reach, whether or not the pen is closed.
 func roam() -> int:
 	return (reach().order as PackedInt32Array).size()
+
+## The score `n` stars take: a point for one, then a share of the best.
+func need(n: int) -> int:
+	if n <= 1:
+		return 1
+	return maxi(1, ceili(best * float(STAR_SHARES[mini(n, 3) - 2]) - 0.0001))
+
+## The stars the pen stands at now: 0 while it is open.
+func stars() -> int:
+	if not closed():
+		return 0
+	var s := score()
+	var out := 0
+	for n in range(1, 4):
+		if s >= need(n):
+			out = n
+	return out
+
+## The edge cells the horse still reaches.
+func gaps() -> PackedInt32Array:
+	return reach().gaps
+
+## The horse's walk from its own cell to `goal`, by plain steps (never through
+## a tunnel, which would be a leap on the screen): the cells after the
+## horse's, [] when the goal cannot be walked to.
+func path_to(goal: int) -> Array[int]:
+	var out: Array[int] = []
+	var seen: PackedByteArray = reach().seen
+	if goal < 0 or goal == horse or seen[goal] == 0:
+		return out
+	var from := PackedInt32Array()
+	from.resize(cells())
+	from.fill(-1)
+	from[horse] = horse
+	var queue: Array[int] = [horse]
+	var head := 0
+	while head < queue.size():
+		var c: int = queue[head]
+		head += 1
+		if c == goal:
+			break
+		var here := xy(c)
+		for d: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+			var k := at(here + d)
+			if k < 0 or seen[k] == 0 or from[k] >= 0:
+				continue
+			from[k] = c
+			queue.append(k)
+	if from[goal] < 0:
+		return out
+	var c := goal
+	while c != horse:
+		out.push_front(c)
+		c = from[c]
+	return out
+
+## The way out the horse walks to when it tests the fence: the nearest edge
+## cell it reaches on foot, [] when the pen is closed or none is.
+func path_out() -> Array[int]:
+	var best_path: Array[int] = []
+	for g: int in gaps():
+		if g == horse:
+			return best_path
+		var p := path_to(g)
+		if not p.is_empty() and (best_path.is_empty() or p.size() < best_path.size()):
+			best_path = p
+	return best_path
+
+## Where the horse wanders to graze in a closed pen: the best thing in it,
+## or else its farthest cell. [] when there is nowhere worth the walk.
+func path_graze() -> Array[int]:
+	if not closed():
+		return []
+	var r := reach()
+	var goal := -1
+	var far := 0
+	for c: int in r.order:
+		if item(c) == Gen.GOLD or (item(c) == Gen.APPLE and (goal < 0 or item(goal) != Gen.GOLD)):
+			goal = c
+	if goal < 0:
+		for c: int in r.order:
+			if int(r.dist[c]) > far:
+				far = int(r.dist[c])
+				goal = c
+	var p := path_to(goal)
+	return p if p.size() >= 2 else ([] as Array[int])
 
 func moves_budget() -> int:
 	return budget + MOVES_SLACK[band] if MOVES_SLACK[band] > 0 else 0
@@ -231,12 +324,12 @@ func _touches(i: int, seen: PackedByteArray) -> bool:
 			return true
 	return false
 
-## Submit: OPEN while the horse can still get out, SMALL when the pen is
-## closed under the target, OK when the day is done.
+## Submit: OPEN while the horse can still get out, SMALL when the pen closed
+## is worth nothing (a hive in a pen of a few cells), OK when the day is done.
 func submit() -> int:
 	if not closed():
 		return OPEN
-	if score() < target:
+	if stars() < 1:
 		return SMALL
 	submitted = true
 	return OK

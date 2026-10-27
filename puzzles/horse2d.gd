@@ -26,6 +26,14 @@ extends "res://core/puzzle_base.gd"
 ## the horse kicks up its heels, the bales hop in the order they were laid,
 ## and flowers open across the pen from the horse outward.
 ##
+## Made fun (2026-10-27). Any closed pen may be submitted, and three live stars
+## on the right-hand pill rate it against the best pen known (State.stars);
+## while the pen is open the pill counts the ways out. Left alone, the horse
+## tests the fence: it trots to the nearest way out and peeks over the edge
+## (a quip on the toast), or, penned, ambles off to graze and comes back. A
+## touch sends it home. A day won short of the best shows the best pen's
+## bales as faint ghosts, so the player sees what was missed.
+##
 ## The paddock is the whole screen (2026-10-13, the registry's `bleed`):
 ## puzzles/horse_world.gd lies edge to edge as the board's first child from
 ## the first `set_clear`, and the pills and the field are laid in the span
@@ -50,6 +58,7 @@ const CozyTheme = preload("res://ui/theme.gd")
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 const MovesPill = preload("res://ui/flat/moves_pill.gd")
 const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
+const StarLine = preload("res://ui/flat/star_line.gd")
 ## The moves the out-of-moves card's video buys, once a board.
 const MOVES_BONUS := 5
 
@@ -114,6 +123,35 @@ const CARD_AFTER := 1.0
 const CARD_AFTER_STILL := 0.3
 const PILL_FONT := 32
 const PILL_H := 50.0
+## The stars on the right-hand pill, at this scale of StarLine's.
+const PILL_STARS := 0.72
+
+## The horse testing the fence. Left this long without a touch on an open pen
+## (`IDLE_ESCAPE`) it trots to the nearest way out, a cell a `WALK_STEP`, peeks
+## over the edge for `PEEK_TIME` and trots back a cell a `WALK_BACK`; in a
+## closed pen it ambles off to graze after `IDLE_GRAZE`, nibbling for
+## `GRAZE_TIME`. `STROLLS` a pen, so a pen left alone falls quiet. A touch
+## sends it home in `HOME_TIME`.
+const IDLE_ESCAPE := 3.5
+const IDLE_GRAZE := 6.0
+const STROLLS := 2
+const WALK_STEP := 0.2
+const WALK_BACK := 0.15
+const WALK_BOB := 0.07
+const PEEK_TIME := 1.3
+const PEEK_LEAN := 0.22
+const GRAZE_TIME := 1.6
+const GRAZE_NODS := 3.0
+const HOME_TIME := 0.16
+## The horse's lines over the edge (HP_ESCAPE_0..).
+const ESCAPES := 6
+## The best pen's bales, after a win short of it: when they start to show,
+## a bale after the other, and how faint.
+const GHOST_AT := 1.2
+const GHOST_STEP := 0.06
+const GHOST_ALPHA := 0.42
+## How much longer the win waits when there are ghosts to see.
+const GHOST_HOLD := 0.9
 ## The toast: the board's own line for what just happened (a refusal, the pen
 ## closing, a Submit that is not one yet), on a dark pill over the foot of
 ## the card -- or over its head when the finger is working down there. The
@@ -147,6 +185,8 @@ const HAPTICS := {
 	"heart_back": Haptics.GOOD,
 	"locked": Haptics.WARN,
 	"not_yet": Haptics.WARN,
+	"star_up": Haptics.GOOD,
+	"star_down": Haptics.TICK,
 	"out_of_hearts": Haptics.LOSE,
 	"solved": Haptics.WIN,
 }
@@ -241,6 +281,8 @@ var _press_cell := -1
 var _was_closed := false
 var _was_ready := false
 var _was_best := false
+var _was_stars := 0
+var _stars := StarLine.new()
 
 # --- the horse ---
 var _expr := Face.Expr.HAPPY
@@ -249,6 +291,19 @@ var _shake_at := -INF
 var _kick_at := -INF
 var _blink_at := 0.0
 var _horse_press := -INF
+## The horse's stroll: the cells from its own one out and the second it set
+## off, what for (WALK_*), and when a touch sent it home from where.
+enum { WALK_NONE, WALK_ESCAPE, WALK_GRAZE }
+var _walk: Array[int] = []
+var _walk_at := 0.0
+var _walk_kind := WALK_NONE
+var _walk_peeked := false
+var _walk_step := -1
+var _home_from := Vector2.ZERO
+var _home_at := -INF
+var _idle_from := 0.0
+var _strolls := 0
+var _escape_said := -1
 var _pill_bump := [-INF, -INF]
 var _pill_bad := -INF
 
@@ -271,7 +326,7 @@ func puzzle_id() -> String: return "horse"
 func title() -> String: return "Horse Pen"
 
 func rules() -> String:
-	var out := tr("HP_RULES") % [state.budget, state.target]
+	var out := tr("HP_RULES") % [state.budget, state.need(2), state.need(3), state.best]
 	if state.has_items():
 		out += "\n\n" + tr("HP_RULES_APPLES")
 	if state.has_gold() or state.has_bees():
@@ -464,6 +519,11 @@ func _deal() -> void:
 	_was_closed = false
 	_was_ready = false
 	_was_best = false
+	_was_stars = 0
+	_stars.clear(0)
+	_walk_clear()
+	_strolls = 0
+	_idle_from = _now()
 	_expr = Face.Expr.HAPPY
 	_hop_at = -INF
 	_shake_at = -INF
@@ -871,9 +931,37 @@ func _build_live(now: float) -> ArrayMesh:
 			else:
 				_bale_hop.erase(cell)
 		_bale(fb, cell, sc, lift, state.pinned.has(cell), alpha)
+	# The best pen's bales the player's pen did without, faint, once the
+	# flowers are out: what the best we know looks like.
+	if _solved_at >= 0.0:
+		var k := 0
+		for cell: int in _ghosts():
+			var e: float = now - _solved_at - GHOST_AT - k * GHOST_STEP
+			k += 1
+			if Motion.reduce:
+				e = Motion.POP_IN
+			if e < 0.0:
+				busy = true
+				continue
+			if e < Motion.POP_IN:
+				busy = true
+			var g := Motion.pop_in_scale(minf(e, Motion.POP_IN))
+			_bale(fb, cell, g, 0.0, true, GHOST_ALPHA * minf(1.0, e / Motion.POP_IN))
 	if busy:
 		_anim_until = maxf(_anim_until, now + 0.1)
 	return fb.mesh()
+
+## The best pen's bales not standing on a won day short of it, top rows
+## first; [] at the best or before the win.
+func _ghosts() -> Array:
+	var out: Array = []
+	if not state.submitted or state.score() >= state.best:
+		return out
+	for i in state.m.get("sol", []):
+		if not state.has_bale(int(i)):
+			out.append(int(i))
+	out.sort()
+	return out
 
 ## One bale on `cell`, grown `sc` about its foot and raised `lift` pixels,
 ## over its shadow.
@@ -920,8 +1008,9 @@ func _draw_life() -> void:
 	for i in state.cells():
 		if state.item(i) == Gen.BEE:
 			_bees(b, i, now)
-	var at := cell_centre(state.horse)
-	var lift := 0.0
+	var walk := _walk_pose(now)
+	var at: Vector2 = walk.at
+	var lift: float = walk.lift
 	var alpha := 1.0
 	var squash := Vector2.ONE
 	if not Motion.reduce:
@@ -947,11 +1036,12 @@ func _draw_life() -> void:
 	_life_layer.draw_mesh(shadow, null)
 	shown.append(shadow)
 	var pose := _pose(now)
-	var key := "%d|%.2f|%.3f|%.3f|%.3f" % [pose.expr, pose.eye, pose.nod, pose.kick, pose.tail]
+	pose.nod = snappedf(float(pose.nod) + float(walk.nod), 0.005)
+	var key := "%d|%.2f|%.3f|%.3f|%.3f|%s" % [pose.expr, pose.eye, pose.nod, pose.kick, pose.tail, walk.left]
 	if key != _horse_key or _horse_mesh == null:
 		var hb := Face.Builder.new()
 		Parts.horse(hb, Vector2.ZERO, _cell * 0.92, pose.expr, pose.eye, pose.nod, pose.kick, pose.tail,
-			state.horse % state.w >= (state.w + 1) / 2)
+			walk.left)
 		_horse_mesh = hb.mesh()
 		_horse_key = key
 	var foot := Vector2(0.0, 0.38 * _cell)
@@ -987,6 +1077,144 @@ func _pose(now: float) -> Dictionary:
 		out.nod = -0.15 * out.kick
 	return out
 
+# --- the horse's stroll ---
+
+func _walk_clear() -> void:
+	_walk = []
+	_walk_kind = WALK_NONE
+	_walk_peeked = false
+	_walk_step = -1
+	_home_at = -INF
+
+## A touch or a bale sends the horse home from wherever its stroll had got
+## to, quickly; nothing when it was at home.
+func _walk_home() -> void:
+	if _walk_kind == WALK_NONE:
+		return
+	var now := _now()
+	_home_from = _walk_pose(now).at
+	_walk_clear()
+	_home_at = now
+	_busy_for(HOME_TIME)
+
+## Sets off on `path` (the cells after the horse's own) for `kind`.
+func _walk_start(kind: int, path: Array[int]) -> void:
+	_walk = [state.horse] as Array[int]
+	_walk.append_array(path)
+	_walk_kind = kind
+	_walk_at = _now()
+	_walk_peeked = false
+	_walk_step = -1
+	_strolls += 1
+
+## How long the stroll lasts: there, the moment at the far end, and back.
+func _walk_times() -> Vector3:
+	var n := float(_walk.size() - 1)
+	return Vector3(n * WALK_STEP, PEEK_TIME if _walk_kind == WALK_ESCAPE else GRAZE_TIME, n * WALK_BACK)
+
+## The horse alone on an open pen tests the fence; penned, it wanders off to
+## graze. Called a frame; starts a stroll, sounds its steps, says the peek and
+## ends it.
+func _stroll(now: float) -> void:
+	if Motion.reduce or is_done() or out_of_hearts or _asleep or _press_cell >= 0:
+		return
+	if _walk_kind == WALK_NONE:
+		if _strolls >= STROLLS or state.bales() == 0 or now < _anim_until:
+			return
+		var closed: bool = state.closed()
+		if now - _idle_from < (IDLE_GRAZE if closed else IDLE_ESCAPE):
+			return
+		var path: Array[int] = state.path_graze() if closed else state.path_out()
+		if path.is_empty():
+			_strolls = STROLLS
+			return
+		_walk_start(WALK_GRAZE if closed else WALK_ESCAPE, path)
+		return
+	var t := now - _walk_at
+	var times := _walk_times()
+	var n := _walk.size() - 1
+	# A hoof's pop a cell, out and back.
+	var step := -1
+	if t < times.x:
+		step = int(t / WALK_STEP)
+	elif t >= times.x + times.y and t < times.x + times.y + times.z:
+		step = n + int((t - times.x - times.y) / WALK_BACK)
+	if step >= 0 and step != _walk_step:
+		_walk_step = step
+		fx.cue("trot", randf_range(TICK_VARY.x, TICK_VARY.y) * (1.04 if step % 2 == 0 else 0.96))
+	if t >= times.x and not _walk_peeked:
+		_walk_peeked = true
+		if _walk_kind == WALK_ESCAPE:
+			var edge: int = _walk[n]
+			_blush[edge] = now
+			_hop_at = now
+			fx.cue("peek")
+			var k := randi() % ESCAPES
+			if k == _escape_said:
+				k = (k + 1) % ESCAPES
+			_escape_said = k
+			_tell(tr("HP_ESCAPE_%d" % k), Face.Expr.JOY, edge)
+			_busy_for(Motion.FLASH_IN + Motion.FLASH_OUT)
+			_redraw()
+	if t >= times.x + times.y + times.z:
+		_walk_clear()
+		_idle_from = now
+		_life_layer.queue_redraw()
+
+## Where the horse stands at `now`: its middle, which way it faces (true is
+## to the left), a trot's bob and a grazing nod.
+func _walk_pose(now: float) -> Dictionary:
+	var home := cell_centre(state.horse)
+	var out := {"at": home, "left": state.horse % state.w >= (state.w + 1) / 2, "lift": 0.0, "nod": 0.0}
+	if _walk_kind == WALK_NONE:
+		var h := now - _home_at
+		if h >= 0.0 and h < HOME_TIME:
+			var u := h / HOME_TIME
+			out.at = _home_from.lerp(home, u * u * (3.0 - 2.0 * u))
+			out.left = _home_from.x > home.x
+		return out
+	var t := now - _walk_at
+	var times := _walk_times()
+	var n := _walk.size() - 1
+	var along := 0.0
+	var going := true
+	if t < times.x:
+		along = t / WALK_STEP
+	elif t < times.x + times.y:
+		along = float(n)
+		var m := (t - times.x) / times.y
+		if _walk_kind == WALK_ESCAPE:
+			# Leaning out over the edge, and back.
+			var edge := state.xy(_walk[n])
+			var out_dir := Vector2.ZERO
+			if edge.x == 0: out_dir.x = -1.0
+			elif edge.x == state.w - 1: out_dir.x = 1.0
+			if edge.y == 0: out_dir.y = -1.0
+			elif edge.y == state.h - 1: out_dir.y = 1.0
+			out.at = cell_centre(_walk[n]) + out_dir.normalized() * sin(PI * m) * PEEK_LEAN * _cell
+			if out_dir.x != 0.0:
+				out.left = out_dir.x < 0.0
+			else:
+				out.left = cell_centre(_walk[n - 1]).x > cell_centre(_walk[n]).x if n > 0 else out.left
+			return out
+		out.at = cell_centre(_walk[n])
+		out.nod = 0.18 * sin(m * TAU * GRAZE_NODS) * sin(PI * m)
+		out.left = cell_centre(_walk[n - 1]).x > out.at.x if n > 0 else out.left
+		return out
+	else:
+		along = float(n) - minf(float(n), (t - times.x - times.y) / WALK_BACK)
+		going = false
+	var i := mini(int(along), n - 1)
+	var u := along - i
+	var a := cell_centre(_walk[i])
+	var b := cell_centre(_walk[i + 1])
+	out.at = a.lerp(b, u * u * (3.0 - 2.0 * u))
+	var dx := (b.x - a.x) * (1.0 if going else -1.0)
+	if dx != 0.0:
+		out.left = dx < 0.0
+	out.lift = absf(sin(PI * u)) * WALK_BOB * _cell
+	return out
+
 ## Two bees round the hive on `cell`; quicker and wider once the pen has
 ## closed over them.
 func _bees(b: Face.Builder, cell: int, now: float) -> void:
@@ -1018,21 +1246,25 @@ func _draw_hud() -> void:
 	var pad := 0.0 if _bled else PAD
 	var left_text := "%d" % state.bales_left()
 	var closed: bool = state.closed()
-	var right_text: String = ("%d / %d" % [state.score(), state.target]) if closed \
-		else tr("HP_PILL_OPEN") % state.target
+	# Open, the ways out still to close; closed, the pen's score and its
+	# stars.
+	var ways: int = state.gaps().size()
+	var right_text: String = ("%d" % state.score()) if closed \
+		else (tr("HP_PILL_WAYS_ONE") if ways == 1 else tr("HP_PILL_WAYS_N") % ways)
 	var right_ink := Pal.TEXT_DIM
 	if closed:
 		right_ink = Pal.TEXT
 		if state.score() >= state.best:
 			right_ink = Pal.SUN_DEEP
-		elif state.score() >= state.target:
+		elif state.stars() >= 3:
 			right_ink = Pal.LEAF_DEEP
 	# Rose only while it is bad news: the stock spent with the pen still open.
 	var left_ink := Pal.BAD if now - _pill_bad < 0.6 or (state.bales_left() == 0 and not closed) else Pal.TEXT
 	var lw := font.get_string_size(left_text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, PILL_FONT).x
 	var rw := font.get_string_size(right_text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, PILL_FONT).x
 	var icon := PILL_H * 0.9
-	var boxes := [Vector2(lw + icon + 44.0, PILL_H), Vector2(rw + icon + 44.0, PILL_H)]
+	var star_w := StarLine.width(PILL_STARS) + 14.0 if closed else 0.0
+	var boxes := [Vector2(lw + icon + 44.0, PILL_H), Vector2(rw + icon + 44.0 + star_w, PILL_H)]
 	var centres := [Vector2(_card.position.x + pad + boxes[0].x * 0.5, y),
 		Vector2(_card.end.x - pad - boxes[1].x * 0.5, y)]
 	var b := Face.Builder.new()
@@ -1047,10 +1279,11 @@ func _draw_hud() -> void:
 	var bale_at: Vector2 = centres[0] + Vector2(-boxes[0].x * 0.5 + 16.0 + icon * 0.5, 0.0)
 	Parts.bale(b, bale_at, icon * 0.9)
 	var mark_at: Vector2 = centres[1] + Vector2(-boxes[1].x * 0.5 + 16.0 + icon * 0.5, 0.0)
-	if closed and state.score() >= state.best:
-		b.polygon(Seal.star(mark_at, icon * 0.42), Pal.SUN)
-	else:
-		Parts.wheat_ear(b, mark_at, icon, Pal.WHEAT.darkened(0.12) if closed else Pal.TEXT_DIM)
+	# The stars say how good the pen is; at the best the ear goes gold.
+	var ear := Pal.TEXT_DIM
+	if closed:
+		ear = Pal.SUN_DEEP if state.score() >= state.best else Pal.WHEAT.darkened(0.12)
+	Parts.wheat_ear(b, mark_at, icon, ear)
 	_hud_shown = b.mesh()
 	var alpha := 1.0 if Motion.reduce else Motion.appear_level(since)
 	_hud_layer.draw_mesh(_hud_shown, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, alpha))
@@ -1059,6 +1292,9 @@ func _draw_hud() -> void:
 		HORIZONTAL_ALIGNMENT_LEFT, -1.0, PILL_FONT, Color(left_ink, alpha))
 	_hud_layer.draw_string(font, mark_at + Vector2(icon * 0.5 + 8.0, mid), right_text,
 		HORIZONTAL_ALIGNMENT_LEFT, -1.0, PILL_FONT, Color(right_ink, alpha))
+	if closed:
+		_stars.draw(_hud_layer, mark_at + Vector2(icon * 0.5 + 8.0 + rw + 14.0 + StarLine.R * PILL_STARS, 0.0),
+			PILL_STARS, now, alpha)
 	if max_moves > 0:
 		_moves_pill.draw(_hud_layer, Vector2(size.x * 0.5, y), moves_left, now)
 	_draw_toast(now)
@@ -1087,6 +1323,8 @@ func _gui_input(event: InputEvent) -> void:
 
 func _press(cell: int) -> void:
 	_press_cell = -1
+	_idle_from = _now()
+	_walk_home()
 	if is_done() or cell < 0 or out_of_hearts:
 		return
 	_press_cell = cell
@@ -1173,11 +1411,16 @@ func _refuse(cell: int, why: String) -> void:
 ## sprout say what the pen has become.
 func _after_change(from: float, quiet := false, near := -1) -> void:
 	_sync_reach(from)
+	_walk_home()
+	_strolls = 0
+	_idle_from = _now()
 	var closed: bool = state.closed()
-	var ready: bool = closed and state.score() >= state.target
+	var stars: int = state.stars()
+	var ready: bool = stars >= 3
 	var is_best: bool = closed and state.score() >= state.best
 	if closed != _was_closed or closed:
 		_bump_pill(1)
+	_stars.rate(stars, _now())
 	if not quiet:
 		if is_best and not _was_best:
 			fx.cue("best")
@@ -1187,16 +1430,22 @@ func _after_change(from: float, quiet := false, near := -1) -> void:
 			fx.cue("ready")
 			_hop_at = _now()
 			fx.ring(cell_centre(state.horse), _cell * 0.6, Pal.LEAF)
+		elif stars > _was_stars and stars >= 2:
+			fx.cue("star_up")
+			fx.ring(cell_centre(state.horse), _cell * 0.5, Pal.SUN)
 		elif closed and not _was_closed:
 			fx.cue("closed")
 			fx.ring(cell_centre(state.horse), _cell * 0.6, Pal.WHEAT)
 		elif _was_closed and not closed:
 			fx.cue("open")
-	var turned := closed != _was_closed or ready != _was_ready or is_best != _was_best \
+		elif stars < _was_stars:
+			fx.cue("star_down")
+	var turned := closed != _was_closed or stars != _was_stars or is_best != _was_best \
 		or (not closed and state.bales_left() == 0)
 	_was_closed = closed
 	_was_ready = ready
 	_was_best = is_best
+	_was_stars = stars
 	_expr = _mood()
 	_speak()
 	# Said aloud only when the pen became something else, never on every bale.
@@ -1216,7 +1465,7 @@ func _mood() -> int:
 	for i in state.cells():
 		if seen[i] == 1 and state.item(i) == Gen.BEE:
 			return Face.Expr.WORRIED
-	return Face.Expr.JOY if state.score() >= state.target else Face.Expr.HAPPY
+	return Face.Expr.JOY if state.stars() >= 3 else Face.Expr.HAPPY
 
 # --- the sprout's line ---
 
@@ -1229,13 +1478,18 @@ func _speak() -> void:
 	if not state.closed():
 		_say(tr("HP_OPEN_STOCK") if state.bales_left() == 0 else tr("HP_OPEN"), Face.Expr.HAPPY)
 		return
-	var short: int = state.target - state.score()
-	if short > 0:
-		_say(tr("HP_SHORT_ONE") if short == 1 else tr("HP_SHORT_N") % short, Face.Expr.PUZZLED)
-	elif state.score() >= state.best:
+	var stars: int = state.stars()
+	if state.score() >= state.best:
 		_say(tr("HP_BEST"), Face.Expr.JOY)
+	elif stars >= 3:
+		_say(tr("HP_READY") % state.best, Face.Expr.JOY)
+	elif stars < 1:
+		_say(tr("HP_SUBMIT_TINY"), Face.Expr.PUZZLED)
 	else:
-		_say(tr("HP_READY"), Face.Expr.JOY)
+		# How far the next star is: said as a nudge, never as a refusal.
+		var short: int = state.need(stars + 1) - state.score()
+		var key := "HP_STAR2" if stars == 1 else "HP_STAR3"
+		_say(tr(key + "_ONE") if short == 1 else tr(key + "_N") % short, Face.Expr.HAPPY)
 
 func _say(text: String, mood: int) -> void:
 	_tip_text = text
@@ -1360,11 +1614,14 @@ func hint() -> bool:
 	return true
 
 ## Submit. An open pen blushes where the horse still gets out and the horse
-## shakes its head; a closed one under the target gets the shake alone; a pen
-## worth the target ends the day. Always -1: there is nothing to count.
+## shakes its head; any closed pen worth a point ends the day, its stars as
+## they stand (one worth nothing, a hive in a pen of a few cells, gets the
+## shake). Always -1: there is nothing to count.
 func check() -> int:
 	if is_done() or out_of_hearts:
 		return -1
+	_walk_home()
+	_idle_from = _now()
 	checks += 1
 	var now := _now()
 	match state.submit():
@@ -1378,8 +1635,7 @@ func check() -> int:
 			_busy_for(Motion.FLASH_IN + Motion.FLASH_OUT)
 		State.SMALL:
 			_shake_at = now
-			var short: int = state.target - state.score()
-			_tell(tr("HP_SUBMIT_SMALL_ONE") if short == 1 else tr("HP_SUBMIT_SMALL_N") % short, Face.Expr.PUZZLED)
+			_tell(tr("HP_SUBMIT_TINY"), Face.Expr.PUZZLED)
 			fx.cue("not_yet")
 		State.OK:
 			check_solved()
@@ -1447,6 +1703,8 @@ func restore_completed_board() -> void:
 	_anim_until = 0.0
 	_expr = Face.Expr.JOY
 	_was_closed = true
+	_was_stars = state.stars()
+	_stars.rate(_was_stars, now, false)
 	var seen: PackedByteArray = state.reach().seen
 	for i in seen.size():
 		_lvl_from[i] = float(seen[i])
@@ -1462,7 +1720,8 @@ func restore_completed_board() -> void:
 
 func share_glyphs() -> String:
 	var out: String = state.share_glyphs()
-	out += "\n🌾 %d / %d" % [state.score(), state.target]
+	var stars: int = state.stars()
+	out += "\n🌾 %d %s%s" % [state.score(), "⭐".repeat(stars), "☆".repeat(3 - stars)]
 	if state.score() >= state.best:
 		out += " ⭐ " + tr("HP_SEAL_BEST")
 	return out
@@ -1470,13 +1729,16 @@ func share_glyphs() -> String:
 # --- the win ---
 
 func flat_win() -> Dictionary:
-	var sub := tr("HP_WIN_SUB") % [_final_score, state.best]
+	var sub := tr("HP_WIN_SUB") % [_final_score, state.best] if _ghosts().is_empty() \
+		else tr("HP_WIN_SUB_GHOST") % [_final_score, state.best]
 	if _final_score >= state.best:
 		sub = tr("HP_WIN_SUB_BEST") % _final_score
 	return {"faces": [], "subtitle": sub}
 
 func win_delay() -> float:
-	return Motion.REDUCED_TIME if Motion.reduce else WIN_WAIT + PARTY_EXTRA
+	if Motion.reduce:
+		return Motion.REDUCED_TIME
+	return WIN_WAIT + PARTY_EXTRA + (GHOST_HOLD if not _ghosts().is_empty() else 0.0)
 
 ## The horse kicks up its heels, the bales hop in the order they were laid,
 ## flowers open across the pen from the horse outward, and a pen as good as
@@ -1485,6 +1747,7 @@ func _on_solved() -> void:
 	var now := _now()
 	_press_cell = -1
 	_end_shade()
+	_walk_home()
 	_tip_timer.stop()
 	_toast = ""
 	_solved_at = now
@@ -1499,7 +1762,8 @@ func _on_solved() -> void:
 	fx.cue("solved")
 	_hud_layer.queue_redraw()
 	_party()
-	_busy_for(Motion.SOLVE_DELAY + BLOOM_CAP + BLOOM_TIME + 0.2)
+	_busy_for(maxf(Motion.SOLVE_DELAY + BLOOM_CAP + BLOOM_TIME,
+		GHOST_AT + _ghosts().size() * GHOST_STEP + Motion.POP_IN) + 0.2)
 	_redraw()
 
 func _party() -> void:
@@ -1563,7 +1827,7 @@ func _spend(cost: int, land: float) -> void:
 	_hud_layer.queue_redraw()
 	if moves_left > 0 or is_done():
 		return
-	if state.closed() and state.score() >= state.target:
+	if state.stars() >= 1:
 		return
 	_lost_ever = true
 	out_of_hearts = true
@@ -1679,6 +1943,7 @@ func _process(delta: float) -> void:
 	if _cell <= 0.0:
 		return
 	var now := _now()
+	_stroll(now)
 	if now < _anim_until or now < _wheat_until:
 		queue_redraw()
 	# The horse's tail and the bees never stand quite still; under
@@ -1689,7 +1954,8 @@ func _process(delta: float) -> void:
 	if (since < Motion.DROP_FADE + 0.1) or _moves_pill.animating(now - 0.1) \
 			or now - float(_pill_bump[0]) < Motion.BUMP_TIME + 0.1 \
 			or now - float(_pill_bump[1]) < Motion.BUMP_TIME + 0.1 \
-			or (now - _pill_bad < 0.7) or (_toast != "" and now - _toast_at < TOAST_HOLD + 0.1):
+			or (now - _pill_bad < 0.7) or (_toast != "" and now - _toast_at < TOAST_HOLD + 0.1) \
+			or _stars.busy(now):
 		_hud_layer.queue_redraw()
 
 func _redraw() -> void:

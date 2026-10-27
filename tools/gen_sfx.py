@@ -2793,6 +2793,17 @@ SETS = {
         # The pony patted: its own voice, a real one (PONY), the take of
         # 2026-10-08 with the top rolled off, 3 dB down.
         "neigh":         ("a small pony giving one short soft friendly nicker, a quiet breathy little whinny through the nose, cute and gentle, not loud, not dramatic, short", 0.9, -12, PONY, "warm:2400", "ease:0.01", "body:300"),
+        # Made fun (2026-10-27). The pony peeking over the edge on its own:
+        # neigh's take (its raw copied to peek.mp3, nothing bought), a step
+        # up and quieter, since no finger asked for it.
+        "peek":          ("a small pony giving one short soft friendly nicker, a quiet breathy little whinny through the nose, cute and gentle, not loud, not dramatic, short", 0.9, -16, PONY, "warm:2400", "ease:0.01", "body:300", "notes:0:2"),
+        # Its hooves as it trots there and back: a run rides the walk, one
+        # bubble a cell, quiet (the board varies it at play).
+        "trot":          ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -22, FOLEY, "bank:wrap", "cut:0.08", "notes:0:-4", "tight"),
+        # A star won on the pill (two, or the pen grown back to it): the
+        # bubble twice rising. One lost: the lip twice falling.
+        "star_up":       ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -15, FOLEY, "bank:wrap", "cut:0.2", "notes:0.08:-4,0", "tight"),
+        "star_down":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -18, FOLEY, "bank:lip", "cut:0.2", "notes:0.09:-1,-5", "tight"),
         # The day's end. `party` starts 0.4 s into `solved`, so solved is four
         # quick notes up and the party the long one, six up and over; the seal
         # 0.8 s after that, three notes that dip and rise.
