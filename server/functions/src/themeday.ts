@@ -32,8 +32,10 @@ import {makeVista, TIMES as VISTA_TIMES, Vistas} from "./vistas";
  * is there a whole day before the quizzes (publishDays, 03:00) are written
  * on it, and its pictures a day before they are published.
  *
- * A step that made nothing is tried once more on a later run, then given up
- * on: the board deals its own for that place.
+ * A step that made nothing is tried twice more on a later run (TRIES is
+ * three), then given up on: the board deals its own for that place. The
+ * afternoon, dusk and night vistas are edits of the morning: they are not
+ * run, and no try is counted, while the morning is neither done nor given up.
  */
 
 /** The steps of a day, in order. */
@@ -88,6 +90,14 @@ export async function stagedTheme(db: Firestore, day: number): Promise<Theme | n
 function finished(s: Staged): boolean {
   if (s.done?.includes("theme") && s.theme === undefined) return true;
   return STEPS.every((step) => s.done?.includes(step));
+}
+
+/** True for an afternoon, dusk or night vista step while the morning is
+ *  neither done nor given up (both put "vista0" in `done`): they are edits of
+ *  it, so they are not run and no try is counted. The day is not `finished`
+ *  meanwhile, so it still waits. */
+function waitsForMorning(step: string, s: Staged): boolean {
+  return step.startsWith("vista") && step !== "vista0" && !s.done?.includes("vista0");
 }
 
 /** The `pictures` content a staged day comes to, or null with no theme. */
@@ -286,6 +296,7 @@ export async function themeWork(db: Firestore, now: Date): Promise<void> {
         const s = ((await ref.get()).data() ?? {}) as Staged;
         if (finished(s)) break;
         if (s.done?.includes(step)) continue;
+        if (waitsForMorning(step, s)) continue;
         if (Date.now() - t0 > START_BUDGET_MS) return;
         const tries = (s.tries?.[step] ?? 0) + 1;
         let out: {save: Record<string, unknown>; made: boolean} = {save: {}, made: false};
