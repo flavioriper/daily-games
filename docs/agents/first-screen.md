@@ -1363,6 +1363,16 @@ Part B).
   arrives behind the built menu, as the day card does. The sun and moon were
   seated on the old painting's deck (measured against its floor line), so the
   seats are not to be brought back for a different picture.
+- **The header has its own painting first** (2026-10-27, the user: "let's
+  generate a different image direction for the header to avoid being the same
+  of the daily images"): the header's dusk and the Today card's afternoon read
+  as one picture twice, so the night paints a fifth, `header`, the same place
+  seen from farther away and from another side (`vistas.ts` `HEADER`, golden
+  hour, the left half calm, no creatures). `set_header_vista` takes
+  `ThemedVistas.texture("header")` first, then the day's dusk, then the bundled
+  dusk, all under the same zoom, focus and tint. A day without one (older
+  days, a header that never passed) is as before. `docs/agents/turns-and-backend.md`
+  has the night's side.
 - **Measured** (`tests/_shot_menu.gd`, 810x1440, `opengl3_angle`, one run at a
   time, second of two quoted): **160** draw calls at rest on page one, bundled
   dusk (160 / 160), and 160 on the trial day's dusk (`tools/themed_play.sh

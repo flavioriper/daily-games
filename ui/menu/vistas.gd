@@ -329,12 +329,15 @@ static func header_plate() -> ColorRect:
 	set_header_vista(plate)
 	return plate
 
-## The header's painting: the day's own dusk when this phone holds one
-## (core/themed_vistas.gd), the bundled dusk otherwise, under the same crop
-## and tint either way. Re-points a plate that already stands, as
+## The header's painting: the day's own header painting (the same place seen
+## from farther away, so it is not the day card's picture twice), else the
+## day's dusk, else the bundled dusk, under the same crop and tint whichever
+## it is. Re-points a plate that already stands, as
 ## `set_day_vista` does the day card's.
 static func set_header_vista(plate: ColorRect) -> void:
-	var own := Themed.texture("dusk")
+	var own := Themed.texture("header")
+	if own == null:
+		own = Themed.texture("dusk")
 	if own != null:
 		point_at(plate, own, HEADER[1], HEADER[2], Pal.ACCENT)
 		return

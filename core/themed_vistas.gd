@@ -5,7 +5,8 @@ extends RefCounted
 ## (docs/superpowers/specs/2026-10-17-themed-vistas-design.md): the theme's
 ## place painted at morning, afternoon, dusk and night by the night's
 ## process (server/functions/src/vistas.ts), a JPEG each, published as
-## `days/<day>/turns/vistas` only when all four passed. The difficulty
+## `days/<day>/turns/vistas` only when all four passed (and, when one passed
+## too, the menu header's own as `header`). The difficulty
 ## sheet's four rows take them in that order and the day card the
 ## afternoon (ui/menu/vistas.gd).
 ##
@@ -25,7 +26,8 @@ static var _tex := {}
 static var _name := {}
 static var _cast := []
 
-## The vista of `time` for today, or null.
+## The vista of `time` for today, or null. "header" is the menu header's own
+## painting, there only when the night painted one that passed.
 static func texture(time: String) -> Texture2D:
 	_refresh()
 	return _tex.get(time)
@@ -87,4 +89,13 @@ static func _decoded(doc: Dictionary) -> Dictionary:
 		if raw.is_empty() or img.load_jpg_from_buffer(raw) != OK:
 			return {}
 		out[time] = ImageTexture.create_from_image(img)
+	# The menu header's own painting (2026-10-27): optional, a day without one
+	# keeps the dusk behind the header; one that will not decode is left out
+	# and never costs the four their place.
+	var head = doc.get("header")
+	if head is String and not (head as String).is_empty():
+		var himg := Image.new()
+		var hraw := Marshalls.base64_to_raw(head)
+		if not hraw.is_empty() and himg.load_jpg_from_buffer(hraw) == OK:
+			out["header"] = ImageTexture.create_from_image(himg)
 	return out

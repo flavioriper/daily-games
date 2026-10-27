@@ -646,7 +646,9 @@ function themedView() {
 // The day's painted vistas (server/functions/src/vistas.ts, `cli.js vistas`):
 // the four a phone would be sent, morning to night as the difficulty rows
 // stand, and every turned-down painting with the reviewer's word.
-const VISTA_ROW = { morning: "Easy", afternoon: "Medium · the day card", dusk: "Hard", night: "Insane" };
+// `header` is the menu header's own painting (a fifth, from farther away): shown
+// only for a day that tried one.
+const VISTA_ROW = { morning: "Easy", afternoon: "Medium · the day card", dusk: "Hard", night: "Insane", header: "The menu header" };
 function themedVistas(box, v) {
   box.append(el("div", { class: "way" }, el("b", {}, "Vistas"), !v ? " · none: `cli.js vistas <day.json>` paints them into days/themed-vistas/"
     : v.sent ? " · the four a phone would be sent" : " · not all four passed: a phone keeps the bundled vistas",
@@ -654,6 +656,7 @@ function themedVistas(box, v) {
   if (!v) return;
   const levels = el("div", { class: "levels" });
   for (const time of Object.keys(VISTA_ROW)) {
+    if (time === "header" && !v.vistaTries.some(t => t.time === "header")) continue;
     const kept = v.vistaTries.find(t => t.time === time && t.wrong === "");
     const card = el("div", { class: "pic" + (kept ? "" : " bank") });
     card.append(kept ? el("img", { src: "days/themed-vistas/" + kept.name, loading: "lazy", alt: time, style: "width:100%;border-radius:8px" })

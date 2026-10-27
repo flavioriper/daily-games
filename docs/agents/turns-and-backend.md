@@ -171,6 +171,32 @@ done or given up. The bench
 (`cli.js vistas`) logs each try's `peeplets` and the painter's native `WxH`,
 and keeps every full painting as `<day>_vista-<time>-<n>-full.png`.
 
+**A fifth painting, the menu header's own** (2026-10-27, the user: "let's
+generate a different image direction for the header to avoid being the same of
+the daily images"). `vistas.ts` `HEADER_KEY = "header"`: the same place as the
+theme's scene seen from a rise or its far edge, farther away, the horizon low,
+a big sky, golden hour, the left half sky, haze and soft ground only (the
+game's name is laid over it), no creatures. Painted by `makeHeader` (same shape
+as `makeVista`, try names `vista-header-<n>`, `-full` PNG kept before review)
+from `vista_style.png` alone: **no Peeplet sheet**. Reviewed alone
+(`reviewPainting(theme, "header", drawn, null)`, `Slot = Time | "header"`) by
+its own short system prompt (`REVIEWER_HEADER`; `REVIEWER`'s rules want two or
+three Peeplets and would contradict) and `REVIEW_HEADER`; it passes only with
+`wrong === ""` and `peeplets === 0` (fail closed). `REVIEW_HEADER` is not in
+`rubricHash()`: the bench scores the four vistas only. `themeday.ts`: the step
+`header` sits in `STEPS` before the vista steps (it needs no morning, so
+`waitsForMorning` does not catch it), staged at `themes/{day}/vistas/header`,
+`TRIES` as the others, two paintings a run. `publishVistas` still needs the
+four times and writes `header` into the document (`Vistas.header?`) only when
+the staged jpg exists; `finished()` walks `STEPS`, so a day staged ahead waits
+for the header like any step. The phone reads it in `ThemedVistas._decoded` as
+`texture("header")` (optional; the four stay required). CLI: `cli.js vistas`
+paints it after the four, `cli.js header <day.json>` re-rolls only it for a
+day that has `vistas`; the verdicts are `vistaTries` rows with `time:
+"header"`, which the dashboard shows as a fifth card. The `vistas` document is
+now up to five JPEGs of 200 KiB base64 at the very most (the cap is per
+painting; the trial JPEGs are 60 to 90 KB), under Firestore's 1 MiB.
+
 **The day waits for its theme** (2026-10-20, the user, whose 21:00 BRT open
 found no theme: "make sure the game challenges only switch when next theme
 is fully done"). The server was not late: `days/20261020/turns/pictures`
