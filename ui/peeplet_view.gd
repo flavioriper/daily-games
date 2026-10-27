@@ -45,17 +45,38 @@ extends SubViewportContainer
 @export var color_index := 0:
 	set(v):
 		color_index = v
-		_rebuild()
+		if not _dressing:
+			_rebuild()
 ## A HeadgearItemFactory.kinds() name ("crown", "wizardHat"), or "" for none.
 @export var headgear := "":
 	set(v):
 		headgear = v
-		_rebuild()
+		if not _dressing:
+			_rebuild()
 ## An EyewearItemFactory.kinds() name ("roundGlasses", "visor"), or "".
 @export var eyewear := "":
 	set(v):
 		eyewear = v
-		_rebuild()
+		if not _dressing:
+			_rebuild()
+
+## True while `dress` sets the three wear fields, so their setters hold off
+## the rebuild and it happens once at the end.
+var _dressing := false
+
+## The coat, hat and eyewear in one go, rebuilding the walker once instead
+## of once a setter (core/cast.gd dresses every seat this way; a re-dress in
+## the tree would otherwise rebuild three times). Unchanged wear rebuilds
+## nothing.
+func dress(coat: int, hat: String, eyes: String) -> void:
+	if color_index == coat and headgear == hat and eyewear == eyes:
+		return
+	_dressing = true
+	color_index = coat
+	headgear = hat
+	eyewear = eyes
+	_dressing = false
+	_rebuild()
 
 ## Sat down, held: the walker sits and the pose is settled at once, so a
 ## portrait that never runs (idle_fps 0) still shows the sit, and a rebuilt

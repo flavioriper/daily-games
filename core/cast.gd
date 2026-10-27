@@ -50,15 +50,13 @@ static func seeded(day: int) -> Array[int]:
 static func persona(which: int, day: int = Daily.date_key()) -> Dictionary:
 	return PeepletPersonas.get_persona(pair(day)[clampi(which, 0, 1)])
 
-## Dresses a PeepletView in the day's persona `which` (0 or 1). Each setter
-## rebuilds the walker: call this once, before the view enters the tree.
-## Returns the persona index the view now wears.
+## Dresses a PeepletView in the day's persona `which` (0 or 1) through its
+## `dress` (one rebuild, none before the view is in the tree). Returns the
+## persona index the view now wears.
 static func dress(view, which: int, day: int = Daily.date_key()) -> int:
 	var idx := pair(day)[clampi(which, 0, 1)]
 	var p := PeepletPersonas.get_persona(idx)
-	view.color_index = int(p["coat"])
-	view.headgear = String(p["hat"])
-	view.eyewear = String(p["eyes"])
+	view.dress(int(p["coat"]), String(p["hat"]), String(p["eyes"]))
 	return idx
 
 ## For a seat built earlier that `dress` left wearing persona `held`: dresses
