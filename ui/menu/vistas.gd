@@ -256,9 +256,9 @@ static func point_at(plate: ColorRect, vista: Variant, zoom: float, focus: Vecto
 ## (ui/menu.gd's `_build_list`, `MenuHeader.HEIGHT`'s own budget is fixed),
 ## and this crop is `cover`, sized off the plate's own height, so growing the
 ## plate without accounting for the pad rescales and slides the whole
-## painting rather than opening a band at the top -- the sun and moon seated
-## on the deck (`menu_header.gd`'s `PAIR_TOP`) walked down the picture with
-## it. `set_top_pad` records the pad so `_refit` can cover the plate at its
+## painting rather than opening a band at the top -- the header's scene
+## (the DAILY / PUZZLES tiles, and the sun and moon before them) walked down
+## the picture with it. `set_top_pad` records the pad so `_refit` can cover the plate at its
 ## *pre-pad* height and extend the UV rect upward by the pad's own share of
 ## that crop, leaving the picture below the pad pixel-identical to the
 ## pad-0 case, shifted down by the pad.

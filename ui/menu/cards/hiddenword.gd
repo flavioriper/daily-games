@@ -50,8 +50,8 @@ const WORDS_GAP := 12.0
 ## its two radii, and the Peeplet standing on it (its size, its middle).
 const TUMP_AT := Vector2(78.0, -8.0)
 const TUMP_R := Vector2(112.0, 46.0)
-const SPROUT := 74.0
-const SPROUT_AT := Vector2(74.0, 66.0)
+const PEEPLET := 74.0
+const PEEPLET_AT := Vector2(74.0, 66.0)
 
 const PAPER_TOP := Color("faf3e0")
 const PAPER_LOW := Color("f0e2c2")
@@ -199,6 +199,14 @@ func _draw() -> void:
 	for c in TYPED.length():
 		Mosaic.letter(self, _tile_at(GUESSES.size(), c) + lift, s, TYPED[c], Vector2.ONE, Pal.TEXT, font)
 
+## The seat's Peeplet and the persona it wears (core/cast.gd).
+var _peeplet: Control
+var _worn := -1
+
+## world/main.gd tells ThemedVistas.GROUP when the day's document arrives.
+func vistas_arrived() -> void:
+	_worn = Cast.redress(_peeplet, 0, _worn)
+
 func _lay() -> void:
 	var k := _k()
 	# The words stand in the top left corner, clear of the seal's; the steps
@@ -214,12 +222,16 @@ func _lay() -> void:
 			var took: Vector2 = line.get_combined_minimum_size()
 			_said.append(Rect2(Vector2(words.position.x, y), took))
 			y += took.y
-	var px := SPROUT * k
+	var px := PEEPLET * k
 	var peeplet := PeepletView.new()
-	Cast.dress(peeplet, 0)
+	_worn = Cast.dress(peeplet, 0)
+	_peeplet = peeplet
+	# The day letting go, or the night's cast arriving, behind a built card.
+	if not is_in_group(ThemedVistas.GROUP):
+		add_to_group(ThemedVistas.GROUP)
 	peeplet.frame_height = 0.88
 	peeplet.aim_y = 0.46
 	peeplet.idle_fps = 0.0
 	peeplet.size = Vector2(px, px)
-	peeplet.position = Vector2(SPROUT_AT.x * k, size.y - SPROUT_AT.y * k) - peeplet.size * 0.5
+	peeplet.position = Vector2(PEEPLET_AT.x * k, size.y - PEEPLET_AT.y * k) - peeplet.size * 0.5
 	_keep(peeplet)

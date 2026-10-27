@@ -8,7 +8,7 @@ extends Control
 ## the gap of the tools row, one in each of the side airs the grid leaves),
 ## two far hills, and the meadow from the grid's foot down to the bottom of
 ## the screen, with the band's own blades, bushes and flowers along its
-## crown. A letter box stands on the crown in the left air, where the sprout
+## crown. A letter box stands on the crown in the left air, where the Peeplet
 ## comes up with the word, and a sealed letter and a loose paper tile drift
 ## in the same air (the right one is Insane's snail's).
 ##

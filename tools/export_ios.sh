@@ -40,3 +40,5 @@ IOS_EXPORT_DIR="$(pwd)/$out" GODOT_IAP_ADDON_DIR="$(pwd)/addons/godot-iap" \
 # which must stay: it names the save folder). The home-screen label is "Peeplet".
 sed -i '' 's/INFOPLIST_KEY_CFBundleDisplayName = "Peeplet Daily";/INFOPLIST_KEY_CFBundleDisplayName = "Peeplet";/' \
   "$out/peeplet-daily.xcodeproj/project.pbxproj"
+grep -q 'INFOPLIST_KEY_CFBundleDisplayName = "Peeplet";' "$out/peeplet-daily.xcodeproj/project.pbxproj" \
+  || { echo "display name not patched"; exit 1; }

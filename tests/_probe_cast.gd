@@ -28,7 +28,7 @@ func _initialize() -> void:
 	var q := Cast.pair(Daily.date_key())
 	print("published pair = ", q)
 	_check(q[0] == 3 and q[1] == PeepletPersonas_count() - 1, "published clamps")
-	_check(Cast.pair(20261027) == q, "published overrides the day arg")
+	_check(Cast.pair(Daily.date_key() + 1) == Cast.seeded(Daily.date_key() + 1), "published is today's only")
 	ThemedVistas.adopt({"v": 1, "times": {}, "cast": [1]})
 	_check(ThemedVistas.cast().is_empty(), "malformed cast ignored")
 	ThemedVistas.adopt({})

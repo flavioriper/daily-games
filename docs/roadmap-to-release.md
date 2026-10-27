@@ -33,6 +33,9 @@ be built.
   old one): subtitle, short and long descriptions, feature graphic and the six
   phone shots. The Play Console title and the App Store Connect name are
   renamed by the user, by hand.
+- **Deploys owed for the rename** (the user's): the `X-Title` header in the
+  functions and the `server/site` pages (`/peeplet/`, privacy) go live only
+  with `tools/deploy_functions.sh` and the hosting deploy.
 - **Monetisation: banner ads, plus a one-time purchase that removes ads for
   life.**
 - **pt and es ship at 1.0.**

@@ -79,6 +79,8 @@ var _month := 0        # yyyymm on show
 var _first_month := 0
 var _streak_ci: Control
 var _today_ci: Control
+var _peeplet: Control   # the Today card's Peeplet and the persona it wears
+var _worn := -1
 var _cal_ci: Control
 var _prev: Button
 var _next: Button
@@ -102,7 +104,10 @@ func _init() -> void:
 	_props(today_art, _draw_rock)
 	# The day's first Peeplet, sat on the rock: a held portrait, drawn once.
 	var peeplet := PeepletView.new()
-	Cast.dress(peeplet, 0)
+	_worn = Cast.dress(peeplet, 0)
+	_peeplet = peeplet
+	# The day letting go, or the night's cast arriving, behind a built tab.
+	add_to_group(ThemedVistas.GROUP)
 	peeplet.frame_height = 0.88
 	peeplet.aim_y = 0.46
 	peeplet.idle_fps = 0.0
@@ -128,6 +133,10 @@ func _init() -> void:
 	_next = _chevron("chevron_right", 1)
 	_next.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 	_next.offset_left = -CHEVRON
+
+## world/main.gd tells ThemedVistas.GROUP when the day's document arrives.
+func vistas_arrived() -> void:
+	_worn = Cast.redress(_peeplet, 0, _worn)
 
 func _card(h: float, painter: Callable) -> Control:
 	var card := PanelContainer.new()

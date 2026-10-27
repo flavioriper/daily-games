@@ -454,7 +454,7 @@ func _build_list() -> void:
 	_list_root.add_child(page)
 	# The header's painted scene, full-bleed from the top edge (under the
 	# safe area) to past the day card's top, where it fades into the paper;
-	# the wordmark stands on its left scrim (spec 2026-09-24-painted-menu,
+	# the DAILY / PUZZLES tiles stand on its left scrim (spec 2026-09-24-painted-menu,
 	# section 5). Laid under the margins, so no row of the column moves.
 	_backdrop = Vistas.header_plate()
 	_backdrop.name = "Backdrop"
@@ -469,8 +469,8 @@ func _build_list() -> void:
 	## F1 (final fix wave, 2026-09-24): the line above grows the plate by the
 	## top inset so the header clears a punch-hole cutout, but Vistas' crop is
 	## `cover` and sizes off the plate's own height -- left alone, that inset
-	## would rescale and slide the whole painting, walking the sun and moon
-	## off the deck (see Vistas.set_top_pad's own comment). Telling the crop
+	## would rescale and slide the whole painting, walking the header's scene
+	## off its deck (see Vistas.set_top_pad's own comment). Telling the crop
 	## to ignore exactly `insets.x` px keeps it pixel-identical to the inset-0
 	## case, shifted down by the inset.
 	Vistas.set_top_pad(_backdrop, insets.x)

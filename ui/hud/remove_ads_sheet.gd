@@ -11,7 +11,7 @@ extends "res://ui/hud/sheet.gd"
 ## closure in a stack trace.
 ## Spec: docs/superpowers/specs/2026-09-25-ads-and-remove-ads-design.md, section 4.
 ##
-## Redrawn on 2026-09-28: a painted meadow with the sprout on its rock (a Peeplet since 2026-10-27), the
+## Redrawn on 2026-09-28: a painted meadow with the Peeplet on its rock (a sprout until 2026-10-27), the
 ## three things the purchase is as plaque rows in place of a paragraph, one
 ## wide sun button with the price, and Restore as a quiet text button under
 ## it. The round X is the only close while there is something to buy; once
@@ -41,6 +41,7 @@ var _perks: VBoxContainer
 ## is built with every board, so its 3D picture waits until it is wanted.
 var _plate: Control
 var _peeplet: Control
+var _worn := -1
 
 func _card_style() -> StyleBox:
 	return CozyTheme.parchment_card()
@@ -121,7 +122,8 @@ func _seat_peeplet() -> void:
 	if _peeplet != null or _plate == null:
 		return
 	_peeplet = PeepletView.new()
-	Cast.dress(_peeplet, 1)
+	_worn = Cast.dress(_peeplet, 1)
+	add_to_group(ThemedVistas.GROUP)
 	_peeplet.frame_height = 0.88
 	_peeplet.aim_y = 0.46
 	_peeplet.idle_fps = 0.0
@@ -131,6 +133,10 @@ func _seat_peeplet() -> void:
 	_peeplet.offset_top = -146
 	_peeplet.offset_bottom = -18
 	_plate.add_child(_peeplet)
+
+## The day's document arriving behind a sheet already seated (ThemedVistas.GROUP).
+func vistas_arrived() -> void:
+	_worn = Cast.redress(_peeplet, 1, _worn)
 
 func open_from(door: String) -> void:
 	if is_open():

@@ -15,12 +15,14 @@ const PLAIN_HATS := ["", "bandana", "beanie", "bow", "cap", "chefHat", "earmuffs
 ## The flat coats, PeepletPalette.BODY 0..7.
 const FLAT_COATS := 8
 
-## The published pair when the day's vistas carry one, else the seeded pair.
+## The published pair when the day's vistas carry one (they are today's, so
+## only for today), else the seeded pair.
 static func pair(day: int = Daily.date_key()) -> Array[int]:
 	var n := PeepletPersonas.count()
-	var c := ThemedVistas.cast()
-	if c.size() == 2 and n > 0:
-		return [clampi(int(c[0]), 0, n - 1), clampi(int(c[1]), 0, n - 1)]
+	if day == Daily.date_key() and n > 0:
+		var c := ThemedVistas.cast()
+		if c.size() == 2:
+			return [clampi(int(c[0]), 0, n - 1), clampi(int(c[1]), 0, n - 1)]
 	return seeded(day)
 
 ## Persona indices (into PeepletPersonas.ALL) with a flat coat and a plain hat.
@@ -50,8 +52,20 @@ static func persona(which: int, day: int = Daily.date_key()) -> Dictionary:
 
 ## Dresses a PeepletView in the day's persona `which` (0 or 1). Each setter
 ## rebuilds the walker: call this once, before the view enters the tree.
-static func dress(view, which: int, day: int = Daily.date_key()) -> void:
-	var p := persona(which, day)
+## Returns the persona index the view now wears.
+static func dress(view, which: int, day: int = Daily.date_key()) -> int:
+	var idx := pair(day)[clampi(which, 0, 1)]
+	var p := PeepletPersonas.get_persona(idx)
 	view.color_index = int(p["coat"])
 	view.headgear = String(p["hat"])
 	view.eyewear = String(p["eyes"])
+	return idx
+
+## For a seat built earlier that `dress` left wearing persona `held`: dresses
+## the view again only when seat `which` is now someone else (the day let go,
+## or the night's cast arrived behind the built screen). Returns the persona
+## now worn. Cheap when nothing changed: no setter runs, nothing rebuilds.
+static func redress(view, which: int, held: int) -> int:
+	if not is_instance_valid(view) or pair()[clampi(which, 0, 1)] == held:
+		return held
+	return dress(view, which)
