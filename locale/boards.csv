@@ -2735,6 +2735,7 @@ BB_LVL_1,"12 × 12, up to five colours","12 × 12, até cinco cores","12 × 12, 
 BB_LVL_2,"16 × 16, up to seven colours, no rings","16 × 16, até sete cores, sem anéis","16 × 16, hasta siete colores, sin anillos"
 BB_LVL_3,"A huge picture, 32 × 32: zoom in","Um desenho enorme, 32 × 32: dê zoom","Un dibujo enorme, 32 × 32: haz zoom"
 BB_PILL,%d of %d set,%d de %d encaixadas,%d de %d encajadas
+BB_PART,Part %d of %d,Parte %d de %d,Parte %d de %d
 BB_REFUSE_HOME,That one is set. It stays.,Essa já está encaixada. Ela fica.,Esa ya está encajada. Se queda.
 BB_REFUSE_FULL,The case is full. Set some jewels first.,A caixa está cheia. Encaixe algumas joias antes.,La caja está llena. Encaja algunas joyas antes.
 BB_KEPT_ONE,The case was full: one stayed behind.,A caixa encheu: uma ficou para trás.,La caja se llenó: una se quedó atrás.
@@ -2769,6 +2770,7 @@ BB_REFUSE_WRONG,That slot is another colour.,Esse encaixe é de outra cor.,Esa c
 HTP_BB_HELD_CAP,They wait for you to say where,Elas esperam você dizer para onde,Esperan a que digas adónde
 BB_RULES_CORNERS,Here corners count as touching.,Aqui as diagonais também contam.,Aquí las diagonales también cuentan.
 BB_RULES_BIG,"The picture is big: spread two fingers to come close, drag to look around, and the button at the bottom left shows it whole again. Nothing shows where a jewel goes.","O desenho é grande: afaste dois dedos para chegar perto, arraste para olhar em volta, e o botão embaixo à esquerda mostra tudo de novo. Nada mostra onde cada joia vai.","El dibujo es grande: separa dos dedos para acercarte, arrastra para mirar alrededor, y el botón de abajo a la izquierda lo muestra entero otra vez. Nada muestra adónde va una joya."
+BB_RULES_PARTS,"On Insane the picture comes in parts: set every jewel of one and the next slides in, until the picture is whole.","No Insano o desenho vem em partes: encaixe todas as joias de uma e a próxima desliza para o lugar, até o desenho ficar inteiro.","En Insano el dibujo viene en partes: encaja todas las joyas de una y la siguiente se desliza a su sitio, hasta que el dibujo esté entero."
 HTP_BB_ZOOM,Come close to a big picture,Chegue perto de um desenho grande,Acércate a un dibujo grande
 HTP_BB_ZOOM_BODY,"This picture is too big to set from afar. Spread two fingers to zoom in and pinch to zoom out. Close up, drag one finger to look around. The round button at the bottom left goes close and back to the whole picture.","Este desenho é grande demais para montar de longe. Afaste dois dedos para aproximar e junte para afastar. De perto, arraste um dedo para olhar em volta. O botão redondo embaixo à esquerda aproxima e volta ao desenho inteiro.","Este dibujo es demasiado grande para montarlo de lejos. Separa dos dedos para acercarte y júntalos para alejarte. De cerca, arrastra un dedo para mirar alrededor. El botón redondo de abajo a la izquierda acerca y vuelve al dibujo entero."
 HTP_BB_ZOOM_PINCH_CAP,Two fingers apart: closer,Dois dedos se afastando: mais perto,Dos dedos separándose: más cerca

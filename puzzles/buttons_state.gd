@@ -40,7 +40,22 @@ const HARD := 2
 ## and the side of the day's themed picture each asks for
 ## (core/themed_pictures.gd): Insane's 48 is drawn for Button Box alone.
 const BANK_BAND := [0, 1, 3, 3]
-const THEMED_KEY := [10, 12, 32, 48]
+const THEMED_KEY := [10, 12, 32, 128]
+## Insane is one big picture played a quarter at a time (the user,
+## 2026-10-27, with a shot of a mosaic game: "on jewel box, the insane
+## should be a way bigger image and user fill each part of a 4 grid side
+## at time"; they chose 96 a side, then "it should have at least 5x more
+## pieces": 128, half of it filled at least). The night's 128 is cut in two each way
+## and the quarters played in reading order, each a cloth with its own
+## scramble and tin (`_deal_parts`). Insane asked for the night's 48 whole
+## until then.
+const PARTS_FROM := 3
+## The night's picture Insane played whole before it came in parts.
+const NIGHT_WHOLE := 48
+## A quarter with fewer jewels than this, or of one colour, is no part of
+## its own: a subject on bare board can leave a corner nearly empty, and a
+## cloth of one colour cannot scramble. Its jewels open set.
+const PART_MIN := 16
 ## The places in the tin a band starts with, and the most it ever has.
 ## Ten places open of twenty, CASE_STEP more a colour whole (the user,
 ## 2026-10-11: "the case should be bigger, 20 slots, 10 free and 10 to
@@ -130,6 +145,20 @@ var _off := PackedInt32Array()
 var _count := 0
 ## The hand counting its own game keeps no history.
 var _quiet := false
+## A picture played in parts (Insane): the whole, a letter a square
+## (`legend` names them), the parts as {rows, at, start} in the order they
+## are played, and the one on the cloth. `w`, `h`, `slot` and the rest
+## are the part's; `part_at` is where its first square lies in the whole. A
+## picture played whole has no parts.
+var whole: Array = []
+var legend: Dictionary = {}
+var parts: Array = []
+var part := 0
+var part_at := Vector2i.ZERO
+## The taps of the parts already sewn, which the part's own count adds to.
+var taps_before := 0
+## A picture a probe hands Insane in place of the night's.
+static var handed: Dictionary = {}
 
 static func bank() -> Dictionary:
 	if not _bank_read:
@@ -163,9 +192,11 @@ func setup(rng: RandomNumberGenerator, difficulty: int, daily_key := 0) -> void:
 	if doc.get("bands") is Array and from < (doc.bands as Array).size():
 		pics = doc.bands[from]
 	var pic := {"name": "", "rows": ["rrgg", "rrgg", "bbyy", "bbyy"]}
-	var legend := {"r": "red", "g": "green", "b": "blue", "y": "yellow"}
+	var plain := {"r": "red", "g": "green", "b": "blue", "y": "yellow"}
 	if pics.is_empty():
-		adopt(pic, legend, rng)
+		adopt(pic, plain, rng)
+		return
+	if band >= PARTS_FROM and _deal_parts(rng, daily_key, pics, doc.palette):
 		return
 	# A picture nearly all one colour cannot be scrambled off itself: it is
 	# drawn again while more than a quarter of it opens already sewn. The
@@ -191,11 +222,13 @@ func setup(rng: RandomNumberGenerator, difficulty: int, daily_key := 0) -> void:
 	par = _solve_taps()
 
 ## Plays `pic` ({name, rows}) with its letters read through `legend`.
-func adopt(pic: Dictionary, legend: Dictionary, rng: RandomNumberGenerator) -> void:
-	_lay(pic, legend, rng)
+func adopt(pic: Dictionary, names: Dictionary, rng: RandomNumberGenerator) -> void:
+	_lay(pic, names, rng)
 	par = _solve_taps()
 
-func _lay(pic: Dictionary, legend: Dictionary, rng: RandomNumberGenerator) -> void:
+## Lays `pic` on the cloth and scrambles it, or opens it as `keep` when
+## that is a part's opening already drawn.
+func _lay(pic: Dictionary, names: Dictionary, rng: RandomNumberGenerator, keep := PackedInt32Array()) -> void:
 	var rows: Array = pic.rows
 	h = rows.size()
 	w = String(rows[0]).length()
@@ -209,7 +242,7 @@ func _lay(pic: Dictionary, legend: Dictionary, rng: RandomNumberGenerator) -> vo
 			var ch := String(rows[y])[x]
 			if ch == ".":
 				continue
-			var named := String(legend.get(ch, "grey"))
+			var named := String(names.get(ch, "grey"))
 			var k := colours.find(named)
 			if k < 0:
 				k = colours.size()
@@ -220,21 +253,144 @@ func _lay(pic: Dictionary, legend: Dictionary, rng: RandomNumberGenerator) -> vo
 		if k >= 0:
 			_count += 1
 	_places = tin_base if tin_base >= 0 else places_for(_count)
-	start = _scramble(rng)
+	start = keep.duplicate() if not keep.is_empty() else _scramble(rng)
 	reset()
 
 ## A hand-made cloth (the tutorial's): `rows` the patches and `opening` the
 ## buttons on them, letter for letter.
-func adopt_laid(rows: Array, opening: Array, legend: Dictionary) -> void:
+func adopt_laid(rows: Array, opening: Array, names: Dictionary) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 1
-	_lay({"name": "", "rows": rows}, legend, rng)
+	_lay({"name": "", "rows": rows}, names, rng)
 	for y in h:
 		for x in w:
 			if slot[y * w + x] >= 0:
-				start[y * w + x] = colours.find(String(legend.get(String(opening[y])[x], "grey")))
+				start[y * w + x] = colours.find(String(names.get(String(opening[y])[x], "grey")))
 	reset()
 	par = _solve_taps()
+
+## Insane's picture in quarters: one picture cut in two each way (the
+## user, 2026-10-27: "it should be a single picture, into 4 parts not 4
+## different pictures"). The night's 128, else the night's 48 (published
+## for Insane whole until then, so a phone holds it before a 128 is ever
+## drawn), else one of the bank's 32s: both a stopgap, with fewer jewels
+## than Insane had whole. Each part is drawn as a whole day is (scrambled
+## again while a quarter of it opens set). The par is every part's added
+## up, each counted as its part comes on: four of a 128 counted at once
+## took 1.8 s on a desk. False with nothing to play in parts.
+func _deal_parts(rng: RandomNumberGenerator, daily_key: int, pics: Array, names: Dictionary) -> bool:
+	var pic := ThemedPictures.picture(daily_key, THEMED_KEY[band])
+	if pic.is_empty():
+		pic = ThemedPictures.picture(daily_key, NIGHT_WHOLE)
+	if not handed.is_empty():
+		pic = handed
+	if pic.is_empty():
+		pic = pics[rng.randi_range(0, pics.size() - 1)]
+	whole = pic.rows
+	name_key = String(pic.get("name", ""))
+	var cut := quarters(whole)
+	legend = names
+	parts = []
+	par = 0
+	draws = 0
+	for piece: Dictionary in cut:
+		for attempt in DRAWS:
+			draws += 1
+			_lay({"name": name_key, "rows": piece.rows}, names, rng)
+			if homes() * 4 <= count() or _count < PART_MIN or colours.size() < 2:
+				break
+		if _count < PART_MIN or colours.size() < 2:
+			continue
+		piece.start = start.duplicate()
+		parts.append(piece)
+	if parts.is_empty():
+		whole = []
+		return false
+	taps_before = 0
+	_enter_part(0)
+	return true
+
+## A picture's rows cut in two each way, in reading order, as
+## {rows, at}.
+static func quarters(rows_: Array) -> Array:
+	var out: Array = []
+	var side: int = rows_.size()
+	var half_x := ceili(String(rows_[0]).length() / 2.0)
+	var half_y := ceili(side / 2.0)
+	for q in 4:
+		var x0 := (q % 2) * half_x
+		var y0 := (q / 2) * half_y
+		var rows: Array = []
+		for y in range(y0, mini(side, y0 + half_y)):
+			rows.append(String(rows_[y]).substr(x0, half_x))
+		out.append({"rows": rows, "at": Vector2i(x0, y0)})
+	return out
+
+## Puts part `k` on the cloth as it opened.
+func _enter_part(k: int) -> void:
+	part = k
+	var piece: Dictionary = parts[k]
+	part_at = piece.at
+	_lay({"name": name_key, "rows": piece.rows}, legend, null, piece.start)
+	if not piece.has("par"):
+		piece.par = _solve_taps()
+		par += int(piece.par)
+
+## Whether the picture is played in parts.
+func in_parts() -> bool:
+	return parts.size() > 1
+
+func parts_left() -> int:
+	return parts.size() - 1 - part if in_parts() else 0
+
+## This part is sewn and another waits.
+func part_done() -> bool:
+	return cur == slot and parts_left() > 0
+
+## The next part on the cloth, its taps added on to the ones before. Only
+## once `part_done`.
+func next_part() -> void:
+	if not part_done():
+		return
+	taps_before = taps
+	_enter_part(part + 1)
+
+## Square (x, y) of the whole, as {colour name, whether it is set}, for
+## every square off this part: the parts before it are sewn, the ones after
+## it wait, and a quarter too small to be a part opens set. Read off the
+## letters, so a colour keeps its name across parts.
+func around() -> Array:
+	var out: Array = []
+	if not in_parts():
+		return out
+	var waiting := {}
+	for k in range(part + 1, parts.size()):
+		var piece: Dictionary = parts[k]
+		waiting[piece.at] = (piece.rows as Array)
+	for y in whole.size():
+		var line := String(whole[y])
+		for x in line.length():
+			var ch := line[x]
+			if ch == ".":
+				continue
+			var p := Vector2i(x, y)
+			var mine := p - part_at
+			if mine.x >= 0 and mine.y >= 0 and mine.x < w and mine.y < h:
+				continue
+			var sewn_ := true
+			for o: Vector2i in waiting:
+				var rows: Array = waiting[o]
+				var q := p - o
+				if q.x >= 0 and q.y >= 0 and q.y < rows.size() and q.x < String(rows[0]).length():
+					sewn_ = false
+					break
+			out.append([p, String(legend.get(ch, "grey")), sewn_])
+	return out
+
+func whole_size() -> Vector2i:
+	if not in_parts():
+		return Vector2i(w, h)
+	return Vector2i(String(whole[0]).length(), whole.size())
 
 ## The buttons as the day opens: whole colours trade places (the user,
 ## 2026-10-12, of a day that opened "too sparse and spreaded, making the
@@ -357,8 +513,9 @@ func in_tin() -> int:
 			out += 1
 	return out
 
+## Every part sewn: a picture in parts is solved on its last.
 func is_solved() -> bool:
-	return cur == slot
+	return cur == slot and parts_left() == 0
 
 ## No band counts its moves (the user, 2026-10-12: "let's remove the
 ## limited moves on insane for drawing games like button box"; Insane had
@@ -602,12 +759,14 @@ func reset() -> void:
 	tin = PackedInt32Array()
 	tin.resize(_places)
 	tin.fill(-1)
-	taps = 0
+	taps = taps_before
 	history = []
 	_recount()
 
 ## Every button sewn, for a finished daily reopened.
 func finish(used := -1) -> void:
+	if in_parts() and part < parts.size() - 1:
+		_enter_part(parts.size() - 1)
 	cur = slot.duplicate()
 	tin.fill(-1)
 	history = []
@@ -830,17 +989,28 @@ func share_glyphs() -> String:
 		"rose": "🟥", "lilac": "🟪", "purple": "🟪", "sky": "🟦", "blue": "🟦", "teal": "🟩", "lime": "🟩",
 		"green": "🟩", "forest": "🟩", "tan": "🟧", "brown": "🟫", "dark": "⬛", "grey": "⬜"}
 	var out := ""
+	# a picture in parts is shared whole, read off its letters
+	var size := whole_size()
+	var names: Array = []
+	for y in size.y:
+		for x in size.x:
+			if in_parts():
+				var ch := String(whole[y])[x] if x < String(whole[y]).length() else "."
+				names.append("" if ch == "." else String(legend.get(ch, "grey")))
+			else:
+				var s := slot[y * w + x]
+				names.append("" if s < 0 else colours[s])
 	# A big picture is shared small: a mark is two squares a side there, and
 	# the colour most of its squares are (1,024 marks are not a share).
-	var step := ceili(float(maxi(w, h)) / SHARE_MAX)
-	for y in range(0, h, step):
-		for x in range(0, w, step):
+	var step := ceili(float(maxi(size.x, size.y)) / SHARE_MAX)
+	for y in range(0, size.y, step):
+		for x in range(0, size.x, step):
 			var votes := {}
 			var top := ""
-			for yy in range(y, mini(h, y + step)):
-				for xx in range(x, mini(w, x + step)):
-					var s := slot[yy * w + xx]
-					var mark := "▫️" if s < 0 else String(marks.get(colours[s], "⬜"))
+			for yy in range(y, mini(size.y, y + step)):
+				for xx in range(x, mini(size.x, x + step)):
+					var named: String = names[yy * size.x + xx]
+					var mark := "▫️" if named == "" else String(marks.get(named, "⬜"))
 					votes[mark] = int(votes.get(mark, 0)) + 1
 					if top == "" or int(votes[mark]) > int(votes[top]):
 						top = mark

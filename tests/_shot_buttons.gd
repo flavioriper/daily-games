@@ -261,6 +261,38 @@ func _script() -> void:
 			for dt in [-3.0, 0.0, 0.5, 1.0, 1.6, 2.6, 4.2]:
 				_at(t + dt, _shot)
 			_end = t + 5.2
+		"parts":
+			# Insane in parts: the first part at rest, sewn by the state's own
+			# hand to its last move, that move through the board, the hop,
+			# the slide half way and the next part in its place
+			_at(1.4, _shot)
+			_at(1.6, func() -> void:
+				var st_ = _puzzle.state
+				var guard := 0
+				while guard < 4000:
+					guard += 1
+					var m: Dictionary = st_.hint()
+					if m.is_empty():
+						break
+					var cur_: PackedInt32Array = st_.cur.duplicate()
+					var tin_: PackedInt32Array = st_.tin.duplicate()
+					var taps_: int = st_.taps
+					st_.play(m)
+					if st_.part_done():
+						st_.cur = cur_
+						st_.tin = tin_
+						st_.taps = taps_
+						st_._recount()
+						break
+				_puzzle._deal()
+				_puzzle._layout()
+				_puzzle._request())
+			_at(2.0, _shot)
+			_at(2.4, _pick)
+			_at(2.6, _place)
+			for dt in [1.35, 1.45, 1.55, 1.65, 3.0]:
+				_at(2.6 + dt, _shot)
+			_end = 6.4
 		"out":
 			var t := 1.6
 			for k in _puzzle.max_moves * 2:
@@ -382,4 +414,8 @@ func _script() -> void:
 				_puzzle.completed_record = {"taps": st.par + 2, "left": 0}
 				_puzzle.restore_completed())
 			_at(0.5, _shot)
+			# the host lays a won day out for the win screen: whole, for a
+			# picture in parts
+			_at(0.7, func() -> void: _puzzle.set_clear(_puzzle._clear.x, _puzzle._clear.y, true))
+			_at(1.1, _shot)
 			_end = 1.5

@@ -97,6 +97,8 @@ func _play(st, how: int, rng: RandomNumberGenerator, tag: String) -> void:
 	var guard := 0
 	while not st.is_solved() and guard < 20000:
 		guard += 1
+		if st.part_done():
+			st.next_part()
 		var legal := _legal(st)
 		var bare := 0
 		for c: int in legal.bare:

@@ -20,6 +20,7 @@ extends SceneTree
 ##   godot --headless --path . --script tests/_probe_buttons_board.gd [-- days=6]
 
 const Board = preload("res://puzzles/buttons2d.gd")
+const State = preload("res://puzzles/buttons_state.gd")
 const Motion = preload("res://core/motion.gd")
 
 var _days := 6
@@ -153,7 +154,20 @@ func _zoom() -> void:
 		root.add_child(board)
 		var rng := RandomNumberGenerator.new()
 		rng.seed = hash([band, 3, 7])
+		# Insane plays a quarter of the night's picture, 24 to 48 squares a
+		# side; the bank's 32 a harness falls back on has quarters of 16, too
+		# few to zoom, so it is handed a 48 (a bank 24, doubled)
+		if band == 3:
+			var rows: Array = []
+			for line: String in (State.bank().bands[2][0] as Dictionary).rows:
+				var wide := ""
+				for ch in line:
+					wide += ch + ch
+				rows.append(wide)
+				rows.append(wide)
+			State.handed = {"name": "", "rows": rows}
 		board.start(rng, band)
+		State.handed = {}
 		board.max_moves = 0
 		var z = board.zoom
 		var st = board.state

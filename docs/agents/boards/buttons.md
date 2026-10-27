@@ -1291,3 +1291,57 @@ selection to clear. A throwaway check over six Easy days: five wrong-colour
 taps and three on sewn jewels, each leaving nothing held and no move
 counted. Board probe 38 days, the two old band-2 zoom failures. Not seen on
 a screen.
+
+## 2026-10-27: Insane is one big picture, a quarter at a time
+
+The user, with a shot of a mosaic game (a big picture, one stepped part
+lit, the rest washed out past the screen's edge): "on jewel box, the insane
+should be a way bigger image and user fill each part of a 4 grid side at
+time"; asked the size, they chose 96 a side; then "it should be a single
+picture, into 4 parts not 4 different pictures" and "it should have at
+least 5x more pieces". So the night paints a 128 for Insane alone (side
+112-144, at least half filled: 6,300-18,700 jewels against today's
+500-1,800; `tools/beads.js`, `server/functions/src/pictures.ts`,
+`docs/agents/days-dashboard.md`), and the state cuts it in two each way
+(`State.quarters`) and plays the quarters in reading order, each a cloth
+of its own with its own scramble and case (`_deal_parts`, `_enter_part`,
+`next_part`). `taps` carry across (`taps_before`), the par is every part's
+added up, each counted as its part comes on (four of a 128 at once took
+1.8 s on this Mac; the deal now pays for the first). `is_solved` is the
+last part sewn; `part_done` is a part sewn with another waiting.
+
+The board lays out by the part being played, so a part is as big on the
+screen as a whole Insane picture was, and draws the rest of the picture
+round it in `_still` (`State.around`): parts sewn flat as set jewels,
+parts waiting their colours `PART_FADE` toward the page, all inside one
+outline; the cloth is clipped to its room while in parts, as the cloth is
+drawn over the case. A part sewn hops as a won picture does with the
+colour-whole cue and confetti (`_part_sewn`), nothing plays (`_turning`:
+taps, Undo and the bulb all wait; Start over clears it), and after
+`PART_HOLD` the next part comes on in the same place, popping in as a day
+does (`_next_part`). The pill reads "Part 2 of 4 · 0 of 1024 set"
+(`BB_PART`), the rules a line more (`BB_RULES_PARTS`, en/pt/es mine). Won,
+or reopened won, the picture is laid out whole (`_layout` by
+`whole_size()`), and the share is the whole.
+
+A slide of the whole picture carrying the next part into place was built
+first and dropped: its transform printed right frame by frame, but the
+harness's shots never showed the sewn part moving. Not understood.
+
+Until the functions are deployed and a night paints a 128, Insane plays the
+night's 48 cut in quarters (22-32 a side), or with no day on the phone one
+of the bank's 32s (quarters of 16): fewer jewels than Insane had whole, a
+stopgap. A quarter with under `PART_MIN` (16) jewels or one colour is no
+part: its jewels open set. The board probe hands its zoom check a doubled
+bank 24 (`State.handed`), as a 16-square quarter has nothing to zoom.
+
+Checks: rules probe 648/0; board probe 38 days, the two old band-2 zoom
+failures; a throwaway hand over stand-in 96s, every day's taps equal to
+its par; shots (`parts` mode, `restore` now with the host's win layout)
+of a quarter handed over and the won picture whole. Not seen: a real 128
+(the night has not drawn one; the subagent's dry run needed a Vertex token
+command that was refused), a phone, the deal time on a phone.
+
+Unconfirmed, mine: reading order; `PART_MIN`; Start over resets the part
+only; the colour-whole toast on a part's last move; `day_dict` exports the
+part on the cloth, not the whole; a 128 day is many times today's taps.

@@ -180,6 +180,12 @@ const BLOCK_STAGGER := 0.09
 const WIN_WAIT := 1.3
 const PARTY_EXTRA := 0.6
 const WIN_SLIDE := 0.5
+## A part of Insane's picture sewn: its jewels hop, it waits this long, and
+## the next part comes on in its place. A part
+## waiting is its colours this far toward the page (the reference's
+## washed-out squares), a part sewn is flat as a set jewel.
+const PART_HOLD := 0.9
+const PART_FADE := 0.72
 const STAMP_AT := 0.7
 const STAMP_FROM := 1.8
 const STAMP_DROP := 0.18
@@ -280,6 +286,8 @@ var _tin_per := TIN_ROW
 var _from_cell := 0.0
 var _from_grid := Vector2.ZERO
 var _slid_at := -INF
+## Between a part sewn and the next on the cloth: nothing plays.
+var _turning := false
 var _gen := 0
 
 # --- the meshes ---
@@ -378,6 +386,8 @@ func rules() -> String:
 		out += " " + tr("BB_RULES_CORNERS")
 	if state.band >= State.BIG_FROM:
 		out += "\n\n" + tr("BB_RULES_BIG")
+	if state.band >= State.PARTS_FROM:
+		out += "\n\n" + tr("BB_RULES_PARTS")
 	out += "\n\n" + tr("BB_RULES_TIN") % state.places()
 	if max_moves > 0:
 		out += "\n\n" + tr("RULES_MOVES_SEQ") % max_moves
@@ -515,6 +525,7 @@ func _begin() -> void:
 	_won = false
 	_solved_at = -INF
 	_slid_at = -INF
+	_turning = false
 	_stamp_at = INF
 	_seal_mesh = null
 	zoom.reset()
@@ -560,7 +571,7 @@ func set_clear(top: float, bottom: float, won := false) -> void:
 	_clear = Vector2(top, bottom)
 	if won and not _won and _cell > 0.0:
 		_from_cell = _cell
-		_from_grid = _grid
+		_from_grid = _origin()
 		# the win has the picture whole: the slide starts from the zoom it
 		# found
 		_from_zoom = zoom.xf()
@@ -585,11 +596,16 @@ func _layout() -> void:
 	var head := top if _won else top + HUD_ROW
 	var floor_y := foot if _won else _tin_rect.position.y - GAP
 	var room := Vector2(size.x - 2.0 * (PAD + BORDER), floor_y - head - 2.0 * BORDER)
-	_cell = minf(CELL_MAX, minf(room.x / state.w, room.y / state.h))
+	# a picture in parts is laid by the part being played, the rest of it
+	# running on round it past the room; won, it is laid whole
+	var whole: Vector2i = state.whole_size() if _won else Vector2i(state.w, state.h)
+	_cell = minf(CELL_MAX, minf(room.x / whole.x, room.y / whole.y))
 	if _cell <= 0.0:
 		return
-	var pic := Vector2(state.w, state.h) * _cell
+	var pic := Vector2(whole) * _cell
 	_grid = Vector2((size.x - pic.x) * 0.5, head + BORDER + (room.y - pic.y) * 0.5)
+	if _won:
+		_grid += Vector2(state.part_at) * _cell
 	# the picture's room, which a zoomed picture is clipped to
 	_view = Rect2(0.0, head, size.x, maxf(1.0, floor_y - head))
 	_cloth.position = _view.position
@@ -718,6 +734,11 @@ func _cell_under(at: Vector2) -> int:
 func _field_px() -> Rect2:
 	return Rect2(_grid, Vector2(state.w, state.h) * _cell)
 
+## Where the whole picture's first square is laid: the part's own for a
+## picture played whole.
+func _origin() -> Vector2:
+	return _grid - Vector2(state.part_at) * _cell
+
 ## The picture's edge, a border around its own shape, and a slot a square,
 ## each in its jewel's colour with a seat: one mesh, and the slots of one
 ## colour join in it.
@@ -727,7 +748,18 @@ func _build_still() -> ArrayMesh:
 	for i in state.slot.size():
 		if state.slot[i] >= 0:
 			centres.append(cell_centre(i))
+	# the parts of Insane's picture round this one: sewn flat, or waiting
+	# washed out
+	var around: Array = state.around()
+	var origin := _origin()
+	for one: Array in around:
+		centres.append(origin + (Vector2(one[0]) + Vector2(0.5, 0.5)) * _cell)
 	Art.outline(b, centres, _cell, clampf(_cell * OUTLINE_K, OUTLINE_MIN, OUTLINE_MAX))
+	for one: Array in around:
+		var col := Art.colour(one[1])
+		if not one[2]:
+			col = col.lerp(Pal.SURFACE, PART_FADE)
+		Art.sewn(b, origin + (Vector2(one[0]) + Vector2(0.5, 0.5)) * _cell, _cell, col)
 	for i in state.slot.size():
 		if state.slot[i] >= 0:
 			Art.patch(b, cell_centre(i), _cell, Art.colour(state.colours[state.slot[i]]), _cell < Art.SMALL)
@@ -750,7 +782,7 @@ func _slide_xf(now: float) -> Transform2D:
 	var u := clampf(e / WIN_SLIDE, 0.0, 1.0)
 	var s := u * u * (3.0 - 2.0 * u)
 	var k0 := _from_cell / _cell
-	var was := _from_zoom * Transform2D(0.0, Vector2(k0, k0), 0.0, _from_grid - _grid * k0)
+	var was := _from_zoom * Transform2D(0.0, Vector2(k0, k0), 0.0, _from_grid - _origin() * k0)
 	var k := lerpf(was.get_scale().x, 1.0, s)
 	return Transform2D(0.0, Vector2(k, k), 0.0, was.origin.lerp(Vector2.ZERO, s))
 
@@ -1078,6 +1110,8 @@ func _draw_hud() -> void:
 ## taps left beside it.
 func pill_text() -> String:
 	var sewn := tr("BB_PILL") % [state.homes(), state.count()]
+	if state.in_parts():
+		sewn = tr("BB_PART") % [state.part + 1, state.parts.size()] + " · " + sewn
 	if max_moves > 0:
 		return (tr("MOVES_LEFT_ONE") if moves_left == 1 else tr("MOVES_LEFT_N") % moves_left) + " · " + sewn
 	return sewn
@@ -1432,7 +1466,7 @@ func _tin_at(local: Vector2) -> int:
 	return -1
 
 func _can_play() -> bool:
-	if is_done() or out_of_hearts or _solved_at > -INF:
+	if is_done() or out_of_hearts or _solved_at > -INF or _turning:
 		return false
 	return max_moves == 0 or moves_left > 0
 
@@ -1652,6 +1686,8 @@ func _play(res: Dictionary, at_cell: int, starts: Dictionary) -> void:
 	_request()
 	note_move()
 	_spend(1, last)
+	if state.part_done():
+		_part_sewn(last)
 
 ## One button has landed: its tick, a step up the run, and a ring where it
 ## was sewn.
@@ -1720,7 +1756,7 @@ func tip_line() -> Dictionary:
 # --- the HUD's actions ---
 
 func can_undo() -> bool:
-	return max_moves == 0 and not is_done() and not out_of_hearts and not state.history.is_empty()
+	return max_moves == 0 and not is_done() and not out_of_hearts and not _turning and not state.history.is_empty()
 
 ## Takes the last tap back: its buttons are where they were, at once.
 func undo() -> bool:
@@ -1749,7 +1785,7 @@ func hints_left() -> int:
 ## Makes the move the state's own hand would, as the player makes it: the
 ## pick, a beat, then the tap that says where it goes.
 func hint() -> bool:
-	if is_done() or out_of_hearts or hints_left() <= 0:
+	if is_done() or out_of_hearts or _turning or hints_left() <= 0:
 		return false
 	var move: Dictionary = state.hint()
 	if move.is_empty():
@@ -1793,6 +1829,7 @@ func reset_board() -> void:
 
 func _restart() -> void:
 	_gen += 1
+	_turning = false
 	state.reset()
 	moves = 0
 	_running = true
@@ -1824,7 +1861,9 @@ func restore_completed_board() -> void:
 	var now := _now()
 	_gen += 1
 	state.finish(int(completed_record.get("taps", state.par)))
+	_turning = false
 	_deal()
+	_layout()
 	moves_left = int(completed_record.get("left", 0))
 	_opened = now - 10.0
 	_solved_at = now - 10.0
@@ -1875,20 +1914,59 @@ func _on_solved() -> void:
 	# the picture is seen whole for its win
 	if zoom.zoomed():
 		zoom.toggle()
-	if _big():
-		# a thousand buttons hop a block at a time, each block one mesh
-		for b in _blocks.size():
-			_block_hop[b] = now + lag + Motion.stagger(b % _bw + b / _bw, BLOCK_STAGGER, 1.0)
-	else:
-		for i in state.slot.size():
-			if state.slot[i] >= 0:
-				var c: Vector2i = state.xy(i)
-				_hop_at[i] = now + lag + Motion.stagger(c.x + c.y, Motion.SOLVE_STAGGER, 1.0)
-				_mark(i)
+	_hop_all(now + lag)
 	_after(lag, fx.cue.bind("solved"))
 	_hud_layer.queue_redraw()
 	_party(lag)
 	_busy_for(lag + Motion.SOLVE_TIME + 1.0 + WIN_SLIDE + 0.3)
+	_request()
+
+## The cloth's jewels hop along its diagonals from `from`.
+func _hop_all(from: float) -> void:
+	if _big():
+		# a thousand buttons hop a block at a time, each block one mesh
+		for b in _blocks.size():
+			_block_hop[b] = from + Motion.stagger(b % _bw + b / _bw, BLOCK_STAGGER, 1.0)
+	else:
+		for i in state.slot.size():
+			if state.slot[i] >= 0:
+				var c: Vector2i = state.xy(i)
+				_hop_at[i] = from + Motion.stagger(c.x + c.y, Motion.SOLVE_STAGGER, 1.0)
+				_mark(i)
+
+## A part of Insane's picture is sewn and another waits: it hops as a won
+## picture does, with the colour-whole cue, and the next part comes on.
+func _part_sewn(last: float) -> void:
+	var now := _now()
+	_turning = true
+	_pressed = -1
+	_unhold()
+	_combo_n = 0
+	var lag := 0.0 if Motion.reduce else maxf(0.0, last - now) + Motion.SOLVE_DELAY
+	if zoom.zoomed():
+		zoom.toggle()
+	_hop_all(now + lag)
+	_after(lag, func() -> void:
+		fx.cue("whole")
+		if not Motion.reduce:
+			fx.confetti(zoom.to_screen(_field_px().get_center()), 24, _cell * 6.0))
+	_busy_for(lag + PART_HOLD + 0.3)
+	_after(0.0 if Motion.reduce else lag + PART_HOLD, _next_part)
+	_request()
+
+## The next part on the cloth, where the last one was played, its jewels
+## popping in as a day's do (a slide of the whole picture along was tried
+## and never seen to move in a harness: 2026-10-27).
+func _next_part() -> void:
+	_turning = false
+	if not state.part_done():
+		return
+	state.next_part()
+	zoom.reset()
+	_deal()
+	_layout()
+	_enter()
+	_bump_pill()
 	_request()
 
 func _party(lag: float) -> void:
@@ -2051,7 +2129,9 @@ func _process(delta: float) -> void:
 	if gliding or zoom.busy() or now < _anim_until or now - _slid_at < WIN_SLIDE + 0.1:
 		_request()
 	# a zoomed picture is cut to its room; whole, it may pop and slide past it
-	_cloth.clip_contents = zoom.zoomed()
+	# (a part of a picture in parts is cut to it too: the rest runs on past
+	# it, and the cloth is drawn over the case)
+	_cloth.clip_contents = zoom.zoomed() or (state.in_parts() and not _won)
 	_over.clip_contents = zoom.zoomed()
 	var wanted := _zoom_button_wanted()
 	if _zoom_b.visible != wanted:
