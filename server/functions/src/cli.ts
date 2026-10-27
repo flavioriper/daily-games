@@ -12,7 +12,7 @@ import {makeDay as picturesDay} from "./pictures";
 import {describe, eligible, seeded} from "./cast";
 import {makeTheme, themed} from "./theme";
 import {makeWords} from "./words";
-import {makeVista, TIMES as VISTA_TIMES, Vistas} from "./vistas";
+import {FULL_SUFFIX, makeVista, TIMES as VISTA_TIMES, Vistas} from "./vistas";
 
 /**
  * The night's work by hand (tools/acorn_day.sh, tools/pearl_day.sh,
@@ -240,7 +240,7 @@ async function main(): Promise<void> {
       if (day.theme === null) continue;
       const keep = (name: string, d: {bytes: Buffer}) => {
         // The painter's full-size painting (the bench's) is a PNG, the phone's JPEG a JPEG.
-        const kept = `${day.day}_${name}.${name.endsWith("-full") ? "png" : "jpg"}`;
+        const kept = `${day.day}_${name}.${name.endsWith(FULL_SUFFIX) ? "png" : "jpg"}`;
         fs.writeFileSync(path.join(path.dirname(file), kept), d.bytes);
         return kept;
       };

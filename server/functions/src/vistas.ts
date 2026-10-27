@@ -29,6 +29,8 @@ const QUALITY = [82, 74, 66];
 /** Base64 a vista may be: four stay well under a document's 1 MiB. */
 const MAX_B64 = 200 * 1024;
 const ASPECT = "21:9";
+/** The bench keeps the painter's full-size drawing under `<name>` + this (a PNG). */
+export const FULL_SUFFIX = "-full";
 
 /** The painting model: the shape boards' (flash on Vertex), whose quota is
  *  not the pixel pictures' pro (2026-10-16) and which painted the first
@@ -70,8 +72,8 @@ const REVIEWER = `You check painted backgrounds for a cosy daily puzzle game pla
   `creature, the Peeplet, first, then one or two paintings, and answer in JSON. A painting is turned down for any of: text, letters, numbers, a ` +
   `logo or a signature anywhere in it; any human or human-shaped figure; a Peeplet (the creature on the reference sheet) with more or fewer than ` +
   `two arms or two legs, a limb fused, melted, doubled, bent the wrong way or longer than the body, hands with fingers, a neck, a second head or ` +
-  `face, more than two eyes, or a body that is not one round blob; a Peeplet in the left third of the painting; a Peeplet larger than a fifth of ` +
-  `the painting's height or smaller than a twentieth; no Peeplet at all, or more than three; anything frightening, violent or unsuitable for ` +
+  `face, more than two eyes, or a body that is not one round blob; a Peeplet in the left third of the painting; a Peeplet whose body is larger than a fifth of ` +
+  `the painting's height or smaller than a twentieth (a Peeplet's height is measured by its body, its hat excluded); no Peeplet at all, or more than three; anything frightening, violent or unsuitable for ` +
   `children; not a wide painted landscape (a close-up of one thing, a photo, a pattern); the light not the time of day asked; or, when there is a ` +
   `first painting to compare, a different place or a different framing from it (the light and sky changing is expected). Say what is wrong in ` +
   `"wrong", or leave it empty when nothing is. Answer "peeplets" with how many Peeplets you count in the painting being judged.`;
@@ -142,24 +144,31 @@ function dataUrl(d: Drawing): string {
  */
 export async function reviewPainting(theme: Theme, time: Time, drawn: Drawing, morning: Drawing | null):
   Promise<{wrong: string; peeplets: number}> {
+  if (time !== "morning" && morning === null) throw new Error(`the ${time} edit needs the morning painting beside it`);
   const review = await ask<{wrong: string; peeplets: number}>({
     system: REVIEWER,
     prompt: time === "morning" ?
       `The first picture is the reference sheet of the Peeplet. The second is the painting to judge, of the theme "${theme.name.en}" (${theme.scene}), meant to be at ${time}.` :
       `The first picture is the reference sheet of the Peeplet. The second is a painting at morning; the third is meant to be the same place at ${time}. Judge the third.`,
-    images: time === "morning" || morning === null ?
+    images: morning === null ?
       [dataUrl(sheetRef()), dataUrl(drawn)] : [dataUrl(sheetRef()), dataUrl(morning), dataUrl(drawn)],
     schema: REVIEW_SCHEMA,
     role: "review",
   });
-  return {wrong: String(review.wrong ?? "").trim(), peeplets: Number(review.peeplets ?? 0)};
+  // Fails closed: a missing or non-numeric count is 0, and a painting passes
+  // only with nothing wrong AND one to three Peeplets counted.
+  const n = Number(review.peeplets);
+  const peeplets = Number.isFinite(n) ? Math.round(n) : 0;
+  let wrong = String(review.wrong ?? "").trim();
+  if (wrong === "" && (peeplets < 1 || peeplets > 3)) wrong = `counted ${peeplets} Peeplets`;
+  return {wrong, peeplets};
 }
 
 /**
  * The vista of `time`, shrunk for a phone, or null when no painting passed.
  * `morning` (already shrunk) is the one the others are painted from and
  * seen beside; `keep` is told of every painting made (the small one, and
- * under the bench the full one as `<name>-full`). The reviewer sees the
+ * under the bench the full one as `<name>` + FULL_SUFFIX). The reviewer sees the
  * painter's full-size painting; only a passing one is shrunk. `size` is the
  * painter's native WxH. Never throws.
  */
@@ -185,7 +194,7 @@ export async function makeVista(day: number, theme: Theme, time: Time, morning: 
       const px = decoded(drawn);
       size = `${px.width}x${px.height}`;
       // The bench keeps the paid drawing before the review, which can fail.
-      keep?.(name + "-full", drawn);
+      keep?.(name + FULL_SUFFIX, drawn);
       const {wrong, peeplets} = await reviewPainting(theme, time, drawn, morning);
       log.push({name, wrong, peeplets, size});
       // Only a passing painting is shrunk for a phone; the bench (`keep`) is
