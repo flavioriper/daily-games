@@ -150,7 +150,7 @@ export async function reviewPainting(theme: Theme, time: Time, drawn: Drawing, m
     prompt: time === "morning" ?
       `The first picture is the reference sheet of the Peeplet. The second is the painting to judge, of the theme "${theme.name.en}" (${theme.scene}), meant to be at ${time}.` :
       `The first picture is the reference sheet of the Peeplet. The second is a painting at morning; the third is meant to be the same place at ${time}. Judge the third.`,
-    images: morning === null ?
+    images: time === "morning" || morning === null ?
       [dataUrl(sheetRef()), dataUrl(drawn)] : [dataUrl(sheetRef()), dataUrl(morning), dataUrl(drawn)],
     schema: REVIEW_SCHEMA,
     role: "review",
