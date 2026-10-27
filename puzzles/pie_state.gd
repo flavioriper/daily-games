@@ -25,6 +25,7 @@ var rows := 3
 ## Who ate, a bit a baker.
 var ate := 0
 var names: Array = []
+## Who the bakers are: an index into peeplet/peeplet_personas.gd each.
 var faces: Array = []
 var clues: Array = []
 var start := 0

@@ -48,15 +48,10 @@ const BANDS := [
 		"w": [5, 2, 2, 3, 1, 1, 2, 0, 1, 1, 1, 1]},
 ]
 
-## The names, two to a letter; a day takes one of each pair it uses and
-## lays them in reading order, so a name is easy to find on the grid.
-const NAMES := [
-	["Ada", "Alma"], ["Bea", "Bram"], ["Cal", "Cleo"], ["Dot", "Dex"],
-	["Eli", "Emma"], ["Fay", "Finn"], ["Gus", "Greta"], ["Hal", "Hana"],
-	["Ivy", "Ines"], ["Jo", "Juno"], ["Kit", "Koa"], ["Lou", "Lena"],
-	["Max", "Mila"], ["Ned", "Nora"], ["Olga", "Otto"], ["Pip", "Paz"],
-	["Quin", "Rosa"], ["Rex", "Ruth"], ["Tess", "Theo"], ["Uma", "Vic"],
-]
+## The bakers are Peeplets (peeplet/peeplet_personas.gd): a day deals n of
+## the fifty and lays them in their names' order, so a name in a clue is easy
+## to find on the grid.
+const Personas = preload("res://peeplet/peeplet_personas.gd")
 
 static var _pc := PackedInt32Array()
 
@@ -400,12 +395,15 @@ static func _try_deal(rng: RandomNumberGenerator, b: Dictionary) -> Dictionary:
 				break
 			return {}
 		_shuffle(rng, fresh)
+	var cast := range(Personas.count())
+	_shuffle(rng, cast)
+	cast = cast.slice(0, n)
+	cast.sort_custom(func(a: int, b: int) -> bool:
+		return String(Personas.get_persona(a).name) < String(Personas.get_persona(b).name))
 	var names := []
-	for i in n:
-		names.append(NAMES[i][rng.randi_range(0, 1)])
-	var faces := range(20)
-	_shuffle(rng, faces)
-	return {"cols": cols, "rows": rows, "ate": ate, "names": names, "faces": faces.slice(0, n),
+	for who: int in cast:
+		names.append(Personas.get_persona(who).name)
+	return {"cols": cols, "rows": rows, "ate": ate, "names": names, "faces": cast,
 		"clues": clues, "start": start, "dish": dish}
 
 ## A clue for baker `i` that proves someone new with the clues heard so

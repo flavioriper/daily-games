@@ -11,9 +11,9 @@
   clue sentences are written here, `clue_text`), `puzzles/pie_state.gd`
   (marks, slips, the bulb's baker, quality), `puzzles/pie_gen.gd` (the
   clue kinds as sums, the solver and the deal), `puzzles/pie_world.gd`,
-  `ui/faces/pie_art.gd` (card, halo, tick, slice, pie, hat, bubble,
-  buttons, and the twenty faces), `ui/hud/pie_tutorial_diagram.gd`,
-  `ui/menu/cards/pie.gd`.
+  `ui/faces/pie_art.gd` (card, halo, tick, slice, pie, crumbs, bubble,
+  buttons), `peeplet/peeplet_personas.gd` (the fifty bakers),
+  `ui/hud/pie_tutorial_diagram.gd`, `ui/menu/cards/pie.gd`.
 - **One solver for everything**: `Gen.forced` is what the deal checks every
   round with and what `State.mark` judges a mark with (via `proof()`,
   cached until the next mark). A clue kind added must be added to
@@ -77,3 +77,26 @@
   proven baker picked and marked); `tests/_shot_pie.gd -- <dir> d=<0..3>
   [tut=<page>|card]` shoots rest, picked, refused, turning, marked, slip,
   nudged, hinted, leads, quip, dimmed, midway, the win and the reopened day, and prints the day's clues.
+- **Caught is crust, not berry (2026-10-27)**: the user, "the red color
+  when someone ate the pie is making users confused, look like it's wrong".
+  Berry is the house's wrong, so the "ate" card paper, its badge plate, the
+  "Ate pie" button and the caught ring moved to baked crust (`Art.ATE*`);
+  berry stays only on slips and the "says otherwise" line, and 🟥 in the
+  share is still a slip.
+- **The bakers are Peeplets (2026-10-27)**: the user, "switch the fruits
+  with peeplets char personas". Fifty personas in
+  `peeplet/peeplet_personas.gd` (name, coat, hat, eyewear, two traits, a
+  line; no two share coat and hat; append only, a day keeps them by
+  index). The deal shuffles the fifty after the clues (the clue rng is
+  untouched) and sorts the day's n by name. Each baker is a live
+  `ui/peeplet_view.gd` in `_cast`, seated by `_draw_card` under the card's
+  own transform (drop, shiver, hop, flip, dim) and shown only when seated;
+  crumbs go on `_over` above them. The views hold their frame
+  (`idle_fps` 0): the picked baker breathes at 12, a marked baker laughs
+  (walker `laugh_time`, silent, the board has its sounds), the win laughs
+  along its wave. The first game screen that loads a model, on the user's
+  word. Draw calls on Insane 143-252 (were 168-276); the menu card 10.
+  The persona page: https://claude.ai/artifact/LaPmKwPhMwxqDJzhQPZ6X2
+  (renders by `tests/_shot_peeplet_personas.gd`). Owed: a phone run (20
+  SubViewports on Insane, MSAA 4x each), the traits and lines are not in
+  the game (they need locale rows first).

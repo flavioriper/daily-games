@@ -34,6 +34,12 @@ extends SubViewportContainer
 	set(v):
 		frame_height = v
 		_aim()
+## Metres above the peeplet's feet the camera looks at; the peeplet lab's
+## 0.3 is its middle, higher leaves room above for a tall hat.
+@export var aim_y := 0.3:
+	set(v):
+		aim_y = v
+		_aim()
 ## One of PeepletPalette.BODY, by index: eight flat coats and four painted
 ## ones (candy, midnight, ocean, cloud).
 @export var color_index := 0:
@@ -54,7 +60,9 @@ extends SubViewportContainer
 ## Frames a second the 3D picture is redrawn at while the peeplet acts
 ## (walks, picks, laughs) and while it only breathes. Between redraws the
 ## last frame stays up, a single 2D draw; off screen or hidden it is not
-## drawn at all, and at the game's rest (core/power.gd) it holds still.
+## drawn at all, and at the game's rest (core/power.gd) it holds still. An
+## idle_fps of 0 holds the frame while it only breathes: a still portrait,
+## redrawn when it acts, is rebuilt, re-aimed or shown again.
 @export var busy_fps := 30.0
 @export var idle_fps := 15.0
 
@@ -64,8 +72,8 @@ var _camera: Camera3D
 ## core/power.gd stops whatever has `_idle` true at rest, through set_idle().
 var _idle := true
 var _since := INF
+var _was_busy := false
 
-const TARGET := Vector3(0.0, 0.3, 0.0)
 ## The fur's toon band is cut against this uniform, not a light node: the
 ## peeplet lab's noon sun (world_lighting.sun_toward_direction() at LAB_HOUR
 ## 12, read off the running lab 2026-10-23). The hats and eyewear are lit
@@ -185,8 +193,9 @@ func _aim() -> void:
 		return
 	var p := deg_to_rad(pitch)
 	_camera.fov = rad_to_deg(2.0 * atan(frame_height * 0.5 / DISTANCE))
-	var eye := TARGET + Vector3(0.0, sin(p), cos(p)) * DISTANCE
-	_camera.transform = Transform3D(Basis.looking_at(TARGET - eye, Vector3.UP), eye)
+	var target := Vector3(0.0, aim_y, 0.0)
+	var eye := target + Vector3(0.0, sin(p), cos(p)) * DISTANCE
+	_camera.transform = Transform3D(Basis.looking_at(target - eye, Vector3.UP), eye)
 	_since = INF
 
 func _process(delta: float) -> void:
@@ -195,9 +204,20 @@ func _process(delta: float) -> void:
 	_since += delta
 	if not is_visible_in_tree() or not get_viewport_rect().intersects(get_global_rect()):
 		return
-	if _since >= 1.0 / (busy_fps if _busy() else idle_fps):
+	var busy := _busy()
+	var fps := busy_fps if busy else idle_fps
+	# an action's last pose is drawn too, or a held portrait keeps it
+	var due := _since >= (1.0 / fps if fps > 0.0 else INF) or (_was_busy and not busy)
+	_was_busy = busy
+	if due:
 		_since = 0.0
 		_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
+
+## Shown again: the container hands its viewport back to always-update, so
+## take it back to one frame now.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_VISIBILITY_CHANGED:
+		_since = INF
 
 func _busy() -> bool:
 	return walker.walking or walker.pick_time >= 0.0 or walker.snack_time >= 0.0 \

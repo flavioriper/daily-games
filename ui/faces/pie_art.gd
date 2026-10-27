@@ -2,42 +2,21 @@ extends RefCounted
 
 ## Who Ate the Pie?'s pieces (puzzles/pie2d.gd, its tutorial and its menu
 ## card): the baker's name card, the two verdict badges (a leaf tick for
-## "didn't", a slice of pie for "ate pie"), the pie in its dish, the baker's
-## hat, the bubble the clues are read in and the two verdict buttons. Builder
-## shapes, cached per size, as teacup.gd's are; the bakers themselves are
-## the house's own faces (teacup.gd's friends and more), never new drawings.
+## "didn't", a slice of pie for "ate pie"), the pie in its dish, a caught
+## baker's crumbs, the bubble the clues are read in and the two verdict
+## buttons. Builder shapes, cached per size, as teacup.gd's are; the bakers
+## themselves are live Peeplets (ui/peeplet_view.gd), never drawn here.
 ##
 ## A card says its baker's verdict by its paper and its badge, never by a
 ## shade of the face: a cleared card is leaf paper with a tick, a card that
-## ate is berry paper with a slice.
+## ate is crust paper with a slice. Never berry: berry is the house's wrong
+## (a slip, a refusal), and a caught baker on berry read as a mistake (the
+## user, 2026-10-27: "the red color when someone ate the pie is making
+## users confused, look like it's wrong").
 
 const Face = preload("res://ui/faces/face.gd")
 const Pal = preload("res://core/palette.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
-
-## The bakers, by face: twenty silhouettes, one each on Insane's grid.
-const FACES := [
-	"res://ui/faces/berry_face.gd",
-	"res://ui/faces/pear_face.gd",
-	"res://ui/faces/pumpkin_face.gd",
-	"res://ui/faces/acorn_face.gd",
-	"res://ui/faces/mushroom_face.gd",
-	"res://ui/faces/moon_face.gd",
-	"res://ui/faces/sun_face.gd",
-	"res://ui/faces/cloud_face.gd",
-	"res://ui/faces/flower_face.gd",
-	"res://ui/faces/leaf_face.gd",
-	"res://ui/faces/bee_face.gd",
-	"res://ui/faces/hedgehog_face.gd",
-	"res://ui/faces/kitten_face.gd",
-	"res://ui/faces/snail_face.gd",
-	"res://ui/faces/sprout_face.gd",
-	"res://ui/faces/conifer_face.gd",
-	"res://ui/faces/oak_face.gd",
-	"res://ui/faces/troll_face.gd",
-	"res://ui/faces/lantern_face.gd",
-	"res://ui/faces/tent_face.gd",
-]
 
 enum Paper { OPEN, CLEAR, ATE }
 
@@ -45,8 +24,12 @@ const CARD := Color("fffaf0")
 const CARD_EDGE := Color("e2d3ba")
 const CLEAR := Color("e9f3dd")
 const CLEAR_EDGE := Color("a9cc8c")
-const ATE := Color("fbe2dc")
-const ATE_EDGE := Color("e3a39a")
+const ATE := Color("f6e5c6")
+const ATE_EDGE := Color("d2a467")
+## The "ate pie" button and the caught ring: baked crust, darker than the
+## card so the cream label reads on it.
+const ATE_BUTTON := Color("b9844c")
+const ATE_BUTTON_DEEP := Color("8f6232")
 const SHADE := Color("6b4a33")
 const CRUST := Color("e3b46e")
 const CRUST_DEEP := Color("c08a45")
@@ -57,19 +40,10 @@ const DISH := Color("f4efe6")
 const DISH_DEEP := Color("cfc3b0")
 const DISH_RIM := Color("a9c9d9")
 const CRUMB := Color("d6a865")
-const HAT := Color("fffdf9")
-const HAT_SHADE := Color("e8e0d2")
 const BUBBLE := Color("fffdf8")
 const BUBBLE_EDGE := Color("dccbb0")
 
 static var _cache := {}
-
-## A baker's face node for kind `k`, not in any tree; the owner sizes it and
-## draws `layers_now()` under its own transform.
-static func baker(k: int) -> Control:
-	var f: Control = load(FACES[k % FACES.size()]).new()
-	f.shadowless = true
-	return f
 
 ## A name card `sz`, its top left at the origin, on `paper`.
 static func card(sz: Vector2, paper: int) -> ArrayMesh:
@@ -111,15 +85,15 @@ static func tick(r: float) -> ArrayMesh:
 		r * 0.24, Pal.SURFACE)
 	return _keep(key, b)
 
-## The ate badge: a slice of berry pie, its point down-left, `r` its reach,
-## centred on the origin.
+## The ate badge: a slice of pie on a cream plate rimmed in crust, its point
+## down-left, `r` its reach, centred on the origin.
 static func slice(r: float) -> ArrayMesh:
 	var key := "slice:%d" % roundi(r * 2.0)
 	if _cache.has(key):
 		return _cache[key]
 	var b := Face.Builder.new()
-	b.disc(Vector2(0.0, r * 0.08), r, Pal.BERRY_DEEP)
-	b.disc(Vector2.ZERO, r, Pal.BERRY_TILE)
+	b.disc(Vector2(0.0, r * 0.08), r, ATE_BUTTON_DEEP)
+	b.disc(Vector2.ZERO, r, DISH)
 	_wedge(b, Vector2(-r * 0.5, r * 0.42), r * 1.05, -PI * 0.42, -PI * 0.08)
 	return _keep(key, b)
 
@@ -189,22 +163,6 @@ static func crumbs(w: float) -> ArrayMesh:
 		_crumbs(b, p, w * 0.17, 3)
 	return _keep(key, b)
 
-## A baker's hat: a tall white cook's hat, its band's middle at the origin,
-## `w` its band's width.
-static func hat(w: float) -> ArrayMesh:
-	var key := "hat:%d" % roundi(w * 2.0)
-	if _cache.has(key):
-		return _cache[key]
-	var b := Face.Builder.new()
-	var band := Face.Builder.round_rect(Vector2(-w * 0.5, -w * 0.12), Vector2(w, w * 0.3), w * 0.08)
-	for p in [Vector2(-w * 0.32, -w * 0.38), Vector2(w * 0.32, -w * 0.38), Vector2(0.0, -w * 0.52)]:
-		b.disc(p + Vector2(0.0, w * 0.04), w * 0.34, HAT_SHADE)
-	for p in [Vector2(-w * 0.32, -w * 0.38), Vector2(w * 0.32, -w * 0.38), Vector2(0.0, -w * 0.52)]:
-		b.disc(p, w * 0.32, HAT)
-	b.polygon(band, HAT_SHADE)
-	b.polygon(Face.Builder.round_rect(Vector2(-w * 0.5, -w * 0.12), Vector2(w, w * 0.22), w * 0.08), HAT)
-	return _keep(key, b)
-
 ## The bubble clues are read in, `sz`, its top left at the origin, with a
 ## little tail up at `tail_x` (no tail when negative).
 static func bubble(sz: Vector2, tail_x: float) -> ArrayMesh:
@@ -223,7 +181,7 @@ static func bubble(sz: Vector2, tail_x: float) -> ArrayMesh:
 		b.polygon(PackedVector2Array([Vector2(tail_x - t + 4.0, 4.0), Vector2(tail_x, -t + 5.0), Vector2(tail_x + t - 4.0, 4.0)]), BUBBLE)
 	return _keep(key, b)
 
-## A verdict button `sz` (top left at the origin): leaf for "didn't", berry
+## A verdict button `sz` (top left at the origin): leaf for "didn't", crust
 ## for "ate pie", with its badge at the left; `down` is pressed.
 static func button(sz: Vector2, eat: bool, down: bool) -> ArrayMesh:
 	var key := "btn:%d:%d:%s:%s" % [roundi(sz.x), roundi(sz.y), eat, down]
@@ -231,8 +189,8 @@ static func button(sz: Vector2, eat: bool, down: bool) -> ArrayMesh:
 		return _cache[key]
 	var b := Face.Builder.new()
 	var r := sz.y * 0.5
-	var fill: Color = Pal.BERRY if eat else Pal.LEAF
-	var deep: Color = Pal.BERRY_DEEP if eat else Pal.LEAF_DEEP
+	var fill: Color = ATE_BUTTON if eat else Pal.LEAF
+	var deep: Color = ATE_BUTTON_DEEP if eat else Pal.LEAF_DEEP
 	var lift := 0.0 if down else sz.y * 0.08
 	b.polygon(Face.Builder.round_rect(Vector2(0.0, sz.y * 0.08), sz, r), deep)
 	b.polygon(Face.Builder.round_rect(Vector2(0.0, sz.y * 0.08 - lift), sz, r), fill)

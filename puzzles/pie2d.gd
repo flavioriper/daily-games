@@ -14,10 +14,14 @@ extends "res://core/puzzle_base.gd"
 ## this board full rect and says what its rows cover (`set_clear`); the
 ## world (puzzles/pie_world.gd) is the board's first child. The cards, the
 ## pie, the badges, the bubble and the buttons are ui/faces/pie_art.gd's;
-## the bakers are the house's own faces, one node per baker and look, never
-## in the tree, drawn by this board from their `layers_now()`.
+## the bakers are Peeplets (peeplet/peeplet_personas.gd, the user,
+## 2026-10-27: "switch the fruits with peeplets"), a live ui/peeplet_view.gd
+## each in `_cast`, seated over its card by `_draw_card` under the card's
+## own motion; a caught baker's crumbs go on `_over`, drawn after them. The
+## views hold a still frame and redraw only when their baker laughs (a mark,
+## the win) or is picked, so twenty of them cost a draw each between.
 ##
-## A mark flips the card over to its paper (leaf for "didn't", berry for
+## A mark flips the card over to its paper (leaf for "didn't", crust for
 ## "ate pie"), its badge pops and the baker hops; the bakers the new clue
 ## speaks of are ringed a moment, and one caught owns up in the bubble with
 ## crumbs on their chin. An open baker picked rings every clue that speaks
@@ -40,7 +44,8 @@ const World = preload("res://puzzles/pie_world.gd")
 const Art = preload("res://ui/faces/pie_art.gd")
 const Motion = preload("res://core/motion.gd")
 const Pal = preload("res://core/palette.gd")
-const Face = preload("res://ui/faces/face.gd")
+const PeepletView = preload("res://ui/peeplet_view.gd")
+const Personas = preload("res://peeplet/peeplet_personas.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
 const Haptics = preload("res://core/haptics.gd")
 const CozyTheme = preload("res://ui/theme.gd")
@@ -75,6 +80,15 @@ const WIN_HOLD := 1.4
 const WAVE_STEP := 0.05
 ## The columns' letters.
 const LETTERS := "ABCDEFGH"
+## A baker's picture: metres of the Peeplet's world it is tall and the height
+## it looks at, so the tallest hat (the wizard's) stays in; the picked
+## baker breathes at PICKED_FPS, the rest hold still.
+const CAST_FRAME := 1.0
+const CAST_AIM := 0.46
+const PICKED_FPS := 12.0
+## A marked card's picture across, in its small face's widths: the hat
+## needs room above the face.
+const MINI_SIDE := 1.9
 
 ## Built silent and deaf for the tutorial's page.
 var demo := false
@@ -118,8 +132,16 @@ var _slip_at := -INF
 var _found_at := -INF
 ## The clue sentences, a baker each, written once a deal.
 var _text: Array[String] = []
-## The bakers' faces, "kind:expression" -> Control (never in the tree).
-var _faces := {}
+## The bakers: a PeepletView each, children of `_cast`, for the personas
+## in `_cast_ids`; `_over` draws the caught ones' crumbs over them, at
+## `_crumbs` (a card-space transform and its tint, a baker each) as
+## `_draw_card` laid them this frame. `_seated` the bakers seated this frame.
+var _cast: Control
+var _over: Control
+var _views: Array[Control] = []
+var _cast_ids: Array = []
+var _crumbs := {}
+var _seated := 0
 var _won_at := -INF
 var _enter_at := 0.0
 var _pressing := -2
@@ -179,17 +201,22 @@ func _ready() -> void:
 		fx = Fx2D.new()
 		fx.name = "Fx"
 		fx.haptics = HAPTICS
+	_cast = Control.new()
+	_cast.name = "Cast"
+	_cast.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_cast)
+	_over = Control.new()
+	_over.name = "Over"
+	_over.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_over.draw.connect(_draw_over)
+	add_child(_over)
+	if fx != null:
 		add_child(fx)
+	_seat_cast()
 	resized.connect(_relayout)
 	if demo:
 		_make_world()
 		_relayout()
-
-func _exit_tree() -> void:
-	for f: Control in _faces.values():
-		if is_instance_valid(f):
-			f.free()
-	_faces.clear()
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_band = clampi(difficulty, 0, 3)
@@ -211,6 +238,7 @@ func _fresh() -> void:
 	_text.clear()
 	for i in n:
 		_text.append(clue_text(i))
+	_seat_cast()
 	_sel = _st.start
 	_sel_at = -INF
 	_say = ""
@@ -304,6 +332,7 @@ func _select(i: int) -> void:
 		return
 	_sel = i
 	_sel_at = _t
+	_breathe()
 	_say = ""
 	_quip = ""
 	_cue("pick", randf_range(0.96, 1.04))
@@ -359,8 +388,9 @@ func _verdict(eat: bool, by_hint := false) -> void:
 	var turn := FLIP_TIME * 0.5 if not Motion.reduce else 0.0
 	_after(turn, func() -> void:
 		_cue("caught" if eat else "clear", randf_range(0.96, 1.04))
+		_laugh(i)
 		if not demo:
-			fx.ring(_card_centre(i), _l("cw") * 0.55, Pal.BERRY if eat else Pal.LEAF)
+			fx.ring(_card_centre(i), _l("cw") * 0.55, Art.ATE_BUTTON if eat else Pal.LEAF)
 			if eat:
 				fx.puff(_header_pie(), Art.CRUMB, 5))
 	_after(FLIP_TIME, func() -> void: _ring_spoken(i))
@@ -375,7 +405,11 @@ func _ring_spoken(i: int) -> void:
 func _solved_now() -> void:
 	_phase = Phase.DONE
 	_sel = -1
+	_breathe()
 	_won_at = _t + FLIP_TIME + 0.2
+	# the table laughs along the win's wave
+	for j in _st.count():
+		_after(FLIP_TIME + 0.2 + j * WAVE_STEP + 0.1, _laugh.bind(j))
 	_after(FLIP_TIME + 0.15, func() -> void: _cue("solved"))
 	if not demo:
 		_after(FLIP_TIME + 0.5, func() -> void:
@@ -466,6 +500,75 @@ func _process(delta: float) -> void:
 		var job: Array = _queue.pop_front()
 		(job[1] as Callable).call()
 	queue_redraw()
+	if _over != null:
+		_over.queue_redraw()
+
+# --- the bakers ---
+
+## A PeepletView for every baker of the day, built when the day's cast
+## changes; each holds its frame until it acts.
+func _seat_cast() -> void:
+	if _cast == null or _cast_ids == _st.faces:
+		return
+	for v in _views:
+		v.queue_free()
+	_views.clear()
+	for k in _st.faces:
+		var p: Dictionary = Personas.get_persona(int(k))
+		var v: Control = PeepletView.new()
+		v.color_index = int(p.coat)
+		v.headgear = String(p.hat)
+		v.eyewear = String(p.eyes)
+		v.frame_height = CAST_FRAME
+		v.aim_y = CAST_AIM
+		v.idle_fps = 0.0
+		v.visible = false
+		_cast.add_child(v)
+		_views.append(v)
+	_cast_ids = _st.faces.duplicate()
+	_size_cast()
+
+## The views' own size: an open card's picture, the largest a baker is drawn
+## (a marked card's is the same picture scaled down).
+func _size_cast() -> void:
+	if _L.is_empty():
+		return
+	var side := _open_side(float(_L.cw), float(_L.ch), float(_L.pad), float(_L.big_fs))
+	for v in _views:
+		v.size = Vector2.ONE * ceilf(side)
+
+func _open_side(cw: float, ch: float, pad: float, bfs: float) -> float:
+	return minf(cw - pad, ch - pad * 1.4 - bfs * 1.05)
+
+## Only the picked baker breathes; the rest hold their frame.
+func _breathe() -> void:
+	for j in _views.size():
+		_views[j].idle_fps = PICKED_FPS if j == _sel and not demo else 0.0
+
+## Baker `i` laughs, silently: the board has its own sounds.
+func _laugh(i: int) -> void:
+	if i >= _views.size() or Motion.reduce:
+		return
+	var w = _views[i].walker
+	if w != null and w.laugh_time < 0.0 and w.snack_time < 0.0:
+		w.laugh_time = 0.0
+
+## Baker `i`'s picture, `side` across and centred on `c` in card space under
+## the card's `base`, faded with the card.
+func _seat(i: int, side: float, base: Transform2D, c: Vector2, tint: Color) -> void:
+	if i >= _views.size() or _views[i].size.x <= 0.0:
+		return
+	var v := _views[i]
+	var xf := base * Transform2D(0.0, Vector2.ONE * (side / v.size.x), 0.0, c - Vector2.ONE * side * 0.5)
+	v.position = xf.origin
+	v.scale = xf.get_scale()
+	v.modulate = tint
+	_seated |= 1 << i
+
+func _draw_over() -> void:
+	for i: int in _crumbs:
+		var at: Array = _crumbs[i]
+		_over.draw_mesh(Art.crumbs(float(at[2])), null, at[0], at[1])
 
 # --- the fingers ---
 
@@ -568,6 +671,7 @@ func _relayout() -> void:
 	var top := _clear.x if _bled else 0.0
 	var bottom := size.y - (_clear.y if _bled else 0.0)
 	_L = _layout_for(top, bottom)
+	_size_cast()
 	if _world != null:
 		_world.position = Vector2(-_shift if _bled else 0.0, 0.0)
 		_world.size = size
@@ -688,8 +792,12 @@ func _draw() -> void:
 	if _L.is_empty() or _st.names.is_empty():
 		return
 	_draw_letters()
+	_seated = 0
+	_crumbs.clear()
 	for i in _st.count():
 		_draw_card(i)
+	for i in _views.size():
+		_views[i].visible = _seated & (1 << i) != 0
 	_draw_head()
 	_draw_bubble()
 
@@ -711,14 +819,6 @@ func _draw_letters() -> void:
 		var s := str(row + 1)
 		var sw := font.get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 		draw_string(font, Vector2(r.position.x - 22.0 * u - sw * 0.5, r.get_center().y + fs * 0.35), s, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, ink)
-
-func _face(kind: int, expr: int) -> Control:
-	var key := "%d:%d" % [kind, expr]
-	if not _faces.has(key):
-		var f: Control = Art.baker(kind)
-		f.expression = expr
-		_faces[key] = f
-	return _faces[key]
 
 func _draw_card(i: int) -> void:
 	var u := _u()
@@ -781,34 +881,27 @@ func _draw_card(i: int) -> void:
 	if sx < 0.15:
 		return
 	var pad := _l("pad")
-	var expr := Face.Expr.HAPPY
-	if shown:
-		expr = Face.Expr.WORRIED if _st.did_eat(i) else (Face.Expr.JOY if won or flip < 1.2 else Face.Expr.HAPPY)
-	elif won:
-		expr = Face.Expr.JOY
-	var f := _face(int(_st.faces[i]), expr)
 	var font: Font = CozyTheme.display(700)
 	var name: String = _st.names[i]
 	if not shown:
 		# an open card: the baker large in the middle, their name under them
-		var seat := _l("seat")
-		var fc := Vector2(r.size.x * 0.5, pad + seat * 0.62)
-		_draw_baker(f, seat, base, fc, tint)
 		var bfs := int(_L.big_fs)
+		var side := _open_side(r.size.x, r.size.y, pad, bfs)
+		_seat(i, side, base, Vector2(r.size.x * 0.5, pad * 0.4 + side * 0.5), tint)
 		draw_set_transform_matrix(base)
 		draw_string(font, Vector2(0.0, r.size.y - pad - bfs * 0.15), name, HORIZONTAL_ALIGNMENT_CENTER, r.size.x, bfs, Color(Pal.TEXT, a))
 		draw_set_transform_matrix(Transform2D.IDENTITY)
 		return
 	var mini := _l("mini")
 	var fc := Vector2(pad + mini * 0.5, pad + mini * 0.6)
-	_draw_baker(f, mini, base, fc, tint)
+	_seat(i, mini * MINI_SIDE, base, fc + Vector2(-mini * 0.08, -mini * 0.18), tint)
 	if _st.did_eat(i):
-		draw_mesh(Art.crumbs(mini), null, base * Transform2D(0.0, fc + Vector2(0.0, mini * 0.3)), tint)
+		_crumbs[i] = [base * Transform2D(0.0, fc + Vector2(0.0, mini * 0.32)), tint, mini * 0.8]
 	var nfs := int(_L.name_fs)
 	var body: Font = CozyTheme.body(600)
 	var cfs := int(_L.clue_fs)
 	draw_set_transform_matrix(base)
-	draw_string(font, Vector2(pad + mini * 1.15, fc.y + nfs * 0.36), name, HORIZONTAL_ALIGNMENT_LEFT, r.size.x - pad * 2.0 - mini * 2.0, nfs, Color(Pal.TEXT, tint.a))
+	draw_string(font, Vector2(pad + mini * 1.3, fc.y + nfs * 0.36), name, HORIZONTAL_ALIGNMENT_LEFT, r.size.x - pad * 2.0 - mini * 2.15, nfs, Color(Pal.TEXT, tint.a))
 	draw_multiline_string(body, Vector2(pad, pad + mini * 1.08 + cfs * 0.92), _text[i], HORIZONTAL_ALIGNMENT_LEFT, r.size.x - pad * 2.0, cfs, -1, Color(Pal.TEXT, tint.a))
 	draw_set_transform_matrix(Transform2D.IDENTITY)
 	if shown:
@@ -817,15 +910,6 @@ func _draw_card(i: int) -> void:
 		var bs := Motion.pop_in_scale(bk).x if bk < Motion.POP_IN and not Motion.reduce else 1.0
 		var badge: ArrayMesh = Art.slice(br) if _st.did_eat(i) else Art.tick(br)
 		draw_mesh(badge, null, base * Transform2D(0.0, Vector2.ONE * bs, 0.0, Vector2(r.size.x - br * 0.9, br * 0.9)), tint)
-
-## A baker's face in a `seat` square centred on `fc` (card space), their
-## hat on top.
-func _draw_baker(f: Control, seat: float, base: Transform2D, fc: Vector2, tint: Color) -> void:
-	f.size = Vector2.ONE * seat
-	var fxf := base * Transform2D(0.0, fc - f.size * 0.5)
-	for layer: Array in f.layers_now():
-		draw_mesh(layer[0], null, fxf * (layer[1] as Transform2D), tint)
-	draw_mesh(Art.hat(seat * 0.46), null, base * Transform2D(0.0, fc + Vector2(0.0, -seat * 0.38)), tint)
 
 ## The pie in its dish and how many who ate are found; the slips under it.
 func _draw_head() -> void:
