@@ -1302,6 +1302,9 @@ ratings of its own yet. `Registry.PUZZLES` now runs, best first:
 
 ### The difficulty sheet retired for the puzzles (2026-10-22)
 
+**Reversed on 2026-10-27**: the sheet is back for the puzzle cards, the row
+last played ringed; see "2026-10-27: the sheet is back" at the end of this file.
+
 The user: "remove the difficulty sheet from the puzzles since users can switch
 difficulty ingame, load gamepage directly". A card with `pick_difficulty` now
 opens its board at once, at the level last played on that board
