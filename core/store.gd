@@ -23,6 +23,12 @@ const PRODUCT := "remove_ads"
 ## gone. The launch check still runs, so a player who bought on Play keeps
 ## their ads removed. True brings all three doors back.
 const SELLING := false
+## The godot-iap plugin is off since 2026-10-27 (the user: "we don't have it
+## no more"): its Android library carried the com.android.vending.BILLING
+## permission, which is what put the "In-app purchases" label on the Play
+## listing. project.godot lists neither its autoload nor its plugin.cfg, so
+## _iap stays null and the store is simply unavailable on a phone; the addon
+## files stay on disk for the day it comes back (re-enable both lines).
 const TYPES_PATH := "res://addons/godot-iap/types.gd"
 static var save_path := "user://store.cfg"
 

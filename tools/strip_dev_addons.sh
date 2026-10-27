@@ -7,8 +7,9 @@
 # (tools/deploy_android.sh does `git checkout` on both files).
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
-# Only godot_mcp's entry leaves the plugin list: the store plugins (AdMob,
-# godot-iap) stay enabled, because their exporters run during the export.
+# Only godot_mcp's entry leaves the plugin list: the AdMob plugin stays
+# enabled, because its exporter runs during the export. (godot-iap is not in
+# the list at all since 2026-10-27: core/store.gd says why.)
 perl -ni -e 'print unless /^MCPGameBridge=/' project.godot
 perl -pi -e 's{"res://addons/godot_mcp/plugin\.cfg",\s*}{}; s{,\s*"res://addons/godot_mcp/plugin\.cfg"}{}; s{^enabled=PackedStringArray\("res://addons/godot_mcp/plugin\.cfg"\)\n}{}' project.godot
 perl -pi -e 's{^exclude_filter="([^"]*)"}{my $f = $1; $f =~ /addons\/godot_mcp/ ? qq(exclude_filter="$f") : qq(exclude_filter="$f, addons/godot_mcp/*")}e' export_presets.cfg
