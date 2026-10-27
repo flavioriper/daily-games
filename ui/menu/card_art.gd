@@ -12,8 +12,7 @@ extends Control
 ## lanterns, Shikaku's markers, Tents' tent and conifers, Light Up's lamp,
 ## One Line's snail, Queens' bee, Mushroom Patch's mushrooms, Fairy Lights'
 ## two lit papers (Untangle's lantern again, which is what that board plays
-## with too), and the shared sprout that stands in for Hidden Word's and
-## Word Trail's -- so a card and its board are visibly the same drawing.
+## with too) -- so a card and its board are visibly the same drawing.
 ## Only the furniture under them (a tray, a beam, a tile, a run of wire) is
 ## drawn here.
 ##
@@ -39,7 +38,6 @@ const LanternFace = preload("res://ui/faces/lantern_face.gd")
 const CourtLantern = preload("res://ui/faces/court_lantern.gd")
 const MarkerFace = preload("res://ui/faces/marker_face.gd")
 const BeeFace = preload("res://ui/faces/bee_face.gd")
-const SproutFace = preload("res://ui/faces/sprout_face.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 const MosaicTile = preload("res://ui/faces/mosaic_tile.gd")
@@ -317,14 +315,13 @@ func _build() -> void:
 			# the whole picture is _draw's.
 			pass
 		"wordtrail":
-			# The sprout beside a small field: the field is one plain Control
+			# A small field and no character: the field is one plain Control
 			# whose own `draw` this branch wires up, so the picture costs one
 			# branch of _build and none of _draw (spec section 11).
-			_seat(SproutFace.new(), 58.0, -122.0, 6.0)
 			var field := Control.new()
 			field.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			field.size = Vector2(210.0, 100.0) * _u
-			field.position = at(32.0, 2.0) - field.size * 0.5
+			field.position = at(0.0, 2.0) - field.size * 0.5
 			field.draw.connect(_draw_word_field.bind(field))
 			add_child(field)
 		"hedgehogs":
@@ -540,7 +537,7 @@ func _draw_letters() -> void:
 		_round(xs[i] - cell * 0.5, -cell * 0.5 - 6.0, cell, cell, 12.0, marks[i])
 		MosaicTile.letter(self, at(xs[i], -6.0), cell * _u, letters[i], Vector2.ONE, Pal.PAPER, font)
 
-## Word Trail: a small field of letter tiles beside the sprout, four by
+## Word Trail: a small field of letter tiles, no character, four by
 ## three, with two grey wall slabs and one trail bending twice through the
 ## rest in Pal.LEAF over Pal.LEAF_TILE, its letters in Pal.LEAF_DEEP. Wired
 ## as `field`'s own `draw` handler rather than a branch of this file's

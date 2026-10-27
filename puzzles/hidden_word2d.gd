@@ -62,7 +62,7 @@ const Haptics = preload("res://core/haptics.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Mosaic = preload("res://ui/faces/mosaic_tile.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
-const SproutFace = preload("res://ui/faces/sprout_face.gd")
+const PeepletView = preload("res://ui/peeplet_view.gd")
 const SnailFace = preload("res://ui/faces/snail_face.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const RunMesh = preload("res://ui/flat/run_mesh.gd")
@@ -146,7 +146,7 @@ const GHOST := 0.55
 const SOLVE_DIM := 0.3
 const OVER_DIM := 0.4
 const DIM_TIME := 0.3
-## How long the keyboard takes to leave, and the sprout's own rise -- how long
+## How long the keyboard takes to leave, and the Peeplet's own rise -- how long
 ## it waits after the last tile lands, how far below its seat it starts, how
 ## long it takes and how long it fades in over.
 const KEYS_OUT := 0.25
@@ -154,12 +154,13 @@ const REVEAL_WAIT := 0.1
 const REVEAL_RISE := 200.0
 const REVEAL_TIME := 0.35
 const REVEAL_FADE := 0.25
-## The reveal, laid out on the scenery band: its top, the sprout's centre in
-## from the card's left and R, then the word card's left, the paper it leaves
-## at the right, its height, corner and edge, and the two lines inside it.
+## The reveal, laid out on the scenery band: its top, the Peeplet's centre in
+## from the card's left and R (the Peeplet's picture is three R across), then
+## the word card's left, the paper it leaves at the right, its height, corner
+## and edge, and the two lines inside it.
 const REVEAL_TOP := -12.0
-const SPROUT_AT := Vector2(118.0, 76.0)
-const SPROUT_R := 66.0
+const PEEPLET_AT := Vector2(118.0, 76.0)
+const PEEPLET_R := 66.0
 const WORD_CARD_X := 206.0
 const WORD_CARD_RIGHT := 40.0
 const WORD_CARD_H := 140.0
@@ -317,8 +318,8 @@ const GLASSES_TIME := 1.7
 const CONGA_STEP := 0.06
 const CONGA_HOP := -12.0
 ## The party after a solve: PARTY_AT after the winning row lands the tiles
-## dance DANCE_BEATS beats, flowers bloom along the band, the sprout comes up
-## in a party hat with a cheer, and STAMP_AT later the seal drops.
+## dance DANCE_BEATS beats, flowers bloom along the band, the Peeplet comes up
+## with a cheer, and STAMP_AT later the seal drops.
 const PARTY_AT := 0.85
 const PARTY_EXTRA := 2.1
 const DANCE_BEATS := 4
@@ -386,7 +387,7 @@ var _toast := 0
 var _toast_at := -100.0
 ## The second the winning row landed, and the second the sixth row did. Both
 ## are in the future while that row is still turning, which is the whole
-## point: the hop, the dim, the sprout and the word all wait for the tiles.
+## point: the hop, the dim, the Peeplet and the word all wait for the tiles.
 var _solved_at := -100.0
 var _over_at := -100.0
 ## When the keyboard is due to leave. Whether it has gone is the tray's own
@@ -403,9 +404,10 @@ var _fx_due: Array = []
 ## Sounds waiting on a clock, oldest first: each tile's flip as it starts to
 ## turn, and the win or the loss once the row that decided it has landed.
 var _cue_due: Array = []
-## The sprout the reveal raises. Built on the first ending and kept, because
-## Reset can put the board back into play and a second sixth row can come.
-var _sprout: Control = null
+## The day's first Peeplet, which the reveal raises: it laughs on a win and
+## sits on a loss. Built on the first ending and kept, because Reset can put
+## the board back into play and a second sixth row can come.
+var _peeplet: Control = null
 
 # --- the polish pass ---
 ## Per row, Snail Mail: whether it turned over sealed, and the second the
@@ -673,7 +675,7 @@ func day_dict() -> Dictionary:
 ## Everything a finished board leaves behind: the refusal in hand, the solve,
 ## the reveal and the waves either of them owns. Both build() (a new word) and
 ## reset_board() (the same word again) go through it, because a board that
-## kept `_over_at` would raise the sprout over an empty grid.
+## kept `_over_at` would raise the Peeplet over an empty grid.
 func _clear_endings() -> void:
 	_toast = 0
 	_toast_at = -100.0
@@ -691,10 +693,9 @@ func _clear_endings() -> void:
 	if is_instance_valid(_stamp):
 		_stamp.queue_free()
 	_stamp = null
-	if _sprout != null:
-		_sprout.visible = false
-		_sprout.hat = 0.0
-		_sprout.glasses = 0.0
+	if _peeplet != null:
+		_peeplet.visible = false
+		_peeplet.seated = false
 	_bring_keys_back()
 
 ## Every row's moments, for a board whose rows are all going: a new word, a
@@ -946,7 +947,7 @@ func _process(delta: float) -> void:
 	_deliver_cues(now)
 	_expire(now)
 	_send_keys_away(now)
-	_ride_sprout(now)
+	_ride_peeplet(now)
 	_deliver_reacts(now)
 	_ride_snail(now)
 	if now < _grow_at + GROW_TIME + 0.1:
@@ -1014,7 +1015,7 @@ func _laid_out() -> bool:
 ## - **the solve**, from the moment the row lands through the last tile's hop
 ##   (SOLVE_DELAY + four SOLVE_STAGGERs + SOLVE_TIME) -- longer than the dim
 ##   behind it, so the one figure covers both;
-## - **the reveal**, from the same landing through the sprout's rise
+## - **the reveal**, from the same landing through the Peeplet's rise
 ##   (REVEAL_WAIT + REVEAL_TIME) -- longer than the rows' dim and the
 ##   keyboard's exit;
 ## - **Reset's** wave, the last tile's delay plus its turn out.
@@ -1776,8 +1777,8 @@ func _draw_toast(t: float, shown: Array) -> void:
 
 # --- the reveal (spec section 8) ---
 
-## The word on its own small card at the foot of the board, beside the sprout
-## the board raises with it. It rises with the sprout and fades in with it,
+## The word on its own small card at the foot of the board, beside the Peeplet
+## the board raises with it. It rises with the Peeplet and fades in with it,
 ## off the same two readers, because one is a node and the other is drawn and
 ## they have to arrive as one thing.
 func _draw_reveal(t: float, shown: Array) -> void:
@@ -1804,7 +1805,7 @@ func _draw_reveal(t: float, shown: Array) -> void:
 	shown.append(_reveal_mesh)
 	var x := _x0() + WORD_CARD_X + WORD_TEXT_X
 	if state.is_solved():
-		# The party's card: the word found, and the sprout's silly cheer.
+		# The party's card: the word found, and the silly cheer.
 		_line(CozyTheme.display(700, WORD_SPACING), WORD_FONT, Vector2(x, top + WORD_LABEL_Y + 2.0),
 			state.written.to_upper(), Color(Pal.GOOD, a))
 		_line(CozyTheme.body(500), WORD_LABEL_FONT - 4, Vector2(x, top + WORD_Y + 4.0),
@@ -1817,7 +1818,7 @@ func _draw_reveal(t: float, shown: Array) -> void:
 
 ## How far below its seat the reveal still is, `since` seconds in: REVEAL_RISE
 ## taken home by the back ease, the curve `Motion.slide` would have used on a
-## node. Nothing under reduce motion -- the sprout and the card are simply
+## node. Nothing under reduce motion -- the Peeplet and the card are simply
 ## there.
 func _reveal_rise(since: float) -> float:
 	if Motion.reduce:
@@ -1831,19 +1832,19 @@ func _line(font: Font, px: int, at: Vector2, text: String, colour: Color) -> voi
 		at + Vector2(0.0, font.get_height(px) * 0.5 - font.get_descent(px)),
 		text, HORIZONTAL_ALIGNMENT_LEFT, -1, px, colour)
 
-## The sprout rides the board's clock, as One Line's walker does: it is a
-## node (ui/faces/sprout_face.gd draws itself), but the card beside it is
+## The Peeplet rides the board's clock, as One Line's walker does: it is a
+## node (ui/peeplet_view.gd shows itself), but the card beside it is
 ## drawn, and a tween on one of them and a reader on the other would arrive a
 ## frame apart. Both read `_over_at` every frame instead.
-func _ride_sprout(t: float) -> void:
-	if _sprout == null or not _sprout.visible:
+func _ride_peeplet(t: float) -> void:
+	if _peeplet == null or not _peeplet.visible:
 		return
 	var since := t - _stage_at() - REVEAL_WAIT
-	var seat := Vector2(_x0() + SPROUT_AT.x, _reveal_top() + SPROUT_AT.y + _reveal_rise(since))
-	_sprout.position = seat - _sprout.size * 0.5
-	_sprout.modulate.a = Motion.appear_level(since, REVEAL_FADE)
+	var seat := Vector2(_x0() + PEEPLET_AT.x, _reveal_top() + PEEPLET_AT.y + _reveal_rise(since))
+	_peeplet.position = seat - _peeplet.size * 0.5
+	_peeplet.modulate.a = Motion.appear_level(since, REVEAL_FADE)
 
-## When the band's stage -- the sprout and the card beside it -- came up: the
+## When the band's stage -- the Peeplet and the card beside it -- came up: the
 ## reveal's moment, or the party's, or -100 for neither.
 func _stage_at() -> float:
 	if _over_at > -50.0:
@@ -1852,27 +1853,37 @@ func _stage_at() -> float:
 		return _party_at
 	return -100.0
 
-## The sprout the reveal brings, built on the first ending and kept after it.
-## It is sized so R comes out at SPROUT_R once the face's own REACH -- the
-## room its leaves need above the blob -- has been paid for.
-func _raise_sprout(mood: int = Face.Expr.HAPPY, party := false) -> void:
-	if _sprout == null:
-		_sprout = SproutFace.new()
-		_sprout.name = "Sprout"
-		_sprout.z_index = 1
-		add_child(_sprout)
-	var px := SPROUT_R * 2.0 * SproutFace.REACH
-	_sprout.size = Vector2(px, px)
-	_sprout.expression = mood
-	_sprout.visible = true
-	_sprout.modulate.a = 0.0
-	_sprout.hat = 1.0 if party and (Motion.reduce or _restoring) else 0.0
-	_ride_sprout(_now())
-	_sprout.set_idle(true)
-	if party and not Motion.reduce and not _restoring:
-		var tw := _sprout.create_tween()
-		tw.tween_interval(REVEAL_WAIT + REVEAL_TIME)
-		tw.tween_property(_sprout, "hat", 1.0, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+## The Peeplet the reveal brings, built on the first ending and kept after it,
+## dressed as the day's first (Cast.dress, before it enters the tree). A win
+## has it standing and laughing once the card has come up (silent: the board
+## has its own sounds, as Who Ate the Pie? does); a loss has it sit. Its
+## picture is held (idle_fps 0) and redrawn when it acts.
+func _raise_peeplet(win: bool) -> void:
+	if _peeplet == null:
+		_peeplet = PeepletView.new()
+		Cast.dress(_peeplet, 0)
+		_peeplet.name = "Peeplet"
+		_peeplet.frame_height = 1.0
+		_peeplet.aim_y = 0.46
+		_peeplet.idle_fps = 0.0
+		_peeplet.z_index = 1
+		add_child(_peeplet)
+	var px := PEEPLET_R * 3.0
+	_peeplet.size = Vector2(px, px)
+	_peeplet.visible = true
+	_peeplet.modulate.a = 0.0
+	_peeplet.seated = not win
+	_ride_peeplet(_now())
+	if win and not Motion.reduce and not _restoring:
+		_after(REVEAL_WAIT + REVEAL_TIME, _peeplet_laugh)
+
+## The win's laugh, silent.
+func _peeplet_laugh() -> void:
+	if _peeplet == null or not _peeplet.visible or not state.is_solved():
+		return
+	var w = _peeplet.walker
+	if w != null and w.laugh_time < 0.0 and w.snack_time < 0.0:
+		w.laugh_time = 0.0
 
 # --- the three moves ---
 
@@ -2299,7 +2310,7 @@ func row_back() -> void:
 	_refresh()
 	moved.emit()
 
-## Show the word: the old ending -- the keyboard slides away and the sprout
+## Show the word: the old ending -- the keyboard slides away and the Peeplet
 ## rises with the word on its card -- and the board ends unsolved.
 func show_word() -> void:
 	if is_done():
@@ -2310,7 +2321,7 @@ func show_word() -> void:
 	_over_at = now
 	_keys_out_at = now
 	fx.cue("lost")
-	_raise_sprout(Face.Expr.HAPPY)
+	_raise_peeplet(false)
 	_busy_for(REVEAL_WAIT + REVEAL_TIME + DIM_TIME)
 	finish_unsolved()
 	_refresh()
@@ -2323,8 +2334,8 @@ func busy() -> bool:
 # --- the party and the seal (polish spec, section 3) ---
 
 ## The solve's party, from the winning row's landing: after its hop the
-## tiles dance, the rows it never needed bloom into a meadow, the sprout comes
-## up on the band in a party hat with a silly cheer, confetti flies twice,
+## tiles dance, the rows it never needed bloom into a meadow, the Peeplet comes
+## up on the band with a silly cheer, confetti flies twice,
 ## and the seal drops onto the cheer's card.
 func _party(landed: float) -> void:
 	var now := _now()
@@ -2338,7 +2349,7 @@ func _party(landed: float) -> void:
 func _party_on() -> void:
 	if not state.is_solved():
 		return
-	_raise_sprout(Face.Expr.JOY, true)
+	_raise_peeplet(true)
 	if Motion.reduce:
 		return
 	fx.cue("party")
@@ -2699,14 +2710,14 @@ func restore_completed_board() -> void:
 	# hundred: anything under -50 reads as "never solved" (`_row_alpha`).
 	_solved_at = now - 10.0
 	# The entrance has already played, and so has the party: the meadow
-	# stands in the rows it never needed, the sprout is up in its hat with the
+	# stands in the rows it never needed, the Peeplet is up with the
 	# cheer, and the seal is on the card.
 	_opened = now - 10.0
 	_anim_until = 0.0
 	_party_at = now - 10.0
 	_cheer = posmod(state.answer.hash(), CHEERS)
 	_restoring = true
-	_raise_sprout(Face.Expr.JOY, true)
+	_raise_peeplet(true)
 	_stamp_down()
 	_restoring = false
 	_refit_card.call_deferred()

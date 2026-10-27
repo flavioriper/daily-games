@@ -113,3 +113,10 @@ rounded turf plate is gone: it tells the world its ground line
   Hard sees few themed words and Insane mostly none: the server's ask
   (`words.ts`) would need more a length to feed every band, which is a
   `publishDay` deploy and the user's to run.
+
+- **No character (2026-10-27, `feat/peeplet-brand`).** The sprout is gone
+  from the board and from its card (`ui/faces/sprout_face.gd` is deleted; the
+  spec gives Word Trail no character, its pieces are marks). The stage on the
+  band is the card alone (`STAGE_X` 0, so it starts at the field's left edge,
+  where the sprout's room used to be); the cheer, the seal and the rise are as
+  they were. The card's picture is the field, centred.

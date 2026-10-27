@@ -163,3 +163,16 @@ vertically so the crown stays under the grid.
   all three. A day that met nothing deals as it did. A year measured: 0.
   The nested slices themselves stay (a Medium word may be an Easy word of
   another day).
+
+- **The sprout is a Peeplet (2026-10-27, `feat/peeplet-brand`).** The
+  reveal's character is no longer `ui/faces/sprout_face.gd` (deleted): it is a
+  `PeepletView` dressed as the day's first Peeplet (`Cast.dress(view, 0)`),
+  built on the first ending and kept (`_peeplet`, `_raise_peeplet(win)`,
+  `_ride_peeplet`; the rise, fade and seat are the sprout's own, `PEEPLET_AT`,
+  `PEEPLET_R`). Framed as Pie's card (`frame_height 1.0`, `aim_y 0.46`,
+  `idle_fps 0.0`: a held portrait). A win stands it and laughs it once the card
+  is up (the walker's silent `laugh_time`, the board has its own sounds); a
+  loss sits it (`PeepletView.seated`, new: the walker sits and the pose is
+  settled by hand, because a held walker is not processed). The party hat and
+  the sprout's `hat` / `glasses` fields are gone; the persona wears its own.
+  The menu card seats the same Peeplet on its tump, held.

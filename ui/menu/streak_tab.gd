@@ -28,7 +28,7 @@ const Streak = preload("res://core/streak.gd")
 const PlayerStats = preload("res://core/player_stats.gd")
 const Ink = preload("res://ui/menu/ink.gd")
 const Vistas = preload("res://ui/menu/vistas.gd")
-const SproutFace = preload("res://ui/faces/sprout_face.gd")
+const PeepletView = preload("res://ui/peeplet_view.gd")
 const SheetParts = preload("res://ui/hud/sheet_parts.gd")
 const Face = preload("res://ui/faces/face.gd")
 
@@ -100,14 +100,20 @@ func _init() -> void:
 	_props(_streak_ci.get_child(0), _draw_signpost)
 	var today_art := _side_art(_today_ci, Vistas.TODAY, TODAY_ART_W)
 	_props(today_art, _draw_rock)
-	var sprout := SproutFace.new()
-	sprout.size = Vector2(92, 92)
-	sprout.set_anchors_preset(Control.PRESET_CENTER)
-	sprout.offset_left = 10
-	sprout.offset_right = 102
-	sprout.offset_top = -50
-	sprout.offset_bottom = 42
-	today_art.add_child(sprout)
+	# The day's first Peeplet, sat on the rock: a held portrait, drawn once.
+	var peeplet := PeepletView.new()
+	Cast.dress(peeplet, 0)
+	peeplet.frame_height = 1.0
+	peeplet.aim_y = 0.46
+	peeplet.idle_fps = 0.0
+	peeplet.seated = true
+	peeplet.size = Vector2(92, 92)
+	peeplet.set_anchors_preset(Control.PRESET_CENTER)
+	peeplet.offset_left = 10
+	peeplet.offset_right = 102
+	peeplet.offset_top = -50
+	peeplet.offset_bottom = 42
+	today_art.add_child(peeplet)
 	var stats := IconButton.new("bars", "BAR_STATS", "IconButton")
 	stats.name = "Stats"
 	stats.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
@@ -204,7 +210,7 @@ func _draw_signpost(ci: Control) -> void:
 	_flower(ci, foot + Vector2(78, -2), 18, Pal.FLOWER_TILE)
 	_flower(ci, foot + Vector2(104, -34), 13, Pal.SURFACE)
 
-## Today's card: the rock the sprout sits on, and a flower beside it.
+## Today's card: the rock the Peeplet sits on, and a flower beside it.
 func _draw_rock(ci: Control) -> void:
 	var c := Vector2(ci.size.x * 0.5 + 56.0, ci.size.y + 8.0)
 	_boulder(ci, c, 70, 34)

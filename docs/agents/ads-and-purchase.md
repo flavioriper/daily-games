@@ -182,3 +182,9 @@ stated before the 3D game left.
   AdMob Network bids; SDK-less bidders (Equativ, Index Exchange, Magnite,
   Media.net...) were left until there is traffic, each needs its terms
   accepted.
+
+- **The sheet's picture has a Peeplet (2026-10-27, `feat/peeplet-brand`).** The
+  sprout on the rock is the day's second Peeplet (`Cast.dress(view, 1)`),
+  standing, `idle_fps 0.0`, in the sprout's old 128 px box. It is a child of the
+  sheet's hero plate, so it lives and goes with the sheet; a held portrait, it
+  draws only when shown.

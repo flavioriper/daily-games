@@ -247,7 +247,6 @@ const TIPS_WISHES := ["WT_TIP_DRAG", "WT_TIP_WISHES", "WT_TIP_CANCEL", "WT_TIP_L
 const TIPS_NIGHT := ["WT_TIP_NIGHT", "WT_TIP_WISHES", "WT_TIP_NIGHT_WORDS", "WT_TIP_CANCEL"]
 
 # --- the third polish (2026-09-30; docs/superpowers/specs/2026-09-30-word-trail-polish-design.md) ---
-const SproutFace = preload("res://ui/faces/sprout_face.gd")
 const LanternFace = preload("res://ui/faces/lantern_face.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const OUT_CARD := "res://ui/hud/out_of_rows.gd"
@@ -323,8 +322,7 @@ const LAMP_FOLLOW := 16.0
 const DAWN_TIME := 1.5
 const DAWN_STEP := 0.03
 ## The party, PARTY_AT after the solve hop: the tiles dance, every wall
-## blooms a flower, the sprout comes up on the band in a party hat beside a
-## card with a silly cheer, and STAMP_AT later the seal drops on the card.
+## blooms a flower, a card with a silly cheer comes up on the band, and STAMP_AT later the seal drops on the card.
 const PARTY_AT := 0.35
 const DANCE_BEATS := 4
 const DANCE_BEAT := 0.3
@@ -341,12 +339,11 @@ const STAMP_TILT := -0.22
 const CHEERS := 12
 const STAGE_RISE := 120.0
 const STAGE_TIME := 0.4
-const STAGE_X := 150.0
+const STAGE_X := 0.0
 const STAGE_RIGHT := 24.0
 const STAGE_H := 104.0
 const STAGE_RADIUS := 24.0
 const STAGE_EDGE := 6.0
-const STAGE_SPROUT_R := 46.0
 const STAGE_FONT := 34
 const STAGE_LINE := 26
 
@@ -490,13 +487,12 @@ var _lamp_cell := Vector2i(-1, -1)
 var _lamp: Control
 var _lamp_pos := Vector2.ZERO
 var _dawn_at := NEVER
-## The party: when it began, when the meadow bloomed, the cheer, the stage's
-## sprout, the seal and its mesh.
+## The party: when it began, when the meadow bloomed, the cheer, the seal and
+## its mesh.
 var _party_at := NEVER
 var _bloom_at := NEVER
 var _stage_at := NEVER
 var _cheer := 0
-var _sprout: Control
 var _stamp: Control
 var _stage_mesh: ArrayMesh
 var _air: ArrayMesh
@@ -634,8 +630,6 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_bloom_at = NEVER
 	_stage_at = NEVER
 	_restoring = false
-	if is_instance_valid(_sprout):
-		_sprout.visible = false
 	if is_instance_valid(_stamp):
 		_stamp.queue_free()
 	_stamp = null
@@ -954,7 +948,6 @@ func _process(delta: float) -> void:
 	_fire_pending(t)
 	_light_round(t)
 	_ride_lamp(t, delta)
-	_ride_sprout(t)
 	if _animating(t):
 		_refresh()
 
@@ -2152,7 +2145,7 @@ func _release(cancel := false) -> void:
 ## unwinds). On Hard and Insane a trail that could have been a word -- as
 ## long as one still hiding -- and was never tried blows a seed off the
 ## dandelion; the last seed is the card. A trail tried before is free, and
-## the sprout says so. True when a seed went, which has its own sound.
+## the board says so. True when a seed went, which has its own sound.
 func _missed(path: Array, t: float) -> bool:
 	var plausible: bool = _state.could_be(path)
 	var again: bool = plausible and _state.tried.has(State._key(path))
@@ -2183,7 +2176,7 @@ func _missed(path: Array, t: float) -> bool:
 		_say(tr("WT_WISH_GONE") % left, Face.Expr.HAPPY)
 	return true
 
-# --- the sprout's line ---
+# --- the tip's line ---
 
 func _left_line() -> String:
 	var left: int = _state.words.size() - _state.found_count()
@@ -2210,7 +2203,7 @@ func _cycle_tip() -> void:
 	_tip_idx = (_tip_idx + 1) % tips.size()
 	_say(tr(tips[_tip_idx]), Face.Expr.HAPPY)
 
-## The sprout's own line, rather than Binairo's cycle of broken rules: there
+## The tip's own line, rather than Binairo's cycle of broken rules: there
 ## is no rule a tap can break on this board.
 func tip_line() -> Dictionary:
 	return {"text": _tip_text, "mood": _tip_mood}
@@ -2404,8 +2397,8 @@ func restore_completed_board() -> void:
 	_opened = _now() - 100.0
 	_tip_timer.stop()
 	_say(tr("WT_WIN"), Face.Expr.JOY)
-	# The party's lasting marks, standing still: the meadow, the sprout in its
-	# hat with the cheer, the seal, and on Insane the dawn already up.
+	# The party's lasting marks, standing still: the meadow, the card with the
+	# cheer, the seal, and on Insane the dawn already up.
 	_restoring = true
 	_state.misses = int(completed_record.get("misses", 0))
 	_wish_bought = bool(completed_record.get("more", false))
@@ -2753,8 +2746,8 @@ func wish_back() -> void:
 	moved.emit()
 
 ## Show the words: the tiles perk up and every word still hiding locks, one
-## after another in a paler ribbon, then the board ends unsolved with the
-## sprout's kind line on the band.
+## after another in a paler ribbon, then the board ends unsolved with a
+## kind line on the band.
 func show_words() -> void:
 	if is_done():
 		return
@@ -2963,7 +2956,7 @@ func _cheer_for() -> int:
 	return posmod(key.hash(), CHEERS)
 
 ## After the solve hop: the tiles dance, every wall blooms a flower, the
-## sprout comes up on the band in a party hat with a silly cheer, confetti
+## card comes up on the band with a silly cheer, confetti
 ## flies twice, and STAMP_AT later the seal drops on the cheer's card.
 func _party(t: float) -> void:
 	_cheer = _cheer_for()
@@ -3019,28 +3012,10 @@ func _meadow(t: float) -> void:
 		_rm.put(SHAPE_LEAVES, [Pal.LEAF], Transform2D(0.0, sz, 0.0, mid))
 		_rm.put(SHAPE_HEAD, [petal, Pal.SUN], Transform2D(spin, sz, 0.0, mid))
 
-## The stage on the band: the sprout and the card beside it rise together at
-## `at` -- the cheer on a solve, a kind line on shown words.
+## The stage on the band: the card rises at `at` -- the cheer on a solve, a
+## kind line on shown words.
 func _raise_stage(at: float) -> void:
 	_stage_at = at
-	var party: bool = _state.is_solved() and _state.shown.is_empty()
-	if not is_instance_valid(_sprout):
-		_sprout = SproutFace.new()
-		_sprout.name = "Sprout"
-		_sprout.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_sprout.z_index = 1
-		add_child(_sprout)
-	var px := STAGE_SPROUT_R * 2.0 * SproutFace.REACH
-	_sprout.size = Vector2(px, px)
-	_sprout.expression = Face.Expr.JOY if party else Face.Expr.HAPPY
-	_sprout.visible = true
-	_sprout.hat = 1.0 if party and (Motion.reduce or _restoring) else 0.0
-	_sprout.set_idle(true)
-	_ride_sprout(_now())
-	if party and not Motion.reduce and not _restoring:
-		var tw := _sprout.create_tween()
-		tw.tween_interval(STAGE_TIME)
-		tw.tween_property(_sprout, "hat", 1.0, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	_busy_for(STAGE_TIME + 0.4)
 
 ## How far the stage has come up, 0 to 1.
@@ -3057,13 +3032,6 @@ func _stage_rise(t: float) -> float:
 func _stage_top() -> float:
 	var tall := _foot() - _band_top()
 	return _band_top() + maxf((tall - STAGE_H) * 0.5, 0.0)
-
-func _ride_sprout(t: float) -> void:
-	if not is_instance_valid(_sprout) or not _sprout.visible:
-		return
-	var seat := Vector2(_side() + STAGE_X * 0.5, _stage_top() + STAGE_H * 0.5 + _stage_rise(t))
-	_sprout.position = seat - _sprout.size * 0.5
-	_sprout.modulate.a = _stage_level(t)
 
 ## The stage's card and its two lines, drawn: the day's line and the cheer,
 ## or the kind line under shown words.

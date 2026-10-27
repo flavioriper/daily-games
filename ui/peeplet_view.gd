@@ -57,6 +57,14 @@ extends SubViewportContainer
 		eyewear = v
 		_rebuild()
 
+## Sat down, held: the walker sits and the pose is settled at once, so a
+## portrait that never runs (idle_fps 0) still shows the sit, and a rebuilt
+## walker (a new coat, hat or eyewear) sits again.
+@export var seated := false:
+	set(v):
+		seated = v
+		_pose()
+
 ## Frames a second the 3D picture is redrawn at while the peeplet acts
 ## (walks, picks, laughs) and while it only breathes. Between redraws the
 ## last frame stays up, a single 2D draw; off screen or hidden it is not
@@ -153,6 +161,22 @@ func _rebuild() -> void:
 	# posed once now: a held portrait's walker may never run, and an unposed
 	# walker stands in its rig's rest, arms straight out
 	walker.advance(1.0 / 60.0)
+	_pose()
+	_since = INF
+
+## The sit, eased in by hand: a held portrait's walker is not processed, so
+## the pose is walked to its end here, a tenth of a second at a time, and the
+## picture is redrawn. A walker already acting is left to ease itself.
+func _pose() -> void:
+	if walker == null:
+		return
+	walker.set_sitting(seated)
+	if _busy():
+		return
+	var steps := 0
+	while steps < 24 and absf(walker.sit_amount - (1.0 if seated else 0.0)) > 0.002:
+		walker.advance(0.1)
+		steps += 1
 	_since = INF
 
 ## daily (2026-10-23, the cartoon pass, after Duolingo's owl): the eyes a

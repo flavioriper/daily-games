@@ -11,7 +11,7 @@ extends "res://ui/hud/sheet.gd"
 ## closure in a stack trace.
 ## Spec: docs/superpowers/specs/2026-09-25-ads-and-remove-ads-design.md, section 4.
 ##
-## Redrawn on 2026-09-28: a painted meadow with the sprout on its rock, the
+## Redrawn on 2026-09-28: a painted meadow with the sprout on its rock (a Peeplet since 2026-10-27), the
 ## three things the purchase is as plaque rows in place of a paragraph, one
 ## wide sun button with the price, and Restore as a quiet text button under
 ## it. The round X is the only close while there is something to buy; once
@@ -20,7 +20,7 @@ extends "res://ui/hud/sheet.gd"
 const Analytics = preload("res://core/analytics.gd")
 const Vistas = preload("res://ui/menu/vistas.gd")
 const StreakTab = preload("res://ui/menu/streak_tab.gd")
-const SproutFace = preload("res://ui/faces/sprout_face.gd")
+const PeepletView = preload("res://ui/peeplet_view.gd")
 
 const HERO_H := 250.0
 const HERO_R := 30.0
@@ -91,8 +91,8 @@ func _build_sheet(col: VBoxContainer) -> void:
 	Store.busy_changed.connect(_on_busy_changed)
 	Store.purchase_failed.connect(_on_failed)
 
-## The sheet's picture: the meadow, clear of any banner, with the sprout
-## sitting on its rock among flowers.
+## The sheet's picture: the meadow, clear of any banner, with the day's
+## second Peeplet standing on its rock among flowers.
 func _hero() -> Control:
 	var plate := Vistas.picture(Vistas.STORE, HERO_R)
 	plate.custom_minimum_size.y = HERO_H
@@ -107,13 +107,18 @@ func _hero() -> Control:
 		StreakTab._flower(props, c + Vector2(142, -26), 19, Pal.FLOWER_TILE)
 		StreakTab._flower(props, c + Vector2(178, -8), 13, Pal.SURFACE))
 	plate.add_child(props)
-	var sprout := SproutFace.new()
-	sprout.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	sprout.offset_left = -64
-	sprout.offset_right = 64
-	sprout.offset_top = -146
-	sprout.offset_bottom = -18
-	plate.add_child(sprout)
+	# The day's second Peeplet, standing: a held portrait, drawn once.
+	var peeplet := PeepletView.new()
+	Cast.dress(peeplet, 1)
+	peeplet.frame_height = 1.0
+	peeplet.aim_y = 0.46
+	peeplet.idle_fps = 0.0
+	peeplet.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	peeplet.offset_left = -64
+	peeplet.offset_right = 64
+	peeplet.offset_top = -146
+	peeplet.offset_bottom = -18
+	plate.add_child(peeplet)
 	return plate
 
 func open_from(door: String) -> void:

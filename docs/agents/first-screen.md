@@ -1365,3 +1365,11 @@ Part B).
   dusk (160 / 160), and 160 on the trial day's dusk (`tools/themed_play.sh
   20261019 vistas`, 160 / 160). Before, on the same tree, one reading of 168
   (a toast over it that run may have been counted in).
+
+- **Streak's Today card seats a Peeplet (2026-10-27, `feat/peeplet-brand`).**
+  The sprout on the rock is the day's first Peeplet (`Cast.dress(view, 0)`),
+  seated (`PeepletView.seated`), `idle_fps 0.0`, in the sprout's old 92 px box.
+  A held portrait: drawn once, redrawn only when shown again, so the menu's
+  draw calls are the same with the Streak tab open or shut. Hidden Word's
+  card has the same Peeplet standing on its tump; Word Trail's card has no
+  character any more (its field is centred).

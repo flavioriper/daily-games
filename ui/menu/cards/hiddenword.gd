@@ -7,16 +7,16 @@ extends "res://ui/menu/cards/card_face.gd"
 ## their paper pieces, and the tile its last letter goes on is the go button,
 ## in the card's colour, with a chevron where the letter would be. The name
 ## stands over the steps on the left, the top right corner is left to the
-## seal, and the sprout waits on a tump of the board's turf at the foot.
+## seal, and the day's Peeplet waits on a tump of the board's turf at the foot.
 ##
 ## The ground, the turf and the fifteen tiles are one mesh, cut as the board
 ## cuts a piece (hidden_word2d.gd's `_tile_face`: a lip, a lit rim, a crown);
 ## the letters are draw commands over it, as they are there (Mosaic.letter).
-## The sprout is the one thing alive.
+## The Peeplet is the one thing alive.
 
 const Board = preload("res://puzzles/hidden_word2d.gd")
 const Mosaic = preload("res://ui/faces/mosaic_tile.gd")
-const SproutFace = preload("res://ui/faces/sprout_face.gd")
+const PeepletView = preload("res://ui/peeplet_view.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 
@@ -47,7 +47,7 @@ const GO_SIZE := 1.16
 const WORDS_TOP := 14.0
 const WORDS_GAP := 12.0
 ## The tump of turf in the bottom left corner: its middle from the corner,
-## its two radii, and the sprout standing on it (its size, its middle).
+## its two radii, and the Peeplet standing on it (its size, its middle).
 const TUMP_AT := Vector2(78.0, -8.0)
 const TUMP_R := Vector2(112.0, 46.0)
 const SPROUT := 74.0
@@ -215,8 +215,11 @@ func _lay() -> void:
 			_said.append(Rect2(Vector2(words.position.x, y), took))
 			y += took.y
 	var px := SPROUT * k
-	var sprout := SproutFace.new()
-	sprout.size = Vector2(px, px)
-	sprout.position = Vector2(SPROUT_AT.x * k, size.y - SPROUT_AT.y * k) - sprout.size * 0.5
-	_keep(sprout)
-	sprout.set_idle(true)
+	var peeplet := PeepletView.new()
+	Cast.dress(peeplet, 0)
+	peeplet.frame_height = 1.0
+	peeplet.aim_y = 0.46
+	peeplet.idle_fps = 0.0
+	peeplet.size = Vector2(px, px)
+	peeplet.position = Vector2(SPROUT_AT.x * k, size.y - SPROUT_AT.y * k) - peeplet.size * 0.5
+	_keep(peeplet)
