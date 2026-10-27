@@ -231,7 +231,7 @@ for framework, ref in framework_refs.items():
         build_entries.append(
             f"\t\t{embed_id} /* {build_comment} */ = "
             f"{{isa = PBXBuildFile; fileRef = {ref}; "
-            "settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; }};\n"
+            "settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };\n"
         )
 
     if embed_id not in embed_phase_block:
