@@ -9,6 +9,7 @@ import {bankPrompts, cleaned, makeDay as pearlDay, Prompt} from "./pearl";
 import {makeJellies} from "./jelly";
 import type {Port} from "./ports";
 import {makeDay as picturesDay} from "./pictures";
+import {describe, eligible, seeded} from "./cast";
 import {makeTheme, themed} from "./theme";
 import {makeWords} from "./words";
 import {makeVista, TIMES as VISTA_TIMES, Vistas} from "./vistas";
@@ -49,6 +50,9 @@ import {makeVista, TIMES as VISTA_TIMES, Vistas} from "./vistas";
  *       Hidden Word's and Word Trail's words (words.ts) for days the
  *       command above made, into each file's pictures document; the
  *       pictures and the jellies are left as they are.
+ *   node lib/cli.js cast <yyyymmdd>
+ *       the day's two Peeplets (cast.ts) and what a painter is told of
+ *       each; the phone seeds the same pair (core/cast.gd).
  *   node lib/cli.js publish
  *       runs publishDays for today and tomorrow against whatever project
  *       the credentials name -- the day a game ships on, which the 03:00
@@ -294,6 +298,11 @@ async function main(): Promise<void> {
       fs.writeFileSync(file, JSON.stringify(day));
       print(`${file}: hoops ${Object.entries(hoops).map(([b, h]) => `${b}:${h.id} ${h.panels.length}`).join(" ") || "none"}`);
     }
+  } else if (what === "cast" && args.length === 1) {
+    // The day's two Peeplets, as the night and the phone seed them (cast.ts).
+    const day = Number(args[0]);
+    const pair = seeded(day);
+    print(`${day}: [${pair[0]}, ${pair[1]}] of ${eligible().length} eligible\n  ${describe(pair[0])}\n  ${describe(pair[1])}`);
   } else if (what === "publish") {
     // Loaded here and not at the top: index.ts wakes the admin SDK, which a
     // dry run has no credentials for and no use of.
@@ -301,7 +310,7 @@ async function main(): Promise<void> {
     await publishDays(new Date());
     print("published");
   } else {
-    console.error("usage: cli.js day [acorn|pearl] [yyyymmdd] | bank pearl <level> <count> <outfile> | themed <yyyymmdd> <days> <outdir> [themes-dir] | vistas <day.json>... | jellies <day.json>... | hoops <day.json>... | words <day.json>... | quizzes <day.json>... | publish");
+    console.error("usage: cli.js day [acorn|pearl] [yyyymmdd] | bank pearl <level> <count> <outfile> | themed <yyyymmdd> <days> <outdir> [themes-dir] | cast <yyyymmdd> | vistas <day.json>... | jellies <day.json>... | hoops <day.json>... | words <day.json>... | quizzes <day.json>... | publish");
     process.exitCode = 2;
   }
 }

@@ -1,0 +1,302 @@
+[
+	{
+		"coat": 3,
+		"eyes": "roundglasses",
+		"hat": "chefHat",
+		"name": "Ada"
+	},
+	{
+		"coat": 11,
+		"eyes": "",
+		"hat": "halo",
+		"name": "Alba"
+	},
+	{
+		"coat": 8,
+		"eyes": "heartglasses",
+		"hat": "bow",
+		"name": "Bea"
+	},
+	{
+		"coat": 7,
+		"eyes": "",
+		"hat": "vikingHelm",
+		"name": "Bram"
+	},
+	{
+		"coat": 4,
+		"eyes": "starglasses",
+		"hat": "wizardHat",
+		"name": "Cleo"
+	},
+	{
+		"coat": 9,
+		"eyes": "techvisor",
+		"hat": "propellerCap",
+		"name": "Cosmo"
+	},
+	{
+		"coat": 5,
+		"eyes": "",
+		"hat": "sunhat",
+		"name": "Dot"
+	},
+	{
+		"coat": 10,
+		"eyes": "shades",
+		"hat": "cap",
+		"name": "Dex"
+	},
+	{
+		"coat": 2,
+		"eyes": "",
+		"hat": "beanie",
+		"name": "Elio"
+	},
+	{
+		"coat": 6,
+		"eyes": "glasses",
+		"hat": "flowerCrown",
+		"name": "Edda"
+	},
+	{
+		"coat": 1,
+		"eyes": "",
+		"hat": "leafAntlers",
+		"name": "Fig"
+	},
+	{
+		"coat": 6,
+		"eyes": "roundglasses",
+		"hat": "mushroomCap",
+		"name": "Fern"
+	},
+	{
+		"coat": 0,
+		"eyes": "eyepatch",
+		"hat": "pirateHat",
+		"name": "Gus"
+	},
+	{
+		"coat": 3,
+		"eyes": "",
+		"hat": "earmuffs",
+		"name": "Greta"
+	},
+	{
+		"coat": 7,
+		"eyes": "monocle",
+		"hat": "topHat",
+		"name": "Hal"
+	},
+	{
+		"coat": 1,
+		"eyes": "",
+		"hat": "bandana",
+		"name": "Hana"
+	},
+	{
+		"coat": 4,
+		"eyes": "",
+		"hat": "flowerCrown",
+		"name": "Ivy"
+	},
+	{
+		"coat": 8,
+		"eyes": "3dglasses",
+		"hat": "partyHat",
+		"name": "Iggy"
+	},
+	{
+		"coat": 2,
+		"eyes": "glasses",
+		"hat": "graduationCap",
+		"name": "Jo"
+	},
+	{
+		"coat": 9,
+		"eyes": "",
+		"hat": "crown",
+		"name": "Juno"
+	},
+	{
+		"coat": 5,
+		"eyes": "",
+		"hat": "cap",
+		"name": "Kit"
+	},
+	{
+		"coat": 10,
+		"eyes": "swimgoggles",
+		"hat": "bandana",
+		"name": "Koa"
+	},
+	{
+		"coat": 0,
+		"eyes": "pixelshades",
+		"hat": "beanie",
+		"name": "Lou"
+	},
+	{
+		"coat": 11,
+		"eyes": "shades",
+		"hat": "sunhat",
+		"name": "Lena"
+	},
+	{
+		"coat": 3,
+		"eyes": "visor",
+		"hat": "propellerCap",
+		"name": "Max"
+	},
+	{
+		"coat": 8,
+		"eyes": "starglasses",
+		"hat": "starHeadband",
+		"name": "Mila"
+	},
+	{
+		"coat": 6,
+		"eyes": "",
+		"hat": "chefHat",
+		"name": "Ned"
+	},
+	{
+		"coat": 4,
+		"eyes": "roundglasses",
+		"hat": "earmuffs",
+		"name": "Nora"
+	},
+	{
+		"coat": 7,
+		"eyes": "",
+		"hat": "cap",
+		"name": "Otto"
+	},
+	{
+		"coat": 5,
+		"eyes": "glasses",
+		"hat": "chefHat",
+		"name": "Olga"
+	},
+	{
+		"coat": 1,
+		"eyes": "",
+		"hat": "partyHat",
+		"name": "Pip"
+	},
+	{
+		"coat": 2,
+		"eyes": "",
+		"hat": "halo",
+		"name": "Paz"
+	},
+	{
+		"coat": 9,
+		"eyes": "monocle",
+		"hat": "wizardHat",
+		"name": "Quin"
+	},
+	{
+		"coat": 0,
+		"eyes": "heartglasses",
+		"hat": "flowerCrown",
+		"name": "Rosa"
+	},
+	{
+		"coat": 10,
+		"eyes": "shades",
+		"hat": "vikingHelm",
+		"name": "Rex"
+	},
+	{
+		"coat": 11,
+		"eyes": "monocle",
+		"hat": "graduationCap",
+		"name": "Ruth"
+	},
+	{
+		"coat": 3,
+		"eyes": "rainbowshades",
+		"hat": "sunhat",
+		"name": "Sol"
+	},
+	{
+		"coat": 8,
+		"eyes": "",
+		"hat": "beanie",
+		"name": "Suki"
+	},
+	{
+		"coat": 6,
+		"eyes": "",
+		"hat": "bandana",
+		"name": "Tess"
+	},
+	{
+		"coat": 4,
+		"eyes": "glasses",
+		"hat": "topHat",
+		"name": "Theo"
+	},
+	{
+		"coat": 5,
+		"eyes": "",
+		"hat": "starHeadband",
+		"name": "Uma"
+	},
+	{
+		"coat": 7,
+		"eyes": "",
+		"hat": "pirateHat",
+		"name": "Vic"
+	},
+	{
+		"coat": 1,
+		"eyes": "",
+		"hat": "mushroomCap",
+		"name": "Wren"
+	},
+	{
+		"coat": 2,
+		"eyes": "",
+		"hat": "bow",
+		"name": "Wally"
+	},
+	{
+		"coat": 11,
+		"eyes": "",
+		"hat": "earmuffs",
+		"name": "Yuki"
+	},
+	{
+		"coat": 10,
+		"eyes": "",
+		"hat": "flowerCrown",
+		"name": "Yara"
+	},
+	{
+		"coat": 9,
+		"eyes": "visor",
+		"hat": "cap",
+		"name": "Zed"
+	},
+	{
+		"coat": 0,
+		"eyes": "starglasses",
+		"hat": "crown",
+		"name": "Zoe"
+	},
+	{
+		"coat": 3,
+		"eyes": "",
+		"hat": "leafAntlers",
+		"name": "Nico"
+	},
+	{
+		"coat": 5,
+		"eyes": "roundglasses",
+		"hat": "bow",
+		"name": "Bo"
+	}
+]

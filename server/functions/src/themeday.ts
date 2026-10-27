@@ -6,6 +6,7 @@ import {bySide, Picture, pixelBand, Pictures} from "./pictures";
 import {makeTheme, Theme, themed, validTheme} from "./theme";
 import {makeWords, Words} from "./words";
 import {Port, publishPorts, stagePorts} from "./ports";
+import {seeded} from "./cast";
 import {makeVista, TIMES as VISTA_TIMES, Vistas} from "./vistas";
 
 /**
@@ -174,7 +175,9 @@ export async function publishVistas(db: Firestore, day: number): Promise<boolean
     if (typeof jpg !== "string" || jpg === "") return false;
     times[time] = jpg;
   }
-  const made: Vistas = {v: 1, theme: theme.id, name: theme.name, times: times as Vistas["times"]};
+  const made: Vistas = {v: 1, theme: theme.id, name: theme.name, times: times as Vistas["times"],
+    // The seeded pair until the painter is asked for it (the next task).
+    cast: seeded(day)};
   try {
     await doc.create({json: JSON.stringify(made)});
   } catch (e) {

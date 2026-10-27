@@ -36,6 +36,10 @@ export interface Theme {
   scene: string;
   objects: Thing[];
   words: {en: string[]; pt: string[]; es: string[]};
+  /** What two small creatures could be doing in the scene together: one
+   *  short line, which the day's cast is painted doing (cast.ts). Optional:
+   *  themes staged before it have none and still parse. */
+  cast?: string;
 }
 
 /** Things a theme has, and words a language. */
@@ -48,6 +52,7 @@ const LEAST = 3;
 const WORDS = 8;
 const SCENE_MAX = 320;
 const DRAW_MAX = 160;
+const CAST_MAX = 160;
 /** Themes written before one is given up on. */
 const TRIES = 2;
 
@@ -70,6 +75,7 @@ export function validTheme(t: unknown): t is Theme {
     ids.add(x.id);
   }
   if (ids.size !== THINGS) return false;
+  if (o.cast !== undefined && !text(o.cast, CAST_MAX)) return false;
   for (const lang of LANGS) {
     if (!text(o.name?.[lang], 30)) return false;
     const words = o.words?.[lang];
@@ -88,6 +94,7 @@ The theme is drawn as pixel pictures of very few squares, so everything in it mu
 - "objects": exactly ${THINGS} single things from that scene, the simplest first, each drawn as one pixel art sprite on a bare board. Each must be recognisable by its outline alone (a mushroom, a mug, a tent: yes; a book, a blanket, a cloud of steam: no). "draw" says the thing with its colours, clearly different ones: three or four for the first ("a red mushroom with white spots and a cream stem"), then more with each, up to seven or eight for the last three, which are the ones with the most to them, full of detail to draw big (a basket of fruit, a tea tray, a lantern among leaves, a cottage with flower boxes). None of them is a thin or spindly shape: each fills most of a square. None is mostly one colour (a red apple, a blue teapot: no; a striped mug, a slice of watermelon, a toadstool: yes). "name" is its plain English name, one or two words, and "pt" and "es" the same in Portuguese (Brazil) and Spanish.
 - "name": the theme's name, two or three words, in each language.
 - "words": ${WORDS} common single nouns about the theme in each language, four to eight letters, lowercase.
+- "cast": one short line of what two small creatures could be doing in that scene together (rolling a hay bale, sharing a picnic blanket), no people.
 - "id" values are lowercase English slugs.`;
 
 const THEME_SCHEMA = {
@@ -105,6 +112,7 @@ const THEME_SCHEMA = {
     words: {type: "object", additionalProperties: false, required: ["en", "pt", "es"],
       properties: {en: {type: "array", items: {type: "string"}}, pt: {type: "array", items: {type: "string"}},
         es: {type: "array", items: {type: "string"}}}},
+    cast: {type: "string"},
   },
 };
 
@@ -141,7 +149,9 @@ export async function makeTheme(day: number, recent: string[] = []): Promise<The
       // A writer's slug is as often hyphened as not: made ours, not turned down.
       const slug = (v: unknown) => String(v ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
       const theme = {v: 1 as const, id: slug(got.id), name: got.name, scene: got.scene,
-        objects: (Array.isArray(got.objects) ? got.objects : []).map((o) => ({...o, id: slug(o?.id)})), words: got.words};
+        objects: (Array.isArray(got.objects) ? got.objects : []).map((o) => ({...o, id: slug(o?.id)})), words: got.words,
+        // Optional: a writer that leaves it out still has a theme.
+        ...(text(got.cast, CAST_MAX) ? {cast: got.cast.trim()} : {})};
       if (!validTheme(theme)) {
         console.error(`theme: day ${day}, try ${attempt}: not a theme: ${JSON.stringify(got).slice(0, 1500)}`);
         continue;

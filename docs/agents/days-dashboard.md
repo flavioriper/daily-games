@@ -548,3 +548,19 @@ The output is not bit-reproducible: the walkers' idle breathing and the
 frame at which the laugh freezes (0.80 to 0.82 s) depend on wall-clock frame
 timing, so a rebuild differs by a few pixels. The harness warns when the
 window is not 2048 x 1024 and still saves.
+
+## The cast (2026-10-27)
+
+The day's two Peeplets (`server/functions/src/cast.ts`; the phone's twin is
+`core/cast.gd`, built by the app plan). Eligible are the personas whose coat
+is flat (`PeepletPalette.BODY` 0..7) and whose hat is one of `PLAIN_HATS`
+(twenty-three of the fifty), in `PeepletPersonas.ALL` order. With `n` the
+eligible count and `day` the yyyymmdd number: `a = fnv1a("cast-a-" + day) % n`,
+`b = fnv1a("cast-b-" + day) % n`, `b = (a + 1) % n` when `b == a`, and the pair
+is `eligible[a], eligible[b]`; `[0, 1]` when fewer than two are eligible.
+`fnv1a` is the 32-bit unsigned FNV-1a over the string's bytes (`core/daily.gd:47`,
+`eye.ts`). The list reaches the server as `server/functions/src/cast_personas.json`,
+written by `godot --headless --path . --script tools/export_personas.gd` (run it
+whenever the persona list changes; `tests/_probe_cast_parity.gd` checks it).
+Test vector, from `node lib/cli.js cast <day>` and confirmed in GDScript:
+`20261027 = [14, 8]`, `20261028 = [11, 20]`, `20261029 = [42, 33]`.

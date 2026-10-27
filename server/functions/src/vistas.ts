@@ -166,4 +166,6 @@ export interface Vistas {
   name: {en: string; pt: string; es: string};
   /** A JPEG a time, base64. */
   times: Record<Time, string>;
+  /** The day's two Peeplets, indices into the persona list (cast.ts). */
+  cast: [number, number];
 }
