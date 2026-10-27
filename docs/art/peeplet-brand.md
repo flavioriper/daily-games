@@ -63,7 +63,7 @@ human, a wrong number of arms or legs, a fused, melted, doubled, bent or
 overlong limb, fingers, a neck, a second head, more than two eyes, a body that
 is not one round blob, a Peeplet in the left third (the day card's words go
 there), no Peeplet or more than three, and a body (hat excluded) larger than
-a quarter (past about 27%; the user, 2026-10-27: 22-24% is fine) or smaller than a twentieth of the painting's height. An edit's Peeplets must be the morning's: the same number, body colours and hats. The model writes a `limbs` note for each Peeplet before it answers. Hats and coats
+a quarter (past about 27%; the user, 2026-10-27: 22-24% is fine) or smaller than a twentieth of the painting's height. Lights lit at dusk or night (windows, lanterns, the fire, their glow) are the time of day, never a different place. An edit's Peeplets must be the morning's: the same number, body colours and hats. The model writes a `limbs` note for each Peeplet before it answers. Hats and coats
 are not judged. The size rule is the one the user may overrule: a borderline
 size is never copied into a bench label.
 

@@ -243,5 +243,10 @@
   "verdict": "fail",
   "defect": "third-arm",
   "subtle": false
+ },
+ "20261202_vista-morning-1_decoy-1-third-arm.jpg": {
+  "verdict": "pass",
+  "defect": "",
+  "subtle": false
  }
 }

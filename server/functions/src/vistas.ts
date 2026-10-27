@@ -92,7 +92,7 @@ const REVIEWER = `You check painted backgrounds for a cosy daily puzzle game pla
   `face, more than two eyes, or a body that is not one round blob; a Peeplet in the left third of the painting; a Peeplet whose body is larger than ` +
   `about a quarter of the painting's height (clearly over a quarter, past 27%; a body near a quarter is fine) or smaller than a twentieth (a Peeplet's height is measured by its body, its hat excluded); no Peeplet at all, or more than three; anything frightening, violent or unsuitable for ` +
   `children; not a wide painted landscape (a close-up of one thing, a photo, a pattern); the light not the time of day asked; or, when there is a ` +
-  `first painting to compare, a different place or a different framing from it (the light and sky changing is expected; but a building, window, tree, path, fence or thing that is added, gone or moved is a different place), or Peeplets that are not the ` +
+  `first painting to compare, a different place or a different framing from it (the light and sky changing is expected; so are the lights that are lit at dusk or night: windows, lanterns, the fire and their glow are the time of day and never a different place), or Peeplets that are not the ` +
   `same as the first painting's: when a painting at morning is shown beside the one to judge, the Peeplets in it must be the same Peeplets, the same ` +
   `number, each with the same body colour and the same hat or headgear and each in the same spot; a Peeplet that is added, gone or in another ` +
   `colour is wrong (the night may darken the colours and add glow, but a purple Peeplet stays purple and a pair stays a pair). Say what is wrong in ` +

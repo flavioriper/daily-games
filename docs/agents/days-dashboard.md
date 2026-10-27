@@ -645,6 +645,7 @@ under 1/3; at most three passes, and no crop-and-enlarge before the user says.
 | 1, rescored on the user's 18 labels | none | 8 of 31 fail-labelled (4 long-arm, fused, missing-leg, the harbour's third Peeplet at dusk and night; the 1014 "neck") | 2 of 31 (size, 20261015 morning-0 and -1) | 0 | 0 |
 | 2 | sheet named as the only truth, a `limbs` note a Peeplet before `wrong`, size ceiling a quarter, edit Peeplets must be the same | invalid: Opus stopped on `refusal` for 33 of 49 files (the "Before you decide anything, write ... in limbs" sentence trips it; US$2.27) | | | |
 | 3 | the same, the refusal sentence gone, arms in body widths and "hunt for the flaw", feet counted, an added/gone/moved thing is a different place | 3 of 31: 20261014 morning-0 long-arm ("neck"), 20261018 night-1 long-arm, 20261202 morning-1 (third arm) | 7 of 31 (5 night/dusk files "lanterns added", 20261019 morning-0 fused decoy-6 [a labelled pass], 20261201 night-0 "arms fused") | 0 | 0 |
+| 4, correction: lights | pass 3's place clause reverted to the pass-1 wording plus one sentence: windows, lanterns, the fire and their glow lit at dusk or night are the time of day, never a different place; limb wording untouched (the limb-wording cap of three passes was spent in pass 3) | 6 of 32: 20261018 night-1 long-arm, 20261019 morning-0 long-arm, 20261019 night-0 missing-leg, 20261101 dusk-0 and -1 (a lit window the user labelled fail), 20261201 afternoon-0 fused | 3 of 32 (20261015 morning-1, 20261018 afternoon-0 "arm runs into the other Peeplet", 20261019 morning-0 decoy-6-fused a labelled pass) | 0 | 0 |
 
 Pass 3 gate FAILS (US$2.04, 302,705 tokens in and 41,564 out, no review errors).
 The limb checks caught the 20261201 long-arm and fused, the 20261019 long-arm
@@ -656,6 +657,7 @@ good rejections are mostly the new "a thing added is a different place"
 clause: night and dusk paintings show lanterns the reviewer calls new. The
 three-pass cap is spent; the next step is the user's (a wording that does not
 overreach on lanterns, or crop-and-enlarge, which needs their word).
+Pass 4 (US$2.01, no review errors) is a production-safety correction, not a gate attempt: the lantern and glow rejections are gone (the five lit night/dusk paintings pass), but the lit window the user labelled fail (20261101 dusk-0 and -1) passes again, so it is on the deformed-passed list; the gate still FAILS. The user's label of 20261202 morning-1 decoy-1 as a pass arrived during the run (32 pass-labelled). Verdicts of the same file vary between runs.
 `limbs` rides back from `reviewPainting` as a third field and is in each
 `verdicts` entry of `report.json`. 20261202 morning-1 decoy-1 (unlabelled): turned down
 in pass 3 for a flipper-like tip and a basket that hides the right foot.
