@@ -5,9 +5,11 @@ extends RefCounted
 ## (docs/superpowers/specs/2026-10-13-daily-theme-design.md). The night's
 ## process publishes one picture a band -- a thing from the theme, drawn as
 ## shaded pixel art on a bare board (server/functions/src/pictures.ts) --
-## keyed by the band's side (10, 12, 24, 32, and 48 for Button Box's Insane
-## alone), and Pixel Garden, Button Box and Toy Cannons deal it in place of
-## their bank's for that band (Button Box's Hard asks for the 32).
+## keyed by the band's side (10, 12, 24, 32, 48 for Button Box's Insane on
+## builds before 2026-10-27, and 96 for Jewel Box's Insane since, sewn a
+## quarter at a time), and Pixel Garden, Button Box and Toy Cannons deal it
+## in place of their bank's for that band (Button Box's Hard asks for the
+## 32).
 ##
 ## Since 2026-10-14 a picture is kept at the squares it was drawn at, never
 ## redrawn to the band's side: its rows are a square of any side within the
@@ -39,6 +41,7 @@ const RULES := {
 	24: {"side": [24, 34], "colours": [6, 12]},
 	32: {"side": [32, 40], "colours": [8, 14]},
 	48: {"side": [44, 64], "colours": [10, 16]},
+	96: {"side": [80, 112], "colours": [12, 16]},
 }
 const FILL := [0.25, 0.80]
 const LEAD := 0.6

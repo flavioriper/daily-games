@@ -32,7 +32,8 @@ export interface Picture {
 export interface Pictures {
   v: 1;
   theme: string;
-  /** By size: "10", "12", "16", "24", "32". A size not here is the bank's. */
+  /** By size: "10", "12", "24", "32", "48" and "96" (Beads.SIZES). A size
+   *  not here is the bank's. */
   sizes: Record<string, Picture>;
   /** Gumdrop's, by band: "0" Easy to "3" Insane, a jelly a mould
    *  (jelly.ts). A place not filled here the board fills from its own
@@ -104,18 +105,22 @@ export const DEFAULT_ROWS_MODEL = "anthropic/claude-opus-5.5";
  *  model drew flat; asked this, a mushroom with a maroon shadow, a coral
  *  light and grey spots, read clean at its own squares. */
 const PIXEL_OBJECT = (what: string, side: number, colours: number, detail: boolean) => `Pixel art sprite of ${what}, about ${side} by ${side} pixels, upscaled so every pixel is one big square block, no grid lines. One sprite only, centred on a plain pure white background, nothing else in the picture, no shadow under it, no text. A one-pixel dark outline all round it. Shaded like good pixel art: each main colour in two or three flat tones (a shadow tone, a mid tone and a light tone) laid as blocks of whole pixels, no gradients, no anti-aliasing, at most ${colours} colours in all. Cute cozy kawaii style, ${detail ? "detailed, with texture and small features" : "big simple readable shapes"}, about as wide as it is tall.`;
-/** The bands drawn with detail: Insane's and Button Box's own. */
+/** The bands drawn with detail: Insane's and Button Box's own (and Jewel
+ *  Box's 96). */
 const DETAIL_FROM = 32;
 
 /** What a band's first drawing is asked for, by the band's side. The image
  *  model holds no side: asked 8 it drew 17, asked 12 it drew 36 to 41,
  *  asked 18 and 24 it drew 34 and 36 (read off the drawings of 2026-10-14).
- *  Each next ask is scaled by what the last came out at. */
-const FIRST_ASK: Record<number, number> = {10: 8, 12: 9, 24: 18, 32: 24, 48: 40};
+ *  Each next ask is scaled by what the last came out at. Jewel Box's 96
+ *  asks 80: the overshoot falls as the ask grows (asked 12 it drew three
+ *  times that, asked 40 a 64 cottage, 1.6 times), so 80 at 1.2 to 1.4 times
+ *  lands at 96 to 112, and one drawn over is asked again smaller. */
+const FIRST_ASK: Record<number, number> = {10: 8, 12: 9, 24: 18, 32: 24, 48: 40, 96: 80};
 /** Drawings of one band before it is written from words instead: a drawing
  *  on gemini-3-pro-image is one to four minutes with its rate limit, and the
  *  two small bands, which the model seldom draws small enough, get two. */
-const PIXEL_DRAWINGS: Record<number, number> = {10: 2, 12: 2, 24: 3, 32: 3, 48: 3};
+const PIXEL_DRAWINGS: Record<number, number> = {10: 2, 12: 2, 24: 3, 32: 3, 48: 3, 96: 3};
 /** Bare squares round the thing each way: the boards' bare edge. */
 const MARGIN = 1;
 
@@ -304,7 +309,7 @@ export async function pixelBand(day: number, theme: Theme, i: number, sizes: Rec
       const drawing = await draw(PIXEL_OBJECT(thing.draw, side, colours, size >= DETAIL_FROM));
       if (keep !== undefined) draft.file = keep(`${day}_${what}_${n}`, drawing);
       const px = decoded(drawing);
-      const sn = Beads.snap(px.data, px.width, px.height);
+      const sn = Beads.snap(px.data, px.width, px.height, rule.finest);
       if (sn === null) {
         draft.error = "no squares found in it";
         continue;

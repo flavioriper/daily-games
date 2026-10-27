@@ -43,10 +43,11 @@ export interface Theme {
 }
 
 /** Things a theme has, and words a language. */
-/** Things a theme names: one a band (10, 12, 24, 32 and Button Box's 48
- *  squares, with a sixth to spare), the simplest first. Themes written
- *  before 2026-10-14 name three; they are still valid (LEAST), and the
- *  pixel way draws the last one for the bands it has no thing for. */
+/** Things a theme names: one a band (10, 12, 24, 32, Button Box's 48 and,
+ *  since 2026-10-27, Jewel Box's 96, which draws the sixth), the simplest
+ *  first. Themes written before 2026-10-14 name three; they are still valid
+ *  (LEAST), and the pixel way draws the last one for the bands it has no
+ *  thing for. */
 export const THINGS = 6;
 const LEAST = 3;
 const WORDS = 8;

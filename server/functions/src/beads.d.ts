@@ -4,14 +4,17 @@
 declare const Beads: {
   PALETTE: Record<string, string>;
   /** By the band's side: the side its rows may be, colours and fill. */
-  RULES: Record<number, {side: number[]; colours: number[]; fill: number[]}>;
+  RULES: Record<number, {side: number[]; colours: number[]; fill: number[];
+    /** The most squares a side a drawing of the band is read at (snap). */
+    finest?: number}>;
   SIZES: number[];
   optionsFor(size: number): Beads.Options;
   fillOf(rows: string[]): number;
   check(rows: string[], size: number): Beads.Check[];
   convert(rgba: Uint8Array | Uint8ClampedArray, width: number, height: number, opt: Beads.Options): {rows: string[]};
-  /** Pixel art read at its own squares; null when no grid is found. */
-  snap(rgba: Uint8Array | Uint8ClampedArray, width: number, height: number): Beads.Snapped | null;
+  /** Pixel art read at its own squares, at most `finest` (96 unless told)
+   *  a side; null when no grid is found. */
+  snap(rgba: Uint8Array | Uint8ClampedArray, width: number, height: number, finest?: number): Beads.Snapped | null;
   /** A snapped drawing as a band's rows, or `why` it is not one. */
   fromSnap(sn: Beads.Snapped, size: number, colours: number, scene: boolean, slack: number):
     {rows?: string[]; why?: string; w?: number; h?: number};

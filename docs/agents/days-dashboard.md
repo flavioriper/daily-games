@@ -681,3 +681,31 @@ beside `days/themed-vistas/`). The page code is in `tools/dashboard.src.html`;
 `tools/build_dashboard.py` already carries `vistaTries` whole. The Peeplet
 rules and what the bench gate does not yet prove are in
 `docs/art/peeplet-brand.md`.
+
+## A 96 picture for Jewel Box's Insane (2026-10-27)
+
+The user, of Jewel Box's Insane: "a way bigger image", sewn a quarter at a
+time; 96 a side, so a quarter is about the 48's whole. `Beads.SIZES` gains
+96 (`tools/beads.js` RULES: 80 to 112 a side, 12 to 16 colours, the same
+fill, lead and bare edge; `core/themed_pictures.gd` holds the same row), so
+the night has a `pic96` step drawing the theme's sixth thing (a theme of
+five lends its fifth). The 48 stays: the build on phones asks for it.
+`FIRST_ASK` is 80, three drawings.
+
+**The reader had to change for it.** `Beads.snap` read no grid finer than
+a 96th of the image, and a 96 sprite on its white board is always more, so a
+band's RULES may name `finest` (the 96's is 160) and snap is handed it. A
+pitch tried a quarter pixel off also drifts off its lines over a hundred
+squares (a synthetic 100-square grid at 10.24 px scored under its double at
+10.15), so with `finest` the pitches are tried closer where the squares are
+many. Without it every band reads as before (the same synthetic 64-square
+grid read 15.92 px before and after). On synthetic crisp grids of 80 to 124
+squares at 1,024 px the 96 band read every square (`mixed 0`); a 140-square
+canvas read too, its thing then 113 wide, over the range.
+
+**Not tried on a real drawing**: the dry run on flash needed another
+login's Vertex token on this Mac and was refused here. Owed: one 96 drawing
+on `gemini-3-pro-image` (a square is 7 to 10 px at 1,024, and real output is
+softer than the synthetic: if the night's 96s are turned down as "finer
+drawing", ask Vertex for `imageConfig.imageSize: "2K"` on that band alone),
+and `finest` raised to 192 if a sprite comes back on a canvas past 160.

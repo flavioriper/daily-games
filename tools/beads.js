@@ -44,7 +44,16 @@ var Beads = (function () {
     // Button Box's Insane alone (the user, 2026-10-14: "insane should be a
     // really big and detailed image"): asked 40, the model drew a cottage
     // at 64 × 61 that read clean.
-    48: { side: [44, 64], colours: [10, 16], fill: [.25, .8], small: true, lead: LEAD } };
+    48: { side: [44, 64], colours: [10, 16], fill: [.25, .8], small: true, lead: LEAD },
+    // Jewel Box's Insane since 2026-10-27 (the user: "a way bigger image",
+    // sewn a quarter at a time; 96 a side, so a quarter is about the 48's
+    // whole). The 48 stays for the build already on phones. Fill keeps the
+    // same range: cutOut pads a thing to 96 only when it is drawn under
+    // 94, and a sprite of the theme's (none thin, each filling most of
+    // its square) on one bare square each way fills about what a 48 does.
+    // `finest` is the most squares a side its drawing is read at (snap):
+    // the white board round a sprite of 80 to 112 is more than snap's 96.
+    96: { side: [80, 112], colours: [12, 16], fill: [.25, .8], small: true, lead: LEAD, finest: 160 } };
   var CUT_FILL = [.3, .7], MOST = .45, WORK = 240;
   var DEFAULTS = { size: 10, frame: "subject", bg: "auto", tol: .1, margin: 1, colours: 4, zoom: 1, px: 0, py: 0, vivid: 1 };
 
@@ -235,12 +244,17 @@ var Beads = (function () {
     return best;
   }
   // Pixel art's squares are square: one pitch for both axes, each its phase.
-  function pitchOf(col, row, lo, hi) {
+  // Pitches are tried a quarter pixel apart; `fine` tries them closer where
+  // the squares are many, since a pitch off by an eighth of a pixel drifts
+  // off its lines over a hundred squares (a 100-square grid at 10.24 px
+  // scored under its double at 10.15, 2026-10-27). Only a band with a
+  // `finest` reads this way, so the others read as they always have.
+  function pitchOf(col, row, lo, hi, fine) {
     var tc = 0, tr = 0, x, all = [];
     for (x = 0; x < col.length; x++) tc += col[x];
     for (x = 0; x < row.length; x++) tr += row[x];
     if (!tc || !tr) return [];
-    for (var p = lo; p <= hi; p += .25) {
+    for (var p = lo; p <= hi; p += fine ? Math.max(.01, Math.min(.25, .2 * p * p / col.length)) : .25) {
       var gx = phaseOf(col, tc, p), gy = phaseOf(row, tr, p);
       all.push({ g: [gx, gy], score: gx.score + gy.score });
     }
@@ -276,16 +290,19 @@ var Beads = (function () {
   // middle half's most common shade) and how well the squares hold one
   // colour each: `fit`, the share of their pixels near their own colour,
   // and `mixed`, the squares whose middle is not mostly one colour.
-  function snap(rgba, w, h) {
+  // `finest` is the most squares a side the image is read at: 96 unless
+  // told (a band's RULES `finest`), which a 96 sprite on its white board
+  // is always over.
+  function snap(rgba, w, h, finest) {
     var n = w * h, lab = new Float32Array(n * 3), i;
     for (i = 0; i < n; i++) lab.set(oklab(lin(rgba[4 * i]), lin(rgba[4 * i + 1]), lin(rgba[4 * i + 2])), 3 * i);
-    var pr = profiles(lab, w, h), side = Math.max(w, h), lo = Math.max(4, side / 96), hi = side / 6;
+    var pr = profiles(lab, w, h), side = Math.max(w, h), lo = Math.max(4, side / (finest || 96)), hi = side / 6;
     // The changes can fall as well on a finer pitch, its lines laid unevenly,
     // as on the drawing's own, and the other way about where the drawing
     // is finer in places. So the best few pitches and the best one's
     // multiples are each read, and the coarsest whose squares hold one colour
     // about as well as the best's is the drawing's.
-    var found = pitchOf(pr[0], pr[1], lo, hi), cands = found.map(function (c) { return c.g; }), tc = 0, tr = 0, x;
+    var found = pitchOf(pr[0], pr[1], lo, hi, !!finest), cands = found.map(function (c) { return c.g; }), tc = 0, tr = 0, x;
     if (!found.length) return null;
     for (x = 0; x < w; x++) tc += pr[0][x];
     for (x = 0; x < h; x++) tr += pr[1][x];
@@ -397,7 +414,7 @@ var Beads = (function () {
     for (y = 0; y < N; y++) rows.push(at.slice(y * N, y * N + N).map(function (a) { return a < 0 ? "." : LETTERS[a]; }).join(""));
     return { rows: rows, w: bw, h: bh, side: N };
   }
-  return { PALETTE: PALETTE, cutOut: cutOut, SIZES: [10, 12, 24, 32, 48], RULES: RULES, rulesOf: rulesOf, optionsFor: optionsFor, fillOf: fillOf,
+  return { PALETTE: PALETTE, cutOut: cutOut, SIZES: [10, 12, 24, 32, 48, 96], RULES: RULES, rulesOf: rulesOf, optionsFor: optionsFor, fillOf: fillOf,
     check: check, convert: convert, snap: snap, fromSnap: fromSnap };
 })();
 if (typeof module !== "undefined") module.exports = Beads;
