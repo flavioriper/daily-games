@@ -34,8 +34,8 @@ const RIGHT := 20.0
 const FOOT := 15.0
 ## A piece's bottom edge, in cells, and the least it may be: the board's EDGE
 ## has a floor of 5 on a cell of 130, which is a slab on one of 44.
-const LIP := 0.07
-const LIP_MIN := 3.0
+const LIP := WordTiles.LIP
+const LIP_MIN := WordTiles.LIP_MIN
 ## The word, and the guesses that led to it. The marks are worked out from
 ## these, never written down.
 const WORD := "honey"
@@ -154,13 +154,13 @@ func _paint(b: Face.Builder) -> void:
 			var fill: Color = Board.MARK[got[c]]
 			var tone := (float((r * 5 + c) * 37 % 11) / 10.0) * 2.0 - 1.0
 			fill = fill.lightened(tone * Board.TONE) if tone > 0.0 else fill.darkened(-tone * Board.TONE)
-			_piece(b, _tile_at(r, c), s, fill, fill.lerp(Pal.TEXT, Board.EDGE_MIX),
+			WordTiles.piece(b, _tile_at(r, c), s, fill, fill.lerp(Pal.TEXT, Board.EDGE_MIX),
 				fill.lerp(Pal.SURFACE, Board.RIM_LIGHT))
 	var last := rows - 1
 	for c in WORD.length():
 		var at := _tile_at(last, c)
 		if c < TYPED.length():
-			_piece(b, at, s, Pal.SURFACE.lerp(Pal.SURFACE_HI, Board.PAPER_CROWN),
+			WordTiles.piece(b, at, s, Pal.SURFACE.lerp(Pal.SURFACE_HI, Board.PAPER_CROWN),
 				Pal.SURFACE_HI.lerp(Pal.LINE, Board.PAPER_LIP), Pal.SURFACE)
 		elif soon:
 			# No go tile on a card that cannot be opened: the bed the letter
@@ -171,24 +171,12 @@ func _paint(b: Face.Builder) -> void:
 		else:
 			_go(b, at + Vector2.ONE * (s * 0.5), s * GO_SIZE)
 
-## One piece at `at`, `s` wide, as the board's `_tile_face` cuts it: the
-## bottom edge in `deep`, the face in `rim`, and the crown in `fill` a bevel
-## down and in from it.
-func _piece(b: Face.Builder, at: Vector2, s: float, fill: Color, deep: Color, rim: Color) -> void:
-	var r := s * Board.RADIUS
-	var edge := maxf(LIP_MIN, s * LIP)
-	var bev := s * Board.BEVEL
-	b.polygon(Face.Builder.round_rect(at, Vector2(s, s), r), deep)
-	b.polygon(Face.Builder.round_rect(at, Vector2(s, s - edge), r), rim)
-	b.polygon(Face.Builder.round_rect(at + Vector2(bev * 0.7, bev), Vector2(s - bev * 1.4, s - edge - bev),
-		maxf(r - bev * 0.5, 0.0)), fill)
-
 ## The go tile about `mid`: a piece in the card's colour over its own soft
 ## shadow, a chevron where its letter would be.
 func _go(b: Face.Builder, mid: Vector2, s: float) -> void:
 	var at := mid - Vector2.ONE * (s * 0.5)
 	Scenery.soft_disc(b, mid + Vector2(0.0, s * 0.42), s * 0.58, s * 0.2, Color(Pal.TEXT, 0.2))
-	_piece(b, at, s, colour, colour.darkened(0.26), colour.lerp(Pal.SURFACE, Board.RIM_LIGHT))
+	WordTiles.piece(b, at, s, colour, colour.darkened(0.26), colour.lerp(Pal.SURFACE, Board.RIM_LIGHT))
 	var c := mid + Vector2(s * 0.02, -maxf(LIP_MIN, s * LIP) * 0.5)
 	var h := s * 0.17
 	b.stroke(PackedVector2Array([c + Vector2(-h * 0.55, -h), c + Vector2(h * 0.55, 0.0),

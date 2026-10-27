@@ -171,7 +171,7 @@ static func tile_colours(held: bool, grout: float, alpha: float, blush := 0.0, t
 ## numbers, rather than from inside the mesh builder.
 const LETTER_SIZE := 0.56
 static func letter(b, at: Vector2, s: float, ch: String, grow: Vector2,
-		col: Color, font: Font, alpha := 1.0) -> void:
+		col: Color, font: Font, alpha := 1.0, angle := 0.0) -> void:
 	if ch.is_empty() or alpha <= 0.0 or grow.x <= 0.0 or grow.y <= 0.0:
 		return
 	var size := int(s * LETTER_SIZE)
@@ -179,7 +179,7 @@ static func letter(b, at: Vector2, s: float, ch: String, grow: Vector2,
 	var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
 	var h := font.get_height(size)
 	var where := Vector2(-w * 0.5, h * 0.5 - font.get_descent(size))
-	b.draw_set_transform(at, 0.0, grow)
+	b.draw_set_transform(at, angle, grow)
 	font.draw_string(b.get_canvas_item(), where, text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color(col, alpha))
 	b.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
