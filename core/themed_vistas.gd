@@ -23,14 +23,25 @@ const GROUP := "themed_vistas"
 static var _day := 0
 static var _tex := {}
 static var _name := {}
+static var _cast := []
 
 ## The vista of `time` for today, or null.
 static func texture(time: String) -> Texture2D:
+	_refresh()
+	return _tex.get(time)
+
+## The day's pair of Peeplets as the night published it (two persona
+## indices, core/cast.gd clamps them), [] with none. Kept even when the
+## document's pictures did not decode.
+static func cast() -> Array:
+	_refresh()
+	return _cast
+
+static func _refresh() -> void:
 	var today := Daily.date_key()
 	if today != _day:
 		_day = today
 		_take(Backend.cached_day(GAME, today) if Backend.started() else {})
-	return _tex.get(time)
 
 ## The day's theme by name in the player's language, "" with no vistas: the
 ## day card shows it in place of the island's.
@@ -49,10 +60,21 @@ static func _take(doc: Dictionary) -> void:
 	_tex = _decoded(doc)
 	var names = doc.get("name")
 	_name = names if names is Dictionary and not _tex.is_empty() else {}
+	_cast = _cast_of(doc)
 
 ## Forgets what was decoded, for the document that just arrived.
 static func reload() -> void:
 	_day = 0
+	_cast = []
+
+static func _cast_of(doc: Dictionary) -> Array:
+	var c = doc.get("cast")
+	if not c is Array or c.size() != 2:
+		return []
+	for v in c:
+		if not (v is int or v is float):
+			return []
+	return [int(c[0]), int(c[1])]
 
 static func _decoded(doc: Dictionary) -> Dictionary:
 	var times = doc.get("times")
@@ -61,7 +83,8 @@ static func _decoded(doc: Dictionary) -> Dictionary:
 	var out := {}
 	for time in TIMES:
 		var img := Image.new()
-		if img.load_jpg_from_buffer(Marshalls.base64_to_raw(str(times.get(time, "")))) != OK:
+		var raw := Marshalls.base64_to_raw(str(times.get(time, "")))
+		if raw.is_empty() or img.load_jpg_from_buffer(raw) != OK:
 			return {}
 		out[time] = ImageTexture.create_from_image(img)
 	return out
