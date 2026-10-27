@@ -515,7 +515,7 @@ deploy.
 `server/functions/assets/peeplet_sheet.png` (2048 x 1024, flat `Pal.PAPER`
 ground, one ink label under each cell) is the live Peeplet
 (`ui/peeplet_view.gd`) in eight cells: front, three-quarter (`turn` 35),
-side (90), back (180), sitting and laughing (caught mid-swell), all in coat 0
+side (90), back (180), sitting and "laughing (bounce)", all in coat 0
 (coral); then a `sunhat` on coat 5 and `roundglasses` on coat 6. It is the
 reference image the day's painter and the reviewer are given, so the Peeplets
 painted into the vistas wear this one look. `server/` is `.gdignore`d, so
@@ -528,6 +528,23 @@ Rebuild it after any change to the Peeplet's look (windowed, one at a time):
 
 `ink` was **off** (`PeepletFur.ink` is false in the repo): no line round the
 coat. The harness (`tests/_shot_peeplet_sheet.gd`) takes `ink` as
-`_shot_peeplet.gd` does; a sheet made with it must say so here. 49 draw
-calls. The sheet is laid out on the first frame: in `_initialize` the window
+`_shot_peeplet.gd` does; a sheet made with it must say so here. 17 draw
+calls (the last run). The sheet is laid out on the first frame: in `_initialize` the window
 has no size yet and every cell collapses into the corner.
+
+Two poses are subtler than their names, and the sheet says so. The live
+laugh (`peeplet_walker.gd`, `LAUGH_*`) is a body bounce, a squash and
+stretch under a swell with a 14 degree rock back and a wag: it never opens
+the mouth or changes the eyes. The cell is the walker frozen at its
+`laugh_time` 0.80 (bounce at its tallest, taller and narrower than the
+front, arms up, leaning back) and is labelled "laughing (bounce)" so the
+painter is not told the face laughs. The live sit (`SIT_BODY_DROP` 0.072,
+`SIT_LEAN` -13 degrees, the legs swung out under the belly) is genuinely
+this subtle on a blob whose legs cannot reach past its belly: a lower,
+slightly rocked body with the toes peeking out. The cell is the settled sit,
+kept as it is.
+
+The output is not bit-reproducible: the walkers' idle breathing and the
+frame at which the laugh freezes (0.80 to 0.82 s) depend on wall-clock frame
+timing, so a rebuild differs by a few pixels. The harness warns when the
+window is not 2048 x 1024 and still saves.
