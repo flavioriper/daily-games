@@ -1395,3 +1395,12 @@ it closes) is the only path to `_open_at`; the win's "Try Hard" invite goes
 straight to `_open_at` as before. `tests/_shot_menu.gd -- diff=<id>` is back,
 on a throwaway progress file whose last level is Medium so the ring shows;
 on a themed day each row wears its own painted time (`Vistas.level_row`).
+
+**The tiles wear the icon's colours (2026-10-27, later the same day).** The
+user: "make sure the daily puzzle colors follow the icon colors". The five
+tile colours in `ui/menu/word_tiles.gd` were the app palette's muted kin
+(SUN_TILE for the yellow, a pale sky and coral); they are now sampled from
+`assets/icon/icon.png`: cream `fdecc8`, yellow `fdcf3f`, green `55b35c`,
+blue `72b5fb`, coral `fb7c6a`, and the letters are white on every coloured
+tile, the yellow included, as the icon has them. The opening lays the same
+colours. Menu idle 160 draw calls, unchanged.

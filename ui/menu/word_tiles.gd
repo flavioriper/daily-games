@@ -14,13 +14,16 @@ const Face = preload("res://ui/faces/face.gd")
 const Mosaic = preload("res://ui/faces/mosaic_tile.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 
-## The icon's tile colours (SKY and CORAL were the opening's BLUE and CORAL
-## before the opening laid these tiles).
-const PAPER := Pal.PAPER
-const BUTTER := Pal.SUN_TILE
-const LEAF := Pal.LEAF
-const SKY := Color("95c6e8")
-const CORAL := Color("fb8f7a")
+## The icon's tile colours, sampled from assets/icon/icon.png (the user,
+## 2026-10-27: "make sure the daily puzzle colors follow the icon colors"):
+## a warm cream, a sunflower yellow, a leaf green, a sky blue and a coral.
+## They are the icon's, not the app palette's muted kin, so the wordmark
+## reads as the icon does.
+const PAPER := Color("fdecc8")
+const BUTTER := Color("fdcf3f")
+const LEAF := Color("55b35c")
+const SKY := Color("72b5fb")
+const CORAL := Color("fb7c6a")
 
 ## A piece's corner, bevel and the shades of its edge and rim, as the Hidden
 ## Word board cuts it (puzzles/hidden_word2d.gd reads them from here): the
@@ -105,10 +108,10 @@ static func colour_at(i: int) -> Color:
 	var c := cell(i)
 	return COLOURS[ROWS[c.y]][c.x]
 
-## The letter's colour on tile `i`: ink on the pale tiles, surface on the rest.
+## The letter's colour on tile `i`: ink on the cream tiles, white on every
+## coloured one, the yellow included (as the icon has it).
 static func ink_at(i: int) -> Color:
-	var fill := colour_at(i)
-	return Pal.TEXT if fill == PAPER or fill == BUTTER else Pal.SURFACE
+	return Pal.TEXT if colour_at(i) == PAPER else Pal.SURFACE
 
 ## The local rect of tile `i`, before its tilt.
 func tile_rect(i: int) -> Rect2:
