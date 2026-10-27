@@ -83,12 +83,12 @@ const LETTERS := "ABCDEFGH"
 ## A baker's picture: metres of the Peeplet's world it is tall and the height
 ## it looks at, so the tallest hat (the wizard's) stays in; the picked
 ## baker breathes at PICKED_FPS, the rest hold still.
-const CAST_FRAME := 1.0
-const CAST_AIM := 0.46
+const CAST_FRAME := 0.62
+const CAST_AIM := 0.52
 const PICKED_FPS := 12.0
 ## A marked card's picture across, in its small face's widths: the hat
 ## needs room above the face.
-const MINI_SIDE := 1.9
+const MINI_SIDE := 1.5
 
 ## Built silent and deaf for the tutorial's page.
 var demo := false
@@ -897,7 +897,7 @@ func _draw_card(i: int) -> void:
 		return
 	var mini := _l("mini")
 	var fc := Vector2(pad + mini * 0.5, pad + mini * 0.6)
-	_seat(i, mini * MINI_SIDE, base, fc + Vector2(-mini * 0.08, -mini * 0.18), tint)
+	_seat(i, mini * MINI_SIDE, base, fc + Vector2(-mini * 0.05, -mini * 0.22), tint)
 	if _st.did_eat(i):
 		_crumbs[i] = [base * Transform2D(0.0, fc + Vector2(0.0, mini * 0.32)), tint, mini * 0.8]
 	var nfs := int(_L.name_fs)

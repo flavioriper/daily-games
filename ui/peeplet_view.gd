@@ -150,6 +150,9 @@ func _rebuild() -> void:
 	PeepletBatch.merge_face(walker.body_mesh, 1)
 	walker.body_mesh.add_child(cartoon_eyes())
 	walker.process_mode = PROCESS_MODE_INHERIT if _idle else PROCESS_MODE_DISABLED
+	# posed once now: a held portrait's walker may never run, and an unposed
+	# walker stands in its rig's rest, arms straight out
+	walker.advance(1.0 / 60.0)
 	_since = INF
 
 ## daily (2026-10-23, the cartoon pass, after Duolingo's owl): the eyes a
