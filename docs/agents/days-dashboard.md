@@ -509,3 +509,25 @@ deploy.
   with a day's real ports. Small faults left: `readPorts` and `readDay` call
   `token()` concurrently on a first visit and sign up twice; `band` is
   parsed and unused; a port's unparsable score shows as 0.
+
+## The Peeplet sheet (2026-10-27)
+
+`server/functions/assets/peeplet_sheet.png` (2048 x 1024, flat `Pal.PAPER`
+ground, one ink label under each cell) is the live Peeplet
+(`ui/peeplet_view.gd`) in eight cells: front, three-quarter (`turn` 35),
+side (90), back (180), sitting and laughing (caught mid-swell), all in coat 0
+(coral); then a `sunhat` on coat 5 and `roundglasses` on coat 6. It is the
+reference image the day's painter and the reviewer are given, so the Peeplets
+painted into the vistas wear this one look. `server/` is `.gdignore`d, so
+Godot never imports it; `npm run build` in `server/functions` copies it to
+`lib/peeplet_sheet.png` beside `vista_style.png`.
+
+Rebuild it after any change to the Peeplet's look (windowed, one at a time):
+
+    ulimit -f 200000; caffeinate -d -i -u timeout 60 godot --path . --resolution 2048x1024 --always-on-top --script res://tests/_shot_peeplet_sheet.gd -- out=server/functions/assets/peeplet_sheet.png
+
+`ink` was **off** (`PeepletFur.ink` is false in the repo): no line round the
+coat. The harness (`tests/_shot_peeplet_sheet.gd`) takes `ink` as
+`_shot_peeplet.gd` does; a sheet made with it must say so here. 49 draw
+calls. The sheet is laid out on the first frame: in `_initialize` the window
+has no size yet and every cell collapses into the corner.
