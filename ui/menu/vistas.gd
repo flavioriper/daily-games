@@ -326,8 +326,19 @@ static func header_plate() -> ColorRect:
 	var mat := plate.material as ShaderMaterial
 	mat.set_shader_parameter("scrim", HEADER_SCRIM)
 	mat.set_shader_parameter("fade", HEADER_FADE)
-	point_at(plate, HEADER[0], HEADER[1], HEADER[2], Pal.ACCENT)
+	set_header_vista(plate)
 	return plate
+
+## The header's painting: the day's own dusk when this phone holds one
+## (core/themed_vistas.gd), the bundled dusk otherwise, under the same crop
+## and tint either way. Re-points a plate that already stands, as
+## `set_day_vista` does the day card's.
+static func set_header_vista(plate: ColorRect) -> void:
+	var own := Themed.texture("dusk")
+	if own != null:
+		point_at(plate, own, HEADER[1], HEADER[2], Pal.ACCENT)
+		return
+	point_at(plate, HEADER[0], HEADER[1], HEADER[2], Pal.ACCENT)
 
 ## A picture set into the side of a Streak card: `row` is [vista, zoom,
 ## focus], washed into `paper` (the card's own fill) along its left edge.

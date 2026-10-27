@@ -452,6 +452,10 @@ func _build_list() -> void:
 	_list_root.add_child(_backdrop)
 	var insets := SafeArea.insets(self)
 	_backdrop.offset_bottom = MARGIN + insets.x + MenuHeader.HEIGHT + BACKDROP_BLEED
+	# The day's own dusk arriving behind the built menu re-points the plate in
+	# place, as the day card's picture does (vistas_arrived, below).
+	if not is_in_group(ThemedVistas.GROUP):
+		add_to_group(ThemedVistas.GROUP)
 	## F1 (final fix wave, 2026-09-24): the line above grows the plate by the
 	## top inset so the header clears a punch-hole cutout, but Vistas' crop is
 	## `cover` and sizes off the plate's own height -- left alone, that inset
@@ -758,6 +762,12 @@ func _pad(grid: GridContainer, into: Array, pad: Array, cols: int) -> void:
 			filler.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			pad.append(filler)
 			grid.add_child(filler)
+
+## The day's vistas came in behind the built menu (world/main.gd tells the
+## group, as it does the day card): the header's painting takes the day's dusk.
+func vistas_arrived() -> void:
+	if is_instance_valid(_backdrop):
+		Vistas.set_header_vista(_backdrop)
 
 ## A banner arriving or leaving changes the bottom inset after the list was
 ## built, so everything _build_list placed off `insets` is placed again: the

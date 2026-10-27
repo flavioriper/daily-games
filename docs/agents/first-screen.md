@@ -1328,3 +1328,40 @@ level every time a card is opened from the list; `Progress.last_level` is no
 longer read (the save still writes it). The level card's switch in game and
 the win's invite to the next level are unchanged. Versus (its sheet asks the
 level each time) and Arcade (their own progress) are untouched.
+
+### The tiles wordmark and the day's painting (2026-10-27)
+
+The user, 2026-10-27: "keep the same daily puzzle look from the icon instead
+of doing a plain daily puzzle font"; "the hero image should also be daily
+changed by the daily theme"; "remove the peeplets from the main screen header,
+keep only the daily puzzles" (spec `2026-10-27-peeplet-brand-design.md`,
+Part B).
+
+- **The wordmark is `WordTiles`** (`ui/menu/word_tiles.gd`, the icon's DAILY /
+  PUZZLES tiles, one mesh plus twelve letters), named `Tiles`, tile 60 at the
+  1080 design width (about 490 by 127), in the title block at `TITLE_TOP` 120
+  (the buttons end 110 down on the right, the tiles reach 490 across from the
+  left) with the motto's two lines under it. The Label wordmark, the i's sun,
+  the sprig and `TITLE` are gone from `menu_header.gd`, and so are the sun and
+  moon faces with their seats (`SUN_SEAT`, `MOON_SEAT`, `PAIR_*`, `FACE_RISE`).
+  **Nothing in the header idles now**, so `Power`'s rest and
+  `refresh_motion` have nothing to still; `refresh_motion` stands the entrance
+  finished. The faces live only where they are pieces or marks (Binairo's
+  board and card, the symbol tray, friends, the win screen for now).
+- **The entrance** lays the tiles one every 0.085 s from `enter`'s delay (a
+  `tween_method` on `shown`, `ceili`, `TRANS_LINEAR`), while the block lifts
+  `TITLE_LIFT` over `TITLE_TIME`; the motto fades at `MOTTO_AT` and the buttons
+  scale in as before. Under `Motion.reduce` all of it stands finished.
+- **The painting behind is the day's** (`Vistas.set_header_vista(plate)`:
+  `ThemedVistas.texture("dusk")` when this phone holds one, the bundled dusk
+  otherwise; same zoom `HEADER[1]`, focus `HEADER[2]`, tint `Pal.ACCENT`;
+  `header_plate()` calls it). `ui/menu.gd` joins `ThemedVistas.GROUP` and its
+  `vistas_arrived()` re-points `_backdrop` in place when the day's document
+  arrives behind the built menu, as the day card does. The sun and moon were
+  seated on the old painting's deck (measured against its floor line), so the
+  seats are not to be brought back for a different picture.
+- **Measured** (`tests/_shot_menu.gd`, 810x1440, `opengl3_angle`, one run at a
+  time, second of two quoted): **160** draw calls at rest on page one, bundled
+  dusk (160 / 160), and 160 on the trial day's dusk (`tools/themed_play.sh
+  20261019 vistas`, 160 / 160). Before, on the same tree, one reading of 168
+  (a toast over it that run may have been counted in).
