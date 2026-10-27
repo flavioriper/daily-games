@@ -645,3 +645,14 @@ fused, long-arm and missing-leg decoys (nine files) and 20261014 night-0,
 and -1 for a lit window not in the morning. Only the fingers, human, neck and
 text defects are labelled, so the gate says nothing yet about limb count,
 fusing or length: label those decoys (open `index.html`) and `--rescore`.
+
+## The dashboard shows the Peeplets (2026-10-27)
+
+Themed days, under Vistas: each try's `peeplets` (the reviewer's count; days
+made before it have none and show nothing) follows the difficulty row on a
+kept painting and the reviewer's word on a turned-down one, and the line
+links `days/peeplet-bench/index.html` (relative to `tools/dashboard.html`,
+beside `days/themed-vistas/`). The page code is in `tools/dashboard.src.html`;
+`tools/build_dashboard.py` already carries `vistaTries` whole. The Peeplet
+rules and what the bench gate does not yet prove are in
+`docs/art/peeplet-brand.md`.

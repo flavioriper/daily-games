@@ -17,6 +17,11 @@ SubViewport with its own `World3D`. Who Ate the Pie?'s bakers (up to twenty
 on Insane, `peeplet/peeplet_personas.gd`) and its menu card use it; nothing
 else does. Never redraw a Peeplet by hand or bake it to an image.
 
+**The one baked Peeplet** (2026-10-27): `server/functions/assets/peeplet_sheet.png`,
+the reference the night's painter and reviewer are given. It is rendered by
+`tests/_shot_peeplet_sheet.gd`, never hand-edited, never on a phone
+(`docs/art/peeplet-brand.md`).
+
 ## Boards that left
 
 **Balance, Code Break, Tents, One Line and Mushroom Patch were removed on

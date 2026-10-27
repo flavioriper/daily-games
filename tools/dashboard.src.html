@@ -649,21 +649,26 @@ function themedView() {
 const VISTA_ROW = { morning: "Easy", afternoon: "Medium · the day card", dusk: "Hard", night: "Insane" };
 function themedVistas(box, v) {
   box.append(el("div", { class: "way" }, el("b", {}, "Vistas"), !v ? " · none: `cli.js vistas <day.json>` paints them into days/themed-vistas/"
-    : v.sent ? " · the four a phone would be sent" : " · not all four passed: a phone keeps the bundled vistas"));
+    : v.sent ? " · the four a phone would be sent" : " · not all four passed: a phone keeps the bundled vistas",
+    " · ", el("a", { href: "days/peeplet-bench/index.html" }, "the reviewer's bench")));
   if (!v) return;
   const levels = el("div", { class: "levels" });
   for (const time of Object.keys(VISTA_ROW)) {
     const kept = v.vistaTries.find(t => t.time === time && t.wrong === "");
     const card = el("div", { class: "pic" + (kept ? "" : " bank") });
     card.append(kept ? el("img", { src: "days/themed-vistas/" + kept.name, loading: "lazy", alt: time, style: "width:100%;border-radius:8px" })
-      : el("div", { class: "hole" }, "bundled"), el("div", { class: "name" }, time), el("div", { class: "use" }, VISTA_ROW[time]));
+      : el("div", { class: "hole" }, "bundled"), el("div", { class: "name" }, time), el("div", { class: "use" }, VISTA_ROW[time] + peepletCount(kept)));
     levels.append(card);
   }
   box.append(levels);
   for (const t of v.vistaTries.filter(t => t.wrong !== "")) {
     box.append(el("div", { class: "draft" }, el("img", { src: "days/themed-vistas/" + t.name, loading: "lazy", alt: t.time }),
-      el("div", {}, el("div", { class: "what" }, `${t.time} · turned down`), el("div", { class: "use" }, t.wrong))));
+      el("div", {}, el("div", { class: "what" }, `${t.time} · turned down`), el("div", { class: "use" }, t.wrong + peepletCount(t)))));
   }
+}
+// The reviewer's count of Peeplets in a try (`peeplets`; older days have none).
+function peepletCount(t) {
+  return t && typeof t.peeplets === "number" ? ` · ${t.peeplets} ${t.peeplets === 1 ? "Peeplet" : "Peeplets"}` : "";
 }
 // The word boards' words (server/functions/src/words.ts): Hidden Word's Easy
 // takes the first of its list, Word Trail a path of each length the first
