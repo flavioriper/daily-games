@@ -18,8 +18,14 @@ vfile="$cache/vistas-$(date -u +%Y%m%d)-content.json"
 # The backend's real cache for today (written by its prefetch) is kept aside
 # as <file>.real while a made day sits in its place, and put back by `off`;
 # without one, `off` just removes the made day's file.
-keep() { [ -f "$1" ] && [ ! -f "$1.real" ] && mv "$1" "$1.real" && echo "kept $1.real" || true; }
-back() { if [ -f "$1.real" ]; then mv -f "$1.real" "$1"; echo "restored $1"; else rm -f "$1"; echo "removed $1"; fi; }
+# `keep` marks the slot as holding a made day (<file>.made) so `off` touches
+# only slots this script filled: the other cache file stays as it was.
+keep() { [ -f "$1" ] && [ ! -f "$1.real" ] && mv "$1" "$1.real" && echo "kept $1.real" || true; touch "$1.made"; }
+back() {
+  [ -f "$1.made" ] || return 0
+  rm -f "$1.made"
+  if [ -f "$1.real" ]; then mv -f "$1.real" "$1"; echo "restored $1"; else rm -f "$1"; echo "removed $1"; fi
+}
 if [ "${1:-}" = "off" ]; then
   back "$file"; back "$vfile"; exit 0
 fi

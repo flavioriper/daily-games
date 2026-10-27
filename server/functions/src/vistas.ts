@@ -128,14 +128,15 @@ const REVIEW_EDIT = (time: Time) =>
  *  its own short system prompt. */
 const REVIEWER_HEADER = `You check painted backgrounds for a cosy daily puzzle game played by all ages, and answer in JSON. You are shown one painting ` +
   `and no reference sheet. Be strict: hunt for any creature, animal, figure or Peeplet (a small round creature with two eyes), any text, ` +
-  `letters or numbers, and any thing standing in the area the brief keeps empty, and say what you find.`;
+  `letters or numbers, and any thing standing out in the area the brief keeps calm, and say what you find; distant soft scenery is not a thing standing out.`;
 
 /** The header is judged alone, with no sheet: a landscape with no creature at all. */
 const REVIEW_HEADER = (theme: Theme) =>
   `The only picture is the header painting of the theme "${theme.name.en}" (${theme.scene}): a wide landscape of that kind of place, meant to be at golden hour (the low sun, ` +
   `long warm light), judged on its own, with no other painting beside it and no reference sheet. It must show NO Peeplet and no creature or figure of ` +
-  `any kind: "peeplets" must be 0, and any count above 0 is wrong. Its LEFT HALF must be calm: a building, tree, animal or other thing standing in the left half is wrong ` +
-  `(sky, haze and soft ground are fine). It must be a wide painted landscape of that kind of place, not a close-up or a pattern. The usual hard rules ` +
+  `any kind: "peeplets" must be 0, and any count above 0 is wrong. Its LEFT HALF must be calm, since the game's name is laid over its upper part: a building, a large tree, an animal, a thing or a ` +
+  `foreground bush standing in the left half is wrong; sky, clouds, haze, far hills and soft ground are fine, and so are small, soft, distant ` +
+  `trees or bushes on far hills below the horizon (they sit under the lettering, not in it). It must be a wide painted landscape of that kind of place, not a close-up or a pattern. The usual hard rules ` +
   `apply: no text, letters, numbers, logo or signature, no humans or human-shaped figures, nothing frightening, violent or unsuitable for children. ` +
   `Put what you see of any creature or figure in "limbs" (or "none"), and leave "wrong" empty when nothing is wrong.`;
 
