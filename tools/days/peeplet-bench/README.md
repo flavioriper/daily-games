@@ -17,7 +17,10 @@ to the JPEG when it is not.
 A painting's full PNG is `<name>-full.png` for `<name>.jpg`; a decoy's is
 `<name>.png`. Labels are keyed by the JPEG's name. Paintings and decoys left
 out of `labels.json` are the ones waiting for the user's word (the subtle
-decoys and the paintings the labeller was unsure of).
+decoys and the paintings the labeller was unsure of). The `other` fails are
+text in the painting (20261016 morning-0 and -1, 20261202 morning-0); a
+size verdict is never copied from the reviewer into a label (20261015
+morning-1 was, and was taken out: a borderline size is the user's call).
 
 The bench days: 20261014-20261019 are the six themed days already made (stripped
 to `{day, theme}`), 20261101 and 20261102 were written by `cli.js theme`,
