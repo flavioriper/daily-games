@@ -72,8 +72,14 @@ export interface Ask {
 /** What the requests of this process have cost so far, in US dollars, by
  *  OpenRouter's own count (`usage.cost`). */
 let spent = 0;
+/** Tokens Anthropic's API reported (cost() prices them at ANTHROPIC_PRICE,
+ *  which is not what a bill says: the bench prints these as well). */
+const used = {input: 0, output: 0};
 export function cost(): number {
   return spent;
+}
+export function tokens(): {input: number; output: number} {
+  return {...used};
 }
 function count(out: {usage?: {cost?: number}}): void {
   spent += Number(out.usage?.cost) || 0;
@@ -204,6 +210,8 @@ async function askAnthropic<T>(model: string, a: Ask): Promise<T> {
   });
   const out = await stream.finalMessage();
   const price = ANTHROPIC_PRICE[out.model] ?? ANTHROPIC_PRICE[model] ?? [0, 0];
+  used.input += out.usage.input_tokens;
+  used.output += out.usage.output_tokens;
   spent += (out.usage.input_tokens * price[0] + out.usage.output_tokens * price[1]) / 1e6;
   if (out.stop_reason !== "end_turn") throw new Error(`${model} stopped on ${out.stop_reason}`);
   const text = out.content.map((b) => b.type === "text" ? b.text : "").join("");

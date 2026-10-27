@@ -614,3 +614,34 @@ written by `godot --headless --path . --script tools/export_personas.gd` (run it
 whenever the persona list changes; `tests/_probe_cast_parity.gd` checks it).
 Test vector, from `node lib/cli.js cast <day>` and confirmed in GDScript:
 `20261027 = [14, 8]`, `20261028 = [11, 20]`, `20261029 = [42, 33]`.
+
+## The reviewer's bench (2026-10-27)
+
+`node lib/cli.js review-bench tools/days/peeplet-bench` (from
+`server/functions`, on Anthropic's API: it refuses to start when the review
+model would go to OpenRouter) runs `reviewPainting` over every JPEG in the
+bench: a painting's or decoy's full PNG when on disk, the JPEG when not, the
+day's morning that passed at paint time beside every non-morning file. It
+prints a line a file and writes `report.json`: `pass`, `rubric` (sha1 of the
+REVIEWER, FIRST, AGAIN and NEVER strings), `deformedPassed`, `goodRejected`,
+`countErrors` (a pass-labelled painting not counted at 2 Peeplets),
+`subtlePassed`, `passLabelled`, `errors`, tokens and `costUsd`, `verdicts` for
+every file and `unlabelled` (the reviewer's word on the user's pile, never
+scored). `--rescore` recomputes the scores from `report.json`'s verdicts
+against the labels as they are now, with no API call. A file that errors
+(429, network) is retried once after 20 s, then recorded `ERROR: ...` and
+counted apart. Gate: `deformedPassed` empty and `goodRejected / passLabelled`
+under 1/3; at most three passes, and no crop-and-enlarge before the user says.
+
+| Pass | Prompt change | Deformed passed | Good rejected | Count errors | Subtle passed |
+|---|---|---|---|---|---|
+| 1 | none (the Task 3 rubric: sheet first, body-only size, 1..3 count) | 0 of 7 fail-labelled (fingers 2, human, neck, text 3) | 0 of 24 | 0 | 0 |
+
+Pass 1 read 49 files, 253,136 tokens in and 18,924 out; the gate held with no
+change. Unlabelled files the reviewer **passed**: all of the third-arm,
+fused, long-arm and missing-leg decoys (nine files) and 20261014 night-0,
+20261017 dusk-0 and night-0 (the last two counted 3 Peeplets). It turned down
+20261015 morning-0 and -1 and 20261202 morning-1 for size, and 20261101 dusk-0
+and -1 for a lit window not in the morning. Only the fingers, human, neck and
+text defects are labelled, so the gate says nothing yet about limb count,
+fusing or length: label those decoys (open `index.html`) and `--rescore`.

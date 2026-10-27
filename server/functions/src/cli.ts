@@ -3,7 +3,7 @@ import path from "node:path";
 import {makeDay as acornDay} from "./acorn";
 import {bankPuzzles, makeDay as shelvesDay, Puzzle as ShelvesPuzzle} from "./shelves";
 import {bankRounds, makeDay as cluesDay, Round as CluesRound} from "./clues";
-import {cost, draw, Drawing} from "./generate";
+import {anthropicModel, cost, draw, Drawing, modelFor, tokens} from "./generate";
 import {BANDS as HOOP_BANDS, HoopPicture, makeHoop} from "./hoop";
 import {bankPrompts, cleaned, makeDay as pearlDay, Prompt} from "./pearl";
 import {makeJellies} from "./jelly";
@@ -12,7 +12,7 @@ import {makeDay as picturesDay} from "./pictures";
 import {describe, eligible, seeded} from "./cast";
 import {makeTheme, themed} from "./theme";
 import {makeWords} from "./words";
-import {FULL_SUFFIX, makeVista, shrunk, TIMES as VISTA_TIMES, Vistas, vistaModel} from "./vistas";
+import {FULL_SUFFIX, makeVista, reviewPainting, rubricHash, shrunk, Time, TIMES as VISTA_TIMES, Vistas, vistaModel} from "./vistas";
 
 /**
  * The night's work by hand (tools/acorn_day.sh, tools/pearl_day.sh,
@@ -53,6 +53,12 @@ import {FULL_SUFFIX, makeVista, shrunk, TIMES as VISTA_TIMES, Vistas, vistaModel
  *       the painting edited once for each defect in DEFECTS (or those named),
  *       as decoy-<n>-<defect>.png and a phone-size .jpg beside it: paintings
  *       that must be turned down, for the bench the reviewer is judged on.
+ *   node lib/cli.js review-bench <bench-dir> [--rescore] [--pass N]
+ *       the night's reviewer (vistas.ts reviewPainting) over every painting in
+ *       the Peeplet bench, scored against labels.json into <bench-dir>/report.json
+ *       (tools/days/peeplet-bench/README.md). Unlabelled files are reviewed too and
+ *       listed, not scored. --rescore reads report.json's verdicts again against
+ *       the labels as they are now, with no review. Runs on Anthropic's API.
  *   node lib/cli.js words <day.json>...
  *       Hidden Word's and Word Trail's words (words.ts) for days the
  *       command above made, into each file's pictures document; the
@@ -195,6 +201,108 @@ export const DEFECTS: [string, string, boolean?][] = [
   ["long-arm", "make one Peeplet's arm slightly longer than the other", true],
 ];
 
+interface Label {verdict: "pass" | "fail"; defect: string; subtle: boolean}
+interface Verdict {wrong: string; peeplets: number}
+
+/** The bench's scores of `verdicts` against `labels` (labelled files only;
+ *  a file whose review errored is counted apart and judged neither way). */
+export function scoreBench(labels: Record<string, Label>, verdicts: Record<string, Verdict>) {
+  const deformedPassed: string[] = [], goodRejected: string[] = [], subtlePassed: string[] = [];
+  const countErrors: string[] = [], errors: string[] = [];
+  let passLabelled = 0;
+  for (const [file, label] of Object.entries(labels)) {
+    const v = verdicts[file];
+    if (v === undefined) continue;
+    if (label.verdict === "pass") passLabelled++;
+    if (v.wrong.startsWith("ERROR:")) {
+      errors.push(file);
+      continue;
+    }
+    if (label.verdict === "fail" && v.wrong === "") (label.subtle ? subtlePassed : deformedPassed).push(file);
+    if (label.verdict === "pass" && v.wrong !== "") goodRejected.push(file);
+    if (label.verdict === "pass" && v.peeplets !== 2) countErrors.push(file);
+  }
+  return {deformedPassed, goodRejected, countErrors, subtlePassed, errors, passLabelled};
+}
+
+/** The bench's day-of-file, time and morning (the day's morning that passed at paint time). */
+function benchFile(dir: string, file: string): {theme: Day["theme"]; time: Time; image: Drawing; morning: Drawing | null} {
+  const [day, rest] = file.split("_");
+  const time = /^vista-(morning|afternoon|dusk|night)-/.exec(rest)?.[1] as Time;
+  const info = JSON.parse(fs.readFileSync(path.join(dir, `${day}.json`), "utf8")) as Day;
+  const named = (f: string): Drawing => {
+    const bytes = fs.readFileSync(path.join(dir, f));
+    return {mime: bytes[0] === 0x89 ? "image/png" : "image/jpeg", bytes};
+  };
+  const base = file.replace(/\.jpg$/, "");
+  // The painter's full-size PNG when it is on disk (a painting's `-full`, a decoy's own), else the JPEG.
+  const full = [base.includes("_decoy-") ? `${base}.png` : `${base}${FULL_SUFFIX}.png`, file].find((f) => fs.existsSync(path.join(dir, f))) as string;
+  let morning: Drawing | null = null;
+  if (time !== "morning") {
+    // At paint time the reviewer saw the morning as shrunk for the phone: its JPEG.
+    const m = info.vistaTries.find((t) => t.time === "morning" && t.wrong === "");
+    if (m === undefined) throw new Error(`${file}: its day has no morning that passed`);
+    morning = named(m.name);
+  }
+  return {theme: info.theme, time, image: named(full), morning};
+}
+
+interface Day {day: number; theme: import("./theme").Theme; vistaTries: {time: string; name: string; wrong: string; peeplets: number}[]}
+
+/** review-bench: the reviewer over every painting in `dir`, scored, into report.json. */
+async function reviewBench(dir: string, rescore: boolean, passArg: number | null, print: (s: string) => void): Promise<void> {
+  const labels = JSON.parse(fs.readFileSync(path.join(dir, "labels.json"), "utf8")) as Record<string, Label>;
+  const reportFile = path.join(dir, "report.json");
+  const before = fs.existsSync(reportFile) ? JSON.parse(fs.readFileSync(reportFile, "utf8")) : null;
+  let verdicts: Record<string, Verdict> = {};
+  let spend = {costUsd: 0, inputTokens: 0, outputTokens: 0};
+  if (rescore) {
+    if (before === null) throw new Error("no report.json to rescore");
+    verdicts = before.verdicts;
+    spend = {costUsd: before.costUsd, inputTokens: before.inputTokens ?? 0, outputTokens: before.outputTokens ?? 0};
+  } else {
+    // Anthropic direct only: OpenRouter has no credit, and a silent fall to it is a bug, not a retry.
+    const model = modelFor("review");
+    if (anthropicModel(model) === null) throw new Error(`the reviewer (${model}) would not go to Anthropic's API: ANTHROPIC_API_KEY unset or the model not anthropic/*`);
+    const files = fs.readdirSync(dir).filter((f) => /^\d{8}_vista-.*\.jpg$/.test(f)).sort();
+    for (const file of files) {
+      const {theme, time, image, morning} = benchFile(dir, file);
+      let got: Verdict | null = null;
+      for (let attempt = 0; attempt < 2 && got === null; attempt++) {
+        try {
+          got = await reviewPainting(theme, time, image, morning);
+        } catch (e) {
+          const msg = String(e).replace(/sk-[A-Za-z0-9_-]+/g, "sk-…").slice(0, 200);
+          console.error(`review-bench: ${file} attempt ${attempt}: ${msg}`);
+          if (attempt === 0) await new Promise((r) => setTimeout(r, 20000));
+          else got = {wrong: `ERROR: ${msg}`, peeplets: 0};
+        }
+      }
+      verdicts[file] = got as Verdict;
+      const label = labels[file];
+      print(`${file.padEnd(52)} ${label === undefined ? "unlabelled" : `${label.verdict}${label.defect === "" ? "" : "/" + label.defect}${label.subtle ? "(subtle)" : ""}`.padEnd(14)} ` +
+        `${verdicts[file].wrong === "" ? "PASSED" : "turned down"} ${verdicts[file].peeplets}P  ${verdicts[file].wrong.slice(0, 110)}`);
+    }
+    const t = tokens();
+    spend = {costUsd: Math.round(cost() * 10000) / 10000, inputTokens: t.input, outputTokens: t.output};
+  }
+  const score = scoreBench(labels, verdicts);
+  const unlabelled = Object.fromEntries(Object.entries(verdicts).filter(([f]) => labels[f] === undefined));
+  const report = {
+    pass: rescore ? before.pass : passArg ?? (before?.pass ?? 0) + 1,
+    rubric: rescore ? before.rubric : rubricHash(),
+    deformedPassed: score.deformedPassed, goodRejected: score.goodRejected, countErrors: score.countErrors.length,
+    countErrorFiles: score.countErrors, subtlePassed: score.subtlePassed, errors: score.errors,
+    passLabelled: score.passLabelled, ...spend, unlabelled, verdicts,
+  };
+  fs.writeFileSync(reportFile, JSON.stringify(report, null, 1) + "\n");
+  const gate = score.deformedPassed.length === 0 && score.goodRejected.length / Math.max(1, score.passLabelled) < 1 / 3;
+  print(`pass ${report.pass}${rescore ? " (rescored)" : ""}: deformed passed ${score.deformedPassed.length} ${JSON.stringify(score.deformedPassed)}, ` +
+    `subtle passed ${score.subtlePassed.length}, good rejected ${score.goodRejected.length}/${score.passLabelled}, ` +
+    `count errors ${score.countErrors.length}, review errors ${score.errors.length}, unlabelled ${Object.keys(unlabelled).length}; ` +
+    `tokens ${spend.inputTokens} in / ${spend.outputTokens} out, counted US$${spend.costUsd}; gate ${gate ? "HOLDS" : "FAILS"}`);
+}
+
 async function main(): Promise<void> {
   // What is printed is the day and nothing else: the makers' own lines go
   // to the other stream.
@@ -266,6 +374,12 @@ async function main(): Promise<void> {
         console.error(`decoys: ${out} failed`, e);
       }
     }
+  } else if (what === "review-bench" && args.length >= 1) {
+    const flags = args.filter((a) => a.startsWith("--"));
+    const rest = args.filter((a) => !a.startsWith("--"));
+    const passAt = args.indexOf("--pass");
+    const passArg = passAt >= 0 ? Number(args[passAt + 1]) : null;
+    await reviewBench(rest[0], flags.includes("--rescore"), passArg, print);
   } else if (what === "words" && args.length >= 1) {
     // The word boards' words for days already made, the rest untouched.
     for (const file of args) {
@@ -363,7 +477,7 @@ async function main(): Promise<void> {
     await publishDays(new Date());
     print("published");
   } else {
-    console.error("usage: cli.js day [acorn|pearl] [yyyymmdd] | bank pearl <level> <count> <outfile> | themed <yyyymmdd> <days> <outdir> [themes-dir] | cast <yyyymmdd> | theme <yyyymmdd> <out.json> [recent.json|text]... | decoys <png> <out-dir> [defect...] | vistas <day.json>... | jellies <day.json>... | hoops <day.json>... | words <day.json>... | quizzes <day.json>... | publish");
+    console.error("usage: cli.js day [acorn|pearl] [yyyymmdd] | bank pearl <level> <count> <outfile> | themed <yyyymmdd> <days> <outdir> [themes-dir] | cast <yyyymmdd> | theme <yyyymmdd> <out.json> [recent.json|text]... | decoys <png> <out-dir> [defect...] | review-bench <bench-dir> [--rescore] [--pass N] | vistas <day.json>... | jellies <day.json>... | hoops <day.json>... | words <day.json>... | quizzes <day.json>... | publish");
     process.exitCode = 2;
   }
 }

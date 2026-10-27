@@ -1,0 +1,286 @@
+{
+ "pass": 1,
+ "rubric": "d060f3475ec4572c5240507b78cde6d28f57ab91",
+ "deformedPassed": [],
+ "goodRejected": [],
+ "countErrors": 0,
+ "countErrorFiles": [],
+ "subtlePassed": [],
+ "errors": [],
+ "passLabelled": 24,
+ "costUsd": 1.391,
+ "inputTokens": 253136,
+ "outputTokens": 18924,
+ "unlabelled": {
+  "20261014_vista-afternoon-0_decoy-1-third-arm.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261014_vista-morning-0_decoy-6-fused.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261014_vista-morning-0_decoy-7-long-arm.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261014_vista-night-0.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261015_vista-morning-0.jpg": {
+   "wrong": "The Peeplets are too large. The purple Peeplet's body (hat excluded) runs from about y≈385 to y≈545, roughly 160 px of the 672 px height (about 24%), which is over the one-fifth limit. The yellow Peeplet's body (earmuffs excluded) is about 140–150 px, at or slightly over the limit.",
+   "peeplets": 2
+  },
+  "20261015_vista-morning-1.jpg": {
+   "wrong": "Both Peeplets are too large. The yellow Peeplet with earmuffs and the purple Peeplet with a top hat each have a body about 145–155 px tall, roughly 22–23% of the 672 px painting height. That is more than the allowed one fifth (about 134 px).",
+   "peeplets": 2
+  },
+  "20261017_vista-dusk-0.jpg": {
+   "wrong": "",
+   "peeplets": 3
+  },
+  "20261017_vista-night-0.jpg": {
+   "wrong": "",
+   "peeplets": 3
+  },
+  "20261018_vista-afternoon-0_decoy-1-third-arm.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261018_vista-night-1_decoy-7-long-arm.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261019_vista-morning-0_decoy-6-fused.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261019_vista-morning-0_decoy-7-long-arm.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261019_vista-night-0_decoy-2-missing-leg.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261101_vista-dusk-0.jpg": {
+   "wrong": "Not quite the same place as the morning painting: a lit arched window now appears on the wall to the right of the stall, which was a plain brick wall in the first painting. The dusk light is fine, but the scenery itself should not change.",
+   "peeplets": 2
+  },
+  "20261101_vista-dusk-1.jpg": {
+   "wrong": "The scene does not match the first painting: a lit window appears on the wall to the right of the stall that is not in the morning painting. Everything else (dusk light, framing, the two Peeplets' size and placement) is fine.",
+   "peeplets": 2
+  },
+  "20261201_vista-afternoon-0_decoy-6-fused.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261201_vista-afternoon-0_decoy-7-long-arm.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261202_vista-morning-1.jpg": {
+   "wrong": "Both Peeplets are too large: the green Peeplet's body (flower crown excluded) spans roughly 170 px of the 672 px painting height, about a quarter, and the blue Peeplet's body under its beanie is also around or over a fifth. Both exceed the one-fifth maximum.",
+   "peeplets": 2
+  }
+ },
+ "verdicts": {
+  "20261014_vista-afternoon-0.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261014_vista-afternoon-0_decoy-1-third-arm.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261014_vista-dusk-0.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261014_vista-morning-0.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261014_vista-morning-0_decoy-6-fused.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261014_vista-morning-0_decoy-7-long-arm.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261014_vista-night-0.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261014_vista-night-1.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261015_vista-morning-0.jpg": {
+   "wrong": "The Peeplets are too large. The purple Peeplet's body (hat excluded) runs from about y≈385 to y≈545, roughly 160 px of the 672 px height (about 24%), which is over the one-fifth limit. The yellow Peeplet's body (earmuffs excluded) is about 140–150 px, at or slightly over the limit.",
+   "peeplets": 2
+  },
+  "20261015_vista-morning-1.jpg": {
+   "wrong": "Both Peeplets are too large. The yellow Peeplet with earmuffs and the purple Peeplet with a top hat each have a body about 145–155 px tall, roughly 22–23% of the 672 px painting height. That is more than the allowed one fifth (about 134 px).",
+   "peeplets": 2
+  },
+  "20261016_vista-morning-0.jpg": {
+   "wrong": "The cookie jar has the word 'COOKIE' painted on it, and the painting must contain no text. Both Peeplets are too large: their bodies are about 165–190 px tall, over a fifth of the 672 px painting height (about 134 px). The scene is also an indoor close-up of a counter with a view through a window, not a wide painted landscape.",
+   "peeplets": 2
+  },
+  "20261016_vista-morning-1.jpg": {
+   "wrong": "There is text in the painting: both blue cookie jars are labelled 'COOKIS'. Both Peeplets are also too large. The purple Peeplet's body is about a quarter of the painting's height, and the yellow sunhat Peeplet's body, hat excluded, is above a fifth, beyond the one-fifth limit.",
+   "peeplets": 2
+  },
+  "20261017_vista-afternoon-0.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261017_vista-dusk-0.jpg": {
+   "wrong": "",
+   "peeplets": 3
+  },
+  "20261017_vista-morning-0.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261017_vista-morning-0_decoy-3-fingers.jpg": {
+   "wrong": "Both Peeplets have yellow, glove-like hands with separate fingers: the purple one in the top hat waves two fingered hands, and the red one in the striped beanie holds out a fingered hand. Peeplets must have simple rounded nub arms.",
+   "peeplets": 2
+  },
+  "20261017_vista-night-0.jpg": {
+   "wrong": "",
+   "peeplets": 3
+  },
+  "20261018_vista-afternoon-0.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261018_vista-afternoon-0_decoy-1-third-arm.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261018_vista-dusk-0.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261018_vista-dusk-0_decoy-4-human.jpg": {
+   "wrong": "A human child (curly blond hair, striped shirt and overalls) sits by the campfire on the right; human figures are not allowed. They replace the blue creature from the morning painting.",
+   "peeplets": 1
+  },
+  "20261018_vista-morning-0.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261018_vista-morning-0_decoy-3-fingers.jpg": {
+   "wrong": "The blue Peeplet on the right has a raised, waving hand drawn with separate splayed fingers, and Peeplets must not have hands with fingers.",
+   "peeplets": 2
+  },
+  "20261018_vista-night-1.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261018_vista-night-1_decoy-7-long-arm.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261019_vista-afternoon-0.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261019_vista-afternoon-0_decoy-5-neck.jpg": {
+   "wrong": "The pink Peeplet in the chef's hat is deformed. Its body is stretched into a tall stalk like a long neck rather than one round blob, and it has a second face, with one face at the top and another near the bottom. It is also far too large: its body fills well over a fifth of the painting's height. The green Peeplet with the mushroom cap, the place, the framing and the afternoon light are fine.",
+   "peeplets": 2
+  },
+  "20261019_vista-dusk-0.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261019_vista-morning-0.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261019_vista-morning-0_decoy-6-fused.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261019_vista-morning-0_decoy-7-long-arm.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261019_vista-night-0.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261019_vista-night-0_decoy-2-missing-leg.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261101_vista-afternoon-0.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261101_vista-dusk-0.jpg": {
+   "wrong": "Not quite the same place as the morning painting: a lit arched window now appears on the wall to the right of the stall, which was a plain brick wall in the first painting. The dusk light is fine, but the scenery itself should not change.",
+   "peeplets": 2
+  },
+  "20261101_vista-dusk-1.jpg": {
+   "wrong": "The scene does not match the first painting: a lit window appears on the wall to the right of the stall that is not in the morning painting. Everything else (dusk light, framing, the two Peeplets' size and placement) is fine.",
+   "peeplets": 2
+  },
+  "20261101_vista-morning-0.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261102_vista-afternoon-0.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261102_vista-dusk-0.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261102_vista-morning-0.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261102_vista-night-0.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261201_vista-afternoon-0.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261201_vista-afternoon-0_decoy-6-fused.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261201_vista-afternoon-0_decoy-7-long-arm.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261201_vista-dusk-0.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261201_vista-morning-0.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261201_vista-night-0.jpg": {
+   "wrong": "",
+   "peeplets": 2
+  },
+  "20261202_vista-morning-0.jpg": {
+   "wrong": "The cookie jar has the word \"COOKIES\" written on it, and text is not allowed. The green Peeplet's body, excluding its flower crown, also looks taller than a fifth of the painting's height, at about 160 px of 672.",
+   "peeplets": 2
+  },
+  "20261202_vista-morning-1.jpg": {
+   "wrong": "Both Peeplets are too large: the green Peeplet's body (flower crown excluded) spans roughly 170 px of the 672 px painting height, about a quarter, and the blue Peeplet's body under its beanie is also around or over a fifth. Both exceed the one-fifth maximum.",
+   "peeplets": 2
+  }
+ }
+}

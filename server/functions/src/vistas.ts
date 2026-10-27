@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import {createHash} from "node:crypto";
 import jpeg from "jpeg-js";
 import {ask, available, draw, Drawing, shapesModel} from "./generate";
 import {describe, seeded} from "./cast";
@@ -77,6 +78,12 @@ const REVIEWER = `You check painted backgrounds for a cosy daily puzzle game pla
   `children; not a wide painted landscape (a close-up of one thing, a photo, a pattern); the light not the time of day asked; or, when there is a ` +
   `first painting to compare, a different place or a different framing from it (the light and sky changing is expected). Say what is wrong in ` +
   `"wrong", or leave it empty when nothing is. Answer "peeplets" with how many Peeplets you count in the painting being judged.`;
+
+/** The reviewer's rubric (its system prompt and the three the painter is
+ *  told), as a short hash: the bench's report names the one it judged. */
+export function rubricHash(): string {
+  return createHash("sha1").update([REVIEWER, FIRST({name: {en: "", pt: "", es: ""}, scene: ""} as unknown as Theme, [0, 0]), AGAIN("afternoon"), NEVER].join("\n---\n")).digest("hex");
+}
 
 const REVIEW_SCHEMA = {
   type: "object",
