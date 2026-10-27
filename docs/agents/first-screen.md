@@ -1373,3 +1373,22 @@ Part B).
   draw calls are the same with the Streak tab open or shut. Hidden Word's
   card has the same Peeplet standing on its tump; Word Trail's card has no
   character any more (its field is centred).
+
+**2026-10-27: the sheet is back.** The user: "move back the difficulties
+sheet when clicking on the game". A card with `pick_difficulty` asks on
+`ui/menu/difficulty_sheet.gd` again: `menu.gd` builds `difficulty_sheet`
+(`chose` -> `_open_at`) and `_open` raises it with `ask(entry)` instead of
+opening a board. The row last played is marked: `ask` reads
+`Progress.last_level(id)` and passes `last` to `_row(level, d, done, on_press,
+last := false)`, whose go draws a ring in `Pal.ACCENT` round it (the Versus
+sheet calls `_row` unchanged and rings nothing). Before a first play, or when
+the card has lost that level, no row is ringed; the 2026-10-26 `_start_level`
+(always Easy) went, since nothing opens a board without asking any more.
+`_open_at` still saves `set_last_level` and the board's level card still
+switches level in game and saves it (`flat_host._on_level`), so the ring
+follows the player between boards. One board per answer: `_open` returns
+while the sheet is up, and `close_then` (which refuses a second call while
+it closes) is the only path to `_open_at`; the win's "Try Hard" invite goes
+straight to `_open_at` as before. `tests/_shot_menu.gd -- diff=<id>` is back,
+on a throwaway progress file whose last level is Medium so the ring shows;
+on a themed day each row wears its own painted time (`Vistas.level_row`).

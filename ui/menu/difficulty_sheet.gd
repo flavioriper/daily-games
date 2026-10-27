@@ -83,15 +83,19 @@ func ask(entry: Dictionary) -> void:
 		_list.remove_child(c)
 		c.queue_free()
 	var levels: Array = entry.get("levels", [])
+	# The row last played on this card carries a ring round its go; before a
+	# first play (or when the card has since lost that level) none does.
+	var last := Progress.last_level(String(entry.get("id", "")))
 	for i in levels.size():
 		var level: Dictionary = levels[i]
 		var d := int(level.get("difficulty", i))
 		var done := Progress.completed(Registry.progress_id(entry, d))
 		_list.add_child(_row(level, clampi(d, 0, 3), done, func() -> void:
-			close_then(chose.emit.bind(_entry, d))))
+			close_then(chose.emit.bind(_entry, d)), d == last))
 	open()
 
-func _row(level: Dictionary, d: int, done: bool, on_press: Callable) -> Control:
+## `last` rings the go in `Pal.ACCENT`: the row the player played last.
+func _row(level: Dictionary, d: int, done: bool, on_press: Callable, last := false) -> Control:
 	var night := d == 3
 	var tint: Array = TINTS[d]
 	var fill: Color = tint[0]
@@ -154,7 +158,7 @@ func _row(level: Dictionary, d: int, done: bool, on_press: Callable) -> Control:
 		meta.add_child(GridDots.new(dim))
 		meta.add_child(_text(meta_text, dim))
 	words.add_child(_text(LINE_KEYS[d] if size_only else meta_text, dim))
-	var go := GoButton.new(night, done)
+	var go := GoButton.new(night, done, last)
 	go.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
 	go.offset_left = -GO - INSET
 	go.offset_right = -INSET
@@ -267,10 +271,12 @@ class GridDots extends Control:
 class GoButton extends Control:
 	var night := false
 	var done := false
+	var last := false
 
-	func _init(night_: bool, done_: bool) -> void:
+	func _init(night_: bool, done_: bool, last_ := false) -> void:
 		night = night_
 		done = done_
+		last = last_
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	func _draw() -> void:
@@ -285,6 +291,15 @@ class GoButton extends Control:
 		sb.shadow_offset = Vector2(0.0, 3.0)
 		sb.anti_aliasing_size = 1.2
 		draw_style_box(sb, Rect2(Vector2.ZERO, size))
+		if last:
+			# The row last played: a ring just outside the go, one draw.
+			var ring := StyleBoxFlat.new()
+			ring.draw_center = false
+			ring.set_corner_radius_all(int(size.x * 0.5) + 6)
+			ring.set_border_width_all(4)
+			ring.border_color = Pal.ACCENT
+			ring.anti_aliasing_size = 1.2
+			draw_style_box(ring, Rect2(Vector2.ONE * -6.0, size + Vector2.ONE * 12.0))
 		var g := size * 0.44
 		var r := Rect2((size - g) * 0.5, g)
 		if done:

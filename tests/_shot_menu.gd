@@ -14,7 +14,8 @@ extends SceneTree
 ##     godot --path . --resolution 810x1440 --script res://tests/_shot_menu.gd -- diff
 ##
 ## `diff` opens the difficulty sheet over Light Up's card in place of a tab
-## (`diff=<id>` for another board's).
+## (`diff=<id>` for another board's), on a throwaway progress file whose last
+## level is Medium, so the ringed row shows.
 ##
 ## Saves /tmp/shot_menu_1.png and /tmp/shot_menu_2.png (or, under `page2`,
 ## /tmp/shot_menu_1.png and /tmp/shot_menu_page2.png), and prints the mean
@@ -74,9 +75,22 @@ func _initialize() -> void:
 		if a in ["streak", "stats", "arcade", "versus"] or a == "diff" or a.begins_with("diff="):
 			_tab_arg = a
 			break
+	# The difficulty sheet rings the row last played, so the `diff` shot
+	# plays on a throwaway progress file that says Medium was (the player's
+	# own is never touched).
+	if _tab_arg.begins_with("diff"):
+		var progress = load("res://core/progress.gd")
+		progress.path = "user://_shot_menu_progress.cfg"
+		DirAccess.remove_absolute(progress.path)
+		var id := _tab_arg.trim_prefix("diff=") if "=" in _tab_arg else "lightup"
+		progress.set_last_level(id, 1)
 	var main: Node = load("res://world/main.tscn").instantiate()
 	root.add_child(main)
 	_menu = main.get_node("UI/Menu")
+
+func _finalize() -> void:
+	if _tab_arg.begins_with("diff"):
+		DirAccess.remove_absolute("user://_shot_menu_progress.cfg")
 
 func _process(delta: float) -> bool:
 	_t += delta
@@ -94,6 +108,11 @@ func _process(delta: float) -> bool:
 		print("saved /tmp/shot_menu_1.png")
 		if _page2:
 			_menu._turn_page(1)
+			_idle = []
+			_draws = 0
+		elif _tab_arg.begins_with("diff"):
+			var id := _tab_arg.trim_prefix("diff=") if "=" in _tab_arg else "lightup"
+			_menu.difficulty_sheet.ask(preload("res://ui/registry.gd").find(id))
 			_idle = []
 			_draws = 0
 		elif not _tab_arg.is_empty():

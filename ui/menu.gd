@@ -43,6 +43,7 @@ const Vistas = preload("res://ui/menu/vistas.gd")
 const DayRow = preload("res://ui/menu/day_row.gd")
 const PuzzleCard = preload("res://ui/menu/puzzle_card_2d.gd")
 const CategoryRow = preload("res://ui/menu/category_row.gd")
+const DifficultySheet = preload("res://ui/menu/difficulty_sheet.gd")
 const Icons = preload("res://ui/icons.gd")
 const Analytics = preload("res://core/analytics.gd")
 const StreakTab = preload("res://ui/menu/streak_tab.gd")
@@ -219,6 +220,7 @@ var settings_sheet: Control
 ## The purchase sheet: the header's remove-ads button, settings' row and
 ## (through world/main.gd) the banner's tab all open it.
 var remove_ads_sheet: Control
+var difficulty_sheet: Control
 var versus_sheet: Control
 ## The daily gifts and the shop (spec 2026-09-28-gold-gifts-design.md).
 var gifts_sheet: Control
@@ -366,6 +368,14 @@ func _ready() -> void:
 	add_child(shop_sheet)
 	arcade_tab.shop.connect(func(game: String) -> void: shop_sheet.open_for(game, "arcade"))
 	Wallet.changed.connect(func() -> void: header.set_gifts(Wallet.claimable()))
+	# A puzzle card with levels asks which on this sheet (2026-10-27, the user:
+	# "move back the difficulties sheet when clicking on the game"); it is the
+	# only way to `_open_at` from a card, so a second tap while it is up
+	# mounts nothing.
+	difficulty_sheet = DifficultySheet.new()
+	difficulty_sheet.name = "DifficultySheet"
+	difficulty_sheet.chose.connect(_open_at)
+	add_child(difficulty_sheet)
 	# A Versus card asks who to play on the same sheet's rows.
 	versus_sheet = VersusSheet.new()
 	versus_sheet.name = "VersusSheet"
@@ -1583,21 +1593,19 @@ func go_back() -> void:
 func _open(entry: Dictionary) -> void:
 	if Registry.is_soon(entry) or _swiped:
 		return
-	# A card with levels opens straight at its easiest, every time it is
-	# opened from the list (the user, 2026-10-26: "it should always start at
-	# easy when user first enter"; it opened at the level last played from
-	# 2026-10-22); the board's level card changes it in game (the user,
-	# 2026-10-22: "remove the difficulty sheet from the puzzles since users
-	# can switch difficulty ingame, load gamepage directly").
+	# A card whose levels are boards of their own asks which first, on the
+	# difficulty sheet, the row last played ringed (the user, 2026-10-27:
+	# "move back the difficulties sheet when clicking on the game"; it opened
+	# straight at Easy from 2026-10-22, the sheet retired). The sheet's
+	# `close_then` is the only path from it to `_open_at`, and it refuses a
+	# second answer while it closes. The board's level card still switches
+	# level in game.
 	if bool(entry.get("pick_difficulty", false)):
-		_open_at(entry, _start_level(entry))
+		if difficulty_sheet.visible:
+			return
+		difficulty_sheet.ask(entry)
 		return
 	_open_at(entry, 1)
-
-## The level a card opens at: its first.
-func _start_level(entry: Dictionary) -> int:
-	var levels: Array = entry.get("levels", [])
-	return int(levels[0].get("difficulty", 0)) if not levels.is_empty() else 0
 
 func _open_at(entry: Dictionary, difficulty: int) -> void:
 	if bool(entry.get("pick_difficulty", false)):
