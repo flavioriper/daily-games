@@ -35,10 +35,10 @@ labelled: crop the Peeplet from the decoy's PNG and look. An edit that did not
 take is deleted, never labelled pass (a pass label on a decoy would score the
 reviewer for turning down nothing). Edits (flash) often redo the whole scene,
 so also check the Peeplets are still there, and are standing: a seated pair
-shows no legs, so a missing-leg decoy on it shows nothing (the first
-`20261019_vista-night-0_decoy-2-missing-leg` was made so, on seated Peeplets,
-and its defect is read by eye only at the JPEG; its PNG is gone and the bench
-falls back to the JPEG). The painter's morning prompt now asks for the pair
+shows no legs, so a missing-leg decoy on it is hard to judge
+(`20261019_vista-night-0_decoy-2-missing-leg` was made on seated Peeplets; the
+user looked at it by eye and labelled it a real fail, so it stays; its PNG is
+gone and the bench falls back to the JPEG). The painter's morning prompt now asks for the pair
 standing, arms and legs in view (`FIRST` in `vistas.ts`).
 
 Eight edits on standing Peeplets were made on 2026-10-27 (final review fix);
