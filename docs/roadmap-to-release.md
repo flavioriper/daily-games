@@ -24,9 +24,15 @@ be built.
 ## Decisions (2026-09-24)
 
 - **Platforms: Android and iOS**, launching together.
-- **Name: Peeplet Daily, package `com.peeplet.daily`** (the export preset's
-  values; `config/name` aligned 2026-09-25).
-  The iOS bundle ID should match.
+- **Name: Peeplet: Daily Puzzles** on the stores and in the invite text,
+  **Peeplet** under the icon (Android `package/name`, iOS display name),
+  package `com.peeplet.daily` (the export preset's values; the id never
+  changes). `config/name` stays "Peeplet Daily": it names the save folder.
+  The iOS bundle ID should match. Renamed 2026-10-27.
+- **Store refresh, after the DAILY / PUZZLES header ships** (the shots show the
+  old one): subtitle, short and long descriptions, feature graphic and the six
+  phone shots. The Play Console title and the App Store Connect name are
+  renamed by the user, by hand.
 - **Monetisation: banner ads, plus a one-time purchase that removes ads for
   life.**
 - **pt and es ship at 1.0.**
@@ -267,7 +273,7 @@ be built.
       them too.
 - [ ] A developer website hosting the privacy policy, `app-ads.txt` and a
       support email or URL (Apple requires one).
-- [ ] Trademark check on "Peeplet Daily".
+- [ ] Trademark check on "Peeplet: Daily Puzzles".
 - [ ] Decide on iPad: supported, or iPhone only. Supporting it adds
       screenshots and a 3:4 layout pass. The menu already fits 4x4 at 3:4.
 

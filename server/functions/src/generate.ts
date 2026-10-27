@@ -120,7 +120,7 @@ async function post(body: Record<string, unknown>): Promise<Response> {
     headers: {
       "Authorization": `Bearer ${key()}`,
       "Content-Type": "application/json",
-      "X-Title": "Peeplet Daily",
+      "X-Title": "Peeplet: Daily Puzzles",
     },
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(TIMEOUT_MS),

@@ -102,3 +102,22 @@ the gate holds.
 | The bench, labels, report | `tools/days/peeplet-bench/` |
 | Tries and counts on the dashboard | "Themed days", `tools/dashboard.src.html` |
 | The numbers and each pass | `docs/agents/days-dashboard.md` |
+
+## In the app (2026-10-27)
+
+The day's pair comes from `core/cast.gd`, the same two the night's painting
+carries, each a `ui/peeplet_view.gd`. They stand in Hidden Word's menu card
+and its board reveal, Streak's Today card, the remove-ads sheet and the boot
+opening, which pops the day's first one up from behind the DAILY / PUZZLES
+tiles. Who Ate the Pie? keeps its bakers and its card, as before.
+
+They never stand in the first screen's header (the user's word: the header
+is the tiles alone), on a board whose pieces are marks, or in Word Trail.
+
+**The name on screen is the tiles, never a font.** In-app the game is Daily
+Puzzles, the icon's tiles in the header and the opening; no Label spells it.
+The stores say "Peeplet: Daily Puzzles" (the user renames them by hand), the
+invite text and the three site pages say the same, and the launcher label
+under the icon is "Peeplet" (Android `package/name`; iOS patched by
+`tools/export_ios.sh`). `config/name` stays "Peeplet Daily" because it names
+the save folder; the ids (`com.peeplet.daily`, the file names) never change.

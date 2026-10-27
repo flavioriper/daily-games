@@ -990,7 +990,7 @@ FRIENDS_ONLINE_N,%d online,%d online,%d en línea
 FRIENDS_COUNT_ONE,%d friend,%d amigo,%d amigo
 FRIENDS_COUNT_N,%d friends,%d amigos,%d amigos
 FRIENDS_INVITE,Invite a friend,Convidar um amigo,Invitar a un amigo
-FRIENDS_INVITE_TEXT,"Play me at snooker, chess or checkers on Peeplet Daily: %s","Jogue sinuca, xadrez ou damas comigo no Peeplet Daily: %s","Juega conmigo al snooker, al ajedrez o a las damas en Peeplet Daily: %s"
+FRIENDS_INVITE_TEXT,"Play me at snooker, chess or checkers on Peeplet: Daily Puzzles - %s","Jogue sinuca, xadrez ou damas comigo no Peeplet: Daily Puzzles - %s","Juega conmigo al snooker, al ajedrez o a las damas en Peeplet: Daily Puzzles - %s"
 FRIENDS_LINK_COPIED,Link copied,Link copiado,Enlace copiado
 FRIENDS_CODE_COPIED,Code copied,Código copiado,Código copiado
 FRIENDS_YOUR_CODE,Your code,Seu código,Tu código

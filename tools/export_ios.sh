@@ -36,3 +36,7 @@ rm -rf "$out"; mkdir -p "$out"
 godot --headless --path . "$mode" iOS "$out/peeplet-daily.ipa"
 IOS_EXPORT_DIR="$(pwd)/$out" GODOT_IAP_ADDON_DIR="$(pwd)/addons/godot-iap" \
   addons/godot-iap/scripts/fix_ios_embed.sh
+# The exporter writes the launcher label from config/name ("Peeplet Daily",
+# which must stay: it names the save folder). The home-screen label is "Peeplet".
+sed -i '' 's/INFOPLIST_KEY_CFBundleDisplayName = "Peeplet Daily";/INFOPLIST_KEY_CFBundleDisplayName = "Peeplet";/' \
+  "$out/peeplet-daily.xcodeproj/project.pbxproj"

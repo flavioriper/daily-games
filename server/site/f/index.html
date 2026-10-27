@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Peeplet Daily Puzzles - A friend wants to play</title>
-<meta name="description" content="Open the link to become friends in Peeplet Daily Puzzles and play snooker, chess or checkers together.">
+<title>Peeplet: Daily Puzzles - A friend wants to play</title>
+<meta name="description" content="Open the link to become friends in Peeplet: Daily Puzzles and play snooker, chess or checkers together.">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="Peeplet Daily Puzzles">
+<meta property="og:site_name" content="Peeplet: Daily Puzzles">
 <meta property="og:title" content="A friend wants to play">
-<meta property="og:description" content="Open the link to become friends in Peeplet Daily Puzzles and play snooker, chess or checkers together.">
+<meta property="og:description" content="Open the link to become friends in Peeplet: Daily Puzzles and play snooker, chess or checkers together.">
 <meta name="twitter:card" content="summary">
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#f6efe3">
@@ -56,7 +56,7 @@
     <circle cx="65" cy="53" r="3.2" fill="#3b3028"/>
     <path d="M47 62q9 8 18 0" fill="none" stroke="#3b3028" stroke-width="3.2" stroke-linecap="round"/>
   </svg>
-  <p class="game">Peeplet Daily Puzzles</p>
+  <p class="game">Peeplet: Daily Puzzles</p>
   <h1 data-t="title">A friend wants to play</h1>
 
   <div class="card" id="ok" hidden>
@@ -70,7 +70,7 @@
     <p data-t="bad">This link is not complete.</p>
     <p data-t="bad2">Ask your friend to send it again.</p>
   </div>
-  <noscript><div class="card bad"><p>Open Peeplet Daily Puzzles, then Versus &rsaquo; Friends &rsaquo; Enter a code, and type the 8 characters at the end of this link.</p></div></noscript>
+  <noscript><div class="card bad"><p>Open Peeplet: Daily Puzzles, then Versus &rsaquo; Friends &rsaquo; Enter a code, and type the 8 characters at the end of this link.</p></div></noscript>
 </main>
 <script>
 (function () {
@@ -97,7 +97,7 @@
   var lang = (navigator.language || "en").slice(0, 2).toLowerCase();
   var t = T[lang] || T.en;
   document.documentElement.lang = T[lang] ? lang : "en";
-  document.title = "Peeplet Daily Puzzles - " + t.title;
+  document.title = "Peeplet: Daily Puzzles - " + t.title;
   var nodes = document.querySelectorAll("[data-t]");
   for (var i = 0; i < nodes.length; i++) nodes[i].innerHTML = t[nodes[i].getAttribute("data-t")];
 
