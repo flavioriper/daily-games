@@ -182,6 +182,23 @@ const STAMP_R := 0.16
 const STAMP_TILT := -0.22
 ## The lines the tips cycle while nothing else is being said.
 const TIPS := ["BR_TIP_REST", "BR_TIP_SLOTS", "BR_TIP_TAP", "BR_TIP_TWO", "BR_TIP_ONE_NET"]
+## Made fun (2026-10-27). A player who never reasons strands an islet in
+## nearly every game and then lays 9 to 28 more planks with the board silent
+## (tests/_probe_br_fun.gd); the same player who takes a plank back when the
+## halo shows stalls in a fraction of them. So an islet that can no longer
+## reach its number, and a group sealed off with every number met, wear a
+## rose halo for as long as it is true (`_stuck`), and the moment a hand
+## makes one it pulses and is said. Easy to Hard: Lantern Night keeps its
+## silence (`STUCK_BANDS`).
+const STUCK_BANDS := 3
+const HALO_R := 1.16
+const HALO_W := 0.11
+const HALO_MIN := 3.0
+const HALO_ALPHA := 0.95
+## The ways out of a pressed islet (Conceptis's "allowed directions"): every
+## lane it faces that a drag could lay a plank on, washed paler than the lane
+## the finger has picked.
+const WAY_ALPHA := 0.2
 const TIP_CYCLE := 7.0
 
 # --- the screen, measured (spec section 6) ---
@@ -675,6 +692,9 @@ var _flip: Dictionary = {}       # islet -> at: its coin flips to met then
 var _flag: Dictionary = {}       # islet -> {"at", "open"}: its pennant rising or folding
 var _pulse: Dictionary = {}      # islet -> at: a split group pulsing then
 var _groups := 1
+## Islet -> true for every islet wearing the halo: stranded, or in a sealed
+## group. Recomputed after every change (`_mark_stuck`).
+var _stuck: Dictionary = {}
 ## True while the board settles a move the hand made: only then does an
 ## islet met, one pushed over or the split named knock (docs/agents/haptics.md).
 var _by_hand := false
@@ -738,7 +758,8 @@ func tutorial_pages() -> Array:
 		[Diagram.Lesson.NETWORK, "HTP_BR_NET", tr("HTP_BR_NET_BODY")],
 	]
 	if max_moves <= 0:
-		steps.append([Diagram.Lesson.OVER, "HTP_BR_OVER", tr("HTP_BR_OVER_BODY")])
+		steps.append([Diagram.Lesson.OVER, "HTP_BR_OVER", tr("HTP_BR_OVER_BODY")
+			+ (" " + tr("HTP_BR_OVER_BODY_STUCK") if state == null or state.band < STUCK_BANDS else "")])
 	if state != null and not state.lanterns.is_empty():
 		steps.append([Diagram.Lesson.LANTERNS, "HTP_BR_LANTERN", tr("BR_RULES_LANTERNS")])
 	if max_moves <= 0:
@@ -774,6 +795,8 @@ func _tips() -> Array:
 	var lead: Array = ["TIP_MOVES_SEQ"] if max_moves > 0 else []
 	if not state.lanterns.is_empty():
 		return lead + ["BR_TIP_LANTERN", "BR_TIP_LANTERN_2"] + TIPS
+	if state.band < STUCK_BANDS:
+		return lead + TIPS + ["BR_TIP_STUCK"]
 	return lead + TIPS
 
 ## What the phone does under each cue (docs/agents/haptics.md). A plank laid
@@ -957,6 +980,7 @@ func _deal() -> void:
 	_flip = {}
 	_flag = {}
 	_pulse = {}
+	_stuck = {}
 	_groups = state.islets.size()
 	_dance_at = INF
 	_boat_at = INF
@@ -1289,6 +1313,7 @@ func _relay() -> Transform2D:
 ## Built in the reference layout's space (`_in_ref`).
 func _build(t: float) -> Array:
 	var b := Face.Builder.new()
+	_way_bands(b)
 	_aim_band(b)
 	_refusal(b, t)
 	var under: ArrayMesh = b.mesh() if not b.verts.is_empty() else null
@@ -1302,6 +1327,7 @@ const SHAPE_FLAG := 100000
 const SHAPE_COIN := 200000
 const SHAPE_LANTERN := 200001
 const SHAPE_RING := 300000
+const SHAPE_HALO := 500000
 const SHAPE_RUN := 1000000
 ## Rooms: one per lane in `_rm_runs`, one per islet in `_rm_islets`.
 const ROOM_LANE := 0
@@ -1432,6 +1458,7 @@ func _build_islets(t: float) -> ArrayMesh:
 			var cell: Vector2i = state.islets[i]
 			var want := state.need_of(cell)
 			var room := _rm_islets.size_of(SHAPE_BODY + i * 2) \
+				+ _rm_islets.size_of(SHAPE_HALO) \
 				+ _rm_islets.size_of(SHAPE_FLAG) \
 				+ maxi(_rm_islets.size_of(SHAPE_COIN), _rm_islets.size_of(SHAPE_LANTERN)) \
 				+ _rm_islets.size_of(SHAPE_RING + want * 1000 + want * 2)
@@ -1454,7 +1481,7 @@ func _build_islets(t: float) -> ArrayMesh:
 	return _islets_mesh
 
 ## What an islet looks like at `t`: [scale, middle, over, pennant, coin,
-## turn, got, want, drawn live].
+## turn, got, want, drawn live, lantern glow, stuck].
 func _islet_look(i: int, t: float) -> Array:
 	var cell: Vector2i = state.islets[i]
 	var want: int = state.need_of(cell)
@@ -1462,7 +1489,8 @@ func _islet_look(i: int, t: float) -> Array:
 	var turn := _coin_turn(cell, t)
 	return [_islet_scale(cell, t), _at(cell) + _islet_off(cell, t), got > want, _flag_k(cell, t),
 		_coin_colour(cell, t, want, got), turn, got, want,
-		state.lanterns.has(cell) and absf(turn) < 1.0, _lantern_glow(t) if state.lanterns.has(cell) else 0.0]
+		state.lanterns.has(cell) and absf(turn) < 1.0, _lantern_glow(t) if state.lanterns.has(cell) else 0.0,
+		_stuck.has(cell)]
 
 ## An islet as its shapes under its scale and offset (what `_islet` draws,
 ## piece by piece): the body, the pennant, the coin or the lantern -- a
@@ -1479,6 +1507,8 @@ func _put_islet(i: int, look: Array, t: float) -> void:
 	var got: int = look[6]
 	var xf := Transform2D(0.0, sc, 0.0, mid)
 	_rm_islets.put(SHAPE_BODY + i * 2 + int(over), [], xf)
+	if bool(look[10]) and _solved_at == -INF:
+		_rm_islets.put(SHAPE_HALO, [], xf)
 	var coin: Color = look[4]
 	var turn: float = look[5]
 	if state.lanterns.has(cell):
@@ -1504,6 +1534,9 @@ func _shape(id: int) -> Face.Builder:
 	if id >= SHAPE_RUN:
 		var rl: Dictionary = _run_looks[id]
 		_run_draw(b, String(rl.key), rl)
+	elif id == SHAPE_HALO:
+		b.stroke(Face.Builder.ring(Vector2.ZERO, r * HALO_R, r * HALO_R),
+			maxf(HALO_MIN, r * HALO_W), Color(Pal.FLOWER, HALO_ALPHA), true)
 	elif id >= SHAPE_RING:
 		var code := id - SHAPE_RING
 		var ring := r * COIN_R * SLOT_R
@@ -1650,6 +1683,21 @@ func _buoy(b, key: String) -> void:
 ## round the islet at the far end. This is the drag's whole answer, and it is
 ## drawn rather than mounted -- `_aim` and `_aim_dir` are the only state under
 ## it, so a drag costs a variable and a `queue_redraw`.
+## Every lane out of the pressed islet a drag could lay a plank on, faint,
+## so the finger sees which islets it faces before it moves. The lane it has
+## picked is `_aim_band`'s.
+func _way_bands(b) -> void:
+	if _from == State.NOWHERE or Motion.reduce:
+		return
+	for dir in [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
+		var other := state.facing(_from, dir)
+		if other == State.NOWHERE:
+			continue
+		var key := state.lane_at(_from, other)
+		if key == "" or key == _aim or state.blocked_by(key) != "":
+			continue
+		_band(b, _lane_ends(key), _islet_r() * BEAM_TUCK, Color(Pal.SURFACE, WAY_ALPHA))
+
 func _aim_band(b) -> void:
 	if _aim == "" or _from == State.NOWHERE or not state.lanes.has(_aim):
 		return
@@ -3029,7 +3077,8 @@ func _move(key: String, from: Vector2i) -> void:
 	else:
 		_last = state.lanes[key].a
 	_after_move(snap, from, key)
-	if laid and not _pushed_over(key):
+	# A plank that leaves a halo standing anywhere is no streak.
+	if laid and not _pushed_over(key) and _stuck.is_empty():
 		_on_right(key)
 	else:
 		_break_streak()
@@ -3124,6 +3173,7 @@ func _network(key: String) -> void:
 	var groups := state.groups()
 	var was := _groups
 	_groups = groups.size()
+	var fresh := _mark_stuck()
 	if state.is_solved():
 		return
 	var land := 0.0 if Motion.reduce else LAY_TIME * LAND_AT
@@ -3135,6 +3185,8 @@ func _network(key: String) -> void:
 			fx.cue("join"))
 	if _groups > 1 and state.numbers_met():
 		_near_miss(groups, land)
+	elif _by_hand and not fresh.is_empty():
+		_stuck_alert(fresh, land)
 
 ## Every number met and the islets in `groups.size()` groups: the line says
 ## so, and every islet outside the biggest group pulses a few beats with a
@@ -3166,6 +3218,64 @@ func _near_miss(groups: Array, delay: float) -> void:
 					_after(beat * SPLIT_BEAT, func() -> void:
 						if not is_done():
 							fx.ring(_at(cell), _islet_r() * RING_R, Pal.FLOWER)))
+
+## Recomputes the halo: every stranded islet and every islet of a sealed
+## group, Easy to Hard. Returns what a hand would want told: {"cells": the
+## islets that have just put the halo on, "sealed": whether a sealed group is
+## among them}, or {} when none has.
+func _mark_stuck() -> Dictionary:
+	var was := _stuck
+	_stuck = {}
+	if state.band >= STUCK_BANDS or state.is_solved():
+		return {}
+	var stranded := state.stranded()
+	for cell in stranded:
+		_stuck[cell] = true
+	var sealed := false
+	var groups := state.sealed()
+	# Every number met: every group is sealed, and the biggest is the one the
+	# others have to reach, so it goes bare (the near-miss's own rule).
+	if groups.size() == _groups:
+		var biggest := 0
+		for k in groups.size():
+			if groups[k].size() > groups[biggest].size():
+				biggest = k
+		groups.remove_at(biggest)
+	for group in groups:
+		for cell in group:
+			_stuck[cell] = true
+			sealed = sealed or not was.has(cell)
+	var fresh: Array = []
+	for cell in _stuck:
+		if not was.has(cell):
+			fresh.append(cell)
+	if fresh.is_empty():
+		return {}
+	return {"cells": fresh, "sealed": sealed}
+
+## A hand has just stranded an islet or sealed a group: the line says which,
+## and the islets that put the halo on pulse as the plank lands.
+func _stuck_alert(fresh: Dictionary, delay: float) -> void:
+	var t := _now() + delay
+	for cell in fresh.cells:
+		_pulse[cell] = t
+	_busy_for(delay + SPLIT_BEAT * SPLIT_PULSES + Motion.BUMP_TIME)
+	var line := tr("BR_SEALED") if bool(fresh.sealed) else tr("BR_STRANDED")
+	_after(delay, func() -> void:
+		if is_done():
+			return
+		_speak(line, Face.Expr.WORRIED)
+		fx.cue("split")
+		fx.buzz(Haptics.WARN)
+		if Motion.reduce:
+			return
+		for cell in fresh.cells:
+			if not _stuck.has(cell):
+				continue
+			for beat in SPLIT_PULSES:
+				_after(beat * SPLIT_BEAT, func() -> void:
+					if not is_done():
+						fx.ring(_at(cell), _islet_r() * RING_R, Pal.FLOWER)))
 
 # --- what changed, and when each piece answers for it ---
 
@@ -3451,6 +3561,7 @@ func _wipe() -> void:
 	_sparked = {}
 	_sinking = []
 	_pulse = {}
+	_stuck = {}
 	_flip = {}
 	for cell in _flag:
 		_flag[cell] = {"at": t, "open": false}

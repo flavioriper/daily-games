@@ -315,6 +315,54 @@ func groups() -> Array[Array]:
 		out.append(group)
 	return out
 
+## Every islet that can no longer reach its number: short of it, with too
+## little room left on its lanes to make it up -- a lane a run crosses takes
+## nothing, a full one nothing more, and one takes no more than the islet
+## across still wants. Certain, never a guess (the "too few" a solver would
+## flag), so saying it reveals nothing the board does not already show.
+## A lantern counts friends, not planks, and is never named: its room is not
+## a sum of planks.
+func stranded() -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	for cell in islets:
+		if lanterns.has(cell):
+			continue
+		var short := need_of(cell) - count(cell)
+		if short <= 0:
+			continue
+		var room := 0
+		for key in lanes:
+			var lane: Dictionary = lanes[key]
+			if lane.a != cell and lane.b != cell:
+				continue
+			if blocked_by(String(key)) != "":
+				continue
+			var other: Vector2i = lane.b if lane.a == cell else lane.a
+			var spare := MAX_PLANKS if lanterns.has(other) \
+				else maxi(0, need_of(other) - count(other))
+			room += mini(MAX_PLANKS - planks(String(key)), spare)
+		if room < short:
+			out.append(cell)
+	return out
+
+## Every group cut off from the rest with all its numbers met: no plank can
+## leave it without pushing an islet over, so it can never join the others.
+## Empty when the islets are one network.
+func sealed() -> Array[Array]:
+	var out: Array[Array] = []
+	var all := groups()
+	if all.size() <= 1:
+		return out
+	for group in all:
+		var met := true
+		for cell in group:
+			if count(cell) != need_of(cell):
+				met = false
+				break
+		if met:
+			out.append(group)
+	return out
+
 ## Every rule at once and never a subset: every islet's number met, no two
 ## runs crossing, AND one single network. The last is the puzzle -- see the
 ## spec's section 1.

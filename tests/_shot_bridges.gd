@@ -10,7 +10,8 @@ extends SceneTree
 ## islet tapped and read out), `right` (the answer's planks one every 0.7 s:
 ## streak, bubble, slots filling, flips, pennants, gags), `wrong` (Hard and
 ## Insane: a wrong plank until the hearts run out, shots mid-sink, on the
-## card and after Try again), `tap` (a tap on a lane's water, twice), `solve`
+## card and after Try again), `stuck` (an islet pressed and its ways out,
+## a plank that strands an islet, the halo, Undo), `tap` (a tap on a lane's water, twice), `solve`
 ## (every plank to the win
 ## screen, the party run out), `restore` (a solved day reopened). Frames go to
 ## <dir>/br_<mode>_d<level>_<n>.png. Every mode prints the peak draw calls
@@ -173,6 +174,22 @@ func _wrong_lane() -> String:
 			return String(key)
 	return ""
 
+## A lane where one plank, or two, strands an islet or seals a group.
+func _stuck_lane() -> String:
+	var st = _puzzle.state
+	var keys: Array = st.lanes.keys()
+	keys.sort()
+	for k in keys:
+		for times in [1, 2]:
+			for i in times:
+				st.cycle(String(k))
+			var bad: bool = not st.stranded().is_empty() or not st.sealed().is_empty()
+			for i in times:
+				st.undo()
+			if bad:
+				return String(k)
+	return String(keys[0])
+
 func _script() -> void:
 	var st = _puzzle.state
 	var plan := _plan_answer()
@@ -235,6 +252,23 @@ func _script() -> void:
 				_at(done + 0.3 + k * 0.4, _shot)
 			_ms_from = done
 			_end = done + 6.2
+		"stuck":
+			# Press an islet and hold (the ways out), then the first plank that
+			# strands an islet or seals a group, through the drag (the halo, the
+			# pulse, the line), then that plank taken back (the halo off).
+			var key := _stuck_lane()
+			var lane: Dictionary = st.lanes[key]
+			_at(1.2, func() -> void: _mouse(_puzzle._at(lane.a), true))
+			_at(1.5, _shot.bind("_ways"))
+			_at(1.6, func() -> void: _mouse(_puzzle._at(lane.a), false))
+			_at(2.0, _lay.bind(key))
+			_at(2.0 + 0.35, func() -> void: _lay(key) if _puzzle._stuck.is_empty() else null)
+			_at(2.9, _shot.bind("_halo"))
+			_at(3.0, func() -> void: print("stuck %s, tip: %s" % [_puzzle._stuck.keys(), _puzzle.tip_line().text]))
+			_at(3.6, func() -> void: _puzzle.undo())
+			_at(4.3, _shot.bind("_undone"))
+			_at(4.4, func() -> void: print("after undo stuck %s" % [_puzzle._stuck.keys()]))
+			_end = 4.6
 		"restore":
 			_at(1.5, func() -> void: _puzzle.restore_completed_board())
 			_at(2.0, _shot)

@@ -218,3 +218,52 @@ and motion are untouched; only the drawing changed.
 - Decided for the user, unconfirmed: the lattice centred; the pennant
   dropped (the coin's wash and the grooves already say "met"); the menu
   card's lagoon left dark. Owed: a phone, the user's eye on Insane's dusk.
+
+### Made fun: the board says when it is lost (2026-10-27)
+
+The user: "make bridges experience way better to play, and game itself way
+funnier to play, right now nobody likes it", autonomous, pushed when done.
+
+- **Measured first** (`tests/_probe_br_fun.gd`, 60 days a band): a player
+  who never pushes an islet over its number and lays planks at random
+  stalls short of the solve in 49/57/59 of 60 games on Easy/Medium/Hard.
+  In 49/57/59 an islet goes dead (short of its number, no lane left that
+  can make it up) and they lay 8.8/14.8/28.2 more planks before stalling,
+  the board silent; a sealed-off group (every number in it met, cut from
+  the rest) forms in 3/8/10 and 7/9/27 planks follow it. The near-miss
+  line came only once *every* number was met, i.e. at the very end. The
+  same player who takes a plank back the moment one of the two is true
+  stalls in **10/15/39**: the facts alone carry a guesser most of the way.
+- **Taken from the apps.** The solver's "too few, certain" flag and its
+  isolated-group flag (Simon Tatham's Bridges marks both red as they
+  happen), and Conceptis Hashi's highlight of the allowed directions from a
+  pressed island.
+- `State.stranded()` (an islet short of its number whose open lanes cannot
+  supply it: a crossed lane gives nothing, a full one nothing more, a lane
+  no more than the far islet still wants; lanterns never named) and
+  `State.sealed()` (every group of met islets while there is more than one).
+- **The rose halo** (`SHAPE_HALO`, `Pal.FLOWER`, `HALO_*`): `_stuck` is the
+  stranded islets and every islet of a sealed group, recomputed in
+  `_network` after every move, Undo and hint; a cached shape in the islet
+  mesh, so no draw call. With every number met all groups are sealed and
+  the biggest goes bare (the near-miss's own rule, which still speaks
+  `BR_SPLIT`). A hand that puts a halo on hears `split`, feels WARN, sees
+  the new islets pulse with the near-miss's rings, and the card says
+  `BR_STRANDED` or `BR_SEALED` ("Take a plank back"). Undo takes it off
+  silently. A plank that leaves any halo standing builds no streak.
+  Easy to Hard (`STUCK_BANDS`): **Lantern Night keeps its silence**, the
+  user's to call.
+- **The ways out** (`_way_bands`, `WAY_ALPHA` 0.2): while an islet is
+  pressed, every lane it faces that a drag could lay on is a faint wash, the
+  picked one `_aim_band`'s as before. Every band.
+- `BR_TIP_STUCK` joins the tips below Insane; the tutorial's OVER page
+  gains `HTP_BR_OVER_BODY_STUCK`. Rows en/pt/es.
+- `tests/_shot_bridges.gd stuck` (new mode): opengl3_angle 810x1440, Medium,
+  the ways out, a halo on a stranded 3, Undo taking it off: peak 92 draw
+  calls, as `right` read before the change. `_win.gd -- bridges` PASS with
+  real drags; suite passed=303276 failed=0; every band's tutorial pages
+  played 6 s headless, no script error.
+- Decided for the user, unconfirmed: the halo free on every band but
+  Insane; the pulse and WARN on a fresh halo; no streak while one stands;
+  the ways-out wash on every band. Not on a phone; the `split` cue on a
+  halo not heard.
