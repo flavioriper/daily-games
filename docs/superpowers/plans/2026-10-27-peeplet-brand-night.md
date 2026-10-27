@@ -17,7 +17,9 @@
 - Vertex credentials for local runs come from the user's login (`tools/themed_days.sh` shows the env); run paintings serially, never in parallel with a themeDay emulator.
 - The sheet is the one baked Peeplet image allowed: rendered by its harness, never hand-edited, rebuilt when the look changes, never shipped to a phone (`server/` is `.gdignore`d).
 - Harness rules as in the app plan (resolution flag before `--script`, `--always-on-top`, `caffeinate`, `ulimit -f`).
-- Commit locally after each task; never push.
+- Commit locally after each task; never push. Work on `feat/peeplet-brand`.
+- **No new suite tests** (the user's standing rule): checks are throwaway `tests/_probe_*.gd` scripts or CLI lines, never `tests/test_*.gd`.
+- `peeplet/peeplet_personas.gd` has no `class_name`: preload it.
 
 ## Review Focus
 
@@ -64,7 +66,7 @@ git commit -m "feat(night): the Peeplet reference sheet, rendered from the live 
 - Create: `server/functions/src/cast.ts`
 - Create: `server/functions/src/cast_personas.json` (generated: name, coat, hat, eyes per persona, in `ALL` order)
 - Create: `tools/export_personas.gd` (a headless script that writes that JSON from `peeplet/peeplet_personas.gd`; run by hand when the list changes)
-- Create: `tests/test_cast_parity.gd` (the suite: the JSON matches `PeepletPersonas.ALL` entry by entry)
+- Create: `tests/_probe_cast_parity.gd` (throwaway: the JSON matches `PeepletPersonas.ALL` entry by entry, prints PASS/FAIL)
 - Modify: `server/functions/src/theme.ts:32-40` (`Theme.cast?: string`, the writer's prompt and schema gain it)
 - Modify: `server/functions/src/vistas.ts:180-190` (`Vistas.cast: [number, number]`)
 - Reference: `server/functions/src/eye.ts:37` (`fnv1a`, the same function as `core/daily.gd:47`), `peeplet/peeplet_palette.gd:17-30` (coats 0..7 are flat).
@@ -80,20 +82,20 @@ git commit -m "feat(night): the Peeplet reference sheet, rendered from the live 
   - `export function describe(i: number): string` ("a Peeplet in a <coat> coat wearing <hat>").
 - `Theme.cast?: string` (one line, the pair's doing); `Vistas.cast: [number, number]`.
 
-- [ ] **Step 1: Write the failing tests.** In `tests/test_cast_parity.gd`: load `res://server/functions/src/cast_personas.json`… (`server/` is gdignored, so read it with `FileAccess` by absolute project path `ProjectSettings.globalize_path("res://") + "server/functions/src/cast_personas.json"`), assert its length equals `PeepletPersonas.count()` and each entry's name/coat/hat/eyes equal `get_persona(i)`'s. In `server/functions`, a `node lib/cli.js cast 20261027` command prints the pair and the two descriptions (there is no test runner; the CLI line is the check, and the parity test is the Godot suite's).
+- [ ] **Step 1: Write the failing probe.** In `tests/_probe_cast_parity.gd`: load `res://server/functions/src/cast_personas.json`… (`server/` is gdignored, so read it with `FileAccess` by absolute project path `ProjectSettings.globalize_path("res://") + "server/functions/src/cast_personas.json"`), assert its length equals `PeepletPersonas.count()` and each entry's name/coat/hat/eyes equal `get_persona(i)`'s. In `server/functions`, a `node lib/cli.js cast 20261027` command prints the pair and the two descriptions (there is no test runner; the CLI line is the check, and the parity test is the Godot suite's).
 
 - [ ] **Step 2: Implement** per Interfaces: `tools/export_personas.gd` writes the JSON; `cast.ts`; `theme.ts` writer prompt gains `"cast": one short line of what two small creatures could be doing in that scene together (rolling a hay bale, sharing a picnic blanket), no people` and the schema a `cast` string, optional in `validTheme`; `cli.ts` gains `cast <day>`.
 
 - [ ] **Step 3: Verify**
 
-Run: `godot --headless --path . --script tools/export_personas.gd && godot --headless --path . --script tests/run_tests.gd 2>&1 | tail -3 && cd server/functions && npm run build && node lib/cli.js cast 20261027 && node lib/cli.js cast 20261028`
-Expected: suite 0 failures; two different pairs printed, each two distinct indices with plain hats and flat coats.
+Run: `godot --headless --path . --script tools/export_personas.gd && godot --headless --path . --script tests/_probe_cast_parity.gd && cd server/functions && npm run build && node lib/cli.js cast 20261027 && node lib/cli.js cast 20261028`
+Expected: PASS; two different pairs printed, each two distinct indices with plain hats and flat coats.
 Then parity: the Godot suite prints `cast vector 20261027 = [a, b]` (app plan, Task 3); `node lib/cli.js cast 20261027` must print the same two indices. If they differ, the hashes differ (JS `fnv1a` must be 32-bit unsigned over UTF-8 bytes, as `core/daily.gd:47`): fix `cast.ts` until they agree, and keep the vector in `days-dashboard.md`.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add server/functions/src/cast.ts server/functions/src/cast_personas.json tools/export_personas.gd tests/test_cast_parity.gd tests/run_tests.gd server/functions/src/theme.ts server/functions/src/vistas.ts server/functions/src/cli.ts
+git add server/functions/src/cast.ts server/functions/src/cast_personas.json tools/export_personas.gd tests/_probe_cast_parity.gd server/functions/src/theme.ts server/functions/src/vistas.ts server/functions/src/cli.ts
 git commit -m "feat(night): the day's cast on the server, the same pair the phone seeds, with plain hats and flat coats in words"
 ```
 
@@ -109,7 +111,7 @@ git commit -m "feat(night): the day's cast on the server, the same pair the phon
 
 **Interfaces:**
 - Consumes: `cast.ts` (`seeded`, `describe`), `Theme.cast`.
-- Produces: `makeVista(day, theme, time, morning, keep?, tries = 2, pair = seeded(day))` returning `{vista, tries: {name, wrong, peeplets}[]}`; `REVIEW_SCHEMA` is `{wrong: string, peeplets: integer}`; `export function reviewPainting(theme, time, drawn: Drawing, morning: Drawing | null): Promise<{wrong: string; peeplets: number}>` (the review alone, for the bench).
+- Produces: `makeVista(day, theme, time, morning, keep?, tries = 2, pair = seeded(day))` returning `{vista, tries: {name, wrong, peeplets, size}[]}` (`size` the painter's native `WxH`); `REVIEW_SCHEMA` is `{wrong: string, peeplets: integer}`; `export function reviewPainting(theme, time, drawn: Drawing, morning: Drawing | null): Promise<{wrong: string; peeplets: number}>` (the review alone, for the bench).
 
 - [ ] **Step 1: The prompts.** Rewrite per the spec's Part C:
   - `NEVER`: "No humans, no human faces, no text, ... no border or frame. The Peeplets are the only creatures with faces."
@@ -125,7 +127,7 @@ git commit -m "feat(night): the day's cast on the server, the same pair the phon
 - [ ] **Step 4: Build and a dry run**
 
 Run: `cd server/functions && npm run build && node lib/cli.js vistas ../../tools/days/themed-vistas/20261019.json`
-Expected: four paintings pass or the log says why each was turned down with a `peeplets` count; the JPEGs beside the JSON show two Peeplets. Look at them. Cost printed.
+Expected: four paintings pass or the log says why each was turned down with a `peeplets` count; the JPEGs beside the JSON show two Peeplets. Look at them. Cost printed. **Also print the painter's native size** (`decoded(drawn).width x height`) on every try: if flash answers about 1024 wide, reviewing "the full painting" buys nothing over the phone JPEG and a Peeplet at an eighth of the height is ~56 px, which is the first calibration finding; write it in `days-dashboard.md` and tell the user, since it moves the crop-and-enlarge lever earlier.
 
 - [ ] **Step 5: Commit**
 

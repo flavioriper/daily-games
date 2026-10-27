@@ -278,13 +278,15 @@ first (its balance has run to zero before).
   name): **Peeplet**, my call pending the user: it fits every launcher without
   truncation, the icon's tiles already say DAILY PUZZLES, and it matches the
   store prefix.
-- `project.godot`: before `config/name` changes, pin the save folder with
-  `application/config/use_custom_user_dir=true` and
-  `custom_user_dir_name="Peeplet Daily"`, so this Mac's saves,
-  `tools/themed_play.sh` and the checkout trap keep their path. Then
-  `config/name="Peeplet: Daily Puzzles"`. The bundle and package id
-  `com.peeplet.daily`, the Firebase project and App Distribution ids never
-  change.
+- `project.godot`'s `config/name` stays "Peeplet Daily" (amended 2026-10-27
+  at planning): it is only the desktop window title, and either renaming it
+  or pinning a custom user dir would move this Mac's `user://` out of
+  `app_userdata/Peeplet Daily`, breaking `tools/themed_play.sh` and the
+  checkout trap. The launcher labels are set where they are read: Android
+  `package/name` in the preset, iOS `INFOPLIST_KEY_CFBundleDisplayName`
+  patched by `tools/export_ios.sh` after the export (the exporter writes it
+  from `config/name`). The bundle and package id `com.peeplet.daily`, the
+  Firebase project and App Distribution ids never change.
 - `locale/ui.csv` `FRIENDS_INVITE_TEXT` says "Peeplet: Daily Puzzles" in en,
   pt and es. The three site pages under `server/site/` and `generate.ts`'s
   `X-Title` say the same. `export_presets.cfg`, `tools/export_ios.sh`,

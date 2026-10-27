@@ -20,8 +20,10 @@
 - Text goes through `locale/ui.csv`; titles stay English.
 - Honour `Motion.reduce`; a held PeepletView honours `set_idle` (core/power.gd picks it up).
 - `godot --headless --check-only --script <file>` on every edited script before a harness.
-- Commit locally after each task; never push.
-- Before task 1, commit any stray uncommitted work as its own commit (the user's preference).
+- Commit locally after each task; never push. Work on `feat/peeplet-brand`.
+- **No new suite tests** (the user's standing rule: an MVP; only self-driven checks). Where a task below says "test", write a throwaway `tests/_probe_<name>.gd` (a SceneTree script printing PASS/FAIL, run with `godot --headless --path . --script tests/_probe_<name>.gd`), never a `tests/test_*.gd` or a `run_tests.gd` entry. The suite is run only to prove nothing broke.
+- `peeplet/peeplet_personas.gd` has no `class_name`: `const PeepletPersonas = preload("res://peeplet/peeplet_personas.gd")`.
+- **The night plan runs first** (its Tasks 1-3 and the dry run), so the themed header measurement in Task 2 sees Peeplets.
 
 ## Review Focus
 
@@ -29,7 +31,7 @@
 2. A themed day whose vistas arrive after the menu is built: the header changes in place through the `themed_vistas` group (Task 2 test).
 3. A persona index past the list (a cast published after the list shrank, or a corrupted doc): `Cast.pair` clamps and never indexes out of range (Task 3 test).
 4. A PeepletView left redrawing on a hidden sheet: Streak's and the remove-ads sheet's views hold `idle_fps 0` and are freed with the sheet (Task 4 check in the harness: draw calls equal before and after opening and closing the sheet).
-5. The save folder on this Mac after the rename: `user://` still resolves to `Peeplet Daily` (Task 7 verification).
+5. The save folder on this Mac after the rename: untouched, because `config/name` is not changed (Task 7 states why).
 
 ---
 
@@ -37,7 +39,7 @@
 
 **Files:**
 - Create: `ui/menu/word_tiles.gd`
-- Create: `tests/test_word_tiles.gd`
+- Create: `tests/_probe_word_tiles.gd` (throwaway)
 - Reference: `ui/menu/cards/hiddenword.gd:174-184` (`_piece`), `ui/faces/mosaic_tile.gd:173` (`Mosaic.letter`), `puzzles/hidden_word2d.gd:101-103, 1495` (RADIUS, BEVEL, EDGE_MIX, RIM_LIGHT), `ui/opening.gd:56` (TILES colours), `tests/test_hidden_word.gd` (how a suite test is shaped), `tests/run_tests.gd` (how tests are listed).
 
 **Interfaces:**
@@ -51,7 +53,7 @@
   - `func total_size() -> Vector2`.
   - The drawing: one `ArrayMesh` of the tiles (`_piece` as hiddenword.gd cuts it, each under its own `Transform2D` rotation about the tile's centre), built on `_build()` and kept, drawn with one `draw_mesh`; the letters over it with `Mosaic.letter` (12 draw commands, as the Hidden Word card does). `shown` only changes which tiles are issued, not the mesh.
 
-- [ ] **Step 1: Write the failing test** in `tests/test_word_tiles.gd`, registered in `tests/run_tests.gd` the way the others are:
+- [ ] **Step 1: Write the failing probe** `tests/_probe_word_tiles.gd` (prints PASS or the failing line):
 
 ```gdscript
 func test_layout():
@@ -68,20 +70,20 @@ func test_layout():
 
 - [ ] **Step 2: Run it and see it fail**
 
-Run: `godot --headless --path . --script tests/run_tests.gd 2>&1 | grep -A3 word_tiles`
+Run: `godot --headless --path . --script tests/_probe_word_tiles.gd`
 Expected: a parse failure naming `WordTiles`.
 
 - [ ] **Step 3: Implement `ui/menu/word_tiles.gd`** as the Interfaces block says. The piece cut is `hiddenword.gd`'s `_piece` moved here as `static func piece(b, at, s, fill, deep, rim)`; hiddenword.gd calls `WordTiles.piece` and loses its own copy (same component, one code). `deep = fill.lerp(Pal.TEXT, Board.EDGE_MIX)`, `rim = fill.lerp(Pal.SURFACE, Board.RIM_LIGHT)`. Letters are ink (`Pal.TEXT`) on paper tiles and `Pal.SURFACE` on coloured ones.
 
 - [ ] **Step 4: Parse and test**
 
-Run: `godot --headless --check-only --script ui/menu/word_tiles.gd && godot --headless --check-only --script ui/menu/cards/hiddenword.gd && godot --headless --path . --script tests/run_tests.gd 2>&1 | tail -3`
-Expected: the suite's pass count up by one, 0 failures.
+Run: `godot --headless --check-only --script ui/menu/word_tiles.gd && godot --headless --check-only --script ui/menu/cards/hiddenword.gd && godot --headless --path . --script tests/_probe_word_tiles.gd && godot --headless --path . --script tests/run_tests.gd 2>&1 | tail -3`
+Expected: PASS, and the suite still 303276 passed, 0 failed.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add ui/menu/word_tiles.gd tests/test_word_tiles.gd tests/run_tests.gd ui/menu/cards/hiddenword.gd
+git add ui/menu/word_tiles.gd tests/_probe_word_tiles.gd ui/menu/cards/hiddenword.gd
 git commit -m "feat(menu): WordTiles, the icon's DAILY / PUZZLES tiles as one drawn control"
 ```
 
@@ -129,7 +131,7 @@ git commit -m "feat(menu): the header wears the DAILY / PUZZLES tiles over the d
 
 **Files:**
 - Create: `core/cast.gd`
-- Create: `tests/test_cast.gd`
+- Create: `tests/_probe_cast.gd` (throwaway)
 - Modify: `core/themed_vistas.gd` (keep the `cast` field of the day's document)
 - Reference: `peeplet/peeplet_personas.gd` (`ALL`, `count()`, `get_persona(i)`), `core/daily.gd:47` (`fnv1a`), `core/daily.gd:20` (`date_key`).
 
@@ -140,10 +142,10 @@ git commit -m "feat(menu): the header wears the DAILY / PUZZLES tiles over the d
   - `static func seeded(day: int) -> Array[int]`: `a = fnv1a("cast-a-" + str(day)) % n`, `b = fnv1a("cast-b-" + str(day)) % n`, and if `b == a` then `b = (a + 1) % n`, over the eligible personas only (below).
   - `static func eligible() -> Array[int]`: persona indices whose coat is one of `PeepletPalette.BODY` 0..7 (the flat coats) and whose hat is in `PLAIN_HATS := ["", "bandana", "beanie", "bow", "cap", "chefHat", "earmuffs", "sunhat", "topHat", "partyHat", "mushroomCap", "flowerCrown"]`.
   - `static func persona(which: int, day: int = Daily.date_key()) -> Dictionary`: `PeepletPersonas.get_persona(pair(day)[which])`.
-  - `static func dress(view, which: int, day: int = Daily.date_key()) -> void`: sets `view.color_index`, `view.headgear`, `view.eyewear` from the persona.
+  - `static func dress(view, which: int, day: int = Daily.date_key()) -> void`: sets `view.color_index`, `view.headgear`, `view.eyewear` from the persona (each setter rebuilds the walker, as on Pie's card; call it once, before the view enters the tree).
 - `ThemedVistas.cast() -> Array` returns the document's `cast` or `[]`.
 
-- [ ] **Step 1: Write the failing test** `tests/test_cast.gd`:
+- [ ] **Step 1: Write the failing probe** `tests/_probe_cast.gd` (the same checks, as prints of PASS/FAIL):
 
 ```gdscript
 func test_seeded_pair_is_two_distinct_eligible():
@@ -171,12 +173,12 @@ func test_published_cast_clamps():
 
 - [ ] **Step 3: Implement `core/cast.gd` and `ThemedVistas.cast()`** per Interfaces. The same seed rule is written in the night plan's `cast.ts` (Task 2 there); the strings `"cast-a-"`/`"cast-b-"` and the eligibility rule are the contract.
 
-- [ ] **Step 4: Parse and test**; expected two new passes, 0 failures.
+- [ ] **Step 4: Parse, run the probe (PASS) and the suite (unchanged, 0 failures)**.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add core/cast.gd tests/test_cast.gd tests/run_tests.gd core/themed_vistas.gd
+git add core/cast.gd tests/_probe_cast.gd core/themed_vistas.gd
 git commit -m "feat(cast): the day's pair of Peeplets, seeded by the day or published with the vistas"
 ```
 
@@ -238,15 +240,15 @@ git commit -m "feat(peeplet): the sprout face goes; the day's Peeplets take its 
 
 **Interfaces:**
 - Consumes: `Progress.last_level(id) -> int`, `DifficultySheet.ask(entry)`, `signal chose(entry, difficulty)`.
-- Produces: `DifficultySheet._row(level, d, done, on_press, last: bool)`: when `last`, the go draws a ring in `Pal.ACCENT` round it (the Versus sheet passes `false`).
+- Produces: `DifficultySheet._row(level, d, done, on_press, last := false)`: when `last`, the go draws a ring in `Pal.ACCENT` round it (the Versus sheet calls it unchanged).
 
-- [ ] **Step 1: Write the failing test** `tests/test_menu_open.gd` (a headless SceneTree test: build `ui/menu.gd` offline as `tests/_offline_main.gd` does, call `_open(Registry.find("sudoku"))`, assert `difficulty_sheet.visible` and no `FlatHost` child mounted; then `difficulty_sheet.chose.emit(entry, 2)` and assert one host mounted at difficulty 2 and `Progress.last_level("sudoku") == 2`). If building the menu headless is not possible (see `_offline_main.gd`), make it a windowed probe `tests/_probe_sheet.gd` that prints `PASS`/`FAIL` and record that choice in the commit message.
+- [ ] **Step 1: Write the failing probe** `tests/_probe_sheet.gd` (windowed, after `tests/_offline_main.gd`'s way of building the menu offline): call `_open(Registry.find("sudoku"))`, check `difficulty_sheet.visible` and no `FlatHost` mounted; then `difficulty_sheet.chose.emit(entry, 2)` and check one host mounted at difficulty 2 and `Progress.last_level("sudoku") == 2`; print PASS/FAIL and quit. Put `user://` progress back as it was on every exit path.
 
 - [ ] **Step 2: Run, see it fail** (`difficulty_sheet` undefined).
 
 - [ ] **Step 3: Restore the sheet** per Files; `_start_level` stays (the sheet's `ask` uses it to mark `last`), `_open_at` keeps saving `set_last_level`.
 
-- [ ] **Step 4: Run the test**, then the suite; 0 failures.
+- [ ] **Step 4: Run the probe** (PASS), then the suite; 0 failures.
 
 - [ ] **Step 5: Measure** `_shot_menu.gd -- diff=sudoku` twice on opengl3_angle (sheet open), with and without the trial themed day adopted (`tools/themed_play.sh 20261019 vistas` / `off`).
 Expected: within budget; the four rows show the four painted times on the themed run.
@@ -254,7 +256,7 @@ Expected: within budget; the four rows show the four painted times on the themed
 - [ ] **Step 6: Commit**
 
 ```bash
-git add ui/menu.gd ui/menu/difficulty_sheet.gd ui/registry.gd tests/_shot_menu.gd tests/test_menu_open.gd tests/run_tests.gd docs/agents/first-screen.md
+git add ui/menu.gd ui/menu/difficulty_sheet.gd ui/registry.gd tests/_shot_menu.gd tests/_probe_sheet.gd docs/agents/first-screen.md
 git commit -m "feat(menu): a puzzle card asks on the difficulty sheet again, the row last played ringed"
 ```
 
@@ -269,7 +271,7 @@ git commit -m "feat(menu): a puzzle card asks on the difficulty sheet again, the
 
 **Interfaces:**
 - Consumes: `WordTiles` (Task 1): its mesh and `shown`; `ui/peeplet_view.gd`.
-- Produces: `Opening.landed(rank)` keeps its meaning (a tile set down) so the sounds in `world/boot.gd` stay wired; ranks now run 0..11.
+- Produces: `Opening.landed(rank)` keeps its meaning (a tile set down) so the sounds in `world/boot.gd` stay wired; ranks now run 0..11 (`boot.gd:108` takes `rank % _pops.size()`, so twelve are fine; the pitch step rises twelve times, listen once).
 
 - [ ] **Step 1: The tiles.** The 3x3 grid, the sprout, the word and the sun go. A `WordTiles` child (tile `TILE` scaled by `u` as the grid was) stands where the grid stood; the tiles come in one by one in reading order 0.085 s apart from `TILE_AT`, each with its puff and `landed(rank)`; the ripple every 2.6 s runs over the twelve. `SETTLED` becomes `TILE_AT + 12 * TILE_STEP + TILE_TIME + 0.4`. Leaving: the tiles pop out in the run they came in. Reduce motion: finished from the first frame.
 
@@ -291,26 +293,27 @@ git commit -m "feat(opening): the DAILY / PUZZLES tiles come together, as the ic
 
 ### Task 7: The name
 
+`config/name` in `project.godot` is **not** changed: it is only the desktop window title, and renaming it (or pinning a custom user dir, which moves `user://` out of `app_userdata/`) would move this Mac's saves and break `tools/themed_play.sh`. The player-facing names are set where each is read.
+
 **Files:**
-- Modify: `project.godot:28` (`config/name`), add `config/use_custom_user_dir=true` and `config/custom_user_dir_name="Peeplet Daily"` in `[application]`
-- Modify: `export_presets.cfg:47` (`package/name="Peeplet"`), and the iOS preset gains `application/name="Peeplet"` (Godot's iOS preset key for the display name; check `godot --help` or the preset docs for the exact key in 4.7)
+- Modify: `export_presets.cfg:47` (`package/name="Peeplet"`, the Android launcher label)
+- Modify: `tools/export_ios.sh:36-38` (after the export and `fix_ios_embed.sh`: `sed -i '' 's/INFOPLIST_KEY_CFBundleDisplayName = "Peeplet Daily";/INFOPLIST_KEY_CFBundleDisplayName = "Peeplet";/' build/ios/peeplet-daily.xcodeproj/project.pbxproj`, the iOS launcher label; the exporter writes it from `config/name`, so the script is where it is corrected)
 - Modify: `locale/ui.csv:993` (`FRIENDS_INVITE_TEXT` en/pt/es: "Peeplet: Daily Puzzles")
 - Modify: `server/functions/src/generate.ts:117` (`X-Title`), `server/site/index.html`, `server/site/f/index.html`, `server/site/peeplet/privacy/index.html` ("Peeplet Daily Puzzles" to "Peeplet: Daily Puzzles")
 - Modify: `docs/roadmap-to-release.md` (the name line; a follow-on line: listing text, feature graphic and shots to refresh after the header ships; the store renames by hand)
 - Modify: `CLAUDE.md` (the Peeplet exception paragraph widens per the spec's "Docs and rules")
+- Modify: `docs/superpowers/specs/2026-10-27-peeplet-brand-design.md` Part A (amend: `config/name` untouched, the iOS label patched in the export script; the reason above)
 - Create: `docs/art/peeplet-brand.md` (per the spec: what the Peeplet is, personas, where it appears, where it never does, the sheet rule from the night plan)
 
-- [ ] **Step 1: Pin the save folder first**, then rename. Verify: `godot --headless --path . --script tests/_offline_main.gd` (or any headless script printing `OS.get_user_data_dir()`) prints a path ending in `Peeplet Daily`.
+- [ ] **Step 1: The strings.** Reimport after the csv edit (`godot --headless --path . --import`). `grep -rn "Peeplet Daily\b" --include=*.gd --include=*.csv --include=*.html --include=*.ts --include=*.cfg --include=*.sh . | grep -v "docs/\|project.godot\|build/"` lists only the `sed` line in `export_ios.sh`.
 
-- [ ] **Step 2: The strings.** Reimport after the csv edit (`godot --headless --path . --import`, per the reimport memory). `grep -rn "Peeplet Daily" --include=*.gd --include=*.csv --include=*.html --include=*.ts . | grep -v "custom_user_dir\|docs/"` lists nothing but the user-dir line.
+- [ ] **Step 2: Suite and a parse of every touched script**; 0 failures. `bash -n tools/export_ios.sh`.
 
-- [ ] **Step 3: Suite and a parse of every touched script**; 0 failures.
-
-- [ ] **Step 4: Commit**
+- [ ] **Step 3: Commit**
 
 ```bash
-git add project.godot export_presets.cfg locale/ui.csv server/functions/src/generate.ts server/site docs/roadmap-to-release.md CLAUDE.md docs/art/peeplet-brand.md
-git commit -m "feat(brand): Peeplet: Daily Puzzles -- the app's name, the invite text and the site; the save folder pinned; the Peeplet brand note"
+git add export_presets.cfg tools/export_ios.sh locale/ui.csv server/functions/src/generate.ts server/site docs/roadmap-to-release.md CLAUDE.md docs/art/peeplet-brand.md docs/superpowers/specs/2026-10-27-peeplet-brand-design.md
+git commit -m "feat(brand): Peeplet: Daily Puzzles -- the launcher labels, the invite text and the site; the Peeplet brand note"
 ```
 
 The store titles on Play Console and App Store Connect are the user's, by hand.
