@@ -1,0 +1,162 @@
+{
+ "20261014_vista-afternoon-0.jpg": {
+  "verdict": "pass",
+  "defect": "",
+  "subtle": false
+ },
+ "20261014_vista-dusk-0.jpg": {
+  "verdict": "pass",
+  "defect": "",
+  "subtle": false
+ },
+ "20261014_vista-morning-0.jpg": {
+  "verdict": "pass",
+  "defect": "",
+  "subtle": false
+ },
+ "20261014_vista-night-1.jpg": {
+  "verdict": "pass",
+  "defect": "",
+  "subtle": false
+ },
+ "20261015_vista-morning-1.jpg": {
+  "verdict": "fail",
+  "defect": "other",
+  "subtle": false
+ },
+ "20261016_vista-morning-0.jpg": {
+  "verdict": "fail",
+  "defect": "other",
+  "subtle": false
+ },
+ "20261016_vista-morning-1.jpg": {
+  "verdict": "fail",
+  "defect": "other",
+  "subtle": false
+ },
+ "20261017_vista-afternoon-0.jpg": {
+  "verdict": "pass",
+  "defect": "",
+  "subtle": false
+ },
+ "20261017_vista-morning-0.jpg": {
+  "verdict": "pass",
+  "defect": "",
+  "subtle": false
+ },
+ "20261017_vista-morning-0_decoy-3-fingers.jpg": {
+  "verdict": "fail",
+  "defect": "fingers",
+  "subtle": false
+ },
+ "20261018_vista-afternoon-0.jpg": {
+  "verdict": "pass",
+  "defect": "",
+  "subtle": false
+ },
+ "20261018_vista-dusk-0.jpg": {
+  "verdict": "pass",
+  "defect": "",
+  "subtle": false
+ },
+ "20261018_vista-dusk-0_decoy-4-human.jpg": {
+  "verdict": "fail",
+  "defect": "human",
+  "subtle": false
+ },
+ "20261018_vista-morning-0.jpg": {
+  "verdict": "pass",
+  "defect": "",
+  "subtle": false
+ },
+ "20261018_vista-morning-0_decoy-3-fingers.jpg": {
+  "verdict": "fail",
+  "defect": "fingers",
+  "subtle": false
+ },
+ "20261018_vista-night-1.jpg": {
+  "verdict": "pass",
+  "defect": "",
+  "subtle": false
+ },
+ "20261019_vista-afternoon-0.jpg": {
+  "verdict": "pass",
+  "defect": "",
+  "subtle": false
+ },
+ "20261019_vista-afternoon-0_decoy-5-neck.jpg": {
+  "verdict": "fail",
+  "defect": "neck",
+  "subtle": false
+ },
+ "20261019_vista-dusk-0.jpg": {
+  "verdict": "pass",
+  "defect": "",
+  "subtle": false
+ },
+ "20261019_vista-morning-0.jpg": {
+  "verdict": "pass",
+  "defect": "",
+  "subtle": false
+ },
+ "20261019_vista-night-0.jpg": {
+  "verdict": "pass",
+  "defect": "",
+  "subtle": false
+ },
+ "20261101_vista-afternoon-0.jpg": {
+  "verdict": "pass",
+  "defect": "",
+  "subtle": false
+ },
+ "20261101_vista-morning-0.jpg": {
+  "verdict": "pass",
+  "defect": "",
+  "subtle": false
+ },
+ "20261102_vista-afternoon-0.jpg": {
+  "verdict": "pass",
+  "defect": "",
+  "subtle": false
+ },
+ "20261102_vista-dusk-0.jpg": {
+  "verdict": "pass",
+  "defect": "",
+  "subtle": false
+ },
+ "20261102_vista-morning-0.jpg": {
+  "verdict": "pass",
+  "defect": "",
+  "subtle": false
+ },
+ "20261102_vista-night-0.jpg": {
+  "verdict": "pass",
+  "defect": "",
+  "subtle": false
+ },
+ "20261201_vista-afternoon-0.jpg": {
+  "verdict": "pass",
+  "defect": "",
+  "subtle": false
+ },
+ "20261201_vista-dusk-0.jpg": {
+  "verdict": "pass",
+  "defect": "",
+  "subtle": false
+ },
+ "20261201_vista-morning-0.jpg": {
+  "verdict": "pass",
+  "defect": "",
+  "subtle": false
+ },
+ "20261201_vista-night-0.jpg": {
+  "verdict": "pass",
+  "defect": "",
+  "subtle": false
+ },
+ "20261202_vista-morning-0.jpg": {
+  "verdict": "fail",
+  "defect": "other",
+  "subtle": false
+ }
+}

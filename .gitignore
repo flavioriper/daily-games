@@ -104,7 +104,11 @@ server/*.log
 tools/how_big/.venv/
 
 # Made by tools/export_days.gd and tools/build_dashboard.py, not written
-tools/days/
+tools/days/*
+# The Peeplet review bench is kept (tools/days/peeplet-bench/README.md).
+!tools/days/peeplet-bench/
+# The painter's full-size PNGs stay on disk (about 1.2 MB each); the phone-size JPEGs are the record.
+tools/days/peeplet-bench/*.png
 tools/dashboard.html
 
 # Firebase iOS frameworks (~135 MB), built by the Godotx Firebase plugin

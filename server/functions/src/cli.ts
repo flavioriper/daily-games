@@ -3,7 +3,7 @@ import path from "node:path";
 import {makeDay as acornDay} from "./acorn";
 import {bankPuzzles, makeDay as shelvesDay, Puzzle as ShelvesPuzzle} from "./shelves";
 import {bankRounds, makeDay as cluesDay, Round as CluesRound} from "./clues";
-import {cost, Drawing} from "./generate";
+import {cost, draw, Drawing} from "./generate";
 import {BANDS as HOOP_BANDS, HoopPicture, makeHoop} from "./hoop";
 import {bankPrompts, cleaned, makeDay as pearlDay, Prompt} from "./pearl";
 import {makeJellies} from "./jelly";
@@ -12,7 +12,7 @@ import {makeDay as picturesDay} from "./pictures";
 import {describe, eligible, seeded} from "./cast";
 import {makeTheme, themed} from "./theme";
 import {makeWords} from "./words";
-import {FULL_SUFFIX, makeVista, TIMES as VISTA_TIMES, Vistas} from "./vistas";
+import {FULL_SUFFIX, makeVista, shrunk, TIMES as VISTA_TIMES, Vistas, vistaModel} from "./vistas";
 
 /**
  * The night's work by hand (tools/acorn_day.sh, tools/pearl_day.sh,
@@ -46,6 +46,13 @@ import {FULL_SUFFIX, makeVista, TIMES as VISTA_TIMES, Vistas} from "./vistas";
  *       each painting beside the file as <day>_vista-<time>-<try>.jpg, the
  *       reviewer's word on each in `vistaTries`, and what a phone would be
  *       sent in `vistas` when all four passed (tools/themed_play.sh).
+ *   node lib/cli.js theme <yyyymmdd> <out.json> [recent-day.json | text to avoid]...
+ *       the day's theme alone, as {day, theme}, told not to repeat the
+ *       themes of the recent files named (the Peeplet bench's days).
+ *   node lib/cli.js decoys <painting.png> <out-dir> [defect...]
+ *       the painting edited once for each defect in DEFECTS (or those named),
+ *       as decoy-<n>-<defect>.png and a phone-size .jpg beside it: paintings
+ *       that must be turned down, for the bench the reviewer is judged on.
  *   node lib/cli.js words <day.json>...
  *       Hidden Word's and Word Trail's words (words.ts) for days the
  *       command above made, into each file's pictures document; the
@@ -176,6 +183,18 @@ async function themedDays(first: number, count: number, outdir: string, themesFr
   return `${outdir}: ${made} days made, US$${cost().toFixed(2)}`;
 }
 
+/** What the bench's decoys are made to show: [name, the edit, subtle]. The
+ *  last two are subtle: the reviewer may miss them, and the user labels them. */
+export const DEFECTS: [string, string, boolean?][] = [
+  ["third-arm", "give one Peeplet a third arm"],
+  ["missing-leg", "remove one of a Peeplet's legs"],
+  ["fingers", "give a Peeplet human hands with fingers"],
+  ["human", "replace one Peeplet with a small human child"],
+  ["neck", "give a Peeplet a long neck"],
+  ["fused", "fuse a Peeplet's arm into its body so it melts in", true],
+  ["long-arm", "make one Peeplet's arm slightly longer than the other", true],
+];
+
 async function main(): Promise<void> {
   // What is printed is the day and nothing else: the makers' own lines go
   // to the other stream.
@@ -215,6 +234,37 @@ async function main(): Promise<void> {
       const on = (bands: {id: string}[][], t: RegExp) => bands.map((b) => b.filter((q) => t.test(q.id)).length).join("/");
       print(`${file}: acorn ${acorn.source}, themed ${on(acorn.bands, /b\dt\d+$/)}; pearl ${pearl.source}, ` +
         `themed ${on(pearl.bands, /t$/)}; US$${cost().toFixed(2)} so far`);
+    }
+  } else if (what === "theme" && args.length >= 2) {
+    // The day's theme alone, for the bench's days.
+    // A file names a theme to avoid; anything else is a line of text to avoid.
+    const recent = args.slice(2).flatMap((f) => f.endsWith(".json") ? themed(JSON.parse(fs.readFileSync(f, "utf8")).theme) : [f]);
+    const theme = await makeTheme(Number(args[0]), recent);
+    if (theme === null) {
+      console.error("theme: none");
+      process.exitCode = 1;
+    } else {
+      fs.writeFileSync(args[1], JSON.stringify({day: Number(args[0]), theme}));
+      print(`${args[0]}: ${theme.name.en}: ${theme.scene}\n  cast: ${theme.cast ?? "-"}\n  US$${cost().toFixed(2)} so far`);
+    }
+  } else if (what === "decoys" && args.length >= 2) {
+    // One edit of the painting a defect, for the bench's decoys.
+    const picked = args.slice(2);
+    const painting: Drawing = {mime: "image/png", bytes: fs.readFileSync(args[0])};
+    fs.mkdirSync(args[1], {recursive: true});
+    for (const [n, [name, edit]] of DEFECTS.entries()) {
+      if (picked.length > 0 && !picked.includes(name)) continue;
+      const base = path.join(args[1], `decoy-${n + 1}-${name}`);
+      const prefix = path.basename(args[0]).replace(/\.png$/, "").replace(/-full$/, "");
+      const out = `${prefix}_${path.basename(base)}`;
+      try {
+        const got = await draw(`Edit the attached painting: ${edit}. Change nothing else.`, vistaModel(), {images: [painting], aspect: "21:9"});
+        fs.writeFileSync(path.join(args[1], `${out}.png`), got.bytes);
+        fs.writeFileSync(path.join(args[1], `${out}.jpg`), shrunk(got).bytes);
+        print(`${out}: ${edit}; US$${cost().toFixed(2)} so far`);
+      } catch (e) {
+        console.error(`decoys: ${out} failed`, e);
+      }
     }
   } else if (what === "words" && args.length >= 1) {
     // The word boards' words for days already made, the rest untouched.
@@ -313,7 +363,7 @@ async function main(): Promise<void> {
     await publishDays(new Date());
     print("published");
   } else {
-    console.error("usage: cli.js day [acorn|pearl] [yyyymmdd] | bank pearl <level> <count> <outfile> | themed <yyyymmdd> <days> <outdir> [themes-dir] | cast <yyyymmdd> | vistas <day.json>... | jellies <day.json>... | hoops <day.json>... | words <day.json>... | quizzes <day.json>... | publish");
+    console.error("usage: cli.js day [acorn|pearl] [yyyymmdd] | bank pearl <level> <count> <outfile> | themed <yyyymmdd> <days> <outdir> [themes-dir] | cast <yyyymmdd> | theme <yyyymmdd> <out.json> [recent.json|text]... | decoys <png> <out-dir> [defect...] | vistas <day.json>... | jellies <day.json>... | hoops <day.json>... | words <day.json>... | quizzes <day.json>... | publish");
     process.exitCode = 2;
   }
 }
