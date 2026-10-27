@@ -79,7 +79,7 @@ Anthropic's API) runs the reviewer over it and writes `report.json`.
 **The gate:** no deformed painting passes (`deformedPassed` empty) and fewer
 than a third of the good ones are rejected, in at most three reviewer passes;
 if it is not met, stop and ask the user before any crop-and-enlarge. Rerun the
-bench after any change to `REVIEWER`, `REVIEW_FIRST` or `REVIEW_EDIT`; the
+bench after any change to `REVIEWER`, `REVIEW_FIRST`, `REVIEW_EDIT` or `REVIEW_SCHEMA`; the
 report's `rubric` hash says which rubric it judged.
 
 **What the gate does and does not prove (2026-10-27, pass 1; superseded: on the user's labels pass 3 fails the gate, 3 deformed passed and 7 of 31 good rejected, see `days-dashboard.md`).** It held:
