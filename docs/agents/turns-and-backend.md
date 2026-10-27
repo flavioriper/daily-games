@@ -148,6 +148,23 @@ as the functions' service account, which needs Vertex AI User there:
 `tools/vertex_identity.sh`, run by a person. Without it every picture step
 fails twice and the bead boards deal their banks; the rest still publishes.
 
+**The vista step paints the day's two Peeplets** (2026-10-27, Peeplet Brand,
+the night; `server/functions/src/vistas.ts`). The morning is painted from
+the theme's scene with `vista_style.png` first and `peeplet_sheet.png`
+(`docs/agents/days-dashboard.md`, "The Peeplet sheet") second, the prompt
+naming the day's pair (`cast.ts seeded(day)`, `describe`) and what they are
+doing (`Theme.cast`); the other three are edits of the morning "with the same
+two Peeplets in the same spots and poses". The reviewer (`reviewPainting`)
+sees the sheet first, the morning next for an edit, then the painter's
+**full-size** painting (never the shrunk JPEG), and answers `{wrong,
+peeplets}`: humans and malformed Peeplets (limbs, fingers, neck, extra
+eyes), a Peeplet in the left third, one over a fifth or under a twentieth of
+the height, none or more than three are turned down. Only a passing painting
+is shrunk (`shrunk`, 1024 wide, JPEG). `themeday.ts`: `TRIES = 3` runs a
+step, and the morning is painted twice a run, the others once. The bench
+(`cli.js vistas`) logs each try's `peeplets` and the painter's native `WxH`,
+and keeps every full painting as `<day>_vista-<time>-<n>-full.png`.
+
 **The day waits for its theme** (2026-10-20, the user, whose 21:00 BRT open
 found no theme: "make sure the game challenges only switch when next theme
 is fully done"). The server was not late: `days/20261020/turns/pictures`

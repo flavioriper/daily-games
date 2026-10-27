@@ -41,7 +41,7 @@ export const STEPS: string[] = ["theme", "words",
   ...MOULDS.map((_, b) => `jelly${b}`), ...HOOP_BANDS.map((_, b) => `hoop${b}`), ...Beads.SIZES.map((s) => `pic${s}`),
   ...VISTA_TIMES.map((_, i) => `vista${i}`)];
 /** Runs a step may have before it is given up on. */
-const TRIES = 2;
+const TRIES = 3;
 /** A run starts no step past this: the longest step seen is some ten
  *  minutes (a picture band four on the emulator trial, its Pearl-sized
  *  ones longer on the Mac), and the function is given thirty. */
@@ -176,7 +176,6 @@ export async function publishVistas(db: Firestore, day: number): Promise<boolean
     times[time] = jpg;
   }
   const made: Vistas = {v: 1, theme: theme.id, name: theme.name, times: times as Vistas["times"],
-    // The seeded pair until the painter is asked for it (the next task).
     cast: seeded(day)};
   try {
     await doc.create({json: JSON.stringify(made)});
@@ -242,8 +241,9 @@ async function runStep(db: Firestore, when: Date, day: number, step: string, s: 
     const time = VISTA_TIMES[Number(step.slice("vista".length))];
     const first = time === "morning" ? null : (await vista(db, day, "morning").get()).get("jpg");
     const morning = typeof first === "string" ? {mime: "image/jpeg", bytes: Buffer.from(first, "base64")} : null;
-    // One painting a run: the step is tried again on a later run (TRIES).
-    const got = await makeVista(day, theme, time, morning, undefined, 1);
+    // The morning is painted twice a run (the reviewer counts its Peeplets and
+    // limbs), the others once: a step is tried again on a later run (TRIES).
+    const got = await makeVista(day, theme, time, morning, undefined, time === "morning" ? 2 : 1);
     if (got.vista !== null) await vista(db, day, time).set({jpg: got.vista.bytes.toString("base64")});
     return {save: {}, made: got.vista !== null};
   }

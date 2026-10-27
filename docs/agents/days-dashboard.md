@@ -462,6 +462,18 @@ when all four pass; `core/themed_vistas.gd` on the phone). Trial day 20261019
 in `tools/days/themed-vistas/`, shown in Themed days. Spec and open calls:
 `docs/superpowers/specs/2026-10-17-themed-vistas-design.md`.
 
+**Peeplets in the vistas, the painter's native size (2026-10-27).** The
+night's first dry run (`cli.js vistas` on 20261019, flash on Vertex, 21:9)
+got paintings **1536 x 672** from the painter, both morning tries; the
+reviewer's Opus call then failed (OpenRouter 402, key out of credits), so no
+verdict, no `peeplets` count and no look at the Peeplets exist yet (the
+drawings were not kept: `makeVista` now keeps each `-full` PNG before the
+review). Calibration: a Peeplet at an eighth of 672 px is ~84 px tall, at a
+fifth ~134 px, and the phone's JPEG (1024 x 448) halves that to ~56 px at an
+eighth. The reviewer sees the full 1536 x 672, so it has 1.5x the phone's
+detail, not the same picture; a crop-and-enlarge pass would still move
+the Peeplets from ~84 px to something a limb check can count.
+
 ## The day viewer shows what a port did (2026-10-21)
 
 `tools/day_viewer` (a local React page, `npm run dev` there, built

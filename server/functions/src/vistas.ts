@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import jpeg from "jpeg-js";
 import {ask, available, draw, Drawing, shapesModel} from "./generate";
+import {describe, seeded} from "./cast";
 import {decoded} from "./pictures";
 import {Theme} from "./theme";
 
@@ -44,30 +45,40 @@ const LIGHT: Record<Time, string> = {
   night: "a calm starry night: a deep indigo and violet sky full of stars with a crescent moon, cool blue moonlight on everything, lanterns and windows glowing warm",
 };
 
-const NEVER = "No people, no faces, no text, no letters or numbers anywhere (no signs with writing, no labels), no logo, no signature, no watermark, no border or frame.";
+const NEVER = "No humans, no human faces, no text, no letters or numbers anywhere (no signs with writing, no labels), no logo, no signature, " +
+  "no watermark, no border or frame. The Peeplets are the only creatures with faces.";
 
-/** The first painting: the place, at morning, in the reference's style. */
-const FIRST = (t: Theme) => `Paint a wide landscape background for a cosy puzzle game, of this place: ${t.scene} (The day's theme: ${t.name.en}.) ` +
-  `Shown at ${LIGHT.morning}. Paint it in exactly the style of the attached picture: a hand-painted storybook illustration, soft painterly ` +
+/** The first painting: the place, at morning, in the reference's style, with
+ *  the day's two Peeplets (the second attached picture) in the right two thirds. */
+const FIRST = (t: Theme, pair: [number, number]) => `Paint a wide landscape background for a cosy puzzle game, of this place: ${t.scene} (The day's theme: ${t.name.en}.) ` +
+  `Shown at ${LIGHT.morning}. Paint it in exactly the style of the first attached picture: a hand-painted storybook illustration, soft painterly ` +
   `brushwork, rich warm saturated colours, rounded friendly shapes, foliage framing the edges, depth to distant hills or sky. Copy only the ` +
   `style: not the attached picture's place, buildings or things. A wide view of the whole place with its things in it, never a close-up of ` +
-  `one thing; the left third calm and simple, since words are laid over it. ${NEVER}`;
+  `one thing; the left third calm and simple, since words are laid over it. ` +
+  `Two Peeplets, the small round creatures of the second attached picture, exactly as drawn there: a round body, two short arms, two stubby legs, ` +
+  `two eyes, no fingers, no neck. One is ${describe(pair[0])}, the other ${describe(pair[1])}. They are ` +
+  `${t.cast ?? "doing something small together that fits the place"}, in the right two thirds of the painting, each between an eighth and a fifth ` +
+  `of the painting's height, painted in the same brushwork as the place. ${NEVER}`;
 
 /** The others: the morning painted again at `time`. */
 const AGAIN = (time: Time) => `The attached picture is a painting of a place at morning. Paint exactly the same place again, from exactly ` +
-  `the same viewpoint and framing, with the same buildings, trees, paths and things in the same spots, in the same painting style, but at ` +
-  `${LIGHT[time]}. Change only the light, the sky and the colours the time of day gives. ${NEVER}`;
+  `the same viewpoint and framing, with the same buildings, trees, paths and things in the same spots, with the same two Peeplets in the same ` +
+  `spots and poses, in the same painting style, but at ${LIGHT[time]}. Change only the light, the sky and the colours the time of day gives. ${NEVER}`;
 
-const REVIEWER = `You check painted backgrounds for a cosy daily puzzle game played by all ages. You are shown one or two paintings and ` +
-  `answer in JSON. A painting is turned down for any of: text, letters, numbers, a logo or a signature anywhere in it; a person or a face; ` +
-  `anything frightening, violent or unsuitable for children; not a wide painted landscape (a close-up of one thing, a photo, a pattern); ` +
-  `the light not the time of day asked; or, when there is a first painting to compare, a different place or a different framing from it ` +
-  `(the light and sky changing is expected). Say what is wrong in "wrong", or leave it empty when nothing is.`;
+const REVIEWER = `You check painted backgrounds for a cosy daily puzzle game played by all ages. You are shown a reference sheet of the game's ` +
+  `creature, the Peeplet, first, then one or two paintings, and answer in JSON. A painting is turned down for any of: text, letters, numbers, a ` +
+  `logo or a signature anywhere in it; any human or human-shaped figure; a Peeplet (the creature on the reference sheet) with more or fewer than ` +
+  `two arms or two legs, a limb fused, melted, doubled, bent the wrong way or longer than the body, hands with fingers, a neck, a second head or ` +
+  `face, more than two eyes, or a body that is not one round blob; a Peeplet in the left third of the painting; a Peeplet larger than a fifth of ` +
+  `the painting's height or smaller than a twentieth; no Peeplet at all, or more than three; anything frightening, violent or unsuitable for ` +
+  `children; not a wide painted landscape (a close-up of one thing, a photo, a pattern); the light not the time of day asked; or, when there is a ` +
+  `first painting to compare, a different place or a different framing from it (the light and sky changing is expected). Say what is wrong in ` +
+  `"wrong", or leave it empty when nothing is. Answer "peeplets" with how many Peeplets you count in the painting being judged.`;
 
 const REVIEW_SCHEMA = {
   type: "object",
-  properties: {wrong: {type: "string"}},
-  required: ["wrong"],
+  properties: {wrong: {type: "string"}, peeplets: {type: "integer"}},
+  required: ["wrong", "peeplets"],
   additionalProperties: false,
 };
 
@@ -78,6 +89,16 @@ function styleRef(): Drawing {
     style = {mime: "image/png", bytes: fs.readFileSync(path.join(__dirname, "vista_style.png"))};
   }
   return style;
+}
+
+let sheet: Drawing | null = null;
+/** The Peeplet sheet (assets/peeplet_sheet.png, copied beside the build): the
+ *  creature as the game draws it, shown to the painter and the reviewer. */
+function sheetRef(): Drawing {
+  if (sheet === null) {
+    sheet = {mime: "image/png", bytes: fs.readFileSync(path.join(__dirname, "peeplet_sheet.png"))};
+  }
+  return sheet;
 }
 
 /** `d` made a phone's JPEG: WIDTH wide (each pixel the mean of those it
@@ -114,18 +135,43 @@ function dataUrl(d: Drawing): string {
 }
 
 /**
+ * The review alone: `drawn`, the painter's full-size painting, seen with the
+ * Peeplet sheet first and, for an edit, the morning before it. Answers what
+ * is wrong ("" when nothing) and how many Peeplets the reviewer counts.
+ */
+export async function reviewPainting(theme: Theme, time: Time, drawn: Drawing, morning: Drawing | null):
+  Promise<{wrong: string; peeplets: number}> {
+  const review = await ask<{wrong: string; peeplets: number}>({
+    system: REVIEWER,
+    prompt: time === "morning" ?
+      `The first picture is the reference sheet of the Peeplet. The second is the painting to judge, of the theme "${theme.name.en}" (${theme.scene}), meant to be at ${time}.` :
+      `The first picture is the reference sheet of the Peeplet. The second is a painting at morning; the third is meant to be the same place at ${time}. Judge the third.`,
+    images: time === "morning" || morning === null ?
+      [dataUrl(sheetRef()), dataUrl(drawn)] : [dataUrl(sheetRef()), dataUrl(morning), dataUrl(drawn)],
+    schema: REVIEW_SCHEMA,
+    role: "review",
+  });
+  return {wrong: String(review.wrong ?? "").trim(), peeplets: Number(review.peeplets ?? 0)};
+}
+
+/**
  * The vista of `time`, shrunk for a phone, or null when no painting passed.
  * `morning` (already shrunk) is the one the others are painted from and
- * seen beside; `keep` is told of every painting made. Never throws.
+ * seen beside; `keep` is told of every painting made (the small one, and
+ * under the bench the full one as `<name>-full`). The reviewer sees the
+ * painter's full-size painting; only a passing one is shrunk. `size` is the
+ * painter's native WxH. Never throws.
  */
 export async function makeVista(day: number, theme: Theme, time: Time, morning: Drawing | null,
-  keep?: (name: string, d: Drawing) => string, tries = 2): Promise<{vista: Drawing | null; tries: {name: string; wrong: string}[]}> {
-  const log: {name: string; wrong: string}[] = [];
+  keep?: (name: string, d: Drawing) => string, tries = 2, pair: [number, number] = seeded(day)):
+  Promise<{vista: Drawing | null; tries: {name: string; wrong: string; peeplets: number; size: string}[]}> {
+  const log: {name: string; wrong: string; peeplets: number; size: string}[] = [];
   if (!available() || (time !== "morning" && morning === null)) return {vista: null, tries: log};
-  const prompt = time === "morning" ? FIRST(theme) : AGAIN(time);
-  const shown = time === "morning" ? [styleRef()] : [morning as Drawing];
+  const prompt = time === "morning" ? FIRST(theme, pair) : AGAIN(time);
+  const shown = time === "morning" ? [styleRef(), sheetRef()] : [morning as Drawing];
   for (let attempt = 0; attempt < tries; attempt++) {
     const name = `vista-${time}-${attempt}`;
+    let size = "";
     try {
       let drawn: Drawing;
       try {
@@ -135,23 +181,20 @@ export async function makeVista(day: number, theme: Theme, time: Time, morning: 
         console.error(`vistas: day ${day}, ${time}: ${vistaModel()} would not draw, asking ${shapesModel()}`, e);
         drawn = await draw(prompt, shapesModel(), {images: shown, aspect: ASPECT});
       }
-      const small = shrunk(drawn);
-      keep?.(name, small);
-      const review = await ask<{wrong: string}>({
-        system: REVIEWER,
-        prompt: time === "morning" ?
-          `One painting, of the theme "${theme.name.en}" (${theme.scene}), meant to be at ${time}.` :
-          `The first painting is at morning; the second is meant to be the same place at ${time}. Judge the second.`,
-        images: time === "morning" ? [dataUrl(small)] : [dataUrl(morning as Drawing), dataUrl(small)],
-        schema: REVIEW_SCHEMA,
-        role: "review",
-      });
-      const wrong = String(review.wrong ?? "").trim();
-      log.push({name, wrong});
-      if (wrong === "") return {vista: small, tries: log};
+      const px = decoded(drawn);
+      size = `${px.width}x${px.height}`;
+      // The bench keeps the paid drawing before the review, which can fail.
+      keep?.(name + "-full", drawn);
+      const {wrong, peeplets} = await reviewPainting(theme, time, drawn, morning);
+      log.push({name, wrong, peeplets, size});
+      // Only a passing painting is shrunk for a phone; the bench (`keep`) is
+      // shown every try, small and full.
+      const small = wrong === "" || keep !== undefined ? shrunk(drawn) : null;
+      if (small !== null) keep?.(name, small);
+      if (wrong === "" && small !== null) return {vista: small, tries: log};
       console.error(`vistas: day ${day}, ${time}, try ${attempt}: turned down: ${wrong}`);
     } catch (e) {
-      log.push({name, wrong: `failed: ${String(e).slice(0, 200)}`});
+      log.push({name, wrong: `failed: ${String(e).slice(0, 200)}`, peeplets: 0, size});
       console.error(`vistas: day ${day}, ${time}, try ${attempt} failed`, e);
     }
   }

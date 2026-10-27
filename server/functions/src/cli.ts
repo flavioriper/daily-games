@@ -239,16 +239,19 @@ async function main(): Promise<void> {
       const day = JSON.parse(fs.readFileSync(file, "utf8"));
       if (day.theme === null) continue;
       const keep = (name: string, d: {bytes: Buffer}) => {
-        const kept = `${day.day}_${name}.jpg`;
+        // The painter's full-size painting (the bench's) is a PNG, the phone's JPEG a JPEG.
+        const kept = `${day.day}_${name}.${name.endsWith("-full") ? "png" : "jpg"}`;
         fs.writeFileSync(path.join(path.dirname(file), kept), d.bytes);
         return kept;
       };
       const times: Record<string, string> = {};
-      const tries: {time: string; name: string; wrong: string}[] = [];
+      const tries: {time: string; name: string; wrong: string; peeplets: number; size: string}[] = [];
+      const pair = seeded(day.day);
       let morning = null;
       for (const time of VISTA_TIMES) {
-        const got = await makeVista(day.day, day.theme, time, morning, keep);
-        tries.push(...got.tries.map((t) => ({time, name: `${day.day}_${t.name}.jpg`, wrong: t.wrong})));
+        const got = await makeVista(day.day, day.theme, time, morning, keep, 2, pair);
+        tries.push(...got.tries.map((t) => ({time, name: `${day.day}_${t.name}.jpg`, wrong: t.wrong, peeplets: t.peeplets, size: t.size})));
+        for (const t of got.tries) print(`  ${time} ${t.name}: ${t.size}, ${t.peeplets} Peeplets, ${t.wrong === "" ? "passed" : `turned down: ${t.wrong}`}`);
         if (got.vista === null) break;
         if (time === "morning") morning = got.vista;
         times[time] = got.vista.bytes.toString("base64");
