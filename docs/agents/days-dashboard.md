@@ -462,17 +462,29 @@ when all four pass; `core/themed_vistas.gd` on the phone). Trial day 20261019
 in `tools/days/themed-vistas/`, shown in Themed days. Spec and open calls:
 `docs/superpowers/specs/2026-10-17-themed-vistas-design.md`.
 
-**Peeplets in the vistas, the painter's native size (2026-10-27).** The
-night's first dry run (`cli.js vistas` on 20261019, flash on Vertex, 21:9)
-got paintings **1536 x 672** from the painter, both morning tries; the
-reviewer's Opus call then failed (OpenRouter 402, key out of credits), so no
-verdict, no `peeplets` count and no look at the Peeplets exist yet (the
-drawings were not kept: `makeVista` now keeps each `-full` PNG before the
-review). Calibration: a Peeplet at an eighth of 672 px is ~84 px tall, at a
-fifth ~134 px, and the phone's JPEG (1024 x 448) halves that to ~56 px at an
-eighth. The reviewer sees the full 1536 x 672, so it has 1.5x the phone's
-detail, not the same picture; a crop-and-enlarge pass would still move
-the Peeplets from ~84 px to something a limb check can count.
+**Peeplets in the vistas, the first dry run (2026-10-27).** `cli.js vistas`
+on 20261019 (flash on Vertex, review on Anthropic direct, 21:9; pair 42 and
+29, "a mint coat, a red spotted mushroom cap" and "a peach coat, a white
+chef's hat"). Both morning tries were turned down, and the review itself
+works (schema filled, `peeplets` 2 both times, the sheet and the painting
+reach the model; the reviewer measures heights in px of the full painting).
+- **Native size 1536 x 672**, not ~1024: a Peeplet at an eighth of the height
+  is ~84 px, at a fifth ~134 px (56 px at an eighth on the phone's 448 px
+  JPEG). The reviewer sees the full painting, 1.5x the phone's detail.
+- **Try 0**: Peeplets ~170 and ~205 px tall (25-30%, over a fifth), right
+  third, under a tree, a tea tray between them. Turned down for size.
+- **Try 1**: ~125 and ~142 px (19-21%), right of centre. The reviewer said
+  borderline on size and added that **both wear robes that hide the legs**.
+- **The painter dressed them.** The sheet's body is coral (coat 0); the
+  painter kept every body red and put the *named coat colour* on a jacket
+  (mint, peach), with a mouth open in a smile, arms and legs mostly hidden.
+  So "a mint coat" reads as clothing, not fur colour: the prompt's word for
+  the pair (`describe`, "in a <coat> coat") needs the colour as the
+  creature's own body ("a mint-green Peeplet", no jacket), and the sheet
+  shows only red bodies as a reference. Not changed here (one day's
+  evidence; the bench's call).
+- Hats came through (mushroom cap, chef's hat); two Peeplets, right two
+  thirds, same brushwork as the place.
 
 ## The day viewer shows what a port did (2026-10-21)
 

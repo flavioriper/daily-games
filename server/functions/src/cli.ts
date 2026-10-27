@@ -264,7 +264,7 @@ async function main(): Promise<void> {
       }
       fs.writeFileSync(file, JSON.stringify(day));
       print(`${file}: ${day.vistas ? "four vistas" : `stopped at ${VISTA_TIMES[Object.keys(times).length]}`} in ${tries.length} paintings, ` +
-        tries.filter((t) => t.wrong !== "").map((t) => `${t.time}: ${t.wrong}`).join("; "));
+        tries.filter((t) => t.wrong !== "").map((t) => `${t.time}: ${t.wrong}`).join("; ") + `; US$${cost().toFixed(2)} so far`);
     }
   } else if (what === "jellies" && args.length >= 1) {
     // Gumdrop's jellies for days already made, their pictures untouched.
