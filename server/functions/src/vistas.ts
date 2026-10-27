@@ -56,9 +56,10 @@ const FIRST = (t: Theme, pair: [number, number]) => `Paint a wide landscape back
   `style: not the attached picture's place, buildings or things. A wide view of the whole place with its things in it, never a close-up of ` +
   `one thing; the left third calm and simple, since words are laid over it. ` +
   `Two Peeplets, the small round creatures of the second attached picture, exactly as drawn there: a round body, two short arms, two stubby legs, ` +
-  `two eyes, no fingers, no neck. One is ${describe(pair[0])}, the other ${describe(pair[1])}. They are ` +
-  `${t.cast ?? "doing something small together that fits the place"}, in the right two thirds of the painting, each between an eighth and a fifth ` +
-  `of the painting's height, painted in the same brushwork as the place. ${NEVER}`;
+  `two eyes, no fingers, no neck. Each Peeplet's body is one plain colour all over, with no clothes, no robe, no jacket; only the hat is worn. ` +
+  `One is ${describe(pair[0])}, the other ${describe(pair[1])}. They are ` +
+  `${t.cast ?? "doing something small together that fits the place"}, in the right two thirds of the painting, each about one seventh of the ` +
+  `painting's height, small figures in a wide place, never the main subject, painted in the same brushwork as the place. ${NEVER}`;
 
 /** The others: the morning painted again at `time`. */
 const AGAIN = (time: Time) => `The attached picture is a painting of a place at morning. Paint exactly the same place again, from exactly ` +

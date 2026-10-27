@@ -486,6 +486,32 @@ reach the model; the reviewer measures heights in px of the full painting).
 - Hats came through (mushroom cap, chef's hat); two Peeplets, right two
   thirds, same brushwork as the place.
 
+**The second dry run, after the wording fix (2026-10-27).** `describe` now
+says "a mint Peeplet (its whole round body is mint) wearing a red spotted
+mushroom cap", `FIRST` says once that each body is one plain colour with no
+clothes, robe or jacket and only the hat is worn, and asks for "each about
+one seventh of the painting's height, small figures in a wide place, never
+the main subject". Same day, pair and commands: morning try 0 turned down
+for size (a hat-and-body of ~24% and ~31%; the reviewer counted body alone
+~20%), **try 1 passed, then afternoon, dusk and night each passed at the
+first try**: four vistas in five paintings, 1536 x 672 each, `peeplets` 2
+every time, the same two Peeplets in the same spots and poses at all four
+times (the edits kept them).
+- **Body colour**: the clothes are gone. Peach reads peach; "mint" reads as
+  a sage grey-green (the sheet's coat 6 is sage too), so the two are told
+  apart but mint is not minty. Hats right (mushroom cap, chef's hat).
+- **Size**: passing try 1 has the mushroom one ~125 px (19%) and the chef
+  ~165 px with the hat (25%, its body ~100 px, 15%). The painter still lands
+  a little over one seventh, bodies near it, hats over a fifth.
+- **Limbs and faces**: two eyes, a small mouth, no fingers, no neck; they
+  sit, so legs are mostly hidden and the mint body is more a frog-like
+  blob than the sheet's round one. Try 0 (standing) has stubby arms and legs.
+- Their place moved: the second run set them at x ~900-1130 of 1536
+  (right of the middle), the first at ~1000-1300.
+- The bench's cost line (`US$ so far`) read 0.15 for the five paintings
+  and five reviews; it counts what OpenRouter reports, so the direct
+  Anthropic reviews may be missing from it.
+
 ## The day viewer shows what a port did (2026-10-21)
 
 `tools/day_viewer` (a local React page, `npm run dev` there, built

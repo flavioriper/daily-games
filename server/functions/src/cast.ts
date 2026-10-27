@@ -68,5 +68,6 @@ export function seeded(day: number): [number, number] {
 /** What a painter is told of persona i. */
 export function describe(i: number): string {
   const p = ALL[i];
-  return `a Peeplet in a ${COAT_WORDS[p.coat]} coat wearing ${HAT_WORDS[p.hat]}`;
+  const c = COAT_WORDS[p.coat];
+  return `a ${c} Peeplet (its whole round body is ${c}) wearing ${HAT_WORDS[p.hat]}`;
 }
