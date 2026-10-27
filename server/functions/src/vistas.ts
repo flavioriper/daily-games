@@ -81,8 +81,21 @@ const REVIEWER = `You check painted backgrounds for a cosy daily puzzle game pla
 
 /** The reviewer's rubric (its system prompt and the three the painter is
  *  told), as a short hash: the bench's report names the one it judged. */
+/** The reviewer's two per-call prompts (the morning on its own; an edit beside its morning). */
+const REVIEW_FIRST = (theme: Theme, time: Time) =>
+  `The first picture is the reference sheet of the Peeplet. The second is the painting to judge, of the theme "${theme.name.en}" (${theme.scene}), meant to be at ${time}.`;
+const REVIEW_EDIT = (time: Time) =>
+  `The first picture is the reference sheet of the Peeplet. The second is a painting at morning; the third is meant to be the same place at ${time}. Judge the third.`;
+
+/**
+ * A fingerprint of the reviewer's rubric (its system prompt, its two
+ * per-call prompts and its answer schema), so the bench's report.json knows
+ * which rubric its verdicts came from. The painter's prompts (FIRST, AGAIN,
+ * NEVER) are not in it: they change what is painted, not how it is judged.
+ */
 export function rubricHash(): string {
-  return createHash("sha1").update([REVIEWER, FIRST({name: {en: "", pt: "", es: ""}, scene: ""} as unknown as Theme, [0, 0]), AGAIN("afternoon"), NEVER].join("\n---\n")).digest("hex");
+  const blank = {name: {en: "", pt: "", es: ""}, scene: ""} as unknown as Theme;
+  return createHash("sha1").update([REVIEWER, REVIEW_FIRST(blank, "morning"), REVIEW_EDIT("afternoon"), JSON.stringify(REVIEW_SCHEMA)].join("\n---\n")).digest("hex");
 }
 
 const REVIEW_SCHEMA = {
@@ -154,9 +167,7 @@ export async function reviewPainting(theme: Theme, time: Time, drawn: Drawing, m
   if (time !== "morning" && morning === null) throw new Error(`the ${time} edit needs the morning painting beside it`);
   const review = await ask<{wrong: string; peeplets: number}>({
     system: REVIEWER,
-    prompt: time === "morning" ?
-      `The first picture is the reference sheet of the Peeplet. The second is the painting to judge, of the theme "${theme.name.en}" (${theme.scene}), meant to be at ${time}.` :
-      `The first picture is the reference sheet of the Peeplet. The second is a painting at morning; the third is meant to be the same place at ${time}. Judge the third.`,
+    prompt: time === "morning" ? REVIEW_FIRST(theme, time) : REVIEW_EDIT(time),
     images: time === "morning" || morning === null ?
       [dataUrl(sheetRef()), dataUrl(drawn)] : [dataUrl(sheetRef()), dataUrl(morning), dataUrl(drawn)],
     schema: REVIEW_SCHEMA,

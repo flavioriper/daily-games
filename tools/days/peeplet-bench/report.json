@@ -1,6 +1,6 @@
 {
  "pass": 1,
- "rubric": "d060f3475ec4572c5240507b78cde6d28f57ab91",
+ "rubric": "570e35234588e799118f20692740bd5041291795",
  "deformedPassed": [],
  "goodRejected": [],
  "countErrors": 0,
@@ -29,11 +29,11 @@
    "peeplets": 2
   },
   "20261015_vista-morning-0.jpg": {
-   "wrong": "The Peeplets are too large. The purple Peeplet's body (hat excluded) runs from about y≈385 to y≈545, roughly 160 px of the 672 px height (about 24%), which is over the one-fifth limit. The yellow Peeplet's body (earmuffs excluded) is about 140–150 px, at or slightly over the limit.",
+   "wrong": "The Peeplets are too large. The purple Peeplet's body (hat excluded) runs from about y\u2248385 to y\u2248545, roughly 160 px of the 672 px height (about 24%), which is over the one-fifth limit. The yellow Peeplet's body (earmuffs excluded) is about 140\u2013150 px, at or slightly over the limit.",
    "peeplets": 2
   },
   "20261015_vista-morning-1.jpg": {
-   "wrong": "Both Peeplets are too large. The yellow Peeplet with earmuffs and the purple Peeplet with a top hat each have a body about 145–155 px tall, roughly 22–23% of the 672 px painting height. That is more than the allowed one fifth (about 134 px).",
+   "wrong": "Both Peeplets are too large. The yellow Peeplet with earmuffs and the purple Peeplet with a top hat each have a body about 145\u2013155 px tall, roughly 22\u201323% of the 672 px painting height. That is more than the allowed one fifth (about 134 px).",
    "peeplets": 2
   },
   "20261017_vista-dusk-0.jpg": {
@@ -119,15 +119,15 @@
    "peeplets": 2
   },
   "20261015_vista-morning-0.jpg": {
-   "wrong": "The Peeplets are too large. The purple Peeplet's body (hat excluded) runs from about y≈385 to y≈545, roughly 160 px of the 672 px height (about 24%), which is over the one-fifth limit. The yellow Peeplet's body (earmuffs excluded) is about 140–150 px, at or slightly over the limit.",
+   "wrong": "The Peeplets are too large. The purple Peeplet's body (hat excluded) runs from about y\u2248385 to y\u2248545, roughly 160 px of the 672 px height (about 24%), which is over the one-fifth limit. The yellow Peeplet's body (earmuffs excluded) is about 140\u2013150 px, at or slightly over the limit.",
    "peeplets": 2
   },
   "20261015_vista-morning-1.jpg": {
-   "wrong": "Both Peeplets are too large. The yellow Peeplet with earmuffs and the purple Peeplet with a top hat each have a body about 145–155 px tall, roughly 22–23% of the 672 px painting height. That is more than the allowed one fifth (about 134 px).",
+   "wrong": "Both Peeplets are too large. The yellow Peeplet with earmuffs and the purple Peeplet with a top hat each have a body about 145\u2013155 px tall, roughly 22\u201323% of the 672 px painting height. That is more than the allowed one fifth (about 134 px).",
    "peeplets": 2
   },
   "20261016_vista-morning-0.jpg": {
-   "wrong": "The cookie jar has the word 'COOKIE' painted on it, and the painting must contain no text. Both Peeplets are too large: their bodies are about 165–190 px tall, over a fifth of the 672 px painting height (about 134 px). The scene is also an indoor close-up of a counter with a view through a window, not a wide painted landscape.",
+   "wrong": "The cookie jar has the word 'COOKIE' painted on it, and the painting must contain no text. Both Peeplets are too large: their bodies are about 165\u2013190 px tall, over a fifth of the 672 px painting height (about 134 px). The scene is also an indoor close-up of a counter with a view through a window, not a wide painted landscape.",
    "peeplets": 2
   },
   "20261016_vista-morning-1.jpg": {
