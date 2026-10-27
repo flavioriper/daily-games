@@ -15,8 +15,8 @@ const Face = preload("res://ui/faces/face.gd")
 const Mosaic = preload("res://ui/faces/mosaic_tile.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 
-## The icon's tile colours. SKY and CORAL are the opening's BLUE and CORAL
-## (the opening reads them from here).
+## The icon's tile colours (SKY and CORAL were the opening's BLUE and CORAL
+## before the opening laid these tiles).
 const PAPER := Pal.PAPER
 const BUTTER := Pal.SUN_TILE
 const LEAF := Pal.LEAF

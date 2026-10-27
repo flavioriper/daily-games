@@ -22,6 +22,11 @@ places or not at all.
 
 ### What plays (`ui/opening.gd`)
 
+**Since 2026-10-27 the grid, the sprout, the lettered word and the sun are
+gone: the opening lays the twelve DAILY / PUZZLES tiles, see "The tiles"
+below.** The two sections after this one keep the history of the nine-tile
+opening (its order, puff, hop, 42 draw calls and the numbers measured under it).
+
 The app icon coming together: the grid is built a tile at a time (since
 2026-10-15, below), the sprout grows out of the middle one and its two leaves fall open, `Daily`
 is lettered under it a letter at a time with the sun-dot last, and warm motes
@@ -43,6 +48,64 @@ came in, the word lifts off and the ground thins over 0.5 s.
   least, and leaves in one plain fade of `Motion.REDUCED_TIME`.
 - It had one sound from 2026-10-09: `ui`'s `opening`, tiles set down and
   two kalimba notes in one take from the first frame, synced to nothing.
+
+### The tiles (2026-10-27)
+
+The rebrand (Daily Puzzles, the Peeplet as its character) puts the app icon's
+two words on the first screen's header (`ui/menu/word_tiles.gd`, `WordTiles`),
+and the opening lays those same twelve tiles in place of the 3x3 grid, the
+sprout, `Daily` and the sun. `Opening` has one `WordTiles` child (tile
+`WORD_TILE` 108 at 1080, scaled by `u`, centred on the screen) and sets its
+`shown`: a tile appears in reading order every `TILE_STEP` 0.085 s from
+`TILE_AT`, when it is down (`touch_at`, 0.37 of `TILE_TIME`), with its puff
+of light behind it, `landed(rank)` (ranks now 0..11) and a 1.2% settle of the
+whole word. `WordTiles.shown` is whole tiles, so a tile *appears*; the drop,
+the squash and the shadow of the nine-tile grid are gone with it.
+
+- **The ripple** every 2.6 s (after `SETTLED`) is the puff's light run from
+  tile to tile, 0.06 s apart, fainter; the tiles themselves do not hop.
+- **Leaving**: `shown` falls one tile every `LEAVE_STEP` from the last, the
+  run they came in reversed (the first screen takes the cream as before).
+- **Reduce motion**: all twelve and the Peeplet from the first frame (the
+  Peeplet on the second step), held `HELD`, one plain fade out.
+- `SETTLED` is `TILE_AT + 12 * TILE_STEP + TILE_TIME + 0.4` = 1.84 s (was 2.05).
+- **Sounds**: `world/boot.gd` is unchanged. `landed` now fires twelve times,
+  so the pop's pitch climbs `11 * POP_STEP` = 5.5 semitones (was 4); the
+  cozy rules' five at most is passed by half a tone and **no one has
+  listened**: lower `POP_STEP` to 0.45 if it reads high. `bloomed` (the
+  kalimba notes, `COZY_TUNE`) is now said as the Peeplet pops up
+  (`peeplet_at()`, as the twelfth tile is down) since the leaves are gone.
+- **The motes** stay, all behind the tiles now (the tiles are a child
+  control and draw after the opening's own `_draw`).
+- **The Peeplet** (`Cast.persona(0)`, `idle_fps 0`, `frame_height 0.88`,
+  `aim_y 0.46`, a held portrait) is built when its cue passes, by a lazy
+  `load` of `ui/peeplet_view.gd` and `core/cast.gd` (no new preload), and
+  stands behind the tiles' top edge, feet 60 px under them: it pops up from
+  its feet (`pop_in_scale`, rising 60 px with `Motion.drop_in_lift`) and
+  shrinks back down as they leave. Measured on this Mac, opengl3_angle,
+  second of two: `load` of the script 57 ms, `new` + dress 9 ms, the first
+  `_rebuild` ~55 ms, so 121 ms to a built walker (under the 150 ms line) and
+  67 ms more to its first draw (a 3D SubViewport's first render). It lands
+  as one long frame (about 190 ms) just after the twelfth tile; the clock
+  waits (`MAX_STEP`) so nothing jumps. It made the cut. **The phone's number
+  is owed.**
+- **Draw calls**: 27 settled (`tests/_shot_opening.gd`, second reading the
+  same), the Peeplet one of them; the opening with the first screen under it
+  reads 133 at most (`boot time`, was 148 with the nine-tile opening).
+- **Boot cost, not paid yet.** `WordTiles` preloads the Hidden Word board
+  (`puzzles/hidden_word2d.gd`, for four constants), and a cold `load` of that
+  is 211 ms here. The opening references `WordTiles`, so `opening.gd` now
+  takes ~190 ms longer to load before its first frame (`opening _init` at
+  ~870 ms of engine time, was ~690) on this Mac, and every phone is slower.
+  The load of the game under the opening is unchanged (3.07 s and 3.20 s,
+  was 3.20 s and 3.22 s), the window is cream the whole while and the first
+  tile comes that much later. The cure is in `word_tiles.gd` (the four board
+  constants copied, or moved to a light script), not here; measure again
+  after it.
+- **Seen**: the shot harness (`tests/_shot_opening.gd`, stills and leaving)
+  and one run of the game itself to the first screen (nothing in the log);
+  the lay-down on screen, the pops with sound and the phone are unseen/unheard
+  by the user.
 
 ### The grid built one by one (2026-10-15)
 
