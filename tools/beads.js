@@ -46,14 +46,17 @@ var Beads = (function () {
     // at 64 × 61 that read clean.
     48: { side: [44, 64], colours: [10, 16], fill: [.25, .8], small: true, lead: LEAD },
     // Jewel Box's Insane since 2026-10-27 (the user: "a way bigger image",
-    // sewn a quarter at a time; 96 a side, so a quarter is about the 48's
-    // whole). The 48 stays for the build already on phones. Fill keeps the
-    // same range: cutOut pads a thing to 96 only when it is drawn under
-    // 94, and a sprite of the theme's (none thin, each filling most of
-    // its square) on one bare square each way fills about what a 48 does.
-    // `finest` is the most squares a side its drawing is read at (snap):
-    // the white board round a sprite of 80 to 112 is more than snap's 96.
-    96: { side: [80, 112], colours: [12, 16], fill: [.25, .8], small: true, lead: LEAD, finest: 160 } };
+    // sewn a quarter at a time, then "at least 5x more pieces" than the
+    // 48's 500 to 1,800 beads). Fill is at least half its square so the
+    // count holds: 112 a side half filled is 6,300 beads, 144 at 90% some
+    // 18,700; a third of it filled at 112 would be barely the 48's
+    // fivefold. A chunky sprite fills about three quarters of its box, so
+    // drawn 112 and padded to 128 (cutOut's `least`) it still fills over
+    // half; the prompt asks this band for one that fills its square. The
+    // 48 stays for the build already on phones. `finest` is the most
+    // squares a side its drawing is read at (snap): the white board round
+    // a sprite of 112 to 144 is far more than snap's 96.
+    128: { side: [112, 144], colours: [12, 16], fill: [.5, .9], small: true, lead: LEAD, finest: 200 } };
   var CUT_FILL = [.3, .7], MOST = .45, WORK = 240;
   var DEFAULTS = { size: 10, frame: "subject", bg: "auto", tol: .1, margin: 1, colours: 4, zoom: 1, px: 0, py: 0, vivid: 1 };
 
@@ -291,7 +294,7 @@ var Beads = (function () {
   // colour each: `fit`, the share of their pixels near their own colour,
   // and `mixed`, the squares whose middle is not mostly one colour.
   // `finest` is the most squares a side the image is read at: 96 unless
-  // told (a band's RULES `finest`), which a 96 sprite on its white board
+  // told (a band's RULES `finest`), which a 128 sprite on its white board
   // is always over.
   function snap(rgba, w, h, finest) {
     var n = w * h, lab = new Float32Array(n * 3), i;
@@ -414,7 +417,7 @@ var Beads = (function () {
     for (y = 0; y < N; y++) rows.push(at.slice(y * N, y * N + N).map(function (a) { return a < 0 ? "." : LETTERS[a]; }).join(""));
     return { rows: rows, w: bw, h: bh, side: N };
   }
-  return { PALETTE: PALETTE, cutOut: cutOut, SIZES: [10, 12, 24, 32, 48, 96], RULES: RULES, rulesOf: rulesOf, optionsFor: optionsFor, fillOf: fillOf,
+  return { PALETTE: PALETTE, cutOut: cutOut, SIZES: [10, 12, 24, 32, 48, 128], RULES: RULES, rulesOf: rulesOf, optionsFor: optionsFor, fillOf: fillOf,
     check: check, convert: convert, snap: snap, fromSnap: fromSnap };
 })();
 if (typeof module !== "undefined") module.exports = Beads;

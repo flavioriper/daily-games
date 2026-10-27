@@ -6,7 +6,7 @@ extends RefCounted
 ## process publishes one picture a band -- a thing from the theme, drawn as
 ## shaded pixel art on a bare board (server/functions/src/pictures.ts) --
 ## keyed by the band's side (10, 12, 24, 32, 48 for Button Box's Insane on
-## builds before 2026-10-27, and 96 for Jewel Box's Insane since, sewn a
+## builds before 2026-10-27, and 128 for Jewel Box's Insane since, sewn a
 ## quarter at a time), and Pixel Garden, Button Box and Toy Cannons deal it
 ## in place of their bank's for that band (Button Box's Hard asks for the
 ## 32).
@@ -34,14 +34,15 @@ const BANK := "res://content/pixel_garden.json"
 ## tools/beads.js RULES, as the server ran them, by the band's side: the
 ## side the rows may be, colours, the fill of the picture's own square, the
 ## largest colour's share of its beads (Button Box's `lead`), and an edge
-## left bare. The two tables change together.
+## left bare. The fill is FILL unless a band names its own (the 128's,
+## at least half its square). The two tables change together.
 const RULES := {
 	10: {"side": [10, 18], "colours": [3, 7]},
 	12: {"side": [12, 22], "colours": [4, 7]},
 	24: {"side": [24, 34], "colours": [6, 12]},
 	32: {"side": [32, 40], "colours": [8, 14]},
 	48: {"side": [44, 64], "colours": [10, 16]},
-	96: {"side": [80, 112], "colours": [12, 16]},
+	128: {"side": [112, 144], "colours": [12, 16], "fill": [0.5, 0.9]},
 }
 const FILL := [0.25, 0.80]
 const LEAD := 0.6
@@ -213,7 +214,8 @@ static func valid(rows, size: int) -> bool:
 	if count.size() < int(rule.colours[0]) or count.size() > int(rule.colours[1]):
 		return false
 	var share := float(filled) / float(side * side)
-	if share < float(FILL[0]) or share > float(FILL[1]):
+	var fill: Array = rule.get("fill", FILL)
+	if share < float(fill[0]) or share > float(fill[1]):
 		return false
 	for ch in count:
 		if float(count[ch]) >= LEAD * filled:

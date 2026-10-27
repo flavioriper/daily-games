@@ -682,30 +682,38 @@ beside `days/themed-vistas/`). The page code is in `tools/dashboard.src.html`;
 rules and what the bench gate does not yet prove are in
 `docs/art/peeplet-brand.md`.
 
-## A 96 picture for Jewel Box's Insane (2026-10-27)
+## A 128 picture for Jewel Box's Insane (2026-10-27)
 
 The user, of Jewel Box's Insane: "a way bigger image", sewn a quarter at a
-time; 96 a side, so a quarter is about the 48's whole. `Beads.SIZES` gains
-96 (`tools/beads.js` RULES: 80 to 112 a side, 12 to 16 colours, the same
-fill, lead and bare edge; `core/themed_pictures.gd` holds the same row), so
-the night has a `pic96` step drawing the theme's sixth thing (a theme of
-five lends its fifth). The 48 stays: the build on phones asks for it.
-`FIRST_ASK` is 80, three drawings.
+time, and then "at least 5x more pieces" than the 48's 500 to 1,800 beads.
+`Beads.SIZES` gains 128 (`tools/beads.js` RULES: 112 to 144 a side, 12 to
+16 colours, fill 50% to 90%, the same lead and bare edge, so a picture is
+6,000 to 18,000 beads; `core/themed_pictures.gd` holds the same row, its
+fill the band's own), and the night has a `pic128` step drawing the
+theme's sixth thing (a theme of five lends its fifth). The 48 stays: the
+build on phones asks for it. `FIRST_ASK` is 110, three drawings. It is a
+pixel sprite, not the old scene prompt (a flat illustration averaged down,
+the look the user turned away on 2026-10-14): asked for a chunky shape that
+fills its square, a sprite of 112 or more fills over half of 128 even
+padded, and one drawn under 112 is asked again bigger. A 96 was built
+first, the same day, and replaced before it was used.
 
 **The reader had to change for it.** `Beads.snap` read no grid finer than
-a 96th of the image, and a 96 sprite on its white board is always more, so a
-band's RULES may name `finest` (the 96's is 160) and snap is handed it. A
-pitch tried a quarter pixel off also drifts off its lines over a hundred
-squares (a synthetic 100-square grid at 10.24 px scored under its double at
-10.15), so with `finest` the pitches are tried closer where the squares are
-many. Without it every band reads as before (the same synthetic 64-square
-grid read 15.92 px before and after). On synthetic crisp grids of 80 to 124
-squares at 1,024 px the 96 band read every square (`mixed 0`); a 140-square
-canvas read too, its thing then 113 wide, over the range.
+a 96th of the image, and a 128 sprite on its white board is always more,
+so a band's RULES may name `finest` (the 128's is 200) and snap is handed
+it. A pitch tried a quarter pixel off also drifts off its lines over a
+hundred squares (a synthetic 100-square grid at 10.24 px scored under its
+double at 10.15), so with `finest` the pitches are tried closer where the
+squares are many. Without it every band reads as before (a synthetic
+64-square grid read 15.92 px before and after). Synthetic crisp grids at
+1,024 px, the thing 0.85 of the canvas, read every square (`mixed 0`): 120
+squares (the thing 103, padded to 128, 47% filled: under the range, asked
+again), 140 (118, 128 a side, 65%), 160 (137, 139 a side, 72%), 180 (152,
+over 144, asked again smaller).
 
 **Not tried on a real drawing**: the dry run on flash needed another
-login's Vertex token on this Mac and was refused here. Owed: one 96 drawing
-on `gemini-3-pro-image` (a square is 7 to 10 px at 1,024, and real output is
-softer than the synthetic: if the night's 96s are turned down as "finer
-drawing", ask Vertex for `imageConfig.imageSize: "2K"` on that band alone),
-and `finest` raised to 192 if a sprite comes back on a canvas past 160.
+login's Vertex token on this Mac and was refused here. Owed: one 128
+drawing on `gemini-3-pro-image`. A square is 5.7 to 8.5 px at 1,024, and
+real output is softer than the synthetic: if the night's 128s are turned
+down as "finer drawing", ask Vertex for `imageConfig.imageSize: "2K"` on
+that band alone.
