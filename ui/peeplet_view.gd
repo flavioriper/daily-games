@@ -202,9 +202,11 @@ func _process(delta: float) -> void:
 	if walker == null or not _idle:
 		return
 	_since += delta
+	var busy := _busy()
+	# a held portrait's walker sleeps too; a trigger wakes it through _busy()
+	walker.set_process(busy or idle_fps > 0.0)
 	if not is_visible_in_tree() or not get_viewport_rect().intersects(get_global_rect()):
 		return
-	var busy := _busy()
 	var fps := busy_fps if busy else idle_fps
 	# an action's last pose is drawn too, or a held portrait keeps it
 	var due := _since >= (1.0 / fps if fps > 0.0 else INF) or (_was_busy and not busy)

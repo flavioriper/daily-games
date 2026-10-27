@@ -241,6 +241,7 @@ func _fresh() -> void:
 	_seat_cast()
 	_sel = _st.start
 	_sel_at = -INF
+	_breathe()
 	_say = ""
 	_leads = 0
 	_nudge = 0
@@ -445,6 +446,7 @@ func hint() -> bool:
 		_cue("hint")
 		_sel = i
 		_sel_at = _t
+		_breathe()
 		if not demo:
 			fx.sparkle(_card_centre(i), Pal.SUN)
 		_verdict(_st.did_eat(i), true)
@@ -455,6 +457,7 @@ func hint() -> bool:
 	_nudge_baker = int(lit.baker)
 	_nudge_at = _t
 	_sel = -1
+	_breathe()
 	_leads = 0
 	_say = ""
 	if not demo:
@@ -1044,6 +1047,7 @@ func restore_completed_board() -> void:
 	for i in _st.count():
 		_flip_at[i] = -10.0
 	_sel = -1
+	_breathe()
 	_phase = Phase.DONE
 	_won_at = _t
 	queue_redraw()

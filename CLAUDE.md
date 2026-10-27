@@ -11,6 +11,12 @@ board is drawn in 2D like the other twenty. The Blender rules that used to open
 this file went with it; if a model ever comes back, recover them from history
 (`docs/art/blender-contract.md` is still in the tree).
 
+**One exception, the Peeplet** (the user, 2026-10-23 and 2026-10-27): the
+real Peeplet is a 3D model shown flat through `ui/peeplet_view.gd`, each a
+SubViewport with its own `World3D`. Who Ate the Pie?'s bakers (up to twenty
+on Insane, `peeplet/peeplet_personas.gd`) and its menu card use it; nothing
+else does. Never redraw a Peeplet by hand or bake it to an image.
+
 ## Boards that left
 
 **Balance, Code Break, Tents, One Line and Mushroom Patch were removed on

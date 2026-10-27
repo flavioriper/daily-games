@@ -97,6 +97,9 @@
   along its wave. The first game screen that loads a model, on the user's
   word. Draw calls on Insane 143-252 (were 168-276); the menu card 10.
   The persona page: https://claude.ai/artifact/LaPmKwPhMwxqDJzhQPZ6X2
-  (renders by `tests/_shot_peeplet_personas.gd`). Owed: a phone run (20
-  SubViewports on Insane, MSAA 4x each), the traits and lines are not in
+  (renders by `tests/_shot_peeplet_personas.gd`). A held view's walker
+  stops processing too (`set_process`), so twenty held bakers cost no
+  walker CPU; the How to play sheet keeps one page in the tree, so it adds
+  nine views at most. Owed: a phone run (20 SubViewports on Insane, MSAA 4x
+  each, plus nine on a tutorial page), the traits and lines are not in
   the game (they need locale rows first).
