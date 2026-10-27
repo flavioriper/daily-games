@@ -39,12 +39,14 @@ a painting that fails never reaches a phone; the phone keeps the bundled ones.
 personas from the eligible ones: a flat coat (`PeepletPalette.BODY` 0..7) and
 a plain hat (`PLAIN_HATS`), so the painter is never asked to invent a
 propeller cap from a word. The seed is FNV-1a over `"cast-a-" + day` and
-`"cast-b-" + day`; the phone's `core/cast.gd` (the app plan adds it) must pick the same pair. The
+`"cast-b-" + day`; the phone's `core/cast.gd` (the app plan adds it) must pick the same pair. When fewer than two personas are eligible, the pair is [0, 1], the first two of ALL. `describe(i)` is total: a coat index outside `COAT_WORDS` reads "coloured" and a hat outside `HAT_WORDS` "a plain hat", never `undefined`. The
 test vector is in `days-dashboard.md`. A vistas document carries `cast: [a, b]`.
 
 **The painter** (`vistas.ts`). The morning is given the style picture and the
 sheet. It is told: two Peeplets as drawn on the sheet, a round body, two short
-arms, two stubby legs, two eyes, no fingers, no neck; each body one plain
+arms, two stubby legs, two eyes, no fingers, no neck, both standing with arms
+and legs in plain view in poses from the sheet (a seated pair hides its legs,
+so a missing-leg decoy shows nothing: 2026-10-27 final review); each body one plain
 colour all over, named by `describe()` ("its whole round body is red"), no
 clothes, only the hat worn (flash dressed them in robes until the wording said
 so); in the right two thirds, each about a seventh of the painting's height,
@@ -54,7 +56,8 @@ morning and are told to keep the same creatures in the same spots and poses.
 
 **The reviewer** (`reviewPainting` in `vistas.ts`). It is shown the sheet
 first and the full-size painting (never the shrunk phone JPEG, where a limb
-is invisible), and answers `{wrong, peeplets}`. A painting passes only with
+is invisible; for an edit, the morning beside it is the shrunk JPEG, as at
+paint time), and answers `{wrong, peeplets}`. A painting passes only with
 nothing wrong and one to three Peeplets counted. It is turned down for a
 human, a wrong number of arms or legs, a fused, melted, doubled, bent or
 overlong limb, fingers, a neck, a second head, more than two eyes, a body that

@@ -59,7 +59,8 @@ const FIRST = (t: Theme, pair: [number, number]) => `Paint a wide landscape back
   `style: not the attached picture's place, buildings or things. A wide view of the whole place with its things in it, never a close-up of ` +
   `one thing; the left third calm and simple, since words are laid over it. ` +
   `Two Peeplets, the small round creatures of the second attached picture, exactly as drawn there: a round body, two short arms, two stubby legs, ` +
-  `two eyes, no fingers, no neck. Each Peeplet's body is one plain colour all over, with no clothes, no robe, no jacket; only the hat is worn. ` +
+  `two eyes, no fingers, no neck. Both stand on their two legs, with both arms and both legs in plain view, in poses taken from the reference ` +
+  `sheet, never seated, hidden behind anything or cut off by the frame. Each Peeplet's body is one plain colour all over, with no clothes, no robe, no jacket; only the hat is worn. ` +
   `One is ${describe(pair[0])}, the other ${describe(pair[1])}. They are ` +
   `${t.cast ?? "doing something small together that fits the place"}, in the right two thirds of the painting, each about one seventh of the ` +
   `painting's height, small figures in a wide place, never the main subject, painted in the same brushwork as the place. ${NEVER}`;
@@ -79,8 +80,6 @@ const REVIEWER = `You check painted backgrounds for a cosy daily puzzle game pla
   `first painting to compare, a different place or a different framing from it (the light and sky changing is expected). Say what is wrong in ` +
   `"wrong", or leave it empty when nothing is. Answer "peeplets" with how many Peeplets you count in the painting being judged.`;
 
-/** The reviewer's rubric (its system prompt and the three the painter is
- *  told), as a short hash: the bench's report names the one it judged. */
 /** The reviewer's two per-call prompts (the morning on its own; an edit beside its morning). */
 const REVIEW_FIRST = (theme: Theme, time: Time) =>
   `The first picture is the reference sheet of the Peeplet. The second is the painting to judge, of the theme "${theme.name.en}" (${theme.scene}), meant to be at ${time}.`;

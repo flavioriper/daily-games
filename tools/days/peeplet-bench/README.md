@@ -27,3 +27,38 @@ to `{day, theme}`), 20261101 and 20261102 were written by `cli.js theme`,
 and 20261201 and 20261202 are second paintings of the tide pool and the bakery
 (the same themes, a new cast), made because the first two stopped at the
 morning. Day 20261018's first night try failed on a Vertex 429 and has no image.
+
+## Making a decoy: confirm the defect by eye
+
+A decoy's defect must be confirmed by eye, at full size, before it is
+labelled: crop the Peeplet from the decoy's PNG and look. An edit that did not
+take is deleted, never labelled pass (a pass label on a decoy would score the
+reviewer for turning down nothing). Edits (flash) often redo the whole scene,
+so also check the Peeplets are still there, and are standing: a seated pair
+shows no legs, so a missing-leg decoy on it shows nothing (the first
+`20261019_vista-night-0_decoy-2-missing-leg` was made so, on seated Peeplets,
+and its defect is read by eye only at the JPEG; its PNG is gone and the bench
+falls back to the JPEG). The painter's morning prompt now asks for the pair
+standing, arms and legs in view (`FIRST` in `vistas.ts`).
+
+Eight edits on standing Peeplets were made on 2026-10-27 (final review fix);
+one was kept, `20261202_vista-morning-1_decoy-1-third-arm` (the blue Peeplet
+has a third arm in front, gripping the basket; unlabelled, waiting for the
+user). That painting was itself turned down for size by the reviewer in pass 1,
+so the decoy's verdict says "too large", not the arm: it proves nothing about
+limb count until the user labels it and a size-clean base is used. Dropped:
+
+- `20261101_vista-morning-0_decoy-1-third-arm`: the purple Peeplet turned
+  three-quarters with two arms; no third arm.
+- `20261101_vista-morning-0_decoy-2-missing-leg`: the purple Peeplet was
+  painted out; a missing Peeplet, not a leg.
+- `20261101_vista-morning-0_decoy-7-long-arm`: one arm gone and the face
+  redrawn; no longer arm.
+- `20261014_vista-morning-0_decoy-1-third-arm`: two arms each; no third.
+- `20261014_vista-morning-0_decoy-2-missing-leg` (twice): first, both
+  Peeplets kept two feet; second, both Peeplets painted out.
+- `20261202_vista-morning-1_decoy-2-missing-leg`: both blue feet still there,
+  the green's second foot hidden behind the basket; nothing visibly removed.
+
+To review just new decoys: `node lib/cli.js review-bench <dir> --only
+<file.jpg>...` (a few cents), then label them and `--rescore`.

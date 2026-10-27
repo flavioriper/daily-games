@@ -53,12 +53,16 @@ import {FULL_SUFFIX, makeVista, reviewPainting, rubricHash, shrunk, Time, TIMES 
  *       the painting edited once for each defect in DEFECTS (or those named),
  *       as decoy-<n>-<defect>.png and a phone-size .jpg beside it: paintings
  *       that must be turned down, for the bench the reviewer is judged on.
- *   node lib/cli.js review-bench <bench-dir> [--rescore] [--pass N]
+ *   node lib/cli.js review-bench <bench-dir> [--rescore] [--pass N] [--only <file.jpg>...]
  *       the night's reviewer (vistas.ts reviewPainting) over every painting in
  *       the Peeplet bench, scored against labels.json into <bench-dir>/report.json
  *       (tools/days/peeplet-bench/README.md). Unlabelled files are reviewed too and
  *       listed, not scored. --rescore reads report.json's verdicts again against
  *       the labels as they are now, with no review. Runs on Anthropic's API.
+ *       --only reviews just the named .jpg files (names, not paths) and merges
+ *       their verdicts into report.json's, then rescores everything: a few
+ *       new decoys cost a few cents, not a pass. It refuses when the rubric
+ *       changed since the report.
  *   node lib/cli.js words <day.json>...
  *       Hidden Word's and Word Trail's words (words.ts) for days the
  *       command above made, into each file's pictures document; the
@@ -250,12 +254,13 @@ function benchFile(dir: string, file: string): {theme: Day["theme"]; time: Time;
 interface Day {day: number; theme: import("./theme").Theme; vistaTries: {time: string; name: string; wrong: string; peeplets: number}[]}
 
 /** review-bench: the reviewer over every painting in `dir`, scored, into report.json. */
-async function reviewBench(dir: string, rescore: boolean, passArg: number | null, print: (s: string) => void): Promise<void> {
+async function reviewBench(dir: string, rescore: boolean, passArg: number | null, only: string[] | null, print: (s: string) => void): Promise<void> {
   const labels = JSON.parse(fs.readFileSync(path.join(dir, "labels.json"), "utf8")) as Record<string, Label>;
   const reportFile = path.join(dir, "report.json");
   const before = fs.existsSync(reportFile) ? JSON.parse(fs.readFileSync(reportFile, "utf8")) : null;
   let verdicts: Record<string, Verdict> = {};
   let spend = {costUsd: 0, inputTokens: 0, outputTokens: 0};
+  if (rescore && only !== null) throw new Error("--rescore and --only do not go together");
   if (rescore) {
     if (before === null) throw new Error("no report.json to rescore");
     verdicts = before.verdicts;
@@ -265,6 +270,15 @@ async function reviewBench(dir: string, rescore: boolean, passArg: number | null
     const model = modelFor("review");
     if (anthropicModel(model) === null) throw new Error(`the reviewer (${model}) would not go to Anthropic's API: ANTHROPIC_API_KEY unset or the model not anthropic/*`);
     const files = fs.readdirSync(dir).filter((f) => /^\d{8}_vista-.*\.jpg$/.test(f)).sort();
+    if (only !== null) {
+      // The named files only, merged into the report's verdicts: the rest keep their word, so the rubric must be the one that gave it.
+      if (before === null) throw new Error("--only needs a report.json to merge into");
+      if (before.rubric !== rubricHash()) throw new Error("the rubric changed since report.json: review the whole bench (without --only)");
+      const missing = only.filter((f) => !files.includes(f));
+      if (missing.length > 0) throw new Error(`not in the bench: ${missing.join(", ")}`);
+      verdicts = before.verdicts;
+      files.splice(0, files.length, ...only);
+    }
     for (const file of files) {
       const {theme, time, image, morning} = benchFile(dir, file);
       let got: Verdict | null = null;
@@ -284,13 +298,15 @@ async function reviewBench(dir: string, rescore: boolean, passArg: number | null
         `${verdicts[file].wrong === "" ? "PASSED" : "turned down"} ${verdicts[file].peeplets}P  ${verdicts[file].wrong.slice(0, 110)}`);
     }
     const t = tokens();
-    spend = {costUsd: Math.round(cost() * 10000) / 10000, inputTokens: t.input, outputTokens: t.output};
+    // With --only, this run's spend is added to the report's.
+    const base = only !== null ? {costUsd: before.costUsd, inputTokens: before.inputTokens ?? 0, outputTokens: before.outputTokens ?? 0} : {costUsd: 0, inputTokens: 0, outputTokens: 0};
+    spend = {costUsd: Math.round((base.costUsd + cost()) * 10000) / 10000, inputTokens: base.inputTokens + t.input, outputTokens: base.outputTokens + t.output};
   }
   const score = scoreBench(labels, verdicts);
   const unlabelled = Object.fromEntries(Object.entries(verdicts).filter(([f]) => labels[f] === undefined));
   const report = {
-    pass: rescore ? before.pass : passArg ?? (before?.pass ?? 0) + 1,
-    rubric: rescore ? before.rubric : rubricHash(),
+    pass: rescore || only !== null ? before.pass : passArg ?? (before?.pass ?? 0) + 1,
+    rubric: rescore || only !== null ? before.rubric : rubricHash(),
     deformedPassed: score.deformedPassed, goodRejected: score.goodRejected, countErrors: score.countErrors.length,
     countErrorFiles: score.countErrors, subtlePassed: score.subtlePassed, errors: score.errors,
     passLabelled: score.passLabelled, ...spend, unlabelled, verdicts,
@@ -376,10 +392,12 @@ async function main(): Promise<void> {
     }
   } else if (what === "review-bench" && args.length >= 1) {
     const flags = args.filter((a) => a.startsWith("--"));
-    const rest = args.filter((a) => !a.startsWith("--"));
     const passAt = args.indexOf("--pass");
     const passArg = passAt >= 0 ? Number(args[passAt + 1]) : null;
-    await reviewBench(rest[0], flags.includes("--rescore"), passArg, print);
+    // --only <file.jpg>...: the files after it, up to the next flag.
+    const onlyAt = args.indexOf("--only");
+    const only = onlyAt < 0 ? null : args.slice(onlyAt + 1).filter((a, i, all) => !a.startsWith("--") && !all.slice(0, i).some((b) => b.startsWith("--")));
+    await reviewBench(args[0], flags.includes("--rescore"), passArg, only, print);
   } else if (what === "words" && args.length >= 1) {
     // The word boards' words for days already made, the rest untouched.
     for (const file of args) {
@@ -477,7 +495,7 @@ async function main(): Promise<void> {
     await publishDays(new Date());
     print("published");
   } else {
-    console.error("usage: cli.js day [acorn|pearl] [yyyymmdd] | bank pearl <level> <count> <outfile> | themed <yyyymmdd> <days> <outdir> [themes-dir] | cast <yyyymmdd> | theme <yyyymmdd> <out.json> [recent.json|text]... | decoys <png> <out-dir> [defect...] | review-bench <bench-dir> [--rescore] [--pass N] | vistas <day.json>... | jellies <day.json>... | hoops <day.json>... | words <day.json>... | quizzes <day.json>... | publish");
+    console.error("usage: cli.js day [acorn|pearl] [yyyymmdd] | bank pearl <level> <count> <outfile> | themed <yyyymmdd> <days> <outdir> [themes-dir] | cast <yyyymmdd> | theme <yyyymmdd> <out.json> [recent.json|text]... | decoys <png> <out-dir> [defect...] | review-bench <bench-dir> [--rescore] [--pass N] [--only <file.jpg>...] | vistas <day.json>... | jellies <day.json>... | hoops <day.json>... | words <day.json>... | quizzes <day.json>... | publish");
     process.exitCode = 2;
   }
 }

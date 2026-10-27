@@ -54,7 +54,9 @@ export function eligible(): number[] {
   return out;
 }
 
-/** The day's two: day is the yyyymmdd number. [0, 1] when fewer than two are eligible. */
+/** The day's two: day is the yyyymmdd number. When fewer than two personas
+ *  are eligible, the pair is [0, 1], the first two of ALL (describe() copes
+ *  with any persona, eligible or not). */
 export function seeded(day: number): [number, number] {
   const list = eligible();
   const n = list.length;
@@ -65,9 +67,11 @@ export function seeded(day: number): [number, number] {
   return [list[a], list[b]];
 }
 
-/** What a painter is told of persona i. */
+/** What a painter is told of persona i; total: a coat index outside
+ *  COAT_WORDS reads "coloured" and a hat outside HAT_WORDS "a plain hat",
+ *  never undefined. */
 export function describe(i: number): string {
   const p = ALL[i];
-  const c = COAT_WORDS[p.coat];
-  return `a ${c} Peeplet (its whole round body is ${c}) wearing ${HAT_WORDS[p.hat]}`;
+  const c = COAT_WORDS[p.coat] ?? "coloured";
+  return `a ${c} Peeplet (its whole round body is ${c}) wearing ${HAT_WORDS[p.hat] ?? "a plain hat"}`;
 }

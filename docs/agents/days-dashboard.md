@@ -509,8 +509,9 @@ times (the edits kept them).
 - Their place moved: the second run set them at x ~900-1130 of 1536
   (right of the middle), the first at ~1000-1300.
 - The bench's cost line (`US$ so far`) read 0.15 for the five paintings
-  and five reviews; it counts what OpenRouter reports, so the direct
-  Anthropic reviews may be missing from it.
+  and five reviews. `cost()` counts the direct Anthropic reviews too:
+  `askAnthropic` adds to `spent` at `ANTHROPIC_PRICE`; only a Vertex
+  drawing is uncounted (the answer carries no price).
 
 ## The day viewer shows what a port did (2026-10-21)
 
@@ -607,7 +608,7 @@ is flat (`PeepletPalette.BODY` 0..7) and whose hat is one of `PLAIN_HATS`
 (twenty-three of the fifty), in `PeepletPersonas.ALL` order. With `n` the
 eligible count and `day` the yyyymmdd number: `a = fnv1a("cast-a-" + day) % n`,
 `b = fnv1a("cast-b-" + day) % n`, `b = (a + 1) % n` when `b == a`, and the pair
-is `eligible[a], eligible[b]`; `[0, 1]` when fewer than two are eligible.
+is `eligible[a], eligible[b]`. When fewer than two personas are eligible, the pair is [0, 1], the first two of ALL. `describe(i)` is total: a coat index outside `COAT_WORDS` reads "coloured" and a hat outside `HAT_WORDS` "a plain hat", never `undefined`.
 `fnv1a` is the 32-bit unsigned FNV-1a over the string's bytes (`core/daily.gd:47`,
 `eye.ts`). The list reaches the server as `server/functions/src/cast_personas.json`,
 written by `godot --headless --path . --script tools/export_personas.gd` (run it
@@ -623,12 +624,17 @@ model would go to OpenRouter) runs `reviewPainting` over every JPEG in the
 bench: a painting's or decoy's full PNG when on disk, the JPEG when not, the
 day's morning that passed at paint time beside every non-morning file. It
 prints a line a file and writes `report.json`: `pass`, `rubric` (sha1 of the
-REVIEWER, FIRST, AGAIN and NEVER strings), `deformedPassed`, `goodRejected`,
+reviewer's prompts and schema: REVIEWER, REVIEW_FIRST, REVIEW_EDIT and
+REVIEW_SCHEMA; the painter's FIRST, AGAIN and NEVER are not in it), `deformedPassed`, `goodRejected`,
 `countErrors` (a pass-labelled painting not counted at 2 Peeplets),
 `subtlePassed`, `passLabelled`, `errors`, tokens and `costUsd`, `verdicts` for
 every file and `unlabelled` (the reviewer's word on the user's pile, never
 scored). `--rescore` recomputes the scores from `report.json`'s verdicts
-against the labels as they are now, with no API call. A file that errors
+against the labels as they are now, with no API call. `--only <file.jpg>...`
+reviews just the named files (a few new decoys, a few cents), merges their
+verdicts into `report.json`'s and rescores; it refuses when the rubric hash
+changed since the report. A decoy is labelled only after its defect is
+confirmed by eye at full size; an edit that did not take is deleted. A file that errors
 (429, network) is retried once after 20 s, then recorded `ERROR: ...` and
 counted apart. Gate: `deformedPassed` empty and `goodRejected / passLabelled`
 under 1/3; at most three passes, and no crop-and-enlarge before the user says.
