@@ -156,10 +156,14 @@ naming the day's pair (`cast.ts seeded(day)`, `describe`) and what they are
 doing (`Theme.cast`); the other three are edits of the morning "with the same
 two Peeplets in the same spots and poses". The reviewer (`reviewPainting`)
 sees the sheet first, the morning next for an edit (the shrunk JPEG, as at
-paint time), then the painter's **full-size** painting (never the shrunk JPEG), and answers `{wrong,
-peeplets}`: humans and malformed Peeplets (limbs, fingers, neck, extra
-eyes), a Peeplet in the left third, one over a fifth or under a twentieth of
-the height, none or more than three are turned down. Only a passing painting
+paint time), then the painter's **full-size** painting (never the shrunk JPEG), and answers `{limbs,
+wrong, peeplets}` (`limbs` is its per-Peeplet note, written before the
+verdict): humans and malformed Peeplets (limbs, fingers, neck, extra
+eyes), a Peeplet in the left third, one over about a quarter or under a
+twentieth of the height (the body, hat excluded), none or more than three,
+and an edit whose Peeplets are not the morning's are turned down; lit
+windows and lanterns at dusk or night are the time of day, never a
+different place. Only a passing painting
 is shrunk (`shrunk`, 1024 wide, JPEG). `themeday.ts`: `TRIES = 3` runs a
 step, and the morning is painted twice a run, the others once; the afternoon,
 dusk and night steps are not run, and no try is counted, until the morning is
