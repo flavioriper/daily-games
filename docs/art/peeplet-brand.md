@@ -63,7 +63,7 @@ human, a wrong number of arms or legs, a fused, melted, doubled, bent or
 overlong limb, fingers, a neck, a second head, more than two eyes, a body that
 is not one round blob, a Peeplet in the left third (the day card's words go
 there), no Peeplet or more than three, and a body (hat excluded) larger than
-a fifth or smaller than a twentieth of the painting's height. Hats and coats
+a quarter (past about 27%; the user, 2026-10-27: 22-24% is fine) or smaller than a twentieth of the painting's height. An edit's Peeplets must be the morning's: the same number, body colours and hats. The model writes a `limbs` note for each Peeplet before it answers. Hats and coats
 are not judged. The size rule is the one the user may overrule: a borderline
 size is never copied into a bench label.
 
@@ -82,7 +82,7 @@ if it is not met, stop and ask the user before any crop-and-enlarge. Rerun the
 bench after any change to `REVIEWER`, `REVIEW_FIRST` or `REVIEW_EDIT`; the
 report's `rubric` hash says which rubric it judged.
 
-**What the gate does and does not prove (2026-10-27, pass 1).** It holds:
+**What the gate does and does not prove (2026-10-27, pass 1; superseded: on the user's labels pass 3 fails the gate, 3 deformed passed and 7 of 31 good rejected, see `days-dashboard.md`).** It held:
 0 deformed passed, 0 good rejected. But only the fingers, human, neck and text
 defects are labelled. The reviewer passed every unlabelled limb decoy (third
 arm, fused, long arm, missing leg), so limb defects are not yet shown caught.

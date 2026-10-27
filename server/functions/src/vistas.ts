@@ -71,20 +71,41 @@ const AGAIN = (time: Time) => `The attached picture is a painting of a place at 
   `spots and poses, in the same painting style, but at ${LIGHT[time]}. Change only the light, the sky and the colours the time of day gives. ${NEVER}`;
 
 const REVIEWER = `You check painted backgrounds for a cosy daily puzzle game played by all ages. You are shown a reference sheet of the game's ` +
-  `creature, the Peeplet, first, then one or two paintings, and answer in JSON. A painting is turned down for any of: text, letters, numbers, a ` +
+  `creature, the Peeplet, first, then one or two paintings, and answer in JSON. The reference sheet is the only truth about how a Peeplet is built: ` +
+  `a round body that is the head too (no neck, nothing between the face and the body), exactly two short stubby nub arms of the same short length ` +
+  `(each far shorter than the body is wide), two stubby legs with feet below (a seated Peeplet shows both feet in front of it), two eyes, no fingers. ` +
+  `Paintings from the painter are often flawed in a limb in a way that is easy to miss at a glance, so hunt for it: go over each Peeplet one by one ` +
+  `against the sheet and note in "limbs", in your own words, its body colour and hat, then what each arm and each leg really looks like ` +
+  `(where it starts, where it ends, how far it sticks out from the body in body widths, whether its tip is rounded or flared, spread or hand-like, ` +
+  `whether it runs into the body, into the other Peeplet or into a thing it holds) and how many legs or feet show. Do not assume a limb is ` +
+  `fine because the pose is cheerful. The sheet's arms are small round-tipped nubs that stick out less than a quarter of the body's width. ` +
+  `An arm that reaches out to hold or point at something is still an arm, and it must be short; a third arm is wrong even when it holds a thing; an arm ` +
+  `that sticks out more than half the body's width, or ends in a flared, spread or hand-like tip, is too long. Count the feet and legs as well: ` +
+  `two, one each side, and a Peeplet that shows one is missing one (unless the other is plainly hidden behind a thing); two limbs that run together ` +
+  `into one are fused. Pass a painting only when you looked for these flaws and found none. ` +
+  `A painting is turned down for any of: text, letters, numbers, a ` +
   `logo or a signature anywhere in it; any human or human-shaped figure; a Peeplet (the creature on the reference sheet) with more or fewer than ` +
-  `two arms or two legs, a limb fused, melted, doubled, bent the wrong way or longer than the body, hands with fingers, a neck, a second head or ` +
-  `face, more than two eyes, or a body that is not one round blob; a Peeplet in the left third of the painting; a Peeplet whose body is larger than a fifth of ` +
-  `the painting's height or smaller than a twentieth (a Peeplet's height is measured by its body, its hat excluded); no Peeplet at all, or more than three; anything frightening, violent or unsuitable for ` +
+  `two arms or two legs (a seated or half-hidden Peeplet still shows two feet or two legs; a leg that is missing, or that cannot be told from the other, counts as fewer), ` +
+  `a limb fused, melted, doubled, merged into the body or into a held thing, bent the wrong way, or longer than the body is wide (an arm ` +
+  `that reaches as far as the body is wide or farther is too long), hands with fingers, a neck (a stalk or a ` +
+  `narrow part between the face and the body), a second head or ` +
+  `face, more than two eyes, or a body that is not one round blob; a Peeplet in the left third of the painting; a Peeplet whose body is larger than ` +
+  `about a quarter of the painting's height (clearly over a quarter, past 27%; a body near a quarter is fine) or smaller than a twentieth (a Peeplet's height is measured by its body, its hat excluded); no Peeplet at all, or more than three; anything frightening, violent or unsuitable for ` +
   `children; not a wide painted landscape (a close-up of one thing, a photo, a pattern); the light not the time of day asked; or, when there is a ` +
-  `first painting to compare, a different place or a different framing from it (the light and sky changing is expected). Say what is wrong in ` +
-  `"wrong", or leave it empty when nothing is. Answer "peeplets" with how many Peeplets you count in the painting being judged.`;
+  `first painting to compare, a different place or a different framing from it (the light and sky changing is expected; but a building, window, tree, path, fence or thing that is added, gone or moved is a different place), or Peeplets that are not the ` +
+  `same as the first painting's: when a painting at morning is shown beside the one to judge, the Peeplets in it must be the same Peeplets, the same ` +
+  `number, each with the same body colour and the same hat or headgear and each in the same spot; a Peeplet that is added, gone or in another ` +
+  `colour is wrong (the night may darken the colours and add glow, but a purple Peeplet stays purple and a pair stays a pair). Say what is wrong in ` +
+  `"wrong", or leave it empty when nothing is: if your "limbs" note found any defect in a limb, "wrong" must not be empty. Answer "peeplets" with ` +
+  `how many Peeplets you count in the painting being judged.`;
 
 /** The reviewer's two per-call prompts (the morning on its own; an edit beside its morning). */
 const REVIEW_FIRST = (theme: Theme, time: Time) =>
-  `The first picture is the reference sheet of the Peeplet. The second is the painting to judge, of the theme "${theme.name.en}" (${theme.scene}), meant to be at ${time}.`;
+  `The first picture is the reference sheet of the Peeplet. The second is the painting to judge, of the theme "${theme.name.en}" (${theme.scene}), meant to be at ${time}. Go over each Peeplet's limbs.`;
 const REVIEW_EDIT = (time: Time) =>
-  `The first picture is the reference sheet of the Peeplet. The second is a painting at morning; the third is meant to be the same place at ${time}. Judge the third.`;
+  `The first picture is the reference sheet of the Peeplet. The second is a painting at morning; the third is meant to be the same place at ${time}. Judge the third. ` +
+  `First count the Peeplets in the second picture and note each one's body colour and hat; the third must show those same Peeplets, no more, no fewer, no recoloured. ` +
+  `Then go over each Peeplet's limbs in the third.`;
 
 /**
  * A fingerprint of the reviewer's rubric (its system prompt, its two
@@ -99,8 +120,10 @@ export function rubricHash(): string {
 
 const REVIEW_SCHEMA = {
   type: "object",
-  properties: {wrong: {type: "string"}, peeplets: {type: "integer"}},
-  required: ["wrong", "peeplets"],
+  // `limbs` comes first on purpose: the model writes what it sees of each
+  // Peeplet's arms and legs before it decides `wrong`.
+  properties: {limbs: {type: "string"}, wrong: {type: "string"}, peeplets: {type: "integer"}},
+  required: ["limbs", "wrong", "peeplets"],
   additionalProperties: false,
 };
 
@@ -162,9 +185,9 @@ function dataUrl(d: Drawing): string {
  * is wrong ("" when nothing) and how many Peeplets the reviewer counts.
  */
 export async function reviewPainting(theme: Theme, time: Time, drawn: Drawing, morning: Drawing | null):
-  Promise<{wrong: string; peeplets: number}> {
+  Promise<{wrong: string; peeplets: number; limbs: string}> {
   if (time !== "morning" && morning === null) throw new Error(`the ${time} edit needs the morning painting beside it`);
-  const review = await ask<{wrong: string; peeplets: number}>({
+  const review = await ask<{limbs: string; wrong: string; peeplets: number}>({
     system: REVIEWER,
     prompt: time === "morning" ? REVIEW_FIRST(theme, time) : REVIEW_EDIT(time),
     images: time === "morning" || morning === null ?
@@ -178,7 +201,8 @@ export async function reviewPainting(theme: Theme, time: Time, drawn: Drawing, m
   const peeplets = Number.isFinite(n) ? Math.round(n) : 0;
   let wrong = String(review.wrong ?? "").trim();
   if (wrong === "" && (peeplets < 1 || peeplets > 3)) wrong = `counted ${peeplets} Peeplets`;
-  return {wrong, peeplets};
+  // `limbs` is the reviewer's own inspection note, kept for the bench's report.
+  return {wrong, peeplets, limbs: String(review.limbs ?? "").trim()};
 }
 
 /**

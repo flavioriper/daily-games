@@ -642,6 +642,23 @@ under 1/3; at most three passes, and no crop-and-enlarge before the user says.
 | Pass | Prompt change | Deformed passed | Good rejected | Count errors | Subtle passed |
 |---|---|---|---|---|---|
 | 1 | none (the Task 3 rubric: sheet first, body-only size, 1..3 count) | 0 of 7 fail-labelled (fingers 2, human, neck, text 3) | 0 of 24 | 0 | 0 |
+| 1, rescored on the user's 18 labels | none | 8 of 31 fail-labelled (4 long-arm, fused, missing-leg, the harbour's third Peeplet at dusk and night; the 1014 "neck") | 2 of 31 (size, 20261015 morning-0 and -1) | 0 | 0 |
+| 2 | sheet named as the only truth, a `limbs` note a Peeplet before `wrong`, size ceiling a quarter, edit Peeplets must be the same | invalid: Opus stopped on `refusal` for 33 of 49 files (the "Before you decide anything, write ... in limbs" sentence trips it; US$2.27) | | | |
+| 3 | the same, the refusal sentence gone, arms in body widths and "hunt for the flaw", feet counted, an added/gone/moved thing is a different place | 3 of 31: 20261014 morning-0 long-arm ("neck"), 20261018 night-1 long-arm, 20261202 morning-1 (third arm) | 7 of 31 (5 night/dusk files "lanterns added", 20261019 morning-0 fused decoy-6 [a labelled pass], 20261201 night-0 "arms fused") | 0 | 0 |
+
+Pass 3 gate FAILS (US$2.04, 302,705 tokens in and 41,564 out, no review errors).
+The limb checks caught the 20261201 long-arm and fused, the 20261019 long-arm
+and missing-leg (the missing-leg by a lantern string added at night, not the
+leg), and the harbour's third Peeplet (the edit rule). The three misses write
+"short round-tipped nub, about a quarter of the body's width" for arms the user
+sees as long: the note comes out as the template, not as a measurement. The
+good rejections are mostly the new "a thing added is a different place"
+clause: night and dusk paintings show lanterns the reviewer calls new. The
+three-pass cap is spent; the next step is the user's (a wording that does not
+overreach on lanterns, or crop-and-enlarge, which needs their word).
+`limbs` rides back from `reviewPainting` as a third field and is in each
+`verdicts` entry of `report.json`. 20261202 morning-1 decoy-1 (unlabelled): turned down
+in pass 3 for a flipper-like tip and a basket that hides the right foot.
 
 Pass 1 read 49 files, 253,136 tokens in and 18,924 out; the gate held with no
 change. Unlabelled files the reviewer **passed**: all of the third-arm,
