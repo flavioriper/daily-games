@@ -167,3 +167,18 @@ stated before the 3D game left.
   so anyone who bought on Play keeps the banner off. The `remove_ads` IAP
   in App Store Connect must not be attached to an App Store submission while
   this holds. `SELLING = true` brings all three doors back.
+- **A loaded full-screen ad is dropped after 55 minutes since 2026-10-27**
+  (AdMob's mediation checklist: an ad held over an hour may not be paid).
+  `Ads._drop_stale()` runs every 5 minutes and before every
+  `can_reward`, `show_rewarded` and `leaving_game`; it destroys the old
+  ad, tracks `ad_expired` (`format`) and loads a new one. The age is wall
+  clock, so a phone asleep still ages it. The console at the time (7 days
+  to 2026-10-27): Android rewarded 6 requests, 6 matched, 0 shown; Android
+  banner 109 requests, 45% match, 47 impressions; iOS 672 requests, 0
+  matched, because the iOS AdMob app is "requires review" until it is
+  linked to a live App Store listing (Apps > Add store, once 0.1.0 is out).
+  Already set in the console then: high-engagement ads on, banner refresh
+  and every floor Google-optimised, app-ads.txt 100% authorised. Only the
+  AdMob Network bids; SDK-less bidders (Equativ, Index Exchange, Magnite,
+  Media.net...) were left until there is traffic, each needs its terms
+  accepted.

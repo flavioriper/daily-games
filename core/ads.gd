@@ -65,6 +65,13 @@ var _fake_full := ""   # "", "1" (always earns) or "skip" (never earns)
 ## games, so turning this on is the whole way back; the probes do.
 var post_play := false
 var _retry: Timer
+## A loaded full-screen ad earns nothing once old: AdMob's own advice is to
+## drop a rewarded or interstitial ad held over an hour and ask for a fresh
+## one. Wall-clock seconds, so a phone asleep in a pocket still ages it.
+const AD_MAX_AGE := 55.0 * 60.0
+var _interstitial_at := 0.0
+var _rewarded_at := 0.0
+var _stale: Timer
 
 func _ready() -> void:
 	reload_state()
@@ -78,6 +85,11 @@ func _ready() -> void:
 		_load_interstitial()
 		_load_rewarded())
 	add_child(_retry)
+	_stale = Timer.new()
+	_stale.wait_time = 300.0
+	_stale.timeout.connect(_drop_stale)
+	add_child(_stale)
+	_stale.start()
 	Store.owned_changed.connect(func(owned: bool) -> void:
 		if owned:
 			remove()
@@ -297,6 +309,7 @@ func _load_interstitial() -> void:
 	cb.on_ad_loaded = func(ad: InterstitialAd) -> void:
 		_loading_interstitial = false
 		_interstitial = ad
+		_interstitial_at = Time.get_unix_time_from_system()
 	cb.on_ad_failed_to_load = func(error: LoadAdError) -> void:
 		_loading_interstitial = false
 		Analytics.track("ad_load_failed", {"format": "interstitial", "error": "%d" % error.code})
@@ -314,12 +327,28 @@ func _load_rewarded() -> void:
 	cb.on_ad_loaded = func(ad: RewardedAd) -> void:
 		_loading_rewarded = false
 		_rewarded = ad
+		_rewarded_at = Time.get_unix_time_from_system()
 		rewards_changed.emit()
 	cb.on_ad_failed_to_load = func(error: LoadAdError) -> void:
 		_loading_rewarded = false
 		Analytics.track("ad_load_failed", {"format": "rewarded", "error": "%d" % error.code})
 		_retry_soon()
 	RewardedAdLoader.new().load(unit, ad_request(), cb)
+
+## Drops whichever loaded ad has outlived AD_MAX_AGE and asks for a new one.
+func _drop_stale() -> void:
+	var now := Time.get_unix_time_from_system()
+	if _interstitial != null and now - _interstitial_at > AD_MAX_AGE:
+		_interstitial.destroy()
+		_interstitial = null
+		Analytics.track("ad_expired", {"format": "interstitial"})
+		_load_interstitial()
+	if _rewarded != null and now - _rewarded_at > AD_MAX_AGE:
+		_rewarded.destroy()
+		_rewarded = null
+		Analytics.track("ad_expired", {"format": "rewarded"})
+		rewards_changed.emit()
+		_load_rewarded()
 
 ## A game (board, Arcade run, Versus game) ended.
 func note_finished() -> void:
@@ -337,6 +366,7 @@ func leaving_game() -> void:
 		return
 	var now := Time.get_unix_time_from_system()
 	var today := Daily.date_key()
+	_drop_stale()
 	var why := pacing.interstitial_verdict(now, today, Progress.hearts(today), AgeGate.band())
 	if why.is_empty() and _interstitial == null and _fake_full.is_empty():
 		why = "not_loaded"
@@ -388,6 +418,7 @@ func can_reward(placement: String) -> bool:
 		return false
 	if not _fake_full.is_empty():
 		return true
+	_drop_stale()
 	return _rewarded != null
 
 ## Analytics only: call once when a rewarded button is shown.
@@ -426,6 +457,7 @@ func show_rewarded(placement: String, done: Callable) -> void:
 	if not _fake_full.is_empty():
 		_fake_show("rewarded", finish)
 		return
+	_drop_stale()
 	if _rewarded == null:
 		finish.call(false, false)
 		return
