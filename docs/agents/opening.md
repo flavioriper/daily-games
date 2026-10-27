@@ -70,9 +70,7 @@ the squash and the shadow of the nine-tile grid are gone with it.
   Peeplet on the second step), held `HELD`, one plain fade out.
 - `SETTLED` is `TILE_AT + 12 * TILE_STEP + TILE_TIME + 0.4` = 1.84 s (was 2.05).
 - **Sounds**: `world/boot.gd` is unchanged. `landed` now fires twelve times,
-  so the pop's pitch climbs `11 * POP_STEP` = 5.5 semitones (was 4); the
-  cozy rules' five at most is passed by half a tone and **no one has
-  listened**: lower `POP_STEP` to 0.45 if it reads high. `bloomed` (the
+  so `POP_STEP` went to 0.45 (below), **unheard**. `bloomed` (the
   kalimba notes, `COZY_TUNE`) is now said as the Peeplet pops up
   (`peeplet_at()`, as the twelfth tile is down) since the leaves are gone.
 - **The motes** stay, all behind the tiles now (the tiles are a child
@@ -92,16 +90,18 @@ the squash and the shadow of the nine-tile grid are gone with it.
 - **Draw calls**: 27 settled (`tests/_shot_opening.gd`, second reading the
   same), the Peeplet one of them; the opening with the first screen under it
   reads 133 at most (`boot time`, was 148 with the nine-tile opening).
-- **Boot cost, not paid yet.** `WordTiles` preloads the Hidden Word board
-  (`puzzles/hidden_word2d.gd`, for four constants), and a cold `load` of that
-  is 211 ms here. The opening references `WordTiles`, so `opening.gd` now
-  takes ~190 ms longer to load before its first frame (`opening _init` at
-  ~870 ms of engine time, was ~690) on this Mac, and every phone is slower.
-  The load of the game under the opening is unchanged (3.07 s and 3.20 s,
-  was 3.20 s and 3.22 s), the window is cream the whole while and the first
-  tile comes that much later. The cure is in `word_tiles.gd` (the four board
-  constants copied, or moved to a light script), not here; measure again
-  after it.
+- **Boot cost, paid back (fix round 1).** `WordTiles` used to preload the
+  Hidden Word board (`puzzles/hidden_word2d.gd`) for four constants; a cold
+  load of that is 211 ms, and the opening, standing on `WordTiles`, reached
+  its `_init` ~190 ms later (windowed ~870 ms of engine time, was ~690).
+  `word_tiles.gd` now owns `RADIUS`, `BEVEL`, `EDGE_MIX` and `RIM_LIGHT`, and
+  the board's four consts read them from `WordTiles` (the board depends on
+  the tiles, never the other way: the boot opening must not load the board).
+  Headless, three runs each, engine time at the opening's `_init`: nine-tile
+  opening 419-422 ms, tiles with the board 589-595, now 425-459.
+- **Pop pitch**: `world/boot.gd` `POP_STEP` is 0.45 (was 0.5), so the twelve
+  pops climb 11 x 0.45 = 4.95 semitones, inside the five of `sound.md`. Still
+  unheard.
 - **Seen**: the shot harness (`tests/_shot_opening.gd`, stills and leaving)
   and one run of the game itself to the first screen (nothing in the log);
   the lay-down on screen, the pops with sound and the phone are unseen/unheard

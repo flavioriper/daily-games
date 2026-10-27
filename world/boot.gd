@@ -40,9 +40,9 @@ const UNDER := 3
 ## where nothing lands for them to belong to.
 const TILE := preload("res://assets/sfx/ui/tile.ogg")
 const TUNE := preload("res://assets/sfx/ui/opening.ogg")
-## The pops climb this many semitones a tile: four over the nine (the cozy
+## The pops climb this many semitones a tile: five over the twelve (the cozy
 ## rules' five at most), and a hair either way so no two are one sound.
-const POP_STEP := 0.5
+const POP_STEP := 0.45
 const POP_JITTER := 0.012
 
 ## Put on the real scene root in place of its own script: a harness's offline

@@ -10,7 +10,6 @@ extends Control
 ## the header and the opening all use the one drawing.
 
 const Pal = preload("res://core/palette.gd")
-const Board = preload("res://puzzles/hidden_word2d.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Mosaic = preload("res://ui/faces/mosaic_tile.gd")
 const CozyTheme = preload("res://ui/theme.gd")
@@ -22,6 +21,15 @@ const BUTTER := Pal.SUN_TILE
 const LEAF := Pal.LEAF
 const SKY := Color("95c6e8")
 const CORAL := Color("fb8f7a")
+
+## A piece's corner, bevel and the shades of its edge and rim, as the Hidden
+## Word board cuts it (puzzles/hidden_word2d.gd reads them from here): the
+## board is a heavy script, and the boot opening, which stands on this one,
+## must never load it.
+const RADIUS := 0.19
+const BEVEL := 0.055
+const EDGE_MIX := 0.26
+const RIM_LIGHT := 0.3
 
 const ROWS := ["DAILY", "PUZZLES"]
 const COLOURS := {
@@ -122,9 +130,9 @@ func _sized() -> void:
 ## bottom edge in `deep`, the face in `rim`, and the crown in `fill` a bevel
 ## down and in from it.
 static func piece(b: Face.Builder, at: Vector2, s: float, fill: Color, deep: Color, rim: Color) -> void:
-	var r := s * Board.RADIUS
+	var r := s * RADIUS
 	var edge := maxf(LIP_MIN, s * LIP)
-	var bev := s * Board.BEVEL
+	var bev := s * BEVEL
 	b.polygon(Face.Builder.round_rect(at, Vector2(s, s), r), deep)
 	b.polygon(Face.Builder.round_rect(at, Vector2(s, s - edge), r), rim)
 	b.polygon(Face.Builder.round_rect(at + Vector2(bev * 0.7, bev), Vector2(s - bev * 1.4, s - edge - bev),
@@ -141,8 +149,8 @@ func _build() -> void:
 	for i in count():
 		var fill := colour_at(i)
 		var b := Face.Builder.new()
-		piece(b, Vector2.ONE * (-tile * 0.5), tile, fill, fill.lerp(Pal.TEXT, Board.EDGE_MIX),
-			fill.lerp(Pal.SURFACE, Board.RIM_LIGHT))
+		piece(b, Vector2.ONE * (-tile * 0.5), tile, fill, fill.lerp(Pal.TEXT, EDGE_MIX),
+			fill.lerp(Pal.SURFACE, RIM_LIGHT))
 		var m := b.mesh()
 		_tiles.append(m)
 		whole.append(m, _place(i))

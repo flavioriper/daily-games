@@ -97,10 +97,10 @@ const INSET := 28.0
 const BAND := 120.0
 ## A tile's corner and the bottom edge under its face, in cells, and how far
 ## that edge goes toward the ink.
-const RADIUS := 0.19
+const RADIUS := WordTiles.RADIUS
 const EDGE := 0.05
 const EDGE_MIN := 5.0
-const EDGE_MIX := 0.26
+const EDGE_MIX := WordTiles.EDGE_MIX
 ## How far an empty tile's own edge goes toward the ink: less, because an
 ## empty tile is a bed and not a piece.
 const EMPTY_MIX := 0.14
@@ -239,8 +239,8 @@ const PAPER_LIP := 0.55
 ## rim. A mark's rim is its face RIM_LIGHT toward SURFACE, so it is lit from
 ## above; TONE is how far lighter or darker a tile's hash moves its face, so
 ## the rows read as laid by hand.
-const BEVEL := 0.055
-const RIM_LIGHT := 0.3
+const BEVEL := WordTiles.BEVEL
+const RIM_LIGHT := WordTiles.RIM_LIGHT
 const TONE := 0.035
 ## The flip lifts the tile off the card: at edge-on it has grown FLIP_SWELL
 ## and risen FLIP_RISE of a cell over a soft shadow, and it lands with a
