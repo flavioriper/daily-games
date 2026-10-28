@@ -70,9 +70,37 @@ const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 const MovesPill = preload("res://ui/flat/moves_pill.gd")
 const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
 const Meadow = preload("res://puzzles/shikaku_world.gd")
+const Reader = preload("res://puzzles/shikaku_reader.gd")
+const StarLine = preload("res://ui/flat/star_line.gd")
 const FLAT_HOST := "res://ui/flat/flat_host.gd"
 ## The slide into the win's span (the host's SLOT_TIME).
 const WIN_SLIDE := 0.45
+
+# The made-fun pass (2026-10-28): live stars, a sign's reach, a bulb that
+# reads, and squares no sign can reach any more rimmed.
+## Live stars by moves over par (a bed a sign; a bed fenced or cleared is
+## one, a redraw two, State.move_cost): three up to the first figure over,
+## two up to the second, by band. Never read off the answer.
+const STARS_BY_BAND := [[2, 5], [2, 6], [3, 8], [4, 10]]
+## The wash on the squares a pressed sign could still take, and the rims of
+## the bulb's reading and of a stuck square.
+const REACH_ALPHA := 0.26
+const RIM_INSET := 0.08
+const RIM_WIDTH := 0.07
+const RIM_DASH := 0.16
+const RIM_GAP := 0.1
+## The stars' row over the field on a band with no hearts or counter.
+const STAR_ROW := 48.0
+## The toast: a paper card over the field, on the half away from what it is
+## about, saying what a refusal, a bed that does not fit, a stuck square or
+## the bulb's reading is (the board's lines had no place on screen before).
+const TOAST_TIME := 3.6
+## The reading's toast stays longer, then goes too: the rims hold it.
+const TOAST_READ := 6.0
+const TOAST_FADE := 0.25
+const TOAST_FONT := 30
+const TOAST_PAD := Vector2(26.0, 16.0)
+const TOAST_MARGIN := 14.0
 ## The moves the out-of-moves card's video buys, once a board.
 const MOVES_BONUS := 5
 
@@ -160,6 +188,9 @@ const DISC_SHARE := 0.42
 const DISC_MAX := 54.0
 const DISC_RIM := 5.0
 const DISC_TEXT := 1.05
+## The rectangle's sides under the disc, and the paper rim round them.
+const SIDES_TEXT := 0.62
+const SIDES_RIM := 8
 ## The crop that comes up when the field is done: a flower a cell, the stem
 ## SEED_SIZE of a cell tall from its foot at SEED_AT, one colour to a bed.
 ## A bloom is drawn in SEED_STEPS frames of its own, cached.
@@ -493,6 +524,28 @@ var _placed := false
 var _shift := 0.0
 var _slide_tw: Tween
 
+## Every move the day has made (Reset keeps them), and the stars they earn.
+var _all_moves := 0
+var _stars := StarLine.new()
+var _best_streak := 0
+## The pressed sign's reach: the squares any bed it could still be covers.
+var _reach_mesh: ArrayMesh
+## The bulb's reading, between its two presses: {clue, rect, rule, cell, by}.
+var _reading := {}
+## Squares no sign can reach any more, while the field says so.
+var _stuck: Array = []
+var _rims_mesh: ArrayMesh
+var _rims_key := ""
+var _toast := ""
+var _toast_at := -INF
+var _toast_low := false
+## A reading's toast stays TOAST_READ, and goes with the reading.
+var _toast_hold := false
+## The bed the release just drew: only a blush of its own pops the toast.
+var _just_drawn := Rect2i()
+var _toast_layer: Control
+var _toast_shown: ArrayMesh
+
 func puzzle_id() -> String: return "shikaku"
 func title() -> String: return "Shikaku"
 
@@ -504,6 +557,8 @@ func rules() -> String:
 		out += "\n\n" + tr("SK_RULES_CROW")
 	if max_moves > 0:
 		out += "\n\n" + tr("SK_RULES_MOVES") % max_moves
+	else:
+		out += "\n\n" + tr("SK_RULES_STARS")
 	return out
 
 ## The lines the sprout cycles: a board with scarecrows leads with them, a
@@ -606,6 +661,7 @@ func _ready() -> void:
 	_life_layer = _layer("Life", 1, _draw_life)
 	_heart_layer = _layer("Hearts", 1, _draw_hearts)
 	_combo_layer = _layer("Combo", 2, _draw_combo)
+	_toast_layer = _layer("Toast", 2, _draw_toast)
 	_tip_timer = Timer.new()
 	_tip_timer.wait_time = TIP_CYCLE
 	_tip_timer.timeout.connect(_cycle_tip)
@@ -631,6 +687,11 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	max_moves = state.moves_budget()
 	_heart_used = false
 	_lost_ever = false
+	_all_moves = 0
+	_best_streak = 0
+	_stars.clear()
+	_reading = {}
+	_stuck = []
 	_deal()
 	_edges = {}
 	_fence_until = -1.0e9
@@ -887,9 +948,10 @@ func _layout() -> void:
 	for layer: Control in [_heart_layer, _combo_layer, _life_layer]:
 		layer.queue_redraw()
 
-## The room kept over the field for the hearts or Insane's counter.
+## The room kept over the field for the hearts, Insane's counter or the
+## stars (every band since the made-fun pass).
 func _head() -> float:
-	return HEART_ROW if max_hearts > 0 or max_moves > 0 else 0.0
+	return HEART_ROW if max_hearts > 0 or max_moves > 0 else STAR_ROW
 
 ## What the host's rows cover, in this board's own pixels (it is laid full
 ## rect). While playing the field is laid in what is left. On the win it is
@@ -1640,6 +1702,13 @@ func _draw() -> void:
 	if _fence != null:
 		draw_mesh(_fence, null, Transform2D(0.0, _origin))
 		shown.append(_fence)
+	if _drag_from.x >= 0 and not is_done() and _reach_mesh != null:
+		draw_mesh(_reach_mesh, null)
+		shown.append(_reach_mesh)
+	var rims := _build_rims()
+	if rims != null:
+		draw_mesh(rims, null)
+		shown.append(rims)
 	if _drag_from.x >= 0 and not is_done():
 		busy = _draw_pending(now) or busy
 		shown.append(_pend_mesh)
@@ -1772,9 +1841,41 @@ func _press(cell: Vector2i) -> void:
 	_pend_key = ""
 	_pend_px = Rect2()
 	_fit_clue = -1
+	_reach_mesh = _build_reach(cell, who)
 	_anim_until = maxf(_anim_until, _drag_at + Motion.POP_IN)
 	fx.cue("select")
 	_redraw()
+
+## A press on a sign washes every square a bed it could still be covers
+## (the size and shape it asks for, its own sign and no other inside, clear
+## of the other beds as they stand), so where it can go is seen before the
+## drag; the better apps of the genre show it the same way. Null off a sign.
+func _build_reach(cell: Vector2i, own: int) -> ArrayMesh:
+	var clue := -1
+	for i in state.clues.size():
+		if state.clues[i].pos == cell:
+			clue = i
+	if clue < 0:
+		return null
+	var cells := {}
+	for r: Rect2i in State.Gen.candidates(state.clues, clue, w, h):
+		var clear := true
+		for k in state.rects.size():
+			if k != own and state.rects[k].intersects(r):
+				clear = false
+				break
+		if not clear:
+			continue
+		for x in range(r.position.x, r.end.x):
+			for y in range(r.position.y, r.end.y):
+				cells[Vector2i(x, y)] = true
+	if cells.is_empty():
+		return null
+	var b := Face.Builder.new()
+	for at: Vector2i in cells:
+		var px := _rect_px(Rect2i(at, Vector2i.ONE)).grow(-BED_INSET)
+		b.fan(Face.Builder.round_rect(px.position, px.size, BED_RADIUS * 0.6), Color(Pal.SUN_RAY, REACH_ALPHA))
+	return b.mesh()
 
 ## The count moment: a number that was recounted bumps.
 func _recount() -> void:
@@ -1827,8 +1928,9 @@ func _release() -> void:
 	# Insane counts moves: a bed fenced or cleared is one, a redraw two, and
 	# a drag the budget cannot pay for is not a move.
 	var cost := 0
+	var spent := state.move_cost(pend, own)
 	if max_moves > 0:
-		cost = state.move_cost(pend, own)
+		cost = spent
 		if cost > moves_left:
 			_refuse(own, tr("SK_MOVES_SHORT"))
 			_redraw()
@@ -1849,13 +1951,18 @@ func _release() -> void:
 			_nudge_around(rect)
 			_puff_corners(rect, Pal.BED_FURROW)
 			fx.cue("plot")
+			_count_move(spent)
+			_just_drawn = rect
 			_after_move(start)
+			_just_drawn = Rect2i()
 			_judge(rect)
 			_spend(cost, _now())
+			_why_not(rect)
 		"clear":
 			_leave_missing(before, _now())
 			_hop_inside(out.rect, Motion.HOP, Motion.HOP_TIME)
 			fx.cue("clear")
+			_count_move(spent)
 			_after_move(Vector2(out.rect.position) + Vector2(out.rect.size) * 0.5)
 			_spend(cost, _now())
 	_redraw()
@@ -1880,10 +1987,109 @@ func _clear_drag() -> void:
 
 ## Everything a change to the partition drives.
 func _after_move(from: Vector2) -> void:
+	_drop_reading()
 	_fence_sync(from)
 	_refresh_markers()
+	_find_stuck()
 	_speak()
 	note_move()
+
+## A bed fenced or cleared goes on the day's count (a redraw is two), and
+## the stars are read again; a bed that lands on itself is free.
+func _count_move(n: int) -> void:
+	if n <= 0:
+		return
+	_all_moves += n
+	_rate(true)
+
+func _rate(heard: bool) -> void:
+	_stars.rate(_stars_for(_all_moves), _now(), heard and not is_done())
+	_heart_layer.queue_redraw()
+
+func _stars_for(made: int) -> int:
+	var cut: Array = STARS_BY_BAND[clampi(state.band, 0, 3)]
+	var over: int = made - state.clues.size()
+	return 3 if over <= int(cut[0]) else (2 if over <= int(cut[1]) else 1)
+
+## Squares no sign can reach any more, read off the beds as they stand
+## (puzzles/shikaku_reader.gd with every bed taken as laid): a bed beside
+## them is wrong. Only while no bed blushes, so every bed has its one sign.
+## A sign with no room left is rimmed instead of squares when there are none.
+func _find_stuck() -> void:
+	_stuck = []
+	if is_done() or state.blushing() > 0 or state.rects.is_empty():
+		return
+	var fixed: Array = []
+	for r in state.rects:
+		fixed.append(r)
+	var r = Reader.new(w, h, state.clues, fixed)
+	var reached := {}
+	var boxed: Array = []
+	for i in state.clues.size():
+		if r.is_placed(i):
+			continue
+		if (r.reach[i] as Array).is_empty():
+			boxed.append(state.clues[i].pos)
+		for at in r.reach[i]:
+			reached[at] = true
+	for y in h:
+		for x in w:
+			if r.owner[y * w + x] < 0 and not reached.has(Vector2i(x, y)):
+				_stuck.append(Vector2i(x, y))
+	if _stuck.is_empty():
+		_stuck = boxed
+
+## A bed that does not fit its sign says why, in words the sign would use.
+func _why_not(rect: Rect2i) -> void:
+	if is_done() or not _stuck.is_empty():
+		return
+	var inside: Array[int] = []
+	for i in state.clues.size():
+		if rect.has_point(state.clues[i].pos):
+			inside.append(i)
+	if inside.size() != 1:
+		return
+	var clue: Dictionary = state.clues[inside[0]]
+	if State.Gen.fits(clue, rect.size.x, rect.size.y) or State.Gen.crow_of(clue) >= 0:
+		return
+	var area := int(clue.area)
+	if area > 0 and rect.get_area() != area:
+		_say(tr("SK_NOT_SIZE") % [area, rect.get_area()], Face.Expr.PUZZLED)
+		_toast_say(_tip_text, [rect])
+		return
+	var shape := int(clue.get("shape", State.Gen.Shape.ANY))
+	if shape != State.Gen.Shape.ANY:
+		_say(tr(["", "SK_NOT_SQUARE", "SK_NOT_TALL", "SK_NOT_WIDE"][shape]), Face.Expr.PUZZLED)
+		_toast_say(_tip_text, [rect])
+
+## The bulb's reading (sun) and the stuck squares (rose), dashed rims on
+## their cells, one mesh cut again only when what they rim changes.
+func _build_rims() -> ArrayMesh:
+	if is_done() or (_reading.is_empty() and _stuck.is_empty()):
+		return null
+	var key := "%s|%s|%.1f|%s" % [str(_reading), str(_stuck), _cell, str(_origin)]
+	if key == _rims_key and _rims_mesh != null:
+		return _rims_mesh
+	_rims_key = key
+	var b := Face.Builder.new()
+	var width := maxf(PEND_MIN, _cell * RIM_WIDTH)
+	if not _reading.is_empty():
+		var cells: Array = [state.clues[int(_reading.clue)].pos]
+		if Vector2i(_reading.cell).x >= 0:
+			cells.append(_reading.cell)
+		if int(_reading.get("by", -1)) >= 0:
+			cells.append(state.clues[int(_reading.by)].pos)
+		for at in cells:
+			_rim(b, at, Pal.SUN, width)
+	for at in _stuck:
+		_rim(b, at, Pal.BAD, width)
+	_rims_mesh = b.mesh()
+	return _rims_mesh
+
+func _rim(b, at: Vector2i, colour: Color, width: float) -> void:
+	var px := _rect_px(Rect2i(at, Vector2i.ONE)).grow(-_cell * RIM_INSET)
+	_dash_path(b, Face.Builder.round_rect(px.position, px.size, BED_RADIUS), true,
+		width, colour, _cell * RIM_DASH, _cell * RIM_GAP)
 
 # --- what the beds do ---
 
@@ -1970,7 +2176,9 @@ func _refuse(who: int, why := "") -> void:
 	_say(why if why != "" else tr("SK_PINNED"), Face.Expr.PUZZLED)
 	fx.cue("locked")
 	if who < 0 or who >= state.rects.size():
+		_toast_say(_tip_text, [])
 		return
+	_toast_say(_tip_text, [state.rects[who]])
 	_blush(state.rects[who])
 	var i := state.clue_index_in(who)
 	if i < 0:
@@ -2013,6 +2221,7 @@ func _judge(rect: Rect2i) -> void:
 		_break_streak()
 		return
 	_streak += 1
+	_best_streak = maxi(_best_streak, _streak)
 	if _streak >= 2:
 		var step: int = COMBO_STEPS[mini(_streak - 2, COMBO_STEPS.size() - 1)]
 		fx.cue("combo", pow(2.0, step / 12.0), COMBO_DB)
@@ -2237,6 +2446,10 @@ func _close_card() -> void:
 func _draw_hearts() -> void:
 	if max_moves > 0 and _cell > 0.0:
 		_moves_pill.draw(_heart_layer, Vector2(size.x * 0.5, _origin.y - HEART_ROW * 0.5), moves_left, _now())
+		return
+	if max_hearts <= 0 and _cell > 0.0:
+		var sw := StarLine.width(1.0)
+		_stars.draw(_heart_layer, Vector2(size.x * 0.5 - sw * 0.5 + StarLine.R, _origin.y - STAR_ROW * 0.5), 1.0, _now())
 		return
 	if max_hearts <= 0 or _cell <= 0.0:
 		return
@@ -2589,16 +2802,91 @@ func _speak() -> void:
 		_say(tr("SK_BLUSH_1") if blush == 1
 			else tr("SK_BLUSH_N") % blush,
 			Face.Expr.PUZZLED)
+		# Only the bed just drawn pops the card: one left blushing elsewhere
+		# would otherwise bring it back at every move.
+		var who: int = state.rects.find(_just_drawn)
+		if who >= 0 and state.plot_blushes(who):
+			_toast_say(_tip_text, [_just_drawn])
+		return
+	if not _stuck.is_empty():
+		_say(tr("SK_STUCK"), Face.Expr.PUZZLED)
+		var cells: Array = []
+		for at: Vector2i in _stuck:
+			cells.append(Rect2i(at, Vector2i.ONE))
+		_toast_say(_tip_text, cells)
 		return
 	var bare := state.bare_cells()
 	if bare == 0:
 		for i in state.clues.size():
 			if State.Gen.crow_of(state.clues[i]) >= 0 and not state.clue_ok(i):
 				_say(tr("SK_CROW_WRONG"), Face.Expr.STRAIN)
+				_toast_say(_tip_text, [])
 				return
 		_say(tr("SK_WRONG_SIZE"), Face.Expr.STRAIN)
+		_toast_say(_tip_text, [])
 		return
 	_say(tr("SK_BARE_1") if bare == 1 else tr("SK_BARE_N") % bare, Face.Expr.HAPPY)
+
+## Says `text` on the toast, on the half of the field away from `about`
+## (rects in cells; the top when it is about nothing). The same line said
+## again while it shows only stays longer. `hold`: the bulb's reading, which
+## stays TOAST_READ unless a move puts it out first.
+func _toast_say(text: String, about: Array, hold := false) -> void:
+	var now := _now()
+	if text == _toast and _toast_level(now) > 0.0:
+		_toast_at = now - TOAST_FADE
+	else:
+		_toast = text
+		_toast_at = now
+		var rows := 0.0
+		for r: Rect2i in about:
+			rows += r.position.y + r.size.y * 0.5
+		_toast_low = not about.is_empty() and rows / about.size() < h * 0.5
+	_toast_hold = hold
+	_toast_layer.queue_redraw()
+
+## The bulb's reading goes out (a move, Undo, the second press), and its
+## toast with it.
+func _drop_reading() -> void:
+	_reading = {}
+	if _toast_hold:
+		_toast = ""
+		_toast_hold = false
+	_toast_layer.queue_redraw()
+
+## How much of the toast shows at `now`: 0 gone, 1 full.
+func _toast_level(now: float) -> float:
+	if _toast == "" or is_done():
+		return 0.0
+	var stay := TOAST_READ if _toast_hold else TOAST_TIME
+	var e := now - _toast_at
+	return 1.0 - clampf((e - stay) / TOAST_FADE, 0.0, 1.0)
+
+## The toast: a paper card the field's width, its line wrapped and centred.
+## One mesh and the words.
+func _draw_toast() -> void:
+	var now := _now()
+	var level := _toast_level(now)
+	if level <= 0.0 or _cell <= 0.0:
+		return
+	var font: Font = CozyTheme.body(700)
+	var field := _field_px()
+	var card_w := field.size.x - 2.0 * TOAST_MARGIN
+	var width := card_w - 2.0 * TOAST_PAD.x
+	var tall := font.get_multiline_string_size(_toast, HORIZONTAL_ALIGNMENT_CENTER, width, TOAST_FONT).y
+	var card := Vector2(card_w, tall + 2.0 * TOAST_PAD.y)
+	var top := field.end.y - TOAST_MARGIN - card.y if _toast_low else field.position.y + TOAST_MARGIN
+	var centre := Vector2(field.get_center().x, top + card.y * 0.5)
+	var k := 1.0 if Motion.reduce else Motion.pop_in_scale(now - _toast_at, TOAST_FADE).x
+	var b := Face.Builder.new()
+	b.polygon(Face.Builder.round_rect(-card * 0.5 - Vector2.ONE * 3.0, card + Vector2.ONE * 6.0, 24.0), Pal.LINE)
+	b.polygon(Face.Builder.round_rect(-card * 0.5, card, 22.0), Pal.SURFACE)
+	_toast_shown = b.mesh()
+	_toast_layer.draw_set_transform(centre, 0.0, Vector2(k, k))
+	_toast_layer.draw_mesh(_toast_shown, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, level))
+	_toast_layer.draw_multiline_string(font, Vector2(-width * 0.5, -card.y * 0.5 + TOAST_PAD.y + font.get_ascent(TOAST_FONT)),
+		_toast, HORIZONTAL_ALIGNMENT_CENTER, width, TOAST_FONT, -1, Color(Pal.TEXT, level))
+	_toast_layer.draw_set_transform_matrix(Transform2D.IDENTITY)
 
 func _say(text: String, mood: int) -> void:
 	_tip_text = text
@@ -2644,8 +2932,10 @@ func undo() -> bool:
 		_arrive(rect, false)
 		_hop_inside(rect, Motion.HOP, Motion.HOP_TIME)
 		from = Vector2(rect.position) + Vector2(rect.size) * 0.5
+	_drop_reading()
 	_fence_sync(from)
 	_refresh_markers()
+	_find_stuck()
 	_speak()
 	fx.cue("undo")
 	moved.emit()
@@ -2653,16 +2943,83 @@ func undo() -> bool:
 	return true
 
 func hints_left() -> int:
-	return State.HINTS_BY_BAND[state.band] + hints_extra - hints_used
+	return hints_held() + (0 if _reading.is_empty() else 1)
+
+func hints_held() -> int:
+	return maxi(0, State.HINTS_BY_BAND[state.band] + hints_extra - hints_used)
+
+## Made fun (2026-10-28): the bulb teaches, in two presses. The first reads
+## the field the way a player can (puzzles/shikaku_reader.gd, on from the
+## beds the player has right): it rims the sign whose bed is decided and the
+## square that decides it, and says why, for one hint. The player may draw
+## it themselves; a second press while the reading stands draws it, free.
+## Where nothing decides a bed (scarecrow fields, mostly), it rims the sign
+## of the answer's next bed and says so.
+func hint() -> bool:
+	if is_done() or out_of_hearts or _ejecting:
+		return false
+	if not _reading.is_empty():
+		var lay: Rect2i = _reading.rect
+		_drop_reading()
+		return _lay_hint(lay)
+	if hints_held() <= 0:
+		return false
+	var r := _read()
+	if r.is_empty():
+		return false
+	hints_used += 1
+	_reading = r
+	_say(_why(r), Face.Expr.HAPPY)
+	var at: Vector2i = state.clues[int(r.clue)].pos
+	var about: Array = [Rect2i(at, Vector2i.ONE)]
+	if Vector2i(r.cell).x >= 0:
+		about.append(Rect2i(r.cell, Vector2i.ONE))
+	_toast_say(_tip_text, about, true)
+	fx.ring(_rect_px(Rect2i(at, Vector2i.ONE)).get_center(), _cell * 0.7, Pal.SUN)
+	fx.cue("hint")
+	_bump(int(r.clue))
+	moved.emit()
+	_redraw()
+	return true
+
+## What the bulb reads now: {clue, rect, rule, cell, by}; {} when every bed
+## is the answer's.
+func _read() -> Dictionary:
+	var right: Array = []
+	for rect in state.rects:
+		if state.is_answer(rect):
+			right.append(rect)
+	var got: Dictionary = Reader.new(w, h, state.clues, right).next()
+	if not got.is_empty() and state.is_answer(got.rect) and not state.rects.has(got.rect):
+		return got
+	for rect in state.solution:
+		if right.has(rect):
+			continue
+		for i in state.clues.size():
+			if rect.has_point(state.clues[i].pos):
+				return {"clue": i, "rect": rect, "rule": Reader.Rule.NONE, "cell": Vector2i(-1, -1), "by": -1}
+	return {}
+
+## The reading's toast: why, then what a second press does.
+func _why(r: Dictionary) -> String:
+	var line := ""
+	match int(r.rule):
+		Reader.Rule.ONE_WAY:
+			line = tr("SK_WHY_ONE_WAY")
+		Reader.Rule.ONLY:
+			line = tr("SK_WHY_ONLY")
+		Reader.Rule.CROWD:
+			line = tr("SK_WHY_CROWD")
+		_:
+			line = tr("SK_WHY_START")
+	return line + " " + tr("SK_WHY_AGAIN")
 
 ## Draws one plot from the answer and pins it: a ring pulses out of the bed,
 ## the bed drops in from above, sparkles rise and its number is recounted.
-## Counts no move but can finish the puzzle.
-func hint() -> bool:
-	if is_done() or out_of_hearts or _ejecting or hints_left() <= 0:
-		return false
+## Counts no move but can finish the puzzle. The bulb's second press, free.
+func _lay_hint(want: Rect2i) -> bool:
 	var before := _snapshot()
-	var target := state.apply_hint()
+	var target := state.apply_hint(want)
 	if target.size == Vector2i(0, 0):
 		return false
 	_leave_missing(before, _now())
@@ -2673,9 +3030,9 @@ func hint() -> bool:
 	fx.ring(px.get_center(), minf(px.size.x, px.size.y) * 0.5, Pal.LEAF)
 	fx.sparkle(px.get_center(), Pal.LEAF)
 	fx.cue("hint")
-	hints_used += 1
 	_fence_sync(Vector2(target.position) + Vector2(target.size) * 0.5, Motion.DROP_TIME * 0.6)
 	_refresh_markers()
+	_find_stuck()
 	_say(tr("SK_FENCED"), Face.Expr.HAPPY)
 	moved.emit()
 	_redraw()
@@ -2712,6 +3069,10 @@ func reset_board() -> void:
 		return
 	_clear_drag()
 	_break_streak()
+	_reading = {}
+	_stuck = []
+	_toast = ""
+	_toast_layer.queue_redraw()
 	var before := _snapshot()
 	state.reset()
 	var now := _now()
@@ -2791,6 +3152,10 @@ func restore_completed_board() -> void:
 	_edges = {}
 	_fence_sync(Vector2.ZERO, 0.0, true)
 	_refresh_markers(true)
+	_reading = {}
+	_stuck = []
+	if completed_record.has("moves"):
+		_stars.rate(_stars_for(int(completed_record.moves)), now, false)
 	_say(tr("SK_SOLVED"), Face.Expr.JOY)
 	_redraw()
 	for layer: Control in [_heart_layer, _combo_layer, _life_layer]:
@@ -2813,7 +3178,25 @@ func share_glyphs() -> String:
 ## The board is the answer, so the win screen shows no cast: the planted
 ## field stays on the card under it, which is what the player made.
 func flat_win() -> Dictionary:
-	return {"faces": [], "subtitle": tr("SK_WIN")}
+	var made := int(completed_record.get("moves", _all_moves))
+	if made <= 0:
+		return {"faces": [], "subtitle": tr("SK_WIN")}
+	var par: int = state.clues.size()
+	var sub := tr("SK_WIN_MOVES_N") % made
+	# One line: the win's card stands right under it.
+	var best := int(completed_record.get("streak", _best_streak))
+	if made <= par:
+		sub += " " + tr("SK_WIN_PAR")
+	elif best >= COMBO_FROM:
+		sub += " " + tr("SK_WIN_STREAK") % best
+	return {"faces": [], "subtitle": sub}
+
+## The day's moves and best run, kept with the completion so a reopened day
+## shows its stars and its line.
+func completion_record() -> Dictionary:
+	if _all_moves <= 0:
+		return {}
+	return {"moves": _all_moves, "streak": _best_streak}
 
 func win_delay() -> float:
 	return Motion.REDUCED_TIME if Motion.reduce else WIN_WAIT + PARTY_EXTRA
@@ -2825,6 +3208,7 @@ func _on_solved() -> void:
 	_blooms = {}
 	_clear_drag()
 	_tip_timer.stop()
+	_toast_layer.queue_redraw()
 	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 or max_moves > 0 else checks == 0)
 	if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
 		_combo_out_at = _now()
@@ -2983,10 +3367,15 @@ func _process(delta: float) -> void:
 		_redraw()
 	if (_split_index >= 0 and now - _split_at < SPLIT_TIME + 0.1) \
 			or (_back_index >= 0 and now - _back_at < HEART_BACK_TIME + 0.1) \
-			or _moves_pill.animating(now - 0.1):
+			or _moves_pill.animating(now - 0.1) or _stars.busy(now - 0.1):
 		_heart_layer.queue_redraw()
 	if _combo_n >= COMBO_FROM and (now - _combo_at < COMBO_HOLD + 0.1 or _combo_out_at > -INF):
 		_combo_layer.queue_redraw()
+	if _toast != "":
+		var e := now - _toast_at
+		var stay := TOAST_READ if _toast_hold else TOAST_TIME
+		if e < TOAST_FADE + 0.05 or (e > stay - 0.05 and e < stay + TOAST_FADE + 0.05):
+			_toast_layer.queue_redraw()
 	if not _flies.is_empty() or not _worm.is_empty() \
 			or (now >= _stamp_at and now - _stamp_at < STAMP_DROP * 2.0 + 0.1):
 		_fly(delta)
@@ -3115,4 +3504,13 @@ class Overlay extends Control:
 		var wide := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px_size).x
 		draw_string(font, Vector2(-wide * 0.5, font.get_ascent(px_size) * 0.5),
 			text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px_size, colour)
+		# Its sides under it, "2 × 3", once it is more than a strip: the
+		# better apps of the genre count the bed this way while it is drawn.
+		if pend.size.x > 1 and pend.size.y > 1:
+			var sides := "%d × %d" % [pend.size.x, pend.size.y]
+			var small := int(roundf(r * SIDES_TEXT))
+			var sw := font.get_string_size(sides, HORIZONTAL_ALIGNMENT_LEFT, -1.0, small).x
+			var at := Vector2(-sw * 0.5, r + font.get_ascent(small) + 2.0)
+			draw_string_outline(font, at, sides, HORIZONTAL_ALIGNMENT_LEFT, -1.0, small, SIDES_RIM, Pal.SURFACE)
+			draw_string(font, at, sides, HORIZONTAL_ALIGNMENT_LEFT, -1.0, small, Pal.TEXT)
 		draw_set_transform_matrix(Transform2D.IDENTITY)

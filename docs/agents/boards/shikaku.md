@@ -125,3 +125,78 @@ leaves 77 of 1920). The field's edges are on the host's margin; a pill row
 - Decided for the user, unconfirmed: no Check; the fence in the tools gap
   (it stands over "Well done!" on the win); the field's own sand panel
   kept. Owed: a phone, the level slide's look.
+
+## Made fun (2026-10-28)
+
+The user: "make shikaku experience way better to play, and game itself way
+funnier to play, right now nobody likes it", autonomous, push when done.
+References from the web, by genre: store listings of the rectangle apps
+advertise showing *the possible areas around a clue*, *clear explanations
+when a selection is rejected* and *width x height counting while drawing*;
+the solving guides all teach the same two first moves (a sign that fits
+only one way; a square only one sign can reach). No reviews worth citing.
+
+**Measured first** (`tests/_probe_sk_fun.gd`, headless, 40 days a band,
+`puzzles/shikaku_reader.gd`): reading the field the way those guides teach
+read 94% of Easy's beds on average but **3 of 40 Easy fields not at all**
+(a field of vertical 3s needs lookahead a beginner does not have), Hard
+39/40 whole, Insane's scarecrow bank 0/40 (its counts are not read). It
+never laid a wrong bed. The board's lines (refusals, "N squares still bare",
+"wrong size") had no place on screen: nothing read `tip_line()` since the
+bleed redesign. A fitting bed that is not the answer was accepted, sprouted
+and counted in the streak, and the player found out only at "every square
+planted, but...", with nothing pointing at which bed. No band had stakes.
+The baseline `right` shot already shows plenty of spectacle (streak bubble,
+gags, butterflies); the gap was reading and stakes, so no new sounds, gags
+or celebration.
+
+**What changed**:
+
+- **Readable deals**: Easy to Hard deal again until the reader reads the
+  whole field (`State.READABLE_TRIES` 16, the last try stands). Probe after:
+  40/40 on all three; setup mean 0.8 / 1.6 / 6.2 ms, worst 17 ms on Hard.
+  Today's Easy-Hard fields changed. Insane's bank untouched.
+- **The reader** (`puzzles/shikaku_reader.gd`): every sign keeps the beds
+  it could still be; one way, only sign (a square one sign alone reaches),
+  crowded (a square every bed of a sign covers). Sound with scarecrows.
+- **The bulb teaches in two presses** (`hint`, `_read`, `_why`): the first
+  reads from the beds the player has right, rims the sign (and the square
+  the rule turned on, and for crowded the other sign) in sun and says why
+  (`SK_WHY_ONE_WAY/ONLY/CROWD`, `SK_WHY_START` where nothing decides, which
+  is most of Insane), for one hint; a second press draws and pins it, free
+  (`State.apply_hint(target)`). Any move or Undo puts the reading out. The
+  tutorial's HINT page presses twice (`HTP_SK_READ_CAP`); its body no longer
+  names Check.
+- **A press on a sign washes its reach** (`_build_reach`): every square a
+  bed it could still be covers, clear of the other beds as they stand. One
+  mesh, made at the press.
+- **The count disc says the sides** ("2 x 3") under the area once the
+  rectangle is more than a strip.
+- **Stuck squares** (`_find_stuck`): after every move, with no bed
+  blushing, the reader takes the beds as laid; bare squares no sign can
+  reach any more are rimmed rose and `SK_STUCK` says a bed beside them is
+  wrong (a sign boxed in with no room is rimmed when there are no such
+  squares). Public reasoning, never the answer.
+- **A bed that does not fit says why**: `SK_NOT_SIZE` ("asks for 6; this
+  bed has 4"), `SK_NOT_SQUARE/TALL/WIDE`.
+- **The toast** (`_toast_say`, `_draw_toast`, its own layer): a paper card
+  the field's width on the half of the field away from what it is about,
+  for refusals, why-nots, blushing beds, stuck squares, the wrong full field
+  and the reading (6 s, or until a move puts the reading out; the rims
+  stay). 3.6 s otherwise. A blush pops it only for the bed just drawn.
+- **Live stars** (`ui/flat/star_line.gd`) in a 48 px row over the field
+  (`STAR_ROW`; hearts or a counter keep `HEART_ROW`), by moves over par (a
+  bed a sign; `State.move_cost`: fenced 1, cleared 1, redrawn 2):
+  `STARS_BY_BAND` three up to +2/+2/+3/+4, two up to +5/+6/+8/+10. The
+  bulb's beds and Undo count nothing; Reset keeps the day's moves. The
+  win's subtitle is the moves (`SK_WIN_MOVES_N`) and `SK_WIN_PAR` at par or
+  the best run (`SK_WIN_STREAK`), one line. `completion_record` keeps moves
+  and run, so a reopened day shows its stars.
+
+opengl3_angle 810x1440, `perf` mid-board: 86 / 89 / 86 / 88 draw calls
+(Easy to Insane); Insane's solve peaks at 153 (was 164). `_win.gd
+shikaku` PASS; suite 303252/0. Unseen on a phone; the star cuts, the toast's
+placement and the reach wash's sun are my calls, unconfirmed; pt/es unread
+by a speaker. Left as is: a sign boxed in with no room stands on a bare
+square, so the stuck rim can ring the square a sign stands on (the line
+still reads true).

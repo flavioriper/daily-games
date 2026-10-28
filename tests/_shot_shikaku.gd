@@ -9,7 +9,10 @@ extends SceneTree
 ## second: streak, sprouts, gags, butterflies), `wrong` (a bed that fits its
 ## sign but is not the answer, again until the hearts run out: Hard and
 ## Insane), `solve` (the answer to the win: planting, stamp, party), `perf`
-## (half the answer, then a quiet window: draw calls and frame time).
+## (half the answer, then a quiet window: draw calls and frame time),
+## `read` (the made-fun pass: two beds, the bulb's two presses, then a sign
+## pressed for its reach and dragged to a 2x2 for its sides), `stuck` (wrong
+## beds that fit their signs until a square no sign can reach is rimmed).
 ## Frames go to <dir>/sk_<mode>_d<level>_<n>.png.
 
 const SHOT_DIR := "/private/tmp/claude-501/-Users-flavioriper-dev-daily/b3499ef5-297d-43f3-abe0-b6fa4d997aa6/scratchpad"
@@ -182,6 +185,45 @@ func _script() -> void:
 				_at(done + 0.4 + k * 0.45, _shot)
 			_ms_from = done
 			_end = done + 4.2
+		"read":
+			var beds := _answer()
+			_draw_bed(1.0, beds[0])
+			_draw_bed(1.5, beds[1])
+			_at(2.6, func() -> void:
+				print("hint 1: ", _puzzle.hint(), " left ", _puzzle.hints_left(), " reading ", _puzzle._reading)
+				print("say: ", _puzzle.tip_line().text))
+			_at(3.1, _shot)
+			_at(3.6, func() -> void:
+				print("hint 2: ", _puzzle.hint(), " left ", _puzzle.hints_left(), " plots ", _puzzle.state.rects.size())
+				print("say: ", _puzzle.tip_line().text))
+			_at(4.6, _shot)
+			_at(5.0, func() -> void:
+				var st = _puzzle.state
+				for i in st.clues.size():
+					if st.owner_at(st.clues[i].pos.y, st.clues[i].pos.x) < 0:
+						var at: Vector2i = st.clues[i].pos
+						_ev_press(_puzzle.cell_to_local(at.y, at.x), true)
+						var to := Vector2i(mini(at.x + 1, st.w - 1) if at.x + 1 < st.w else at.x - 1, mini(at.y + 1, st.h - 1) if at.y + 1 < st.h else at.y - 1)
+						_at(5.5, func() -> void: _ev_motion(_puzzle.cell_to_local(to.y, to.x)))
+						return)
+			_at(5.35, _shot)
+			_at(5.9, _shot)
+			_at(6.2, func() -> void: _ev_press(Vector2(-10, -10), false))
+			_end = 6.4
+		"stuck":
+			for k in 4:
+				_at(1.0 + k * 0.6, func() -> void:
+					if not _puzzle._stuck.is_empty():
+						return
+					var r := _wrong_bed()
+					var a: Vector2 = _puzzle.cell_to_local(r.position.y, r.position.x)
+					var b: Vector2 = _puzzle.cell_to_local(r.end.y - 1, r.end.x - 1)
+					_ev_press(a, true)
+					_ev_motion(b)
+					_ev_press(b, false)
+					print("bed ", r, " stuck ", _puzzle._stuck, " say: ", _puzzle.tip_line().text))
+			_at(4.0, _shot)
+			_end = 4.2
 		"perf":
 			var beds := _answer()
 			for k in beds.size() / 2:

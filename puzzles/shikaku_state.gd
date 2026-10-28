@@ -13,6 +13,7 @@ extends RefCounted
 
 const Gen = preload("res://puzzles/shikaku_gen.gd")
 const InsaneBank = preload("res://core/insane_bank.gd")
+const Reader = preload("res://puzzles/shikaku_reader.gd")
 
 ## The largest area a clue can carry, and the smallest rectangle worth
 ## drawing: a 1 or a 2 is forced on sight. The island's own numbers, so the
@@ -22,6 +23,11 @@ const MAX_AREA := 9
 ## leaves room for.
 const MAX_AREA_INSANE := 12
 const MIN_AREA := 3
+## Fields dealt on Easy to Hard until one reads to the end by what each sign
+## can still reach (puzzles/shikaku_reader.gd, the made-fun pass of
+## 2026-10-28): a field a beginner cannot start without guessing is dealt
+## again. The last try stands if none reads.
+const READABLE_TRIES := 16
 const HINTS := 3
 ## Hints per difficulty. Insane had none while it counted moves; since
 ## 2026-10-13 it has Hard's.
@@ -72,7 +78,10 @@ func setup(rng: RandomNumberGenerator, difficulty: int, bank_step := 0) -> void:
 		out = Gen.from_bank(InsaneBank.pick("shikaku", bank_step))
 	if out.is_empty():
 		var step: Array = SIZES[band]
-		out = Gen.generate(rng, step[0], step[1], step[2], MIN_AREA, SHAPES[band][0], SHAPES[band][1])
+		for k in READABLE_TRIES:
+			out = Gen.generate(rng, step[0], step[1], step[2], MIN_AREA, SHAPES[band][0], SHAPES[band][1])
+			if Reader.new(out.w, out.h, out.clues).run() == out.clues.size():
+				break
 	w = out.w
 	h = out.h
 	clues = out.clues
@@ -392,15 +401,18 @@ func reset() -> void:
 	history = []
 	reown()
 
-## Draws one plot from the answer and pins it: the first solution rectangle
-## the board does not already have. Returns it, or a zero rect when there is
+## Draws one plot from the answer and pins it: `target` when it is one of
+## the answer's (the bulb's reading), else the first solution rectangle the
+## board does not already have. Returns it, or a zero rect when there is
 ## none left to give.
-func apply_hint() -> Rect2i:
-	var target := Rect2i(0, 0, 0, 0)
-	for rect in solution:
-		if not rects.has(rect):
-			target = rect
-			break
+func apply_hint(target := Rect2i(0, 0, 0, 0)) -> Rect2i:
+	if not solution.has(target) or (rects.has(target) and locked[rects.find(target)]):
+		target = Rect2i(0, 0, 0, 0)
+	if target.size == Vector2i(0, 0):
+		for rect in solution:
+			if not rects.has(rect):
+				target = rect
+				break
 	if target.size == Vector2i(0, 0):
 		return target
 	var keep: Array[Rect2i] = []

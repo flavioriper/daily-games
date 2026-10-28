@@ -13,7 +13,9 @@ extends Control
 ## - ONE: a bed round two signs blushes; a tap clears it; one sign each.
 ## - SHAPES: a square sign refuses a wide plot and takes a square one; a
 ##   sign with no number takes any size of its shape.
-## - HINT: the bulb drops a bed in and pins it; a drag on it is refused.
+## - HINT: the bulb's first press rims the sign whose bed is decided (the
+##   board's reading, 2026-10-28), the second drops the bed in and pins it;
+##   a drag on it is refused.
 ## - HEARTS: a bed that fits its sign but is not the answer wilts and costs
 ##   a heart (`hearts` is the band's count), then the right one.
 ## - CROW: a scarecrow's number counts the beds sharing a fence with its own.
@@ -78,6 +80,8 @@ var _split_at := -1.0e9
 ## Kept until the next draw replaces them: a canvas command holds a mesh by
 ## RID.
 var _field_shown: Array = []
+## HINT: the sign the bulb's first press rims, until the second draws it.
+var _reading_at := Vector2i(-1, -1)
 var _over_shown: ArrayMesh
 var _disc: ArrayMesh
 var _disc_key := ""
@@ -251,9 +255,13 @@ func _start() -> void:
 			_play_drag(Vector2i(0, 2), Vector2i(2, 2), 2)
 			_loop.tween_interval(2.2)
 		Lesson.HINT:
+			# Two presses: the first rims the sign and says why, the second
+			# draws its bed.
+			_loop.tween_callback(_read)
+			_loop.tween_interval(2.0)
 			_loop.tween_callback(_hint)
 			_loop.tween_interval(1.8)
-			_play_drag(Vector2i(1, 1), Vector2i(1, 0), 0)
+			_play_drag(Vector2i(1, 1), Vector2i(1, 0), 1)
 			_loop.tween_interval(2.0)
 		Lesson.HEARTS:
 			_play_drag(Vector2i(0, 1), Vector2i(2, 1), 0)
@@ -316,6 +324,7 @@ func _reset() -> void:
 	_down = false
 	_full = hearts
 	_split_at = -1.0e9
+	_reading_at = Vector2i(-1, -1)
 	_art._edges = {}
 	_art._fence_sync(Vector2.ZERO, 0.0, true)
 	_art._fence_still_key = -1
@@ -337,7 +346,7 @@ func _still() -> void:
 			_say(2)
 		Lesson.HINT:
 			st.apply_hint()
-			_say(0)
+			_say(1)
 		Lesson.HEARTS:
 			# The still shows the right bed with every heart; the page's body
 			# says what a wrong one costs.
@@ -360,7 +369,7 @@ func _caption_for(step: int) -> String:
 		Lesson.SHAPES:
 			keys = ["HTP_SK_SQUARE_CAP", "HTP_SK_SQUARED_CAP", "HTP_SK_ANY_CAP"]
 		Lesson.HINT:
-			keys = ["HTP_SK_HINT_CAP", "HTP_SK_PINNED_CAP"]
+			keys = ["HTP_SK_READ_CAP", "HTP_SK_HINT_CAP", "HTP_SK_PINNED_CAP"]
 		Lesson.HEARTS:
 			keys = ["HTP_SK_FITS_CAP", "HTP_SK_WILT_CAP", "HTP_SK_RIGHT_CAP"]
 		Lesson.CROW:
@@ -449,11 +458,28 @@ func _refuse(who: int) -> void:
 	var i: int = _art.state.clue_index_in(who)
 	if i >= 0:
 		Motion.shiver(_signs[i], _cell * Board.MARKER * Board.SHIVER)
-	_say(1)
+	_say(2 if lesson == Lesson.HINT else 1)
+
+## HINT, the first press: the sign of the answer's first missing bed is
+## rimmed in sun and bobs.
+func _read() -> void:
+	var st = _art.state
+	for rect: Rect2i in st.solution:
+		if st.rects.has(rect):
+			continue
+		for i in st.clues.size():
+			if rect.has_point(st.clues[i].pos):
+				_reading_at = st.clues[i].pos
+				Motion.bump(_signs[i])
+				_say(0)
+				_field.queue_redraw()
+				return
 
 ## HINT: the bulb draws the answer's first missing bed and pins it, dropping
 ## it in from above.
 func _hint() -> void:
+	_reading_at = Vector2i(-1, -1)
+	_say(1)
 	var rect: Rect2i = _art.state.apply_hint()
 	if rect.size == Vector2i.ZERO:
 		return
@@ -575,6 +601,12 @@ func _draw_field() -> void:
 		if f != null:
 			shown.append(f)
 			_field.draw_mesh(f, null, Transform2D(0.0, _origin))
+	if _reading_at.x >= 0:
+		var rb := Face.Builder.new()
+		_art._rim(rb, _reading_at, Pal.SUN, maxf(Board.PEND_MIN, _cell * Board.RIM_WIDTH))
+		var rim := rb.mesh()
+		shown.append(rim)
+		_field.draw_mesh(rim, null)
 	if _pend.has_area():
 		var px: Rect2 = _art._rect_px(_pend)
 		var colour: Color = _art._pending_colour(_pend)
