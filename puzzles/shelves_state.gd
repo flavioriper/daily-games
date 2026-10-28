@@ -229,6 +229,10 @@ static func _key_of(words: Array) -> String:
 	s.sort()
 	return "|".join(s)
 
+## Whether these four were shelved before (a repeat costs nothing).
+func tried(words: Array) -> bool:
+	return _tried.has(_key_of(words))
+
 ## The four picked jars shelved: a shelf when they are one, else a heart.
 func submit() -> Said:
 	if picked.size() != 4 or solved() or out():

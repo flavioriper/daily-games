@@ -11,11 +11,15 @@ import bank from "./shelves_bank.json";
  * "fish"), never a pun across languages: each language's words are its
  * own, chosen natively under the same idea, so a group stands in all three.
  *
- * A model writes a band's puzzles and a second, blind pass sorts them: the
+ * A model writes a band's puzzles, red herrings named ("traps", TRAPS a
+ * band, every language), and a second, blind pass solves them: the
  * reviewer is shown each language's words shuffled with no groups and puts
- * them on shelves itself. A puzzle survives only when the reviewer's shelves
- * are the writer's in every language, it was sure, and it found nothing to
- * say. What is left short is filled from the bank the game ships
+ * them on shelves itself, says how often it was fooled on the way and what
+ * is wrong. A puzzle survives only when the reviewer's shelves are the
+ * writer's in every language, it found nothing wrong, and (past Easy) it
+ * was fooled at least once; its shelves are then ordered as the reviewer
+ * found them. Being unsure is no longer a fault (2026-10-28: the old "sure"
+ * gate turned down every board with a real red herring). What is left short is filled from the bank the game ships
  * (content/shelves.json, copied beside this file by `npm run build`), the
  * same puzzle a phone that never reached the network deals itself.
  */
@@ -134,6 +138,21 @@ export function tidy(p: Puzzle): Puzzle {
 
 // --- the writer ---
 
+/** Red herrings each language's set must carry, Easy to Insane: a word of
+ *  one shelf that plainly seems to belong on another. A board with none is
+ *  sorted at a glance and nobody enjoys it (2026-10-28: the first bank had
+ *  none, and "nobody likes it"). */
+export const TRAPS = [1, 3, 4, 5];
+/** More than this and the board stops being fair: four hearts a day. */
+const TRAPS_MAX = 8;
+
+/** A word that looks as if it goes on another shelf: `word` sits in one
+ *  group and seems to fit group `seems` (an index into the same groups). */
+export interface Trap {
+  word: string;
+  seems: number;
+}
+
 const GROUP_SCHEMA = {
   type: "object",
   properties: {
@@ -144,10 +163,20 @@ const GROUP_SCHEMA = {
   additionalProperties: false,
 };
 
+const TRAP_SCHEMA = {
+  type: "object",
+  properties: {word: {type: "string"}, seems: {type: "integer"}},
+  required: ["word", "seems"],
+  additionalProperties: false,
+};
+
 const WORDING_SCHEMA = {
   type: "object",
-  properties: {groups: {type: "array", items: GROUP_SCHEMA}},
-  required: ["groups"],
+  properties: {
+    groups: {type: "array", items: GROUP_SCHEMA},
+    traps: {type: "array", items: TRAP_SCHEMA},
+  },
+  required: ["groups", "traps"],
   additionalProperties: false,
 };
 
@@ -165,39 +194,71 @@ const BAND_SCHEMA = {
   additionalProperties: false,
 };
 
+/** The ideas every lazy grouping puzzle reaches for; the first bank was made
+ *  of little else (instruments, fruit, pasta, pets in a dozen puzzles). */
+const STOCK = [
+  "musical instruments", "fruits", "vegetables", "pets", "farm animals",
+  "birds", "insects", "ocean animals", "shapes", "colours", "weather",
+  "kinds of pasta", "cheeses", "metals", "tools", "vehicles", "body parts",
+  "clothing", "shoes", "rooms of a home", "sports", "classroom items",
+  "kitchen tools", "things in the sky", "planets", "units of measure",
+  "things with shells", "things with teeth", "things with faces",
+  "things with keys", "palindromes",
+];
+
 const WRITER = `You write the daily word-grouping puzzle of a cozy mobile \
 game played by families in Brazil, Latin America and the English-speaking \
 world. A puzzle is a set of words, every one belonging to exactly one hidden \
-group of four; the player sorts them onto shelves, four at a time.
+group of four; the player sorts them onto shelves, four at a time, and four \
+wrong fours end the day.
 
-What every puzzle must be:
-- Each group is a clear shared idea a player can name once they see it: a \
-kind of thing (types of pasta), a property (things that are striped), a \
-shared partner word (words that go before "ball"), a role, a place.
-- **Red herrings are the point**: several words should look as though they \
-belong to a second group, so the first guess is often wrong, but in the end \
-exactly one way of sorting all the words works. No word may truly fit two \
-groups.
+**The fun is being fooled, then seeing it.** A good board makes the player \
+spot a group of four at once, try it, and lose a heart because one of those \
+words was really needed somewhere else; then the hidden idea clicks and they \
+laugh. A board whose groups can be read off at a glance is a failed board, \
+however correct.
+
+How a board is built:
+- Start from the subtlest group (a word that goes before or after a partner \
+word, a word hiding a smaller word, words that are also verbs or names of \
+something else, things that can be "broken", a phrase each completes, \
+a sound, a double meaning). Then pick the plain groups so that several of \
+their words, and several of the subtle group's words, look as though they \
+belong to another group.
+- **Red herrings, on purpose**: list them in "traps", each a word and the \
+index (0-based, into this language's groups) of the group it *seems* to \
+belong to but does not. Typical: five words that all look like "kinds of \
+bird" but only four are; a word of the plain group that also fits the \
+partner word. Every trap must genuinely tempt an adult.
+- Still exactly one sorting of all the words works: a trap fits its false \
+group's surface, never its exact idea as the label states it. No five words \
+truly share one label.
+- Vary the kinds of groups within a puzzle: at most one plain "kinds of X" \
+on Medium and harder; the others are properties, partner words, hidden \
+words, roles, things that do something, phrases.
+- Never use these tired ideas, nor anything close: ${STOCK.join(", ")}. \
+Prefer vivid, playful, everyday words (food, home, nature, games, stories) \
+over dull ones.
 - Groups are ordered from the most obvious to the most subtle.
 - Every word is one ordinary dictionary word (no spaces, at most 11 letters), \
 no proper names of people or brands, nothing for adults only.
 - Written three times: English (en), Brazilian Portuguese (pt) and neutral \
 Latin American Spanish (es), each language's words chosen natively, never \
-translated word for word. The plain groups keep the same idea in all three, \
-in the same order. A subtle group built on a double meaning, a partner word \
-or a sound seldom survives translation ("things with keys" is two different \
-words in Portuguese): for such a group, give each language its own subtle \
-idea that is natural there, at the same place in the order. Each language's \
-set must sort one way only, in that language.
+translated word for word, each with its own traps. The plain groups keep the \
+same idea in all three, in the same order. A subtle group built on a double \
+meaning, a partner word or a sound seldom survives translation: give each \
+language its own subtle idea that is natural there, at the same place in the \
+order. Each language's set must sort one way only, in that language.
 - A group's "label" names its idea in a few words (at most 30 characters), \
-in that language.`;
+in that language, said with a smile when it can ("Words before 'cake'", \
+"Things that can be broken").`;
 
 /** What each band is asked for. */
 const BRIEFS = [
-  (n: number) => `${n} easy puzzles of three groups each (12 words): ideas a ten-year-old knows, one mild red herring.`,
-  (n: number) => `${n} puzzles of four groups each (16 words): everyday ideas, the last group a little subtle, a few red herrings.`,
-  (n: number) => `${n} hard puzzles of four groups each (16 words): the last two groups subtle (a partner word, a hidden property), many red herrings.`,
-  (n: number) => `${n} very hard puzzles of five groups each (20 words): the last two groups subtle, many red herrings across groups.`,
+  (n: number) => `${n} easy puzzles of three groups each (12 words): ideas a ten-year-old knows, at least one honest red herring, and the last group a gentle twist (a partner word, a property).`,
+  (n: number) => `${n} puzzles of four groups each (16 words): one plain group, the others properties or partner words, the last subtle; at least three red herrings.`,
+  (n: number) => `${n} hard puzzles of four groups each (16 words): the last two groups subtle (a partner word, a hidden word, a double meaning), at least four red herrings, so an obvious-looking group of four is a trap.`,
+  (n: number) => `${n} very hard puzzles of five groups each (20 words): the last two groups subtle, at least five red herrings across groups, two plausible groups of five where only four belong.`,
 ];
 
 function writerPrompt(day: number, band: number, taken: string[]): string {
@@ -205,6 +266,33 @@ function writerPrompt(day: number, band: number, taken: string[]): string {
     `\n\nGroups used lately, not to be used again nor anything close:\n${taken.map((r) => `- ${r}`).join("\n")}`;
   return `Write the shelves puzzles for day ${day}: ${BRIEFS[band](DRAFTS)} \
 No group's idea may repeat across the puzzles.${stale}`;
+}
+
+/** A wording's traps that hold: the word is on the board, and the group it
+ *  seems to fit is another of this wording's. */
+export function goodTraps(w: Wording & {traps?: unknown}): Trap[] {
+  if (!Array.isArray(w.traps)) return [];
+  const seen = new Set<string>();
+  const out: Trap[] = [];
+  for (const t of w.traps) {
+    if (typeof t !== "object" || t === null) continue;
+    const word = norm(String((t as Trap).word ?? ""));
+    const seems = Number((t as Trap).seems);
+    const home = w.groups.findIndex((g) => g.words.some((x) => norm(x) === word));
+    if (home < 0 || !Number.isInteger(seems) || seems < 0 || seems >= w.groups.length || seems === home || seen.has(word)) continue;
+    seen.add(word);
+    out.push({word, seems});
+  }
+  return out;
+}
+
+/** Whether a written puzzle carries the band's red herrings in every
+ *  language, and not so many the board is a lottery. */
+export function trapped(p: Puzzle, band: number): boolean {
+  return LANGS.every((l) => {
+    const n = goodTraps(p[l]).length;
+    return n >= TRAPS[band] && n <= TRAPS_MAX;
+  });
 }
 
 // --- the reviewer ---
@@ -220,10 +308,10 @@ const SORT_SCHEMA = {
           id: {type: "string"},
           lang: {type: "string", enum: [...LANGS]},
           shelves: {type: "array", items: {type: "array", items: {type: "string"}}},
-          sure: {type: "boolean"},
-          issue: {type: "string", enum: ["none", "ambiguous", "obscure", "translation", "unsuitable"]},
+          fooled: {type: "integer"},
+          issue: {type: "string", enum: ["none", "ambiguous", "obscure", "translation", "unsuitable", "dull"]},
         },
-        required: ["id", "lang", "shelves", "sure", "issue"],
+        required: ["id", "lang", "shelves", "fooled", "issue"],
         additionalProperties: false,
       },
     },
@@ -235,26 +323,35 @@ const SORT_SCHEMA = {
 const REVIEWER = `You test a family word-grouping puzzle before it is \
 published in English, Portuguese and Spanish. Each puzzle is shown as a \
 shuffled set of words in one language: every word belongs to exactly one \
-hidden group of four. You are not told the groups.
+hidden group of four. You are not told the groups. A good puzzle is meant to \
+fool its player at first: words that seem to make a group of four but do \
+not are the point, not a flaw.
 
-For every puzzle in every language: sort all its words into groups of four \
-yourself ("shelves", each a list of four of the words exactly as shown), say \
-whether you are sure your sorting is the only one that works ("sure"), and \
-name the one thing wrong with it, if anything ("issue"):
-- ambiguous: a word fits two groups, or more than one sorting works.
-- obscure: a group or word most adults would never get.
-- translation: the language's words read unnaturally or a group only works in \
-another language.
-- unsuitable: not for a family game.
-- none: a good puzzle.
-
-Be strict. A sorting you would not stake your name on is not "sure".`;
+For every puzzle in every language:
+- Solve it as a player would. "shelves": your final sorting of all its \
+words into groups of four (each a list of four of the words exactly as \
+shown), **ordered from the group you found first to the one you found \
+last**.
+- "fooled": how many tempting wrong groups of four you noticed on the way \
+(four words that looked like a group but were not one in the end), 0 when \
+every group was plain at a glance.
+- "issue", the one thing wrong with it, if anything:
+  - ambiguous: once solved, more than one complete sorting still works \
+(a fifth word fitting a group's exact idea). A decoy that only fits a \
+group's surface is not ambiguous.
+  - obscure: a group or word most adults would never get.
+  - translation: the language's words read unnaturally or a group only works \
+in another language.
+  - unsuitable: not for a family game.
+  - dull: no red herring worth the name; the groups can be read off at a \
+glance.
+  - none: a good puzzle.`;
 
 interface Sort {
   id: string;
   lang: string;
   shelves: string[][];
-  sure: boolean;
+  fooled: number;
   issue: string;
 }
 
@@ -292,20 +389,34 @@ export function samePartition(groups: Group[], shelves: string[][]): boolean {
   return want.size === 0;
 }
 
+/** `groups` in the order the reviewer found them (its shelves are the same
+ *  partition): the plank colours climb with how hard a shelf really was. */
+export function inFoundOrder(groups: Group[], shelves: string[][]): Group[] {
+  const key = (ws: string[]) => ws.map(norm).sort().join("|");
+  const at = new Map(shelves.map((s, i) => [key(s.map(String)), i]));
+  return groups.slice().sort((a, b) => (at.get(key(a.words)) ?? 0) - (at.get(key(b.words)) ?? 0));
+}
+
 /** The puzzles the reviewer sorted as the writer meant in every language,
- *  surely, with nothing to say against them. */
-export function passing(puzzles: Puzzle[], sorts: Sort[]): Puzzle[] {
-  return puzzles.filter((p) => {
+ *  with nothing to say against them, re-ordered as it found the shelves.
+ *  The Easy band may be plain; every other one must have fooled it once. */
+export function passing(puzzles: Puzzle[], sorts: Sort[], band = 0): Puzzle[] {
+  const out: Puzzle[] = [];
+  for (const p of puzzles) {
     const why: string[] = [];
+    const kept = {id: p.id} as Puzzle;
     for (const l of LANGS) {
       const s = sorts.find((x) => x.id === p.id && x.lang === l);
       if (s === undefined) why.push(`${l}: no sort`);
       else if (!samePartition(p[l].groups, s.shelves)) why.push(`${l}: sorted otherwise`);
-      else if (!s.sure || s.issue !== "none") why.push(`${l}: ${s.sure ? "" : "unsure "}${s.issue}`);
+      else if (s.issue !== "none" && !(band === 0 && s.issue === "dull")) why.push(`${l}: ${s.issue}`);
+      else if (band > 0 && !(Number(s.fooled) >= 1)) why.push(`${l}: fooled nobody`);
+      else kept[l] = {groups: inFoundOrder(p[l].groups, s.shelves)};
     }
     if (why.length > 0) console.error(`shelves: ${p.id} turned down (${why.join("; ")}): ${p.en.groups.map((g) => g.label).join(" / ")}`);
-    return why.length === 0;
-  });
+    else out.push(kept);
+  }
+  return out;
 }
 
 // --- the day ---
@@ -335,6 +446,11 @@ export async function writeBand(day: number, band: number, taken: string[], pref
   const written = (Array.isArray(draft.puzzles) ? draft.puzzles : [])
     .map((d, i) => ({id: `${prefix}p${i}`, en: d.en, pt: d.pt, es: d.es}))
     .filter((p): p is Puzzle => validPuzzle(p, band))
+    .filter((p) => {
+      const ok = trapped(p, band);
+      if (!ok) console.error(`shelves: ${p.id} turned down (red herrings ${LANGS.map((l) => goodTraps(p[l]).length).join("/")}, ${TRAPS[band]} wanted)`);
+      return ok;
+    })
     .map(tidy);
   if (written.length === 0) return [];
   const review = await ask<{sorts: Sort[]}>({
@@ -343,7 +459,7 @@ export async function writeBand(day: number, band: number, taken: string[], pref
     schema: SORT_SCHEMA,
     role: "review",
   });
-  return passing(written, Array.isArray(review.sorts) ? review.sorts : []);
+  return passing(written, Array.isArray(review.sorts) ? review.sorts : [], band);
 }
 
 /**
@@ -354,21 +470,23 @@ export async function writeBand(day: number, band: number, taken: string[], pref
 export async function makeDay(day: number, recent: string[] = [], _theme: Theme | null = null): Promise<Day> {
   const reserve = bankDay(day);
   if (!available()) return {v: 1, source: "bank", bands: reserve};
-  const taken = recent.slice();
-  const bands: (Puzzle | null)[] = [];
-  let fromBank = 0;
-  for (let b = 0; b < GROUPS.length; b++) {
-    let list: Puzzle[] = [];
-    try {
-      list = await writeBand(day, b, taken);
-    } catch (e) {
-      console.error(`shelves: band ${b} of day ${day} failed, the bank fills it`, e);
+  // The bands are written side by side, each given a second try: the review
+  // turns down most boards since it asks for red herrings (2026-10-28), and
+  // four bands one after another twice would outrun the night's half hour.
+  const write = async (b: number): Promise<Puzzle | null> => {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const list = await writeBand(day, b, recent, `d${day}b${b}${attempt > 0 ? `r${attempt}` : ""}`);
+        if (list.length > 0) return list[0];
+      } catch (e) {
+        console.error(`shelves: band ${b} of day ${day} failed (try ${attempt + 1})`, e);
+      }
     }
-    const p = list.length > 0 ? list[0] : reserve[b];
-    if (list.length === 0) fromBank++;
-    bands.push(p);
-    if (p !== null) taken.push(...p.en.groups.map((g) => g.label));
-  }
+    return null;
+  };
+  const written = await Promise.all(GROUPS.map((_, b) => write(b)));
+  const bands = written.map((p, b) => p ?? reserve[b]);
+  const fromBank = written.filter((p) => p === null).length;
   const source = fromBank === 0 ? "model" : fromBank === GROUPS.length ? "bank" : "mixed";
   return {v: 1, source, bands};
 }

@@ -79,6 +79,19 @@ const SAY_TIME := 2.2
 const CARD_AFTER := 1.1
 const REVEAL_STEP := 0.55
 const WIN_HOLD := 1.3
+## The beat before a verdict (2026-10-28, "nobody likes it"): the four
+## picked jars hop one after another, each a pop a little higher, and only
+## then is the four judged. The hop's height at W, a jar's start after the
+## last's, and the breath after the fourth.
+const JUDGE_HOP := 26.0
+const JUDGE_STEP := 0.11
+const JUDGE_HOLD := 0.14
+## The last shelf goes up by itself, this long after the one before it.
+const LAST_AFTER := 0.5
+## Picked jars hold jam; a shelf's jars hold its colour's.
+const JAM := Color("e7748a")
+## How many "a shelf went up" cheers there are (FS_CHEER_1..).
+const CHEERS := 6
 
 ## Built silent and deaf for the tutorial's page, and dealt this puzzle.
 var demo := false
@@ -110,6 +123,11 @@ var out_of_hearts := false
 var _card: Control
 var _heart_bought := false
 var _revealing := false
+## The four being judged (hopping), since when; the last shelf on its way.
+var _judging: Array = []
+var _judge_at := -INF
+var _last_pending := false
+var _last_up_now := false
 var _pressing := -2
 var _rng := RandomNumberGenerator.new()
 ## The layout: where the rows let the board be, and what it sets there.
@@ -119,7 +137,6 @@ var _bled := false
 var _shift := 0.0
 var _L := {}
 var _world: Control
-var _jar: ArrayMesh
 var _jar_key := ""
 var _planks := {}
 var _keys_mesh: ArrayMesh
@@ -259,7 +276,8 @@ func _hold_places() -> void:
 	_moved_at = _t
 
 func busy() -> bool:
-	return _revealing or out_of_hearts or _t < _moved_at + SLIDE_TIME * 0.6
+	return _revealing or out_of_hearts or _last_pending or not _judging.is_empty() \
+		or _t < _moved_at + SLIDE_TIME * 0.6
 
 func _tap(i: int) -> void:
 	if not _dealt or is_done() or _won or _st.solved():
@@ -307,6 +325,21 @@ func _shelve() -> void:
 		_cue("hush")
 		return
 	var picked: Array = _st.picked.duplicate()
+	if Motion.reduce or _st.tried(picked):
+		_judge(picked)
+		return
+	# the beat: each picked jar hops in the order it was picked, then the verdict
+	_judging = picked
+	_judge_at = _t
+	for k in 4:
+		_after(k * JUDGE_STEP, func() -> void: _cue("pick", 1.0 + 0.09 * k))
+	_after(3 * JUDGE_STEP + Motion.HOP_TIME * 0.5 + JUDGE_HOLD, func() -> void:
+		_judging = []
+		_judge(picked))
+
+func _judge(picked: Array) -> void:
+	if _st.solved() or _st.out():
+		return
 	var said: int = _st.submit()
 	if said == Said.IGNORED:
 		return
@@ -319,10 +352,17 @@ func _shelve() -> void:
 	moves += 1
 	moved.emit()
 	if said == Said.SHELVED or said == Said.SOLVED:
-		_up(_st.shelved[_st.shelved.size() - 1], picked)
-		_say = ""
+		var g: int = _st.shelved[_st.shelved.size() - 1]
+		_up(g, picked)
+		if _last_up_now:
+			_say_now(tr("FS_LAST"))
+		else:
+			_cheer(g)
 		if said == Said.SOLVED:
 			_solved_now()
+		elif _st.tiles.size() == 4:
+			_last_pending = true
+			_after(LAST_AFTER + RISE_TIME, _last_up)
 		return
 	_shiver = picked
 	_shiver_at = _t
@@ -331,7 +371,7 @@ func _shelve() -> void:
 	if said == Said.CLOSE:
 		_say_now(tr("FS_CLOSE"))
 	elif said == Said.WRONG:
-		_say_now(tr("FS_WRONG"))
+		_say_now(tr(["FS_WRONG", "FS_WRONG_2", "FS_WRONG_3"][(_st.mistakes - 1) % 3]))
 	else:
 		_run_out()
 
@@ -348,6 +388,26 @@ func _up(g: int, words: Array) -> void:
 	_cue("shelf", 1.0 + _st.shelved.size() * 0.05)
 	if not demo:
 		_after(RISE_TIME, func() -> void: fx.sparkle(_row_centre(_st.shelved.find(g)), Pal.SUN))
+
+## A shelf up is cheered: the day's subtlest shelf as a trick seen
+## through, the others in a line that changes a shelf to the next.
+func _cheer(g: int) -> void:
+	if demo:
+		return
+	if g == _st.count() - 1 and _st.count() > 1:
+		_say_now(tr("FS_SNEAKY"))
+	else:
+		_say_now(tr("FS_CHEER_%d" % (1 + (_st.shelved.size() + _seed_key) % CHEERS)))
+
+## Only one shelf left: its four go up by themselves, as the player's.
+func _last_up() -> void:
+	_last_pending = false
+	if _st.tiles.size() != 4 or is_done() or out_of_hearts:
+		return
+	_st.picked.assign(_st.tiles)
+	_last_up_now = true
+	_judge(_st.picked.duplicate())
+	_last_up_now = false
 
 func _say_now(text: String) -> void:
 	_say = text
@@ -675,14 +735,20 @@ func _draw() -> void:
 		_draw_say()
 		_draw_keys()
 
-func _jar_mesh() -> ArrayMesh:
+## A jar, empty or holding `jam`; one mesh a size and a jam, kept.
+var _jars := {}
+
+func _jar_mesh(jam := Color.TRANSPARENT) -> ArrayMesh:
 	var key := "%d:%d" % [roundi(_l("tile_w")), roundi(_l("row_h"))]
 	if key != _jar_key:
 		_jar_key = key
+		_jars.clear()
+	var k := jam.to_html()
+	if not _jars.has(k):
 		var b := Face.Builder.new()
-		Art.jar(b, Vector2.ZERO, Vector2(_l("tile_w") * 0.9, _l("row_h") * 0.92))
-		_jar = b.mesh()
-	return _jar
+		Art.jar(b, Vector2.ZERO, Vector2(_l("tile_w") * 0.9, _l("row_h") * 0.92), jam)
+		_jars[k] = b.mesh()
+	return _jars[k]
 
 func _draw_jar(w: String, at: Vector2, font: Font, rising := false) -> void:
 	var u := _u()
@@ -694,9 +760,12 @@ func _draw_jar(w: String, at: Vector2, font: Font, rising := false) -> void:
 	if e < Motion.DROP_TIME and not Motion.reduce:
 		at.y -= Motion.drop_in_lift(e, Motion.DROP * 1.5 * u)
 		a = Motion.appear_level(e)
-	var picked: bool = _st.picked.has(w)
+	var picked: bool = _st.picked.has(w) or _judging.has(w)
 	if picked:
-		at.y -= 12.0 * u
+		at.y -= 16.0 * u
+	var judged := _judging.find(w)
+	if judged >= 0:
+		at.y += Motion.hop_lift(_t - _judge_at - judged * JUDGE_STEP, -JUDGE_HOP * u, Motion.HOP_TIME)
 	var tap := _t - float(_tap_at.get(w, -INF))
 	var grow := 1.0
 	if tap >= 0.0 and tap < Motion.BUMP_TIME and not Motion.reduce:
@@ -706,8 +775,12 @@ func _draw_jar(w: String, at: Vector2, font: Font, rising := false) -> void:
 	var xf := Transform2D(0.0, Vector2.ONE * grow, 0.0, at)
 	if picked:
 		draw_mesh(_halo_mesh(), null, xf, Color(1, 1, 1, a))
-	draw_mesh(_jar_mesh(), null, xf, Color(1, 1, 1, a))
-	_word(font, w, at + Vector2(0.0, _l("row_h") * 0.1), _l("tile_w") * 0.74, Color(Pal.TEXT, a), grow)
+	var jam := JAM if picked else Color.TRANSPARENT
+	if rising:
+		jam = Art.SHELF[_st.group_of(w) % Art.SHELF.size()]
+	draw_mesh(_jar_mesh(jam), null, xf, Color(1, 1, 1, a))
+	var ink: Color = Art.LABEL if picked and not rising else Pal.TEXT
+	_word(font, w, at + Vector2(0.0, _l("row_h") * 0.1), _l("tile_w") * 0.74, Color(ink, a), grow)
 
 var _halo: ArrayMesh
 var _halo_key := ""

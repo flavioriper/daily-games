@@ -88,7 +88,7 @@ func _process(_delta: float) -> bool:
 		if _f == 7200:
 			_b = _host._puzzle
 			_shot("reopen")
-			print("reopen done=%s wrongs=%d" % [_b.is_done(), _b.state().wrongs])
+			print("reopen done=%s wrongs=%d" % [_b.is_done(), _b.state().mistakes])
 			return true
 		return false
 	if _b == null:
@@ -109,7 +109,7 @@ func _process(_delta: float) -> bool:
 			if _f == 1010:
 				_shot("picked")
 				_b.demo_key(_b.Key.ENTER)
-			if _f == 1020:
+			if _f == 1060:
 				_shot("close")
 				_b.demo_key(_b.Key.DELETE)
 				_b.hint()
@@ -123,9 +123,9 @@ func _process(_delta: float) -> bool:
 					if not st.picked.has(w):
 						_b.demo_tap_word(w)
 				_b.demo_key(_b.Key.ENTER)
-			if _f == 2016:
+			if _f == 2044:
 				_shot("rising")
-			if _f == 2060:
+			if _f == 2090:
 				_shot("shelved")
 				_step = 5
 				_f = 5000

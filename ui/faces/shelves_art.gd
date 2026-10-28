@@ -29,21 +29,28 @@ const PLANK := Color("c99863")
 const PLANK_DEEP := Color("9f7148")
 
 ## A jar about `at`, `sz` its whole size: the lid over a glass body and a
-## paper label across it, where the word goes.
-static func jar(b: Face.Builder, at: Vector2, sz: Vector2) -> void:
+## paper label across it, where the word goes. `jam` (when not clear) fills
+## the glass and dyes the label: a picked jar's, or a shelf's colour as its
+## four go up.
+static func jar(b: Face.Builder, at: Vector2, sz: Vector2, jam := Color.TRANSPARENT) -> void:
 	var w := sz.x
 	var h := sz.y
 	var body := Rect2(at.x - w * 0.5, at.y - h * 0.32, w, h * 0.8)
 	b.fan(Face.Builder.round_rect(body.position + Vector2(0.0, h * 0.03), body.size, w * 0.16), Color(0.3, 0.2, 0.1, 0.12))
 	b.fan(Face.Builder.round_rect(body.position, body.size, w * 0.16), GLASS_LINE)
 	b.fan(Face.Builder.round_rect(body.position + Vector2(2.5, 2.5), body.size - Vector2(5.0, 5.0), w * 0.15), GLASS)
+	if jam.a > 0.0:
+		# the jam, from a little under the lid to the glass's foot
+		var fill := Rect2(body.position + Vector2(5.0, h * 0.08), body.size - Vector2(10.0, h * 0.08 + 5.0))
+		b.fan(Face.Builder.round_rect(fill.position, fill.size, w * 0.13), jam)
+		b.fan(Face.Builder.round_rect(fill.position, Vector2(fill.size.x, h * 0.07), w * 0.06), jam.lightened(0.3))
 	# the shine down the glass's left side
 	b.stroke(PackedVector2Array([Vector2(body.position.x + w * 0.1, body.position.y + h * 0.12),
 		Vector2(body.position.x + w * 0.1, body.end.y - h * 0.16)]), maxf(2.0, w * 0.035), GLASS_SHINE)
 	# the label
 	var lab := Rect2(at.x - w * 0.44, at.y - h * 0.12, w * 0.88, h * 0.44)
 	b.fan(Face.Builder.round_rect(lab.position, lab.size, h * 0.06), LABEL_LINE)
-	b.fan(Face.Builder.round_rect(lab.position + Vector2(1.5, 1.5), lab.size - Vector2(3.0, 3.0), h * 0.055), LABEL)
+	b.fan(Face.Builder.round_rect(lab.position + Vector2(1.5, 1.5), lab.size - Vector2(3.0, 3.0), h * 0.055), LABEL if jam.a <= 0.0 else jam.darkened(0.12))
 	# the lid, gingham
 	var lid := Rect2(at.x - w * 0.36, at.y - h * 0.5, w * 0.72, h * 0.2)
 	b.fan(Face.Builder.round_rect(lid.position + Vector2(0.0, h * 0.02), lid.size, h * 0.05), LID_DEEP)

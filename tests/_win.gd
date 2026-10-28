@@ -1816,8 +1816,10 @@ func _solve_shelves() -> void:
 	for w in [g0[0], g0[1], g0[2], g1[0]]:
 		_tap_local(_puzzle.word_to_local(w))
 	_tap_local(_puzzle.key_to_local(_puzzle.Key.ENTER))
-	_hud_ok = _hud_ok and st.hearts == st.HEARTS - 1 and st.picked.size() == 4
+	# the four hop before they are judged
+	_hud_ok = _hud_ok and st.hearts == st.HEARTS and _puzzle.busy()
 	await settle.call()
+	_hud_ok = _hud_ok and st.hearts == st.HEARTS - 1 and st.picked.size() == 4
 	_tap_local(_puzzle.key_to_local(_puzzle.Key.ENTER))
 	_hud_ok = _hud_ok and st.hearts == st.HEARTS - 1
 	_tap_local(_puzzle.key_to_local(_puzzle.Key.DELETE))

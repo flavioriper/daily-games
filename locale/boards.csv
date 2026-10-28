@@ -3456,6 +3456,8 @@ FS_RULES_CROWDED,"Crowded Pantry: five shelves hide in twenty words, and words t
 FS_REPEAT,You tried those four already.,Você já tentou essas quatro.,Ya probaste esas cuatro.
 FS_CLOSE,Three of those go together.,Três dessas combinam.,Tres de esas van juntas.
 FS_WRONG,Not a shelf.,Não é uma prateleira.,No es un estante.
+FS_WRONG_2,Those don't go together.,Essas não combinam.,Esas no van juntas.
+FS_WRONG_3,"Tricky, aren't they?","Traiçoeiras, né?","Tramposas, ¿no?"
 FS_OUT_LINE,Out of hearts.,Sem corações.,Sin corazones.
 FS_HEART_BACK,One more heart!,Mais um coração!,¡Un corazón más!
 FS_SHOWN_LINE,There are the shelves. A new pantry tomorrow.,Aí estão as prateleiras. Amanhã tem outra despensa.,Ahí están los estantes. Mañana hay otra despensa.
@@ -3468,6 +3470,14 @@ FS_WIN,Every shelf filled!,Todas as prateleiras cheias!,¡Todos los estantes lle
 FS_WIN_CLEAN,Not one mistake.,Nenhum erro.,Ningún error.
 FS_WIN_MISTAKES_ONE,%d mistake on the way.,%d erro no caminho.,%d error por el camino.
 FS_WIN_MISTAKES_N,%d mistakes on the way.,%d erros no caminho.,%d errores por el camino.
+FS_CHEER_1,Into the jar!,Pro pote!,¡Al frasco!
+FS_CHEER_2,That's a shelf!,Isso é prateleira!,¡Eso es un estante!
+FS_CHEER_3,Neatly stacked.,Bem arrumadinho.,Bien ordenadito.
+FS_CHEER_4,Lid on tight!,Tampa bem fechada!,¡Tapa bien cerrada!
+FS_CHEER_5,Sharp eye!,Olho bom!,¡Buen ojo!
+FS_CHEER_6,Got that one!,Essa foi!,¡Esa salió!
+FS_SNEAKY,You saw through the sneaky one!,Você pegou a mais traiçoeira!,¡Descubriste la más tramposa!
+FS_LAST,And the last one goes up by itself.,E a última sobe sozinha.,Y la última sube sola.
 HTP_FS_PICK,"Pick four, shelve them",Escolha quatro e guarde,Elige cuatro y guárdalas
 HTP_FS_PICK_BODY,"Tap four jars whose words go together, then the tick. Four of one shelf go up to the top of the dresser.",Toque em quatro potes cujas palavras combinam e depois no visto. Quatro da mesma prateleira sobem para o alto da cristaleira.,Toca cuatro frascos cuyas palabras van juntas y luego la palomita. Cuatro del mismo estante suben a lo alto del aparador.
 HTP_FS_CLOSE,"Close, but not quite",Quase,Casi
