@@ -11,7 +11,11 @@ extends SceneTree
 ## piles snuffle); `streak` (proved rakes with the gags forced: acorn, love,
 ## butterfly, the bubble); `wakereset` (a wake, then Reset at once and
 ## again after the hold); `solve` (logic plays the lawn out, then the party);
-## `restore`. Frames go to <dir>/hh_<mode>_d<level>_<n>.png; every mode
+## `restore`; `fun` (the made-fun pass: a wake drops a star, proved rakes
+## to mid-lawn so spent numbers fade, a number tapped to flag its own, a
+## number held, the bulb's reading and its second press); `pair` (singles
+## played until the lawn needs two numbers read together, then the bulb's
+## reading of the pair). Frames go to <dir>/hh_<mode>_d<level>_<n>.png; every mode
 ## prints the peak draw calls and the mean frame from 0.5 s on.
 
 const SHOT_DIR := "/tmp"
@@ -228,6 +232,71 @@ func _script() -> void:
 			_at(t0 + 0.6, func(): print("reset later: can_reset ", _puzzle.can_reset()); _puzzle.reset_board())
 			_at(t0 + 2.4, _shot)
 			_end = t0 + 3.0
+		"fun":
+			_at(t0, func(): _tap(_hog()))
+			_drive(t0 + 1.2, t0 + 1.2 + 0.15 * 14.0, func(c: int): pass)
+			_at(t0 + 7.2, func():
+				var st = _puzzle._state
+				for c in st.size():
+					if st.open[c] == 0 or st.number(c) <= 0:
+						continue
+					var cov := 0
+					for r: int in st.g.nb[c]:
+						if st.open[r] == 0 and st.flag[r] == 0 and st.woke[r] == 0:
+							cov += 1
+					if cov > 0 and cov == st.number(c) - st.marked_around(c):
+						var before: int = st.flags_left()
+						_tap(c)
+						print("flag chord at ", c, ": flags left ", before, " -> ", st.flags_left())
+						return
+				print("flag chord: no number to tap"))
+			_at(t0 + 7.9, _shot.bind("_dim"))
+			_at(t0 + 8.2, func():
+				var st = _puzzle._state
+				for c in st.size():
+					if st.open[c] == 1 and st.number(c) > 0 and not _puzzle._is_spent(c):
+						var ev := InputEventMouseButton.new()
+						ev.button_index = MOUSE_BUTTON_LEFT
+						ev.pressed = true
+						ev.position = _puzzle._centre(c)
+						_puzzle._gui_input(ev)
+						return)
+			_at(t0 + 8.5, _shot.bind("_held"))
+			_at(t0 + 8.7, func():
+				var ev := InputEventMouseButton.new()
+				ev.button_index = MOUSE_BUTTON_LEFT
+				ev.pressed = false
+				ev.position = Vector2(-20.0, -20.0)
+				_puzzle._gui_input(ev))
+			_at(t0 + 9.2, func(): print("hint 1: ", _puzzle.hint(), " lit ", _puzzle._lit.get("rule"), " ", _puzzle._lit.get("kind"), " cells ", _puzzle._lit.get("cells"), " why ", _puzzle._lit.get("why"), " left ", _puzzle.hints_left(), " held ", _puzzle.hints_held()))
+			_at(t0 + 9.8, _shot.bind("_lit"))
+			_at(t0 + 11.0, func(): print("hint 2: ", _puzzle.hint(), " left ", _puzzle.hints_left(), " used ", _puzzle.hints_used))
+			_at(t0 + 11.8, _shot.bind("_played"))
+			_end = t0 + 12.4
+		"pair":
+			var t := t0
+			while t < 30.0:
+				_at(t, func():
+					if _puzzle._lit.size() > 0 or not _ready_for_input():
+						return
+					var st = _puzzle._state
+					var step: Dictionary = st.hint_step()
+					if step.is_empty():
+						return
+					if step.rule != "single":
+						print("pair: ", _puzzle.hint(), " rule ", _puzzle._lit.get("rule"), " ", _puzzle._lit.get("kind"), " cells ", _puzzle._lit.get("cells"), " why ", _puzzle._lit.get("why"))
+						print("toast: ", _puzzle._toast)
+						_at(_t + 0.8, _shot.bind("_pair"))
+						_end = _t + 1.2
+						return
+					if step.kind == "flag":
+						for c: int in step.cells:
+							st.toggle_flag(c)
+						_puzzle._refresh()
+					else:
+						_tap(int(step.cell)))
+				t += 0.15
+			_end = 30.0
 		"restore":
 			_at(0.6, func():
 				_puzzle.completed_record = {"woke": [], "hearts": 1, "flawless": true}

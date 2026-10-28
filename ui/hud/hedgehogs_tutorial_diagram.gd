@@ -24,7 +24,8 @@ extends Control
 ##   hedgehog walks; the two piles rustle alike and wear paw prints.
 ## - UNDO: a rake taken back by Undo, then Reset to the opening (Reset alone
 ##   on Insane, which has no Undo).
-## - HINT: the bulb flags and pins a sleeper, then rakes a pile.
+## - HINT: the bulb lights its reading (the numbers it reads, the piles they
+##   decide), and a second press plays it.
 ##
 ## The board checkup, 2026-10-02: Hedgehogs had only the shared one-page
 ## card.
@@ -101,7 +102,7 @@ class Board extends "res://puzzles/hedgehogs2d.gd":
 	func _say(_text: String, _mood: int) -> void:
 		pass
 
-	func _tell(_key: String, _mood: int, _arg := "") -> void:
+	func _tell(_key: String, _mood: int, _arg := "", _hold := 0.0) -> void:
 		pass
 
 	func _on_safe_rake(_c: int, _lands: float) -> void:

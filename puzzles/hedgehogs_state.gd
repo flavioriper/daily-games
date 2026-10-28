@@ -305,6 +305,19 @@ func chord(c: int) -> Dictionary:
 	if v < 0 or covered.is_empty():
 		return res
 	var m := marked_around(c)
+	# Made fun (2026-10-28): a number whose covered piles are just the
+	# hedgehogs it still needs flags them all, the player's own reading of
+	# what the screen shows. Flags only: no rake, so the bell never counts it.
+	if m < v and covered.size() == v - m:
+		wrong.fill(0)
+		var flags: Array = []
+		for r in covered:
+			flags.append([r, 0])
+			flag[r] = 1
+		history.append({"raked": PackedInt32Array(), "flags": flags})
+		res.kind = "flagged"
+		res.cells = covered
+		return res
 	if m != v:
 		res.kind = "too_few" if m < v else "too_many"
 		return res
@@ -391,6 +404,12 @@ func reset_board() -> PackedInt32Array:
 ## "flag", "cell"} for one that must be a hedgehog and is not yet flagged;
 ## {} when solved. A hedgehog the player already flagged counts as known once
 ## logic proves it, and the search moves on.
+##
+## Made fun (2026-10-28): the step also says why, so the bulb can teach --
+## "cells" every pile the same reading decides that is still to do (the
+## cell first), "why" the numbers read (one for a single, the smaller then
+## the bigger for a pair, none for the count), "rule" ("single", "pair" or
+## "count") and "need" the hedgehogs that reading still wants.
 func hint_step() -> Dictionary:
 	if is_solved():
 		return {}
@@ -400,18 +419,103 @@ func hint_step() -> Dictionary:
 		if woke[c] == 1 or pin[c] == 1:
 			known[c] = 1
 	for guard in size():
-		var d := Gen.deduce(g, open, known, true)
-		if d.is_empty():
+		var step := _explain(known)
+		if step.is_empty():
 			return {}
-		for c: int in d.safe:
-			if open[c] == 0:
-				return {"kind": "rake", "cell": c}
-		for c: int in d.hogs:
-			if flag[c] == 0:
-				return {"kind": "flag", "cell": c}
-		for c: int in d.hogs:
+		if not step.cells.is_empty():
+			step["cell"] = step.cells[0]
+			return step
+		for c: int in step.proved:
 			known[c] = 1
 	return {}
+
+## One reading of the lawn from `known`, the hint's: the first number (or
+## pair, or the count) that decides anything. {"kind", "cells" (what is
+## still to do: covered bare piles, or unflagged hedgehogs), "proved" (every
+## hedgehog it decides, to carry on from), "why", "rule", "need"}, or {}.
+func _explain(known: PackedByteArray) -> Dictionary:
+	var cons: Array = []  # [number cell, PackedInt32Array unknowns, need]
+	for c in size():
+		if open[c] == 0:
+			continue
+		var u := PackedInt32Array()
+		var need: int = number(c)
+		for r: int in g.nb[c]:
+			if known[r] == 1:
+				need -= 1
+			elif open[r] == 0:
+				u.append(r)
+		if not u.is_empty():
+			cons.append([c, u, need])
+	var fallback := {}
+	for k: Array in cons:
+		var u: PackedInt32Array = k[1]
+		var need := int(k[2])
+		if need == 0:
+			var s := _step("rake", u, PackedInt32Array([k[0]]), "single", need)
+			if not s.cells.is_empty():
+				return s
+		elif need == u.size():
+			var s := _step("flag", u, PackedInt32Array([k[0]]), "single", need)
+			if not s.cells.is_empty():
+				return s
+			if fallback.is_empty():
+				fallback = s
+	if not fallback.is_empty():
+		return fallback
+	# Pairs on every band, as the old hint read them: Easy and Medium are
+	# dealt never to need one.
+	for a: Array in cons:
+		var au: PackedInt32Array = a[1]
+		for b: Array in cons:
+			var bu: PackedInt32Array = b[1]
+			if a == b or au.size() >= bu.size():
+				continue
+			var inside := true
+			for r in au:
+				if not bu.has(r):
+					inside = false
+					break
+			if not inside:
+				continue
+			var diff := PackedInt32Array()
+			for r in bu:
+				if not au.has(r):
+					diff.append(r)
+			var dn: int = int(b[2]) - int(a[2])
+			var why := PackedInt32Array([a[0], b[0]])
+			if dn == 0:
+				var s := _step("rake", diff, why, "pair", dn)
+				if not s.cells.is_empty():
+					return s
+			elif dn == diff.size():
+				var s := _step("flag", diff, why, "pair", dn)
+				if not s.cells.is_empty():
+					return s
+				if fallback.is_empty():
+					fallback = s
+	if not fallback.is_empty():
+		return fallback
+	var left: int = g.k
+	var unk := PackedInt32Array()
+	for c in size():
+		if known[c] == 1:
+			left -= 1
+		elif open[c] == 0:
+			unk.append(c)
+	if not unk.is_empty() and left == 0:
+		return _step("rake", unk, PackedInt32Array(), "count", 0)
+	if not unk.is_empty() and left == unk.size():
+		return _step("flag", unk, PackedInt32Array(), "count", left)
+	return {}
+
+func _step(kind: String, piles: PackedInt32Array, why: PackedInt32Array, rule: String, need: int) -> Dictionary:
+	var cells := PackedInt32Array()
+	for r in piles:
+		if (kind == "rake" and open[r] == 0) or (kind == "flag" and flag[r] == 0):
+			cells.append(r)
+	return {"kind": kind, "cells": cells, "proved": piles if kind == "flag" else PackedInt32Array(),
+		"why": why, "rule": rule, "need": need}
 
 ## Plays a hint_step: a rake (lifting a flag on the cell first) returns
 ## rake()'s result; a flag is laid and pinned and returns {"kind": "pinned",

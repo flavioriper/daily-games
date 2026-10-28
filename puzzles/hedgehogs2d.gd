@@ -62,6 +62,7 @@ const NapCat = preload("res://ui/faces/nap_cat.gd")
 const Cat = preload("res://ui/faces/caterpillar.gd")
 const RunMesh = preload("res://ui/flat/run_mesh.gd")
 const World = preload("res://puzzles/hedgehogs_world.gd")
+const StarLine = preload("res://ui/flat/star_line.gd")
 const FLAT_HOST := "res://ui/flat/flat_host.gd"
 
 ## The looks a cell is put together from, each made once at the reference
@@ -151,6 +152,8 @@ const SWIRL_TIME := 1.8
 const UNDO_STEP := 0.012
 ## How long a press must be held to do the other chip's action.
 const LONG_PRESS := 0.4
+## A number's own flags drop in this far apart.
+const FLAG_STEP := 0.06
 ## The win: the sleepers' wave starts this long after the last rake, and
 ## the win screen waits this long after the wave.
 const WIN_LEAD := 0.3
@@ -166,6 +169,26 @@ const TOAST_FONT := 32
 const TOAST_MARGIN := 40.0
 const TIP_CYCLE := 8.0
 const TIPS := ["HH_TIP_RAKE", "HH_TIP_NUMBER", "HH_TIP_FLAG", "HH_TIP_CHORD", "HH_TIP_WOKE"]
+
+# --- made fun (2026-10-28, docs/agents/boards/hedgehogs.md "Made fun") ---
+## A raked number with no covered pile left round it has nothing more to
+## say: it fades to SPENT_ALPHA over SPENT_FADE, so the eye goes to the
+## numbers still to read. A solved lawn shows them all again.
+const SPENT_ALPHA := 0.32
+const SPENT_FADE := 0.3
+## The light over the lawn: a number held shows its covered piles, and the
+## bulb's reading shows its numbers and the piles they decide.
+const LIT_INSET := 0.07
+const LIT_RADIUS := 0.2
+const LIT_LINE := 0.06
+const HOLD_FILL := 0.4
+const WHY_DISC := 0.4
+## The stars ride the tally: three with no hedgehog woken, two with one,
+## one with more (StarLine, Market Sums' and Super Slider's line).
+const STAR_SCALE := 0.82
+const STAR_GAP := 14.0
+## The bulb's reading stays on the toast longer than a line does.
+const WHY_HOLD := 5.5
 const TIPS_HEARTS := ["HH_TIP_RAKE", "HH_TIP_HEARTS", "HH_TIP_NUMBER", "HH_TIP_FLAG", "HH_TIP_CHORD"]
 const TIPS_WALK := ["HH_TIP_WALK", "HH_TIP_RUSTLE", "HH_TIP_TUCK", "HH_TIP_BELL"]
 
@@ -501,6 +524,17 @@ var _hearts_shown: ArrayMesh
 var _dusk_tw: Tween
 var _was_busy := false
 
+## Made fun: the stars, the bulb's reading standing (hint_step()'s
+## dictionary; {} with none), each number's spent look and when it last
+## turned, and the light's mesh with what it was built for.
+var _stars := StarLine.new()
+var _lit: Dictionary = {}
+var _spent := PackedByteArray()
+var _spent_at := PackedFloat32Array()
+var _light: ArrayMesh
+var _light_key: Array = []
+var _toast_hold := TOAST_HOLD
+
 ## -2 picks off the day; a Gag forces one (the harness).
 var force_gag := -2
 var _streak := 0
@@ -756,6 +790,13 @@ func _dealt() -> void:
 	_press_finger = -2
 	_toast = ""
 	_toast_at = -100.0
+	_stars.clear()
+	_lit = {}
+	_spent.resize(n)
+	_spent.fill(0)
+	_spent_at.resize(n)
+	_spent_at.fill(-100.0)
+	_light_key = []
 	_last = int(_state.g.start)
 	_opened = _now()
 	# The opening's gust plays once the card has popped in.
@@ -778,6 +819,12 @@ func _dealt() -> void:
 	_tip_idx = 0
 	_say(tr(_tips()[0]), Face.Expr.HAPPY)
 	_tip_timer.start()
+	# The one line a player needs and the board never said: a number is
+	# itself a button. Toasted once the opening's gust has blown.
+	var open_tip := "HH_TIP_WALK" if _state.walkers() else "HH_TIP_TAP_NUMBER"
+	_later(gust_at - _now() + 0.6, func():
+		if _toast == "" and not is_done():
+			_tell(open_tip, Face.Expr.HAPPY))
 
 ## Every heart back and the morning light: a new deal and Try again.
 func _deal_hearts() -> void:
@@ -1154,7 +1201,7 @@ func _show_rake(r: Dictionary, c: int) -> void:
 			_refuse(c, "HH_FLAGGED")
 		"refused_pin":
 			_refuse(c, "HH_PINNED")
-		"chord", "too_few", "too_many":
+		"chord", "too_few", "too_many", "flagged":
 			_show_chord(r, c)
 
 func _show_chord(r: Dictionary, c: int) -> void:
@@ -1167,6 +1214,19 @@ func _show_chord(r: Dictionary, c: int) -> void:
 				tell = false
 			fx.cue("chord")
 			_after_rake(r, c, r.woke, 0.0)
+			_after_move()
+		"flagged":
+			# A number that flagged its own: every pennant drops in, a beat
+			# apart, under the one tap.
+			var t := _now()
+			var i := 0
+			for f: int in r.cells:
+				var at := t + (0.0 if Motion.reduce else float(i) * FLAG_STEP)
+				_flag_at[f] = at
+				_touch(f, at + FLAG_DROP + Motion.BUMP_TIME)
+				i += 1
+			_ring_at(c)
+			fx.cue("flag")
 			_after_move()
 		"too_few":
 			_refuse(c, "HH_CHORD_FEW")
@@ -1188,6 +1248,7 @@ func _after_rake(r: Dictionary, c: int, woke: PackedInt32Array, lead: float) -> 
 	if not cells.is_empty() and String(r.kind) != "woke":
 		fx.buzz(Haptics.BUMP if _gust_bumped else Haptics.TAP)
 	if not woke.is_empty():
+		_rate(true)
 		# The wake holds the HUD until the hedgehog has popped in.
 		_busy_until = maxf(_busy_until, _now() + lead + Motion.POP_IN + 0.05)
 		_break_streak()
@@ -1207,7 +1268,7 @@ func _after_rake(r: Dictionary, c: int, woke: PackedInt32Array, lead: float) -> 
 			fx.sparkle(_centre(c), Pal.SUN)
 			fx.cue("whoosh"))
 		if woke.is_empty():
-			_say(tr("HH_WHOOSH"), Face.Expr.JOY)
+			_tell("HH_WHOOSH", Face.Expr.JOY)
 	_queue_walk(r, lead)
 
 ## Sleepwalkers' bell. A gesture that did not ring it lights a dot; one that
@@ -1237,10 +1298,11 @@ func _show_walk(w: Vector2i) -> void:
 	fx.cue("bell")
 	if w.x < 0:
 		_sync_numbers()
-		_say(tr("HH_WALK_NONE"), Face.Expr.SLEEPY)
+		_tell("HH_WALK_NONE", Face.Expr.SLEEPY)
 		_refresh()
 		return
 	_paws = w
+	_lit = {}
 	for c in [w.x, w.y]:
 		_walk_at[c] = t
 		_touch(c, t + WALK_TIME)
@@ -1254,10 +1316,10 @@ func _show_walk(w: Vector2i) -> void:
 			_num_at[c] = t + (0.0 if Motion.reduce else WALK_TIME * 0.45)
 	_sync_numbers()
 	_later(0.0 if Motion.reduce else 0.18, func(): fx.cue("snuffle"))
-	# Only the first walk is toasted: the toast sits over the lawn's foot,
-	# and on Sleepwalkers every number there counts.
+	# Every walk is toasted since 2026-10-28: the toast sits under the bed
+	# now, clear of every number.
 	if _walk_told:
-		_say(tr("HH_WALK"), Face.Expr.WORRIED)
+		_tell("HH_WALK", Face.Expr.WORRIED)
 	else:
 		_tell("HH_WALK_FIRST", Face.Expr.WORRIED)
 	_walk_told = true
@@ -1319,7 +1381,7 @@ func _process(delta: float) -> void:
 		_breeze(t)
 	if settled or _animating(t):
 		_refresh()
-	elif _toast != "" and t - _toast_at < TOAST_HOLD + 0.1:
+	elif _toast != "" and t - _toast_at < _toast_hold + 0.1:
 		queue_redraw()
 
 ## The breeze: one row's piles rustle, a cell after another, and a woken
@@ -1392,6 +1454,7 @@ func _draw() -> void:
 		if m != null:
 			draw_mesh(m, null, at, tint)
 			shown.append(m)
+	_draw_light(xf, seen, shown)
 	_draw_numbers(t, xf, seen)
 	_draw_tally(t, seen, shown)
 	_draw_toast(t, shown)
@@ -1851,6 +1914,7 @@ func _draw_numbers(t: float, xf: Transform2D, seen: float) -> void:
 		if since < 0.0 and not Motion.reduce:
 			continue
 		var sc: Vector2 = Motion.pop_in_scale(since) if not Motion.reduce else Vector2.ONE
+		var ink: float = seen * _spent_level(c, t)
 		var at := _centre(c) + Vector2(Motion.shiver_offset(t - float(_bump_at[c]), _cell * 0.03), _cell * 0.02)
 		draw_set_transform_matrix(xf * Transform2D(0.0, sc, 0.0, at))
 		var text := str(v)
@@ -1859,8 +1923,66 @@ func _draw_numbers(t: float, xf: Transform2D, seen: float) -> void:
 			wide = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px).x
 			_num_w[v * 1000 + px] = wide
 		draw_string(font, Vector2(-wide * 0.5, rise), text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px,
-			Color(Pal.NUM_INK[mini(v, Pal.NUM_INK.size() - 1)], seen))
+			Color(Pal.NUM_INK[mini(v, Pal.NUM_INK.size() - 1)], ink))
 	draw_set_transform(Vector2.ZERO)
+
+## Whether raked `c` has nothing left to say: no pile round it still covered
+## and unflagged. Read off what the screen shows (raked, flags, the woken),
+## never the hedgehogs themselves, so a wrong flag dims a number just as a
+## right one does.
+func _is_spent(c: int) -> bool:
+	for r: int in _state.g.nb[c]:
+		if _state.open[r] == 0 and _state.flag[r] == 0 and _state.woke[r] == 0:
+			return false
+	return true
+
+## A number's ink, 1 to SPENT_ALPHA as it turns spent (and back, on an Undo
+## or a lifted flag). Every number in full on a solved lawn.
+func _spent_level(c: int, t: float) -> float:
+	var spent := _is_spent(c) and _solved_at < 0.0
+	if spent != (_spent[c] == 1):
+		_spent[c] = 1 if spent else 0
+		# A number that turns as the lawn opens fades once its gust is in.
+		_spent_at[c] = maxf(t, float(_blow_at[c]) + NUM_LAG)
+		_busy_for(_spent_at[c] - t + SPENT_FADE)
+	var k := 1.0 if Motion.reduce else clampf((t - float(_spent_at[c])) / SPENT_FADE, 0.0, 1.0)
+	return lerpf(1.0, SPENT_ALPHA, k) if spent else lerpf(SPENT_ALPHA, 1.0, k)
+
+## The light over the lawn, one mesh: the covered piles round a number held
+## under a finger washed in sun, and the bulb's reading -- a sun disc under
+## each number it reads and a sun rim round each pile it decides. Rebuilt
+## only when what it shows changes.
+func _draw_light(xf: Transform2D, seen: float, shown: Array) -> void:
+	var held := -1
+	if _press_cell >= 0 and _state.open[_press_cell] == 1 and int(_num_view[_press_cell]) > 0 \
+			and not is_done():
+		held = _press_cell
+	if not _lit_stands():
+		_lit = {}
+	if held < 0 and _lit.is_empty():
+		return
+	var key := [held, _lit.get("cells", PackedInt32Array()), _lit.get("why", PackedInt32Array()), _cell, _grid,
+		_state.flag.duplicate() if held >= 0 else null]
+	if _light == null or key != _light_key:
+		var b := Face.Builder.new()
+		var inset := _cell * LIT_INSET
+		var side := Vector2.ONE * (_cell - 2.0 * inset)
+		if held >= 0:
+			for r: int in _state.g.nb[held]:
+				if _state.open[r] == 0 and _state.flag[r] == 0 and _state.woke[r] == 0:
+					var at := _centre(r) - side * 0.5
+					b.fan(Face.Builder.round_rect(at, side, _cell * LIT_RADIUS), Color(Pal.SUN, HOLD_FILL))
+		for w: int in _lit.get("why", PackedInt32Array()):
+			b.disc(_centre(w), _cell * WHY_DISC, Color(Pal.SUN, 0.55))
+		for c: int in _lit.get("cells", PackedInt32Array()):
+			var at := _centre(c) - side * 0.5
+			b.stroke(Face.Builder.round_rect(at, side, _cell * LIT_RADIUS), _cell * LIT_LINE, Pal.SUN, true)
+		_light = b.mesh() if not b.verts.is_empty() else null
+		_light_key = key
+	if _light == null:
+		return
+	draw_mesh(_light, null, xf, Color(1.0, 1.0, 1.0, seen))
+	shown.append(_light)
 
 ## The tally strip: a sleeping hedgehog and how many are still asleep and
 ## unflagged -- the global count the proof uses, given free. BAD when there
@@ -1879,8 +2001,12 @@ func _draw_tally(t: float, seen: float, shown: Array) -> void:
 	var wide := font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1.0, TALLY_SIZE).x
 	var moon := _state.walkers() and _solved_at < 0.0
 	var bell_w := 2.0 * MOON_R + 12.0 + PIP_GAP * float(State.Gen.WALK_EVERY)
-	var run := TALLY_GLYPH + TALLY_GAP + wide + (TALLY_GAP * 1.6 + bell_w if moon else 0.0)
-	var start := size.x * 0.5 - run * 0.5
+	var sw := StarLine.width(STAR_SCALE) + STAR_GAP
+	var run := TALLY_GLYPH + TALLY_GAP + wide + (TALLY_GAP * 1.6 + bell_w if moon else 0.0) + sw
+	var start := size.x * 0.5 - run * 0.5 + sw
+	_stars.draw(self, Vector2(start - sw + StarLine.R * STAR_SCALE, _tally_y), STAR_SCALE, t, seen)
+	if _stars.busy(t):
+		queue_redraw()
 	if moon:
 		_draw_bell(Vector2(start + TALLY_GLYPH + TALLY_GAP + wide + TALLY_GAP * 1.6 + MOON_R, _tally_y), t, seen, shown)
 	var ink: Color = Pal.BAD if _state.flags_left() < 0 and _solved_at < 0.0 else Pal.TEXT
@@ -1964,10 +2090,10 @@ func _draw_toast(t: float, shown: Array) -> void:
 	if _toast == "":
 		return
 	var since := t - _toast_at
-	if since < 0.0 or since >= TOAST_HOLD:
+	if since < 0.0 or since >= _toast_hold:
 		return
 	var alpha := minf(Motion.appear_level(since, Motion.DROP_FADE),
-		Motion.appear_level(TOAST_HOLD - since, Motion.DROP_FADE))
+		Motion.appear_level(_toast_hold - since, Motion.DROP_FADE))
 	if alpha <= 0.0:
 		return
 	var line := tr(_toast)
@@ -1996,8 +2122,10 @@ func _draw_toast(t: float, shown: Array) -> void:
 		return
 	var mid := Vector2(size.x * 0.5, size.y - TOAST_MARGIN - h * 0.5)
 	if _bled:
-		# Over the bed's foot, clear of the tray under it.
-		mid.y = minf(size.y - _clear.y - 12.0 - h * 0.5, _frame_rect().end.y + 12.0 + h * 0.5)
+		# Under the bed's foot, never over a pile: a line that will not fit
+		# above the tray lies over the tray's top (the bulb's reasons,
+		# 2026-10-28), which a tap still reaches.
+		mid.y = _frame_rect().end.y + 12.0 + h * 0.5
 	draw_mesh(_toast_mesh, null, Transform2D(0.0, mid), Color(Color.WHITE, alpha))
 	shown.append(_toast_mesh)
 	var top := mid.y - h * 0.5 + (TOAST_H - font.get_height(TOAST_FONT)) * 0.5 + font.get_ascent(TOAST_FONT)
@@ -2039,7 +2167,13 @@ func _gui_input(event: InputEvent) -> void:
 			var id := _press_id
 			if c >= 0 and _state.open[c] == 0:
 				_touch(c, _press_at + LONG_PRESS + 0.3)
-			if c >= 0:
+			elif c >= 0:
+				# A number held lights its covered piles.
+				queue_redraw()
+			# A long press is the other chip on a covered pile; a raked number
+			# held only shows its piles, and does its tap on the release (a
+			# finger slid off it does nothing).
+			if c >= 0 and _state.open[c] == 0:
 				_later(LONG_PRESS, func():
 					if id == _press_id and _press_cell == c and not _long_fired:
 						_long_fired = true
@@ -2051,6 +2185,7 @@ func _gui_input(event: InputEvent) -> void:
 		_press_cell = -1
 		_press_finger = -2
 		_press_id += 1
+		queue_redraw()
 		if was >= 0 and not _long_fired:
 			_release_at[was] = _now()
 			_touch(was, _now() + RELEASE_TIME)
@@ -2073,18 +2208,20 @@ func _say(text: String, mood: int) -> void:
 
 ## An explanation of what just happened: the sprout's line (which no screen
 ## shows since the tip card left every board) and the toast, which one does.
-func _tell(key: String, mood: int, arg := "") -> void:
+func _tell(key: String, mood: int, arg := "", hold := TOAST_HOLD) -> void:
 	_say(tr(key) % arg if arg != "" else tr(key), mood)
 	_toast = key
 	_toast_arg = arg
 	_toast_at = _now()
+	_toast_hold = hold
 	queue_redraw()
 
 func _cycle_tip() -> void:
 	if is_done() or _state.can_undo():
 		return
-	_tip_idx = (_tip_idx + 1) % TIPS.size()
-	_say(tr(TIPS[_tip_idx]), Face.Expr.HAPPY)
+	var tips := _tips()
+	_tip_idx = (_tip_idx + 1) % tips.size()
+	_say(tr(tips[_tip_idx]), Face.Expr.HAPPY)
 
 func tip_line() -> Dictionary:
 	return {"text": _tip_text, "mood": _tip_mood}
@@ -2105,6 +2242,7 @@ func undo() -> bool:
 	var u: Dictionary = _state.undo()
 	if u.is_empty():
 		return false
+	_lit = {}
 	var t := _now()
 	var raked: PackedInt32Array = u.raked
 	for i in raked.size():
@@ -2127,38 +2265,106 @@ func undo() -> bool:
 	_refresh()
 	return true
 
+## A reading standing counts as one more press: the second press plays it
+## and costs nothing (hints_held is the badge's true count).
 func hints_left() -> int:
+	return hints_held() + (1 if _lit_stands() else 0)
+
+func hints_held() -> int:
 	return maxi(0, State.hints_for(_state.difficulty) + hints_extra - hints_used)
 
-## The next thing logic can prove from what the player can see: a bare cell
-## raked, else a hedgehog flagged and pinned.
+## Made fun (2026-10-28): the bulb teaches, in two presses. The first finds
+## the next thing logic proves from what the player can see and shows its
+## reading -- the numbers it reads lit, the piles they decide rimmed in
+## sun, and why on the toast -- for one hint. The player may do it
+## themselves; a second press while it stands does it for them, free: the
+## piles it proves bare are raked, the hedgehogs flagged and pinned.
 func hint() -> bool:
-	if is_done() or out_of_hearts or hints_left() <= 0 or busy():
+	if is_done() or out_of_hearts or busy():
+		return false
+	if _lit_stands():
+		return _play_lit()
+	if hints_held() <= 0:
 		return false
 	_break_streak()
 	var step: Dictionary = _state.hint_step()
 	if step.is_empty():
 		return false
 	hints_used += 1
-	var c: int = step.cell
-	if step.kind == "rake" and _state.flag[c] == 1:
-		_unflag_at[c] = _now()
-	var r: Dictionary = _state.apply_hint(step)
-	_ring_at(c)
+	_lit = step
+	fx.cue("hint")
+	for w: int in step.why:
+		_ring_at(w)
+	if step.why.is_empty():
+		for c: int in step.cells:
+			_ring_at(c)
+	_tell(_why_line(step), Face.Expr.HAPPY, "", WHY_HOLD)
+	moved.emit()
+	_refresh()
+	return true
+
+## Whether the bulb's reading still has a pile to do.
+func _lit_stands() -> bool:
+	if _lit.is_empty() or _state.size() == 0:
+		return false
+	for c: int in _lit.cells:
+		if c >= _state.size():
+			return false
+		if String(_lit.kind) == "rake" and _state.open[c] == 0:
+			return true
+		if String(_lit.kind) == "flag" and _state.flag[c] == 0 and _state.woke[c] == 0:
+			return true
+	return false
+
+## The second press: the reading played, under the hint's own rules (no
+## streak, no move counted).
+func _play_lit() -> bool:
+	var step := _lit
+	_lit = {}
 	fx.cue("hint")
 	_hinting = true
-	if String(r.kind) == "pinned":
-		_flag_at[c] = _now()
-		_touch(c, _now() + FLAG_DROP + Motion.BUMP_TIME)
-		_tell("HH_HINT_FLAG", Face.Expr.HAPPY)
+	var flagged := false
+	for c: int in step.cells:
+		if is_done():
+			break
+		if String(step.kind) == "flag":
+			if _state.flag[c] == 1 or _state.woke[c] == 1:
+				continue
+			_state.apply_hint({"kind": "flag", "cell": c})
+			_flag_at[c] = _now()
+			_touch(c, _now() + FLAG_DROP + Motion.BUMP_TIME)
+			flagged = true
+		elif _state.open[c] == 0:
+			if _state.flag[c] == 1:
+				_unflag_at[c] = _now()
+			_show_rake(_state.apply_hint({"kind": "rake", "cell": c}), c)
+	if flagged:
 		_after_move()
-	else:
-		_show_rake(r, c)
-		# A rake that finished the lawn has the win's line; leave it.
-		if not is_done():
-			_tell("HH_HINT_RAKE", Face.Expr.HAPPY)
 	_hinting = false
+	if not is_done():
+		_tell("HH_HINT_FLAG" if String(step.kind) == "flag" else "HH_HINT_RAKE", Face.Expr.HAPPY)
+	_refresh()
 	return true
+
+## Why the reading decides what it does, in the player's words.
+func _why_line(step: Dictionary) -> String:
+	var why: PackedInt32Array = step.why
+	var flag := String(step.kind) == "flag"
+	match String(step.rule):
+		"single":
+			var v := int(_num_view[why[0]])
+			if not flag:
+				return tr("HH_WHY_BARE") % v
+			return tr("HH_WHY_HOG_ONE") % v if int(step.need) == 1 else tr("HH_WHY_HOG_N") % [v, int(step.need)]
+		"pair":
+			var a := int(_num_view[why[0]])
+			var b := int(_num_view[why[1]])
+			# `a` is the number whose piles all lie among `b`'s.
+			if not flag:
+				return tr("HH_WHY_PAIR_BARE") % [b, a]
+			var need := int(step.need)
+			return tr("HH_WHY_PAIR_HOG_ONE") % [b, a] if need == 1 else tr("HH_WHY_PAIR_HOG_N") % [b, need, a]
+	return tr("HH_WHY_COUNT_HOG") if flag else tr("HH_WHY_COUNT_BARE")
 
 ## Every wrong flag's pennant turns rose and shivers, and holds until the
 ## next move. Counts a check.
@@ -2201,6 +2407,7 @@ func reset_board() -> void:
 	_turn += 1
 	var before: PackedByteArray = _state.flag.duplicate()
 	var covered: PackedInt32Array = _state.reset_board()
+	_lit = {}
 	if night:
 		_night_back()
 	var t := _now()
@@ -2390,6 +2597,7 @@ func restore_completed_board() -> void:
 		_state.woke[w] = 1
 		_state.woken += 1
 	_state.woken = maxi(_state.woken, int(completed_record.get("woken", 0)))
+	_rate(false)
 	_state.history = []
 	var t := _now()
 	# Never below zero: _solved_at >= 0 is what "solved" reads as, and a day
@@ -2443,6 +2651,13 @@ func _recorded_woke() -> PackedInt32Array:
 			return PackedInt32Array()
 		out.append(c)
 	return out
+
+## The stars the day stands at: three with nobody woken, two with one, one
+## with more. `woken` is the day's tally (Reset keeps it), so a star once
+## fallen stays down. `heard`: it falls with the wake.
+func _rate(heard: bool) -> void:
+	_stars.rate(clampi(3 - _state.woken, 1, 3), _now(), heard and not is_done())
+	queue_redraw()
 
 # --- hearts ---
 

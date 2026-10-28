@@ -22,12 +22,21 @@ extends RefCounted
 ## Per level: the lawn, the hedgehogs, whether the proof may subtract
 ## subsets and how many rounds must need one, and the opening flood's range
 ## in cells. Insane adds the sleepwalkers below.
+##
+## Made fun (2026-10-28, tests/_probe_hh_fun.gd): a deal must also hand the
+## player a way in and a warm-up. The opening's first reading decides at
+## least FIRST_READ piles on every band (one in three Hard openings decided
+## one or none), and `late` is the most of the bare piles a reader of one
+## number at a time may be left facing when the first pair of numbers is
+## needed: on Hard and Insane that wall came at the opening itself on one
+## night in four, and before half way on most.
 const BANDS := [
-	{"cols": 8, "rows": 10, "k": 12, "subsets": false, "need_sub": 0, "open": Vector2i(12, 40)},
-	{"cols": 9, "rows": 11, "k": 17, "subsets": false, "need_sub": 0, "open": Vector2i(12, 36)},
-	{"cols": 10, "rows": 11, "k": 21, "subsets": true, "need_sub": 1, "open": Vector2i(8, 30)},
-	{"cols": 10, "rows": 11, "k": 24, "subsets": true, "need_sub": 2, "open": Vector2i(6, 28)},
+	{"cols": 8, "rows": 10, "k": 12, "subsets": false, "need_sub": 0, "open": Vector2i(12, 40), "late": 1.0},
+	{"cols": 9, "rows": 11, "k": 17, "subsets": false, "need_sub": 0, "open": Vector2i(12, 36), "late": 1.0},
+	{"cols": 10, "rows": 11, "k": 21, "subsets": true, "need_sub": 1, "open": Vector2i(8, 30), "late": 0.5},
+	{"cols": 10, "rows": 11, "k": 24, "subsets": true, "need_sub": 2, "open": Vector2i(6, 28), "late": 0.8},
 ]
+const FIRST_READ := 2
 
 ## Sleepwalkers (Insane): every WALK_EVERY rakes the bell rings and one
 ## sleeping hedgehog, not under a flag, steps to a covered pile next to it --
@@ -231,6 +240,36 @@ static func prove_from(g: Dictionary, subsets: bool, open_in: PackedByteArray, k
 				safe_left -= flood(g, open, r).size()
 	return {"ok": true, "rounds": rounds, "sub": sub, "cnt": cnt}
 
+## Whether the opening (`open`, raked) hands a way in -- its first reading
+## decides FIRST_READ piles or more -- and a reader of one number at a time
+## gets at least as far as `late` allows before a pair is needed.
+static func _warm(g: Dictionary, open_in: PackedByteArray, late: float) -> bool:
+	var open := open_in.duplicate()
+	var known := PackedByteArray()
+	known.resize(g.n)
+	var first := deduce(g, open, known, false)
+	if first.is_empty() or first.rule == "count" or first.safe.size() + first.hogs.size() < FIRST_READ:
+		return false
+	if late >= 1.0:
+		return true
+	var bare := 0
+	for c in int(g.n):
+		if g.hog[c] == 0 and open[c] == 0:
+			bare += 1
+	var d := first
+	while not d.is_empty() and d.rule == "single":
+		for r: int in d.hogs:
+			known[r] = 1
+		for r: int in d.safe:
+			if open[r] == 0:
+				flood(g, open, r)
+		d = deduce(g, open, known, false)
+	var left := 0
+	for c in int(g.n):
+		if g.hog[c] == 0 and open[c] == 0:
+			left += 1
+	return float(left) <= late * float(bare)
+
 ## The day's lawn for level `d`, seeded only by `rng`. The opening is dealt
 ## away from the edge with its 3x3 kept clear; the hedgehogs are the first k
 ## of the rest, shuffled. Kept only if the opening flood is in the level's
@@ -271,7 +310,7 @@ static func generate(rng: RandomNumberGenerator, d: int) -> Dictionary:
 		g.attempts = attempt
 		g.opened = opened
 		g.proof = p
-		if int(p.sub) < int(bd.need_sub):
+		if int(p.sub) < int(bd.need_sub) or not _warm(g, probe, float(bd.late)):
 			if fallback.is_empty():
 				fallback = g
 			continue
