@@ -1269,7 +1269,9 @@ func _draw_toast(t: float, shown: Array) -> void:
 		_toast_mesh_for = key
 	var mid := Vector2(size.x * 0.5, minf(_plate_bottom() + _peg_r * 0.55 + 46.0 + h * 0.5, size.y - _clear.y - 24.0 - h * 0.5))
 	if high:
-		mid = Vector2(_side() + room * 0.5, _clear.x + SHELF_H + 2.0 + h * 0.5)
+		# A tall toast (the bulb's why) rises over the shelf rather than down
+		# onto the pegs.
+		mid = Vector2(_side() + room * 0.5, minf(_clear.x + SHELF_H + 2.0 + h * 0.5, _clear.x + TOP_ROOM - h * 0.5 - 4.0))
 	draw_mesh(_toast_mesh, null, Transform2D(0.0, mid), Color(Color.WHITE, alpha))
 	shown.append(_toast_mesh)
 	var top := mid.y - h * 0.5 + (TOAST_H - font.get_height(TOAST_FONT)) * 0.5 + font.get_ascent(TOAST_FONT)

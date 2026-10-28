@@ -53,7 +53,12 @@ reading"):
   `UT_WIN_BEAT` under par. `UT_RULES` names the stars.
 - **The toast never lies over the pegs**: bands without the kitten keep
   `TOAST_ROOM` under the plate (Hard's boards are a little smaller for
-  it); Insane's toast stands in the kitten's row under the shelf.
+  it); Insane's toast stands in the kitten's row under the shelf, and
+  a taller one (a long why, pt/es) rises over the shelf, never onto the
+  plate.
+- Left as is: Undo does not win a star back (`_all_moves` is not taken
+  down; StarLine can pop one back if that is wanted), and an Undo during a
+  ball's 0.5 s flight still plays its landing tick.
 
 opengl3_angle 810x1440: rest 86 (Easy), 88 (Medium), 91 (Hard), 95
 (Insane) draw calls; Insane's answer played to the win peaks at 149.
