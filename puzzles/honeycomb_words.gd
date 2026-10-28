@@ -89,8 +89,9 @@ func inside(hive: int, queen: int, most := 3) -> PackedInt32Array:
 			out.append(i)
 	return out
 
-## A word's honey: one for four letters, its length past that, seven more
-## for a word that uses all seven letters (a full comb).
+## A word's honey: one a letter, seven more for a word that uses all seven
+## letters (a full comb). A four-letter word poured one until 2026-10-28,
+## and a player finding the short words first, as players do, filled the
+## jar a drop at a time.
 static func points(word: String, full: bool) -> int:
-	var n := word.length()
-	return (1 if n <= 4 else n) + (7 if full else 0)
+	return word.length() + (7 if full else 0)

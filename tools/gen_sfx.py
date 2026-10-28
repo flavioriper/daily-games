@@ -1933,6 +1933,9 @@ SETS = {
         "found":    ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -21, FOLEY, "bank:tongue", "cut:0.12", "notes:0:-1", "tight"),
         "fly":      ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -20, FOLEY, "bank:wrap", "cut:0.08", "notes:0.035:7,9,7,9,12,9,12", "tight"),
         "reset":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -16, FOLEY, "bank:token", "cut:0.4", "notes:0.05:0,-2,-4,-5,-7,-9", "tight"),
+        # 2026-10-28: a rank lit on the strip, four wraps climbing to the
+        # fifth above (pitched up a rank at a time at play)
+        "rank":     ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.1", "notes:0.08:0,4,7,12", "tight"),
         "hint":     ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -16, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320", "notes:0:2"),
         "enter":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.5", "notes:0.05:-2,1,-2,0,3,1,4", "tight"),
         "confetti": ("a soft little paper confetti pop and flutter with a tiny music box twinkle, cute", 1.0, -10, BEADBOX_TUNE, "warm:7000"),

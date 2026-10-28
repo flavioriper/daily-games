@@ -137,8 +137,10 @@ static func mark(b, at: Vector2, r: float, kind: int, ink: Color) -> void:
 				t, ink, false)
 
 ## The honey strip: a jar's paper band `sz` about `at`, filled from the left
-## by `share` (0..1) of honey, with comb cells pressed into it.
-static func strip(b, at: Vector2, sz: Vector2, share: float) -> void:
+## by `share` (0..1) of honey, with comb cells pressed into it; `marks` the
+## ranks on the way, as shares of the band, a small cell each, honey once
+## reached (`reached` of them), `pop` the newest's bump scale.
+static func strip(b, at: Vector2, sz: Vector2, share: float, marks: Array = [], reached := 0, pop := 1.0) -> void:
 	var corner := at - sz * 0.5
 	var rr := sz.y * 0.5
 	b.fan(Face.Builder.round_rect(corner + Vector2(0.0, sz.y * 0.12), sz, rr), JAR_EDGE)
@@ -152,3 +154,16 @@ static func strip(b, at: Vector2, sz: Vector2, share: float) -> void:
 		b.fan(Face.Builder.round_rect(corner + Vector2.ONE * inset, Vector2(fw, inner.y), inner.y * 0.5), HONEY)
 		b.fan(Face.Builder.round_rect(corner + Vector2.ONE * inset + Vector2(inner.y * 0.3, inner.y * 0.14),
 			Vector2(maxf(fw - inner.y * 0.6, 0.0), inner.y * 0.22), inner.y * 0.11), Color(HONEY_LIT, 0.9))
+	for m in marks.size():
+		var x := corner.x + inset + float(marks[m]) * inner.x
+		var c := Vector2(x, at.y)
+		var r := inner.y * 0.62 * (pop if m == reached - 1 else 1.0)
+		var on := m < reached
+		b.fan(hex_points(c + Vector2(0.0, r * 0.12), r), HONEY_DEEP if on else JAR_EDGE)
+		b.fan(hex_points(c, r * 0.86), HONEY_LIT if on else JAR)
+
+## A word found, on a wax chip: `rect` the chip, honey for a full comb.
+static func chip(b, rect: Rect2, full: bool) -> void:
+	var rr := rect.size.y * 0.5
+	b.fan(Face.Builder.round_rect(rect.position + Vector2(0.0, rect.size.y * 0.1), rect.size, rr), HONEY_DEEP if full else WAX_DEEP)
+	b.fan(Face.Builder.round_rect(rect.position, rect.size, rr), HONEY if full else WAX_LIT)

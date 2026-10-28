@@ -48,3 +48,53 @@
   line); `tests/_shot_honeycomb.gd -- <dir> d=<0..3> [tut=<page>|card]`
   shoots rest, spelling, refused, taken, shuffling, hinted, busy, the
   queen's flight, the win and the reopened day.
+
+## Made fun (2026-10-28, unattended)
+
+The user: "make honeycomb experience way better to play, and game itself
+way funnier to play, right now nobody likes it ... show the words as a
+list in order of placement instead of reordering, something more elegant".
+
+- **The words found are wax chips in the order found** (`_lay_chips`,
+  `Art.chip`): a new word flies from the entry row into its own chip at the
+  end and the chip pops in; no chip moves to let it in. A full comb's chip
+  is honey. Rows centred, top-aligned; the chips shrink from `CHIP_SIZE` to
+  `CHIP_MIN`, and past that the earliest row makes way and is counted on a
+  first chip (`HC_EARLIER_ONE/_N`). A word sent again lights its chip
+  (`_flash_i`). One mesh for the chips, the newest a cached mesh under a
+  transform; the lit chip's ring is kept in `_flash_mesh` (a temporary
+  freed before the frame drew it: "mesh is null"), and every chip's draw
+  starts with `draw_set_transform(Vector2.ZERO)` (the last chip's text
+  transform otherwise carried into the next chip's mesh).
+- **Honey is one a letter** (`Words.points`), seven more for a full comb.
+  A four-letter word poured one before, and a player finding the short
+  words first filled the jar a drop at a time (Medium ~19 words). The lines
+  are `SHARE` [0.18, 0.2, 0.24, 0.24]: `tests/_probe_hc_pace.gd` puts the
+  line at 5-7 words on Easy, 8-10 Medium, 11-15 Hard (an any-order player
+  and a shortest-first one, all three languages). `_probe_honeycomb.gd`:
+  unfillable 0, clashes 0. `_win.gd -- honeycomb`: Medium's day 20 words
+  before, 10 after.
+- **Three ranks on the way to the line** (`State.RANKS` 25/50/75% of it):
+  Buzzing, Busy bee, Honey maker (`HC_RANK_n`, toasts `HC_RANK_n_SAY`), a
+  hex pip each on the strip that lights and bumps when the word reaching it
+  lands, with the `rank` cue (four wraps rising, pitched up a rank) and a
+  sparkle. The honey count moved under the strip (`label_y`, `LABEL_H`),
+  with the rank's name before it: the pips sat where the centred numbers
+  were. Names are ours; the original's are never used.
+- **The search's map**: under each cell's letter, how many of the day's
+  words still to find begin with it (`State.starts()`, with the queen as she
+  is now, so it follows her flights on Insane; cached on found count and
+  queen). The count line says how many full combs still hide
+  (`HC_FULL_LEFT_ONE/_N`). `HC_RULES_MAP` explains both in the rules.
+- **The praise is said in the entry's row** once the word has left it
+  (`_say_now(key, after)`, `_draw_say`): bigger, in honey for praise, dim
+  for a refusal, gone at the next letter. Under the keys only the count line
+  stays (it sat where the thumb is).
+- **Runs**: every third word in a row with no refusal says "%d in a row!"
+  (`HC_STREAK`); the word's pop rides up the run. A word already found does
+  not break a run.
+- **The swarm**: one more drifting bee joins every three words found (two
+  to seven), popping in as the word lands.
+- Draw calls (`opengl3_angle`, 810x1440): 110-119 in play (Easy, Medium,
+  Insane), 170 on the win, 146 a tutorial page.
+- Owed: the `rank` cue heard, the phone, pt/es names read by a speaker.

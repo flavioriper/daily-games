@@ -4,8 +4,8 @@ extends RefCounted
 ## Seven letters in a comb, one in the middle cell where the queen sits.
 ## Spell words of four letters or more from them, letters used as often as
 ## you like, every word holding the queen's letter. Each word found pours
-## honey: one for four letters, its length past that, seven more for a full
-## comb (a word with all seven letters). The day is done when the jar is
+## honey: one a letter, seven more for a full comb (a word with all seven
+## letters). The day is done when the jar is
 ## filled to the band's line, a share of all the honey the day's words hold.
 ## On Insane (Wandering Queen) the queen flies to another letter every
 ## FLIGHT words found, so the words after must hold her new letter.
@@ -14,8 +14,15 @@ const Words = preload("res://puzzles/honeycomb_words.gd")
 
 ## The bulb, by band.
 const HINTS := [3, 2, 1, 1]
-## The jar's line, as a share of the honey the day's words hold.
-const SHARE := [0.2, 0.28, 0.36, 0.36]
+## The jar's line, as a share of the honey the day's words hold. Lowered
+## 2026-10-28 with the honey rule (the board read as a slog): the line is
+## about 5-7 words on Easy, 8-10 on Medium and 11-15 on Hard, the fewer for
+## a player sending the day's words in any order, the more for one sending
+## the shortest first (tests/_probe_hc_pace.gd).
+const SHARE := [0.18, 0.2, 0.24, 0.24]
+## The ranks on the way to the line, as shares of it: three named steps
+## the strip lights before the jar is full.
+const RANKS := [0.25, 0.5, 0.75]
 ## Insane: words found between the queen's flights.
 const FLIGHT := 4
 const SHORTEST := 4
@@ -175,6 +182,42 @@ func fly() -> int:
 
 func solved() -> bool:
 	return honey >= goal
+
+## The ranks reached: 0 none yet, RANKS.size() the last before the line.
+func rank() -> int:
+	return rank_at(honey)
+
+func rank_at(h: int) -> int:
+	var n := 0
+	for share in RANKS:
+		if h >= rank_honey(n):
+			n += 1
+	return n
+
+## The honey rank `n` (0-based) asks for.
+func rank_honey(n: int) -> int:
+	return maxi(1, ceili(goal * float(RANKS[n])))
+
+## Per letter of the hive, how many of the day's words still to find begin
+## with it (with the queen as she is now).
+func starts() -> Dictionary:
+	var out := {}
+	for ch in letters:
+		out[ch] = 0
+	for i in open_words():
+		var w: String = words.words[i]
+		if not found.has(w):
+			out[w[0]] = int(out.get(w[0], 0)) + 1
+	return out
+
+## The day's full combs not found yet.
+func fulls_left() -> int:
+	var n := 0
+	for i in open_words():
+		var w: String = words.words[i]
+		if words.masks[i] == hive_mask and not found.has(w):
+			n += 1
+	return n
 
 ## The ring in a new order.
 func shuffle(rng: RandomNumberGenerator) -> void:

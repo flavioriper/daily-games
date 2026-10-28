@@ -154,7 +154,11 @@ func _process(_delta: float) -> bool:
 					_queue.append("flight")
 					_step = 4
 					_f = 4000
-				elif st.found.size() == 12 and not _queue.has("busy"):
+				elif st.rank() >= 1 and not _queue.has("rank"):
+					_queue.append("rank")
+					_step = 8
+					_f = 8500
+				elif st.found.size() == 6 and not _queue.has("busy"):
 					_queue.append("busy")
 					_shot("busy")
 		4:
@@ -174,6 +178,16 @@ func _process(_delta: float) -> bool:
 				_host.closed.emit()
 				_step = 7
 				_f = 7000
+		8:
+			# the rank lit, then the first word sent again lights its chip
+			if _f == 8528:
+				_shot("ranked")
+				_type(st.found[0])
+				_b.demo_key(2)
+			if _f == 8540:
+				_shot("again")
+				_step = 5
+				_f = 5000
 		50:
 			var pages: Array = _b.tutorial_pages()
 			_diag = pages[clampi(_page, 0, pages.size() - 1)].diagram

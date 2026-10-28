@@ -53,6 +53,7 @@ const HAPTICS := {
 	"found": Haptics.TICK,
 	"fly": Haptics.TAP,
 	"hint": Haptics.GOOD,
+	"rank": Haptics.GOOD,
 	"reset": Haptics.TAP,
 	"solved": Haptics.WIN,
 }
@@ -68,6 +69,8 @@ const KEY_GAP := 90.0
 ## The rows at W: the strip, the words found, the word spelt, the gaps.
 const STRIP_W := 760.0
 const STRIP_H := 58.0
+## The line under the strip: the rank reached and the honey over the line.
+const LABEL_H := 40.0
 const FOUND_H := 196.0
 const ENTRY_H := 120.0
 const GAP := 26.0
@@ -76,8 +79,23 @@ const COUNT_H := 64.0
 ## numbers, the count line and the toast.
 const CELL_SIZE := 92
 const ENTRY_SIZE := 84
-const FOUND_SIZE := 36
 const FOUND_MIN := 26
+## The words found, each on a wax chip in the order found (the user,
+## 2026-10-28: "show the words as a list in order of placement instead of
+## reordering"): the type at W and the least it shrinks to before the
+## earliest rows make way; a chip's height, its side padding and the gap
+## between chips and rows, in its type size.
+const CHIP_SIZE := 34
+const CHIP_MIN := 26
+const CHIP_H := 1.5
+const CHIP_PAD := 0.6
+const CHIP_GAP := 0.3
+## A word sent again lights its chip this long.
+const FLASH_TIME := 0.9
+## The letters' counts on the cells, the type at W.
+const BADGE_SIZE := 30
+## A run of words with no refusal is praised every this many.
+const STREAK := 3
 const STRIP_SIZE := 30
 const COUNT_SIZE := 32
 const SAY_SIZE := 34
@@ -94,8 +112,11 @@ const SAY_TIME := 2.0
 ## The win: the cells' wave, how long the board's own win plays.
 const WIN_HOLD := 1.4
 const WAVE_STEP := 0.07
-## The drifting bees: how many, their size in a cell's radius.
+## The drifting bees: how many at the start, one more a few words found
+## (up to the most), their size in a cell's radius.
 const DRIFTERS := 2
+const DRIFT_EVERY := 3
+const DRIFT_MOST := 7
 const DRIFT_SIZE := 0.32
 
 ## Built silent and deaf for the tutorial's page, and the hive it shows
@@ -143,9 +164,30 @@ var _bees: Array[ArrayMesh] = []
 var _bee_s := -1.0
 var _still: ArrayMesh
 var _still_key := ""
-var _rows: Array = []
-var _rows_key := ""
-var _rows_size := FOUND_SIZE
+## The chips laid: {rect, text, full, i (in `found`, -1 the count of the
+## earliest made way)}; their one mesh and the type they are written in.
+var _chips: Array = []
+var _chips_key := ""
+var _chips_mesh: ArrayMesh
+var _lone_mesh: ArrayMesh
+## The lit chip's ring, kept until the next frame's replaces it.
+var _flash_mesh: ArrayMesh
+var _chip_fs := 0
+## When the newest word's chip lands, and the chip a word sent again lights.
+var _landed_at := -INF
+var _flash_i := -1
+var _flash_at := -INF
+## When the strip's last rank was reached.
+var _rank_at := -INF
+## Per letter, the day's words still to find that begin with it.
+var _starts := {}
+var _fulls_left := 0
+var _starts_key := ""
+## Words in a row with no refusal.
+var _streak := 0
+## The drifting bees flying, and when each extra one joined.
+var _drifting := DRIFTERS
+var _born := {}
 var fx: Node
 
 func puzzle_id() -> String: return "honeycomb"
@@ -156,6 +198,7 @@ func rules() -> String:
 	out += "\n\n" + tr("HC_RULES_HONEY")
 	if _st.wandering():
 		out += "\n\n" + tr("HC_RULES_WANDER") % State.FLIGHT
+	out += "\n\n" + tr("HC_RULES_MAP")
 	out += "\n\n" + tr("HC_RULES_SCORE")
 	return out
 
@@ -223,7 +266,14 @@ func _fresh() -> void:
 	_praise = ""
 	_hint_word = ""
 	_still_key = ""
-	_rows_key = ""
+	_chips_key = ""
+	_starts_key = ""
+	_landed_at = -INF
+	_flash_i = -1
+	_rank_at = -INF
+	_streak = 0
+	_drifting = _drift_count()
+	_born = {}
 	_relayout()
 
 func day_dict() -> Dictionary:
@@ -258,6 +308,7 @@ func _tap_cell(i: int) -> void:
 		return
 	_press_at[i] = _t
 	_typed_at.append(_t)
+	_say = ""
 	_cue("tap", 1.0 + 0.03 * mini(_st.entry.length(), 12))
 	if _hint_word != "" and not _hint_word.begins_with(_st.entry):
 		_hint_word = ""
@@ -307,8 +358,17 @@ func _send() -> void:
 			var pts := Words.points(text, said == Said.FULL)
 			_leaving = {"text": text, "at": _t, "taken": true, "points": pts}
 			_strip_at = _t + TAKE_TIME
-			_rows_key = ""
+			_landed_at = _t + TAKE_TIME
+			_chips_key = ""
 			_hint_word = ""
+			_streak += 1
+			var ranked: bool = _st.rank() > _st.rank_at(_st.honey - pts) and not _st.solved()
+			if ranked:
+				_rank_at = _t + TAKE_TIME
+			var n := _drift_count()
+			if n > _drifting:
+				_born[n - 1] = _t + TAKE_TIME
+				_drifting = n
 			if said == Said.FULL:
 				_praise = "HC_FULL"
 				_cue("full")
@@ -316,22 +376,39 @@ func _send() -> void:
 					for c in 7:
 						fx.ring(_cell_pos(c), _l("r") * 1.1, Pal.SUN)
 			else:
-				_praise = "HC_NICE_1" if pts <= 1 else ("HC_NICE_2" if pts <= 6 else "HC_NICE_3")
-				_cue("word", 1.0 + 0.04 * mini(text.length() - 4, 6))
+				if ranked:
+					_praise = "HC_RANK_%d_SAY" % _st.rank()
+				elif _streak >= STREAK and _streak % STREAK == 0:
+					_praise = "HC_STREAK"
+				else:
+					_praise = "HC_NICE_1" if pts <= 4 else ("HC_NICE_2" if pts <= 6 else "HC_NICE_3")
+				_cue("word", 1.0 + 0.04 * mini(text.length() - 4, 6) + 0.02 * mini(_streak - 1, 8))
 				if not demo and fx != null:
 					fx.sparkle(Vector2(size.x * 0.5, _l("entry_y")), Pal.SUN)
-			_say_now(_praise)
+			if ranked and _tree_ok():
+				get_tree().create_timer(TAKE_TIME, false).timeout.connect(func() -> void:
+					if not is_inside_tree():
+						return
+					_cue("rank", 0.94 + 0.06 * _st.rank())
+					if fx != null:
+						fx.sparkle(_rank_pos(_st.rank() - 1), Pal.SUN))
+			_say_now(_praise, TAKE_TIME)
 			if _st.solved():
 				_phase_solved()
 			elif _st.flies_now():
 				_fly()
 		_:
 			_leaving = {"text": text, "at": _t, "taken": false}
+			if said == Said.FOUND:
+				_flash_i = _st.found.find(text)
+				_flash_at = _t
+			else:
+				_streak = 0
 			match said:
-				Said.SHORT: _say_now("HC_SAY_SHORT")
-				Said.NO_QUEEN: _say_now("HC_SAY_QUEEN")
-				Said.FOUND: _say_now("HC_SAY_FOUND")
-				_: _say_now("HC_SAY_NOT")
+				Said.SHORT: _say_now("HC_SAY_SHORT", REFUSE_TIME)
+				Said.NO_QUEEN: _say_now("HC_SAY_QUEEN", REFUSE_TIME)
+				Said.FOUND: _say_now("HC_SAY_FOUND", REFUSE_TIME)
+				_: _say_now("HC_SAY_NOT", REFUSE_TIME)
 			_cue("found" if said == Said.FOUND else "refuse")
 
 ## Insane: the queen flies on to the cell of her next letter.
@@ -413,9 +490,19 @@ func reset_board() -> void:
 	_enter_at = _t
 	_cue("reset")
 
-func _say_now(key: String) -> void:
+## A word said in the entry's row, once whatever is leaving it has left.
+func _say_now(key: String, after := 0.0) -> void:
 	_say = key
-	_say_at = _t
+	_say_at = _t + after
+
+## The tutorial's board never plays timers' cues; neither does one out of
+## the tree.
+func _tree_ok() -> bool:
+	return not demo and is_inside_tree()
+
+## The drifting bees the words found so far call.
+func _drift_count() -> int:
+	return mini(DRIFTERS + _st.found.size() / DRIFT_EVERY, DRIFT_MOST)
 
 func _cue(name: String, pitch := 1.0, volume_db := 0.0) -> void:
 	if demo or fx == null:
@@ -552,7 +639,7 @@ func _relayout() -> void:
 	var top := _clear.x if _bled else 0.0
 	var bottom := size.y - (_clear.y if _bled else 0.0)
 	_L = _layout_for(top, bottom)
-	_rows_key = ""
+	_chips_key = ""
 	if _world != null:
 		_world.position = Vector2(-_shift if _bled else 0.0, 0.0)
 		_world.size = size
@@ -572,7 +659,7 @@ func _layout_for(top: float, bottom: float) -> Dictionary:
 	# and the comb fill the win's span
 	var keys_h := 0.0 if _won else GAP + KEY_R * 2.0 + 16.0 + count_h
 	var found_h := FOUND_H if not demo else FOUND_H * 0.6
-	var need := STRIP_H + GAP + found_h + GAP * 0.5 + ENTRY_H + GAP + comb_h + keys_h
+	var need := STRIP_H + LABEL_H + GAP + found_h + GAP * 0.5 + ENTRY_H + GAP + comb_h + keys_h
 	var k := minf(1.0, span / (need * u))
 	# a narrow, tall span would leave the comb wider than the screen
 	k = minf(k, (w * 0.96) / (comb_w * u))
@@ -582,7 +669,7 @@ func _layout_for(top: float, bottom: float) -> Dictionary:
 		# whatever the span leaves over is shared: most of it above the comb
 		y = top + (span - need * s) * 0.3
 	var strip_y := y + STRIP_H * 0.5 * s
-	var found_top := strip_y + (STRIP_H * 0.5 + GAP) * s
+	var found_top := strip_y + (STRIP_H * 0.5 + LABEL_H + GAP) * s
 	var entry_y := found_top + (found_h + GAP * 0.5 + ENTRY_H * 0.5) * s
 	var comb_y := entry_y + (ENTRY_H * 0.5 + GAP) * s + comb_h * 0.5 * s
 	var keys_y := comb_y + comb_h * 0.5 * s + (GAP + KEY_R) * s
@@ -590,6 +677,7 @@ func _layout_for(top: float, bottom: float) -> Dictionary:
 		"u": u, "s": s, "top": top, "bottom": bottom,
 		"horizon": entry_y - ENTRY_H * 0.25 * s,
 		"strip_y": strip_y, "sw": STRIP_W * s, "sh": STRIP_H * s,
+		"label_y": strip_y + (STRIP_H * 0.5 + LABEL_H * 0.72) * s,
 		"found_top": found_top, "found_h": found_h * s,
 		"entry_y": entry_y, "comb_y": comb_y, "comb_h": comb_h * s,
 		"r": CELL_R * s, "gap": CELL_GAP * s,
@@ -626,6 +714,7 @@ func _draw() -> void:
 	if absf(r - _units_r) > 0.5:
 		_units_r = r
 		_units = Art.units(r)
+	_refresh_starts()
 	_draw_still()
 	_draw_found()
 	for i in 7:
@@ -643,18 +732,22 @@ func _draw_still() -> void:
 	for k in 3:
 		pulse.append(_t - _key_at[k] < Motion.BUMP_TIME)
 	var share := clampf(float(_st.honey) / float(maxi(1, _st.goal)), 0.0, 1.0)
-	var key := "%d:%d:%d:%.3f:%s:%s:%s" % [roundi(size.x), roundi(_l("strip_y")), roundi(_l("keys_y") * 4.0), share, str(pulse), _won, swell >= 0.0 and swell < Motion.BUMP_TIME]
-	if key != _still_key or pulse.has(true) or (swell >= 0.0 and swell < Motion.BUMP_TIME):
+	var popping := _t - _rank_at >= 0.0 and _t - _rank_at < Motion.BUMP_TIME
+	var key := "%d:%d:%d:%.3f:%s:%s:%s:%d" % [roundi(size.x), roundi(_l("strip_y")), roundi(_l("keys_y") * 4.0), share, str(pulse), _won, swell >= 0.0 and swell < Motion.BUMP_TIME, _shown_rank()]
+	if key != _still_key or pulse.has(true) or (swell >= 0.0 and swell < Motion.BUMP_TIME) or popping:
 		_still_key = key
 		_still = _build_still(share, swell)
 	draw_mesh(_still, null)
-	# the strip's numbers: the honey over the line
+	# the strip's words: the rank reached, the honey over the line
 	var font: Font = CozyTheme.display(800)
 	var fs := roundi(STRIP_SIZE * _s())
 	var text := "%d / %d" % [_st.honey, _st.goal]
+	var rank := _shown_rank()
+	if rank > 0 and not _won:
+		text = tr("HC_RANK_%d" % rank) + "  ·  " + text
 	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-	var at := Vector2(size.x * 0.5 - tw * 0.5, _l("strip_y") + font.get_ascent(fs) * 0.36)
-	draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, roundi(8 * _s()), Color(Art.JAR, 0.9))
+	var at := Vector2(size.x * 0.5 - tw * 0.5, _l("label_y"))
+	draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, roundi(8 * _s()), Color(Pal.SURFACE, 0.85))
 	draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Art.INK)
 
 func _build_still(share: float, swell: float) -> ArrayMesh:
@@ -662,7 +755,9 @@ func _build_still(share: float, swell: float) -> ArrayMesh:
 	var sz := Vector2(_l("sw"), _l("sh"))
 	if swell >= 0.0 and swell < Motion.BUMP_TIME and not Motion.reduce:
 		sz *= Motion.bump_scale(swell, 0.08)
-	Art.strip(b, Vector2(size.x * 0.5, _l("strip_y")), sz, share)
+	var re := _t - _rank_at
+	var pop := Motion.bump_scale(re, 0.4) if re >= 0.0 and re < Motion.BUMP_TIME and not Motion.reduce else 1.0
+	Art.strip(b, Vector2(size.x * 0.5, _l("strip_y")), sz, share, State.RANKS, _shown_rank(), pop)
 	if not _won:
 		for k in 3:
 			var kr := _l("kr")
@@ -673,72 +768,171 @@ func _build_still(share: float, swell: float) -> ArrayMesh:
 			Art.key(b, _key_pos(k), kr, k, lit)
 	return b.mesh()
 
-## The words found, alphabetical, laid in rows across the box; smaller as
-## they grow, and past what fits the newest are shown and the rest counted.
+## The rank the strip shows: the one reached, once the word that reached
+## it has poured into the jar.
+func _shown_rank() -> int:
+	var n: int = _st.rank()
+	if _t < _rank_at:
+		n -= 1
+	return maxi(0, n)
+
+## Where rank `n`'s cell sits on the strip.
+func _rank_pos(n: int) -> Vector2:
+	var sz := Vector2(_l("sw"), _l("sh"))
+	var inset := sz.y * 0.16
+	var x := size.x * 0.5 - sz.x * 0.5 + inset + float(State.RANKS[clampi(n, 0, State.RANKS.size() - 1)]) * (sz.x - inset * 2.0)
+	return Vector2(x, _l("strip_y"))
+
+## The words found, each on a wax chip, laid in rows in the order they were
+## found: a new word lands at the end and no chip moves to let it in. The
+## chips shrink as rows fill; past the smallest the earliest row makes way
+## and is counted on the first chip.
 func _draw_found() -> void:
 	var font: Font = CozyTheme.display(700)
-	var key := "%d:%d:%d" % [_st.found.size(), roundi(size.x), roundi(_l("found_h"))]
-	if key != _rows_key:
-		_rows_key = key
-		_lay_rows(font)
-	var top := _l("found_top")
-	var fs := roundi(_rows_size * _s())
-	var line := fs * 1.3
+	var key := "%d:%d:%d:%d" % [_st.found.size(), roundi(size.x), roundi(_l("found_h")), roundi(_l("found_top"))]
+	if key != _chips_key:
+		_chips_key = key
+		_lay_chips(font)
 	if _st.found.is_empty():
 		var hint := tr("HC_NONE_YET")
 		var hs := roundi(FOUND_MIN * _s())
 		var hw := font.get_string_size(hint, HORIZONTAL_ALIGNMENT_LEFT, -1, hs).x
-		draw_string(font, Vector2(size.x * 0.5 - hw * 0.5, top + line), hint, HORIZONTAL_ALIGNMENT_LEFT, -1, hs, Color(Art.INK, 0.45))
+		draw_string(font, Vector2(size.x * 0.5 - hw * 0.5, _l("found_top") + hs * 1.3), hint, HORIZONTAL_ALIGNMENT_LEFT, -1, hs, Color(Art.INK, 0.45))
 		return
-	for i in _rows.size():
-		var row: String = _rows[i]
-		var tw := font.get_string_size(row, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-		var at := Vector2(size.x * 0.5 - tw * 0.5, top + line * (i + 0.8))
-		draw_string_outline(font, at, row, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, roundi(8 * _s()), Color(Pal.SURFACE, 0.85))
-		draw_string(font, at, row, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Art.INK)
+	if _chips_mesh != null:
+		draw_mesh(_chips_mesh, null)
+	var asc := font.get_ascent(_chip_fs)
+	var newest: int = _st.found.size() - 1
+	for c: Dictionary in _chips:
+		draw_set_transform(Vector2.ZERO)
+		var rect: Rect2 = c.rect
+		var k := 1.0
+		if int(c.i) == newest and not Motion.reduce:
+			var e := _t - _landed_at
+			if e < 0.0:
+				continue
+			if e < Motion.POP_IN:
+				k = Motion.pop_in_scale(e).x
+			draw_mesh(_lone_mesh, null, Transform2D(0.0, Vector2.ONE * k, 0.0, rect.get_center()))
+		if int(c.i) == _flash_i and _t - _flash_at < FLASH_TIME:
+			var f := (_t - _flash_at) / FLASH_TIME
+			var ring := Face.Builder.new()
+			var grow := rect.size.y * 0.16
+			ring.fan(Face.Builder.round_rect(rect.position - Vector2.ONE * grow, rect.size + Vector2.ONE * grow * 2.0, rect.size.y * 0.5 + grow), Color(Pal.SUN_RAY, 0.75 * (1.0 - f)))
+			Art.chip(ring, rect, bool(c.full))
+			k = 1.0 + 0.12 * sin(f * PI) if not Motion.reduce else 1.0
+			_flash_mesh = ring.mesh()
+			draw_mesh(_flash_mesh, null, Transform2D(0.0, Vector2.ONE * k, 0.0, rect.get_center() * (1.0 - k)))
+		var text: String = c.text
+		var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, _chip_fs).x
+		draw_set_transform(rect.get_center(), 0.0, Vector2.ONE * k)
+		draw_string(font, Vector2(-tw * 0.5, asc * 0.36), text, HORIZONTAL_ALIGNMENT_LEFT, -1, _chip_fs, Art.INK if int(c.i) >= 0 else Color(Art.INK, 0.6))
+	draw_set_transform(Vector2.ZERO)
 
-func _lay_rows(font: Font) -> void:
+func _lay_chips(font: Font) -> void:
 	var shown: Array[String] = []
+	var fulls: Array[bool] = []
 	for w in _st.found:
 		var i: int = _st.words.find(w)
 		var s: String = _st.words.shown(i) if i >= 0 else w.to_upper()
 		shown.append(s.left(1) + s.substr(1).to_lower())
-	shown.sort()
-	var width := _l("sw") * 1.15
-	var size_now := FOUND_SIZE
+		fulls.append(_st.words.mask_of(w) == _st.hive_mask)
+	var width := _l("sw") * 1.2
+	var size_now := CHIP_SIZE if not demo else CHIP_MIN
+	var skip := 0
 	while true:
 		var fs := roundi(size_now * _s())
-		var rows := _rows_for(shown, font, fs, width)
-		var fit := floori(_l("found_h") / (fs * 1.3))
-		if rows.size() <= fit or size_now <= FOUND_MIN:
-			if rows.size() > fit:
-				# the rest counted in the last row
-				rows = rows.slice(0, maxi(1, fit))
-				rows[rows.size() - 1] = tr("HC_MORE") % (shown.size() - _counted(rows))
-			_rows = rows
-			_rows_size = size_now
+		var rows := _chip_rows(shown, skip, font, fs, width)
+		var h := fs * CHIP_H
+		var fit := maxi(1, floori((_l("found_h") + fs * CHIP_GAP) / (h + fs * CHIP_GAP)))
+		if rows.size() <= fit or skip >= shown.size() - 1:
+			_place_chips(rows, shown, fulls, skip, font, fs, width)
 			return
-		size_now -= 2
-
-func _rows_for(shown: Array[String], font: Font, fs: int, width: float) -> Array:
-	var rows := []
-	var row := ""
-	for s in shown:
-		var next := s if row == "" else row + "   " + s
-		if row != "" and font.get_string_size(next, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > width:
-			rows.append(row)
-			row = s
+		if size_now > CHIP_MIN:
+			size_now -= 2
 		else:
-			row = next
-	if row != "":
+			# the earliest words make way, counted on the first chip
+			var row: Array = rows[0]
+			skip += maxi(1, row.size() - (1 if skip > 0 else 0))
+			skip = mini(skip, shown.size() - 1)
+
+## The rows of chips, as indices into `shown` (-1 the count chip), the
+## words from `skip` on.
+func _chip_rows(shown: Array[String], skip: int, font: Font, fs: int, width: float) -> Array:
+	var rows := []
+	var row := []
+	var used := 0.0
+	var items: Array[int] = []
+	if skip > 0:
+		items.append(-1)
+	for i in range(skip, shown.size()):
+		items.append(i)
+	for i in items:
+		var w := _chip_w(_chip_text(shown, i, skip), font, fs)
+		var next := w if row.is_empty() else used + fs * CHIP_GAP + w
+		if not row.is_empty() and next > width:
+			rows.append(row)
+			row = [i]
+			used = w
+		else:
+			row.append(i)
+			used = next
+	if not row.is_empty():
 		rows.append(row)
 	return rows
 
-func _counted(rows: Array) -> int:
-	var n := 0
-	for i in rows.size() - 1:
-		n += String(rows[i]).split("   ").size()
-	return n
+func _chip_text(shown: Array[String], i: int, skip: int) -> String:
+	if i >= 0:
+		return shown[i]
+	return tr("HC_EARLIER_ONE") if skip == 1 else tr("HC_EARLIER_N") % skip
+
+func _chip_w(text: String, font: Font, fs: int) -> float:
+	return font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x + fs * CHIP_PAD * 2.0
+
+## The chips' rects, each row centred, from the top of the words' box; one
+## mesh for all of them but the newest (it pops in on its own).
+func _place_chips(rows: Array, shown: Array[String], fulls: Array[bool], skip: int, font: Font, fs: int, width: float) -> void:
+	_chips.clear()
+	_chip_fs = fs
+	var h := fs * CHIP_H
+	var gap := fs * CHIP_GAP
+	var b := Face.Builder.new()
+	var newest := shown.size() - 1
+	var any := false
+	for r in rows.size():
+		var row: Array = rows[r]
+		var ws := []
+		var total := -gap
+		for i in row:
+			var w := _chip_w(_chip_text(shown, i, skip), font, fs)
+			ws.append(w)
+			total += w + gap
+		var x := size.x * 0.5 - total * 0.5
+		var y := _l("found_top") + r * (h + gap)
+		for j in row.size():
+			var i: int = row[j]
+			var rect := Rect2(x, y, ws[j], h)
+			var full := fulls[i] if i >= 0 else false
+			_chips.append({"rect": rect, "text": _chip_text(shown, i, skip), "full": full, "i": i})
+			if i == newest:
+				var lone := Face.Builder.new()
+				Art.chip(lone, Rect2(-rect.size * 0.5, rect.size), full)
+				_lone_mesh = lone.mesh()
+			if i != newest or Motion.reduce:
+				any = true
+				if i >= 0:
+					Art.chip(b, rect, full)
+				else:
+					b.fan(Face.Builder.round_rect(rect.position, rect.size, h * 0.5), Color(Art.WAX_DEEP, 0.3))
+			x += ws[j] + gap
+	_chips_mesh = b.mesh() if any else null
+
+## Where the chip of the word found `i` sits, or the words' box's middle.
+func _chip_centre(i: int) -> Vector2:
+	for c: Dictionary in _chips:
+		if int(c.i) == i:
+			return (c.rect as Rect2).get_center()
+	return Vector2(size.x * 0.5, _l("found_top") + _l("found_h") * 0.5)
 
 ## Where cell `i` is drawn now and how big.
 func _cell_xf(i: int) -> Transform2D:
@@ -771,11 +965,26 @@ func _draw_cell(i: int) -> void:
 		draw_mesh(_units.press, null, xf, Color(1, 1, 1, 1.0 - e / (Motion.BUMP_TIME * 1.5)))
 	draw_mesh(_units.queen if i == 0 else _units.cell, null, xf)
 
-## The letters on the cells, sliding through a shuffle and the queen's trade.
+## The day's words still to find, by the letter they begin with, kept
+## until a word is found or the queen flies.
+func _refresh_starts() -> void:
+	var key := "%d:%s:%s" % [_st.found.size(), _st.queen, _st.letters]
+	if key == _starts_key:
+		return
+	_starts_key = key
+	_starts = _st.starts()
+	_fulls_left = _st.fulls_left()
+
+## The letters on the cells, sliding through a shuffle and the queen's trade;
+## under each, how many of the day's words still to find begin with it (the
+## search's map: a stuck player knows where to look, never what).
 func _draw_letters() -> void:
 	var font: Font = CozyTheme.display(800)
 	var fs := roundi(CELL_SIZE * _s())
 	var asc := font.get_ascent(fs)
+	var small: Font = CozyTheme.display(700)
+	var bs := roundi(BADGE_SIZE * _s())
+	var bas := small.get_ascent(bs)
 	var shuffle_k := clampf((_t - _shuffle_at) / SHUFFLE_TIME, 0.0, 1.0) if not Motion.reduce else 1.0
 	shuffle_k = shuffle_k * shuffle_k * (3.0 - 2.0 * shuffle_k)
 	for i in 7:
@@ -793,6 +1002,11 @@ func _draw_letters() -> void:
 		var tw := font.get_string_size(up, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 		draw_set_transform(at, 0.0, xf.get_scale())
 		draw_string(font, Vector2(-tw * 0.5, asc * 0.36), up, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Art.INK)
+		var left := int(_starts.get(ch, 0))
+		if left > 0 and not is_done():
+			var t := str(left)
+			var bw := small.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, bs).x
+			draw_string(small, Vector2(-bw * 0.5, _l("r") * 0.64 + bas * 0.36), t, HORIZONTAL_ALIGNMENT_LEFT, -1, bs, Color(Art.INK, 0.5))
 		draw_set_transform(Vector2.ZERO)
 
 ## Through the queen's trade, cell `i`'s letter rides from the other cell.
@@ -855,14 +1069,21 @@ func _draw_drifters() -> void:
 	var flap := int(_t * 16.0) % 2
 	var mid := Vector2(size.x * 0.5, _l("comb_y"))
 	var reach := _l("comb_h") * 0.62
-	for k in DRIFTERS:
-		var ph := _t * (0.23 + 0.06 * k) * (1.0 if k == 0 else -1.0) + k * PI
-		var wob := 1.0 + 0.08 * sin(_t * 1.3 + k * 2.0)
+	# one more joins every few words found: the swarm is the day's work
+	for k in _drifting:
+		var way := 1.0 if k % 2 == 0 else -1.0
+		var ph := _t * (0.23 + 0.05 * (k % 3)) * way + k * 1.9
+		var wob := (1.0 + 0.08 * sin(_t * 1.3 + k * 2.0)) * (1.0 + 0.07 * (k % 3))
 		var at := mid + Vector2(cos(ph) * minf(reach * 1.08, size.x * 0.46), sin(ph) * reach * 0.92) * wob
-		var face := -signf(sin(ph)) * (1.0 if k == 0 else -1.0)
+		var face := -signf(sin(ph)) * way
 		if face == 0.0:
 			face = 1.0
 		var sc := DRIFT_SIZE / 0.62
+		var born := float(_born.get(k, -INF))
+		if _t < born:
+			continue
+		if _t - born < Motion.POP_IN:
+			sc *= Motion.pop_in_scale(_t - born).x
 		draw_mesh(_bees[flap], null, Transform2D(0.0, Vector2(sc * face, sc), 0.0, at))
 
 ## The word being spelt, its queen letters in honey; a word leaving flies
@@ -891,11 +1112,13 @@ func _draw_entry() -> void:
 	var k := 1.0
 	if not _leaving.is_empty():
 		if taken:
+			# into its chip at the end of the words found
 			var f := clampf(e / TAKE_TIME, 0.0, 1.0)
-			f = f * f
-			shift = Vector2(0.0, (_l("strip_y") - y) * f)
-			k = lerpf(1.0, 0.35, f)
-			alpha = 1.0 - f * 0.7
+			f = 1.0 - (1.0 - f) * (1.0 - f)
+			var there := _chip_centre(_st.found.size() - 1)
+			shift = (there - Vector2(size.x * 0.5, y)) * f
+			k = lerpf(1.0, float(_chip_fs) / float(maxi(1, fs)), f)
+			alpha = 1.0 - f * 0.5
 		else:
 			var f := clampf(e / REFUSE_TIME, 0.0, 1.0)
 			if not Motion.reduce:
@@ -926,8 +1149,12 @@ func _draw_entry() -> void:
 		draw_set_transform(Vector2(size.x * 0.5, y), 0.0, Vector2.ONE)
 		draw_string(font, Vector2(cx, asc * 0.36), dots, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(Art.HONEY_DEEP, pulse))
 	draw_set_transform(Vector2.ZERO)
+	# what the last word was heard as, in its row until a letter is tapped
+	var saying := _say != "" and text.is_empty() and _leaving.is_empty() and _t >= _say_at
+	if saying:
+		_draw_say(font, y)
 	# the caret, while nothing is spelt
-	if text.is_empty() and _leaving.is_empty() and not is_done() and not demo:
+	if text.is_empty() and _leaving.is_empty() and not is_done() and not demo and not saying:
 		var blink := 1.0 if Motion.reduce else (0.5 + 0.5 * signf(sin(_t * 5.0)))
 		var ch := asc * 0.8
 		draw_line(Vector2(size.x * 0.5, y - ch * 0.5), Vector2(size.x * 0.5, y + ch * 0.4), Color(Art.HONEY_DEEP, 0.7 * blink), 5.0 * _s(), true)
@@ -941,34 +1168,46 @@ func _draw_entry() -> void:
 		draw_string_outline(font, at, pts, HORIZONTAL_ALIGNMENT_LEFT, -1, ps, roundi(8 * _s()), Color(Pal.SURFACE, 1.0 - f))
 		draw_string(font, at, pts, HORIZONTAL_ALIGNMENT_LEFT, -1, ps, Color(Art.HONEY_DEEP, 1.0 - f))
 
-## The words found and, on Insane, when the queen flies next; or the toast.
+## The praise, a rank or why a word was refused, popping in the entry's row.
+func _draw_say(font: Font, y: float) -> void:
+	var text := tr(_say)
+	if _say == "HC_SAY_FLY":
+		text = text % _st.queen.to_upper()
+	elif _say == "HC_STREAK":
+		text = text % _streak
+	var good := _say.begins_with("HC_NICE") or _say.begins_with("HC_RANK") or _say == "HC_FULL" or _say == "HC_STREAK" or _say == "HC_SAY_FLY"
+	var fs := roundi(SAY_SIZE * (1.5 if good else 1.1) * _s())
+	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+	var e := _t - _say_at
+	var pk := Motion.pop_in_scale(e, 0.25).x if e < 0.25 and not Motion.reduce else 1.0
+	var fade := clampf((SAY_TIME - e) / 0.4, 0.0, 1.0)
+	var ink := Art.HONEY_DEEP if good else Pal.TEXT_DIM
+	draw_set_transform(Vector2(size.x * 0.5, y), 0.0, Vector2.ONE * pk)
+	var asc := font.get_ascent(fs)
+	draw_string_outline(font, Vector2(-tw * 0.5, asc * 0.36), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, roundi(10 * _s()), Color(Pal.SURFACE, 0.9 * fade))
+	draw_string(font, Vector2(-tw * 0.5, asc * 0.36), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(ink, fade))
+	draw_set_transform(Vector2.ZERO)
+
+## Under the keys: the words found, the full combs still hiding and, on
+## Insane, when the queen flies next.
 func _draw_count() -> void:
-	if demo or _won:
+	if demo or _won or is_done():
 		return
 	var font: Font = CozyTheme.display(700)
 	var y := _l("count_y")
 	var s := float(_L.u)
-	if _say != "":
-		var text := tr(_say)
-		if _say == "HC_SAY_FLY":
-			text = text % _st.queen.to_upper()
-		var fs := roundi(SAY_SIZE * s)
-		var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-		var pk := Motion.pop_in_scale(_t - _say_at, 0.25).x if _t - _say_at < 0.25 and not Motion.reduce else 1.0
-		draw_set_transform(Vector2(size.x * 0.5, y), 0.0, Vector2.ONE * pk)
-		draw_string_outline(font, Vector2(-tw * 0.5, 0.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, roundi(10 * s), Color(Pal.SURFACE, 0.92))
-		draw_string(font, Vector2(-tw * 0.5, 0.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Pal.TEXT)
-		draw_set_transform(Vector2.ZERO)
-		return
-	if is_done():
-		return
 	var n: int = _st.found.size()
 	var text: String = (tr("HC_WORDS_ONE") if n == 1 else tr("HC_WORDS_N")) % n
+	if _fulls_left > 0:
+		text += "  ·  " + (tr("HC_FULL_LEFT_ONE") if _fulls_left == 1 else tr("HC_FULL_LEFT_N") % _fulls_left)
 	if _st.wandering():
 		var left := State.FLIGHT - n % State.FLIGHT
 		text += "  ·  " + (tr("HC_FLIES_ONE") if left == 1 else tr("HC_FLIES_N") % left)
 	var cs := roundi(COUNT_SIZE * s)
 	var cw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, cs).x
+	if cw > size.x * 0.94:
+		cs = roundi(cs * size.x * 0.94 / cw)
+		cw = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, cs).x
 	var at := Vector2(size.x * 0.5 - cw * 0.5, y)
 	draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, cs, roundi(10 * s), Color(Pal.SURFACE, 0.92))
 	draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, cs, Pal.TEXT)

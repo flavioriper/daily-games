@@ -3387,11 +3387,11 @@ HC_LVL_1,A fuller comb,Um favo mais cheio,Un panal más lleno
 HC_LVL_2,"Rarer words, a higher line","Palavras raras, linha mais alta","Palabras raras, línea más alta"
 HC_LVL_3,Wandering Queen: she flies,Rainha Andarilha: ela voa,Reina Errante: ella vuela
 HC_RULES,"Tap the cells to spell a word of four letters or more, then the tick to send it. Letters can be used more than once, and every word must hold the letter in the middle cell.","Toque nas células para formar uma palavra de quatro letras ou mais e depois no visto para enviar. As letras podem se repetir, e toda palavra precisa ter a letra da célula do meio.","Toca las celdas para formar una palabra de cuatro letras o más y luego la marca para enviarla. Las letras se pueden repetir, y cada palabra debe llevar la letra de la celda del centro."
-HC_RULES_HONEY,"Each word pours honey: one for a four-letter word, one a letter for longer ones, and seven more for a full comb, a word with all seven letters. The day is done when the jar reaches its line.","Cada palavra despeja mel: um por uma palavra de quatro letras, um por letra nas mais longas e sete a mais por um favo cheio, uma palavra com as sete letras. O dia termina quando o pote chega à linha.","Cada palabra vierte miel: uno por una palabra de cuatro letras, uno por letra en las más largas y siete más por un panal lleno, una palabra con las siete letras. El día termina cuando el tarro llega a la línea."
+HC_RULES_HONEY,"Each word pours one honey a letter, and seven more for a full comb, a word with all seven letters. The day is done when the jar reaches its line.","Cada palavra despeja um de mel por letra, e sete a mais por um favo cheio, uma palavra com as sete letras. O dia termina quando o pote chega à linha.","Cada palabra vierte uno de miel por letra, y siete más por un panal lleno, una palabra con las siete letras. El día termina cuando el tarro llega a la línea."
 HC_RULES_WANDER,"Wandering Queen: every %d words the queen flies to another cell, and the words after must hold her new letter.","Rainha Andarilha: a cada %d palavras a rainha voa para outra célula, e as palavras seguintes precisam ter a nova letra dela.","Reina Errante: cada %d palabras la reina vuela a otra celda, y las palabras siguientes deben llevar su nueva letra."
 HC_RULES_SCORE,Your score is the words you found over the words you tried: entries that are not words count against it. Words already found and words too short do not.,Sua nota é as palavras achadas sobre as tentadas: entradas que não são palavras contam contra. Palavras repetidas ou curtas demais não contam.,Tu puntuación son las palabras halladas sobre las intentadas: lo que no es palabra cuenta en contra. Las repetidas y las demasiado cortas no.
+HC_RULES_MAP,"The small number under a letter counts the day's words still to find that begin with it. The strip lights three ranks on the way to the line.","O número pequeno sob uma letra conta as palavras do dia ainda por achar que começam com ela. A faixa acende três níveis no caminho até a linha.","El número pequeño bajo una letra cuenta las palabras del día aún por encontrar que empiezan con ella. La franja enciende tres rangos en el camino hasta la línea."
 HC_NONE_YET,Your words will gather here,Suas palavras vão aparecer aqui,Tus palabras aparecerán aquí
-HC_MORE,and %d more,e mais %d,y %d más
 HC_WORDS_ONE,%d word,%d palavra,%d palabra
 HC_WORDS_N,%d words,%d palavras,%d palabras
 HC_FLIES_ONE,she flies after the next,ela voa depois da próxima,vuela tras la siguiente
@@ -3399,6 +3399,17 @@ HC_FLIES_N,she flies in %d,ela voa em %d,vuela en %d
 HC_NICE_1,Good!,Boa!,¡Bien!
 HC_NICE_2,Sweet!,Doce!,¡Dulce!
 HC_NICE_3,Lovely!,Que lindo!,¡Precioso!
+HC_RANK_1,Buzzing,Zumbindo,Zumbando
+HC_RANK_2,Busy bee,Abelha atarefada,Abeja atareada
+HC_RANK_3,Honey maker,Fazedora de mel,Hacedora de miel
+HC_RANK_1_SAY,Buzzing!,Zumbindo!,¡Zumbando!
+HC_RANK_2_SAY,Busy bee!,Abelha atarefada!,¡Abeja atareada!
+HC_RANK_3_SAY,Honey maker!,Fazedora de mel!,¡Hacedora de miel!
+HC_STREAK,%d in a row!,%d seguidas!,¡%d seguidas!
+HC_EARLIER_ONE,1 before,1 antes,1 antes
+HC_EARLIER_N,%d before,%d antes,%d antes
+HC_FULL_LEFT_ONE,a full comb hides here,um favo cheio se esconde aqui,un panal lleno se esconde aquí
+HC_FULL_LEFT_N,%d full combs hide here,%d favos cheios se escondem aqui,%d panales llenos se esconden aquí
 HC_FULL,Full comb!,Favo cheio!,¡Panal lleno!
 HC_SAY_SHORT,Four letters at least.,Pelo menos quatro letras.,Cuatro letras como mínimo.
 HC_SAY_QUEEN,Every word needs the middle letter.,Toda palavra precisa da letra do meio.,Cada palabra necesita la letra del centro.
