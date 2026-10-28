@@ -1,5 +1,66 @@
 # Untangle
 
+## Made fun (2026-10-28)
+
+The user: "make untangle experience way better to play, and game itself
+way funnier to play, right now nobody likes it", autonomous, push when
+done. References by genre (the pin-and-hole rope untangling games; never
+their names): the web turned up store listings only, no reviews or design
+writing worth citing, so the calls below rest on the probe and on the
+house's other made-fun passes, not on reviewer consensus.
+
+**Measured first** (`tests/_probe_ut_fun.gd`, headless, 30 days a band):
+a greedy player (the move leaving the fewest crossings, which is what the
+held peg's preview number hands the player) wins 28-30 of 30 on every band
+within +0.3 (Easy) to +1.4 (Insane) moves of par, and never once makes the
+crossings go up: the over/under wrap only shows after a mistake. A third to
+a half of greedy moves free two or more ropes at once, and nothing marked
+it; the speak lines counted "knots" (crossings) while the board's goal is
+ropes leaving; there were no stakes (no thread on any band, no stars); and
+the toast lay over Insane's pegs. Insane's par is the walk back (`beam` 0),
+so greedy beats it now and then. Deals, the rule and the knot drawing are
+unchanged (`_probe_ut_plates` 0 fails).
+
+**What changed** (`puzzles/untangle2d.gd`, "the shelf, the stars and the
+reading"):
+
+- **The shelf**: a row over the plate (left of the kitten on Insane) with
+  a hollow seat for every dealt rope. A rope that comes free sends a ball
+  of yarn in its colours flying up from where it popped to the next empty
+  seat (`_shelve`, `BALL_FLY`), so the row fills left to right; Undo and
+  Reset take a returning rope's ball off (`_bring_back` -> `_unshelve`).
+  A restored day has every seat full.
+- **Ropes freed in a row climb**: each rope freed, move after move, plays
+  `free` a step (`FREE_STEP`) higher and its ball lands on `stitch` a step
+  higher by seat. A move freeing two or more gets the big word
+  (`UT_W_ROPES_N`, "3 ropes at once!") in place of the crossing word, with
+  a bigger spray; the best is kept (`_best_free`) and named on the win.
+- **Live stars** on the shelf's row (`ui/flat/star_line.gd`, `_rate`): by
+  moves against par, `STARS_BY_BAND` (three up to par+1, +1, +1, +2; two up
+  to +3, +3, +4, +6). A bulb-played move counts, its reading does not;
+  Reset keeps the day's moves. Read off moves only, never the answer.
+- **The bulb teaches in two presses** (`_why`, `_reading`): the first
+  finds the step (`state.hint_step`, the one search), rims the peg and its
+  hole in sun with a dotted way between, and says why: the rope comes free
+  (`UT_WHY_FREE`), other ropes do (`UT_WHY_FREES_ONE/_N`), crossings slide
+  off (`UT_WHY_TOP_ONE/_N`) or it clears the way (`UT_WHY_SETUP`); the toast
+  stands while the reading does. A second press flies the peg, free. Any
+  move, Undo or Reset puts the reading out. `hints_held()` is the badge.
+  The tutorial's HINT page presses twice (`HTP_UT_READ_CAP`).
+- **Words count ropes**: `UT_FREE_ONE/_N`, `UT_ONE_ROPE_LEFT` replace the
+  knot-counting lines. The win's subtitle is the moves
+  (`UT_WIN_MOVES_ONE/_N`) and the best move's ropes (`UT_WIN_BEST`), or
+  `UT_WIN_BEAT` under par. `UT_RULES` names the stars.
+- **The toast never lies over the pegs**: bands without the kitten keep
+  `TOAST_ROOM` under the plate (Hard's boards are a little smaller for
+  it); Insane's toast stands in the kitten's row under the shelf.
+
+opengl3_angle 810x1440: rest 86 (Easy), 88 (Medium), 91 (Hard), 95
+(Insane) draw calls; Insane's answer played to the win peaks at 149.
+`_win.gd untangle` PASS; suite 303252/0. No new sounds. Unseen on a phone;
+the shelf's look, the star cuts and the Hard board's smaller size are my
+calls, unconfirmed.
+
 **Plugged holes and big boards (2026-10-16, evening)**: Hard deals on
 `grid:7x5:b3` / `grid:6x6:b4` with 10 ropes, Insane on `grid:8x6:b5` with
 13; a plug is a lattice cell left out of the plate (`Plate.blocked`, drawn by

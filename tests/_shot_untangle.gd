@@ -386,10 +386,15 @@ func _script() -> void:
 			_at(1.2, func() -> void:
 				if _puzzle.hints_left() <= 0:
 					_puzzle.add_hint())
+			# Two presses (2026-10-28): the reading, then the move.
+			_end = 6.5
 			_at(1.5, func() -> void: _host.top_bar.hint_button.pressed.emit())
-			_at(1.7, _shot)
-			_at(2.4, _shot)
-			_at(3.6, _shot)
+			_at(1.9, _shot)
+			_at(3.0, func() -> void:
+				print("reading: ", _puzzle._reading, " held ", _puzzle.hints_held(), " left ", _puzzle.hints_left())
+				_host.top_bar.hint_button.pressed.emit())
+			_at(3.2, _shot)
+			_at(5.0, _shot)
 		"undo":
 			_end = 6.0
 			var m := _free_move()

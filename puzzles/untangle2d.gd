@@ -58,6 +58,7 @@ const KittenFace = preload("res://ui/faces/kitten_face.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const Rewards = preload("res://arcade/rewards.gd")
+const StarLine = preload("res://ui/flat/star_line.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const World = preload("res://puzzles/untangle_world.gd")
 const FLAT_HOST := "res://ui/flat/flat_host.gd"
@@ -72,6 +73,9 @@ const TOP_ROOM := 196.0
 const TOP_ROOM_THREAD := 96.0
 const TOP_ROOM_PLAIN := 16.0
 const BOTTOM_ROOM := 30.0
+## Under the plate, room for a toast of two lines, so one never lies over
+## the pegs (Insane's toast stands in the kitten's row instead).
+const TOAST_ROOM := 170.0
 ## The win's span is fitted with this much kept clear all round, and the
 ## slide into it takes the host's SLOT_TIME.
 const WIN_PAD := 28.0
@@ -216,6 +220,21 @@ const TOAST_PAD := 80.0
 const TOAST_RADIUS := 28.0
 const TOAST_FONT := 32
 
+# --- made fun (2026-10-28) ---
+## The shelf over the plate: a ball of yarn for every rope dealt, hollow
+## until a rope comes free and its ball flies up to the next empty seat, so
+## the row fills left to right as the day goes. The row's height, a ball's
+## largest radius, its flight; the stars ride the same row.
+const SHELF_H := 70.0
+const BALL_R := 21.0
+const BALL_FLY := 0.5
+const STAR_SCALE := 1.0
+## Stars by moves past par, per band: three up to the first, two up to the
+## second, one beyond.
+const STARS_BY_BAND := [[1, 3], [1, 3], [1, 4], [2, 6]]
+## Each rope freed in a row, move after move, plays its cue this much higher.
+const FREE_STEP := 0.06
+
 var state: State = State.new()
 var nodes: int:
 	get: return state.holes
@@ -308,6 +327,19 @@ var _stamp: Control
 var _stamp_rad := STAMP_R
 var _party := false
 var _kitten_mood_until := 0.0
+var _stars := StarLine.new()
+## The shelf: the ropes freed, in the order they came free, and per rope when
+## its ball lands on its seat (INF while the rope is on the plate) and where
+## it flew up from.
+var _shelf_ropes: Array[int] = []
+var _ball_at := PackedFloat32Array()
+var _ball_from := PackedVector2Array()
+## Ropes freed in a row, move after move (a move freeing none ends it), and
+## the most one move freed.
+var _free_run := 0
+var _best_free := 0
+## The bulb's first press: {peg, from, to, key, n}; a second press plays it.
+var _reading := {}
 
 # what is drawn
 var _ring_mesh: ArrayMesh
@@ -354,6 +386,7 @@ var _rebuilt_at := 0.0
 var _restored := false
 var _toast := ""
 var _toast_at := -100.0
+var _toast_text := ""
 var _toast_hold := TOAST_HOLD
 var _toast_mesh: ArrayMesh
 var _toast_mesh_for := ""
@@ -495,7 +528,16 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_opened = _now()
 	_busy_until = 0.0
 	_idle_at = _now() + IDLE_WHIP_EVERY
-	_top = TOP_ROOM if _kitten_here() else (TOP_ROOM_THREAD if state.budget > 0 else TOP_ROOM_PLAIN)
+	# The shelf rides the kitten's row on Insane, and has a row of its own
+	# over the plate elsewhere.
+	_top = TOP_ROOM if _kitten_here() else (TOP_ROOM_THREAD if state.budget > 0 else TOP_ROOM_PLAIN + SHELF_H)
+	_shelf_ropes = []
+	_ball_at = PackedFloat32Array(); _ball_at.resize(state.ropes); _ball_at.fill(INF)
+	_ball_from = PackedVector2Array(); _ball_from.resize(state.ropes)
+	_free_run = 0
+	_best_free = 0
+	_reading = {}
+	_stars.clear()
 	var pegs: int = state.at.size()
 	_mv = []
 	_lift = PackedFloat32Array(); _lift.resize(pegs)
@@ -554,7 +596,7 @@ func _layout() -> void:
 		return
 	var side := _side()
 	var pl := state.plate
-	var avail_h := size.y - _clear.x - _clear.y - _top - BOTTOM_ROOM
+	var avail_h := size.y - _clear.x - _clear.y - _top - (BOTTOM_ROOM if _kitten_here() else TOAST_ROOM)
 	_rh = maxf(minf((size.x - 2.0 * side) / (2.0 * pl.ext.x), avail_h / (2.0 * pl.ext.y)), 27.0)
 	_ro = maxf(pl.ext.x, pl.ext.y) * _rh
 	if pl.kind == "board":
@@ -976,12 +1018,17 @@ func _animating(t: float) -> bool:
 	for s in _stitch_at.size():
 		if t < _stitch_at[s] + 0.5:
 			return true
-	return false
+	return _balls_moving(t)
 
 ## Anything that needs a redraw of the same mesh but not a rebuild: the
 ## sleepers' z's rising.
 func _pulses(t: float) -> bool:
-	if _toast != "" and t - _toast_at < _toast_hold + 0.1:
+	# A toast redraws while it fades in and out; a long one (the bulb's
+	# reading) stands still between.
+	var since := t - _toast_at
+	if _toast != "" and since < _toast_hold + 0.1 and (since < Motion.DROP_FADE + 0.1 or since > _toast_hold - Motion.DROP_FADE - 0.1):
+		return true
+	if _stars.busy(t):
 		return true
 	return _out_card and not Motion.reduce
 
@@ -1169,6 +1216,7 @@ func _draw() -> void:
 	if _extra_mesh != null:
 		draw_mesh(_extra_mesh, null)
 		shown.append(_extra_mesh)
+	_draw_stars(t)
 	_draw_toast(t, shown)
 	_shown = shown
 	_draw_numbers()
@@ -1177,8 +1225,9 @@ func _draw() -> void:
 ## A line on a dark label over the ring's top, for `hold` seconds: what the
 ## board wants to say that no sticker covers (a refusal, the thread running low,
 ## the first hint of how it plays). The line also goes to the sprout.
-func _tell(key: String, mood := Face.Expr.HAPPY, hold := TOAST_HOLD) -> void:
-	_say(tr(key), mood)
+func _tell(key: String, mood := Face.Expr.HAPPY, hold := TOAST_HOLD, text := "") -> void:
+	_toast_text = text if text != "" else tr(key)
+	_say(_toast_text, mood)
 	_toast = key
 	_toast_at = _now()
 	_toast_hold = hold
@@ -1193,10 +1242,15 @@ func _draw_toast(t: float, shown: Array) -> void:
 	var alpha := minf(Motion.appear_level(since, Motion.DROP_FADE), Motion.appear_level(_toast_hold - since, Motion.DROP_FADE))
 	if alpha <= 0.0:
 		return
-	var line := tr(_toast)
+	var line := _toast_text
 	var font: Font = CozyTheme.body(600)
-	# Under the ring, where the card is empty, clear of the corner flowers.
+	# Under the ring, where the card is empty, clear of the corner flowers;
+	# where the plate reaches the foot (Insane's big board), in the kitten's
+	# row under the shelf instead, so it never lies over the pegs.
 	var room := maxf(TOAST_PAD, size.x - 280.0)
+	var high := _kitten_here() and size.y - _clear.y - 24.0 - (_plate_bottom() + _peg_r * 0.55 + 46.0) < TOAST_H + 40.0
+	if high:
+		room = maxf(TOAST_PAD, _kitten_at.x - KITTEN_SIZE * 0.5 - _side() - 8.0)
 	var text_room := room - TOAST_PAD
 	var one: float = font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, TOAST_FONT).x
 	var lines := 1
@@ -1214,6 +1268,8 @@ func _draw_toast(t: float, shown: Array) -> void:
 		_toast_mesh = b.mesh()
 		_toast_mesh_for = key
 	var mid := Vector2(size.x * 0.5, minf(_plate_bottom() + _peg_r * 0.55 + 46.0 + h * 0.5, size.y - _clear.y - 24.0 - h * 0.5))
+	if high:
+		mid = Vector2(_side() + room * 0.5, _clear.x + SHELF_H + 2.0 + h * 0.5)
 	draw_mesh(_toast_mesh, null, Transform2D(0.0, mid), Color(Color.WHITE, alpha))
 	shown.append(_toast_mesh)
 	var top := mid.y - h * 0.5 + (TOAST_H - font.get_height(TOAST_FONT)) * 0.5 + font.get_ascent(TOAST_FONT)
@@ -1913,6 +1969,8 @@ static func _append_arrays(b: Face.Builder, a: Array, xf: Transform2D, tint: Col
 func _build_extras(b: Face.Builder, t: float) -> void:
 	if _peg_px.is_empty():
 		return
+	_draw_shelf(b, t)
+	_draw_reading(b)
 	for p in _peg_px.size():
 		if _away[p >> 1]:
 			continue
@@ -2302,7 +2360,9 @@ func _drop(p: int, hole: int, from: Vector2, hint := false) -> void:
 	if res.is_empty():
 		_go_home(p, true)
 		return
+	_end_reading()
 	_all_moves += 1
+	_rate(true)
 	_dirty = true
 	var to := _hole_px(hole)
 	var dur := _fly_time(from, to)
@@ -2361,9 +2421,13 @@ func _landed(p: int, hole: int, res: Dictionary, hint: bool) -> void:
 		fx.sparkle(at, Pal.GOOD)
 		if left > 0:
 			fx.cue("untie", 1.0 + 0.06 * mini(cleared, 5), -6.0)
+	var freed: int = (res.gone as Array).size()
+	if freed == 0:
+		_free_run = 0
+	_best_free = maxi(_best_free, freed)
 	if _solved_at == -INF and left > 0:
-		_speak(cleared, left)
-	_rewards(p, cleared, left)
+		_speak(freed, Gen.ropes_left(state.at))
+	_rewards(p, cleared, left, freed)
 	_rewards_knots(res, undone)
 	_send_off(res.gone, p)
 	_dirty = true
@@ -2375,11 +2439,19 @@ func _streak_update(cleared: int) -> void:
 		_streak = 0
 
 ## The words: an untied pair or two, and a run of moves that each undid one.
-func _rewards(p: int, cleared: int, left: int) -> void:
+func _rewards(p: int, cleared: int, left: int, freed := 0) -> void:
 	if _rw == null or is_done():
 		return
 	var mid := _c + Vector2(0.0, -_ro * 0.05)
-	if cleared >= 2:
+	if freed >= 2 and left > 0:
+		# Ropes freed at once are the move to plan for: the biggest word,
+		# and the shelf's balls fly up one after another.
+		_rw.sticker(tr("UT_W_ROPES_N") % freed, mid, 84 + 8 * mini(freed - 2, 3), 1.4, true, Color.WHITE, freed >= 3, "ropes", 20.0)
+		if not Motion.reduce:
+			_rw.spray(_peg_px[p], Pal.SUN, 10 + freed * 3, 700.0, "star", 1.1)
+			_rw.spray(_peg_px[p], Color("fffaf0"), 6, 560.0, "spark", 1.2)
+		fx.cue("combo", 1.0 + 0.05 * mini(freed - 2, 4))
+	elif cleared >= 2:
 		var key := "UT_W_2"
 		if cleared >= 6:
 			key = "UT_W_6"
@@ -2442,7 +2514,8 @@ func _send_off(ropes: Array, by := -1) -> float:
 		if by >= 0 and (by >> 1) == rr:
 			stay = by
 		var wait := 0.0 if Motion.reduce else LEAVE_WAIT + LEAVE_STEP * n
-		_leave[rr] = {"shine": t, "t0": t + wait, "stay": stay, "go": stay ^ 1, "sent": false, "pop": false}
+		_leave[rr] = {"shine": t, "t0": t + wait, "stay": stay, "go": stay ^ 1, "sent": false, "pop": false, "run": _free_run}
+		_free_run += 1
 		for e in 2:
 			_face[2 * rr + e] = 1
 			_face_at[2 * rr + e] = t + 0.08 * e
@@ -2465,7 +2538,8 @@ func _update_leaving(t: float) -> void:
 		if not lv.sent and t >= float(lv.t0):
 			lv.sent = true
 			_fly(go, _peg_px[go], _peg_px[stay], 0.0, LEAVE_REEL, _peg_r * 0.35)
-			fx.cue("free", 1.0 + 0.05 * float(r % 4), -6.0)
+			# A rope freed in a row, move after move, a step higher each.
+			fx.cue("free", 1.0 + FREE_STEP * mini(int(lv.run), 10), -6.0)
 		if lv.sent and not lv.pop and t >= float(lv.t0) + LEAVE_REEL:
 			lv.pop = true
 			var at := _peg_px[stay]
@@ -2476,6 +2550,7 @@ func _update_leaving(t: float) -> void:
 			if not Motion.reduce:
 				_rw.spray(at, col[0], 6, 420.0, "star", 0.9)
 			Haptics.play(Haptics.TICK)
+			_shelve(r, at)
 		if t >= float(lv.t0) + LEAVE_REEL + LEAVE_POP:
 			_gone_now(r)
 
@@ -2498,6 +2573,7 @@ func _gone_now(r: int) -> void:
 ## Rope `r` is back on the ring (an undo, a reset): its pegs pop in where
 ## they were.
 func _bring_back(r: int) -> void:
+	_unshelve(r)
 	_leave[r] = null
 	_away[r] = false
 	_back_at[r] = _now()
@@ -2510,17 +2586,17 @@ func _bring_back(r: int) -> void:
 	_dirty = true
 
 ## The words on the sprout's line.
-func _speak(gone: int, left: int) -> void:
+func _speak(freed: int, left: int) -> void:
 	if is_done():
 		return
-	if gone <= 0:
+	if freed <= 0:
 		return
 	if left == 1:
-		_say(tr("UT_ONE_KNOT_LEFT"), Face.Expr.HAPPY)
-	elif gone == 1:
-		_say(tr("UT_GONE_ONE") % left, Face.Expr.HAPPY)
+		_say(tr("UT_ONE_ROPE_LEFT"), Face.Expr.HAPPY)
+	elif freed == 1:
+		_say(tr("UT_FREE_ONE") % left, Face.Expr.HAPPY)
 	else:
-		_say(tr("UT_GONE_N") % [gone, left], Face.Expr.HAPPY)
+		_say(tr("UT_FREE_N") % [freed, left], Face.Expr.HAPPY)
 
 # --- thread ---
 
@@ -2763,7 +2839,11 @@ func skill_quality() -> float:
 	return clampf(float(par) / float(maxi(_all_moves, par)), 0.0, 1.0)
 
 func completion_record() -> Dictionary:
-	return {"stamp": stamp_key()} if stamp_key() != "" else {}
+	var out := {"stamp": stamp_key()} if stamp_key() != "" else {}
+	if _all_moves > 0:
+		out["moves"] = _all_moves
+		out["best"] = _best_free
+	return out
 
 func _clear_stamp() -> void:
 	if is_instance_valid(_stamp):
@@ -2819,8 +2899,19 @@ func _place_stamp() -> void:
 	_stamp.scale = Vector2.ONE * (rad / _stamp_rad)
 	_stamp.position = _c + Vector2(_ri * 0.02, _ri * 0.18) - _stamp.pivot_offset
 
+## The win names the moves, the best move's ropes when one freed two or
+## more, and a day done in fewer moves than the dealer's own answer.
 func flat_win() -> Dictionary:
-	return {"faces": [], "subtitle": tr("UT_WIN_SUB")}
+	var made := int(completed_record.get("moves", _all_moves))
+	var best := maxi(_best_free, int(completed_record.get("best", 0)))
+	if made <= 0 or _shown_answer:
+		return {"faces": [], "subtitle": tr("UT_WIN_SUB")}
+	var line: String = (tr("UT_WIN_MOVES_ONE") if made == 1 else tr("UT_WIN_MOVES_N") % made)
+	if made < state.par:
+		line += " " + tr("UT_WIN_BEAT")
+	elif best >= 2:
+		line += " " + tr("UT_WIN_BEST") % best
+	return {"faces": [], "subtitle": line}
 
 func win_delay() -> float:
 	return Motion.REDUCED_TIME if Motion.reduce else WIN_HOLD + 0.6
@@ -2868,6 +2959,10 @@ func restore_completed_board() -> void:
 	state.show_answer()
 	for r in state.ropes:
 		_gone_now(r)
+	_shelve_all()
+	_best_free = int(completed_record.get("best", 0))
+	if completed_record.has("moves"):
+		_stars.rate(_stars_for(int(completed_record.moves)), t, false)
 	_set_shown(state.tw, true)
 	_solved_at = t - 100.0
 	_opened = t - 10.0
@@ -2898,6 +2993,8 @@ func undo() -> bool:
 	var back: Dictionary = state.undo()
 	if back.is_empty():
 		return false
+	_end_reading()
+	_free_run = 0
 	_set_shown(state.tw)
 	var p: int = back.peg
 	# A rope the move had set free comes back to the ring with it.
@@ -2933,26 +3030,51 @@ func _drop_held() -> void:
 ## Insane gives none of its own; a video's (which cost thread, like any move)
 ## are the only ones there.
 func hints_left() -> int:
+	return hints_held() + (0 if _reading.is_empty() else 1)
+
+## The hints still in hand, the badge's number (a reading standing is not).
+func hints_held() -> int:
 	var budget: int = State.HINTS_BY_BAND[clampi(_difficulty, 0, 3)]
 	if out_of_hearts or state.out_of_thread():
 		return 0
 	return maxi(0, budget + hints_extra - hints_used)
 
-## One peg flies to where the shortest way I can find puts it, and the thread
-## pays for it like any move.
+## Made fun (2026-10-28): the bulb teaches, in two presses. The first finds
+## the next step of a short way home, rims the peg to lift and the hole it
+## goes to, and says why (the rope that comes free, the ropes, the crossings
+## that slide off, or a move that clears the way), for one hint. The player
+## may make it themselves; a second press while the reading stands flies the
+## peg there, free.
 func hint() -> bool:
-	if is_done() or hints_left() <= 0 or out_of_hearts or state.out_of_thread() or not _settled(_now()):
+	if is_done() or out_of_hearts or state.out_of_thread() or not _settled(_now()):
 		return false
 	_drop_held()
+	if not _reading.is_empty():
+		var rd := _reading
+		_end_reading()
+		var lp: int = rd.peg
+		if state.at[lp] != int(rd.from) or state.drop_check(lp, int(rd.to)) != 0:
+			return false
+		fx.cue("hint")
+		_say(tr("UT_HINT"), Face.Expr.HAPPY)
+		_undone = []
+		_drop(lp, int(rd.to), _peg_px[lp], true)
+		return true
+	if hints_held() <= 0:
+		return false
 	var step: Array = state.hint_step()
 	if step.is_empty():
 		return false
 	hints_used += 1
+	_reading = _why(step)
 	var p: int = step[0]
 	fx.cue("hint")
-	_say(tr("UT_HINT"), Face.Expr.HAPPY)
-	_undone = []
-	_drop(p, int(step[2]), _peg_px[p], true)
+	_tell("UT_WHY", Face.Expr.HAPPY, 600.0, String(_reading.text))
+	_say(tr("UT_WHY_AGAIN"), Face.Expr.HAPPY)
+	fx.ring(_peg_px[p], _peg_r * 1.8, Pal.SUN)
+	fx.ring(_hole_px(int(step[2])), _peg_r * 1.8, Pal.SUN)
+	_dirty = true
+	focus_changed.emit()
 	return true
 
 ## Reset sends every peg walking home, one after another. On a day with thread
@@ -2967,6 +3089,8 @@ func reset_board() -> void:
 	_drop_held()
 	var t := _now()
 	var walking: Array[int] = state.reset()
+	_end_reading()
+	_free_run = 0
 	_set_shown(state.tw)
 	var k := 0
 	for p in walking:
@@ -2990,6 +3114,169 @@ func reset_board() -> void:
 		_tell("UT_RESET_THREAD" if state.budget > 0 else "UT_RESET")
 	fx.cue("reset")
 	_busy_until = t + 0.4 + Motion.stagger(walking.size(), WALK_STEP, 1.0)
+	_dirty = true
+
+# --- the shelf, the stars and the reading (made fun, 2026-10-28) ---
+
+## The shelf's row: its middle's y, the first star's and the first ball's
+## middles, a ball's radius and the step between balls. Over the plate, or
+## left of the kitten on Insane.
+func _shelf() -> Dictionary:
+	var left := _side() + 8.0
+	var right := size.x - _side() - 8.0
+	if _kitten_here():
+		right = _kitten_at.x - KITTEN_SIZE * 0.5 - 4.0
+	var sw := StarLine.width(STAR_SCALE)
+	var gap := 26.0
+	var n := maxi(1, state.ropes_dealt())
+	var r := clampf((right - left - sw - gap) / (n * 2.5), 8.0, BALL_R)
+	var step := r * 2.5
+	var w := sw + gap + (n - 1) * step + 2.0 * r
+	var x0 := (left + right) * 0.5 - w * 0.5
+	return {"y": _clear.x + SHELF_H * 0.5 + 4.0, "stars": x0 + StarLine.R * STAR_SCALE,
+		"ball": x0 + sw + gap + r, "r": r, "step": step}
+
+## Rope `r` came free at `from`: its ball flies to the next empty seat.
+func _shelve(r: int, from: Vector2) -> void:
+	if _shelf_ropes.has(r):
+		return
+	_shelf_ropes.append(r)
+	_ball_from[r] = from
+	_ball_at[r] = _now() + (0.0 if Motion.reduce else BALL_FLY)
+	var seat := _shelf_ropes.size() - 1
+	_later_call(0.0 if Motion.reduce else BALL_FLY, func() -> void:
+		var sh := _shelf()
+		var at := Vector2(float(sh.ball) + seat * float(sh.step), float(sh.y))
+		fx.cue("stitch", 1.0 + FREE_STEP * mini(seat, 12), -6.0)
+		fx.sparkle(at, (_rope_col(r)[0] as Color).lightened(0.3))
+		_dirty = true)
+
+## Rope `r` is back on the plate (an undo, a reset): its ball leaves the
+## shelf, and any freed after it close up.
+func _unshelve(r: int) -> void:
+	_shelf_ropes.erase(r)
+	_ball_at[r] = INF
+
+## Every dealt rope's ball on its seat at once (a restored day, the answer).
+func _shelve_all() -> void:
+	for r in state.ropes:
+		if state.start_at[2 * r] >= 0 and not _shelf_ropes.has(r):
+			_shelf_ropes.append(r)
+			_ball_at[r] = -INF
+
+func _balls_moving(t: float) -> bool:
+	for r in _shelf_ropes:
+		if t < _ball_at[r] + Motion.POP_IN + 0.05:
+			return true
+	return false
+
+## The shelf: a hollow seat a dealt rope, and the freed ropes' balls of
+## yarn, flying up or sitting, wound round in their rope's colours.
+func _draw_shelf(b: Face.Builder, t: float) -> void:
+	if state.ropes_dealt() <= 0 or _ro <= 0.0:
+		return
+	var sh := _shelf()
+	var r: float = sh.r
+	var y: float = sh.y
+	for i in state.ropes_dealt():
+		var at := Vector2(float(sh.ball) + i * float(sh.step), y)
+		Scenery.soft_disc(b, at + Vector2(0.0, r * 0.2), r * 1.05, r * 1.05, Color(Pal.LINE, 0.16))
+		b.stroke(Face.Builder.arc_points(at, r * 0.92, 0.0, TAU), 2.5, Color(Pal.LINE, 0.4), true)
+	for i in _shelf_ropes.size():
+		var rope: int = _shelf_ropes[i]
+		var seat := Vector2(float(sh.ball) + i * float(sh.step), y)
+		var land := _ball_at[rope]
+		var at := seat
+		var k := 1.0
+		if t < land:
+			# In the air: up from where the rope popped, in an arc.
+			var u := _ease(clampf(1.0 - (land - t) / BALL_FLY, 0.0, 1.0))
+			at = _ball_from[rope].lerp(seat, u) + Vector2(0.0, -sin(u * PI) * 90.0)
+			k = lerpf(1.3, 1.0, u)
+		elif t - land < Motion.POP_IN and not Motion.reduce:
+			k = Motion.pop_in_scale(t - land).x
+		_draw_ball(b, at, r * k, _rope_col(rope))
+
+## A ball of yarn: its colour, three wraps across it in the deep edge and a
+## pale glint.
+func _draw_ball(b: Face.Builder, at: Vector2, r: float, col: Array) -> void:
+	b.disc(at, r, col[1])
+	b.disc(at, r * 0.86, col[0])
+	for k in 3:
+		var a := -0.9 + 0.6 * k
+		b.stroke(Face.Builder.arc_points(at + Vector2.from_angle(a + PI) * r * 0.9, r * 1.1, a - 0.75, a + 0.75),
+			maxf(1.5, r * 0.13), Color(col[1] as Color, 0.85), false)
+	b.disc(at + Vector2(-r * 0.32, -r * 0.34), r * 0.2, Color(col[2] as Color, 0.95))
+
+## Stars by moves against par (a move the bulb played counts as a move, its
+## reading as nothing). Read off moves only, never the answer, so a star never
+## falls to say a move was wrong; Reset keeps the day's moves.
+func _rate(heard: bool) -> void:
+	_stars.rate(_stars_for(_all_moves), _now(), heard and not is_done())
+
+func _stars_for(made: int) -> int:
+	var cut: Array = STARS_BY_BAND[clampi(_difficulty, 0, 3)]
+	var extra := made - state.par
+	return 3 if extra <= int(cut[0]) else (2 if extra <= int(cut[1]) else 1)
+
+func _draw_stars(t: float) -> void:
+	if state.ropes_dealt() <= 0 or _ro <= 0.0:
+		return
+	var sh := _shelf()
+	_stars.draw(self, Vector2(float(sh.stars), float(sh.y)), STAR_SCALE, t)
+
+## What the bulb's first press says of a step: the rope it frees, the ropes,
+## the crossings that slide off, or a move that clears the way.
+func _why(step: Array) -> Dictionary:
+	var p: int = step[0]
+	var a := state.at.duplicate()
+	var tw := state.tw.duplicate()
+	var before := Gen.crossing_count(tw)
+	Gen.apply(state.plate, a, tw, state.ropes, p, int(step[2]))
+	var gone: Array = Gen.retire(a, tw, state.ropes)
+	var cleared := before - Gen.crossing_count(tw)
+	var text := tr("UT_WHY_SETUP")
+	if gone.size() == 1 and int(gone[0]) == p >> 1:
+		text = tr("UT_WHY_FREE")
+	elif gone.size() == 1:
+		text = tr("UT_WHY_FREES_ONE")
+	elif gone.size() > 1:
+		text = tr("UT_WHY_FREES_N") % gone.size()
+	elif cleared == 1:
+		text = tr("UT_WHY_TOP_ONE")
+	elif cleared > 1:
+		text = tr("UT_WHY_TOP_N") % cleared
+	return {"peg": p, "from": int(step[1]), "to": int(step[2]), "text": text}
+
+## The reading's rims: the peg to lift and the hole it goes to, in sun, and
+## a dotted way between them.
+func _draw_reading(b: Face.Builder) -> void:
+	if _reading.is_empty() or is_done():
+		return
+	var p: int = _reading.peg
+	if state.at[p] != int(_reading.from):
+		return
+	var a := _peg_px[p]
+	var h := _hole_px(int(_reading.to))
+	var d := h - a
+	var n := int(d.length() / (_peg_r * 0.9))
+	for i in range(1, n):
+		var u := float(i) / n
+		if a.lerp(h, u).distance_to(a) < _peg_r * 1.6 or a.lerp(h, u).distance_to(h) < _hole_r * 1.6:
+			continue
+		b.disc(a.lerp(h, u), _peg_r * 0.13, Color(Pal.SUN_DEEP, 0.9))
+	for at in [a, h]:
+		var r: float = _peg_r * 1.45
+		b.stroke(Face.Builder.arc_points(at, r, 0.0, TAU), 7.0, Color("fffaf0"), true)
+		b.stroke(Face.Builder.arc_points(at, r, 0.0, TAU), 4.5, Pal.SUN, true)
+
+## The reading is out: a move, an undo, a reset.
+func _end_reading() -> void:
+	if _reading.is_empty():
+		return
+	_reading = {}
+	if _toast == "UT_WHY":
+		_toast = ""
 	_dirty = true
 
 # --- the sprout's line ---

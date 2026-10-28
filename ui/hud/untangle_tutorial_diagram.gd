@@ -86,6 +86,9 @@ var _knots := {}
 var _spent := 0
 var _stitch_t: Array = []
 var _hint_t := -10.0
+## The bulb's first press: the peg and its hole rimmed in sun until the
+## second press plays it (the board's reading, 2026-10-28).
+var _reading := false
 var _preview := ""
 var _preview_hole := -1
 var _taut := false
@@ -160,6 +163,7 @@ func _scene() -> void:
 	_spent = 0
 	_stitch_t = []
 	_hint_t = -10.0
+	_reading = false
 	_glow = -10.0
 	_preview = ""
 	_preview_hole = -1
@@ -215,12 +219,22 @@ func _scene() -> void:
 			_at(3.9 + 0.16, func() -> void: _wrap_on(1))
 			_loop = 6.4
 		Lesson.HINT:
+			# Two presses: the first lights the peg and its hole and says
+			# why, the second moves it.
 			_say(0.0, "HTP_UT_HINT_CAP")
-			_at(0.7, func() -> void: _hint_t = _clock)
-			_at(1.3, func() -> void: _fly_to(1, 7, FLY * 1.6, _peg_r * UT.FLY_ARC))
-			_at(1.3 + FLY * 0.8, func() -> void: _cross_off())
-			_at(1.3 + FLY * 1.6 + 0.05, func() -> void: _free())
-			_loop = 4.4
+			_at(0.7, func() -> void:
+				_hint_t = _clock
+				_reading = true
+				_say_now("HTP_UT_READ_CAP"))
+			_at(2.7, func() -> void:
+				_hint_t = _clock
+				_say_now("HTP_UT_HINT_CAP"))
+			_at(3.2, func() -> void:
+				_reading = false
+				_fly_to(1, 7, FLY * 1.6, _peg_r * UT.FLY_ARC))
+			_at(3.2 + FLY * 0.8, func() -> void: _cross_off())
+			_at(3.2 + FLY * 1.6 + 0.05, func() -> void: _free())
+			_loop = 6.4
 		Lesson.THREAD:
 			_say(0.0, "HTP_UT_STITCH_CAP")
 			_at(0.6, func() -> void: _carry(1, 4, CARRY))
@@ -670,6 +684,10 @@ func _draw_peg(b: Face.Builder, p: int, pop := 1.0) -> void:
 		var a := sin(PI * hs / 1.2)
 		Scenery.soft_disc(b, at, R * 2.2, R * 2.2, Color(Pal.SUN, 0.35 * a))
 		b.stroke(Face.Builder.arc_points(at, R * (1.3 + 0.2 * hs), 0.0, TAU), 3.0, Color(Pal.SUN, 0.9 * a), true)
+	if p == 1 and _reading:
+		for rim in [at, _hole_px(7)]:
+			b.stroke(Face.Builder.arc_points(rim, R * 1.45, 0.0, TAU), 6.0, Color("fffaf0"), true)
+			b.stroke(Face.Builder.arc_points(rim, R * 1.45, 0.0, TAU), 3.5, Pal.SUN, true)
 
 ## The finger on a carried peg: a pale touch under it.
 func _draw_hand(b: Face.Builder) -> void:
