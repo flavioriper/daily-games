@@ -182,3 +182,40 @@ are".
   a two-digit row clue (10 3) fits its slots, the label clears the tray.
 - A day finished before this restores a different picture (the shape draw
   moved). Unseen by the user, no phone.
+
+### Harder, and every number speaks (2026-10-28)
+
+The user: "players are complaining it's too easy, maybe we should fill X
+only when row or column is filled, also for multiple row or column numbers,
+we should show them as filled individually as well, right now user is
+confused when there is like 1 2 2 1 2 rows or columns, and it only show
+filled after filling everything". Built unattended, pushed.
+
+- **The board crosses out a finished line, nothing else**: `State.shut_in`
+  returns a line's blanks (and its own X's) only once its tiles read right
+  (`Gen.reads`), on every band. The 2026-10-16 rule (every blank no
+  placement over the player's tiles can fill, `Gen.refine`) did the line
+  logic for the player and is gone; that is what "too easy" was. The
+  lifting is unchanged: a line that stops reading right takes its board
+  X's back on the same move, and Undo restores both. The generators are
+  untouched.
+- **A number dims when its own run is surely done** (`Gen.pinned_runs`,
+  `State.runs_done`): read off the player's tiles *and* crosses, never the
+  picture. A run is done when every way of laying the clue over the board
+  (tile = filled, cross = empty, blank = open) puts that run on the same
+  cells and they are all tiles: pinned by the edge, by crosses, or by the
+  runs beside it. `1 2 2 1 2` with `#.##` laid at the left edge dims the
+  1 and the first 2; a 2 boxed by crosses mid-line dims nothing when it
+  could be either 2 (Nintendo's Picross rule is "sealed by an X"; ours
+  also takes the edge and the neighbours, and refuses an ambiguous seal).
+  A line no placement fits dims nothing. Tumbled lines: all or none.
+  DP over (run, cell), O(runs x cells) a line, every line after each move
+  (`_verdicts`), cached in `_pinned`, never computed in `_draw`.
+- Drawn per number: `DONE_A` 0.32 of the ink over `DONE_TIME`, with a
+  `Motion.bump_scale` pop as it turns. Green (reads right) and rose
+  (over-filled) still win over the dim. No sound: it is not an action.
+- Tips `NG_TIP_DONE` and `NG_TIP_X` (en/pt/es) join the cycle.
+- Suite 303252/0, `_win.gd -- nonogram` passes, `_shot_nonogram.gd -- d=2
+  right` (opengl3_angle, 810x1440) peaks 94 draw calls.
+- Owed: a phone, the user's verdict on the dim rule and on whether the
+  ambiguous seal should dim "a 2".

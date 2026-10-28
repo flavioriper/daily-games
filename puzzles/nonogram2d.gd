@@ -121,6 +121,10 @@ const TAB_A := 0.7
 const TAB_OK := 0.32
 const TAB_OVER := 0.75
 const WASH_TIME := 0.25
+## A number whose run is surely done fades to this much of its ink, over
+## DONE_TIME, and pops as it goes (2026-10-28).
+const DONE_A := 0.32
+const DONE_TIME := 0.3
 ## The row and the column under the finger wash toward the sun, sockets
 ## FOCUS and tabs FOCUS_TAB of the way, in over FOCUS_IN and out over
 ## FOCUS_OUT: the clues a stroke is being checked against are lit while it is
@@ -260,7 +264,7 @@ const DAISY_INKS := [Pal.PETAL_EDGE, Pal.SURFACE, Pal.SUN]
 const HINTS := State.HINTS
 const TIP_CYCLE := 10.0
 ## Translation keys (locale/ui.csv), read through tr() when said.
-const TIPS := ["NG_TIP_RUNS", "NG_TIP_DRAG", "NG_TIP_GREEN"]
+const TIPS := ["NG_TIP_RUNS", "NG_TIP_DRAG", "NG_TIP_DONE", "NG_TIP_GREEN", "NG_TIP_X"]
 
 ## Back to camp from the out-of-hearts card: the host leaves the board.
 signal leave
@@ -369,6 +373,9 @@ var _clue_bump: Dictionary = {} # "r3" / "c5" -> at: the line was recounted
 var _clue_hop: Dictionary = {}  # line key -> {"at", "height", "time"}
 var _lines: Dictionary = {}     # line key -> {"state", "was", "to", "at"}: its tab's wash
 var _glint: Dictionary = {}     # line key -> at: the glint runs out of its clue
+## Line key -> {"runs": [bool], "at": [float]}: which of its numbers are
+## surely done (State.runs_done) and when each last turned, for the dim.
+var _pinned: Dictionary = {}
 ## The cell the finger is on, and when it went down and came up (INF while
 ## down): the row and the column it lights.
 var _focus_cell := Vector2i(-1, -1)
@@ -1207,6 +1214,9 @@ func _seed_verdicts() -> void:
 	for x in state.w:
 		var ink := _verdict_ink(state.col_state(x))
 		_lines["c%d" % x] = {"state": state.col_state(x), "was": ink, "to": ink, "at": -100.0}
+	_pinned = {}
+	for k in state.h + state.w:
+		_mark_done(k, -100.0)
 
 ## Every line whose verdict a move changed washes its tab as the last of its
 ## own cells in `arrivals` lands; one that has just come out right hops its
@@ -1217,6 +1227,36 @@ func _verdicts(t: float, arrivals: Dictionary) -> void:
 		_verdict("r%d" % y, state.row_state(y), _line_lands(arrivals, t, y, -1), state.w)
 	for x in state.w:
 		_verdict("c%d" % x, state.col_state(x), _line_lands(arrivals, t, -1, x), state.h)
+	for k in state.h + state.w:
+		_mark_done(k, _line_lands(arrivals, t, k if k < state.h else -1, -1 if k < state.h else k - state.h))
+
+## Line `k`'s numbers whose runs are surely done now, each stamped `at` when
+## it turns either way (a number pops as it dims).
+func _mark_done(k: int, at: float) -> void:
+	var key := _key(k)
+	var runs: Array = state.runs_done(k, -1) if k < state.h else state.runs_done(-1, k - state.h)
+	if not _pinned.has(key):
+		var stamps: Array = []
+		for _i in runs.size():
+			stamps.append(-100.0)
+		_pinned[key] = {"runs": runs, "at": stamps}
+		return
+	var d: Dictionary = _pinned[key]
+	for i in runs.size():
+		if bool(runs[i]) != bool(d.runs[i]):
+			d.at[i] = at
+			_busy_for(at - _now() + maxf(DONE_TIME, Motion.BUMP_TIME))
+	d.runs = runs
+
+## How dim number `i` of line `key` is now: 0 live, 1 surely done.
+func _done_amount(key: String, i: int, t: float) -> float:
+	if not _pinned.has(key):
+		return 0.0
+	var d: Dictionary = _pinned[key]
+	if i >= (d.runs as Array).size():
+		return 0.0
+	var u := 1.0 if Motion.reduce else _dec((t - float(d.at[i])) / DONE_TIME)
+	return u if bool(d.runs[i]) else 1.0 - u
 
 func _verdict(key: String, line_state: int, at: float, length: int) -> void:
 	if not _lines.has(key):
@@ -1448,10 +1488,21 @@ func _draw_clues() -> void:
 		var scale := _clue_scale(key, index, t)
 		if scale.x <= 0.0:
 			continue
-		var ink := Color(_clue_ink(_line_state(k)), faded)
+		var line_state := _line_state(k)
+		var ink := Color(_clue_ink(line_state), faded)
 		for n in _numbers(k, t):
-			draw_set_transform_matrix(_line_xf(k, scale, t) * Transform2D(float(n.rot), n.at))
-			_number(font, px, rise, str(n.value), Vector2.ZERO, ink)
+			var one := ink
+			var pop := 1.0
+			# A run surely done dims its own number, before the whole line
+			# reads right (green wins then, rose while over-filled).
+			if line_state == State.LINE_IDLE and not is_done():
+				var dim := _done_amount(key, int(n.index), t)
+				one = Color(ink, faded * lerpf(1.0, DONE_A, dim))
+				if dim > 0.0 and not Motion.reduce:
+					pop = Motion.bump_scale(t - float(_pinned[key].at[int(n.index)]))
+			draw_set_transform_matrix(_line_xf(k, scale, t) * Transform2D(float(n.rot), n.at)
+				* Transform2D(0.0, Vector2.ONE * pop, 0.0, Vector2.ZERO))
+			_number(font, px, rise, str(n.value), Vector2.ZERO, one)
 	draw_set_transform(Vector2.ZERO)
 
 ## Line `k` (rows, then columns) as a key and as a verdict.
@@ -1507,7 +1558,7 @@ func _numbers(k: int, t: float) -> Array:
 				var settle := 1.0 - (1.0 - u) * (1.0 - u)
 				at.y -= LEAF_DROP * _cell * (1.0 - settle)
 				rot += sin(e * 9.0 + h * TAU) * LEAF_SWAY * (1.0 - u)
-		out.append({"value": clue[i], "at": at, "rot": rot})
+		out.append({"value": clue[i], "at": at, "rot": rot, "index": i})
 	return out
 
 ## How far the numbers go on the win: CLUE_GONE, then all the way once the

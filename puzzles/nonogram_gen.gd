@@ -123,6 +123,85 @@ static func refine(clue: Array, known: Array) -> Array:
 			out.append(-1)
 	return out
 
+## Which of a line's runs are surely done, one bool a number: those every
+## way of laying the clue over `known` (1 a tile, 0 a cross, -1 open) puts
+## on the same cells, and those cells all tiles. The player's own board,
+## never the picture: a run is pinned by the edge, by crosses, or by the
+## runs around it (2026-10-28). Nothing on a line no placement fits.
+static func pinned_runs(clue: Array, known: Array) -> Array:
+	var n := known.size()
+	var m := clue.size()
+	var out: Array = []
+	out.resize(m)
+	out.fill(false)
+	if m == 0:
+		return out
+	# Crosses and tiles before each cell, so a stretch is read in one step.
+	var crosses: Array = [0]
+	var tiles: Array = [0]
+	for i in n:
+		crosses.append(int(crosses[i]) + (1 if int(known[i]) == 0 else 0))
+		tiles.append(int(tiles[i]) + (1 if int(known[i]) == 1 else 0))
+	var seg := func(s: int, l: int) -> bool:
+		return s >= 0 and s + l <= n and int(crosses[s + l]) == int(crosses[s])
+	# fwd[j][p]: runs 0..j-1 fit in [0, p) covering every tile there.
+	var fwd: Array = []
+	for j in m + 1:
+		var row: Array = []
+		row.resize(n + 1)
+		row.fill(false)
+		fwd.append(row)
+	for p in n + 1:
+		fwd[0][p] = int(tiles[p]) == 0
+	for j in range(1, m + 1):
+		var l := int(clue[j - 1])
+		for p in range(1, n + 1):
+			var v: bool = int(known[p - 1]) != 1 and bool(fwd[j][p - 1])
+			if not v:
+				var s := p - l
+				v = seg.call(s, l) and _left_ok(fwd, known, j - 1, s)
+			fwd[j][p] = v
+	# bwd[j][p]: runs j..m-1 fit in [p, n) covering every tile there.
+	var bwd: Array = []
+	for j in m + 1:
+		var row: Array = []
+		row.resize(n + 1)
+		row.fill(false)
+		bwd.append(row)
+	for p in n + 1:
+		bwd[m][p] = int(tiles[n]) - int(tiles[p]) == 0
+	for j in range(m - 1, -1, -1):
+		var l := int(clue[j])
+		for p in range(n, -1, -1):
+			var v: bool = p < n and int(known[p]) != 1 and bool(bwd[j][p + 1])
+			if not v:
+				v = seg.call(p, l) and _right_ok(bwd, known, j, p + l, n, m)
+			bwd[j][p] = v
+	for i in m:
+		var l := int(clue[i])
+		var only := -1
+		var count := 0
+		for s in n - l + 1:
+			if seg.call(s, l) and _left_ok(fwd, known, i, s) and _right_ok(bwd, known, i, s + l, n, m):
+				count += 1
+				only = s
+				if count > 1:
+					break
+		out[i] = count == 1 and int(tiles[only + l]) - int(tiles[only]) == l
+	return out
+
+## Run `j` may start at `s`: everything before it holds runs 0..j-1.
+static func _left_ok(fwd: Array, known: Array, j: int, s: int) -> bool:
+	if s == 0:
+		return j == 0
+	return int(known[s - 1]) != 1 and bool(fwd[j][s - 1])
+
+## Run `j` may end at `e`: everything after it holds runs j+1..m-1.
+static func _right_ok(bwd: Array, known: Array, j: int, e: int, n: int, m: int) -> bool:
+	if e == n:
+		return j + 1 == m
+	return int(known[e]) != 1 and bool(bwd[j + 1][e + 1])
+
 static func is_complete(grid: Array) -> bool:
 	for row in grid:
 		for v in row:
