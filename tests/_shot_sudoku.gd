@@ -11,7 +11,8 @@ extends SceneTree
 ## 0.7 s: streak, bubble, gags, stickers), `wrong` (Hard and Insane: a wrong
 ## number until the hearts run out, shots mid-tumble, on the card and after
 ## Try again), `solve` (every number placed to the win screen, the party run
-## out), `restore` (a solved day reopened). Frames go to
+## out), `restore` (a solved day reopened), `fun` (auto notes, a scan, a
+## taught hint, the notes hidden). Frames go to
 ## <dir>/sd_<mode>_d<level>_<n>.png. Every mode prints the peak draw calls
 ## from 0.5 s on (or its own window).
 
@@ -198,6 +199,22 @@ func _script() -> void:
 				_at(done + 0.3 + k * 0.4, _shot)
 			_ms_from = done
 			_end = done + 5.4
+		"fun":
+			# The made-fun pass: auto notes at rest, a scan, a taught hint,
+			# the notes put away.
+			_at(1.2, _shot.bind("_notes"))
+			_at(1.4, func() -> void: _puzzle.pick(3))
+			_at(1.8, _shot.bind("_scan"))
+			_at(2.0, func() -> void: _select(cells[0]))
+			_at(2.3, _shot.bind("_picked"))
+			_at(2.5, func() -> void:
+				_select(cells[0])
+				_puzzle.pick(3)
+				_host._on_hint())
+			_at(3.2, _shot.bind("_hint"))
+			_at(3.5, func() -> void: _host._notes_button.pressed.emit())
+			_at(3.9, _shot.bind("_off"))
+			_end = 4.1
 		"restore":
 			_at(1.5, func() -> void: _puzzle.restore_completed_board())
 			_at(2.0, _shot)

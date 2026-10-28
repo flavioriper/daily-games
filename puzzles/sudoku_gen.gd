@@ -436,6 +436,56 @@ static func singles_solve(puz: PackedByteArray) -> PackedByteArray:
 			return g
 	return g
 
+## What each empty cell of `g` can still hold, read off the numbers its peers
+## show and nothing else: the auto notes' marks and the hint's reading. 0 for
+## a filled cell.
+static func candidates(g: PackedByteArray) -> PackedInt32Array:
+	_tables()
+	var cand := PackedInt32Array()
+	cand.resize(CELLS)
+	for i in CELLS:
+		if g[i] > 0:
+			continue
+		var m := FULL
+		for j in _peers[i]:
+			if g[j] > 0:
+				m &= ~(1 << (g[j] - 1))
+		cand[i] = m
+	return cand
+
+## The first move a player could see on `g` with no pencil, the way the
+## hint explains it: a number with one place left in a region, then in a row
+## or column ("hidden"), then a cell with one number left ("naked"). The
+## region first because it is the scan players make first. `{}` when singles
+## have stalled. Only steps that agree with `sol` are handed back, so a wrong
+## number already on the board cannot make the hint teach a wrong one.
+static func single_step(g: PackedByteArray, sol: PackedByteArray) -> Dictionary:
+	var cand := candidates(g)
+	var order: Array = []
+	for u in range(2 * N, 3 * N):
+		order.append(u)
+	for u in 2 * N:
+		order.append(u)
+	for u in order:
+		var unit: PackedInt32Array = _units[u]
+		for d in range(1, N + 1):
+			var bit := 1 << (d - 1)
+			var seat := -1
+			var n := 0
+			for i in unit:
+				if g[i] == d:
+					n = -1
+					break
+				if g[i] == 0 and (cand[i] & bit) != 0:
+					seat = i
+					n += 1
+			if n == 1 and sol[seat] == d:
+				return {"cell": seat, "digit": d, "kind": "hidden", "unit": u}
+	for i in CELLS:
+		if g[i] == 0 and popcount(cand[i]) == 1 and sol[i] == _digit_of(cand[i]):
+			return {"cell": i, "digit": int(sol[i]), "kind": "naked", "unit": -1}
+	return {}
+
 static func is_complete(g: PackedByteArray) -> bool:
 	for i in CELLS:
 		if g[i] == 0:

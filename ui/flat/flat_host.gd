@@ -160,6 +160,11 @@ var _level_tw: Tween
 ## after the board is spawned" means. Cleared by _spawn so a new board gets
 ## its own handoff.
 var _tray_given := false
+## Sudoku's pencil on the tools row, beside the bulb (2026-10-28): the auto
+## notes shown or hidden. Built the first time a board answers
+## `notes_offered`, shown only while the board on screen offers them, lit in
+## the sun while they show.
+var _notes_button: Button
 var _hearts_line := ""
 ## The date key of the daily this board was dealt from, taken when the daily
 ## seed spawned it; 0 for a board from a random seed (the settings sheet's
@@ -763,6 +768,27 @@ func _refresh() -> void:
 	var p = _puzzle if is_instance_valid(_puzzle) else null
 	if tray != null:
 		tray.refresh(p)
+	_refresh_notes(p)
+
+func _refresh_notes(p) -> void:
+	var offered: bool = p != null and p.has_method("notes_offered") and p.notes_offered()
+	if top_bar == null or top_bar.tools == null or (not offered and _notes_button == null):
+		return
+	if _notes_button == null:
+		_notes_button = IconButton.new("pencil")
+		_notes_button.name = "NotesButton"
+		_notes_button.custom_minimum_size = FlatTopBar.BUTTON
+		_notes_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		_notes_button.pressed.connect(func() -> void:
+			if is_instance_valid(_puzzle) and _puzzle.has_method("toggle_notes"):
+				_puzzle.toggle_notes())
+		top_bar.tools.add_child(_notes_button)
+		top_bar.tools.move_child(_notes_button, top_bar.hint_button.get_index())
+	_notes_button.visible = offered
+	if offered:
+		var on: bool = p.notes_shown()
+		CozyTheme.lift_button(_notes_button, Pal.SURFACE.lerp(Pal.SUN, 0.45) if on else Pal.SURFACE,
+			int(FlatTopBar.BUTTON.x * 0.29))
 
 ## A board may want less of the slot than it was given: Balance caps its
 ## bands, so a short column leaves the rest as air above the weight cards

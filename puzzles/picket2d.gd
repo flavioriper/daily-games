@@ -99,6 +99,14 @@ const PICKET_HAPTICS := {"plot": Haptics.BUMP}
 func puzzle_id() -> String: return "picket"
 func title() -> String: return "Picket Sums"
 
+## Sudoku's auto notes read only the lines, not the plots' sums, and its
+## taught hint reads Sudoku's singles: Picket keeps its own bulb and no notes.
+func notes_offered() -> bool:
+	return false
+
+func _teaches() -> bool:
+	return false
+
 func _ready() -> void:
 	super()
 	fx.haptics = HAPTICS.merged(PICKET_HAPTICS)

@@ -181,7 +181,7 @@ const SAY_HOLD := 2.2
 const TIP_CYCLE := 10.0
 ## Translation keys (locale/ui.csv). A "%d" in a line is the grid's size,
 ## filled in by _tip() after tr().
-const TIPS := ["SD_TIP_UNITS", "SD_TIP_TAP", "SD_TIP_CROSS", "SD_TIP_PALE"]
+const TIPS := ["SD_TIP_UNITS", "SD_TIP_TAP", "SD_TIP_SCAN", "SD_TIP_CROSS", "SD_TIP_COUNTS"]
 
 # --- the polish of 2026-09-30 (spec 2026-09-30-sudoku-polish-design.md) ---
 ## The hearts, on the family's paper pill in a strip over the tray (Queens').
@@ -271,6 +271,16 @@ const STAMP_TILT := -0.22
 ## nothing on the screen turns `_pencil` on any more; the pencil's drawing
 ## and state.mark stay for whenever it gets a door again.
 const REMOVE_CHIP := 9
+const WASH_WHY := 0.2
+## The auto notes a shade lighter than a mark the player wrote would be.
+const NOTE_AUTO_A := 0.8
+const WASH_OPEN := 0.24
+const TOAST_HOLD := 2.6
+const TOAST_HOLD_HINT := 4.5
+const TOAST_H := 76.0
+const TOAST_PAD := 64.0
+const TOAST_RADIUS := 26.0
+const TOAST_FONT := 30
 
 var state: State = null
 
@@ -280,6 +290,31 @@ var fx: Node2D
 const SELECT_OFF_PITCH := 0.84
 var _sel := -1
 var _pencil := false
+## The made-fun pass (2026-10-28). The numbers each empty cell can still hold,
+## read off its peers (`Gen.candidates`) and drawn as pencil marks: Hard and
+## Insane are dug to want the pencil, and the pad has had none since
+## 2026-09-23. Derived, never stored, so undo and the move count never see
+## them. Shown by default; the tools row's pencil hides them for the session.
+static var notes_pref := true
+var _cand := PackedInt32Array()
+## A digit chip tapped with no cell selected: that number's scan. Its copies
+## take the twin coin, every cell it already rules out is shaded, and its
+## pencil marks are inked, so the places it can still go stand out. Kept
+## while a cell is picked, and put away by tapping its chip again.
+var _scan := 0
+## The hint's reasoning, washed in leaf until the next tap: the region, row
+## or column a hidden single was read from, or the peers that ruled out every
+## other number of a naked one.
+var _why: Dictionary = {}
+## A line in a dark pill between the grid and the pad (Super Slider's toast):
+## the tip card these lines were written for is not on a levelled board's
+## screen, so a refusal or a hint's reason was said to nobody.
+var _toast := ""
+var _toast_at := -100.0
+var _toast_hold := 0.0
+var _toast_mesh: ArrayMesh
+var _toast_mesh_for := ""
+var _toast_layer: Control
 ## cell -> true: what the last Check found, cleared per cell when it is
 ## written again. The only thing on this board that is remembered rather
 ## than derived, because it is a memory of a question that was asked.
@@ -532,6 +567,7 @@ func _ready() -> void:
 	_heart_layer = _layer("Hearts", 1, _draw_hearts)
 	_life_layer = _layer("Life", 3, _draw_life)
 	_combo_layer = _layer("Combo", 4, _draw_combo)
+	_toast_layer = _layer("Toast", 5, _draw_toast)
 	_rm = RunMesh.new(_make_shape)
 	resized.connect(_layout)
 	solved.connect(_on_solved)
@@ -567,6 +603,9 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_deal()
 	_sel = -1
 	_pencil = false
+	_scan = 0
+	_why = {}
+	_toast = ""
 	_wrong = {}
 	_flash = {}
 	_bump = {}
@@ -907,6 +946,7 @@ func _draw() -> void:
 	# the question is asked. See the note there.
 	if _dirty:
 		_clash = state.clashes()
+		_cand = Gen.candidates(state.grid) if notes_shown() else PackedInt32Array()
 		_grid_mesh = _build_grid(now)
 		_dirty = false
 	# The mesh is handed over and held in the same breath, so what the canvas
@@ -956,16 +996,31 @@ func _build_grid(now: float) -> ArrayMesh:
 	# tail, where a place keeps its indices (no run under every cell).
 	var peers: Dictionary = {}
 	var twins: Dictionary = {}
+	var ruled_out: Dictionary = {}
 	if _sel >= 0:
 		for j in Gen.peers_of(_sel):
 			peers[j] = true
-		for j in state.twins(_sel):
-			twins[j] = true
+	var focus := focus_digit()
+	if focus > 0:
+		for j in Gen.CELLS:
+			if state.grid[j] == focus and j != _sel:
+				twins[j] = true
+				if _sel < 0:
+					for p in Gen.peers_of(j):
+						ruled_out[p] = true
+	# With no cell picked, the scan washes the places its number can still
+	# go in leaf; the cells it is ruled out of stay as they are (a grey shade
+	# under the region panels' own did not read, 2026-10-28).
+	var open: Dictionary = {}
+	if focus > 0 and _sel < 0 and state.remaining(focus) > 0:
+		for j in Gen.CELLS:
+			if state.grid[j] == 0 and not ruled_out.has(j):
+				open[j] = true
 	var clash: Dictionary = _clash
 	for i in Gen.CELLS:
 		if i == _sel:
 			continue
-		var wash := _wash_of(i, peers, twins, clash)
+		var wash := _wash_of(i, peers, twins, clash, open)
 		var lit := _flash_level(now, i)
 		var twin := wash.a <= 0.0 and twins.has(i)
 		if wash.a <= 0.0 and lit <= 0.0 and not twin:
@@ -990,7 +1045,7 @@ func _build_grid(now: float) -> ArrayMesh:
 	_rm.put_builder(b)
 	if _sel >= 0:
 		_rm.open(PART_SEL, 0)
-		_selected_tile(now, k, _wash_of(_sel, peers, twins, clash))
+		_selected_tile(now, k, _wash_of(_sel, peers, twins, clash, open))
 	_hills(now, k)
 	return _rm.mesh()
 
@@ -1258,15 +1313,20 @@ func _cell_grow(now: float, i: int) -> float:
 ## selected cell keeps its gold edge either way. A clash and a mistake are
 ## two different things: the first is visible with no answer in hand, the
 ## second needs the answer and costs a Check.
-func _wash_of(i: int, peers: Dictionary, twins: Dictionary, clash: Dictionary) -> Color:
+func _wash_of(i: int, peers: Dictionary, twins: Dictionary, clash: Dictionary,
+		open := {}) -> Color:
 	if _wrong.has(i) or _bad.has(i):
 		return Color(Pal.BAD, WASH_WRONG)
 	if clash.has(i):
 		return Color(Pal.BAD, WASH_CLASH)
 	if i == _sel:
 		return Color(Pal.SUN, WASH_SELECTED)
+	if _why.has(i):
+		return Color(Pal.LEAF, WASH_WHY)
 	if twins.has(i):
 		return Color(1.0, 1.0, 1.0, 0.0)
+	if open.has(i):
+		return Color(Pal.LEAF, WASH_OPEN)
 	if peers.has(i):
 		return Color(Pal.SUN, WASH_PEER)
 	return Color(1.0, 1.0, 1.0, 0.0)
@@ -1322,6 +1382,17 @@ func _draw_numerals(now: float, pop: float, centre: Vector2) -> void:
 				var spot := _note_spot(n)
 				_numeral(note_font, note_px, note_rise, str(n), spot,
 					Color(Pal.TEXT_DIM, seen))
+		elif i < _cand.size() and _cand[i] != 0:
+			# The auto notes: what the cell can still hold, the scanned
+			# number's mark inked in leaf so its places read at a glance.
+			_seat(at, centre, pop, grow)
+			var focus := focus_digit()
+			for n in range(1, Gen.N + 1):
+				if (_cand[i] & (1 << (n - 1))) == 0:
+					continue
+				var lit := n == focus
+				_numeral(note_font, note_px, note_rise, str(n), _note_spot(n),
+					Color(Pal.LEAF_DEEP if lit else Pal.TEXT_DIM, seen * (1.0 if lit else NOTE_AUTO_A)))
 		elif state.ruled.has(i):
 			_seat(at, centre, pop, grow)
 			_draw_ruled(i, note_font, note_px, note_rise)
@@ -1480,6 +1551,7 @@ func _gui_input(event: InputEvent) -> void:
 	if i < 0:
 		return
 	_sel = -1 if i == _sel else i
+	_why = {}
 	# No tap that does something is silent: a tick as the cell is picked, the
 	# same one a little lower as it is let go, and the faintest knock under
 	# each (the cue is unmapped, so fx gives it the echo).
@@ -1510,11 +1582,61 @@ func pick(i: int) -> bool:
 	if state == null or is_done() or out_of_hearts or _ejecting:
 		return false
 	if _sel < 0:
-		_speak(tr("SD_TAP_CELL"), Face.Expr.PUZZLED)
+		if i == REMOVE_CHIP:
+			_speak(tr("SD_TAP_CELL"), Face.Expr.PUZZLED)
+			return false
+		_scan_digit(i + 1)
 		return false
+	_why = {}
 	if i == REMOVE_CHIP:
 		return _erase(_sel)
 	return _apply(_sel, i + 1)
+
+## A digit chip with no cell picked: scan that number, or put the scan away
+## when it is the one already scanned (the made-fun pass, 2026-10-28; it was
+## a refusal, "Tap a cell first"). Heard as a pick and felt as a tick.
+func _scan_digit(d: int) -> void:
+	_scan = 0 if d == _scan else d
+	_why = {}
+	fx.cue("select", randf_range(0.97, 1.03) if _scan > 0 else SELECT_OFF_PITCH)
+	fx.buzz(Haptics.TICK)
+	if _scan > 0 and state.remaining(_scan) > 0:
+		_speak(tr("SD_SCAN") % _scan, Face.Expr.HAPPY)
+	focus_changed.emit()
+	_redraw()
+
+## The number the board is lit for: the picked cell's, else the scan's.
+func focus_digit() -> int:
+	if state == null:
+		return 0
+	if _sel >= 0 and state.grid[_sel] > 0:
+		return int(state.grid[_sel])
+	return _scan
+
+## The pad's lit chip (ui/flat/digit_pad.gd).
+func scan_digit() -> int:
+	return _scan
+
+## Whether this board draws the auto notes at all: the nines, whose days are
+## dug to want the pencil. Picket Sums says no.
+func notes_offered() -> bool:
+	return state != null and Gen.N > 6
+
+func notes_shown() -> bool:
+	return notes_offered() and notes_pref
+
+## The tools row's pencil (ui/flat/flat_host.gd).
+func toggle_notes() -> void:
+	notes_pref = not notes_pref
+	fx.cue("select", 1.0 if notes_pref else SELECT_OFF_PITCH)
+	fx.buzz(Haptics.TICK)
+	_speak(tr("SD_NOTES_ON" if notes_pref else "SD_NOTES_OFF"), Face.Expr.HAPPY)
+	focus_changed.emit()
+	_redraw()
+
+## Whether the hint reads its step out loud. Picket's state hints its own way.
+func _teaches() -> bool:
+	return true
 
 ## The remove chip: the selected cell's digit or marks come out, as one move
 ## undo can put back. Taking a digit out can only open a unit, never finish
@@ -1605,9 +1727,25 @@ func _apply(i: int, d: int) -> bool:
 			break
 	_redraw()
 	note_move()
+	_full_but_wrong()
 	# Insane counts moves: a number written or tapped back out is one.
 	_spend(state.move_cost(i, _pencil), now + (0.0 if Motion.reduce else LAND_AT))
 	return true
+
+## Every cell written and still not solved: with Check gone (2026-10-13)
+## nothing said so, and a full grid just sat there. The numbers that are
+## wrong blush, as Check's did, until each is written again.
+func _full_but_wrong() -> void:
+	if state.grid.has(0) or state.is_solved():
+		return
+	var w: PackedInt32Array = state.wrong()
+	for i in w:
+		_wrong[i] = true
+	if w.is_empty():
+		return
+	_speak(tr("SD_FULL_ONE") if w.size() == 1 else tr("SD_FULL_N") % w.size(), Face.Expr.STRAIN)
+	fx.buzz(Haptics.WARN)
+	_redraw()
 
 ## Diff the units and hand each cell of one that has just come right its
 ## moment: it lights up in gold from `at` outwards, a king-move step apart.
@@ -1722,12 +1860,14 @@ func hint() -> bool:
 	if state == null or is_done() or out_of_hearts or _ejecting:
 		return false
 	var before: Array = state.finished_units()
+	var step: Dictionary = state.hint_step() if _teaches() else {}
 	var i := state.hint()
 	if i < 0:
 		return false
 	var now := _now()
 	hints_used += 1
 	_sel = i
+	_why = _why_of(step) if not step.is_empty() and int(step.cell) == i else {}
 	_wrong.erase(i)
 	_bump[i] = now
 	_drop[i] = now
@@ -1738,11 +1878,45 @@ func hint() -> bool:
 	fx.cue("hint")
 	_settle(before, i, now)
 	_update_stickers(now)
-	_say(tr("SD_HINT"), Face.Expr.HAPPY)
+	if not step.is_empty() and int(step.cell) == i:
+		_speak(_hint_line(step), Face.Expr.HAPPY, TOAST_HOLD_HINT)
+	else:
+		_say(tr("SD_HINT"), Face.Expr.HAPPY)
 	_redraw()
 	moved.emit()
 	check_solved()
 	return true
+
+## The cells a hint's reason is read from (Good Sudoku's hint shows its
+## working): a hidden single's whole region, row or column; a naked single's
+## filled peers, every other number it could not be.
+func _why_of(step: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	var i := int(step.cell)
+	match String(step.kind):
+		"hidden":
+			for j in Gen.units()[int(step.unit)]:
+				if j != i:
+					out[j] = true
+		"naked":
+			for j in Gen.peers_of(i):
+				if state.grid[j] > 0:
+					out[j] = true
+	return out
+
+## Why the hint's number goes where it went, in the player's words.
+func _hint_line(step: Dictionary) -> String:
+	var d := int(step.digit)
+	match String(step.kind):
+		"wrong":
+			return tr("SD_HINT_WRONG") % [int(step.was), d]
+		"hidden":
+			var u := int(step.unit)
+			var key := "SD_HINT_ROW" if u < Gen.N else ("SD_HINT_COL" if u < 2 * Gen.N else "SD_HINT_BOX")
+			return tr(key) % d
+		"naked":
+			return tr("SD_HINT_NAKED") % d
+	return tr("SD_HINT_DEEP") % d
 
 ## Every cell that disagrees with the answer shivers, in a shallow wave out
 ## from the middle row, and keeps the rose wash until it is written again.
@@ -1887,6 +2061,9 @@ func restore_completed_board() -> void:
 	state.history = []
 	_sel = -1
 	_pencil = false
+	_scan = 0
+	_why = {}
+	_toast = ""
 	_wrong = {}
 	_flash = {}
 	_bump = {}
@@ -1983,12 +2160,17 @@ func _say(text: String, mood: int) -> void:
 
 ## A line that owns the card for SAY_HOLD seconds, after which the cycling
 ## rules resume. Every refusal and every Check goes through it.
-func _speak(line: String, mood: int) -> void:
+func _speak(line: String, mood: int, hold := SAY_HOLD) -> void:
 	_say(line, mood)
-	_hold_until = _now() + SAY_HOLD
+	_hold_until = _now() + hold
+	_toast = line
+	_toast_at = _now()
+	_toast_hold = maxf(hold, TOAST_HOLD)
+	if _toast_layer != null:
+		_toast_layer.queue_redraw()
 	if get_tree() == null:
 		return
-	get_tree().create_timer(SAY_HOLD).timeout.connect(_resume_tips)
+	get_tree().create_timer(hold).timeout.connect(_resume_tips)
 
 func _resume_tips() -> void:
 	if is_done() or out_of_hearts or _now() < _hold_until - 0.01:
@@ -2219,10 +2401,57 @@ func _tick_layers(now: float) -> void:
 		_heart_layer.queue_redraw()
 	if _combo_n >= COMBO_FROM and (now - _combo_at < COMBO_HOLD + 0.1 or _combo_out_at > -INF):
 		_combo_layer.queue_redraw()
+	if _toast != "" and now - _toast_at < _toast_hold + 0.1:
+		_toast_layer.queue_redraw()
 	var alive := _tick_life(now)
 	if alive or _life_alive:
 		_life_layer.queue_redraw()
 	_life_alive = alive
+
+## The toast between the grid and the pad, Super Slider's `_draw_toast`:
+## a dark pill, one or two lines of paper ink, fading in and out.
+func _draw_toast() -> void:
+	if _toast == "" or _cell <= 0.0 or not _current() or is_done():
+		return
+	var since := _now() - _toast_at
+	if since < 0.0 or since >= _toast_hold:
+		return
+	var alpha := minf(Motion.appear_level(since, Motion.DROP_FADE),
+		Motion.appear_level(_toast_hold - since, Motion.DROP_FADE))
+	if alpha <= 0.0:
+		return
+	var font: Font = CozyTheme.body(600)
+	var room := maxf(TOAST_PAD * 2.0, _cell * Gen.N + 2.0 * FRAME * _scale())
+	var text_room := room - TOAST_PAD
+	var one: float = font.get_string_size(_toast, HORIZONTAL_ALIGNMENT_LEFT, -1, TOAST_FONT).x
+	var lines := 1
+	var text_w := one
+	if one > text_room:
+		var wrapped: Vector2 = font.get_multiline_string_size(_toast, HORIZONTAL_ALIGNMENT_CENTER, text_room, TOAST_FONT)
+		lines = maxi(1, int(round(wrapped.y / font.get_height(TOAST_FONT))))
+		text_w = minf(text_room, wrapped.x)
+	var w := minf(room, text_w + TOAST_PAD)
+	var h := TOAST_H + float(lines - 1) * font.get_height(TOAST_FONT)
+	var key := "%d|%d" % [int(w), int(h)]
+	if _toast_mesh == null or _toast_mesh_for != key:
+		var b := Face.Builder.new()
+		b.fan(Face.Builder.round_rect(Vector2(-w, -h) * 0.5, Vector2(w, h), TOAST_RADIUS), Pal.TEXT)
+		_toast_mesh = b.mesh()
+		_toast_mesh_for = key
+	# In the gap under the tray, or over the tray's foot where the gap is
+	# too thin to hold it.
+	var foot := _grid.y + _cell * Gen.N + (FRAME + TRAY_LIP) * _scale()
+	var floor_y := size.y - _clear.y if _clear.y > 0.0 else size.y
+	var mid := Vector2(_centre().x, minf((foot + floor_y) * 0.5, floor_y - h * 0.5 - 8.0))
+	_toast_layer.draw_mesh(_toast_mesh, null, Transform2D(0.0, mid), Color(Color.WHITE, alpha))
+	var top := mid.y - h * 0.5 + (TOAST_H - font.get_height(TOAST_FONT)) * 0.5 + font.get_ascent(TOAST_FONT)
+	var left := mid.x - w * 0.5 + TOAST_PAD * 0.5
+	if lines == 1:
+		_toast_layer.draw_string(font, Vector2(left, top), _toast, HORIZONTAL_ALIGNMENT_LEFT, -1,
+			TOAST_FONT, Color(Pal.PAPER, alpha))
+	else:
+		_toast_layer.draw_multiline_string(font, Vector2(left, top), _toast, HORIZONTAL_ALIGNMENT_CENTER,
+			w - TOAST_PAD, TOAST_FONT, lines, Color(Pal.PAPER, alpha))
 
 ## The hearts over the tray as one mesh on a paper pill (Queens'): pink with
 ## a small face and a leaf, a faint ghost where one was, the lost one's halves

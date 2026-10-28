@@ -197,3 +197,55 @@ too thin on keyboard". `ui/flat/digit_pad.gd`: `CHIP_H` 88 -> 104 (the pad
 32 taller; the host measures its slot off `HEIGHT`), `FONT_SIZE` 56 -> 66,
 and the digits at Fredoka 700 (the face's heaviest, key_board.gd's weight)
 instead of 600. `_shot_sudoku.gd rest` on Easy and Hard: draw calls peak 77.
+
+## 2026-10-28: made fun
+
+The user: "make sudoku experience way better to play, and game itself way
+funnier to play, right now nobody likes it", autonomous, pushed. Read
+against Good Sudoku (auto notes, hints that teach, focus mode) and
+Sudoku.com / Not Evil Sudoku (same-number highlight, counts on the pad).
+
+- **The finding.** Hard and Insane are dug to want the pencil (`Gen.TIER`
+  PENCIL, "every banked grid wants the pencil"), and the pad has had no
+  pencil since 2026-09-23 (`_pencil` was never set true again). A probe
+  (`tests/_probe_sd_fun.gd`, scratch) of a player with no notes: singles
+  finish Easy and Medium 30/30, but fill only **26% of Hard's empty cells**
+  and 1% of Insane's before every easy move runs out. **And no line the
+  board spoke reached the screen**: `tip_line()` has no reader on a
+  levelled board, so refusals, the hill's count and the hint's line were
+  said to nobody.
+- **Auto notes** (nines only, `notes_offered`): every empty cell shows what
+  its peers still allow (`Gen.candidates`), derived on each rebuild and
+  never stored, so undo, Reset and Insane's move count never see them. On
+  by default; the tools row's pencil (built by `flat_host.gd`
+  `_refresh_notes`, lit in the sun while they show) hides them for the
+  session (`notes_pref`, static). The manual pencil chip stays gone: that
+  was the user's call.
+- **The scan**: a digit chip with no cell picked lights that chip, coins the
+  number's copies and washes in leaf every empty cell it can still go
+  (`_scan`, `focus_digit()`); the same chip puts it away. It was the
+  refusal "Tap a cell first". A tap on the grid still only selects.
+  Picked cells holding a number coin their twins as before; the scanned or
+  picked number's auto notes are inked in leaf.
+- **The hint teaches** (`State.hint_step`, `Gen.single_step`): a wrong
+  number first ("That 5 didn't belong here. It's a 3."), then a hidden
+  single read from a region, then a row or column, then a naked single,
+  else the cell with the fewest numbers left. The unit (or the naked
+  single's filled peers) is washed in leaf until the next tap, and the
+  reason shows for 4.5 s. Bulb-only solves of ten days a band: Hard 543
+  taught of 547 hints (4 fallbacks), Insane 390 of 650 (the hills'
+  reasoning is not taught), every hint right.
+- **The toast**: `_speak` lines show in a dark pill between the tray and
+  the pad (Super Slider's `_draw_toast`, on its own layer).
+- **A full grid that is wrong says so** (`_full_but_wrong`): Check was
+  removed on 2026-10-13 and a full wrong grid just sat there; its wrong
+  numbers blush now and the toast counts them.
+- **The pad** (`ui/flat/digit_pad.gd`) prints how many of each number are
+  left in the chip's corner and lights the scanned chip. Picket Sums shares
+  the pad and gets both; it says no to the auto notes and the taught hint.
+- `SD_RULES` lost its Check paragraph (en/pt/es) for the scan and the bulb.
+- `opengl3_angle` 810x1440 `_shot_sudoku.gd -- d=2 fun`: draw calls peak
+  139 with the auto notes on (77 before).
+- Decided for the user, unconfirmed: notes on by default on Hard and
+  Insane, the pencil's seat on the tools row, no manual pencil, Insane
+  keeping the notes despite counting moves. Not on a phone; no new sound.

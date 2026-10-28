@@ -281,12 +281,44 @@ func undo() -> int:
 			notes[j] |= bit
 	return i
 
-## One cell from the answer: whichever open cell has the fewest candidates,
-## so a hint lands where the player was closest rather than at random. The
-## cell filled, or -1 when there is nothing left to fill or no hints left.
+## The hint, read before it is spent (2026-10-28, the made-fun pass): a
+## wrong number first, since nothing else the bulb could say is worth
+## anything over it; then the next single a player could see
+## (`Gen.single_step`); then, where singles have stalled, the open cell with
+## the fewest numbers left. {"cell", "digit", "kind", "unit", "was"}: kind is
+## "wrong", "hidden", "naked" or "deep". `{}` when there is nothing to fill.
+func hint_step() -> Dictionary:
+	var bad := wrong()
+	if not bad.is_empty():
+		var i := bad[0]
+		return {"cell": i, "digit": int(sol[i]), "kind": "wrong", "unit": -1, "was": int(grid[i])}
+	var step := Gen.single_step(grid, sol)
+	if not step.is_empty():
+		step["was"] = 0
+		return step
+	var i := _fewest()
+	if i < 0:
+		return {}
+	return {"cell": i, "digit": int(sol[i]), "kind": "deep", "unit": -1, "was": 0}
+
+## One cell from the answer, where `hint_step` says. The cell filled, or -1
+## when there is nothing left to fill or no hints left.
 func hint() -> int:
 	if hints_left <= 0:
 		return -1
+	var step := hint_step()
+	if step.is_empty():
+		return -1
+	var best := int(step.cell)
+	var entry := {"cell": best, "prev": int(grid[best]), "notes": int(notes[best]),
+		"struck": PackedInt32Array(), "bit": 0}
+	_write(best, int(sol[best]), entry)
+	history.append(entry)
+	hints_left -= 1
+	return best
+
+## The open (or wrong) cell with the fewest candidates.
+func _fewest() -> int:
 	var best := -1
 	var best_n := Gen.N + 1
 	for i in Gen.CELLS:
@@ -300,13 +332,6 @@ func hint() -> int:
 		if n < best_n:
 			best_n = n
 			best = i
-	if best < 0:
-		return -1
-	var entry := {"cell": best, "prev": int(grid[best]), "notes": int(notes[best]),
-		"struck": PackedInt32Array(), "bit": 0}
-	_write(best, int(sol[best]), entry)
-	history.append(entry)
-	hints_left -= 1
 	return best
 
 ## A judged number was wrong: it comes back out of `i`, its move leaves the

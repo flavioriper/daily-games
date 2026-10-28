@@ -140,7 +140,7 @@ const PUZZLES := [
 		"short": "SD_SHORT",
 		"motto": "SD_MOTTO",
 		"footer": "Scan · Place · Complete",
-		# Ten chips -- 1 to 9 and the pencil -- so it asks for the digit pad.
+		# Ten chips -- 1 to 9 and the cross -- so it asks for the digit pad.
 		# Everything else is the default: it keeps the actions row and the tip
 		# card, which makes it the plainest board in the registry to wire.
 		"script": "res://puzzles/sudoku2d.gd",

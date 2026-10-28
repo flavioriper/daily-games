@@ -81,6 +81,15 @@ var _flats: Dictionary = {}   # look key -> [verts, cols]
 var _faces: ArrayMesh
 var _sig := PackedFloat32Array()
 var _font: Font
+## The made-fun pass (2026-10-28, Sudoku.com's pad): how many of each number
+## are still to place, small in the chip's corner, and the chip of the number
+## the board is scanning lit in the sun. Read off the board on refresh, and
+## only from a board that answers `scan_digit` (Picket Sums answers too).
+var _left := PackedInt32Array()
+var _lit := 0
+var _count_font: Font
+const COUNT_SIZE := 26
+const COUNT_INSET := Vector2(14.0, 8.0)
 
 func _init() -> void:
 	enter_from = Vector2(0, 100)
@@ -94,6 +103,7 @@ func _make_inner() -> Container:
 
 func _build() -> void:
 	_font = CozyTheme.display(700)
+	_count_font = CozyTheme.body(700)
 	_paint = Control.new()
 	_paint.name = "Paint"
 	_paint.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -213,7 +223,7 @@ func _draw_chips() -> void:
 			var chip := _chips[k]
 			if not chip.is_visible_in_tree():
 				continue
-			var f := _flat_for(chip, k == REMOVE)
+			var f := _flat_for(chip, k == REMOVE, k + 1 == _lit)
 			b.verts.append_array((inv * chip.get_global_transform()) * (f[0] as PackedVector2Array))
 			b.cols.append_array(f[1])
 		_faces = b.mesh() if not b.verts.is_empty() else null
@@ -230,20 +240,26 @@ func _draw_chips() -> void:
 		_paint.draw_set_transform_matrix(inv * chip.get_global_transform())
 		_paint.draw_string(_font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE,
 			Color(Pal.TEXT, chip.modulate.a))
+		if k < _left.size() and _left[k] > 0:
+			var c := str(_left[k])
+			var cw := _count_font.get_string_size(c, HORIZONTAL_ALIGNMENT_LEFT, -1, COUNT_SIZE).x
+			_paint.draw_string(_count_font,
+				Vector2(chip.size.x - COUNT_INSET.x - cw, COUNT_INSET.y + _count_font.get_ascent(COUNT_SIZE)),
+				c, HORIZONTAL_ALIGNMENT_LEFT, -1, COUNT_SIZE, Color(Pal.TEXT_DIM, chip.modulate.a))
 	_paint.draw_set_transform_matrix(Transform2D.IDENTITY)
 
 ## A chip's face as a flat triangle list about its own top-left corner, made
 ## once per size, press, spend and glyph: CozyTheme.soft_button's look in
 ## SURFACE (the soft shadow, the two-pixel border, the face; key_board.gd's
 ## triangles), the cross stroked on the remove chip as Icons' "cross" is.
-func _flat_for(chip: Button, cross: bool) -> Array:
+func _flat_for(chip: Button, cross: bool, lit := false) -> Array:
 	var held := KeyBoard._held(chip)
 	var a := chip.modulate.a
-	var key := "%d|%d|%s|%.2f|%s" % [int(chip.size.x), int(chip.size.y), held, a, cross]
+	var key := "%d|%d|%s|%.2f|%s|%s" % [int(chip.size.x), int(chip.size.y), held, a, cross, lit]
 	var f: Array = _flats.get(key, [])
 	if not f.is_empty():
 		return f
-	var fill: Color = Pal.SURFACE
+	var fill: Color = Pal.SURFACE.lerp(Pal.SUN, 0.45) if lit else Pal.SURFACE
 	var b := Face.Builder.new()
 	var sz := chip.size
 	var tint := fill.darkened(0.55).lerp(Color(0.35, 0.23, 0.12), 0.5)
@@ -268,8 +284,18 @@ func refresh(puzzle) -> void:
 	if puzzle == null:
 		return
 	_lay(puzzle.digit_count() if puzzle.has_method("digit_count") else 9)
+	var lefts := PackedInt32Array()
 	for k in _digits:
 		var left: int = puzzle.remaining(k + 1) if puzzle.has_method("remaining") else 9
+		lefts.append(left)
 		var spent := left <= 0
 		_chips[k].disabled = spent
 		_chips[k].modulate.a = SPENT_ALPHA if spent else 1.0
+	var lit: int = puzzle.scan_digit() if puzzle.has_method("scan_digit") else 0
+	if lefts != _left or lit != _lit:
+		_left = lefts
+		_lit = lit
+		_faces = null
+		_sig = PackedFloat32Array()
+		if _paint != null:
+			_paint.queue_redraw()
