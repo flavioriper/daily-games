@@ -440,7 +440,7 @@ HW_STAMP_4,Sharp,Afiado,Agudo
 HW_STAMP_5,Steady,Firme,Firme
 HW_STAMP_6,Phew!,Ufa!,¡Uf!
 HW_STAMP_MORE,Second wind,Fôlego extra,Segundo aire
-HW_LEFT_N,%d words left,%d palavras ainda,%d palabras aún
+HW_LEFT_N,%d words left,Restam %d palavras,Quedan %d palabras
 HW_LEFT_ONE,Only one word fits!,Só uma palavra serve!,¡Solo una palabra encaja!
 HW_CHEER_0,Your brain did a cartwheel.,Seu cérebro deu uma estrelinha.,Tu cerebro dio una voltereta.
 HW_CHEER_1,The dictionary is blushing.,O dicionário ficou vermelho.,El diccionario se sonrojó.
