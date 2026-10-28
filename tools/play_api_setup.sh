@@ -52,7 +52,19 @@ if [[ -s "$key" ]]; then
   echo "play_api_setup: key already at $key"
 else
   mkdir -p "$(dirname "$key")"
-  g iam service-accounts keys create "$key" --iam-account "$sa_email"
+  # A just-created account is NOT_FOUND for a few seconds (seen 2026-10-28).
+  for try in 1 2 3 4 5 6; do
+    if g iam service-accounts keys create "$key" --iam-account "$sa_email" 2>/tmp/play_api_setup.err; then
+      break
+    elif grep -q NOT_FOUND /tmp/play_api_setup.err && [[ $try -lt 6 ]]; then
+      echo "play_api_setup: $sa_email not visible yet, retrying in 5 s"
+      sleep 5
+    else
+      cat /tmp/play_api_setup.err >&2
+      exit 1
+    fi
+  done
+  [[ -s "$key" ]] || { echo "play_api_setup: no key written"; exit 1; }
   chmod 600 "$key"
   echo "play_api_setup: key written to $key"
 fi
