@@ -270,7 +270,10 @@ func _script() -> void:
 				_puzzle._gui_input(ev))
 			_at(t0 + 9.2, func(): print("hint 1: ", _puzzle.hint(), " lit ", _puzzle._lit.get("rule"), " ", _puzzle._lit.get("kind"), " cells ", _puzzle._lit.get("cells"), " why ", _puzzle._lit.get("why"), " left ", _puzzle.hints_left(), " held ", _puzzle.hints_held()))
 			_at(t0 + 9.8, _shot.bind("_lit"))
-			_at(t0 + 11.0, func(): print("hint 2: ", _puzzle.hint(), " left ", _puzzle.hints_left(), " used ", _puzzle.hints_used))
+			_at(t0 + 11.0, func(): print("hint 2: ", _puzzle.hint(), " left ", _puzzle.hints_left(), " used ", _puzzle.hints_used,
+				" numbers caught up ", _puzzle._num_view == _puzzle._state.g.num, " bell ", _puzzle._state.bell,
+				" still lit ", _puzzle._lit.get("cells")))
+			_at(t0 + 11.5, func(): print("after: numbers caught up ", _puzzle._num_view == _puzzle._state.g.num, " lit ", _puzzle._lit.get("cells")))
 			_at(t0 + 11.8, _shot.bind("_played"))
 			_end = t0 + 12.4
 		"pair":

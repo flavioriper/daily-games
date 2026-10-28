@@ -110,7 +110,7 @@ The user: "make hedgehogs experience way better to play, and game itself
 way funnier to play, right now nobody likes it", autonomous, push when
 done. References: the classic dig-and-flag game's mobile apps (tap a number
 to chord, flag controls the most argued-over thing on a phone, no-guess
-boards) and 14 Minesweeper Variants (numbers that can no longer matter dim,
+boards) and a fourteen-variant game of the same genre (numbers that can no longer matter dim,
 a hint that lights the cell, the clues and the reason and leaves the
 deduction to you). The name of the original stays out of everything else.
 
@@ -157,7 +157,10 @@ them nothing.
   the piles they decide and says why on the toast for WHY_HOLD (HH_WHY_*).
   The player may do it themselves; a second press while it stands plays it
   all, free (`hints_left()` counts the reading, `hints_held()` is the
-  badge). A walk, Undo or Reset puts the reading out. The tutorial's hint
+  badge). On Sleepwalkers a reading of bare piles is played one pile a
+  press (a rake may ring the bell, whose walk must land before the next
+  rake, or `_num_view` takes the walked counts early); it stands, free,
+  till done. A walk, Undo or Reset puts the reading out. The tutorial's hint
   page lights, then plays (HTP_HH_HINT_CAP).
 - **Live stars** on the tally (`ui/flat/star_line.gd`, `_rate`): three with
   nobody woken, two with one, one with more; `woken` is the day's tally, so

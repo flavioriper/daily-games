@@ -2318,14 +2318,19 @@ func _lit_stands() -> bool:
 
 ## The second press: the reading played, under the hint's own rules (no
 ## streak, no move counted).
+## On Sleepwalkers a rake may ring the bell, whose walk must land before
+## the next rake, so a reading of bare piles is played one pile a press there,
+## standing (and free) until it is done or a walk puts it out.
 func _play_lit() -> bool:
 	var step := _lit
+	var one := _state.walkers() and String(step.kind) == "rake"
 	_lit = {}
 	fx.cue("hint")
 	_hinting = true
 	var flagged := false
+	var raked := 0
 	for c: int in step.cells:
-		if is_done():
+		if is_done() or (one and raked > 0):
 			break
 		if String(step.kind) == "flag":
 			if _state.flag[c] == 1 or _state.woke[c] == 1:
@@ -2338,6 +2343,17 @@ func _play_lit() -> bool:
 			if _state.flag[c] == 1:
 				_unflag_at[c] = _now()
 			_show_rake(_state.apply_hint({"kind": "rake", "cell": c}), c)
+			raked += 1
+	if one:
+		# Standing for the next press, rimming only what is left; a walk this
+		# rake rang puts it out as it lands (_show_walk), and the HUD is
+		# held till then.
+		var left := PackedInt32Array()
+		for c: int in step.cells:
+			if _state.open[c] == 0:
+				left.append(c)
+		step.cells = left
+		_lit = step
 	if flagged:
 		_after_move()
 	_hinting = false
