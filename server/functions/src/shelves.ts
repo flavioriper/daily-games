@@ -255,17 +255,26 @@ in that language, said with a smile when it can ("Words before 'cake'", \
 
 /** What each band is asked for. */
 const BRIEFS = [
-  (n: number) => `${n} easy puzzles of three groups each (12 words): ideas a ten-year-old knows, at least one honest red herring, and the last group a gentle twist (a partner word, a property).`,
-  (n: number) => `${n} puzzles of four groups each (16 words): one plain group, the others properties or partner words, the last subtle; at least three red herrings.`,
-  (n: number) => `${n} hard puzzles of four groups each (16 words): the last two groups subtle (a partner word, a hidden word, a double meaning), at least four red herrings, so an obvious-looking group of four is a trap.`,
-  (n: number) => `${n} very hard puzzles of five groups each (20 words): the last two groups subtle, at least five red herrings across groups, two plausible groups of five where only four belong.`,
+  (n: number) => `${n} easy puzzle(s) of three groups each (12 words): ideas a ten-year-old knows, at least one honest red herring, and the last group a gentle twist (a partner word, a property).`,
+  (n: number) => `${n} puzzle(s) of four groups each (16 words): one plain group, the others properties or partner words, the last subtle; at least three red herrings.`,
+  (n: number) => `${n} hard puzzle(s) of four groups each (16 words): the last two groups subtle (a partner word, a hidden word, a double meaning), at least four red herrings, so an obvious-looking group of four is a trap.`,
+  (n: number) => `${n} very hard puzzle(s) of five groups each (20 words): the last two groups subtle, at least five red herrings across groups, two plausible groups of five where only four belong.`,
 ];
 
-function writerPrompt(day: number, band: number, taken: string[]): string {
+/** Kinds of subtle group a draft leans on, one a draft, so the drafts of a
+ *  band do not all reach for "words before X". */
+const LEANS = [
+  "a word hidden inside each word, or a partner word before or after",
+  "a double meaning (each word is also something else), or a phrase each completes",
+  "things that do or have something unexpected, or a sound or a letter trick",
+];
+
+function writerPrompt(day: number, band: number, taken: string[], draft = 0): string {
   const stale = taken.length === 0 ? "" :
     `\n\nGroups used lately, not to be used again nor anything close:\n${taken.map((r) => `- ${r}`).join("\n")}`;
-  return `Write the shelves puzzles for day ${day}: ${BRIEFS[band](DRAFTS)} \
-No group's idea may repeat across the puzzles.${stale}`;
+  return `Write the shelves puzzle for day ${day}, draft ${draft + 1}: ${BRIEFS[band](1)} \
+Its subtle group leans on ${LEANS[draft % LEANS.length]}. Answer with exactly one \
+puzzle in "puzzles".${stale}`;
 }
 
 /** A wording's traps that hold: the word is on the board, and the group it
@@ -437,12 +446,21 @@ export function asked(day: unknown): string[] {
 /** A band's puzzles from the model: written, checked, sorted blind. Throws
  *  when the model could not be asked. */
 export async function writeBand(day: number, band: number, taken: string[], prefix = `d${day}b${band}`): Promise<Puzzle[]> {
-  const draft = await ask<{puzzles: Omit<Puzzle, "id">[]}>({
+  // One board a request, the drafts side by side: three boards with their
+  // red herrings in three languages ran Haiku past its 32k tokens.
+  const asks = await Promise.allSettled(Array.from({length: DRAFTS}, (_, i) => ask<{puzzles: Omit<Puzzle, "id">[]}>({
     system: WRITER,
-    prompt: writerPrompt(day, band, taken),
+    prompt: writerPrompt(day, band, taken, i),
     schema: BAND_SCHEMA,
     role: "write",
-  });
+  })));
+  const drafts: Omit<Puzzle, "id">[] = [];
+  for (const a of asks) {
+    if (a.status === "fulfilled" && Array.isArray(a.value.puzzles)) drafts.push(...a.value.puzzles.slice(0, 1));
+    else if (a.status === "rejected") console.error("shelves: a draft failed", a.reason);
+  }
+  if (drafts.length === 0) throw new Error("no draft written");
+  const draft = {puzzles: drafts};
   const written = (Array.isArray(draft.puzzles) ? draft.puzzles : [])
     .map((d, i) => ({id: `${prefix}p${i}`, en: d.en, pt: d.pt, es: d.es}))
     .filter((p): p is Puzzle => validPuzzle(p, band))
