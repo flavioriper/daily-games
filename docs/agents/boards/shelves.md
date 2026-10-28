@@ -51,5 +51,6 @@
     cheered (`FS_CHEER_1..6`, `FS_SNEAKY` for the day's subtlest); a wrong
     four's line varies (`FS_WRONG*`); with one shelf left it goes up by
     itself (`_last_up`, counted as the player's guess, `FS_LAST`).
+  - Bank 16/16/12/11 (Insane by Haiku, ib003 dropped by hand for "JUKEBOX" under "Words before box").
   - Not deployed: the night's new prompts need `tools/deploy_functions.sh`
     (a person runs it); until then the nightly days are the old writer's.
