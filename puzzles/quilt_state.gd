@@ -742,6 +742,13 @@ func hint() -> Dictionary:
 	if best < 0:
 		return {}
 	var target := _free_spot(best)
+	# The made-fun pass (2026-10-28): the bulb sews the move a careful player
+	# could have found next on the right patches alone, when there is one, so
+	# a hint teaches the reading instead of handing out the hardest patch.
+	var read := _read_next()
+	if read.x >= 0:
+		best = read.x
+		target = read.y
 	if target < 0:
 		return {}
 	var want := {}
@@ -765,6 +772,64 @@ func hint() -> Dictionary:
 	history.append({"kind": "hint", "moved": moved, "locked": best})
 	recompute()
 	return {"patch": best, "origin": target, "displaced": displaced}
+
+## The bare cells sewing `p` on `origin` would shut in a pocket smaller
+## than every quilt patch still waiting (`Gen.pocket_cells`): the gap the
+## board shows under a held patch before the drop (the made-fun pass,
+## 2026-10-28). `p` is judged off the quilt, as `fits` judges it, so a sewn
+## patch slid along leaves its old cells bare. Empty when nothing is shut,
+## when nothing else waits, or when the spot does not fit.
+func gaps(p: int, origin: int) -> PackedInt32Array:
+	if fits(p, origin) != OK:
+		return PackedInt32Array()
+	var smallest := 0
+	for q in shapes.size():
+		if q == p or int(at[q]) >= 0 or int(answer[q]) < 0:
+			continue
+		var n: int = shapes[q].size()
+		smallest = n if smallest == 0 else mini(smallest, n)
+	if smallest == 0:
+		return PackedInt32Array()
+	var bare := cover.duplicate()
+	var taking := PackedInt32Array()
+	for i in bare.size():
+		if int(bare[i]) == p:
+			bare[i] = -1
+	for cell in patch_cells(p, origin):
+		taking.append(idx(cell.x, cell.y))
+	return Gen.pocket_cells(cols, rows, region, bare, taking, smallest)
+
+## The next forced move (`Gen.next_read`) on the quilt with only its right
+## patches sewn, as Vector2i(patch, origin) -- the patch moved to the free
+## alike one when the reading names a sewn patch -- or (-1, -1). Its origin
+## is always an answer place of the patch's shape on a unique quilt.
+func _read_next() -> Vector2i:
+	if cols <= 0 or not ok:
+		return Vector2i(-1, -1)
+	var right := PackedInt32Array()
+	right.resize(cols * rows)
+	right.fill(-1)
+	var free: Array[int] = []
+	for p in shapes.size():
+		if int(answer[p]) < 0:
+			continue
+		if int(at[p]) >= 0 and is_right(p, int(at[p])):
+			for cell in patch_cells(p, int(at[p])):
+				right[idx(cell.x, cell.y)] = p
+		else:
+			free.append(p)
+	if free.is_empty():
+		return Vector2i(-1, -1)
+	var move := Gen.next_read(cols, rows, region, shapes, right, free)
+	if move.x < 0:
+		return move
+	# Only an answer place is worth a hint: on a quilt with a second tiling
+	# the reading could be right and still not the stored answer.
+	var key := _key(move.x)
+	for q in shapes.size():
+		if _key(q) == key and int(answer[q]) == move.y:
+			return move
+	return Vector2i(-1, -1)
 
 ## The answer place of `p`'s shape no alike patch is sitting on right now:
 ## its own answer when that is free, else the first free one of its shape's

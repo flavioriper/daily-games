@@ -187,7 +187,7 @@ const SHEEN := 0.36
 ## for SAY_HOLD before they come back (Bridges' and Sudoku's).
 const TIP_CYCLE := 7.0
 const SAY_HOLD := 3.2
-const TIPS := ["QL_TIP_DRAG", "QL_TIP_TURN", "QL_TIP_GHOST", "QL_TIP_OFF", "QL_TIP_ALL"]
+const TIPS := ["QL_TIP_DRAG", "QL_TIP_CORNER", "QL_TIP_GHOST", "QL_TIP_GAP", "QL_TIP_OFF", "QL_TIP_TURN", "QL_TIP_ALL"]
 ## A judged board: a patch taken off cannot be, and every patch does fit
 ## somewhere only on a board without scraps.
 const TIPS_HEARTS := ["QL_TIP_HEARTS", "QL_TIP_DRAG", "QL_TIP_TURN", "QL_TIP_GHOST", "QL_TIP_ALL"]
@@ -210,6 +210,8 @@ const STICKY := 0.75
 const DEAD_PULSES := 3
 const DEAD_BEAT := 0.42
 const DEAD_W := 0.08
+## The rose wash on a gap a held patch would shut (`_gap_cells`).
+const GAP_FILL := 0.22
 ## The sewn-in label: a little cloth tag on the backing's top-right corner
 ## counting the bare squares, bumping when the count changes.
 const TAG_SIZE := Vector2(74.0, 84.0)
@@ -486,6 +488,11 @@ var _flawless := false
 var _wiggle: Dictionary = {}
 ## The dead end's cells and when their pulse starts: {"cells", "at"}.
 var _dead: Dictionary = {}
+## The gap under the held patch (`_gap_cells`), cached by (patch, spot) and
+## the history's length, so a hold that rests on one spot floods once.
+var _gap := PackedInt32Array()
+var _gap_key := Vector2i(-1, -1)
+var _gap_ver := -1
 ## The sewn-in label: the count it shows, when it last changed, its mesh.
 var _tag_count := -1
 var _tag_at := -INF
@@ -2213,6 +2220,34 @@ func _ghost(b, _t: float) -> void:
 		else:
 			Cloth.dash_loop(b, pts, GHOST_W * cell,
 				GHOST_DASH * cell, GHOST_DASH * cell, Pal.BAD)
+	if state == FITS:
+		_gap_cells(b, p, _target())
+
+## The made-fun pass (2026-10-28): under a held patch that fits, the bare
+## squares the drop would shut in a pocket too small for any patch still
+## waiting are washed rose with a dashed rim, steady while it is held there
+## -- the gap a careful player looks for, shown before it costs a move.
+## Easy, Medium and Hard only: Insane says nothing it does not have to, and
+## its scraps would make "too small for what is left" a lie.
+func _gap_cells(b, p: int, target: int) -> void:
+	if max_moves > 0 or _state.judged() or target < 0:
+		return
+	var key := Vector2i(p, target)
+	if _gap_key != key or _gap_ver != _state.history.size():
+		_gap_key = key
+		_gap_ver = _state.history.size()
+		_gap = _state.gaps(p, target)
+	if _gap.is_empty():
+		return
+	var cell := _cell()
+	var o := _origin()
+	for i: int in _gap:
+		var at := o + Vector2(float(i % _state.cols), float(i / _state.cols)) * cell
+		var pts := Face.Builder.round_rect(at + Vector2.ONE * cell * 0.08, Vector2.ONE * cell * 0.84,
+			cell * 0.18)
+		b.polygon(pts, Color(Pal.BAD, GAP_FILL))
+		Cloth.dash_loop(b, pts, DEAD_W * cell, GHOST_DASH * cell, GHOST_DASH * cell,
+			Color(Pal.BAD, HALO_ALPHA))
 
 ## The running stitch along every seam: the board's signature. Each seam's
 ## dashes run out from the patch that made it, one cell of distance per

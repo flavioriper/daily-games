@@ -128,6 +128,19 @@ const HARD_NODES := 60
 ## be counted. The largest band is a 7x7 box, so nothing the bands can grow
 ## comes near it; the guard is for a caller that hands in its own region.
 const MASK_CELLS := 63
+## The share of a band's patches `readable` must sew from the bare quilt
+## with no guess (the made-fun pass, 2026-10-28): all of them on Easy and
+## Medium, so a careful player is never made to guess, and on Hard one
+## patch: its eight keep their harder middle but always open with a move to
+## be found. Reading half of Hard cost 78 ms a deal and 360 at worst, past
+## the 194 ms gate; the first move alone costs 32 and 121 (60 days, this
+## Mac). Insane's banked Scrap Basket is not read.
+const READ_SHARE := [1.0, 1.0, 0.1]
+## Times ATTEMPTS: a readable board is rarer than a unique one (17, 18 and
+## 21 of 60 quilts each band handed out before -- read to the end on Easy
+## and Medium, opened on Hard), so the loop runs longer before it falls
+## back to the first board that passed every other test.
+const READ_ATTEMPTS := 4
 ## One grow can wedge rather than fail -- it runs out of legal accretions
 ## long before its patches are all grown -- but every loop below is bounded
 ## by the cells it is filling, so this guards only the seed search.
@@ -161,7 +174,8 @@ static func generate(rng: RandomNumberGenerator, difficulty: int) -> Dictionary:
 	var b: Dictionary = BANDS[d]
 	var last := {}
 	var unique := {}
-	for attempt in range(1, ATTEMPTS + 1):
+	var readable_board := {}
+	for attempt in range(1, ATTEMPTS * READ_ATTEMPTS + 1):
 		var grown := _grow(rng, b)
 		if grown.is_empty():
 			continue
@@ -175,7 +189,18 @@ static func generate(rng: RandomNumberGenerator, difficulty: int) -> Dictionary:
 			continue
 		if d >= 2 and int(board.nodes) < HARD_NODES:
 			continue
+		if readable_board.is_empty():
+			readable_board = board
+		var shapes: Array = board.shapes
+		var need := ceili(float(READ_SHARE[d]) * shapes.size())
+		var read := readable(int(board.cols), int(board.rows), board.region, shapes,
+			PackedByteArray(), need)
+		board["read"] = read
+		if read < need:
+			continue
 		return board
+	if not readable_board.is_empty():
+		return readable_board
 	if not unique.is_empty():
 		return unique
 	if not last.is_empty():
@@ -650,6 +675,177 @@ static func _has_hole(owner: PackedInt32Array, n: int) -> bool:
 		if owner[idx] < 0 and seen[idx] == 0:
 			return true
 	return false
+
+# ------------------------------------------------------------ the reading
+
+## **How far the quilt can be read** (the made-fun pass, 2026-10-28): the
+## patches a careful player sews with no guess at all, walking from the bare
+## quilt. A spot is *ruled out at a glance* when it would leave a bare pocket
+## smaller than every patch still to sew (`pocket_cells`), and a move is
+## *forced* when a patch has one spot left after that, or a bare square has
+## one patch-and-spot that can cover it. Both are always the answer's own
+## move on a unique quilt -- the answer never leaves a pocket it cannot fill,
+## and the square's one cover is the cover -- so the walk never errs.
+##
+## Measured before the pass (`tests/_probe_ql_fun.gd`, 60 days a band): only
+## 17, 18 and 4 of 60 Easy, Medium and Hard quilts could be read to the end
+## this way, and 30, 22 and 39 of 60 had **no first move at all**: the first
+## patch on was a guess. That, and not the size of the quilt, was why nobody
+## liked it -- trial and error with the outline as the only clue.
+##
+## Returns how many patches the walk sews, stopping once it has `need` (scraps,
+## answer -1, never count: pass `skip` with a 1 for each patch to leave out
+## of the reading).
+static func readable(cols: int, rows: int, region: PackedByteArray, shapes: Array,
+		skip: PackedByteArray = PackedByteArray(), need: int = 1 << 20) -> int:
+	var total := cols * rows
+	var cover := PackedInt32Array()
+	cover.resize(total)
+	cover.fill(-1)
+	var free: Array[int] = []
+	for p in shapes.size():
+		if skip.size() > p and skip[p] == 1:
+			continue
+		free.append(p)
+	var sewn := 0
+	while not free.is_empty() and sewn < need:
+		var move := next_read(cols, rows, region, shapes, cover, free)
+		if move.x < 0:
+			break
+		for k in _cells_at(cols, shapes[move.x], move.y):
+			cover[k] = move.x
+		free.erase(move.x)
+		sewn += 1
+	return sewn
+
+## The next move `readable` would make with `cover` as it stands and `free`
+## the patches still to sew: Vector2i(patch, origin), or (-1, -1) when
+## nothing is forced. The hint asks it too, so a bulb sews the patch the
+## player could have worked out next rather than an arbitrary one.
+static func next_read(cols: int, rows: int, region: PackedByteArray, shapes: Array,
+		cover: PackedInt32Array, free: Array) -> Vector2i:
+	var total := cols * rows
+	var spots := {}
+	for p in free:
+		spots[p] = _glance_spots(cols, rows, region, cover, shapes, free, p)
+	for p in free:
+		var list: PackedInt32Array = spots[p]
+		if list.size() == 1:
+			return Vector2i(p, list[0])
+	var by_cell := {}
+	for p in free:
+		for o in spots[p]:
+			for k in _cells_at(cols, shapes[p], o):
+				if by_cell.has(k):
+					by_cell[k] = Vector2i(-2, -2)
+				else:
+					by_cell[k] = Vector2i(p, o)
+	for k in total:
+		if region[k] == 1 and cover[k] < 0:
+			var v: Vector2i = by_cell.get(k, Vector2i(-2, -2))
+			if v.x >= 0:
+				return v
+	return Vector2i(-1, -1)
+
+## The spots `p` may lie on with `cover` as it is, less those a glance rules
+## out (see `readable`). `free` is every patch still to sew, `p` among them.
+static func _glance_spots(cols: int, rows: int, region: PackedByteArray,
+		cover: PackedInt32Array, shapes: Array, free: Array, p: int) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	var smallest := 0
+	for q in free:
+		if q != p:
+			var n: int = shapes[q].size()
+			smallest = n if smallest == 0 else mini(smallest, n)
+	for origin in cols * rows:
+		var cells := _fit_cells(cols, rows, region, cover, shapes[p], origin)
+		if cells.is_empty():
+			continue
+		if smallest > 0 and not pocket_cells(cols, rows, region, cover, cells, smallest).is_empty():
+			continue
+		out.append(origin)
+	return out
+
+## The cell indices `offs` covers with its origin on `origin`, or an empty
+## array when any of them is off the quilt or already covered.
+static func _fit_cells(cols: int, rows: int, region: PackedByteArray,
+		cover: PackedInt32Array, offs: Array, origin: int) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	var oc := origin % cols
+	var orr := origin / cols
+	for off in offs:
+		var c: int = oc + int(off.x)
+		var r: int = orr + int(off.y)
+		if c >= cols or r >= rows:
+			return PackedInt32Array()
+		var k := r * cols + c
+		if region[k] != 1 or cover[k] >= 0:
+			return PackedInt32Array()
+		out.append(k)
+	return out
+
+static func _cells_at(cols: int, offs: Array, origin: int) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	for off in offs:
+		out.append((origin / cols + int(off.y)) * cols + origin % cols + int(off.x))
+	return out
+
+## The bare cells that `taking` would shut in a pocket smaller than
+## `smallest` -- the gap a player sees nothing left can fill. Empty when
+## every pocket it touches is big enough. Only pockets beside `taking` are
+## walked, and each only until it reaches `smallest`, so it is cheap enough
+## to ask of every spot: a pocket that was already shut before is the
+## board's dead end to name, not this drop's.
+##
+## The board asks it of a held patch to show the gap before the drop;
+## `readable` asks it to rule a spot out.
+static func pocket_cells(cols: int, rows: int, region: PackedByteArray,
+		cover: PackedInt32Array, taking: PackedInt32Array, smallest: int) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	var mine := {}
+	for k in taking:
+		mine[k] = true
+	var shut := {}
+	for t in taking:
+		var tc := t % cols
+		var tr := t / cols
+		for d0 in DIRS:
+			var sc: int = tc + d0.x
+			var sr: int = tr + d0.y
+			if sc < 0 or sr < 0 or sc >= cols or sr >= rows:
+				continue
+			var start := sr * cols + sc
+			if mine.has(start) or shut.has(start) or region[start] != 1 or cover[start] >= 0:
+				continue
+			# Each pocket floods on its own: a walk cut short at `smallest`
+			# must not leave marks that make a later start see a fragment.
+			var seen := {start: true}
+			var pocket: Array[int] = [start]
+			var i := 0
+			var open := false
+			while i < pocket.size():
+				if pocket.size() >= smallest:
+					open = true
+					break
+				var k: int = pocket[i]
+				i += 1
+				var c := k % cols
+				var r := k / cols
+				for dir in DIRS:
+					var qc: int = c + dir.x
+					var qr: int = r + dir.y
+					if qc < 0 or qr < 0 or qc >= cols or qr >= rows:
+						continue
+					var q := qr * cols + qc
+					if seen.has(q) or mine.has(q) or region[q] != 1 or cover[q] >= 0:
+						continue
+					seen[q] = true
+					pocket.append(q)
+			if not open:
+				for k in pocket:
+					shut[k] = true
+				out.append_array(PackedInt32Array(pocket))
+	return out
 
 # ----------------------------------------------------------------- the proof
 

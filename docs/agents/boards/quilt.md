@@ -296,3 +296,47 @@ id, the title and every `QL_*` line are as they were.
   `_draw_quilt` (the entry has a `"card"`). The sounds stand: `place` is
   already the bank's token. Owed: a phone, the tutorial page looked at
   (`quilt_tutorial_diagram.gd` parses).
+
+## Made fun (2026-10-28)
+
+The user: "make quilt experience way better to play, and game itself way
+funnier to play, right now nobody likes it", autonomous, push when done.
+
+- **Measured first** (`tests/_probe_ql_fun.gd`, headless, 60 days a band).
+  The quilt was not too easy: a patch had 8.8 / 11.2 / 17.5 / 21.1 legal
+  spots on the bare quilt (Easy to Insane) and none had only one. What was
+  wrong is that it could not be *read*. Reading means what a careful player
+  does: rule out a spot that leaves a pocket smaller than every patch left,
+  then sew a patch with one spot left, or the one patch that can cover some
+  bare square. That finished only 17, 18 and 4 of 60 Easy, Medium and Hard
+  quilts, and **30, 22 and 39 of 60 had no first move at all**: the first
+  patch on was a guess, and so was most of the rest. A player who drops
+  anything anywhere it fits is stuck on 59-60 of 60.
+- **Readable deals** (`Gen.readable`, `READ_SHARE` [1, 1, 0.1]): Easy and
+  Medium are dealt only if the reading finishes them (60/60 now), and Hard
+  only if it gives a first move (60/60 now; read to the end 9-16/60, so
+  Hard keeps its middle). Node windows and uniqueness are tested as before;
+  the loop runs `ATTEMPTS * READ_ATTEMPTS` and falls back to the first
+  board that passed the rest. Deal on this Mac, 60 days: Easy 6.7 ms (worst
+  21), Medium 11.8 (46), Hard 32 (121), against the 194 gate. Reading half
+  of Hard cost 78 / 360 and was dropped. Insane's bank is untouched (not
+  re-mined; 15/60 of its boards open with a forced move).
+- **The gap under the hand** (`_gap_cells`, `State.gaps`, `Gen.pocket_cells`):
+  on Easy, Medium and Hard, a held patch that fits washes rose (dashed rim)
+  the bare squares its drop would shut in a pocket too small for any patch
+  still waiting. Only pockets beside the patch are walked, each until it
+  reaches the smallest size, cached by (patch, spot, history length). The
+  drop is still taken; the old dead-end line and pulse follow it. Not on
+  Insane (its scraps make "too small for what is left" untrue, and it says
+  nothing it does not have to).
+- **The bulb teaches the reading** (`State._read_next`): a hint sews the
+  next forced move on the quilt with only its right patches counted, when
+  that move is an answer place; otherwise the old pick (fewest spots).
+- **Two tips** in the cycle (`TIPS`, not Insane's): `QL_TIP_CORNER` (start
+  in a corner or a nook, a square only one patch can cover) and
+  `QL_TIP_GAP` (the rose gap), en/pt/es.
+- `tests/_shot_quilt.gd gap`: Medium peak 82 draw calls. Suite 303252/0.
+- Decided for the user, unconfirmed: Hard asks only for a first move; the
+  gap wash on Hard as well; the drop into a gap is not refused; the bank
+  left alone. Not on a phone; no new sound (the wash is silent, as a ghost
+  is).

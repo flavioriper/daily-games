@@ -5,7 +5,8 @@ extends SceneTree
 ##
 ##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_quilt.gd -- [d=0..3] [mode] [rm] [out=<dir>]
 ##
-## Modes: `rest` (the entrance, the ghost finger on Easy and Medium, the
+## Modes: `gap` (a patch held where it would shut a pocket too small for
+## anything left: the rose gap), `rest` (the entrance, the ghost finger on Easy and Medium, the
 ## label), `tap` (a rack patch tapped: the wiggle and the line; then one held
 ## half a cell off its fit, sticky snap's ghost), `stuck` (Easy and Medium:
 ## a drop that leaves the quilt unfinishable, the rose pulse), `wrong` (Hard
@@ -247,6 +248,22 @@ func _script() -> void:
 				print("sticky drop -> at %d (answer %d)" % [int(st.at[p]), int(st.answer[p])]))
 			_at(3.5, _shot.bind("_sewn"))
 			_end = 3.7
+		"gap":
+			# A patch held over a spot that would shut a pocket too small for
+			# anything left (the made-fun pass): the rose gap under the hold.
+			_at(0.9, func() -> void:
+				for q in st.shapes.size():
+					for origin in st.cols * st.rows:
+						if not st.gaps(q, origin).is_empty():
+							print("gap: patch %d at %d shuts %s" % [q, origin, st.gaps(q, origin)])
+							_drag(1.0, q, origin, Vector2.ZERO, true)
+							_at(1.6, _shot.bind("_held"))
+							_at(1.7, func() -> void:
+								_mouse(_drop_point(q, origin), false))
+							_at(2.6, _shot.bind("_dropped"))
+							return
+				print("no gap found"))
+			_end = 2.8
 		"stuck":
 			var pick := _stuck_pick()
 			if pick.is_empty():
