@@ -129,6 +129,9 @@ const GLOW_INSET := 7.0
 const GLOW_TRIM := Vector2(14.0, 21.0)
 const GLOW_RADIUS := 0.19
 const GLOW_ALPHA := 0.45
+## How far a shaped day's tile goes to its picture colour: face and lip.
+const PICTURE_WASH := 0.34
+const PICTURE_LIP := 0.6
 const DASH_INSET := 9.0
 const DASH_TRIM := Vector2(18.0, 25.0)
 const DASH_RADIUS := 0.18
@@ -283,6 +286,18 @@ const QUICK := 6.0
 const STREAK := 3
 const BIG := 7
 const BUBBLE_FONT := 36
+## A line in a dark pill under the slots (Sudoku's toast, 2026-10-28): the
+## tip card these lines were written for is not on a levelled board's screen,
+## so "You tried that one already" and the wishes left were said to nobody.
+const TOAST_HOLD := 2.8
+const TOAST_HOLD_LONG := 4.2
+const TOAST_H := 70.0
+const TOAST_PAD := 60.0
+const TOAST_RADIUS := 26.0
+const TOAST_FONT := 30
+## A trail that spells a hidden word over other tiles: a soft wobble on the
+## word's slots, free, with its line.
+const ELSEWHERE_TIME := 0.5
 const BUBBLE_HOLD := 1.4
 ## The gags, one a word, picked off the word: hearts, a conga, a butterfly,
 ## a twirl, or nothing.
@@ -366,6 +381,11 @@ var _placed := false
 var _shift := 0.0
 var _slide_tw: Tween
 var _skip_enter := false
+var _toast := ""
+var _toast_at := -100.0
+var _toast_hold := 0.0
+var _toast_mesh: ArrayMesh
+var _toast_mesh_for := ""
 ## The board's own effects node, as on every flat board: the hint's ring and
 ## sparkle come through it and nowhere else.
 var fx: Node2D
@@ -442,7 +462,7 @@ enum { PART_SKY, PART_CELL, PART_RIBBON, PART_BEAM, PART_GLOW, PART_FLOWER, PART
 enum { SLOT_BED, SLOT_PIECE }
 ## The live beam's run: the most a trail across the whole field draws.
 const BEAM_ROOM := 4000
-const GLOWS_KEPT := 2
+const GLOWS_KEPT := 9
 var _tip_text := ""
 var _tip_mood := Face.Expr.HAPPY
 var _tip_idx := 0
@@ -593,7 +613,10 @@ func _ready() -> void:
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	# A daily takes the day's theme's words when this phone holds them.
-	_state.build(rng, difficulty, ThemedPictures.words(daily_key, puzzle_id()) if bank_step == 0 else {})
+	# The field is the day's thing (the user, 2026-10-28), the square when no
+	# thing cuts for it.
+	var shape := State.shape_for(rng, difficulty, daily_key, bank_step)
+	_state.build(rng, difficulty, ThemedPictures.words(daily_key, puzzle_id()) if bank_step == 0 else {}, shape)
 	_trail = []
 	_beam_at = -100.0
 	_grew_at = -100.0
@@ -683,7 +706,7 @@ func day_dict() -> Dictionary:
 		"payload": {"n": n, "rows": rows, "lengths": State.lens_for(_state.band), "lang": Locale.current()},
 		"solution": {"words": words},
 		"metrics": {"size": n, "words": words.size(), "walls": _state.walls.size(),
-			"letters": n * n - _state.walls.size(), "bends": bends,
+			"letters": _state.letters.size(), "bends": bends, "shape": _state.shape_id,
 			"longest": (_state.words[_state.words.size() - 1]["path"] as Array).size(),
 			"hints": int(HINTS_BY_BAND[_state.band]), "wishes": _state.wishes,
 			"dark": _state.band >= State.NIGHT_BAND},
@@ -700,9 +723,18 @@ func day_dict() -> Dictionary:
 func _cell_for(available: float) -> float:
 	if _state.n <= 0:
 		return 0.0
-	var span := float(_state.n - 1) * GAP
-	var across := (size.x - 2.0 * _side() - span) / float(_state.n)
-	var down := (available - 2.0 * INSET - SLOTS_H - SLOTS_PAD - span) / float(_state.n)
+	# A shaped day's cells are sized by the shape's own bounds, not its box.
+	var wide := maxi(_state.used.size.x, 1)
+	var tall := maxi(_state.used.size.y, 1)
+	var across := (size.x - 2.0 * _side() - float(wide - 1) * GAP) / float(wide)
+	var down := (available - 2.0 * INSET - SLOTS_H - SLOTS_PAD - float(tall - 1) * GAP) / float(tall)
+	if not _state.mask.is_empty():
+		# Never taller than the band's own square would stand, so the slots
+		# and the scenery band keep their place under a narrow thing.
+		var n0: int = 5 + int(_state.band)
+		var cell0 := (size.x - 2.0 * _side() - float(n0 - 1) * GAP) / float(n0)
+		var high := float(n0) * cell0 + float(n0 - 1) * GAP
+		down = minf(down, (high - float(tall - 1) * GAP) / float(tall))
 	return maxf(0.0, minf(across, down))
 
 func _cell() -> float:
@@ -714,16 +746,28 @@ func _field_size() -> float:
 
 ## The field's top-left inside this Control's rect: centred across the card,
 ## its top at the card's own inset.
+##
+## On a shaped day the grid's origin is set so the shape's own bounds are the
+## ones centred, and its top row is the card's top.
 func _origin() -> Vector2:
-	return Vector2((size.x - _field_size()) * 0.5, _top())
+	var step := _cell() + GAP
+	var u: Rect2i = _state.used
+	var w := float(u.size.x) * step - GAP
+	return Vector2((size.x - w) * 0.5 - float(u.position.x) * step, _top() - float(u.position.y) * step)
+
+## The shape's bounds on the card: the whole square on a plain day.
+func _used_box() -> Rect2:
+	var step := _cell() + GAP
+	var u: Rect2i = _state.used
+	return Rect2(_origin() + Vector2(u.position) * step, Vector2(u.size) * step - Vector2.ONE * GAP)
 
 ## The centre of the field: what the entrance pops about.
 func _field_centre() -> Vector2:
-	return _origin() + Vector2.ONE * (_field_size() * 0.5)
+	return _used_box().get_center()
 
 ## The slots' band: SLOTS_PAD under the field, SLOTS_H tall.
 func _slots_top() -> float:
-	return _origin().y + _field_size() + SLOTS_PAD
+	return _used_box().end.y + SLOTS_PAD
 
 ## The top-left of cell (x across, y down).
 func _corner(cell: Vector2i) -> Vector2:
@@ -1100,6 +1144,7 @@ func _draw() -> void:
 		draw_mesh(_air, null)
 		shown.append(_air)
 	_draw_stage(t, shown)
+	_draw_toast(t)
 	_shown = shown
 
 ## Everything on the field with no glyph on it, in one mesh and in the one
@@ -1259,7 +1304,17 @@ func _bed(b, at: Vector2, box: Vector2, r: float, lip: float, floor_col: Color, 
 ## A wall: a bed sunk into the card in the family's warm stone, with a leaf
 ## pressed into its floor. It is a hole in the field and not a blank tile.
 func _wall(cell: Vector2i, alpha: float, t: float) -> void:
-	_rm.put(SHAPE_WALL, [Color(BED_SHADE, alpha), Color(BED, alpha), Color(Pal.TEXT, WALL_LEAF_INK * alpha)],
+	var bed: Color = BED
+	var shade: Color = BED_SHADE
+	# A wall in the day's shape takes a breath of its picture colour, so the
+	# thing reads whole round its leaves.
+	var fam := _state.family(cell)
+	if fam != "":
+		var bead: Color = Pal.PG_BEADS.get(fam, BED)
+		var k := clampf(bead.s * 1.6, 0.25, 1.0) * PICTURE_WASH * 0.5
+		bed = bed.lerp(bead, k)
+		shade = shade.lerp(bead.darkened(0.3), k)
+	_rm.put(SHAPE_WALL, [Color(shade, alpha), Color(bed, alpha), Color(Pal.TEXT, WALL_LEAF_INK * alpha)],
 		_cell_xf(cell, t) * _at_corner(_corner(cell)))
 
 ## A cell's own tone, -1 to 1, off its hash.
@@ -1278,6 +1333,18 @@ func _tile(cell: Vector2i, t: float, alpha := 1.0) -> void:
 	var face: Color = _toned(Pal.SURFACE.lerp(Pal.SURFACE_HI, PAPER_CROWN), tone)
 	var rim: Color = Pal.SURFACE
 	var lip: Color = Pal.SURFACE_HI.lerp(Pal.LINE, PAPER_LIP)
+	# On a shaped day a tile wears the picture's colour under it, washed so
+	# the letter reads, and its lip the colour deeper: the field is the
+	# thing (Paper Planes' planes wear theirs).
+	var fam := _state.family(cell)
+	if fam != "":
+		var bead: Color = Pal.PG_BEADS.get(fam, Pal.SURFACE)
+		# A grey or white thing stays near paper: a grey tile reads as one
+		# switched off.
+		var k := clampf(bead.s * 1.6, 0.25, 1.0)
+		face = face.lerp(bead, PICTURE_WASH * k)
+		rim = rim.lerp(bead, PICTURE_WASH * 0.6 * k)
+		lip = lip.lerp(bead.darkened(0.25), PICTURE_LIP * k)
 	var i := _lit_word(cell, t)
 	if i >= 0:
 		face = _toned(WORD_TILES[i % WORD_TILES.size()], tone)
@@ -1615,10 +1682,14 @@ func _glow(i: int, t: float) -> void:
 	if shown <= 0:
 		return
 	var path: Array = _state.words[i]["path"]
-	for k in mini(shown, path.size()):
-		# The glow rides its tile: it is part of that cell's face, so it takes
-		# the press and the hop with it rather than sitting still under one.
-		_rm.put(SHAPE_GLOW, [Color(Pal.SUN_RAY, GLOW_ALPHA), Pal.SUN_DEEP],
+	# The first step lights the word's every tile softly, the second its
+	# start in full. The glow rides its tile: it is part of that cell's face,
+	# so it takes the press and the hop with it rather than sitting still
+	# under one.
+	for k in path.size():
+		var start: bool = k == 0 and shown >= 2
+		_rm.put(SHAPE_GLOW, [Color(Pal.SUN_RAY, GLOW_ALPHA if start else GLOW_ALPHA * 0.55),
+			Pal.SUN_DEEP if start else Color(Pal.SUN_DEEP, 0.45)],
 			_tile_xf(path[k], t) * _at_corner(_corner(path[k])))
 
 ## The closed outline `pts` cut into dashes of `on` with `off` between them.
@@ -1985,11 +2056,17 @@ func _glyph(font: Font, px: int, text: String, ink: Color, at: Vector2) -> void:
 ## it; both are read off the clock in _draw, so all this has to do is start
 ## it. _animating() knows how long it runs.
 func _enter() -> void:
+	_say_shape()
 	if _skip_enter:
 		return
 	_opened = _now()
 	fx.cue("enter")
 	_refresh()
+
+## The day's thing, said once as the field comes in.
+func _say_shape() -> void:
+	if _state.shape_name != "" and _state.order.is_empty():
+		_tell(tr("WT_SHAPE") % _state.shape_name, TOAST_HOLD_LONG)
 
 # --- input ---
 
@@ -2068,9 +2145,11 @@ func _near_cell(local: Vector2) -> Vector2i:
 
 ## Whether a local point is off the field, by more than half a gap.
 func _off_field(local: Vector2) -> bool:
-	var o := _origin() - Vector2.ONE * GAP * 0.5
-	var w := _field_size() + GAP
-	return local.x < o.x or local.y < o.y or local.x > o.x + w or local.y > o.y + w
+	if not _used_box().grow(GAP * 0.5).has_point(local):
+		return true
+	# On a shaped day the void round the thing is off the field too.
+	var p := (local - _origin() + Vector2.ONE * GAP * 0.5) / (_cell() + GAP)
+	return not _state.inside(Vector2i(int(floor(p.x)), int(floor(p.y))))
 
 ## The finger has arrived on `cell`: the beam starts growing toward it and
 ## the tile under it starts sinking. The tile it left springs back to the
@@ -2117,6 +2196,15 @@ func _release(cancel := false) -> void:
 		if path.size() > 1 and not Motion.reduce:
 			_ghost = {"path": path, "at": t}
 			_busy_for(BEAM_TIME)
+		# The right word on the wrong tiles is never a miss: it is half found,
+		# and the board says so (the old board unwound it in silence, and on
+		# Hard took a wish for it).
+		var spelt: int = _state.spelt_elsewhere(path) if not cancel else -1
+		if spelt >= 0:
+			fx.cue("select", LET_GO_PITCH)
+			_tell(tr("WT_ELSEWHERE") % String(_state.words[spelt]["word"]), TOAST_HOLD_LONG)
+			_refresh()
+			return
 		# A trail that only unwinds is still a thing let go: the trace's tick, a
 		# little lower, unless the seed blown off already answered.
 		if cancel or not _missed(path, t):
@@ -2153,7 +2241,7 @@ func _missed(path: Array, t: float) -> bool:
 	if plausible and not again:
 		_streak = 0
 	if again and _state.counts_wishes():
-		_say(tr("WT_TRIED"), Face.Expr.HAPPY)
+		_tell(tr("WT_TRIED"))
 		return false
 	if not cost:
 		return false
@@ -2171,9 +2259,9 @@ func _missed(path: Array, t: float) -> bool:
 		_run_out(t)
 	elif left <= 2:
 		_after(0.6, fx.cue.bind("wish_low"))
-		_say(tr("WT_WISHES_ONE") if left == 1 else tr("WT_WISHES_N") % left, Face.Expr.WORRIED)
+		_tell(tr("WT_WISHES_ONE") if left == 1 else tr("WT_WISHES_N") % left, TOAST_HOLD, Face.Expr.WORRIED)
 	else:
-		_say(tr("WT_WISH_GONE") % left, Face.Expr.HAPPY)
+		_tell(tr("WT_WISH_GONE") % left)
 	return true
 
 # --- the tip's line ---
@@ -2188,6 +2276,15 @@ func _speak() -> void:
 	if is_done():
 		return
 	_say(_left_line(), Face.Expr.HAPPY)
+
+## A line the player is meant to read now: the tip's line and the toast.
+func _tell(text: String, hold := TOAST_HOLD, mood := Face.Expr.HAPPY) -> void:
+	_say(text, mood)
+	_toast = text
+	_toast_at = _now()
+	_toast_hold = hold
+	_busy_for(hold)
+	queue_redraw()
 
 func _say(text: String, mood: int) -> void:
 	_tip_text = text
@@ -2269,10 +2366,14 @@ func hint() -> bool:
 	if not _state.hint():
 		return false
 	hints_used += 1
-	if cell.x >= 0:
+	if shown == 0:
+		for c in _state.words[pick]["path"]:
+			_fx_at(c, Pal.LEAF)
+	elif cell.x >= 0:
 		_fx_at(cell, Pal.LEAF)
 	fx.cue("hint")
-	_say(tr("WT_HINT_START") if shown == 0 else tr("WT_HINT_MORE"), Face.Expr.HAPPY)
+	_tell(tr("WT_HINT_SET") % (_state.words[pick]["path"] as Array).size() if shown == 0 else tr("WT_HINT_FROM"),
+		TOAST_HOLD_LONG)
 	_refresh()
 	moved.emit()
 	return true
@@ -2562,6 +2663,47 @@ func _drop_bubble() -> void:
 	if is_instance_valid(_bubble):
 		_bubble.queue_free()
 	_bubble = null
+
+## The toast: a dark pill centred just under the slots, over the band, on
+## the screen only (a tutorial page's quietened board has no band to hold it).
+func _draw_toast(t: float) -> void:
+	if _toast == "" or not _bleed or is_done():
+		return
+	var since := t - _toast_at
+	if since < 0.0 or since >= _toast_hold:
+		return
+	var alpha := minf(Motion.appear_level(since, Motion.DROP_FADE),
+		Motion.appear_level(_toast_hold - since, Motion.DROP_FADE))
+	if alpha <= 0.0:
+		return
+	var font: Font = CozyTheme.body(600)
+	var room := size.x - 2.0 * _side()
+	var text_room := room - TOAST_PAD
+	var one: float = font.get_string_size(_toast, HORIZONTAL_ALIGNMENT_LEFT, -1, TOAST_FONT).x
+	var lines := 1
+	var text_w := one
+	if one > text_room:
+		var wrapped: Vector2 = font.get_multiline_string_size(_toast, HORIZONTAL_ALIGNMENT_CENTER, text_room, TOAST_FONT)
+		lines = maxi(1, int(round(wrapped.y / font.get_height(TOAST_FONT))))
+		text_w = minf(text_room, wrapped.x)
+	var w := minf(room, text_w + TOAST_PAD)
+	var h := TOAST_H + float(lines - 1) * font.get_height(TOAST_FONT)
+	var key := "%d|%d" % [int(w), int(h)]
+	if _toast_mesh == null or _toast_mesh_for != key:
+		var b := Face.Builder.new()
+		b.fan(Face.Builder.round_rect(Vector2(-w, -h) * 0.5, Vector2(w, h), TOAST_RADIUS), Pal.TEXT)
+		_toast_mesh = b.mesh()
+		_toast_mesh_for = key
+	var mid := Vector2(size.x * 0.5, _band_top() + h * 0.5 + 6.0)
+	draw_mesh(_toast_mesh, null, Transform2D(0.0, mid), Color(Color.WHITE, alpha))
+	var top := mid.y - h * 0.5 + (TOAST_H - font.get_height(TOAST_FONT)) * 0.5 + font.get_ascent(TOAST_FONT)
+	var left := mid.x - w * 0.5 + TOAST_PAD * 0.5
+	if lines == 1:
+		draw_string(font, Vector2(left, top), _toast, HORIZONTAL_ALIGNMENT_LEFT, -1,
+			TOAST_FONT, Color(Pal.PAPER, alpha))
+	else:
+		draw_multiline_string(font, Vector2(left, top), _toast, HORIZONTAL_ALIGNMENT_CENTER,
+			w - TOAST_PAD, TOAST_FONT, lines, Color(Pal.PAPER, alpha))
 
 # --- the air: the dandelion, hearts and butterflies ---
 
@@ -2874,8 +3016,8 @@ func _levels(t: float) -> Dictionary:
 					var k := c + Vector2i(dx, dy)
 					if out.has(k):
 						out[k] = 1.0
-		for idx in mini(_state.hint_shown(i), path.size()):
-			out[path[idx]] = 1.0
+		for c in _state.hint_lit(i):
+			out[c] = 1.0
 	return out
 
 ## The night sky under the field: a deep blue pond the tiles stand in, with a
@@ -2896,9 +3038,8 @@ func _night_sky(t: float) -> void:
 ## The night sky under the field as this layout lays it: a deep blue pond
 ## the tiles stand in, with a star at some of the corners where four meet.
 func _sky_into(b, sky: Color, star: Color) -> void:
-	var o := _origin() - Vector2.ONE * GAP * 0.5
-	var w := _field_size() + GAP
-	b.fan(Face.Builder.round_rect(o, Vector2(w, w), _cell() * RADIUS + GAP * 0.5), sky)
+	var box := _used_box().grow(GAP * 0.5)
+	b.fan(Face.Builder.round_rect(box.position, box.size, _cell() * RADIUS + GAP * 0.5), sky)
 	var step := _cell() + GAP
 	for y in range(1, _state.n):
 		for x in range(1, _state.n):

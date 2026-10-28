@@ -193,6 +193,27 @@ func _next_word() -> Array:
 
 func _script() -> void:
 	match _mode:
+		"hint":
+			# The bulb twice: every tile of the shortest word, then its start.
+			_at(4.6, func() -> void: _puzzle.hint())
+			_at(5.4, _shot.bind("_set"))
+			_at(6.0, func() -> void: _puzzle.hint())
+			_at(6.8, _shot.bind("_start"))
+			_end = 7.0
+		"elsewhere":
+			# The shortest word spelt over the head of the longest one's tiles:
+			# right word, wrong way -- free, and said.
+			_at(4.6, func() -> void:
+				var st = _puzzle._state
+				var w: String = st.words[0]["word"]
+				var long: Array = st.words[st.words.size() - 1]["path"]
+				var q: Array = long.slice(0, w.length())
+				for k in q.size():
+					st.letters[q[k]] = w.substr(k, 1)
+				_puzzle._refresh()
+				_trace(q))
+			_at(5.2, _shot.bind("_said"))
+			_end = 5.4
 		"rest":
 			_at(0.1, _shot.bind("_enter"))
 			_at(1.2, func() -> void:

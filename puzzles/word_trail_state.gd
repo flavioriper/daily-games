@@ -31,6 +31,21 @@ const WISH_BACK := 3
 const NIGHT_BAND := 3
 const ATTEMPTS := 60
 const RESTARTS := 120
+## The day's shape (the user, 2026-10-28: "add some different shapes based on
+## daily theme on word trail to avoid being just boring squares (use as
+## reference the paper planes)"). The field is the day's thing cut to a
+## square box (PlanesState.cut_shape) a little bigger than the band's square,
+## so its cells hold the band's words with a few walls to spare: a cut is
+## taken when its cells number the band's letters plus SHAPE_SPARE.x to
+## SHAPE_SPARE.y and fill at most SHAPE_FILL of the box (more is a block, not
+## a shape). Cells outside it are void: no tile, no wall, nothing drawn.
+const Planes = preload("res://puzzles/planes_state.gd")
+const SHAPE_SPARE := [Vector2i(2, 9), Vector2i(2, 10), Vector2i(3, 13), Vector2i(3, 19)]
+const SHAPE_GROW := 4
+## No box past this many cells across: a finger needs a tile at least a
+## tenth of the phone's width.
+const SHAPE_MAX_N := 10
+const SHAPE_FILL := 0.86
 
 static var _words_cache: Dictionary = {}
 static var _words_lang := ""
@@ -51,6 +66,14 @@ var wishes := 0
 var tried: Dictionary = {}
 ## The words shown on the out card's "Show the words", not found.
 var shown: Dictionary = {}
+## The cells of the day's shape (cell -> true), or {} for the plain square;
+## the thing's id and its name, said once on the board.
+var mask: Dictionary = {}
+## The cells the field covers, walls and tiles: the square, or the shape's
+## own bounds, which the board centres and sizes its cells by.
+var used := Rect2i()
+var shape_id := ""
+var shape_name := ""
 
 static func lens_for(difficulty: int) -> Array:
 	return BANDS[clampi(difficulty, 0, BANDS.size() - 1)]
@@ -80,14 +103,43 @@ static func word_bank() -> Dictionary:
 ## `themed` is the day's theme's words by length, the best first
 ## (ThemedPictures.words): a path takes one its bucket holds before a
 ## random one, so the grid is laid as ever and only its words change.
-func build(rng: RandomNumberGenerator, difficulty: int, themed: Dictionary = {}) -> void:
+##
+## `shape` is shape_for()'s cut for this band, or {} for the square. A shape
+## the walks cannot fill in ATTEMPTS is dropped for the square, so a day
+## always deals.
+func build(rng: RandomNumberGenerator, difficulty: int, themed: Dictionary = {}, shape: Dictionary = {}) -> void:
 	var lens: Array = lens_for(difficulty)
 	band = clampi(difficulty, 0, BANDS.size() - 1)
 	n = 5 + band
+	mask = {}
+	shape_id = ""
+	shape_name = ""
+	if not shape.is_empty():
+		var kept_n := n
+		n = int(shape.n)
+		mask = shape.cells
+		var tried_shape := _pick_paths(rng, lens)
+		if not tried_shape.is_empty():
+			shape_id = String(shape.get("id", ""))
+			shape_name = String(shape.get("name", ""))
+			misses = 0
+			wishes = int(WISHES[band])
+			tried = {}
+			shown = {}
+			_write(rng, tried_shape, themed)
+			return
+		n = kept_n
+		mask = {}
 	misses = 0
 	wishes = int(WISHES[band])
 	tried = {}
 	shown = {}
+	_write(rng, _pick_paths(rng, lens, true), themed)
+
+## The best of ATTEMPTS walks by the quality rules, or [] when none passed
+## them; `loose_ok` takes the first that grew at all over nothing (the
+## square always deals).
+func _pick_paths(rng: RandomNumberGenerator, lens: Array, loose_ok := false) -> Array:
 	var best: Array = []
 	var best_score := 1 << 30
 	var loose: Array = []
@@ -110,9 +162,9 @@ func build(rng: RandomNumberGenerator, difficulty: int, themed: Dictionary = {})
 		if score < best_score:
 			best_score = score
 			best = paths
-	if best.is_empty():
+	if best.is_empty() and loose_ok:
 		best = loose
-	_write(rng, best, themed)
+	return best
 
 ## Longest first: a random free start, then a self-avoiding walk through free
 ## neighbours, restarting that word if it paints itself into a corner.
@@ -126,7 +178,7 @@ func _grow(rng: RandomNumberGenerator, lens: Array) -> Array:
 		var got: Array = []
 		for tries in RESTARTS:
 			var start := Vector2i(rng.randi_range(0, n - 1), rng.randi_range(0, n - 1))
-			if used.has(start):
+			if used.has(start) or not inside(start):
 				continue
 			var path: Array = [start]
 			used[start] = true
@@ -135,7 +187,7 @@ func _grow(rng: RandomNumberGenerator, lens: Array) -> Array:
 				var opts: Array = []
 				for d in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
 					var k: Vector2i = here + d
-					if k.x < 0 or k.y < 0 or k.x >= n or k.y >= n or used.has(k):
+					if not inside(k) or used.has(k):
 						continue
 					opts.append(k)
 				if opts.is_empty():
@@ -212,10 +264,24 @@ func _write(rng: RandomNumberGenerator, paths: Array, themed: Dictionary = {}) -
 	for y in n:
 		for x in n:
 			var cell := Vector2i(x, y)
-			if not letters.has(cell):
+			if inside(cell) and not letters.has(cell):
 				walls.append(cell)
+	settle_used()
 	order = []
 	given = {}
+
+## `used` from the walls and the letters.
+func settle_used() -> void:
+	var lo := Vector2i(n, n)
+	var hi := Vector2i(-1, -1)
+	for c: Vector2i in letters.keys() + walls:
+		lo = Vector2i(mini(lo.x, c.x), mini(lo.y, c.y))
+		hi = Vector2i(maxi(hi.x, c.x), maxi(hi.y, c.y))
+	used = Rect2i(lo, hi - lo + Vector2i.ONE) if hi.x >= 0 else Rect2i(0, 0, n, n)
+
+## The picture's colour family under `cell` on a shaped day, or "".
+func family(cell: Vector2i) -> String:
+	return String(mask.get(cell, "")) if not mask.is_empty() else ""
 
 # --- the quality rules (spec section 4) ---
 func _total_bends(paths: Array) -> int:
@@ -265,12 +331,16 @@ func _full_wall_line(paths: Array) -> bool:
 	for i in n:
 		var row := true
 		var col := true
+		var row_any := false
+		var col_any := false
 		for j in n:
+			row_any = row_any or inside(Vector2i(j, i))
+			col_any = col_any or inside(Vector2i(i, j))
 			if open_cells.has(Vector2i(j, i)):
 				row = false
 			if open_cells.has(Vector2i(i, j)):
 				col = false
-		if row or col:
+		if (row and row_any) or (col and col_any):
 			return true
 	return false
 
@@ -281,7 +351,7 @@ func _wall_blocks(paths: Array) -> int:
 	for y in n:
 		for x in n:
 			var cell := Vector2i(x, y)
-			if open_cells.has(cell) or seen.has(cell):
+			if open_cells.has(cell) or seen.has(cell) or not inside(cell):
 				continue
 			blocks += 1
 			seen[cell] = true
@@ -290,7 +360,7 @@ func _wall_blocks(paths: Array) -> int:
 				var c: Vector2i = stack.pop_back()
 				for d in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
 					var k: Vector2i = c + d
-					if k.x < 0 or k.y < 0 or k.x >= n or k.y >= n:
+					if not inside(k):
 						continue
 					if open_cells.has(k) or seen.has(k):
 						continue
@@ -299,6 +369,12 @@ func _wall_blocks(paths: Array) -> int:
 	return blocks
 
 # --- derived, never stored (the Queens rule) ---
+## On the field at all: in the grid and, on a shaped day, in the shape.
+func inside(cell: Vector2i) -> bool:
+	if cell.x < 0 or cell.y < 0 or cell.x >= n or cell.y >= n:
+		return false
+	return mask.is_empty() or mask.has(cell)
+
 func is_wall(cell: Vector2i) -> bool:
 	return not letters.has(cell)
 
@@ -363,8 +439,13 @@ func reset_board() -> void:
 	while not order.is_empty():
 		words[order.pop_back()]["found"] = false
 
-## The one hint this game can give: the words are hidden but the letters are
-## not, so the only thing a player can be short of is where a word starts.
+## The hint comes in two steps a word, as the theme-grid games give it (the
+## user, 2026-10-28: "make word trail ... way funnier to play"): the first
+## lights every tile of the shortest hidden word, in no order -- the letters
+## are on show, so the set is most of the way to the word -- and the second
+## lights where it starts. `given[i]` is the steps word i has had.
+const HINT_STEPS := 2
+
 func hint() -> bool:
 	var pick := hint_target()
 	if pick < 0:
@@ -373,15 +454,15 @@ func hint() -> bool:
 	return true
 
 ## Which word the next hint would light, or -1 when there is none: the
-## shortest unfound word that still has a tile left to give. `hint()` picks
-## through this, and so does the board, which has to know which tile to ring
-## before it spends the hint -- one seam, so the two can never disagree.
+## shortest unfound word with a step left to give. `hint()` picks through
+## this, and so does the board, which has to know which tile to ring before
+## it spends the hint -- one seam, so the two can never disagree.
 func hint_target() -> int:
 	var pick := -1
 	for i in words.size():
 		if words[i]["found"]:
 			continue
-		if hint_shown(i) >= (words[i]["path"] as Array).size():
+		if hint_shown(i) >= HINT_STEPS:
 			continue
 		if pick < 0 or (words[i]["path"] as Array).size() < (words[pick]["path"] as Array).size():
 			pick = i
@@ -390,13 +471,30 @@ func hint_target() -> int:
 func hint_shown(index: int) -> int:
 	return int(given.get(index, 0))
 
-## The next tile a hint would light, or (-1, -1) when there is none.
+## The tiles word `index`'s hints have lit: all of them after the first.
+func hint_lit(index: int) -> Array:
+	return (words[index]["path"] as Array) if hint_shown(index) > 0 else []
+
+## The tile a hint on word `index` would ring: its middle for the first step
+## (the ring says nothing of the order), its start for the second; (-1, -1)
+## when there is none.
 func hint_cell(index: int) -> Vector2i:
 	var shown := hint_shown(index)
 	var path: Array = words[index]["path"]
-	if shown >= path.size():
+	if shown >= HINT_STEPS:
 		return Vector2i(-1, -1)
-	return path[shown]
+	return path[0] if shown == 1 else path[path.size() / 2]
+
+## The unfound word a trail spells over tiles that are not its own, or -1:
+## the word is right, the way is not. Never a miss.
+func spelt_elsewhere(path: Array) -> int:
+	var text := ""
+	for c in path:
+		text += String(letters.get(c, ""))
+	for i in words.size():
+		if not words[i]["found"] and String(words[i]["word"]) == text:
+			return i
+	return -1
 
 # --- the dandelion and the night (polish spec 2026-09-30) ---
 func night() -> bool:
@@ -454,3 +552,107 @@ func reveal_next() -> int:
 			order.append(i)
 			return i
 	return -1
+
+# --- the day's shape ---
+static var _bank_fits: Dictionary = {}
+
+## The day's thing cut for `difficulty`: {id, name, n, cells}, or {} for the
+## square. The themed thing when this phone holds one and it cuts for every
+## band, else one of the bank's things that cuts for every band, picked by
+## the day so every phone cuts the same (by `rng` with no day), so a day's
+## four bands are the same thing.
+static func shape_for(rng: RandomNumberGenerator, difficulty: int, daily_key := 0, bank_step := 0) -> Dictionary:
+	var b := clampi(difficulty, 0, BANDS.size() - 1)
+	if bank_step == 0:
+		for size in Planes.SHAPE_SIZES:
+			var pic := ThemedPictures.picture(daily_key, size)
+			if pic.is_empty():
+				continue
+			var all := true
+			for d in BANDS.size():
+				if fit_shape(pic.rows, d).is_empty():
+					all = false
+					break
+			if all:
+				var cut := fit_shape(pic.rows, b)
+				cut["id"] = String(pic.id)
+				cut["name"] = String(pic.get("name", ""))
+				return cut
+	var ids := shared_shapes()
+	if ids.is_empty():
+		return {}
+	var pick := rng.randi_range(0, ids.size() - 1)
+	if daily_key != 0:
+		pick = posmod(Daily.fnv1a("trail_shape|%d|%d" % [daily_key, bank_step]), ids.size())
+	var pic: Dictionary = ids[pick]
+	var cut := fit_shape(pic.rows, b)
+	cut["id"] = String(pic.id)
+	cut["name"] = tr_name(String(pic.get("name", "")))
+	return cut
+
+static func tr_name(key: String) -> String:
+	var shown := TranslationServer.translate(key)
+	return shown if shown != key else ""
+
+## The bank's single things (Pixel Garden's 10 and 12 bands) that cut for
+## every band, in the bank's order: [{id, name, rows}].
+static func shared_shapes() -> Array:
+	if _bank_fits.has("all"):
+		return _bank_fits["all"]
+	var out: Array = []
+	var doc = JSON.parse_string(FileAccess.get_file_as_string(Planes.PIXEL_BANK))
+	if doc is Dictionary and doc.get("bands") is Array and (doc.bands as Array).size() >= 2:
+		for bb in [0, 1]:
+			for pic in doc.bands[bb]:
+				var all := true
+				for d in BANDS.size():
+					if fit_shape(pic.rows, d).is_empty():
+						all = false
+						break
+				if all:
+					out.append(pic)
+	_bank_fits["all"] = out
+	return out
+
+## A picture's `rows` cut for band `b`: the smallest square box from the
+## band's square up SHAPE_GROW cells whose cut holds the band's letters with
+## SHAPE_SPARE walls, is not a block and is one piece, centred in the box:
+## {n, cells}, or {}.
+static func fit_shape(rows: Array, b: int) -> Dictionary:
+	var need := 0
+	for l in BANDS[b]:
+		need += int(l)
+	var spare: Vector2i = SHAPE_SPARE[b]
+	for box in range(5 + b, mini(5 + b + SHAPE_GROW, SHAPE_MAX_N) + 1):
+		var cut := Planes.cut_shape(rows, Vector2i(box, box))
+		if cut.is_empty():
+			continue
+		var cells: Dictionary = cut.cells
+		var count := cells.size()
+		if count < need + spare.x or count > need + spare.y:
+			continue
+		if float(count) > SHAPE_FILL * float(box * box):
+			continue
+		var off := Vector2i((box - int(cut.cols)) / 2, (box - int(cut.rows)) / 2)
+		var moved := {}
+		for c: Vector2i in cells:
+			moved[c + off] = cells[c]
+		if not _connected(moved):
+			continue
+		return {"n": box, "cells": moved}
+	return {}
+
+static func _connected(cells: Dictionary) -> bool:
+	if cells.is_empty():
+		return false
+	var first: Vector2i = cells.keys()[0]
+	var seen := {first: true}
+	var stack: Array = [first]
+	while not stack.is_empty():
+		var c: Vector2i = stack.pop_back()
+		for d in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+			var k: Vector2i = c + d
+			if cells.has(k) and not seen.has(k):
+				seen[k] = true
+				stack.append(k)
+	return seen.size() == cells.size()

@@ -67,10 +67,10 @@ HW_LVL_0,Everyday words,Palavras do dia a dia,Palabras cotidianas
 HW_LVL_1,Less common words,Palavras menos comuns,Palabras menos comunes
 HW_LVL_2,"Any word, every clue used","Qualquer palavra, toda pista usada","Cualquier palabra, cada pista usada"
 HW_LVL_3,Snail Mail: colours a row late,Correio Caracol: cores uma fileira depois,Correo Caracol: colores una fila después
-WT_LVL_0,"4 words, 5 × 5","4 palavras, 5 × 5","4 palabras, 5 × 5"
-WT_LVL_1,"6 words, 6 × 6","6 palavras, 6 × 6","6 palabras, 6 × 6"
-WT_LVL_2,"6 words, 7 × 7, 7 wishes","6 palavras, 7 × 7, 7 desejos","6 palabras, 7 × 7, 7 deseos"
-WT_LVL_3,"Night Walk: 8 × 8 in the dark","Passeio noturno: 8 × 8 no escuro","Paseo nocturno: 8 × 8 a oscuras"
+WT_LVL_0,"The day's shape: 4 words","A forma do dia: 4 palavras","La forma del día: 4 palabras"
+WT_LVL_1,"The day's shape: 6 words","A forma do dia: 6 palavras","La forma del día: 6 palabras"
+WT_LVL_2,"The day's shape: 6 long words","A forma do dia: 6 palavras longas","La forma del día: 6 palabras largas"
+WT_LVL_3,"Night Walk: 6 long words in the dark, 5 wishes","Passeio noturno: 6 palavras longas no escuro, 5 desejos","Paseo nocturno: 6 palabras largas a oscuras, 5 deseos"
 WIN_HEARTS,%d of 3 today,%d de 3 hoje,%d de 3 hoy
 WIN_DAY_KEPT,Day kept · streak %d,Dia garantido · sequência %d,Día conseguido · racha %d
 WIN_STREAK,Streak %d,Sequência %d,Racha %d

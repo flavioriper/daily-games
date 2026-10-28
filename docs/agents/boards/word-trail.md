@@ -120,3 +120,56 @@ rounded turf plate is gone: it tells the world its ground line
   band is the card alone (`STAGE_X` 0, so it starts at the field's left edge,
   where the sprout's room used to be); the cheer, the seal and the rise are as
   they were. The card's picture is the field, centred.
+
+### The day's shape, a two-step bulb and a voice (2026-10-28)
+
+The user: "make word trail and hidden word experience way better to play,
+and game itself way funnier to play, right now nobody likes it", then "let's
+try to add some different shapes based on daily theme on word trail to
+avoid being just boring squares (use as reference the paper planes)". Read
+against the theme-grid games (a word's tiles lit before its order, a right
+word never silently refused).
+
+- **The field is the day's thing.** `State.shape_for` takes the themed
+  picture (`ThemedPictures.picture`, Paper Planes' `SHAPE_SIZES`) when it
+  cuts for every band, else one of the bank's single things that does
+  (`shared_shapes`, 16 of Pixel Garden's 10/12 things), picked by
+  `Daily.fnv1a("trail_shape|<day>|<step>")`, so a day's four bands are one
+  thing on every phone. `fit_shape` cuts it with `PlanesState.cut_shape`
+  into the smallest square box from the band's square up `SHAPE_GROW`
+  (never past `SHAPE_MAX_N` 10 across) that holds the band's letters plus
+  `SHAPE_SPARE` walls, fills at most `SHAPE_FILL` 0.86 of the box and is
+  one piece. Paths grow only inside it (`inside()`); the rest of the box is
+  void, never drawn, off the field for a let-go. A shape the walks cannot
+  fill in `ATTEMPTS` falls back to the square, so a day always deals.
+  Forty seeds a band (`tests/_probe_wt_shape.gd`): shaped 39/40/40/36,
+  boxes 5-7 / 7-9 / 8-10 / 9-10, walls 5.0/4.9/8.7/8.7, worst build 29 ms.
+- **The field wears the picture.** A tile's face goes `PICTURE_WASH` 0.34
+  to its colour family (`Pal.PG_BEADS`), its lip deeper; a wall a breath of
+  it; a grey or white family stays near paper (a grey tile reads as one
+  switched off). Found words keep their own colours and ribbons.
+- **Laid by the shape's bounds** (`State.used`, `_used_box`): the cells are
+  sized by the bounds, never taller than the band's own square would stand
+  (so the slots and the band keep their place), centred, the night pond
+  round the bounds.
+- **The toast.** The host stopped reading `tip_line()` with the level
+  cards, so "You tried that one already" and the wishes left were said to
+  nobody. `_tell` puts a line in a dark pill (Sudoku's) just under the
+  slots: the day's thing as the field comes in (`WT_SHAPE`), the wishes
+  lines, the hint's and the next.
+- **The right word on other tiles is never a miss** (`spelt_elsewhere`):
+  "HOOD is right! It hides along other tiles.", free on every band (it
+  used to unwind silently, and on Insane cost a wish).
+- **The bulb is two steps a word** (`HINT_STEPS`): the first lights every
+  tile of the shortest unfound word softly, in no order ("These 4 tiles
+  hold one word"), the second its start in full. `HINTS_BY_BAND` unchanged.
+  `HTP_WT_HINT_*` and the two captions say so; the tutorial's two presses
+  read as before.
+- Level lines `WT_LVL_0..3` drop the grid sizes (and Hard's stale wishes).
+- Verified: suite 303252/0; `_win.gd -- wordtrail` PASS; `_shot_wordtrail.gd`
+  `rest`, `words`, `solve`, `out`, `restore`, new `hint` and `elsewhere` on
+  opengl3_angle, draw calls 82-101 peak.
+- Decided for the user, unconfirmed: the tint strength; a bank thing (not
+  the theme's) on days with no themed picture; the shape named by a toast,
+  not on the card. A 6-10 cell silhouette is blocky: the colours carry the
+  thing more than the outline. Owed: a phone, a themed day seen.

@@ -76,7 +76,7 @@ var _finger_shown: ArrayMesh
 class Field extends "res://puzzles/word_trail_state.gd":
 	var spelt: Array = ["TREE", "LEAF", "BLOOM"]
 
-	func build(_rng: RandomNumberGenerator, difficulty: int) -> void:
+	func build(_rng: RandomNumberGenerator, difficulty: int, _themed: Dictionary = {}, _shape: Dictionary = {}) -> void:
 		band = clampi(difficulty, 0, BANDS.size() - 1)
 		n = 4
 		misses = 0
@@ -98,6 +98,7 @@ class Field extends "res://puzzles/word_trail_state.gd":
 			for x in n:
 				if not letters.has(Vector2i(x, y)):
 					walls.append(Vector2i(x, y))
+		settle_used()
 
 ## The board, quiet and short: no sound set (its id names none), no tips,
 ## rewards, solve or out card, no scenery band; the field at the top of the
