@@ -205,6 +205,11 @@ func _summon() -> void:
 		return
 	if not _field.has_focus():
 		_field.edit()
+	elif _osk <= 0.0 and osk_override < 0.0 and DisplayServer.has_feature(DisplayServer.FEATURE_VIRTUAL_KEYBOARD):
+		# Android's back hides the keyboard and leaves the field focused:
+		# shown again, or a tap could never bring it back
+		_field.unedit()
+		_field.edit()
 
 ## Leaving the board puts the keyboard away with it.
 func _exit_tree() -> void:
