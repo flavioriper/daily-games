@@ -64,11 +64,21 @@ else
     user_token="$(gcloud auth print-access-token --account "$account" 2>/dev/null || true)"
   fi
   [[ -n "$user_token" ]] || { echo "gcloud has no valid token for $account; in a Terminal: gcloud auth login $account"; exit 1; }
-  res="$(curl -sS -X POST -H "Authorization: Bearer $user_token" -H "Content-Type: application/json" \
-    -d "{\"scope\":[\"$scope\"],\"lifetime\":\"1800s\"}" \
-    "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/$sa:generateAccessToken")"
-  token="$(echo "$res" | jq -r '.accessToken // empty')"
-  [[ -n "$token" ]] || { echo "could not impersonate $sa:"; echo "$res" | jq . 2>/dev/null || echo "$res"; exit 1; }
+  # A fresh Token Creator grant takes IAM a few minutes to honour (seen
+  # 2026-10-28): on that one denial, keep asking for up to five minutes.
+  for try in $(seq 1 20); do
+    res="$(curl -sS -X POST -H "Authorization: Bearer $user_token" -H "Content-Type: application/json" \
+      -d "{\"scope\":[\"$scope\"],\"lifetime\":\"1800s\"}" \
+      "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/$sa:generateAccessToken")"
+    token="$(echo "$res" | jq -r '.accessToken // empty')"
+    [[ -n "$token" ]] && break
+    if echo "$res" | grep -q "iam.serviceAccounts.getAccessToken" && [[ $try -lt 20 ]]; then
+      echo "not yet Token Creator on $sa (IAM still propagating), retrying in 15 s ($try/20)"
+      sleep 15
+    else
+      echo "could not impersonate $sa:"; echo "$res" | jq . 2>/dev/null || echo "$res"; exit 1
+    fi
+  done
 fi
 auth=(-H "Authorization: Bearer $token")
 
