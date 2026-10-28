@@ -26,6 +26,7 @@ const Mosaic = preload("res://ui/faces/mosaic_tile.gd")
 
 ## The screen the picture was drawn on; everything scales with the width.
 const W := 1080.0
+const TOP_H := 1920.0
 const CLOTH_TOP := Color("f4f6fa")
 const CLOTH_MID := Color("e6ebf5")
 const CLOTH_LOW := Color("d7dfee")
@@ -38,6 +39,9 @@ const WEAVE_A := 0.05
 ## The light from the window, behind the wordmark: its middle as shares.
 const LIGHT_AT := Vector2(0.10, 0.02)
 ## The spares in the gap of the tools row: [x, y as shares, size at W, turn].
+## Their y is a share of a 9:16 screen (TOP_H at W), not of this one: the
+## host's rows sit at fixed pixels from the top, and on a taller phone a share
+## of the height dropped them out of the tools row onto the clues (2026-10-28).
 const SPARES := [[0.365, 0.229, 62.0, -0.26], [0.455, 0.236, 62.0, 0.34]]
 const SPARE_PEBBLE := [0.565, 0.232, 70.0]
 const SPARE_DAISY := [0.665, 0.231, 20.0, 0.4]
@@ -124,13 +128,14 @@ func _build() -> void:
 				Vector2(hx + 1.5 * u, hy + 16.0 * u), Vector2(hx - 1.5 * u, hy + 16.0 * u)]), Color(THREAD, 0.30))
 			hy += 30.0 * u
 	# The spares in the gap of the tools row, lying where they were put down.
+	var top := Vector2(size.x, TOP_H * u)
 	for s in SPARES:
-		var at := Vector2(s[0], s[1]) * size
+		var at := Vector2(s[0], s[1]) * top
 		var px: float = s[2] * u
 		Scenery.soft_disc(b, at + Vector2(0.0, px * 0.16), px * 0.56, px * 0.46, Color(Pal.TEXT, 0.14))
 		Mosaic.tile(b, at, px, Vector2.ONE, false, 0.0, 1.0, s[3])
-	Mosaic.pebble(b, Vector2(SPARE_PEBBLE[0], SPARE_PEBBLE[1]) * size, SPARE_PEBBLE[2] * u, Vector2.ONE, 1.0)
-	_daisy(b, Vector2(SPARE_DAISY[0], SPARE_DAISY[1]) * size, SPARE_DAISY[2] * u, SPARE_DAISY[3])
+	Mosaic.pebble(b, Vector2(SPARE_PEBBLE[0], SPARE_PEBBLE[1]) * top, SPARE_PEBBLE[2] * u, Vector2.ONE, 1.0)
+	_daisy(b, Vector2(SPARE_DAISY[0], SPARE_DAISY[1]) * top, SPARE_DAISY[2] * u, SPARE_DAISY[3])
 	_heart(b, u)
 	_dish(b, u)
 	for d in DAISIES:
@@ -138,8 +143,11 @@ func _build() -> void:
 	_shown = b.mesh()
 	queue_redraw()
 	var gb := Face.Builder.new()
+	var top_g := Vector2(size.x, TOP_H * size.x / W)
 	for g in GLINTS:
-		_sparkle(gb, Vector2(g[0], g[1]) * size, g[2] * u, Color(Pal.SURFACE, 0.95))
+		# The first two glints are the spares'; the others sit by the foot.
+		var at := Vector2(g[0], g[1]) * (top_g if g[1] < 0.5 else size)
+		_sparkle(gb, at, g[2] * u, Color(Pal.SURFACE, 0.95))
 	_glints_shown = gb.mesh()
 	_glints.size = size
 	_glints.queue_redraw()

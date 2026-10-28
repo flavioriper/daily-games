@@ -219,3 +219,39 @@ filled after filling everything". Built unattended, pushed.
   right` (opengl3_angle, 810x1440) peaks 94 draw calls.
 - Owed: a phone, the user's verdict on the dim rule and on whether the
   ambiguous seal should dim "a 2".
+
+### Taller boards and the picture card (2026-10-28)
+
+The user, from a phone shot of a 15 x 13 Insane with a third of the screen
+empty under it: "nonogram board is weird because it's too empty
+everywhere, seems wrong, can you propose another layout for it?". Shown four
+mocks on an artifact (today, taller boards, picture card with the grid by
+the thumb, big cells sliding sideways), the user picked the recommended mix
+of the first two: "recommended is perfect, go for it".
+
+- **The floor sits on the host's bottom rows** (`_layout`, bleed only): its
+  size label's strip ends at `_clear.y`, the hearts' strip and `_card` ride
+  above it. The cell is still the width-or-height cap it was.
+- **The picture card** fills the room above (`_pic`, from `_clear.x +
+  PIC_GAP` to the floor's top less `PIC_GAP`) when that is at least
+  `PIC_MIN` (300): "Your picture" (`NG_PIC`) and "5 of 28 lines done"
+  (`NG_PIC_LINES`, en/pt/es), and the player's own tiles in miniature on
+  paper, a tile on a line that reads right in the floor's slate (shaded per
+  cell by `_tone`), any other at `PIC_FAINT`. **It never shows
+  `state.bitmap`**: a line reads right before its tiles are surely the
+  picture's, and lighting the answer would correct it. One mesh
+  (`_build_pic`) rebuilt when a tile or a line's reading changes, two
+  strings; it fades in with the floor and leaves with the scaffolding
+  (`_gone`). The pictures are the generator's blobs, so there is no name
+  and no colour picture (the mock's teapot was a stand-in).
+- **Hard and Insane lost their landscapes** (`Gen.SHAPES`): 12 x 10 is now
+  12 x 14 and 15 x 13 is 15 x 17. Today's deal changes on those bands.
+- **The world's spares** (two tiles, a pebble, a daisy and their glints)
+  were placed by a share of the screen's height, which on a phone taller
+  than 9:16 dropped them out of the tools row onto the clues (the user's
+  shot shows it): their y is now a share of a 9:16 screen (`TOP_H`).
+- At 9:16 (810x1440) the boards fill the span and no card shows; at the
+  user's phone's shape (634x1440, about 1080 x 2450) Medium's 6 x 8 and
+  Insane's 15 x 17 both get a card. Peaks 94-111 draw calls on
+  `opengl3_angle`; `_win.gd -- nonogram` PASS; suite 303252/0. Unseen on a
+  phone.

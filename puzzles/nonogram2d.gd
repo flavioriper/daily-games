@@ -80,6 +80,27 @@ const NUM_SIZE := 0.42
 const SIZE_PX := 26
 const SIZE_ROW := 40.0
 const SIZE_A := 0.6
+## The picture card (the user, 2026-10-28, of a 15 x 13 with a third of the
+## phone empty under it: "nonogram board is weird because it's too empty
+## everywhere", and of the concept page's mock, "recommended is perfect"):
+## the floor sits on the host's bottom rows, by the thumb, and the room the
+## width-capped cell leaves above it holds a card with the player's own board
+## in miniature, a finished line's tiles in full and the rest faint. It never
+## shows the picture: a line reads right before its tiles are surely the
+## picture's, and lighting the answer would correct it. PIC_MIN is the least
+## room worth a card (no card, the floor still sits low), PIC_GAP the air
+## round it, PIC_HEAD its title row, PIC_PAD its inset, PIC_WIDE the most of
+## the card's width the miniature takes, PIC_FAINT an unfinished tile's ink.
+const PIC_MIN := 300.0
+const PIC_GAP := 22.0
+const PIC_HEAD := 84.0
+const PIC_PAD := 30.0
+const PIC_WIDE := 0.62
+const PIC_R := 34.0
+const PIC_FAINT := 0.24
+const PIC_TONE := 0.12
+const PIC_TITLE_PX := 40
+const PIC_COUNT_PX := 28
 ## The heavier line every fifth cell, which only a board with more than five
 ## of them needs.
 const GUIDE_EVERY := 5
@@ -333,6 +354,11 @@ var _mush_tw: Tween
 var _bee: BeeFace
 var _bee_tw: Tween
 var _card := Rect2()
+## The picture card's rect (empty when there is no room for one), its mesh,
+## and what the mesh was built for.
+var _pic := Rect2()
+var _pic_mesh: ArrayMesh
+var _pic_for := ""
 ## The cloth is the whole screen (2026-10-13, the registry's `bleed`):
 ## puzzles/nonogram_world.gd lies edge to edge as the first child, behind
 ## this board's own drawing, and the floor is laid in the span the host's
@@ -691,8 +717,14 @@ func _layout() -> void:
 	_band = Vector2(_cell * state.gw * NUM, _cell * state.gh * NUM)
 	var floor_size := Vector2(_cell * state.w, _cell * state.h) + _band
 	if _bleed:
-		_card = Rect2(_side(), _clear.x, size.x - 2.0 * _side(), row + floor_size.y)
-		_grid = Vector2(size.x * 0.5 - floor_size.x * 0.5, _clear.x + row) + _band
+		# On the host's bottom rows, by the thumb; the room above is the
+		# picture card's.
+		var top := size.y - _clear.y - SIZE_ROW - floor_size.y - row
+		_card = Rect2(_side(), top, size.x - 2.0 * _side(), row + floor_size.y)
+		_grid = Vector2(size.x * 0.5 - floor_size.x * 0.5, top + row) + _band
+		_pic = Rect2(_side(), _clear.x + PIC_GAP, size.x - 2.0 * _side(), top - _clear.x - 2.0 * PIC_GAP)
+		if _pic.size.y < PIC_MIN:
+			_pic = Rect2()
 		if _won:
 			# Laid out under a win (a resize, or a day reopened solved): the
 			# slide is aimed again, and set at its end if it never ran.
@@ -876,6 +908,7 @@ func _draw() -> void:
 			Color(1.0, 1.0, 1.0, Motion.appear_level(elapsed)))
 	_draw_clues()
 	_draw_size()
+	_draw_pic()
 	_draw_badge()
 
 ## "15 × 20" under the floor, right-aligned to its last column.
@@ -892,6 +925,72 @@ func _draw_size() -> void:
 	var at := _grid + Vector2(state.w * _cell - wide, state.h * _cell
 		+ (SIZE_ROW + font.get_ascent(SIZE_PX) - font.get_descent(SIZE_PX)) * 0.5)
 	draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, SIZE_PX, Color(Pal.TEXT, a))
+
+## The picture card over the floor: one mesh (the card, the miniature's paper
+## and its tiles) rebuilt only when a tile or a line's reading changes, and
+## two strings. It fades in with the floor and leaves with the scaffolding.
+func _draw_pic() -> void:
+	if _pic.size.y <= 0.0 or _cell <= 0.0 or state.bitmap.is_empty():
+		return
+	var t := _now()
+	var a := (1.0 - _gone(t)) * Motion.appear_level(t - _opened - Motion.ENTER_DELAY)
+	if a <= 0.0:
+		return
+	var rows := PackedByteArray()
+	var cols := PackedByteArray()
+	var done := 0
+	for y in state.h:
+		rows.append(int(state.row_state(y) == State.LINE_OK))
+		done += rows[y]
+	for x in state.w:
+		cols.append(int(state.col_state(x) == State.LINE_OK))
+		done += cols[x]
+	var key := "%s|%s|%s|%d" % [_pic, rows, cols, state.marks.hash()]
+	if _pic_mesh == null or _pic_for != key:
+		_pic_mesh = _build_pic(rows, cols)
+		_pic_for = key
+	draw_mesh(_pic_mesh, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, a))
+	var head := _pic.position.y + PIC_HEAD * 0.5 + PIC_PAD * 0.5
+	var title: Font = CozyTheme.display(600)
+	draw_string(title, Vector2(_pic.position.x + PIC_PAD + 8.0,
+		head + (title.get_ascent(PIC_TITLE_PX) - title.get_descent(PIC_TITLE_PX)) * 0.5),
+		tr("NG_PIC"), HORIZONTAL_ALIGNMENT_LEFT, -1.0, PIC_TITLE_PX, Color(Pal.TEXT, a))
+	var body: Font = CozyTheme.body(700)
+	var line := tr("NG_PIC_LINES") % [done, state.w + state.h]
+	var wide := body.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1.0, PIC_COUNT_PX).x
+	draw_string(body, Vector2(_pic.end.x - PIC_PAD - 8.0 - wide,
+		head + (body.get_ascent(PIC_COUNT_PX) - body.get_descent(PIC_COUNT_PX)) * 0.5),
+		line, HORIZONTAL_ALIGNMENT_LEFT, -1.0, PIC_COUNT_PX, Color(Pal.ACORN_DEEP, a))
+
+## The card, its paper and the player's tiles in miniature: a tile on a line
+## that reads right in full (shaded per cell as the floor's are), any other
+## faint.
+func _build_pic(rows: PackedByteArray, cols: PackedByteArray) -> ArrayMesh:
+	var b := Face.Builder.new()
+	b.fan(Face.Builder.round_rect(_pic.position + Vector2(0.0, 6.0), _pic.size, PIC_R), Color(Pal.LINE, 0.45))
+	b.fan(Face.Builder.round_rect(_pic.position, _pic.size, PIC_R), Pal.SURFACE)
+	var room := Vector2(_pic.size.x * PIC_WIDE, _pic.size.y - PIC_HEAD - PIC_PAD * 2.0)
+	var p := floorf(minf(room.x / state.w, room.y / state.h))
+	if p < 2.0:
+		return b.mesh()
+	var dim := Vector2(state.w, state.h) * p
+	var at := Vector2(_pic.get_center().x - dim.x * 0.5,
+		_pic.position.y + PIC_HEAD + PIC_PAD + (room.y - dim.y) * 0.5).floor()
+	b.fan(Face.Builder.round_rect(at - Vector2.ONE * PIC_PAD * 0.5, dim + Vector2.ONE * PIC_PAD, PIC_R * 0.5), Pal.PAPER)
+	var gap := 1.0 if p >= 8.0 else 0.0
+	for y in state.h:
+		for x in state.w:
+			var cell := Vector2i(x, y)
+			if state.mark_at(cell) != State.FILL:
+				continue
+			var ink: Color = Color(Pal.MOSAIC, PIC_FAINT)
+			if rows[y] or cols[x]:
+				var tone := _tone(cell)
+				ink = Pal.MOSAIC.lightened(tone * PIC_TONE) if tone > 0.0 else Pal.MOSAIC.darkened(-tone * PIC_TONE)
+			var o := at + Vector2(x, y) * p
+			b.fan(PackedVector2Array([o + Vector2(gap, gap), o + Vector2(p - gap, gap),
+				o + Vector2(p - gap, p - gap), o + Vector2(gap, p - gap)]), ink)
+	return b.mesh()
 
 ## Everything on the floor in one mesh, in the order the mock paints it: the
 ## bands' tabs, leaves and daisies, the sockets, the five-cell guides over

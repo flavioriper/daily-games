@@ -281,11 +281,16 @@ static func _blobby(rng: RandomNumberGenerator, w: int, h: int) -> Array:
 ## capped by the width (columns plus the row clues' band), so a 20-wide
 ## picture would be a 30 px cell, a third of a fingertip; 15 wide with 20
 ## rows keeps it near 40.
+##
+## Hard and Insane lost their landscapes 2026-10-28 (the user, of a 15 x 13
+## leaving a third of a tall phone empty, chose "taller boards" with the
+## picture card, nonogram2d.gd's PIC_MIN): 12 x 10 became 12 x 14 and
+## 15 x 13 became 15 x 17. A short board's room goes to the card.
 const SHAPES := [
 	[[5, 5], [5, 6], [6, 5], [6, 6], [5, 7], [7, 5]],
 	[[7, 7], [8, 8], [6, 8], [8, 6], [7, 9], [8, 10]],
-	[[10, 10], [12, 12], [10, 12], [12, 10], [10, 14], [12, 15]],
-	[[15, 15], [15, 18], [15, 20], [14, 20], [13, 17], [15, 13]],
+	[[10, 10], [12, 12], [10, 12], [12, 14], [10, 14], [12, 15]],
+	[[15, 15], [15, 18], [15, 20], [14, 20], [13, 17], [15, 17]],
 ]
 
 ## Insane since 2026-10-16 (the user: "instead of having shuffled numbers,
