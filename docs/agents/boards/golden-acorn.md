@@ -177,3 +177,68 @@ four plates stand on the air, 1000 wide (they were 940).
 - Decided for the user, unconfirmed: summer, not the card's autumn; no
   card under the question. Owed: a phone, a daily that waits on the
   network (the fetching line stands on bare air).
+
+### Made fun (2026-10-28)
+
+The user: "make golden acorn experience way better to play, and game itself
+way funnier to play, right now nobody likes it", autonomous, push when
+done. References, by genre: daily trivia apps (streaks with multipliers or
+tiers, the same questions for everyone, a shared result), the live quiz
+shows' and classroom quiz games' streak bonus and rising tension, and the
+prize-ladder show this board follows (the lock asked twice). A web search
+on 2026-10-28 found streaks the common hook and nothing solid on wagers;
+JetPunk's daily trivia averages 6.5 of 10, which is why three stars allow
+one miss.
+
+**What was wrong:** three presses a question (a plate, Lock in the bottom
+right corner, Next), so a day was 21 presses with the thumb going to the
+corner twice a question; nothing at stake on Easy to Hard and nothing to
+chase (the result was "5 of 7"); the acorn count went up at the lock, so it
+gave the answer away through the held breath; the question stood high on
+its paper over an empty strip kept for the why.
+
+**What changed:**
+
+- **A second tap on the lit plate locks it** (`ARM` 0.3 s: a tap sooner
+  does nothing, so a jittery double tap cannot lock what it only picked).
+  The picked plate's letter disc is a padlock (`Art.padlock`); the first
+  pick of a board says "Sure? Tap it again to lock it." (`AC_TAP_AGAIN`)
+  until the player has once locked that way (`Progress` tutorial flag
+  `acorn_tap_lock`; the tutorial's stage neither reads nor sets it). Lock
+  on the actions row still works. A question is two taps on one plate
+  and a tap anywhere on the card.
+- **A run climbs**: each right answer in a row plays `right` a step higher
+  (`RUN_PITCH` 0.05 a step, `RUN_STEPS` 5), with a bigger ring; from three
+  in a row a second sparkle, a little confetti and a word that rises off
+  the plate ("4 in a row!", `AC_RUN_N`). `State.run()`, `State.best_run()`.
+  The win says the best run when it was three or more and not the whole
+  day (`AC_WIN_SUB_RUN`).
+- **Live stars** on the pill row (`ui/flat/star_line.gd`, Easy to Hard;
+  the Climb has its hearts): three with at most one wrong, two with up to
+  three, one past that (`State.stars`), falling on the reveal, set quietly
+  on a restore. Display only; nothing else reads them.
+- **The acorn flies** from the right plate to the count (`FLIGHT` 0.5 s)
+  and the count goes up when it lands. `_rights_shown` keeps the question
+  on the card out of the count until then (the old spoiler).
+- **The question stands in the paper's middle** while it is asked and
+  lifts as the why comes; it is fitted to the smaller room, so its size
+  never jumps.
+- The tutorial's Lock page taps the plate twice (`HTP_AC_LOCK_PRESS_CAP`,
+  `HTP_AC_LOCK_BODY`); `AC_RULES` says it, and `AC_RULES_STARS` (Easy to
+  Hard only, the Climb has none) the run and the stars. en/pt/es.
+- No new sounds: the run is `right` pitched.
+
+Measured on `opengl3_angle` at 810x1440: 93 draw calls at rest, peak 163
+with the run's confetti (114 before); `_win.gd -- acorn` PASS;
+`_shot_acorn.gd` every mode, and a new `run` mode (locks by second taps,
+a tap 0.1 s after the pick refused, the count shown one behind until the
+acorn lands); suite 303252/0. Unseen on a phone.
+
+**Left out, on purpose:** a crowd's "% got this right" (needs the backend
+to gather answers, and no score is sent to the crowd; never faked);
+wagers; any clock; a host. The bank was not reread.
+
+**Mine, the user's to call:** a second tap locks; the stars' cut (one
+miss keeps three); the run cheered from three; the pitch climbing; the tip
+on a board's first pick until a lock by tap is learnt; the tools row still greys Undo and the bin
+(shared with Pearl Dive and How Big?).

@@ -45,3 +45,9 @@ static func heart(b: Face.Builder, at: Vector2, r: float, colour: Color) -> void
 	pts.append_array(Face.Builder.arc_points(at + Vector2(lobe, -r * 0.2), lobe, PI, PI * 2.18))
 	pts.append(at + Vector2(0.0, r * 0.95))
 	b.polygon(pts, colour)
+
+## A padlock, on the plate that is picked: tap it again and it locks.
+static func padlock(b: Face.Builder, at: Vector2, r: float, colour: Color) -> void:
+	var arc := Face.Builder.arc_points(at + Vector2(0.0, -0.12) * r, 0.3 * r, PI, TAU)
+	b.stroke(arc, 0.13 * r, colour, false)
+	b.fan(Face.Builder.round_rect(at + Vector2(-0.46, -0.14) * r, Vector2(0.92, 0.66) * r, 0.14 * r), colour)

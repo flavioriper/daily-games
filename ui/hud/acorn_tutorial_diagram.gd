@@ -9,8 +9,8 @@ extends Control
 ## enters the tree):
 ##
 ## - PICK: the finger taps one answer, then another; the light moves.
-## - LOCK: the right answer picked, the page's Lock pressed; the held
-##   breath, then the plate turns leaf green.
+## - LOCK: the right answer picked and tapped again, which locks it; the
+##   held breath, then the plate turns leaf green.
 ## - WHY: a wrong answer locked; it turns berry, the right one green, and
 ##   the line under the question says why. Then Next.
 ## - CLIMB (Insane): a wrong lock, and a heart goes.
@@ -269,8 +269,12 @@ func _start() -> void:
 			_tap(RIGHT_AT, "HTP_AC_PICK_DONE_CAP")
 			_loop.tween_interval(2.6)
 		Lesson.LOCK:
+			# A second tap on the lit plate locks it (2026-10-28); the
+			# chip's Lock does the same and the other pages press it.
 			_tap(RIGHT_AT, "")
-			_press_chip("HTP_AC_LOCK_PRESS_CAP", _lock)
+			_loop.tween_interval(0.4)
+			_tap(RIGHT_AT, "HTP_AC_LOCK_PRESS_CAP")
+			_loop.tween_callback(_dress_chip)
 			_say_for("HTP_AC_LOCK_CAP", 4.0)
 		Lesson.WHY:
 			_tap(0, "")

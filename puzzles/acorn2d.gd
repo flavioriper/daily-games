@@ -2,7 +2,7 @@ extends "res://core/puzzle_base.gd"
 
 ## Golden Acorn as a flat board: a quiz. A card of paper holds the question;
 ## under it stand four answers on wooden plates, lettered A to D. A tap picks
-## one, Lock makes it final, and after a held breath the right plate turns
+## one, a second tap on it (or Lock) makes it final, and after a held breath the right plate turns
 ## leaf green -- with the picked one in berry beside it when they differ --
 ## and a line under the question says why. A few questions make the day; the
 ## Climb (Insane) is ten that rise, with hearts.
@@ -44,6 +44,10 @@ const Seal = preload("res://ui/flat/seal.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Backend = preload("res://core/backend.gd")
 const World = preload("res://puzzles/acorn_world.gd")
+const StarLine = preload("res://ui/flat/star_line.gd")
+const Progress = preload("res://core/progress.gd")
+## Kept once the player has locked a plate by tapping it again: the tip stops.
+const TAP_LEARNT := "acorn_tap_lock"
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 const FLAT_HOST := "res://ui/flat/flat_host.gd"
 ## The slide into the win's span (the host's SLOT_TIME), and the air kept
@@ -101,6 +105,22 @@ const TOAST_HOLD := 2.4
 ## An answer picked and an answer locked are heard a dozen times a day, so
 ## neither is the same tock twice (they were 1.0 every time).
 const TICK_VARY := Vector2(0.94, 1.06)
+## A second tap on the lit plate locks it ("are you sure?" asked by the
+## finger), but not one that lands this soon after the pick: a jittery
+## double tap must not lock what it only meant to pick.
+const ARM := 0.3
+## A run of rights climbs: each right answer's notes a step higher, up to
+## RUN_STEPS steps, and its sparkle the fuller.
+const RUN_PITCH := 0.05
+const RUN_STEPS := 5
+## The run is cheered from three in a row, on a word that rises off the plate.
+const RUN_CHEER := 3
+const CHEER_TIME := 1.3
+const CHEER_RISE := 70.0
+const CHEER_FONT := 46
+## The acorn a right answer earns flies from its plate to the count.
+const FLIGHT := 0.5
+const STAR_SCALE := 0.9
 const TOAST_H := 76.0
 const TOAST_PAD := 72.0
 const TOAST_RADIUS := 26.0
@@ -201,6 +221,19 @@ var _pill_bump := [-INF, -INF]
 var _stamp_at := INF
 var _toast := ""
 var _toast_at := -100.0
+## Three stars on the pill row, falling as wrong answers come (not the Climb:
+## its hearts say the same).
+var _stars := StarLine.new()
+## The word a run is cheered with, the plate it rises off and when.
+var _cheer := ""
+var _cheer_at := -INF
+var _cheer_from := Vector2.ZERO
+## The acorn flying to the count, from where.
+var _flight_at := -INF
+var _flight_from := Vector2.ZERO
+## The first pick of a board says a second tap locks it, until the player
+## has once locked that way (TAP_LEARNT).
+var _told_tap := false
 
 func puzzle_id() -> String: return "acorn"
 func title() -> String: return "Golden Acorn"
@@ -210,6 +243,8 @@ func rules() -> String:
 	var hints: int = State.HINTS_BY[state.band]
 	if hints > 0:
 		out += "\n\n" + (tr("AC_RULES_BULB_ONE") if hints == 1 else tr("AC_RULES_BULB_N") % hints)
+	if State.HEARTS_BY[state.band] == 0:
+		out += "\n\n" + tr("AC_RULES_STARS")
 	if State.HEARTS_BY[state.band] > 0:
 		out += "\n\n" + tr("AC_RULES_CLIMB") % State.HEARTS_BY[state.band]
 	return out
@@ -285,6 +320,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_seed_key = int(rng.randi())
 	_dealt = false
 	_tries = 0
+	_told_tap = false
 	_phase = Phase.WAIT
 	_clear()
 	_layout()
@@ -381,6 +417,10 @@ func _clear() -> void:
 	_stamp_at = INF
 	_seal_mesh = null
 	_toast = ""
+	_cheer = ""
+	_cheer_at = -INF
+	_flight_at = -INF
+	_stars.clear()
 
 # --- layout ---
 
@@ -611,7 +651,8 @@ func _plate_xf(i: int, pose: Dictionary) -> Transform2D:
 	return Transform2D(0.0, Vector2(float(pose.s), float(pose.s)), 0.0, c)
 
 ## The look of plate `i`: [face, rim, disc, letter ink, mark] where mark is
-## 1 for a tick, -1 for a cross and 0 for the letter.
+## 1 for a tick, -1 for a cross, 2 for the padlock of the plate picked (a
+## second tap locks it) and 0 for the letter.
 func _plate_look(i: int, now: float) -> Array:
 	if _revealed(now):
 		var res: Dictionary = state.results[state.index]
@@ -622,7 +663,7 @@ func _plate_look(i: int, now: float) -> Array:
 		return [Pal.SURFACE, Pal.LINE, Pal.ACORN_TILE, Pal.TEXT_DIM, 0]
 	var held := i == _picked or (state.locked() and i == int(state.results[state.index].pick))
 	if held:
-		return [Pal.SUN_TILE, Pal.SUN_DEEP, Pal.SUN, Pal.SURFACE, 0]
+		return [Pal.SUN_TILE, Pal.SUN_DEEP, Pal.SUN_DEEP, Pal.SURFACE, 2]
 	return [Pal.SURFACE, Pal.LINE, Pal.ACORN_TILE, Pal.TEXT, 0]
 
 ## How much of plate `i` is left to see: an answer the bulb took fades, and
@@ -655,7 +696,9 @@ func _build_live(now: float) -> ArrayMesh:
 		var r := _plates[i].size.y * LETTER_R
 		var at := xf * Vector2(-half.x + 22.0 + r, 0.0)
 		b.disc(at, r * float(pose.s), Color(look[2] as Color, alpha))
-		if int(look[4]) > 0:
+		if int(look[4]) == 2:
+			Art.padlock(b, at, r * float(pose.s), Color(look[3] as Color, alpha))
+		elif int(look[4]) > 0:
 			Art.tick(b, at, r * float(pose.s), Color(look[3] as Color, alpha))
 		elif int(look[4]) < 0:
 			Art.cross(b, at, r * float(pose.s), Color(look[3] as Color, alpha))
@@ -697,6 +740,7 @@ func _draw_hud() -> void:
 	_draw_pills(now, alpha, shown)
 	_draw_question(now, alpha)
 	_draw_answers(now)
+	_draw_cheer(now)
 	if now >= _stamp_at:
 		_draw_stamp(now, shown)
 	_draw_toast(now, shown)
@@ -709,7 +753,7 @@ func _draw_pills(now: float, alpha: float, shown: Array) -> void:
 	var y := _card.position.y + HUD_ROW * 0.5 + 6.0
 	var n: int = state.count()
 	var left_text := tr("AC_ROUND") % [mini(state.index + 1, n), n]
-	var right_text := "%d" % state.rights()
+	var right_text := "%d" % _rights_shown(now)
 	var lw := font.get_string_size(left_text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, PILL_FONT).x
 	var rw := font.get_string_size(right_text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, PILL_FONT).x
 	var pip := 14.0
@@ -744,9 +788,18 @@ func _draw_pills(now: float, alpha: float, shown: Array) -> void:
 		if not Motion.reduce and k == hearts:
 			s = Motion.bump_scale(now - _heart_at, 0.4)
 		Art.heart(b, c, 18.0 * s, Pal.HEART if k < hearts else Pal.LINE)
+	# The acorn a right answer earned, on its way from the plate to the count.
+	var flown := (now - _flight_at) / FLIGHT
+	if not Motion.reduce and flown >= 0.0 and flown < 1.0:
+		var u := 1.0 - pow(1.0 - flown, 3.0)
+		var lift := Vector2(0.0, -120.0 * sin(PI * u))
+		Art.acorn(b, _flight_from.lerp(nut_at, u) + lift, icon * 0.46 * lerpf(1.3, 1.0, u), true)
 	var pills := b.mesh()
 	_hud_layer.draw_mesh(pills, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, alpha))
 	shown.append(pills)
+	if max_hearts == 0:
+		var sw := StarLine.width(STAR_SCALE)
+		_stars.draw(_hud_layer, Vector2(size.x * 0.5 - sw * 0.5 + StarLine.R * STAR_SCALE, y), STAR_SCALE, now, alpha)
 	var mid := (font.get_ascent(PILL_FONT) - font.get_descent(PILL_FONT)) * 0.5
 	_hud_layer.draw_string(font, Vector2(centres[0].x - boxes[0].x * 0.5 + 22.0, y + mid), left_text,
 		HORIZONTAL_ALIGNMENT_LEFT, -1.0, PILL_FONT, Color(Pal.TEXT, alpha))
@@ -781,7 +834,13 @@ func _draw_question(now: float, alpha: float) -> void:
 		# The seal takes the paper's top right corner; the question makes room.
 		box.size.x -= _seal_rad() * 2.0 - 24.0
 	var text := str(w.get("q", ""))
-	_write(display, text, box, _fit(display, text, box.size, Q_FONTS), Color(Pal.TEXT, a))
+	# Fitted to the room the why will leave it, so its size never jumps, but
+	# stood in the paper's middle until the why comes, and then lifted.
+	var up := 0.0
+	if _revealed(now):
+		up = 1.0 if Motion.reduce else Motion.appear_level(now - _lock_at - HOLD, 0.25)
+	var stood := Rect2(box.position, box.size + Vector2(0.0, (WHY_H - 12.0) * (1.0 - up)))
+	_write(display, text, stood, _fit(display, text, box.size, Q_FONTS), Color(Pal.TEXT, a))
 	if not _revealed(now):
 		return
 	var why := str(w.get("why", ""))
@@ -852,6 +911,36 @@ func _draw_toast(now: float, shown: Array) -> void:
 	_hud_layer.draw_string(font, Vector2(mid.x - wide * 0.5, base), _toast, HORIZONTAL_ALIGNMENT_CENTER, wide,
 		TOAST_FONT, Color(Pal.PAPER, alpha))
 
+## The acorns the count shows: the answer on the card is not counted before
+## it is out and its acorn has landed (it counted from the lock before
+## 2026-10-28, which told a right answer through the held breath).
+func _rights_shown(now: float) -> int:
+	var n: int = state.rights()
+	if state.locked() and state.index < state.results.size() and bool(state.results[state.index].right):
+		var landed := _revealed(now) and (Motion.reduce or now - _flight_at >= FLIGHT)
+		if not landed:
+			n -= 1
+	return maxi(0, n)
+
+## The run's word, rising off the right plate and fading.
+func _draw_cheer(now: float) -> void:
+	if _cheer == "":
+		return
+	var e := now - _cheer_at
+	if e < 0.0 or e >= CHEER_TIME:
+		return
+	var font: Font = CozyTheme.display(700)
+	var u := e / CHEER_TIME
+	var k := 1.0 if Motion.reduce else Motion.pop_in_scale(e).x
+	var a := minf(1.0, (1.0 - u) * 3.0)
+	var at := _cheer_from + Vector2(0.0, 0.0 if Motion.reduce else -CHEER_RISE * (1.0 - pow(1.0 - u, 2.0)))
+	var wide := font.get_string_size(_cheer, HORIZONTAL_ALIGNMENT_LEFT, -1.0, CHEER_FONT).x
+	_hud_layer.draw_set_transform_matrix(Transform2D(-0.06, Vector2(k, k), 0.0, at))
+	var base := Vector2(-wide * 0.5, font.get_ascent(CHEER_FONT) * 0.35)
+	_hud_layer.draw_string_outline(font, base, _cheer, HORIZONTAL_ALIGNMENT_LEFT, -1.0, CHEER_FONT, 10, Color(Pal.SURFACE, a))
+	_hud_layer.draw_string(font, base, _cheer, HORIZONTAL_ALIGNMENT_LEFT, -1.0, CHEER_FONT, Color(Pal.SUN_DEEP.darkened(0.15), a))
+	_hud_layer.draw_set_transform_matrix(Transform2D.IDENTITY)
+
 func _bump_pill(k: int) -> void:
 	_pill_bump[k] = _now()
 	_hud_layer.queue_redraw()
@@ -902,7 +991,14 @@ func _release(at: Vector2) -> void:
 	_up_at = _now()
 	_busy_for(Motion.RELEASE_TIME)
 	if _phase == Phase.PLAY and _plate_at(at) == i:
-		pick_answer(i)
+		if i == _picked:
+			# The lit plate again: sure. Too soon after the pick, nothing.
+			if _now() - _pick_at >= ARM:
+				lock()
+				if puzzle_id() == "acorn" and state.locked():
+					Progress.mark_tutorial_seen(TAP_LEARNT)
+		else:
+			pick_answer(i)
 	_redraw()
 
 ## Picks shown place `i`: the plate lights and waits for Lock. A second pick
@@ -914,6 +1010,10 @@ func pick_answer(i: int) -> void:
 		return
 	_picked = i
 	_pick_at = _now()
+	if not _told_tap:
+		_told_tap = true
+		if puzzle_id() != "acorn" or not Progress.tutorial_seen(TAP_LEARNT):
+			_tell(tr("AC_TAP_AGAIN"))
 	fx.cue("pick", randf_range(TICK_VARY.x, TICK_VARY.y))
 	_busy_for(Motion.BUMP_TIME)
 	_redraw()
@@ -981,16 +1081,35 @@ func lock() -> void:
 	var hold := 0.0 if Motion.reduce else HOLD
 	var right := bool(res.right)
 	var place: int = state.right_place()
+	var run: int = state.run()
+	if right:
+		# Not landed until the answer is out and its acorn has flown.
+		_flight_at = INF
 	_after(hold, func() -> void:
 		var at := _plates[place].get_center()
+		var now_at := _now()
 		if right:
-			fx.cue("right")
+			# A run climbs: the notes a step higher a right in a row, the
+			# sparkle fuller, and from three in a row a word for it.
+			var step := mini(run - 1, RUN_STEPS)
+			fx.cue("right", 1.0 + RUN_PITCH * step)
 			fx.sparkle(Vector2(_plates[place].position.x + 60.0, at.y), Pal.SUN)
-			fx.ring(at, _plates[place].size.y * 0.9, Pal.LEAF)
-			_bump_pill(1)
+			if run >= RUN_CHEER:
+				fx.sparkle(Vector2(_plates[place].end.x - 60.0, at.y), Pal.SUN)
+				fx.confetti(at, 6 + 2 * step, _plates[place].size.x * 0.5)
+				_cheer = tr("AC_RUN_N") % run
+				_cheer_at = now_at
+				_cheer_from = Vector2(_plates[place].end.x - _plates[place].size.x * 0.24, _plates[place].position.y - 6.0)
+			fx.ring(at, _plates[place].size.y * (0.9 + 0.08 * step), Pal.LEAF)
+			_flight_at = now_at
+			_flight_from = Vector2(_plates[place].position.x + 22.0 + _plates[place].size.y * LETTER_R, at.y)
+			_after(0.0 if Motion.reduce else FLIGHT, func() -> void: _bump_pill(1))
 		else:
 			fx.cue("wrong")
+		if max_hearts == 0:
+			_stars.rate(state.stars(), now_at, true)
 		_bump_pill(0)
+		_busy_for(maxf(FLIGHT, CHEER_TIME) + 0.1)
 		_redraw())
 	if bool(res.missed):
 		_after(hold + WHY_AT, func() -> void:
@@ -1083,6 +1202,8 @@ func restore_completed_board() -> void:
 	max_hearts = State.HEARTS_BY[state.band]
 	_clear()
 	hearts = maxi(1, state.hearts) if max_hearts > 0 else 0
+	if max_hearts == 0:
+		_stars.rate(state.stars(), now, false)
 	_phase = Phase.REVEAL
 	_settled = true
 	_opened = now - 10.0
@@ -1100,7 +1221,11 @@ func share_glyphs() -> String:
 # --- the win ---
 
 func flat_win() -> Dictionary:
-	return {"faces": [], "subtitle": tr("AC_WIN_SUB") % [state.rights(), state.count()]}
+	var sub := tr("AC_WIN_SUB") % [state.rights(), state.count()]
+	var best: int = state.best_run()
+	if best >= RUN_CHEER and best < state.count():
+		sub = tr("AC_WIN_SUB_RUN") % [state.rights(), state.count(), best]
+	return {"faces": [], "subtitle": sub}
 
 func win_delay() -> float:
 	return Motion.REDUCED_TIME if Motion.reduce else WIN_WAIT

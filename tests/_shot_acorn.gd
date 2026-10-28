@@ -5,7 +5,7 @@ extends SceneTree
 ##
 ##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_acorn.gd -- [d=0..3] [mode] [rm] [out=<dir>] [lang=pt]
 ##
-## Modes: `rest` (the entrance and the first question); `play` (every
+## Modes: `run` (locks by a second tap; a run, its cheer, the stars); `rest` (the entrance and the first question); `play` (every
 ## question locked, right and wrong by turns: each reveal, each swap, the
 ## win); `perfect` (every one right: the seal); `hint` (the bulb, then a
 ## pick from the two left); `out` (the Climb: wrong until the hearts are
@@ -172,6 +172,29 @@ func _script() -> void:
 			_end = 2.6
 		"play":
 			var t := _answer_all(1.6, func(k: int) -> bool: return k % 3 != 1)
+			_at(t + 1.2, _shot)
+			_end = t + 1.6
+		"run":
+			# Locked by a second tap on the lit plate, right but for the
+			# fifth: the run's cheer and the acorn's flight mid-air, the
+			# stars falling, and a tap too soon after the pick that must not lock.
+			var n: int = load("res://puzzles/acorn_state.gd").ASKS[_level]
+			var t := 1.6
+			_at(t + 0.1, func() -> void:
+				_tap(_puzzle.state.right_place())
+				print("second tap 0.1 s after the pick locked: ", _puzzle.state.locked()))
+			for k in n:
+				var right := k != 4
+				_at(t, func() -> void:
+					if _puzzle.state.locked():
+						return
+					_tap(_puzzle.state.right_place() if right else _wrong()))
+				_at(t + 0.45, func() -> void:
+					_tap(_puzzle.state.right_place() if right else _wrong())
+					print("q ", k + 1, " locked by second tap: ", _puzzle.state.locked(), " shown ", _puzzle._rights_shown(_puzzle._now()), " of ", _puzzle.state.rights()))
+				_at(t + 0.45 + 0.6 + 0.28, _shot)
+				_at(t + 2.0, func() -> void: _host._on_check())
+				t += 2.6
 			_at(t + 1.2, _shot)
 			_end = t + 1.6
 		"perfect":

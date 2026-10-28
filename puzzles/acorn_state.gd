@@ -254,6 +254,35 @@ func rights() -> int:
 			n += 1
 	return n
 
+## The rights in a row that question `upto` ends (-1: the last locked);
+## 0 when it was wrong.
+func run(upto := -1) -> int:
+	var at := results.size() - 1 if upto < 0 else mini(upto, results.size() - 1)
+	var n := 0
+	while at >= 0 and bool(results[at].right):
+		n += 1
+		at -= 1
+	return n
+
+## The longest run of rights in the day so far.
+func best_run() -> int:
+	var best := 0
+	var n := 0
+	for r: Dictionary in results:
+		n = n + 1 if bool(r.right) else 0
+		best = maxi(best, n)
+	return best
+
+## The stars the first `told` locks earn: three with at most one wrong, two
+## with up to three, one past that. The Climb's are its hearts, and it has none.
+func stars(told := -1) -> int:
+	var upto := results.size() if told < 0 else mini(told, results.size())
+	var wrong := 0
+	for i in upto:
+		if not bool(results[i].right):
+			wrong += 1
+	return 3 if wrong <= 1 else (2 if wrong <= 3 else 1)
+
 ## Every question locked, and on the Climb a heart still in hand.
 func is_solved() -> bool:
 	if questions.is_empty() or results.size() < questions.size():
