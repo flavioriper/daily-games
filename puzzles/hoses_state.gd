@@ -37,8 +37,12 @@ var history: Array = []
 ## The hose under the finger and the hoses as its stroke found them.
 var live := -1
 var _before: Array = []
-## Strokes that changed the bed (the brain report has no score here).
+## Strokes that changed the bed, strokes on the same hose running on
+## counting once (the genre's moves: a hose drawn in two goes is one move;
+## the brain report has no score here).
 var strokes := 0
+## The hose the last counted stroke drew.
+var _last_drawn := -1
 var hinted := 0
 ## Square -> [hose, which end] for every tap and flower.
 var _end_at := {}
@@ -238,11 +242,14 @@ func end_stroke() -> bool:
 	# a hose of its end alone is no hose
 	if (hoses[live] as Array).size() < 2:
 		hoses[live] = []
+	var was := live
 	live = -1
 	var changed := not _same(hoses, _before)
 	if changed:
 		history.append(_before)
-		strokes += 1
+		if was != _last_drawn:
+			strokes += 1
+		_last_drawn = was
 	_before = []
 	return changed
 
@@ -310,7 +317,38 @@ func lay_answer(c: int) -> void:
 	# a seed another seed hose ends on is let go
 	live = -1
 	_before = []
+	_last_drawn = c
 	hinted += 1
+
+## The links of the bed that are the answer's: [square, square] pairs of
+## every drawn hose that lie along the same hose's answer (the bulb reads
+## on from what the player has right, never from what is wrong).
+func right_links() -> Array:
+	var truth := {}
+	for c in answer.size():
+		var a: Array = answer[c]
+		for i in a.size() - 1:
+			truth[_side(int(a[i]), int(a[i + 1]))] = c
+	var out := []
+	for c in hoses.size():
+		var h: Array = hoses[c]
+		for i in h.size() - 1:
+			var k := _side(int(h[i]), int(h[i + 1]))
+			if truth.has(k) and int(truth[k]) == c:
+				out.append([int(h[i]), int(h[i + 1])])
+	return out
+
+## The answer's hose through squares `a` and `b`, -1 when none links them.
+func answer_hose(a: int, b: int) -> int:
+	for c in answer.size():
+		var p: Array = answer[c]
+		var i := p.find(a)
+		if i >= 0 and ((i > 0 and int(p[i - 1]) == b) or (i < p.size() - 1 and int(p[i + 1]) == b)):
+			return c
+	return -1
+
+static func _side(a: int, b: int) -> int:
+	return mini(a, b) * 4096 + maxi(a, b)
 
 func _is_answer(c: int) -> bool:
 	var h: Array = hoses[c]

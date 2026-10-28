@@ -140,6 +140,10 @@ func _process(_delta: float) -> bool:
 				_shot("undone")
 			if _f == 3040:
 				_b.hint()
+			if _f == 3046:
+				_shot("reading")
+			if _f == 3048:
+				_b.hint()
 			if _f == 3050:
 				_shot("hinting")
 			if _f == 3090:

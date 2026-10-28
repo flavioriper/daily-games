@@ -222,3 +222,35 @@ static func halo(b: Face.Builder, at: Vector2, s: float) -> void:
 	b.disc(at, s * 0.42, Color(CREAM, 0.35))
 	var ring := Face.Builder.arc_points(at, s * 0.42, 0.0, TAU)
 	b.stroke(ring, s * 0.06, Color(CREAM, 0.95), true)
+
+## The made-fun pass (2026-10-28): what the water grows. A square under a
+## joined hose sprouts a tuft of grass in one of its corners (`seed` picks
+## which, `grow` 0 to 1 as the water arrives), and on the win the tuft
+## opens a little cream daisy (`bloom` 0 to 1). Never the hoses' colours.
+static func sprout(b: Face.Builder, at: Vector2, s: float, seed: int, grow: float, bloom := 0.0) -> void:
+	if grow <= 0.01:
+		return
+	var corner: Vector2 = [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)][(seed * 5 + 3) % 4]
+	var base: Vector2 = at + corner * s * 0.3 + Vector2(0.0, s * 0.06)
+	var h := s * 0.24 * grow
+	for k in 3:
+		var lean := (k - 1) * 0.55
+		var tip := base + Vector2(lean * h * 0.7, -h * (1.0 - absf(k - 1) * 0.25))
+		var mid := base + Vector2(lean * h * 0.15, -h * 0.55)
+		b.stroke(Face.Builder.bezier2(base, mid, tip, 5), s * 0.05 * maxf(grow, 0.4), SEPAL_DEEP if k == 1 else SPROUT)
+	if bloom > 0.01:
+		var top := base + Vector2(0.0, -h * 1.05)
+		var r := s * 0.085 * bloom
+		for k in 5:
+			b.disc(top + Vector2.RIGHT.rotated(-PI * 0.5 + k * TAU / 5.0) * r, r * 0.8, CREAM)
+		b.disc(top, r * 0.6, PETAL_EYE)
+
+## The sun rim the bulb's reading lays round square `at` (`s` wide): the
+## square it reads, or a square it links to (`soft`).
+static func rim(b: Face.Builder, at: Vector2, s: float, ink: Color, soft := false) -> void:
+	var t := s * (1.0 - TILE_GAP)
+	var r := s * TILE_CORNER
+	var top := at - Vector2(t, t) * 0.5
+	if not soft:
+		b.fan(Face.Builder.round_rect(top, Vector2(t, t), r), Color(ink, 0.28))
+	b.stroke(Face.Builder.round_rect(top, Vector2(t, t), r), s * (0.05 if soft else 0.075), Color(ink, 0.7 if soft else 1.0), true)

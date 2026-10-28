@@ -3379,6 +3379,15 @@ HS_SAY_DRY,"Every flower is reached, but some squares are still dry.","Toda flor
 HS_WIN_ONE,%d hoses in %d stroke.,%d mangueiras em %d traço.,%d mangueras en %d trazo.
 HS_WIN_N,%d hoses in %d strokes.,%d mangueiras em %d traços.,%d mangueras en %d trazos.
 HS_WIN_PERFECT,Every hose in one go.,Cada mangueira de uma vez só.,Cada manguera de una sola vez.
+HS_WHY_TAP,This tap has only one free side.,Esta torneira só tem um lado livre.,Este grifo solo tiene un lado libre.
+HS_WHY_FLOWER,This flower has only one free side.,Esta flor só tem um lado livre.,Esta flor solo tiene un lado libre.
+HS_WHY_SEED,This seed has only one free side.,Esta semente só tem um lado livre.,Esta semilla solo tiene un lado libre.
+HS_WHY_CORNER,Only two free sides: a hose runs through here.,Só dois lados livres: uma mangueira passa aqui.,Solo dos lados libres: una manguera pasa por aquí.
+HS_WHY_LAST,One free side left: its hose goes on there.,Resta um lado livre: a mangueira segue por ali.,Queda un lado libre: su manguera sigue por ahí.
+HS_WHY_PAIR,Nothing decides a hose yet: try this pair.,Nada decide uma mangueira ainda: tente este par.,Nada decide una manguera aún: prueba este par.
+HS_WHY_AGAIN,Tap the bulb again to lay that hose.,Toque na lâmpada de novo para colocar a mangueira.,Toca la bombilla otra vez para poner la manguera.
+HS_SAY_DRY_HOW,A hose beside them must take the long way.,Uma mangueira ao lado precisa dar a volta longa.,Una manguera de al lado debe dar la vuelta larga.
+HS_RULES_STARS,"Water runs once a hose is joined, and grass sprouts where it stands. Three stars for a hose a stroke (with one slip to spare); going on with the same hose is still one stroke.","A água corre quando a mangueira está ligada, e a grama brota onde ela fica. Três estrelas para uma mangueira por traço (com um deslize de folga); continuar a mesma mangueira ainda é um traço.","El agua corre cuando la manguera está unida, y la hierba brota donde se queda. Tres estrellas por una manguera en cada trazo (con un desliz de margen); seguir con la misma manguera sigue siendo un trazo."
 HTP_HS_JOIN,Join a flower,Ligue uma flor,Une una flor
 HTP_HS_JOIN_BODY,"Drag from a tap to the flower of its colour. The hose follows your finger, and the flower opens when it arrives.","Arraste de uma torneira até a flor da mesma cor. A mangueira segue o seu dedo, e a flor abre quando ela chega.","Arrastra de un grifo a la flor de su color. La manguera sigue tu dedo, y la flor se abre cuando llega."
 HTP_HS_WATER,Water everything,Regue tudo,Riega todo
@@ -3388,7 +3397,7 @@ HTP_HS_CUT_BODY,Drag across another hose and it is cut there. Slide back off it 
 HTP_HS_SEEDS,Seedlings,Mudinhas,Semilleros
 HTP_HS_SEEDS_BODY,"On Insane, some taps lead to seeds instead of flowers. Their hoses may water any seed, and you work out which goes where.","No Insano, algumas torneiras levam a sementes em vez de flores. As mangueiras delas podem regar qualquer semente, e você descobre qual vai para onde.","En Demencial, algunos grifos llevan a semillas en vez de flores. Sus mangueras pueden regar cualquier semilla, y tú averiguas cuál va adónde."
 HTP_HS_HINT,A hose,Uma mangueira,Una manguera
-HTP_HS_HINT_BODY,"The bulb lays one hose the way the answer has it, cutting whatever is in its way.","A lâmpada coloca uma mangueira do jeito da resposta, cortando o que estiver no caminho.","La bombilla coloca una manguera como la tiene la respuesta, cortando lo que esté en medio."
+HTP_HS_HINT_BODY,"The bulb shows a square that decides a hose and says why. Draw it yourself, or tap the bulb again and it lays that hose.","A lâmpada mostra um quadrado que decide uma mangueira e diz por quê. Desenhe você mesmo, ou toque na lâmpada de novo e ela coloca a mangueira.","La bombilla muestra una casilla que decide una manguera y dice por qué. Dibújala tú, o toca la bombilla otra vez y la pone."
 BRAIN_HS_1,"Start with the corners and the edges: a square there has few ways in, so its hose is often forced.","Comece pelos cantos e bordas: ali um quadrado tem poucas entradas, então a mangueira costuma ser obrigatória.","Empieza por las esquinas y los bordes: ahí una casilla tiene pocas entradas, así que su manguera suele ser obligada."
 BRAIN_HS_2,Two ends side by side on the edge usually hug it: lay that short hose first.,Duas pontas lado a lado na borda costumam seguir a borda: coloque essa mangueira curta primeiro.,Dos extremos juntos en el borde suelen seguirlo: pon esa manguera corta primero.
 BRAIN_HS_3,A hose that runs alongside itself leaves a square no one can reach. Keep hoses from touching themselves.,Uma mangueira encostada nela mesma deixa um quadrado que ninguém alcança. Evite que as mangueiras se toquem.,Una manguera pegada a sí misma deja una casilla que nadie alcanza. Evita que las mangueras se toquen.

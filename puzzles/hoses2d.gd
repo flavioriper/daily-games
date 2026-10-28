@@ -21,6 +21,14 @@ extends "res://core/puzzle_base.gd"
 ## down the hose once. The bulb lays one hose of the answer, drawn out from
 ## its tap.
 ##
+## **Made fun** (2026-10-28, docs/agents/boards/hoses.md): water runs only
+## through a joined hose, darkening the soil square by square and sprouting a
+## tuft on each (a daisy on each at the win); joins climb in pitch; the hose
+## in hand's other end pulses; three live stars ride the count line, by
+## strokes (a hose drawn in two goes on running is one); the bulb teaches in
+## two presses (puzzles/hoses_reader.gd says why); a bed all joined but dry
+## rings its dry squares.
+##
 ## The board is also its own tutorial: `demo` set before it enters the tree
 ## makes it silent, deaf and laid in its own rect, and
 ## ui/hud/hoses_tutorial_diagram.gd plays it with `demo_press`, `demo_move`
@@ -36,6 +44,8 @@ const Face = preload("res://ui/faces/face.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
 const Haptics = preload("res://core/haptics.gd")
 const CozyTheme = preload("res://ui/theme.gd")
+const Reader = preload("res://puzzles/hoses_reader.gd")
+const StarLine = preload("res://ui/flat/star_line.gd")
 
 const Step = State.Step
 
@@ -61,7 +71,7 @@ const W := 1080.0
 const CELL_MAX := 176.0
 const SIDE := 54.0
 const FRAME := 0.26
-const COUNT_H := 96.0
+const COUNT_H := 150.0
 const COUNT_SIZE := 34
 const SAY_SIZE := 32
 ## A flower opening, the water's run down a joined hose, the bulb's hose
@@ -71,6 +81,13 @@ const RUSH_TIME := 0.7
 const LAY_TIME := 0.5
 const REFUSE_TIME := 0.4
 const SAY_TIME := 2.6
+## The stars under the count line: their scale and drop below it.
+const STAR_SCALE := 1.25
+const STAR_DROP := 58.0
+## A sprout's growing, the partner end's pulse, each join's step up.
+const GROW_TIME := 0.32
+const PULSE_TIME := 1.1
+const JOIN_STEP := 0.05
 ## The win: the flowers' wave, how long the board's own win plays.
 const WIN_HOLD := 1.4
 const WAVE_STEP := 0.07
@@ -119,6 +136,16 @@ var _ends_key := ""
 var _halo: ArrayMesh
 var _halo_cell := 0.0
 var fx: Node
+var _stars := StarLine.new()
+## The bulb's reading while it stands: {hose, cell, rule, ways}; {} when none.
+var _reading := {}
+var _reading_mesh: ArrayMesh
+var _reading_key := ""
+## The dry squares rung while every hose is joined.
+var _dry_mesh: ArrayMesh
+var _dry_key := ""
+## Square -> when water reached it (its sprout grows from then).
+var _wet_at := {}
 
 func puzzle_id() -> String: return "hoses"
 func title() -> String: return "Hosepipes"
@@ -128,6 +155,7 @@ func rules() -> String:
 	if not _st.seeds.is_empty():
 		out += "\n\n" + tr("HS_RULES_SEEDS")
 	out += "\n\n" + tr("HS_RULES_CUT")
+	out += "\n\n" + tr("HS_RULES_STARS")
 	return out
 
 func tutorial_pages() -> Array:
@@ -159,6 +187,9 @@ func can_undo() -> bool:
 	return _band < 3 and not _st.history.is_empty() and not is_done() and _st.live < 0
 
 func hints_left() -> int:
+	return hints_held() + (0 if _reading.is_empty() else 1)
+
+func hints_held() -> int:
 	return maxi(0, int(State.HINTS[_band]) + hints_extra - hints_used)
 
 func _ready() -> void:
@@ -198,6 +229,9 @@ func _fresh() -> void:
 		_rush_at.append(-INF)
 	_lay = {}
 	_say = ""
+	_reading = {}
+	_wet_at = {}
+	_stars.clear()
 	_refused_cell = -1
 	_refused_for = -1
 	_soil_key = ""
@@ -292,7 +326,8 @@ func _heard(heard: int, c: int) -> void:
 				for cut: Array in _st.cut_hoses():
 					fx.puff(_cell_pos(int(cut[1])), Art.colour(int(cut[0])), 5)
 		Step.JOIN:
-			_cue("join", randf_range(0.98, 1.03))
+			# each hose joined a step higher than the last
+			_cue("join", minf(0.94 + JOIN_STEP * _st.joined_count(), 1.34))
 
 func _refuse(cell: int, target: int) -> void:
 	if _refused_for == target:
@@ -308,6 +343,8 @@ func _release() -> void:
 		return
 	if _st.end_stroke():
 		moves += 1
+		_reading = {}
+		_rate(true)
 		moved.emit()
 	_after_change()
 
@@ -315,7 +352,7 @@ func _after_change() -> void:
 	if _st.solved():
 		_phase_solved()
 	elif _st.all_joined_dry():
-		_say_now("HS_SAY_DRY")
+		_say_now("HS_SAY_DRY|HS_SAY_DRY_HOW")
 		_cue("dry")
 
 func _phase_solved() -> void:
@@ -348,25 +385,85 @@ func undo() -> bool:
 	if not _st.undo():
 		return false
 	_say = ""
+	_reading = {}
 	_cue("undo")
 	return true
 
 ## The bulb: the first hose not as the answer has it, laid as the answer
 ## has it and drawn out from its tap; what was in its way is cut.
+##
+## Made fun (2026-10-28): the bulb teaches, in two presses. The first reads
+## the bed the way a player can (puzzles/hoses_reader.gd, on from the links
+## the player has right): it rims the square that decides a hose and the
+## squares it must link to, and says why, for one hint. The player may draw
+## it themselves; a second press while the reading stands lays that hose,
+## free. Where no square decides anything yet, it rims the pair's two ends.
 func hint() -> bool:
-	if hints_left() <= 0 or is_done():
+	if is_done():
 		return false
 	if _st.live >= 0:
 		_release()
 	_finish_lay()
-	var c: int = _st.hint_hose()
-	if c < 0:
+	if not _reading.is_empty():
+		var lay := int(_reading.hose)
+		_reading = {}
+		_say = ""
+		return _lay_hose(lay)
+	if hints_held() <= 0:
+		return false
+	var r := _read()
+	if r.is_empty():
 		return false
 	hints_used += 1
+	_reading = r
+	_say_now(_why(r))
+	_cue("hint")
+	_rate(true)
+	if not demo and fx != null:
+		var at: int = int(r.cell) if int(r.cell) >= 0 else int((_st.ends[int(r.hose)] as Array)[0])
+		fx.ring(_cell_pos(at), _l("cell") * 0.8, Pal.SUN)
+	return true
+
+## What the bulb reads now: {hose, cell, rule, ways}, cell -1 and ways the
+## hose's ends when no square decides one. {} when every hose is right.
+func _read() -> Dictionary:
+	var day := {"n": _st.n, "ends": _st.ends, "seeds": _st.seeds}
+	var r = Reader.new(day)
+	for l: Array in _st.right_links():
+		r.link(int(l[0]), int(l[1]))
+	var got: Dictionary = r.next()
+	if not got.is_empty():
+		var c: int = _st.answer_hose(int(got.cell), int(got.ways[0]))
+		if c >= 0:
+			return {"hose": c, "cell": int(got.cell), "rule": int(got.rule), "ways": got.ways}
+	var c := _st.hint_hose()
+	if c < 0:
+		return {}
+	var a: Array = _st.answer[c]
+	return {"hose": c, "cell": -1, "rule": Reader.Rule.NONE, "ways": [int(a[0]), int(a[a.size() - 1])]}
+
+## The reading's toast: why, then what a second press does.
+func _why(r: Dictionary) -> String:
+	var line := "HS_WHY_PAIR"
+	match int(r.rule):
+		Reader.Rule.END:
+			var cell := int(r.cell)
+			line = "HS_WHY_SEED" if _st.is_seed(cell) else ("HS_WHY_TAP" if _st.is_tap(cell) else "HS_WHY_FLOWER")
+		Reader.Rule.CORNER:
+			line = "HS_WHY_CORNER"
+		Reader.Rule.LAST:
+			line = "HS_WHY_LAST"
+	return line + "|HS_WHY_AGAIN"
+
+## Hose `c` laid as the answer has it, drawn out from its tap.
+func _lay_hose(c: int) -> bool:
+	if c < 0 or c >= _st.count():
+		return false
 	_st.lay_answer(c)
 	_lay = {"hose": c, "at": _t}
 	_say = ""
 	_cue("hint")
+	_rate(true)
 	if not demo and fx != null:
 		fx.ring(_cell_pos(int((_st.ends[c] as Array)[0])), _l("cell") * 0.8, Pal.SUN)
 	if Motion.reduce:
@@ -388,6 +485,7 @@ func reset_board() -> void:
 	_st.restart()
 	moves = 0
 	_say = ""
+	_reading = {}
 	_enter_at = _t - Motion.ENTER_DELAY
 	_cue("reset")
 
@@ -430,7 +528,7 @@ func _process(delta: float) -> void:
 	_watch_joins()
 	if not _lay.is_empty() and _t - float(_lay.at) >= LAY_TIME:
 		_finish_lay()
-	if _say != "" and _t - _say_at > SAY_TIME:
+	if _say != "" and _t - _say_at > SAY_TIME and not (_say.begins_with("HS_WHY") and not _reading.is_empty()):
 		_say = ""
 	queue_redraw()
 
@@ -448,7 +546,7 @@ func _watch_joins() -> void:
 			if not demo and fx != null:
 				var h: Array = _st.hoses[c]
 				var at := _cell_pos(int(h[h.size() - 1]))
-				fx.ring(at, _l("cell") * 0.7, Art.colour(c))
+				fx.ring(at, _l("cell") * (0.6 + 0.08 * _st.joined_count()), Art.colour(c))
 				fx.sparkle(at, Pal.SUN)
 
 # --- the fingers ---
@@ -584,21 +682,60 @@ func _draw() -> void:
 		return
 	var easing := not _from.is_empty() and _t - _lay_at < 0.5
 	_draw_soil(easing)
+	_draw_dry()
 	_draw_hoses(easing)
 	_draw_rush()
 	_draw_ends(easing)
+	_draw_reading()
+	_draw_partner()
 	_draw_head()
 	_draw_count()
 
-## The frame and the soil squares, dry or wet; one mesh while nothing is
-## watered or dried.
-func _draw_soil(easing: bool) -> void:
+## The squares water stands in: those of a joined hose, reached square by
+## square from its tap while the water runs down it.
+func _wet() -> Dictionary:
 	var wet := {}
-	for h: Array in _st.hoses:
-		for v in h:
-			wet[int(v)] = true
-	var key := "%s:%d:%d:%d" % [str(wet.keys()), roundi(_l("cell") * 8.0), roundi(_l("ox")), roundi(_l("oy"))]
-	if key != _soil_key or easing or _soil == null:
+	for c in _st.count():
+		if not _st.joined(c):
+			continue
+		var h: Array = _st.hoses[c]
+		var reach := h.size()
+		var e: float = _t - _rush_at[c]
+		if e >= 0.0 and e < RUSH_TIME and not Motion.reduce:
+			reach = ceili(e / RUSH_TIME * h.size())
+		var from_tap: bool = int(h[0]) == int((_st.ends[c] as Array)[0])
+		for i in reach:
+			wet[int(h[i if from_tap else h.size() - 1 - i])] = true
+	return wet
+
+## Squares under joined hoses, for the count line.
+func _watered() -> int:
+	var k := 0
+	for c in _st.count():
+		if _st.joined(c):
+			k += (_st.hoses[c] as Array).size()
+	return k
+
+## The frame and the soil squares, dry or wet, a tuft on each wet one (a
+## daisy in it on the win); one mesh while nothing is watered, dried or
+## growing.
+func _draw_soil(easing: bool) -> void:
+	var wet := _wet()
+	for v in wet:
+		if not _wet_at.has(v):
+			_wet_at[v] = _t
+	for v in _wet_at.keys():
+		if not wet.has(v):
+			_wet_at.erase(v)
+	var growing := false
+	if not Motion.reduce:
+		for v in _wet_at:
+			if _t - float(_wet_at[v]) < GROW_TIME:
+				growing = true
+				break
+	var blooming := _phase_won() and _t - _won_at < WIN_HOLD + 0.6 and not Motion.reduce
+	var key := "%s:%d:%d:%d:%s" % [str(wet.keys()), roundi(_l("cell") * 8.0), roundi(_l("ox")), roundi(_l("oy")), is_done()]
+	if key != _soil_key or easing or growing or blooming or _soil == null:
 		_soil_key = key
 		var b := Face.Builder.new()
 		var cs := _l("cell")
@@ -606,8 +743,77 @@ func _draw_soil(easing: bool) -> void:
 		Art.frame(b, Rect2(_l("ox"), _l("oy"), cs * n, cs * n), cs * FRAME)
 		for i in n * n:
 			Art.soil(b, _cell_pos(i), cs, wet.has(i), i)
+		for i in n * n:
+			if not wet.has(i) or _st.end_of(i) >= 0 or _st.is_seed(i):
+				continue
+			var grow := 1.0
+			var bloom := 0.0
+			if not Motion.reduce:
+				grow = Motion.back_out(clampf((_t - float(_wet_at.get(i, -INF))) / GROW_TIME, 0.0, 1.0))
+			if is_done():
+				# a reopened day (_won_at -INF) stands in bloom
+				bloom = 1.0 if Motion.reduce else Motion.back_out(clampf((_t - _won_at - (i % n + i / n) * WAVE_STEP * 0.6) / 0.35, 0.0, 1.0))
+			Art.sprout(b, _cell_pos(i), cs, i, grow, bloom)
 		_soil = b.mesh()
 	draw_mesh(_soil, null)
+
+## Every hose joined and squares still dry: each dry square rimmed in sun.
+func _draw_dry() -> void:
+	if _st.live >= 0 or not _st.all_joined_dry() or is_done():
+		return
+	var dry := []
+	for i in _st.squares():
+		if _st.owner(i) < 0 and _st.end_of(i) < 0:
+			dry.append(i)
+	var key := "%s:%d:%d:%d" % [str(dry), roundi(_l("cell") * 8.0), roundi(_l("ox")), roundi(_l("oy"))]
+	if key != _dry_key or _dry_mesh == null:
+		_dry_key = key
+		var b := Face.Builder.new()
+		for i in dry:
+			Art.rim(b, _cell_pos(int(i)), _l("cell"), Pal.SUN)
+		_dry_mesh = b.mesh() if not b.verts.is_empty() else null
+	if _dry_mesh != null:
+		draw_mesh(_dry_mesh, null)
+
+## The bulb's reading: the square it reads rimmed and washed in sun, the
+## squares it links to rimmed softly (a pair's two ends when none decides).
+func _draw_reading() -> void:
+	if _reading.is_empty():
+		return
+	var key := "%s:%d:%d:%d" % [str(_reading), roundi(_l("cell") * 8.0), roundi(_l("ox")), roundi(_l("oy"))]
+	if key != _reading_key or _reading_mesh == null:
+		_reading_key = key
+		var b := Face.Builder.new()
+		var cs := _l("cell")
+		if int(_reading.cell) >= 0:
+			Art.rim(b, _cell_pos(int(_reading.cell)), cs, Pal.SUN)
+		for v in _reading.ways:
+			Art.rim(b, _cell_pos(int(v)), cs, Pal.SUN, int(_reading.cell) >= 0)
+		_reading_mesh = b.mesh()
+	# a slow breath so it reads as asked, not as a mark of the bed
+	var a := 1.0 if Motion.reduce else 0.75 + 0.25 * sin(_t * 4.0)
+	draw_mesh(_reading_mesh, null, Transform2D(), Color(1, 1, 1, a))
+
+## The hose in hand's other end pulses (on Seedlings, every bare seed), so
+## the eye finds where it is going.
+func _draw_partner() -> void:
+	var c: int = _st.live
+	if c < 0 or _st.joined(c) or _halo == null:
+		return
+	var h: Array = _st.hoses[c]
+	var e: Array = _st.ends[c]
+	var goals := []
+	if _st.seeded(c):
+		for sc in _st.seeds:
+			if _st.seed_owner(int(sc)) < 0:
+				goals.append(int(sc))
+	else:
+		goals.append(int(e[1]) if int(h[0]) == int(e[0]) else int(e[0]))
+	var k := fmod(_t, PULSE_TIME) / PULSE_TIME
+	var sc := 1.0 if Motion.reduce else 0.9 + 0.35 * k
+	var a := 0.8 if Motion.reduce else 0.9 * (1.0 - k)
+	for g in goals:
+		draw_mesh(_halo, null, Transform2D(0.0, Vector2.ONE * sc, 0.0, _cell_pos(int(g))), Color(1, 1, 1, a))
 
 ## The hoses, one mesh rebuilt only when one changed.
 func _draw_hoses(easing: bool) -> void:
@@ -791,23 +997,33 @@ func _draw_count() -> void:
 	var text: String
 	var fs: int
 	if _say != "":
-		text = tr(_say)
+		var parts := PackedStringArray()
+		for k in _say.split("|"):
+			parts.append(tr(k))
+		text = "\n".join(parts)
 		fs = roundi(SAY_SIZE * u)
 	elif is_done():
 		return
 	else:
 		var j: int = _st.joined_count()
 		text = tr("HS_JOINED") % [j, _st.count()]
-		text += "  ·  " + tr("HS_WATERED") % roundi(100.0 * _st.watered() / float(_st.squares()))
+		text += "  ·  " + tr("HS_WATERED") % roundi(100.0 * _watered() / float(_st.squares()))
 		fs = roundi(COUNT_SIZE * u)
-	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 	var pk := 1.0
 	if _say != "" and _t - _say_at < 0.25 and not Motion.reduce:
 		pk = Motion.pop_in_scale(_t - _say_at, 0.25).x
 	draw_set_transform(Vector2(size.x * 0.5, y), 0.0, Vector2.ONE * pk)
-	draw_string_outline(font, Vector2(-tw * 0.5, 0.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, roundi(10 * u), Color(Pal.SURFACE, 0.92))
-	draw_string(font, Vector2(-tw * 0.5, 0.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Pal.TEXT)
+	var lines := text.split("\n")
+	for i in lines.size():
+		var tw := font.get_string_size(lines[i], HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		var at := Vector2(-tw * 0.5, i * fs * 1.25)
+		draw_string_outline(font, at, lines[i], HORIZONTAL_ALIGNMENT_LEFT, -1, fs, roundi(10 * u), Color(Pal.SURFACE, 0.92))
+		draw_string(font, at, lines[i], HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Pal.TEXT)
 	draw_set_transform(Vector2.ZERO)
+	# the stars under the count; a toast of two lines has them
+	if lines.size() < 2:
+		var sw := StarLine.width(STAR_SCALE * u)
+		_stars.draw(self, Vector2(size.x * 0.5 - sw * 0.5 + StarLine.R * STAR_SCALE * u, y + STAR_DROP * u), STAR_SCALE * u, _t)
 
 # --- the win ---
 
@@ -824,6 +1040,16 @@ func flat_win() -> Dictionary:
 	var line: String = tr("HS_WIN_PERFECT") if _st.strokes <= _st.count() else ""
 	return {"faces": [], "subtitle": (made + " " + line).strip_edges()}
 
+## Three stars while the strokes are at most one past the hoses (a hose a
+## stroke, and one slip), two up to four past, one beyond; a hose the bulb
+## laid counts as a stroke, its reading as nothing, so drawing the read hose
+## yourself costs what letting the bulb lay it does. Read off strokes only,
+## never the answer, so a star never falls to say a hose is wrong. Reset
+## keeps the day's strokes.
+func _rate(heard: bool) -> void:
+	var extra: int = _st.strokes + _st.hinted - _st.count()
+	_stars.rate(3 if extra <= 1 else (2 if extra <= 4 else 1), _t, heard and not is_done())
+
 func completion_record() -> Dictionary:
 	return {"hoses": _st.hoses.duplicate(true), "strokes": _st.strokes}
 
@@ -837,5 +1063,9 @@ func restore_completed_board() -> void:
 		_rush_at[c] = -INF
 	_lay = {}
 	_say = ""
+	_reading = {}
+	for i in _st.squares():
+		_wet_at[i] = -INF
+	_rate(false)
 	_won_at = -INF
 	queue_redraw()

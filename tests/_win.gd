@@ -1692,9 +1692,14 @@ func _solve_hoses() -> void:
 		_hud_ok = _hud_ok and st.joined(b)
 		_press(_host.top_bar.undo_button)
 		_hud_ok = _hud_ok and st.hoses == before
+	# the bulb reads (one hint, nothing laid), then lays that hose free
+	var joined_before: int = st.joined_count()
+	_press(_host.top_bar.hint_button)
+	var read_ok: bool = _puzzle.hints_used == 1 and st.joined_count() == joined_before and not _puzzle._reading.is_empty()
 	_press(_host.top_bar.hint_button)
 	settle.call()
-	_hud_ok = _hud_ok and _puzzle.hints_used == 1 and st.joined_count() >= 1
+	print("hoses: bulb read %s, then laid" % read_ok)
+	_hud_ok = _hud_ok and read_ok and _puzzle.hints_used == 1 and st.joined_count() >= 1
 	for c in st.count():
 		if _puzzle.is_done():
 			break

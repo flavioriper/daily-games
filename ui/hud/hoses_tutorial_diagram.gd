@@ -10,7 +10,7 @@ extends Control
 ## - CUT: a hose drawn, another dragged across it (it is cut) and back off
 ##   it (it grows back), then laid its own way.
 ## - SEEDS: on an Insane bed, a seed hose drawn to a seed, which blooms.
-## - HINT: the bulb lays a hose.
+## - HINT: the bulb reads a square and says why, then lays its hose.
 ##
 ## Easy beds but SEEDS (a fixed Insane bed from the bank, never today's). A page plays until its
 ## point is made, waits a moment and starts over. Under reduce motion the
@@ -124,6 +124,9 @@ func _script(st) -> Array:
 					_draw_path(out, st.answer[c])
 					break
 		_:
+			# the first press reads a square and says why, the second lays it
+			out.append(["bulb"])
+			out.append(["wait", 1.8])
 			out.append(["bulb"])
 	return out
 

@@ -56,3 +56,75 @@
   hose); `tests/_shot_hoses.gd -- <dir> d=<0..3> [tut=<page>|card]` shoots
   rest, drawing, cut, joined, undone, hinting, hinted, midway, the win and
   the reopened day.
+
+## Made fun (2026-10-28)
+
+The user: "make hosepipes experience way better to play, and game itself
+way funnier to play, right now nobody likes it", autonomous, push when
+done. References, by genre (the classic path-pair games; never their names):
+reviewers praise the tactile drag and a sound for each join, and the
+"perfect" of one stroke a pair, with the share of the board filled kept
+apart from it; the genre's complaints are boards that need a guess with no
+word on a mistake, and the full-fill rule making perfect play tedious on
+large boards.
+
+**Measured first** (`tests/_probe_hs_fun.gd`, headless, 40 beds a band,
+`puzzles/hoses_reader.gd`): a player reading one square at a time (a square
+whose free sides are exactly the links it still needs takes them) gets
+94% of an Easy bed's links on average, 76% Medium, 61% Hard, 20% Insane
+(live-dealt beds of the same bands), and never a wrong link. So the bulb
+can say why most of the time, and Insane's beds ask for reading past one
+square. The deals are unchanged.
+
+**What changed:**
+
+- **Water runs only through a joined hose** (`_wet`): the soil under a
+  hose stays dry until its tap reaches its flower, then darkens square by
+  square from the tap as the drops run, and each wet square sprouts a tuft
+  of grass in a corner (`Art.sprout`, `GROW_TIME`). The count line's
+  "watered" share counts joined hoses' squares (`_watered`). On the win
+  every tuft opens a cream daisy in a diagonal wave; a reopened day stands
+  in bloom. Grass and cream, never a hose's colour.
+- **Joins climb**: each join's cue a step (`JOIN_STEP` 0.05) higher than
+  the last, its ring a little bigger. No new sounds.
+- **The other end pulses** while a hose is in hand (the halo mesh,
+  `PULSE_TIME`); on Seedlings every bare seed does.
+- **Live stars** under the count line (`ui/flat/star_line.gd`, `_rate`):
+  three while strokes + hoses the bulb laid are at most one past the hoses,
+  two up to four past, one beyond (a reading alone costs no star, so drawing
+  the read hose yourself costs what letting the bulb lay it does). Read off strokes only, never the answer, so a
+  star never falls to say a hose is wrong. **A stroke on the same hose as
+  the one before is not counted again** (`State._last_drawn`, the genre's
+  moves: a hose drawn in two goes is one); a laid hose counts as drawn.
+  Reset keeps the day's strokes. "Every hose in one go" still means
+  strokes <= hoses.
+- **The bulb teaches in two presses** (`_read`, `_why`): the first reads the
+  bed from the links the player has right (`State.right_links`) with
+  `hoses_reader.gd`, rims in sun the square that decides a hose and softly
+  the squares it must link to, and says why (`HS_WHY_TAP/FLOWER/SEED`,
+  `HS_WHY_CORNER`, `HS_WHY_LAST`, then `HS_WHY_AGAIN`) for one hint, the
+  toast standing while the reading does. A second press lays that hose,
+  free. Where no square decides anything, it rims the first wrong pair's two
+  ends (`HS_WHY_PAIR`). Any stroke that changes the bed, Undo or Reset puts
+  the reading out. `hints_held()` is the badge, `hints_left()` counts the
+  reading. The tutorial's HINT page presses twice.
+- **All joined but dry**: the dry squares are rimmed in sun and the toast
+  says what it means (`HS_SAY_DRY` + `HS_SAY_DRY_HOW`).
+- The count line takes two lines for a toast (`|` between keys in `_say`);
+  `COUNT_H` 150 for the stars. `HS_RULES_STARS` and `HTP_HS_HINT_BODY` in
+  en/pt/es.
+
+Draw calls on opengl3_angle, 810x1440, Insane: 75-93 in play, 85 with a
+reading, 141 on the win (Medium on the default driver 79-94, 144).
+`_win.gd -- hoses` PASS (the bulb reads, nothing laid, then lays); suite
+303252/0.
+
+Decided for the user, unconfirmed: the star thresholds, the second press
+free, soil dry under an unjoined hose, sprouts and daisies. The reader
+ignores the player's wrong hoses, so a reading can rim a square a wrong hose
+lies on and call its sides free (the second press cuts and lays, so it
+resolves). The tutorial's HINT page shows the rims without the words (a
+demo has no count line); its caption says it. The all-joined-but-dry rims
+have no harness mode and are unseen. Owed: a phone
+(the drag on a diagonal flick, the pulse), the pitch climb heard, pt/es by a
+reader.
