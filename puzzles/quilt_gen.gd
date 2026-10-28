@@ -133,14 +133,18 @@ const MASK_CELLS := 63
 ## Medium, so a careful player is never made to guess, and on Hard one
 ## patch: its eight keep their harder middle but always open with a move to
 ## be found. Reading half of Hard cost 78 ms a deal and 360 at worst, past
-## the 194 ms gate; the first move alone costs 32 and 121 (60 days, this
-## Mac). Insane's banked Scrap Basket is not read.
+## the 194 ms gate. As shipped, 500 seeds a band on this Mac: 500, 500 and
+## 499 of 500 readable, 7.3 / 13.6 / 28.6 ms a deal, worst 48.8 / 66.3 /
+## 148.3. Insane's banked Scrap Basket is not read.
 const READ_SHARE := [1.0, 1.0, 0.1]
 ## Times ATTEMPTS: a readable board is rarer than a unique one (17, 18 and
 ## 21 of 60 quilts each band handed out before -- read to the end on Easy
 ## and Medium, opened on Hard), so the loop runs longer before it falls
 ## back to the first board that passed every other test.
-const READ_ATTEMPTS := 4
+## Hard's is 2: at 4 its worst of 500 seeds dealt in 197.6 ms, past the
+## gate. A clock cannot cut the loop instead -- a day has to be the same
+## quilt on every phone, fast or slow.
+const READ_ATTEMPTS := [4, 4, 2]
 ## One grow can wedge rather than fail -- it runs out of legal accretions
 ## long before its patches are all grown -- but every loop below is bounded
 ## by the cells it is filling, so this guards only the seed search.
@@ -175,7 +179,7 @@ static func generate(rng: RandomNumberGenerator, difficulty: int) -> Dictionary:
 	var last := {}
 	var unique := {}
 	var readable_board := {}
-	for attempt in range(1, ATTEMPTS * READ_ATTEMPTS + 1):
+	for attempt in range(1, ATTEMPTS * int(READ_ATTEMPTS[d]) + 1):
 		var grown := _grow(rng, b)
 		if grown.is_empty():
 			continue

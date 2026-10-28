@@ -488,8 +488,9 @@ var _flawless := false
 var _wiggle: Dictionary = {}
 ## The dead end's cells and when their pulse starts: {"cells", "at"}.
 var _dead: Dictionary = {}
-## The gap under the held patch (`_gap_cells`), cached by (patch, spot) and
-## the history's length, so a hold that rests on one spot floods once.
+## The gap under the held patch (`_gap_cells`), cached by (patch, spot),
+## `_gen` and the history's length, so a hold that rests on one spot floods
+## once.
 var _gap := PackedInt32Array()
 var _gap_key := Vector2i(-1, -1)
 var _gap_ver := -1
@@ -2233,9 +2234,12 @@ func _gap_cells(b, p: int, target: int) -> void:
 	if max_moves > 0 or _state.judged() or target < 0:
 		return
 	var key := Vector2i(p, target)
-	if _gap_key != key or _gap_ver != _state.history.size():
+	# Undo bumps `_gen`, so an undo and a new drop that land on the same
+	# history length still read as a new board.
+	var ver: int = _gen * 100000 + _state.history.size()
+	if _gap_key != key or _gap_ver != ver:
 		_gap_key = key
-		_gap_ver = _state.history.size()
+		_gap_ver = ver
 		_gap = _state.gaps(p, target)
 	if _gap.is_empty():
 		return

@@ -316,16 +316,20 @@ funnier to play, right now nobody likes it", autonomous, push when done.
   Medium are dealt only if the reading finishes them (60/60 now), and Hard
   only if it gives a first move (60/60 now; read to the end 9-16/60, so
   Hard keeps its middle). Node windows and uniqueness are tested as before;
-  the loop runs `ATTEMPTS * READ_ATTEMPTS` and falls back to the first
-  board that passed the rest. Deal on this Mac, 60 days: Easy 6.7 ms (worst
-  21), Medium 11.8 (46), Hard 32 (121), against the 194 gate. Reading half
-  of Hard cost 78 / 360 and was dropped. Insane's bank is untouched (not
+  the loop runs `ATTEMPTS * READ_ATTEMPTS[band]` (4, 4, 2) and falls back
+  to the first board that passed the rest. 500 seeds a band on this Mac:
+  500, 500 and 499 readable; deal 7.3 / 13.6 / 28.6 ms, worst 48.8 / 66.3 /
+  148.3, against the 194 gate (Hard at 4 attempts reached 197.6, so 2; a
+  clock cannot cut the loop, a day is the same quilt on every phone).
+  Reading half of Hard cost 78 / 360 and was dropped. The probe takes
+  `QL_DAYS` and `QL_BAND` from the environment. Insane's bank is untouched (not
   re-mined; 15/60 of its boards open with a forced move).
 - **The gap under the hand** (`_gap_cells`, `State.gaps`, `Gen.pocket_cells`):
   on Easy, Medium and Hard, a held patch that fits washes rose (dashed rim)
   the bare squares its drop would shut in a pocket too small for any patch
   still waiting. Only pockets beside the patch are walked, each until it
-  reaches the smallest size, cached by (patch, spot, history length). The
+  reaches the smallest size, cached by (patch, spot, `_gen`, history
+  length). The
   drop is still taken; the old dead-end line and pulse follow it. Not on
   Insane (its scraps make "too small for what is left" untrue, and it says
   nothing it does not have to).

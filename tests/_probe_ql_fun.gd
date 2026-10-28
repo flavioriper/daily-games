@@ -8,8 +8,9 @@ extends SceneTree
 const State = preload("res://puzzles/quilt_state.gd")
 
 func _initialize() -> void:
-	var days := 60
-	for band in 4:
+	var days := int(OS.get_environment("QL_DAYS")) if OS.get_environment("QL_DAYS") != "" else 60
+	var bands: Array = [0, 1, 2, 3] if OS.get_environment("QL_BAND") == "" else [int(OS.get_environment("QL_BAND"))]
+	for band in bands:
 		var spots := 0
 		var patches := 0
 		var single := 0
