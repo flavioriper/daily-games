@@ -11,7 +11,9 @@
 #
 #   1. enables androidpublisher.googleapis.com on the project;
 #   2. creates the service account play-publisher;
-#   3. writes its key to ~/keys/play-publisher.json (mode 600, outside git).
+#   3. enables the IAM Credentials API and makes the login Token Creator on
+#      the account, so tools/upload_play.sh can impersonate it (the org
+#      policy forbids service account keys).
 #
 # The service account gets no project role: its power comes from the Play
 # Console, where it has to be invited as a user (Users and permissions >
@@ -24,7 +26,6 @@ project="${PLAY_GCP_PROJECT:-daily-games-420bf}"
 account="${PLAY_GCP_ACCOUNT:-flavio@hypertradeworx.xyz}"
 sa_name="play-publisher"
 sa_email="$sa_name@$project.iam.gserviceaccount.com"
-key="${PLAY_SA_KEY:-$HOME/keys/play-publisher.json}"
 
 g() { gcloud --account "$account" --project "$project" "$@"; }
 
@@ -48,25 +49,22 @@ else
   echo "play_api_setup: created $sa_email"
 fi
 
-if [[ -s "$key" ]]; then
-  echo "play_api_setup: key already at $key"
+# 3. Keyless: the organisation policy iam.disableServiceAccountKeyCreation
+# forbids keys (seen 2026-10-28), so tools/upload_play.sh impersonates the
+# account instead -- the IAM Credentials API mints it a short-lived token on
+# the strength of $account's own gcloud login, which needs Token Creator on
+# the account. (If PLAY_SA_KEY exists, the upload script uses that instead.)
+if g services list --enabled --format="value(config.name)" | grep -q '^iamcredentials.googleapis.com$'; then
+  echo "play_api_setup: IAM Credentials API already enabled"
 else
-  mkdir -p "$(dirname "$key")"
-  # A just-created account is NOT_FOUND for a few seconds (seen 2026-10-28).
-  for try in 1 2 3 4 5 6; do
-    if g iam service-accounts keys create "$key" --iam-account "$sa_email" 2>/tmp/play_api_setup.err; then
-      break
-    elif grep -q NOT_FOUND /tmp/play_api_setup.err && [[ $try -lt 6 ]]; then
-      echo "play_api_setup: $sa_email not visible yet, retrying in 5 s"
-      sleep 5
-    else
-      cat /tmp/play_api_setup.err >&2
-      exit 1
-    fi
-  done
-  [[ -s "$key" ]] || { echo "play_api_setup: no key written"; exit 1; }
-  chmod 600 "$key"
-  echo "play_api_setup: key written to $key"
+  g services enable iamcredentials.googleapis.com
+  echo "play_api_setup: enabled iamcredentials.googleapis.com"
+fi
+if g iam service-accounts get-iam-policy "$sa_email" --format=json | jq -e --arg m "user:$account" '.bindings[]? | select(.role=="roles/iam.serviceAccountTokenCreator") | .members[] | select(.==$m)' >/dev/null; then
+  echo "play_api_setup: $account already Token Creator on $sa_email"
+else
+  g iam service-accounts add-iam-policy-binding "$sa_email" --member "user:$account" --role roles/iam.serviceAccountTokenCreator >/dev/null
+  echo "play_api_setup: $account made Token Creator on $sa_email"
 fi
 
 echo

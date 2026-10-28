@@ -76,15 +76,16 @@ Since 2026-10-28 a release AAB can go to a Play track without the Console:
 `tools/upload_play.sh [aab]` opens an edit, uploads the bundle, puts it on
 `PLAY_TRACK` (internal by default) as a `PLAY_STATUS` release (draft by
 default: nobody sees it until a person rolls it out in the Console, but Play
-measures it at once), and commits. It signs in as the service account
-`play-publisher@daily-games-420bf.iam.gserviceaccount.com`, whose key sits at
-`~/keys/play-publisher.json` (outside git, beside the upload keystore); the
-token is minted with openssl and curl, no google-auth on this Mac.
+measures it at once), and commits. It acts as the service account
+`play-publisher@daily-games-420bf.iam.gserviceaccount.com`, keylessly: the
+organisation policy forbids service account keys, so the project owner's
+gcloud login (Token Creator on the account) asks the IAM Credentials API for
+a half-hour token as the account, with curl and jq.
 
 The one-time setup is `bash tools/play_api_setup.sh`, run by a person with
 the project owner's gcloud login (the auto-mode classifier refuses identity
-and IAM steps): it enables the Play Android Developer API, creates the
-service account and writes the key. The account has no cloud role; the Play
-Console grants its power (Users and permissions > Invite new users, "Release
-apps to testing tracks" on the app). Production releases stay the user's
-hand in the Console.
+and IAM steps): it enables the Play Android Developer and IAM Credentials
+APIs, creates the service account and grants the login Token Creator on it.
+The account has no cloud role; the Play Console grants its power (Users and
+permissions > Invite new users, "Release apps to testing tracks" on the
+app). Production releases stay the user's hand in the Console.
