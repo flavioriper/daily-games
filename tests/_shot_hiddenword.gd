@@ -17,7 +17,8 @@ extends SceneTree
 ## phone's keyboard that tall (in the board's pixels; 806 is a 16:9 phone's,
 ## 42% of 1920), as off a phone there is none; `field` types through the
 ## board's unseen line as the phone's keyboard would, a letter at a time,
-## then a whole autocorrected word, then Enter.
+## then a whole autocorrected word, then Enter. `phone` lays the board out as
+## a phone does, with the board's own keys hidden.
 
 const SHOT_DIR := "/private/tmp/claude-501/-Users-flavioriper-dev-daily/78b53668-8a1f-437d-9baa-ef327881bd37/scratchpad"
 
@@ -38,6 +39,7 @@ var _ms_sum := 0.0
 var _ms_n := 0
 var _draws_max := 0
 var _osk := -1.0
+var _phone := false
 
 func _initialize() -> void:
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
@@ -51,6 +53,8 @@ func _initialize() -> void:
 			_dir = a.substr(4)
 		elif a.begins_with("osk="):
 			_osk = float(a.substr(4))
+		elif a == "phone":
+			_phone = true
 		else:
 			_mode = a
 	var progress = load("res://core/progress.gd")
@@ -80,6 +84,9 @@ func _process(delta: float) -> bool:
 		if _host.has_node("HowToPlay"):
 			_host.get_node("HowToPlay").free()
 		_puzzle.osk_override = _osk
+		if _phone:
+			_puzzle.keys_shown = false
+			_puzzle._layout()
 		print("answer: ", _puzzle.state.answer, " snail ", _puzzle.state.snail, " strict ", _puzzle.state.strict, " hints ", _puzzle.hints_left())
 		_script()
 		return false
@@ -115,12 +122,12 @@ func _layout_report() -> void:
 	var p = _puzzle
 	var grid := Rect2(p._origin(), p._block())
 	var keys: Control = p._keys
-	var keys_r := Rect2(keys.position, keys.size * keys.scale) if keys != null else Rect2()
+	var shows: bool = keys != null and keys.visible
+	var keys_r := Rect2(keys.position, keys.size) if shows else Rect2(Vector2(0.0, p.size.y), Vector2.ZERO)
 	var osk_top: float = p.size.y - p._osk if p._osk > 0.0 else p.size.y
-	print("layout: board %s, cell %.1f, grid y %.0f..%.0f, keys y %.0f..%.0f (scale %.2f), osk top %.0f, fits %s, left %d" % [
-		p.size, p._cell(), grid.position.y, grid.end.y, keys_r.position.y, keys_r.end.y,
-		keys.scale.x if keys != null else 0.0, osk_top, grid.end.y < keys_r.position.y and keys_r.end.y <= osk_top,
-		p._left_to])
+	print("layout: board %s, cell %.1f, grid y %.0f..%.0f, keys %s y %.0f..%.0f, osk top %.0f, fits %s, left %d" % [
+		p.size, p._cell(), grid.position.y, grid.end.y, "shown" if shows else "hidden", keys_r.position.y, keys_r.end.y,
+		osk_top, grid.end.y <= keys_r.position.y and (not shows or keys_r.end.y <= osk_top) and grid.end.y <= osk_top, p._left_to])
 
 func _feed(text: String) -> void:
 	var f: LineEdit = _puzzle._field

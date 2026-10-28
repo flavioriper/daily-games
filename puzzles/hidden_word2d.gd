@@ -339,18 +339,20 @@ const STAMP_R := 62.0
 const STAMP_TILT := -0.22
 
 ## The phone's own keyboard (the user, 2026-10-28: "users want to use the
-## native keyboard as well on hidden word like on five clues"). The board
-## keeps its own keys too, as a child it lays itself: full size at the foot
-## while the phone's keyboard is down, and at KEYS_MINI just above it while
-## it is up, where they are the key marks' mirror (a phone's keyboard cannot
-## wear them) and still type. OSK_GAP is the air above the phone's keyboard,
-## KEYS_GAP the air between the band and the keys, and BAND_OSK the band
-## while the phone's keyboard is up, when the words-left chip moves beside
-## the small keys: a 16:9 phone's keyboard leaves the grid some 600 of 1920.
+## native keyboard as well on hidden word like on five clues"). On a phone
+## it is the only keyboard (the user, 2026-10-28: "should not show both
+## native and ingame keyboard, only the native keyboard", then "redesign the
+## layout to avoid the bottom empty space where keyboard were"): the board's
+## own keys are hidden (`keys_shown`), the key marks live on the grid alone,
+## and the grid grows into the keys' room while the phone's keyboard is down.
+## Off a phone (a desktop run, no keyboard on screen) the keys stay, full
+## size at the foot, and hide too while a keyboard is up. OSK_GAP
+## is the air above the phone's keyboard, KEYS_GAP the air between the band
+## and the keys, and BAND_OSK the band while the phone's keyboard is up, the
+## words-left chip's room under the grid.
 const OSK_GAP := 8.0
 const KEYS_GAP := 10.0
-const KEYS_MINI := 0.4
-const BAND_OSK := 12.0
+const BAND_OSK := 74.0
 
 ## The words-left chip on the band under the grid: how many of the band's
 ## words still fit every row that shows its colours. It counts down a
@@ -536,6 +538,9 @@ var _slide_tw: Tween
 ## False on a board that is handed its keys (the tutorial's Desk): no keys,
 ## no field and no chip of its own.
 var own_keys := true
+## False on a device with a keyboard on screen: the board's keys never show.
+## A harness sets it to lay the board out as a phone does.
+var keys_shown := not DisplayServer.has_feature(DisplayServer.FEATURE_VIRTUAL_KEYBOARD)
 var _keys: Control = null
 ## The unseen line the phone's keyboard types into, what it held when last
 ## read, and whether the keyboard is still to be called up for this word.
@@ -971,25 +976,24 @@ func _bottom() -> float:
 func _band_h() -> float:
 	return BAND_OSK if _osk > 0.0 else BAND
 
-## The board's own keys' scale: full size, or the mirror above the phone's
-## keyboard.
-func _keys_k() -> float:
-	return KEYS_MINI if _osk > 0.0 else 1.0
-
-## What the keys take off the foot of the span, with their gap.
+## What the keys take off the foot of the span, with their gap: nothing
+## while they are hidden.
 func _keys_h() -> float:
-	if _keys == null:
+	if not _keys_up():
 		return 0.0
-	return KeyBoard.HEIGHT * _keys_k() + KEYS_GAP
+	return KeyBoard.HEIGHT + KEYS_GAP
+
+## True while the board's own keys are on the screen.
+func _keys_up() -> bool:
+	return _keys != null and keys_shown and _osk <= 0.0
 
 func _place_keys() -> void:
 	if _keys == null:
 		return
-	var k := _keys_k()
 	var w := _card_w()
+	_keys.visible = _keys_up()
 	_keys.size = Vector2(w, KeyBoard.HEIGHT)
-	_keys.scale = Vector2(k, k)
-	_keys.position = Vector2((size.x - w * k) * 0.5, _bottom() - KeyBoard.HEIGHT * k)
+	_keys.position = Vector2((size.x - w) * 0.5, _bottom() - KeyBoard.HEIGHT)
 	if _field != null:
 		_field.position = _origin()
 		_field.size = _block()
@@ -1074,9 +1078,6 @@ func _layout() -> void:
 
 ## The meadow's crown: the band's ground line under the grid.
 func _ground() -> float:
-	if _osk > 0.0:
-		# Just under the grid: the small keys stand on the turf.
-		return _origin().y + _block().y + KEYS_GAP * 0.5
 	return _origin().y + _block().y + _band_h() - TURF_TOP
 
 ## What the host's rows cover, in this board's own pixels (it is laid full
@@ -2066,11 +2067,6 @@ func _draw_chip(t: float, shown: Array) -> void:
 	if not Motion.reduce and land >= 0.0 and land < Motion.BUMP_TIME:
 		swell += CHIP_SWELL * sin(PI * land / Motion.BUMP_TIME)
 	var mid := Vector2(size.x * 0.5, _origin().y + _block().y + minf(BAND * 0.42, CHIP_H * 0.5 + 10.0))
-	if _osk > 0.0 and _keys != null:
-		# Beside the small keys, in the air their right leaves.
-		var right: float = _keys.position.x + _keys.size.x * _keys.scale.x
-		mid = Vector2(minf(right + (size.x - right) * 0.5, size.x - w * 0.5 - 8.0),
-			_keys.position.y + KeyBoard.HEIGHT * _keys.scale.y * 0.5)
 	var grow := Vector2.ONE * swell
 	draw_mesh(_chip_mesh, null, Transform2D(0.0, grow, 0.0, mid), Color(1.0, 1.0, 1.0, a))
 	shown.append(_chip_mesh)

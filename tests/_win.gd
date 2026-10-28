@@ -1253,14 +1253,12 @@ func _solve_hiddenword() -> void:
 			if not slot.has_point(_puzzle.cell_to_local(r, c)):
 				_fit_ok = false
 	# Laid out above a phone's keyboard 42% of the screen tall: the grid
-	# over the small keys, the keys over the phone's.
+	# over the phone's, and the board's own keys hidden.
 	var osk: float = _puzzle.size.y * 0.42
 	_puzzle.osk_override = osk
 	_puzzle._watch_osk()
 	var keys: Control = _puzzle._keys
-	var keys_top: float = keys.position.y
-	var keys_foot: float = keys_top + keys.size.y * keys.scale.y
-	_fit_ok = _fit_ok and _puzzle._origin().y + _puzzle._block().y < keys_top and keys_foot <= _puzzle.size.y - osk \
+	_fit_ok = _fit_ok and not keys.visible and _puzzle._origin().y + _puzzle._block().y <= _puzzle.size.y - osk \
 		and _puzzle._cell() >= 40.0
 	_puzzle.osk_override = -1.0
 	_puzzle._watch_osk()

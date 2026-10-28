@@ -240,3 +240,24 @@ keeps the tray), and keeps what that call protected: the key marks.
   word is dealt; QWERTY mirror at 0.4 rather than an alphabet strip; the
   count over the band's list. Owed: a phone (the keyboard's real height,
   Android's back, autocorrect on a five-letter line).
+
+### Only the phone's keyboard (2026-10-28, later)
+
+The user, from a phone shot with both keyboards up: "hidden words should not
+show both native and ingame keyboard, only the native keyboard", then "make
+sure to redesign the layout to avoid the bottom empty space where keyboard
+were". This replaces the 40% mirror above.
+
+- `keys_shown` (false wherever `DisplayServer` has a virtual keyboard): the
+  board's own `KeyBoard` is hidden on a phone, keyboard up or down. Off a
+  phone it shows full size at the foot and hides while a keyboard is up
+  (`_keys_up`). The key marks now live on the grid alone.
+- Hidden keys take no height (`_keys_h`), so the width-or-height cell grows
+  into their room: keyboard down, cells 189 px, grid 510 to 1713 of 1920,
+  edge to edge (it covers the mailbox post); keyboard up at 42%, cells 75,
+  grid 510 to 1032, the chip in `BAND_OSK` (74) under it, centred, the
+  keyboard's top at 1114. `KEYS_MINI` is gone.
+- `tests/_shot_hiddenword.gd` takes `phone` (sets `keys_shown = false`);
+  `tests/_win.gd -- hiddenword` checks the keys are hidden above a 42%
+  keyboard: PASS. Peak 82-83 draw calls on `opengl3_angle`. Unseen on a
+  phone.
