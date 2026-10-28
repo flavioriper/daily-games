@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Install the Android build template (if android/ has none), raise its
-# Android Gradle plugin from 8.6.1 to 8.9.1, and give its manifest the way in
-# for a friend link.
+# Android Gradle plugin from 8.6.1 to 8.9.1, give its manifest the way in
+# for a friend link, wire the Firebase Gradle plugins, and turn R8 on for the
+# release build (patch 4 at the bottom says why).
 #
 # Why: godot-iap's openiap-google 3.5.2 pulls androidx.core 1.18, which
 # refuses to build under AGP older than 8.9.1, and Godot 4.7's template pins
@@ -131,4 +132,39 @@ else
   perl -pi -e "s{^(    id 'org\.jetbrains\.kotlin\.android')\$}{\$1\n    id 'com.google.gms.google-services'\n    id 'com.google.firebase.crashlytics'}" "$app_gradle"
   grep -q "id 'com.google.firebase.crashlytics'" "$app_gradle"
   echo "patch_android_template: Firebase plugins applied"
+fi
+
+# 4. R8 on the release build (2026-10-28; Play's "DEX code optimization: Low"
+# and "obfuscation 8%" rows). minify + shrinkResources, with the optimize
+# variant of AGP's default rules (the plain proguard-android.txt carries
+# -dontoptimize, which leaves Play's optimization row a dash). The keep rules
+# Godot needs (org.godotengine.**, every GodotPlugin, JNI natives) are written
+# into proguard-rules.pro by the AdMob addon's exporter on every release
+# export, when project.godot has admob/general/android/enable_r8_optimization
+# on; that addon also prepends a com.android.tools:r8:8.8.27 classpath pin to
+# build.gradle, older than AGP 8.9.1's own R8 -- harmless, and not ours.
+# Debug exports (Firebase App Distribution) are untouched.
+if grep -q "minifyEnabled true" "$app_gradle"; then
+  echo "patch_android_template: R8 already on for release"
+else
+  # Two 'release {' blocks: signingConfigs' and buildTypes'. The build type's
+  # is the one followed by "signingConfig signingConfigs.release".
+  if [[ "$(perl -0ne 'my @m = /        release \{\n(?:.*\n){0,6}?.*signingConfig signingConfigs\.release/g; print scalar @m' "$app_gradle")" != "1" ]]; then
+    echo "patch_android_template: expected one release build type (release { ... signingConfig signingConfigs.release) in $app_gradle, found:" >&2
+    grep -n 'release {\|signingConfigs.release' "$app_gradle" >&2 || echo "  (none)" >&2
+    exit 1
+  fi
+  perl -0pi -e 's{(        release \{\n)((?:.*\n){0,6}?.*signingConfig signingConfigs\.release)}{$1            minifyEnabled true\n            shrinkResources true\n            proguardFiles getDefaultProguardFile(\x27proguard-android-optimize.txt\x27), \x27proguard-rules.pro\x27\n$2}' "$app_gradle"
+  grep -q "minifyEnabled true" "$app_gradle"
+  echo "patch_android_template: R8 on for release"
+fi
+# Our own rules go in proguard-rules.pro ahead of the addon's: line numbers
+# and source names, which AGP's optimize file drops, so a Crashlytics trace
+# retraces to a line and not just a method.
+rules=android/build/proguard-rules.pro
+if [[ -f "$rules" ]] && grep -q "LineNumberTable" "$rules"; then
+  echo "patch_android_template: proguard-rules.pro already keeps line numbers"
+else
+  printf '%s\n' "# Keep line numbers and source names for Crashlytics retrace (tools/patch_android_template.sh)." "-keepattributes SourceFile,LineNumberTable" "-renamesourcefileattribute SourceFile" >> "$rules"
+  echo "patch_android_template: proguard-rules.pro keeps line numbers"
 fi
