@@ -42,7 +42,7 @@ func _initialize() -> void:
 			_reduce = true
 		elif a.begins_with("out="):
 			_dir = a.substr(4)
-		elif a == "whole":
+		elif a == "whole" or a == "moveon":
 			pass
 		else:
 			_mode = a
@@ -182,6 +182,18 @@ func _script() -> void:
 				print("wrong at ", cell, " as ", wrong)
 				_put(_t, cell.y, cell.x, wrong))
 			_at(2.0, _shot)
+			if OS.get_cmdline_user_args().has("moveon"):
+				# Moving on at once, as a player does: a tap on another free
+				# tile commits the wrong one, and the toast must survive it.
+				_at(2.1, func() -> void:
+					for cell in _free():
+						_tap(_t, cell.y, cell.x)
+						return)
+				_at(2.9, func() -> void:
+					_say()
+					_shot())
+				_end = 3.1
+				return
 			_at(3.3, func() -> void:
 				_say()
 				_shot())

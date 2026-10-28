@@ -1446,6 +1446,12 @@ func _gui_input(event: InputEvent) -> void:
 func _tap(r: int, c: int) -> void:
 	if out_of_hearts or _ejecting[r][c] != null:
 		return
+	# A blush's or a stuck line's toast speaks of the last move: a new tap
+	# puts it out first, and moving on from the held tile (_commit) may say
+	# the next. The rims stay while they are true; a reading goes below.
+	if _toast != "" and not _toast_hold:
+		_toast = ""
+		_toast_layer.queue_redraw()
 	if _held != Vector2i(c, r):
 		_commit()
 		if out_of_hearts:
@@ -1471,11 +1477,6 @@ func _tap(r: int, c: int) -> void:
 		return
 	_drop_reading()
 	_unstick()
-	# A blush's or a stuck line's toast speaks of the last move; a new one
-	# puts it out (the rims stay while they are true).
-	if _toast != "":
-		_toast = ""
-		_toast_layer.queue_redraw()
 	var v: int = state.grid[r][c]
 	_flip_face(r, c, v)
 	_hop(r, c, Motion.HOP, Motion.HOP_TIME)

@@ -475,7 +475,9 @@ the streak bubble, the silly lines, the party), so no new sounds or gags.
 - **The toast** (`_toast_say`, `_draw_toast`, its own layer): a paper card
   the grid's width in the open night under the grid, so it never covers a
   tile. 3.6 s, a reading 7 s; a new tap puts a blush's or stuck line's
-  toast out. A fourth copy of the toast after Shikaku, Untangle and Hoses:
+  toast out *before* it commits the held tile, so moving on to the next
+  tile (the usual commit) shows the held tile's line rather than wiping it
+  (`_shot_binairo.gd -- wrong moveon`). A fourth copy of the toast after Shikaku, Untangle and Hoses:
   each board carries its own; a shared one in `ui/flat/` is owed.
 - **Live stars** (`ui/flat/star_line.gd`) in a `STAR_ROW` (56) strip over
   the grid on every band, by **changes of mind** (`_fixes`, `_tally`): a
