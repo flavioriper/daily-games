@@ -135,6 +135,10 @@ var done := 0
 var threads := 0
 ## Threads asked for that are no panel's side.
 var refused := 0
+## The outline is threaded on every reset (`hem`): set by setup, cleared by
+## adopt_laid, so the tutorial's hand-cut boards open bare as their lessons
+## expect.
+var hems := false
 
 static func bank() -> Dictionary:
 	if not _bank_read:
@@ -163,6 +167,7 @@ static func hints_for(band_: int) -> int:
 ## band's side (core/themed_pictures.gd).
 func setup(rng: RandomNumberGenerator, difficulty: int, daily_key := 0) -> void:
 	band = clampi(difficulty, 0, THEMED_SIDE.size() - 1)
+	hems = true
 	var doc := bank()
 	var pics := pictures(band)
 	if pics.is_empty():
@@ -971,6 +976,7 @@ static func _key(a: int, b: int) -> int:
 ## A hand-made picture (the tutorial's): pins and panels as given, colours
 ## named.
 func adopt_laid(pin_list: Array, panel_list: Array, named: Array) -> void:
+	hems = false
 	w = 1
 	h = 1
 	name_key = ""
@@ -1143,6 +1149,23 @@ func reset() -> void:
 	done = 0
 	threads = 0
 	refused = 0
+	if hems:
+		hem()
+
+## The picture's outline threaded before the first touch (2026-10-28, the
+## made-fun pass): the sides only one panel has, so the day opens on the
+## thing's silhouette in yarn and not on a cloud of pins, and the tedious
+## third of the threading (an Easy day was ~90 sides by hand, 20-45 of them
+## round the edge) is done. A side whose laying would close a panel stays
+## open, so nothing is knitted before the player's first thread.
+func hem() -> void:
+	for s in sides.size():
+		if laid[s] or (side_panels[s] as PackedInt32Array).size() != 1:
+			continue
+		if open_sides[side_panels[s][0]] <= 1:
+			continue
+		lay_side(s)
+	threads = 0
 
 ## The side between pins `a` and `b`, -1 for none.
 func side_between(a: int, b: int) -> int:

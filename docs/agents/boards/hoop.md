@@ -631,3 +631,61 @@ Vertex yet**.
     The eye still asks for a rounder handle and softer shading. The band
     ran 15.0 min against HOOP_BUDGET_MS's 12 (a try begun before the
     deadline runs to its end), $2.07.
+
+## 2026-10-28: made fun -- numbers that read and count down, the outline threaded, the day kept
+
+The user: "make yarn hoop experience way better to play, and game itself
+way funnier to play, right now nobody likes it", autonomous, pushed.
+Read against the reference on its web page (its level 1 played in
+Chrome: four dots, three 3s **inside the shapes**, so our rule is its
+rule; bold numerals as heavy as its dots, a thick twisted rope, a gentle
+ramp of levels) and Cozy Ropes (store page and reviews: saved progress,
+"no penalties", players angry at a move limit and at close dots taken by
+mistake).
+
+- **The finding.** The cached days on this Mac (19th-29th): Easy ~40
+  panels and **~90 sides threaded by hand**, Medium ~55 and ~130, Hard
+  ~90 and ~200, Insane 130-170 and 250-390; the clue for each was a
+  numeral 3.5-5.5 px tall (`MARK_H`, from the user's 2026-10-14 "really
+  small"), about half a millimetre on a phone, so a day played as a poke
+  through a cloud of identical pins. And **no day was kept mid-way**:
+  leaving a 200-side Hard threw it away (no board in the app keeps one;
+  they were minutes long).
+- **The numbers count down and read** (`_mark_into`): a panel's numeral is
+  the sides it still wants (`open_sides`), its corner count until the
+  first thread, so each lay ticks the numbers either side of it (a swell
+  over `MARK_TICK`, drawn in the moving mesh while `_ticked`). The ink
+  turns from `MARK` to the panel's own colour as it is threaded, wholly at
+  the last side (never paler than `MARK_LUM`, or a cream panel's sank into
+  the linen). Sized to the room about the middle, `MARK_ROOM` 0.65 within
+  `MARK_H` 6-18 px and never over `MARK_SEEN` 24 px as the zoom shows it;
+  strokes `MARK_W` 0.21, `MARK` darker. Measured at 810x1440 on the bank
+  cuts: Easy median 20 px (now 18 at the most), Hard 14, Insane 10 (6 at
+  the least, read through the zoom as before). Glyphs 1 and 2 added.
+- **The outline is threaded before the first touch** (`HoopState.hem`,
+  on every reset of a board `setup` dealt, never `adopt_laid`'s tutorial
+  boards): every side only one panel has, except one whose laying would
+  close its panel, so the day opens on the thing's silhouette in yarn and
+  nothing is knitted before the player's first thread. 8-35% of the sides
+  on the bank cuts. The bin puts the hem back. **A taste call made for the
+  user** (the reference does not do it); `hems` false in `setup` undoes it.
+- **The day is kept** (`_keep`, `_resume`, `_forget`): today's daily, a
+  band a key, in `<progress path>_hoop_play.cfg` (so a harness's runs keep
+  their own; `_shot_hoop.gd` deletes its file): the laid sides, slips,
+  hints, best, moves and time, written at the end of each stroke and the
+  bulb's thread, let go on the win and the bin, other days dropped on the
+  next write; a cut with another side count is not trusted.
+- **The rope is chunky**: `YARN_W` 9 at the most, `ROPE_SHARE` 0.19 of the
+  shortest side (was 6 and 0.13), the thread in hand and the draw-in the
+  same width as the laid rope; `TWIST` 12.
+- `YH_RULES` and `HTP_YH_FILL_BODY` say the count-down, the outline and the
+  keeping (en/pt/es).
+- Probe every band solved; suite 303252/0; `_win.gd hoop` PASS; draw calls
+  86 rest (Easy), 96 peak in play (Medium), 92 zoomed on `opengl3_angle`
+  (Insane). Throwaway probe: resume gives the same sides on every band,
+  the bin leaves the hem only, nothing filled at the start.
+- **Not done, named**: the reference's gentle ramp (three shapes on level
+  1) is the night's panel budget (`server/functions/src/hoop.ts`,
+  `LEAST_PANELS`), not the phone's. Whether the night's picture ports are
+  deployed is the user's to say (picture-ports is on main; the deploy list
+  in `docs/agents/turns-and-backend.md`). Unseen on a phone, no new sound.

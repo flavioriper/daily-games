@@ -36,6 +36,7 @@ const Seal = preload("res://ui/flat/seal.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const PanZoom = preload("res://ui/flat/pan_zoom.gd")
 const IconButton = preload("res://ui/hud/icon_button.gd")
+const Progress = preload("res://core/progress.gd")
 
 ## The hoop: its room from the screen's sides, the ring's width, and the
 ## linen left round the picture inside it.
@@ -65,9 +66,13 @@ const REACH_CLEAR := 1.35
 ## snap): three pins all but in a line, and a straight drag to the far one
 ## would be taken by the middle one at the full snap.
 const PASS_SHARE := 0.6
-## A thread: its width, and its twist a dash every TWIST pixels.
-const YARN_W := 6.0
-const TWIST := 9.0
+## A thread: its width at the most, and its twist a dash every TWIST
+## pixels at that width. Chunky since 2026-10-28 (was 6, 0.13 of the
+## shortest side): the reference's rope reads across the room, ours was a
+## pencil line among the pins.
+const YARN_W := 9.0
+const ROPE_SHARE := 0.19
+const TWIST := 12.0
 ## The knitting: a stitch's column width and row height on the screen, and
 ## the linen left between two panels.
 ## One V stitch on the table, px at 1x (the reference's are specks whole
@@ -102,21 +107,34 @@ const YARN_HI := Color("d98c70")
 const PIN := Color("6b5b8c")
 const PIN_DEEP := Color("4d4068")
 const PIN_HI := Color("a596c4")
-const MARK := Color("9d8c6f")
-## A panel's mark is its corner count written in a stitched numeral, this
-## tall at the most and at the least seen whole, and the yarn it is
-## stitched in; the zoom scales it with the linen, so close up it reads.
-## (Tiny, the user, 2026-10-14, with the reference's screen: "numbers
-## should be really small to be properly seeing on zoom in, to avoid
-## making the screen polluted like it's today"; 7-13 px before, 10-22
-## before that.) A stroke is never thinner than MARK_STROKE px whole.
-const MARK_H := Vector2(3.5, 5.5)
-const MARK_W := 0.17
-const MARK_STROKE := 0.8
-const MARK_ROOM := 0.9
-## The numerals a panel can need (3 to 7 corners), as strokes in a box a
-## unit tall: a 4 is a stem and a bent arm, a 7 a bar and a slope; the 3,
-## 5 and 6 have bows (`_glyph`).
+const MARK := Color("6f604c")
+## A panel's mark is how many of its sides are still to thread (its corner
+## count until the first, since the made-fun pass of 2026-10-28: the
+## board speaks as it is threaded, each lay ticking down the numbers on
+## either side of it), written in a stitched numeral sized to the room
+## about the panel's middle, this tall at the least and the most seen
+## whole; the zoom scales it with the linen. It was 3.5-5.5 px from the
+## user's 2026-10-14 "numbers should be really small" (on Insane's 300
+## panels): specks no one read at the whole view of a phone, where the
+## reference's numerals are as bold as its dots. Sized to the room, a
+## crowded board's stay small and an open one's read; the ink takes the
+## panel's colour as its sides are threaded, wholly at the last one.
+const MARK_H := Vector2(6.0, 18.0)
+const MARK_W := 0.21
+const MARK_STROKE := 1.1
+const MARK_ROOM := 0.65
+## ... and never over MARK_SEEN px as the zoom shows it (close up on
+## Insane, 18 px at 4x stood over the pins).
+const MARK_SEEN := 24.0
+## The darkest a numeral's ink may be lifted to, so a pale panel's still
+## reads on the linen.
+const MARK_LUM := 0.38
+## A numeral ticking down swells and settles over MARK_TICK s.
+const MARK_TICK := 0.32
+## The numerals a panel can need (1 to 7 sides), as strokes in a box a
+## unit tall: a 1 is a flag and a stem, a 4 a stem and a bent arm, a 7 a
+## bar and a slope; the 2, 3, 5 and 6 have bows (`_glyph`).
+const GLYPH_ONE := [[Vector2(0.14, 0.2), Vector2(0.44, 0.0), Vector2(0.44, 1.0)]]
 const GLYPH_FOUR := [[Vector2(0.62, 0.0), Vector2(0.62, 1.0)], [Vector2(0.62, 0.0), Vector2(0.0, 0.66), Vector2(0.78, 0.66)]]
 const GLYPH_SEVEN := [[Vector2(0.02, 0.0), Vector2(0.72, 0.0), Vector2(0.26, 1.0)]]
 ## The zoom: the round button's size and inset at the foot's left, how wide
@@ -263,6 +281,9 @@ var _filling := {}
 var _gone := {}
 var _laid_at := {}
 var _shiver_at := {}
+## Panels whose numeral just ticked down: when, drawn swelling over the
+## still marks until MARK_TICK.
+var _ticked := {}
 
 # the hand
 var _cur := -1
@@ -364,6 +385,8 @@ func _ready() -> void:
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_gen += 1
 	state.setup(rng, difficulty, daily_key if bank_step == 0 else 0)
+	_best = 0
+	_resume()
 	_begin()
 
 ## The day as cut, for tools/export_days.gd (PuzzleBase.day_dict): the bead
@@ -399,7 +422,6 @@ func _begin() -> void:
 	_slid_at = -INF
 	_stamp_at = INF
 	_seal_mesh = null
-	_best = 0
 	_deal()
 	_layout()
 	_enter()
@@ -414,6 +436,7 @@ func _deal() -> void:
 	_gone = {}
 	_laid_at = {}
 	_shiver_at = {}
+	_ticked = {}
 	_threads_stale = true
 	_pins_stale = true
 	_marks_stale = true
@@ -467,7 +490,7 @@ func _layout() -> void:
 	_snap = clampf(shortest * SNAP_SHARE, SNAP.x, SNAP.y)
 	_reach = clampf(shortest * REACH_SHARE, _snap, REACH_MAX)
 	_pin_r = clampf(shortest * 0.16, PIN_R_MIN, PIN_R)
-	_rope_w = clampf(shortest * 0.13, 2.4, YARN_W)
+	_rope_w = clampf(shortest * ROPE_SHARE, 3.0, YARN_W)
 	# the zoom's room is the whole table; close is the shortest side made
 	# wide enough for a finger, within bounds; none once the day is won
 	var near := clampf(ZOOM_SIDE / maxf(shortest, 1.0), ZOOM_NEAR.x, ZOOM_NEAR.y)
@@ -787,38 +810,54 @@ func _pin_into(b, at: Vector2, r: float) -> void:
 	b.disc(at + Vector2(-0.4, -0.6), r * 0.82, PIN)
 	b.disc(at + Vector2(-r * 0.3, -r * 0.32), r * 0.3, PIN_HI)
 
-## Panel `k`'s mark: its corner count, a 3 or a 4 stitched in grey yarn
-## about its middle (the user, 2026-10-14: "make the numbers clear (instead
-## of just dots, write the number)"), sized to the room the panel has about
-## that middle, and never under MARK_H.x: a cramped panel's may touch its
-## sides, but every panel says its count (two of a thousand Hard panels
-## at 810 wide are cramped). A panel of any other count (none is cut)
-## gets a dot a corner.
-func _mark_into(b, k: int) -> void:
+## Panel `k`'s mark: the sides it still wants threaded, stitched about
+## its middle in the mark's ink turning to the panel's colour as its sides
+## are laid (wholly at the last one), sized to the room the panel has about
+## that middle and never under MARK_H.x: a cramped panel's may touch its
+## sides, but every panel says its count. `swell` scales it (a numeral
+## ticking down). A count with no numeral (none is cut) gets a dot a side.
+func _mark_into(b, k: int, swell := 1.0) -> void:
 	var outline := _outline_px(k)
 	var n := outline.size()
+	var left: int = state.open_sides[k]
 	var c := _mark_at(outline)
 	# the room: the nearest side
 	var room := INF
 	for m in n:
 		room = minf(room, Geometry2D.get_closest_point_to_segment(c, outline[m], outline[(m + 1) % n]).distance_to(c))
-	var tall := clampf(room * MARK_ROOM, MARK_H.x, MARK_H.y)
+	var tall := minf(clampf(room * MARK_ROOM, MARK_H.x, MARK_H.y), MARK_SEEN / _built_k) * swell
 	var wide := maxf(MARK_STROKE / _built_k, tall * MARK_W)
-	var strokes := _glyph(n)
+	var ink := MARK
+	if left < n:
+		var own: Color = State.ink(state.colours[state.colour[k]]).darkened(0.22)
+		# a pale panel's (cream, white) would sink into the linen
+		var lum := own.get_luminance()
+		if lum > MARK_LUM:
+			own = own.darkened(1.0 - MARK_LUM / lum)
+		ink = MARK.lerp(own, 1.0 if left <= 1 else float(n - left) / float(n - 1))
+	var strokes := _glyph(left)
 	if strokes.is_empty():
-		for p in outline:
-			b.disc(c + (p - c).normalized() * tall * 0.45, 3.0, MARK)
+		for m in left:
+			b.disc(c + Vector2.from_angle(TAU * m / maxf(1.0, left)) * tall * 0.45, 3.0, ink)
 		return
 	for stroke: Array in strokes:
 		var pts := PackedVector2Array()
 		for q: Vector2 in stroke:
 			pts.append(c + (q - Vector2(0.36, 0.5)) * tall)
-		b.stroke(pts, wide, MARK)
+		b.stroke(pts, wide, ink)
 
 ## Numeral `n` as strokes in a box a unit tall, about (0.36, 0.5); [] for
 ## a count no panel is cut with.
 static func _glyph(n: int) -> Array:
 	match n:
+		1:
+			return GLYPH_ONE
+		2:
+			# a bow over the top, a slope down to the foot and the foot
+			var bow := Array(Face.Builder.arc_points(Vector2(0.36, 0.3), 0.29, PI * 1.08, PI * 2.18))
+			bow.append(Vector2(0.04, 1.0))
+			bow.append(Vector2(0.74, 1.0))
+			return [bow]
 		3:
 			# two bows, the top one a little smaller, open to the left
 			var r := 0.26
@@ -931,7 +970,7 @@ func _marks_mesh() -> ArrayMesh:
 	_marks = null
 	var b := _builder()
 	for k in state.panels.size():
-		if not state.filled[k]:
+		if not state.filled[k] and not _ticked.has(k):
 			_mark_into(b, k)
 	_marks = b.mesh() if not b.idx.is_empty() else null
 	return _marks
@@ -1059,7 +1098,15 @@ func _moving_meshes(now: float, since: float) -> Array:
 			continue
 		var a := _px[int(l.from)]
 		var c := _px[int(l.to)]
-		b.stroke(PackedVector2Array([a, a.lerp(c, Motion.back_out(e / THREAD_IN))]), YARN_W, YARN)
+		b.stroke(PackedVector2Array([a, a.lerp(c, Motion.back_out(e / THREAD_IN))]), _rope_w, YARN)
+	# numerals ticking down swell and settle
+	for kk: int in _ticked.keys():
+		var e := now - float(_ticked[kk])
+		if e >= MARK_TICK or state.filled[kk] or _solved_at > -INF:
+			_ticked.erase(kk)
+			_marks_stale = true
+			continue
+		_mark_into(b, kk, 1.0 + 0.45 * sin(PI * e / MARK_TICK) * (1.0 - e / MARK_TICK))
 	var knitting := _combine(parts)
 	var under := b.mesh() if not b.idx.is_empty() else null
 	b = _builder()
@@ -1085,8 +1132,8 @@ func _moving_meshes(now: float, since: float) -> Array:
 		b.stroke(Face.Builder.arc_points(a, _pin_r + 7.0, 0.0, TAU), 3.0, Color(YARN, 0.8), true)
 		if _cur >= 0 and _finger.x >= 0.0 and _finger.distance_to(a) > _pin_r:
 			var mid := (a + _finger) * 0.5 + Vector2(0.0, a.distance_to(_finger) * SAG)
-			b.stroke(Face.Builder.bezier2(a, mid, _finger, 12), YARN_W, Color(YARN, 0.85))
-			b.disc(_finger, YARN_W * 0.9, YARN_HI)
+			b.stroke(Face.Builder.bezier2(a, mid, _finger, 12), _rope_w, Color(YARN, 0.85))
+			b.disc(_finger, _rope_w * 0.9, YARN_HI)
 			# the magnet's halo: the pin the finger would take, let go here
 			var near := _reached(zoom.to_screen(_finger))
 			if near >= 0 and near != _refused:
@@ -1459,6 +1506,11 @@ func _lay(s: int, a: int, b: int) -> void:
 	var semis := mini(_stroke_threads - 1, 10) * STITCH_STEP
 	fx.cue("stitch", pow(2.0, minf(semis, 5.0) / 12.0) * randf_range(0.97, 1.03))
 	var mid := (_px[a] + _px[b]) * 0.5
+	_marks_stale = true
+	if not Motion.reduce:
+		for k in state.side_panels[s]:
+			if not state.filled[k]:
+				_ticked[k] = now
 	for k in closed:
 		_close(k, mid, now)
 		for v in state.panels[k]:
@@ -1467,7 +1519,6 @@ func _lay(s: int, a: int, b: int) -> void:
 	if closed.size() == 2:
 		_after(0.0 if Motion.reduce else 0.06, fx.cue.bind("double"))
 	if not closed.is_empty():
-		_marks_stale = true
 		_bump_pill()
 		_check_whole(closed)
 	_busy_for(FILL + 0.1)
@@ -1507,6 +1558,8 @@ func _end_stroke() -> void:
 				fx.confetti(_at(_combo_pos), 14, _radius * 0.6 * zoom.k)
 	if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
 		_combo_at = minf(_combo_at, _now() - COMBO_HOLD * 0.5)
+	if _stroke_threads > 0:
+		_keep()
 	_stroke = 0
 	_stroke_threads = 0
 
@@ -1570,6 +1623,70 @@ func hint() -> bool:
 		_request())
 	return true
 
+# --- the day kept mid-way ---
+
+## A day's threads kept while it is played (2026-10-28): a Hard day is ~200
+## sides, Insane up to ~390, and leaving the board threw them all away (no
+## board kept a day mid-way; they were minutes long). Today's daily only,
+## a band a key, beside the progress file so a harness's runs keep their
+## own; other days are let go on the next write.
+func _play_path() -> String:
+	return Progress.path.get_basename() + "_hoop_play.cfg"
+
+func _play_key() -> String:
+	return "band_%d" % state.band
+
+func _keeps() -> bool:
+	return daily_key != 0 and bank_step == 0 and not state.panels.is_empty()
+
+func _keep() -> void:
+	if not _keeps() or is_done():
+		return
+	var cfg := ConfigFile.new()
+	cfg.load(_play_path())
+	for sec in cfg.get_sections():
+		if sec != str(daily_key):
+			cfg.erase_section(sec)
+	cfg.set_value(str(daily_key), _play_key(), {"sides": state.sides.size(), "laid": state.laid,
+		"slips": state.refused, "hints": hints_used, "best": _best, "moves": moves, "elapsed": elapsed})
+	cfg.save(_play_path())
+
+func _forget() -> void:
+	if not _keeps():
+		return
+	var cfg := ConfigFile.new()
+	if cfg.load(_play_path()) != OK or not cfg.has_section_key(str(daily_key), _play_key()):
+		return
+	cfg.erase_section_key(str(daily_key), _play_key())
+	cfg.save(_play_path())
+
+## The threads this day's band was left with, laid again (no animation, no
+## sound) before the board is shown; a cut that came out different (another
+## side count) is not trusted and is let go.
+func _resume() -> void:
+	if not _keeps():
+		return
+	var cfg := ConfigFile.new()
+	if cfg.load(_play_path()) != OK or not cfg.has_section_key(str(daily_key), _play_key()):
+		return
+	var got = cfg.get_value(str(daily_key), _play_key())
+	if not (got is Dictionary) or int(got.get("sides", -1)) != state.sides.size():
+		return
+	var laid = got.get("laid")
+	if not (laid is PackedByteArray) or (laid as PackedByteArray).size() != state.sides.size():
+		return
+	for s in state.sides.size():
+		if laid[s]:
+			state.lay_side(s)
+	if state.is_solved():
+		state.reset()
+		return
+	state.refused = int(got.get("slips", 0))
+	hints_used = int(got.get("hints", 0))
+	_best = int(got.get("best", 0))
+	moves = int(got.get("moves", 0))
+	elapsed = float(got.get("elapsed", 0.0))
+
 ## The linen as the day opened it: every thread taken out. The hints a
 ## player spent are not refunded.
 func reset_board() -> void:
@@ -1577,6 +1694,7 @@ func reset_board() -> void:
 		return
 	_gen += 1
 	state.reset()
+	_forget()
 	moves = 0
 	_running = true
 	_deal()
@@ -1637,6 +1755,7 @@ func win_delay() -> float:
 func _on_solved() -> void:
 	var now := _now()
 	_end_stroke()
+	_forget()
 	_cur = -1
 	_toast = ""
 	_solved_at = now

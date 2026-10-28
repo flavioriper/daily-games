@@ -47,6 +47,7 @@ func _initialize() -> void:
 	var progress = load("res://core/progress.gd")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://_shot_yh_progress.cfg"))
 	progress.path = "user://_shot_yh_progress.cfg"
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://_shot_yh_progress_hoop_play.cfg"))
 	for e in load("res://ui/registry.gd").PUZZLES:
 		if not (_mode == "howto" and e.id == "hoop"):
 			progress.mark_tutorial_seen(String(e.id))
