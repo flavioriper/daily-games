@@ -1,5 +1,5 @@
 keys,en,pt,es
-BN_RULES,"Fill every cell with a sun or a moon. Never three alike in a line. Every line has an equal count of each.\n\nAn = between two cells means they hold the same symbol. An × means they hold opposite ones.\n\nEvery board can be reasoned out, one sure step at a time. You never need to guess.","Preencha cada casa com um sol ou uma lua. Nunca três iguais em linha. Cada linha tem a mesma quantidade de cada um.\n\nUm = entre duas casas quer dizer que elas têm o mesmo símbolo. Um × quer dizer que têm símbolos opostos.\n\nTodo tabuleiro se resolve com raciocínio, um passo certo de cada vez. Você nunca precisa chutar.","Llena cada casilla con un sol o una luna. Nunca tres iguales en línea. Cada línea tiene la misma cantidad de cada uno.\n\nUn = entre dos casillas significa que tienen el mismo símbolo. Un × significa que tienen símbolos opuestos.\n\nCada tablero se resuelve razonando, un paso seguro a la vez. Nunca hace falta adivinar."
+BN_RULES,"Fill every cell with a sun or a moon. Never three alike in a line. Every line has an equal count of each.\n\nAn = between two cells means they hold the same symbol. An × means they hold opposite ones.\n\nEvery board can be reasoned out, one sure step at a time. You never need to guess.\n\nStuck? The bulb shows the next step and says why; press it again to set it. Change a tile you had moved on from and a star may fall.","Preencha cada casa com um sol ou uma lua. Nunca três iguais em linha. Cada linha tem a mesma quantidade de cada um.\n\nUm = entre duas casas quer dizer que elas têm o mesmo símbolo. Um × quer dizer que têm símbolos opostos.\n\nTodo tabuleiro se resolve com raciocínio, um passo certo de cada vez. Você nunca precisa chutar.\n\nTravou? A lâmpada mostra o próximo passo e diz por quê; toque de novo para colocar. Trocar uma casa já deixada para trás pode custar uma estrela.","Llena cada casilla con un sol o una luna. Nunca tres iguales en línea. Cada línea tiene la misma cantidad de cada uno.\n\nUn = entre dos casillas significa que tienen el mismo símbolo. Un × significa que tienen símbolos opuestos.\n\nCada tablero se resuelve razonando, un paso seguro a la vez. Nunca hace falta adivinar.\n\n¿Atascado? La bombilla muestra el siguiente paso y dice por qué; tócala otra vez para ponerlo. Cambiar una casilla que ya dejaste atrás puede costar una estrella."
 CB_OUT_TITLE,Out of rows,Sem fileiras,Sin filas
 CB_OUT_BODY,"The code is still hiding under its lids. Watch a short video for one more row, or lift the lids and see it.","O código ainda está escondido sob as tampas. Assista a um vídeo curto e ganhe mais uma fileira, ou levante as tampas e veja.","El código sigue escondido bajo sus tapas. Mira un video corto para tener una fila más, o levanta las tapas y míralo."
 CB_OUT_BODY_REST,The code is still hiding under its lids. Lift them and see it; there is a new one tomorrow.,O código ainda está escondido sob as tampas. Levante-as e veja; amanhã tem outro.,El código sigue escondido bajo sus tapas. Levántalas y míralo; mañana hay otro.
@@ -425,6 +425,32 @@ BN_ONE_HEART,One more heart,Mais um coração,Un corazón más
 BN_CAUGHT,Caught you!,Te peguei!,¡Te atrapé!
 BN_FLAWLESS,Flawless,Impecável,Impecable
 BN_INSANE_SEAL,Insane,Insano,Demencial
+BN_A_SUN,a sun,um sol,un sol
+BN_A_MOON,a moon,uma lua,una luna
+BN_SUNS,suns,sóis,soles
+BN_MOONS,moons,luas,lunas
+BN_WHY_SAME,"An = joins this tile to its neighbour, so it is %s too.","Um = liga esta casa à vizinha, então ela também é %s.","Un = une esta casilla a su vecina, así que también es %s."
+BN_WHY_DIFF,"An × joins this tile to its neighbour, so it is the other one: %s.","Um × liga esta casa à vizinha, então ela é a outra: %s.","Un × une esta casilla a su vecina, así que es la otra: %s."
+BN_WHY_PAIR,"Two %s side by side: a third would make three, so this one is %s.","Um par de %s: mais um igual faria três, então esta é %s.","Un par de %s: otro igual haría tres, así que esta es %s."
+BN_WHY_GAP,"A gap between two %s can't take a third, so it is %s.","Um espaço entre um par de %s não pode repetir o símbolo, então é %s.","Un hueco entre dos %s no puede repetirlo, así que es %s."
+BN_WHY_HALF_ROW,"This row already has all the %s it can hold, so this one is %s.","Esta linha já tem sua metade de %s, então esta é %s.","Esta fila ya tiene su mitad de %s, así que esta es %s."
+BN_WHY_HALF_COL,"This column already has all the %s it can hold, so this one is %s.","Esta coluna já tem sua metade de %s, então esta é %s.","Esta columna ya tiene su mitad de %s, así que esta es %s."
+BN_WHY_LINE_ROW,Try %s here: this row could not be finished without breaking a rule. So it is %s.,Tente %s aqui: esta linha não fecharia sem quebrar uma regra. Então é %s.,Prueba %s aquí: esta fila no se podría terminar sin romper una regla. Así que es %s.
+BN_WHY_LINE_COL,Try %s here: this column could not be finished without breaking a rule. So it is %s.,Tente %s aqui: esta coluna não fecharia sem quebrar uma regra. Então é %s.,Prueba %s aquí: esta columna no se podría terminar sin romper una regla. Así que es %s.
+BN_WHY_WRONG,This tile isn't the answer: it should be %s.,Esta casa não é a resposta: deveria ser %s.,Esta casilla no es la respuesta: debería ser %s.
+BN_WHY_NEXT,This tile is %s.,Esta casa é %s.,Esta casilla es %s.
+BN_WHY_AGAIN,Press the bulb again to set it.,Toque a lâmpada de novo para colocar.,Toca la bombilla otra vez para ponerla.
+BN_BAD_THREE,Three %s side by side: never three alike.,Três %s lado a lado: nunca três iguais.,Tres %s en fila: nunca tres iguales.
+BN_BAD_MANY_ROW,Too many %s in this row: only %d fit.,%s demais nesta linha: só cabem %d.,Sobran %s en esta fila: solo caben %d.
+BN_BAD_MANY_COL,Too many %s in this column: only %d fit.,%s demais nesta coluna: só cabem %d.,Sobran %s en esta columna: solo caben %d.
+BN_BAD_SAME,This = wants both tiles to match.,Este = quer as duas casas iguais.,Este = quiere las dos casillas iguales.
+BN_BAD_DIFF,This × wants the two tiles to differ.,Este × quer as duas casas diferentes.,Este × quiere las dos casillas distintas.
+BN_STUCK_ROW,This row can't be finished any more: a tile in it isn't the answer.,Esta linha não fecha mais: uma casa nela não é a resposta.,Esta fila ya no se puede terminar: una casilla en ella no es la respuesta.
+BN_STUCK_COL,This column can't be finished any more: a tile in it isn't the answer.,Esta coluna não fecha mais: uma casa nela não é a resposta.,Esta columna ya no se puede terminar: una casilla en ella no es la respuesta.
+BN_WIN_CLEAN,Not one tile changed!,Nenhuma casa trocada!,¡Ninguna casilla cambiada!
+BN_WIN_FIXES_ONE,One tile changed.,Uma casa trocada.,Una casilla cambiada.
+BN_WIN_FIXES_N,%d tiles changed.,%d casas trocadas.,%d casillas cambiadas.
+BN_WIN_RUN,Best run: %d.,Melhor sequência: %d.,Mejor racha: %d.
 SK_BLURB,Cut the field into numbered plots.,Divida o campo em canteiros numerados.,Divide el campo en parcelas numeradas.
 SK_SHORT,Cut the field into\nnumbered plots.,Divida o campo em\ncanteiros numerados.,Divide el campo en\nparcelas numeradas.
 SK_MOTTO,Every plot has its number,"Cada canteiro, seu número","Cada parcela, su número"
@@ -712,7 +738,7 @@ HTP_LESSON_ANY,Make one clear move at a time,Faça uma jogada clara de cada vez,
 HTP_NEXT,Next,Próximo,Siguiente
 HTP_BACK,Back,Voltar,Atrás
 HTP_BN_TAP,Tap a tile,Toque numa casa,Toca una casilla
-HTP_BN_TAP_BODY,"Tap once for a sun, again for a moon, and once more to clear it. Or pick a sun or a moon below the board and paint tiles with it.","Toque uma vez para um sol, de novo para uma lua, e mais uma vez para limpar. Ou escolha um sol ou uma lua embaixo do tabuleiro e pinte as casas.","Toca una vez para un sol, otra para una luna y una más para borrar. O elige un sol o una luna bajo el tablero y pinta las casillas."
+HTP_BN_TAP_BODY,"Tap once for a sun, again for a moon, and once more to clear it. Stuck? The bulb shows the next step and says why; press it again to set it.","Toque uma vez para um sol, de novo para uma lua, e mais uma vez para limpar. Travou? A lâmpada mostra o próximo passo e diz por quê; toque de novo para colocar.","Toca una vez para un sol, otra para una luna y una más para borrar. ¿Atascado? La bombilla muestra el siguiente paso y dice por qué; tócala otra vez para ponerlo."
 HTP_BN_TAP_SUN,One tap: a sun,Um toque: um sol,Un toque: un sol
 HTP_BN_TAP_MOON,Again: a moon,De novo: uma lua,Otra vez: una luna
 HTP_BN_TAP_CLEAR,Once more: empty,Mais uma vez: vazia,Una vez más: vacía

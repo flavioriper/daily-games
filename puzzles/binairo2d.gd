@@ -63,6 +63,30 @@ const MoonFace = preload("res://ui/faces/moon_face.gd")
 const MovesPill = preload("res://ui/flat/moves_pill.gd")
 const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
 const DaySky = preload("res://puzzles/binairo_sky.gd")
+const Reader = preload("res://puzzles/binairo_reader.gd")
+const StarLine = preload("res://ui/flat/star_line.gd")
+
+## Made fun (2026-10-28): three live stars in a strip over the grid, lost to
+## tiles changed after the player moved on from them (`_fixes`): three up to
+## the first cut, two up to the second. Mine, unconfirmed.
+const STAR_ROW := 56.0
+const STARS_BY_BAND := [[1, 4], [1, 4], [2, 6], [3, 8]]
+## Easy and Medium deal again while the opening holds no step a sentence
+## explains (only a whole line read): one Medium day in forty, measured.
+const OPEN_TRIES := 8
+## The bulb's rims (sun around the tiles a step read, leaf around the tile
+## it fills, rose around a line no legal finish is left for), as shares of a
+## tile: stroke width and how far out of the tile.
+const RIM_WIDTH := 0.045
+const RIM_OUT := 0.03
+## The toast: a paper card in the open night under the grid. A reading
+## stays TOAST_READ unless a move puts it out first.
+const TOAST_TIME := 3.6
+const TOAST_READ := 7.0
+const TOAST_FADE := 0.25
+const TOAST_FONT := 34
+const TOAST_PAD := Vector2(28.0, 18.0)
+const TOAST_GAP := 40.0
 ## The moves the out-of-moves card's video buys, once a board.
 const MOVES_BONUS := 5
 
@@ -412,6 +436,24 @@ var _card: Control
 var _stamp: Control
 var _party: Array = []
 
+## Made fun (2026-10-28): the day's tiles changed after the player moved on
+## from them (Reset keeps them), the stars they stand at, the longest
+## streak, the bulb's reading ({} or Reader's step, plus "wrong" for a tile
+## that is not the answer), the lines no legal finish is left for, and the
+## toast.
+var _fixes := 0
+var _stars := StarLine.new()
+var _best_streak := 0
+var _reading: Dictionary = {}
+var _stuck: Array[int] = []
+var _rims_layer: Control
+var _rims_shown: ArrayMesh
+var _toast_layer: Control
+var _toast_shown: ArrayMesh
+var _toast := ""
+var _toast_at := -INF
+var _toast_hold := false
+
 func puzzle_id() -> String: return "binairo"
 func title() -> String: return "Binairo"
 
@@ -492,6 +534,18 @@ func _ready() -> void:
 	_combo_layer.z_index = 2
 	_combo_layer.draw.connect(_draw_combo)
 	add_child(_combo_layer)
+	_rims_layer = Control.new()
+	_rims_layer.name = "Rims"
+	_rims_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_rims_layer.z_index = 1
+	_rims_layer.draw.connect(_draw_rims)
+	add_child(_rims_layer)
+	_toast_layer = Control.new()
+	_toast_layer.name = "Toast"
+	_toast_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_toast_layer.z_index = 2
+	_toast_layer.draw.connect(_draw_toast)
+	add_child(_toast_layer)
 	fx = Fx2D.new()
 	fx.name = "Fx"
 	# Over the tiles, which are added after it: stars land on the board, not under it.
@@ -506,7 +560,11 @@ func _ready() -> void:
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_level = clampi(difficulty, 0, LEVELS.size() - 1)
 	var level: Dictionary = LEVELS[_level]
-	var data: Dictionary = Gen.generate(rng, level.size, level.min_clues, level.signs, level.tier)
+	var data: Dictionary = {}
+	for i in OPEN_TRIES:
+		data = Gen.generate(rng, level.size, level.min_clues, level.signs, level.tier)
+		if _level > 1 or int(Reader.next(data.puzzle, data.signs).get("rule", 0)) != Reader.Rule.LINE:
+			break
 	_data = data
 	max_hearts = HEART_COUNTS[_level]
 	state.band = _level
@@ -557,6 +615,13 @@ func _setup_board() -> void:
 	_combo_out_at = -INF
 	_acting = {}
 	_held = Vector2i(-1, -1)
+	_fixes = 0
+	_best_streak = 0
+	_stars.clear()
+	_reading = {}
+	_stuck = []
+	_toast = ""
+	_toast_hold = false
 	state.setup(_data)
 	max_moves = state.moves_budget()
 	moves_left = max_moves
@@ -703,12 +768,12 @@ func _layout() -> void:
 	_place()
 	if _tiles.is_empty():
 		return
-	var span := size.y - _clear.x - _clear.y
+	var span := size.y - _clear.x - _clear.y - STAR_ROW
 	var g := minf(size.x - 2.0 * _side(), span)
 	_tile = (g - (n - 1) * GAP) / n
 	if _tile <= 0.0:
 		return
-	_origin = Vector2((size.x - g) * 0.5, _clear.x)
+	_origin = Vector2((size.x - g) * 0.5, _clear.x + STAR_ROW)
 	if _won:
 		# Laid out under a win (a resize, or a day reopened solved): the
 		# slide is aimed again, and set at its end if it never ran.
@@ -724,7 +789,7 @@ func _layout() -> void:
 		_mm_face.mesh = _coin_mesh(_tile - TILE_EDGE)
 		_mm_tint.mesh = _mm_face.mesh
 		_under.queue_redraw()
-	for layer: Control in [_sign_layer, _heart_layer, _combo_layer]:
+	for layer: Control in [_sign_layer, _heart_layer, _combo_layer, _rims_layer, _toast_layer]:
 		layer.position = Vector2.ZERO
 		layer.size = size
 		layer.queue_redraw()
@@ -1404,6 +1469,13 @@ func _tap(r: int, c: int) -> void:
 		changed = state.cycle(r, c)
 	if not changed:
 		return
+	_drop_reading()
+	_unstick()
+	# A blush's or a stuck line's toast speaks of the last move; a new one
+	# puts it out (the rims stay while they are true).
+	if _toast != "":
+		_toast = ""
+		_toast_layer.queue_redraw()
 	var v: int = state.grid[r][c]
 	_flip_face(r, c, v)
 	_hop(r, c, Motion.HOP, Motion.HOP_TIME)
@@ -1455,6 +1527,7 @@ func _score(r: int, c: int) -> void:
 		return
 	_counted[r][c] = true
 	_streak += 1
+	_best_streak = maxi(_best_streak, _streak)
 	if _streak >= 2:
 		var step: int = COMBO_STEPS[mini(_streak - 2, COMBO_STEPS.size() - 1)]
 		fx.cue("combo", pow(2.0, step / 12.0), COMBO_DB)
@@ -1550,6 +1623,7 @@ func _commit() -> void:
 	_held = Vector2i(-1, -1)
 	if cell.x < 0 or out_of_hearts:
 		return
+	_tally(cell)
 	if cost > 0:
 		_settling = true
 		_spend(cost, _now())
@@ -1568,6 +1642,30 @@ func _commit() -> void:
 	# Moved on: whatever the tile broke shows now.
 	if _shown_bad != state.bad:
 		_recolour()
+	_find_stuck()
+	var why := _blush_why(r, c)
+	if why != "":
+		_toast_say(why)
+	elif not _stuck.is_empty():
+		_toast_say(tr("BN_STUCK_ROW" if _stuck[0] < n else "BN_STUCK_COL"))
+
+## A tile the player had moved on from, now showing something else, is a
+## change of mind, and the stars count it; setting a bare tile is not. Read
+## once a hold, where it ends (_commit, or the solve, which comes first).
+func _tally(cell: Vector2i) -> void:
+	if cell.x >= 0 and _held_from != -1 and state.grid[cell.y][cell.x] != _held_from:
+		_fixes += 1
+		_rate(not is_done())
+	_held_from = -1
+
+## The stars the day's changes leave, read again; `heard`: a lost one falls.
+func _rate(heard: bool) -> void:
+	_stars.rate(_stars_for(_fixes), _now(), heard)
+	_heart_layer.queue_redraw()
+
+func _stars_for(fixes: int) -> int:
+	var cut: Array = STARS_BY_BAND[clampi(_level, 0, 3)]
+	return 3 if fixes <= int(cut[0]) else (2 if fixes <= int(cut[1]) else 1)
 
 ## The move the held tile will cost when the player moves on from it: one
 ## when it shows something other than what it did before they began.
@@ -1830,6 +1928,16 @@ func _process(delta: float) -> void:
 		_sign_layer.queue_redraw()
 	if _combo_n >= COMBO_FROM and (now - _combo_at < COMBO_HOLD + 0.1 or _combo_out_at > -INF):
 		_combo_layer.queue_redraw()
+	if _stars.busy(now - 0.1):
+		_heart_layer.queue_redraw()
+	if _toast != "":
+		var e := now - _toast_at
+		var stay := TOAST_READ if _toast_hold else TOAST_TIME
+		if e < TOAST_FADE + 0.1 or (e > stay - 0.1 and e < stay + TOAST_FADE + 0.1):
+			_toast_layer.queue_redraw()
+		elif e >= stay + TOAST_FADE + 0.1:
+			_toast = ""
+			_toast_hold = false
 
 ## A MultiMesh of 2D transforms with a colour each.
 static func _multimesh() -> MultiMesh:
@@ -1965,6 +2073,12 @@ func _draw_hearts() -> void:
 		_moves_pill.draw(_heart_layer, Vector2(size.x * 0.5, _origin.y - HEART_ROW * 0.5),
 			maxi(0, moves_left - _owed()), _now())
 		return
+	if max_hearts <= 0 and _tile > 0.0:
+		# Made fun: the live stars, over the grid while it is played.
+		if not is_done():
+			var sw := StarLine.width(1.0)
+			_stars.draw(_heart_layer, Vector2(size.x * 0.5 - sw * 0.5 + StarLine.R, _origin.y - STAR_ROW * 0.5), 1.0, _now())
+		return
 	if max_hearts <= 0 or _tile <= 0.0:
 		return
 	var b := Face.Builder.new()
@@ -2075,7 +2189,13 @@ func undo() -> bool:
 	var got: Vector3i = state.undo()
 	var r := got.x
 	var c := got.y
+	# An undo is no change of mind of its own: the hold starts from what it
+	# brought back, unless the player was already on this tile.
+	if _held != Vector2i(c, r):
+		_held_from = got.z
 	_held = Vector2i(c, r)
+	_drop_reading()
+	_unstick()
 	_flip_face(r, c, got.z)
 	_hop(r, c, Motion.HOP, Motion.HOP_TIME)
 	fx.cue("undo")
@@ -2090,18 +2210,91 @@ func undo() -> bool:
 func hints_left() -> int:
 	if not capabilities().has("hint"):
 		return 0
-	return HINTS + hints_extra - hints_used
+	return _hints_held() + (0 if _reading.is_empty() else 1)
 
-## Fills one cell from the solution: a ring pulses, the face drops in with a
-## bounce and sparkles, and the tile takes the given look. Counts no move but
-## can finish the puzzle.
+func _hints_held() -> int:
+	return maxi(0, HINTS + hints_extra - hints_used)
+
+## Made fun (2026-10-28): the bulb teaches, in two presses. The first reads
+## the board the way a player can (puzzles/binairo_reader.gd): it rims the
+## tiles a step reads in sun and the tile it fills in leaf, and the toast
+## says why, for one hint. The player may set it themselves; a second press
+## while the reading stands sets it, free. A tile that is not the answer is
+## named first, as the old hint mended it first.
 func hint() -> bool:
-	if is_done() or out_of_hearts or hints_left() <= 0:
+	if is_done() or out_of_hearts:
 		return false
 	_commit()
-	if out_of_hearts:
+	if out_of_hearts or is_done():
 		return false
-	var cell: Vector2i = state.apply_hint()
+	if not _reading.is_empty():
+		var lay: Vector2i = _reading.cell
+		_drop_reading()
+		return _lay_hint(lay)
+	if _hints_held() <= 0:
+		return false
+	var got := _read()
+	if got.is_empty():
+		return false
+	hints_used += 1
+	_reading = got
+	var cell: Vector2i = got.cell
+	_toast_say(_why(got), true)
+	_ring(cell.y, cell.x)
+	fx.cue("hint")
+	_focus(cell.y, cell.x)
+	_rims_layer.queue_redraw()
+	moved.emit()
+	return true
+
+## What the bulb reads now: a tile that is not the answer, else the step
+## Reader takes first; {} on a finished board.
+func _read() -> Dictionary:
+	for r in n:
+		for c in n:
+			if state.is_wrong(r, c):
+				return {"cell": Vector2i(c, r), "value": state.solution[r][c], "rule": Reader.Rule.NONE,
+					"by": [], "line": -1, "sign": -1, "wrong": true}
+	var got := Reader.next(state.grid, state.signs, _level == 0)
+	if got.is_empty():
+		var cell: Vector2i = state.hint_cell()
+		if cell.x < 0:
+			return {}
+		got = {"cell": cell, "value": state.solution[cell.y][cell.x], "rule": Reader.Rule.NONE,
+			"by": [], "line": -1, "sign": -1}
+	return got
+
+## The reading's toast: why, then what a second press does.
+func _why(got: Dictionary) -> String:
+	var v: int = got.value
+	var one := tr("BN_A_SUN" if v == 0 else "BN_A_MOON")
+	var other := tr("BN_SUNS" if v == 1 else "BN_MOONS")
+	var row: bool = int(got.line) >= 0 and int(got.line) < n
+	var line := ""
+	if got.get("wrong", false):
+		line = tr("BN_WHY_WRONG") % one
+	else:
+		match int(got.rule):
+			Reader.Rule.SIGN:
+				var s: Vector4i = state.signs[int(got.sign)]
+				line = (tr("BN_WHY_SAME") if s.w == 1 else tr("BN_WHY_DIFF")) % one
+			Reader.Rule.PAIR:
+				line = tr("BN_WHY_PAIR") % [other, one]
+			Reader.Rule.GAP:
+				line = tr("BN_WHY_GAP") % [other, one]
+			Reader.Rule.HALF:
+				line = tr("BN_WHY_HALF_ROW" if row else "BN_WHY_HALF_COL") % [other, one]
+			Reader.Rule.LINE:
+				line = tr("BN_WHY_LINE_ROW" if row else "BN_WHY_LINE_COL") % [tr("BN_A_SUN" if v == 1 else "BN_A_MOON"), one]
+			_:
+				line = tr("BN_WHY_NEXT") % one
+	return line + " " + tr("BN_WHY_AGAIN")
+
+## Fills (r, c) from the solution and locks it: a ring pulses, the face drops
+## in with a bounce and sparkles, and the tile takes the given look. Counts
+## no move and no hint (the reading did) but can finish the puzzle.
+func _lay_hint(cell: Vector2i) -> bool:
+	cell = state.apply_hint(cell)
 	if cell.x < 0:
 		return false
 	var r := cell.y
@@ -2115,9 +2308,9 @@ func hint() -> bool:
 	for i in 6:
 		fx.sparkle(at + Vector2(_hash(i, r) - 0.5, _hash(c, i) - 0.5) * _tile * 0.7)
 	fx.cue("hint")
-	hints_used += 1
 	_focus(r, c)
 	_after_change(r, c)
+	_find_stuck()
 	moved.emit()
 	check_solved()
 	return true
@@ -2187,6 +2380,14 @@ func reset_board() -> void:
 	brush = -2
 	brush_changed.emit()
 	moves = 0
+	# The day's changes of mind stay (the stars are the day's, not the
+	# board's); the reading and the stuck lines go with the tiles.
+	_held_from = -1
+	_drop_reading()
+	_stuck = []
+	_toast = ""
+	_rims_layer.queue_redraw()
+	_toast_layer.queue_redraw()
 	_recolour()
 	fx.cue("reset")
 
@@ -2216,6 +2417,11 @@ func restore_completed_board() -> void:
 	# are not saved with the completion, so a reopened board shares no
 	# Flawless line rather than guess one.
 	_flawless = false
+	_fixes = int(completed_record.get("fixes", 0))
+	_best_streak = int(completed_record.get("run", 0))
+	_reading = {}
+	_stuck = []
+	_toast = ""
 
 func is_solved() -> bool:
 	return state.is_solved()
@@ -2232,12 +2438,20 @@ func share_glyphs() -> String:
 ## the board. The host brings the win screen in after this wave.
 ## On Insane the liar is caught first (_unmask) and the wave waits for it.
 func _on_solved() -> void:
+	_tally(_held)
+	_drop_reading()
+	_stuck = []
+	_toast = ""
+	_rims_layer.queue_redraw()
+	_toast_layer.queue_redraw()
+	_heart_layer.queue_redraw()
 	_focus_clear()
 	brush = -2
 	brush_changed.emit()
 	_break_streak()
 	_look_ahead()
-	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 or max_moves > 0 else checks == 0)
+	# Made fun (2026-10-28): Flawless is no hint and no tile changed.
+	_flawless = hints_used == 0 and _fixes == 0 and (not _lost_ever if max_hearts > 0 or max_moves > 0 else checks == 0)
 	_lead = 0.0
 	if state.liar >= 0:
 		_unmask()
@@ -2262,6 +2476,174 @@ func _on_solved() -> void:
 		_later(_lead + (0.0 if Motion.reduce else STAMP_AT), _stamp_down)
 	if not Motion.reduce:
 		_later(_lead + PARTY_AT, _party_on)
+
+# --- made fun: the win's line ---
+
+## The sun and the moon as ever, and a line of how it went: not one tile
+## changed, or how many, and the best run.
+func flat_win() -> Dictionary:
+	var fixes := int(completed_record.get("fixes", _fixes))
+	var run := int(completed_record.get("run", _best_streak))
+	var sub := tr("BN_WIN_CLEAN") if fixes == 0 else (tr("BN_WIN_FIXES_ONE") if fixes == 1 else tr("BN_WIN_FIXES_N") % fixes)
+	if run >= COMBO_FROM:
+		sub += " " + tr("BN_WIN_RUN") % run
+	return {"faces": [SunFace.new(), MoonFace.new()], "subtitle": sub}
+
+## The day's changes and best run, kept with the completion so a reopened
+## day says the same line.
+func completion_record() -> Dictionary:
+	return {"fixes": _fixes, "run": _best_streak}
+
+# --- made fun: rims, stuck lines and the toast ---
+
+## The bulb's reading goes out (a tap, Undo, Reset, its own second press),
+## and its toast with it.
+func _drop_reading() -> void:
+	if _reading.is_empty():
+		return
+	_reading = {}
+	if _toast_hold:
+		_toast = ""
+		_toast_hold = false
+		_toast_layer.queue_redraw()
+	_rims_layer.queue_redraw()
+
+## Lines no legal finish is left for, from the tiles as they stand: a tile in
+## each is not the answer. Public reasoning, never the answer: only while
+## nothing blushes, since a broken line already says so.
+func _find_stuck() -> void:
+	var was := _stuck
+	_stuck = []
+	if not is_done() and state.bad.rows.is_empty() and state.bad.cols.is_empty() and state.bad.cells.is_empty():
+		_stuck = Reader.stuck_lines(state.grid, state.signs)
+	if _stuck != was:
+		_rims_layer.queue_redraw()
+
+## While the player is on a tile, the stuck lines it mends stop being rimmed
+## at once; new ones wait for the move on (_commit).
+func _unstick() -> void:
+	if _stuck.is_empty():
+		return
+	var still := Reader.stuck_lines(state.grid, state.signs)
+	var kept: Array[int] = []
+	for line in _stuck:
+		if still.has(line):
+			kept.append(line)
+	if kept != _stuck:
+		_stuck = kept
+		_rims_layer.queue_redraw()
+
+## What rule the tile at (r, c) breaks now, in the words of the rule; "" when
+## none. Three alike first, then a line over its half, then a sign.
+func _blush_why(r: int, c: int) -> String:
+	var v: int = state.grid[r][c]
+	if v == -1 or not state.is_bad(r, c):
+		return ""
+	var many := tr("BN_SUNS" if v == 0 else "BN_MOONS")
+	for along: Vector2i in [Vector2i(0, 1), Vector2i(1, 0)]:
+		for k in range(-2, 1):
+			var run := 0
+			for j in 3:
+				var at := Vector2i(c, r) + along * (k + j)
+				if at.x >= 0 and at.y >= 0 and at.x < n and at.y < n and state.grid[at.y][at.x] == v:
+					run += 1
+			if run == 3:
+				return tr("BN_BAD_THREE") % many
+	var in_row := 0
+	var in_col := 0
+	for j in n:
+		if state.grid[r][j] == v:
+			in_row += 1
+		if state.grid[j][c] == v:
+			in_col += 1
+	if in_row > n / 2:
+		return tr("BN_BAD_MANY_ROW") % [many, n / 2]
+	if in_col > n / 2:
+		return tr("BN_BAD_MANY_COL") % [many, n / 2]
+	for s: Vector4i in state.signs:
+		var o := Gen.sign_other(s)
+		if (Vector2i(s.x, s.y) == Vector2i(r, c) or o == Vector2i(r, c)) and Gen.sign_broken(state.grid, s):
+			return tr("BN_BAD_SAME" if s.w == 1 else "BN_BAD_DIFF")
+	return ""
+
+## Says `text` on the toast. The same line said again while it shows only
+## stays longer. `hold`: the bulb's reading, which stays TOAST_READ unless a
+## move puts it out first.
+func _toast_say(text: String, hold := false) -> void:
+	var now := _now()
+	if text == _toast and _toast_level(now) > 0.0:
+		_toast_at = now - TOAST_FADE
+	else:
+		_toast = text
+		_toast_at = now
+	_toast_hold = hold
+	_toast_layer.queue_redraw()
+
+## How much of the toast shows at `now`: 0 gone, 1 full.
+func _toast_level(now: float) -> float:
+	if _toast == "" or is_done():
+		return 0.0
+	var stay := TOAST_READ if _toast_hold else TOAST_TIME
+	return 1.0 - clampf((now - _toast_at - stay) / TOAST_FADE, 0.0, 1.0)
+
+## The toast: a paper card the grid's width in the open night under it, its
+## line wrapped and centred. One mesh and the words.
+func _draw_toast() -> void:
+	var now := _now()
+	var level := _toast_level(now)
+	if level <= 0.0 or _tile <= 0.0:
+		return
+	var font: Font = CozyTheme.body(700)
+	var g := _tile * n + GAP * (n - 1)
+	var width := g - 2.0 * TOAST_PAD.x
+	var tall := font.get_multiline_string_size(_toast, HORIZONTAL_ALIGNMENT_CENTER, width, TOAST_FONT).y
+	var card := Vector2(g, tall + 2.0 * TOAST_PAD.y)
+	var centre := Vector2(size.x * 0.5, _origin.y + g + TOAST_GAP + card.y * 0.5)
+	var k := 1.0 if Motion.reduce else Motion.pop_in_scale(now - _toast_at, TOAST_FADE).x
+	var b := Face.Builder.new()
+	b.polygon(Face.Builder.round_rect(-card * 0.5 - Vector2.ONE * 3.0, card + Vector2.ONE * 6.0, 27.0), Pal.LINE)
+	b.polygon(Face.Builder.round_rect(-card * 0.5, card, 24.0), Pal.SURFACE)
+	_toast_shown = b.mesh()
+	_toast_layer.draw_set_transform(centre, 0.0, Vector2(k, k))
+	_toast_layer.draw_mesh(_toast_shown, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, level))
+	_toast_layer.draw_multiline_string(font, Vector2(-width * 0.5, -card.y * 0.5 + TOAST_PAD.y + font.get_ascent(TOAST_FONT)),
+		_toast, HORIZONTAL_ALIGNMENT_CENTER, width, TOAST_FONT, -1, Color(Pal.TEXT, level))
+	_toast_layer.draw_set_transform_matrix(Transform2D.IDENTITY)
+
+## The bulb's reading (sun around the tiles it read, leaf around the tile it
+## fills; a line read whole is rimmed as one) and the stuck lines (rose),
+## one mesh, made when what they rim changes.
+func _draw_rims() -> void:
+	if is_done() or _tile <= 0.0 or (_reading.is_empty() and _stuck.is_empty()):
+		return
+	var b := Face.Builder.new()
+	var width := maxf(4.0, _tile * RIM_WIDTH)
+	for line in _stuck:
+		_rim_line(b, line, Pal.BAD, width)
+	if not _reading.is_empty():
+		var rule := int(_reading.rule)
+		if (rule == Reader.Rule.HALF or rule == Reader.Rule.LINE) and int(_reading.line) >= 0:
+			_rim_line(b, int(_reading.line), Pal.SUN, width)
+		else:
+			for at: Vector2i in _reading.by:
+				_rim_cells(b, at, at, Pal.SUN, width)
+		var cell: Vector2i = _reading.cell
+		_rim_cells(b, cell, cell, Pal.LEAF, width * 1.4)
+	_rims_shown = b.mesh()
+	_rims_layer.draw_mesh(_rims_shown, null)
+
+func _rim_line(b, line: int, colour: Color, width: float) -> void:
+	if line < n:
+		_rim_cells(b, Vector2i(0, line), Vector2i(n - 1, line), colour, width)
+	else:
+		_rim_cells(b, Vector2i(line - n, 0), Vector2i(line - n, n - 1), colour, width)
+
+## A rounded rim around the tiles from `a` to `b` (as (c, r)).
+func _rim_cells(b, a: Vector2i, z: Vector2i, colour: Color, width: float) -> void:
+	var out := _tile * RIM_OUT + width * 0.5
+	var from := _rest(a.y, a.x) - Vector2.ONE * out
+	var to := _rest(z.y, z.x) + Vector2.ONE * (_tile + out)
+	b.stroke(Face.Builder.round_rect(from, to - from, TILE_RADIUS + out), width, colour, true, false)
 
 # --- the flawless stamp ---
 

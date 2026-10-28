@@ -183,12 +183,13 @@ func hint_cell() -> Vector2i:
 				best = Vector2i(c, r)
 	return best
 
-## Fills hint_cell() from the solution and locks it as a given, remembering
-## it was a hint so reset can unlock it. The cell's own entries leave the
+## Fills `want` (hint_cell() when none is named: the bulb's reading names
+## one since 2026-10-28) from the solution and locks it as a given,
+## remembering it was a hint so reset can unlock it. The cell's own entries leave the
 ## history: an undo must never turn a locked cell back, and there is nothing
 ## honest to restore it to. Returns the (c, r) filled, or (-1, -1).
-func apply_hint() -> Vector2i:
-	var cell := hint_cell()
+func apply_hint(want := Vector2i(-1, -1)) -> Vector2i:
+	var cell := want if want.x >= 0 and not given[want.y][want.x] else hint_cell()
 	if cell.x < 0:
 		return cell
 	var r := cell.y

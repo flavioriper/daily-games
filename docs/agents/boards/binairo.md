@@ -421,3 +421,79 @@ and refused: "undo it, i don't like". Reverted in 0a8fd2ff; a placed tile
 is plain paper again and a clue its sand. Do not offer it again. The whole
 of what the user settled for this screen is the checklist in
 `docs/agents/flat-screens.md`, "Every board gets a world of its own".
+
+### Made fun (2026-10-28)
+
+The user: "make binario experience way better to play, and game itself way
+funnier to play, right now nobody likes it", autonomous, push when done.
+References from the web (all secondhand: no official page found): LinkedIn's
+Tango, the same genre with suns, moons, = and x, is described as always
+having a next step by reasoning, and its Hint as picking out a cell and
+giving a tip or marking wrong placements; Tango's scorecard shows time,
+mistakes and hints. 0h h1 (Q42, 4.5-4.7 stars) is the genre's other
+well-liked app. Sources: lilachbullock.com/linkedin-tango,
+coolmathgames.com/0-tango-by-linkedin, thewordfinder.com tango hints,
+appfollow 0h h1.
+
+**Measured first** (`tests/_probe_bn_fun.gd`, headless, 40 days a band,
+walked by `puzzles/binairo_reader.gd`): every deal already reads to its
+answer without a guess (Gen.deduce), and **87-100% of the steps are one
+sentence** (Easy: sign 29%, pair 31%, gap 9%, half 29%, whole line 0%;
+Insane: whole line 13%). One Medium opening in forty had only a whole-line
+read. So the gap was not the deals: the bulb filled a tile and said nothing,
+a blush never said which rule, a wrong tile that broke no rule stood until
+the board was full, the tutorial still spoke of the tray that went on
+2026-10-13, and **no band had stakes** (`MOVES_SLACK` and `HEART_COUNTS`
+are all zero). The baseline shots already show plenty of spectacle (faces,
+the streak bubble, the silly lines, the party), so no new sounds or gags.
+
+**What changed**:
+
+- **The reader** (`puzzles/binairo_reader.gd`): Gen.deduce's steps with
+  their reasons -- `SIGN`, `PAIR`, `GAP`, `HALF`, then `LINE` (one line read
+  whole) only when no other step exists, the tiles each read, and
+  `stuck_lines` (a line no legal finish is left for, from its tiles and its
+  own signs). Probe: every walk ends on the answer.
+- **Easy and Medium deal again** (`OPEN_TRIES` 8, the same rng) while the
+  opening's first step is a whole-line read. Changes that one day in forty.
+- **The bulb teaches in two presses** (`hint`, `_read`, `_why`): the first
+  rims the tiles the step reads in sun (a half-full or whole line rimmed as
+  one) and the tile it fills in leaf, and the toast says why
+  (`BN_WHY_SAME/DIFF/PAIR/GAP/HALF_*/LINE_*`, `BN_WHY_AGAIN`), for one
+  hint; a second press sets it, free (`_lay_hint`, `State.apply_hint(want)`).
+  A tile that is not the answer is named first (`BN_WHY_WRONG`), as the old
+  hint mended it first. A tap, Undo or Reset puts the reading out.
+  `hints_left` counts a standing reading, as Shikaku's does.
+- **A blush says which rule** (`_blush_why`, at `_commit`): `BN_BAD_THREE`,
+  `BN_BAD_MANY_ROW/COL`, `BN_BAD_SAME/DIFF`.
+- **Stuck lines** (`_find_stuck` at `_commit`, Undo and the bulb's tile;
+  `_unstick` on a tap clears the ones it mends): while nothing blushes, a
+  line no legal finish is left for is rimmed rose and `BN_STUCK_ROW/COL`
+  says a tile in it is not the answer. Rules only, never the answer, so it
+  is honest on every band; it catches a wrong tile long before the board
+  is full.
+- **The toast** (`_toast_say`, `_draw_toast`, its own layer): a paper card
+  the grid's width in the open night under the grid, so it never covers a
+  tile. 3.6 s, a reading 7 s; a new tap puts a blush's or stuck line's
+  toast out. A fourth copy of the toast after Shikaku, Untangle and Hoses:
+  each board carries its own; a shared one in `ui/flat/` is owed.
+- **Live stars** (`ui/flat/star_line.gd`) in a `STAR_ROW` (56) strip over
+  the grid on every band, by **changes of mind** (`_fixes`, `_tally`): a
+  tile the player had moved on from that now shows something else. Setting
+  a bare tile, a sun tapped through to a moon, Undo and the bulb's tile
+  cost nothing. `STARS_BY_BAND` three up to 1/1/2/3, two up to 4/4/6/8.
+  Reset keeps the day's. Hidden once solved. **Flawless is now no hint and
+  no tile changed.**
+- **The win's line** (`flat_win`, `completion_record` {fixes, run}):
+  `BN_WIN_CLEAN` or `BN_WIN_FIXES_ONE/N`, and `BN_WIN_RUN` from a run of 3.
+- **Words**: `HTP_BN_TAP_BODY` no longer speaks of the tray and says what
+  the bulb does; `BN_RULES` gains the bulb and the stars. en/pt/es (pt/es
+  worded to agree with "luas"/"lunas").
+
+`tests/_shot_binairo.gd` (new): `rest`, `right`, `wrong`, `stuck`, `read`,
+`line` (`whole` for a whole-line read), `fix`, `solve`, `perf`.
+opengl3_angle 810x1440, second of two readings: Medium mid-board 88 draw
+calls, Insane 89; Insane's solve to the win peaks at 263. `_win.gd
+binairo` PASS; suite 303252/0. Unseen on a phone; the star cuts, the
+change-of-mind rule and the toast's place are my calls, unconfirmed; pt/es
+unread by a speaker.
