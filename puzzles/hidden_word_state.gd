@@ -89,6 +89,9 @@ var sent := 0
 ## are delivered. The clue rule and the hint read it, so a refusal can never
 ## name a green that is still face-down or sealed.
 var seen := -1
+## The band this word was dealt at (0 Easy .. 3 Insane): which slice of the
+## list `words_left` counts over.
+var band := 0
 
 ## The accept list, read once per language and shared by every instance in
 ## the process: 15,921 keys is a few ms and half a megabyte, and a harness
@@ -99,6 +102,8 @@ static var _lang := ""
 static var _accept: Dictionary = {}
 static var _answers: Array = []
 static var _bands: Array = []
+## `_answers` folded, in the same order, for `words_left`.
+static var _folded: Array = []
 
 static func _load() -> void:
 	if not _accept.is_empty() and _lang == Locale.current():
@@ -110,9 +115,12 @@ static func _load() -> void:
 	var doc = JSON.parse_string(FileAccess.get_file_as_string(Locale.content(WORDS)))
 	_answers = []
 	_bands = []
+	_folded = []
 	if typeof(doc) == TYPE_DICTIONARY:
 		_answers = doc.get("answers", [])
 		_bands = doc.get("bands", [])
+	for w in _answers:
+		_folded.append(Locale.fold(String(w)))
 	# The board must never refuse its own word. A test asserts the two lists
 	# already agree; this is the belt to that brace, and it is free.
 	for w in _answers:
@@ -138,6 +146,7 @@ func setup(rng: RandomNumberGenerator, difficulty: int, banked := "", themed: Ar
 	tries = ROWS
 	hints_left = HINTS_BY_BAND[clampi(difficulty, 0, HINTS_BY_BAND.size() - 1)]
 	no_hints = hints_left <= 0
+	band = clampi(difficulty, 0, 3)
 	keeps_rows = difficulty >= 3
 	strict = difficulty >= 2
 	snail = difficulty >= 3
@@ -167,6 +176,37 @@ static func deal(rng: RandomNumberGenerator, difficulty: int, themed: Array = []
 		if not avoid.has(w):
 			return w
 	return String(_answers[at])
+
+## How many words could still be the answer after the first `upto` rows
+## (the ones showing their colours): the band's own slice of the list --
+## Easy's 217, Medium's 467, Hard's and Insane's whole list -- and the answer
+## itself wherever it came from (a themed or banked word may sit outside the
+## slice), each kept while every one of those rows would have marked it
+## exactly as it did. Never less than one: the answer always fits.
+func words_left(upto: int) -> int:
+	_load()
+	upto = clampi(upto, 0, rows.size())
+	var end := _folded.size()
+	if band < 2 and band < _bands.size():
+		end = mini(end, int(_bands[band]))
+	var count := 0
+	var met := false
+	for k in end:
+		var w: String = _folded[k]
+		if w.length() != LEN:
+			continue
+		if _fits(w, upto):
+			count += 1
+			met = met or w == answer
+	if not met:
+		count += 1
+	return count
+
+func _fits(word: String, upto: int) -> bool:
+	for r in upto:
+		if mark_guess(rows[r], word) != marks[r]:
+			return false
+	return true
 
 ## The out-of-rows card's one more row, once a word.
 func add_row() -> bool:

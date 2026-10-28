@@ -1252,12 +1252,43 @@ func _solve_hiddenword() -> void:
 		for c in State.LEN:
 			if not slot.has_point(_puzzle.cell_to_local(r, c)):
 				_fit_ok = false
+	# Laid out above a phone's keyboard 42% of the screen tall: the grid
+	# over the small keys, the keys over the phone's.
+	var osk: float = _puzzle.size.y * 0.42
+	_puzzle.osk_override = osk
+	_puzzle._watch_osk()
+	var keys: Control = _puzzle._keys
+	var keys_top: float = keys.position.y
+	var keys_foot: float = keys_top + keys.size.y * keys.scale.y
+	_fit_ok = _fit_ok and _puzzle._origin().y + _puzzle._block().y < keys_top and keys_foot <= _puzzle.size.y - osk \
+		and _puzzle._cell() >= 40.0
+	_puzzle.osk_override = -1.0
+	_puzzle._watch_osk()
 	_press(_host.top_bar.hint_button)
-	_hud_ok = _puzzle.hints_used == 1 and _puzzle.moves == 0
-	var word: String = _puzzle.state.answer
+	_hud_ok = _puzzle.hints_used == 1 and _puzzle.moves == 0 and _host.tray == null
+	# A wrong word on the phone's keyboard (the board's unseen line): the
+	# row commits, the line empties, and fewer words fit.
+	var st = _puzzle.state
+	var wrong := ""
+	for w in st._answers:
+		var f := Locale.fold(String(w))
+		if f != st.answer and f.length() == State.LEN:
+			wrong = f
+			break
+	var field: LineEdit = _puzzle._field
+	field.text = wrong.to_upper()
+	field.text_changed.emit(field.text)
+	field.text_submitted.emit(field.text)
+	_hud_ok = _hud_ok and st.rows == [wrong] and field.text == "" and st.words_left(1) < st.words_left(0)
+	# The answer on the board's own keys, touched.
+	var word: String = st.answer
 	for i in word.length():
-		_tap_key("Key_%s" % word[i].to_upper())
-	_tap_key("Key_Enter")
+		var chip = keys.find_child("Key_%s" % word[i].to_upper(), true, false)
+		if chip is Button:
+			_press(chip)
+	var enter = keys.find_child("Key_Enter", true, false)
+	if enter is Button:
+		_press(enter)
 
 ## Sudoku: one hint and one Check off the real HUD, then the day's own answer
 ## a cell at a time -- a touch on the cell to select it and a touch on the

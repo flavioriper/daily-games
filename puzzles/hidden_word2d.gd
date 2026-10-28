@@ -68,6 +68,7 @@ const Seal = preload("res://ui/flat/seal.gd")
 const RunMesh = preload("res://ui/flat/run_mesh.gd")
 const OUT_OF_ROWS := "res://ui/hud/out_of_rows.gd"
 const World = preload("res://puzzles/hidden_word_world.gd")
+const KeyBoard = preload("res://ui/flat/key_board.gd")
 const FLAT_HOST := "res://ui/flat/flat_host.gd"
 ## The slide into the win's span (the host's SLOT_TIME), and the air the
 ## board keeps inside that span.
@@ -337,6 +338,32 @@ const STAMP_DROP := 0.18
 const STAMP_R := 62.0
 const STAMP_TILT := -0.22
 
+## The phone's own keyboard (the user, 2026-10-28: "users want to use the
+## native keyboard as well on hidden word like on five clues"). The board
+## keeps its own keys too, as a child it lays itself: full size at the foot
+## while the phone's keyboard is down, and at KEYS_MINI just above it while
+## it is up, where they are the key marks' mirror (a phone's keyboard cannot
+## wear them) and still type. OSK_GAP is the air above the phone's keyboard,
+## KEYS_GAP the air between the band and the keys, and BAND_OSK the band
+## while the phone's keyboard is up, when the words-left chip moves beside
+## the small keys: a 16:9 phone's keyboard leaves the grid some 600 of 1920.
+const OSK_GAP := 8.0
+const KEYS_GAP := 10.0
+const KEYS_MINI := 0.4
+const BAND_OSK := 12.0
+
+## The words-left chip on the band under the grid: how many of the band's
+## words still fit every row that shows its colours. It counts down a
+## LEFT_TIME after the row's reactions (LEFT_DELAY), a wrap pop a step at a
+## time, five at most, climbing; "Only one word fits!" goes gold.
+const LEFT_DELAY := 0.55
+const LEFT_TIME := 0.7
+const LEFT_POPS := 5
+const CHIP_H := 54.0
+const CHIP_PAD := 44.0
+const CHIP_FONT := 28
+const CHIP_SWELL := 0.12
+
 var state = State.new()
 ## The board's own effects node, as on every flat board: the hint's ring
 ## and sparkle (func hint(), below) come through it and nowhere else.
@@ -506,6 +533,27 @@ var _placed := false
 var _shift := 0.0
 var _slide_tw: Tween
 
+## False on a board that is handed its keys (the tutorial's Desk): no keys,
+## no field and no chip of its own.
+var own_keys := true
+var _keys: Control = null
+## The unseen line the phone's keyboard types into, what it held when last
+## read, and whether the keyboard is still to be called up for this word.
+var _field: LineEdit = null
+var _field_seen := ""
+var _want_osk := false
+## The phone's keyboard's height in the board's pixels (0 while down), and a
+## stand-in a harness sets to see the layout above one off a phone.
+var _osk := 0.0
+var osk_override := -1.0
+## The chip: the count it shows at rest, the count it is going to, and when
+## it set off.
+var _left_from := -1
+var _left_to := -1
+var _left_at := -100.0
+var _chip_mesh: ArrayMesh
+var _chip_mesh_for := ""
+
 enum { SHAPE_SQ, SHAPE_LIP, SHAPE_TOP, SHAPE_BEVEL, SHAPE_CARET, SHAPE_SHADOW, SHAPE_FLAP, SHAPE_WAX }
 enum { PART_CARET, PART_CELL }
 
@@ -606,7 +654,131 @@ func _ready() -> void:
 	fx.name = "Fx"
 	fx.z_index = 2
 	add_child(fx)
+	if own_keys:
+		_make_keys()
+		_make_field()
 	resized.connect(_layout)
+
+## The board's own keys: the game's keyboard, laid by the board (`_layout`)
+## and painted by it as the host's tray was.
+func _make_keys() -> void:
+	var keys: Control = KeyBoard.new()
+	keys.name = "Keys"
+	keys.z_index = 1
+	add_child(keys)
+	keys.key.connect(type_letter)
+	keys.commit.connect(commit_row)
+	keys.erase.connect(erase_letter)
+	_keys = keys
+	set_tray(keys)
+
+## The line the phone's keyboard types into, as Five Clues' (`clues2d.gd`):
+## unseen, laid over the grid, never touched itself (a tap on the grid calls
+## the keyboard up), and editing across Enter so the keyboard stays up from
+## one row to the next. Its text is the row in hand, left to right.
+func _make_field() -> void:
+	_field = LineEdit.new()
+	_field.name = "Field"
+	_field.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_field.max_length = State.LEN + 1
+	_field.context_menu_enabled = false
+	_field.selecting_enabled = false
+	_field.middle_mouse_paste_enabled = false
+	_field.keep_editing_on_text_submit = true
+	_field.virtual_keyboard_enabled = true
+	var none := StyleBoxEmpty.new()
+	for box in ["normal", "focus", "read_only"]:
+		_field.add_theme_stylebox_override(box, none)
+	for ink in ["font_color", "font_placeholder_color", "caret_color", "selection_color", "font_selected_color"]:
+		_field.add_theme_color_override(ink, Color(0, 0, 0, 0))
+	_field.text_changed.connect(_on_field)
+	_field.text_submitted.connect(func(_t: String) -> void: commit_row())
+	add_child(_field)
+
+## Calls the phone's keyboard up, while a row can be typed.
+func _summon() -> void:
+	if _field == null or is_done() or out_of_hearts or clock_held or _working_row() < 0:
+		return
+	if not is_visible_in_tree():
+		return
+	if not _field.has_focus():
+		_field.edit()
+	elif _osk <= 0.0 and osk_override < 0.0 and DisplayServer.has_feature(DisplayServer.FEATURE_VIRTUAL_KEYBOARD):
+		# Android's back hides the keyboard and leaves the field focused:
+		# shown again, or a tap could never bring it back
+		_field.unedit()
+		_field.edit()
+
+## Leaving the board puts the phone's keyboard away with it.
+func _exit_tree() -> void:
+	_dismiss()
+
+func _dismiss() -> void:
+	if _field != null and _field.has_focus():
+		_field.unedit()
+		_field.release_focus()
+
+## What the phone's keyboard typed: folded and cut to five letters, then
+## laid on the row by the board's own moves -- erased back to where it and
+## the last reading part, and typed on from there -- so a letter typed on
+## the phone pops in exactly as a key's does.
+func _on_field(text: String) -> void:
+	var want := _clean(text)
+	if out_of_hearts or is_done() or _working_row() < 0:
+		_sync_field()
+		return
+	var have := _field_seen
+	var same := 0
+	while same < mini(have.length(), want.length()) and have[same] == want[same]:
+		same += 1
+	_field_seen = want
+	for _i in have.length() - same:
+		erase_letter()
+	for i in range(same, want.length()):
+		type_letter(want[i])
+	_sync_field()
+
+static func _clean(text: String) -> String:
+	var keep := Locale.alphabet()
+	var out := ""
+	for ch in Locale.fold(text):
+		if keep.contains(ch):
+			out += ch
+			if out.length() >= State.LEN:
+				break
+	return out
+
+## The field put back to the row in hand (its letters, left to right), after
+## anything else wrote the row: a key, a bed, Enter, Reset.
+func _sync_field() -> void:
+	if _field == null:
+		return
+	var row: String = state.typed.replace(" ", "") if _working_row() >= 0 else ""
+	_field_seen = row
+	if _field.text != row:
+		_field.text = row
+	_field.caret_column = row.length()
+
+## The phone's keyboard's top, followed: the board lays itself out above it
+## while it is up. Its height comes in the window's pixels.
+func _watch_osk() -> void:
+	var h := osk_override
+	if h < 0.0:
+		h = 0.0
+		if not DisplayServer.has_feature(DisplayServer.FEATURE_VIRTUAL_KEYBOARD):
+			_set_osk(0.0)
+			return
+		var win := DisplayServer.window_get_size()
+		var kb := DisplayServer.virtual_keyboard_get_height()
+		if kb > 0 and win.y > 0:
+			h = float(kb) * get_viewport_rect().size.y / float(win.y)
+			h = maxf(0.0, h - (get_viewport_rect().size.y - get_global_rect().end.y))
+	_set_osk(h)
+
+func _set_osk(h: float) -> void:
+	if absf(h - _osk) > 0.5:
+		_osk = h
+		_layout()
 
 ## The words the day's other bands deal, for band `difficulty` to keep
 ## clear of: Insane's out of the bank, then Easy up to the band below this
@@ -650,8 +822,10 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_flip_row = -1
 	_keys_due = []
 	_clear_endings()
+	_want_osk = true
 	_layout()
 	_enter()
+	_sync_field()
 
 ## The day as dealt, for tools/export_days.gd (PuzzleBase.day_dict): the word
 ## in the language Locale has, which is English unless the player chose another.
@@ -722,6 +896,9 @@ func _clear_rows() -> void:
 	_snail_to_row = 0
 	_snail_at = -100.0
 	_seat_snail()
+	_left_to = state.words_left(0) if not state.answer.is_empty() else -1
+	_left_from = _left_to
+	_left_at = -100.0
 
 ## Puts a keyboard that was sent away back on screen. `slide_out` is
 ## reversible: the same tray slides back from the same `enter_from`, fades in
@@ -752,7 +929,7 @@ func set_tray(t: Control) -> void:
 func _cell_for(available: float) -> float:
 	var inset := 0.0 if _bleeding else INSET
 	var w := _card_w() - inset * 2.0
-	var h := available - inset * 2.0 - BAND
+	var h := available - inset * 2.0 - _band_h()
 	var n := _rows_f()
 	return maxf(0.0, minf((w - GAP * float(State.LEN - 1)) / float(State.LEN),
 		(h - GAP * (n - 1.0)) / n))
@@ -779,7 +956,43 @@ func _card_w() -> float:
 ## The height the grid and the band have: the span the host's rows leave, or
 ## the whole rect in a card.
 func _avail() -> float:
-	return size.y - _clear.x - _clear.y if _bleeding else size.y
+	return _bottom() - _keys_h() - _clear.x if _bleeding else size.y
+
+## The foot of what the board may use: over the host's bottom rows, and
+## above the phone's keyboard while it is up.
+func _bottom() -> float:
+	var foot := size.y - (_clear.y if _bleeding else 0.0)
+	if _osk > 0.0:
+		foot = minf(foot, size.y - _osk - OSK_GAP)
+	return foot
+
+## The band under the grid: the meadow's stage, or only the chip's room
+## while the phone's keyboard is up.
+func _band_h() -> float:
+	return BAND_OSK if _osk > 0.0 else BAND
+
+## The board's own keys' scale: full size, or the mirror above the phone's
+## keyboard.
+func _keys_k() -> float:
+	return KEYS_MINI if _osk > 0.0 else 1.0
+
+## What the keys take off the foot of the span, with their gap.
+func _keys_h() -> float:
+	if _keys == null:
+		return 0.0
+	return KeyBoard.HEIGHT * _keys_k() + KEYS_GAP
+
+func _place_keys() -> void:
+	if _keys == null:
+		return
+	var k := _keys_k()
+	var w := _card_w()
+	_keys.size = Vector2(w, KeyBoard.HEIGHT)
+	_keys.scale = Vector2(k, k)
+	_keys.position = Vector2((size.x - w * k) * 0.5, _bottom() - KeyBoard.HEIGHT * k)
+	if _field != null:
+		_field.position = _origin()
+		_field.size = _block()
 
 ## The grid block's own size: five tiles across, six down, with the gaps.
 func _block() -> Vector2:
@@ -796,7 +1009,7 @@ func card_height(available: float) -> float:
 	if c <= 0.0:
 		return available
 	var n := _rows_f()
-	return minf(available, n * c + GAP * (n - 1.0) + BAND + INSET * 2.0)
+	return minf(available, n * c + GAP * (n - 1.0) + _band_h() + INSET * 2.0)
 
 ## True, and honestly so: the height binds in a 9:16 slot with the band or
 ## without it, so **the slack is zero at 1080x1920 and this call does nothing
@@ -856,11 +1069,15 @@ func _layout() -> void:
 			if _slid <= 0.0 and not (_slide_tw != null and _slide_tw.is_valid()):
 				_slid = 1.0
 	_place()
+	_place_keys()
 	_refresh()
 
 ## The meadow's crown: the band's ground line under the grid.
 func _ground() -> float:
-	return _origin().y + _block().y + BAND - TURF_TOP
+	if _osk > 0.0:
+		# Just under the grid: the small keys stand on the turf.
+		return _origin().y + _block().y + KEYS_GAP * 0.5
+	return _origin().y + _block().y + _band_h() - TURF_TOP
 
 ## What the host's rows cover, in this board's own pixels (it is laid full
 ## rect). While playing the grid and the band's stage are laid in what is
@@ -941,6 +1158,13 @@ func _place() -> void:
 
 func _process(delta: float) -> void:
 	super(delta)
+	if _field != null:
+		_watch_osk()
+		if clock_held or is_done():
+			_dismiss()
+		elif _want_osk and _laid_out() and is_visible_in_tree():
+			_want_osk = false
+			_summon()
 	var now := _now()
 	_deliver_keys(now)
 	_deliver_fx(now)
@@ -1084,6 +1308,7 @@ func _draw() -> void:
 			shown.append(_grid_mesh)
 	_draw_letters(now)
 	_draw_glasses(now, shown)
+	_draw_chip(now, shown)
 	_draw_reveal(now, shown)
 	_draw_toast(now, shown)
 	_shown = shown
@@ -1775,6 +2000,87 @@ func _draw_toast(t: float, shown: Array) -> void:
 		TOAST_FONT, Color(Pal.PAPER, TOAST_INK))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
+# --- the words-left chip ---
+
+## The rows showing their colours have just grown: the chip sets off from
+## what it shows towards the new count, after the row's own reactions, with
+## a wrap pop a step of the way, climbing.
+func _count_left(now: float) -> void:
+	if _field == null or state.answer.is_empty():
+		return
+	var n: int = state.words_left(state.seen)
+	if n == _left_to:
+		return
+	_left_from = _shown_left(now)
+	_left_to = n
+	_left_at = now + (0.0 if Motion.reduce else LEFT_DELAY)
+	if state.is_solved():
+		return
+	var pops := mini(LEFT_POPS, absi(_left_from - n))
+	if Motion.reduce:
+		pops = mini(pops, 1)
+	for i in pops:
+		var at := _left_at + LEFT_TIME * float(i + 1) / float(pops)
+		_cue_due.append({"at": at, "cue": "combo", "pitch": pow(2.0, float(i) / 12.0) * randf_range(0.97, 1.03)})
+	if n == 1:
+		_cue_due.append({"at": _left_at + LEFT_TIME + 0.05, "cue": "sprout"})
+	_cue_due.sort_custom(func(a, b) -> bool: return float(a.at) < float(b.at))
+	_busy_for(_left_at - now + LEFT_TIME + Motion.BUMP_TIME)
+
+## The count the chip reads at `t`: on its way from the old to the new.
+func _shown_left(t: float) -> int:
+	if _left_from < 0 or Motion.reduce:
+		return _left_to
+	var u := clampf((t - _left_at) / LEFT_TIME, 0.0, 1.0)
+	return roundi(lerpf(float(_left_from), float(_left_to), 1.0 - (1.0 - u) * (1.0 - u)))
+
+## The chip on the band, centred under the grid, while a row can still be
+## played: "217 words left", down to "Only one word fits!" in gold. It swells
+## as it lands on its new count.
+func _draw_chip(t: float, shown: Array) -> void:
+	if _field == null or _left_to < 0 or state.is_solved() or _stage_at() > -50.0:
+		return
+	var since := t - _opened - Motion.ENTER_DELAY
+	var a := Motion.appear_level(since, Motion.ENTER_POP)
+	if a <= 0.0:
+		return
+	var n := _shown_left(t)
+	var one := n == 1 and _left_to == 1
+	var line := tr("HW_LEFT_ONE") if one else tr("HW_LEFT_N") % n
+	var font: Font = CozyTheme.body(700)
+	# The pill is sized for the widest the count will read, so it never
+	# wobbles while the number runs down.
+	var widest := tr("HW_LEFT_ONE") if one else tr("HW_LEFT_N") % maxi(_left_from, _left_to)
+	var w: float = font.get_string_size(widest, HORIZONTAL_ALIGNMENT_LEFT, -1, CHIP_FONT).x + CHIP_PAD
+	var key := "%d|%s" % [int(w), one]
+	if _chip_mesh == null or _chip_mesh_for != key:
+		var b := Face.Builder.new()
+		var fill: Color = Pal.SUN if one else Pal.SURFACE
+		b.fan(Face.Builder.round_rect(Vector2(-w * 0.5, -CHIP_H * 0.5 + 4.0), Vector2(w, CHIP_H), CHIP_H * 0.5),
+			Pal.LINE if not one else Pal.SUN.darkened(0.2))
+		b.fan(Face.Builder.round_rect(Vector2(-w * 0.5, -CHIP_H * 0.5), Vector2(w, CHIP_H), CHIP_H * 0.5), fill)
+		_chip_mesh = b.mesh()
+		_chip_mesh_for = key
+	var land := t - _left_at - LEFT_TIME
+	var swell := 1.0
+	if not Motion.reduce and land >= 0.0 and land < Motion.BUMP_TIME:
+		swell += CHIP_SWELL * sin(PI * land / Motion.BUMP_TIME)
+	var mid := Vector2(size.x * 0.5, _origin().y + _block().y + minf(BAND * 0.42, CHIP_H * 0.5 + 10.0))
+	if _osk > 0.0 and _keys != null:
+		# Beside the small keys, in the air their right leaves.
+		var right: float = _keys.position.x + _keys.size.x * _keys.scale.x
+		mid = Vector2(minf(right + (size.x - right) * 0.5, size.x - w * 0.5 - 8.0),
+			_keys.position.y + KeyBoard.HEIGHT * _keys.scale.y * 0.5)
+	var grow := Vector2.ONE * swell
+	draw_mesh(_chip_mesh, null, Transform2D(0.0, grow, 0.0, mid), Color(1.0, 1.0, 1.0, a))
+	shown.append(_chip_mesh)
+	var tw: float = font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, CHIP_FONT).x
+	var where := Vector2(-tw * 0.5, font.get_height(CHIP_FONT) * 0.5 - font.get_descent(CHIP_FONT))
+	draw_set_transform(mid, 0.0, grow)
+	font.draw_string(get_canvas_item(), where, line, HORIZONTAL_ALIGNMENT_LEFT, -1, CHIP_FONT,
+		Color(Pal.TEXT if one else Pal.ACORN_DEEP, a))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
 # --- the reveal (spec section 8) ---
 
 ## The word on its own small card at the foot of the board, beside the Peeplet
@@ -1914,6 +2220,7 @@ func type_letter(letter: String) -> void:
 		_ready_at = now + TYPE_POP * 0.5
 		_busy_for(TYPE_POP * 0.5 + READY_TIME + float(State.LEN - 1) * READY_STEP)
 		fx.cue("ready")
+	_sync_field()
 	_refresh()
 
 ## Backspace. The letter under the caret -- or, on an empty bed, the nearest
@@ -1936,6 +2243,7 @@ func erase_letter() -> void:
 	_caret_at = now
 	_busy_for(maxf(Motion.POP_OUT, CARET_GLIDE))
 	fx.cue("erase")
+	_sync_field()
 	_refresh()
 
 ## A tap on a bed of the row in hand: the caret glides there and the next
@@ -1950,6 +2258,7 @@ func select_cell(c: int) -> void:
 	_caret_at = _now()
 	_busy_for(CARET_GLIDE)
 	fx.cue("type")
+	_sync_field()
 	_refresh()
 
 ## The bed of the row in hand under a board-local point, or -1.
@@ -1966,7 +2275,11 @@ func _cell_at(local: Vector2) -> int:
 ## Only the row in hand takes a tap; everywhere else the card lets it
 ## through to whatever lies under.
 func _has_point(point: Vector2) -> bool:
-	return _cell_at(point) >= 0
+	if _cell_at(point) >= 0:
+		return true
+	# With the phone's keyboard to call up, the whole grid answers a tap.
+	return _field != null and _working_row() >= 0 and not is_done() and _laid_out() \
+		and Rect2(_origin(), _block()).grow(GAP).has_point(point)
 
 ## Press and release on the same bed selects it, as Code Break's seats do.
 func _gui_input(event: InputEvent) -> void:
@@ -1978,6 +2291,7 @@ func _gui_input(event: InputEvent) -> void:
 	if event.pressed:
 		_touch_cell = c
 		accept_event()
+		_summon()
 		return
 	if _touch_cell >= 0 and c == _touch_cell:
 		select_cell(c)
@@ -2008,6 +2322,7 @@ func commit_row() -> void:
 	_flip_row = row
 	_flip_at = now
 	_row_at[row] = now
+	_sync_field()
 	var sealed: bool = state.snail and state.delivered() < state.rows.size()
 	_sealed[row] = sealed
 	_clear_working()
@@ -2055,9 +2370,14 @@ func commit_row() -> void:
 	_busy_for(last - now + maxf(Motion.BUMP_TIME, _glint_length()))
 	if sealed:
 		_busy_for(landed - now + DELIVER_AFTER + SNAIL_CRAWL * 1.3)
+	if state.is_solved() or state.is_over():
+		_dismiss()
 	if state.is_solved():
 		_solved_at = landed
 		_cue_due.append({"at": landed, "cue": "solved"})
+		# The keys leave as the party starts: the band is the Peeplet's.
+		if _keys != null:
+			_keys_out_at = landed
 		if not Motion.reduce:
 			for c in State.LEN:
 				_fx_due.append({
@@ -2307,6 +2627,8 @@ func row_back() -> void:
 	_band_mesh = null
 	_busy_for(GROW_TIME + Motion.ENTER_POP)
 	fx.cue("row_back")
+	_sync_field()
+	_want_osk = true
 	_refresh()
 	moved.emit()
 
@@ -2491,6 +2813,7 @@ func _deliver_keys(now: float) -> void:
 		var due: Dictionary = _keys_due.pop_front()
 		if due.has("seen"):
 			state.seen = maxi(state.seen, int(due.seen))
+			_count_left(now)
 		if _tray == null:
 			continue
 		_tray.set_marks(due.marks)
@@ -2528,6 +2851,8 @@ func _enter() -> void:
 	_anim_until = _opened
 	_busy_for(Motion.ENTER_DELAY + Motion.ENTER_POP)
 	fx.cue("enter")
+	if _keys != null and is_inside_tree():
+		_keys.enter(Motion.ENTER_DELAY)
 
 func is_solved() -> bool:
 	return state.is_solved()
@@ -2635,6 +2960,7 @@ func reset_board() -> void:
 	_running = true
 	_busy_for(Motion.stagger(state.tries * State.LEN - 1, Motion.RESET_STAGGER) + Motion.POP_OUT)
 	fx.cue("reset")
+	_sync_field()
 	_refresh()
 
 ## Hard and Insane: the rows are ink, so Reset sends back only the letters
@@ -2651,6 +2977,7 @@ func _reset_row() -> void:
 	_caret_at = now
 	_busy_for(float(n) * Motion.RESET_STAGGER * 2.0 + Motion.POP_OUT + CARET_GLIDE)
 	fx.cue("reset")
+	_sync_field()
 	_refresh()
 
 ## Reset gives nothing once the rows have run out (the card is up, or the
@@ -2716,6 +3043,8 @@ func restore_completed_board() -> void:
 	_anim_until = 0.0
 	_party_at = now - 10.0
 	_cheer = posmod(state.answer.hash(), CHEERS)
+	if _keys != null:
+		_keys_out_at = now
 	_restoring = true
 	_raise_peeplet(true)
 	_stamp_down()

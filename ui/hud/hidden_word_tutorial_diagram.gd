@@ -85,6 +85,9 @@ class Desk extends "res://puzzles/hidden_word2d.gd":
 		return "hiddenword_tutorial"
 
 	func _ready() -> void:
+		# The page hands it the keyboard the finger plays: no keys, field or
+		# words-left chip of its own.
+		own_keys = false
 		super()
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 		fx.buzzes = false  # (the page's finger is not the player's)

@@ -106,13 +106,15 @@ const PUZZLES := [
 		"short": "HW_SHORT",
 		"motto": "HW_MOTTO",
 		"footer": "Type · Guess · Find",
-		# It types, so its tray is a keyboard; every Enter is the check, so
-		# there is no actions row and Reset rides in the top bar; and it is
-		# the first board built with no tip card at all.
+		# It types on the phone's own keyboard (2026-10-28) and keeps its
+		# own keys, which it lays itself (full size, or the marks' mirror
+		# above the phone's keyboard), so the host builds no tray; every
+		# Enter is the check, so there is no actions row and Reset rides in
+		# the top bar; and it is the first board built with no tip card.
 		"script": "res://puzzles/hidden_word2d.gd",
 		"card": "res://ui/menu/cards/hiddenword.gd",
 		"shell": "flat",
-		"tray": "keys",
+		"tray": "none",
 		"tip": false,
 		# Its world is the whole screen (`bleed`, puzzles/hidden_word_world.gd) and the
 		# levels stand where the day card was (docs/agents/flat-screens.md).

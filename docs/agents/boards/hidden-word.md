@@ -176,3 +176,67 @@ vertically so the crown stays under the grid.
   settled by hand, because a held walker is not processed). The party hat and
   the sprout's `hat` / `glasses` fields are gone; the persona wears its own.
   The menu card seats the same Peeplet on its tump, held.
+
+### The phone's keyboard, and the words left (2026-10-28)
+
+The user: "make word trail and hidden word experience way better to play,
+and game itself way funnier to play, right now nobody likes it", then
+"users want to use the native keyboard as well on hidden word like on five
+clues". This reverses the 2026-10-15 call above for this board (Pearl Dive
+keeps the tray), and keeps what that call protected: the key marks.
+
+- **It types on the phone's own keyboard**, Five Clues' way
+  (`docs/agents/boards/clues.md`): an unseen `LineEdit` (`_field`) over the
+  grid, `keep_editing_on_text_submit`, called up when the word is dealt
+  (`_want_osk`, once the board is laid out and nothing holds the clock) and
+  by any tap on the grid (`_has_point` takes the whole block while a row can
+  be typed); `_watch_osk` follows the keyboard's height, `osk_override`
+  stands in for one off a phone. **The field's text is the row**, left to
+  right: `_on_field` folds it (`Locale.fold`, accents off, letters of the
+  language's alphabet only, five at most), erases back to where it and the
+  last reading part and types on from there through `type_letter` /
+  `erase_letter`, so a phone letter pops in as a key's does and an
+  autocorrect that rewrites the line simply retypes it. Anything else that
+  writes the row (a key, a bed, Enter, Reset) puts the field back
+  (`_sync_field`). Enter on the phone is `commit_row`; a refusal keeps the
+  line. A solve or the last row puts the keyboard away.
+- **The board keeps its own keys**, the same `KeyBoard` (`ui/flat/key_board.gd`),
+  now its child and laid by it (`_place_keys`); the registry's tray is
+  `"none"`. With the phone's keyboard down they are where the tray was, full
+  size, and the game plays as before (desktop too: the field takes a real
+  keyboard). With it up they shrink to `KEYS_MINI` (0.4) just above it, the
+  **mirror of the marks** the phone's keyboard cannot wear, QWERTY because
+  the phone's own is right under them (and Spanish keeps its Ñ), still
+  tappable. The band shrinks to `BAND_OSK` and the meadow's ground sits
+  under the grid. They leave as the party starts and on Show the word, and
+  come back with Reset, as the tray did. The tutorial's `Desk` sets
+  `own_keys = false` and keeps the page's scaled keyboard.
+- Above a 16:9 phone's keyboard (`osk=806`, 42% of 1920) the grid gets 510
+  to 948 of 1920: cells 61 px with six rows, 51 with the seventh, keys 970 to
+  1106, the keyboard's top at 1114.
+- **The words-left chip** (`State.words_left`, `_count_left`, `_draw_chip`):
+  under the grid, "467 words left", how many of the band's words still fit
+  every row showing its colours -- Easy's 217, Medium's 467, Hard's and
+  Insane's whole 968, plus the answer wherever it came from (themed, banked),
+  so it is never zero. It moves when a row shows its colours (`state.seen`,
+  so on Snail Mail when the snail brings it), counting down LEFT_TIME after
+  the row's reactions with a wrap pop (the board's `combo`) a step, five at
+  most, climbing; one left reads "Only one word fits!" in gold with
+  `sprout`. Beside the small keys while the phone's keyboard is up. Insane
+  counts the whole list rather than its banked hard words: the
+  bank is a grading of the same list, and saying "of the hard ones" would
+  tell the player the word is a trap. `HW_LEFT_N`, `HW_LEFT_ONE` en/pt/es.
+- The praise by row was already there (the seal's `HW_STAMP_1..6`).
+- `HTP_HW_GUESS_BODY` names the phone's keyboard (en/pt/es).
+- `tests/_shot_hiddenword.gd`: `osk=<px>`, mode `field` (typed through the
+  line: letters, a backspace, a sixth letter and accents folded away, Enter)
+  and a `layout:` line. `tests/_win.gd -- hiddenword`: the layout above a
+  42% keyboard, a wrong word through the field (the row commits, the line
+  empties, fewer words fit), the answer on the board's own keys: PASS.
+- Draw calls on `opengl3_angle`: 85 peak playing rows with or without the
+  phone's keyboard (the keys' paint is the tray's two), 103 on Insane's out
+  of rows; Insane's solve peaked 153 under the party's confetti.
+- Decided for the user, unconfirmed: the keyboard comes up by itself when a
+  word is dealt; QWERTY mirror at 0.4 rather than an alphabet strip; the
+  count over the band's list. Owed: a phone (the keyboard's real height,
+  Android's back, autocorrect on a five-letter line).

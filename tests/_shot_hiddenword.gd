@@ -13,7 +13,11 @@ extends SceneTree
 ## wrong, shots at the droop and the card, then One more row, a last wrong
 ## row, and Show the word), `restore` (a solved day reopened). Frames go to
 ## <dir>/hw_<mode>_d<level>_<n>.png. Every mode prints the peak draw calls
-## from 0.5 s on (or its own window).
+## from 0.5 s on (or its own window). `osk=<px>` lays the board out above a
+## phone's keyboard that tall (in the board's pixels; 806 is a 16:9 phone's,
+## 42% of 1920), as off a phone there is none; `field` types through the
+## board's unseen line as the phone's keyboard would, a letter at a time,
+## then a whole autocorrected word, then Enter.
 
 const SHOT_DIR := "/private/tmp/claude-501/-Users-flavioriper-dev-daily/78b53668-8a1f-437d-9baa-ef327881bd37/scratchpad"
 
@@ -33,6 +37,7 @@ var _ms_from := 0.5
 var _ms_sum := 0.0
 var _ms_n := 0
 var _draws_max := 0
+var _osk := -1.0
 
 func _initialize() -> void:
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
@@ -44,6 +49,8 @@ func _initialize() -> void:
 			_reduce = true
 		elif a.begins_with("out="):
 			_dir = a.substr(4)
+		elif a.begins_with("osk="):
+			_osk = float(a.substr(4))
 		else:
 			_mode = a
 	var progress = load("res://core/progress.gd")
@@ -72,6 +79,7 @@ func _process(delta: float) -> bool:
 		_puzzle = _host._puzzle
 		if _host.has_node("HowToPlay"):
 			_host.get_node("HowToPlay").free()
+		_puzzle.osk_override = _osk
 		print("answer: ", _puzzle.state.answer, " snail ", _puzzle.state.snail, " strict ", _puzzle.state.strict, " hints ", _puzzle.hints_left())
 		_script()
 		return false
@@ -90,6 +98,7 @@ func _process(delta: float) -> bool:
 			st.rows, st.delivered(), st.rows.size(), st.tries, _puzzle.out_of_hearts, _puzzle.is_done(),
 			_puzzle.is_solved(), _puzzle.hints_left(), _puzzle.can_reset()])
 		print("tip: ", _puzzle.tip_line().text)
+		_layout_report()
 		print("share: ", _puzzle.share_glyphs())
 		var loaded: Array = []
 		for k in _puzzle.fx._streams:
@@ -99,6 +108,24 @@ func _process(delta: float) -> bool:
 		quit()
 		return true
 	return false
+
+## Where the grid, the chip and the keys landed, against the phone's
+## keyboard's top when one is laid.
+func _layout_report() -> void:
+	var p = _puzzle
+	var grid := Rect2(p._origin(), p._block())
+	var keys: Control = p._keys
+	var keys_r := Rect2(keys.position, keys.size * keys.scale) if keys != null else Rect2()
+	var osk_top: float = p.size.y - p._osk if p._osk > 0.0 else p.size.y
+	print("layout: board %s, cell %.1f, grid y %.0f..%.0f, keys y %.0f..%.0f (scale %.2f), osk top %.0f, fits %s, left %d" % [
+		p.size, p._cell(), grid.position.y, grid.end.y, keys_r.position.y, keys_r.end.y,
+		keys.scale.x if keys != null else 0.0, osk_top, grid.end.y < keys_r.position.y and keys_r.end.y <= osk_top,
+		p._left_to])
+
+func _feed(text: String) -> void:
+	var f: LineEdit = _puzzle._field
+	f.text = text
+	f.text_changed.emit(text)
 
 func _at(t: float, what: Callable) -> void:
 	_plan.append([t, what])
@@ -175,6 +202,26 @@ func _script() -> void:
 			_at(1.6, func() -> void: _type(_wrong().substr(0, 5), false))
 			_at(2.4, _shot)
 			_end = 2.6
+		"field":
+			# The phone's keyboard: a letter at a time, a backspace, then an
+			# autocorrect that rewrites the whole line (accents and a sixth
+			# letter folded away), then Enter.
+			var w := _wrong()
+			_at(1.0, _feed.bind(w.substr(0, 1)))
+			_at(1.1, _feed.bind(w.substr(0, 2)))
+			_at(1.2, _feed.bind(w.substr(0, 3) + "!"))
+			_at(1.3, _feed.bind(w.substr(0, 2)))
+			_at(1.5, _feed.bind(w.substr(0, 4).to_upper()))
+			_at(1.7, func() -> void: _feed("Já " + w + "zz"))
+			_at(1.9, func() -> void: print("field typed '%s' (field '%s')" % [_puzzle.state.typed, _puzzle._field.text]))
+			_at(2.0, func() -> void: _feed(w))
+			_at(2.1, func() -> void: _puzzle._field.text_submitted.emit(w))
+			_at(2.4, _shot.bind("_turn"))
+			_at(3.6, _shot.bind("_count"))
+			_at(4.2, func() -> void: _feed(_wrong("all")))
+			_at(4.3, func() -> void: _puzzle._field.text_submitted.emit(""))
+			_at(6.0, _shot.bind("_count2"))
+			_end = 6.2
 		"select":
 			# A real tap on the fifth bed of the row in hand, then a letter:
 			# it lands there and the caret goes back to the first empty bed.

@@ -440,6 +440,8 @@ HW_STAMP_4,Sharp,Afiado,Agudo
 HW_STAMP_5,Steady,Firme,Firme
 HW_STAMP_6,Phew!,Ufa!,¡Uf!
 HW_STAMP_MORE,Second wind,Fôlego extra,Segundo aire
+HW_LEFT_N,%d words left,%d palavras ainda,%d palabras aún
+HW_LEFT_ONE,Only one word fits!,Só uma palavra serve!,¡Solo una palabra encaja!
 HW_CHEER_0,Your brain did a cartwheel.,Seu cérebro deu uma estrelinha.,Tu cerebro dio una voltereta.
 HW_CHEER_1,The dictionary is blushing.,O dicionário ficou vermelho.,El diccionario se sonrojó.
 HW_CHEER_2,Snack break: earned.,Pausa pro lanche: merecida.,Merienda: bien ganada.
@@ -1598,7 +1600,7 @@ HTP_QN_MIST_CAP,A misty patch takes two queens,Um canteiro enevoado leva duas ra
 HTP_QN_HALF_CAP,One crown lit: it wants one more,Uma coroinha acesa: falta mais uma,Una coronita encendida: falta otra
 HTP_QN_FULL_CAP,"With both seated, the rest is crossed","Com as duas, o resto é riscado","Con las dos, el resto se tacha"
 HTP_HW_GUESS,Guess the hidden word,Adivinhe a palavra oculta,Adivina la palabra oculta
-HTP_HW_GUESS_BODY,"Type a five-letter word on the keys and press Enter. The row turns over: green is the right letter in the right place, amber is in the word somewhere else, grey is not in the word.","Digite uma palavra de cinco letras no teclado e toque em Enviar. A fileira vira: verde é a letra certa no lugar certo, âmbar está na palavra em outro lugar, cinza não está na palavra.","Escribe una palabra de cinco letras en el teclado y pulsa Enviar. La fila se da vuelta: verde es la letra correcta en su lugar, ámbar está en la palabra en otro lugar, gris no está en la palabra."
+HTP_HW_GUESS_BODY,"Type a five-letter word on your phone's keyboard or the keys and press Enter. The row turns over: green is the right letter in the right place, amber is in the word somewhere else, grey is not in the word.","Digite uma palavra de cinco letras no teclado do celular ou nas teclas e toque em Enviar. A fileira vira: verde é a letra certa no lugar certo, âmbar está na palavra em outro lugar, cinza não está na palavra.","Escribe una palabra de cinco letras en el teclado del móvil o en las teclas y pulsa Enviar. La fila se da vuelta: verde es la letra correcta en su lugar, ámbar está en la palabra en otro lugar, gris no está en la palabra."
 HTP_HW_CLUES,Follow the colours,Siga as cores,Sigue los colores
 HTP_HW_CLUES_BODY,"The keys keep every colour your rows found, so you can see at a glance which letters are left. Use them to close in, until a row turns all green.","As teclas guardam todas as cores que as fileiras acharam, então dá para ver de relance quais letras sobram. Use-as para chegar perto, até uma fileira ficar toda verde.","Las teclas guardan todos los colores que encontraron tus filas, así ves de un vistazo qué letras quedan. Úsalas para acercarte, hasta que una fila quede toda verde."
 HTP_HW_TAP,Pick your square,Escolha a casa,Elige la casilla
@@ -1646,8 +1648,8 @@ HTP_WT_NIGHT,Night Walk,Passeio noturno,Paseo nocturno
 HTP_WT_NIGHT_BODY,"The field is dark, walls and all. Hold a finger down and a lantern lights the tiles around it; they fade back once it moves on. Every word you find lights its tiles and their neighbours for good.","O campo está escuro, paredes e tudo. Segure o dedo e uma lanterna ilumina as casas em volta; elas voltam para o escuro quando ela se afasta. Cada palavra achada ilumina suas casas e as vizinhas para sempre.","El campo está a oscuras, paredes incluidas. Mantén el dedo y un farol ilumina las casillas de alrededor; vuelven a la oscuridad cuando se aleja. Cada palabra encontrada ilumina sus casillas y las vecinas para siempre."
 HTP_WT_UNDO,Changed your mind?,Mudou de ideia?,¿Cambiaste de idea?
 HTP_WT_UNDO_BODY,"Undo lifts the last word you found, and Reset lifts them all, so you can try another way. Neither costs anything.","Desfazer tira a última palavra achada, e Recomeçar tira todas, para você tentar outro caminho. Nenhum dos dois custa nada.","Deshacer quita la última palabra encontrada, y Reiniciar las quita todas, para que pruebes otro camino. Ninguno cuesta nada."
-HTP_WT_HINT_BODY_ONE,"The bulb lights where the shortest hidden word starts, and asked again, its next letter. A lit tile stays lit until its word is found. You have one hint.","A lâmpada acende onde começa a palavra escondida mais curta e, se pedir de novo, a próxima letra. Uma casa acesa fica acesa até a palavra ser achada. Você tem uma dica.","La bombilla enciende donde empieza la palabra oculta más corta y, si pides otra vez, su siguiente letra. Una casilla encendida sigue así hasta encontrar la palabra. Tienes una pista."
-HTP_WT_HINT_BODY_N,"The bulb lights where the shortest hidden word starts, and asked again, its next letter. A lit tile stays lit until its word is found. You have %d hints.","A lâmpada acende onde começa a palavra escondida mais curta e, se pedir de novo, a próxima letra. Uma casa acesa fica acesa até a palavra ser achada. Você tem %d dicas.","La bombilla enciende donde empieza la palabra oculta más corta y, si pides otra vez, su siguiente letra. Una casilla encendida sigue así hasta encontrar la palabra. Tienes %d pistas."
+HTP_WT_HINT_BODY_ONE,"The bulb lights every tile of the shortest hidden word, in no order, and asked again, the tile it starts on. A lit tile stays lit until its word is found. You have one hint.","A lâmpada acende todas as casas da palavra escondida mais curta, fora de ordem, e, se pedir de novo, a casa onde ela começa. Uma casa acesa fica acesa até a palavra ser achada. Você tem uma dica.","La bombilla enciende todas las casillas de la palabra oculta más corta, sin orden, y, si pides otra vez, la casilla donde empieza. Una casilla encendida sigue así hasta encontrar la palabra. Tienes una pista."
+HTP_WT_HINT_BODY_N,"The bulb lights every tile of the shortest hidden word, in no order, and asked again, the tile it starts on. A lit tile stays lit until its word is found. You have %d hints.","A lâmpada acende todas as casas da palavra escondida mais curta, fora de ordem, e, se pedir de novo, a casa onde ela começa. Uma casa acesa fica acesa até a palavra ser achada. Você tem %d dicas.","La bombilla enciende todas las casillas de la palabra oculta más corta, sin orden, y, si pides otra vez, la casilla donde empieza. Una casilla encendida sigue así hasta encontrar la palabra. Tienes %d pistas."
 HTP_WT_DRAG_CAP,Drag from letter to letter,Arraste de letra em letra,Arrastra de letra en letra
 HTP_WT_LOCK_CAP,A hidden word locks in its colour,Uma palavra escondida fica na sua cor,Una palabra oculta se fija en su color
 HTP_WT_BOXES_CAP,Its letters drop into its boxes,As letras caem nas suas caixinhas,Sus letras caen en sus casillas
@@ -1657,8 +1659,8 @@ HTP_WT_OFF_CAP,Let go off the field: free,Solte fora do campo: de graça,Suelta 
 HTP_WT_EVERY_CAP,Every letter belongs to one word,Cada letra é de uma palavra,Cada letra es de una palabra
 HTP_WT_UNDO_CAP,Undo lifts the last word,Desfazer tira a última palavra,Deshacer quita la última palabra
 HTP_WT_RESET_CAP,Reset lifts them all,Recomeçar tira todas,Reiniciar las quita todas
-HTP_WT_HINT_CAP,The bulb lights where a word starts,A lâmpada acende onde a palavra começa,La bombilla enciende donde empieza
-HTP_WT_HINT2_CAP,Ask again for its next letter,Peça de novo: a próxima letra,Pide otra vez: la siguiente letra
+HTP_WT_HINT_CAP,The bulb lights a word's tiles,A lâmpada acende as casas de uma palavra,La bombilla enciende las casillas de una palabra
+HTP_WT_HINT2_CAP,Ask again: where it starts,Peça de novo: onde ela começa,Pide otra vez: dónde empieza
 HTP_WT_SEED_CAP,A wrong trail blows a seed away,Um caminho errado sopra uma semente,Un camino equivocado sopla una semilla
 HTP_WT_AGAIN_CAP,The same trail again is free,O mesmo caminho de novo é grátis,El mismo camino otra vez es gratis
 HTP_WT_LAMP_CAP,Hold a finger down: the lantern,Segure o dedo: a lanterna,Mantén el dedo: el farol
@@ -3567,3 +3569,7 @@ BRAIN_FC_3,A short guess is safer: one key word names an idea as well as a sente
 BRAIN_FC_4,"On a hard round, turn one more card instead of guessing early.","Numa rodada difícil, vire mais uma carta em vez de chutar cedo.","En una ronda difícil, voltea una carta más en vez de adivinar antes."
 PP_LEFT_ONE,1 plane left,1 avião restante,Queda 1 avión
 PP_LEFT_N,%d planes left,%d aviões restantes,Quedan %d aviones
+WT_HINT_SET,These %d tiles hold one word. Find its way!,Estas %d casas formam uma palavra. Ache o caminho!,Estas %d casillas forman una palabra. ¡Encuentra el camino!
+WT_HINT_FROM,It starts on the bright tile.,Ela começa na casa mais clara.,Empieza en la casilla más brillante.
+WT_ELSEWHERE,%s is right! It hides along other tiles.,%s está certa! Ela se esconde em outras casas.,¡%s es correcta! Se esconde en otras casillas.
+WT_SHAPE,Today's field: %s,O campo de hoje: %s,El campo de hoy: %s
