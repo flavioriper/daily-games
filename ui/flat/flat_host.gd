@@ -165,6 +165,7 @@ var _tray_given := false
 ## `notes_offered`, shown only while the board on screen offers them, lit in
 ## the sun while they show.
 var _notes_button: Button
+var _notes_lit := -1
 var _hearts_line := ""
 ## The date key of the daily this board was dealt from, taken when the daily
 ## seed spawned it; 0 for a board from a random seed (the settings sheet's
@@ -786,9 +787,11 @@ func _refresh_notes(p) -> void:
 		top_bar.tools.move_child(_notes_button, top_bar.hint_button.get_index())
 	_notes_button.visible = offered
 	if offered:
-		var on: bool = p.notes_shown()
-		CozyTheme.lift_button(_notes_button, Pal.SURFACE.lerp(Pal.SUN, 0.45) if on else Pal.SURFACE,
-			int(FlatTopBar.BUTTON.x * 0.29))
+		var on := int(p.notes_shown())
+		if on != _notes_lit:
+			_notes_lit = on
+			CozyTheme.lift_button(_notes_button, Pal.SURFACE.lerp(Pal.SUN, 0.45) if on else Pal.SURFACE,
+				int(FlatTopBar.BUTTON.x * 0.29))
 
 ## A board may want less of the slot than it was given: Balance caps its
 ## bands, so a short column leaves the rest as air above the weight cards

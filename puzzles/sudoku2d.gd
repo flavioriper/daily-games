@@ -1806,6 +1806,7 @@ func undo() -> bool:
 		return false
 	var now := _now()
 	_sel = i
+	_why = {}
 	_wrong.erase(i)
 	_bump[i] = now
 	_busy_for(Motion.BUMP_TIME)
@@ -2411,7 +2412,9 @@ func _tick_layers(now: float) -> void:
 ## The toast between the grid and the pad, Super Slider's `_draw_toast`:
 ## a dark pill, one or two lines of paper ink, fading in and out.
 func _draw_toast() -> void:
-	if _toast == "" or _cell <= 0.0 or not _current() or is_done():
+	# Only on the screen: a tutorial page's quietened board is never laid
+	# under the host's rows and has no gap to show it in.
+	if _toast == "" or _cell <= 0.0 or not _bled or not _current() or is_done():
 		return
 	var since := _now() - _toast_at
 	if since < 0.0 or since >= _toast_hold:
@@ -2716,6 +2719,8 @@ func _break_streak() -> void:
 ## Every one of `d` is on the grid: each hops in a wave out from the last one
 ## placed, in reading order, with a sparkle at the end, and the line cheers.
 func _all_home(d: int) -> void:
+	if d == _scan:
+		_scan = 0
 	if state.is_solved():
 		return
 	var now := _now()
