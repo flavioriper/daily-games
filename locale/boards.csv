@@ -3490,10 +3490,10 @@ FC_LVL_0,"3 rounds, everyday ideas","3 rodadas, ideias do dia a dia","3 rondas, 
 FC_LVL_1,"3 rounds, trickier first clues","3 rodadas, primeiras pistas mais traiçoeiras","3 rondas, primeras pistas más engañosas"
 FC_LVL_2,"4 rounds, subtle ideas","4 rodadas, ideias sutis","4 rondas, ideas sutiles"
 FC_LVL_3,Three Tries: 4 subtle rounds,Três Tentativas: 4 rodadas sutis,Tres Intentos: 4 rondas sutiles
-FC_RULES,"%d rounds. Five clue cards hide one idea: each card names a thing that belongs to it, the least telling first. Type the idea and press Enter. A wrong idea turns the next card; Enter with nothing typed turns it without a guess. Name it with as few cards as you can.","%d rodadas. Cinco cartas escondem uma ideia: cada carta é uma coisa que pertence a ela, a menos reveladora primeiro. Digite a ideia e aperte Enter. Uma ideia errada vira a próxima carta; Enter sem nada digitado vira a carta sem palpite. Acerte com o mínimo de cartas.","%d rondas. Cinco cartas esconden una idea: cada carta es una cosa que pertenece a ella, la menos reveladora primero. Escribe la idea y pulsa Enter. Una idea equivocada voltea la siguiente carta; Enter sin escribir nada la voltea sin intento. Acierta con las menos cartas posibles."
-FC_RULES_TRIES,"Three Tries: a round also ends after %d wrong ideas, so turn cards with an empty Enter before you guess.","Três Tentativas: uma rodada também acaba depois de %d palpites errados, então vire cartas com Enter vazio antes de chutar.","Tres Intentos: una ronda también termina tras %d intentos equivocados, así que voltea cartas con Enter vacío antes de adivinar."
+FC_RULES,"%d rounds. Five clue cards hide one idea: each card names a thing that belongs to it, the least telling first. Type the idea on your keyboard and press Enter. A wrong idea turns the next card; tap a face-down card to turn it without a guess. Name it with as few cards as you can.","%d rodadas. Cinco cartas escondem uma ideia: cada carta é uma coisa que pertence a ela, a menos reveladora primeiro. Digite a ideia no seu teclado e aperte Enter. Uma ideia errada vira a próxima carta; toque numa carta virada para baixo para virá-la sem palpite. Acerte com o mínimo de cartas.","%d rondas. Cinco cartas esconden una idea: cada carta es una cosa que pertenece a ella, la menos reveladora primero. Escribe la idea en tu teclado y pulsa Enter. Una idea equivocada voltea la siguiente carta; toca una carta boca abajo para voltearla sin intento. Acierta con las menos cartas posibles."
+FC_RULES_TRIES,"Three Tries: a round also ends after %d wrong ideas, so tap cards to turn them before you guess.","Três Tentativas: uma rodada também acaba depois de %d palpites errados, então toque nas cartas para virá-las antes de chutar.","Tres Intentos: una ronda también termina tras %d intentos equivocados, así que toca las cartas para voltearlas antes de adivinar."
 FC_ALL_UP,Every card is up: type your idea.,Todas as cartas estão viradas: digite sua ideia.,Todas las cartas están volteadas: escribe tu idea.
-FC_REPEAT,You said that already.,Você já disse isso.,Ya dijiste eso.
+FC_REPEAT,You tried that one.,Você já tentou essa.,Ya probaste esa.
 FC_WRONG,Not that one. Next clue!,Não é essa. Próxima pista!,No es esa. ¡Siguiente pista!
 FC_TRIES_ONE,Not that one. %d try left.,Não é essa. Resta %d tentativa.,No es esa. Queda %d intento.
 FC_TRIES_N,Not that one. %d tries left.,Não é essa. Restam %d tentativas.,No es esa. Quedan %d intentos.
@@ -3501,19 +3501,26 @@ FC_IT_WAS,It was: %s,Era: %s,Era: %s
 FC_FOUND_ONE,Found with %d card,Achada com %d carta,Hallada con %d carta
 FC_FOUND_N,Found with %d cards,Achada com %d cartas,Hallada con %d cartas
 FC_LOST,Not this time,Não desta vez,Esta vez no
-FC_NEXT,Enter for the next,Enter para a próxima,Enter para la siguiente
-FC_DONE,Enter to finish,Enter para terminar,Enter para terminar
-FC_TYPE,Type the idea,Digite a ideia,Escribe la idea
+FC_NEXT,tap for the next,toque para a próxima,toca para la siguiente
+FC_DONE,tap to finish,toque para terminar,toca para terminar
+FC_TYPE,Tap to type your guess,Toque para digitar seu palpite,Toca para escribir tu respuesta
 FC_WIN,%d of %d ideas found.,%d de %d ideias achadas.,%d de %d ideas halladas.
 FC_WIN_CARDS,%.1f cards each.,%.1f cartas cada.,%.1f cartas cada una.
+FC_CLOSE,So close! Check the spelling.,Quase! Confira a escrita.,¡Casi! Revisa cómo se escribe.
+FC_TAP_TURN,tap for a clue,toque para uma pista,toca para una pista
+FC_PRAISE_1,Mind reader!,Leitor de mentes!,¡Lees mentes!
+FC_PRAISE_2,Brilliant!,Brilhante!,¡Brillante!
+FC_PRAISE_3,Sharp!,Afiado!,¡Agudo!
+FC_PRAISE_4,Got it!,Acertou!,¡Lo tienes!
+FC_PRAISE_5,"Phew, just in time!","Ufa, por pouco!","¡Uf, por los pelos!"
 HTP_FC_GUESS,Name the idea,Diga a ideia,Di la idea
-HTP_FC_GUESS_BODY,Every card is a thing that belongs to one hidden idea. Type the idea and press Enter.,Cada carta é uma coisa de uma ideia escondida. Digite a ideia e aperte Enter.,Cada carta es una cosa de una idea oculta. Escribe la idea y pulsa Enter.
+HTP_FC_GUESS_BODY,"Every card is a thing that belongs to one hidden idea. Type the idea and press Enter. Close is fine: plurals, typos and the idea's main word all count.","Cada carta é uma coisa de uma ideia escondida. Digite a ideia e aperte Enter. Chegar perto basta: plural, erro de digitação e a palavra principal da ideia valem.","Cada carta es una cosa de una idea oculta. Escribe la idea y pulsa Enter. Acercarse basta: plurales, erratas y la palabra principal de la idea cuentan."
 HTP_FC_WRONG,A wrong idea,Uma ideia errada,Una idea equivocada
 HTP_FC_WRONG_BODY,"A wrong idea turns the next card, which tells you a little more.","Uma ideia errada vira a próxima carta, que conta um pouco mais.","Una idea equivocada voltea la siguiente carta, que cuenta un poco más."
 HTP_FC_TURN,The next clue,A próxima pista,La siguiente pista
-HTP_FC_TURN_BODY,Press Enter with nothing typed to turn the next card without a guess. Fewer cards make a better score.,Aperte Enter sem nada digitado para virar a próxima carta sem chutar. Menos cartas dão uma nota melhor.,Pulsa Enter sin escribir nada para voltear la siguiente carta sin intento. Menos cartas dan mejor puntuación.
+HTP_FC_TURN_BODY,Tap the next face-down card to turn it without a guess. Fewer cards make a better score.,Toque na próxima carta virada para baixo para virá-la sem chutar. Menos cartas dão uma nota melhor.,Toca la siguiente carta boca abajo para voltearla sin intento. Menos cartas dan mejor puntuación.
 HTP_FC_TRIES,Three Tries,Três Tentativas,Tres Intentos
-HTP_FC_TRIES_BODY,On Insane a round ends after %d wrong ideas. Turn cards with an empty Enter until you are sure.,"No Insano, uma rodada acaba depois de %d palpites errados. Vire cartas com Enter vazio até ter certeza.","En Demencial, una ronda termina tras %d intentos equivocados. Voltea cartas con Enter vacío hasta estar seguro."
+HTP_FC_TRIES_BODY,On Insane a round ends after %d wrong ideas. Tap cards to turn them until you are sure.,"No Insano, uma rodada acaba depois de %d palpites errados. Toque nas cartas para virá-las até ter certeza.","En Demencial, una ronda termina tras %d intentos equivocados. Toca las cartas para voltearlas hasta estar seguro."
 HTP_FC_HINT,A hint,Uma dica,Una pista
 HTP_FC_HINT_BODY,The bulb shows the idea's next letter on the slate.,A lâmpada mostra a próxima letra da ideia na lousa.,La bombilla muestra la siguiente letra de la idea en la pizarra.
 BRAIN_FC_1,"Before you guess, say what the first two cards have in common, out loud.","Antes de chutar, diga em voz alta o que as duas primeiras cartas têm em comum.","Antes de adivinar, di en voz alta qué tienen en común las dos primeras cartas."

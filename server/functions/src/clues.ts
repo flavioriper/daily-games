@@ -77,22 +77,104 @@ export function norm(s: string): string {
   return out;
 }
 
-/** Whether a typed line names the idea: it is one of the phrases, folded,
- *  or holds one of CONTAINS_MIN letters or more; a phrase's last "s" may be
- *  left off. puzzles/clues_state.gd accepts exactly the same. */
-export function accepts(w: Wording, line: string): boolean {
-  const typed = norm(line);
-  if (typed === "") return false;
-  for (const a of w.accept) {
-    const f = norm(a);
-    const forms = f.length > CONTAINS_MIN && f.endsWith("s") ? [f, f.slice(0, -1)] : [f];
-    for (const form of forms) {
-      if (form === "") continue;
-      if (typed === form) return true;
-      if (form.length >= CONTAINS_MIN && typed.includes(form)) return true;
+/** The words of a label that say nothing alone, folded; its other words of
+ *  LABEL_MIN letters or more are accepted as the key words are
+ *  (puzzles/clues_state.gd GENERIC). */
+const GENERIC = new Set([
+  "thing", "things", "types", "kinds", "sorts", "parts", "stuff", "objects", "items",
+  "words", "found", "their", "there", "these", "those", "other", "others", "every",
+  "famous", "where", "which", "about", "being", "under", "inside", "often", "usually",
+  "coisa", "coisas", "tipos", "partes", "objetos", "itens", "palavras", "outros", "outras",
+  "todos", "todas", "dentro", "sobre", "entre", "podem", "fazem",
+  "cosas", "clases", "palabras", "otros", "otras", "pueden", "hacen",
+]);
+const LABEL_MIN = 5;
+/** A typed word one letter off a form of TYPO_MIN letters is right, two off
+ *  one of TYPO_LONG; one more is "close" (the phone's, free). */
+const TYPO_MIN = 6;
+const TYPO_LONG = 9;
+
+/** `s` cut into its words, each folded. */
+export function words(s: string): string[] {
+  const out: string[] = [];
+  let w = "";
+  for (const ch of s.normalize("NFC").toLowerCase() + " ") {
+    if (ch >= "a" && ch <= "z") w += ch;
+    else if (FOLD[ch] !== undefined) w += FOLD[ch];
+    else {
+      if (w !== "") out.push(w);
+      w = "";
     }
   }
-  return false;
+  return out;
+}
+
+function addForm(out: string[], f: string): void {
+  if (f !== "" && !out.includes(f)) out.push(f);
+  const cut = f.slice(0, -1);
+  if (f.length > CONTAINS_MIN && f.endsWith("s") && !out.includes(cut)) out.push(cut);
+}
+
+/** The key words folded, each with its last "s" left off too. */
+function forms(w: Wording): string[] {
+  const out: string[] = [];
+  for (const a of w.accept) addForm(out, norm(a));
+  return out;
+}
+
+/** The label's telling words, which must be typed as whole words. */
+function labelForms(w: Wording): string[] {
+  const out: string[] = [];
+  for (const x of words(w.label ?? "")) if (x.length >= LABEL_MIN && !GENERIC.has(x)) addForm(out, x);
+  return out;
+}
+
+function distance(a: string, b: string): number {
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 0; i < a.length; i++) {
+    const row = [i + 1];
+    for (let j = 0; j < b.length; j++) {
+      row.push(Math.min(prev[j + 1] + 1, row[j] + 1, prev[j] + (a[i] === b[j] ? 0 : 1)));
+    }
+    prev = row;
+  }
+  return prev[b.length];
+}
+
+/** 0 when the line is right as typed, else the fewest letters a typed word
+ *  is off a form long enough to forgive (puzzles/clues_state.gd _miss). */
+function miss(w: Wording, line: string): number {
+  const typed = norm(line);
+  if (typed === "") return 99;
+  const keys = forms(w);
+  for (const form of keys) {
+    if (typed === form || (form.length >= CONTAINS_MIN && typed.includes(form))) return 0;
+  }
+  const labels = labelForms(w);
+  const heard = words(line);
+  for (const x of heard) {
+    if (labels.includes(x) || (x.length > CONTAINS_MIN && x.endsWith("s") && labels.includes(x.slice(0, -1)))) return 0;
+  }
+  if (heard.length > 1) heard.push(typed);
+  let best = 99;
+  for (const x of heard) {
+    if (x.length < TYPO_MIN) continue;
+    for (const form of [...keys, ...labels]) {
+      if (form.length < TYPO_MIN) continue;
+      const d = distance(x, form) - (form.length >= TYPO_LONG ? 1 : 0);
+      best = Math.min(best, Math.max(d, 1));
+    }
+  }
+  return best;
+}
+
+/** Whether a typed line names the idea: one of its key words folded, or
+ *  holding one of CONTAINS_MIN letters or more, or one of its label's telling
+ *  words typed as a word (a last "s" may be left off either way); or a typed
+ *  word of TYPO_MIN letters or more one letter off one of those (two off one
+ *  of TYPO_LONG). puzzles/clues_state.gd accepts exactly the same. */
+export function accepts(w: Wording, line: string): boolean {
+  return miss(w, line) <= 1;
 }
 
 // --- the bank ---

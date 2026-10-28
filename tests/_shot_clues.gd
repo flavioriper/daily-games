@@ -5,7 +5,9 @@ extends SceneTree
 ## bulb's strike, the fold mid-way, the box turned, the box flying, the
 ## next round, the win settled and the day reopened from its card, with the
 ## draw calls of each frame. `tut` shoots a tutorial page played a while;
-## `card` the menu card beside Hosepipes'. Puts nothing in the player's save.
+## `card` the menu card beside Hosepipes'; `osk=<px>` lays the board out
+## above a stand-in phone keyboard that tall. Puts nothing in the player's
+## save.
 
 var _menu: Node
 var _host: Node
@@ -16,6 +18,7 @@ var _page := 1
 var _f := 0
 var _step := 0
 var _diag: Control
+var _osk := -1.0
 
 func _initialize() -> void:
 	for a in OS.get_cmdline_user_args():
@@ -27,6 +30,8 @@ func _initialize() -> void:
 				_page = int(a.substr(4))
 		elif a == "card":
 			_step = 60
+		elif a.begins_with("osk="):
+			_osk = float(a.substr(4))
 		elif a == "out":
 			_step = 40
 		else:
@@ -90,6 +95,9 @@ func _process(_delta: float) -> bool:
 		_b = _host._puzzle
 	var st = _b.state()
 	if not _b.dealt():
+		return false
+	if _osk >= 0.0 and _b.osk_override != _osk:
+		_b.osk_override = _osk
 		return false
 	match _step:
 		0:

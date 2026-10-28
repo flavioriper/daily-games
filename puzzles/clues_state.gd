@@ -16,7 +16,7 @@ extends RefCounted
 
 const Daily = preload("res://core/daily.gd")
 
-enum Said { RIGHT, WRONG, LOST, TURNED, REPEAT, EMPTY, IGNORED }
+enum Said { RIGHT, WRONG, LOST, TURNED, REPEAT, EMPTY, IGNORED, NEAR }
 
 const BANK := "res://content/clues.json"
 const GAME := "clues"
@@ -68,24 +68,116 @@ static func norm(s: String) -> String:
 			out += FOLD[ch]
 	return out
 
-## Whether `line` names the idea: one of its phrases folded, or holding one
-## of CONTAINS_MIN letters or more; a phrase's last "s" may be left off. As
-## server/functions/src/clues.ts accepts().
-static func accepts(accept: Array, line: String) -> bool:
+## The words of a label that say nothing alone ("Things with teeth" is
+## about teeth, not things), folded. A label's other words of LABEL_MIN
+## letters or more are accepted as its key words are.
+const GENERIC := [
+	"thing", "things", "types", "kinds", "sorts", "parts", "stuff", "objects", "items",
+	"words", "found", "their", "there", "these", "those", "other", "others", "every",
+	"famous", "where", "which", "about", "being", "under", "inside", "often", "usually",
+	"coisa", "coisas", "tipos", "partes", "objetos", "itens", "palavras", "outros", "outras",
+	"todos", "todas", "dentro", "sobre", "entre", "podem", "fazem",
+	"cosas", "clases", "palabras", "otros", "otras", "pueden", "hacen",
+]
+const LABEL_MIN := 5
+## How far a typed word may be from an accepted one (letters added, lost or
+## changed) and still be right: one, two from a word of TYPO_LONG letters.
+## One more is "close": said, and free.
+const TYPO_MIN := 6
+const TYPO_LONG := 9
+
+## `s` cut into its words, each folded.
+static func words(s: String) -> Array[String]:
+	var out: Array[String] = []
+	var w := ""
+	for ch in s.to_lower() + " ":
+		if ch >= "a" and ch <= "z":
+			w += ch
+		elif FOLD.has(ch):
+			w += FOLD[ch]
+		else:
+			if w != "":
+				out.append(w)
+			w = ""
+	return out
+
+## The forms a typed line may hold to name the idea: the key words folded,
+## each with its last "s" left off too.
+static func forms(accept: Array) -> Array[String]:
+	var out: Array[String] = []
+	for a in accept:
+		_add_form(out, norm(String(a)))
+	return out
+
+## The label's telling words, which must be typed as whole words ("fruit"
+## names Citrus fruits; "grapefruit" does not).
+static func label_forms(label: String) -> Array[String]:
+	var out: Array[String] = []
+	for w in words(label):
+		if w.length() >= LABEL_MIN and not GENERIC.has(w):
+			_add_form(out, w)
+	return out
+
+static func _add_form(out: Array[String], f: String) -> void:
+	if f != "" and not out.has(f):
+		out.append(f)
+	var cut := f.substr(0, f.length() - 1)
+	if f.length() > CONTAINS_MIN and f.ends_with("s") and not out.has(cut):
+		out.append(cut)
+
+## Letters added, lost or changed between `a` and `b`.
+static func distance(a: String, b: String) -> int:
+	var prev: Array[int] = []
+	for j in b.length() + 1:
+		prev.append(j)
+	for i in a.length():
+		var row: Array[int] = [i + 1]
+		for j in b.length():
+			var cost := 0 if a[i] == b[j] else 1
+			row.append(mini(mini(prev[j + 1] + 1, row[j] + 1), prev[j] + cost))
+		prev = row
+	return prev[b.length()]
+
+## How near `line` comes to the idea: 0 when it is right as typed, else
+## the fewest letters a typed word is off a form long enough to forgive.
+static func _miss(accept: Array, label: String, line: String) -> int:
 	var typed := norm(line)
 	if typed == "":
-		return false
-	for a in accept:
-		var f := norm(String(a))
-		var forms := [f]
-		if f.length() > CONTAINS_MIN and f.ends_with("s"):
-			forms.append(f.substr(0, f.length() - 1))
-		for form: String in forms:
-			if form == "":
+		return 99
+	var keys := forms(accept)
+	for form in keys:
+		if typed == form or (form.length() >= CONTAINS_MIN and typed.contains(form)):
+			return 0
+	var labels := label_forms(label)
+	var heard := words(line)
+	for w in heard:
+		if labels.has(w) or (w.length() > CONTAINS_MIN and w.ends_with("s") and labels.has(w.substr(0, w.length() - 1))):
+			return 0
+	if heard.size() > 1:
+		heard.append(typed)
+	var best := 99
+	for w in heard:
+		if w.length() < TYPO_MIN:
+			continue
+		for form in keys + labels:
+			if form.length() < TYPO_MIN:
 				continue
-			if typed == form or (form.length() >= CONTAINS_MIN and typed.contains(form)):
-				return true
-	return false
+			var d := distance(w, form) - (1 if form.length() >= TYPO_LONG else 0)
+			best = mini(best, maxi(d, 1))
+	return best
+
+## Whether `line` names the idea: one of its key words folded, or holding
+## one of CONTAINS_MIN letters or more, or one of its label's telling words
+## typed as a word (a last "s" may be left off either way); or a typed word
+## of TYPO_MIN letters or more one letter off one of those (two off one of
+## TYPO_LONG). As server/functions/src/clues.ts accepts().
+static func accepts(accept: Array, line: String, label := "") -> bool:
+	return _miss(accept, label, line) <= 1
+
+## Not right, but one letter further off than accepts() forgives: a slip,
+## said and free.
+static func near(accept: Array, line: String, label := "") -> bool:
+	return _miss(accept, label, line) == 2
 
 # --- the bank ---
 
@@ -232,11 +324,14 @@ func offer(line: String) -> Said:
 		return turn()
 	if said.has(typed):
 		return Said.REPEAT
-	said.append(typed)
 	var r := round_now()
-	if accepts(r.accept, line):
+	if accepts(r.accept, line, r.label):
 		results.append(shown)
 		return Said.RIGHT
+	# a slip of a letter is pointed out, not spent
+	if near(r.accept, line, r.label):
+		return Said.NEAR
+	said.append(typed)
 	wrongs += 1
 	if shown >= CLUES or (tries() > 0 and wrongs >= tries()):
 		results.append(0)

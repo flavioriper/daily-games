@@ -4,17 +4,22 @@ extends "res://core/puzzle_base.gd"
 ## words board. Five clue cards are pinned face down to a cork board on the
 ## garden shed's wall; the first is turned. Every card names a thing that
 ## belongs to one hidden idea, the least telling first. Type the idea on the
-## keyboard and Enter: right, and the idea is chalked on the slate under the
-## board; wrong, and the next card turns. Enter on an empty line turns the
-## next card without a guess. A wrong line with every card up loses the
+## phone's own keyboard and Enter: right, and the idea is chalked on the
+## slate under the board with a word of praise for how few cards it took;
+## wrong, and the line is pinned crossed out under the slate and the next
+## card turns. A tap on the next face-down card (or Enter on an empty line)
+## turns it without a guess; a slip of a letter is pointed out, free. A
+## wrong line with every card up loses the
 ## round, and the idea is shown. On Insane (Three Tries) a round also ends
 ## at its third wrong line. Every round done is the day; the score is the
 ## cards each round needed. The rules are puzzles/clues_state.gd's.
 ##
-## **The shed wall is the whole screen** (`"bleed": true`); the keyboard is
-## the host's tray (`"tray": "keys"`), Hidden Word's, as Pearl Dive's is:
-## the host sends `type_letter`, `erase_letter` and `commit_row`. A tap on
-## the slate does Enter's job once a round is over.
+## **The shed wall is the whole screen** (`"bleed": true`, `"tray": "none"`).
+## Players hated the built-in keyboard (the user, 2026-10-28: "they want to
+## use their own device keyboard"), so the board holds an unseen LineEdit
+## over the slate and the phone's keyboard types into it; the board lays
+## itself out above the keyboard while it is up (`_osk`). A round over moves
+## on by itself after a moment; a tap or Enter moves on sooner.
 ##
 ## A daily's rounds are written at night (server/functions/src/clues.ts) and
 ## fetched as Golden Acorn's are: at once when this phone holds them, after
@@ -71,6 +76,18 @@ const TURN_TIME := 0.36
 const SAY_TIME := 2.0
 const ROUND_SLIDE := 0.4
 const WIN_HOLD := 1.2
+## A round over moves on by itself after this long (lost: the idea read
+## first), and ignores Enter for the first moment so a typed Enter held
+## over does not skip the cards turning.
+const NEXT_RIGHT := 2.6
+const NEXT_LOST := 3.6
+const NEXT_GUARD := 0.6
+## The tried lines under the slate, and the praise stamped on the cork.
+const TRIED_SIZE := 26
+const PRAISE_SIZE := 64
+const PRAISE_TIME := 1.6
+## Room left between the slate's row and the phone's keyboard, at W.
+const OSK_GAP := 18.0
 
 var demo := false
 var demo_rounds: Array = []
@@ -92,7 +109,15 @@ var _shake_at := -INF
 var _won_at := -INF
 var _say := ""
 var _say_at := -INF
-var _tray: Control
+var _field: LineEdit
+## The phone's keyboard's height in the board's pixels (0 while down), and a
+## stand-in a harness sets to see the layout above one off a phone.
+var _osk := 0.0
+var osk_override := -1.0
+## This round's wrong lines as typed, and the praise of the last found.
+var _tried: Array[String] = []
+var _praise := ""
+var _round_no := 0
 var _clear := Vector2.ZERO
 var _won := false
 var _bled := false
@@ -145,18 +170,68 @@ func _ready() -> void:
 		fx.name = "Fx"
 		fx.haptics = HAPTICS
 		add_child(fx)
+		_make_field()
 	resized.connect(_relayout)
 	if demo:
 		_make_world()
 		_relayout()
 
-## The host hands the keyboard over once a board.
-func set_tray(t: Control) -> void:
-	_tray = t
-	_tray.match_locale()
-	_tray.clear_marks()
-	if _tray.gone:
-		_tray.enter(0.0)
+## The line the phone's keyboard types into: unseen, laid over the slate,
+## never touched itself (the board's own _gui_input calls it up), so the
+## slate stays drawn as chalk. It keeps editing across Enter so the keyboard
+## stays up from one guess to the next.
+func _make_field() -> void:
+	_field = LineEdit.new()
+	_field.name = "Field"
+	_field.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_field.max_length = State.TYPE_MAX
+	_field.context_menu_enabled = false
+	_field.selecting_enabled = false
+	_field.middle_mouse_paste_enabled = false
+	_field.keep_editing_on_text_submit = true
+	_field.virtual_keyboard_enabled = true
+	var none := StyleBoxEmpty.new()
+	for box in ["normal", "focus", "read_only"]:
+		_field.add_theme_stylebox_override(box, none)
+	for ink in ["font_color", "font_placeholder_color", "caret_color", "selection_color", "font_selected_color"]:
+		_field.add_theme_color_override(ink, Color(0, 0, 0, 0))
+	_field.text_changed.connect(_on_typed)
+	_field.text_submitted.connect(func(_t: String) -> void: commit_row())
+	add_child(_field)
+
+## Calls the phone's keyboard up, while a round is played.
+func _summon() -> void:
+	if _field == null or _phase != Phase.PLAY or is_done() or clock_held:
+		return
+	if not _field.has_focus():
+		_field.edit()
+
+## Leaving the board puts the keyboard away with it.
+func _exit_tree() -> void:
+	_dismiss()
+
+func _dismiss() -> void:
+	if _field != null and _field.has_focus():
+		_field.unedit()
+		_field.release_focus()
+
+## What the keyboard typed, as the slate shows it.
+func _on_typed(text: String) -> void:
+	if _phase != Phase.PLAY or is_done():
+		if text != "":
+			_field.text = ""
+		return
+	var was := _typed
+	_typed = text.to_upper()
+	if _typed.length() > was.length():
+		_cue("type", randf_range(0.97, 1.03))
+	elif _typed.length() < was.length():
+		_cue("erase")
+
+func _clear_line() -> void:
+	_typed = ""
+	if _field != null and _field.text != "":
+		_field.text = ""
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_gen += 1
@@ -203,11 +278,16 @@ func _begin() -> void:
 	_typed = ""
 	_fresh_round()
 	_cue("enter")
+	_summon.call_deferred()
 
 func _fresh_round() -> void:
 	_phase = Phase.PLAY
+	_round_no += 1
 	_round_at = _t
 	_over_at = -INF
+	_tried.clear()
+	_praise = ""
+	_clear_line()
 	_turned_at.clear()
 	for i in State.CLUES:
 		_turned_at.append(-INF)
@@ -232,6 +312,7 @@ func _after(delay: float, what: Callable) -> void:
 	_queue.append([_t + delay, what])
 	_queue.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
 
+## The tutorial's hands type through these; a player types into _field.
 func type_letter(letter: String) -> void:
 	if _phase != Phase.PLAY or is_done() or _typed.length() >= State.TYPE_MAX:
 		return
@@ -245,15 +326,30 @@ func erase_letter() -> void:
 	_cue("erase")
 
 ## Enter: the line offered, the next card when the line is empty, or once a
-## round is over, the next round (after the last, the end of the day).
+## round is over (and its cards have had a moment), the next round (after
+## the last, the end of the day).
 func commit_row() -> void:
 	if not _dealt or is_done():
 		return
 	match _phase:
 		Phase.OVER:
-			_next()
+			if _t - _over_at >= NEXT_GUARD or demo:
+				_next()
 		Phase.PLAY:
 			_offer()
+
+## A tap on a face-down card: the next one turns, no guess spent.
+func turn_next() -> bool:
+	if _phase != Phase.PLAY or is_done():
+		return false
+	var said: int = _st.turn()
+	if said == Said.TURNED:
+		_turn(_st.shown - 1)
+		return true
+	if said == Said.EMPTY:
+		_say_now(tr("FC_ALL_UP"))
+		_cue("hush")
+	return false
 
 func _offer() -> void:
 	var said: int = _st.offer(_typed)
@@ -269,17 +365,23 @@ func _offer() -> void:
 			_shake_at = _t
 			_cue("repeat")
 			return
+		Said.NEAR:
+			_say_now(tr("FC_CLOSE"))
+			_shake_at = _t
+			_cue("repeat")
+			return
 		Said.TURNED:
 			_turn(_st.shown - 1)
 			return
 	moves += 1
 	moved.emit()
 	if said == Said.RIGHT:
-		_typed = ""
+		_clear_line()
 		_round_over(true)
 		return
 	_shake_at = _t
-	_typed = ""
+	_tried.append(_typed.strip_edges())
+	_clear_line()
 	if said == Said.LOST:
 		_round_over(false)
 		return
@@ -302,9 +404,20 @@ func _round_over(right: bool) -> void:
 		if _turned_at[i] == -INF:
 			_turned_at[i] = _t + 0.25 + i * 0.08
 	_cue("right" if right else "lost")
+	var cards: int = _st.results[_st.results.size() - 1]
+	if right:
+		_praise = tr("FC_PRAISE_%d" % clampi(cards, 1, State.CLUES))
 	if right and not demo:
 		fx.sparkle(_slate_centre(), Pal.SUN)
 		fx.ring(_slate_centre(), _l("slate_w") * 0.4, Pal.GOOD)
+		if cards <= 2:
+			fx.confetti(_card_pos(2), 14, _l("card_w"))
+	# on to the next by itself once the cards have been read
+	if not demo:
+		var no := _round_no
+		_after(NEXT_RIGHT if right else NEXT_LOST, func() -> void:
+			if no == _round_no and _phase == Phase.OVER:
+				_next())
 
 func _next() -> void:
 	if _st.index + 1 >= _st.count():
@@ -317,6 +430,7 @@ func _next() -> void:
 func _solved_now() -> void:
 	_phase = Phase.DONE
 	_won_at = _t
+	_dismiss()
 	_cue("solved")
 	if not demo:
 		_after(0.4, func() -> void:
@@ -334,6 +448,7 @@ func hint() -> bool:
 		return false
 	hints_used += 1
 	_cue("hint")
+	_summon()
 	if not demo:
 		fx.sparkle(_slate_centre() + Vector2(0.0, _l("slate_h") * 0.42), Pal.SUN)
 	return true
@@ -369,7 +484,10 @@ func slate_to_local() -> Vector2:
 
 func _process(delta: float) -> void:
 	super(delta)
+	if not demo:
+		_watch_osk()
 	if clock_held and not demo:
+		_dismiss()
 		return
 	_t += delta
 	while not _queue.is_empty() and float(_queue[0][0]) <= _t:
@@ -386,11 +504,42 @@ func _gui_input(event: InputEvent) -> void:
 		if event is InputEventMouseButton and event.button_index != MOUSE_BUTTON_LEFT:
 			return
 		accept_event()
-		# the slate does Enter's job once a round is over
-		if _phase == Phase.OVER and Rect2(_slate_centre() - Vector2(_l("slate_w"), _l("slate_h")) * 0.5, Vector2(_l("slate_w"), _l("slate_h"))).grow(20.0).has_point(event.position):
-			_next()
-		elif _phase == Phase.PLAY:
-			_cue("hush")
+		match _phase:
+			Phase.OVER:
+				# any tap moves on once the cards have had their moment
+				if _t - _over_at >= NEXT_GUARD:
+					_next()
+			Phase.PLAY:
+				# a face-down card turns the next; anywhere else calls the
+				# keyboard back up
+				if _card_at(event.position) >= _st.shown:
+					turn_next()
+				_summon()
+
+## The card under `at`, or -1.
+func _card_at(at: Vector2) -> int:
+	for i in State.CLUES:
+		if Rect2(_card_pos(i) - Vector2(_l("card_w"), _l("card_h")) * 0.5, Vector2(_l("card_w"), _l("card_h"))).grow(_l("gap") * 0.5).has_point(at):
+			return i
+	return -1
+
+## The phone's keyboard's top, followed: the board lays itself out above
+## it while it is up. Its height comes in the window's pixels.
+func _watch_osk() -> void:
+	var h := osk_override
+	if h < 0.0:
+		h = 0.0
+		if not DisplayServer.has_feature(DisplayServer.FEATURE_VIRTUAL_KEYBOARD):
+			_osk = 0.0
+			return
+		var win := DisplayServer.window_get_size()
+		var kb := DisplayServer.virtual_keyboard_get_height()
+		if kb > 0 and win.y > 0:
+			h = float(kb) * get_viewport_rect().size.y / float(win.y)
+			h = maxf(0.0, h - (get_viewport_rect().size.y - get_global_rect().end.y))
+	if absf(h - _osk) > 0.5:
+		_osk = h
+		_relayout()
 
 # --- the layout ---
 
@@ -428,43 +577,60 @@ func _relayout() -> void:
 		return
 	var top := _clear.x if _bled else 0.0
 	var bottom := size.y - (_clear.y if _bled else 0.0)
+	if _osk > 0.0:
+		bottom = minf(bottom, size.y - _osk - OSK_GAP * size.x / W)
 	_L = _layout_for(top, bottom)
 	if _world != null:
 		_world.position = Vector2(-_shift if _bled else 0.0, 0.0)
 		_world.size = size
 		_world.set_lines(_L.cork as Rect2, _L.slate as Rect2)
+	if _field != null:
+		var r: Rect2 = _L.slate
+		_field.position = r.position
+		_field.size = r.size
 	queue_redraw()
 
+## Laid in the span between the rows; tight while the phone's keyboard is up
+## (a 16:9 phone leaves the board some 600 of its 1920): the pills, slate
+## and gaps shrink, and the passing word rides the cork's foot, not a row.
 func _layout_for(top: float, bottom: float) -> Dictionary:
 	var w := size.x
 	var u := w / W
+	var tight := _osk > 0.0
 	var span := maxf(bottom - top, 300.0 * u)
-	var pills_h := PILL_R * 2.0 * u + 20.0 * u
-	var say_h := 44.0 * u
-	var hearts_h := 44.0 * u if State.TRIES[_band] > 0 else 0.0
-	var slate_h := SLATE_H * u
-	var room := span - pills_h - say_h - hearts_h - slate_h - 70.0 * u
-	var card_h := minf(CARD.y * u, (room - (State.CLUES - 1) * CARD_GAP * u) / State.CLUES)
+	var gap := (8.0 if tight else CARD_GAP) * u
+	var pills_h := (PILL_R * 2.0 * u + 20.0 * u) * (0.75 if tight else 1.0)
+	var say_h := 0.0 if tight else 44.0 * u
+	var tried_h := 40.0 * u
+	var hearts_h := (32.0 if tight else 44.0) * u if State.TRIES[_band] > 0 else 0.0
+	var slate_h := SLATE_H * u * (0.74 if tight else 1.0)
+	var air := (14.0 if tight else 70.0) * u
+	var after_pills := (10.0 if tight else 24.0) * u
+	var after_cards := (16.0 if tight else 34.0) * u
+	var room := span - pills_h - after_pills - after_cards - say_h - tried_h - hearts_h - slate_h - air
+	var card_h := minf(CARD.y * u, (room - (State.CLUES - 1) * gap) / State.CLUES)
 	card_h = maxf(card_h, 40.0 * u)
 	var card_w := minf(CARD.x * u, w * 0.8)
-	var stack_h := State.CLUES * card_h + (State.CLUES - 1) * CARD_GAP * u
-	var used := pills_h + stack_h + slate_h + hearts_h + say_h + 70.0 * u
-	var y := top + maxf(10.0 * u, (span - used) * 0.4)
+	var stack_h := State.CLUES * card_h + (State.CLUES - 1) * gap
+	var used := pills_h + after_pills + stack_h + after_cards + slate_h + tried_h + hearts_h + say_h + air
+	var y := top + maxf((4.0 if tight else 10.0) * u, (span - used) * 0.4)
 	var pills_y := y + pills_h * 0.5
-	y += pills_h + 24.0 * u
+	y += pills_h + after_pills
 	var cards_top := y
-	var cork := Rect2(w * 0.5 - card_w * 0.5 - 40.0 * u, cards_top - 22.0 * u, card_w + 80.0 * u, stack_h + 44.0 * u)
-	y += stack_h + 34.0 * u
+	var cork := Rect2(w * 0.5 - card_w * 0.5 - 40.0 * u, cards_top - 22.0 * u * (0.5 if tight else 1.0), card_w + 80.0 * u, stack_h + 44.0 * u * (0.5 if tight else 1.0))
+	y += stack_h + after_cards
 	var slate_w := minf(w * 0.86, 820.0 * u)
 	var slate := Rect2(w * 0.5 - slate_w * 0.5, y, slate_w, slate_h)
-	y += slate_h + 12.0 * u
+	y += slate_h + (6.0 if tight else 12.0) * u
+	var tried_y := y + tried_h * 0.5
+	y += tried_h
 	var hearts_y := y + hearts_h * 0.5
 	y += hearts_h
 	return {
-		"u": u, "top": top, "bottom": bottom, "pills_y": pills_y,
-		"cards_top": cards_top, "card_w": card_w, "card_h": card_h,
+		"u": u, "top": top, "bottom": bottom, "pills_y": pills_y, "pill_k": 0.75 if tight else 1.0,
+		"cards_top": cards_top, "card_w": card_w, "card_h": card_h, "gap": gap,
 		"cork": cork, "slate": slate, "slate_w": slate_w, "slate_h": slate_h,
-		"hearts_y": hearts_y, "say_y": y + say_h * 0.5,
+		"hearts_y": hearts_y, "say_y": cork.end.y - 6.0 * u if tight else y + say_h * 0.5, "tried_y": tried_y,
 	}
 
 func _l(key: String) -> float:
@@ -474,7 +640,7 @@ func _u() -> float:
 	return float(_L.get("u", 1.0))
 
 func _card_pos(i: int) -> Vector2:
-	return Vector2(size.x * 0.5, _l("cards_top") + _l("card_h") * 0.5 + i * (_l("card_h") + CARD_GAP * _u()))
+	return Vector2(size.x * 0.5, _l("cards_top") + _l("card_h") * 0.5 + i * (_l("card_h") + _l("gap")))
 
 func _slate_centre() -> Vector2:
 	var r: Rect2 = _L.get("slate", Rect2())
@@ -489,8 +655,10 @@ func _draw() -> void:
 	for i in State.CLUES:
 		_draw_card(i)
 	_draw_slate()
+	_draw_tried()
 	_draw_tries()
 	_draw_say()
+	_draw_praise()
 
 func _card_mesh(face: bool) -> ArrayMesh:
 	var key := "%s:%d:%d" % [face, roundi(_l("card_w")), roundi(_l("card_h"))]
@@ -535,6 +703,11 @@ func _draw_card(i: int) -> void:
 	if face:
 		var word: String = String(_st.round_now().clues[i]).to_upper()
 		_text(font, word, at + Vector2(0.0, 2.0 * u), _l("card_w") * 0.8 * sx, CARD_SIZE * u, CARD_MIN * u, Color(Art.INK, a))
+	elif i == _st.shown and _phase == Phase.PLAY and not demo:
+		# the next card asks to be tapped
+		var breathe := 1.0 if Motion.reduce else 0.75 + 0.25 * sin(_t * 3.2)
+		var body: Font = CozyTheme.display(700)
+		_text(body, "%d  ·  %s" % [i + 1, tr("FC_TAP_TURN")], at + Vector2(0.0, 2.0 * u), _l("card_w") * 0.86 * sx, 30.0 * u, 16.0 * u, Color(Art.BACK_INK, a * breathe))
 	else:
 		var n := str(i + 1)
 		_text(font, n, at + Vector2(0.0, 2.0 * u), _l("card_w") * sx, CARD_SIZE * u, CARD_MIN * u, Color(Art.BACK_INK, a))
@@ -574,8 +747,10 @@ func _draw_slate() -> void:
 		return
 	var shown := _typed if _typed != "" else ""
 	if shown == "":
-		var body: Font = CozyTheme.display(700)
-		_text(body, tr("FC_TYPE"), c + Vector2(0.0, -sh * 0.08), sw * 0.9, 30.0 * u, 16.0 * u, Color(Art.CHALK, 0.45))
+		# the bulb's letters, once lit, stand in for the prompt
+		if _st.hinted == 0:
+			var body: Font = CozyTheme.display(700)
+			_text(body, tr("FC_TYPE"), c + Vector2(0.0, -sh * 0.08), sw * 0.9, 30.0 * u, 16.0 * u, Color(Art.CHALK, 0.45))
 	else:
 		var x := 0.0
 		if _shake_at > -INF and not Motion.reduce:
@@ -583,18 +758,19 @@ func _draw_slate() -> void:
 		_text(font, shown, c + Vector2(x, -sh * 0.08), sw * 0.9, LINE_SIZE * u, 22.0 * u, Art.CHALK)
 	if _st.hinted > 0:
 		var body: Font = CozyTheme.display(700)
-		_text(body, _st.hint_line(), c + Vector2(0.0, sh * 0.3), sw * 0.9, 28.0 * u, 16.0 * u, Color(Pal.SUN_RAY, 0.95))
+		var hy := sh * 0.3 if shown != "" else -sh * 0.04
+		_text(body, _st.hint_line(), c + Vector2(0.0, hy), sw * 0.9, 28.0 * u, 16.0 * u, Color(Pal.SUN_RAY, 0.95))
 
 ## A pill a round along the top: its count of cards once done (a cross for a
 ## round lost), the round in hand ringed.
 func _draw_pills() -> void:
 	var u := _u()
 	var n: int = _st.count()
-	var gap := PILL_R * 2.8 * u
+	var gap := PILL_R * 2.8 * u * _l("pill_k")
 	var font: Font = CozyTheme.display(800)
 	for i in n:
 		var at := Vector2(size.x * 0.5 + (i - (n - 1) * 0.5) * gap, _l("pills_y"))
-		var r := PILL_R * u
+		var r := PILL_R * u * _l("pill_k")
 		var done: bool = i < _st.results.size()
 		var res: int = _st.results[i] if done else -1
 		var wave := 0.0
@@ -628,6 +804,62 @@ func _draw_say() -> void:
 	var at := Vector2(size.x * 0.5 - tw * 0.5, _l("say_y") + fs * 0.35)
 	draw_string_outline(font, at, _say, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, roundi(8 * u), Color(Pal.SURFACE, 0.85 * a))
 	draw_string(font, at, _say, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(Pal.TEXT, a))
+
+## This round's wrong lines in a row under the slate, each struck through,
+## so what was tried stays in sight.
+func _draw_tried() -> void:
+	if _tried.is_empty() or _phase == Phase.DONE:
+		return
+	var u := _u()
+	var font: Font = CozyTheme.display(700)
+	var fs := roundi(TRIED_SIZE * u)
+	var gap := 26.0 * u
+	var widths: Array[float] = []
+	var total := 0.0
+	for line in _tried:
+		var tw := font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		widths.append(tw)
+		total += tw
+	total += gap * (_tried.size() - 1)
+	var room := _l("slate_w")
+	if total > room:
+		fs = maxi(roundi(14.0 * u), int(fs * room / total))
+		total = 0.0
+		for k in _tried.size():
+			widths[k] = font.get_string_size(_tried[k], HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+			total += widths[k]
+		total += gap * (_tried.size() - 1)
+	var x := size.x * 0.5 - total * 0.5
+	var y := _l("tried_y")
+	var ink := Color(Pal.TEXT, 0.7)
+	for k in _tried.size():
+		var base := Vector2(x, y + fs * 0.35)
+		draw_string_outline(font, base, _tried[k], HORIZONTAL_ALIGNMENT_LEFT, -1, fs, roundi(7 * u), Color(Pal.SURFACE, 0.8))
+		draw_string(font, base, _tried[k], HORIZONTAL_ALIGNMENT_LEFT, -1, fs, ink)
+		draw_line(Vector2(x - 4.0 * u, y), Vector2(x + widths[k] + 4.0 * u, y), Color(Pal.BAD, 0.85), maxf(2.0, 3.0 * u))
+		x += widths[k] + gap
+
+## The word of praise for a round found, stamped over the cork as the cards
+## turn, and gone before the next round.
+func _draw_praise() -> void:
+	if _praise == "" or _phase != Phase.OVER:
+		return
+	var e := _t - _over_at - 0.15
+	if e < 0.0 or e > PRAISE_TIME:
+		return
+	var u := _u()
+	var font: Font = CozyTheme.display(800)
+	var fs := roundi(PRAISE_SIZE * u)
+	var tw := font.get_string_size(_praise, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+	var k := clampf(e / 0.22, 0.0, 1.0)
+	var sc := 1.0 if Motion.reduce else lerpf(1.6, 1.0, 1.0 - pow(1.0 - k, 3.0))
+	var a := clampf((PRAISE_TIME - e) / 0.35, 0.0, 1.0) * (1.0 if Motion.reduce else k)
+	var c: Vector2 = (_L.cork as Rect2).get_center()
+	draw_set_transform(c, -0.07, Vector2(sc, sc))
+	var at := Vector2(-tw * 0.5, fs * 0.35)
+	draw_string_outline(font, at, _praise, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, roundi(14 * u), Color(Pal.SURFACE, a))
+	draw_string(font, at, _praise, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(Pal.GOOD, a))
+	draw_set_transform(Vector2.ZERO)
 
 # --- the win ---
 

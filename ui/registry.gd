@@ -643,12 +643,12 @@ const PUZZLES := [
 		# rounds are written at night by a model and named blind by a second
 		# (server/functions/src/clues.ts), in the player's language; the bank
 		# deals a phone that never reached them (content/clues.json). It
-		# types, so its tray is Hidden Word's keyboard, as Pearl Dive's is,
-		# and Enter is every move: no actions row and no tip card.
+		# types on the phone's own keyboard (2026-10-28, players hated the
+		# built-in one), so it has no tray: no actions row and no tip card.
 		"script": "res://puzzles/clues2d.gd",
 		"card": "res://ui/menu/cards/clues.gd",
 		"shell": "flat",
-		"tray": "keys",
+		"tray": "none",
 		"tip": false,
 		"bleed": true,
 		"level_card": true,

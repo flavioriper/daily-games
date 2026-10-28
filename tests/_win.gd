@@ -1732,29 +1732,55 @@ func _solve_clues() -> void:
 			break
 		await process_frame
 	var st = _puzzle._st
-	var tray: Node = _host.tray
-	var enter: Button = tray.find_child("Key_Enter", true, false)
+	# the phone's keyboard types into the board's own field
+	var field: LineEdit = _puzzle._field
 	var type := func(word: String) -> void:
-		for ch in word:
-			_press(tray.find_child("Key_%s" % ch.to_upper(), true, false))
-		_press(enter)
+		field.text = word
+		field.text_changed.emit(word)
+		field.text_submitted.emit(word)
 	_fit_ok = Rect2(Vector2.ZERO, _puzzle.size).has_point(_puzzle.slate_to_local())
-	_hud_ok = _puzzle.capabilities() == ["hint"] and _puzzle.hints_left() > 0 and not _puzzle.can_reset()
-	_press(enter)
-	_hud_ok = _hud_ok and st.shown == 2
-	var wrong := "PEBBLE" if not st.accepts(st.round_now().accept, "pebble") else "CLOUD"
+	# laid out above a keyboard half the screen tall
+	_puzzle.osk_override = _puzzle.size.y * 0.42
+	await process_frame
+	await process_frame
+	var slate: Rect2 = _puzzle._L.slate
+	_fit_ok = _fit_ok and slate.end.y <= _puzzle.size.y * 0.58 and field.get_rect().is_equal_approx(slate) \
+		and _puzzle._card_pos(4).y + _puzzle._l("card_h") * 0.5 < slate.position.y and _puzzle._l("card_h") >= 40.0
+	_puzzle.osk_override = -1.0
+	await process_frame
+	_hud_ok = _puzzle.capabilities() == ["hint"] and _puzzle.hints_left() > 0 and not _puzzle.can_reset() and _host.tray == null
+	# a tap on the next face-down card turns it, no guess spent
+	_tap_local(_puzzle._card_pos(3))
+	_hud_ok = _hud_ok and st.shown == 2 and st.wrongs == 0
+	var wrong := "PEBBLE" if not st.accepts(st.round_now().accept, "pebble", st.round_now().label) else "CLOUD"
 	type.call(wrong)
-	_hud_ok = _hud_ok and st.shown == 3 and st.wrongs == 1
+	_hud_ok = _hud_ok and st.shown == 3 and st.wrongs == 1 and _puzzle._tried == [wrong]
+	# a slip two letters off a long key word is pointed out, free
+	for a in st.round_now().accept:
+		var f: String = st.norm(String(a))
+		if f.length() >= 6 and f.length() < 9:
+			var slip := f.substr(0, 1) + "qq" + f.substr(3)
+			if st.near(st.round_now().accept, slip, st.round_now().label):
+				type.call(slip)
+				_hud_ok = _hud_ok and st.shown == 3 and st.wrongs == 1 and _puzzle._say == _puzzle.tr("FC_CLOSE")
+			break
 	_press(_host.top_bar.hint_button)
 	_hud_ok = _hud_ok and _puzzle.hints_used == 1 and st.hinted == 1
 	for r in 8:
 		if _puzzle.is_done():
 			break
 		if _puzzle.phase() == _puzzle.Phase.PLAY:
-			type.call(st.norm(String(st.round_now().accept[0])))
-		await process_frame
-		_press(enter)
-		await process_frame
+			# a typo of the key word is right
+			var word: String = st.norm(String(st.round_now().accept[0]))
+			type.call(word.substr(0, word.length() - 1) + "z" if word.length() >= 6 and r == 0 else word)
+			_hud_ok = _hud_ok and _puzzle.phase() == _puzzle.Phase.OVER and _puzzle._praise != ""
+		# the first round moves on by itself; the rest by a tap
+		for i in 400:
+			if _puzzle.phase() != _puzzle.Phase.OVER:
+				break
+			if r > 0 and i == 50:
+				_tap_local(_puzzle.size * 0.5)
+			await process_frame
 	for i in 120:
 		await process_frame
 	_waiting = false

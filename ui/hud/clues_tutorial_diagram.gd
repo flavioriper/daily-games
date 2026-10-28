@@ -6,10 +6,10 @@ extends Control
 ## on it a letter at a time. `lesson` and `band` are set before it enters
 ## the tree:
 ##
-## - GUESS: two cards turned with an empty Enter, then the idea typed: it is
-##   chalked on the slate.
+## - GUESS: two cards turned by a tap, then the idea typed: it is chalked
+##   on the slate.
 ## - WRONG: a wrong idea typed: the next card turns; then the right one.
-## - TURN: Enter on an empty line turns a card, no guess spent.
+## - TURN: a tap on the next face-down card turns it, no guess spent.
 ## - TRIES: Insane's three wrong lines and the round is lost.
 ## - HINT: the bulb shows the idea's first letter, then it is typed.
 ##
@@ -26,6 +26,7 @@ enum Lesson { GUESS, WRONG, TURN, TRIES, HINT }
 const FINGER_R := 26.0
 const BULB := "#bulb"
 const ENTER := "#enter"
+const CARD := "#card"
 const STEP_WAIT := 0.9
 const LETTER_WAIT := 0.09
 const REST := 2.0
@@ -39,6 +40,8 @@ var _typing := ""
 var _wait := 0.0
 var _rest := -1.0
 var _bulb_at := -INF
+var _tap_at := -INF
+var _tap := Vector2.ZERO
 var _t := 0.0
 
 func _ready() -> void:
@@ -79,22 +82,22 @@ func _deal() -> void:
 	_bulb_at = -INF
 	_steps = _script(_board.state())
 
-## What the hand does, in order: a line to type and Enter, an empty Enter,
-## or the bulb.
+## What the hand does, in order: a line to type and Enter, a tap on the
+## next card, or the bulb.
 func _script(st) -> Array:
 	var r: Dictionary = st.round_now()
 	var right: String = State.norm(String(r.accept[0]))
 	var wrong := "PEBBLE" if not State.accepts(r.accept, "pebble") else "CLOUD"
 	match lesson:
 		Lesson.WRONG:
-			return [wrong, ENTER, right]
+			return [wrong, CARD, right]
 		Lesson.TURN:
-			return [ENTER, ENTER, ENTER]
+			return [CARD, CARD, CARD]
 		Lesson.TRIES:
 			return [wrong, "CLOUD" if wrong != "CLOUD" else "RIVER", "TEAPOT"]
 		Lesson.HINT:
 			return [BULB, right]
-	return [ENTER, ENTER, right]
+	return [CARD, CARD, right]
 
 func _process(delta: float) -> void:
 	if Motion.reduce or _board == null:
@@ -129,10 +132,20 @@ func _process(delta: float) -> void:
 		_board.hint()
 	elif s == ENTER:
 		_board.commit_row()
+	elif s == CARD:
+		_tap = _board._card_pos(_board.state().shown)
+		_tap_at = _t
+		_board.turn_next()
 	else:
 		_typing = s.to_upper()
 
 func _draw_over() -> void:
+	# the finger's press on the card it turns
+	var te := _t - _tap_at
+	if te < 0.6 and _rest < 0.0:
+		var k := 1.0 - te / 0.6
+		_over.draw_circle(_tap, FINGER_R * (1.0 + 0.25 * (1.0 - k)), Color(Pal.TEXT, 0.25 * k))
+		_over.draw_arc(_tap, FINGER_R + 8.0 * (1.0 - k), 0.0, TAU, 32, Color(Pal.TEXT, 0.5 * k), 3.0, true)
 	if lesson == Lesson.HINT and _t - _bulb_at < 2.0 and _rest < 0.0:
 		var c := Vector2(size.x - 44.0, 40.0)
 		_over.draw_circle(c, 26.0, Color(Pal.SUN, 0.9))
