@@ -122,6 +122,9 @@ const SCORE_FONT := 50
 const KICKER_FONT := 24
 const COMBO_FONT := 110
 const JUDGE_FONT := 34
+## Early or late, lettered under an OK or a struck BAD, and its two colours.
+const EARLY_FONT := 24
+const EARLY_COLS := [Color("8cc8ec"), Color("f59a6a")]
 const TITLE_FONT := 60
 const LINE_FONT := 32
 
@@ -173,6 +176,11 @@ const OFFSET_MAX := 0.35
 const PHONE_GUESS := 0.12
 const SETTINGS := "user://drumbeat.cfg"
 ## The tap-along keeps the taps from this knock on, and wants this many.
+## The timing following the hand at a song's end (`_follow_hand`).
+const FOLLOW_N := 12
+const FOLLOW_MIN := 0.025
+const FOLLOW_SHARE := 0.8
+const FOLLOW_MAX := 0.06
 const TUNE_FROM := 3
 const TUNE_MIN := 5
 ## Hearts: the sign in the band, and the out-of-hearts card after the song
@@ -251,7 +259,12 @@ var _stopped_at := 0.0
 var _held := {}
 
 # motion, on the screen's own clock (seconds, `_now()`)
-var _judge := {}          # the latest: {grade, at}
+var _judge := {}          # the latest: {grade, at, dt, passed}
+## How far off each stroke that played a note landed this song (seconds,
+## late positive), for the timing to follow the player's hand at its end.
+var _dts: Array = []
+## What the last song's end moved the timing by (ms), told on the next card.
+var _followed_ms := 0
 var _flies: Array = []    # {lane, from, at, golden}
 ## Two berries at once: note index -> its row, in TWINs either side of the line.
 var _rows := {}
@@ -547,6 +560,7 @@ func _fresh() -> void:
 	_clock = -0.5
 	_last_vt = -10.0
 	_judge = {}
+	_dts = []
 	_flies = []
 	# two berries at one instant ride one over the other, the lower drum's on top
 	_rows = {}
@@ -622,6 +636,7 @@ func _start(from := 0.0) -> void:
 		_fresh()
 		_plays += 1
 	_phase = "play"
+	_followed_ms = 0
 	_play_music(String(_song.get("file", "")), String(_song.get("lead", "")), from)
 
 func _play_music(file: String, lead: String, from: float) -> void:
@@ -1211,7 +1226,9 @@ func _on_judge(ev: Dictionary, t: float) -> void:
 	var n: Dictionary = _st.notes[i]
 	var kind := _kind(lane)
 	var at := _ring_at(i)
-	_judge = {"grade": grade, "at": t}
+	_judge = {"grade": grade, "at": t, "dt": float(ev.get("dt", 0.0)), "passed": bool(ev.passed)}
+	if not bool(ev.passed):
+		_dts.append(float(ev.get("dt", 0.0)))
 	if grade == State.Grade.BAD:
 		_duck = true
 		_set_drum_mood(lane, Parts.Mood.WORRIED)
@@ -1336,7 +1353,26 @@ func _seat(i: int) -> Vector2:
 	var back := k % 2 == 1
 	return Vector2(x, _path_top() - (18.0 if back else 0.0) * u)
 
+## The timing follows the hand (2026-10-29): when a song's strokes land
+## off on the median by more than FOLLOW_MIN, the phone's timing moves
+## FOLLOW_SHARE of the way toward them, at most FOLLOW_MAX a song, and the
+## next card (the missed one, or the start card after a Redo) says by how
+## much over its Tune button. Needs FOLLOW_N strokes that played a note.
+func _follow_hand() -> void:
+	if _dts.size() < FOLLOW_N:
+		return
+	var d := _dts.duplicate()
+	d.sort()
+	var m: float = d[d.size() / 2]
+	if absf(m) < FOLLOW_MIN:
+		return
+	var step := clampf(snappedf(m * FOLLOW_SHARE, 0.005), -FOLLOW_MAX, FOLLOW_MAX)
+	var was := _offset
+	_set_offset(_offset + step)
+	_followed_ms = int(roundf((_offset - was) * 1000.0))
+
 func _song_over() -> void:
+	_follow_hand()
 	var mark := "🥁"
 	if _st.all_good():
 		mark = "👑"
@@ -1479,6 +1515,7 @@ func heart_back() -> void:
 
 func _start_with_hearts() -> void:
 	_phase = "play"
+	_followed_ms = 0
 	_plays += 1
 	_play_music(String(_song.get("file", "")), String(_song.get("lead", "")), 0.0)
 	moved.emit()
@@ -2782,6 +2819,11 @@ func _draw_words(now: float) -> void:
 		var fs := JUDGE_FONT + (6 if int(_judge.grade) == State.Grade.GOOD else 0)
 		draw_set_transform(Vector2((RING_X + 14.0) * u, _path_top() - 30.0 * u - rise), 0.0, Vector2(pop, pop))
 		_label(Vector2.ZERO, tr(JUDGE_KEYS[int(_judge.grade)]), int(fs * u), Color(col, a), Color(Parts.INK, 0.85 * a))
+		# a stroke that missed GOOD says which side it fell: early or late
+		var dt := float(_judge.get("dt", 0.0))
+		if int(_judge.grade) != State.Grade.GOOD and not bool(_judge.get("passed", true)) and absf(dt) > float(State.GOOD_WIN[_st.level]):
+			var side := tr("DB_EARLY") if dt < 0.0 else tr("DB_LATE")
+			_label(Vector2(0.0, fs * 0.95 * u), side, int(EARLY_FONT * u), Color(EARLY_COLS[0 if dt < 0.0 else 1], a), Color(Parts.INK, 0.75 * a))
 		draw_set_transform(Vector2.ZERO)
 	if not _roll_pop.is_empty() and now - float(_roll_pop.at) < 0.5:
 		_label(Vector2((RING_X + 190.0) * u, _path_top() - 30.0 * u), str(int(_roll_pop.n)), int(44 * u), Parts.ROLL, Parts.INK)
@@ -2856,6 +2898,9 @@ func _draw_card(head: String, line: String, now: float, buttons := true) -> void
 		_label((rects[2] as Rect2).get_center() + Vector2(0, 14.0 * u), "+", int(44 * u), Parts.INK, Color(0, 0, 0, 0))
 		var ms := int(roundf(_offset * 1000.0))
 		_label((rects[1] as Rect2).get_center() + Vector2(0, 10.0 * u), tr("DB_TUNE_BUTTON") % ("%+d" % ms), int(27 * u), Parts.INK, Color(0, 0, 0, 0))
+		if _followed_ms != 0:
+			_label(Vector2(c.x, (rects[1] as Rect2).position.y - 24.0 * u), tr("DB_FOLLOWED") % ("%+d" % _followed_ms), int(23 * u),
+				Color(Parts.INK, 0.6), Color(0, 0, 0, 0))
 
 ## The tap-along's card: a wooden block that hops on each knock, and a dot a
 ## tap on a ruler from early to late.

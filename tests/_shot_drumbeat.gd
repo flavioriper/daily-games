@@ -3,7 +3,7 @@ extends SceneTree
 ## Drumbeat through the real menu and flat host, played by a bot through the
 ## board's own strokes, shot at fixed moments:
 ##
-##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_drumbeat.gd -- <outdir> [d=<level>] [miss] [full] [reduce]
+##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_drumbeat.gd -- <outdir> [d=<level>] [miss] [full] [reduce] [late]
 ##
 ## 1 the start card, 2 early in the song, 3 in the first Go-Go section, 4 on
 ## the first balloon, and with `full` 5 the win (or, with `miss`, where the bot
@@ -26,6 +26,10 @@ var _revive := false
 var _t := 0.0
 var _step := 0
 var _struck := {}
+## `late` (or `late=<ms>`): every tap and ribbon struck this long after its
+## time -- "late" under the word, shot as 2d_late, and the timing following
+## the hand at the song's end (told on the missed card).
+var _late := 0.0
 var _last_roll := -10.0
 var _shots: Array = []
 var _frames: Array = []
@@ -64,6 +68,10 @@ func _initialize() -> void:
 			_tune = true
 		elif a == "reduce":
 			_reduce = true
+		elif a == "late":
+			_late = 0.09
+		elif a.begins_with("late="):
+			_late = float(a.substr(5)) / 1000.0
 	var main: Node = load("res://world/main.tscn").instantiate()
 	root.add_child(main)
 	_menu = main.get_node("UI/Menu")
@@ -100,7 +108,7 @@ func _bot() -> void:
 		if n.type == State.Type.HOLD and n.held and vt >= float(n.end):
 			_b._lift(int(n.lane))
 			continue
-		if _struck.has(i) or n.st != State.St.WAIT:
+		if _struck.has(i) or n.st != State.St.WAIT or float(n.t) + _late > vt + 0.01:
 			continue
 		_struck[i] = true
 		_b.strike(int(n.lane))
@@ -158,6 +166,9 @@ func _process(delta: float) -> bool:
 				_step = 2
 		2:
 			_bot()
+			if _late > 0.0 and not _struck.has(-3) and not _b._judge.is_empty() and _b._now() - float(_b._judge.at) > 0.12:
+				_struck[-3] = true
+				_shot("2d_late")
 			if not _shots.is_empty() and _b.song_now() >= float(_shots[0][1]):
 				_shot(String(_shots[0][0]))
 				_shots.pop_front()

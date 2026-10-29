@@ -142,3 +142,33 @@ and the cat drop to z 0 so nothing draws over the host's cards.
 - Decided for the user, unconfirmed: a light evening; a stage of 332 at
   1920 (about 500 in the card); drums 8% larger. Owed: a phone, the user's
   ear on nothing having moved in time.
+
+### Made fun (2026-10-29)
+
+The user: "make trestle and drumbeat experience way better to play, and game
+itself way funnier to play, right now nobody likes it". The genre's
+references are praised for clear right/wrong cues and forgiving windows,
+and faulted for not saying whether a stroke was early or late.
+
+- **Measured first** (`tests/_probe_db_fun.gd -- sd lag wrong skip`, a
+  thumb off by a normal error around a lag, a share of strokes on the wrong
+  drum or none, ten seeds a song). Before: a player 60 ms off, 30 ms late,
+  8% wrong and 5% missed cleared Easy 27/30, Medium 9/30, Hard 0/30; one
+  45 ms off cleared Insane 0/30.
+- **Fairer gauge and windows** (`drumbeat_state.gd`): GOOD 75/70/60/55 ms,
+  OK 140/130/120/110, BAD 170/160/150/140; an OK fills three quarters of a
+  GOOD (`OK_GAIN`, was a half), a BAD drains one GOOD (`BAD_DRAIN`, was
+  two). Now: 60 ms off with no lag clears 30/25/19/3 of 30; 45 ms off with
+  5% wrong 30/30/30/26 (the bot plays Echo's hidden bars from perfect
+  memory); 90 ms off with 15% wrong still clears no Hard (21/4/0/0).
+  Charts and music untouched.
+- **Early or late** under an OK or a struck BAD at the ring (`EARLY_FONT`,
+  blue early, apricot late; the keys `DB_EARLY`/`DB_LATE` were the tune
+  card's).
+- **The timing follows the hand** (`_follow_hand`, at the song's end): with
+  12 strokes that played a note and their median off by 25 ms or more, the
+  phone's timing moves 0.8 of the way, at most 60 ms a song, and the next
+  card says so over its Tune button (`DB_FOLLOWED`).
+- `_shot_drumbeat.gd late` / `late=<ms>` strikes every tap that late and
+  shoots `2d_late`. Medium at 135 ms late: the missed card read "Timing +60
+  ms to match your taps". Suite 303252/0. Not on a phone; unheard.

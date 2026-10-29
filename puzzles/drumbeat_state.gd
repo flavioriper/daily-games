@@ -14,7 +14,8 @@ extends RefCounted
 ## player can, a balloon that many strokes before it pops. Two notes at the
 ## same instant are struck together. Every note is GOOD, OK or BAD by how far
 ## from its time it was struck; a note let past is a BAD. A BAD breaks the
-## combo. The soul gauge fills on GOOD, half on OK, and drains on BAD; the
+## combo. The soul gauge fills on GOOD, three quarters on OK, and drains as
+## much as a GOOD fills on BAD; the
 ## song is cleared -- the board solved -- when it ends at or over the line.
 ##
 ## Hard and Insane carry hearts (3 and 2): MISS_RUN misses in a row break
@@ -35,10 +36,15 @@ enum St { WAIT, HIT, MISSED }
 const DRUMS := [1, 2, 3, 3]
 ## The judgement windows, in seconds either side of a note, by difficulty.
 ## Wider than an arcade cabinet's, because a phone's glass and its audio are
-## both slower than a drum.
-const GOOD_WIN := [0.07, 0.06, 0.05, 0.045]
-const OK_WIN := [0.13, 0.115, 0.1, 0.09]
-const BAD_WIN := [0.16, 0.145, 0.13, 0.12]
+## both slower than a drum. Widened on 2026-10-29 with OK_GAIN and BAD_DRAIN
+## (tests/_probe_db_fun.gd, a thumb off by a normal error, a share of its
+## strokes on the wrong drum or none): a player 60 ms off with 8% wrong and
+## 5% missed cleared Medium 9/30 and Hard 0/30, and clears 25/30 and 19/30
+## now; one 45 ms off with 5% wrong clears Insane 26/30 (was 0/30); one 90 ms
+## off with 15% wrong still clears no Hard.
+const GOOD_WIN := [0.075, 0.07, 0.06, 0.055]
+const OK_WIN := [0.14, 0.13, 0.12, 0.11]
+const BAD_WIN := [0.17, 0.16, 0.15, 0.14]
 ## A hold let go this close to its end still counts as held to the end.
 const HOLD_SLACK := 0.12
 ## Points a note: GOOD, OK.
@@ -62,6 +68,9 @@ const GOGO := 1.2
 ## difficulty; the song is cleared at CLEAR of it.
 const FILL := [0.55, 0.65, 0.75, 0.8]
 const GAUGE_MAX := 100.0
+## A GOOD's gauge an OK fills, and a BAD drains (they were a half and two).
+const OK_GAIN := 0.75
+const BAD_DRAIN := 1.0
 const CLEAR := 80.0
 ## The combo is lettered at these counts, and every hundred past the last.
 const COMBO_CALLS := [10, 25, 50, 100]
@@ -388,14 +397,14 @@ func _judge(i: int, grade: int, passed: bool, dt := 0.0) -> void:
 			oks += 1
 			combo += 1
 			miss_run = 0
-			gauge = minf(GAUGE_MAX, gauge + _gain * 0.5)
+			gauge = minf(GAUGE_MAX, gauge + _gain * OK_GAIN)
 		Grade.BAD:
 			bads += 1
 			miss_run += 1
 			if combo > 0:
 				events.append({"type": "break", "combo": combo})
 			combo = 0
-			gauge = maxf(0.0, gauge - _gain * 2.0)
+			gauge = maxf(0.0, gauge - _gain * BAD_DRAIN)
 	if grade != Grade.BAD:
 		pts = _points(grade, float(n.t))
 		score += pts
