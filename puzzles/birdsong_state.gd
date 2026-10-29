@@ -26,6 +26,9 @@ extends RefCounted
 ## Times are the board's seconds; nothing here knows the screen.
 
 enum Heard { GOOD, OK, ROUND, SOLVED, SLIP, IGNORED }
+## Why a slip was a slip (said on the board's toast): a knock before its
+## place, after it, where no knock is, or a place passed with no knock.
+enum Why { EARLY, LATE, EXTRA, MISSED }
 
 ## Per band, Easy to Insane: the tempo, the slots in a bar, the day's
 ## knocks, the first round's knocks, how long the holes stay on the card
@@ -42,6 +45,14 @@ const HINTS := [3, 2, 1, 1]
 ## How near its place a knock must land, in seconds: good, and fine.
 const GOOD := 0.09
 const OK := 0.17
+## A knock past OK but within this of its place is called late rather than
+## the place called missed: a place is only given up this long after OK, so
+## a late knock is told it was late. What is a slip is unchanged.
+const LATE_GRACE := 0.16
+## How far a knock may be from the nearest knock's place to be called early
+## or late; past it, it is a knock where there is none. It reaches past
+## OK + LATE_GRACE, so a knock just before a place is given up is late.
+const NEAR := 0.34
 
 var band := 0
 ## The day's knocks, in the order the rounds add them (slots in the bar).
@@ -71,6 +82,15 @@ var goods := 0
 var oks := 0
 ## Each round knocked back, the slips it took.
 var history: Array[int] = []
+## The last slip: why, and the slot of the knock it was about (the knock
+## early, late or missed; where the extra one landed, rounded).
+var why := Why.MISSED
+var why_slot := 0
+## Rounds knocked back clean in a row, the best run of the day, and whether
+## the round just knocked back had every knock good.
+var run := 0
+var best_run := 0
+var perfect := false
 
 func deal(rng: RandomNumberGenerator, the_band: int) -> void:
 	band = clampi(the_band, 0, BPM.size() - 1)
@@ -160,6 +180,9 @@ func restart() -> void:
 	goods = 0
 	oks = 0
 	slips_round = 0
+	run = 0
+	best_run = 0
+	perfect = false
 	history.clear()
 	_begin_round()
 
@@ -205,6 +228,13 @@ func round_feints() -> Array[int]:
 			out.append(int(s))
 	return out
 
+## The knock this round adds (its slot), or -1 on the first round.
+func new_slot() -> int:
+	var r := mini(round_ix, rounds() - 1)
+	if r <= 0:
+		return -1
+	return order[mini(int(START[band]) + r - 1, order.size() - 1)]
+
 ## How long the holes stay on the card: 2, 1 or 0 (SHOW).
 func show() -> int:
 	return int(SHOW[band])
@@ -241,6 +271,12 @@ func heard(t: float) -> Heard:
 			best = i
 	if best < 0 or far > OK:
 		last_grade = 2
+		if best >= 0 and far <= NEAR:
+			why = Why.EARLY if t < due(best) else Why.LATE
+			why_slot = knocks[best]
+		else:
+			why = Why.EXTRA
+			why_slot = clampi(roundi(last_slot), 0, grid() - 1)
 		_slip()
 		return Heard.SLIP
 	grades[best] = 0 if far <= GOOD else 1
@@ -252,8 +288,13 @@ func heard(t: float) -> Heard:
 	landed += 1
 	if landed < knocks.size():
 		return Heard.GOOD if far <= GOOD else Heard.OK
+	perfect = not grades.has(1)
 	if slips_round == 0:
 		clean += 1
+		run += 1
+		best_run = maxi(best_run, run)
+	else:
+		run = 0
 	history.append(slips_round)
 	slips_round = 0
 	round_ix += 1
@@ -268,7 +309,9 @@ func missed(t: float) -> int:
 	if not started() or solved():
 		return -1
 	for i in knocks.size():
-		if grades[i] < 0 and t > due(i) + OK:
+		if grades[i] < 0 and t > due(i) + OK + LATE_GRACE:
+			why = Why.MISSED
+			why_slot = knocks[i]
 			_slip()
 			return i
 	return -1
@@ -276,6 +319,7 @@ func missed(t: float) -> int:
 func _slip() -> void:
 	slips += 1
 	slips_round += 1
+	run = 0
 
 ## The share of rounds knocked back without a slip (the brain report).
 func quality() -> float:

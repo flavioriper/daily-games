@@ -1767,6 +1767,11 @@ SETS = {
         "hush":     ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -21, FOLEY, "bank:tongue", "cut:0.1", "notes:0:-6", "tight"),
         "round":    ("a small happy flourish, four soft kalimba notes rising with a tiny music box sparkle on top, a little square of bead art finished, proud and cute", 1.2, -9, BEADBOX_TUNE, "warm:7000"),
         "peck":     ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -11, FOLEY, "bank:token", "cut:0.2", "notes:0:1", "tight"),
+        # the player's knock on the stump (2026-10-29, the user: "players
+        # really really hate the drums sounds, maybe we can change it to knock
+        # sounds similar to what the bird does"): the peck's token, a little
+        # deeper, so the two knocks are kin but told apart.
+        "knock":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -10, FOLEY, "bank:token", "cut:0.2", "notes:0:-3", "tight"),
         "tick":     ('a small pebble dropped into a calm pond, one soft plop, close, very short', 0.5, -24, FOLEY, "bank:pebble", "cut:0.16", "tight"),
         "feint":    ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -22, FOLEY, "bank:lip", "cut:0.16", "notes:0:-2", "tight"),
         "hint":     ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -16, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320", "notes:0:2"),

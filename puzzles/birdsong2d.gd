@@ -47,11 +47,13 @@ const Face = preload("res://ui/faces/face.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
 const Haptics = preload("res://core/haptics.gd")
 const CozyTheme = preload("res://ui/theme.gd")
+const StarLine = preload("res://ui/flat/star_line.gd")
+const Toast = preload("res://ui/flat/toast_card.gd")
 
 enum Phase { WAIT, LISTEN, PLAY, PAUSE, DONE }
 
 const HAPTICS := {
-	"drum": Haptics.TAP,
+	"knock": Haptics.TAP,
 	"round": Haptics.GOOD,
 	"slip": Haptics.WARN,
 	"hush": Haptics.TICK,
@@ -84,6 +86,19 @@ const BLINK_TIME := 0.13
 ## The win: the knocks' wave, how long the board's own win plays.
 const WIN_HOLD := 1.3
 const WAVE_STEP := 0.08
+## The encore on the win: the woodpecker knocks the day's whole rhythm
+## once more at twice the pace, the player's berries hopping to each knock,
+## then the flourish. It starts this long after the last knock.
+const ENCORE_LEAD := 0.35
+## The new knock of a round: its peck a little higher, its chips gold.
+const NEW_PITCH := 1.12
+## Stars by slips and bulbs: three at no more than the first, two at no
+## more than the second.
+const STARS_CUT := [1, 3]
+## How long the woodpecker beams at a good knock; its nod on a beat of the
+## player's bar.
+const GLAD_TIME := 0.3
+const NOD_TIME := 0.18
 ## The words beside the woodpecker and the round under the card, at W.
 const SAY_SIZE := 54
 const SUB_SIZE := 28
@@ -144,6 +159,19 @@ var _card_key := ""
 var _rings := {}
 ## The board's sounds and sparks; none on the tutorial's silent board.
 var fx: Node
+## Why a slip was a slip, under the card; the stars over it.
+var _toast := Toast.new()
+var _stars := StarLine.new()
+## The bulb was pressed this round: its holes stay on the card through the
+## turns until it is knocked back, on every band.
+var _peek := false
+## The knock this round adds (-1 on the first), and the beat lit last: the
+## woodpecker's on its bar, the player's from their first knock (seen only,
+## never heard -- a sound would come late by the phone's delay).
+var _new_slot := -1
+var _beat_k := -1
+var _glad_at := -INF
+var _encore_at := -INF
 
 func puzzle_id() -> String: return "birdsong"
 func title() -> String: return "Birdsong"
@@ -212,6 +240,12 @@ func _fresh() -> void:
 	_phase = Phase.WAIT
 	_say = ""
 	_sub = ""
+	_peek = false
+	_new_slot = -1
+	_beat_k = -1
+	_encore_at = -INF
+	_toast.clear()
+	_stars.clear(3)
 	_relayout()
 
 func day_dict() -> Dictionary:
@@ -254,27 +288,34 @@ func _knock_bar() -> void:
 	_missed.clear()
 	_shown_knocks.clear()
 	_say_now("BS_LISTEN")
+	_new_slot = _st.new_slot()
+	_beat_k = -1
 	var at := _t + LEAD
 	_call_at = at
 	_pecks.clear()
 	var step: float = _st.slot_time()
 	for s in _st.knocks:
-		_pecks.append({"at": at + s * step, "slot": s, "feint": false})
+		_pecks.append({"at": at + s * step, "slot": s, "feint": false, "new": s == _new_slot})
 	for s in _st.round_feints():
-		_pecks.append({"at": at + s * step, "slot": s, "feint": true})
+		_pecks.append({"at": at + s * step, "slot": s, "feint": true, "new": false})
 	_pecks.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a.at) < float(b.at))
 	for p: Dictionary in _pecks:
 		var feint: bool = p.feint
-		_after(float(p.at) - _t, func() -> void: _peck(feint))
+		var fresh: bool = p.new
+		_after(float(p.at) - _t, func() -> void: _peck(feint, fresh))
 	for k in 4:
 		_after(LEAD + k * _st.beat(), func() -> void: _tick(k))
 	_after(LEAD + _st.bar(), _your_turn)
 
-func _peck(feint: bool) -> void:
-	_cue("feint" if feint else "peck", randf_range(0.98, 1.02), 0.0, 0)
+func _peck(feint: bool, fresh := false) -> void:
+	if feint:
+		_cue("feint", randf_range(0.98, 1.02), 0.0, 0)
+	else:
+		_cue("peck", NEW_PITCH if fresh else randf_range(0.98, 1.02), 1.5 if fresh else 0.0, 0)
 
 func _tick(k: int) -> void:
 	_beat_at = _t
+	_beat_k = k
 	_cue("tick", 1.06 if k == 0 else 1.0, 0.0, 0)
 
 func _your_turn() -> void:
@@ -282,6 +323,7 @@ func _your_turn() -> void:
 		return
 	_phase = Phase.PLAY
 	_turn_at = _t
+	_beat_k = -1
 	_say_now("BS_YOUR_TURN", "BS_TURN_SUB")
 
 ## Now, between two of the clock's steps: a knock is timed to the touch.
@@ -296,7 +338,9 @@ func _knock() -> void:
 		return
 	var t := _now()
 	_drum_at = t
-	_cue("drum", 1.0, 0.0, 0)
+	# the player's knock: wood, kin to the peck and a little deeper (the
+	# user, 2026-10-29: players hated the drum's sound)
+	_cue("knock", randf_range(0.98, 1.02), 0.0, 0)
 	match _phase:
 		Phase.WAIT:
 			# a knock before the first bar starts it now
@@ -313,6 +357,11 @@ func _knock() -> void:
 	moved.emit()
 	var heard: int = _st.heard(t)
 	_marks.append({"slot": _st.last_slot, "grade": _st.last_grade, "at": t})
+	if _st.last_grade == 0 and heard != State.Heard.SLIP:
+		_glad_at = _t
+		if not demo:
+			var c := Vector2(_slot_x(clampf(_st.last_slot, 0.0, _st.grid() - 1.0)), _lane(1).get_center().y)
+			fx.ring(c, _mark_r() * 1.6, GOOD_RING)
 	match heard:
 		State.Heard.SLIP:
 			_slip()
@@ -339,18 +388,61 @@ func _slip() -> void:
 			_missed.append(_st.knocks[i])
 	_cue("slip")
 	_say_now("BS_AGAIN")
+	_toast.say(_why_line(), _t)
+	_rate()
 	_after(AFTER_SLIP, _knock_bar)
+
+## Why the slip was a slip, and where the knock it was about sits.
+func _why_line() -> String:
+	var key: String = ["BS_WHY_EARLY", "BS_WHY_LATE", "BS_WHY_EXTRA", "BS_WHY_MISSED"][_st.why]
+	return tr(key) % _where(_st.why_slot)
+
+## A slot in words a player counts by: on a beat, half way between two, or
+## just after or before one.
+func _where(s: int) -> String:
+	var per: int = _st.grid() / 4
+	var b := s / per + 1
+	match (s % per) * 4 / per:
+		0:
+			return tr("BS_AT_BEAT") % b
+		2:
+			return tr("BS_AT_AND") % [b, b + 1] if b < 4 else tr("BS_AT_AND_END") % b
+		1:
+			return tr("BS_AT_AFTER") % b
+		_:
+			return tr("BS_AT_BEFORE") % (b + 1) if b < 4 else tr("BS_AT_END")
+
+## The stars by slips and bulbs read.
+func _rate(shown := true) -> void:
+	var n: int = _st.slips + hints_used
+	_stars.rate(3 if n <= int(STARS_CUT[0]) else (2 if n <= int(STARS_CUT[1]) else 1), _t, shown)
 
 func _round_done() -> void:
 	_phase = Phase.PAUSE
 	_round_at = _t
 	_shown_knocks = _shown_round()
+	_peek = false
+	_toast.clear()
+	# clean rounds in a row climb the flourish; three or more, or every
+	# knock good, get their own word
+	var run: int = _st.run
+	var pitch := 1.0 + 0.05 * clampi(run - 1, 0, 4)
 	_after(0.12, func() -> void:
-		_cue("round")
+		_cue("round", pitch)
 		if not demo:
-			fx.sparkle(_head_at() + Vector2(0, -_bird_r() * 0.8), Pal.SUN))
+			fx.sparkle(_head_at() + Vector2(0, -_bird_r() * 0.8), Pal.SUN)
+			if run >= 3 or _st.perfect:
+				fx.sparkle(_head_at() + Vector2(-_bird_r(), -_bird_r() * 0.3), Pal.SUN)
+				fx.sparkle(Vector2(_l("card_x") + _l("card_w") * 0.5, _l("card_y")), Pal.SUN))
 	_after(AFTER_ROUND, _knock_bar)
-	_say_now("BS_NICE")
+	if run >= 3:
+		_say = "BS_RUN"
+		_say_at = _t
+		_sub = ""
+	elif _st.perfect:
+		_say_now("BS_PERFECT")
+	else:
+		_say_now("BS_NICE")
 
 func _solved_now() -> void:
 	_phase = Phase.DONE
@@ -359,12 +451,24 @@ func _solved_now() -> void:
 	_shown_knocks = _shown_round()
 	_say = ""
 	_sub = ""
-	_after(0.1, func() -> void: _cue("solved"))
+	_peek = false
+	_toast.clear()
+	# the encore: the day's whole rhythm at twice the pace, the berries
+	# hopping to each knock, then the flourish
+	_encore_at = _t + ENCORE_LEAD
+	_pecks.clear()
+	var step: float = _st.slot_time() * 0.5
+	for s in _shown_knocks:
+		var at: float = _encore_at + s * step
+		_pecks.append({"at": at, "slot": s, "feint": false, "new": false})
+		_after(at - _t, func() -> void: _cue("peck", 1.04, 0.0, 0))
+	var end: float = ENCORE_LEAD + _st.bar() * 0.5
+	_after(end, func() -> void: _cue("solved"))
 	if not demo:
-		_after(0.5, func() -> void:
+		_after(end + 0.25, func() -> void:
 			fx.confetti(_head_at() + Vector2(0, -_bird_r()), 26, size.x * 0.7)
-			# not one slip all day: the party's toots over the confetti
-			_cue("party" if _st.clean >= _st.rounds() else "confetti"))
+			# three stars: the party's toots over the confetti
+			_cue("party" if _stars.stars >= 3 else "confetti"))
 	check_solved()
 
 func is_solved() -> bool:
@@ -375,7 +479,9 @@ func hint() -> bool:
 	if hints_left() <= 0 or not (_phase == Phase.PLAY or _phase == Phase.LISTEN):
 		return false
 	hints_used += 1
+	_peek = true
 	_cue("hint")
+	_rate()
 	_knock_bar()
 	return true
 
@@ -386,6 +492,7 @@ func reset_board() -> void:
 	_st.restart()
 	moves = 0
 	_fresh()
+	_rate(false)
 	_cue("reset")
 	_after(LEAD, _knock_bar)
 
@@ -432,6 +539,13 @@ func _process(delta: float) -> void:
 		var job: Array = _queue.pop_front()
 		(job[1] as Callable).call()
 	if _phase == Phase.PLAY:
+		# the player's beats from their first knock, lit on the card and
+		# nodded by the woodpecker
+		if _st.started():
+			var k := int(floor((_t - _st.anchor) / _st.beat()))
+			if k != _beat_k and k >= 0 and k < 4:
+				_beat_k = k
+				_beat_at = _t
 		var miss: int = _st.missed(_t)
 		if miss >= 0:
 			_slip()
@@ -628,7 +742,7 @@ func _draw_bird() -> void:
 	draw_mesh(Bird.body(r), null, Transform2D(0.0, Vector2(1.0, breath), 0.0, at + Vector2(0, lift)))
 	var mood := Bird.Mood.REST
 	var puzzled := _t - _slip_at < PUZZLED_TIME
-	if _phase == Phase.DONE or _t - _round_at < AFTER_ROUND * 0.8:
+	if _phase == Phase.DONE or _t - _round_at < AFTER_ROUND * 0.8 or _t - _glad_at < GLAD_TIME:
 		mood = Bird.Mood.JOY
 	elif puzzled:
 		mood = Bird.Mood.PUZZLED
@@ -638,6 +752,9 @@ func _draw_bird() -> void:
 	var cock := 0.0
 	if puzzled and not Motion.reduce:
 		cock = 0.3 * sin(clampf((_t - _slip_at) / PUZZLED_TIME, 0.0, 1.0) * PI)
+	# a nod on each beat of the player's bar: the beat they keep, seen
+	if _phase == Phase.PLAY and _st.started() and _t - _beat_at < NOD_TIME and not Motion.reduce:
+		cock += 0.16 * sin((_t - _beat_at) / NOD_TIME * PI)
 	var head := at + Bird.head_at(r) * Vector2(1.0, breath) + Bird.strike(r) * pose + Vector2(0, lift)
 	draw_mesh(Bird.head(r, mood), null, Transform2D(-0.1 * pose + cock, head))
 
@@ -663,6 +780,8 @@ func _draw_chips() -> void:
 			var s := (7.0 + 4.0 * h1) * u
 			var turn := a * (6.0 + i)
 			var col := BARK if i % 2 == 0 else Color("d9b48a")
+			if k.get("new", false) and i % 2 == 1:
+				col = Pal.SUN
 			draw_colored_polygon(PackedVector2Array([p + Vector2(-s, -s * 0.5).rotated(turn),
 				p + Vector2(s * 1.1, -s * 0.2).rotated(turn), p + Vector2(-s * 0.2, s * 0.8).rotated(turn)]), Color(col, fade))
 
@@ -685,7 +804,7 @@ func _draw_card() -> void:
 	for k in 4:
 		var x := _slot_x(k * _st.grid() / 4)
 		var tw := font.get_string_size(str(k + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-		var lit := _phase == Phase.LISTEN and _t - _beat_at < 0.2 and _beat_index() == k
+		var lit := (_phase == Phase.LISTEN or _phase == Phase.PLAY) and _t - _beat_at < 0.2 and _beat_k == k
 		draw_string(font, Vector2(x - tw * 0.5, _lane(0).position.y - 14.0 * u), str(k + 1),
 			HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Parts.LANE_DEEP[0] if lit else Pal.TEXT_DIM)
 	var r := _mark_r()
@@ -701,10 +820,10 @@ func _draw_card() -> void:
 		for k: Dictionary in _pecks:
 			if not k.feint and _t >= float(k.at):
 				holes.append(int(k.slot))
-		vis = 1.0 if _show() > 0 else 0.0
+		vis = 1.0 if _show() > 0 or _peek else 0.0
 	elif _phase == Phase.PLAY:
 		holes = _st.knocks
-		vis = 1.0 if _show() == 2 else (clampf(1.0 - (_t - _turn_at) / FADE, 0.0, 1.0) if _show() == 1 else 0.0)
+		vis = 1.0 if _show() == 2 or _peek else (clampf(1.0 - (_t - _turn_at) / FADE, 0.0, 1.0) if _show() == 1 else 0.0)
 	elif _phase == Phase.PAUSE and not _shown_knocks.is_empty():
 		holes = _shown_knocks
 		vis = 1.0
@@ -717,6 +836,10 @@ func _draw_card() -> void:
 			draw_circle(Vector2.ZERO, r, Color(BARK_DEEP, vis))
 			draw_circle(Vector2(1.5, 2.5) * u, r * 0.66, Color(HOLE, vis))
 			draw_set_transform(Vector2.ZERO)
+			# the round's new knock glints
+			if s == _new_slot and not won and since >= 0.0:
+				var p := 0.5 if Motion.reduce else 0.5 + 0.5 * sin((_t - _peck_at(s)) * 6.0)
+				draw_arc(c, (r + 7.0 * u) * k, 0.0, TAU, 32, Color(Pal.SUN, vis * (0.55 + 0.45 * p)), 5.0 * u, true)
 	# after a slip: dashed rings where the knocks were
 	if _phase == Phase.PAUSE and _shown_knocks.is_empty():
 		for s in _missed:
@@ -727,9 +850,12 @@ func _draw_card() -> void:
 		var c := Vector2(_slot_x(s), low)
 		var since := _t - float(m.at)
 		var k := Motion.pop_in_scale(since).x if since < Motion.POP_IN else 1.0
-		if won:
-			var wave := maxf(0.0, _t - _won_at - _marks.find(m) * WAVE_STEP)
-			c.y += Motion.hop_lift(wave, Motion.SOLVE_HOP * 1.4 * u, Motion.SOLVE_TIME)
+		if won and not Motion.reduce:
+			# hops to the encore's knock nearest it, or a wave on a reopened day
+			var from := _won_at + _marks.find(m) * WAVE_STEP
+			if _encore_at > -INF:
+				from = _encore_at + roundf(float(m.slot)) * _st.slot_time() * 0.5
+			c.y += Motion.hop_lift(maxf(0.0, _t - from), Motion.SOLVE_HOP * 1.4 * u, Motion.SOLVE_TIME)
 		match int(m.grade):
 			2:
 				draw_mesh(Parts.berry(0, r * 0.8, Parts.Mood.WORRIED), null, Transform2D(0.0, Vector2.ONE * k, 0.0, c), Color(1, 1, 1, 0.55))
@@ -755,9 +881,6 @@ func _draw_card() -> void:
 ## them, so its pages show what their words say.
 func _show() -> int:
 	return 2 if demo else _st.show()
-
-func _beat_index() -> int:
-	return clampi(int(floor((_beat_at - _call_at) / _st.beat() + 0.5)), 0, 3)
 
 func _peck_at(s: int) -> float:
 	for k: Dictionary in _pecks:
@@ -861,7 +984,7 @@ func _draw_say() -> void:
 	var x := _l("say_x")
 	var y := _l("say_y")
 	if _say != "":
-		var text := tr(_say)
+		var text := tr(_say) % _st.run if _say == "BS_RUN" else tr(_say)
 		var fs := roundi(SAY_SIZE * u)
 		var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 		var k := Motion.pop_in_scale(_t - _say_at, 0.25).x if _t - _say_at < 0.25 else 1.0
@@ -883,15 +1006,30 @@ func _draw_say() -> void:
 	var cs := roundi(COUNT_SIZE * u)
 	var cw := font.get_string_size(count, HORIZONTAL_ALIGNMENT_LEFT, -1, cs).x
 	var cy := _l("count_y")
-	draw_string_outline(font, Vector2(size.x * 0.5 - cw * 0.5, cy), count, HORIZONTAL_ALIGNMENT_LEFT, -1, cs, roundi(8 * u), Color(Pal.SURFACE, 0.8))
-	draw_string(font, Vector2(size.x * 0.5 - cw * 0.5, cy), count, HORIZONTAL_ALIGNMENT_LEFT, -1, cs, Pal.TEXT_DIM)
+	# the round and the stars side by side under the card; a slip's why
+	# lies over them while it shows
+	var ss := 0.95 * u
+	var sw := StarLine.width(ss)
+	var gap := 24.0 * u
+	var x0 := size.x * 0.5 - (cw + gap + sw) * 0.5
+	var a := 1.0 - _toast.level(_t)
+	if a > 0.0:
+		draw_string_outline(font, Vector2(x0, cy), count, HORIZONTAL_ALIGNMENT_LEFT, -1, cs, roundi(8 * u), Color(Pal.SURFACE, 0.8 * a))
+		draw_string(font, Vector2(x0, cy), count, HORIZONTAL_ALIGNMENT_LEFT, -1, cs, Color(Pal.TEXT_DIM, a))
+		_stars.draw(self, Vector2(x0 + cw + gap + StarLine.R * ss, cy - cs * 0.35), ss, _t, a)
+	if _toast.showing(_t):
+		var tw2 := _l("card_w")
+		var fs2 := roundi(30 * u)
+		var pad := Vector2(28.0, 18.0) * u
+		var tall := _toast.tall(tw2, fs2, pad)
+		_toast.draw(self, Vector2(size.x * 0.5, _l("card_y") + _l("card_h") + 18.0 * u + tall * 0.5), tw2, _t, fs2, pad)
 
 # --- the win ---
 
 func win_delay() -> float:
 	if Motion.reduce:
 		return Motion.REDUCED_TIME
-	return WIN_HOLD
+	return maxf(WIN_HOLD, ENCORE_LEAD + _st.bar() * 0.5 + 0.9)
 
 func skill_quality() -> float:
 	if _st.order.is_empty():
@@ -903,6 +1041,8 @@ func share_glyphs() -> String:
 
 func flat_win() -> Dictionary:
 	var line := tr("BS_WIN_ALL") if _st.clean >= _st.rounds() else tr("BS_WIN_CLEAN") % [_st.clean, _st.rounds()]
+	if _st.best_run >= 2 and _st.clean < _st.rounds():
+		line += " " + tr("BS_WIN_RUN") % _st.best_run
 	return {"faces": [], "subtitle": tr("BS_WIN") + " " + line}
 
 func completion_record() -> Dictionary:
@@ -920,4 +1060,5 @@ func restore_completed_board() -> void:
 	for s in _shown_knocks:
 		_marks.append({"slot": float(s), "grade": 0, "at": -INF})
 	_say = ""
+	_rate(false)
 	queue_redraw()

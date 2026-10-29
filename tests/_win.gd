@@ -1494,7 +1494,8 @@ func _solve_birdsong() -> void:
 			continue
 		if not hinted and st.round_no() == 1:
 			hinted = true
-			_hud_ok = _hud_ok and _puzzle.hint()
+			# the bulb knocks the round again and keeps its holes on the card
+			_hud_ok = _hud_ok and _puzzle.hint() and _puzzle._peek
 			continue
 		var next: int = st.landed
 		if st.started() and _puzzle.clock() < _puzzle.knock_due(next):
@@ -1504,6 +1505,10 @@ func _solve_birdsong() -> void:
 			slipped = true
 			while st.slips == 0:
 				_puzzle._process(dt)
+			# the slip says why on the toast, and a star (bulb + slip) holds
+			_hud_ok = _hud_ok and st.why == st.Why.MISSED and _puzzle._toast.text != "" \
+				and _puzzle._stars.stars == 2
+			print("birdsong slip toast: ", _puzzle._toast.text)
 			continue
 		_tap_local(_puzzle.drum_to_local())
 		_puzzle._process(dt)

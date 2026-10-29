@@ -3156,6 +3156,19 @@ BS_ROUND,Round %d of %d,Rodada %d de %d,Ronda %d de %d
 BS_WIN,The whole rhythm!,O ritmo inteiro!,¡El ritmo entero!
 BS_WIN_CLEAN,%d of %d rounds with no slip.,%d de %d rodadas sem errar.,%d de %d rondas sin fallar.
 BS_WIN_ALL,Not one slip!,Nenhum erro!,¡Ni un fallo!
+BS_WHY_EARLY,Too early: that knock is %s.,Cedo demais: essa batida vai %s.,Demasiado pronto: ese golpe va %s.
+BS_WHY_LATE,Too late: that knock is %s.,Tarde demais: essa batida vai %s.,Demasiado tarde: ese golpe va %s.
+BS_WHY_EXTRA,One knock too many: there is none %s.,Uma batida a mais: não há nenhuma %s.,Un golpe de más: no hay ninguno %s.
+BS_WHY_MISSED,A knock was missed %s.,Faltou uma batida %s.,Faltó un golpe %s.
+BS_AT_BEAT,on beat %d,no tempo %d,en el tiempo %d
+BS_AT_AND,half way between %d and %d,no meio entre %d e %d,a mitad entre %d y %d
+BS_AT_AND_END,half way through beat %d,no meio do tempo %d,a mitad del tiempo %d
+BS_AT_AFTER,just after %d,logo depois do %d,justo después del %d
+BS_AT_BEFORE,just before %d,logo antes do %d,justo antes del %d
+BS_AT_END,at the very end,bem no final,justo al final
+BS_PERFECT,Perfect!,Perfeito!,¡Perfecto!
+BS_RUN,%d in a row!,%d seguidas!,¡%d seguidas!
+BS_WIN_RUN,Best run: %d.,Melhor sequência: %d.,Mejor racha: %d.
 HTP_BS_LISTEN,Listen to the woodpecker,Ouça o pica-pau,Escucha al pájaro carpintero
 HTP_BS_LISTEN_BODY,"The woodpecker knocks a rhythm on the trunk, one bar of four beats. Each knock leaves a hole on the card.","O pica-pau bate um ritmo no tronco, um compasso de quatro tempos. Cada batida deixa um furo no cartão.","El pájaro carpintero golpea un ritmo en el tronco, un compás de cuatro tiempos. Cada golpe deja un agujero en la tarjeta."
 HTP_BS_PLAY,Knock it back,Bata de volta,Repite el ritmo
@@ -3165,7 +3178,7 @@ HTP_BS_SLIP_BODY,"A missed knock, an extra one or one too far off is no harm: th
 HTP_BS_FEINT,Feints,Fintas,Amagos
 HTP_BS_FEINT_BODY,"On Insane the woodpecker draws back twice a bar without striking: no sound of wood, no hole. Knock only the knocks.","No Insano o pica-pau recua duas vezes por compasso sem bater: sem som de madeira, sem furo. Bata só as batidas.","En Insano el pájaro carpintero se echa atrás dos veces por compás sin golpear: sin sonido de madera, sin agujero. Repite solo los golpes."
 HTP_BS_HINT,Knock it again,Bata de novo,Golpéalo otra vez
-HTP_BS_HINT_BODY,The bulb has the woodpecker knock the round once more.,A lâmpada faz o pica-pau bater a rodada mais uma vez.,La bombilla hace que el pájaro carpintero golpee la ronda una vez más.
+HTP_BS_HINT_BODY,"The bulb has the woodpecker knock the round once more, and its holes stay on the card until you knock it back.","A lâmpada faz o pica-pau bater a rodada mais uma vez, e os buracos ficam no cartão até você acertar.","La bombilla hace que el pájaro carpintero golpee la ronda una vez más, y sus agujeros quedan en la tarjeta hasta que la repitas."
 BRAIN_BS_1,Count the beats in your head while it knocks: one and two and three and four.,Conte os tempos na cabeça enquanto ele bate: um e dois e três e quatro.,Cuenta los tiempos en tu cabeza mientras golpea: uno y dos y tres y cuatro.
 BRAIN_BS_2,"Put words to the rhythm, a syllable a knock: a rhythm said is easier to keep.","Ponha palavras no ritmo, uma sílaba por batida: um ritmo falado se guarda melhor.","Ponle palabras al ritmo, una sílaba por golpe: un ritmo dicho se guarda mejor."
 BRAIN_BS_3,Only one knock is new each round: hold the rest and listen for where it lands.,Só uma batida é nova a cada rodada: segure o resto e escute onde ela cai.,Solo un golpe es nuevo cada ronda: guarda el resto y escucha dónde cae.
