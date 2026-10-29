@@ -221,3 +221,69 @@ cloud card is gone; the paper and the shaft stand on the host's margin.
 - Decided for the user, unconfirmed: the shaft kept as the board's own
   dark column; the keys on sand. Owed: a phone, One Breath's out-of-air
   card over the bled board.
+
+## Made fun (2026-10-29)
+
+The user, 2026-10-29: "make gumdrop and pearl dive experience way better to
+play, and game itself way funnier to play, right now nobody likes it. Use
+web for reference on how good games does it. Do it autonomous, push to main
+when done." Built unattended; every call below is mine.
+
+- **Why nobody liked it** (shots of 2026-10-29 and the reference): the
+  answer was the end of the moment, not its start. The paper said the
+  tier in one line and "The Pearl: X · Also deep: a · b" under it, and the
+  bell moved 1 of 60 m for what most hands type, so a common answer showed
+  nothing at all. The quiz show this genre comes from (the one whose
+  column counts down to the rarest answer) lives on its reveal: the
+  suspense of the count and then learning what the rarer answers were.
+  The in-game keyboard was the other complaint the user brought on Five
+  Clues and Hidden Word (2026-10-28).
+- **The phone's own keyboard** (`"tray": "none"`): an unseen LineEdit over
+  the paper's line (`_field_edit`, `_summon`, `_dismiss`, `_watch_osk`,
+  as `puzzles/clues2d.gd`); the paper is laid above the keyboard while it
+  is up (`OSK_GAP`, `OSK_LEAST`; the line moves high so the ladder has
+  room). The keyboard stays up from prompt to prompt (Enter on it is the
+  board's Enter) and goes down on the win and out of air. The card says
+  "Tap to dive" (`PD_READY_TAP`); a tap on the paper calls the keyboard
+  back. `type_letter`/`erase_letter`/`commit_row` stay for the tutorial
+  and the probes. Harnesses type into the field; `_shot_pearl.gd ... osk`
+  lays out as if the keyboard took 42%.
+- **The ladder** (`State.ladder`, `_draw_reveal`): five rungs under the
+  answer, Everyone / Well known / Rare / Very few / The Pearl, each with
+  one of its answers (the player's own on its rung, lit in its tier's
+  colour and bumped; the others by the day's key, the same for everyone),
+  **counted down a rung every `RUNG_STEP` (0.22 s) to the answer's**, a
+  `rung` pop a rung climbing `RUNG_PITCH`, the bell riding the count; the
+  answer's own notes land on its rung; the deeper rungs fade in after, so
+  the rare answers are there to be learnt. A dry prompt shows the ladder
+  unlit. Replaces the tier line, "The Pearl:" and "Also deep:" (their keys
+  stay in the csv, unused).
+- **Runs**: rare-or-deeper answers in a row (`State.run`, `RUN_TIER` 2)
+  lift the answer's cue `RUN_PITCH` a step and say "n rare in a row!" from
+  two; the best run is on the win's line (`PD_WIN_RUN`).
+- **Live stars** (`ui/flat/star_line.gd`) between the two pills, hollow
+  from the dive and popping in (`star`, a pebble two up) as the depth
+  passes 20/40/60% of the floor (`State.STAR_SHARES`).
+- **A forgiving judge** (`State.find`, `_whole`, `close`): a line that
+  holds a listed form whole or is held by one counts when the shorter is
+  5+ letters and 60% of the longer ("golden gate bridge" is the Golden
+  Gate, a plural the writer left out is the thing); a line **two slips**
+  from a form, 6+ letters, is "So close! Check the spelling", free, the
+  line kept to mend; a line already turned down this prompt is said and
+  free (`tried`). `tests/_probe_pd_fun.gd`: of 4,627 bank forms of 4+
+  letters, the form plus an s counts on 4,468 (4 land on another tier's
+  longer form); a two-slip line is said close on 1,390. The server
+  (`pearl.ts`) only validates, it does not judge: nothing to deploy.
+- **The bulb in two presses**: the first as before (the Pearl's first
+  letter and length, one hint), the line under it inviting a second press;
+  a second press on the same prompt is free and shows every other letter
+  ("J _ B _ T _ C _ B _", `State.tell_more`, `hinted` is 0/1/2 now).
+  `hints_left` counts the free press so the host lets it through.
+- **Kept**: the clock, 3 s a miss, the tiers and metres, the bank and the
+  server, Insane as Hard's clock. MISS_COST was not made band by band.
+- **Measured** (`opengl3_angle`, 810x1440): play 167 draw calls peak with
+  the ladder (160 before), the same with the keyboard up; `_win.gd --
+  pearl` PASS (bulb twice, a misspelt Pearl free, a miss, every Pearl).
+- **Owed**: a phone (the real keyboard's height and autocorrect on a
+  typed answer, Android back), the rung and star pops heard, pt/es read,
+  the tutorial's bulb page still shows one press.

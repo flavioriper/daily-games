@@ -60,6 +60,18 @@ const ANSWERS_MIN := 14
 const TYPE_MAX := 22
 ## A slip of one letter is forgiven from this many letters up.
 const NEAR_FROM := 5
+## A line that holds a listed form whole, or is held whole by one, counts as
+## that answer when the shorter is at least WHOLE_FROM letters and WHOLE_SHARE
+## of the longer ("goldengatebridge" is the Golden Gate). 2026-10-29.
+const WHOLE_FROM := 5
+const WHOLE_SHARE := 0.6
+## A line two slips from a listed form, from CLOSE_FROM letters up, is "so
+## close": said, and free (2026-10-29, as Five Clues' since 2026-10-28).
+const CLOSE_FROM := 6
+## Stars by the share of the floor the dive reached (`stars`).
+const STAR_SHARES := [0.2, 0.4, 0.6]
+## A run: answers in a row from this tier down (rare, deep, the Pearl).
+const RUN_TIER := 2
 
 ## Letters the keyboard cannot type, as the ones it can.
 const FOLD := {
@@ -85,8 +97,12 @@ var results: Array = []
 var time_left := 0.0
 ## Answers the list did not hold, this prompt.
 var misses := 0
-## Per prompt, whether the bulb told its Pearl's first letter.
+## Per prompt, what the bulb told of its Pearl: 0 nothing, 1 its first
+## letter and length, 2 every other letter too (the second press, free).
 var hinted: Array = []
+## Lines offered this prompt that the list did not hold, normalised: one
+## offered again is said and costs nothing.
+var tried: Array = []
 ## One Breath ran out of air.
 var out := false
 ## "model", "mixed" or "bank": who wrote the day.
@@ -265,10 +281,11 @@ func restart() -> void:
 	index = 0
 	results = []
 	misses = 0
+	tried = []
 	out = false
 	hinted = []
 	for i in prompts.size():
-		hinted.append(false)
+		hinted.append(0)
 	_own = []
 	_other = []
 	_lang = ""
@@ -407,16 +424,114 @@ func find(text: String) -> int:
 	var other: Dictionary = _other[index]
 	if other.has(n):
 		return int(other[n])
+	var answers: Array = prompts[index].answers
+	var whole := _whole(n, own)
+	if whole < 0:
+		whole = _whole(n, other)
+	if whole >= 0:
+		return whole
 	if n.length() < NEAR_FROM:
 		return -1
 	var best := -1
-	var answers: Array = prompts[index].answers
 	for f: String in own:
 		if near(n, f):
 			var a := int(own[f])
 			if best < 0 or int(answers[a].t) < int(answers[best].t):
 				best = a
 	return best
+
+## The answer whose form `n` holds whole or is held by (`WHOLE_FROM`,
+## `WHOLE_SHARE`), the longest such form; -1 when none.
+func _whole(n: String, forms: Dictionary) -> int:
+	var best := -1
+	var best_len := 0
+	for f: String in forms:
+		var short := mini(f.length(), n.length())
+		if short < WHOLE_FROM or float(short) < WHOLE_SHARE * float(maxi(f.length(), n.length())):
+			continue
+		var held := n.begins_with(f) or n.ends_with(f) if f.length() <= n.length() \
+			else f.begins_with(n) or f.ends_with(n)
+		if held and f.length() > best_len:
+			best = int(forms[f])
+			best_len = f.length()
+	return best
+
+## Whether `text` is two slips from a form of the prompt on the card in the
+## screen's language (`CLOSE_FROM` letters up): a fair try misspelt.
+func close(text: String) -> bool:
+	if index >= prompts.size():
+		return false
+	_index(index)
+	var n := norm(text)
+	if n.length() < CLOSE_FROM:
+		return false
+	for f: String in _own[index]:
+		if absi(f.length() - n.length()) <= 2 and _slips(n, f) <= 2:
+			return true
+	return false
+
+## The edit distance of `a` and `b` (letters wrong, missing or extra).
+static func _slips(a: String, b: String) -> int:
+	var row: Array = range(b.length() + 1)
+	for i in a.length():
+		var prev: int = row[0]
+		row[0] = i + 1
+		for j in b.length():
+			var keep: int = row[j + 1]
+			row[j + 1] = mini(mini(row[j + 1] + 1, row[j] + 1), prev + (0 if a[i] == b[j] else 1))
+			prev = keep
+	return int(row[b.length()])
+
+## Answers in a row, up to the last, of RUN_TIER or deeper.
+func run() -> int:
+	var n := 0
+	for k in range(results.size() - 1, -1, -1):
+		if int(results[k].t) < RUN_TIER:
+			break
+		n += 1
+	return n
+
+## The longest such run of the dive.
+func best_run() -> int:
+	var best := 0
+	var n := 0
+	for r: Dictionary in results:
+		n = n + 1 if int(r.t) >= RUN_TIER else 0
+		best = maxi(best, n)
+	return best
+
+## Stars, 0 to 3, by the share of the floor reached (`STAR_SHARES`).
+func stars() -> int:
+	var floor_m := floor_depth()
+	if floor_m <= 0:
+		return 0
+	var share := float(depth()) / float(floor_m)
+	var n := 0
+	for s: float in STAR_SHARES:
+		if share >= s - 0.0001:
+			n += 1
+	return n
+
+## One answer of each tier of prompt `i`, shallow to the Pearl, for the
+## ladder shown after it: the player's own in its tier, else one picked by
+## the day's key (the same for everybody), "" for a tier the list lacks.
+func ladder(i := -1) -> Array:
+	var at := index if i < 0 else i
+	var out_l := ["", "", "", "", ""]
+	if at < 0 or at >= prompts.size():
+		return out_l
+	var given := int(results[at].a) if at < results.size() else -1
+	var answers: Array = prompts[at].answers
+	var keys := [1 << 62, 1 << 62, 1 << 62, 1 << 62, 1 << 62]
+	for a in answers.size():
+		var t := clampi(int(answers[a].t), 0, PEARL)
+		var k := Daily.fnv1a("%s|%d|%s|rung|%d" % [GAME, _key, prompts[at].id, a])
+		if a == given:
+			k = -1
+		if k < int(keys[t]):
+			keys[t] = k
+			out_l[t] = answer_name(at, a)
+	return out_l
 
 # --- playing it ---
 
@@ -452,6 +567,12 @@ func guess(text: String) -> Dictionary:
 		return {"hit": false, "short": true}
 	var a := find(text)
 	if a < 0:
+		var n := norm(text)
+		if tried.has(n):
+			return {"hit": false, "short": false, "again": true}
+		if close(text):
+			return {"hit": false, "short": false, "close": true}
+		tried.append(n)
 		misses += 1
 		time_left = maxf(0.0, time_left - MISS_COST)
 		var ran := time_left <= 0.0
@@ -473,6 +594,7 @@ func advance() -> bool:
 		return false
 	index += 1
 	misses = 0
+	tried = []
 	if not tank():
 		time_left = float(SECONDS[band])
 	return true
@@ -482,7 +604,15 @@ func advance() -> bool:
 func tell() -> Dictionary:
 	if answered() or out or index >= prompts.size() or bool(hinted[index]):
 		return {}
-	hinted[index] = true
+	hinted[index] = 1
+	return told()
+
+## The bulb's second press on a prompt it has told: every other letter of
+## the Pearl as well. Free. {} when it has not told it yet, or told this.
+func tell_more() -> Dictionary:
+	if answered() or out or index >= prompts.size() or int(hinted[index]) != 1:
+		return {}
+	hinted[index] = 2
 	return told()
 
 ## What the bulb told of the prompt on the card, {} when it did not.
@@ -490,7 +620,11 @@ func told() -> Dictionary:
 	if index >= hinted.size() or not bool(hinted[index]):
 		return {}
 	var n := norm(pearl_name())
-	return {"first": n.substr(0, 1).to_upper(), "letters": n.length()}
+	var shown := ""
+	if int(hinted[index]) >= 2:
+		for k in n.length():
+			shown += (n[k].to_upper() if k % 2 == 0 else "_") + (" " if k + 1 < n.length() else "")
+	return {"first": n.substr(0, 1).to_upper(), "letters": n.length(), "more": shown}
 
 ## One Breath's video: air back in the tank and the dive goes on.
 func more_air() -> void:

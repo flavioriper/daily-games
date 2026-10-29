@@ -793,8 +793,12 @@ func _solve_pearl() -> void:
 	_waiting = true
 	var S = load("res://puzzles/pearl_state.gd")
 	var slot := Rect2(Vector2.ZERO, _puzzle.size)
-	var tray: Node = _host.tray
-	var enter: Button = tray.find_child("Key_Enter", true, false)
+	# the phone's keyboard types into the board's own field (2026-10-29)
+	var field: LineEdit = _puzzle._field_edit
+	var key := func(ch: String) -> void:
+		field.text += ch
+		field.text_changed.emit(field.text)
+	var enter := func() -> void: field.text_submitted.emit(field.text)
 	var guard := 0
 	while _puzzle.state.count() == 0 and guard < 900:
 		guard += 1
@@ -802,7 +806,7 @@ func _solve_pearl() -> void:
 	var st = _puzzle.state
 	_fit_ok = _fit_ok and slot.has_point(_puzzle.field_point())
 	await create_timer(0.6).timeout
-	_press(enter)
+	enter.call()
 	var hint_ok := true
 	var miss_ok := true
 	for r in st.count():
@@ -815,17 +819,28 @@ func _solve_pearl() -> void:
 		if r == 0 and _puzzle.capabilities().has("hint"):
 			_press(_host.top_bar.hint_button)
 			hint_ok = _puzzle.hints_used == 1 and not st.told().is_empty()
+			# the second press on the same prompt is free and shows more
+			_press(_host.top_bar.hint_button)
+			hint_ok = hint_ok and _puzzle.hints_used == 1 and str(st.told().more) != ""
 		if r == 1:
+			# a fair try misspelt is free; a line the list lacks is not
+			if S.norm(st.pearl_name()).length() >= S.CLOSE_FROM:
+				for ch in S.norm(st.pearl_name()).substr(0, 2) + "qq" + S.norm(st.pearl_name()).substr(2):
+					key.call(ch)
+				enter.call()
+				miss_ok = st.misses == 0 and not st.answered() and field.text != ""
+				field.text = ""
+				field.text_changed.emit("")
 			for ch in "zzzqx":
-				_press(tray.find_child("Key_%s" % ch.to_upper(), true, false))
-			_press(enter)
-			miss_ok = st.misses == 1 and not st.answered()
+				key.call(ch)
+			enter.call()
+			miss_ok = miss_ok and st.misses == 1 and not st.answered()
 		for ch in S.norm(st.pearl_name()):
-			_press(tray.find_child("Key_%s" % ch.to_upper(), true, false))
-		_press(enter)
+			key.call(ch)
+		enter.call()
 		_hud_ok = _hud_ok and st.answered() and int(st.results[r].t) == S.PEARL
 		await create_timer(1.3).timeout
-		_press(enter)
+		enter.call()
 	_hud_ok = _hud_ok and hint_ok and miss_ok and st.pearls() == st.count() and st.depth() == st.floor_depth()
 	var wait := 0
 	while not _puzzle.is_done() and wait < 600:

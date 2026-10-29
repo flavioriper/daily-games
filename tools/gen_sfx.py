@@ -3171,6 +3171,11 @@ SETS = {
         # reads -18 on a phone, as the old one did). The board varies it by
         # 0.94 to 1.06, and the miss and the refusal with it.
         "tick":          ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.07", "notes:0:2", "tight"),
+        # The ladder counted down after an answer (2026-10-29): one bubble of
+        # the wrap a rung, the board lifting each a step; the run of pops
+        # rides the bell going down. A star won: a pebble, two up.
+        "rung":          ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -15, FOLEY, "bank:wrap", "cut:0.12", "tight"),
+        "star":          ('a small pebble dropped into a calm pond, one soft plop, close, very short', 0.6, -14, FOLEY, "bank:pebble", "cut:0.16", "notes:0.07:0,4", "tight"),
         # Not on the list: twice and falling. It can sound on the frame `dry`
         # or `out_of_air` does (the miss's three seconds ran the clock out),
         # notches under a phrase. Enter on an empty line, and a bulb with

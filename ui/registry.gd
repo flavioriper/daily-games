@@ -1382,13 +1382,14 @@ const PUZZLES := [
 		"short": "PD_SHORT",
 		"motto": "PD_MOTTO",
 		"footer": "Type · Dive · Find",
-		# It types, so its tray is Hidden Word's keyboard, and Enter is every
-		# move there is (dive, offer the answer, the next prompt): no actions
-		# row, and no tip card.
+		# It types on the phone's own keyboard since 2026-10-29 (an unseen
+		# LineEdit, as Five Clues and Hidden Word), so the host builds no
+		# tray; Enter is every move there is (dive, offer the answer, the next
+		# prompt): no actions row, and no tip card.
 		"script": "res://puzzles/pearl2d.gd",
 		"card": "res://ui/menu/cards/pearl.gd",
 		"shell": "flat",
-		"tray": "keys",
+		"tray": "none",
 		"tip": false,
 		# Its world is the whole screen (`bleed`, puzzles/pearl_world.gd) and the
 		# levels stand where the day card was (docs/agents/flat-screens.md).

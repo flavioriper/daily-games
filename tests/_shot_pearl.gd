@@ -27,6 +27,8 @@ var _level := 0
 var _mode := "rest"
 var _reduce := false
 var _fixed := false
+## `osk`: lay the board out as if the phone's keyboard took 42% of it.
+var _osk := false
 var _dir := SHOT_DIR
 var _menu: Node
 var _host: Node
@@ -50,6 +52,8 @@ func _initialize() -> void:
 			_reduce = true
 		elif a == "fixed":
 			_fixed = true
+		elif a == "osk":
+			_osk = true
 		elif a.begins_with("out="):
 			_dir = a.substr(4)
 		elif a.begins_with("lang="):
@@ -95,6 +99,8 @@ func _process(delta: float) -> bool:
 			_host.get_node("HowToPlay").free()
 		if _fixed:
 			_at(0.05, _deal_fixed)
+		if _osk:
+			_puzzle.osk_override = _puzzle.size.y * 0.42
 		_script()
 		return false
 	while not _plan.is_empty() and float(_plan[0][0]) <= _t:
@@ -137,18 +143,21 @@ func _shot(tag := "") -> void:
 	var st = _puzzle.state
 	print("saved ", path, "  prompt ", st.index + 1, " ", st.prompt().get("id", "?"), " \"", st.ask(), "\" depth ", st.depth())
 
-## One of the tray's keys pressed: a letter, or "enter" / "erase".
+## A key as the phone's keyboard types it (since 2026-10-29 the board has no
+## tray: an unseen LineEdit the phone's keyboard fills): a letter, or
+## "enter" / "erase", through the field's own text and its Enter.
 func _key(what: String) -> void:
-	var tray: Node = _host.tray
-	var chip: Node = null
+	var field: LineEdit = _puzzle._field_edit
 	if what == "enter":
-		chip = tray.find_child("Key_Enter", true, false)
-	elif what == "erase":
-		chip = tray.find_child("Key_Erase", true, false)
+		field.text_submitted.emit(field.text)
+		return
+	var text := field.text
+	if what == "erase":
+		text = text.substr(0, maxi(0, text.length() - 1))
 	else:
-		chip = tray.find_child("Key_%s" % what.to_upper(), true, false)
-	if chip != null:
-		(chip as BaseButton).pressed.emit()
+		text += what.to_lower()
+	field.text = text
+	field.text_changed.emit(text)
 
 func _type(text: String) -> void:
 	for ch in text:
@@ -221,7 +230,9 @@ func _script() -> void:
 			_at(1.5, func() -> void: _key("enter"))
 			_at(2.0, func() -> void: _host._on_hint())
 			_at(2.6, _shot)
-			_end = 3.0
+			_at(2.8, func() -> void: _host._on_hint())
+			_at(3.4, _shot)
+			_end = 3.8
 		"dry":
 			_at(1.5, func() -> void: _key("enter"))
 			_at(2.0, func() -> void:

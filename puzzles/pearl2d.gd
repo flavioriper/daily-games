@@ -45,6 +45,7 @@ const Backend = preload("res://core/backend.gd")
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 const World = preload("res://puzzles/pearl_world.gd")
 const FLAT_HOST := "res://ui/flat/flat_host.gd"
+const StarLine = preload("res://ui/flat/star_line.gd")
 ## The slide into the win's span (the host's SLOT_TIME), and how far inside
 ## the span the board lands.
 const WIN_SLIDE := 0.45
@@ -81,7 +82,7 @@ const CLOCK_ROOM := 76.0
 const FIELD_H := 108.0
 const FIELD_RADIUS := 22.0
 ## The field's middle, as a share of the paper's height.
-const FIELD_AT := 0.5
+const FIELD_AT := 0.42
 
 const ASK_FONTS := [50, 46, 42, 38, 34, 30]
 const TYPE_FONTS := [52, 46, 40, 34, 30]
@@ -95,6 +96,19 @@ const DEPTH_FONT := 22
 # --- motion: what is this board's own ---
 ## The bell sinking to its new depth.
 const DIVE_TIME := 0.7
+## Made fun (2026-10-29): after an answer the ladder of the prompt's tiers is
+## counted down a rung every RUNG_STEP to the one it came to, a pop a rung
+## climbing RUNG_PITCH a step, the bell riding the count; the rungs under it
+## fade in after. RUN_PITCH: a run of rare-or-deeper answers lifts the
+## answer's own cue this much an answer in the row.
+const RUNG_STEP := 0.22
+const RUNG_PITCH := 0.06
+const RUN_PITCH := 0.05
+const RUNG_FONTS := [32, 30, 28, 26, 24, 22, 20, 18]
+## The gap kept between the paper and the phone's keyboard, and the least
+## height the paper keeps over it.
+const OSK_GAP := 18.0
+const OSK_LEAST := 420.0
 ## The clock's last seconds are counted aloud.
 const LAST_SECONDS := 5
 ## The clock's tick, a miss and a refusal are never the same sound twice
@@ -200,6 +214,7 @@ var _hud_layer: Control
 var _hud_shown: Array = []
 var _seal_mesh: ArrayMesh
 var _toast_mesh: ArrayMesh
+var _reveal_mesh: ArrayMesh
 var _toast_mesh_for := ""
 
 # --- the clocks ---
@@ -217,6 +232,16 @@ var _toast := ""
 var _toast_at := -100.0
 ## The last whole second the clock showed, for counting the last ones aloud.
 var _whole := 0
+## The phone's own keyboard (2026-10-29, as Five Clues' and Hidden Word's
+## since 2026-10-28): an unseen LineEdit over the line the answer is typed
+## on; the board lays itself above the keyboard while it is up. A harness
+## sets `osk_override` to a height to lay out as if it were.
+var _field_edit: LineEdit
+var _osk := 0.0
+var osk_override := -1.0
+## The dive's count down the ladder: how long it takes for this answer.
+var _dive_time := DIVE_TIME
+var _stars := StarLine.new()
 
 func puzzle_id() -> String: return "pearl"
 func title() -> String: return "Pearl Dive"
@@ -282,6 +307,86 @@ func _ready() -> void:
 	add_child(_hud_layer)
 	resized.connect(_layout)
 	solved.connect(_on_solved)
+	_make_field()
+
+## The line the phone's keyboard types into: unseen, laid over the paper's
+## line, never touched itself (the board's own _gui_input calls it up). It
+## keeps editing across Enter so the keyboard stays up from one prompt to
+## the next, and Enter on it is the board's Enter.
+func _make_field() -> void:
+	_field_edit = LineEdit.new()
+	_field_edit.name = "Field"
+	_field_edit.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_field_edit.max_length = State.TYPE_MAX
+	_field_edit.context_menu_enabled = false
+	_field_edit.selecting_enabled = false
+	_field_edit.middle_mouse_paste_enabled = false
+	_field_edit.keep_editing_on_text_submit = true
+	_field_edit.virtual_keyboard_enabled = true
+	var none := StyleBoxEmpty.new()
+	for box in ["normal", "focus", "read_only"]:
+		_field_edit.add_theme_stylebox_override(box, none)
+	for ink in ["font_color", "font_placeholder_color", "caret_color", "selection_color", "font_selected_color"]:
+		_field_edit.add_theme_color_override(ink, Color(0, 0, 0, 0))
+	_field_edit.text_changed.connect(_on_typed)
+	_field_edit.text_submitted.connect(func(_t: String) -> void: commit_row())
+	add_child(_field_edit)
+
+## Calls the phone's keyboard up, while the dive is on.
+func _summon() -> void:
+	if _field_edit == null or is_done() or out_of_hearts or not _dealt or _phase == Phase.READY:
+		return
+	if not _field_edit.has_focus():
+		_field_edit.edit()
+	elif _osk <= 0.0 and osk_override < 0.0 and DisplayServer.has_feature(DisplayServer.FEATURE_VIRTUAL_KEYBOARD):
+		# Android's back hides the keyboard and leaves the field focused:
+		# shown again, or a tap could never bring it back
+		_field_edit.unedit()
+		_field_edit.edit()
+
+func _exit_tree() -> void:
+	_dismiss()
+
+func _dismiss() -> void:
+	if _field_edit != null and _field_edit.has_focus():
+		_field_edit.unedit()
+		_field_edit.release_focus()
+
+## What the keyboard typed, as the line shows it.
+func _on_typed(text: String) -> void:
+	if _phase != Phase.PLAY or is_done() or out_of_hearts:
+		if text != "":
+			_field_edit.text = ""
+		return
+	_typed = text
+	_hud_layer.queue_redraw()
+
+## The line as `text`, on the screen and in the keyboard's field.
+func _set_line(text: String) -> void:
+	_typed = text
+	if _field_edit != null and _field_edit.text != text:
+		_field_edit.text = text
+		_field_edit.caret_column = text.length()
+
+## The phone's keyboard's top, followed: the paper is laid above it while it
+## is up. Its height comes in the window's pixels.
+func _watch_osk() -> void:
+	var h := osk_override
+	if h < 0.0:
+		h = 0.0
+		if not DisplayServer.has_feature(DisplayServer.FEATURE_VIRTUAL_KEYBOARD):
+			if _osk != 0.0:
+				_osk = 0.0
+				_layout()
+			return
+		var win := DisplayServer.window_get_size()
+		var kb := DisplayServer.virtual_keyboard_get_height()
+		if kb > 0 and win.y > 0:
+			h = float(kb) * get_viewport_rect().size.y / float(win.y)
+			h = maxf(0.0, h - (get_viewport_rect().size.y - get_global_rect().end.y))
+	if absf(h - _osk) > 0.5:
+		_osk = h
+		_layout()
 
 ## The host hands the keyboard over once a board. Its keys are Hidden Word's
 ## and may still wear that board's marks.
@@ -393,7 +498,6 @@ func _begin() -> void:
 func _clear() -> void:
 	out_of_hearts = false
 	_settled = false
-	_typed = ""
 	_answer_at = -INF
 	_miss_at = -INF
 	_swap_at = -INF
@@ -403,6 +507,9 @@ func _clear() -> void:
 	_seal_mesh = null
 	_toast = ""
 	_whole = 0
+	_dive_time = DIVE_TIME
+	_stars.clear(0)
+	_set_line("")
 
 # --- layout ---
 
@@ -421,6 +528,10 @@ func _layout() -> void:
 		var u := size.x / 1080.0
 		var span := size.y - _clear_rows.x - _clear_rows.y
 		var tall_b := clampf(span - FLOOR_BAND * u, 0.0, (size.x - 2.0 * side) * 1.08)
+		if _osk > 0.0 and not _won:
+			# the phone's keyboard is up: the paper stands over it
+			var over := size.y - _osk - OSK_GAP * u - _clear_rows.x
+			tall_b = clampf(over, minf(OSK_LEAST * u, tall_b), tall_b)
 		_card = Rect2(side, _clear_rows.x, size.x - 2.0 * side, tall_b)
 		_world.size = size
 		_world.set_ground(_card.end.y + FLOOR_UNDER * u)
@@ -436,6 +547,12 @@ func _layout() -> void:
 	_clock = Rect2(_panel.position.x + 30.0, _panel.position.y + 30.0, _panel.size.x - 60.0 - CLOCK_ROOM, CLOCK_H)
 	_field = Rect2(_panel.position.x + 26.0, _panel.position.y + _panel.size.y * FIELD_AT - FIELD_H * 0.5,
 		_panel.size.x - 52.0, FIELD_H)
+	if _osk > 0.0 and _bled:
+		# tight: the line high, the ladder's room under it
+		_field.position.y = _clock.end.y + maxf(110.0, _panel.size.y * 0.3) - FIELD_H * 0.5
+	if _field_edit != null:
+		_field_edit.position = _field.position
+		_field_edit.size = _field.size
 	_still = _build_still()
 	_seal_mesh = null
 	if _won and _bled:
@@ -546,8 +663,9 @@ func _depth_shown(now: float) -> float:
 	var to := float(state.depth())
 	if Motion.reduce:
 		return to
-	var u := clampf((now - _dive_at) / DIVE_TIME, 0.0, 1.0)
-	return lerpf(_dive_from, to, 1.0 - pow(1.0 - u, 3.0))
+	var u := clampf((now - _dive_at) / _dive_time, 0.0, 1.0)
+	# the bell rides the ladder's count: steady down, eased at the end
+	return lerpf(_dive_from, to, 1.0 - pow(1.0 - u, 2.0))
 
 # --- the still drawing ---
 
@@ -685,7 +803,7 @@ func _build_live(now: float) -> ArrayMesh:
 	for k in state.results.size():
 		var r: Dictionary = state.results[k]
 		metres += int(r.m)
-		if int(r.t) >= 0 and (k < state.index or now - _answer_at >= DIVE_TIME or Motion.reduce):
+		if int(r.t) >= 0 and (k < state.index or now - _answer_at >= _dive_time or Motion.reduce):
 			Art.pip(b, Vector2(_shaft.position.x + 16.0, _depth_y(metres)), 7.0, int(r.t))
 	var y := _depth_y(_depth_shown(now))
 	b.stroke(PackedVector2Array([Vector2(x, _shaft.position.y + 4.0), Vector2(x, y - BELL_R)]), 3.0, Color(Art.NACRE, 0.85))
@@ -733,6 +851,11 @@ func _draw_hud() -> void:
 		return
 	var alpha := 1.0 if Motion.reduce else Motion.appear_level(since)
 	_draw_pills(now, alpha, shown)
+	if _phase != Phase.READY or state.results.size() > 0:
+		# the dive's stars, between the two pills
+		var ss := 0.9
+		var sy := _card.position.y + HUD_ROW * 0.5 + (-4.0 if _bled else 6.0)
+		_stars.draw(_hud_layer, Vector2(_card.get_center().x - StarLine.width(ss) * 0.5 + StarLine.R * ss, sy), ss, now, alpha)
 	_draw_paper(now, alpha)
 	_draw_depths(alpha)
 	if now >= _stamp_at:
@@ -820,7 +943,7 @@ func _draw_paper(now: float, alpha: float) -> void:
 		var lead := tr("PD_READY_BREATH") % [state.count(), int(State.AIR)] if state.tank() \
 			else tr("PD_READY") % [state.count(), int(State.SECONDS[state.band])]
 		_write(display, lead, ask_box, _fit(display, lead, ask_box.size, ASK_FONTS), Color(Pal.TEXT, a))
-		_write(display, tr("PD_READY_FIELD"), Rect2(_field.position, _field.size), TYPE_FONTS[3], Color(Pal.TEXT_DIM, a))
+		_write(display, tr("PD_READY_TAP"), Rect2(_field.position, _field.size), TYPE_FONTS[3], Color(Pal.TEXT_DIM, a))
 		_write(body, tr("PD_READY_FOOT") % int(State.MISS_COST), foot, FOOT_FONT, Color(Pal.TEXT_DIM, a))
 		return
 	var ask: String = state.ask()
@@ -845,6 +968,10 @@ func _draw_paper(now: float, alpha: float) -> void:
 	var told: Dictionary = state.told()
 	if not told.is_empty():
 		var line := tr("PD_HINT_LINE") % [str(told.first), int(told.letters)]
+		if str(told.more) != "":
+			line = tr("PD_HINT_MORE") % str(told.more)
+		elif hints_left() > 0:
+			line += "\n" + tr("PD_HINT_AGAIN")
 		_write(body, line, foot, FOOT_FONT, Color(Art.tier(State.PEARL).darkened(0.15), a))
 	elif _phase == Phase.PLAY:
 		# The keyboard has no space key and no accents, and `State.norm` drops
@@ -852,8 +979,13 @@ func _draw_paper(now: float, alpha: float) -> void:
 		# to say (2026-10-15: players looked for what the keyboard "misses").
 		_write(body, tr("PD_FOLD"), foot, FOOT_FONT, Color(Pal.TEXT_DIM, a * 0.8))
 
-## What the answer came to: its name on the line with what it dived, its
-## tier under it, and then the Pearl and two more that were deep.
+## What the answer came to: its name on the line with what it dived, and
+## under it the prompt's ladder (made fun, 2026-10-29, after the counted
+## column of the quiz shows that score the rarest answer): a rung a tier,
+## shallow to the Pearl, each with one of its answers -- the player's own on
+## its rung, lit in its tier's colour -- counted down a rung every RUNG_STEP
+## to the one it came to; the rungs under it fade in after, so the deeper
+## ones are there to be learnt. A dry prompt shows the ladder whole, unlit.
 func _draw_reveal(now: float, a: float, foot: Rect2) -> void:
 	var display: Font = CozyTheme.display(700)
 	var body: Font = CozyTheme.body(600)
@@ -874,32 +1006,71 @@ func _draw_reveal(now: float, a: float, foot: Rect2) -> void:
 		var gb := _field.get_center().y + (display.get_ascent(TYPE_FONTS[2]) - display.get_descent(TYPE_FONTS[2])) * 0.5
 		_hud_layer.draw_string(display, Vector2(_field.end.x - 26.0 - gain_w, gb), gain, HORIZONTAL_ALIGNMENT_LEFT, -1.0,
 			TYPE_FONTS[2], Color(ink, a))
-	var wa := a if Motion.reduce else a * Motion.appear_level(now - _answer_at - 0.2, 0.25)
-	if wa <= 0.0:
-		return
-	var lines := []
-	if t >= State.PEARL:
-		lines.append([display, tr("PD_FOUND_PEARL"), TIER_FONT, ink])
-	else:
-		if t >= 0:
-			lines.append([display, tr("PD_TIER_%d" % t), TIER_FONT, ink])
-		lines.append([body, tr("PD_PEARL_WAS") % state.pearl_name(), FOOT_FONT, Art.tier(State.PEARL).darkened(0.2)])
-	var deep: Array = state.deep_names(state.index, 2)
-	if not deep.is_empty():
-		lines.append([body, tr("PD_ALSO_DEEP") % " · ".join(PackedStringArray(deep)), FOOT_FONT - 2, Pal.TEXT_DIM])
+	var rungs: Array = state.ladder(state.index)
 	var last: bool = state.index + 1 >= state.count()
+	var tail := ""
 	if _enter_line and not is_done():
-		lines.append([body, tr("PD_ENTER_DONE") if last else tr("PD_ENTER_NEXT"), FOOT_FONT - 4, Color(Pal.TEXT_DIM, 0.8)])
-	var tall := 0.0
-	for l: Array in lines:
-		tall += (l[0] as Font).get_height(int(l[2])) + 6.0
-	var y := foot.position.y + maxf(0.0, (foot.size.y - tall) * 0.5)
-	for l: Array in lines:
-		var f: Font = l[0]
-		var size_px := _fit_line(f, str(l[1]), foot.size.x, [int(l[2]), int(l[2]) - 4, int(l[2]) - 8])
-		_hud_layer.draw_string(f, Vector2(foot.position.x, y + f.get_ascent(size_px)), str(l[1]),
-			HORIZONTAL_ALIGNMENT_CENTER, foot.size.x, size_px, Color(l[3] as Color, wa))
-		y += f.get_height(int(l[2])) + 6.0
+		tail = tr("PD_ENTER_DONE") if last else tr("PD_ENTER_NEXT")
+	var tail_h := 0.0 if tail == "" else body.get_height(FOOT_FONT - 6) + 4.0
+	var rung_h := clampf((foot.size.y - tail_h) / 5.0, 30.0, 60.0)
+	var top := foot.position.y + maxf(0.0, (foot.size.y - tail_h - rung_h * 5.0) * 0.5)
+	var rs: int = RUNG_FONTS.back()
+	for f: int in RUNG_FONTS:
+		if body.get_height(f) <= rung_h * 0.78:
+			rs = f
+			break
+	var b := Face.Builder.new()
+	var texts: Array = []
+	var since := now - _answer_at
+	for k in 5:
+		var y := top + k * rung_h
+		var box := Rect2(foot.position.x - 10.0, y + 2.0, foot.size.x + 20.0, rung_h - 4.0)
+		# when this rung shows: counted down to the answer's, the rest after
+		var at := k * RUNG_STEP if t >= 0 and k <= t else (t + 1) * RUNG_STEP + 0.1
+		if t < 0:
+			at = 0.2
+		var ra := a if Motion.reduce else a * Motion.appear_level(since - at, 0.16)
+		if ra <= 0.0:
+			continue
+		var mine := k == t
+		var under := t >= 0 and k > t
+		if mine:
+			var grow := 1.0 if Motion.reduce else Motion.bump_scale(since - at, 0.08)
+			var c := box.get_center()
+			var bx := Rect2(c - box.size * 0.5 * grow, box.size * grow)
+			b.fan(Face.Builder.round_rect(bx.position - Vector2.ONE * 3.0, bx.size + Vector2.ONE * 6.0, rung_h * 0.5), Color(Art.tier(k), ra))
+			b.fan(Face.Builder.round_rect(bx.position, bx.size, rung_h * 0.5 - 3.0), Color(Art.tier_tile(k), ra))
+		var pc := Vector2(box.position.x + 24.0, box.get_center().y)
+		var pr := rung_h * 0.2
+		if k >= State.PEARL:
+			Art.pearl(b, pc, pr * 1.15)
+		else:
+			b.disc(pc, pr, Color(Art.tier(k), ra * (0.55 if under else 1.0)))
+		var name: String = rungs[k]
+		var label := tr("PD_RUNG_%d" % k)
+		var col := ink if mine else (Pal.TEXT_DIM if under else Pal.TEXT)
+		texts.append([label, name, Rect2(box.position.x + 48.0, y, box.size.x - 60.0, rung_h), Color(col, ra), mine])
+	var mesh := b.mesh()
+	if mesh != null:
+		_hud_layer.draw_mesh(mesh, null)
+		_reveal_mesh = mesh
+	for e: Array in texts:
+		var r: Rect2 = e[2]
+		var f: Font = display if bool(e[4]) else body
+		var label: String = e[0]
+		var name: String = e[1]
+		var mid := r.get_center().y + (f.get_ascent(rs) - f.get_descent(rs)) * 0.5
+		var lw := f.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1.0, rs).x
+		_hud_layer.draw_string(f, Vector2(r.position.x, mid), label, HORIZONTAL_ALIGNMENT_LEFT, -1.0, rs, Color(e[3] as Color, (e[3] as Color).a * 0.8))
+		if name != "":
+			var nfs := _fit_line(display, name, r.size.x - lw - 18.0, [rs, rs - 2, rs - 4, rs - 6])
+			_hud_layer.draw_string(display, Vector2(r.position.x + lw + 14.0, mid), name, HORIZONTAL_ALIGNMENT_RIGHT,
+				r.size.x - lw - 14.0, nfs, e[3])
+	if tail != "":
+		var ta := a if Motion.reduce else a * Motion.appear_level(since - (maxi(t, 0) + 1) * RUNG_STEP - 0.3, 0.25)
+		if ta > 0.0:
+			_hud_layer.draw_string(body, Vector2(foot.position.x, top + 5.0 * rung_h + body.get_ascent(FOOT_FONT - 6) + 2.0), tail,
+				HORIZONTAL_ALIGNMENT_CENTER, foot.size.x, FOOT_FONT - 6, Color(Pal.TEXT_DIM, ta * 0.8))
 
 ## A line the player has to see now, on a dark pill over the paper's foot.
 func _tell(text: String) -> void:
@@ -951,6 +1122,9 @@ func _gui_input(event: InputEvent) -> void:
 				start_dive()
 			elif _phase == Phase.REVEAL and _now() - _answer_at > NEXT_AFTER:
 				next_prompt()
+			else:
+				# anywhere else calls the phone's keyboard back up
+				_summon()
 
 ## A key of the tray under the card (ui/flat/flat_host.gd sends the three).
 func type_letter(letter: String) -> void:
@@ -958,13 +1132,13 @@ func type_letter(letter: String) -> void:
 		return
 	if _typed.length() >= State.TYPE_MAX:
 		return
-	_typed += letter
+	_set_line(_typed + letter)
 	_hud_layer.queue_redraw()
 
 func erase_letter() -> void:
 	if _phase != Phase.PLAY or is_done() or out_of_hearts or _typed == "":
 		return
-	_typed = _typed.substr(0, _typed.length() - 1)
+	_set_line(_typed.substr(0, _typed.length() - 1))
 	_hud_layer.queue_redraw()
 
 ## Enter: dives, offers the line, and once an answer is out asks the next.
@@ -987,6 +1161,7 @@ func start_dive() -> void:
 	_round_at = _now()
 	_whole = int(ceil(state.time_left))
 	fx.cue("dive")
+	_summon()
 	_busy_for(0.4)
 	_redraw()
 	_hud_layer.queue_redraw()
@@ -1007,7 +1182,17 @@ func offer() -> void:
 			_tell(tr("PD_TYPE_FIRST"))
 			fx.cue("refuse", randf_range(TICK_VARY.x, TICK_VARY.y))
 			return
-		_typed = ""
+		if bool(res.get("close", false)) or bool(res.get("again", false)):
+			# a fair try misspelt, or a line already turned down: said, and
+			# free; the line stays to be mended
+			_miss_at = now
+			_tell(tr("PD_CLOSE") if bool(res.get("close", false)) else tr("PD_AGAIN") % said)
+			fx.cue("refuse", randf_range(TICK_VARY.x, TICK_VARY.y))
+			_busy_for(0.4)
+			_redraw()
+			_hud_layer.queue_redraw()
+			return
+		_set_line("")
 		_miss_at = now
 		checks += 1
 		_tell(tr("PD_MISS") % [said, int(State.MISS_COST)])
@@ -1018,7 +1203,7 @@ func offer() -> void:
 		_redraw()
 		_hud_layer.queue_redraw()
 		return
-	_typed = ""
+	_set_line("")
 	_toast = ""
 	_phase = Phase.REVEAL
 	_answer_at = now
@@ -1027,17 +1212,31 @@ func offer() -> void:
 	checks += 1
 	moves += 1
 	var t := int(res.t)
-	fx.cue("pearl" if t >= State.PEARL else ("deep" if t >= 2 else "hit"))
+	# the ladder counted down a rung a pop, the bell riding it, and the
+	# answer's own notes on the rung it came to (lifted by a run)
+	_dive_time = (t + 1) * RUNG_STEP if not Motion.reduce else DIVE_TIME
+	var run: int = state.run()
+	var land := 0.0 if Motion.reduce else t * RUNG_STEP
+	if not Motion.reduce:
+		for k in t:
+			_after(k * RUNG_STEP, func() -> void: fx.cue("rung", 1.0 + k * RUNG_PITCH))
 	var at := Vector2(_shaft.get_center().x, _depth_y(float(state.depth())))
-	_after(0.0 if Motion.reduce else DIVE_TIME * 0.8, func() -> void:
+	var stars_were: int = _stars.stars
+	_after(land, func() -> void:
+		fx.cue("pearl" if t >= State.PEARL else ("deep" if t >= 2 else "hit"), 1.0 + RUN_PITCH * maxi(0, run - 1))
 		fx.ring(at, BELL_R * 1.8, Art.tier(t))
 		if t >= State.PEARL:
 			fx.sparkle(at, Pal.SUN)
-		_bump_pill(1))
+		_bump_pill(1)
+		if _stars.rate(state.stars(), _now()) > 0:
+			fx.cue("star", 1.0 + 0.08 * stars_were)
+		if run >= 2:
+			_tell(tr("PD_RUN") % run)
+		_hud_layer.queue_redraw())
 	if float(res.air) > 0.0:
 		_after(0.25, func() -> void: fx.cue("air_back"))
 	_bump_pill(0)
-	_busy_for(DIVE_TIME + 0.6)
+	_busy_for(_dive_time + 1.4)
 	_redraw()
 	_hud_layer.queue_redraw()
 	moved.emit()
@@ -1046,10 +1245,11 @@ func offer() -> void:
 ## The clock ran out: the prompt is dry, or on One Breath the dive is over.
 func _ran_out() -> void:
 	var now := _now()
-	_typed = ""
+	_set_line("")
 	if state.out:
 		out_of_hearts = true
 		_running = false
+		_dismiss()
 		fx.cue("out_of_air")
 		_tell(tr("PD_OUT"))
 		_after(Motion.REDUCED_TIME if Motion.reduce else CARD_AFTER, _open_card)
@@ -1058,8 +1258,10 @@ func _ran_out() -> void:
 		_answer_at = now
 		_dive_at = now
 		_dive_from = float(state.depth())
+		_dive_time = DIVE_TIME
 		moves += 1
 		fx.cue("dry")
+		_busy_for(1.4)
 		_bump_pill(0)
 		moved.emit()
 	_busy_for(0.6)
@@ -1089,6 +1291,7 @@ func next_prompt() -> void:
 		_answer_at = -INF
 		_whole = int(ceil(state.time_left))
 		_bump_pill(0)
+		_summon()
 		_redraw()
 		_hud_layer.queue_redraw()
 		focus_changed.emit())
@@ -1100,11 +1303,31 @@ func next_prompt() -> void:
 # --- the HUD's actions ---
 
 func hints_left() -> int:
-	return State.HINTS_BY[state.band] + hints_extra - hints_used
+	return _hints_held() + (1 if _more_due() else 0)
 
-## The bulb tells the Pearl's first letter and how long it is.
+func _hints_held() -> int:
+	return maxi(0, State.HINTS_BY[state.band] + hints_extra - hints_used)
+
+## Whether the bulb's second press, free, is waiting on the prompt standing.
+func _more_due() -> bool:
+	return _phase == Phase.PLAY and not state.answered() and state.index < state.hinted.size() \
+		and int(state.hinted[state.index]) == 1
+
+## The bulb, in two presses (made fun, 2026-10-29): the first tells the
+## Pearl's first letter and how long it is, for one hint; a second on the
+## same prompt, free, shows every other letter of it.
 func hint() -> bool:
-	if is_done() or out_of_hearts or _phase != Phase.PLAY or hints_left() <= 0:
+	if is_done() or out_of_hearts or _phase != Phase.PLAY:
+		return false
+	if _more_due():
+		state.tell_more()
+		fx.cue("hint", 1.12)
+		fx.sparkle(Vector2(_shaft.get_center().x, _shaft.end.y - SAND_H - 22.0), Pal.SUN)
+		_busy_for(0.5)
+		_hud_layer.queue_redraw()
+		moved.emit()
+		return true
+	if _hints_held() <= 0:
 		return false
 	var told: Dictionary = state.tell()
 	if told.is_empty():
@@ -1169,6 +1392,7 @@ func restore_completed_board() -> void:
 	_anim_until = 0.0
 	_layout()
 	_stamp_at = now - 10.0 if _stamped() else INF
+	_stars.rate(state.stars(), now, false)
 	_hud_layer.queue_redraw()
 	_redraw()
 
@@ -1178,7 +1402,10 @@ func share_glyphs() -> String:
 # --- the win ---
 
 func flat_win() -> Dictionary:
-	return {"faces": [], "subtitle": tr("PD_WIN_SUB") % [state.depth(), state.floor_depth()]}
+	var sub: String = tr("PD_WIN_SUB") % [state.depth(), state.floor_depth()]
+	if state.best_run() >= 2:
+		sub += " · " + tr("PD_WIN_RUN") % state.best_run()
+	return {"faces": [], "subtitle": sub}
 
 func win_delay() -> float:
 	return Motion.REDUCED_TIME if Motion.reduce else WIN_WAIT
@@ -1191,6 +1418,7 @@ func _stamped() -> bool:
 func _on_solved() -> void:
 	var now := _now()
 	_toast = ""
+	_dismiss()
 	fx.cue("solved")
 	if _stamped():
 		_stamp_at = now if Motion.reduce else now + Motion.SOLVE_DELAY
@@ -1323,6 +1551,7 @@ func busy() -> bool:
 
 func _process(delta: float) -> void:
 	super(delta)
+	_watch_osk()
 	if not _dealt:
 		return
 	var now := _now()
@@ -1339,7 +1568,8 @@ func _process(delta: float) -> void:
 		_hud_layer.queue_redraw()
 	elif (_toast != "" and now - _toast_at < TOAST_HOLD + 0.1) \
 			or now - float(_pill_bump[0]) < Motion.BUMP_TIME + 0.1 \
-			or now - float(_pill_bump[1]) < Motion.BUMP_TIME + 0.1:
+			or now - float(_pill_bump[1]) < Motion.BUMP_TIME + 0.1 \
+			or _stars.busy(now):
 		_hud_layer.queue_redraw()
 
 func _redraw() -> void:
