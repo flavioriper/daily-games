@@ -76,7 +76,7 @@ var _wheel_shown: ArrayMesh
 var _sway: Tween
 
 ## Whether the tools row's gap holds its cloud and kite: the board's count
-## pill stands there since 2026-10-29 (Easy to Hard), and turns them off.
+## pill stands there since 2026-10-29, and turns them off.
 var gap := true
 
 func _ready() -> void:

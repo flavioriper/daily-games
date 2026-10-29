@@ -245,3 +245,7 @@ reference on how good games does it". Built unattended.
   on Medium. `_win.gd -- pinwheel` PASS. No new sound file.
   Unseen on a phone; the thresholds (stars 2/8, the hold timings) are
   unconfirmed.
+- Same evening: Insane has had no move counter since its budget went to
+  0, so the count pill stands on every band; the hill's cloud and kite
+  step out by `_counting()` rather than by band, and the pill goes once
+  the win screen takes over (it lay over the win line).

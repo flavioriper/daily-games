@@ -995,6 +995,11 @@ func card_centred() -> bool:
 	return true
 
 func _layout() -> void:
+	# The count pill stands in the tools row's gap: the world's ornaments
+	# there step out while it shows.
+	if _world != null and _world.gap == _counting():
+		_world.gap = not _counting()
+		_world._build()
 	_frame_mesh = null
 	_love_mesh = null
 	_bfly_wing = null
@@ -1032,8 +1037,6 @@ func set_clear(top: float, bottom: float, won := false) -> void:
 		_bled = true
 		_world = World.new()
 		_world.name = "World"
-		# The count pill stands in the tools row's gap on Easy to Hard.
-		_world.gap = _state.difficulty >= 3
 		# The board paints in `_draw`: the hill goes behind that.
 		_world.show_behind_parent = true
 		add_child(_world)
@@ -1041,6 +1044,8 @@ func set_clear(top: float, bottom: float, won := false) -> void:
 		_world.size = size
 		_ref_cell = 0.0
 	_won = won
+	if _heart_layer != null:
+		_heart_layer.queue_redraw()
 	if not won:
 		_clear = Vector2(top, bottom)
 		_slid = 0.0
@@ -2639,7 +2644,7 @@ func share_glyphs() -> String:
 ## pinwheels batch into one mesh and a Control per pin would be a node per
 ## pin of a thing with no face on it.
 func flat_win() -> Dictionary:
-	if _counting():
+	if max_hearts <= 0 and max_moves <= 0 and _state.par > 0:
 		return {"faces": [], "subtitle": tr("PW_WIN_TAPS") % [_taps, _state.par]}
 	return {"faces": [], "subtitle": tr("PW_WIN")}
 
@@ -2842,10 +2847,11 @@ func _draw_hearts() -> void:
 	_heart_layer.draw_set_transform(Vector2.ZERO)
 
 ## Whether the count pill stands in the tools row's gap (2026-10-29): a
-## laid-out day with neither hearts nor a move counter (Easy to Hard). The
-## tutorial's frames are never bled, and show none.
+## laid-out day with neither hearts nor a move counter (every band since
+## Insane's move counter went), until the win screen takes over. The
+## tutorial's frames are never bled.
 func _counting() -> bool:
-	return _bled and max_hearts <= 0 and max_moves <= 0 and _state.par > 0
+	return _bled and not _won and max_hearts <= 0 and max_moves <= 0 and _state.par > 0
 
 ## The count pill: the stars the taps stand at (ui/flat/star_line.gd), then
 ## the turns so far against the frame's fewest, in the middle of the tools
