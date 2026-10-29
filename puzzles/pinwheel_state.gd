@@ -61,6 +61,8 @@ const MOVES_SHARE := 0.25
 ## Every cycle a piece can have (one to four ways to lie) divides this, so
 ## a count of quarter turns is only ever needed modulo it.
 const TURN_CYCLE := 12
+## Live stars (`stars`): taps over the fewest for three, and for two.
+const STAR_SLACK := [2, 8]
 ## The share's squares, one per `Pal.CLOTH` index.
 ##
 ## A share is only ever taken from a **solved** frame, where by definition no
@@ -184,7 +186,7 @@ func take(out: Dictionary, d: int) -> void:
 		var b := int(r["to"])
 		if a >= 0 and a < shapes.size() and b >= 0 and b < shapes.size():
 			(_kids[a] as Array).append([b, int(r.get("sign", 1))])
-	par = _least_taps()
+	par = _least_taps(start)
 	recompute()
 
 ## Insane's moves for this frame: the fewest taps that solve it and a quarter
@@ -196,7 +198,8 @@ func moves_budget() -> int:
 		return 0
 	return par + maxi(least, int(ceil(par * MOVES_SHARE)))
 
-## The fewest taps from the opening to the stored answer, exactly. A tap on a
+## The fewest taps from pose `from` (the opening for `par`) to the stored
+## answer, exactly. A tap on a
 ## pin turns its piece one step and tugs everything tied below, so a piece's
 ## steps are its own taps plus (signed) every step of the piece it hangs
 ## from, and all that matters of either is the count modulo the piece's
@@ -204,7 +207,7 @@ func moves_budget() -> int:
 ## way its parent may have turned (modulo TURN_CYCLE), the cheapest taps on
 ## the piece and on everything below it. Not always the dealer's top-down
 ## route: a few taps more on a short-cycled pin can save more below it.
-func _least_taps() -> int:
+func _least_taps(from: PackedInt32Array) -> int:
 	var child := {}
 	for kids: Array in _kids:
 		for k: Array in kids:
@@ -213,19 +216,19 @@ func _least_taps() -> int:
 	var total := 0
 	for p in shapes.size():
 		if not child.has(p):
-			total += _taps_below(p, 0, memo)
+			total += _taps_below(p, 0, memo, from)
 	return total
 
 ## The fewest taps on `p` and everything tied below it that bring them all
 ## home, `pulled` being the steps the ribbon above has already turned `p`.
-func _taps_below(p: int, pulled: int, memo: Dictionary) -> int:
+func _taps_below(p: int, pulled: int, memo: Dictionary, from: PackedInt32Array) -> int:
 	var m: int = (shapes[p] as Array).size()
 	if m <= 1:
 		return 0
 	var at := p * TURN_CYCLE + pulled
 	if memo.has(at):
 		return memo[at]
-	var need := posmod(int(answer[p]) - int(start[p]), m)
+	var need := posmod(int(answer[p]) - int(from[p]), m)
 	var best := -1
 	for taps in TURN_CYCLE:
 		var steps := pulled + taps
@@ -233,7 +236,7 @@ func _taps_below(p: int, pulled: int, memo: Dictionary) -> int:
 			continue
 		var cost := taps
 		for k: Array in (_kids[p] as Array):
-			cost += _taps_below(int(k[0]), posmod(steps * int(k[1]), TURN_CYCLE), memo)
+			cost += _taps_below(int(k[0]), posmod(steps * int(k[1]), TURN_CYCLE), memo, from)
 		if best < 0 or cost < best:
 			best = cost
 	memo[at] = best
@@ -464,6 +467,18 @@ func hint() -> Dictionary:
 	recompute()
 	return {"piece": best, "from": was, "to": int(turned[best])}
 
+## The bulb's second press (2026-10-29): piece `p` straight to turn `o` in
+## one entry, tugging nothing, as `hint()` turns its piece. Spends no hint:
+## the first press, which read it, did. {} when it is already there.
+func turn_to(p: int, o: int) -> Dictionary:
+	if p < 0 or p >= shapes.size() or fixed(p) or is_tacked(p) or int(turned[p]) == o:
+		return {}
+	var was := int(turned[p])
+	turned[p] = o
+	history.append({"piece": p, "from": was, "to": o})
+	recompute()
+	return {"piece": p, "from": was, "to": o}
+
 ## Takes back the last move, a hint's whole journey included, and returns it
 ## **inverted** -- {"piece", "from": where it was, "to": where it is now} --
 ## so the board can swing it back the way it came. {} when there is nothing
@@ -510,6 +525,122 @@ func reset() -> Array:
 	history = []
 	recompute()
 	return moved
+
+# ---------------------------------------------------------------- reading
+
+## The frame read the way a player reads it, never off the stored answer:
+## every piece may stand in any of its turns, and each square must end
+## under exactly one piece. Two rules carry it, over and over:
+##
+## - **"cell"**: a square that only one turn of one piece can still cover
+##   forces that turn.
+## - **"left"**: a piece whose other turns all lie on a forced piece has one
+##   turn left.
+##
+## A forced turn rules out every other piece's turn that lies on it, which
+## is what lets the next square speak. Returns the steps in the order they
+## were found, [{piece, turn, cell (Vector2i, "cell" only), why}], and stops
+## where neither rule speaks (a frame that needs a guess there). Pinned-fast
+## pieces are forced from the start and never a step. The bulb reads the
+## first step the frame does not already show (`reading`).
+func reading_chain() -> Array:
+	var n := cols * rows
+	var live: Array = []
+	var done := PackedInt32Array()
+	done.resize(shapes.size())
+	done.fill(-1)
+	for p in shapes.size():
+		var m: int = (shapes[p] as Array).size()
+		live.append(range(m))
+		if m == 1:
+			done[p] = 0
+	var taken := PackedInt32Array()
+	taken.resize(n)
+	taken.fill(-1)
+	var queue: Array = []
+	for p in shapes.size():
+		if done[p] >= 0:
+			queue.append(p)
+	var steps: Array = []
+	while true:
+		# A forced piece takes its squares: every other live turn on them goes.
+		while not queue.is_empty():
+			var f := int(queue.pop_front())
+			for cell: Vector2i in _orient(f, int(done[f])):
+				var i := idx(cell.x, cell.y)
+				if i >= 0:
+					taken[i] = f
+			for q in shapes.size():
+				if done[q] >= 0:
+					continue
+				var keep: Array = []
+				for o: int in (live[q] as Array):
+					var clear := true
+					for cell: Vector2i in _orient(q, o):
+						var i := idx(cell.x, cell.y)
+						if i >= 0 and taken[i] >= 0:
+							clear = false
+							break
+					if clear:
+						keep.append(o)
+				live[q] = keep
+		var found := false
+		# "left": one turn standing.
+		for q in shapes.size():
+			if done[q] < 0 and (live[q] as Array).size() == 1:
+				done[q] = int(live[q][0])
+				steps.append({"piece": q, "turn": done[q], "why": "left"})
+				queue.append(q)
+				found = true
+				break
+		if found:
+			continue
+		# "cell": an open square only one live turn covers.
+		var who := []
+		who.resize(n)
+		for i in n:
+			who[i] = []
+		for q in shapes.size():
+			if done[q] >= 0:
+				continue
+			for o: int in (live[q] as Array):
+				for cell: Vector2i in _orient(q, o):
+					var i := idx(cell.x, cell.y)
+					if i >= 0 and taken[i] < 0:
+						(who[i] as Array).append([q, o])
+		for i in n:
+			if taken[i] < 0 and (who[i] as Array).size() == 1:
+				var pick: Array = who[i][0]
+				done[int(pick[0])] = int(pick[1])
+				steps.append({"piece": int(pick[0]), "turn": int(pick[1]),
+					"cell": cell_of(i), "why": "cell"})
+				queue.append(int(pick[0]))
+				found = true
+				break
+		if not found:
+			break
+	return steps
+
+## The first step of the reading the frame does not already show, or {}
+## when every step is shown (the rest of the frame needs a guess, or it is
+## covered).
+func reading() -> Dictionary:
+	for st: Dictionary in reading_chain():
+		var p := int(st["piece"])
+		if int(turned[p]) != int(st["turn"]):
+			return st
+	return {}
+
+## Live stars against the fewest taps: the taps made, plus the fewest still
+## needed from here (`_least_taps(turned)`, tugs and all), against `par`.
+## Three within `STAR_SLACK` [0], two within [1], else one.
+func stars(taps: int) -> int:
+	var over := taps + _least_taps(turned) - par
+	if over <= STAR_SLACK[0]:
+		return 3
+	if over <= STAR_SLACK[1]:
+		return 2
+	return 1
 
 # ------------------------------------------------------------------ share
 

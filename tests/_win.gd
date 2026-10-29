@@ -1006,8 +1006,13 @@ func _solve_pinwheel() -> void:
 	for p in (st.shapes as Array).size():
 		if not slot.has_point(_puzzle._pin_point(p)):
 			_fit_ok = false
+	# The bulb in two presses (2026-10-29): the first reads (one hint, a
+	# ring), the second, free, turns the read piece there.
 	_press(_host.top_bar.hint_button)
-	_hud_ok = _puzzle.hints_used == 1
+	var read: Dictionary = _puzzle._reading.duplicate()
+	_press(_host.top_bar.hint_button)
+	_hud_ok = _puzzle.hints_used == 1 and not read.is_empty() and _puzzle._reading.is_empty() \
+		and int(st.turned[int(read["piece"])]) == int(read["turn"])
 	for p in (st.shapes as Array).size():
 		if _puzzle.is_done():
 			return

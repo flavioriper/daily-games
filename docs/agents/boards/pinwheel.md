@@ -193,3 +193,55 @@ on the host's margin.
   pinwheel` passes.
 - Decided for the user, unconfirmed: Medium's frame coming to 40 of the
   bottom edge. Owed: a phone, the level slide.
+
+### Made fun (2026-10-29)
+
+The user: "make pinwheel and sunbeam experience way better to play, and game
+itself way funnier to play, right now nobody likes it. Use web for
+reference on how good games does it". Built unattended.
+
+- **What the web said.** The genre's reference lets you tap a square that
+  is no pivot to see which pivots move it, and offers "fewest rotations"
+  as the challenge; reviews love the click of the last piece and nothing
+  about the hunting before it.
+- **Measured first** (`tests/_probe_pw_fun.gd`, 30 deals a band): the
+  frame is a pure reading puzzle -- two rules ("cell": a square only one
+  turn of one piece can still reach forces that turn; "left": a piece whose
+  other turns all lie on forced pieces) carry the whole frame on 29, 30, 26
+  and 28 of 30 deals, and every one of the 1,373 steps they took matched the
+  stored answer. But a casual tapper (the tap that leaves the least trouble,
+  a random one a third of the time) ran a median 51, 96 and 171 taps over
+  the fewest on Easy to Hard, and on Hard 20 of 30 never finished in 400.
+  The reasoning was there and nothing on screen showed it.
+- **Hold a square that is no pin**: every turn of every piece that can
+  reach it is a dashed ink outline with its pin ringed, the square ringed
+  in sun; one turn alone is in leaf, with the streak's bright note, and the
+  line says how many ("3 pieces can reach this square. Find the square only
+  one can."). Turns that would lie on a pinned-fast piece are left out. The
+  marks stay REACH_KEEP after the finger lifts. It is the old "tap a square
+  to wobble its pins" grown into the board's question.
+- **Hold a pin** PEEK_AFTER (0.28 s): its next turn as a dashed outline (on
+  Ribbons, each tugged piece's too); let go on it to turn as before.
+- **Live stars on a pill in the tools row's gap** (Easy to Hard; Insane
+  keeps its move pill): "7 turns · fewest 18", taps plus the fewest still
+  needed from here (`_least_taps(turned)`, exact over the ribbons too) over
+  `par`; three within 2, two within 8 (`State.STAR_SLACK`). The hill's
+  cloud and kite step out of the gap for it (`World.gap`). Win line: turns
+  against the fewest.
+- **The bulb in two presses**: the first (one hint) rings the first read
+  step the frame does not show yet (`State.reading`) -- a square and its
+  only piece ("only the ringed piece can reach the ringed square, and in
+  one way only"), or a piece with one turn left -- and the second, free,
+  turns it there (`State.turn_to`). Where the reading has nothing left (the
+  frame needs a guess), one press turns the piece furthest from home and
+  says why. Hint quarters count as taps. `_win.gd` presses twice and checks
+  the read piece landed.
+- The first turn that makes the frame messier, before any square was
+  held, says once "Hold any square to see which pieces can reach it." A new
+  tutorial page, "Read the frame" (Lesson.HOLD), holds the read corner and
+  turns its piece; the bulb page presses twice. `PW_RULES_HOLD` in the
+  rules. en/pt/es.
+- `opengl3_angle` 810x1440 Hard: peak 83 draw calls with marks showing (twice); GL peak 83-86
+  on Medium. `_win.gd -- pinwheel` PASS. No new sound file.
+  Unseen on a phone; the thresholds (stars 2/8, the hold timings) are
+  unconfirmed.

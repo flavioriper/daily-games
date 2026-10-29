@@ -213,6 +213,37 @@ func _script() -> void:
 			_end = 3.5
 		"perf":
 			_end = 4.0
+		"hold":
+			# 2026-10-29: a held square's reach (the read square, then one
+			# more), a held pin's next turn, and the count pill.
+			var at := [Vector2.ZERO]
+			_at(1.5, func() -> void:
+				var st: Dictionary = _puzzle._state.reading()
+				var c: Vector2i = st.get("cell", Vector2i(0, 0))
+				at[0] = _puzzle.cell_to_local(c.x, c.y)
+				_mouse(at[0], true))
+			_at(1.75, _shot.bind("_only"))
+			_at(1.8, func() -> void: _mouse(at[0], false))
+			_at(1.9, func() -> void:
+				var st = _puzzle._state
+				var c := Vector2i(st.cols / 2, st.rows / 2)
+				if st.piece_at_pin(c.x, c.y) >= 0:
+					c.x = (c.x + 1) % st.cols
+				at[0] = _puzzle.cell_to_local(c.x, c.y)
+				_mouse(at[0], true))
+			_at(2.15, _shot.bind("_many"))
+			_at(2.2, func() -> void: _mouse(at[0], false))
+			_at(4.4, func() -> void: _mouse(_pin(_next_home()), true))
+			_at(4.9, _shot.bind("_peek"))
+			_at(5.0, func() -> void: _mouse(_pin(_next_home()), false))
+			_at(5.6, _shot.bind("_turned"))
+			_end = 6.0
+		"read":
+			_at(1.5, func() -> void: _puzzle.hint())
+			_at(1.8, _shot.bind("_first"))
+			_at(2.6, func() -> void: _puzzle.hint())
+			_at(3.4, _shot.bind("_second"))
+			_end = 4.0
 		"press":
 			var p := [-1]
 			_at(1.5, func() -> void:

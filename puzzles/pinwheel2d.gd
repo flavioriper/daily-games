@@ -245,6 +245,23 @@ const CARD_AFTER := 1.1
 const CARD_AFTER_STILL := 0.3
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 const MovesPill = preload("res://ui/flat/moves_pill.gd")
+const StarLine = preload("res://ui/flat/star_line.gd")
+const FlatTopBar = preload("res://ui/flat/flat_top_bar.gd")
+## The made-fun pass (2026-10-29): a held square marks every turn that can
+## reach it (REACH_KEEP after the finger lifts, fading over REACH_FADE), a
+## pin held PEEK_AFTER marks where its next tap lays it, and the bulb's
+## reading rings a square and a pin. Marks are dashed outlines and rings in
+## ink, leaf for the one turn that is forced -- never a shade of a cloth.
+const PEEK_AFTER := 0.28
+const REACH_KEEP := 1.8
+const REACH_FADE := 0.3
+const MARK_W := 0.05
+const MARK_ON := 0.14
+const MARK_OFF := 0.09
+const MARK_RING := 0.34
+const MARK_RING_W := 0.06
+const COUNT_FONT := 28
+const READ_PULSE := 1.2
 const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
 ## The moves the out-of-moves card's video buys.
 const MOVES_BONUS := 5
@@ -484,6 +501,16 @@ var out_of_hearts := false
 var moves_left := 0
 var max_moves := 0
 var _moves_pill := MovesPill.new()
+## The stars the taps stand at (State.stars), on the count pill.
+var _stars := StarLine.new()
+## The bulb's first press (State.reading's step): {piece, turn, why, cell}
+## until a move; the second press, free, turns that piece there.
+var _reading: Dictionary = {}
+## A held square: {"cell", "turns": [[piece, turn]], "at", "up"} (`up` -1
+## while held).
+var _reach: Dictionary = {}
+var _mark_mesh: ArrayMesh
+var _hold_taught := false
 var _heart_used := false
 var _lost_ever := false
 var _undo_ever := false
@@ -554,7 +581,7 @@ func title() -> String: return "Pinwheel"
 ## lost (Easy to Hard), or the ribbons and the move counter (Insane). The
 ## hearts' line is asleep with the hearts.
 func rules() -> String:
-	var out := tr("PW_RULES")
+	var out := tr("PW_RULES") + "\n\n" + tr("PW_RULES_HOLD")
 	if _state.ribboned():
 		out += "\n\n" + tr("PW_RULES_RIBBONS_MOVES")
 	elif max_hearts > 0:
@@ -579,6 +606,7 @@ func tutorial_pages() -> Array:
 	var steps := [
 		[Diagram.Lesson.TURN, "HTP_PW_TURN", tr("HTP_PW_TURN_BODY")],
 		[Diagram.Lesson.DONE, "HTP_PW_DONE", tr("HTP_PW_DONE_BODY")],
+		[Diagram.Lesson.HOLD, "HTP_PW_HOLD", tr("HTP_PW_HOLD_BODY")],
 	]
 	if judged:
 		steps.append([Diagram.Lesson.HEARTS, "HTP_TN_HEARTS", tr("PW_RULES_HEARTS") % hearts_n])
@@ -737,6 +765,9 @@ func _deal() -> void:
 	_back_at = AGO
 	_busy_until = 0.0
 	_press_piece = -1
+	_reach = {}
+	_reading = {}
+	_stars.clear()
 	Motion.stop(_dusk_tw)
 	modulate = Color.WHITE
 	if _heart_layer != null:
@@ -1001,6 +1032,8 @@ func set_clear(top: float, bottom: float, won := false) -> void:
 		_bled = true
 		_world = World.new()
 		_world.name = "World"
+		# The count pill stands in the tools row's gap on Easy to Hard.
+		_world.gap = _state.difficulty >= 3
 		# The board paints in `_draw`: the hill goes behind that.
 		_world.show_behind_parent = true
 		add_child(_world)
@@ -1104,6 +1137,8 @@ func _process(delta: float) -> void:
 			or t - _opened < Motion.ENTER_DELAY + Motion.POP_IN + 0.1):
 		_heart_layer.queue_redraw()
 	elif max_moves > 0 and _moves_pill.animating(t - 0.1):
+		_heart_layer.queue_redraw()
+	elif _counting() and (_stars.busy(t) or t - _opened < Motion.ENTER_DELAY + Motion.POP_IN + 0.1):
 		_heart_layer.queue_redraw()
 
 ## Every ring and sparkle whose moment has come.
@@ -1229,6 +1264,8 @@ func _animating(t: float) -> bool:
 		if t - float(_tug_at[i]) < TUG_TIME:
 			return true
 	if _press_piece >= 0 or (_press_up >= 0.0 and t - _press_up < Motion.RELEASE_TIME):
+		return true
+	if _reach_level(t) > 0.0 or (not _reading.is_empty() and t - float(_reading.get("at", AGO)) < READ_PULSE):
 		return true
 	if t >= _untie_at and t - _untie_at < UNTIE_TIME + 0.1:
 		return true
@@ -1378,7 +1415,98 @@ func _draw() -> void:
 		if m != null:
 			draw_mesh(m, null, on, tint)
 			shown.append(m)
+	_mark_mesh = _build_marks(t)
+	if _mark_mesh != null:
+		draw_mesh(_mark_mesh, null, xf, tint)
+		shown.append(_mark_mesh)
 	_shown = shown
+
+## The marks over everything (2026-10-29), in board pixels and made each
+## frame they show (a handful of dashes and rings): a held square's reach,
+## a held pin's next turn, the bulb's reading. Null when none shows.
+func _build_marks(t: float) -> ArrayMesh:
+	var b := Face.Builder.new()
+	var any := false
+	var a := _reach_level(t)
+	if a > 0.0:
+		var turns: Array = _reach["turns"]
+		var col := Pal.LEAF_DEEP if turns.size() == 1 else Pal.TEXT
+		for pair: Array in turns:
+			_dash_cells(b, _state.cells_of(int(pair[0]), int(pair[1])), Color(col, 0.8 * a))
+			_mark_ring(b, _pin_point(int(pair[0])), Color(col, a), 1.0)
+		var at: Vector2i = _reach["cell"]
+		_mark_ring(b, cell_to_local(at.x, at.y), Color(Pal.SUN_DEEP, a), 1.25)
+		any = true
+	if _press_piece >= 0 and t - _press_down >= PEEK_AFTER and not busy():
+		var k := 1.0 if Motion.reduce else clampf((t - _press_down - PEEK_AFTER) / Motion.FLASH_IN, 0.0, 1.0)
+		for pull: Array in _state.tugged(_press_piece):
+			var q := int(pull[0])
+			if _state.fixed(q):
+				continue
+			var m: int = (_state.shapes[q] as Array).size()
+			var o := posmod(int(_state.turned[q]) + int(pull[1]), m)
+			_dash_cells(b, _state.cells_of(q, o), Color(Pal.TEXT, 0.75 * k))
+		any = true
+	if not _reading.is_empty():
+		var since := t - float(_reading.get("at", AGO))
+		var beat := 1.0 if Motion.reduce or since >= READ_PULSE else 1.0 + 0.18 * sin(since * TAU * 2.0)
+		_mark_ring(b, _pin_point(int(_reading["piece"])), Pal.LEAF_DEEP, 1.15 * beat)
+		if _reading.has("cell"):
+			var c: Vector2i = _reading["cell"]
+			_mark_ring(b, cell_to_local(c.x, c.y), Pal.SUN_DEEP, 1.3 * beat)
+		any = true
+	return b.mesh() if any else null
+
+## A dashed outline round `cells`, the stain's dash.
+func _dash_cells(b, cells: Array, colour: Color) -> void:
+	var cell := _cell()
+	for loop: PackedVector2Array in Cloth.loops(cells):
+		Cloth.dash_loop(b, Cloth.laid(loop, _origin(), cell, Vector2i.ZERO, Vector2.ONE, 0.0,
+			STAIN_RADIUS), MARK_W * cell, MARK_ON * cell, MARK_OFF * cell, colour)
+
+func _mark_ring(b, at: Vector2, colour: Color, scale: float) -> void:
+	var cell := _cell()
+	b.stroke(Face.Builder.arc_points(at, MARK_RING * cell * scale, 0.0, TAU), MARK_RING_W * cell, colour, true, false)
+
+## How strongly a held square's reach shows at `t`: full while held and
+## REACH_KEEP after, then fading.
+func _reach_level(t: float) -> float:
+	if _reach.is_empty():
+		return 0.0
+	var up := float(_reach["up"])
+	if up < 0.0:
+		return 1.0
+	var past := t - up - REACH_KEEP
+	if past <= 0.0:
+		return 1.0
+	if Motion.reduce or past >= REACH_FADE:
+		return 0.0
+	return 1.0 - past / REACH_FADE
+
+## Every turn of every piece that would cover (c, r), but none that lies on
+## a pinned-fast piece (those are settled for good): [[piece, turn], ...].
+func _reach_of(at: Vector2i) -> Array:
+	var fast := {}
+	for q in _state.shapes.size():
+		if _state.fixed(q):
+			for cell: Vector2i in _state.cells_of(q, 0):
+				fast[cell] = q
+	var out: Array = []
+	for q in _state.shapes.size():
+		if _state.fixed(q):
+			continue
+		for o in (_state.shapes[q] as Array).size():
+			var cells: Array = _state.cells_of(q, o)
+			if not cells.has(at):
+				continue
+			var clear := true
+			for cell: Vector2i in cells:
+				if fast.has(cell):
+					clear = false
+					break
+			if clear:
+				out.append([q, o])
+	return out
 
 ## The ground: one panel of Shikaku's unclaimed plot behind the grid, the
 ## faint rules between its cells, and a rim round the lot. It carries no
@@ -2022,15 +2150,51 @@ func _gui_input(event: InputEvent) -> void:
 			_press_down = _now()
 			_press_up = -1.0
 			_refresh()
+		elif _pressed.x >= 0 and held < 0 and not busy():
+			_hold_square(_pressed)
 		return
 	var at := _cell_at(event.position)
 	var was := _pressed
 	_pressed = Vector2i(-1, -1)
 	_let_go()
+	if not _reach.is_empty() and float(_reach["up"]) < 0.0:
+		# A held square's marks stay a moment after the finger lifts.
+		_reach["up"] = _now()
+		_refresh()
+		accept_event()
+		return
 	if at.x < 0 or at != was:
 		return
 	_tap(at)
 	accept_event()
+
+## A finger on a square that is no pin (2026-10-29): every turn of every
+## piece that can reach it is drawn as a dashed outline, its pin ringed,
+## and the line says how many -- one, in leaf, is a turn the frame forces.
+## The board's way of asking "who can cover this?", which is the whole
+## reading of the frame (State.reading_chain), one square at a time.
+func _hold_square(at: Vector2i) -> void:
+	_hold_taught = true
+	var turns := _reach_of(at)
+	_reach = {"cell": at, "turns": turns, "at": _now(), "up": -1.0}
+	var pieces := {}
+	for pair: Array in turns:
+		pieces[int(pair[0])] = true
+	if turns.is_empty():
+		_say(tr("PW_REACH_FAST"), Face.Expr.HAPPY)
+	elif turns.size() == 1:
+		_say(tr("PW_REACH_ONLY"), Face.Expr.JOY)
+	elif pieces.size() == 1:
+		_say(tr("PW_REACH_ONE_PIECE") % turns.size(), Face.Expr.HAPPY)
+	else:
+		_say(tr("PW_REACH_PIECES") % pieces.size(), Face.Expr.HAPPY)
+	# Heard: one turn alone is the streak's bright note, more a touch (the
+	# tutorial's quiet frame has no sound set, and keeps its touch quiet too).
+	if turns.size() == 1:
+		fx.cue("combo", 1.5, COMBO_DB)
+	elif puzzle_id() == "pinwheel":
+		fx.touch()
+	_refresh()
 
 ## The finger lifts: the wheel it held springs back from its dip.
 func _let_go() -> void:
@@ -2091,9 +2255,17 @@ func _tap(at: Vector2i) -> void:
 			_tugs(pulls, t)
 		fx.cue("place")
 		_taps += 1
+		_reach = {}
+		_reading = {}
 		_sparkle_cleared(before, t)
 		_on_turned(p, trouble, _trouble(), t + _swing_time(q) + TUG_LAG * float(deepest))
 		_speak()
+		# A turn that made the frame messier, before the player has held a
+		# square: once, the line says what holding one shows.
+		if _trouble() > trouble and not _hold_taught and not _state.is_solved():
+			_hold_taught = true
+			_say(tr("PW_TEACH_HOLD"), Face.Expr.HAPPY)
+		_rate(true)
 		_refresh()
 		note_move()
 		_spend(1, t + _swing_time(q) + TUG_LAG * float(deepest))
@@ -2233,12 +2405,15 @@ func undo() -> bool:
 	if back.is_empty():
 		return false
 	_refused = {}
+	_reach = {}
+	_reading = {}
 	_undo_ever = true
 	_break_streak()
 	_clear_gags()
 	_settle(before, _now(), true, {}, dirs)
 	_say(tr("PW_TURNED_BACK") + " " + _left_line(), Face.Expr.HAPPY)
 	fx.cue("undo")
+	_rate(false)
 	_refresh()
 	moved.emit()
 	check_solved()
@@ -2248,24 +2423,66 @@ func undo() -> bool:
 func add_hint() -> void:
 	_state.hints_extra += 1
 
+## A read waiting on its second press counts as a hint held: that press is
+## free.
 func hints_left() -> int:
-	return _state.hints_left()
+	return _state.hints_left() + (1 if not _reading.is_empty() else 0)
 
-## Turns the piece furthest from home all the way home, in one spin and one
-## history entry. Counts no move, and the hint is not refunded by the undo
-## that takes it back.
+## The bulb in two presses (2026-10-29). The first, one hint, reads the
+## frame (State.reading): it rings a square only one turn of one piece can
+## still reach, and that piece's pin, and says so -- or rings a piece whose
+## other turns all lie on settled pieces. The rings stay until a move. The
+## second press, free, turns that piece there. Where the reading has
+## nothing left to say (the frame needs a guess from here, or every read
+## turn is already shown), the first press turns the piece furthest from
+## home, as the bulb always did.
 func hint() -> bool:
-	if is_done() or out_of_hearts or busy() or hints_left() <= 0:
+	if is_done() or out_of_hearts or busy():
 		return false
+	if not _reading.is_empty():
+		var p := int(_reading["piece"])
+		var to := int(_reading["turn"])
+		_reading = {}
+		if int(_state.turned[p]) == to:
+			_refresh()
+			return false
+		return _hint_turn(p, to, tr("PW_HINT"))
+	if _state.hints_left() <= 0:
+		return false
+	var st: Dictionary = _state.reading()
+	if st.is_empty():
+		return _hint_turn(-1, -1, tr("PW_HINT_GUESS"))
+	_state.hints_used += 1
+	hints_used = _state.hints_used
+	_reach = {}
+	_reading = st.duplicate()
+	_reading["at"] = _now()
+	if str(st["why"]) == "cell":
+		_say(tr("PW_READ_CELL"), Face.Expr.JOY)
+	else:
+		_say(tr("PW_READ_LEFT"), Face.Expr.JOY)
+	fx.cue("hint")
+	_refresh()
+	moved.emit()
+	return true
+
+## Turns piece `p` to turn `to` in one spin and one history entry (the
+## bulb's second press), or with `p` -1 the piece furthest from home, which
+## spends a hint. The quarters count as taps: the stars read the way, not
+## who turned it. Not refunded by the undo that takes it back.
+func _hint_turn(p: int, to: int, line: String) -> bool:
 	var before: PackedInt32Array = _state.turned.duplicate()
-	var out: Dictionary = _state.hint()
+	var out: Dictionary = _state.hint() if p < 0 else _state.turn_to(p, to)
 	if out.is_empty():
 		_say(tr("PW_ALL_HOME"), Face.Expr.HAPPY)
 		return false
 	hints_used = _state.hints_used
-	var p := int(out["piece"])
+	p = int(out["piece"])
+	_reach = {}
 	_refused = {}
 	_settle(before, _now(), false)
+	var m: int = (_state.shapes[p] as Array).size()
+	_taps += posmod(int(out["to"]) - int(out["from"]), maxi(1, m))
 	# On a judged board the piece a hint turned home is sewn down: the hint
 	# proved it, as a heart would have.
 	if _state.judged:
@@ -2275,7 +2492,8 @@ func hint() -> bool:
 		_after(lands, fx.cue.bind("tack"))
 	_fx_at(_pin_point(p), Pal.LEAF)
 	fx.cue("hint")
-	_say(tr("PW_HINT") + " " + _left_line(), Face.Expr.HAPPY)
+	_say(line + " " + _left_line(), Face.Expr.HAPPY)
+	_rate(false)
 	_refresh()
 	moved.emit()
 	# A hint can finish the frame, and a board that ends on one still ends.
@@ -2303,6 +2521,9 @@ func reset_board() -> void:
 	_wave_home(true)
 	moves = 0
 	_running = true
+	_reach = {}
+	_reading = {}
+	_rate(false)
 	_say(tr("PW_RESET") + " " + _left_line(), Face.Expr.HAPPY)
 	fx.cue("reset")
 	_refresh()
@@ -2351,6 +2572,8 @@ func restore_completed_board() -> void:
 	_reset_rewards()
 	hearts = clampi(int(completed_record.get("hearts", max_hearts)), 0, max_hearts)
 	_flawless = bool(completed_record.get("flawless", false))
+	_taps = int(completed_record.get("taps", _state.par))
+	_stars.clear(clampi(int(completed_record.get("stars", 3)), 0, 3))
 	_cat_at = t - 100.0
 	_place_cat(t)
 	if _flawless or _state.ribboned():
@@ -2395,7 +2618,7 @@ func skill_quality() -> float:
 ## What a reopened daily needs to look as it was left: the hearts kept and
 ## whether it was flawless. Plain values only (it goes through a ConfigFile).
 func completion_record() -> Dictionary:
-	return {"hearts": hearts, "flawless": _flawless}
+	return {"hearts": hearts, "flawless": _flawless, "taps": _taps, "stars": _stars.stars}
 
 ## The frame's own squares, then the seal's words: `🎀 Ribbons` for any
 ## Insane solve (and ` · Flawless` when it was), `🏅 Flawless` otherwise.
@@ -2416,6 +2639,8 @@ func share_glyphs() -> String:
 ## pinwheels batch into one mesh and a Control per pin would be a node per
 ## pin of a thing with no face on it.
 func flat_win() -> Dictionary:
+	if _counting():
+		return {"faces": [], "subtitle": tr("PW_WIN_TAPS") % [_taps, _state.par]}
 	return {"faces": [], "subtitle": tr("PW_WIN")}
 
 ## Long enough for the solve wave to cross the frame. Under reduce-motion
@@ -2566,6 +2791,9 @@ func _sparkle_cleared(before: PackedInt32Array, t: float) -> void:
 ## pink with a small face and a leaf, a faint ghost where one was, the lost
 ## one's halves falling apart, one coming back popping in.
 func _draw_hearts() -> void:
+	if _counting() and _cell() > 0.0:
+		_draw_count()
+		return
 	if max_moves > 0 and _cell() > 0.0:
 		_moves_pill.draw(_heart_layer, _hearts_at(), moves_left, _now())
 		return
@@ -2612,6 +2840,53 @@ func _draw_hearts() -> void:
 	_heart_layer.draw_set_transform(c * (1.0 - enter), 0.0, Vector2.ONE * enter)
 	_heart_layer.draw_mesh(_hearts_shown, null)
 	_heart_layer.draw_set_transform(Vector2.ZERO)
+
+## Whether the count pill stands in the tools row's gap (2026-10-29): a
+## laid-out day with neither hearts nor a move counter (Easy to Hard). The
+## tutorial's frames are never bled, and show none.
+func _counting() -> bool:
+	return _bled and max_hearts <= 0 and max_moves <= 0 and _state.par > 0
+
+## The count pill: the stars the taps stand at (ui/flat/star_line.gd), then
+## the turns so far against the frame's fewest, in the middle of the tools
+## row's gap (the hill's cloud and kite step out for it).
+func _draw_count() -> void:
+	var now := _now()
+	var enter := 1.0 if Motion.reduce else Motion.pop_in_scale(now - _opened - Motion.ENTER_DELAY).x
+	if enter <= 0.0:
+		return
+	var font: Font = CozyTheme.body(700)
+	var text: String = (tr("PW_COUNT_ONE") % _state.par) if _taps == 1 else (tr("PW_COUNT") % [_taps, _state.par])
+	var fs := COUNT_FONT
+	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+	var ss := 0.9
+	var sw := StarLine.width(ss)
+	var pill := Vector2(sw + 14.0 + tw, 2.0 * HEART_R) + 2.0 * HEART_PILL_PAD
+	var gap := float(load(FLAT_HOST).GAP)
+	var c := Vector2(size.x * 0.5, _clear.x - gap - FlatTopBar.BUTTON.y * 0.5)
+	var corner := c - pill * 0.5
+	var rim := Vector2.ONE * HEART_PILL_RIM
+	var b := Face.Builder.new()
+	b.polygon(Face.Builder.round_rect(corner - rim, pill + 2.0 * rim, pill.y * 0.5 + HEART_PILL_RIM), Pal.LINE)
+	b.polygon(Face.Builder.round_rect(corner, pill, pill.y * 0.5), Pal.SURFACE)
+	_hearts_shown = b.mesh()
+	_heart_layer.draw_set_transform(c * (1.0 - enter), 0.0, Vector2.ONE * enter)
+	_heart_layer.draw_mesh(_hearts_shown, null)
+	var x0 := corner.x + HEART_PILL_PAD.x
+	_stars.draw(_heart_layer, Vector2(x0 + StarLine.R * ss, c.y), ss, now)
+	var base := c.y - font.get_height(fs) * 0.5 + font.get_ascent(fs)
+	_heart_layer.draw_string(font, Vector2(x0 + sw + 14.0, base), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs,
+		Color(Pal.TEXT, 0.8))
+	_heart_layer.draw_set_transform(Vector2.ZERO)
+
+## The stars read once a move (`heard`: a star lost falls with a low undo
+## note).
+func _rate(heard: bool) -> void:
+	if not _counting():
+		return
+	if _stars.rate(_state.stars(_taps), _now(), heard and not is_done()) < 0:
+		fx.cue("undo", 0.85, -4.0)
+	_heart_layer.queue_redraw()
 
 ## The middle of the hearts' pill: just over the frame's rim, so the pill
 ## sits with the frame it belongs to on a band whose frame is bound by the

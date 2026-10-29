@@ -22,7 +22,10 @@ extends Control
 ##   the crossed blue ribbon's the other way, and the frame is done.
 ## - UNDO: Undo turns the last piece back; Reset turns them all back (Reset
 ##   alone on Insane, which has no Undo).
-## - HINT: the bulb turns the piece furthest from home all the way home.
+## - HOLD: a finger held on a square only one turn of one piece can reach
+##   outlines that turn (2026-10-29); the piece is then turned there.
+## - HINT: the bulb's first press rings what to read, the second turns it
+##   (2026-10-29).
 ##
 ## The board checkup, 2026-10-02: Pinwheel had only the shared one-page
 ## card.
@@ -33,7 +36,7 @@ const Face = preload("res://ui/faces/face.gd")
 const Gen = preload("res://puzzles/pinwheel_gen.gd")
 const State = preload("res://puzzles/pinwheel_state.gd")
 
-enum Lesson { TURN, DONE, HEARTS, RIBBONS, UNDO, HINT }
+enum Lesson { TURN, DONE, HEARTS, RIBBONS, UNDO, HINT, HOLD }
 
 ## The finger: a soft disc and a ring, pressed smaller while it is down.
 const FINGER_R := 20.0
@@ -284,9 +287,40 @@ func _start() -> void:
 			_loop.tween_callback(func() -> void: _art.reset_board())
 			_loop.tween_interval(2.0)
 		Lesson.HINT:
+			_say_for("HTP_PW_READ_CAP", 0.0)
 			_loop.tween_callback(func() -> void: _art.hint())
-			_loop.tween_interval(3.2)
+			_loop.tween_interval(2.2)
+			_loop.tween_callback(_say.bind("HTP_PW_HINT_CAP"))
+			_loop.tween_callback(func() -> void: _art.hint())
+			_loop.tween_interval(2.6)
+		Lesson.HOLD:
+			var f := _forced()
+			if not f.is_empty():
+				var at: Vector2 = _art.cell_to_local(f[0].x, f[0].y)
+				_loop.tween_callback(func() -> void:
+					_finger = _art.position + at
+					_down = false)
+				_loop.tween_interval(0.35)
+				_loop.tween_callback(_press_at.bind(at))
+				_say_for("HTP_PW_HOLD_CAP", 1.8)
+				_loop.tween_callback(_release_at.bind(at))
+				_loop.tween_interval(0.3)
+				_loop.tween_callback(_lift)
+				for i in int(f[2]):
+					_play_tap(int(f[1]), "")
+					_loop.tween_interval(0.35)
+				_loop.tween_interval(1.6)
 	_loop.tween_callback(_reset)
+
+## A square only one turn of one piece reaches, on the frame as dealt, and
+## that piece and its taps there: [cell, piece, taps], or [] when none.
+func _forced() -> Array:
+	var st: Dictionary = _art._state.reading()
+	if st.is_empty() or not st.has("cell"):
+		return []
+	var p := int(st["piece"])
+	var m: int = (_art._state.shapes[p] as Array).size()
+	return [st["cell"], p, posmod(int(st["turn"]) - int(_art._state.turned[p]), m)]
 
 ## The caption turned to `key` for `hold`.
 func _say_for(key: String, hold: float) -> void:
@@ -332,7 +366,8 @@ func _reset(fresh := false) -> void:
 	_lift()
 	_say({Lesson.TURN: "HTP_PW_DARK_CAP", Lesson.DONE: "HTP_PW_LAST_CAP",
 		Lesson.HEARTS: "HTP_PW_HOME_CAP", Lesson.RIBBONS: "HTP_PW_TIED_CAP",
-		Lesson.UNDO: "HTP_PW_TAP_CAP", Lesson.HINT: "HTP_PW_HINT_CAP"}[lesson])
+		Lesson.UNDO: "HTP_PW_TAP_CAP", Lesson.HINT: "HTP_PW_READ_CAP",
+		Lesson.HOLD: "HTP_PW_HOLD_CAP"}[lesson])
 
 ## Reduce-motion: the lesson's answer, standing still.
 func _still() -> void:
@@ -356,6 +391,12 @@ func _still() -> void:
 			_say("HTP_PW_UNDO_CAP" if band < 3 else "HTP_PW_RESET_CAP")
 		Lesson.HINT:
 			_art.hint()
+			_art.hint()
+		Lesson.HOLD:
+			var f := _forced()
+			if not f.is_empty():
+				_art._hold_square(f[0])
+			_say("HTP_PW_HOLD_CAP")
 	_art._refresh()
 
 ## `key` through tr.
@@ -374,6 +415,22 @@ func _press(p: int) -> void:
 	ev.pressed = true
 	ev.position = _art.pin_at(p)
 	_down = true
+	_art._gui_input(ev)
+
+func _press_at(at: Vector2) -> void:
+	var ev := InputEventMouseButton.new()
+	ev.button_index = MOUSE_BUTTON_LEFT
+	ev.pressed = true
+	ev.position = at
+	_down = true
+	_art._gui_input(ev)
+
+func _release_at(at: Vector2) -> void:
+	var ev := InputEventMouseButton.new()
+	ev.button_index = MOUSE_BUTTON_LEFT
+	ev.pressed = false
+	ev.position = at
+	_down = false
 	_art._gui_input(ev)
 
 func _release(p: int) -> void:

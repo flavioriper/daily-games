@@ -75,6 +75,10 @@ var _wheel: Control
 var _wheel_shown: ArrayMesh
 var _sway: Tween
 
+## Whether the tools row's gap holds its cloud and kite: the board's count
+## pill stands there since 2026-10-29 (Easy to Hard), and turns them off.
+var gap := true
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_wheel = Control.new()
@@ -121,8 +125,9 @@ func _build() -> void:
 	for ring in SUN_RINGS:
 		b.disc(sun, ring[0] * u, Color(Pal.SUN_RAY, ring[1]))
 	# The gap of the tools row: a cloud, and a kite with its tail.
-	Scenery.cloud(b, Vector2(GAP_CLOUD[0], GAP_CLOUD[1]) * size, GAP_CLOUD[2] * u, CLOUD)
-	_kite(b, Vector2(GAP_KITE[0], GAP_KITE[1]) * size, GAP_KITE[2] * u, GAP_KITE[3])
+	if gap:
+		Scenery.cloud(b, Vector2(GAP_CLOUD[0], GAP_CLOUD[1]) * size, GAP_CLOUD[2] * u, CLOUD)
+		_kite(b, Vector2(GAP_KITE[0], GAP_KITE[1]) * size, GAP_KITE[2] * u, GAP_KITE[3])
 	# The rises along the foot, the far one first.
 	b.ellipse(Vector2(size.x * 0.70, size.y + 40.0 * k), size.x * 0.62, 190.0 * k, RISE_FAR)
 	b.ellipse(Vector2(size.x * 0.16, size.y + 46.0 * k), size.x * 0.52, 200.0 * k, RISE)
