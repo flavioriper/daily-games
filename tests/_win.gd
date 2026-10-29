@@ -1441,9 +1441,9 @@ func _tap_key(key_name: String) -> void:
 ## board with no wrong beads; then one wrong bead is seated and lifted again
 ## (a tap on a bead of the chosen colour lifts it), and every colour's chip
 ## is tapped and its pegs tapped in turn.
-## Glimpse: the first show put down at once (a tap on the board), then
-## every bead seated by tapping, as Pixel Garden's solve does; no hint or
-## Check to press.
+## Glimpse: the first show put down at once (a tap on the board), one
+## wrong bead tapped (it hops home, a miss, a star falls), then every bead
+## seated by tapping, as Pixel Garden's solve does; no hint, Check or Undo.
 func _solve_glimpse() -> void:
 	var st = _puzzle._state
 	var n: int = st.n
@@ -1456,7 +1456,16 @@ func _solve_glimpse() -> void:
 	_puzzle._first_at = 0.0
 	_puzzle._process(0.0)
 	_tap_local(_puzzle.cell_to_local(n / 2, n / 2))
-	_hud_ok = not _puzzle._showing() and _puzzle.capabilities() == ["undo"]
+	_hud_ok = not _puzzle._showing() and _puzzle.capabilities().is_empty()
+	# One miss: a bead the picture does not want there hops home at once,
+	# a star falls and the toast says so.
+	_tap_local(_puzzle.chip_to_local(0))
+	for c in st.size():
+		if int(st.want[c]) != 0 and int(st.beads[c]) == -1:
+			_tap_local(_puzzle.cell_to_local(c / n, c % n))
+			break
+	_hud_ok = _hud_ok and _puzzle.misses == 1 and st.placed() == 0 and _puzzle._stars.stars == 2 \
+		and _puzzle._toast == "GL_MISS_FIRST"
 	for k in st.names.size():
 		_tap_local(_puzzle.chip_to_local(k))
 		for c in st.size():
@@ -2007,9 +2016,12 @@ func _solve_pixelgarden() -> void:
 		for c in n:
 			if not slot.has_point(_puzzle.cell_to_local(r, c)):
 				_fit_ok = false
+	# The bulb reads (a peg ringed, one hint), then fixes it free.
+	_press(_host.top_bar.hint_button)
+	_hud_ok = _puzzle._reading >= 0 and _puzzle.hints_used == 1 and st.placed() == 0 and _puzzle._toast == "PG_READ_NEXT"
 	_press(_host.top_bar.hint_button)
 	_press_check()
-	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1
+	_hud_ok = _hud_ok and _puzzle.hints_used == 1 and _puzzle.checks == 1 and st.placed() == 1 and _puzzle._reading == -1
 	# A wrong bead on a bare peg, then lifted by tapping it again.
 	for c in st.size():
 		if int(st.want[c]) == -1:

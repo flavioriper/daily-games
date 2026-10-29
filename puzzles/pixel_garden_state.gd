@@ -330,6 +330,27 @@ func wrong() -> PackedInt32Array:
 			out.append(c)
 	return out
 
+## Every bare peg the picture wants a bead on, reading order.
+func missing() -> PackedInt32Array:
+	var out := PackedInt32Array()
+	for c in size():
+		if want[c] != EMPTY and beads[c] != want[c]:
+			out.append(c)
+	return out
+
+## Whether row `y` of the board is as the picture has it, with at least one
+## bead in it: what a row's leaf says (pixel_garden2d.gd), and nothing about
+## a row not yet finished.
+func row_right(y: int) -> bool:
+	var any := false
+	for x in n:
+		var c := y * n + x
+		if beads[c] != want[c]:
+			return false
+		if want[c] != EMPTY:
+			any = true
+	return any
+
 func can_undo() -> bool:
 	return not history.is_empty()
 
@@ -440,15 +461,14 @@ func undo() -> PackedInt32Array:
 ## ends as the picture has it. Returns {"peg", "was"} or {} with nothing
 ## left to fix. What came before in the history still describes the board
 ## except the one peg the hint took over.
-func hint() -> Dictionary:
+func hint(at := -1) -> Dictionary:
 	var pool := wrong()
 	if pool.is_empty():
-		for c in size():
-			if want[c] != EMPTY and beads[c] != want[c]:
-				pool.append(c)
+		pool = missing()
 	if pool.is_empty():
 		return {}
-	var c := pool[_rng.randi() % pool.size()]
+	# The bulb's second press fixes the peg its first press read.
+	var c := at if at >= 0 and at < size() and beads[at] != want[at] and locked[at] == 0 else pool[_rng.randi() % pool.size()]
 	var was := beads[c]
 	# A wrong bead whose right colour is bare (a bare peg) is lifted; else the
 	# peg takes its colour. If the kit's last bead of that colour sits on a

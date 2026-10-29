@@ -296,3 +296,66 @@ and show the ruler only.
   (`ThemedPictures.RULES.side`: 10 to 18 at Easy, up to 40 at Insane), a
   shaded sprite kept at the squares it was drawn at; this board lays the
   side it is handed.
+### Made fun (2026-10-29)
+
+The user: "make pixel garden and glimpse experience way better to play, and
+game itself way funnier to play, right now nobody likes it", autonomous,
+push when done. Spec `docs/superpowers/specs/2026-10-29-pixel-garden-glimpse-fun-design.md`.
+References from the web: colour-by-number apps (Pixel Painter, Pixel
+Coloring, Pixel Art Numbers listings) earn their pleasure from a palette
+that shows what is left of each colour, a pop on every cell, quick feedback
+on each cell and a payoff at the end, and above all from **the cell telling
+you what it wants**.
+
+**Measured first** (`tests/_probe_pg_fun.gd`, the bank, the first bead
+seated the wrong colour, the rest right in reading order): the beads
+seated after a slip before the board says anything. Until the kit runs dry
+(`PG_NONE_LEFT`): median 30 / 48 / 478 / 913 by band. Until the iron:
+47 / 65 / 575 / 1023. A leaf at the end of each finished row speaks at
+2 / 1 / 23 / 31. So the board kept the genre's counts, pops, zoom and payoff
+but hid where the player was and said nothing of a slip for hundreds of
+beads.
+
+**What changed** (`pixel_garden2d.gd`, "the made-fun pass" block):
+
+- **A leaf on a finished row** (`_check_rows`, `_draw_leaves`, in `_marks`):
+  a row that is just as the picture has it, with at least one bead
+  (`State.row_right`), sprouts a leaf past its last peg with a climbing
+  `combo` note (-7 dB) and a green sparkle. A row that goes wrong loses its
+  leaf. A deal or a restore is quiet (`_rows_quiet`). It confirms whole
+  rows only, never a bead.
+- **The pattern card reads where you are** (`_draw_card_reading`): the
+  square under the finger is ringed while a stroke is in hand, and every
+  square whose peg holds a bead is faded (right or wrong, the bar's own
+  rule, so it gives nothing away). Two small meshes over the card.
+- **Guides** (`_draw_guides`, in `_plates`): a hairline every `GUIDE` (4)
+  pegs out from the seam, both ways, on boards whose plates are wider than
+  4. Not on the card (its squares are 5-8 px).
+- **Easy traces the shape**: darker wells under the pegs the picture
+  covers, never a colour (`_traces()`).
+- **The bulb reads before it fixes** (`hint()`, `_fix()`, `_reading`), the
+  house's two-press bulb: the first press rims every bead astray in rose
+  and counts them (`PG_READ_ASTRAY_ONE/N`), or, with none astray, rings
+  the bare peg nearest the last touch in sun and puts its colour in the
+  tweezers (`PG_READ_NEXT`). That costs one hint. A second press fixes the
+  read peg for free (`State.hint(at)`). A stroke puts the reading out.
+  `hints_left` counts a reading that is standing. `HTP_PG_HINT_BODY_ONE/N`
+  is rewritten; the tutorial's HINT diagram still plays one press.
+- **Live stars** (`star_line.gd`, at the right end of the name's line):
+  slips are beads the iron sent home (`sent_home`) plus bulbs read; 0 keeps
+  three stars, up to 3 keeps two (`STARS_CUT`). `completion_record` keeps
+  `slips` and `stars`, and a restore sets the stars quietly.
+- `PG_RULES_LEAF` added to the rules.
+- Kept as the user had them: the iron waits for a full board, no moves, no
+  Check, the deals.
+- Hooks for Glimpse: `_reads_card()` (card ring, fading, guides, trace),
+  `_slips()`, `_star_cut()`, `_climb()`, `_more_marks()`.
+- Harnesses: `_win.gd -- pixelgarden` presses the bulb twice (a reading,
+  then the fix); `_shot_pixel_garden.gd` has `id=glimpse` and the `fun` and
+  `gl` modes. `_probe_pixel_garden.gd` presses four times for its two hints
+  and expects Insane's `["undo", "hint"]`. That check was already failing
+  before this pass. The probe now gives 0 failed.
+- opengl3_angle 810x1440 (second readings): Medium 99 at peak in play;
+  Insane tour 101-105 whole and close, 125 at the win, 170 with the
+  tutorial sheet. `_win.gd pixelgarden` PASS; suite 303252/0. No new
+  sounds. Unseen on a phone; pt/es unread by a speaker.

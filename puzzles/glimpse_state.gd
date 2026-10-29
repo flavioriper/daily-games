@@ -158,6 +158,12 @@ func _seat(c: int, to: int) -> void:
 		first[c] = to
 	super(c, to)
 
+## A bead of colour `k` refused on peg `c` (glimpse2d.gd judges each one as
+## it goes down): it was the peg's first try, so it is kept as one.
+func miss(c: int, k: int) -> void:
+	if first.size() == size() and first[c] == EMPTY:
+		first[c] = k
+
 ## How many of the picture's beads went down right the first time.
 func first_right() -> int:
 	var k := 0

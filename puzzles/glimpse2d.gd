@@ -13,6 +13,13 @@ extends "res://puzzles/pixel_garden2d.gd"
 ## (`LOOKS_BY`); none are left on Insane past its one. No hint and no Check:
 ## both would read the picture out. Undo and Reset stay.
 ##
+## **Every bead is judged as it goes down** (the made-fun pass, 2026-10-29,
+## Memory Matrix's way): a bead the picture does not want on that peg hops
+## straight back to its compartment, the peg ringed rose, and counts a miss;
+## a right one stays, and right beads in a row climb in pitch, with a word
+## every RUN_WORD of them. Three live stars by misses and looks
+## (`GL_STARS_CUT`); nothing wrong can stand, so there is no Undo.
+##
 ## Everything else -- the box, the tweezers, the plates, the iron, the
 ## party, the seal -- is Pixel Garden's own code, run as it is. Its sounds
 ## are its own set (assets/sfx/glimpse/), Pixel Garden's takes a step off.
@@ -32,6 +39,11 @@ const TIME_W := 10.0
 const TIME_OUT := 22.0
 ## Each look spent takes this off the solve's quality.
 const LOOK_COST := 0.1
+## Misses and looks that keep three stars, two (more is one).
+const GL_STARS_CUT := [0, 2]
+## A word every this many right beads in a row.
+const RUN_WORD := 5
+const ROSE := Color("e0607e")
 
 ## When the picture held up goes back under its cover (INF: it is not held
 ## up by the board), when that show began, and whether it is the first.
@@ -45,6 +57,14 @@ var _counted := 0
 var _first_at := INF
 var looks_left := 0
 var looks_used := 0
+## Beads refused today, the right ones in a row now, and the best run.
+var misses := 0
+var run := 0
+var best_run := 0
+## A stroke that missed paints no more pegs.
+var _missed_in_stroke := false
+## Rose rings on missed pegs: [peg, when].
+var _miss_rings: Array = []
 var _cover_mesh: ArrayMesh
 var _cover_key := ""
 
@@ -56,6 +76,7 @@ func title() -> String: return "Glimpse"
 
 func rules() -> String:
 	var out := tr("GL_RULES") % int(SHOW_BY[_state.band])
+	out += "\n\n" + tr("GL_RULES_JUDGE")
 	out += "\n\n" + tr("PG_RULES_PLATES")
 	var n: int = LOOKS_BY[_state.band]
 	out += "\n\n" + (tr("GL_RULES_LOOKS_ONE") if n == 1 else tr("GL_RULES_LOOKS_N") % n)
@@ -72,7 +93,6 @@ func tutorial_pages() -> Array:
 		[Diagram.Lesson.SEAT, "HTP_PG_SEAT", tr("HTP_PG_SEAT_BODY")],
 		[Diagram.Lesson.PLATE, "HTP_PG_PLATE", tr("HTP_GL_PLATE_BODY")],
 		[Diagram.Lesson.LOOK, "HTP_GL_LOOK", tr("HTP_GL_LOOK_BODY_ONE") if n == 1 else tr("HTP_GL_LOOK_BODY_N") % n],
-		[Diagram.Lesson.UNDO, "HTP_WT_UNDO", tr("HTP_PG_UNDO_BODY")],
 	]
 	var pages := []
 	for step in steps:
@@ -83,7 +103,7 @@ func tutorial_pages() -> Array:
 	return pages
 
 func capabilities() -> Array[String]:
-	return ["undo"]
+	return []
 
 func hints_left() -> int:
 	return 0
@@ -96,6 +116,11 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_counted = 0
 	looks_left = LOOKS_BY[clampi(difficulty, 0, 3)]
 	looks_used = 0
+	misses = 0
+	run = 0
+	best_run = 0
+	_missed_in_stroke = false
+	_miss_rings = []
 	_cover_mesh = null
 	super(rng, difficulty)
 	# The picture comes up once the board has popped in and nothing lies
@@ -166,6 +191,7 @@ func _press(at: Vector2) -> void:
 			_first_at = INF
 			_hold_up(SHOW_BY[_state.band], true)
 		return
+	_missed_in_stroke = false
 	if _thumb.has_point(at):
 		if is_done() or _won:
 			return
@@ -175,6 +201,7 @@ func _press(at: Vector2) -> void:
 			return
 		looks_left -= 1
 		looks_used += 1
+		_rate_stars()
 		_cover_mesh = null
 		_hold_up(PEEK_SHOW, false)
 		return
@@ -185,6 +212,78 @@ func _release() -> void:
 	if _showing():
 		return
 	super()
+
+## The card is covered: nothing on it to read, and Easy traces nothing.
+func _reads_card() -> bool:
+	return false
+
+func _slips() -> int:
+	return misses + looks_used
+
+func _star_cut() -> Array:
+	return GL_STARS_CUT
+
+## A run of right beads climbs higher than a stroke does.
+func _climb() -> float:
+	return minf(0.3, 0.025 * run)
+
+## A bead is judged as it goes down: the picture's colour for that peg
+## stays, any other hops home at once and counts a miss, and the stroke
+## that missed paints no more (a run swept one peg too far costs one miss,
+## not a row of them).
+func _paint(c: int) -> void:
+	if _missed_in_stroke:
+		_last = c
+		return
+	var bare: bool = c >= 0 and c < _state.size() and _state.beads[c] == State.EMPTY and _state.locked[c] == 0
+	if not _erase and bare and not _painted.has(c) and not _plate_busy(_state.plate_of(c)) \
+			and _state.left(brush) > 0 and int(_state.want[c]) != brush:
+		_painted[c] = true
+		_last = c
+		_miss(c)
+		return
+	var before: int = _state.beads[c] if c >= 0 and c < _state.size() else State.EMPTY
+	super(c)
+	if not _erase and before == State.EMPTY and c >= 0 and c < _state.size() and _state.beads[c] == brush:
+		run += 1
+		best_run = maxi(best_run, run)
+		if run % RUN_WORD == 0:
+			_word(tr("GL_WORD_RUN") % run, _centre(c))
+			fx.cue("steady", 1.0 + minf(0.2, 0.02 * run / RUN_WORD))
+			if not Motion.reduce and zoom.view.has_point(zoom.to_screen(_centre(c))):
+				fx.sparkle(zoom.to_screen(_centre(c)), Pal.SUN)
+
+## Peg `c` refused the colour in hand: the bead drops onto it and hops back
+## to its compartment, a rose ring where it tried, a star falling.
+func _miss(c: int) -> void:
+	var t := _now()
+	_missed_in_stroke = true
+	misses += 1
+	run = 0
+	_state.miss(c, brush)
+	if not Motion.reduce:
+		_flying.append({"from": _centre(c), "to": _home(brush), "colour": _state.colours[brush],
+			"at": t + 0.18, "sits": true})
+		_miss_rings.append([c, t])
+		_busy_for(HOME_TIME + 0.3)
+	_shake_at[c] = t
+	fx.cue("astray")
+	fx.buzz(Haptics.WARN)
+	_tell("GL_MISS_FIRST" if misses == 1 else "GL_MISS")
+	_rate_stars()
+	_refresh()
+
+## The rose rings on missed pegs, into the board's marks.
+func _more_marks(b: Face.Builder, t: float) -> void:
+	var keep: Array = []
+	for m: Array in _miss_rings:
+		var u := (t - float(m[1])) / 0.7
+		if u >= 1.0:
+			continue
+		keep.append(m)
+		var rr := _cell * (0.42 + 0.12 * u)
+		b.stroke(Face.Builder.ring(_centre(int(m[0])), rr, rr), _cell * 0.07, Color(ROSE, 1.0 - u * u), true)
+	_miss_rings = keep
 
 func _pinch_began() -> void:
 	_cancel_stroke()
@@ -270,28 +369,31 @@ static func cover(b: Face.Builder, r: Rect2, left: int, most: int) -> void:
 		else:
 			b.stroke(Face.Builder.ring(at, pip * 0.8, pip * 0.8), 3.0, Color(ink, 0.45), true)
 
-## Flawless is every bead right the first time, without a look.
+## Flawless is not one miss, without a look.
 func _party(span: float) -> void:
-	_flawless = looks_used == 0 and _state.first_right() >= _state.target
+	_flawless = looks_used == 0 and misses == 0
 	super(span)
 
-## The share of the picture's beads that went down right the first time,
-## each look spent taking a little off.
+## The share of the picture's beads less the misses, each look spent taking
+## a little off.
 func skill_quality() -> float:
 	if _state.target <= 0:
 		return -1.0
-	var q := float(_state.first_right()) / float(_state.target)
+	var q := 1.0 - float(misses) / float(_state.target)
 	return clampf(q - LOOK_COST * looks_used, 0.0, 1.0)
 
 func flat_win() -> Dictionary:
-	var right: int = _state.first_right()
-	var line := tr("GL_WIN_ALL") if right >= _state.target else tr("GL_WIN_FIRST") % [right, _state.target]
+	var line := tr("GL_WIN_ALL") if misses == 0 else (tr("GL_WIN_MISS_ONE") if misses == 1 else tr("GL_WIN_MISS_N") % misses)
+	if misses > 0 and best_run >= RUN_WORD:
+		line += " " + tr("GL_WIN_RUN") % best_run
 	return {"faces": [], "subtitle": tr("GL_WIN") + " " + line}
 
 func completion_record() -> Dictionary:
 	var out := super()
 	out["looks"] = looks_used
 	out["first"] = _state.first_right()
+	out["misses"] = misses
+	out["run"] = best_run
 	return out
 
 ## A finished day reopens with the picture shown, never held up again.
@@ -301,3 +403,5 @@ func restore_completed_board() -> void:
 	_peek = false
 	super()
 	looks_used = int(completed_record.get("looks", 0))
+	misses = int(completed_record.get("misses", 0))
+	best_run = int(completed_record.get("run", 0))

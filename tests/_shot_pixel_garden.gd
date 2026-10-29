@@ -25,6 +25,8 @@ const SHOT_DIR := "/tmp"
 var _t := 0.0
 var _level := 0
 var _mode := "rest"
+## `id=glimpse` shoots Glimpse, which is this board's code.
+var _id := "pixelgarden"
 var _reduce := false
 var _dir := SHOT_DIR
 var _menu: Node
@@ -49,6 +51,8 @@ func _initialize() -> void:
 			_level = int(a.substr(2))
 		elif a == "rm":
 			_reduce = true
+		elif a.begins_with("id="):
+			_id = a.substr(3)
 		elif a.begins_with("out="):
 			_dir = a.substr(4)
 		else:
@@ -69,7 +73,7 @@ func _process(delta: float) -> bool:
 		_t = 0.0
 		var entry: Dictionary = {}
 		for e in load("res://ui/registry.gd").PUZZLES:
-			if e.id == "pixelgarden":
+			if e.id == _id:
 				entry = e
 		if _reduce:
 			load("res://core/motion.gd").reduce = true
@@ -127,7 +131,7 @@ func _shot(tag := "") -> void:
 		return
 	RenderingServer.force_draw()
 	_n += 1
-	var path := "%s/pg_%s_d%d_%d%s.png" % [_dir, _mode, _level, _n, tag]
+	var path := "%s/%s_%s_d%d_%d%s.png" % [_dir, _id, _mode, _level, _n, tag]
 	root.get_texture().get_image().save_png(path)
 	print("saved ", path, "  hearts ", _puzzle.hearts, " streak ", _puzzle._streak, " words ", _puzzle._words.size(),
 		" love ", _puzzle._love.size(), " flies ", _puzzle._flies.size(), " irons ", _puzzle._irons.size(),
@@ -292,6 +296,57 @@ func _script() -> void:
 			for t in [17.7, 18.3, 18.9, 19.7, 21.9]:
 				_at(t, _shot)
 			_end = 22.3
+		"gl":
+			# Glimpse: the picture held up, put down by a tap, then a few of
+			# its beads seated (one of them wrong) and a look spent.
+			_at(1.6, _shot)
+			_at(1.8, func() -> void: _puzzle._press(_puzzle.cell_to_local(0, 0)))
+			_at(2.2, func() -> void:
+				var k := 0
+				for c in st.size():
+					if int(st.want[c]) != -1 and k < st.target / 2:
+						_puzzle.set_brush(int(st.want[c]))
+						_tap(c)
+						k += 1
+				for c in st.size():
+					if int(st.want[c]) == -1:
+						_tap(c)
+						break)
+			for t in [2.4, 2.9, 3.4]:
+				_at(t, _shot)
+			_end = 4.0
+		"fun":
+			# The made-fun pass: the first rows seated right (their leaves),
+			# one bead astray below them, a finger held on a peg (the card's
+			# ring), the bulb's reading and its fix.
+			_at(0.6, func() -> void:
+				var rows := 0
+				for y in st.n:
+					var any := false
+					for x in st.n:
+						var c: int = y * st.n + x
+						if int(st.want[c]) != -1:
+							any = true
+							_puzzle.set_brush(int(st.want[c]))
+							_tap(c)
+					if any:
+						rows += 1
+					if rows >= 3:
+						for c in range((y + 1) * st.n, st.size()):
+							if int(st.want[c]) != -1:
+								_puzzle.set_brush((int(st.want[c]) + 1) % st.names.size())
+								_tap(c)
+								break
+						break)
+			_at(1.3, _shot)
+			_at(1.4, func() -> void: _mouse(_puzzle.cell_to_local(st.n - 2, st.n / 2), true))
+			_at(1.6, _shot)
+			_at(1.65, func() -> void: _mouse(_puzzle.cell_to_local(st.n - 2, st.n / 2), false))
+			_at(1.8, func() -> void: _puzzle.hint())
+			_at(2.1, _shot)
+			_at(2.4, func() -> void: _puzzle.hint())
+			_at(2.9, _shot)
+			_end = 3.4
 		"rest":
 			_at(0.6, func() -> void:
 				var pegs: PackedInt32Array = st.plate_pegs(0)

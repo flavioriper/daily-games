@@ -146,7 +146,8 @@ func _band_checks() -> void:
 	var budget := 0
 	_ok(st.moves_budget() == budget and _b.max_moves == budget and _b.max_hearts == 0,
 		"band %d: %d beads, budget %d, no hearts" % [_band, st.target, _b.max_moves])
-	var caps: Array[String] = ["undo"]
+	# Insane has the bulb again since 2026-10-13.
+	var caps: Array[String] = ["undo", "hint"]
 	if _band < 3:
 		caps = ["undo", "hint", "check"]
 	_ok(_b.capabilities() == caps, "band %d capabilities %s" % [_band, _b.capabilities()])
@@ -435,7 +436,8 @@ func _zoom_checks() -> void:
 		# A hint out of sight is brought into view (Hard), and Reset goes whole.
 		if band == 2:
 			var ok := true
-			for i in 2:
+			# Two hints, each a reading and its free fix (2026-10-29).
+			for i in 4:
 				if _b.hint():
 					var h := -1
 					for c in st.size():

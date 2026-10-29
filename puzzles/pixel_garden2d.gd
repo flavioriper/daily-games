@@ -286,6 +286,22 @@ const STAMP_TILT := -0.22
 ## picture held, a chip picked, a fused or taken peg, a colour run out, the
 ## iron setting off, its steam, the words, the gags and the party say
 ## nothing; the seal knocks as it lands (`_party`).
+## The made-fun pass (2026-10-29, docs/agents/boards/pixel-garden.md "Made
+## fun"): a leaf sprouts at the end of a row of the board that is right, so a
+## slip is found within a row instead of at the iron (a slip went unsaid for
+## a median 30 to 913 beads by band: tests/_probe_pg_fun.gd); the pattern
+## card rings the square under the finger and dims the squares already
+## beaded, the board and the card carry a guide every GUIDE pegs from the
+## seam, Easy traces the picture's shape under its pegs, the bulb reads
+## before it fixes, and three live stars count the slips.
+const StarLine = preload("res://ui/flat/star_line.gd")
+const LEAF_TIME := 0.42
+const GUIDE := 4
+## Slips that keep three stars, two (more is one): beads the iron sent home
+## and bulbs read.
+const STARS_CUT := [0, 3]
+const STAR_S := 0.9
+
 const HAPTICS := {
 	"undo": Haptics.TICK,
 	"reset": Haptics.TAP,
@@ -299,6 +315,19 @@ const HAPTICS := {
 }
 
 var _state = State.new()
+## When each row's leaf sprouted (INF: none), and whether the next look at
+## the rows is quiet (a deal, a restore: leaves already there just stand).
+var _row_leaf := PackedFloat64Array()
+var _rows_quiet := true
+var _leaves_grown := 0
+## Beads the iron has sent home today, and the live stars they cost.
+var sent_home := 0
+var _stars := StarLine.new()
+## A bulb's reading standing until the next press: the peg it aims its fix
+## at (-1: none).
+var _reading := -1
+var _thumb_dim: ArrayMesh
+var _thumb_dim_key := ""
 var fx: Node2D
 ## The chosen colour: an index into the day's colours.
 var brush := 0
@@ -508,6 +537,8 @@ func rules() -> String:
 	var out := tr("PG_RULES")
 	if "check" in capabilities():
 		out += " " + tr("PG_RULES_CHECK")
+	if _reads_card():
+		out += "\n\n" + tr("PG_RULES_LEAF")
 	if max_moves <= 0:
 		out += "\n\n" + tr("PG_RULES_PLATES")
 	if max_hearts > 0:
@@ -641,6 +672,13 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_won = false
 	_toast = ""
 	_toast_at = -100.0
+	_row_leaf = PackedFloat64Array()
+	_rows_quiet = true
+	_leaves_grown = 0
+	sent_home = 0
+	_reading = -1
+	_stars.clear(3)
+	_thumb_dim = null
 	# The colour the picture uses most of is in hand to begin with.
 	brush = 0
 	for k in _state.need.size():
@@ -1195,6 +1233,7 @@ func _touch(c: int, until: float) -> void:
 	_busy_for(until - _now())
 
 func _refresh() -> void:
+	_check_rows()
 	_live_dirty = true
 	_stale = true
 	queue_redraw()
@@ -1226,6 +1265,137 @@ func _plate_busy(q: int) -> bool:
 		if int(ir.q) == q and t < float(ir.end):
 			return true
 	return false
+
+# --- the made-fun pass (2026-10-29) ---
+
+## Whether the pattern card is read while playing (its ring, its dimmed
+## squares, the guides) and Easy traces the shape: Glimpse covers the card.
+func _reads_card() -> bool:
+	return true
+
+## Easy's board shows the picture's shape under its pegs.
+func _traces() -> bool:
+	return _reads_card() and _state.band == 0
+
+## The slips the live stars count, and where they fall.
+func _slips() -> int:
+	return sent_home + hints_used
+
+func _star_cut() -> Array:
+	return STARS_CUT
+
+## Sets the live stars from the slips so far; `shown` false sets them
+## quietly (a restore).
+func _rate_stars(shown := true) -> void:
+	var w := _slips()
+	var cut := _star_cut()
+	var n := 3 if w <= int(cut[0]) else (2 if w <= int(cut[1]) else 1)
+	if _stars.rate(n, _now(), shown) != 0:
+		_busy_for(StarLine.FALL)
+
+## How much a seated bead's pop climbs: a run up a row, bead by bead.
+func _climb() -> float:
+	return minf(0.12, 0.008 * _seated_in_stroke)
+
+## A leaf for every row that is right now; one that has gone wrong loses
+## its leaf. New leaves (not on a quiet look) sprout with a climbing note.
+func _check_rows() -> void:
+	var n: int = _state.n
+	if n == 0 or _state.beads.size() != n * n:
+		return
+	if _row_leaf.size() != n:
+		_row_leaf.resize(n)
+		_row_leaf.fill(INF)
+	var t := _now()
+	var quiet := _rows_quiet or _won or is_done()
+	var grown := 0
+	var last := -1
+	for y in n:
+		var right: bool = _state.row_right(y)
+		if right and _row_leaf[y] == INF:
+			_row_leaf[y] = -1000.0 if quiet else t
+			if not quiet:
+				grown += 1
+				last = y
+		elif not right and _row_leaf[y] != INF:
+			_row_leaf[y] = INF
+	_rows_quiet = false
+	if grown <= 0:
+		return
+	_leaves_grown += grown
+	_live_dirty = true
+	_busy_for(LEAF_TIME)
+	var step: int = mini(_leaves_grown - 1, 12)
+	fx.cue("combo", pow(2.0, step / 12.0), -7.0)
+	if not Motion.reduce:
+		var at := _leaf_at(last)
+		if zoom.view.has_point(zoom.to_screen(at)):
+			fx.sparkle(zoom.to_screen(at), Pal.GOOD)
+
+## What a board built on this one marks over the beads (Glimpse's misses).
+func _more_marks(_b: Face.Builder, _t: float) -> void:
+	pass
+
+## Where a row's leaf grows: just past the row's last peg, in the plate's
+## margin.
+func _leaf_at(y: int) -> Vector2:
+	var n: int = _state.n
+	return _centre(y * n + n - 1) + Vector2(_cell * 0.5, _cell * 0.2)
+
+## Every row's leaf, a sprout popping in. Into the marks mesh.
+func _draw_leaves(b: Face.Builder, t: float) -> void:
+	for y in _row_leaf.size():
+		var at0: float = _row_leaf[y]
+		if at0 == INF:
+			continue
+		var k := 1.0 if Motion.reduce else Motion.pop_in_scale(t - at0, LEAF_TIME).x
+		if k <= 0.0:
+			continue
+		var at := _leaf_at(y)
+		var s := minf(_cell * 0.3, 18.0) * k
+		var tip := at + Vector2(s * 0.9, -s * 1.1)
+		var leaf := PackedVector2Array()
+		leaf.append_array(Face.Builder.bezier2(at, at + Vector2(s * 1.4, -s * 0.1), tip))
+		leaf.append_array(Face.Builder.bezier2(tip, at + Vector2(-s * 0.1, -s * 1.4), at))
+		b.fan(leaf, Pal.GOOD)
+		b.stroke(PackedVector2Array([at, at.lerp(tip, 0.7)]), maxf(1.0, s * 0.16), Pal.GOOD.darkened(0.3))
+
+## The pattern card's square for peg `c`, about the card's own corner, and
+## its side (as _build_thumb_pixels lays them).
+func _thumb_square(c: int) -> Rect2:
+	var n: int = _state.n
+	var h: int = _state.half
+	var inner := Rect2(Vector2.ZERO, _thumb.size).grow(-8.0)
+	var s := (inner.size.x - 12.0) / (float(n) + THUMB_GAP)
+	var at := inner.position + Vector2.ONE * 6.0
+	var x := c % n
+	var y := c / n
+	var o := at + Vector2((1.0 if x >= h else 0.0) * (h + THUMB_GAP), (1.0 if y >= h else 0.0) * (h + THUMB_GAP)) * s
+	return Rect2(o + Vector2(x % h if h > 0 else x, y % h if h > 0 else y) * s, Vector2.ONE * s)
+
+## Over the pattern card: the squares whose pegs hold a bead, dimmed (right
+## or wrong, as the bar counts them), and the square under the finger,
+## ringed. Two small meshes.
+func _draw_card_reading(xf: Transform2D, seen: float) -> void:
+	if not _reads_card() or _won or is_done() or _thumb.size.x <= 0.0:
+		return
+	var key := "%d|%d|%d" % [_state.placed(), _state.history.size(), _gen]
+	if _thumb_dim == null or key != _thumb_dim_key:
+		var b := Face.Builder.new()
+		for c in _state.size():
+			if _state.beads[c] != State.EMPTY and _state.want[c] != State.EMPTY:
+				var r := _thumb_square(c)
+				b.fan(Face.Builder.round_rect(r.position, r.size, r.size.x * 0.2), Color(Pal.PG_BOARD, 0.72))
+		_thumb_dim = b.mesh() if not b.verts.is_empty() else null
+		_thumb_dim_key = key
+	var place := xf * Transform2D(0.0, _thumb.position)
+	if _thumb_dim != null:
+		draw_mesh(_thumb_dim, null, place, Color(1.0, 1.0, 1.0, seen))
+	if _stroking and _last >= 0 and _last < _state.size():
+		var r := _thumb_square(_last).grow(maxf(1.5, _thumb_square(_last).size.x * 0.3))
+		draw_set_transform_matrix(place)
+		draw_rect(r, Color(Pal.TEXT, 0.9 * seen), false, 2.5)
+		draw_set_transform(Vector2.ZERO)
 
 # --- the drawing ---
 
@@ -1395,6 +1565,7 @@ func _build_table() -> void:
 		p.fan(_corners(Rect2(face.position, face.size - Vector2(0.0, 2.0)), radii), Pal.PG_BOARD)
 		# (Just inside the plate's top edge: the field is clipped there.)
 		_clip(p, Vector2(pr.get_center().x, face.position.y + 1.0 + _cell * 0.08), _cell)
+	_draw_guides(p)
 	_plates = p.mesh()
 	# The tray's inner corners: what lies between the floor's round corner
 	# and the square one the field is clipped to.
@@ -1417,6 +1588,35 @@ func _build_table() -> void:
 				var v2 := k.vertex(pts[i + 1], ring[1])
 				k.tri(v0, v1, v2)
 	_mask = k.mesh()
+
+## Over the plates, under the pegs: a hairline every GUIDE pegs out from the
+## seam, as cross-stitch cloth has, so a place is counted from the nearest
+## line; and on Easy the picture's shape as darker wells (shape only, never
+## a colour).
+func _draw_guides(p: Face.Builder) -> void:
+	if not _reads_card():
+		return
+	var n: int = _state.n
+	var h: int = _state.half
+	if h > GUIDE:
+		var top := _centre(0).y - _cell * 0.5
+		var foot := _centre((n - 1) * n).y + _cell * 0.5
+		var left := _centre(0).x - _cell * 0.5
+		var right := _centre(n - 1).x + _cell * 0.5
+		var ink := Color(Pal.PG_BOARD_DEEP, 0.75)
+		var w := maxf(1.0, _cell * 0.035)
+		for j in range(1, n):
+			if j == h or absi(j - h) % GUIDE != 0:
+				continue
+			var x := (_centre(j - 1).x + _centre(j).x) * 0.5
+			var y := (_centre((j - 1) * n).y + _centre(j * n).y) * 0.5
+			p.stroke(PackedVector2Array([Vector2(x, top), Vector2(x, foot)]), w, ink)
+			p.stroke(PackedVector2Array([Vector2(left, y), Vector2(right, y)]), w, ink)
+	if _traces():
+		var well := Color(Pal.PG_BOARD_DEEP, 0.55)
+		for c in _state.size():
+			if _state.want[c] != State.EMPTY:
+				p.disc(_centre(c), _cell * 0.4, well)
 
 ## Every peg, as copies of one: the ones the picture covers, and the bare
 ## ones, which the win fades (under a bead the peg is hidden anyway).
@@ -1534,6 +1734,12 @@ func _build_live(t: float) -> void:
 	for c in _state.size():
 		if _state.locked[c] == State.HINTED or _halo.has(c):
 			_mark(marks, c, t)
+	_draw_leaves(marks, t)
+	_more_marks(marks, t)
+	if _reading >= 0 and _reading < _state.size() and _state.beads[_reading] == State.EMPTY:
+		# The bulb's reading of a bare peg: a sun ring round it, held.
+		var rr := _cell * 0.46
+		marks.stroke(Face.Builder.ring(_centre(_reading), rr, rr), _cell * 0.07, Pal.SUN, true)
 	_marks = marks.mesh() if not marks.verts.is_empty() else null
 	_live = _build_air(t)
 
@@ -1844,6 +2050,8 @@ func _plate_done(ir: Dictionary, astray: int, costs := true) -> void:
 		return
 	_streak = 0
 	_lost_ever = true
+	sent_home += astray
+	_rate_stars()
 	fx.cue("astray")
 	if max_hearts > 0 and costs:
 		_lose_heart()
@@ -2318,6 +2526,8 @@ func _draw_head_text(t: float, xf: Transform2D, seen: float) -> void:
 		pill_w = font.get_string_size(MovesPill.line(self, moves_left), HORIZONTAL_ALIGNMENT_LEFT, -1.0,
 			MovesPill.FONT).x + 2.0 * MovesPill.PAD
 		hearts_w = pill_w + 12.0
+	elif max_hearts <= 0:
+		hearts_w = StarLine.width(STAR_S) + 12.0
 	draw_string(font, Vector2(_right.position.x + 4.0, _right.position.y + font.get_ascent(NAME_SIZE)),
 		name, HORIZONTAL_ALIGNMENT_LEFT, _right.size.x - 8.0 - hearts_w, NAME_SIZE, Color(Pal.TEXT, seen))
 	var count_size := COUNT_SMALL if _chip_rows > 1 else COUNT_SIZE
@@ -2339,12 +2549,17 @@ func _draw_head_text(t: float, xf: Transform2D, seen: float) -> void:
 	if max_moves > 0 and seen >= 1.0:
 		_moves_pill.draw(self, xf * Vector2(_right.end.x - pill_w * 0.5 - 4.0, _right.position.y + 17.0),
 			moves_left, t)
+	elif max_hearts <= 0:
+		# The live stars, at the right end of the name's line.
+		var sx := _right.end.x - StarLine.width(STAR_S) + StarLine.R * STAR_S - 4.0
+		_stars.draw(self, xf * Vector2(sx, _right.position.y + font.get_ascent(NAME_SIZE) * 0.62), STAR_S * xf.get_scale().x, t, seen)
 	_draw_thumb(xf, seen)
 
 ## The pattern card's picture at rest (Glimpse covers it).
 func _draw_thumb(xf: Transform2D, seen: float) -> void:
 	if _thumb_mesh != null:
 		draw_mesh(_thumb_mesh, null, xf * Transform2D(0.0, _thumb.position), Color(1.0, 1.0, 1.0, seen))
+	_draw_card_reading(xf, seen)
 
 ## The held picture: the pattern card grown over the board, so it can be
 ## read peg for peg beside nothing at all.
@@ -2581,6 +2796,10 @@ func _press(at: Vector2) -> void:
 	var c := _peg_at(p)
 	if c < 0 or _plate_busy(_state.plate_of(c)):
 		return
+	# A stroke puts out the bulb's reading.
+	if _reading >= 0:
+		_reading = -1
+		_halo = {}
 	_stroking = true
 	_start = c
 	_start_at = p
@@ -2658,7 +2877,7 @@ func _paint(c: int) -> void:
 				_seated_in_stroke += 1
 				# A run climbs a little as it goes, like beads clicking down
 				# a row one after another.
-				var climb := minf(0.12, 0.008 * _seated_in_stroke)
+				var climb := _climb()
 				fx.cue("place", 0.94 + climb + 0.06 * _h01(c, _painted.size()), 0.0)
 			else:
 				_touch(c, t + LIFT_TIME)
@@ -2810,19 +3029,78 @@ func _show_changes(before: PackedInt32Array, pegs: PackedInt32Array, per: float,
 	_bar_bump = t
 	_busy_for(Motion.BUMP_TIME + Motion.stagger(pegs.size(), per))
 
+## A reading standing counts as a hint left: its second press is free.
 func hints_left() -> int:
-	return maxi(0, State.hints_for(_state.band) + hints_extra - hints_used)
+	return maxi(0, State.hints_for(_state.band) + hints_extra - hints_used) + (1 if _reading >= 0 else 0)
 
-## Puts one peg right and fixes it: a bead out of place is lifted (or turned
-## the right colour), else a missing bead drops in, under the hint's ring.
+## The bulb in two presses (the house's, as Paper Box and Binairo have it).
+## The first reads, for one hint: every bead astray rimmed rose and counted,
+## or, with none, the next bare peg the picture wants ringed in sun and its
+## colour put in the tweezers. A second press while the reading stands fixes
+## one of those, free (`_fix`). Any stroke puts the reading out.
 func hint() -> bool:
-	if _blocked() or hints_left() <= 0 or _stroking:
+	if _blocked() or _stroking:
 		return false
+	if _reading >= 0:
+		var at := _reading
+		_reading = -1
+		return _fix(at)
+	if hints_left() <= 0:
+		return false
+	var wrong := PackedInt32Array()
+	for c in _state.wrong():
+		if _state.locked[c] == 0:
+			wrong.append(c)
+	var t := _now()
+	if not wrong.is_empty():
+		hints_used += 1
+		_halo = {}
+		_halo_at = t
+		for c in wrong:
+			_halo[c] = true
+			_shake_at[c] = t
+			_touch(c, t + Motion.SHIVER_TIME)
+		_reading = wrong[0]
+		_tell("PG_READ_ASTRAY_ONE" if wrong.size() == 1 else "PG_READ_ASTRAY_N", "" if wrong.size() == 1 else str(wrong.size()))
+		fx.cue("check")
+		_show_peg(wrong[0])
+	else:
+		var bare: PackedInt32Array = _state.missing()
+		if bare.is_empty():
+			return false
+		hints_used += 1
+		# The bare peg nearest the last one touched, or the first.
+		var c: int = bare[0]
+		if _focus != Vector2.INF:
+			var best := INF
+			for o in bare:
+				var d := _centre(o).distance_squared_to(_focus)
+				if d < best:
+					best = d
+					c = o
+		_reading = c
+		var k: int = _state.want[c]
+		if k != brush:
+			_pick(k)
+		if not Motion.reduce:
+			_rings.append({"pos": _centre(c), "at": t})
+			_busy_for(Motion.RING_TIME)
+		_tell("PG_READ_NEXT")
+		fx.cue("check_ok")
+		_show_peg(c)
+	_rate_stars()
+	moved.emit()
+	_refresh()
+	return true
+
+## Puts peg `at` right and fixes it: a bead out of place is lifted (or turned
+## the right colour), else a missing bead drops in, under the hint's ring.
+func _fix(at: int) -> bool:
 	var before: PackedInt32Array = _state.beads.duplicate()
-	var h: Dictionary = _state.hint()
+	var h: Dictionary = _state.hint(at)
 	if h.is_empty():
+		_refresh()
 		return false
-	hints_used += 1
 	var c: int = h.peg
 	var pegs := PackedInt32Array()
 	for o in _state.size():
@@ -3125,7 +3403,7 @@ func _on_solved() -> void:
 	_refresh()
 
 func completion_record() -> Dictionary:
-	return {"hearts": hearts, "flawless": _flawless, "moves": moves_left}
+	return {"hearts": hearts, "flawless": _flawless, "moves": moves_left, "slips": _slips(), "stars": _stars.stars}
 
 ## The day as dealt, for tools/export_days.gd (PuzzleBase.day_dict): the bare
 ## pegboard in its four plates, and the picture the pattern card shows. Every
@@ -3178,6 +3456,8 @@ func restore_completed_board() -> void:
 	hearts = clampi(int(completed_record.get("hearts", max_hearts)), 0, max_hearts)
 	moves_left = clampi(int(completed_record.get("moves", max_moves)), 0, max_moves)
 	_flawless = bool(completed_record.get("flawless", false))
+	_stars.rate(int(completed_record.get("stars", 3)), _now(), false)
+	_reading = -1
 	out_of_hearts = false
 	modulate = Color.WHITE
 	_toast = ""
