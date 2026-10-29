@@ -48,6 +48,7 @@ const Scenery = preload("res://ui/flat/scenery.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const World = preload("res://puzzles/how_big_world.gd")
+const StarLine = preload("res://ui/flat/star_line.gd")
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 const FLAT_HOST := "res://ui/flat/flat_host.gd"
 ## The slide into the win's span (the host's SLOT_TIME), and the air the
@@ -115,8 +116,17 @@ const PILL_H := 50.0
 const NAME_FONT := 36
 const SIZE_FONT := 30
 const SCORE_FONT := 84
+const GRADE_FONT := 60
 const VERDICT_FONT := 32
+const NOTE_FONT := 29
 const FACT_FONT := 27
+## The round's points count up on the card, a click every few, from this long
+## after the card pops, over COUNT_TIME (2026-10-29).
+const COUNT_FROM := 0.12
+const COUNT_TIME := 0.45
+const COUNT_TICKS := 6
+## The bulb's second press: the window that scores 90 drawn as two outlines.
+const WINDOW_W := 3.0
 const TOAST_HOLD := 2.4
 const TOAST_H := 76.0
 const TOAST_PAD := 72.0
@@ -221,6 +231,12 @@ var _toast := ""
 var _toast_at := -100.0
 var _hint_dir := 0
 var _hint_at := -INF
+## The bulb pressed once this round: a second press, free, shows the window
+## (State.window) as two outlines until the lock.
+var _reading := false
+var _window := false
+## The stars the day can still reach (State.stars), on the points pill.
+var _stars := StarLine.new()
 
 func puzzle_id() -> String: return "how_big"
 func title() -> String: return "How Big?"
@@ -354,7 +370,10 @@ func _deal() -> void:
 	_seal_mesh = null
 	_toast = ""
 	_hint_dir = 0
+	_reading = false
+	_window = false
 	_frame = {}
+	_stars.clear(state.stars())
 
 # --- layout ---
 
@@ -645,6 +664,12 @@ func _build_live(now: float) -> ArrayMesh:
 	if _phase == Phase.PLAY or not state.locked():
 		var xf := Art.stand(tgt_id, _tgt_foot(), _px * pop.y, true)
 		Art.fill(b, tgt_id, xf, Color(PAPER, t_alpha))
+		if _window:
+			# The bulb's second press: the least and the most that score 90.
+			var win: Vector2 = state.window()
+			for m: float in [win.x, win.y]:
+				Art.outline(b, tgt_id, Art.stand(tgt_id, _tgt_foot(), _px_of(m), true), WINDOW_W,
+					Color(Pal.LEAF_DEEP, 0.7 * t_alpha))
 		Art.outline(b, tgt_id, xf, OUTLINE_W, Color(INK, t_alpha))
 		_grip(b, now, t_alpha)
 		return _mesh_of(b)
@@ -732,8 +757,9 @@ func _draw_hud() -> void:
 	var rw := font.get_string_size(right_text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, PILL_FONT).x
 	var pip := 16.0
 	var pips_w := n * pip + (n - 1) * 8.0
-	var icon := PILL_H * 0.8
-	var boxes := [Vector2(lw + pips_w + 56.0, PILL_H), Vector2(rw + icon + 44.0, PILL_H)]
+	var star_s := 0.8
+	var stars_w := StarLine.width(star_s)
+	var boxes := [Vector2(lw + pips_w + 56.0, PILL_H), Vector2(rw + stars_w + 44.0, PILL_H)]
 	var centres := [Vector2(_card.position.x + _pad() + boxes[0].x * 0.5, y),
 		Vector2(_card.end.x - _pad() - boxes[1].x * 0.5, y)]
 	var b := Face.Builder.new()
@@ -752,8 +778,7 @@ func _draw_hud() -> void:
 		elif k == state.index:
 			tint = Pal.TEXT_DIM
 		b.disc(c, pip * 0.5, tint)
-	var star_at: Vector2 = centres[1] + Vector2(-boxes[1].x * 0.5 + 16.0 + icon * 0.5, 0.0)
-	b.polygon(Seal.star(star_at, icon * 0.5), Pal.SUN)
+	var stars_at: Vector2 = centres[1] + Vector2(-boxes[1].x * 0.5 + 18.0 + StarLine.R * star_s, 0.0)
 	# Insane's hearts, between the pills.
 	for k in max_hearts:
 		var c := Vector2(size.x * 0.5 + (k - (max_hearts - 1) * 0.5) * 46.0, y)
@@ -767,7 +792,8 @@ func _draw_hud() -> void:
 	var mid := (font.get_ascent(PILL_FONT) - font.get_descent(PILL_FONT)) * 0.5
 	_hud_layer.draw_string(font, Vector2(centres[0].x - boxes[0].x * 0.5 + 22.0, y + mid), left_text,
 		HORIZONTAL_ALIGNMENT_LEFT, -1.0, PILL_FONT, Color(Pal.TEXT, alpha))
-	_hud_layer.draw_string(font, star_at + Vector2(icon * 0.5 + 8.0, mid), right_text,
+	_stars.draw(_hud_layer, stars_at, star_s, now, alpha)
+	_hud_layer.draw_string(font, stars_at + Vector2(stars_w - StarLine.R * star_s + 10.0, mid), right_text,
 		HORIZONTAL_ALIGNMENT_LEFT, -1.0, PILL_FONT, Color(Pal.TEXT, alpha))
 	_draw_captions(now, alpha)
 	if state.locked() and _phase != Phase.SWAP:
@@ -859,19 +885,27 @@ static func verdict(res: Dictionary) -> String:
 		return tr_s("HB_TIMES_SMALL") % Locale.number(under, 1)
 	return tr_s("HB_UNDER") % Locale.number(round((1.0 - g / t) * 100.0))
 
-## The result card at the head of the stage: the round's points, how far off,
-## and a line about the thing.
+## The result card at the head of the stage (2026-10-29): the grade's word,
+## the round's points counting up with how far off, a line that sets the
+## thing against the ruler (or, on a wild miss, the thing the guess was the
+## size of), a run of close rounds, and a line about the thing.
 func _draw_result(now: float, shown: Array) -> void:
 	var e := now - _lock_at - CARD_AT
 	if e < 0.0 and not Motion.reduce:
 		return
 	var res: Dictionary = state.results[state.index]
+	var score := int(res.score)
 	var big: Font = CozyTheme.display(700)
 	var body: Font = CozyTheme.body(600)
-	var score_text := "+%d" % int(res.score)
-	var verdict_text := verdict(res)
+	var counted := score
+	if not Motion.reduce:
+		counted = int(round(score * clampf((e - COUNT_FROM) / COUNT_TIME, 0.0, 1.0)))
+	var grade := tr(State.grade_key(score))
+	var verdict_text := "+%d  ·  %s" % [counted, verdict(res)] if score < 100 else "+%d" % counted
 	if bool(res.missed):
 		verdict_text += "  " + tr("HB_HEART_LOST")
+	var note := note_line(state.tgt(), state.ref(), float(res.guess))
+	var run_text := tr("HB_RUN") % int(res.get("run", 0)) if int(res.get("run", 0)) >= 2 else ""
 	var fact := tr(State.fact_key(state.tgt()))
 	if fact == State.fact_key(state.tgt()):
 		fact = ""
@@ -879,13 +913,15 @@ func _draw_result(now: float, shown: Array) -> void:
 	var fact_h := 0.0
 	if fact != "":
 		fact_h = body.get_multiline_string_size(fact, HORIZONTAL_ALIGNMENT_CENTER, wide - 60.0, FACT_FONT).y + 14.0
-	var tall := 26.0 + big.get_height(SCORE_FONT) * 0.82 + body.get_height(VERDICT_FONT) + fact_h + 22.0
+	var note_h := body.get_height(NOTE_FONT) + 6.0 if note.text != "" else 0.0
+	var run_h := big.get_height(NOTE_FONT) + 6.0 if run_text != "" else 0.0
+	var tall := 24.0 + big.get_height(GRADE_FONT) * 0.86 + body.get_height(VERDICT_FONT) + note_h + run_h + fact_h + 22.0
 	var key := "%d|%d" % [int(wide), int(tall)]
 	if _result_mesh == null or _result_mesh_for != key:
-		var b := Face.Builder.new()
-		b.fan(Face.Builder.round_rect(Vector2(-wide, -tall) * 0.5 + Vector2(0.0, 5.0), Vector2(wide, tall), 30.0), Color(Pal.LINE, 0.9))
-		b.fan(Face.Builder.round_rect(Vector2(-wide, -tall) * 0.5, Vector2(wide, tall), 30.0), Pal.SURFACE)
-		_result_mesh = b.mesh()
+		var mb := Face.Builder.new()
+		mb.fan(Face.Builder.round_rect(Vector2(-wide, -tall) * 0.5 + Vector2(0.0, 5.0), Vector2(wide, tall), 30.0), Color(Pal.LINE, 0.9))
+		mb.fan(Face.Builder.round_rect(Vector2(-wide, -tall) * 0.5, Vector2(wide, tall), 30.0), Pal.SURFACE)
+		_result_mesh = mb.mesh()
 		_result_mesh_for = key
 	shown.append(_result_mesh)
 	var k := 1.0
@@ -897,16 +933,52 @@ func _draw_result(now: float, shown: Array) -> void:
 	var xf := Transform2D(0.0, Vector2(k, k), 0.0, centre)
 	_hud_layer.draw_set_transform_matrix(xf)
 	_hud_layer.draw_mesh(_result_mesh, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, alpha * 0.97))
-	var tint := grade_colour(int(res.score))
-	var yy := -tall * 0.5 + 14.0 + big.get_ascent(SCORE_FONT) * 0.9
-	_hud_layer.draw_string(big, Vector2(-wide * 0.5, yy), score_text, HORIZONTAL_ALIGNMENT_CENTER, wide, SCORE_FONT, Color(tint, alpha))
-	yy += body.get_height(VERDICT_FONT) + 4.0
+	var tint := grade_colour(score)
+	# The word lands with a bump of its own once the count is in.
+	var wk := 1.0
+	if not Motion.reduce:
+		wk = Motion.bump_scale(e - COUNT_FROM - COUNT_TIME, 0.14)
+	var yy := -tall * 0.5 + 12.0 + big.get_ascent(GRADE_FONT) * 0.92
+	_hud_layer.draw_set_transform_matrix(xf * Transform2D(0.0, Vector2(wk, wk), 0.0, Vector2(0.0, yy - big.get_ascent(GRADE_FONT) * 0.35)))
+	_hud_layer.draw_string(big, Vector2(-wide * 0.5 / wk, big.get_ascent(GRADE_FONT) * 0.35), grade, HORIZONTAL_ALIGNMENT_CENTER,
+		wide / wk, GRADE_FONT, Color(tint, alpha))
+	_hud_layer.draw_set_transform_matrix(xf)
+	yy += body.get_height(VERDICT_FONT) + 2.0
 	_hud_layer.draw_string(body, Vector2(-wide * 0.5, yy), verdict_text, HORIZONTAL_ALIGNMENT_CENTER, wide, VERDICT_FONT, Color(Pal.TEXT, alpha))
+	if note.text != "":
+		yy += note_h
+		_hud_layer.draw_string(body, Vector2(-wide * 0.5, yy), str(note.text), HORIZONTAL_ALIGNMENT_CENTER, wide,
+			NOTE_FONT, Color(note.colour, alpha))
+	if run_text != "":
+		yy += run_h
+		_hud_layer.draw_string(big, Vector2(-wide * 0.5, yy), run_text, HORIZONTAL_ALIGNMENT_CENTER, wide,
+			NOTE_FONT, Color(Pal.SUN_DEEP, alpha))
 	if fact != "":
 		yy += 16.0 + body.get_ascent(FACT_FONT)
 		_hud_layer.draw_multiline_string(body, Vector2(-wide * 0.5 + 30.0, yy), fact, HORIZONTAL_ALIGNMENT_CENTER,
 			wide - 60.0, FACT_FONT, -1, Color(Pal.TEXT_DIM, alpha))
 	_hud_layer.draw_set_transform_matrix(Transform2D.IDENTITY)
+
+## The card's line under the points: on a wild miss, the thing in the table
+## the guess was the size of ("You made it horse-sized!"); else the two
+## things set against each other by their true sizes ("Car ≈ 2.1 × Door").
+## {"text", "colour"}; text "" when there is nothing worth saying.
+static func note_line(tgt: Dictionary, ref_it: Dictionary, guess: float) -> Dictionary:
+	var like: Dictionary = State.like(tgt, guess)
+	if not like.is_empty():
+		return {"text": tr_s("HB_LIKE") % _mid_name(like), "colour": Pal.BERRY_DEEP}
+	var c := State.compare(tgt, ref_it)
+	var k := float(c.k)
+	if k < 1.1 or k > 99.0 or str(tgt.get("id", "")) == str(ref_it.get("id", "")):
+		return {"text": "", "colour": Pal.TEXT}
+	return {"text": "%s ≈ %s × %s" % [name_of(c.big), Locale.number(k, 1 if k < 10.0 else 0), name_of(c.small)],
+		"colour": Pal.LEAF_DEEP}
+
+## A thing's name inside a sentence: lower case, unless it is a name with a
+## stop in it (T. rex).
+static func _mid_name(it: Dictionary) -> String:
+	var n := name_of(it)
+	return n if n.contains(".") else n.to_lower()
 
 ## A line the player has to see now, on a dark pill over the foot of the stage.
 func _tell(text: String) -> void:
@@ -1031,21 +1103,43 @@ func size_to(m: float) -> void:
 # --- the HUD's actions ---
 
 func hints_left() -> int:
-	return State.HINTS_BY[state.band] + hints_extra - hints_used
+	return _hints_held() + (1 if _reading else 0)
 
-## The bulb says which way the truth lies from where the answer stands.
+func _hints_held() -> int:
+	return maxi(0, State.HINTS_BY[state.band] + hints_extra - hints_used)
+
+## The bulb in two presses (2026-10-29). The first, one hint, says which way
+## the truth lies from where the answer stands and whether by a lot; the
+## second, free, draws the window that scores 90 as two outlines round the
+## answer, which stay until the lock.
 func hint() -> bool:
-	if is_done() or out_of_hearts or _phase != Phase.PLAY or hints_left() <= 0:
+	if is_done() or out_of_hearts or _phase != Phase.PLAY:
+		return false
+	var at := _tgt_box(_px).position
+	if _reading:
+		_reading = false
+		_window = true
+		_tell(tr("HB_HINT_WINDOW"))
+		fx.ring(at, GRIP_R * 2.2, Pal.LEAF)
+		fx.cue("hint", 1.12)
+		_busy_for(TOAST_HOLD)
+		_redraw()
+		moved.emit()
+		return true
+	if _hints_held() <= 0:
 		return false
 	hints_used += 1
 	_hint_dir = state.nudge(_guess())
 	_hint_at = _now()
-	var at := _tgt_box(_px).position
 	if _hint_dir == 0:
 		_tell(tr("HB_HINT_THERE"))
 		fx.sparkle(at, Pal.SUN)
 	else:
-		_tell(tr("HB_HINT_BIGGER") if _hint_dir > 0 else tr("HB_HINT_SMALLER"))
+		var key := "HB_HINT_BIGGER" if _hint_dir > 0 else "HB_HINT_SMALLER"
+		if absi(_hint_dir) > 1:
+			key += "_LOT"
+		_tell(tr(key) + " " + tr("HB_HINT_AGAIN"))
+		_reading = not _window
 		fx.ring(at, GRIP_R * 2.2, Pal.LEAF if _hint_dir > 0 else Pal.CLOUD)
 	fx.cue("hint")
 	_busy_for(TOAST_HOLD)
@@ -1078,26 +1172,40 @@ func lock() -> void:
 	_lock_at = now
 	_toast = ""
 	_hint_dir = 0
+	_reading = false
+	_window = false
 	checks += 1
 	moves += 1
 	fx.cue("lock")
 	var score := int(res.score)
+	var run := int(res.get("run", 0))
+	var stars: int = state.stars()
 	var gen := _gen
+	# The points count up on the card a click at a time, climbing.
+	if not Motion.reduce and score > 0:
+		for k in COUNT_TICKS:
+			_after(CARD_AT + COUNT_FROM + COUNT_TIME * float(k) / float(COUNT_TICKS - 1), func() -> void:
+				fx.cue("notch", 0.92 + 0.05 * k, NOTCH_DB))
 	_after(0.0 if Motion.reduce else REVEAL_TIME * 0.75, func() -> void:
 		if gen != _gen:
 			return
 		var at := _tgt_box(_px_of(float(res.truth))).get_center()
+		# A run of close rounds climbs the cue a step a round.
+		var climb := 1.0 + 0.05 * clampi(run - 1, 0, 4)
 		if score >= 100:
-			fx.cue("spot")
+			fx.cue("spot", climb)
 			fx.sparkle(at, Pal.SUN)
 			fx.ring(at, 90.0, Pal.SUN)
 		elif score >= 78:
-			fx.cue("close")
+			fx.cue("close", climb)
 			fx.ring(at, 80.0, Pal.LEAF)
+			if run >= 2:
+				fx.sparkle(at, Pal.SUN)
 		elif score >= 45:
 			fx.cue("fair")
 		else:
 			fx.cue("off")
+		_stars.rate(stars, _now())
 		_bump_pill(0)
 		_bump_pill(1))
 	if bool(res.missed):
@@ -1106,7 +1214,7 @@ func lock() -> void:
 			_heart_at = _now()
 			fx.cue("heart_lost")
 			_hud_layer.queue_redraw())
-	_busy_for(REVEAL_TIME + CARD_AT + Motion.POP_IN + 0.3)
+	_busy_for(maxf(REVEAL_TIME, CARD_AT + COUNT_FROM + COUNT_TIME + Motion.BUMP_TIME) + CARD_AT + Motion.POP_IN + 0.3)
 	_redraw()
 	_hud_layer.queue_redraw()
 	moved.emit()
@@ -1217,6 +1325,7 @@ func restore_completed_board() -> void:
 	_anim_until = 0.0
 	_layout()
 	_stamp_at = now - 10.0 if state.band >= 3 or state.sharp() else INF
+	_stars.clear(state.stars())
 	_hud_layer.queue_redraw()
 	_redraw()
 
@@ -1228,7 +1337,10 @@ func share_glyphs() -> String:
 # --- the win ---
 
 func flat_win() -> Dictionary:
-	return {"faces": [], "subtitle": tr("HB_WIN_SUB") % [state.total(), state.best_total()]}
+	var line := tr("HB_WIN_SUB") % [state.total(), state.best_total()]
+	if state.best_run >= 2:
+		line += " " + tr("HB_WIN_RUN") % state.best_run
+	return {"faces": [], "subtitle": line}
 
 func win_delay() -> float:
 	return Motion.REDUCED_TIME if Motion.reduce else WIN_WAIT
@@ -1384,6 +1496,8 @@ func _process(delta: float) -> void:
 	var now := _now()
 	if now < _anim_until or _drag:
 		queue_redraw()
+		_hud_layer.queue_redraw()
+	elif _stars.busy(now):
 		_hud_layer.queue_redraw()
 	elif (_toast != "" and now - _toast_at < TOAST_HOLD + 0.1) \
 			or now - float(_pill_bump[0]) < Motion.BUMP_TIME + 0.1 \

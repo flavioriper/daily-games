@@ -2513,11 +2513,24 @@ HB_UNDER,%s%% too small,%s%% pequeno demais,%s%% de menos
 HB_TIMES_BIG,%s× too big,%s× grande demais,%s× demasiado grande
 HB_TIMES_SMALL,%s× too small,%s× pequeno demais,%s× demasiado pequeño
 HB_HEART_LOST,A heart gone.,Um coração a menos.,Un corazón menos.
-HB_HINT_BIGGER,Bigger than that.,Maior do que isso.,Más grande que eso.
-HB_HINT_SMALLER,Smaller than that.,Menor do que isso.,Más pequeño que eso.
+HB_HINT_BIGGER,A bit bigger than that.,Um pouco maior do que isso.,Un poco más grande que eso.
+HB_HINT_SMALLER,A bit smaller than that.,Um pouco menor do que isso.,Un poco más pequeño que eso.
 HB_HINT_THERE,That looks about right.,Parece bem por aí.,Parece estar bien así.
 HB_RESET,Back where it started.,De volta ao começo.,De vuelta al principio.
 HB_WIN_SUB,%d of %d points,%d de %d pontos,%d de %d puntos
+HB_HINT_BIGGER_LOT,Much bigger than that!,Bem maior do que isso!,¡Mucho más grande que eso!
+HB_HINT_SMALLER_LOT,Much smaller than that!,Bem menor do que isso!,¡Mucho más pequeño que eso!
+HB_HINT_AGAIN,Press the bulb again to see the window.,Toque na lâmpada de novo para ver a janela.,Toca la bombilla otra vez para ver la ventana.
+HB_HINT_WINDOW,Land it between the two green outlines.,Deixe entre os dois contornos verdes.,Déjalo entre los dos contornos verdes.
+HB_GRADE_SO_CLOSE,So close!,Quase!,¡Casi!
+HB_GRADE_CLOSE,Close!,Perto!,¡Cerca!
+HB_GRADE_NOT_BAD,Not bad!,Nada mal!,¡Nada mal!
+HB_GRADE_FAIR,Fair guess,Razoável,Razonable
+HB_GRADE_WAY_OFF,Way off!,Longe!,¡Muy lejos!
+HB_GRADE_WILD,Whoa!,Eita!,¡Uy!
+HB_LIKE,You made it %s-sized!,Ficou do tamanho de %s!,¡Te quedó del tamaño de %s!
+HB_RUN,%d good guesses in a row!,%d acertos seguidos!,¡%d aciertos seguidos!
+HB_WIN_RUN,Best run: %d good guesses in a row.,Melhor sequência: %d acertos seguidos.,Mejor racha: %d aciertos seguidos.
 HB_SEAL_SHARP,Sharp eye,Olho afiado,Buen ojo
 HB_SEAL_LADDER,Ladder,Escada,Escalera
 HB_OUT,Out of hearts.,Acabaram os corações.,Sin corazones.

@@ -35,6 +35,20 @@ const CURVE := [[1.06, 100.0], [1.12, 90.0], [1.2, 78.0], [1.3333, 62.0], [2.0, 
 const MISS_RATIO := 2.0
 ## A day this good is stamped: nine in ten of every point there was.
 const SHARP := 0.9
+## A round at least this good is "close" and keeps a run going.
+const RUN_FROM := 78
+## The live stars (2026-10-29): the share of the day's points that can still
+## be reached, for three stars, two and one.
+const STAR_AT := [0.85, 0.65, 0.4]
+## The grade's word by score, best first: [least score, locale key].
+const GRADES := [[100, "HB_SPOT"], [90, "HB_GRADE_SO_CLOSE"], [78, "HB_GRADE_CLOSE"], [62, "HB_GRADE_NOT_BAD"],
+	[45, "HB_GRADE_FAIR"], [30, "HB_GRADE_WAY_OFF"], [0, "HB_GRADE_WILD"]]
+## The bulb says "much" bigger or smaller past this ratio.
+const LOT := 1.5
+## A miss this far off names the thing the guess was the size of.
+const LIKE_FROM := 1.6
+## ...when one in the table is within this much of the guess.
+const LIKE_NEAR := 1.2
 
 # --- how a round is framed ---
 ## The ruler is never drawn smaller than this across its longer side, nor the
@@ -63,6 +77,9 @@ var results: Array = []
 var ref_m := 0.0
 var hearts := 0
 var hinted := false
+## Close rounds in a row (RUN_FROM), and the longest the day has had.
+var run := 0
+var best_run := 0
 var _lot := 0.0
 
 # --- the table ---
@@ -172,6 +189,8 @@ func restart() -> void:
 	results = []
 	hearts = HEARTS_BY[band]
 	hinted = false
+	run = 0
+	best_run = 0
 	if not rounds.is_empty():
 		ref_m = float(rounds[0].ref.size_m)
 
@@ -280,7 +299,58 @@ func lock(guess: float) -> Dictionary:
 	var out := {"guess": guess, "truth": t, "score": score_for(guess, t), "ratio": r,
 		"missed": missed, "over": guess > t}
 	results.append(out)
+	run = run + 1 if int(out.score) >= RUN_FROM else 0
+	best_run = maxi(best_run, run)
+	out["run"] = run
 	return out
+
+## The stars the day can still reach: every round not yet locked counted at
+## its best (STAR_AT).
+func stars() -> int:
+	var most := best_total()
+	if most <= 0:
+		return 3
+	var can := float(total() + 100 * maxi(0, rounds.size() - results.size())) / float(most)
+	for k in STAR_AT.size():
+		if can >= float(STAR_AT[k]) - 1e-6:
+			return 3 - k
+	return 0
+
+## The locale key of the grade's word for `score`.
+static func grade_key(score: int) -> String:
+	for g: Array in GRADES:
+		if score >= int(g[0]):
+			return str(g[1])
+	return str(GRADES[GRADES.size() - 1][1])
+
+## The two things of a round by their true sizes, as "the bigger is k times
+## the smaller": {"big", "small", "k"}, by the numbers each is measured by.
+static func compare(a: Dictionary, b: Dictionary) -> Dictionary:
+	var ma := float(a.get("size_m", 1.0))
+	var mb := float(b.get("size_m", 1.0))
+	if ma >= mb:
+		return {"big": a, "small": b, "k": ma / mb}
+	return {"big": b, "small": a, "k": mb / ma}
+
+## The thing in the table nearest in size to `tgt` sized at `guess` (box
+## against box), when the guess is far enough off to say so and one is near
+## enough: {} otherwise. Never the thing itself.
+static func like(tgt: Dictionary, guess: float) -> Dictionary:
+	var truth := float(tgt.get("size_m", 1.0))
+	if ratio_off(guess, truth) < LIKE_FROM:
+		return {}
+	var b := box_m(tgt, guess)
+	var said := maxf(b.x, b.y)
+	var best := {}
+	var near := LIKE_NEAR
+	for it: Dictionary in items():
+		if str(it.id) == str(tgt.id):
+			continue
+		var r := ratio_off(bigness(it), said)
+		if r <= near:
+			near = r
+			best = it
+	return best
 
 ## Deals the next round. On the Ladder the thing just sized is the ruler, at
 ## the size the player gave it -- or its true one if that lock cost a heart.
@@ -307,15 +377,29 @@ func finish(scores: Array, guesses: Array = []) -> void:
 	index = maxi(0, rounds.size() - 1)
 	ref_m = float(ref().get("size_m", 1.0))
 	hearts = maxi(1, hearts)
+	run = 0
+	best_run = 0
+	for r: Dictionary in results:
+		run = run + 1 if int(r.score) >= RUN_FROM else 0
+		best_run = maxi(best_run, run)
 
 ## The bulb: which way the truth lies from `guess`: 1 bigger, -1 smaller, 0
-## when it is already inside the 6% that scores everything.
+## when it is already inside the 6% that scores everything; 2 and -2 when it
+## is more than half again as far (`LOT`).
 func nudge(guess: float) -> int:
 	hinted = true
 	var t := truth()
-	if ratio_off(guess, t) <= float(CURVE[0][0]):
+	var r := ratio_off(guess, t)
+	if r <= float(CURVE[0][0]):
 		return 0
-	return 1 if guess < t else -1
+	var way := 1 if guess < t else -1
+	return way * (2 if r > LOT else 1)
+
+## The bulb's second press: the sizes that score 90 or more, [least, most].
+func window() -> Vector2:
+	var t := truth()
+	var k := float(CURVE[1][0])
+	return Vector2(t / k, t * k)
 
 # --- the frame ---
 

@@ -190,3 +190,49 @@ animal. A pose that tilts or rears makes the box taller than the animal
 ever is. Every other row was in range on 2026-10-15. The orca's 4.1 m is
 mostly its fin. Suite 249567 passed, 0 failed. The day's pairs moved,
 since a pair is picked by box.
+
+### Made fun (2026-10-29)
+
+The user, 2026-10-29: "make how big and knight experience way better to
+play, and game itself way funnier to play, right now nobody likes it. Use
+web for reference on how good games does it." Built unattended. The game
+the genre follows was read again on the web: its reveal is the point (the
+truth over the guess "in red pen", a fact), and its day is five locks and
+a total. Ours had all that and said nothing more: a lock was a number.
+
+- **The result card speaks** (`_draw_result`): the grade's word in its
+  colour (`State.GRADES`: Spot on! / So close! / Close! / Not bad! / Fair
+  guess / Way off! / Whoa!), landing with a bump once the round's points
+  have **counted up** under it (`COUNT_FROM`, `COUNT_TIME`, six climbing
+  `notch` clicks; Motion.reduce shows the number whole); then "+66 · 30%
+  too big"; then **a line that sets the thing against the ruler** by their
+  true sizes, "Car ≈ 2.1 × Door" (`note_line`, `State.compare`; nothing
+  when they are within 10%); on a miss past 1.6x, instead, **the thing in
+  the table the guess was the size of**, "You made it cow-sized!"
+  (`State.like`, within 20% box against box, never the thing itself; a
+  name keeps its case only when it has a stop in it, T. rex); a run line;
+  the fact as before.
+- **Runs**: a round of 78 or more keeps a run (`State.run`, `best_run`,
+  `RUN_FROM`); from two the card says "3 good guesses in a row!" and the
+  grade's cue climbs 5% a round; the best run is on the win's line.
+- **Live stars** on the points pill (`ui/flat/star_line.gd`): the stars the
+  day can still reach, every unlocked round counted at 100 (`State.stars`,
+  `STAR_AT` 85/65/40% of the day's points). A bad round drops one, falling.
+- **The bulb in two presses** (Teacups' way: `hints_left` counts a pending
+  second press). The first, a hint, says which way and **whether by a lot**
+  (past 1.5x: "Much bigger than that!"; `State.nudge` returns ±2); the
+  second, free, draws **the window that scores 90** (`State.window`, the
+  truth ÷/× 1.12) as two leaf outlines round the answer until the lock.
+- Measured (`tests/_probe_hb_fun.gd`, 40 days a band): a guesser within
+  ~25% ends p50 on 81% of the points, stars 0/1/2/3 = 0/1/28/11; a loose one
+  (~50%) on 66%, 0/19/21/0; the comparison line shows on 87-99% of rounds,
+  the "-sized" line on 3-4% of rounds for the first and 22% for the second.
+- `opengl3_angle` 810x1440: 94 draw calls peak on lock and on the hint;
+  `tests/_win.gd -- how_big` PASS; suite 303252/0. No new sound file: the
+  count is the size's own `notch`, the window the hint's cue up a step.
+- Decided for the user, unconfirmed: the seven words; 78 as a "good
+  guess"; stars as what is still reachable (they only fall); the second
+  press's window at 90 points; the frame left as it was (the pair sits low
+  because wide things are short; `State.frame`'s range was measured and
+  kept so the truth's place in the drag still says nothing). Owed: a phone,
+  pt/es read by a speaker ("Ficou do tamanho de vaca!" has no article).
