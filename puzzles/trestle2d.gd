@@ -1433,6 +1433,7 @@ func _stars() -> int:
 # --- the win ---
 
 func _on_solved() -> void:
+	_peek = {}
 	_solved_at = _now()
 	_testing = false
 	_flawless = hints_used == 0 and (not _lost_ever if max_hearts > 0 else _tests_all == 1)
@@ -1963,12 +1964,15 @@ func hint() -> bool:
 		if p.is_empty():
 			_tell("TR_HINT_ALL")
 			return false
+		if _testing:
+			_stop()
 		hints_used += 1
 		_peek = p
 		_peek_at = _now()
 		if not Motion.reduce:
 			fx.ring(px(Vector2(p.a + p.b) * 0.5), _u * 0.8, Pal.SUN)
-		_tell("TR_PEEK_HINGE" if _hinge != NONE else "TR_PEEK")
+		# "would hold that bolt" only of a piece that ends on it
+		_tell("TR_PEEK_HINGE" if _hinge != NONE and (p.a == _hinge or p.b == _hinge) else "TR_PEEK")
 		fx.cue("hint")
 		_frame = null
 		moved.emit()
@@ -3082,7 +3086,7 @@ func _draw_front() -> void:
 	if t - _chip_at < 0.4:
 		# a chip just picked is bouncing
 		_strip_mesh = null
-	var strip_key := "%d|%d|%d|%s|%s|%s|%s|%s|%d" % [state.cost(), _mat, state.budget, Vector3(size.x, size.y, _top()), _free, is_done(), _testing, _crowd_state, _pills().size()]
+	var strip_key := "%d|%d|%d|%s|%s|%s|%s|%s|%d|%s" % [state.cost(), _mat, state.budget, Vector3(size.x, size.y, _top()), _free, is_done(), _testing, _crowd_state, _pills().size(), _last_broken.is_empty()]
 	if _strip_mesh == null or _strip_for != strip_key:
 		_strip_mesh = _build_strip()
 		_strip_for = strip_key
@@ -3184,8 +3188,10 @@ func _build_strip() -> ArrayMesh:
 	var at := _live_stars_at()
 	if at.x >= 0.0 and not state.design.is_empty():
 		var earn := _stars()
+		# dimmed while the last test's breaks are marked: a promise, not praise
+		var gold := Color(Rewards.GOLD, 0.45) if not _last_broken.is_empty() else Rewards.GOLD
 		for i in 3:
-			Rewards.star(b, at + Vector2(STAR_STEP * i, 0.0), 12.0, Rewards.GOLD if i < earn else Color(Pal.TEXT, 0.16))
+			Rewards.star(b, at + Vector2(STAR_STEP * i, 0.0), 12.0, gold if i < earn else Color(Pal.TEXT, 0.16))
 	return b.mesh()
 
 ## Where the live stars' first stands, after the budget bar's name, or

@@ -1359,7 +1359,8 @@ func _seat(i: int) -> Vector2:
 ## next card (the missed one, or the start card after a Redo) says by how
 ## much over its Tune button. Needs FOLLOW_N strokes that played a note.
 func _follow_hand() -> void:
-	if _dts.size() < FOLLOW_N:
+	# the tutorial's road plays a bot finger: it never sets the phone's timing
+	if not _staged() or _dts.size() < FOLLOW_N:
 		return
 	var d := _dts.duplicate()
 	d.sort()
