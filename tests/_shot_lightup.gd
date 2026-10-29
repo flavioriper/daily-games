@@ -5,7 +5,8 @@ extends SceneTree
 ##
 ##     godot --path . --resolution 810x1440 --always-on-top --rendering-driver opengl3_angle --script res://tests/_shot_lightup.gd -- [d=0..3] [mode] [rm] [out=<dir>]
 ##
-## Modes: `rest` (the court as dealt), `right` (the answer's lamps set down
+## Modes: `hint` (the bulb read, then pressed again), `stuck` (a fair lamp
+## off the answer that strands a stone or starves a block), `rest` (the court as dealt), `right` (the answer's lamps set down
 ## one a second), `wrong` (a fair lamp that is not the answer, again until
 ## the hearts run out: Hard and Insane; shots mid-gutter, after the eject,
 ## on the out-of-hearts card, then after Try again), `sweep` (a row of chips

@@ -228,7 +228,7 @@ which must exist):
 
     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_lattice.gd -- d=0..3 <mode> [rm]
 
-Modes: `rest play refuse hint solve out reset restore`. `play` makes three
+Modes: `rest play refuse hint wrong solve out reset restore` (`hint` reads, picks the tile to bring under the guide and swaps on the second press; `wrong` swaps a number onto a square the rules rule out, since 2026-10-29). `play` makes three
 swaps of the answer by two taps and one by a drag, shot in the air; `solve`
 makes the bulb's own swaps to the win; `out` (Insane) trades two tiles back
 and forth until the swaps are gone. A tile in the air is not picked up, so

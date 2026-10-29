@@ -3,7 +3,8 @@ extends RefCounted
 ## A board's toast: a paper card with one wrapped line, popping in, standing
 ## a while and fading. Shikaku, Untangle, Hosepipes and Binairo each carry
 ## their own copy of the same look; Paper Box (2026-10-29) is the first to
-## use this one, and the others can move onto it when next touched.
+## use this one, Lattice (off its own dark pill) and Light Up the same day,
+## and the others can move onto it when next touched.
 ##
 ## The board owns the clock (`now`) and where the card stands; the card
 ## keeps its mesh in a var until the next draw replaces it. One draw_mesh

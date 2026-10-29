@@ -7,7 +7,9 @@ extends SceneTree
 ##
 ## Modes: `rest` (the entrance and the deal); `play` (three swaps of the
 ## answer by tap and one by drag, shot in the air and landed); `refuse` (a
-## tile at home tapped, two of one number swapped); `hint`; `solve` (the
+## tile at home tapped, two of one number swapped); `hint` (the reading, the
+## tile to bring picked under the guide, the second press); `wrong` (a
+## number swapped onto a square the rules rule out); `solve` (the
 ## answer swap by swap, the win); `out` (Insane: two tiles traded back and
 ## forth until the swaps are gone, the card, Try again); `reset`; `restore`
 ## (a day reopened already played).
