@@ -2143,6 +2143,11 @@ func _solve_trestle() -> void:
 	for a in st.anchors():
 		if not slot.has_point(_puzzle.point_to_local(a)):
 			_fit_ok = false
+	# the bulb in two presses: the first shows a member, the second lays it
+	_press(_host.top_bar.hint_button)
+	var peeked: bool = st.design.is_empty() and not _puzzle._peek.is_empty()
+	_press(_host.top_bar.hint_button)
+	var bulb_ok: bool = peeked and st.design.size() == 1 and st.design[0].get("hint", false) and _puzzle._peek.is_empty()
 	var todo: Array = st.proof.duplicate()
 	var stands := {}
 	for a in st.anchors():
@@ -2165,14 +2170,19 @@ func _solve_trestle() -> void:
 		_tap_local(_puzzle.chip_to_local(int(p.m)))
 		_drag_local(_puzzle.point_to_local(from), _puzzle.point_to_local(to))
 		stands[to] = true
-	# a tap on the first member takes it down; Undo puts it back
-	var first: Dictionary = st.design[0]
+	# a tap on a member of the player's (its middle off the lattice's
+	# points) takes it down; Undo puts it back
+	var first: Dictionary = st.design[st.design.size() - 1]
+	for d: Dictionary in st.design:
+		if not d.get("hint", false) and ((d.a.x + d.b.x) % 2 != 0 or (d.a.y + d.b.y) % 2 != 0):
+			first = d
+			break
 	var mid: Vector2 = (_puzzle.point_to_local(first.a) + _puzzle.point_to_local(first.b)) * 0.5
 	var before: int = st.design.size()
 	_tap_local(mid)
 	_hud_ok = st.design.size() == before - 1
 	_press(_host.top_bar.undo_button)
-	_hud_ok = _hud_ok and st.design.size() == before and st.design.size() == st.proof.size()
+	_hud_ok = _hud_ok and bulb_ok and st.design.size() == before and st.design.size() == st.proof.size()
 	_press_check()
 	_puzzle.run_test_now()
 

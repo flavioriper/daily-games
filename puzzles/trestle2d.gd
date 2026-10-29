@@ -317,6 +317,15 @@ var _peak := {}
 ## The member that gave way first in the last test, and when (for the slow).
 var _first_key := ""
 var _first_at := -100.0
+## The bolt the last failed test bent furthest at its first snap (the
+## hinge), ringed while building until a member is laid to it or the next
+## test; `_hinge_bare` when nothing of the design runs down from it.
+var _hinge := Vector2i(-99, -99)
+var _hinge_bare := false
+## The bulb's first press: the proof member it will lay, shown as a dashed
+## gold ghost until the second press lays it (free) or the player does.
+var _peek := {}
+var _peek_at := -100.0
 var _loads_told := false
 ## After the solve: a convoy or a free build running on the solved board.
 var _convoy := false
@@ -577,6 +586,8 @@ func _deal(level: Dictionary, difficulty: int) -> void:
 	_tests = 0
 	_peak = {}
 	_first_key = ""
+	_hinge = NONE
+	_peek = {}
 	_loads_told = false
 	_convoy = false
 	_free = false
@@ -1060,6 +1071,7 @@ func _events(t: float) -> void:
 					# the moment plays slow
 					_first_key = _key(state.design[int(e.m)])
 					_first_at = t
+					_find_hinge()
 					if not Motion.reduce:
 						_rw.ring(at, _u * 1.1, Color(Parts.BAD, 0.9))
 						_rw.ring(at, _u * 1.6, Color(1, 1, 1, 0.8), 0.08)
@@ -1182,6 +1194,7 @@ func _start_test(carts: int) -> void:
 	_last_broken = {}
 	_first_key = ""
 	_first_at = -100.0
+	_hinge = NONE
 	_sel = Vector2i(-99, -99)
 	_pressing = false
 	_dragging = false
@@ -1286,6 +1299,35 @@ func _keep_peaks() -> void:
 static func _key(d: Dictionary) -> String:
 	return "%d,%d,%d,%d,%d" % [d.a.x, d.a.y, d.b.x, d.b.y, int(d.m)]
 
+## The bolt of the design moved furthest from its place at the first snap:
+## measured on the banked proofs with one member taken out, it sits on an
+## end of the missing member on 76/68/57% of Easy/Medium/Hard's failing
+## runs, where the end of the member that snapped does on 5/11/15%. Bare
+## when no beam off the deck runs down from it.
+func _find_hinge() -> void:
+	_hinge = NONE
+	var far := 0.05
+	for p in state.joints():
+		if state.is_anchor(p):
+			continue
+		var j := sim.joint_at(p)
+		if j < 0 or sim.jfix[j] == 1:
+			continue
+		var dd := sim.jp[j].distance_to(Vector2(p))
+		if dd > far:
+			far = dd
+			_hinge = p
+	if _hinge == NONE:
+		return
+	_hinge_bare = true
+	for d in state.design:
+		if Gen.on_deck(state.level, d.a, d.b):
+			# the deck going down a ramp holds nothing up
+			continue
+		if (d.a == _hinge and d.b.y < _hinge.y) or (d.b == _hinge and d.a.y < _hinge.y):
+			_hinge_bare = false
+			break
+
 func _failed(t: float) -> void:
 	_fail_at = t
 	for m in sim.broken:
@@ -1321,6 +1363,8 @@ func _failed(t: float) -> void:
 			_tell("TR_NO_ROAD")
 		elif convoy:
 			_tell("TR_CONVOY_FAIL_ONE" if snapped == 1 else "TR_CONVOY_FAIL_N", [] if snapped == 1 else [snapped])
+		elif _hinge != NONE:
+			_tell("TR_WHY_BARE" if _hinge_bare else "TR_WHY_BENT")
 		elif first_mat >= 0:
 			_tell(FIRST_KEYS[first_mat][0 if snapped == 1 else 1], [] if snapped == 1 else [snapped - 1])
 		elif snapped == 1:
@@ -1831,6 +1875,7 @@ func try_again() -> void:
 	_peak = {}
 	_last_broken = {}
 	_first_key = ""
+	_hinge = NONE
 	_sag = []
 	_settle = {}
 	elapsed = 0.0
@@ -1895,21 +1940,48 @@ func undo() -> bool:
 	moved.emit()
 	return true
 
+## A peek waiting on its second press counts as a hint held: that press is
+## free.
 func hints_left() -> int:
+	return _hints_held() + (0 if _peek.is_empty() else 1)
+
+func _hints_held() -> int:
 	return maxi(0, HINTS_BY[clampi(_difficulty, 0, 3)] + hints_extra - hints_used)
 
-## One member of the day's proof, laid in gold; the player's own members
-## furthest from it come down if the budget will not stretch to it.
+## The bulb in two presses (2026-10-29). The first, one hint, shows where a
+## member of the day's proof goes as a dashed gold ghost -- after a failed
+## test the one nearest the bolt that bent (`_hinge`) -- and says so. The
+## second, free, lays it in gold as the bulb always did; the player's own
+## members furthest from it come down if the budget will not stretch to it.
 func hint() -> bool:
-	if is_done() or hints_left() <= 0 or out_of_hearts or (_testing and _committed()):
+	if is_done() or out_of_hearts or (_testing and _committed()):
 		return false
+	if _peek.is_empty():
+		if _hints_held() <= 0:
+			return false
+		var p := state.next_hint(_hinge)
+		if p.is_empty():
+			_tell("TR_HINT_ALL")
+			return false
+		hints_used += 1
+		_peek = p
+		_peek_at = _now()
+		if not Motion.reduce:
+			fx.ring(px(Vector2(p.a + p.b) * 0.5), _u * 0.8, Pal.SUN)
+		_tell("TR_PEEK_HINGE" if _hinge != NONE else "TR_PEEK")
+		fx.cue("hint")
+		_frame = null
+		moved.emit()
+		return true
 	if _testing:
 		_stop()
-	var h := state.apply_hint()
+	var h := state.apply_hint(_peek)
+	_peek = {}
 	if h.is_empty():
 		_tell("TR_HINT_ALL")
+		_frame = null
+		moved.emit()
 		return false
-	hints_used += 1
 	_last_broken = {}
 	var d: Dictionary = h.d
 	_hint_at = _now()
@@ -1939,6 +2011,7 @@ func reset_board() -> void:
 		_kick(0.06)
 	_sag = []
 	_last_broken = {}
+	_hinge = NONE
 	_sel = Vector2i(-99, -99)
 	_solved_at = -1.0
 	_crossed_at = -1.0
@@ -2240,6 +2313,12 @@ func _lay(a: Vector2i, b: Vector2i) -> void:
 	_float("-%s" % Locale.number(state.cost() - before), (px(Vector2(a)) + pb) * 0.5 + Vector2(0.0, -_u * 0.3), Parts.PIN_DEEP)
 	_bar_hit = now
 	fx.cue(["place_road", "place_wood", "place_rope"][_mat], randf_range(0.95, 1.05))
+	if a == _hinge or b == _hinge:
+		_hinge = NONE
+	if not _peek.is_empty() and ((_peek.a == a and _peek.b == b) or (_peek.a == b and _peek.b == a)):
+		# laid by hand where the ghost showed: the bulb's second press is
+		# not needed
+		_peek = {}
 	_laid += 1
 	if _laid % 4 == 0:
 		# the troll nods along with the work
@@ -2662,6 +2741,22 @@ func _build_frame() -> ArrayMesh:
 		for j in joints:
 			if not state.is_anchor(j):
 				rm.put(Look.JOINT, [], _at(joints[j]))
+		if _hinge != NONE:
+			# the bolt the last test bent furthest: ringed in sun, pulsing
+			var hp := px(Vector2(_hinge))
+			hb.disc(hp, _u * 0.36, Color(Pal.SUN, 0.28))
+			hb.stroke(Face.Builder.arc_points(hp, _u * 0.36, 0.0, TAU), _u * 0.07, Pal.SUN, true)
+			hb.stroke(Face.Builder.arc_points(hp, _u * 0.25, 0.0, TAU), _u * 0.035, Color.WHITE, true)
+			halos += 1
+		if not _peek.is_empty():
+			# the bulb's first press: where a member of a bridge that works goes
+			var a := px(Vector2(_peek.a))
+			var b := px(Vector2(_peek.b))
+			hb.stroke(PackedVector2Array([a, b]), _u * 0.34, Color(Pal.SUN, 0.3))
+			_dashed(hb, a, b, _u * 0.1, Pal.SUN, _u * 0.2)
+			for e in [a, b]:
+				hb.stroke(Face.Builder.arc_points(e, _u * 0.2, 0.0, TAU), _u * 0.05, Pal.SUN, true)
+			halos += 1
 	for a in state.anchors():
 		if not _testing and state.design.is_empty() and a == Vector2i(0, 0):
 			# the first pin calls: this is where the road starts
@@ -3085,7 +3180,27 @@ func _build_strip() -> ArrayMesh:
 	var bar := _budget_rect()
 	b.fan(Face.Builder.round_rect(bar.position + Vector2(0, 2), bar.size, bar.size.y * 0.5), Color(Pal.TEXT, 0.12))
 	b.fan(Face.Builder.round_rect(bar.position, bar.size, bar.size.y * 0.5), Pal.SURFACE_HI)
+	# the stars this bridge would earn crossing now, after the bar's name
+	var at := _live_stars_at()
+	if at.x >= 0.0 and not state.design.is_empty():
+		var earn := _stars()
+		for i in 3:
+			Rewards.star(b, at + Vector2(STAR_STEP * i, 0.0), 12.0, Rewards.GOLD if i < earn else Color(Pal.TEXT, 0.16))
 	return b.mesh()
+
+## Where the live stars' first stands, after the budget bar's name, or
+## x < 0 where the strip leaves no room for them beside the figure.
+func _live_stars_at() -> Vector2:
+	var bar := _budget_rect()
+	var lfont: Font = CozyTheme.body(600)
+	var font: Font = CozyTheme.body(700)
+	var lw := lfont.get_string_size(tr("TR_BUDGET"), HORIZONTAL_ALIGNMENT_LEFT, -1, 24).x
+	var money := "%s / %s" % [Locale.number(state.budget), Locale.number(state.budget)]
+	var mw := font.get_string_size(money, HORIZONTAL_ALIGNMENT_LEFT, -1, 34).x
+	var x := bar.position.x + lw + 26.0
+	if x + STAR_STEP * 3.0 + 14.0 > bar.end.x - mw:
+		return Vector2(-1.0, 0.0)
+	return Vector2(x, bar.position.y - 26.0)
 
 ## The budget bar's fill, eased to the cost, flashing as it moves, and the
 ## proof's star, which shines while the bridge is as cheap as the proof.

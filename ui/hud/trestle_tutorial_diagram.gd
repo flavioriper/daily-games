@@ -27,7 +27,8 @@ extends Control
 ## - HEARTS (Hard and Insane): a test that fails costs a heart.
 ## - TEA (Insane): the deck dips and the tea spills; stiffened, not a drop.
 ## - BAR: Undo takes back the last member, Reset clears the bridge.
-## - HINT (bands with hints): the bulb lays a member of a bridge that works.
+## - HINT (bands with hints): the bulb shows a member of a bridge that works,
+##   and pressed again lays it.
 ##
 ## The board checkup, 2026-10-03: Trestle had only the shared one-page card.
 
@@ -306,10 +307,11 @@ func _run(gen: int) -> void:
 					_say("HTP_TR_RESET_CAP")
 					_art.reset_board()
 			Lesson.HINT:
+				# two presses: the first shows the piece, the second lays it
 				_art.hint()
-				ok = await _wait(1.3, gen)
+				ok = await _wait(1.6, gen)
 				if ok:
-					_say("HTP_TR_HINT_MORE_CAP")
+					_say("HTP_TR_HINT_CAP")
 					_art.hint()
 		if not ok or not await _wait(2.6, gen):
 			return
@@ -352,7 +354,7 @@ func _reset() -> void:
 			_say("HTP_TR_DRAG_CAP")
 		Lesson.HINT:
 			_art.lay(PINS, ROAD + STRUTS, 2400, band, mats, false, false, [])
-			_say("HTP_TR_HINT_CAP")
+			_say("HTP_TR_PEEK_CAP")
 
 ## Reduce-motion: the lesson's bridge, standing still.
 func _still() -> void:
@@ -361,6 +363,7 @@ func _still() -> void:
 	for r in built:
 		_art.state.add(Vector2i(r[0], r[1]), Vector2i(r[2], r[3]), r[4])
 	if lesson == Lesson.HINT:
+		_art.hint()
 		_art.hint()
 	_art._sel = Gap.NONE
 	_art._frame = null

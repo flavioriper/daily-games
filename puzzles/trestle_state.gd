@@ -134,12 +134,31 @@ func reset() -> Array:
 	_undo = []
 	return gone
 
-## The next member of the proof not yet built. It replaces whatever the
-## player built on the same two points; when the budget will not stretch,
-## the player's own members furthest from it are taken down until it does.
-## Returns {"d": member, "removed": [members]} or {}.
-func apply_hint() -> Dictionary:
+## The proof member the bulb would show next: of those not yet built, the one whose middle is nearest `near`
+## (a bolt the last test bent most), or with `near` off the grid the first
+## in the proof's order. {} when every one is there.
+func next_hint(near := Vector2i(-99, -99)) -> Dictionary:
+	var best := {}
+	var best_d := INF
 	for p in proof:
+		var i := find(p.a, p.b)
+		if i >= 0 and design[i].m == p.m:
+			continue
+		if near.x == -99:
+			return p
+		var dd := (Vector2(p.a + p.b) * 0.5).distance_to(Vector2(near))
+		if dd < best_d - 0.001:
+			best_d = dd
+			best = p
+	return best
+
+## Lays proof member `target` (or, with none, the next of the proof not yet
+## built). It replaces whatever the player built on the same two points;
+## when the budget will not stretch, the player's own members furthest from
+## it are taken down until it does.
+## Returns {"d": member, "removed": [members]} or {}.
+func apply_hint(target := {}) -> Dictionary:
+	for p in ([target] if not target.is_empty() else proof):
 		var i := find(p.a, p.b)
 		if i >= 0 and design[i].m == p.m:
 			if not design[i].get("hint", false):

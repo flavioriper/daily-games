@@ -191,3 +191,40 @@ win's cards.
   trestle` passes.
 - Decided for the user, unconfirmed: Go kept; a riverbed foot. Owed: a
   phone, the cost of a relayout a frame during the win's ease.
+
+### Made fun (2026-10-29)
+
+The user: "make trestle and drumbeat experience way better to play, and game
+itself way funnier to play, right now nobody likes it". The genre's
+reference is loved for its stress view and its comic collapses, and faulted
+for never saying why a bridge failed, so players pass by guessing.
+
+- **Measured first.** A whole test is 40/63/127/179 ms headless on this Mac
+  (median, Easy to Insane), so nothing runs the sim while building. On the
+  banked proofs with one member taken out (`tests/_probe_tr_hinge.gd`), the
+  bolt moved furthest at the first snap sits on an end of the missing
+  member on 153/202, 174/256 and 224/394 failing runs (Easy to Hard); the
+  end of the member that snapped does on 11, 28 and 58. A graph lint ("a
+  deck bolt with nothing off the deck") was tried and dropped: it flags all
+  17 Easy proofs, whose middle deck bolt hangs between two planks.
+- **The hinge** (`_find_hinge`, at the first snap): that bolt is ringed in
+  sun while building, until a member is laid to it or the next Go, and the
+  toast after the fail says it: `TR_WHY_BARE` when no beam off the deck runs
+  down from it ("nothing holds it from below: brace it with a triangle down
+  to a pin"), `TR_WHY_BENT` otherwise. Spills, a road short of the bank, a
+  stuck cart and the convoy keep their own lines.
+- **The bulb in two presses.** The first, one hint, shows a member of the
+  proof as a dashed gold ghost (`_peek`), after a failed test the one whose
+  middle is nearest the hinge (`State.next_hint`), else the first not
+  built; a member the player already has is never shown. The second, free,
+  lays it in gold (`State.apply_hint(target)`) as before. Laid by hand
+  where the ghost is, the second press is not needed. `hints_left()` counts
+  the waiting press. Tutorial page: shows, then lays (`HTP_TR_PEEK_CAP`).
+- **Live stars** after the budget bar's name: what the bridge would earn
+  crossing at its cost now (`_stars()`), when the strip has room beside the
+  figure (`_live_stars_at`).
+- `_win.gd trestle` presses the bulb twice first (a ghost, then one gold
+  member) and takes down a member whose middle is off the lattice;
+  `_shot_trestle.gd fail` shoots 5 the first press's ghost. Medium fail:
+  97 draw calls building with the ring and the ghost. Suite 303252/0.
+  Not on a phone; the pt/es lines unread by a native speaker.

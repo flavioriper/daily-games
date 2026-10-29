@@ -6,7 +6,8 @@ extends SceneTree
 ##
 ## 1 the empty gap, 2 the day's proof built (a member being dragged), 3 the
 ## cart halfway over, 4 the win. With `fail` only the road is built: 3 is the
-## collapse and 4 the drawing board after it, the snapped members in red.
+## collapse, 4 the drawing board after it (the snapped members in red, the
+## bolt that bent ringed) and 5 the bulb's first press (the dashed piece).
 ## Prints the draw calls and the mean frame time over the second before
 ## each shot. Solves go to a throwaway progress file, never this Mac's save.
 ## A solve adds 5, the party. `out` (Hard or Insane) builds only the road
@@ -149,8 +150,13 @@ func _process(delta: float) -> bool:
 					_at = _t
 			elif (not _fail and _done_at >= 0.0 and _t > _done_at + 0.7) or (_fail and not _b._testing and _t > _at + 3.2):
 				_shot("4_end")
+				print("hinge %s bare %s toast %s" % [_b._hinge, _b._hinge_bare, _b._toast])
 				if _fail:
-					quit()
+					# the bulb's first press: the dashed piece by the bent bolt
+					_b.hint()
+					_at = _t
+					_step = 7
+					return false
 				_step = 5
 			elif _t > _at + 20.0:
 				_shot("4_timeout")
@@ -160,6 +166,11 @@ func _process(delta: float) -> bool:
 				_shot("5_try")
 				print("after try again: hearts %d/%d out %s design %d sketch %d tests %d modulate %s" % [_b.hearts,
 					_b.max_hearts, _b.out_of_hearts, _b.state.design.size(), _b._sketch.size(), _b._tests, _b.modulate])
+				quit()
+		7:
+			if _t > _at + 1.0:
+				_shot("5_peek")
+				print("peek %s hints_left %d" % [_b._peek, _b.hints_left()])
 				quit()
 		5:
 			if _t > _done_at + 3.1:
