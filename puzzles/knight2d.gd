@@ -2185,12 +2185,16 @@ func hint() -> bool:
 		return false
 	hints_used += 1
 	_reading = m
-	var rd: Dictionary = _state.reading()
+	# Brambles is not read for dead ends: the mask makes each search too
+	# slow to run eight of on a press (73 ms on a Mac, 2026-10-29).
+	var rd: Dictionary = _state.reading() if not _state.brambles() else {}
 	var text: String
 	if m == _state.king:
 		text = tr("KN_READ_KING")
 	elif _foe_on(m):
 		text = tr("KN_READ_TAKE")
+	elif rd.is_empty():
+		text = tr("KN_READ_RING")
 	elif int(rd.dead) == 1:
 		text = tr("KN_READ_DEAD_ONE") % int(rd.all)
 	elif int(rd.dead) > 1:

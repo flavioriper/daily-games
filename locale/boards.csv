@@ -3801,6 +3801,7 @@ KN_READ_TAKE,Take the ringed rose knight: one fewer to chase you.,Capture o cava
 KN_READ_DEAD_ONE,1 of your %d dots leads to a dead end. The ringed one keeps the way open.,1 dos seus %d pontos leva a um beco sem saída. O do anel mantém o caminho aberto.,1 de tus %d puntos lleva a un callejón sin salida. El del anillo mantiene el camino abierto.
 KN_READ_DEAD_N,%d of your %d dots lead to a dead end. The ringed one keeps the way open.,%d dos seus %d pontos levam a um beco sem saída. O do anel mantém o caminho aberto.,%d de tus %d puntos llevan a un callejón sin salida. El del anillo mantiene el camino abierto.
 KN_READ_SAFE,Every dot keeps a way open. The ringed one is the shortest.,Todo ponto mantém um caminho aberto. O do anel é o mais curto.,Todos los puntos mantienen un camino abierto. El del anillo es el más corto.
+KN_READ_RING,The ringed dot is the next hop of the shortest way.,O ponto com o anel é o próximo salto do caminho mais curto.,El punto del anillo es el siguiente salto del camino más corto.
 KN_READ_AGAIN,Press the bulb again to hop there.,Toque na lâmpada de novo para saltar.,Toca la bombilla otra vez para saltar.
 KN_COUNT_ONE,1 hop · shortest %d,1 salto · mínimo %d,1 salto · mínimo %d
 KN_COUNT,%d hops · shortest %d,%d saltos · mínimo %d,%d saltos · mínimo %d

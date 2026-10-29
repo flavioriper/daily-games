@@ -198,10 +198,14 @@ func line_left() -> int:
 ## so far plus the shortest line from here, against the day's shortest from
 ## the opening (`opt`). Within STAR_SPARE[0] of it three, within [1] two,
 ## else one. -1 when nothing is known (no line from here, or no opt).
+##
+## On Brambles the line from here is not searched: with the mask it ran to
+## 42 ms a hop on a Mac (2026-10-29), and every hop spends a square there
+## anyway, so the hops made are read against the shortest alone.
 func stars(hops: int) -> int:
 	if opt() <= 0:
 		return -1
-	var left := line_left()
+	var left := maxi(0, opt() - hops) if brambles() else line_left()
 	if left < 0:
 		return -1
 	var over := hops + left - opt()

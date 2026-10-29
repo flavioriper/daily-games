@@ -140,6 +140,12 @@ whole answer can be shown before a hop -- the fix is to show it.
   king in reach, or a rose knight to take; `State.reading`); the second,
   free, hops there. From a lost position the first press still rewinds.
   The tutorial's HINT page and `tests/_win.gd` press twice.
+- **Brambles is not searched for these** (timed headless, 12 bank boards):
+  `State.stars` with the mask ran to 42 ms a hop and `State.reading` to
+  73 ms a press on this Mac, so on Insane the stars read the hops made
+  against the shortest alone (every hop spends a square there) and the
+  bulb says only "The ringed dot is the next hop of the shortest way"
+  (`KN_READ_RING`). Easy to Hard: reading and stars together at most 15 ms.
 - **The win's line** names the hops against the shortest ("The shortest
   way: 6 hops!") and the best run of safe hops from three.
 - `opengl3_angle` 810x1440: 81-92 draw calls peak (peek, read, lost);
