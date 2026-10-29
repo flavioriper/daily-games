@@ -55,7 +55,8 @@ the last bead was down.
 - Pixel Garden's leaves sprout here too. Its card ring, fading, guides and
   Easy trace are off (`_reads_card()` false), since they would read the
   covered card out.
-- `GL_RULES_JUDGE` added; `HTP_GL_PLATE_BODY` rewritten.
+- `GL_RULES_JUDGE` added, `PG_RULES_PLATES` dropped from Glimpse's rules
+  (no plate can be wrong now); `HTP_GL_PLATE_BODY` rewritten.
 - Rounds (one picture after another, growing, Memory Matrix's other half)
   were left out: they would change the one-picture day record.
 - `_win.gd -- glimpse` taps one wrong bead first (a miss, two stars, the

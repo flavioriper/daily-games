@@ -323,7 +323,10 @@ beads.
   (`State.row_right`), sprouts a leaf past its last peg with a climbing
   `combo` note (-7 dB) and a green sparkle. A row that goes wrong loses its
   leaf. A deal or a restore is quiet (`_rows_quiet`). It confirms whole
-  rows only, never a bead.
+  rows only, never a bead. A won board wears none. `_check_rows` runs in
+  `_refresh` (every frame an animation runs, an n-squared scan that stops
+  early at a row's first wrong peg); the tour's frame times stayed at
+  10-17 ms.
 - **The pattern card reads where you are** (`_draw_card_reading`): the
   square under the finger is ringed while a stroke is in hand, and every
   square whose peg holds a bead is faded (right or wrong, the bar's own
@@ -344,7 +347,11 @@ beads.
 - **Live stars** (`star_line.gd`, at the right end of the name's line):
   slips are beads the iron sent home (`sent_home`) plus bulbs read; 0 keeps
   three stars, up to 3 keeps two (`STARS_CUT`). `completion_record` keeps
-  `slips` and `stars`, and a restore sets the stars quietly.
+  `slips` and `stars`, and a restore sets the stars quietly. Undo and Reset
+  put out a standing reading.
+- Owed, found on the way: the pattern card on an odd side (a themed
+  17-square picture) draws `half` x `half` squares a plate, so it leaves
+  out the last row and column. That was true before this pass.
 - `PG_RULES_LEAF` added to the rules.
 - Kept as the user had them: the iron waits for a full board, no moves, no
   Check, the deals.

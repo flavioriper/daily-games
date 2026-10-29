@@ -77,7 +77,6 @@ func title() -> String: return "Glimpse"
 func rules() -> String:
 	var out := tr("GL_RULES") % int(SHOW_BY[_state.band])
 	out += "\n\n" + tr("GL_RULES_JUDGE")
-	out += "\n\n" + tr("PG_RULES_PLATES")
 	var n: int = LOOKS_BY[_state.band]
 	out += "\n\n" + (tr("GL_RULES_LOOKS_ONE") if n == 1 else tr("GL_RULES_LOOKS_N") % n)
 	return out

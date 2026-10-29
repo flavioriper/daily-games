@@ -31,7 +31,8 @@ push when done.
 2. **Where am I**: while a finger is on the board, the pattern card rings
    the square under it. Squares whose pegs already hold a bead are dimmed on
    the card (bead seated, right or wrong, the bar's own rule). Guides every
-   four pegs from the seam, on the board and on the card (cross-stitch aida).
+   four pegs from the seam, on the board (cross-stitch aida); not on the
+   card, whose squares are 5-8 px.
 3. **Easy traces**: the board shows the picture's outline as darker
    wells under the pegs (shape only, never colour).
 4. **The bulb reads before it fixes** (the house's two-press bulb): the

@@ -1344,6 +1344,9 @@ func _leaf_at(y: int) -> Vector2:
 
 ## Every row's leaf, a sprout popping in. Into the marks mesh.
 func _draw_leaves(b: Face.Builder, t: float) -> void:
+	# The finished picture wears none: the iron and the party have it.
+	if _won:
+		return
 	for y in _row_leaf.size():
 		var at0: float = _row_leaf[y]
 		if at0 == INF:
@@ -1371,7 +1374,7 @@ func _thumb_square(c: int) -> Rect2:
 	var x := c % n
 	var y := c / n
 	var o := at + Vector2((1.0 if x >= h else 0.0) * (h + THUMB_GAP), (1.0 if y >= h else 0.0) * (h + THUMB_GAP)) * s
-	return Rect2(o + Vector2(x % h if h > 0 else x, y % h if h > 0 else y) * s, Vector2.ONE * s)
+	return Rect2(o + Vector2(x - h if x >= h else x, y - h if y >= h else y) * s, Vector2.ONE * s)
 
 ## Over the pattern card: the squares whose pegs hold a bead, dimmed (right
 ## or wrong, as the bar counts them), and the square under the finger,
@@ -2996,6 +2999,9 @@ func can_undo() -> bool:
 func undo() -> bool:
 	if max_moves > 0 or _blocked() or _stroking:
 		return false
+	# Undo puts out the bulb's reading, as a stroke does.
+	_reading = -1
+	_halo = {}
 	var before: PackedInt32Array = _state.beads.duplicate()
 	var pegs: PackedInt32Array = _state.undo()
 	if pegs.is_empty():
@@ -3172,6 +3178,7 @@ func reset_board() -> void:
 	if _blocked():
 		return
 	moves_left = max_moves
+	_reading = -1
 	_zoom_whole()
 	var before: PackedInt32Array = _state.beads.duplicate()
 	var pegs: PackedInt32Array = _state.reset()
