@@ -434,7 +434,10 @@ func _read() -> Dictionary:
 			continue
 		for c: int in beds[b].cells:
 			var t := cover[c]
-			if t >= 0 and answer[t].x >= 0 and not right(t):
+			if t >= 0 and answer[t].x < 0:
+				# the Spare, laid: it goes back to the rack
+				return {"tile": t, "at": -1, "dir": dir[t], "off": [] as Array[int], "kind": "broken", "bed": b}
+			if t >= 0 and not right(t):
 				return _move(t, {"kind": "broken", "bed": b})
 	for sq in bed_of.size():
 		var w := ways(sq)

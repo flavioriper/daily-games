@@ -140,15 +140,20 @@ cups) and the board said nothing of those either. Every Easy hole is par
   the hole's (`GF_BANK`, `GF_BANK_N` "2-kerb bank shot!"); each kerb a
   putt meets after its first knocks a little higher (`KERB_CLIMB`).
 - **So close!** (`GF_CLOSE`) by a ball that stops within `NEAR` (9) of the
-  cup, with a tick.
+  cup, with a tick (not after a rim-out, which said its own word).
+  `_shot_minigolf.gd -- d=0 miss` shoots it and the path left behind.
 - **The clock slows by the cup** (`_slow_k`: 0.4 of real time while the
   ball is inside 11.5 of the cup under 72 a second), so a drop or a near
   miss is watched. The sim's steps are the same; reduce motion skips it;
-  `settle_now()` is untouched.
+  `settle_now()` is untouched. Measured (`_probe_gf_fun.gd`): about half
+  of all putts slow, for a median 0.34-0.39 s more, at most 1.9 s. The
+  tutorial waits on the putt's phase, so it only plays longer.
 - **The last putt's way stays on the green** as faint dots (`_path`,
   `PATH_GAP`) until the next putt, so a miss shows what it did.
 - **The aim shows more on the easy bands**: `State.GUIDE_BY` 96/64 on
-  Easy/Medium (64/52 before); Hard and Insane unchanged.
+  Easy/Medium (64/52 before); Hard and Insane unchanged. This was one of
+  the first build's open calls; changed under "nobody likes it", the
+  user's to undo.
 - **Live stars** (`star_line.gd`) left of the pips, by strokes over par so
   far: at par or under 3, up to `STARS_OVER` (2/2/3/3) over 2, more 1
   (`GF_RULES_STARS` in the rules).

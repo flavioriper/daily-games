@@ -3196,6 +3196,7 @@ DP_READ_TILE,The %s tile has only one place that breaks no bed.,A peça %s só t
 DP_READ_FEWEST,Start with the %s tile: only %d places break no bed.,Comece pela peça %s: só %d lugares não quebram nenhum canteiro.,Empieza por la ficha %s: solo %d sitios no rompen ningún parterre.
 DP_READ_HERE,The %s tile goes here.,A peça %s vai aqui.,La ficha %s va aquí.
 DP_READ_AGAIN,Press the bulb again to lay it.,Toque a lâmpada de novo para colocá-la.,Toca la bombilla otra vez para colocarla.
+DP_READ_AGAIN_MOVE,Press the bulb again to move it.,Toque a lâmpada de novo para tirá-la.,Toca la bombilla otra vez para moverla.
 DP_W_TWO,Two beds!,Dois canteiros!,¡Dos parterres!
 DP_W_MANY,%d beds!,%d canteiros!,¡%d parterres!
 DP_W_RUN,%d in a row!,%d seguidas!,¡%d seguidas!

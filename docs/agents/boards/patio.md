@@ -84,9 +84,13 @@ it runs on the press, on the frame.
   else the fewest), rims the squares the tile goes to and the tile itself
   in sun (the lone square thicker), and the toast says why
   (`DP_READ_*`, tiles named `a|b`), for one hint; a second press lays it
-  free. Any move by hand puts the reading out. The tutorial's HINT page
-  presses twice.
-- **A broken bed says why** on the toast (`State.bed_why`, `DP_BAD_*`:
+  free. Any move by hand, or Undo, puts the reading out. The Spare laid
+  in a bed it breaks is read first and goes back to the rack
+  (`at` -1, `DP_READ_AGAIN_MOVE`; `_probe_dp_fun.gd` checks it, 20/20).
+  On Insane, when the toast falls back over the rack's top and the read
+  tile is in the first row, it stands at the foot instead. The tutorial's
+  HINT page presses twice.
+- **A broken bed says why** (a tile laid or turned into it) on the toast (`State.bed_why`, `DP_BAD_*`:
   over its sum, short of it, not under, not over, two numbers that differ,
   a number twice) and its squares are rimmed rose while the toast shows;
   mended, the toast goes.

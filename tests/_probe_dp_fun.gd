@@ -68,4 +68,31 @@ func _initialize() -> void:
 				if after > before: keeps += 1
 		print("band %d: bulb readings %d, places of the read tile %s, only one place %.0f%% (on the first reading %d/%d); tiles that keep a bed %.0f%%; slowest reading %.1f ms; a square only one way %.0f%%, either %.0f%%; readings by kind %s" % [
 			band, steps, str(mins), 100.0 * forced / maxf(1, steps), first_forced, n, 100.0 * keeps / maxf(1, laid), ms / 1000.0, 100.0 * sq_forced / maxf(1, steps), 100.0 * either / maxf(1, steps), str(kinds)])
+	# The Spare laid where it breaks a bed is what the bulb reads, back to
+	# the rack (at -1).
+	var spare_ok := 0
+	var spare_n := 0
+	for seed in n:
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 2000 + seed
+		var st = State.new()
+		st.deal(rng, 3)
+		for t in st.tiles.size():
+			if st.answer[t].x >= 0:
+				continue
+			var put := false
+			for a in st.bed_of.size():
+				if put or st.bed_of[a] < 0:
+					continue
+				for d in 4:
+					if not put and st.try_drop(t, a, d) < 0:
+						st.place(t, a, d)
+						put = true
+						break
+			if put:
+				spare_n += 1
+				var r: Dictionary = st.read_hint()
+				if String(r.get("kind", "")) == "broken" and int(r.tile) == t and int(r.at) == -1:
+					spare_ok += 1
+	print("spare laid to break a bed: read as broken, back to the rack %d/%d" % [spare_ok, spare_n])
 	quit()

@@ -30,6 +30,7 @@ func _initialize() -> void:
 		var aces := 0
 		var over := {}
 		var holes := 0
+		var slows: Array = []
 		for h in mini(n, pool.size()):
 			var base := Sim.new()
 			base.setup(pool[h])
@@ -39,7 +40,13 @@ func _initialize() -> void:
 				while not sim.sunk and k < 9:
 					var shot: Dictionary = sim.best_shot(48, 5, 1)
 					sim.putt(float(shot.a) + rng.randfn(0.0, aim), clampf(float(shot.u) * (1.0 + rng.randfn(0.0, pw)), 0.03, 1.0))
-					sim.run()
+					var slow_t := 0.0
+					while sim.step():
+						if not sim.sunk and not sim.wet and sim.p.distance_to(sim.cup) < 11.5 and sim.v.length() < 72.0:
+							slow_t += Sim.DT
+					var extra := slow_t * (1.0 / 0.4 - 1.0)
+					if extra > 0.0:
+						slows.append(extra)
 					k += 1
 					putts += 1
 					if sim.sunk:
@@ -56,7 +63,20 @@ func _initialize() -> void:
 				var d: int = k - int(pool[h].get("par", 2))
 				over[d] = int(over.get(d, 0)) + 1
 				holes += 1
-		print("band %d: %d holes played, %d putts; missed putts stopping <6/<9/<12 of the cup: %d/%d/%d (%.0f%%/%.0f%%/%.0f%% of misses); sunk %d, off a kerb %d (%.0f%%); aces %d; vs par %s" % [
+		print("band %d: %d holes played, %d putts; missed putts stopping <6/<9/<12 of the cup: %d/%d/%d (%.0f%%/%.0f%%/%.0f%% of misses); sunk %d, off a kerb %d (%.0f%%); aces %d; vs par %s; slowed putts %d, extra wall seconds median %.2f max %.2f" % [
 			band, holes, putts, near[0], near[1], near[2], 100.0 * near[0] / maxf(1, putts - sunk), 100.0 * near[1] / maxf(1, putts - sunk),
-			100.0 * near[2] / maxf(1, putts - sunk), sunk, sunk_bank, 100.0 * sunk_bank / maxf(1, sunk), aces, str(over)])
+			100.0 * near[2] / maxf(1, putts - sunk), sunk, sunk_bank, 100.0 * sunk_bank / maxf(1, sunk), aces, str(over), slows.size(), _median(slows), _max(slows)])
 	quit()
+
+static func _median(a: Array) -> float:
+	if a.is_empty():
+		return 0.0
+	var b := a.duplicate()
+	b.sort()
+	return float(b[b.size() / 2])
+
+static func _max(a: Array) -> float:
+	var m := 0.0
+	for x in a:
+		m = maxf(m, float(x))
+	return m

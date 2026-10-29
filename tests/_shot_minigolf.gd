@@ -8,7 +8,8 @@ extends SceneTree
 ## Modes: `rest`; `aim` (a pull held: the dots and the band); `putt` (the
 ## steady putt let go, shot as it rolls); `hint` (the bulb: its line, then
 ## the aim brought near it); `solve` (every hole played by the steady putt
-## to the win and the party); `out` (Insane: putts wasted until the strokes
+## to the win and the party); `miss` (a putt stopping near the cup:
+## the near-miss word and the putt's way left on the green); `out` (Insane: putts wasted until the strokes
 ## run out: dusk, the card, Try again); `reset`; `restore`; `holes` (each
 ## hole of the course at rest). Frames go to <dir>/gf_<mode>_d<level>_<n>.png;
 ## every mode prints the peak draw calls and the mean frame from 0.5 s on.
@@ -200,6 +201,29 @@ func _script() -> void:
 			for k in 6:
 				_at(1.45 + 0.35 * k, _shot)
 			_end = 5.0
+		"miss":
+			# made fun: a putt that stops near the cup without dropping, then
+			# the green at rest -- "So close!" and the putt's way left on it
+			_at(1.2, func():
+				var sim = _puzzle._state.sim
+				var best := {}
+				var far := INF
+				for ai in 96:
+					for ui in 12:
+						var c = sim.clone()
+						var a := TAU * ai / 96.0
+						var u := 0.1 + 0.9 * ui / 11.0
+						c.putt(a, u)
+						c.run()
+						var d: float = c.p.distance_to(c.cup)
+						if not c.sunk and not c.lipped and not c.wet and d < 8.0 and d > 3.0 and c.time > 1.0 and d < far:
+							far = d
+							best = {"a": a, "u": u}
+				if not best.is_empty():
+					_pull(best.a, best.u, true))
+			for k in 4:
+				_at(3.0 + 0.9 * k, _shot)
+			_end = 7.0
 		"hint":
 			_at(1.0, func(): _host._on_hint())
 			_at(2.2, _shot)

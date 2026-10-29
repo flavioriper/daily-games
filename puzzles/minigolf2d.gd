@@ -220,15 +220,11 @@ var _tries := 1
 var _flawless := false
 var _won := false
 ## Made fun: the stars, the last putt's way, the kerbs it has met, the run
-## of holes at par or better and the best, and the day's bank shots in and
-## near misses.
+## of holes at par or better.
 var _stars := StarLine.new()
 var _path := PackedVector2Array()
 var _putt_hits := 0
 var _par_run := 0
-var _best_run := 0
-var _banks := 0
-var _near := 0
 ## The hole in play's bounds, and where the hole before it stood.
 var _box := Rect2(0.0, 0.0, 82.0, 116.0)
 var _old_origin := Vector2.ZERO
@@ -459,9 +455,6 @@ func _begin() -> void:
 func _fresh(t: float) -> void:
 	_stars.clear(3)
 	_par_run = 0
-	_best_run = 0
-	_banks = 0
-	_near = 0
 	_pip_at = PackedFloat32Array()
 	_pip_at.resize(_state.holes.size())
 	_pip_at.fill(-100.0)
@@ -772,9 +765,8 @@ func _handle(events: Array, t: float) -> void:
 func _on_stop(t: float) -> void:
 	_phase = "aim"
 	var sim = _state.sim
-	if not sim.sunk and sim.p.distance_to(sim.cup) < NEAR:
-		# made fun: a near miss is said, never silent
-		_near += 1
+	if not sim.sunk and not sim.lipped and sim.p.distance_to(sim.cup) < NEAR:
+		# made fun: a near miss is said, never silent (a rim-out said its own)
 		_float_word("GF_CLOSE", sim.p)
 		fx.buzz(Haptics.TICK)
 	_after_putt(t)
@@ -854,10 +846,7 @@ func _on_sunk(t: float) -> void:
 	# made fun: a run of holes at par or better climbs; a ball in off the
 	# kerbs is a bank shot, said under the word; the stars are read again
 	_par_run = _par_run + 1 if d <= 0 else 0
-	_best_run = maxi(_best_run, _par_run)
 	var banked: int = sim.hits
-	if banked > 0:
-		_banks += 1
 	var cue_pitch := 1.0 + RUN_STEP * float(mini(maxi(_par_run - 1, 0), 4))
 	var extra := ""
 	if banked > 0:

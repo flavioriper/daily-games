@@ -367,7 +367,7 @@ func _changed(sound: String) -> void:
 	moved.emit()
 	# a tile laid is a pop varied a little each time (the house sound)
 	_cue(sound, randf_range(0.94, 1.06) if sound == "set" else 1.0)
-	_judge_beds(sound == "set")
+	_judge_beds(sound == "set" or sound == "turn")
 	check_solved()
 	if is_done():
 		_solved_now()
@@ -485,7 +485,9 @@ func undo() -> bool:
 		return false
 	_press = {}
 	_ghost = Vector2i(-1, 0)
-	_reading = {}
+	if not _reading.is_empty():
+		_reading = {}
+		_toast.clear()
 	_cue("undo")
 	_judge_beds()
 	return true
@@ -513,7 +515,7 @@ func hint() -> bool:
 		_slips += 1
 		_rate(true)
 		_toast.say(_read_line(m), _t, true)
-		fx.ring(_answer_mid(m), _l("cell") * 1.3, Pal.SUN)
+		fx.ring(_answer_mid(m) if int(m.at) >= 0 else _target(int(m.tile)), _l("cell") * 1.3, Pal.SUN)
 	_cue("hint")
 	moved.emit()
 	return true
@@ -527,7 +529,11 @@ func _lay_hint() -> bool:
 	_st.remember()
 	for o: int in m.off:
 		_st.lift(o)
-	_st.place(int(m.tile), int(m.at), int(m.dir))
+	if int(m.at) < 0:
+		# the Spare read in a broken bed: back to the rack
+		_st.lift(int(m.tile))
+	else:
+		_st.place(int(m.tile), int(m.at), int(m.dir))
 	_land_at[int(m.tile)] = _t + MOVE_TIME
 	_press = {}
 	_ghost = Vector2i(-1, 0)
@@ -566,7 +572,7 @@ func _read_line(m: Dictionary) -> String:
 		_:
 			var n := int(m.get("places", 0))
 			line = tr("DP_READ_FEWEST") % [name, n] if n >= 2 else tr("DP_READ_HERE") % name
-	return line + " " + tr("DP_READ_AGAIN")
+	return line + " " + tr("DP_READ_AGAIN_MOVE" if String(m.get("kind", "")) == "broken" else "DP_READ_AGAIN")
 
 ## The bin: every tile back to its bay.
 func reset_board() -> void:
@@ -1286,11 +1292,12 @@ func _draw_rims() -> void:
 			var m := _reading
 			if String(m.kind) == "broken":
 				_bed_lines(b, cell, o, int(m.bed), Pal.BAD)
-			var p0 := o + Vector2(_st.cell(int(m.at))) * cell
-			var p1 := o + Vector2(_st.cell(_st.other(int(m.at), int(m.dir)))) * cell
-			var lo := Vector2(minf(p0.x, p1.x), minf(p0.y, p1.y)) + Vector2.ONE * cell * 0.03
-			var hi := Vector2(maxf(p0.x, p1.x), maxf(p0.y, p1.y)) + Vector2.ONE * cell * 0.97
-			b.stroke(Face.Builder.round_rect(lo, hi - lo, cell * 0.16), 6.0 * u, Pal.SUN, true)
+			if int(m.at) >= 0:
+				var p0 := o + Vector2(_st.cell(int(m.at))) * cell
+				var p1 := o + Vector2(_st.cell(_st.other(int(m.at), int(m.dir)))) * cell
+				var lo := Vector2(minf(p0.x, p1.x), minf(p0.y, p1.y)) + Vector2.ONE * cell * 0.03
+				var hi := Vector2(maxf(p0.x, p1.x), maxf(p0.y, p1.y)) + Vector2.ONE * cell * 0.97
+				b.stroke(Face.Builder.round_rect(lo, hi - lo, cell * 0.16), 6.0 * u, Pal.SUN, true)
 			if String(m.kind) == "square":
 				var sq := o + Vector2(_st.cell(int(m.square))) * cell
 				b.stroke(Face.Builder.round_rect(sq + Vector2.ONE * cell * 0.1, Vector2.ONE * cell * 0.8, cell * 0.14), 9.0 * u, Pal.SUN, true)
@@ -1325,8 +1332,13 @@ func _draw_toast() -> void:
 	var pad := TOAST_PAD * u
 	var tall := _toast.tall(width, fs, pad)
 	var y := _l("foot") + 24.0 * u
-	if y + tall > float(_L.get("bottom", size.y)) - 8.0 * u:
+	var bottom := float(_L.get("bottom", size.y))
+	if y + tall > bottom - 8.0 * u:
 		y = _l("rack_y") - GAP * u * 0.5
+		# never over the tile a reading rims: then the card's foot instead
+		if not _reading.is_empty() and _st.at[int(_reading.tile)] < 0 \
+				and int(_reading.tile) / int(_L.get("per_row", 5)) == 0:
+			y = bottom - 8.0 * u - tall
 	_toast.draw(self, Vector2(size.x * 0.5, y + tall * 0.5), width, _t, fs, pad)
 
 # --- the win ---
