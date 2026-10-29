@@ -4,8 +4,11 @@ extends SceneTree
 ## board on that level and shoots the table at rest, a cup lifted, a miss,
 ## a pair found, a waltz mid-way (d=3), the win settled and the day reopened
 ## from its card, with the draw calls of each frame. `tut` shoots a tutorial
-## page played a while; `card` the menu card beside Domino Patio's. Puts
-## nothing in the player's save.
+## page played a while; `card` the menu card beside Domino Patio's. `read`
+## (made fun, 2026-10-29) presses the bulb twice with the first cup up and
+## shoots the reading (toast, rims on the cups never lifted) and the twin
+## peeking; the miss after it is then a lapse, its toast and berry rim in
+## the miss shot. Puts nothing in the player's save.
 
 var _menu: Node
 var _host: Node
@@ -16,6 +19,7 @@ var _page := 1
 var _f := 0
 var _step := 0
 var _diag: Control
+var _read := false
 
 func _initialize() -> void:
 	for a in OS.get_cmdline_user_args():
@@ -27,6 +31,8 @@ func _initialize() -> void:
 				_page = int(a.substr(4))
 		elif a == "card":
 			_step = 60
+		elif a == "read":
+			_read = true
 		else:
 			_dir = a
 	var progress = load("res://core/progress.gd")
@@ -93,6 +99,14 @@ func _process(_delta: float) -> bool:
 		1:
 			if _f == 1020:
 				_shot("lifted")
+				if _read:
+					_b.hint()
+			if _read and _f == 1050:
+				_shot("read")
+				_b.hint()
+			if _read and _f == 1080:
+				_shot("peeked")
+			if _f == (1100 if _read else 1020):
 				var other := 1 if st.partner(0) != 1 else 2
 				_tap(st.slot[other])
 				_step = 2

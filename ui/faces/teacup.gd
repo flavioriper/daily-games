@@ -47,6 +47,15 @@ const FOOT := 0.4
 const FOOT_H := 0.14
 const HIGH := 1.02
 
+## A Peeplet under a cup (the board's and the card's): its picture's side in
+## the cup's mouth's half widths, metres of the Peeplet's world it is tall
+## and the height it looks at (the whole Peeplet and the tallest hat), and
+## how far down the picture its feet stand.
+const PIC := 2.75
+const CAST_FRAME := 0.95
+const CAST_AIM := 0.42
+const FEET := 0.93
+
 static var _cache := {}
 
 ## A friend's face node for kind `k`, not in any tree; the owner sizes it
@@ -168,7 +177,7 @@ static func saucer_mesh(r: float) -> ArrayMesh:
 
 ## A found pair's mark on a saucer: a ring of gold round the friend. The
 ## board rims a saucer in another colour the same way (a lapse's twin in
-## berry, the cups never lifted in sun), never by a shade of the friend.
+## berry, the cups never lifted in leaf green), never by a shade of the friend.
 static func found_ring(r: float, colour := GOLD) -> ArrayMesh:
 	var key := "found:%d:%s" % [roundi(r * 2.0), colour.to_html()]
 	if _cache.has(key):

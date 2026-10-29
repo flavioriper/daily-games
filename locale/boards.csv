@@ -3282,7 +3282,7 @@ TC_WIN_RUN,Best run: %d pairs in a row.,Melhor sequência: %d pares seguidos.,Me
 TC_RUN,%d pairs in a row!,%d pares seguidos!,¡%d parejas seguidas!
 TC_LAPSE,"You had seen %s's twin already: it was here!","Você já tinha visto o gêmeo de %s: estava aqui!","Ya habías visto al gemelo de %s: ¡estaba aquí!"
 TC_READ_SEEN,"You have lifted %s's twin before. Think back, or press the bulb again to peek.","Você já levantou o gêmeo de %s. Puxe pela memória, ou toque na lâmpada de novo para espiar.","Ya levantaste al gemelo de %s. Haz memoria, o toca la bombilla otra vez para espiar."
-TC_READ_FRESH,"%s's twin hides under a ringed cup, one you have never lifted. Press the bulb again to peek.","O gêmeo de %s está sob uma xícara marcada, uma que você nunca levantou. Toque na lâmpada de novo para espiar.","El gemelo de %s está bajo una taza marcada, una que nunca levantaste. Toca la bombilla otra vez para espiar."
+TC_READ_FRESH,"%s's twin hides under a cup ringed in green, one you have never lifted. Press the bulb again to peek.","O gêmeo de %s está sob uma xícara com anel verde, uma que você nunca levantou. Toque na lâmpada de novo para espiar.","El gemelo de %s está bajo una taza con aro verde, una que nunca levantaste. Toca la bombilla otra vez para espiar."
 HTP_TC_LIFT,Lift two cups,Levante duas xícaras,Levanta dos tazas
 HTP_TC_LIFT_BODY,"Tap a cup to see the friend under it, then tap another. Two different friends go back under their cups.","Toque numa xícara para ver o amiguinho embaixo, depois toque em outra. Dois amiguinhos diferentes voltam para debaixo das xícaras.","Toca una taza para ver el amiguito de debajo, luego toca otra. Dos amiguitos distintos vuelven bajo sus tazas."
 HTP_TC_PAIR,Find a pair,Encontre um par,Encuentra una pareja

@@ -16,7 +16,6 @@ const Cup = preload("res://ui/faces/teacup.gd")
 const World = preload("res://puzzles/teacups_world.gd")
 const PeepletView = preload("res://ui/peeplet_view.gd")
 const Personas = preload("res://peeplet/peeplet_personas.gd")
-const Board = preload("res://puzzles/teacups2d.gd")
 
 ## The row the card was drawn for (puzzle_card_2d.gd's CARD_H).
 const H := 246.0
@@ -135,13 +134,13 @@ func _lay() -> void:
 		v.color_index = int(p.coat)
 		v.headgear = String(p.hat)
 		v.eyewear = String(p.eyes)
-		v.frame_height = Board.CAST_FRAME
-		v.aim_y = Board.CAST_AIM
+		v.frame_height = Cup.CAST_FRAME
+		v.aim_y = Cup.CAST_AIM
 		v.idle_fps = 0.0
 		v.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var side := ceilf(r * Board.PIC)
+		var side := ceilf(r * Cup.PIC)
 		v.size = Vector2.ONE * side
-		v.position = at + Vector2(0.0, r * 0.1) - Vector2(side * 0.5, side * Board.FEET)
+		v.position = at + Vector2(0.0, r * 0.1) - Vector2(side * 0.5, side * Cup.FEET)
 		_keep(v)
 	var lid := Control.new()
 	lid.mouse_filter = Control.MOUSE_FILTER_IGNORE

@@ -35,7 +35,7 @@ extends "res://core/puzzle_base.gd"
 ## says whose twin was passed over and rims the saucer it sat on. Live stars
 ## by lapses and bulbs. The bulb reads before it acts: with a cup in hand
 ## the first press says whether its twin has been seen, and rims the cups
-## never lifted when it has not, for one hint; a second press lifts the
+## never lifted (leaf green) when it has not, for one hint; a second press lifts the
 ## twin, free. With no cup in hand it peeks a pair still hidden at once.
 ##
 ## The board is also its own tutorial: `demo` set before it enters the tree
@@ -96,14 +96,12 @@ const WIN_HOLD := 1.4
 const WAVE_STEP := 0.05
 ## The count line under the table, at W.
 const COUNT_SIZE := 30
-## A friend's picture: its side in the cup's mouth's half widths, metres of
-## the Peeplet's world it is tall and the height it looks at (the whole
-## Peeplet and the tallest hat), and how far down it the feet stand. A
-## friend under a lifted cup breathes at UP_FPS; the rest hold still.
-const PIC := 2.75
-const CAST_FRAME := 0.95
-const CAST_AIM := 0.42
-const FEET := 0.93
+## A friend under a lifted cup breathes at UP_FPS; the rest hold still (the
+## picture's measures are ui/faces/teacup.gd's PIC and the rest).
+const PIC := Cup.PIC
+const CAST_FRAME := Cup.CAST_FRAME
+const CAST_AIM := Cup.CAST_AIM
+const FEET := Cup.FEET
 const UP_FPS := 12.0
 ## A lapse's rim on the saucer the twin sat on, and a found-by-memory ring.
 const RIM_TIME := 2.2
@@ -741,13 +739,13 @@ func _layout_for(top: float, bottom: float) -> Dictionary:
 	var cols: int = maxi(1, _st.cols())
 	var rows: int = maxi(1, _st.rows())
 	var count_h := 0.0 if demo else 120.0 * u
-	# a cell: the row pitch is 0.8 of it, a lifted top cup needs 0.75 over
+	# a cell: the row pitch is 0.8 of it, a lifted top cup needs 1.0 over
 	# the first row's mouths and a saucer 0.3 under the last's
-	var cw := minf(w * 0.92 / cols, (span - count_h) / ((rows - 1) * 0.8 + 1.1))
+	var cw := minf(w * 0.92 / cols, (span - count_h) / ((rows - 1) * 0.8 + 1.35))
 	cw = minf(cw, 320.0 * u)
 	var ph := cw * 0.8
-	var grid_h := (rows - 1) * ph + cw * 1.05
-	var oy := top + (span - count_h - grid_h) * 0.5 + cw * 0.75
+	var grid_h := (rows - 1) * ph + cw * 1.3
+	var oy := top + (span - count_h - grid_h) * 0.5 + cw * 1.0
 	var ox := w * 0.5 - cols * cw * 0.5
 	var foot := oy + (rows - 1) * ph + cw * 0.3
 	return {
@@ -822,7 +820,7 @@ func _draw() -> void:
 		var pulse := 0.55 + 0.25 * sin(_t * 5.0) if not Motion.reduce else 0.7
 		for c in _st.hidden():
 			if not _st.seen[c] and c != _st.first:
-				draw_mesh(Cup.found_ring(r, Pal.SUN), null, Transform2D(0.0, _slot_pos(_st.slot[c])), Color(1, 1, 1, pulse))
+				draw_mesh(Cup.found_ring(r, Pal.LEAF), null, Transform2D(0.0, Vector2.ONE * 1.12, 0.0, _slot_pos(_st.slot[c])), Color(1, 1, 1, pulse + 0.2))
 	# a lapse: the saucer the passed-over twin stands on
 	var e := _t - _rim_at
 	if _rim_slot >= 0 and e < RIM_TIME:

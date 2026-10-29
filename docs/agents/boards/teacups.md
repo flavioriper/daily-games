@@ -63,7 +63,7 @@ rather than fruits, like it's done on who ate the pie".
   lift count left the line; it stays on the win).
 - **The bulb reads before it acts**: with a cup in hand the first press
   (one hint) says whether its twin has been seen and, when not, rims the
-  cups never lifted in sun; a second press while that cup is up lifts the
+  cups never lifted in leaf green (gold would be lost in the saucers' own line); a second press while that cup is up lifts the
   twin, free. With no cup in hand a hidden pair peeks at once, as before.
   The tutorial's HINT page presses twice.
 - **The menu card**: two live Bea twins (persona 2) in place of the baked
