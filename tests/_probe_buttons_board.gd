@@ -355,16 +355,26 @@ func _aim() -> void:
 			var pickable: bool = under >= 0 and (st.judge(under) == st.OK or (st.cur[under] < 0 and st.slot[under] != c))
 			if under == b:
 				continue
-			if pickable and dir.length() * cell > board.AIM_EDGE * cell:
-				_aimed(got == under or (got >= 0 and got != b and st.slot[got] == c and st.cur[got] < 0), "band %d: the aim took a square's own tap (%s)" % [band, dir])
+			if board._held_cells.has(under) and dir.length() * cell > board.AIM_EDGE * cell:
+				_aimed(got == under or (got >= 0 and got != b and st.slot[got] == c and st.cur[got] < 0), "band %d: the aim took the pick's own tap (%s)" % [band, dir])
+			elif pickable:
+				# another button or another colour's patch, with a pick in
+				# hand: the patch the pick may go to (2026-10-29)
+				_aimed(got >= 0 and st.slot[got] == c and st.cur[got] < 0, "band %d: a touch on a neighbour aimed at %d, not a patch (%s)" % [band, got, dir])
 			elif not (under >= 0 and st.slot[under] == c and st.cur[under] < 0):
 				_aimed(got >= 0 and st.slot[got] == c and st.cur[got] < 0, "band %d: a touch beside the patch aimed at %d (%s)" % [band, got, dir])
-		# a button's edge by the patch is the patch's, its middle its own
+		# a button's edge by the patch is the patch's, and its middle too
 		for d: Vector2i in st.NEAR:
 			var j: int = st.at_xy(st.xy(b) + d)
 			if j >= 0 and st.judge(j) == st.OK:
 				_aimed(board.aim(at + Vector2(d) * cell * 0.62) == b, "band %d: a button's edge by the patch is not the patch's" % band)
-				_aimed(board.aim(board.cell_screen(j)) == j, "band %d: a button's middle is not its own" % band)
+				# with a pick in hand only the pick keeps its middle: another
+				# button's reaches for a patch of the pick's colour (2026-10-29)
+				var mid: int = board.aim(board.cell_screen(j))
+				if board._held_cells.has(j):
+					_aimed(mid == j, "band %d: the pick's middle is not its own" % band)
+				else:
+					_aimed(mid >= 0 and st.slot[mid] == c and st.cur[mid] < 0, "band %d: a button's middle with a pick in hand aimed at %d, not a patch" % [band, mid])
 				break
 		# and the touch itself sews: beside the patch, never on it
 		var side := Vector2(0.62, 0.0) if st.at_xy(st.xy(b) + Vector2i(1, 0)) != b else Vector2(-0.62, 0.0)

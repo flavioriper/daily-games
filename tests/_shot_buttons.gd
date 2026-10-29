@@ -5,7 +5,8 @@ extends SceneTree
 ##
 ##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_buttons.gd -- [d=0..3] [mode] [rm] [out=<dir>]
 ##
-## Modes: `rest` (the entrance and the cloth); `play` (four moves of the
+## Modes: `rest` (the entrance and the cloth); `merge` (a run landing and
+## merging together); `play` (four moves of the
 ## state's own hand, shot picked and in the air); `refuse` (a sewn button
 ## tapped; the tin filled and tapped once more; a patch of another colour); `hint` (the bulb, then Undo);
 ## `solve` (the hand's taps to the win); `out` (Insane: the taps spent
@@ -224,6 +225,28 @@ func _script() -> void:
 			_at(5.2, _next)
 			_at(6.0, _shot)
 			_end = 6.6
+		"merge":
+			# a run on its way: in the air, standing on its slots, swelling,
+			# going in as a wave, merged
+			# the hand's own moves played quietly up to its first onto the
+			# picture, so the one shot sews
+			_at(1.4, func() -> void:
+				var st_ = _puzzle.state
+				var guard := 0
+				while guard < 200:
+					guard += 1
+					var m: Dictionary = st_.hint()
+					if m.is_empty() or (int(m.to) >= 0 and (m.cells as PackedInt32Array).size() >= 4):
+						break
+					st_.play(m)
+				_puzzle._deal()
+				_puzzle._layout()
+				_puzzle._request())
+			_at(1.6, _pick)
+			_at(2.0, _place)
+			for dt in [0.7, 1.4, 1.5, 1.6, 1.7, 1.8, 1.95, 2.4]:
+				_at(2.0 + dt, _shot)
+			_end = 4.8
 		"refuse":
 			_at(1.6, func() -> void: _tap(_first(st.is_home) if _first(st.is_home) >= 0 else 0))
 			_at(1.75, _shot)

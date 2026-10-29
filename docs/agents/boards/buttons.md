@@ -1345,3 +1345,46 @@ command that was refused), a phone, the deal time on a phone.
 Unconfirmed, mine: reading order; `PART_MIN`; Start over resets the part
 only; the colour-whole toast on a part's last move; `day_dict` exports the
 part on the cloth, not the whole; a 128 day is many times today's taps.
+
+## 2026-10-29: slower flights, a pick that places, a move that merges together
+
+The user: "Slow down flight speed by 50%, when there is no color selected,
+clicking on the board should trigger the helper around the touch to the
+nearest color to select, when there is a color selected, it should trigger
+the color placement, this way we can avoid selecting another color when
+user is trying to place what is selected. And we need a better animation
+when a color is fully filled, instead of merging the slot to the board
+piece by piece, wait all color pieces to finish moving, and merge them into
+the board together into some good looking animation."
+
+- **`FLY_TIME` 0.498** (0.249): half the speed. Slides of the case and
+  `RUN_STEP` as they were; a run of twenty-six lands its last at ~1.12 s.
+- **With a pick in hand, a tap on another jewel places** (`aim`): it
+  reaches `_reach()` for a bare patch of the pick's colour, as linen and a
+  sewn jewel already did, and picks that jewel only with none in reach.
+  Only the pick itself keeps the `AIM_EDGE` middle (a tap puts it down, two
+  send it to the case). With nothing in hand `_aim_pick` already took the
+  nearest jewel that can be picked; unchanged. The tin's own taps
+  unchanged. `_probe_buttons_board`'s two aim checks rewritten to the rule.
+- **A move's jewels merge together** (`_merge_all`, `_merge_at`,
+  `_merging`): a jewel landed on its own slot stands there (loose, its
+  shadow) until the move's last has settled (`RELEASE_TIME`), then the
+  move goes in as a wave out of the tapped patch, `MERGE_WAVE` 0.035 s a
+  ring and the whole wave within `MERGE_WAVE_CAP` 0.3 s. Each jewel swells
+  `MERGE_GROW` and rises `MERGE_RISE` for the first `MERGE_SWELL` of
+  `MERGE_TIME` 0.42 s, then twists `MERGE_TWIST` down to nothing while the
+  slot's flat square pops up under it from `MERGE_FROM` on the back ease.
+  The merge's start has one `sew` pop at `MERGE_PITCH` 1.26, -4 dB, a ring
+  round the tapped patch in its thread colour and up to `MERGE_SPARKLES`
+  sparkles. The colour-whole hop, `_last_land` (the win's lag), the busy
+  time and `_part_sewn` now wait for the merge's end. Undo, Reset, a
+  restored day and a part coming on merge at once (`_merge_at` -INF).
+  Read as the move, not the whole colour: holding every set jewel up until
+  its colour was whole would take back 2026-10-20's merge ("too hard to see
+  wrong pieces near the end"); a colour made whole still hops right after
+  its last move's wave. My reading, unconfirmed.
+- `_shot_buttons.gd` `merge` mode: a run of 26 on Medium in the air,
+  standing, swelling and going in from the top. Peak 101 draw calls
+  (`opengl3_angle`, 810x1440). `_win.gd buttons` PASS; board probe 38
+  days, the two old band-2 zoom failures; suite 303252/0. Not seen on a
+  phone; the merge pop unheard.

@@ -148,8 +148,9 @@ const PICK_CAP := 0.0
 ## again to 0.14 on 2026-10-23 (the user: "increase fly speed of pieces"),
 ## then the speed at three quarters ("reduce fly speed by 25%"): 0.14 x 4/3,
 ## and at three quarters again ("reduce fly time more 25%", meant slower):
-## 0.187 x 4/3.
-const FLY_TIME := 0.249
+## 0.187 x 4/3. Then at half the speed (the user, 2026-10-29: "slow down
+## flight speed by 50%"): 0.249 x 2.
+const FLY_TIME := 0.498
 ## Every flight takes FLY_TIME, however far it goes (the user, 2026-10-23:
 ## "never increase fly time, it should be a constant no matter where"); a
 ## flight out of the case or into it no longer stretches by its length.
@@ -165,8 +166,28 @@ const FLY_GROW := 0.18
 ## then merges into it (the user, 2026-10-20: "when the piece is on the
 ## right slot, merge it into it"): the slot's flat square covers the seat
 ## and the gem sinks into it, shrinking to nothing over MERGE_TIME.
+## Since 2026-10-29 a move's jewels merge together (the user: "instead of
+## merging the slot to the board piece by piece, wait all color pieces to
+## finish moving, and merge them into the board together"): each landed
+## jewel stands on its slot until the move's last has settled, then they
+## go in as a wave out of the tapped patch, MERGE_WAVE a ring and no more
+## than MERGE_WAVE_CAP from first to last. A jewel swells and rises for
+## MERGE_SWELL of its merge, then twists down to nothing as the slot's
+## square pops up under it from MERGE_FROM of its size.
 const SETTLE_DROP := 0.1
-const MERGE_TIME := 0.22
+const MERGE_TIME := 0.42
+const MERGE_WAVE := 0.035
+const MERGE_WAVE_CAP := 0.3
+const MERGE_SWELL := 0.3
+const MERGE_GROW := 0.14
+const MERGE_RISE := 0.1
+const MERGE_TWIST := 0.7
+const MERGE_FROM := 0.55
+## The merge's one pop, a little above the landings' ticks, and the most
+## sparkles it throws.
+const MERGE_PITCH := 1.26
+const MERGE_DB := -4.0
+const MERGE_SPARKLES := 5
 ## A button out of the tin leaves once its patch is bare.
 const TIN_LAG := 0.16
 const WHOLE_STEP := 0.03
@@ -337,6 +358,9 @@ var _seal_mesh: ArrayMesh
 ## in the air until then, drawn by its flight.
 var _arrive := PackedFloat32Array()
 var _tin_arrive := PackedFloat32Array()
+## The second a landed jewel on its own slot starts to merge into it
+## (-INF: merged long since).
+var _merge_at := PackedFloat32Array()
 var _hop_at := PackedFloat32Array()
 var _shiver_at := PackedFloat32Array()
 ## Buttons in the air: {c, from, to, at, time, sewn}.
@@ -546,6 +570,7 @@ func _deal() -> void:
 	_kept_told = false
 	var n: int = state.slot.size()
 	_arrive = _filled(n, -INF)
+	_merge_at = _filled(n, -INF)
 	_hop_at = _filled(n, -INF)
 	_shiver_at = _filled(n, -INF)
 	_tin_places = state.places()
@@ -943,9 +968,13 @@ func _build_live(now: float) -> bool:
 		var home: bool = c == state.slot[i]
 		var moving := false
 		# a landed button settles into its socket, loose; on its own colour
-		# the square then fills out from under it (`fill`, 0 to 1)
+		# it stands there until its move's merge, then the square pops up
+		# from under it (`fill`, 0 to 1) as it twists down to nothing
 		var settling := false
 		var fill := 1.0
+		var spin := 0.0
+		var gem := 0.0
+		var rise := 0.0
 		if not Motion.reduce:
 			var p: Vector2i = state.xy(i)
 			var e := now - _opened - Motion.ENTER_DELAY - Motion.stagger(p.x + p.y, Motion.ENTER_STAGGER)
@@ -961,10 +990,28 @@ func _build_live(now: float) -> bool:
 				settling = true
 				sc *= lerpf(HELD_SCALE, 1.0, Motion.back_out(landed / Motion.RELEASE_TIME))
 				lift += Motion.drop_in_lift(landed, SETTLE_DROP * _cell, Motion.RELEASE_TIME)
-			elif home and landed < Motion.RELEASE_TIME + MERGE_TIME:
-				moving = true
-				var m := (landed - Motion.RELEASE_TIME) / MERGE_TIME
-				fill = m * m * (3.0 - 2.0 * m)
+			if home:
+				var mz := now - _merge_at[i]
+				if mz < 0.0:
+					# waiting for the move's last to settle: still a gem
+					moving = true
+					settling = true
+				elif mz < MERGE_TIME:
+					moving = true
+					var m := mz / MERGE_TIME
+					if m < MERGE_SWELL:
+						var w := m / MERGE_SWELL
+						var up := w * w * (3.0 - 2.0 * w)
+						fill = 0.0
+						gem = 1.0 + MERGE_GROW * up
+						rise = MERGE_RISE * _cell * up
+					else:
+						var w := (m - MERGE_SWELL) / (1.0 - MERGE_SWELL)
+						var down := w * w * (3.0 - 2.0 * w)
+						fill = maxf(0.001, Motion.back_out(w))
+						gem = (1.0 + MERGE_GROW) * (1.0 - down)
+						rise = MERGE_RISE * _cell * (1.0 - down)
+						spin = MERGE_TWIST * down
 			var hop := now - _hop_at[i]
 			if hop >= 0.0 and hop < Motion.SOLVE_TIME:
 				moving = true
@@ -980,15 +1027,18 @@ func _build_live(now: float) -> bool:
 		else:
 			still += 1
 		var loose := not home or settling
-		if loose or lift > 0.5:
+		if loose or (lift > 0.5 and gem <= 0.0):
 			rest.append(u.shade, Transform2D(0.0, sc, 0.0, at))
 		if loose:
 			rest.append(u.loose[c], Transform2D(0.0, sc, 0.0, at - Vector2(0.0, lift)))
 		else:
-			# merged: the slot's square over the seat, the gem sinking into it
-			rest.append(u.sewn[c], Transform2D(0.0, sc, 0.0, at - Vector2(0.0, lift)))
-			if fill < 1.0:
-				rest.append(u.loose[c], Transform2D(0.0, sc * (1.0 - fill), 0.0, at - Vector2(0.0, lift)))
+			# merged: the slot's square over the seat, the gem going into it
+			if fill > 0.0:
+				var k := lerpf(MERGE_FROM, 1.0, fill) if gem > 0.0 else 1.0
+				rest.append(u.sewn[c], Transform2D(0.0, sc * k, 0.0, at - Vector2(0.0, lift)))
+			if gem > 0.0:
+				rest.append(u.shade, Transform2D(0.0, sc * gem, 0.0, at))
+				rest.append(u.loose[c], Transform2D(spin, sc * gem, 0.0, at - Vector2(0.0, lift + rise)))
 	_live_mesh = rest.mesh()
 	# all still: back to the blocks (the pick stays out while it is held)
 	if not busy and still > 0:
@@ -1316,6 +1366,12 @@ const TIN_HIT := -3
 ## for one of the pick's colour, and is refused only with none in reach.
 ## Since 2026-10-26 a miss like that, or one on a sewn button, with a pick
 ## in hand puts the pick down instead of refusing it (`tap`).
+## Since 2026-10-29 (the user: "when there is a color selected, it should
+## trigger the color placement, this way we can avoid selecting another
+## color when user is trying to place what is selected") a tap on another
+## jewel that could be picked reaches as far as linen does for a patch of
+## the pick's colour, and picks that jewel only with none in reach; only
+## the pick itself keeps the AIM_EDGE middle.
 const AIM_REACH := 1.5
 const AIM_PX := 44.0
 const AIM_EDGE := 0.7
@@ -1387,7 +1443,9 @@ func aim(at: Vector2) -> int:
 	if over >= 0:
 		if state.cur[over] < 0 and state.slot[over] == _held_c:
 			return over
-		if state.judge(over) == State.OK:
+		# only the pick itself keeps its middle (a tap there puts it down,
+		# two send it to the tin); any other jewel reaches for a patch
+		if state.judge(over) == State.OK and _held_cells.has(over):
 			reach = AIM_EDGE * _cell
 	var lp := zoom.to_layout(at)
 	var p := ((lp - _grid) / _cell).floor()
@@ -1603,6 +1661,8 @@ func _play(res: Dictionary, at_cell: int, starts: Dictionary) -> void:
 	var tin_k := _tin_step * TIN_FIT / _cell
 	# landings counted as they come, on one shared counter
 	var landed := [0]
+	# the patches this move sews, to merge together once all have settled
+	var homed := PackedInt32Array()
 	for m: Array in moves_:
 		var kind := int(m[0])
 		if kind == State.SLIDE:
@@ -1632,6 +1692,7 @@ func _play(res: Dictionary, at_cell: int, starts: Dictionary) -> void:
 				_mark(int(m[1]))
 				_mark(int(m[2]))
 				sewn += 1
+				homed.append(int(m[2]))
 			State.TO_TIN:
 				f.from = starts.get(int(m[1]), cell_centre(int(m[1])))
 				f.to = tin_centre(int(m[2]))
@@ -1647,14 +1708,16 @@ func _play(res: Dictionary, at_cell: int, starts: Dictionary) -> void:
 				_arrive[int(m[2])] = at + fly
 				_mark(int(m[2]))
 				sewn += 1
+				homed.append(int(m[2]))
 		_flights.append(f)
 		var lands := at + float(f.time)
 		last = maxf(last, lands)
 		_after(lands - now, _landed.bind(kind, int(m[2]), landed, moves_.size()))
 		order += 1
-	_last_land = last
+	var merged := _merge_all(homed, at_cell, last)
+	_last_land = merged
 	_bump_pill()
-	_busy_for(last - now + Motion.RELEASE_TIME + MERGE_TIME + 0.1)
+	_busy_for(merged - now + 0.1)
 	# the streak: moves in a row that each sewed something
 	if sewn > 0:
 		_streak += 1
@@ -1682,12 +1745,57 @@ func _play(res: Dictionary, at_cell: int, starts: Dictionary) -> void:
 				if not Motion.reduce:
 					fx.confetti(_at_seen(at_cell), 10 + mini(sewn, 12), _cell * 4.0))
 	if not (res.whole as Array).is_empty():
-		_after(last - now, _whole.bind(res.whole, at_cell))
+		_after(merged - now, _whole.bind(res.whole, at_cell))
 	_request()
 	note_move()
 	_spend(1, last)
 	if state.part_done():
-		_part_sewn(last)
+		_part_sewn(merged)
+
+## A move's jewels on their own slots merge together: once the last of them
+## has settled, as a wave out of `at_cell`, the nearest first. The second
+## the last merge ends (`last` with nothing to merge).
+func _merge_all(homed: PackedInt32Array, at_cell: int, last: float) -> float:
+	if homed.is_empty():
+		return last
+	var now := _now()
+	var lands := now
+	for to in homed:
+		lands = maxf(lands, _arrive[to])
+	if Motion.reduce:
+		for to in homed:
+			_merge_at[to] = lands
+		return maxf(last, lands)
+	var go := lands + Motion.RELEASE_TIME
+	var origin: Vector2i = state.xy(at_cell if at_cell >= 0 else homed[0])
+	var far := 1
+	for to in homed:
+		var d: Vector2i = state.xy(to) - origin
+		far = maxi(far, maxi(absi(d.x), absi(d.y)))
+	var step := minf(MERGE_WAVE, MERGE_WAVE_CAP / far)
+	for to in homed:
+		var d: Vector2i = state.xy(to) - origin
+		_merge_at[to] = go + maxi(absi(d.x), absi(d.y)) * step
+	_after(go - now, _merging.bind(homed, at_cell))
+	return maxf(last, go + far * step + MERGE_TIME)
+
+## The merge begins: one pop, a ring round the tapped patch, and a few
+## sparkles over the jewels going in.
+func _merging(homed: PackedInt32Array, at_cell: int) -> void:
+	if is_done():
+		return
+	fx.cue("sew", MERGE_PITCH * randf_range(TICK_VARY.x, TICK_VARY.y), MERGE_DB)
+	var c: int = state.slot[homed[0]]
+	if at_cell >= 0 and _in_sight(at_cell) and not Motion.reduce:
+		fx.ring(_at(at_cell), _cell * zoom.k * 1.1, Art.thread_for(Art.colour(state.colours[c])))
+	if Motion.reduce:
+		return
+	var stride := maxi(1, ceili(float(homed.size()) / MERGE_SPARKLES))
+	for k in range(0, homed.size(), stride):
+		var to: int = homed[k]
+		if _in_sight(to):
+			_after(_merge_at[to] - _now() + MERGE_TIME * MERGE_SWELL, fx.sparkle.bind(_at(to), Pal.SUN))
+	_request()
 
 ## One button has landed: its tick, a step up the run, and a ring where it
 ## was sewn.
@@ -1765,6 +1873,7 @@ func undo() -> bool:
 	_gen += 1
 	_flights = []
 	_arrive.fill(-INF)
+	_merge_at.fill(-INF)
 	_tin_arrive.fill(-INF)
 	_hop_at.fill(-INF)
 	_unhold()
