@@ -208,6 +208,30 @@ func _script() -> void:
 	match _mode:
 		"rest":
 			_at(1.5, _shot)
+		"catch":
+			# 2026-10-29: the bulb's piece held, its rail's sun rings showing,
+			# then let go where it stood; then a move that ends the light
+			# somewhere (the line), and the count pill throughout.
+			_end = 4.0
+			_at(1.0, func() -> void:
+				var p: int = _puzzle._state.hint_piece()
+				_mouse(_peg(p, float(_puzzle._state.pos[p])), true))
+			_at(1.5, _shot.bind("_held"))
+			_at(1.6, func() -> void: _mouse(_last, false))
+			_at(2.0, func() -> void:
+				var sb = _puzzle._state
+				for p in sb.pieces().size():
+					for q in sb.g.pieces[p].rail.size():
+						if q != sb.pos[p] and not sb.taken(p, q):
+							_slide(p, q)
+							return)
+			_at(3.6, _shot.bind("_line"))
+		"read":
+			_end = 3.6
+			_at(1.0, func() -> void: _puzzle.hint())
+			_at(1.4, _shot.bind("_first"))
+			_at(2.0, func() -> void: _puzzle.hint())
+			_at(3.0, _shot.bind("_second"))
 		"hold":
 			_end = 3.0
 			_at(1.0, func() -> void:

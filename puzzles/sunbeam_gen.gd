@@ -109,8 +109,9 @@ static func bend(g: Dictionary, p: int, q: int, c: int, d: int) -> Array:
 ## steps in order, each {c, d, k, p, o, nd} -- `k` "" for a free cell, "m" a
 ## mirror, "u" a cup, "bud", "pot", "lamp" or "back" (a cup's back) -- how it
 ## ended ("bud", "out", "pot", "lamp", "cup", "loop"), the cells it lit and
-## how many drops, and whether that is the solve.
-static func trace(g: Dictionary, pos: PackedInt32Array) -> Dictionary:
+## how many drops, and whether that is the solve. `skip` names a piece
+## lifted off the floor (a held piece's catch marks read the light without it).
+static func trace(g: Dictionary, pos: PackedInt32Array, skip := -1) -> Dictionary:
 	var w: int = g.cols
 	var h: int = g.rows
 	var n := w * h
@@ -118,6 +119,8 @@ static func trace(g: Dictionary, pos: PackedInt32Array) -> Dictionary:
 	occ.resize(n)
 	occ.fill(-1)
 	for p in pos.size():
+		if p == skip:
+			continue
 		for c in cells_of(g, p, pos[p]):
 			occ[c] = p
 	var seen := PackedByteArray()

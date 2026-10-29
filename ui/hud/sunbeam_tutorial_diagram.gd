@@ -323,12 +323,16 @@ func _start() -> void:
 			_loop.tween_callback(func() -> void: _art.reset_board())
 			_loop.tween_interval(2.2)
 		Lesson.HINT:
-			_loop.tween_callback(_say.bind("HTP_SB_HINT_CAP"))
-			_loop.tween_interval(0.4)
-			_loop.tween_callback(func() -> void: _art.hint())
-			_loop.tween_interval(1.8)
-			_loop.tween_callback(func() -> void: _art.hint())
-			_loop.tween_interval(0.6)
+			# The bulb in two presses (2026-10-29): a ring, then the slide;
+			# twice, one piece each.
+			for k in 2:
+				_loop.tween_callback(_say.bind("HTP_SB_READ_CAP"))
+				_loop.tween_interval(0.4)
+				_loop.tween_callback(func() -> void: _art.hint())
+				_loop.tween_interval(1.4)
+				_loop.tween_callback(_say.bind("HTP_SB_HINT_CAP"))
+				_loop.tween_callback(func() -> void: _art.hint())
+				_loop.tween_interval(1.2)
 			_win()
 			_loop.tween_interval(3.0)
 	_loop.tween_callback(_reset)
@@ -391,6 +395,7 @@ func _still() -> void:
 			_slide_now(0, 2, 0)
 			_say("HTP_SB_UNDO_CAP" if band < 3 else "HTP_SB_RESET_CAP")
 		Lesson.HINT:
+			_art.hint()
 			_art.hint()
 			_say("HTP_SB_HINT_CAP")
 		Lesson.DRAG:

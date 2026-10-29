@@ -94,3 +94,48 @@ off (an Easy cell is 191).
   staying over "Well done!". Seen and left: on the win the wall's top rail
   and the rainbow run close to the grey line. Owed: a phone, the level
   slide.
+
+### Made fun (2026-10-29)
+
+The user: "make pinwheel and sunbeam experience way better to play, and game
+itself way funnier to play, right now nobody likes it. Use web for
+reference on how good games does it". Built unattended.
+
+- **What the web said.** The genre's reference is loved as relaxing and
+  faulted for coming down to "picking the right spot to aim at"; the fun
+  is the light snapping where you meant it to go, the frustration is
+  fiddling until it does.
+- **Measured first** (`tests/_probe_sb_fun.gd`, 30 floors a band): a
+  fiddler (a random piece to its best peg by drops lit, a random peg a
+  third of the time) ran a median 15, 71 and 175 moves over the shortest on
+  Easy to Hard, and 4 Medium and 21 Hard floors of 30 went unsolved in 300.
+  A player who only lets go a piece on a peg the light crosses ran 1, 4 and
+  35 over, unsolved 0, 1 and 20. What the floor never showed was where the
+  light crosses a rail.
+- **Sun rings on a held piece's rail** (`State.catches`): every peg the
+  light crosses **with the piece lifted off the floor** (`Gen.trace`'s new
+  `skip`; read with the piece in place, a peg past its own bend is crossed
+  only because it stands there). The lifted light is the same all drag
+  long, so it is read once on the press. The ring under the piece now is
+  filled.
+- **Where the light gave out, said**: after a move by hand that leaves the
+  light short of the bud, once an arrangement, "The light stops at a pot. 2
+  of 4 drops lit." (pot, a cup's back, off the floor, a loop). The bud
+  reached with drops dry keeps its own line.
+- **Live stars on a pill in the tools row's gap** on every band that has no
+  hearts or move counter (all four since Insane's counter went): moves plus
+  the pieces still off home, against `shortest_solve()` (on Shy Dew the
+  bank's `dark`, so the stars there can only fall late); three within 1, two
+  within 4 (`State.STAR_SLACK`). The hanging shelf steps out of the gap
+  while the pill shows (`World.gap`), and the pill goes when the win screen
+  takes over (`_won`). Win line: moves against the shortest.
+- **The bulb in two presses**: the first (one hint) rings the piece the
+  light needs next (`State.hint_piece`, what the bulb always slid) and says
+  whether its place is one of its sun rings -- true on 88/90, 116/123,
+  127/180 and 47/196 presses walking home band by band, so the line only
+  promises it when it is so -- and the second, free, slides it home and pins
+  it, counted as a move. `_win.gd` presses twice and checks the rung piece
+  was pinned; the tutorial's bulb page rings then slides, twice.
+- `SB_RULES_CATCH` in the rules; en/pt/es. `opengl3_angle` 810x1440 Hard,
+  a piece held: peak 89 draw calls (twice). `_win.gd -- sunbeam` PASS. No
+  new sound file. Unseen on a phone; the thresholds are unconfirmed.

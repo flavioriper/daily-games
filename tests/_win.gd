@@ -896,8 +896,14 @@ func _solve_sunbeam() -> void:
 		for c in st.cols:
 			if not slot.has_point(_puzzle.cell_to_local(r, c)):
 				_fit_ok = false
+	# The bulb in two presses (2026-10-29): the first rings the piece the
+	# light needs (one hint, nothing moves), the second slides it home.
 	_press(_host.top_bar.hint_button)
-	_hud_ok = _puzzle.hints_used == 1 and st.pinned.size() == 1
+	var rang: int = _puzzle._reading
+	var still: bool = st.pinned.is_empty()
+	_press(_host.top_bar.hint_button)
+	_hud_ok = _puzzle.hints_used == 1 and still and rang >= 0 and st.pinned.has(rang) \
+		and _puzzle._reading < 0
 	for pass_i in 12:
 		var moved := false
 		for p in st.pieces().size():

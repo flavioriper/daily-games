@@ -36,6 +36,8 @@ const HEARTS_BY := [0, 0, 0, 0]
 ## another peg costs one, a move the sleepers send back included; a peek
 ## (holding a piece) and a tap the rails refuse cost nothing.
 const MOVES_SLACK := [0, 0, 0, 0]
+## Live stars (`stars`): moves over the shortest for three, and for two.
+const STAR_SLACK := [1, 4]
 
 var difficulty := 0
 
@@ -222,15 +224,7 @@ func answer_order() -> Array:
 func hint() -> Dictionary:
 	if is_solved():
 		return {}
-	var p := -1
-	for o: int in answer_order():
-		if pos[o] != home(o) and not pinned.has(o):
-			if p < 0:
-				p = o
-			# On a floor with sleepers, the first one that wakes none.
-			if sleepers().is_empty() or _quiet_home(o):
-				p = o
-				break
+	var p := hint_piece()
 	if p < 0:
 		return {}
 	var before := pos.duplicate()
@@ -255,6 +249,35 @@ func hint() -> Dictionary:
 	history.append(before)
 	retrace()
 	return {"piece": p, "moved": moved}
+
+## The piece `hint()` would slide: the first along the answer's beam that
+## is not home (on a floor with sleepers, the first that wakes none), or -1.
+## The bulb's first press rings it (2026-10-29).
+func hint_piece() -> int:
+	var p := -1
+	for o: int in answer_order():
+		if pos[o] != home(o) and not pinned.has(o):
+			if p < 0:
+				p = o
+			if sleepers().is_empty() or _quiet_home(o):
+				p = o
+				break
+	return p
+
+## Live stars on Easy to Hard (2026-10-29): the moves made plus the pieces
+## still off home, against the shortest way. Three within STAR_SLACK[0],
+## two within [1], else one.
+func stars(moves: int) -> int:
+	var left := 0
+	for p in pos.size():
+		if pos[p] != home(p):
+			left += 1
+	var over := moves + left - shortest_solve()
+	if over <= STAR_SLACK[0]:
+		return 3
+	if over <= STAR_SLACK[1]:
+		return 2
+	return 1
 
 ## Whether sliding `o` home (whoever is in the way stepping aside) leaves
 ## the light off every sleeper.
@@ -299,6 +322,29 @@ func reset_board() -> void:
 	if before != pos:
 		history.append(before)
 	retrace()
+
+## The pegs of `p`'s rail the light crosses with `p` lifted off the floor:
+## let go there and it meets the beam. What the board marks on a held
+## piece's rail, read off the light and never off the answer. (Read with the
+## piece lifted: past a bend `p` itself makes, a peg is only crossed because
+## `p` stands where it does.)
+func catches(p: int) -> Array:
+	var out: Array = []
+	if pinned.has(p):
+		return out
+	var free := {}
+	for st: Dictionary in Gen.trace(g, pos, p).steps:
+		if str(st.k) == "":
+			free[int(st.c)] = true
+	var rail: PackedInt32Array = g.pieces[p].rail
+	for q in rail.size():
+		if taken(p, q):
+			continue
+		for c in cells_of(p, q):
+			if free.has(c):
+				out.append(q)
+				break
+	return out
 
 func lit_drops() -> int:
 	return int(beam.get("lit_drops", 0))

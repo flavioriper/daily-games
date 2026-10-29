@@ -62,6 +62,9 @@ const MOTES := [[0.30, 438.0, 5.0], [0.70, 452.0, 4.0], [0.76, 410.0, 3.0],
 const BREATH := 3.6
 const BREATH_LOW := 0.35
 
+## Whether the tools row's gap holds its hanging shelf: the board's count
+## pill stands there since 2026-10-29, and turns it off.
+var gap := true
 var _shown: ArrayMesh
 var _motes: Control
 var _motes_shown: ArrayMesh
@@ -126,7 +129,8 @@ func _build() -> void:
 		b.fan(PackedVector2Array([Vector2(x0, y0), Vector2(x0 + pw * 0.16, y0),
 			Vector2(x0 - pw * 0.08, bench_y - 90.0 * u), Vector2(x0 - pw * 0.24, bench_y - 90.0 * u)]),
 			Color(1.0, 1.0, 1.0, 0.3))
-	_shelf(b, u)
+	if gap:
+		_shelf(b, u)
 	_bench(b, u, bench_y)
 	_shown = b.mesh()
 	queue_redraw()

@@ -198,6 +198,16 @@ const CARD_AFTER := 1.1
 const CARD_AFTER_STILL := 0.3
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 const MovesPill = preload("res://ui/flat/moves_pill.gd")
+const StarLine = preload("res://ui/flat/star_line.gd")
+const FlatTopBar = preload("res://ui/flat/flat_top_bar.gd")
+## The made-fun pass (2026-10-29): sun rings on a held piece's rail where
+## the light crosses it (State.catches), the bulb's leaf ring on the piece
+## it read, and the count pill's font.
+const CATCH_R := 0.4
+const CATCH_W := 0.07
+const READ_R := 0.62
+const READ_PULSE := 1.2
+const COUNT_FONT := 28
 const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
 ## The moves the out-of-moves card's video buys, once a floor.
 const MOVES_BONUS := 5
@@ -370,6 +380,17 @@ var _heart_used := false
 var moves_left := 0
 var max_moves := 0
 var _moves_pill := MovesPill.new()
+## The stars the moves stand at (State.stars), on the count pill.
+var _stars := StarLine.new()
+## The pegs of the held piece's rail the light crosses with it lifted.
+var _catch: Array = []
+## The bulb's first press: the piece it rang and when, -1 for none. The
+## second press, free, slides it home.
+var _reading := -1
+var _reading_at := -100.0
+var _mark_mesh: ArrayMesh
+## The arrangement a where-the-light-ends line was said for.
+var _end_told := ""
 var _lost_ever := false
 var _undo_ever := false
 var _flawless := false
@@ -430,7 +451,7 @@ func title() -> String: return "Sunbeam"
 ## The rules, then the band's own closing: nothing can be lost (Easy,
 ## Medium), the snails (Hard), or Shy Dew (Insane).
 func rules() -> String:
-	var out := tr("SB_RULES")
+	var out := tr("SB_RULES") + "\n\n" + tr("SB_RULES_CATCH")
 	if _state.shy():
 		out += "\n\n" + tr("SB_RULES_SHY_MOVES")
 	elif not _state.snails().is_empty():
@@ -676,6 +697,10 @@ func _deal() -> void:
 	for p in _state.pieces().size():
 		_disp.append({"from": float(_state.pos[p]), "at": -100.0, "lift": false})
 	_drag = {}
+	_catch = []
+	_reading = -1
+	_end_told = ""
+	_stars.clear()
 	_peg_press = {}
 	_refused = {"at": -100.0, "p": -1}
 	_rings = []
@@ -754,6 +779,11 @@ func card_centred() -> bool:
 	return true
 
 func _layout() -> void:
+	# The count pill stands in the tools row's gap: the world's ornaments
+	# there step out while it shows.
+	if _world != null and _world.gap == _counting():
+		_world.gap = not _counting()
+		_world._build()
 	_glass = null
 	_still = null
 	if _bled:
@@ -788,6 +818,8 @@ func set_clear(top: float, bottom: float, won := false) -> void:
 		_clear = Vector2(top, bottom)
 	Motion.stop(_slide_tw)
 	_won = won
+	if _heart_layer != null:
+		_heart_layer.queue_redraw()
 	if not won:
 		_clear = Vector2(top, bottom)
 		_slid = 0.0
@@ -1197,6 +1229,8 @@ func _process(delta: float) -> void:
 		_heart_layer.queue_redraw()
 	if max_moves > 0 and _moves_pill.animating(t - 0.1):
 		_heart_layer.queue_redraw()
+	elif _counting() and (_stars.busy(t) or t - _opened < Motion.ENTER_DELAY + Motion.POP_IN + 0.1):
+		_heart_layer.queue_redraw()
 
 ## The light reaching things: a drop it has just wet rings and chimes (not
 ## twice inside CHIME_QUIET, so a drag sweeping the light back and forth over
@@ -1238,6 +1272,16 @@ func _arrivals(t: float) -> void:
 			fx.cue("dry")
 			if _by_hand:
 				fx.buzz(Haptics.WARN)
+	elif _by_hand and _drag.is_empty() and _settled(t) and tr_.end != "bud" and _arrived(t) \
+			and _end_told != key and _bud_told != key:
+		# Where the light gave out, and how far it got (2026-10-29): said
+		# once an arrangement, after a move by hand, never at the opening.
+		_end_told = key
+		var why := {"pot": "SB_END_POT", "cup": "SB_END_CUP", "out": "SB_END_OUT",
+			"lamp": "SB_END_OUT", "loop": "SB_END_LOOP"}
+		var lit := _state.lit_drops()
+		var all := _state.drops().size()
+		_say(tr(why.get(tr_.end, "SB_END_OUT")) + " " + tr("SB_LIT_OF") % [lit, all], Face.Expr.HAPPY)
 
 ## Whether every piece has landed on its peg.
 func _settled(t: float) -> bool:
@@ -1253,7 +1297,8 @@ func _animating(t: float) -> bool:
 		return false
 	var entrance := Motion.ENTER_DELAY + Motion.ENTER_POP \
 		+ Motion.stagger(_state.pieces().size() + 2, Motion.ENTER_STAGGER) + Motion.POP_IN + 0.2
-	return t - _opened < entrance or not _drag.is_empty()
+	return t - _opened < entrance or not _drag.is_empty() \
+		or (_reading >= 0 and t - _reading_at < READ_PULSE)
 
 func _busy_for(seconds: float) -> void:
 	_anim_until = maxf(_anim_until, _now() + seconds)
@@ -1311,7 +1356,37 @@ func _draw() -> void:
 		if m != null:
 			draw_mesh(m, null, board, tint)
 			shown.append(m)
+	_mark_mesh = _build_marks(t)
+	if _mark_mesh != null:
+		draw_mesh(_mark_mesh, null, xf, tint)
+		shown.append(_mark_mesh)
 	_shown = shown
+
+## The marks over the floor (2026-10-29), in board pixels, made each frame
+## they show: a sun ring on every peg of the held piece's rail the light
+## crosses (filled where it stands now), and the bulb's leaf ring round the
+## piece it read. Null when none shows.
+func _build_marks(t: float) -> ArrayMesh:
+	var s := _cell()
+	var any := false
+	var b := Face.Builder.new()
+	if not _drag.is_empty() and not _catch.is_empty():
+		var p: int = _drag.p
+		for q: int in _catch:
+			var at := _pt(_piece_mid(p, float(q)))
+			var here := q == int(_state.pos[p])
+			if here:
+				b.disc(at, CATCH_R * s, Color(Pal.SUN, 0.28))
+			b.stroke(Face.Builder.arc_points(at, CATCH_R * s, 0.0, TAU), CATCH_W * s,
+				Color(Pal.SUN_DEEP, 0.95 if here else 0.7), true, false)
+		any = true
+	if _reading >= 0:
+		var since := t - _reading_at
+		var beat := 1.0 if Motion.reduce or since >= READ_PULSE else 1.0 + 0.15 * sin(since * TAU * 2.0)
+		var at := _pt(_piece_mid(_reading, _peg_now(_reading, t)))
+		b.stroke(Face.Builder.arc_points(at, READ_R * s * beat, 0.0, TAU), CATCH_W * s, Pal.LEAF_DEEP, true, false)
+		any = true
+	return b.mesh() if any else null
 
 ## The greenhouse's glass: a wall of sage panes behind everything, light
 ## shafts, the potting shelf over the floor and the window box under it.
@@ -2060,6 +2135,9 @@ func _press(local: Vector2) -> void:
 			return
 		var s := _peg_now(p, t)
 		_drag = {"p": p, "s": s, "off": s - _rail_s(p, local), "before": _state.pos.duplicate(), "at": t}
+		# The light with this piece lifted is the same light all drag long:
+		# nothing else moves while it is held.
+		_catch = _state.catches(p)
 		_shy_told = false
 		_by_hand = false
 		fx.cue("lift")
@@ -2086,14 +2164,17 @@ func _release(local: Vector2) -> void:
 		_disp[p] = {"from": float(_drag.s), "at": t, "lift": true}
 		var before: PackedInt32Array = _drag.before
 		_drag = {}
+		_catch = []
 		_busy_for(SNAP_TIME + LAND_TIME)
 		_land_puff(p)
 		if _state.commit(before):
+			_reading = -1
 			if not _judged_wrong(p, before, t):
 				fx.cue("slide")
 				note_move()
 				_after_move(before)
 				_spend(1, t + SNAP_TIME + LAND_TIME)
+				_rate(true)
 		else:
 			fx.cue("drop")
 		_refresh()
@@ -2120,11 +2201,13 @@ func _release(local: Vector2) -> void:
 		_busy_for(SNAP_TIME + LAND_TIME)
 		_land_puff(p)
 		_state.commit(before)
+		_reading = -1
 		if not _judged_wrong(p, before, t):
 			fx.cue("slide")
 			note_move()
 			_after_move(before)
 			_spend(1, t + SNAP_TIME + LAND_TIME)
+			_rate(true)
 		_refresh()
 
 ## A little puff off the rail where piece `p` lands, as it lands.
@@ -2197,30 +2280,58 @@ func undo() -> bool:
 		return false
 	_undo_ever = true
 	_by_hand = false
+	_reading = -1
 	_break_streak()
 	_clear_gags()
 	var t := _now()
 	_settle(before, t)
+	_rate(false)
 	_say(tr("SB_UNDONE"), Face.Expr.HAPPY)
 	fx.cue("undo")
 	_refresh()
 	moved.emit()
 	return true
 
+## A read waiting on its second press counts as a hint held: that press is
+## free.
 func hints_left() -> int:
+	return _hints_held() + (1 if _reading >= 0 else 0)
+
+func _hints_held() -> int:
 	return maxi(0, State.hints_for(_state.difficulty) + hints_extra - hints_used)
 
-## Slides the next piece along the answer's beam home and pins it there (on
-## Hard, the first such piece that wakes no snail).
+## The bulb in two presses (2026-10-29). The first, one hint, rings the
+## piece the light needs next (State.hint_piece) and says whether its place
+## is one of the sun rings its rail shows when held (the light reaches it
+## now) or not yet; the ring stays until a move. The second, free, slides it
+## home and pins it, as the bulb always did (on Hard, the first such piece
+## that wakes no snail).
 func hint() -> bool:
-	if is_done() or out_of_hearts or busy() or hints_left() <= 0:
+	if is_done() or out_of_hearts or busy():
 		return false
+	if _reading < 0:
+		if _hints_held() <= 0:
+			return false
+		var hp: int = _state.hint_piece()
+		if hp < 0:
+			return false
+		hints_used += 1
+		_reading = hp
+		_reading_at = _now()
+		var on_light: bool = (_state.catches(hp) as Array).has(_state.home(hp))
+		_say(tr("SB_READ_CATCH") if on_light else tr("SB_READ_NEXT"), Face.Expr.HAPPY)
+		fx.cue("hint")
+		_refresh()
+		moved.emit()
+		return true
+	_reading = -1
 	var t := _now()
 	var before: PackedInt32Array = _state.pos.duplicate()
 	var r: Dictionary = _state.hint()
 	if r.is_empty():
+		_refresh()
 		return false
-	hints_used += 1
+	moves += 1
 	_by_hand = false
 	_break_streak()
 	_settle(before, t)
@@ -2228,6 +2339,7 @@ func hint() -> bool:
 	_ring_at(_pt(_piece_mid(p, float(_state.pos[p]))), t + SNAP_TIME)
 	_say(tr("SB_HINT"), Face.Expr.HAPPY)
 	fx.cue("hint")
+	_rate(false)
 	_refresh()
 	moved.emit()
 	check_solved()
@@ -2251,6 +2363,8 @@ func reset_board() -> void:
 	_solved_at = AGO
 	_bloom_at = AGO
 	moves = 0
+	_reading = -1
+	_rate(false)
 	# The opening again is the floor from the top, so the moves come back.
 	moves_left = max_moves
 	_heart_layer.queue_redraw()
@@ -2281,11 +2395,13 @@ func skill_quality() -> float:
 
 ## What a reopened daily needs: the hearts kept and whether it was flawless.
 func completion_record() -> Dictionary:
-	return {"hearts": hearts, "moves_left": moves_left, "flawless": _flawless}
+	return {"hearts": hearts, "moves_left": moves_left, "flawless": _flawless, "moves": moves, "stars": _stars.stars}
 
 # --- the win ---
 
 func flat_win() -> Dictionary:
+	if max_hearts <= 0 and max_moves <= 0 and _state.shortest_solve() > 0:
+		return {"faces": [], "subtitle": tr("SB_WIN_MOVES") % [moves, _state.shortest_solve()]}
 	return {"faces": [], "subtitle": tr("SB_WIN")}
 
 ## The win screen waits for the light to reach the bud, the wave to run the
@@ -2355,6 +2471,8 @@ func restore_completed_board() -> void:
 	hearts = clampi(int(completed_record.get("hearts", max_hearts)), 0, max_hearts)
 	moves_left = clampi(int(completed_record.get("moves_left", max_moves)), 0, max_moves)
 	_flawless = bool(completed_record.get("flawless", false))
+	moves = int(completed_record.get("moves", _state.shortest_solve()))
+	_stars.clear(clampi(int(completed_record.get("stars", 3)), 0, 3))
 	_state.pos = _state.home_pos()
 	_state.retrace()
 	var t := _now()
@@ -2555,6 +2673,9 @@ func _zs(b: Face.Builder, t: float) -> void:
 # --- hearts ---
 
 func _draw_hearts() -> void:
+	if _counting() and _cell() > 0.0:
+		_draw_count()
+		return
 	if max_moves > 0 and _cell() > 0.0:
 		_moves_pill.draw(_heart_layer, _hearts_at(Vector2.ZERO, maxf(HEART_TOP + HEART_PILL_PAD.y + HEART_R,
 			_origin().y - FRAME - HEART_PILL_PAD.y - HEART_R - 10.0)), moves_left, _now())
@@ -2604,6 +2725,55 @@ func _draw_hearts() -> void:
 	_heart_layer.draw_set_transform(c * (1.0 - enter), 0.0, Vector2.ONE * enter)
 	_heart_layer.draw_mesh(_hearts_shown, null)
 	_heart_layer.draw_set_transform(Vector2.ZERO)
+
+## Whether the count pill stands in the tools row's gap (2026-10-29): a
+## laid-out floor with neither hearts nor a move counter (every band since
+## Insane's move counter went), until the win screen takes over. The
+## tutorial's floors are never bled.
+func _counting() -> bool:
+	return _bled and not _won and max_hearts <= 0 and max_moves <= 0 and _state.shortest_solve() > 0
+
+## The count pill: the stars the moves stand at (ui/flat/star_line.gd),
+## then the moves so far against the floor's shortest, in the middle of the
+## tools row's gap (the hanging shelf steps out for it).
+func _draw_count() -> void:
+	var now := _now()
+	var enter := 1.0 if Motion.reduce else Motion.pop_in_scale(now - _opened - Motion.ENTER_DELAY).x
+	if enter <= 0.0:
+		return
+	var font: Font = CozyTheme.body(700)
+	var best := _state.shortest_solve()
+	var text: String = (tr("SB_COUNT_ONE") % best) if moves == 1 else (tr("SB_COUNT") % [moves, best])
+	var fs := COUNT_FONT
+	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+	var ss := 0.9
+	var sw := StarLine.width(ss)
+	var pill := Vector2(sw + 14.0 + tw, 2.0 * HEART_R) + 2.0 * HEART_PILL_PAD
+	var gap := float(load(FLAT_HOST).GAP)
+	var c := Vector2(size.x * 0.5, _clear.x - gap - FlatTopBar.BUTTON.y * 0.5)
+	var corner := c - pill * 0.5
+	var rim := Vector2.ONE * HEART_PILL_RIM
+	var b := Face.Builder.new()
+	b.polygon(Face.Builder.round_rect(corner - rim, pill + 2.0 * rim, pill.y * 0.5 + HEART_PILL_RIM), Pal.LINE)
+	b.polygon(Face.Builder.round_rect(corner, pill, pill.y * 0.5), Pal.SURFACE)
+	_hearts_shown = b.mesh()
+	_heart_layer.draw_set_transform(c * (1.0 - enter), 0.0, Vector2.ONE * enter)
+	_heart_layer.draw_mesh(_hearts_shown, null)
+	var x0 := corner.x + HEART_PILL_PAD.x
+	_stars.draw(_heart_layer, Vector2(x0 + StarLine.R * ss, c.y), ss, now)
+	var base := c.y - font.get_height(fs) * 0.5 + font.get_ascent(fs)
+	_heart_layer.draw_string(font, Vector2(x0 + sw + 14.0, base), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs,
+		Color(Pal.TEXT, 0.8))
+	_heart_layer.draw_set_transform(Vector2.ZERO)
+
+## The stars read once a move (`heard`: a star lost falls with a low undo
+## note).
+func _rate(heard: bool) -> void:
+	if not _counting():
+		return
+	if _stars.rate(_state.stars(moves), _now(), heard and not is_done()) < 0:
+		fx.cue("undo", 0.85, -4.0)
+	_heart_layer.queue_redraw()
 
 ## The middle of the hearts' pill (`pill` its size): over the floor, at
 ## height `y` (a tutorial page hangs it beside the floor).
