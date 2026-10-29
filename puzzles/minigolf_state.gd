@@ -19,8 +19,10 @@ const Gen = preload("res://puzzles/minigolf_gen.gd")
 const HINTS_BY := [3, 3, 2, 2]
 const HEARTS_BY := [0, 0, 0, 0]
 const MOVES_SLACK := [0, 0, 0, 0]
-## How much of a putt's way the dotted aim shows, in field units.
-const GUIDE_BY := [64.0, 52.0, 42.0, 30.0]
+## How much of a putt's way the dotted aim shows, in field units. Made fun
+## (2026-10-29): Easy shows most of a roll (118 at most) and Medium more
+## than it did (they were 64 and 52), so the easy bands teach the banks.
+const GUIDE_BY := [96.0, 64.0, 42.0, 30.0]
 
 var band := 0
 var holes: Array = []

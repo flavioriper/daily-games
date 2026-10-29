@@ -113,3 +113,49 @@ hole swap slides off the screen's edge. `ball_at()` returns local pixels.
   minigolf` passes with real pulls.
 - Decided for the user, unconfirmed: the hole centred, not top-aligned;
   the 110 foot (a full-height hole is 8% smaller). Owed: a phone.
+
+### Made fun (2026-10-29)
+
+The user: "make mini golf and domino patio experience way better to play,
+and game itself way funnier to play, right now nobody likes it",
+autonomous, push when done. The web had little design writing on the
+genre; what it had agreed: a clear aim line, drag-to-power, and layered
+feedback on the knock and the cup (itch.io jam comments asking for more
+feedback on "bouncing and scoring", store copy praising "readable" holes
+with "instant feedback"). Nothing in `minigolf_sim.gd` or the bank was
+touched (a sim constant means re-mining).
+
+**Measured first** (`tests/_probe_gf_fun.gd`, 30 holes a band, three
+rounds each, the steady one-bank putt struck well off: 0.06 rad, 14%
+power): a casual hand makes par on 69/67/44/51% of holes (Easy to Insane)
+and aces 11/3/0/0%; **21/23/29/36% of balls that drop come off a kerb**,
+and the board said nothing of it, though "a trick shot is how par is
+beaten"; **11-17% of missed putts stop within 9 units of the cup** (three
+cups) and the board said nothing of those either. Every Easy hole is par
+2, so a card of pars was a card of the same word.
+
+**What changed** (board and state only):
+
+- **Bank shots**: a ball that drops off a kerb gets a second word under
+  the hole's (`GF_BANK`, `GF_BANK_N` "2-kerb bank shot!"); each kerb a
+  putt meets after its first knocks a little higher (`KERB_CLIMB`).
+- **So close!** (`GF_CLOSE`) by a ball that stops within `NEAR` (9) of the
+  cup, with a tick.
+- **The clock slows by the cup** (`_slow_k`: 0.4 of real time while the
+  ball is inside 11.5 of the cup under 72 a second), so a drop or a near
+  miss is watched. The sim's steps are the same; reduce motion skips it;
+  `settle_now()` is untouched.
+- **The last putt's way stays on the green** as faint dots (`_path`,
+  `PATH_GAP`) until the next putt, so a miss shows what it did.
+- **The aim shows more on the easy bands**: `State.GUIDE_BY` 96/64 on
+  Easy/Medium (64/52 before); Hard and Insane unchanged.
+- **Live stars** (`star_line.gd`) left of the pips, by strokes over par so
+  far: at par or under 3, up to `STARS_OVER` (2/2/3/3) over 2, more 1
+  (`GF_RULES_STARS` in the rules).
+- **Runs**: a hole at par or better after another climbs its cue
+  (`RUN_STEP`) and, when not a bank shot, says `GF_RUN` "3 in a row at
+  par!" under the word.
+- No new sounds; en/pt/es. `_win.gd -- minigolf` PASS; `_shot_minigolf.gd
+  -- d=1 solve` seen: stars, "Hole in one!" with "2-kerb bank shot!",
+  "Birdie!" with "Bank shot!". The open calls of the first build (no Undo,
+  the pull, par by a noisy bot) are still the user's. Unseen on a phone.

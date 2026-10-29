@@ -47,6 +47,7 @@ const Haptics = preload("res://core/haptics.gd")
 const MovesPill = preload("res://ui/flat/moves_pill.gd")
 const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
 const World = preload("res://puzzles/minigolf_world.gd")
+const StarLine = preload("res://ui/flat/star_line.gd")
 const FLAT_HOST_PATH := "res://ui/flat/flat_host.gd"
 ## The lawn kept open under the field on a bleed board, for the world's
 ## foot, and the slide into the win's span (the host's SLOT_TIME).
@@ -137,6 +138,25 @@ const TOAST_H := 84.0
 const TOAST_PAD := 80.0
 const TOAST_RADIUS := 28.0
 const TOAST_FONT := 32
+# --- made fun (2026-10-29) ---
+## Three live stars by the strokes over par so far: at par or under 3, up
+## to this many over 2, more 1 (by band); their size on the scorecard.
+const STARS_OVER := [2, 2, 3, 3]
+const STAR_S := 0.8
+## A putt that stops this near the cup without dropping is a near miss
+## (field units; the cup is 3.3 across).
+const NEAR := 9.0
+## The roll slows to this share of real time while the ball is this near
+## the cup and this slow (the sim's own steps; only the clock stretches).
+const SLOW := 0.4
+const SLOW_R := 11.5
+const SLOW_V := 72.0
+## The last putt's way, left on the green as faint dots this far apart.
+const PATH_GAP := 2.4
+## Each kerb a putt meets after its first knocks a little higher.
+const KERB_CLIMB := 0.05
+## A hole at par or better after another climbs the cue this much.
+const RUN_STEP := 0.04
 
 const TIPS := ["GF_TIP_AIM", "GF_TIP_BANK", "GF_TIP_PAR"]
 const TIPS_SAND := ["GF_TIP_AIM", "GF_TIP_SAND", "GF_TIP_PAR"]
@@ -199,6 +219,16 @@ var _log := ""
 var _tries := 1
 var _flawless := false
 var _won := false
+## Made fun: the stars, the last putt's way, the kerbs it has met, the run
+## of holes at par or better and the best, and the day's bank shots in and
+## near misses.
+var _stars := StarLine.new()
+var _path := PackedVector2Array()
+var _putt_hits := 0
+var _par_run := 0
+var _best_run := 0
+var _banks := 0
+var _near := 0
 ## The hole in play's bounds, and where the hole before it stood.
 var _box := Rect2(0.0, 0.0, 82.0, 116.0)
 var _old_origin := Vector2.ZERO
@@ -273,6 +303,7 @@ func rules() -> String:
 		out += "\n\n" + tr("GF_RULES_GATES")
 	if max_moves > 0:
 		out += "\n\n" + tr("GF_RULES_STROKES") % max_moves
+	out += "\n\n" + tr("GF_RULES_STARS") % int(STARS_OVER[clampi(_state.band, 0, STARS_OVER.size() - 1)])
 	return out
 
 ## The how-to-play pages, band-aware: the putt, the bank shot, the card and
@@ -426,6 +457,11 @@ func _begin() -> void:
 
 ## The course from its first tee.
 func _fresh(t: float) -> void:
+	_stars.clear(3)
+	_par_run = 0
+	_best_run = 0
+	_banks = 0
+	_near = 0
 	_pip_at = PackedFloat32Array()
 	_pip_at.resize(_state.holes.size())
 	_pip_at.fill(-100.0)
@@ -446,6 +482,7 @@ func _fresh_hole(t: float) -> void:
 	_guide_for = Vector2(INF, INF)
 	_ghost = {}
 	_trail = []
+	_path = PackedVector2Array()
 	_hole_at = t
 	_sunk_at = -100.0
 	_wet_at = -100.0
@@ -630,7 +667,7 @@ func _process(delta: float) -> void:
 		return
 	var t := _now()
 	if _phase == "roll":
-		_acc += delta
+		_acc += delta * _slow_k()
 		var events: Array = []
 		var n := 0
 		var rolling := true
@@ -639,6 +676,8 @@ func _process(delta: float) -> void:
 			_acc -= Sim.DT
 			n += 1
 		_trail.append(_state.sim.p)
+		if _path.is_empty() or _path[_path.size() - 1].distance_to(_state.sim.p) >= PATH_GAP:
+			_path.append(_state.sim.p)
 		if _trail.size() > TRAIL:
 			_trail.pop_front()
 		_handle(events, t)
@@ -666,6 +705,16 @@ func _process(delta: float) -> void:
 		_live = null
 		queue_redraw()
 
+## Made fun: the clock slows while the ball creeps up on the cup, so a putt
+## that drops (or just misses) is watched. The sim steps the same.
+func _slow_k() -> float:
+	var sim = _state.sim
+	if Motion.reduce or sim.sunk or sim.wet:
+		return 1.0
+	if sim.p.distance_to(sim.cup) < SLOW_R and sim.v.length() < SLOW_V:
+		return SLOW
+	return 1.0
+
 ## Whether anything on the card is in motion this frame.
 func _moving(t: float) -> bool:
 	if _phase in ["roll", "wet", "sunk", "swap"] or _aiming or not _think.is_empty():
@@ -677,6 +726,8 @@ func _moving(t: float) -> bool:
 	if max_moves > 0 and _moves_pill.animating(t - 0.1):
 		return true
 	if t >= _stamp_at and t - _stamp_at < 1.0:
+		return true
+	if _stars.busy(t):
 		return true
 	# the flag flutters on; a still card under reduce motion draws nothing
 	return not Motion.reduce and not _won
@@ -696,7 +747,9 @@ func _handle(events: Array, t: float) -> void:
 		match String(e[0]):
 			"wall", "gate":
 				var hard := clampf(float(e[2]) / 90.0, 0.0, 1.0)
-				fx.cue("wall", 0.9 + 0.3 * hard, lerpf(WALL_SOFT_DB, 0.0, hard))
+				_putt_hits += 1
+				var climb := 1.0 + KERB_CLIMB * float(mini(_putt_hits - 1, 4))
+				fx.cue("wall", (0.9 + 0.3 * hard) * climb, lerpf(WALL_SOFT_DB, 0.0, hard))
 				if hard > 0.25:
 					fx.puff(_pt(at), Pal.GF_KERB_HI, 2)
 			"post":
@@ -718,6 +771,12 @@ func _handle(events: Array, t: float) -> void:
 
 func _on_stop(t: float) -> void:
 	_phase = "aim"
+	var sim = _state.sim
+	if not sim.sunk and sim.p.distance_to(sim.cup) < NEAR:
+		# made fun: a near miss is said, never silent
+		_near += 1
+		_float_word("GF_CLOSE", sim.p)
+		fx.buzz(Haptics.TICK)
 	_after_putt(t)
 
 ## The ball is at rest again: the gates swap, and a count that has run out
@@ -741,6 +800,7 @@ func _on_splash(at: Vector2, t: float) -> void:
 	_wet_at = t
 	_wet_from = at
 	_trail = []
+	_path = PackedVector2Array()
 	fx.cue("splash")
 	fx.puff(_pt(at), Pal.GF_WATER_HI, 6)
 	_tell("GF_WET", Face.Expr.WORRIED)
@@ -791,6 +851,20 @@ func _on_sunk(t: float) -> void:
 		word = "GF_DOUBLE"
 		col = Pal.FLOWER_TILE
 	_log += glyph
+	# made fun: a run of holes at par or better climbs; a ball in off the
+	# kerbs is a bank shot, said under the word; the stars are read again
+	_par_run = _par_run + 1 if d <= 0 else 0
+	_best_run = maxi(_best_run, _par_run)
+	var banked: int = sim.hits
+	if banked > 0:
+		_banks += 1
+	var cue_pitch := 1.0 + RUN_STEP * float(mini(maxi(_par_run - 1, 0), 4))
+	var extra := ""
+	if banked > 0:
+		extra = tr("GF_BANK") if banked == 1 else tr("GF_BANK_N") % banked
+	elif _par_run >= 2:
+		extra = tr("GF_RUN") % _par_run
+	_rate(true)
 	var last: bool = _state.last_hole()
 	get_tree().create_timer(0.0 if Motion.reduce else SINK_TIME).timeout.connect(func():
 		if is_inside_tree() and (_phase == "sunk" or _won):
@@ -798,8 +872,10 @@ func _on_sunk(t: float) -> void:
 			# the frame the ball dropped and `party` is 0.28 s off, and a third
 			# phrase between them is three tunes at once (it was sounded always).
 			if not _won:
-				fx.cue(cue_name)
-			_sticker(tr(word), col, n == 1 or d < 0))
+				fx.cue(cue_name, cue_pitch)
+			_sticker(tr(word), col, n == 1 or d < 0)
+			if extra != "":
+				_sub_sticker(extra, Pal.SUN_RAY if banked > 0 else Pal.PAPER))
 	if n == 1 and not Motion.reduce:
 		fx.confetti(Vector2(_fs.x * 0.5, _band() + 20.0), 24, _fs.x * 0.8)
 	_say(tr(word), Face.Expr.JOY if d <= 0 else Face.Expr.HAPPY)
@@ -853,6 +929,17 @@ func _swap(t: float) -> void:
 func _sticker(text: String, col: Color, big: bool) -> void:
 	_stickers.append({"text": text, "col": col, "at": _now(), "life": STICKER_LIFE, "px": 92 if big else 76,
 		"pos": Vector2(_fs.x * 0.5, _band() + (_fs.y - _band()) * 0.36), "tilt": -0.06})
+
+## Made fun: a second, smaller word under the hole's (a bank shot, a run).
+func _sub_sticker(text: String, col: Color) -> void:
+	_stickers.append({"text": text, "col": col, "at": _now() + 0.12, "life": STICKER_LIFE, "px": 52,
+		"pos": Vector2(_fs.x * 0.5, _band() + (_fs.y - _band()) * 0.36 + 84.0), "tilt": 0.05})
+
+## Made fun: the stars the card so far would earn; `heard`: a lost one falls.
+func _rate(heard: bool) -> void:
+	var over: int = _state.over_par()
+	var cut: int = STARS_OVER[clampi(_state.band, 0, STARS_OVER.size() - 1)]
+	_stars.rate(3 if over <= 0 else (2 if over <= cut else 1), _now(), heard)
 
 ## A small word by the ball.
 func _float_word(key: String, at: Vector2) -> void:
@@ -1231,6 +1318,11 @@ func _build_live(t: float) -> ArrayMesh:
 			var u := beat / (BECKON * 0.55)
 			var r := Sim.BALL_R * s * (1.3 + 1.5 * u)
 			b.stroke(Face.Builder.ring(ball * s, r, r), (0.45 - 0.25 * u) * s, Color(Pal.GF_BALL, 0.6 * (1.0 - u)), true)
+	# made fun: the last putt's way, faint dots left on the green until the
+	# next putt, so a miss shows what it did
+	if aimable and _path.size() > 1:
+		for i in _path.size():
+			b.disc(_path[i] * s, 0.42 * s, Color(Pal.GF_BALL, 0.38))
 	# the trail
 	var m := _trail.size()
 	for i in m:
@@ -1357,6 +1449,14 @@ func _draw_hud(t: float, xf: Transform2D, tint: Color, shown: Array) -> void:
 		var right := minf(_fs.x - 28.0, x0 + wide - PIP_R + 28.0 + tw)
 		var ink: Color = Pal.SUN_DEEP.darkened(0.25) if d < 0 else (Pal.TEXT if d == 0 else Pal.FLOWER_DEEP.darkened(0.2))
 		draw_string(font, Vector2(right - tw, y + trise), tag, HORIZONTAL_ALIGNMENT_LEFT, -1, TAG_FONT, Color(ink, tint.a))
+	# made fun: the three stars, left of the pips
+	if not _won:
+		var ss := STAR_S
+		var sw := StarLine.width(ss)
+		var sx := maxf(14.0 + StarLine.R * ss, x0 - PIP_R - 26.0 - sw + StarLine.R * ss)
+		draw_set_transform(Vector2.ZERO)
+		_stars.draw(self, xf * Vector2(sx, y), ss, t, tint.a)
+		draw_set_transform_matrix(xf)
 	var line := _line()
 	if line != "":
 		var body: Font = CozyTheme.body(700)
@@ -1510,6 +1610,8 @@ func _putt() -> void:
 	_phase = "roll"
 	_acc = 0.0
 	_trail = []
+	_path = PackedVector2Array()
+	_putt_hits = 0
 	_ghost = {}
 	_power = 0.0
 	_snapped = false
@@ -1650,6 +1752,7 @@ func restore_completed_board() -> void:
 	_log = String(completed_record.get("log", ""))
 	moves_left = maxi(0, int(completed_record.get("moves_left", 0)))
 	_flawless = bool(completed_record.get("flawless", false))
+	_rate(false)
 	var t := _now()
 	_fresh_hole(t - 100.0)
 	_opened = t - 100.0
