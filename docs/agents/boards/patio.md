@@ -51,3 +51,69 @@
 - Open, the user's to call: everything in the spec's section 7, in
   particular the worst generation time (~260 ms on this Mac on Hard and
   Insane, over Quilt's 194 ms gate) and Insane's many lone-square beds.
+
+### Made fun (2026-10-29)
+
+The user: "make mini golf and domino patio experience way better to play,
+and game itself way funnier to play, right now nobody likes it",
+autonomous, push when done. References from the web: Defector's review of
+the genre's daily ("the rush" is working out *how*, the a-ha of a mental
+map before the exact placement; Hard looks overwhelming on a phone);
+bossrush.net's and other solving guides (start from the most restrictive
+bed, single squares and lone-square outcrops force a tile, count the
+numbers you hold). Nothing in the references says the board should flag a
+wrong bed; this board already does, from the rules alone.
+
+**Measured first** (`tests/_probe_dp_fun.gd`, 40 days a band, the answer
+laid in a random order, the bulb read before each tile): with the rules
+alone and one step ahead (`State.lives`: neither bed broken, and no free
+square beside it stranded), a reading that can honestly say "only one" --
+a square only one tile can cover (`State.ways`) or a tile with only one
+place (`State.places`) -- stands at 62-65% of readings on Easy, 63-68%
+Medium, 70-74% Hard, 79-81% Insane (first-order only, without the step
+ahead: 49/46/68/74%). The rest name the tile with the fewest places,
+which is the guides' first tip. 70-82% of tiles laid keep a bed. A reading
+is up to 54 ms on this Mac (a memo of judged places; 151 ms without), so
+it runs on the press, on the frame.
+
+**What changed**:
+
+- **The bulb teaches in two presses** (`hint`, `_lay_hint`, as Paper Box):
+  the first reads (`State.read_hint`: a bed already broken -- its wrong
+  tile goes; a square only one tile can cover; a tile with only one place;
+  else the fewest), rims the squares the tile goes to and the tile itself
+  in sun (the lone square thicker), and the toast says why
+  (`DP_READ_*`, tiles named `a|b`), for one hint; a second press lays it
+  free. Any move by hand puts the reading out. The tutorial's HINT page
+  presses twice.
+- **A broken bed says why** on the toast (`State.bed_why`, `DP_BAD_*`:
+  over its sum, short of it, not under, not over, two numbers that differ,
+  a number twice) and its squares are rimmed rose while the toast shows;
+  mended, the toast goes.
+- **A bed's running sum**: a sum, under or over bed of two squares or more
+  with spots in it shows what it holds so far in a small chip under its
+  tag (the bed's own deep ink, a number, never a shade of the bed).
+- **The drop is judged before it is made**: the held tile's ghost is rose
+  where it would break a bed and sun where it would fill one to its rule
+  (`State.try_drop`), leaf otherwise.
+- **The bed lines are drawn again over the laid tiles** (`_draw_lines`,
+  one cached mesh, 5 px at 0.95): a tile's halves had hidden which bed
+  they lay in.
+- **Live stars** (`star_line.gd`) over the patio, by slips: beds broken by
+  a tile laid and bulbs read (`STARS_CUT` [0, 2]). The party's toots need
+  three stars (they needed no bulb and no refusal).
+- **Runs**: a tile that keeps a bed and breaks none carries the run on; the
+  "bed" cue climbs with it; three in a row, or one tile keeping two beds at
+  once, gets a big word and a spray of stars (`DP_W_RUN`, `DP_W_TWO`,
+  `DP_W_MANY`). The win names the best run (`DP_WIN_RUN`).
+- The toast is the shared `ui/flat/toast_card.gd`, under the rack, or over
+  the rack's top when there is no room (Insane). The old word over the
+  rack (`_draw_say`) is gone; "A bed's rule is broken" (`DP_ALMOST`) is on
+  the toast.
+- Deals, bands, the rules and the sounds unchanged. en/pt/es.
+- Harnesses: `_win.gd -- patio` checks both bulb presses and a tile laid
+  where it breaks a bed (toast, rims, the star count) then dragged off;
+  `_shot_patio.gd` shoots `hinted`. `opengl3_angle` 810x1440: Medium 122
+  rest, 145 at most in play, 211 win; Insane 131 rest, 154 in play, 220
+  win. `_probe_insane_hints.gd -- id=patio seeds=4`: 0 failures. Unseen on
+  a phone.

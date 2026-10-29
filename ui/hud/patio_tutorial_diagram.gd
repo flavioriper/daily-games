@@ -11,7 +11,8 @@ extends Control
 ##   it fills and keeps its rule.
 ## - BOUNDS: a day with under, over (and on Hard, all different) tags, laid.
 ## - SPARE: Insane's day laid; one tile is left on the rack.
-## - HINT: the bulb over the board, and one tile goes down where it belongs.
+## - HINT: the bulb over the board rings a tile and where it goes, and a
+##   second press lays it there.
 ##
 ## A page plays until its point is made, waits a moment and starts over.
 ## Under reduce motion the board stands as it is dealt.
@@ -40,6 +41,7 @@ var _rest := -1.0
 var _next := 0
 var _turns := 0
 var _hinted := false
+var _laid := false
 var _finger_from := Vector2(-1, -1)
 var _finger_to := Vector2(-1, -1)
 var _finger_at := -INF
@@ -79,6 +81,7 @@ func _deal() -> void:
 	_next = 0
 	_turns = 0
 	_hinted = false
+	_laid = false
 
 func _process(delta: float) -> void:
 	if Motion.reduce:
@@ -99,7 +102,11 @@ func _process(delta: float) -> void:
 		return
 	if lesson == Lesson.HINT:
 		if _hinted:
-			if _wait > WAIT + 1.4:
+			# the bulb reads first, then a second press lays the tile
+			if not _laid and _wait > WAIT + 1.6:
+				_laid = true
+				_board.hint()
+			elif _laid and _wait > WAIT + 3.0:
 				_rest = REST
 			return
 		_hinted = true

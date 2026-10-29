@@ -1984,8 +1984,32 @@ func _solve_patio() -> void:
 	for t in st.tiles.size():
 		if not slot.has_point(_puzzle._bay(t)):
 			_fit_ok = false
+	# Made fun: the bulb reads first (a tile rimmed, the toast, one hint,
+	# a star off), then lays it free.
 	_press(_host.top_bar.hint_button)
-	_hud_ok = _puzzle.hints_used == 1
+	var read: Dictionary = _puzzle._reading
+	_hud_ok = _puzzle.hints_used == 1 and not read.is_empty() and _puzzle._toast.showing(_puzzle._t) \
+		and _puzzle._stars.stars == 2 and not st.right(int(read.tile))
+	_press(_host.top_bar.hint_button)
+	_hud_ok = _hud_ok and _puzzle.hints_used == 1 and _puzzle._reading.is_empty() and st.right(int(read.tile))
+	# A tile laid where it breaks a bed: the toast says why, a star falls;
+	# dragged off again, the toast goes.
+	var broke := false
+	for t in st.tiles.size():
+		if broke or st.at[t] >= 0:
+			continue
+		for a in st.bed_of.size():
+			if broke or st.bed_of[a] < 0 or not st.fits(t, a, st.dir[t]) or st.try_drop(t, a, st.dir[t]) >= 0:
+				continue
+			var lift0 := Vector2(0, _puzzle.HOLD_LIFT * _puzzle._l("cell"))
+			_drag_local(_puzzle._bay(t), _puzzle._patio_pos(a, st.dir[t]) + lift0)
+			_hud_ok = _hud_ok and st.at[t] == a and _puzzle._told_bed >= 0 and _puzzle._toast.showing(_puzzle._t) \
+				and _puzzle._slips == 2 and _puzzle._stars.stars == 2
+			print("  broke a bed: %s" % _puzzle._toast.text)
+			_drag_local(_puzzle._patio_pos(a, st.dir[t]), Vector2(_puzzle.size.x * 0.5, _puzzle.size.y - 30.0))
+			_hud_ok = _hud_ok and st.at[t] < 0 and _puzzle._told_bed == -1
+			broke = true
+	_hud_ok = _hud_ok and broke
 	var lifted := false
 	for t in st.tiles.size():
 		if _puzzle.is_done():

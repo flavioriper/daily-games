@@ -45,6 +45,9 @@ const Fx2D = preload("res://ui/fx2d.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 const Haptics = preload("res://core/haptics.gd")
 const CozyTheme = preload("res://ui/theme.gd")
+const StarLine = preload("res://ui/flat/star_line.gd")
+const Toast = preload("res://ui/flat/toast_card.gd")
+const Rewards = preload("res://arcade/rewards.gd")
 
 const Rule = State.Rule
 const DIRS := State.DIRS
@@ -104,6 +107,17 @@ const TRAY_DEEP := Color("9c7450")
 const TRAY_LIT := Color("d8b48a")
 const BAY_INK := Color("7d5a3c")
 const LEAF := Color("6f9e4c")
+## Made fun (2026-10-29): the stars by slips (beds broken, bulbs read: none
+## 3, up to two 2, more 1), their row over the patio, a run's climb in
+## pitch, the toast's letters and padding, the running sum's chip under a
+## tag, and the bed lines laid over the tiles.
+const STARS_CUT := [0, 2]
+const STAR_ROW := 64.0
+const RUN_STEP := 0.05
+const TOAST_SIZE := 30
+const TOAST_PAD := Vector2(26.0, 16.0)
+const SUM_FONT := 0.24
+const LINES_OVER := 0.95
 
 ## Built silent and deaf for the tutorial's page.
 var demo := false
@@ -155,6 +169,24 @@ var _patio_key := ""
 var _rack_mesh: ArrayMesh
 var _rack_key := ""
 var fx: Node
+## Made fun: the stars, the toast, the big words, the bulb's standing
+## reading (State.read_hint, {} for none), the slips, the run of tiles
+## that kept a bed and the best, what the ghost's drop would do (-1 break,
+## 1 keep, 0 neither), the bed a toast is about (-1 none) and the meshes of
+## the rims and of the bed lines over the tiles.
+var _stars := StarLine.new()
+var _toast := Toast.new()
+var _rw: Rewards
+var _reading := {}
+var _slips := 0
+var _run := 0
+var _best_run := 0
+var _ghost_says := 0
+var _told_bed := -1
+var _rim_mesh: ArrayMesh
+var _rim_key := ""
+var _lines_mesh: ArrayMesh
+var _lines_key := ""
 
 func puzzle_id() -> String: return "patio"
 func title() -> String: return "Domino Patio"
@@ -162,6 +194,7 @@ func title() -> String: return "Domino Patio"
 func rules() -> String:
 	var out := tr("DP_RULES")
 	out += "\n\n" + tr("DP_RULES_TAGS")
+	out += "\n\n" + tr("DP_RULES_HELP")
 	if _band >= 1:
 		out += "\n\n" + tr("DP_RULES_BOUNDS")
 	if _band >= 2:
@@ -200,9 +233,6 @@ func capabilities() -> Array[String]:
 func can_undo() -> bool:
 	return _band < 3 and not _st.history.is_empty() and not is_done()
 
-func hints_left() -> int:
-	return maxi(0, int(State.HINTS[_band]) + hints_extra - hints_used)
-
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE if demo else Control.MOUSE_FILTER_STOP
 	if not demo:
@@ -210,6 +240,11 @@ func _ready() -> void:
 		fx.name = "Fx"
 		fx.haptics = HAPTICS
 		add_child(fx)
+		_rw = Rewards.new()
+		_rw.name = "Rewards"
+		_rw.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_rw.z_index = 4
+		add_child(_rw)
 	resized.connect(_relayout)
 	if demo:
 		_make_world()
@@ -262,6 +297,15 @@ func _fresh() -> void:
 	_say = ""
 	_patio_key = ""
 	_rack_key = ""
+	_lines_key = ""
+	_rim_key = ""
+	_reading = {}
+	_toast.clear()
+	_told_bed = -1
+	_slips = 0
+	_run = 0
+	_best_run = 0
+	_stars.clear(3)
 	_relayout()
 
 ## Each bed a colour by index, never its neighbour's; a bed with no rule is
@@ -316,17 +360,26 @@ func day_dict() -> Dictionary:
 
 func _changed(sound: String) -> void:
 	moves += 1
+	if not _reading.is_empty():
+		# a move by hand puts a standing reading out (laid as read, it was free)
+		_reading = {}
+		_toast.clear()
 	moved.emit()
 	# a tile laid is a pop varied a little each time (the house sound)
 	_cue(sound, randf_range(0.94, 1.06) if sound == "set" else 1.0)
-	_judge_beds()
+	_judge_beds(sound == "set")
 	check_solved()
 	if is_done():
 		_solved_now()
 
 ## Each bed that came to be kept or broken by the move just made says so.
-func _judge_beds() -> void:
+## Made fun: a bed newly broken is a slip (a star may fall) and its toast
+## says why; a tile laid that keeps a bed and breaks none carries the run
+## on, and the run and the beds kept climb in pitch; one that breaks a bed
+## ends it. `laid`: the move was a tile set down.
+func _judge_beds(laid := false) -> void:
 	var kept := 0
+	var broke := -1
 	for b in _st.beds.size():
 		var now: int = _st.bed(b)
 		if now != _bed_was[b]:
@@ -337,28 +390,92 @@ func _judge_beds() -> void:
 					fx.sparkle(_tag_at(b), Pal.GOOD)
 			elif now == State.Bed.BROKEN:
 				_broke_at[b] = _t
+				broke = b
 				_cue("broken")
 			_bed_was[b] = now
+	if broke >= 0:
+		_run = 0
+		if laid and not demo:
+			_slips += 1
+			_rate(true)
+			_tell_bed(broke)
+	elif laid and kept > 0:
+		_run += 1
+		_best_run = maxi(_best_run, _run)
 	if kept > 0:
-		_cue("bed", 1.0 + 0.06 * mini(kept - 1, 4))
-	if _st.covered() and not _st.solved():
+		_cue("bed", 1.0 + 0.06 * mini(kept - 1, 4) + RUN_STEP * mini(maxi(_run - 1, 0), 5))
+		if broke < 0 and not demo:
+			_cheer(kept)
+	if _told_bed >= 0 and _st.bed(_told_bed) != State.Bed.BROKEN:
+		# the bed the toast was about is mended: the toast goes with it
+		_told_bed = -1
+		_toast.clear()
+	if _st.covered() and not _st.solved() and broke < 0 and _told_bed < 0:
 		_say_now("DP_ALMOST")
-	elif _say == "DP_ALMOST":
+	elif not _st.covered() and _say == "DP_ALMOST":
 		_say = ""
+
+## The stars the day's slips leave; `heard`: a lost one falls.
+func _rate(heard: bool) -> void:
+	var w := _slips
+	_stars.rate(3 if w <= int(STARS_CUT[0]) else (2 if w <= int(STARS_CUT[1]) else 1), _t, heard)
+
+## A tile that keeps two beds at once, or a run of three tiles each keeping
+## one: a big word over the patio and a spray of stars.
+func _cheer(kept: int) -> void:
+	if _rw == null or is_done():
+		return
+	var text := ""
+	if kept >= 2:
+		text = tr("DP_W_TWO") if kept == 2 else tr("DP_W_MANY") % kept
+	elif _run >= 3:
+		text = tr("DP_W_RUN") % _run
+	if text == "":
+		return
+	var at := _rw.at(self, _patio_centre() - Vector2(0.0, _l("cell") * _st.rows * 0.5 + 10.0 * _u()))
+	var big := mini(maxi(_run, kept) - 2, 3)
+	_rw.sticker(text, at, roundi((70.0 + 6.0 * big) * _u()), 1.3, true, Color.WHITE, kept >= 2 or _run >= 4, "run", 20.0)
+	_rw.spray(at, Pal.SUN, 8 + 3 * big, 600.0, "star", 1.0)
+
+## A bed just broken says why, on the toast, its squares rimmed rose.
+func _tell_bed(b: int) -> void:
+	var line := _bed_line(b)
+	if line == "":
+		return
+	_told_bed = b
+	_say = ""
+	_toast.say(line, _t)
+
+## The sentence for bed `b`'s break (State.bed_why).
+func _bed_line(b: int) -> String:
+	var why: Dictionary = _st.bed_why(b)
+	if why.is_empty():
+		return ""
+	match String(why.why):
+		"over": return tr("DP_BAD_OVER") % [int(why.a), int(why.b)]
+		"short": return tr("DP_BAD_SHORT") % [int(why.a), int(why.b)]
+		"less": return tr("DP_BAD_LESS") % [int(why.a), int(why.b)]
+		"more": return tr("DP_BAD_MORE") % [int(why.a), int(why.b)]
+		"same": return tr("DP_BAD_SAME") % [int(why.a), int(why.b)]
+		"apart": return tr("DP_BAD_APART") % int(why.a)
+	return ""
 
 func _solved_now() -> void:
 	_won_at = _t
 	_say = ""
 	_press = {}
 	_ghost = Vector2i(-1, 0)
+	_reading = {}
+	_told_bed = -1
+	_toast.clear()
 	_cue("solved")
 	if not demo:
 		get_tree().create_timer(0.45).timeout.connect(func() -> void:
 			if not is_inside_tree():
 				return
 			fx.confetti(_patio_centre() - Vector2(0, _l("cell") * _st.rows * 0.4), 26, size.x * 0.7)
-			# not one bulb and not one tile refused: the party's toots
-			_cue("party" if hints_used == 0 and _refusals == 0 else "confetti"))
+			# three stars kept: the party's toots
+			_cue("party" if _stars.stars >= 3 else "confetti"))
 
 func is_solved() -> bool:
 	return _st.solved()
@@ -368,19 +485,45 @@ func undo() -> bool:
 		return false
 	_press = {}
 	_ghost = Vector2i(-1, 0)
+	_reading = {}
 	_cue("undo")
 	_judge_beds()
 	return true
 
-## The bulb: one tile of the answer laid where it goes; what lay there goes
-## back to the rack.
+## Made fun: the bulb teaches, in two presses. The first reads the patio
+## (State.read_hint: a bed broken, a square only one tile can cover, a tile
+## with only one place, else the tile with the fewest), rims the tile and
+## the squares it goes to in sun and says why, for one hint. A second press
+## while the reading stands, or the tile laid there by hand, lays it, free.
 func hint() -> bool:
-	if hints_left() <= 0 or is_done():
+	if is_done():
 		return false
-	var m: Dictionary = _st.hint_move()
+	if not _reading.is_empty():
+		return _lay_hint()
+	if _hints_held() <= 0:
+		return false
+	var m: Dictionary = _st.read_hint()
 	if m.is_empty():
 		return false
 	hints_used += 1
+	_reading = m
+	_told_bed = -1
+	_say = ""
+	if not demo:
+		_slips += 1
+		_rate(true)
+		_toast.say(_read_line(m), _t, true)
+		fx.ring(_answer_mid(m), _l("cell") * 1.3, Pal.SUN)
+	_cue("hint")
+	moved.emit()
+	return true
+
+## The bulb's second press: the tile it read, laid where it goes; what lay
+## there goes back to the rack.
+func _lay_hint() -> bool:
+	var m := _reading
+	_reading = {}
+	_toast.clear()
 	_st.remember()
 	for o: int in m.off:
 		_st.lift(o)
@@ -395,7 +538,35 @@ func hint() -> bool:
 	check_solved()
 	if is_done():
 		_solved_now()
+	moved.emit()
 	return true
+
+func hints_left() -> int:
+	return _hints_held() + (0 if _reading.is_empty() else 1)
+
+func _hints_held() -> int:
+	return maxi(0, int(State.HINTS[_band]) + hints_extra - hints_used)
+
+## The middle of the two squares a reading lays its tile on.
+func _answer_mid(m: Dictionary) -> Vector2:
+	return _patio_pos(int(m.at), int(m.dir))
+
+## The sentence for a reading (State.read_hint).
+func _read_line(m: Dictionary) -> String:
+	var v: Vector2i = _st.tiles[int(m.tile)]
+	var name := "%d|%d" % [v.x, v.y]
+	var line := ""
+	match String(m.get("kind", "")):
+		"broken":
+			line = _bed_line(int(m.bed)) + " " + tr("DP_READ_BROKEN") % name
+		"square":
+			line = tr("DP_READ_SQUARE") % name
+		"tile":
+			line = tr("DP_READ_TILE") % name
+		_:
+			var n := int(m.get("places", 0))
+			line = tr("DP_READ_FEWEST") % [name, n] if n >= 2 else tr("DP_READ_HERE") % name
+	return line + " " + tr("DP_READ_AGAIN")
 
 ## The bin: every tile back to its bay.
 func reset_board() -> void:
@@ -406,12 +577,19 @@ func reset_board() -> void:
 	_press = {}
 	_ghost = Vector2i(-1, 0)
 	_say = ""
+	_reading = {}
+	_told_bed = -1
+	_toast.clear()
+	_run = 0
 	_cue("reset")
 	_judge_beds()
 
+## A short word on the toast (the patio covered with a bed unhappy).
 func _say_now(key: String) -> void:
 	if _say != key:
 		_say_at = _t
+		if not demo:
+			_toast.say(tr(key), _t)
 	_say = key
 
 func _cue(name: String, pitch := 1.0) -> void:
@@ -455,6 +633,8 @@ func _process(delta: float) -> void:
 	if clock_held and not demo:
 		return
 	_t += delta
+	if _rw != null:
+		_rw.step(delta)
 	for t in _st.tiles.size():
 		var key := Vector2i(_st.at[t], _st.dir[t])
 		if key != _key[t]:
@@ -512,7 +692,10 @@ func _gui_input(event: InputEvent) -> void:
 			_move_at[t] = _t
 			_cue("pick")
 		if bool(_press.moved):
-			_ghost = _drop_at(int(_press.t), _held_centre())
+			var g := _drop_at(int(_press.t), _held_centre())
+			if g != _ghost:
+				_ghost = g
+				_ghost_says = _st.try_drop(int(_press.t), g.x, g.y) if g.x >= 0 else 0
 
 ## The tile under a finger at `local`: one on the patio by its squares, one
 ## on the rack by its bay; -1 for none.
@@ -705,16 +888,16 @@ func _layout_for(top: float, bottom: float) -> Dictionary:
 		var rc := cell * RACK_K
 		per_row = maxi(1, floori(room / (rc * BAY)))
 		rack_rows = ceili(float(n) / per_row)
-		var need := pad + rows * cell + GAP * u + rack_rows * rc * BAY + pad
+		var need := pad + STAR_ROW * u + rows * cell + GAP * u + rack_rows * rc * BAY + pad
 		if need <= span:
 			break
 		cell -= 2.0 * u
 	var rc2 := cell * RACK_K
-	var oy2 := top + pad
+	var oy2 := top + pad + STAR_ROW * u
 	var rack_y := oy2 + rows * cell + GAP * u
 	return {"u": u, "cell": cell, "ox": (w - cols * cell) * 0.5, "oy": oy2, "rack": rc2,
 		"rack_y": rack_y, "per_row": per_row, "rack_rows": rack_rows, "seen": 1.0,
-		"wall": oy2 - 30.0 * u, "foot": rack_y + rack_rows * rc2 * BAY}
+		"wall": oy2 - 30.0 * u - STAR_ROW * u, "foot": rack_y + rack_rows * rc2 * BAY, "bottom": bottom}
 
 ## A layout value, eased from the play's layout into the win's.
 func _l(key: String) -> float:
@@ -801,10 +984,13 @@ func _draw() -> void:
 	for t in _st.tiles.size():
 		if t != held:
 			_draw_tile(t, e)
+	_draw_lines(pop)
+	_draw_rims()
 	_draw_tags(e)
 	if held >= 0:
 		_draw_tile(held, e)
-	_draw_say()
+	_draw_stars(e)
+	_draw_toast()
 
 ## The patio: a raised bed of stone squares, each bed's own colour, a line
 ## round every bed. One cached mesh a layout.
@@ -843,17 +1029,25 @@ func _build_patio(cell: float, o: Vector2) -> ArrayMesh:
 		b.fan(Face.Builder.round_rect(at + Vector2.ONE * inset + Vector2(0, cell * 0.03), Vector2.ONE * (cell - 2.0 * inset), r), col.darkened(0.12))
 		b.fan(Face.Builder.round_rect(at + Vector2.ONE * inset, Vector2.ONE * (cell - 2.0 * inset), r), col)
 		b.fan(Face.Builder.round_rect(at + Vector2.ONE * inset * 2.2, Vector2(cell - 4.4 * inset, cell * 0.22), r * 0.6), Color(1, 1, 1, 0.16))
-	# a bed's line: along each side of its squares that meets another bed,
-	# carried over the grout between two squares of the same bed
+	_bed_lines(b, cell, o, -1, Color())
+	return b.mesh()
+
+## A bed's line: along each side of its squares that meets another bed,
+## carried over the grout between two squares of the same bed. `only` >= 0
+## draws that bed's alone in `colour`, thicker (a rim).
+func _bed_lines(b: Face.Builder, cell: float, o: Vector2, only: int, colour: Color, thick := 3.5) -> void:
+	var u := _u()
 	for i in _st.bed_of.size():
 		var bed: int = _st.bed_of[i]
-		if bed < 0 or int(_st.beds[bed].rule) == Rule.NONE:
+		if bed < 0 or int(_st.beds[bed].rule) == Rule.NONE and only < 0:
 			continue
-		var col: Color = _bed_colour[bed].darkened(0.38)
+		if only >= 0 and bed != only:
+			continue
+		var col: Color = _bed_colour[bed].darkened(0.38) if only < 0 else colour
 		var c: Vector2i = _st.cell(i)
 		var at := o + Vector2(c) * cell
 		var k := cell * 0.09
-		var w := 3.5 * u
+		var w := (thick if only < 0 else 6.0) * u
 		if _border(c, Vector2i(0, -1)):
 			b.stroke(PackedVector2Array([at + Vector2(k, k), at + Vector2(cell - k, k)]), w, col)
 		if _border(c, Vector2i(1, 0)):
@@ -872,7 +1066,6 @@ func _build_patio(cell: float, o: Vector2) -> ArrayMesh:
 			for side: Array in [[Vector2i(-1, 0), k], [Vector2i(1, 0), cell - k]]:
 				if _border(c, side[0]) and _border(n, side[0]):
 					b.stroke(PackedVector2Array([at + Vector2(side[1], cell - k), at + Vector2(side[1], cell + k)]), w, col)
-	return b.mesh()
 
 ## Whether square `c`'s side toward `d` ends its bed.
 func _border(c: Vector2i, d: Vector2i) -> bool:
@@ -922,8 +1115,17 @@ func _draw_ghost() -> void:
 	var lo := Vector2(minf(p0.x, p1.x), minf(p0.y, p1.y)) + Vector2.ONE * cell * 0.06
 	var hi := Vector2(maxf(p0.x, p1.x), maxf(p0.y, p1.y)) + Vector2.ONE * cell * 0.94
 	var pulse := 0.5 + 0.5 * sin(_t * 8.0)
-	draw_rect(Rect2(lo, hi - lo), Color(Pal.SURFACE, 0.35 + 0.15 * pulse))
-	draw_polyline(Face.Builder.round_rect(lo, hi - lo, cell * 0.14), Color(LEAF, 0.85), 4.0 * _u(), true)
+	# made fun: the drop's outcome before it is made -- rose when it would
+	# break a bed, sun when it would fill one to its rule
+	var ink := LEAF
+	var fill := Pal.SURFACE
+	if _ghost_says < 0:
+		ink = Pal.BAD
+		fill = Color(Pal.BAD).lerp(Pal.SURFACE, 0.6)
+	elif _ghost_says > 0:
+		ink = Pal.SUN
+	draw_rect(Rect2(lo, hi - lo), Color(fill, 0.35 + 0.15 * pulse))
+	draw_polyline(Face.Builder.round_rect(lo, hi - lo, cell * 0.14), Color(ink, 0.9), (4.0 if _ghost_says == 0 else 6.0) * _u(), true)
 
 func _mesh(t: int, d: int) -> ArrayMesh:
 	var key := t * 4 + d
@@ -1028,6 +1230,18 @@ func _draw_tags(e: float) -> void:
 				draw_set_transform(at, 0.0, Vector2.ONE * s)
 				draw_string(font, Vector2(-tw * 0.5, asc * 0.5), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Pal.TEXT)
 				draw_set_transform(Vector2.ZERO)
+		if state == State.Bed.OPEN and int(info.rule) in [Rule.SUM, Rule.LESS, Rule.MORE] and (info.cells as Array).size() >= 2:
+			# made fun: what the bed holds so far, a small chip under its tag
+			var got := _st.so_far(b)
+			if got.y > 0:
+				var sfs := roundi(cell * SUM_FONT)
+				var st := str(got.x)
+				var sw := font.get_string_size(st, HORIZONTAL_ALIGNMENT_LEFT, -1, sfs).x
+				var ch := Vector2(maxf(sw * 0.5 + sfs * 0.35, sfs * 0.6), sfs * 0.58)
+				var cc := at + Vector2(0.0, half.y + ch.y + 2.0 * u)
+				draw_colored_polygon(Face.Builder.round_rect(cc - ch, ch * 2.0, ch.y), Color(deep, 0.92))
+				var sasc := font.get_ascent(sfs) - font.get_descent(sfs)
+				draw_string(font, cc + Vector2(-sw * 0.5, sasc * 0.5), st, HORIZONTAL_ALIGNMENT_LEFT, -1, sfs, Pal.SURFACE)
 		if state == State.Bed.KEPT:
 			var tick := at + Vector2(half.x * 0.85, -half.y * 0.75)
 			var tk := r * 0.42 * (Motion.pop_in_scale(kept).x if kept < Motion.POP_IN else 1.0)
@@ -1035,21 +1249,85 @@ func _draw_tags(e: float) -> void:
 			draw_polyline(PackedVector2Array([tick + Vector2(-tk * 0.45, 0.0), tick + Vector2(-tk * 0.1, tk * 0.35),
 				tick + Vector2(tk * 0.5, -tk * 0.35)]), Pal.SURFACE, maxf(2.0, tk * 0.28), true)
 
-## A word over the rack when the patio is covered but a bed is unhappy.
-func _draw_say() -> void:
-	if _say == "" or is_done() or _won:
+## Made fun: the bed lines again over the laid tiles, faint, so a tile's
+## two halves still read as in their beds. One cached mesh a layout.
+func _draw_lines(pop: float) -> void:
+	var cell := _l("cell")
+	var o := _origin()
+	var key := "%d:%d:%d" % [roundi(cell * 10.0), roundi(o.x), roundi(o.y)]
+	if key != _lines_key:
+		_lines_key = key
+		var b := Face.Builder.new()
+		_bed_lines(b, cell, o, -1, Color(), 5.0)
+		_lines_mesh = b.mesh()
+	var mid := _patio_centre()
+	draw_mesh(_lines_mesh, null, Transform2D(0.0, Vector2.ONE * pop, 0.0, mid - mid * pop), Color(1, 1, 1, LINES_OVER))
+
+## Made fun: the rims. The bulb's reading in sun: the two squares its tile
+## goes to (and, read off a lone square, that square thicker); a bed the
+## toast says is broken in rose round its squares. One mesh made when what
+## it rims changes.
+func _draw_rims() -> void:
+	if demo and _reading.is_empty():
+		return
+	var on_bed := _told_bed >= 0 and _toast.showing(_t)
+	if _reading.is_empty() and not on_bed:
+		return
+	var cell := _l("cell")
+	var o := _origin()
+	var key := "%s:%d:%d:%d:%d" % [str(_reading), _told_bed if on_bed else -1, roundi(cell * 10.0), roundi(o.x), roundi(o.y)]
+	if key != _rim_key:
+		_rim_key = key
+		var b := Face.Builder.new()
+		var u := _u()
+		if on_bed:
+			_bed_lines(b, cell, o, _told_bed, Pal.BAD)
+		if not _reading.is_empty():
+			var m := _reading
+			if String(m.kind) == "broken":
+				_bed_lines(b, cell, o, int(m.bed), Pal.BAD)
+			var p0 := o + Vector2(_st.cell(int(m.at))) * cell
+			var p1 := o + Vector2(_st.cell(_st.other(int(m.at), int(m.dir)))) * cell
+			var lo := Vector2(minf(p0.x, p1.x), minf(p0.y, p1.y)) + Vector2.ONE * cell * 0.03
+			var hi := Vector2(maxf(p0.x, p1.x), maxf(p0.y, p1.y)) + Vector2.ONE * cell * 0.97
+			b.stroke(Face.Builder.round_rect(lo, hi - lo, cell * 0.16), 6.0 * u, Pal.SUN, true)
+			if String(m.kind) == "square":
+				var sq := o + Vector2(_st.cell(int(m.square))) * cell
+				b.stroke(Face.Builder.round_rect(sq + Vector2.ONE * cell * 0.1, Vector2.ONE * cell * 0.8, cell * 0.14), 9.0 * u, Pal.SUN, true)
+			# the tile it lays, where it lies now
+			var t := int(m.tile)
+			var c := _target(t)
+			var k := _target_k(t) / Tile.H
+			var half := Vector2(Tile.H, Tile.H * 0.5) * k if _st.dir[t] % 2 == 0 else Vector2(Tile.H * 0.5, Tile.H) * k
+			b.stroke(Face.Builder.round_rect(c - half * 1.12, half * 2.24, Tile.H * 0.22 * k), 5.0 * u, Pal.SUN, true)
+		_rim_mesh = b.mesh()
+	var pulse := 1.0 if Motion.reduce else 0.75 + 0.25 * sin(_t * 5.0)
+	draw_mesh(_rim_mesh, null, Transform2D.IDENTITY, Color(1, 1, 1, pulse))
+
+## Made fun: the three stars, in their row over the patio.
+func _draw_stars(e: float) -> void:
+	if demo or _won or is_done():
 		return
 	var u := _u()
-	var font: Font = CozyTheme.display(700)
-	var text := tr(_say)
-	var fs := roundi(SAY_SIZE * u)
-	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-	var k := Motion.pop_in_scale(_t - _say_at, 0.25).x if _t - _say_at < 0.25 else 1.0
-	var y := _l("rack_y") - GAP * u * 0.3
-	draw_set_transform(Vector2(size.x * 0.5, y), 0.0, Vector2.ONE * k)
-	draw_string_outline(font, Vector2(-tw * 0.5, 0.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, roundi(10 * u), Color(Pal.SURFACE, 0.9))
-	draw_string(font, Vector2(-tw * 0.5, 0.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Pal.TEXT)
-	draw_set_transform(Vector2.ZERO)
+	var ss := u * 1.1
+	var sw := StarLine.width(ss)
+	var alpha := clampf((e - 0.1) / 0.3, 0.0, 1.0)
+	_stars.draw(self, Vector2(size.x * 0.5 - sw * 0.5 + StarLine.R * ss, _l("oy") - STAR_ROW * u * 0.55), ss, _t, alpha)
+
+## Made fun: the toast, in the open terrace under the rack, or over the
+## rack's top when there is no room under it.
+func _draw_toast() -> void:
+	if demo or is_done() or _won or not _toast.showing(_t):
+		return
+	var u := _u()
+	var width := minf(size.x - 2.0 * SIDE * u, 900.0 * u)
+	var fs := roundi(TOAST_SIZE * u)
+	var pad := TOAST_PAD * u
+	var tall := _toast.tall(width, fs, pad)
+	var y := _l("foot") + 24.0 * u
+	if y + tall > float(_L.get("bottom", size.y)) - 8.0 * u:
+		y = _l("rack_y") - GAP * u * 0.5
+	_toast.draw(self, Vector2(size.x * 0.5, y + tall * 0.5), width, _t, fs, pad)
 
 # --- the win ---
 
@@ -1062,10 +1340,12 @@ func share_glyphs() -> String:
 	return "🌼 " + _st.share_glyphs()
 
 func flat_win() -> Dictionary:
+	if _best_run >= 2:
+		return {"faces": [], "subtitle": tr("DP_WIN_RUN") % _best_run}
 	return {"faces": [], "subtitle": tr("DP_WIN")}
 
 func completion_record() -> Dictionary:
-	return {"at": Array(_st.at), "dir": Array(_st.dir)}
+	return {"at": Array(_st.at), "dir": Array(_st.dir), "slips": _slips, "run": _best_run}
 
 ## A finished day reopens with its tiles where they were laid.
 func restore_completed_board() -> void:
@@ -1078,5 +1358,8 @@ func restore_completed_board() -> void:
 		_move_at[t] = -INF
 	for b in _st.beds.size():
 		_bed_was[b] = _st.bed(b)
+	_slips = int(rec.get("slips", 0))
+	_best_run = int(rec.get("run", 0))
+	_rate(false)
 	_won_at = -INF
 	queue_redraw()

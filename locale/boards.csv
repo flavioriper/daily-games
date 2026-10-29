@@ -2322,6 +2322,11 @@ GF_TIP_SLOPE,The arrows on a slope show where it pushes.,As setas da rampa mostr
 GF_TIP_STROKES,Every stroke counts here. Plan the hole before you putt.,Aqui cada tacada conta. Planeje o buraco antes de bater.,Aquí cada golpe cuenta. Planea el hoyo antes de golpear.
 GF_TIP_GATES,The gates swap after every putt.,Os portões trocam depois de cada tacada.,Las cancelas cambian después de cada golpe.
 GF_LIP,Rimmed out!,Na beirada!,¡Por el borde!
+GF_CLOSE,So close!,Quase!,¡Casi!
+GF_BANK,Bank shot!,Tabelinha!,¡De banda!
+GF_BANK_N,%d-kerb bank shot!,Tabela de %d bordas!,¡De banda a %d bordes!
+GF_RUN,%d in a row at par!,%d seguidos no par!,¡%d seguidos al par!
+GF_RULES_STARS,"The stars on the scorecard: at par or under you keep all three, up to %d over two, past that one.","As estrelas no placar: no par ou abaixo você fica com as três, até %d acima com duas, além disso com uma.","Las estrellas del marcador: en el par o por debajo conservas las tres, hasta %d por encima dos, más allá una."
 GF_WET,Splash! The ball is back where you struck it.,Tchibum! A bola voltou para onde você bateu.,¡Chof! La bola volvió a donde la golpeaste.
 GF_IN,In the cup,No buraco,Embocada
 GF_ACE,Hole in one!,Hole-in-one!,¡Hoyo en uno!
@@ -3179,6 +3184,23 @@ DP_RULES_APART,A crossed = means every number in the bed is different.,Um = cort
 DP_RULES_SPARE,The Spare: the rack holds one tile more than the patio needs. It goes nowhere; find which.,A Sobra: o suporte tem uma peça a mais do que o pátio precisa. Ela não vai em lugar nenhum; descubra qual é.,La Sobrante: el soporte tiene una ficha más de las que el patio necesita. No va en ningún sitio; descubre cuál es.
 DP_ALMOST,A bed's rule is broken,Um canteiro não cumpre a regra,Un parterre no cumple su regla
 DP_WIN,Every bed in bloom!,Todos os canteiros floridos!,¡Todos los parterres en flor!
+DP_BAD_OVER,"This bed adds up to %d, past its %d.","Este canteiro soma %d, passou dos %d.","Este parterre suma %d, se pasa de %d."
+DP_BAD_SHORT,"This bed can reach %d at most, short of its %d.","Este canteiro chega no máximo a %d, abaixo dos %d.","Este parterre llega como mucho a %d, por debajo de %d."
+DP_BAD_LESS,This bed adds up to %d; it must stay under %d.,Este canteiro soma %d; precisa ficar abaixo de %d.,Este parterre suma %d; debe quedarse por debajo de %d.
+DP_BAD_MORE,This bed can reach %d at most; it must pass %d.,Este canteiro chega no máximo a %d; precisa passar de %d.,Este parterre llega como mucho a %d; debe pasar de %d.
+DP_BAD_SAME,A %d and a %d in a bed where every number is the same.,Um %d e um %d num canteiro onde todos os números são iguais.,Un %d y un %d en un parterre donde todos los números son iguales.
+DP_BAD_APART,Two %ds in a bed where every number is different.,Dois %d num canteiro onde todos os números são diferentes.,Dos %d en un parterre donde todos los números son distintos.
+DP_READ_BROKEN,Move the %s tile out.,Tire a peça %s daí.,Saca la ficha %s de ahí.
+DP_READ_SQUARE,Only the %s tile can cover the ringed square without breaking a bed.,Só a peça %s cobre a casa marcada sem quebrar um canteiro.,Solo la ficha %s puede cubrir la casilla marcada sin romper un parterre.
+DP_READ_TILE,The %s tile has only one place that breaks no bed.,A peça %s só tem um lugar que não quebra nenhum canteiro.,La ficha %s solo tiene un sitio que no rompe ningún parterre.
+DP_READ_FEWEST,Start with the %s tile: only %d places break no bed.,Comece pela peça %s: só %d lugares não quebram nenhum canteiro.,Empieza por la ficha %s: solo %d sitios no rompen ningún parterre.
+DP_READ_HERE,The %s tile goes here.,A peça %s vai aqui.,La ficha %s va aquí.
+DP_READ_AGAIN,Press the bulb again to lay it.,Toque a lâmpada de novo para colocá-la.,Toca la bombilla otra vez para colocarla.
+DP_W_TWO,Two beds!,Dois canteiros!,¡Dos parterres!
+DP_W_MANY,%d beds!,%d canteiros!,¡%d parterres!
+DP_W_RUN,%d in a row!,%d seguidas!,¡%d seguidas!
+DP_WIN_RUN,In bloom! Best run %d.,Tudo florido! Melhor série %d.,¡Todo en flor! Mejor racha %d.
+DP_RULES_HELP,The small number under a tag is what the bed holds so far. A held tile's outline turns red where it would break a bed and gold where it would finish one.,O número pequeno sob uma etiqueta é o que o canteiro já tem. O contorno de uma peça segurada fica vermelho onde ela quebraria um canteiro e dourado onde o completaria.,El número pequeño bajo una etiqueta es lo que el parterre ya tiene. El contorno de una ficha sostenida se vuelve rojo donde rompería un parterre y dorado donde lo completaría.
 HTP_DP_LAY,Lay the tiles,Coloque as peças,Coloca las fichas
 HTP_DP_LAY_BODY,Drag a domino from the rack onto two squares side by side. Cover the whole patio.,Arraste um dominó do suporte para duas casas lado a lado. Cubra o pátio inteiro.,Arrastra una ficha del soporte a dos casillas contiguas. Cubre todo el patio.
 HTP_DP_TURN,Turn a tile,Gire uma peça,Gira una ficha
@@ -3191,7 +3213,7 @@ HTP_DP_BOUNDS_APART_BODY,<4: less than 4. >9: more than 9. A crossed =: every nu
 HTP_DP_SPARE,The Spare,A Sobra,La Sobrante
 HTP_DP_SPARE_BODY,On Insane one tile is left over. The patio is still covered; the spare stays on the rack.,No Insano sobra uma peça. O pátio ainda fica todo coberto; a sobra fica no suporte.,En Demencial sobra una ficha. El patio queda cubierto igual; la sobrante se queda en el soporte.
 HTP_DP_HINT,A helping hand,Uma ajudinha,Una ayudita
-HTP_DP_HINT_BODY,"The bulb lays one tile where it belongs, and moves anything in its way back to the rack.",A lâmpada coloca uma peça no lugar certo e devolve ao suporte o que estiver no caminho.,La bombilla coloca una ficha en su sitio y devuelve al soporte lo que esté en medio.
+HTP_DP_HINT_BODY,"The bulb first rings a tile and the squares it goes to, and says why. Press it again and the tile is laid.","A lâmpada primeiro marca uma peça e as casas onde ela vai, e diz por quê. Toque de novo e a peça é colocada.","La bombilla primero marca una ficha y las casillas donde va, y dice por qué. Tócala otra vez y la ficha se coloca."
 BRAIN_DP_1,"Start with the tags that leave one choice, like a 0 or a 12 over two squares.","Comece pelas etiquetas que deixam uma só escolha, como um 0 ou um 12 em duas casas.","Empieza por las etiquetas que dejan una sola opción, como un 0 o un 12 en dos casillas."
 BRAIN_DP_2,An = bed and a double on the rack: find where the double fits first.,Um canteiro = e uma dupla no suporte: descubra primeiro onde a dupla cabe.,Un parterre = y una doble en el soporte: busca primero dónde cabe la doble.
 BRAIN_DP_3,Count what is left: the rack's spots add up to what the open beds still need.,Conte o que falta: os pontos do suporte somam o que os canteiros abertos ainda pedem.,Cuenta lo que queda: los puntos del soporte suman lo que los parterres abiertos aún piden.

@@ -36,6 +36,9 @@ var dir: Array[int] = []
 var cover := PackedInt32Array()
 ## Each move's [at, dir] before it, for Undo.
 var history: Array = []
+## A reading's judged places (`lives`), kept only while it reads.
+var _memo := {}
+var _reading := false
 
 func deal(rng: RandomNumberGenerator, the_band: int) -> void:
 	band = clampi(the_band, 0, 3)
@@ -193,6 +196,87 @@ func bed(b: int) -> Bed:
 		return Bed.BROKEN
 	return Bed.KEPT if rem == 0 else Bed.OPEN
 
+## What lies in bed `b` so far: [the sum, how many squares are covered].
+func so_far(b: int) -> Vector2i:
+	var sum := 0
+	var cnt := 0
+	for c: int in beds[b].cells:
+		var v := spot(c)
+		if v >= 0:
+			sum += v
+			cnt += 1
+	return Vector2i(sum, cnt)
+
+## Why bed `b` is broken, read off its rule: {why, a, b} where `why` is
+## "over" (sum past n: a the sum), "short" (sum cannot reach n: a the most
+## it can), "less" (a the sum, not under n), "more" (a the most it can, not
+## over n), "same" (a and b two numbers that differ), "apart" (a a number
+## twice); {} when it is not broken.
+func bed_why(b: int) -> Dictionary:
+	if bed(b) != Bed.BROKEN:
+		return {}
+	var info: Dictionary = beds[b]
+	var n := int(info.n)
+	var got := so_far(b)
+	var most := got.x + 6 * ((info.cells as Array).size() - got.y)
+	match int(info.rule):
+		Rule.SUM:
+			return {"why": "over", "a": got.x, "b": n} if got.x > n else {"why": "short", "a": most, "b": n}
+		Rule.LESS:
+			return {"why": "less", "a": got.x, "b": n}
+		Rule.MORE:
+			return {"why": "more", "a": most, "b": n}
+		Rule.SAME:
+			var first := -1
+			for c: int in info.cells:
+				var v := spot(c)
+				if v < 0:
+					continue
+				if first >= 0 and v != first:
+					return {"why": "same", "a": first, "b": v}
+				if first < 0:
+					first = v
+		Rule.APART:
+			var seen := {}
+			for c: int in info.cells:
+				var v := spot(c)
+				if v < 0:
+					continue
+				if seen.has(v):
+					return {"why": "apart", "a": v, "b": v}
+				seen[v] = true
+	return {}
+
+## What laying tile `t` at `a` turned `d` would do, the patio put back
+## after: -1 it breaks a bed, 1 it keeps one (fills it to its rule), 0
+## neither.
+func try_drop(t: int, a: int, d: int) -> int:
+	if not fits(t, a, d):
+		return 0
+	var was_at: int = at[t]
+	var was_dir: int = dir[t]
+	var mine: Array[int] = []
+	for s in [a, other(a, d)]:
+		if not mine.has(bed_of[s]):
+			mine.append(bed_of[s])
+	var before := {}
+	for bb in mine:
+		before[bb] = bed(bb)
+	place(t, a, d)
+	var out := 0
+	for bb in mine:
+		var now := bed(bb)
+		if now == Bed.BROKEN and before[bb] != Bed.BROKEN:
+			out = -1
+			break
+		if now == Bed.KEPT and before[bb] != Bed.KEPT and int(beds[bb].rule) != Rule.NONE:
+			out = 1
+	lift(t)
+	if was_at >= 0:
+		place(t, was_at, was_dir)
+	dir[t] = was_dir
+	return out
+
 func covered() -> bool:
 	for i in bed_of.size():
 		if bed_of[i] >= 0 and cover[i] < 0:
@@ -238,6 +322,166 @@ func hint_move() -> Dictionary:
 	# every answer tile right: only a spare can be out of place, and it
 	# cannot be on the patio
 	return {}
+
+## Whether tile `t` (lifted) laid at `a` turned `d` breaks neither of its
+## beds and leaves every free square beside it a way to be covered (one
+## step ahead, so a tile that strands a square is no place for it).
+func lives(t: int, a: int, d: int) -> bool:
+	if not fits(t, a, d):
+		return false
+	var key := (t * cover.size() + a) * 4 + d
+	if _memo.has(key):
+		return _memo[key]
+	place(t, a, d)
+	var b := other(a, d)
+	var ok := bed(bed_of[a]) != Bed.BROKEN and bed(bed_of[b]) != Bed.BROKEN
+	if ok:
+		for s in [a, b]:
+			for dd: Vector2i in DIRS:
+				var c := cell(s) + dd
+				if on_patio(c) and cover[idx(c)] < 0 and int(_ways(idx(c), false)[0]) == 0:
+					ok = false
+					break
+			if not ok:
+				break
+	lift(t)
+	if _reading:
+		_memo[key] = ok
+	return ok
+
+## How many places tile `t` could lie (`lives`), the tile itself lifted
+## first; a double counts a pair of squares once. [count, anchor, dir] of
+## the last place found.
+func places(t: int) -> Array:
+	var was_at: int = at[t]
+	var was_dir: int = dir[t]
+	lift(t)
+	var n := 0
+	var where := Vector2i(-1, 0)
+	var turns := 2 if tiles[t].x == tiles[t].y else 4
+	for a in bed_of.size():
+		if bed_of[a] < 0:
+			continue
+		for d in turns:
+			if lives(t, a, d):
+				n += 1
+				where = Vector2i(a, d)
+	if was_at >= 0:
+		place(t, was_at, was_dir)
+	else:
+		dir[t] = was_dir
+	return [n, where.x, where.y]
+
+## How many ways square `s` could be covered now: each tile not on the
+## patio, each pair of free squares through `s`, each way round (`lives`).
+## [count, tile, anchor, dir] of the last way found.
+func ways(s: int) -> Array:
+	return _ways(s, true)
+
+func _ways(s: int, ahead: bool) -> Array:
+	var n := 0
+	var who := [-1, -1, 0]
+	if bed_of[s] < 0 or cover[s] >= 0:
+		return [0, -1, -1, 0]
+	for t in tiles.size():
+		if at[t] >= 0:
+			continue
+		var was_dir: int = dir[t]
+		var turns := 2 if tiles[t].x == tiles[t].y else 4
+		for k in 4:
+			# the pair through s: s first turned k, or s second
+			for first in [true, false]:
+				var a: int = s if first else other(s, k)
+				var d: int = k if first else (k + 2) % 4
+				if a < 0 or (turns == 2 and d >= 2):
+					continue
+				var ok := false
+				if ahead:
+					ok = lives(t, a, d)
+				elif fits(t, a, d):
+					place(t, a, d)
+					ok = bed(bed_of[a]) != Bed.BROKEN and bed(bed_of[other(a, d)]) != Bed.BROKEN
+					lift(t)
+				if ok:
+					n += 1
+					who = [t, a, d]
+					if not ahead:
+						# one is enough to say the square is not stranded
+						dir[t] = was_dir
+						return [n, t, a, d]
+		dir[t] = was_dir
+	return [n, who[0], who[1], who[2]]
+
+## What the bulb's first press reads, as the guides teach the genre, in
+## order: a bed already broken (the tile in it lying wrong goes where the
+## answer has it); a free square only one tile can cover (`ways`); a tile
+## with only one place (`places`); else the answer's tile with the fewest
+## places. A reading claims "only one" only when that one way is the
+## answer's. hint_move's dictionary with `kind` ("broken", "square",
+## "tile", "fewest"), `bed` or `square` and `places` added; {} for none.
+func read_hint() -> Dictionary:
+	# the board stands still through a reading: each place is judged once
+	_memo.clear()
+	_reading = true
+	var out := _read()
+	_reading = false
+	_memo.clear()
+	return out
+
+func _read() -> Dictionary:
+	for b in beds.size():
+		if bed(b) != Bed.BROKEN:
+			continue
+		for c: int in beds[b].cells:
+			var t := cover[c]
+			if t >= 0 and answer[t].x >= 0 and not right(t):
+				return _move(t, {"kind": "broken", "bed": b})
+	for sq in bed_of.size():
+		var w := ways(sq)
+		if int(w[0]) == 1 and _answers(int(w[1]), int(w[2]), int(w[3])):
+			return _move(int(w[1]), {"kind": "square", "square": sq, "places": 1})
+	var fewest := 1 << 20
+	var pick := -1
+	for t in tiles.size():
+		if answer[t].x < 0 or right(t):
+			continue
+		var p := places(t)
+		var n := int(p[0])
+		if n == 1 and _answers(t, int(p[1]), int(p[2])):
+			return _move(t, {"kind": "tile", "places": 1})
+		if n > 0 and n < fewest:
+			fewest = n
+			pick = t
+	if pick < 0:
+		var m := hint_move()
+		if not m.is_empty():
+			m["kind"] = "fewest"
+			m["places"] = 0
+		return m
+	return _move(pick, {"kind": "fewest", "places": fewest})
+
+## Whether tile `t` laid at `a` turned `d` lies as the answer has it.
+func _answers(t: int, a: int, d: int) -> bool:
+	if t < 0 or answer[t].x < 0:
+		return false
+	var want: Vector2i = answer[t]
+	if a == want.x and d == want.y:
+		return true
+	var b := other(want.x, want.y)
+	return a == b and d == (want.y + 2) % 4 and (bed_of[want.x] == bed_of[b] or tiles[t].x == tiles[t].y)
+
+## Tile `t` to where the answer has it, what lies there off: `extra` added.
+func _move(t: int, extra: Dictionary) -> Dictionary:
+	var a: int = answer[t].x
+	var d: int = answer[t].y
+	var off: Array[int] = []
+	for sq in [a, other(a, d)]:
+		var o := cover[sq]
+		if o >= 0 and o != t and not off.has(o):
+			off.append(o)
+	var out := {"tile": t, "at": a, "dir": d, "off": off}
+	out.merge(extra)
+	return out
 
 ## A finished day, put back: every tile where the answer has it.
 func finish() -> void:

@@ -3,7 +3,7 @@ extends SceneTree
 ## Domino Patio shots: `-- <dir> [d=<0..3>] [tut|card]` opens the board on
 ## that level and shoots it at rest, a tile held by a real touch over its
 ## ghost, half the answer laid (tags ticked), a refused tile, a broken bed,
-## the win early and settled, the day reopened from its card and a tutorial
+## the bulb's reading (`hinted`), the win early and settled, the day reopened from its card and a tutorial
 ## page, with the draw calls of each frame. `tut` shoots the first tutorial
 ## page over the board; `card` the menu card beside Lattice's. Puts
 ## nothing in the player's save.
@@ -160,7 +160,13 @@ func _process(_delta: float) -> bool:
 		5:
 			if _f == 1210:
 				_shot("broken")
+				# the bulb's first press: a reading, rimmed and said
+				_b.undo()
+				_b.hint()
+			if _f == 1226:
+				_shot("hinted")
 				st.restart()
+				_b._reading = {}
 				_b._judge_beds()
 			if _f == 1240:
 				for t in st.tiles.size():
