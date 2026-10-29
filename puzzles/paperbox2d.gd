@@ -21,6 +21,15 @@ extends "res://core/puzzle_base.gd"
 ## The board is also its own tutorial: `demo` set before it enters the tree
 ## makes it silent, deaf and laid in its own rect, and
 ## ui/hud/paperbox_tutorial_diagram.gd plays it with `demo_tap`.
+##
+## **Made fun (2026-10-29)**: a wrong box says why (State.why: two sides
+## that are opposite, a corner whose third side is the opposite of the one
+## shown, or a stamp turned), rimmed rose on the net and on the box, in a
+## toast card at the head of the mat. The bulb reads in two presses: the
+## first rims the box it would strike and says why (one hint), the second
+## (or a tap on that box) strikes it, free. Three live stars by wrong picks
+## beside the round count. Boxes picked right first time in a row climb in
+## pitch and earn a big word from the second, and a gold star on the shelf.
 
 const State = preload("res://puzzles/paperbox_state.gd")
 const Fold = preload("res://puzzles/paperbox_fold.gd")
@@ -32,6 +41,9 @@ const Face = preload("res://ui/faces/face.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
 const Haptics = preload("res://core/haptics.gd")
 const CozyTheme = preload("res://ui/theme.gd")
+const StarLine = preload("res://ui/flat/star_line.gd")
+const Toast = preload("res://ui/flat/toast_card.gd")
+const Rewards = preload("res://arcade/rewards.gd")
 
 enum Phase { PLAY, FOLD, DONE }
 
@@ -68,6 +80,17 @@ const WIN_HOLD := 1.2
 ## The words, at W.
 const COUNT_SIZE := 30
 const ASK_SIZE := 30
+## Made fun: the head of the mat, where the ask stands and the toast takes
+## its place; the toast's words and padding, at W.
+const HEAD := 150.0
+const TOAST_SIZE := 38
+const TOAST_PAD := Vector2(30.0, 16.0)
+## The rims: their width as a part of a square, and the stars, by the day's
+## wrong picks: three at none, two up to the second.
+const RIM := 0.07
+const STARS_CUT := [0, 2]
+## A run's climb: a step up in pitch for each box right first time in a row.
+const RUN_STEP := 0.06
 
 ## Built silent and deaf for the tutorial's page.
 var demo := false
@@ -107,6 +130,17 @@ var _boxes := {}
 var _used := {}
 ## The board's sounds and sparks; none on the tutorial's silent board.
 var fx: Node
+## Made fun: the stars, the toast, the big words, the box the bulb has read
+## ({"o", "why"}) and the wrong pick's reason standing ({"o", "why"}), the
+## rims they draw (kept until the next), and the run of first tries.
+var _stars := StarLine.new()
+var _toast := Toast.new()
+var _rw: Rewards
+var _reading: Dictionary = {}
+var _told: Dictionary = {}
+var _rims_mesh: ArrayMesh
+var _rims_key := ""
+var _run := 0
 
 func puzzle_id() -> String: return "paperbox"
 func title() -> String: return "Paper Box"
@@ -145,9 +179,6 @@ func capabilities() -> Array[String]:
 func can_reset() -> bool:
 	return false
 
-func hints_left() -> int:
-	return maxi(0, int(State.HINTS[_band]) + hints_extra - hints_used)
-
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE if demo else Control.MOUSE_FILTER_STOP
 	if not demo:
@@ -155,6 +186,11 @@ func _ready() -> void:
 		fx.name = "Fx"
 		fx.haptics = HAPTICS
 		add_child(fx)
+		_rw = Rewards.new()
+		_rw.name = "Rewards"
+		_rw.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_rw.z_index = 4
+		add_child(_rw)
 	resized.connect(_relayout)
 	if demo:
 		_make_world()
@@ -165,6 +201,8 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_st.deal(rng, _band)
 	_queue.clear()
 	_phase = Phase.PLAY
+	_stars.clear(3)
+	_run = 0
 	_fresh_round()
 	_cue("enter")
 
@@ -178,6 +216,9 @@ func _fresh_round() -> void:
 		_struck_at.append(-INF)
 		_hinted.append(false)
 	_net_key = ""
+	_reading = {}
+	_told = {}
+	_toast.clear()
 	_relayout()
 
 func day_dict() -> Dictionary:
@@ -211,10 +252,16 @@ func _tap(o: int) -> void:
 		return
 	if o < 0 or o >= _st.struck.size():
 		return
+	if not _reading.is_empty() and o == int(_reading.o):
+		# the box the bulb read: struck as its second press would, free
+		_lay_hint()
+		return
+	_reading = {}
 	if _st.struck[o]:
-		# a struck box only shakes its head again
+		# a struck box only shakes its head again, and says why again
 		_struck_at[o] = _t
 		_hinted[o] = false
+		_tell(o)
 		_cue("hush")
 		return
 	var heard: int = _st.pick(o)
@@ -224,8 +271,14 @@ func _tap(o: int) -> void:
 	moved.emit()
 	if heard == State.Picked.WRONG:
 		_struck_at[o] = _t
+		_tell(o)
+		_rate(true)
 		_cue("wrong")
 		return
+	_told = {}
+	_toast.clear()
+	# a first try keeps the run going; a box found after a wrong pick ends it
+	_run = _run + 1 if _st.wrong_in[_st.current] == 0 else 0
 	_picked = o
 	_pick_at = _t
 	_phase = Phase.FOLD
@@ -239,9 +292,10 @@ func _tap(o: int) -> void:
 	for i in hinges:
 		_after(HOLD + LIFT + i * HINGE_STEP, func() -> void: _cue("fold", 1.0 + i * 0.06))
 	_after(_turn_end(), func() -> void:
-		_cue("made")
+		_cue("made", 1.0 + mini(_run, 5) * RUN_STEP)
 		if not demo:
-			fx.sparkle(_mat_centre(), Pal.SUN))
+			fx.sparkle(_mat_centre(), Pal.SUN)
+			_cheer_run())
 	_after(_fly_end(), _land)
 
 func _fold_end() -> float:
@@ -260,6 +314,8 @@ func _land() -> void:
 	_cue("shelf", 1.0 + slot * 0.05)
 	if not demo:
 		fx.ring(_shelf_pos(slot), _l("ss") * 1.4, Pal.SUN)
+		if _st.wrong_in[slot] == 0:
+			_rw.spray(_rw.at(self, _shelf_pos(slot)), Pal.SUN, 8, 420.0, "star", 0.8)
 	_shelf_key = ""
 	if _st.solved():
 		_solved_now()
@@ -284,20 +340,95 @@ func _solved_now() -> void:
 func is_solved() -> bool:
 	return _st.solved()
 
-## The bulb: one wrong box still standing is struck off.
+## Made fun: the bulb teaches, in two presses. The first reads the box it
+## would strike: rims it and the net's squares that show why in sun and says
+## why, for one hint. A second press while the reading stands (or a tap on
+## that box) strikes it, free.
 func hint() -> bool:
-	if hints_left() <= 0 or _phase != Phase.PLAY or is_done():
+	if _phase != Phase.PLAY or is_done():
 		return false
-	var o: int = _st.strike()
+	if not _reading.is_empty():
+		return _lay_hint()
+	if _hints_held() <= 0:
+		return false
+	var o: int = _st.next_strike()
 	if o < 0:
 		return false
 	hints_used += 1
-	_struck_at[o] = _t
-	_hinted[o] = true
+	_reading = {"o": o, "why": State.why(_st.now(), o)}
+	_told = {}
+	_toast.say(_why_line(o, _reading.why), _t, true)
 	_cue("hint")
 	if not demo:
 		fx.ring(_opt_pos(o), _l("bs") * 1.3, Pal.SUN)
+	moved.emit()
 	return true
+
+## The bulb's second press: the box it read, struck off.
+func _lay_hint() -> bool:
+	var o: int = _st.strike(int(_reading.o))
+	_reading = {}
+	if o < 0:
+		return false
+	_struck_at[o] = _t
+	_hinted[o] = true
+	_toast.clear()
+	_cue("hint")
+	if not demo:
+		fx.ring(_opt_pos(o), _l("bs") * 1.3, Pal.SUN)
+	moved.emit()
+	return true
+
+func hints_left() -> int:
+	return _hints_held() + (0 if _reading.is_empty() else 1)
+
+func _hints_held() -> int:
+	return maxi(0, int(State.HINTS[_band]) + hints_extra - hints_used)
+
+## A wrong box says why: rimmed rose on the net and on itself, and the toast.
+func _tell(o: int) -> void:
+	var why := State.why(_st.now(), o)
+	if why.is_empty():
+		return
+	_told = {"o": o, "why": why}
+	_toast.say(_why_line(o, why), _t)
+
+## The sentence for box `o`'s reading `why` (State.why).
+func _why_line(o: int, why: Dictionary) -> String:
+	var r: Dictionary = _st.now()
+	var pic: Array = r.options[o]
+	var shown := func(slot: int) -> String: return _colour(int((pic[slot] as Array)[0]))
+	var line := ""
+	match int(why.get("why", -1)):
+		State.Why.OPPOSITE:
+			var sq: Array = why.squares
+			var key := "PB_WHY_OPP_ROW" if State.in_a_row(r.net, int(sq[0]), int(sq[1])) else "PB_WHY_OPP"
+			line = tr(key) % [shown.call(int(why.faces[0])), shown.call(int(why.faces[1]))]
+		State.Why.CORNER:
+			var odd: int = why.faces[0]
+			var keep: Array = why.keep
+			line = tr("PB_WHY_CORNER_%d" % odd) % [shown.call(int(keep[0])), shown.call(int(keep[1])), _colour(int(why.real)), shown.call(odd)]
+		State.Why.STAMP:
+			line = tr("PB_WHY_STAMP") % shown.call(int((why.faces as Array)[0]) if not (why.faces as Array).is_empty() else 0)
+	return line.substr(0, 1).to_upper() + line.substr(1)
+
+func _colour(c: int) -> String:
+	return tr("PB_C_%d" % c)
+
+## The stars the day's wrong picks leave; `heard`: a lost one falls.
+func _rate(heard: bool) -> void:
+	var w: int = _st.wrongs
+	_stars.rate(3 if w <= int(STARS_CUT[0]) else (2 if w <= int(STARS_CUT[1]) else 1), _t, heard)
+
+## A run of first tries cheered from the second: a big word over the box.
+func _cheer_run() -> void:
+	if _run < 2 or _rw == null:
+		return
+	var key := "PB_W_ALL" if _run >= State.ROUNDS else "PB_W_RUN"
+	var text := tr(key) if _run >= State.ROUNDS else tr(key) % _run
+	var at := _rw.at(self, _mat_centre() - Vector2(0.0, _l("cell") * 1.5))
+	_rw.sticker(text, at, roundi((76.0 + 6.0 * mini(_run - 2, 3)) * _u()), 1.3, true, Color.WHITE, _run >= 3, "run", 20.0)
+	_rw.spray(at, Pal.SUN, 8 + _run * 3, 620.0, "star", 1.0)
 
 func _cue(name: String, pitch := 1.0) -> void:
 	if demo or fx == null:
@@ -321,6 +452,8 @@ func _process(delta: float) -> void:
 	if clock_held and not demo:
 		return
 	_t += delta
+	if _rw != null:
+		_rw.step(delta)
 	while not _queue.is_empty() and float(_queue[0][0]) <= _t:
 		var job: Array = _queue.pop_front()
 		(job[1] as Callable).call()
@@ -441,7 +574,7 @@ func _layout_for(top: float, bottom: float) -> Dictionary:
 	var mat_bot := opt_y - bs * 1.0 - 34.0 * u
 	var mat := Rect2(w * 0.06, mat_top, w * 0.88, maxf(mat_bot - mat_top, 120.0 * u))
 	var ext := Fold.extent(_st.now().net) if not _st.rounds.is_empty() else Vector2i(4, 3)
-	var ask := 0.0 if demo else ASK_SIZE * 2.0 * u
+	var ask := 0.0 if demo else HEAD * u
 	var cell := minf((mat.size.x - 90.0 * u) / ext.x, (mat.size.y - 70.0 * u - ask) / ext.y)
 	cell = clampf(cell, 20.0 * u, 168.0 * u)
 	return {
@@ -449,6 +582,7 @@ func _layout_for(top: float, bottom: float) -> Dictionary:
 		"slot": slot, "bs": bs, "opt_y": opt_y, "mat": mat, "cell": cell,
 		"net_c": Vector2(mat.get_center().x, mat.position.y + ask + (mat.size.y - ask) * 0.5),
 		"ask_y": mat.position.y + 26.0 * u + ASK_SIZE * u,
+		"head_y": mat.position.y + 14.0 * u,
 		"count_y": bottom - 34.0 * u,
 	}
 
@@ -488,7 +622,9 @@ func _draw() -> void:
 			_draw_net()
 		for o in _st.struck.size():
 			_draw_option(o)
+		_draw_rims()
 		_draw_count()
+		_draw_toast()
 	# the boxes this frame did not draw are let go; those it drew are kept
 	# until a later frame no longer does
 	for k in _boxes.keys():
@@ -500,7 +636,7 @@ func _draw() -> void:
 func _draw_shelf() -> void:
 	var ss := _l("ss")
 	var done: int = mini(_st.current, State.ROUNDS)
-	var key := "%d:%d:%d:%d" % [done, roundi(ss * 10.0), roundi(_l("shelf")), roundi(size.x)]
+	var key := "%d:%d:%d:%d:%s" % [done, roundi(ss * 10.0), roundi(_l("shelf")), roundi(size.x), str(_st.wrong_in)]
 	var ended := _phase == Phase.DONE or is_done()
 	if key != _shelf_key:
 		_shelf_key = key
@@ -511,6 +647,8 @@ func _draw_shelf() -> void:
 					Art.spot(b, _shelf_pos(k), ss)
 				continue
 			Art.box(b, _shelf_pos(k), ss, _answer(k), maxf(1.2, ss * 0.035))
+			if _st.wrong_in[k] == 0:
+				_gold(b, _shelf_pos(k), ss)
 		_shelf_mesh = b.mesh() if not b.verts.is_empty() else null
 	if _shelf_mesh != null:
 		draw_mesh(_shelf_mesh, null)
@@ -521,7 +659,7 @@ func _draw_shelf() -> void:
 			var wave := _t - _won_at - k * Motion.WAVE_STEP * 2.0
 			if wave >= 0.0 and not Motion.reduce:
 				at.y += Motion.hop_lift(fmod(wave, 1.4), Motion.SOLVE_HOP * 2.0 * _u(), Motion.SOLVE_TIME)
-			draw_mesh(_box_mesh("shelf:%d" % k, _answer(k), ss, false), null, Transform2D(0.0, at))
+			draw_mesh(_box_mesh("shelf:%d:%d" % [k, _st.wrong_in[k]], _answer(k), ss, false, _st.wrong_in[k] == 0), null, Transform2D(0.0, at))
 
 func _answer(k: int) -> Array:
 	var r: Dictionary = _st.rounds[k]
@@ -539,6 +677,10 @@ func _draw_ask() -> void:
 	var a := 1.0
 	if _phase == Phase.FOLD:
 		a = clampf(1.0 - (_t - _pick_at) / 0.3, 0.0, 1.0)
+	# the toast takes the ask's place while it shows
+	a *= 1.0 - _toast.level(_t)
+	if a <= 0.0:
+		return
 	draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color(World.MAT_LINE.lerp(Color.WHITE, 0.6), a))
 
 ## The net at rest on the mat, sliding in when its round begins.
@@ -676,7 +818,7 @@ func _draw_option(o: int) -> void:
 
 ## A box drawn about its middle, cached by key and size; `cross` the pencil
 ## hatch and cross instead.
-func _box_mesh(key: String, pic: Array, s: float, cross: bool) -> ArrayMesh:
+func _box_mesh(key: String, pic: Array, s: float, cross: bool, gold := false) -> ArrayMesh:
 	var k := "%s:%d" % [key, roundi(s * 10.0)]
 	_used[k] = true
 	if not _boxes.has(k):
@@ -685,8 +827,17 @@ func _box_mesh(key: String, pic: Array, s: float, cross: bool) -> ArrayMesh:
 			Art.struck(b, Vector2.ZERO, s)
 		else:
 			Art.box(b, Vector2.ZERO, s, pic, _edge_w(s))
+			if gold:
+				_gold(b, Vector2.ZERO, s)
 		_boxes[k] = b.mesh()
 	return _boxes[k]
+
+## Made fun: a box on the shelf picked right first time wears a gold star
+## on its lid.
+func _gold(b: Face.Builder, at: Vector2, s: float) -> void:
+	var c := at + Fold.project(Vector3(0.0, 0.0, 0.5)) * s
+	StarLine.star(b, c + Vector2(0.0, s * 0.04), s * 0.36, 0.0, Pal.LINE)
+	StarLine.star(b, c, s * 0.34, 0.0, Pal.SUN)
 
 func _shadow_mesh(s: float) -> ArrayMesh:
 	var k := "shadow:%d" % roundi(s * 10.0)
@@ -713,13 +864,60 @@ func _draw_count() -> void:
 	var u := _u()
 	var font: Font = CozyTheme.display(700)
 	var text: String = tr("PB_ROUND") % [mini(_st.current + 1, State.ROUNDS), State.ROUNDS]
-	if _st.wrongs > 0:
-		text += "  ·  " + (tr("PB_WRONG_ONE") if _st.wrongs == 1 else tr("PB_WRONG_N")) % _st.wrongs
 	var cs := roundi(COUNT_SIZE * u)
 	var cw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, cs).x
-	var at := Vector2(size.x * 0.5 - cw * 0.5, _l("count_y"))
+	# Made fun: the live stars beside the count, the pair centred
+	var ss := 1.15 * u
+	var gap := 22.0 * u
+	var sw := StarLine.width(ss)
+	var x0 := size.x * 0.5 - (cw + gap + sw) * 0.5
+	var at := Vector2(x0, _l("count_y"))
 	draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, cs, roundi(8 * u), Color(Pal.SURFACE, 0.85))
 	draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, cs, Pal.TEXT_DIM)
+	_stars.draw(self, Vector2(x0 + cw + gap + StarLine.R * ss, _l("count_y") - cs * 0.36), ss, _t)
+
+## Made fun: the toast at the head of the mat, the mat's width less a margin.
+func _draw_toast() -> void:
+	if demo or not _toast.showing(_t):
+		return
+	var u := _u()
+	var mat: Rect2 = _L.mat
+	var width := mat.size.x - 44.0 * u
+	var fs := roundi(TOAST_SIZE * u)
+	var pad := TOAST_PAD * u
+	var tall := _toast.tall(width, fs, pad)
+	_toast.draw(self, Vector2(size.x * 0.5, _l("head_y") + tall * 0.5), width, _t, fs, pad)
+
+## Made fun: the reason's rims, one mesh made when what they rim changes:
+## the bulb's reading in sun, a wrong pick's in rose, round the net's
+## squares and the box's faces that show it. Not while a net slides in.
+func _draw_rims() -> void:
+	var on: Dictionary = _reading if not _reading.is_empty() else _told
+	if on.is_empty() or _phase != Phase.PLAY or (_t - _round_at < SLIDE_TIME and not Motion.reduce):
+		return
+	var why: Dictionary = on.why
+	if why.is_empty():
+		return
+	var o := int(on.o)
+	var cell := _l("cell")
+	var key := "%d:%d:%d:%s:%d:%d" % [_st.current, o, 0 if on == _reading else 1, str(why.faces), roundi(cell * 10.0), roundi(size.x)]
+	if key != _rims_key:
+		_rims_key = key
+		var colour: Color = Pal.SUN if on == _reading else Pal.BAD
+		var r: Dictionary = _st.now()
+		var b := Face.Builder.new()
+		var w := maxf(4.0, cell * RIM)
+		var half := Vector2(Fold.extent(r.net)) * 0.5
+		var mid := _mat_centre()
+		for i: int in why.squares:
+			var c := mid + (Vector2(r.net[i]) + Vector2(0.5, 0.5) - half) * cell
+			var g := cell * 0.5 + w * 0.5
+			b.stroke(Face.Builder.round_rect(c - Vector2.ONE * g, Vector2.ONE * g * 2.0, cell * 0.1), w, colour, true)
+		var bs := _l("bs")
+		for slot: int in why.faces:
+			b.stroke(Art.face_of(_opt_pos(o), bs, slot), maxf(3.0, bs * 0.09), colour, true)
+		_rims_mesh = b.mesh()
+	draw_mesh(_rims_mesh, null)
 
 # --- the win ---
 
@@ -741,7 +939,12 @@ func flat_win() -> Dictionary:
 	if _st.wrongs == 0:
 		line = tr("PB_WIN_CLEAN")
 	else:
-		line = (tr("PB_WIN_WRONG_ONE") if _st.wrongs == 1 else tr("PB_WIN_WRONG_N")) % _st.wrongs
+		var best: int = _st.runs().y
+		if best >= 2:
+			# made fun: the longest run of first tries, in the same short line
+			line = (tr("PB_WIN_RUN_ONE") if _st.wrongs == 1 else tr("PB_WIN_RUN_N")) % [_st.wrongs, best]
+		else:
+			line = (tr("PB_WIN_WRONG_ONE") if _st.wrongs == 1 else tr("PB_WIN_WRONG_N")) % _st.wrongs
 	return {"faces": [], "subtitle": tr("PB_WIN") + " " + line}
 
 func completion_record() -> Dictionary:
@@ -751,6 +954,10 @@ func completion_record() -> Dictionary:
 func restore_completed_board() -> void:
 	_queue.clear()
 	_st.finish(completed_record.get("wrongs", []) as Array)
+	_rate(false)
+	_reading = {}
+	_told = {}
+	_toast.clear()
 	_phase = Phase.DONE
 	_won_at = _t
 	_relayout()

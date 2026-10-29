@@ -92,19 +92,27 @@ static func box(b: Face.Builder, at: Vector2, s: float, pic: Array, width: float
 	var proj := func(p: Vector3) -> Vector2: return at + Fold.project(p) * s
 	for slot in [2, 1, 0]:
 		var n := Vector3(Fold.SHOWN[slot] as Vector3i)
-		# the face's two ways across, so its corners run round it
-		var u := Vector3(0, 1, 0) if slot == 1 else Vector3(1, 0, 0)
-		var v := n.cross(u)
 		var c := n * 0.5
-		var pts := PackedVector2Array()
-		for q in [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]:
-			pts.append(proj.call(c + u * (q.x * 0.5) + v * (q.y * 0.5)))
+		var pts := face_of(at, s, slot)
 		var col: int = int((pic[slot] as Array)[0])
 		face(b, pts, _shade(PAPER[col], lit(n)), LINE[col], width)
 		var m: Vector3i = (pic[slot] as Array)[1]
 		if m != Vector3i.ZERO:
 			var way := Vector3(m)
 			stamp(b, proj, c, way, n.cross(way))
+
+## The outline of a box's face `slot` (0 top, 1 right, 2 left), its middle
+## at `at`, `s` as box() takes it.
+static func face_of(at: Vector2, s: float, slot: int) -> PackedVector2Array:
+	var n := Vector3(Fold.SHOWN[slot] as Vector3i)
+	# the face's two ways across, so its corners run round it
+	var u := Vector3(0, 1, 0) if slot == 1 else Vector3(1, 0, 0)
+	var v := n.cross(u)
+	var c := n * 0.5
+	var pts := PackedVector2Array()
+	for q in [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]:
+		pts.append(at + Fold.project(c + u * (q.x * 0.5) + v * (q.y * 0.5)) * s)
+	return pts
 
 ## The box's outline (its hexagon), for a hatch or a ring.
 static func outline(at: Vector2, s: float) -> PackedVector2Array:

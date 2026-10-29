@@ -11,7 +11,8 @@ extends Control
 ## - CORNER: a box whose corner turns the wrong way round is struck, then
 ##   the right one (a Hard deal).
 ## - STAMPS: Insane's stamps; a box with a stamp turned is struck.
-## - HINT: the bulb strikes a wrong box, then the right one is picked.
+## - HINT: the bulb reads a wrong box (rimmed, why), a second press strikes
+##   it, then the right one is picked.
 ##
 ## A page plays until its point is made, waits a moment and starts over.
 ## Under reduce motion the board stands as it is dealt.
@@ -101,7 +102,7 @@ func _script(st) -> Array[int]:
 		Lesson.FOLD:
 			return [answer]
 		Lesson.HINT:
-			return [BULB, answer]
+			return [BULB, BULB, answer]
 	var wrong := (r.kinds as Array).find(want)
 	if wrong < 0:
 		wrong = 0 if answer != 0 else 1
@@ -131,9 +132,11 @@ func _process(delta: float) -> void:
 	var o: int = _steps.pop_front()
 	if o == BULB:
 		_bulb_at = _t
-		_board.hints_extra += 1
+		if _board.hints_left() <= 0:
+			_board.hints_extra += 1
 		_board.hint()
-		_wait = -0.3
+		# a reading stands a while to be seen before the strike
+		_wait = -0.9
 		return
 	_finger = _board.option_to_local(o)
 	_finger_at = _t

@@ -44,3 +44,67 @@
   fold stepped through); `tests/_shot_paperbox.gd -- <dir> d=<0..3>
   [tut=<page>|card]` shoots rest, wrong, hinted, each beat of the fold, the
   next round, the win and the reopened day.
+
+### Made fun (2026-10-29)
+
+The user: "make paper block experience way better to play, and game itself
+way funnier to play, right now nobody likes it", autonomous, push when
+done (read as Paper Box). References from the web: a review of the *Click
+the Cube* app (dlgs.uni-potsdam.de) praises showing the fold after an
+answer so the player can check their mental work (this board already
+folded the right box); *Puzzle Workout*'s cube-net quiz reports *why* each
+chosen wrong answer failed (which faces collide), as diagnosis rather than
+a second penalty; software3d.com's net puzzle gives a clear wrong verdict,
+a retry, and a reveal.
+
+**Measured first** (`tests/_probe_paperbox.gd`, 365 days a band, the
+"whys" line): every wrong box has a reason a player can check, read from
+the folded box rather than the deal's kind (`State.why`). Easy: all
+opposite pairs, 21% of them *bent* (not two apart in a row), so the
+sentence has a row and a bent form. Medium: 1825 opposite, 1825 corner.
+**Hard and Insane had not one opposite box**: every wrong box was a corner
+the wrong way round (or a stamp turned), which the board had no words for.
+The probe proves that every corner box reads as one rule: keep its top and
+right as they stand, and the left must be the side opposite the one it
+shows (100%, keep always top+right). So Hard ties back to Easy's rule.
+The gap was not the deals: a wrong pick was struck and counted and said
+nothing, the bulb struck a box without a word, and no band had stakes.
+
+**What changed**:
+
+- **A wrong box says why** (`_tell`, `_why_line`): rose rims round the net's
+  squares that show it and the box's faces, and a toast at the head of the
+  mat (`PB_WHY_OPP_ROW`, `PB_WHY_OPP`, `PB_WHY_CORNER_0/1/2`,
+  `PB_WHY_STAMP`, colours `PB_C_0..5` as nouns). A tap on a struck box
+  says it again.
+- **The bulb teaches in two presses**: the first reads the box `strike()`
+  would take (`State.next_strike`), rims it and its squares in sun and
+  says why, for one hint; a second press, or a tap on that box, strikes it
+  free (`_lay_hint`). `hints_left` counts a standing reading. The
+  tutorial's HINT page presses twice (`HTP_PB_HINT_BODY` rewritten).
+- **The toast** is `ui/flat/toast_card.gd`, the shared card owed after
+  Shikaku, Untangle, Hosepipes and Binairo each carried a copy; only Paper
+  Box uses it so far. It stands in the head of the mat (`HEAD` 150 at W,
+  the ask's row made taller; the ask fades while the toast shows). pt/es
+  corner lines run to three lines and just clear a three-row net.
+- **Live stars** (`star_line.gd`) beside "Box n of 5", by the day's wrong
+  picks (`STARS_CUT` [0, 2]: none 3, up to two 2, more 1); the wrong-pick
+  count left the line (the stars say it).
+- **Runs**: a box right first time climbs `RUN_STEP` in pitch on the
+  "made" cue; from the second in a row a big word over the turned box
+  (`PB_W_RUN`, `PB_W_ALL` at five) and a spray of stars
+  (`arcade/rewards.gd`, as Untangle). A first-try box wears a gold star on
+  the shelf, and on the win the line names the best run
+  (`PB_WIN_RUN_ONE/N`, kept short: the longer line ran off the screen).
+- The tutorial's silent board rims too (no toast): the OPPOSITE and
+  CORNER pages rim the pair the struck box gets wrong. Any tap puts a
+  standing reading out (as Binairo's), except a tap on the read box,
+  which strikes it free.
+- Deals, bands and the fold are unchanged. No new sounds.
+- Harnesses: `_win.gd -- paperbox` checks the toast and the fallen star on
+  the wrong pick and the bulb's two presses; `_shot_paperbox.gd` shoots
+  `hinted` (the reading), `hinted2` (the strike), `run`, and takes
+  `lang=<pt|es>`.
+- opengl3_angle 810x1440: 84-98 draw calls in play on every band (Easy 87), the
+  win 143-146, a tutorial page 99. `_win.gd paperbox` PASS; suite
+  303252/0. Unseen on a phone.

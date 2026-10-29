@@ -3524,7 +3524,7 @@ PB_LVL_0,"Simple nets, 3 boxes","Moldes simples, 3 caixas","Plantillas simples, 
 PB_LVL_1,"Any net, 3 boxes","Qualquer molde, 3 caixas","Cualquier plantilla, 3 cajas"
 PB_LVL_2,"Any net, 4 boxes","Qualquer molde, 4 caixas","Cualquier plantilla, 4 cajas"
 PB_LVL_3,Stamped: every side marked,Carimbado: todo lado marcado,Sellado: cada lado marcado
-PB_RULES,%d rounds. A flat paper net lies on the mat and %d boxes stand under it. Fold the net in your head and tap the one box it makes. A wrong box is struck off and counted.,%d rodadas. Um molde de papel aberto está no tapete e %d caixas estão embaixo dele. Dobre o molde na cabeça e toque na única caixa que ele forma. Uma caixa errada é riscada e contada.,%d rondas. Una plantilla de papel plana está en la base y %d cajas están debajo. Dobla la plantilla en tu cabeza y toca la única caja que forma. Una caja equivocada se tacha y se cuenta.
+PB_RULES,%d rounds. A flat paper net lies on the mat and %d boxes stand under it. Fold the net in your head and tap the one box it makes. A wrong box is struck off and says why; each costs stars.,%d rodadas. Um molde de papel aberto está no tapete e %d caixas estão embaixo dele. Dobre o molde na cabeça e toque na única caixa que ele forma. Uma caixa errada é riscada e diz por quê; cada uma custa estrelas.,%d rondas. Una plantilla de papel plana está en la base y %d cajas están debajo. Dobla la plantilla en tu cabeza y toca la única caja que forma. Una caja equivocada se tacha y dice por qué; cada una cuesta estrellas.
 PB_RULES_TIP,"Two squares with one square between them in a straight row end up on opposite sides, so no box shows both.","Dois quadrados com um quadrado entre eles numa fileira reta ficam em lados opostos, então nenhuma caixa mostra os dois.","Dos cuadrados con uno entre ellos en una fila recta acaban en lados opuestos, así que ninguna caja muestra los dos."
 PB_RULES_STAMPED,Stamped: every square carries a cream arrow. The right box shows each arrow pointing the way the fold turns it.,Carimbado: todo quadrado tem uma seta creme. A caixa certa mostra cada seta apontando para onde a dobra a vira.,Sellado: cada cuadrado lleva una flecha crema. La caja correcta muestra cada flecha apuntando hacia donde el doblez la gira.
 PB_ASK,Which box does it fold into?,Que caixa ele forma?,¿Qué caja forma?
@@ -3535,6 +3535,22 @@ PB_WIN,Five boxes folded!,Cinco caixas dobradas!,¡Cinco cajas dobladas!
 PB_WIN_CLEAN,Not one wrong pick.,Nenhuma escolha errada.,Ninguna elección equivocada.
 PB_WIN_WRONG_ONE,%d wrong pick along the way.,%d escolha errada no caminho.,%d elección equivocada por el camino.
 PB_WIN_WRONG_N,%d wrong picks along the way.,%d escolhas erradas no caminho.,%d elecciones equivocadas por el camino.
+PB_C_0,yellow,amarelo,amarillo
+PB_C_1,red,vermelho,rojo
+PB_C_2,green,verde,verde
+PB_C_3,blue,azul,azul
+PB_C_4,purple,roxo,morado
+PB_C_5,pink,rosa,rosa
+PB_WHY_OPP_ROW,"%s and %s have one square between them in a row, so they fold to opposite sides: no box shows both.","%s e %s têm um quadrado entre eles numa fileira, então ficam em lados opostos: nenhuma caixa mostra os dois.","%s y %s tienen un cuadrado entre ellos en fila, así que quedan en lados opuestos: ninguna caja muestra los dos."
+PB_WHY_OPP,"%s and %s fold to opposite sides of the box, so no box shows both.","%s e %s ficam em lados opostos da caixa, então nenhuma caixa mostra os dois.","%s y %s quedan en lados opuestos de la caja, así que ninguna caja muestra los dos."
+PB_WHY_CORNER_0,"With %s on the right and %s on the left, the top must be %s, the side opposite %s.","Com %s à direita e %s à esquerda, o topo tem que ser %s, o lado oposto ao %s.","Con %s a la derecha y %s a la izquierda, la cara de arriba tiene que ser %s, el lado opuesto al %s."
+PB_WHY_CORNER_1,"With %s on top and %s on the left, the right must be %s, the side opposite %s.","Com %s em cima e %s à esquerda, a direita tem que ser %s, o lado oposto ao %s.","Con %s arriba y %s a la izquierda, la derecha tiene que ser %s, el lado opuesto al %s."
+PB_WHY_CORNER_2,"With %s on top and %s on the right, the left must be %s, the side opposite %s.","Com %s em cima e %s à direita, a esquerda tem que ser %s, o lado oposto ao %s.","Con %s arriba y %s a la derecha, la izquierda tiene que ser %s, el lado opuesto al %s."
+PB_WHY_STAMP,"The colours are right, but the arrow on %s points another way once folded.","As cores estão certas, mas a seta no %s aponta para outro lado depois de dobrada.","Los colores están bien, pero la flecha del %s apunta a otro lado al doblarla."
+PB_W_RUN,%d in a row!,%d seguidas!,¡%d seguidas!
+PB_W_ALL,All five first try!,As cinco de primeira!,¡Las cinco a la primera!
+PB_WIN_RUN_ONE,"%d wrong pick, best run %d.","%d escolha errada, melhor série %d.","%d elección mala, mejor racha %d."
+PB_WIN_RUN_N,"%d wrong picks, best run %d.","%d escolhas erradas, melhor série %d.","%d elecciones malas, mejor racha %d."
 HTP_PB_FOLD,Fold it in your head,Dobre na cabeça,Dóblalo en tu cabeza
 HTP_PB_FOLD_BODY,The net on the mat folds into one of the boxes below. Tap it and watch the paper fold into that very box.,O molde no tapete forma uma das caixas embaixo. Toque nela e veja o papel se dobrar exatamente nessa caixa.,La plantilla de la base forma una de las cajas de abajo. Tócala y mira el papel doblarse justo en esa caja.
 HTP_PB_OPPOSITE,Opposite sides,Lados opostos,Lados opuestos
@@ -3544,7 +3560,7 @@ HTP_PB_CORNER_BODY,Three sides that meet at a corner go round it in one order. T
 HTP_PB_STAMPS,Stamps,Carimbos,Sellos
 HTP_PB_STAMPS_BODY,On Insane every side carries an arrow. The right box shows each arrow pointing where the fold turns it.,No Insano todo lado tem uma seta. A caixa certa mostra cada seta apontando para onde a dobra a vira.,En Demencial cada lado lleva una flecha. La caja correcta muestra cada flecha apuntando hacia donde el doblez la gira.
 HTP_PB_HINT,A hint,Uma dica,Una pista
-HTP_PB_HINT_BODY,The bulb strikes off one wrong box.,A lâmpada risca uma caixa errada.,La bombilla tacha una caja equivocada.
+HTP_PB_HINT_BODY,"The bulb rims a wrong box and says why. Press it again, or tap that box, to strike it off.","A lâmpada marca uma caixa errada e diz por quê. Toque de novo, ou toque nessa caixa, para riscá-la.","La bombilla marca una caja equivocada y dice por qué. Púlsala otra vez, o toca esa caja, para tacharla."
 BRAIN_PB_1,"Pick one square as the lid and fold its neighbours down around it, one at a time.","Escolha um quadrado como tampa e dobre os vizinhos em volta dele, um de cada vez.","Elige un cuadrado como tapa y dobla sus vecinos a su alrededor, uno a la vez."
 BRAIN_PB_2,Squares two apart in a straight row are opposite sides: rule out any box that shows both.,Quadrados a dois de distância numa fileira reta são lados opostos: descarte qualquer caixa que mostre os dois.,Los cuadrados a dos de distancia en una fila recta son lados opuestos: descarta cualquier caja que muestre los dos.
 BRAIN_PB_3,Two squares that touch in the net share an edge on the box. Follow one edge at a time.,Dois quadrados que se tocam no molde dividem uma aresta na caixa. Siga uma aresta de cada vez.,Dos cuadrados que se tocan en la plantilla comparten una arista en la caja. Sigue una arista a la vez.

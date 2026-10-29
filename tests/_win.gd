@@ -1879,7 +1879,7 @@ func _solve_shelves() -> void:
 	_waiting = false
 
 ## Paper Box: a wrong box picked on purpose (struck, counted), a tap on it
-## again (nothing), a tap on the mat's foot over a box (nothing), the bulb through the real button (one more struck), then
+## again (nothing), a tap on the mat's foot over a box (nothing), the bulb through the real button twice (a reading, then one more struck), then
 ## each round's right box picked by a real touch, the fold stepped through on
 ## the board's own clock.
 func _solve_paperbox() -> void:
@@ -1893,15 +1893,20 @@ func _solve_paperbox() -> void:
 	var answer := int(st.now().answer)
 	var wrong := 0 if answer != 0 else 1
 	_tap_local(_puzzle.option_to_local(wrong))
-	_hud_ok = _hud_ok and st.struck[wrong] and st.wrongs == 1
+	# made fun: the wrong box says why and a star falls
+	_hud_ok = _hud_ok and st.struck[wrong] and st.wrongs == 1 and _puzzle._toast.text != "" and _puzzle._stars.stars == 2
 	_tap_local(_puzzle.option_to_local(wrong))
 	_hud_ok = _hud_ok and st.wrongs == 1
 	# the mat's foot, just over a box: no pick
 	var mat: Rect2 = _puzzle._L.mat
 	_tap_local(Vector2(_puzzle.option_to_local(answer).x, mat.end.y - 10.0))
 	_hud_ok = _hud_ok and _puzzle.phase() == _puzzle.Phase.PLAY and st.struck.count(true) == 1
+	# the bulb in two presses: a reading (one hint, nothing struck), then the strike, free
+	var held: int = _puzzle.hints_left()
 	_press(_host.top_bar.hint_button)
-	_hud_ok = _hud_ok and _puzzle.hints_used == 1 and st.struck.count(true) == 2
+	_hud_ok = _hud_ok and _puzzle.hints_used == 1 and st.struck.count(true) == 1 and not _puzzle._reading.is_empty() and _puzzle.hints_left() == held
+	_press(_host.top_bar.hint_button)
+	_hud_ok = _hud_ok and _puzzle.hints_used == 1 and st.struck.count(true) == 2 and _puzzle._reading.is_empty()
 	for r in 10:
 		if _puzzle.is_done():
 			return

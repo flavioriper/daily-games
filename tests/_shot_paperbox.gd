@@ -5,7 +5,7 @@ extends SceneTree
 ## bulb's strike, the fold mid-way, the box turned, the box flying, the
 ## next round, the win settled and the day reopened from its card, with the
 ## draw calls of each frame. `tut` shoots a tutorial page played a while;
-## `card` the menu card beside Hosepipes'. Puts nothing in the player's save.
+## `card` the menu card beside Hosepipes'; `lang=<pt|es>` the words. Puts nothing in the player's save.
 
 var _menu: Node
 var _host: Node
@@ -16,6 +16,8 @@ var _page := 1
 var _f := 0
 var _step := 0
 var _diag: Control
+var _ran := false
+var _lang := ""
 
 func _initialize() -> void:
 	for a in OS.get_cmdline_user_args():
@@ -25,6 +27,8 @@ func _initialize() -> void:
 			_step = 50
 			if a.begins_with("tut="):
 				_page = int(a.substr(4))
+		elif a.begins_with("lang="):
+			_lang = a.substr(5)
 		elif a == "card":
 			_step = 60
 		else:
@@ -72,6 +76,8 @@ func _process(_delta: float) -> bool:
 			return true
 		return false
 	if _f == 5:
+		if _lang != "":
+			TranslationServer.set_locale(_lang)
 		_menu._open_at(load("res://ui/registry.gd").find("paperbox"), _band)
 		_host = _menu.get_child(_menu.get_child_count() - 1)
 		if _host.has_node("HowToPlay"):
@@ -100,14 +106,17 @@ func _process(_delta: float) -> bool:
 			_step = 1
 			_f = 1000
 		1:
-			if _f == 1012:
+			if _f == 1030:
 				_shot("wrong")
 				_b.hint()
 				_step = 2
 				_f = 2000
 		2:
-			if _f == 2015:
+			if _f == 2030:
 				_shot("hinted")
+				_b.hint()
+			if _f == 2050:
+				_shot("hinted2")
 				_b.demo_tap(int(st.now().answer))
 				_step = 3
 				_f = 3000
@@ -123,6 +132,10 @@ func _process(_delta: float) -> bool:
 			else:
 				_shot(String(beats[i][1]))
 		5:
+			if not _ran and _b._rw.has_sticker("run"):
+				_ran = true
+				_run(0.25)
+				_shot("run")
 			if _b.is_done():
 				_step = 6
 				_f = 6000

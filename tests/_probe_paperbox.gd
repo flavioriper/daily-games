@@ -24,6 +24,8 @@ func _initialize() -> void:
 		var kinds := {}
 		var consensus := 0
 		var odd := 0
+		var whys := {}
+		var no_opp := 0
 		for s in 365:
 			var rng := RandomNumberGenerator.new()
 			rng.seed = 20261022 + s * 7919 + band
@@ -64,8 +66,34 @@ func _initialize() -> void:
 					odd += 1
 				for k in r.kinds:
 					kinds[k] = int(kinds.get(k, 0)) + 1
+				var has_opp := false
+				for o in (r.options as Array).size():
+					var w := PS.why(r, o)
+					if o == int(r.answer):
+						continue
+					if w.is_empty() or (w.squares as Array).is_empty():
+						whys["none"] = int(whys.get("none", 0)) + 1
+						continue
+					var name: String = ["opp", "corner", "stamp"][int(w.why)]
+					if int(w.why) == PS.Why.CORNER:
+						var sd := Fold.folded(r.net, r.root, r.colours, r.ways)
+						var nn := {}
+						for n: Vector3i in sd:
+							nn[int(sd[n][0])] = n
+						var shown := int(r.options[o][w.faces[0]][0])
+						if nn[shown] != -(nn[int(w.real)] as Vector3i) or (w.keep as Array) != [0, 1]:
+							name += "_BAD" if nn[shown] != -(nn[int(w.real)] as Vector3i) else "_keep%s" % str(w.keep)
+						name += "_row" if PS.in_a_row(r.net, w.squares[0], w.squares[1]) else "_bent"
+					if int(w.why) == PS.Why.OPPOSITE:
+						has_opp = true
+						name += "_row" if PS.in_a_row(r.net, w.squares[0], w.squares[1]) else "_bent"
+					var pair := "%d>%s" % [int(r.kinds[o]), name]
+					whys[pair] = int(whys.get(pair, 0)) + 1
+				if not has_opp:
+					no_opp += 1
 				if ok != 1 or at != int(r.answer) or keys.size() != PS.CHOICES[band] or (r.options as Array).size() != PS.CHOICES[band]:
 					wrong_days += 1
 					print("  band %d day %d: %d right, answer %d at %d, %d options" % [band, s, ok, r.answer, at, (r.options as Array).size()])
+		print("band %d whys (kind>why): %s, rounds with no opposite box %d" % [band, str(whys), no_opp])
 		print("band %d: %d bad rounds, worst deal %d ms, kinds %s, answer alone agreed most %d, least %d of 1825" % [band, wrong_days, worst, str(kinds), consensus, odd])
 	quit()

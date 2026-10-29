@@ -254,8 +254,9 @@ func advance() -> void:
 	current += 1
 	_fresh_round()
 
-## The bulb: a wrong box still standing, struck off; -1 when none is left.
-func strike() -> int:
+## The wrong box the bulb would read next, still standing; -1 when none is
+## left. The day's own pick, so a hint is the same on every phone.
+func next_strike() -> int:
 	if solved() or picked:
 		return -1
 	var left: Array[int] = []
@@ -264,10 +265,94 @@ func strike() -> int:
 			left.append(i)
 	if left.is_empty():
 		return -1
-	# the day's own pick, so a hint is the same on every phone
-	var i: int = left[(current * 7 + wrongs * 3 + struck.count(true)) % left.size()]
+	return left[(current * 7 + wrongs * 3 + struck.count(true)) % left.size()]
+
+## The bulb: box `i` (next_strike() when -1) struck off without counting
+## as a wrong pick; -1 when none is left.
+func strike(i := -1) -> int:
+	if i < 0:
+		i = next_strike()
+	if i < 0 or solved() or picked or i >= struck.size() or struck[i] or i == int(now().answer):
+		return -1
 	struck[i] = true
 	return i
+
+## Made fun (2026-10-29): why box `o` of round `r` is wrong, read from the
+## folded box itself (never from the deal's kind, so the reason is one a
+## player can check): {"why": Why, "faces": the picture's slots that show
+## it, "squares": the net's squares to look at, "keep": the slots that are
+## right as they stand, "real": the colour the odd face should be}.
+##
+## - OPPOSITE: two shown faces are opposite sides (`faces`, `squares` the
+##   pair).
+## - CORNER: three sides that meet, the wrong way round. Every such box
+##   reads as one rule: two of its faces are right as they stand (`keep`),
+##   and then the third (`faces`) must be the side opposite the one it
+##   shows (`real`); `squares` is that opposite pair. Kept top and right
+##   first, so the reading is the same on every phone.
+## - STAMP: the colours are a real corner; these arrows point another way.
+##
+## {} for the answer.
+enum Why { OPPOSITE, CORNER, STAMP }
+
+static func why(r: Dictionary, o: int) -> Dictionary:
+	if o == int(r.answer) or o < 0 or o >= (r.options as Array).size():
+		return {}
+	var pic: Array = r.options[o]
+	var sides := Fold.folded(r.net, r.root, r.colours, r.ways)
+	var normal := {}
+	var colour := {}
+	for n: Vector3i in sides:
+		normal[int(sides[n][0])] = n
+		colour[n] = int(sides[n][0])
+	var square := {}
+	for i in (r.colours as Array).size():
+		square[int(r.colours[i])] = i
+	var c: Array[int] = []
+	for f: Array in pic:
+		c.append(int(f[0]))
+	for a in 3:
+		for b in range(a + 1, 3):
+			if normal[c[a]] == -(normal[c[b]] as Vector3i):
+				return {"why": Why.OPPOSITE, "faces": [a, b], "squares": [square[c[a]], square[c[b]]], "keep": [], "real": -1}
+	# a real corner turned so its colours stand as they do: only the arrows
+	for turn in Fold.turns():
+		var seen: Array = Fold.picture(sides, turn)
+		if int(seen[0][0]) != c[0] or int(seen[1][0]) != c[1] or int(seen[2][0]) != c[2]:
+			continue
+		var faces := []
+		var squares := []
+		for k in 3:
+			if (seen[k] as Array)[1] != (pic[k] as Array)[1]:
+				faces.append(k)
+				squares.append(square[c[k]])
+		return {"why": Why.STAMP, "faces": faces, "squares": squares, "keep": [], "real": -1}
+	for keep in [[0, 1], [0, 2], [1, 2]]:
+		var odd: int = 3 - int(keep[0]) - int(keep[1])
+		for turn in Fold.turns():
+			var seen: Array = Fold.picture(sides, turn)
+			if int(seen[keep[0]][0]) != c[keep[0]] or int(seen[keep[1]][0]) != c[keep[1]]:
+				continue
+			var real := int(seen[odd][0])
+			return {"why": Why.CORNER, "faces": [odd], "squares": [square[c[odd]], square[real]], "keep": keep, "real": real}
+	return {}
+
+## Whether net squares `a` and `b` lie in one row with one square between.
+static func in_a_row(net: Array, a: int, b: int) -> bool:
+	var d: Vector2i = (net[a] as Vector2i) - (net[b] as Vector2i)
+	return (absi(d.x) == 2 and d.y == 0) or (absi(d.y) == 2 and d.x == 0)
+
+## Made fun (2026-10-29): the boxes picked right first time in a row up to
+## round `upto` (excluded), and the longest such run of the day.
+func runs(upto := -1) -> Vector2i:
+	if upto < 0:
+		upto = mini(current, ROUNDS)
+	var run := 0
+	var best := 0
+	for r in upto:
+		run = run + 1 if wrong_in[r] == 0 else 0
+		best = maxi(best, run)
+	return Vector2i(run, best)
 
 ## The brain report: a wrong pick costs a fifth.
 func quality() -> float:
