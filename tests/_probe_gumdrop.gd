@@ -28,8 +28,24 @@ func _initialize() -> void:
 	_run()
 	_insane()
 	_themed()
+	_why()
 	print("%d failed" % _fails)
 	quit(1 if _fails > 0 else 0)
+
+## Made fun (2026-10-29): what the serve's toast and the bulb say of a
+## chunk, from its pigments; and runs of Great serves.
+func _why() -> void:
+	var full: float = Sim.C_FULL
+	_check("an orange of cherry and lemon half each, full, reads right",
+		String(Sim.why(Vector3(0.5, 0.5, 0) * full, 1).kind) == "ok")
+	var mix: Dictionary = Sim.why(Vector3(0.85, 0.15, 0) * full, 1)
+	_check("an orange heavy on cherry reads too much cherry, not enough lemon",
+		String(mix.kind) == "mix" and int(mix.over) == 0 and int(mix.under) == 1)
+	_check("a lime at a third of its shade reads pale", String(Sim.why(Vector3(0, 0.5, 0.5) * full * 0.33, 3).kind) == "pale")
+	_check("an empty chunk reads dry", String(Sim.why(Vector3.ZERO, 0).kind) == "dry")
+	var s = Sim.new()
+	s.marks = [70, 85, 96, 99, 60, 90]
+	_check("runs of Great: the last 1, the best 3", s.run() == 1 and s.best_run() == 3)
 
 func _check(what: String, ok: bool) -> void:
 	print("%s  %s" % ["ok  " if ok else "FAIL", what])
@@ -158,9 +174,9 @@ func _days() -> void:
 						mixed += 1
 				mixed_least = mini(mixed_least, mixed)
 		_check("band %d: %d moulds on every one of 200 days, %d to %d cells, %d pots at most" % [band, int(spec.moulds), cells.min(), cells.max(), pots_most],
-			ok and pots_most <= [2, 3, 4, 3][band])
+			ok and pots_most <= [2, 4, 4, 3][band])
 		_check("band %d: every wanted flavour is a pot or its two neighbours, both stood by the tray" % band, makeable)
-		if band < 2:
+		if band < 1:
 			_check("band %d: nothing to mix" % band, mixed_least == 0)
 		if band == 3:
 			_check("Three Pots: only the pigments stand by the tray and a cell or more is mixed (least %d)" % mixed_least, mixed_least >= 1)

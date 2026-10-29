@@ -64,6 +64,9 @@ var _target := 0.33
 ## The bot serves with a real touch on the gold button (the low serve) or
 ## through the sim.
 var _tap_serve := false
+## `bulb` (2026-10-29): after the refused serve, the bulb pressed twice --
+## the reading (`3b_bulb_read`) and the piece poured right (`3c_bulb_poured`).
+var _bulb := false
 
 func _initialize() -> void:
 	for a: String in OS.get_cmdline_user_args():
@@ -71,6 +74,8 @@ func _initialize() -> void:
 			_reduce = true
 		elif a == "reveal":
 			_reveal = true
+		elif a == "bulb":
+			_bulb = true
 		elif a == "tutor":
 			_tutor = true
 		elif a == "pour":
@@ -347,12 +352,36 @@ func _process(delta: float) -> bool:
 				print("refused: serves 0")
 			else:
 				print("NOT refused: serves %d phase %d" % [_t_.sim.serves, _t_.sim.phase])
+			if _bulb:
+				_host._on_hint()
+				print("bulb 1: reading %d hints_used %d left %d toast '%s'" % [_t_.reading, _b.hints_used, _b.hints_left(), _t_._toast.text])
+				_at = _t
+				_step = 20
+				return false
 			# every chunk a little, then served with a real touch
 			_target = 0.33
 			_tap_serve = true
 			_play = true
 			_at = _t
 			_step = 12
+		20:
+			if _t - _at > 0.7:
+				_shot("3b_bulb_read")
+				var c: int = _t_.reading
+				_host._on_hint()
+				print("bulb 2: poured %d, reading %d hints_used %d" % [c, _t_.reading, _b.hints_used])
+				_at = _t
+				_step = 21
+		21:
+			if _t - _at > 1.2:
+				_shot("3c_bulb_poured")
+				print("bulb: fills %s" % str(_fills()))
+				_bulb = false
+				_target = 0.33
+				_tap_serve = true
+				_play = true
+				_at = _t
+				_step = 12
 		12:
 			_reveal_shot()
 			if _t_.sim.phase == Sim.Phase.SHOW and _t_.sim.phase_t > 0.6 and _t_.sim.serves == 1:

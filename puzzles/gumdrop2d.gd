@@ -45,15 +45,43 @@ func title() -> String: return "Gumdrop"
 
 func rules() -> String:
 	var out := tr("GD_RULES") % [sim.moulds.size()]
-	if band >= 2:
+	if band >= 1:
 		out += "\n\n" + tr("GD_RULES_MIX")
+	out += "\n\n" + (tr("GD_RULES_BULB_ONE") if int(HINTS[band]) == 1 else tr("GD_RULES_BULB_N") % int(HINTS[band]))
 	return out
 
 ## The match is hidden until the mould is served, and syrup is taken out
-## with the table's own grey button, not an Undo: no Undo, no bulb, no
-## Check.
+## with the table's own grey button, not an Undo: no Undo, no Check. The
+## bulb since 2026-10-29 (made fun), in two presses: the first reads a
+## piece that is not right (the needle's, else the first) and says what it
+## is made of and what is off, for one hint; a second, free, pours it right.
+const HINTS := [3, 2, 1, 1]
+
 func capabilities() -> Array[String]:
-	return []
+	return ["hint"]
+
+func hints_left() -> int:
+	return _hints_held() + (1 if table != null and table.reading >= 0 else 0)
+
+func _hints_held() -> int:
+	return maxi(0, int(HINTS[band]) + hints_extra - hints_used)
+
+func hint() -> bool:
+	if is_done() or sim == null or table == null:
+		return false
+	if table.reading >= 0:
+		var poured: bool = table.pour_right()
+		if poured:
+			moved.emit()
+		return poured
+	if _hints_held() <= 0:
+		return false
+	if table.read_chunk() < 0:
+		return false
+	hints_used += 1
+	table.cue("hint")
+	moved.emit()
+	return true
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -161,7 +189,10 @@ func flat_win() -> Dictionary:
 	var row: Array = []
 	for k in 3:
 		row.append(Jelly.new(k))
-	return {"faces": row, "subtitle": tr("GD_WIN_SUB") % " · ".join(parts)}
+	var sub: String = tr("GD_WIN_SUB") % " · ".join(parts)
+	if sim.best_run() >= 2:
+		sub += " · " + tr("GD_WIN_RUN") % sim.best_run()
+	return {"faces": row, "subtitle": sub}
 
 ## The win screen waits for the last mould's number.
 func win_delay() -> float:

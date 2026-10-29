@@ -67,6 +67,9 @@ uniform float pour_top = 0.6;
 uniform vec3 pigment = vec3(1.0, 0.0, 0.0);
 uniform int fill_cell = -1;
 uniform vec3 fill_pig = vec3(0.0);
+// The bulb's second press (2026-10-29): the cell set to fill_pig outright,
+// whatever was in it, not only raised to it.
+uniform bool fill_exact = false;
 uniform float clearing = 0.0;
 // What of a texel is its neighbours' mean after a frame, and how far off
 // the neighbours are read, in texels.
@@ -155,7 +158,7 @@ void fragment() {
 			}
 		}
 		if (fill_cell == cell) {
-			d = max(d, fill_pig / AMOUNT_TOP);
+			d = fill_exact ? fill_pig / AMOUNT_TOP : max(d, fill_pig / AMOUNT_TOP);
 		}
 		COLOR = vec4(min(d, vec3(1.0)), 1.0);
 	}

@@ -351,12 +351,26 @@ const METER_SLACK := 0.08
 ## [flavour, share] in the order they went in, summing to `total`); past
 ## full a dark ring climbs outside the rim; `snap`, the rim white all
 ## round (a chunk just landed). Built each frame it is shown.
-static func meter(r: float, segments: Array, total: float, snap := false) -> ArrayMesh:
+## `want` (made fun, 2026-10-29): a mixed chunk's recipe, [flavour, share]
+## a pot in the order to pour them, drawn as a thin track inside the rim in
+## the pots' colours with a white notch where one pot gives way to the
+## next: let go on the notch, change pots, fill to the top.
+static func meter(r: float, segments: Array, total: float, snap := false, want: Array = []) -> ArrayMesh:
 	var b := Face.Builder.new()
 	var from := -PI * 0.5
 	var shown := minf(total, 1.0)
 	var rim := 0.95 * r
 	var w := 0.1 * r
+	if not want.is_empty():
+		var inner := rim - w * 1.15
+		var gfrom := -PI * 0.5
+		for k in want.size():
+			var gto := gfrom + TAU * float(want[k][1])
+			b.stroke(Face.Builder.arc_points(Vector2.ZERO, inner, gfrom, gto), w * 0.55, Color(FLAVOURS[int(want[k][0])], 0.75), false, false)
+			if k + 1 < want.size():
+				var d := Vector2.from_angle(gto)
+				b.stroke(PackedVector2Array([d * (inner - w * 0.5), d * (rim + w * 0.75)]), 0.05 * r, Color.WHITE)
+			gfrom = gto
 	# a chunk just landed: the ring snaps white, the whole way round
 	if snap:
 		b.stroke(Face.Builder.arc_points(Vector2.ZERO, rim, from, from + TAU), w, Color.WHITE, true, false)

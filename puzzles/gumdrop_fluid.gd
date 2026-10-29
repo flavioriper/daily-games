@@ -112,6 +112,7 @@ var pigment := Vector3(1, 0, 0)
 var drag := Vector2.ZERO
 var fill_cell := -1
 var fill_pig := Vector3.ZERO
+var fill_exact := false
 
 var _passes: Array = []
 var _mats := {}
@@ -285,8 +286,10 @@ func tick(delta: float) -> void:
 	dye.set_shader_parameter("pigment", pigment)
 	dye.set_shader_parameter("fill_cell", fill_cell)
 	dye.set_shader_parameter("fill_pig", fill_pig)
+	dye.set_shader_parameter("fill_exact", fill_exact)
 	dye.set_shader_parameter("clearing", clearing)
 	fill_cell = -1
+	fill_exact = false
 
 ## Pigment a second at the tip's middle into the chunk under it: more
 ## into a bigger chunk, less than in proportion (Sim.pace is the rate over

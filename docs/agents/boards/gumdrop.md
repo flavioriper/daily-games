@@ -982,3 +982,63 @@ builder's and the spec says so.
   and the rows put a mark back); the gel and tray kept dark; a shelf of
   served jellies across days, free play into a served jelly, and a
   decision layer for Hard and Insane, all left for a later pass.
+
+### Made fun, second pass: a choice to make (2026-10-29)
+
+The user, 2026-10-29: "make gumdrop and pearl dive experience way better to
+play, and game itself way funnier to play, right now nobody likes it. Use
+web for reference on how good games does it. Do it autonomous, push to main
+when done." Built unattended on main; every call below is mine.
+
+- **Why it was still dull** (shots of 2026-10-29, Medium): the 10-26 pass
+  made the pour quick and the serve a reveal but left the decision layer
+  for later (spec section 7). On Easy and Medium the card's colours were
+  the pots: pick the pot shown, hold, serve; nothing to choose and no
+  skill. And a serve under Great said a number and nothing of why (the
+  harness's own "56% Served!"). Colour-mixing games that hold players make
+  the mix the puzzle and show how near it is (web: the genre's 0-100%
+  match meters with tiers, side-by-side reads).
+- **Medium mixes** (`Mould.BANDS[1].stood` is `ONE_MIXED`): one flavour of
+  the picture has no pot and is made from its two neighbours, as Hard
+  has. Rows 8-18 nearly all have an orange, lime or grape; a picture
+  without one stays plain, and so does a themed Medium jelly
+  (`THEMED[1].mixed` is 0, jelly.ts untouched). `GD_LVL_1` says so; the
+  rules' mix paragraph shows from Medium. `_probe_gumdrop.gd`: Medium 4
+  pots at most, nothing to mix only on Easy.
+- **The recipe on the meter** (`Art.meter(..., want)`, `_recipe_track`):
+  a mixed chunk under the tip shows its recipe as a thin track inside the
+  rim in the pots' colours, the pot already poured (else the one held)
+  first, and a white notch where one gives way to the next: let go on the
+  notch, change pots, fill to the top. Easy to Hard; **not on Insane**,
+  where the mix is the player's to find.
+- **The serve says why** (`_why_line`, `Sim.why`): under Great, the piece
+  the judge liked least, by flavour, on a toast over the card ("The
+  orange piece had too much cherry, not enough lemon." / "... was a bit
+  pale: fill it until the ring lands."), from the chunk's pigments read
+  at the judge (`_reads`, `_judged`). `Sim.why`: "dry", "pale" (under
+  `WHY_FULL` 0.9 of the shade), "mix" (off the card's mix by `WHY_MIX`
+  0.12, with the pigment over and the one under) or "ok".
+- **The toast stands over the card, never over the tray** (the user's
+  2026-10-11 no-words-on-the-jelly rule); the card's two lines step aside
+  while it shows. `ui/flat/toast_card.gd`.
+- **Runs**: Great-or-better serves in a row (`Sim.run`) say "n great in a
+  row!" from two; the best run is on the win's line (`GD_WIN_RUN`).
+- **The bulb, in two presses** (`capabilities()` is `["hint"]` now;
+  `HINTS` 3/2/1/1): the first reads the chunk under the needle if it is
+  not right, else the first that is not (`Sim.off_chunk`), rings it and
+  says what it is made of and what is off ("This piece is orange: cherry
+  and lemon, half each. It has too much cherry. Tap the bulb again to pour
+  it right."), for one hint; every piece right is said and costs nothing.
+  A second press, free, pours it right: `Sim.set_right` and the dye
+  pass's new `fill_exact` (the cell set to the card's shade outright, not
+  only raised to it; no pass added). A squeeze or a drain puts the reading
+  out. `hint` cue: two kalimba notes alike and a third up. The HUD
+  tutorial page's words name the bulb; no bench page of its own.
+- **Measured** (`opengl3_angle`, 810x1440, `_shot_gumdrop.gd`): Medium
+  play 117-127 draw calls, the win 170 (as before); Hard with `bulb`: the
+  read 118, poured 113, the chunk read 1.00 after, the day served at
+  86/100/97/98. `_win.gd -- gumdrop` PASS; `_probe_gumdrop.gd` 0 failed
+  (new: `_why`, runs).
+- **Owed**: a phone (the notch's legibility under a thumb, `fill_exact`
+  on a real GLES3 driver), the hint cue heard, pt/es read, the bulb's own
+  tutorial page.

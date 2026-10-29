@@ -89,6 +89,8 @@ var t := 0.0
 ## The day: its moulds, which of them is on the tray, and each one's
 ## match once it was served.
 var moulds: Array = []
+## The band the day was dealt for (0 Easy .. 3 Insane).
+var band := 0
 var index := 0
 var marks: Array = []
 ## The serves made.
@@ -142,8 +144,9 @@ func set_day(list: Array) -> void:
 
 ## A band's day off the day's seed, the day's themed jellies first when
 ## there are any (Mould.day).
-func deal_day(band: int, from: RandomNumberGenerator, themed: Array = []) -> void:
-	set_day(Mould.day(band, from, themed))
+func deal_day(level: int, from: RandomNumberGenerator, themed: Array = []) -> void:
+	band = level
+	set_day(Mould.day(level, from, themed))
 
 ## The day from its first mould, the serves from zero.
 func restart() -> void:
@@ -310,6 +313,87 @@ func filled(c: int, flavour: int, part: float) -> void:
 		landed[c] = 1
 	if phase == Phase.READY:
 		phase = Phase.PLAY
+
+# --- runs (made fun, 2026-10-29) ---
+
+## Serves in a row, up to the last, at Great or better.
+func run() -> int:
+	var n := 0
+	for k in range(marks.size() - 1, -1, -1):
+		if int(marks[k]) < TIER_GREAT:
+			break
+		n += 1
+	return n
+
+func best_run() -> int:
+	var best := 0
+	var n := 0
+	for m in marks:
+		n = n + 1 if int(m) >= TIER_GREAT else 0
+		best = maxi(best, n)
+	return best
+
+# --- reading a chunk (made fun, 2026-10-29) ---
+
+## The share of the way off the card's mix a chunk may be and still read
+## right (`why`), and the share of its shade it must reach.
+const WHY_MIX := 0.12
+const WHY_FULL := 0.9
+
+## What is wrong with a chunk holding pigments `read` (amounts, the card's
+## shade C_FULL) for a card that wants `flavour`: {"kind": "ok"}; "dry"
+## (nothing in it); "pale" (the right mix, short of the shade); or "mix",
+## with the pigment there is too much of ("over") and the one it needs
+## more of ("under"), Mould.PRIMARIES' indices into the three.
+static func why(read: Vector3, flavour: int) -> Dictionary:
+	var sum := read.x + read.y + read.z
+	if sum < WET:
+		return {"kind": "dry"}
+	var want: Vector3 = Mould.PIGMENT[flavour]
+	var off: Vector3 = read / sum - want
+	if off.length() >= WHY_MIX:
+		var over := 0
+		var under := 0
+		for i in 3:
+			if off[i] > off[over]:
+				over = i
+			if off[i] < off[under]:
+				under = i
+		return {"kind": "mix", "over": over, "under": under}
+	if sum < WHY_FULL * C_FULL:
+		return {"kind": "pale"}
+	return {"kind": "ok"}
+
+## The flavour chunk `c` of the mould on the tray is wanted in, and the
+## pots it is made from with their shares (Mould.recipe).
+func want_of(c: int) -> int:
+	return int((mould.get("want", []) as Array)[c]) if c >= 0 and c < (mould.get("want", []) as Array).size() else -1
+
+func recipe_of(c: int) -> Dictionary:
+	var f := want_of(c)
+	return {} if f < 0 else Mould.recipe(f, mould.get("pots", []))
+
+## The chunk the bulb reads first: of the chunks `read` (a Vector3 a chunk)
+## says are not right, the tip's own, else the first; -1 when all are.
+func off_chunk(read: Array) -> int:
+	var c := tip_cell()
+	if c >= 0 and c < read.size() and String(why(read[c], want_of(c)).kind) != "ok":
+		return c
+	for k in read.size():
+		if String(why(read[k], want_of(k)).kind) != "ok":
+			return k
+	return -1
+
+## A chunk set to the card's shade of its flavour at once, whatever was in
+## it: the bulb's second press. The fluid sets it (`exact`).
+func set_right(c: int) -> void:
+	var f := want_of(c)
+	if f < 0:
+		return
+	prefill.append({"cell": c, "pigment": (Mould.PIGMENT[f] as Vector3) * C_FULL, "exact": true})
+	learn(c, C_FULL)
+	if c < landed.size():
+		landed[c] = 1
 
 # --- the hand ---
 

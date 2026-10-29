@@ -57,7 +57,9 @@ const PICTURES := [
 enum Stood { PLAIN, ONE_MIXED, THREE_POTS }
 const BANDS := [
 	{"moulds": 2, "rows": [0, 7], "stood": Stood.PLAIN},
-	{"moulds": 3, "rows": [8, 18], "stood": Stood.PLAIN},
+	# Medium mixes one flavour from two pots since 2026-10-29 (made fun:
+	# Easy and Medium had no choice to make, the pot was the card's)
+	{"moulds": 3, "rows": [8, 18], "stood": Stood.ONE_MIXED},
 	{"moulds": 4, "rows": [11, 26], "stood": Stood.ONE_MIXED},
 	{"moulds": 5, "rows": [19, 28], "stood": Stood.THREE_POTS},
 ]

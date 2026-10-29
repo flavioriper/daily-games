@@ -56,6 +56,7 @@ const HAPTICS := {}
 const Face = preload("res://ui/faces/face.gd")
 
 const Rewards = preload("res://arcade/rewards.gd")
+const ToastCard = preload("res://ui/flat/toast_card.gd")
 
 const MARGIN := 40
 const GAP := 20
@@ -231,6 +232,14 @@ var _slid := false
 var _bits: Array = []
 ## The loud rewards over the whole table (arcade/rewards.gd).
 var _rw: Rewards
+## Made fun (2026-10-29): a toast over the card (never over the tray: no
+## words on the jelly) says why a serve fell short of Great, a run of Great
+## serves, and the bulb's reading; the chunk the bulb read, rimmed until a
+## move or its second press; each chunk's pigments as the judge saw them.
+var _toast := ToastCard.new()
+var reading := -1
+var _reads: Array = []
+var _judged := PackedFloat32Array()
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -456,6 +465,9 @@ func lay(game: RefCounted) -> void:
 	_shown_index = -1
 	_shown_match = -2
 	_cell_pots.clear()
+	_toast.clear()
+	reading = -1
+	_reads = []
 	won = false
 	held = false
 	_tip = sim.tip
@@ -497,6 +509,11 @@ func _process(delta: float) -> void:
 	_drive(delta)
 	_animate(delta)
 	_refresh_hud()
+	# the card's two lines step aside while the toast stands over the card
+	if _match_l != null:
+		var lines_a := minf(1.0 - _win_k(), 1.0 - _toast.level(_clock))
+		_match_l.modulate.a = lines_a
+		_need_l.modulate.a = lines_a
 	_knock_now()
 	_redraw()
 
@@ -522,6 +539,7 @@ func _drive(delta: float) -> void:
 		var pre: Dictionary = sim.prefill.pop_front()
 		_fluid.fill_cell = int(pre.cell)
 		_fluid.fill_pig = pre.pigment
+		_fluid.fill_exact = bool(pre.get("exact", false))
 	_fluid.tick(delta)
 
 ## Whether the fluid's passes run this frame: not under a card, and not
@@ -558,6 +576,10 @@ func _animate(delta: float) -> void:
 		# rings out of the tip as it pours, into it as it draws out
 		_ring(sim.tip, 4.0, 0.5, Color(1, 1, 1, 0.8), draining)
 	_pour_sound(delta, pouring, draining)
+	# a move puts the bulb's reading out
+	if reading >= 0 and (sim.squeezing or sim.draining):
+		reading = -1
+		_toast.clear()
 	# the meter: the chunk under the tip, eased; gone when the tip is over
 	# the tray or the mould is served
 	if playing and not won:
@@ -740,6 +762,10 @@ func _play_events() -> void:
 				_fx.cue("serve")
 			"judge":
 				var m: Dictionary = _fluid.measure()
+				_reads = []
+				for c in (sim.mould.get("cells", []) as Array).size():
+					_reads.append(_fluid.level(c))
+				_judged = m.near
 				sim.judge(m.near, m.all)
 				# the verdict and the day's end are this frame's too
 				evs.append_array(sim.events)
@@ -819,6 +845,95 @@ func _on_served(ev: Dictionary) -> void:
 			_rw.sticker(tr("GD_GOOD"), at + Vector2(0, 104.0), 50, 1.9, false, Color("fff4c2"), false, "word")
 	# the jelly shakes as it is judged, whatever the tier
 	wobble(WOB_SERVE)
+	# under Great, the toast says which piece and why; a run of Great serves
+	# says so
+	var run: int = sim.run()
+	if int(ev.tier) < 1:
+		var line := _why_line()
+		if line != "":
+			say(line)
+	elif run >= 2:
+		say(tr("GD_RUN") % run)
+
+## Why the mould just served fell short: the piece the judge liked least,
+## by its flavour, pale or mixed wrong. "" when nothing reads wrong.
+func _why_line() -> String:
+	var worst := -1
+	for c in mini(_judged.size(), _reads.size()):
+		if worst < 0 or _judged[c] < _judged[worst]:
+			worst = c
+	if worst < 0:
+		return ""
+	var f: int = sim.want_of(worst)
+	var got: Dictionary = Sim.why(_reads[worst], f)
+	match String(got.kind):
+		"pale":
+			return tr("GD_WHY_PALE") % _flavour(f)
+		"mix":
+			return tr("GD_WHY_MIX") % [_flavour(f), _flavour(Mould.PRIMARIES[int(got.over)]), _flavour(Mould.PRIMARIES[int(got.under)])]
+	return ""
+
+func _flavour(f: int) -> String:
+	return tr("GD_FLAVOUR_%d" % f)
+
+## Says `text` on the toast over the card; `held` keeps it (a reading).
+func say(text: String, held_line := false) -> void:
+	_toast.say(text, _clock, held_line)
+	_top.queue_redraw()
+
+## The bulb's first press (made fun, 2026-10-29): the chunk under the
+## needle when it is not right, else the first that is not, rimmed, and
+## the toast says what it is made of and what is off. -1 when every chunk
+## reads right (said, free) or the mould is not being played.
+func read_chunk() -> int:
+	if sim == null or sim.phase > Sim.Phase.PLAY:
+		return -1
+	var reads: Array = []
+	for c in (sim.mould.get("cells", []) as Array).size():
+		reads.append(_fluid.level(c) if DisplayServer.get_name() != "headless" else Vector3(sim.tank[c], 0, 0))
+	var c: int = sim.off_chunk(reads)
+	if c < 0:
+		say(tr("GD_ALL_RIGHT"))
+		return -1
+	reading = c
+	var f: int = sim.want_of(c)
+	var rec: Dictionary = sim.recipe_of(c)
+	var line: String
+	if rec.size() >= 2:
+		var pots: Array = rec.keys()
+		line = tr("GD_READ_MIX") % [_flavour(f), _flavour(int(pots[0])), _flavour(int(pots[1]))]
+	else:
+		line = tr("GD_READ_PLAIN") % _flavour(f)
+	var got: Dictionary = Sim.why(reads[c], f)
+	match String(got.kind):
+		"pale":
+			line += " " + tr("GD_READ_PALE")
+		"mix":
+			line += " " + tr("GD_READ_OVER") % _flavour(Mould.PRIMARIES[int(got.over)])
+	say(line + " " + tr("GD_READ_AGAIN"), true)
+	_ring(sim.centre_of(c), 9.0, 0.7, Color(Pal.SUN, 0.95), true)
+	_fx.sparkle(px(sim.centre_of(c)), Pal.SUN)
+	return c
+
+## The bulb's second press: the chunk it read set right at once.
+func pour_right() -> bool:
+	if reading < 0 or sim == null or sim.phase > Sim.Phase.PLAY:
+		return false
+	var c := reading
+	reading = -1
+	_toast.clear()
+	sim.set_right(c)
+	_cell_pots[c] = {}
+	for f: int in sim.recipe_of(c):
+		(_cell_pots[c] as Dictionary)[f] = true
+	if c < _armed.size():
+		_armed[c] = 0
+	_fx.sparkle(px(sim.centre_of(c)), Sim.FLAVOURS[sim.want_of(c)])
+	_ring(sim.centre_of(c), 9.0, 0.6, Color.WHITE)
+	_fx.cue("land")
+	wobble(WOB_LAND)
+	_top.queue_redraw()
+	return true
 
 func _ring(at: Vector2, r: float, life: float, col: Color, inward := false) -> void:
 	if Motion.reduce:
@@ -953,6 +1068,10 @@ func _draw_top() -> void:
 		# the plunger first, so it sinks into the barrel as it is squeezed
 		_top.draw_mesh(Art.plunger(DROPPER), null, lean * Transform2D(0.0, Vector2(0, -DROPPER * 0.74 + DROPPER * 0.13 * _squash)))
 		_top.draw_mesh(Art.needle(int(sim.pots[sim.picked].flavour), DROPPER), null, lean)
+	# the toast over the card, never the tray
+	if _toast.showing(_clock):
+		var w := maxf(_card.size.x, minf(_tray.size.x, size.x - 2.0 * MARGIN))
+		_toast.draw(_top, _card.get_center(), w, _clock, 30, Vector2(26.0, 16.0))
 
 ## The meter on the squeeze button: the white rim filled clockwise with
 ## the chunk's pigments, 100% the card's shade, the number under the drop.
@@ -962,7 +1081,7 @@ func _draw_meter(xf: Transform2D, fade: Color) -> void:
 	var total: float = (_level.x + _level.y + _level.z) / Sim.C_FULL
 	var alpha := fade * Color(1, 1, 1, _meter_k)
 	var snap := _clock - _land_at < LAND_SNAP
-	_meter = Art.meter(_squeeze_r, _meter_segments(sim.tip_cell(), _level / Sim.C_FULL), total, snap)
+	_meter = Art.meter(_squeeze_r, _meter_segments(sim.tip_cell(), _level / Sim.C_FULL), total, snap, _recipe_track(sim.tip_cell()))
 	if _meter != null:
 		_top.draw_mesh(_meter, null, xf, alpha)
 	var font: Font = CozyTheme.display(700)
@@ -972,6 +1091,30 @@ func _draw_meter(xf: Transform2D, fade: Color) -> void:
 	var at := xf * Vector2(-tw * 0.5, _squeeze_r * 0.62 + font.get_ascent(fs) * 0.35)
 	_top.draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, fs,
 		(Pal.LEAF_DEEP if snap else Art.INK if total > 1.0 + Art.METER_SLACK else Color("fffdf8")) * alpha)
+
+## A mixed chunk's recipe on the meter (made fun, 2026-10-29), Easy to
+## Hard: [flavour, share] a pot, the pot already poured first, else the
+## one the needle holds; [] for a chunk of one pot and on Insane, where
+## the mix is the player's to find.
+func _recipe_track(cell: int) -> Array:
+	if sim.band >= 3 or cell < 0:
+		return []
+	var rec: Dictionary = sim.recipe_of(cell)
+	if rec.size() < 2:
+		return []
+	var order: Array = rec.keys()
+	var first := -1
+	var poured: Array = _cell_pots.get(cell, {}).keys()
+	if not poured.is_empty() and rec.has(int(poured[0])):
+		first = int(poured[0])
+	elif rec.has(int(sim.pots[sim.picked].flavour)):
+		first = int(sim.pots[sim.picked].flavour)
+	if first >= 0 and order[0] != first:
+		order.reverse()
+	var out: Array = []
+	for f: int in order:
+		out.append([f, float(rec[f])])
+	return out
 
 ## The meter's segments for the chunk: a segment a pot that has gone into
 ## it, in the order they went in, each the share of the reading its

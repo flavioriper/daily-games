@@ -4015,6 +4015,9 @@ SETS = {
         "perfect":   ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.12:2,6,9", "cut:0.8"),
         # A run beginning: three notes up.
         "start":     ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:2,5,9", "cut:0.9"),
+        # The bulb (2026-10-29): two notes alike and a third up, as Pearl
+        # Dive's; its second press pours the piece right and lands it.
+        "hint":      ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:5,5,9", "cut:1.0"),
         # A pot picked (2026-10-26): the pebble, the house select, in place
         # of the button's click.
         "pick":      ('a small pebble dropped into a calm pond, one soft plop, close, very short', 0.6, -16, FOLEY, "bank:pebble", "cut:0.14", "tight"),
