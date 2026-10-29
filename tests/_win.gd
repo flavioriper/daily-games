@@ -1960,23 +1960,39 @@ func _solve_teacups() -> void:
 			if _puzzle.phase() == _puzzle.Phase.PLAY or _puzzle.is_done():
 				return
 			_puzzle._process(0.05)
-	# two misses: cup 0 against a cup of another friend, twice
-	for m in 2:
-		var a: int = st.hidden()[0]
-		var b := -1
-		for c in st.hidden():
-			if st.kind[c] != st.kind[a]:
-				b = c
-				break
-		_tap_local(_puzzle.slot_to_local(st.slot[a]))
-		_tap_local(_puzzle.slot_to_local(st.slot[b]))
+	# two misses: cup 0 against a cup of another friend; then that cup's
+	# twin against a third cup, a lapse (the twin was seen), which the toast
+	# names and the twin's saucer is rimmed
+	var a0: int = st.hidden()[0]
+	var b0 := -1
+	for c in st.hidden():
+		if st.kind[c] != st.kind[a0]:
+			b0 = c
+			break
+	var pb: int = st.partner(b0)
+	var c0 := -1
+	for c in st.hidden():
+		if c != b0 and c != pb and st.kind[c] != st.kind[a0]:
+			c0 = c
+			break
+	for turn in [[a0, b0], [pb, c0]]:
+		_tap_local(_puzzle.slot_to_local(st.slot[turn[0]]))
+		_tap_local(_puzzle.slot_to_local(st.slot[turn[1]]))
 		_hud_ok = _hud_ok and _puzzle.phase() == _puzzle.Phase.HOLD
 		_puzzle._process(1.0)
 		settle.call()
-	# a cup in hand, the bulb: its partner peeks and is lifted
+	_hud_ok = _hud_ok and st.lapses == 1 and _puzzle._rim_slot == st.slot[b0] and _puzzle._toast.showing(_puzzle._t)
+	# a cup in hand, the bulb: the first press reads (one hint, the toast, a
+	# reading standing), the second lifts its partner, free
 	var first: int = st.hidden()[0]
 	_tap_local(_puzzle.slot_to_local(st.slot[first]))
-	_hud_ok = _hud_ok and _puzzle.hint()
+	var stars_before: int = _puzzle._stars.stars
+	_hud_ok = _hud_ok and _puzzle.hint() and _puzzle._reading == first and _puzzle.hints_used == 1 \
+		and _puzzle._toast.showing(_puzzle._t) and _puzzle._stars.stars <= stars_before
+	_hud_ok = _hud_ok and _puzzle.hint() and _puzzle._reading == -1 and _puzzle.hints_used == 1 \
+		and _puzzle._up[st.partner(first)]
+	# the Peeplets: one a cup, the ones under lifted cups shown
+	_hud_ok = _hud_ok and _puzzle._views.size() == st.cups()
 	_tap_local(_puzzle.slot_to_local(st.slot[st.partner(first)]))
 	_puzzle._process(0.1)
 	for step in 40:

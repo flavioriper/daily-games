@@ -14,7 +14,8 @@ this file went with it; if a model ever comes back, recover them from history
 **One exception, the Peeplet** (the user, 2026-10-23 and 2026-10-27): the
 real Peeplet is a 3D model shown flat through `ui/peeplet_view.gd`, each a
 SubViewport with its own `World3D`. Who Ate the Pie?'s bakers (up to twenty
-on Insane, `peeplet/peeplet_personas.gd`) and its menu card use it, and the
+on Insane, `peeplet/peeplet_personas.gd`) and its menu card use it,
+Teacups' friends and its card do too (the user, 2026-10-29), and the
 day's pair (`core/cast.gd`) sits on Hidden Word's card and reveal, Streak's
 Today card, the remove-ads sheet and the boot opening; nothing else does,
 never the header. Never redraw a Peeplet by hand or bake it to an image.

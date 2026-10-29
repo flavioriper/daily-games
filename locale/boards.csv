@@ -3258,7 +3258,7 @@ BRAIN_DP_1,"Start with the tags that leave one choice, like a 0 or a 12 over two
 BRAIN_DP_2,An = bed and a double on the rack: find where the double fits first.,Um canteiro = e uma dupla no suporte: descubra primeiro onde a dupla cabe.,Un parterre = y una doble en el soporte: busca primero dónde cabe la doble.
 BRAIN_DP_3,Count what is left: the rack's spots add up to what the open beds still need.,Conte o que falta: os pontos do suporte somam o que os canteiros abertos ainda pedem.,Cuenta lo que queda: los puntos del soporte suman lo que los parterres abiertos aún piden.
 BRAIN_DP_4,Squares with no tag take anything: fill them last.,Casas sem etiqueta aceitam qualquer coisa: deixe-as para o fim.,Las casillas sin etiqueta aceptan cualquier cosa: déjalas para el final.
-TC_BLURB,"Cups upside down on the tea table, a friend under each. Lift two at a time and find every pair.","Xícaras de cabeça para baixo na mesa do chá, um amiguinho debaixo de cada. Levante duas por vez e encontre todos os pares.","Tazas boca abajo en la mesa del té, un amiguito debajo de cada una. Levanta dos a la vez y encuentra todas las parejas."
+TC_BLURB,"Cups upside down on the tea table, a Peeplet hiding under each. Lift two at a time and find every pair of twins.","Xícaras de cabeça para baixo na mesa do chá, um Peeplet escondido debaixo de cada. Levante duas por vez e encontre todos os gêmeos.","Tazas boca abajo en la mesa del té, un Peeplet escondido debajo de cada una. Levanta dos a la vez y encuentra todos los gemelos."
 TC_SHORT,"Lift two cups,
 find the pairs.","Levante duas xícaras,
 ache os pares.","Levanta dos tazas,
@@ -3278,6 +3278,11 @@ TC_WIN,Every friend found in %d lifts!,Todos os amiguinhos achados em %d levanta
 TC_WIN_SHARP,Not one partner forgotten.,Nenhum par esquecido.,Ninguna pareja olvidada.
 TC_WIN_LAPSES_ONE,%d partner slipped your mind.,%d par escapou da memória.,%d pareja se te escapó.
 TC_WIN_LAPSES_N,%d partners slipped your mind.,%d pares escaparam da memória.,%d parejas se te escaparon.
+TC_WIN_RUN,Best run: %d pairs in a row.,Melhor sequência: %d pares seguidos.,Mejor racha: %d parejas seguidas.
+TC_RUN,%d pairs in a row!,%d pares seguidos!,¡%d parejas seguidas!
+TC_LAPSE,"You had seen %s's twin already: it was here!","Você já tinha visto o gêmeo de %s: estava aqui!","Ya habías visto al gemelo de %s: ¡estaba aquí!"
+TC_READ_SEEN,"You have lifted %s's twin before. Think back, or press the bulb again to peek.","Você já levantou o gêmeo de %s. Puxe pela memória, ou toque na lâmpada de novo para espiar.","Ya levantaste al gemelo de %s. Haz memoria, o toca la bombilla otra vez para espiar."
+TC_READ_FRESH,"%s's twin hides under a ringed cup, one you have never lifted. Press the bulb again to peek.","O gêmeo de %s está sob uma xícara marcada, uma que você nunca levantou. Toque na lâmpada de novo para espiar.","El gemelo de %s está bajo una taza marcada, una que nunca levantaste. Toca la bombilla otra vez para espiar."
 HTP_TC_LIFT,Lift two cups,Levante duas xícaras,Levanta dos tazas
 HTP_TC_LIFT_BODY,"Tap a cup to see the friend under it, then tap another. Two different friends go back under their cups.","Toque numa xícara para ver o amiguinho embaixo, depois toque em outra. Dois amiguinhos diferentes voltam para debaixo das xícaras.","Toca una taza para ver el amiguito de debajo, luego toca otra. Dos amiguitos distintos vuelven bajo sus tazas."
 HTP_TC_PAIR,Find a pair,Encontre um par,Encuentra una pareja
@@ -3287,7 +3292,7 @@ HTP_TC_REMEMBER_BODY,"Every friend you see is a clue. When its twin turns up, go
 HTP_TC_WALTZ,Waltz,Valsa,Vals
 HTP_TC_WALTZ_BODY,"On Insane, every second miss sets two hidden cups wiggling, then trading places. Keep your eyes on them.","No Insano, a cada dois erros duas xícaras escondidas balançam e trocam de lugar. Fique de olho nelas.","En Demencial, cada dos fallos dos tazas ocultas se menean y cambian de sitio. No les quites el ojo."
 HTP_TC_HINT,A peek,Uma espiada,Un vistazo
-HTP_TC_HINT_BODY,"The bulb lifts the partner of the cup in your hand for a moment. With no cup up, a hidden pair peeks out.","A lâmpada levanta por um instante o par da xícara na sua mão. Sem xícara levantada, um par escondido dá uma espiada.","La bombilla levanta un momento la pareja de la taza que tienes en la mano. Sin taza levantada, una pareja oculta se asoma."
+HTP_TC_HINT_BODY,"With a cup in your hand, the bulb tells you whether you have seen its twin. Press it again and the twin peeks out.","Com uma xícara na mão, a lâmpada diz se você já viu o gêmeo dela. Toque de novo e o gêmeo dá uma espiada.","Con una taza en la mano, la bombilla te dice si ya viste a su gemelo. Tócala otra vez y el gemelo se asoma."
 BRAIN_TC_1,Name each friend as you lift it: words stick better than pictures alone.,Diga o nome de cada amiguinho ao levantá-lo: palavras grudam melhor que só imagens.,Nombra cada amiguito al levantarlo: las palabras se quedan mejor que solo las imágenes.
 BRAIN_TC_2,"Sweep the table in order, row by row, so you know which cups are still unseen.","Percorra a mesa em ordem, fileira por fileira, para saber quais xícaras ainda não viu.","Recorre la mesa en orden, fila por fila, para saber qué tazas aún no has visto."
 BRAIN_TC_3,"Lift a new cup first: if its twin is one you have seen, you can go straight to it.","Levante primeiro uma xícara nova: se o gêmeo for um que você já viu, pode ir direto nele.","Levanta primero una taza nueva: si su gemelo es uno que ya viste, puedes ir directo a él."

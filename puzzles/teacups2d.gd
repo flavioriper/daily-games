@@ -11,17 +11,32 @@ extends "res://core/puzzle_base.gd"
 ## **The table is the whole screen** (`"bleed": true`): the flat host lays
 ## this board full rect and says what its rows cover (`set_clear`); the
 ## world (puzzles/teacups_world.gd) is the board's first child. The cups and
-## saucers are ui/faces/teacup.gd's; the friends are the house's own faces,
-## one node per friend and look, never in the tree, drawn by this board
-## from their `layers_now()`.
+## saucers are ui/faces/teacup.gd's; the friends are Peeplets (the user,
+## 2026-10-29: "include the peeplet chars rather than fruits, like it's done
+## on who ate the pie"), a live ui/peeplet_view.gd a cup, holding a still
+## frame. The table is laid row by row so a nearer row stands in front: the
+## board draws the saucers, then each row is a `_casts[i]` holding that
+## row's Peeplets and a `_lids[i]` drawing its cups over them; `_top` draws
+## the count, the stars and the toast over everything.
 ##
-## A lift rides up and tips the cup off its friend; a cup put back drops and
-## lands with a bump. A miss holds both friends worried a moment, then
-## covers them -- a tap on another cup covers them at once and lifts it. On
-## Insane (Waltz) every second miss sets two hidden cups wiggling, then
-## swapping places in plain sight. The bulb peeks: the partner of the cup in
-## hand, or a pair still hidden when none is. No Undo (a cup seen cannot be
-## unseen) and no bin (a day started over would be a day remembered).
+## A lift rides up and tips the cup off its friend, who breathes and has
+## their name on the saucer's lip while the cup is up; a cup put back drops
+## and lands with a bump. A miss slumps both friends a moment, then covers
+## them -- a tap on another cup covers them at once and lifts it. On Insane
+## (Waltz) every second miss sets two hidden cups wiggling, then swapping
+## places in plain sight. No Undo (a cup seen cannot be unseen) and no bin
+## (a day started over would be a day remembered).
+##
+## Made fun (2026-10-29, the user: "nobody likes it"; measured with
+## tests/_probe_tc_fun.gd: half of all turns are blind guesses, and the
+## remembered half went unsaid until the win). A pair found makes both
+## friends laugh; one found by memory rings its saucers; pairs in a row
+## climb the pair cue and say so every third, best run on the win. A lapse
+## says whose twin was passed over and rims the saucer it sat on. Live stars
+## by lapses and bulbs. The bulb reads before it acts: with a cup in hand
+## the first press says whether its twin has been seen, and rims the cups
+## never lifted when it has not, for one hint; a second press lifts the
+## twin, free. With no cup in hand it peeks a pair still hidden at once.
 ##
 ## The board is also its own tutorial: `demo` set before it enters the tree
 ## makes it silent, deaf and laid in its own rect, and
@@ -36,6 +51,10 @@ const Face = preload("res://ui/faces/face.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
 const Haptics = preload("res://core/haptics.gd")
 const CozyTheme = preload("res://ui/theme.gd")
+const PeepletView = preload("res://ui/peeplet_view.gd")
+const Personas = preload("res://peeplet/peeplet_personas.gd")
+const StarLine = preload("res://ui/flat/star_line.gd")
+const Toast = preload("res://ui/flat/toast_card.gd")
 
 enum Phase { PLAY, HOLD, BUSY, DONE }
 
@@ -58,9 +77,9 @@ const DROP_TIME := 0.16
 const MISS_HOLD := 0.9
 ## How high a lifted cup rides and how far it tips, in its mouth's half width
 ## and radians.
-const RISE := 1.25
-const TIP := 0.34
-const SLIDE := 0.32
+const RISE := 2.2
+const TIP := 0.42
+const SLIDE := 0.6
 ## A found pair's cups flying off.
 const GONE_TIME := 0.35
 const GONE_RISE := 2.2
@@ -77,6 +96,17 @@ const WIN_HOLD := 1.4
 const WAVE_STEP := 0.05
 ## The count line under the table, at W.
 const COUNT_SIZE := 30
+## A friend's picture: its side in the cup's mouth's half widths, metres of
+## the Peeplet's world it is tall and the height it looks at (the whole
+## Peeplet and the tallest hat), and how far down it the feet stand. A
+## friend under a lifted cup breathes at UP_FPS; the rest hold still.
+const PIC := 2.75
+const CAST_FRAME := 0.95
+const CAST_AIM := 0.42
+const FEET := 0.93
+const UP_FPS := 12.0
+## A lapse's rim on the saucer the twin sat on, and a found-by-memory ring.
+const RIM_TIME := 2.2
 
 ## Built silent and deaf for the tutorial's page.
 var demo := false
@@ -106,8 +136,24 @@ var _peek_tok: Array[int] = []
 ## leaves its queued cue and its end behind, and they must not touch the next.
 var _held: Array[int] = []
 var _hold_tok := 0
-## The friends' nodes, "kind:expression" -> Control (never in the tree).
-var _friends := {}
+## The friends: a PeepletView a cup id, in the row layer of its place;
+## `_cast_ids` the personas they were built for.
+var _views: Array[Control] = []
+var _cast_ids: Array[int] = []
+## Per row of the table: the layer holding its friends and the one drawing
+## its cups over them; `_top` over every row.
+var _casts: Array[Control] = []
+var _lids: Array[Control] = []
+var _top: Control
+var _stars := StarLine.new()
+var _toast := Toast.new()
+## The bulb's first press: the cup in hand it read (-1 none), and whether it
+## rims the cups never lifted.
+var _reading := -1
+var _fresh_rim := false
+## A lapse's rim: the place the passed-over twin stands at, and since when.
+var _rim_slot := -1
+var _rim_at := -INF
 var _won_at := -INF
 var _enter_at := 0.0
 var _pressing := -2
@@ -162,26 +208,42 @@ func capabilities() -> Array[String]:
 func can_reset() -> bool:
 	return false
 
+## The bulbs left, and the free second press while a reading stands.
 func hints_left() -> int:
+	return _hints_held() + (1 if _reading >= 0 else 0)
+
+func _hints_held() -> int:
 	return maxi(0, int(State.HINTS[_band]) + hints_extra - hints_used)
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE if demo else Control.MOUSE_FILTER_STOP
+	for i in int(State.ROWS.max()):
+		var cast := Control.new()
+		cast.name = "Cast%d" % i
+		cast.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(cast)
+		_casts.append(cast)
+		var lid := Control.new()
+		lid.name = "Lid%d" % i
+		lid.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		lid.draw.connect(_draw_lid.bind(i))
+		add_child(lid)
+		_lids.append(lid)
+	_top = Control.new()
+	_top.name = "Top"
+	_top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_top.draw.connect(_draw_top)
+	add_child(_top)
 	if not demo:
 		fx = Fx2D.new()
 		fx.name = "Fx"
 		fx.haptics = HAPTICS
 		add_child(fx)
+	_seat_cast()
 	resized.connect(_relayout)
 	if demo:
 		_make_world()
 		_relayout()
-
-func _exit_tree() -> void:
-	for f: Control in _friends.values():
-		if is_instance_valid(f):
-			f.free()
-	_friends.clear()
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_band = clampi(difficulty, 0, 3)
@@ -219,6 +281,12 @@ func _fresh() -> void:
 	_held.clear()
 	_queue.clear()
 	_phase = Phase.PLAY
+	_reading = -1
+	_fresh_rim = false
+	_rim_slot = -1
+	_toast.clear()
+	_stars.clear(3)
+	_seat_cast()
 	_relayout()
 
 func day_dict() -> Dictionary:
@@ -227,7 +295,7 @@ func day_dict() -> Dictionary:
 	return {
 		"source": "generator", "kind": "text",
 		"payload": {"cols": _st.cols(), "rows": _st.rows(), "waltz": _st.waltzes()},
-		"solution": {"kind": Array(_st.kind), "slot": Array(_st.slot)},
+		"solution": {"kind": Array(_st.kind), "slot": Array(_st.slot), "persona": Array(_st.persona)},
 		"metrics": {"pairs": _st.pairs(), "cups": _st.cups()},
 	}
 
@@ -243,6 +311,7 @@ func _raise(c: int) -> void:
 	_up[c] = true
 	_up_at[c] = _t
 	_peek_tok[c] += 1
+	_breathe()
 
 func _lower(c: int) -> void:
 	if not _up[c] or _st.found[c]:
@@ -250,6 +319,8 @@ func _lower(c: int) -> void:
 	_up[c] = false
 	_up_at[c] = _t
 	_peek_tok[c] += 1
+	_grieve(c, false)
+	_breathe()
 	var land := DROP_TIME if not Motion.reduce else 0.0
 	_after(land, func() -> void: _cue("down", randf_range(0.95, 1.05)))
 
@@ -283,6 +354,8 @@ func _tap(s: int) -> void:
 		return
 	moves += 1
 	moved.emit()
+	if _reading >= 0:
+		_end_reading()
 	_raise(c)
 	_cue("lift", randf_range(0.96, 1.04))
 	match heard:
@@ -290,32 +363,53 @@ func _tap(s: int) -> void:
 			_held = [a, c]
 			_phase = Phase.HOLD
 			var tok := _hold_tok
+			var twin: int = _st.lapse_twin
 			_after(0.22, func() -> void:
 				if tok != _hold_tok:
 					return
 				_cue("miss")
 				for k in [a, c]:
-					_worry_until[k] = _t + WORRY_TIME)
+					_worry_until[k] = _t + WORRY_TIME
+					_grieve(k, true))
 			_after(MISS_HOLD, func() -> void:
 				if tok == _hold_tok and _phase == Phase.HOLD:
 					_end_hold())
+			if twin >= 0:
+				# a twin seen and passed over: whose, and where it sat
+				_rim_slot = _st.slot[twin]
+				_rim_at = _t
+				_toast.say(tr("TC_LAPSE") % _st.name_of(twin), _t)
+			_rate(true)
 		State.Lifted.PAIR:
 			_found(a, c)
+			_rate(true)
 		State.Lifted.SOLVED:
 			_found(a, c)
+			_rate(true)
 			_solved_now()
 
-## Two cups of one friend: they fly off, the friends hop on their saucers.
+## Two cups of one friend: they fly off, the friends hop on their saucers and
+## laugh. A pair found by memory rings its saucers; a run climbs the cue
+## and says so every third.
 func _found(a: int, c: int) -> void:
 	var at := _t + LIFT_TIME * 0.8
 	for k in [a, c]:
 		_gone_at[k] = at
 		_hop_at[k] = at
+	var run: int = _st.run
+	var by_heart: bool = _st.remembered
+	if run >= 3 and run % 3 == 0 and not _st.solved():
+		_toast.say(tr("TC_RUN") % run, _t)
 	_after(LIFT_TIME * 0.8, func() -> void:
-		_cue("pair")
+		_cue("pair", 1.0 + 0.05 * clampi(run - 1, 0, 4))
+		for k in [a, c]:
+			_laugh(k)
+		_breathe()
 		if not demo:
 			for k in [a, c]:
-				fx.sparkle(_friend_at(k), Pal.SUN))
+				fx.sparkle(_friend_at(k), Pal.SUN)
+				if by_heart:
+					fx.ring(_slot_pos(_st.slot[k]), _l("r") * 1.4, Pal.SUN))
 
 ## The cups a miss held up go down; on Insane a waltz may follow.
 func _end_hold() -> void:
@@ -347,11 +441,18 @@ func _waltz() -> void:
 		if _phase == Phase.BUSY:
 			_phase = Phase.PLAY)
 
+## The stars at the lapses and bulbs so far; `shown` false sets them quietly.
+func _rate(shown: bool) -> void:
+	_stars.rate(_st.stars(hints_used), _t, shown)
+
 func _solved_now() -> void:
 	_phase = Phase.DONE
 	_queue.clear()
 	_won_at = _t + 0.3
 	_after(0.25, func() -> void: _cue("solved"))
+	# the friends laugh along the win's wave
+	for c in _st.cups():
+		_after(0.3 + _st.slot[c] * WAVE_STEP + 0.4, _laugh.bind(c))
 	if not demo:
 		_after(0.6, func() -> void:
 			fx.confetti(Vector2(size.x * 0.5, _l("oy")), 26, size.x * 0.7)
@@ -362,20 +463,47 @@ func _solved_now() -> void:
 func is_solved() -> bool:
 	return _st.solved()
 
-## The bulb: the partner of the cup in hand peeks out, or with no cup in
-## hand a pair still hidden does.
+## The bulb reads before it acts. With a cup in hand the first press says
+## whether its twin has been seen (and rims the cups never lifted when it has
+## not), for one hint; a second press while that cup is up lifts the twin,
+## free. With no cup in hand a pair still hidden peeks out at once.
 func hint() -> bool:
-	if hints_left() <= 0 or _phase == Phase.DONE or _phase == Phase.BUSY or is_done():
+	if _phase == Phase.DONE or _phase == Phase.BUSY or is_done():
+		return false
+	if _reading >= 0:
+		var held := _reading
+		_end_reading()
+		if held != _st.first:
+			return false
+		_cue("hint")
+		_peek()
+		return true
+	if _hints_held() <= 0:
 		return false
 	hints_used += 1
 	_cue("hint")
+	if _st.first >= 0 and _phase == Phase.PLAY:
+		_reading = _st.first
+		var seen: bool = _st.seen[_st.partner(_reading)]
+		_fresh_rim = not seen
+		_toast.say(tr("TC_READ_SEEN" if seen else "TC_READ_FRESH") % _st.name_of(_reading), _t, true)
+		_hop_at[_reading] = _t
+		_rate(true)
+		return true
 	if _phase == Phase.HOLD:
 		_end_hold()
 	if _phase == Phase.BUSY:
 		_after(WIGGLE + WALTZ_TIME + DROP_TIME + 0.15, _peek)
 	else:
 		_peek()
+	_rate(true)
 	return true
+
+func _end_reading() -> void:
+	_reading = -1
+	_fresh_rim = false
+	if _toast.hold:
+		_toast.clear()
 
 func _peek() -> void:
 	for c in _st.peek():
@@ -412,6 +540,108 @@ func _process(delta: float) -> void:
 		var job: Array = _queue.pop_front()
 		(job[1] as Callable).call()
 	queue_redraw()
+	for lid in _lids:
+		lid.queue_redraw()
+	if _top != null:
+		_top.queue_redraw()
+
+# --- the friends ---
+
+## A PeepletView a cup for the day's cast, built when the cast changes; each
+## holds its frame until it acts.
+func _seat_cast() -> void:
+	if _casts.is_empty() or _st.kind.is_empty():
+		return
+	var ids: Array[int] = []
+	for c in _st.cups():
+		ids.append(_st.persona_of(c))
+	if ids == _cast_ids:
+		return
+	for v in _views:
+		v.queue_free()
+	_views.clear()
+	for c in _st.cups():
+		var p: Dictionary = Personas.get_persona(ids[c])
+		var v: Control = PeepletView.new()
+		v.color_index = int(p.coat)
+		v.headgear = String(p.hat)
+		v.eyewear = String(p.eyes)
+		v.frame_height = CAST_FRAME
+		v.aim_y = CAST_AIM
+		v.idle_fps = 0.0
+		v.visible = false
+		v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_casts[0].add_child(v)
+		_views.append(v)
+	_cast_ids = ids
+	_size_cast()
+
+func _size_cast() -> void:
+	if _L.is_empty():
+		return
+	var side := ceilf(float(_L.r) * PIC)
+	for v in _views:
+		v.size = Vector2.ONE * side
+
+## Only a friend under a lifted cup breathes; the rest hold their frame.
+func _breathe() -> void:
+	for c in _views.size():
+		_views[c].idle_fps = UP_FPS if _up[c] and not _st.found[c] and not demo else 0.0
+
+## Friend `c` laughs, silently: the board has its own sounds.
+func _laugh(c: int) -> void:
+	if c >= _views.size() or Motion.reduce:
+		return
+	var w = _views[c].walker
+	if w != null and w.laugh_time < 0.0:
+		w.laugh_time = 0.0
+
+## Friend `c` slumps on a miss, and straightens when covered.
+func _grieve(c: int, on: bool) -> void:
+	if c >= _views.size() or (on and Motion.reduce):
+		return
+	var w = _views[c].walker
+	if w != null:
+		w.grieving = on
+
+## The table's row a cup stands in now (along its waltz, the nearer).
+func _row_now(c: int) -> int:
+	var ph := _l("ph")
+	if ph <= 0.0:
+		return 0
+	return clampi(roundi((_cup_pos(c).y - _l("oy")) / ph), 0, _lids.size() - 1)
+
+## Every friend placed for this frame: in its row's layer, at its saucer,
+## shown only when no cup stands on it.
+func _place_cast() -> void:
+	var r := _l("r")
+	var u := _u()
+	var won := _phase == Phase.DONE or is_done()
+	for c in _views.size():
+		var v := _views[c]
+		var row: int = _st.slot[c] / _st.cols()
+		if v.get_parent() != _casts[row]:
+			v.reparent(_casts[row], false)
+		var lift := _lift(c)
+		# -INF until the pair is found: a friend is never shown under a cup
+		# that stands on it, or its edge would show under the rim
+		var gone := _t - _gone_at[c] if _gone_at[c] > -INF else -1.0
+		if lift <= 0.02 and gone < 0.0 and not won:
+			v.visible = false
+			continue
+		var k := 1.0 if gone >= 0.0 or won else clampf(lift * 1.4, 0.0, 1.0)
+		var feet := _slot_pos(_st.slot[c]) + Vector2(0.0, r * 0.1)
+		var hop := _t - _hop_at[c]
+		if hop >= 0.0 and hop < HOP_TIME and not Motion.reduce:
+			feet.y += Motion.hop_lift(hop, Motion.SOLVE_HOP * 1.6 * u, HOP_TIME)
+		if won and _won_at > -INF:
+			var wave: float = _t - _won_at - _st.slot[c] * WAVE_STEP
+			if wave >= 0.0 and not Motion.reduce:
+				feet.y += Motion.hop_lift(fmod(wave, 1.2), Motion.SOLVE_HOP * 2.0 * u, Motion.SOLVE_TIME)
+		var side := v.size.x
+		v.scale = Vector2.ONE * k
+		v.position = feet - Vector2(side * 0.5, side * FEET) * k
+		v.visible = true
 
 # --- the fingers ---
 
@@ -494,6 +724,7 @@ func _relayout() -> void:
 	var top := _clear.x if _bled else 0.0
 	var bottom := size.y - (_clear.y if _bled else 0.0)
 	_L = _layout_for(top, bottom)
+	_size_cast()
 	if _world != null:
 		_world.position = Vector2(-_shift if _bled else 0.0, 0.0)
 		_world.size = size
@@ -509,7 +740,7 @@ func _layout_for(top: float, bottom: float) -> Dictionary:
 	var span := maxf(bottom - top, 200.0 * u)
 	var cols: int = maxi(1, _st.cols())
 	var rows: int = maxi(1, _st.rows())
-	var count_h := 0.0 if demo else 70.0 * u
+	var count_h := 0.0 if demo else 120.0 * u
 	# a cell: the row pitch is 0.8 of it, a lifted top cup needs 0.75 over
 	# the first row's mouths and a saucer 0.3 under the last's
 	var cw := minf(w * 0.92 / cols, (span - count_h) / ((rows - 1) * 0.8 + 1.1))
@@ -522,7 +753,7 @@ func _layout_for(top: float, bottom: float) -> Dictionary:
 	return {
 		"u": u, "top": top, "bottom": bottom,
 		"cw": cw, "ph": ph, "r": cw * 0.3, "ox": ox, "oy": oy,
-		"foot": foot, "count_y": foot + 50.0 * u,
+		"foot": foot, "count_y": foot + 60.0 * u,
 		# the cloth's far edge sits a little over the first row's cups
 		"edge": maxf(top + 10.0 * u, oy - cw * 0.62),
 	}
@@ -580,15 +811,26 @@ func _draw() -> void:
 	if _L.is_empty() or _st.kind.is_empty():
 		return
 	_draw_table()
-	var order: Array[int] = []
+	var r := _l("r")
 	for c in _st.cups():
-		order.append(c)
-	# far rows first, so a nearer cup stands in front
-	order.sort_custom(func(a: int, b: int) -> bool: return _cup_pos(a).y < _cup_pos(b).y)
-	for c in order:
-		_draw_friend(c)
-		_draw_cup(c)
-	_draw_count()
+		var gone := _t - _gone_at[c] if _gone_at[c] > -INF else -1.0
+		if _st.found[c] and gone >= 0.0:
+			var ring_k := Motion.pop_in_scale(gone).x if gone < Motion.POP_IN else 1.0
+			draw_mesh(Cup.found_ring(r), null, Transform2D(0.0, Vector2.ONE * ring_k, 0.0, _slot_pos(_st.slot[c])))
+	# the bulb's reading: the cups never lifted, where an unseen twin hides
+	if _fresh_rim:
+		var pulse := 0.55 + 0.25 * sin(_t * 5.0) if not Motion.reduce else 0.7
+		for c in _st.hidden():
+			if not _st.seen[c] and c != _st.first:
+				draw_mesh(Cup.found_ring(r, Pal.SUN), null, Transform2D(0.0, _slot_pos(_st.slot[c])), Color(1, 1, 1, pulse))
+	# a lapse: the saucer the passed-over twin stands on
+	var e := _t - _rim_at
+	if _rim_slot >= 0 and e < RIM_TIME:
+		var a := 1.0 - clampf((e - RIM_TIME + 0.4) / 0.4, 0.0, 1.0)
+		var k := 1.0 + (0.08 * sin(e * 9.0) if not Motion.reduce else 0.0)
+		draw_mesh(Cup.found_ring(r, Pal.BERRY), null, Transform2D(0.0, Vector2.ONE * k * 1.1, 0.0, _slot_pos(_rim_slot)),
+			Color(1, 1, 1, a))
+	_place_cast()
 
 ## The saucers, one cached mesh a layout.
 func _draw_table() -> void:
@@ -602,49 +844,35 @@ func _draw_table() -> void:
 		_table = b.mesh()
 	draw_mesh(_table, null)
 
-func _friend(kind: int, expr: int) -> Control:
-	var key := "%d:%d" % [kind, expr]
-	if not _friends.has(key):
-		var f: Control = Cup.friend(kind)
-		f.expression = expr
-		_friends[key] = f
-	return _friends[key]
-
-func _draw_friend(c: int) -> void:
-	var lift := _lift(c)
-	# -INF until the pair is found: a friend is never drawn under a cup that
-	# stands on it, or its edge would show under the rim
-	var gone := _t - _gone_at[c] if _gone_at[c] > -INF else -1.0
-	var won := _phase == Phase.DONE or is_done()
-	if lift <= 0.02 and gone < 0.0 and not won:
+## Row `i`'s cups, far to near, over its friends; and the names of the
+## friends under its lifted cups on their saucers' lips.
+func _draw_lid(i: int) -> void:
+	if _L.is_empty() or _st.kind.is_empty():
 		return
-	var r := _l("r")
-	var seat := r * 1.55
-	var k := 1.0 if gone >= 0.0 or won else clampf(lift * 1.4, 0.0, 1.0)
-	var at := _friend_at(c)
+	var lid := _lids[i]
+	var order: Array[int] = []
+	for c in _st.cups():
+		if _row_now(c) == i:
+			order.append(c)
+	order.sort_custom(func(a: int, b: int) -> bool: return _cup_pos(a).y < _cup_pos(b).y)
+	for c in order:
+		_draw_cup(lid, c)
+	if demo:
+		return
 	var u := _u()
-	var hop := _t - _hop_at[c]
-	if hop >= 0.0 and hop < HOP_TIME and not Motion.reduce:
-		at.y += Motion.hop_lift(hop, Motion.SOLVE_HOP * 1.6 * u, HOP_TIME)
-	if won and _won_at > -INF:
-		var wave: float = _t - _won_at - _st.slot[c] * WAVE_STEP
-		if wave >= 0.0:
-			at.y += Motion.hop_lift(fmod(wave, 1.2), Motion.SOLVE_HOP * 2.0 * u, Motion.SOLVE_TIME) if not Motion.reduce else 0.0
-	if _st.found[c] and gone >= 0.0:
-		var ring_k := Motion.pop_in_scale(gone).x if gone < Motion.POP_IN else 1.0
-		draw_mesh(Cup.found_ring(r), null, Transform2D(0.0, Vector2.ONE * ring_k, 0.0, _slot_pos(_st.slot[c])))
-	var expr := Face.Expr.HAPPY
-	if _st.found[c] or won:
-		expr = Face.Expr.JOY
-	elif _t < _worry_until[c]:
-		expr = Face.Expr.WORRIED
-	var f := _friend(_st.kind[c], expr)
-	f.size = Vector2.ONE * seat
-	var base := Transform2D(0.0, Vector2.ONE * k, 0.0, at) * Transform2D(0.0, -f.size * 0.5)
-	for layer: Array in f.layers_now():
-		draw_mesh(layer[0], null, base * (layer[1] as Transform2D))
+	var r := _l("r")
+	var font: Font = CozyTheme.display(700)
+	var fs := roundi(maxf(22.0 * u, r * 0.34))
+	for c in order:
+		if _st.found[c] or _lift(c) < 0.6:
+			continue
+		var name: String = _st.name_of(c)
+		var w := font.get_string_size(name, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		var at := _slot_pos(_st.slot[c]) + Vector2(-w * 0.5, r * 0.5 + fs * 0.35)
+		lid.draw_string_outline(font, at, name, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, roundi(8 * u), Color(Pal.SURFACE, 0.95))
+		lid.draw_string(font, at, name, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Pal.TEXT)
 
-func _draw_cup(c: int) -> void:
+func _draw_cup(ci: CanvasItem, c: int) -> void:
 	var r := _l("r")
 	var u := _u()
 	var gone := _t - _gone_at[c]
@@ -678,23 +906,36 @@ func _draw_cup(c: int) -> void:
 	if wig >= 0.0 and wig < WIGGLE and not Motion.reduce:
 		turn += Motion.wobble_angle(wig, 0.14, WIGGLE)
 	var shadow_k := clampf(1.0 - lift * 0.5, 0.3, 1.0)
-	draw_mesh(Cup.shadow(r), null, Transform2D(0.0, Vector2(shadow_k, shadow_k), 0.0, at), Color(1, 1, 1, a * shadow_k))
+	ci.draw_mesh(Cup.shadow(r), null, Transform2D(0.0, Vector2(shadow_k, shadow_k), 0.0, at), Color(1, 1, 1, a * shadow_k))
 	var xf := Transform2D(tip + turn, Vector2(1.0 / squash, squash), 0.0, at + Vector2(slide, -rise + drop))
-	draw_mesh(Cup.cup(r), null, xf, Color(1, 1, 1, a))
+	ci.draw_mesh(Cup.cup(r), null, xf, Color(1, 1, 1, a))
 
-## How many pairs are found of how many, and the lifts so far.
-func _draw_count() -> void:
-	if demo or is_done() or _won:
+## How many pairs are found of how many and the stars side by side under
+## the table; a toast lies over them while it shows.
+func _draw_top() -> void:
+	if demo or _L.is_empty() or _st.kind.is_empty() or is_done() or _won:
 		return
 	var u := _u()
 	var font: Font = CozyTheme.display(700)
-	var lifts: String = (tr("TC_LIFTS_ONE") if _st.lifts == 1 else tr("TC_LIFTS_N")) % _st.lifts
-	var text: String = tr("TC_PAIRS") % [_st.pairs_found, _st.pairs()] + "  ·  " + lifts
+	var text: String = tr("TC_PAIRS") % [_st.pairs_found, _st.pairs()]
 	var cs := roundi(COUNT_SIZE * u)
 	var cw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, cs).x
-	var at := Vector2(size.x * 0.5 - cw * 0.5, _l("count_y"))
-	draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, cs, roundi(8 * u), Color(Pal.SURFACE, 0.85))
-	draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, cs, Pal.TEXT_DIM)
+	var ss := 0.95 * u
+	var sw := StarLine.width(ss)
+	var gap := 24.0 * u
+	var x0 := size.x * 0.5 - (cw + gap + sw) * 0.5
+	var cy := _l("count_y")
+	var a := 1.0 - _toast.level(_t)
+	if a > 0.0:
+		_top.draw_string_outline(font, Vector2(x0, cy), text, HORIZONTAL_ALIGNMENT_LEFT, -1, cs, roundi(8 * u), Color(Pal.SURFACE, 0.85 * a))
+		_top.draw_string(font, Vector2(x0, cy), text, HORIZONTAL_ALIGNMENT_LEFT, -1, cs, Color(Pal.TEXT_DIM, a))
+		_stars.draw(_top, Vector2(x0 + cw + gap + StarLine.R * ss, cy - cs * 0.35), ss, _t, a)
+	if _toast.showing(_t):
+		var tw := minf(size.x - 64.0 * u, 900.0 * u)
+		var fs := roundi(30 * u)
+		var pad := Vector2(28.0, 18.0) * u
+		var tall := _toast.tall(tw, fs, pad)
+		_toast.draw(_top, Vector2(size.x * 0.5, cy - cs * 0.35 - 30.0 * u + tall * 0.5), tw, _t, fs, pad)
 
 # --- the win ---
 
@@ -717,15 +958,19 @@ func flat_win() -> Dictionary:
 		line = tr("TC_WIN_SHARP")
 	else:
 		line = (tr("TC_WIN_LAPSES_ONE") if _st.lapses == 1 else tr("TC_WIN_LAPSES_N")) % _st.lapses
+	if _st.best_run >= 3 and _st.best_run < _st.pairs():
+		line += " " + tr("TC_WIN_RUN") % _st.best_run
 	return {"faces": [], "subtitle": tr("TC_WIN") % _st.lifts + " " + line}
 
 func completion_record() -> Dictionary:
-	return {"history": Array(_st.history), "lifts": _st.lifts}
+	return {"history": Array(_st.history), "lifts": _st.lifts, "best_run": _st.best_run}
 
 ## A finished day reopens with every friend on its saucer, the cups gone.
 func restore_completed_board() -> void:
 	_queue.clear()
-	_st.finish(completed_record.get("history", []) as Array, int(completed_record.get("lifts", 0)))
+	_st.finish(completed_record.get("history", []) as Array, int(completed_record.get("lifts", 0)),
+		int(completed_record.get("best_run", 0)))
+	_rate(false)
 	for c in _st.cups():
 		_gone_at[c] = -10.0
 		_up[c] = true

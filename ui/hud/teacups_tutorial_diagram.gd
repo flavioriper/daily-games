@@ -96,7 +96,8 @@ func _script(st) -> Array[int]:
 				d += 1
 			return [st.slot[a], st.slot[b], st.slot[c], st.slot[d]]
 		_:
-			return [st.slot[a], BULB, st.slot[pa]]
+			# the bulb reads, then the twin peeks out on the second press
+			return [st.slot[a], BULB, BULB, st.slot[pa]]
 
 func _process(delta: float) -> void:
 	if Motion.reduce:

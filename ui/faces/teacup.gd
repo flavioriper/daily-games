@@ -8,10 +8,11 @@ extends RefCounted
 ## transform. The saucer is drawn about the same origin. Builder shapes,
 ## cached per size, as woodpecker.gd's are.
 ##
-## Every cup is the same cup: the friend under it is what tells two apart,
-## and a friend is one of the house's own faces (berry_face.gd and the
-## rest), never a new drawing. A found pair loses its cups; nothing is ever
-## signalled by a shade of a friend's colour.
+## Every cup is the same cup: the friend under it is what tells two apart.
+## The board's friends are Peeplets since 2026-10-29 (puzzles/teacups2d.gd);
+## `friend` and FRIENDS, the house's own faces, are only the menu card's
+## now. A found pair loses its cups; nothing is ever signalled by a shade of
+## a friend's colour.
 
 const Face = preload("res://ui/faces/face.gd")
 const Pal = preload("res://core/palette.gd")
@@ -165,14 +166,16 @@ static func saucer_mesh(r: float) -> ArrayMesh:
 	_cache[key] = m
 	return m
 
-## A found pair's mark on a saucer: a ring of gold round the friend.
-static func found_ring(r: float) -> ArrayMesh:
-	var key := "found:%d" % roundi(r * 2.0)
+## A found pair's mark on a saucer: a ring of gold round the friend. The
+## board rims a saucer in another colour the same way (a lapse's twin in
+## berry, the cups never lifted in sun), never by a shade of the friend.
+static func found_ring(r: float, colour := GOLD) -> ArrayMesh:
+	var key := "found:%d:%s" % [roundi(r * 2.0), colour.to_html()]
 	if _cache.has(key):
 		return _cache[key]
 	var b := Face.Builder.new()
-	b.stroke(Face.Builder.ring(Vector2.ZERO, r * 1.28, r * 0.36), r * 0.07, GOLD, true)
-	b.stroke(Face.Builder.ring(Vector2.ZERO, r * 1.28, r * 0.36), r * 0.025, Color(GOLD_DEEP, 0.7), true)
+	b.stroke(Face.Builder.ring(Vector2.ZERO, r * 1.28, r * 0.36), r * 0.07, colour, true)
+	b.stroke(Face.Builder.ring(Vector2.ZERO, r * 1.28, r * 0.36), r * 0.025, Color(colour.darkened(0.2), 0.7), true)
 	var m := b.mesh()
 	_cache[key] = m
 	return m
