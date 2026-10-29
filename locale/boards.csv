@@ -3832,7 +3832,7 @@ SB_END_CUP,The light hits the back of a cup.,A luz bate nas costas de uma xícar
 SB_END_OUT,The light runs off the floor.,A luz sai do chão da estufa.,La luz se sale del suelo.
 SB_END_LOOP,The light runs round in a loop.,A luz fica dando voltas.,La luz da vueltas en círculo.
 SB_LIT_OF,%d of %d drops lit.,%d de %d gotas acesas.,%d de %d gotas encendidas.
-SB_COUNT_ONE,1 move · shortest %d,1 movimento · mínimo %d,1 movimiento · mínimo %d
-SB_COUNT,%d moves · shortest %d,%d movimentos · mínimo %d,%d movimientos · mínimo %d
+SB_COUNT_ONE,1 move · shortest %d,1 jogada · mínimo %d,1 jugada · mínimo %d
+SB_COUNT,%d moves · shortest %d,%d jogadas · mínimo %d,%d jugadas · mínimo %d
 SB_WIN_MOVES,Every drop in %d moves · shortest %d.,Todas as gotas em %d movimentos · mínimo %d.,Todas las gotas en %d movimientos · mínimo %d.
 HTP_SB_READ_CAP,First press: the bulb rings the piece the light needs,Primeiro toque: a lâmpada marca a peça de que a luz precisa,Primer toque: la bombilla marca la pieza que necesita la luz
