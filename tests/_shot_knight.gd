@@ -13,7 +13,9 @@ extends SceneTree
 ## brambles wither back); `nap` (Insane: the day's line on a banked board
 ## that needs a nap, shot as the knight dozes off); `streak` (the day's line
 ## with gags forced: somersault, love, butterfly, the bubble); `solve` (the
-## day's line, then the crown and the party); `restore`.
+## day's line, then the crown and the party); `restore`; `peek` (a dot held:
+## the answer's ghosts, slid to another dot, let go off the board); `read`
+## (the bulb pressed twice: the ring and its reading, then the hop).
 ## Frames go to <dir>/kn_<mode>_d<level>_<n>.png; every mode prints the peak
 ## draw calls and the mean frame from 0.5 s on.
 
@@ -135,6 +137,28 @@ func _tap(c: int) -> void:
 		ev.position = at
 		_puzzle._gui_input(ev)
 
+## A press held on square c, through the board's own input.
+func _hold(c: int) -> void:
+	var ev := InputEventMouseButton.new()
+	ev.button_index = MOUSE_BUTTON_LEFT
+	ev.pressed = true
+	ev.position = _puzzle._centre(c)
+	_puzzle._gui_input(ev)
+
+## The held finger moved onto square c.
+func _slide(c: int) -> void:
+	var ev := InputEventMouseMotion.new()
+	ev.position = _puzzle._centre(c)
+	_puzzle._gui_input(ev)
+
+## The finger let go at `at` (board coordinates).
+func _let_go(at: Vector2) -> void:
+	var ev := InputEventMouseButton.new()
+	ev.button_index = MOUSE_BUTTON_LEFT
+	ev.pressed = false
+	ev.position = at
+	_puzzle._gui_input(ev)
+
 ## A safe hop chosen off the walk's seed, or -1 when there is none.
 func _safe() -> int:
 	var st = _puzzle._state
@@ -143,6 +167,19 @@ func _safe() -> int:
 		if int(st.peek(m).caught) < 0 and m != st.king:
 			ok.append(m)
 	return -1 if ok.is_empty() else ok[_walk.randi_range(0, ok.size() - 1)]
+
+## A safe hop that leaves no way to the king, or -1.
+func _dead() -> int:
+	var st = _puzzle._state
+	for m in st.legal():
+		if int(st.peek(m).caught) >= 0 or m == st.king:
+			continue
+		st.play(m)
+		var l: bool = st.lost()
+		st.undo()
+		if l:
+			return m
+	return -1
 
 ## A hop into a rose knight's reach, or -1.
 func _unsafe() -> int:
@@ -219,13 +256,32 @@ func _script() -> void:
 						break)
 			_at(t0 + 3.0 * 2.0 + 3.4, _shot)
 			_end = t0 + 3.0 * 2.0 + 4.0
+		"peek":
+			# a dot held (2026-10-29): the rose side's answer as ghosts, then
+			# the finger slides to another dot, then lets go off the board
+			_at(t0, func(): _hold(_puzzle._state.legal()[0]))
+			_at(t0 + 0.5, _shot)
+			_at(t0 + 0.7, func(): _slide(_puzzle._state.legal()[_puzzle._state.legal().size() - 1]))
+			_at(t0 + 1.2, _shot)
+			_at(t0 + 1.3, func(): _let_go(Vector2(-50.0, -50.0)))
+			_at(t0 + 1.8, _shot)
+			_end = t0 + 2.2
+		"read":
+			# the bulb's first press rings the hop and reads the dots; the second hops
+			_at(t0, func(): _puzzle.hint())
+			_at(t0 + 0.6, _shot)
+			_at(t0 + 1.0, func(): _puzzle.hint())
+			_at(t0 + 2.0, _shot)
+			_end = t0 + 2.4
 		"lost":
 			# safe hops until the board calls it lost, then the button
 			var at := t0
 			for k in 20:
 				_at(at, func():
-					if not _puzzle._lost and not _puzzle.is_done():
-						var m := _safe()
+					if not _puzzle._lost and not _puzzle.is_done() and _puzzle._now() >= _puzzle._busy_until:
+						var m := _dead()
+						if m < 0:
+							m = _safe()
 						if m >= 0:
 							_tap(m))
 				at += GAP

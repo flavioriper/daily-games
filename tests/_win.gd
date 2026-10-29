@@ -932,8 +932,9 @@ func _slide_sunbeam(p: int, to: int) -> void:
 		pts.append(_puzzle._pt(_puzzle._piece_mid(p, float(q))))
 	_drag_path_local(pts)
 
-## Knight: one hint through the HUD, which plays the shortest line's next hop
-## for you, then the rest of the line tapped square by square by real touch.
+## Knight: one hint through the HUD, pressed twice -- it rings the shortest
+## line's next hop, then plays it for you -- then the rest of the line
+## tapped square by square by real touch.
 ## The board ignores taps while its pieces travel, and this drives input
 ## synchronously, so each tap first clears that wait.
 func _solve_knight() -> void:
@@ -947,8 +948,12 @@ func _solve_knight() -> void:
 	# The harness drives synchronously a few frames after opening, inside
 	# the board's entrance wait.
 	_puzzle._busy_until = -100.0
+	# The bulb in two presses (2026-10-29): the first rings the hop and
+	# spends the hint, the second hops there for free.
 	_press(_host.top_bar.hint_button)
-	_hud_ok = _puzzle.hints_used == 1 and st.history.size() == 1
+	var rang: bool = _puzzle._reading >= 0 and st.history.size() == 0
+	_press(_host.top_bar.hint_button)
+	_hud_ok = rang and _puzzle.hints_used == 1 and st.history.size() == 1
 	for i in 64:
 		if st.is_solved():
 			break

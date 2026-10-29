@@ -58,6 +58,7 @@ const Dialog = preload("res://ui/hud/dialog.gd")
 const Gen = preload("res://puzzles/knight_gen.gd")
 const RunMesh = preload("res://ui/flat/run_mesh.gd")
 const World = preload("res://puzzles/knight_world.gd")
+const StarLine = preload("res://ui/flat/star_line.gd")
 const FLAT_HOST := "res://ui/flat/flat_host.gd"
 ## The slide into the win's span (the host's SLOT_TIME), and the air kept
 ## inside that span.
@@ -180,6 +181,7 @@ const BOXED_HOLD := 0.9
 ## reach no screen. Rings' toast, measure for measure; a line too long for
 ## the card wraps and the pill grows a row a line.
 const TOAST_HOLD := 2.6
+const TOAST_LONG := 4.6
 const TOAST_H := 84.0
 const TOAST_PAD := 80.0
 const TOAST_RADIUS := 28.0
@@ -209,6 +211,8 @@ const MovesPill = preload("res://ui/flat/moves_pill.gd")
 const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
 ## The moves the out-of-moves card's video buys, once a board.
 const MOVES_BONUS := 5
+## The count line's text over the board (2026-10-29).
+const COUNT_FONT := 28
 const AGO := -1.0e9
 
 # --- the streak and the gags ---
@@ -339,6 +343,9 @@ var _toast := ""
 var _toast_at := -100.0
 var _toast_mesh: ArrayMesh
 var _toast_mesh_for := ""
+## How long the toast stays: TOAST_HOLD, or TOAST_LONG for a line with more
+## to read (a tip, the bulb's reading).
+var _toast_for := TOAST_HOLD
 ## Which deal the timers belong to: a build, Try again or a restore bumps it.
 var _gen := 0
 ## A press waiting on its release: {"c", "at"}; empty when none.
@@ -409,6 +416,20 @@ var _stamp_at := INF
 var _cat: Control
 var _cat_at := INF
 var _cat_curled := false
+
+# --- the 2026-10-29 pass ---
+## What the hop under the finger would do (State.peek): the rose knights'
+## answers drawn as ghosts with their hoofprints, and the reach they would
+## have, while a dot is held. {} when nothing is held.
+var _peek := {}
+## A first catch or dead end says once that a held dot shows the answer.
+var _hold_taught := false
+## The bulb pressed once: the square it rings, -1 when none. A second
+## press, free, hops there.
+var _reading := -1
+## The stars the way stands at (State.stars), over the board.
+var _stars := StarLine.new()
+var _best_streak := 0
 
 func puzzle_id() -> String: return "knight"
 func title() -> String: return "Knight"
@@ -649,9 +670,12 @@ func _deal() -> void:
 	_toast = ""
 	_toast_at = -100.0
 	_press = {}
+	_peek = {}
+	_reading = -1
 	_hop_id += 1
 	_nap_told = false
 	_set_lost(false)
+	_stars.clear()
 
 static func _still_at(c: int) -> Dictionary:
 	return {"from": c, "to": c, "at": -100.0, "dur": 1.0, "arc": 0.0, "pop": false}
@@ -755,6 +779,8 @@ func set_clear(top: float, bottom: float, won := false) -> void:
 		_bled = true
 		_world = World.new()
 		_world.name = "World"
+		# the count pill stands in the tools row's gap
+		_world.gap = false
 		_world.show_behind_parent = true
 		add_child(_world)
 		move_child(_world, 0)
@@ -932,6 +958,8 @@ func _play(to: int, from_hint := false) -> void:
 	var r: Dictionary = _state.play(to)
 	if r.is_empty():
 		return
+	_reading = -1
+	_peek = {}
 	var jt := _jump()
 	var lead := _crouch()
 	var land := t + lead + jt
@@ -987,6 +1015,8 @@ func _play(to: int, from_hint := false) -> void:
 		_busy_until = land
 		_busy_for(land - t)
 		note_move()
+		_heart_layer.queue_redraw()
+		_rate(false)
 		_spend(1, land)
 		return
 	if caught:
@@ -1008,6 +1038,9 @@ func _play(to: int, from_hint := false) -> void:
 			if max_hearts > 0:
 				fx.cue("heart_lost")
 				_tell_hearts("KN_CAUGHT_HEART")
+			elif not _hold_taught and not from_hint:
+				_hold_taught = true
+				_tell("KN_CAUGHT_HOLD", Face.Expr.STRAIN)
 			else:
 				_tell("KN_CAUGHT", Face.Expr.STRAIN))
 		_later(last - t + CAUGHT_HOLD, func():
@@ -1042,6 +1075,11 @@ func _play(to: int, from_hint := false) -> void:
 	_hop_id += 1
 	var hop_id := _hop_id
 	note_move()
+	_heart_layer.queue_redraw()
+	if not lost:
+		_later(last - t, func():
+			if hop_id == _hop_id:
+				_rate(true))
 	if took >= 0:
 		_tell("KN_TAKEN", Face.Expr.HAPPY)
 	elif from_hint:
@@ -1083,7 +1121,11 @@ func _show_stuck(boxed: bool, lost: bool) -> void:
 	var was := _lost
 	_set_lost(lost)
 	if _lost and not was:
-		_tell(STUCK_MSG, Face.Expr.STRAIN)
+		if not _hold_taught:
+			_hold_taught = true
+			_tell("KN_DEAD_END_HOLD", Face.Expr.STRAIN)
+		else:
+			_tell("KN_DEAD_END", Face.Expr.STRAIN)
 		fx.cue("stuck")
 
 ## Brambles: nowhere left to hop that is not a catch. A heart splits, your
@@ -1209,6 +1251,8 @@ func _process(delta: float) -> void:
 	if (max_hearts > 0 or max_moves > 0) and (t - _split_at < SPLIT_TIME + 0.1 or t - _back_at < HEART_BACK_TIME + 0.1 \
 			or t - _opened < Motion.ENTER_DELAY + Motion.POP_IN + 0.1 or _moves_pill.animating(t - 0.1)):
 		_heart_layer.queue_redraw()
+	elif _counting() and (_stars.busy(t) or t - _opened < Motion.ENTER_DELAY + Motion.POP_IN + 0.1):
+		_heart_layer.queue_redraw()
 	if _animating(t):
 		_refresh()
 	elif _idle_moment(t):
@@ -1217,7 +1261,7 @@ func _process(delta: float) -> void:
 	elif _idle_drawn:
 		_idle_drawn = false
 		_refresh()
-	elif _toast != "" and t - _toast_at < TOAST_HOLD + 0.1:
+	elif _toast != "" and t - _toast_at < _toast_for + 0.1:
 		# the toast is drawn apart from the meshes: a redraw, not a rebuild
 		queue_redraw()
 
@@ -1669,6 +1713,8 @@ func _build_pieces(t: float) -> ArrayMesh:
 				var cs := lerpf(1.0, CROWN_ON, ce)
 				items.append({"air": 2, "y": cp.y, "fn": func():
 					_put(_piece_rm, SH_CROWN, Transform2D(ca, Vector2.ONE * cs * s / _ref_s, 0.0, cp))})
+	if not _peek.is_empty() and not _press.is_empty() and not won:
+		_draw_peek(_lb, s)
 	items.sort_custom(func(p, q): return p.y < q.y if p.air == q.air else p.air < q.air)
 	for it: Dictionary in items:
 		it.fn.call()
@@ -1686,6 +1732,43 @@ func _build_pieces(t: float) -> ArrayMesh:
 			var rad := s * (0.3 + 0.4 * u)
 			b.stroke(Face.Builder.ring(r.pos, rad, rad), s * 0.05 * (1.0 - u) + 1.0, Color(Pal.SUN, 1.0 - u), true)
 	return _flush(_piece_rm)
+
+## A held dot's preview, under the pieces: your knight's ghost on the dot
+## with the prints of the hop, and each rose knight's answer as its ghost
+## where it would land with the prints of its own hop (never just a paler
+## rose: the prints say which knight goes where). A catch shows dizzy stars
+## over your ghost; a knight that would be fenced in shows its z's.
+func _draw_peek(b: Face.Builder, s: float) -> void:
+	var to := int(_press.c)
+	var at := _centre(to)
+	var kc := _centre(_state.king)
+	_hop_prints(b, _centre(_state.you), at, s, Color(Pal.KNIGHT_CREAM_LINE, 0.6))
+	Piece.knight(b, at, s, Piece.CREAM, -1.0 if kc.x < at.x else 1.0, 0.0, Vector2.ONE, false, 0.45, 0.0, 1.0, false, false)
+	var mvs: Array = _peek.moved
+	var napped: Array = _peek.get("napped", [])
+	for i in mvs.size():
+		var mv: Vector2i = mvs[i]
+		if i == int(_peek.took) or mv.y < 0:
+			continue
+		if napped.has(i):
+			_z(b, _centre(mv.y) + Vector2(s * 0.22, -s * 0.62), s * 0.16, 0.8)
+			continue
+		if mv.x == mv.y:
+			continue
+		var land := _centre(mv.y)
+		_hop_prints(b, _centre(mv.x), land, s, Color(Pal.KNIGHT_REACH, 0.75))
+		Piece.knight(b, land, s, Piece.ROSE, -1.0 if at.x < land.x else 1.0, 0.0, Vector2.ONE, false, 0.5, 0.0, 1.0, false, false)
+	if int(_peek.caught) >= 0:
+		_dizzy_stars(b, at - Vector2(0.0, s * 0.62), s, 0.3, 0.9)
+
+## Every square the rose knights in `fs` reach, napping ones aside.
+func _reach_of(fs: PackedInt32Array) -> Dictionary:
+	var out := {}
+	for f in fs:
+		if f >= 0 and not Gen.napping(f):
+			for m in Gen.hops(_state.w, f):
+				out[m] = true
+	return out
 
 ## The ground under the pieces: the brambles or the trail, and the marks.
 ## Made again only while one of them moves (a bramble growing or withering,
@@ -1707,7 +1790,7 @@ func _build_ground(t: float) -> void:
 		for c in _grown:
 			if not Motion.reduce and t - float(_grown[c]) < BRAMBLE_GROW:
 				settled = false
-	var key := [s, _origin(), route, last, _grown.keys(), _state.foes, marks, legal]
+	var key := [s, _origin(), route, last, _grown.keys(), _state.foes, marks, legal, _reading]
 	if settled and _ground != null and key == _ground_key:
 		return
 	_ground_key = key if settled else []
@@ -1740,6 +1823,12 @@ func _build_ground(t: float) -> void:
 	if marks:
 		var fade := 1.0 if Motion.reduce else clampf((t - _busy_until) / MARK_FADE, 0.0, 1.0)
 		var reach: Dictionary = _state.reach()
+		# A held dot shows the reach the rose side would have after its
+		# answer, and the other dots go quiet.
+		var peeking := not _peek.is_empty() and not _press.is_empty()
+		var reach_now := reach
+		if peeking and int(_peek.caught) < 0 and not bool(_peek.won):
+			reach = _reach_of(_peek.foes)
 		for q: int in reach:
 			if q == _state.king:
 				continue
@@ -1753,8 +1842,13 @@ func _build_ground(t: float) -> void:
 			var e := 1.0 if Motion.reduce else maxf(0.05, Motion.pop_in_scale(maxf(0.0, t - _busy_until - float(i) * 0.025)).x)
 			if not _press.is_empty() and int(_press.c) == q:
 				e *= 1.35 if Motion.reduce else 1.0 + 0.35 * minf(1.0, (t - float(_press.at)) / PRESS_TIME)
-			var kind := MARK_TAKE if q == _state.king or _foe_on(q) else MARK_RING if reach.has(q) else MARK_DOT
-			if fade >= 1.0:
+			var kind := MARK_TAKE if q == _state.king or _foe_on(q) else MARK_RING if reach_now.has(q) else MARK_DOT
+			if q == _reading:
+				# the bulb's ring, kept until a hop
+				_lb.stroke(Face.Builder.ring(at, s * 0.42, s * 0.42), s * 0.06, Color(Pal.SUN, 0.95 * fade), true)
+			if peeking and q != int(_press.c):
+				_mark_move(_lb, at, s, kind, e, fade * 0.35)
+			elif fade >= 1.0:
 				_put(_ground_rm, SH_DOT + kind, Transform2D(0.0, Vector2.ONE * rel * e, 0.0, at))
 			else:
 				_mark_move(_lb, at, s, kind, e, fade)
@@ -1875,10 +1969,10 @@ func _draw_toast(t: float, shown: Array) -> void:
 	if _toast == "":
 		return
 	var since := t - _toast_at
-	if since < 0.0 or since >= TOAST_HOLD:
+	if since < 0.0 or since >= _toast_for:
 		return
 	var alpha := minf(Motion.appear_level(since, Motion.DROP_FADE),
-		Motion.appear_level(TOAST_HOLD - since, Motion.DROP_FADE))
+		Motion.appear_level(_toast_for - since, Motion.DROP_FADE))
 	if alpha <= 0.0:
 		return
 	var line := tr(_toast)
@@ -1952,16 +2046,17 @@ func _gui_input(event: InputEvent) -> void:
 		var c := _square_at(event.position)
 		if event.pressed:
 			_press = {}
+			_peek = {}
 			if c >= 0 and _state.legal().has(c) and _now() >= _busy_until:
-				_press = {"c": c, "at": _now()}
-				_refresh()
+				_hold(c)
 			return
 		var pressed: Dictionary = _press
 		_press = {}
-		if c < 0:
-			_refresh()
-			return
-		if not pressed.is_empty() and int(pressed.c) != c:
+		_peek = {}
+		if c < 0 or (not pressed.is_empty() and int(pressed.c) != c):
+			if not pressed.is_empty():
+				# let go off the dot: nothing hops, and it is heard
+				fx.touch(0.84)
 			_refresh()
 			return
 		if c == _state.you:
@@ -1971,6 +2066,22 @@ func _gui_input(event: InputEvent) -> void:
 			_refresh()
 		else:
 			_play(c)
+	elif (event is InputEventScreenDrag or event is InputEventMouseMotion) and not _press.is_empty():
+		# The held dot follows the finger across the dots, each one's answer
+		# shown in turn; let go on one to hop there.
+		accept_event()
+		var c := _square_at(event.position)
+		if c >= 0 and c != int(_press.c) and _state.legal().has(c) and _now() >= _busy_until:
+			_hold(c)
+			fx.touch()
+
+## A dot held: the hop it would make, and the rose side's answer to it,
+## shown until the finger lets go.
+func _hold(c: int) -> void:
+	_press = {"c": c, "at": _now()}
+	_peek = _state.peek(c)
+	_busy_for(PRESS_TIME)
+	_refresh()
 
 # --- the sprout's line ---
 
@@ -1983,9 +2094,14 @@ func _say(text: String, mood: int) -> void:
 ## shows since the tip card left every board) and the toast, which one does.
 ## The rotating opening tips never come through here -- they would be noise.
 func _tell(key: String, mood: int) -> void:
-	_say(tr(key), mood)
-	_toast = key
+	_tell_text(key, mood)
+
+## The same, with a line already put together; `long` keeps it TOAST_LONG.
+func _tell_text(text: String, mood: int, long := false) -> void:
+	_say(tr(text), mood)
+	_toast = text
 	_toast_at = _now()
+	_toast_for = TOAST_LONG if long or text.ends_with("_HOLD") else TOAST_HOLD
 	queue_redraw()
 
 ## A line about a lost heart, with how many are left after it.
@@ -2015,23 +2131,43 @@ func undo() -> bool:
 	if not can_undo() or not _state.undo():
 		return false
 	_undo_ever = true
+	_reading = -1
 	_break_streak()
 	_clear_gags()
 	_slide_to_state(_now(), 0.0)
 	_set_lost(_state.lost())
 	_tell(STUCK_MSG if _lost else "KN_UNDONE", Face.Expr.STRAIN if _lost else Face.Expr.HAPPY)
 	fx.cue("undo")
+	if not _lost:
+		_rate(false)
 	moved.emit()
 	return true
 
 func hints_left() -> int:
+	return _hints_held() + (1 if _reading >= 0 else 0)
+
+func _hints_held() -> int:
 	return maxi(0, State.hints_for(_state.difficulty) + hints_extra - hints_used)
 
-## Plays the next hop of the shortest line from here for you. From a lost
-## position -- no line left -- it spends the hint rewinding to the last
-## position that still had one instead.
+## The bulb in two presses (2026-10-29). The first, one hint, reads the
+## dots -- how many lead to a dead end -- and rings the next hop of the
+## shortest line from here, which stays ringed until a hop; the second,
+## free, hops there for you. From a lost position -- no line left -- the
+## first press spends the hint rewinding to the last position that still
+## had one instead.
 func hint() -> bool:
-	if is_done() or out_of_hearts or hints_left() <= 0 or busy():
+	if is_done() or out_of_hearts or busy():
+		return false
+	if _reading >= 0:
+		var to := _reading
+		_reading = -1
+		if not _state.legal().has(to):
+			return false
+		_ring_at(_centre(to), _now() + _jump())
+		fx.cue("hint")
+		_play(to, true)
+		return true
+	if _hints_held() <= 0:
 		return false
 	var m: int = _state.hint_move()
 	if m < 0:
@@ -2048,9 +2184,24 @@ func hint() -> bool:
 		fx.cue("refuse")
 		return false
 	hints_used += 1
-	_ring_at(_centre(m), _now() + _jump())
+	_reading = m
+	var rd: Dictionary = _state.reading()
+	var text: String
+	if m == _state.king:
+		text = tr("KN_READ_KING")
+	elif _foe_on(m):
+		text = tr("KN_READ_TAKE")
+	elif int(rd.dead) == 1:
+		text = tr("KN_READ_DEAD_ONE") % int(rd.all)
+	elif int(rd.dead) > 1:
+		text = tr("KN_READ_DEAD_N") % [int(rd.dead), int(rd.all)]
+	else:
+		text = tr("KN_READ_SAFE")
+	_tell_text(text + " " + tr("KN_READ_AGAIN"), Face.Expr.HAPPY, true)
+	_ring_at(_centre(m), _now())
 	fx.cue("hint")
-	_play(m, true)
+	_refresh()
+	moved.emit()
 	return true
 
 func can_reset() -> bool:
@@ -2061,6 +2212,7 @@ func can_reset() -> bool:
 func reset_board() -> void:
 	if not can_reset():
 		return
+	_reading = -1
 	_break_streak()
 	_clear_gags()
 	_state.reset_board()
@@ -2072,6 +2224,7 @@ func reset_board() -> void:
 	_toast_at = -100.0
 	moves = 0
 	moves_left = max_moves
+	_stars.clear()
 	_heart_layer.queue_redraw()
 	_running = true
 	_say(tr(_tips()[0]), Face.Expr.HAPPY)
@@ -2079,7 +2232,28 @@ func reset_board() -> void:
 	moved.emit()
 
 func _on_start_over() -> void:
-	reset_board()
+	if _steps_back() and _lost:
+		_step_back()
+	else:
+		reset_board()
+
+## Back to the last position that still has a way to the king, free: the
+## dead end's own button (2026-10-29). The hops made stay counted, so the
+## stars keep what the detour cost.
+func _step_back() -> void:
+	var n: int = _state.rewind_to_live()
+	if n <= 0:
+		reset_board()
+		return
+	_break_streak()
+	_clear_gags()
+	_reading = -1
+	_slide_to_state(_now(), 0.0)
+	_set_lost(false)
+	_tell_text(tr("KN_STEPPED_ONE") if n == 1 else tr("KN_STEPPED_N") % n, Face.Expr.HAPPY)
+	fx.cue("undo")
+	_rate(false)
+	moved.emit()
 
 ## Whether a catch or a boxed-in ending is still playing out: input, Undo,
 ## Hint and Reset wait, and the host holds its hint video.
@@ -2108,7 +2282,7 @@ func skill_quality() -> float:
 
 ## What a reopened daily needs: the hearts kept and whether it was flawless.
 func completion_record() -> Dictionary:
-	return {"hearts": hearts, "flawless": _flawless}
+	return {"hearts": hearts, "flawless": _flawless, "hops": moves, "stars": _stars.stars, "best_run": _best_streak}
 
 # --- lost positions and the Start over button ---
 
@@ -2132,8 +2306,19 @@ func _foe_on(c: int) -> bool:
 func _set_lost(v: bool) -> void:
 	if v and not _lost:
 		_stuck_at = _now()
+		# A dead end steps back to the last position with a way through
+		# (2026-10-29); boxed in on Brambles starts over, as before.
+		if _stuck_btn != null and _stuck_btn.has_method("set_label"):
+			var back := _steps_back()
+			_stuck_btn.set_icon("undo_back" if back else "reset")
+			_stuck_btn.set_label(tr("KN_STEP_BACK") if back else tr("KN_START_OVER"))
 	_lost = v
 	_place_stuck()
+
+## Whether the button under a dead end steps back rather than starting over:
+## every band without Brambles, once a hop has been kept.
+func _steps_back() -> bool:
+	return not _state.brambles() and _state.can_undo()
 
 ## The Start over button, centred under the board, popping in once the
 ## position is known lost and gone the moment it is not.
@@ -2288,6 +2473,9 @@ func _lose_heart(at: float) -> void:
 	_heart_layer.queue_redraw()
 
 func _draw_hearts() -> void:
+	if _counting() and _cell() > 0.0:
+		_draw_count()
+		return
 	if max_moves > 0 and _cell() > 0.0:
 		if Motion.reduce or Motion.pop_in_scale(_now() - _opened - Motion.ENTER_DELAY).x > 0.0:
 			_moves_pill.draw(_heart_layer, Vector2(size.x * 0.5, maxf(HEART_TOP + HEART_PILL_PAD.y + HEART_R,
@@ -2338,6 +2526,53 @@ func _draw_hearts() -> void:
 	_heart_layer.draw_set_transform(c * (1.0 - enter), 0.0, Vector2.ONE * enter)
 	_heart_layer.draw_mesh(_hearts_shown, null)
 	_heart_layer.draw_set_transform(Vector2.ZERO)
+
+## Whether the count line stands over the board (2026-10-29): every band
+## with neither hearts nor a move counter, which is every band today.
+func _counting() -> bool:
+	return max_hearts <= 0 and max_moves <= 0 and _state.opt() > 0
+
+## The count line over the board, on a pill: the stars the way stands at
+## (ui/flat/star_line.gd), then the hops so far against the day's shortest.
+func _draw_count() -> void:
+	var now := _now()
+	var enter := 1.0 if Motion.reduce else Motion.pop_in_scale(now - _opened - Motion.ENTER_DELAY).x
+	if enter <= 0.0:
+		return
+	var font: Font = CozyTheme.body(700)
+	var text: String = (tr("KN_COUNT_ONE") % _state.opt()) if moves == 1 else (tr("KN_COUNT") % [moves, _state.opt()])
+	var fs := COUNT_FONT
+	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+	var ss := 0.9
+	var sw := StarLine.width(ss)
+	var pill := Vector2(sw + 14.0 + tw, 2.0 * HEART_R) + 2.0 * HEART_PILL_PAD
+	var y := maxf(HEART_TOP + HEART_PILL_PAD.y + HEART_R, _origin().y - FRAME - HEART_PILL_PAD.y - HEART_R - 10.0)
+	var c := _hearts_at(pill, y)
+	var corner := c - pill * 0.5
+	var rim := Vector2.ONE * HEART_PILL_RIM
+	var b := Face.Builder.new()
+	b.polygon(Face.Builder.round_rect(corner - rim, pill + 2.0 * rim, pill.y * 0.5 + HEART_PILL_RIM), Pal.LINE)
+	b.polygon(Face.Builder.round_rect(corner, pill, pill.y * 0.5), Pal.SURFACE)
+	_hearts_shown = b.mesh()
+	_heart_layer.draw_set_transform(c * (1.0 - enter), 0.0, Vector2.ONE * enter)
+	_heart_layer.draw_mesh(_hearts_shown, null)
+	var x0 := corner.x + HEART_PILL_PAD.x
+	_stars.draw(_heart_layer, Vector2(x0 + StarLine.R * ss, c.y), ss, now)
+	var base := c.y - font.get_height(fs) * 0.5 + font.get_ascent(fs)
+	_heart_layer.draw_string(font, Vector2(x0 + sw + 14.0, base), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs,
+		Color(Pal.TEXT, 0.8))
+	_heart_layer.draw_set_transform(Vector2.ZERO)
+
+## The stars read off the solver once a kept hop (`heard`: a star lost
+## falls with the lip). A position with no line says nothing: its dead end
+## is told by the board.
+func _rate(heard: bool) -> void:
+	var n: int = _state.stars(moves)
+	if n < 0:
+		return
+	if _stars.rate(n, _now(), heard and not is_done()) < 0:
+		fx.cue("undo", 0.85)
+	_heart_layer.queue_redraw()
 
 ## The hearts' pill's centre: over the board, centred (the tutorial's page
 ## hangs it beside the board).
@@ -2511,6 +2746,7 @@ func _after(delay: float, what: Callable) -> void:
 # --- the rewards ---
 
 func _reset_rewards() -> void:
+	_best_streak = 0
 	_streak = 0
 	_streak_gen += 1
 	_hops = 0
@@ -2543,6 +2779,7 @@ func _day_hash() -> int:
 ## confetti at 4, 7 and every 5 -- and the gag picked for it plays.
 func _on_safe_hop(to: int, land: float, gag: int) -> void:
 	_streak += 1
+	_best_streak = maxi(_best_streak, _streak)
 	var count := _streak
 	var gen := _streak_gen
 	var at := _centre(to)
@@ -2637,7 +2874,12 @@ func _start_gag(c: int, gag: int, lands: float) -> void:
 # --- the win ---
 
 func flat_win() -> Dictionary:
-	return {"faces": [], "subtitle": tr("KN_WIN")}
+	var line := tr("KN_WIN")
+	if _state.opt() > 0:
+		line += " " + (tr("KN_WIN_PAR") % moves if moves <= _state.opt() else tr("KN_WIN_HOPS") % [moves, _state.opt()])
+	if _best_streak >= COMBO_FROM:
+		line += " " + tr("KN_WIN_RUN") % _best_streak
+	return {"faces": [], "subtitle": line}
 
 ## The win screen waits for your knight to land, the king to fall, the crown
 ## to find your head and the party to have its moment.
@@ -2691,10 +2933,13 @@ func restore_completed_board() -> void:
 	_reset_rewards()
 	hearts = clampi(int(completed_record.get("hearts", max_hearts)), 0, max_hearts)
 	_flawless = bool(completed_record.get("flawless", false))
+	_best_streak = int(completed_record.get("best_run", 0))
 	_state.reset_board()
 	for m in _state.g.line:
 		_state.play(m)
 	_snap_to_state()
+	moves = int(completed_record.get("hops", _state.history.size()))
+	_stars.clear(clampi(int(completed_record.get("stars", 3)), 0, 3))
 	var t := _now()
 	_solved_at = t - 100.0
 	_opened = t - 100.0

@@ -94,3 +94,59 @@ host's margin and the 170 cell cap is off (an Easy cell is 190).
   larger cells. **Start over stays**: it does what the bin does, but it
   comes up only once the position is proved lost and does not ask; the
   user's to call whether it goes. Owed: a phone, the level slide.
+
+### Made fun (2026-10-29)
+
+The user, 2026-10-29: "make how big and knight experience way better to
+play, and game itself way funnier to play, right now nobody likes it. Use
+web for reference on how good games does it." Built unattended. What the
+web said of knight puzzles: they turn into trial and error when "it is hard
+to tell what path the knight is going to take", and a hint that just plays
+the level is resented. **Measured first** (`tests/_probe_kn_fun.gd`, a
+player who never lands in rose corners and otherwise hops at random, half
+the time toward the king): **25 of 30 Medium days and 30 of 30 Hard days
+walk into a dead end, at the 2nd-3rd hop** (p50), with nothing said until
+the board proves it; Easy 2 of 30. The rose side's rule is fixed, so the
+whole answer can be shown before a hop -- the fix is to show it.
+
+- **Hold a dot to see the answer** (`_hold`, `_peek`, `_draw_peek`): while
+  a dot is held, your knight's ghost stands on it with the hop's prints,
+  each rose knight's ghost stands where it would answer with **the prints
+  of its own hop** (so a ghost is never only a paler rose), a knight that
+  would be fenced in shows its z's, a catch shows dizzy stars over your
+  ghost, the rose corners become the reach the rose side would have
+  *after* its answer, and the other dots go quiet. The finger slides from
+  dot to dot (each heard, `fx.touch`); let go on one to hop, off the dots
+  to cancel (heard at 0.84). `State.peek` matched `State.play` on every one
+  of 3,018 legal squares of 120 deals (the probe's guard). The first catch
+  or dead end of a board says once that holding shows the answer
+  (`KN_CAUGHT_HOLD`, `KN_DEAD_END_HOLD`, a longer toast, `TOAST_LONG`).
+- **A dead end steps back, not over**: the button under the board reads
+  **Step back** (`KN_STEP_BACK`, the undo glyph) on every band without
+  Brambles and rewinds to the last position that still has a way
+  (`State.rewind_to_live`, free; "One hop back. There is a way from here.").
+  The bin still starts over. Brambles keeps Start over. This is the call
+  the 10-13 note left open, made.
+- **Live stars and a count** over the board on every band (the pill where
+  hearts or moves stood, `_draw_count`; the world's horseshoe and crown in
+  the tools row's gap are off, `knight_world.gd`'s `gap`): "3 hops ·
+  shortest 6" and three stars read off the solver after each kept hop --
+  hops so far plus the shortest line from here, against the day's
+  (`State.stars`, `STAR_SPARE` 2 and 6; a star lost falls with the lip).
+  Undo and Step back keep the hops made; Reset gives them back.
+- **The bulb in two presses**: the first, a hint, rings the next hop of the
+  shortest line in sun (kept until a hop) and reads the dots -- "2 of your
+  5 dots lead to a dead end. The ringed one keeps the way open." (or the
+  king in reach, or a rose knight to take; `State.reading`); the second,
+  free, hops there. From a lost position the first press still rewinds.
+  The tutorial's HINT page and `tests/_win.gd` press twice.
+- **The win's line** names the hops against the shortest ("The shortest
+  way: 6 hops!") and the best run of safe hops from three.
+- `opengl3_angle` 810x1440: 81-92 draw calls peak (peek, read, lost);
+  `tests/_win.gd -- knight` PASS; suite 303252/0. No new sound file.
+- Decided for the user, unconfirmed: hold-to-preview on every band
+  (Insane too: it shows naps and catches, never whether a position is
+  lost); no dead-end mark in the preview (that would be the puzzle);
+  Step back free; stars by 2 and 6 hops over; the count pill on every band.
+  Owed: a phone (does a held finger hide the ghost under it? the ghost
+  stands on the held square), pt/es read by a speaker.

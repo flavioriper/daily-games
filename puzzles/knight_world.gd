@@ -69,6 +69,9 @@ const PETALS := [[0.19, 318.0, 9.0, 0.6], [0.52, 300.0, 8.0, 2.1], [0.66, 350.0,
 const BREATH := 3.6
 const BREATH_LOW := 0.4
 
+## Whether the tools row's gap holds its horseshoe, prints and crown: the
+## board's count pill stands there since 2026-10-29, and turns them off.
+var gap := true
 var _shown: ArrayMesh
 var _air: Control
 var _air_shown: ArrayMesh
@@ -106,7 +109,8 @@ func _build() -> void:
 		Scenery.soft_disc(b, sun, ring[0] * u, ring[0] * u, Color(LIGHT, ring[1]))
 	var wall_y := size.y - WALL_TOP * u
 	_paving(b, u, wall_y)
-	_gap(b, u)
+	if gap:
+		_gap(b, u)
 	_wall(b, u, wall_y)
 	_shown = b.mesh()
 	queue_redraw()

@@ -27,7 +27,8 @@ extends Control
 ##   when Insane began counting moves). Then the way that works.
 ## - UNDO: a hop, Undo takes it back; Reset puts every piece back (Reset alone
 ##   on Insane, which has no Undo).
-## - HINT: the bulb hops for you, twice, onto the king.
+## - HINT: the bulb rings the next hop, and a second press hops there; twice,
+##   onto the king (two presses a hop since 2026-10-29).
 ##
 ## The board checkup, 2026-10-02: Knight had only the shared one-page card.
 
@@ -336,7 +337,7 @@ func _start() -> void:
 				_tap(DEAD_END, "HTP_KN_CORNER_CAP", "HTP_KN_BOXED_CAP", 2.8)
 			else:
 				_tap(DEAD_END, "HTP_KN_CORNER_CAP", "HTP_KN_BOXED_MOVES_CAP" if band >= 3 else "HTP_KN_LOST_CAP", 1.8)
-				_loop.tween_callback(_say.bind("HTP_KN_OVER_CAP"))
+				_loop.tween_callback(_say.bind("HTP_KN_OVER_CAP" if band >= 3 else "HTP_KN_BACK_CAP"))
 				_loop.tween_callback(func() -> void: _point_at(_art.stuck_mid()))
 				_loop.tween_interval(0.5)
 				_loop.tween_callback(func() -> void: _down = true)
@@ -360,12 +361,16 @@ func _start() -> void:
 			_loop.tween_callback(func() -> void: _art.reset_board())
 			_loop.tween_interval(2.0)
 		Lesson.HINT:
-			_loop.tween_callback(_say.bind("HTP_KN_HINT_CAP"))
-			_loop.tween_interval(0.4)
-			_loop.tween_callback(func() -> void: _art.hint())
-			_loop.tween_interval(1.6)
-			_loop.tween_callback(func() -> void: _art.hint())
-			_loop.tween_interval(0.8)
+			# Two presses a hop since 2026-10-29: the first rings the way,
+			# the second hops there.
+			for _k in 2:
+				_loop.tween_callback(_say.bind("HTP_KN_HINT_READ_CAP"))
+				_loop.tween_interval(0.4)
+				_loop.tween_callback(func() -> void: _art.hint())
+				_loop.tween_interval(1.4)
+				_loop.tween_callback(_say.bind("HTP_KN_HINT_CAP"))
+				_loop.tween_callback(func() -> void: _art.hint())
+				_loop.tween_interval(1.4)
 			_say_for("HTP_KN_DONE_CAP", 3.0)
 	_loop.tween_callback(_reset)
 
@@ -427,7 +432,7 @@ func _still() -> void:
 			_say("HTP_KN_UNDO_CAP" if band < 3 else "HTP_KN_RESET_CAP")
 		Lesson.HINT:
 			_art.hint()
-			_say("HTP_KN_HINT_CAP")
+			_say("HTP_KN_HINT_READ_CAP")
 	_art._refresh()
 
 ## Square `c` tapped at once, through the board's own input.

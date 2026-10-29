@@ -27,6 +27,8 @@ const MOVES_SLACK := [0, 0, 0, 0]
 ## `lost()`'s search budget: a position whose proof needs more than this is
 ## taken to be alive (measured: a live Hard position proves in a few hundred).
 const LOST_NODES := 6000
+## The live stars: hops over the day's shortest line for three, and for two.
+const STAR_SPARE := [2, 6]
 
 ## The generated board (knight_gen.gd's dictionary), read by the board.
 var g := {}
@@ -183,6 +185,46 @@ func lost() -> bool:
 	var cap := moves_left() if moves_left() > 0 else 64
 	var line := Gen.solve(g, you, foes, cap, LOST_NODES, mask)
 	return line.is_empty() and Gen.last_nodes < LOST_NODES
+
+## How many hops the shortest line from here takes: 0 once won, -1 when
+## there is none (or the search runs past LOST_NODES, so nothing is known).
+func line_left() -> int:
+	if won:
+		return 0
+	var line := Gen.solve(g, you, foes, 64, LOST_NODES, mask)
+	return -1 if line.is_empty() else line.size()
+
+## The stars the way the player is on would earn (2026-10-29): `hops` made
+## so far plus the shortest line from here, against the day's shortest from
+## the opening (`opt`). Within STAR_SPARE[0] of it three, within [1] two,
+## else one. -1 when nothing is known (no line from here, or no opt).
+func stars(hops: int) -> int:
+	if opt() <= 0:
+		return -1
+	var left := line_left()
+	if left < 0:
+		return -1
+	var over := hops + left - opt()
+	if over <= STAR_SPARE[0]:
+		return 3
+	return 2 if over <= STAR_SPARE[1] else 1
+
+## The bulb's reading of the hops from here: {"dead": the legal hops that
+## are no catch but leave no way to the king, "caught": those a rose knight
+## answers onto, "all": every legal hop}.
+func reading() -> Dictionary:
+	var dead := 0
+	var caught := 0
+	var all := legal()
+	for m in all:
+		var r := peek(m)
+		if int(r.caught) >= 0:
+			caught += 1
+		elif not bool(r.won):
+			var nm := mask | (1 << you) if brambles() else 0
+			if Gen.solve(g, int(r.you), r.foes, 64, LOST_NODES, nm).is_empty() and Gen.last_nodes < LOST_NODES:
+				dead += 1
+	return {"dead": dead, "caught": caught, "all": all.size()}
 
 ## The next hop of the shortest line from here, or -1 when there is none
 ## (or, under a budget, none inside the moves left).
