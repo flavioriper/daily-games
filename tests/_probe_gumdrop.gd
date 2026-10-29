@@ -300,7 +300,11 @@ func _themed() -> void:
 			for j: Dictionary in day.pictures.jellies[key]:
 				var m := Mould.build_parts("themed_" + String(j.id), Mould.from_doc(j.parts))
 				var why := Mould.unfit(m, band)
-				_check("%s band %d: the night's %s keeps its row here (%s)" % [f.get_basename(), band, j.id, why if why != "" else "%d chunks, %d cells" % [int(m.laid), (m.cells as Array).size()]], why == "")
+				# Medium asks for a mixed flavour since 2026-10-29: a night
+				# written before that may lack one, and is turned down for
+				# the pictures (which mix), as any unfit jelly is
+				var older: bool = band == 1 and why == "too few mixed flavours" and f.get_basename() < "20261030"
+				_check("%s band %d: the night's %s keeps its row here (%s)" % [f.get_basename(), band, j.id, why if why != "" else "%d chunks, %d cells" % [int(m.laid), (m.cells as Array).size()]], why == "" or older)
 				if why == "":
 					built.append(m)
 			if built.is_empty():

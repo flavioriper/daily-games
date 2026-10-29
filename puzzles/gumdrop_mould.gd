@@ -73,7 +73,7 @@ const PRIMARIES := [0, 2, 4]
 ## the two change together.
 const THEMED := [
 	{"flavours": [2, 2], "mixed": 0, "chunks": [2, 5]},
-	{"flavours": [3, 3], "mixed": 0, "chunks": [3, 7]},
+	{"flavours": [3, 3], "mixed": 1, "chunks": [3, 7]},
 	{"flavours": [3, 4], "mixed": 1, "chunks": [3, 10]},
 	{"flavours": [4, 6], "mixed": 2, "chunks": [4, 14]},
 ]

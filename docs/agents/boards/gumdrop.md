@@ -1001,8 +1001,13 @@ when done." Built unattended on main; every call below is mine.
 - **Medium mixes** (`Mould.BANDS[1].stood` is `ONE_MIXED`): one flavour of
   the picture has no pot and is made from its two neighbours, as Hard
   has. Rows 8-18 nearly all have an orange, lime or grape; a picture
-  without one stays plain, and so does a themed Medium jelly
-  (`THEMED[1].mixed` is 0, jelly.ts untouched). `GD_LVL_1` says so; the
+  without one stays plain. **The night's Medium jellies must now carry a
+  mixed flavour** (`THEMED[1].mixed` 0 -> 1 on the phone and in jelly.ts
+  `RULES`, which change together; `mixed` is a least): until the user
+  deploys `publishDay`, a themed Medium jelly without one is turned down
+  on the phone and the 29 pictures (which mix) take its place, so Medium
+  mixes either way, a little less themed meanwhile. The probe lets nights
+  written before 2026-10-30 fail that one rule. `GD_LVL_1` says so; the
   rules' mix paragraph shows from Medium. `_probe_gumdrop.gd`: Medium 4
   pots at most, nothing to mix only on Easy.
 - **The recipe on the meter** (`Art.meter(..., want)`, `_recipe_track`):

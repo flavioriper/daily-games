@@ -239,6 +239,8 @@ var _whole := 0
 var _field_edit: LineEdit
 var _osk := 0.0
 var osk_override := -1.0
+## False on the tutorial's stage: a page never calls the keyboard up.
+var keyboard := true
 ## The dive's count down the ladder: how long it takes for this answer.
 var _dive_time := DIVE_TIME
 var _stars := StarLine.new()
@@ -307,7 +309,8 @@ func _ready() -> void:
 	add_child(_hud_layer)
 	resized.connect(_layout)
 	solved.connect(_on_solved)
-	_make_field()
+	if keyboard:
+		_make_field()
 
 ## The line the phone's keyboard types into: unseen, laid over the paper's
 ## line, never touched itself (the board's own _gui_input calls it up). It
@@ -317,7 +320,9 @@ func _make_field() -> void:
 	_field_edit = LineEdit.new()
 	_field_edit.name = "Field"
 	_field_edit.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_field_edit.max_length = State.TYPE_MAX
+	# spaces count here (the phone's keyboard has them), so a long name
+	# typed whole fits: State.NAME_MAX and a few
+	_field_edit.max_length = State.NAME_MAX + 6
 	_field_edit.context_menu_enabled = false
 	_field_edit.selecting_enabled = false
 	_field_edit.middle_mouse_paste_enabled = false
@@ -371,6 +376,8 @@ func _set_line(text: String) -> void:
 ## The phone's keyboard's top, followed: the paper is laid above it while it
 ## is up. Its height comes in the window's pixels.
 func _watch_osk() -> void:
+	if _field_edit == null:
+		return
 	var h := osk_override
 	if h < 0.0:
 		h = 0.0
@@ -1552,6 +1559,9 @@ func busy() -> bool:
 func _process(delta: float) -> void:
 	super(delta)
 	_watch_osk()
+	if clock_held:
+		# a sheet over the board: the keyboard goes down under it
+		_dismiss()
 	if not _dealt:
 		return
 	var now := _now()

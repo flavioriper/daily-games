@@ -97,6 +97,7 @@ class Stage extends "res://puzzles/pearl2d.gd":
 		return "pearl_tutorial"
 
 	func _ready() -> void:
+		keyboard = false  # (a page never calls the phone's keyboard up)
 		super()
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 		fx.buzzes = false  # (the page's typing is not the player's)

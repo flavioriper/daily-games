@@ -246,7 +246,10 @@ when done." Built unattended; every call below is mine.
   board's Enter) and goes down on the win and out of air. The card says
   "Tap to dive" (`PD_READY_TAP`); a tap on the paper calls the keyboard
   back. `type_letter`/`erase_letter`/`commit_row` stay for the tutorial
-  and the probes. Harnesses type into the field; `_shot_pearl.gd ... osk`
+  and the probes. The tutorial's stage builds no field (`keyboard`
+  false), so a page never calls the keyboard up; a sheet over the board
+  (`clock_held`) puts it down; the field takes `NAME_MAX` + 6 characters
+  since spaces count there. Harnesses type into the field; `_shot_pearl.gd ... osk`
   lays out as if the keyboard took 42%.
 - **The ladder** (`State.ladder`, `_draw_reveal`): five rungs under the
   answer, Everyone / Well known / Rare / Very few / The Pearl, each with
