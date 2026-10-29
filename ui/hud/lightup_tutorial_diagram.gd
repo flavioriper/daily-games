@@ -73,6 +73,12 @@ class Court extends "res://puzzles/lightup2d.gd":
 	func _say(_text: String, _mood: int) -> void:
 		pass
 
+	func _toast_say(_text: String, _near := Vector2i(-1, -1), _held := false) -> void:
+		pass
+
+	func _shows_stars() -> bool:
+		return false
+
 	func _gag(_cell: Vector2i) -> void:
 		pass
 
@@ -237,6 +243,10 @@ func _start() -> void:
 			_play_tap(Vector2i(0, 0), "HTP_LU_CHIPPED_CAP")
 			_loop.tween_interval(2.4)
 		Lesson.HINT:
+			_loop.tween_callback(_say.bind("HTP_LU_READ_CAP"))
+			_loop.tween_interval(0.5)
+			_loop.tween_callback(_art.hint)
+			_loop.tween_interval(2.2)
 			_loop.tween_callback(_say.bind("HTP_LU_HINT_CAP"))
 			_loop.tween_interval(0.5)
 			_loop.tween_callback(_art.hint)
@@ -267,11 +277,12 @@ func _start() -> void:
 			_loop.tween_interval(2.2)
 	_loop.tween_callback(_reset)
 
-## The hint's lantern: the first of the answer's, which is the one the bulb
-## sets down on an empty court.
+## The hint's lantern: the one the bulb pinned (its reading's since the
+## made-fun pass), else the first of the answer's.
 var _hinted: Vector2i:
 	get:
-		return _art.state.solution[0]
+		var pinned: Array = _art.state.locked.keys()
+		return pinned[0] if not pinned.is_empty() else _art.state.solution[0]
 
 ## A tap on `cell`: the finger comes down, the caption turns to `say` (when
 ## not ""), and the finger lets go.
@@ -355,6 +366,7 @@ func _still() -> void:
 	var st = _art.state
 	match lesson:
 		Lesson.HINT:
+			_art.hint()
 			_art.hint()
 			_say("HTP_LU_PINNED_CAP")
 			return

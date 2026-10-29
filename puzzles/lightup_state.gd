@@ -401,3 +401,183 @@ func reset() -> Array:
 	history = []
 	recompute()
 	return cleared
+
+# --- reading the court, as a player can (2026-10-29) ---
+
+## Why a reading names its stone: a numbered block with just as many stones
+## free beside it as it still wants, a dark stone only one stone can light,
+## a cat with just as many lines of sight free as lamps she still wants, or
+## (none of those) the answer's next lamp.
+enum { WHY_BLOCK, WHY_ONLY, WHY_CAT, WHY_START }
+
+## The stones in sight of `cell` along the four ways, stopping at a block
+## (a cat lets the look through), each way its own list.
+func sight(cell: Vector2i) -> Array:
+	var out: Array = []
+	for d in DIRS:
+		var way: Array = []
+		var p: Vector2i = cell + d
+		while lets_light(p):
+			way.append(p)
+			p += d
+		out.append(way)
+	return out
+
+## Every open stone a lamp could still go on by the rules, with `down` the
+## lamps taken as standing: not lit by one of them, not beside a numbered
+## block that has all its lamps, not in sight of a cat that has all hers.
+## Chips are the player's notes and do not count.
+func free_stones(down: Array) -> Dictionary:
+	var here := {}
+	for b in down:
+		here[b] = true
+	var lit_by := Gen.lit_cells(grid, down, w, h)
+	var out := {}
+	for cell in white_cells():
+		if not here.has(cell) and not lit_by.has(cell):
+			out[cell] = true
+	for y in h:
+		for x in w:
+			var c := Vector2i(x, y)
+			var need := int(grid[y][x])
+			if need >= 0:
+				var have := 0
+				for d in DIRS:
+					if here.has(c + d):
+						have += 1
+				if have >= need:
+					for d in DIRS:
+						out.erase(c + d)
+			elif Gen.is_cat(need):
+				if Gen.seen_by(grid, down, c, w, h) >= need - Gen.CAT:
+					for way: Array in sight(c):
+						for p in way:
+							out.erase(p)
+	return out
+
+## The open stones in the dark that nothing can light any more, by the rules
+## and the lamps on the court: every stone that could light them is lit,
+## or beside a block or in sight of a cat that has all its lamps. Some lamp
+## near them is wrong.
+func stuck() -> Array:
+	var down := lamps()
+	var free := free_stones(down)
+	var lit_by := Gen.lit_cells(grid, down, w, h)
+	var out: Array = []
+	for cell in white_cells():
+		if lit_by.has(cell) or free.has(cell):
+			continue
+		var can := false
+		for way: Array in sight(cell):
+			for p in way:
+				if free.has(p):
+					can = true
+		if not can:
+			out.append(cell)
+	return out
+
+## The bulb's first press: a stone the rules decide from the answer's lamps
+## the court already has, and why. {cell, why, from} -- `from` the block, the
+## dark stone or the cat the rule turned on; {} on a finished court.
+func read() -> Dictionary:
+	var down: Array = []
+	for b in solution:
+		if mark_at(b) == LAMP:
+			down.append(b)
+	if down.size() == solution.size():
+		return {}
+	var free := free_stones(down)
+	var here := {}
+	for b in down:
+		here[b] = true
+	var lit_by := Gen.lit_cells(grid, down, w, h)
+	# a block with as many stones free beside it as it still wants
+	for y in h:
+		for x in w:
+			var c := Vector2i(x, y)
+			var need := int(grid[y][x])
+			if need <= 0:
+				continue
+			var have := 0
+			var open: Array = []
+			for d in DIRS:
+				if here.has(c + d):
+					have += 1
+				elif free.has(c + d):
+					open.append(c + d)
+			if have < need and open.size() == need - have:
+				return {"cell": open[0], "why": WHY_BLOCK, "from": c}
+	# a dark stone only one stone can light
+	for cell in white_cells():
+		if lit_by.has(cell):
+			continue
+		var by: Array = []
+		if free.has(cell):
+			by.append(cell)
+		for way: Array in sight(cell):
+			for p in way:
+				if free.has(p):
+					by.append(p)
+		if by.size() == 1:
+			return {"cell": by[0], "why": WHY_ONLY, "from": cell}
+	# a cat with as many ways free as lamps she still wants: a way with one
+	# free stone in it holds her lamp there
+	for c in cats:
+		var want := cat_need(c) - Gen.seen_by(grid, down, c, w, h)
+		if want <= 0:
+			continue
+		var ways: Array = []
+		for way: Array in sight(c):
+			var f: Array = []
+			for p in way:
+				if free.has(p):
+					f.append(p)
+			if not f.is_empty():
+				ways.append(f)
+		if ways.size() == want:
+			for f: Array in ways:
+				if f.size() == 1:
+					return {"cell": f[0], "why": WHY_CAT, "from": c}
+	for b in solution:
+		if mark_at(b) != LAMP:
+			return {"cell": b, "why": WHY_START, "from": b}
+	return {}
+
+## Pins the lamp on `target` (the reading's), as `hint` pins the next one.
+func hint_at(target: Vector2i) -> Vector2i:
+	if not solution.has(target) or mark_at(target) == LAMP:
+		return hint()
+	var kept: Array = []
+	for entry in history:
+		var left: Array = []
+		for e in entry:
+			if e.cell != target:
+				left.append(e)
+		if not left.is_empty():
+			kept.append(left)
+	history = kept
+	marks[target] = LAMP
+	locked[target] = true
+	recompute()
+	return target
+
+## The numbered blocks that can no longer have their number, by the rules
+## and the lamps on the court: the lamps beside them and the stones still
+## free beside them fall short of it.
+func starved() -> Array:
+	var down := lamps()
+	var free := free_stones(down)
+	var out: Array = []
+	for y in h:
+		for x in w:
+			var c := Vector2i(x, y)
+			var need := int(grid[y][x])
+			if need <= 0:
+				continue
+			var can := 0
+			for d in DIRS:
+				if mark_at(c + d) == LAMP or free.has(c + d):
+					can += 1
+			if can < need:
+				out.append(c)
+	return out

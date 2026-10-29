@@ -121,3 +121,67 @@ Easy cell is 200 (it was about 188). `set_foot(y)` sizes the trellis.
   lattice` passes in par.
 - Decided for the user, unconfirmed: the slats straight on the wall; the
   larger Easy cell. Owed: a phone, Insane with its swap pill.
+
+## Made fun (2026-10-29)
+
+The user: "make lattice and light up experience way better to play, and
+game itself way funnier to play, right now nobody likes it", autonomous,
+push when done. References from the web: reviews of the letter game it
+follows praise the swap limit and the stars for few swaps, and its yellow
+("right letter, wrong place") is what turns guessing into reading; in a
+number lattice every line holds 1 to n, so a yellow would say nothing (the
+2026-10-09 note: the original's script answers green or nothing). The lever
+is the rules the player can read, said out loud.
+
+**Measured first** (`tests/_probe_la_fun.gd`, headless, 40 days a band, a
+hand making the answer's swaps in a random order, `State.read()` before
+each): the rules alone (lines, knots, the tiles still out) decide a square
+on **every** reading of every band -- a line's last square 60-76%, a knot
+with its other tiles home 23-39%, the rest a square only one number fits;
+the "no reason, here is the answer's swap" fallback fired 0 times, a
+decided square was never wrong, a reading is under 1 ms (one 14 ms
+outlier on Hard). At the opening a plain square still takes 2.7 (Easy) to
+3.8 (Insane) numbers by the rules. So the lattice was always readable, and
+the board said none of it: a swap came back green or plain, nothing else,
+and the uncounted bands could be brute-forced.
+
+**What changed**:
+
+- **The bulb teaches in two presses** (`hint`, `State.read`, `_why`): the
+  first rims the decided square in sun (thick), the tile to bring there,
+  and the line or the knot that decided it, and the toast says why
+  (`LA_WHY_LAST_ROW/COL`, `LA_WHY_KNOT`, `LA_WHY_ONLY`,
+  `LA_WHY_HIDDEN_ROW/COL`, `LA_WHY_PAIR` unreached) plus `LA_READ_AGAIN`,
+  for one hint; a second press makes the swap, free. A swap by hand, Undo
+  or Reset puts the reading out. The tile chosen is one whose own square
+  wants what the decided square holds, when there is one (two home).
+  Tutorial HINT page presses twice (`HTP_LA_READ_CAP`, then
+  `HTP_LA_BULB_CAP`, now "Second press").
+- **The guide over a picked or held tile** (`_draw_guide`): every other
+  plain tile its number cannot go to by the rules (`State.candidates`) is
+  veiled in paper, and a tile whose square only that number fits is rimmed
+  in sun. One mesh, made when the tile is picked. Rules only, never the
+  answer. Said in the rules (`LA_RULES_GUIDE`).
+- **A swap that sets a number where the rules rule it out** rims that
+  square rose (`_wrong_at`, kept until that tile moves) and the toast says
+  why (`LA_NOT_ROW/COL`: the line already has that number home;
+  `LA_NOT_KNOT`).
+- **Live stars** (`star_line.gd`) on the pill's strip, left: slips are
+  swaps that sent nothing home (a clean solve sends one or two home every
+  swap) and bulbs read; `STARS_CUT` [0, 2].
+- **Runs**: each swap sending a tile home climbs the home cue 3.5% a swap
+  (to 1.3); every third says `LA_RUN` with sparkles; two home at once
+  sparkles both. The win's subtitle adds `LA_WIN_RUN` from a run of 3.
+- **The toast** is the shared `ui/flat/toast_card.gd` (the board's own
+  dark pill is gone), in the open garden under the lattice, else over its
+  foot or head as before.
+- Deals, bands, par, sounds and Insane's rules unchanged. en/pt/es
+  (machine-written pt/es, unreviewed).
+- Harnesses: `_shot_lattice.gd` modes `hint` (read, the tile picked under
+  the guide, swapped) and `wrong`; `_win.gd -- lattice` checks both
+  presses (PASS). `opengl3_angle` 810x1440: Medium 98 peak in `hint`, 88
+  in `wrong`; Insane 98. `_probe_insane_hints -- id=lattice seeds=4`: 0
+  failures. Suite 303252/0. Unseen on a phone.
+- Calls made without the user: a bulb read is a slip (as Patio's);
+  stars by slips, not by par; no running sum on the knots (the guide does
+  that work); no yellow.

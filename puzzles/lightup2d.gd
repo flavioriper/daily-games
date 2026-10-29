@@ -77,6 +77,8 @@ const MovesPill = preload("res://ui/flat/moves_pill.gd")
 const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
 const World = preload("res://puzzles/lightup_world.gd")
 const FLAT_HOST := "res://ui/flat/flat_host.gd"
+const ToastCard = preload("res://ui/flat/toast_card.gd")
+const StarLine = preload("res://ui/flat/star_line.gd")
 ## The slide into the win's span (the host's SLOT_TIME).
 const WIN_SLIDE := 0.45
 ## The moves the out-of-moves card's video buys, once a board.
@@ -202,6 +204,17 @@ const WIN_WAIT := 1.6
 ## The hearts' strip over the court, on Hard and Insane only; Shikaku's and
 ## Tents' pill, and their numbers.
 const HEART_ROW := 64.0
+## Made fun (2026-10-29): the row the live stars stand in on a court with
+## no hearts and no count (on Insane they stand left of the count's pill).
+## Stars by slips -- a lantern set down that broke a rule or left a stone or
+## a block it can no longer have, and a bulb read: three at none, two up to
+## two, one past that.
+const STAR_ROW := 52.0
+const STARS_CUT := [0, 2]
+const RIM_W := 0.07
+const TOAST_FS := 30
+const TOAST_PAD_IN := Vector2(26.0, 16.0)
+const TOAST_MARGIN := 22.0
 const HEART_R := 21.0
 const HEART_GAP := 12.0
 const HEART_PILL_PAD := Vector2(18.0, 8.0)
@@ -592,7 +605,7 @@ func puzzle_id() -> String: return "lightup"
 func title() -> String: return "Light Up"
 
 func rules() -> String:
-	var out := tr("LU_RULES")
+	var out := tr("LU_RULES") + "\n\n" + tr("LU_RULES_STUCK")
 	if state.has_cats():
 		out += "\n\n" + tr("LU_RULES_CAT")
 	if max_moves > 0:
@@ -673,6 +686,24 @@ const HAPTICS := {
 ## a cat's number met knock.
 var _by_hand := false
 
+# --- made fun ---
+var _toast := ToastCard.new()
+var _toast_layer: Control
+var _rims_layer: Control
+var _rims_shown: ArrayMesh
+var _stars := StarLine.new()
+var _slips := 0
+## The bulb's first press: State.read()'s reading, until a move puts it out.
+var _reading: Dictionary = {}
+## Stones nothing can light any more and blocks that can no longer have
+## their number, by the rules and the lamps down: rimmed rose.
+var _stuck: Array = []
+var _starved: Array = []
+## What the court broke after the last move, to tell a move that broke more.
+var _broke := 0
+## Where the toast is about, to keep it off that half of the court.
+var _toast_near := Vector2i(-1, -1)
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = false
@@ -691,6 +722,8 @@ func _ready() -> void:
 	_life_layer = _layer("Life", 1, _draw_life)
 	_heart_layer = _layer("Hearts", 1, _draw_hearts)
 	_combo_layer = _layer("Combo", 2, _draw_combo)
+	_rims_layer = _layer("Rims", 1, _draw_rims)
+	_toast_layer = _layer("Toast", 3, _draw_toast)
 	_tip_timer = Timer.new()
 	_tip_timer.wait_time = TIP_CYCLE
 	_tip_timer.timeout.connect(_cycle_tip)
@@ -716,6 +749,8 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	max_moves = state.moves_budget()
 	_heart_used = false
 	_lost_ever = false
+	_slips = 0
+	_stars.clear(3)
 	_deal()
 	_beam_out = []
 	_chip_in = {}
@@ -823,6 +858,14 @@ func _deal() -> void:
 	_seal_mesh = null
 	_sweep_n = 0
 	_blocks_met = _met_blocks()
+	_toast.clear()
+	_reading = {}
+	_stuck = []
+	_starved = []
+	_broke = 0
+	_rims_shown = null
+	if _rims_layer != null:
+		_rims_layer.queue_redraw()
 	if _snail_node != null:
 		_snail_node.visible = false
 	for layer: Control in [_heart_layer, _veil_layer, _life_layer, _combo_layer]:
@@ -1151,7 +1194,13 @@ func _place() -> void:
 
 ## The strip the hearts stand in over the court, on a board with hearts.
 func _heart_row() -> float:
-	return HEART_ROW if max_hearts > 0 or max_moves > 0 else 0.0
+	if max_hearts > 0 or max_moves > 0:
+		return HEART_ROW
+	return STAR_ROW if _shows_stars() else 0.0
+
+## Whether this board shows the live stars (the tutorial's court does not).
+func _shows_stars() -> bool:
+	return true
 
 ## Control-local point over the centre of cell (r, c). The win harness taps
 ## these, exactly as it does on the island board.
@@ -2226,6 +2275,8 @@ func _commit(before: Dictionary, changed: Array, t: float, per: float, from: Vec
 	else:
 		_relight(t, _at_once)
 	_speak()
+	_drop_reading()
+	_judge_court(true, from)
 	_redraw()
 	note_move()
 	return arrivals
@@ -2404,6 +2455,7 @@ func _refuse(cell: Vector2i) -> void:
 	elif state.is_cat(cell):
 		line = "LU_REFUSE_CAT"
 	_say(tr(line), Face.Expr.PUZZLED)
+	_toast_say(tr(line), cell)
 	fx.cue("locked")
 	var now := _now()
 	if _is_block(cell):
@@ -2497,26 +2549,74 @@ func undo() -> bool:
 	_transition(before, state.undo(), now, Motion.ENTER_STAGGER)
 	_relight(now, _at_once)
 	_speak()
+	_drop_reading()
+	_judge_court(false, Vector2i(-1, -1))
 	fx.cue("undo")
 	_redraw()
 	moved.emit()
 	return true
 
 func hints_left() -> int:
-	return State.HINTS_BY_BAND[state.band] + hints_extra - hints_used
+	return _hints_held() + (0 if _reading.is_empty() else 1)
 
-## Lights one lantern from the answer and pins it for good: a ring pulses out
-## of the stone, the lamp drops in from above, sparkles rise, and the light
-## travels out from it. Counts no move but can finish the puzzle.
+func _hints_held() -> int:
+	return maxi(0, State.HINTS_BY_BAND[state.band] + hints_extra - hints_used)
+
+## Made fun (2026-10-29): the bulb teaches, in two presses. The first reads
+## the court the way a player can (State.read: a numbered block with just as
+## many stones free beside it as it still wants, a dark stone only one stone
+## can light, a cat with just as many ways free as lamps she wants), from the
+## answer's lanterns already down: it rims the stone in sun and what decided
+## it, and the toast says why, for one hint. The player may set it down
+## themselves; a second press while the reading stands sets it and pins it,
+## free.
 func hint() -> bool:
-	if is_done() or out_of_hearts or _ejecting or hints_left() <= 0:
+	if is_done() or out_of_hearts or _ejecting:
 		return false
+	if not _reading.is_empty():
+		var target: Vector2i = _reading.cell
+		_drop_reading()
+		return _pin(target)
+	if _hints_held() <= 0:
+		return false
+	var got: Dictionary = state.read()
+	if got.is_empty():
+		return false
+	hints_used += 1
+	_reading = got
+	_slips += 1
+	_rate(true)
+	var cell: Vector2i = got.cell
+	fx.ring(cell_to_local(cell.y, cell.x), _cell * 0.55, Pal.SUN)
+	fx.cue("hint")
+	_toast_say(_why(got) + " " + tr("LU_READ_AGAIN"), cell, true)
+	_rims_shown = null
+	_rims_layer.queue_redraw()
+	moved.emit()
+	return true
+
+## What the reading says.
+func _why(got: Dictionary) -> String:
+	var from: Vector2i = got.from
+	match int(got.why):
+		State.WHY_BLOCK:
+			return tr("LU_WHY_BLOCK") % int(state.grid[from.y][from.x])
+		State.WHY_ONLY:
+			return tr("LU_WHY_ONLY")
+		State.WHY_CAT:
+			return tr("LU_WHY_CAT")
+	return tr("LU_WHY_START")
+
+## Lights the lantern on `target` (the reading's) and pins it for good: a
+## ring pulses out of the stone, the lamp drops in from above, sparkles
+## rise, and the light travels out from it. Counts no move but can finish
+## the puzzle.
+func _pin(target_: Vector2i) -> bool:
 	var before: Dictionary = state.marks.duplicate()
-	var target: Vector2i = state.hint()
+	var target: Vector2i = state.hint_at(target_)
 	if target.x < 0:
 		return false
 	var now := _now()
-	hints_used += 1
 	_judged[target] = true
 	_transition(before, [target], now, 0.0, true)
 	_relight(now, _travel_from(target))
@@ -2525,10 +2625,119 @@ func hint() -> bool:
 	fx.sparkle(at, Pal.LEAF)
 	fx.cue("hint")
 	_say(tr("LU_PINNED"), Face.Expr.HAPPY)
+	_judge_court(false, target)
 	_redraw()
 	moved.emit()
 	check_solved()
 	return true
+
+## The reading goes out (a move by hand, Undo, Reset, its own second press),
+## and its toast with it.
+func _drop_reading() -> void:
+	if _reading.is_empty():
+		return
+	_reading = {}
+	_rims_shown = null
+	if _toast.hold:
+		_toast.clear()
+		_toast_layer.queue_redraw()
+	_rims_layer.queue_redraw()
+
+## Made fun: the court read after a move, by the rules. Stones nothing can
+## light any more and blocks that can no longer have their number are
+## rimmed rose. A move by hand that broke more than the court had broken
+## before (two lanterns in sight, a block or a cat over, a stone stuck, a
+## block starved) is a slip, and the toast says what.
+func _judge_court(by_hand: bool, near: Vector2i) -> void:
+	_stuck = state.stuck()
+	_starved = state.starved()
+	_rims_shown = null
+	_rims_layer.queue_redraw()
+	var seen: int = state.clash.size()
+	var over: int = state.over_blocks()
+	var cats_over: int = state.over_cats()
+	var broke := seen + over + cats_over + _stuck.size() + _starved.size()
+	var worse := broke > _broke
+	_broke = broke
+	if not by_hand or is_done():
+		return
+	if worse and state.mark_at(near) == State.LAMP:
+		_slips += 1
+		_rate(true)
+		var line := ""
+		if seen > 0 and state.clash.has(near):
+			line = tr("LU_SEEN_TWO") if seen <= 2 else tr("LU_SEEN_N") % seen
+		elif over > 0:
+			line = tr("LU_OVER_ONE") if over == 1 else tr("LU_OVER_N") % over
+		elif cats_over > 0:
+			line = tr("LU_CAT_OVER_ONE") if cats_over == 1 else tr("LU_CAT_OVER_N") % cats_over
+		elif not _stuck.is_empty():
+			line = tr("LU_STUCK_ONE") if _stuck.size() == 1 else tr("LU_STUCK_N") % _stuck.size()
+		elif not _starved.is_empty():
+			line = tr("LU_STARVED")
+		elif seen > 0:
+			line = tr("LU_SEEN_TWO") if seen <= 2 else tr("LU_SEEN_N") % seen
+		if line != "":
+			_toast_say(line, near)
+	elif broke == 0 and _toast.showing(_now()) and not _toast.hold:
+		# mended: the toast about it goes
+		_toast.clear()
+		_toast_layer.queue_redraw()
+
+## The stars the day's slips leave; `heard`: a lost one falls.
+func _rate(heard: bool) -> void:
+	var w := _slips
+	_stars.rate(3 if w <= int(STARS_CUT[0]) else (2 if w <= int(STARS_CUT[1]) else 1), _now(), heard)
+	_heart_layer.queue_redraw()
+
+## Says `text` on the toast, kept off the half of the court `near` is on;
+## `held`: a reading, kept until a move puts it out.
+func _toast_say(text: String, near := Vector2i(-1, -1), held := false) -> void:
+	_toast.say(text, _now(), held)
+	_toast_near = near
+	_toast_layer.queue_redraw()
+
+## The toast: in the open walk under the court when there is room, else
+## over the court on the half away from what it is about.
+func _draw_toast() -> void:
+	var now := _now()
+	if _cell <= 0.0 or not _toast.showing(now):
+		return
+	var court := Rect2(_grid, Vector2(_cell * state.w, _cell * state.h))
+	var wide := minf(size.x - 2.0 * _side(), maxf(court.size.x, 560.0))
+	var tall: float = _toast.tall(wide, TOAST_FS, TOAST_PAD_IN)
+	var mid := Vector2(size.x * 0.5, court.end.y + MORTAR + TOAST_MARGIN + tall * 0.5)
+	if size.y - _clear.y - court.end.y - MORTAR < tall + 2.0 * TOAST_MARGIN:
+		var low: bool = _toast_near.y < 0 or _toast_near.y < state.h / 2
+		mid.y = court.end.y - TOAST_MARGIN - tall * 0.5 if low else court.position.y + TOAST_MARGIN + tall * 0.5
+	_toast.draw(_toast_layer, mid, wide, now, TOAST_FS, TOAST_PAD_IN)
+
+## Made fun: the reading's rims (the stone in sun, thick, and the block, the
+## dark stone or the cat that decided it) and rose rims on stones nothing can
+## light and blocks that can no longer have their number. One mesh, made
+## when what it shows changes.
+func _draw_rims() -> void:
+	if _cell <= 0.0 or is_done() or (_reading.is_empty() and _stuck.is_empty() and _starved.is_empty()):
+		return
+	if _rims_shown == null:
+		var b := Face.Builder.new()
+		var s := _cell * (1.0 - GAP)
+		if not _reading.is_empty():
+			var from: Vector2i = _reading.from
+			var cell: Vector2i = _reading.cell
+			if from != cell:
+				b.stroke(_stone_box(from, s), _cell * RIM_W, Color(Pal.SUN, 0.8), true)
+			b.stroke(_stone_box(cell, s + _cell * 0.04), _cell * RIM_W * 1.6, Pal.SUN, true)
+		for c: Vector2i in _stuck:
+			b.stroke(_stone_box(c, s), _cell * RIM_W * 1.2, Pal.BAD, true)
+		for c: Vector2i in _starved:
+			b.stroke(_stone_box(c, s), _cell * RIM_W * 1.2, Pal.BAD, true)
+		_rims_shown = b.mesh()
+	_rims_layer.draw_mesh(_rims_shown, null)
+
+func _stone_box(c: Vector2i, s: float) -> PackedVector2Array:
+	var at := cell_to_local(c.y, c.x) - Vector2.ONE * s * 0.5
+	return Face.Builder.round_rect(at, Vector2.ONE * s, _cell * (STONE_RADIUS + 0.03))
 
 ## Every lantern the answer does not put there wobbles and its stone blushes,
 ## and the sprout says how many.
@@ -2564,6 +2773,8 @@ func reset_board() -> void:
 	_refresh_faces()
 	_say(tr("LU_RESET"),
 		Face.Expr.HAPPY)
+	_drop_reading()
+	_judge_court(false, Vector2i(-1, -1))
 	_tip_timer.start()
 	fx.cue("reset")
 	_redraw()
@@ -2987,6 +3198,8 @@ func try_again() -> void:
 	moves = 0
 	elapsed = 0.0
 	checks = 0
+	_slips = 0
+	_stars.clear(3)
 	_running = true
 	_clear_court()
 	var dusk := _dusk(_now())
@@ -3046,6 +3259,11 @@ func _close_card() -> void:
 ## and Binairo's: pink with a small face and a leaf, a faint ghost where one
 ## was, the lost one's halves falling apart, and one coming back popping in.
 func _draw_hearts() -> void:
+	if _cell > 0.0 and _shows_stars() and not is_done() and not _won:
+		# made fun: the live stars, over the court's left edge
+		var row := _heart_row()
+		_stars.draw(_heart_layer, Vector2(_grid.x + StarLine.R, _grid.y - MORTAR - row * 0.5 - 4.0), 1.0, _now(),
+			clampf((_now() - _opened - Motion.ENTER_DELAY) / 0.3, 0.0, 1.0))
 	if max_moves > 0 and _cell > 0.0:
 		_moves_pill.draw(_heart_layer, Vector2(size.x * 0.5, _grid.y - MORTAR - HEART_ROW * 0.5 - 4.0),
 			moves_left, _now())
@@ -3792,8 +4010,11 @@ func _process(delta: float) -> void:
 		queue_redraw()
 	if (_split_index >= 0 and now - _split_at < SPLIT_TIME + 0.1) \
 			or (_back_index >= 0 and now - _back_at < HEART_BACK_TIME + 0.1) \
-			or _moves_pill.animating(now - 0.1):
+			or _moves_pill.animating(now - 0.1) or _stars.busy(now) \
+			or now - _opened - Motion.ENTER_DELAY < 0.5:
 		_heart_layer.queue_redraw()
+	if _toast.showing(now):
+		_toast_layer.queue_redraw()
 	if _combo_n >= COMBO_FROM and (now - _combo_at < COMBO_HOLD + 0.1 or _combo_out_at > -INF):
 		_combo_layer.queue_redraw()
 	if _tick_life(now):

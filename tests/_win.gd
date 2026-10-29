@@ -620,9 +620,16 @@ func _solve_lattice() -> void:
 			break
 	_hud_ok = st.swaps == 0
 	if _puzzle.capabilities().has("hint"):
+		# made fun: the first press reads (a square rimmed, the toast says
+		# why, nothing swapped), the second makes the swap
 		_press(_host.top_bar.hint_button)
-		_hud_ok = _hud_ok and _puzzle.hints_used == 1 and st.swaps == 1
+		_hud_ok = _hud_ok and _puzzle.hints_used == 1 and st.swaps == 0 \
+			and not _puzzle._reading.is_empty() and _puzzle._card_toast.text != ""
 		await create_timer(0.4).timeout
+		_press(_host.top_bar.hint_button)
+		_hud_ok = _hud_ok and _puzzle.hints_used == 1 and st.swaps == 1 and _puzzle._reading.is_empty()
+		await create_timer(0.4).timeout
+		print("lattice: bulb read and swapped, hud=%s, stars %d" % [_hud_ok, _puzzle._stars.stars])
 	var dragged := false
 	var guard := 0
 	while not st.is_solved() and guard < 60:
@@ -1089,10 +1096,16 @@ func _solve_lightup() -> void:
 		for c in w:
 			if not slot.has_point(_puzzle.cell_to_local(r, c)):
 				_fit_ok = false
-	# The HUD's own buttons: one hint (lights and pins a lantern), then one check.
+	# The HUD's own buttons: the bulb twice (made fun: the first press reads,
+	# a stone rimmed and the toast saying why, the second lights and pins
+	# it), then one check.
 	_press(_host.top_bar.hint_button)
+	var read_ok: bool = not _puzzle._reading.is_empty() and _puzzle._toast.text != "" and _puzzle.state.lamps().is_empty()
+	_press(_host.top_bar.hint_button)
+	read_ok = read_ok and _puzzle._reading.is_empty() and _puzzle.state.lamps().size() == 1
+	print("lightup: bulb read then pinned: %s" % read_ok)
 	_press_check()
-	_hud_ok = _puzzle.hints_used == 1 and _puzzle.checks == 1
+	_hud_ok = read_ok and _puzzle.hints_used == 1 and _puzzle.checks == 1
 	for b in _puzzle._solution_bulbs:
 		if _puzzle.is_done():
 			return

@@ -16,7 +16,7 @@ extends Control
 ##   the two plain tiles traded into it.
 ## - KNOT: a knot pointing at a green 2 and a plain tile, reading 6; the 4
 ##   swapped in beside it and the knot turning leaf.
-## - HINT: the bulb makes a swap of the answer, twice.
+## - HINT: the bulb reads a square and says why, then makes the swap.
 ## - COUNT: Insane's count of swaps going down.
 ##
 ## Every lattice below is the one answer
@@ -276,9 +276,9 @@ func _start() -> void:
 			_tap(6, "", "HTP_LA_KNOT_DONE_CAP", 3.4)
 		Lesson.HINT:
 			_press_chip()
-			_loop.tween_interval(2.6)
+			_say_for("HTP_LA_READ_CAP", 2.6)
 			_press_chip()
-			_loop.tween_interval(2.6)
+			_say_for("HTP_LA_BULB_CAP", 2.6)
 		Lesson.COUNT:
 			_tap(1, "", "", 0.3)
 			_tap(3, "", "", 1.6)
@@ -330,7 +330,7 @@ func _reset(fresh := false) -> void:
 	_lift()
 	_place_chip()
 	_say({Lesson.SWAP: "HTP_LA_PICK_CAP", Lesson.LINES: "HTP_LA_ROW_CAP", Lesson.KNOT: "HTP_LA_KNOT_CAP",
-		Lesson.HINT: "HTP_LA_BULB_CAP", Lesson.COUNT: "HTP_LA_LEFT_CAP"}[lesson])
+		Lesson.HINT: "HTP_LA_READ_CAP", Lesson.COUNT: "HTP_LA_LEFT_CAP"}[lesson])
 
 ## Reduce-motion: the lesson's answer, standing still.
 func _still() -> void:
@@ -348,6 +348,7 @@ func _still() -> void:
 			_art.tap(6)
 			_say("HTP_LA_KNOT_DONE_CAP")
 		Lesson.HINT:
+			_art.hint()
 			_art.hint()
 		Lesson.COUNT:
 			_art.tap(1)

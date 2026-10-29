@@ -169,3 +169,65 @@ ones. The court's mortar bed is on the host's margin.
   `check()` where the button is gone.
 - Decided for the user, unconfirmed: no Check; evening only at the foot;
   the court on a peach mid-tone. Owed: a phone, the level slide.
+
+## Made fun (2026-10-29)
+
+The user: "make lattice and light up experience way better to play, and
+game itself way funnier to play, right now nobody likes it", autonomous,
+push when done. References from the web: the genre's solving guides teach
+the same first moves (a number with just as many free stones as it wants;
+a dark stone only one place can light; a 0 rules its neighbours out) and
+the best solver tools "show one logical next move, explain the rule, and
+let you apply it when you want". The board already had plenty of
+spectacle (gags, moths, streak, party); the gap was reading and stakes.
+
+**Measured first** (`tests/_probe_lu_fun.gd`, headless, 40 days a band):
+- `State.read()` from the answer's lamps already down, the answer laid in a
+  random order: the rules decide the stone on 95-100% of readings (a
+  numbered block 76-94%, a lone lighter 5-17%), the "good place to start"
+  fallback 0-5%; a decided stone was never off the answer; under 1 ms
+  (one 2.5 ms outlier).
+- **Nothing the board said reached the screen**: `_speak()` and the
+  refusals went to `tip_line()`, which nothing has read since the bleed
+  redesign. Two lamps in sight, a block over its number: shown only as a
+  rose beam or a rose block, never said.
+- One fair lamp off the answer (no rule broken) leaves, by the rules alone,
+  a stone nothing can light or a numbered block that can no longer have
+  its number 26/24/15/23 times in 40 (Easy..Insane): the player could be
+  told at once and was told nothing until the court was full.
+
+**What changed**:
+
+- **The bulb teaches in two presses** (`hint`, `State.read`, `_why`,
+  `_pin` via `State.hint_at`): the first rims the stone in sun (thick) and
+  the block, dark stone or cat that decided it, and the toast says why
+  (`LU_WHY_BLOCK/ONLY/CAT/START`) plus `LU_READ_AGAIN`, for one hint; a
+  second press sets it down and pins it, free. Any move, Undo or Reset
+  puts the reading out. Tutorial HINT page presses twice
+  (`HTP_LU_READ_CAP`, `HTP_LU_HINT_CAP` now "Second press"); its body no
+  longer names Check.
+- **Stuck stones and starved blocks** (`State.stuck`, `State.starved`,
+  `State.free_stones`): after every move, stones nothing can light any
+  more and blocks that can no longer have their number are rimmed rose
+  (`_draw_rims`, its own layer, one mesh). Chips are the player's notes
+  and are not counted. Said in the rules (`LU_RULES_STUCK`).
+- **The toast** (`ui/flat/toast_card.gd`, its own layer) in the walk under
+  the court, else over the half away from what it is about: refusals, a
+  lantern that broke a rule (`LU_SEEN_*`, `LU_OVER_*`, `LU_CAT_OVER_*`),
+  stuck (`LU_STUCK_ONE/N`), starved (`LU_STARVED`), the reading. Mended,
+  it goes.
+- **Live stars** (`star_line.gd`) in a `STAR_ROW` (52) over the court's
+  left edge on every band (the tutorial's court has none,
+  `_shows_stars`): slips are lanterns set down that broke more than the
+  court had broken (sight, a block or cat over, a stone stuck, a block
+  starved) and bulbs read; `STARS_CUT` [0, 2].
+- Deals, rules, sounds, the streak and the party unchanged. en/pt/es
+  (machine-written pt/es, unreviewed). Easy-Hard courts are one row's
+  worth smaller for the star row.
+- Harnesses: `_shot_lightup.gd` modes `hint` and `stuck`; `_win.gd --
+  lightup` checks both presses (PASS). `opengl3_angle` 810x1440: Medium 93
+  peak, Insane 95. `_probe_insane_hints -- id=lightup seeds=4`: 0
+  failures. Suite 303252/0. Unseen on a phone.
+- Calls made without the user: a bulb read is a slip; a reading starts from
+  the answer's lamps already down and ignores off-answer ones (the old
+  bulb did the same); stuck/starved judged with chips ignored.

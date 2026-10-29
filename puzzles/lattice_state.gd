@@ -239,3 +239,143 @@ func share_glyphs() -> String:
 			out += "▫️" if i < 0 else ("🟩" if start[i] == sol[i] else "⬜")
 		out += "\n"
 	return out.strip_edges()
+
+# --- reading the lattice, as a player can (2026-10-29) ---
+
+## Why a reading names its square: the line's last free square, a knot with
+## its other tiles home, a square only one number fits, a number only one
+## square of a line can take, or (none of those) a swap the answer makes.
+enum { WHY_LAST, WHY_KNOT, WHY_ONLY, WHY_HIDDEN, WHY_PAIR }
+
+## The numbers the square `i` could still take, from the rules alone: none
+## already home in a whole line it stands in, one of the tiles still out,
+## and what its knots leave. Never the answer.
+func candidates(i: int) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	if is_home(i):
+		out.append(cur[i])
+		return out
+	var free := {}
+	for j in cur.size():
+		if not is_home(j):
+			free[int(cur[j])] = true
+	var used := {}
+	for l: int in lines_of(i):
+		for j: int in lines[l]:
+			if is_home(j):
+				used[int(cur[j])] = true
+	for v in range(1, n + 1):
+		if used.has(v) or not free.has(v):
+			continue
+		if _knot_allows(i, v):
+			out.append(v)
+	return out
+
+## Whether `v` on `i` can meet every knot pointing at it, the knot's other
+## tiles home at what they are and the rest anything from 1 to n.
+func _knot_allows(i: int, v: int) -> bool:
+	for k in knots:
+		var cells_: PackedInt32Array = k.cells
+		if not cells_.has(i):
+			continue
+		var lo := v
+		var hi := v
+		for j: int in cells_:
+			if j == i:
+				continue
+			if is_home(j):
+				lo += cur[j]
+				hi += cur[j]
+			else:
+				lo += 1
+				hi += n
+		if int(k.sum) < lo or int(k.sum) > hi:
+			return false
+	return true
+
+## The knot that alone fixes `i` (its other tiles all home), or -1.
+func _fixing_knot(i: int) -> int:
+	for k in knots.size():
+		var cells_: PackedInt32Array = knots[k].cells
+		if not cells_.has(i):
+			continue
+		var all_home := true
+		for j: int in cells_:
+			if j != i and not is_home(j):
+				all_home = false
+		if all_home:
+			return k
+	return -1
+
+## The bulb's first press: a square the rules decide and why, and a tile to
+## bring there. {cell, value, why, tile, line, knot}; {} on a finished board.
+## `cell` is -1 on WHY_PAIR (no square decided): `tile` and `pair` are then
+## the answer's swap that sends the most home.
+func read() -> Dictionary:
+	if is_solved():
+		return {}
+	var cands := {}
+	for i in cur.size():
+		if not is_home(i):
+			cands[i] = candidates(i)
+	# a line with one square left
+	for l in lines.size():
+		var out: Array = []
+		for j: int in lines[l]:
+			if not is_home(j):
+				out.append(j)
+		if out.size() == 1 and (cands[out[0]] as PackedInt32Array).size() == 1:
+			return _reading(out[0], WHY_LAST, l, -1)
+	# a knot with its other tiles home
+	for i: int in cands:
+		var k := _fixing_knot(i)
+		if k >= 0 and (cands[i] as PackedInt32Array).size() == 1:
+			return _reading(i, WHY_KNOT, -1, k)
+	# a square one number fits
+	for i: int in cands:
+		if (cands[i] as PackedInt32Array).size() == 1:
+			return _reading(i, WHY_ONLY, -1, -1)
+	# a number one square of a line can take
+	for l in lines.size():
+		var have := {}
+		for j: int in lines[l]:
+			if is_home(j):
+				have[int(cur[j])] = true
+		for v in range(1, n + 1):
+			if have.has(v):
+				continue
+			var only := -1
+			var count := 0
+			for j: int in lines[l]:
+				if not is_home(j) and (cands[j] as PackedInt32Array).has(v):
+					only = j
+					count += 1
+			if count == 1:
+				return _reading(only, WHY_HIDDEN, l, -1, v)
+	var pair := hint()
+	if pair.is_empty():
+		return {}
+	return {"cell": -1, "value": int(sol[pair[0]]), "why": WHY_PAIR, "tile": pair[1], "pair": pair,
+		"line": -1, "knot": -1}
+
+## A reading of square `i` (its number is the answer's: the rules decided
+## it), and the tile to bring: one whose own square wants what `i` holds now
+## when there is one, so both go home.
+func _reading(i: int, why: int, line: int, knot: int, v := -1) -> Dictionary:
+	if v < 0:
+		v = int(sol[i])
+	var tile := -1
+	for j in cur.size():
+		if j == i or is_home(j) or cur[j] != v:
+			continue
+		if sol[j] == cur[i]:
+			tile = j
+			break
+		if tile < 0:
+			tile = j
+	return {"cell": i, "value": v, "why": why, "tile": tile, "pair": [tile, i], "line": line, "knot": knot}
+
+## The fewest swaps the deal could still be done in, at the least: a swap
+## sends two tiles home at the most.
+func swaps_floor() -> int:
+	return swaps + int(ceil((count() - homes()) / 2.0))

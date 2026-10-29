@@ -41,6 +41,8 @@ const CozyTheme = preload("res://ui/theme.gd")
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 const World = preload("res://puzzles/lattice_world.gd")
 const FLAT_HOST := "res://ui/flat/flat_host.gd"
+const ToastCard = preload("res://ui/flat/toast_card.gd")
+const StarLine = preload("res://ui/flat/star_line.gd")
 ## The slide into the win's span (the host's SLOT_TIME), and the air kept
 ## round the block inside it.
 const WIN_SLIDE := 0.45
@@ -89,12 +91,21 @@ const LOW := 3
 ## The toast: the board's own line for what just happened, on a dark pill
 ## over the foot of the card -- or over its head when the finger is working
 ## down there (Knight's and Horse Pen's toast, measure for measure).
-const TOAST_HOLD := 2.6
-const TOAST_H := 84.0
-const TOAST_PAD := 80.0
-const TOAST_RADIUS := 28.0
-const TOAST_FONT := 32
-const TOAST_MARGIN := 40.0
+const TOAST_MARGIN := 24.0
+
+## Made fun (2026-10-29). Stars by slips (a swap that sent nothing home, a
+## bulb read): three at none, two up to two, one past that. A run of swaps
+## that each send a tile home climbs the home cue a step a swap, and says so
+## every third. The guide over a picked tile: a tile its number cannot go to
+## is veiled, one that can only take that number is rimmed in sun.
+const STARS_CUT := [0, 2]
+const RUN_PITCH := 0.035
+const RUN_PITCH_MAX := 1.3
+const RUN_SAY := 3
+const VEIL_ALPHA := 0.62
+const RIM_W := 0.07
+const TOAST_FS := 30
+const TOAST_PAD_IN := Vector2(26.0, 16.0)
 
 const TIP_CYCLE := 10.0
 const TIPS := ["LA_TIP_SWAP", "LA_TIP_LINE", "LA_TIP_KNOT", "LA_TIP_HOME"]
@@ -209,15 +220,28 @@ var _stamp_at := INF
 var _anim_until := 0.0
 var _tip_text := ""
 var _tip_mood := Face.Expr.HAPPY
-var _toast := ""
-var _toast_at := -100.0
 var _toast_high := false
-var _toast_mesh: ArrayMesh
-var _toast_mesh_for := ""
 var _tip_idx := 0
 var _tip_timer: Timer
 var _final_swaps := 0
 var _final_left := 0
+
+# --- made fun ---
+var _card_toast := ToastCard.new()
+var _stars := StarLine.new()
+var _slips := 0
+var _run := 0
+var _best_run := 0
+## The bulb's first press: State.read()'s reading, until a move puts it out.
+var _reading: Dictionary = {}
+## The guide over the tile picked or held: cell -> 0 its number cannot go
+## there, 2 only its number can; the number it was made for.
+var _guide: Dictionary = {}
+var _guide_for := -1
+var _guide_mesh: ArrayMesh
+var _rim_mesh: ArrayMesh
+## Squares rimmed rose: a tile set where the rules say its number cannot go.
+var _wrong_at: Array = []
 
 func puzzle_id() -> String: return "lattice"
 func title() -> String: return "Lattice"
@@ -225,6 +249,7 @@ func title() -> String: return "Lattice"
 func rules() -> String:
 	var out := tr("LA_RULES") % state.n
 	out += "\n\n" + tr("LA_RULES_KNOTS")
+	out += "\n\n" + tr("LA_RULES_GUIDE")
 	if max_moves > 0:
 		out += "\n\n" + tr("LA_RULES_COUNTED") % [max_moves, state.par]
 	else:
@@ -339,6 +364,9 @@ func day_dict() -> Dictionary:
 func _begin() -> void:
 	max_moves = state.moves_budget()
 	_heart_used = false
+	_slips = 0
+	_best_run = 0
+	_stars.clear(3)
 	_solved_at = -1.0
 	_stamp_at = INF
 	_seal_mesh = null
@@ -355,7 +383,13 @@ func _deal() -> void:
 	_asleep = false
 	_held = -1
 	_picked = -1
-	_toast = ""
+	_card_toast.clear()
+	_reading = {}
+	_guide = {}
+	_guide_for = -1
+	_wrong_at = []
+	_rim_mesh = null
+	_run = 0
 	var count: int = state.count()
 	_fly_from = PackedVector2Array()
 	_fly_from.resize(count)
@@ -425,6 +459,8 @@ func _layout() -> void:
 		_grid = Vector2(size.x * 0.5 - side * 0.5, _card.position.y + HUD_ROW + (tall - HUD_ROW - side) * 0.5)
 	_flat_cache = {}
 	_units = Art.units(_cell)
+	_guide_mesh = null
+	_rim_mesh = null
 	_still = _build_still()
 	_seal_mesh = null
 	_knots_dirty = true
@@ -636,13 +672,78 @@ func _draw() -> void:
 		draw_mesh(_rest, null)
 		shown.append(_rest)
 	_draw_ink(_rest_ink)
+	_draw_guide(shown)
 	if _top != null:
 		draw_mesh(_top, null)
 		shown.append(_top)
 	_draw_ink(_top_ink)
+	_draw_rims(shown)
 	if now >= _stamp_at:
 		_draw_stamp(now, shown)
 	_shown = shown
+
+## Made fun: the guide over the tile picked or held. Every other plain tile
+## its number cannot go to by the rules is veiled; one whose square only that
+## number fits is rimmed in sun. Read from the rules, never the answer; one
+## mesh, made when the tile is picked.
+func _draw_guide(shown: Array) -> void:
+	var src := _held if _held >= 0 else _picked
+	if src < 0 or is_done() or state.is_home(src):
+		_guide_for = -1
+		return
+	var key := src * 1000 + int(state.cur[src]) * 100 + state.homes()
+	if _guide_for != key or _guide_mesh == null:
+		_guide_for = key
+		var v := int(state.cur[src])
+		var b := Face.Builder.new()
+		var s := _cell * Art.TILE
+		for j in state.count():
+			if j == src or state.is_home(j):
+				continue
+			var c: PackedInt32Array = state.candidates(j)
+			var at := cell_centre(j) - Vector2.ONE * s * 0.5 - Vector2(0.0, _cell * Art.FACE_RISE)
+			var box := Face.Builder.round_rect(at, Vector2.ONE * s, _cell * Art.TILE_RADIUS)
+			if not c.has(v):
+				b.fan(box, Color(Pal.SURFACE, VEIL_ALPHA))
+			elif c.size() == 1:
+				b.stroke(box, _cell * RIM_W, Pal.SUN, true)
+		_guide_mesh = b.mesh()
+	draw_mesh(_guide_mesh, null)
+	shown.append(_guide_mesh)
+
+## Made fun: the reading's rims (the square in sun, thick; the tile to bring
+## in sun; the line or the knot that decided it, fine) and a rose rim on a
+## square holding a number the rules say cannot be there.
+func _draw_rims(shown: Array) -> void:
+	if is_done() or (_reading.is_empty() and _wrong_at.is_empty()):
+		return
+	if _rim_mesh == null:
+		var b := Face.Builder.new()
+		var s := _cell * (Art.TILE + 0.08)
+		if not _reading.is_empty():
+			var line := int(_reading.line)
+			if line >= 0:
+				for j: int in state.lines[line]:
+					b.stroke(_box(j, s), _cell * RIM_W * 0.5, Color(Pal.SUN, 0.7), true)
+			var knot := int(_reading.knot)
+			if knot >= 0:
+				var at: Vector2 = _square_centre(state.knots[knot].at)
+				b.stroke(Face.Builder.ring(at, _cell * 0.4, _cell * 0.4), _cell * RIM_W, Pal.SUN, true)
+				for j: int in state.knots[knot].cells:
+					b.stroke(_box(j, s), _cell * RIM_W * 0.5, Color(Pal.SUN, 0.7), true)
+			if int(_reading.cell) >= 0:
+				b.stroke(_box(int(_reading.cell), s + _cell * 0.04), _cell * RIM_W * 1.6, Pal.SUN, true)
+			if int(_reading.tile) >= 0:
+				b.stroke(_box(int(_reading.tile), s), _cell * RIM_W, Pal.SUN, true)
+		for j: int in _wrong_at:
+			b.stroke(_box(j, s), _cell * RIM_W * 1.2, Pal.BAD, true)
+		_rim_mesh = b.mesh()
+	draw_mesh(_rim_mesh, null)
+	shown.append(_rim_mesh)
+
+func _box(j: int, s: float) -> PackedVector2Array:
+	var at := cell_centre(j) - Vector2.ONE * s * 0.5 - Vector2(0.0, _cell * Art.FACE_RISE)
+	return Face.Builder.round_rect(at, Vector2.ONE * s, _cell * (Art.TILE_RADIUS + 0.03))
 
 ## The numerals of the tiles a build just laid, each under its tile's own
 ## transform so it pops, flies and hops with it.
@@ -772,6 +873,9 @@ func _draw_hud() -> void:
 	var rise := (font.get_ascent(PILL_FONT) - font.get_descent(PILL_FONT)) * 0.5
 	_hud_layer.draw_string(font, Vector2(-wide * 0.5, rise), text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, PILL_FONT, Color(ink, alpha))
 	_hud_layer.draw_set_transform(Vector2.ZERO)
+	if not is_done() and not _won:
+		# made fun: the live stars, on the strip's left over the lattice
+		_stars.draw(_hud_layer, Vector2(_card.position.x + StarLine.R, _card.position.y + HUD_ROW * 0.5 + 6.0), 1.0, now, alpha)
 	_draw_toast(now)
 
 ## What the pill reads.
@@ -786,46 +890,22 @@ func _bump_pill() -> void:
 	_pill_bump = _now()
 	_hud_layer.queue_redraw()
 
+## The toast (the shared paper card, ui/flat/toast_card.gd since the made-fun
+## pass): in the open garden under the lattice when there is room, else over
+## the lattice's foot, or its head when what it is about is down there.
 func _draw_toast(now: float) -> void:
-	if _toast == "":
+	if not _card_toast.showing(now):
 		return
-	var since := now - _toast_at
-	if since < 0.0 or since >= TOAST_HOLD:
-		return
-	var alpha := minf(Motion.appear_level(since, Motion.DROP_FADE),
-		Motion.appear_level(TOAST_HOLD - since, Motion.DROP_FADE))
-	if alpha <= 0.0:
-		return
-	var font: Font = CozyTheme.body(600)
-	var room := maxf(TOAST_PAD, size.x - 120.0)
-	var text_room := room - TOAST_PAD
-	var one: float = font.get_string_size(_toast, HORIZONTAL_ALIGNMENT_LEFT, -1, TOAST_FONT).x
-	var lines := 1
-	var text_w := one
-	if one > text_room:
-		var wrapped: Vector2 = font.get_multiline_string_size(_toast, HORIZONTAL_ALIGNMENT_CENTER, text_room, TOAST_FONT)
-		lines = maxi(1, int(round(wrapped.y / font.get_height(TOAST_FONT))))
-		text_w = minf(text_room, wrapped.x)
-	var wide := minf(room, text_w + TOAST_PAD)
-	var tall := TOAST_H + float(lines - 1) * font.get_height(TOAST_FONT)
-	var key := "%s|%d|%d" % [_toast, int(wide), lines]
-	if _toast_mesh == null or _toast_mesh_for != key:
-		var b := Face.Builder.new()
-		b.fan(Face.Builder.round_rect(Vector2(-wide, -tall) * 0.5, Vector2(wide, tall), TOAST_RADIUS), Pal.TEXT)
-		_toast_mesh = b.mesh()
-		_toast_mesh_for = key
 	var field := _field_px()
-	var mid := Vector2(size.x * 0.5, field.end.y - TOAST_MARGIN - tall * 0.5)
-	if _toast_high:
-		mid.y = field.position.y + TOAST_MARGIN + tall * 0.5
-	_hud_layer.draw_mesh(_toast_mesh, null, Transform2D(0.0, mid), Color(Color.WHITE, alpha * 0.94))
-	var top := mid.y - tall * 0.5 + (TOAST_H - font.get_height(TOAST_FONT)) * 0.5 + font.get_ascent(TOAST_FONT)
-	var left := mid.x - wide * 0.5 + TOAST_PAD * 0.5
-	if lines == 1:
-		_hud_layer.draw_string(font, Vector2(left, top), _toast, HORIZONTAL_ALIGNMENT_LEFT, -1, TOAST_FONT, Color(Pal.PAPER, alpha))
-	else:
-		_hud_layer.draw_multiline_string(font, Vector2(left, top), _toast, HORIZONTAL_ALIGNMENT_CENTER,
-			wide - TOAST_PAD, TOAST_FONT, lines, Color(Pal.PAPER, alpha))
+	var wide := minf(size.x - 2.0 * _side(), maxf(field.size.x, 560.0))
+	var tall: float = _card_toast.tall(wide, TOAST_FS, TOAST_PAD_IN)
+	var mid := Vector2(size.x * 0.5, field.end.y + TOAST_MARGIN + tall * 0.5)
+	var room := size.y - _clear.y - field.end.y if _bled else size.y - field.end.y
+	if room < tall + 2.0 * TOAST_MARGIN:
+		mid.y = field.end.y - TOAST_MARGIN - tall * 0.5
+		if _toast_high:
+			mid.y = field.position.y + TOAST_MARGIN + tall * 0.5
+	_card_toast.draw(_hud_layer, mid, wide, now, TOAST_FS, TOAST_PAD_IN)
 
 # --- input ---
 
@@ -915,7 +995,7 @@ func tap(cell: int) -> void:
 
 ## Swaps the tiles on `a` and `b`, `a`'s leaving from `from` (where the finger
 ## let it go). False when the rules refuse it.
-func _swap(a: int, b: int, from: Vector2) -> bool:
+func _swap(a: int, b: int, from: Vector2, by_hint := false) -> bool:
 	# Insane counts its swaps, and one the count cannot pay for is not made.
 	var cost := 1 if max_moves > 0 else 0
 	if cost > moves_left and max_moves > 0:
@@ -929,6 +1009,8 @@ func _swap(a: int, b: int, from: Vector2) -> bool:
 			return false
 		State.REFUSED_SELF:
 			return false
+	if not by_hint:
+		_drop_reading()
 	var now := _now()
 	_fly(b, from, SWAP_TIME)
 	_fly(a, cell_centre(b), SWAP_TIME)
@@ -937,7 +1019,7 @@ func _swap(a: int, b: int, from: Vector2) -> bool:
 	_home_at[b] = land
 	fx.cue("swap", randf_range(TICK_VARY.x, TICK_VARY.y))
 	_bump_pill()
-	_after(land - now, _landed.bind(a, b))
+	_after(land - now, _landed.bind(a, b, false, by_hint))
 	note_move()
 	_spend(cost, land)
 	return true
@@ -951,7 +1033,7 @@ func _fly(cell: int, from: Vector2, time: float) -> void:
 
 ## The two tiles of a swap have landed: the ones now home say so, and so do
 ## the knots and the lines they settle.
-func _landed(a: int, b: int, quiet := false) -> void:
+func _landed(a: int, b: int, quiet := false, by_hint := false) -> void:
 	var sent := 0
 	for i: int in [a, b]:
 		if state.is_home(i):
@@ -961,11 +1043,73 @@ func _landed(a: int, b: int, quiet := false) -> void:
 		if sent == 0:
 			fx.cue("miss", randf_range(TICK_VARY.x, TICK_VARY.y))
 		else:
-			fx.cue("home2" if sent == 2 else "home", randf_range(TICK_VARY.x, TICK_VARY.y))
+			# a run climbs the home cue a step a swap
+			var up := minf(1.0 + RUN_PITCH * _run, RUN_PITCH_MAX)
+			fx.cue("home2" if sent == 2 else "home", up * randf_range(0.98, 1.02))
+	if not quiet:
+		_judge_swap(a, b, sent, by_hint)
 	_settle(quiet)
 	_knots_dirty = true
 	_busy_for(Motion.BUMP_TIME)
 	_redraw()
+
+## Made fun: what a swap came to, past its sound. Nothing home is a slip (a
+## clean solve sends one or two home every swap) and ends the run; a tile set
+## where the rules say its number cannot go is rimmed rose and the toast
+## says why; a run of swaps sending tiles home says so every third.
+func _judge_swap(a: int, b: int, sent: int, by_hint: bool) -> void:
+	var kept: Array = []
+	for i: int in _wrong_at:
+		if i != a and i != b and not state.is_home(i) and not state.candidates(i).has(int(state.cur[i])):
+			kept.append(i)
+	_wrong_at = kept
+	var why := ""
+	for i: int in [b, a]:
+		if state.is_home(i) or state.candidates(i).has(int(state.cur[i])):
+			continue
+		_wrong_at.append(i)
+		if why == "":
+			why = _why_not(i)
+	_rim_mesh = null
+	if sent == 0:
+		_run = 0
+		_slips += 1
+		_rate(true)
+	else:
+		_run += 1
+		_best_run = maxi(_best_run, _run)
+	if is_done():
+		return
+	var near := a if why != "" else b
+	if why != "":
+		_tell(why, Face.Expr.PUZZLED, _wrong_at[-1])
+	elif sent == 2 and not Motion.reduce:
+		fx.sparkle(cell_centre(a), Pal.SUN)
+		fx.sparkle(cell_centre(b), Pal.SUN)
+	if sent > 0 and _run >= RUN_SAY and _run % RUN_SAY == 0:
+		_tell(tr("LA_RUN") % _run, Face.Expr.JOY, near)
+		for i: int in [a, b]:
+			fx.sparkle(cell_centre(i), Pal.SUN)
+
+## Why the number on `i` cannot be there, by the rules: a whole line it
+## stands in has that number home already, or a knot cannot make its sum.
+func _why_not(i: int) -> String:
+	var v := int(state.cur[i])
+	var rows: int = (state.n + 1) / 2
+	for l: int in state.lines_of(i):
+		for j: int in state.lines[l]:
+			if j != i and state.is_home(j) and int(state.cur[j]) == v:
+				return tr("LA_NOT_ROW" if l < rows else "LA_NOT_COL") % v
+	for k in state.knots.size():
+		if (state.knots[k].cells as PackedInt32Array).has(i) and not state._knot_allows(i, v):
+			return tr("LA_NOT_KNOT") % [int(state.knots[k].sum), v]
+	return tr("LA_NOT_GONE") % v
+
+## The stars the day's slips leave; `heard`: a lost one falls.
+func _rate(heard: bool) -> void:
+	var w := _slips
+	_stars.rate(3 if w <= int(STARS_CUT[0]) else (2 if w <= int(STARS_CUT[1]) else 1), _now(), heard)
+	_hud_layer.queue_redraw()
 
 ## Knots and lines newly whole: a knot bumps, a line hops end to end.
 func _settle(quiet := false) -> void:
@@ -1010,8 +1154,7 @@ func _say(text: String, mood: int) -> void:
 ## the cell the finger is on, so the toast keeps out of its way.
 func _tell(text: String, mood: int, near := -1) -> void:
 	_say(text, mood)
-	_toast = text
-	_toast_at = _now()
+	_card_toast.say(text, _now())
 	_toast_high = near >= 0 and state.xy(near).y >= state.n * 2 / 3
 	_hud_layer.queue_redraw()
 
@@ -1036,6 +1179,10 @@ func undo() -> bool:
 	if pair.is_empty():
 		return false
 	_picked = -1
+	_drop_reading()
+	_run = 0
+	_wrong_at = []
+	_rim_mesh = null
 	var now := _now()
 	_fly(pair[0], cell_centre(pair[1]), SWAP_TIME)
 	_fly(pair[1], cell_centre(pair[0]), SWAP_TIME)
@@ -1050,27 +1197,83 @@ func undo() -> bool:
 	return true
 
 func hints_left() -> int:
-	return State.hints_for(state.band) + hints_extra - hints_used
+	return _hints_held() + (0 if _reading.is_empty() else 1)
 
-## Makes one swap of the answer, two tiles home at once when there is such a
-## pair: a ring out of each cell, then the swap as the player would make it.
+func _hints_held() -> int:
+	return maxi(0, State.hints_for(state.band) + hints_extra - hints_used)
+
+## Made fun (2026-10-29): the bulb teaches, in two presses. The first reads
+## the lattice the way a player can (State.read: a line's last square, a knot
+## with its other tiles home, a square only one number fits, a number only
+## one square of a line takes): it rims the square in sun, the line or the
+## knot that decided it, and the tile to bring, and the toast says why, for
+## one hint. The player may make the swap themselves; a second press while
+## the reading stands makes it, free.
 func hint() -> bool:
-	if is_done() or out_of_hearts or hints_left() <= 0:
+	if is_done() or out_of_hearts:
 		return false
-	var pair: Array = state.hint()
-	if pair.is_empty():
+	if not _reading.is_empty():
+		var pair: Array = _reading.pair
+		_drop_reading()
+		_picked = -1
+		_held = -1
+		for i: int in pair:
+			fx.ring(cell_centre(i), _cell * 0.5, Pal.SUN)
+			fx.sparkle(cell_centre(i), Pal.LEAF)
+		fx.cue("hint")
+		var made := _swap(pair[0], pair[1], cell_centre(pair[0]), true)
+		_redraw()
+		moved.emit()
+		return made
+	if _hints_held() <= 0:
+		return false
+	var got: Dictionary = state.read()
+	if got.is_empty() or int(got.tile) < 0:
 		return false
 	hints_used += 1
 	_picked = -1
 	_held = -1
-	for i: int in pair:
-		fx.ring(cell_centre(i), _cell * 0.5, Pal.SUN)
-		fx.sparkle(cell_centre(i), Pal.LEAF)
+	_reading = got
+	_rim_mesh = null
+	var at := int(got.cell) if int(got.cell) >= 0 else int(got.tile)
+	fx.ring(cell_centre(at), _cell * 0.55, Pal.SUN)
 	fx.cue("hint")
-	_swap(pair[0], pair[1], cell_centre(pair[0]))
-	_tell(tr("LA_HINTED"), Face.Expr.HAPPY, pair[1])
+	_tell(_why(got) + " " + tr("LA_READ_AGAIN"), Face.Expr.HAPPY, at)
+	_card_toast.hold = true
+	_slips += 1
+	_rate(true)
 	_redraw()
+	moved.emit()
 	return true
+
+## What the reading says.
+func _why(got: Dictionary) -> String:
+	var v := int(got.value)
+	var rows: int = (state.n + 1) / 2
+	var row: bool = int(got.line) >= 0 and int(got.line) < rows
+	match int(got.why):
+		State.WHY_LAST:
+			return tr("LA_WHY_LAST_ROW" if row else "LA_WHY_LAST_COL") % v
+		State.WHY_KNOT:
+			var k: Dictionary = state.knots[int(got.knot)]
+			return tr("LA_WHY_KNOT") % [int(k.sum), v]
+		State.WHY_ONLY:
+			return tr("LA_WHY_ONLY") % v
+		State.WHY_HIDDEN:
+			return tr("LA_WHY_HIDDEN_ROW" if row else "LA_WHY_HIDDEN_COL") % v
+	return tr("LA_WHY_PAIR")
+
+## The reading goes out (a swap by hand, Undo, Reset, its own second press),
+## and its toast with it.
+func _drop_reading() -> void:
+	if _reading.is_empty():
+		return
+	_reading = {}
+	_rim_mesh = null
+	if _card_toast.hold:
+		_card_toast.clear()
+	_hud_layer.queue_redraw()
+	queue_redraw()
 
 ## The deal as it was dealt, every tile popping back in along the diagonals,
 ## and on Insane every swap back. The hints a player spent are not refunded.
@@ -1104,7 +1307,7 @@ func skill_quality() -> float:
 	return clampf(float(par) / float(maxi(state.swaps, par)), 0.0, 1.0)
 
 func completion_record() -> Dictionary:
-	return {"swaps": state.swaps, "left": moves_left}
+	return {"swaps": state.swaps, "left": moves_left, "slips": _slips, "run": _best_run}
 
 ## A completed daily is rebuilt from its seed, so the lattice opens
 ## scrambled: every tile goes home and the swaps it took are put back.
@@ -1115,6 +1318,9 @@ func restore_completed_board() -> void:
 	state.finish(int(completed_record.get("swaps", state.par)))
 	_deal()
 	moves_left = int(completed_record.get("left", 0))
+	_slips = int(completed_record.get("slips", 0))
+	_best_run = int(completed_record.get("run", 0))
+	_rate(false)
 	_opened = now - 10.0
 	_solved_at = now - 10.0
 	_final_swaps = state.swaps
@@ -1151,6 +1357,8 @@ func flat_win() -> Dictionary:
 		sub = tr("LA_WIN_SUB_BEST") % _final_swaps
 	else:
 		sub = tr("LA_WIN_SUB") % [_final_swaps, state.par]
+	if _best_run >= RUN_SAY:
+		sub += " " + tr("LA_WIN_RUN") % _best_run
 	return {"faces": [], "subtitle": sub}
 
 func win_delay() -> float:
@@ -1163,7 +1371,10 @@ func _on_solved() -> void:
 	_held = -1
 	_picked = -1
 	_tip_timer.stop()
-	_toast = ""
+	_card_toast.clear()
+	_reading = {}
+	_guide = {}
+	_wrong_at = []
 	_solved_at = now
 	_final_swaps = state.swaps
 	_final_left = moves_left - (1 if max_moves > 0 else 0)
@@ -1277,6 +1488,9 @@ func try_again() -> void:
 		return
 	_close_card()
 	elapsed = 0.0
+	_slips = 0
+	_best_run = 0
+	_stars.clear(3)
 	_restart()
 	_tip_idx = 0
 	_say(tr(_tips()[0]), Face.Expr.HAPPY)
@@ -1344,7 +1558,7 @@ func _process(delta: float) -> void:
 		queue_redraw()
 	var since := now - _opened - Motion.ENTER_DELAY
 	if since < Motion.DROP_FADE + 0.1 or now - _pill_bump < Motion.BUMP_TIME + 0.1 \
-			or (_toast != "" and now - _toast_at < TOAST_HOLD + 0.1):
+			or _card_toast.showing(now) or _stars.busy(now):
 		_hud_layer.queue_redraw()
 
 func _redraw() -> void:

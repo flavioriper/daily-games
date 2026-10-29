@@ -197,6 +197,31 @@ func _script() -> void:
 				print("after try again: hearts %d out %s lamps %d hints %d" % [_puzzle.hearts, _puzzle.out_of_hearts, _puzzle.state.lamps().size(), _puzzle.hints_left()]))
 			_at(8.8, _shot)
 			_end = 9.0
+		"hint":
+			# made fun: the first press reads (a stone rimmed, the toast says
+			# why), the second sets it down and pins it
+			_at(1.6, func() -> void: _puzzle.hint())
+			_at(1.9, _shot)
+			_at(2.4, func() -> void:
+				_puzzle.hint()
+				print("hint: lamps %d hints left %d" % [_puzzle.state.lamps().size(), _puzzle.hints_left()]))
+			_at(2.9, _shot)
+			_end = 3.2
+		"stuck":
+			# made fun: a fair lamp off the answer that leaves a stone nothing
+			# can light or a block short of its number: rose rims, the toast,
+			# a star falling
+			_at(1.5, func() -> void:
+				var c := _stuck_cell()
+				print("stuck lamp ", c)
+				if c.x >= 0:
+					_ev_press(_puzzle.cell_to_local(c.y, c.x), true)
+					_ev_press(_puzzle.cell_to_local(c.y, c.x), false))
+			_at(2.1, _shot)
+			_at(2.8, func() -> void:
+				print("stuck %d starved %d stars %d toast '%s'" % [_puzzle._stuck.size(), _puzzle._starved.size(), _puzzle._stars.stars, _puzzle._toast.text]))
+			_at(2.9, _shot)
+			_end = 3.2
 		"wake":
 			_at(1.5, func() -> void:
 				var st = _puzzle.state
@@ -250,3 +275,21 @@ func _script() -> void:
 				_tap(1.0 + k * 0.3, lamps[k])
 			_ms_from = 1.0 + lamps.size() * 0.15 + 2.5
 			_end = _ms_from + 3.0
+
+## A stone where a fair lamp off the answer strands a stone or starves a
+## block.
+func _stuck_cell() -> Vector2i:
+	var st = _puzzle.state
+	for y in st.h:
+		for x in st.w:
+			var c := Vector2i(x, y)
+			if not st.is_white(c) or st.mark_at(c) != 0 or st.solution.has(c):
+				continue
+			st.marks[c] = 1
+			st.recompute()
+			var hit: bool = st.lamp_fair(c) and (not st.stuck().is_empty() or not st.starved().is_empty())
+			st.marks.erase(c)
+			st.recompute()
+			if hit:
+				return c
+	return Vector2i(-1, -1)

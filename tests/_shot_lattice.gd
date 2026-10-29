@@ -193,12 +193,28 @@ func _script() -> void:
 			_at(2.75, _shot)
 			_end = 4.0
 		"hint":
+			# made fun: the first press reads, the tile to bring picked (the
+			# guide over it), the second press swaps
 			_at(1.6, func() -> void: _host._on_hint())
 			_at(1.75, _shot)
 			_at(2.3, _shot)
-			_at(2.6, func() -> void: _host._on_undo())
-			_at(3.1, _shot)
-			_end = 4.0
+			_at(2.5, func() -> void: _tap(int(_puzzle._reading.tile)))
+			_at(2.9, _shot)
+			_at(3.1, func() -> void: _host._on_hint())
+			_at(3.6, _shot)
+			_end = 4.2
+		"wrong":
+			# made fun: a swap that sends nothing home and sets a number where
+			# the rules rule it out: the rose rim, the toast, a star falling
+			_at(1.6, func() -> void:
+				var p := _wrong_pair()
+				print("wrong pair %s" % [p])
+				if p.size() == 2:
+					_tap(p[0])
+					_tap(p[1]))
+			_at(2.0, _shot)
+			_at(2.6, _shot)
+			_end = 3.4
 		"solve":
 			var t := 1.4
 			for k in st.par + 2:
@@ -238,3 +254,19 @@ func _script() -> void:
 				_puzzle.restore_completed())
 			_at(0.5, _shot)
 			_end = 1.5
+
+## Two plain tiles whose swap sends neither home and sets a number on a
+## square the rules say it cannot take.
+func _wrong_pair() -> Array:
+	var st = _puzzle.state
+	for a in st.count():
+		if st.is_home(a): continue
+		for b in st.count():
+			if b == a or st.is_home(b) or st.cur[a] == st.cur[b]: continue
+			if st.sol[a] == st.cur[b] or st.sol[b] == st.cur[a]: continue
+			st._trade(a, b)
+			var bad: bool = not st.candidates(b).has(int(st.cur[b]))
+			st._trade(a, b)
+			if bad:
+				return [a, b]
+	return []
