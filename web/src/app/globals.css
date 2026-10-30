@@ -65,15 +65,33 @@ h1 {
 }
 h1 em { color: var(--accent); }
 .lede { max-width: 31em; margin: 0 0 32px; font-size: 18px; color: var(--dim); }
-.get { display: flex; flex-wrap: wrap; gap: 14px 32px; align-items: baseline; }
-.get a {
+.get { display: flex; flex-wrap: wrap; gap: 12px; }
+.store {
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 176px;
+  padding: 11px 20px 11px 16px;
+  border: 1px solid var(--ink);
+  border-radius: 4px;
   font-weight: 500;
+  line-height: 1.1;
   text-decoration: none;
-  border-bottom: 1px solid var(--ink);
-  padding-bottom: 3px;
+  transition: background-color .15s, color .15s;
 }
-.get a:hover { color: var(--accent); border-color: var(--accent); }
-.get span { color: var(--dim); }
+.store svg { width: 20px; height: 20px; flex: none; }
+.store span { display: flex; flex-direction: column; }
+.store small {
+  margin-bottom: 3px;
+  font-size: 9.5px;
+  font-weight: 400;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  opacity: .72;
+}
+.store:hover { background: var(--ink); color: var(--paper); }
+.store.primary { background: var(--ink); color: var(--paper); }
+.store.primary:hover { background: var(--accent); border-color: var(--accent); }
 figure { margin: 0; }
 figcaption {
   display: flex;

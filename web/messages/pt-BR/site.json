@@ -6,8 +6,8 @@
   "headlineOne": "Quebra-cabeças pequenos,",
   "headlineTwo": "dias mais leves.",
   "lede": "Tabuleiros novos toda manhã, os mesmos para todos. {count} jogos de lógica, palavras e imagens, do Fácil ao Insano, com arcade e versus para quando um só nunca basta.",
-  "iosCta": "Entrar no beta para iPhone",
-  "androidCta": "Baixar no Google Play",
+  "iosCta": "TestFlight",
+  "androidCta": "Google Play",
   "heroAlt": "Um pretzel em ponto cruz, meio preenchido com joias, em um tabuleiro de Jewel Box",
   "heroCaption": "Coloque cada joia, descubra a imagem",
   "shotAlt": "Uma tela de {name}",
@@ -20,5 +20,7 @@
   "closeTitle": "Os tabuleiros de hoje estão esperando.",
   "madeBy": "Feito pela Hypertradeworx. Os anúncios mantêm o jogo grátis.",
   "privacy": "Política de privacidade",
-  "privacyHref": "https://daily-games-420bf.web.app/peeplet/privacy#pt"
+  "privacyHref": "https://daily-games-420bf.web.app/peeplet/privacy#pt",
+  "androidEyebrow": "Disponível no",
+  "iosEyebrow": "Beta para iPhone no"
 }

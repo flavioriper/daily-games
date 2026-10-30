@@ -6,8 +6,8 @@
   "headlineOne": "Small puzzles,",
   "headlineTwo": "brighter days.",
   "lede": "New boards every morning, the same for everyone. {count} games of logic, words and pictures, from Easy to Insane, with arcade and versus for when one more is never enough.",
-  "iosCta": "Join the iPhone beta",
-  "androidCta": "Get it on Google Play",
+  "iosCta": "TestFlight",
+  "androidCta": "Google Play",
   "heroAlt": "A cross stitch pretzel half set with jewels on a board of Jewel Box",
   "heroCaption": "Set every jewel, find the picture",
   "shotAlt": "A screen of {name}",
@@ -20,5 +20,7 @@
   "closeTitle": "Today's boards are waiting.",
   "madeBy": "Made by Hypertradeworx. Ads keep the game free.",
   "privacy": "Privacy policy",
-  "privacyHref": "https://daily-games-420bf.web.app/peeplet/privacy"
+  "privacyHref": "https://daily-games-420bf.web.app/peeplet/privacy",
+  "androidEyebrow": "Get it on",
+  "iosEyebrow": "iPhone beta on"
 }
