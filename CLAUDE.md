@@ -65,6 +65,7 @@ that area**, and add new history there rather than here.
 | Sound | `docs/agents/sound.md` |
 | Haptics: the kinds, the rules and the per-game list | `docs/agents/haptics.md` |
 | Art, buttons, sheets, dialogs | `docs/agents/art-and-ui.md` |
+| The website (`web/`) | `docs/agents/website.md` |
 | Android build | `docs/agents/android.md` |
 | Analytics events | `docs/agents/analytics.md` |
 | Ads, age gate, remove-ads purchase | `docs/agents/ads-and-purchase.md` |

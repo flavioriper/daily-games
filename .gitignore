@@ -116,3 +116,11 @@ tools/dashboard.html
 /ios/plugins/firebase_*/
 tools/day_viewer/node_modules/
 tools/day_viewer/dist/
+
+# The site (web/): dependencies, build output and the assembled hosting folder.
+web/node_modules/
+web/.next/
+web/out/
+web/next-env.d.ts
+web/tsconfig.tsbuildinfo
+server/public_site/

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Deploys the hosted site (server/site, by server/firebase.json's hosting
-# block) to https://daily-games-420bf.web.app: the friend link's page
+# Builds the landing page (web/) and deploys it with server/site, assembled
+# into server/public_site for server/firebase.json's hosting block, to
+# https://daily-games-420bf.web.app: the friend link's page
 # (/f/<CODE>, every one rewritten to f/index.html), the Android App Links
 # statement (/.well-known/assetlinks.json, which names the certificates a
 # build must be signed with for an https friend link to open the game
@@ -11,5 +12,8 @@
 #   curl -i https://daily-games-420bf.web.app/.well-known/assetlinks.json
 # (200, application/json), and a link with any code shows the page.
 set -euo pipefail
-cd "$(dirname "$0")/../server"
+cd "$(dirname "$0")/../web"
+bun install --frozen-lockfile
+bun run build
+cd ../server
 firebase deploy --only hosting --project daily-games-420bf
