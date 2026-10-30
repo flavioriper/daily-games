@@ -2,6 +2,7 @@ import Image from "next/image";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { routing } from "@i18n/routing";
 import { GameList } from "@/components/GameList";
+import { Peeplet } from "@/components/Peeplet";
 import { StoreButtons } from "@/components/StoreButtons";
 import { GAMES, HERO_PHONES, langOf, type Group } from "@/lib/games";
 import { appJsonLd } from "@/lib/seo";
@@ -16,6 +17,7 @@ const PILLARS = [
   {
     key: "Morning",
     tone: "butter",
+    peeplet: <Peeplet name="sunhat" className="at-card-peek behind" />,
     glyph: (
       <svg viewBox="0 0 32 32" aria-hidden="true">
         <circle cx="16" cy="18" r="6.5" />
@@ -27,6 +29,7 @@ const PILLARS = [
   {
     key: "Levels",
     tone: "sage",
+    peeplet: <Peeplet name="mushroom" className="at-card-stand" />,
     glyph: (
       <svg viewBox="0 0 32 32" aria-hidden="true">
         <path d="M3 27h7v-6h7v-6h7V9h5" />
@@ -37,6 +40,7 @@ const PILLARS = [
   {
     key: "Together",
     tone: "sky",
+    peeplet: <Peeplet name="party" className="at-card-peek behind" />,
     glyph: (
       <svg viewBox="0 0 32 32" aria-hidden="true">
         <circle cx="12" cy="16" r="7.5" />
@@ -100,12 +104,16 @@ export default async function Page({ params }: { params: Promise<{ locale: strin
                 />
               </figure>
             ))}
+            <Peeplet name="reader" className="at-fan-top" />
+            <Peeplet name="watcher" className="at-fan-left" />
+            <Peeplet name="coral" className="at-fan-right" />
           </div>
         </section>
 
         <section className="pillars" aria-label={t("navLabel")}>
           {PILLARS.map((pillar) => (
             <article key={pillar.key} className={`pillar ${pillar.tone}`}>
+              {pillar.peeplet}
               <span className="glyph">{pillar.glyph}</span>
               <h2>{t(`pillar${pillar.key}Title`)}</h2>
               <p>{t(`pillar${pillar.key}Text`)}</p>
@@ -125,12 +133,15 @@ export default async function Page({ params }: { params: Promise<{ locale: strin
               games={games}
               lang={lang}
               shotOf={(name) => t("shotAlt", { name })}
+              peeplet={group === "puzzles" ? <Peeplet name="flowers" className="at-shelf" /> : null}
             />
           );
         })}
 
         <section className="close" id="get">
           <div className="close-card">
+            <Peeplet name="laugh" className="at-close-top" />
+            <Peeplet name="coral" className="at-close-side behind flip" />
             <h2>{t("closeTitle")}</h2>
             <p>{t("closeText")}</p>
             <StoreButtons />

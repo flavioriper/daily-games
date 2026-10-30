@@ -20,10 +20,13 @@ day's pair (`core/cast.gd`) sits on Hidden Word's card and reveal, Streak's
 Today card, the remove-ads sheet and the boot opening; nothing else does,
 never the header. Never redraw a Peeplet by hand or bake it to an image.
 
-**The one baked Peeplet** (2026-10-27): `server/functions/assets/peeplet_sheet.png`,
+**The baked Peeplets** (2026-10-27): `server/functions/assets/peeplet_sheet.png`,
 the reference the night's painter and reviewer are given. It is rendered by
 `tests/_shot_peeplet_sheet.gd`, never hand-edited, never on a phone
-(`docs/art/peeplet-brand.md`).
+(`docs/art/peeplet-brand.md`). The website's eight (2026-10-30, the user's
+call) are the same kind of thing: `tests/_shot_site_peeplets.gd` renders
+them, `web/scripts/gen_games.py` cuts them, nobody draws or edits one
+(`docs/agents/website.md`).
 
 ## Boards that left
 

@@ -242,6 +242,37 @@ h1 em { font-style: italic; font-weight: 400; color: var(--accent); }
   }
 }
 
+/* The Peeplets: rendered from the live model and let loose on the page,
+   perched on an edge, peeking over one, hiding behind a phone. Heights only;
+   each keeps its own proportions. A `behind` Peeplet is painted under its
+   parent's background (z-index -1 in main's stacking context), so the parent
+   must set no z-index of its own. */
+.peep {
+  position: absolute;
+  width: auto;
+  pointer-events: none;
+  user-select: none;
+  filter: drop-shadow(0 6px 8px rgba(42, 32, 25, .14));
+}
+.peep.behind { z-index: -1; filter: none; }
+.peep.flip { transform: scaleX(-1); }
+/* Sitting on the middle phone's top edge, legs over the bezel. */
+.at-fan-top { left: 50%; top: 0; height: 92px; margin: -78px 0 0 -56px; z-index: 4; animation: settle .9s var(--ease) .5s both; }
+/* Hiding behind the rightmost phone, half of it peeking out. */
+.at-fan-right { right: -17%; bottom: 12%; height: 96px; z-index: 0; transform: scaleX(-1) rotate(-6deg); }
+/* Watching from the floor, its far side behind the leftmost phone. */
+.at-fan-left { left: -6%; bottom: -4px; height: 100px; z-index: 0; }
+/* Peeking over a card's top edge from behind. */
+.at-card-peek { top: -58px; right: 34px; height: 96px; }
+/* Standing on a card's top edge. */
+.at-card-stand { bottom: calc(100% - 6px); left: 28px; height: 84px; z-index: 1; }
+/* Sitting on the shelf header's rule line. */
+.at-shelf { right: 120px; bottom: -13px; height: 72px; z-index: 1; }
+/* Bouncing on the closing card's top edge. */
+.at-close-top { right: 14%; bottom: calc(100% - 10px); height: 120px; z-index: 1; }
+/* Peeking out from behind the closing card's left edge. */
+.at-close-side { left: -40px; bottom: 36px; height: 108px; }
+
 /* The three reasons */
 .pillars {
   display: grid;
@@ -252,6 +283,7 @@ h1 em { font-style: italic; font-weight: 400; color: var(--accent); }
   padding: 0 var(--gutter) clamp(56px, 7vw, 96px);
 }
 .pillar {
+  position: relative;
   padding: 26px 26px 28px;
   border-radius: var(--r-xl);
   background: var(--paper-deep);
@@ -280,6 +312,7 @@ h1 em { font-style: italic; font-weight: 400; color: var(--accent); }
   scroll-margin-top: 72px;
 }
 .shelf header {
+  position: relative;
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
@@ -325,6 +358,7 @@ h1 em { font-style: italic; font-weight: 400; color: var(--accent); }
 /* The close */
 .close { max-width: var(--wide); margin: 0 auto; padding: 8px var(--gutter) clamp(56px, 8vw, 104px); scroll-margin-top: 72px; }
 .close-card {
+  position: relative;
   padding: clamp(40px, 6vw, 80px) var(--gutter);
   border-radius: var(--r-xl);
   background:
@@ -336,6 +370,7 @@ h1 em { font-style: italic; font-weight: 400; color: var(--accent); }
 .close-card h2 { font-size: clamp(34px, 5vw, 64px); letter-spacing: -.025em; line-height: 1.02; margin-bottom: 14px; text-wrap: balance; }
 .close-card p { max-width: 34em; margin: 0 auto 28px; color: var(--dim); font-size: 17px; }
 .close-card .get { justify-content: center; }
+.close-card h2, .close-card p, .close-card .get { position: relative; }
 
 footer {
   max-width: var(--wide);
@@ -352,7 +387,9 @@ footer p { display: flex; flex-wrap: wrap; gap: 6px 20px; margin: 0 0 8px; }
 @media (max-width: 900px) {
   .hero { grid-template-columns: 1fr; gap: 8px; }
   .fan { --w: clamp(120px, 24vw, 170px); margin-top: 28px; }
-  .pillars { grid-template-columns: 1fr; }
+  .pillars { grid-template-columns: 1fr; gap: 48px; }
+  .at-shelf { display: none; }
+  .at-close-side { display: none; }
   /* A shelf scrolls sideways on a phone, so seventy games stay a short page. */
   .shelf ol {
     display: flex;
@@ -376,9 +413,15 @@ footer p { display: flex; flex-wrap: wrap; gap: 6px 20px; margin: 0 0 8px; }
   .store { width: 100%; justify-content: flex-start; padding-left: 22px; }
   .fan { --w: clamp(104px, 34vw, 140px); --step: .72; --lean: 8deg; }
   .phone:nth-child(1), .phone:nth-child(5) { display: none; }
+  .at-fan-top { height: 76px; margin: -64px 0 0 -46px; }
+  .at-fan-left { height: 80px; left: -8%; }
+  .at-fan-right { height: 78px; right: -20%; }
+  .at-card-peek { height: 80px; top: -48px; right: 22px; }
+  .at-card-stand { height: 72px; }
+  .at-close-top { height: 96px; right: 10%; }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .phone { animation: none; }
+  .phone, .peep { animation: none; }
   .store, .pill, .plate { transition: none; }
 }

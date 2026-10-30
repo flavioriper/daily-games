@@ -81,3 +81,22 @@ for id_ in HERO:
     shot = Image.open(ROOT / f"build/site_shots/{id_}.png").convert("RGB")
     shot.resize((405, 720), Image.LANCZOS).save(WEB / f"public/phones/{id_}.webp", quality=84)
 print(len(games), "games")
+
+# The page's Peeplets (the user, 2026-10-30), rendered by
+# tests/_shot_site_peeplets.gd into build/site_peeplets: the viewport hands
+# them over premultiplied, so they are straightened, trimmed and saved with
+# their alpha. Never hand-edited.
+PEEPLETS = ROOT / "build/site_peeplets"
+(WEB / "public/peeplets").mkdir(parents=True, exist_ok=True)
+for png in sorted(PEEPLETS.glob("*.png")):
+    im = Image.open(png).convert("RGBA")
+    px = im.load()
+    for y in range(im.height):
+        for x in range(im.width):
+            r, g, b, a = px[x, y]
+            if 0 < a < 255:
+                px[x, y] = (min(255, r * 255 // a), min(255, g * 255 // a), min(255, b * 255 // a), a)
+    box = im.getbbox()
+    im = im.crop((box[0] - 4, max(0, box[1] - 4), box[2] + 4, min(im.height, box[3] + 4)))
+    im.save(WEB / f"public/peeplets/{png.stem}.webp", quality=92, method=6)
+    print(png.stem, im.size)

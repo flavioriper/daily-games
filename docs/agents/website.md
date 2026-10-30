@@ -41,8 +41,22 @@ chrome stays quiet:
   `server/public_site`, which `server/firebase.json` now serves.
   `tools/deploy_site.sh` builds and deploys and is run by a person. Before
   deploying by hand, build first: the folder is ignored by git.
-- **The Peeplet is not on the page**: the rule against baking one to an image
-  has no web exception yet, so that is the user's call.
+- **The Peeplets on the page** (the user, 2026-10-30: "i'm missing some
+  peeplets around the page", then "more natural on the page, like above
+  elements, sitting somewhere, hiding"): eight renders of the live model by
+  `tests/_shot_site_peeplets.gd` (windowed, `--resolution 1600x800`), each
+  saved from its own transparent SubViewport to `build/site_peeplets/`;
+  `gen_games.py` un-premultiplies, trims and writes `public/peeplets/*.webp`.
+  Never hand-drawn, never hand-edited: this is the web's one exception to
+  the no-baked-Peeplet rule, like the painter's sheet. `src/components/Peeplet.tsx`
+  places one by class: perched on the middle phone (`reader`), watching from
+  the floor half behind the left phone (`watcher`), hiding behind the right
+  phone (`coral`, mirrored), peeking over a card's top edge from behind
+  (`sunhat`, `party`; class `behind` = z-index -1, so the parent sets no
+  z-index of its own), standing on a card (`mushroom`), sitting on the
+  Puzzles shelf's rule (`flowers`), bouncing on the closing card's top edge
+  (`laugh`), peeking from behind its left edge (`coral` again). Re-render
+  after any change to the Peeplet's look.
 - **Store links** live in `web/src/lib/siteUrl.ts` and the message files. Android
   links to the live Play listing; the iPhone link is TestFlight until the App
   Store page exists.

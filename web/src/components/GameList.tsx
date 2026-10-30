@@ -9,12 +9,13 @@ type Props = {
   games: Game[];
   lang: Lang;
   shotOf: (name: string) => string;
+  peeplet?: React.ReactNode;
 };
 
 // One shelf of games: a tile each, its screen on a plate tinted from the
 // screen's own colours, its name and one line under it. A grid on a desk, a
 // row that scrolls sideways on a phone.
-export function GameList({ id, title, intro, count, games, lang, shotOf }: Props) {
+export function GameList({ id, title, intro, count, games, lang, shotOf, peeplet }: Props) {
   return (
     <section className="shelf" id={id}>
       <header>
@@ -23,6 +24,7 @@ export function GameList({ id, title, intro, count, games, lang, shotOf }: Props
           <p>{intro}</p>
         </div>
         <span className="chip">{count}</span>
+        {peeplet}
       </header>
       <ol>
         {games.map((game) => (
