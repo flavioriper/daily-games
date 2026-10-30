@@ -23,3 +23,6 @@ stated preference, so that list is the builder's call.
   coming soon on the user's word, though the Play listing is live.
 - `NEXT_PUBLIC_SITE_URL` sets the origin for canonical links and the sitemap
   once the site has its own domain.
+- **Vercel**: `web/vercel.json` builds with plain `next build`, because the
+  assemble step reaches outside `web/`. The site there has no `/f` or privacy
+  page, so the footer's privacy link is absolute, to the Firebase page.
