@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Fraunces, Nunito } from "next/font/google";
+import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { notFound } from "next/navigation";
@@ -49,6 +50,12 @@ export default async function LocaleLayout({
         {children}
         <Analytics />
         <SpeedInsights />
+        {/* Ahrefs Web Analytics, the Peeplet project's key (public). */}
+        <Script
+          src="https://analytics.ahrefs.com/analytics.js"
+          data-key="srxBBpGZIjhWpY7rFrasJg"
+          strategy="lazyOnload"
+        />
       </body>
     </html>
   );

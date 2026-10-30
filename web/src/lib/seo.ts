@@ -43,6 +43,9 @@ export function buildLocaleMetadata({
     twitter: { card: "summary_large_image", title, description, images: [image] },
     icons: { icon: "/icon.png", apple: "/apple-icon.png" },
     robots: { index: true, follow: true },
+    other: {
+      "ahrefs-site-verification": "3da426c0ee2cdd80a18bde6f5ec444bb3c9953427128da3860bbc1d3b530fe05",
+    },
   };
 }
 
