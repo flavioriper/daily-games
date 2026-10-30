@@ -24,6 +24,11 @@ const DARK := Color("2c2118")
 func id() -> String:
 	return "clockwork"
 
+## The model's round base shows under the camera's tilt, so the foot stands
+## higher than the flat set's, clear of the square's edge.
+func foot_drop() -> float:
+	return 0.3
+
 func model_dir() -> String:
 	return "res://versus/models/clockwork"
 
@@ -55,7 +60,7 @@ func model_tick(parts: Array, dt: float, left: float, full: float) -> void:
 		if left <= RATTLE_AT:
 			rate = 11.0
 	parts[0].rotation.x += rate * dt
-	parts[1].rotation.y += rate * dt * 0.6
+	parts[1].rotation.z += rate * dt * 0.6
 
 func move_time(_type: int, from: Vector2, to: Vector2) -> float:
 	return 0.26 + 0.05 * from.distance_to(to)
