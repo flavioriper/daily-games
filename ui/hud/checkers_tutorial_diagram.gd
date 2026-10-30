@@ -172,7 +172,7 @@ func _layout() -> void:
 	var room := Vector2(size.x, maxf(0.0, size.y - CAPTION_H))
 	_frame.position = Vector2.ZERO
 	_frame.size = room
-	var across := 8.0 + 2.0 * Lawn.FRAME
+	var across: float = 8.0 + 2.0 * _art.skin.frame()
 	var board := Vector2(across, across + 2.0 * (Lawn.TRAY + Lawn.TRAY_GAP)) * CELL + Vector2.ONE * 0.5
 	_art.size = board
 	var x := floorf((room.x - board.x) * 0.5)

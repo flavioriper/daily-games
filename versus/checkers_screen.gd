@@ -1,14 +1,20 @@
 extends Control
 
 ## A game of checkers against the computer: the third game on the Versus
-## tab, built the way chess is (versus/chess_screen.gd). The flat boards'
-## top bar (back, the title in ink with its sprout, undo, reset, a hint with
-## its count, settings), a scoreboard with the sun for you and the moon for
-## the computer and the move number between them, and the board on the same
-## wooden deck.
+## tab, laid and tooled as chess is (versus/chess_screen.gd). The flat boards'
+## top bar, a row of tools (back and forward through the moves, how the game
+## stands, the pen, the options in versus/checkers_options.gd, Resign), the
+## score sheet (versus/chess_strip.gd), and the board full width on the wooden
+## deck with each player's plate over and under it, a clock on each.
 ##
-## You always play the cream pieces at the bottom; which colour they move
-## as swaps every game (Play again), so the computer opens every other one.
+## Each of your moves is graded on the worker in the computer's task
+## (versus/checkers_grade.gd), the end card reviews the game, and a rating
+## moves. The fun is the moments: a shot, a chain, a crown (`_moment`), and
+## the moon's lines on its plate.
+##
+## You play the pieces at the bottom; which colour they move as swaps every
+## game (Play again) unless the options fix it, so the computer opens every
+## other one.
 ## Brazilian rules (versus/checkers_rules.gd): capturing is compulsory and
 ## the most pieces must be taken, so when a capture is on, the pieces that
 ## can make it wear a ring. The other player is versus/checkers_ai.gd,
@@ -53,12 +59,18 @@ const Face = preload("res://ui/faces/face.gd")
 const IconButton = preload("res://ui/hud/icon_button.gd")
 const Analytics = preload("res://core/analytics.gd")
 const Online = preload("res://versus/online/online.gd")
+const Grade = preload("res://versus/checkers_grade.gd")
+const Strip = preload("res://versus/chess_strip.gd")
+const Options = preload("res://versus/checkers_options.gd")
+const Rewards = preload("res://arcade/rewards.gd")
 
 const GAME := "checkers"
 const MARGIN := 40
 const GAP := 20
-const SCORE_H := 128.0
-const DECK_PAD := 18
+const DECK_PAD := 8
+const PLATE_H := 92.0
+const FACE_PX := 68.0
+const TOOL := 84.0
 const BACKDROP_BLEED := 90.0
 const HINTS := 3
 ## Pauses, seconds: the shortest the computer seems to think, how long it
@@ -67,13 +79,31 @@ const THINK_MIN := 0.6
 const PONDER := 0.35
 ## Before the end card: long enough for the losers to turn over.
 const END_WAIT := 2.4
+const CLOCK_LOW := 20.0
+const BUZZ_AT := 10.0
+## Online the match's minute a move shows when it starts to matter.
+const MOVE_LIMIT_SHOWN := 20
+const ONLINE_CLOCK := [300, 3]
+## What your rating is measured against, a level at a time.
+const BOT_RATING := [600, 1100, 1500]
+const START_RATING := 800.0
+const RATING_K := 24.0
+## How long a line of the moon's stays up, and how long Resign waits for the
+## second tap.
+const QUIP_HOLD := 3.6
+const RESIGN_HOLD := 3.0
+## The computer gives up this many pieces behind with no way back: nobody
+## should have to hunt the last man down a board for ten minutes.
+const CONCEDE_BY := 6
+## The tool row: the limit shows once this few moves are left.
+const DRAW_SHOWN := 10
 const TOAST_HOLD := 2.2
 const LEVELS := ["DIFF_EASY", "DIFF_MEDIUM", "DIFF_HARD", "VS_ONLINE"]
 ## The room a name has on a scoreboard plate, beside its face.
-const NAME_W := 250.0
+const NAME_W := 420.0
 
 ## WAIT is online's: the board laid and still while the lobby looks.
-enum State { ENTER, YOURS, THINK, ANIM, REWIND, OVER, WAIT }
+enum State { ENTER, YOURS, THINK, ANIM, REWIND, OVER, WAIT, RETRY }
 
 var level := 1
 var rules: RefCounted
@@ -107,6 +137,8 @@ var _rng := RandomNumberGenerator.new()
 var _fx: Node2D
 var _backdrop: ColorRect
 var _margins: MarginContainer
+var _deck: Control
+var _room: MarginContainer
 var _toast: PanelContainer
 var _toast_label: Label
 var _toast_tw: Tween
@@ -115,7 +147,55 @@ var _plates: Array = []
 var _faces: Array = []
 var _status: Array[Label] = []
 var _names: Array[Label] = []
-var _move_label: Label
+var _clock_pills: Array[PanelContainer] = []
+var _clock_labels: Array[Label] = []
+## Seconds left: yours, the other side's.
+var _clock := [0.0, 0.0]
+var _clock_ink := [Color.BLACK, Color.BLACK]
+var _increment := 0.0
+var _clocked := false
+var _warned := false
+## The game so far: the position it started from, the moves, their notation,
+## and ply -> verdict.
+var _base: RefCounted
+var _moves: Array = []
+var _sans: Array = []
+var _grades := {}
+## The position before your last move and its ply, until the computer's task
+## takes them to judge.
+var _judge_game: RefCounted
+var _judge_ply := -1
+var _strip: Control
+var _tools: HBoxContainer
+var _tool_prev: Button
+var _tool_next: Button
+var _tool_pen: Button
+var _tool_resign: Button
+var _line: Label
+var _pen_row: HBoxContainer
+var _options: Control
+## The ply on show, -1 for the game as it stands.
+var _view := -1
+var _reviewing := false
+var _review_row: HBoxContainer
+var _try_button: Button
+var _retry_ply := -1
+var _retry_game: RefCounted
+## The plies the review has still to grade.
+var _grade_queue: Array = []
+var _grade_total := 0
+var _quip_until := 0.0
+var _resign_until := 0.0
+## What this game moved your rating by, and what the end card was built with.
+var _rating_delta := 0
+var _end_args: Array = []
+## A game with an undo or a hint does not count toward the rating.
+var _practice := false
+var _rw: Rewards
+## What the card tallies: your longest chain, the men you crowned, your shots.
+var _best_chain := 0
+var _crowned := 0
+var _shots := 0
 ## Whether the compulsory capture has been explained this game.
 var _told_must := false
 ## The game online, when the level is Record.ONLINE; null against the
@@ -175,7 +255,7 @@ func _build() -> void:
 	_margins.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(_margins)
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", GAP)
+	col.add_theme_constant_override("separation", 10)
 	_margins.add_child(col)
 
 	# The motto names the moon: a game online has its own.
@@ -186,8 +266,11 @@ func _build() -> void:
 	top_bar.reset.connect(_on_reset)
 	top_bar.hint.connect(_on_hint)
 	top_bar.settings.connect(func() -> void: settings_sheet.open())
-	col.add_child(top_bar)
-	col.add_child(_build_scoreboard())
+	var bar_room := MarginContainer.new()
+	bar_room.add_theme_constant_override("margin_left", MARGIN)
+	bar_room.add_theme_constant_override("margin_right", MARGIN)
+	bar_room.add_child(top_bar)
+	col.add_child(bar_room)
 
 	var deck := Control.new()
 	deck.name = "Deck"
@@ -196,24 +279,41 @@ func _build() -> void:
 	deck.draw.connect(_draw_deck.bind(deck))
 	deck.resized.connect(deck.queue_redraw)
 	col.add_child(deck)
-	var inset := MarginContainer.new()
-	inset.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	for side in ["left", "right", "top", "bottom"]:
-		inset.add_theme_constant_override("margin_" + side, DECK_PAD)
-	inset.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	deck.add_child(inset)
+	_deck = deck
+	_room = MarginContainer.new()
+	_room.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_room.add_theme_constant_override("margin_left", DECK_PAD)
+	_room.add_theme_constant_override("margin_right", DECK_PAD)
+	_room.add_theme_constant_override("margin_top", 10)
+	_room.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	deck.add_child(_room)
+	var stack := VBoxContainer.new()
+	stack.add_theme_constant_override("separation", 8)
+	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_room.add_child(stack)
+	# Every button stands above the board, never below it (the user, 2026-10-30).
+	_strip = Strip.new()
+	_strip.picked.connect(_on_strip)
+	stack.add_child(_build_tools())
+	stack.add_child(_strip)
+	stack.add_child(_build_plate(1))
 	board = Board.new()
 	board.name = "Board"
 	board.skin = CheckersSkin.named(Record.skin(GAME))
+	board.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	board.resized.connect(deck.queue_redraw)
 	board.chosen.connect(_on_chosen)
 	board.settled.connect(_on_settled)
+	board.badge_pressed.connect(_on_badge)
 	board.refused.connect(func(reason: String) -> void:
 		_say(tr("CKR_MUST") if reason == "must" else tr("CKR_STUCK")))
-	inset.add_child(board)
+	stack.add_child(board)
+	stack.add_child(_build_plate(0))
 	_fx = Fx2D.new()
 	_fx.haptics = HAPTICS
 	add_child(_fx)
+	_rw = Rewards.new()
+	add_child(_rw)
 
 	_toast = PanelContainer.new()
 	_toast.add_theme_stylebox_override("panel", CozyTheme.lifted(Pal.SURFACE, 30, 14))
@@ -230,11 +330,9 @@ func _build() -> void:
 
 func _apply_insets() -> void:
 	var insets := SafeArea.insets(self)
-	_margins.add_theme_constant_override("margin_left", MARGIN)
-	_margins.add_theme_constant_override("margin_right", MARGIN)
-	_margins.add_theme_constant_override("margin_top", MARGIN + int(insets.x))
-	_margins.add_theme_constant_override("margin_bottom", MARGIN + int(insets.y))
-	_backdrop.offset_bottom = MARGIN + insets.x + FlatTopBar.HEIGHT + GAP + SCORE_H + BACKDROP_BLEED
+	_margins.add_theme_constant_override("margin_top", GAP + int(insets.x))
+	_room.add_theme_constant_override("margin_bottom", 12 + int(insets.y))
+	_backdrop.offset_bottom = GAP + insets.x + FlatTopBar.HEIGHT + BACKDROP_BLEED
 	Vistas.set_top_pad(_backdrop, insets.x)
 
 ## The same wooden terrace snooker's table stands on, the whole height of
@@ -252,7 +350,7 @@ func _draw_deck(deck: Control) -> void:
 
 func _build_deck(sz: Vector2) -> ArrayMesh:
 	var b := Face.Builder.new()
-	var radius := 36.0
+	var radius := 0.0
 	var clip := Face.Builder.round_rect(Vector2.ZERO, sz, radius)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 5
@@ -286,8 +384,11 @@ func _build_deck(sz: Vector2) -> ArrayMesh:
 	for k in 3:
 		b.stroke(Face.Builder.round_rect(Vector2.ONE * (5.0 + k * 10.0), sz - Vector2.ONE * (10.0 + k * 20.0), radius - 5.0 - k * 10.0),
 			10.0, Color(0.25, 0.12, 0.05, 0.08), true)
+	# a wooden board stands on a bare deck
+	if not board.skin.cartoon():
+		return b.mesh()
 	# petals and leaves blown on, never under the board
-	var keep_out := Rect2(board.used_rect.position + Vector2.ONE * DECK_PAD, board.used_rect.size).grow(16.0)
+	var keep_out := Rect2(board.global_position - _deck.global_position + board.used_rect.position, board.used_rect.size).grow(16.0)
 	var placed := 0
 	var tries := 0
 	while placed < 14 and tries < 300:
@@ -322,100 +423,178 @@ static func _clip_into(b: Face.Builder, pts: PackedVector2Array, col: Color, cli
 	for piece in Geometry2D.intersect_polygons(pts, clip):
 		b.polygon(piece, col)
 
-func _build_scoreboard() -> Control:
-	var row := HBoxContainer.new()
-	row.custom_minimum_size.y = SCORE_H
-	row.add_theme_constant_override("separation", 16)
-	for p in 2:
-		var plate := PanelContainer.new()
-		plate.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var inner := HBoxContainer.new()
-		inner.add_theme_constant_override("separation", 12)
-		inner.alignment = BoxContainer.ALIGNMENT_BEGIN if p == 0 else BoxContainer.ALIGNMENT_END
-		plate.add_child(inner)
-		var seat := Control.new()
-		seat.custom_minimum_size = Vector2(88, 88)
-		seat.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		var face: Control = SunFace.new() if p == 0 else MoonFace.new()
-		face.size = Vector2(88, 88)
-		seat.add_child(face)
-		_faces.append(face)
-		var words := VBoxContainer.new()
-		words.alignment = BoxContainer.ALIGNMENT_CENTER
-		words.add_theme_constant_override("separation", -4)
-		var align := HORIZONTAL_ALIGNMENT_LEFT if p == 0 else HORIZONTAL_ALIGNMENT_RIGHT
-		var name_l := Label.new()
-		name_l.text = "SNK_YOU" if p == 0 else "SNK_BOT"
-		name_l.theme_type_variation = "SheetTitle"
-		name_l.horizontal_alignment = align
-		var status := Label.new()
-		status.theme_type_variation = "CardBlurb"
-		status.horizontal_alignment = align
-		words.add_child(name_l)
-		words.add_child(status)
-		_status.append(status)
-		_names.append(name_l)
-		if p == 0:
-			inner.add_child(seat)
-			inner.add_child(words)
-		else:
-			inner.add_child(words)
-			inner.add_child(seat)
-		_plates.append(plate)
-		if p == 1:
-			row.add_child(_build_move_panel())
-		row.add_child(plate)
-	return row
+## One player's plate, full width: the face, the name and what they are doing,
+## and the clock at the end.
+func _build_plate(p: int) -> Control:
+	var plate := PanelContainer.new()
+	plate.custom_minimum_size.y = PLATE_H
+	var inner := HBoxContainer.new()
+	inner.add_theme_constant_override("separation", 14)
+	plate.add_child(inner)
+	var seat := Control.new()
+	seat.custom_minimum_size = Vector2(FACE_PX, FACE_PX)
+	seat.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var face: Control = SunFace.new() if p == 0 else MoonFace.new()
+	face.size = Vector2(FACE_PX, FACE_PX)
+	seat.add_child(face)
+	inner.add_child(seat)
+	var words := VBoxContainer.new()
+	words.alignment = BoxContainer.ALIGNMENT_CENTER
+	words.add_theme_constant_override("separation", -8)
+	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var name_l := Label.new()
+	name_l.text = "SNK_YOU" if p == 0 else "SNK_BOT"
+	name_l.theme_type_variation = "SheetBody"
+	name_l.add_theme_font_size_override("font_size", 36)
+	var status := Label.new()
+	status.theme_type_variation = "CardBlurb"
+	status.clip_text = true
+	words.add_child(name_l)
+	words.add_child(status)
+	inner.add_child(words)
+	var pill := PanelContainer.new()
+	pill.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	pill.custom_minimum_size = Vector2(176, 72)
+	var digits := Label.new()
+	digits.theme_type_variation = "DayBig"
+	digits.add_theme_font_size_override("font_size", 46)
+	digits.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	digits.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	digits.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	pill.add_child(digits)
+	inner.add_child(pill)
+	_faces.resize(2)
+	_status.resize(2)
+	_names.resize(2)
+	_plates.resize(2)
+	_clock_pills.resize(2)
+	_clock_labels.resize(2)
+	_faces[p] = face
+	_status[p] = status
+	_names[p] = name_l
+	_plates[p] = plate
+	_clock_pills[p] = pill
+	_clock_labels[p] = digits
+	return plate
 
-func _build_move_panel() -> Control:
-	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", CozyTheme.lifted(Color("fcf7ef"), 30, 10))
-	panel.custom_minimum_size.x = 200
-	var col := VBoxContainer.new()
-	col.alignment = BoxContainer.ALIGNMENT_CENTER
-	col.add_theme_constant_override("separation", -6)
-	panel.add_child(col)
-	var kicker := Label.new()
-	kicker.text = "CHS_MOVE"
-	kicker.theme_type_variation = "MenuKicker"
-	kicker.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	col.add_child(kicker)
-	_move_label = Label.new()
-	_move_label.theme_type_variation = "DayBig"
-	_move_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	col.add_child(_move_label)
-	return panel
+## The row over the board: back and forward through the moves, how the game
+## stands, and the pen, the options and Resign. The pen's colours take the
+## words' place while it is down, and the review has a row of its own.
+func _build_tools() -> Control:
+	var foot := Control.new()
+	foot.custom_minimum_size.y = TOOL
+	foot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_tools = HBoxContainer.new()
+	_tools.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_tools.add_theme_constant_override("separation", 10)
+	foot.add_child(_tools)
+	_tool_prev = _tool("chevron_left", func() -> void: _step(-1))
+	_tool_next = _tool("chevron_right", func() -> void: _step(1))
+	_line = Label.new()
+	_line.theme_type_variation = "SheetBody"
+	_line.add_theme_font_size_override("font_size", 30)
+	_line.add_theme_color_override("font_color", Pal.PAPER)
+	_line.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	_line.clip_text = true
+	_line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_line.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_tools.add_child(_line)
+	_pen_row = HBoxContainer.new()
+	_pen_row.add_theme_constant_override("separation", 8)
+	_pen_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_pen_row.alignment = BoxContainer.ALIGNMENT_END
+	_pen_row.visible = false
+	_tools.add_child(_pen_row)
+	for i in Board.PEN.size():
+		var dot := Button.new()
+		dot.focus_mode = Control.FOCUS_NONE
+		dot.custom_minimum_size = Vector2(TOOL * 0.8, TOOL * 0.8)
+		dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		dot.pressed.connect(func() -> void:
+			board.pen_colour = i
+			_paint_pen())
+		_pen_row.add_child(dot)
+	var rub := _tool("bin", func() -> void:
+		board.clear_pen()
+		_fx.buzz(Haptics.TICK))
+	rub.reparent(_pen_row)
+	_tool_pen = _tool("pencil", _toggle_pen)
+	_tool("gear", _open_options)
+	_tool_resign = _tool("cross", _on_resign)
+	_review_row = HBoxContainer.new()
+	_review_row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_review_row.add_theme_constant_override("separation", 10)
+	_review_row.visible = false
+	foot.add_child(_review_row)
+	_tool("chevron_left", func() -> void: _step(-1)).reparent(_review_row)
+	_tool("chevron_right", func() -> void: _step(1)).reparent(_review_row)
+	_tool("eye", _next_mistake).reparent(_review_row)
+	_try_button = Dialog.primary("reset", tr("CHS_TRY_AGAIN"))
+	_try_button.custom_minimum_size = Vector2(0.0, TOOL)
+	_try_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_try_button.pressed.connect(_try_again)
+	_review_row.add_child(_try_button)
+	_tool("check", _leave_review).reparent(_review_row)
+	return foot
+
+func _tool(icon: String, pressed: Callable) -> Button:
+	var b := IconButton.new(icon)
+	b.custom_minimum_size = Vector2(TOOL, TOOL)
+	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	b.pressed.connect(pressed)
+	_tools.add_child(b)
+	return b
 
 ## Whose turn it is, on the plates: the one to move lit and saying so.
 func _refresh_board() -> void:
-	var over := _state == State.OVER or _state == State.WAIT
+	var over := _state == State.OVER or _state == State.WAIT or _state == State.RETRY
+	var quipping := Time.get_ticks_msec() / 1000.0 < _quip_until
 	for p in 2:
 		var mine: bool = not over and (rules.turn == player) == (p == 0)
-		var box := CozyTheme.lifted(Pal.SURFACE if mine else Color("f7f0e4"), 30, 10)
+		var box := CozyTheme.lifted(Pal.SURFACE if mine else Color("f7f0e4"), 24, 8)
 		if mine:
 			box.border_color = Pal.ACCENT_2
 			box.set_border_width_all(4)
 		_plates[p].add_theme_stylebox_override("panel", box)
-		_plates[p].modulate.a = 1.0 if mine or over else 0.82
-		var colour_key := "CHS_FIRST" if (player == rules.first_side()) == (p == 0) else "CHS_SECOND"
-		var line := tr(colour_key)
+		var seat_side: int = player if p == 0 else 1 - player
+		var left: Vector2i = rules.count(seat_side)
+		var line := "%s  ·  %s" % [tr("CHS_COLOUR_WHITE" if seat_side == rules.first_side() else "CHS_COLOUR_BLACK"), tr("CKR_LEFT") % (left.x + left.y)]
 		if mine:
 			line = tr("CHS_TO_MOVE") if p == 0 else tr("CHS_THINKS")
 			if p == 0 and _state == State.YOURS and rules.must_capture():
 				line = tr("CKR_CAPTURE")
 		if _state == State.WAIT:
 			line = ""
+		if p == 1 and quipping:
+			continue
 		_status[p].text = line
 		if online != null:
-			# The side to move carries its seconds.
-			online.dress(_status[p], line, mine and _state != State.ENTER, p == 0)
-	var shown := str(_move_number())
-	if _move_label.text != shown:
-		_move_label.text = shown
-		_move_label.pivot_offset = _move_label.size * 0.5
-		if _state != State.ENTER:
-			Motion.bump(_move_label, 0.2, 0.25)
+			# The match's minute a move still stands behind the clocks: it
+			# shows when it starts to matter.
+			online.dress(_status[p], line, mine and _state != State.ENTER and online.seconds(p == 0) <= MOVE_LIMIT_SHOWN, p == 0)
+	_names[0].text = tr("SNK_YOU") if online != null else "%s  ·  %d" % [tr("SNK_YOU"), _rating()]
+	_paint_clocks()
+	_refresh_line()
 	top_bar.refresh(self)
+	_refresh_tools()
+
+## The tool row's words: the move and the pieces left, and when a drawn ending
+## nears, how long there is.
+func _refresh_line() -> void:
+	@warning_ignore("integer_division")
+	var left: int = (rules.ending_limit() - rules.quiet + 1) / 2
+	if left <= DRAW_SHOWN and rules.quiet > 0:
+		_line.text = tr("CKR_DRAW_IN") % left
+		return
+	var a: Vector2i = rules.count(player)
+	var b: Vector2i = rules.count(1 - player)
+	_line.text = "%s  ·  %d v %d" % [tr("CHS_MOVE_N") % _move_number(), a.x + a.y, b.x + b.y]
+
+func _refresh_tools() -> void:
+	var some := _sans.size() > 0
+	_tool_prev.set_enabled(some and _view != 0)
+	_tool_next.set_enabled(_view >= 0)
+	_tool_resign.set_enabled(_state != State.OVER and _state != State.WAIT and some)
 
 # --- the top bar's view of this screen (FlatTopBar.refresh) ---
 
@@ -431,18 +610,18 @@ func is_solved() -> bool:
 ## Undo, the bulb and Reset are the computer's games' alone: online they
 ## stay on the bar, greyed.
 func can_undo() -> bool:
-	return online == null and _state == State.YOURS and _history.size() >= (2 if player == rules.first_side() else 3)
+	return online == null and not _clocked and _state == State.YOURS and _history.size() >= (2 if player == rules.first_side() else 3)
 
 ## The move number, a move being one each.
 func _move_number() -> int:
 	return rules.ply / 2 + 1
 
 func hints_left() -> int:
-	return _hints if _state == State.YOURS and online == null else 0
+	return _hints if _state == State.YOURS and online == null and not _clocked else 0
 
 ## The bulb's badge: the count stays up while the bulb waits its turn.
 func hints_held() -> int:
-	return _hints if online == null else 0
+	return _hints if online == null and not _clocked else 0
 
 ## Reset waits out a move in the air, as `_on_reset` does.
 func can_reset() -> bool:
@@ -462,6 +641,7 @@ func tutorial_pages() -> Array:
 		[Diagram.Lesson.END, "TUT_CHECKERS_END", tr("TUT_CHECKERS_END_BODY")],
 		[Diagram.Lesson.BAR, "TUT_CHECKERS_BAR",
 			tr("TUT_CHECKERS_BAR_BODY_ONE") if HINTS == 1 else tr("TUT_CHECKERS_BAR_BODY_N") % HINTS],
+		[Diagram.Lesson.MOVE, "TUT_CHECKERS_TOOLS", tr("TUT_CHECKERS_TOOLS_BODY")],
 	]
 	var pages := []
 	for step: Array in steps:
@@ -475,15 +655,28 @@ func tutorial_pages() -> Array:
 # --- the game ---
 
 func _new_game() -> void:
+	if online == null:
+		match Options.colour():
+			1:
+				player = rules_first()
+			2:
+				player = 1 - rules_first()
 	_lay(State.ENTER)
 	if Motion.reduce:
 		_start_turn.call_deferred()
+
+## The side that opens: colour chips name it, as chess's name White.
+func rules_first() -> int:
+	return Rules.new().first_side()
 
 ## A fresh set on the board: dealt in for a game (ENTER), or simply there,
 ## for the lobby to stand over (WAIT).
 func _lay(state: State) -> void:
 	_game += 1
 	rules = Rules.new()
+	# Online both ends must agree on every draw.
+	rules.endings = online == null
+	_base = rules.copy()
 	_history.clear()
 	_inbox.clear()
 	_online_end = ""
@@ -492,6 +685,25 @@ func _lay(state: State) -> void:
 	_undos = 0
 	_told_must = false
 	_state = state
+	_moves = []
+	_sans = []
+	_grades = {}
+	_judge_game = null
+	_view = -1
+	_reviewing = false
+	_grade_queue = []
+	_practice = false
+	_quip_until = 0.0
+	_best_chain = 0
+	_crowned = 0
+	_shots = 0
+	_strip.clear()
+	_set_clock()
+	_review_row.visible = false
+	_tools.visible = true
+	_rw.clear()
+	board.eval_bar = -1.0
+	board.clear_pen()
 	if _end != null:
 		_end.queue_free()
 		_end = null
@@ -499,10 +711,17 @@ func _lay(state: State) -> void:
 		f.expression = Face.Expr.HAPPY
 	board.interactive = false
 	board.setup(rules, player, state == State.ENTER)
+	_set_aids()
 	_refresh_board()
+
+## The trap preview is the computer's games', up to Medium, as the red lines.
+func _set_aids() -> void:
+	board.traps = online == null and level < 2 and Options.on("traps")
 
 func _on_settled() -> void:
 	match _state:
+		State.RETRY:
+			pass
 		State.ENTER:
 			_start_turn()
 		State.ANIM:
@@ -528,17 +747,17 @@ func _start_turn() -> void:
 	if mine:
 		_state = State.YOURS
 		board.interactive = true
-		var must := PackedInt32Array()
-		for m: PackedInt32Array in rules.legal_moves():
-			if Rules.mv_ncaps(m) > 0 and not must.has(m[0]):
-				must.append(m[0])
-		board.set_must(must)
+		var must := _set_must()
+		_show_verdict()
 		if not must.is_empty() and not _told_must:
 			_told_must = true
 			_say(tr("CKR_MUST_FIRST"))
 		elif _history.size() < 2:
 			_say(tr("CHS_YOUR_MOVE"))
 	else:
+		if _concedes():
+			_conclude("won", "CKR_CONCEDED", "")
+			return
 		_state = State.THINK
 		board.interactive = false
 		board.set_thinking(true)
@@ -550,7 +769,27 @@ func _start_turn() -> void:
 			_take_online()
 	_refresh_board()
 
+## The pieces of yours that can capture wear their rings.
+func _set_must() -> PackedInt32Array:
+	var must := PackedInt32Array()
+	for m: PackedInt32Array in rules.legal_moves():
+		if Rules.mv_ncaps(m) > 0 and not must.has(m[0]):
+			must.append(m[0])
+	board.set_must(must)
+	return must
+
+## The computer sees it is lost: far behind, with a king against it.
+func _concedes() -> bool:
+	if online != null:
+		return false
+	var mine: Vector2i = rules.count(player)
+	var its: Vector2i = rules.count(1 - player)
+	return mine.y > 0 and mine.x + mine.y - its.x - its.y >= CONCEDE_BY
+
 func _on_chosen(m: PackedInt32Array) -> void:
+	if _state == State.RETRY:
+		_retry_chosen(m)
+		return
 	if _state != State.YOURS:
 		return
 	# One knock a move: a tap as it is chosen, unless the move earns the
@@ -561,28 +800,90 @@ func _on_chosen(m: PackedInt32Array) -> void:
 	_play(m)
 
 func _play(m: PackedInt32Array) -> void:
+	_back_to_live()
 	var d: Dictionary = rules.describe(m)
+	var hand: bool = int(d.side) == player
+	if hand and online == null and Options.on("grades"):
+		_judge_game = rules.copy()
+		_judge_ply = _moves.size()
+	d["shot"] = _is_shot(d)
+	_moves.append(m)
+	_sans.append(Grade.notation(m))
+	if _clocked and _moves.size() > 2:
+		_clock[0 if hand else 1] += _increment
 	rules.make(m)
 	_history.append(d)
+	_strip.set_moves(_sans)
 	_state = State.ANIM
 	board.interactive = false
 	board.set_hint(PackedInt32Array())
 	_hint_move = PackedInt32Array()
 	board.set_must(PackedInt32Array())
+	if hand:
+		board.clear_pen()
 	_hush()
 	board.play(d)
-	if online != null and int(d.side) == player:
+	if online != null and hand:
 		online.send({"m": Array(m)})
 	_refresh_board()
 	if not (d.caps as Array).is_empty():
-		var taker := 0 if int(d.side) == player else 1
+		var taker := 0 if hand else 1
 		_react(taker, Face.Expr.JOY)
 		_react(1 - taker, Face.Expr.WORRIED)
 	elif bool(d.crown):
-		_react(0 if int(d.side) == player else 1, Face.Expr.JOY)
+		_react(0 if hand else 1, Face.Expr.JOY)
+
+## A shot, as it pays: the mover's last move was quiet, the other side's
+## answer was bound to capture, and this capture takes more than it took.
+func _is_shot(d: Dictionary) -> bool:
+	var n := _history.size()
+	var caps: int = (d.caps as Array).size()
+	if n < 2 or caps == 0:
+		return false
+	var theirs: Dictionary = _history[n - 1]
+	var set_up: Dictionary = _history[n - 2]
+	var gave: int = (theirs.caps as Array).size()
+	return gave > 0 and (set_up.caps as Array).is_empty() and caps > gave
 
 func _after_move() -> void:
+	if not _history.is_empty():
+		_moment(_history.back())
 	_start_turn()
+
+## What the move that just landed was worth: the words in the air for yours,
+## a line of the moon's for its own. The game's biggest moment wins the frame.
+func _moment(d: Dictionary) -> void:
+	var hand: bool = int(d.side) == player
+	var caps: int = (d.caps as Array).size()
+	var mid: Vector2 = _rw.at(board, board.frame_rect().get_center() + Vector2(0.0, -board.cell))
+	if hand:
+		_best_chain = maxi(_best_chain, caps)
+		if bool(d.crown):
+			_crowned += 1
+		if bool(d.shot):
+			_shots += 1
+			_rw.sticker(tr("CKR_SHOT"), mid, 104, 1.5, true, Color.WHITE, true, "shot")
+			_rw.spray(mid, Pal.SUN, 22, 780.0, "star", 1.1)
+			_rw.rain(1.2)
+			_fx.cue("crown", 1.2)
+			_fx.buzz(Haptics.GOOD)
+			_quip("CKR_Q_SHOT", 2)
+		elif caps >= 2:
+			var key := "CKR_CHAIN_%d" % caps if caps <= 4 else "CKR_CHAIN_N"
+			_rw.sticker(tr(key) % caps if caps > 4 else tr(key), mid, 72 + 10 * mini(caps, 5), 1.1, caps >= 3, Color("fff4c2"), caps >= 3, "chain")
+			_rw.spray(mid, Pal.SUN_RAY, 6 + 4 * caps, 620.0, "star", 1.0)
+		elif bool(d.crown):
+			_rw.sticker(tr("CKR_CROWNED"), mid, 76, 1.0, false, Color("fff4c2"), false, "crown")
+			_rw.spray(_rw.at(board, board.px(board.cell_of(int(d.to)))), Pal.SUN, 10, 520.0, "star", 1.0)
+			_quip("CKR_Q_CROWN_YOU", 2)
+		return
+	if bool(d.shot):
+		_rw.sticker(tr("CKR_SHOT"), mid, 76, 1.1, false, Color("ffd2c4"), false, "shot")
+		_quip("CKR_Q_GOTCHA", 2)
+	elif caps >= 3:
+		_quip("CKR_Q_GOTCHA", 2)
+	elif bool(d.crown):
+		_quip("CKR_Q_CROWN_ME", 2)
 
 ## A face on the scoreboard shows `expr` for a moment.
 func _react(p: int, expr: int) -> void:
@@ -595,11 +896,16 @@ func _react(p: int, expr: int) -> void:
 
 # --- thinking, for the computer and the hint ---
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	# The computer's answer waits while the tutorial card is up, so no move
 	# is played (or heard) behind a page.
 	if not _held:
 		_poll_think()
+		_tick_clock(delta)
+	_rw.step(delta)
+	if _quip_until > 0.0 and Time.get_ticks_msec() / 1000.0 >= _quip_until:
+		_quip_until = 0.0
+		_refresh_board()
 
 func _hold(on: bool) -> void:
 	_held = on
@@ -611,12 +917,26 @@ func _think(kind: String) -> void:
 	var lv := level if kind == "ai" else 2
 	var budget := -1 if kind == "ai" else AI.HINT_BUDGET_MS
 	var seed := _rng.randi()
-	var box: Array = [PackedInt32Array()]
+	var box: Array = [PackedInt32Array(), {}, -1]
 	_box = box
 	_task_for = kind
 	_task_game = _game
 	_think_at = Time.get_ticks_msec() / 1000.0
-	_task = WorkerThreadPool.add_task(func() -> void: box[0] = AI.new().plan(copy, lv, seed, budget))
+	if kind == "ai" and _clocked:
+		# Never more than its share of what is left on its clock.
+		budget = mini(AI.BUDGET_MS[level], maxi(int(_clock[1] * 1000.0 / 30.0 + _increment * 500.0), 40))
+	var judging: RefCounted = _judge_game if kind == "ai" else null
+	var judged_move := PackedInt32Array()
+	if judging != null:
+		judged_move = _moves[_judge_ply]
+	var judged_ply := _judge_ply
+	_judge_game = null
+	_task = WorkerThreadPool.add_task(func() -> void:
+		box[0] = AI.new().plan(copy, lv, seed, budget)
+		if judging != null:
+			var j: Dictionary = Grade.judge_move(judging, judged_move, seed)
+			j["ply"] = judged_ply
+			box[1] = j)
 
 func _poll_think() -> void:
 	if _task == -1 or not WorkerThreadPool.is_task_completed(_task):
@@ -627,24 +947,39 @@ func _poll_think() -> void:
 	WorkerThreadPool.wait_for_task_completion(_task)
 	_task = -1
 	var m: PackedInt32Array = _box[0]
+	if _task_game == _game and not (_box[1] as Dictionary).is_empty():
+		_note_verdict(_box[1])
+	if kind == "grade":
+		_grade_next()
+		return
+	if kind == "retry":
+		_retry_judged()
+		return
 	if kind == "ai" and _task_game == _game and _state == State.THINK and not m.is_empty():
 		_bot_moves(m)
 		return
 	if kind == "hint" and _task_game == _game and _state == State.YOURS and not m.is_empty():
 		_hint_move = m
+		_practice = true
 		board.set_hint(m)
 		_fx.cue("hint")
 		_say(tr("CHS_HINT_LINE"))
 	if _state == State.THINK:
 		_think("ai")
+	elif _reviewing:
+		_grade_next()
 
 ## The computer picks its piece up, holds it a beat, and moves.
 func _bot_moves(m: PackedInt32Array) -> void:
-	_state = State.ANIM
 	board.set_thinking(false)
+	# A cartoon holds its piece up a beat; on a clock nobody waits for that.
+	if not board.skin.cartoon() or _clocked or Motion.reduce:
+		_play(m)
+		return
+	_state = State.ANIM
 	board.set_lifted(Rules.mv_from(m))
 	var game := _game
-	get_tree().create_timer(0.0 if Motion.reduce else PONDER).timeout.connect(func() -> void:
+	get_tree().create_timer(PONDER).timeout.connect(func() -> void:
 		# An online game can end (a resignation, a clock) inside the beat.
 		if _game != game or not is_inside_tree() or _state != State.ANIM:
 			return
@@ -673,7 +1008,9 @@ func _on_undo() -> void:
 	if not can_undo():
 		return
 	_undos += 1
+	_practice = true
 	_rewinds = 2
+	_back_to_live()
 	_state = State.REWIND
 	_fx.buzz(Haptics.TICK)
 	board.interactive = false
@@ -688,6 +1025,11 @@ func _rewind_one() -> void:
 	_rewinds -= 1
 	var d: Dictionary = _history.pop_back()
 	rules.unmake()
+	_moves.pop_back()
+	_sans.pop_back()
+	_grades.erase(_moves.size())
+	_strip.grades.erase(_moves.size())
+	_strip.set_moves(_sans)
 	board.rewind(d)
 	_refresh_board()
 
@@ -695,6 +1037,7 @@ func _rewind_one() -> void:
 
 func _go_online() -> void:
 	online = Online.new(self, GAME)
+	online.set_bank(ONLINE_CLOCK[0], ONLINE_CLOCK[1])
 	online.seeking.connect(_on_online_seeking)
 	online.started.connect(_on_online_started)
 	online.move.connect(_on_online_move)
@@ -716,6 +1059,7 @@ func _on_online_seeking() -> void:
 func _on_online_started() -> void:
 	var opener: int = rules.first_side()
 	player = opener if online.opens() else 1 - opener
+	online.set_bank(ONLINE_CLOCK[0], ONLINE_CLOCK[1])
 	_seat_rival(online.opponent)
 	_new_game()
 
@@ -726,15 +1070,15 @@ func _seat_rival(uid: String) -> void:
 	_faces[1].queue_free()
 	var face: Control = MoonFace.new()
 	if uid.is_empty():
-		face.size = Vector2(88, 88)
-		_names[1].remove_theme_font_size_override("font_size")
+		_names[1].add_theme_font_size_override("font_size", 36)
 		_names[1].auto_translate_mode = Node.AUTO_TRANSLATE_MODE_INHERIT
 		# Nobody yet while the lobby looks: the bot is not who is coming.
 		_names[1].text = "SNK_BOT" if online == null else "…"
 		face.visible = online == null
 	else:
-		face = online.face(88)
+		face = online.face(FACE_PX)
 		Online.fit(_names[1], online.rival(), NAME_W)
+	face.size = Vector2(FACE_PX, FACE_PX)
 	seat.add_child(face)
 	_faces[1] = face
 
@@ -801,6 +1145,7 @@ func _play_computer() -> void:
 	online = null
 	level = Record.last_bot_level(GAME)
 	_seat_rival("")
+	_set_clock()
 	for l in _status:
 		l.remove_theme_color_override("font_color")
 	top_bar.set_motto(tr("CKR_MOTTO"))
@@ -832,11 +1177,18 @@ func _conclude(outcome: String, reason: String, why: String) -> void:
 	# The seat that made the last move: the side not to move now.
 	var mine_last: bool = rules.turn != player
 	_state = State.OVER
+	_back_to_live()
 	board.interactive = false
 	board.set_thinking(false)
 	board.set_lifted(-1)
 	board.set_must(PackedInt32Array())
+	board.set_arrows([])
 	board.finish(outcome)
+	_rating_delta = 0
+	if online == null and not _practice:
+		_rating_delta = _rate(outcome)
+	if online == null:
+		Record.set_option(GAME, "streak", 1 + _streak() if outcome == "won" else 0)
 	_refresh_board()
 	if online != null:
 		online.settle(outcome, why, _move_number(), mine_last)
@@ -859,10 +1211,15 @@ func _conclude(outcome: String, reason: String, why: String) -> void:
 	get_tree().create_timer(0.3 if Motion.reduce else END_WAIT).timeout.connect(func() -> void:
 		if _game != game or not is_inside_tree():
 			return
-		_end = _build_end(outcome, reason, why)
-		add_child(_end)
-		Motion.appear(_end, 0.0, 1.0, 0.3)
-		_celebrate(outcome == "won"))
+		_show_end(outcome, reason, why, true))
+
+func _show_end(outcome: String, reason: String, why: String, party: bool) -> void:
+	_end_args = [outcome, reason, why]
+	_end = _build_end(outcome, reason, why)
+	add_child(_end)
+	Motion.appear(_end, 0.0, 1.0, 0.3)
+	if party:
+		_celebrate(outcome == "won")
 
 func _build_end(outcome: String, reason: String, why := "") -> Control:
 	var scrim := Dialog.scrim()
@@ -876,12 +1233,12 @@ func _build_end(outcome: String, reason: String, why := "") -> Control:
 	col.add_theme_constant_override("separation", 18)
 	card.add_child(col)
 	var seat := Control.new()
-	seat.custom_minimum_size = Vector2(0, 170)
+	seat.custom_minimum_size = Vector2(0, 130)
 	var face: Control = SunFace.new()
 	if outcome == "lost":
-		face = MoonFace.new() if online == null else online.face(170)
-	face.size = Vector2(170, 170)
-	face.position = Vector2(820 * 0.5 - 40 - 85, 0)
+		face = MoonFace.new() if online == null else online.face(130)
+	face.size = Vector2(130, 130)
+	face.position = Vector2(820 * 0.5 - 40 - 65, 0)
 	face.expression = Face.Expr.SLEEPY if outcome == "draw" else Face.Expr.JOY
 	seat.add_child(face)
 	col.add_child(seat)
@@ -894,7 +1251,7 @@ func _build_end(outcome: String, reason: String, why := "") -> Control:
 	col.add_child(head)
 	var said := Label.new()
 	if reason != "":
-		said.text = tr(reason) % _move_number() if outcome != "draw" else tr(reason)
+		said.text = tr(reason) % _move_number() if "%d" in tr(reason) else tr(reason)
 	# Off the board nothing was taken or blocked: the match's own reason, if
 	# it has words.
 	if online != null and why != "":
@@ -907,11 +1264,22 @@ func _build_end(outcome: String, reason: String, why := "") -> Control:
 	col.add_child(said)
 	var line := Label.new()
 	line.text = "%s  ·  %s" % [tr(LEVELS[level]), Record.record_line(GAME, level)]
+	if online == null and not _practice:
+		line.text += "  ·  %d (%+d)" % [_rating(), _rating_delta]
 	line.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	line.theme_type_variation = "SheetBodyDim"
 	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(line)
+	for text: String in [_feats_line(outcome), _tally_line()]:
+		var extra := Label.new()
+		extra.text = text
+		extra.visible = text != ""
+		extra.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+		extra.theme_type_variation = "SheetBodyDim"
+		extra.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		extra.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		col.add_child(extra)
 	var again: Button
 	if online != null:
 		again = online.again_button()  # Find another
@@ -924,8 +1292,29 @@ func _build_end(outcome: String, reason: String, why := "") -> Control:
 			_new_game())
 	var back := Dialog.secondary("chevron_left", tr("SNK_BACK"))
 	back.pressed.connect(_on_back)
-	Dialog.buttons(col, again, back)
+	var review := Dialog.secondary("eye", tr("CHS_REVIEW"))
+	review.pressed.connect(_enter_review)
+	review.visible = _moves.size() >= 2
+	var stack := Dialog.buttons(col, again, review)
+	back.size_flags_horizontal = Control.SIZE_FILL
+	stack.add_child(back)
 	return scrim
+
+## What the game had in it: the best chain, the crowns, the shots, the streak.
+func _feats_line(outcome: String) -> String:
+	var parts := PackedStringArray()
+	if _best_chain >= 2:
+		parts.append(tr("CKR_END_CHAIN") % _best_chain)
+	if _crowned > 0:
+		parts.append(tr("CKR_END_KINGS") % _crowned)
+	if _shots > 0:
+		parts.append(tr("CKR_END_SHOTS") % _shots)
+	if online == null and outcome == "won" and _streak() >= 2:
+		parts.append(tr("CKR_END_STREAK") % _streak())
+	return "  ·  ".join(parts)
+
+func _streak() -> int:
+	return int(Record.option(GAME, "streak", 0))
 
 func _celebrate(won: bool) -> void:
 	var card: Control = _end.get_node("Center/Card")
@@ -946,6 +1335,396 @@ func _celebrate(won: bool) -> void:
 		# connection with it
 		get_tree().create_timer(0.25 + 0.14 * k).timeout.connect(fx.puff.bind(at, cols[k % cols.size()], 12))
 
+# --- the clock ---
+
+## Reads the clock for this game: what the options say, or the one an online
+## game has. A game with a clock has no undo and no hints.
+func _set_clock() -> void:
+	var control: Array = ONLINE_CLOCK if online != null else Options.CONTROLS[Options.control()]
+	_clocked = int(control[0]) > 0
+	_clock = [float(control[0]), float(control[0])]
+	_increment = float(control[1])
+	_warned = false
+	for pill in _clock_pills:
+		pill.visible = _clocked
+
+func _clock_running() -> bool:
+	return _clocked and online == null and _moves.size() >= 2 and _state in [State.YOURS, State.THINK, State.ANIM]
+
+func _tick_clock(delta: float) -> void:
+	if online != null:
+		_paint_clocks()
+		return
+	if not _clock_running() or settings_sheet.is_open() or (_options != null and _options.is_open()):
+		return
+	var p := 0 if rules.turn == player else 1
+	_clock[p] -= minf(delta, 0.25)
+	if p == 0 and _clock[0] <= BUZZ_AT and not _warned:
+		_warned = true
+		Haptics.play(Haptics.WARN)
+	_paint_clocks()
+	if _clock[p] <= 0.0:
+		_clock[p] = 0.0
+		_conclude("lost" if p == 0 else "won", "CHS_FLAG_LOST" if p == 0 else "CHS_FLAG_WON", "")
+
+func _paint_clocks() -> void:
+	if not _clocked:
+		return
+	var on: int = -1 if _state in [State.OVER, State.WAIT, State.ENTER, State.RETRY] else (0 if rules.turn == player else 1)
+	for p in 2:
+		var left: float = _clock[p] if online == null else online.bank(p == 0)
+		var low := left < CLOCK_LOW
+		var running := p == on
+		var fill: Color = Pal.BAD if running and low else (Color("2f2a26") if running else Color("ece3d4"))
+		var ink: Color = Pal.PAPER if running else Pal.TEXT
+		var text := _clock_text(left)
+		if _clock_labels[p].text != text or _clock_ink[p] != ink:
+			_clock_labels[p].text = text
+			_clock_ink[p] = ink
+			_clock_labels[p].add_theme_color_override("font_color", ink)
+			_clock_pills[p].add_theme_stylebox_override("panel", CozyTheme.lifted(fill, 18, 6))
+
+## Minutes and seconds, tenths in the last ten seconds.
+static func _clock_text(left: float) -> String:
+	var t := maxf(left, 0.0)
+	if t < 10.0:
+		return "0:%04.1f" % (floorf(t * 10.0) / 10.0)
+	var whole := ceili(t)
+	@warning_ignore("integer_division")
+	return "%d:%02d" % [whole / 60, whole % 60]
+
+# --- the pen ---
+
+func _toggle_pen() -> void:
+	board.pen = not board.pen
+	_line.visible = not board.pen
+	_pen_row.visible = board.pen
+	_paint_pen()
+
+func _paint_pen() -> void:
+	_tool_pen.set_icon("check" if board.pen else "pencil")
+	for i in Board.PEN.size():
+		var dot: Button = _pen_row.get_child(i)
+		var box := StyleBoxFlat.new()
+		box.bg_color = Board.PEN[i]
+		box.set_corner_radius_all(40)
+		box.border_color = Pal.PAPER
+		box.set_border_width_all(6 if board.pen_colour == i else 0)
+		for state in ["normal", "hover", "pressed"]:
+			dot.add_theme_stylebox_override(state, box)
+
+# --- the score sheet ---
+
+func _on_strip(ply: int) -> void:
+	_show_ply(-1 if ply == _moves.size() - 1 and not _reviewing else ply)
+
+func _step(by: int) -> void:
+	var at: int = (_moves.size() - 1 if _view < 0 else _view) + by
+	if at < -1 or at >= _moves.size():
+		return
+	_show_ply(-1 if at == _moves.size() - 1 and not _reviewing else maxi(at, 0))
+
+## The board after `ply`, -1 for the game as it stands.
+func _show_ply(ply: int) -> void:
+	if ply < 0:
+		_back_to_live()
+	else:
+		_view = ply
+		board.interactive = false
+		board.show_position(_before(ply + 1), player, _history.slice(0, ply + 1))
+		_strip.set_current(ply)
+		if _reviewing:
+			_show_review_ply(ply)
+	_refresh_tools()
+
+## Back to the game after a look at a past move.
+func _back_to_live() -> void:
+	if _view < 0:
+		return
+	_view = -1
+	_strip.set_current(-1)
+	board.show_position(rules, player, _history)
+	board.interactive = _state == State.YOURS
+	if _state == State.YOURS:
+		_set_must()
+		_show_verdict()
+
+# --- the verdicts ---
+
+func _note_verdict(j: Dictionary) -> void:
+	var ply: int = j.ply
+	_grades[ply] = j
+	_strip.set_grade(ply, j.grade)
+	if online != null or _state == State.OVER:
+		return
+	match int(j.grade):
+		Grade.BLUNDER:
+			_quip("CHS_Q_BLUNDER", 3)
+		Grade.MISTAKE:
+			_quip("CHS_Q_MISTAKE", 2)
+		Grade.BRILLIANT, Grade.GREAT:
+			_quip("CHS_Q_GREAT", 2)
+
+## A line of the moon's on its plate, one of `count`. Never online.
+func _quip(key: String, count: int) -> void:
+	if online != null:
+		return
+	_status[1].text = tr("%s_%d" % [key, 1 + _rng.randi() % count])
+	_quip_until = Time.get_ticks_msec() / 1000.0 + QUIP_HOLD
+	_react(1, Face.Expr.WORRIED if key in ["CHS_Q_GREAT", "CKR_Q_SHOT", "CKR_Q_CROWN_YOU"] else Face.Expr.JOY)
+
+## On your turn: the badge on your last move, and what is under attack.
+func _show_verdict() -> void:
+	if online != null:
+		return
+	var ply := _moves.size() - 2
+	if Options.on("grades") and ply >= 0 and _grades.has(ply) and int(_history[ply].side) == player:
+		board.set_badge(int(_history[ply].to), _grades[ply].grade)
+	if Options.on("threats") and level < 2 and not rules.must_capture():
+		board.set_arrows([], Grade.threats(rules))
+
+## The squares of a move, from where it starts.
+static func _route(m: PackedInt32Array) -> Array:
+	var pts: Array = [m[0]]
+	pts.append_array(Array(Rules.mv_path(m)))
+	return pts
+
+## The badge says what was wrong: the stronger move, for nothing.
+func _on_badge() -> void:
+	var ply := _moves.size() - 2 if _state == State.YOURS else _moves.size() - 1
+	if not _grades.has(ply):
+		return
+	var j: Dictionary = _grades[ply]
+	board.set_arrows([[_route(j.best), Color(Board.PEN[0], 0.8)]])
+	_say(tr("CHS_BETTER") % Grade.notation(j.best))
+	_fx.cue("hint")
+
+## The position before `ply`.
+func _before(ply: int) -> RefCounted:
+	var g: RefCounted = _base.copy()
+	for i in ply:
+		g.make(_moves[i])
+	return g
+
+## The moves made by you that have verdicts, as costs. A forced one is BOOK.
+func _my_costs() -> Array:
+	var costs: Array = []
+	for ply: int in _grades:
+		if int(_history[ply].side) == player and int(_grades[ply].grade) != Grade.BOOK:
+			costs.append(float(_grades[ply].cost))
+	return costs
+
+## "Accuracy 86%  ·  1 !! brilliant  ·  2 ? mistake", for the card and the review.
+func _tally_line() -> String:
+	var costs := _my_costs()
+	if costs.is_empty():
+		return ""
+	var counts := {}
+	for ply: int in _grades:
+		if int(_history[ply].side) == player:
+			var g: int = _grades[ply].grade
+			counts[g] = int(counts.get(g, 0)) + 1
+	var parts := PackedStringArray([tr("CHS_ACCURACY") % Grade.accuracy(costs)])
+	for g: int in [Grade.BRILLIANT, Grade.GREAT, Grade.INACCURACY, Grade.MISTAKE, Grade.BLUNDER]:
+		if counts.has(g):
+			parts.append("%d %s %s" % [counts[g], Grade.SYMBOL[g], tr(Grade.KEY[g])])
+	return "  ·  ".join(parts)
+
+# --- rating ---
+
+func _rating() -> int:
+	return roundi(float(Record.option(GAME, "rating", START_RATING)))
+
+## Moves your rating for `outcome` against this level; what it moved by.
+func _rate(outcome: String) -> int:
+	var mine := float(Record.option(GAME, "rating", START_RATING))
+	var theirs := float(BOT_RATING[clampi(level, 0, 2)])
+	var expected := 1.0 / (1.0 + pow(10.0, (theirs - mine) / 400.0))
+	var scored: float = {"won": 1.0, "draw": 0.5, "lost": 0.0}[outcome]
+	var after := mine + RATING_K * (scored - expected)
+	Record.set_option(GAME, "rating", after)
+	return roundi(after) - roundi(mine)
+
+# --- the review ---
+
+func _enter_review() -> void:
+	if _end != null:
+		_end.queue_free()
+		_end = null
+	_reviewing = true
+	_tools.visible = false
+	_review_row.visible = true
+	_grade_queue = []
+	for ply in _moves.size():
+		if int(_history[ply].side) == player and not _grades.has(ply):
+			_grade_queue.append(ply)
+	_grade_total = _grade_queue.size()
+	_show_ply(_first_slip(0))
+	_grade_next()
+
+## The first of your moves from `from` on that went wrong, else the last.
+func _first_slip(from: int) -> int:
+	for ply in range(from, _moves.size()):
+		if _grades.has(ply) and int(_grades[ply].grade) >= Grade.INACCURACY and int(_history[ply].side) == player:
+			return ply
+	return _moves.size() - 1
+
+func _next_mistake() -> void:
+	var from := _view + 1
+	var ply := _first_slip(from)
+	if ply == _moves.size() - 1 and from <= ply:
+		ply = _first_slip(0)
+	_show_ply(ply)
+
+## Grades the next of your moves not yet graded, one on the worker at a time.
+func _grade_next() -> void:
+	if _grade_queue.is_empty() or _task != -1 or not _reviewing:
+		if _reviewing and _view >= 0:
+			_show_review_ply(_view)
+		return
+	var ply: int = _grade_queue.pop_front()
+	var g := _before(ply)
+	var m: PackedInt32Array = _moves[ply]
+	var seed := _rng.randi()
+	var box: Array = [PackedInt32Array(), {}, -1]
+	_box = box
+	_task_for = "grade"
+	_task_game = _game
+	_task = WorkerThreadPool.add_task(func() -> void:
+		var j: Dictionary = Grade.judge_move(g, m, seed)
+		j["ply"] = ply
+		box[1] = j)
+	if _view >= 0:
+		_show_review_ply(_view)
+
+## What the review says at `ply`: the badge, the stronger move in green, what
+## came down on it in orange, the bar, and Try again on a slip of yours.
+func _show_review_ply(ply: int) -> void:
+	var words := _tally_line()
+	if not _grade_queue.is_empty():
+		words = tr("CHS_REVIEWING") % [_grade_total - _grade_queue.size(), _grade_total]
+	_status[0].text = words
+	_status[1].text = ""
+	var mine := int(_history[ply].side) == player
+	var arrows: Array = []
+	var can_try := false
+	if _grades.has(ply):
+		var j: Dictionary = _grades[ply]
+		board.set_badge(int(_history[ply].to), j.grade)
+		if j.best != _moves[ply] and int(j.grade) >= Grade.INACCURACY:
+			arrows.append([_route(j.best), Color(Board.PEN[0], 0.82)])
+			if not (j.reply as PackedInt32Array).is_empty():
+				arrows.append([_route(j.reply), Color(Board.PEN[1], 0.82)])
+				_status[1].text = tr("CKR_PUNISHED") % Grade.notation(j.reply)
+			can_try = mine
+		if int(j.grade) != Grade.BOOK:
+			board.eval_bar = float(j.chance) if int(_history[ply].side) == Rules.LIGHT else 100.0 - float(j.chance)
+	else:
+		board.set_badge(-1, -1)
+	board.set_arrows(arrows)
+	_try_button.disabled = not can_try
+
+func _leave_review() -> void:
+	_reviewing = false
+	_review_row.visible = false
+	_tools.visible = true
+	board.eval_bar = -1.0
+	board.set_arrows([])
+	_view = 0
+	_back_to_live()
+	_show_end(_end_args[0], _end_args[1], _end_args[2], false)
+
+## Your slip's position again, and the move to find.
+func _try_again() -> void:
+	if _view < 0 or _state != State.OVER:
+		return
+	_retry_ply = _view
+	_retry_game = _before(_view)
+	_state = State.RETRY
+	board.show_position(_retry_game, player, _history.slice(0, _view))
+	board.set_arrows([])
+	board.set_badge(-1, -1)
+	board.eval_bar = -1.0
+	board.interactive = true
+	_status[1].text = ""
+	_set_must_on(_retry_game)
+	_say(tr("CHS_FIND_BETTER"))
+	_refresh_tools()
+
+func _set_must_on(g: RefCounted) -> void:
+	var must := PackedInt32Array()
+	for m: PackedInt32Array in g.legal_moves():
+		if Rules.mv_ncaps(m) > 0 and not must.has(m[0]):
+			must.append(m[0])
+	board.set_must(must)
+
+func _retry_chosen(m: PackedInt32Array) -> void:
+	board.interactive = false
+	board.set_must(PackedInt32Array())
+	var d: Dictionary = _retry_game.describe(m)
+	var g: RefCounted = _retry_game.copy()
+	_retry_game.make(m)
+	board.play(d)
+	var seed := _rng.randi()
+	var box: Array = [PackedInt32Array(), {}, -1]
+	_box = box
+	_task_for = "retry"
+	_task_game = _game
+	_task = WorkerThreadPool.add_task(func() -> void:
+		box[2] = Grade.judge_move(g, m, seed).grade)
+
+func _retry_judged() -> void:
+	var good: bool = int(_box[2]) <= Grade.GOOD
+	_say(tr("CHS_FOUND_IT") if good else tr("CHS_NOT_QUITE"))
+	_fx.cue("hint" if good else "refused")
+	var game := _game
+	get_tree().create_timer(1.3).timeout.connect(func() -> void:
+		if _game != game or not is_inside_tree() or _state != State.RETRY:
+			return
+		_state = State.OVER
+		if good:
+			_show_ply(_retry_ply)
+		else:
+			_try_again())
+
+# --- resigning and the options ---
+
+func _on_resign() -> void:
+	if _state == State.OVER or _state == State.WAIT or _sans.is_empty():
+		return
+	if online != null:
+		online.ask_leave(_move_number())
+		return
+	var now := Time.get_ticks_msec() / 1000.0
+	if now > _resign_until:
+		_resign_until = now + RESIGN_HOLD
+		_say(tr("CHS_RESIGN_ASK"))
+		return
+	_resign_until = 0.0
+	_conclude("lost", "CHS_RESIGNED", "")
+
+func _open_options() -> void:
+	if _options == null:
+		_options = Options.new()
+		_options.name = "Options"
+		add_child(_options)
+		_options.changed.connect(_on_options)
+	_options.open()
+
+func _on_options() -> void:
+	if board.skin.id() != Record.skin(GAME):
+		board.set_skin(CheckersSkin.named(Record.skin(GAME)))
+		_deck_mesh = null
+		_deck_key = Rect2()
+		_deck.queue_redraw()
+	# A clock chosen before the first move takes at once.
+	if _sans.is_empty() and online == null and _state != State.OVER:
+		_set_clock()
+		_refresh_board()
+	_set_aids()
+	if not Options.on("threats"):
+		board.set_arrows([])
+
 # --- chrome ---
 
 func _say(text: String) -> void:
@@ -964,14 +1743,14 @@ func _hush() -> void:
 	_toast_tw = create_tween()
 	_toast_tw.tween_property(_toast, "modulate:a", 0.0, 0.2)
 
-## Over the computer's planter at the top, where it hides no piece in play.
+## Over the board, a little above its middle.
 func _place_toast() -> void:
 	_toast.reset_size()
 	var at: Rect2 = board.get_global_rect()
 	var frame: Rect2 = board.frame_rect()
-	var sz := _toast.get_combined_minimum_size()
-	var top := maxf(at.position.y + board.used_rect.position.y, at.position.y + frame.position.y + board.cell * 0.4 - sz.y)
-	_toast.global_position = Vector2(at.position.x + frame.get_center().x - sz.x * 0.5, top)
+	var w := _toast.get_combined_minimum_size().x
+	_toast.global_position = Vector2(at.position.x + frame.get_center().x - w * 0.5,
+		at.position.y + frame.position.y + frame.size.y * 0.4)
 
 func _on_reset() -> void:
 	if not can_reset():
@@ -996,6 +1775,9 @@ func go_back() -> void:
 	if online != null and online.back():
 		return
 	if tutor.close():
+		return
+	if _options != null and _options.is_open():
+		_options.close()
 		return
 	if settings_sheet.is_open():
 		settings_sheet.close()

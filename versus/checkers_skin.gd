@@ -51,11 +51,25 @@ static func named(id: String) -> RefCounted:
 	match id:
 		"plain":
 			return load("res://versus/checkers_skin.gd").new()
+		"classic":
+			return load("res://versus/checkers_skin_classic.gd").new()
 		_:
 			return load("res://versus/checkers_skin_garden.gd").new()
 
 func id() -> String:
 	return "plain"
+
+## A cartoon gets the lawn, the faces and the dust; off one the board is wood.
+func cartoon() -> bool:
+	return true
+
+## The pieces in the colours they move as, not cream for the player always.
+func true_colours() -> bool:
+	return false
+
+## The board's frame, in cells.
+func frame() -> float:
+	return 0.3
 
 # --- drawing ---
 

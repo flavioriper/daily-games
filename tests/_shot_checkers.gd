@@ -64,7 +64,12 @@ func setup(spec: String, turn := Rules.LIGHT) -> void:
 	g.hashes = PackedInt64Array([g.hash])
 	_s._game += 1
 	_s.rules = g
+	_s._base = g.copy()
 	_s._history.clear()
+	_s._moves = []
+	_s._sans = []
+	_s._grades = {}
+	_s._strip.clear()
 	_s.board.setup(g, _s.player, false)
 	_s._start_turn()
 

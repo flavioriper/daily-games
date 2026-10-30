@@ -94,9 +94,9 @@ static func set_last_colour(game: String, colour: int) -> void:
 	cfg.save(PATH)
 
 ## The piece set chosen for a game (versus/chess_skin.gd,
-## versus/checkers_skin.gd): chess has two, the others the house set.
+## versus/checkers_skin.gd): chess and checkers have sets, the others the house one.
 static func skin(game: String) -> String:
-	return String(_load().get_value("skin", game, "classic" if game == "chess" else "garden"))
+	return String(_load().get_value("skin", game, "classic" if game in ["chess", "checkers"] else "garden"))
 
 static func set_skin(game: String, id: String) -> void:
 	var cfg := _load()

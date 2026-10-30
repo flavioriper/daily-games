@@ -41,6 +41,12 @@ enum { PLAYING, NO_MOVES, QUIET, REPETITION }
 ## Plies with neither a capture nor a man moving before the game is drawn:
 ## twenty moves each of kings shuffling.
 const QUIET_PLIES := 40
+## With `endings` on, the short endings' limits, in plies with no capture and
+## no man moved (the FMJD's rules 7.2.4, 7.2.7 and 7.2.8): three pieces with a
+## king against a lone king have fifteen moves, or five while that king holds
+## the long diagonal; two or fewer against one have five.
+const LONE_PLIES := 30
+const SHORT_PLIES := 10
 
 ## RAYS[sq][d]: the squares out from sq along diagonal d, nearest first.
 ## d 0 and 1 run up the board (toward rank 8), 2 and 3 down.
@@ -75,6 +81,10 @@ var variant := Variant.BRAZILIAN
 var flying := true
 var men_back := true
 var most := true
+## The short endings are drawn early (`ending_limit`). The computer's games
+## only: an online game's two ends must agree on every draw, and nothing on
+## the wire says which rules a client has.
+var endings := false
 var board := PackedInt32Array()
 var turn := LIGHT
 ## Plies since the last capture or man move.
@@ -117,6 +127,7 @@ func copy() -> RefCounted:
 	g.hash = hash
 	g.hashes = hashes.duplicate()
 	g.since = since
+	g.endings = endings
 	return g
 
 func rehash() -> void:
@@ -384,11 +395,37 @@ func repeats() -> int:
 func status() -> int:
 	if legal_moves().is_empty():
 		return NO_MOVES
-	if quiet >= QUIET_PLIES:
+	if quiet >= ending_limit():
 		return QUIET
 	if repeats() >= 3:
 		return REPETITION
 	return PLAYING
+
+## The plies with no capture and no man moved that draw this position.
+func ending_limit() -> int:
+	if not endings:
+		return QUIET_PLIES
+	var a := count(LIGHT)
+	var b := count(DARK)
+	var strong := a if a.x + a.y >= b.x + b.y else b
+	var weak := b if a.x + a.y >= b.x + b.y else a
+	if weak != Vector2i(0, 1) or strong.y == 0:
+		return QUIET_PLIES
+	var n := strong.x + strong.y
+	if n <= 2:
+		return SHORT_PLIES
+	if n == 3:
+		return SHORT_PLIES if _lone_king_on_long() else LONE_PLIES
+	return QUIET_PLIES
+
+## Whether the lone king stands on a1-h8. Only asked with one king alone.
+func _lone_king_on_long() -> bool:
+	var a := count(LIGHT)
+	var s := -1 if a.x + a.y > 1 else 1
+	for i in 8:
+		if board[i * 9] * s == KING:
+			return true
+	return false
 
 ## Men and kings a side has on the board.
 func count(side: int) -> Vector2i:

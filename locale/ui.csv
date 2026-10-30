@@ -280,7 +280,33 @@ CHS_Q_MISTAKE_2,Hmm. I like my chances.,Hum. Gostei das minhas chances.,Mmm. Me 
 CHS_Q_GREAT_1,Wait. That was good.,Espera. Essa foi boa.,Espera. Esa fue buena.
 CHS_Q_GREAT_2,Who taught you that?,Quem te ensinou isso?,¿Quién te enseñó eso?
 TUT_CHESS_TOOLS,The tools,As ferramentas,Las herramientas
-TUT_CHESS_TOOLS_BODY,"While the other side thinks, tap a piece and a square to queue a premove; tap elsewhere to take it back. The pencil draws arrows and squares. Tap a move under the board to see that moment, and the gear sets the clock.","Enquanto o outro pensa, toque numa peça e numa casa para deixar um pré-lance; toque em outro lugar para desfazer. O lápis desenha setas e casas. Toque num lance abaixo do tabuleiro para ver aquele momento, e a engrenagem ajusta o relógio.","Mientras el otro piensa, toca una pieza y una casilla para dejar un premovimiento; toca en otro sitio para deshacerlo. El lápiz dibuja flechas y casillas. Toca una jugada bajo el tablero para ver ese momento, y el engranaje ajusta el reloj."
+TUT_CHESS_TOOLS_BODY,"While the other side thinks, tap a piece and a square to queue a premove; tap elsewhere to take it back. The pencil draws arrows and squares. Tap a move above the board to see that moment, and the gear sets the clock.","Enquanto o outro pensa, toque numa peça e numa casa para deixar um pré-lance; toque em outro lugar para desfazer. O lápis desenha setas e casas. Toque num lance acima do tabuleiro para ver aquele momento, e a engrenagem ajusta o relógio.","Mientras el otro piensa, toca una pieza y una casilla para dejar un premovimiento; toca en otro sitio para deshacerlo. El lápiz dibuja flechas y casillas. Toca una jugada sobre el tablero para ver ese momento, y el engranaje ajusta el reloj."
+CKR_OPT_TRAPS,Trap preview,Prévia de armadilhas,Vista de trampas
+CKR_OPT_TRAPS_SUB,"Red landings give pieces away, on Easy and Medium","Casa vermelha entrega peças, no Fácil e no Médio","Casilla roja entrega piezas, en Fácil y Medio"
+CKR_LEFT,%d left,%d em jogo,%d en juego
+CKR_DRAW_IN,Draw in %d moves,Empate em %d lances,Tablas en %d jugadas
+CKR_CONCEDED,The bot gives up,O bot desistiu,El bot se rinde
+CKR_PUNISHED,Then %s comes down on it,Aí vem %s,Entonces llega %s
+CKR_SHOT,SHOT!,GOLPE!,¡GOLPE!
+CKR_CHAIN_2,DOUBLE!,DUPLA!,¡DOBLE!
+CKR_CHAIN_3,TRIPLE!,TRIPLA!,¡TRIPLE!
+CKR_CHAIN_4,QUADRUPLE!,QUÁDRUPLA!,¡CUÁDRUPLE!
+CKR_CHAIN_N,%d IN ONE!,%d DE UMA VEZ!,¡%d DE UNA VEZ!
+CKR_CROWNED,CROWNED!,COROADA!,¡CORONADA!
+CKR_END_CHAIN,Best chain %d,Melhor sequência %d,Mejor cadena %d
+CKR_END_KINGS,Kings made %d,Damas feitas %d,Damas hechas %d
+CKR_END_SHOTS,Shots %d,Golpes %d,Golpes %d
+CKR_END_STREAK,%d wins in a row,%d vitórias seguidas,%d victorias seguidas
+CKR_Q_SHOT_1,I had to take it. I HAD to.,Eu tinha que capturar. TINHA.,Tenía que comer. TENÍA.
+CKR_Q_SHOT_2,That was a trap. Well played.,Era uma armadilha. Boa.,Era una trampa. Bien jugado.
+CKR_Q_GOTCHA_1,Forced captures are the best.,Captura obrigatória é a melhor coisa.,Las capturas obligadas son lo mejor.
+CKR_Q_GOTCHA_2,Did you see that coming?,Você viu essa chegando?,¿Lo viste venir?
+CKR_Q_CROWN_YOU_1,A king. Oh dear.,Uma dama. Ai ai.,Una dama. Ay ay.
+CKR_Q_CROWN_YOU_2,I was hoping you'd miss that.,Eu torcia para você não ver.,Esperaba que no lo vieras.
+CKR_Q_CROWN_ME_1,Long live me.,Viva eu.,Viva yo.
+CKR_Q_CROWN_ME_2,Now I can fly.,Agora eu voo.,Ahora vuelo.
+TUT_CHECKERS_TOOLS,The tools,As ferramentas,Las herramientas
+TUT_CHECKERS_TOOLS_BODY,"Tap a ?, ?! or ?? to see the stronger move. Red landings give pieces away on Easy and Medium. The pencil draws, a move over the board shows that moment, and the gear sets the clock.","Toque em ?, ?! ou ?? para ver o melhor lance. Casa vermelha entrega peças no Fácil e no Médio. O lápis desenha, um lance sobre o tabuleiro mostra aquele momento, e a engrenagem ajusta o relógio.","Toca ?, ?! o ?? para ver la mejor jugada. Una casilla roja entrega piezas en Fácil y Medio. El lápiz dibuja, una jugada sobre el tablero muestra ese momento, y el engranaje ajusta el reloj."
 VS_CHECKERS_BLURB,"A game against the computer: hop, jump chains of pieces, and crown your men.","Uma partida contra o computador: pule, capture em sequência e coroe suas pedras.","Una partida contra el ordenador: salta, captura en cadena y corona tus fichas."
 CKR_MOTTO,JUMP OVER THE MOON,PULE POR CIMA DA LUA,SALTA SOBRE LA LUNA
 CKR_CAPTURE,Capture!,Capture!,¡Captura!
@@ -840,7 +866,7 @@ TUT_CHESS_CAP_UNDO,Undo takes both back,Desfazer volta os dois,Deshacer retira l
 TUT_CHESS_CAP_HINT,The bulb shows a good move,A lâmpada mostra um bom lance,La bombilla muestra una buena jugada
 TUT_CHESS_CAP_RESET,Reset starts over,Recomeçar reinicia a partida,Reiniciar empieza de nuevo
 TUT_CHECKERS_MOVE,One step forward,Um passo à frente,Un paso adelante
-TUT_CHECKERS_MOVE_BODY,"Play stays on the green squares. A man steps one square diagonally forward. Tap one of yours, then where it lands, or drag it there. Yours are the pieces at the bottom.","O jogo fica nas casas verdes. Uma pedra anda uma casa na diagonal, para a frente. Toque numa das suas e depois onde ela para, ou arraste. As suas são as de baixo.","Se juega en las casillas verdes. Un peón avanza una casilla en diagonal. Toca uno de los tuyos y luego dónde cae, o arrástralo. Los tuyos son los de abajo."
+TUT_CHECKERS_MOVE_BODY,"Play stays on the dark squares. A man steps one square diagonally forward. Tap one of yours, then where it lands, or drag it there. Yours are the pieces at the bottom.","O jogo fica nas casas escuras. Uma pedra anda uma casa na diagonal, para a frente. Toque numa das suas e depois onde ela para, ou arraste. As suas são as de baixo.","Se juega en las casillas oscuras. Un peón avanza una casilla en diagonal. Toca uno de los tuyos y luego dónde cae, o arrástralo. Los tuyos son los de abajo."
 TUT_CHECKERS_MOVE_CAP_TAP,Tap a piece: the dots are where it can go,Toque numa peça: os pontos são aonde ela vai,Toca una pieza: los puntos son adónde va
 TUT_CHECKERS_MOVE_CAP_REPLY,The bot answers,O bot responde,El bot responde
 TUT_CHECKERS_MOVE_CAP_DRAG,Or drag it there,Ou arraste até lá,O arrástrala hasta allí

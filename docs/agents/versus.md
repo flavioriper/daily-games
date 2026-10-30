@@ -119,10 +119,12 @@ coloured squares and move badges; autonomous, pushed).
 
 - **The screen.** The board is full width (cell 120 at the harness, was 84).
   The other player's plate stands over it and yours under it, each with its
-  clock, then the score sheet (`versus/chess_strip.gd`, one control, a string
-  a move in view), then the tools: back and forward through the moves, the
-  opening's name, the pen, the options (`versus/chess_options.gd`), Resign.
-  155-210 draw calls.
+  clock. **Every button stands above the board, never below it** (the user,
+  2026-10-30, of chess and checkers): from the top, the tools (back and forward
+  through the moves, the opening's name, the pen, the options in
+  `versus/chess_options.gd`, Resign; the review's row in their place), the score
+  sheet (`versus/chess_strip.gd`, one control, a string a move in view), the
+  other's plate, the board, your plate. 155-210 draw calls.
 - **Two sets, classic the default**: `versus/chess_skin_classic.gd`, Staunton
   shapes on a wooden board, no faces, true colours, a move a quick slide. A
   skin answers `cartoon()`, `true_colours()` and `frame()`; off a cartoon the
@@ -233,6 +235,56 @@ chess is: rules, computer, skin contract, house set, board, screen.
 - Harnesses: `tests/_shot_checkers.gd` (every beat; `reduce` after the
   outdir), `tests/_probe_checkers_game.gd` (a whole game, `UNDO=1` takes
   moves back). Both put `user://versus.cfg` back.
+
+**Checkers made a real checkers app** (2026-10-30, the user: "way better to
+play, and game itself way funnier ... right now nobody likes it ... players want
+something way more professional, with more visual and strategy tools, use as
+reference the chess one"; autonomous, pushed). Rated apps lead with levels,
+undo, hints, review and a rating; a shot is the fastest way to win, and the
+compulsory capture is what makes it possible.
+
+- **Chess's screen and tools**, the code carried over and the shared parts
+  shared: the stack of tools, score sheet (`chess_strip.gd`, the same control),
+  plates and board, clocks (no clock, 3+2, 5+0, 10+0; a clock takes undo and
+  hints away), the pen, verdicts, red lines, the review with Try again, a
+  rating (800 to start, Easy 600, Medium 1100, Hard 1500, K 24, undo or hint
+  makes it practice), Resign. `versus/versus_options.gd` holds the sheet's rows;
+  `chess_options.gd` and `checkers_options.gd` are thin. Notation `c3-d4`,
+  `c3xe5xg3` with every landing.
+- **The classic set is the default** (`versus/checkers_skin_classic.gd`): chess's
+  wooden board, turned discs in true colours, a king two discs with a gold
+  crown, no faces, dust or bubble. The garden set stays in the options, and
+  `_mesh` and friends ask `_worn(seat)`. The tutorial says dark squares now.
+- **The grader** (`versus/checkers_grade.gd`) extends chess's for its enum and
+  accuracy. A man up reads about 68 percent (`CHANCE_K`). A move with no choice
+  is BOOK: no badge, not in the accuracy. **`!!` is a shot** (`Grade.shot`): a
+  quiet move after which every forced capture is paid back with more. `reply`
+  is what punishes a slip: orange in the review, green the stronger move.
+- **The trap preview, which chess has not**: pick a piece on Easy or Medium and
+  a landing that loses pieces turns red with the count, read by a capture-only
+  exchange (`Grade.exposed`), under 1 ms a pick on this Mac.
+- **Moments** (`_moment`, `arcade/rewards.gd`): SHOT! with rain, DOUBLE!,
+  TRIPLE!, CROWNED!; the moon's lines (`CKR_Q_*`, and chess's on verdicts), never
+  online. The end card adds best chain, kings, shots and a win streak.
+- **The levels are characters** (`AI._lean_after`): Easy runs men for the far
+  row, Medium offers pieces, Hard plays, blurred a little for 8 plies. The
+  computer concedes `CONCEDE_BY` 6 pieces behind against a king.
+- **Short endings draw early** (`rules.endings`, the FMJD's 7.2.4, 7.2.7, 7.2.8):
+  two or fewer against a lone king 5 moves, three against one 15, or 5 with that
+  king on the long diagonal. The tool row counts the last ten moves down.
+  **Computer games only**: online stays at twenty, since no rules version
+  travels with a match.
+- Online: the wire is untouched, nothing graded live, 5+3 by `online.set_bank`,
+  chess's arrangement with chess's caveat (an old client never flags itself).
+- 103-195 draw calls on the phone's driver (the options sheet 228). Suite
+  303252/0, `_probe_checkers.gd` 0 fails, `_probe_online.gd` all passed for
+  checkers and chess, whole games through the screen with and without undo.
+  `Online.bank` no longer reads past its array in the lobby, where `seat` is -1.
+  Not on a phone, not heard.
+- Left out on purpose: an opening book (no source checked), premoves (the
+  compulsory capture voids most of them), English rules as an option (the
+  tutorial and captions are Brazilian). No new sound: credits are out until
+  2026-11-01.
 
 **Air hockey is the fourth Versus game** (2026-10-08, built unattended from
 one line and a photograph of a table: "a new arcade multiplayer game of air

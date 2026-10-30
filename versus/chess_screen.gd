@@ -281,6 +281,11 @@ func _build() -> void:
 	stack.add_theme_constant_override("separation", 8)
 	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_room.add_child(stack)
+	# Every button stands above the board, never below it (the user, 2026-10-30).
+	_strip = Strip.new()
+	_strip.picked.connect(_on_strip)
+	stack.add_child(_build_tools())
+	stack.add_child(_strip)
 	stack.add_child(_build_plate(1))
 	board = Board.new()
 	board.name = "Board"
@@ -294,10 +299,6 @@ func _build() -> void:
 		_say(tr("CHS_KING_SAFE") if reason == "king" else tr("CHS_STUCK")))
 	stack.add_child(board)
 	stack.add_child(_build_plate(0))
-	_strip = Strip.new()
-	_strip.picked.connect(_on_strip)
-	stack.add_child(_strip)
-	stack.add_child(_build_tools())
 	_fx = Fx2D.new()
 	_fx.haptics = HAPTICS
 	add_child(_fx)
@@ -462,7 +463,7 @@ func _build_plate(p: int) -> Control:
 	_clock_labels[p] = digits
 	return plate
 
-## The row at the foot: back and forward through the moves, what the game is,
+## The row over the board: back and forward through the moves, what the game is,
 ## and the pen, the options and Resign. The pen's colours take the words' place
 ## while it is down, and the review has a row of its own.
 func _build_tools() -> Control:
@@ -563,7 +564,7 @@ func _refresh_board() -> void:
 	top_bar.refresh(self)
 	_refresh_tools()
 
-## The foot's words: the opening, and past it how far the game has got.
+## The tool row's words: the opening, and past it how far the game has got.
 func _refresh_line() -> void:
 	if _pen_row == null:
 		return

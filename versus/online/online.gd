@@ -455,6 +455,9 @@ func dress(label: Label, base: String, on: bool, mine: bool) -> void:
 ## rules' minute a move still stands behind it. A side whose clock runs out
 ## says so itself (`_tick_bank`), by resigning.
 func bank(mine: bool) -> float:
+	# No seat yet while the lobby looks: both clocks stand full.
+	if seat < 0:
+		return _bank[0]
 	var s := seat if mine else 1 - seat
 	var left: float = _bank[s]
 	if live() and _bank_seat == s and _bank_at > 0.0 and _bank_moves >= 2:

@@ -17,7 +17,13 @@ extends RefCounted
 ## on a shorter budget. Runs on a worker thread against a copy of the game;
 ## nothing here touches the scene tree.
 ##
+## The levels are also characters, a small lean on the first move only: Easy
+## cannot resist running a man for the far row, Medium loves to offer a piece
+## (the search still turns down one that simply loses it), Hard just plays,
+## with a little blur in the opening so no two games start alike.
+##
 ##     AI.new().plan(game.copy(), level, seed)
+##     AI.new().analyse(game, budget_ms, max_depth, seed)  # {score, best}
 
 const Rules = preload("res://versus/checkers_rules.gd")
 
@@ -27,6 +33,14 @@ const DEPTH := [2, 4, 16]
 const NOISE := [70.0, 22.0, 0.0]
 const BUDGET_MS := [400, 800, 1500]
 const HINT_BUDGET_MS := 1100
+## Hard's blur for its first plies.
+const OPENING_NOISE := 9.0
+const OPENING_PLIES := 8
+## Easy's love of the far row, per row a man's move reaches past RUNNER_FROM.
+const RUNNER := 16
+const RUNNER_FROM := 4
+## Medium's love of a move that leaves the other side bound to capture.
+const BAITER := 14
 const MAN_V := 100
 const KING_FLY := 320
 const KING_STEP := 170
@@ -60,6 +74,8 @@ var rng := RandomNumberGenerator.new()
 ## What the last plan saw, for the probes: the depth finished and its score.
 var reached := 0
 var score := 0
+## A move left out of an analysis, to find the best of the rest.
+var skip := PackedInt32Array()
 
 ## The move to play for the side to move in `game` (a copy: it is searched
 ## in place). Empty when there is none.
@@ -87,22 +103,53 @@ func plan(game: RefCounted, level: int, seed: int, budget_ms := -1) -> PackedInt
 		moves[i] = moves[j]
 		moves[j] = t
 	var noise: float = NOISE[level]
+	if level == 2 and g.ply < OPENING_PLIES:
+		noise = OPENING_NOISE
+	return _deepen(moves, int(DEPTH[level]), noise, level)
+
+## The position in `game` read for what it is, with no blur: its score for the
+## side to move, in hundredths of a man, and the best move. Searched in place.
+func analyse(game: RefCounted, budget_ms: int, max_depth: int, seed: int) -> Dictionary:
+	g = game
+	rng.seed = seed
+	nodes = 0
+	stopped = false
+	reached = 0
+	score = 0
+	tt.clear()
+	killers.resize(MAX_PLY * 2 + 8)
+	killers.fill(-1)
+	var moves: Array = g.legal_moves().filter(func(m: PackedInt32Array) -> bool: return m != skip)
+	if moves.is_empty():
+		return {"score": -WIN, "best": PackedInt32Array()}
+	deadline = Time.get_ticks_msec() + budget_ms
+	var best := _deepen(moves, max_depth, 0.0, 2)
+	if reached == 0:
+		score = evaluate()
+	return {"score": score, "best": best}
+
+## Iterative deepening over `moves`; the best found, with `score` and `reached`
+## set.
+func _deepen(moves: Array, max_depth: int, noise: float, level: int) -> PackedInt32Array:
 	var best: PackedInt32Array = moves[0]
-	for depth in range(1, int(DEPTH[level]) + 1):
+	for depth in range(1, max_depth + 1):
 		var alpha := -INF
 		var round_best: PackedInt32Array = best
 		var round_score := -INF
 		var round_noisy := -INF
 		var complete := true
 		for m: PackedInt32Array in moves:
+			var lean := _lean(m, level)
 			g.make(m)
 			# with a blur every root move needs its true score, so no window
 			var v := -_search(depth - 1, -INF, INF if noise > 0.0 else -alpha, 1)
+			if lean != 0:
+				lean = _lean_after(m, level)
 			g.unmake()
 			if stopped:
 				complete = false
 				break
-			var noisy := v + (rng.randfn(0.0, noise) if noise > 0.0 else 0.0)
+			var noisy := v + lean + (rng.randfn(0.0, noise) if noise > 0.0 else 0.0)
 			if noisy > round_noisy:
 				round_noisy = noisy
 				round_best = m
@@ -120,13 +167,27 @@ func plan(game: RefCounted, level: int, seed: int, budget_ms := -1) -> PackedInt
 			break
 	return best
 
+## Whether a level's character could care about `m`, before it is made.
+func _lean(m: PackedInt32Array, level: int) -> int:
+	if level == 0 and absi(g.board[m[0]]) == Rules.MAN:
+		return 1
+	return 1 if level == 1 and Rules.mv_ncaps(m) == 0 else 0
+
+## What a level's character adds to `m`, with it made.
+func _lean_after(m: PackedInt32Array, level: int) -> int:
+	if level == 0:
+		var r := Rules.mv_to(m) >> 3
+		var adv := r if g.turn == Rules.DARK else 7 - r
+		return maxi(adv - RUNNER_FROM, 0) * RUNNER
+	return BAITER if g.must_capture() else 0
+
 func _search(depth: int, alpha: int, beta: int, ply: int) -> int:
 	nodes += 1
 	if (nodes & 511) == 0 and Time.get_ticks_msec() > deadline:
 		stopped = true
 	if stopped:
 		return 0
-	if g.quiet >= Rules.QUIET_PLIES or g.repeats() >= 2:
+	if g.quiet >= g.ending_limit() or g.repeats() >= 2:
 		return 0
 	var moves: Array = g.legal_moves()
 	if moves.is_empty():

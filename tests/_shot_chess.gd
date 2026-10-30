@@ -71,6 +71,10 @@ func setup(rows: String, turn: int) -> void:
 	_s._game += 1
 	_s.rules = g
 	_s._history.clear()
+	_s._moves = []
+	_s._sans = []
+	_s._grades = {}
+	_s._strip.clear()
 	_s.board.setup(g, _s.player, false)
 	_s._state = _s.State.YOURS
 	_s.board.interactive = true
