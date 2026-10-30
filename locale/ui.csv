@@ -173,7 +173,7 @@ SNK_NEEDS,"You need snookers now, or a bit of luck","Agora você precisa de sinu
 SNK_BLACK_BALL,"Black ball game: this one decides it","Tudo na preta: esta decide","Todo a la negra: esta decide"
 SNK_RUN,Break of %d!,Tacada de %d!,¡Tacada de %d!
 SNK_POT_TWO,Two at once!,Duas de uma vez!,¡Dos de una vez!
-SNK_POT_DOUBLE,A double, off the cushion!,Na tabela, que beleza!,¡Por la banda, qué bonita!
+SNK_POT_DOUBLE,"A double, off the cushion!","Na tabela, que beleza!","¡Por la banda, qué bonita!"
 SNK_POT_LONG,Long pot!,Bola longa!,¡Bola larga!
 SNK_WHY_CLOSE,So close! It stopped at the pocket,Por um triz! Parou na caçapa,¡Por poco! Se paró en la tronera
 SNK_WHY_FULL,"Too full: the ball went wide of the pocket. Hit it thinner","Pegou cheio demais: a bola abriu da caçapa. Pegue mais fino","Demasiado llena: la bola se abrió de la tronera. Dale más fino"
@@ -182,7 +182,8 @@ SNK_WHY_JAWS,"In the jaws and out again. A touch softer","Bateu na boca da caça
 SNK_WHY_SHORT,"On line, but short: draw the cue back further","Na linha, mas faltou força: puxe mais o taco","En línea, pero corta: tira más del taco"
 SNK_CONCEDED,The Bot shook hands and conceded,O Bot estendeu a mão e desistiu,El Bot te dio la mano y se rindió
 SNK_NEW_BEST,New best break: %d!,Nova melhor tacada: %d!,¡Nueva mejor tacada: %d!
-SNK_POTS,%d pots,%d bolas,%d bolas
+SNK_POTS_ONE,1 pot,1 bola,1 bola
+SNK_POTS_N,%d pots,%d bolas,%d bolas
 SNK_MOON_POT_1,Too easy.,Fácil demais.,Demasiado fácil.
 SNK_MOON_POT_2,Did you see that?,Viu essa?,¿Has visto eso?
 SNK_MOON_POT_3,Moonlight magic.,Magia do luar.,Magia de luna.

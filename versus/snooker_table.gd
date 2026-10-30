@@ -64,6 +64,8 @@ const DASH := 11.0
 const DASH_GAP := 8.0
 const OBJ_LINE := 0.42
 const CUE_LINE := 0.24
+## How near a line the wheel catches it, radians.
+const WHEEL_CATCH := 0.0012
 
 const CLOTH := Color("3f9150")
 const CLOTH_EDGE := Color("2f7a40")
@@ -419,15 +421,19 @@ func snap(by_hand := false) -> void:
 		if by_hand and (was.is_empty() or int(was.id) != int(lock.id) or int(was.pocket) != int(lock.pocket)):
 			locked.emit()
 
-## The wheel: the aim turned by hand, a hair, and off whatever line it was on.
+## The wheel: the aim turned by hand, a hair, off whatever line it was on. It
+## settles on a line only coming toward one, so the slowest turn can leave it.
 func nudge(radians: float) -> void:
+	var from := aim_dir
 	aim_dir = aim_dir.rotated(radians)
 	hint_dir = Vector2.ZERO
 	lock = {}
-	var tight := assist
-	assist = 0.0012
-	snap()
-	assist = tight
+	for p in pot_lines:
+		var off := absf(aim_dir.angle_to(p.dir))
+		if off < WHEEL_CATCH and off < absf(from.angle_to(p.dir)):
+			lock = p
+			aim_dir = p.dir
+			return
 
 ## Whether a press lands on the cue lying behind the ball.
 func _on_cue(at: Vector2) -> bool:

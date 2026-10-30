@@ -176,6 +176,7 @@ var _try := {}
 var _from: PackedVector2Array
 var _shot_dir := Vector2.ZERO
 var _obj_dir := Vector2.ZERO
+var _first := -1
 var _railed := {}
 var _in_at := {}
 var _tap := false
@@ -367,7 +368,9 @@ func _build() -> void:
 	table.locked.connect(func() -> void: _fx.buzz(Haptics.TICK))
 	table.moved.connect(_read_lines)
 	table.tapped.connect(func() -> void:
-		if _state == State.ROLL:
+		# Online the turn's clock runs from the shooter's table stopping, so
+		# only the computer's games can be hurried.
+		if _state == State.ROLL and online == null:
 			_tap = true)
 	table.pulling.connect(_on_pull)
 	table.placed.connect(func() -> void: _fx.buzz(Haptics.TAP))
@@ -751,6 +754,9 @@ func _start_turn() -> void:
 ## plain turn only the first two times, and never over the last shot's words.
 func _turn_line() -> void:
 	if Time.get_ticks_msec() / 1000.0 - _said_at < 1.5:
+		# Still reading the last shot: what this turn is goes under it.
+		if rules.free_ball or rules.in_hand:
+			_say(_toast_label.text + "\n" + tr("SNK_FREE" if rules.free_ball else "SNK_IN_HAND"))
 		return
 	var gap: int = rules.scores[1] - rules.scores[0]
 	if online == null and gap > rules.remaining() and not _needs_said:
@@ -1014,6 +1020,8 @@ func _judge() -> void:
 	_shots += 1
 	_break_off = false
 	var was_break: int = rules.breaks[rules.turn]
+	# Online the table is put exactly at rest below, which clears this.
+	_first = sim.first_hit
 	var res: Dictionary = rules.judge()
 	if online != null:
 		# The referee puts a cue ball in hand on one spot in the D whatever
@@ -1033,8 +1041,12 @@ func _judge() -> void:
 			sim.restore(same)
 		online.send({"table": snap, "rules": rules.to_dict()}, rules.turn == 0)
 	_refresh_board()
+	var respot_was := _respot_said
 	_call(res)
-	_tell(res, was_break)
+	if _respot_said == respot_was:
+		_tell(res, was_break)
+	else:
+		_said_at = Time.get_ticks_msec() / 1000.0
 	_after()
 
 ## What a judged shot looks and sounds like: the points, the foul and its
@@ -1117,9 +1129,12 @@ func _pot_word(res: Dictionary) -> String:
 ## Why the pot the aim was locked on stayed out.
 func _why_missed() -> String:
 	var id := int(_try.id)
-	if sim.first_hit != id or _obj_dir == Vector2.ZERO:
+	if _first != id or _obj_dir == Vector2.ZERO:
 		return ""
-	var mouth: Vector2 = sim.pockets[int(_try.pocket)].at
+	# Where the line was aimed (AI.pots), not the pocket's centre.
+	var k := int(_try.pocket)
+	var pk: Dictionary = sim.pockets[k]
+	var mouth: Vector2 = pk.at + (pk.out as Vector2) * Sim.R * (1.0 if k == 2 or k == 3 else 0.4)
 	if sim.on[id] and sim.pos[id].distance_to(mouth) < 0.14:
 		return "SNK_WHY_CLOSE"
 	var way: Vector2 = (mouth - _from[id]).normalized()
@@ -1554,7 +1569,7 @@ func _build_end(outcome: String, why: String) -> Control:
 	line.text = "%s  ·  %s  ·  %s" % [tr("SNK_HIGH") % rules.high_break[0], tr(LEVELS[level]),
 		Record.record_line(GAME, level)]
 	if online == null:
-		line.text = "%s  ·  %s" % [tr("SNK_POTS") % _pots, line.text]
+		line.text = "%s  ·  %s" % [(tr("SNK_POTS_ONE") if _pots == 1 else tr("SNK_POTS_N") % _pots), line.text]
 	line.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	line.theme_type_variation = "SheetBodyDim"
 	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
