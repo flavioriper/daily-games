@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Fraunces, Inter } from "next/font/google";
+import { Fraunces, Nunito } from "next/font/google";
 import { notFound } from "next/navigation";
 import { hasLocale } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
@@ -7,8 +7,10 @@ import { routing } from "@i18n/routing";
 import { SITE_URL } from "@/lib/siteUrl";
 import { buildLocaleMetadata } from "@/lib/seo";
 
-const serif = Fraunces({ subsets: ["latin", "latin-ext"], axes: ["opsz"], variable: "--font-serif" });
-const sans = Inter({ subsets: ["latin", "latin-ext"], variable: "--font-sans" });
+// Fraunces with its SOFT axis for the rounded, warmer cut; Nunito is the
+// game's own body font (assets/fonts).
+const serif = Fraunces({ subsets: ["latin", "latin-ext"], axes: ["opsz", "SOFT"], variable: "--font-serif" });
+const sans = Nunito({ subsets: ["latin", "latin-ext"], variable: "--font-sans" });
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));

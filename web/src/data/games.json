@@ -7,7 +7,8 @@
    "en": "Five letters, six tries. A new word every day.",
    "pt": "Cinco letras, seis tentativas. Uma palavra nova por dia.",
    "es": "Cinco letras, seis intentos. Una palabra nueva cada día."
-  }
+  },
+  "tint": "#ece6cf"
  },
  {
   "id": "sudoku",
@@ -17,7 +18,8 @@
    "en": "Every number once in every row, column and region.",
    "pt": "Cada número uma vez em cada linha, coluna e região.",
    "es": "Cada número una vez en cada fila, columna y región."
-  }
+  },
+  "tint": "#e9dbc1"
  },
  {
   "id": "picket",
@@ -27,7 +29,8 @@
    "en": "Sudoku fenced into garden plots: each plot's numbers add up to its tag, and none repeats.",
    "pt": "Sudoku cercado em canteiros: os números de cada canteiro somam o da plaquinha, sem repetir.",
    "es": "Sudoku cercado en parcelas: los números de cada parcela suman lo de su etiqueta, sin repetirse."
-  }
+  },
+  "tint": "#e8dac1"
  },
  {
   "id": "market",
@@ -37,7 +40,8 @@
    "en": "Six crates of numbers on a market stall and an order on the board. Add, take away, times and share them until one crate holds the order.",
    "pt": "Seis caixotes de números numa banca de feira e um pedido no quadro. Some, subtraia, multiplique e divida até um caixote ter o pedido.",
    "es": "Seis cajas de números en un puesto del mercado y un pedido en la pizarra. Suma, resta, multiplica y divide hasta que una caja tenga el pedido."
-  }
+  },
+  "tint": "#ecdcc7"
  },
  {
   "id": "pie",
@@ -47,7 +51,8 @@
    "en": "Bakers at the village fête, and somebody ate the pie. Every baker you clear says one true thing. Prove who did it, one baker at a time.",
    "pt": "Confeiteiros na festa da vila, e alguém comeu a torta. Cada confeiteiro que você marca diz uma verdade. Prove quem foi, um de cada vez.",
    "es": "Pasteleros en la feria del pueblo, y alguien se comió el pastel. Cada pastelero que marcas dice una verdad. Demuestra quién fue, uno a uno."
-  }
+  },
+  "tint": "#e5dbc9"
  },
  {
   "id": "rings",
@@ -57,7 +62,8 @@
    "en": "Gather every colour onto a peg of its own.",
    "pt": "Junte cada cor num pino só dela.",
    "es": "Reúne cada color en un poste propio."
-  }
+  },
+  "tint": "#e9d8c7"
  },
  {
   "id": "planes",
@@ -67,7 +73,8 @@
    "en": "Tap a plane whose lane to the edge is clear, and off it goes.",
    "pt": "Toque num avião com o caminho livre até a borda, e lá vai ele.",
    "es": "Toca un avión con el camino libre hasta el borde, y allá va."
-  }
+  },
+  "tint": "#e1dcd3"
  },
  {
   "id": "quilt",
@@ -77,7 +84,8 @@
    "en": "Fit every patch onto the quilt, with not a gap left.",
    "pt": "Encaixe cada retalho na colcha, sem deixar vão.",
    "es": "Encaja cada retazo en la colcha, sin dejar huecos."
-  }
+  },
+  "tint": "#e5d9cc"
  },
  {
   "id": "buttons",
@@ -87,7 +95,8 @@
    "en": "Lift the jewels off the wrong slots and set each one where its colour belongs.",
    "pt": "Tire as joias dos encaixes errados e encaixe cada uma onde a cor dela pertence.",
    "es": "Quita las joyas de las casillas equivocadas y encaja cada una donde va su color."
-  }
+  },
+  "tint": "#e1cabc"
  },
  {
   "id": "queens",
@@ -97,7 +106,8 @@
    "en": "Seat one queen in every row, column and colour.",
    "pt": "Ponha uma rainha em cada linha, coluna e cor.",
    "es": "Sienta una reina en cada fila, columna y color."
-  }
+  },
+  "tint": "#ecdfce"
  },
  {
   "id": "nonogram",
@@ -107,7 +117,8 @@
    "en": "Fill the runs and reveal the picture.",
    "pt": "Preencha as sequências e revele a imagem.",
    "es": "Rellena las tiras y revela el dibujo."
-  }
+  },
+  "tint": "#f2eadb"
  },
  {
   "id": "slider",
@@ -117,7 +128,8 @@
    "en": "Slide the blocks and get the big red one out of the gate.",
    "pt": "Deslize os blocos e tire o vermelho grande pelo portão.",
    "es": "Desliza los bloques y saca el rojo grande por la puerta."
-  }
+  },
+  "tint": "#ebdcc6"
  },
  {
   "id": "hedgehogs",
@@ -127,7 +139,8 @@
    "en": "Rake the leaves and let the sleeping hedgehogs lie.",
    "pt": "Rastele as folhas e deixe os ouriços dormirem.",
    "es": "Rastrilla las hojas y deja dormir a los erizos."
-  }
+  },
+  "tint": "#e7ddc2"
  },
  {
   "id": "wordtrail",
@@ -137,7 +150,8 @@
    "en": "Trace every hidden word. The lengths are the only clue.",
    "pt": "Trace cada palavra escondida. Os tamanhos são a única pista.",
    "es": "Traza cada palabra oculta. Las longitudes son la única pista."
-  }
+  },
+  "tint": "#ede5d0"
  },
  {
   "id": "honeycomb",
@@ -147,7 +161,8 @@
    "en": "Seven letters on a comb, the queen bee on the middle one. Spell words that hold her letter and pour their honey into the jar.",
    "pt": "Sete letras num favo, a abelha rainha na do meio. Forme palavras com a letra dela e despeje o mel no pote.",
    "es": "Siete letras en un panal, la abeja reina en la del centro. Forma palabras con su letra y vierte la miel en el tarro."
-  }
+  },
+  "tint": "#e9e7ca"
  },
  {
   "id": "shelves",
@@ -157,7 +172,8 @@
    "en": "Jam jars on the pantry dresser hide shelves of four words that go together. Find every shelf.",
    "pt": "Potes de geleia na cristaleira da despensa escondem prateleiras de quatro palavras que combinam. Ache todas as prateleiras.",
    "es": "Frascos de mermelada en el aparador de la despensa esconden estantes de cuatro palabras que van juntas. Encuentra todos los estantes."
-  }
+  },
+  "tint": "#eddcc7"
  },
  {
   "id": "clues",
@@ -167,7 +183,8 @@
    "en": "Five clue cards turn one at a time, each a thing that belongs to one hidden idea. Name the idea with as few as you can.",
    "pt": "Cinco cartas de pista viram uma de cada vez, cada uma uma coisa de uma mesma ideia escondida. Diga a ideia com o mínimo de pistas.",
    "es": "Cinco cartas de pista se voltean una a una, cada una una cosa de una misma idea oculta. Di la idea con las menos pistas posibles."
-  }
+  },
+  "tint": "#ecdec9"
  },
  {
   "id": "train",
@@ -177,7 +194,8 @@
    "en": "Send the little vacuums round the belt to pull the sand picture away from below, grain by grain.",
    "pt": "Mande os aspiradorzinhos dar a volta no trilho e puxar o desenho de areia por baixo, grão por grão.",
    "es": "Manda las aspiradoritas a dar la vuelta a la vía y aspirar el dibujo de arena por debajo, grano a grano."
-  }
+  },
+  "tint": "#dbd9d2"
  },
  {
   "id": "hoop",
@@ -187,7 +205,8 @@
    "en": "Thread the pins of the hoop and knit a hidden picture, panel by panel.",
    "pt": "Costure os alfinetes do bastidor e tricote um desenho escondido, retalho por retalho.",
    "es": "Cose los alfileres del bastidor y teje un dibujo escondido, retazo a retazo."
-  }
+  },
+  "tint": "#eddcc9"
  },
  {
   "id": "acorn",
@@ -197,7 +216,8 @@
    "en": "A daily quiz. Four answers, one right: pick, lock, and learn why.",
    "pt": "Um quiz diário. Quatro respostas, uma certa: escolha, confirme e descubra o porquê.",
    "es": "Un quiz diario. Cuatro respuestas, una correcta: elige, confirma y descubre por qué."
-  }
+  },
+  "tint": "#e5daca"
  },
  {
   "id": "caterpillar",
@@ -207,7 +227,8 @@
    "en": "Walk every square, eating the leaves in order.",
    "pt": "Passe por todos os quadrados, comendo as folhas em ordem.",
    "es": "Recorre todos los cuadros comiendo las hojas en orden."
-  }
+  },
+  "tint": "#e3dec5"
  },
  {
   "id": "hoses",
@@ -217,7 +238,8 @@
    "en": "Taps and flowers on a raised garden bed. Drag a hose from each tap to its flower: hoses never cross, and every square must be watered.",
    "pt": "Torneiras e flores num canteiro elevado. Arraste uma mangueira de cada torneira até a sua flor: as mangueiras nunca se cruzam, e todo quadrado tem que ser regado.",
    "es": "Grifos y flores en un bancal elevado. Arrastra una manguera de cada grifo a su flor: las mangueras nunca se cruzan, y hay que regar cada casilla."
-  }
+  },
+  "tint": "#e8e1ca"
  },
  {
   "id": "paperbox",
@@ -227,7 +249,8 @@
    "en": "A flat paper net lies on the mat with boxes under it. Pick the box it folds into, five times a day.",
    "pt": "Um molde de papel aberto está na mesa com caixas embaixo. Escolha a caixa que ele forma, cinco vezes por dia.",
    "es": "Una plantilla de papel plana está en la mesa con cajas debajo. Elige la caja que forma, cinco veces al día."
-  }
+  },
+  "tint": "#e9dbca"
  },
  {
   "id": "binairo",
@@ -237,7 +260,8 @@
    "en": "Suns and moons. Never three alike in a line.",
    "pt": "Sóis e luas. Nunca três iguais em linha.",
    "es": "Soles y lunas. Nunca tres iguales en línea."
-  }
+  },
+  "tint": "#dcd6d1"
  },
  {
   "id": "minigolf",
@@ -247,7 +271,8 @@
    "en": "Putt the ball round the day's course in as few strokes as you can.",
    "pt": "Leve a bola pelo campo do dia com o mínimo de tacadas.",
    "es": "Lleva la bola por el campo del día con los menos golpes posibles."
-  }
+  },
+  "tint": "#dde2ca"
  },
  {
   "id": "fairylights",
@@ -257,7 +282,8 @@
    "en": "Turn the wire until every lantern is lit.",
    "pt": "Gire o fio até acender todas as lanternas.",
    "es": "Gira el cable hasta encender todos los faroles."
-  }
+  },
+  "tint": "#ecdec5"
  },
  {
   "id": "untangle",
@@ -267,7 +293,8 @@
    "en": "Lift the pegs over the ropes until every rope comes free.",
    "pt": "Leve os pinos por cima das cordas até todas se soltarem.",
    "es": "Lleva las clavijas por encima de las cuerdas hasta que todas se suelten."
-  }
+  },
+  "tint": "#ecdcc9"
  },
  {
   "id": "bridges",
@@ -277,7 +304,8 @@
    "en": "Plank every islet to its number, and join them all.",
    "pt": "Dê a cada ilhota suas pontes e ligue todas.",
    "es": "Dale a cada islote sus puentes y únelos todos."
-  }
+  },
+  "tint": "#d3e0df"
  },
  {
   "id": "pixelgarden",
@@ -287,7 +315,8 @@
    "en": "Copy the picture onto the pegboard one bead at a time.",
    "pt": "Copie a figura no pinboard uma conta de cada vez.",
    "es": "Copia el dibujo en el tablero una cuenta a la vez."
-  }
+  },
+  "tint": "#ebdbc8"
  },
  {
   "id": "glimpse",
@@ -297,7 +326,8 @@
    "en": "A little picture shows for a few seconds. Rebuild it bead by bead from memory.",
    "pt": "Uma figurinha aparece por alguns segundos. Remonte-a conta por conta de memória.",
    "es": "Un dibujito aparece unos segundos. Rehazlo cuenta a cuenta de memoria."
-  }
+  },
+  "tint": "#e3ddcc"
  },
  {
   "id": "birdsong",
@@ -307,7 +337,8 @@
    "en": "A woodpecker knocks a rhythm on the old tree. Knock it back on the drum; each round it adds one knock.",
    "pt": "Um pica-pau bate um ritmo na árvore velha. Bata o mesmo ritmo no tambor; a cada rodada ele soma uma batida.",
    "es": "Un pájaro carpintero golpea un ritmo en el árbol viejo. Repítelo en el tambor; cada ronda suma un golpe."
-  }
+  },
+  "tint": "#e0dbc3"
  },
  {
   "id": "patio",
@@ -317,7 +348,8 @@
    "en": "Lay the dominoes on the patio so every flower bed keeps the rule on its tag.",
    "pt": "Coloque os dominós no pátio para que cada canteiro cumpra a regra da sua etiqueta.",
    "es": "Coloca las fichas de dominó en el patio para que cada parterre cumpla la regla de su etiqueta."
-  }
+  },
+  "tint": "#ecdfca"
  },
  {
   "id": "teacups",
@@ -327,7 +359,8 @@
    "en": "Cups upside down on the tea table, a Peeplet hiding under each. Lift two at a time and find every pair of twins.",
    "pt": "Xícaras de cabeça para baixo na mesa do chá, um Peeplet escondido debaixo de cada. Levante duas por vez e encontre todos os gêmeos.",
    "es": "Tazas boca abajo en la mesa del té, un Peeplet escondido debajo de cada una. Levanta dos a la vez y encuentra todos los gemelos."
-  }
+  },
+  "tint": "#d8ddc3"
  },
  {
   "id": "lattice",
@@ -337,7 +370,8 @@
    "en": "Swap the number tiles until every line of the lattice holds each number once.",
    "pt": "Troque as peças numeradas até cada linha da treliça ter cada número uma vez.",
    "es": "Intercambia las fichas numeradas hasta que cada línea de la celosía tenga cada número una vez."
-  }
+  },
+  "tint": "#d9dbbd"
  },
  {
   "id": "gumdrop",
@@ -347,7 +381,8 @@
    "en": "Colour the clear jelly to match the card: squeeze the syrup in, let it soak, and serve it.",
    "pt": "Pinte a gelatina transparente igual ao cartão: aperte a calda, deixe penetrar e sirva.",
    "es": "Pinta la gelatina transparente igual que la tarjeta: aprieta el sirope, deja que cale y sírvela."
-  }
+  },
+  "tint": "#f3e5d2"
  },
  {
   "id": "lightup",
@@ -357,7 +392,8 @@
    "en": "Light every cell, and no bulb may see another.",
    "pt": "Ilumine cada casa, e nenhuma lanterna pode ver outra.",
    "es": "Ilumina cada casilla, y ningún farol puede ver a otro."
-  }
+  },
+  "tint": "#f3e5d1"
  },
  {
   "id": "shikaku",
@@ -367,7 +403,8 @@
    "en": "Cut the field into numbered plots.",
    "pt": "Divida o campo em canteiros numerados.",
    "es": "Divide el campo en parcelas numeradas."
-  }
+  },
+  "tint": "#e7dcc5"
  },
  {
   "id": "how_big",
@@ -377,7 +414,8 @@
    "en": "Two silhouettes, one at its real size. Pull the other until it looks right beside it.",
    "pt": "Duas silhuetas, uma no tamanho real. Puxe a outra até ficar do tamanho certo ao lado dela.",
    "es": "Dos siluetas, una a su tamaño real. Tira de la otra hasta que se vea bien a su lado."
-  }
+  },
+  "tint": "#dfdfd3"
  },
  {
   "id": "horse",
@@ -387,7 +425,8 @@
    "en": "Pen the horse in with hay bales, and keep as much meadow as you can.",
    "pt": "Cerque o cavalo com fardos de feno e fique com o máximo de campo que puder.",
    "es": "Encierra al caballo con fardos de heno y quédate con todo el prado que puedas."
-  }
+  },
+  "tint": "#e9e8d2"
  },
  {
   "id": "pearl",
@@ -397,7 +436,8 @@
    "en": "Name a kind of thing against the clock. The rarer your answer, the deeper the dive.",
    "pt": "Diga um tipo de coisa contra o relógio. Quanto mais rara a resposta, mais fundo o mergulho.",
    "es": "Di un tipo de cosa contra el reloj. Cuanto más rara la respuesta, más hondo el buceo."
-  }
+  },
+  "tint": "#cad3d5"
  },
  {
   "id": "knight",
@@ -407,7 +447,8 @@
    "en": "Hop your knight past the guards and take the king.",
    "pt": "Salte com seu cavalo pelos guardas e capture o rei.",
    "es": "Salta con tu caballo entre los guardias y captura al rey."
-  }
+  },
+  "tint": "#e8d6c4"
  },
  {
   "id": "pinwheel",
@@ -417,7 +458,8 @@
    "en": "Turn each pinned piece until the frame is full.",
    "pt": "Gire cada peça presa até o quadro ficar cheio.",
    "es": "Gira cada pieza fija hasta llenar el marco."
-  }
+  },
+  "tint": "#e9e0d5"
  },
  {
   "id": "sunbeam",
@@ -427,7 +469,8 @@
    "en": "Slide the mirrors and bend the light to the bud.",
    "pt": "Deslize os espelhos e leve a luz até o botão.",
    "es": "Desliza los espejos y lleva la luz al capullo."
-  }
+  },
+  "tint": "#eaddc7"
  },
  {
   "id": "trestle",
@@ -437,7 +480,8 @@
    "en": "Build a bridge on a budget and send the cart across.",
    "pt": "Construa uma ponte com o orçamento e mande o carrinho atravessar.",
    "es": "Construye un puente con el presupuesto y haz cruzar al carrito."
-  }
+  },
+  "tint": "#e1dbcc"
  },
  {
   "id": "drumbeat",
@@ -447,7 +491,8 @@
    "en": "One road, one short song: tap each berry's drum.",
    "pt": "Uma estrada, uma música curta: toque o tambor de cada frutinha.",
    "es": "Un camino, una canción corta: toca el tambor de cada baya."
-  }
+  },
+  "tint": "#eee1d1"
  },
  {
   "id": "deckchair",
@@ -457,7 +502,8 @@
    "en": "Seven columns of cards to sort home by suit, from the ace to the king. Tap a card or carry it.",
    "pt": "Sete colunas de cartas para levar para casa por naipe, do ás ao rei. Toque numa carta ou arraste.",
    "es": "Siete columnas de cartas para llevar a casa por palo, del as al rey. Toca una carta o arrástrala."
-  }
+  },
+  "tint": "#e2d0c0"
  },
  {
   "id": "posy",
@@ -467,7 +513,8 @@
    "en": "Swap neighbouring tiles to line up three or more. Collect what each day asks for before the moves run out.",
    "pt": "Troque peças vizinhas para alinhar três ou mais. Colete o que cada dia pede antes que os movimentos acabem.",
    "es": "Intercambia piezas vecinas para alinear tres o más. Reúne lo que pide cada día antes de quedarte sin movimientos."
-  }
+  },
+  "tint": "#e0dbc9"
  },
  {
   "id": "trivet",
@@ -477,7 +524,8 @@
    "en": "Set stacks of felt mats on the tray. Tops that match gather, and ten of a colour are put away.",
    "pt": "Ponha pilhas de feltros na bandeja. Os topos iguais se juntam, e dez da mesma cor são guardados.",
    "es": "Pon pilas de fieltros en la bandeja. Las cimas iguales se juntan, y diez del mismo color se guardan."
-  }
+  },
+  "tint": "#e3d4bf"
  },
  {
   "id": "stackwood",
@@ -487,7 +535,8 @@
    "en": "Wooden blocks fall one by one: steer each onto its match, chain the merges and keep the shelf from topping out.",
    "pt": "Blocos de madeira caem um a um: leve cada um até o seu par, encadeie as fusões e não deixe a prateleira transbordar.",
    "es": "Los bloques de madera caen uno a uno: lleva cada uno a su pareja, encadena las fusiones y no dejes que el estante se desborde."
-  }
+  },
+  "tint": "#e4d5c1"
  },
  {
   "id": "thirteen",
@@ -497,7 +546,8 @@
    "en": "Drag through three or more touching tiles of a number to merge them one higher. Can you make a 13?",
    "pt": "Arraste por três ou mais peças vizinhas do mesmo número para fundi-las em uma a mais. Consegue chegar ao 13?",
    "es": "Arrastra por tres o más fichas vecinas del mismo número para fundirlas en una más alta. ¿Llegarás al 13?"
-  }
+  },
+  "tint": "#e8e2d9"
  },
  {
   "id": "beeline",
@@ -507,7 +557,8 @@
    "en": "Tap to beat her wings and fly the bee through the gaps in the hedges. One gap, one point.",
    "pt": "Toque para bater as asas e leve a abelha pelos vãos das sebes. Um vão, um ponto.",
    "es": "Toca para batir las alas y lleva a la abeja por los huecos de los setos. Un hueco, un punto."
-  }
+  },
+  "tint": "#e0dcc3"
  },
  {
   "id": "eddy",
@@ -517,7 +568,8 @@
    "en": "Steer a whirlpool round the pond. What it draws down is banked as drops, and drops buy a stronger whirlpool for the next run.",
    "pt": "Guie um redemoinho pelo lago. O que ele leva ao fundo vira gotas, e as gotas compram um redemoinho mais forte para a próxima partida.",
    "es": "Guía un remolino por el estanque. Lo que se lleva al fondo se guarda como gotas, y las gotas compran un remolino más fuerte para la próxima partida."
-  }
+  },
+  "tint": "#dce3d9"
  },
  {
   "id": "peapod",
@@ -527,7 +579,8 @@
    "en": "Slide the pea cannon under the crates and shoot them down before they reach you. Catch the gifts.",
    "pt": "Deslize o canhão de ervilhas sob as caixas e derrube-as antes que cheguem até você. Pegue os presentes.",
    "es": "Desliza el cañón de guisantes bajo las cajas y derríbalas antes de que te alcancen. Atrapa los regalos."
-  }
+  },
+  "tint": "#e5e6c9"
  },
  {
   "id": "marigold",
@@ -537,7 +590,8 @@
    "en": "Bounce seeds off the buds and bloom every marigold.",
    "pt": "Quique sementes nos botões e faça florescer todas as calêndulas.",
    "es": "Rebota semillas en los capullos y haz florecer todas las caléndulas."
-  }
+  },
+  "tint": "#dddcd9"
  },
  {
   "id": "firefly",
@@ -547,7 +601,8 @@
    "en": "Hold back the night swarm: slide to fly, hold to shoot, and win back a firefly the moths carry off.",
    "pt": "Segure o enxame da noite: deslize para voar, segure para atirar e resgate o vaga-lume que as mariposas levarem.",
    "es": "Detén al enjambre nocturno: desliza para volar, mantén para disparar y rescata a la luciérnaga que se lleven las polillas."
-  }
+  },
+  "tint": "#ddcebd"
  },
  {
   "id": "molehill",
@@ -557,7 +612,8 @@
    "en": "A minute on the lawn: whack the moles, mind the rabbit, keep the streak going.",
    "pt": "Um minuto no gramado: acerte as toupeiras, poupe o coelho e mantenha a sequência.",
    "es": "Un minuto en el césped: golpea a los topos, respeta al conejo y mantén la racha."
-  }
+  },
+  "tint": "#dedfc2"
  },
  {
   "id": "furrow",
@@ -567,7 +623,8 @@
    "en": "A small farm that grows while you are away. Pick, sow again by hand, gather eggs and milk, and come back before the crops wither.",
    "pt": "Uma pequena fazenda que cresce enquanto você está fora. Colha, replante com a mão, junte ovos e leite, e volte antes que a plantação murche.",
    "es": "Una pequeña granja que crece mientras no estás. Recoge, vuelve a sembrar a mano, junta huevos y leche, y vuelve antes de que se marchite el cultivo."
-  }
+  },
+  "tint": "#dfe2c3"
  },
  {
   "id": "tally",
@@ -577,7 +634,8 @@
    "en": "Dig numbers, belt them through adders and multipliers, and bring the counting box the number it asks for.",
    "pt": "Extraia números, leve-os em esteiras por somadores e multiplicadores e entregue à caixa o número que ela pede.",
    "es": "Extrae números, llévalos en cintas por sumadores y multiplicadores y dale a la caja el número que pide."
-  }
+  },
+  "tint": "#cfdacf"
  },
  {
   "id": "factory",
@@ -587,7 +645,8 @@
    "en": "Three robots, a sheet of nodes: wire what each one does, and every loop walks back to the bay. The floor only runs while you watch it.",
    "pt": "Três robôs, uma folha de nós: ligue o que cada um faz, e toda volta caminha de volta à base. O piso só anda enquanto você olha.",
    "es": "Tres robots, una hoja de nodos: conecta lo que hace cada uno, y cada vuelta camina de regreso a la base. El suelo solo anda mientras lo miras."
-  }
+  },
+  "tint": "#ebdec7"
  },
  {
   "id": "bagatelle",
@@ -597,7 +656,8 @@
    "en": "Marbles through the pins",
    "pt": "Bolinhas entre os pinos",
    "es": "Canicas entre los clavos"
-  }
+  },
+  "tint": "#e5d5ba"
  },
  {
   "id": "griddle",
@@ -607,7 +667,8 @@
    "en": "A toastie stand of four places that all run at once. Sell a queue by hand for a rush, and mind who your shortcuts annoy.",
    "pt": "Uma barraca de tostas com quatro lugares que funcionam ao mesmo tempo. Venda a fila à mão para uma correria e cuide de quem seus atalhos incomodam.",
    "es": "Un puesto de tostadas con cuatro lugares que funcionan a la vez. Vende la cola a mano para una racha y cuida a quién molestan tus atajos."
-  }
+  },
+  "tint": "#e0dfcc"
  },
  {
   "id": "nightlight",
@@ -617,7 +678,8 @@
    "en": "Feed a star with gas and watch worlds form round it. It burns its way up to iron, goes supernova, and starts again in a richer sky.",
    "pt": "Alimente uma estrela com gás e veja mundos se formarem ao redor. Ela queima até o ferro, vira supernova e recomeça num céu mais rico.",
    "es": "Alimenta una estrella con gas y mira cómo se forman mundos a su alrededor. Quema hasta el hierro, se vuelve supernova y vuelve a empezar en un cielo más rico."
-  }
+  },
+  "tint": "#ddd1cd"
  },
  {
   "id": "snooker",
@@ -627,7 +689,8 @@
    "en": "A frame against the computer: pot a red, then a colour, then clear the colours in order.",
    "pt": "Uma partida contra o computador: encaçape uma vermelha, depois uma cor, e por fim as cores em ordem.",
    "es": "Un frame contra el ordenador: mete una roja, luego un color, y al final los colores en orden."
-  }
+  },
+  "tint": "#ced4bc"
  },
  {
   "id": "chess",
@@ -637,7 +700,8 @@
    "en": "A game against the computer: every piece moves its own way, and the king must be caught.",
    "pt": "Uma partida contra o computador: cada peça anda do seu jeito, e o rei tem de ser encurralado.",
    "es": "Una partida contra el ordenador: cada pieza se mueve a su manera, y hay que atrapar al rey."
-  }
+  },
+  "tint": "#e0d1be"
  },
  {
   "id": "dominoes",
@@ -647,7 +711,8 @@
    "en": "Match the ends, be first to fifty.",
    "pt": "Combine as pontas, chegue a cinquenta.",
    "es": "Une las puntas, llega a cincuenta."
-  }
+  },
+  "tint": "#d2d9c7"
  },
  {
   "id": "checkers",
@@ -657,7 +722,8 @@
    "en": "A game against the computer: hop, jump chains of pieces, and crown your men.",
    "pt": "Uma partida contra o computador: pule, capture em sequência e coroe suas pedras.",
    "es": "Una partida contra el ordenador: salta, captura en cadena y corona tus fichas."
-  }
+  },
+  "tint": "#dfd0bd"
  },
  {
   "id": "penny",
@@ -667,7 +733,8 @@
    "en": "Take turns dropping pennies into the rack. The first to line up four wins.",
    "pt": "Cada um na sua vez solta uma moeda na grade. Quem alinhar quatro primeiro vence.",
    "es": "Por turnos, suelta una moneda en la rejilla. Gana quien alinee cuatro primero."
-  }
+  },
+  "tint": "#dbd5c3"
  },
  {
   "id": "reversi",
@@ -677,7 +744,8 @@
    "en": "Turn their discs, end with more.",
    "pt": "Vire os discos, termine com mais.",
    "es": "Voltea sus fichas, termina con más."
-  }
+  },
+  "tint": "#d8d6d0"
  },
  {
   "id": "boats",
@@ -687,7 +755,8 @@
    "en": "Hide five toy boats on your pond, then take turns tossing pebbles to find the other fleet first.",
    "pt": "Esconda cinco barquinhos no seu lago e, cada um na sua vez, jogue pedrinhas para achar a outra frota primeiro.",
    "es": "Esconde cinco barquitos en tu estanque y, por turnos, lanza piedritas para encontrar antes la otra flota."
-  }
+  },
+  "tint": "#d4d9d3"
  },
  {
   "id": "hockey",
@@ -697,6 +766,7 @@
    "en": "First to seven: knock the puck past the other mallet and into the slot in the far rail.",
    "pt": "Até sete gols: mande o disco além do outro batedor, para a abertura na borda oposta.",
    "es": "A siete goles: mete el disco más allá del otro mazo, en la ranura del borde opuesto."
-  }
+  },
+  "tint": "#e1d0be"
  }
 ]

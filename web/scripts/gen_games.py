@@ -52,13 +52,32 @@ for id_ in order(versus_tab):
     games.append({"id": id_, "title": names(versus_tab)[id_], "group": "versus",
                   "text": text(f"VS_{up}_BLURB", f"VS_{up}_SHORT")})
 
-(WEB / "src/data/games.json").write_text(json.dumps(games, ensure_ascii=False, indent=1) + "\n")
-
 # The upright middle of an 810 by 1440 screen: every board fits it, the top bar
 # and the tray under it do not.
 BOX = (0, 290, 810, 1370)
+PAPER = (246, 239, 226)
 (WEB / "public/games").mkdir(parents=True, exist_ok=True)
 for game in games:
     shot = Image.open(ROOT / f"build/site_shots/{game['id']}.png").convert("RGB")
-    shot.crop(BOX).resize((240, 320), Image.LANCZOS).save(WEB / f"public/games/{game['id']}.webp", quality=82)
+    tile = shot.crop(BOX).resize((240, 320), Image.LANCZOS)
+    tile.save(WEB / f"public/games/{game['id']}.webp", quality=82)
+    # The tile's plate: the screen's own colour (its saturated pixels, since
+    # most of a screen is cream) laid thin over paper, so every game sits on a
+    # pale tint of its own world.
+    small = tile.resize((60, 80), Image.BOX)
+    vivid = [px for px in small.getdata() if max(px) - min(px) > 60]
+    if len(vivid) < 40:
+        vivid = [px for px in small.getdata() if max(px) - min(px) > 24] or [(170, 190, 140)]
+    r, g, b = (sum(c[i] for c in vivid) / len(vivid) for i in range(3))
+    game["tint"] = "#%02x%02x%02x" % tuple(round(p * 0.74 + c * 0.26) for p, c in zip(PAPER, (r, g, b)))
+
+(WEB / "src/data/games.json").write_text(json.dumps(games, ensure_ascii=False, indent=1) + "\n")
+
+# The hero's fan of phones: five whole screens, no Peeplet on any of them
+# (docs/agents/website.md), at half size.
+HERO = ["minigolf", "honeycomb", "buttons", "boats", "posy"]
+(WEB / "public/phones").mkdir(parents=True, exist_ok=True)
+for id_ in HERO:
+    shot = Image.open(ROOT / f"build/site_shots/{id_}.png").convert("RGB")
+    shot.resize((405, 720), Image.LANCZOS).save(WEB / f"public/phones/{id_}.webp", quality=84)
 print(len(games), "games")

@@ -18,10 +18,10 @@ function IconApple() {
 }
 
 // The two ways to get the game: an icon, a small line, the store's name.
-export function StoreButtons() {
+export function StoreButtons({ size }: { size?: "big" }) {
   const t = useTranslations("site");
   return (
-    <div className="get">
+    <div className={size ? `get ${size}` : "get"}>
       <a className="store primary" href={PLAY_URL} rel="noopener">
         <IconGooglePlay />
         <span><small>{t("androidEyebrow")}</small>{t("androidCta")}</span>

@@ -2,15 +2,40 @@
 
 The landing page, 2026-10-30: a Next.js app in `web/` built on the structure of
 the old peeplet repo's site (`[locale]` routes, next-intl, `seo.ts`, sitemap,
-robots), exported static. Warm paper, a serif, thin rules: the user asked for
-elegance rather than the game's cards, and picked the almanac list on no
-stated preference, so that list is the builder's call.
+robots), exported static.
+
+**The look, second pass the same day** (the user: "way more elegant,
+something targeting both kids and adults, keeping the cozy vibes, but
+modern"). The first pass was an editorial page: thin rules, one picture, an
+almanac list, Inter. Now the game's own screens do the colouring and the
+chrome stays quiet:
+
+- **The fan of phones** is the hero: five whole screens (`HERO_PHONES` in
+  `src/lib/games.ts`, cut by the generator to `public/phones/`), leaning on
+  each other, the middle one upright and in front. They are chosen for
+  colour and for showing no Peeplet (below). Swap the list, rerun the
+  generator.
+- **Every game is a tile on a plate** tinted from its own screen: the
+  generator averages the screen's vivid pixels and lays that thin over paper
+  (`tint` in `games.json`). A grid on a desk, a shelf that scrolls sideways
+  on a phone, so seventy games stay a short page.
+- **Type**: Fraunces with its `SOFT` axis at 100 (rounded serif, the adult
+  side) and Nunito, the game's own body font. The headline is sized to its
+  column per language (`cqi`, `html[lang]` rules in `globals.css`): the
+  Portuguese "Quebra-cabeças" would otherwise break at its hyphen, so the
+  message carries a word joiner after it.
+- **One radius family** (28 / 20 / 12 / pill), one accent (terracotta),
+  three pale plates (butter, sage, sky) for the three reasons, a paper grain
+  at 28%. No emoji, no confetti, no mascots.
+- Reduced motion disables the fan's settle and every hover lift.
 
 - **Data comes from the game.** `web/scripts/gen_games.py` writes
-  `src/data/games.json` from `ui/registry.gd`, the Arcade and Versus tabs and
-  `locale/*.csv`, and `public/games/*.webp` from `build/site_shots`, which
+  `src/data/games.json` (with each tile's `tint`) from `ui/registry.gd`, the
+  Arcade and Versus tabs and `locale/*.csv`, `public/games/*.webp` and the
+  hero's `public/phones/*.webp` from `build/site_shots`, which
   `tests/_shot_site.gd` shoots. Run both after a new game or a new look.
-  `hero.webp` and `public/og.png` are cut by hand.
+  `public/og.png` is a 1440-wide Chrome shot of the English hero resized to
+  1200 x 630.
 - **Hosting.** `bun run build` assembles the export and `server/site` (the
   friend link's page, privacy, `.well-known`, app-ads.txt) into
   `server/public_site`, which `server/firebase.json` now serves.

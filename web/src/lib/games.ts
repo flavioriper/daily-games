@@ -8,7 +8,12 @@ export type Game = {
   title: string;
   group: Group;
   text: Record<Lang, string>;
+  // The pale plate under its tile, mixed from the screen's own colours.
+  tint: string;
 };
+
+// The hero's fan of phones, left to right; scripts/gen_games.py cuts them.
+export const HERO_PHONES = ["minigolf", "honeycomb", "buttons", "boats", "posy"];
 
 export const GAMES = data as Game[];
 
