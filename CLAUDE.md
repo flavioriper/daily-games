@@ -20,6 +20,14 @@ day's pair (`core/cast.gd`) sits on Hidden Word's card and reveal, Streak's
 Today card, the remove-ads sheet and the boot opening; nothing else does,
 never the header. Never redraw a Peeplet by hand or bake it to an image.
 
+**A second exception, chess sets made of models** (the user, 2026-10-30: "a
+gd model like the peeplets, not drawed by hand"): a chess skin that answers
+`model_dir()` is real `.glb` pieces on one shared transparent 3D layer over
+the 2D board (`versus/chess_models.gd`), modelled in Blender
+(`art/chess_*.blend`), never baked. A skin belongs to whoever wears it, so one
+game can show two (`versus/chess_board.gd` `skin_of(seat)`); read
+`docs/agents/versus.md` first.
+
 **The baked Peeplets** (2026-10-27): `server/functions/assets/peeplet_sheet.png`,
 the reference the night's painter and reviewer are given. It is rendered by
 `tests/_shot_peeplet_sheet.gd`, never hand-edited, never on a phone

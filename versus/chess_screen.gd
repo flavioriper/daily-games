@@ -1211,13 +1211,19 @@ func _set_clock() -> void:
 	_clock = [float(control[0]), float(control[0])]
 	_increment = float(control[1])
 	_warned = false
+	board.clock_full = float(control[0])
+	_tell_board_clock()
 	for pill in _clock_pills:
 		pill.visible = _clocked
 
 func _clock_running() -> bool:
 	return _clocked and online == null and _moves.size() >= 2 and _state in [State.YOURS, State.THINK, State.ANIM]
 
+func _tell_board_clock() -> void:
+	board.clock_left = _clock
+
 func _tick_clock(delta: float) -> void:
+	_tell_board_clock()
 	if online != null:
 		_paint_clocks()
 		return

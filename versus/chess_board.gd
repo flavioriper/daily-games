@@ -32,6 +32,8 @@ signal premoves_changed
 
 const Rules = preload("res://versus/chess_rules.gd")
 const ChessSkin = preload("res://versus/chess_skin.gd")
+const ChessModels = preload("res://versus/chess_models.gd")
+const Power = preload("res://core/power.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Pal = preload("res://core/palette.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
@@ -99,7 +101,23 @@ const BRASS_DEEP := Color("a8772a")
 const SWEAT := Color("a9d4ef")
 
 var rules: RefCounted
+## The set of the player at the bottom, who also picks the board under it:
+## its frame, its dressing and its shadows.
 var skin: RefCounted = ChessSkin.named("garden")
+## The other player's set, null for the same: a skin belongs to whoever wears
+## it, so one game can show two (the user, 2026-10-30).
+var rival_skin: RefCounted = null
+## Each seat's clock in seconds, and what it started from (0 for no clock): a
+## model set can play along.
+var clock_left := [0.0, 0.0]
+var clock_full := 0.0
+## The 3D layer of a set made of models, and the plain control over it that
+## carries what stands above the pieces; null while no seat wears one.
+var _models: SubViewportContainer
+var _top: Control
+## Where what stands above the pieces is drawn: this board, or `_top`.
+var _ink: CanvasItem = self
+var _model_clock := 0.0
 ## The colour the player moves (Rules.WHITE or BLACK); their pieces are
 ## always the cream ones and always at the bottom.
 var player := Rules.WHITE
@@ -293,7 +311,7 @@ func setup(the_rules: RefCounted, as_colour: int, enter := true) -> void:
 			# From the far side forward, a ripple across each rank.
 			var row := a.at.y if a.side == 1 else 7.0 - a.at.y
 			var delay := (row * 0.09 if a.side == 1 else 0.45 + row * 0.09) + a.at.x * 0.025
-			_start(a, "enter", skin.enter_time(), a.at, a.at, delay)
+			_start(a, "enter", _s(a).enter_time(), a.at, a.at, delay)
 		_after(0.1, func() -> void: _cue("enter"))
 	queue_redraw()
 
@@ -326,6 +344,13 @@ func set_hint(move: int) -> void:
 
 func set_lifted(sq: int) -> void:
 	_lifted = sq
+
+## The set worn by a seat (0 the player's, 1 the other's).
+func skin_of(seat: int) -> RefCounted:
+	return rival_skin if seat == 1 and rival_skin != null else skin
+
+func _s(a: Actor) -> RefCounted:
+	return skin_of(a.side)
 
 ## The set changed under the board: the same pieces, re-laid.
 func set_skin(the_skin: RefCounted) -> void:
@@ -447,7 +472,7 @@ func sq_at(p: Vector2) -> int:
 ## player took), 1 above (what the computer took).
 func tray_cell(tray: int, slot: int) -> Vector2:
 	var foot := Vector2(origin.x + (0.45 + slot * tray_step) * cell, _tray_mid(tray) + 0.4 * tray_scale * cell)
-	return cell_at(foot - Vector2(0.0, skin.foot_drop() * cell))
+	return cell_at(foot - Vector2(0.0, skin_of(1 - tray).foot_drop() * cell))
 
 ## A tray's middle line, in pixels.
 func _tray_mid(tray: int) -> float:
@@ -572,7 +597,7 @@ func play(d: Dictionary) -> void:
 	threats = []
 	auto_arrows = []
 	var type := absi(int(d.piece))
-	var dur: float = 0.2 if dropped or reduce else skin.move_time(type, start, to_c)
+	var dur: float = 0.2 if dropped or reduce else _s(a).move_time(type, start, to_c)
 	if _snap_next:
 		_snap_next = false
 		dur = 0.09
@@ -585,14 +610,14 @@ func play(d: Dictionary) -> void:
 	if start.x != to_c.x:
 		a.look = signf(to_c.x - start.x)
 	if not dropped and not reduce:
-		_cue(skin.takeoff_cue(type))
-	var contact: float = dur * (1.0 if dropped or reduce else skin.contact_at(type))
+		_cue(_s(a).takeoff_cue(type))
+	var contact: float = dur * (1.0 if dropped or reduce else _s(a).contact_at(type))
 	# What the hand's own move earned knocks as it happens: a capture at the
 	# contact, a promotion as the pawn turns. The cues ring for the
 	# computer's moves too and are not mapped (docs/agents/haptics.md).
 	a.hit_u = -1.0
 	if int(d.captured) != 0 and not dropped and not reduce:
-		a.hit_u = skin.contact_at(type)
+		a.hit_u = _s(a).contact_at(type)
 	if int(d.captured) != 0:
 		var victim: Actor = _at_sq.get(int(d.captured_at))
 		if victim != null:
@@ -605,23 +630,23 @@ func play(d: Dictionary) -> void:
 			_at_sq.erase(int(d.rook_from))
 			rook.sq = int(d.rook_to)
 			rook.move_type = Rules.KNIGHT
-			_start(rook, "move", 0.2 if reduce else skin.move_time(Rules.KNIGHT, rook.at, cell_of(rook.sq)),
+			_start(rook, "move", 0.2 if reduce else _s(a).move_time(Rules.KNIGHT, rook.at, cell_of(rook.sq)),
 				rook.at, cell_of(rook.sq), 0.0 if reduce else 0.12)
 			_at_sq[rook.sq] = rook
 	_after(dur, func() -> void:
 		if int(d.rook_from) >= 0:
 			_cue("castle")
 		elif int(d.captured) == 0:
-			_cue(skin.land_cue(type), _rng.randf_range(0.94, 1.06))
+			_cue(_s(a).land_cue(type), _rng.randf_range(0.94, 1.06))
 		if not skin.cartoon():
 			return
-		if skin.lands_with_dust(type) and not dropped:
+		if _s(a).lands_with_dust(type) and not dropped:
 			_puff(to_c)
 		elif not reduce:
 			_puff(to_c, Color("efe4cc"), 3)
-		_ripple(to_c, 1.0 if skin.lands_with_dust(type) else 0.7))
+		_ripple(to_c, 1.0 if _s(a).lands_with_dust(type) else 0.7))
 	if int(d.promo) != 0:
-		var pt: float = skin.promote_time()
+		var pt: float = _s(a).promote_time()
 		_after(dur, func() -> void:
 			a.move_type = a.type
 			_start(a, "promote", 0.2 if reduce else pt, a.to, a.to)
@@ -646,7 +671,7 @@ func _knock(victim: Actor, dir: Vector2, contact: float, hand := false) -> void:
 	victim.sq = -1
 	var target := tray_cell(tray, slot)
 	_after(contact, func() -> void:
-		_start(victim, "knock", 0.25 if Motion.reduce else skin.knock_time(), victim.at, target)
+		_start(victim, "knock", 0.25 if Motion.reduce else _s(victim).knock_time(), victim.at, target)
 		victim.dir = dir
 		victim.rest_scale = tray_scale
 		victim.face = ChessSkin.F_DIZZY
@@ -705,9 +730,9 @@ func tremble(sq: int) -> void:
 	var a: Actor = _at_sq.get(sq)
 	if a == null or Motion.reduce:
 		return
-	_start(a, "tremble", skin.tremble_time(), a.at, a.at)
+	_start(a, "tremble", _s(a).tremble_time(), a.at, a.at)
 	a.face = ChessSkin.F_WORRY
-	a.face_until = _now + skin.tremble_time()
+	a.face_until = _now + _s(a).tremble_time()
 
 ## The end of the game: the mated king goes over and the winners hop in a
 ## wave out from the winning piece; a draw puts everyone to sleep.
@@ -720,22 +745,22 @@ func finish(outcome: String, king_sq := -1) -> void:
 	if king_sq >= 0 and _at_sq.has(king_sq):
 		_fallen = king_sq
 		var k: Actor = _at_sq[king_sq]
-		_start(k, "topple", skin.topple_time(), k.at, k.at, 0.2)
+		_start(k, "topple", _s(k).topple_time(), k.at, k.at, 0.2)
 		k.face = ChessSkin.F_DIZZY
 		k.face_until = INF
-		if skin.has_crown(k.type):
+		if _s(k).has_crown(k.type):
 			# knocked off the way he falls, unless that would throw it off
 			# the board, then the other way
 			var dir := -1.0 if k.side == 0 else 1.0
 			if k.at.x + dir * 1.5 < -0.2 or k.at.x + dir * 1.5 > 7.2:
 				dir = -dir
 			k.crown_dir = dir
-			_after(0.2 + skin.topple_time() * skin.crown_pop(), func() -> void:
+			_after(0.2 + _s(k).topple_time() * _s(k).crown_pop(), func() -> void:
 				k.crown_off = _now
 				_cue("lift", 1.3)
 				if _fx != null:
-					_fx.sparkle(_foot(k.at) + skin.crown_seat(k.type, cell), Pal.SUN))
-			_after(0.2 + skin.topple_time() * skin.crown_pop() + skin.crown_time() * 0.48, func() -> void:
+					_fx.sparkle(_foot(k.at, k.side) + _s(k).crown_seat(k.type, cell), Pal.SUN))
+			_after(0.2 + _s(k).topple_time() * _s(k).crown_pop() + _s(k).crown_time() * 0.48, func() -> void:
 				_cue("place", 1.33)
 				_ripple(k.at + Vector2(k.crown_dir * 1.05, 0.0), 0.6))
 	if outcome == "draw":
@@ -756,7 +781,7 @@ func finish(outcome: String, king_sq := -1) -> void:
 			for k in 2:
 				_after(delay + k * 0.6, func() -> void:
 					if a.kind == "":
-						_start(a, "cheer", skin.cheer_time(), a.at, a.at))
+						_start(a, "cheer", _s(a).cheer_time(), a.at, a.at))
 
 ## Now and then one resting piece does its own little thing, while the
 ## game waits on someone.
@@ -774,10 +799,10 @@ func _fidget() -> void:
 	if idle.is_empty():
 		return
 	var a: Actor = idle[_rng.randi() % idle.size()]
-	_start(a, "fidget", skin.fidget_time(a.type), a.at, a.at)
+	_start(a, "fidget", _s(a).fidget_time(a.type), a.at, a.at)
 
 func _shiver(a: Actor) -> void:
-	_start(a, "shiver", skin.shiver_time(), a.at, a.at)
+	_start(a, "shiver", _s(a).shiver_time(), a.at, a.at)
 	a.face = ChessSkin.F_WORRY
 	a.face_until = _now + 0.6
 
@@ -1149,26 +1174,73 @@ func _draw() -> void:
 		var pose = e[2]
 		var up := clampf(pose.lift, 0.0, 2.0)
 		var k: float = pose.scale * (1.0 - up * 0.25)
-		draw_mesh(_shadow_mesh, null, Transform2D(0.0, Vector2(k, k), 0.0, _foot(pose.at) + Vector2(up * 0.22, up * 0.04) * cell),
+		draw_mesh(_shadow_mesh, null, Transform2D(0.0, Vector2(k, k), 0.0, _foot(pose.at, e[1].side) + Vector2(up * 0.22, up * 0.04) * cell),
 			Color(1, 1, 1, pose.alpha * (1.0 - up * 0.35)))
 	for e: Array in poses:
 		var a: Actor = e[1]
 		var pose = e[2]
 		var look: float = pose.look if pose.look != 0.0 else a.look
 		var bare := a.crown_off >= 0.0 and _now >= a.crown_off
+		if _s(a).model_dir() != "":
+			continue
 		var mesh := _mesh(a.type, a.side, _face_of(a), look, bare)
-		var xf := Transform2D(pose.tilt, pose.squash * pose.scale, 0.0, _foot(pose.at) - Vector2(0.0, pose.lift * cell))
+		var xf := Transform2D(pose.tilt, pose.squash * pose.scale, 0.0, _foot(pose.at, a.side) - Vector2(0.0, pose.lift * cell))
 		draw_mesh(mesh, null, xf, Color(1, 1, 1, pose.alpha))
 		if bare:
 			_draw_crown(a)
+	_sync_models(poses)
+	if _models == null:
+		_draw_top()
+	else:
+		_top.queue_redraw()
+
+func _draw_top() -> void:
 	_draw_ghosts()
 	if _over_mesh != null:
-		draw_mesh(_over_mesh, null)
+		_ink.draw_mesh(_over_mesh, null)
 	_draw_badge_mark()
 	_draw_picker()
 	_draw_advantage()
 	if eval_bar >= 0.0:
 		_draw_eval_bar()
+
+## Hands every model piece's pose to the 3D layer, making it the first time a
+## seat wears a model set and dropping it when none does.
+func _sync_models(poses: Array) -> void:
+	var worn: bool = skin.model_dir() != "" or skin_of(1).model_dir() != ""
+	if not worn:
+		if _models != null:
+			_models.queue_free()
+			_top.queue_free()
+			_models = null
+			_top = null
+			_ink = self
+		return
+	if _models == null:
+		_models = ChessModels.new()
+		_models.set_anchors_preset(Control.PRESET_FULL_RECT)
+		add_child(_models)
+		move_child(_models, 0)
+		_top = Control.new()
+		_top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_top.set_anchors_preset(Control.PRESET_FULL_RECT)
+		add_child(_top)
+		move_child(_top, 1)
+		_top.draw.connect(_draw_top)
+		_ink = _top
+	var list: Array = []
+	for e: Array in poses:
+		var a: Actor = e[1]
+		var worn_set: RefCounted = _s(a)
+		if worn_set.model_dir() == "":
+			continue
+		var pose = e[2]
+		var look: float = pose.look if pose.look != 0.0 else -1.0
+		list.append([a, a.type, worn_set, a.side if player == Rules.WHITE else 1 - a.side, _foot(pose.at, a.side), pose.lift, pose.tilt,
+			pose.squash, pose.scale, pose.alpha, look, clock_left[a.side], clock_full])
+	var dt := get_process_delta_time()
+	_model_clock += dt
+	_models.sync(list, cell, _model_clock, dt, Power.resting)
 
 ## Each queued move's piece, faint, where it will stand.
 func _draw_ghosts() -> void:
@@ -1179,8 +1251,8 @@ func _draw_ghosts() -> void:
 		if a == null:
 			continue
 		at[q[1]] = a
-		draw_mesh(_mesh(a.type, a.side, ChessSkin.F_OPEN, a.look), null,
-			Transform2D(0.0, _foot(cell_of(q[1]))), Color(1, 1, 1, 0.55))
+		_ink.draw_mesh(_mesh(a.type, a.side, ChessSkin.F_OPEN, a.look), null,
+			Transform2D(0.0, _foot(cell_of(q[1]), a.side)), Color(1, 1, 1, 0.55))
 
 ## The glyph on the verdict's badge. The disc is in the over layer; the
 ## signs that are letters are a string each.
@@ -1193,7 +1265,7 @@ func _draw_badge_mark() -> void:
 	var s := 1.0 if Motion.reduce else ChessSkin._back_out_k(clampf((_now - _badge_at) / 0.25, 0.0, 1.0))
 	var fs := maxi(int(cell * 0.2 * s), 4)
 	var w := _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-	draw_string(_font, _badge_at_px() + Vector2(-w * 0.5, fs * 0.36), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Pal.PAPER)
+	_ink.draw_string(_font, _badge_at_px() + Vector2(-w * 0.5, fs * 0.36), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Pal.PAPER)
 
 ## White's chance down the board's left side, White's end at the bottom when
 ## the player is White.
@@ -1201,49 +1273,50 @@ func _draw_eval_bar() -> void:
 	var w := minf(frame * cell, cell * 0.14)
 	var rect := Rect2(origin - Vector2(w, 0.0), Vector2(w, 8.0 * cell))
 	var white_h := rect.size.y * eval_bar / 100.0
-	draw_rect(rect, Color("2c2725"))
+	_ink.draw_rect(rect, Color("2c2725"))
 	if player == Rules.WHITE:
-		draw_rect(Rect2(rect.position + Vector2(0.0, rect.size.y - white_h), Vector2(w, white_h)), Color("f4eee2"))
+		_ink.draw_rect(Rect2(rect.position + Vector2(0.0, rect.size.y - white_h), Vector2(w, white_h)), Color("f4eee2"))
 	else:
-		draw_rect(Rect2(rect.position, Vector2(w, white_h)), Color("f4eee2"))
+		_ink.draw_rect(Rect2(rect.position, Vector2(w, white_h)), Color("f4eee2"))
 
 ## A crown knocked off its king: in flight, then lying where it stopped,
 ## with its own shadow.
 func _draw_crown(a: Actor) -> void:
-	var key := "crown|%d|%d" % [a.type, a.side]
+	var key := "crown|%s|%d|%d" % [_s(a).id(), a.type, a.side]
 	var m: ArrayMesh = _meshes.get(key)
 	if m == null:
 		var b := Face.Builder.new()
-		skin.build_crown(b, a.type, a.side, cell)
+		_s(a).build_crown(b, a.type, a.side, cell)
 		m = b.mesh()
 		_meshes[key] = m
 	# the crown's centre rides REST over the ground when it lies there, so
 	# its flight starts that much under its seat
 	var rest := cell * 0.12
-	var seat: float = -skin.crown_seat(a.type, cell).y / cell - 0.12
-	var u := clampf((_now - a.crown_off) / skin.crown_time(), 0.0, 1.0)
-	var p: RefCounted = skin.crown_pose(u, a.crown_dir, seat)
-	var foot := _foot(a.at + p.at)
+	var seat: float = -_s(a).crown_seat(a.type, cell).y / cell - 0.12
+	var u := clampf((_now - a.crown_off) / _s(a).crown_time(), 0.0, 1.0)
+	var p: RefCounted = _s(a).crown_pose(u, a.crown_dir, seat)
+	var foot := _foot(a.at + p.at, a.side)
 	var up := clampf(p.lift, 0.0, 2.0)
 	var k := 0.55 * (1.0 - up * 0.25)
 	draw_mesh(_shadow_mesh, null, Transform2D(0.0, Vector2(k, k * 0.8), 0.0, foot + Vector2(up * 0.22, up * 0.04) * cell),
 		Color(1, 1, 1, 1.0 - up * 0.35))
 	draw_mesh(m, null, Transform2D(p.tilt, p.squash * p.scale, 0.0, foot - Vector2(0.0, p.lift * cell + rest)))
 
-func _foot(c: Vector2) -> Vector2:
-	return px(c) + Vector2(0.0, skin.foot_drop() * cell)
+func _foot(c: Vector2, seat := 0) -> Vector2:
+	return px(c) + Vector2(0.0, skin_of(seat).foot_drop() * cell)
 
 func _mesh(type: int, seat: int, face: int, look: float, bare := false) -> ArrayMesh:
+	var worn: RefCounted = skin_of(seat)
 	var side := seat
-	if skin.true_colours():
+	if worn.true_colours():
 		side = seat if player == Rules.WHITE else 1 - seat
 		face = ChessSkin.F_OPEN
 		look = 1.0
-	var key := "%d|%d|%d|%d|%d" % [type, side, face, 1 if look > 0.0 else 0, 1 if bare else 0]
+	var key := "%s|%d|%d|%d|%d|%d" % [worn.id(), type, side, face, 1 if look > 0.0 else 0, 1 if bare else 0]
 	var m: ArrayMesh = _meshes.get(key)
 	if m == null:
 		var b := Face.Builder.new()
-		skin.build(b, type, side, cell, face, look, bare)
+		worn.build(b, type, side, cell, face, look, bare)
 		m = b.mesh()
 		_meshes[key] = m
 	return m
@@ -1251,12 +1324,12 @@ func _mesh(type: int, seat: int, face: int, look: float, bare := false) -> Array
 ## How an actor stands this frame: its moment if it has one, else at rest.
 func _pose_of(a: Actor) -> RefCounted:
 	if still:
-		return skin.idle_pose(a.type, a.at, 0.0, a.phase, false)
+		return _s(a).idle_pose(a.type, a.at, 0.0, a.phase, false)
 	if a.kind != "":
 		var u := clampf((_now - a.t0) / a.dur, 0.0, 1.0)
 		if _now < a.t0:
 			if a.kind == "enter":
-				var hidden: RefCounted = skin.enter_pose(a.at, 0.0)
+				var hidden: RefCounted = _s(a).enter_pose(a.at, 0.0)
 				hidden.alpha = 0.0
 				return hidden
 			u = 0.0
@@ -1269,7 +1342,7 @@ func _pose_of(a: Actor) -> RefCounted:
 					return p
 				if Motion.reduce:
 					return ChessSkin.Pose.at_cell(a.from.lerp(a.to, u))
-				var mp: RefCounted = skin.move_pose(a.move_type, a.from, a.to, u)
+				var mp: RefCounted = _s(a).move_pose(a.move_type, a.from, a.to, u)
 				if a.hit_u > 0.0:
 					# leaning into the hit, and a little squashed by it
 					var bump := exp(-pow((u - a.hit_u) / 0.09, 2.0))
@@ -1286,25 +1359,25 @@ func _pose_of(a: Actor) -> RefCounted:
 					var p: RefCounted = ChessSkin.Pose.at_cell(a.from.lerp(a.to, u))
 					p.scale = lerpf(1.0, tray_scale, u)
 					return p
-				return skin.knock_pose(a.from, a.to, a.dir, u, tray_scale)
+				return _s(a).knock_pose(a.from, a.to, a.dir, u, tray_scale)
 			"shiver":
-				var p: RefCounted = skin.shiver_pose(a.at, u)
+				var p: RefCounted = _s(a).shiver_pose(a.at, u)
 				p.scale = a.rest_scale
 				return p
 			"tremble":
-				return skin.tremble_pose(a.at, u)
+				return _s(a).tremble_pose(a.at, u)
 			"topple":
-				return skin.topple_pose(a.at, u, -1.0 if a.side == 0 else 1.0)
+				return _s(a).topple_pose(a.at, u, -1.0 if a.side == 0 else 1.0)
 			"cheer":
-				return skin.cheer_pose(a.at, u)
+				return _s(a).cheer_pose(a.at, u)
 			"fidget":
-				return skin.fidget_pose(a.type, a.at, u)
+				return _s(a).fidget_pose(a.type, a.at, u)
 			"promote":
-				return skin.promote_pose(a.at, u)
+				return _s(a).promote_pose(a.at, u)
 			"enter":
-				return skin.enter_pose(a.at, u)
+				return _s(a).enter_pose(a.at, u)
 	if a.kind == "" and _mood != "" and a.sq == _check_sq_for_mate():
-		return skin.topple_pose(a.at, 1.0, -1.0 if a.side == 0 else 1.0)
+		return _s(a).topple_pose(a.at, 1.0, -1.0 if a.side == 0 else 1.0)
 	if a.sq < 0:
 		var p := ChessSkin.Pose.at_cell(a.at)
 		p.scale = a.rest_scale
@@ -1319,7 +1392,7 @@ func _pose_of(a: Actor) -> RefCounted:
 		var still_pose := ChessSkin.Pose.at_cell(a.at)
 		still_pose.lift = 0.12 if lifted else 0.0
 		return still_pose
-	var ip: RefCounted = skin.idle_pose(a.type, a.at, _now, a.phase, lifted)
+	var ip: RefCounted = _s(a).idle_pose(a.type, a.at, _now, a.phase, lifted)
 	if a.sq == _lifted:
 		# the computer's "hmm" before it lets go
 		ip.tilt += 0.08 * sin(_now * 12.0)
@@ -1361,9 +1434,9 @@ func _face_of(a: Actor) -> int:
 	if _selected >= 0 and a.side == 1 and _targets.has(a.sq):
 		return ChessSkin.F_WORRY
 	if _now >= a.blink_at and not Motion.reduce:
-		if _now < a.blink_at + skin.blink_time():
+		if _now < a.blink_at + _s(a).blink_time():
 			return ChessSkin.F_BLINK
-		var gap: Vector2 = skin.blink_gap()
+		var gap: Vector2 = _s(a).blink_gap()
 		a.blink_at = _now + _rng.randf_range(gap.x, gap.y)
 	return ChessSkin.F_OPEN
 
@@ -1543,9 +1616,9 @@ func _draw_advantage() -> void:
 	var x := origin.x + (0.45 + n * tray_step) * cell - cell * 0.05
 	var mid := _tray_mid(tray)
 	var tag := Rect2(Vector2(x, mid - fs * 0.62), Vector2(w + fs * 0.7, fs * 1.24))
-	draw_rect(Rect2(tag.position + Vector2(0, 3), tag.size), Color(SOIL_DEEP, 0.6))
-	draw_rect(tag, Pal.PAPER)
-	draw_string(_font, Vector2(tag.position.x + fs * 0.35, mid + fs * 0.36), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Pal.TEXT)
+	_ink.draw_rect(Rect2(tag.position + Vector2(0, 3), tag.size), Color(SOIL_DEEP, 0.6))
+	_ink.draw_rect(tag, Pal.PAPER)
+	_ink.draw_string(_font, Vector2(tag.position.x + fs * 0.35, mid + fs * 0.36), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Pal.TEXT)
 
 func _build_marks() -> ArrayMesh:
 	# null when there is nothing to mark: an empty mesh is an error.
@@ -1715,7 +1788,7 @@ func _speed_lines(b: Face.Builder, a: Actor) -> void:
 			var uu := u - float(k) * 0.035
 			if uu < 0.0:
 				break
-			var pose: RefCounted = skin.move_pose(a.move_type, a.from, a.to, uu)
+			var pose: RefCounted = _s(a).move_pose(a.move_type, a.from, a.to, uu)
 			var q := _foot(pose.at) + (across * h - Vector2(0.0, pose.lift + lift)) * cell
 			if prev != Vector2.INF:
 				var f := 1.0 - float(k) / 8.0
@@ -1897,9 +1970,9 @@ func _draw_picker() -> void:
 	box.shadow_offset = Vector2(0, cell * 0.06)
 	box.border_color = Pal.SUN
 	box.set_border_width_all(4)
-	draw_style_box(box, rect)
+	_ink.draw_style_box(box, rect)
 	for i in cells.size():
 		var type := Rules.mv_promo(_picker[i])
 		var mesh := _mesh(type, 0, ChessSkin.F_JOY, 1.0)
 		var bob := 0.03 * sin(_now * 5.0 + i)
-		draw_mesh(mesh, null, Transform2D(0.0, Vector2.ONE * 0.8, 0.0, _foot(cells[i]) - Vector2(0, (0.12 + bob) * cell)))
+		_ink.draw_mesh(mesh, null, Transform2D(0.0, Vector2.ONE * 0.8, 0.0, _foot(cells[i]) - Vector2(0, (0.12 + bob) * cell)))

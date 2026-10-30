@@ -16,6 +16,8 @@
 art/*.blend
 # Mascots are modelled by hand, so their .blend IS the source: keep it
 !art/mascot_*.blend
+# The chess sets are modelled by hand in the live session; the .blend is the source.
+!art/chess_*.blend
 # So is the tile cube, hand-modelled since the trilon was replaced
 !art/tile.blend
 # So is the tree, hand-modelled scenery

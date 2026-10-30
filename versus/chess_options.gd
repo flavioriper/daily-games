@@ -14,8 +14,8 @@ const GAME := "chess"
 const CONTROLS := [[0, 0], [180, 2], [300, 0], [600, 0]]
 const CONTROL_KEYS := ["CHS_CLOCK_OFF", "3 + 2", "5 + 0", "10 + 0"]
 const COLOUR_KEYS := ["CHS_COLOUR_SWAP", "CHS_COLOUR_WHITE", "CHS_COLOUR_BLACK"]
-const SKINS := ["classic", "garden"]
-const SKIN_KEYS := ["CHS_SET_CLASSIC", "CHS_SET_GARDEN"]
+const SKINS := ["classic", "garden", "clockwork"]
+const SKIN_KEYS := ["CHS_SET_CLASSIC", "CHS_SET_GARDEN", "CHS_SET_CLOCKWORK"]
 const SWITCHES := [["premoves", "CHS_OPT_PREMOVES", "CHS_OPT_PREMOVES_SUB"],
 	["grades", "CHS_OPT_GRADES", "CHS_OPT_GRADES_SUB"],
 	["threats", "CHS_OPT_THREATS", "CHS_OPT_THREATS_SUB"]]

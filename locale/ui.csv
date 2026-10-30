@@ -242,6 +242,7 @@ CHS_OPT_COLOUR,YOUR COLOUR,SUA COR,TU COLOR
 CHS_OPT_SET,PIECES,PEÇAS,PIEZAS
 CHS_SET_CLASSIC,Classic,Clássicas,Clásicas
 CHS_SET_GARDEN,Garden,Jardim,Jardín
+CHS_SET_CLOCKWORK,Clockwork,Engrenagens,Engranajes
 CHS_OPT_PREMOVES,Premoves,Pré-lances,Premovimientos
 CHS_OPT_PREMOVES_SUB,Queue moves while the other side thinks,Deixe lances prontos enquanto o outro pensa,Deja jugadas listas mientras el otro piensa
 CHS_OPT_GRADES,Move grades,Notas dos lances,Notas de jugadas

@@ -46,6 +46,8 @@ static func named(id: String) -> RefCounted:
 			return load("res://versus/chess_skin.gd").new()
 		"garden":
 			return load("res://versus/chess_skin_garden.gd").new()
+		"clockwork":
+			return load("res://versus/chess_skin_clockwork.gd").new()
 		_:
 			return load("res://versus/chess_skin_classic.gd").new()
 
@@ -127,6 +129,27 @@ func crown_pose(u: float, dir: float, seat: float) -> Pose:
 ## The soft shadow under a piece, as a fraction of a cell across.
 func shadow_size() -> Vector2:
 	return Vector2(0.32, 0.1)
+
+# --- models ---
+
+## The folder of a set made of real models (versus/chess_models.gd), one
+## <piece>.glb each; "" for a set drawn by `build`.
+func model_dir() -> String:
+	return ""
+
+## How often, a second, a model's own moving parts turn; 0 for none.
+func model_hz() -> float:
+	return 0.0
+
+## The colour of a glb material for a seat. Named colours and never an
+## instance uniform: those come out as garbage past sixteen on Android.
+func model_tint(_material: String, _seat: int) -> Color:
+	return Color.WHITE
+
+## Turns a model's moving parts. `left` and `full` are its wearer's clock in
+## seconds, `full` 0 for no clock.
+func model_tick(_piece: Node3D, _clock: float, _left: float, _full: float) -> void:
+	pass
 
 # --- motion ---
 

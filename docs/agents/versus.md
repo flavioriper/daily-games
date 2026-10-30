@@ -130,6 +130,24 @@ coloured squares and move badges; autonomous, pushed).
   and takes the coordinates into the squares. The garden set stays in the
   options. The default is a call of mine, from the user's pictures: the old
   pawn and bishop were near enough the same shape at a glance.
+- **Sets belong to players, and can be models** (the user, 2026-10-30: "the
+  skin only apply to the player using it", "a gd model like the peeplets").
+  The board asks `skin_of(seat)` for everything about a piece; `skin`, the
+  player's, keeps what is the board's (frame, dressing, shadows). `rival_skin`
+  is null for now: a bot wears the player's set, and online needs each side's
+  skin id sent with the game, not built. A skin answering `model_dir()` is
+  `<dir>/<piece>.glb`, stood on `versus/chess_models.gd`: one SubViewport with
+  an orthographic camera, each foot on the 2D foot pixel, depth from the
+  camera's pitch, redrawn only on a frame something moved. What stands over
+  the pieces (ghosts, badges, picker, `_over_mesh`) moves to the `_top`
+  control through `_ink`, so draw those with `_ink.draw_*`. The model skin's
+  inherited `build` still draws the ghosts, the picker and the tutorial.
+  Clockwork vs Clockwork: 204 draw calls and 55,784 triangles on the layer,
+  about 330 for the screen, ANGLE. A 2D set against a model set is overdrawn
+  by the layer: every model stands over every drawn piece, whichever row.
+  Blender: the Screw modifier's normals must be flipped or the camera sees
+  into the piece; materials are matched by name in `model_tint`. Owed: a
+  phone run, MSAA 4x over the whole board being the risk (`MSAA`).
 - **The clock.** No clock, 3+2, 5+0, 10+0. It starts after both first moves,
   pauses under the tutorial and the sheets, and a game with one has no undo
   and no hints. A flag against a bare king is a draw. Saved with the options
