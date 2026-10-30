@@ -36,6 +36,12 @@ extends Control
 ## tile along, the places it fits light, and it is laid at the end it is let
 ## go on. Let go on an end it does not fit it is refused, and anywhere else
 ## it goes back to the hand.
+##
+## At Fives a tile that would score says so while it is the player's turn: a
+## brass tag on the tile in the hand with the best it can make, and on each
+## place it could go once picked up or carried. Reading the count is not the
+## game; what the ends are left at for the other side is. `flash_ends` lights
+## the two ends the moment they score.
 
 ## The player chose a move: `tile * 2 + end`.
 signal chosen(move: int)
@@ -49,6 +55,8 @@ signal refused(reason: String)
 ## The player's last tile came down on the table again: once for each of the
 ## two raps that say the hand is theirs.
 signal rapped
+## A tap on the table while it is not the player's to play.
+signal tapped
 
 const Rules = preload("res://versus/dominoes_rules.gd")
 const Face = preload("res://ui/faces/face.gd")
@@ -67,6 +75,11 @@ const ROW := 6.0
 ## The most a half of a tile on the line is drawn, in pixels.
 const UNIT_MAX := 74.0
 const PAD := 14.0
+## The two ends lit as they score.
+const FLASH_TIME := 0.9
+const TAG := Vector2(84.0, 46.0)
+const TAG_FS := 32
+const TAG_INK := Color("4a2f12")
 const FAR_H := 124.0
 const STOCK_H := 112.0
 ## The scale of a tile in the far hand, in the boneyard, and in the player's
@@ -212,6 +225,9 @@ var interactive := false:
 			_touch()
 ## A picture, not a game (the Versus tab's card): the line alone, no input.
 var still := false
+## On a cloth the screen paints, running off its sides: no felt of its own,
+## and the trays flush with the control.
+var bare := false
 ## A tutorial page's table: it moves as a game's does, but hears no finger
 ## and makes no sound.
 var deaf := false
@@ -291,6 +307,8 @@ var _knock_zone := Zone.MINE
 var _sigh_at := -10.0
 var _ripple_at := -10.0
 var _ripple := 1.0
+## When the two ends last scored.
+var _flash_at := -10.0
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE if still or deaf else Control.MOUSE_FILTER_STOP
@@ -337,6 +355,7 @@ func setup(the_rules: RefCounted, side: int, enter := false) -> void:
 	_knock_at = -10.0
 	_sigh_at = -10.0
 	_ripple_at = -10.0
+	_flash_at = -10.0
 	thinking = false
 	_place_all(true)
 	_deal_due = false
@@ -548,6 +567,24 @@ func stock_point() -> Vector2:
 func slot_point(move: int) -> Vector2:
 	return Vector2(_slot(move >> 1, move & 1).c) * _k
 
+## The middle of the line's room, where a score is said.
+func line_point() -> Vector2:
+	return _zone_line.get_center() * _k
+
+## The two ends light as they score.
+func flash_ends() -> void:
+	_flash_at = _t
+	_busy(FLASH_TIME)
+	_touch()
+
+## The tile standing at `end`, -1 before the first.
+func _tip(end: int) -> int:
+	var tip := -1
+	for p: Vector3i in rules.plays:
+		if p.y < 0 or p.y == end:
+			tip = p.x
+	return tip
+
 ## Where a line of words can stand: across the top of the mat's middle.
 func toast_point() -> Vector2:
 	return Vector2(_v.x * 0.5, _zone_line.position.y + 54.0) * _k
@@ -651,7 +688,7 @@ func _place_all(snap: bool) -> void:
 		var hand_h := rows * row_h + LIFT + PAD
 		_zone_hand = Rect2(0.0, _v.y - hand_h, _v.x, hand_h)
 		_zone_stock = Rect2(0.0, _zone_hand.position.y - STOCK_H, _v.x, STOCK_H)
-		_zone_line = Rect2(PAD, FAR_H, _v.x - 2.0 * PAD, _zone_stock.position.y - FAR_H - 6.0)
+		_zone_line = Rect2(_pad(), FAR_H, _v.x - 2.0 * _pad(), _zone_stock.position.y - FAR_H - 6.0)
 	for sp in _sprites:
 		sp.shown = false
 	# the line, fitted to its room
@@ -687,7 +724,7 @@ func _place_all(snap: bool) -> void:
 			elif rules.fits(mine[i], 0) or rules.fits(mine[i], 1):
 				at.y -= LIFT
 		_aim(_sprites[mine[i]], Zone.MINE, at, hs, 1, true, snap)
-	var far_step := minf(H * FAR_S + 8.0, (_v.x - 2.0 * PAD - H * FAR_S) / maxf(1.0, theirs.size() - 1.0))
+	var far_step := minf(H * FAR_S + 8.0, (_v.x - 2.0 * _pad() - H * FAR_S) / maxf(1.0, theirs.size() - 1.0))
 	for i in theirs.size():
 		var at := Vector2(_v.x * 0.5 + (i - (theirs.size() - 1) * 0.5) * far_step, FAR_H * 0.5 + 2.0)
 		_aim(_sprites[theirs[i]], Zone.THEIRS, at, FAR_S, 1, _reveal, snap)
@@ -697,8 +734,11 @@ func _place_all(snap: bool) -> void:
 ## Where the boneyard's tile `i` lies: the two that are never drawn first,
 ## a little apart from the rest.
 func _stock_at(i: int) -> Vector2:
-	var x := PAD + 18.0 + H * STOCK_S * 0.5 + i * STOCK_STEP + (22.0 if i >= Rules.KEEP else 0.0)
+	var x := _pad() + 18.0 + H * STOCK_S * 0.5 + i * STOCK_STEP + (22.0 if i >= Rules.KEEP else 0.0)
 	return Vector2(x, _zone_stock.position.y + STOCK_H * 0.5)
+
+func _pad() -> float:
+	return 0.0 if bare else PAD
 
 func _aim(sp: Sprite, zone: int, to: Vector2, s: float, o: int, up: bool, snap: bool) -> void:
 	if sp.zone != zone and not snap:
@@ -861,6 +901,8 @@ func _gui_input(event: InputEvent) -> void:
 		_drop(carried)
 	elif interactive:
 		_tap(at / _k)
+	else:
+		tapped.emit()
 
 ## The player's tile under `at`, -1 for none.
 func _hand_tile(at: Vector2) -> int:
@@ -962,7 +1004,8 @@ func _tap(at: Vector2) -> void:
 			_busy(0.4)
 			_cue("refused")
 			refused.emit("fit")
-		elif a and b and not rules.plays.is_empty() and rules.ends[0] != rules.ends[1]:
+		elif a and b and not rules.plays.is_empty() and (rules.ends[0] != rules.ends[1]
+				or rules.would_score(tile, 0) != rules.would_score(tile, 1)):
 			_picked = -1 if _picked == tile else tile
 			_hint = -1
 			_cue("lift")
@@ -1028,6 +1071,32 @@ func _draw() -> void:
 			draw_mesh(_mesh(t if up else -1, sp.o), null, Transform2D(0.0, Vector2(s * across, s), 0.0, at))
 	if _over_mesh != null:
 		draw_mesh(_over_mesh, null)
+	for tag: Array in _tag_list():
+		var font := get_theme_default_font()
+		var text := "+%d" % tag[1]
+		var wide := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, TAG_FS).x
+		draw_string(font, Vector2(tag[0]) + Vector2(-wide * 0.5, TAG_FS * 0.36), text, HORIZONTAL_ALIGNMENT_LEFT, -1, TAG_FS, TAG_INK)
+
+## What wears a score tag just now: [[where, points]]. A tile of the hand
+## with the best it can make, or the places of the tile picked up or carried.
+func _tag_list() -> Array:
+	var out: Array = []
+	if still or rules == null or not rules.fives or not interactive:
+		return out
+	var held := _drag if _drag >= 0 else _picked
+	if held >= 0:
+		for end in 2:
+			var n: int = rules.would_score(held, end)
+			if n > 0 and not (end == 1 and rules.plays.is_empty()):
+				var slot := _slot(held, end)
+				out.append([Vector2(slot.c) + Vector2(0.0, -_half_size(slot.o).y * _unit), n])
+		return out
+	for t in rules.hands[player]:
+		var n: int = maxi(rules.would_score(t, 0), rules.would_score(t, 1))
+		if n > 0:
+			var sp := _sprites[t]
+			out.append([sp.pos + Vector2(0.0, -H * sp.s), n])
+	return out
 
 ## How far a tile at rest is off its place just now, down the screen: the
 ## boneyard's next beckoning, a hand's last tile, a hand passing, the other
@@ -1140,29 +1209,31 @@ static func _stitch(b: Face.Builder, pts: PackedVector2Array, dash: float, gap: 
 ## the far hand's tray, the boneyard's box and the cup.
 func _build_mat() -> ArrayMesh:
 	var b := Face.Builder.new()
-	b.fan(Face.Builder.round_rect(Vector2(0.0, 6.0), _v - Vector2(0.0, 6.0), 30.0), Color(0.12, 0.07, 0.03, 0.3))
-	b.fan(Face.Builder.round_rect(Vector2.ZERO, _v - Vector2(0.0, 6.0), 30.0), FELT)
+	if not bare:
+		b.fan(Face.Builder.round_rect(Vector2(0.0, 6.0), _v - Vector2(0.0, 6.0), 30.0), Color(0.12, 0.07, 0.03, 0.3))
+		b.fan(Face.Builder.round_rect(Vector2.ZERO, _v - Vector2(0.0, 6.0), 30.0), FELT)
 	var pool := _zone_line.get_center()
 	Scenery.soft_disc(b, pool, _zone_line.size.x * 0.52, _zone_line.size.y * 0.5, Color(FELT_LIT, 0.55))
 	if not still:
 		var thread := Color(FELT_LIT, 0.75)
 		_sprout(b, _zone_line.position + Vector2(52.0, 62.0), 1.5, thread)
 		_sprout(b, _zone_line.end - Vector2(54.0, 42.0), 1.5, thread)
-		Scenery.tray(b, Vector2(PAD, 8.0), Vector2(_v.x - 2.0 * PAD, FAR_H - 12.0))
-		var box_at := Vector2(PAD, _zone_stock.position.y + 6.0)
-		var box := Vector2(_stock_at(Rules.TILES - Rules.HAND * 2).x - PAD - 8.0, STOCK_H - 12.0)
+		Scenery.tray(b, Vector2(_pad(), 8.0), Vector2(_v.x - 2.0 * _pad(), FAR_H - 12.0))
+		var box_at := Vector2(_pad(), _zone_stock.position.y + 6.0)
+		var box := Vector2(_stock_at(Rules.TILES - Rules.HAND * 2).x - _pad() - 8.0, STOCK_H - 12.0)
 		Scenery.tray(b, box_at, box)
 		# the two that stay lie behind a slat of their own
 		var slat := _stock_at(Rules.KEEP).x - H * STOCK_S * 0.5 - 13.0
 		b.fan(Face.Builder.round_rect(Vector2(slat - 4.0, box_at.y + 5.0), Vector2(8.0, box.y - 8.0), 3.0), PINE_DEEP)
 		b.fan(Face.Builder.round_rect(Vector2(slat - 4.0, box_at.y + 3.0), Vector2(8.0, box.y - 10.0), 3.0), PINE)
 		Scenery.cup(b, _cup_at(), 44.0)
-	_stitch(b, Face.Builder.round_rect(Vector2(7.0, 7.0), _v - Vector2(14.0, 20.0), 24.0), 14.0, 9.0, 2.5, Color(FELT_LIT, 0.85))
+	if not bare:
+		_stitch(b, Face.Builder.round_rect(Vector2(7.0, 7.0), _v - Vector2(14.0, 20.0), 24.0), 14.0, 9.0, 2.5, Color(FELT_LIT, 0.85))
 	return b.mesh()
 
 ## The middle of the cup, right of the boneyard's box.
 func _cup_at() -> Vector2:
-	return Vector2(_v.x - PAD - 76.0, _zone_stock.position.y + STOCK_H * 0.5 - 14.0)
+	return Vector2(_v.x - _pad() - 76.0, _zone_stock.position.y + STOCK_H * 0.5 - 14.0)
 
 static func _frame(b: Face.Builder, c: Vector2, half: Vector2, grow: float, width: float, col: Color) -> void:
 	b.stroke(Face.Builder.round_rect(c - half - Vector2.ONE * grow, (half + Vector2.ONE * grow) * 2.0, 14.0 + grow), width, col, true)
@@ -1183,6 +1254,7 @@ func _build_over() -> ArrayMesh:
 			Scenery.soft_disc(b, at, 11.0 + 12.0 * u, 11.0 + 12.0 * u, Color(1, 1, 1, 0.34 * sin(PI * u)))
 		_light_kiss(b)
 		_light_last(b)
+		_light_ends(b)
 		var rippled := (_t - _ripple_at) / RIPPLE_TIME
 		if rippled >= 0.0 and rippled < 1.0:
 			# the tea shaken: two rings out to the cup's side
@@ -1223,6 +1295,10 @@ func _build_over() -> ArrayMesh:
 			_frame(b, slot.c, half, 2.0 * beat, 6.0, HINT)
 	if _must_draw and _hint != Rules.DRAW:
 		_light_stock(b, HALO, beat)
+	for tag: Array in _tag_list():
+		var at: Vector2 = tag[0]
+		b.fan(Face.Builder.round_rect(at - TAG * 0.5 + Vector2(0.0, 3.0), TAG, 16.0), Color(0.2, 0.1, 0.03, 0.3))
+		b.fan(Face.Builder.round_rect(at - TAG * 0.5, TAG, 16.0), HINT)
 	return null if b.verts.is_empty() else b.mesh()
 
 ## The match just made: light in the number's colour spreading from the
@@ -1254,6 +1330,21 @@ func _light_kiss(b: Face.Builder) -> void:
 	if pop > 1.0:
 		for h: Dictionary in _kiss_halves:
 			_pips(b, h.c, h.n, h.upright, _unit / H, pop)
+
+## The two ends as they score: brass rings going out from each.
+func _light_ends(b: Face.Builder) -> void:
+	var since := _t - _flash_at
+	if since < 0.0 or since >= FLASH_TIME:
+		return
+	var u := since / FLASH_TIME
+	for end in 2:
+		var tip := _tip(end)
+		if tip < 0:
+			continue
+		var sp := _sprites[tip]
+		var half := _half_size(sp.o) * _unit
+		Scenery.soft_disc(b, sp.to, half.x * 1.5, half.y * 1.5, Color(HINT, 0.55 * (1.0 - u)))
+		_frame(b, sp.to, half, 2.0 + 16.0 * u, 6.0, Color(BRASS.lightened(0.2), 1.0 - u))
 
 ## A hand down to its last tile: brass light breathing under the eye.
 func _light_last(b: Face.Builder) -> void:

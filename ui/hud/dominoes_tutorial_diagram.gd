@@ -8,7 +8,9 @@ extends Control
 ## - MATCH: three tiles laid where their numbers match, the moon answering.
 ## - ENDS: a tile that fits both ends picked up and a place chosen, then a
 ##   double laid across.
-## - DRAW: nothing fits, two tiles drawn, the second laid.
+## - FIVES: the ends counted, a tile laid for 5 and another for 10, each with
+##   its tag, the ends lit as they score.
+## - DRAW: nothing fits, two tiles come from the boneyard, the second laid.
 ## - OUT: the last tile laid, and the other hand turned up to be counted.
 ## - BAR: the bulb rings a tile and its place, and the tile goes there.
 ##
@@ -21,7 +23,7 @@ const Board = preload("res://versus/dominoes_board.gd")
 const Motion = preload("res://core/motion.gd")
 const Pal = preload("res://core/palette.gd")
 
-enum Lesson { MATCH, ENDS, DRAW, OUT, BAR }
+enum Lesson { MATCH, ENDS, DRAW, OUT, BAR, FIVES }
 
 const FINGER_R := 26.0
 const FINGER_ALPHA := 0.2
@@ -62,8 +64,8 @@ static func _rest(used: Array, n: int) -> Array:
 ## moves from an empty one), the boneyard's last tiles (the last is drawn
 ## first), its length and its script of [seconds, what, ...]. `tap` taps one
 ## of the sun's tiles: it is laid if it fits one end, picked up if it fits
-## both; `end` taps the place a move would put the picked tile; `draw` taps
-## the boneyard; `bot` is the moon's move; `hint` is the bulb; `hide` takes
+## both; `end` taps the place a move would put the picked tile; `draw` is a
+## tile coming from the boneyard by itself; `bot` is the moon's move; `hint` is the bulb; `hide` takes
 ## the finger away.
 static func script_of(the_lesson: int) -> Dictionary:
 	match the_lesson:
@@ -80,7 +82,12 @@ static func script_of(the_lesson: int) -> Dictionary:
 		Lesson.DRAW:
 			return {"len": 9.5, "sun": [T(4, 2), T(3, 1)], "moon": [T(5, 5), T(4, 1), T(3, 0)],
 				"line": [T(6, 6) * 2], "draws": [T(6, 2), T(5, 0)], "script": [
-				[1.6, "draw"], [3.4, "draw"], [5.4, "tap", T(6, 2)], [6.0, "hide"]]}
+				[1.6, "draw"], [2.6, "draw"], [4.6, "tap", T(6, 2)], [5.2, "hide"]]}
+		Lesson.FIVES:
+			return {"len": 10.5, "sun": [T(6, 2), T(2, 5), T(1, 1)], "moon": [T(3, 5), T(0, 0), T(4, 1)],
+				"line": [T(3, 6) * 2], "draws": [], "script": [
+				[1.8, "tap", T(6, 2)], [3.8, "bot", T(3, 5) * 2], [5.8, "tap", T(2, 5)],
+				[7.6, "end", T(2, 5) * 2 + 1], [8.2, "hide"]]}
 		Lesson.OUT:
 			return {"len": 8.0, "sun": [T(5, 1)], "moon": [T(4, 3), T(3, 0)],
 				"line": [T(2, 4) * 2, T(4, 4) * 2 + 1, T(2, 6) * 2, T(4, 5) * 2 + 1, T(6, 6) * 2], "draws": [], "script": [
@@ -134,7 +141,7 @@ func _process(delta: float) -> void:
 	# the finger sets off for the tap that is coming
 	for i in range(_next, _script.size()):
 		var e: Array = _script[i]
-		if String(e[1]) in ["tap", "end", "draw"]:
+		if String(e[1]) in ["tap", "end"]:
 			if i != _aimed and _t >= float(e[0]) - LEAD:
 				_aimed = i
 				var at := _point_of(e)
@@ -181,13 +188,15 @@ func _do(e: Array, quiet: bool) -> void:
 				_board.set_hint(e[2])
 		"hide":
 			_shown = false
-	if what in ["tap", "end", "draw"]:
+	if what in ["tap", "end"]:
 		_down_at = _t
 	if move < 0 or not _rules.make(move):
 		return
 	if quiet:
 		return
 	_board.sync()
+	if _rules.last_score > 0:
+		_board.flash_ends()
 	if _rules.hand_over:
 		_board.interactive = false
 		_board.reveal(true)

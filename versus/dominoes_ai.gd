@@ -7,11 +7,13 @@ extends RefCounted
 ##
 ## The levels are how it chooses among the tiles that fit:
 ##   0  any of them, more often than not; else as level 1 with a shaky eye
-##   1  the heavy tiles and the doubles first, keeping numbers it has more of
+##   1  what scores now, then the heavy tiles and the doubles, keeping numbers
+##      it has more of
 ##   2  it deals the tiles it cannot see every way they could lie -- the
 ##      other side holds none of a number it drew or passed on -- plays each
 ##      of its moves out to the end of the hand many times, and takes the one
-##      that scores best on average
+##      that leaves it furthest ahead on average, so it weighs what a tile
+##      scores against what the ends it leaves will score for the other side
 ##
 ## A draw or a pass is never a choice (the rules force both), so `plan` with
 ## one legal move answers it at once.
@@ -23,6 +25,8 @@ const Rules = preload("res://versus/dominoes_rules.gd")
 ## How often the easy level lays whatever comes to hand.
 const LOOSE := 0.6
 const BLUR := [5.0, 0.6, 0.0]
+## How much a point scored now weighs against a pip got out of the hand.
+const SCORE_WEIGHT := 1.5
 const BUDGET_MS := 320
 const HINT_BUDGET_MS := 260
 ## Deals tried at the least, whatever the clock says, and at the most.
@@ -62,6 +66,8 @@ static func worth(v: Dictionary, m: int) -> float:
 	var score := float(Rules.weight(tile))
 	if Rules.is_double(tile):
 		score += 3.0
+	if v.fives:
+		score += SCORE_WEIGHT * Rules.score_after(v.ends, v.doubled, v.line.size(), tile, m & 1)
 	var after := ends_after(v.ends, m)
 	for t: int in v.hand:
 		if t == tile:
@@ -144,7 +150,12 @@ func _by_deals(v: Dictionary, legal: PackedInt32Array, rng: RandomNumberGenerato
 		base.hands[1 - side] = hand
 		base.stock = PackedInt32Array(rest)
 		base.ends = v.ends.duplicate()
-		if base.ends[0] >= 0:
+		base.doubled = v.doubled.duplicate()
+		base.fives = v.fives
+		base.scores = v.scores.duplicate()
+		var was: int = base.scores[side] - base.scores[1 - side]
+		# the line's length alone counts: the first tile is a count of its own
+		for j in mini(int(v.line.size()), 2):
 			base.plays.append(Vector3i(0, -1, 0))
 		base.turn = side
 		base.passes = v.passes
@@ -152,10 +163,7 @@ func _by_deals(v: Dictionary, legal: PackedInt32Array, rng: RandomNumberGenerato
 			var game: RefCounted = base.copy()
 			game.make(legal[i])
 			_play_out(game)
-			if game.hand_winner == side:
-				sums[i] += game.hand_points
-			elif game.hand_winner >= 0:
-				sums[i] -= game.hand_points
+			sums[i] += game.scores[side] - game.scores[1 - side] - was
 	var best := legal[0]
 	var best_score := -INF
 	for i in legal.size():
@@ -166,8 +174,8 @@ func _by_deals(v: Dictionary, legal: PackedInt32Array, rng: RandomNumberGenerato
 			best = legal[i]
 	return best
 
-## Both sides lay their heaviest tile that fits, doubles first, to the end of
-## the hand.
+## Both sides lay what scores most, then their heaviest tile that fits,
+## doubles first, to the end of the hand.
 static func _play_out(game: RefCounted) -> void:
 	while not game.hand_over:
 		var moves: PackedInt32Array = game.legal_moves()
@@ -175,7 +183,7 @@ static func _play_out(game: RefCounted) -> void:
 		if moves.size() > 1:
 			var best := -1
 			for m in moves:
-				var w: int = Rules.weight(m >> 1) + (3 if Rules.is_double(m >> 1) else 0)
+				var w: int = Rules.weight(m >> 1) + (3 if Rules.is_double(m >> 1) else 0) + 10 * game.would_score(m >> 1, m & 1)
 				if w > best:
 					best = w
 					pick = m

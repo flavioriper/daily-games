@@ -3,7 +3,7 @@ extends SceneTree
 ## A game of Dominoes, shot at fixed beats, the screen built by hand so
 ## nothing of the menu (or the network) is started:
 ##
-##     caffeinate -d -i -u godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_dominoes.gd -- <outdir> [level] [rm] [lang=pt|es] [lose] [speed=N]
+##     caffeinate -d -i -u godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_dominoes.gd -- <outdir> [level] [rm] [lang=pt|es] [lose] [capicu] [speed=N]
 ##
 ## The hand is real touches on the board: a tap on the tile the best computer
 ## would lay (`lose`: on the lightest that fits, so the end card is more
@@ -19,6 +19,8 @@ extends SceneTree
 ## shivering, blocked), knock (a hand dipping as it passes), stir (the heap
 ## before the deal), last_0 / last_1 (a hand down to one tile, lit) -- each
 ## when the game comes to it,
+## pay, pay_big (a score over the line, under and over 15), tags (a hand that
+## can score), capicu,
 ## deal (tiles in the air), start, laid, picked (two places lit), hint, draw
 ## (the boneyard lit), refused, long (the line at its longest in the first
 ## hand), hand (a finished hand lying open), end. After the first hand the
@@ -50,6 +52,8 @@ var _hold := {}
 var _lays := 0
 var _wrong := false
 var _nowhere := false
+## `capicu`: the first hand is set to end on a last tile that fits both ends.
+var _capicu := false
 
 func _initialize() -> void:
 	_had_record = FileAccess.file_exists("user://versus.cfg")
@@ -63,6 +67,8 @@ func _initialize() -> void:
 			load("res://core/motion.gd").reduce = true
 		elif a == "lose":
 			_lose = true
+		elif a == "capicu":
+			_capicu = true
 		elif a.begins_with("lang="):
 			TranslationServer.set_locale(a.trim_prefix("lang="))
 		elif a.begins_with("speed="):
@@ -129,6 +135,14 @@ func _process(delta: float) -> bool:
 		return false
 	if _board._rap >= 0 and _board._rap_lift() > 0.7:
 		_shot("rap")
+	# a score said over the line, loud at 15 and up, and a tag on the hand
+	for st: Dictionary in _screen._rw.stickers:
+		if float(st.t) > 0.35 and String(st.id) == "pay":
+			_shot("pay_big" if int(st.size) >= _screen.PAY_FS + _screen.PAY_FS_STEP * 15 else "pay")
+		elif float(st.t) > 0.35 and String(st.id) == "capicu":
+			_shot("capicu")
+	if _board._tag_list().size() > 0 and not _board.is_busy():
+		_shot("tags")
 	# the moments: a match lit (and a double's), the line's wave, a blocked line
 	var kissed: float = _board._t - _board._kiss_at
 	if kissed > 0.1 and kissed < 0.3:
@@ -198,6 +212,21 @@ func _process(delta: float) -> bool:
 	if _screen._state != S.YOURS or _board.is_busy():
 		return false
 	_shot("start")
+	if _capicu:
+		_capicu = false
+		var me: int = _screen.player
+		var mine := [Rules.id(6, 3)]
+		var theirs := [Rules.id(5, 5)]
+		var stock := [Rules.id(0, 0), Rules.id(1, 1)]
+		var line := [Rules.id(6, 1) * 2, Rules.id(3, 1) * 2]
+		if me == Rules.FIRST:
+			r.lay(mine, theirs, stock, line, me)
+		else:
+			r.lay(theirs, mine, stock, line, me)
+		_board.setup(r, me)
+		_board.interactive = true
+		_wait = 0.4
+		return false
 	if r.plays.size() >= 12 and r.hand_no == 0:
 		_shot("long")
 	if _board._picked >= 0:

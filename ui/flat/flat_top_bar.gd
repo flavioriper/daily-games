@@ -137,6 +137,10 @@ func _build() -> void:
 	_block.resized.connect(_fit_title)
 	_fit_title.call_deferred()
 
+## The motto's ink, on a world too deep for the house's own.
+func tint_motto(col: Color) -> void:
+	_motto.add_theme_color_override("font_color", col)
+
 ## Another motto on a bar already built: a Versus screen that opened online
 ## and goes on against the computer takes its own motto back.
 func set_motto(motto: String) -> void:

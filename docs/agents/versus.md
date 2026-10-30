@@ -761,6 +761,9 @@ are pennies, the grid is a rack, a column is a slot.
   person): until they are, Online and a friend's invite to this game are
   refused by the database.
 
+(Against the computer this block's rules and pace were replaced on 2026-10-30:
+see "Dominoes made worth playing" below. Online they still hold.)
+
 **Dominoes is the seventh Versus game** (2026-10-09, built unattended from
 one line and a photograph of a double-six set in its pine box: "the next
 multiplayer game ... check rules on web, wire everything even sound"; no
@@ -992,6 +995,68 @@ Chess's and Air Hockey's are, so the renamed-genre rule does not bite.
   players on one phone does not suit (hidden hands); **the live rules are
   not deployed** (`tools/deploy_live.sh`, by a person): until they are,
   Online and a friend's invite to this game are refused by the database.
+
+**Dominoes made worth playing** (2026-10-30, the user: "make dominoes
+experience way better to play, and game itself way funnier to play, right now
+nobody likes it ... use web for reference ... do it autonomous"). **What was
+judged**: the Draw game scores only at a hand's end and half its turns have one
+move, so polish could not save it; every rated app leads with All Fives, where
+any tile can score. Measured on 20,000 hands of a greedy pair: a score on 32%
+of turns, a real choice between scoring and not on 24%.
+
+- **The rules** (`Rules.fives`, true for the computer's games): after every
+  tile the open ends are counted, a double at an end both its halves, the
+  first tile whole and a first double once; a multiple of five scores at once
+  for whoever laid it (`count`, `last_score`, `would_score`). Going out takes
+  the other's pips to the nearest five (`to_five`, 12 is 10, 13 is 15); blocked,
+  the lighter hand takes the heavier's the same way (pagat, not the difference
+  the Draw game pays). The tile that reaches `FIVES_TARGET` 120 wins with the
+  hand unfinished, so a hand-end score can pass it. **Capicu** (`CAPICU` 25): a last tile, not a double, whose
+  two numbers are the two ends. The name is Capicu / Lá e ló / Capicúa by
+  language; pagat's Latin tables pay 25 to 100.
+- **No spinner, the call against the first plan**: Muggins' two ends. A
+  spinner gave 28% against 24% real choices and scores of 25+ on under 1% of
+  scoring turns, for a new move space, a new wire and a rewritten `lay_line`.
+  Scoring of 15+ is 2.3 times as common with one, so it is the first thing to
+  try if the game still reads thin.
+- **Online is still the Draw game to 50** (`rules.fives = online == null`): no
+  rules version travels with a match, an old client plays those rules, and a
+  queue of its own means `database.rules.json`, a person's deploy. The pill says
+  so; the tutorial drops the Fives page there. **Owed: a `dominoes` queue
+  for Fives once a build is out and the rules are deployed.**
+- **The computer** (`worth`, `_play_out`, `_by_deals`): Medium takes what
+  scores (`SCORE_WEIGHT`), the playouts pick score first, Hard sums the score
+  difference a hand ends on, so it weighs what it leaves. Over 60 games a
+  pairing, top level at 25 ms: 1 beats 0 51-9, 2 beats 0 53-7, 2 beats 1 44-16;
+  4.5 to 5 hands at 150, which is why the target is 120.
+- **A score is a moment** (`_pay`, owed in `_pay_due` until the tile has landed):
+  the two ends ring brass (`board.flash_ends`), a sticker of the points over
+  the line through the shared `arcade/rewards.gd`, loud from `PAY_LOUD` 15 with a sunburst
+  from `PAY_RAYS` 20, stars to the plate, the peg up its line, the plates and
+  the faces moving only then (`_catch_up`). `N in a row!` is cosmetic
+  (`_runs`). The moon talks (`_quip`, DOM_Q_*): three kinds of three lines,
+  never online. **Known**: going out on a tile that also scores, the
+  sticker says the fives while the plate takes the hand's points too.
+- **The pegging board** (`versus/dominoes_pegs.gd`): All Fives' old cribbage
+  board as a pine strip, a hole for five points, a pop a hole up a semitone a
+  hole (`score`, `bank:wrap`), five at most. One mesh and two pegs.
+- **Reading is not the game**: the pill counts the ends (`10 + 5 = 15`), a
+  tile that would score wears a brass tag in the hand and on each place it
+  could go (`_tag_list`). Two ends alike are two moves when a double stands at
+  one, and a tile that scores differently at each is picked up first.
+- **Less waiting**: a hand that cannot play draws by itself, a tile every
+  `DRAW_WAIT` 0.36 s (it was a tap each); a tap ends the look at a finished hand after
+  `HAND_SKIP` 0.9 s.
+- **Laid as Deckchair and the chess of that day**: planks over the whole
+  screen, the cloth (`_build_world`) running off the sides and foot,
+  `board.bare`; bar, tools row (Undo greyed, the bin that asks, the pill, the
+  bulb), plates, pegs on the 40 margin. The tab's card and the tutorial pages
+  keep their own mat. The motto is inked for the wood (`tint_motto`).
+- 105 to 131 draw calls by real touches on `opengl3_angle`, 125 on Hard, 141
+  to 150 on a tutorial page. Suite 303252/0. `tests/_shot_dominoes.gd` adds
+  `pay`, `pay_big`, `tags`, `capicu` (the flag `capicu` sets a hand to end on
+  one). Not on a phone, not heard. A blocked hand can swing 45
+  points: whether that is too much is the phone's call.
 
 **Reversi is the eighth Versus game** (2026-10-09, built unattended from one
 line and a photograph of the game's box, a blue tray of black and white

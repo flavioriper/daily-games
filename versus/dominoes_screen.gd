@@ -1,19 +1,27 @@
 extends Control
 
 ## A game of Dominoes: the seventh game on the Versus tab, built the way
-## Penny Drop is (versus/penny_screen.gd). The flat boards' top bar, a
-## scoreboard with the sun for you and the moon for the other player, each
-## with its points, and the target between them; on the wooden deck the felt
-## mat (versus/dominoes_board.gd).
+## Penny Drop is (versus/penny_screen.gd). Laid as Deckchair and the daily
+## boards are (the user, 2026-10-30): the table fills the screen, its cloth
+## running off the sides; on the rows' margin the top bar, the tools row with
+## the open ends' count in it, the two plates with the target between them,
+## the pegging board, and the table's own things on the cloth
+## (versus/dominoes_board.gd).
 ##
-## The rules (versus/dominoes_rules.gd) are the Draw game for two with a
+## The rules (versus/dominoes_rules.gd) are All Fives for two with a
 ## double-six set: seven tiles each, a tile laid a turn at either end of the
-## line where its number matches, a draw from the boneyard only when no tile
-## fits, a pass when the boneyard is down to its last two. A hand goes to
-## whoever lays their last tile, or to the lighter hand when the line is
-## blocked, for the pips the other is left with; the first to fifty wins the
-## game. Who leads the first hand swaps every game, and the lead changes
-## sides every hand.
+## line where its number matches, and whenever the two ends count a multiple
+## of five whoever laid the tile scores it at once. No tile fits: tiles come
+## from the boneyard by themselves until one does, and a pass when it is down
+## to its last two. A hand goes to whoever lays their last tile, or to the
+## lighter hand when the line is blocked, for the pips the other is left with
+## to the nearest five; a last tile that fits both ends is a Capicu. The
+## first to the target wins on the tile that gets there. Who leads the first
+## hand swaps every game, and the lead changes sides every hand.
+##
+## **A game online is still the Draw game to fifty** (`rules.fives` false):
+## no rules version travels with a match and an old client plays those rules,
+## so the count, the tags and the Capicu wait for a queue of the game's own.
 ##
 ## There is no undo: a tile drawn has shown you something. The bulb is the
 ## hard computer's tile for your hand, three a game.
@@ -42,6 +50,8 @@ const SafeArea = preload("res://ui/safe_area.gd")
 const Vistas = preload("res://ui/menu/vistas.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
 const Haptics = preload("res://core/haptics.gd")
+const Pegs = preload("res://versus/dominoes_pegs.gd")
+const Rewards = preload("res://arcade/rewards.gd")
 ## What the phone knocks for (docs/agents/haptics.md). The board's cues ring
 ## for both players and are not mapped: the hand's own tile knocks by
 ## `_fx.buzz`.
@@ -56,23 +66,41 @@ const GAME := "dominoes"
 const TITLE := "Dominoes"
 const MARGIN := 40
 const GAP := 20
-const SCORE_H := 128.0
-const DECK_PAD := 18
-const BACKDROP_BLEED := 90.0
+const SCORE_H := 120.0
+## Between the plates and the pegs, and the pegs and the table.
+const ROW_GAP := 12
+const PILL_R := 30
+const CLEAR_CARD := 820
 const HINTS := 3
 ## Seconds: the least the computer is seen to think, the beat before a draw
 ## or a pass that is not the player's, how long a pass is looked at, how long
 ## a finished hand lies open before the next is dealt, and the beat before
-## the end card.
+## the end card. `DRAW_WAIT` is the beat before a tile comes from the
+## boneyard by itself, `PAY_WAIT` and `PAY_STEP` how long a score is looked
+## at before the game goes on, and `HAND_SKIP` how soon a tap may end the look
+## at a finished hand.
 const THINK_MIN := 0.7
 const STEP := 0.45
 const PASS_WAIT := 1.3
+const DRAW_WAIT := 0.36
+const PAY_WAIT := 0.5
+const PAY_STEP := 0.09
 const HAND_WAIT := 3.6
+const HAND_SKIP := 0.9
 const END_WAIT := 2.4
 const TOAST_HOLD := 2.2
 const LEVELS := ["DIFF_EASY", "DIFF_MEDIUM", "DIFF_HARD", "VS_ONLINE"]
 ## The room a name has on a scoreboard plate, beside its face.
 const NAME_W := 250.0
+## A score's sticker: its size, and how many of them are loud.
+const PAY_FS := 68
+const PAY_FS_STEP := 2.0
+const PAY_LOUD := 15
+const PAY_RAYS := 20
+## The most a run of pops climbs (house sound rule 5).
+const POPS_CLIMB := 5
+## The lines the moon says, how many a kind.
+const QUIPS := 3
 
 ## WAIT is online's: the mat bare and still while the lobby looks. ENTER a
 ## hand being dealt; YOURS to lay or draw; THINK the other player choosing;
@@ -82,8 +110,15 @@ enum State { WAIT, ENTER, YOURS, THINK, ANIM, HAND, OVER }
 var level := 1
 var rules: RefCounted
 var board: Control
-var _deck_mesh: ArrayMesh
-var _deck_key := Rect2()
+var _world: Control
+var _world_mesh: ArrayMesh
+var _rw: Rewards
+var pegs: Control
+var _clear_card: Control
+var _ends_kicker: Label
+var _ends_l: Label
+var _ends_pill: PanelContainer
+var _target_l: Label
 var top_bar: Control
 var settings_sheet: Control
 ## The tutorial card: the top bar's ?, the settings' How to play and the
@@ -108,7 +143,6 @@ var _task_game := 0
 var _think_at := 0.0
 var _rng := RandomNumberGenerator.new()
 var _fx: Node2D
-var _backdrop: ColorRect
 var _margins: MarginContainer
 var _toast: PanelContainer
 var _toast_label: Label
@@ -118,7 +152,15 @@ var _plates: Array = []
 var _faces: Array = []
 var _status: Array[Label] = []
 var _names: Array[Label] = []
+## The points on each plate (0 you), which wait for the tile to land.
 var _points := [0, 0]
+## What the last tile scored and who laid it, owed once it has landed.
+var _pay_due := 0
+var _pay_side := 0
+## Each side's tiles that scored one after the other, by the rules' side.
+var _runs := [0, 0]
+## When the finished hand was first shown.
+var _hand_at := 0.0
 ## The game online, when the level is Record.ONLINE; null against the
 ## computer (and again once the lobby's "Play the computer" is taken).
 var online: Node
@@ -167,14 +209,15 @@ func _exit_tree() -> void:
 # --- building ---
 
 func _build() -> void:
-	var page := ColorRect.new()
-	page.color = Pal.PAPER
-	page.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	page.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(page)
-	_backdrop = Vistas.board_plate(GAME, Pal.ACCENT)
-	_backdrop.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	add_child(_backdrop)
+	_world = Control.new()
+	_world.name = "World"
+	_world.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_world.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_world.draw.connect(func() -> void:
+		if _world_mesh != null:
+			_world.draw_mesh(_world_mesh, null))
+	_world.resized.connect(_paint_world)
+	add_child(_world)
 
 	_margins = MarginContainer.new()
 	_margins.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -184,42 +227,43 @@ func _build() -> void:
 	_margins.add_child(col)
 
 	# The motto names the moon: a game online has its own.
-	top_bar = FlatTopBar.new(TITLE, tr("VS_ONLINE_MOTTO" if level == Record.ONLINE else "DOM_MOTTO"), true)
+	top_bar = FlatTopBar.new(TITLE, tr("VS_ONLINE_MOTTO" if level == Record.ONLINE else "DOM_MOTTO"), true, false, true)
 	top_bar.name = "TopBar"
 	top_bar.back.connect(_on_back)
-	top_bar.reset.connect(_on_reset)
+	top_bar.reset.connect(_ask_clear)
 	top_bar.hint.connect(_on_hint)
 	top_bar.settings.connect(func() -> void: settings_sheet.open())
 	col.add_child(top_bar)
-	col.add_child(_build_scoreboard())
+	top_bar.tint_motto(Color("4a2f12"))
+	col.add_child(_build_tools())
+	var boards := VBoxContainer.new()
+	boards.add_theme_constant_override("separation", ROW_GAP)
+	boards.add_child(_build_scoreboard())
+	pegs = Pegs.new()
+	pegs.name = "Pegs"
+	pegs.hopped.connect(_on_hopped)
+	boards.add_child(pegs)
+	col.add_child(boards)
 
-	var deck := Control.new()
-	deck.name = "Deck"
-	deck.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	deck.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	deck.draw.connect(_draw_deck.bind(deck))
-	deck.resized.connect(deck.queue_redraw)
-	col.add_child(deck)
-	var inset := MarginContainer.new()
-	inset.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	for side in ["left", "right", "top", "bottom"]:
-		inset.add_theme_constant_override("margin_" + side, DECK_PAD)
-	inset.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	deck.add_child(inset)
 	board = Board.new()
 	board.name = "Board"
-	board.resized.connect(deck.queue_redraw)
+	board.bare = true
+	board.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	board.tapped.connect(_on_table_tapped)
+	col.add_child(board)
 	board.chosen.connect(_on_chosen)
 	board.draw_asked.connect(_on_draw)
 	board.settled.connect(_on_settled)
+	board.resized.connect(_paint_world)
 	board.rapped.connect(func() -> void: _fx.buzz(Haptics.BUMP))
 	board.refused.connect(func(reason: String) -> void:
 		_fx.buzz(Haptics.WARN)
 		_say(tr("DOM_NO_FIT" if reason == "fit" else "DOM_NO_DRAW")))
-	inset.add_child(board)
 	_fx = Fx2D.new()
 	_fx.haptics = HAPTICS
 	add_child(_fx)
+	_rw = Rewards.new()
+	add_child(_rw)
 
 	_toast = PanelContainer.new()
 	_toast.add_theme_stylebox_override("panel", CozyTheme.lifted(Pal.SURFACE, 30, 14))
@@ -240,43 +284,66 @@ func _apply_insets() -> void:
 	_margins.add_theme_constant_override("margin_right", MARGIN)
 	_margins.add_theme_constant_override("margin_top", MARGIN + int(insets.x))
 	_margins.add_theme_constant_override("margin_bottom", MARGIN + int(insets.y))
-	_backdrop.offset_bottom = MARGIN + insets.x + FlatTopBar.HEIGHT + GAP + SCORE_H + BACKDROP_BLEED
-	Vistas.set_top_pad(_backdrop, insets.x)
+	_paint_world()
 
-## The same wooden terrace snooker's table stands on, the whole height of
-## the deck: planks with their joints, grain and knots, and petals and
-## leaves blown into the room round the board. One mesh, built once a
-## layout.
-func _draw_deck(deck: Control) -> void:
-	if deck.size.x <= 0.0 or board == null or board.used_rect.size.y <= 0.0:
+## The bar's tools row with the open ends' count on a paper pill where its
+## gap is: Undo greyed (a tile drawn has shown you something), the bin, the
+## pill, the bulb.
+func _build_tools() -> Control:
+	var row: HBoxContainer = top_bar.tools
+	_ends_pill = PanelContainer.new()
+	_ends_pill.name = "Ends"
+	_ends_pill.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_ends_pill.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_ends_pill.custom_minimum_size.y = FlatTopBar.BUTTON.y
+	_ends_pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ends_pill.add_theme_stylebox_override("panel", CozyTheme.lifted(Pal.SURFACE, PILL_R, 10))
+	var words := VBoxContainer.new()
+	words.alignment = BoxContainer.ALIGNMENT_CENTER
+	words.add_theme_constant_override("separation", -6)
+	_ends_pill.add_child(words)
+	_ends_kicker = Label.new()
+	_ends_kicker.text = "DOM_ENDS"
+	_ends_kicker.theme_type_variation = "MenuKicker"
+	_ends_kicker.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	words.add_child(_ends_kicker)
+	_ends_l = Label.new()
+	_ends_l.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	_ends_l.theme_type_variation = "SheetTitle"
+	_ends_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	words.add_child(_ends_l)
+	for child in row.get_children():
+		if child is Control and not (child is Button):
+			child.visible = false
+	row.add_child(_ends_pill)
+	row.move_child(_ends_pill, top_bar.hint_button.get_index())
+	return row
+
+## The table: planks all over the screen, and the cloth from the table's head
+## running off both sides and the foot. One mesh, built once a layout.
+func _paint_world() -> void:
+	if _world == null or _world.size.x <= 0.0 or board == null or board.size.y <= 0.0:
 		return
-	var key := Rect2(deck.size, board.used_rect.position + board.used_rect.size)
-	if _deck_mesh == null or key != _deck_key:
-		_deck_key = key
-		_deck_mesh = _build_deck(deck.size)
-	deck.draw_mesh(_deck_mesh, null)
+	_world_mesh = _build_world(_world.size, board.global_position.y - global_position.y - GAP * 0.5)
+	_world.queue_redraw()
 
-func _build_deck(sz: Vector2) -> ArrayMesh:
+func _build_world(sz: Vector2, cloth_y: float) -> ArrayMesh:
 	var b := Face.Builder.new()
-	var radius := 36.0
-	var clip := Face.Builder.round_rect(Vector2.ZERO, sz, radius)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 5
-	b.fan(clip, Color("a06d45"))
+	b.polygon(_plank_rect(Vector2.ZERO, sz), Color("a06d45"))
 	var plank := 58.0
 	var y := 0.0
-	while y < sz.y:
+	while y < cloth_y:
 		var h := minf(plank, sz.y - y)
-		var tone := Color("b98457").lerp(Color("a06d45"), rng.randf())
-		_clip_into(b, _plank_rect(Vector2(0.0, y), Vector2(sz.x, h - 3.0)), tone, clip)
-		_clip_into(b, _plank_rect(Vector2(0.0, y), Vector2(sz.x, 2.0)), Color(1, 1, 1, 0.12), clip)
-		var joint := rng.randf_range(0.2, 0.8) * sz.x
-		_clip_into(b, _plank_rect(Vector2(joint, y + 4.0), Vector2(3.0, h - 10.0)), Color(0.3, 0.17, 0.08, 0.35), clip)
+		b.polygon(_plank_rect(Vector2(0.0, y), Vector2(sz.x, h - 3.0)), Color("c29066").lerp(Color("ad7a50"), rng.randf()))
+		b.polygon(_plank_rect(Vector2(0.0, y), Vector2(sz.x, 2.0)), Color(1, 1, 1, 0.12))
+		b.polygon(_plank_rect(Vector2(rng.randf_range(0.2, 0.8) * sz.x, y + 4.0), Vector2(3.0, h - 10.0)), Color(0.3, 0.17, 0.08, 0.35))
 		for g in 2:
 			var gy := y + h * (0.3 + 0.35 * g) + rng.randf_range(-4.0, 4.0)
 			var ph := rng.randf() * TAU
-			var x0 := radius + rng.randf_range(0.0, sz.x * 0.3)
-			var x1 := minf(sz.x - radius, x0 + rng.randf_range(sz.x * 0.3, sz.x * 0.6))
+			var x0 := rng.randf_range(0.0, sz.x * 0.4)
+			var x1 := minf(sz.x, x0 + rng.randf_range(sz.x * 0.3, sz.x * 0.6))
 			var pts := PackedVector2Array()
 			var x := x0
 			while x <= x1:
@@ -284,49 +351,19 @@ func _build_deck(sz: Vector2) -> ArrayMesh:
 				x += 18.0
 			if pts.size() > 1:
 				b.stroke(pts, 1.8, Color(0.35, 0.2, 0.1, 0.14))
-		if rng.randf() < 0.3:
-			var kp := Vector2(rng.randf_range(radius * 2.0, sz.x - radius * 2.0), y + h * 0.5)
-			b.stroke(Face.Builder.ring(kp, 13.0, 5.5), 2.0, Color(0.35, 0.2, 0.1, 0.25), true)
 		y += plank
-	# the edge of the terrace falls into shade
-	for k in 3:
-		b.stroke(Face.Builder.round_rect(Vector2.ONE * (5.0 + k * 10.0), sz - Vector2.ONE * (10.0 + k * 20.0), radius - 5.0 - k * 10.0),
-			10.0, Color(0.25, 0.12, 0.05, 0.08), true)
-	# petals and leaves blown on, never under the board
-	var keep_out := Rect2(board.used_rect.position + Vector2.ONE * DECK_PAD, board.used_rect.size).grow(16.0)
-	var placed := 0
-	var tries := 0
-	while placed < 14 and tries < 300:
-		tries += 1
-		var p := Vector2(rng.randf_range(40.0, sz.x - 40.0), rng.randf_range(34.0, sz.y - 34.0))
-		if keep_out.has_point(p):
-			continue
-		var ang := rng.randf() * TAU
-		var pts := PackedVector2Array()
-		var leaf := placed % 3 == 2
-		var r := rng.randf_range(18.0, 26.0) if leaf else rng.randf_range(12.0, 17.0)
-		for k in 14:
-			var a := TAU * float(k) / 14.0
-			var rr := r * (0.55 + 0.45 * cos(a * 0.5) * cos(a * 0.5)) if not leaf else r
-			pts.append(p + Vector2(cos(a) * rr, sin(a) * rr * (0.42 if leaf else 0.6)).rotated(ang))
-		var shade := PackedVector2Array()
-		for q in pts:
-			shade.append(q + Vector2(2.0, 3.0))
-		b.polygon(shade, Color(0.3, 0.15, 0.05, 0.25))
-		var col: Color = Pal.LEAF if leaf else (Pal.FLOWER_TILE if placed % 2 == 0 else Pal.FLOWER)
-		b.polygon(pts, col)
-		if leaf:
-			b.stroke(PackedVector2Array([p - Vector2(r * 1.2, 0.0).rotated(ang), p + Vector2(r * 0.8, 0.0).rotated(ang)]), 2.0,
-				Color(Pal.LEAF_DEEP, 0.7))
-		placed += 1
+	# the cloth, its edge's shadow on the wood and a stitched hem under it
+	b.polygon(_plank_rect(Vector2(0.0, cloth_y - 8.0), Vector2(sz.x, 8.0)), Color(0.2, 0.1, 0.04, 0.3))
+	b.polygon(_plank_rect(Vector2(0.0, cloth_y), Vector2(sz.x, sz.y - cloth_y)), Board.FELT)
+	b.polygon(_plank_rect(Vector2(0.0, cloth_y), Vector2(sz.x, 5.0)), Board.FELT_LIT)
+	var x := 12.0
+	while x < sz.x:
+		b.polygon(_plank_rect(Vector2(x, cloth_y + 14.0), Vector2(14.0, 2.5)), Color(Board.FELT_LIT, 0.85))
+		x += 23.0
 	return b.mesh()
 
 static func _plank_rect(at: Vector2, sz: Vector2) -> PackedVector2Array:
 	return PackedVector2Array([at, at + Vector2(sz.x, 0.0), at + sz, at + Vector2(0.0, sz.y)])
-
-static func _clip_into(b: Face.Builder, pts: PackedVector2Array, col: Color, clip: PackedVector2Array) -> void:
-	for piece in Geometry2D.intersect_polygons(pts, clip):
-		b.polygon(piece, col)
 
 func _build_scoreboard() -> Control:
 	var row := HBoxContainer.new()
@@ -352,10 +389,10 @@ func _build_scoreboard() -> Control:
 		var align := HORIZONTAL_ALIGNMENT_LEFT if p == 0 else HORIZONTAL_ALIGNMENT_RIGHT
 		var name_l := Label.new()
 		name_l.text = "SNK_YOU" if p == 0 else "SNK_BOT"
-		name_l.theme_type_variation = "SheetTitle"
+		name_l.theme_type_variation = "CardBlurb"
 		name_l.horizontal_alignment = align
 		var status := Label.new()
-		status.theme_type_variation = "CardBlurb"
+		status.theme_type_variation = "SheetTitle"
 		status.horizontal_alignment = align
 		words.add_child(name_l)
 		words.add_child(status)
@@ -387,12 +424,11 @@ func _build_target_panel() -> Control:
 	kicker.theme_type_variation = "MenuKicker"
 	kicker.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(kicker)
-	var target := Label.new()
-	target.text = str(Rules.TARGET)
-	target.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-	target.theme_type_variation = "DayBig"
-	target.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	col.add_child(target)
+	_target_l = Label.new()
+	_target_l.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	_target_l.theme_type_variation = "DayBig"
+	_target_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(_target_l)
 	return panel
 
 static func _points_line(n: int) -> String:
@@ -413,19 +449,48 @@ func _refresh_board() -> void:
 		_plates[p].modulate.a = 1.0 if mine or over else 0.82
 		# the other side's tiles are turned over in thought while it thinks
 		board.thinking = _state == State.THINK
-		var pts: int = rules.scores[side]
-		var line := "" if _state == State.WAIT else _points_line(pts)
+		var line := "" if _state == State.WAIT else _points_line(_points[p])
 		_status[p].auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 		_status[p].text = line
-		if pts != _points[p]:
-			_points[p] = pts
-			if pts > 0:
-				_status[p].pivot_offset = _status[p].size * 0.5
-				Motion.bump(_status[p], 0.25, 0.3)
 		if online != null:
 			# The side to play carries its seconds.
 			online.dress(_status[p], line, mine and _state != State.ENTER, p == 0)
+	_refresh_ends()
 	top_bar.refresh(self)
+
+## The pill: what the ends count. Online it is the Draw game, and it says that.
+func _refresh_ends() -> void:
+	if not rules.fives:
+		_ends_kicker.text = "DOM_ENDS_ONLINE"
+		_ends_l.text = tr("DOM_ENDS_DRAW")
+		return
+	_ends_kicker.text = "DOM_ENDS"
+	if rules.plays.is_empty():
+		_ends_l.text = "-"
+		return
+	if rules.plays.size() == 1:
+		_ends_l.text = str(rules.count())
+		return
+	var a: int = rules.ends[0] * (2 if rules.doubled[0] else 1)
+	var b: int = rules.ends[1] * (2 if rules.doubled[1] else 1)
+	_ends_l.text = "%d + %d = %d" % [a, b, a + b]
+
+## The plates and the pegs catch up with the rules' scores, and the plate
+## that moved bumps. The pegs' pops are the sound of it.
+func _catch_up() -> void:
+	for p in 2:
+		var side := player if p == 0 else 1 - player
+		var pts: int = rules.scores[side]
+		if pts != _points[p]:
+			_points[p] = pts
+			_status[p].pivot_offset = _status[p].size * 0.5
+			Motion.bump(_status[p], 0.25, 0.3)
+		pegs.score(p, pts)
+	_refresh_board()
+
+## A peg reached a hole: a pop, climbing a semitone a hole.
+func _on_hopped(_side: int, n: int) -> void:
+	_fx.cue("score", pow(2.0, mini(n, POPS_CLIMB) / 12.0), 0.0, 20)
 
 # --- the top bar's view of this screen (FlatTopBar.refresh) ---
 
@@ -460,14 +525,18 @@ func can_reset() -> bool:
 ## how well the computer plays, so the pages are the same on all three.
 func tutorial_pages() -> Array:
 	var Diagram = load("res://ui/hud/dominoes_tutorial_diagram.gd")
+	var fives := online == null
 	var steps := [
 		[Diagram.Lesson.MATCH, "TUT_DOMINOES_MATCH", tr("TUT_DOMINOES_MATCH_BODY")],
 		[Diagram.Lesson.ENDS, "TUT_DOMINOES_ENDS", tr("TUT_DOMINOES_ENDS_BODY")],
 		[Diagram.Lesson.DRAW, "TUT_DOMINOES_DRAW", tr("TUT_DOMINOES_DRAW_BODY")],
-		[Diagram.Lesson.OUT, "TUT_DOMINOES_OUT", tr("TUT_DOMINOES_OUT_BODY") % Rules.TARGET],
+		[Diagram.Lesson.OUT, "TUT_DOMINOES_OUT", tr("TUT_DOMINOES_OUT_FIVES_BODY") % [Rules.CAPICU, Rules.FIVES_TARGET]
+			if fives else tr("TUT_DOMINOES_OUT_BODY") % Rules.TARGET],
 		[Diagram.Lesson.BAR, "TUT_DOMINOES_BAR",
 			tr("TUT_DOMINOES_BAR_BODY_ONE") if HINTS == 1 else tr("TUT_DOMINOES_BAR_BODY_N") % HINTS],
 	]
+	if fives:
+		steps.insert(1, [Diagram.Lesson.FIVES, "TUT_DOMINOES_FIVES", tr("TUT_DOMINOES_FIVES_BODY")])
 	var pages := []
 	for step: Array in steps:
 		var d: Control = Diagram.new()
@@ -488,6 +557,8 @@ func _lay(state: State, seed := 0) -> void:
 	_game += 1
 	_beat += 1
 	rules = Rules.new()
+	# no rules version travels with a match: online is the old game
+	rules.fives = online == null
 	if state == State.ENTER:
 		rules.deal(seed)
 	_inbox.clear()
@@ -497,6 +568,12 @@ func _lay(state: State, seed := 0) -> void:
 	_hints = HINTS
 	_hint_move = -1
 	_points = [0, 0]
+	_pay_due = 0
+	_runs = [0, 0]
+	pegs.reset(rules.target())
+	_target_l.text = str(rules.target())
+	_close_clear()
+	_rw.clear()
 	_state = state
 	if _end != null:
 		_end.queue_free()
@@ -515,8 +592,53 @@ func _after(seconds: float, what: Callable) -> void:
 			what.call())
 
 func _on_settled() -> void:
-	if _state == State.ENTER or _state == State.ANIM:
+	if _state != State.ENTER and _state != State.ANIM:
+		return
+	if _pay_due > 0:
+		_pay()
+	else:
 		_start_turn()
+
+## The tile has landed and it scored: the ends light, the points fly to the
+## plate, the peg hops up its line with a pop a hole, and only then does the
+## game go on.
+func _pay() -> void:
+	var points := _pay_due
+	var side := _pay_side
+	var p := 0 if side == player else 1
+	_pay_due = 0
+	board.flash_ends()
+	var mid: Vector2 = _rw.at(board, board.line_point())
+	var plate: Vector2 = _rw.at(_status[p], _status[p].size * 0.5)
+	var loud := points >= PAY_LOUD
+	var col: Color = Pegs.SUN if p == 0 else Pegs.MOON
+	_rw.sticker("+%d" % points, mid, int(PAY_FS + PAY_FS_STEP * points), 0.9, loud,
+		Color.WHITE if p == 0 else Pegs.MOON.lightened(0.4), points >= PAY_RAYS, "pay")
+	_rw.spray(mid, col, 4 + points / 2, 620.0, "star", 1.0, 0.1, plate)
+	_rw.ring(mid, 140.0 + points * 4.0, Color(col, 0.9))
+	if p == 0:
+		_fx.buzz(Haptics.BUMP if loud else Haptics.GOOD)
+	if _runs[side] >= 2:
+		_rw.sticker(tr("DOM_ROLL") % _runs[side], mid + Vector2(0.0, 110.0), 44, 0.9, false, Color("fff4c2"), false, "roll")
+	if loud:
+		_faces[p].expression = Face.Expr.JOY
+		_faces[1 - p].expression = Face.Expr.WORRIED
+		_quip("MOAN" if p == 0 else "GLOAT")
+	_catch_up()
+	_after(PAY_WAIT + PAY_STEP * points / 5.0, _after_pay)
+
+func _after_pay() -> void:
+	if _state != State.ANIM:
+		return
+	if not rules.hand_over:
+		for f in _faces:
+			f.expression = Face.Expr.HAPPY
+	_start_turn()
+
+## The moon says something, against the computer only.
+func _quip(kind: String) -> void:
+	if online == null:
+		_say(tr("DOM_Q_%s_%d" % [kind, 1 + randi() % QUIPS]))
 
 func _start_turn() -> void:
 	if rules.hand_over:
@@ -539,14 +661,18 @@ func _start_turn() -> void:
 			_knock(tr("DOM_YOU_PASS"), true)
 			_fx.buzz(Haptics.WARN)
 			_after(PASS_WAIT, func() -> void: _apply(Rules.PASS))
+		elif forced == Rules.DRAW:
+			# Nothing to choose: the tiles come by themselves.
+			_state = State.ANIM
+			board.set_must_draw(true)
+			if _my_draws == 0:
+				_say(tr("DOM_DRAW_ONE"))
+			_after(DRAW_WAIT, func() -> void: _apply(Rules.DRAW))
 		else:
 			_state = State.YOURS
 			board.interactive = true
-			board.set_must_draw(forced == Rules.DRAW)
-			if forced == Rules.DRAW:
-				if _my_draws == 0 or online == null:
-					_say(tr("DOM_DRAW_ONE"))
-			elif rules.plays.is_empty() and rules.hand_no == 0:
+			board.set_must_draw(false)
+			if rules.plays.is_empty() and rules.hand_no == 0:
 				_say(tr("DOM_YOUR_LEAD"))
 	else:
 		_state = State.THINK
@@ -566,6 +692,8 @@ func _step_other(m: int) -> void:
 		return
 	if m == Rules.PASS:
 		_knock(tr("DOM_THEY_PASS"), false)
+		if rules.fives:
+			_quip("PASS")
 	_apply(m)
 
 ## A pass is knocked on the table and said.
@@ -583,12 +711,20 @@ func _on_chosen(move: int) -> void:
 	_hush()
 	_apply(move)
 
-## The player tapped the boneyard with no tile that fits.
+## The player tapped the boneyard with no tile that fits: it draws by itself
+## now, so this is only ever a tap in the beat before it does.
 func _on_draw() -> void:
 	if _state != State.YOURS or not rules.can(Rules.DRAW):
 		return
 	_fx.buzz(Haptics.TICK)
 	_apply(Rules.DRAW)
+
+## A tap on the table during the look at a finished hand: on to the next.
+func _on_table_tapped() -> void:
+	if _state != State.HAND or online != null or Time.get_ticks_msec() / 1000.0 - _hand_at < HAND_SKIP:
+		return
+	_fx.touch()
+	_next_hand()
 
 ## Makes the side to move's move and shows it. Online, this seat's turn goes
 ## out whole with the move that ends it.
@@ -598,6 +734,12 @@ func _apply(m: int) -> void:
 		return
 	_state = State.ANIM
 	_hint_move = -1
+	if m < Rules.DRAW:
+		_runs[side] = _runs[side] + 1 if rules.last_score > 0 else 0
+		_pay_due = rules.last_score
+		_pay_side = side
+	elif m == Rules.DRAW and side == player:
+		_fx.buzz(Haptics.TICK)
 	if online != null and side == player:
 		if m == Rules.DRAW:
 			_my_draws += 1
@@ -618,10 +760,13 @@ func _apply(m: int) -> void:
 ## The hand is over: the other hand is turned up and the points are said.
 ## The game goes on to its end, or after a look to the next hand.
 func _hand_done() -> void:
+	if rules.capicu:
+		_capicu()
 	if rules.status() == Rules.WON:
 		_conclude("won" if rules.winner == player else "lost", "DOM_SCORE_IN", "")
 		return
 	_state = State.HAND
+	_hand_at = Time.get_ticks_msec() / 1000.0
 	board.interactive = false
 	board.reveal(true)
 	var mine: bool = rules.hand_winner == player
@@ -633,8 +778,19 @@ func _hand_done() -> void:
 	_faces[0].expression = Face.Expr.JOY if mine else (Face.Expr.SLEEPY if rules.hand_winner < 0 else Face.Expr.WORRIED)
 	_faces[1].expression = Face.Expr.WORRIED if mine else (Face.Expr.SLEEPY if rules.hand_winner < 0 else Face.Expr.JOY)
 	_say(text, HAND_WAIT - 0.6)
-	_refresh_board()
+	_catch_up()
 	_after(HAND_WAIT, _next_hand)
+
+## The last tile fitted both ends: said large, over a sunburst.
+func _capicu() -> void:
+	var mine: bool = rules.hand_winner == player
+	var mid: Vector2 = _rw.at(board, board.line_point())
+	_rw.sticker(tr("DOM_CAPICU"), mid, 92, 1.6, true, Color.WHITE, true, "capicu")
+	_rw.sticker("+%d" % Rules.CAPICU, mid + Vector2(0.0, 120.0), 56, 1.6, false, Color("fff4c2"), false, "capicu_plus")
+	_rw.spray(mid, Pegs.SUN if mine else Pegs.MOON, 18, 760.0, "star", 1.1)
+	_fx.cue("capicu")
+	if not mine:
+		_quip("GLOAT")
 
 func _next_hand() -> void:
 	if _state != State.HAND:
@@ -651,7 +807,8 @@ func _next_hand() -> void:
 
 # --- thinking, for the computer and the hint ---
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	_rw.step(delta)
 	# The computer's answer waits while the tutorial card is up, so no tile
 	# is laid (or heard) behind a page.
 	if not _held:
@@ -864,7 +1021,7 @@ func _conclude(outcome: String, reason: String, why: String) -> void:
 	_beat += 1
 	board.interactive = false
 	board.finish(outcome)
-	_refresh_board()
+	_catch_up()
 	var hands: int = rules.hand_no + 1
 	if online != null:
 		online.settle(outcome, why, rules.laid, mine_last)
@@ -876,7 +1033,7 @@ func _conclude(outcome: String, reason: String, why: String) -> void:
 		Analytics.track("versus_end", {"game": GAME, "level": level, "won": outcome == "won",
 			"result": outcome, "moves": rules.laid, "hands": hands, "hints": HINTS - _hints,
 			"score": rules.scores[player], "score_other": rules.scores[1 - player],
-			"first": player == Rules.FIRST})
+			"first": player == Rules.FIRST, "fives": rules.fives})
 	Ads.note_finished()
 	_fx.cue("win" if outcome == "won" else "lose")
 	_faces[0].expression = Face.Expr.JOY if outcome == "won" else (Face.Expr.WORRIED if outcome == "lost" else Face.Expr.SLEEPY)
@@ -998,6 +1155,56 @@ func _place_toast() -> void:
 	var sz := _toast.get_combined_minimum_size()
 	_toast.global_position = board.global_position + board.toast_point() - sz * 0.5
 
+## The bin: a card that asks before the game is thrown away, as a daily
+## board's does. A game with nothing laid goes without asking.
+func _ask_clear() -> void:
+	if _clear_card != null or not can_reset():
+		return
+	if rules.laid == 0 and rules.hand_no == 0:
+		_on_reset()
+		return
+	var scrim := Dialog.scrim()
+	scrim.name = "ClearCard"
+	_clear_card = scrim
+	scrim.gui_input.connect(func(event: InputEvent) -> void:
+		if (event is InputEventScreenTouch or event is InputEventMouseButton) and event.pressed:
+			_close_clear())
+	var center := CenterContainer.new()
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	scrim.add_child(center)
+	var card := Dialog.card(CLEAR_CARD)
+	card.mouse_filter = Control.MOUSE_FILTER_STOP
+	center.add_child(card)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 20)
+	card.add_child(col)
+	col.add_child(Dialog.head("DOM_CLEAR_TITLE", "bin"))
+	var body := Label.new()
+	body.text = "DOM_CLEAR_BODY"
+	body.theme_type_variation = "CardBlurb"
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(body)
+	var keep := Dialog.primary("check", tr("CLEAR_NO"))
+	keep.name = "Keep"
+	keep.pressed.connect(_close_clear)
+	var yes := Dialog.secondary("bin", tr("DOM_CLEAR_YES"))
+	yes.name = "Clear"
+	yes.pressed.connect(func() -> void:
+		_close_clear()
+		_on_reset())
+	Dialog.buttons(col, keep, yes)
+	add_child(scrim)
+	_held = true
+	Motion.appear(scrim, 0.0, 1.0, 0.2)
+
+func _close_clear() -> void:
+	if _clear_card == null:
+		return
+	_clear_card.queue_free()
+	_clear_card = null
+	_held = false
+
 func _on_reset() -> void:
 	if not can_reset():
 		return
@@ -1021,6 +1228,9 @@ func go_back() -> void:
 	if online != null and online.back():
 		return
 	if tutor.close():
+		return
+	if _clear_card != null:
+		_close_clear()
 		return
 	if settings_sheet.is_open():
 		settings_sheet.close()

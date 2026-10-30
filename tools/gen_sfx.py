@@ -3357,7 +3357,12 @@ SETS = {
         "lost_hand": ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:7,5", "cut:0.7"),
         # The bulb: two notes alike and a third up.
         "hint":      ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:4,4,8", "cut:1.0"),
-        # First to fifty: six up and over.
+        # A tile that scored: one bubble a hole of the pegging board, pitched
+        # up at play as the peg climbs (versus/dominoes_screen.gd _on_hopped).
+        "score":     ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -16, FOLEY, "bank:wrap", "cut:0.12", "tight"),
+        # A last tile on both ends: the hand's three notes, on up.
+        "capicu":    ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.1:4,8,11,16,11,16", "cut:1.2"),
+        # First to the target: six up and over.
         "win":       ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:3,7,10,7,10,11", "cut:1.9"),
         # Three slow ones down, small and kind.
         "lose":      ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:10,7,3"),
