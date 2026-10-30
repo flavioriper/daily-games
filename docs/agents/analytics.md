@@ -77,8 +77,9 @@ The Measurement Protocol notes that follow are kept for the desktop path:
   the bottom mallet's and `shots` both mallets'; Toy Boats (`game: boats`,
   2026-10-09) sends `moves` as your pebbles, `hints`, `sunk` and `lost` in
   boats and `first`, whether you threw first; Penny Drop (`game: penny`,
-  2026-10-09) sends `result` won/lost/draw, `moves`, `undos`, `hints` and
-  `first`, whether you dropped first; Dominoes (`fives` true for All Fives to 120, since 2026-10-30, false for the Draw game to 50 online; `game: dominoes`,
+  2026-10-09) sends `result` won/lost, `racks_won`, `racks_lost`, `undos` and
+  `hints` for a match against the computer since 2026-10-30, and online `result`
+  through `versus_online_end`; Dominoes (`fives` true for All Fives to 120, since 2026-10-30, false for the Draw game to 50 online; `game: dominoes`,
   2026-10-09) sends `result` won/lost, `moves` as every tile laid by either
   side, `hands`, `hints`, `score`, `score_other` and `first`, whether you
   led the first hand; Reversi (`game: reversi`, 2026-10-09) sends `result`

@@ -25,6 +25,11 @@ extends Control
 ## the pennies' own transforms and soft round light in the mesh over the face,
 ## so none of them is a draw call; none of them runs under reduce motion.
 ##
+## A trick is told as one too: a heavy penny breaks each penny under it out
+## through the face (`play_heavy`), a spark burns down on a penny and those
+## above it fall a place (`play_spark`), and the waiting penny wears what it is
+## (`set_trick`).
+##
 ## The board shows what it has been told (`play`, `rewind`), not the rules it
 ## was set up from, so a penny is in its hole only once it has landed.
 
@@ -35,6 +40,14 @@ signal chosen(col: int)
 signal settled
 ## The finger crossed to another column.
 signal moved
+## A finger has come onto `col`, whose mark (penny_ai.gd's MARK_*) is `kind`.
+signal peeked(col: int, kind: int)
+## With a spark in hand, a penny of the other side's was touched.
+signal aimed(cell: int)
+## A heavy penny broke one more, this many so far; the hole it was in.
+signal crushed_one(n: int, at: Vector2)
+## A spark went off, at this point of the board.
+signal sparked(at: Vector2)
 ## The column let go over is full.
 signal refused(reason: String)
 
@@ -44,6 +57,7 @@ const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
+const AI = preload("res://versus/penny_ai.gd")
 
 ## A hole's pitch in the meshes' own space, whose origin is the top left of
 ## the grid of holes.
@@ -101,6 +115,22 @@ const TRAY_H := 92.0
 const PINE := Color("e6c896")
 const PINE_LIT := Color("f3ddb4")
 const PINE_DEEP := Color("b88f5c")
+
+## The heavy penny: how much harder it falls, what it keeps of its speed through
+## each penny it breaks, how hard the rack shakes at each, and how a broken
+## penny comes out through the face. The spark's fuse, its seconds.
+const HEAVY_FALL := 1.5
+const CRUSH_KEEP := 0.72
+const QUAKE_PX := 9.0
+const QUAKE_TIME := 0.34
+const FLING_LIFE := 0.8
+const FLING_GROW := 0.5
+const FUSE := 0.34
+const IRON := Color("5a5f6e")
+const IRON_LIT := Color("8b91a3")
+const IRON_DEEP := Color("3a3e4a")
+const WARN := Color("e8603c")
+const SAFE := Color("6fc7e8")
 
 ## --- the moments ---
 ## A knock: how far the pennies under it are driven (each `Motion.NUDGE_LAG`
@@ -190,6 +220,20 @@ var _thinking := false
 var _over := -1
 var _down := false
 var _hint := -1
+## What the waiting penny is: 0 plain, Rules.HEAVY or Rules.TWIN.
+var _trick := 0
+## With a spark in hand: whose pennies can be touched, -1 not aiming.
+var _aim_look := -1
+## What each slot would do, for the hand that is learning (`set_marks`).
+var _marks := {}
+## {at, cell}: a spark burning down, and pennies coming out through the face:
+## {look, at, v, spin, turn, t}.
+var _fuse := {}
+var _flung: Array[Dictionary] = []
+var _quake_at := -10.0
+var _crushed := 0
+var _landing_left := 0
+var _iron: ArrayMesh
 var _last := -1
 var _line := PackedInt32Array()
 ## How the game ended, "" while it is on.
@@ -242,6 +286,12 @@ func setup(the_rules: RefCounted, side: int, enter := false) -> void:
 		if rules.cells[c] != Rules.EMPTY:
 			_cells[c] = look_of(rules.cells[c] - 1) + 1
 	_air.clear()
+	_flung.clear()
+	_fuse = {}
+	_trick = 0
+	_aim_look = -1
+	_marks = {}
+	_landing_left = 0
 	_back_up = {}
 	_hover_look = -1
 	_hover_a = 0.0
@@ -315,6 +365,82 @@ func play(cell: int, side: int) -> void:
 		"from": HOVER_Y, "wait": 0.0, "spill": false})
 	_busy(2.0)
 
+## The heavy penny of `side` goes down, breaking `crushed` (Rules.crushed), to
+## lie in `cell`.
+func play_heavy(cell: int, side: int, crushed: PackedInt32Array) -> void:
+	var look := look_of(side)
+	var to := mid(cell)
+	_hint = -1
+	_over = -1
+	_down = false
+	_thinking = false
+	_hover_look = -1
+	_hover_a = 0.0
+	_trick = 0
+	_crushed = 0
+	if Motion.reduce:
+		for x in crushed:
+			_cells[x % Rules.CELLS] = 0
+		_cells[cell] = look + 1
+		_last = cell
+		_cue("crush", 1.0)
+		_after(Motion.REDUCED_TIME, func() -> void: settled.emit())
+		_touch()
+		return
+	_cue("drop", 0.8)
+	var rows := PackedInt32Array()
+	for x in crushed:
+		rows.append(x % Rules.CELLS)
+	_air.append({"look": look, "x": to.x, "y": HOVER_Y, "v": 900.0, "to": to.y, "cell": cell, "hit": false,
+		"from": HOVER_Y, "wait": 0.0, "spill": false, "heavy": rows})
+	_mark("heavy")
+	_busy(2.4)
+
+## A spark burns down on the penny at `cell`, then `fell` (Rules.fell) move.
+func play_spark(cell: int, fell: Array[Vector2i]) -> void:
+	_hint = -1
+	_over = -1
+	_down = false
+	_thinking = false
+	_aim_look = -1
+	_hover_look = -1
+	_hover_a = 0.0
+	var drop := func() -> void:
+		_fuse = {}
+		var look := _cells[cell] - 1
+		_cells[cell] = 0
+		_cue("spark")
+		sparked.emit(_xf * mid(cell))
+		if not Motion.reduce:
+			_quake_at = _t
+			_fling(cell, look, 1.0)
+		for f in fell:
+			var was := _cells[f.x]
+			_cells[f.x] = 0
+			if Motion.reduce:
+				_cells[f.y] = was
+			else:
+				_air.append({"look": was - 1, "x": mid(f.y).x, "y": mid(f.x).y, "v": 0.0, "to": mid(f.y).y, "cell": f.y,
+					"hit": false, "from": mid(f.x).y, "wait": 0.14, "spill": false, "group": true})
+		_landing_left = 0 if Motion.reduce else fell.size()
+		if _landing_left == 0:
+			_after(Motion.REDUCED_TIME if Motion.reduce else WATCH + 0.2, func() -> void: settled.emit())
+		_busy(1.2)
+		_touch()
+	if Motion.reduce:
+		drop.call()
+		return
+	_fuse = {"at": _t, "cell": cell}
+	_cue("fuse")
+	_mark("fuse")
+	_busy(FUSE + 0.2)
+	_after(FUSE, drop)
+
+## A penny comes out through the face, turning, and falls away.
+func _fling(cell: int, look: int, k: float) -> void:
+	_flung.append({"look": look, "at": mid(cell), "v": Vector2(randf_range(-520.0, 520.0), randf_range(-760.0, -420.0) * k),
+		"spin": randf_range(-9.0, 9.0), "turn": 0.0, "t": 0.0})
+
 ## The penny in `cell` is taken back out of the top of its column.
 func rewind(cell: int) -> void:
 	var look := _cells[cell] - 1
@@ -359,6 +485,24 @@ func set_waiting(side: int) -> void:
 			_busy(FETCH + 0.1)
 	_busy(0.3)
 	_touch()
+
+## What the waiting penny is: 0 plain, Rules.HEAVY, Rules.TWIN.
+func set_trick(kind: int) -> void:
+	_trick = kind
+	_busy(0.3)
+	_touch()
+
+## A spark is in hand and the pennies of `look` can be touched; -1 puts it
+## away.
+func set_aim(look: int) -> void:
+	_aim_look = look
+	_busy(0.3)
+	_touch()
+
+## What each slot would do (`penny_ai.gd`'s `marks`), shown only under a
+## finger on that slot.
+func set_marks(marks: Dictionary) -> void:
+	_marks = marks
 
 ## The other player is choosing: its penny drifts over the columns.
 func set_thinking(on: bool) -> void:
@@ -485,7 +629,7 @@ func _layout() -> void:
 
 func _process(delta: float) -> void:
 	_t += delta
-	var live := _t < _busy_until or not _air.is_empty() or _down or _thinking
+	var live := _t < _busy_until or not _air.is_empty() or not _flung.is_empty() or _down or _thinking or _aim_look >= 0
 	# The waiting penny comes and goes, and follows its column.
 	var want := 1.0 if _hover_look >= 0 else 0.0
 	if _hover_a != want:
@@ -503,12 +647,14 @@ func _process(delta: float) -> void:
 		if interactive and not Motion.reduce:
 			live = true
 	_fall(delta)
+	_fly(delta)
 	if live:
 		queue_redraw()
 
 ## Moves what is in the air: a dropped penny falls, knocks once and lies
 ## still; a spilled one falls away.
 func _fall(delta: float) -> void:
+	var g := GRAVITY
 	var i := 0
 	while i < _air.size():
 		var p: Dictionary = _air[i]
@@ -516,8 +662,22 @@ func _fall(delta: float) -> void:
 			p.wait = float(p.wait) - delta
 			i += 1
 			continue
-		p.v = float(p.v) + GRAVITY * delta
+		var rows: PackedInt32Array = p.get("heavy", PackedInt32Array())
+		p.v = float(p.v) + g * (HEAVY_FALL if p.has("heavy") else 1.0) * delta
 		p.y = float(p.y) + float(p.v) * delta
+		# through what is under it, one penny at a time
+		while not rows.is_empty() and float(p.y) + PENNY_R >= mid(rows[0]).y - PENNY_R * 0.5:
+			var c := rows[0]
+			var look := _cells[c] - 1
+			rows.remove_at(0)
+			p.heavy = rows
+			_cells[c] = 0
+			_crushed += 1
+			_cue("crush", 0.9 + 0.09 * mini(_crushed, 5))
+			_quake_at = _t
+			_fling(c, look, 1.0 + 0.1 * _crushed)
+			p.v = float(p.v) * CRUSH_KEEP
+			crushed_one.emit(_crushed, _xf * mid(c))
 		if float(p.y) >= float(p.to):
 			if bool(p.spill):
 				_air.remove_at(i)
@@ -537,12 +697,34 @@ func _fall(delta: float) -> void:
 					_mark("knock")
 			else:
 				_cells[int(p.cell)] = int(p.look) + 1
-				_last = int(p.cell)
+				var grouped := p.has("group")
+				if not grouped:
+					_last = int(p.cell)
 				_air.remove_at(i)
+				if grouped:
+					_landing_left -= 1
+					_busy(WATCH + 0.3)
+					if _landing_left == 0:
+						_after(WATCH, func() -> void: settled.emit())
+					continue
 				_landed(int(p.cell), int(p.look))
 				_busy(WATCH + 0.3)
 				_after(WATCH, func() -> void: settled.emit())
 				continue
+		i += 1
+
+## Moves the pennies that came out through the face.
+func _fly(delta: float) -> void:
+	var i := 0
+	while i < _flung.size():
+		var f: Dictionary = _flung[i]
+		f.t = float(f.t) + delta
+		f.v = (f.v as Vector2) + Vector2(0.0, GRAVITY * 0.6 * delta)
+		f.at = (f.at as Vector2) + (f.v as Vector2) * delta
+		f.turn = float(f.turn) + float(f.spin) * delta
+		if float(f.t) >= FLING_LIFE:
+			_flung.remove_at(i)
+			continue
 		i += 1
 
 func _busy(seconds: float) -> void:
@@ -572,6 +754,13 @@ func column_at(p: Vector2) -> int:
 		return -1
 	return clampi(int(floorf(q.x / U)), 0, Rules.W - 1)
 
+## The cell of the hole under a point of the board, -1 for none.
+func cell_at(p: Vector2) -> int:
+	var q := _xf.affine_inverse() * p
+	if q.x < 0.0 or q.x >= GRID.x or q.y < 0.0 or q.y >= GRID.y:
+		return -1
+	return int(q.x / U) + (Rules.H - 1 - int(q.y / U)) * Rules.W
+
 func _gui_input(event: InputEvent) -> void:
 	if still or deaf or not interactive:
 		return
@@ -595,6 +784,16 @@ func _gui_input(event: InputEvent) -> void:
 	else:
 		return
 	accept_event()
+	if _aim_look >= 0:
+		if press:
+			var c := cell_at(at)
+			if c >= 0 and _cells[c] == _aim_look + 1:
+				_cue("tick")
+				aimed.emit(c)
+			else:
+				_cue("refused", randf_range(TICK_VARY.x, TICK_VARY.y))
+				refused.emit("aim")
+		return
 	var col := column_at(at)
 	if release:
 		if not _down:
@@ -605,7 +804,7 @@ func _gui_input(event: InputEvent) -> void:
 			_cue("tick", 0.84)
 		_over = -1
 		if col >= 0:
-			if rules.can(col):
+			if rules.can(col) or _trick == Rules.HEAVY:
 				_hover_x = float(col)
 				_hover_to = float(col)
 				chosen.emit(col)
@@ -628,6 +827,7 @@ func _gui_input(event: InputEvent) -> void:
 			# on the column it already hangs over is answered by the drop.
 			var shifts := _hover_to != float(col)
 			_hover_to = float(col)
+			peeked.emit(col, int(_marks.get(col, 0)))
 			if not press:
 				_cue("tick", randf_range(TICK_VARY.x, TICK_VARY.y))
 				moved.emit()
@@ -644,10 +844,11 @@ func _draw() -> void:
 	if _back == null:
 		_back = _build_back()
 		_front = _build_front()
+		_iron = _build_iron()
 		_penny = [_build_penny(0), _build_penny(1)]
 		_glow = _build_glow()
 	_over_mesh = _build_over()
-	_shown = [_back, _front, _penny, _glow, _over_mesh]
+	_shown = [_back, _front, _penny, _iron, _glow, _over_mesh]
 	# The face dips on its foot at a knock and shivers when the rack is full
 	# with no line; the foot, the trays and the shadow stay where they are.
 	var xf := _xf
@@ -656,6 +857,7 @@ func _draw() -> void:
 		var shift := Vector2(0.0, Motion.nudge_offset(_t - _knock_at, RACK_PX * _knock_k, Motion.NUDGE_TIME, 0.0))
 		if _mood == "draw" and _line.is_empty():
 			shift.x += Motion.shiver_offset(_t - _won_at, FULL_PX, 0.3)
+		shift += Vector2(Motion.shiver_offset(_t - _quake_at, QUAKE_PX, QUAKE_TIME), Motion.nudge_offset(_t - _quake_at, QUAKE_PX * 0.7, Motion.NUDGE_TIME, 0.0))
 		xf = _xf * Transform2D(0.0, shift)
 	draw_mesh(_back, null, _xf)
 	var lit := _over if _down else -1
@@ -673,7 +875,10 @@ func _draw() -> void:
 			# the knock flattens it once
 			var q := Motion.bump_scale(_t - _knock_at, SQUASH * _knock_k, Motion.BUMP_TIME) - 1.0
 			squash = Vector2(1.0 + q, 1.0 - q)
-		draw_mesh(_penny[int(p.look)], null, xf * Transform2D(0.0, squash, 0.0, Vector2(float(p.x), float(p.y) + (squash.x - 1.0) * PENNY_R)), Color(1, 1, 1, a))
+		var fall := xf * Transform2D(0.0, squash, 0.0, Vector2(float(p.x), float(p.y) + (squash.x - 1.0) * PENNY_R))
+		draw_mesh(_penny[int(p.look)], null, fall, Color(1, 1, 1, a))
+		if p.has("heavy"):
+			draw_mesh(_iron, null, fall)
 	if not _back_up.is_empty():
 		var f := clampf((_t - float(_back_up.at)) / REWIND, 0.0, 1.0)
 		var y := lerpf(float(_back_up.from), HOVER_Y, ease(f, 0.5))
@@ -681,6 +886,14 @@ func _draw() -> void:
 	draw_mesh(_front, null, xf)
 	if rolls and not still:
 		_draw_rolls()
+	for f: Dictionary in _flung:
+		var u := float(f.t) / FLING_LIFE
+		var k := 1.0 + FLING_GROW * sin(minf(u * 2.0, 1.0) * PI * 0.5)
+		draw_mesh(_penny[int(f.look)], null, xf * Transform2D(float(f.turn), Vector2.ONE * k, 0.0, f.at), Color(1, 1, 1, 1.0 - u * u * u))
+	# what a mark warns of: the other side's penny in the place you would lift
+	# it onto
+	if _down and int(_marks.get(_over, 0)) == AI.MARK_GIVES and rules.landing(_over) >= 0:
+		draw_mesh(_penny[1 - look_of(rules.turn)], null, xf * Transform2D(0.0, mid(rules.landing(_over) + Rules.W)), Color(1, 1, 1, 0.6))
 	if _hover_look >= 0 and _hover_a > 0.0:
 		var at := _hover_at()
 		var sc := 0.8 + 0.2 * _hover_a
@@ -703,7 +916,14 @@ func _draw() -> void:
 				sc = lerpf(ROLL_R / PENNY_R, 1.0, e) * (1.0 + AIR * sin(PI * u))
 				a = 1.0
 				lean = 0.0
-		draw_mesh(_penny[_hover_look], null, _xf * Transform2D(lean, Vector2.ONE * sc, 0.0, at), Color(1, 1, 1, a))
+		var hang := _xf * Transform2D(lean, Vector2.ONE * sc, 0.0, at)
+		if _trick == Rules.TWIN:
+			draw_mesh(_penny[_hover_look], null, hang * Transform2D(0.0, Vector2(-26.0, 0.0)), Color(1, 1, 1, a))
+			draw_mesh(_penny[_hover_look], null, hang * Transform2D(0.0, Vector2(26.0, 0.0)), Color(1, 1, 1, a))
+		else:
+			draw_mesh(_penny[_hover_look], null, hang, Color(1, 1, 1, a))
+		if _trick == Rules.HEAVY:
+			draw_mesh(_iron, null, hang, Color(1, 1, 1, a))
 	if _over_mesh != null:
 		draw_mesh(_over_mesh, null, xf)
 
@@ -867,6 +1087,19 @@ func _build_penny(look: int) -> ArrayMesh:
 		b.polygon(pts, STAMP[look])
 	return b.mesh()
 
+## The iron band a heavy penny wears over its own stamp, with its rivets.
+func _build_iron() -> ArrayMesh:
+	var b := Face.Builder.new()
+	var r := PENNY_R + 3.0
+	b.stroke(Face.Builder.ring(Vector2(0.0, 2.0), r - 4.0, r - 4.0), 15.0, IRON_DEEP, true)
+	b.stroke(Face.Builder.ring(Vector2.ZERO, r - 4.0, r - 4.0), 14.0, IRON, true)
+	b.stroke(Face.Builder.arc_points(Vector2.ZERO, r - 3.0, PI * 1.05, PI * 1.6), 4.0, IRON_LIT)
+	for k in 8:
+		var d := Vector2.from_angle(TAU * k / 8.0 + PI / 8.0) * (r - 4.0)
+		b.disc(d + Vector2(0.0, 1.0), 4.5, IRON_DEEP)
+		b.disc(d, 3.8, IRON_LIT)
+	return b.mesh()
+
 ## The light down a column, drawn behind the pennies for column 0.
 func _build_glow() -> ArrayMesh:
 	var b := Face.Builder.new()
@@ -890,6 +1123,7 @@ func _build_over() -> ArrayMesh:
 		var land: int = rules.landing(_over)
 		if land >= 0:
 			b.stroke(Face.Builder.ring(mid(land), HOLE_R - 7.0, HOLE_R - 7.0), 5.0, Color(HALO, 0.8), true)
+			_mark_slot(b, land, int(_marks.get(_over, 0)))
 		else:
 			b.stroke(PackedVector2Array([Vector2(x - 16.0, HOVER_Y - 16.0), Vector2(x + 16.0, HOVER_Y + 16.0)]), 8.0, col)
 			b.stroke(PackedVector2Array([Vector2(x + 16.0, HOVER_Y - 16.0), Vector2(x - 16.0, HOVER_Y + 16.0)]), 8.0, col)
@@ -903,6 +1137,7 @@ func _build_over() -> ArrayMesh:
 		var tip := Vector2(x, HOVER_Y + 26.0 + 6.0 * beat)
 		b.polygon(PackedVector2Array([tip + Vector2(-20.0, -28.0), tip + Vector2(20.0, -28.0), tip]), HINT)
 		_busy(0.2)
+	_light_aim(b)
 	if not Motion.reduce:
 		_light_block(b)
 		_light_run(b)
@@ -919,6 +1154,35 @@ func _build_over() -> ArrayMesh:
 		if not Motion.reduce:
 			_busy(0.2)
 	return null if b.verts.is_empty() else b.mesh()
+
+## What the slot under the finger would do, on the place it lands in: gold a
+## win, sky a line stopped, red a place handed to the other side. Never a
+## shade of a penny; a ring of its own weight.
+func _mark_slot(b: Face.Builder, land: int, kind: int) -> void:
+	if kind == 0:
+		return
+	var at := mid(land)
+	var col: Color = {AI.MARK_WIN: HINT, AI.MARK_BLOCK: SAFE, AI.MARK_GIVES: WARN}[kind]
+	var target := land + Rules.W if kind == AI.MARK_GIVES else land
+	b.stroke(Face.Builder.ring(mid(target), HOLE_R - 3.0, HOLE_R - 3.0), 9.0, col, true)
+	if kind == AI.MARK_GIVES:
+		b.stroke(PackedVector2Array([at + Vector2(0.0, -HOLE_R + 2.0), at + Vector2(0.0, -U + HOLE_R)]), 7.0, col)
+
+## A spark in hand: every penny it could take stands in a beating ring, and
+## one burning down is closed on by its fuse.
+func _light_aim(b: Face.Builder) -> void:
+	if _aim_look >= 0:
+		var beat := 0.0 if Motion.reduce else 0.5 + 0.5 * sin(_t * 6.0)
+		for c in Rules.CELLS:
+			if _cells[c] == _aim_look + 1:
+				b.stroke(Face.Builder.ring(mid(c), PENNY_R + 1.0 + 3.0 * beat, PENNY_R + 1.0 + 3.0 * beat), 6.0, WARN, true)
+	if _fuse.is_empty():
+		return
+	var u := clampf((_t - float(_fuse.at)) / FUSE, 0.0, 1.0)
+	var at := mid(int(_fuse.cell))
+	var r := lerpf(PENNY_R + 34.0, PENNY_R * 0.4, u)
+	b.stroke(Face.Builder.ring(at, r, r), 7.0, HINT, true)
+	Scenery.soft_disc(b, at, 60.0 + 40.0 * u, 60.0 + 40.0 * u, Color(HINT, 0.25 + 0.5 * u))
 
 # --- the moments' light: soft and round, all of it in the mesh over the face ---
 

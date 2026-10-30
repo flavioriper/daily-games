@@ -49,6 +49,9 @@ const GAMES := ["snooker", "chess", "dominoes", "checkers", "penny", "reversi", 
 ## The games with no game online (and so none against a friend): their fourth
 ## chip is two players on this phone.
 const LOCAL_GAMES := ["hockey"]
+## The game with a fifth row: online and two players on this phone both.
+const BOTH_GAMES := ["penny"]
+const LEVELS_BOTH := [["DIFF_EASY", 0], ["DIFF_MEDIUM", 1], ["DIFF_HARD", 2], ["VS_ONLINE", Record.ONLINE], ["VS_TWO", Record.LOCAL]]
 const NAMES := {"snooker": "Snooker", "chess": "Chess", "checkers": "Checkers", "hockey": "Air Hockey",
 	"boats": "Toy Boats", "penny": "Penny Drop", "dominoes": "Dominoes", "reversi": "Reversi"}
 ## Each card's line: two lines at half the screen's width at most.
@@ -84,6 +87,8 @@ static func entries() -> Array:
 
 ## A game's four chips, as [key, level].
 static func levels_of(game: String) -> Array:
+	if BOTH_GAMES.has(game):
+		return LEVELS_BOTH
 	return LEVELS_LOCAL if LOCAL_GAMES.has(game) else LEVELS
 
 ## Whether `game` can be played online, and so against a friend.

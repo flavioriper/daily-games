@@ -12,6 +12,9 @@ extends Control
 ## - TWO: a third penny that leaves two places to finish, one stopped, the
 ##   other taken.
 ## - BAR: the bulb rings a slot and the penny goes there.
+## - HEAVY: a heavy penny goes down a slot and breaks what is in it.
+## - SPARK: a spark takes the moon's penny and the one on it falls.
+## - TWIN: two drops in one turn make a four the moon cannot stop.
 ##
 ## A page is the columns already played and a list of [seconds, what, ...],
 ## and it starts over when it ends. Under reduce motion it stands on the
@@ -22,7 +25,7 @@ const Board = preload("res://versus/penny_board.gd")
 const Motion = preload("res://core/motion.gd")
 const Pal = preload("res://core/palette.gd")
 
-enum Lesson { DROP, LINE, BLOCK, TWO, BAR }
+enum Lesson { DROP, LINE, BLOCK, TWO, BAR, HEAVY, SPARK, TWIN }
 
 const FINGER_R := 26.0
 const FINGER_ALPHA := 0.2
@@ -45,12 +48,15 @@ var _go_at := 0.0
 var _go_for := 0.001
 var _shown := false
 var _down := false
+## The trick the page has taken up: it goes with the next `up` or `aim`.
+var _armed := 0
 
 ## A lesson: the columns played before it opens (the sun first), its length
 ## and its script of [seconds, what, ...]. `go` moves the finger to a column
 ## over some time; `down` and `up` press and let go, `up` dropping the sun's
 ## penny where the finger is; `lift` brings the moon's penny over a column
-## and `play` drops it; `hint` is the bulb; `ring` rings a line made; `hide`
+## and `play` drops it; `arm` takes up a trick and `aim` sets a spark on a
+## column's bottom penny; `hint` is the bulb; `ring` rings a line made; `hide`
 ## takes the finger away.
 static func script_of(the_lesson: int) -> Dictionary:
 	match the_lesson:
@@ -71,6 +77,16 @@ static func script_of(the_lesson: int) -> Dictionary:
 				[0.8, "go", 4, 0.01], [1.1, "down"], [1.6, "up"], [1.8, "hide"],
 				[3.2, "lift", 1], [3.9, "play", 1],
 				[5.4, "go", 5, 0.01], [5.7, "down"], [6.2, "up"], [6.4, "hide"], [7.0, "ring"]]}
+		Lesson.HEAVY:
+			return {"len": 8.0, "pre": [0, 3, 1, 3, 6, 3], "script": [
+				[0.8, "arm", Rules.HEAVY], [1.1, "go", 3, 0.01], [1.4, "down"], [2.2, "up"], [2.4, "hide"]]}
+		Lesson.SPARK:
+			return {"len": 7.5, "pre": [0, 2, 1, 6, 2, 6, 3, 6], "script": [
+				[0.8, "arm", Rules.SPARK], [2.2, "aim", 2], [3.8, "ring"]]}
+		Lesson.TWIN:
+			return {"len": 8.0, "pre": [1, 1, 2, 2], "script": [
+				[0.8, "arm", Rules.TWIN], [1.1, "go", 3, 0.01], [1.4, "down"], [1.9, "up"], [2.1, "hide"],
+				[3.0, "go", 4, 0.01], [3.3, "down"], [3.8, "up"], [4.0, "hide"], [4.8, "ring"]]}
 	return {"len": 8.0, "pre": [3, 3, 4, 2], "script": [
 		[1.0, "hint", 5],
 		[2.8, "go", 5, 0.01], [3.1, "down"], [3.7, "up"], [3.9, "hide"],
@@ -95,8 +111,18 @@ func _ready() -> void:
 			match String(e[1]):
 				"go":
 					_to = float(e[2])
+				"arm":
+					_armed = int(e[2])
+					if _armed == Rules.TWIN:
+						_rules.twin()
+				"aim":
+					_rules.spark(int(e[2]))
 				"up":
-					_rules.make(int(_to))
+					if _armed == Rules.HEAVY:
+						_rules.heavy(int(_to))
+					else:
+						_rules.make(int(_to))
+					_armed = 0
 				"play":
 					_rules.make(e[2])
 		_board.setup(_rules, Rules.FIRST)
@@ -114,9 +140,11 @@ func _begin() -> void:
 	_t = 0.0
 	_shown = false
 	_down = false
+	_armed = 0
 	_rules = Rules.new()
 	for col: int in d.pre:
 		_rules.make(col)
+	_rules.tricks = [Rules.ALL_TRICKS, Rules.ALL_TRICKS]
 	_board.setup(_rules, Rules.FIRST)
 	_board.set_waiting(Rules.FIRST)
 
@@ -156,6 +184,17 @@ func _do(e: Array) -> void:
 			_board.set_lifted(e[2])
 		"play":
 			_drop(e[2])
+		"arm":
+			_armed = int(e[2])
+			if _armed == Rules.TWIN:
+				_rules.twin()
+			elif _armed == Rules.HEAVY:
+				_board.set_trick(Rules.HEAVY)
+			else:
+				_board.set_aim(1)
+		"aim":
+			_rules.spark(int(e[2]))
+			_board.play_spark(int(e[2]), _rules.fell.duplicate())
 		"hint":
 			_board.set_hint(e[2])
 		"ring":
@@ -166,10 +205,16 @@ func _do(e: Array) -> void:
 ## The side to move's penny goes down `col`, and the other side's then waits.
 func _drop(col: int) -> void:
 	var side: int = _rules.turn
+	if _armed == Rules.HEAVY:
+		_armed = 0
+		_board.play_heavy(_rules.heavy(col), side, _rules.crushed)
+		return
 	var cell: int = _rules.make(col)
 	if cell < 0:
 		return
 	_board.play(cell, side)
+	if _rules.twin_owed or (_rules.turn == side and _rules.status() == Rules.PLAYING):
+		_board.set_waiting(side)
 	if _rules.status() == Rules.PLAYING and side == Rules.SECOND:
 		_board.set_waiting(Rules.FIRST)
 

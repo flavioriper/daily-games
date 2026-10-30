@@ -1389,8 +1389,8 @@ TUT_PENNY_BLOCK_BODY,"When the moon has three in a line and the fourth place can
 TUT_PENNY_TWO,Two ways at once,Dois caminhos de uma vez,Dos caminos a la vez
 TUT_PENNY_TWO_BODY,"One penny can only stop one line. Make a drop that leaves you two places to finish a four, and whichever the moon stops, you take the other.","Uma moeda só para uma linha. Faça uma jogada que deixe dois lugares para fechar um quatro e, seja qual for o que a lua parar, você fica com o outro.","Una moneda solo frena una línea. Haz una jugada que te deje dos lugares para cerrar un cuatro y, frene la luna el que frene, tú te quedas con el otro."
 TUT_PENNY_BAR,The buttons up top,Os botões lá de cima,Los botones de arriba
-TUT_PENNY_BAR_BODY_ONE,"Undo takes back your penny and the bot's answer. Reset starts a new game. The bulb rings a good slot, once a game. Online, each turn has a minute. Sound and this guide are under the gear.","Desfazer volta a sua moeda e a resposta do bot. Recomeçar inicia uma partida nova. A lâmpada marca uma boa coluna, uma vez por partida. Online, cada jogada tem um minuto. O som e este guia ficam na engrenagem.","Deshacer retira tu moneda y la respuesta del bot. Reiniciar empieza una partida nueva. La bombilla marca una buena columna, una vez por partida. En línea, cada turno tiene un minuto. El sonido y esta guía están en el engranaje."
-TUT_PENNY_BAR_BODY_N,"Undo takes back your penny and the bot's answer. Reset starts a new game. The bulb rings a good slot, %d times a game. Online, each turn has a minute. Sound and this guide are under the gear.","Desfazer volta a sua moeda e a resposta do bot. Recomeçar inicia uma partida nova. A lâmpada marca uma boa coluna, %d vezes por partida. Online, cada jogada tem um minuto. O som e este guia ficam na engrenagem.","Deshacer retira tu moneda y la respuesta del bot. Reiniciar empieza una partida nueva. La bombilla marca una buena columna, %d veces por partida. En línea, cada turno tiene un minuto. El sonido y esta guía están en el engranaje."
+TUT_PENNY_BAR_BODY_ONE,"Undo takes back your penny and the bot's answer, never a trick. Reset starts this rack again. The bulb rings a good slot, once a match. Sound and this guide are under the gear.","Desfazer volta a sua moeda e a resposta do bot, nunca um truque. Recomeçar reinicia esta grade. A lâmpada marca uma boa coluna, uma vez por duelo. O som e este guia ficam na engrenagem.","Deshacer retira tu moneda y la respuesta del bot, nunca un truco. Reiniciar repite esta rejilla. La bombilla marca una buena columna, una vez por duelo. El sonido y esta guía están en el engranaje."
+TUT_PENNY_BAR_BODY_N,"Undo takes back your penny and the bot's answer, never a trick. Reset starts this rack again. The bulb rings a good slot, %d times a match. Sound and this guide are under the gear.","Desfazer volta a sua moeda e a resposta do bot, nunca um truque. Recomeçar reinicia esta grade. A lâmpada marca uma boa coluna, %d vezes por duelo. O som e este guia ficam na engrenagem.","Deshacer retira tu moneda y la respuesta del bot, nunca un truco. Reiniciar repite esta rejilla. La bombilla marca una buena columna, %d veces por duelo. El sonido y esta guía están en el engranaje."
 DOM_MOTTO,"MAKE FIVES, BEAT THE MOON","FAÇA CINCOS, VENÇA A LUA","HAZ CINCOS, VENCE A LA LUNA"
 DOM_FIRST_TO,FIRST TO,ATÉ,HASTA
 DOM_POINTS_ONE,1 point,1 ponto,1 punto
@@ -2288,3 +2288,65 @@ BRAIN_YOURS,Your brain,Seu cérebro,Tu cerebro
 BRAIN_LOWEST,%s is your lowest. Try %s.,%s é seu ponto mais fraco. Tente %s.,%s es tu punto más flojo. Prueba %s.
 BRAIN_UNTRAINED,You haven't trained %s yet. Try %s.,Você ainda não treinou %s. Tente %s.,Aún no has entrenado %s. Prueba %s.
 BRAIN_NOT_YET,Not trained yet,Ainda não treinado,Aún sin entrenar
+PNY_RACK,RACK %d,GRADE %d,REJILLA %d
+PNY_HEAVY,Heavy,Pesada,Pesada
+PNY_SPARK,Spark,Faísca,Chispa
+PNY_TWIN,Twin,Dupla,Doble
+PNY_AIM,Touch one of the other side's pennies,Toque numa moeda do outro lado,Toca una moneda del otro lado
+PNY_AIM_NONE,No penny to take yet,Ainda não há moeda para tirar,Aún no hay moneda que quitar
+PNY_HEAVY_LINE,"Drop it in any slot: it breaks everything under it, yours too","Solte em qualquer coluna: ela quebra tudo embaixo, até as suas","Suéltala en cualquier columna: rompe todo lo de abajo, también las tuyas"
+PNY_SPARK_LINE,Touch a penny to take it out: the ones above it fall,Toque numa moeda para tirá-la: as de cima caem,Toca una moneda para quitarla: las de arriba caen
+PNY_TWIN_GO,Two drops!,Duas jogadas!,¡Dos jugadas!
+PNY_TWIN_MORE,Drop again: this turn is two,Solte de novo: este turno vale dois,Suelta otra vez: este turno vale dos
+PNY_MARK_WIN,This one wins!,Esta vence!,¡Esta gana!
+PNY_MARK_BLOCK,This stops the moon's line,Esta para a linha da lua,Esta frena la línea de la luna
+PNY_MARK_GIVES,Careful: this lifts the moon onto its winning place,Cuidado: esta leva a lua ao lugar que vence,Cuidado: esta sube a la luna a su lugar ganador
+PNY_POP,Pop!,Pá!,¡Pum!
+PNY_SMASH,Smash!,Esmagou!,¡Aplastó!
+PNY_SMASH_N,Smash x%d!,Esmagou x%d!,¡Aplastó x%d!
+PNY_FORK,Two ways to win!,Dois jeitos de vencer!,¡Dos formas de ganar!
+PNY_BLOCKED,Blocked!,Bloqueou!,¡Bloqueado!
+PNY_FOUR,Four!,Quatro!,¡Cuatro!
+PNY_FELL,It fell in!,Caiu no lugar!,¡Cayó en su sitio!
+PNY_OWN_GOAL,Own goal!,Gol contra!,¡Autogol!
+PNY_MATCH_WON,The match is yours!,A partida é sua!,¡El duelo es tuyo!
+PNY_MATCH_LOST,The moon takes the match,A lua levou o duelo,La luna se lleva el duelo
+PNY_MATCH_LINE,%d racks to %d.,%d grades a %d.,%d rejillas a %d.
+PNY_STREAK,%d in a row,%d seguidas,%d seguidas
+PNY_SUN,Sun,Sol,Sol
+PNY_MOON,Moon,Lua,Luna
+PNY_LOCAL_TURN,%s's turn,Vez de: %s,Turno de: %s
+PNY_LOCAL_WON,%s wins the match!,%s venceu o duelo!,¡%s gana el duelo!
+PNY_Q_MOAN_1,Hey! I was using that.,Ei! Eu estava usando isso.,¡Oye! Lo estaba usando.
+PNY_Q_MOAN_2,The moon does not forget.,A lua não esquece.,La luna no olvida.
+PNY_Q_MOAN_3,Rude. Very rude.,Grosseria. Muita grosseria.,Grosero. Muy grosero.
+PNY_Q_GLOAT_1,Oops. Was that your column?,Ops. Era sua coluna?,Ups. ¿Era tu columna?
+PNY_Q_GLOAT_2,"Tidy, isn't it?","Ficou arrumadinho, né?","Quedó ordenado, ¿no?"
+PNY_Q_GLOAT_3,I'll sweep up later.,Depois eu varro.,Luego barro.
+PNY_Q_FORK_ME_1,Wait. Two? That's not fair.,Espera. Dois? Assim não vale.,Espera. ¿Dos? Eso no vale.
+PNY_Q_FORK_ME_2,I only have one penny!,Eu só tenho uma moeda!,¡Solo tengo una moneda!
+PNY_Q_FORK_ME_3,Who taught you that?,Quem te ensinou isso?,¿Quién te enseñó eso?
+PNY_Q_FORK_MOON_1,Pick one. I'll take the other.,Escolha uma. Eu fico com a outra.,Elige una. Yo tomo la otra.
+PNY_Q_FORK_MOON_2,"Two doors, one of you.","Duas portas, um de você.","Dos puertas, uno de ti."
+PNY_Q_FORK_MOON_3,One penny won't save you.,Uma moeda não vai te salvar.,Una moneda no te salvará.
+PNY_Q_BLOCK_MOON_1,Not today.,Hoje não.,Hoy no.
+PNY_Q_BLOCK_MOON_2,I saw that from up here.,Vi isso lá de cima.,Lo vi desde aquí arriba.
+PNY_Q_BLOCK_MOON_3,"Nice try, little sun.","Boa tentativa, solzinho.","Buen intento, solecito."
+PNY_Q_HEAVY_1,Mind your fingers.,Cuidado com os dedos.,Cuidado con los dedos.
+PNY_Q_HEAVY_2,This one's heavy.,Essa é pesada.,Esta pesa.
+PNY_Q_HEAVY_3,Coming through.,Com licença.,Con permiso.
+PNY_Q_SPARK_1,Is it warm in here?,Está quente aqui?,¿Hace calor aquí?
+PNY_Q_SPARK_2,Stand back.,Afaste-se.,Atrás.
+PNY_Q_SPARK_3,Just a little spark.,Só uma faisquinha.,Solo una chispita.
+PNY_Q_RACK_ME_1,That one didn't count.,Essa não valeu.,Esa no contó.
+PNY_Q_RACK_ME_2,Beginner's luck.,Sorte de principiante.,Suerte de principiante.
+PNY_Q_RACK_ME_3,Again. Now.,De novo. Agora.,Otra vez. Ya.
+PNY_Q_RACK_MOON_1,That's how it's done.,É assim que se faz.,Así se hace.
+PNY_Q_RACK_MOON_2,Want a hint?,Quer uma dica?,¿Quieres una pista?
+PNY_Q_RACK_MOON_3,Four. I counted.,Quatro. Eu contei.,Cuatro. Conté.
+TUT_PENNY_HEAVY,The heavy penny,A moeda pesada,La moneda pesada
+TUT_PENNY_HEAVY_BODY,"Take it from the row over the rack and drop it in any slot, even a full one. It breaks everything under it, yours too, and lies on the bottom as your penny.","Pegue na fileira acima da grade e solte em qualquer coluna, mesmo cheia. Ela quebra tudo embaixo, até as suas, e fica no fundo como sua moeda.","Tómala de la fila sobre la rejilla y suéltala en cualquier columna, incluso llena. Rompe todo lo de abajo, también las tuyas, y queda al fondo como tu moneda."
+TUT_PENNY_SPARK,The spark,A faísca,La chispa
+TUT_PENNY_SPARK_BODY,"Instead of a drop, take out one of the moon's pennies. Those above it fall a place, and a fall can finish a line, for either side.","Em vez de soltar, tire uma moeda da lua. As de cima caem um lugar, e a queda pode fechar uma linha, de qualquer lado.","En vez de soltar, quita una moneda de la luna. Las de arriba caen un lugar, y la caída puede cerrar una línea, de cualquier lado."
+TUT_PENNY_TWIN,"The twin, and the match",A dupla e o duelo,La doble y el duelo
+TUT_PENNY_TWIN_BODY,"Two drops in one turn: two in a line with room is now a threat. Each trick is good once a rack, the moon has some too, and the first to %d racks takes the match.","Duas jogadas num turno: duas em linha com espaço já são uma ameaça. Cada truque vale uma vez por grade, a lua também tem, e quem fizer %d grades leva o duelo.","Dos jugadas en un turno: dos en línea con espacio ya son amenaza. Cada truco vale una vez por rejilla, la luna también tiene, y quien haga %d rejillas gana el duelo."

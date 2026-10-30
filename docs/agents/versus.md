@@ -616,7 +616,8 @@ are pennies, the grid is a rack, a column is a slot.
   a side next to one another across, up or along either slant win at once; a
   full rack with no line is a draw. The box leaves who starts to the players:
   here it swaps every game (`Record.last_colour`; online it is the opener).
-  None of the box's variants (five in a row, the pop-out rack) are here.
+  None of the box's variants were here until the trick pennies of 2026-10-30
+  ("Penny Drop made worth playing").
 - **The rules are pure data** (`versus/penny_rules.gd`): a cell is `col +
   row * 7`, row 0 the bottom; a move is its column; `make` answers the cell
   landed in (-1 refused), `unmake` takes it back, `line` holds every cell of
@@ -1109,6 +1110,87 @@ of turns, a real choice between scoring and not on 24%.
   `pay`, `pay_big`, `tags`, `capicu` (the flag `capicu` sets a hand to end on
   one). Not on a phone, not heard. A blocked hand can swing 45
   points: whether that is too much is the phone's call.
+
+**Penny Drop made worth playing** (2026-10-30, the user: "make penny drop
+experience way better to play, and game itself way funnier ... right now
+nobody likes it. Use web for reference ... Do it autonomous, push to main").
+Reference: the box's own Power Up edition and its anvil, bomb and play-two
+pieces, and the store's four-in-a-row apps, which all lead with one-use
+power discs and pass and play ([Wikipedia](https://en.wikipedia.org/wiki/Connect_Four),
+[variants](https://rarepike.com/four/variants/),
+[4 in a Row Master](https://apps.apple.com/qa/app/4-in-a-row-master/id1576427906),
+[Four in a Row - 2 Player](https://apps.apple.com/us/app/-/id6471396328)). **What
+was judged**: a plain game is forty quiet drops that a person either sees through
+or loses to, nothing in it can turn a lost rack round, Easy missed wins in hand
+(a broken game, not an easy one), the moon said nothing, and one rack is no
+reason to come back. Those names stay forbidden: here they are tricks.
+
+- **The tricks** (`Rules.tricks`, a mask a side, a rack; `penny_rules.gd`):
+  `HEAVY` goes down any slot, even a full one, breaking everything under it,
+  yours too, and lies on the bottom as your penny; `SPARK` is the turn instead
+  of a drop, one of the other side's pennies goes and those above fall; `TWIN`
+  is two drops in one turn (`drops`, `twin_owed`). A fall can make a line nobody
+  dropped: the player of the trick wins on their own line first, a line of the
+  other side's alone is an **own goal**. `status` looks for an open column now,
+  since a crush takes `ply` past what a full rack means; `turns` counts turns
+  for the move number. You hold all three, the moon `STOCK` by level: Spark on
+  Easy, Spark and Heavy on Medium, all three on Hard. **Undo stops at a trick**
+  (`trick_ply`), so `unmake` never has one to take back.
+- **Online is one rack of the plain game** (`tricky()` false, `rules.tricks`
+  empty): the wire is still `{m: column}`. Dominoes' reason: no rules version
+  travels with a match, and a queue of its own is a person's deploy. **Owed**: a
+  trick queue once a build is out, if it is wanted.
+- **The computer plays them** (`plan_turn`, `_plan_trick`): a crush or a pop is
+  a column shifted on the same two boards (`_shift`, `_has_four`), so a trick is
+  the same search from the position it leaves, read `TRICK_DEPTH` 2, 4, 5 inside
+  `TRICK_MS`, and played if it beats the best plain drop by a bar falling from
+  `GAIN_EARLY` 24 to `GAIN_LATE` 5 as the rack fills. It does not imagine yours.
+  A random-rack probe of 300 agreed with the rules bit for bit. **The levels**:
+  Easy always takes a win in hand now (`MISS_WIN` is gone) and still misses
+  four blocks in ten; Medium looks five plies with a blur of 3. Racks fell from
+  about 28 turns to about 15, 1 to 4 tricks a rack. Level 0 with all three
+  tricks standing in for a casual hand, 16 racks at 120 ms: 12-4 against Easy,
+  7-9 against Medium, 1-15 against Hard. `_probe_penny.gd -- 16`: 1 beats 0
+  14-0, 2 beats 0 16-0, 2 beats 1 16-0; 20 games on three seeds 16-3, 18-1,
+  19-1. Six games can fall under the probe's 1.5 times bar now Medium looks
+  five plies: that is its noise, not a level turned round.
+- **A match** (`MATCH_TO` 3, `_rack_over`, state `RACK`): first to three racks,
+  the score between the plates (`PNY_RACK`), the loser of a rack dropping first
+  in the next, tricks back each rack, three bulbs a match. Reset starts the rack
+  again, not the match. `Record` counts matches; a `streak` and `best_streak`
+  option go on the end card. `versus_end` carries `racks_won`, `racks_lost` for
+  `moves`. Over 3-2 against Easy by the harness: about three minutes.
+- **The rack reads a slot** (`AI.marks`, Easy and Medium, `MARKS_UP_TO`): under a
+  finger only, gold wins, sky stops the moon's line, and red rings the place you
+  would hand it, with its penny ghosted there and a line up from your landing;
+  the toast says which (`board.peeked`). The game's three blunders are three
+  bit reads. Hard reads nothing for you.
+- **Moments**: `_moment` after a landing reads the rules, so the moon's are as
+  loud: `Two ways to win!` (rays), `Blocked!`, `Smash x%d!`, `Pop!`, `Two drops!`;
+  a rack's `Four!`, `It fell in!`, `Own goal!`. A heavy penny breaks pennies out
+  through the face toward you (`_fling`, `_fly`), each a shake (`QUAKE_PX`) and
+  a pop a little higher; a spark has a fuse (`FUSE`). The moon talks
+  (`PNY_Q_*`, nine kinds of three, six in ten, never online or on one phone) and
+  its face moves on a three, not only at the end.
+- **Two players on one phone** (`Record.LOCAL`, `BOTH_GAMES`): a fifth sheet row,
+  since this game has both Online and that. Same match and tricks; the row of
+  tricks follows the side to move, no bulb or undo, no record.
+- **Laid to the rule**: planks over the whole screen (`_build_world`), no vista,
+  the tricks in a row over the rack (`versus/penny_tricks.gd`, its `Mini` on the
+  moon's plate), rolls and trays kept. **`board.resized` is deferred** to
+  `_paint_world`: the board lays itself out on the same signal, and undeferred
+  the floor came up blank on the run the plates did not jolt it. Pace:
+  `THINK_MIN` 0.45, `PONDER` 0.25.
+- **Sounds** (`gen_sfx.py penny crush fuse spark four`, all from the bank but
+  `fuse`, a breath): unheard. Eight tutorial pages with three new lessons, on the
+  rack itself; online the three drop away.
+- `tests/_shot_penny_tricks.gd -- <outdir> [level] [lose]`: a match by real
+  touches, each trick and sticker shot. 118 to 143 draw calls on
+  `opengl3_angle`, 142 to 146 on a tutorial page. **Left out**: a graded review
+  like chess's (grades read plain moves and a trick has no search behind it), a
+  rating, the bottom-row pull rule. Not on a phone, not heard; pt and es unread
+  by a speaker; whether the row of tricks is too far from a thumb (above the
+  rack by the user's chess rule, which was said of chess and checkers only).
 
 **Reversi is the eighth Versus game** (2026-10-09, built unattended from one
 line and a photograph of the game's box, a blue tray of black and white

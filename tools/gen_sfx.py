@@ -3310,6 +3310,14 @@ SETS = {
         # The rack emptied before a new game: lift's take, seven notches
         # tumbling down, the bottom row first.
         "spill":    ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1300", "cut:0.62", "body:320", "tight", "notes:0.07:4,2,3,0,1,-2,-4"),
+        # The trick pennies (2026-10-30): the heavy penny breaking one, a low
+        # token, played up a little a penny by the board; the spark's fuse, a
+        # breath, and its pop, a lip; a rack's four, a note a little less than
+        # the match's.
+        "crush":    ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -11, FOLEY, "bank:token", "cut:0.16", "notes:0:-5", "tight"),
+        "fuse":     ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -20, BREEZE, "warm:1400", "ease:0.04", "body:320", "cut:0.32"),
+        "spark":    ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -11, FOLEY, "bank:lip", "cut:0.14", "notes:0:3", "tight"),
+        "four":     ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0.1:4,9,12", "cut:0.8"),
         "hint":     ("one soft short note on a kalimba, muffled and kind", 0.6, -11, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.14:5,9", "cut:0.6"),
         "win":      ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2000", "ease:0.012", "body:300", "notes:0.14:4,7,9,11,12", "cut:1.5"),
         "lose":     ("one soft short note on a kalimba, muffled and kind", 0.6, -11, COZY_TUNE, "warm:2400", "ease:0.015", "body:300", "notes:0.26:9,7,4", "cut:1.1"),
