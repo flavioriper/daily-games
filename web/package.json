@@ -7,6 +7,8 @@
     "build": "next build && node scripts/assemble.mjs"
   },
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
+    "@vercel/speed-insights": "^2.0.0",
     "next": "^15.1.0",
     "next-intl": "^4.13.0",
     "react": "^19.0.0",
