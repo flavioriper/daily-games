@@ -26,3 +26,4 @@ stated preference, so that list is the builder's call.
 - **Vercel**: `web/vercel.json` builds with plain `next build`, because the
   assemble step reaches outside `web/`. The site there has no `/f` or privacy
   page, so the footer's privacy link is absolute, to the Firebase page.
+- **Live** on Vercel since 2026-10-30: project `peeplet-landing`, team hypertradeworx, https://peeplet-landing.vercel.app. Deployed by CLI from `web/` (`vercel deploy --prod`), no Git connection. `NEXT_PUBLIC_SITE_URL` is set there; change it when a domain arrives.
