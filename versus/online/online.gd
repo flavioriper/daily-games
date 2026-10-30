@@ -115,6 +115,17 @@ var _held_end := {}
 var _plies := 0
 ## The first open() takes the friend's invite; any after it asks them.
 var _accept := false
+## The seat whose clock ran out, -1 until one does.
+var flagged := -1
+## Whether this game has clocks at all: only chess sets them.
+var _banked := false
+## Each seat's clock in seconds, what a move adds, the turn it was last paid
+## up to and whose turn that was, and the moves paid for so far.
+var _bank := [0.0, 0.0]
+var _bank_add := 0.0
+var _bank_at := 0.0
+var _bank_seat := -1
+var _bank_moves := 0
 
 func _init(screen: Control, the_game: String) -> void:
 	name = "Online"
@@ -409,6 +420,8 @@ func seconds(mine: bool) -> int:
 	return int(_match.seconds_left())
 
 func _on_clock(the_seat: int, left: int) -> void:
+	_follow_bank()
+	_tick_bank()
 	if the_seat != seat:
 		_warned = false
 	elif left <= BUZZ_AT and not _warned and live():
@@ -436,6 +449,49 @@ func dress(label: Label, base: String, on: bool, mine: bool) -> void:
 		_bumped = s
 		label.pivot_offset = label.size * 0.5
 		Motion.bump(label, 0.1, 0.22)
+
+## Seconds left on a side's own clock. It is worked out here from the turn
+## times both ends read from the match, so the two phones agree, and the
+## rules' minute a move still stands behind it. A side whose clock runs out
+## says so itself (`_tick_bank`), by resigning.
+func bank(mine: bool) -> float:
+	var s := seat if mine else 1 - seat
+	var left: float = _bank[s]
+	if live() and _bank_seat == s and _bank_at > 0.0 and _bank_moves >= 2:
+		left -= (_match.now() - _bank_at) / 1000.0
+	return maxf(left, 0.0)
+
+## Sets both clocks, at the start of a match.
+func set_bank(seconds_each: float, increment: float) -> void:
+	_banked = true
+	_bank = [seconds_each, seconds_each]
+	_bank_add = increment
+	_bank_at = 0.0
+	_bank_seat = -1
+	_bank_moves = 0
+	flagged = -1
+
+## A new turn on the match: the side that just moved pays for it.
+func _follow_bank() -> void:
+	if not _banked or not _match.has_method("turn_at"):
+		return
+	var at: float = _match.turn_at()
+	if at <= 0.0 or at == _bank_at:
+		return
+	if _bank_at > 0.0 and _bank_seat >= 0:
+		_bank_moves += 1
+		if _bank_moves > 2:
+			_bank[_bank_seat] = maxf(_bank[_bank_seat] - (at - _bank_at) / 1000.0, 0.0) + _bank_add
+	_bank_at = at
+	_bank_seat = int(_match.turn())
+
+func _tick_bank() -> void:
+	if not _banked or not live() or flagged >= 0 or _bank_moves < 2 or _bank_seat < 0:
+		return
+	if bank(_bank_seat == seat) <= 0.0:
+		flagged = _bank_seat
+		if _bank_seat == seat:
+			_match.resign()
 
 # --- who the other player is ---
 
@@ -476,6 +532,8 @@ func why_line(why: String, outcome: String) -> String:
 	match why:
 		"resign":
 			return tr("VS_END_RESIGN") % rival() if won else tr("VS_END_RESIGN_YOU")
+		"flag":
+			return tr("CHS_FLAG_WON" if outcome == "won" else "CHS_FLAG_LOST")
 		"timeout":
 			return tr("VS_END_TIMEOUT") % rival() if won else tr("VS_END_TIMEOUT_YOU")
 		"left":

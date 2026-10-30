@@ -93,7 +93,21 @@ static func set_last_colour(game: String, colour: int) -> void:
 	cfg.set_value("colour", game, colour)
 	cfg.save(PATH)
 
-## The piece set chosen for a game; skins are to come (versus/chess_skin.gd,
-## versus/checkers_skin.gd), so for now this reads the house set.
+## The piece set chosen for a game (versus/chess_skin.gd,
+## versus/checkers_skin.gd): chess has two, the others the house set.
 static func skin(game: String) -> String:
-	return String(_load().get_value("skin", game, "garden"))
+	return String(_load().get_value("skin", game, "classic" if game == "chess" else "garden"))
+
+static func set_skin(game: String, id: String) -> void:
+	var cfg := _load()
+	cfg.set_value("skin", game, id)
+	cfg.save(PATH)
+
+## A game's own option, kept beside its record.
+static func option(game: String, key: String, fallback: Variant) -> Variant:
+	return _load().get_value("options_" + game, key, fallback)
+
+static func set_option(game: String, key: String, value: Variant) -> void:
+	var cfg := _load()
+	cfg.set_value("options_" + game, key, value)
+	cfg.save(PATH)

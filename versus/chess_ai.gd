@@ -18,6 +18,7 @@ extends RefCounted
 ##     AI.new().plan(game.copy(), level, seed)
 
 const Rules = preload("res://versus/chess_rules.gd")
+const Notes = preload("res://versus/chess_notes.gd")
 
 const MATE := 100000
 const INF := 1000000
@@ -26,6 +27,15 @@ const DEPTH := [1, 2, 6]
 const NOISE := [110.0, 35.0, 0.0]
 const BUDGET_MS := [500, 900, 1600]
 const HINT_BUDGET_MS := 1100
+## Plies of the book each level follows.
+const BOOK_PLIES := [4, 8, 14]
+## What a level likes, in centipawns on a root move: a capture, a check, each
+## square nearer the enemy king.
+const STYLE := [
+	{"capture": 70, "check": 50, "hunt": 0},
+	{"capture": 0, "check": 25, "hunt": 9},
+	{"capture": 0, "check": 0, "hunt": 0},
+]
 
 const EXACT := 0
 const LOWER := 1
@@ -128,10 +138,12 @@ var rng := RandomNumberGenerator.new()
 ## What the last plan saw, for the probes: the depth finished and its score.
 var reached := 0
 var score := 0
+## A root move left out of the search (the grader's second best), 0 for none.
+var skip := 0
 
 ## The move to play for the side to move in `game` (a copy: it is searched
 ## in place). -1 when there is none.
-func plan(game: RefCounted, level: int, seed: int, budget_ms := -1) -> int:
+func plan(game: RefCounted, level: int, seed: int, budget_ms := -1, played: Array = []) -> int:
 	g = game
 	rng.seed = seed
 	killers.resize(128)
@@ -142,27 +154,69 @@ func plan(game: RefCounted, level: int, seed: int, budget_ms := -1) -> int:
 	if moves.size() == 1:
 		return moves[0]
 	var lv := clampi(level, 0, 2)
+	if played.size() > 0 or g.fullmove == 1:
+		var opening := Notes.book_move(played, moves, BOOK_PLIES[lv], rng)
+		if opening >= 0:
+			return opening
 	deadline = Time.get_ticks_msec() + (budget_ms if budget_ms > 0 else BUDGET_MS[lv])
 	if NOISE[lv] > 0.0:
-		return _blurred(moves, DEPTH[lv], NOISE[lv])
+		return _blurred(moves, DEPTH[lv], NOISE[lv], STYLE[lv])
 	return _deepening(moves, DEPTH[lv])
+
+## The position as Hard sees it, within `budget_ms`: {best, score, depth},
+## `score` in centipawns from the side to move, `best` -1 when it has no move.
+## Unlike plan() it searches even a forced move, and never blurs.
+func analyse(game: RefCounted, budget_ms: int, max_depth: int, seed: int) -> Dictionary:
+	g = game
+	rng.seed = seed
+	killers.resize(128)
+	killers.fill(0)
+	var moves: PackedInt32Array = g.legal_moves()
+	if skip != 0:
+		var left := PackedInt32Array()
+		for m in moves:
+			if m != skip:
+				left.append(m)
+		moves = left
+	if moves.is_empty():
+		return {"best": -1, "score": -MATE if g.in_check() else 0, "depth": 0}
+	deadline = Time.get_ticks_msec() + budget_ms
+	var best := _deepening(moves, max_depth)
+	return {"best": best, "score": score, "depth": reached}
 
 ## Easy and Medium: every root move scored exactly at a fixed depth, each
 ## blurred, the best blurred score played. A mate is never blurred away.
-func _blurred(moves: PackedInt32Array, depth: int, noise: float) -> int:
+func _blurred(moves: PackedInt32Array, depth: int, noise: float, style: Dictionary) -> int:
 	var best := moves[0]
 	var best_score := -INF * 1.0
 	for m in moves:
 		g.make(m)
+		var checks: bool = g.in_check()
 		var sc := -_search(depth - 1, -INF, INF, 1)
 		g.unmake()
 		var blurred := float(sc)
 		if absi(sc) < MATE - 1000:
-			blurred += rng.randfn(0.0, noise)
+			blurred += rng.randfn(0.0, noise) + _liking(m, checks, style)
 		if blurred > best_score:
 			best_score = blurred
 			best = m
 	return best
+
+## What a level's character adds to a root move, for its capture, its check and
+## the squares it gains on the enemy king.
+func _liking(m: int, checks: bool, style: Dictionary) -> float:
+	var extra := 0.0
+	if Rules.mv_flags(m) & Rules.F_CAPTURE:
+		extra += style.capture
+	if checks:
+		extra += style.check
+	if style.hunt != 0:
+		var king: int = g.kings[1 - g.turn]
+		extra += style.hunt * (_steps(Rules.mv_from(m), king) - _steps(Rules.mv_to(m), king))
+	return extra
+
+static func _steps(a: int, b: int) -> int:
+	return maxi(absi((a & 7) - (b & 7)), absi((a >> 3) - (b >> 3)))
 
 ## Hard: iterative deepening, the root re-ordered by the last full depth,
 ## ties broken by a shuffle so it does not play one opening for ever.

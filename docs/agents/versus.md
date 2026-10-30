@@ -98,8 +98,8 @@ calls on the tab).
   transform, never rebuilt to move. The board (`versus/chess_board.gd`) owns
   the rules' mirror (one actor a piece), the clock, the trays and the cues.
   `Skin` is a native Godot class, so the constant is `ChessSkin`.
-- The player's pieces are always cream at the bottom; the colour they move
-  as swaps every game. 122-129 draw calls at the board since the polish
+- The player's pieces are always at the bottom (on the garden set always
+  cream; on the classic set in their true colour). 122-129 draw calls at the board since the polish
   of 2026-09-26 (166-170 before; the terrace became one mesh), ANGLE
   agreeing. The board draws two live meshes, one under the pieces and one
   over, rebuilt a frame at a time: marks popping in, ripples, speed lines,
@@ -110,6 +110,80 @@ calls on the tab).
   (a whole game through the real screen, both sides the computer; it loads
   the screen with `load()` at run time, because a `preload` compiles before
   the `Ads` autoload exists). All put `user://versus.cfg` back.
+
+**Chess made a real chess app** (2026-10-30, the user: "make chess experience
+way better to play, and game itself way funnier ... right now nobody likes
+it", players asking for "more professional tools like a timer on each side,
+option to pre define a move", four pictures of a wooden board with arrows,
+coloured squares and move badges; autonomous, pushed).
+
+- **The screen.** The board is full width (cell 120 at the harness, was 84).
+  The other player's plate stands over it and yours under it, each with its
+  clock, then the score sheet (`versus/chess_strip.gd`, one control, a string
+  a move in view), then the tools: back and forward through the moves, the
+  opening's name, the pen, the options (`versus/chess_options.gd`), Resign.
+  155-210 draw calls.
+- **Two sets, classic the default**: `versus/chess_skin_classic.gd`, Staunton
+  shapes on a wooden board, no faces, true colours, a move a quick slide. A
+  skin answers `cartoon()`, `true_colours()` and `frame()`; off a cartoon the
+  board leaves off dust, speed lines, sweat, sleepers and the thought bubble
+  and takes the coordinates into the squares. The garden set stays in the
+  options. The default is a call of mine, from the user's pictures: the old
+  pawn and bishop were near enough the same shape at a glance.
+- **The clock.** No clock, 3+2, 5+0, 10+0. It starts after both first moves,
+  pauses under the tutorial and the sheets, and a game with one has no undo
+  and no hints. A flag against a bare king is a draw. Saved with the options
+  in `user://versus.cfg`.
+- **The clock online is worked out on the phones, not by the rules.** The
+  database's only clock is its minute a move (`turnAt + 60000`), and changing
+  that is a production deploy. So both ends get 5+3 from the `turnAt` of each
+  turn (`Online.bank`, `_follow_bank`), which they share, the side that runs
+  out resigns itself (`_tick_bank`), and the other end reads that resignation
+  as a flag. Nothing changed on the server, and an old client still plays a
+  new one: it just never flags itself, and the minute a move still catches
+  it. A hacked client can ignore its clock the same way. The minute comes up
+  on the plate in its last 20 seconds. To make it real, take the bank into
+  `server/database.rules.json`.
+- **Premoves**: while the other side thinks or moves, touch goes down a path
+  of its own (`premoving`, `_pre_press`, `_reach`: where a piece could go on a
+  board that will have changed, nothing blocking). Up to four queue; each
+  shows orange squares, an arrow and a ghost of the piece. On your turn the
+  first goes off if legal and lands at once (`snap_next`, 0.09 s), a pawn to
+  the last rank queens, and if it is not legal the whole queue goes and a
+  toast says so. Tapping anywhere else takes the queue back. `play()` no
+  longer deselects on the other side's move, or a piece picked up to premove
+  dropped out of the hand.
+- **The pen**: tap a square to colour it, drag for an arrow, the same again
+  rubs it out; four colours and a bin. A move of yours clears it. The colours
+  are one language across the screen: green the good move (the bulb's arrow
+  turned green for it), orange a move waiting, red danger, blue a square
+  picked out.
+- **Verdicts** (`versus/chess_grade.gd`): every move of yours against the
+  computer is graded by what it cost in chance of winning, on the worker,
+  in the computer's task, because the screen has one worker slot. 130 ms a
+  position, about depth 4 here. The badge comes up on your turn, a tap on a
+  ?!, ? or ?? shows the stronger move for nothing, and the verdict sets off a
+  line of the moon's on its plate. Online nothing is graded during the game.
+- **Danger lines**: red dashes to a piece of yours that can be taken for
+  nothing or by something cheaper, on Easy and Medium, off in the options.
+- **The review**: from the end card. Accuracy, counts, each move with its
+  badge, the stronger move green and yours red, the win bar, the eye jumping
+  to the next slip, and Try again puts the position back to find a better one.
+  Online games are graded here, a move at a time.
+- **The levels are characters** (`AI.STYLE`): Easy cannot resist a capture or a
+  check, Medium hunts your king, Hard just plays. All open from the book
+  (`versus/chess_notes.gd`, 57 lines, 4, 8 and 14 plies), which also names the
+  opening at the foot. Every line is checked legal by a probe; the notation
+  is standard letters in every language.
+- **A rating** moves after each game against the computer (800 to start;
+  Easy 600, Medium 1100, Hard 1500; K 24). A game with an undo or a hint is
+  practice and does not count. Nothing is rated online, the user's call of
+  2026-10-04.
+- No new sound: a premove set is `place` at 1.12, everything else the set's own
+  cues, because the ElevenLabs credits are out until 2026-11-01. A classic
+  move has no take-off sound.
+- Not done: a draw offer and a rematch online (each needs a new word between
+  the phones), board flip, a phone, a real two-phone clock.
 
 **Checkers is the third Versus game** (2026-09-26, spec
 `2026-09-26-versus-checkers-design.md`), against the computer, built the way

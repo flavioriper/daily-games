@@ -231,6 +231,55 @@ CHS_DRAW_STALEMATE,"Stalemate: no move left, but no check","Afogamento: nenhum l
 CHS_DRAW_FIFTY,Fifty moves with no capture and no pawn move,Cinquenta lances sem captura nem lance de peão,Cincuenta jugadas sin captura ni movimiento de peón
 CHS_DRAW_REPEAT,The same position three times,A mesma posição três vezes,La misma posición tres veces
 CHS_DRAW_MATERIAL,Not enough pieces left to checkmate,Não restam peças suficientes para dar xeque-mate,No quedan piezas suficientes para dar jaque mate
+CHS_MOVE_N,Move %d,Lance %d,Jugada %d
+CHS_COLOUR_WHITE,White,Brancas,Blancas
+CHS_COLOUR_BLACK,Black,Pretas,Negras
+CHS_COLOUR_SWAP,Swap,Alternar,Alternar
+CHS_CLOCK_OFF,No clock,Sem relógio,Sin reloj
+CHS_OPTIONS,Options,Opções,Opciones
+CHS_OPT_CLOCK,CLOCK,RELÓGIO,RELOJ
+CHS_OPT_COLOUR,YOUR COLOUR,SUA COR,TU COLOR
+CHS_OPT_SET,PIECES,PEÇAS,PIEZAS
+CHS_SET_CLASSIC,Classic,Clássicas,Clásicas
+CHS_SET_GARDEN,Garden,Jardim,Jardín
+CHS_OPT_PREMOVES,Premoves,Pré-lances,Premovimientos
+CHS_OPT_PREMOVES_SUB,Queue moves while the other side thinks,Deixe lances prontos enquanto o outro pensa,Deja jugadas listas mientras el otro piensa
+CHS_OPT_GRADES,Move grades,Notas dos lances,Notas de jugadas
+CHS_OPT_GRADES_SUB,A badge on each of your moves,Um selo em cada lance seu,Una insignia en cada jugada tuya
+CHS_OPT_THREATS,Danger lines,Linhas de perigo,Líneas de peligro
+CHS_OPT_THREATS_SUB,"Red lines to your hanging pieces, on Easy and Medium","Linhas vermelhas até suas peças soltas, no Fácil e no Médio","Líneas rojas a tus piezas colgadas, en Fácil y Medio"
+CHS_OPT_DONE,Done,Pronto,Listo
+CHS_PRE_OFF,Premove cancelled: it is no longer legal,Pré-lance cancelado: não é mais válido,Premovimiento cancelado: ya no es legal
+CHS_BETTER,Stronger was %s,Melhor seria %s,Mejor era %s
+CHS_ACCURACY,Accuracy %d%%,Precisão %d%%,Precisión %d%%
+CHS_REVIEW,Review the game,Rever a partida,Revisar la partida
+CHS_REVIEWING,Reviewing %d of %d…,Revendo %d de %d…,Revisando %d de %d…
+CHS_TRY_AGAIN,Try again,Tentar de novo,Reintentar
+CHS_FIND_BETTER,Find a better move,Ache um lance melhor,Busca una jugada mejor
+CHS_FOUND_IT,That's it!,É isso!,¡Eso es!
+CHS_NOT_QUITE,"Not quite, try again","Ainda não, tente de novo","Todavía no, prueba otra vez"
+CHS_RESIGN_ASK,Tap again to resign,Toque de novo para desistir,Toca otra vez para rendirte
+CHS_RESIGNED,You resigned,Você desistiu,Te rendiste
+CHS_FLAG_WON,Their time ran out,O tempo do outro acabou,Se le acabó el tiempo
+CHS_FLAG_LOST,Your time ran out,Seu tempo acabou,Se te acabó el tiempo
+CHS_FLAG_DRAW,Time ran out with nothing left to mate,O tempo acabou e não há peças para dar mate,Se acabó el tiempo y no hay piezas para el mate
+CHS_G_BOOK,book,teoria,teoría
+CHS_G_BRILLIANT,brilliant,brilhante,brillante
+CHS_G_GREAT,great,ótimo,gran jugada
+CHS_G_BEST,best,melhor,mejor
+CHS_G_GOOD,good,bom,buena
+CHS_G_INACCURACY,inaccuracy,imprecisão,imprecisión
+CHS_G_MISTAKE,mistake,erro,error
+CHS_G_BLUNDER,blunder,erro grave,error grave
+CHS_Q_BLUNDER_1,Thank you very much!,Muito obrigado!,¡Muchas gracias!
+CHS_Q_BLUNDER_2,Is that a gift for me?,Isso é um presente pra mim?,¿Es un regalo para mí?
+CHS_Q_BLUNDER_3,"Oh! I saw that, you know.","Opa! Eu vi isso, viu?","¡Oh! Lo vi, ¿sabes?"
+CHS_Q_MISTAKE_1,Are you sure about that?,Tem certeza disso?,¿Seguro de eso?
+CHS_Q_MISTAKE_2,Hmm. I like my chances.,Hum. Gostei das minhas chances.,Mmm. Me gustan mis opciones.
+CHS_Q_GREAT_1,Wait. That was good.,Espera. Essa foi boa.,Espera. Esa fue buena.
+CHS_Q_GREAT_2,Who taught you that?,Quem te ensinou isso?,¿Quién te enseñó eso?
+TUT_CHESS_TOOLS,The tools,As ferramentas,Las herramientas
+TUT_CHESS_TOOLS_BODY,"While the other side thinks, tap a piece and a square to queue a premove; tap elsewhere to take it back. The pencil draws arrows and squares. Tap a move under the board to see that moment, and the gear sets the clock.","Enquanto o outro pensa, toque numa peça e numa casa para deixar um pré-lance; toque em outro lugar para desfazer. O lápis desenha setas e casas. Toque num lance abaixo do tabuleiro para ver aquele momento, e a engrenagem ajusta o relógio.","Mientras el otro piensa, toca una pieza y una casilla para dejar un premovimiento; toca en otro sitio para deshacerlo. El lápiz dibuja flechas y casillas. Toca una jugada bajo el tablero para ver ese momento, y el engranaje ajusta el reloj."
 VS_CHECKERS_BLURB,"A game against the computer: hop, jump chains of pieces, and crown your men.","Uma partida contra o computador: pule, capture em sequência e coroe suas pedras.","Una partida contra el ordenador: salta, captura en cadena y corona tus fichas."
 CKR_MOTTO,JUMP OVER THE MOON,PULE POR CIMA DA LUA,SALTA SOBRE LA LUNA
 CKR_CAPTURE,Capture!,Capture!,¡Captura!
@@ -751,7 +800,7 @@ TUT_SNOOKER_CAP_BULB,Stuck? Press the bulb,Travou? Toque na lâmpada,¿Sin ideas
 TUT_SNOOKER_CAP_GOLD,A gold line and a gold notch,Uma linha e uma marca douradas,Una línea y una marca doradas
 TUT_SNOOKER_CAP_NOTCH,Draw back to the notch,Puxe até a marca,Tira hasta la marca
 TUT_CHESS_MOVE,"Tap a piece, then a square","Toque na peça, depois na casa","Toca la pieza, luego la casilla"
-TUT_CHESS_MOVE_BODY,"Tap one of your pieces: dots show where it can go, a ring what it can take. Tap the square, or drag the piece there. Yours are the cream ones at the bottom; who moves first swaps every game.","Toque numa peça sua: os pontos mostram aonde ela pode ir, o anel o que ela pode capturar. Toque na casa ou arraste a peça. As suas são as creme, embaixo; quem joga primeiro troca a cada partida.","Toca una pieza tuya: los puntos muestran adónde puede ir, el anillo lo que puede capturar. Toca la casilla o arrastra la pieza. Las tuyas son las crema, abajo; quien empieza cambia en cada partida."
+TUT_CHESS_MOVE_BODY,"Tap one of your pieces: dots show where it can go, a ring what it can take. Tap the square, or drag the piece there. Yours are at the bottom; who moves first swaps every game, and the options can fix your colour.","Toque numa peça sua: os pontos mostram aonde ela pode ir, o anel o que ela pode capturar. Toque na casa ou arraste a peça. As suas ficam embaixo; quem joga primeiro troca a cada partida, e nas opções dá para fixar sua cor.","Toca una pieza tuya: los puntos muestran adónde puede ir, el anillo lo que puede capturar. Toca la casilla o arrastra la pieza. Las tuyas están abajo; quien juega primero cambia cada partida, y en opciones puedes fijar tu color."
 TUT_CHESS_LINES,"Rook, bishop and queen","Torre, bispo e dama","Torre, alfil y dama"
 TUT_CHESS_LINES_BODY,"The rook runs along rows and columns, the bishop along diagonals, the queen does both. They go as far as they like but stop at the first piece in the way, taking it if it is the bot's.","A torre corre pelas linhas e colunas, o bispo pelas diagonais, a dama faz os dois. Vão até onde quiserem, mas param na primeira peça no caminho, capturando-a se for do bot.","La torre corre por filas y columnas, el alfil por diagonales, la dama hace ambas cosas. Llegan tan lejos como quieran, pero se detienen en la primera pieza del camino y la capturan si es del bot."
 TUT_CHESS_STEPS,"Knight, king and pawn","Cavalo, rei e peão","Caballo, rey y peón"

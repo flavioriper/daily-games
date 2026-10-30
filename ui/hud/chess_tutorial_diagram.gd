@@ -164,7 +164,8 @@ func _layout() -> void:
 	_window.position = Vector2(0.0, 0.0 if _top else size.y - win_h)
 	_window.size = Vector2(size.x, win_h)
 	# A pixel over, so the board's floor() lands on CELL.
-	_art.size = Vector2(8.0 + 2.0 * Board.FRAME, 8.0 + 2.0 * (Board.FRAME + Board.TRAY + Board.TRAY_GAP)) * CELL + Vector2.ONE
+	var edge: float = skin.frame()
+	_art.size = Vector2(8.0 + 2.0 * edge, 8.0 + 2.0 * (edge + Board.TRAY + Board.TRAY_GAP)) * CELL + Vector2.ONE
 	# The near tray's deep edge hangs a little under the board's own rect.
 	_art.position = Vector2(floorf((size.x - _art.size.x) * 0.5), 0.0 if _top else win_h - _art.size.y - 6.0)
 	_over.position = Vector2.ZERO

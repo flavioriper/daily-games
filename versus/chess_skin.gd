@@ -44,11 +44,27 @@ static func named(id: String) -> RefCounted:
 	match id:
 		"plain":
 			return load("res://versus/chess_skin.gd").new()
-		_:
+		"garden":
 			return load("res://versus/chess_skin_garden.gd").new()
+		_:
+			return load("res://versus/chess_skin_classic.gd").new()
 
 func id() -> String:
 	return "plain"
+
+## Whether the board dresses the moves in speed lines, dust, sweat, sleepers
+## and a thought bubble. A tournament set answers false.
+func cartoon() -> bool:
+	return true
+
+## Whether `build` is handed the piece's true colour (0 white, 1 black) and
+## not the seat (0 the player's, 1 the other's).
+func true_colours() -> bool:
+	return false
+
+## The wooden frame's width, in cells.
+func frame() -> float:
+	return 0.3
 
 # --- drawing ---
 

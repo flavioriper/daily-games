@@ -222,6 +222,14 @@ func seconds_left() -> int:
 	return maxi(0, ceili((float(_m.get("turnAt", 0.0)) + LIMIT_MS - Live.server_now()) / 1000.0))
 
 ## The seat to act; -1 outside a game.
+## When the turn began, by the server's clock; 0 before there is a match.
+func turn_at() -> float:
+	return float(_m.get("turnAt", 0.0))
+
+## The server's clock.
+func now() -> float:
+	return Live.server_now()
+
 func turn() -> int:
 	return int(_m.get("turn", -1)) if phase == Phase.PLAYING else -1
 

@@ -25,6 +25,10 @@ signal settled
 ## A tap the rules turned down: "stuck" (the piece has no move at all) or
 ## "king" (its moves would leave the king in check).
 signal refused(reason: String)
+## The verdict's badge on the last move was tapped.
+signal badge_pressed
+## A premove was set or the queue was cleared by hand.
+signal premoves_changed
 
 const Rules = preload("res://versus/chess_rules.gd")
 const ChessSkin = preload("res://versus/chess_skin.gd")
@@ -34,6 +38,7 @@ const Scenery = preload("res://ui/flat/scenery.gd")
 const Motion = preload("res://core/motion.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
 const Haptics = preload("res://core/haptics.gd")
+const Grade = preload("res://versus/chess_grade.gd")
 
 ## In cells: the tray strip above and below (at least TRAY, growing to
 ## TRAY_MAX into a tall phone's spare height), the air between it and the
@@ -67,10 +72,24 @@ const FRAME_DEEP := Color("4f311d")
 const FRAME_LIP := Color("a97a4f")
 const TROUGH := Color("8a5d3a")
 const TROUGH_DEEP := Color("5e3d24")
+## The wooden board, for a skin that is not a cartoon.
+const WOOD_LIGHT := Color("e8c99a")
+const WOOD_DARK := Color("a9744a")
+const WOOD_FRAME := Color("5c3a21")
+const WOOD_LAST := Color(0.93, 0.87, 0.3, 0.5)
+## What the marks say, in one language with the pen's: green the good move,
+## orange a move waiting, red danger, blue a square picked out.
+const PREMOVE := Color("f2841f")
+const THREAT := Color("e0523f")
+const PEN := [Color("7cb342"), Color("f2841f"), Color("e0523f"), Color("3f8fd6")]
+## A grade's badge, by versus/chess_grade.gd's bands.
+const BADGE := [Color("a88865"), Color("1fb8a6"), Color("5b8bd0"), Color("7cb342"), Color("95b776"),
+	Color("e8b931"), Color("f0913a"), Color("e0432f")]
+const MAX_PREMOVES := 4
 const MARK_LAST := Color(1.0, 0.82, 0.36, 0.42)
 const MARK_PICK := Color(1.0, 0.78, 0.3, 0.6)
 const MARK_DOT := Color(0.23, 0.19, 0.16, 0.2)
-const HINT := Color("f5a623")
+const HINT := Color("6fa83a")
 const SOIL := Color("6f4c33")
 const SOIL_DEEP := Color("553823")
 const MOSS := Color("9cb97c")
@@ -87,8 +106,27 @@ var player := Rules.WHITE
 var interactive := false
 ## The tab's picture: drawn once, no clock, no touch.
 var still := false
+## It is the other side's move and a move of yours can be queued for when it
+## is yours (`pre`).
+var premoving := false
+## The pen is down: touches draw on the board and move nothing.
+var pen := false
+var pen_colour := 0
+## Moves queued, in order, as [from, to, promo].
+var pre: Array = []
+## What the pen has drawn: square -> colour index, and [from, to, colour].
+var pen_squares := {}
+var pen_arrows: Array = []
+## Arrows the game draws, as [from, to, colour].
+var auto_arrows: Array = []
+## Red dashed lines from what threatens to what it threatens, as [from, to].
+var threats: Array = []
+## The win bar down the board's left side: White's chance, percent, -1 for none.
+var eval_bar := -1.0
 
 var cell := 100.0
+## The wooden frame's width in cells: the skin's.
+var frame := FRAME
 ## The trays' depth and their pieces' scale and spacing this layout.
 var tray_h := TRAY
 var tray_scale := TRAY_SCALE
@@ -151,6 +189,14 @@ var _quiet_press := false
 var _drag_cell := Vector2.ZERO
 var _hover := -1
 var _picker: PackedInt32Array = PackedInt32Array()
+## The next move is a premove going off: it lands at once.
+var _snap_next := false
+var _pen_from := -1
+var _pen_to := -1
+## The badge: its square, its grade (-1 none) and when it appeared.
+var _badge_sq := -1
+var _badge_grade := -1
+var _badge_at := 0.0
 
 var _board_mesh: ArrayMesh
 var _marks_mesh: ArrayMesh
@@ -221,6 +267,10 @@ func setup(the_rules: RefCounted, as_colour: int, enter := true) -> void:
 	_petals.clear()
 	_check_from = PackedInt32Array()
 	_thinking = false
+	_badge_sq = -1
+	_badge_grade = -1
+	auto_arrows = []
+	threats = []
 	for sq in 64:
 		var p: int = rules.board[sq]
 		if p == 0:
@@ -277,6 +327,82 @@ func set_hint(move: int) -> void:
 func set_lifted(sq: int) -> void:
 	_lifted = sq
 
+## The set changed under the board: the same pieces, re-laid.
+func set_skin(the_skin: RefCounted) -> void:
+	skin = the_skin
+	_meshes.clear()
+	_layout()
+
+## The grade of the move that landed on `sq`, as a badge in its corner.
+func set_badge(sq: int, grade: int) -> void:
+	_badge_sq = sq
+	_badge_grade = grade
+	_badge_at = _now
+
+## Arrows the game draws, and the red lines; either may be empty.
+func set_arrows(arrows: Array, threat_lines: Array = []) -> void:
+	auto_arrows = arrows
+	threats = threat_lines
+
+func clear_pen() -> void:
+	pen_squares = {}
+	pen_arrows = []
+	_pen_from = -1
+	_marks_dirty = true
+
+func clear_premoves() -> void:
+	if pre.is_empty():
+		return
+	pre = []
+	_marks_dirty = true
+	premoves_changed.emit()
+
+## The other side has moved and it is the player's turn: a piece picked up
+## while waiting now has its real moves.
+func turn_came() -> void:
+	premoving = false
+	if _selected < 0:
+		return
+	var sq := _selected
+	var a: Actor = _at_sq.get(sq)
+	var moves: PackedInt32Array = rules.moves_from(sq) if a != null and a.side == 0 else PackedInt32Array()
+	if moves.is_empty():
+		deselect()
+		return
+	_targets = {}
+	for m in moves:
+		_targets[Rules.mv_to(m)] = true
+	_marks_dirty = true
+
+## The next move played lands at once, the premove's way.
+func snap_next() -> void:
+	_snap_next = true
+
+## The board at a past position: `g` is that position and `played` the moves
+## that led to it (rules.describe() each), for the trays. Nothing animates.
+func show_position(g: RefCounted, as_colour: int, played: Array) -> void:
+	var mood := _mood
+	setup(g, as_colour, false)
+	_mood = mood
+	for d: Dictionary in played:
+		if int(d.captured) == 0:
+			continue
+		var a := Actor.new()
+		a.type = absi(int(d.captured))
+		a.side = 0 if Rules.side_of(int(d.captured)) == player else 1
+		a.look = 1.0
+		a.phase = _rng.randf()
+		var tray := 0 if a.side == 1 else 1
+		a.sq = -1
+		a.rest_scale = tray_scale
+		a.at = tray_cell(tray, _trays[tray].size())
+		_trays[tray].append(a)
+		_actors.append(a)
+	if not played.is_empty():
+		var last: Dictionary = played.back()
+		_last = Vector2i(int(last.from), int(last.to))
+	_marks_dirty = true
+
 func deselect() -> void:
 	if _selected >= 0 and not _targets.is_empty():
 		# the marks pop back out rather than vanish
@@ -326,14 +452,15 @@ func tray_cell(tray: int, slot: int) -> Vector2:
 ## A tray's middle line, in pixels.
 func _tray_mid(tray: int) -> float:
 	if tray == 0:
-		return origin.y + (8.0 + FRAME + TRAY_GAP + tray_h * 0.5) * cell
-	return origin.y - (FRAME + TRAY_GAP + tray_h * 0.5) * cell
+		return origin.y + (8.0 + frame + TRAY_GAP + tray_h * 0.5) * cell
+	return origin.y - (frame + TRAY_GAP + tray_h * 0.5) * cell
 
 func frame_rect() -> Rect2:
-	return Rect2(origin - Vector2.ONE * FRAME * cell, Vector2.ONE * (8.0 + 2.0 * FRAME) * cell)
+	return Rect2(origin - Vector2.ONE * frame * cell, Vector2.ONE * (8.0 + 2.0 * frame) * cell)
 
 func _layout() -> void:
-	var across := 8.0 + 2.0 * FRAME
+	frame = skin.frame()
+	var across := 8.0 + 2.0 * frame
 	var c := floorf(minf(size.x / across, size.y / (across + 2.0 * (TRAY + TRAY_GAP))))
 	if c <= 0.0:
 		return
@@ -350,7 +477,7 @@ func _layout() -> void:
 	var used := Vector2(across, down) * cell
 	var corner := ((size - used) * 0.5).floor()
 	used_rect = Rect2(corner, used)
-	origin = corner + Vector2(FRAME, FRAME + TRAY_GAP + tray_h) * cell
+	origin = corner + Vector2(frame, frame + TRAY_GAP + tray_h) * cell
 	for a: Actor in _actors:
 		if a.sq >= 0:
 			a.at = cell_of(a.sq)
@@ -411,7 +538,7 @@ func _finish(a: Actor) -> void:
 		a.face_until = INF
 
 func _cue(name: String, pitch := 1.0) -> void:
-	if _fx != null:
+	if _fx != null and name != "":
 		_fx.cue(name, pitch)
 
 func _puff(c: Vector2, colour := Color("e9dcc3"), n := 5) -> void:
@@ -428,14 +555,28 @@ func play(d: Dictionary) -> void:
 		return
 	_busy = true
 	var reduce := Motion.reduce
+	var hand: bool = int(d.side) == player
 	var to_c := cell_of(int(d.to))
-	var dropped := _dragging or a.at.distance_to(to_c) < 0.01
-	var start := _drag_cell if _dragging else cell_of(int(d.from))
-	deselect()
+	var carried := _dragging and hand
+	var dropped := carried or a.at.distance_to(to_c) < 0.01
+	var start := _drag_cell if carried else cell_of(int(d.from))
+	# A piece picked up to premove stays up through the other side's move,
+	# unless it is the one taken.
+	if hand or _selected == int(d.to) or _selected == int(d.captured_at):
+		deselect()
+	if hand:
+		clear_pen()
 	_lifted = -1
 	_hint = Vector2i(-1, -1)
+	set_badge(-1, -1)
+	threats = []
+	auto_arrows = []
 	var type := absi(int(d.piece))
 	var dur: float = 0.2 if dropped or reduce else skin.move_time(type, start, to_c)
+	if _snap_next:
+		_snap_next = false
+		dur = 0.09
+		dropped = true
 	_at_sq.erase(int(d.from))
 	a.sq = int(d.to)
 	a.move_type = type
@@ -449,7 +590,6 @@ func play(d: Dictionary) -> void:
 	# What the hand's own move earned knocks as it happens: a capture at the
 	# contact, a promotion as the pawn turns. The cues ring for the
 	# computer's moves too and are not mapped (docs/agents/haptics.md).
-	var hand: bool = int(d.side) == player
 	a.hit_u = -1.0
 	if int(d.captured) != 0 and not dropped and not reduce:
 		a.hit_u = skin.contact_at(type)
@@ -473,6 +613,8 @@ func play(d: Dictionary) -> void:
 			_cue("castle")
 		elif int(d.captured) == 0:
 			_cue(skin.land_cue(type), _rng.randf_range(0.94, 1.06))
+		if not skin.cartoon():
+			return
 		if skin.lands_with_dust(type) and not dropped:
 			_puff(to_c)
 		elif not reduce:
@@ -513,10 +655,11 @@ func _knock(victim: Actor, dir: Vector2, contact: float, hand := false) -> void:
 		if _fx != null:
 			if hand:
 				_fx.buzz(Haptics.BUMP)
-			var hit := px(victim.at)
-			_fx.ring(hit, cell * 0.35, Color(Pal.PAPER, 0.9), 0.35)
-			_fx.puff(hit, Pal.SUN_RAY, 6)
-		if not Motion.reduce:
+			if skin.cartoon():
+				var hit := px(victim.at)
+				_fx.ring(hit, cell * 0.35, Color(Pal.PAPER, 0.9), 0.35)
+				_fx.puff(hit, Pal.SUN_RAY, 6)
+		if not Motion.reduce and skin.cartoon():
 			_impacts.append([px(victim.at) - Vector2(0.0, cell * 0.25), _now]))
 
 ## Takes a move back (undo): the piece walks home, anything it took comes
@@ -641,7 +784,7 @@ func _shiver(a: Actor) -> void:
 # --- touch ---
 
 func _gui_input(event: InputEvent) -> void:
-	if still or not interactive or _busy:
+	if still or not (pen or premoving or (interactive and not _busy)):
 		return
 	var press := false
 	var release := false
@@ -663,7 +806,9 @@ func _gui_input(event: InputEvent) -> void:
 	else:
 		return
 	accept_event()
-	if press:
+	if pen:
+		_pen_input(at, press, release)
+	elif press:
 		_on_press(at)
 	elif release:
 		_on_release(at)
@@ -674,7 +819,13 @@ func _on_press(p: Vector2) -> void:
 	if not _picker.is_empty():
 		_pick_promotion(p)
 		return
+	if _badge_hit(p):
+		badge_pressed.emit()
+		return
 	var sq := sq_at(p)
+	if premoving:
+		_pre_press(sq, p)
+		return
 	if _selected >= 0 and _targets.has(sq):
 		_choose(sq)
 		return
@@ -731,6 +882,148 @@ func _on_release(p: Vector2) -> void:
 		a.move_type = Rules.BISHOP
 	_marks_dirty = true
 
+## Whether `p` is on the verdict's badge, the top right corner of its square.
+func _badge_hit(p: Vector2) -> bool:
+	if _badge_sq < 0 or _badge_grade < Grade.INACCURACY:
+		return false
+	return p.distance_to(_badge_at_px()) < cell * 0.26
+
+func _badge_at_px() -> Vector2:
+	return px(cell_of(_badge_sq)) + Vector2(0.33, -0.33) * cell
+
+# --- moves queued for your turn ---
+
+## The board as it will stand once every queued move has gone off.
+func _pre_board() -> Dictionary:
+	var at := _at_sq.duplicate()
+	for q: Array in pre:
+		var a: Actor = at.get(q[0])
+		at.erase(q[0])
+		if a != null:
+			at[q[1]] = a
+	return at
+
+func _pre_press(sq: int, p: Vector2) -> void:
+	if _selected >= 0 and _targets.has(sq):
+		_choose(sq)
+		return
+	var a: Actor = _pre_board().get(sq)
+	if a != null and a.side == 0 and sq != _selected and pre.size() < MAX_PREMOVES:
+		_selected = sq
+		_select_at = _now
+		_gone = {}
+		_targets = _reach(sq, a)
+		_marks_dirty = true
+		_cue("lift")
+		_pressing = _at_sq.get(sq) == a
+		_press_at = p
+		_quiet_press = false
+		return
+	# Anywhere else takes the whole queue back.
+	if _selected >= 0 or not pre.is_empty():
+		_cue("lift", 0.8)
+	deselect()
+	clear_premoves()
+
+## Every square a piece could reach on a board that will have changed by then:
+## other pieces do not block, and a pawn may take either way.
+func _reach(sq: int, a: Actor) -> Dictionary:
+	var out := {}
+	var f := sq & 7
+	var r := sq >> 3
+	var put := func(df: int, dr: int) -> void:
+		var nf := f + df
+		var nr := r + dr
+		if nf >= 0 and nf < 8 and nr >= 0 and nr < 8:
+			out[nr * 8 + nf] = true
+	var up := 1 if player == Rules.WHITE else -1
+	match a.type:
+		Rules.PAWN:
+			put.call(0, up)
+			put.call(-1, up)
+			put.call(1, up)
+			if r == (1 if up > 0 else 6):
+				put.call(0, 2 * up)
+		Rules.KNIGHT:
+			for k: Vector2i in [Vector2i(1, 2), Vector2i(2, 1), Vector2i(-1, 2), Vector2i(-2, 1),
+					Vector2i(1, -2), Vector2i(2, -1), Vector2i(-1, -2), Vector2i(-2, -1)]:
+				put.call(k.x, k.y)
+		Rules.KING:
+			for df in range(-1, 2):
+				for dr in range(-1, 2):
+					if df != 0 or dr != 0:
+						put.call(df, dr)
+			if f == 4 and r == (0 if up > 0 else 7):
+				put.call(2, 0)
+				put.call(-2, 0)
+		_:
+			for d: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1),
+					Vector2i(1, 1), Vector2i(1, -1), Vector2i(-1, 1), Vector2i(-1, -1)]:
+				var straight := d.x == 0 or d.y == 0
+				if (a.type == Rules.ROOK and not straight) or (a.type == Rules.BISHOP and straight):
+					continue
+				for n in range(1, 8):
+					put.call(d.x * n, d.y * n)
+	return out
+
+func _queue(to: int) -> void:
+	pre.append([_selected, to, 0])
+	var from := _selected
+	_selected = -1
+	_targets = {}
+	_dragging = false
+	_pressing = false
+	_hover = -1
+	_marks_dirty = true
+	_cue("place", 1.12)
+	if _fx != null:
+		_fx.touch()
+		_fx.ring(px(cell_of(to)), cell * 0.4, PREMOVE, 0.3)
+	var a: Actor = _at_sq.get(from)
+	if a != null and a.kind == "":
+		a.at = cell_of(from)
+	premoves_changed.emit()
+
+# --- the pen ---
+
+func _pen_input(p: Vector2, press: bool, release: bool) -> void:
+	var sq := sq_at(p)
+	if press:
+		_pen_from = sq
+		_pen_to = sq
+	elif release:
+		if _pen_from >= 0 and sq >= 0:
+			if sq == _pen_from:
+				_pen_square(sq)
+			else:
+				_pen_arrow(_pen_from, sq)
+		_pen_from = -1
+		_marks_dirty = true
+	elif _pen_from >= 0 and sq >= 0:
+		_pen_to = sq
+
+## Tapped: the square takes the pen's colour, or gives it back.
+func _pen_square(sq: int) -> void:
+	if pen_squares.get(sq, -1) == pen_colour:
+		pen_squares.erase(sq)
+	else:
+		pen_squares[sq] = pen_colour
+	if _fx != null:
+		_fx.touch()
+
+## Drawn: the same arrow again rubs it out.
+func _pen_arrow(from: int, to: int) -> void:
+	for i in pen_arrows.size():
+		if pen_arrows[i][0] == from and pen_arrows[i][1] == to:
+			var old: int = pen_arrows[i][2]
+			pen_arrows.remove_at(i)
+			if old == pen_colour:
+				return
+			break
+	pen_arrows.append([from, to, pen_colour])
+	if _fx != null:
+		_fx.touch()
+
 func _select(sq: int) -> void:
 	var moves: PackedInt32Array = rules.moves_from(sq)
 	var a: Actor = _at_sq[sq]
@@ -757,6 +1050,9 @@ func _select(sq: int) -> void:
 	_cue("lift")
 
 func _choose(to: int) -> void:
+	if premoving:
+		_queue(to)
+		return
 	var options := PackedInt32Array()
 	for m in rules.moves_from(_selected):
 		if Rules.mv_to(m) == to:
@@ -865,10 +1161,51 @@ func _draw() -> void:
 		draw_mesh(mesh, null, xf, Color(1, 1, 1, pose.alpha))
 		if bare:
 			_draw_crown(a)
+	_draw_ghosts()
 	if _over_mesh != null:
 		draw_mesh(_over_mesh, null)
+	_draw_badge_mark()
 	_draw_picker()
 	_draw_advantage()
+	if eval_bar >= 0.0:
+		_draw_eval_bar()
+
+## Each queued move's piece, faint, where it will stand.
+func _draw_ghosts() -> void:
+	var at := _at_sq.duplicate()
+	for q: Array in pre:
+		var a: Actor = at.get(q[0])
+		at.erase(q[0])
+		if a == null:
+			continue
+		at[q[1]] = a
+		draw_mesh(_mesh(a.type, a.side, ChessSkin.F_OPEN, a.look), null,
+			Transform2D(0.0, _foot(cell_of(q[1]))), Color(1, 1, 1, 0.55))
+
+## The glyph on the verdict's badge. The disc is in the over layer; the
+## signs that are letters are a string each.
+func _draw_badge_mark() -> void:
+	if _badge_sq < 0 or _badge_grade < 0 or _font == null:
+		return
+	var text: String = Grade.SYMBOL[_badge_grade]
+	if text == "" or _badge_grade in [Grade.BEST, Grade.GOOD]:
+		return
+	var s := 1.0 if Motion.reduce else ChessSkin._back_out_k(clampf((_now - _badge_at) / 0.25, 0.0, 1.0))
+	var fs := maxi(int(cell * 0.2 * s), 4)
+	var w := _font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+	draw_string(_font, _badge_at_px() + Vector2(-w * 0.5, fs * 0.36), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Pal.PAPER)
+
+## White's chance down the board's left side, White's end at the bottom when
+## the player is White.
+func _draw_eval_bar() -> void:
+	var w := minf(frame * cell, cell * 0.14)
+	var rect := Rect2(origin - Vector2(w, 0.0), Vector2(w, 8.0 * cell))
+	var white_h := rect.size.y * eval_bar / 100.0
+	draw_rect(rect, Color("2c2725"))
+	if player == Rules.WHITE:
+		draw_rect(Rect2(rect.position + Vector2(0.0, rect.size.y - white_h), Vector2(w, white_h)), Color("f4eee2"))
+	else:
+		draw_rect(Rect2(rect.position, Vector2(w, white_h)), Color("f4eee2"))
 
 ## A crown knocked off its king: in flight, then lying where it stopped,
 ## with its own shadow.
@@ -896,7 +1233,12 @@ func _draw_crown(a: Actor) -> void:
 func _foot(c: Vector2) -> Vector2:
 	return px(c) + Vector2(0.0, skin.foot_drop() * cell)
 
-func _mesh(type: int, side: int, face: int, look: float, bare := false) -> ArrayMesh:
+func _mesh(type: int, seat: int, face: int, look: float, bare := false) -> ArrayMesh:
+	var side := seat
+	if skin.true_colours():
+		side = seat if player == Rules.WHITE else 1 - seat
+		face = ChessSkin.F_OPEN
+		look = 1.0
 	var key := "%d|%d|%d|%d|%d" % [type, side, face, 1 if look > 0.0 else 0, 1 if bare else 0]
 	var m: ArrayMesh = _meshes.get(key)
 	if m == null:
@@ -1025,7 +1367,38 @@ func _face_of(a: Actor) -> int:
 		a.blink_at = _now + _rng.randf_range(gap.x, gap.y)
 	return ChessSkin.F_OPEN
 
+## The tournament board: sixty-four wooden squares with their grain in a thin
+## dark frame, and nothing round it.
+func _build_wood() -> ArrayMesh:
+	var b := Face.Builder.new()
+	var fr := frame_rect()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 23
+	b.fan(Face.Builder.round_rect(fr.position + Vector2(0, 6), fr.size, 10.0), Color(0.12, 0.07, 0.04, 0.45))
+	b.fan(Face.Builder.round_rect(fr.position, fr.size, 10.0), WOOD_FRAME)
+	for row in 8:
+		for col in 8:
+			var sq := sq_of(Vector2i(col, row))
+			var dark := ((sq & 7) + (sq >> 3)) % 2 == 0
+			var at := origin + Vector2(col, row) * cell
+			var tone: Color = (WOOD_DARK if dark else WOOD_LIGHT).lightened(rng.randf_range(-0.012, 0.03))
+			b.fan(_square(at), tone)
+			# a board's grain runs one way, each square its own cut
+			var grain := Color(0.34, 0.2, 0.09, 0.16 if dark else 0.09)
+			for k in 4:
+				var y0 := rng.randf_range(0.04, 0.96)
+				var pts := PackedVector2Array()
+				var ph := rng.randf() * TAU
+				for j in 7:
+					var u := float(j) / 6.0
+					var yy := clampf(y0 + sin(u * 3.0 + ph) * 0.025, 0.01, 0.99)
+					pts.append(at + Vector2(u, yy) * cell)
+				b.stroke(pts, cell * 0.012, grain)
+	return b.mesh()
+
 func _build_board() -> ArrayMesh:
+	if not skin.cartoon():
+		return _build_wood()
 	var b := Face.Builder.new()
 	var fr := frame_rect()
 	var r := cell * 0.22
@@ -1064,7 +1437,7 @@ func _build_board() -> ArrayMesh:
 	b.fan(Face.Builder.round_rect(fr.position + Vector2(0, 8), fr.size, r), FRAME_DEEP)
 	b.fan(Face.Builder.round_rect(fr.position, fr.size, r), FRAME_COL)
 	# grain running round the frame, a line or two a side
-	var band := FRAME * cell
+	var band := frame * cell
 	for side in 4:
 		for g in 2:
 			var off := band * (0.3 + 0.35 * g)
@@ -1122,19 +1495,36 @@ func _build_board() -> ArrayMesh:
 func _draw_coords() -> void:
 	if _font == null or still:
 		return
+	if not skin.cartoon():
+		_draw_coords_inside()
+		return
 	var fs := int(cell * 0.2)
 	var ink := Color(Pal.PAPER, 0.75)
 	for i in 8:
 		var file_sq := sq_of(Vector2i(i, 7))
 		var letter := "abcdefgh"[file_sq & 7]
-		var at := Vector2(origin.x + (i + 0.5) * cell, origin.y + 8.0 * cell + FRAME * cell * 0.5 + fs * 0.36)
+		var at := Vector2(origin.x + (i + 0.5) * cell, origin.y + 8.0 * cell + frame * cell * 0.5 + fs * 0.36)
 		var w := _font.get_string_size(letter, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 		draw_string(_font, at - Vector2(w * 0.5, 0), letter, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, ink)
 		var rank_sq := sq_of(Vector2i(0, i))
 		var num := str((rank_sq >> 3) + 1)
-		var at2 := Vector2(origin.x - FRAME * cell * 0.5, origin.y + (i + 0.5) * cell + fs * 0.36)
+		var at2 := Vector2(origin.x - frame * cell * 0.5, origin.y + (i + 0.5) * cell + fs * 0.36)
 		var w2 := _font.get_string_size(num, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 		draw_string(_font, at2 - Vector2(w2 * 0.5, 0), num, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, ink)
+
+## The tournament board's coordinates, in the corners of its own squares, each
+## in the colour of the other kind of square.
+func _draw_coords_inside() -> void:
+	var fs := int(cell * 0.17)
+	for i in 8:
+		var file_sq := sq_of(Vector2i(i, 7))
+		var rank_sq := sq_of(Vector2i(0, i))
+		var col_f := WOOD_LIGHT if ((file_sq & 7) + (file_sq >> 3)) % 2 == 0 else WOOD_DARK
+		var col_r := WOOD_LIGHT if ((rank_sq & 7) + (rank_sq >> 3)) % 2 == 0 else WOOD_DARK
+		draw_string(_font, origin + Vector2(i + 1.0, 8.0) * cell + Vector2(-fs * 0.72, -fs * 0.28), "abcdefgh"[file_sq & 7],
+			HORIZONTAL_ALIGNMENT_LEFT, -1, fs, col_f)
+		draw_string(_font, origin + Vector2(0.0, i) * cell + Vector2(fs * 0.24, fs * 0.92), str((rank_sq >> 3) + 1),
+			HORIZONTAL_ALIGNMENT_LEFT, -1, fs, col_r)
 
 ## "+3" on a little paper tag at the end of the tray of whoever is ahead
 ## on material.
@@ -1160,7 +1550,10 @@ func _draw_advantage() -> void:
 func _build_marks() -> ArrayMesh:
 	# null when there is nothing to mark: an empty mesh is an error.
 	var b := Face.Builder.new()
-	if _last.x >= 0:
+	if _last.x >= 0 and not skin.cartoon():
+		b.fan(_square(origin + cell_of(_last.x) * cell), WOOD_LAST)
+		b.fan(_square(origin + cell_of(_last.y) * cell), WOOD_LAST)
+	elif _last.x >= 0:
 		# where it came from, faintly; where it went, warmly; and a trail of
 		# footprints between, round the corner of a knight's L
 		var at := origin + cell_of(_last.x) * cell
@@ -1190,6 +1583,11 @@ func _build_marks() -> ArrayMesh:
 		b.fan(_square(origin + cell_of(_selected) * cell), MARK_PICK)
 	if _hover >= 0:
 		b.fan(_square(origin + cell_of(_hover) * cell), Color(MARK_PICK, 0.35))
+	for q: Array in pre:
+		b.fan(_square(origin + cell_of(q[0]) * cell), Color(PREMOVE, 0.34))
+		b.fan(_square(origin + cell_of(q[1]) * cell), Color(PREMOVE, 0.55))
+	for sq: int in pen_squares:
+		b.fan(_square(origin + cell_of(sq) * cell), Color(PEN[pen_squares[sq]], 0.6))
 	return null if b.verts.is_empty() else b.mesh()
 
 func _square(at: Vector2) -> PackedVector2Array:
@@ -1240,14 +1638,14 @@ func _build_under() -> ArrayMesh:
 		var rx := cell * (0.26 + 0.34 * e) * float(r[2])
 		b.stroke(Face.Builder.ring(_foot(r[0]), rx, rx * 0.36), cell * 0.035 * (1.0 - t) + 1.0, Color(1, 1, 1, 0.6 * (1.0 - t)), true)
 	_ripples = keep
-	if _check_sq >= 0 and not reduce:
+	if _check_sq >= 0 and not reduce and skin.cartoon():
 		var u := (_now - _check_at) / ATTACK_TIME
 		if u < 1.0:
 			var z := px(cell_of(_check_sq))
 			for from in _check_from:
 				var a := px(cell_of(from))
 				_dashes(b, a, z, cell * 0.07, Color(Pal.BAD, 0.85 * (1.0 - u)), _now * cell * 1.2)
-	if not reduce:
+	if not reduce and skin.cartoon():
 		for a: Actor in _actors:
 			if a.kind == "move" and not a.dropped and a.move_type in [Rules.BISHOP, Rules.ROOK, Rules.QUEEN] and _now >= a.t0:
 				_speed_lines(b, a)
@@ -1331,6 +1729,18 @@ func _build_over(poses: Array) -> ArrayMesh:
 	var b := Face.Builder.new()
 	var reduce := Motion.reduce
 	var keep: Array = []
+	for line: Array in threats:
+		_dashes(b, px(cell_of(line[0])), px(cell_of(line[1])), cell * 0.08, Color(THREAT, 0.8), 0.0)
+	for arrow: Array in auto_arrows:
+		_arrow(b, arrow[0], arrow[1], arrow[2])
+	for arrow: Array in pen_arrows:
+		_arrow(b, arrow[0], arrow[1], Color(PEN[arrow[2]], 0.78))
+	for q: Array in pre:
+		_arrow(b, q[0], q[1], Color(PREMOVE, 0.78))
+	if _pen_from >= 0 and _pen_to != _pen_from:
+		_arrow(b, _pen_from, _pen_to, Color(PEN[pen_colour], 0.55))
+	if _badge_sq >= 0 and _badge_grade >= 0 and Grade.SYMBOL[_badge_grade] != "":
+		_badge(b)
 	for im: Array in _impacts:
 		var t := (_now - float(im[1])) / IMPACT_TIME
 		if t >= 1.0:
@@ -1342,7 +1752,7 @@ func _build_over(poses: Array) -> ArrayMesh:
 		_star(b, im[0], r * 0.55, r * 0.25, 8, 0.4 - t * 0.8, Color(Pal.SUN_RAY, 0.9 * (1.0 - t)))
 	_impacts = keep
 	var rose_king: Array = []
-	for e: Array in poses:
+	for e: Array in poses if skin.cartoon() else []:
 		var a: Actor = e[1]
 		var p = e[2]
 		var head := _foot(p.at) - Vector2(0.0, (p.lift + 0.45 * p.scale) * cell)
@@ -1382,7 +1792,7 @@ func _build_over(poses: Array) -> ArrayMesh:
 		if env > 0.0:
 			var p = rose_king[1]
 			var at := _foot(p.at) + Vector2(0.42 * cell, -(p.lift + 1.3) * cell)
-			if at.y < origin.y - FRAME * cell:
+			if at.y < origin.y - frame * cell:
 				at.y += cell * 0.5
 			var s := env
 			b.disc(at + Vector2(-0.3, 0.3) * cell, cell * 0.045 * s, Color(Pal.PAPER, 0.95))
@@ -1416,6 +1826,38 @@ func _build_over(poses: Array) -> ArrayMesh:
 				body.append(c + Vector2(cos(ang) * rr, sin(ang) * rr * 0.55 * maxf(flip, 0.25)).rotated(spin))
 			b.polygon(body, Color(cols[int(pt[5])], alpha))
 	return null if b.verts.is_empty() else b.mesh()
+
+## An arrow from a square to a square: a knight's turns the corner of its L.
+func _arrow(b: Face.Builder, from: int, to: int, colour: Color) -> void:
+	var a := px(cell_of(from))
+	var z := px(cell_of(to))
+	var d := cell_of(to) - cell_of(from)
+	var bend := (absf(d.x) == 2.0 and absf(d.y) == 1.0) or (absf(d.x) == 1.0 and absf(d.y) == 2.0)
+	var pts := PackedVector2Array([a + (z - a).normalized() * cell * 0.3])
+	if bend:
+		var corner := a + (Vector2(z.x - a.x, 0.0) if absf(d.x) > absf(d.y) else Vector2(0.0, z.y - a.y))
+		pts = PackedVector2Array([a + (corner - a).normalized() * cell * 0.3, corner])
+	var last := pts[pts.size() - 1]
+	var dir := (z - last).normalized()
+	var neck := z - dir * cell * 0.36
+	pts.append(neck)
+	b.stroke(pts, cell * 0.17, colour)
+	var side := dir.orthogonal() * cell * 0.27
+	b.polygon(PackedVector2Array([z - dir * cell * 0.06, neck + side, neck - side]), colour)
+
+## The verdict's disc in the corner of its square, popping in; a star or a
+## tick is drawn, a mark of punctuation is `_draw_badge_mark`'s.
+func _badge(b: Face.Builder) -> void:
+	var at := _badge_at_px()
+	var s := 1.0 if Motion.reduce else ChessSkin._back_out_k(clampf((_now - _badge_at) / 0.25, 0.0, 1.0))
+	var r := cell * 0.2 * s
+	b.disc(at + Vector2(0.0, cell * 0.02), r * 1.06, Color(0, 0, 0, 0.3))
+	b.disc(at, r, BADGE[_badge_grade])
+	if _badge_grade == Grade.BEST:
+		_star(b, at, r * 0.68, r * 0.3, 5, 0.0, Pal.PAPER)
+	elif _badge_grade == Grade.GOOD:
+		b.stroke(PackedVector2Array([at + Vector2(-0.45, 0.02) * r, at + Vector2(-0.12, 0.35) * r, at + Vector2(0.5, -0.32) * r]),
+			r * 0.24, Pal.PAPER)
 
 ## A sleeper's z drifting up, fading in and out, one every Z_PERIOD.
 func _zzz(b: Face.Builder, a: Actor, p) -> void:
