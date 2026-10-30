@@ -65,4 +65,4 @@ chrome stays quiet:
 - **Vercel**: `web/vercel.json` builds with plain `next build`, because the
   assemble step reaches outside `web/`. The site there has no `/f` or privacy
   page, so the footer's privacy link is absolute, to the Firebase page.
-- **Live** on Vercel since 2026-10-30: project `peeplet-landing`, team hypertradeworx, https://peeplet-landing.vercel.app. Deployed by CLI from `web/` (`vercel deploy --prod`), no Git connection. `NEXT_PUBLIC_SITE_URL` is set there; change it when a domain arrives.
+- **Live** on Vercel since 2026-10-30: project `peeplet-landing`, team hypertradeworx, https://peeplet-landing.vercel.app. Linked to the GitHub repo (the user, 2026-10-30: "it should have a link to git main"): every push to `main` builds and deploys production, so the site ships with the game. The project's Root Directory must be `web`; the first Git build failed while it was `.` (no `next` at the repo root). `NEXT_PUBLIC_SITE_URL` is set there; change it when a domain arrives.
