@@ -119,6 +119,12 @@ static func is_red(id: int) -> bool:
 static func is_colour(id: int) -> bool:
 	return id >= YELLOW and id <= BLACK
 
+## Only the first `n` reds of the rack stay: the triangle's top rows. A frame
+## against the computer is six reds (2026-10-30), the ids and the wire as ever.
+func keep_reds(n: int) -> void:
+	for id in range(n + 1, REDS + 1):
+		on[id] = false
+
 ## Every ball set for the break: the colours on their spots, the reds in
 ## their triangle with the apex just behind the pink, and the cue ball in
 ## the D (the player may move it anywhere in the D before the break).

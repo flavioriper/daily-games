@@ -66,17 +66,37 @@ func _process(delta: float) -> bool:
 	elif _step == 5 and _t > _beats[4]:
 		_shot("4_ai")
 		_step = 6
-	elif _step == 6 and _t > 40.0:
+	elif _step == 6 and _t > 26.0:
 		_shot("5_later")
 		print("scores ", _screen.rules.scores, " state ", _screen._state, " shots ", _screen._shots)
+		_step = 8
+	elif _step == 8 and _screen._state == _screen.State.AIM:
+		# A pot line locked on, the Moon talking.
+		var s = _screen
+		s._read_lines()
+		if not s.table.pot_lines.is_empty():
+			s.table.aim_dir = s.table.pot_lines[0].dir
+			s.table.snap()
+			s._mark_pace()
+		s.table.power = 0.5
+		s._moon("YOU_RUN")
+		_step = 9
+		_beats[4] = _t + 0.5
+	elif _step == 9 and _t > _beats[4]:
+		_shot("5_lock")
+		print("lock ", _screen.table.lock, " notch ", _screen.table.pot_power)
+		_screen.table.power = 0.0
 		# The end card, forced: a won frame.
 		_screen.rules.scores = [72, 41]
 		_screen.rules.high_break = [23, 12]
 		_screen.rules.over = true
 		_screen.rules.winner = 0
+		_screen._pots = 14
+		_screen._conceded = true
 		_screen._finish()
 		_step = 7
-	elif _step == 7 and _t > 41.0:
+		_beats[4] = _t + 1.0
+	elif _step == 7 and _t > _beats[4]:
 		_shot("6_end")
 		if _had_record:
 			var f := FileAccess.open("user://versus.cfg", FileAccess.WRITE)

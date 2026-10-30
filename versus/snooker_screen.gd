@@ -66,10 +66,10 @@ const HINTS := 3
 ## Pauses, seconds: the shortest the computer seems to think, how long it
 ## takes to swing onto its line and to draw the cue back, and the beat after
 ## the balls stop before the next turn.
-const THINK_MIN := 0.7
-const AIM_SWING := 0.75
-const AIM_PULL := 0.45
-const AFTER := 0.7
+const THINK_MIN := 0.35
+const AIM_SWING := 0.5
+const AIM_PULL := 0.3
+const AFTER := 0.45
 const TOAST_HOLD := 2.2
 ## The level names, the difficulty sheet's keys.
 const LEVELS := ["DIFF_EASY", "DIFF_MEDIUM", "DIFF_HARD", "VS_ONLINE"]
@@ -79,6 +79,35 @@ const NAME_W := 226.0
 ## it, and how much quicker the cue shows a shot when this end is behind.
 const SLIDE := 0.15
 const HURRY := 0.4
+## A frame against the computer: 15 reds ran 70-90 shots and about 15 minutes
+## (tests/_probe_sn_fun.gd), so it is six, the shorter game's own number.
+const BOT_REDS := 6
+## How near a pot line the aim locks on, radians, by level (the last Online),
+## how far the object ball's line shows off one, metres, and on which levels
+## the ruler marks the pace a locked pot wants. Off the lock a pot is too
+## narrow for a thumb: 0.11 degrees off drops 55 of 100, 0.46 degrees 9.
+const ASSIST := [0.035, 0.02, 0.008, 0.005]
+const OBJ_REACH := [1.1, 0.75, 0.42, 0.42]
+const PACE_MARK := [true, true, false, false]
+## The clock on the balls: under TAIL_SPEED nothing can happen but the last
+## creep, 36% of all rolling, so it runs TAIL_RATE; a tap runs TAP_RATE; a ball
+## on going into a pocket's mouth runs SLOW_RATE, at most SLOW_FOR a shot.
+const TAIL_SPEED := 0.25
+const TAIL_RATE := 3.0
+const TAP_RATE := 4.0
+const SLOW_RATE := 0.45
+const SLOW_FOR := 0.7
+const SLOW_NEAR := 0.2
+## Breaks that get their own word, and from which the table throws colours.
+const RUNS := [10, 20, 30, 40, 50, 60, 75]
+const RUN_CONFETTI := 20
+## The cue ball and object ball's run from which a pot is a long pot, metres.
+const LONG_POT := 2.6
+## The Moon's lines: the three rows of a kind (SNK_MOON_<KIND>_1..3) and how
+## often it says one.
+const MOON_SAYS := {"POT": 0.3, "YOU_MISS": 0.5, "BOT_MISS": 0.6, "BOT_FOUL": 1.0, "YOU_FOUL": 0.7,
+	"YOU_RUN": 1.0, "CONCEDE": 1.0}
+const MOON_HOLD := 2.4
 
 ## LOBBY and SETTLE are online's: the table racked and still while the lobby
 ## looks, and this end's roll of the other player's shot over, waiting for
@@ -91,6 +120,7 @@ var rules: RefCounted
 var table: Control
 var top_bar: Control
 var spin_pad: Control
+var fine_wheel: Control
 var settings_sheet: Control
 ## The tutorial card: the top bar's ?, the settings' How to play and the
 ## first play (ui/hud/screen_tutor.gd).
@@ -139,6 +169,30 @@ var _toast_tw: Tween
 var _end: Control
 ## The re-spotted black is announced once.
 var _respot_said := false
+## This shot: the hand's locked pot and where everything stood, the object
+## ball's first run, which balls have touched a cushion, where each one went
+## in, and the clock (a tap's hurry, the slow-motion left).
+var _try := {}
+var _from: PackedVector2Array
+var _shot_dir := Vector2.ZERO
+var _obj_dir := Vector2.ZERO
+var _railed := {}
+var _in_at := {}
+var _tap := false
+var _slow_left := 0.0
+## The frame: your pots, routine lines said, whether each once-a-frame line
+## has been, the bot conceding, and a new best break for the end card.
+var _pots := 0
+var _told := 0
+var _black_said := false
+var _needs_said := false
+var _conceded := false
+var _new_best := false
+## When words about the last shot went up, so a routine line waits for them.
+var _said_at := -10.0
+var _moon_bubble: PanelContainer
+var _moon_label: Label
+var _moon_tw: Tween
 # --- the scoreboard ---
 var _plates: Array = []
 var _scores: Array[Label] = []
@@ -292,13 +346,29 @@ func _build() -> void:
 	spin_pad.changed.connect(func() -> void: table.tip = spin_pad.tip)
 	spin_pad.pressed.connect(func() -> void: _fx.touch())
 	side_col.add_child(spin_pad)
+	side_col.add_child(_caption("SNK_FINE"))
+	fine_wheel = Controls.FineWheel.new()
+	fine_wheel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	fine_wheel.pressed.connect(func() -> void: _fx.touch())
+	fine_wheel.nudged.connect(func(radians: float) -> void:
+		table.nudge(radians)
+		table.hint_power = 0.0
+		_mark_pace()
+		_hush())
+	side_col.add_child(fine_wheel)
 
 	table = Table.new()
 	table.name = "Table"
 	table.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	table.aimed.connect(func() -> void:
 		table.hint_power = 0.0
+		_mark_pace()
 		_hush())
+	table.locked.connect(func() -> void: _fx.buzz(Haptics.TICK))
+	table.moved.connect(_read_lines)
+	table.tapped.connect(func() -> void:
+		if _state == State.ROLL:
+			_tap = true)
 	table.pulling.connect(_on_pull)
 	table.placed.connect(func() -> void: _fx.buzz(Haptics.TAP))
 	table.grabbed.connect(func() -> void: _fx.touch())
@@ -327,6 +397,15 @@ func _build() -> void:
 	_toast_label.custom_minimum_size.x = 560
 	_toast.add_child(_toast_label)
 	add_child(_toast)
+	_moon_bubble = PanelContainer.new()
+	_moon_bubble.add_theme_stylebox_override("panel", CozyTheme.lifted(Color("eceafb"), 26, 12))
+	_moon_bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_moon_bubble.modulate.a = 0.0
+	_moon_label = Label.new()
+	_moon_label.theme_type_variation = "SheetBody"
+	_moon_label.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	_moon_bubble.add_child(_moon_label)
+	add_child(_moon_bubble)
 	_apply_insets()
 
 func _caption(key: String) -> Label:
@@ -593,8 +672,15 @@ func _lay() -> void:
 	table.slide({}, 0.0)
 	Motion.stop(_ai_tw)
 	sim = Sim.new()
+	if online == null:
+		sim.keep_reds(BOT_REDS)
 	rules = Rules.new(sim, _breaker)
 	table.sim = sim
+	table.assist = ASSIST[level]
+	table.obj_reach = OBJ_REACH[level]
+	table.pot_lines = []
+	table.lock = {}
+	table.pot_power = 0.0
 	table.power = 0.0
 	table.hint_dir = Vector2.ZERO
 	table.aim_dir = Vector2(0.0, -1.0)
@@ -604,6 +690,11 @@ func _lay() -> void:
 	_shots = 0
 	_break_off = true
 	_acc = 0.0
+	_pots = 0
+	_black_said = false
+	_needs_said = false
+	_conceded = false
+	_new_best = false
 	if _end != null:
 		_end.queue_free()
 		_end = null
@@ -612,6 +703,14 @@ func _start_turn() -> void:
 	if _state == State.OVER:
 		return
 	if rules.over:
+		_finish()
+		return
+	if online == null and rules.turn == 1 and rules.scores[0] - rules.scores[1] > rules.remaining():
+		# Beaten on the table: the Bot shakes hands, as a player would.
+		_conceded = true
+		rules.over = true
+		rules.winner = 0
+		_moon("CONCEDE")
 		_finish()
 		return
 	if online != null and _online_end != "" and (rules.turn == 0 or _inbox.is_empty()):
@@ -625,6 +724,7 @@ func _start_turn() -> void:
 	if rules.in_hand:
 		_seat_cue_ball()
 	table.targets = rules.legal_first()
+	_read_lines()
 	table.cue_in()
 	_refresh_board()
 	var mine: bool = rules.turn == 0
@@ -635,17 +735,11 @@ func _start_turn() -> void:
 		_controls(true)
 		# Aim at the nearest ball on to start, so the line means something.
 		_aim_near()
-		if rules.free_ball:
-			_say(tr("SNK_FREE"))
-		elif rules.in_hand:
-			_say(tr("SNK_IN_HAND"))
-		else:
-			_say(tr("SNK_YOUR_TURN"))
+		_turn_line()
 	else:
 		_state = State.THINK
 		_controls(false)
 		if online == null:
-			_say(tr("SNK_BOT_TURN"))
 			_think("ai")
 		else:
 			_say(online.first_line() if _shots == 0 else tr("SNK_RIVAL_TURN") % online.rival())
@@ -653,10 +747,45 @@ func _start_turn() -> void:
 	_dress_clocks()
 	top_bar.refresh(self)
 
+## What the hand needs told as its turn comes: the rare states always, the
+## plain turn only the first two times, and never over the last shot's words.
+func _turn_line() -> void:
+	if Time.get_ticks_msec() / 1000.0 - _said_at < 1.5:
+		return
+	var gap: int = rules.scores[1] - rules.scores[0]
+	if online == null and gap > rules.remaining() and not _needs_said:
+		_needs_said = true
+		_say(tr("SNK_NEEDS"))
+	elif rules.phase == Rules.SEQUENCE and rules.next_colour() == Sim.BLACK and absi(gap) <= 7 and not _black_said:
+		_black_said = true
+		_say(tr("SNK_BLACK_BALL"))
+	elif rules.free_ball:
+		_say(tr("SNK_FREE"))
+	elif rules.in_hand:
+		_say(tr("SNK_IN_HAND"))
+	elif _told < 2:
+		_told += 1
+		_say(tr("SNK_YOUR_TURN"))
+
+## The pot lines from where the cue ball stands now, and the aim on one.
+func _read_lines() -> void:
+	table.pot_lines = []
+	table.lock = {}
+	if rules.turn == 0 and not _break_off:
+		table.pot_lines = AI.pots(sim, {"phase": rules.phase})
+		table.snap()
+	_mark_pace()
+
+## The pale notch for the pace a locked pot wants.
+func _mark_pace() -> void:
+	table.pot_power = _power_for(float(table.lock.speed)) if PACE_MARK[level] and not table.lock.is_empty() else 0.0
+
 func _controls(on: bool) -> void:
 	table.interactive = on
 	spin_pad.enabled = on
 	spin_pad.queue_redraw()
+	fine_wheel.enabled = on
+	fine_wheel.queue_redraw()
 	if on:
 		spin_pad.set_tip(Vector2.ZERO)
 		table.tip = Vector2.ZERO
@@ -685,6 +814,11 @@ func _aim_near() -> void:
 		if d < best:
 			best = d
 			table.aim_dir = (sim.pos[id] - cue).normalized()
+	# On Easy the turn opens on the easiest pot there is.
+	if level == 0 and not table.pot_lines.is_empty():
+		table.aim_dir = table.pot_lines[0].dir
+	table.snap()
+	_mark_pace()
 
 # --- the player's shot ---
 
@@ -719,6 +853,14 @@ static func _power_for(speed: float) -> float:
 
 func _shoot(dir: Vector2, speed: float, tip: Vector2) -> void:
 	_state = State.STROKE
+	_try = table.lock.duplicate() if rules.turn == 0 else {}
+	_from = sim.pos.duplicate()
+	_shot_dir = dir
+	_obj_dir = Vector2.ZERO
+	_railed = {}
+	_in_at = {}
+	_tap = false
+	_slow_left = SLOW_FOR
 	_hush()
 	_controls(false)
 	table.in_hand = false
@@ -751,12 +893,18 @@ func _process(delta: float) -> void:
 		return
 	match _state:
 		State.ROLL:
-			_acc += minf(delta, 0.05)
+			_acc += minf(delta, 0.05) * _clock(delta)
 			var n := 0
-			while _acc >= Sim.DT and n < 40:
+			while _acc >= Sim.DT and n < 120:
 				sim.step(Sim.DT)
 				_acc -= Sim.DT
 				n += 1
+			if n >= 120:
+				_acc = 0.0
+			if not _try.is_empty() and _obj_dir == Vector2.ZERO and sim.first_hit == int(_try.id) and sim.on[_try.id]:
+				var v: Vector2 = sim.vel[_try.id]
+				if v.length() > 0.01:
+					_obj_dir = v.normalized()
 			_play_events()
 			if not sim.moving():
 				if online != null and rules.turn != 0:
@@ -770,6 +918,34 @@ func _process(delta: float) -> void:
 	# still thinking when the shot is played must not hold the thread when
 	# the computer's turn comes round.
 	_poll_think()
+
+## How fast the table's clock runs this frame. Fixed steps of the same sim
+## either way, so online nothing drifts by it.
+func _clock(delta: float) -> float:
+	if _tap:
+		return TAP_RATE
+	var top := 0.0
+	for i in Sim.COUNT:
+		if sim.on[i]:
+			top = maxf(top, (sim.vel[i] as Vector2).length())
+	if _slow_left > 0.0 and not Motion.reduce and _going_in():
+		_slow_left -= delta
+		return SLOW_RATE
+	return TAIL_RATE if top < TAIL_SPEED else 1.0
+
+## A ball on is running into a pocket's mouth, the moment worth watching.
+func _going_in() -> bool:
+	for id in table.targets:
+		if not sim.on[id]:
+			continue
+		var v: Vector2 = sim.vel[id]
+		if v.length() < 0.12:
+			continue
+		for pk in sim.pockets:
+			var to: Vector2 = (pk.at as Vector2) - sim.pos[id]
+			if to.length() < SLOW_NEAR and v.normalized().dot(to.normalized()) > 0.94:
+				return true
+	return false
 
 ## Loud as the contact was hard: a kiss at a walking pace is a tick, a break
 ## a crack. `speed` is the closing speed in metres a second. The floor is
@@ -805,6 +981,7 @@ func _play_events() -> void:
 				_fx.cue("clack", clampf(0.85 + float(e.speed) * 0.057, 0.85, 1.135), _hit_db(float(e.speed), 3.0))
 				table.flash("ball", e.at, float(e.speed) / 2.5)
 			"cushion":
+				_railed[int(e.id)] = true
 				if float(e.speed) > 0.08:
 					_fx.cue("cushion", clampf(0.9 + float(e.speed) * 0.05, 0.9, 1.1), _hit_db(float(e.speed), 3.0))
 					table.flash("cushion", e.at, float(e.speed) / 2.0)
@@ -812,7 +989,9 @@ func _play_events() -> void:
 				var out: Vector2 = sim.pockets[int(e.pocket)].out
 				if e.has("from"):
 					table.sink(int(e.id), e.from, (e.at as Vector2) + out * 0.03)
-				_fx.cue("pot")
+				_in_at[int(e.id)] = e.at
+				# A break climbs: each pot in it rings a little higher.
+				_fx.cue("pot", clampf(1.0 + 0.012 * float(rules.breaks[rules.turn]), 1.0, 1.25))
 				if rules.turn == 0 and not _pot_felt and _pot_on(int(e.id)):
 					_pot_felt = true
 					_fx.buzz(Haptics.BUMP)
@@ -834,6 +1013,7 @@ func _judge() -> void:
 	_state = State.WAIT
 	_shots += 1
 	_break_off = false
+	var was_break: int = rules.breaks[rules.turn]
 	var res: Dictionary = rules.judge()
 	if online != null:
 		# The referee puts a cue ball in hand on one spot in the D whatever
@@ -854,6 +1034,7 @@ func _judge() -> void:
 		online.send({"table": snap, "rules": rules.to_dict()}, rules.turn == 0)
 	_refresh_board()
 	_call(res)
+	_tell(res, was_break)
 	_after()
 
 ## What a judged shot looks and sounds like: the points, the foul and its
@@ -878,6 +1059,94 @@ func _call(res: Dictionary) -> void:
 	if rules.respotted_black and not rules.over and rules.phase == Rules.SEQUENCE and sim.on[Sim.BLACK] and rules.in_hand and _respot_said == false:
 		_respot_said = true
 		_say(tr("SNK_RESPOT_BLACK"))
+
+## The shot in words, when it earned any: what the pot was, the break it
+## reached, and of a locked pot that stayed out, why. Off this table's own roll
+## (a game online takes the other seat's shots by `_call` alone).
+func _tell(res: Dictionary, was_break: int) -> void:
+	var player := int(res.player)
+	if bool(res.foul):
+		_said_at = Time.get_ticks_msec() / 1000.0
+		_moon("YOU_FOUL" if player == 0 else "BOT_FOUL")
+		return
+	if int(res.scored) > 0:
+		if player == 0:
+			_pots += (res.pots as Array).size()
+		else:
+			_moon("POT")
+		var now: int = rules.breaks[player]
+		var run := 0
+		for m in RUNS:
+			if was_break < m and now >= m:
+				run = m
+		if player == 0 and run > 0:
+			_said_at = Time.get_ticks_msec() / 1000.0
+			_say(tr("SNK_RUN") % now)
+			_moon("YOU_RUN")
+			if run >= RUN_CONFETTI and not Motion.reduce:
+				_fx.confetti(table.px(Vector2(Sim.W * 0.5, Sim.L * 0.3)), 24, table.size.x * 0.6)
+		elif player == 0:
+			var word := _pot_word(res)
+			if word != "":
+				_said_at = Time.get_ticks_msec() / 1000.0
+				_say(tr(word))
+		return
+	if player == 1:
+		_moon("BOT_MISS")
+		return
+	if _try.is_empty():
+		return
+	var why := _why_missed()
+	if why != "":
+		_said_at = Time.get_ticks_msec() / 1000.0
+		_say(tr(why))
+	_moon("YOU_MISS")
+
+## What kind of pot that was, if it was one worth a word.
+func _pot_word(res: Dictionary) -> String:
+	var pots: Array = res.pots
+	if pots.size() > 1:
+		return "SNK_POT_TWO"
+	var id := int(pots[0])
+	if _railed.has(id):
+		return "SNK_POT_DOUBLE"
+	if _in_at.has(id) and _from[Sim.CUE].distance_to(_from[id]) + _from[id].distance_to(_in_at[id]) > LONG_POT:
+		return "SNK_POT_LONG"
+	return ""
+
+## Why the pot the aim was locked on stayed out.
+func _why_missed() -> String:
+	var id := int(_try.id)
+	if sim.first_hit != id or _obj_dir == Vector2.ZERO:
+		return ""
+	var mouth: Vector2 = sim.pockets[int(_try.pocket)].at
+	if sim.on[id] and sim.pos[id].distance_to(mouth) < 0.14:
+		return "SNK_WHY_CLOSE"
+	var way: Vector2 = (mouth - _from[id]).normalized()
+	if absf(way.angle_to(_obj_dir)) > 0.012:
+		var meant := absf(_shot_dir.angle_to(way))
+		return "SNK_WHY_FULL" if absf(_shot_dir.angle_to(_obj_dir)) < meant else "SNK_WHY_THIN"
+	if _railed.has(id):
+		return "SNK_WHY_JAWS"
+	return "SNK_WHY_SHORT"
+
+## The Moon pipes up: only against the computer, and not at every shot.
+func _moon(kind: String) -> void:
+	if online != null or _rng.randf() > float(MOON_SAYS[kind]):
+		return
+	_moon_label.text = tr("SNK_MOON_%s_%d" % [kind, _rng.randi_range(1, 3)])
+	_moon_bubble.reset_size()
+	var at: Rect2 = _plates[1].get_global_rect()
+	_moon_bubble.global_position = Vector2(at.end.x - _moon_bubble.size.x, at.end.y + 6.0)
+	if kind == "BOT_MISS" or kind == "BOT_FOUL":
+		_faces[1].expression = Face.Expr.WORRIED
+	elif kind != "YOU_RUN":
+		_faces[1].expression = Face.Expr.JOY
+	Motion.stop(_moon_tw)
+	_moon_tw = create_tween()
+	_moon_tw.tween_property(_moon_bubble, "modulate:a", 1.0, 0.15)
+	_moon_tw.tween_interval(MOON_HOLD)
+	_moon_tw.tween_property(_moon_bubble, "modulate:a", 0.0, 0.3)
 
 ## The beat after the balls stop, then the next turn.
 func _after() -> void:
@@ -967,6 +1236,10 @@ func _show_hint(plan: Dictionary) -> void:
 	spin_pad.set_tip(plan.tip)
 	table.tip = plan.tip
 	table.hint_power = _power_for(float(plan.speed))
+	_read_lines()
+	table.aim_dir = plan.dir
+	table.snap()
+	_mark_pace()
 	_fx.sparkle(table.px(sim.pos[Sim.CUE]))
 	_fx.cue("hint")
 	_say(tr("SNK_HINT_LINE") % int(round(table.hint_power * 100.0)))
@@ -1212,6 +1485,7 @@ func _conclude(outcome: String, why: String) -> void:
 		online.settle(outcome, why, _shots, int(rules.last.get("player", -1)) == 0)
 	else:
 		Record.add(GAME, level, won)
+		_new_best = Record.note_break(GAME, level, rules.high_break[0])
 		Analytics.track("versus_end", {"game": GAME, "level": level, "won": won,
 			"score_you": rules.scores[0], "score_bot": rules.scores[1], "shots": _shots,
 			"high_break": rules.high_break[0]})
@@ -1263,6 +1537,13 @@ func _build_end(outcome: String, why: String) -> Control:
 	# has words.
 	var said := Label.new()
 	said.text = online.why_line(why, outcome) if online != null else ""
+	if online == null:
+		var bits: Array = []
+		if _conceded:
+			bits.append(tr("SNK_CONCEDED"))
+		if _new_best:
+			bits.append(tr("SNK_NEW_BEST") % rules.high_break[0])
+		said.text = "\n".join(bits)
 	said.visible = said.text != ""
 	said.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	said.theme_type_variation = "SheetBody"
@@ -1272,6 +1553,8 @@ func _build_end(outcome: String, why: String) -> Control:
 	var line := Label.new()
 	line.text = "%s  ·  %s  ·  %s" % [tr("SNK_HIGH") % rules.high_break[0], tr(LEVELS[level]),
 		Record.record_line(GAME, level)]
+	if online == null:
+		line.text = "%s  ·  %s" % [tr("SNK_POTS") % _pots, line.text]
 	line.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	line.theme_type_variation = "SheetBodyDim"
 	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

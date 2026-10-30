@@ -154,7 +154,6 @@ SNK_BREAK,Break %d,Tacada %d,Tacada %d
 SNK_LEFT,%d on the table,%d na mesa,%d en la mesa
 SNK_SPIN,SPIN,EFEITO,EFECTO
 SNK_YOUR_TURN,"Your shot: aim on the table, then drag the cue back and let go","Sua vez: mire na mesa, depois puxe o taco para trás e solte","Tu turno: apunta en la mesa, luego tira del taco hacia atrás y suéltalo"
-SNK_BOT_TURN,Bot is lining up…,O bot está mirando…,El bot está apuntando…
 SNK_RIVAL_TURN,%s is lining up…,%s está mirando…,%s está apuntando…
 SNK_IN_HAND,"Ball in hand: drag it anywhere in the D","Bola na mão: arraste-a para qualquer lugar do D","Bola en mano: arrástrala a cualquier lugar de la D"
 SNK_FREE,"Free ball: any ball counts as the ball on","Bola livre: qualquer bola vale como a bola da vez","Bola libre: cualquier bola cuenta como la bola en juego"
@@ -169,6 +168,42 @@ SNK_LOSE,Frame lost,Partida perdida,Frame perdido
 SNK_HIGH,Highest break %d,Maior tacada %d,Mejor tacada %d
 SNK_AGAIN,Play again,Jogar de novo,Jugar otra vez
 SNK_BACK,Back,Voltar,Volver
+SNK_FINE,FINE,FINO,FINO
+SNK_NEEDS,"You need snookers now, or a bit of luck","Agora você precisa de sinucas, ou de sorte","Ahora necesitas snookers, o algo de suerte"
+SNK_BLACK_BALL,"Black ball game: this one decides it","Tudo na preta: esta decide","Todo a la negra: esta decide"
+SNK_RUN,Break of %d!,Tacada de %d!,¡Tacada de %d!
+SNK_POT_TWO,Two at once!,Duas de uma vez!,¡Dos de una vez!
+SNK_POT_DOUBLE,A double, off the cushion!,Na tabela, que beleza!,¡Por la banda, qué bonita!
+SNK_POT_LONG,Long pot!,Bola longa!,¡Bola larga!
+SNK_WHY_CLOSE,So close! It stopped at the pocket,Por um triz! Parou na caçapa,¡Por poco! Se paró en la tronera
+SNK_WHY_FULL,"Too full: the ball went wide of the pocket. Hit it thinner","Pegou cheio demais: a bola abriu da caçapa. Pegue mais fino","Demasiado llena: la bola se abrió de la tronera. Dale más fino"
+SNK_WHY_THIN,"Too thin: the ball went wide of the pocket. Hit it fuller","Pegou fino demais: a bola abriu da caçapa. Pegue mais cheio","Demasiado fina: la bola se abrió de la tronera. Dale más lleno"
+SNK_WHY_JAWS,"In the jaws and out again. A touch softer","Bateu na boca da caçapa e voltou. Um pouco mais suave","Tocó la boca de la tronera y salió. Un poco más suave"
+SNK_WHY_SHORT,"On line, but short: draw the cue back further","Na linha, mas faltou força: puxe mais o taco","En línea, pero corta: tira más del taco"
+SNK_CONCEDED,The Bot shook hands and conceded,O Bot estendeu a mão e desistiu,El Bot te dio la mano y se rindió
+SNK_NEW_BEST,New best break: %d!,Nova melhor tacada: %d!,¡Nueva mejor tacada: %d!
+SNK_POTS,%d pots,%d bolas,%d bolas
+SNK_MOON_POT_1,Too easy.,Fácil demais.,Demasiado fácil.
+SNK_MOON_POT_2,Did you see that?,Viu essa?,¿Has visto eso?
+SNK_MOON_POT_3,Moonlight magic.,Magia do luar.,Magia de luna.
+SNK_MOON_YOU_MISS_1,Unlucky! Hee hee.,Azar! Hi hi.,¡Mala suerte! Ji ji.
+SNK_MOON_YOU_MISS_2,Thanks for that.,Obrigado por essa.,Gracias por eso.
+SNK_MOON_YOU_MISS_3,The pocket is the dark bit.,A caçapa é a parte escura.,La tronera es lo oscuro.
+SNK_MOON_BOT_MISS_1,The cloth moved. Honest.,O pano mexeu. Juro.,El paño se movió. Lo juro.
+SNK_MOON_BOT_MISS_2,I meant to do that.,Foi de propósito.,Era a propósito.
+SNK_MOON_BOT_MISS_3,Nobody saw that.,Ninguém viu isso.,Nadie ha visto eso.
+SNK_MOON_BOT_FOUL_1,Oops. Free points.,Ops. Pontos de graça.,Uy. Puntos gratis.
+SNK_MOON_BOT_FOUL_2,My hand slipped.,Minha mão escorregou.,Se me fue la mano.
+SNK_MOON_BOT_FOUL_3,Let us never speak of it.,Nunca mais falemos disso.,No hablemos de esto.
+SNK_MOON_YOU_FOUL_1,Lovely. For me.,Lindo. Para mim.,Precioso. Para mí.
+SNK_MOON_YOU_FOUL_2,I will take those points.,Vou ficar com esses pontos.,Me quedo esos puntos.
+SNK_MOON_YOU_FOUL_3,The white has a mind of its own.,A branca tem vontade própria.,La blanca va por libre.
+SNK_MOON_YOU_RUN_1,"Hey, leave some for me.","Ei, deixa alguma para mim.","Oye, déjame alguna."
+SNK_MOON_YOU_RUN_2,Are you even blinking?,Você nem pisca?,¿Ni parpadeas?
+SNK_MOON_YOU_RUN_3,This is getting rude.,Isso está ficando indelicado.,Esto ya es de mala educación.
+SNK_MOON_CONCEDE_1,Well played. I am off to bed.,Bem jogado. Vou dormir.,Bien jugado. Me voy a dormir.
+SNK_MOON_CONCEDE_2,Too strong tonight.,Forte demais esta noite.,Demasiado fuerte esta noche.
+SNK_MOON_CONCEDE_3,Handshake? Handshake.,Aperto de mão? Aperto de mão.,¿Nos damos la mano? Sí.
 SNK_THINKING,Finding a shot…,Procurando uma jogada…,Buscando una jugada…
 SNK_HINT_LINE,"Try this line, about %d%% power","Tente esta linha, com cerca de %d%% de força","Prueba esta línea, con un %d%% de fuerza"
 VS_CHESS_BLURB,"A game against the computer: every piece moves its own way, and the king must be caught.","Uma partida contra o computador: cada peça anda do seu jeito, e o rei tem de ser encurralado.","Una partida contra el ordenador: cada pieza se mueve a su manera, y hay que atrapar al rey."
@@ -682,9 +717,9 @@ BST_PP_QUICK,Quick pod,Vagem veloz,Vaina veloz
 BST_PP_QUICK_LINE,Start with a quicker cannon,Comece com um canhão mais rápido,Empieza con un cañón más rápido
 BST_CHANCE_PEAPOD,Everything is pushed well back from the line.,Tudo é empurrado para bem longe da linha.,Todo se aleja bastante de la línea.
 TUT_SNOOKER_AIM,"Aim, draw back, let go","Mire, puxe e solte","Apunta, tira y suelta"
-TUT_SNOOKER_AIM_BODY,"Press the table to aim the white: the dotted line shows what it meets and where that ball goes. Then press the cue behind the white, drag it back and let go. The further back, the harder the shot.","Toque na mesa para mirar a branca: a linha pontilhada mostra o que ela acerta e para onde essa bola vai. Depois toque no taco atrás da branca, puxe e solte. Quanto mais longe, mais forte.","Toca la mesa para apuntar la blanca: la línea de puntos muestra qué toca y adónde va esa bola. Luego toca el taco detrás de la blanca, tira hacia atrás y suelta. Cuanto más atrás, más fuerte."
+TUT_SNOOKER_AIM_BODY,"Press the table to aim the white: the dotted line shows what it meets and where that ball goes. Near a pot the line turns gold and runs into the pocket; the wheel under the spin fine-tunes it. Then press the cue behind the white, drag it back and let go. The further back, the harder the shot.","Toque na mesa para mirar a branca: a linha pontilhada mostra o que ela acerta e para onde essa bola vai. Perto de uma boa jogada, a linha fica dourada e entra na caçapa; a roda sob o efeito faz o ajuste fino. Depois toque no taco atrás da branca, puxe e solte. Quanto mais longe, mais forte.","Toca la mesa para apuntar la blanca: la línea de puntos muestra qué toca y adónde va esa bola. Cerca de una buena jugada, la línea se vuelve dorada y entra en la tronera; la rueda bajo el efecto la afina. Luego toca el taco detrás de la blanca, tira hacia atrás y suelta. Cuanto más atrás, más fuerte."
 TUT_SNOOKER_ORDER,"A red, then a colour","Uma vermelha, depois uma cor","Una roja, luego un color"
-TUT_SNOOKER_ORDER_BODY,"Pot a red, then any colour, then a red again: you play on while you pot. A potted colour returns to its spot until the reds run out. Aim for a ball with a glowing ring.","Encaçape uma vermelha, depois uma cor, depois outra vermelha: você segue jogando enquanto acertar. A cor volta ao seu ponto até as vermelhas acabarem. Mire numa bola com anel.","Mete una roja, luego un color, luego otra roja: sigues jugando mientras aciertes. El color vuelve a su punto hasta que se acaben las rojas. Apunta a una bola con anillo."
+TUT_SNOOKER_ORDER_BODY,"Pot a red, then any colour, then a red again: you play on while you pot. A potted colour returns to its spot until the reds run out. Aim for a ball with a glowing ring. Against the Bot a frame has six reds.","Encaçape uma vermelha, depois uma cor, depois outra vermelha: você segue jogando enquanto acertar. A cor volta ao seu ponto até as vermelhas acabarem. Mire numa bola com anel. Contra o Bot, a partida tem seis vermelhas.","Mete una roja, luego un color, luego otra roja: sigues jugando mientras aciertes. El color vuelve a su punto hasta que se acaben las rojas. Apunta a una bola con anillo. Contra el Bot, el frame tiene seis rojas."
 TUT_SNOOKER_WORTH,What each ball is worth,Quanto vale cada bola,Cuánto vale cada bola
 TUT_SNOOKER_WORTH_BODY,"A red is worth 1; the colours go from yellow, 2, to black, 7. Once the reds are gone, pot the colours in that order and they stay down. The higher score after the black wins.","A vermelha vale 1; as cores vão da amarela, 2, até a preta, 7. Sem vermelhas na mesa, encaçape as cores nessa ordem: agora elas não voltam. Ganha quem tiver mais pontos no fim.","La roja vale 1; los colores van de la amarilla, 2, a la negra, 7. Sin rojas en la mesa, mete los colores en ese orden: ahora ya no vuelven. Gana quien tenga más puntos al final."
 TUT_SNOOKER_FOUL,A foul gives points away,Falta dá pontos ao Bot,La falta regala puntos

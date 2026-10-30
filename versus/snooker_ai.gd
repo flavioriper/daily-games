@@ -73,8 +73,10 @@ static func deliver(shot: Dictionary, level: int, rng: RandomNumberGenerator) ->
 static func _break_off(table: RefCounted) -> Dictionary:
 	var cue := Sim.D_CENTRE + Vector2(Sim.D_R * 0.62, 0.0)
 	table.pos[Sim.CUE] = cue
-	var red: Vector2 = table.pos[11]
+	var red := Vector2(-INF, -INF)
 	for id in range(1, Sim.REDS + 1):
+		if not table.on[id]:
+			continue
 		if table.pos[id].x > red.x + 0.001 or (absf(table.pos[id].x - red.x) < 0.001 and table.pos[id].y > red.y):
 			red = table.pos[id]
 	# The last red of the second-from-back row on the right, hit about a

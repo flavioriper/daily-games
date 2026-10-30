@@ -53,6 +53,29 @@ reaches it through the `versus_host` group.
   `user://versus.cfg` back afterwards; a harness that finishes a frame some
   other way must do the same, or it writes a fake win into this Mac's save.
 
+- **Made fun, 2026-10-30** (the user: "right now nobody likes it"). Measured
+  first (`tests/_probe_sn_fun.gd`, `_probe_sn_margin.gd`): 15 reds ran 70-90
+  shots, about 15 minutes; a listed pot drops 94/100 dead on, 55 at 0.11
+  degrees off, 25 at 0.23, 9 at 0.46, so a thumb could not pot however good it
+  was; 36% of rolling was balls under 0.25 m/s. So: **six reds against the
+  computer** (`Sim.keep_reds`, ids and wire unchanged; **Online stays 15**,
+  both ends lay their own table, an old client would refuse a short one). **The
+  aim locks onto a pot line** (`AI.pots` cached in `table.pot_lines`,
+  `ASSIST` 0.035/0.02/0.008/0.005 rad): the line goes gold into a ringed pocket,
+  a tick, and Easy/Medium get a white pace notch (`PACE_MARK`). Easy opens each
+  turn on the easiest pot. A **fine wheel** under the spin pad turns the aim a
+  hair and leaves the lock. The clock: `TAIL_RATE` 3x under 0.25 m/s, a tap on
+  the table 4x, 0.45x (0.7 s a shot) as a ball on runs into a mouth; it steps
+  the same sim, so online does not drift. Bot beats cut about a third. Words: a
+  locked pot that stayed out says why (close, full, thin, jaws, short), long
+  pots, doubles, two at once, breaks at `RUNS`, confetti from 20; pot pitch
+  climbs with the break. The Moon heckles (`MOON_SAYS`, never online). The Bot
+  concedes when beaten on the table. The plain turn line shows twice a session,
+  and `_said_at` keeps a routine line off the last shot's words. End card: pots,
+  new best break (`Record.note_break`). Thumb 0.69 degrees sd, 15% pace, the
+  planner's choice of shot: Easy 4/4, Medium 4/4, Hard 1/4; 22-33 shots. Not on
+  a phone, unheard.
+
 **Chess is the second Versus game** (2026-09-26, spec
 `2026-09-26-versus-chess-design.md`), against the computer. The tab now holds
 one card a game (banner, name and record, a line, levels beside Play), each

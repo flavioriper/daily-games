@@ -29,6 +29,19 @@ static func add(game: String, level: int, won: bool) -> void:
 	cfg.set_value(key, field, int(cfg.get_value(key, field, 0)) + 1)
 	cfg.save(PATH)
 
+## The best break played at this game and level; `note_break` keeps a higher
+## one and answers whether it was.
+static func best_break(game: String, level: int) -> int:
+	return int(_load().get_value("%s_%d" % [game, level], "best_break", 0))
+
+static func note_break(game: String, level: int, n: int) -> bool:
+	if n <= best_break(game, level):
+		return false
+	var cfg := _load()
+	cfg.set_value("%s_%d" % [game, level], "best_break", n)
+	cfg.save(PATH)
+	return true
+
 ## The level last played, so the Versus tab opens on it.
 static func last_level(game: String) -> int:
 	return int(_load().get_value("last", game, 1))

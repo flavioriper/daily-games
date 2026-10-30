@@ -25,11 +25,18 @@ signal placed
 signal grabbed
 signal pulling
 signal released(power: float)
+## The aim came onto a pot line (once for each line it comes onto).
+signal locked
+## The ball in hand was carried somewhere new.
+signal moved
+## A press while the table is not taking aim: the balls may be hurried.
+signal tapped
 
 const Sim = preload("res://versus/snooker_sim.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
+const AI = preload("res://versus/snooker_ai.gd")
 
 ## The frame round the playing area, metres: the cushions' green tops, then
 ## the wooden rail.
@@ -120,6 +127,16 @@ var targets: Array = []
 var hint_dir := Vector2.ZERO
 ## The hint's suggested pull, 0..1, a gold notch on the pull ruler (0 none).
 var hint_power := 0.0
+## The pots there are from where the cue ball stands (AI.pots), and how near
+## one the aim has to come, radians, for it to lock on: its line is drawn gold
+## to the pocket. A pot is that narrow, and a thumb is not that fine.
+var pot_lines: Array = []
+var assist := 0.0
+var lock := {}
+## The pace that line wants, a pale notch on the ruler (0 none).
+var pot_power := 0.0
+## How far the object ball's own line is shown off a lock, metres.
+var obj_reach := OBJ_LINE
 ## A picture, not a game (the Versus tab's card): drawn once per resize and
 ## never again, so it costs the menu nothing a frame.
 var still := false
@@ -318,6 +335,8 @@ func sink(id: int, at: Vector2, pocket: Vector2) -> void:
 
 func _gui_input(event: InputEvent) -> void:
 	if not interactive:
+		if event is InputEventScreenTouch and event.pressed or event is InputEventMouseButton and event.pressed:
+			tapped.emit()
 		return
 	var press := false
 	var release := false
@@ -371,16 +390,44 @@ func _gui_input(event: InputEvent) -> void:
 		var p := Sim.clamp_d(metres(at))
 		if sim.free_at(p, Sim.CUE):
 			sim.pos[Sim.CUE] = p
+			moved.emit()
 		return
 	if _drag == "aim":
 		var d := metres(at) - cue
 		if d.length() > Sim.R * 0.5:
 			aim_dir = d.normalized()
 			hint_dir = Vector2.ZERO
+			snap(true)
 			aimed.emit()
 			if not _swung:
 				_swung = true
 				grabbed.emit()
+
+## The aim comes onto the nearest pot line within `assist`, or off any. Only
+## the hand's own aim says so: a turn opening on a line is no touch to answer.
+func snap(by_hand := false) -> void:
+	var was: Dictionary = lock
+	lock = {}
+	var best := assist
+	for p in pot_lines:
+		var off := absf(aim_dir.angle_to(p.dir))
+		if off < best:
+			best = off
+			lock = p
+	if not lock.is_empty():
+		aim_dir = lock.dir
+		if by_hand and (was.is_empty() or int(was.id) != int(lock.id) or int(was.pocket) != int(lock.pocket)):
+			locked.emit()
+
+## The wheel: the aim turned by hand, a hair, and off whatever line it was on.
+func nudge(radians: float) -> void:
+	aim_dir = aim_dir.rotated(radians)
+	hint_dir = Vector2.ZERO
+	lock = {}
+	var tight := assist
+	assist = 0.0012
+	snap()
+	assist = tight
 
 ## Whether a press lands on the cue lying behind the ball.
 func _on_cue(at: Vector2) -> bool:
@@ -626,7 +673,7 @@ func _build_live() -> ArrayMesh:
 	if show_guide and show_cue and sim.on[Sim.CUE] and _follow_t < 0.0:
 		if hint_dir != Vector2.ZERO:
 			_guide(b, hint_dir, Color(Pal.SUN_RAY, 0.8))
-		_guide(b, aim_dir, Color(1.0, 1.0, 1.0, 0.8))
+		_guide(b, aim_dir, Color(Pal.SUN_RAY, 0.95) if not lock.is_empty() else Color(1.0, 1.0, 1.0, 0.8))
 	if show_cue and (sim.on[Sim.CUE] or _follow_t >= 0.0):
 		_ruler(b)
 		_cue(b)
@@ -664,6 +711,9 @@ func _ruler(b: Face.Builder) -> void:
 			var u1 := minf(float(k + 1) / bands, power)
 			var col := Color("8fcf7a").lerp(Color("f2c233"), clampf(u0 * 1.8, 0.0, 1.0)).lerp(Color("e0574f"), clampf(u0 * 2.0 - 1.0, 0.0, 1.0))
 			b.stroke(PackedVector2Array([a - d * full * u0, a - d * full * u1]), 8.0, col, false, k == 0)
+	if pot_power > 0.0:
+		var t := a - d * full * pot_power
+		b.stroke(PackedVector2Array([t - n * 12.0, t + n * 12.0]), 4.0, Color(1.0, 1.0, 1.0, 0.95))
 	if hint_power > 0.0:
 		var t := a - d * full * hint_power
 		b.stroke(PackedVector2Array([t - n * 14.0, t + n * 14.0]), 5.0, Pal.SUN_RAY)
@@ -725,7 +775,14 @@ func _guide(b: Face.Builder, dir: Vector2, col: Color) -> void:
 		var n: Vector2 = hit.normal
 		var obj: Vector2 = sim.pos[hit.id]
 		var cut := clampf(dir.dot(n), 0.0, 1.0)
-		b.stroke(PackedVector2Array([px(obj + n * Sim.R * 1.1), px(obj + n * (Sim.R + OBJ_LINE * (0.35 + 0.65 * cut)))]), 3.0, col)
+		if not lock.is_empty() and dir == aim_dir and int(hit.id) == int(lock.id):
+			# The way in: all the way to the pocket, and the pocket answers.
+			var hole := _hole(int(lock.pocket))
+			var pulse := 0.0 if Motion.reduce else 0.12 * sin(_time * 5.0)
+			b.stroke(PackedVector2Array([px(obj + n * Sim.R * 1.1), hole.at]), 4.0, col)
+			b.stroke(Face.Builder.ring(hole.at, hole.r * (1.12 + pulse), hole.r * (1.12 + pulse)), 5.0, Pal.SUN_RAY, true)
+		else:
+			b.stroke(PackedVector2Array([px(obj + n * Sim.R * 1.1), px(obj + n * (Sim.R + obj_reach * (0.35 + 0.65 * cut)))]), 3.0, col)
 		var run := dir - n * dir.dot(n)
 		if run.length() > 0.02:
 			run = run.normalized()
