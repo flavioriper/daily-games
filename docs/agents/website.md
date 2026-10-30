@@ -18,9 +18,9 @@ stated preference, so that list is the builder's call.
   deploying by hand, build first: the folder is ignored by git.
 - **The Peeplet is not on the page**: the rule against baking one to an image
   has no web exception yet, so that is the user's call.
-- **Store links** live in `web/src/lib/siteUrl.ts` and the message files. The
-  iPhone link is TestFlight until the App Store page exists. Android reads
-  coming soon on the user's word, though the Play listing is live.
+- **Store links** live in `web/src/lib/siteUrl.ts` and the message files. Android
+  links to the live Play listing; the iPhone link is TestFlight until the App
+  Store page exists.
 - `NEXT_PUBLIC_SITE_URL` sets the origin for canonical links and the sitemap
   once the site has its own domain.
 - **Vercel**: `web/vercel.json` builds with plain `next build`, because the

@@ -4,7 +4,7 @@ import { routing } from "@i18n/routing";
 import { GameList } from "@/components/GameList";
 import { GAMES, langOf, type Group } from "@/lib/games";
 import { appJsonLd } from "@/lib/seo";
-import { CONTACT, IOS_URL, SITE_URL } from "@/lib/siteUrl";
+import { CONTACT, IOS_URL, PLAY_URL, SITE_URL } from "@/lib/siteUrl";
 
 const GROUPS: Group[] = ["puzzles", "arcade", "versus"];
 const LOCALE_NAMES: Record<string, string> = { en: "English", "pt-BR": "Português", es: "Español" };
@@ -43,8 +43,8 @@ export default async function Page({ params }: { params: Promise<{ locale: strin
             <h1>{t("headlineOne")}<br /><em>{t("headlineTwo")}</em></h1>
             <p className="lede">{t("lede", { count: GAMES.length })}</p>
             <div className="get">
+              <a href={PLAY_URL} rel="noopener">{t("androidCta")}</a>
               <a href={IOS_URL} rel="noopener">{t("iosCta")}</a>
-              <span>{t("androidSoon")}</span>
             </div>
           </div>
           <figure>
@@ -68,8 +68,8 @@ export default async function Page({ params }: { params: Promise<{ locale: strin
         <section className="close">
           <h2>{t("closeTitle")}</h2>
           <div className="get">
+            <a href={PLAY_URL} rel="noopener">{t("androidCta")}</a>
             <a href={IOS_URL} rel="noopener">{t("iosCta")}</a>
-            <span>{t("androidSoon")}</span>
           </div>
         </section>
       </main>
