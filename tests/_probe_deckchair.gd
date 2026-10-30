@@ -5,7 +5,7 @@ extends SceneTree
 ##   godot --headless --script tests/_probe_deckchair.gd -- [deals] [first seed]
 ## The bot takes whatever `find_move` hands it (a card turned up first, then
 ## a card home, then a card off the stock, then the nearest rearranging that
-## leads to one), sweeps once every card is face up and stops when the sim
+## leads to one) to the last card and stops when the sim
 ## says stuck. After every move the whole deal is checked: 52 cards, each
 ## once; every face-up run built down in alternating colours; no column
 ## with nothing but face-down cards. Then undo, the stuck search, the
@@ -56,9 +56,7 @@ func _initialize() -> void:
 			var m: Dictionary = s.find_move()
 			if m.is_empty():
 				break
-			if s.sweeping:
-				s.sweep_step()
-			elif m.has("draw"):
+			if m.has("draw"):
 				s.draw()
 			else:
 				s.drop(int(m.card), int(m.kind), int(m.i))
@@ -71,6 +69,9 @@ func _initialize() -> void:
 	_aces_check()
 	_revive_check()
 	_score_check()
+	_chair_check()
+	_streak_check()
+	_bank_check()
 	print("%d failed" % _fails)
 	quit(1 if _fails > 0 else 0)
 
@@ -79,18 +80,13 @@ func play(s, most: int) -> int:
 	var n := 0
 	_whole(s, "dealt")
 	while s.phase == Sim.Phase.PLAY and n < most:
-		if s.sweeping:
-			if not s.sweep_step():
-				_check("a sweep runs to the win", false)
-				break
-		else:
-			var m: Dictionary = s.find_move()
-			if m.is_empty():
-				break
-			var ok: bool = s.draw() if m.has("draw") else s.drop(int(m.card), int(m.kind), int(m.i))
-			if not ok:
-				_check("the sim takes its own move (seed %d, move %d: %s)" % [s.seed_used, n, m], false)
-				break
+		var m: Dictionary = s.find_move()
+		if m.is_empty():
+			break
+		var ok: bool = s.draw() if m.has("draw") else s.drop(int(m.card), int(m.kind), int(m.i))
+		if not ok:
+			_check("the sim takes its own move (seed %d, move %d: %s)" % [s.seed_used, n, m], false)
+			break
 		s.events.clear()
 		n += 1
 		_whole(s, "seed %d move %d" % [s.seed_used, n])
@@ -112,6 +108,9 @@ func _whole(s, what: String) -> void:
 	for c: int in s.stock + s.waste:
 		seen[c] = true
 		count += 1
+	if s.chair >= 0:
+		seen[s.chair] = true
+		count += 1
 	for suit in Sim.SUITS:
 		for r in int(s.home[suit]):
 			seen[suit * Sim.RANKS + r] = true
@@ -129,7 +128,7 @@ func _undo_check() -> void:
 	var keys := [_key(s)]
 	for k in 40:
 		var m: Dictionary = s.find_move()
-		if m.is_empty() or s.sweeping:
+		if m.is_empty():
 			break
 		if m.has("draw"):
 			s.draw()
@@ -146,6 +145,7 @@ func _undo_check() -> void:
 ## A hand-made dead end: nothing fits anywhere and the stock is out.
 func _stuck_check() -> void:
 	var s = Sim.new(5)
+	s.has_chair = false
 	# hearts' two on a face-down three of spades and so on: tops that take
 	# nothing, an empty stock
 	s.cols = [[_c(1, 4)], [_c(3, 4)], [_c(0, 9)], [_c(2, 9)], [_c(1, 7)], [_c(3, 7)], [_c(0, 0), _c(0, 2)]]
@@ -180,7 +180,7 @@ func _aces_check() -> void:
 	var s = Sim.new(21)
 	s.start_aces()
 	_whole(s, "aces home")
-	_check("the aces begin at home and score nothing", s.home_count() == 4 and s.score == 0 and s.stock.size() == 20)
+	_check("the aces begin at home and score nothing", s.home_count() == 4 and s.score == 0)
 	play(s, 4000)
 
 func _revive_check() -> void:
@@ -219,6 +219,69 @@ func _score_check() -> void:
 	s.drop(_c(0, 0), Sim.At.COL, 1)
 	_check("an ace cannot come down onto an ace", s.score == Sim.PTS_HOME + Sim.PTS_WASTE_COL)
 	_check("a home refuses another suit", not s.can_drop(_c(2, 0), Sim.At.HOME, 0))
+
+## The deckchair: one card, off the columns or the waste; it counts for the
+## search, an undo brings it back, and a tap with nowhere else goes there.
+func _chair_check() -> void:
+	var s = Sim.new(5)
+	s.cols = [[_c(1, 4)], [_c(3, 4)], [_c(0, 9)], [_c(2, 9)], [_c(1, 7)], [_c(3, 7)], [_c(0, 2), _c(0, 8)]]
+	s.down = [0, 0, 0, 0, 0, 0, 1]
+	s.stock = []
+	s.waste = []
+	s.home = [0, 0, 0, 0]
+	s._plan.clear()
+	var m: Dictionary = s.find_move()
+	_check("the deckchair is a way on", not m.is_empty() and int(m.kind) == Sim.At.CHAIR and int(m.card) == _c(0, 8))
+	_check("a tap never sends a card anywhere but home", s.auto_dst(_c(0, 8)).x < 0)
+	var ace = Sim.new(5)
+	ace.cols[0] = [_c(1, 0)]
+	_check("a tap sends a card home when it may", ace.auto_dst(_c(1, 0)) == Vector2i(Sim.At.HOME, 1))
+	var key := _key(s)
+	_check("the card rests", s.drop(_c(0, 8), Sim.At.CHAIR, 0) and s.chair == _c(0, 8))
+	_check("and the one under it turns up", int(s.down[6]) == 0)
+	_check("one card at a time", not s.can_drop(_c(1, 7), Sim.At.CHAIR, 0))
+	s.undo()
+	_check("undo takes it back", s.chair < 0 and _key(s) == key)
+
+func _streak_check() -> void:
+	var s = Sim.new(1)
+	s.cols = [[_c(0, 0)], [_c(0, 1)], [_c(0, 2)], [_c(0, 3)], [_c(0, 4)], [], []]
+	s.down = [0, 0, 0, 0, 0, 0, 0]
+	s.stock = []
+	s.waste = []
+	s.home = [0, 0, 0, 0]
+	s._plan.clear()
+	for r in 5:
+		s.drop(_c(0, r), Sim.At.HOME, 0)
+	_check("the streak pays double from its fourth good move", s.score == 3 * Sim.PTS_HOME + 2 * 2 * Sim.PTS_HOME)
+	_check("and says so", s.events.any(func(e: Dictionary) -> bool: return e.type == "chain" and int(e.mult) == 2))
+	s.chain = 99
+	_check("the streak stops at %d" % Sim.MULT_MOST, s.mult() == Sim.MULT_MOST)
+	s.chain = 6
+	s.undo()
+	_check("an undo ends the streak", s.chain == 0)
+	var cooled = Sim.new(1)
+	cooled.chain = 6
+	for k in Sim.COOL_AFTER:
+		cooled.draw()
+	_check("a stock turned on and on cools it a step", cooled.mult() == 2)
+
+## The bank's deals are won by the bot without the deckchair, a sample of
+## them, and the aces-home booster deals them whole.
+func _bank_check() -> void:
+	var deals: Array = load("res://arcade/deckchair_deals.gd").DEALS
+	_check("the bank has deals (%d)" % deals.size(), deals.size() >= 300)
+	var lost := 0
+	for k in range(0, deals.size(), maxi(deals.size() / 60, 1)):
+		var s = Sim.new(int(deals[k]))
+		s.has_chair = false
+		s._plan.clear()
+		play(s, 4000)
+		lost += 0 if s.phase == Sim.Phase.WON else 1
+		var a = Sim.new(int(deals[k]))
+		a.start_aces()
+		_whole(a, "aces home on a banked deal")
+	_check("the bank's deals are won (%d lost)" % lost, lost == 0)
 
 func _check(what: String, ok: bool) -> void:
 	if not ok:

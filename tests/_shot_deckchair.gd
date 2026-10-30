@@ -10,7 +10,7 @@ extends SceneTree
 ## (3 the carry in the air, its rings up) and a touch on a card that has
 ## somewhere to go. Then a bot plays the sim's own moves: 4 the table mid
 ## deal, 5 the bulb's rings, 6 the dead end's card, Finish, 7 the end card.
-## A second deal (seed 3, which the bot wins): 8 the sweep, 9 the win, 10
+## A second deal (seed 30, of the bank): 8 every card face up, 9 the win, 10
 ## its end card. The moments are shot as they come up, each once, a tenth of
 ## a second in (m_home, m_ace, m_suit, m_king, m_seam, m_turn: a card home,
 ## an ace, a king that ends its suit, a king on an empty column, a run laid
@@ -24,7 +24,7 @@ extends SceneTree
 const Sim = preload("res://arcade/deckchair_sim.gd")
 const PATH := "user://arcade.cfg"
 const DEAD := 2
-const WIN := 3
+const WIN := 30
 const TIMEOUT := 150.0
 
 var _menu: Node
@@ -131,7 +131,7 @@ func _skip_gold() -> void:
 ## One of the sim's own moves, through the table as a finger's would go.
 func _play_one() -> void:
 	var sim = _s.sim
-	if sim == null or sim.phase != Sim.Phase.PLAY or sim.sweeping:
+	if sim == null or sim.phase != Sim.Phase.PLAY:
 		return
 	var m: Dictionary = sim.find_move()
 	if m.is_empty():
@@ -317,17 +317,19 @@ func _process(delta: float) -> bool:
 				_s.deal_seed = WIN
 				_s._boosts = []
 				_s._new_game()
+				# the bank's proof is without the deckchair, so the bot plays so
+				_s.sim.has_chair = false
+				_s.sim._plan.clear()
 				_bot = true
 				_bot_gap = 0.02
 				_step = 15
 		15:
-			if _s.sim.sweeping:
-				_bot = false
+			if _s.sim.hidden_count() == 0:
 				_at = _t
 				_step = 16
 		16:
-			if _t > _at + 1.4:
-				_shot("8_sweep")
+			if _t > _at + 0.1:
+				_shot("8_open")
 				_step = 17
 		17:
 			if _s.sim.phase == Sim.Phase.WON:

@@ -8,9 +8,11 @@ extends RefCounted
 ## deckchair's own canvas, striped, the house's sprout stamped in its middle.
 ## The cards are marks, so nothing here has a face.
 ##
-## The cloth is a place: a pool of lamplight over the columns, thread
-## stitched round its hem, the sprout embroidered at its foot, and in the
-## one empty place of the top row a glass of lemonade on a straw coaster.
+## The cloth is a place: a beach towel with a pool of sun over the columns,
+## thread stitched round its hem, the sprout embroidered at its foot, and in
+## the one empty place of the top row either the deckchair itself (a level
+## that has it) or a glass of lemonade on a straw coaster. On the game's own
+## screen the towel lies on the beach (`world`), which fills the screen.
 ##
 ## A card's mesh has its top left corner at the origin and is `w` wide and
 ## `w * TALL` high.
@@ -24,17 +26,17 @@ const CARD := Color("fffaf0")
 const CARD_EDGE := Color("d6c6ab")
 const RED := Color("d9564b")
 const BLACK := Color("3d3944")
-const STRIPE := Color("4c9a94")
-const STRIPE_DEEP := Color("3a7a75")
+const STRIPE := Color("e2725b")
+const STRIPE_DEEP := Color("bf5340")
 const STRIPE_PALE := Color("fdf3dc")
-const CLOTH := Color("8dba8c")
-const CLOTH_DEEP := Color("74a57c")
-const CLOTH_LINE := Color("5f9069")
-const SHADE := Color(0.13, 0.22, 0.14, 0.2)
+const CLOTH := Color("4fa39c")
+const CLOTH_DEEP := Color("3f8f8c")
+const CLOTH_LINE := Color("2c6f6f")
+const SHADE := Color(0.08, 0.16, 0.18, 0.24)
 const HALO := Color("f5c23a")
 ## The cloth where the lamp falls on it, and the thread it is sewn with.
-const CLOTH_LIT := Color("b4d9a6")
-const THREAD := Color("d3ecc0")
+const CLOTH_LIT := Color("74c4b6")
+const THREAD := Color("c9ece0")
 ## The light of a moment: the lamp's own, a red suit's and a black suit's,
 ## and the brass a card is framed in.
 const LAMP := Color("fff6e0")
@@ -50,6 +52,13 @@ const GLASS_EDGE := Color("c5ddd2")
 const LEMONADE := Color("f6dc6e")
 const LEMONADE_LIT := Color("fdf0a8")
 const LEMON := Color("f2c53b")
+## The beach: the sky, the sea and the sand.
+const SKY_TOP := Color("cfeaf2")
+const SKY_LOW := Color("eef8f4")
+const SEA_FAR := Color("7fcbc9")
+const SEA_NEAR := Color("a9e0d6")
+const SAND_TOP := Color("f8e8c6")
+const SAND_LOW := Color("f1d9ab")
 ## How far down a column can ever reach, in cards' heights: a king over six
 ## cards face down, built to its ace.
 const REACH := 4.96
@@ -79,7 +88,7 @@ static func face(suit: int, w: float) -> ArrayMesh:
 	return _made("face%d/%.1f" % [suit, w], func(b: Face.Builder) -> void:
 		_body(b, w, CARD)
 		var col := RED if suit % 2 == 1 else BLACK
-		pip(b, suit, Vector2(0.77, 0.21) * w, 0.115 * w, col)
+		pip(b, suit, Vector2(0.77, 0.22) * w, 0.13 * w, col)
 		pip(b, suit, Vector2(0.5, 0.9) * w, 0.27 * w, col))
 
 static func back(w: float) -> ArrayMesh:
@@ -187,12 +196,67 @@ static func cloth(sz: Vector2, w := 0.0, row := 0.0, glass_at := Vector2.ZERO, g
 			leaf(b, at, at + Vector2(way * 0.55, -0.55) * r, 0.17 * r, Color(THREAD, 0.6))
 			leaf(b, at + Vector2(way * 0.1, 0.12) * r, at + Vector2(way * 0.75, 0.1) * r, 0.14 * r, Color(THREAD, 0.5))
 	if glass_r > 0.0:
-		_glass(b, glass_at, glass_r)
+		glass(b, glass_at, glass_r)
 	return b.mesh()
+
+## The beach the game's screen lies on, `sz` of it: sky behind the rows, the
+## sea, the sand, and the towel from `top` down to past the foot, its broad
+## stripes down its two sides (`w` a card's width). One cached mesh.
+static func world(sz: Vector2, top: float, w: float) -> ArrayMesh:
+	var b := Face.Builder.new()
+	var sea := top * 0.44
+	var shore := top * 0.6
+	_band(b, 0.0, sea, sz.x, SKY_TOP, SKY_LOW)
+	_band(b, sea, shore, sz.x, SEA_FAR, SEA_NEAR)
+	_band(b, shore, sz.y, sz.x, SAND_TOP, SAND_LOW)
+	Scenery.soft_disc(b, Vector2(sz.x * 0.82, sea * 0.3), sz.x * 0.2, sz.x * 0.2, Color(LAMP, 0.85))
+	# the foam along the shore
+	var foam := PackedVector2Array()
+	var n := 24
+	for i in n + 1:
+		var x := sz.x * i / n
+		foam.append(Vector2(x, shore + sin(i * 1.3) * 5.0 + sin(i * 0.47) * 4.0))
+	b.stroke(foam, 7.0, Color(STRIPE_PALE, 0.9))
+	# the towel runs off both sides and the foot, so nothing but the rows'
+	# margin stands beside the cards; only its head has a hem
+	_band(b, top + 7.0, top + 14.0, sz.x, Color(SHADE, 0.5), Color(SHADE, 0.0))
+	_band(b, top, sz.y, sz.x, CLOTH, CLOTH_DEEP)
+	Scenery.soft_disc(b, Vector2(sz.x * 0.5, top + w * 3.2), sz.x * 0.62, w * 4.8, Color(CLOTH_LIT, 0.36))
+	var hem := top + 0.11 * w
+	var dash := 0.13 * w
+	var x := 0.06 * w
+	while x < sz.x:
+		b.stroke(PackedVector2Array([Vector2(x, hem), Vector2(x + dash, hem)]), maxf(1.5, 0.024 * w), Color(THREAD, 0.75))
+		x += dash + 0.085 * w
+	return b.mesh()
+
+static func _band(b: Face.Builder, y0: float, y1: float, wide: float, col0: Color, col1: Color) -> void:
+	var a := b.vertex(Vector2(0, y0), col0)
+	var c := b.vertex(Vector2(wide, y0), col0)
+	var d := b.vertex(Vector2(wide, y1), col1)
+	var e := b.vertex(Vector2(0, y1), col1)
+	b.tri(a, c, d)
+	b.tri(a, d, e)
+
+## The deckchair in its place, `at` its top left corner: a side view of the
+## wooden frame and its striped canvas, in the slot a card rests in.
+static func chair_into(b: Face.Builder, at: Vector2, w: float) -> void:
+	var sz := size(w)
+	b.polygon(Face.Builder.round_rect(at, sz, 0.09 * w), Color(STRIPE_PALE, 0.24))
+	b.stroke(Face.Builder.round_rect(at, sz, 0.09 * w), maxf(2.0, 0.025 * w), Color(STRIPE_PALE, 0.8), true)
+	var p := func(x: float, y: float) -> Vector2: return at + Vector2(x, y) * w
+	var wood := Color("c98f55")
+	var line := 0.055 * w
+	b.stroke(PackedVector2Array([p.call(0.2, 1.14), p.call(0.72, 0.5)]), line, wood)
+	b.stroke(PackedVector2Array([p.call(0.78, 1.14), p.call(0.42, 0.72)]), line, wood)
+	b.stroke(PackedVector2Array([p.call(0.14, 1.0), p.call(0.5, 0.98)]), line * 0.8, wood)
+	var seat := Face.Builder.bezier2(p.call(0.8, 0.28), p.call(0.5, 0.86), p.call(0.14, 0.92), 12)
+	b.stroke(seat, 0.2 * w, STRIPE_PALE)
+	b.stroke(seat, 0.11 * w, STRIPE)
 
 ## A glass of lemonade seen from above, on a woven straw coaster `r` across
 ## its half: two cubes of ice, a slice of lemon and a striped paper straw.
-static func _glass(b: Face.Builder, c: Vector2, r: float) -> void:
+static func glass(b: Face.Builder, c: Vector2, r: float) -> void:
 	b.disc(c + Vector2(0.04, 0.14) * r, r, Color(SHADE, 0.3))
 	b.disc(c + Vector2(0, 0.06) * r, r, STRAW_DEEP)
 	b.disc(c, r, STRAW)

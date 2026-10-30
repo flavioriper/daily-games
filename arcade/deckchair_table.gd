@@ -7,11 +7,13 @@ extends Control
 ## (ui/hud/deckchair_tutorial_diagram.gd) are this table alone with a hand
 ## scripted on it.
 ##
-## Top row: the four homes on the left, then the waste and the stock on the
-## right. Under it the seven columns, each fanned down the cloth.
+## Top row: the four homes on the left, the deckchair (a level that has it)
+## or the lemonade, then the waste and the stock on the right. Under it the
+## seven columns, each fanned down the cloth. `bare` is the game's own table:
+## the cloth is the screen's world and the outer columns lie on its margins.
 ##
-## Play: tap the stock to turn a card. Tap a card and it goes where it may
-## (its home first, else a column); or carry it, with what lies on it, to
+## Play: tap the stock to turn a card. Tap a card and it goes up to its home
+## if it may, and nowhere else; anything else is carried: carry it, with what lies on it, to
 ## the column or home it is wanted on. A carried card's places wear a ring.
 ##
 ## Drawing: every card is one cached mesh (its face less the rank, or the
@@ -34,6 +36,7 @@ const Face = preload("res://ui/faces/face.gd")
 const Motion = preload("res://core/motion.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
 const CozyTheme = preload("res://ui/theme.gd")
+const ToastCard = preload("res://ui/flat/toast_card.gd")
 
 const N := Sim.DECK
 ## How far a finger moves, in the table's own pixels, before a press is a
@@ -45,7 +48,7 @@ const DEAL_GAP := 0.034
 ## How much of a card shows under the next: face down, and face up (enough
 ## for the rank and the small mark).
 const FAN_DOWN := 0.12
-const FAN_UP := 0.27
+const FAN_UP := 0.3
 const HINT_T := 2.6
 const POP_T := 0.8
 ## A ticking sound never plays the same twice (docs/agents/sound.md).
@@ -90,11 +93,21 @@ const HINT_EVERY := 0.85
 const CARRY_SWELL := 0.05
 const LEAN_MOST := 0.11
 const RIPPLE_T := 0.9
+## How far over the table's foot the toast's middle stands.
+const TOAST_FOOT := 70.0
+## On the game's own table, how far the top row stands under the table's top:
+## clear of the towel's hem.
+const HEAD_ROOM := 40.0
 ## What a card's landing means.
 enum Mark { NONE, HOME, ACE, SUIT, KING, RUN, TURN }
 
 var sim: RefCounted
 var interactive := true
+## The game's own table: no cloth of its own, flush with the screen's rows.
+## Set before it enters the tree.
+var bare := false
+## A line over the table's foot: the bulb's reading, a word on the deal.
+var toast := ToastCard.new()
 ## How many cards' height a short table keeps room for (a tutorial page
 ## fans three or four cards and asks for less).
 var tall_room := 3.1
@@ -120,6 +133,8 @@ var _top := 0.0
 var _row := 0.0
 var _cloth: ArrayMesh
 var _slots: ArrayMesh
+## Whether `_slots` was built with the deckchair; -1 not yet.
+var _slots_chair := -1
 var _down := false
 var _press_at := Vector2.ZERO
 var _press_card := -1
@@ -179,7 +194,7 @@ func _init() -> void:
 	_onto.fill(-1)
 
 func _ready() -> void:
-	clip_contents = true
+	clip_contents = not bare
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	resized.connect(_layout)
 	_layout()
@@ -190,25 +205,35 @@ func _layout() -> void:
 	var s := size
 	if s.x <= 0.0 or s.y <= 0.0:
 		return
-	_gap = s.x * 0.014
-	_w = (s.x - _gap * 8.0) / 7.0
+	_gap = s.x * (0.012 if bare else 0.014)
+	_w = (s.x - _gap * (6.0 if bare else 8.0)) / 7.0
 	# a short table (a tutorial page) takes smaller cards, so a column still
 	# has room to fan
 	_w = minf(_w, (s.y - _gap * 4.0) / (Art.TALL * tall_room))
 	_h = _w * Art.TALL
 	_left = (s.x - _w * 7.0 - _gap * 6.0) * 0.5
-	_top = _gap * 1.5
+	_top = HEAD_ROOM if bare else _gap * 1.5
 	_row = _top + _h + _gap * 2.2
-	_cloth = Art.cloth(s, _w, _row, glass_at(), _glass_r())
+	_cloth = null if bare else Art.cloth(s, _w, _row, Vector2.ZERO, 0.0)
+	_build_slots()
+	_sync(true)
+	queue_redraw()
+
+## The empty places, and what stands in the top row's spare one.
+func _build_slots() -> void:
+	var chair: bool = sim != null and sim.has_chair
+	_slots_chair = 1 if chair else 0
 	var b := Face.Builder.new()
 	for suit in Sim.SUITS:
 		Art.slot_into(b, home_at(suit), _w, suit)
 	Art.slot_into(b, stock_at(), _w, -1, true)
 	for c in Sim.COLS:
 		Art.slot_into(b, Vector2(col_x(c), _row), _w)
+	if chair:
+		Art.chair_into(b, chair_at(), _w)
+	else:
+		Art.glass(b, glass_at(), _glass_r())
 	_slots = b.mesh()
-	_sync(true)
-	queue_redraw()
 
 func col_x(c: int) -> float:
 	return _left + c * (_w + _gap)
@@ -221,6 +246,13 @@ func waste_at() -> Vector2:
 
 func stock_at() -> Vector2:
 	return Vector2(col_x(6), _top)
+
+func chair_at() -> Vector2:
+	return Vector2(col_x(4), _top)
+
+## The table's own clock, which the toast is timed on.
+func clock() -> float:
+	return _clock
 
 func card_size() -> Vector2:
 	return Vector2(_w, _h)
@@ -258,6 +290,8 @@ func _fan(c: int) -> float:
 func _sync(snap := false) -> void:
 	if sim == null or _w <= 0.0:
 		return
+	if _slots_chair != (1 if sim.has_chair else 0):
+		_build_slots()
 	_order.clear()
 	_in_col.fill(0)
 	var n: int = sim.stock.size()
@@ -268,7 +302,8 @@ func _sync(snap := false) -> void:
 		_vis[card] = 1 if i < 2 or i == n - 1 else 0
 		_order.append(card)
 	n = sim.waste.size()
-	var spread := mini(n - 1, 2)
+	# only the top can be played, so nothing fans out from under it
+	var spread := 0
 	for i in n:
 		var card: int = sim.waste[i]
 		var f := maxi(0, i - (n - 1 - spread))
@@ -276,6 +311,11 @@ func _sync(snap := false) -> void:
 		_want[card] = 1
 		_vis[card] = 1 if i >= n - 3 else 0
 		_order.append(card)
+	if sim.chair >= 0:
+		_to[sim.chair] = chair_at()
+		_want[sim.chair] = 1
+		_vis[sim.chair] = 1
+		_order.append(sim.chair)
 	for suit in Sim.SUITS:
 		var top: int = sim.home[suit]
 		for r in top:
@@ -334,7 +374,7 @@ func play_events() -> void:
 				_deal_in()
 			"move":
 				if (ev.to as Vector2i).x == Sim.At.HOME:
-					said.emit("home", 1.0 + 0.012 * mini(Sim.rank_of(int((ev.cards as Array)[0])), 12))
+					said.emit("home", 1.0 + 0.012 * mini(Sim.rank_of(int((ev.cards as Array)[0])), 12) + 0.03 * (sim.mult() - 1))
 				else:
 					said.emit("place", randf_range(1.0 - VARY, 1.0 + VARY))
 			"flip":
@@ -351,12 +391,13 @@ func play_events() -> void:
 	for ev: Dictionary in evs:
 		match String(ev.type):
 			"move":
-				_pop(int(ev.gain), _to[int((ev.cards as Array)[0])])
+				_pop(int(ev.gain), _to[int((ev.cards as Array)[0])], sim.mult())
 			"flip":
-				_pop(int(ev.gain), _to[int(ev.card)])
+				_pop(int(ev.gain), _to[int(ev.card)], sim.mult())
 		played.emit(ev)
 	if not evs.is_empty():
 		_hint = {}
+		toast.clear()
 		acted.emit()
 	queue_redraw()
 
@@ -381,7 +422,7 @@ func _mark(evs: Array) -> void:
 				if to.x == Sim.At.HOME:
 					var rank := Sim.rank_of(head)
 					_meant[head] = Mark.SUIT if rank == Sim.KING else (Mark.ACE if rank == 0 else Mark.HOME)
-				else:
+				elif to.x == Sim.At.COL:
 					var pile: Array = sim.cols[to.y]
 					var under := pile.find(head) - 1
 					if under >= 0:
@@ -473,12 +514,13 @@ func _deal_in() -> void:
 			_delay[card] = DEAL_HOLD + k * DEAL_GAP
 			k += 1
 
-func _pop(gain: int, at: Vector2) -> void:
+## A move's points lettered where it was made, larger the hotter the streak.
+func _pop(gain: int, at: Vector2, mult := 1) -> void:
 	if gain == 0 or Motion.reduce:
 		return
 	if _pops.size() >= 6:
 		_pops.pop_front()
-	_pops.append({"text": ("+%d" % gain) if gain > 0 else str(gain), "at": at + Vector2(_w * 0.5, -_w * 0.1), "t": 0.0, "good": gain > 0})
+	_pops.append({"text": ("+%d" % gain) if gain > 0 else str(gain), "at": at + Vector2(_w * 0.5, -_w * 0.1), "t": 0.0, "good": gain > 0, "big": 1.0 + 0.14 * (mult - 1)})
 
 ## Rings a way on: a card and where it goes, or the stock.
 func show_hint(m: Dictionary) -> void:
@@ -541,6 +583,8 @@ func drag(at: Vector2) -> void:
 		for c in Sim.COLS:
 			if sim.can_drop(_press_card, Sim.At.COL, c):
 				_targets.append(Vector2i(Sim.At.COL, c))
+		if sim.can_drop(_press_card, Sim.At.CHAIR, 0):
+			_targets.append(Vector2i(Sim.At.CHAIR, 0))
 		_hint = {}
 		_lift_at = _clock
 		_drag_x = at.x
@@ -607,6 +651,11 @@ func _set_down() -> void:
 				best = Vector2i(Sim.At.HOME, suit)
 		elif not (from.x == Sim.At.HOME and from.y == suit):
 			wrong = true
+	if sim.has_chair:
+		var over := _overlap(mine, Rect2(chair_at(), card_size()))
+		if over > most and _targets.has(Vector2i(Sim.At.CHAIR, 0)):
+			most = over
+			best = Vector2i(Sim.At.CHAIR, 0)
 	for c in Sim.COLS:
 		var top := col_next(c) if not (from.x == Sim.At.COL and from.y == c) else Vector2(col_x(c), _row)
 		var over := _overlap(mine, Rect2(Vector2(col_x(c), _row), Vector2(_w, maxf(top.y - _row, 0.0) + _h)))
@@ -645,6 +694,8 @@ func _card_under(at: Vector2) -> int:
 		for i in range(pile.size() - 1, -1, -1):
 			if Rect2(_to[int(pile[i])], sz).has_point(at):
 				return int(pile[i])
+	if sim.chair >= 0 and Rect2(chair_at(), sz).has_point(at):
+		return sim.chair
 	if not sim.waste.is_empty():
 		var top: int = sim.waste[sim.waste.size() - 1]
 		if Rect2(_to[top], sz).has_point(at):
@@ -711,9 +762,10 @@ func _resting(card: int) -> bool:
 	return _delay[card] <= 0.0 and _flip[card] < 0.0 and _at[card] == _to[card] and _shake[card] <= 0.0
 
 func _draw() -> void:
-	if _cloth == null:
+	if _slots == null:
 		return
-	draw_mesh(_cloth, null)
+	if _cloth != null:
+		draw_mesh(_cloth, null)
 	draw_mesh(_slots, null)
 	if sim == null:
 		return
@@ -752,6 +804,7 @@ func _draw() -> void:
 			_draw_card(font, card, _at[card], base)
 	draw_set_transform(Vector2.ZERO)
 	_draw_pops(font)
+	toast.draw(self, Vector2(size.x * 0.5, size.y - TOAST_FOOT), minf(size.x, 660.0), _clock, 30, Vector2(26.0, 16.0))
 
 ## How far a card stands off its place: the kings' hop on a deal won, the
 ## bulb's card beckoning, the columns' sigh at a dead end.
@@ -797,8 +850,8 @@ func _draw_card(font: Font, card: int, pos: Vector2, base := Transform2D.IDENTIT
 	draw_mesh(Art.face(Sim.suit_of(card), _w), null)
 	var text: String = Art.RANKS[Sim.rank_of(card)]
 	var wide := text.length() > 1
-	var fs := int(_w * (0.27 if wide else 0.31))
-	draw_string(font, Vector2((0.07 if wide else 0.11) * _w, 0.325 * _w), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Art.ink(card))
+	var fs := int(_w * (0.29 if wide else 0.34))
+	draw_string(font, Vector2((0.06 if wide else 0.1) * _w, 0.335 * _w), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Art.ink(card))
 
 ## What is alight over the cards, or nothing: a card home in its suit's
 ## light, the brass round an ace and a king, the lamp on a card turned up
@@ -891,12 +944,14 @@ func _draw_rings() -> void:
 func _place(tg: Vector2i) -> Vector2:
 	if tg.x == Sim.At.HOME:
 		return home_at(tg.y)
+	if tg.x == Sim.At.CHAIR:
+		return chair_at()
 	var pile: Array = sim.cols[tg.y]
 	return Vector2(col_x(tg.y), _row) if pile.is_empty() else _to[int(pile[pile.size() - 1])]
 
 func _draw_pops(font: Font) -> void:
-	var fs := int(_w * 0.3)
 	for p: Dictionary in _pops:
+		var fs := int(_w * 0.3 * float(p.big))
 		var k: float = float(p.t) / POP_T
 		var at: Vector2 = p.at + Vector2(0, -0.5 * _w * (1.0 - pow(1.0 - k, 2.0)))
 		var a := 1.0 - k * k

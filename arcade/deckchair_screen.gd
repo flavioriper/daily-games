@@ -2,15 +2,18 @@ extends Control
 
 ## Deckchair: the ninth game on the Arcade tab, the seven-column card game
 ## for one (spec docs/superpowers/specs/2026-10-10-arcade-deckchair-design.md).
-## The flat boards' top bar (back, the title in ink, undo, the bulb,
-## restart, settings), a paper row with the score, the best and the time,
-## and under them the table in a wooden frame (arcade/deckchair_table.gd).
+## Laid as a daily board is (docs/agents/flat-screens.md, the checklist of
+## 2026-10-13; the user, 2026-10-30): the beach fills the screen, and over it
+## the top bar (back, the title, ?, the gear), the tools row
+## (Undo and the bin at its start, the bulb at its end, the score between
+## them) and the table right under it on the rows' margins
+## (arcade/deckchair_table.gd). Nothing under the table.
 ##
 ## The game is arcade/deckchair_sim.gd; the table draws it and takes the
 ## fingers. This screen keeps the run round it: the boosters before, the
 ## sounds, the words over the table, the card that comes up at a dead end
-## (Undo, or Finish and keep the score), the sweep once every card is face
-## up, the Second chance and the end card.
+## (Undo, or Finish and keep the score), the Second chance and the end card. Every deal comes from the bank of
+## deals the bot won (arcade/deckchair_deals.gd), so every deal can be won.
 ##
 ## The cards are marks, so the game has no mascot: the end card's seat is a
 ## fan of cards.
@@ -29,7 +32,7 @@ const Dialog = preload("res://ui/hud/dialog.gd")
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const SafeArea = preload("res://ui/safe_area.gd")
-const Vistas = preload("res://ui/menu/vistas.gd")
+const Deals = preload("res://arcade/deckchair_deals.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
 const Haptics = preload("res://core/haptics.gd")
 ## What the phone knocks for (docs/agents/haptics.md). A card lifted, set
@@ -48,15 +51,10 @@ const Rewards = preload("res://arcade/rewards.gd")
 const GAME := "deckchair"
 const MARGIN := 40
 const GAP := 20
-const HUD_H := 110.0
-const FRAME := 16
-const BACKDROP_BLEED := 90.0
-## The sweep: a beat after the last card turns up, then a card home this
-## often.
-const SWEEP_WAIT := 0.6
-const SWEEP_GAP := 0.085
-## Of the sweep's cards, one in this many is felt.
-const SWEEP_FELT := 4
+## The score's pill in the tools row.
+const PILL_R := 30
+## The card the bin brings up.
+const CLEAR_CARD := 760
 ## The win is held this long before the end card.
 const WIN_HOLD := 2.2
 
@@ -77,30 +75,30 @@ var settings_sheet: Control
 var tutor: RefCounted
 var table: Table
 var _fx: Node2D
-## The sweep's cards are heard and not felt: a second Fx2D with its buzzes
-## off, as Peapod's gun has.
-var _quiet: Node2D
-var _backdrop: ColorRect
+var _world: Control
+var _world_mesh: ArrayMesh
 var _margins: MarginContainer
 var _score_l: Label
-var _best_l: Label
-var _time_l: Label
+var _mult_l: Label
+var _mult_plate: PanelContainer
 var _stuck: Control
+var _clear_card: Control
+## The bulb's first press read the position out; the next spends the hint.
+var _read := false
 var _end: Control
 var _held := false
 var _started_at := 0
 var _best := 0
 var _shown_score := -1
-var _shown_secs := -1
+var _shown_mult := 0
 var _beat_best := false
 var _clock := 0.0
-var _sweep_t := -1.0
-var _swept := 0
 var _undos := 0
 var _hinted := 0
 var _seat: Control
 ## The loud rewards over the whole screen (arcade/rewards.gd).
 var _rw: Rewards
+var _col: VBoxContainer
 var _end_score: Label
 var _end_at := 0.0
 
@@ -125,95 +123,94 @@ func _ready() -> void:
 # --- building ---
 
 func _build() -> void:
-	var page := ColorRect.new()
-	page.color = Pal.PAPER
-	page.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	page.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(page)
-	_backdrop = Vistas.board_plate(GAME, Pal.LEAF_DEEP)
-	_backdrop.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	add_child(_backdrop)
+	_world = Control.new()
+	_world.name = "World"
+	_world.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_world.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_world.draw.connect(func() -> void:
+		if _world_mesh != null:
+			_world.draw_mesh(_world_mesh, null))
+	_world.resized.connect(_paint_world)
+	add_child(_world)
 
 	_margins = MarginContainer.new()
 	_margins.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(_margins)
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", GAP)
-	_margins.add_child(col)
+	_col = VBoxContainer.new()
+	_col.add_theme_constant_override("separation", GAP)
+	_margins.add_child(_col)
 
-	top_bar = FlatTopBar.new("Deckchair", tr("DC_MOTTO"), true)
+	top_bar = FlatTopBar.new("Deckchair", tr("DC_MOTTO"), true, false, true)
 	top_bar.name = "TopBar"
 	top_bar.back.connect(_on_back)
-	top_bar.reset.connect(_on_reset)
+	top_bar.reset.connect(_ask_clear)
 	top_bar.undo.connect(_on_undo)
 	top_bar.hint.connect(_on_hint)
 	top_bar.settings.connect(func() -> void: settings_sheet.open())
-	col.add_child(top_bar)
-	col.add_child(_build_hud())
-	col.add_child(_build_frame())
+	_col.add_child(top_bar)
+	_col.add_child(_build_tools())
+	table = Table.new()
+	table.name = "Table"
+	table.bare = true
+	table.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	table.said.connect(_on_said)
+	table.played.connect(_on_event)
+	table.acted.connect(_on_acted)
+	_col.add_child(table)
+	_fx = Fx2D.new()
+	_fx.haptics = HAPTICS
+	table.add_child(_fx)
 	_rw = Rewards.new()
 	add_child(_rw)
 	_apply_insets()
 
-## The wooden frame with the table in it, and the dead end's card docked at
-## its foot.
-func _build_frame() -> PanelContainer:
-	var frame := PanelContainer.new()
-	frame.name = "Frame"
-	frame.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	var box := StyleBoxFlat.new()
-	box.bg_color = Color("6e4a2f")
-	box.set_corner_radius_all(36)
-	box.border_color = Color("9c6b45")
-	box.set_border_width_all(6)
-	box.set_content_margin_all(FRAME)
-	box.shadow_color = Color(0.2, 0.1, 0.05, 0.25)
-	box.shadow_size = 10
-	box.shadow_offset = Vector2(0, 6)
-	frame.add_theme_stylebox_override("panel", box)
-	table = Table.new()
-	table.name = "Table"
-	table.said.connect(_on_said)
-	table.played.connect(_on_event)
-	table.acted.connect(_on_acted)
-	frame.add_child(table)
-	_fx = Fx2D.new()
-	_fx.haptics = HAPTICS
-	table.add_child(_fx)
-	_quiet = Fx2D.new()
-	_quiet.buzzes = false
-	table.add_child(_quiet)
-	return frame
-
-func _build_hud() -> Control:
-	var row := HBoxContainer.new()
-	row.custom_minimum_size.y = HUD_H
-	row.add_theme_constant_override("separation", 16)
-	var made := []
-	for key in ["FF_SCORE", "FF_BEST", "DC_TIME"]:
-		var plate := PanelContainer.new()
-		plate.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		plate.size_flags_stretch_ratio = 1.25 if key == "FF_SCORE" else 1.0
-		plate.add_theme_stylebox_override("panel", CozyTheme.lifted(Color("fcf7ef"), 30, 8))
-		var words := VBoxContainer.new()
-		words.alignment = BoxContainer.ALIGNMENT_CENTER
-		words.add_theme_constant_override("separation", -6)
-		plate.add_child(words)
-		var kicker := Label.new()
-		kicker.text = key
-		kicker.theme_type_variation = "MenuKicker"
-		kicker.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		words.add_child(kicker)
-		var value := Label.new()
-		value.text = "0"
-		value.theme_type_variation = "SheetTitle"
-		value.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		words.add_child(value)
-		row.add_child(plate)
-		made.append(value)
-	_score_l = made[0]
-	_best_l = made[1]
-	_time_l = made[2]
+## The bar's tools row with the score on a paper pill where its gap is, and
+## the streak's multiplier on a chip of sun at the pill's end.
+func _build_tools() -> Control:
+	var row: HBoxContainer = top_bar.tools
+	var pill := PanelContainer.new()
+	pill.name = "Tally"
+	pill.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pill.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	pill.custom_minimum_size.y = FlatTopBar.BUTTON.y
+	pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pill.add_theme_stylebox_override("panel", CozyTheme.lifted(Pal.SURFACE, PILL_R, 10))
+	var line := HBoxContainer.new()
+	line.alignment = BoxContainer.ALIGNMENT_CENTER
+	line.add_theme_constant_override("separation", 16)
+	pill.add_child(line)
+	var words := VBoxContainer.new()
+	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	words.alignment = BoxContainer.ALIGNMENT_CENTER
+	words.add_theme_constant_override("separation", -6)
+	line.add_child(words)
+	var kicker := Label.new()
+	kicker.text = "FF_SCORE"
+	kicker.theme_type_variation = "MenuKicker"
+	kicker.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	words.add_child(kicker)
+	_score_l = Label.new()
+	_score_l.text = "0"
+	_score_l.theme_type_variation = "SheetTitle"
+	_score_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	words.add_child(_score_l)
+	_mult_plate = PanelContainer.new()
+	_mult_plate.custom_minimum_size = Vector2(92, 0)
+	_mult_plate.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_mult_plate.add_theme_stylebox_override("panel", CozyTheme.chip(Pal.SUN, 22, Color.TRANSPARENT, 0))
+	line.add_child(_mult_plate)
+	_mult_l = Label.new()
+	_mult_l.theme_type_variation = "SheetTitle"
+	_mult_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_mult_l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_mult_plate.add_child(_mult_l)
+	_mult_plate.modulate.a = 0.0
+	# the pill takes the row's gap: Undo, the bin, the pill, the bulb
+	for child in row.get_children():
+		if child is Control and not (child is Button):
+			child.visible = false
+	row.add_child(pill)
+	row.move_child(pill, top_bar.hint_button.get_index())
 	return row
 
 func _apply_insets() -> void:
@@ -222,8 +219,15 @@ func _apply_insets() -> void:
 	_margins.add_theme_constant_override("margin_right", MARGIN)
 	_margins.add_theme_constant_override("margin_top", MARGIN + int(insets.x))
 	_margins.add_theme_constant_override("margin_bottom", MARGIN + int(insets.y))
-	_backdrop.offset_bottom = MARGIN + insets.x + FlatTopBar.HEIGHT + GAP + HUD_H + BACKDROP_BLEED
-	Vistas.set_top_pad(_backdrop, insets.x)
+	_paint_world()
+
+## The beach, its towel's head just over the table's.
+func _paint_world() -> void:
+	if _world == null or _world.size.x <= 0.0:
+		return
+	var top := MARGIN + SafeArea.insets(self).x + FlatTopBar.HEIGHT + GAP + FlatTopBar.BUTTON.y + GAP
+	_world_mesh = Art.world(_world.size, top, (_world.size.x - MARGIN * 2.0) / Sim.COLS)
+	_world.queue_redraw()
 
 # --- the game ---
 
@@ -232,29 +236,34 @@ func _new_game() -> void:
 		_end.queue_free()
 		_end = null
 	_hide_stuck()
-	sim = Sim.new(deal_seed)
+	_close_clear()
+	_read = false
+	sim = Sim.new(deal_seed if deal_seed >= 0 else _pick_deal())
 	Boosters.apply(GAME, sim, _boosts)
 	_boosted = not _boosts.is_empty()
 	_chance_used = false
 	_run_gold = 0
 	_beat_best = false
-	_sweep_t = -1.0
-	_swept = 0
 	_undos = 0
 	_hinted = 0
 	_end_score = null
 	_rw.clear()
 	_best = Record.best(GAME)
 	_shown_score = -1
-	_shown_secs = -1
+	_shown_mult = 0
 	_started_at = Time.get_ticks_msec()
 	table.sim = sim
 	table.interactive = true
 	_fx.cue("deal")
 	table.play_events()
+	table.toast.say(tr("DC_CAN_WIN"), table.clock())
 	_refresh_hud()
 	top_bar.refresh(self)
 	Analytics.track("arcade_start", {"game": GAME, "boosts": ",".join(_boosts)})
+
+## A deal of the bank.
+func _pick_deal() -> int:
+	return int(Deals.DEALS[randi() % Deals.DEALS.size()])
 
 ## The tutorial card's pages (ui/hud/screen_tutor.gd), each a small table
 ## played by a hand (ui/hud/deckchair_tutorial_diagram.gd). Every number in
@@ -267,7 +276,9 @@ func tutorial_pages() -> Array:
 		[Diagram.Lesson.HOME, "TUT_DECKCHAIR_HOME", tr("TUT_DECKCHAIR_HOME_BODY")],
 		[Diagram.Lesson.STOCK, "TUT_DECKCHAIR_STOCK", tr("TUT_DECKCHAIR_STOCK_BODY")],
 		[Diagram.Lesson.KING, "TUT_DECKCHAIR_KING", tr("TUT_DECKCHAIR_KING_BODY")],
+		[Diagram.Lesson.CHAIR, "TUT_DECKCHAIR_CHAIR", tr("TUT_DECKCHAIR_CHAIR_BODY")],
 		[Diagram.Lesson.SCORE, "TUT_DECKCHAIR_SCORE", tr("TUT_DECKCHAIR_SCORE_BODY")],
+		[Diagram.Lesson.STREAK, "TUT_DECKCHAIR_STREAK", tr("TUT_DECKCHAIR_STREAK_BODY")],
 		[Diagram.Lesson.BOOSTS, "TUT_DECKCHAIR_BOOSTS", tr("TUT_DECKCHAIR_BOOSTS_BODY")],
 		[Diagram.Lesson.HUD, "TUT_DECKCHAIR_HUD", tr("TUT_DECKCHAIR_HUD_BODY")],
 	]
@@ -293,7 +304,7 @@ func can_undo() -> bool:
 	return sim != null and sim.can_undo()
 
 func hints_left() -> int:
-	return sim.hints if sim != null and not sim.sweeping else 0
+	return sim.hints if sim != null else 0
 
 func _process(delta: float) -> void:
 	if sim == null:
@@ -301,13 +312,6 @@ func _process(delta: float) -> void:
 	_clock += delta
 	if not _held and not settings_sheet.is_open():
 		sim.tick(delta)
-		if _sweep_t >= 0.0:
-			_sweep_t -= delta
-			while _sweep_t < 0.0 and sim.sweeping:
-				_sweep_t += SWEEP_GAP
-				if not sim.sweep_step():
-					break
-				table.play_events()
 	_rw.bounds = Rect2(_rw.at(table, Vector2.ZERO), table.size)
 	_rw.step(delta)
 	_refresh_hud()
@@ -329,6 +333,18 @@ func _on_undo() -> void:
 func _on_hint() -> void:
 	if sim == null:
 		return
+	# the first press reads the table out for nothing; the next rings the move
+	if not _read:
+		var line: String = sim.reading()
+		if line == "":
+			_fx.cue("nope")
+			return
+		_read = true
+		table.toast.say(tr(line), table.clock(), true)
+		_fx.cue("hint")
+		return
+	_read = false
+	table.toast.clear()
 	var m: Dictionary = sim.hint()
 	if m.is_empty():
 		_fx.cue("nope")
@@ -342,15 +358,10 @@ func _on_hint() -> void:
 # --- what the table says ---
 
 func _on_said(cue: String, pitch: float) -> void:
-	if sim != null and sim.sweeping and cue == "home":
-		_swept += 1
-		_quiet.cue("home", pitch)
-		if _swept % SWEEP_FELT == 1:
-			_fx.buzz(Haptics.TICK)
-		return
 	_fx.cue(cue, pitch)
 
 func _on_acted() -> void:
+	_read = false
 	top_bar.refresh(self)
 	if sim != null and not sim.stuck:
 		_hide_stuck()
@@ -362,11 +373,10 @@ func _on_event(ev: Dictionary) -> void:
 			var card: int = (ev.cards as Array)[0]
 			if to.x == Sim.At.HOME and Sim.rank_of(card) == Sim.KING:
 				_suit_home(to.y)
+		"chain":
+			_on_chain(int(ev.mult))
 		"stuck":
 			_show_stuck()
-		"sweep":
-			_sweep_t = SWEEP_WAIT
-			_rw.sticker(tr("DC_SWEEP"), _over_table(0.5), 60, 1.4, true, Color.WHITE, false, "sweep")
 		"win":
 			_on_win(int(ev.bonus))
 		"over":
@@ -380,6 +390,15 @@ func _over_table(down: float) -> Vector2:
 
 func _plate_at(l: Label) -> Vector2:
 	return _rw.at(l, l.size * 0.5)
+
+## The streak moved a step: up, a sticker over the table and the chip bumped.
+func _on_chain(m: int) -> void:
+	_refresh_hud()
+	if m <= 1:
+		return
+	_rw.sticker(tr("DC_STREAK") % m, _over_table(0.5), 46 + 6 * m, 0.9, m >= Sim.MULT_MOST, Color("fff4c2"), false, "streak")
+	_rw.spray(_plate_at(_mult_l), Pal.SUN, 4 + 2 * m, 480.0, "spark", 0.9)
+	_fx.buzz(Haptics.BUMP if m >= Sim.MULT_MOST else Haptics.TICK)
 
 ## A suit all the way home: its king down, stars off the pile.
 func _suit_home(suit: int) -> void:
@@ -416,7 +435,8 @@ func _show_stuck() -> void:
 	col.add_theme_constant_override("separation", 8)
 	card.add_child(col)
 	var head := Label.new()
-	head.text = "DC_STUCK"
+	# past the search's reach the table may still hold a way on
+	head.text = "DC_STUCK_MAYBE" if sim.unsure else "DC_STUCK"
 	head.theme_type_variation = "SheetTitle"
 	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(head)
@@ -430,7 +450,7 @@ func _show_stuck() -> void:
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", 16)
 	col.add_child(row)
-	var undo := Dialog.secondary("undo", tr("DC_STUCK_UNDO"))
+	var undo := Dialog.secondary("undo_back", tr("DC_STUCK_UNDO"))
 	undo.name = "Undo"
 	undo.disabled = not sim.can_undo()
 	undo.pressed.connect(_on_undo)
@@ -450,8 +470,9 @@ func _show_stuck() -> void:
 	holder.name = "StuckHolder"
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	# its edges on the rows' margins, as the rows' own are
 	for side in ["margin_left", "margin_right", "margin_bottom"]:
-		holder.add_theme_constant_override(side, 24)
+		holder.add_theme_constant_override(side, 0)
 	card.size_flags_vertical = Control.SIZE_SHRINK_END
 	line.custom_minimum_size.x = 400
 	holder.add_child(card)
@@ -474,21 +495,24 @@ func _on_finish() -> void:
 func _refresh_hud() -> void:
 	if sim == null:
 		return
-	var secs := int(sim.t)
-	if secs != _shown_secs:
-		_shown_secs = secs
-		_time_l.text = "%d:%02d" % [secs / 60, secs % 60]
+	var m: int = sim.mult()
+	if m != _shown_mult:
+		_shown_mult = m
+		_mult_l.text = "x%d" % m
+		_mult_plate.modulate.a = 1.0 if m > 1 else 0.35
+		_mult_plate.pivot_offset = _mult_plate.size * 0.5
+		if m > 1:
+			Motion.bump(_mult_plate, 0.2, 0.3)
 	if sim.score == _shown_score:
 		return
 	_shown_score = sim.score
 	_score_l.text = Record.grouped(sim.score)
-	_best_l.text = Record.grouped(maxi(_best, sim.score))
 	if not _beat_best and _best > 0 and sim.score > _best:
 		_beat_best = true
-		_best_l.pivot_offset = _best_l.size * 0.5
-		Motion.bump(_best_l, 0.3, 0.4)
-		_rw.spray(_plate_at(_best_l), Pal.SUN, 14, 620.0, "star", 1.0)
-		_rw.ring(_plate_at(_best_l), 160.0, Color(Pal.SUN, 0.9))
+		_score_l.pivot_offset = _score_l.size * 0.5
+		Motion.bump(_score_l, 0.3, 0.4)
+		_rw.spray(_plate_at(_score_l), Pal.SUN, 14, 620.0, "star", 1.0)
+		_rw.ring(_plate_at(_score_l), 160.0, Color(Pal.SUN, 0.9))
 		_fx.buzz(Haptics.BUMP)
 
 # --- the end ---
@@ -666,6 +690,57 @@ func _on_reset() -> void:
 		Analytics.track("board_reset", {"puzzle_id": GAME})
 	_ask()
 
+## The bin: a card that asks before the deal is thrown away, as a daily
+## board's does. Keep playing is the sun button; the scrim keeps too. The
+## clock waits under it. A deal with nothing done on it goes without asking.
+func _ask_clear() -> void:
+	if _clear_card != null:
+		return
+	if sim == null or sim.is_over() or sim.moves == 0:
+		_on_reset()
+		return
+	var scrim := Dialog.scrim()
+	scrim.name = "ClearCard"
+	_clear_card = scrim
+	scrim.gui_input.connect(func(event: InputEvent) -> void:
+		if (event is InputEventScreenTouch or event is InputEventMouseButton) and event.pressed:
+			_close_clear())
+	var center := CenterContainer.new()
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	scrim.add_child(center)
+	var card := Dialog.card(CLEAR_CARD)
+	card.mouse_filter = Control.MOUSE_FILTER_STOP
+	center.add_child(card)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 20)
+	card.add_child(col)
+	col.add_child(Dialog.head("DC_CLEAR_TITLE", "bin"))
+	var body := Label.new()
+	body.text = "DC_CLEAR_BODY"
+	body.theme_type_variation = "CardBlurb"
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(body)
+	var keep := Dialog.primary("check", tr("CLEAR_NO"))
+	keep.name = "Keep"
+	keep.pressed.connect(_close_clear)
+	var yes := Dialog.secondary("bin", tr("DC_CLEAR_YES"))
+	yes.name = "Clear"
+	yes.pressed.connect(func() -> void:
+		_close_clear()
+		_on_reset())
+	Dialog.buttons(col, keep, yes)
+	add_child(scrim)
+	_held = true
+	Motion.appear(scrim, 0.0, 1.0, 0.2)
+
+func _close_clear() -> void:
+	if _clear_card == null:
+		return
+	_clear_card.queue_free()
+	_clear_card = null
+	_held = false
+
 func _on_back() -> void:
 	if sim != null and not sim.is_over() and sim.score > 0:
 		Analytics.track("arcade_abandon", {"game": GAME, "score": sim.score, "stage": sim.home_count()})
@@ -674,6 +749,9 @@ func _on_back() -> void:
 ## Android's back, through the menu: a sheet first, then the screen.
 func go_back() -> void:
 	if tutor.close():
+		return
+	if _clear_card != null:
+		_close_clear()
 		return
 	if settings_sheet.is_open():
 		settings_sheet.close()

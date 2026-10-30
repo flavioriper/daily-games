@@ -3041,6 +3041,52 @@ penalties. Its "furthest" is the most cards home.
   looked at.
 - **Not in `tests/_probe_arcade_buzz.gd`**: it has no Deckchair bot.
 - Owed: a phone, the sounds heard, pt and es read, the spec's ten calls.
+- **Made fun and laid as a daily board** (2026-10-30, the user: "way better
+  to play ... way funnier ... right now nobody likes it", the in-game UI to
+  follow the daily puzzles', "careful with the borders", spec
+  `2026-10-30-deckchair-fun.md`). Some lines above are history: the frame,
+  the paper plates, the clock on screen, the sweep and tap-to-any-place went.
+  - **Layout**: the flat-screens checklist, built by the screen itself. The
+    beach is `Art.world`, one cached mesh; the towel runs off both sides and
+    the foot so nothing but the rows' 40 margin stands beside the cards, and
+    only its head has a hem (the first shot had a hem all round against the
+    cards). `FlatTopBar` with `tools_row`, the tools row with the
+    score pill and streak chip in its gap; `Table.bare` lies flush on the
+    margins, `HEAD_ROOM` under the towel's head. The bin asks, except on a
+    deal not touched. The dead end's card lies on the same margins.
+  - **Every deal can be won**: `arcade/deckchair_deals.gd`, seeds the bot won
+    unaided, written by `tests/_bank_deckchair.gd`, proved without the
+    deckchair (rerun only if the shuffle changes). A harness's `deal_seed` skips the bank. The aces booster now
+    lifts the aces out of the same shuffle, so a banked deal stays banked.
+    The Second chance reshuffles and promises nothing.
+  - **No levels** (the user: the daily was the reference for the UI, "i
+    didn't mean you were suppose to include difficulty"). A level card with
+    four banks was built and taken out the same day: it is one game, a card
+    turned at a time.
+  - **The deckchair** is one free place in the top row, for one card off a
+    column or the waste, carried there. The search counts it: a position's
+    homes carry its card as a fifth number. It is the search's last resort
+    in `_progress`, so the bot rests a card only when nothing else helps.
+  - **The streak**: `CHAIN_STEP` good moves to a step, up to x`MULT_MOST`,
+    paid on cards home, turned up and played off the stock, and never on the
+    win bonus. `COOL_AFTER` turns of the stock in a row cool it a step; an
+    undo or a card brought down ends it.
+  - **A tap only sends a card home** (the user: "keep clicking on all cards
+    and they start to play alone"); a column or the chair is a carry. The
+    tutorial's hand carries too.
+  - **No sweep** (the user: "players like to manual organize till the last
+    card"). `_last_cards` replaces it for the search: with every card face
+    up the plan is the lowest card that may go home, so the bulb and the
+    dead end stay honest. Without it the search called won endgames stuck.
+  - **The bulb reads first**: free press, a toast (`Sim.reading`); the next
+    press spends the hint and rings the move. A move puts the reading out.
+  - **A stuck past the search's reach says "Looks stuck"** (`unsure`), not
+    "No moves left"; its buttons are the same.
+  - Web references: streak meters of the tower-solitaire apps, "winning
+    deals" modes, Balatro's rising score feel, undo and hints as a choice.
+  - Owed: a phone (a carry under a thumb on the 96-wide cards, the search's
+    slowest move, 176 ms here), the sounds heard with the streak's rising
+    pitch, pt and es read.
 
 
 **Eddy is the tenth** (2026-10-10, spec

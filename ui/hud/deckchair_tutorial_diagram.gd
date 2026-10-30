@@ -7,12 +7,13 @@ extends Control
 ## card moves, turns over and scores exactly as it does in the game.
 ## `lesson` picks the page (set before it enters the tree):
 ##
-## - BUILD: a red six carried onto a black seven, then a five tapped onto it.
-## - TURN: a nine tapped away, the card under it turning up, and again.
+## - BUILD: a red six carried onto a black seven, then a five carried onto it.
+## - TURN: a nine carried away, the card under it turning up, and again.
 ## - HOME: an ace and a two tapped to their piles.
 ## - STOCK: the stock tapped, and what it turns played onto the columns.
 ## - KING: a king carried, with its queen, to the empty column.
-## - SCORE, BOOSTS, HUD: rows of chips, each beside what it is.
+## - CHAIR: a card rested on the deckchair, the one under it turning up.
+## - SCORE, STREAK, BOOSTS, HUD: rows of chips, each beside what it is.
 
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
@@ -23,7 +24,7 @@ const Sim = preload("res://arcade/deckchair_sim.gd")
 const Table = preload("res://arcade/deckchair_table.gd")
 const Boosters = preload("res://arcade/boosters.gd")
 
-enum Lesson { BUILD, TURN, HOME, STOCK, KING, SCORE, BOOSTS, HUD }
+enum Lesson { BUILD, TURN, HOME, STOCK, KING, CHAIR, SCORE, STREAK, BOOSTS, HUD }
 
 const FRAME := 14
 ## The table is no wider than this for its height.
@@ -124,7 +125,9 @@ static func _c(suit: int, rank: int) -> int:
 func _reset() -> void:
 	if not _played() or not is_inside_tree() or size.x <= 0.0:
 		return
+	# a page shows no deckchair but its own
 	var s := Sim.new(1)
+	s.has_chair = lesson == Lesson.CHAIR
 	s.stock = []
 	s.waste = []
 	s.home = [0, 0, 0, 0]
@@ -135,17 +138,25 @@ func _reset() -> void:
 			s.cols = [[_c(CL, 13)], [_c(SP, 7)], [_c(HE, 6)], [_c(DI, 11)], [_c(CL, 5)], [_c(HE, 3)], [_c(SP, 9)]]
 			_steps = [
 				{"at": 1.0, "do": "carry", "card": _c(HE, 6), "kind": Sim.At.COL, "i": 1},
-				{"at": 3.2, "do": "tap", "card": _c(CL, 5)},
+				{"at": 3.2, "do": "carry", "card": _c(CL, 5), "kind": Sim.At.COL, "i": 1},
 			]
 			_length = 6.0
+		Lesson.CHAIR:
+			s.cols = [[_c(CL, 13)], [_c(HE, 6), _c(SP, 9)], [_c(DI, 11)], [_c(CL, 3)], [_c(HE, 13)], [_c(SP, 7)], [_c(DI, 5)]]
+			s.down = [0, 1, 0, 0, 0, 0, 0]
+			_steps = [
+				{"at": 1.0, "do": "carry", "card": _c(SP, 9), "kind": Sim.At.CHAIR, "i": 0},
+				{"at": 3.0, "do": "carry", "card": _c(HE, 6), "kind": Sim.At.COL, "i": 5},
+			]
+			_length = 5.6
 		Lesson.TURN:
 			s.cols = [[_c(CL, 6), _c(HE, 8), _c(SP, 9)], [_c(DI, 10)], [_c(SP, 2), _c(DI, 7)], [_c(CL, 12)], [_c(HE, 13)], [_c(CL, 3)], [_c(DI, 5)]]
 			s.down = [2, 0, 1, 0, 0, 0, 0]
 			_steps = [
-				{"at": 1.0, "do": "tap", "card": _c(SP, 9)},
-				{"at": 2.8, "do": "tap", "card": _c(HE, 8)},
+				{"at": 1.0, "do": "carry", "card": _c(SP, 9), "kind": Sim.At.COL, "i": 1},
+				{"at": 3.0, "do": "carry", "card": _c(HE, 8), "kind": Sim.At.COL, "i": 1},
 			]
-			_length = 5.6
+			_length = 5.8
 		Lesson.HOME:
 			s.home = [1, 0, 0, 0]
 			s.cols = [[_c(DI, 8), _c(SP, 2)], [_c(HE, 1)], [_c(DI, 5), _c(CL, 4)], [_c(SP, 11)], [_c(HE, 9)], [_c(CL, 7)], [_c(DI, 13)]]
@@ -160,9 +171,9 @@ func _reset() -> void:
 			s.cols = [[_c(HE, 9)], [_c(SP, 13)], [_c(DI, 5)], [_c(CL, 11)], [_c(HE, 7)], [_c(SP, 3)], [_c(DI, 12)]]
 			_steps = [
 				{"at": 0.9, "do": "stock"},
-				{"at": 2.0, "do": "tap", "card": _c(CL, 8)},
-				{"at": 3.3, "do": "stock"},
-				{"at": 4.4, "do": "tap", "card": _c(HE, 12)},
+				{"at": 2.0, "do": "carry", "card": _c(CL, 8), "kind": Sim.At.COL, "i": 0},
+				{"at": 3.6, "do": "stock"},
+				{"at": 4.6, "do": "carry", "card": _c(HE, 12), "kind": Sim.At.COL, "i": 1},
 			]
 			_length = 7.0
 		Lesson.KING:
@@ -170,7 +181,6 @@ func _reset() -> void:
 			s.down = [1, 0, 0, 0, 0, 0, 0]
 			_steps = [{"at": 1.0, "do": "carry", "card": _c(HE, 13), "kind": Sim.At.COL, "i": 1}]
 			_length = 5.0
-	s.sweeps = false
 	s.score = 0
 	s.stuck = false
 	s.events.clear()
@@ -222,7 +232,7 @@ func _process(delta: float) -> void:
 				"carry":
 					_carry_from = _finger
 					var to := Vector2i(int(step.kind), int(step.i))
-					var top: Vector2 = _table.home_at(to.y) if to.x == Sim.At.HOME else _table.col_next(to.y)
+					var top: Vector2 = _table.home_at(to.y) if to.x == Sim.At.HOME else (_table.chair_at() if to.x == Sim.At.CHAIR else _table.col_next(to.y))
 					_carry_to = top + _table.card_size() * Vector2(0.5, 0.2)
 					_carry_at = _t
 					_down_until = INF
@@ -259,6 +269,12 @@ func _draw() -> void:
 				["undo", tr("TUT_DECKCHAIR_SCORE_DOWN") % -Sim.PTS_DOWN],
 				["clock", tr("TUT_DECKCHAIR_SCORE_TIME")],
 			]
+		Lesson.STREAK:
+			rows = [
+				["flame", tr("TUT_DECKCHAIR_STREAK_UP") % Sim.CHAIN_STEP],
+				["trend", tr("TUT_DECKCHAIR_STREAK_TOP") % Sim.MULT_MOST],
+				["undo_back", tr("TUT_DECKCHAIR_STREAK_END")],
+			]
 		Lesson.BOOSTS:
 			rows = [
 				[Boosters.icon("dc_aces"), tr("TUT_DECKCHAIR_BOOST_ACES")],
@@ -267,9 +283,9 @@ func _draw() -> void:
 			]
 		_:
 			rows = [
-				["undo", tr("TUT_DECKCHAIR_HUD_UNDO")],
+				["undo_back", tr("TUT_DECKCHAIR_HUD_UNDO")],
 				["bulb", tr("TUT_DECKCHAIR_HUD_HINT_N") % Sim.HINTS],
-				["reset", tr("TUT_DECKCHAIR_HUD_RESET")],
+				["bin", tr("TUT_DECKCHAIR_HUD_RESET")],
 				["gear", tr("TUT_DECKCHAIR_HUD_GEAR")],
 			]
 	var boosts := lesson == Lesson.BOOSTS
