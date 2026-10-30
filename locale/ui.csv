@@ -1473,7 +1473,7 @@ ARC_BEST_HOME,Most cards home: %d,Mais cartas em casa: %d,Más cartas en casa: %
 DC_MOTTO,"Ace to king, suit by suit","Do ás ao rei, naipe a naipe","Del as al rey, palo a palo"
 DC_TIME,TIME,TEMPO,TIEMPO
 DC_STUCK,No moves left,Sem jogadas,Sin jugadas
-DC_STUCK_LINE,"Undo to try another way, or finish and keep your score.","Desfaça para tentar outro caminho, ou termine e fique com os pontos.","Deshaz para probar otro camino, o termina y quédate con los puntos."
+DC_STUCK_LINE,"This deal can still be won: undo a move or two, or finish and keep your score.","Esta partida ainda tem solução: desfaça uma ou duas jogadas, ou termine e guarde os pontos.","Esta partida aún tiene solución: deshaz una o dos jugadas, o termina y guarda tus puntos."
 DC_STUCK_UNDO,Undo,Desfazer,Deshacer
 DC_FINISH,Finish,Terminar,Terminar
 DC_WON,Every card home!,Todas em casa!,¡Todas en casa!

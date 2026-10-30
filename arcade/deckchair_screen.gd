@@ -393,8 +393,9 @@ func _plate_at(l: Label) -> Vector2:
 
 ## The streak moved a step: up, a sticker over the table and the chip bumped.
 func _on_chain(m: int) -> void:
+	var was := _shown_mult
 	_refresh_hud()
-	if m <= 1:
+	if m <= was or m <= 1:
 		return
 	_rw.sticker(tr("DC_STREAK") % m, _over_table(0.5), 46 + 6 * m, 0.9, m >= Sim.MULT_MOST, Color("fff4c2"), false, "streak")
 	_rw.spray(_plate_at(_mult_l), Pal.SUN, 4 + 2 * m, 480.0, "spark", 0.9)
@@ -450,12 +451,13 @@ func _show_stuck() -> void:
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", 16)
 	col.add_child(row)
-	var undo := Dialog.secondary("undo_back", tr("DC_STUCK_UNDO"))
+	# the deal can be won, so going back is the way out and not the giving up
+	var undo := Dialog.primary("undo_back", tr("DC_STUCK_UNDO"))
 	undo.name = "Undo"
 	undo.disabled = not sim.can_undo()
 	undo.pressed.connect(_on_undo)
 	row.add_child(undo)
-	var finish := Dialog.primary("check", tr("DC_FINISH"))
+	var finish := Dialog.secondary("check", tr("DC_FINISH"))
 	finish.name = "Finish"
 	finish.pressed.connect(_on_finish)
 	row.add_child(finish)

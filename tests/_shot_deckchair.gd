@@ -271,7 +271,7 @@ func _process(delta: float) -> bool:
 				_step = 7
 		7:
 			if _t > _at + 0.5:
-				print("a touch on a card moved it: ", _s.sim.moves == _moves + 1)
+				print("a touch on a card sent it home (false when it cannot go): ", _s.sim.moves == _moves + 1)
 				_bot = true
 				_moves = 0
 				_at = _t

@@ -3082,6 +3082,9 @@ penalties. Its "furthest" is the most cards home.
     press spends the hint and rings the move. A move puts the reading out.
   - **A stuck past the search's reach says "Looks stuck"** (`unsure`), not
     "No moves left"; its buttons are the same.
+  - The dead end's sun button is Undo and Finish the quiet one: the deal can
+    be won, so going back is the way out. The bare table does not clip, so a
+    card carried up draws over the tools row; that is meant.
   - Web references: streak meters of the tower-solitaire apps, "winning
     deals" modes, Balatro's rising score feel, undo and hints as a choice.
   - Owed: a phone (a carry under a thumb on the 96-wide cards, the search's
