@@ -22,17 +22,19 @@ const YAW := 0.42
 const NAMES := {1: "pawn", 2: "knight", 3: "bishop", 4: "rook", 5: "queen", 6: "king"}
 ## Set to 0 if a phone can't afford the edges over a whole board.
 const MSAA := Viewport.MSAA_4X
+const Power = preload("res://core/power.gd")
 
 var _viewport: SubViewport
 var _camera: Camera3D
 var _forward := Vector3.FORWARD
 var _up := Vector3.UP
-## Actor -> {root, type, skin, xf}.
+## Actor -> {root, type, skin, xf, parts, left, full}.
 var _pieces := {}
 var _scenes := {}
 var _materials := {}
 var _dirty := true
 var _wait := 0.0
+var _since := 0.0
 
 func _init() -> void:
 	stretch = true
@@ -107,7 +109,7 @@ func _make(type: int, skin: RefCounted, seat: int) -> Node3D:
 ## Stands every model piece. `pieces` is [[actor, type, skin, seat, foot, lift,
 ## tilt, squash, scale, alpha, look, left, full]]; an actor gone from the list
 ## is taken off. Called from the board's _draw, so it runs at the board's rate.
-func sync(pieces: Array, cell: float, clock: float, delta: float, resting: bool) -> void:
+func sync(pieces: Array, cell: float) -> void:
 	var h := size.y / cell
 	if not is_equal_approx(_camera.size, h):
 		_camera.size = h
@@ -121,8 +123,11 @@ func sync(pieces: Array, cell: float, clock: float, delta: float, resting: bool)
 			if not p.is_empty():
 				p.root.queue_free()
 			p = {"root": _make(e[1], e[2], e[3]), "type": e[1], "skin": e[2], "xf": Transform3D()}
+			p.parts = e[2].model_parts(p.root)
 			_pieces[actor] = p
 			_dirty = true
+		p.left = e[11]
+		p.full = e[12]
 		var yaw: float = YAW if e[10] < 0.0 else PI - YAW
 		var b := Basis(_forward, e[6]) * Basis.from_scale(Vector3(e[7].x, e[7].y, 1.0) * e[8]) * Basis(Vector3.UP, yaw)
 		var xf := Transform3D(b, _world(e[4], e[5], cell))
@@ -137,18 +142,27 @@ func sync(pieces: Array, cell: float, clock: float, delta: float, resting: bool)
 			_pieces[actor].root.queue_free()
 			_pieces.erase(actor)
 			_dirty = true
-	# A model's own moving parts run at their skin's few frames a second, and
-	# never while the game rests (core/power.gd).
-	_wait -= delta
-	if _wait <= 0.0 and not resting:
-		var hz := 0.0
-		for e: Array in pieces:
-			var skin: RefCounted = e[2]
-			hz = maxf(hz, skin.model_hz())
-			skin.model_tick(_pieces[e[0]].root, clock, e[11], e[12])
-		if hz > 0.0:
-			_wait = 1.0 / hz
-			_dirty = true
+	_render()
+
+func _render() -> void:
 	if _dirty:
 		_dirty = false
 		_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
+
+## A model's own moving parts run here, not in the board's _draw, which may
+## not come while nothing moves: their skin's few frames a second, and never
+## while the game rests (core/power.gd).
+func _process(delta: float) -> void:
+	_since += delta
+	_wait -= delta
+	if _wait > 0.0 or Power.resting:
+		return
+	var hz := 0.0
+	for p: Dictionary in _pieces.values():
+		hz = maxf(hz, p.skin.model_hz())
+		p.skin.model_tick(p.parts, _since, p.left, p.full)
+	_since = 0.0
+	if hz > 0.0:
+		_wait = 1.0 / hz
+		_dirty = true
+		_render()

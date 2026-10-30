@@ -43,20 +43,19 @@ func model_tint(material: String, seat: int) -> Color:
 			return BRASS_GEAR if brass else GUN_GEAR
 	return DARK
 
+func model_parts(piece: Node3D) -> Array:
+	return [piece.find_child("*_key", true, false), piece.find_child("*_gear", true, false)]
+
 ## `left` and `full` are the wearer's clock in seconds, `full` 0 for a game
 ## with none: the key then turns at its easy rate.
-func model_tick(piece: Node3D, clock: float, left: float, full: float) -> void:
+func model_tick(parts: Array, dt: float, left: float, full: float) -> void:
 	var rate := 1.2
 	if full > 0.0:
 		rate = 0.5 + 2.5 * clampf(left / full, 0.0, 1.0)
 		if left <= RATTLE_AT:
 			rate = 11.0
-	var key := piece.find_child("*_key", true, false) as Node3D
-	var gear := piece.find_child("*_gear", true, false) as Node3D
-	if key != null:
-		key.rotation.x = clock * rate
-	if gear != null:
-		gear.rotation.y = clock * rate * 0.6
+	parts[0].rotation.x += rate * dt
+	parts[1].rotation.y += rate * dt * 0.6
 
 func move_time(_type: int, from: Vector2, to: Vector2) -> float:
 	return 0.26 + 0.05 * from.distance_to(to)

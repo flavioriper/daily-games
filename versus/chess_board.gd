@@ -33,7 +33,6 @@ signal premoves_changed
 const Rules = preload("res://versus/chess_rules.gd")
 const ChessSkin = preload("res://versus/chess_skin.gd")
 const ChessModels = preload("res://versus/chess_models.gd")
-const Power = preload("res://core/power.gd")
 const Face = preload("res://ui/faces/face.gd")
 const Pal = preload("res://core/palette.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
@@ -117,7 +116,6 @@ var _models: SubViewportContainer
 var _top: Control
 ## Where what stands above the pieces is drawn: this board, or `_top`.
 var _ink: CanvasItem = self
-var _model_clock := 0.0
 ## The colour the player moves (Rules.WHITE or BLACK); their pieces are
 ## always the cream ones and always at the bottom.
 var player := Rules.WHITE
@@ -1238,9 +1236,7 @@ func _sync_models(poses: Array) -> void:
 		var look: float = pose.look if pose.look != 0.0 else -1.0
 		list.append([a, a.type, worn_set, a.side if player == Rules.WHITE else 1 - a.side, _foot(pose.at, a.side), pose.lift, pose.tilt,
 			pose.squash, pose.scale, pose.alpha, look, clock_left[a.side], clock_full])
-	var dt := get_process_delta_time()
-	_model_clock += dt
-	_models.sync(list, cell, _model_clock, dt, Power.resting)
+	_models.sync(list, cell)
 
 ## Each queued move's piece, faint, where it will stand.
 func _draw_ghosts() -> void:

@@ -146,9 +146,13 @@ func model_hz() -> float:
 func model_tint(_material: String, _seat: int) -> Color:
 	return Color.WHITE
 
-## Turns a model's moving parts. `left` and `full` are its wearer's clock in
-## seconds, `full` 0 for no clock.
-func model_tick(_piece: Node3D, _clock: float, _left: float, _full: float) -> void:
+## A fresh model's moving parts, found once and handed back to `model_tick`.
+func model_parts(_piece: Node3D) -> Array:
+	return []
+
+## Turns a model's moving parts for `dt` seconds. `left` and `full` are its
+## wearer's clock in seconds, `full` 0 for no clock.
+func model_tick(_parts: Array, _dt: float, _left: float, _full: float) -> void:
 	pass
 
 # --- motion ---
