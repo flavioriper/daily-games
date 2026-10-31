@@ -1415,3 +1415,12 @@ where" with it: `_fly_time` gives each flight its on-screen distance over
 for a hop next door.
 The ends are read through the zoom at take-off. The gap still spaces the
 take-offs, so a near gem can land before a far one that left first.
+
+**The lag was frames, not time.** The user: "when piece is flying, now it's
+not smooth anymore, it's all laggy". Logged per frame on Medium and Insane
+(`opengl3_angle`, 810x1440): `_draw_over` 0.2 to 1.9 ms, so nothing was
+behind; but most flights of a move are short, 0.08 to 0.18 s, five to ten
+frames for the whole arc with its fixed lift of 0.6 of a square, steps of
+40 to 90 px a frame. `FLY_MIN` goes for `FLY_BASE` 0.2 s plus the distance
+at `FLY_SPEED` 3.0: next door 0.2 s, half a screen 0.37 s. Not strictly one
+speed any more, but near still lands before far.

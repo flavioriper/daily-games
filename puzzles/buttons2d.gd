@@ -155,12 +155,15 @@ const PICK_CAP := 0.0
 ## The same day that constant went for a speed (the user: "instead of fly
 ## time, it should be a speed, they should fly at the same speed so closer
 ## colors reach faster than further colors"), taking back 2026-10-23's "it
-## should be a constant no matter where". FLY_SPEED is screen heights a
-## second, measured on screen where the zoom has the two ends at take-off:
-## half a screen takes about the old 0.3735. FLY_MIN only keeps a hop to the
-## next square a flight and not a blink.
-const FLY_SPEED := 1.34
-const FLY_MIN := 0.08
+## should be a constant no matter where". A flight is FLY_BASE and then its
+## distance at FLY_SPEED, screen heights a second, measured on screen where
+## the zoom has the two ends at take-off: half a screen takes about the old
+## 0.3735. Plain speed read as lag (the user, the same day: "it's all
+## laggy"): nothing was late, the draws cost 2 ms, but most of a move's
+## flights are short, so they had five to ten frames for their whole arc,
+## steps of 40 to 90 px. FLY_BASE gives every flight twelve frames.
+const FLY_SPEED := 3.0
+const FLY_BASE := 0.2
 ## A button of the tin sliding along to the next place (State.SLIDE).
 const SLIDE_TIME := 0.26
 const FLY_ARC := 0.6
@@ -1761,14 +1764,14 @@ func _play(res: Dictionary, at_cell: int, starts: Dictionary) -> void:
 	if state.part_done():
 		_part_sewn(merged)
 
-## How long flight `f` takes at FLY_SPEED, its ends where the screen has them
+## How long flight `f` takes: FLY_BASE and its distance at FLY_SPEED, its ends where the screen has them
 ## under the picture's transform `pic`.
 func _fly_time(f: Dictionary, pic: Transform2D) -> float:
 	if Motion.reduce:
 		return 0.0
 	var from: Vector2 = pic * (f.from as Vector2) if bool(f.fc) else f.from
 	var to: Vector2 = pic * (f.to as Vector2) if bool(f.tc) else f.to
-	return maxf(FLY_MIN, from.distance_to(to) / (FLY_SPEED * size.y))
+	return FLY_BASE + from.distance_to(to) / (FLY_SPEED * size.y)
 
 ## A move's jewels on their own slots merge together: once the last of them
 ## has settled, as a wave out of `at_cell`, the nearest first. The second
