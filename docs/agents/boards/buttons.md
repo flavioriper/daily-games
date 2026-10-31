@@ -1388,3 +1388,12 @@ the board together into some good looking animation."
   (`opengl3_angle`, 810x1440). `_win.gd buttons` PASS; board probe 38
   days, the two old band-2 zoom failures; suite 303252/0. Not seen on a
   phone; the merge pop unheard.
+
+## 2026-10-31
+
+**The gap doubled.** The user, opening a polish round: "the piece gap,
+increase it time by 100%". `RUN_STEP` 0.025 to 0.05 s, `FLY_TIME` kept at
+0.498: about ten gems in the air at once on a long run (was twenty), and a
+run of 48 leaves in about 2.4 s (was 1.2). Read as the time between
+flights, as every earlier "gap between pieces" here; the gems' drawn size
+did not change. Not seen on a phone.
