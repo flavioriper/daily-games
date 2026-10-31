@@ -882,7 +882,7 @@ func _draw() -> void:
 		return
 	if _boats.is_empty():
 		for i in Rules.FLEET.size():
-			_boats.append(_build_boat(i))
+			_boats.append(boat_mesh(i))
 			_wakes.append(_build_wake(i))
 		_tile = _build_tile()
 		_paper = _build_paper()
@@ -1185,7 +1185,7 @@ static func _box(b: Face.Builder, at: Vector2, sz: Vector2, col: Color, r := 6.0
 
 ## Each boat is its own kind, as the concept drew them. All in the same space
 ## as `hull_points`: along +x, the sharp end ahead, a square `U` long.
-func _build_boat(i: int) -> ArrayMesh:
+static func boat_mesh(i: int) -> ArrayMesh:
 	var b := Face.Builder.new()
 	var n: int = Rules.FLEET[i]
 	match i:

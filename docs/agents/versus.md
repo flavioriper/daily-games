@@ -643,6 +643,7 @@ pond and what is thrown is a pebble.
   - **Sound** (bank only, no credits): new `fire` (lip), `arm` and `spy`
     (pebble); `splash` is now the pebble take, a pebble really landing in a
     pond. Run pitch climbs `RUN_STEP` a pop, five at most. Unheard.
+  - The Versus card draws the game's own Tugboat (`Board.boat_mesh`).
   - 90-112 draw calls at the board, 119-126 with a tutorial page (810x1440).
     ANGLE agrees on the tutorial page, 119-124. Suite 303252/0; `_probe_boats` 0 fails;
     `_probe_boats_online` 0 fails on the emulators, whole games through this

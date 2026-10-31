@@ -2,8 +2,8 @@ extends "res://ui/menu/cards/card_face.gd"
 
 ## Toy Boats' card: a pale tub of bath water seen from above, a few ripples
 ## lying across it, and a loose patch of the pond's own water low on the
-## right, four squares by three, with the board's lines on it. One wooden
-## boat of three squares lies along its middle row, half found: the board's
+## right, four squares by three, with the board's lines on it. The red
+## Tugboat of three squares lies along its middle row, half found: the board's
 ## pegs stand in two of its holes, two ripples mark where a pebble found only
 ## water, and the square that would finish it is ringed.
 ##
@@ -120,26 +120,15 @@ func _paint(b: Face.Builder) -> void:
 	b.stroke(Face.Builder.ring(aim, s * 0.34, s * 0.34), s * 0.07, Board.HINT, true)
 	_go(b, aim - Vector2(0.0, s * GO_UP), aim, s)
 
-## The wooden boat, its stern's square at `at`, lying along the row: the
-## board's hull outline, deck, line of paint, grain and a hole a square.
+## The game's own Tugboat, its stern's square at `at`, lying along the row,
+## over its shadow.
 func _boat(b: Face.Builder, at: Vector2, u: float) -> void:
-	var n: int = Rules.FLEET[BOAT]
 	var lift := Board.U * 0.06
 	var shadow := PackedVector2Array()
 	for p in Board.hull_points(BOAT):
 		shadow.append(at + (p + Vector2(lift * 0.5, lift)) * u)
 	b.polygon(shadow, Board.SHADE)
-	b.polygon(_laid(Board.hull_points(BOAT), at, u), Board.HULL_RIM)
-	b.polygon(_laid(Board.hull_points(BOAT, -0.055 * Board.U), at + Vector2(-0.01, -0.02) * Board.U * u, u), Board.HULL)
-	b.stroke(_laid(Board.hull_points(BOAT, -0.13 * Board.U), at, u), 0.05 * Board.U * u, Board.PAINT[BOAT], true)
-	b.stroke(PackedVector2Array([at + Vector2(-0.2, -0.07) * Board.U * u, at + Vector2((n - 1) + 0.05, -0.07) * Board.U * u]),
-		0.018 * Board.U * u, Color(Board.HULL_RIM, 0.3))
-	b.stroke(PackedVector2Array([at + Vector2(-0.12, 0.08) * Board.U * u, at + Vector2((n - 1) - 0.1, 0.08) * Board.U * u]),
-		0.018 * Board.U * u, Color(Board.HULL_RIM, 0.3))
-	for i in n:
-		var hole := at + Vector2(i, 0.0) * Board.U * u
-		b.disc(hole, 0.085 * Board.U * u, Board.HOLE)
-		b.disc(hole + Vector2(0.012, 0.02) * Board.U * u, 0.06 * Board.U * u, Color(0.2, 0.12, 0.06, 0.5))
+	b.append(Board.boat_mesh(BOAT), Transform2D(0.0, Vector2.ONE * u, 0.0, at))
 
 static func _laid(points: PackedVector2Array, at: Vector2, u: float) -> PackedVector2Array:
 	var out := PackedVector2Array()
