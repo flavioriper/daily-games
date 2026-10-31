@@ -1397,3 +1397,10 @@ increase it time by 100%". `RUN_STEP` 0.025 to 0.05 s, `FLY_TIME` kept at
 run of 48 leaves in about 2.4 s (was 1.2). Read as the time between
 flights, as every earlier "gap between pieces" here; the gems' drawn size
 did not change. Not seen on a phone.
+
+**Flights a quarter shorter.** The user: "increase flight time by 25%",
+then, a minute later, "it was suppose to reduce by 25%, to make it
+faster". `FLY_TIME` 0.498 to 0.3735 s (about 22 frames at 60 fps), the time
+itself and counted from 0.498, the 0.6225 s between never kept. The gap
+stays 0.05 s, so seven or eight gems are in the air at once on a long run.
+Not seen on a phone.

@@ -150,8 +150,9 @@ const PICK_CAP := 0.0
 ## then the speed at three quarters ("reduce fly speed by 25%"): 0.14 x 4/3,
 ## and at three quarters again ("reduce fly time more 25%", meant slower):
 ## 0.187 x 4/3. Then at half the speed (the user, 2026-10-29: "slow down
-## flight speed by 50%"): 0.249 x 2.
-const FLY_TIME := 0.498
+## flight speed by 50%"): 0.249 x 2. Then a quarter shorter (the user,
+## 2026-10-31: "reduce by 25%, to make it faster"): 0.498 x 0.75.
+const FLY_TIME := 0.3735
 ## Every flight takes FLY_TIME, however far it goes (the user, 2026-10-23:
 ## "never increase fly time, it should be a constant no matter where"); a
 ## flight out of the case or into it no longer stretches by its length.
