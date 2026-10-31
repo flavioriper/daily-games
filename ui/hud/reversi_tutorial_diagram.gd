@@ -22,7 +22,7 @@ const Board = preload("res://versus/reversi_board.gd")
 const Motion = preload("res://core/motion.gd")
 const Pal = preload("res://core/palette.gd")
 
-enum Lesson { PLACE, MANY, PASS, CORNER, BAR }
+enum Lesson { PLACE, MANY, PASS, CORNER, BAR, TRICKS }
 
 const FINGER_R := 26.0
 const FINGER_ALPHA := 0.2
@@ -82,6 +82,18 @@ static func script_of(the_lesson: int) -> Dictionary:
 				"......ox"], "script": [
 				[0.9, "go", 6, 3, 0.01], [1.3, "down"], [2.2, "up"], [2.4, "hide"],
 				[4.6, "go", 2, 0, 0.01], [5.0, "down"], [5.9, "up"], [6.1, "hide"]]}
+		Lesson.TRICKS:
+			# A stone on the square the run would be shut from: nobody plays it now.
+			return {"len": 6.5, "rows": [
+				"..ooox..",
+				"........",
+				"...xo...",
+				"...ox...",
+				"........",
+				"........",
+				"........",
+				"........"], "script": [
+				[1.0, "go", 1, 0, 0.01], [1.4, "down"], [2.2, "rock", 1, 0], [2.3, "hide"]]}
 		Lesson.CORNER:
 			return {"len": 9.0, "rows": [
 				".ooox...",
@@ -170,6 +182,15 @@ func _do(e: Array) -> void:
 			_board.set_lifted(Rules.cell(e[2], e[3]))
 		"play":
 			_put(Rules.cell(e[2], e[3]))
+		"rock":
+			var at: int = Rules.cell(e[2], e[3])
+			_down = false
+			_board._down = false
+			_board._over = -1
+			_rules.tricks[_rules.turn] = Rules.STONE
+			_rules.ply = Rules.TRICKS_FROM
+			_rules.stone(at)
+			_board.stone(at)
 		"hint":
 			_board.set_hint(Rules.cell(e[2], e[3]))
 		"hide":

@@ -21,11 +21,14 @@ const RADIUS := 30
 
 var _buttons := {}
 var _icons := {}
+var _kinds: Array = KINDS
 
-func _init() -> void:
+## Another game's tricks: `kinds`, their words and how each is drawn.
+func _init(kinds: Array = KINDS, names: Dictionary = NAMES, painter: Callable = paint) -> void:
+	_kinds = kinds
 	add_theme_constant_override("separation", 14)
 	custom_minimum_size.y = HIGH
-	for kind: int in KINDS:
+	for kind: int in _kinds:
 		var b := Button.new()
 		b.name = "Trick%d" % kind
 		b.focus_mode = Control.FOCUS_NONE
@@ -37,12 +40,12 @@ func _init() -> void:
 		row.alignment = BoxContainer.ALIGNMENT_CENTER
 		row.add_theme_constant_override("separation", 8)
 		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var icon := Icon.new(kind, paint)
+		var icon := Icon.new(kind, painter)
 		icon.custom_minimum_size = Vector2(ICON, ICON)
 		icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(icon)
 		var label := Label.new()
-		label.text = NAMES[kind]
+		label.text = names[kind]
 		label.theme_type_variation = "CardBlurb"
 		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(label)
@@ -54,7 +57,7 @@ func _init() -> void:
 
 ## What is left (a mask), what is in hand and whether a touch does anything.
 func show_stock(left: int, armed: int, live: bool) -> void:
-	for kind: int in KINDS:
+	for kind: int in _kinds:
 		var has := left & kind != 0
 		var b: Button = _buttons[kind]
 		var on: bool = armed == kind
@@ -126,9 +129,11 @@ class Mini extends Control:
 	var _left := -1
 	var _mesh: ArrayMesh
 	var _paint: Callable
+	var _kinds: Array
 
-	func _init(painter: Callable) -> void:
+	func _init(painter: Callable, kinds: Array = KINDS) -> void:
 		_paint = painter
+		_kinds = kinds
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 		custom_minimum_size = Vector2(SIDE * 3.0, SIDE)
 
@@ -138,7 +143,7 @@ class Mini extends Control:
 		_left = left
 		var b := Face.Builder.new()
 		var i := 0.0
-		for kind: int in KINDS:
+		for kind: int in _kinds:
 			if left & kind != 0:
 				_paint.call(b, kind, Vector2(SIDE * (i + 0.5), SIDE * 0.5), SIDE * 0.48)
 				i += 1.0

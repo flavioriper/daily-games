@@ -3382,6 +3382,11 @@ SETS = {
     # hundred turned over, so everything a disc does is dry, low and short
     # with no note, and the notes are kept for the bulb and the end.
     "reversi": {
+        # The tricks (2026-10-31): a stone set down, a low token; a disc swiped,
+        # a thing taken off, the lip; a trick taken in hand, a select, the pebble.
+        "stone":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -11, FOLEY, "bank:token", "cut:0.18", "notes:0:-5", "tight"),
+        "swipe":    ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -12, FOLEY, "bank:lip", "cut:0.16", "notes:0:2", "tight"),
+        "arm":      ('a small pebble dropped into a calm pond, one soft plop, close, very short', 0.6, -15, FOLEY, "bank:pebble", "cut:0.1", "notes:0:3", "tight"),
         # Redone 2026-10-10 against the cozy rules (docs/agents/sound.md), the
         # forty-ninth set of the redo, with Dominoes' above. None kept.
         # Three new takes: `place` (a hollow wooden block set down on felt,

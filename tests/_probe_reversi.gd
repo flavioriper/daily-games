@@ -28,8 +28,125 @@ func _initialize() -> void:
 	_random_games(rng)
 	_pairs(games, rng)
 	_planless(games, rng)
+	_tricks(games, rng)
 	print("FAILS ", _fails)
 	quit(1 if _fails > 0 else 0)
+
+## The tricks: what each may and may not do, and whole games with them, every
+## side played by `plan_turn`. Level 0 holding all three stands in for a casual
+## hand: what it scores against each level is what a person meets.
+func _tricks(games: int, rng: RandomNumberGenerator) -> void:
+	print("tricks")
+	var r := Rules.new()
+	r.tricks = [Rules.ALL_TRICKS, Rules.ALL_TRICKS]
+	_ok("no trick in the opening", not r.can_stone(Rules.cell(0, 0)) and not r.encore())
+	r.ply = Rules.TRICKS_FROM
+	_ok("a stone takes an empty square only", not r.can_stone(Rules.cell(3, 3)) and r.can_stone(Rules.cell(0, 0)))
+	var legal: int = r.legal_moves().size()
+	_ok("a stone spends the turn", r.stone(Rules.cell(2, 3)) and r.turn == Rules.SECOND and r.tricks[Rules.FIRST] & Rules.STONE == 0)
+	_ok("nobody plays a stone's square", not r.can(Rules.cell(2, 3)) and legal > 0)
+	_ok("no stone left is no stone", not r.can_stone(Rules.cell(0, 1)) or r.turn == Rules.SECOND)
+	var c: RefCounted = _laid(["xo......", "........", "........", "...xo...", "...ox...", "........", "........", "o......."], Rules.SECOND)
+	c.tricks = [0, Rules.SWIPE]
+	c.ply = Rules.TRICKS_FROM
+	_ok("a corner cannot be swiped", not c.can_swipe(0))
+	_ok("any other disc can", c.can_swipe(Rules.cell(3, 3)) and c.swipe(Rules.cell(3, 3)) and c.cells[Rules.cell(3, 3)] == Rules.SECOND + 1)
+	var e := Rules.new()
+	e.tricks = [Rules.ENCORE, 0]
+	for k in Rules.TRICKS_FROM:
+		e.make(e.legal_moves()[0])
+	var side: int = e.turn
+	e.tricks = [Rules.ENCORE, Rules.ENCORE]
+	e.encore()
+	e.make(e.legal_moves()[0])
+	_ok("an encore keeps the turn", e.turn == side and e.tricks[side] == 0)
+	var was: int = e.turn
+	e.make(e.legal_moves()[0])
+	_ok("and only for one disc", e.turn != was or not e.has_move(1 - was))
+	_ok("a stone ends a run", _stone_stops())
+	var used := 0
+	for k in 12:
+		var g := Rules.new()
+		g.tricks = [AI.STOCK[k % 3], AI.STOCK[(k + 1) % 3]]
+		var turns := 0
+		while not g.over and turns < 120:
+			turns += 1
+			var who: int = g.turn
+			var plan: Dictionary = AI.new().plan_turn(g, (k + who) % 3, rng.randi(), 25)
+			if int(plan.trick) != 0:
+				used += 1
+			if int(plan.trick) == Rules.ENCORE:
+				g.encore()
+			elif int(plan.trick) == Rules.STONE:
+				g.stone(int(plan.cell))
+			elif int(plan.trick) == Rules.SWIPE:
+				g.swipe(int(plan.cell))
+			else:
+				g.make(int(plan.cell))
+		if not g.over:
+			_ok("a game with tricks ends", false)
+	print("  %d tricks played in 12 games" % used)
+	_ok("the computer plays its tricks", used >= 6)
+	for lv in 3:
+		var wins := 0
+		var n := mini(games, 12)
+		for k in n:
+			var g := Rules.new()
+			var hand := Rules.FIRST if k % 2 == 0 else Rules.SECOND
+			g.tricks[hand] = Rules.ALL_TRICKS
+			g.tricks[1 - hand] = AI.STOCK[lv]
+			while not g.over:
+				var mine: bool = g.turn == hand
+				var plan: Dictionary = AI.new().plan_turn(g, 0 if mine else lv, rng.randi(), 25)
+				if int(plan.trick) == Rules.ENCORE:
+					g.encore()
+				elif int(plan.trick) == Rules.STONE:
+					g.stone(int(plan.cell))
+				elif int(plan.trick) == Rules.SWIPE:
+					g.swipe(int(plan.cell))
+				else:
+					g.make(int(plan.cell))
+			if g.winner() == hand:
+				wins += 1
+		print("  casual hand with all three against level %d: %d-%d" % [lv, wins, n - wins])
+		# A beginner heeding the reads: a corner, never a square that hands one
+		# over, else the most discs. No tricks.
+		var greedy := 0
+		for k in n:
+			var g := Rules.new()
+			var hand := Rules.FIRST if k % 2 == 0 else Rules.SECOND
+			g.tricks[1 - hand] = AI.STOCK[lv]
+			while not g.over:
+				if g.turn == hand:
+					var best := -1
+					var most := -1000
+					for m in g.legal_moves():
+						# The reads under the finger, heeded.
+						var said: String = String(AI.read(g, m).kind)
+						var worth: int = g.flips(m, hand).size() + rng.randi() % 3 + {"corner": 100, "shut": 20, "gives": -50, "": 0}[said]
+						if worth > most:
+							most = worth
+							best = m
+					g.make(best)
+					continue
+				var plan: Dictionary = AI.new().plan_turn(g, lv, rng.randi(), 25)
+				if int(plan.trick) == Rules.ENCORE:
+					g.encore()
+				elif int(plan.trick) == Rules.STONE:
+					g.stone(int(plan.cell))
+				elif int(plan.trick) == Rules.SWIPE:
+					g.swipe(int(plan.cell))
+				else:
+					g.make(int(plan.cell))
+			if g.winner() == hand:
+				greedy += 1
+		print("  a beginner against level %d: %d-%d" % [lv, greedy, n - greedy])
+
+func _stone_stops() -> bool:
+	var g: RefCounted = _laid(["..ooox..", "........", "........", "...xo...", "...ox...", "........", "........", "........"])
+	var before: int = g.flips(Rules.cell(1, 0), Rules.FIRST).size()
+	g.cells[Rules.cell(3, 0)] = Rules.ROCK
+	return before == 3 and g.flips(Rules.cell(1, 0), Rules.FIRST).is_empty()
 
 func _ok(what: String, yes: bool) -> void:
 	if not yes:

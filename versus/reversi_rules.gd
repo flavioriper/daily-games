@@ -10,6 +10,13 @@ extends RefCounted
 ## choice -- and the game ends when neither side has one. The side showing
 ## more discs wins; the same count is a draw.
 ##
+## **Tricks** (`tricks`, a mask a side; all empty online, where no rules version
+## travels with a match): one use a game. STONE is the turn instead of a disc,
+## a stone on an empty square that nobody can ever play and that ends any run
+## through it; SWIPE is the turn instead of a disc, one of the other side's
+## discs turned to yours, corners excepted; ENCORE is a second disc straight
+## after the next one. A trick cannot be taken back: `history` is cleared.
+##
 ## A cell is `x + y * W`, y 0 the top row. A move is its cell. The pass is
 ## made by `make` itself: after a move `turn` is the side that moves next,
 ## which is the same side again when the other has no square (`passed`).
@@ -23,6 +30,16 @@ const SECOND := 1
 const PLAYING := 0
 const WON := 1
 const DRAW := 2
+## What a stone is on a cell.
+const ROCK := 3
+const STONE := 1
+const SWIPE := 2
+const ENCORE := 4
+const ALL_TRICKS := STONE | SWIPE | ENCORE
+const CORNERS := [0, W - 1, CELLS - W, CELLS - 1]
+## No trick before this many moves: two discs in a row on the second move can
+## turn the other side's last disc and end the game there.
+const TRICKS_FROM := 8
 const DIRS := [Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1), Vector2i(-1, 1),
 	Vector2i(-1, 0), Vector2i(-1, -1), Vector2i(0, -1), Vector2i(1, -1)]
 
@@ -41,6 +58,9 @@ var over := false
 ## Each move made: [cell, the cells it turned, the turn before, `passed`
 ## before, `last_side` before].
 var history: Array = []
+## Each side's tricks left, and whether the next disc is an encore's.
+var tricks := [0, 0]
+var encore_on := false
 
 func _init() -> void:
 	cells.resize(CELLS)
@@ -107,6 +127,14 @@ func has_move(side: int) -> bool:
 			return true
 	return false
 
+## The squares `side` could play as the board stands.
+func legal_for(side: int) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	for c in CELLS:
+		if cells[c] == EMPTY and not flips(c, side).is_empty():
+			out.append(c)
+	return out
+
 ## The squares the side to move may play, none once the game is over.
 func legal_moves() -> PackedInt32Array:
 	var out := PackedInt32Array()
@@ -144,6 +172,17 @@ func make(c: int) -> PackedInt32Array:
 		cells[q] = turn + 1
 	ply += 1
 	last_side = turn
+	if encore_on:
+		encore_on = false
+		history.clear()
+		if has_move(turn):
+			passed = false
+			return turned
+	_next()
+	return turned
+
+## Whose turn it is once `turn` has moved.
+func _next() -> void:
 	var other := 1 - turn
 	passed = false
 	if has_move(other):
@@ -152,7 +191,47 @@ func make(c: int) -> PackedInt32Array:
 		passed = true
 		if not has_move(turn):
 			over = true
-	return turned
+
+func tricks_open() -> bool:
+	return not over and ply >= TRICKS_FROM
+
+func can_stone(c: int) -> bool:
+	return tricks_open() and tricks[turn] & STONE != 0 and c >= 0 and c < CELLS and cells[c] == EMPTY
+
+func can_swipe(c: int) -> bool:
+	return tricks_open() and tricks[turn] & SWIPE != 0 and c >= 0 and c < CELLS and cells[c] == 2 - turn and not (c in CORNERS)
+
+## A stone on `c`, the turn spent.
+func stone(c: int) -> bool:
+	if not can_stone(c):
+		return false
+	cells[c] = ROCK
+	_after_trick(STONE)
+	return true
+
+## The other side's disc on `c` turned, the turn spent.
+func swipe(c: int) -> bool:
+	if not can_swipe(c):
+		return false
+	cells[c] = turn + 1
+	_after_trick(SWIPE)
+	return true
+
+## The next disc comes with another; the turn is not spent.
+func encore() -> bool:
+	if not tricks_open() or tricks[turn] & ENCORE == 0:
+		return false
+	tricks[turn] &= ~ENCORE
+	encore_on = true
+	history.clear()
+	return true
+
+func _after_trick(kind: int) -> void:
+	tricks[turn] &= ~kind
+	history.clear()
+	ply += 1
+	last_side = turn
+	_next()
 
 ## Takes the last disc back off and turns back what it turned.
 func unmake() -> void:
@@ -203,4 +282,6 @@ func copy() -> RefCounted:
 	r.last_side = last_side
 	r.over = over
 	r.history = history.duplicate()
+	r.tricks = tricks.duplicate()
+	r.encore_on = encore_on
 	return r

@@ -35,6 +35,10 @@ signal chosen(cell: int)
 signal settled
 ## The square let go over may not be played: "taken" or "none".
 signal refused(reason: String)
+## With a trick in hand, the square it was put on.
+signal targeted(cell: int)
+## A finger came onto a square that has something to say (`reader`).
+signal peeked(kind: String, turned: int)
 
 const Rules = preload("res://versus/reversi_rules.gd")
 const Face = preload("res://ui/faces/face.gd")
@@ -55,6 +59,9 @@ const TALLY_H := 22.0
 ## The space the board takes, alone and with the room over it (the screen's
 ## line of words) and the tally under it.
 const SPACE := Rect2(-FRAME - 6.0, -FRAME - 6.0, GRID.x + 2.0 * FRAME + 12.0, GRID.y + 2.0 * FRAME + 22.0)
+## With the row of tricks over it, the board takes no room for words there;
+## they stand under the tally.
+const SPACE_ROW := Rect2(-FRAME - 6.0, -FRAME - 6.0, GRID.x + 2.0 * FRAME + 12.0, GRID.y + 2.0 * FRAME + 6.0 + 150.0)
 const SPACE_TALLY := Rect2(-FRAME - 6.0, -FRAME - 96.0, GRID.x + 2.0 * FRAME + 12.0, GRID.y + 2.0 * FRAME + 96.0 + 76.0)
 
 const FIELD := Color("5f93cf")
@@ -73,7 +80,16 @@ const HALO := Color("fff6e0")
 const HINT := Color("f9c04a")
 ## A side's light, by look: the sun's is warm, the moon's silver. Light on a
 ## square or round a disc, never a tint of the disc.
-const LIGHT := [Color("ffe7a0"), Color("e3e9ff")]
+const LIGHT := [Color("ffe7a0"), Color("e3e9ff"), Color("fff6e0")]
+## A read under the finger: a corner to take, an answer that hands one over, the
+## other side shut out.
+const READ_GOOD := Color("f9c04a")
+const READ_BAD := Color("e8604f")
+const READ_SHUT := Color("bfe6f5")
+const STONE_FACE := Color("a7a39a")
+const STONE_LIT := Color("c9c5ba")
+const STONE_DEEP := Color("6d6a62")
+const MOSS := Color("7f9e5e")
 const BRASS := Color("d2a54f")
 const BRASS_DEEP := Color("9a7330")
 const BRASS_HI := Color("f1d58f")
@@ -161,6 +177,16 @@ var tally := true
 var deaf := false
 ## The rectangle the board takes.
 var used_rect := Rect2()
+## The screen's row of tricks stands over the board (`SPACE_ROW`).
+var row_over := false
+## What a finger on a square reads (`AI.read`); empty on levels that read nothing.
+var reader := Callable()
+## The trick in hand (Rules.STONE, Rules.SWIPE), 0 none.
+var armed := 0:
+	set(v):
+		armed = v
+		_busy(0.2)
+		queue_redraw()
 
 var _xf := Transform2D.IDENTITY
 var _base: ArrayMesh
@@ -224,6 +250,8 @@ var _end_wait := {}
 var _turn_at := 0.0
 var _single := false
 var _lifted_at := -10.0
+## What the square under the finger reads.
+var _read := {}
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE if still or deaf else Control.MOUSE_FILTER_STOP
@@ -247,7 +275,7 @@ func setup(the_rules: RefCounted, side: int, enter := false) -> void:
 	_cells.resize(Rules.CELLS)
 	for c in Rules.CELLS:
 		if rules.cells[c] != Rules.EMPTY:
-			_cells[c] = look_of(rules.cells[c] - 1) + 1
+			_cells[c] = _shown_of(rules.cells[c])
 	_turning = {}
 	_pop = {}
 	_gone.clear()
@@ -292,6 +320,10 @@ func setup(the_rules: RefCounted, side: int, enter := false) -> void:
 func look_of(side: int) -> int:
 	return 0 if side == player else 1
 
+## What a rules' cell shows, in `_cells`: a look plus one, 3 a stone.
+func _shown_of(v: int) -> int:
+	return 3 if v == Rules.ROCK else look_of(v - 1) + 1
+
 ## The middle of a square, in the meshes' space.
 static func mid(c: int) -> Vector2:
 	return Vector2((c % Rules.W + 0.5) * U, (c / Rules.W + 0.5) * U)
@@ -302,7 +334,7 @@ func point_of(p: Vector2) -> Vector2:
 
 ## Where a line of words can stand without hiding a square: over the board.
 func toast_point() -> Vector2:
-	return _xf * Vector2(GRID.x * 0.5, -FRAME - 48.0)
+	return _xf * (Vector2(GRID.x * 0.5, TALLY_Y + 78.0) if row_over else Vector2(GRID.x * 0.5, -FRAME - 48.0))
 
 # --- what the screen tells it ---
 
@@ -364,6 +396,30 @@ func play(cell: int, turned: PackedInt32Array, side: int) -> void:
 	_busy(total + WATCH + 0.3 + MOTE_TIME)
 	_after(total + WATCH, func() -> void: settled.emit())
 
+## A stone comes down on `cell`.
+func stone(cell: int) -> void:
+	_cells[cell] = 3
+	_last = -1
+	_cue("stone")
+	if not Motion.reduce:
+		_pop[cell] = _t
+	_busy(POP + 0.3)
+	_after(POP + WATCH, func() -> void: settled.emit())
+	queue_redraw()
+
+## The disc on `cell` is swiped to `side`.
+func swiped(cell: int, side: int) -> void:
+	var look := look_of(side)
+	_cue("swipe")
+	if not Motion.reduce:
+		_turning[cell] = {"from": _cells[cell] - 1, "at": _t}
+		_glow[cell] = {"at": _t, "look": look, "dir": Vector2.UP}
+	_cells[cell] = look + 1
+	_last = cell
+	_busy(FLIP + 0.4)
+	_after(FLIP + WATCH, func() -> void: settled.emit())
+	queue_redraw()
+
 ## The edges the disc on `cell` has just filled: every square of the row or
 ## column along the frame now holds a disc.
 func _note_edges(cell: int) -> void:
@@ -412,7 +468,7 @@ func sync() -> void:
 		_last = rules.history[rules.history.size() - 1][0]
 	var changed := false
 	for c in Rules.CELLS:
-		var want: int = 0 if rules.cells[c] == Rules.EMPTY else look_of(rules.cells[c] - 1) + 1
+		var want: int = 0 if rules.cells[c] == Rules.EMPTY else _shown_of(rules.cells[c])
 		if _cells[c] == want:
 			continue
 		changed = true
@@ -482,7 +538,7 @@ func is_busy() -> bool:
 func _layout() -> void:
 	if size.x <= 0.0 or size.y <= 0.0:
 		return
-	var space := SPACE_TALLY if tally and not still else SPACE
+	var space := SPACE_ROW if row_over else (SPACE_TALLY if tally and not still else SPACE)
 	var s := size.x / space.size.x if still else minf(size.x / space.size.x, size.y / space.size.y)
 	var at := (size - space.size * s) * 0.5
 	_xf = Transform2D(0.0, Vector2(s, s), 0.0, at - space.position * s)
@@ -538,6 +594,8 @@ func _want_share() -> float:
 		if _cells[c] == 0:
 			continue
 		var look := _cells[c] - 1
+		if look == 2:
+			continue
 		if _turning.has(c) and _t < float(_turning[c].at) + FLIP * 0.5:
 			look = int(_turning[c].from)
 		if look == 0:
@@ -604,7 +662,18 @@ func _gui_input(event: InputEvent) -> void:
 			# let go off the board: the square that was held is given up
 			_fx.touch(0.84)
 		_over = -1
-		if cell >= 0:
+		_read = {}
+		if cell >= 0 and armed != 0:
+			var fits: bool = rules.can_stone(cell) if armed == Rules.STONE else rules.can_swipe(cell)
+			if fits:
+				targeted.emit(cell)
+			else:
+				_shake_at = _t
+				_shake_cell = cell
+				_busy(0.4)
+				_cue("refused")
+				refused.emit("trick")
+		elif cell >= 0:
 			if rules.can(cell):
 				chosen.emit(cell)
 			else:
@@ -621,6 +690,11 @@ func _gui_input(event: InputEvent) -> void:
 		return
 	if cell != _over:
 		_over = cell
+		_read = {}
+		if armed == 0 and reader.is_valid() and cell >= 0 and rules.can(cell):
+			_read = reader.call(cell)
+			if String(_read.get("kind", "")) != "":
+				peeked.emit(String(_read.kind), rules.flips(cell, rules.turn).size())
 		_busy(0.2)
 		if press and cell >= 0 and _fx != null:
 			_fx.touch()
@@ -633,7 +707,7 @@ func _draw() -> void:
 		return
 	if _base == null:
 		_base = _build_base()
-		_disc = [_build_disc(0), _build_disc(1)]
+		_disc = [_build_disc(0), _build_disc(1), _build_stone()]
 	_over_mesh = _build_over()
 	_shown = [_base, _disc, _over_mesh]
 	draw_mesh(_base, null, _xf)
@@ -750,6 +824,19 @@ func _build_disc(look: int) -> ArrayMesh:
 		b.polygon(pts, STAMP[look])
 	return b.mesh()
 
+## A garden stone about the origin, moss on its shoulder.
+func _build_stone() -> ArrayMesh:
+	var b := Face.Builder.new()
+	var r := DISC_R
+	b.ellipse(Vector2(1.0, 9.0), r * 1.02, r * 0.9, Color(0.05, 0.1, 0.2, 0.3))
+	b.ellipse(Vector2(0.0, 4.0), r, r * 0.86, STONE_DEEP)
+	b.ellipse(Vector2.ZERO, r, r * 0.84, STONE_FACE)
+	b.ellipse(Vector2(-8.0, -9.0), r * 0.62, r * 0.46, STONE_LIT)
+	b.ellipse(Vector2(13.0, -16.0), r * 0.42, r * 0.26, MOSS)
+	b.disc(Vector2(-16.0, 12.0), 3.5, STONE_DEEP)
+	b.disc(Vector2(8.0, 16.0), 2.5, STONE_DEEP)
+	return b.mesh()
+
 ## What lies over the discs: a dot on every square that may be played, the
 ## frame under the finger and the rings on what it would turn, the ring on
 ## the last disc set down, the bulb's ring, the other player's choice, and
@@ -759,7 +846,12 @@ func _build_over() -> ArrayMesh:
 	var moving := not Motion.reduce
 	if moving:
 		_light_under(b)
-	if interactive and _mood == "":
+	if interactive and _mood == "" and armed != 0:
+		for c in Rules.CELLS:
+			var fits: bool = rules.can_stone(c) if armed == Rules.STONE else rules.can_swipe(c)
+			if fits:
+				b.stroke(Face.Builder.ring(mid(c), 16.0, 16.0), 4.0, Color(READ_GOOD, 0.9), true)
+	elif interactive and _mood == "":
 		var legal: PackedInt32Array = rules.legal_moves()
 		var since := _t - _turn_at
 		for i in legal.size():
@@ -778,14 +870,24 @@ func _build_over() -> ArrayMesh:
 			if r > 0.5:
 				b.disc(mid(c), r, Color(HALO, 0.55))
 	if _down and _over >= 0:
-		var ok: bool = rules.can(_over)
+		var ok: bool = rules.can(_over) if armed == 0 else (rules.can_stone(_over) if armed == Rules.STONE else rules.can_swipe(_over))
 		var col := Color(HALO, 0.95) if ok else Color(Pal.BAD, 0.9)
+		var said := String(_read.get("kind", ""))
+		if said != "":
+			col = {"corner": READ_GOOD, "gives": READ_BAD, "shut": READ_SHUT}[said]
 		var at := Vector2(_over % Rules.W, _over / Rules.W) * U
 		b.stroke(Face.Builder.round_rect(at + Vector2(5.0, 5.0), Vector2(U - 10.0, U - 10.0), 12.0), 6.0, col, true)
 		if ok:
 			b.disc(mid(_over), 13.0, Color(HALO, 0.9))
-			for q: int in rules.flips(_over, rules.turn):
-				b.stroke(Face.Builder.ring(mid(q), DISC_R + 4.0, DISC_R + 4.0), 5.0, Color(HALO, 0.95), true)
+			if armed == 0:
+				for q: int in rules.flips(_over, rules.turn):
+					b.stroke(Face.Builder.ring(mid(q), DISC_R + 4.0, DISC_R + 4.0), 5.0, Color(HALO, 0.95), true)
+			if said == "gives":
+				# The corner this hands over: the other side's disc ghosted there.
+				var corner: int = _read.corner
+				b.append(_disc[look_of(1 - rules.turn)], Transform2D(0.0, mid(corner)), Color(1, 1, 1, 0.55))
+				var at2 := Vector2(corner % Rules.W, corner / Rules.W) * U
+				b.stroke(Face.Builder.round_rect(at2 + Vector2(5.0, 5.0), Vector2(U - 10.0, U - 10.0), 12.0), 6.0, READ_BAD, true)
 	var shake := _t - _shake_at
 	if shake < 0.35 and _shake_cell >= 0:
 		var m := mid(_shake_cell)

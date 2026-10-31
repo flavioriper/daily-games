@@ -126,6 +126,18 @@ that area**, and add new history there rather than here.
   `arcade/eddy_screen.gd` do. No paper page with the game in a frame. A
   daily board asks the flat host for it with `"bleed": true` in the
   registry (Gumdrop, Jewel Box, Toy Cannons; `docs/agents/flat-screens.md`).
+- **A game screen is laid as the daily boards** (the user, 2026-10-31: "wire
+  UI layout properly, make it a rule, using daily ones"), every screen
+  touched from now on, puzzle, Arcade or Versus: the world full rect (a
+  mesh on a `_world` Control; `Scenery.planks` is the wooden floor), then on
+  the 40 margin `FlatTopBar.new(title, motto, true, false, true)` and its tools
+  row, Undo, the bin, a paper pill where the row's gap is (`_build_tools`:
+  what the game counts) and the bulb, greyed where a game has none, then
+  plates if any, then the field `SIZE_EXPAND_FILL`. The bin asks. No
+  `Vistas.board_plate`, no paper page, no framed deck, and a game's own
+  buttons stand above its board. `versus/hockey_screen.gd` and
+  `versus/reversi_screen.gd` are the shortest examples. Older Versus screens
+  are not there yet: convert them when next touched.
 - **A new board** is a `Registry.PUZZLES` entry; the suite's parse guard walks
   the registry. `godot --headless --check-only --script puzzles/<board>2d.gd`
   before a harness. Text goes through locale keys (`locale/ui.csv`,

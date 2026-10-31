@@ -50,7 +50,7 @@ const GAMES := ["snooker", "chess", "dominoes", "checkers", "penny", "reversi", 
 ## chip is two players on this phone.
 const LOCAL_GAMES := ["hockey"]
 ## The game with a fifth row: online and two players on this phone both.
-const BOTH_GAMES := ["penny"]
+const BOTH_GAMES := ["penny", "reversi"]
 const LEVELS_BOTH := [["DIFF_EASY", 0], ["DIFF_MEDIUM", 1], ["DIFF_HARD", 2], ["VS_ONLINE", Record.ONLINE], ["VS_TWO", Record.LOCAL]]
 const NAMES := {"snooker": "Snooker", "chess": "Chess", "checkers": "Checkers", "hockey": "Air Hockey",
 	"boats": "Toy Boats", "penny": "Penny Drop", "dominoes": "Dominoes", "reversi": "Reversi"}

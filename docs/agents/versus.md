@@ -1388,6 +1388,58 @@ once, to forbid it: Othello. No code, comment, key, commit or screen uses it.
   (`tools/deploy_live.sh`, at the user's word), and nothing has been played
   against the live database yet.
 
+**Air Hockey and Reversi made worth playing** (2026-10-31, the user: "make
+reversi and air hockey experience way better to play, and game itself way
+funnier ... right now nobody likes it. Use web for reference ... Do it
+autonomous, push to main when done. Make sure to wire UI layout properly (make
+it a rule if it's not) using daily ones"). The layout rule is in CLAUDE.md.
+References: [EA Air Hockey](https://www.pocketgamer.com/air-hockey-mob/review/)
+(pickups on four spots, hit with the puck),
+[Namco's multi-puck table](https://www.intergameonline.com/coin-op/news/multi-puck-air-hockey-from-namco),
+[AirBattle Hockey](https://nintendoworldreport.com/review/33419). The web gave little on
+Reversi beyond hints, undo and last-move marks, so its tricks and reads
+follow Penny Drop's and Checkers' passes here, not a reference.
+
+- **Air Hockey, the power table** (`Sim.powers`; the tutorial and the tab's card
+  keep the plain game; there is no online): a token every `PICK_EVERY` s on one
+  of four `SPOTS`, the puck run through it gives it to `last_touch`. `TWIN` a
+  second puck (`twin`, the same code with the two swapped by `_swap`; a goal with
+  a puck left does not stop play, `more`), `BIG` the mallet, `WIDE` the other
+  goal, `SLOW` the other arm, `GOLD` the next goal worth two to whoever scores
+  it. The computer minds the nearer puck (`threat`) and from Medium plays at a
+  token one possession in three. Probe: 18 power matches ended, every token
+  taken, the higher level won 18 of 18. `MALLET_E`, `SWING` and speeds untouched.
+- **Its moments**: the goal is named (Own goal!, Hat trick!, Comeback!, Double
+  goal!, Double bank!, Bank shot!, Rocket!), Save!, Rally x6!, a jolt
+  (`table.quake`), slow motion on a puck about to end a match (`_pace`), moon
+  lines (`HKY_Q_*`), a streak and best rally on the card. The table is as
+  large as it goes: no plates, faces and pips on the pill; Undo and the bulb grey.
+- **Reversi, tricks** (`Rules.tricks`, online none): Stone (a square gone for
+  good, `ROCK`, `flips` stops on it by itself), Swipe (one disc, no corner), Encore
+  (two discs). **None before `TRICKS_FROM` 8 plies**: an Encore on move two turned
+  the other side's last disc and ended the game. A trick clears `history`, so Undo
+  stops there. The moon: none on Easy, Swipe on Medium, all on Hard
+  (`AI.STOCK`, `plan_turn`). The row is `versus/penny_tricks.gd`, fed its own list.
+- **Reversi, reads** (`AI.read`, Easy and Medium, `board.reader`): under a finger,
+  gold takes a corner, red hands one over with the moon's disc ghosted there, sky
+  shuts them out, and the toast says so with the discs.
+- **The levels were the reason nobody won**: a beginner (a corner, else the most
+  discs, heeding the reads) went 3-9 and 0-12 on the old Easy and Medium. `WILD`
+  by level, Medium one ply: now 11-1, 6-6, 0-12 (`_probe_reversi.gd`). Hard is
+  untouched and is a wall. Proxy, not a person.
+- **Review**: each of your moves judged on the worker while its discs turn
+  (`AI.judge`), Only move! on the one good square, the end card's graph and
+  "Try your worst move again" (`_retry`, nothing it comes to is recorded).
+- **Two on one phone**: `reversi` is in `BOTH_GAMES`; no bulb, undo or record.
+- `THINK_MIN` 0.45, `PONDER` 0.25. Sounds from the bank, unheard: hockey `token`,
+  reversi `stone`, `swipe`, `arm`. New harnesses: `tests/_shot_hockey_powers.gd`,
+  `tests/_shot_reversi_tricks.gd`. Draw calls on the phone's driver: hockey 106-116,
+  Reversi 89-182. **A harness must never preload a screen**: autoloads are not up
+  at compile, the script fails and its window stands blank, which the user took
+  for the game freezing. `_shot_reversi_tricks.gd` quits by itself now.
+- **Left out / owed**: a classic-table switch for hockey, a rating, tricks online
+  (a rules version on the wire is a person's deploy), a phone, ears, pt and es by a speaker.
+
 **Haptics** (2026-10-03, `docs/agents/haptics.md` rows 30-32): the cues ring
 for both players, so only `hint`, `win`, `lose` (and chess's and checkers'
 `draw`) are mapped; everything else is `_fx.buzz` where the hand's side is

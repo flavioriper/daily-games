@@ -1530,6 +1530,53 @@ VS_BOATS_SHORT,Find the other fleet first.,Ache a outra frota primeiro.,Encuentr
 VS_PENNY_SHORT,Line up four pennies to win.,Alinhe quatro moedas para vencer.,Alinea cuatro monedas para ganar.
 VS_DOMINOES_SHORT,Make the ends count in fives.,Faça as pontas somarem de cinco em cinco.,Haz que las puntas sumen de cinco en cinco.
 RVS_MOTTO,SHOW MORE DISCS THAN THE MOON,TENHA MAIS DISCOS QUE A LUA,TEN MÁS FICHAS QUE LA LUNA
+RVS_CLEAR_BODY,The board is cleared and the tricks come back.,O tabuleiro é limpo e os truques voltam.,El tablero se limpia y vuelven los trucos.
+RVS_NOT_THERE,Not there,Aí não,Ahí no
+RVS_STONE,Stone,Pedra,Piedra
+RVS_SWIPE,Swipe,Roubo,Robo
+RVS_ENCORE,Encore,Bis,Bis
+RVS_STONE_LINE,Put a stone on any empty square: nobody plays there again.,Ponha uma pedra em uma casa vazia: ninguém joga mais ali.,Pon una piedra en una casilla vacía: nadie juega ahí más.
+RVS_SWIPE_LINE,"Pick one of their discs, any but a corner.","Escolha um disco deles, menos os de canto.","Elige un disco suyo, menos los de esquina."
+RVS_STONE_SAID,Blocked!,Bloqueado!,¡Bloqueado!
+RVS_SWIPE_SAID,Swiped!,Roubado!,¡Robado!
+RVS_ENCORE_GO,Two discs!,Dois discos!,¡Dos discos!
+RVS_CORNER,Corner!,Canto!,¡Esquina!
+RVS_BIG,%d discs!,%d discos!,¡%d discos!
+RVS_SHUT,No moves left!,Sem jogadas!,¡Sin jugadas!
+RVS_COMEBACK,Comeback!,Virada!,¡Remontada!
+RVS_WIPEOUT,Wipeout!,Lavada!,¡Paliza!
+RVS_ONLY,Only move!,Única jogada!,¡Única jugada!
+RVS_READ_CORNER,A corner: +%d,Um canto: +%d,Una esquina: +%d
+RVS_READ_GIVES,"+%d, but it hands over a corner","+%d, mas entrega um canto","+%d, pero regala una esquina"
+RVS_READ_SHUT,"+%d, and they have no answer","+%d, e eles ficam sem resposta","+%d, y se quedan sin respuesta"
+RVS_RETRY,Try your worst move again,Refazer sua pior jogada,Repetir tu peor jugada
+RVS_RETRY_LINE,Your worst move. Find a better one.,Sua pior jogada. Ache uma melhor.,Tu peor jugada. Busca una mejor.
+RVS_LOCAL_TURN,%s's move,Vez: %s,Turno: %s
+RVS_LOCAL_WON,%s wins!,%s venceu!,¡Gana %s!
+RVS_PASS_LOCAL,%s has no square: pass,%s não tem casa: passa,%s no tiene casilla: pasa
+TUT_REVERSI_TRICKS,Three tricks,Três truques,Tres trucos
+TUT_REVERSI_TRICKS_BODY,"From the fifth move, once a game each: Stone blocks an empty square for good, Swipe turns one disc, Encore plays two discs in a row. Stone and Swipe spend your turn.","Da quinta jogada em diante, uma vez por partida cada: Pedra bloqueia uma casa vazia para sempre, Roubo vira um disco, Bis joga dois discos seguidos. Pedra e Roubo gastam sua vez.","Desde la quinta jugada, una vez por partida cada uno: Piedra bloquea una casilla vacía para siempre, Robo gira un disco, Bis juega dos discos seguidos. Piedra y Robo gastan tu turno."
+RVS_Q_CORNER_ME_1,"Hey, I was saving that corner.","Ei, eu estava guardando esse canto.","Oye, guardaba esa esquina."
+RVS_Q_CORNER_ME_2,Corners are overrated. Probably.,Canto é superestimado. Acho.,Las esquinas están sobrevaloradas. Creo.
+RVS_Q_CORNER_ME_3,That one hurt a little.,Essa doeu um pouco.,Esa dolió un poco.
+RVS_Q_CORNER_MOON_1,Thank you for the corner.,Obrigada pelo canto.,Gracias por la esquina.
+RVS_Q_CORNER_MOON_2,"Mine now. Forever, actually.","Agora é meu. Para sempre, aliás.","Ahora es mía. Para siempre, de hecho."
+RVS_Q_CORNER_MOON_3,Nobody takes a corner back.,Ninguém tira um canto de volta.,Nadie recupera una esquina.
+RVS_Q_BIG_ME_1,Show-off.,Exibido.,Fanfarrón.
+RVS_Q_BIG_ME_2,That was a lot of my discs.,Isso foi muito disco meu.,Eran muchos discos míos.
+RVS_Q_BIG_ME_3,"Wait, I was using those.","Espera, eu estava usando esses.","Espera, los estaba usando."
+RVS_Q_BIG_MOON_1,Oops. All mine.,Ops. Tudo meu.,Uy. Todo mío.
+RVS_Q_BIG_MOON_2,Count them. I will wait.,Conta aí. Eu espero.,Cuéntalos. Espero.
+RVS_Q_BIG_MOON_3,The night falls quickly.,A noite cai rápido.,La noche cae deprisa.
+RVS_Q_SHUT_ME_1,No moves? How rude.,Sem jogadas? Que grosseria.,¿Sin jugadas? Qué grosero.
+RVS_Q_SHUT_ME_2,I will just sit here then.,Vou ficar aqui parada então.,Me quedo aquí sentada entonces.
+RVS_Q_SHUT_ME_3,This is fine. All fine.,Tudo bem. Tudo ótimo.,Todo bien. Todo perfecto.
+RVS_Q_SHUT_MOON_1,"Your turn? No, mine again.","Sua vez? Não, minha de novo.","¿Tu turno? No, otra vez el mío."
+RVS_Q_SHUT_MOON_2,Sit this one out.,Fica de fora dessa.,Esta te la saltas.
+RVS_Q_SHUT_MOON_3,Nothing for you. Sorry.,Nada para você. Desculpe.,Nada para ti. Lo siento.
+RVS_Q_TRICK_1,A little moon magic.,Uma magiazinha da Lua.,Un poco de magia lunar.
+RVS_Q_TRICK_2,I keep a trick up my sleeve.,Sempre tenho um truque na manga.,Siempre guardo un truco.
+RVS_Q_TRICK_3,Did you think I had none?,Achou que eu não tinha?,¿Creías que no tenía?
 RVS_DISCS,DISCS,DISCOS,FICHAS
 RVS_YOUR_MOVE,Your turn: tap a dotted square to set a disc there,Sua vez: toque numa casa com ponto para pôr um disco,Tu turno: toca una casilla con punto para poner una ficha
 RVS_TAKEN,That square is taken,Essa casa está ocupada,Esa casilla está ocupada
