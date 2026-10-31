@@ -596,6 +596,33 @@ pond and what is thrown is a pebble.
   presses Ready -- 65 s); `tests/_shot_howto_screen.gd -- boats <outdir>`;
   `tests/_shot_versus_tab.gd`. `tests/_probe_online.gd`,
   `_probe_versus_buzz.gd` and `_shot_online.gd` have no arm for it.
+- **A redesign is proposed, not built** (2026-10-31, the user: "something
+  more animated, rather than a plain board ... each side has some cannon at
+  the base, and it shoot ... enemy field as some tactical map ... some
+  creativity tools"; a first pass with two quays of five cannons and the
+  chart big in the middle was rejected: "the player field should take most
+  of the screen, boats floating as real boats. Just a single cannon at
+  bottom that shoots, and enemy shoot come from the top of the screen not
+  from the map"). The concept is `docs/brainstorm/toy-boats-harbour.html`
+  (also https://claude.ai/artifact/6S1MDswDttAKcj711bKfhG): your water
+  full rect, the field 10 x 10 at 100 a square from y 350; five real boats
+  under the names they have (Barge with crates, Ferry with cabin and
+  funnel, red Tugboat, Sailboat, Rowboat with oars), bobbing with a wake,
+  a hit a scorch and a peg, sunk tinted under the water; one toy cannon on
+  a jetty at the foot (640, 1720) that swivels to the column, pops and
+  sends the pebble off the top of the screen; their shots a shadow
+  swelling on the water then the pebble dropping in from above the top
+  bar; the chart folded in the bottom-left corner (pins, rings, fleet
+  strip, Moon face) and unfolding 760 square over the water on your turn,
+  with a tray of plan tools on its left (crosshair, pencil, flag, stencil,
+  eraser; local marks, never sent), folding on release; the answer a toast
+  plus a mark on the folded chart; laying out on the big water, so the two
+  grids never swap. Rules, computer, seal and wire untouched; only the
+  board, the screen (to the daily layout), the tutorial pages, card and
+  sounds move. Six calls wait on the user (the page lists them): the chart
+  unfolding on its own or on tap; toy pops or a real boom; plan tools only
+  or rule-changing shots; fire on release or a Fire button; the answer as
+  toast plus mark or the sheet reopening; five kinds of boat or one hull.
 - **Open**: nothing was touched on a phone (whether a square is easy to hit
   with a thumb at 70 px, whether the small pond is readable); the pace (a
   round is about 3 s before the player thinks, a game 35-60 rounds); Hard

@@ -1,0 +1,563 @@
+<title>Toy Boats Harbour</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:ital,wght@0,400;0,600;0,700;1,400&display=swap">
+<style>
+/* Layout: one column of reading width, the phone mock and its figures breaking wider; the game's own hexes as the page palette. */
+:root{
+  --bg:#edf2f5; --paper:#fbf8f1; --fg:#1f2a33; --muted:#5e6b76; --line:#d3dbe1;
+  --water:#4f9fd0; --water-deep:#3d86b8; --wood:#b98457; --wood-deep:#7d5334;
+  --slate:#38404a; --chalk:#f3efe6; --peg:#e0574f; --hint:#f9c04a; --hull:#e6c79b;
+  --decided:#4c9a94; --proposed:#f5a623; --out:#8f979f;
+  --display:"Fredoka","Nunito",system-ui,sans-serif; --body:"Nunito",system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#141c22; --paper:#1d262e; --fg:#e8eef2; --muted:#9fb0bd; --line:#2e3a44; --chalk:#e8e4da; color-scheme:dark } }
+:root[data-theme="dark"]{ --bg:#141c22; --paper:#1d262e; --fg:#e8eef2; --muted:#9fb0bd; --line:#2e3a44; --chalk:#e8e4da; color-scheme:dark }
+
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.55;margin:0;
+  padding-block:32px 72px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:960px;margin:0 auto;display:grid;gap:44px}
+h1,h2,h3{font-family:var(--display);font-weight:600;line-height:1.15;text-wrap:balance;margin:0}
+h1{font-size:clamp(30px,5vw,44px)}
+h2{font-size:24px}
+h3{font-size:17px}
+p{margin:0;max-width:66ch}
+.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+header{display:grid;gap:12px}
+header p{font-size:18px}
+section{display:grid;gap:16px}
+.lede{color:var(--muted)}
+
+.hero{display:grid;grid-template-columns:390px minmax(0,1fr);gap:28px;align-items:start}
+@media (max-width:760px){.hero{grid-template-columns:1fr}}
+.phone{position:relative;width:390px;max-width:100%}
+.phone canvas{display:block;width:100%;height:auto;border-radius:30px;box-shadow:0 18px 40px rgba(20,40,60,.22)}
+.phone-bar{display:flex;gap:8px;align-items:center;margin-top:10px;font-size:13px;color:var(--muted)}
+.phone-bar button{font:inherit;font-weight:700;color:var(--fg);background:var(--paper);border:1px solid var(--line);border-radius:999px;padding:5px 14px;cursor:pointer}
+.phone-bar button:focus-visible{outline:2px solid var(--water);outline-offset:2px}
+.beats{display:grid;gap:10px}
+.beat{display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;align-items:baseline}
+.beat b{font-family:var(--display);font-weight:600;color:var(--water-deep)}
+.beat .t{font-family:var(--mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+
+.compare{display:grid;grid-template-columns:240px minmax(0,1fr);gap:24px;align-items:start}
+@media (max-width:760px){.compare{grid-template-columns:1fr}}
+.compare canvas{display:block;width:100%;height:auto;border-radius:18px;border:1px solid var(--line)}
+figure{margin:0;display:grid;gap:8px}
+figcaption{font-size:13px;color:var(--muted)}
+.zones svg{max-width:100%;height:auto;display:block}
+
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;vertical-align:top;padding:9px 10px;border-bottom:1px solid var(--line)}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700}
+td:first-child{font-weight:700;white-space:nowrap}
+.tbl{overflow-x:auto}
+.pill{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:999px;color:#fff;white-space:nowrap}
+.pill.d{background:var(--decided)}.pill.p{background:var(--proposed)}.pill.o{background:var(--out)}
+
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:16px 18px;display:grid;gap:8px;min-width:0}
+.card ul{margin:0;padding-left:18px;display:grid;gap:5px}
+ol.calls{margin:0;padding-left:0;list-style:none;display:grid;gap:12px;counter-reset:c}
+ol.calls li{display:grid;grid-template-columns:34px minmax(0,1fr);gap:10px;align-items:start}
+ol.calls li::before{counter-increment:c;content:counter(c);font-family:var(--display);font-weight:600;font-size:20px;color:var(--peg);line-height:1.2}
+.rec{color:var(--decided);font-weight:700}
+small{color:var(--muted)}
+</style>
+
+<div class="wrap">
+<header>
+  <div class="eyebrow">Toy Boats · concept, second pass · 31 Oct 2026 · nothing in Godot yet</div>
+  <h1>Your water is the stage; the chart is a sheet you pull up to aim</h1>
+  <p>Your pond fills the screen, with your five boats floating on it as real boats: a barge, a ferry, a tug, a sailboat and a rowboat, bobbing on the water. One toy cannon sits on a jetty at the foot and fires up, off the top of the screen, at the other player's water. Their shots come back from above: a shadow grows on your water, then the pebble drops. The other fleet is never a board on screen. It is a paper chart that unfolds when it is your turn, where you pinpoint the square and scribble your plans, and folds away the moment you let go.</p>
+  <p class="lede">The mock on the left plays a stretch of a game on its own. Rules, computer and online wire are untouched; the calls at the bottom are what this page needs from you.</p>
+</header>
+
+<section>
+  <div class="hero">
+    <div>
+      <div class="phone"><canvas id="mock" width="780" height="1386" aria-label="Animated mock of the proposed Toy Boats screen: your pond with five boats fills it, a cannon on a jetty at the foot fires up and off the screen, their shots fall from the top, a paper chart unfolds to aim"></canvas></div>
+      <div class="phone-bar"><button id="pause" type="button">Pause</button><button id="again" type="button">Restart</button><span>1080 × 1920 design space at the phone's 390.</span></div>
+    </div>
+    <div class="beats">
+      <h2>One round, as the mock shows it</h2>
+      <div class="beat"><b>1</b><div>Your turn: the chart unfolds from its corner over the water. Slide to the square, its row and column light, the coordinate reads above the thumb. <span class="t">0.0–1.5 s</span></div></div>
+      <div class="beat"><b>2</b><div>Let go. The chart folds back to its corner, the cannon swivels to the column, the fuse sparks, pop, recoil, puff. The pebble climbs, shrinks and leaves by the top of the screen. <span class="t">1.5–2.7 s</span></div></div>
+      <div class="beat"><b>3</b><div>A beat later the answer comes back: a toast with the coordinate and a pin or ring on the folded chart. A sinking crosses the boat off the chart's fleet strip with a sparkle. <span class="t">+0.3 s</span></div></div>
+      <div class="beat"><b>4</b><div>Their shot: a shadow swells on your water where it will land, the pebble drops in from above the top bar. A miss is rings; a hit is a puff, a peg on the deck and the boat rocking hard. Sunk, it tips and settles under the water. <span class="t">+0.6 s</span></div></div>
+      <div class="beat"><b>5</b><div>Between shots the water is alive: boats bob and swing a little, wakes pulse, light drifts across the surface, as a <code>_process</code> on one mesh.</div></div>
+      <p><small>A round stays about 3 s before thinking, as today. The lay-out happens on the same big water, so the two grids never swap places any more.</small></p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Today and the proposal</h2>
+  <div class="compare">
+    <figure>
+      <canvas id="today" width="480" height="853" aria-label="Today's Toy Boats: a small pond above a big chalk slate"></canvas>
+      <figcaption>Today: pond small above, slate big below, a panel of five boats to sink. Checkers' shape; a mark appears where the finger lets go.</figcaption>
+    </figure>
+    <figure class="zones">
+      <svg viewBox="0 0 1180 1920" role="img" aria-label="The proposed layout in design pixels: top bar and tools row over the water, the field of ten by ten at 100 a square, the folded chart in the bottom left corner, the jetty with one cannon at the foot, and the chart unfolded over the field while aiming">
+        <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="currentColor"/></marker></defs>
+        <rect x="1" y="1" width="1078" height="1918" rx="60" fill="#4f9fd0" fill-opacity=".25" stroke="currentColor" stroke-width="2"/>
+        <g font-family="Nunito,system-ui,sans-serif" font-size="30" fill="currentColor">
+          <rect x="40" y="60" width="1000" height="100" rx="20" fill="none" stroke="currentColor" stroke-width="2"/><text x="60" y="122">FlatTopBar · title, motto, settings</text>
+          <rect x="40" y="180" width="1000" height="90" rx="20" fill="none" stroke="currentColor" stroke-width="2"/><text x="60" y="236">Undo (grey) · bin · paper pill: pebbles · bulb</text>
+          <rect x="40" y="350" width="1000" height="1000" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="8 8"/>
+          <text x="60" y="400">your water · 10 × 10 · 100 a square · boats laid out and hit here</text>
+          <text x="60" y="320" font-size="26">their shots drop in from above the top bar</text>
+          <rect x="160" y="480" width="760" height="760" rx="18" fill="#f3efe6" fill-opacity=".85" stroke="currentColor" stroke-width="2"/>
+          <text x="190" y="530" fill="#1f2a33">the chart, unfolded while you aim · 64 a square</text>
+          <text x="190" y="568" fill="#1f2a33" font-size="26">letters and numbers in the margin · plan tools in the tray</text>
+          <rect x="80" y="560" width="60" height="500" rx="30" fill="none" stroke="currentColor" stroke-width="2"/>
+          <text x="110" y="1100" text-anchor="middle" font-size="24">tray</text>
+          <rect x="40" y="1420" width="300" height="360" rx="18" fill="#f3efe6" fill-opacity=".85" stroke="currentColor" stroke-width="2"/>
+          <text x="60" y="1470" fill="#1f2a33" font-size="26">the chart, folded</text>
+          <text x="60" y="1505" fill="#1f2a33" font-size="24">pins and rings · their fleet strip</text>
+          <rect x="480" y="1640" width="320" height="220" rx="18" fill="#b98457" fill-opacity=".6" stroke="currentColor" stroke-width="2"/>
+          <text x="640" y="1760" text-anchor="middle" fill="#1f2a33" font-size="26">jetty · one cannon</text>
+          <line x1="1100" y1="350" x2="1100" y2="1350" stroke="currentColor" stroke-width="2" marker-start="url(#arr)" marker-end="url(#arr)"/><text x="1112" y="860" font-size="26">1000</text>
+          <line x1="40" y1="1395" x2="1040" y2="1395" stroke="currentColor" stroke-width="2" marker-start="url(#arr)" marker-end="url(#arr)"/><text x="540" y="1388" font-size="26" text-anchor="middle">1000</text>
+        </g>
+      </svg>
+      <figcaption>Proposed zones in design pixels (1080 wide, 40 margin). The water is the world, full rect; the field is ten squares of 100, the largest a 10 × 10 can be at this width. The chart unfolds over it only while aiming.</figcaption>
+    </figure>
+  </div>
+  <div class="tbl"><table>
+    <thead><tr><th>Part</th><th>Today</th><th>Proposed</th><th></th></tr></thead>
+    <tbody>
+    <tr><td>Your side</td><td>A small pond, swapped big only while laying out.</td><td>The whole screen. Ten by ten at 100 a square, grid lines faint on the water, letters and numbers along the edges. Laying out happens here, so there is no swap.</td><td><span class="pill p">proposed</span></td></tr>
+    <tr><td>Your boats</td><td>Wooden blanks in five lengths with a paint line.</td><td>Five real boats, each its own kind and the name it already has: Barge (crates on deck), Ferry (cabin, funnel), Tugboat (red hull, black funnel), Sailboat (mast and sail), Rowboat (oars). They bob and swing, a wake pulses round each. A hit scorches the deck and pegs it; sunk, the boat tips and settles under the water, blue.</td><td><span class="pill p">proposed</span></td></tr>
+    <tr><td>Your shot</td><td>A finger lift on the slate; a mark appears.</td><td>One toy cannon on a jetty at the foot. It swivels to the column, fuse, pop, recoil, puff; the pebble climbs and leaves by the top of the screen. The answer comes back as a toast and a mark on the folded chart.</td><td><span class="pill p">proposed</span></td></tr>
+    <tr><td>Their shot</td><td>A short fall onto the small pond.</td><td>From above the top of the screen: a shadow swells on the water where it will land, then the pebble drops in. Rings, or a puff, a peg and the boat rocking.</td><td><span class="pill p">proposed</span></td></tr>
+    <tr><td>Their side</td><td>A chalk slate, the big grid during play.</td><td>A paper chart folded in the bottom-left corner (pins, rings, a fleet strip), unfolding over the water on your turn, folding on release. Tap the folded chart to open it between turns and plan.</td><td><span class="pill p">proposed</span></td></tr>
+    <tr><td>Aiming</td><td>Finger on the slate lights row and column; letting go throws.</td><td>Same gesture, on the unfolded chart. Added: the coordinate reads above the thumb.</td><td><span class="pill d">keeps today's input</span></td></tr>
+    <tr><td>Rules, computer, online</td><td>10 × 10, fleet 5-4-3-3-2, one throw a turn, named only when sunk; three levels; sealed fleets on the wire.</td><td>Unchanged, byte for byte. Everything on this page is in <code>boats_board.gd</code> and <code>boats_screen.gd</code>.</td><td><span class="pill d">decided</span></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>The chart tools</h2>
+  <p>A tray of round buttons down the unfolded chart's left edge (the thumb side stays clear). Every tool writes on a planning layer that is the player's own: it is never sent, never judged, and the bin wipes it. The crosshair is the default and the chart folds after each shot.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Tool</th><th>What the finger does</th><th>What it draws</th><th></th></tr></thead>
+    <tbody>
+    <tr><td>Crosshair</td><td>Slide to a square, let go to fire. Tried squares refuse with the tongue sound and a hatch.</td><td>Row and column lit, the coordinate tag.</td><td><span class="pill d">today's throw</span></td></tr>
+    <tr><td>Pencil</td><td>Draw freehand on the paper: a loop round a region, an arrow, a scribble.</td><td>A grey pencil stroke, baked into one mesh when the finger lifts.</td><td><span class="pill p">proposed</span></td></tr>
+    <tr><td>Flag</td><td>Tap a square to pin a small flag, tap again to lift it.</td><td>A red paper flag on a pin, "shoot here next".</td><td><span class="pill p">proposed</span></td></tr>
+    <tr><td>Stencil</td><td>Drag a boat from the fleet strip onto the chart, tap it to turn, drag it off to clear.</td><td>A dashed hull the boat's length. Over a miss, a sunk hull or the paper's edge it hatches: it cannot lie there. It never says where a boat is, only where it still could.</td><td><span class="pill p">proposed</span></td></tr>
+    <tr><td>Eraser</td><td>Rub over your own marks.</td><td>Removes strokes, flags and stencils under the finger; the game's own pins and rings stay.</td><td><span class="pill p">proposed</span></td></tr>
+    <tr><td>Bulb</td><td>In the tools row, three a game, as today.</td><td>The Hard computer's throw glows on the chart for one turn.</td><td><span class="pill d">today's hint</span></td></tr>
+    </tbody>
+  </table></div>
+  <p><small>Shots that change the rules (a spread of three pebbles, a spyglass that counts hull squares in a 3 × 3) are deliberately not on this list: they would change the computer, the wire and the live rules. They are call 3 below.</small></p>
+</section>
+
+<section>
+  <h2>What this costs and what it keeps</h2>
+  <div class="two">
+    <div class="card"><h3>Untouched</h3><ul>
+      <li><code>boats_rules.gd</code>, <code>boats_ai.gd</code>, the seal and the wire, the Firebase rules and <code>tests/_probe_boats.gd</code>.</li>
+      <li>The name, the pebble, the five boat names, the locale rows (one new row for the coordinate tag, three for the tools' captions).</li>
+      <li>Three levels plus Online and a friend; who throws first swapping.</li>
+    </ul></div>
+    <div class="card"><h3>Rebuilt</h3><ul>
+      <li>The board: the water and its grid, five boat drawings, the jetty and cannon, the chart folded and unfolded, the tray. Baked meshes under transforms; one live mesh while a pebble, the cannon, a shadow or a stencil moves; strokes baked on lift.</li>
+      <li>The screen to the daily layout: world full rect, <code>FlatTopBar</code> and the tools row, no plates, no deck frame. The lay-out state drags boats on the big water.</li>
+      <li>The tutorial's five pages redrawn through the new board's own motions; the Versus card and the how-to shot.</li>
+    </ul></div>
+    <div class="card"><h3>Budget</h3><ul>
+      <li>Today 67–78 draw calls at the board. Estimate 90–120: the water one mesh, boats one baked mesh each under their bob transform, the chart two (paper, marks), strokes one, the letters as today.</li>
+      <li>Bobbing and wakes are a <code>_process</code> on cached meshes so they survive the rest rule; the cannon swivels under a transform, never a rebuild.</li>
+      <li>No <code>instance uniform</code>, ANGLE checked, 810 × 1440 harness.</li>
+    </ul></div>
+    <div class="card"><h3>Sound and feel</h3><ul>
+      <li>The shot is the lip pop (a thing taken off) a fuse-length after the finger lifts; the answer coming back is the token (a pin set down) or a pencil scratch with air; sunk keeps its muffled note. Their pebble landing is the token again, deeper. Nothing is water, as today.</li>
+      <li>Haptics: a tap on fire, GOOD on a hit, the heavier one on a sinking.</li>
+      <li>A toy spring cannon flicking pebbles, no fire, no shells: cozy stays the brief unless call 2 says otherwise.</li>
+    </ul></div>
+  </div>
+</section>
+
+<section>
+  <h2>Calls this page is for</h2>
+  <ol class="calls">
+    <li><div><b>The chart unfolds on its own when your turn comes</b> (as in the mock), or stays folded until you tap it? <span class="rec">Recommended: on its own, folding on release, so a round is still one gesture.</span></div></li>
+    <li><div><b>How naval it gets.</b> A toy spring cannon and pebbles with pops (as drawn), or a real little cannon with a flash, smoke and a boom? <span class="rec">Recommended: toy, to keep the house sound and the name honest.</span></div></li>
+    <li><div><b>Plan tools only, or shots too.</b> The tray changes no rule. A once-a-game spread or spyglass means new messages on the wire, a smarter computer and a rules deploy. <span class="rec">Recommended: tools first, judge on the phone, shots as a second pass if it still feels flat.</span></div></li>
+    <li><div><b>Fire on release, or aim then press.</b> Release keeps today's 3 s round. A Fire button on the jetty feels more like a gun deck and allows a re-aim, at one tap more a round. <span class="rec">Recommended: release.</span></div></li>
+    <li><div><b>Where your answer shows.</b> A toast plus a mark on the folded chart (as drawn), or the chart unfolds again for a second to show the pin land? <span class="rec">Recommended: toast and mark; the water stays the stage.</span></div></li>
+    <li><div><b>Five kinds of boat</b> (as drawn), or one hull in five lengths with the paint line, as today? Five kinds are five drawings and five tutorial pictures; they also make "a boat is named only when it sinks" read at a glance on your own water.</div></li>
+  </ol>
+</section>
+
+<section>
+  <h2>Left out on purpose</h2>
+  <div class="tbl"><table><tbody>
+    <tr><td>3D boats or cannon</td><td>The game is 2D; the only models are the Peeplet and chess sets. Boats and cannon are baked drawings. <span class="pill o">out</span></td></tr>
+    <tr><td>A tilted or perspective sea</td><td>The tilted chess table was rejected on 2026-10-30 as hard to see on a phone. The water stays top-down; the boats get hull sides and shadows for depth, not the camera. <span class="pill o">out</span></td></tr>
+    <tr><td>Their cannons on screen</td><td>Their shots come from beyond the top edge. Their side is only ever the chart. <span class="pill o">out</span></td></tr>
+    <tr><td>A crew</td><td>No Peeplets, no new mascots; the Sun and Moon faces stay the two players, small, on the jetty and the chart. <span class="pill o">out</span></td></tr>
+    <tr><td>Water sounds</td><td>Toy Boats' sound rule "nothing is water" stands; a landing is a pin set down. <span class="pill o">out</span></td></tr>
+  </tbody></table></div>
+</section>
+</div>
+
+<script>
+(function(){
+// ---- shared drawing helpers -------------------------------------------
+const C = {
+  water:'#4f9fd0', waterDeep:'#3d86b8', waterLine:'rgba(255,255,255,.22)', glint:'rgba(255,255,255,.10)',
+  wood:'#b98457', woodLit:'#d3a273', woodDeep:'#7d5334',
+  slate:'#38404a', chalk:'#f3efe6', paper:'#f6f0e2', paperLine:'rgba(60,60,70,.18)', ink:'#3a4048', pencil:'rgba(70,76,86,.75)',
+  peg:'#e0574f', pegLit:'#f48c80', pebble:'#8f979f', pebbleLit:'#b9c0c6', hull:'#e6c79b', hullRim:'#a57a48', hint:'#f9c04a',
+  shade:'rgba(20,50,80,.28)', white:'#f7f4ec', teal:'#4c9a94', red:'#d9534a', redDeep:'#a63a33', cream:'#f3e7c8'
+};
+const LETTERS = 'ABCDEFGHIJ';
+function rr(g,x,y,w,h,r){ g.beginPath(); g.roundRect(x,y,w,h,r); }
+const lerp=(a,b,u)=>a+(b-a)*u, clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const easeOut=u=>1-Math.pow(1-u,3), easeIn=u=>u*u*u, easeInOut=u=>u<.5?4*u*u*u:1-Math.pow(-2*u+2,3)/2;
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function sunFace(g,x,y,r){
+  g.save(); g.translate(x,y);
+  g.strokeStyle=C.hint; g.lineWidth=7; g.lineCap='round';
+  for(let i=0;i<8;i++){ const a=i*Math.PI/4; g.beginPath(); g.moveTo(Math.cos(a)*(r+9),Math.sin(a)*(r+9)); g.lineTo(Math.cos(a)*(r+21),Math.sin(a)*(r+21)); g.stroke(); }
+  g.fillStyle=C.hint; g.beginPath(); g.arc(0,0,r,0,7); g.fill();
+  g.fillStyle=C.slate; g.beginPath(); g.arc(-r*.35,-r*.15,r*.1,0,7); g.arc(r*.35,-r*.15,r*.1,0,7); g.fill();
+  g.strokeStyle=C.slate; g.lineWidth=4; g.beginPath(); g.arc(0,r*.1,r*.4,0.25*Math.PI,0.75*Math.PI); g.stroke();
+  g.restore();
+}
+function moonFace(g,x,y,r,mood){
+  g.save(); g.translate(x,y);
+  g.fillStyle='#d9dde6'; g.beginPath(); g.arc(0,0,r,0,7); g.fill();
+  g.fillStyle='#bfc5d2'; g.beginPath(); g.arc(r*.35,r*.3,r*.18,0,7); g.arc(-r*.4,r*.4,r*.1,0,7); g.fill();
+  g.fillStyle=C.slate; g.beginPath(); g.arc(-r*.3,-r*.15,r*.1,0,7); g.arc(r*.3,-r*.15,r*.1,0,7); g.fill();
+  g.strokeStyle=C.slate; g.lineWidth=4; g.beginPath();
+  if(mood<0){ g.arc(0,r*.65,r*.35,1.2*Math.PI,1.8*Math.PI); } else { g.moveTo(-r*.3,r*.3); g.lineTo(r*.3,r*.3); }
+  g.stroke(); g.restore();
+}
+// The one toy cannon, seen from above: wooden carriage, slate barrel with a brass band; angle 0 points up.
+const MUZ=96;
+function cannon(g,x,y,angle,recoil,scale){
+  g.save(); g.translate(x,y); g.rotate(angle); g.scale(scale,scale);
+  g.fillStyle=C.shade; g.beginPath(); g.ellipse(6,12,54,28,0,0,7); g.fill();
+  g.fillStyle=C.woodDeep; g.beginPath(); g.arc(-44,6,18,0,7); g.arc(44,6,18,0,7); g.fill();
+  g.fillStyle=C.wood; g.beginPath(); g.arc(-44,6,9,0,7); g.arc(44,6,9,0,7); g.fill();
+  g.fillStyle=C.woodDeep; rr(g,-40,-18,80,40,12); g.fill();
+  g.fillStyle=C.wood; rr(g,-36,-22,72,36,12); g.fill();
+  g.translate(0,recoil*22);
+  g.fillStyle='#4a5560'; rr(g,-22,-72,44,92,18); g.fill();
+  g.fillStyle='#6b7784'; rr(g,-14,-66,10,76,5); g.fill();
+  g.fillStyle=C.hint; rr(g,-22,-56,44,10,4); g.fill();
+  g.fillStyle='#4a5560'; g.beginPath(); g.arc(0,-72,24,0,7); g.fill();
+  g.fillStyle='#1f2630'; g.beginPath(); g.arc(0,-72,12,0,7); g.fill();
+  g.restore();
+}
+// A hull centred on 0,0 with the bow at +x.
+function hullPath(g,L,W){
+  g.beginPath(); g.moveTo(-L/2+W*.25,-W/2); g.lineTo(L/2-W*.95,-W/2); g.quadraticCurveTo(L/2+W*.05,-W*.2,L/2+W*.12,0);
+  g.quadraticCurveTo(L/2+W*.05,W*.2,L/2-W*.95,W/2); g.lineTo(-L/2+W*.25,W/2); g.quadraticCurveTo(-L/2-W*.06,W*.35,-L/2-W*.06,0);
+  g.quadraticCurveTo(-L/2-W*.06,-W*.35,-L/2+W*.25,-W/2); g.closePath();
+}
+// Five real boats on the water: kind 0 Barge, 1 Ferry, 2 Tugboat, 3 Sailboat, 4 Rowboat. Bow at +x; vertical boats turn to +y.
+function realBoat(g,kind,len,cell,vert,phase,t,sunk,hits){
+  const L=len*cell-cell*.22, W=cell*.76;
+  g.save();
+  if(!sunk){ g.translate(Math.sin(t*1.7+phase)*2, Math.sin(t*1.3+phase)*3); }
+  if(vert) g.rotate(Math.PI/2);
+  if(!sunk) g.rotate(Math.sin(t*1.1+phase)*0.03);
+  // wake and shadow
+  if(!sunk){ g.save(); g.strokeStyle=C.waterLine; g.lineWidth=3; const p=(t*0.6+phase)%1; g.globalAlpha=1-p; g.beginPath(); g.ellipse(0,0,L/2+10+40*p,W/2+10+30*p,0,0,7); g.stroke(); g.restore(); }
+  g.save(); g.translate(5,9); g.fillStyle=sunk?'rgba(20,50,80,.12)':C.shade; hullPath(g,L,W); g.fill(); g.restore();
+  if(sunk) g.globalAlpha=0.5;
+  const hullCol=[C.woodDeep,C.white,C.red,C.white,C.wood][kind];
+  const sideCol=['#5b3a22','#c9c3b2','#a63a33','#c9c3b2','#8a6035'][kind];
+  // hull side (toward the viewer) then deck
+  g.save(); g.translate(0,5); g.fillStyle=sideCol; hullPath(g,L,W); g.fill(); g.restore();
+  g.fillStyle=hullCol; hullPath(g,L,W); g.fill();
+  g.strokeStyle='rgba(40,30,20,.35)'; g.lineWidth=cell*.03; hullPath(g,L,W); g.stroke();
+  // deck plank/inner line
+  g.save(); g.scale(0.9,0.72); g.strokeStyle='rgba(40,30,20,.18)'; g.lineWidth=cell*.03; hullPath(g,L,W); g.stroke(); g.restore();
+  if(kind===0){ // barge: crates, wheelhouse at the stern
+    for(let i=0;i<3;i++){ const x=-L/2+W*.6+i*W*.62; g.fillStyle=C.woodDeep; rr(g,x-W*.2+3,-W*.2+3,W*.4,W*.4,4); g.fill(); g.fillStyle=C.woodLit; rr(g,x-W*.2,-W*.22,W*.4,W*.4,4); g.fill(); g.strokeStyle=C.woodDeep; g.lineWidth=2; g.beginPath(); g.moveTo(x,-W*.22); g.lineTo(x,W*.18); g.stroke(); }
+    g.fillStyle=C.slate; rr(g,L/2-W*1.5,-W*.24,W*.5,W*.48,6); g.fill(); g.fillStyle='#8fb9d6'; rr(g,L/2-W*1.42,-W*.16,W*.34,W*.14,3); g.fill();
+  } else if(kind===1){ // ferry: teal stripe, long cabin with windows, funnel
+    g.save(); hullPath(g,L,W); g.clip(); g.fillStyle=C.teal; g.fillRect(-L/2,W*.28,L,W*.1); g.restore();
+    g.fillStyle='#e8e2d2'; rr(g,-L/2+W*.45,-W*.3,L-W*1.3,W*.6,8); g.fill();
+    g.fillStyle='#8fb9d6'; for(let i=0;i<len+1;i++){ g.beginPath(); g.arc(-L/2+W*.7+i*W*.5,0,W*.09,0,7); g.fill(); }
+    g.fillStyle=C.red; g.beginPath(); g.arc(-L/2+W*.9,0,W*.17,0,7); g.fill(); g.fillStyle=C.slate; g.beginPath(); g.arc(-L/2+W*.9,0,W*.09,0,7); g.fill();
+  } else if(kind===2){ // tugboat: pilot house, black funnel with a white band, tyres along the side
+    g.fillStyle='#e8e2d2'; rr(g,-W*.1,-W*.3,W*.9,W*.6,8); g.fill();
+    g.fillStyle='#8fb9d6'; rr(g,W*.45,-W*.18,W*.25,W*.36,4); g.fill();
+    g.fillStyle=C.slate; g.beginPath(); g.arc(-W*.55,0,W*.2,0,7); g.fill(); g.strokeStyle=C.white; g.lineWidth=3; g.beginPath(); g.arc(-W*.55,0,W*.14,0,7); g.stroke();
+    g.fillStyle=C.slate; for(let i=0;i<3;i++){ g.beginPath(); g.arc(-L/2+W*.5+i*W*.55,W*.48,W*.07,0,7); g.fill(); }
+  } else if(kind===3){ // sailboat: mast, mainsail and boom, swung a little
+    g.strokeStyle=C.woodDeep; g.lineWidth=4; g.beginPath(); g.moveTo(W*.1,0); g.lineTo(-L/2+W*.2,W*.55); g.stroke();
+    g.fillStyle=C.cream; g.beginPath(); g.moveTo(W*.1,0); g.lineTo(-L/2+W*.25,W*.5); g.quadraticCurveTo(-W*.2,W*.1,L/2-W*.5,0); g.closePath(); g.fill();
+    g.strokeStyle='rgba(40,30,20,.25)'; g.lineWidth=2; g.stroke();
+    g.fillStyle=C.woodDeep; g.beginPath(); g.arc(W*.1,0,W*.1,0,7); g.fill();
+    g.fillStyle=C.red; g.beginPath(); g.moveTo(W*.1,0); g.lineTo(W*.1+28,-10); g.lineTo(W*.1,-18); g.closePath(); g.fill();
+  } else { // rowboat: thwarts and two oars
+    g.strokeStyle=C.woodDeep; g.lineWidth=4; for(let i=0;i<2;i++){ const x=-L/2+W*.55+i*W*.7; g.beginPath(); g.moveTo(x,-W*.4); g.lineTo(x,W*.4); g.stroke(); }
+    g.strokeStyle=C.wood; g.lineWidth=6; g.lineCap='round'; g.beginPath(); g.moveTo(-W*.1,-W*.45); g.lineTo(-W*.5,-W*1.1); g.moveTo(-W*.1,W*.45); g.lineTo(-W*.5,W*1.1); g.stroke();
+    g.fillStyle=C.woodDeep; g.beginPath(); g.ellipse(-W*.55,-W*1.15,W*.18,W*.08,0.9,0,7); g.ellipse(-W*.55,W*1.15,W*.18,W*.08,-0.9,0,7); g.fill();
+  }
+  // hits on the deck
+  for(const k of hits){ const x=-L/2+W*.3+(k+.5)*(L-W*.3)/len-(W*.1); g.fillStyle='rgba(30,20,10,.55)'; g.beginPath(); g.arc(x,0,W*.22,0,7); g.fill(); g.fillStyle=C.peg; g.beginPath(); g.arc(x,0,W*.12,0,7); g.fill(); g.fillStyle=C.pegLit; g.beginPath(); g.arc(x-3,-3,W*.05,0,7); g.fill(); }
+  g.restore();
+  if(sunk){ g.save(); g.globalAlpha=.35; g.fillStyle='#2f6f9f'; if(vert) g.rotate(Math.PI/2); hullPath(g,L,W); g.fill(); g.restore(); }
+}
+function pin(g,x,y,scale){
+  g.save(); g.translate(x,y); g.scale(scale,scale);
+  g.fillStyle=C.shade; g.beginPath(); g.ellipse(8,14,14,6,0,0,7); g.fill();
+  g.strokeStyle='#6c7480'; g.lineWidth=4; g.beginPath(); g.moveTo(0,0); g.lineTo(0,14); g.stroke();
+  g.fillStyle=C.peg; g.beginPath(); g.arc(0,-8,15,0,7); g.fill();
+  g.fillStyle=C.pegLit; g.beginPath(); g.arc(-5,-13,5,0,7); g.fill();
+  g.restore();
+}
+function pencilRing(g,x,y,r,a){
+  g.save(); g.globalAlpha=a; g.strokeStyle=C.pencil; g.lineWidth=Math.max(2.5,r*.2); g.lineCap='round';
+  g.beginPath(); for(let i=0;i<=20;i++){ const th=i/20*Math.PI*2; const rr_=r*(1+0.06*Math.sin(th*3+1)); g.lineTo(x+Math.cos(th)*rr_, y+Math.sin(th)*rr_); } g.stroke(); g.restore();
+}
+function ring(g,x,y,r,a,col,w){ g.save(); g.globalAlpha=a; g.strokeStyle=col; g.lineWidth=w||6; g.beginPath(); g.arc(x,y,r,0,7); g.stroke(); g.restore(); }
+function puff(g,x,y,u,col,size){
+  const s=size||1; for(let i=0;i<5;i++){ const a=i/5*Math.PI*2+0.4; const d=(20+60*easeOut(u))*s; g.save(); g.globalAlpha=(1-u)*0.7; g.fillStyle=col; g.beginPath(); g.arc(x+Math.cos(a)*d,y+Math.sin(a)*d*0.7-30*u*s,14*s*(1-u*0.5),0,7); g.fill(); g.restore(); }
+}
+function sparkles(g,x,y,u,s){
+  s=s||1; for(let i=0;i<8;i++){ const a=i/8*Math.PI*2; const d=(30+90*easeOut(u))*s; g.save(); g.globalAlpha=1-u; g.fillStyle=i%2?C.hint:'#fff'; g.translate(x+Math.cos(a)*d,y+Math.sin(a)*d); g.rotate(u*3); g.fillRect(-6*s,-6*s,12*s,12*s); g.restore(); }
+}
+function flag(g,x,y,s){
+  s=s||1; g.save(); g.translate(x,y); g.scale(s,s); g.strokeStyle='#6c7480'; g.lineWidth=4; g.beginPath(); g.moveTo(0,22); g.lineTo(0,-26); g.stroke();
+  g.fillStyle=C.peg; g.beginPath(); g.moveTo(0,-26); g.lineTo(30,-16); g.lineTo(0,-6); g.closePath(); g.fill(); g.restore();
+}
+
+// ---- the proposed screen ------------------------------------------------
+const mock=document.getElementById('mock'); const mg=mock.getContext('2d');
+const DPR=Math.min(2,window.devicePixelRatio||1);
+mock.width=1080*DPR*390/1080; mock.height=1920*DPR*390/1080;
+const MS = mock.width/1080;
+
+// Geometry, design px.
+const F={x:40,y:350,cell:100};                 // your water, the field
+const CHIP={x:40,y:1420,w:300,h:360,cell:30};   // the chart folded
+const SHEET={x:160,y:480,w:760,h:760,cell:64, gx:230, gy:550}; // the chart unfolded
+const CAN={x:640,y:1720};                       // the cannon on the jetty
+const fieldC=(cx,cy)=>[F.x+(cx+.5)*F.cell, F.y+(cy+.5)*F.cell];
+
+const myBoats=[ {kind:0,x:0,y:1,len:5,v:false},{kind:1,x:1,y:5,len:4,v:false},{kind:2,x:8,y:2,len:3,v:true,sunk:true},{kind:3,x:5,y:8,len:3,v:false},{kind:4,x:2,y:7,len:2,v:true} ];
+const names=['Barge','Ferry','Tugboat','Sailboat','Rowboat']; const lens=[5,4,3,3,2];
+const preMiss=[[1,1],[7,2],[6,4],[2,8],[8,7],[4,1]]; const preHit=[[0,3]];
+const pondMiss=[[3,3],[9,9],[0,9],[6,0]];
+
+// Timeline. aim: the sheet unfolds at t, the finger slides, release fires the cannon, the answer comes back.
+// enemy: a shadow swells on the water from t, the pebble lands at t+0.6.
+const LOOP=14.0;
+const EV=[
+  {t:0.2, kind:'aim', from:[5,8], to:[3,6], dur:1.0, hit:true},
+  {t:3.6, kind:'enemy', cell:[7,2], hit:false},
+  {t:5.0, kind:'aim', from:[4,6], to:[4,6], dur:0.5, hit:true},
+  {t:7.9, kind:'enemy', cell:[2,5], hit:true},
+  {t:9.3, kind:'aim', from:[5,5], to:[5,6], dur:0.5, hit:true, sunk:[[3,6],[4,6],[5,6]]},
+  {t:12.3,kind:'enemy', cell:[6,4], hit:false},
+];
+const UNFOLD=0.35, FOLD=0.3, SWIVEL=0.3, FUSE=0.2, FLY=0.6, ANSWER=0.3;
+for(const e of EV){ if(e.kind==='aim'){ e.tr=e.t+UNFOLD+e.dur; e.tp=e.tr+SWIVEL+FUSE; e.tres=e.tp+FLY+ANSWER; } else { e.land=e.t+0.6; } }
+const colX=cx=>SHEET.gx+(cx+.5)*SHEET.cell;
+const aimAngle=cx=>lerp(-0.45,0.45,(cx+.5)/10);
+
+function sheetOpen(t){ // 0 folded .. 1 unfolded, and the aim event if any
+  for(const e of EV){ if(e.kind!=='aim') continue;
+    if(t>=e.t && t<e.tr) return {u:easeOut(clamp((t-e.t)/UNFOLD,0,1)), e};
+    if(t>=e.tr && t<e.tr+FOLD) return {u:1-easeIn(clamp((t-e.tr)/FOLD,0,1)), e}; }
+  return {u:0,e:null};
+}
+function fingerState(t){
+  for(const e of EV){ if(e.kind!=='aim') continue; const f0=e.t+UNFOLD; if(t<f0||t>e.tr) continue; const u=easeOut(clamp((t-f0)/e.dur,0,1));
+    const fx=lerp(e.from[0],e.to[0],u), fy=lerp(e.from[1],e.to[1],u); return {cell:[Math.round(fx),Math.round(fy)], x:colX(fx)+16, y:SHEET.gy+(fy+.5)*SHEET.cell+40}; }
+  return null;
+}
+function cannonState(t){ // angle, recoil, fuse, pop age, flight u
+  const st={ang:0,rec:0,fuse:false,pop:-1,fly:-1,col:0};
+  let target=null;
+  for(const e of EV){ if(e.kind!=='aim') continue;
+    if(t>=e.t+UNFOLD && t<e.tr){ const f=fingerState(t); if(f){ st.ang=aimAngle(f.cell[0])*0.5; st.col=f.cell[0]; } }
+    if(t>=e.tr && t<e.tres+1.0){ const a=t-e.tr; st.col=e.to[0]; st.ang=aimAngle(e.to[0])*easeOut(clamp(a/SWIVEL,0,1));
+      if(a>=SWIVEL && a<SWIVEL+FUSE) st.fuse=true;
+      if(t>=e.tp){ const b=t-e.tp; st.pop=b; st.rec=Math.max(0,1-b/0.35); if(b<FLY) st.fly=b/FLY; if(b>1.2) st.ang*=Math.max(0,1-(b-1.2)/0.5); } }
+  }
+  return st;
+}
+function sunkAt(t){ for(const e of EV){ if(e.sunk && t>=e.tres) return e.tres; } return -1; }
+function shotsBefore(t){ let n=0; for(const e of EV) if(e.kind==='aim' && t>=e.tp) n++; return n; }
+
+function drawChart(g,x,y,w,h,cell,gx,gy,t,big){
+  // paper, margin letters, grid, marks, plans and the fleet strip (folded only)
+  g.fillStyle=C.shade; rr(g,x+6,y+8,w,h,18); g.fill();
+  g.fillStyle=C.paper; rr(g,x,y,w,h,18); g.fill();
+  g.strokeStyle=C.paperLine; g.lineWidth=big?2:1;
+  for(let i=0;i<=10;i++){ g.beginPath(); g.moveTo(gx+i*cell,gy); g.lineTo(gx+i*cell,gy+10*cell); g.stroke(); g.beginPath(); g.moveTo(gx,gy+i*cell); g.lineTo(gx+10*cell,gy+i*cell); g.stroke(); }
+  if(big){ g.fillStyle=C.ink; g.font='600 26px Nunito'; g.textAlign='center'; for(let i=0;i<10;i++){ g.fillText(LETTERS[i],gx+(i+.5)*cell,gy-18); g.fillText(String(i+1),gx-32,gy+(i+.5)*cell+9); } g.textAlign='left';
+    g.save(); g.globalAlpha=.25; g.translate(x+w-50,y+h-50); g.strokeStyle=C.ink; g.lineWidth=3; g.beginPath(); g.arc(0,0,14,0,7); g.stroke(); g.beginPath(); g.moveTo(0,-26); g.lineTo(0,26); g.moveTo(-26,0); g.lineTo(26,0); g.stroke(); g.restore(); }
+  const cc=(cx,cy)=>[gx+(cx+.5)*cell, gy+(cy+.5)*cell];
+  const s=cell/64;
+  // plans: pencil loop, stencil, flag
+  g.save(); g.strokeStyle=C.pencil; g.lineWidth=4*s; g.lineCap='round'; g.globalAlpha=.8;
+  g.beginPath(); const [lx,ly]=cc(4.5,6); for(let i=0;i<=40;i++){ const a=i/40*Math.PI*2; g.lineTo(lx+Math.cos(a)*125*s+Math.sin(a*3)*5*s, ly+Math.sin(a)*58*s+Math.cos(a*2)*4*s); } g.stroke();
+  g.setLineDash([10*s,8*s]); g.lineWidth=3*s; const [sx,sy]=cc(0,3.5); rr(g,sx-24*s,sy-58*s,48*s,116*s,16*s); g.stroke(); g.setLineDash([]);
+  if(big){ g.font='600 26px Nunito'; g.fillStyle=C.pencil; g.fillText('?',sx+32,sy+9); } g.restore();
+  flag(g,...cc(9,9),0.8*s);
+  // marks
+  for(const [mx,my] of preMiss){ const [px,py]=cc(mx,my); pencilRing(g,px,py,18*s,.9); }
+  for(const [mx,my] of preHit){ const [px,py]=cc(mx,my); pin(g,px,py,0.85*s); }
+  for(const e of EV){ if(e.kind!=='aim'||t<e.tres) continue; const [px,py]=cc(...e.to); const age=t-e.tres;
+    if(e.hit){ const u=clamp(age/0.25,0,1); pin(g,px,py-(1-easeIn(u))*60*s,(1+(1-u)*0.4)*0.85*s); }
+    else pencilRing(g,px,py,18*s*easeOut(clamp(age/0.3,0,1)),.9);
+    if(e.sunk){ const u=clamp(age/0.7,0,1); const [ax,ay]=cc(...e.sunk[0]); const [bx,by]=cc(...e.sunk[e.sunk.length-1]);
+      g.save(); g.strokeStyle=C.ink; g.lineWidth=5*s; g.setLineDash([2000]); g.lineDashOffset=2000*(1-u); rr(g,ax-26*s,ay-24*s,(bx-ax)+52*s,48*s,20*s); g.stroke(); g.restore();
+      if(age<0.9) sparkles(g,(ax+bx)/2,ay,age/0.9,s); } }
+  if(!big){ // fleet strip
+    const fy=y+h-30; const sa=sunkAt(t);
+    lens.forEach((n,i)=>{ const fx=x+18+i*58; const sunk=i===2&&sa>=0&&t-sa>0.4; g.save(); g.globalAlpha=sunk?.4:1; g.setLineDash([5,4]); g.strokeStyle=C.pencil; g.lineWidth=2; rr(g,fx,fy-8,n*9,16,7); g.stroke(); g.restore();
+      if(sunk){ g.strokeStyle=C.peg; g.lineWidth=4; g.beginPath(); g.moveTo(fx-4,fy); g.lineTo(fx+n*9+4,fy); g.stroke(); } });
+    g.fillStyle=C.ink; g.font='700 18px Nunito'; g.save(); g.letterSpacing='1px'; g.fillText('THEIR FLEET',x+18,y+32); g.restore();
+    moonFace(g,x+w-36,y+32,18, sa>=0&&t-sa<2.2?-1:0);
+  }
+}
+
+function drawScreen(g,t){
+  const S=MS; g.setTransform(S,0,0,S,0,0);
+  // the water, full rect, drifting light
+  const sea=g.createLinearGradient(0,0,0,1920); sea.addColorStop(0,C.waterDeep); sea.addColorStop(1,C.water);
+  g.fillStyle=sea; g.fillRect(0,0,1080,1920);
+  g.strokeStyle=C.waterLine; g.lineWidth=4;
+  for(let k=0;k<10;k++){ const y=100+k*190; g.beginPath(); for(let x=0;x<=1080;x+=30){ g.lineTo(x, y+Math.sin(x/110+t*0.7+k)*8); } g.stroke(); }
+  g.fillStyle=C.glint; for(let k=0;k<6;k++){ const x=(k*230+t*25)%1180-50, y=400+((k*367)%1300); g.beginPath(); g.ellipse(x,y,70,22,0.3,0,7); g.fill(); }
+  // the field's grid and its letters
+  g.strokeStyle='rgba(255,255,255,.16)'; g.lineWidth=2;
+  for(let i=0;i<=10;i++){ g.beginPath(); g.moveTo(F.x+i*F.cell,F.y); g.lineTo(F.x+i*F.cell,F.y+1000); g.stroke(); g.beginPath(); g.moveTo(F.x,F.y+i*F.cell); g.lineTo(F.x+1000,F.y+i*F.cell); g.stroke(); }
+  g.fillStyle='rgba(255,255,255,.75)'; g.font='700 24px Nunito'; g.textAlign='center';
+  for(let i=0;i<10;i++){ g.fillText(LETTERS[i],F.x+(i+.5)*F.cell,F.y-12); g.fillText(String(i+1),F.x+18,F.y+(i+.5)*F.cell+9); } g.textAlign='left';
+
+  // misses on the water (quiet rings), then the boats, then the hits of this loop
+  for(const [x,y] of pondMiss){ const [cx,cy]=fieldC(x,y); ring(g,cx,cy,22,.35,'#fff',3); }
+  const sa=sunkAt(t);
+  myBoats.forEach((b,i)=>{ const [cx,cy]=b.v?fieldC(b.x,b.y+(b.len-1)/2):fieldC(b.x+(b.len-1)/2,b.y);
+    const hits=[]; if(b.sunk){ for(let k=0;k<b.len;k++) hits.push(k); }
+    let rock=0;
+    for(const e of EV){ if(e.kind!=='enemy'||!e.hit) continue; const age=t-e.land; const k=b.v?e.cell[1]-b.y:e.cell[0]-b.x; const inb=(b.v?e.cell[0]===b.x:e.cell[1]===b.y)&&k>=0&&k<b.len;
+      if(inb && age>=0){ hits.push(k); if(age<1.4) rock=Math.sin(age*16)*0.12*(1-age/1.4); } }
+    g.save(); g.translate(cx,cy); g.rotate(rock); realBoat(g,b.kind,b.len,F.cell,b.v,i*1.7,t,!!b.sunk,hits); g.restore(); });
+  // their shots: shadow swelling, the pebble dropping in from above, the landing
+  for(const e of EV){ if(e.kind!=='enemy') continue; const [cx,cy]=fieldC(...e.cell);
+    if(t>=e.t && t<e.land){ const u=(t-e.t)/0.6; g.save(); g.globalAlpha=0.45*u; g.fillStyle='#143a5c'; g.beginPath(); g.ellipse(cx+6,cy+8,10+28*u,6+18*u,0,0,7); g.fill(); g.restore();
+      if(u>0.35){ const v=easeIn((u-0.35)/0.65); const y=lerp(-80,cy,v); const sc=lerp(0.55,1.0,v); g.save(); g.translate(cx+(1-v)*40,y); g.scale(sc,sc); g.fillStyle=C.pebble; g.beginPath(); g.ellipse(0,0,22,16,0.4,0,7); g.fill(); g.fillStyle=C.pebbleLit; g.beginPath(); g.ellipse(-7,-5,9,5,0.4,0,7); g.fill(); g.restore(); } }
+    if(t>=e.land){ const age=t-e.land;
+      if(e.hit){ if(age<0.7) puff(g,cx,cy,age/0.7,'rgba(60,60,70,.8)',1.1); }
+      else { for(let r=0;r<3;r++){ const u=clamp((age-r*0.15)/0.8,0,1); if(u>0&&u<1) ring(g,cx,cy,18+70*easeOut(u),(1-u)*0.9,'#fff',4); } if(age>0.6) ring(g,cx,cy,22,.35*clamp((age-0.6)/0.3,0,1),'#fff',3); } } }
+
+  // top bar
+  g.fillStyle='#fff'; g.font='600 54px Fredoka'; g.fillText('Toy Boats',40,118);
+  g.font='600 26px Nunito'; g.fillStyle='rgba(255,255,255,.8)'; g.fillText('Find their fleet first',44,154);
+  g.fillStyle='rgba(255,255,255,.9)'; g.beginPath(); g.arc(1000,100,36,0,7); g.fill();
+  g.strokeStyle=C.slate; g.lineWidth=5; g.beginPath(); g.arc(1000,100,13,0,7); g.stroke();
+  for(let i=0;i<8;i++){ const a=i*Math.PI/4; g.beginPath(); g.moveTo(1000+Math.cos(a)*18,100+Math.sin(a)*18); g.lineTo(1000+Math.cos(a)*25,100+Math.sin(a)*25); g.stroke(); }
+  const tool=(x,alpha,draw)=>{ g.save(); g.globalAlpha=alpha; g.fillStyle='rgba(255,255,255,.92)'; g.beginPath(); g.arc(x,225,40,0,7); g.fill(); g.strokeStyle=C.slate; g.lineWidth=6; g.lineCap='round'; draw(x,225); g.restore(); };
+  tool(80,0.45,(x,y)=>{ g.beginPath(); g.arc(x+4,y,16,Math.PI*0.2,Math.PI*1.6); g.stroke(); g.beginPath(); g.moveTo(x-18,y-4); g.lineTo(x-6,y-16); g.lineTo(x-4,y+2); g.closePath(); g.fillStyle=C.slate; g.fill(); });
+  tool(180,1,(x,y)=>{ g.beginPath(); g.moveTo(x-14,y-10); g.lineTo(x-10,y+18); g.lineTo(x+10,y+18); g.lineTo(x+14,y-10); g.closePath(); g.stroke(); g.beginPath(); g.moveTo(x-20,y-12); g.lineTo(x+20,y-12); g.stroke(); });
+  g.fillStyle=C.paper; rr(g,440,190,200,70,35); g.fill(); g.fillStyle=C.pebble; g.beginPath(); g.ellipse(480,225,16,12,0.3,0,7); g.fill();
+  g.fillStyle=C.ink; g.font='600 34px Fredoka'; g.fillText(String(14+shotsBefore(t)),510,238);
+  tool(1000,1,(x,y)=>{ g.beginPath(); g.arc(x,y-6,16,0,7); g.stroke(); g.beginPath(); g.moveTo(x-8,y+14); g.lineTo(x+8,y+14); g.moveTo(x-6,y+22); g.lineTo(x+6,y+22); g.stroke(); });
+  g.fillStyle=C.hint; g.beginPath(); g.arc(1030,195,16,0,7); g.fill(); g.fillStyle=C.slate; g.font='700 22px Nunito'; g.textAlign='center'; g.fillText('3',1030,203); g.textAlign='left';
+
+  // the jetty and the one cannon
+  g.fillStyle=C.shade; rr(g,486,1648,320,220,18); g.fill();
+  g.fillStyle=C.wood; rr(g,480,1640,320,220,18); g.fill();
+  g.strokeStyle=C.woodDeep; g.lineWidth=2; for(let x=540;x<800;x+=60){ g.beginPath(); g.moveTo(x,1640); g.lineTo(x,1860); g.stroke(); }
+  g.fillStyle=C.woodDeep; for(const [px,py] of [[500,1660],[780,1660],[500,1840],[780,1840]]){ g.beginPath(); g.arc(px,py,9,0,7); g.fill(); }
+  sunFace(g,880,1760,36);
+  const cs=cannonState(t);
+  cannon(g,CAN.x,CAN.y,cs.ang,cs.rec,1.4);
+  const mx=CAN.x+Math.sin(cs.ang)*MUZ*1.4, my=CAN.y-Math.cos(cs.ang)*MUZ*1.4;
+  if(cs.fuse){ g.fillStyle=C.hint; g.beginPath(); g.arc(CAN.x+Math.sin(cs.ang)*30+(Math.random()-.5)*10, CAN.y-Math.cos(cs.ang)*30+(Math.random()-.5)*10, 8+Math.random()*7,0,7); g.fill(); }
+  if(cs.pop>=0 && cs.pop<0.5) puff(g,mx,my,cs.pop/0.5,'rgba(255,255,255,.85)',1.3);
+  if(cs.fly>=0){ const u=cs.fly; const tx=F.x+(cs.col+.5)*F.cell; const x=lerp(mx,tx,u), y=lerp(my,-90,easeOut(u)); const sc=lerp(1.3,0.45,u);
+    g.save(); g.translate(x,y); g.scale(sc,sc); g.fillStyle=C.pebble; g.beginPath(); g.ellipse(0,0,22,16,0.4,0,7); g.fill(); g.fillStyle=C.pebbleLit; g.beginPath(); g.ellipse(-7,-5,9,5,0.4,0,7); g.fill(); g.restore(); }
+
+  // the chart: folded in its corner, or unfolding over the water
+  const so=sheetOpen(t);
+  if(so.u<=0.001){ drawChart(g,CHIP.x,CHIP.y,CHIP.w,CHIP.h,CHIP.cell,CHIP.x+0,CHIP.y+44,t,false); }
+  else {
+    const u=so.u; const x=lerp(CHIP.x,SHEET.x,u), y=lerp(CHIP.y,SHEET.y,u), w=lerp(CHIP.w,SHEET.w,u), h=lerp(CHIP.h,SHEET.h,u);
+    if(u<0.97){ g.fillStyle=C.shade; rr(g,x+6,y+8,w,h,18); g.fill(); g.fillStyle=C.paper; rr(g,x,y,w,h,18); g.fill(); g.strokeStyle=C.paperLine; g.lineWidth=2; const c=w/12; for(let i=0;i<=10;i++){ g.beginPath(); g.moveTo(x+c+i*c,y+c); g.lineTo(x+c+i*c,y+c+10*c); g.stroke(); g.beginPath(); g.moveTo(x+c,y+c+i*c); g.lineTo(x+c+10*c,y+c+i*c); g.stroke(); } }
+    else {
+      g.fillStyle='rgba(10,30,50,.25)'; g.fillRect(0,0,1080,1920);
+      drawChart(g,SHEET.x,SHEET.y,SHEET.w,SHEET.h,SHEET.cell,SHEET.gx,SHEET.gy,t,true);
+      // tray
+      const icons=[
+        (x,y)=>{ g.beginPath(); g.arc(x,y,13,0,7); g.stroke(); g.beginPath(); g.moveTo(x-20,y); g.lineTo(x+20,y); g.moveTo(x,y-20); g.lineTo(x,y+20); g.stroke(); },
+        (x,y)=>{ g.save(); g.translate(x,y); g.rotate(-Math.PI/4); g.fillStyle=C.slate; g.fillRect(-6,-18,12,28); g.beginPath(); g.moveTo(-6,10); g.lineTo(6,10); g.lineTo(0,20); g.closePath(); g.fill(); g.restore(); },
+        (x,y)=>{ g.beginPath(); g.moveTo(x-7,y+18); g.lineTo(x-7,y-18); g.stroke(); g.fillStyle=C.slate; g.beginPath(); g.moveTo(x-7,y-18); g.lineTo(x+15,y-11); g.lineTo(x-7,y-4); g.fill(); },
+        (x,y)=>{ g.setLineDash([6,5]); g.lineWidth=4; rr(g,x-22,y-9,44,18,8); g.stroke(); g.setLineDash([]); },
+        (x,y)=>{ g.save(); g.translate(x,y); g.rotate(-Math.PI/5); g.fillStyle=C.peg; rr(g,-16,-9,32,18,5); g.fill(); g.restore(); },
+      ];
+      icons.forEach((d,i)=>{ const y=600+i*100; g.fillStyle=i===0?'#fff':'rgba(255,255,255,.8)'; g.beginPath(); g.arc(110,y,30,0,7); g.fill();
+        if(i===0){ g.strokeStyle=C.hint; g.lineWidth=5; g.beginPath(); g.arc(110,y,30,0,7); g.stroke(); }
+        g.strokeStyle=C.slate; g.lineWidth=5; g.lineCap='round'; d(110,y); });
+      // finger, lit row and column, coordinate tag
+      const f=fingerState(t);
+      if(f){ const cx=colX(f.cell[0]), cy=SHEET.gy+(f.cell[1]+.5)*SHEET.cell;
+        g.fillStyle='rgba(249,192,74,.3)'; g.fillRect(SHEET.gx+f.cell[0]*SHEET.cell,SHEET.gy,SHEET.cell,640); g.fillRect(SHEET.gx,SHEET.gy+f.cell[1]*SHEET.cell,640,SHEET.cell);
+        g.strokeStyle=C.hint; g.lineWidth=5; g.beginPath(); g.arc(cx,cy,26,0,7); g.stroke(); g.beginPath(); g.moveTo(cx-38,cy); g.lineTo(cx-16,cy); g.moveTo(cx+16,cy); g.lineTo(cx+38,cy); g.moveTo(cx,cy-38); g.lineTo(cx,cy-16); g.moveTo(cx,cy+16); g.lineTo(cx,cy+38); g.stroke();
+        g.fillStyle=C.slate; rr(g,cx-58,cy-140,116,56,28); g.fill(); g.fillStyle='#fff'; g.font='600 34px Fredoka'; g.textAlign='center'; g.fillText(LETTERS[f.cell[0]]+'-'+(f.cell[1]+1),cx,cy-100); g.textAlign='left';
+        g.fillStyle='rgba(255,255,255,.35)'; g.beginPath(); g.arc(f.x,f.y,46,0,7); g.fill(); g.strokeStyle='rgba(255,255,255,.8)'; g.lineWidth=4; g.stroke(); }
+    }
+  }
+
+  // the answer, as a toast above the folded chart
+  for(const e of EV){ if(e.kind!=='aim') continue; const age=t-e.tres; if(age<0||age>2.0) continue;
+    const a=clamp(age/0.25,0,1)*clamp((2.0-age)/0.4,0,1); const txt=e.sunk?'Tugboat sunk':(LETTERS[e.to[0]]+'-'+(e.to[1]+1)+(e.hit?'  ·  Hit':'  ·  Miss'));
+    g.save(); g.globalAlpha=a; g.fillStyle=C.paper; const w=e.sunk?420:360; rr(g,40,1340,w,66,33); g.fill(); g.fillStyle=e.hit?C.peg:C.ink; g.font='600 32px Fredoka'; g.fillText(txt,70,1385); g.restore(); }
+}
+
+// ---- today's screen, a still -------------------------------------------
+function drawToday(){
+  const c=document.getElementById('today'); const g=c.getContext('2d'); const S=c.width/1080;
+  g.setTransform(S,0,0,S,0,0);
+  g.fillStyle='#f3efe6'; g.fillRect(0,0,1080,1920);
+  g.fillStyle='#e9e2d4'; rr(g,40,60,1000,1800,40); g.fill();
+  g.fillStyle=C.slate; g.font='600 50px Fredoka'; g.fillText('Toy Boats',80,150);
+  const px=80,py=220,pc=42;
+  g.fillStyle=C.wood; rr(g,px-20,py-20,pc*10+40,pc*10+40,14); g.fill(); g.fillStyle=C.water; g.fillRect(px,py,pc*10,pc*10);
+  g.strokeStyle=C.waterLine; g.lineWidth=1.5; for(let i=0;i<=10;i++){ g.beginPath(); g.moveTo(px+i*pc,py); g.lineTo(px+i*pc,py+pc*10); g.stroke(); g.beginPath(); g.moveTo(px,py+i*pc); g.lineTo(px+pc*10,py+i*pc); g.stroke(); }
+  const paint=['#e0574f','#4c9a94','#f5a623','#e58fb5','#7d8fd9'];
+  myBoats.forEach((b,i)=>{ const cx=px+(b.x+(b.v?0:(b.len-1)/2)+.5)*pc, cy=py+(b.y+(b.v?(b.len-1)/2:0)+.5)*pc; g.save(); g.translate(cx,cy); if(b.v) g.rotate(Math.PI/2);
+    const L=b.len*pc-pc*.2,H=pc*.7; g.fillStyle=C.hull; g.beginPath(); g.moveTo(-L/2,-H/2); g.lineTo(L/2-H*.5,-H/2); g.quadraticCurveTo(L/2+2,0,L/2-H*.5,H/2); g.lineTo(-L/2,H/2); g.closePath(); g.fill(); g.strokeStyle=C.hullRim; g.lineWidth=3; g.stroke(); g.strokeStyle=paint[i]; g.lineWidth=4; g.beginPath(); g.moveTo(-L/2+8,0); g.lineTo(L/2-H*.7,0); g.stroke(); g.restore(); });
+  g.fillStyle=C.peg; g.beginPath(); g.arc(px+8.5*pc,py+3.5*pc,9,0,7); g.fill();
+  g.fillStyle=C.slate; g.font='700 26px Nunito'; g.fillText('TO SINK',600,270);
+  names.forEach((n,i)=>{ g.font='600 30px Nunito'; g.fillStyle=C.slate; g.fillText(n,600,330+i*58); });
+  const sx=100,sy=760,sc=88;
+  g.fillStyle=C.wood; rr(g,sx-30,sy-30,sc*10+60,sc*10+60,16); g.fill(); g.fillStyle=C.slate; g.fillRect(sx,sy,sc*10,sc*10);
+  g.strokeStyle='rgba(243,239,230,.3)'; g.lineWidth=2; for(let i=0;i<=10;i++){ g.beginPath(); g.moveTo(sx+i*sc,sy); g.lineTo(sx+i*sc,sy+sc*10); g.stroke(); g.beginPath(); g.moveTo(sx,sy+i*sc); g.lineTo(sx+sc*10,sy+i*sc); g.stroke(); }
+  g.strokeStyle=C.chalk; g.lineWidth=5; g.lineCap='round';
+  for(const [x,y] of preMiss){ g.beginPath(); g.arc(sx+(x+.5)*sc,sy+(y+.5)*sc,22,0,7); g.stroke(); }
+  g.strokeStyle='#ffb7a3'; for(const [x,y] of [[0,3],[3,6],[4,6]]){ const cx=sx+(x+.5)*sc, cy=sy+(y+.5)*sc; g.beginPath(); g.moveTo(cx-22,cy-22); g.lineTo(cx+22,cy+22); g.moveTo(cx+22,cy-22); g.lineTo(cx-22,cy+22); g.stroke(); }
+  g.fillStyle=C.chalk; g.font='600 26px Nunito'; g.textAlign='center'; for(let i=0;i<10;i++){ g.fillText(LETTERS[i],sx+(i+.5)*sc,sy-40); g.fillText(String(i+1),sx-45,sy+(i+.5)*sc+9); }
+}
+drawToday(); if(document.fonts && document.fonts.ready) document.fonts.ready.then(drawToday);
+
+// ---- the loop -------------------------------------------------------------
+const startAt=parseFloat(new URLSearchParams(location.search).get('t'));
+let playing=!reduce && isNaN(startAt), tt=reduce?8.3:(isNaN(startAt)?0:startAt), last=performance.now();
+const pauseB=document.getElementById('pause'), againB=document.getElementById('again');
+function frame(now){ if(playing){ tt+=(now-last)/1000; if(tt>LOOP) tt-=LOOP; } last=now; drawScreen(mg,tt); requestAnimationFrame(frame); }
+pauseB.addEventListener('click',()=>{ playing=!playing; pauseB.textContent=playing?'Pause':'Play'; });
+againB.addEventListener('click',()=>{ tt=0; if(!playing){ playing=true; pauseB.textContent='Pause'; } });
+if(reduce) pauseB.textContent='Play';
+requestAnimationFrame(frame);
+})();
+</script>
