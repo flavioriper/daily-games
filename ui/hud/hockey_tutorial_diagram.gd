@@ -15,6 +15,7 @@ extends Control
 ##   swings and sends it back.
 ## - BANK: the straight way is blocked, so off the long rail and in.
 ## - TWO: two fingers, a rally (both hands are versus/hockey_ai.gd).
+## - POWERS: the swing again, through a token: a second puck comes out of it.
 ##
 ## Every scene is a script of where each hand wants its mallet over time and
 ## was tried on the sim, which steps a fixed 1/240 s, so it repeats exactly
@@ -29,7 +30,7 @@ const Sim = preload("res://versus/hockey_sim.gd")
 const AI = preload("res://versus/hockey_ai.gd")
 const Table = preload("res://versus/hockey_table.gd")
 
-enum Lesson { LEAD, SCORE, BLOCK, BANK, TWO }
+enum Lesson { LEAD, SCORE, BLOCK, BANK, TWO, POWERS }
 
 const PAD := 6.0
 const FINGER_R := 30.0
@@ -84,6 +85,10 @@ static func scene_of(the_lesson: int) -> Dictionary:
 			return {"len": 6.6, "puck": Vector2(0.5, 0.52), "fingers": [0], "still": 1.9, "paths": {
 				0: [[0.0, 0.5, 1.4], [3.62, 0.5, 1.4], [3.84, 0.5, 1.06], [4.62, 0.5, 1.4], [6.6, 0.5, 1.4]],
 				1: [[0.0, h1.x, h1.y], [0.9, 0.5, 0.2], [1.5, 0.5, 0.2], [1.78, 0.5, 0.5], [2.4, 0.5, 0.2], [6.6, 0.5, 0.2]]}}
+		Lesson.POWERS:
+			return {"len": 5.6, "puck": Vector2(0.5, 1.08), "token": Vector2(0.5, 0.92), "fingers": [0], "still": 2.0, "paths": {
+				0: [[0.0, h0.x, h0.y], [0.9, h0.x, h0.y], [1.5, 0.5, 1.36], [1.72, 0.5, 0.94], [2.6, 0.5, 1.2], [5.6, h0.x, h0.y]],
+				1: [[0.0, 0.2, 0.3]]}}
 		Lesson.BANK:
 			return {"len": 5.6, "puck": Vector2(0.62, 1.1), "fingers": [0], "still": 1.6, "paths": {
 				0: [[0.0, h0.x, h0.y], [0.8, h0.x, h0.y], [1.6, 0.774, 1.264], [1.86, 0.52, 0.994], [2.8, 0.6, 1.2], [5.6, h0.x, h0.y]],
@@ -116,6 +121,10 @@ static func lay(scene: Dictionary) -> RefCounted:
 		s.puck_on = false
 	else:
 		s.puck = scene.puck
+	if scene.has("token"):
+		s.pick_kind = Sim.TWIN
+		s.pick_at = scene.token
+		s.pick_t = 99.0
 	for p in 2:
 		s.mallet[p] = want(scene, p, 0.0)
 		s.aim[p] = s.mallet[p]

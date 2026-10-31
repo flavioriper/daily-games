@@ -1377,6 +1377,8 @@ SETS = {
     # hiss. With two players on one phone every goal plays `goal` and the
     # end plays `win`.
     "hockey": {
+        # A token taken off the table (2026-10-31): a thing picked up, the pebble.
+        "token":    ('a small pebble dropped into a calm pond, one soft plop, close, very short', 0.6, -13, FOLEY, "bank:pebble", "cut:0.12", "notes:0:5", "tight"),
         "strike":   ("one small round wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.1", "body:320", "tight"),
         "wall":     ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -14, FOLEY, "bank:tongue", "cut:0.1", "notes:0:-1", "tight"),
         # A goal's corner: wall's take, three steps down.

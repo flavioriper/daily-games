@@ -1312,6 +1312,45 @@ HKY_SERVE_SUN,Sun's puck,O disco é do Sol,El disco es del Sol
 HKY_SERVE_MOON,Moon's puck,O disco é da Lua,El disco es de la Luna
 HKY_GOAL,Goal!,Gol!,¡Gol!
 HKY_MATCH_POINT,One more wins it,Mais um e acabou,Uno más y se acaba
+HKY_CLEAR_TITLE,Throw this match away?,Jogar esta partida fora?,¿Tirar este partido?
+HKY_CLEAR_BODY,The score goes back to nothing and the puck is served again.,O placar volta a zero e o disco é sacado de novo.,El marcador vuelve a cero y se saca de nuevo.
+HKY_CLEAR_YES,New match,Nova partida,Partido nuevo
+HKY_RALLY,Rally x%d!,Rali x%d!,¡Peloteo x%d!
+HKY_SAVE,Save!,Defesa!,¡Parada!
+HKY_OWN,Own goal!,Gol contra!,¡Autogol!
+HKY_HAT,Hat trick!,Três seguidos!,¡Triplete!
+HKY_COMEBACK,Comeback!,Virada!,¡Remontada!
+HKY_DOUBLE,Double goal!,Gol duplo!,¡Gol doble!
+HKY_BANK,Bank shot!,Tabela!,¡De banda!
+HKY_BANK_2,Double bank!,Tabela dupla!,¡Doble banda!
+HKY_ROCKET,Rocket!,Foguete!,¡Cañonazo!
+HKY_P_TWIN,Two pucks!,Dois discos!,¡Dos discos!
+HKY_P_BIG,Big mallet!,Rebatedor gigante!,¡Mazo gigante!
+HKY_P_WIDE,Wide open!,Gol escancarado!,¡Portería abierta!
+HKY_P_SLOW,Stuck in jam!,Preso na geleia!,¡Pegado en mermelada!
+HKY_P_GOLD,Golden puck: worth 2!,Disco de ouro: vale 2!,¡Disco de oro: vale 2!
+HKY_STREAK,%d wins in a row,%d vitórias seguidas,%d victorias seguidas
+HKY_END_STATS,Best rally %d  ·  Saves %d,Melhor rali %d  ·  Defesas %d,Mejor peloteo %d  ·  Paradas %d
+TUT_HOCKEY_POWERS,Tokens,Fichas,Fichas
+TUT_HOCKEY_POWERS_BODY,"Run the puck through a token and it is yours: two pucks, a big mallet, their goal wide open, their arm stuck in jam, or a golden puck worth 2 to whoever scores it.","Passe o disco por uma ficha e ela é sua: dois discos, rebatedor gigante, o gol deles escancarado, o braço deles preso na geleia ou um disco de ouro que vale 2 para quem marcar.","Pasa el disco por una ficha y es tuya: dos discos, mazo gigante, su portería abierta, su brazo pegado en mermelada o un disco de oro que vale 2 para quien marque."
+HKY_Q_SCORED_1,Did you see that? Neither did you.,Viu essa? Nem você.,¿Lo viste? Tú tampoco.
+HKY_Q_SCORED_2,The moon sends its regards.,A Lua manda lembranças.,La luna manda saludos.
+HKY_Q_SCORED_3,Too quick for the sun?,Rápido demais pro Sol?,¿Muy rápido para el sol?
+HKY_Q_CONCEDED_1,I blinked. It does not count.,Eu pisquei. Não vale.,Parpadeé. No cuenta.
+HKY_Q_CONCEDED_2,"Lucky. Very, very lucky.","Sorte. Muita, muita sorte.","Suerte. Mucha, mucha suerte."
+HKY_Q_CONCEDED_3,The table is tilted. Obviously.,A mesa está torta. Claro.,La mesa está torcida. Claro.
+HKY_Q_SAVED_1,Hey! That was going in!,Ei! Essa ia entrar!,¡Oye! ¡Esa entraba!
+HKY_Q_SAVED_2,Fine. Keep your goal.,Tá bom. Fique com seu gol.,Vale. Quédate tu portería.
+HKY_Q_SAVED_3,Who taught you that?,Quem te ensinou isso?,¿Quién te enseñó eso?
+HKY_Q_POWER_1,"Ooh, mine now.","Oba, agora é meu.","Uy, ahora es mío."
+HKY_Q_POWER_2,"Thank you, table.","Obrigada, mesa.","Gracias, mesa."
+HKY_Q_POWER_3,I was aiming for that. Honest.,Eu mirei nisso. Juro.,Apunté a eso. De verdad.
+HKY_Q_OWN_ME_1,You scored for me. How kind.,Você marcou pra mim. Que gentil.,Marcaste para mí. Qué amable.
+HKY_Q_OWN_ME_2,I will take that.,Vou aceitar essa.,Eso me lo quedo.
+HKY_Q_OWN_ME_3,"Wrong goal, sunshine.","Gol errado, solzinho.","Portería equivocada, solecito."
+HKY_Q_OWN_MOON_1,"I meant to do that. No, I did not.","Foi de propósito. Não, não foi.","Fue a propósito. No, no fue."
+HKY_Q_OWN_MOON_2,Nobody saw that.,Ninguém viu isso.,Nadie vio eso.
+HKY_Q_OWN_MOON_3,The puck slipped. Space is slippery.,O disco escorregou. O espaço é liso.,El disco resbaló. El espacio resbala.
 HKY_WIN,Match won!,Partida ganha!,¡Partido ganado!
 HKY_LOSE,Match lost,Partida perdida,Partido perdido
 HKY_WIN_SUN,Sun wins!,O Sol venceu!,¡Gana el Sol!

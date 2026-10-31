@@ -57,8 +57,65 @@ func _initialize() -> void:
 				bad += 1
 	bad += _lessons()
 	bad += _corners()
+	bad += _powers(seed)
 	print("OK" if bad == 0 else "FAILED: %d" % bad)
 	quit(0 if bad == 0 else 1)
+
+## The power table, computer against computer: every token comes up and is
+## taken, no puck leaves the table but through a goal, a match still ends, and
+## the levels still stand.
+func _powers(seed: int) -> int:
+	var bad := 0
+	var seen := {}
+	var wins := [[0, 0], [0, 0], [0, 0]]
+	var secs := 0.0
+	var doubles := 0
+	for k in 18:
+		var low := k % 3
+		var sim := Sim.new()
+		sim.powers = true
+		sim.rng.seed = seed + k
+		var bots := [AI.new(0, low, seed + k + 1), AI.new(1, (low + 1) % 3, seed + k + 2)]
+		sim.reset(k % 2)
+		for bot in bots:
+			bot.served()
+		var pause := 0.0
+		var t := 0.0
+		while not sim.over and t < LIMIT:
+			t += Sim.DT
+			for bot in bots:
+				bot.drive(sim, Sim.DT)
+			sim.step()
+			for e in sim.events:
+				if String(e.kind) == "power":
+					seen[int(e.power)] = int(seen.get(int(e.power), 0)) + 1
+				elif String(e.kind) == "goal" and int(e.worth) == 2:
+					doubles += 1
+			sim.events.clear()
+			for at: Vector2 in ([sim.puck] + ([sim.twin] if sim.twin_on else [])):
+				if sim.puck_on and (at.x < 0.0 or at.x > Sim.W or at.y < -0.1 or at.y > Sim.L + 0.1):
+					bad += 1
+			if not sim.puck_on and not sim.over:
+				pause += Sim.DT
+				if pause > 1.0:
+					pause = 0.0
+					sim.serve(0 if sim.puck.y < Sim.L * 0.5 else 1)
+					for bot in bots:
+						bot.served()
+		secs += t
+		if not sim.over:
+			bad += 1
+			continue
+		var top: int = maxi(low, (low + 1) % 3)
+		wins[low][1 if (sim.winner == 1) == ((low + 1) % 3 == top) else 0] += 1
+	print("powers: taken %s, %d double goals, %.0f s a match, higher level won %d of 18" % [str(seen), doubles, secs / 18.0,
+		wins[0][1] + wins[1][1] + wins[2][1]])
+	if seen.size() < Sim.POWERS.size():
+		bad += 1
+	if wins[0][1] + wins[1][1] + wins[2][1] < 12:
+		print("  ! the levels no longer stand on the power table")
+		bad += 1
+	return bad
 
 func _match(a: int, b: int, seed: int) -> Dictionary:
 	var sim := Sim.new()

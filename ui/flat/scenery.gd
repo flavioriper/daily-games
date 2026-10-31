@@ -186,3 +186,37 @@ static func cup(b: Face.Builder, c: Vector2, r: float) -> void:
 	b.disc(c, r * 0.62, CHINA)
 	b.disc(c, r * 0.5, TEA)
 	b.stroke(Face.Builder.arc_points(c, r * 0.36, PI * 1.05, PI * 1.5), 3.0, Color(TEA_LIT, 0.9))
+
+## The house's wooden floor over `sz`: planks across, each a shade apart, with
+## their joints, grain and knots. A screen laid full rect stands on this
+## (the rule in CLAUDE.md, "A game screen is laid as the daily boards").
+static func planks(b: Face.Builder, sz: Vector2, seed_at := 5) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_at
+	b.polygon(_box(Vector2.ZERO, sz), Color("a06d45"))
+	var plank := 58.0
+	var y := 0.0
+	while y < sz.y:
+		var h := minf(plank, sz.y - y)
+		b.polygon(_box(Vector2(0.0, y), Vector2(sz.x, h - 3.0)), Color("b98457").lerp(Color("a06d45"), rng.randf()))
+		b.polygon(_box(Vector2(0.0, y), Vector2(sz.x, 2.0)), Color(1, 1, 1, 0.12))
+		b.polygon(_box(Vector2(rng.randf_range(0.2, 0.8) * sz.x, y + 4.0), Vector2(3.0, h - 10.0)), Color(0.3, 0.17, 0.08, 0.35))
+		for g in 2:
+			var gy := y + h * (0.3 + 0.35 * g) + rng.randf_range(-4.0, 4.0)
+			var ph := rng.randf() * TAU
+			var x0 := rng.randf_range(0.0, sz.x * 0.4)
+			var x1 := minf(sz.x, x0 + rng.randf_range(sz.x * 0.3, sz.x * 0.6))
+			var pts := PackedVector2Array()
+			var x := x0
+			while x <= x1:
+				pts.append(Vector2(x, gy + sin(x / 60.0 + ph) * 2.5))
+				x += 18.0
+			if pts.size() > 1:
+				b.stroke(pts, 1.8, Color(0.35, 0.2, 0.1, 0.14))
+		if rng.randf() < 0.3:
+			var kp := Vector2(rng.randf_range(60.0, sz.x - 60.0), y + h * 0.5)
+			b.stroke(Face.Builder.ring(kp, 13.0, 5.5), 2.0, Color(0.35, 0.2, 0.1, 0.25), true)
+		y += plank
+
+static func _box(at: Vector2, sz: Vector2) -> PackedVector2Array:
+	return PackedVector2Array([at, at + Vector2(sz.x, 0.0), at + sz, at + Vector2(0.0, sz.y)])

@@ -30,6 +30,8 @@ const LEVELS := [
 const GUARD := 0.2
 ## How far behind the puck it lines up before it swings.
 const BACK := 0.07
+## How often it plays at a token rather than the goal.
+const TOKEN_SHOT := 0.35
 
 var me := 1
 var level := 1
@@ -68,7 +70,8 @@ func drive(sim: RefCounted, dt: float) -> void:
 	var cfg: Dictionary = LEVELS[level]
 	_t += dt
 	_rest = maxf(0.0, _rest - dt)
-	_seen.append([_t, sim.puck, sim.puck_vel, sim.puck_on])
+	var mind: Array = sim.threat(me)
+	_seen.append([_t, mind[0], mind[1], mind[2]])
 	while _seen.size() > 1 and _t - float(_seen[1][0]) >= float(cfg.react):
 		_seen.pop_front()
 	var saw: Array = _seen[0]
@@ -91,8 +94,11 @@ func drive(sim: RefCounted, dt: float) -> void:
 		if not _has_mark:
 			_has_mark = true
 			_mark = _pick_mark(cfg, puck)
+			# A token in reach is worth a shot, from the middle level up.
+			if sim.pick_kind != Sim.NONE and level >= 1 and rng.randf() < TOKEN_SHOT:
+				_mark = _turn(sim.pick_at) if flip else sim.pick_at
 		var line := (_mark - puck).normalized()
-		var behind := puck - line * (Sim.PUCK_R + Sim.MALLET_R + BACK)
+		var behind := puck - line * (Sim.PUCK_R + float(sim.radius[me]) + BACK)
 		behind.y = maxf(behind.y, Sim.MALLET_R)
 		var lined := (at - behind).length() < 0.05 or (puck - at).normalized().dot(line) > 0.92
 		_dawdle = _dawdle + dt if vel.length() < 0.4 else 0.0
@@ -122,7 +128,7 @@ func drive(sim: RefCounted, dt: float) -> void:
 	if flip:
 		want = _turn(want)
 		at = _turn(at)
-	want = Sim.clamp_half(me, want)
+	want = Sim.clamp_half(me, want, sim.radius[me])
 	if not _has_mark:
 		_dawdle = 0.0
 	if vel.y >= -0.15:

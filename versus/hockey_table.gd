@@ -45,6 +45,8 @@ extends Control
 
 ## A finger came down for `seat`.
 signal touched(seat: int)
+## A save was made in front of `seat`'s goal.
+signal saved(seat: int)
 
 const Sim = preload("res://versus/hockey_sim.gd")
 const Face = preload("res://ui/faces/face.gd")
@@ -130,6 +132,12 @@ const STILL := 0.05
 const STILL_WAIT := 0.8
 const BREATH := 0.025
 const BREATH_TIME := 2.4
+## A token's bob and how long before it goes it starts to blink; the rings
+## that say how long a power has left; the table's jolt on a goal.
+const TOKEN_R := 0.07
+const BLINK := 2.5
+const POWER_RING := 0.02
+const QUAKE_TIME := 0.32
 
 var sim: RefCounted
 ## Which seats a finger leads.
@@ -185,6 +193,8 @@ var _still_t := 0.0
 var _clock := 0.0
 var _was_on := true
 var _sim_seen: RefCounted
+var _quake_at := -10.0
+var _quake_px := 0.0
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE if still else Control.MOUSE_FILTER_STOP
@@ -316,6 +326,7 @@ func flash(kind: String, at: Vector2, strength: float, seat := -1) -> void:
 			and absf(at.x + n.x * (own.y - at.y) / n.y - own.x) < Sim.GOAL_HALF \
 			and strength * FULL - sim.mallet_vel[seat].length() >= SAVE_SPEED:
 		_flashes.append({"kind": "save", "at": Sim.goal_of(seat), "t": 0.0, "life": SAVE_TIME, "strength": s, "seat": seat, "n": n})
+		saved.emit(seat)
 
 ## The puck went in at `end` (0 the bottom goal) from `at`.
 func goal(end: int, at: Vector2) -> void:
@@ -333,6 +344,13 @@ func goal(end: int, at: Vector2) -> void:
 		_mote(Vector2(x, Sim.goal_of(end).y) + up * _rng.randf_range(0.0, 0.05),
 			up * _rng.randf_range(0.12, 0.34) + Vector2(_rng.randf_range(-0.06, 0.06), 0.0),
 			_rng.randf_range(0.6, 1.1), _rng.randf_range(0.014, 0.026), SIDE[1 - end][1])
+
+## The table jolts by `by` pixels: a goal.
+func quake(by: float) -> void:
+	if Motion.reduce:
+		return
+	_quake_at = _clock
+	_quake_px = by
 
 ## Nobody is leading a mallet any more (a goal, the end, a card going up).
 func let_go() -> void:
@@ -399,6 +417,9 @@ func _draw() -> void:
 	if _table == null:
 		_table = _build_table()
 		_build_pieces()
+	var since := _clock - _quake_at
+	if since < QUAKE_TIME and not still:
+		draw_set_transform(Vector2(Motion.shiver_offset(since, _quake_px, QUAKE_TIME), Motion.nudge_offset(since, _quake_px * 0.7, QUAKE_TIME, 0.0)))
 	draw_mesh(_table, null)
 	_live = _build_live()
 	draw_mesh(_live, null)
@@ -645,21 +666,22 @@ func _build_live() -> ArrayMesh:
 	var mallet_lift := [0.0, 0.0]
 	for p in 2:
 		var at := px(sim.mallet[p])
-		var along := 1.0
-		var across := 1.0
+		var grown: float = sim.radius[p] / Sim.MALLET_R
+		var along := grown
+		var across := grown
 		var n: Vector2 = _bump_n[p]
 		if _bump[p] > 0.0 and moving:
 			var sq: float = Motion.bump_scale(BUMP - _bump[p], SQUASH * _bump_by[p], BUMP) - 1.0
-			along -= sq
-			across += sq * 0.6
+			along -= sq * grown
+			across += sq * 0.6 * grown
 		elif _slump[p] > 0.0:
 			# Scored on: it sags, wider than it is tall, with a shake of the head.
 			n = Vector2.DOWN
-			along -= SLUMP * _slump[p]
-			across += SLUMP * 0.4 * _slump[p]
+			along -= SLUMP * _slump[p] * grown
+			across += SLUMP * 0.4 * _slump[p] * grown
 			at += Vector2(Motion.shiver_offset(_goal_t, Motion.SHIVER_PX * 2.0, Motion.SHIVER_TIME * 2.0), SLUMP * 0.5 * mallet_r * _slump[p])
 		elif lying:
-			along += BREATH * _breath(p * 0.5)
+			along += BREATH * _breath(p * 0.5) * grown
 			across = along
 		if moving and _goal_by == p:
 			# The scorer hops once; whoever took the match, three times.
@@ -719,7 +741,7 @@ func _build_live() -> ArrayMesh:
 	# shadows first, so no piece shades another's top
 	for p in 2:
 		var high: float = mallet_lift[p] / maxf(1.0, mallet_r)
-		b.disc(px(sim.mallet[p]) + shade * (1.3 + 2.0 * high), mallet_r * (1.02 - 0.2 * high), SHADOW)
+		b.disc(px(sim.mallet[p]) + shade * (1.3 + 2.0 * high), sim.radius[p] * ppm * (1.02 - 0.2 * high), SHADOW)
 	if sim.puck_on:
 		b.disc(puck_at + shade * 0.7, puck_r * minf(1.0, puck_pop.y), Color(SHADOW, SHADOW.a * Motion.appear_level(_serve_t) if moving else SHADOW.a))
 	# The puck's trail: the light of whoever struck it last, and what it sheds.
@@ -742,11 +764,17 @@ func _build_live() -> ArrayMesh:
 		var ru: float = _serve_t / Motion.RING_TIME
 		Scenery.soft_disc(b, puck_at, puck_r * (1.2 + 2.6 * ru), puck_r * (1.2 + 2.6 * ru), Color(SIDE[sim.side()][0], 0.8 * (1.0 - ru)))
 
+	_power_under(b, moving, puck_at, puck_r)
+
 	# --- the pieces ---
 	if puck_shown:
 		b.idx.append_array(_piece_idx[0])
 	b.idx.append_array(_piece_idx[1])
 	b.idx.append_array(_piece_idx[2])
+
+	if sim.twin_on:
+		_second_puck(b, puck_r)
+	_power_over(b)
 
 	# --- over them ---
 	var well := 0.016 * ppm
@@ -790,6 +818,101 @@ func _build_live() -> ArrayMesh:
 				var size_by := 1.0 - float(k) / LAP_MOTES
 				_glow_at(b, _rim(end2, side, eased * way), ppm * 0.05 * (0.5 + 0.5 * size_by), Color(SIDE[_goal_by][1], 0.95), sin(lu * PI) * (0.4 + 0.6 * size_by))
 	return b.mesh()
+
+## What lies under the pieces of the power table: a goal stood open, the
+## token, the gold puck's light.
+func _power_under(b: Face.Builder, moving: bool, puck_at: Vector2, puck_r: float) -> void:
+	for end in 2:
+		if sim.wide_t[end] <= 0.0:
+			continue
+		# The mouth run out along the rail, trimmed in the side's colour.
+		var half: float = sim.goal_half(end) * ppm
+		var y := origin.y + (Sim.L * ppm if end == 0 else -RAIL * ppm * 0.7)
+		var at := Vector2(origin.x + Sim.W * ppm * 0.5 - half, y)
+		var deep := RAIL * ppm * 0.7
+		b.fan(Face.Builder.round_rect(at - Vector2(5.0, 0.0 if end == 0 else 5.0), Vector2(half * 2.0 + 10.0, deep + 5.0), 9.0), SIDE[end][2])
+		b.fan(Face.Builder.round_rect(at, Vector2(half * 2.0, deep), 6.0), SLOT)
+		var lip := origin.y + (Sim.L * ppm if end == 0 else 0.0)
+		var well := 0.016 * ppm + 1.0
+		var out := 1.0 if end == 0 else -1.0
+		b.fan(PackedVector2Array([Vector2(at.x, lip), Vector2(at.x + half * 2.0, lip),
+			Vector2(at.x + half * 2.0, lip + out * well), Vector2(at.x, lip + out * well)]), SLOT)
+	if sim.pick_kind != Sim.NONE:
+		var c := px(sim.pick_at)
+		var r := TOKEN_R * ppm
+		var blinking: bool = sim.pick_t < BLINK and fmod(sim.pick_t, 0.5) < 0.2
+		var beat: float = 1.0 + (0.06 * sin(_clock * 5.0) if moving else 0.0)
+		Scenery.soft_disc(b, c, r * 1.9, r * 1.9, Color(BRASS, 0.5 if not blinking else 0.2))
+		if not blinking:
+			b.disc(c + Vector2(0.0, r * 0.14), r * beat, BRASS.darkened(0.3))
+			b.disc(c, r * beat, BRASS)
+			b.disc(c, r * 0.86 * beat, STAMP)
+			power_icon(b, sim.pick_kind, c, r * 0.72 * beat)
+	if sim.gold and sim.puck_on:
+		Scenery.soft_disc(b, puck_at, puck_r * 2.6, puck_r * 2.6, Color(BRASS, 0.9))
+
+## The second puck, its own light round it.
+func _second_puck(b: Face.Builder, puck_r: float) -> void:
+	var at := px(sim.twin)
+	Scenery.soft_disc(b, at, puck_r * 1.9, puck_r * 1.9, Color(HALO, 0.75))
+	b.disc(at + Vector2(0.009, 0.016) * ppm * 0.7, puck_r, SHADOW)
+	var base := b.verts.size()
+	var verts: PackedVector2Array = _piece_verts[0]
+	b.verts.append_array(Transform2D(0.0, at) * verts)
+	b.cols.append_array(_piece_cols.slice(0, verts.size()))
+	for i: int in _piece_idx[0]:
+		b.idx.append(base + i)
+
+## Over a mallet, how long its power has left: an arc round it that runs down.
+func _power_over(b: Face.Builder) -> void:
+	for p in 2:
+		var c := px(sim.mallet[p])
+		var r: float = sim.radius[p] * ppm + POWER_RING * ppm
+		if sim.big_t[p] > 0.0:
+			_time_arc(b, c, r, sim.big_t[p] / Sim.BIG_TIME, BRASS)
+		if sim.slow_t[p] > 0.0:
+			_time_arc(b, c, r + POWER_RING * ppm * 0.8, sim.slow_t[p] / Sim.SLOW_TIME, Color("6f93d0"))
+			for k in 6:
+				var a := TAU * k / 6.0 + _clock * 0.5
+				b.disc(c + Vector2.from_angle(a) * r * 0.88, r * 0.07, Color("dfe9fb"))
+
+func _time_arc(b: Face.Builder, c: Vector2, r: float, left: float, col: Color) -> void:
+	b.stroke(Face.Builder.arc_points(c, r, -PI * 0.5, -PI * 0.5 + TAU * clampf(left, 0.02, 1.0)), maxf(3.0, ppm * 0.009), col, false, true)
+
+## A token's drawing about `c`, in a box of side 2r.
+static func power_icon(b: Face.Builder, kind: int, c: Vector2, r: float) -> void:
+	match kind:
+		Sim.TWIN:
+			for k in 2:
+				var at := c + Vector2((k * 2 - 1) * r * 0.42, (1 - k * 2) * r * 0.2)
+				b.disc(at + Vector2(0.0, r * 0.08), r * 0.5, PUCK_DEEP)
+				b.disc(at, r * 0.5, PUCK)
+				b.stroke(Face.Builder.ring(at, r * 0.32, r * 0.32), r * 0.07, Color(PUCK_LIT, 0.9), true, false)
+		Sim.BIG:
+			b.disc(c, r * 0.86, SIDE[0][2])
+			b.disc(c + LIGHT * r * 0.1, r * 0.76, SIDE[0][0])
+			b.disc(c + LIGHT * r * 0.14, r * 0.34, SIDE[0][1])
+		Sim.WIDE:
+			var y := c.y + r * 0.34
+			b.stroke(PackedVector2Array([c + Vector2(-r * 0.9, r * 0.34), Vector2(c.x + r * 0.9, y)]), r * 0.26, SLOT, false, true)
+			for sx: float in [-1.0, 1.0]:
+				var tip := c + Vector2(sx * r * 0.86, -r * 0.34)
+				b.stroke(PackedVector2Array([c + Vector2(sx * r * 0.2, -r * 0.34), tip]), r * 0.15, BRASS.darkened(0.2), false, true)
+				b.stroke(PackedVector2Array([tip + Vector2(-sx * r * 0.28, -r * 0.26), tip, tip + Vector2(-sx * r * 0.28, r * 0.26)]), r * 0.15, BRASS.darkened(0.2), false, true)
+		Sim.SLOW:
+			for k in 3:
+				var d := Vector2.from_angle(PI * k / 3.0 + PI * 0.5) * r * 0.86
+				b.stroke(PackedVector2Array([c - d, c + d]), r * 0.15, Color("6f93d0"), false, true)
+				for e: float in [-1.0, 1.0]:
+					var at := c + d * 0.62 * e
+					b.stroke(PackedVector2Array([at + d.rotated(0.9 * e) * 0.3, at, at + d.rotated(-0.9 * e) * 0.3]), r * 0.11, Color("6f93d0"), false, true)
+		Sim.GOLD:
+			b.disc(c + Vector2(0.0, r * 0.08), r * 0.86, BRASS.darkened(0.35))
+			b.disc(c, r * 0.84, BRASS)
+			b.stroke(Face.Builder.ring(c, r * 0.62, r * 0.62), r * 0.08, Color(STAMP, 0.9), true, false)
+			# two pips: it counts double
+			b.disc(c + Vector2(-r * 0.25, 0.0), r * 0.17, STAMP)
+			b.disc(c + Vector2(r * 0.25, 0.0), r * 0.17, STAMP)
 
 ## The puck from straight above, about nothing: the house's, the sprout
 ## stamped in cream inside its ring.
