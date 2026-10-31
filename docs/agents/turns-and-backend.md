@@ -638,6 +638,21 @@ and the page carries on as it was).
 Roadmap: `docs/brainstorm/single-turn-roadmap.md`. Phase 0's design:
 `docs/superpowers/specs/2026-09-17-single-turn-foundation-design.md`.
 
+### The clouds' own models: the labs of 2026-10-30
+
+The Anthropic balance hit zero at 00:00 UTC on 2026-10-30 (US$199 in
+October, Opus 5.5 reading every drawing in `themeDay`); production has
+failed every half hour since, and the days the outage covered were given up
+in their staged documents. `ask()` now also speaks to **Gemini on Vertex AI**
+(`vertex/<model>`) and **Nova on Bedrock** (`bedrock/<model id>`), by
+prefix, and one day was written on each: the record, the table, the
+confounds and the recipe to move the daily flow are in
+`docs/superpowers/specs/2026-10-30-model-labs/README.md`. Short form: Gemini
+(Argon reviewing, 3.8 Flash writing) made the day for US$0.86 against
+Opus's US$12 to 18, losing only to Vertex's latency; Nova 2 Lite wrote good
+quizzes but read drawings poorly and cost four times Gemini. Nothing is
+deployed; the models stay Anthropic's by default until the user moves them.
+
 ## The Realtime Database (Versus online)
 
 2026-10-04, spec `2026-10-04-versus-online-design.md`. The one live thing in
