@@ -100,8 +100,15 @@ function anthropicKey(): string {
   return (process.env.ANTHROPIC_API_KEY ?? "").trim();
 }
 
+function bedrockKey(): string {
+  return (process.env.AWS_BEARER_TOKEN_BEDROCK ?? "").trim();
+}
+
 export function available(): boolean {
-  if (modelFor() === "off" || (key() === "" && anthropicKey() === "")) return false;
+  if (modelFor() === "off") return false;
+  // A key for OpenRouter or Anthropic, a Google Cloud project for Vertex's
+  // models, a Bedrock API key for Amazon's: any one is a model to ask.
+  if (key() === "" && anthropicKey() === "" && vertexProject() === "" && bedrockKey() === "") return false;
   return (process.env.FIRESTORE_EMULATOR_HOST ?? "") === "";
 }
 
@@ -137,6 +144,11 @@ export async function ask<T>(a: Ask): Promise<T> {
   const model = a.model ?? modelFor(a.role);
   const direct = anthropicModel(model);
   if (direct !== null) return askAnthropic<T>(direct, a);
+  // The clouds' own models, by prefix (the labs of 2026-10-30, when the
+  // Anthropic balance ran out: Google's on Vertex AI for the Google Cloud
+  // credits, Amazon's on Bedrock for the AWS credits).
+  if (model.startsWith("vertex/")) return askGemini<T>(model.slice("vertex/".length), a);
+  if (model.startsWith("bedrock/")) return askNova<T>(model.slice("bedrock/".length), a);
   const told = `${a.system}\n\nAnswer with one JSON object and nothing else, in exactly this JSON schema:\n${JSON.stringify(a.schema)}`;
   const base = {
     model,
@@ -216,6 +228,184 @@ async function askAnthropic<T>(model: string, a: Ask): Promise<T> {
   if (out.stop_reason !== "end_turn") throw new Error(`${model} stopped on ${out.stop_reason}`);
   const text = out.content.map((b) => b.type === "text" ? b.text : "").join("");
   return jsonIn(text) as T;
+}
+
+/** US dollars a million tokens in and out for the clouds' own models
+ *  (Google's list 2026-10-28, Amazon's), so cost() counts the labs. */
+const GEMINI_PRICE: Record<string, [number, number]> = {
+  "gemini-4-argon": [2, 10],
+  "gemini-3.1-pro-preview": [2, 12],
+  "gemini-3.8-flash": [0.75, 3.75],
+  "gemini-3.6-flash": [0.75, 3.75],
+  "gemini-3.5-flash-lite": [0.3, 2.5],
+  "gemini-2.5-pro": [1.25, 10],
+  "gemini-2.5-flash": [0.3, 2.5],
+};
+const NOVA_PRICE: Record<string, [number, number]> = {
+  "nova-2-lite": [0.3, 2.5],
+  "nova-pro": [0.8, 3.2],
+  "nova-lite": [0.06, 0.24],
+};
+
+/** How long one Gemini request is waited for before it is asked again. */
+const GEMINI_TRY_MS = 90000;
+
+/** The schema told in words, for a model that cannot be held to one. */
+function schemaTold(a: Ask): string {
+  return `${a.system}\n\nAnswer with one JSON object and nothing else, in exactly this JSON schema:\n${JSON.stringify(a.schema)}`;
+}
+
+/** A data: URL's kind and bytes, as the clouds' APIs want them apart. */
+function dataUrl(url: string): {mime: string; format: string; data: string} {
+  const got = /^data:(image\/(png|jpeg|gif|webp));base64,(.+)$/s.exec(url);
+  if (got === null) throw new Error("a picture that is not a data: URL");
+  return {mime: got[1], format: got[2], data: got[3]};
+}
+
+/** ask(), of a Gemini on Vertex AI ("vertex/gemini-4-argon"): the schema
+ *  held by responseJsonSchema, the pictures inline, thinking at the medium
+ *  level, and when the schema is refused (HTTP 400) plain JSON with the
+ *  schema told. Thought tokens are output tokens on the bill. */
+async function askGemini<T>(model: string, a: Ask): Promise<T> {
+  const parts = [...(a.images ?? []).map((u) => {
+    const d = dataUrl(u);
+    return {inlineData: {mimeType: d.mime, data: d.data}};
+  }), {text: a.prompt}];
+  const body = (held: boolean) => ({
+    systemInstruction: {parts: [{text: held ? a.system : schemaTold(a)}]},
+    contents: [{role: "user", parts}],
+    generationConfig: {
+      responseMimeType: "application/json",
+      maxOutputTokens: 32000,
+      thinkingConfig: {thinkingLevel: "MEDIUM"},
+      ...(held ? {responseJsonSchema: a.schema} : {}),
+    },
+  });
+  const url = `https://aiplatform.googleapis.com/v1/projects/${vertexProject()}/locations/global/publishers/google/models/${model}:generateContent`;
+  // The global endpoint now and then holds a request for minutes with no
+  // byte sent (2026-10-30: one in four of a trivial question), while the
+  // same question answers in seconds asked again: a request is given 90 s
+  // and asked three times before it is a failure.
+  const send = async (b: unknown) => {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await fetch(url, {
+          method: "POST",
+          headers: {"Authorization": `Bearer ${await vertexToken()}`, "Content-Type": "application/json"},
+          body: JSON.stringify(b),
+          signal: AbortSignal.timeout(GEMINI_TRY_MS),
+        });
+      } catch (e) {
+        if (attempt >= 2 || !/Timeout|abort/i.test(String((e as Error)?.name ?? e))) throw e;
+        console.error(`${model}: no answer in ${GEMINI_TRY_MS / 1000} s; asked again`);
+      }
+    }
+  };
+  let held = true;
+  let res = await send(body(true));
+  if (res.status === 400) {
+    console.error(`${model}: the schema was refused (${(await res.text()).slice(0, 160)}); asked for JSON`);
+    held = false;
+    res = await send(body(false));
+  }
+  // Vertex answers 429 ("Resource exhausted") to a project's bursts, as it
+  // does the drawings (drawOnVertex): asked again after a wait, it answers.
+  for (let wait = 20; res.status === 429 && wait <= 80; wait *= 2) {
+    await new Promise((r) => setTimeout(r, wait * 1000));
+    res = await send(body(held));
+  }
+  if (!res.ok) throw new Error(`${model}: HTTP ${res.status} ${(await res.text()).slice(0, 400)}`);
+  const out = await res.json() as {
+    candidates?: {finishReason?: string; content?: {parts?: {text?: string; thought?: boolean}[]}}[];
+    usageMetadata?: {promptTokenCount?: number; candidatesTokenCount?: number; thoughtsTokenCount?: number}};
+  const u = out.usageMetadata ?? {};
+  const inTok = u.promptTokenCount ?? 0;
+  const outTok = (u.candidatesTokenCount ?? 0) + (u.thoughtsTokenCount ?? 0);
+  const price = GEMINI_PRICE[model] ?? [0, 0];
+  used.input += inTok;
+  used.output += outTok;
+  spent += (inTok * price[0] + outTok * price[1]) / 1e6;
+  const c = out.candidates?.[0];
+  if (c?.finishReason !== "STOP") throw new Error(`${model} stopped on ${c?.finishReason ?? "nothing"}`);
+  const text = (c.content?.parts ?? []).filter((p) => p.thought !== true).map((p) => p.text ?? "").join("");
+  return jsonIn(text) as T;
+}
+
+/** ask(), of an Amazon Nova on Bedrock ("bedrock/global.amazon.nova-2-lite-v1:0",
+ *  the global profile: the regional one answers 4096 tokens at most): the
+ *  schema held by a forced tool, which Nova decodes under the schema's
+ *  grammar, the pictures as bytes, reasoning at the medium effort; when
+ *  the tool is refused (HTTP 400) plain JSON with the schema told. Signed
+ *  with the Bedrock API key in AWS_BEARER_TOKEN_BEDROCK, in AWS_REGION. */
+async function askNova<T>(model: string, a: Ask): Promise<T> {
+  const region = (process.env.AWS_REGION ?? "").trim() || "us-east-1";
+  const images = (a.images ?? []).map((u) => {
+    const d = dataUrl(u);
+    return {image: {format: d.format, source: {bytes: d.data}}};
+  });
+  const body = (held: boolean) => ({
+    system: [{text: held ? a.system : schemaTold(a)}],
+    messages: [{role: "user", content: [...images, {text: a.prompt}]}],
+    inferenceConfig: {maxTokens: MAX_TOKENS},
+    additionalModelRequestFields: {reasoningConfig: {type: "enabled", maxReasoningEffort: "medium"}},
+    ...(held ? {toolConfig: {
+      tools: [{toolSpec: {name: "answer", description: "The one answer, in its schema.", inputSchema: {json: a.schema}}}],
+      toolChoice: {tool: {name: "answer"}},
+    }} : {}),
+  });
+  const url = `https://bedrock-runtime.${region}.amazonaws.com/model/${model}/converse`;
+  const send = (b: unknown) => fetch(url, {
+    method: "POST",
+    headers: {"Authorization": `Bearer ${bedrockKey()}`, "Content-Type": "application/json"},
+    body: JSON.stringify(b),
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+  });
+  let held = true;
+  let res = await send(body(true));
+  // Nova now and then answers a forced tool with malformed output (seen
+  // 2026-10-30 on a one-line question): asked once more before giving up
+  // on the tool.
+  if (res.ok && /"stopReason":"malformed_(model_output|tool_use)"/.test(await res.clone().text())) {
+    console.error(`${model}: malformed answer to the tool; asked again`);
+    res = await send(body(true));
+  }
+  if (res.status === 400) {
+    console.error(`${model}: the tool was refused (${(await res.text()).slice(0, 160)}); asked for JSON`);
+    held = false;
+    res = await send(body(false));
+  }
+  if (res.status === 429) {
+    await new Promise((r) => setTimeout(r, 20000));
+    res = await send(body(held));
+  }
+  if (!res.ok) throw new Error(`${model}: HTTP ${res.status} ${(await res.text()).slice(0, 400)}`);
+  const out = await res.json() as {
+    stopReason?: string;
+    output?: {message?: {content?: {text?: string; toolUse?: {input?: unknown}}[]}};
+    usage?: {inputTokens?: number; outputTokens?: number}};
+  const inTok = out.usage?.inputTokens ?? 0;
+  const outTok = out.usage?.outputTokens ?? 0;
+  const price = Object.entries(NOVA_PRICE).find(([k]) => model.includes(k))?.[1] ?? [0, 0];
+  used.input += inTok;
+  used.output += outTok;
+  spent += (inTok * price[0] + outTok * price[1]) / 1e6;
+  const content = out.output?.message?.content ?? [];
+  const tool = content.find((b) => b.toolUse !== undefined)?.toolUse?.input;
+  if (held) {
+    if (out.stopReason === "tool_use" && tool !== undefined && typeof tool === "object") return tool as T;
+    // Malformed twice: plain JSON, the schema told, as the last resort.
+    console.error(`${model} stopped on ${out.stopReason ?? "nothing"} without the answer; asked for JSON`);
+    const plain = await send(body(false));
+    if (!plain.ok) throw new Error(`${model}: HTTP ${plain.status} ${(await plain.text()).slice(0, 400)}`);
+    const p = await plain.json() as typeof out;
+    used.input += p.usage?.inputTokens ?? 0;
+    used.output += p.usage?.outputTokens ?? 0;
+    spent += ((p.usage?.inputTokens ?? 0) * price[0] + (p.usage?.outputTokens ?? 0) * price[1]) / 1e6;
+    if (p.stopReason !== "end_turn") throw new Error(`${model} stopped on ${p.stopReason ?? "nothing"}`);
+    return jsonIn((p.output?.message?.content ?? []).map((b) => b.text ?? "").join("")) as T;
+  }
+  if (out.stopReason !== "end_turn") throw new Error(`${model} stopped on ${out.stopReason ?? "nothing"}`);
+  return jsonIn(content.map((b) => b.text ?? "").join("")) as T;
 }
 
 /** Vertex AI's name for the image model, which has no maker's prefix. */

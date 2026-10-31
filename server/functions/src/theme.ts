@@ -59,8 +59,45 @@ const TRIES = 2;
 
 const SLUG = /^[a-z][a-z0-9_]{1,30}$/;
 
+/** A string cut at the last word boundary before `max`; anything else as it is. */
+function trimmed(v: unknown, max: number): unknown {
+  if (typeof v !== "string" || v.length <= max) return v;
+  const cut = v.slice(0, max);
+  const at = cut.lastIndexOf(" ");
+  return (at > max / 2 ? cut.slice(0, at) : cut).replace(/[,;:\s]+$/, "");
+}
+
 function text(v: unknown, max: number): v is string {
   return typeof v === "string" && v.trim().length > 0 && v.length <= max;
+}
+
+/** The first rule a would-be theme breaks, "" when it is one: what the
+ *  night's log says of a writer's answer that validTheme turns down. */
+export function whyNotTheme(t: unknown): string {
+  const o = t as Theme;
+  if (typeof o !== "object" || o === null) return "not an object";
+  if (!SLUG.test(String(o.id))) return `id ${JSON.stringify(o.id)}`;
+  if (!text(o.scene, SCENE_MAX)) return `scene ${typeof o.scene === "string" ? `${String(o.scene).length} chars` : typeof o.scene}`;
+  if (!Array.isArray(o.objects) || o.objects.length < LEAST || o.objects.length > THINGS) return `objects ${Array.isArray(o.objects) ? o.objects.length : typeof o.objects}`;
+  const ids = new Set<string>();
+  for (const x of o.objects) {
+    if (typeof x !== "object" || x === null) return "an object that is not one";
+    if (!SLUG.test(String(x.id))) return `object id ${JSON.stringify(x.id)}`;
+    if (!text(x.name, 30)) return `object name ${JSON.stringify(x.name)}`;
+    if (!text(x.draw, DRAW_MAX)) return `draw of ${x.id}: ${typeof x.draw === "string" ? `${String(x.draw).length} chars` : typeof x.draw}`;
+    if (!text(x.pt, 30) || !text(x.es, 30)) return `pt/es of ${x.id}: ${JSON.stringify(x.pt)} / ${JSON.stringify(x.es)}`;
+    ids.add(x.id);
+  }
+  if (ids.size !== THINGS) return `${ids.size} distinct ids of ${o.objects.length}`;
+  if (o.cast !== undefined && !text(o.cast, CAST_MAX)) return `cast ${JSON.stringify(o.cast).slice(0, 80)}`;
+  for (const lang of LANGS) {
+    if (!text(o.name?.[lang], 30)) return `name.${lang} ${JSON.stringify(o.name?.[lang])}`;
+    const words = o.words?.[lang];
+    if (!Array.isArray(words) || words.length < 1) return `words.${lang} ${JSON.stringify(words).slice(0, 80)}`;
+    const bad = words.find((w) => !text(w, 20));
+    if (bad !== undefined) return `words.${lang} has ${JSON.stringify(bad)}`;
+  }
+  return "";
 }
 
 export function validTheme(t: unknown): t is Theme {
@@ -107,9 +144,11 @@ const THEME_SCHEMA = {
     name: {type: "object", additionalProperties: false, required: ["en", "pt", "es"],
       properties: {en: {type: "string"}, pt: {type: "string"}, es: {type: "string"}}},
     scene: {type: "string"},
-    objects: {type: "array", items: {type: "object", additionalProperties: false, required: ["id", "name", "pt", "es", "draw"],
+    // Exactly THINGS, in the schema too: told only in words, Gemini 3.8
+    // Flash answered five and eight as often as six (2026-10-30).
+    objects: {type: "array", minItems: THINGS, maxItems: THINGS, items: {type: "object", additionalProperties: false, required: ["id", "name", "pt", "es", "draw"],
       properties: {id: {type: "string"}, name: {type: "string"}, pt: {type: "string"}, es: {type: "string"},
-        draw: {type: "string"}}}},
+        draw: {type: "string", maxLength: DRAW_MAX}}}},
     words: {type: "object", additionalProperties: false, required: ["en", "pt", "es"],
       properties: {en: {type: "array", items: {type: "string"}}, pt: {type: "array", items: {type: "string"}},
         es: {type: "array", items: {type: "string"}}}},
@@ -150,11 +189,15 @@ export async function makeTheme(day: number, recent: string[] = []): Promise<The
       // A writer's slug is as often hyphened as not: made ours, not turned down.
       const slug = (v: unknown) => String(v ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
       const theme = {v: 1 as const, id: slug(got.id), name: got.name, scene: got.scene,
-        objects: (Array.isArray(got.objects) ? got.objects : []).map((o) => ({...o, id: slug(o?.id)})), words: got.words,
+        // "exactly six, the simplest first": a writer that gives more (Gemini
+        // 3.8 Flash and Nova 2 Lite both did, 2026-10-30) keeps its first six.
+        // ... and a "draw" that runs past DRAW_MAX (Gemini's did by a few
+        // words) is cut at the last word before it, not turned down.
+        objects: (Array.isArray(got.objects) ? got.objects : []).slice(0, THINGS).map((o) => ({...o, id: slug(o?.id), draw: trimmed(o?.draw, DRAW_MAX)})), words: got.words,
         // Optional: a writer that leaves it out still has a theme.
         ...(text(got.cast, CAST_MAX) ? {cast: got.cast.trim()} : {})};
       if (!validTheme(theme)) {
-        console.error(`theme: day ${day}, try ${attempt}: not a theme: ${JSON.stringify(got).slice(0, 1500)}`);
+        console.error(`theme: day ${day}, try ${attempt}: not a theme (${whyNotTheme(theme)}): ${JSON.stringify(got).slice(0, 1500)}`);
         continue;
       }
       const review = await ask<{wrong: string; bad_words?: string[]}>({
