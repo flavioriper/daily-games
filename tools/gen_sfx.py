@@ -3259,10 +3259,18 @@ SETS = {
         # two light notches coming down. Never `--new`: the takes are lift's.
         "throw":    ('one water drop falling into a cup of water, a single soft plop, close, very short', 0.5, -18, FOLEY, "bank:plop", "cut:0.09", "notes:0:4", "tight"),
         "lob":      ('one water drop falling into a cup of water, a single soft plop, close, very short', 0.5, -19, FOLEY, "bank:plop", "cut:0.24", "notes:0.11:3,0", "tight"),
+        # The harbour (2026-10-31): the toy cannon going off is a lip pop three
+        # steps down; a trick taken up is the pebble (rule 1: arm); the
+        # Spyglass finding its count, the pebble twice rising.
+        "fire":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -12, FOLEY, "bank:lip", "cut:0.16", "notes:0:-3", "tight"),
+        "arm":      ('a small pebble dropped into a calm pond', 0.5, -15, FOLEY, "bank:pebble", "cut:0.14", "notes:0:2", "tight"),
+        "spy":      ('a small pebble dropped into a calm pond', 0.5, -14, FOLEY, "bank:pebble", "cut:0.2", "notes:0.09:0,5", "tight"),
         # Yours, wide: lift's take, one low notch.
         "miss":     ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.14", "notes:0:-3", "tight"),
         # Theirs, wide of your boats: place's, three steps under it and duller.
-        "splash":   ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1200", "cut:0.14", "body:320", "tight", "notes:0:-7", "before:2200:3"),
+        # 2026-10-31: on the harbour their pebble lands in your water, so it is
+        # the bank's pebble in a pond, two steps down.
+        "splash":   ('a small pebble dropped into a calm pond', 0.5, -13, FOLEY, "bank:pebble", "cut:0.2", "notes:0:-2", "tight"),
         # Yours on a boat: place's take, two notches, the second four steps up.
         "hit":      ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -12, HUSH, "warm:1600", "cut:0.24", "body:320", "tight", "notes:0.08:-4,0"),
         # Theirs on a boat of yours: place's take, two notches, the second three steps down.

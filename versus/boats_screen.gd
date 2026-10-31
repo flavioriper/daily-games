@@ -1,16 +1,23 @@
 extends Control
 
-## A game of Toy Boats: the fifth game on the Versus tab, built the way
-## checkers is (versus/checkers_screen.gd). The flat boards' top bar, a
-## scoreboard with the sun for you and the moon for the other player and the
-## pebbles you have thrown between them, and on the wooden deck the folding
-## box: your pond and your slate (versus/boats_board.gd).
+## A game of Toy Boats: the fifth game on the Versus tab, laid as the daily
+## boards: the player's own water over the whole screen (versus/boats_board.gd),
+## on the rows' 40 margin the flat top bar and its tools row with the count on
+## a paper pill where the row's gap is, under them this game's own row (the
+## tricks, or Shuffle and Ready), and then the field. The concept is
+## docs/brainstorm/toy-boats-harbour.html.
 ##
 ## The game is the one sold in a box with two grids and a fleet of plastic
 ## ships, renamed as every genre here is; the rules (versus/boats_rules.gd)
 ## are that game's: ten by ten, boats of 5, 4, 3, 3 and 2 laid along a row or
 ## a column and never over one another, a throw a turn, miss or hit said, a
 ## boat named when it sinks, and the first fleet all sunk loses.
+##
+## **Against the computer** two things are added over those rules
+## (versus/boats_tricks.gd): a plain hit throws again, and three boats each
+## carry a once-a-game trick they take down with them. The computer plays
+## both. **Online stays the plain game**: a queue of tricks on a match is a
+## rules deploy, by a person.
 ##
 ## A game begins with the boats being laid out (drag to move, tap to turn,
 ## Shuffle, Ready). Who throws first swaps every game. The other player is
@@ -31,6 +38,8 @@ signal closed
 const Rules = preload("res://versus/boats_rules.gd")
 const AI = preload("res://versus/boats_ai.gd")
 const Board = preload("res://versus/boats_board.gd")
+const Tricks = preload("res://versus/boats_tricks.gd")
+const Stock = preload("res://versus/penny_tricks.gd")
 const Record = preload("res://versus/versus_record.gd")
 const FlatTopBar = preload("res://ui/flat/flat_top_bar.gd")
 const SettingsSheet = preload("res://ui/hud/settings_sheet.gd")
@@ -40,8 +49,8 @@ const Dialog = preload("res://ui/hud/dialog.gd")
 const Pal = preload("res://core/palette.gd")
 const Motion = preload("res://core/motion.gd")
 const SafeArea = preload("res://ui/safe_area.gd")
-const Vistas = preload("res://ui/menu/vistas.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
+const Rewards = preload("res://arcade/rewards.gd")
 const Haptics = preload("res://core/haptics.gd")
 ## What the phone knocks for (docs/agents/haptics.md). The board's cues ring
 ## for both players and are not mapped: the hand's throws knock by `_fx.buzz`.
@@ -56,20 +65,22 @@ const GAME := "boats"
 const TITLE := "Toy Boats"
 const MARGIN := 40
 const GAP := 20
-const SCORE_H := 128.0
-const DECK_PAD := 18
-const BACKDROP_BLEED := 90.0
+const PILL_R := 30
+const FACE := 72.0
+const ROW_H := 104.0
+const CLEAR_CARD := 780
 const HINTS := 3
 ## Seconds: how long the computer takes to aim (and up to how much longer),
-## how long your pebble is in the air before its answer, and the beat before
-## the end card.
-const AIM_MIN := 0.7
-const AIM_MORE := 0.6
-const FLIGHT := 0.45
+## and a pebble's time away before its answer comes back, the beat between a
+## trick's pebbles and the beat before the end card.
+const AIM_MIN := 0.35
+const AIM_MORE := 0.35
+const FLIGHT := 0.72
+const VOLLEY_STEP := 0.17
 const END_WAIT := 1.8
-const TOAST_HOLD := 2.0
+const TOAST_HOLD := 1.6
 const LEVELS := ["DIFF_EASY", "DIFF_MEDIUM", "DIFF_HARD", "VS_ONLINE"]
-## The room a name has on a scoreboard plate, beside its face.
+## The room a name has on the online row.
 const NAME_W := 250.0
 ## Online: with this many seconds left to lay the boats out, they are taken
 ## as they lie; and how long the winner's fleet is waited for after the word
@@ -77,11 +88,20 @@ const NAME_W := 250.0
 const LAY_AT := 4
 const SHOW_WAIT := 4.0
 const BOATS := ["BTS_BOAT_0", "BTS_BOAT_1", "BTS_BOAT_2", "BTS_BOAT_3", "BTS_BOAT_4"]
+const TRICK_WORDS := {Tricks.SCATTER: "BTS_T_SCATTER", Tricks.GLASS: "BTS_T_GLASS", Tricks.SKIP: "BTS_T_SKIP"}
+const TRICK_HOW := {Tricks.SCATTER: "BTS_T_SCATTER_HOW", Tricks.GLASS: "BTS_T_GLASS_HOW", Tricks.SKIP: "BTS_T_SKIP_HOW"}
+## How the moon's words come, one time in this many tries, and how many of
+## each kind.
+const QUIP_ODDS := 0.55
+const QUIPS := 3
+## A run of hits climbs a semitone a pop, five at most (docs/agents/sound.md).
+const RUN_STEP := 1.06
+const RUN_TOP := 5
 
-## WAIT is online's: the box laid and still while the lobby looks. PLACE is
+## WAIT is online's: the water laid and still while the lobby looks. PLACE is
 ## the boats being laid out, READY (online) laid and waiting for the other
-## player's, SWAP the grids changing places. YOURS to throw; FLY your pebble
-## in the air; THEIRS the other player aiming; ANIM a landing being watched;
+## player's, SWAP the beat before the first throw. YOURS to throw; FLY your
+## pebble away; THEIRS the other player aiming; ANIM a landing being watched;
 ## SHOW (online) your fleet all sunk, waiting to see the winner's.
 enum State { WAIT, ENTER, PLACE, READY, SWAP, YOURS, FLY, THEIRS, ANIM, SHOW, OVER }
 
@@ -89,8 +109,6 @@ var level := 1
 var pond: RefCounted
 var slate: RefCounted
 var board: Control
-var _deck_mesh: ArrayMesh
-var _deck_key := Rect2()
 var top_bar: Control
 var settings_sheet: Control
 ## The tutorial card: the top bar's ?, the settings' How to play and the
@@ -117,23 +135,38 @@ var _flying := -1
 var _clock := 0.0
 var _rng := RandomNumberGenerator.new()
 var _fx: Node2D
-var _backdrop: ColorRect
+var _rw: Rewards
 var _margins: MarginContainer
 var _toast: PanelContainer
 var _toast_label: Label
 var _toast_tw: Tween
 var _end: Control
-var _plates: Array = []
+var _clear_card: Control
 var _faces: Array = []
+var _scores: Array[Label] = []
 var _status: Array[Label] = []
 var _names: Array[Label] = []
 var _move_label: Label
-## Beside the small grid: the words and buttons of laying out, then the
-## heading over the boats left to sink.
-var _panel: VBoxContainer
-var _panel_line: Label
+## The game's own row under the tools: one of these three shows.
+var _row: Control
+var _tricks: Control
+var _lay_row: HBoxContainer
+var _line: HBoxContainer
 var _shuffle: Button
 var _ready_b: Button
+## The tricks left to each side (masks of Tricks.*) before sunk boats take
+## theirs, what is in hand, and what the pebble in the air is.
+var _stock := Tricks.ALL
+var _their_stock := Tricks.ALL
+var _armed := 0
+var _throwing := 0
+## A plain hit: the same side throws again.
+var _again := false
+## The hits running now, the best run this game, and each side's pebbles that
+## found a boat.
+var _run := 0
+var _best_run := 0
+var _hits := 0
 ## The game online, when the level is Record.ONLINE; null against the
 ## computer (and again once the lobby's "Play the computer" is taken).
 var online: Node
@@ -155,6 +188,10 @@ func _init(the_level := 1) -> void:
 
 func puzzle_id() -> String:
 	return GAME
+
+## The tricks and the streak are the computer's games'.
+func tricky() -> bool:
+	return online == null
 
 func _ready() -> void:
 	add_to_group("versus_host")
@@ -179,81 +216,45 @@ func _ready() -> void:
 # --- building ---
 
 func _build() -> void:
-	var page := ColorRect.new()
-	page.color = Pal.PAPER
-	page.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	page.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(page)
-	_backdrop = Vistas.board_plate(GAME, Pal.ACCENT)
-	_backdrop.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	add_child(_backdrop)
+	# The water is the world: the board itself, under everything, full rect.
+	board = Board.new()
+	board.name = "Board"
+	board.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	board.aimed.connect(_on_aimed)
+	board.settled.connect(_on_settled)
+	board.landed.connect(_on_landed)
+	board.moved.connect(func() -> void: _fx.buzz(Haptics.TAP))
+	board.chart_moved.connect(func(_open: bool) -> void: _fx.buzz(Haptics.TICK))
+	board.refused.connect(func(reason: String) -> void:
+		_say(tr("BTS_TRIED") if reason == "tried" else tr("BTS_NO_ROOM")))
+	add_child(board)
 
 	_margins = MarginContainer.new()
 	_margins.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_margins.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_margins)
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", GAP)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_margins.add_child(col)
 
 	# The motto names the moon: a game online has its own.
-	top_bar = FlatTopBar.new(TITLE, tr("VS_ONLINE_MOTTO" if level == Record.ONLINE else "BTS_MOTTO"), true)
+	top_bar = FlatTopBar.new(TITLE, tr("VS_ONLINE_MOTTO" if level == Record.ONLINE else "BTS_MOTTO"), true, false, true)
 	top_bar.name = "TopBar"
 	top_bar.back.connect(_on_back)
-	top_bar.reset.connect(_on_reset)
+	top_bar.reset.connect(_ask_clear)
 	top_bar.hint.connect(_on_hint)
 	top_bar.settings.connect(func() -> void: settings_sheet.open())
 	col.add_child(top_bar)
-	col.add_child(_build_scoreboard())
+	top_bar.tint_motto(Color("12344f"))
+	col.add_child(_build_tools())
+	col.add_child(_build_row())
 
-	var deck := Control.new()
-	deck.name = "Deck"
-	deck.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	deck.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	deck.draw.connect(_draw_deck.bind(deck))
-	deck.resized.connect(deck.queue_redraw)
-	col.add_child(deck)
-	var inset := MarginContainer.new()
-	inset.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	for side in ["left", "right", "top", "bottom"]:
-		inset.add_theme_constant_override("margin_" + side, DECK_PAD)
-	inset.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	deck.add_child(inset)
-	board = Board.new()
-	board.name = "Board"
-	board.resized.connect(func() -> void:
-		deck.queue_redraw()
-		_place_panel.call_deferred())
-	board.aimed.connect(_on_aimed)
-	board.settled.connect(_on_settled)
-	board.moved.connect(func() -> void: _fx.buzz(Haptics.TAP))
-	board.refused.connect(func(reason: String) -> void:
-		_say(tr("BTS_TRIED") if reason == "tried" else tr("BTS_NO_ROOM")))
-	inset.add_child(board)
 	_fx = Fx2D.new()
 	_fx.haptics = HAPTICS
 	add_child(_fx)
-
-	_panel = VBoxContainer.new()
-	_panel.name = "Panel"
-	_panel.alignment = BoxContainer.ALIGNMENT_CENTER
-	_panel.add_theme_constant_override("separation", 14)
-	_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_panel)
-	_panel_line = Label.new()
-	_panel_line.theme_type_variation = "CardBlurb"
-	_panel_line.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-	_panel_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_panel_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_panel_line.add_theme_color_override("font_color", Color("fff6e6"))
-	_panel.add_child(_panel_line)
-	_ready_b = Dialog.primary("check", tr("BTS_READY"))
-	_ready_b.name = "Ready"
-	_ready_b.pressed.connect(_on_ready)
-	_panel.add_child(_ready_b)
-	_shuffle = Dialog.secondary("reset", tr("BTS_SHUFFLE"))
-	_shuffle.name = "Shuffle"
-	_shuffle.pressed.connect(_on_shuffle)
-	_panel.add_child(_shuffle)
+	_rw = Rewards.new()
+	add_child(_rw)
 
 	_toast = PanelContainer.new()
 	_toast.add_theme_stylebox_override("panel", CozyTheme.lifted(Pal.SURFACE, 30, 14))
@@ -263,7 +264,8 @@ func _build() -> void:
 	_toast_label.theme_type_variation = "SheetBody"
 	_toast_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_toast_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_toast_label.custom_minimum_size.x = 560
+	_toast_label.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	_toast_label.custom_minimum_size.x = 620
 	_toast.add_child(_toast_label)
 	add_child(_toast)
 	_apply_insets()
@@ -274,199 +276,178 @@ func _apply_insets() -> void:
 	_margins.add_theme_constant_override("margin_right", MARGIN)
 	_margins.add_theme_constant_override("margin_top", MARGIN + int(insets.x))
 	_margins.add_theme_constant_override("margin_bottom", MARGIN + int(insets.y))
-	_backdrop.offset_bottom = MARGIN + insets.x + FlatTopBar.HEIGHT + GAP + SCORE_H + BACKDROP_BLEED
-	Vistas.set_top_pad(_backdrop, insets.x)
+	_place_frame.call_deferred()
 
-## The same wooden terrace snooker's table stands on, the whole height of
-## the deck: planks with their joints, grain and knots, and petals and
-## leaves blown into the room round the board. One mesh, built once a
-## layout.
-func _draw_deck(deck: Control) -> void:
-	if deck.size.x <= 0.0 or board == null or board.used_rect.size.y <= 0.0:
+## The field starts under the game's own row.
+func _place_frame() -> void:
+	if _row == null or not is_inside_tree():
 		return
-	var key := Rect2(deck.size, board.used_rect.position + board.used_rect.size)
-	if _deck_mesh == null or key != _deck_key:
-		_deck_key = key
-		_deck_mesh = _build_deck(deck.size)
-	deck.draw_mesh(_deck_mesh, null)
+	var insets := SafeArea.insets(self)
+	board.set_frame(_row.position.y + _row.get_parent().position.y + ROW_H + GAP, size.y - MARGIN - insets.y)
 
-func _build_deck(sz: Vector2) -> ArrayMesh:
-	var b := Face.Builder.new()
-	var radius := 36.0
-	var clip := Face.Builder.round_rect(Vector2.ZERO, sz, radius)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 5
-	b.fan(clip, Color("a06d45"))
-	var plank := 58.0
-	var y := 0.0
-	while y < sz.y:
-		var h := minf(plank, sz.y - y)
-		var tone := Color("b98457").lerp(Color("a06d45"), rng.randf())
-		_clip_into(b, _plank_rect(Vector2(0.0, y), Vector2(sz.x, h - 3.0)), tone, clip)
-		_clip_into(b, _plank_rect(Vector2(0.0, y), Vector2(sz.x, 2.0)), Color(1, 1, 1, 0.12), clip)
-		var joint := rng.randf_range(0.2, 0.8) * sz.x
-		_clip_into(b, _plank_rect(Vector2(joint, y + 4.0), Vector2(3.0, h - 10.0)), Color(0.3, 0.17, 0.08, 0.35), clip)
-		for g in 2:
-			var gy := y + h * (0.3 + 0.35 * g) + rng.randf_range(-4.0, 4.0)
-			var ph := rng.randf() * TAU
-			var x0 := radius + rng.randf_range(0.0, sz.x * 0.3)
-			var x1 := minf(sz.x - radius, x0 + rng.randf_range(sz.x * 0.3, sz.x * 0.6))
-			var pts := PackedVector2Array()
-			var x := x0
-			while x <= x1:
-				pts.append(Vector2(x, gy + sin(x / 60.0 + ph) * 2.5))
-				x += 18.0
-			if pts.size() > 1:
-				b.stroke(pts, 1.8, Color(0.35, 0.2, 0.1, 0.14))
-		if rng.randf() < 0.3:
-			var kp := Vector2(rng.randf_range(radius * 2.0, sz.x - radius * 2.0), y + h * 0.5)
-			b.stroke(Face.Builder.ring(kp, 13.0, 5.5), 2.0, Color(0.35, 0.2, 0.1, 0.25), true)
-		y += plank
-	# the edge of the terrace falls into shade
-	for k in 3:
-		b.stroke(Face.Builder.round_rect(Vector2.ONE * (5.0 + k * 10.0), sz - Vector2.ONE * (10.0 + k * 20.0), radius - 5.0 - k * 10.0),
-			10.0, Color(0.25, 0.12, 0.05, 0.08), true)
-	# petals and leaves blown on, never under the board
-	var keep_out := Rect2(board.used_rect.position + Vector2.ONE * DECK_PAD, board.used_rect.size).grow(16.0)
-	var placed := 0
-	var tries := 0
-	while placed < 14 and tries < 300:
-		tries += 1
-		var p := Vector2(rng.randf_range(40.0, sz.x - 40.0), rng.randf_range(34.0, sz.y - 34.0))
-		if keep_out.has_point(p):
-			continue
-		var ang := rng.randf() * TAU
-		var pts := PackedVector2Array()
-		var leaf := placed % 3 == 2
-		var r := rng.randf_range(18.0, 26.0) if leaf else rng.randf_range(12.0, 17.0)
-		for k in 14:
-			var a := TAU * float(k) / 14.0
-			var rr := r * (0.55 + 0.45 * cos(a * 0.5) * cos(a * 0.5)) if not leaf else r
-			pts.append(p + Vector2(cos(a) * rr, sin(a) * rr * (0.42 if leaf else 0.6)).rotated(ang))
-		var shade := PackedVector2Array()
-		for q in pts:
-			shade.append(q + Vector2(2.0, 3.0))
-		b.polygon(shade, Color(0.3, 0.15, 0.05, 0.25))
-		var col: Color = Pal.LEAF if leaf else (Pal.FLOWER_TILE if placed % 2 == 0 else Pal.FLOWER)
-		b.polygon(pts, col)
-		if leaf:
-			b.stroke(PackedVector2Array([p - Vector2(r * 1.2, 0.0).rotated(ang), p + Vector2(r * 0.8, 0.0).rotated(ang)]), 2.0,
-				Color(Pal.LEAF_DEEP, 0.7))
-		placed += 1
-	return b.mesh()
-
-static func _plank_rect(at: Vector2, sz: Vector2) -> PackedVector2Array:
-	return PackedVector2Array([at, at + Vector2(sz.x, 0.0), at + sz, at + Vector2(0.0, sz.y)])
-
-static func _clip_into(b: Face.Builder, pts: PackedVector2Array, col: Color, clip: PackedVector2Array) -> void:
-	for piece in Geometry2D.intersect_polygons(pts, clip):
-		b.polygon(piece, col)
-
-func _build_scoreboard() -> Control:
-	var row := HBoxContainer.new()
-	row.custom_minimum_size.y = SCORE_H
-	row.add_theme_constant_override("separation", 16)
+## The bar's tools row with the count on a paper pill where its gap is: Undo
+## greyed (a pebble thrown has told you something), the bin, the pill, the
+## bulb. Each side's face and boats afloat, and the pebbles thrown between.
+func _build_tools() -> Control:
+	var row: HBoxContainer = top_bar.tools
+	var pill := PanelContainer.new()
+	pill.name = "Count"
+	pill.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pill.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	pill.custom_minimum_size.y = FlatTopBar.BUTTON.y
+	pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pill.add_theme_stylebox_override("panel", CozyTheme.lifted(Pal.SURFACE, PILL_R, 10))
+	var line := HBoxContainer.new()
+	line.alignment = BoxContainer.ALIGNMENT_CENTER
+	line.add_theme_constant_override("separation", 8)
+	pill.add_child(line)
 	for p in 2:
-		var plate := PanelContainer.new()
-		plate.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var inner := HBoxContainer.new()
-		inner.add_theme_constant_override("separation", 12)
-		inner.alignment = BoxContainer.ALIGNMENT_BEGIN if p == 0 else BoxContainer.ALIGNMENT_END
-		plate.add_child(inner)
 		var seat := Control.new()
-		seat.custom_minimum_size = Vector2(88, 88)
+		seat.custom_minimum_size = Vector2(FACE, FACE)
 		seat.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		var face: Control = SunFace.new() if p == 0 else MoonFace.new()
-		face.size = Vector2(88, 88)
+		face.size = Vector2(FACE, FACE)
 		seat.add_child(face)
 		_faces.append(face)
-		var words := VBoxContainer.new()
-		words.alignment = BoxContainer.ALIGNMENT_CENTER
-		words.add_theme_constant_override("separation", -4)
-		var align := HORIZONTAL_ALIGNMENT_LEFT if p == 0 else HORIZONTAL_ALIGNMENT_RIGHT
-		var name_l := Label.new()
-		name_l.text = "SNK_YOU" if p == 0 else "SNK_BOT"
-		name_l.theme_type_variation = "SheetTitle"
-		name_l.horizontal_alignment = align
-		var status := Label.new()
-		status.theme_type_variation = "CardBlurb"
-		status.horizontal_alignment = align
-		words.add_child(name_l)
-		words.add_child(status)
-		_status.append(status)
-		_names.append(name_l)
+		var score := Label.new()
+		score.text = "5"
+		score.theme_type_variation = "SheetTitle"
+		score.custom_minimum_size.x = 40
+		score.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		score.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_scores.append(score)
 		if p == 0:
-			inner.add_child(seat)
-			inner.add_child(words)
+			line.add_child(seat)
+			line.add_child(score)
+			line.add_child(_build_middle())
 		else:
-			inner.add_child(words)
-			inner.add_child(seat)
-		_plates.append(plate)
-		if p == 1:
-			row.add_child(_build_move_panel())
-		row.add_child(plate)
+			line.add_child(score)
+			line.add_child(seat)
+	for child in row.get_children():
+		if child is Control and not (child is Button):
+			child.visible = false
+	row.add_child(pill)
+	row.move_child(pill, top_bar.hint_button.get_index())
 	return row
 
-func _build_move_panel() -> Control:
-	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", CozyTheme.lifted(Color("fcf7ef"), 30, 10))
-	panel.custom_minimum_size.x = 200
+func _build_middle() -> Control:
 	var col := VBoxContainer.new()
 	col.alignment = BoxContainer.ALIGNMENT_CENTER
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	col.add_theme_constant_override("separation", -6)
-	panel.add_child(col)
 	var kicker := Label.new()
 	kicker.text = "BTS_THROWS"
 	kicker.theme_type_variation = "MenuKicker"
 	kicker.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(kicker)
 	_move_label = Label.new()
-	_move_label.theme_type_variation = "DayBig"
+	_move_label.theme_type_variation = "SheetTitle"
 	_move_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(_move_label)
-	return panel
+	return col
 
-## The panel beside the small grid: what it says and holds for the state.
-func _place_panel() -> void:
-	if board == null or board.size.x <= 0.0:
-		return
-	var room: Rect2 = board.panel_rect()
+## The game's own row, above the field as every game's buttons are: the tricks
+## through play, Shuffle and Ready while laying out, and online the two sides'
+## names and clocks.
+func _build_row() -> Control:
+	_row = Control.new()
+	_row.name = "Row"
+	_row.custom_minimum_size.y = ROW_H
+	_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_row.resized.connect(func() -> void: _place_frame.call_deferred())
+	_tricks = Stock.new(Tricks.KINDS, TRICK_WORDS, _paint_trick)
+	_tricks.name = "Tricks"
+	_tricks.picked.connect(_on_trick)
+	_tricks.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_row.add_child(_tricks)
+	_lay_row = HBoxContainer.new()
+	_lay_row.name = "Lay"
+	_lay_row.add_theme_constant_override("separation", 16)
+	_lay_row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_row.add_child(_lay_row)
+	_shuffle = Dialog.secondary("reset", tr("BTS_SHUFFLE"))
+	_shuffle.name = "Shuffle"
+	_shuffle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_shuffle.pressed.connect(_on_shuffle)
+	_lay_row.add_child(_shuffle)
+	_ready_b = Dialog.primary("check", tr("BTS_READY"))
+	_ready_b.name = "Ready"
+	_ready_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_ready_b.pressed.connect(_on_ready)
+	_lay_row.add_child(_ready_b)
+	_line = HBoxContainer.new()
+	_line.name = "Sides"
+	_line.add_theme_constant_override("separation", 16)
+	_line.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_row.add_child(_line)
+	for p in 2:
+		var plate := PanelContainer.new()
+		plate.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		plate.add_theme_stylebox_override("panel", CozyTheme.lifted(Pal.SURFACE, PILL_R, 10))
+		var words := VBoxContainer.new()
+		words.alignment = BoxContainer.ALIGNMENT_CENTER
+		words.add_theme_constant_override("separation", -6)
+		plate.add_child(words)
+		var name_l := Label.new()
+		name_l.text = "SNK_YOU" if p == 0 else "SNK_BOT"
+		name_l.theme_type_variation = "CardBlurb"
+		name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		words.add_child(name_l)
+		var status := Label.new()
+		status.theme_type_variation = "CardBlurb"
+		status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		words.add_child(status)
+		_names.append(name_l)
+		_status.append(status)
+		_line.add_child(plate)
+	return _row
+
+## A trick's drawing, in a box of side 2r.
+static func _paint_trick(b: Face.Builder, kind: int, c: Vector2, r: float) -> void:
+	if kind == Tricks.SCATTER:
+		for d: Vector2 in [Vector2.ZERO, Vector2.UP, Vector2.DOWN, Vector2.LEFT, Vector2.RIGHT]:
+			var at := c + d * r * 0.62
+			b.disc(at + Vector2(0.0, r * 0.05), r * 0.27, Board.PEBBLE.darkened(0.3))
+			b.disc(at, r * 0.26, Board.PEBBLE)
+			b.disc(at + Vector2(-r * 0.07, -r * 0.08), r * 0.1, Board.PEBBLE_LIT)
+	elif kind == Tricks.GLASS:
+		var tube := Transform2D(-0.6, c)
+		b.polygon(Board._xf_pts(tube, Face.Builder.round_rect(Vector2(-r * 0.95, -r * 0.2), Vector2(r * 0.9, r * 0.4), r * 0.08)), Color("7d5334"))
+		b.polygon(Board._xf_pts(tube, Face.Builder.round_rect(Vector2(-r * 0.2, -r * 0.3), Vector2(r * 0.8, r * 0.6), r * 0.08)), Board.BRASS)
+		b.polygon(Board._xf_pts(tube, Face.Builder.round_rect(Vector2(r * 0.55, -r * 0.4), Vector2(r * 0.4, r * 0.8), r * 0.1)), Color("7d5334"))
+		b.disc(tube * Vector2(r * 0.95, 0.0), r * 0.26, Color("9fd3ea"))
+	else:
+		var y := r * 0.56
+		var x0 := -r * 0.9
+		var pts := PackedVector2Array()
+		for hop in 3:
+			var w := r * (0.86 - hop * 0.2)
+			pts.append_array(Face.Builder.bezier2(c + Vector2(x0, y), c + Vector2(x0 + w * 0.5, y - r * (1.1 - hop * 0.3)), c + Vector2(x0 + w, y), 8))
+			x0 += w
+		b.stroke(pts, r * 0.08, Color(Board.INK, 0.7))
+		b.disc(c + Vector2(x0, y), r * 0.24, Board.PEBBLE)
+		b.disc(c + Vector2(x0 - r * 0.06, y - r * 0.07), r * 0.09, Board.PEBBLE_LIT)
+
+func _refresh_board() -> void:
 	var lay := _state == State.PLACE or _state == State.ENTER
-	var wait := _state == State.READY
-	var play := not lay and not wait and _state != State.WAIT and _state != State.SWAP
-	_panel.visible = lay or wait or play
-	_ready_b.visible = lay
-	_shuffle.visible = lay
+	var wait := _state == State.READY or _state == State.WAIT
+	_lay_row.visible = lay
 	_ready_b.disabled = _state != State.PLACE
 	_shuffle.disabled = _state != State.PLACE
-	_panel.alignment = BoxContainer.ALIGNMENT_BEGIN if play else BoxContainer.ALIGNMENT_CENTER
-	if lay:
-		_panel_line.text = tr("BTS_LAY")
-	elif wait:
-		_panel_line.text = tr("BTS_WAITING") % online.rival()
-	else:
-		_panel_line.text = tr("BTS_TO_SINK")
-	_panel_line.custom_minimum_size.x = room.size.x
-	_panel.global_position = board.global_position + room.position
-	_panel.size = room.size
-
-## Whose throw it is, on the plates: the one to throw lit and saying so, the
-## other counting its boats.
-func _refresh_board() -> void:
+	_tricks.visible = not lay and tricky() and _state != State.WAIT
+	_line.visible = not lay and not tricky()
+	var left := _left()
+	_tricks.show_stock(left, _armed, _state == State.YOURS)
 	var playing := _state == State.YOURS or _state == State.FLY or _state == State.THEIRS or _state == State.ANIM
 	for p in 2:
 		var mine: bool = playing and _mine == (p == 0)
-		var box := CozyTheme.lifted(Pal.SURFACE if mine else Color("f7f0e4"), 30, 10)
-		if mine:
-			box.border_color = Pal.ACCENT_2
-			box.set_border_width_all(4)
-		_plates[p].add_theme_stylebox_override("panel", box)
-		_plates[p].modulate.a = 1.0 if mine or not playing else 0.82
-		var left: int = (pond if p == 0 else slate).afloat()
-		var line := tr("BTS_AFLOAT_ONE" if left == 1 else "BTS_AFLOAT_N") % left
+		var count: int = (pond if p == 0 else slate).afloat()
+		_scores[p].text = str(count)
+		var line := tr("BTS_AFLOAT_ONE" if count == 1 else "BTS_AFLOAT_N") % count
 		if mine:
 			line = tr("BTS_YOUR_THROW") if p == 0 else tr("BTS_AIMING")
-		elif _state == State.PLACE or _state == State.ENTER:
+		elif lay:
 			line = tr("BTS_LAYING") if p == 0 or online != null else ""
 		elif _state == State.READY:
 			line = tr("BTS_IS_READY") if p == 0 else tr("BTS_LAYING")
@@ -485,7 +466,12 @@ func _refresh_board() -> void:
 		if playing:
 			Motion.bump(_move_label, 0.2, 0.25)
 	top_bar.refresh(self)
-	_place_panel()
+	if wait and _toast.modulate.a > 0.0:
+		_hush()
+
+## The tricks the player still holds: a boat gone takes its own down.
+func _left() -> int:
+	return Tricks.left(_stock, pond.sunk) if pond != null else 0
 
 # --- the top bar's view of this screen (FlatTopBar.refresh) ---
 
@@ -502,7 +488,7 @@ func is_solved() -> bool:
 func can_undo() -> bool:
 	return false
 
-## The bulb and Reset are the computer's games' alone: online they stay on
+## The bulb and the bin are the computer's games' alone: online they stay on
 ## the bar, greyed.
 func hints_left() -> int:
 	return _hints if _state == State.YOURS and online == null else 0
@@ -511,19 +497,20 @@ func hints_left() -> int:
 func hints_held() -> int:
 	return _hints if online == null else 0
 
-## Reset waits out a pebble in the air.
+## The bin waits out a pebble in the air.
 func can_reset() -> bool:
 	return online == null and (_state == State.PLACE or _state == State.YOURS or _state == State.THEIRS or _state == State.OVER)
 
 ## The How to play card's pages (ui/hud/how_to_play.gd), each played on the
-## box itself by ui/hud/boats_tutorial_diagram.gd. The level only changes how
-## well the computer aims, so the pages are the same on all three.
+## water and the chart by ui/hud/boats_tutorial_diagram.gd. The level only
+## changes how well the computer aims, so the pages are the same on all three.
 func tutorial_pages() -> Array:
 	var Diagram = load("res://ui/hud/boats_tutorial_diagram.gd")
 	var steps := [
 		[Diagram.Lesson.LAY, "TUT_BOATS_LAY", tr("TUT_BOATS_LAY_BODY")],
 		[Diagram.Lesson.THROW, "TUT_BOATS_THROW", tr("TUT_BOATS_THROW_BODY")],
 		[Diagram.Lesson.HUNT, "TUT_BOATS_HUNT", tr("TUT_BOATS_HUNT_BODY")],
+		[Diagram.Lesson.TRICKS, "TUT_BOATS_TRICKS", tr("TUT_BOATS_TRICKS_BODY")],
 		[Diagram.Lesson.SINK, "TUT_BOATS_SINK", tr("TUT_BOATS_SINK_BODY")],
 		[Diagram.Lesson.BAR, "TUT_BOATS_BAR",
 			tr("TUT_BOATS_BAR_BODY_ONE") if HINTS == 1 else tr("TUT_BOATS_BAR_BODY_N") % HINTS],
@@ -535,13 +522,59 @@ func tutorial_pages() -> Array:
 		pages.append({"diagram": d, "title": step[1], "body": step[2]})
 	return pages
 
+## The bin asks, as on a daily board, unless no pebble has been thrown.
+func _ask_clear() -> void:
+	if _clear_card != null or not can_reset():
+		return
+	if slate.shots == 0 or _state == State.OVER:
+		_on_reset()
+		return
+	var scrim := Dialog.scrim()
+	scrim.name = "ClearCard"
+	_clear_card = scrim
+	scrim.gui_input.connect(func(event: InputEvent) -> void:
+		if (event is InputEventScreenTouch or event is InputEventMouseButton) and event.pressed:
+			_close_clear())
+	var center := CenterContainer.new()
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	scrim.add_child(center)
+	var card := Dialog.card(CLEAR_CARD)
+	card.mouse_filter = Control.MOUSE_FILTER_STOP
+	center.add_child(card)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 20)
+	card.add_child(col)
+	col.add_child(Dialog.head("BTS_CLEAR_TITLE", "bin"))
+	var body := Label.new()
+	body.text = "BTS_CLEAR_BODY"
+	body.theme_type_variation = "CardBlurb"
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(body)
+	var keep := Dialog.primary("check", tr("CLEAR_NO"))
+	keep.name = "Keep"
+	keep.pressed.connect(_close_clear)
+	var yes := Dialog.secondary("bin", tr("BTS_CLEAR_YES"))
+	yes.name = "Clear"
+	yes.pressed.connect(func() -> void:
+		_close_clear()
+		_on_reset())
+	Dialog.buttons(col, keep, yes)
+	add_child(scrim)
+	Motion.appear(scrim, 0.0, 1.0, 0.2)
+
+func _close_clear() -> void:
+	if _clear_card != null:
+		_clear_card.queue_free()
+		_clear_card = null
+
 # --- the game ---
 
 func _new_game() -> void:
 	_lay(State.ENTER)
 
-## A fresh box: the boats set down for laying out (ENTER), or simply there,
-## for the lobby to stand over (WAIT).
+## A fresh harbour: the boats set down for laying out (ENTER), or simply
+## there, for the lobby to stand over (WAIT).
 func _lay(state: State) -> void:
 	_game += 1
 	pond = Rules.new()
@@ -560,7 +593,17 @@ func _lay(state: State) -> void:
 	_flying = -1
 	_mine = first
 	_told_lay = false
+	_stock = Tricks.ALL
+	_their_stock = Tricks.ALL
+	_armed = 0
+	_throwing = 0
+	_again = false
+	_run = 0
+	_best_run = 0
+	_hits = 0
 	_state = state
+	_close_clear()
+	_rw.clear()
 	if _end != null:
 		_end.queue_free()
 		_end = null
@@ -577,7 +620,7 @@ func _on_settled() -> void:
 			board.interactive = true
 			if not _told_lay:
 				_told_lay = true
-				_say(tr("BTS_LAY_FIRST"))
+				_say(tr("BTS_LAY"))
 			_refresh_board()
 			_take_online()
 		State.SWAP:
@@ -622,11 +665,15 @@ func _start_turn() -> void:
 	if _mine:
 		_state = State.YOURS
 		board.interactive = true
+		board.can_fire = true
+		board.open_chart(true)
 		if slate.shots == 0:
 			_say(tr("BTS_YOU_FIRST"))
 	else:
 		_state = State.THEIRS
-		board.interactive = false
+		board.can_fire = false
+		board.interactive = true
+		board.open_chart(false)
 		if _their_slate.shots == 0 and pond.shots == 0:
 			_say(tr("BTS_BOT_FIRST") if online == null else online.first_line())
 		if online == null:
@@ -636,13 +683,24 @@ func _start_turn() -> void:
 			_take_online()
 	_refresh_board()
 
-## The player let go on a square of the slate: the pebble is thrown.
+## The player let go on a square of the chart: the pebble goes, unless what
+## is in hand is the Spyglass, which costs no throw.
 func _on_aimed(c: int) -> void:
-	if _state != State.YOURS or slate.marks[c] != Rules.UNKNOWN:
+	if _state != State.YOURS:
+		return
+	if _armed == Tricks.GLASS:
+		_look(c)
+		return
+	if slate.marks[c] != Rules.UNKNOWN and _armed == 0:
 		return
 	_state = State.FLY
 	_flying = c
+	_throwing = _armed
+	_stock &= ~_armed
+	_armed = 0
+	board.armed = 0
 	_hint = -1
+	board.can_fire = false
 	board.interactive = false
 	board.aim(c)
 	_fx.buzz(Haptics.TAP)
@@ -654,42 +712,155 @@ func _on_aimed(c: int) -> void:
 		online.send({"s": c})
 	_refresh_board()
 
-## The answer to the player's pebble: written on the slate and chalked in.
+## A trick taken up or put back. The Barge's and the Tug's wait for the
+## throw; the Ferry's for the square to look at.
+func _on_trick(kind: int) -> void:
+	if _state != State.YOURS:
+		return
+	_armed = 0 if _armed == kind else kind
+	board.armed = _armed
+	board.pick_tool(Board.Tool.AIM)
+	board.open_chart(true)
+	_fx.buzz(Haptics.TAP)
+	_fx.cue("arm", 1.0 if _armed != 0 else 0.84)
+	if _armed != 0:
+		_say(tr(TRICK_HOW[kind]))
+	else:
+		_hush()
+	_refresh_board()
+
+## The Spyglass: how many boat squares lie round `c`, written on the chart.
+func _look(c: int) -> void:
+	var n := Tricks.count(_their_pond, Tricks.cover(Tricks.GLASS, c))
+	_stock &= ~Tricks.GLASS
+	_armed = 0
+	board.armed = 0
+	board.show_glass(c, n)
+	_fx.cue("spy")
+	_fx.buzz(Haptics.GOOD)
+	_say(tr("BTS_GLASS_ONE" if n == 1 else "BTS_GLASS_N") % n)
+	_refresh_board()
+
+## The answer to the player's pebble: written on the chart and shown.
 ## False when it is an answer that cannot be (online: a foul).
 func _hear(c: int, r: int, i: int, b: Vector3i) -> bool:
 	if not slate.note(c, r, i, b):
 		return false
 	_flying = -1
 	_state = State.ANIM
-	board.answer(c, r, i)
-	if r == Rules.MISS:
-		_say(tr("BTS_MISS"))
-	else:
-		_fx.buzz(Haptics.GOOD if r == Rules.SUNK else Haptics.BUMP)
-		_say(tr("BTS_SANK") % tr(BOATS[i]) if r == Rules.SUNK else tr("BTS_HIT"))
-		_react(0, Face.Expr.JOY)
-		_react(1, Face.Expr.WORRIED)
+	_again = online == null and r == Rules.HIT
+	board.answer(c, r, i, true, _pitch())
+	_mark(r, i)
 	_refresh_board()
 	return true
 
-## The other player's pebble at `c` of the pond: answered by the rules and
+func _pitch() -> float:
+	return pow(RUN_STEP, mini(_run, RUN_TOP))
+
+## What one of the player's pebbles did, in words and a sticker.
+func _mark(r: int, i: int) -> void:
+	if r == Rules.MISS:
+		_run = 0
+		_say(tr("BTS_MISS"))
+		_quip("MISSED")
+		return
+	_hits += 1
+	_run += 1
+	_best_run = maxi(_best_run, _run)
+	var mid: Vector2 = board.field_rect().get_center()
+	if r == Rules.SUNK:
+		_fx.buzz(Haptics.GOOD)
+		_rw.sticker(tr("BTS_SANK") % tr(BOATS[i]), _rw.at(board, mid), 76, 1.3, true, Color.WHITE, true, "sunk")
+		_rw.spray(_rw.at(board, mid), Color("ffd479"), 16, 760.0, "star", 1.0)
+		_run = 0
+		_quip("SUNK")
+	else:
+		_fx.buzz(Haptics.BUMP)
+		var word := "BTS_HIT"
+		if online == null:
+			word = "BTS_RUN_%d" % mini(_run, 3)
+		_rw.sticker(tr(word), _rw.at(board, mid), 76 + mini(_run, 3) * 8, 0.9, false, Color("fff4c2"), false, "hit")
+		_quip("HURT")
+	_react(0, Face.Expr.JOY)
+	_react(1, Face.Expr.WORRIED)
+
+## A trick's pebbles come down one at a time, the chart open to watch them,
+## each worked out as it lands so nothing shows before its beat.
+func _volley(kind: int, c: int) -> void:
+	var cells := Tricks.fresh(kind, c, slate.marks)
+	_flying = -1
+	_state = State.ANIM
+	_again = false
+	board.open_chart(true)
+	_refresh_board()
+	var game := _game
+	var tw := create_tween()
+	tw.tween_interval(0.0 if Motion.reduce else Board.UNFOLD)
+	tw.tween_callback(func() -> void:
+		if game == _game:
+			_volley_step(kind, cells, 0))
+
+func _volley_step(kind: int, cells: PackedInt32Array, k: int) -> void:
+	var c := cells[k]
+	var a: Dictionary = _their_pond.fire(c)
+	var r := int(a.r)
+	var i := int(a.boat)
+	slate.note(c, r, i, _their_pond.boats[i] if r == Rules.SUNK else Rules.HIDDEN)
+	var last: bool = k == cells.size() - 1 or (kind == Tricks.SKIP and r != Rules.MISS) or slate.all_sunk()
+	board.answer(c, r, i, last, pow(RUN_STEP, k))
+	_mark(r, i)
+	_refresh_board()
+	if last:
+		return
+	var game := _game
+	get_tree().create_timer(0.02 if Motion.reduce else VOLLEY_STEP).timeout.connect(func() -> void:
+		if game == _game and is_inside_tree():
+			_volley_step(kind, cells, k + 1))
+
+## The other player's pebble at `c` of the water: answered by the rules and
 ## shown landing. The answer, for whoever asked.
 func _take(c: int) -> Dictionary:
 	var a: Dictionary = pond.fire(c)
 	if int(a.r) == Rules.NONE:
 		return a
 	_state = State.ANIM
+	_again = online == null and int(a.r) == Rules.HIT
 	board.strike(c, a.r, a.boat)
-	if int(a.r) != Rules.MISS:
-		_react(1, Face.Expr.JOY)
-		_react(0, Face.Expr.WORRIED)
-		if int(a.r) == Rules.SUNK:
-			_fx.buzz(Haptics.WARN)
-			_say(tr("BTS_LOST_BOAT") % tr(BOATS[a.boat]))
 	_refresh_board()
 	return a
 
-## A landing has been watched: the game is over, or the throw passes.
+## The computer's trick: its pebbles come down in a row.
+func _take_volley(kind: int, c: int) -> void:
+	var shots: Array = Tricks.volley(kind, c, pond, _their_slate)
+	_their_stock &= ~kind
+	_state = State.ANIM
+	_again = false
+	_say(tr(TRICK_WORDS[kind]))
+	for k in shots.size():
+		var s: Dictionary = shots[k]
+		board.strike(s.c, s.r, s.boat, k == shots.size() - 1, VOLLEY_STEP * 1.4 * k)
+	_refresh_board()
+
+## One of their pebbles has landed: what it did to the player's side.
+func _on_landed(r: int, boat: int) -> void:
+	_refresh_board()
+	if r == Rules.MISS:
+		_quip("WIDE")
+		return
+	_fx.buzz(Haptics.WARN if r == Rules.SUNK else Haptics.BUMP)
+	_react(1, Face.Expr.JOY)
+	_react(0, Face.Expr.WORRIED)
+	if r != Rules.SUNK:
+		_quip("GOT")
+		return
+	var lost := ""
+	for kind: int in Tricks.KINDS:
+		if int(Tricks.CARRIER[kind]) == boat and online == null and _stock & kind != 0:
+			lost = tr("BTS_TRICK_GONE") % tr(TRICK_WORDS[kind])
+	_say(tr("BTS_LOST_BOAT") % tr(BOATS[boat]) + ("  " + lost if lost != "" else ""))
+
+## A landing has been watched: the game is over, or the throw passes (a plain
+## hit keeps it).
 func _after_landing() -> void:
 	if slate.all_sunk():
 		if online != null:
@@ -707,10 +878,14 @@ func _after_landing() -> void:
 			return
 		_conclude("lost", "", false)
 		return
+	if _again:
+		_again = false
+		_start_turn()
+		return
 	_mine = not _mine
 	_start_turn()
 
-## A face on the scoreboard shows `expr` for a moment.
+## A face on the pill shows `expr` for a moment.
 func _react(p: int, expr: int) -> void:
 	var face: Control = _faces[p]
 	face.expression = expr
@@ -719,11 +894,17 @@ func _react(p: int, expr: int) -> void:
 		if is_instance_valid(face) and _game == game and _state != State.OVER:
 			face.expression = Face.Expr.HAPPY)
 
+## The moon says something, against the computer only.
+func _quip(kind: String) -> void:
+	if tricky() and randf() < QUIP_ODDS:
+		_say(tr("BTS_Q_%s_%d" % [kind, 1 + randi() % QUIPS]))
+
 # --- the computer ---
 
 func _process(delta: float) -> void:
+	_rw.step(delta)
 	# Nothing of the computer's happens while the tutorial card is up.
-	if _held:
+	if _held or _clear_card != null:
 		return
 	_clock += delta
 	if online != null:
@@ -737,10 +918,19 @@ func _process(delta: float) -> void:
 	var due := _due
 	_due = ""
 	if due == "aim" and _state == State.THEIRS:
+		var plan := Tricks.plan(_their_slate, level, Tricks.left(_their_stock, _their_pond.sunk), _rng)
+		if not plan.is_empty():
+			_take_volley(plan.kind, plan.c)
+			return
 		var c := AI.plan(_their_slate, level, _rng)
 		var a := _take(c)
 		_their_slate.note(c, a.r, a.boat, pond.boats[a.boat] if int(a.r) == Rules.SUNK else Rules.HIDDEN)
 	elif due == "answer" and _state == State.FLY:
+		if _throwing != 0:
+			var kind := _throwing
+			_throwing = 0
+			_volley(kind, _flying)
+			return
 		var a: Dictionary = _their_pond.fire(_flying)
 		_hear(_flying, a.r, a.boat, _their_pond.boats[a.boat] if int(a.r) == Rules.SUNK else Rules.HIDDEN)
 
@@ -757,6 +947,7 @@ func _on_hint() -> void:
 		_hints -= 1
 		_hint = AI.plan(slate, 2, _rng)
 		Analytics.track("hint_used", {"puzzle_id": GAME, "hints": HINTS - _hints})
+	board.open_chart(true)
 	board.set_hint(_hint)
 	_fx.cue("hint")
 	_say(tr("BTS_HINT_LINE"))
@@ -805,14 +996,14 @@ func _seat_rival(uid: String) -> void:
 	_faces[1].queue_free()
 	var face: Control = MoonFace.new()
 	if uid.is_empty():
-		face.size = Vector2(88, 88)
+		face.size = Vector2(FACE, FACE)
 		_names[1].remove_theme_font_size_override("font_size")
 		_names[1].auto_translate_mode = Node.AUTO_TRANSLATE_MODE_INHERIT
 		# Nobody yet while the lobby looks: the bot is not who is coming.
 		_names[1].text = "SNK_BOT" if online == null else "…"
 		face.visible = online == null
 	else:
-		face = online.face(88)
+		face = online.face(int(FACE))
 		Online.fit(_names[1], online.rival(), NAME_W)
 	seat.add_child(face)
 	_faces[1] = face
@@ -994,10 +1185,14 @@ func _conclude(outcome: String, why: String, mine_last: bool, fleet: Array = [])
 		online.settle(outcome, why, slate.shots, mine_last)
 	else:
 		Record.add(GAME, level, outcome == "won")
+		var streak: int = int(Record.option(GAME, "streak", 0)) + 1 if outcome == "won" else 0
+		Record.set_option(GAME, "streak", streak)
+		if streak > int(Record.option(GAME, "best_streak", 0)):
+			Record.set_option(GAME, "best_streak", streak)
 		Analytics.track("versus_end", {"game": GAME, "level": level, "won": outcome == "won",
 			"result": outcome, "moves": slate.shots, "hints": HINTS - _hints,
 			"sunk": Rules.FLEET.size() - slate.afloat(), "lost": Rules.FLEET.size() - pond.afloat(),
-			"first": first})
+			"first": first, "best_run": _best_run, "tricks": 3 - String.num_int64(_stock, 2).count("1")})
 	Ads.note_finished()
 	_fx.cue("win" if outcome == "won" else "lose")
 	_faces[0].expression = Face.Expr.JOY if outcome == "won" else Face.Expr.WORRIED
@@ -1038,6 +1233,7 @@ func _build_end(outcome: String, why := "") -> Control:
 		head.text = online.head(outcome)
 	head.theme_type_variation = "WellDone"
 	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(head)
 	var said := Label.new()
 	if outcome == "won":
@@ -1056,7 +1252,14 @@ func _build_end(outcome: String, why := "") -> Control:
 	said.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(said)
 	var line := Label.new()
-	line.text = "%s  ·  %s" % [tr(LEVELS[level]), Record.record_line(GAME, level)]
+	var bits: Array = [tr(LEVELS[level]), Record.record_line(GAME, level)]
+	if online == null:
+		var wins := int(Record.option(GAME, "streak", 0))
+		if wins >= 2:
+			bits.append(tr("BTS_WINS_RUN") % wins)
+	line.text = "  ·  ".join(bits)
+	if slate.shots > 0:
+		line.text += "\n" + tr("BTS_END_STATS") % [roundi(100.0 * _count_hits() / slate.shots), maxi(_best_run, 1 if _count_hits() > 0 else 0)]
 	line.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	line.theme_type_variation = "SheetBodyDim"
 	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -1076,6 +1279,9 @@ func _build_end(outcome: String, why := "") -> Control:
 	back.pressed.connect(_on_back)
 	Dialog.buttons(col, again, back)
 	return scrim
+
+func _count_hits() -> int:
+	return slate.marks.count(Rules.HIT)
 
 func _celebrate(won: bool) -> void:
 	var card: Control = _end.get_node("Center/Card")
@@ -1114,15 +1320,12 @@ func _hush() -> void:
 	_toast_tw = create_tween()
 	_toast_tw.tween_property(_toast, "modulate:a", 0.0, 0.2)
 
-## Across the gap between the two grids, where it hides no square the thumb
-## is on its way to.
+## In the foot, beside the folded chart, where it hides no square.
 func _place_toast() -> void:
 	_toast.reset_size()
-	var at: Rect2 = board.get_global_rect()
-	var room: Rect2 = board.panel_rect()
+	var room: Rect2 = board.foot_rect()
 	var sz := _toast.get_combined_minimum_size()
-	_toast.global_position = Vector2(at.position.x + board.used_rect.get_center().x - sz.x * 0.5,
-		at.position.y + room.end.y + Board.GAP * 0.5 - sz.y * 0.5)
+	_toast.global_position = board.global_position + Vector2(room.position.x + (room.size.x - sz.x) * 0.5, room.position.y)
 
 func _on_reset() -> void:
 	if not can_reset():
@@ -1132,6 +1335,9 @@ func _on_reset() -> void:
 	_new_game()
 
 func _on_back() -> void:
+	if _clear_card != null:
+		_close_clear()
+		return
 	if online != null:
 		# A game in progress is resigned, and only on a yes; versus_abandon is
 		# the computer's games', online's is versus_online_end (why resign).
@@ -1147,6 +1353,9 @@ func go_back() -> void:
 	if online != null and online.back():
 		return
 	if tutor.close():
+		return
+	if _clear_card != null:
+		_close_clear()
 		return
 	if settings_sheet.is_open():
 		settings_sheet.close()

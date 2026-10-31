@@ -127,7 +127,7 @@ func _process(delta: float) -> bool:
 			_screen._ready_b.pressed.emit()
 			_step = 3
 		3:
-			if _screen._state == S.YOURS:
+			if _screen._state == S.YOURS and _board._open >= 1.0:
 				_shot("play")
 				var c := _pick()
 				_touch(_board.point_of(1, c), true)
@@ -146,7 +146,10 @@ func _process(delta: float) -> bool:
 			_step = 6
 		6:
 			_look()
-			if _screen._state == S.YOURS:
+			if _screen._state == S.YOURS and _board._open >= 1.0:
+				if _screen.slate.shots >= 2 and _left_trick() != 0:
+					_use_trick()
+					return false
 				if _screen.slate.shots == 6 and _level < 3:
 					_screen._on_hint()
 					_wait = 0.3
@@ -185,8 +188,22 @@ func _look() -> void:
 	if _screen.slate.afloat() < 5 and not _done.has("sunk"):
 		_wait = 0.3
 		_shot.call_deferred("sunk")
-	if not _board._pebble.is_empty() and not _done.has("struck") and _t - 0.0 > 0.0 and _board._t - float(_board._pebble.at) > 0.25:
+	if not _board._pebbles.is_empty() and not _done.has("struck") and _board._t - float(_board._pebbles[0].at) > 0.25:
 		_shot("struck")
+
+## The tricks in turn, by the real buttons' handler: the Spyglass, then the
+## other two, each shot as it is armed.
+func _left_trick() -> int:
+	return _screen._left() if not _lose else 0
+
+func _use_trick() -> void:
+	var left: int = _left_trick()
+	var kind: int = 2 if left & 2 != 0 else (1 if left & 1 != 0 else 4)
+	_screen._on_trick(kind)
+	var c := _pick()
+	_touch(_board.point_of(1, c), true)
+	_touch(_board.point_of(1, c), false)
+	_shot("trick%d" % kind)
 
 func _pick() -> int:
 	if _lose:

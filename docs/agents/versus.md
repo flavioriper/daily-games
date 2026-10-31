@@ -596,37 +596,61 @@ pond and what is thrown is a pebble.
   presses Ready -- 65 s); `tests/_shot_howto_screen.gd -- boats <outdir>`;
   `tests/_shot_versus_tab.gd`. `tests/_probe_online.gd`,
   `_probe_versus_buzz.gd` and `_shot_online.gd` have no arm for it.
-- **A redesign is proposed, not built** (2026-10-31, the user: "something
-  more animated, rather than a plain board ... each side has some cannon at
-  the base, and it shoot ... enemy field as some tactical map ... some
-  creativity tools"; a first pass with two quays of five cannons and the
-  chart big in the middle was rejected: "the player field should take most
-  of the screen, boats floating as real boats. Just a single cannon at
-  bottom that shoots, and enemy shoot come from the top of the screen not
-  from the map"). The concept is `docs/brainstorm/toy-boats-harbour.html`
-  (also https://claude.ai/artifact/6S1MDswDttAKcj711bKfhG): your water
-  full rect, the field 10 x 10 at 100 a square from y 350; five real boats
-  under the names they have (Barge with crates, Ferry with cabin and
-  funnel, red Tugboat, Sailboat, Rowboat with oars), bobbing with a wake,
-  a hit a scorch and a peg, sunk tinted under the water; one toy cannon on
-  a jetty at the foot (640, 1720) that swivels to the column, pops and
-  sends the pebble off the top of the screen; their shots a shadow
-  swelling on the water then the pebble dropping in from above the top
-  bar; the chart folded in the bottom-left corner (pins, rings, fleet
-  strip, Moon face) and unfolding 760 square over the water on your turn,
-  with a tray of plan tools on its left (crosshair, pencil, flag, stencil,
-  eraser; local marks, never sent), folding on release; the answer a toast
-  plus a mark on the folded chart; laying out on the big water, so the two
-  grids never swap. Rules, computer, seal and wire untouched; only the
-  board, the screen (to the daily layout), the tutorial pages, card and
-  sounds move. Six calls wait on the user (the page lists them): the chart
-  unfolding on its own or on tap; toy pops or a real boom; plan tools only
-  or rule-changing shots; fire on release or a Fire button; the answer as
-  toast plus mark or the sheet reopening; five kinds of boat or one hull.
-- **Open**: nothing was touched on a phone (whether a square is easy to hit
-  with a thumb at 70 px, whether the small pond is readable); the pace (a
-  round is about 3 s before the player thinks, a game 35-60 rounds); Hard
-  against a person; the sounds; pt and es; **the live rules are not
+- **The harbour, built** (2026-10-31, the user: "make toy boat experience way
+  better to play, and game itself way funnier to play, right now nobody likes
+  it ... Use the new concept plan"; concept `docs/brainstorm/toy-boats-harbour.html`,
+  also https://claude.ai/artifact/6S1MDswDttAKcj711bKfhG). **This takes back
+  the box above where they differ:** no slate, no swap, no plates, no deck.
+  - **The six calls, taken by the agent on the user's "do it autonomous"**: the
+    chart unfolds on its own on your turn; toy pops, no boom; fire on release;
+    answer as toast plus mark on the folded chart; five kinds of boat; and
+    call 3 **overruled against the page's advice**: rule-changing shots now,
+    since "funnier" was asked for and tools alone change no decision.
+  - **The screen** is the daily layout: `boats_board.gd` itself is the world,
+    full rect, under the margins; bar, tools row (the pill: faces, boats afloat,
+    pebbles), then a 104 row (tricks, or Shuffle and Ready, or online the two
+    names and clocks), then the field: `board.set_frame(top, bottom)` 100 a
+    square, at least `FOOT` 300 left under it for the jetty, the cannon and the
+    folded chart. Buttons stand above the field. Bin asks.
+  - **The board**: every mesh cached; water, ripples (the same mesh twice,
+    drifting), boat, wake, damage, paper, tray, cannon barrel under transforms;
+    `_air` and the two live meshes rebuilt only while something moves. Bobbing
+    is a `_process` and stops under `Power.resting`. The chart is one paper
+    under `_xf(1)`, `_open` 0 to 1 between `_chart_shut` and `_chart_open`, so
+    the folded corner shows the same marks. `_due` hides a square answered by
+    the rules until its pebble lands: `pond` is written first. Public names
+    kept for the tutorial and the card: `still`, `setup`, `aim`, `answer`,
+    `strike`, `point_of`, `_lift`, `_carry`, `_drop`, `hull_points`.
+  - **Plan tools** (the tray, left of the chart): crosshair, pencil, flag,
+    stencil, eraser; never sent, never judged, wiped by a new game.
+  - **Streak and tricks, the computer's games only**, in `versus/boats_tricks.gd`
+    over the rules (`boats_rules.gd`, the seal and the wire are untouched, so
+    online is the plain game; a queue there is a rules deploy). From the web:
+    Fleet Battle's streak rule (its maker: faster, more skill), Sea Battle 2's
+    radar and mines, Cafe Sea Battle's weapons tied to the ships still afloat.
+    A plain hit throws again; a sinking passes the throw (letting it keep the
+    throw ran to 9-10 in a row against 4-8). The Barge's Scatter (plus of five),
+    the Ferry's Spyglass (count in a 3 x 3, free), the Tugboat's Skipper (up a
+    column, four squares, stops on a hit): once a game each, **gone with the
+    boat**. Computer plays Scatter and Skipper (`Tricks.plan`), never a count.
+    Tricks do not streak. 300 games computer against computer: 2 beats 1 83-17
+    (75-25 before), 2 beats 0 95-5, a game 87 throws against 97 (`AIM_MIN` went
+    0.7 to 0.35 and the watches shortened, so the wait is much shorter).
+  - **Feel**: `Rewards` stickers on a hit and a run, a bigger one with rays on a
+    sinking, the water quaking when you are hit, a boat rocking, tipping and
+    settling tinted, bubbles; the moon's quips (`BTS_Q_*`, three of five kinds,
+    55%); end card with accuracy, best run, wins in a row.
+  - **Sound** (bank only, no credits): new `fire` (lip), `arm` and `spy`
+    (pebble); `splash` is now the pebble take, a pebble really landing in a
+    pond. Run pitch climbs `RUN_STEP` a pop, five at most. Unheard.
+  - 90-112 draw calls at the board, 119-126 with a tutorial page (810x1440).
+    ANGLE agrees on the tutorial page, 119-124. Suite 303252/0; `_probe_boats` 0 fails;
+    `_probe_boats_online` 0 fails on the emulators, whole games through this
+    screen.
+- **Open**: nothing was touched on a phone (a square of the chart at 80 px,
+  the stencil's feel, whether fire on release mis-fires); whether Hard is
+  beatable now it has a streak; the sounds; pt and es, the quips above all;
+  a trick queue online; **the live rules are not
   deployed** (`tools/deploy_live.sh`, by a person): until they are, Online
   and a friend's invite to this game are refused by the database.
 

@@ -1402,14 +1402,48 @@ BTS_LOST_LEFT_N,%d of their boats were still afloat.,Ainda restavam %d barcos do
 TUT_BOATS_LAY,Hide five boats,Esconda cinco barcos,Esconde cinco barcos
 TUT_BOATS_LAY_BODY,"Before the first pebble, lay your five boats out on your pond: drag one to move it, tap it to turn it. They may lie side by side, never across one another. Shuffle lays them by chance; Ready begins.","Antes da primeira pedrinha, arrume os seus cinco barcos no lago: arraste um para mover, toque nele para virar. Podem ficar lado a lado, nunca um sobre o outro. Embaralhar arruma ao acaso; Pronto começa.","Antes de la primera piedrita, coloca tus cinco barcos en el estanque: arrastra uno para moverlo, tócalo para girarlo. Pueden estar lado a lado, nunca uno sobre otro. Mezclar los coloca al azar; Listo empieza."
 TUT_BOATS_THROW,A pebble a turn,Uma pedrinha por vez,Una piedrita por turno
-TUT_BOATS_THROW_BODY,"The slate is the other pond, which you cannot see. Slide a finger over it, its row and column light up, and let go to throw at that square. A ring is chalked for a miss, a cross for a hit.","A lousa é o outro lago, que você não vê. Deslize o dedo sobre ela, a linha e a coluna acendem, e solte para jogar naquela casa. Um círculo de giz é água, um xis é acerto.","La pizarra es el otro estanque, que no ves. Desliza un dedo sobre ella, su fila y su columna se iluminan, y suelta para lanzar a esa casilla. Un círculo de tiza es agua, una equis es tocado."
+TUT_BOATS_THROW_BODY,"The chart is the other water, which you cannot see. Slide over it, its row and column light up, and let go: the cannon fires. Tap the tools beside it to pencil your own plans.","A carta é a outra água, que você não vê. Deslize sobre ela, a linha e a coluna acendem, e solte: o canhão dispara. Use as ferramentas ao lado para rabiscar seus planos.","La carta es el otro mar, que no puedes ver. Desliza sobre ella, su fila y columna se iluminan, y suelta: el cañón dispara. Usa las herramientas de al lado para anotar tus planes."
 TUT_BOATS_HUNT,Follow a hit,Siga um acerto,Sigue un tocado
-TUT_BOATS_HUNT_BODY,"A boat lies in a straight line. After a hit, try the squares beside it; once two hits line up, keep along that line until the boat sinks.","Um barco fica em linha reta. Depois de um acerto, tente as casas ao lado; quando dois acertos se alinham, siga nessa linha até o barco afundar.","Un barco está en línea recta. Tras un tocado, prueba las casillas de al lado; cuando dos tocados se alinean, sigue por esa línea hasta hundir el barco."
+TUT_BOATS_HUNT_BODY,"A boat lies in a straight line. After a hit, try the squares beside it. Against the computer a hit throws again, for you and for the moon, until a miss or a sinking.","Um barco fica em linha reta. Depois de um acerto, tente as casas ao lado. Contra o computador, um acerto atira de novo, para você e para a lua, até errar ou afundar.","Un barco va en línea recta. Tras un tocado, prueba las casillas de al lado. Contra el ordenador, un tocado dispara otra vez, para ti y para la luna, hasta fallar o hundir."
 TUT_BOATS_SINK,Sink all five,Afunde os cinco,Hunde los cinco
-TUT_BOATS_SINK_BODY,"A boat sinks when every square of it is hit, and its outline goes on the slate. The other player throws at your pond in turn; a peg marks each hit. First to sink all five wins.","Um barco afunda quando todas as suas casas são acertadas, e o contorno vai para a lousa. O outro joga no seu lago na vez dele; um pino marca cada acerto. Quem afundar os cinco primeiro vence.","Un barco se hunde cuando todas sus casillas han sido tocadas, y su contorno va a la pizarra. El otro lanza a tu estanque en su turno; una clavija marca cada tocado. Gana quien hunda antes los cinco."
+TUT_BOATS_SINK_BODY,"A boat sinks when every square of it is hit, and its hull goes on the chart. The moon's pebbles fall from the sky onto your water: watch for the shadow. Lose all five and it's over.","Um barco afunda quando todas as casas são atingidas, e o casco aparece na carta. As pedrinhas da lua caem do céu na sua água: olhe a sombra. Perdeu os cinco, acabou.","Un barco se hunde cuando todas sus casillas son tocadas, y su casco aparece en la carta. Las piedritas de la luna caen del cielo en tu agua: mira la sombra. Pierdes los cinco y se acabó."
 TUT_BOATS_BAR,The buttons up top,Os botões lá de cima,Los botones de arriba
 TUT_BOATS_BAR_BODY_ONE,"The bulb rings a good square to try, once a game. Reset starts a new game. Online, each throw has a minute. Sound and this guide are under the gear.","A lâmpada marca uma boa casa, uma vez por partida. Recomeçar inicia uma partida nova. Online, cada jogada tem um minuto. O som e este guia ficam na engrenagem.","La bombilla marca una buena casilla, una vez por partida. Reiniciar empieza una partida nueva. En línea, cada jugada tiene un minuto. El sonido y esta guía están en el engranaje."
 TUT_BOATS_BAR_BODY_N,"The bulb rings a good square to try, %d times a game. Reset starts a new game. Online, each throw has a minute. Sound and this guide are under the gear.","A lâmpada marca uma boa casa, %d vezes por partida. Recomeçar inicia uma partida nova. Online, cada jogada tem um minuto. O som e este guia ficam na engrenagem.","La bombilla marca una buena casilla, %d veces por partida. Reiniciar empieza una partida nueva. En línea, cada jugada tiene un minuto. El sonido y esta guía están en el engranaje."
+BTS_RUN_1,Hit! Throw again,Acertou! Atire de novo,¡Tocado! Dispara otra vez
+BTS_RUN_2,Again!,De novo!,¡Otra vez!
+BTS_RUN_3,On a roll!,Que sequência!,¡Qué racha!
+BTS_T_SCATTER,Scatter,Chuva,Lluvia
+BTS_T_GLASS,Spyglass,Luneta,Catalejo
+BTS_T_SKIP,Skipper,Quicada,Rebote
+BTS_T_SCATTER_HOW,The Barge's Scatter: five pebbles in a plus,Chuva da Barcaça: cinco pedrinhas em cruz,Lluvia de la Barcaza: cinco piedritas en cruz
+BTS_T_GLASS_HOW,"The Ferry's Spyglass: counts boats in 3 x 3, free","Luneta da Balsa: conta barcos em 3 x 3, de graça","Catalejo del Ferri: cuenta barcos en 3 x 3, gratis"
+BTS_T_SKIP_HOW,"The Tugboat's Skipper: hops up four squares, stops on a hit","Quicada do Rebocador: pula quatro casas, para ao acertar","Rebote del Remolcador: salta cuatro casillas, para al tocar"
+BTS_GLASS_ONE,%d boat square in sight,%d casa de barco à vista,%d casilla de barco a la vista
+BTS_GLASS_N,%d boat squares in sight,%d casas de barco à vista,%d casillas de barco a la vista
+BTS_TRICK_GONE,%s went with it,%s foi junto,%s se fue con él
+BTS_CLEAR_TITLE,New game?,Novo jogo?,¿Nueva partida?
+BTS_CLEAR_BODY,This game ends here and your boats are laid out again.,Este jogo termina aqui e você arruma os barcos de novo.,Esta partida termina aquí y vuelves a colocar tus barcos.
+BTS_CLEAR_YES,New game,Novo jogo,Nueva partida
+BTS_WINS_RUN,%d wins in a row,%d vitórias seguidas,%d victorias seguidas
+BTS_END_STATS,%d%% on target  ·  best run of hits %d,%d%% de pontaria  ·  melhor sequência %d,%d%% de puntería  ·  mejor racha %d
+BTS_Q_MISSED_1,"The moon: cold, very cold","A lua: frio, muito frio","La luna: frío, muy frío"
+BTS_Q_MISSED_2,The moon: nice splash,A lua: belo tchibum,La luna: bonito chapuzón
+BTS_Q_MISSED_3,The moon: I felt nothing,A lua: não senti nada,La luna: no sentí nada
+BTS_Q_HURT_1,"The moon: hey, that was new paint!","A lua: ei, a pintura era nova!","La luna: ¡eh, la pintura era nueva!"
+BTS_Q_HURT_2,The moon: lucky pebble,A lua: pedrinha de sorte,La luna: piedrita con suerte
+BTS_Q_HURT_3,The moon: ow!,A lua: ai!,La luna: ¡ay!
+BTS_Q_SUNK_1,The moon: that one was my favourite,A lua: esse era o meu favorito,La luna: ese era mi favorito
+BTS_Q_SUNK_2,"The moon: it could swim, I promise","A lua: ele sabia nadar, juro","La luna: sabía nadar, lo juro"
+BTS_Q_SUNK_3,The moon: bubbles. Only bubbles,A lua: bolhas. Só bolhas,La luna: burbujas. Solo burbujas
+BTS_Q_WIDE_1,The moon: that was a warm-up,A lua: foi só aquecimento,La luna: era calentamiento
+BTS_Q_WIDE_2,The moon: the wind moved it,A lua: foi o vento,La luna: fue el viento
+BTS_Q_WIDE_3,The moon: I meant to do that,A lua: foi de propósito,La luna: fue a propósito
+BTS_Q_GOT_1,The moon: found you!,A lua: achei você!,La luna: ¡te encontré!
+BTS_Q_GOT_2,The moon: knock knock,A lua: toc toc,La luna: toc toc
+BTS_Q_GOT_3,The moon: is that yours?,A lua: isso é seu?,La luna: ¿eso es tuyo?
+TUT_BOATS_TRICKS,"Three boats, three tricks","Três barcos, três truques","Tres barcos, tres trucos"
+TUT_BOATS_TRICKS_BODY,"The Barge throws a Scatter, the Ferry looks through a Spyglass, the Tugboat sends a Skipper. Each works once, and goes down with its boat, so don't save them too long. Not online.","A Barcaça lança a Chuva, a Balsa olha pela Luneta, o Rebocador manda a Quicada. Cada um vale uma vez e afunda com o barco, então não guarde demais. Online não vale.","La Barcaza lanza la Lluvia, el Ferri mira por el Catalejo, el Remolcador manda el Rebote. Cada uno vale una vez y se hunde con su barco, así que no los guardes demasiado. En línea no."
 VS_PENNY_BLURB,Take turns dropping pennies into the rack. The first to line up four wins.,Cada um na sua vez solta uma moeda na grade. Quem alinhar quatro primeiro vence.,"Por turnos, suelta una moneda en la rejilla. Gana quien alinee cuatro primero."
 PNY_MOTTO,LINE UP FOUR BEFORE THE MOON,ALINHE QUATRO ANTES DA LUA,ALINEA CUATRO ANTES QUE LA LUNA
 PNY_YOUR_MOVE,Your turn: slide over a slot and let go to drop a penny,Sua vez: deslize até uma coluna e solte para largar a moeda,Tu turno: desliza hasta una columna y suelta para dejar caer la moneda

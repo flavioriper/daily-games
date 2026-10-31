@@ -1,7 +1,7 @@
 extends Control
 
-## One page of Toy Boats' tutorial, played by the box itself: the pond on the
-## left and the slate on the right (versus/boats_board.gd as a picture, deaf
+## One page of Toy Boats' tutorial, played by the harbour itself: the water on
+## the left and the chart on the right (versus/boats_board.gd as a picture, deaf
 ## to the player's own hands), and a finger that does to them what a thumb
 ## does -- lifts a boat and carries it, taps one round, slides over the slate
 ## and lets go. The pebbles are answered by a pond of the page's own, by the
@@ -12,6 +12,7 @@ extends Control
 ## - HUNT: from one hit, a square beside it, then along the line to the end.
 ## - SINK: the other player's pebbles on the pond, a miss and the peg that
 ##   sinks a boat; then the slate's last cross and the boat chalked whole.
+## - TRICKS: a Scatter of five pebbles, then a Skipper hopping up a column.
 ## - BAR: the bulb rings a square and the throw there is a hit.
 ##
 ## A page is a list of [seconds, what, ...] and starts over when it ends.
@@ -20,10 +21,11 @@ extends Control
 
 const Rules = preload("res://versus/boats_rules.gd")
 const Board = preload("res://versus/boats_board.gd")
+const Tricks = preload("res://versus/boats_tricks.gd")
 const Motion = preload("res://core/motion.gd")
 const Pal = preload("res://core/palette.gd")
 
-enum Lesson { LAY, THROW, HUNT, SINK, BAR }
+enum Lesson { LAY, THROW, HUNT, TRICKS, SINK, BAR }
 
 const FINGER_R := 26.0
 const FINGER_ALPHA := 0.2
@@ -51,8 +53,10 @@ var _go_at := 0.0
 var _go_for := 0.001
 var _shown := false
 var _down := false
-## Answers owed to pebbles in the air: [when, square].
+## Answers owed to pebbles in the air: [when, square, trick].
 var _owed: Array = []
+## The trick the finger holds.
+var _armed := 0
 
 static func c(x: int, y: int) -> int:
 	return Rules.cell(x, y)
@@ -78,6 +82,10 @@ static func script_of(the_lesson: int) -> Dictionary:
 				[2.6, "go", 1, c(5, 5), 0.4], [3.0, "down"], [3.4, "up"],
 				[4.7, "go", 1, c(6, 5), 0.4], [5.1, "down"], [5.5, "up"],
 				[6.8, "go", 1, c(3, 5), 0.5], [7.3, "down"], [7.7, "up"], [8.1, "hide"]]}
+		Lesson.TRICKS:
+			return {"len": 9.0, "still": 7.4, "marks": [[c(1, 1), false], [c(7, 7), false]], "script": [
+				[0.5, "arm", Tricks.SCATTER], [0.8, "go", 1, c(4, 3), 0.01], [1.0, "down"], [1.5, "up"],
+				[3.8, "arm", Tricks.SKIP], [4.0, "go", 1, c(8, 7), 0.5], [4.6, "down"], [5.0, "up"], [5.4, "hide"]]}
 		Lesson.SINK:
 			return {"len": 10.0, "still": 8.6, "struck": [c(2, 4), c(3, 4), c(8, 8)],
 				"marks": [[c(6, 8), true], [c(3, 2), false], [c(9, 6), false], [c(0, 0), false]], "script": [
@@ -118,6 +126,7 @@ func _begin() -> void:
 	_next = 0
 	_t = 0.0
 	_owed.clear()
+	_armed = 0
 	_shown = false
 	_down = false
 	_pond = Rules.new()
@@ -145,10 +154,14 @@ func _step(delta: float) -> void:
 		_do(_script[_next])
 		_next += 1
 	while not _owed.is_empty() and _t >= float(_owed[0][0]):
-		var sq: int = _owed.pop_front()[1]
+		var due: Array = _owed.pop_front()
+		var sq: int = due[1]
 		var a: Dictionary = _their.fire(sq)
 		_slate.note(sq, a.r, a.boat, _their.boats[a.boat] if int(a.r) == Rules.SUNK else Rules.HIDDEN)
 		_board.answer(sq, a.r, a.boat)
+		# A Skipper ends on the first boat it finds.
+		if int(due[2]) == Tricks.SKIP and int(a.r) != Rules.MISS:
+			_owed.clear()
 	# What a held finger does as it moves: carries a boat, or lights the
 	# slate's row and column.
 	if _down:
@@ -181,9 +194,20 @@ func _do(e: Array) -> void:
 			else:
 				var sq: int = _board._over
 				_board._over = -1
-				if sq >= 0 and _slate.marks[sq] == Rules.UNKNOWN:
+				if sq >= 0 and _armed != 0:
+					_board.armed = 0
 					_board.aim(sq)
-					_owed.append([_t + FLIGHT, sq])
+					var at := _t + FLIGHT
+					for q in Tricks.fresh(_armed, sq, _slate.marks):
+						_owed.append([at, q, _armed])
+						at += 0.2
+					_armed = 0
+				elif sq >= 0 and _slate.marks[sq] == Rules.UNKNOWN:
+					_board.aim(sq)
+					_owed.append([_t + FLIGHT, sq, 0])
+		"arm":
+			_armed = e[2]
+			_board.armed = _armed
 		"strike":
 			var a: Dictionary = _pond.fire(e[2])
 			_board.strike(e[2], a.r, a.boat)
