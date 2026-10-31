@@ -1404,3 +1404,14 @@ faster". `FLY_TIME` 0.498 to 0.3735 s (about 22 frames at 60 fps), the time
 itself and counted from 0.498, the 0.6225 s between never kept. The gap
 stays 0.05 s, so seven or eight gems are in the air at once on a long run.
 Not seen on a phone.
+
+**A speed, not a time.** The user: "instead of fly time, it should be a
+speed, they should fly at the same speed so closer colors reach faster than
+further colors, right now even close colors take the same fly time which
+make it weird". `FLY_TIME` is gone, and 2026-10-23's "a constant no matter
+where" with it: `_fly_time` gives each flight its on-screen distance over
+`FLY_SPEED` (1.34 screen heights a second, so half a screen keeps the
+0.3735 s it had), floored at `FLY_MIN` (0.08 s, 0.16 held half of a Medium run at one time)
+for a hop next door.
+The ends are read through the zoom at take-off. The gap still spaces the
+take-offs, so a near gem can land before a far one that left first.

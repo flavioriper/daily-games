@@ -104,7 +104,7 @@ const HELD_BOB_MAX := 48
 
 # --- motion: what is this board's own ---
 ## One jewel of a run leaves this long after the one before it: with a
-## flight of FLY_TIME, two or three are in the air at once and each landing
+## flight, two or three are in the air at once and each landing
 ## is its own (0.06 and a cap of 0.9 s kept five up and read as a stream;
 ## the user, 2026-10-19: "pieces should move one after another"). The cap
 ## only squeezes the case's biggest stows (48 on Insane); a stretch set or
@@ -152,10 +152,15 @@ const PICK_CAP := 0.0
 ## 0.187 x 4/3. Then at half the speed (the user, 2026-10-29: "slow down
 ## flight speed by 50%"): 0.249 x 2. Then a quarter shorter (the user,
 ## 2026-10-31: "reduce by 25%, to make it faster"): 0.498 x 0.75.
-const FLY_TIME := 0.3735
-## Every flight takes FLY_TIME, however far it goes (the user, 2026-10-23:
-## "never increase fly time, it should be a constant no matter where"); a
-## flight out of the case or into it no longer stretches by its length.
+## The same day that constant went for a speed (the user: "instead of fly
+## time, it should be a speed, they should fly at the same speed so closer
+## colors reach faster than further colors"), taking back 2026-10-23's "it
+## should be a constant no matter where". FLY_SPEED is screen heights a
+## second, measured on screen where the zoom has the two ends at take-off:
+## half a screen takes about the old 0.3735. FLY_MIN only keeps a hop to the
+## next square a flight and not a blink.
+const FLY_SPEED := 1.34
+const FLY_MIN := 0.08
 ## A button of the tin sliding along to the next place (State.SLIDE).
 const SLIDE_TIME := 0.26
 const FLY_ARC := 0.6
@@ -1650,7 +1655,7 @@ func _play(res: Dictionary, at_cell: int, starts: Dictionary) -> void:
 	var now := _now()
 	var moves_: Array = res.moves
 	var step := RUN_STEP
-	var fly := 0.0 if Motion.reduce else FLY_TIME
+	var pic := _pic_xf(now)
 	var order := 0
 	var slides := 0
 	var sliding := 0
@@ -1685,12 +1690,11 @@ func _play(res: Dictionary, at_cell: int, starts: Dictionary) -> void:
 		# `fc` and `tc`: the end is on the cloth (in the picture's own
 		# measure, which the zoom moves) and not on the tin (the screen's)
 		# a patch landing keeps HELD_SCALE to the end: the settle takes it down
-		var f := {"c": int(m[3]), "time": fly, "at": at, "k0": HELD_SCALE, "k1": HELD_SCALE, "fc": true, "tc": true}
+		var f := {"c": int(m[3]), "at": at, "k0": HELD_SCALE, "k1": HELD_SCALE, "fc": true, "tc": true}
 		match kind:
 			State.TO_PATCH:
 				f.from = starts.get(int(m[1]), cell_centre(int(m[1])))
 				f.to = cell_centre(int(m[2]))
-				_arrive[int(m[2])] = at + fly
 				_mark(int(m[1]))
 				_mark(int(m[2]))
 				sewn += 1
@@ -1700,19 +1704,22 @@ func _play(res: Dictionary, at_cell: int, starts: Dictionary) -> void:
 				f.to = tin_centre(int(m[2]))
 				f.tc = false
 				f.k1 = tin_k
-				_tin_arrive[int(m[2])] = at + fly
 				_mark(int(m[1]))
 			State.FROM_TIN:
 				f.from = starts.get(-1 - int(m[1]), tin_centre(int(m[1])))
 				f.to = cell_centre(int(m[2]))
 				f.fc = false
 				f.k0 = tin_k * HELD_SCALE
-				_arrive[int(m[2])] = at + fly
 				_mark(int(m[2]))
 				sewn += 1
 				homed.append(int(m[2]))
-		_flights.append(f)
+		f.time = _fly_time(f, pic)
 		var lands := at + float(f.time)
+		if kind == State.TO_TIN:
+			_tin_arrive[int(m[2])] = lands
+		else:
+			_arrive[int(m[2])] = lands
+		_flights.append(f)
 		last = maxf(last, lands)
 		_after(lands - now, _landed.bind(kind, int(m[2]), landed, moves_.size()))
 		order += 1
@@ -1753,6 +1760,15 @@ func _play(res: Dictionary, at_cell: int, starts: Dictionary) -> void:
 	_spend(1, last)
 	if state.part_done():
 		_part_sewn(merged)
+
+## How long flight `f` takes at FLY_SPEED, its ends where the screen has them
+## under the picture's transform `pic`.
+func _fly_time(f: Dictionary, pic: Transform2D) -> float:
+	if Motion.reduce:
+		return 0.0
+	var from: Vector2 = pic * (f.from as Vector2) if bool(f.fc) else f.from
+	var to: Vector2 = pic * (f.to as Vector2) if bool(f.tc) else f.to
+	return maxf(FLY_MIN, from.distance_to(to) / (FLY_SPEED * size.y))
 
 ## A move's jewels on their own slots merge together: once the last of them
 ## has settled, as a wave out of `at_cell`, the nearest first. The second
