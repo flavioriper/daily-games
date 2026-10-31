@@ -2905,9 +2905,14 @@ SETS = {
     # whole, the bulb and the day's end; every note lands between 400 and
     # 700 Hz and no two cues share a contour.
     "buttons": {
+        # A jewel landing, on a slot or in the case, is Yarn Hoop's point
+        # with more room (the user, 2026-10-31: "a ploc sound instead of a
+        # wood toc", then of the water take "terrible, I want a sound like
+        # the one when you click on the yarn hoop points, a more open
+        # sound"): the pebble, its tail left twice as long.
         "lift":          ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -16, FOLEY, "bank:lip", "cut:0.1", "notes:0:-1", "tight"),
-        "sew":           ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -15, FOLEY, "bank:token", "cut:0.09", "notes:0:0", "tight"),
-        "tin":           ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.1", "body:320", "tight", "notes:0:-3"),
+        "sew":           ('a small pebble dropped into a calm pond, one soft plop, close, very short', 0.6, -16, FOLEY, "bank:pebble", "cut:0.16", "notes:0:-1", "tight"),
+        "tin":           ('a small pebble dropped into a calm pond, one soft plop, close, very short', 0.6, -16, FOLEY, "bank:pebble", "cut:0.16", "notes:0:-5", "tight"),
         # The tin's new place: two tocks of its wood, the second four steps up.
         "open":          ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -13, FOLEY, "bank:lip", "cut:0.2", "notes:0.09:-2,2", "tight"),
         "undo":          ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -15, FOLEY, "bank:lip", "cut:0.26", "notes:0.11:1,-2", "tight"),

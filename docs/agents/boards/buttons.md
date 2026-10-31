@@ -1424,3 +1424,15 @@ frames for the whole arc with its fixed lift of 0.6 of a square, steps of
 40 to 90 px a frame. `FLY_MIN` goes for `FLY_BASE` 0.2 s plus the distance
 at `FLY_SPEED` 3.0: next door 0.2 s, half a screen 0.37 s. Not strictly one
 speed any more, but near still lands before far.
+
+**A ploc on landing.** The user: "change the sound of the piece landing the
+slot to a ploc sound instead of a wood toc". The `plop` take first, then:
+"terrible, I want a sound like the one when you click on the yarn hoop
+points, a more open sound". That point is Hoop's `pick`, the `pebble` take
+cut at 0.08 s. `sew` and `tin` are now that take with `cut:0.16` for the
+openness, -1 and -5 steps (Hoop's is -3, and no two boards share a pop),
+-16. `tin` was a wooden tock too, so a gem into the case read as the same
+toc and went with it. `sew` is also the merge's one pop (`MERGE_PITCH`).
+Changing a row to `bank:` is not enough: the raw take is cached, so
+`gen_sfx.py buttons sew tin --new` (a bank copy, nothing bought), then
+`--import`. Not heard by me; "open" read as the longer tail.
