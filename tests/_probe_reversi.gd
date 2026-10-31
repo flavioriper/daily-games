@@ -58,8 +58,10 @@ func _tricks(games: int, rng: RandomNumberGenerator) -> void:
 	var side: int = e.turn
 	e.tricks = [Rules.ENCORE, Rules.ENCORE]
 	e.encore()
+	e.tricks[side] |= Rules.STONE
+	_ok("no stone while an encore waits", e.encore_on and not e.can_stone(Rules.cell(0, 0)))
 	e.make(e.legal_moves()[0])
-	_ok("an encore keeps the turn", e.turn == side and e.tricks[side] == 0)
+	_ok("an encore keeps the turn", e.turn == side)
 	var was: int = e.turn
 	e.make(e.legal_moves()[0])
 	_ok("and only for one disc", e.turn != was or not e.has_move(1 - was))

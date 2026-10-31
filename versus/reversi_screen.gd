@@ -244,8 +244,7 @@ func _build() -> void:
 	board.name = "Board"
 	board.row_over = true
 	board.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	if level <= READS_UP_TO:
-		board.reader = func(cell: int) -> Dictionary: return AI.read(rules, cell)
+	_set_reader()
 	board.chosen.connect(_on_chosen)
 	board.settled.connect(_on_settled)
 	board.targeted.connect(_on_targeted)
@@ -272,6 +271,10 @@ func _build() -> void:
 	_toast.add_child(_toast_label)
 	add_child(_toast)
 	_apply_insets()
+
+## Easy and Medium read a square under the finger.
+func _set_reader() -> void:
+	board.reader = (func(cell: int) -> Dictionary: return AI.read(rules, cell)) if level <= READS_UP_TO else Callable()
 
 func _apply_insets() -> void:
 	var insets := SafeArea.insets(self)
@@ -403,7 +406,7 @@ func _refresh_board() -> void:
 		_plates[p].modulate.a = 1.0 if mine or over else 0.82
 		var line := tr("CHS_FIRST" if (player == Rules.FIRST) == (p == 0) else "CHS_SECOND")
 		if mine:
-			line = tr("CHS_TO_MOVE") if p == 0 else tr("CHS_THINKS")
+			line = tr("CHS_TO_MOVE") if p == 0 or local() else tr("CHS_THINKS")
 		if _state == State.WAIT:
 			line = ""
 		_status[p].text = line
@@ -477,10 +480,11 @@ func tutorial_pages() -> Array:
 		[Diagram.Lesson.MANY, "TUT_REVERSI_MANY", tr("TUT_REVERSI_MANY_BODY")],
 		[Diagram.Lesson.PASS, "TUT_REVERSI_PASS", tr("TUT_REVERSI_PASS_BODY")],
 		[Diagram.Lesson.CORNER, "TUT_REVERSI_CORNER", tr("TUT_REVERSI_CORNER_BODY")],
-		[Diagram.Lesson.TRICKS, "TUT_REVERSI_TRICKS", tr("TUT_REVERSI_TRICKS_BODY")],
 		[Diagram.Lesson.BAR, "TUT_REVERSI_BAR",
 			tr("TUT_REVERSI_BAR_BODY_ONE") if HINTS == 1 else tr("TUT_REVERSI_BAR_BODY_N") % HINTS],
 	]
+	if tricky():
+		steps.insert(steps.size() - 1, [Diagram.Lesson.TRICKS, "TUT_REVERSI_TRICKS", tr("TUT_REVERSI_TRICKS_BODY")])
 	var pages := []
 	for step: Array in steps:
 		var d: Control = Diagram.new()
@@ -948,6 +952,7 @@ func _play_computer() -> void:
 	online.queue_free()
 	online = null
 	level = Record.last_bot_level(GAME)
+	_set_reader()
 	player = Rules.FIRST if Record.last_colour(GAME) == Rules.FIRST else Rules.SECOND
 	_seat_rival("")
 	for l in _status:

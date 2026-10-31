@@ -192,8 +192,10 @@ func _next() -> void:
 		if not has_move(turn):
 			over = true
 
+## Open from TRICKS_FROM, and shut while an encore waits for its disc: a stone
+## then would hand the second disc to the other side.
 func tricks_open() -> bool:
-	return not over and ply >= TRICKS_FROM
+	return not over and ply >= TRICKS_FROM and not encore_on
 
 func can_stone(c: int) -> bool:
 	return tricks_open() and tricks[turn] & STONE != 0 and c >= 0 and c < CELLS and cells[c] == EMPTY
