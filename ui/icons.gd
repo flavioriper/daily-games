@@ -151,6 +151,20 @@ static func shape(name: String) -> Dictionary:
 			return _run()
 		"music":
 			return _music()
+		"pause":
+			return {"polys": [PackedVector2Array([Vector2(0.26, 0.2), Vector2(0.42, 0.2), Vector2(0.42, 0.8), Vector2(0.26, 0.8)]),
+				PackedVector2Array([Vector2(0.58, 0.2), Vector2(0.74, 0.2), Vector2(0.74, 0.8), Vector2(0.58, 0.8)])], "lines": []}
+		"next":
+			return {"polys": [PackedVector2Array([Vector2(0.2, 0.2), Vector2(0.64, 0.5), Vector2(0.2, 0.8)]),
+				PackedVector2Array([Vector2(0.66, 0.2), Vector2(0.8, 0.2), Vector2(0.8, 0.8), Vector2(0.66, 0.8)])], "lines": []}
+		"speaker":
+			return {"polys": [_speaker()], "lines": [
+				PackedVector2Array([Vector2(0.64, 0.36), Vector2(0.71, 0.5), Vector2(0.64, 0.64)]),
+				PackedVector2Array([Vector2(0.76, 0.24), Vector2(0.89, 0.5), Vector2(0.76, 0.76)])]}
+		"speaker_off":
+			return {"polys": [_speaker()], "lines": [
+				PackedVector2Array([Vector2(0.66, 0.38), Vector2(0.88, 0.62)]),
+				PackedVector2Array([Vector2(0.88, 0.38), Vector2(0.66, 0.62)])]}
 		"buzz":
 			# A phone standing between two pairs of shake marks.
 			return {"polys": [], "lines": [
@@ -361,6 +375,10 @@ static func _run() -> Dictionary:
 		PackedVector2Array([hip, Vector2(0.32, 0.72), Vector2(0.16, 0.7)])]}
 
 ## Two quavers under one beam.
+static func _speaker() -> PackedVector2Array:
+	return PackedVector2Array([Vector2(0.14, 0.38), Vector2(0.3, 0.38), Vector2(0.52, 0.18),
+		Vector2(0.52, 0.82), Vector2(0.3, 0.62), Vector2(0.14, 0.62)])
+
 static func _music() -> Dictionary:
 	var heads := []
 	for c in [Vector2(0.3, 0.76), Vector2(0.7, 0.68)]:

@@ -1,6 +1,7 @@
 extends "res://ui/hud/sheet.gd"
 
-## The settings sheet: the Reduce motion, Sound and Vibration switches, the language,
+## The settings sheet: the Reduce motion, Sound and Vibration switches, the
+## soundtrack's player, the language,
 ## How to play and a New puzzle row (both only on a board; the menu leaves
 ## them out), Remove ads (the purchase sheet's door; "Ads removed" and
 ## disabled once owned -- Restore lives on that sheet, one tap away, which
@@ -18,6 +19,7 @@ const Locale = preload("res://core/locale.gd")
 const Icons = preload("res://ui/icons.gd")
 const Sound = preload("res://core/sound.gd")
 const Haptics = preload("res://core/haptics.gd")
+const MusicPlayer = preload("res://ui/hud/music_player.gd")
 const CreditsSheet = preload("res://ui/hud/credits_sheet.gd")
 const StartOverSheet = preload("res://ui/hud/start_over_sheet.gd")
 const Analytics = preload("res://core/analytics.gd")
@@ -73,6 +75,7 @@ var start_over_sheet: Control
 var toggle: CheckButton
 var sound_toggle: CheckButton
 var haptics_toggle: CheckButton
+var music_player: Control
 var credits_button: Button
 var ads_button: Button
 var privacy_button: Button
@@ -105,6 +108,8 @@ func _build_sheet(col: VBoxContainer) -> void:
 			Sound.set_on(on)
 			Analytics.track("sound_toggled", {"on": on}))
 	col.add_child(sound_toggle)
+	music_player = MusicPlayer.new()
+	col.add_child(music_player)
 	haptics_toggle = _switch_row("buzz", HAPTICS_TINT, "SETTINGS_HAPTICS", "SETTINGS_HAPTICS_SUB", Haptics.on,
 		func(on: bool) -> void:
 			Haptics.set_on(on)
@@ -228,6 +233,7 @@ func _on_open() -> void:
 	start_over_sheet.visible = false
 	_set_switch(toggle, Motion.reduce)
 	_set_switch(sound_toggle, Sound.on)
+	music_player.refresh()
 	_set_switch(haptics_toggle, Haptics.on)
 	_show_languages(false)
 	# IconButton letters a child Label and keeps Button.text empty.

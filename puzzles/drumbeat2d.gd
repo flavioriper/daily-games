@@ -51,6 +51,7 @@ extends "res://core/puzzle_base.gd"
 
 signal leave
 
+const Music = preload("res://core/music.gd")
 const State = preload("res://puzzles/drumbeat_state.gd")
 const World = preload("res://puzzles/drumbeat_world.gd")
 const FLAT_HOST := "res://ui/flat/flat_host.gd"
@@ -433,6 +434,9 @@ func tutorial_pages() -> Array:
 	return pages
 
 func _ready() -> void:
+	# A board you play by ear: the soundtrack waits outside.
+	Music.hold("drumbeat", true)
+	tree_exiting.connect(Music.hold.bind("drumbeat", false))
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = true
 	_road = RunMesh.new(_shape)

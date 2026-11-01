@@ -19,6 +19,7 @@ extends Node
 ## sets `main_script` (to tests/_offline_main.gd) before this enters the tree.
 ## Notes: docs/agents/opening.md.
 
+const Music = preload("res://core/music.gd")
 const Motion = preload("res://core/motion.gd")
 const Opening = preload("res://ui/opening.gd")
 const Sound = preload("res://core/sound.gd")
@@ -61,6 +62,8 @@ func _ready() -> void:
 	Motion.load_settings()
 	# The sound switch too, or a muted game would open with a tune.
 	Sound.load_settings()
+	# The soundtrack waits for the opening's tune to ring out.
+	Music.hold("opening", true)
 	if not Motion.reduce:
 		_tune = AudioStreamPlayer.new()
 		_tune.stream = TUNE
@@ -124,4 +127,5 @@ func _done() -> void:
 		set_process(false)
 		opening.get_parent().queue_free()
 		await _tune.finished
+	Music.hold("opening", false)
 	queue_free()

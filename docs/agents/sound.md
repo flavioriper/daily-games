@@ -387,6 +387,40 @@ peak that tires an ear over hundreds of presses and nothing piercing on a
 small speaker. Lofi production guides: the top rolled off somewhere from 5
 to 10 kHz on a gentle slope (ours is far lower, by the user's word).
 
+## The soundtrack
+
+**2026-11-01, the user's pick by ear** (reference: the breezy golf-resort
+music of an old online golf game, "good to hear but subtle at the background,
+not noise, lowfi style"; never name that game in a prompt, the API refuses it).
+Rounds on 2026-10-30 and 2026-11-01: loved the bossa, the felt piano and
+above all the open kalimba and ukulele takes, hated the jazz waltz and the
+sleepy swing, then asked for more energy. Twelve ElevenLabs Music v2.5 tracks
+of a minute each play in the order of `tools/gen_music.py`, repeated with
+their titles in `core/music.gd`. The tool treats level and length only: -20
+LUFS, 0.4 s in, 3 s out, Vorbis q3, 9 MB in all. Rejected takes are not in the
+tree. Dropped as neither loved nor hated: the slow drumless bossa and the
+Rhodes lofi beat.
+
+`core/music.gd` runs from `world/main.gd` only, so harnesses stay silent. It
+is a bus of its own under Master (the Sound switch and an ad still silence it),
+two players that crossfade, and `_process`, never a looping tween, because it
+plays on while the game rests. It starts a launch on the next track after the
+last. Play, pause and Next fade; mute keeps time. Choices are saved
+under `[music]` beside Sound's. `ui/hud/music_player.gd` on the settings sheet
+is the one door, so every screen has it. **A screen with a beat to hear calls
+`Music.hold(who, true)`** and lets go when it leaves: the opening's tune,
+Drumbeat, Birdsong, Marigold's bloom. The sheet then says the music waits.
+The app sent away or unfocused pauses at once.
+
+**Licence** (read at elevenlabs.io/music-terms, 2026-11-01; not legal advice):
+self-serve plans allow use in an Indie Game, which is under $500,000 lifetime
+revenue for the game, and under $1,000,000 a year from all the publisher's
+games, with affiliates and every kind of monetisation counted. Past that it is
+a Studio Game: 60 days to move to Enterprise Music or take the music out. The
+tracks may not go on music streaming from Starter or be offered as a library.
+Plans up to Pro are marked "For Individual Use Only". Five tracks were made on
+the pay-as-you-go tier, which the terms do not name, and seven on Starter.
+
 ## Sound
 
 Sounds are generated with ElevenLabs by `tools/gen_sfx.py <puzzle_id>` into

@@ -13,6 +13,7 @@ const Analytics = preload("res://core/analytics.gd")
 const Backend = preload("res://core/backend.gd")
 const Social = preload("res://core/social.gd")
 const Power = preload("res://core/power.gd")
+const Music = preload("res://core/music.gd")
 const DeepLink = preload("res://core/deep_link.gd")
 const Locale = preload("res://core/locale.gd")
 const CozyTheme = preload("res://ui/theme.gd")
@@ -117,6 +118,8 @@ func _ready() -> void:
 	# The rest after a while without a touch (core/power.gd): tweens
 	# paused, 30 fps, no draw of a frame nothing changed, the stream shut.
 	Power.start(self)
+	# The soundtrack, here for the same reason: a harness stays silent.
+	Music.start(self)
 	if AgeScreen.wanted():
 		var age := AgeScreen.new()
 		age.name = "AgeScreen"

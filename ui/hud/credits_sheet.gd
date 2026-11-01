@@ -32,7 +32,7 @@ func _build_sheet(col: VBoxContainer) -> void:
 		"Fredoka, copyright 2016 The Fredoka Project Authors (github.com/hafontia/Fredoka-One). Nunito, copyright 2014 The Nunito Project Authors (github.com/googlefonts/nunito). Both under the SIL Open Font License 1.1.")
 	_section(body, "CREDITS_WORDS",
 		"Word lists drawn from and ordered by wordfreq, by Robyn Speer et al. (github.com/rspeer/wordfreq), licensed CC-BY-SA 4.0.")
-	_section(body, "CREDITS_SOUND", "Sound effects made with ElevenLabs.")
+	_section(body, "CREDITS_SOUND", "Sound effects and music made with ElevenLabs.")
 	_section(body, "CREDITS_ENGINE",
 		"Made with the Godot Engine (godotengine.org). Portions of this software are copyright © 2014-present the Godot Engine contributors. Portions of this software are copyright © The FreeType Project (freetype.org). All rights reserved.")
 	var licence := Label.new()

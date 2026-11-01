@@ -37,6 +37,7 @@ extends "res://core/puzzle_base.gd"
 ## makes it silent, deaf and laid in its own rect, and
 ## ui/hud/birdsong_tutorial_diagram.gd plays it with `demo_knock`.
 
+const Music = preload("res://core/music.gd")
 const State = preload("res://puzzles/birdsong_state.gd")
 const World = preload("res://puzzles/birdsong_world.gd")
 const Bird = preload("res://ui/faces/woodpecker.gd")
@@ -210,6 +211,9 @@ func hints_left() -> int:
 	return maxi(0, int(State.HINTS[_band]) + hints_extra - hints_used)
 
 func _ready() -> void:
+	# A board you play by ear: the soundtrack waits outside.
+	Music.hold("birdsong", true)
+	tree_exiting.connect(Music.hold.bind("birdsong", false))
 	mouse_filter = Control.MOUSE_FILTER_IGNORE if demo else Control.MOUSE_FILTER_STOP
 	if not demo:
 		fx = Fx2D.new()

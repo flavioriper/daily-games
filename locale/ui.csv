@@ -2470,3 +2470,6 @@ TUT_PENNY_SPARK,The spark,A faísca,La chispa
 TUT_PENNY_SPARK_BODY,"Instead of a drop, take out one of the moon's pennies. Those above it fall a place, and a fall can finish a line, for either side.","Em vez de soltar, tire uma moeda da lua. As de cima caem um lugar, e a queda pode fechar uma linha, de qualquer lado.","En vez de soltar, quita una moneda de la luna. Las de arriba caen un lugar, y la caída puede cerrar una línea, de cualquier lado."
 TUT_PENNY_TWIN,"The twin, and the match",A dupla e o duelo,La doble y el duelo
 TUT_PENNY_TWIN_BODY,"Two drops in one turn: two in a line with room is now a threat. Each trick is good once a rack, the moon has some too, and the first to %d racks takes the match.","Duas jogadas num turno: duas em linha com espaço já são uma ameaça. Cada truque vale uma vez por grade, a lua também tem, e quem fizer %d grades leva o duelo.","Dos jugadas en un turno: dos en línea con espacio ya son amenaza. Cada truco vale una vez por rejilla, la luna también tiene, y quien haga %d rejillas gana el duelo."
+MUSIC_TRACK_OF,Track %d of %d,Faixa %d de %d,Pista %d de %d
+MUSIC_PAUSED,Paused,Pausado,En pausa
+MUSIC_HELD,Waits while this game plays,Espera durante este jogo,Espera durante este juego

@@ -51,6 +51,7 @@ extends "res://core/puzzle_base.gd"
 
 signal leave
 
+const Music = preload("res://core/music.gd")
 const State = preload("res://puzzles/marigold_state.gd")
 const Parts = preload("res://ui/faces/marigold_parts.gd")
 const Pal = preload("res://core/palette.gd")
@@ -693,10 +694,12 @@ func _ready() -> void:
 	add_child(fx)
 	_roll = _voice("roll", true)
 	_music = _voice("music", false)
+	_music.finished.connect(Music.hold.bind("marigold", false))
 	resized.connect(_layout)
 	solved.connect(_on_solved)
 
 func _exit_tree() -> void:
+	Music.hold("marigold", false)
 	_close_card()
 	# The world is a sibling: it goes with the board.
 	if is_instance_valid(_world):
@@ -1168,6 +1171,7 @@ func _quiet_audio() -> void:
 		_roll.volume_db = -80.0
 	if _music != null:
 		_music.stop()
+		Music.hold("marigold", false)
 
 ## Every seed's wake: the last TRAIL places it was drawn at.
 func _follow_trails() -> void:
@@ -1325,6 +1329,7 @@ func _handle(events: Array, t: float) -> void:
 				if _music.stream != null:
 					get_tree().create_timer(MUSIC_AFTER).timeout.connect(func():
 						if _state.fever and is_inside_tree():
+							Music.hold("marigold", true)
 							_music.play())
 				fx.ring(_pt(e.at), s * 6.0, Pal.SUN, 0.9)
 				_mood(Face.Expr.JOY, 30.0)
