@@ -1436,3 +1436,12 @@ toc and went with it. `sew` is also the merge's one pop (`MERGE_PITCH`).
 Changing a row to `bank:` is not enough: the raw take is cached, so
 `gen_sfx.py buttons sew tin --new` (a bank copy, nothing bought), then
 `--import`. Not heard by me; "open" read as the longer tail.
+
+## The win waits for the last merge (2026-11-01)
+
+The user: "make sure the win screen only appears when the last piece merge
+into the board". The host shows the win the frame after the solve, so a long
+last run was still flying under it. The board now answers `win_lead()`
+(`_win_lag`: to the last merge plus `SOLVE_DELAY`, 0 under reduced motion) and
+`flat_host.gd` `_win_after_lead` waits that long; no other board has the
+method. The tin stays out for the same lag.

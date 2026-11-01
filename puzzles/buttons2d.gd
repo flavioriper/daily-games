@@ -401,6 +401,8 @@ var _opened := -1.0e9
 ## -INF until the day is won (a restored day's is in the past, and early in
 ## a run that is under zero).
 var _solved_at := -INF
+## From the solving tap to the last jewel merged and the picture hopping.
+var _win_lag := 0.0
 var _stamp_at := INF
 var _anim_until := 0.0
 var _toast := ""
@@ -558,6 +560,7 @@ func _begin() -> void:
 	_heart_used = false
 	_won = false
 	_solved_at = -INF
+	_win_lag = 0.0
 	_slid_at = -INF
 	_turning = false
 	_stamp_at = INF
@@ -611,7 +614,7 @@ func set_clear(top: float, bottom: float, won := false) -> void:
 		# found
 		_from_zoom = zoom.xf()
 		zoom.reset()
-		_slid_at = _now() if is_inside_tree() and _solved_at > _now() - 5.0 else -INF
+		_slid_at = _now() if is_inside_tree() and _solved_at + _win_lag > _now() - 5.0 else -INF
 	_won = won
 	_layout()
 
@@ -835,7 +838,7 @@ func _draw() -> void:
 	var since := now - _opened - Motion.ENTER_DELAY
 	var tin_seen := 1.0 if Motion.reduce else Motion.appear_level(since)
 	if _solved_at > -INF:
-		tin_seen = 0.0 if Motion.reduce else clampf(1.0 - (now - _solved_at - WIN_WAIT * 0.4) / 0.3, 0.0, 1.0)
+		tin_seen = 0.0 if Motion.reduce else clampf(1.0 - (now - _solved_at - _win_lag - WIN_WAIT * 0.4) / 0.3, 0.0, 1.0)
 		if _won and _slid_at == -INF:
 			tin_seen = 0.0
 	if tin_seen > 0.0:
@@ -844,7 +847,7 @@ func _draw() -> void:
 		draw_mesh(_tin, null, Transform2D.IDENTITY, Color(1.0, 1.0, 1.0, tin_seen))
 		shown.append(_tin)
 	_tin_rest = null
-	if _solved_at == -INF or now - _solved_at < WIN_WAIT:
+	if _solved_at == -INF or now - _solved_at - _win_lag < WIN_WAIT:
 		var rest := Face.FlatBuilder.new(_flat_cache)
 		for p in _tin_places:
 			var c: int = state.tin[p]
@@ -2026,6 +2029,11 @@ func flat_win() -> Dictionary:
 	var sub := tr("BB_WIN_SUB_ONE") % what if _final_taps == 1 else tr("BB_WIN_SUB_N") % [what, _final_taps]
 	return {"faces": [], "subtitle": sub}
 
+## The win waits for the last jewel to merge: a long run can still be in the
+## air for seconds after the tap that solved the picture.
+func win_lead() -> float:
+	return _win_lag
+
 func win_delay() -> float:
 	return Motion.REDUCED_TIME if Motion.reduce else WIN_WAIT + PARTY_EXTRA
 
@@ -2041,6 +2049,7 @@ func _on_solved() -> void:
 	_final_taps = state.taps
 	_final_left = moves_left - (1 if max_moves > 0 else 0)
 	var lag := 0.0 if Motion.reduce else maxf(0.0, _last_land - now) + Motion.SOLVE_DELAY
+	_win_lag = lag
 	# the picture is seen whole for its win
 	if zoom.zoomed():
 		zoom.toggle()

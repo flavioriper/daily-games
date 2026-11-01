@@ -974,7 +974,23 @@ func _on_solved() -> void:
 	var hold := 0.0 if Motion.reduce else WIN_AFTER
 	if is_instance_valid(_puzzle) and _puzzle.has_method("win_delay"):
 		hold = _puzzle.win_delay()
-	_show_win.call_deferred(hold)
+	_win_after_lead.call_deferred(hold)
+
+## A board may hold the win screen itself back with win_lead(), seconds of its
+## last move still to play (Jewel Box's jewels in the air). Most show it at
+## once, with their wave.
+func _win_after_lead(hold: float) -> void:
+	var lead := 0.0
+	if is_instance_valid(_puzzle) and _puzzle.has_method("win_lead"):
+		lead = _puzzle.win_lead()
+	if lead <= 0.0:
+		_show_win(hold)
+		return
+	var board := _puzzle
+	get_tree().create_timer(lead).timeout.connect(func() -> void:
+		# Redo or New inside the lead has replaced the board.
+		if is_instance_valid(board) and board == _puzzle:
+			_show_win(hold))
 
 ## `hold` is how much longer the board's own win animation runs: the board
 ## stays frozen, scaled to follow its card, until it is over, because a
