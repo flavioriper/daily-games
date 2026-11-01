@@ -22,7 +22,9 @@ extends SceneTree
 ## confetti at 5 -- with each gag forced once, loop, bird, roll and love, then
 ## an undo), `howto` (the first-play sheet's diagram), `restore` (a solved
 ## day reopened flawless with a heart gone: the cat asleep, the seal). Frames
-## go to <dir>/pp_<mode>_d<level>_<n>.png.
+## go to <dir>/pp_<mode>_d<level>_<n>.png. `frenzy` taps a free plane every
+## 0.3 s through the levels, then an undo (the tap and its chain come back
+## together), then lets the gauge run out.
 ## Every mode prints the peak draw calls from 0.5 s on.
 
 const SHOT_DIR := "/tmp"
@@ -212,6 +214,29 @@ func _script() -> void:
 			_at(2.0, _shot)
 			_at(3.3, _shot.bind("_later"))
 			_end = 3.5
+		"frenzy":
+			var at := 1.5
+			while at < 7.5:
+				_at(at, func() -> void:
+					var free: Array = st.free_planes()
+					if not free.is_empty():
+						_puzzle._tap(int(free[0])))
+				at += 0.3
+			_at(2.6, _shot.bind("_lit"))
+			_at(4.8, _shot.bind("_mid"))
+			_at(7.4, _shot.bind("_top"))
+			_at(7.45, func() -> void:
+				print("frenzy=%s level=%d count=%d heat=%.2f left=%d groups=%s" % [_puzzle._frenzy,
+					_puzzle._frenzy_level, _puzzle._frenzy_count, _puzzle._heat, st.left(), str(_puzzle._groups.slice(-6))]))
+			_at(7.6, func() -> void:
+				var left: int = st.left()
+				var group: int = _puzzle._groups[-1]
+				_puzzle.undo()
+				print("undo group=%d left %d -> %d frenzy=%s" % [group, left, st.left(), _puzzle._frenzy]))
+			_at(9.8, func() -> void:
+				print("after frenzy=%s heat=%.2f beat=%s held=%s" % [_puzzle._frenzy, _puzzle._heat,
+					_puzzle._beat_player.playing, _puzzle.Music.should_sound() == false and _puzzle.Music._holds.has("planes_frenzy")]))
+			_end = 10.0
 		"press":
 			var free: Array = st.free_planes()
 			var i: int = free[0]

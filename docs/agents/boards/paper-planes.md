@@ -491,3 +491,51 @@ en/pt/es. Hints stay by band (3, 3, 1, 1).
 - Mine: the 40 x 56 box, the 945 floor, the tighter carve's knobs. Owed:
   Insane's ~20 px cells under a thumb on a phone (no zoom), its deal time
   there.
+
+### The frenzy, and dots where planes were (2026-11-01)
+
+The user: "add some frenzy satisfacting bonus as user fastly click on planes",
+then: near planes fly too if unblocked, "like a chain reaction", a rhythm that
+makes you want to play faster, speeding up, a meter that drains faster the
+faster you go, planes moving to hot tones and shaking "like if it's ready to
+fly away anxious". After first seeing it: "shaking is too strong, reduce it,
+make only the arrows shake, not the entire screen". Then: "subtle dots where
+arrows where, so user can see by eyes if a plane path is clear".
+
+- **The frenzy.** Three tapped launches in `FRENZY_SPAN` light it. A gauge
+  drains over `FRENZY_DRAIN[level]` (1.6 / 1.2 / 0.9 s); a tap adds
+  `FRENZY_TAP`, a chained plane `FRENZY_LINK`. Levels at 10 and 20 launches.
+  An empty gauge, a refusal or Undo ends it flat (`_break_streak`). The win
+  ends it silently. `_on_launched` feeds it, so `TutorialSky` has none.
+- **The chain.** `_launch` is the road a tap and a link share (a link flies
+  `Gag.NONE`). `_chain_step` takes the nearest free plane within
+  `FRENZY_REACH` px of the touch, as the board stands at that moment, so a
+  plane the last link freed can be next; 1 / 2 / 3 links `FRENZY_STEP` apart.
+  `_reach_to` measures in cells. `_groups` holds launches per tap: Undo
+  brings a tap and its chain back together.
+- **Heat** is `puzzles/planes_heat.gdshader`, the board's `material`: plain
+  uniforms, no mesh rebuilt, no draw call, compiled when the board opens.
+  Only a dart shakes: `RunMesh.stamp` gives a dart's vertices (the end of a
+  look's run) a phase in UV.x, and 0 is left alone, so the lines hold still.
+  Shaking whole lines made a dense maze read as the screen shaking. The tint
+  lands on the planes' picture colours by the user's explicit ask, past the
+  "no state in a piece's own shade" rule; at full heat the picture goes red.
+  Darts on the live meshes (beating, pressed) do not quiver for their moment.
+- **The beat** is one loop, `frenzy_beat`, sixteen `token` pops, 2.4 s at
+  100 BPM, faster by `pitch_scale` (1 / 1.25 / 1.5), so it stays sample-tight
+  at any frame rate where a `_process` beat would not; its pitch rises with
+  it. A launch's note is `combo` walking `FRENZY_SCALE` at the beat's rate.
+  `Music.hold` silences the soundtrack; `_frenzy_end` and `_exit_tree` release.
+- **The dots.** `_build_dots`: a faint hexagon on every cell a gone plane
+  held, under the planes, remade only when `left()` or the layout moves. The
+  dots of 2026-10-26's removal stood on every cell; these are only where a
+  plane was. The bare sky round the shape has none: a lane's run past the
+  picture reads by the world's own lattice.
+- `_shot_planes.gd d=2 frenzy` on opengl3_angle, 810x1440: level 3 at 40
+  launches, an undo of a three-plane chain 54 -> 57, gauge out, hold released;
+  110 draw calls peak before the dots. `_win.gd -- planes` PASS, suite
+  303252/0.
+- Mine, the user's to call: every number above, chain reach, ending flat on a
+  refusal, the glow's strength, the pitch rising with the beat, every dart
+  shaking the same rather than free ones more. Not heard, not on a phone,
+  pt/es unreviewed.

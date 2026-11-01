@@ -78,6 +78,7 @@ const CozyTheme = preload("res://ui/theme.gd")
 const RunMesh = preload("res://ui/flat/run_mesh.gd")
 const Haptics = preload("res://core/haptics.gd")
 const PlanesWorld = preload("res://puzzles/planes_world.gd")
+const Music = preload("res://core/music.gd")
 const FLAT_HOST := "res://ui/flat/flat_host.gd"
 
 # --- the screen, measured (spec section 7) ---
@@ -357,7 +358,44 @@ const IDLE_LIFT := 0.12
 ## The streak: a launch ticks `combo` a semitone higher from the second, five
 ## in all; the bubble from COMBO_FROM; confetti at 5, 10, 20 and every 10
 ## after.
+## The dots a plane leaves behind: a share of the cell, faint.
+const DOT_R := 0.07
+const DOT_INK := Color(0.36, 0.3, 0.26, 0.32)
 const COMBO_FROM := 3
+## The frenzy (the user, 2026-11-01). FRENZY_START launches inside
+## FRENZY_SPAN seconds light it; a gauge then drains over FRENZY_DRAIN[level]
+## and a launch refills it, a tap by FRENZY_TAP and a plane the chain took by
+## FRENZY_LINK. FRENZY_AT is the launches that reach each level. Each level
+## drains faster, plays the beat faster (FRENZY_RATE, on the loop's own 100
+## BPM) and chains more planes (FRENZY_CHAIN), each within FRENZY_REACH px of
+## the touch, FRENZY_STEP apart. It ends flat when the gauge empties.
+const FRENZY_START := 3
+const FRENZY_SPAN := 1.5
+const FRENZY_AT := [0, 10, 20]
+const FRENZY_DRAIN := [1.6, 1.2, 0.9]
+const FRENZY_RATE := [1.0, 1.25, 1.5]
+const FRENZY_CHAIN := [1, 2, 3]
+const FRENZY_TAP := 0.55
+const FRENZY_LINK := 0.2
+const FRENZY_REACH := 170.0
+const FRENZY_STEP := 0.08
+## A launch's note walks this scale, played at the beat's rate so it stays in
+## key with it.
+const FRENZY_SCALE := [0, 3, 5, 7, 10, 12, 10, 7]
+## Launches past the top level's for the heat to read full; how fast it comes
+## and goes; the quiver's reach in px at the two ends on a FRENZY_CELL cell.
+const FRENZY_FULL := 30.0
+const HEAT_RISE := 1.2
+const HEAT_FALL := 2.0
+const QUIVER := Vector2(0.3, 1.2)
+const FRENZY_CELL := 40.0
+const FRENZY_LINK_TIME := 0.3
+const FRENZY_GLOW := 110.0
+const FRENZY_BAR := Vector2(320.0, 14.0)
+const BEAT_FADE := 0.25
+const BEAT_FALL := 0.4
+const BEAT_DB := -8.0
+const FRENZY_HOLD := "planes_frenzy"
 const COMBO_STEPS := [-2, -1, 0, 1, 2, 3]
 const COMBO_DB := -4.0
 const COMBO_DEFLATE := 0.25
@@ -680,6 +718,28 @@ var _streak := 0
 var _streak_gen := 0
 var _gag_until := 0.0
 var _gag_gen := 0
+var _dots: ArrayMesh
+var _dots_shown: ArrayMesh
+var _dots_key := Vector4(-1.0, 0.0, 0.0, 0.0)
+var _frenzy := false
+var _frenzy_level := 0
+var _frenzy_count := 0
+var _frenzy_gauge := 0.0
+var _heat := 0.0
+var _tap_times: Array[float] = []
+var _chaining := false
+var _chain_gen := 0
+## How many launches each tap took, so Undo brings a chain back whole.
+var _groups: Array[int] = []
+## The chain's lines between planes, each {a, b, at}.
+var _links: Array = []
+var _beat_player: AudioStreamPlayer
+var _beat_rate := 1.0
+var _beat_falling := false
+var _frenzy_foot := 0.0
+var _heat_mat: ShaderMaterial
+var _glow_mesh: ArrayMesh
+var _glow_rect := Rect2()
 var _combo_n := 0
 var _combo_at := -INF
 var _combo_pos := Vector2.ZERO
@@ -811,6 +871,8 @@ const HAPTICS := {
 	"undo": Haptics.TICK,
 	"reset": Haptics.TAP,
 	"confetti": Haptics.BUMP,
+	"frenzy_in": Haptics.BUMP,
+	"frenzy_out": Haptics.TICK,
 	"hint": Haptics.GOOD,
 	"heart_back": Haptics.GOOD,
 	"heart_lost": Haptics.BAD,
@@ -867,6 +929,13 @@ func _ready() -> void:
 	_life_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_life_layer.draw.connect(_draw_life)
 	add_child(_life_layer)
+	# Set from the start so the shader compiles while the board opens, never
+	# on the frame a frenzy lights.
+	_heat_mat = ShaderMaterial.new()
+	_heat_mat.shader = preload("res://puzzles/planes_heat.gdshader")
+	material = _heat_mat
+	_beat_player = AudioStreamPlayer.new()
+	add_child(_beat_player)
 	resized.connect(_layout)
 	solved.connect(_on_solved)
 
@@ -1136,6 +1205,7 @@ func _process(delta: float) -> void:
 	if _cell <= 0.0:
 		return
 	_idle_tick(t)
+	_frenzy_tick(delta, t)
 	if dirty or _animating(t):
 		_refresh()
 	# The droop rebuilds the still mesh (every plane at rest sinks), so it is
@@ -1336,6 +1406,10 @@ func _draw() -> void:
 	var grow := Motion.wide_pop_scale(t - _opened - Motion.ENTER_DELAY)
 	var mid := _origin + Vector2(float(_state.cols), float(_state.rows)) * _cell * 0.5
 	var xf := Transform2D(0.0, Vector2.ONE * grow, 0.0, mid * (1.0 - grow))
+	_build_dots()
+	if _dots != null:
+		draw_mesh(_dots, null, xf)
+	_dots_shown = _dots
 	if _still != null:
 		draw_mesh(_still, null, xf)
 	_still_shown = _still
@@ -1345,6 +1419,52 @@ func _draw() -> void:
 	if _field != null:
 		draw_mesh(_field, null, xf)
 	_shown = _field
+
+## A small dot on every cell a plane has left (the user, 2026-11-01), so a
+## clear lane can be read by eye: one mesh, remade only when a plane leaves or
+## comes back, from a hexagon a cell laid once a layout. Under the planes, so
+## one still in the air covers its own dots until it has gone.
+func _build_dots() -> void:
+	var key := Vector4(_state.left(), _cell, _origin.x, _origin.y)
+	if key == _dots_key:
+		return
+	_dots_key = key
+	_dots = null
+	if _state.solved() or _state.left() == _state.planes.size():
+		return
+	var cols: int = _state.cols
+	var rows: int = _state.rows
+	var verts := PackedVector2Array()
+	verts.resize(cols * rows * 6)
+	var r := maxf(2.0, _cell * DOT_R)
+	var ring := PackedVector2Array()
+	for k in 6:
+		ring.append(Vector2.from_angle(float(k) * TAU / 6.0) * r)
+	var idx := PackedInt32Array()
+	for p in _state.planes:
+		if not p["gone"]:
+			continue
+		for c: Vector2i in p["cells"]:
+			var n: int = (c.y * cols + c.x) * 6
+			var at := _centre(c)
+			for k in 6:
+				verts[n + k] = at + ring[k]
+			for k in 4:
+				idx.append(n)
+				idx.append(n + k + 1)
+				idx.append(n + k + 2)
+	if idx.is_empty():
+		return
+	var colours := PackedColorArray()
+	colours.resize(verts.size())
+	colours.fill(DOT_INK)
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_COLOR] = colours
+	arrays[Mesh.ARRAY_INDEX] = idx
+	_dots = ArrayMesh.new()
+	_dots.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 
 ## Every plane that has to be drawn frame by frame right now: in the air (or
 ## still trailing its contrail), beating, shivering, on a refused run, or not yet done
@@ -1435,6 +1555,12 @@ func _lay_still() -> void:
 		if not _state.planes[i]["gone"]:
 			rm.open(STILL_PLANE, i)
 			rm.put(_look_id(i, 0), [], Transform2D.IDENTITY)
+			# Its dart's phase in the quiver, never zero: the golden ratio
+			# spreads neighbours apart. A look is its trail, then its dart.
+			var dart := Face.Builder.new()
+			_plane(dart, i, 1e9, 0.0, true, 2)
+			rm.stamp(STILL_PLANE, i, Vector2(fmod(float(i + 1) * 0.618034, 1.0) + 0.001, 0.0),
+				dart.verts.size())
 
 ## A plane's look at rest as a still-mesh shape id, at droop step `droop`
 ## (0 to DROOP_STEPS).
@@ -2285,9 +2411,25 @@ func _tap(i: int) -> void:
 			_break_streak()
 		_refresh()
 		return
+	_launch(i, t)
+
+## Sends off plane `i`, whose lane is clear: a tap's, or a link of the
+## frenzy's chain (`_chain_step`), which takes the same road to the wake, the
+## pill and the win. A chained plane flies plain: a roll is half as slow
+## again and the ripple has to read.
+func _launch(i: int, t: float, chained := false) -> void:
 	var before := _free_set()
 	if not _state.launch(i):
 		return
+	if chained:
+		if _groups.is_empty():
+			_groups.append(1)
+		else:
+			_groups[-1] += 1
+	else:
+		_groups.append(1)
+	if i == _press_target:
+		_clear_press()
 	if _hint_lit == i:
 		_hint_lit = -1
 	_refuse = {}
@@ -2300,7 +2442,7 @@ func _tap(i: int) -> void:
 	# what emits `solved` and calls `_on_solved` on this same frame.
 	_solve_from = cells[cells.size() - 1]
 	_last_plane = i
-	var gag := _pick_gag(i, t)
+	var gag: int = Gag.NONE if chained else _pick_gag(i, t)
 	_fly_out(i, t, gag)
 	_wake(before, _solve_from, t)
 	fx.cue("place")
@@ -2729,8 +2871,16 @@ func can_undo() -> bool:
 func undo() -> bool:
 	if is_done() or not can_undo():
 		return false
-	var i := _state.undo()
-	if i < 0:
+	# A tap and every plane its chain took come back together.
+	_chain_gen += 1
+	var take: int = _groups.pop_back() if not _groups.is_empty() else 1
+	var back: Array[int] = []
+	for k in take:
+		var was := _state.undo()
+		if was < 0:
+			break
+		back.append(was)
+	if back.is_empty():
 		return false
 	# A finger still down on a plane lets go: the sky under it just changed.
 	_release_press()
@@ -2742,8 +2892,9 @@ func undo() -> bool:
 	# Nothing to unwind in the wake: who was freed by what was never written
 	# down. The one thing that is this plane's own is its beat, and only
 	# because a plane mid-beat that is also mid-flight reads as a stutter.
-	_beat.erase(i)
-	_fly_back(i, _now(), 0.0)
+	for i in back:
+		_beat.erase(i)
+		_fly_back(i, _now(), 0.0)
 	_say(tr("PP_UNDO"), Face.Expr.HAPPY)
 	fx.cue("undo")
 	_refresh()
@@ -2795,6 +2946,7 @@ func reset_board() -> void:
 		return
 	_release_press()
 	_break_streak()
+	_groups = []
 	_clear_gags()
 	_fly_all_home()
 	_hint_lit = -1
@@ -2949,6 +3101,7 @@ func _on_solved() -> void:
 	if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
 		_combo_out_at = t
 	_streak_gen += 1
+	_frenzy_end(false)
 	_party()
 	if Motion.reduce:
 		return
@@ -3254,6 +3407,7 @@ func _draw_hearts() -> void:
 	if _bled and _cell > 0.0 and not _state.solved() and not _won:
 		var foot := _origin.y + float(_state.rows) * _cell + PANEL_PAD + PANEL_RIM + FOOT_ROOM * 0.5
 		_left_pill.draw(_heart_layer, Vector2(size.x * 0.5, foot), _left_drawn, _now())
+		_frenzy_foot = foot
 	if max_moves > 0 and _cell > 0.0:
 		_moves_pill.draw(_heart_layer, Vector2(size.x * 0.5, _hearts_y), moves_left, _now())
 		return
@@ -3393,6 +3547,7 @@ func try_again() -> void:
 	_gen += 1
 	_forget()
 	_break_streak()
+	_groups = []
 	_clear_gags()
 	# Dealt first, so the planes' flights home and the clouds' glide back
 	# (both in _fly_all_home) are not wiped by it.
@@ -3474,6 +3629,10 @@ func _after(delay: float, what: Callable) -> void:
 
 ## Every reward's clock back to nothing: a new board, or a restored one.
 func _reset_rewards() -> void:
+	_frenzy_end(false)
+	_heat = 0.0
+	_heat_uniforms()
+	_groups = []
 	_streak = 0
 	_streak_gen += 1
 	_gag_until = 0.0
@@ -3539,7 +3698,10 @@ func _on_launched(i: int, gag: int) -> void:
 	_streak += 1
 	var count := _streak
 	var gen := _streak_gen
-	if count >= 2:
+	_frenzy_launch(head)
+	if _frenzy:
+		_frenzy_note(count)
+	elif count >= 2:
 		var step: int = COMBO_STEPS[mini(count - 2, COMBO_STEPS.size() - 1)]
 		_after(0.06, func() -> void:
 			if gen == _streak_gen:
@@ -3559,6 +3721,205 @@ func _on_launched(i: int, gag: int) -> void:
 	_start_gag(i, gag)
 	_life_layer.queue_redraw()
 
+# --- the frenzy ---
+
+## A launch, tapped or chained, with the head it left from. Lights the frenzy,
+## feeds it, and starts the chain from a tap.
+func _frenzy_launch(head: Vector2) -> void:
+	var t := _now()
+	if not _chaining:
+		_tap_times.append(t)
+		while t - _tap_times[0] > FRENZY_SPAN:
+			_tap_times.pop_front()
+		if not _frenzy and _tap_times.size() >= FRENZY_START:
+			_frenzy_start()
+	if not _frenzy:
+		return
+	_frenzy_count += 1
+	_frenzy_gauge = minf(1.0, _frenzy_gauge + (FRENZY_LINK if _chaining else FRENZY_TAP))
+	var level := _frenzy_level
+	while level + 1 < FRENZY_AT.size() and _frenzy_count >= int(FRENZY_AT[level + 1]):
+		level += 1
+	if level != _frenzy_level:
+		_frenzy_level = level
+		fx.cue("frenzy_in", pow(2.0, float(level * 2) / 12.0), 0.0, 0)
+		fx.ring(head, _cell * 4.0, Pal.SUN)
+	fx.ring(head, maxf(_cell * 1.4, 56.0), Pal.SUN_RAY)
+	if _chaining:
+		return
+	var gen := _chain_gen
+	var left: int = FRENZY_CHAIN[_frenzy_level]
+	_after(FRENZY_STEP, func() -> void: _chain_step(head, head, left, gen))
+
+## One link: the nearest plane to the touch that can go, as the board stands
+## now, so a plane the last link freed can be the next. Undo and the end of
+## the frenzy stop what is left of a chain through `_chain_gen`.
+func _chain_step(touch: Vector2, from: Vector2, left: int, gen: int) -> void:
+	if gen != _chain_gen or left <= 0 or not _frenzy or is_done() or busy():
+		return
+	var best := -1
+	# `_reach_to` measures in cells.
+	var near := FRENZY_REACH / _cell
+	var at := (touch - _origin) / _cell
+	for i in _state.free_planes():
+		var d := _reach_to(i, at)
+		if d < near:
+			near = d
+			best = i
+	if best < 0:
+		return
+	var cells: Array = _state.planes[best]["cells"]
+	var head := _centre(cells[cells.size() - 1])
+	_links.append({"a": from, "b": head, "at": _now()})
+	_chaining = true
+	_launch(best, _now(), true)
+	_chaining = false
+	_after(FRENZY_STEP, func() -> void: _chain_step(touch, head, left - 1, gen))
+
+func _frenzy_start() -> void:
+	_frenzy = true
+	_frenzy_level = 0
+	_frenzy_count = 0
+	_frenzy_gauge = 1.0
+	_beat_rate = float(FRENZY_RATE[0])
+	_beat_falling = false
+	fx.cue("frenzy_in", 1.0, 0.0, 0)
+	Music.hold(FRENZY_HOLD, true)
+	var path := "res://assets/sfx/planes/frenzy_beat.ogg"
+	if ResourceLoader.exists(path):
+		var stream: AudioStream = load(path)
+		if stream is AudioStreamOggVorbis:
+			stream.loop = true
+		_beat_player.stream = stream
+		_beat_player.pitch_scale = _beat_rate
+		_beat_player.volume_db = linear_to_db(0.05) + BEAT_DB
+		_beat_player.play()
+
+## The frenzy stops. `broke`: it was lost, and the beat stumbles and falls
+## away; otherwise (the win, a new board) it just goes.
+func _frenzy_end(broke: bool) -> void:
+	_tap_times = []
+	_chain_gen += 1
+	Music.hold(FRENZY_HOLD, false)
+	if not _frenzy:
+		return
+	_frenzy = false
+	_frenzy_gauge = 0.0
+	if broke:
+		_beat_falling = true
+		fx.cue("frenzy_out", 1.0, 0.0, 0)
+	elif _beat_player != null:
+		_beat_player.stop()
+
+## A launch's note up the scale, in key with the beat.
+func _frenzy_note(count: int) -> void:
+	var step: int = FRENZY_SCALE[count % FRENZY_SCALE.size()]
+	fx.cue("combo", pow(2.0, float(step) / 12.0) * _beat_rate, COMBO_DB, 0)
+
+## The gauge drains, the beat follows the level, the heat comes and goes.
+func _frenzy_tick(delta: float, t: float) -> void:
+	if _frenzy:
+		_frenzy_gauge -= delta / float(FRENZY_DRAIN[_frenzy_level])
+		if _frenzy_gauge <= 0.0:
+			_frenzy_end(true)
+	if _beat_player.playing:
+		if _beat_falling:
+			_beat_player.pitch_scale = maxf(0.5, _beat_player.pitch_scale - delta / BEAT_FALL)
+			_beat_player.volume_db -= delta / BEAT_FALL * 40.0
+			if _beat_player.volume_db <= -48.0:
+				_beat_player.stop()
+				_beat_falling = false
+		else:
+			_beat_rate = move_toward(_beat_rate, float(FRENZY_RATE[_frenzy_level]), delta)
+			_beat_player.pitch_scale = _beat_rate
+			_beat_player.volume_db = move_toward(_beat_player.volume_db, BEAT_DB, delta / BEAT_FADE * 26.0)
+	var wants := 0.0
+	if _frenzy:
+		wants = clampf(0.3 + 0.7 * float(_frenzy_count) / FRENZY_FULL, 0.0, 1.0)
+	var was := _heat
+	_heat = move_toward(_heat, wants, delta * (HEAT_RISE if wants > _heat else HEAT_FALL))
+	if _heat != was:
+		_heat_uniforms()
+	if _heat > 0.0:
+		# The quiver runs on the shader's clock, and a canvas left alone
+		# would not draw it.
+		queue_redraw()
+
+func _heat_uniforms() -> void:
+	if _heat_mat == null:
+		return
+	_heat_mat.set_shader_parameter("heat", _heat)
+	var q := 0.0
+	if _heat > 0.0 and not Motion.reduce:
+		q = lerpf(QUIVER.x, QUIVER.y, _heat) * clampf(_cell / FRENZY_CELL, 0.6, 1.2)
+	_heat_mat.set_shader_parameter("shake", q)
+
+## The hot glow round the screen, the chain's lines and the gauge.
+func _draw_frenzy(now: float, shown: Array) -> void:
+	if _heat <= 0.0 and _links.is_empty():
+		return
+	var inv := _life_layer.get_global_transform().affine_inverse()
+	var screen: Rect2 = inv * get_viewport_rect()
+	if _glow_mesh == null or _glow_rect != screen:
+		_glow_mesh = _build_glow(screen)
+		_glow_rect = screen
+	var hot := Color(1.0, 0.62, 0.16).lerp(Color(0.95, 0.25, 0.12), _heat)
+	var pulse := 1.0
+	if not Motion.reduce:
+		pulse = 0.8 + 0.2 * cos(now * TAU * 1.67 * _beat_rate)
+	_life_layer.draw_mesh(_glow_mesh, null, Transform2D.IDENTITY, Color(hot, (0.2 + 0.3 * _heat) * pulse))
+	shown.append(_glow_mesh)
+	var b := Face.Builder.new()
+	for l in _links:
+		var u: float = (now - float(l.at)) / FRENZY_LINK_TIME
+		b.stroke(PackedVector2Array([l.a, l.b]), maxf(4.0, _cell * 0.12),
+			Color(Pal.SUN, clampf(1.0 - u, 0.0, 1.0)), true)
+	if _frenzy and _frenzy_foot > 0.0:
+		var bar := FRENZY_BAR
+		var at := Vector2(size.x * 0.5 - bar.x * 0.5, _frenzy_foot - 52.0)
+		b.polygon(Face.Builder.round_rect(at - Vector2(3.0, 3.0), bar + Vector2(6.0, 6.0), bar.y * 0.5 + 3.0), Pal.LINE)
+		b.polygon(Face.Builder.round_rect(at, bar, bar.y * 0.5), Pal.SURFACE)
+		var fill := maxf(bar.y, bar.x * clampf(_frenzy_gauge, 0.0, 1.0))
+		b.polygon(Face.Builder.round_rect(at, Vector2(fill, bar.y), bar.y * 0.5), hot)
+	if not b.verts.is_empty():
+		var m := b.mesh()
+		shown.append(m)
+		_life_layer.draw_mesh(m, null)
+	if _frenzy and _frenzy_foot > 0.0:
+		var font: Font = CozyTheme.display(700)
+		var text := tr("PP_FRENZY_%d" % (_frenzy_level + 1))
+		var w := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 32).x
+		_life_layer.draw_string(font, Vector2(size.x * 0.5 - w * 0.5, _frenzy_foot - 64.0),
+			text, HORIZONTAL_ALIGNMENT_LEFT, -1, 32, hot.darkened(0.25))
+
+## The screen's four edges, white at the rim and clear inside: one mesh the
+## frenzy tints.
+func _build_glow(r: Rect2) -> ArrayMesh:
+	var o := r.position
+	var e := r.end
+	var g := FRENZY_GLOW
+	var outer := [o, Vector2(e.x, o.y), e, Vector2(o.x, e.y)]
+	var inner := [o + Vector2(g, g), Vector2(e.x - g, o.y + g), e - Vector2(g, g), Vector2(o.x + g, e.y - g)]
+	var verts := PackedVector2Array()
+	var cols := PackedColorArray()
+	var idx := PackedInt32Array()
+	for k in 4:
+		var n := verts.size()
+		verts.append_array(PackedVector2Array([outer[k], outer[(k + 1) % 4], inner[(k + 1) % 4], inner[k]]))
+		cols.append_array(PackedColorArray([Color.WHITE, Color.WHITE, Color(1, 1, 1, 0), Color(1, 1, 1, 0)]))
+		idx.append_array(PackedInt32Array([n, n + 1, n + 2, n, n + 2, n + 3]))
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_COLOR] = cols
+	arrays[Mesh.ARRAY_INDEX] = idx
+	var m := ArrayMesh.new()
+	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return m
+
+func _exit_tree() -> void:
+	Music.hold(FRENZY_HOLD, false)
+
 ## The streak's confetti counts: 5, 10, 20 and every 10 after.
 static func _confetti_at(count: int) -> bool:
 	return count == 5 or count == 10 or (count >= 20 and count % 10 == 0)
@@ -3567,6 +3928,7 @@ static func _confetti_at(count: int) -> bool:
 ## closing in, the hearts running out. The bubble deflates, and a note the
 ## streak still had to play is dropped.
 func _break_streak() -> void:
+	_frenzy_end(true)
 	_streak = 0
 	_streak_gen += 1
 	if _combo_n >= COMBO_FROM and _combo_out_at == -INF:
@@ -3898,7 +4260,9 @@ func _tick_life(now: float) -> bool:
 	_love = _love.filter(func(l): return now < float(l.t) + LOVE_TIME)
 	_birds = _birds.filter(func(b): return now < float(b.t) + float(b.end))
 	var party := not Motion.reduce and now >= _party_at - 0.05 and now < _party_at + PARTY_TIME + 0.5
-	return not (_love.is_empty() and _birds.is_empty()) or party \
+	_links = _links.filter(func(l): return now < float(l.at) + FRENZY_LINK_TIME)
+	return not (_love.is_empty() and _birds.is_empty()) or party or _heat > 0.0 \
+		or not _links.is_empty() \
 		or (_combo_n >= COMBO_FROM and (now - _combo_at < COMBO_HOLD + 0.1 or _combo_out_at > -INF)) \
 		or (now >= _stamp_at and now - _stamp_at < STAMP_DROP * 2.0 + 0.1)
 
@@ -3911,6 +4275,7 @@ func _draw_life() -> void:
 		return
 	var now := _now()
 	var shown: Array = []
+	_draw_frenzy(now, shown)
 	if not _love.is_empty():
 		var mesh := _love_heart()
 		shown.append(mesh)

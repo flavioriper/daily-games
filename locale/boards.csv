@@ -3841,3 +3841,6 @@ SB_COUNT_ONE,1 move · shortest %d,1 jogada · mínimo %d,1 jugada · mínimo %d
 SB_COUNT,%d moves · shortest %d,%d jogadas · mínimo %d,%d jugadas · mínimo %d
 SB_WIN_MOVES,Every drop in %d moves · shortest %d.,Todas as gotas em %d movimentos · mínimo %d.,Todas las gotas en %d movimientos · mínimo %d.
 HTP_SB_READ_CAP,First press: the bulb rings the piece the light needs,Primeiro toque: a lâmpada marca a peça de que a luz precisa,Primer toque: la bombilla marca la pieza que necesita la luz
+PP_FRENZY_1,Frenzy!,Frenesi!,¡Frenesí!
+PP_FRENZY_2,Frenzy x2!,Frenesi x2!,¡Frenesí x2!
+PP_FRENZY_3,Frenzy x3!,Frenesi x3!,¡Frenesí x3!

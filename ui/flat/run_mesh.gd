@@ -42,6 +42,9 @@ var _fc := PackedColorArray()
 var _fi := PackedInt32Array()
 var _tv := PackedVector2Array()
 var _tc := PackedColorArray()
+## Each laid vertex's UV, when a piece was stamped: what a shader reads to
+## tell one piece from another with no instance uniform (Paper Planes' heat).
+var _uvs := PackedVector2Array()
 
 ## `make(id)` draws shape `id` about its origin into a Face.Builder, in slot
 ## colours.
@@ -60,6 +63,17 @@ func reset() -> void:
 	_offsets = {}
 	_tail_offsets = {}
 	_fixed = 0
+	_uvs = PackedVector2Array()
+
+## Gives the last `count` vertices of run (`part`, `index`) the UV `uv`, kept
+## until the next reset. Call it once the runs are laid.
+func stamp(part: int, index: int, uv: Vector2, count: int) -> void:
+	var run: Vector2i = _runs.get(Vector2i(part, index), Vector2i(0, -1))
+	if run.y <= 0:
+		return
+	_uvs.resize(_fixed)
+	for k in range(run.x + maxi(run.y - count, 0), run.x + run.y):
+		_uvs[k] = uv
 
 ## Draws its shapes from `other`'s cache and adds to it: two meshes put
 ## together from the same shapes, one with runs and one without (Paper
@@ -249,6 +263,11 @@ func mesh() -> ArrayMesh:
 	arrays[Mesh.ARRAY_VERTEX] = _fv
 	arrays[Mesh.ARRAY_COLOR] = _fc
 	arrays[Mesh.ARRAY_INDEX] = _fi
+	if not _uvs.is_empty():
+		# The tail is nobody's piece: zero, which a shader reads as no piece.
+		var uv := _uvs
+		uv.resize(_fv.size())
+		arrays[Mesh.ARRAY_TEX_UV] = uv
 	var m := ArrayMesh.new()
 	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	return m

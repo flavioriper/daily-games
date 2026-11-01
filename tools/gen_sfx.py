@@ -1055,6 +1055,13 @@ SETS = {
     # launch; Insane is Windy Day, and `drift` rides every launch there, so it
     # is short and very quiet.
     "planes": {
+        # The frenzy (2026-11-01). `frenzy_beat` is a sixteen-pop riff of the
+        # token, a seamless loop at 100 BPM that the board plays faster by
+        # pitch_scale, so the rhythm is sample-tight on a phone at any frame
+        # rate; bank takes only.
+        "frenzy_beat": ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -9, FOLEY, "bank:token", "cut:2.4", "notes:0.15:-5,7,3,7,-5,7,5,7,-5,7,3,7,-3,10,7,10", "loop"),
+        "frenzy_in":   ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -10, FOLEY, "bank:wrap", "cut:0.32", "notes:0.07:0,4,7,12", "tight"),
+        "frenzy_out":  ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -12, FOLEY, "bank:lip", "cut:0.4", "notes:0.11:3,0,-4", "tight"),
         # Redone 2026-10-10 against the cozy rules (docs/agents/sound.md), the
         # seventeenth set of the redo, with Quilt's above. Kept from the
         # first set, as they were: refuse, undo, hint, heart_lost, heart_back
