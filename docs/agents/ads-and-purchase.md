@@ -188,3 +188,14 @@ stated before the 3D game left.
   standing, `idle_fps 0.0`, in the sprout's old 128 px box. It is a child of the
   sheet's hero plate, so it lives and goes with the sheet; a held portrait, it
   draws only when shown.
+
+- **The banner and the phone's keyboard** (2026-11-01; the user's shot of a
+  banner floating mid-screen on Pearl Dive after Hidden Word): the Android
+  plugin's `getSafeArea()` starts from `getWindowVisibleDisplayFrame`, which
+  the keyboard shortens, and `bottomMargin` is the window's height less that.
+  `show()` re-places it and every banner refresh called `show()`; the app is
+  immersive, so the window never resizes for the keyboard and the plugin's
+  layout listener did not put it back. `core/ads.gd` now shows only a hidden
+  banner and, Android only, calls `set_position(BOTTOM)` `KEYBOARD_SETTLE`
+  after `virtual_keyboard_get_height()` reaches 0. Read from the plugin's
+  bytecode (5.1.0); no device was attached, so not yet seen on a phone.

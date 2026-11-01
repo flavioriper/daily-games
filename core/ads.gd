@@ -72,8 +72,17 @@ const AD_MAX_AGE := 55.0 * 60.0
 var _interstitial_at := 0.0
 var _rewarded_at := 0.0
 var _stale: Timer
+## The Android plugin stands the banner on the window's visible frame, which
+## the phone's keyboard shortens, and only asks again on a layout change. The
+## app is immersive, so the window never resizes for the keyboard: a banner
+## placed while it was up stayed in mid-screen once it went down. The height
+## animates down to 0, then the frame needs a moment to catch up.
+const KEYBOARD_SETTLE := 0.25
+var _keyboard_up := false
+var _settle := 0.0
 
 func _ready() -> void:
+	set_process(false)
 	reload_state()
 	if OS.is_debug_build():
 		_fake = maxf(0.0, OS.get_environment("ADS_FAKE_BANNER").to_float())
@@ -224,6 +233,7 @@ func _load_banner() -> void:
 		return
 	var size := AdSize.get_current_orientation_anchored_adaptive_banner_ad_size(AdSize.FULL_WIDTH)
 	_ad_view = AdView.new(unit, size, AdPosition.BOTTOM)
+	set_process(OS.get_name() == "Android")
 	# The iOS plugin puts its native view on the window the moment it is
 	# created, loaded or not, and an empty banner view still swallows every
 	# touch in its band: with no fill the bottom of the screen went dead under
@@ -234,7 +244,10 @@ func _load_banner() -> void:
 	listener.on_ad_loaded = func() -> void:
 		if _removed or _ad_view == null:
 			return
-		_ad_view.show()
+		# Every refresh lands here, and show() places the banner: only a hidden
+		# one is shown, or a refresh under the keyboard parks it on top of it.
+		if not _banner_visible:
+			_ad_view.show()
 		_set_banner(true, float(_ad_view.get_height_in_pixels()))
 		Analytics.track("ad_banner_loaded")
 	listener.on_ad_failed_to_load = func(error: LoadAdError) -> void:
@@ -245,6 +258,24 @@ func _load_banner() -> void:
 	listener.on_ad_impression = func() -> void: Analytics.track("ad_banner_impression")
 	_ad_view.ad_listener = listener
 	_ad_view.load_ad(ad_request())
+
+func _process(delta: float) -> void:
+	_watch_keyboard(DisplayServer.virtual_keyboard_get_height(), delta)
+
+## Once the keyboard has been down a moment, the banner is placed afresh.
+func _watch_keyboard(height: int, delta: float) -> void:
+	if height > 0:
+		_keyboard_up = true
+		_settle = 0.0
+		return
+	if _keyboard_up:
+		_keyboard_up = false
+		_settle = KEYBOARD_SETTLE
+	if _settle <= 0.0:
+		return
+	_settle -= delta
+	if _settle <= 0.0 and _ad_view != null and not _removed:
+		_ad_view.set_position(AdPosition.BOTTOM)
 
 ## remove_ads was bought: the banner goes now and is never asked for again.
 func remove() -> void:
