@@ -1453,3 +1453,11 @@ as this board's own words have always meant: speed the flight (`FLY_SPEED` 3.6,
 `FLY_BASE` 0.167, every flight 20% quicker) and the gap the take-offs'
 (`RUN_STEP` 0.0375). The case's slide and the landing tick are as they were.
 
+## No hop on a whole colour, the win at once (2026-11-02)
+
+The user: "remove the jump movement when color is filled on jewel box, also
+when the last piece fill, show the animation, it's taking too long to show it
+after all pieces are in place". `_whole` keeps its sparkles, cue and word, and
+no jewel hops. The win and a part sewn start the moment the last jewel has
+merged, without `SOLVE_DELAY`: `win_lead()` is to the last merge alone.
+

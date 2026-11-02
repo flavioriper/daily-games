@@ -204,10 +204,9 @@ const MERGE_DB := -4.0
 const MERGE_SPARKLES := 5
 ## A button out of the tin leaves once its patch is bare.
 const TIN_LAG := 0.16
-const WHOLE_STEP := 0.03
-## On a big picture a colour whole hops this many squares out from the
-## tapped one and no further, and sparkles this often at the most; a run
-## rings this many times.
+## On a big picture a colour whole sparkles this many squares out from the
+## tapped one and no further, and this often at the most; a run rings this
+## many times.
 const WHOLE_REACH := 6
 const SPARKLES := 12
 const RINGS := 8
@@ -1847,30 +1846,25 @@ func _landed(kind: int, where: int, landed: Array, of: int) -> void:
 	_busy_for(Motion.BUMP_TIME)
 	_request()
 
-## A colour is whole: its buttons hop outward from the tapped patch.
+## A colour is whole: sparkles, the cue and the word. Its jewels do not hop
+## (the user, 2026-11-02: "remove the jump movement when color is filled").
 func _whole(which: Array, from: int) -> void:
 	if is_done():
 		return
-	var now := _now()
 	var origin: Vector2i = state.xy(from)
-	var far := 0
 	var big := _big()
 	var sparkles := 0
 	for i in state.slot.size():
 		if which.has(state.slot[i]):
 			var d: Vector2i = state.xy(i) - origin
 			var ring := maxi(absi(d.x), absi(d.y))
-			# a sky of four hundred does not hop to its far corner
+			# a sky of four hundred does not sparkle to its far corner
 			if big and ring > WHOLE_REACH:
 				continue
-			far = maxi(far, ring)
-			_hop_at[i] = now + ring * WHOLE_STEP
-			_mark(i)
 			if not Motion.reduce and (i * 7) % 5 == 0 and sparkles < SPARKLES and _in_sight(i):
 				sparkles += 1
 				fx.sparkle(_at(i), Pal.SUN)
 	fx.cue("whole")
-	_busy_for(Motion.SOLVE_TIME + far * WHOLE_STEP + 0.1)
 	_tell(tr("BB_WHOLE"), from)
 	_request()
 
@@ -2052,7 +2046,9 @@ func _on_solved() -> void:
 	_solved_at = now
 	_final_taps = state.taps
 	_final_left = moves_left - (1 if max_moves > 0 else 0)
-	var lag := 0.0 if Motion.reduce else maxf(0.0, _last_land - now) + Motion.SOLVE_DELAY
+	# right as the last jewel is in (the user, 2026-11-02: "it's taking too
+	# long to show it after all pieces are in place"): no SOLVE_DELAY
+	var lag := 0.0 if Motion.reduce else maxf(0.0, _last_land - now)
 	_win_lag = lag
 	# the picture is seen whole for its win
 	if zoom.zoomed():
@@ -2085,7 +2081,7 @@ func _part_sewn(last: float) -> void:
 	_pressed = -1
 	_unhold()
 	_combo_n = 0
-	var lag := 0.0 if Motion.reduce else maxf(0.0, last - now) + Motion.SOLVE_DELAY
+	var lag := 0.0 if Motion.reduce else maxf(0.0, last - now)
 	if zoom.zoomed():
 		zoom.toggle()
 	_hop_all(now + lag)
