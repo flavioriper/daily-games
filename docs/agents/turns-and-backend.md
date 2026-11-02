@@ -657,7 +657,8 @@ deployed; the models stay Anthropic's by default until the user moves them.
 
 Set by environment, nothing changes when they are unset. `DAILY_MAP_MODEL`
 reads drawings into jellies and hoops (it was the reviewer), and
-`DAILY_MAP_RESCUE_MODEL` takes the last map ask of a thing's last drawing.
+`DAILY_MAP_TIERS` (cheapest first) climbs models by the judge's score
+(`ladder.ts`). `DAILY_THEME` names the day's theme.
 `DAILY_FINAL_MODEL` sees only what the reviewer would keep, and its verdict is
 the one a picture ships on (`eye.ts` `judge`). `NEON_AI_GATEWAY_TOKEN` and
 `NEON_AI_GATEWAY_BASE_URL` send `anthropic/*` models through the Neon AI

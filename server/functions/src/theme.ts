@@ -175,13 +175,15 @@ export function themed(day: unknown): string[] {
  * The theme to publish, or null. `recent` is themed() of the last days.
  * Never throws.
  */
+const asked = (): string => (process.env.DAILY_THEME ?? "").trim();
+
 export async function makeTheme(day: number, recent: string[] = []): Promise<Theme | null> {
   if (!available()) return null;
   for (let attempt = 0; attempt < TRIES; attempt++) {
     try {
       const got = await ask<Omit<Theme, "v">>({
         system: WRITER,
-        prompt: `The theme for day ${day}.` + (recent.length > 0 ?
+        prompt: `The theme for day ${day}.` + (asked() === "" ? "" : ` The theme must be ${asked()}.`) + (recent.length > 0 ?
           `\n\nThe last days had these, so not these themes, nothing close to them, and none of their things:\n${recent.join("\n")}` : ""),
         schema: THEME_SCHEMA,
         role: "write",

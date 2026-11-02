@@ -116,12 +116,6 @@ export function modelFor(role: Role = "write"): string {
   return (process.env.DAILY_MODEL ?? "").trim() || DEFAULT_MODEL;
 }
 
-/** The model of a drawing's last map ask, when the cheap mapper has failed
- *  all the others; undefined leaves that ask with the mapper. */
-export function rescueModel(): string | undefined {
-  return (process.env.DAILY_MAP_RESCUE_MODEL ?? "").trim() || undefined;
-}
-
 /** The Neon AI Gateway's credential: set, Anthropic's models are asked
  *  through it, on the prepaid credits there, with the same SDK. */
 function neonToken(): string {
@@ -237,6 +231,15 @@ let anthropic: Anthropic | null = null;
  *  pictures as base64 images, and a decline by a safety classifier rerun
  *  on the model the API picks for it (server-side fallback, the Opus
  *  models only). */
+/** A schema without the limits Anthropic's structured outputs turn down
+ *  (those pinned for Gemini, 2026-10-30); the callers check them anyway. */
+function held(s: unknown): unknown {
+  if (Array.isArray(s)) return s.map(held);
+  if (s === null || typeof s !== "object") return s;
+  const limits = ["minItems", "maxItems", "minLength", "maxLength", "minimum", "maximum"];
+  return Object.fromEntries(Object.entries(s).filter(([k, v]) => !limits.includes(k) || typeof v !== "number").map(([k, v]) => [k, held(v)]));
+}
+
 async function askAnthropic<T>(model: string, a: Ask): Promise<T> {
   const neon = neonToken() !== "";
   anthropic ??= new Anthropic(neon ?
@@ -253,7 +256,7 @@ async function askAnthropic<T>(model: string, a: Ask): Promise<T> {
     max_tokens: 32000,
     system: a.system,
     messages: [{role: "user", content: [...images, {type: "text", text: a.prompt}]}],
-    output_config: {effort: "medium", format: {type: "json_schema", schema: a.schema}},
+    output_config: {effort: "medium", format: {type: "json_schema", schema: held(a.schema) as Record<string, unknown>}},
     ...(opus ? {betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const} : {}),
   });
   const out = await stream.finalMessage();
