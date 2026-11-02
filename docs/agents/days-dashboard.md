@@ -717,3 +717,14 @@ drawing on `gemini-3-pro-image`. A square is 5.7 to 8.5 px at 1,024, and
 real output is softer than the synthetic: if the night's 128s are turned
 down as "finer drawing", ask Vertex for `imageConfig.imageSize: "2K"` on
 that band alone.
+
+## The big bands on the zoo day (2026-11-02)
+
+The zoo day kept no 48 and no 128, so Jewel Box's Insane dealt a bank Mountain
+Lake. The image model holds about 100 squares a side at 1K and at 2K, whatever
+is asked, and leaves the sprite about 70% of the image. 48 and 128 now draw at
+2K, told to fill the image, six tries a band, and the 128's least side is 96
+(`tools/beads.js`, `core/themed_pictures.gd`), a picture padded to that and no
+further: a 97 padded to 128 was 33% filled. Kept: toucan 48 (a 34 by 36 sprite
+padded), zoo gate 100. A build before this turns a side under 112 down and
+plays the 48 quartered. `cli.js bands <day.json> <size>...` redraws bands.

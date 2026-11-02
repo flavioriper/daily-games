@@ -322,7 +322,8 @@ export async function pixelBand(day: number, theme: Theme, i: number, sizes: Rec
         draft.error = "no squares found in it";
         continue;
       }
-      const got = Beads.cutOut(sn, colours, MARGIN, size);
+      // padded to the band's least, not its name: a 97 made 128 was 33% filled
+      const got = Beads.cutOut(sn, colours, MARGIN, Math.min(size, rule.side[0]));
       draft.snap = {cols: sn.cols, rows: sn.rows, pitch: Math.round(sn.pitch[0] * 10) / 10, mixed: sn.mixed,
         w: got.w, h: got.h, why: got.why};
       if (got.w !== undefined && got.h !== undefined) {
