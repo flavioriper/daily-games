@@ -99,6 +99,8 @@ static func jellies(date_key: int, band: int) -> Array:
 		if parts.is_empty():
 			continue
 		var m := Mould.build_parts("themed_" + String(got.get("id", "")), parts)
+		if not m.is_empty():
+			m["marks"] = Mould.marks_from_doc(got.get("marks"))
 		if Mould.unfit(m, band) == "" and not out.any(func(x: Dictionary) -> bool: return x.id == m.id):
 			out.append(m)
 	return out

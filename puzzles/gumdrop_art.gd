@@ -132,6 +132,7 @@ static func floor_of(m: Dictionary, u: float) -> ArrayMesh:
 static func gloss_of(m: Dictionary, u: float) -> ArrayMesh:
 	var b := Face.Builder.new()
 	var body := _scaled(m.outline, u)
+	_marks(b, m, u)
 	for line: PackedVector2Array in m.seams:
 		if line.size() >= 2:
 			b.stroke(_scaled(line, u), SEAM * u, Color(GEL, 0.9))
@@ -172,6 +173,7 @@ static func picture(m: Dictionary, u: float) -> ArrayMesh:
 	var want: Array = m.want
 	for c in m.cells.size():
 		b.polygon(_scaled(m.cells[c], u), FLAVOURS[int(want[c])])
+	_marks(b, m, u)
 	# the dark rim: the band between the outline and its inner offset, twice,
 	# as a closed stroke down the band's middle as wide as the band
 	for d: Array in [[1.2, 0.18], [2.4, 0.1]]:
@@ -216,6 +218,15 @@ static func picture(m: Dictionary, u: float) -> ArrayMesh:
 			b.ellipse(at + Vector2(r * 1.5, r * 0.55), r * 0.22, r * 0.13, Color(1, 1, 1, 0.55))
 			break
 	return b.mesh()
+
+## A themed jelly's eyes, noses and stripes: painted on, not poured.
+static func _marks(b: Face.Builder, m: Dictionary, u: float) -> void:
+	var names: Array = Mould.Flavour.keys().map(func(k: String) -> String: return k.to_lower())
+	for mark: Array in m.get("marks", []):
+		var at := names.find(String(mark[0]))
+		var col: Color = FLAVOURS[at] if at >= 0 else (Color("fff6e6") if mark[0] == "cream" else INK)
+		for shape: PackedVector2Array in mark[1]:
+			b.polygon(_scaled(shape, u), col)
 
 static func _scaled(p: PackedVector2Array, u: float) -> PackedVector2Array:
 	var out := PackedVector2Array()

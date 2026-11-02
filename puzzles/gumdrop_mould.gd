@@ -484,6 +484,21 @@ static func from_doc(doc) -> Array:
 		out.append([f, shapes])
 	return out
 
+## A jelly's marks from the night's document: [colour name, polygons] a mark,
+## painted over the tint, in the order given (2026-11-02). Nothing the band
+## counts; a bad one is left out, and the jelly plays without it.
+static func marks_from_doc(doc) -> Array:
+	var out: Array = []
+	if not doc is Array:
+		return out
+	for mark in doc:
+		if out.size() >= 12 or not mark is Dictionary:
+			continue
+		var parsed := from_doc([{"flavour": "cherry", "shapes": mark.get("shapes")}])
+		if not parsed.is_empty():
+			out.append([String(mark.get("flavour", "ink")), parsed[0][1]])
+	return out
+
 ## Whether a built themed jelly keeps its band's row of THEMED; "" when it
 ## does, else what it breaks (the probe prints it).
 static func unfit(m: Dictionary, band: int) -> String:

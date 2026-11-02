@@ -57,7 +57,7 @@ const EYE = (game: Game, drawing: boolean) => `You review pictures for a childre
 
 const RUBRIC: Record<Game, string> = {
   hoop: "A low-poly picture of the thing: the WHOLE thing is present with every part a child expects, in its true colours; the facets read as soft light and shade; nothing but the thing; it looks elegant and polished and faithful to the drawing.",
-  jelly: "A flat jelly of the thing in a few candy colours: the silhouette is sharp, clean and true to the thing so a child names it at once; the parts are big and well proportioned; no stray blobs, slivers or ragged edges; it looks elegant and polished.",
+  jelly: "A flat jelly of the thing in a few candy colours, which are a jelly's own and need not be the thing's (a purple penguin is fine; judge shapes, not true colours): the silhouette is sharp, clean and true to the thing so a child names it at once; the parts are big and well proportioned; no stray blobs, slivers or ragged edges; it looks elegant and polished.",
   pixel: "You are shown one small picture made of coloured squares, from a children's puzzle game: pixel art of very few squares, so it is rough. Say honestly what you see. \"wrong\" is an empty string unless the picture shows something that does not belong in a game for children, or a letter, a word or a logo. Roughness is not wrong.",
 };
 

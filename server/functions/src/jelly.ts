@@ -42,9 +42,19 @@ export interface Shape {
 }
 
 export interface Part {
-  flavour: Flavour;
+  flavour: Flavour | Paint;
   shapes: Shape[];
+  /** Painted on, not poured: an eye, a nose, a stripe (the user, 2026-11-02).
+   *  Any size; no rule of the band counts it. */
+  mark?: boolean;
 }
+
+/** A mark's colours besides the flavours'. */
+export const PAINTS = ["ink", "cream"] as const;
+export type Paint = typeof PAINTS[number];
+
+const poured = (parts: Part[]): Part[] => parts.filter((p) => p.mark !== true);
+const painted = (parts: Part[]): Part[] => parts.filter((p) => p.mark === true);
 
 export interface Jelly {
   /** The thing's id. */
@@ -52,6 +62,9 @@ export interface Jelly {
   name: {en: string; pt: string; es: string};
   /** The one underneath first. */
   parts: Part[];
+  /** Painted over it, as `flavour` and `shapes`; a build before them reads
+   *  the jelly without. */
+  marks?: Part[];
 }
 
 export interface JellyTry {
@@ -198,7 +211,7 @@ export function laid(parts: Part[], n: number): {at: Int32Array; chunks: number;
     }
     for (const piece of pieces(on, n)) {
       for (const k of piece) at[k] = chunk;
-      flavourOf.push(FLAVOURS.indexOf(part.flavour));
+      flavourOf.push(FLAVOURS.indexOf(part.flavour as Flavour));
       chunk++;
     }
   }
@@ -206,11 +219,12 @@ export function laid(parts: Part[], n: number): {at: Int32Array; chunks: number;
 }
 
 /** What is wrong with `parts` for `band`, "" when nothing is. */
-export function why(parts: unknown, band: number): string {
+export function why(given: unknown, band: number): string {
   const rule = RULES[band];
+  const parts = Array.isArray(given) ? poured(given as Part[]) : given;
   if (!Array.isArray(parts) || parts.length === 0 || parts.length > MOST_PARTS) return "parts";
   for (const p of parts as Part[]) {
-    if (typeof p !== "object" || p === null || !FLAVOURS.includes(p.flavour)) return "a flavour";
+    if (typeof p !== "object" || p === null || !FLAVOURS.includes(p.flavour as Flavour)) return "a flavour";
     if (!Array.isArray(p.shapes) || p.shapes.length === 0 || p.shapes.length > MOST_SHAPES) return "a part's shapes";
     for (const s of p.shapes) {
       if (typeof s !== "object" || s === null || !KINDS.includes(s.kind) || !Array.isArray(s.n)) return "a shape";
@@ -221,7 +235,7 @@ export function why(parts: unknown, band: number): string {
       if (polygon(s).some(([x, y]) => x < EDGE[0] || y < EDGE[0] || x > EDGE[1] || y > EDGE[1])) return "off the field";
     }
   }
-  const used = new Set((parts as Part[]).map((p) => FLAVOURS.indexOf(p.flavour)));
+  const used = new Set((parts as Part[]).map((p) => FLAVOURS.indexOf(p.flavour as Flavour)));
   if (used.size < rule.flavours[0] || used.size > rule.flavours[1]) return `${used.size} flavours`;
   if ([...used].filter((f) => f % 2 === 1).length < rule.mixed) return "too few mixed flavours";
   // The chunks as build() makes them: each part's shapes joined, a piece
@@ -250,13 +264,144 @@ export function why(parts: unknown, band: number): string {
   return "";
 }
 
+/** A shape moved and scaled about (cx, cy). */
+function scaled(s: Shape, k: number, cx: number, cy: number, dx: number, dy: number): Shape {
+  const x = (v: number) => cx + (v - cx) * k + dx, y = (v: number) => cy + (v - cy) * k + dy;
+  if (s.kind === "ell") return {kind: s.kind, n: [x(s.n[0]), y(s.n[1]), s.n[2] * k, s.n[3] * k, ...s.n.slice(4)]};
+  if (s.kind === "box") return {kind: s.kind, n: [x(s.n[0]), y(s.n[1]), s.n[2] * k, s.n[3] * k, ...s.n.slice(4).map((v) => v * k)]};
+  return {kind: s.kind, n: s.n.map((v, i) => i % 2 === 0 ? x(v) : y(v))};
+}
+
+/** Every shape scaled by up to `k`, centred on the field, inside EDGE. */
+function fitted(parts: Part[], k: number): Part[] {
+  const pts = parts.flatMap((p) => p.shapes.flatMap(polygon));
+  if (pts.length === 0) return parts;
+  const xs = pts.map((q) => q[0]), ys = pts.map((q) => q[1]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const room = EDGE[1] - EDGE[0] - 1;
+  const fit = Math.min(k, room / Math.max(x1 - x0, y1 - y0, 1));
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  return parts.map((p) => ({...p, shapes: p.shapes.map((s) => scaled(s, fit, cx, cy, 50 - cx, 50 - cy))}));
+}
+
+/** How much of the sim's grid the jelly covers, and what each chunk shows. */
+function shown(fine: Int32Array, chunks: number): {share: number; shows: number[]} {
+  const shows = new Array(chunks).fill(0);
+  let covered = 0;
+  for (let i = 0; i < GRID * GRID; i++) {
+    const x = Math.floor((i % GRID + 0.5) * 100 / GRID), y = Math.floor((Math.floor(i / GRID) + 0.5) * 100 / GRID);
+    const c = fine[y * 100 + x];
+    if (c >= 0) { shows[c]++; covered++; }
+  }
+  return {share: covered / (GRID * GRID), shows};
+}
+
+/** The part's shape that made chunk `c`, read off laid()'s order. */
+function chunkOf(parts: Part[], fine: Int32Array, c: number): {part: Part; shapes: Shape[]} | null {
+  const on = poured(parts);
+  let seen = 0;
+  for (const part of on) {
+    const here = laid([part], 100).chunks;
+    if (c < seen + here) {
+      const has = (s: Shape) => polygon(s).some(([x, y]) => {
+        const k = Math.min(99, Math.max(0, Math.floor(y))) * 100 + Math.min(99, Math.max(0, Math.floor(x)));
+        return fine[k] === c;
+      });
+      const shapes = part.shapes.filter(has);
+      return {part, shapes: shapes.length > 0 ? shapes : part.shapes};
+    }
+    seen += here;
+  }
+  return null;
+}
+
+/** A shape's chunk made a mark if it lies on the jelly, and dropped if not. */
+function painting(parts: Part[], got: {part: Part; shapes: Shape[]}): Part[] {
+  const left = parts.map((p) => p === got.part ? {...p, shapes: p.shapes.filter((s) => !got.shapes.includes(s))} : p)
+    .filter((p) => p.shapes.length > 0);
+  const under = laid(poured(left), 100);
+  const onIt = got.shapes.filter((s) => {
+    const q = polygon(s);
+    const x = q.reduce((a, v) => a + v[0], 0) / q.length, y = q.reduce((a, v) => a + v[1], 0) / q.length;
+    return under.at[Math.floor(y) * 100 + Math.floor(x)] >= 0;
+  });
+  return onIt.length === 0 ? left : [...left, {flavour: got.part.flavour, shapes: onIt, mark: true}];
+}
+
+/** The ring of flavours: the nearest of each to the next. */
+const NEXT_TO = (f: number, g: number) => Math.min((f - g + 6) % 6, (g - f + 6) % 6);
+
+/**
+ * What the board's rules would refuse for a reason a model should not be
+ * paid to mend: too many points, a chunk too small (made a mark), too many
+ * chunks, flavours over the band's, the wrong share of the field. Over half
+ * the tries on the zoo day were turned down for these alone (2026-11-02).
+ * why() still judges what comes back.
+ */
+export function repaired(given: Part[], band: number): Part[] {
+  const rule = RULES[band];
+  let parts: Part[] = given.map((p) => ({...p, shapes: p.shapes.map((s) => {
+    if (s.kind === "ell" || s.kind === "box") return s;
+    let n = s.n.length % 2 === 1 ? s.n.slice(0, -1) : s.n;
+    if (n.length > 2 * MOST_POINTS) {
+      const pts = n.length / 2;
+      n = Array.from({length: MOST_POINTS}, (_, i) => Math.floor(i * pts / MOST_POINTS)).flatMap((i) => [n[2 * i], n[2 * i + 1]]);
+    }
+    return {...s, n};
+  }).filter((s) => s.kind === "ell" || s.kind === "box" || s.n.length >= 6)})).filter((p) => p.shapes.length > 0);
+  parts = parts.filter((p) => p.mark === true ? [...FLAVOURS, ...PAINTS].includes(p.flavour as Flavour) : FLAVOURS.includes(p.flavour as Flavour));
+  // the phone turns down a shape thinner than 2 and a part of over 8
+  parts = parts.map((p) => p.mark !== true ? p : {...p, shapes: p.shapes.slice(0, MOST_SHAPES).map((s) =>
+    s.kind === "ell" || s.kind === "box" ? {...s, n: [s.n[0], s.n[1], Math.max(2, s.n[2]), Math.max(2, s.n[3]), ...s.n.slice(4)]} : s)});
+  parts = fitted(parts, 1);
+  // too many flavours: the least used goes to its nearest neighbour
+  for (;;) {
+    const on = poured(parts);
+    const area = new Map<Flavour, number>();
+    const fine = laid(on, 100);
+    for (let i = 0; i < fine.at.length; i++) {
+      if (fine.at[i] >= 0) {
+        const f = FLAVOURS[fine.flavourOf[fine.at[i]]];
+        area.set(f, (area.get(f) ?? 0) + 1);
+      }
+    }
+    if (area.size <= rule.flavours[1] || area.size < 2) break;
+    const least = [...area].sort((a, b) => a[1] - b[1])[0][0];
+    const i = FLAVOURS.indexOf(least);
+    const to = [...area.keys()].filter((f) => f !== least).sort((a, b) =>
+      NEXT_TO(i, FLAVOURS.indexOf(a)) - NEXT_TO(i, FLAVOURS.indexOf(b)))[0];
+    parts = parts.map((p) => p.mark !== true && p.flavour === least ? {...p, flavour: to} : p);
+  }
+  // the share of the field first, so a chunk is judged at its final size
+  const share = (ps: Part[]) => shown(laid(poured(ps), 100).at, 1000).share;
+  const was = share(parts);
+  if (was > 0 && was < COVER[0] + 0.02) parts = fitted(parts, Math.sqrt((COVER[0] + 0.06) / was));
+  else if (was > COVER[1] - 0.02) parts = fitted(parts, Math.sqrt((COVER[1] - 0.06) / was));
+  // too small to pour, or one chunk too many, or apart from the rest: a mark
+  for (let n = 0; n < 12; n++) {
+    const fine = laid(poured(parts), 100);
+    if (fine.chunks <= rule.chunks[0]) break;
+    const {shows} = shown(fine.at, fine.chunks);
+    const islands = pieces(Array.from(fine.at, (c) => c >= 0), 100).sort((a, b) => b.length - a.length);
+    const apart = islands.length > 1 && islands[1].length < islands[0].length * 0.2 ? fine.at[islands[1][0]] : -1;
+    const small = shows.map((k, c) => [k, c]).sort((a, b) => a[0] - b[0])[0];
+    const c = apart >= 0 ? apart : small[0] < LEAST_SQUARES || fine.chunks > rule.chunks[1] ? small[1] : -1;
+    if (c < 0) break;
+    const got = chunkOf(parts, fine.at, c);
+    if (got === null) break;
+    parts = painting(parts, got);
+  }
+  return parts.map((p) => p.mark !== true ? p : {...p, shapes: p.shapes.map((s) =>
+    s.kind === "ell" || s.kind === "box" ? {...s, n: [s.n[0], s.n[1], Math.max(2, s.n[2]), Math.max(2, s.n[3]), ...s.n.slice(4)]} : s)});
+}
+
 /** The bead letters a flavour is shown in to the blind look. */
 const BEAD = ["r", "o", "y", "i", "b", "u"];
 
 /** The jelly as bead rows of 32, in its flavours' colours. */
 export function beads(parts: Part[]): string[] {
   const n = 32;
-  const {at, flavourOf} = laid(parts, n);
+  const {at, flavourOf} = laid(poured(parts), n);
   const rows: string[] = [];
   for (let y = 0; y < n; y++) {
     let row = "";
@@ -298,7 +443,8 @@ const SCHEMA = {
         additionalProperties: false,
         required: ["flavour", "shapes"],
         properties: {
-          flavour: {type: "string", enum: [...FLAVOURS]},
+          flavour: {type: "string", enum: [...FLAVOURS, ...PAINTS]},
+          mark: {type: "boolean"},
           shapes: {
             type: "array",
             items: {
@@ -319,7 +465,7 @@ function asked(thing: Thing, band: number, last: string): string {
   const flavours = rule.flavours[0] === rule.flavours[1] ? `exactly ${rule.flavours[0]}` : `${rule.flavours[0]} to ${rule.flavours[1]}`;
   const mixed = rule.mixed === 0 ? "" : ` At least ${rule.mixed} of them must be orange, lime or grape.`;
   const again = last === "" ? "" : ` Your last try was turned down: ${last}.`;
-  return `Design the jelly of: ${thing.draw} Use ${flavours} different flavours.${mixed} It comes to ${rule.chunks[0]} to ${rule.chunks[1]} chunks.${again} Think about the shape first, then answer "parts".`;
+  return `${MARKS} Design the jelly of: ${thing.draw} Use ${flavours} different flavours.${mixed} It comes to ${rule.chunks[0]} to ${rule.chunks[1]} chunks.${again} Think about the shape first, then answer "parts".`;
 }
 
 /** Moulds a band's day has (gumdrop_mould.gd BANDS): each is a thing of
@@ -354,7 +500,11 @@ export async function makeJellies(day: number, theme: Theme, only?: number,
       const got = await drawJelly(day, theme, thing, band, d, keep, deadline);
       ports.push(got.port);
       const parts = got.parts ?? await writeJelly({day, theme, thing, band, deadline, port: got.port}, tries);
-      if (parts !== null) list.push({id: thing.id, name: {en: thing.name, pt: thing.pt, es: thing.es}, parts});
+      if (parts !== null) {
+        const marks = painted(parts);
+        list.push({id: thing.id, name: {en: thing.name, pt: thing.pt, es: thing.es}, parts: poured(parts),
+          ...(marks.length > 0 ? {marks: marks.map(({flavour, shapes}) => ({flavour, shapes}))} : {})});
+      }
     }
     if (list.length > 0) jellies[band] = list;
   }
@@ -582,6 +732,10 @@ export const JELLY_BUDGET_MS = 12 * 60 * 1000;
 /** The fewest points a polygon is asked for (the checker takes three), so
  *  the soft rounding has corners to follow the drawing by. */
 const LEAST_POINTS = 6;
+/** Told to every writer of a jelly: the rules' least chunk is too big for an
+ *  eye, and both reviewers marked jellies down for having none (2026-11-02). */
+const MARKS = `The details go in as marks: a part with "mark": true is painted on top and not poured, in ink (dark), cream, or a flavour's colour, as small as you like, and no rule below counts it. Give any creature its eyes, and the small features that make it what it is (a nose, a beak, stripes, whiskers), as marks; keep the poured chunks big and simple. At most 10 mark parts.`;
+
 /** The thinnest a shape is asked to be anywhere, in the field's units: a
  *  thinner one shows under LEAST_SQUARES of the sim's grid. */
 const THINNEST = 6;
@@ -589,6 +743,7 @@ const BAND_NAMES = ["Easy", "Medium", "Hard", "Insane"];
 /** The render the eye is shown: the jelly flat on the card's cream. */
 const RENDER_SIZE = 600;
 const CREAM = "#f3ead8";
+const PAINT_HEX: Record<Paint, string> = {ink: "#3b3340", cream: "#fff6e6"};
 const INK_HEX = INKS.map((c) => "#" + c.map((v) => v.toString(16).padStart(2, "0")).join(""));
 
 /** The spike's ask (spike_jelly_map.js, 2026-10-21); its refusals were all
@@ -600,8 +755,9 @@ Write the jelly as a list of parts. A part has a flavour, one of: cherry (red), 
 
 const MAP_SCHEMA = {type: "object", additionalProperties: false, required: ["parts"], properties: {
   parts: {type: "array", items: {type: "object", additionalProperties: false, required: ["flavour", "shapes"], properties: {
-    flavour: {type: "string", enum: [...FLAVOURS]},
-    shapes: {type: "array", items: {type: "object", additionalProperties: false, required: ["kind", "n"], properties: {kind: {type: "string", enum: ["soft"]}, n: {type: "array", items: {type: "number"}}}}},
+    flavour: {type: "string", enum: [...FLAVOURS, ...PAINTS]},
+    mark: {type: "boolean"},
+    shapes: {type: "array", items: {type: "object", additionalProperties: false, required: ["kind", "n"], properties: {kind: {type: "string", enum: ["soft", "ell"]}, n: {type: "array", items: {type: "number"}}}}},
   }}},
 }};
 
@@ -633,7 +789,7 @@ export function asParts(got: unknown): Part[] | null {
       if (typeof k.kind !== "string" || !Array.isArray(k.n) || !k.n.every(isNumber)) return null;
       shapes.push({kind: k.kind as Shape["kind"], n: k.n.slice()});
     }
-    out.push({flavour: q.flavour as Flavour, shapes});
+    out.push({flavour: q.flavour as Flavour, shapes, ...((p as {mark?: unknown}).mark === true ? {mark: true} : {})});
   }
   return out;
 }
@@ -650,7 +806,7 @@ export async function mapJelly(drawing: Drawing, thing: Thing, band: number, ref
     model,
     schema: MAP_SCHEMA,
     images: [dataUrl(grid.mime, grid.bytes)],
-    prompt: `The drawing is of ${thing.name}. The band is ${BAND_NAMES[band]}, and the board's checker refuses a jelly that breaks any of these: ${mapRules(band)}.${refused === "" ? "" : `\n${refused}`}\nWrite the jelly.`,
+    prompt: `${MARKS} The drawing is of ${thing.name}. The band is ${BAND_NAMES[band]}, and the board's checker refuses a jelly that breaks any of these: ${mapRules(band)}.${refused === "" ? "" : `\n${refused}`}\nWrite the jelly.`,
   });
   return asParts(got);
 }
@@ -721,7 +877,8 @@ function checked(parts: Part[] | null, band: number, t: PortTry): boolean {
 async function judged(c: Ctx, parts: Part[], t: PortTry, drawing?: Drawing): Promise<Buffer | null> {
   let png: Buffer;
   try {
-    const polys = parts.flatMap((p) => p.shapes.map((s) => ({pts: polygon(s), fill: INK_HEX[FLAVOURS.indexOf(p.flavour)]})));
+    const polys = [...poured(parts), ...painted(parts)].flatMap((p) => p.shapes.map((s) => ({pts: polygon(s),
+      fill: PAINT_HEX[p.flavour as Paint] ?? INK_HEX[FLAVOURS.indexOf(p.flavour as Flavour)]})));
     png = renderPolygons(polys, RENDER_SIZE, CREAM);
   } catch (e) {
     t.error = `render: ${said(e)}`;
@@ -759,7 +916,10 @@ async function mapTry(c: Ctx, drawing: Drawing, refused: string, t: PortTry, see
     t.error = `ask: ${said(e)}`;
     return null;
   }
-  if (parts !== null) seen.set(t, parts);
+  if (parts !== null) {
+    parts = repaired(parts, c.band);
+    seen.set(t, parts);
+  }
   if (!checked(parts, c.band, t)) return null;
   const render = await judged(c, parts!, t, drawing);
   return render === null ? null : {score: t.verdict!.score, verdict: t.verdict!, parts: parts!, render, drawing};
@@ -891,6 +1051,7 @@ async function writeJelly(c: Ctx, tries: JellyTry[]): Promise<Part[] | null> {
     let parts: Part[] | null = null;
     try {
       parts = asParts(await ask<unknown>({system: SYSTEM, prompt: asked(c.thing, c.band, last), schema: SCHEMA, model}));
+      if (parts !== null) parts = repaired(parts, c.band);
     } catch (e) {
       t.error = `ask: ${said(e)}`;
     }

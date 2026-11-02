@@ -1047,3 +1047,15 @@ when done." Built unattended on main; every call below is mine.
 - **Owed**: a phone (the notch's legibility under a thumb, `fill_exact`
   on a real GLES3 driver), the hint cue heard, pt/es read, the bulb's own
   tutorial page.
+
+## Painted marks on a themed jelly (2026-11-02)
+
+The user: "fix jellies". A chunk under LEAST_SQUARES is refused, and those are
+the eyes, noses and stripes, so a zoo day kept 1 jelly of 15 with both reviewers
+asking for eyes. A themed jelly may now carry `marks`: {flavour or ink or cream,
+shapes}, painted over the tint (`gumdrop_art.gd` `_marks`, on the skin and the
+card), counted by no rule. A build before them plays the jelly without.
+`jelly.ts` `repaired` mends what no model should be paid for: too many points,
+flavours over the band's, the field's share, and a chunk too small or apart,
+which becomes a mark. The eye is told a jelly's colours are its own.
+
