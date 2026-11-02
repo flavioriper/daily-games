@@ -10,8 +10,9 @@ import bank from "./acorn_bank.json";
  * is shown every question with its answers shuffled and unmarked, answers it
  * on its own, and says whether anything about it is arguable, dated or lost
  * in translation. A question survives only when the reviewer picked the
- * answer the writer marked, was sure, and found nothing to say. What is left
- * short is filled from the bank the game ships (content/acorn.json, copied
+ * answer the writer marked, was sure, and found nothing to say. A band left
+ * short is written again (ROUNDS, the user, 2026-11-02: the bank only in a
+ * critical case). What is short after that is filled from the bank the game ships (content/acorn.json, copied
  * beside this file by `npm run build`), and a day the model could not write
  * at all is the bank's day -- the same one a phone that never reached the
  * network deals itself, so a failed night is not a blank day and not a
@@ -54,6 +55,11 @@ export const ASKS = [7, 7, 7, 10];
 export const CLIMB = [3, 3, 2, 2];
 /** How many the model is asked for, so the review has some to turn down. */
 const DRAFTS = [9, 9, 9, 13];
+/** Times a band may be written before the bank is asked, and how long the
+ *  day may spend before no new round begins: publishDay has 30 minutes for
+ *  every game of two days, side by side. */
+const ROUNDS = 4;
+const ROUNDS_MS = 12 * 60 * 1000;
 
 /** The longest a line may be and still fit the card (the contract's limits,
  *  with a little grace for a model that counts loosely). */
@@ -356,7 +362,7 @@ export function asked(day: unknown): string[] {
 
 /** One band from the model: written, checked against the contract, then
  *  reviewed blind. Throws when the model could not be asked. */
-async function writeBand(day: number, band: number, taken: string[], theme: Theme | null): Promise<Question[]> {
+async function writeBand(day: number, band: number, taken: string[], theme: Theme | null, round = 0): Promise<Question[]> {
   const draft = await ask<{questions: Draft[]}>({
     system: WRITER,
     prompt: writerPrompt(day, band, taken, theme),
@@ -366,7 +372,7 @@ async function writeBand(day: number, band: number, taken: string[], theme: Them
   const written = (Array.isArray(draft.questions) ? draft.questions : [])
     // A themed question's id says so ("t" for "q"): the ids are opaque to
     // the phone, and the dashboard counts them.
-    .map((d, i) => ({id: `d${day}b${band}${theme !== null && d.theme === true ? "t" : "q"}${i}`, cat: d.cat, en: d.en, pt: d.pt, es: d.es}))
+    .map((d, i) => ({id: `d${day}b${band}${theme !== null && d.theme === true ? "t" : "q"}${round * 100 + i}`, cat: d.cat, en: d.en, pt: d.pt, es: d.es}))
     .filter(validQuestion);
   if (written.length === 0) return [];
   const review = await ask<{verdicts: Verdict[]}>({
@@ -388,6 +394,7 @@ async function writeBand(day: number, band: number, taken: string[], theme: Them
 export async function makeDay(day: number, recent: string[] = [], theme: Theme | null = null): Promise<Day> {
   const reserve = bankDay(day);
   if (!available()) return {v: 1, source: "bank", bands: reserve};
+  const deadline = Date.now() + ROUNDS_MS;
   const tiers = bank.tiers as Question[][];
   const taken = recent.slice();
   const bands: Question[][] = [];
@@ -397,10 +404,19 @@ export async function makeDay(day: number, recent: string[] = [], theme: Theme |
   for (let b = 0; b < ASKS.length; b++) {
     const n = ASKS[b];
     let list: Question[] = [];
-    try {
-      list = await writeBand(day, b, taken, theme);
-    } catch (e) {
-      console.error(`acorn: band ${b} of day ${day} failed, the bank fills it`, e);
+    for (let round = 0; round < ROUNDS && list.length < n && Date.now() < deadline; round++) {
+      try {
+        const got = await writeBand(day, b, [...taken, ...list.map(said)], theme, round);
+        if (b === 3) {
+          // The Climb has to rise, so a round stands alone: the longest wins.
+          if (got.length > list.length) list = got;
+        } else {
+          const seen = new Set(list.map((q) => answerOf(said(q))));
+          list.push(...got.filter((q) => !seen.has(answerOf(said(q)))));
+        }
+      } catch (e) {
+        console.error(`acorn: band ${b} of day ${day}, round ${round} failed`, e);
+      }
     }
     kept.push(list.length);
     let band: Question[];

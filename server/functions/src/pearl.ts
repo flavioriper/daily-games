@@ -56,6 +56,10 @@ export interface Day {
 
 /** Prompts a band asks: Easy, Medium, Hard, and One Breath. */
 export const ASKS = [5, 6, 7, 8];
+/** Writing rounds before the bank fills a place (the user, 2026-11-02: the
+ *  bank only in a critical case), and how long the day may spend on them. */
+const ROUNDS = 3;
+const ROUNDS_MS = 12 * 60 * 1000;
 /** How many of each level One Breath takes, easy to hard. */
 export const BREATH = [3, 3, 2];
 export const PEARL = 4;
@@ -752,6 +756,20 @@ export async function makeDay(day: number, recent: string[] = [], theme: Theme |
   } catch (e) {
     console.error(`pearl: day ${day} has no kinds, the bank's day stands`, e);
     return {v: 1, source: "bank", bands: reserve};
+  }
+  // Short of the day's places: asked again for what is missing.
+  const deadline = Date.now() + ROUNDS_MS;
+  for (let round = 1; round < ROUNDS && Date.now() < deadline; round++) {
+    const short = want.map((n, l) => Math.max(0, n - written[l].length));
+    if (short.every((n) => n === 0)) break;
+    try {
+      const more = await writePrompts(`day ${day}`, short,
+        [...recent, ...reserve.flat().map((p) => p.en.ask), ...written.flat().map((p) => p.en.ask)],
+        (l, n) => `d${day}r${round}l${l}k${n}`, theme);
+      more.forEach((list, l) => written[l].push(...list));
+    } catch (e) {
+      console.error(`pearl: day ${day}, round ${round} failed`, e);
+    }
   }
   const kept = written.map((l) => l.length);
   const orders = bankLevels().map((l) => ordered(l, day));
