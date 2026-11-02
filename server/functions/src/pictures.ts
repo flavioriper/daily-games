@@ -1,3 +1,4 @@
+import {sideBySide} from "./parallel";
 import jpeg from "jpeg-js";
 import {PNG} from "pngjs";
 import Beads = require("./beads");
@@ -393,7 +394,7 @@ export async function pixelBand(day: number, theme: Theme, i: number, sizes: Rec
  */
 async function pixelDay(day: number, theme: Theme, sizes: Record<string, Picture>, drafts: Draft[],
   keep?: (name: string, d: Drawing) => string): Promise<void> {
-  for (let i = 0; i < Beads.SIZES.length; i++) await pixelBand(day, theme, i, sizes, drafts, keep);
+  await sideBySide(Beads.SIZES.map((_, i) => i), (i) => pixelBand(day, theme, i, sizes, drafts, keep));
   bySide(sizes, drafts);
 }
 

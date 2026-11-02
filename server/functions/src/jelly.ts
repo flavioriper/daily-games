@@ -1,3 +1,4 @@
+import {sideBySide} from "./parallel";
 import {mapPlan} from "./ladder";
 import {ask, available, draw, Drawing, shapesModel} from "./generate";
 import {board, compact, dissolve, fewer, join, touching, outlines, raster, Raster, Regions, simplify, split, area as signedArea} from "./facets";
@@ -485,12 +486,11 @@ export async function makeJellies(day: number, theme: Theme, only?: number,
   const tries: JellyTry[] = [];
   const ports: Port[] = [];
   if (!available()) return {jellies, tries, ports};
-  // Fourteen jellies a day, one request at a time: side by side, the four
-  // bands' Opus requests ran past OpenRouter's in-flight credit budget
-  // (HTTP 402, 2026-10-14).
+  // Fourteen jellies a day, one band at a time unless DAILY_PARALLEL says
+  // otherwise: side by side, the four bands' Opus requests ran past
+  // OpenRouter's in-flight credit budget (HTTP 402, 2026-10-14).
   // `only`: that band alone, so the night writes a band a run (index.ts).
-  for (let band = 0; band < RULES.length; band++) {
-    if (only !== undefined && band !== only) continue;
+  await sideBySide(RULES.map((_, band) => band).filter((band) => only === undefined || band === only), async (band) => {
     // the budget runs from the band's start: the night writes a band a step
     const deadline = Math.min(Date.now() + JELLY_BUDGET_MS, until ?? Infinity);
     const list: Jelly[] = [];
@@ -507,7 +507,7 @@ export async function makeJellies(day: number, theme: Theme, only?: number,
       }
     }
     if (list.length > 0) jellies[band] = list;
-  }
+  });
   const kept = Object.entries(jellies).map(([b, l]) => `${b}:${l.length}`).join(" ");
   console.log(`jelly: day ${day} (${theme.id}), kept ${kept || "none"} in ${tries.length} tries`);
   return {jellies, tries, ports};

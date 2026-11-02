@@ -1,3 +1,4 @@
+import {sideBySide} from "./parallel";
 import fs from "node:fs";
 import path from "node:path";
 import {makeDay as acornDay} from "./acorn";
@@ -42,6 +43,7 @@ import {FULL_SUFFIX, HEADER_KEY, makeHeader, makeVista, reviewPainting, rubricHa
  *       three questions a band, three prompts a day), into the file as
  *       `quizzes`, for the dashboard. The night's reviewer reads them, so
  *       this costs what a published day does.
+ *   DAILY_PARALLEL=4 runs the hoops', jellies' and pixel bands side by side.
  *   node lib/cli.js vistas <day.json>...
  *       the day's four painted vistas (vistas.ts) for days already made:
  *       each painting beside the file as <day>_vista-<time>-<try>.jpg, the
@@ -532,13 +534,17 @@ async function main(): Promise<void> {
     for (const file of args) {
       const day = JSON.parse(fs.readFileSync(file, "utf8"));
       if (day.theme === null) continue;
-      const hoops: Record<string, HoopPicture> = {};
-      const ports: Port[] = [];
-      for (let band = 0; band < HOOP_BANDS.length; band++) {
-        const {picture, port} = await makeHoop(day.day, day.theme, band, drawingsBeside(file));
-        if (picture !== null) hoops[band] = picture;
+      // DAILY_HOOP_BANDS (0,1,2): those bands again, the others left as made
+      const bands = process.env.DAILY_HOOP_BANDS?.split(",").map(Number) ?? HOOP_BANDS.map((_, band) => band);
+      const hoops: Record<string, HoopPicture> = {...(day.pictures?.hoops ?? {})};
+      let ports: Port[] = (day.hoopPorts ?? []).filter((p: Port) => !bands.includes(p.band));
+      for (const band of bands) delete hoops[band];
+      const made = await sideBySide(bands, (band) => makeHoop(day.day, day.theme, band, drawingsBeside(file)));
+      made.forEach(({picture, port}, i) => {
+        if (picture !== null) hoops[bands[i]] = picture;
         ports.push(port);
-      }
+      });
+      ports = ports.sort((a, b) => a.band - b.band);
       day.hoopPorts = bare(ports);
       if (Object.keys(hoops).length > 0) {
         day.pictures = {...(day.pictures ?? {v: 1, theme: day.theme.id, sizes: {}}), hoops};

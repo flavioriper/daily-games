@@ -73,7 +73,7 @@ export const dataUrl = (mime: string, bytes: Buffer): string => `data:${mime};ba
 /** The reviewer's look at one picture. `render` is what the player sees and
  *  `source` the drawing it was made from, both data URLs. The choices are
  *  the day's things and one that is not, in an order fixed by the day. */
-export async function judge(day: number, theme: Theme, thing: Thing, game: Game, render: string, source?: string): Promise<Verdict> {
+export async function judge(day: number, theme: Theme, thing: Thing, game: Game, render: string, source?: string, note = ""): Promise<Verdict> {
   const names = theme.objects.map((o) => o.name.toLowerCase());
   const free = DECOYS.filter((d) => !names.some((n) => n.includes(d)));
   const decoy = free.length > 0 ? free[fnv1a(`${day}`) % free.length] : "none of these";
@@ -81,7 +81,7 @@ export async function judge(day: number, theme: Theme, thing: Thing, game: Game,
   const look = async (role: Role): Promise<Verdict> => {
     const got = await ask<{pick: string; score: number; wrong: string; notes: string}>({
       system: EYE(game, source !== undefined),
-      prompt: `Rubric: ${RUBRIC[game]}\nChoices: ${choices.join(", ")}.`,
+      prompt: `Rubric: ${RUBRIC[game]}${note === "" ? "" : ` ${note}`}\nChoices: ${choices.join(", ")}.`,
       schema: EYE_SCHEMA,
       role,
       images: source === undefined ? [render] : [render, source],

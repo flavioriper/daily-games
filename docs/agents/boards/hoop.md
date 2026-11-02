@@ -689,3 +689,27 @@ mistake).
   `LEAST_PANELS`), not the phone's. Whether the night's picture ports are
   deployed is the user's to say (picture-ports is on main; the deploy list
   in `docs/agents/turns-and-backend.md`). Unseen on a phone, no new sound.
+
+## 2026-11-02: drawn for the band, the reader first
+
+The user: "do all your fixes". On the Campfire at Dusk day (Neon, gpt-image-2,
+the Haiku/Sonnet/Opus map ladder) Easy and Medium could not pass: no picture
+under 60 panels scored over 6, because 40 panels of a 200-facet drawing were
+judged beside that drawing and told to add facets the band may not have. Of 23
+tries 10 broke the board's rules, and the hoops cost US$1.96 of the day's $4.28.
+
+- `PROMPT` asks Easy and Medium for `BANDS[].facets` (25-35 large, 40-55), used
+  again; Hard and Insane stay at 150-200. This ends "on every band" above.
+- The pixel reader tries each drawing first; the old last-resort reader try is
+  gone. With `DAILY_MAP_TIERS` the first kept picture ends the band.
+- `readerTry` runs `checkMesh`: it had kept a campfire the phone refuses (two
+  panels on one outline, a side three panels share).
+- `judge(..., note)`: `JUDGED_AS(band)` says the band's panel limit and that
+  fewer facets are no fault. The bar for Easy and Medium is a little softer.
+- `DAILY_PARALLEL` (`parallel.ts`, `tools/neon_day.sh` sets 4) runs bands side
+  by side in hoops, jellies and pixel pictures; unset is one at a time, as
+  Vertex needs. `DAILY_HOOP_BANDS=0,1,2` reruns those bands of `cli.js hoops`.
+
+Rerun of bands 0-2: 6 min 44 s, US$0.36 of Claude, all kept (tent 18 panels by
+the reader at 7, lantern 59 by Haiku at 7, campfire 94 by Sonnet at 7).
+Parallel jellies and pictures have not run yet.

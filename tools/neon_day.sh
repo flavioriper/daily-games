@@ -11,7 +11,7 @@
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 set -a; source "${NEON_ENV:?the file with the gateway credentials}"; set +a
-export DAILY_PICTURE_STYLE=pixel DAILY_IMAGE_MODEL=neon/gpt-image-2 DAILY_SHAPES_MODEL=neon/gpt-image-2
+export DAILY_PARALLEL=4 DAILY_PICTURE_STYLE=pixel DAILY_IMAGE_MODEL=neon/gpt-image-2 DAILY_SHAPES_MODEL=neon/gpt-image-2
 export DAILY_MODEL=anthropic/claude-haiku-5.5 DAILY_REVIEW_MODEL=anthropic/claude-sonnet-5.5
 export DAILY_ROWS_MODEL=anthropic/claude-sonnet-5.5 DAILY_FINAL_MODEL=anthropic/claude-opus-5.5
 export DAILY_MAP_TIERS="anthropic/claude-haiku-5.5,anthropic/claude-sonnet-5.5,anthropic/claude-opus-5.5"

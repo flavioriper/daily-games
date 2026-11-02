@@ -55,7 +55,7 @@ export const BANDS = [
 export const LEAST_PANELS = [16, 26, 40, 80];
 export const MOST_CORNERS = 7;
 
-export const PROMPT = (what: string, band: number, key: Key, creature: boolean) => `A low-poly illustration of ${what}, built from at least 150 and about 200 small flat polygon facets (mostly triangles) on every band, the big surfaces broken into many small facets too: a soft, muted, harmonious palette of gentle earthy pastels; each facet is ONE flat solid colour; neighbouring facets shift subtly in tone as if lit softly from the top left (a light, a mid and a shadow tone of each colour); crisp straight edges; no outlines, no lines between facets, no gradient inside a facet, no texture. ${creature ? "" : "It is an object: no face, no eyes, no mouth. "}One thing only, centred and large, filling most of the picture, on ${keyWords(key)}; no cast shadow, no ground, nothing else, no text. A square picture.`;
+export const PROMPT = (what: string, band: number, key: Key, creature: boolean) => `A low-poly illustration of ${what}, built from ${band < 2 ? `${BANDS[band].facets} clean flat polygon facets (mostly triangles), every one big enough to see at once` : "at least 150 and about 200 small flat polygon facets (mostly triangles), the big surfaces broken into many small facets too"}: a soft, muted, harmonious palette of gentle earthy pastels; each facet is ONE flat solid colour; neighbouring facets shift subtly in tone as if lit softly from the top left (a light, a mid and a shadow tone of each colour); crisp straight edges; no outlines, no lines between facets, no gradient inside a facet, no texture. ${creature ? "" : "It is an object: no face, no eyes, no mouth. "}One thing only, centred and large, filling most of the picture, on ${keyWords(key)}; no cast shadow, no ground, nothing else, no text. A square picture.`;
 
 type P = number[];
 
@@ -477,6 +477,10 @@ interface Best {
   render: Buffer;
 }
 
+/** What the eye is told of the band (the user, 2026-11-02): 40 panels of a
+ *  drawing of 200 could only ever be told to add facets it may not have. */
+const JUDGED_AS = (band: number) => `This difficulty holds at most ${BANDS[band].most} panels. Fewer, larger facets than the drawing are no fault: judge whether the thing reads cleanly and looks polished at this size, and never ask for more or smaller facets.`;
+
 /** Pins and panels drawn as the eye sees them and judged beside the drawing,
  *  into `t`; the render, or null when the eye could not be asked. */
 async function judged(c: Ctx, drawing: Drawing, pins: number[], panels: HoopPanel[], t: PortTry): Promise<Buffer | null> {
@@ -489,7 +493,7 @@ async function judged(c: Ctx, drawing: Drawing, pins: number[], panels: HoopPane
   try {
     const polys = panels.map((p) => ({pts: p.k.map((i) => [pins[2 * i], pins[2 * i + 1]]), fill: p.c}));
     const png = renderPolygons(polys, RENDER_SIZE, LINEN, ROPE);
-    t.verdict = await judge(c.day, c.theme, c.thing, "hoop", dataUrl("image/png", png), dataUrl(drawing.mime, drawing.bytes));
+    t.verdict = await judge(c.day, c.theme, c.thing, "hoop", dataUrl("image/png", png), dataUrl(drawing.mime, drawing.bytes), JUDGED_AS(c.band));
     t.kept = t.verdict.ok && t.verdict.score >= FLOOR.hoop;
     return png;
   } catch (e) {
@@ -560,8 +564,9 @@ const logTry = (c: Ctx, t: PortTry) => logLine("hoop", c.day, c.band, c.thing.id
  * The theme's thing for `band` as a model's map: HOOP_DRAWINGS drawings in
  * the style of the reference, each mapped up to MAP_ASKS times by the
  * reviewer model, and every map repaired, coloured, checked and judged; the
- * best the eye keeps wins. When none is kept the pixel reader on the last
- * drawing is one more try. `picture` is null when nothing was kept, and the
+ * best the eye keeps wins. The pixel reader tries each drawing first, since
+ * it is free and cannot write a bad mesh; with DAILY_MAP_TIERS the first
+ * picture kept ends the band. `picture` is null when nothing was kept, and the
  * board cuts the day's bead picture as before; `port` records every try.
  * `keep` is handed each drawing (the dashboard's files). `until` is the
  * run's own limit, absolute ms, when it comes before HOOP_BUDGET_MS does.
@@ -597,9 +602,9 @@ export async function makeHoop(day: number, theme: Theme, band: number, keep?: (
     return true;
   };
   let best: Best | null = null;
-  let last: Drawing | null = null;
+  const enough = process.env.DAILY_MAP_TIERS ? FLOOR.hoop : ENOUGH;
   const plan = mapPlan(HOOP_DRAWINGS, MAP_ASKS);
-  for (let d = 0; !plan.done() && (best === null || best.score < ENOUGH); d++) {
+  for (let d = 0; !plan.done() && (best === null || best.score < enough); d++) {
     if (late("map")) break;
     let drawing: Drawing;
     try {
@@ -611,14 +616,19 @@ export async function makeHoop(day: number, theme: Theme, band: number, keep?: (
       plan.noDrawing();
       continue;
     }
-    last = drawing;
     try {
       keep?.(`${day}_hoop${band}_${thing.id}_${d}`, drawing);
     } catch (e) {
       console.error(`hoop: day ${day}, band ${band}, ${thing.id}: drawing ${d} not kept`, e);
     }
+    if (!late("reader")) {
+      const t = fresh("reader");
+      const got = await readerTry(c, drawing, t);
+      logTry(c, t);
+      if (t.kept && got !== null && (best === null || got.score > best.score)) best = got;
+    }
     let refused = "";
-    while (!plan.done() && (best === null || best.score < ENOUGH)) {
+    while (!plan.done() && (best === null || best.score < enough)) {
       if (late("map")) break;
       const t = fresh("map");
       const got = await mapTry(c, drawing, refused, t, plan.model());
@@ -627,12 +637,6 @@ export async function makeHoop(day: number, theme: Theme, band: number, keep?: (
       refused = lesson(t, thing);
       if (plan.after(t) === "redraw") break;
     }
-  }
-  if (best === null && last !== null && !late("reader")) {
-    const t = fresh("reader");
-    const got = await readerTry(c, last, t);
-    logTry(c, t);
-    if (t.kept && got !== null) best = got;
   }
   if (best === null) return {picture: null, port};
   try {
