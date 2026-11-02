@@ -846,3 +846,13 @@ against the emulator and nowhere else:
   the rules are deployed a player who picks Online with the network up will
   fail to write a ticket and see the No connection card, and Friends says
   it is offline.
+
+## 2026-11-02: a day finished before it comes
+
+The user: generation done before the app shows the day, the bank only in a
+critical case. `themeday.ts`: `TRIES` 6, a jelly step counts as made only with
+all of `MOULDS[band]` and keeps what it has between runs (`makeJellies` `have`),
+a thing that fails gives its place to the theme's next, of six. `CLOSING` (22:00
+UTC): the eve publishes what it has, so a phone fetches it before 00:00; the day
+itself publishes at any run; a day that has come and is published is not worked
+on. Worst case about six failing runs a step: more money on a bad day.

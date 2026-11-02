@@ -475,13 +475,13 @@ export const MOULDS = [2, 3, 4, 5];
 
 /** The theme's things as jellies, by band ("0" Easy to "3" Insane), a
  *  list a band in the theme's order, what became of every try, and a Port a
- *  thing with every ask behind it. A thing whose tries all fail, or that
- *  the band's JELLY_BUDGET_MS does not reach, is left out of its band's
- *  list, and the board fills its place from the twenty-nine. `until` is the
+ *  thing with every ask behind it. A thing whose tries all fail gives its
+ *  place to the theme's next; what the band's JELLY_BUDGET_MS does not reach
+ *  is left for a later run (themeday.ts), and the board plays what there is. `until` is the
  *  run's own limit, absolute ms, when it comes before the band's budget
  *  does. Never throws. */
 export async function makeJellies(day: number, theme: Theme, only?: number,
-  keep?: (name: string, d: Drawing) => void, until?: number): Promise<{jellies: Record<string, Jelly[]>; tries: JellyTry[]; ports: Port[]}> {
+  keep?: (name: string, d: Drawing) => void, until?: number, have: Jelly[] = []): Promise<{jellies: Record<string, Jelly[]>; tries: JellyTry[]; ports: Port[]}> {
   const jellies: Record<string, Jelly[]> = {};
   const tries: JellyTry[] = [];
   const ports: Port[] = [];
@@ -493,8 +493,13 @@ export async function makeJellies(day: number, theme: Theme, only?: number,
   await sideBySide(RULES.map((_, band) => band).filter((band) => only === undefined || band === only), async (band) => {
     // the budget runs from the band's start: the night writes a band a step
     const deadline = Math.min(Date.now() + JELLY_BUDGET_MS, until ?? Infinity);
-    const list: Jelly[] = [];
-    for (const thing of theme.objects.slice(0, MOULDS[band])) {
+    // `have`: what an earlier run kept. A thing that will not come gives its
+    // place to the next of the theme's (the user, 2026-11-02: a band's places
+    // are the theme's, never the board's rose or umbrella).
+    const list: Jelly[] = [...have];
+    for (const thing of theme.objects) {
+      if (list.length >= MOULDS[band]) break;
+      if (list.some((j) => j.id === thing.id)) continue;
       const d: JellyTry = {band, what: thing.id, route: "drawn", why: "", kept: false};
       tries.push(d);
       const got = await drawJelly(day, theme, thing, band, d, keep, deadline);
@@ -506,7 +511,8 @@ export async function makeJellies(day: number, theme: Theme, only?: number,
           ...(marks.length > 0 ? {marks: marks.map(({flavour, shapes}) => ({flavour, shapes}))} : {})});
       }
     }
-    if (list.length > 0) jellies[band] = list;
+    const place = (j: Jelly) => theme.objects.findIndex((o) => o.id === j.id);
+    if (list.length > 0) jellies[band] = list.sort((a, b) => place(a) - place(b));
   });
   const kept = Object.entries(jellies).map(([b, l]) => `${b}:${l.length}`).join(" ");
   console.log(`jelly: day ${day} (${theme.id}), kept ${kept || "none"} in ${tries.length} tries`);

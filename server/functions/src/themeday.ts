@@ -32,8 +32,11 @@ import {HEADER_KEY, makeHeader, makeVista, TIMES as VISTA_TIMES, Vistas} from ".
  * is there a whole day before the quizzes (publishDays, 03:00) are written
  * on it, and its pictures a day before they are published.
  *
- * A step that made nothing is tried twice more on a later run (TRIES is
- * three), then given up on: the board deals its own for that place. The
+ * A step that did not make all it should is tried again on a later run, up
+ * to TRIES, keeping what it has (the user, 2026-11-02: a player meets the
+ * bank only in a critical case). A day is published when it is finished, or
+ * at CLOSING the evening before with what it has, so a phone holds it when
+ * the day turns; a day that has come and is published is not worked on. The
  * afternoon, dusk and night vistas are edits of the morning: they are not
  * run, and no try is counted, while the morning is neither done nor given up.
  * The `header` step (the menu header's own painting, the place from farther
@@ -46,7 +49,10 @@ export const STEPS: string[] = ["theme", "words",
   ...MOULDS.map((_, b) => `jelly${b}`), ...HOOP_BANDS.map((_, b) => `hoop${b}`), ...Beads.SIZES.map((s) => `pic${s}`),
   HEADER_KEY, ...VISTA_TIMES.map((_, i) => `vista${i}`)];
 /** Runs a step may have before it is given up on. */
-const TRIES = 3;
+const TRIES = 6;
+/** The UTC hour the eve of a day publishes what it has: the day turns at
+ *  00:00, and two half-hour runs a phone's fetch ahead is room enough. */
+const CLOSING = 22;
 /** A run starts no step past this: the longest step seen is some ten
  *  minutes (a picture band four on the emulator trial, its Pearl-sized
  *  ones longer on the Mac), and the function is given thirty. */
@@ -243,10 +249,11 @@ async function runStep(db: Firestore, when: Date, day: number, step: string, s: 
   }
   if (step.startsWith("jelly")) {
     const band = step.slice("jelly".length);
-    const got = await makeJellies(day, theme, Number(band), undefined, until);
+    const have = parsed<Jelly[]>(s.jellies?.[band]) ?? [];
+    const got = await makeJellies(day, theme, Number(band), undefined, until, have);
     await stage(db, day, got.ports);
-    const list = got.jellies[band] ?? [];
-    return {save: list.length === 0 ? {} : {[`jellies.${band}`]: JSON.stringify(list)}, made: list.length > 0};
+    const list = got.jellies[band] ?? have;
+    return {save: list.length === 0 ? {} : {[`jellies.${band}`]: JSON.stringify(list)}, made: list.length >= MOULDS[Number(band)]};
   }
   if (step.startsWith("hoop")) {
     const band = step.slice("hoop".length);
@@ -304,6 +311,7 @@ export async function themeWork(db: Firestore, now: Date): Promise<void> {
       const when = new Date(now.getTime() + ahead * 86400000);
       const day = keyOf(when);
       const ref = staging(db, day);
+      if (ahead === 0 && (await db.doc(`days/${day}/turns/pictures`).get()).exists) continue;
       for (const step of STEPS) {
         const s = ((await ref.get()).data() ?? {}) as Staged;
         if (finished(s)) break;
@@ -326,7 +334,7 @@ export async function themeWork(db: Firestore, now: Date): Promise<void> {
         console.log(`themeday: day ${day}, ${step} ${out.made ? "made" : over ? "given up" : "to try again"} in ${Math.round((Date.now() - t0) / 1000)} s`);
       }
       if (ahead <= 1) {
-        await publishPictures(db, day, false);
+        await publishPictures(db, day, ahead === 0 || now.getUTCHours() >= CLOSING);
         await publishVistas(db, day);
       }
     }

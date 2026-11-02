@@ -388,8 +388,9 @@ static func flavours(m: Dictionary) -> Array:
 ## A band's jellies for a day, easiest first: distinct pictures from the
 ## band's rows, each with its pots stood by the band's rule. The day's
 ## themed jellies (core/themed_pictures.gd `jellies`, built) come first, in
-## the theme's order, and take as many of the band's places as they fill;
-## a picture of the same name as one of them is not drawn beside it.
+## the theme's order. With any at all the day is theirs alone, however few
+## (the user, 2026-11-02: never the bank's rose or umbrella beside them);
+## the band's own pictures deal only a day with no themed jelly.
 static func day(band: int, rng: RandomNumberGenerator, themed: Array = []) -> Array:
 	var spec: Dictionary = BANDS[clampi(band, 0, BANDS.size() - 1)]
 	var names: Array = themed.map(func(m: Dictionary) -> String: return String(m.id))
@@ -402,7 +403,7 @@ static func day(band: int, rng: RandomNumberGenerator, themed: Array = []) -> Ar
 	for m: Dictionary in themed.slice(0, int(spec.moulds)):
 		dress(m, int(spec.stood), rng)
 		first.append(m)
-	while first.size() + picked.size() < int(spec.moulds) and not rows.is_empty():
+	while first.is_empty() and picked.size() < int(spec.moulds) and not rows.is_empty():
 		var r: int = rows[rng.randi_range(0, rows.size() - 1)]
 		rows.erase(r)
 		picked.append(r)

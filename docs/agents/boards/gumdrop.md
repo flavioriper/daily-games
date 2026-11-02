@@ -1059,3 +1059,9 @@ card), counted by no rule. A build before them plays the jelly without.
 flavours over the band's, the field's share, and a chunk too small or apart,
 which becomes a mark. The eye is told a jelly's colours are its own.
 
+## 2026-11-02: never the bank beside a themed jelly
+
+The user: "I really really hate when I open jelly ... and the second image is a
+general weird rose or a umbrella". `Mould.day`: with any themed jelly the band
+plays those alone, however few; the band's own pictures deal only a day with
+none. A short day is the price. Phones need a build for it.
