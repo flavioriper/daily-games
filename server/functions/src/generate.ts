@@ -554,8 +554,48 @@ export interface Drawing {
  * 2026-10-13, the picture is `message.images[0].image_url.url`, a data: URL,
  * and `content` is null. Throws on anything that is not a picture.
  */
+/** How the gateway's image tool is driven: a small text model hands the ask on. */
+const NEON_IMAGE_HOST = "gpt-5-mini";
+
+/** draw(), of the Neon AI Gateway ("neon/gpt-image-2"): the Responses image
+ *  tool, always streamed (a whole image over 655,360 bytes is refused
+ *  otherwise). What it cost is not in the answer. */
+async function drawOnNeon(prompt: string, model: string, o: DrawOptions): Promise<Drawing> {
+  const wide = o.aspect === "21:9" || o.aspect === "16:9";
+  const size = wide ? "1536x1024" : o.size === "2K" ? "2048x2048" : "1024x1024";
+  const shown = (o.images ?? []).map((d) => ({type: "input_image", image_url: `data:${d.mime};base64,${d.bytes.toString("base64")}`}));
+  const res = await fetch(`${(process.env.NEON_AI_GATEWAY_BASE_URL ?? "").trim()}/openai/v1/responses`, {
+    method: "POST",
+    headers: {"Authorization": `Bearer ${neonToken()}`, "Content-Type": "application/json"},
+    body: JSON.stringify({
+      model: NEON_IMAGE_HOST,
+      stream: true,
+      tool_choice: {type: "image_generation"},
+      tools: [{type: "image_generation", model, size, output_format: "png"}],
+      input: [{role: "user", content: [...shown, {type: "input_text", text: prompt}]}],
+    }),
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+  });
+  if (!res.ok) throw new Error(`neon ${model}: HTTP ${res.status} ${(await res.text()).slice(0, 400)}`);
+  const text = await res.text();
+  for (const line of text.split("\n")) {
+    if (!line.startsWith("data:")) continue;
+    let got: {type?: string; item?: {type?: string; result?: string}};
+    try {
+      got = JSON.parse(line.slice(5));
+    } catch {
+      continue;
+    }
+    if (got.type === "response.output_item.done" && got.item?.type === "image_generation_call" && got.item.result) {
+      return {mime: "image/png", bytes: Buffer.from(got.item.result, "base64")};
+    }
+  }
+  throw new Error(`neon ${model} drew nothing: ${text.slice(0, 300)}`);
+}
+
 export async function draw(prompt: string, model = imageModel(), o: DrawOptions = {}): Promise<Drawing> {
   if (!available()) throw new Error("no model");
+  if (model.startsWith("neon/")) return drawOnNeon(prompt, model.slice("neon/".length), o);
   if (vertexProject() !== "") return drawOnVertex(prompt, model, o);
   const content = o.images === undefined ? prompt : [{type: "text", text: prompt},
     ...o.images.map((d) => ({type: "image_url", image_url: {url: `data:${d.mime};base64,${d.bytes.toString("base64")}`}}))];
