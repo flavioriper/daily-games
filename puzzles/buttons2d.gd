@@ -123,8 +123,10 @@ const HELD_BOB_MAX := 48
 ## twice as quick (the user, the same day: "make the gap between pieces 2x
 ## faster"): 0.05. Then twice as quick again (the user, 2026-10-23:
 ## "double speed of gap between pieces"): 0.025. Then twice as long (the
-## user, 2026-10-31: "piece gap, increase it time by 100%"): 0.05.
-const RUN_STEP := 0.05
+## user, 2026-10-31: "piece gap, increase it time by 100%"): 0.05. Then a
+## quarter shorter (the user, 2026-11-02: "reduce gap between pieces by
+## 25%"): 0.0375.
+const RUN_STEP := 0.0375
 ## The case's own sliding along a place go one after another too, this
 ## far apart, the whole pack no longer than SLIDE_CAP (a pack on Insane
 ## can slide sixty places, and a place is not pickable until its jewel has
@@ -161,9 +163,11 @@ const PICK_CAP := 0.0
 ## 0.3735. Plain speed read as lag (the user, the same day: "it's all
 ## laggy"): nothing was late, the draws cost 2 ms, but most of a move's
 ## flights are short, so they had five to ten frames for their whole arc,
-## steps of 40 to 90 px. FLY_BASE gives every flight twelve frames.
-const FLY_SPEED := 3.0
-const FLY_BASE := 0.2
+## steps of 40 to 90 px. FLY_BASE gives every flight twelve frames. Both
+## 20% quicker (the user, 2026-11-02: "increase speed by 20%"), so every
+## flight is a sixth shorter, ten frames at the least.
+const FLY_SPEED := 3.6
+const FLY_BASE := 0.167
 ## A button of the tin sliding along to the next place (State.SLIDE).
 const SLIDE_TIME := 0.26
 const FLY_ARC := 0.6

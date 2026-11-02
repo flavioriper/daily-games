@@ -1445,3 +1445,11 @@ last run was still flying under it. The board now answers `win_lead()`
 (`_win_lag`: to the last merge plus `SOLVE_DELAY`, 0 under reduced motion) and
 `flat_host.gd` `_win_after_lead` waits that long; no other board has the
 method. The tin stays out for the same lag.
+
+## Quicker, closer (2026-11-02)
+
+The user: "increase speed by 20% and reduce gap between pieces by 25%". Read
+as this board's own words have always meant: speed the flight (`FLY_SPEED` 3.6,
+`FLY_BASE` 0.167, every flight 20% quicker) and the gap the take-offs'
+(`RUN_STEP` 0.0375). The case's slide and the landing tick are as they were.
+
