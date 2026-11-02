@@ -89,9 +89,11 @@ export async function judge(day: number, theme: Theme, thing: Thing, game: Game,
     return verdict(day, thing, game, got);
   };
   const first = await look("review");
-  // The dear eye sees only what the cheap one would keep: its word is the
-  // bar a picture ships on, and it is not paid to turn down the rest.
-  return modelFor("final") !== "" && first.ok && first.score >= FLOOR[game] ? look("final") : first;
+  // The dear eye sees only what the cheap one would keep, or nearly: its word
+  // is the bar a picture ships on, and it is not paid to turn down the rest.
+  // One under the floor goes too: Sonnet never gave a zoo jelly more than 6.5
+  // of 7, and the 113 tries reached nobody (2026-11-02).
+  return modelFor("final") !== "" && first.ok && first.score >= FLOOR[game] - 1 ? look("final") : first;
 }
 
 function verdict(day: number, thing: Thing, game: Game, got: {pick: string; score: number; wrong: string; notes: string}): Verdict {
