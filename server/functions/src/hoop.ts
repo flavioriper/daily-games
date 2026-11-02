@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import {ask, draw, Drawing, shapesModel} from "./generate";
+import {ask, draw, Drawing, rescueModel, shapesModel} from "./generate";
 import {dataUrl, FLOOR, judge, renderPolygons} from "./eye";
 import {gridOver, GRID_N} from "./grid";
 import {checkMesh, colourFrom, ModelMap, repairMesh} from "./mesh";
@@ -426,14 +426,15 @@ function asMap(got: unknown): ModelMap {
 /** The reviewer model's map of a drawing, read off it with the band's
  *  numbered grid over it. `refused` is what was wrong with its last map of
  *  the same drawing, "" for a first ask. Throws as `ask` does. */
-export async function mapHoop(drawing: Drawing, thing: Thing, band: number, refused: string): Promise<ModelMap> {
+export async function mapHoop(drawing: Drawing, thing: Thing, band: number, refused: string, rescue = false): Promise<ModelMap> {
   const n = GRID_N[band];
   const grid = gridOver(drawing, n, 1);
   const most = BANDS[band].most;
   const again = refused === "" ? "" : ` Your last map of this drawing fell short: ${refused}. Write it again, mending that.`;
   const got = await ask<unknown>({
     system: MAPPER,
-    role: "review",
+    role: "map",
+    model: rescue ? rescueModel() : undefined,
     schema: MAP_SCHEMA,
     images: [dataUrl(grid.mime, grid.bytes)],
     prompt: `The drawing is of ${thing.name}; the grid is ${n} by ${n}. The board takes at most ${most} panels (${BAND_NAMES[band]}) and refuses fewer than ${LEAST_PANELS[band]}: use the whole budget, about ${most}, and cover every facet of the drawing.${band === 3 ? FINE : ""}${again} Write the map.`,
@@ -499,10 +500,10 @@ async function judged(c: Ctx, drawing: Drawing, pins: number[], panels: HoopPane
 /** One ask for a drawing's map, repaired, coloured off the drawing (its
  *  background panels dropped), checked again and judged, into `t`. Never
  *  throws: each stage's error is written on the try. */
-async function mapTry(c: Ctx, drawing: Drawing, refused: string, t: PortTry): Promise<Best | null> {
+async function mapTry(c: Ctx, drawing: Drawing, refused: string, t: PortTry, rescue = false): Promise<Best | null> {
   let got: ModelMap;
   try {
-    got = await mapHoop(drawing, c.thing, c.band, refused);
+    got = await mapHoop(drawing, c.thing, c.band, refused, rescue);
   } catch (e) {
     t.error = `ask: ${said(e)}`;
     return null;
@@ -615,7 +616,7 @@ export async function makeHoop(day: number, theme: Theme, band: number, keep?: (
     for (let a = 0; a < MAP_ASKS && (best === null || best.score < ENOUGH); a++) {
       if (late("map")) break;
       const t = fresh("map");
-      const got = await mapTry(c, drawing, refused, t);
+      const got = await mapTry(c, drawing, refused, t, d === HOOP_DRAWINGS - 1 && a === MAP_ASKS - 1);
       logTry(c, t);
       if (t.kept && got !== null && (best === null || got.score > best.score)) best = got;
       refused = lesson(t, thing);

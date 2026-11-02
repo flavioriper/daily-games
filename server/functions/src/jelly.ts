@@ -1,4 +1,4 @@
-import {ask, available, draw, Drawing, shapesModel} from "./generate";
+import {rescueModel, ask, available, draw, Drawing, shapesModel} from "./generate";
 import {board, compact, dissolve, fewer, join, touching, outlines, raster, Raster, Regions, simplify, split, area as signedArea} from "./facets";
 import {DEFAULT_ROWS_MODEL} from "./pictures";
 import {keyFor, keyWords, Key} from "./key";
@@ -641,11 +641,12 @@ export function asParts(got: unknown): Part[] | null {
  *  numbered grid; null when the answer is not parts at all (asParts).
  *  `refused` is what the last answer on the same drawing was told, a
  *  sentence, "" for a first ask. Throws as `ask` does. */
-export async function mapJelly(drawing: Drawing, thing: Thing, band: number, refused: string): Promise<Part[] | null> {
+export async function mapJelly(drawing: Drawing, thing: Thing, band: number, refused: string, rescue = false): Promise<Part[] | null> {
   const grid = gridOver(drawing, JELLY_GRID_N, 5);
   const got = await ask<unknown>({
     system: MAPPER,
-    role: "review",
+    role: "map",
+    model: rescue ? rescueModel() : undefined,
     schema: MAP_SCHEMA,
     images: [dataUrl(grid.mime, grid.bytes)],
     prompt: `The drawing is of ${thing.name}. The band is ${BAND_NAMES[band]}, and the board's checker refuses a jelly that breaks any of these: ${mapRules(band)}.${refused === "" ? "" : `\n${refused}`}\nWrite the jelly.`,
@@ -749,10 +750,10 @@ function lesson(t: PortTry, thing: Thing): string {
 
 /** One ask for a sticker's jelly, checked and judged, into `t`. Never
  *  throws: each stage's error is written on the try. */
-async function mapTry(c: Ctx, drawing: Drawing, refused: string, t: PortTry, seen: Map<PortTry, Part[]>): Promise<Best | null> {
+async function mapTry(c: Ctx, drawing: Drawing, refused: string, t: PortTry, seen: Map<PortTry, Part[]>, rescue = false): Promise<Best | null> {
   let parts: Part[] | null;
   try {
-    parts = await mapJelly(drawing, c.thing, c.band, refused);
+    parts = await mapJelly(drawing, c.thing, c.band, refused, rescue);
   } catch (e) {
     t.error = `ask: ${said(e)}`;
     return null;
@@ -844,7 +845,7 @@ export async function drawJelly(day: number, theme: Theme, thing: Thing, band: n
     for (let a = 0; a < JELLY_ASKS && best === null; a++) {
       if (late(c, "map")) break;
       const tried = fresh(c, "map");
-      const got = await mapTry(c, drawing, refused, tried, seen);
+      const got = await mapTry(c, drawing, refused, tried, seen, n === DRAWINGS[band] - 1 && a === JELLY_ASKS - 1);
       logTry(c, tried);
       if (tried.kept && got !== null) best = got;
       refused = lesson(tried, thing);

@@ -50,7 +50,9 @@ const MAX_TOKENS = 16000;
 /** A request that has not answered by now is given up on. */
 const TIMEOUT_MS = 240000;
 
-export type Role = "write" | "review";
+/** Who answers (modelFor): the writer, the reviewer, the mapper that reads a
+ *  drawing into a jelly or a hoop, and the last word on a kept picture. */
+export type Role = "write" | "review" | "map" | "final";
 
 export interface Ask {
   /** Who the model is writing for and the rules that never change. */
@@ -78,6 +80,20 @@ const used = {input: 0, output: 0};
 export function cost(): number {
   return spent;
 }
+
+/** This process's asks by role and model: where a day's money went. */
+interface Line {calls: number; input: number; output: number; dollars: number}
+const lines = new Map<string, Line>();
+function book(a: Ask, model: string, input: number, output: number, dollars: number): void {
+  const name = `${a.role ?? "write"} ${model}`;
+  const l = lines.get(name) ?? {calls: 0, input: 0, output: 0, dollars: 0};
+  lines.set(name, {calls: l.calls + 1, input: l.input + input, output: l.output + output, dollars: l.dollars + dollars});
+}
+/** The ledger, the dearest line first. */
+export function ledger(): string {
+  return [...lines].sort((a, b) => b[1].dollars - a[1].dollars).map(([name, l]) =>
+    `${name}: ${l.calls} asks, ${l.input} in, ${l.output} out, US$${l.dollars.toFixed(3)}`).join("\n");
+}
 export function tokens(): {input: number; output: number} {
   return {...used};
 }
@@ -90,13 +106,30 @@ function key(): string {
 }
 
 export function modelFor(role: Role = "write"): string {
+  // The mapper is the reviewer unless DAILY_MAP_MODEL parts them, and there
+  // is no last word unless DAILY_FINAL_MODEL names one (eye.ts judge).
+  if (role === "map") return (process.env.DAILY_MAP_MODEL ?? "").trim() || modelFor("review");
+  if (role === "final") return (process.env.DAILY_FINAL_MODEL ?? "").trim();
   if (role === "review") {
     return (process.env.DAILY_REVIEW_MODEL ?? "").trim() || DEFAULT_REVIEW_MODEL;
   }
   return (process.env.DAILY_MODEL ?? "").trim() || DEFAULT_MODEL;
 }
 
+/** The model of a drawing's last map ask, when the cheap mapper has failed
+ *  all the others; undefined leaves that ask with the mapper. */
+export function rescueModel(): string | undefined {
+  return (process.env.DAILY_MAP_RESCUE_MODEL ?? "").trim() || undefined;
+}
+
+/** The Neon AI Gateway's credential: set, Anthropic's models are asked
+ *  through it, on the prepaid credits there, with the same SDK. */
+function neonToken(): string {
+  return (process.env.NEON_AI_GATEWAY_TOKEN ?? "").trim();
+}
+
 function anthropicKey(): string {
+  if (neonToken() !== "") return neonToken();
   return (process.env.ANTHROPIC_API_KEY ?? "").trim();
 }
 
@@ -205,13 +238,16 @@ let anthropic: Anthropic | null = null;
  *  on the model the API picks for it (server-side fallback, the Opus
  *  models only). */
 async function askAnthropic<T>(model: string, a: Ask): Promise<T> {
-  anthropic ??= new Anthropic({apiKey: anthropicKey(), timeout: TIMEOUT_MS});
+  const neon = neonToken() !== "";
+  anthropic ??= new Anthropic(neon ?
+    {apiKey: neonToken(), authToken: neonToken(), baseURL: `${(process.env.NEON_AI_GATEWAY_BASE_URL ?? "").trim()}/anthropic`, timeout: TIMEOUT_MS} :
+    {apiKey: anthropicKey(), timeout: TIMEOUT_MS});
   const images = (a.images ?? []).map((url) => {
     const got = /^data:(image\/(?:png|jpeg|gif|webp));base64,(.+)$/s.exec(url);
     if (got === null) throw new Error("a picture that is not a data: URL");
     return {type: "image" as const, source: {type: "base64" as const, media_type: got[1] as "image/png", data: got[2]}};
   });
-  const opus = model.startsWith("claude-opus");
+  const opus = model.startsWith("claude-opus") && !neon;
   const stream = anthropic.beta.messages.stream({
     model,
     max_tokens: 32000,
@@ -224,7 +260,9 @@ async function askAnthropic<T>(model: string, a: Ask): Promise<T> {
   const price = ANTHROPIC_PRICE[out.model] ?? ANTHROPIC_PRICE[model] ?? [0, 0];
   used.input += out.usage.input_tokens;
   used.output += out.usage.output_tokens;
-  spent += (out.usage.input_tokens * price[0] + out.usage.output_tokens * price[1]) / 1e6;
+  const dollars = (out.usage.input_tokens * price[0] + out.usage.output_tokens * price[1]) / 1e6;
+  spent += dollars;
+  book(a, model, out.usage.input_tokens, out.usage.output_tokens, dollars);
   if (out.stop_reason !== "end_turn") throw new Error(`${model} stopped on ${out.stop_reason}`);
   const text = out.content.map((b) => b.type === "text" ? b.text : "").join("");
   return jsonIn(text) as T;
@@ -325,6 +363,7 @@ async function askGemini<T>(model: string, a: Ask): Promise<T> {
   used.input += inTok;
   used.output += outTok;
   spent += (inTok * price[0] + outTok * price[1]) / 1e6;
+  book(a, model, inTok, outTok, (inTok * price[0] + outTok * price[1]) / 1e6);
   const c = out.candidates?.[0];
   if (c?.finishReason !== "STOP") throw new Error(`${model} stopped on ${c?.finishReason ?? "nothing"}`);
   const text = (c.content?.parts ?? []).filter((p) => p.thought !== true).map((p) => p.text ?? "").join("");
@@ -389,6 +428,7 @@ async function askNova<T>(model: string, a: Ask): Promise<T> {
   used.input += inTok;
   used.output += outTok;
   spent += (inTok * price[0] + outTok * price[1]) / 1e6;
+  book(a, model, inTok, outTok, (inTok * price[0] + outTok * price[1]) / 1e6);
   const content = out.output?.message?.content ?? [];
   const tool = content.find((b) => b.toolUse !== undefined)?.toolUse?.input;
   if (held) {

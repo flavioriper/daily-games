@@ -3,7 +3,7 @@ import path from "node:path";
 import {makeDay as acornDay} from "./acorn";
 import {bankPuzzles, makeDay as shelvesDay, Puzzle as ShelvesPuzzle} from "./shelves";
 import {bankRounds, makeDay as cluesDay, Round as CluesRound} from "./clues";
-import {anthropicModel, cost, draw, Drawing, modelFor, tokens} from "./generate";
+import {anthropicModel, cost, draw, Drawing, ledger, modelFor, tokens} from "./generate";
 import {BANDS as HOOP_BANDS, HoopPicture, makeHoop} from "./hoop";
 import {bankPrompts, cleaned, makeDay as pearlDay, Prompt} from "./pearl";
 import {makeJellies} from "./jelly";
@@ -542,7 +542,7 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((e) => {
+main().then(() => console.error(ledger())).catch((e) => {
   console.error(e);
   process.exitCode = 1;
 });

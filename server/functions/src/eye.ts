@@ -1,5 +1,5 @@
 import {PNG} from "pngjs";
-import {ask} from "./generate";
+import {ask, modelFor, Role} from "./generate";
 import {Theme, Thing} from "./theme";
 
 /**
@@ -78,13 +78,23 @@ export async function judge(day: number, theme: Theme, thing: Thing, game: Game,
   const free = DECOYS.filter((d) => !names.some((n) => n.includes(d)));
   const decoy = free.length > 0 ? free[fnv1a(`${day}`) % free.length] : "none of these";
   const choices = [...names, decoy].sort((a, b) => fnv1a(`${day}${game}${a}`) - fnv1a(`${day}${game}${b}`));
-  const got = await ask<{pick: string; score: number; wrong: string; notes: string}>({
-    system: EYE(game, source !== undefined),
-    prompt: `Rubric: ${RUBRIC[game]}\nChoices: ${choices.join(", ")}.`,
-    schema: EYE_SCHEMA,
-    role: "review",
-    images: source === undefined ? [render] : [render, source],
-  });
+  const look = async (role: Role): Promise<Verdict> => {
+    const got = await ask<{pick: string; score: number; wrong: string; notes: string}>({
+      system: EYE(game, source !== undefined),
+      prompt: `Rubric: ${RUBRIC[game]}\nChoices: ${choices.join(", ")}.`,
+      schema: EYE_SCHEMA,
+      role,
+      images: source === undefined ? [render] : [render, source],
+    });
+    return verdict(day, thing, game, got);
+  };
+  const first = await look("review");
+  // The dear eye sees only what the cheap one would keep: its word is the
+  // bar a picture ships on, and it is not paid to turn down the rest.
+  return modelFor("final") !== "" && first.ok && first.score >= FLOOR[game] ? look("final") : first;
+}
+
+function verdict(day: number, thing: Thing, game: Game, got: {pick: string; score: number; wrong: string; notes: string}): Verdict {
   const pick = String(got.pick ?? "").trim().toLowerCase();
   // the schema asks for 0 to 10 but cannot hold the model to it, and a 12
   // would outrank every honest score in the hoop's best-of

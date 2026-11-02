@@ -653,6 +653,18 @@ Opus's US$12 to 18, losing only to Vertex's latency; Nova 2 Lite wrote good
 quizzes but read drawings poorly and cost four times Gemini. Nothing is
 deployed; the models stay Anthropic's by default until the user moves them.
 
+### Cheaper with Opus's bar (2026-11-02, not yet run)
+
+Set by environment, nothing changes when they are unset. `DAILY_MAP_MODEL`
+reads drawings into jellies and hoops (it was the reviewer), and
+`DAILY_MAP_RESCUE_MODEL` takes the last map ask of a thing's last drawing.
+`DAILY_FINAL_MODEL` sees only what the reviewer would keep, and its verdict is
+the one a picture ships on (`eye.ts` `judge`). `NEON_AI_GATEWAY_TOKEN` and
+`NEON_AI_GATEWAY_BASE_URL` send `anthropic/*` models through the Neon AI
+Gateway's `/anthropic` route, without the Opus server-side fallback, on its
+prepaid credits. `cli.js` prints a ledger on stderr at the end of a run: asks,
+tokens and dollars by role and model. Drawings are not in it.
+
 ## The Realtime Database (Versus online)
 
 2026-10-04, spec `2026-10-04-versus-online-design.md`. The one live thing in
