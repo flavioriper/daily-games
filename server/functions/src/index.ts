@@ -122,7 +122,7 @@ export const publishDay = onSchedule({
   memory: "512MiB",
   // The Anthropic key writes and reviews (generate.ts: every model is
   // anthropic/); OpenRouter's is kept for any other model named by env.
-  secrets: ["OPENROUTER_API_KEY", "ANTHROPIC_API_KEY"],
+  secrets: ["OPENROUTER_API_KEY", "ANTHROPIC_API_KEY", "NEON_AI_GATEWAY_TOKEN"],
 }, async () => {
   await publishDays(new Date());
 });
@@ -194,7 +194,7 @@ export const themeDay = onSchedule({
   timeoutSeconds: 1800,
   memory: "1GiB",
   maxInstances: 1,
-  secrets: ["OPENROUTER_API_KEY", "ANTHROPIC_API_KEY"],
+  secrets: ["OPENROUTER_API_KEY", "ANTHROPIC_API_KEY", "NEON_AI_GATEWAY_TOKEN"],
 }, async () => {
   await themeWork(db, new Date());
 });
