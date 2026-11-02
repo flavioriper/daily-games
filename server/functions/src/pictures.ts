@@ -104,7 +104,7 @@ export const DEFAULT_ROWS_MODEL = "anthropic/claude-opus-5.5";
  *  each colour in two or three tones. Asked flat and unshaded, the same
  *  model drew flat; asked this, a mushroom with a maroon shadow, a coral
  *  light and grey spots, read clean at its own squares. */
-const PIXEL_OBJECT = (what: string, side: number, colours: number, detail: boolean, full = false) => `Pixel art sprite of ${what}, about ${side} by ${side} pixels, upscaled so every pixel is one big square block, no grid lines. One sprite only, centred on a plain pure white background, nothing else in the picture, no shadow under it, no text. A one-pixel dark outline all round it. Shaded like good pixel art: each main colour in two or three flat tones (a shadow tone, a mid tone and a light tone) laid as blocks of whole pixels, no gradients, no anti-aliasing, at most ${colours} colours in all. Cute cozy kawaii style, ${detail ? "detailed, with texture and small features" : "big simple readable shapes"}, about as wide as it is tall.${full ? " A big chunky solid shape that fills nearly its whole square, no thin or spindly parts, no gaps through it." : ""}`;
+const PIXEL_OBJECT = (what: string, side: number, colours: number, detail: boolean, full = false) => `Pixel art sprite of ${what}, about ${side} by ${side} pixels, upscaled so every pixel is one big square block, no grid lines. One sprite only, centred on a plain pure white background, nothing else in the picture, no shadow under it, no text. A one-pixel dark outline all round it. Shaded like good pixel art: each main colour in two or three flat tones (a shadow tone, a mid tone and a light tone) laid as blocks of whole pixels, no gradients, no anti-aliasing, at most ${colours} colours in all. Cute cozy kawaii style, ${detail ? "detailed, with texture and small features" : "big simple readable shapes"}, about as wide as it is tall.${side >= BIG_ASK ? " The sprite fills the whole image, nearly touching all four edges, with only a sliver of white round it, and it is a square shape, never wide and low." : ""}${full ? " A big chunky solid shape that fills nearly its whole square, no thin or spindly parts, no gaps through it." : ""}`;
 /** The bands drawn with detail: Insane's and Button Box's own (and Jewel
  *  Box's 128). */
 const DETAIL_FROM = 32;
@@ -120,7 +120,14 @@ const FIRST_ASK: Record<number, number> = {10: 8, 12: 9, 24: 18, 32: 24, 48: 40,
 /** Drawings of one band before it is written from words instead: a drawing
  *  on gemini-3-pro-image is one to four minutes with its rate limit, and the
  *  two small bands, which the model seldom draws small enough, get two. */
-const PIXEL_DRAWINGS: Record<number, number> = {10: 2, 12: 2, 24: 3, 32: 3, 48: 3, 128: 3};
+const PIXEL_DRAWINGS: Record<number, number> = {10: 2, 12: 2, 24: 3, 32: 3, 48: 6, 128: 6};
+/** The bands drawn at twice the image. At 1K the model's squares stop near
+ *  100 a side however many are asked, and the sprite stays about 70% of the
+ *  image: asked 188 for the zoo's 128 it drew 91 by 61, asked 102 for its 48
+ *  it drew 27 by 27, and neither band was kept (2026-11-02). */
+const BIG_FROM = 48;
+/** An ask this big tells the model to fill the image. */
+const BIG_ASK = 36;
 /** Bare squares round the thing each way: the boards' bare edge. */
 const MARGIN = 1;
 
@@ -306,7 +313,8 @@ export async function pixelBand(day: number, theme: Theme, i: number, sizes: Rec
     const draft: Draft = {what, draft: n, asked: side, tried: []};
     drafts.push(draft);
     try {
-      const drawing = await draw(PIXEL_OBJECT(thing.draw, side, colours, size >= DETAIL_FROM, rule.fill[0] >= .5));
+      const drawing = await draw(PIXEL_OBJECT(thing.draw, side, colours, size >= DETAIL_FROM, rule.fill[0] >= .5),
+        undefined, size >= BIG_FROM ? {size: "2K"} : {});
       if (keep !== undefined) draft.file = keep(`${day}_${what}_${n}`, drawing);
       const px = decoded(drawing);
       const sn = Beads.snap(px.data, px.width, px.height, rule.finest);

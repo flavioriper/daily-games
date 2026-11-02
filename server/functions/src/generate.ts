@@ -526,7 +526,7 @@ async function askVertex(model: string, prompt: string, o: DrawOptions = {}): Pr
       headers: {"Authorization": `Bearer ${await vertexToken()}`, "Content-Type": "application/json"},
       body: JSON.stringify({
         contents: [{role: "user", parts: [...shown, {text: prompt}]}],
-        generationConfig: {responseModalities: ["TEXT", "IMAGE"], imageConfig: {aspectRatio: o.aspect ?? "1:1"}},
+        generationConfig: {responseModalities: ["TEXT", "IMAGE"], imageConfig: {aspectRatio: o.aspect ?? "1:1", ...(o.size === undefined ? {} : {imageSize: o.size})}},
       }),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
@@ -538,6 +538,8 @@ async function askVertex(model: string, prompt: string, o: DrawOptions = {}): Pr
 export interface DrawOptions {
   images?: Drawing[];
   aspect?: string;
+  /** "2K" for a bigger image, on the models that take one. */
+  size?: string;
 }
 
 export interface Drawing {

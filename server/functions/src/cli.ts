@@ -8,7 +8,8 @@ import {BANDS as HOOP_BANDS, HoopPicture, makeHoop} from "./hoop";
 import {bankPrompts, cleaned, makeDay as pearlDay, Prompt} from "./pearl";
 import {makeJellies} from "./jelly";
 import type {Port} from "./ports";
-import {makeDay as picturesDay} from "./pictures";
+import Beads = require("./beads");
+import {Draft, makeDay as picturesDay, Picture, pixelBand} from "./pictures";
 import {describe, eligible, seeded} from "./cast";
 import {makeTheme, themed} from "./theme";
 import {makeWords} from "./words";
@@ -505,6 +506,26 @@ async function main(): Promise<void> {
       day.jellyPorts = bare(jelly.ports);
       fs.writeFileSync(file, JSON.stringify(day));
       print(`${file}: ${Object.entries(jelly.jellies).map(([b, l]) => `${b}:${l.length}`).join(" ") || "none"} in ${jelly.tries.length} tries, US$${cost().toFixed(2)} so far`);
+    }
+  } else if (what === "bands" && args.length >= 2) {
+    // node lib/cli.js bands <day.json> <size>...: those pixel bands drawn
+    // again into a day already made, the others left as they are.
+    const file = args[0];
+    const day = JSON.parse(fs.readFileSync(file, "utf8"));
+    const drafts: Draft[] = [];
+    const sizes = day.pictures.sizes as Record<string, Picture>;
+    const keep = (name: string, d: Drawing) => {
+      fs.writeFileSync(path.join(path.dirname(file), `${name}.png`), d.bytes);
+      return `${name}.png`;
+    };
+    for (const size of args.slice(1).map(Number)) {
+      await pixelBand(day.day, day.theme, Beads.SIZES.indexOf(size), sizes, drafts, keep);
+      fs.writeFileSync(file, JSON.stringify(day));
+      for (const d of drafts.slice(-6)) {
+        print(`${d.what} ${d.draft}: asked ${d.asked}, ${d.snap?.cols} cols, ${d.snap?.w} x ${d.snap?.h}, ${d.snap?.why ?? ""} ${d.error ?? ""} ` +
+          d.tried.map((t) => `${t.kept ? "kept" : "no"} ${t.checks.filter((c) => !c.ok).map((c) => c.text).join("; ")}`).join("; "));
+      }
+      print(`${size}: ${sizes[size] === undefined ? "none" : `${sizes[size].rows.length} a side`}, US$${cost().toFixed(2)} so far`);
     }
   } else if (what === "hoops" && args.length >= 1) {
     // Yarn Hoop's low-poly pictures for days already made (hoop.ts).
