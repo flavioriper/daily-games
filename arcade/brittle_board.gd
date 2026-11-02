@@ -11,6 +11,17 @@ extends Control
 ##
 ## A volley speeds up the longer it lasts (`pace`): nobody waits for the last
 ## ball rattling at the top of the tin.
+##
+## **A frame is drawn where it falls between two steps** (2026-11-02, the
+## user: "all laggy"). The sim steps at 120 Hz and a frame at 60 is two
+## steps, but at pace 1.6 it is 3.2: drawn at the last step a stream moved
+## 0.375 cells three frames and 0.5 the fourth, a 33% hop every fourth frame
+## that reads as lag at a steady 60 fps (tests/_perf_brittle.gd prints the
+## hops). Now every ball is drawn at `prev.lerp(pos, _acc / DT)`, so a frame
+## moves exactly what its share of time is worth. And at 15 cells a second
+## a ball crosses its own width every frame, more under the pace, so a
+## second MultiMesh lays a streak from where each ball was drawn to where it
+## is: the stream reads as a stream, not a strobe.
 
 signal beat(what: String, data: Dictionary)
 
@@ -46,6 +57,11 @@ var _o := Vector2.ZERO
 var _tin: ArrayMesh
 var _balls: MultiMeshInstance2D
 var _buffer := PackedFloat32Array()
+var _streaks: MultiMeshInstance2D
+var _sbuffer := PackedFloat32Array()
+## Where each ball was drawn last frame, in the tin's pixels: a streak runs
+## from there.
+var _drawn := PackedVector2Array()
 var _acc := 0.0
 var _slide := 1.0
 var _aiming := false
@@ -62,6 +78,12 @@ var _tight := false
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_font = Art.font()
+	_streaks = MultiMeshInstance2D.new()
+	var sm := MultiMesh.new()
+	sm.transform_format = MultiMesh.TRANSFORM_2D
+	sm.mesh = Art.streak()
+	_streaks.multimesh = sm
+	add_child(_streaks)
 	_balls = MultiMeshInstance2D.new()
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_2D
@@ -80,6 +102,8 @@ func lay(game: RefCounted) -> void:
 	_beams.clear()
 	_tight = sim.tight()
 	_balls.visible = false
+	_streaks.visible = false
+	_drawn = PackedVector2Array()
 	queue_redraw()
 
 ## A centred tin, whatever room there is, with its rim inside the rect.
@@ -93,7 +117,10 @@ func layout() -> void:
 	Art.tin(b, _o, _cell)
 	_tin = b.mesh()
 	_balls.position = _o
+	_streaks.position = _o
 	_buffer = PackedFloat32Array()
+	_sbuffer = PackedFloat32Array()
+	_drawn = PackedVector2Array()
 	queue_redraw()
 
 func px(p: Vector2) -> Vector2:
@@ -150,12 +177,17 @@ func _process(delta: float) -> void:
 func _balls_home() -> bool:
 	return not _balls.visible
 
+## Every ball where this frame falls between the last two steps, and under
+## each one that crossed more than its own radius since the last frame, a
+## streak from there to here.
 func _set_balls() -> void:
 	if not sim.flying():
 		_balls.visible = false
+		_streaks.visible = false
 		return
 	var n: int = sim.pos.size()
 	var mm := _balls.multimesh
+	var sm := _streaks.multimesh
 	var s := Sim.R * _cell / Art.BALL
 	if mm.instance_count < n or _buffer.size() != mm.instance_count * 8:
 		mm.instance_count = maxi(n + 32, mm.instance_count)
@@ -164,13 +196,49 @@ func _set_balls() -> void:
 		for k in mm.instance_count:
 			_buffer[k * 8] = s
 			_buffer[k * 8 + 5] = s
+		sm.instance_count = mm.instance_count
+		_sbuffer.resize(mm.instance_count * 8)
+		_sbuffer.fill(0.0)
+	if _drawn.size() != n:
+		_drawn.resize(n)
+		_drawn.fill(Vector2.INF)
 	mm.visible_instance_count = n
+	sm.visible_instance_count = n
+	var a := clampf(_acc / Sim.DT, 0.0, 1.0)
+	var r := Sim.R * _cell
+	var streaks := not Motion.reduce
+	var prev: PackedVector2Array = sim.prev
+	var pos: PackedVector2Array = sim.pos
 	for k in n:
-		var p: Vector2 = sim.pos[k]
-		_buffer[k * 8 + 3] = p.x * _cell
-		_buffer[k * 8 + 7] = p.y * _cell
+		var p: Vector2 = prev[k].lerp(pos[k], a) * _cell
+		_buffer[k * 8 + 3] = p.x
+		_buffer[k * 8 + 7] = p.y
+		var was: Vector2 = _drawn[k]
+		_drawn[k] = p
+		var j := k * 8
+		var d := p - was
+		if streaks and was != Vector2.INF and sim.state[k] == Sim.Ball.FLY and d.length_squared() > r * r:
+			# turned along d, half as long as the way, a ball wide: the
+			# transform's rows laid straight into the buffer
+			var len := d.length()
+			var cx := d.x / len
+			var sy := d.y / len
+			var sx := len * 0.5 / Art.BALL
+			_sbuffer[j] = cx * sx
+			_sbuffer[j + 1] = -sy * s
+			_sbuffer[j + 3] = (p.x + was.x) * 0.5
+			_sbuffer[j + 4] = sy * sx
+			_sbuffer[j + 5] = cx * s
+			_sbuffer[j + 7] = (p.y + was.y) * 0.5
+		else:
+			_sbuffer[j] = 0.0
+			_sbuffer[j + 1] = 0.0
+			_sbuffer[j + 4] = 0.0
+			_sbuffer[j + 5] = 0.0
 	mm.buffer = _buffer
+	sm.buffer = _sbuffer
 	_balls.visible = true
+	_streaks.visible = streaks
 
 ## Hands what the sim did to whoever listens, and keeps the table's part.
 func _play() -> void:
@@ -373,6 +441,7 @@ func release(_at: Vector2) -> void:
 		return
 	if sim.fire(_aim):
 		_balls.visible = false
+		_drawn = PackedVector2Array()
 		_acc = Sim.DT
 		_set_balls()
 		beat.emit("fired", {"balls": sim.balls})

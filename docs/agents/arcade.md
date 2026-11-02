@@ -5312,6 +5312,33 @@ Card between Eddy and Peapod by genre size, so **Marigold's `slot` is 9**.
   `Sim.STALL` a little weight brings every ball down.
 - The boost card, Second chance, gold, Start over, milestones, new best, end
   card count-up and the tutorial are the Arcade's own, as on Trivet.
+- **"All laggy" (2026-11-02, the user, the same evening).** Measured first
+  (`tests/_perf_brittle.gd`: real ticks split into the script's share and
+  the render's, `-- uncapped` for the raw cost, `mouse` and `power` for a
+  desktop play): on this Mac nothing lagged. Capped, every state is a flat
+  16.7 ms frame; uncapped the whole screen costs 2.8 ms idle, 3.6 on a full
+  tin, 5.0 with 180 balls flying, 4.5 aiming under the bulb, against 5.2 for
+  the Arcade tab itself; script 0.1-1.7 ms; no warning or error in the log;
+  the sim 2 us a ball a step (0.15 ms a step at 300 balls, 1.2 ms a frame at
+  4x); a piece's look 0.3 ms to build, 6.6 ms when a rigged tin asks for
+  thirty at once; the hitches left are one-offs (the first cue, the first
+  sticker, 17-36 ms). `Performance.TIME_PROCESS` is not a cost here: it
+  holds the vsync wait and read 18-23 ms on a 16.7 ms frame. **What was
+  wrong was the motion, not the frame.** The harness prints how far a
+  flying ball moved between frames, as drawn: at pace 1.0 a frame was two
+  120 Hz steps, 0.25 cells, about the ball's own width; at pace 1.6 it was
+  3.2 steps drawn at whole steps, so 0.375 cells three frames and 0.5 the
+  fourth, a 33% hop every fourth frame; 2.6x and 4x the same, bigger. That
+  reads as lag at a steady 60 fps on any device. Now the sim keeps `prev`
+  (a `duplicate()` a step: a packed array assigned is shared, not copied,
+  and the first try lerped pos with itself) and the board draws every ball
+  at `prev.lerp(pos, _acc / DT)`: 0.400 cells every frame at 1.6x. And a
+  second MultiMesh (`Art.streak`, one draw call) lays a soft streak from
+  where each ball was drawn to where it is whenever the way is more than a
+  radius, so the stream reads as a stream and not a strobe; off under
+  reduce-motion. Script share with 180 balls 0.5 -> 1.4 ms on the Mac for
+  the per-ball transform. Still not on a phone: the sim's cost there and
+  the streak's look are what the phone run must say.
 
 ### Start over on every Arcade game (2026-10-17)
 

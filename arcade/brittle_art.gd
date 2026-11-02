@@ -159,6 +159,12 @@ static func ball() -> ArrayMesh:
 		b.disc(Vector2.ZERO, BALL, SUGAR)
 		b.disc(Vector2(-0.3, -0.34) * BALL, BALL * 0.34, Color.WHITE))
 
+## The streak a ball leaves across one frame: a soft disc of the ball's
+## radius, stretched along the way it went by the board's transform.
+static func streak() -> ArrayMesh:
+	return _cached("streak", func(b: Face.Builder) -> void:
+		b.disc(Vector2.ZERO, BALL, Color(SUGAR, 0.42)))
+
 ## The scoop the stream leaves from, its lip on the origin.
 static func scoop() -> ArrayMesh:
 	return _cached("scoop", func(b: Face.Builder) -> void:

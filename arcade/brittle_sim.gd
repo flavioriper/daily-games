@@ -95,8 +95,11 @@ var home_x := W * 0.5
 ## Where the first ball down landed: the next volley's scoop.
 var next_x := W * 0.5
 var clock := 0.0
-## Everything still in flight: positions, velocities, states.
+## Everything still in flight: positions, velocities, states. `prev` is
+## where every ball stood before the last step, so the board can draw a
+## frame that falls between two steps where it falls (brittle_board.gd).
 var pos := PackedVector2Array()
+var prev := PackedVector2Array()
 var vel := PackedVector2Array()
 var state := PackedByteArray()
 var fired := 0
@@ -199,6 +202,7 @@ func fire(d: Vector2) -> bool:
 		pos[k] = Vector2(home_x, FLOOR - R)
 		vel[k] = Vector2.ZERO
 		state[k] = Ball.WAIT
+	prev = pos.duplicate()
 	events.append({"kind": "fire", "balls": balls})
 	return true
 
@@ -219,6 +223,8 @@ func step() -> void:
 	if phase != Phase.FLY:
 		return
 	clock += DT
+	# a packed array assigned is shared, not copied: one copy a step
+	prev = pos.duplicate()
 	if fired < balls:
 		_pour_t -= DT
 		while _pour_t <= 0.0 and fired < balls:
