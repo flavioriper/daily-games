@@ -1,6 +1,6 @@
 import type {Firestore} from "firebase-admin/firestore";
 import Beads = require("./beads");
-import {makeJellies, MOULDS, Jelly} from "./jelly";
+import type {Jelly} from "./jelly";
 import {BANDS as HOOP_BANDS, HoopPicture, makeHoop} from "./hoop";
 import {bySide, Picture, pixelBand, Pictures} from "./pictures";
 import {makeTheme, Theme, themed, validTheme} from "./theme";
@@ -12,7 +12,7 @@ import {HEADER_KEY, makeHeader, makeVista, TIMES as VISTA_TIMES, Vistas} from ".
 
 /**
  * The daily theme at night (docs/superpowers/specs/2026-10-13-daily-theme-
- * design.md, stage 4): the theme, the word boards' words, Gumdrop's jellies,
+ * design.md, stage 4): the theme, the word boards' words,
  * Yarn Hoop's low-poly pictures (hoop.ts)
  * and the bead pictures, made a step at a time into a staging document,
  * `themes/{day}` (server only: firestore.rules denies it to every client),
@@ -21,7 +21,7 @@ import {HEADER_KEY, makeHeader, makeVista, TIMES as VISTA_TIMES, Vistas} from ".
  * painted vistas (vistas.ts) are staged a document each under
  * `themes/{day}/vistas/{time}` (four JPEGs would crowd the day's own
  * document) and published as `days/{day}/turns/vistas` once all four are
- * there (core/themed_vistas.gd). The jelly and hoop steps' port records
+ * there (core/themed_vistas.gd). The hoop steps' port records
  * (ports.ts) are staged a document each under `themes/{day}/ports/{id}` and
  * published as `days/{day}/ports/{id}` with the pictures.
  *
@@ -47,7 +47,7 @@ import {HEADER_KEY, makeHeader, makeVista, TIMES as VISTA_TIMES, Vistas} from ".
 
 /** The steps of a day, in order. */
 export const STEPS: string[] = ["theme", "words", "things",
-  ...MOULDS.map((_, b) => `jelly${b}`), ...HOOP_BANDS.map((_, b) => `hoop${b}`), ...Beads.SIZES.map((s) => `pic${s}`),
+  ...HOOP_BANDS.map((_, b) => `hoop${b}`), ...Beads.SIZES.map((s) => `pic${s}`),
   HEADER_KEY, ...VISTA_TIMES.map((_, i) => `vista${i}`)];
 /** Runs a step may have before it is given up on. */
 const TRIES = 6;
@@ -259,14 +259,6 @@ async function runStep(db: Firestore, when: Date, day: number, step: string, s: 
     await grow(db, got.things);
     const list = dayList(day, got.things, held);
     return {save: list.length === 0 ? {} : {things: JSON.stringify(list)}, made: got.things.length > 0};
-  }
-  if (step.startsWith("jelly")) {
-    const band = step.slice("jelly".length);
-    const have = parsed<Jelly[]>(s.jellies?.[band]) ?? [];
-    const got = await makeJellies(day, theme, Number(band), undefined, until, have);
-    await stage(db, day, got.ports);
-    const list = got.jellies[band] ?? have;
-    return {save: list.length === 0 ? {} : {[`jellies.${band}`]: JSON.stringify(list)}, made: list.length >= MOULDS[Number(band)]};
   }
   if (step.startsWith("hoop")) {
     const band = step.slice("hoop".length);
