@@ -15,7 +15,8 @@ extends HBoxContainer
 ## stacks of felt mats sorted on a tray, and Tally (arcade/tally_screen.gd),
 ## a number factory on squared paper, and Bagatelle
 ## (arcade/bagatelle_screen.gd), marbles dropped through brass pins into
-## cups, and Factory (factory/screen.gd), the
+## cups, and Brittle (arcade/brittle_screen.gd), a stream of sugar balls
+## poured at numbered squares of nut brittle, and Factory (factory/screen.gd), the
 ## land of belts, which had a tab of its own until the bottom bar left on
 ## 2026-10-13, and Marigold (puzzles/marigold2d.gd), a seed shot down through
 ## a pond garden of buds, which is a daily board with levels and was a card
@@ -53,10 +54,10 @@ const Registry = preload("res://ui/registry.gd")
 const GAP := 20
 ## Best first by how big each game's genre is on the stores (2026-10-20,
 ## docs/agents/arcade.md); Marigold's `slot` in ui/registry.gd is its index here.
-const GAMES := ["deckchair", "posy", "trivet", "stackwood", "thirteen", "beeline", "eddy", "peapod", "marigold", "firefly", "molehill", "furrow", "tally", "factory", "bagatelle", "griddle", "nightlight"]
-const NAMES := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Lucky Thirteen", "posy": "Posy", "peapod": "Peapod", "nightlight": "Nightlight", "beeline": "Beeline", "deckchair": "Deckchair", "eddy": "Eddy", "furrow": "Furrow", "griddle": "Griddle", "trivet": "Trivet", "tally": "Tally", "bagatelle": "Bagatelle", "factory": "Factory", "marigold": "Marigold"}
+const GAMES := ["deckchair", "posy", "trivet", "stackwood", "thirteen", "beeline", "eddy", "brittle", "peapod", "marigold", "firefly", "molehill", "furrow", "tally", "factory", "bagatelle", "griddle", "nightlight"]
+const NAMES := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Lucky Thirteen", "posy": "Posy", "peapod": "Peapod", "nightlight": "Nightlight", "beeline": "Beeline", "deckchair": "Deckchair", "eddy": "Eddy", "furrow": "Furrow", "griddle": "Griddle", "trivet": "Trivet", "tally": "Tally", "bagatelle": "Bagatelle", "brittle": "Brittle", "factory": "Factory", "marigold": "Marigold"}
 ## How far a game went, in its own words: a stage, a wave, or a streak.
-const FURTHEST := {"molehill": "ARC_BEST_STREAK", "stackwood": "ARC_BEST_BLOCK", "thirteen": "ARC_BEST_NUMBER", "posy": "ARC_BEST_DAY", "peapod": "ARC_BEST_WAVE", "deckchair": "ARC_BEST_HOME", "eddy": "ARC_BEST_LEVEL", "trivet": "ARC_BEST_TRIVET"}
+const FURTHEST := {"molehill": "ARC_BEST_STREAK", "stackwood": "ARC_BEST_BLOCK", "thirteen": "ARC_BEST_NUMBER", "posy": "ARC_BEST_DAY", "peapod": "ARC_BEST_WAVE", "deckchair": "ARC_BEST_HOME", "eddy": "ARC_BEST_LEVEL", "trivet": "ARC_BEST_TRIVET", "brittle": "ARC_BEST_BRITTLE"}
 ## Firefly's clears in all: fifteen stages at four difficulties.
 const FIREFLY_CLEARS := 60
 

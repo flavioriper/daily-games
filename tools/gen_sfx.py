@@ -3622,6 +3622,61 @@ SETS = {
         "game_over": ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0.28:9,6,2", "cut:1.3"),
         "new_best":  ("one soft short note on a kalimba, muffled and kind", 0.6, -8, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.13:2,4,6,7,9", "cut:1.2"),
     },
+    # Brittle (arcade/brittle_screen.gd, 2026-11-02): sugar balls poured at
+    # squares of nut brittle. The house sound from the start, all bank pops
+    # and the kalimba: `hit` repeats while balls strike and the sim throttles
+    # it to twenty a second, so it is the quietest tick of the set; `crack`
+    # climbs half a semitone a square through a volley, to five and no
+    # further. Nothing bought (the set is the bank and the one kalimba take
+    # Trivet and Griddle are made of, copied into build/sfx_raw/brittle/).
+    "brittle": {
+        # A ball on a square: the wrap, the smallest pop.
+        "hit":       ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -24, FOLEY, "bank:wrap", "cut:0.06", "notes:0:2", "tight"),
+        # A ball off the tin's side: the lip, under everything.
+        "wall":      ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -26, FOLEY, "bank:lip", "cut:0.05", "notes:0:-3", "tight"),
+        # The aim passing a mark: the pebble, a select.
+        "aim":       ('a small smooth pebble set down on another, a single soft click, very short', 0.5, -25, FOLEY, "bank:pebble", "cut:0.05", "notes:0:3", "tight"),
+        # The aim taken back: the lip off.
+        "cancel":    ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -18, FOLEY, "bank:lip", "cut:0.1", "notes:0:-4", "tight"),
+        # The pour let go: the token, a thing set down.
+        "fire":      ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -15, FOLEY, "bank:token", "cut:0.14", "notes:0:1", "tight"),
+        # A square broken: the token, a step up, climbing through the volley.
+        "crack":     ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -15, FOLEY, "bank:token", "cut:0.11", "notes:0:4", "tight"),
+        # Popping candy: the wrap three times, quick.
+        "pop":       ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.24", "notes:0.05:0,3,6", "tight"),
+        # A plum picked up: the plop, up.
+        "plus":      ('a single water drop plop, soft and round, very short', 0.5, -14, FOLEY, "bank:plop", "cut:0.16", "notes:0:5", "tight"),
+        # A line run through a row: the wrap twice, up.
+        "line":      ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -17, FOLEY, "bank:wrap", "cut:0.14", "notes:0.05:2,7", "tight"),
+        # A spark turning a ball: the pebble, high.
+        "fizz":      ('a small smooth pebble set down on another, a single soft click, very short', 0.5, -18, FOLEY, "bank:pebble", "cut:0.08", "notes:0:6", "tight"),
+        # The first ball down: the plop, low.
+        "land":      ('a single water drop plop, soft and round, very short', 0.5, -18, FOLEY, "bank:plop", "cut:0.12", "notes:0:-4", "tight"),
+        # The balls called home: the lip twice, down.
+        "recall":    ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -15, FOLEY, "bank:lip", "cut:0.2", "notes:0.08:0,-4", "tight"),
+        # The squares coming down a row: the token, low.
+        "descend":   ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -16, FOLEY, "bank:token", "cut:0.18", "notes:0:-5", "tight"),
+        # A volley taken back: the lip, up.
+        "undo":      ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -16, FOLEY, "bank:lip", "cut:0.12", "notes:0:2", "tight"),
+        # The bulb: the pebble, twice up.
+        "sight":     ('a small smooth pebble set down on another, a single soft click, very short', 0.5, -16, FOLEY, "bank:pebble", "cut:0.18", "notes:0.07:2,7", "tight"),
+        # Nothing to do: the tongue.
+        "nope":      ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.26", "notes:0.1:-6,-6", "tight"),
+        # A square past the last row: two slow knocks down.
+        "over":      ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.42", "notes:0.18:-6,-10", "tight"),
+        # A volley's good word: three notes up.
+        "crush":     ("one soft short note on a kalimba, muffled and kind", 0.6, -11, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.1:2,5,9", "cut:0.8"),
+        # The tin cleared: six up a step at a time.
+        "clean":     ("one soft short note on a kalimba, muffled and kind", 0.6, -8, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.08:2,4,5,7,9,11", "cut:1.3"),
+        # Every tenth step: up a fourth and settling a step under.
+        "level":     ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.13:2,7,5", "cut:0.9"),
+        # A square in the last row: two slow notes down.
+        "warn":      ("one soft short note on a kalimba, muffled and kind", 0.6, -11, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0.24:7,2", "cut:0.9"),
+        "revive":    ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.12:2,7,9", "cut:0.9"),
+        "start":     ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:5,9", "cut:0.8"),
+        "game_over": ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0.28:9,6,2", "cut:1.3"),
+        "new_best":  ("one soft short note on a kalimba, muffled and kind", 0.6, -8, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.13:2,4,6,7,9", "cut:1.2"),
+    },
     # Tally (arcade/tally_screen.gd, 2026-10-15): number tokens carried on
     # belts across squared paper to a counting box. Made against the cozy
     # rules from the start (docs/agents/sound.md). Two cues repeat: `lay`,

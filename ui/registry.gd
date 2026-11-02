@@ -1406,7 +1406,7 @@ const ARCADE := [
 		# there, and the board's accent off it here. The two are kept equal
 		# by hand: moving it in GAMES means changing this.
 		"deck": "arcade",
-		"slot": 8,
+		"slot": 9,
 		# Its world is the whole screen (`bleed`, puzzles/marigold_world.gd) and the
 		# levels stand where the day card was (docs/agents/flat-screens.md).
 		"bleed": true,

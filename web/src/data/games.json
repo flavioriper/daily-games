@@ -433,9 +433,9 @@
   "title": "Deckchair",
   "group": "arcade",
   "text": {
-   "en": "Seven columns of cards to sort home by suit, from the ace to the king. Tap a card or carry it.",
-   "pt": "Sete colunas de cartas para levar para casa por naipe, do ás ao rei. Toque numa carta ou arraste.",
-   "es": "Siete columnas de cartas para llevar a casa por palo, del as al rey. Toca una carta o arrástrala."
+   "en": "Seven columns of cards to sort home by suit, from the ace to the king. Carry a card, or tap it to send it home.",
+   "pt": "Sete colunas de cartas para levar para casa por naipe, do ás ao rei. Arraste as cartas, ou toque para mandar para casa.",
+   "es": "Siete columnas de cartas para llevar a casa por palo, del as al rey. Arrastra las cartas, o tócalas para enviarlas a casa."
   },
   "tint": "#e2d0c0"
  },
@@ -504,6 +504,17 @@
    "es": "Guía un remolino por el estanque. Lo que se lleva al fondo se guarda como gotas, y las gotas compran un remolino más fuerte para la próxima partida."
   },
   "tint": "#dce3d9"
+ },
+ {
+  "id": "brittle",
+  "title": "Brittle",
+  "group": "arcade",
+  "text": {
+   "en": "Pour a stream of sugar balls at the squares of brittle. Each hit takes one off, and a square past the last row ends the run.",
+   "pt": "Lance um fluxo de bolinhas de açúcar nos quadrados de pé de moleque. Cada batida tira um, e um quadrado que passa da última fileira encerra a partida.",
+   "es": "Lanza un chorro de bolitas de azúcar a los cuadrados de turrón. Cada golpe quita uno, y un cuadrado que pasa de la última fila acaba la partida."
+  },
+  "tint": "#ded1c6"
  },
  {
   "id": "peapod",
@@ -642,9 +653,9 @@
   "title": "Dominoes",
   "group": "versus",
   "text": {
-   "en": "Match the ends, be first to fifty.",
-   "pt": "Combine as pontas, chegue a cinquenta.",
-   "es": "Une las puntas, llega a cincuenta."
+   "en": "Make the ends count in fives.",
+   "pt": "Faça as pontas somarem de cinco em cinco.",
+   "es": "Haz que las puntas sumen de cinco en cinco."
   },
   "tint": "#d2d9c7"
  },

@@ -10,7 +10,7 @@ const NAMES := ["chevron_left", "chevron_right", "undo", "reset", "bulb", "gear"
 	"calendar", "home", "trophy", "bars", "heart", "heart_line", "pencil",
 	"puzzle", "flame", "cloud", "mountain", "sparkle", "trend", "crown", "no_ads", "versus", "arcade", "play",
 	"coin", "gift", "clock", "shield", "acorn", "run", "music", "buzz", "globe", "swords", "gamepad",
-	"friends", "copy", "share", "undo_back", "bin", "flip", "span", "bends",
+	"friends", "copy", "share", "undo_back", "bin", "flip", "span", "bends", "arrow_down",
 	"skill_logic", "skill_space", "skill_planning", "skill_focus", "skill_words", "skill_memory"]
 const SEGMENTS := 24
 const FEATHERED := ["heart"]
@@ -24,6 +24,8 @@ const DOWN := Vector2(0.0, 1.0)
 ## gear, "hole". Unknown names give an empty shape.
 static func shape(name: String) -> Dictionary:
 	match name:
+		"arrow_down":
+			return {"polys": [], "lines": [PackedVector2Array([Vector2(0.5, 0.16), Vector2(0.5, 0.74)]), PackedVector2Array([Vector2(0.24, 0.52), Vector2(0.5, 0.78), Vector2(0.76, 0.52)])]}
 		"chevron_left":
 			return {"polys": [], "lines": [PackedVector2Array([Vector2(0.62, 0.18), Vector2(0.34, 0.5), Vector2(0.62, 0.82)])]}
 		"chevron_right":

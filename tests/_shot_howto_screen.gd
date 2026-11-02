@@ -34,6 +34,7 @@ const SCREENS := {
 	"furrow": "res://arcade/furrow_screen.gd",
 	"griddle": "res://arcade/griddle_screen.gd",
 	"trivet": "res://arcade/trivet_screen.gd",
+	"brittle": "res://arcade/brittle_screen.gd",
 	"tally": "res://arcade/tally_screen.gd",
 }
 const SAVES := ["user://versus.cfg", "user://arcade.cfg"]

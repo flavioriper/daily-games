@@ -2067,6 +2067,47 @@ BST_TV_BRUSH_LINE,Two more brushes for the run,Mais duas escovas na partida,Dos 
 BST_TV_HAND,Fresh hands,Mãos novas,Manos nuevas
 BST_TV_HAND_LINE,Two more fresh hands for the run,Mais duas mãos novas na partida,Dos manos nuevas más en la partida
 BST_CHANCE_TRIVET,"The four tallest stacks are taken off, and the run goes on.","As quatro pilhas mais altas saem, e a partida continua.","Se quitan las cuatro pilas más altas, y la partida sigue."
+ARC_BRITTLE_BLURB,"Pour a stream of sugar balls at the squares of brittle. Each hit takes one off, and a square past the last row ends the run.","Lance um fluxo de bolinhas de açúcar nos quadrados de pé de moleque. Cada batida tira um, e um quadrado que passa da última fileira encerra a partida.","Lanza un chorro de bolitas de azúcar a los cuadrados de turrón. Cada golpe quita uno, y un cuadrado que pasa de la última fila acaba la partida."
+ARC_BEST_BRITTLE,Furthest: step %d,Mais longe: passo %d,Más lejos: paso %d
+BT_MOTTO,Crack every square,Quebre cada quadrado,Rompe cada cuadrado
+BT_STEP,STEP,PASSO,PASO
+BT_STEP_UP,Step %d!,Passo %d!,¡Paso %d!
+BT_TIGHT,Last row!,Última fileira!,¡Última fila!
+BT_CRUSH_1,Crunch!,Crec!,¡Crac!
+BT_CRUSH_2,Crumbly!,Esfarelou!,¡Se desmorona!
+BT_CRUSH_3,Sweet!,Que doce!,¡Qué dulce!
+BT_CRUSH_4,Sugar rush!,Pico de açúcar!,¡Subidón de azúcar!
+BT_CLEAN,Clean tin!,Forma limpa!,¡Molde limpio!
+BT_UNDO_LEFT_ONE,Taken back · 1 left,Desfeito · resta 1,Deshecho · queda 1
+BT_UNDO_LEFT_N,Taken back · %d left,Desfeito · restam %d,Deshecho · quedan %d
+BT_SIGHT,Next aim sees further,A próxima mira vê mais longe,La próxima mira ve más lejos
+BT_CLEAR_TITLE,Start this run over?,Recomeçar esta partida?,¿Empezar de nuevo?
+BT_CLEAR_BODY,The tin goes back to the first step and this score is lost.,A forma volta ao primeiro passo e esta pontuação se perde.,El molde vuelve al primer paso y se pierde esta puntuación.
+BT_CLEAR_YES,Start over,Recomeçar,Empezar de nuevo
+BT_END_CARD,The tin is full for now,A forma encheu por enquanto,El molde se llenó por ahora
+BT_STAT_STEP,step,passo,paso
+BT_STAT_BROKE,squares cracked,quadrados quebrados,cuadrados rotos
+BT_STAT_BALLS,sugar balls,bolinhas,bolitas
+BST_BT_BALLS,A full scoop,Colher cheia,Cuchara llena
+BST_BT_BALLS_LINE,Start the run with four more balls,Comece a partida com mais quatro bolinhas,Empieza la partida con cuatro bolitas más
+BST_BT_UNDO,Second thoughts,Pensar de novo,Pensarlo mejor
+BST_BT_UNDO_LINE,Two more undos for the run,Mais dois desfazer na partida,Dos deshacer más en la partida
+BST_CHANCE_BRITTLE,"The three lowest rows are swept off, and the run goes on.","As três fileiras de baixo são varridas, e a partida continua.","Las tres filas de abajo se barren, y la partida sigue."
+TUT_BRITTLE_AIM,Aim and pour,Mire e lance,Apunta y lanza
+TUT_BRITTLE_AIM_BODY,Hold the tin and slide to aim. Let go and the balls pour out one after another. Slide down to the scoop to take the aim back.,Segure a forma e deslize para mirar. Solte e as bolinhas saem uma atrás da outra. Deslize até a colher para desistir da mira.,Mantén pulsado el molde y desliza para apuntar. Suelta y las bolitas salen una tras otra. Desliza hasta la cuchara para deshacer la mira.
+TUT_BRITTLE_CRACK,Crack the squares,Quebre os quadrados,Rompe los cuadrados
+TUT_BRITTLE_CRACK_BODY,"Every hit takes one off a square's number, and at nothing it breaks. Bank the balls off the walls and the wedges.","Cada batida tira um do número do quadrado, e no zero ele quebra. Rebata as bolinhas nas paredes e nas cunhas.","Cada golpe quita uno al número del cuadrado, y en cero se rompe. Haz rebotar las bolitas en las paredes y las cuñas."
+TUT_BRITTLE_PLUM,Sugar plums,Ameixas de açúcar,Ciruelas de azúcar
+TUT_BRITTLE_PLUM_BODY,Roll a ball through a plum and you have one ball more from the next pour on. There is one in every row.,Passe uma bolinha por uma ameixa e você terá uma bolinha a mais a partir do próximo lance. Há uma em cada fileira.,Pasa una bolita por una ciruela y tendrás una bolita más desde el próximo lanzamiento. Hay una en cada fila.
+TUT_BRITTLE_RISE,Row by row,Fileira por fileira,Fila a fila
+TUT_BRITTLE_RISE_BODY,"The first ball down sets the next pour. Then the squares come down a row, a little harder each step. A square past the last line ends the run.","A primeira bolinha a cair marca o próximo lance. Depois os quadrados descem uma fileira, um pouco mais duros a cada passo. Um quadrado que passa da última linha encerra a partida.","La primera bolita en caer marca el próximo lanzamiento. Luego los cuadrados bajan una fila, algo más duros a cada paso. Un cuadrado que pasa de la última línea acaba la partida."
+TUT_BRITTLE_SWEETS,Sweets in the tin,Doces na forma,Dulces en el molde
+TUT_BRITTLE_SWEETS_BODY,Blue arrows run a line through a whole row or column. Sparks send a ball off anywhere. Popping candy breaks into everything around it.,As setas azuis passam por uma fileira ou coluna inteira. As faíscas mandam a bolinha para qualquer lado. A bala estourando quebra tudo em volta.,Las flechas azules recorren toda una fila o columna. Las chispas mandan la bolita a cualquier lado. El caramelo explosivo rompe todo lo que tiene alrededor.
+TUT_BRITTLE_TOOL_UNDO,Takes the last pour back,Desfaz o último lance,Deshace el último lanzamiento
+TUT_BRITTLE_TOOL_BULB,Shows the next aim further,Mostra a próxima mira mais longe,Muestra la próxima mira más lejos
+TUT_BRITTLE_TOOL_ARROW,Calls every ball home,Chama todas as bolinhas de volta,Llama a todas las bolitas
+TUT_BRITTLE_TOOLS,Three tools,Três ferramentas,Tres herramientas
+TUT_BRITTLE_TOOLS_BODY,Undo takes the last pour back. The bulb shows the next aim much further. The arrow calls every ball home when you are tired of waiting.,Desfazer volta o último lance. A lâmpada mostra a próxima mira bem mais longe. A seta chama todas as bolinhas de volta quando você cansar de esperar.,Deshacer quita el último lanzamiento. La bombilla muestra la próxima mira mucho más lejos. La flecha llama a todas las bolitas si te cansas de esperar.
 TUT_TRIVET_PLACE,Set a stack down,Ponha uma pilha,Pon una pila
 TUT_TRIVET_PLACE_BODY,"Carry one of the %d stacks on the cloth to any empty place, or tap it and then the place. When all are down, the next ones come.","Leve uma das %d pilhas do pano até um lugar vazio, ou toque nela e depois no lugar. Quando todas estiverem na bandeja, vêm as próximas.","Lleva una de las %d pilas del paño a un sitio vacío, o tócala y luego el sitio. Cuando todas estén en la bandeja, llegan las siguientes."
 TUT_TRIVET_GATHER,Tops that match gather,Topos iguais se juntam,Las cimas iguales se juntan

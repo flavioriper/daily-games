@@ -16,7 +16,7 @@ extends RefCounted
 ## (puzzles/gumdrop2d.gd).
 
 const CHANCE := "second_chance"
-const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "beeline", "deckchair", "trivet"]
+const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "beeline", "deckchair", "trivet", "brittle"]
 const ITEMS := {
 	"ff_spare": {"game": "firefly", "icon": "heart", "price": 120},
 	"ff_twin": {"game": "firefly", "icon": "plus", "price": 120},
@@ -36,11 +36,13 @@ const ITEMS := {
 	"dc_hints": {"game": "deckchair", "icon": "bulb", "price": 120},
 	"tv_brush": {"game": "trivet", "icon": "sparkle", "price": 120},
 	"tv_hand": {"game": "trivet", "icon": "plus", "price": 120},
+	"bt_balls": {"game": "brittle", "icon": "plus", "price": 120},
+	"bt_undo": {"game": "brittle", "icon": "undo", "price": 120},
 	"second_chance": {"game": "", "icon": "reset", "price": 200},
 }
 ## Each booster's colour on its disc: the game's, so a chip says whose it is.
 const TINT := {"firefly": Color("5b5fa8"), "molehill": Color("8a6a45"), "stackwood": Color("b0773a"),
-	"thirteen": Color("5f9a6a"), "posy": Color("c56f8e"), "peapod": Color("5f9f47"), "beeline": Color("d9952e"), "deckchair": Color("4c9a94"), "eddy": Color("3f86b0"), "trivet": Color("b56a4c"), "": Color("d49a2a")}
+	"thirteen": Color("5f9a6a"), "posy": Color("c56f8e"), "peapod": Color("5f9f47"), "beeline": Color("d9952e"), "deckchair": Color("4c9a94"), "eddy": Color("3f86b0"), "trivet": Color("b56a4c"), "brittle": Color("c9863a"), "": Color("d49a2a")}
 
 const FF_SPARE_SHIPS := 1
 const MH_TIME := 10.0
@@ -57,6 +59,8 @@ const BL_WIDE := 10
 const DC_HINTS := 3
 const TV_BRUSHES := 2
 const TV_HANDS := 2
+const BT_BALLS := 4
+const BT_UNDOS := 2
 
 static func of(game: String) -> Array:
 	var out := []
@@ -136,6 +140,10 @@ static func apply(game: String, sim: RefCounted, ids: Array) -> void:
 				sim.sweeps += TV_BRUSHES
 			"tv_hand":
 				sim.deals += TV_HANDS
+			"bt_balls":
+				sim.balls += BT_BALLS
+			"bt_undo":
+				sim.undos += BT_UNDOS
 
 ## The Second chance: a run over is taken up again where it ended.
 static func revive(game: String, sim: RefCounted) -> void:

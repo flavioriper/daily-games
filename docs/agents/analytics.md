@@ -169,6 +169,12 @@ put away, best) and `arcade_abandon`; `board_reset` and `rules_opened` with
 `puzzle_id` trivet. A mat's hop, a stack put away, a tool used and a level
 are not tracked.
 
+**Brittle (2026-11-02)** is a run and sends the Arcade's three:
+`arcade_start` (game, boosts), `arcade_end` (score, stage as the step reached,
+seconds, balls, broke: squares broken, volleys, best) and `arcade_abandon`;
+`board_reset` and `rules_opened` with `puzzle_id` brittle. A hit, a plum and a
+tool used are not tracked.
+
 **Griddle (2026-10-12)** is kept too, so no `arcade_start` or `arcade_end`:
 `griddle_enter` (served, stars, coins, away in seconds), `griddle_leave`
 (seconds, served, stars, coins), `griddle_buy` (tile: lot, cow, stall,

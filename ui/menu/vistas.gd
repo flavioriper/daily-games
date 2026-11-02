@@ -136,6 +136,8 @@ const CARDS := {
 	"griddle": ["meadow", 1.6, Vector2(0.4, 0.65)],
 	# Trivet's tray stands in the warm light of the sky vista.
 	"trivet": ["sky", 1.5, Vector2(0.6, 0.5)],
+	# Brittle's tin cools on a sill in the warm light of the sky vista.
+	"brittle": ["sky", 1.5, Vector2(0.5, 0.55)],
 	# Tally's paper lies on a desk in the warm light of the sky vista.
 	"tally": ["sky", 1.5, Vector2(0.45, 0.55)],
 	# Bagatelle's velvet board is lit like an evening: the night vista.

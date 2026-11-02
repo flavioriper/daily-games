@@ -9,8 +9,8 @@ extends SceneTree
 ##   ADS_FAKE_FULL=1 godot --headless --script tests/_probe_chance.gd
 ##   ADS_FAKE_FULL=skip godot --headless --script tests/_probe_chance.gd
 
-const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "beeline", "deckchair", "trivet"]
-const NODE := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Thirteen", "posy": "Posy", "peapod": "Peapod", "beeline": "Beeline", "deckchair": "Deckchair", "trivet": "Trivet"}
+const GAMES := ["firefly", "molehill", "stackwood", "thirteen", "posy", "peapod", "beeline", "deckchair", "trivet", "brittle"]
+const NODE := {"firefly": "Firefly", "molehill": "Molehill", "stackwood": "Stackwood", "thirteen": "Thirteen", "posy": "Posy", "peapod": "Peapod", "beeline": "Beeline", "deckchair": "Deckchair", "trivet": "Trivet", "brittle": "Brittle"}
 
 const Boosters = preload("res://arcade/boosters.gd")
 
@@ -106,6 +106,12 @@ func _force_over(g: String, s: Node) -> void:
 					sim.stacks[i] = [posmod(sim.cells[i].x - sim.cells[i].y, 3)]
 			sim._check()
 			s.board.lay(sim)
+		"brittle":
+			# some points made, and a square come past the last row
+			sim.score = maxi(sim.score, 10)
+			sim.kind[sim.index(sim.ROWS, 3)] = 1
+			sim.hp[sim.index(sim.ROWS, 3)] = 9
+			sim.over = true
 
 func _finish(code: int) -> void:
 	if _had:

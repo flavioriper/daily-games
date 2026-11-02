@@ -82,7 +82,7 @@ that area**, and add new history there rather than here.
 | One board's own notes | `docs/agents/boards/<board>.md` |
 | Versus (snooker, chess, checkers, air hockey, Toy Boats, Penny Drop, Dominoes, Reversi) | `docs/agents/versus.md` |
 | Friends: the link, codes, invites, a friend's game | `docs/agents/friends.md` |
-| Arcade (Firefly, Molehill, Stackwood, Lucky Thirteen, Posy, Peapod, Nightlight, Beeline, Deckchair, Eddy, Furrow, Griddle, Trivet, Tally, Bagatelle; Factory and Marigold have cards there too) | `docs/agents/arcade.md` |
+| Arcade (Firefly, Molehill, Stackwood, Lucky Thirteen, Posy, Peapod, Nightlight, Beeline, Deckchair, Eddy, Furrow, Griddle, Trivet, Tally, Bagatelle, Brittle; Factory and Marigold have cards there too) | `docs/agents/arcade.md` |
 | Factory: the land, the sim, the one-sim rule (and the dropped Valley and Grove, as history) | `docs/agents/factory.md` |
 | Gold, gifts and the shop | `docs/agents/gold-gifts-shop.md` |
 | Sound | `docs/agents/sound.md` |
@@ -129,7 +129,7 @@ that area**, and add new history there rather than here.
   code, comments, commits or on screen (Hidden Word, Word Trail,
   Bridges, Quilt, Paper Planes, Pinwheel, Caterpillar, Sunbeam,
   Hedgehogs, Marigold, Horse Pen, Firefly, Molehill,
-  Stackwood, Lucky Thirteen, Posy, Peapod, Nightlight, Beeline, Deckchair, Eddy, Furrow, Griddle, Trivet, Tally, Bagatelle, Grove, How Big?, Golden Acorn, Pearl Dive, Lattice, Toy Boats, Penny Drop, Jewel Box, Yarn Hoop, Glimpse, Birdsong, Teacups, Picket Sums, Market Sums, Who Ate the Pie?, Hosepipes, Honeycomb, Paper Box, Four Shelves, Five Clues). The spec names the original once, to
+  Stackwood, Lucky Thirteen, Posy, Peapod, Nightlight, Beeline, Deckchair, Eddy, Furrow, Griddle, Trivet, Tally, Bagatelle, Brittle, Grove, How Big?, Golden Acorn, Pearl Dive, Lattice, Toy Boats, Penny Drop, Jewel Box, Yarn Hoop, Glimpse, Birdsong, Teacups, Picket Sums, Market Sums, Who Ate the Pie?, Hosepipes, Honeycomb, Paper Box, Four Shelves, Five Clues). The spec names the original once, to
   forbid it.
 - **A game's world fills the screen** (the user, 2026-10-10, of Eddy: "the
   screen should fit everything, just like the factory does, it's gonna be a

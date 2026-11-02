@@ -5283,6 +5283,36 @@ first investment came at 60 min with the flat balls alone (35 before) and
 at 70 with the cup curve too, the second at 160. Neither `SP_DIV` nor the
 bot's policy was touched.
 
+### Brittle (2026-11-02)
+
+The user, with a screenshot of a web ball shooter: "here is the new game we need
+to add to arcade. Do everything autonomous, make sure it uses all the quality
+patterns". A stream of sugar balls poured from a scoop at numbered squares of
+nut brittle in a tin; spec `docs/superpowers/specs/2026-11-02-arcade-brittle-design.md`.
+Card between Eddy and Peapod by genre size, so **Marigold's `slot` is 9**.
+
+- **The sim is pure data** (`arcade/brittle_sim.gd`, cells, 1/120 s).
+  `tests/_probe_brittle.gd -- [runs] [skill]` plays it with a bot that plays
+  each candidate angle out on a copy of the tin; run it after touching the sim.
+- **Laid as the daily boards** (the rule of 2026-10-31): the planks, the top
+  bar's tools row with Undo, the bin that asks, the paper pill (step, score,
+  best), the arrow and the bulb, then the tin `SIZE_EXPAND_FILL`.
+- **The arrow calls the balls home** and is a game's own button, so it stands
+  above the board, in the row between the pill and the bulb.
+- **Undo and the bulb are real here**: 2 of each a run. Undo restores the rng's
+  state too, so the same row comes back and it cannot be used to reroll.
+- **Draw calls**: each piece a cached mesh, one `draw_mesh`, so a knock is a
+  transform. All the balls are one `MultiMeshInstance2D`, its positions one
+  buffer. 165 calls with 180 balls over 54 pieces at 810x1440.
+- **A mesh's feather is in pixels**: a ball built at radius 1 and scaled up came
+  out a blur twice its size. `Art.BALL` is the built radius.
+- **Colour is how hard a square is against the step** (`Art.band`), so it reads
+  across the tin; how far gone one is, is cracks, marks and never a shade.
+- **Nobody waits**: `Board.PACE` speeds a long volley up to 4x, and from
+  `Sim.STALL` a little weight brings every ball down.
+- The boost card, Second chance, gold, Start over, milestones, new best, end
+  card count-up and the tutorial are the Arcade's own, as on Trivet.
+
 ### Start over on every Arcade game (2026-10-17)
 
 The user: "all arcade games must have a button to reset all progress". Every
