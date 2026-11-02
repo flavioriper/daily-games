@@ -3,7 +3,7 @@ extends "res://ui/menu/cards/drumbeat.gd"
 ## Birdsong's card: a spring morning, the old tree's trunk standing at the
 ## card's right edge under the seal's corner, and the woodpecker clinging to
 ## its left side mid-peck, chips off the bark and its holes above it. The go
-## button is the big drum in the card's colour (Drumbeat's own `_go`), on a
+## button is the big drum in the card's colour (`_go` of the base card, drumbeat.gd, kept for this card since Drumbeat left on 2026-11-02), on a
 ## strip of lawn, the one drum the board has. The words stand top left, as
 ## Drumbeat's do.
 

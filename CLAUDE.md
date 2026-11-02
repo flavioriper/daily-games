@@ -51,7 +51,19 @@ still used by other boards, under their old key names.
 **Marigold moved to the Arcade tab the same day** (`Registry.ARCADE`): the
 same daily board with its levels, its card in the Arcade list
 (`docs/agents/boards/marigold.md`). `Registry.PUZZLES` is the grid's
-thirty-two; `Registry.all()` is every board.
+thirty-nine; `Registry.all()` is every board.
+
+**Sand Sweep, Domino Patio, Gumdrop, Knight, Drumbeat and Trestle were removed
+on 2026-11-02** (the user: "let's remove some games not so popular"): their
+boards, cards, tutorials, sounds, shaders, banks, tools, tests, 492 locale rows
+and notes. Git history has all of it. The ids were `train`, `patio`, `gumdrop`,
+`knight`, `drumbeat` and `trestle`; saved progress under them is simply never
+read. Kept because others use them: `ui/menu/cards/drumbeat.gd` (Birdsong's
+card extends it), `ui/faces/drumbeat_parts.gd` (Birdsong), `ui/faces/chess_piece.gd`
+(the chess skins), `ui/faces/domino_tile.gd` (Versus Dominoes). Paper Planes now
+owns the colour `FAMILY` it borrowed from Sand Sweep. The server still accepts
+Trestle's scores (`SCORED`, `server/functions/src/index.ts`) because store builds
+still send them.
 
 ## Where the detail lives
 
@@ -115,9 +127,9 @@ that area**, and add new history there rather than here.
   by a shade of the piece's own colour** (halo, hatch or ring instead).
 - **Renamed genres**: a board never uses the name of the game it follows, in
   code, comments, commits or on screen (Hidden Word, Word Trail,
-  Bridges, Quilt, Paper Planes, Pinwheel, Caterpillar, Sunbeam, Knight,
-  Hedgehogs, Marigold, Drumbeat, Trestle, Horse Pen, Firefly, Molehill,
-  Stackwood, Lucky Thirteen, Posy, Peapod, Nightlight, Beeline, Deckchair, Eddy, Furrow, Griddle, Trivet, Tally, Bagatelle, Gumdrop, Grove, How Big?, Golden Acorn, Pearl Dive, Lattice, Sand Sweep, Toy Boats, Penny Drop, Jewel Box, Toy Cannons, Yarn Hoop, Glimpse, Birdsong, Domino Patio, Teacups, Picket Sums, Market Sums, Who Ate the Pie?, Hosepipes, Honeycomb, Paper Box, Four Shelves, Five Clues). The spec names the original once, to
+  Bridges, Quilt, Paper Planes, Pinwheel, Caterpillar, Sunbeam,
+  Hedgehogs, Marigold, Horse Pen, Firefly, Molehill,
+  Stackwood, Lucky Thirteen, Posy, Peapod, Nightlight, Beeline, Deckchair, Eddy, Furrow, Griddle, Trivet, Tally, Bagatelle, Grove, How Big?, Golden Acorn, Pearl Dive, Lattice, Toy Boats, Penny Drop, Jewel Box, Yarn Hoop, Glimpse, Birdsong, Teacups, Picket Sums, Market Sums, Who Ate the Pie?, Hosepipes, Honeycomb, Paper Box, Four Shelves, Five Clues). The spec names the original once, to
   forbid it.
 - **A game's world fills the screen** (the user, 2026-10-10, of Eddy: "the
   screen should fit everything, just like the factory does, it's gonna be a
@@ -125,7 +137,7 @@ that area**, and add new history there rather than here.
   the top bar, plates and controls lie over it, as `factory/screen.gd` and
   `arcade/eddy_screen.gd` do. No paper page with the game in a frame. A
   daily board asks the flat host for it with `"bleed": true` in the
-  registry (Gumdrop, Jewel Box, Toy Cannons; `docs/agents/flat-screens.md`).
+  registry (Jewel Box; `docs/agents/flat-screens.md`).
 - **A game screen is laid as the daily boards** (the user, 2026-10-31: "wire
   UI layout properly, make it a rule, using daily ones"), every screen
   touched from now on, puzzle, Arcade or Versus: the world full rect (a

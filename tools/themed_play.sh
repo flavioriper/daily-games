@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Puts a themed day tools/themed_days.sh made into this Mac's copy of the
-# game as TODAY's pictures, so Pixel Garden, Button Box, Toy Cannons and
-# Gumdrop (its `jellies`) can be played on it (core/themed_pictures.gd reads the backend's cache; the
+# game as TODAY's pictures, so Pixel Garden and Button Box
+# can be played on it (core/themed_pictures.gd reads the backend's cache; the
 # game run from the editor or the command line wakes the backend). Touches
 # nothing but those cache files (a day with `quizzes` fills Golden Acorn's and
 # Pearl Dive's too); `off` takes them away again and puts the backend's own

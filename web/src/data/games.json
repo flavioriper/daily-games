@@ -187,17 +187,6 @@
   "tint": "#ecdec9"
  },
  {
-  "id": "train",
-  "title": "Sand Sweep",
-  "group": "puzzles",
-  "text": {
-   "en": "Send the little vacuums round the belt to pull the sand picture away from below, grain by grain.",
-   "pt": "Mande os aspiradorzinhos dar a volta no trilho e puxar o desenho de areia por baixo, grão por grão.",
-   "es": "Manda las aspiradoritas a dar la vuelta a la vía y aspirar el dibujo de arena por debajo, grano a grano."
-  },
-  "tint": "#dbd9d2"
- },
- {
   "id": "hoop",
   "title": "Yarn Hoop",
   "group": "puzzles",
@@ -341,17 +330,6 @@
   "tint": "#e0dbc3"
  },
  {
-  "id": "patio",
-  "title": "Domino Patio",
-  "group": "puzzles",
-  "text": {
-   "en": "Lay the dominoes on the patio so every flower bed keeps the rule on its tag.",
-   "pt": "Coloque os dominós no pátio para que cada canteiro cumpra a regra da sua etiqueta.",
-   "es": "Coloca las fichas de dominó en el patio para que cada parterre cumpla la regla de su etiqueta."
-  },
-  "tint": "#ecdfca"
- },
- {
   "id": "teacups",
   "title": "Teacups",
   "group": "puzzles",
@@ -372,17 +350,6 @@
    "es": "Intercambia las fichas numeradas hasta que cada línea de la celosía tenga cada número una vez."
   },
   "tint": "#d9dbbd"
- },
- {
-  "id": "gumdrop",
-  "title": "Gumdrop",
-  "group": "puzzles",
-  "text": {
-   "en": "Colour the clear jelly to match the card: squeeze the syrup in, let it soak, and serve it.",
-   "pt": "Pinte a gelatina transparente igual ao cartão: aperte a calda, deixe penetrar e sirva.",
-   "es": "Pinta la gelatina transparente igual que la tarjeta: aprieta el sirope, deja que cale y sírvela."
-  },
-  "tint": "#f3e5d2"
  },
  {
   "id": "lightup",
@@ -440,17 +407,6 @@
   "tint": "#cad3d5"
  },
  {
-  "id": "knight",
-  "title": "Knight",
-  "group": "puzzles",
-  "text": {
-   "en": "Hop your knight past the guards and take the king.",
-   "pt": "Salte com seu cavalo pelos guardas e capture o rei.",
-   "es": "Salta con tu caballo entre los guardias y captura al rey."
-  },
-  "tint": "#e8d6c4"
- },
- {
   "id": "pinwheel",
   "title": "Pinwheel",
   "group": "puzzles",
@@ -471,28 +427,6 @@
    "es": "Desliza los espejos y lleva la luz al capullo."
   },
   "tint": "#eaddc7"
- },
- {
-  "id": "trestle",
-  "title": "Trestle",
-  "group": "puzzles",
-  "text": {
-   "en": "Build a bridge on a budget and send the cart across.",
-   "pt": "Construa uma ponte com o orçamento e mande o carrinho atravessar.",
-   "es": "Construye un puente con el presupuesto y haz cruzar al carrito."
-  },
-  "tint": "#e1dbcc"
- },
- {
-  "id": "drumbeat",
-  "title": "Drumbeat",
-  "group": "puzzles",
-  "text": {
-   "en": "One road, one short song: tap each berry's drum.",
-   "pt": "Uma estrada, uma música curta: toque o tambor de cada frutinha.",
-   "es": "Un camino, una canción corta: toca el tambor de cada baya."
-  },
-  "tint": "#eee1d1"
  },
  {
   "id": "deckchair",

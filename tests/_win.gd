@@ -158,17 +158,11 @@ func _note(id: String) -> String:
 		"sunbeam": return "%dx%d floor, %d pieces, %d drops, %d slides, hints=%d, board fit=%s, hud=%s" % [
 			_puzzle._state.cols, _puzzle._state.rows, _puzzle._state.pieces().size(),
 			_puzzle._state.drops().size(), _puzzle.moves, _puzzle.hints_used, _fit_ok, _hud_ok]
-		"knight": return "%dx%d board, %d rose knights, shortest %d, %d moves, hints=%d, board fit=%s, hud=%s" % [
-			_puzzle._state.w, _puzzle._state.w, _puzzle._state.foes.size(), _puzzle._state.opt(),
-			_puzzle.moves, _puzzle.hints_used, _fit_ok, _hud_ok]
 		"slider": return "band %d, shortest %d, %d moves, hints=%d, board fit=%s, hud=%s" % [
 			_puzzle._state.band, _puzzle._state.par, _puzzle.moves, _puzzle.hints_used, _fit_ok, _hud_ok]
 		"hedgehogs": return "%dx%d lawn, %d hedgehogs, woken=%d, hints=%d, checks=%d, board fit=%s, hud=%s" % [
 			_puzzle._state.cols(), _puzzle._state.rows(), int(_puzzle._state.g.k), _puzzle._state.woken,
 			_puzzle.hints_used, _puzzle.checks, _fit_ok, _hud_ok]
-		"patio": return "%dx%d, %d tiles (%d spare), %d beds, unique=%s, %d moves, hints=%d, caps %s, board fit=%s, hud=%s" % [
-			_puzzle._st.cols, _puzzle._st.rows, _puzzle._st.laid_count(), _puzzle._st.tiles.size() - _puzzle._st.laid_count(),
-			_puzzle._st.beds.size(), _puzzle._st.unique, _puzzle.moves, _puzzle.hints_used, _puzzle.capabilities(), _fit_ok, _hud_ok]
 		"market": return "%s -> %d, par %d, %d steps, stars=%d, hints=%d, caps %s, board fit=%s, hud=%s" % [
 			str(_puzzle._st.numbers), _puzzle._st.target, _puzzle._st.par, _puzzle._st.steps, _puzzle._st.stars(),
 			_puzzle.hints_used, _puzzle.capabilities(), _fit_ok, _hud_ok]
@@ -202,9 +196,6 @@ func _note(id: String) -> String:
 		"pixelgarden": return "%s %dx%d, %d beads, %d moves, hints=%d, checks=%d, board fit=%s, hud=%s" % [
 			_puzzle._state.pic_id, _puzzle._state.n, _puzzle._state.n, _puzzle._state.target,
 			_puzzle.moves, _puzzle.hints_used, _puzzle.checks, _fit_ok, _hud_ok]
-		"trestle": return "gap %d, cost %d of %d, %d members, %d tests, hints=%d, board fit=%s, hud=%s" % [
-			int(_puzzle.state.level.w), _puzzle.state.cost(), _puzzle.state.budget, _puzzle.state.design.size(),
-			_puzzle.checks, _puzzle.hints_used, _fit_ok, _hud_ok]
 		"minigolf": return "band %d, %d holes, par %d, card %s, hints=%d, board fit=%s, hud=%s" % [
 			_puzzle._state.band, _puzzle._state.holes.size(), _puzzle._state.par_total(), str(_puzzle._state.card),
 			_puzzle.hints_used, _fit_ok, _hud_ok]
@@ -217,15 +208,9 @@ func _note(id: String) -> String:
 		"acorn": return "band %d, %d questions (%s), %d right, hints=%d, checks=%d, board fit=%s, hud=%s" % [
 			_puzzle.state.band, _puzzle.state.count(), _puzzle.state.source, _puzzle.state.rights(),
 			_puzzle.hints_used, _puzzle.checks, _fit_ok, _hud_ok]
-		"gumdrop": return "band %d, %d moulds, served at %s in %d serves, board fit=%s, hud=%s" % [
-			_puzzle.band, _puzzle.sim.moulds.size(), str(_puzzle.sim.marks), _puzzle.moves, _fit_ok, _hud_ok]
 		"hoop": return "band %d, %d panels (%s), %d pins, %d sides, %d refused, best combo %d, hints=%d, board fit=%s, hud=%s" % [
 			_puzzle.state.band, _puzzle.state.panels.size(), _puzzle.state.name_key, _puzzle.state.pins.size(),
 			_puzzle.state.sides.size(), _puzzle.state.refused, _puzzle._best, _puzzle.hints_used, _fit_ok, _hud_ok]
-		"train": return "band %d, %d blocks on %d by %d (%s), %d engines, %d sent (par %d), %d in the siding, jammed=%s, hints=%d, board fit=%s, hud=%s" % [
-			_puzzle.state.band, _puzzle.state.count(), _puzzle.state.w, _puzzle.state.h, _puzzle.state.name_key,
-			_puzzle.state.colour.size(), _puzzle.state.taps, _puzzle.state.par, _puzzle.state.parked(),
-			str(_puzzle.state.jammed), _puzzle.hints_used, _fit_ok, _hud_ok]
 		"buttons": return "band %d, %d buttons on %d by %d (%s), %d taps (par %d), tin %d of %d, %d left of %d, hints=%d, board fit=%s, hud=%s" % [
 			_puzzle.state.band, _puzzle.state.count(), _puzzle.state.w, _puzzle.state.h, _puzzle.state.name_key,
 			_puzzle.state.taps, _puzzle.state.par, _puzzle.state.in_tin(), _puzzle.state.capacity(),
@@ -263,13 +248,11 @@ func _solve(id: String) -> void:
 		"pinwheel": _solve_pinwheel()
 		"caterpillar": _solve_caterpillar()
 		"sunbeam": _solve_sunbeam()
-		"knight": _solve_knight()
 		"hedgehogs": _solve_hedgehogs()
 		"slider": _solve_slider()
 		"pixelgarden": _solve_pixelgarden()
 		"glimpse": _solve_glimpse()
 		"birdsong": _solve_birdsong()
-		"patio": _solve_patio()
 		"teacups": _solve_teacups()
 		"paperbox": _solve_paperbox()
 		"shelves": _solve_shelves()
@@ -278,7 +261,6 @@ func _solve(id: String) -> void:
 		"pie": _solve_pie()
 		"hoses": _solve_hoses()
 		"honeycomb": _solve_honeycomb()
-		"trestle": _solve_trestle()
 		"minigolf": _solve_minigolf()
 		"horse": _solve_horse()
 		"how_big": _solve_how_big()
@@ -286,43 +268,7 @@ func _solve(id: String) -> void:
 		"pearl": _solve_pearl()
 		"lattice": _solve_lattice()
 		"buttons": _solve_buttons()
-		"train": _solve_train()
 		"hoop": _solve_hoop()
-		"gumdrop": _solve_gumdrop()
-
-## Gumdrop's syrup is a fluid on the GPU, so nothing here can pour it in a
-## frame: each mould's cells are filled as the card has them (the sim's
-## prefill, a tutorial page's), given a second to land, and served with a
-## press on the table's own button. It takes wall time, so this one awaits
-## and holds the walk (`_waiting`) to the win.
-func _solve_gumdrop() -> void:
-	_waiting = true
-	var sim = _puzzle.sim
-	var table = _puzzle.table
-	_fit_ok = Rect2(Vector2.ZERO, table.field.size).encloses(table._tray)
-	_hud_ok = table.clear.x > 0.0 and table._card.position.y >= table.clear.x
-	for i in sim.moulds.size():
-		var guard := 0
-		while (sim.index != i or int(sim.phase) > 1) and guard < 900:
-			guard += 1
-			await process_frame
-		for c in sim.mould.want.size():
-			sim.filled(c, int(sim.mould.want[c]), 1.0)
-		await create_timer(1.2).timeout
-		var at: Vector2 = table.field.get_global_transform_with_canvas() * table._serve_at
-		for down in [true, false]:
-			var ev := InputEventScreenTouch.new()
-			ev.index = 0
-			ev.pressed = down
-			ev.position = root.get_final_transform() * at
-			Input.parse_input_event(ev)
-			Input.flush_buffered_events()
-	var wait := 0
-	while not _puzzle.is_done() and wait < 900:
-		wait += 1
-		await process_frame
-	_hud_ok = _hud_ok and _puzzle.moves == sim.moulds.size()
-	_waiting = false
 
 func _solve_binairo() -> void:
 	var n: int = _puzzle.n
@@ -651,11 +597,6 @@ func _solve_lattice() -> void:
 		await process_frame
 	_waiting = false
 
-## Toy Cannons: a buried engine tapped (refused), the bulb once where there is
-## one, then the deal's own line, an engine at a time through the board's
-## input, each sent when the loop is empty (the way the line was proved).
-## The loop runs on its clock, so this one awaits, and holds the walk
-## (`_waiting`) to the win.
 ## Yarn Hoop: the bulb once, then every side still open dragged pin to pin
 ## through the window, as a finger would.
 func _solve_hoop() -> void:
@@ -680,53 +621,6 @@ func _solve_hoop() -> void:
 		guard += 1
 		if guard % 8 == 0:
 			await process_frame
-	_waiting = false
-
-func _solve_train() -> void:
-	_waiting = true
-	var st = _puzzle.state
-	var slot := Rect2(Vector2.ZERO, _puzzle.size)
-	_fit_ok = slot.encloses(_puzzle._rug) and slot.encloses(_puzzle._siding_rect) and slot.encloses(_puzzle._shed_rect)
-	await create_timer(0.8).timeout
-	_hud_ok = true
-	for column: PackedInt32Array in st.sheds:
-		if column.size() > 1:
-			_tap_local(_puzzle.engine_screen(column[1]))
-			_hud_ok = st.taps == 0
-			break
-	var sent := {}
-	if _puzzle.capabilities().has("hint"):
-		var pick: int = st.hint()
-		_press(_host.top_bar.hint_button)
-		await create_timer(1.0).timeout
-		_hud_ok = _hud_ok and _puzzle.hints_used == 1 and st.taps == 1
-		sent[pick] = true
-	# the line's order, but for the engine the bulb already sent: the state's
-	# own hand finishes what the line cannot
-	var guard := 0
-	var i := 0
-	while not st.is_solved() and not st.jammed and guard < 4000:
-		guard += 1
-		if not st.idle():
-			await create_timer(0.1).timeout
-			continue
-		var e := -1
-		if sent.is_empty() and i < st.line.size():
-			e = st.line[i]
-			i += 1
-		else:
-			e = st.hint()
-		if e < 0:
-			break
-		var before: int = st.taps
-		_tap_local(_puzzle.engine_screen(e))
-		_hud_ok = _hud_ok and st.taps == before + 1
-		await create_timer(0.1).timeout
-	_hud_ok = _hud_ok and st.is_solved() and st.parked() == 0
-	var wait := 0
-	while not _puzzle.is_done() and wait < 600:
-		wait += 1
-		await process_frame
 	_waiting = false
 
 ## Button Box: a sewn button tapped where there is one (refused), the bulb
@@ -937,37 +831,6 @@ func _slide_sunbeam(p: int, to: int) -> void:
 		q += step
 		pts.append(_puzzle._pt(_puzzle._piece_mid(p, float(q))))
 	_drag_path_local(pts)
-
-## Knight: one hint through the HUD, pressed twice -- it rings the shortest
-## line's next hop, then plays it for you -- then the rest of the line
-## tapped square by square by real touch.
-## The board ignores taps while its pieces travel, and this drives input
-## synchronously, so each tap first clears that wait.
-func _solve_knight() -> void:
-	var st = _puzzle._state
-	var slot := Rect2(Vector2.ZERO, _puzzle.size)
-	_fit_ok = true
-	for r in st.w:
-		for c in st.w:
-			if not slot.has_point(_puzzle.cell_to_local(r, c)):
-				_fit_ok = false
-	# The harness drives synchronously a few frames after opening, inside
-	# the board's entrance wait.
-	_puzzle._busy_until = -100.0
-	# The bulb in two presses (2026-10-29): the first rings the hop and
-	# spends the hint, the second hops there for free.
-	_press(_host.top_bar.hint_button)
-	var rang: bool = _puzzle._reading >= 0 and st.history.size() == 0
-	_press(_host.top_bar.hint_button)
-	_hud_ok = rang and _puzzle.hints_used == 1 and st.history.size() == 1
-	for i in 64:
-		if st.is_solved():
-			break
-		var m: int = st.hint_move()
-		if m < 0:
-			break
-		_puzzle._busy_until = -100.0
-		_tap_local(_puzzle.cell_to_local(m / st.w, m % st.w))
 
 ## Hedgehogs: Check spent first on the opening, where nothing is flagged and
 ## it must find nothing wrong; one hint through the HUD; then every bare cell
@@ -2035,67 +1898,6 @@ func _solve_teacups() -> void:
 		_tap_local(_puzzle.slot_to_local(st.slot[st.partner(a)]))
 		_puzzle._process(0.1)
 
-## Domino Patio: one bulb through the real button; then each tile of the
-## answer turned on the rack by taps until it faces its answer's way and
-## dragged by a real touch onto its two squares. The first one laid is
-## dragged off the patio again (back to its bay) and laid once more.
-func _solve_patio() -> void:
-	var st = _puzzle._st
-	var slot := Rect2(Vector2.ZERO, _puzzle.size)
-	_fit_ok = true
-	for i in st.bed_of.size():
-		if st.bed_of[i] >= 0 and not slot.has_point(_puzzle._patio_pos(i, 0) - Vector2(_puzzle._l("cell") * 0.5, 0)):
-			_fit_ok = false
-	for t in st.tiles.size():
-		if not slot.has_point(_puzzle._bay(t)):
-			_fit_ok = false
-	# Made fun: the bulb reads first (a tile rimmed, the toast, one hint,
-	# a star off), then lays it free.
-	_press(_host.top_bar.hint_button)
-	var read: Dictionary = _puzzle._reading
-	_hud_ok = _puzzle.hints_used == 1 and not read.is_empty() and _puzzle._toast.showing(_puzzle._t) \
-		and _puzzle._stars.stars == 2 and not st.right(int(read.tile))
-	_press(_host.top_bar.hint_button)
-	_hud_ok = _hud_ok and _puzzle.hints_used == 1 and _puzzle._reading.is_empty() and st.right(int(read.tile))
-	# A tile laid where it breaks a bed: the toast says why, a star falls;
-	# dragged off again, the toast goes.
-	var broke := false
-	for t in st.tiles.size():
-		if broke or st.at[t] >= 0:
-			continue
-		for a in st.bed_of.size():
-			if broke or st.bed_of[a] < 0 or not st.fits(t, a, st.dir[t]) or st.try_drop(t, a, st.dir[t]) >= 0:
-				continue
-			var lift0 := Vector2(0, _puzzle.HOLD_LIFT * _puzzle._l("cell"))
-			_drag_local(_puzzle._bay(t), _puzzle._patio_pos(a, st.dir[t]) + lift0)
-			_hud_ok = _hud_ok and st.at[t] == a and _puzzle._told_bed >= 0 and _puzzle._toast.showing(_puzzle._t) \
-				and _puzzle._slips == 2 and _puzzle._stars.stars == 2
-			print("  broke a bed: %s" % _puzzle._toast.text)
-			_drag_local(_puzzle._patio_pos(a, st.dir[t]), Vector2(_puzzle.size.x * 0.5, _puzzle.size.y - 30.0))
-			_hud_ok = _hud_ok and st.at[t] < 0 and _puzzle._told_bed == -1
-			broke = true
-	_hud_ok = _hud_ok and broke
-	var lifted := false
-	for t in st.tiles.size():
-		if _puzzle.is_done():
-			return
-		if st.answer[t].x < 0 or st.right(t):
-			continue
-		var guard := 0
-		while st.dir[t] != st.answer[t].y and guard < 4:
-			guard += 1
-			_tap_local(_puzzle._bay(t))
-		var lift := Vector2(0, _puzzle.HOLD_LIFT * _puzzle._l("cell"))
-		_drag_local(_puzzle._bay(t), _puzzle.answer_to_local(t) + lift)
-		if not lifted and st.right(t):
-			lifted = true
-			# off the patio again, onto the open terrace under the rack
-			_drag_local(_puzzle.answer_to_local(t), Vector2(_puzzle.size.x * 0.5, _puzzle.size.y - 30.0))
-			_hud_ok = _hud_ok and st.at[t] < 0
-			_drag_local(_puzzle._bay(t), _puzzle.answer_to_local(t) + lift)
-		if not st.right(t):
-			_hud_ok = false
-
 func _solve_pixelgarden() -> void:
 	var st = _puzzle._state
 	var n: int = st.n
@@ -2129,63 +1931,6 @@ func _solve_pixelgarden() -> void:
 				return
 			if int(st.want[c]) == k and int(st.beads[c]) != k:
 				_tap_local(_puzzle.cell_to_local(c / n, c % n))
-
-## Trestle: the day's proof laid member by member by touch -- each dragged
-## from whichever of its ends already stands (a pin, or a bolt an earlier
-## member left), its material picked on the chips first -- then a member
-## tapped off and put back, then Go. The cart's crossing takes seconds of
-## the sim's clock, past this harness's frame slot, so the test is run to
-## its end through the board's own `run_test_now()`.
-func _solve_trestle() -> void:
-	var st = _puzzle.state
-	var slot := Rect2(Vector2.ZERO, _puzzle.size)
-	_fit_ok = true
-	for a in st.anchors():
-		if not slot.has_point(_puzzle.point_to_local(a)):
-			_fit_ok = false
-	# the bulb in two presses: the first shows a member, the second lays it
-	_press(_host.top_bar.hint_button)
-	var peeked: bool = st.design.is_empty() and not _puzzle._peek.is_empty()
-	_press(_host.top_bar.hint_button)
-	var bulb_ok: bool = peeked and st.design.size() == 1 and st.design[0].get("hint", false) and _puzzle._peek.is_empty()
-	var todo: Array = st.proof.duplicate()
-	var stands := {}
-	for a in st.anchors():
-		stands[a] = true
-	var guard := 0
-	while not todo.is_empty() and guard < 400:
-		guard += 1
-		var p: Dictionary = todo.pop_front()
-		var from: Vector2i
-		var to: Vector2i
-		if stands.has(p.a):
-			from = p.a
-			to = p.b
-		elif stands.has(p.b):
-			from = p.b
-			to = p.a
-		else:
-			todo.append(p)
-			continue
-		_tap_local(_puzzle.chip_to_local(int(p.m)))
-		_drag_local(_puzzle.point_to_local(from), _puzzle.point_to_local(to))
-		stands[to] = true
-	# a tap on a member of the player's (its middle off the lattice's
-	# points) takes it down; Undo puts it back
-	var first: Dictionary = st.design[st.design.size() - 1]
-	for d: Dictionary in st.design:
-		if not d.get("hint", false) and ((d.a.x + d.b.x) % 2 != 0 or (d.a.y + d.b.y) % 2 != 0):
-			first = d
-			break
-	var mid: Vector2 = (_puzzle.point_to_local(first.a) + _puzzle.point_to_local(first.b)) * 0.5
-	var before: int = st.design.size()
-	_tap_local(mid)
-	_hud_ok = st.design.size() == before - 1
-	_press(_host.top_bar.undo_button)
-	_hud_ok = _hud_ok and bulb_ok and st.design.size() == before and st.design.size() == st.proof.size()
-	_press_check()
-	_puzzle.run_test_now()
-
 
 ## Check, where a board still has one. A board in a world of its own lost
 ## the button (docs/agents/flat-screens.md): its `check()` is called

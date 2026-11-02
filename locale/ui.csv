@@ -1762,33 +1762,6 @@ TUT_EDDY_HUD,The buttons,Os botões,Los botones
 TUT_EDDY_HUD_RESET,A fresh run on a full pond,Uma partida nova num lago cheio,Una partida nueva en un estanque lleno
 TUT_EDDY_HUD_GEAR,Settings. The run waits for you,Configurações. A partida espera por você,Ajustes. La partida te espera
 TUT_EDDY_HUD_HELP,"This guide, whenever you like","Este guia, quando você quiser","Esta guía, cuando quieras"
-GD_MOTTO,A little at a time,Um pouquinho de cada vez,Un poquito cada vez
-GD_REFUND,Your Gumdrop boosters came back as %d gold,Seus reforços do Gumdrop voltaram como %d de ouro,Tus refuerzos de Gumdrop volvieron como %d de oro
-GD_PERFECT,Perfect!,Perfeito!,¡Perfecto!
-GD_GOOD,Served!,Servido!,¡Servido!
-GD_GREAT,Great!,Ótimo!,¡Genial!
-GD_OF,%d OF %d,%d DE %d,%d DE %d
-GD_CHERRY,Cherry,Cereja,Cereza
-GD_ORANGE,Orange,Laranja,Naranja
-GD_LEMON,Lemon,Limão,Limón
-GD_LIME,Lime,Lima,Lima
-GD_BLUEBERRY,Blueberry,Mirtilo,Arándano
-GD_GRAPE,Grape,Uva,Uva
-TUT_GUMDROP_FILL,Squeeze the syrup in,Aperte a calda,Aprieta el sirope
-TUT_GUMDROP_FILL_BODY,"Slide a finger over the tray and the needle moves as far as your finger does. A tap puts its tip right there. Touch a pot for its flavour, then hold the pink button: the syrup runs out for as long as you hold.","Deslize o dedo sobre a bandeja e a agulha anda o mesmo tanto. Um toque leva a ponta até ali. Toque num pote para escolher o sabor e segure o botão rosa: a calda sai enquanto você segurar.","Desliza un dedo sobre la bandeja y la aguja se mueve lo mismo. Un toque lleva la punta justo allí. Toca un tarro para elegir su sabor y mantén el botón rosa: el sirope sale mientras lo mantengas."
-TUT_GUMDROP_SOAK,Let it soak,Deixe penetrar,Deja que cale
-TUT_GUMDROP_SOAK_BODY,"The colour soaks through the jelly from the tip and spreads for as long as you hold and stays in its piece of jelly. Let go and it evens out on its own. More of it makes the colour stronger; past the card's shade it goes darker.","A cor penetra a gelatina a partir da ponta e se espalha enquanto você segura e fica no seu pedaço de gelatina. Solte e ela se iguala sozinha. Mais calda deixa a cor mais forte; além do tom do cartão, fica mais escura.","El color cala la gelatina desde la punta y se extiende mientras mantienes y se queda en su trozo de gelatina. Suelta y se iguala solo. Más sirope hace el color más fuerte; pasado el tono de la tarjeta, se oscurece."
-TUT_GUMDROP_MATCH,Match the card,Deixe igual ao cartão,Iguala la tarjeta
-TUT_GUMDROP_MATCH_BODY,The card shows the jelly as it is wanted. How near yours is stays hidden until the gold button serves it: then its number is told and stamped. Every piece needs some colour before it can be served; 95% and over is Perfect.,O cartão mostra a gelatina como deve ficar. O quanto a sua está perto fica escondido até o botão dourado servir: aí o número aparece e é carimbado. Todo pedaço precisa de um pouco de cor antes de servir; 95% ou mais é Perfeito.,La tarjeta muestra la gelatina deseada. Lo cerca que está la tuya queda oculto hasta que el botón dorado la sirve: entonces sale el número y se sella. Cada trozo necesita algo de color antes de servirla; 95% o más es Perfecto.
-TUT_GUMDROP_MIX,Two make a third,Dois fazem um terceiro,Dos hacen un tercero
-TUT_GUMDROP_MIX_BODY,"From Medium a flavour on the card may have no pot. Squeeze half of each of its two neighbours into the same piece: cherry and lemon make orange, lemon and blueberry lime, blueberry and cherry grape. Up to Hard the ring marks the half with a white notch.","Do Médio em diante um sabor do cartão pode não ter pote. Aperte metade de cada vizinho no mesmo pedaço: cereja e limão fazem laranja, limão e mirtilo lima, mirtilo e cereja uva. Até o Difícil o anel marca a metade com um risco branco.","Desde Medio un sabor de la tarjeta puede no tener tarro. Aprieta la mitad de cada vecino en el mismo trozo: cereza y limón hacen naranja, limón y arándano lima, arándano y cereza uva. Hasta Difícil el anillo marca la mitad con una raya blanca."
-TUT_GUMDROP_DRAIN,Draw it back out,Tire de volta,Sácalo de vuelta
-TUT_GUMDROP_DRAIN_BODY,"The ring on the pink button fills with the piece under the tip: 100% is the card's shade, and each colour in it is its own segment, so half cherry and half lemon is two equal halves. Gone past full? Hold the grey button and the needle draws the syrup back out.","O anel no botão rosa se enche com o pedaço sob a ponta: 100% é o tom do cartão, e cada cor nele é um segmento, então metade cereja e metade limão são duas metades iguais. Passou do cheio? Segure o botão cinza e a agulha tira a calda de volta.","El anillo del botón rosa se llena con el trozo bajo la punta: 100% es el tono de la tarjeta, y cada color es su propio segmento, así que mitad cereza y mitad limón son dos mitades iguales. ¿Te pasaste? Mantén el botón gris y la aguja saca el sirope de vuelta."
-TUT_GUMDROP_HUD,The buttons,Os botões,Los botones
-TUT_GUMDROP_HUD_BODY,Too much syrup in a piece? Hold the grey button and the needle draws it back out. The ring on the pink button shows how full the piece under the tip is. Stuck? The bulb says what a wrong piece is made of; tap it again to pour it right. Nothing is timed: the jelly waits for you as long as you like.,Calda demais num pedaço? Segure o botão cinza e a agulha a tira de volta. O anel no botão rosa mostra o quanto o pedaço sob a ponta está cheio. Travou? A lâmpada diz do que um pedaço errado é feito; toque de novo para acertá-lo. Nada tem tempo: a gelatina espera por você o quanto quiser.,¿Demasiado almíbar en un trozo? Mantén el botón gris y la aguja lo saca de vuelta. El anillo del botón rosa muestra cuán lleno está el trozo bajo la punta. ¿Atascado? La bombilla dice de qué está hecho un trozo mal; tócala otra vez para acertarlo. Nada tiene tiempo: la gelatina te espera todo lo que quieras.
-TUT_GUMDROP_HUD_RESET,"The mould on the tray, clear again","A forma na bandeja, limpa de novo","El molde de la bandeja, limpio otra vez"
-TUT_GUMDROP_HUD_GEAR,Settings,Configurações,Ajustes
-TUT_GUMDROP_HUD_HELP,"This guide, whenever you like","Este guia, quando você quiser","Esta guía, cuando quieras"
 ARC_FURROW_BLURB,"A small farm that grows while you are away. Pick, sow again by hand, gather eggs and milk, and come back before the crops wither.","Uma pequena fazenda que cresce enquanto você está fora. Colha, replante com a mão, junte ovos e leite, e volte antes que a plantação murche.","Una pequeña granja que crece mientras no estás. Recoge, vuelve a sembrar a mano, junta huevos y leche, y vuelve antes de que se marchite el cultivo."
 FW_MOTTO,"Sow, wait, sweep","Plante, espere, colha","Siembra, espera, recoge"
 FW_SEEDS,SEEDS,SEMENTES,SEMILLAS

@@ -58,13 +58,8 @@ const AcornArt = preload("res://ui/faces/acorn_art.gd")
 const PearlArt = preload("res://ui/faces/pearl_art.gd")
 const LatticeArt = preload("res://ui/faces/lattice_art.gd")
 const ButtonArt = preload("res://ui/faces/button_art.gd")
-const TrainArt = preload("res://ui/faces/train_art.gd")
-const GumArt = preload("res://puzzles/gumdrop_art.gd")
-const GumMould = preload("res://puzzles/gumdrop_mould.gd")
 const MgParts = preload("res://ui/faces/marigold_parts.gd")
 const MgState = preload("res://puzzles/marigold_state.gd")
-const DbParts = preload("res://ui/faces/drumbeat_parts.gd")
-const TrParts = preload("res://ui/faces/trestle_parts.gd")
 const Bead = preload("res://ui/faces/bead.gd")
 const Lawn = preload("res://ui/faces/leaf_pile.gd")
 const Rings2D = preload("res://puzzles/rings2d.gd")
@@ -163,10 +158,6 @@ const SB_POT := Vector2i(7, 2)
 ## Knight's card: the same 8 by 3 strip laid as a chessboard, your knight in
 ## mid-hop along its L toward the rose king, one rose knight standing guard
 ## beside him and the hop's dashed arc behind -- the rule in one picture.
-const KN_FROM := Vector2i(1, 2)
-const KN_TO := Vector2i(3, 1)
-const KN_GUARD := Vector2i(5, 2)
-const KN_KING := Vector2i(6, 1)
 
 ## Super Slider's card: a two-row strip of the tray turned on its side, the
 ## gate cut in its right-hand end and the big block one slide from it --
@@ -210,13 +201,10 @@ var _sky_mesh: ArrayMesh
 var _pinwheel_mesh: ArrayMesh
 var _caterpillar_mesh: ArrayMesh
 var _sunbeam_mesh: ArrayMesh
-var _knight_mesh: ArrayMesh
 var _slider_mesh: ArrayMesh
 var _hedgehogs_mesh: ArrayMesh
 var _marigold_mesh: ArrayMesh
 var _pixelgarden_mesh: ArrayMesh
-var _drumbeat_keep: Array = []
-var _trestle_keep: Array = []
 ## Mini Golf's lane, held for the same RID reason as `_band_mesh`.
 var _minigolf_mesh: ArrayMesh
 ## Horse Pen's meadow, built once a size (`_horse_u` is the `_u` it was
@@ -233,15 +221,9 @@ var _pearl_u := -1.0
 ## Lattice's corner of slats and tiles, built once a size.
 var _lattice_mesh: ArrayMesh
 var _lattice_u := -1.0
-## Toy Cannons' blocks, track and engine, built once a size.
-var _train_mesh: ArrayMesh
-var _train_u := -1.0
 ## Button Box's swatch of patches and buttons, built once a size.
 var _buttons_mesh: ArrayMesh
 var _buttons_u := -1.0
-## Gumdrop's jelly, built once a size.
-var _gumdrop_mesh: ArrayMesh
-var _gumdrop_u := -1.0
 ## Rings' three pegs, held for the same reason as _band_mesh above.
 var _rings_mesh: ArrayMesh
 
@@ -392,13 +374,10 @@ func _draw() -> void:
 		"pinwheel": _draw_pinwheel()
 		"caterpillar": _draw_caterpillar()
 		"sunbeam": _draw_sunbeam()
-		"knight": _draw_knight()
 		"slider": _draw_slider()
 		"hedgehogs": _draw_hedgehogs()
 		"marigold": _draw_marigold()
 		"pixelgarden": _draw_pixelgarden()
-		"drumbeat": _draw_drumbeat()
-		"trestle": _draw_trestle()
 		"minigolf": _draw_minigolf()
 		"horse": _draw_horse()
 		"how_big": _draw_how_big()
@@ -406,8 +385,6 @@ func _draw() -> void:
 		"pearl": _draw_pearl()
 		"lattice": _draw_lattice()
 		"buttons": _draw_buttons()
-		"train": _draw_train()
-		"gumdrop": _draw_gumdrop()
 
 func _round(x: float, y: float, w: float, h: float, radius: float, colour: Color) -> void:
 	var sb := StyleBoxFlat.new()
@@ -1123,37 +1100,6 @@ func _draw_sunbeam() -> void:
 	_sunbeam_mesh = b.mesh()
 	draw_mesh(_sunbeam_mesh, null)
 
-## Knight: the board's own drawing, through `ui/faces/chess_piece.gd`, the
-## file `puzzles/knight2d.gd` draws with, so the card and the board cannot
-## drift apart. One mesh.
-## Spec: docs/superpowers/specs/2026-09-26-knight-flat-design.md, section 4.
-func _draw_knight() -> void:
-	var cell := PIN_CELL * _u
-	var origin := at(-float(PIN_COLS) * PIN_CELL * 0.5, -float(PIN_ROWS) * PIN_CELL * 0.5)
-	var mid := func(c: Vector2i) -> Vector2: return origin + (Vector2(c) + Vector2(0.5, 0.5)) * cell
-	var b := Face.Builder.new()
-	var pad := PIN_PAD * _u
-	var board := Vector2(PIN_COLS, PIN_ROWS) * cell
-	b.fan(Face.Builder.round_rect(origin - Vector2.ONE * pad, board + Vector2.ONE * (2.0 * pad), 0.24 * cell), Pal.CHESS_FRAME)
-	b.fan(PackedVector2Array([origin, origin + Vector2(board.x, 0.0), origin + board, origin + Vector2(0.0, board.y)]), Pal.CHESS_LIGHT)
-	for r in PIN_ROWS:
-		for c in PIN_COLS:
-			if (r + c) % 2 == 1:
-				var p := origin + Vector2(c, r) * cell
-				b.fan(PackedVector2Array([p, p + Vector2(cell, 0.0), p + Vector2(cell, cell), p + Vector2(0.0, cell)]), Pal.CHESS_DARK)
-	var a: Vector2 = mid.call(KN_FROM)
-	var z: Vector2 = mid.call(KN_TO)
-	var top := (a + z) * 0.5 + Vector2(0.0, -cell * 0.9)
-	var arc := Face.Builder.bezier2(a, top, z, 12)
-	for k in range(0, arc.size() - 1, 2):
-		b.stroke(PackedVector2Array([arc[k], arc[k + 1]]), cell * 0.05, Color(Pal.KNIGHT_CREAM_LINE, 0.35))
-	ChessPiece.king(b, mid.call(KN_KING), cell)
-	ChessPiece.knight(b, mid.call(KN_GUARD), cell, ChessPiece.ROSE, -1.0)
-	var fly := a.lerp(z, 0.7)
-	ChessPiece.knight(b, fly, cell, ChessPiece.CREAM, 1.0, cell * 0.45, Vector2.ONE, false, 1.0, 0.22)
-	_knight_mesh = b.mesh()
-	draw_mesh(_knight_mesh, null)
-
 ## Hedgehogs: the board's own drawing, through `ui/faces/leaf_pile.gd`, the
 ## file `puzzles/hedgehogs2d.gd` draws with, so the card and the board cannot
 ## drift apart. One mesh, then the numbers as text.
@@ -1274,60 +1220,6 @@ func _draw_marigold() -> void:
 	_marigold_mesh = b.mesh()
 	draw_mesh(_marigold_mesh, null)
 
-## Drumbeat: the board's path of planks narrowing up into the dusk, four
-## berries coming down it, the four drums at its foot and lanterns on a cord
-## over it, through `ui/faces/drumbeat_parts.gd`, the file
-## `puzzles/drumbeat2d.gd` draws with.
-func _draw_drumbeat() -> void:
-	_drumbeat_keep.clear()
-	var b := Face.Builder.new()
-	var top := -36.0
-	var foot := 38.0
-	var wt := 110.0
-	var wb := 300.0
-	b.polygon(PackedVector2Array([at(-wt * 0.53, top), at(wt * 0.53, top), at(wb * 0.53, foot), at(-wb * 0.53, foot)]), Color("5a3a25"))
-	b.polygon(PackedVector2Array([at(-wt * 0.5, top), at(wt * 0.5, top), at(wb * 0.5, foot), at(-wb * 0.5, foot)]), Color("4a3426"))
-	for k in 6:
-		var f0 := k / 6.0
-		var f1 := (k + 0.5) / 6.0
-		var y0 := lerpf(top, foot, f0)
-		var y1 := lerpf(top, foot, f1)
-		var w0 := lerpf(wt, wb, f0) * 0.49
-		var w1 := lerpf(wt, wb, f1) * 0.49
-		b.polygon(PackedVector2Array([at(-w0, y0), at(w0, y0), at(w1, y1), at(-w1, y1)]), Color("8a5c3a", 0.35))
-	for l in range(1, 4):
-		b.stroke(PackedVector2Array([at((l - 2) * wt / 4.0, top), at((l - 2) * wb / 4.0, foot)]), 1.0 * _u, Color(DbParts.CREAM, 0.3))
-	var cord := PackedVector2Array()
-	for k in 17:
-		var t := k / 16.0
-		cord.append(at(-160.0 + 320.0 * t, -58.0 + sin(PI * t) * 10.0))
-	b.stroke(cord, 1.2 * _u, Color(DbParts.INK, 0.7))
-	var m := b.mesh()
-	_drumbeat_keep.append(m)
-	draw_mesh(m, null)
-	var cols := [Color("f59a6a"), Color("f2c14e"), Color("f08aa6"), Color("8cc8ec"), Color("f59a6a")]
-	for k in cols.size():
-		var t := k / float(cols.size() - 1)
-		var hang := at(-140.0 + 280.0 * t, -58.0 + sin(PI * (0.06 + 0.88 * t)) * 10.0)
-		var lm := DbParts.lantern(8.0 * _u, cols[k], 0.8)
-		_drumbeat_keep.append(lm)
-		draw_mesh(lm, null, Transform2D(0.0, hang))
-	# berries on their way down, smaller far up the path
-	var berries := [[0, 0.75], [2, 0.42], [3, 0.6], [1, 0.18]]
-	for e: Array in berries:
-		var f: float = e[1]
-		var y := lerpf(top, foot, f)
-		var w := lerpf(wt, wb, f)
-		var nm := DbParts.berry(int(e[0]), lerpf(8.0, 13.0, f) * _u, DbParts.Mood.HAPPY)
-		_drumbeat_keep.append(nm)
-		draw_mesh(nm, null, Transform2D(0.0, at((int(e[0]) - 1.5) * w / 4.0, y)))
-	var r := wb / 4.0 * 0.42
-	for lane in 4:
-		var dm := DbParts.band_drum(lane, r * _u)
-		_drumbeat_keep.append(dm)
-		var skin := at((lane - 1.5) * wb / 4.0, foot)
-		draw_mesh(dm, null, Transform2D(0.0, skin - Vector2(0, DbParts.skin_y(lane, r * _u))))
-
 ## Pixel Garden: the board's own pegboard and beads, through
 ## `ui/faces/bead.gd`, the file `puzzles/pixel_garden2d.gd` draws with: a
 ## toadstool half beaded on a pegboard in its tray, the little picture it is
@@ -1374,70 +1266,6 @@ func _draw_pixelgarden() -> void:
 	Bead.bead(b, at(104.0, -8.0), cell * 1.5, Pal.PG_BEADS.green, Vector2.ONE, 1.0, 0.0, 0.0, 0.0, Pal.PG_TABLE, false)
 	_pixelgarden_mesh = b.mesh()
 	draw_mesh(_pixelgarden_mesh, null)
-
-## Trestle: a short gap between two banks with a truss bridge over the
-## river and the cart halfway over, through `ui/faces/trestle_parts.gd`, the
-## file `puzzles/trestle2d.gd` draws with. The cart's body and wheels are
-## their own meshes, the way the board moves them.
-const TR_STEP := 36.0
-func _draw_trestle() -> void:
-	_trestle_keep.clear()
-	var b := Face.Builder.new()
-	var u := TR_STEP * _u
-	var g := func(x: float, y: float) -> Vector2: return at(-90.0 + x * TR_STEP, -14.0 - y * TR_STEP)
-	# the river and the banks
-	b.polygon(PackedVector2Array([at(-100.0, 30.0), at(100.0, 30.0), at(100.0, 59.0), at(-100.0, 59.0)]), Color("6fb6de"))
-	b.stroke(PackedVector2Array([at(-86.0, 38.0), at(-50.0, 38.0)]), 2.0 * _u, Color(1, 1, 1, 0.4))
-	b.stroke(PackedVector2Array([at(20.0, 46.0), at(60.0, 46.0)]), 2.0 * _u, Color(1, 1, 1, 0.4))
-	for side in [-1.0, 1.0]:
-		var lip := -90.0 if side < 0.0 else 90.0
-		var edge := -170.0 if side < 0.0 else 170.0
-		b.polygon(PackedVector2Array([at(edge, -14.0), at(lip, -14.0), at(lip - side * 4.0, 20.0), at(lip + side * 3.0, 59.0), at(edge, 59.0)]), Color("b89a78"))
-		var x0 := minf(edge, lip)
-		b.fan(Face.Builder.round_rect(at(x0, -16.0), Vector2(absf(lip - edge), 12.0) * _u, 3.0 * _u), Color("8cb050"))
-		b.fan(Face.Builder.round_rect(at(x0, -17.0), Vector2(absf(lip - edge), 4.0) * _u, 2.0 * _u), Color("d9c49a"))
-	# a Pratt truss under the road
-	var members := []
-	for i in 5:
-		members.append([Vector2(i, 0), Vector2(i + 1, 0), 0])
-	for i in range(1, 5):
-		members.append([Vector2(i, 0), Vector2(i, -1), 1])
-	for i in range(1, 4):
-		members.append([Vector2(i, -1), Vector2(i + 1, -1), 2 if i == 2 else 1])
-	members.append([Vector2(0, 0), Vector2(1, -1), 1])
-	members.append([Vector2(1, -1), Vector2(2, 0), 1])
-	members.append([Vector2(2, -1), Vector2(3, 0), 1])
-	members.append([Vector2(3, 0), Vector2(4, -1), 1])
-	members.append([Vector2(4, -1), Vector2(5, 0), 1])
-	for pass_mat in [2, 1, 0]:
-		for m in members:
-			if m[2] == pass_mat:
-				TrParts.member(b, g.call(m[0].x, m[0].y), g.call(m[1].x, m[1].y), m[2], u)
-	for i in range(1, 5):
-		TrParts.joint(b, g.call(i, -1), u)
-		TrParts.joint(b, g.call(i, 0), u)
-	TrParts.anchor(b, g.call(0, 0), u)
-	TrParts.anchor(b, g.call(5, 0), u)
-	var m := b.mesh()
-	_trestle_keep.append(m)
-	draw_mesh(m, null)
-	# the cart, a berry riding it
-	var cb := Face.Builder.new()
-	TrParts.cart_body(cb, u, 1)
-	var seat := TrParts.seat(u, 1, 0)
-	cb.disc(seat, u * 0.3, Pal.BERRY)
-	cb.disc(seat + Vector2(-0.08, -0.1) * u, u * 0.08, Color(1, 1, 1, 0.5))
-	Face.face_parts(cb, u * 0.3, seat, Pal.TEXT, 1.0, Face.Expr.JOY)
-	var cm := cb.mesh()
-	_trestle_keep.append(cm)
-	var road_top: Vector2 = g.call(2.3, 0.0) - Vector2(0.0, 0.1 * u)
-	draw_mesh(cm, null, Transform2D(0.0, road_top))
-	var wb := Face.Builder.new()
-	TrParts.wheel(wb, u)
-	var wm := wb.mesh()
-	_trestle_keep.append(wm)
-	for w in TrParts.wheel_at(u, 1):
-		draw_mesh(wm, null, Transform2D(0.4, road_top + w))
 
 ## Mini Golf's card: one lane of the board lying along the box -- the ball
 ## on its tee, the dotted aim threading between a sand trap and a bumper
@@ -1677,16 +1505,6 @@ const LA_KNOTS := [["LU", "9"], ["RD", "3"]]
 ## and the board cannot drift apart.
 const GD_SIDE := 88.0
 
-func _draw_gumdrop() -> void:
-	var side := GD_SIDE * _u
-	if _gumdrop_mesh == null or not is_equal_approx(_gumdrop_u, _u):
-		var m := GumMould.build("balloon")
-		_gumdrop_mesh = GumArt.picture(m, side / GumMould.SIDE)
-		_gumdrop_u = _u
-	var at := _c - Vector2(side, side) * 0.5
-	draw_mesh(GumArt.tray(side), null, Transform2D(0.0, at))
-	draw_mesh(_gumdrop_mesh, null, Transform2D(0.0, at))
-
 func _draw_lattice() -> void:
 	var s := LA_CELL * _u
 	if _lattice_mesh == null or not is_equal_approx(_lattice_u, _u):
@@ -1722,35 +1540,6 @@ func _draw_lattice() -> void:
 			else:
 				_text(str(absi(v)), at_x, at_y + 5.6, 19.0, Pal.SURFACE if v > 0 else Pal.TEXT)
 
-## Toy Cannons' card: an engine on a length of the board's own track
-## (`ui/faces/train_art.gd`) with its number, rolling up to two rows of its
-## blocks. One mesh, rebuilt only when the card changes size. The strip is
-## about 92 units tall: three rows of blocks and an engine under them ran
-## out of it.
-const TT_CELL := 36.0
-const TT_ROWS := ["kyyk", "yrry"]
-const TT_NAMES := {"k": "sky", "y": "yellow", "r": "red"}
-const TT_ENGINE := Vector2(-78.0, 4.0)
-
-func _draw_train() -> void:
-	var s := TT_CELL * _u
-	if _train_mesh == null or not is_equal_approx(_train_u, _u):
-		var b := Face.Builder.new()
-		var rail := PackedVector2Array()
-		for k in 11:
-			rail.append(Vector2(-150.0 + k * 15.0, TT_ENGINE.y) * _u)
-		TrainArt.track(b, rail, 24.0 * _u, false)
-		for y in TT_ROWS.size():
-			for x in 4:
-				TrainArt.block(b, Vector2(40.0 * _u + x * s, (y - 0.5) * s), s, TrainArt.colour(TT_NAMES[TT_ROWS[y][x]]))
-		var e := Face.Builder.new()
-		TrainArt.engine(e, 82.0 * _u, TrainArt.colour("red"))
-		TrainArt.plate(e, 82.0 * _u)
-		b.append(e.mesh(), Transform2D(PI * 0.5, TT_ENGINE * _u))
-		_train_mesh = b.mesh()
-		_train_u = _u
-	draw_mesh(_train_mesh, null, Transform2D(0.0, _c))
-	_text("5", TT_ENGINE.x, TT_ENGINE.y + 7.0, 20.0, Pal.TEXT)
 
 ## Button Box's card: a swatch of the board's own patches and buttons
 ## (`ui/faces/button_art.gd`), five across and two down: six buttons home

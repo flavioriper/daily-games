@@ -7,7 +7,7 @@ extends RefCounted
 ## shaded pixel art on a bare board (server/functions/src/pictures.ts) --
 ## keyed by the band's side (10, 12, 24, 32, 48 for Button Box's Insane on
 ## builds before 2026-10-27, and 128 for Jewel Box's Insane since, sewn a
-## quarter at a time), and Pixel Garden, Button Box and Toy Cannons deal it
+## quarter at a time), and Pixel Garden and Button Box deal it
 ## in place of their bank's for that band (Button Box's Hard asks for the
 ## 32).
 ##
@@ -16,8 +16,7 @@ extends RefCounted
 ## band's range (RULES.side), and the boards lay whatever side they are
 ## handed (Pixel Garden by rows.size(), the other two by w and h).
 ##
-## Gumdrop's jellies ride in the same document, a mould each (`jellies`),
-## and Yarn Hoop's low-poly pictures, a band each (`hoops`, since
+## Yarn Hoop's low-poly pictures ride in the same document, a band each (`hoops`, since
 ## 2026-10-16): pins and panels read off a drawing on the night
 ## (server/functions/src/hoop.ts), laid here as they are.
 ## How Big?'s things of the day ride there too (`things`).
@@ -29,7 +28,6 @@ extends RefCounted
 ## does not keep the rules below, the answer is {} and the bank deals.
 
 const Backend = preload("res://core/backend.gd")
-const Mould = preload("res://puzzles/gumdrop_mould.gd")
 const GAME := "pictures"
 const BANK := "res://content/pixel_garden.json"
 ## tools/beads.js RULES, as the server ran them, by the band's side: the
@@ -79,32 +77,6 @@ static func picture(date_key: int, size: int) -> Dictionary:
 		shown = String(names.get(lang, names.get("en", shown)))
 	shown = shown.strip_edges()
 	return {"id": "themed_" + id, "name": shown.left(1).to_upper() + shown.substr(1), "rows": pic.rows}
-
-## Gumdrop's themed jellies for `band` of the daily of `date_key`, built
-## and not yet dressed (puzzles/gumdrop_mould.gd `build_parts`), a mould
-## each in the theme's order, or []: the night writes a list a band under
-## `jellies` (server/functions/src/jelly.ts), and one that does not keep
-## its band's row of Mould.THEMED is dropped, its place the board's own.
-static func jellies(date_key: int, band: int) -> Array:
-	var out: Array = []
-	if date_key == 0 or not Backend.started():
-		return out
-	var doc: Dictionary = Backend.cached_day(GAME, date_key)
-	var all = doc.get("jellies")
-	if int(doc.get("v", 0)) != 1 or not all is Dictionary or not all.get(str(band)) is Array:
-		return out
-	for got in all[str(band)]:
-		if not got is Dictionary:
-			continue
-		var parts := Mould.from_doc(got.get("parts"))
-		if parts.is_empty():
-			continue
-		var m := Mould.build_parts("themed_" + String(got.get("id", "")), parts)
-		if not m.is_empty():
-			m["marks"] = Mould.marks_from_doc(got.get("marks"))
-		if Mould.unfit(m, band) == "" and not out.any(func(x: Dictionary) -> bool: return x.id == m.id):
-			out.append(m)
-	return out
 
 ## Yarn Hoop's drawn picture for `band` of the daily of `date_key`:
 ## {id, name, pins, panels, inks} (pins a PackedVector2Array in a square of

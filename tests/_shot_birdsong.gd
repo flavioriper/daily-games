@@ -45,7 +45,7 @@ func _process(_delta: float) -> bool:
 	if _step == 20:
 		if _f == 3:
 			var Reg = load("res://ui/registry.gd")
-			for id in ["birdsong", "drumbeat"]:
+			for id in ["birdsong"]:
 				var card: Control = load(Reg.find(id).card).new(Reg.find(id), Color("6bb1d6"))
 				card.size = Vector2(730, 246)
 				card.position = Vector2(40, 200 if id == "birdsong" else 500)

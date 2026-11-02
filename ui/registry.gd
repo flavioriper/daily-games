@@ -665,40 +665,6 @@ const PUZZLES := [
 		],
 	},
 	{
-		"id": "train",
-		"skill": "planning",
-		"kind": "puzzle",
-		"title": "Sand Sweep",
-		"blurb": "TT_BLURB",
-		"short": "TT_SHORT",
-		"motto": "TT_MOTTO",
-		"footer": "Send · Pull · Pop",
-		# The playroom floor is the whole screen (`bleed`, ui/flat/flat_host.gd):
-		# the rug, its loop, the tray and the toy box lie on it, so there is no
-		# tray and no actions row, and the bulb and Reset ride up into the top
-		# bar. The board's own toast says what the tip card would.
-		"script": "res://puzzles/train2d.gd",
-		"card": "res://ui/menu/cards/train.gd",
-		"shell": "flat",
-		"bleed": true,
-		# The levels stand where the day card was, with the tools row under
-		# them (docs/agents/flat-screens.md, "Every board gets a world").
-		"level_card": true,
-		"tray": "none",
-		"actions": false,
-		"tip": false,
-		"difficulties": [0, 1, 2, 3],
-		# Asks like Sudoku: each band (a picture of the bank dealt off the
-		# day's seed) is its own daily with its own done mark.
-		"pick_difficulty": true,
-		"levels": [
-			{"difficulty": 0, "name": "Easy", "line": "TT_LVL_0"},
-			{"difficulty": 1, "name": "Medium", "line": "TT_LVL_1"},
-			{"difficulty": 2, "name": "Hard", "line": "TT_LVL_2"},
-			{"difficulty": 3, "name": "Insane", "line": "TT_LVL_3"},
-		],
-	},
-	{
 		"id": "hoop",
 		"skill": "focus",
 		"kind": "puzzle",
@@ -1124,36 +1090,6 @@ const PUZZLES := [
 		],
 	},
 	{
-		"id": "patio",
-		"skill": "logic",
-		"kind": "puzzle",
-		"title": "Domino Patio",
-		"blurb": "DP_BLURB",
-		"short": "DP_SHORT",
-		"motto": "DP_MOTTO",
-		"footer": "Lay · Turn · Keep",
-		# Lay the house's dominoes on a patio of flower beds so every bed
-		# keeps the rule on its tag (puzzles/patio2d.gd). The terrace fills
-		# the screen and the rack is inside the board, so no tray and no
-		# actions row: Undo, the bin and the bulb ride the tools row. No
-		# Check: the tags say how each bed stands.
-		"script": "res://puzzles/patio2d.gd",
-		"card": "res://ui/menu/cards/patio.gd",
-		"shell": "flat",
-		"tray": "none",
-		"bleed": true,
-		"level_card": true,
-		"actions": false,
-		"difficulties": [0, 1, 2, 3],
-		"pick_difficulty": true,
-		"levels": [
-			{"difficulty": 0, "name": "Easy", "line": "DP_LVL_0"},
-			{"difficulty": 1, "name": "Medium", "line": "DP_LVL_1"},
-			{"difficulty": 2, "name": "Hard", "line": "DP_LVL_2"},
-			{"difficulty": 3, "name": "Insane", "line": "DP_LVL_3"},
-		],
-	},
-	{
 		"id": "teacups",
 		"skill": "memory",
 		"kind": "puzzle",
@@ -1214,40 +1150,6 @@ const PUZZLES := [
 			{"difficulty": 1, "name": "Medium", "line": "LA_LVL_1"},
 			{"difficulty": 2, "name": "Hard", "line": "LA_LVL_2"},
 			{"difficulty": 3, "name": "Insane", "line": "LA_LVL_3"},
-		],
-	},
-	{
-		"id": "gumdrop",
-		"skill": "focus",
-		"kind": "puzzle",
-		"title": "Gumdrop",
-		"blurb": "GD_BLURB",
-		"short": "GD_SHORT",
-		"motto": "GD_MOTTO",
-		"footer": "Squeeze · Soak · Serve",
-		# The kitchen table is the whole screen (`bleed`, ui/flat/flat_host.gd):
-		# the pots and the Squeeze and Serve buttons lie on it, so there is no
-		# tray and no actions row, and Reset rides up into the top bar. It was
-		# an Arcade game for a day (2026-10-10 to 10-11).
-		"script": "res://puzzles/gumdrop2d.gd",
-		"card": "res://ui/menu/cards/gumdrop.gd",
-		"shell": "flat",
-		"bleed": true,
-		# The levels stand where the day card was, with the tools row under
-		# them (docs/agents/flat-screens.md, "Every board gets a world").
-		"level_card": true,
-		"tray": "none",
-		"actions": false,
-		"tip": false,
-		"difficulties": [0, 1, 2, 3],
-		# Asks like Sudoku: each band (gumdrop_mould.gd's BANDS, a few moulds
-		# off the day's seed) is its own daily with its own done mark.
-		"pick_difficulty": true,
-		"levels": [
-			{"difficulty": 0, "name": "Easy", "line": "GD_LVL_0"},
-			{"difficulty": 1, "name": "Medium", "line": "GD_LVL_1"},
-			{"difficulty": 2, "name": "Hard", "line": "GD_LVL_2"},
-			{"difficulty": 3, "name": "Insane", "line": "GD_LVL_3"},
 		],
 	},
 	{
@@ -1408,39 +1310,6 @@ const PUZZLES := [
 		],
 	},
 	{
-		"id": "knight",
-		"skill": "planning",
-		"kind": "puzzle",
-		"title": "Knight",
-		"blurb": "KN_BLURB",
-		"short": "KN_SHORT",
-		"motto": "KN_MOTTO",
-		"footer": "Hop · Dodge · Take",
-		# Nothing is picked up, and nothing wrong can sit on the board: a
-		# catch is undone as it happens. So no tray and no Check; Undo, Reset
-		# and Hint ride in the top bar and the tip card stands alone --
-		# Pinwheel's shape.
-		"card": "res://ui/menu/cards/knight.gd",
-		"script": "res://puzzles/knight2d.gd",
-		"shell": "flat",
-		"tray": "none",
-		# Its world is the whole screen (`bleed`, puzzles/knight_world.gd) and the
-		# levels stand where the day card was (docs/agents/flat-screens.md).
-		"bleed": true,
-		"level_card": true,
-		"actions": false,
-		"difficulties": [0, 1, 2, 3],
-		# Asks like Sudoku: each board size (knight_gen.gd's BANDS) is its
-		# own daily with its own done mark.
-		"pick_difficulty": true,
-		"levels": [
-			{"difficulty": 0, "name": "Easy", "line": "KN_LVL_0"},
-			{"difficulty": 1, "name": "Medium", "line": "KN_LVL_1"},
-			{"difficulty": 2, "name": "Hard", "line": "KN_LVL_2"},
-			{"difficulty": 3, "name": "Insane", "line": "KN_LVL_3"},
-		],
-	},
-	{
 		"id": "pinwheel",
 		"skill": "space",
 		"kind": "puzzle",
@@ -1504,70 +1373,6 @@ const PUZZLES := [
 			{"difficulty": 1, "name": "Medium", "line": "SB_LVL_1"},
 			{"difficulty": 2, "name": "Hard", "line": "SB_LVL_2"},
 			{"difficulty": 3, "name": "Insane", "line": "SB_LVL_3"},
-		],
-	},
-	{
-		"id": "trestle",
-		"skill": "planning",
-		"kind": "puzzle",
-		"title": "Trestle",
-		"blurb": "TR_BLURB",
-		"short": "TR_SHORT",
-		"motto": "TR_MOTTO",
-		"footer": "Build · Test · Cross",
-		# The material chips and the budget stand in the board card over the
-		# river, so no tray; the actions row carries Reset and Go (the Check
-		# button, relabelled: the test is the check), and Undo and Hint ride
-		# in the top bar -- Pixel Garden's shape.
-		"script": "res://puzzles/trestle2d.gd",
-		"card": "res://ui/menu/cards/trestle.gd",
-		"shell": "flat",
-		"tray": "none",
-		# Its world is the whole screen (`bleed`, puzzles/trestle_world.gd) and the
-		# levels stand where the day card was (docs/agents/flat-screens.md).
-		"bleed": true,
-		"level_card": true,
-		"difficulties": [0, 1, 2, 3],
-		# Asks like Sudoku: each band of mined gaps (content/trestle.json) is
-		# its own daily with its own done mark.
-		"pick_difficulty": true,
-		"levels": [
-			{"difficulty": 0, "name": "Easy", "line": "TR_LVL_0"},
-			{"difficulty": 1, "name": "Medium", "line": "TR_LVL_1"},
-			{"difficulty": 2, "name": "Hard", "line": "TR_LVL_2"},
-			{"difficulty": 3, "name": "Insane", "line": "TR_LVL_3"},
-		],
-	},
-	{
-		"id": "drumbeat",
-		"skill": "focus",
-		"kind": "puzzle",
-		"title": "Drumbeat",
-		"blurb": "DB_BLURB",
-		"short": "DB_SHORT",
-		"motto": "DB_MOTTO",
-		"footer": "Listen · Strike · Clear",
-		# The drum is the board: strokes land on the card itself, so no tray
-		# and no actions row, and nothing to take back or check -- the song
-		# judges every note as it passes. Reset rides in the top bar.
-		"script": "res://puzzles/drumbeat2d.gd",
-		"card": "res://ui/menu/cards/drumbeat.gd",
-		"shell": "flat",
-		"tray": "none",
-		# Its world is the whole screen (`bleed`, puzzles/drumbeat_world.gd) and the
-		# levels stand where the day card was (docs/agents/flat-screens.md).
-		"bleed": true,
-		"level_card": true,
-		"actions": false,
-		"difficulties": [0, 1, 2, 3],
-		# Asks like Marigold: each level is its own daily with its own done
-		# mark, and the day's song is dealt from the seed.
-		"pick_difficulty": true,
-		"levels": [
-			{"difficulty": 0, "name": "Easy", "line": "DB_LVL_0"},
-			{"difficulty": 1, "name": "Medium", "line": "DB_LVL_1"},
-			{"difficulty": 2, "name": "Hard", "line": "DB_LVL_2"},
-			{"difficulty": 3, "name": "Insane", "line": "DB_LVL_3"},
 		],
 	},
 ]

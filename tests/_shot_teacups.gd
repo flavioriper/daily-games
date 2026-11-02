@@ -4,7 +4,7 @@ extends SceneTree
 ## board on that level and shoots the table at rest, a cup lifted, a miss,
 ## a pair found, a waltz mid-way (d=3), the win settled and the day reopened
 ## from its card, with the draw calls of each frame. `tut` shoots a tutorial
-## page played a while; `card` the menu card beside Domino Patio's. `read`
+## page played a while; `card` the menu card. `read`
 ## (made fun, 2026-10-29) presses the bulb twice with the first cup up and
 ## shoots the reading (toast, rims on the cups never lifted) and the twin
 ## peeking; the miss after it is then a lapse, its toast and berry rim in
@@ -59,7 +59,7 @@ func _process(_delta: float) -> bool:
 	if _step == 60:
 		if _f == 3:
 			var Reg = load("res://ui/registry.gd")
-			for id in ["teacups", "patio"]:
+			for id in ["teacups"]:
 				var card: Control = load(Reg.find(id).card).new(Reg.find(id), Color("e58f7b"))
 				card.size = Vector2(730, 246)
 				card.position = Vector2(40, 200 if id == "teacups" else 500)

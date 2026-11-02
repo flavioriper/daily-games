@@ -10,7 +10,7 @@ extends RefCounted
 ## fills with knitting in its colour. Every panel filled is the picture.
 ##
 ## The panels are cut from the day's bead picture (the biggest the bank
-## Pixel Garden, Button Box and Toy Cannons deal from holds, or the day's
+## Pixel Garden and Button Box deal from holds, or the day's
 ## themed one), the way low-poly art is cut (2026-10-14, after the user set
 ## a low-poly fox beside our lattice cut): the picture's thin outline and
 ## speckles are dissolved into what they touch, the edges between its

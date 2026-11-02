@@ -33,10 +33,20 @@ const DIRS: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), 
 const InsaneBank = preload("res://core/insane_bank.gd")
 const ThemedPictures = preload("res://core/themed_pictures.gd")
 const PIXEL_BANK := "res://content/pixel_garden.json"
-## The bold families a picture's beads fold into (Toy Cannons' table): a
+## The bold families a picture's beads fold into: a
 ## shade bead (maroon in a red, a cream highlight) is its family's colour, so
 ## a picture holds a handful of colours and no one-cell islands of shading.
-const FAMILY: Dictionary = preload("res://puzzles/train_state.gd").FAMILY
+const FAMILY := {
+	"red": "red", "maroon": "red",
+	"pink": "pink", "coral": "pink", "rose": "pink",
+	"orange": "orange", "rust": "orange",
+	"yellow": "yellow", "butter": "yellow",
+	"white": "white", "cream": "white", "silver": "white",
+	"lilac": "purple", "purple": "purple",
+	"sky": "sky", "blue": "blue", "navy": "blue", "teal": "teal",
+	"lime": "green", "green": "green", "forest": "green",
+	"tan": "brown", "brown": "brown", "dark": "dark", "grey": "grey",
+}
 
 ## Per band, Easy .. Insane: the hints a sky starts with, and its hearts (0 is
 ## a band that cannot be lost). Polish spec section 1.

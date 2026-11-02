@@ -53,19 +53,14 @@ const CARDS := {
 	"rings": ["meadow", 1.5, Vector2(0.40, 0.30)],
 	"caterpillar": ["meadow", 1.7, Vector2(0.65, 0.75)],
 	"sunbeam": ["sky", 1.5, Vector2(0.75, 0.30)],
-	"knight": ["meadow", 1.6, Vector2(0.30, 0.60)],
 	"hedgehogs": ["autumn", 1.6, Vector2(0.60, 0.70)],
 	"slider": ["meadow", 1.5, Vector2(0.55, 0.45)],
 	"marigold": ["dusk", 1.5, Vector2(0.35, 0.35)],
-	# Drumbeat's festival stands in the dusk vista's lantern light.
-	"drumbeat": ["dusk", 1.4, Vector2(0.6, 0.45)],
 	"pixelgarden": ["meadow", 1.6, Vector2(0.30, 0.55)],
 	# Glimpse's mat lies under a clear sky, the memory skill's blue.
 	"glimpse": ["sky", 1.6, Vector2(0.40, 0.45)],
 	# Birdsong's garden morning: the meadow, its old tree and lawn.
 	"birdsong": ["meadow", 1.5, Vector2(0.55, 0.40)],
-	# Domino Patio's terrace in the meadow's sun, by its cottages.
-	"patio": ["meadow", 1.6, Vector2(0.80, 0.55)],
 	# Teacups' tea table in the meadow's garden, by its hedges.
 	"teacups": ["meadow", 1.6, Vector2(0.45, 0.60)],
 	# Market Sums' stall in the meadow's village, by its cottages.
@@ -82,8 +77,6 @@ const CARDS := {
 	"shelves": ["meadow", 1.6, Vector2(0.75, 0.50)],
 	# Five Clues' shed wall by the meadow's garden.
 	"clues": ["meadow", 1.6, Vector2(0.20, 0.50)],
-	# Trestle's river gap under a clear sky.
-	"trestle": ["sky", 1.5, Vector2(0.50, 0.55)],
 	# Mini Golf's course is laid out on the meadow, under its cottages.
 	"minigolf": ["meadow", 1.5, Vector2(0.75, 0.35)],
 	# Horse Pen's pasture: the meadow's open grass, low and to the left.
@@ -98,8 +91,6 @@ const CARDS := {
 	"lattice": ["meadow", 1.5, Vector2(0.42, 0.30)],
 	# Jewel Box is set indoors, by the cottages of the same meadow.
 	"buttons": ["meadow", 1.6, Vector2(0.58, 0.34)],
-	# Toy Cannons is played on a playroom floor, by the same cottages.
-	"train": ["meadow", 1.6, Vector2(0.50, 0.36)],
 	# Yarn Hoop is knitted indoors too, further along the same cottages.
 	"hoop": ["meadow", 1.6, Vector2(0.66, 0.38)],
 	# Versus (not a grid card): the treehouse terrace the reference stands
@@ -149,8 +140,6 @@ const CARDS := {
 	"tally": ["sky", 1.5, Vector2(0.45, 0.55)],
 	# Bagatelle's velvet board is lit like an evening: the night vista.
 	"bagatelle": ["night", 1.6, Vector2(0.6, 0.35)],
-	# Gumdrop's tray is set out on the meadow's grass.
-	"gumdrop": ["meadow", 1.5, Vector2(0.7, 0.55)],
 }
 
 ## The Streak tab's two pictures (ui/menu/streak_tab.gd): the run's card and
