@@ -137,7 +137,7 @@ that area**, and add new history there rather than here.
   the top bar, plates and controls lie over it, as `factory/screen.gd` and
   `arcade/eddy_screen.gd` do. No paper page with the game in a frame. A
   daily board asks the flat host for it with `"bleed": true` in the
-  registry (Jewel Box; `docs/agents/flat-screens.md`).
+  registry (`docs/agents/flat-screens.md`).
 - **A game screen is laid as the daily boards** (the user, 2026-10-31: "wire
   UI layout properly, make it a rule, using daily ones"), every screen
   touched from now on, puzzle, Arcade or Versus: the world full rect (a
