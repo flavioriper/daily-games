@@ -4,6 +4,7 @@ import {makeJellies, MOULDS, Jelly} from "./jelly";
 import {BANDS as HOOP_BANDS, HoopPicture, makeHoop} from "./hoop";
 import {bySide, Picture, pixelBand, Pictures} from "./pictures";
 import {makeTheme, Theme, themed, validTheme} from "./theme";
+import {dayList, DayThing, grow, makeThings, pool} from "./things";
 import {makeWords, Words} from "./words";
 import {Port, publishPorts, stagePorts} from "./ports";
 import {seeded} from "./cast";
@@ -45,7 +46,7 @@ import {HEADER_KEY, makeHeader, makeVista, TIMES as VISTA_TIMES, Vistas} from ".
  */
 
 /** The steps of a day, in order. */
-export const STEPS: string[] = ["theme", "words",
+export const STEPS: string[] = ["theme", "words", "things",
   ...MOULDS.map((_, b) => `jelly${b}`), ...HOOP_BANDS.map((_, b) => `hoop${b}`), ...Beads.SIZES.map((s) => `pic${s}`),
   HEADER_KEY, ...VISTA_TIMES.map((_, i) => `vista${i}`)];
 /** Runs a step may have before it is given up on. */
@@ -70,6 +71,7 @@ const RECENT = 30;
 interface Staged {
   theme?: string;
   words?: string;
+  things?: string;
   jellies?: Record<string, string>;
   hoops?: Record<string, string>;
   pictures?: Record<string, string>;
@@ -134,6 +136,8 @@ function content(s: Staged): Pictures | null {
   if (Object.keys(hoops).length > 0) doc.hoops = hoops;
   const words = parsed<Words>(s.words);
   if (words !== null) doc.words = words;
+  const things = parsed<DayThing[]>(s.things);
+  if (things !== null && things.length > 0) doc.things = things;
   return doc;
 }
 
@@ -246,6 +250,15 @@ async function runStep(db: Firestore, when: Date, day: number, step: string, s: 
   if (step === "words") {
     const got = await makeWords(theme);
     return {save: got.words === null ? {} : {words: JSON.stringify(got.words)}, made: got.words !== null};
+  }
+  if (step === "things") {
+    // New things join the pool as they are made; the day carries them and a
+    // few of the pool's. A run that makes none still stages the pool's.
+    const held = await pool(db);
+    const got = await makeThings(day, theme, held);
+    await grow(db, got.things);
+    const list = dayList(day, got.things, held);
+    return {save: list.length === 0 ? {} : {things: JSON.stringify(list)}, made: got.things.length > 0};
   }
   if (step.startsWith("jelly")) {
     const band = step.slice("jelly".length);

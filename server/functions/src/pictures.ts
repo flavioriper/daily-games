@@ -6,6 +6,7 @@ import {judge as eyeJudge} from "./eye";
 import {ask, available, draw, Drawing} from "./generate";
 import type {HoopPicture} from "./hoop";
 import type {Jelly} from "./jelly";
+import type {DayThing} from "./things";
 import type {Words} from "./words";
 import {Theme, Thing} from "./theme";
 
@@ -45,6 +46,9 @@ export interface Pictures {
   hoops?: Record<string, HoopPicture>;
   /** Hidden Word's and Word Trail's, a language each (words.ts). */
   words?: Words;
+  /** How Big?'s things of the day: the day's new ones and a few of the
+   *  pool's (things.ts). The phone adds them to its own thirty. */
+  things?: DayThing[];
 }
 
 /** What became of one size of one draft: for the dashboard, not the phone. */

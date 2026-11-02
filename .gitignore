@@ -96,6 +96,8 @@ server/functions/src/pearl_bank.json
 server/functions/src/shelves_bank.json
 # And content/clues.json.
 server/functions/src/clues_bank.json
+# And How Big?'s thirty, so a day's new things are never one of them (things.ts).
+server/functions/src/how_big_bank.json
 # And the two word boards' lists (words.ts).
 server/functions/src/word_lists/
 server/.firebase/

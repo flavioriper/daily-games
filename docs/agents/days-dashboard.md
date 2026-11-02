@@ -728,3 +728,8 @@ is asked, and leaves the sprite about 70% of the image. 48 and 128 now draw at
 further: a 97 padded to 128 was 33% filled. Kept: toucan 48 (a 34 by 36 sprite
 padded), zoo gate 100. A build before this turns a side under 112 down and
 plays the 48 quartered. `cli.js bands <day.json> <size>...` redraws bands.
+**How Big?'s things** (2026-10-15): the night has a step `things` after
+`words`: two new things a day on the theme, past three gates, and a pool
+in `things/` that grows. The whole of it is in `docs/agents/boards/how-big.md`,
+"New things every day". The first night after the deploy also runs the step
+for days already staged; a line for it in the log is that, not a fault.
