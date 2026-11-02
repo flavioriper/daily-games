@@ -265,7 +265,7 @@ function check(w: Work, band: number): string {
 /** The same checks on a placed mesh, again after colourFrom has dropped
  *  the background. "Pins inside" works on the square as on the image: its
  *  room of 0.05 is a cross product, a hair at either scale. */
-export function checkMesh(mesh: Mesh, band: number): string {
+export function checkMesh(mesh: Pick<Mesh, "pins" | "panels">, band: number): string {
   const pins: P[] = [];
   for (let i = 0; i < mesh.pins.length; i += 2) pins.push([mesh.pins[i], mesh.pins[i + 1]]);
   return check({pins, panels: mesh.panels}, band);

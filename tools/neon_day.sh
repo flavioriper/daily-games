@@ -19,4 +19,10 @@ export DAILY_MAP_TIERS="anthropic/claude-haiku-5.5,anthropic/claude-sonnet-5.5,a
 unset ANTHROPIC_API_KEY OPENROUTER_API_KEY VERTEX_PROJECT
 cd "$here/../server/functions"
 npm run build >/dev/null
-node lib/cli.js themed "${1:?yyyymmdd}" 1 "$here/days/themed-pixel"
+out="$here/days/themed-pixel"
+node lib/cli.js themed "${1:?yyyymmdd}" 1 "$out"
+# A step that fails leaves the others: the day is judged on what it kept.
+for step in hoops quizzes vistas; do
+  echo "--- $step $(date '+%H:%M:%S')"
+  node lib/cli.js "$step" "$out/$1.json" || echo "--- $step failed"
+done

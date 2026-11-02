@@ -536,8 +536,10 @@ async function readerTry(c: Ctx, drawing: Drawing, t: PortTry): Promise<Best | n
     t.error = `read: ${said(e)}`;
     return null;
   }
-  t.why = got.why;
-  if (got.why !== "") return null;
+  // the phone's own check too: a reader's panels can pass every test above
+  // and still share a side three ways, and the phone then deals its bank
+  t.why = got.why || checkMesh({pins: got.pins, panels: got.panels}, c.band);
+  if (t.why !== "") return null;
   const render = await judged(c, drawing, got.pins, got.panels, t);
   return render === null ? null : {score: t.verdict!.score, pins: got.pins, panels: got.panels, drawing, render};
 }
