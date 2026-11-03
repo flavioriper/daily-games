@@ -21,7 +21,7 @@ export async function token(): Promise<string> {
   if (cached && cached.until > Date.now()) return cached.token;
   try {
     const { stdout } = await run("gcloud", ["auth", "application-default", "print-access-token"]);
-    cached = { token: stdout.trim(), until: Date.now() + 45 * 60_000 };
+    cached = { token: stdout.trim(), until: Date.now() + 5 * 60_000 };
     return cached.token;
   } catch (e) {
     const why = String((e as { stderr?: string }).stderr ?? "").trim().split("\n").slice(-3).join(" ");
