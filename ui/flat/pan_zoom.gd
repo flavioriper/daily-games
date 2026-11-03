@@ -43,6 +43,10 @@ var enabled := false
 ## of it. Zero, the default, and the zoomed picture always covers the view.
 var slack_lo := Vector2.ZERO
 var slack_hi := Vector2.ZERO
+## The button's middle step, when the board names one (Pixel Garden's
+## window, 2026-11-03: the zoom at which a stretch of the board is as big as
+## an Easy board); 0 is half way to `k_near`, as before.
+var k_mid := 0.0
 
 var _t := Vector2.ZERO
 var _touch := {}
@@ -146,12 +150,13 @@ func cycle(at := Vector2.INF) -> void:
 		return
 	var goes_in := next_in()
 	_going_in = goes_in
-	var mid := sqrt(k_near)
+	var mid := _mid()
+	var top := _top()
 	var to_k := 1.0
 	# from where a glide in hand is going, so two quick presses are two steps
 	var cur := _glide_to_k if _glide >= 0.0 else k
 	if goes_in:
-		to_k = mid if cur < mid * 0.98 else k_near
+		to_k = mid if cur < mid * 0.98 else top
 	else:
 		to_k = mid if cur > mid * 1.02 else 1.0
 	if at == Vector2.INF or not goes_in:
@@ -172,9 +177,35 @@ func next_in() -> bool:
 	var goal := _glide_to_k if _glide >= 0.0 else k
 	if goal <= 1.001:
 		return true
-	if goal >= k_near * 0.98:
+	if goal >= _top() * 0.98:
 		return false
 	return _going_in
+
+func _mid() -> float:
+	return clampf(k_mid, 1.0, k_max) if k_mid > 1.0 else sqrt(k_near)
+
+## The button's closest step: close, or the middle step when that is closer.
+func _top() -> float:
+	return maxf(k_near, _mid())
+
+## Puts the layout point `p` under the view's middle, zoomed to `kk` (the
+## zoom as it is when 0), at once or gliding: the window dragged on the
+## pattern card, a tap on it.
+func centre_on(p: Vector2, kk := 0.0, glide := false) -> void:
+	if not enabled:
+		return
+	var to_k := clampf(kk if kk > 0.0 else k, 1.0, k_max)
+	var to_t := _clamp(view.get_center() - p * to_k, to_k)
+	if glide and not Motion.reduce:
+		_glide_from_k = k
+		_glide_from_t = _t
+		_glide_to_k = to_k
+		_glide_to_t = to_t
+		_glide = 0.0
+		return
+	_glide = -1.0
+	k = to_k
+	_t = to_t
 
 ## Moves the zoomed picture by `d` (screen), kept within the view: a board
 ## that is dragged to play pans a picture seen close from where nothing is

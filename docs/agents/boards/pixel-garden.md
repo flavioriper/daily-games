@@ -454,3 +454,71 @@ names this exact pain.
   two-line tip in the foot beside it, over no peg; close, the minus and the
   hand side by side under the tray's left; the pushed corner with no button
   over it. Suite 303240/0. Not on a phone.
+
+### The run holds its line, Easy snaps to its wells, and a window on the card (2026-11-03, later)
+
+The user, after the morning's pass: "instead of locking the axis while
+placing many at a time, we could add a helper where if user finger is
+within a threshold of the color, it places in the right spot so he can
+draw the shape easily", and then "a crop and zoom feature where user can
+use to zoom in into specific regions (to make the board size like the easy
+one to a specific region)". The snap-to-colour as asked was turned down
+for Medium up (a bead landing only where the picture wants it paints the
+shape by scribbling; the board hides its picture on purpose) and the user
+took the alternative: "build what you think is the better solution".
+
+- **The run holds its line, it no longer locks it** (`_drag`, `_lanes`,
+  `_step`; `AXIS_AFTER` and `_line` are gone). The finger is read in lanes
+  (a peg spans whole numbers, the seam taken out as `_axis` takes it) and
+  measured from the peg the run stands on (`_hold`): the way it has gone
+  farther is the way along, where the run follows it a peg at a time once
+  `STICK_ALONG` (0.15) into the next; across it the line holds until the
+  finger is `STICK_ACROSS` (0.6) past the line's edge. So a wobble draws
+  straight as before, a finger that turns draws a corner in one stroke, a
+  diagonal finger a staircase one peg wide. Nothing runs until the finger
+  has left the press by `RUN_AFTER` (0.45) of a cell. A fast finger still
+  fills the pegs between.
+- **Easy snaps to a traced well** (`_snap`, `SNAP` 0.4): on Easy alone,
+  where the shape already shows as darker wells, a finger on a peg the
+  picture leaves bare, within 0.4 of a cell of a bare traced well, is read
+  on the well, at the press and along a run. No other band: there the
+  picture is hidden and a snap would give it away.
+- **The window** (`WINDOW` 12, `_k_window`, `PanZoom.k_mid`,
+  `centre_on`; `_tap_card`, `_card_drag`, `_draw_card_window`,
+  `_card_to_board`, `_board_to_card`). A first cut cropped the board to a
+  plate with the card showing that quarter; the user saw it on the harness
+  window and turned it down: "the pan should be literally just a zoom in
+  of the board but to a predefined crop area... to make it similar to the
+  easy board sizing... and user can move the area on the reference image".
+  So: the round button's first step from whole zooms the board to where
+  **twelve pegs fill the tray**, an Easy board's worth (k = n / 12: 2.0 on
+  a 24, 2.67 on a 32, 3.3 on a themed 40), on the last peg touched; the
+  pattern card stays whole and **frames the stretch in view** (a dark line
+  with a pale edge, drawn over the card while zoomed). **A tap on the
+  card** brings that spot into the window (zooming to it from whole,
+  gliding); **a finger dragged on the card drags the window**, the board
+  following at once; a press kept still for `CARD_TAP` (0.22 s) lifts the
+  picture up as always (from `_process`, never while dragging). Panning
+  the board by two fingers, the hand or a drag from another colour's bead
+  moves the frame on the card too, since the frame is only what the view
+  shows. The button's second step is close where close is closer than the
+  window (`PanZoom._top`: a 32's close is 2.03, under its window of 2.67,
+  so there the button reads minus at once; at the probe's card size a 24's
+  close is 2.17 over its window of 2.0), and back out the same way.
+  `PG_WINDOW` is said once a deal; `PG_ZOOM_TIP` and `HTP_PG_ZOOM_BODY`
+  lead with the tap on the card (en/pt/es mine).
+- Jewel Box shares `pan_zoom.gd`: with `k_mid` left 0 its button steps are
+  as before.
+- Glimpse handles its own card (a tap spends a look) and never reaches the
+  base card press, so it has no card tap or drag; the button's window it
+  shares.
+- `tests/_probe_pixel_garden.gd`: the stroke section adds the corner and
+  the staircase; `_snap_checks` (Easy snaps a finger just off a well, not
+  one in the bare peg's middle; Medium snaps nothing); `_window_checks` (a
+  tap on the card's lower right zooms to the window on that spot, twelve
+  pegs across, the frame on the card over the lower right, the toast once,
+  the hand shown; a drag on the card carries the window to the upper left
+  and seats nothing; the button close, back to the window, whole; a finger
+  kept on the card lifts the picture; Hard's window against its close).
+  The zoom section's first button step is the window now, and its pan
+  checks run on a plain close zoom. 0 failed.

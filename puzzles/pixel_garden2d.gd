@@ -251,7 +251,29 @@ const WHOOSH := 14
 const STEADY_GAP := 5.0
 ## How far a stroke's finger travels, in cells, before its row or column is
 ## chosen.
-const AXIS_AFTER := 0.7
+## A run follows the finger along the way it is going and holds its line
+## across it (2026-11-03, the user: "instead of locking the axis while
+## placing many at a time"): the peg along changes once the finger is
+## STICK_ALONG of a cell into the next, the line across only once it is
+## STICK_ACROSS past the line's edge, so a wobble draws straight and a turn
+## draws a corner. Nothing runs until the finger has left the press by
+## RUN_AFTER of a cell. On Easy, where the shape shows as wells, a finger
+## within SNAP of a cell of a traced well beside a bare peg is read on the
+## well (never on another band: there the picture is hidden).
+const RUN_AFTER := 0.45
+const STICK_ALONG := 0.15
+const STICK_ACROSS := 0.6
+const SNAP := 0.4
+## The window (the user, 2026-11-03: "a crop and zoom feature where user
+## can use to zoom in into specific regions, to make the board size like the
+## easy one... and user can move the area on the reference image"): the
+## round button's first step zooms the board so WINDOW pegs fill the tray,
+## an Easy board's worth, and the pattern card frames the stretch in view.
+## A tap on the card brings that spot into the window; a finger dragged on
+## the card moves the window; a press kept still for CARD_TAP lifts the
+## picture up, as it always did.
+const WINDOW := 12
+const CARD_TAP := 0.22
 ## The streak's tick, a semitone a plate ironed right in a row and no higher
 ## than five (the cozy rules; it was a note up [0, 2, 4, 7, 9, 12]).
 const COMBO_STEPS := [0, 1, 2, 3, 4, 5]
@@ -515,12 +537,21 @@ var _stroking := false
 var _erase := false
 var _refused := false
 var _last := -1
-## The stroke's first peg and where the finger pressed, and the line it keeps
-## to once it has moved AXIS_AFTER of a cell: 0 none yet, 1 its row, 2 its
-## column. A fingertip is wider than a peg, so a run must not wander.
+## The stroke's first peg and where the finger pressed; the peg the run
+## stands on (`_hold`, column and row), which the finger moves a step at a
+## time; and whether it has left the press far enough to run.
 var _start := -1
 var _start_at := Vector2.ZERO
-var _line := 0
+var _hold := Vector2i(-1, -1)
+var _run_on := false
+## A finger on the pattern card: when it landed and where, until it shows
+## itself a tap (a crop) or a hold (the picture lifted).
+var _card_down := false
+var _card_at := -100.0
+var _card_pos := Vector2.ZERO
+## ...or a drag: the window moved on the card.
+var _card_dragging := false
+var _told_window := false
 var _painted := {}
 var _seated_in_stroke := 0
 var _peek := false
@@ -721,6 +752,9 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_set_hand(false, false)
 	_pending = Vector2.INF
 	_told_dry = {}
+	_card_down = false
+	_card_dragging = false
+	_told_window = false
 	_focus = Vector2.INF
 	_layout()
 	fx.cue("enter")
@@ -967,6 +1001,7 @@ func _place_view() -> void:
 	# board may still be pushed up by its height so the pegs under it are
 	# reached.
 	zoom.slack_hi = Vector2.ZERO if _bled else Vector2(0.0, ZOOM_B + 1.5 * ZOOM_INSET)
+	zoom.k_mid = _k_window()
 	zoom.setup(view, lim.x, lim.y)
 	if _ground == null:
 		return
@@ -1015,8 +1050,116 @@ func _sync_zoom() -> void:
 func _on_zoom_button() -> void:
 	if not _zoom_live():
 		return
+	# Whole, the first step is the window (on the last peg touched, the
+	# middle before any), then close, and back out the same way.
 	zoom.cycle(Vector2.INF if _focus == Vector2.INF else zoom.to_screen(_focus))
+	if zoom.zoomed():
+		_say_window()
 	_view_moved()
+
+## The window's zoom: WINDOW pegs across the tray, an Easy board's worth.
+## 1 on a board no bigger than that (no middle step of its own).
+func _k_window() -> float:
+	if not _zoomable() or _state.n <= WINDOW or _cell <= 0.0:
+		return 0.0
+	return float(_state.n) / float(WINDOW)
+
+func _say_window() -> void:
+	if not _told_window:
+		_told_window = true
+		_tell("PG_WINDOW")
+
+## A point of the pattern card (screen) as the point of the board laid out
+## that it stands for: the card's lanes with its seam taken out, the board's
+## with its seam put in.
+func _card_to_board(at: Vector2) -> Vector2:
+	var n: int = _state.n
+	var h: int = _state.half
+	var inner := Rect2(Vector2.ZERO, _thumb.size).grow(-8.0)
+	var s := (inner.size.x - 12.0) / (float(n) + THUMB_GAP)
+	var o := _thumb.position + inner.position + Vector2.ONE * 6.0
+	var u := (at - o) / s
+	var lanes := Vector2.ZERO
+	for i in 2:
+		var v := u[i]
+		if v >= h + THUMB_GAP * 0.5:
+			v = maxf(v - THUMB_GAP, h)
+		elif v >= h:
+			v = h - 0.001
+		v = clampf(v, 0.0, float(n))
+		if v >= h:
+			v += GAP
+		lanes[i] = v
+	return _grid + lanes * _cell
+
+## The other way: a point of the board laid out onto the card (the card's
+## own corner as origin, as `_thumb_square` has it).
+func _board_to_card(p: Vector2) -> Vector2:
+	var n: int = _state.n
+	var h: int = _state.half
+	var inner := Rect2(Vector2.ZERO, _thumb.size).grow(-8.0)
+	var s := (inner.size.x - 12.0) / (float(n) + THUMB_GAP)
+	var o := inner.position + Vector2.ONE * 6.0
+	var lanes := (p - _grid) / _cell
+	var out := Vector2.ZERO
+	for i in 2:
+		var v := _lane(lanes[i])
+		v = clampf(v, 0.0, float(n))
+		if v >= h:
+			v += THUMB_GAP
+		out[i] = v
+	return o + out * s
+
+## A tap on the card: the board comes to that spot, in the window when it
+## was whole, as it is zoomed when already close.
+func _tap_card(at: Vector2) -> void:
+	if not _zoomable() or not _zoom_live() or is_done():
+		return
+	var kk := _k_window() if not zoom.zoomed() else 0.0
+	if kk <= 0.0 and not zoom.zoomed():
+		return
+	zoom.centre_on(_card_to_board(at), kk, true)
+	fx.cue("peek")
+	_say_window()
+	_view_moved()
+
+## A finger dragged on the card: the window follows it. A whole board goes
+## to the window first.
+func _card_drag(at: Vector2) -> void:
+	if not _card_dragging:
+		if at.distance_to(_card_pos) <= PanZoom.SLOP:
+			return
+		if not _zoomable() or not _zoom_live() or is_done() or (_k_window() <= 0.0 and not zoom.zoomed()):
+			return
+		_card_dragging = true
+		fx.cue("peek")
+		_say_window()
+	zoom.centre_on(_card_to_board(at), _k_window() if not zoom.zoomed() else 0.0, false)
+	_view_moved()
+
+## Over the card, while the board is close: a frame round the stretch of
+## the board in view, the window the finger can move.
+func _draw_card_window(xf: Transform2D, seen: float) -> void:
+	if not zoom.zoomed() or _won or is_done() or _thumb.size.x <= 0.0:
+		return
+	var a := _board_to_card(zoom.to_layout(zoom.view.position))
+	var z := _board_to_card(zoom.to_layout(zoom.view.end))
+	var inner := Rect2(Vector2.ZERO, _thumb.size).grow(-8.0)
+	var r := Rect2(a, z - a).intersection(inner.grow(-3.0))
+	if r.size.x <= 2.0 or r.size.y <= 2.0:
+		return
+	draw_set_transform_matrix(xf * Transform2D(0.0, _thumb.position))
+	draw_rect(r.grow(1.5), Color(Pal.PAPER, 0.85 * seen), false, 5.0)
+	draw_rect(r, Color(Pal.TEXT, 0.95 * seen), false, 2.5)
+	draw_set_transform(Vector2.ZERO)
+
+## The picture held up over the board, from a finger kept on the card.
+func _lift_card() -> void:
+	_peek = true
+	_peek_at = _now()
+	_busy_for(PEEK_TIME)
+	fx.cue("peek")
+	queue_redraw()
 
 ## The hand: one finger moves the close board, a tap still seats a bead.
 func _on_hand_button() -> void:
@@ -1279,6 +1422,8 @@ func _process(delta: float) -> void:
 		_place_cat(t)
 	var gliding: bool = zoom.step(delta) or zoom.busy()
 	_sync_zoom()
+	if _card_down and not _card_dragging and not _peek and t - _card_at >= CARD_TAP:
+		_lift_card()
 	if settled or t < _anim_until:
 		_refresh()
 	elif gliding:
@@ -1458,10 +1603,10 @@ func _thumb_square(c: int) -> Rect2:
 	var n: int = _state.n
 	var h: int = _state.half
 	var inner := Rect2(Vector2.ZERO, _thumb.size).grow(-8.0)
-	var s := (inner.size.x - 12.0) / (float(n) + THUMB_GAP)
 	var at := inner.position + Vector2.ONE * 6.0
 	var x := c % n
 	var y := c / n
+	var s := (inner.size.x - 12.0) / (float(n) + THUMB_GAP)
 	var o := at + Vector2((1.0 if x >= h else 0.0) * (h + THUMB_GAP), (1.0 if y >= h else 0.0) * (h + THUMB_GAP)) * s
 	return Rect2(o + Vector2(x - h if x >= h else x, y - h if y >= h else y) * s, Vector2.ONE * s)
 
@@ -1477,13 +1622,15 @@ func _draw_card_reading(xf: Transform2D, seen: float) -> void:
 		for c in _state.size():
 			if _state.beads[c] != State.EMPTY and _state.want[c] != State.EMPTY:
 				var r := _thumb_square(c)
+				if r.size.x <= 0.0:
+					continue
 				b.fan(Face.Builder.round_rect(r.position, r.size, r.size.x * 0.2), Color(Pal.PG_BOARD, 0.72))
 		_thumb_dim = b.mesh() if not b.verts.is_empty() else null
 		_thumb_dim_key = key
 	var place := xf * Transform2D(0.0, _thumb.position)
 	if _thumb_dim != null:
 		draw_mesh(_thumb_dim, null, place, Color(1.0, 1.0, 1.0, seen))
-	if _stroking and _last >= 0 and _last < _state.size():
+	if _stroking and _last >= 0 and _last < _state.size() and _thumb_square(_last).size.x > 0.0:
 		var r := _thumb_square(_last).grow(maxf(1.5, _thumb_square(_last).size.x * 0.3))
 		draw_set_transform_matrix(place)
 		draw_rect(r, Color(Pal.TEXT, 0.9 * seen), false, 2.5)
@@ -2652,6 +2799,7 @@ func _draw_thumb(xf: Transform2D, seen: float) -> void:
 	if _thumb_mesh != null:
 		draw_mesh(_thumb_mesh, null, xf * Transform2D(0.0, _thumb.position), Color(1.0, 1.0, 1.0, seen))
 	_draw_card_reading(xf, seen)
+	_draw_card_window(xf, seen)
 
 ## The held picture: the pattern card grown over the board, so it can be
 ## read peg for peg beside nothing at all.
@@ -2832,12 +2980,16 @@ func _gui_input(event: InputEvent) -> void:
 		var finger: int = event.index if event is InputEventScreenDrag else -1
 		if _stroking and finger == _press_finger:
 			_drag(event.position)
+		elif _card_down and finger == _press_finger:
+			_card_drag(event.position)
 
 ## Two fingers are down: whatever the first had begun never happened. The
 ## card it held is set down; the stroke it started is taken back bead for
 ## bead, with the moves it spent -- and the board's end, if it spent the
 ## last one and the card is not yet up.
 func _pinch_began() -> void:
+	_card_down = false
+	_card_dragging = false
 	if _peek:
 		_release()
 	_cancel_stroke()
@@ -2896,11 +3048,10 @@ func _press(at: Vector2) -> void:
 	_stroke_log = []
 	_stroke_ended = false
 	if _thumb.has_point(at):
-		_peek = true
-		_peek_at = _now()
-		_busy_for(PEEK_TIME)
-		fx.cue("peek")
-		queue_redraw()
+		# A tap or a hold: known when the finger lifts or CARD_TAP passes.
+		_card_down = true
+		_card_at = _now()
+		_card_pos = at
 		return
 	if is_done() or out_of_hearts:
 		return
@@ -2915,6 +3066,7 @@ func _press(at: Vector2) -> void:
 	var c := _peg_at(p)
 	if c < 0 or _plate_busy(_state.plate_of(c)):
 		return
+	c = _snap(c, _lanes(p))
 	# A stroke puts out the bulb's reading.
 	if _reading >= 0:
 		_reading = -1
@@ -2925,7 +3077,8 @@ func _press(at: Vector2) -> void:
 	_stroke_at = _now()
 	_lost_before = _lost_ever
 	_focus = _centre(c)
-	_line = 0
+	_hold = Vector2i(c % _state.n, c / _state.n)
+	_run_on = false
 	_erase = _state.beads[c] == brush
 	_state.begin_stroke()
 	_paint(c)
@@ -2935,21 +3088,34 @@ func _drag(screen: Vector2) -> void:
 	# The finger as the board was laid out; one that has left the tray's floor
 	# paints no peg that is out of sight.
 	var at: Vector2 = zoom.to_layout(screen.clamp(zoom.view.position, zoom.view.end - Vector2.ONE * 0.01))
-	# The run keeps to the row or the column it set off along: whichever way
-	# the finger first went farther, once it has gone AXIS_AFTER of a cell.
-	if _line == 0:
-		var d := at - _start_at
-		if d.length() < _cell * AXIS_AFTER:
+	if not _run_on:
+		if (at - _start_at).length() < _cell * RUN_AFTER:
 			return
-		_line = 1 if absf(d.x) >= absf(d.y) else 2
-	var home := _centre(_start)
-	var c := _peg_at(Vector2(at.x, home.y) if _line == 1 else Vector2(home.x, at.y))
-	if c < 0 or c == _last:
+		_run_on = true
+	var n: int = _state.n
+	# The finger in lanes (peg i spans i to i + 1, the seam taken out), and
+	# how far it stands from the peg the run is on. The way it has gone
+	# farther is the way along: there the run follows it a peg at a time,
+	# STICK_ALONG into the next; across it the run holds its line until the
+	# finger is STICK_ACROSS past the line's edge. A corner comes when the
+	# finger turns, a wobble never leaves the line.
+	var f := _lanes(at)
+	f = Vector2(clampf(f.x, 0.0, n - 0.001), clampf(f.y, 0.0, n - 0.001))
+	var off := f - (Vector2(_hold) + Vector2(0.5, 0.5))
+	var to := _hold
+	if absf(off.x) >= absf(off.y):
+		to.x = _step(_hold.x, f.x, STICK_ALONG)
+		to.y = _step(_hold.y, f.y, STICK_ACROSS)
+	else:
+		to.y = _step(_hold.y, f.y, STICK_ALONG)
+		to.x = _step(_hold.x, f.x, STICK_ACROSS)
+	to = to.clamp(Vector2i.ZERO, Vector2i(n - 1, n - 1))
+	var c := _snap(to.y * n + to.x, f)
+	if c == _last:
 		return
 	# Every peg between the last one painted and this one, so a quick finger
 	# leaves no gaps in its run.
 	if _last >= 0:
-		var n: int = _state.n
 		var a := Vector2i(_last % n, _last / n)
 		var z := Vector2i(c % n, c / n)
 		var steps := maxi(absi(z.x - a.x), absi(z.y - a.y))
@@ -2957,7 +3123,59 @@ func _drag(screen: Vector2) -> void:
 			var q := Vector2i(roundi(lerpf(a.x, z.x, float(i) / steps)), roundi(lerpf(a.y, z.y, float(i) / steps)))
 			_paint(q.y * n + q.x)
 	_paint(c)
+	_hold = Vector2i(c % n, c / n)
 	_refresh()
+
+## The finger as lanes: a peg's column and row span whole numbers, and the
+## seam between the plates is taken out, as `_axis` takes it.
+func _lanes(local: Vector2) -> Vector2:
+	var v := (local - _grid) / _cell
+	return Vector2(_lane(v.x), _lane(v.y))
+
+func _lane(v: float) -> float:
+	var h := float(_state.half)
+	if v >= h + GAP * 0.5:
+		return maxf(v - GAP, h)
+	elif v >= h:
+		return h - 0.001
+	return v
+
+## The lane the run stands on, moved to the finger's once the finger is
+## `give` of a cell past the lane's edge; a fast finger may move it several.
+func _step(hold: int, f: float, give: float) -> int:
+	if f >= float(hold) + 1.0 + give:
+		return int(floor(f - give))
+	if f < float(hold) - give:
+		return int(floor(f + give))
+	return hold
+
+## Easy's help: a finger on a peg the picture leaves bare, within SNAP of a
+## cell of a traced well that is still bare, is read on the well. Only
+## where the wells show, so it gives nothing away.
+func _snap(c: int, f: Vector2) -> int:
+	# A finger on a bead means that bead (a lift), never the well beside it.
+	if not _traces() or _state.want[c] != State.EMPTY or _state.beads[c] != State.EMPTY:
+		return c
+	var n: int = _state.n
+	var best := c
+	var best_d := SNAP
+	for dy: int in range(-1, 2):
+		for dx: int in range(-1, 2):
+			if dx == 0 and dy == 0:
+				continue
+			var x: int = c % n + dx
+			var y: int = c / n + dy
+			if x < 0 or y < 0 or x >= n or y >= n:
+				continue
+			var k: int = y * n + x
+			if _state.want[k] == State.EMPTY or _state.beads[k] != State.EMPTY:
+				continue
+			var near := Vector2(clampf(f.x, x, x + 1.0), clampf(f.y, y, y + 1.0))
+			var d := f.distance_to(near)
+			if d < best_d:
+				best_d = d
+				best = k
+	return best
 
 ## Seats or lifts on peg `c` once a stroke; a stroke never repaints a peg it
 ## has already crossed.
@@ -3034,6 +3252,18 @@ func _paint(c: int) -> void:
 					_tell("PG_NONE_LEFT")
 
 func _release() -> void:
+	if _card_down:
+		_card_down = false
+		if _card_dragging:
+			# The window set down where it was dragged to.
+			_card_dragging = false
+			queue_redraw()
+			return
+		if not _peek:
+			# Let go before the picture lifted: a tap brings that spot of
+			# the picture into the window.
+			_tap_card(_card_pos)
+			return
 	if _peek:
 		_peek = false
 		_peek_at = _now()
@@ -3100,7 +3330,8 @@ func _clear_gesture() -> void:
 	_refused = false
 	_last = -1
 	_start = -1
-	_line = 0
+	_hold = Vector2i(-1, -1)
+	_run_on = false
 	_painted = {}
 	_seated_in_stroke = 0
 
@@ -3591,6 +3822,8 @@ func restore_completed_board() -> void:
 	_set_hand(false, false)
 	_pending = Vector2.INF
 	_told_dry = {}
+	_card_down = false
+	_card_dragging = false
 	var t := _now()
 	_solved_at = t - 100.0
 	_won = true

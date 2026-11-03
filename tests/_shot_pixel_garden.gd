@@ -213,9 +213,10 @@ func _script() -> void:
 			_at(1.5, _shot)
 			_read("whole 1", 1.6, 2.1)
 			_read("whole 2", 2.1, 2.6)
-			# The button, on the middle of the board.
+			# The button, on the middle of the board: the window (twelve pegs
+			# across; a second press on a 32 would step back out, its close
+			# being farther than the window).
 			_at(2.7, func() -> void:
-				_puzzle._zoom_b.pressed.emit()
 				_puzzle._zoom_b.pressed.emit())
 			_at(3.2, _shot)
 			# A run of the row's own colour dragged on the zoomed board.

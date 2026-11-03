@@ -59,6 +59,8 @@ func _process(delta: float) -> bool:
 			_cancel_checks()
 			_zoom_checks()
 			_stroke_checks()
+			_snap_checks()
+			_window_checks()
 			_box_checks()
 			_tutorial_pages()
 			_step = 3
@@ -273,6 +275,8 @@ func _cancel_checks() -> void:
 	_b.zoom.reset()
 	# The card held, a second finger on the board: the card is set down.
 	_finger(0, _b._thumb.get_center(), true)
+	_b._card_at -= 1.0
+	_b._process(0.016)
 	_ok(_b._peek, "the picture held", true)
 	_finger(1, _at(bare), true)
 	_finger(2, _at(bare) + Vector2(150, 150), true)
@@ -387,10 +391,25 @@ func _zoom_checks() -> void:
 		_b._opened -= 5.0
 		_b._sync_zoom()
 		_ok(_b._zoom_b.visible and _b._zoom_icon == "plus", "band %d: the button shows, a plus" % band)
-		_b._on_zoom_button()
+		# From whole the button goes to the window (WINDOW pegs across the
+		# tray); a second press goes close where close is closer (a 32),
+		# else back out.
+		var kw: float = float(st.n) / float(_b.WINDOW)
 		_b._on_zoom_button()
 		_b._sync_zoom()
-		_ok(is_equal_approx(z.k, z.k_near) and _b._zoom_icon == "minus", "band %d: it goes close (%.2f), a minus" % [band, z.k])
+		_ok(is_equal_approx(z.k, kw) and _b._toast == "PG_WINDOW",
+			"band %d: the button goes to the window (k %.2f, %d pegs across), said once" % [band, z.k, _b.WINDOW])
+		if z.k_near > kw * 1.02:
+			_ok(_b._zoom_icon == "plus", "band %d: ... a plus still, close is closer" % band)
+			_b._on_zoom_button()
+			_b._sync_zoom()
+			_ok(is_equal_approx(z.k, z.k_near) and _b._zoom_icon == "minus", "band %d: it goes close (%.2f), a minus" % [band, z.k])
+		else:
+			_ok(_b._zoom_icon == "minus", "band %d: ... a minus, the window is already past close" % band)
+		# The plain close zoom, for the checks below.
+		z._zoom_about(z.k_near, view.get_center(), view.get_center())
+		_b._sync_zoom()
+		_ok(is_equal_approx(z.k, z.k_near), "band %d: close (%.2f)" % [band, z.k])
 		# There and back, and clamped, at a hundred pushes and pinches.
 		var rng := RandomNumberGenerator.new()
 		rng.seed = 9
@@ -417,10 +436,11 @@ func _zoom_checks() -> void:
 		_ok(worst < 0.01, "band %d: a point to the screen and back is itself (off by %.5f at worst)" % [band, worst])
 		_ok(covered, "band %d: a hundred pinches keep the board over its floor (the button's lift apart)" % band)
 		_ok(st.placed() == 0 and _b.moves_left == _b.max_moves, "band %d: and seat nothing" % band)
-		# Every peg in sight is found where it shows.
+		# Every peg in sight is found where it shows (the plain close zoom of
+		# the whole board: the button's steps crop, checked above).
 		z.reset()
-		_b._on_zoom_button()
-		_b._on_zoom_button()
+		z._zoom_about(z.k_near, view.get_center(), view.get_center())
+		_b._sync_zoom()
 		var found := true
 		var count := 0
 		for c in st.size():
@@ -525,12 +545,178 @@ func _stroke_checks() -> void:
 		if int(st.beads[c]) != -1:
 			cols[c % n] = true
 	_ok(cols.size() == 1 and cols.has(1), "a run set off downwards stays on its column")
+	_b.undo()
+	# The line is held, not locked (2026-11-03): a finger that turns draws a
+	# corner, sideways four then down three, in one stroke.
+	_finger(0, from, true)
+	for i in range(1, 5):
+		_slide(0, from + Vector2(i * cell, 0.0))
+	for i in range(1, 4):
+		_slide(0, from + Vector2(4.0 * cell, i * cell))
+	_finger(0, from, false)
+	var want := {}
+	for i in 5:
+		want[c0 + i] = true
+	for i in range(1, 4):
+		want[c0 + 4 + i * n] = true
+	var got := {}
+	for c in st.size():
+		if int(st.beads[c]) != -1:
+			got[c] = true
+	_ok(got == want, "a run that turns draws a corner: %d of %d pegs, no other" % [got.size(), want.size()])
+	_b.undo()
+	# ...and a diagonal finger draws a staircase, never a smear two wide.
+	_finger(0, from, true)
+	for i in range(1, 13):
+		_slide(0, from + Vector2(i * cell * 0.5, i * cell * 0.5))
+	_finger(0, from, false)
+	var stairs := 0
+	var wide := false
+	for c in st.size():
+		if int(st.beads[c]) != -1:
+			stairs += 1
+			var x: int = c % n
+			var y: int = c / n
+			if absi((x - 1) - (y - 2)) > 1:
+				wide = true
+	_ok(stairs >= 10 and not wide, "a diagonal finger draws a staircase (%d pegs, each within one of the diagonal)" % stairs)
+	_b.undo()
+	_b.set_brush(0)
+	_tap(c0)
 	_b.set_brush(1)
 	_tap(c0)
 	_ok(int(st.beads[c0]) == 0, "a peg holding another colour keeps its bead")
 	_b.set_brush(0)
 	_tap(c0)
 	_ok(int(st.beads[c0]) == -1, "its own colour lifts it")
+
+# --- Easy's snap to the wells ---
+
+func _snap_checks() -> void:
+	_deal(0)
+	var st = _b._state
+	var n: int = st.n
+	# A traced well with a bare, untraced neighbour to its left.
+	var well := -1
+	for c in st.size():
+		if c % n > 0 and int(st.want[c]) != -1 and int(st.want[c - 1]) == -1:
+			well = c
+			break
+	_ok(well >= 0, "Easy: a traced well with a bare neighbour (%d)" % well, true)
+	_b.set_brush(int(st.want[well]))
+	# A press a third of a cell into the bare neighbour, toward the well.
+	var at: Vector2 = _b.cell_to_local(well / n, well % n) - Vector2(_b._cell * 0.8, 0.0)
+	_finger(0, at, true)
+	_finger(0, at, false)
+	_ok(int(st.beads[well]) == _b.brush and int(st.beads[well - 1]) == -1, "Easy: a finger just off a traced well is read on the well")
+	_b.undo()
+	at = _b.cell_to_local(well / n, well % n) - Vector2(_b._cell * 1.0, 0.0)
+	_finger(0, at, true)
+	_finger(0, at, false)
+	_ok(int(st.beads[well - 1]) == _b.brush and int(st.beads[well]) == -1, "Easy: a finger in the bare peg's middle is read there")
+	# A bead on that bare peg: a finger a little off it toward the well
+	# lifts the bead, it is not read on the well.
+	at = _b.cell_to_local(well / n, well % n) - Vector2(_b._cell * 0.8, 0.0)
+	_finger(0, at, true)
+	_finger(0, at, false)
+	_ok(int(st.beads[well - 1]) == -1 and int(st.beads[well]) == -1, "Easy: a finger on a bead lifts it, no snap to the well beside")
+	_deal(1)
+	st = _b._state
+	n = st.n
+	well = -1
+	for c in st.size():
+		if c % n > 0 and int(st.want[c]) != -1 and int(st.want[c - 1]) == -1:
+			well = c
+			break
+	_b.set_brush(int(st.want[well]))
+	at = _b.cell_to_local(well / n, well % n) - Vector2(_b._cell * 0.8, 0.0)
+	_finger(0, at, true)
+	_finger(0, at, false)
+	_ok(int(st.beads[well - 1]) == _b.brush and int(st.beads[well]) == -1, "Medium: nothing is snapped (the picture is hidden)")
+	_b.undo()
+
+# --- the window ---
+
+func _window_checks() -> void:
+	_deal(3)
+	_b.set_clear(200.0, 40.0)
+	_b._layout()
+	_b._opened -= 5.0
+	var st = _b._state
+	var z = _b.zoom
+	var n: int = st.n
+	var kw: float = float(n) / float(_b.WINDOW)
+	# A tap on the card's lower right: the board comes to that spot in the
+	# window, and the card frames what is in view.
+	var inner: Rect2 = _b._thumb.grow(-8.0)
+	var at: Vector2 = inner.get_center() + inner.size * 0.25
+	_finger(0, at, true)
+	_ok(not _b._peek and _b._card_down, "a press on the card lifts nothing yet", true)
+	_finger(0, at, false)
+	for i in 30:
+		_b._process(0.016)
+	_b._sync_zoom()
+	var want: Vector2 = _b._card_to_board(at)
+	var mid: Vector2 = z.to_layout(z.view.get_center())
+	var across: int = 0
+	for c in st.size():
+		if c / n == n / 2 and z.view.has_point(z.to_screen(_b._centre(c))):
+			across += 1
+	_ok(is_equal_approx(z.k, kw) and mid.distance_to(want) < _b._cell * 1.5 and across <= _b.WINDOW + 1,
+		"a tap on the card's lower right zooms to the window (k %.2f) on that spot (off by %.0f px), %d pegs across" % [z.k, mid.distance_to(want), across])
+	_ok(_b._toast == "PG_WINDOW" and _b._hand_b.visible, "the window is said once, the hand shows")
+	var frame_a: Vector2 = _b._board_to_card(z.to_layout(z.view.position))
+	var frame_z: Vector2 = _b._board_to_card(z.to_layout(z.view.end))
+	var card_in := Rect2(Vector2.ZERO, _b._thumb.size).grow(-8.0)
+	_ok(card_in.grow(1.0).has_point(frame_a) and card_in.grow(1.0).has_point(frame_z) and frame_z.x - frame_a.x < card_in.size.x * 0.6
+		and frame_a.x > card_in.get_center().x - 2.0,
+		"the frame on the card covers the lower right stretch (%s to %s)" % [frame_a, frame_z])
+	# A drag on the card moves the window: to the upper left.
+	var from: Vector2 = at
+	var to: Vector2 = inner.get_center() - inner.size * 0.25
+	_finger(0, from, true)
+	for i in range(1, 11):
+		_slide(0, from.lerp(to, i / 10.0))
+	_ok(_b._card_dragging and not _b._peek, "a finger dragged on the card drags the window, lifts no picture", true)
+	_finger(0, to, false)
+	mid = z.to_layout(z.view.get_center())
+	_ok(is_equal_approx(z.k, kw) and mid.distance_to(_b._card_to_board(to)) < _b._cell * 1.5 and st.placed() == 0,
+		"...and the window follows it to the upper left (off by %.0f px), no bead seated" % mid.distance_to(_b._card_to_board(to)))
+	# The button: close, back to the window, whole.
+	_b._on_zoom_button()
+	for i in 30:
+		_b._process(0.016)
+	_ok(is_equal_approx(z.k, z.k_near), "the button goes close (%.2f)" % z.k)
+	_b._on_zoom_button()
+	for i in 30:
+		_b._process(0.016)
+	_ok(is_equal_approx(z.k, kw), "...back to the window (%.2f)" % z.k)
+	_b._on_zoom_button()
+	for i in 30:
+		_b._process(0.016)
+	_b._sync_zoom()
+	_ok(not z.zoomed() and not _b._hand_b.visible, "...and to the whole board")
+	# A finger kept on the card lifts the picture, as always.
+	_finger(0, inner.get_center(), true)
+	_b._card_at -= 1.0
+	_b._process(0.016)
+	_ok(_b._peek, "a finger kept on the card lifts the picture")
+	_finger(0, inner.get_center(), false)
+	_ok(not _b._peek and not z.zoomed(), "...and sets it down, the board whole")
+	# A 24 (Hard): the window is 2x, past its close of 1.53.
+	_deal(2)
+	_b.set_clear(200.0, 40.0)
+	_b._layout()
+	_b._opened -= 5.0
+	z = _b.zoom
+	_b._on_zoom_button()
+	_b._sync_zoom()
+	var kw2: float = float(_b._state.n) / float(_b.WINDOW)
+	var closer: bool = z.k_near > kw2 * 1.02
+	_ok(is_equal_approx(z.k, kw2) and _b._zoom_icon == ("plus" if closer else "minus"),
+		"Hard: the window is k %.2f (close %.2f), so the button reads %s" % [z.k, z.k_near, "plus" if closer else "minus"])
+	_b._bled = false
+	_b._layout()
 
 # --- the box ---
 
