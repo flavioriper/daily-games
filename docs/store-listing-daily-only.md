@@ -1,5 +1,14 @@
 # Store listing, daily puzzles only (drafted 2026-11-03)
 
+**Applied 2026-11-03 on the user's "run it, i allow"**, ahead of the store
+release: `tools/deploy_site.sh` ran (privacy page and website live); Play
+default listing en-US short + full, es-419 and pt-BR full saved, the 4 changes
+waiting on "Enviar 4 mudanças para revisão" in Publishing overview (the user
+sends); Play tag Xadrez removed (saved at once). ASC 0.1.0 (in review, build
+2065): en promo + description + keywords, pt-BR and es-MX description +
+keywords saved (pt/es promo already had no arcade or versus). The reviewer
+notes still mention Arcade: they describe build 2065, which has it.
+
 Versus, Arcade, Factory, Friends and Marigold left the game on 2026-11-03
 (CLAUDE.md, "Boards that left"). The live store builds still have them, so
 this text replaces the listing **with the first store release built from that
