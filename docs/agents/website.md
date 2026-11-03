@@ -83,3 +83,25 @@ chrome stays quiet:
   `/admin/music/<id>` (byte ranges, so it seeks), and the list plays on in the
   game's order. A track listed in the game with no file is called out. The
   soundtrack is its first section; more of the game goes beside it.
+- **Games in the admin** (2026-11-03, the user: "add a game list page,
+  let's start with who is bigger game. It should show all specs information
+  about the game, show an analytic about players, and the ingame library").
+  `/admin/games` lists the menu's grid live from `ui/registry.gd`; a game
+  with its own page (`WIRED` in `src/app/admin/games/page.dev.tsx`) links to
+  `/admin/games/<id>`. How Big? is the first, with three sections that fail
+  one by one, so a missing credential never hides what the repo shows:
+  **Specs** (registry, `puzzles/how_big_state.gd`'s constants through
+  `gdConst` in `src/lib/admin/repo.ts`, the `HB_*` lines from the locale
+  CSVs), **Players** (GA4, the events every board already sends, filtered
+  by `puzzle_id`, split by `difficulty`, averages of `seconds` and `hints`)
+  and **Library** (the thirty in `content/how_big*.json`, drawn from their
+  outline loops, and the night's pool, Firestore `things/`, cached five
+  minutes). Google is reached with this Mac's Application Default
+  Credentials, which `src/lib/admin/google.ts` turns into a token by
+  running gcloud, and every call bills `daily-games-420bf`
+  (`x-goog-user-project`). GA4 needs the `analytics.readonly` scope on
+  those credentials, the Analytics Data API enabled on the project, and
+  `puzzle_id`, `difficulty` (dimensions), `seconds` and `hints` (metrics)
+  registered as custom definitions; the page names whichever is missing.
+  `GA4_PROPERTY_ID` in `web/.env.local` pins the property; otherwise the
+  first one named like Daily or Peeplet is used.
