@@ -23,7 +23,8 @@ const REGION := "us-central1"
 const CACHE_DIR := "user://backend_cache"
 const PLAYER_PATH := "user://player.cfg"
 const QUEUE_PATH := "user://backend_queue.json"
-const TIMEOUT := 5.0
+## Long enough for a day's vistas (four JPEGs, ~0.8 MB) on mobile data.
+const TIMEOUT := 15.0
 ## Renew the id token when less than this is left on it.
 const RENEW_MARGIN := 300.0
 ## Content bundled with the game, so a phone that has never been online plays.
@@ -421,6 +422,9 @@ static func _http(url: String, method: int, headers: PackedStringArray, body: St
 		return {"ok": false, "code": 0, "body": "", "error": "offline"}
 	var req := HTTPRequest.new()
 	req.timeout = TIMEOUT
+	# Unthreaded, HTTPRequest reads about a chunk a frame: 2026-11-03's vistas
+	# (764 KB) took 7.9 s and passed the timeout, threaded 2.0 s.
+	req.use_threads = true
 	_node.add_child(req)
 	if req.request(url, headers, method, body) != OK:
 		req.queue_free()
