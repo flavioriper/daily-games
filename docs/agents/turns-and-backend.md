@@ -620,7 +620,7 @@ and nothing here was run):
    `hoop.ts`, `docs/agents/boards/hoop.md`), which was never deployed (the
    functions were last deployed before it).
    **And the 2026-11-03 sliver rule** (`mesh.ts` `slim`, from `repairMesh`
-   and `readHoop`; `docs/agents/boards/hoop.md`), built, not deployed: it
+   and `readHoop`; `docs/agents/boards/hoop.md`), deployed by the user 2026-11-03 10:40: it
    runs before the panel-count check, so a map padded with slivers can now
    fall under `LEAST_PANELS` and be re-asked (the 20th's Medium would go
    46 to 25 against a floor of 26); the try's `mended` logs `slimmed`.

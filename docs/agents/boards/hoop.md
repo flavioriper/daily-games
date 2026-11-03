@@ -762,7 +762,7 @@ as the dots are filled, keep the number always showing whole".
   `clip` and from `readHoop` after its cut, with each path's `least`), so
   the eye judges the picture the phone will show. On the raw cached maps
   it gives 32/50/82/153 where the phone (welding first) gives
-  31/48/82/150. **Built, not deployed** (the user's call; the deploy list in
+  31/48/82/150. **Deployed 2026-11-03 10:40 by the user** (the deploy list in
   `docs/agents/turns-and-backend.md`). It runs before `check`, so a map
   padded with slivers can fall under `LEAST_PANELS` and be re-asked (that
   Medium against a floor of 26): a pass-rate and cost risk on Easy and
