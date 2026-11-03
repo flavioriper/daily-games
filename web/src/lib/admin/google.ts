@@ -5,8 +5,17 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
 export const PROJECT = "daily-games-420bf";
-export const SCOPE_FIX =
-  "gcloud auth application-default login --scopes=openid,https://www.googleapis.com/auth/userinfo.email,https://www.googleapis.com/auth/cloud-platform,https://www.googleapis.com/auth/analytics.readonly";
+export const SCOPE_FIX = "gcloud auth application-default login";
+/** GA is read as this service account: Google refuses the Analytics scope to
+ *  gcloud's own login, so the login borrows a short token from it instead
+ *  (iamcredentials generateAccessToken). No key file. The login needs
+ *  roles/iam.serviceAccountTokenCreator on it, and it is a Viewer on the GA4
+ *  property (Admin > Property access management). */
+export const ANALYTICS_SA = process.env.GA4_SERVICE_ACCOUNT ?? `admin-analytics@${PROJECT}.iam.gserviceaccount.com`;
+export const SA_FIX = [
+  `gcloud iam service-accounts add-iam-policy-binding ${ANALYTICS_SA} --member=user:$(gcloud config get-value account) --role=roles/iam.serviceAccountTokenCreator --project ${PROJECT}`,
+  `gcloud services enable analyticsdata.googleapis.com analyticsadmin.googleapis.com iamcredentials.googleapis.com --project ${PROJECT}`,
+].join(" && ");
 
 const run = promisify(execFile);
 let cached: { token: string; until: number } | null = null;
@@ -41,8 +50,33 @@ export async function whoAmI(): Promise<{ email: string; analytics: boolean } | 
   }
 }
 
-export async function call<T>(url: string, body?: unknown): Promise<T> {
+let borrowed: { token: string; until: number } | null = null;
+
+/** A short Analytics token for ANALYTICS_SA, borrowed with this Mac's login. */
+export async function analyticsToken(): Promise<string> {
+  if (borrowed && borrowed.until > Date.now()) return borrowed.token;
   const t = await token();
+  const res = await fetch(
+    `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${ANALYTICS_SA}:generateAccessToken`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${t}`, "Content-Type": "application/json", "x-goog-user-project": PROJECT },
+      body: JSON.stringify({ scope: ["https://www.googleapis.com/auth/analytics.readonly"], lifetime: "3600s" }),
+      cache: "no-store",
+    },
+  );
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg: string = j?.error?.message ?? `HTTP ${res.status}`;
+    throw new GoogleError(`Couldn't borrow ${ANALYTICS_SA}'s token: ${msg}`, res.status, SA_FIX);
+  }
+  borrowed = { token: j.accessToken, until: Math.min(Date.parse(j.expireTime), Date.now() + 50 * 60_000) - 60_000 };
+  return borrowed.token;
+}
+
+export async function call<T>(url: string, body?: unknown): Promise<T> {
+  const ga = url.includes("analyticsdata.") || url.includes("analyticsadmin.");
+  const t = ga ? await analyticsToken() : await token();
   const res = await fetch(url, {
     method: body === undefined ? "GET" : "POST",
     headers: {
@@ -57,12 +91,15 @@ export async function call<T>(url: string, body?: unknown): Promise<T> {
   if (!res.ok) {
     const msg: string = j?.error?.message ?? `HTTP ${res.status}`;
     let fix: string | undefined;
-    if (/insufficient authentication scopes|ACCESS_TOKEN_SCOPE_INSUFFICIENT/i.test(msg)) fix = SCOPE_FIX;
+    if (ga && res.status === 403 && !/has not been used|is disabled|SERVICE_DISABLED/i.test(msg))
+      fix = `In Google Analytics: Admin > Property access management > add ${ANALYTICS_SA} as a Viewer.`;
+    else if (/insufficient authentication scopes|ACCESS_TOKEN_SCOPE_INSUFFICIENT/i.test(msg)) fix = SCOPE_FIX;
     else if (/has not been used|is disabled|SERVICE_DISABLED/i.test(msg)) {
       const api = url.includes("analyticsdata") ? "analyticsdata.googleapis.com" : url.includes("analyticsadmin") ? "analyticsadmin.googleapis.com" : "";
       if (api) fix = `gcloud services enable ${api} --project ${PROJECT}`;
     } else if (res.status === 401) {
       cached = null;
+      borrowed = null;
       fix = SCOPE_FIX;
     }
     throw new GoogleError(msg, res.status, fix);
@@ -127,7 +164,12 @@ export async function property(): Promise<Property> {
       (pinned ? { id: pinned, name: `property ${pinned}` } : null) ||
       all.find((p) => /daily|peeplet/i.test(p.name)) ||
       all[0];
-    if (!pick) throw new GoogleError("This account can read no Google Analytics property.", 404);
+    if (!pick)
+      throw new GoogleError(
+        `${ANALYTICS_SA} can read no Google Analytics property yet.`,
+        404,
+        `In Google Analytics: Admin > Property access management > add ${ANALYTICS_SA} as a Viewer.`,
+      );
     return pick;
   });
 }

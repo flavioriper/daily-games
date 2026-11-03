@@ -3,7 +3,7 @@
 // credential never hides what the repo can show.
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { GoogleError, whoAmI } from "@/lib/admin/google";
+import { ANALYTICS_SA, GoogleError, whoAmI } from "@/lib/admin/google";
 import {
   EVENTS,
   ID,
@@ -147,7 +147,8 @@ function Fix({ e }: { e: unknown }) {
   return (
     <div className="notice">
       <p className="error">{e instanceof Error ? e.message : String(e)}</p>
-      {g?.fix && (
+      {g?.fix && g.fix.startsWith("In ") && <p className="dim">{g.fix} Then reload.</p>}
+      {g?.fix && !g.fix.startsWith("In ") && (
         <>
           <p className="dim">To fix it, run this in the Claude prompt (with the leading <code>!</code>) or a terminal, then reload:</p>
           <pre className="cmd">! {g.fix}</pre>
@@ -173,7 +174,7 @@ function PlayersPanel({
           <h2>Players</h2>
           <p className="dim">
             From Google Analytics: the events every board sends with <code>puzzle_id</code> {ID}. Numbers can lag up to a day.
-            {me && <> Signed in as <strong>{me.email}</strong>.</>}
+            {me && <> Signed in as <strong>{me.email}</strong>, reading GA as <code>{ANALYTICS_SA}</code>.</>}
           </p>
         </div>
         <div className="filters">
