@@ -166,15 +166,20 @@ const LEVELS := [
 ## A themed day's own (core/themed_vistas.gd), when this phone holds them:
 ## the place painted at a level's time, in the rows' order, and the day card
 ## the afternoon. Painted 21:9 at 1024 wide; [zoom, focus] as above.
-const THEMED_LEVEL := [1.15, Vector2(0.5, 0.55)]
+## Zoom 1.0 (was 1.15 until 2026-11-03): a row is so thin that the extra zoom
+## left too little height to hold the day's Peeplets.
+const THEMED_LEVEL := [1.0, Vector2(0.5, 0.55)]
 const THEMED_DAY := ["afternoon", 1.0, Vector2(0.5, 0.6)]
+## The room kept round the Peeplets' box, a fraction of the painting.
+const BOX_MARGIN := 0.03
 
-## Difficulty `d`'s row: the day's own painting at its time, or LEVELS'.
+## Difficulty `d`'s row: the day's own painting at its time, or LEVELS'. A
+## themed row carries a fourth item, where its Peeplets stand.
 static func level_row(d: int) -> Array:
 	var tex := Themed.texture(Themed.TIMES[d])
 	if tex == null:
 		return LEVELS[d]
-	return [tex, THEMED_LEVEL[0], THEMED_LEVEL[1]]
+	return [tex, THEMED_LEVEL[0], THEMED_LEVEL[1], Themed.box(Themed.TIMES[d])]
 
 ## Island key (core/progress.gd's ISLANDS) to the vista its name suggests.
 ## Keyed on the key, never the translated name, so every language sees the
@@ -210,12 +215,31 @@ static func texture(vista: String) -> Texture2D:
 
 ## The crop, as a UV rect: cover the plate, zoom past cover, then slide to
 ## `focus` within the room the zoom leaves.
-static func crop(plate: Vector2, tex: Vector2, zoom: float, focus: Vector2) -> Rect2:
+static func crop(plate: Vector2, tex: Vector2, zoom: float, focus: Vector2, box := Rect2()) -> Rect2:
 	if plate.x <= 0.0 or plate.y <= 0.0 or tex.x <= 0.0 or tex.y <= 0.0:
 		return Rect2(0.0, 0.0, 1.0, 1.0)
 	var s := maxf(plate.x / tex.x, plate.y / tex.y) * maxf(zoom, 1.0)
 	var frac := (plate / s) / tex
-	return Rect2((Vector2.ONE - frac) * focus, frac)
+	var at := (Vector2.ONE - frac) * focus
+	if box.has_area():
+		at = Vector2(_hold(at.x, frac.x, box.position.x, box.end.x), _hold(at.y, frac.y, box.position.y, box.end.y))
+	return Rect2(at, frac)
+
+## The crop's start on one axis moved as little as it must to show [lo, hi]
+## with BOX_MARGIN round it (2026-11-03, the user: the strips cut the day's
+## Peeplets in half). With no room for the margin the box is centred; too
+## big even for that, the start keeps its top or left edge: hats and faces
+## before feet.
+static func _hold(at: float, span: float, lo: float, hi: float) -> float:
+	var lo_m := maxf(lo - BOX_MARGIN, 0.0)
+	var hi_m := minf(hi + BOX_MARGIN, 1.0)
+	if hi_m - lo_m <= span:
+		at = clampf(at, hi_m - span, lo_m)
+	elif hi - lo <= span:
+		at = (lo + hi - span) * 0.5
+	else:
+		at = lo
+	return clampf(at, 0.0, maxf(1.0 - span, 0.0))
 
 static func _plate(radius: float) -> ColorRect:
 	var plate := ColorRect.new()
@@ -232,7 +256,7 @@ static func _plate(radius: float) -> ColorRect:
 
 ## Points `plate` at a vista -- a name, or a themed day's texture -- (or the
 ## fallback in `tint`) and re-crops it.
-static func point_at(plate: ColorRect, vista: Variant, zoom: float, focus: Vector2, tint: Color) -> void:
+static func point_at(plate: ColorRect, vista: Variant, zoom: float, focus: Vector2, tint: Color, box := Rect2()) -> void:
 	var mat := plate.material as ShaderMaterial
 	var tex: Texture2D = vista if vista is Texture2D else texture(str(vista))
 	mat.set_shader_parameter("fallback", tex == null)
@@ -240,6 +264,7 @@ static func point_at(plate: ColorRect, vista: Variant, zoom: float, focus: Vecto
 	mat.set_shader_parameter("tint", tint)
 	plate.set_meta("zoom", zoom)
 	plate.set_meta("focus", focus)
+	plate.set_meta("box", box)
 	_refit(plate)
 
 ## F1 (final fix wave, 2026-09-24): a plate's top pad, in px -- the header
@@ -265,7 +290,8 @@ static func _refit(plate: ColorRect) -> void:
 		return
 	var top_pad := float(plate.get_meta("top_pad", 0.0))
 	var crop_size := Vector2(plate.size.x, maxf(plate.size.y - top_pad, 1.0))
-	var r := crop(crop_size, tex.get_size(), float(plate.get_meta("zoom", 1.0)), plate.get_meta("focus", Vector2(0.5, 0.5)))
+	var r := crop(crop_size, tex.get_size(), float(plate.get_meta("zoom", 1.0)), plate.get_meta("focus", Vector2(0.5, 0.5)),
+		plate.get_meta("box", Rect2()))
 	if top_pad > 0.0:
 		# The pad's own share of the crop, in UV: r.size.y is the crop's UV
 		# height for crop_size.y px, so top_pad px of it is
@@ -307,7 +333,7 @@ static func day_plate() -> ColorRect:
 static func set_day_vista(plate: ColorRect, island_key: String, tint: Color) -> void:
 	var own := Themed.texture(THEMED_DAY[0])
 	if own != null:
-		point_at(plate, own, THEMED_DAY[1], THEMED_DAY[2], tint)
+		point_at(plate, own, THEMED_DAY[1], THEMED_DAY[2], tint, Themed.box(THEMED_DAY[0]))
 		return
 	var vista: String = DAY.get(island_key, "beach")
 	point_at(plate, vista, 1.0, DAY_FOCUS.get(vista, Vector2(0.5, 0.5)), tint)
@@ -327,10 +353,12 @@ static func header_plate() -> ColorRect:
 ## `set_day_vista` does the day card's.
 static func set_header_vista(plate: ColorRect) -> void:
 	var own := Themed.texture("header")
+	var box := Rect2()
 	if own == null:
 		own = Themed.texture("dusk")
+		box = Themed.box("dusk")
 	if own != null:
-		point_at(plate, own, HEADER[1], HEADER[2], Pal.ACCENT)
+		point_at(plate, own, HEADER[1], HEADER[2], Pal.ACCENT, box)
 		return
 	point_at(plate, HEADER[0], HEADER[1], HEADER[2], Pal.ACCENT)
 
@@ -339,7 +367,7 @@ static func set_header_vista(plate: ColorRect) -> void:
 ## A plain plate on a vista row, rounded, with no scrim: a sheet's picture.
 static func picture(row: Array, radius: float) -> ColorRect:
 	var plate := _plate(radius)
-	point_at(plate, row[0], row[1], row[2], Pal.LEAF)
+	point_at(plate, row[0], row[1], row[2], Pal.LEAF, row[3] if row.size() > 3 else Rect2())
 	return plate
 
 static func side_plate(row: Array, radius: float, paper: Color) -> ColorRect:
@@ -347,5 +375,5 @@ static func side_plate(row: Array, radius: float, paper: Color) -> ColorRect:
 	var mat := plate.material as ShaderMaterial
 	mat.set_shader_parameter("scrim", SIDE_SCRIM)
 	mat.set_shader_parameter("paper", paper)
-	point_at(plate, row[0], row[1], row[2], Pal.LEAF)
+	point_at(plate, row[0], row[1], row[2], Pal.LEAF, row[3] if row.size() > 3 else Rect2())
 	return plate

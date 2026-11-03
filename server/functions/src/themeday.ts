@@ -8,7 +8,7 @@ import {dayList, DayThing, grow, makeThings, pool} from "./things";
 import {makeWords, Words} from "./words";
 import {Port, publishPorts, stagePorts} from "./ports";
 import {seeded} from "./cast";
-import {HEADER_KEY, makeHeader, makeVista, TIMES as VISTA_TIMES, Vistas} from "./vistas";
+import {boxOf, HEADER_KEY, makeHeader, makeVista, TIMES as VISTA_TIMES, Vistas} from "./vistas";
 
 /**
  * The daily theme at night (docs/superpowers/specs/2026-10-13-daily-theme-
@@ -195,13 +195,18 @@ export async function publishVistas(db: Firestore, day: number): Promise<boolean
   const theme = await stagedTheme(db, day);
   if (theme === null) return false;
   const times: Record<string, string> = {};
+  const boxes: NonNullable<Vistas["boxes"]> = {};
   for (const time of VISTA_TIMES) {
-    const jpg = (await vista(db, day, time).get()).get("jpg");
+    const staged = await vista(db, day, time).get();
+    const jpg = staged.get("jpg");
     if (typeof jpg !== "string" || jpg === "") return false;
     times[time] = jpg;
+    const box = boxOf(staged.get("box"));
+    if (box !== null) boxes[time] = box;
   }
   const made: Vistas = {v: 1, theme: theme.id, name: theme.name, times: times as Vistas["times"],
     cast: seeded(day)};
+  if (Object.keys(boxes).length > 0) made.boxes = boxes;
   const head = (await vista(db, day, HEADER_KEY).get()).get("jpg");
   if (typeof head === "string" && head !== "") made.header = head;
   try {
@@ -278,7 +283,9 @@ async function runStep(db: Firestore, when: Date, day: number, step: string, s: 
     // The morning is painted twice a run (the reviewer counts its Peeplets and
     // limbs), the others once: a step is tried again on a later run (TRIES).
     const got = await makeVista(day, theme, time, morning, undefined, time === "morning" ? 2 : 1);
-    if (got.vista !== null) await vista(db, day, time).set({jpg: got.vista.bytes.toString("base64")});
+    if (got.vista !== null) {
+      await vista(db, day, time).set({jpg: got.vista.bytes.toString("base64"), ...(got.box === null ? {} : {box: got.box})});
+    }
     return {save: {}, made: got.vista !== null};
   }
   const size = step.slice("pic".length);

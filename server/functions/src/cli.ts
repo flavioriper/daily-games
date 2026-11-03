@@ -460,6 +460,7 @@ async function main(): Promise<void> {
       if (day.theme === null) continue;
       const keep = keeper(day, file);
       const times: Record<string, string> = {};
+      const boxes: NonNullable<Vistas["boxes"]> = {};
       const tries: VistaTry[] = [];
       const pair = seeded(day.day);
       let morning = null;
@@ -470,6 +471,7 @@ async function main(): Promise<void> {
         if (got.vista === null) break;
         if (time === "morning") morning = got.vista;
         times[time] = got.vista.bytes.toString("base64");
+        if (got.box !== null) boxes[time] = got.box;
       }
       let header: string | null = null;
       if (Object.keys(times).length === VISTA_TIMES.length) {
@@ -477,7 +479,7 @@ async function main(): Promise<void> {
       }
       day.vistaTries = tries;
       if (Object.keys(times).length === VISTA_TIMES.length) {
-        day.vistas = {v: 1, theme: day.theme.id, name: day.theme.name, times, ...(header === null ? {} : {header})} as Vistas;
+        day.vistas = {v: 1, theme: day.theme.id, name: day.theme.name, times, ...(header === null ? {} : {header}), ...(Object.keys(boxes).length === 0 ? {} : {boxes})} as Vistas;
       } else {
         delete day.vistas;
       }

@@ -115,13 +115,20 @@ const REVIEWER = `You check painted backgrounds for a cosy daily puzzle game pla
   `"wrong", or leave it empty when nothing is: if your "limbs" note found any defect in a limb, "wrong" must not be empty. Answer "peeplets" with ` +
   `how many Peeplets you count in the painting being judged.`;
 
+/** Where the Peeplets stand (2026-11-03): the phone's strips (the day card,
+ *  the difficulty rows) show a thin band of the painting and cropped them in
+ *  half at a fixed height, so the band is moved to hold this box
+ *  (ui/menu/vistas.gd). Asked of the reviewer, who is looking at them anyway. */
+const BOX_ASK = `Answer "box" with [left, top, right, bottom], the smallest rectangle holding every Peeplet in the painting being judged, ` +
+  `from the top of the highest hat to the lowest foot, as fractions of that painting's width and height (0 is the left or top edge, 1 the right or bottom).`;
+
 /** The reviewer's per-call prompts (the morning on its own; an edit beside its morning; the header on its own). */
 const REVIEW_FIRST = (theme: Theme, time: Time) =>
-  `The first picture is the reference sheet of the Peeplet. The second is the painting to judge, of the theme "${theme.name.en}" (${theme.scene}), meant to be at ${time}. Go over each Peeplet's limbs.`;
+  `The first picture is the reference sheet of the Peeplet. The second is the painting to judge, of the theme "${theme.name.en}" (${theme.scene}), meant to be at ${time}. Go over each Peeplet's limbs. ${BOX_ASK}`;
 const REVIEW_EDIT = (time: Time) =>
   `The first picture is the reference sheet of the Peeplet. The second is a painting at morning; the third is meant to be the same place at ${time}. Judge the third. ` +
   `First count the Peeplets in the second picture and note each one's body colour and hat; the third must show those same Peeplets, no more, no fewer, no recoloured. ` +
-  `Then go over each Peeplet's limbs in the third.`;
+  `Then go over each Peeplet's limbs in the third. ${BOX_ASK}`;
 
 /** The header's reviewer: REVIEWER's Peeplet rules (a sheet first, two to three
  *  Peeplets wanted) would contradict a painting that must have none, so it has
@@ -138,7 +145,7 @@ const REVIEW_HEADER = (theme: Theme) =>
   `foreground bush standing in the left half is wrong; sky, clouds, haze, far hills and soft ground are fine, and so are small, soft, distant ` +
   `trees or bushes on far hills below the horizon (they sit under the lettering, not in it). It must be a wide painted landscape of that kind of place, not a close-up or a pattern. The usual hard rules ` +
   `apply: no text, letters, numbers, logo or signature, no humans or human-shaped figures, nothing frightening, violent or unsuitable for children. ` +
-  `Put what you see of any creature or figure in "limbs" (or "none"), and leave "wrong" empty when nothing is wrong.`;
+  `Put what you see of any creature or figure in "limbs" (or "none"), and leave "wrong" empty when nothing is wrong. Answer "box" with an empty list.`;
 
 /**
  * A fingerprint of the reviewer's rubric (its system prompt, its two
@@ -156,8 +163,8 @@ const REVIEW_SCHEMA = {
   type: "object",
   // `limbs` comes first on purpose: the model writes what it sees of each
   // Peeplet's arms and legs before it decides `wrong`.
-  properties: {limbs: {type: "string"}, wrong: {type: "string"}, peeplets: {type: "integer"}},
-  required: ["limbs", "wrong", "peeplets"],
+  properties: {limbs: {type: "string"}, wrong: {type: "string"}, peeplets: {type: "integer"}, box: {type: "array", items: {type: "number"}}},
+  required: ["limbs", "wrong", "peeplets", "box"],
   additionalProperties: false,
 };
 
@@ -213,16 +220,29 @@ function dataUrl(d: Drawing): string {
   return `data:${d.mime};base64,${d.bytes.toString("base64")}`;
 }
 
+/** The Peeplets' box, [left, top, right, bottom] in fractions of the painting. */
+export type Box = [number, number, number, number];
+
+/** A reviewer's box, or null when it is not four fractions in order: a phone
+ *  given null keeps its usual crop. */
+export function boxOf(v: unknown): Box | null {
+  if (!Array.isArray(v) || v.length !== 4) return null;
+  const b = v.map(Number);
+  if (b.some((x) => !Number.isFinite(x) || x < 0 || x > 1)) return null;
+  if (b[2] - b[0] < 0.01 || b[3] - b[1] < 0.01) return null;
+  return [b[0], b[1], b[2], b[3]].map((x) => Math.round(x * 1000) / 1000) as Box;
+}
+
 /**
  * The review alone: `drawn`, the painter's full-size painting, seen with the
  * Peeplet sheet first and, for an edit, the morning before it. Answers what
  * is wrong ("" when nothing) and how many Peeplets the reviewer counts.
  */
 export async function reviewPainting(theme: Theme, time: Slot, drawn: Drawing, morning: Drawing | null):
-  Promise<{wrong: string; peeplets: number; limbs: string}> {
+  Promise<{wrong: string; peeplets: number; limbs: string; box: Box | null}> {
   if (time !== "morning" && time !== HEADER_KEY && morning === null) throw new Error(`the ${time} edit needs the morning painting beside it`);
   const header = time === HEADER_KEY;
-  const review = await ask<{limbs: string; wrong: string; peeplets: number}>({
+  const review = await ask<{limbs: string; wrong: string; peeplets: number; box?: unknown}>({
     system: header ? REVIEWER_HEADER : REVIEWER,
     prompt: header ? REVIEW_HEADER(theme) : time === "morning" ? REVIEW_FIRST(theme, time) : REVIEW_EDIT(time),
     images: header ? [dataUrl(drawn)] : time === "morning" || morning === null ?
@@ -242,7 +262,7 @@ export async function reviewPainting(theme: Theme, time: Slot, drawn: Drawing, m
     wrong = `counted ${peeplets} Peeplets`;
   }
   // `limbs` is the reviewer's own inspection note, kept for the bench's report.
-  return {wrong, peeplets, limbs: String(review.limbs ?? "").trim()};
+  return {wrong, peeplets, limbs: String(review.limbs ?? "").trim(), box: header ? null : boxOf(review.box)};
 }
 
 /**
@@ -255,9 +275,9 @@ export async function reviewPainting(theme: Theme, time: Slot, drawn: Drawing, m
  */
 export async function makeVista(day: number, theme: Theme, time: Time, morning: Drawing | null,
   keep?: (name: string, d: Drawing) => string, tries = 2, pair: [number, number] = seeded(day)):
-  Promise<{vista: Drawing | null; tries: {name: string; wrong: string; peeplets: number; size: string}[]}> {
+  Promise<{vista: Drawing | null; box: Box | null; tries: {name: string; wrong: string; peeplets: number; size: string}[]}> {
   const log: {name: string; wrong: string; peeplets: number; size: string}[] = [];
-  if (!available() || (time !== "morning" && morning === null)) return {vista: null, tries: log};
+  if (!available() || (time !== "morning" && morning === null)) return {vista: null, box: null, tries: log};
   const prompt = time === "morning" ? FIRST(theme, pair) : AGAIN(time);
   const shown = time === "morning" ? [styleRef(), sheetRef()] : [morning as Drawing];
   for (let attempt = 0; attempt < tries; attempt++) {
@@ -276,20 +296,20 @@ export async function makeVista(day: number, theme: Theme, time: Time, morning: 
       size = `${px.width}x${px.height}`;
       // The bench keeps the paid drawing before the review, which can fail.
       keep?.(name + FULL_SUFFIX, drawn);
-      const {wrong, peeplets} = await reviewPainting(theme, time, drawn, morning);
+      const {wrong, peeplets, box} = await reviewPainting(theme, time, drawn, morning);
       log.push({name, wrong, peeplets, size});
       // Only a passing painting is shrunk for a phone; the bench (`keep`) is
       // shown every try, small and full.
       const small = wrong === "" || keep !== undefined ? shrunk(drawn) : null;
       if (small !== null) keep?.(name, small);
-      if (wrong === "" && small !== null) return {vista: small, tries: log};
+      if (wrong === "" && small !== null) return {vista: small, box, tries: log};
       console.error(`vistas: day ${day}, ${time}, try ${attempt}: turned down: ${wrong}`);
     } catch (e) {
       log.push({name, wrong: `failed: ${String(e).slice(0, 200)}`, peeplets: 0, size});
       console.error(`vistas: day ${day}, ${time}, try ${attempt} failed`, e);
     }
   }
-  return {vista: null, tries: log};
+  return {vista: null, box: null, tries: log};
 }
 
 /**
@@ -345,4 +365,6 @@ export interface Vistas {
   header?: string;
   /** The day's two Peeplets, indices into the persona list (cast.ts). */
   cast: [number, number];
+  /** Where the Peeplets stand in each time's painting, when the reviewer said. */
+  boxes?: Partial<Record<Time, Box>>;
 }

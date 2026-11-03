@@ -25,12 +25,20 @@ static var _day := 0
 static var _tex := {}
 static var _name := {}
 static var _cast := []
+static var _box := {}
 
 ## The vista of `time` for today, or null. "header" is the menu header's own
 ## painting, there only when the night painted one that passed.
 static func texture(time: String) -> Texture2D:
 	_refresh()
 	return _tex.get(time)
+
+## Where the Peeplets stand in `time`'s painting, in fractions of it
+## (2026-11-03: the night's reviewer says, as `boxes`), or an empty Rect2 when
+## the night did not: a strip is moved to hold it (ui/menu/vistas.gd).
+static func box(time: String) -> Rect2:
+	_refresh()
+	return _box.get(time, Rect2())
 
 ## The day's pair of Peeplets as the night published it (two persona
 ## indices, core/cast.gd clamps them), [] with none. Kept even when the
@@ -63,11 +71,28 @@ static func _take(doc: Dictionary) -> void:
 	var names = doc.get("name")
 	_name = names if names is Dictionary and not _tex.is_empty() else {}
 	_cast = _cast_of(doc)
+	_box = _boxes_of(doc) if not _tex.is_empty() else {}
 
 ## Forgets what was decoded, for the document that just arrived.
 static func reload() -> void:
 	_day = 0
 	_cast = []
+
+static func _boxes_of(doc: Dictionary) -> Dictionary:
+	var boxes = doc.get("boxes")
+	var out := {}
+	if not boxes is Dictionary:
+		return out
+	for time in TIMES:
+		var b = boxes.get(time)
+		if not b is Array or b.size() != 4:
+			continue
+		var ok := true
+		for v in b:
+			ok = ok and (v is int or v is float) and float(v) >= 0.0 and float(v) <= 1.0
+		if ok and float(b[2]) > float(b[0]) and float(b[3]) > float(b[1]):
+			out[time] = Rect2(float(b[0]), float(b[1]), float(b[2]) - float(b[0]), float(b[3]) - float(b[1]))
+	return out
 
 static func _cast_of(doc: Dictionary) -> Array:
 	var c = doc.get("cast")
