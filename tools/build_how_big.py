@@ -348,6 +348,15 @@ def fetch(item):
 
 def build(item):
     sh = item["shape"]
+    if "traced" in sh:
+        # Made by the night's pipeline (server/functions/src/silhouette.ts) and
+        # folded in by tools/how_big/fold_batch.py: already in the 1000-box,
+        # with its triangles, so it is taken as it is.
+        with open(os.path.join(SRC, item["id"] + ".json")) as f:
+            got = json.load(f)
+        assert max(got["w"], got["h"]) == SIDE and got["loops"] and got["tris"], "%s: traced shape" % item["id"]
+        print("%-12s %4dx%-4d  traced" % (item["id"], got["w"], got["h"]), flush=True)
+        return {"w": got["w"], "h": got["h"], "loops": got["loops"], "tris": got["tris"]}
     if "made" in sh:
         g = affinity.scale(MAKERS[sh["made"]](), 1, -1, origin=(0, 0))
     else:
@@ -382,7 +391,11 @@ def write_sources(items):
             "| id | source | taxon / what | by | licence | URL |", "|---|---|---|---|---|---|"]
     for it in items:
         sh = it["shape"]
-        if "made" in sh:
+        if "traced" in sh:
+            rows.append("| %s | %s | %s | %s | %s | %s |" % (
+                it["id"], "PhyloPic" if "phylopic" in sh["credit"] else "image model", it["name_en"],
+                sh.get("by") or "--", sh.get("licence") or "--", sh.get("url") or "--"))
+        elif "made" in sh:
             rows.append("| %s | authored | %s | this project (`make_%s` in the tool) | own work | -- |" % (it["id"], it["name_en"], sh["made"]))
         else:
             rows.append("| %s | PhyloPic | *%s* | %s | %s | https://www.phylopic.org/images/%s |" % (
@@ -467,7 +480,7 @@ def main(argv):
     for it in sorted(items, key=lambda it: it["size_m"]):
         assert it["kind"] in ("insect", "animal", "sea", "dino", "object", "person"), it["id"]
         assert it["measure"] in ("tall", "long") and 0.0 <= it["from"] < it["to"] <= 1.0, it["id"]
-        assert it["source"].startswith("https://") and len(it["fact_en"]) <= 95, it["id"]
+        assert it["source"].startswith("https://") and len(it["fact_en"]) <= (140 if "traced" in it["shape"] else 95), it["id"]
         row = {"id": it["id"], "label": "HB_ITEM_" + it["id"].upper()}
         row.update({k: it[k] for k in ("name_en", "kind", "size_m", "measure", "what_en", "from", "to", "fact_en", "source")})
         table.append(row)
