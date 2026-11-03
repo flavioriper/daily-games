@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # Install the Android build template (if android/ has none), raise its
-# Android Gradle plugin from 8.6.1 to 8.9.1, give its manifest the way in
-# for a friend link, wire the Firebase Gradle plugins, and turn R8 on for the
-# release build (patch 4 at the bottom says why).
+# Android Gradle plugin from 8.6.1 to 8.9.1, wire the Firebase Gradle plugins,
+# and turn R8 on for the release build (patch 4 at the bottom says why).
 #
 # Why: godot-iap's openiap-google 3.5.2 pulls androidx.core 1.18, which
 # refuses to build under AGP older than 8.9.1, and Godot 4.7's template pins
@@ -16,14 +15,9 @@
 # android/.build_version, which the exporter checks against the engine), and
 # the export then runs WITHOUT --install-android-build-template.
 #
-# The friend link (docs/agents/friends.md, "The link"): an activity-alias on
-# the game's one activity, .FriendLink, beside the launcher's, with a filter
-# for peepletdaily://f/<CODE> and one for
-# https://daily-games-420bf.web.app/f/<CODE> (autoVerify; verified against
-# server/site/.well-known/assetlinks.json). It goes in the template's
-# src/main manifest because the exporter writes only src/debug and
-# src/release, and Gradle merges main under them. core/deep_link.gd reads
-# what arrives.
+# The friend link's activity-alias (.FriendLink, patch 2) left with Friends on
+# 2026-11-03; a manifest that still carries it from an older run loses it
+# here.
 #
 # Run before the export; safe to run twice: each patch is skipped when it is
 # already there, and both always get their turn. Fails loudly if what a patch
@@ -69,39 +63,12 @@ else
   echo "patch_android_template: AGP 8.6.1 -> $want"
 fi
 
-# 2. The friend link's alias, after the launcher's.
+# 2. No friend link alias (Friends left on 2026-11-03): an older run's is taken out.
 [[ -f "$manifest" ]] || { echo "patch_android_template: $manifest not found" >&2; exit 1; }
 if grep -q 'android:name="\.FriendLink"' "$manifest"; then
-  echo "patch_android_template: FriendLink alias already there"
-else
-  # The template as 4.7 ships it: one .GodotApp activity and one alias,
-  # .GodotAppLauncher, whose closing tag is the only </activity-alias>.
-  if ! grep -q 'android:name="\.GodotApp"' "$manifest" \
-      || ! grep -q 'android:name="\.GodotAppLauncher"' "$manifest" \
-      || [[ "$(grep -c '</activity-alias>' "$manifest")" != "1" ]]; then
-    echo "patch_android_template: expected one .GodotApp activity and one .GodotAppLauncher alias in $manifest, found:" >&2
-    grep -n '<activity\|</activity-alias>\|android:name="\.' "$manifest" >&2 || echo "  (no activity at all)" >&2
-    exit 1
-  fi
-  ALIAS='        <activity-alias
-            android:name=".FriendLink"
-            android:targetActivity=".GodotApp"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="peepletdaily" android:host="f" />
-            </intent-filter>
-            <intent-filter android:autoVerify="true">
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="daily-games-420bf.web.app" android:pathPrefix="/f/" />
-            </intent-filter>
-        </activity-alias>' perl -0pi -e 's{(</activity-alias>[ \t]*\n)}{$1$ENV{ALIAS}\n}' "$manifest"
-  grep -q 'android:name="\.FriendLink"' "$manifest"
-  echo "patch_android_template: FriendLink alias added"
+  perl -0pi -e 's{[ \t]*<activity-alias\s+android:name="\.FriendLink".*?</activity-alias>[ \t]*\n}{}s' "$manifest"
+  ! grep -q 'android:name="\.FriendLink"' "$manifest"
+  echo "patch_android_template: FriendLink alias removed"
 fi
 
 # Firebase (addons/godotx_firebase): the Google Services plugin turns
