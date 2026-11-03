@@ -13,6 +13,7 @@ import {
   type RangeKey,
   type Shape,
   type Thing,
+  batch,
   library,
   players,
   pool,
@@ -60,7 +61,7 @@ export default async function GamePage({
 
       <Specs s={s} />
       <PlayersPanel result={playersResult} range={range} me={me} />
-      <Library bundled={lib} pool={poolResult} />
+      <Library bundled={lib} pool={poolResult} batch={batch()} />
     </div>
   );
 }
@@ -352,7 +353,15 @@ function ThingCard({ t }: { t: Thing }) {
   );
 }
 
-function Library({ bundled, pool: result }: { bundled: Thing[]; pool: { ok: Thing[] } | { err: unknown } }) {
+function Library({
+  bundled,
+  pool: result,
+  batch: made,
+}: {
+  bundled: Thing[];
+  pool: { ok: Thing[] } | { err: unknown };
+  batch: Thing[] | null;
+}) {
   const sorted = [...bundled].sort((a, b) => a.size_m - b.size_m);
   return (
     <section className="card" id="library">
@@ -360,6 +369,17 @@ function Library({ bundled, pool: result }: { bundled: Thing[]; pool: { ok: Thin
       <p className="dim">
         Everything a round can deal: the {bundled.length} things shipped with the game, and the ones the night adds to the pool.
       </p>
+
+      {made && (
+        <>
+          <h3>New batch, not shipped yet <span className="dim">({made.length}, smallest first)</span></h3>
+          <p className="dim small">
+            Made by <code>tools/how_big/batch_things.sh</code> into <code>build/how_big_batch/</code>. Reload to see more as
+            it runs. Name any to leave out, and the rest are folded into the shipped table.
+          </p>
+          {made.length ? <ul className="things">{made.map((t) => <ThingCard key={t.id} t={t} />)}</ul> : <p className="dim">None kept yet.</p>}
+        </>
+      )}
 
       <h3>The night&apos;s pool {"ok" in result && <span className="dim">({result.ok.length})</span>}</h3>
       {"err" in result ? (

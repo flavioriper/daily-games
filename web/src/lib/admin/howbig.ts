@@ -123,6 +123,37 @@ export async function pool(): Promise<Thing[]> {
     .sort((a, b) => (b.born ?? 0) - (a.born ?? 0) || a.name.localeCompare(b.name));
 }
 
+/** Things a batch run made (tools/how_big/batch_things.sh) and not folded in
+ *  yet: build/how_big_batch/pool.json less the night's own. Null with no batch. */
+export function batch(): Thing[] | null {
+  let rows: PoolRow[];
+  let night: string[];
+  try {
+    rows = JSON.parse(read("build/how_big_batch/pool.json")) as PoolRow[];
+    night = JSON.parse(read("build/how_big_batch/night_ids.json")) as string[];
+  } catch {
+    return null;
+  }
+  const shipped = new Set(library().map((t) => t.id));
+  return rows
+    .filter((t) => !night.includes(t.id) && !shipped.has(t.id.replace(/^d_/, "")))
+    .map((t) => ({
+      id: t.id.replace(/^d_/, ""),
+      name: word(t.name),
+      kind: String(t.kind ?? ""),
+      size_m: Number(t.size_m),
+      measure: String(t.measure ?? ""),
+      what: "",
+      from: Number(t.from ?? 0),
+      to: Number(t.to ?? 1),
+      fact: word(t.fact),
+      source: String(t.source ?? ""),
+      shape: t.shape ?? null,
+      credit: String(t.credit ?? ""),
+    }))
+    .sort((a, b) => a.size_m - b.size_m);
+}
+
 // ---- Players ----
 
 export const RANGES = [
