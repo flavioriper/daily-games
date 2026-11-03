@@ -197,9 +197,6 @@ func _process(delta: float) -> bool:
 	return false
 
 func _open() -> void:
-	if _arcade:
-		_menu._open_arcade(_id)
-		return
 	var entry: Dictionary = {}
 	for e in load("res://ui/registry.gd").all():
 		if e.id == _id:

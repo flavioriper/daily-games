@@ -43,7 +43,7 @@ const Haptics = preload("res://core/haptics.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const StarLine = preload("res://ui/flat/star_line.gd")
 const Toast = preload("res://ui/flat/toast_card.gd")
-const Rewards = preload("res://arcade/rewards.gd")
+const Rewards = preload("res://ui/rewards.gd")
 
 enum Phase { PLAY, FOLD, DONE }
 

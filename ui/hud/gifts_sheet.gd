@@ -8,10 +8,8 @@ extends "res://ui/hud/sheet.gd"
 ## Spec docs/superpowers/specs/2026-09-28-gold-gifts-design.md, sections 2 and 4.
 
 const GoldPill = preload("res://ui/menu/gold_pill.gd")
-const BoosterIcon = preload("res://arcade/booster_icon.gd")
 const Icons = preload("res://ui/icons.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
-const Boosters = preload("res://arcade/boosters.gd")
 
 const TILE_H := 200.0
 const ICON := 64.0
@@ -141,19 +139,15 @@ func _tile(d: int) -> PanelContainer:
 	tile.add_child(tick)
 	return tile
 
-## A gift's icons and its words: the coin with its gold, each item with how
-## many.
+## A gift's icon and its words: the coin with its gold.
 func _fill(tile: PanelContainer, gift: Dictionary) -> void:
 	var icons: HBoxContainer = tile.get_child(0).get_node("Icons")
 	for c in icons.get_children():
 		c.queue_free()
 	var words: Array = []
 	if int(gift.gold) > 0:
-		icons.add_child(BoosterIcon.new("gold", ICON))
+		icons.add_child(Coin.new(ICON))
 		words.append(Locale.number(int(gift.gold)))
-	for id: String in gift.items:
-		icons.add_child(BoosterIcon.new(id, ICON))
-		words.append("x%d" % int(gift.items[id]))
 	(tile.get_child(0).get_node("Amount") as Label).text = "  ".join(words)
 
 func _on_open() -> void:
@@ -193,10 +187,7 @@ func _refresh() -> void:
 	var hearts := Progress.hearts(today)
 	var claimed_h := Wallet.hearts_claimed(today)
 	var gift := Wallet.hearts_gift(today)
-	var parts: Array = [tr("GIFT_GOLD") % Locale.number(int(gift.gold))]
-	for id: String in gift.items:
-		parts.append(tr(Boosters.name_key(id)))
-	_hearts_line.text = " + ".join(parts)
+	_hearts_line.text = tr("GIFT_GOLD") % Locale.number(int(gift.gold))
 	hearts_button.set_enabled(Wallet.hearts_ready(today))
 	hearts_button.set_label(tr("GIFT_CLAIMED") if claimed_h else (tr("GIFT_CLAIM") if hearts >= 3 else "%d/3" % hearts))
 	_hearts_marks.set_meta("n", hearts)
@@ -230,3 +221,13 @@ func _celebrate(from: Control, gift: Dictionary) -> void:
 	var local := at - _fx.get_global_transform().origin
 	_fx.puff(local, Pal.SUN, 12)
 	_fx.puff(local, Color("fffaf0"), 8)
+
+## A gift's coin (it was arcade/booster_icon.gd's "gold" until 2026-11-03).
+class Coin extends Control:
+	func _init(side: float) -> void:
+		custom_minimum_size = Vector2(side, side)
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		size_flags_vertical = Control.SIZE_SHRINK_CENTER
+
+	func _draw() -> void:
+		GoldPill.coin(self, size * 0.5, minf(size.x, size.y) * 0.4)

@@ -8,7 +8,7 @@ import { GAMES, HERO_PHONES, langOf, type Group } from "@/lib/games";
 import { appJsonLd } from "@/lib/seo";
 import { CONTACT, SITE_URL } from "@/lib/siteUrl";
 
-const GROUPS: Group[] = ["puzzles", "arcade", "versus"];
+const GROUPS: Group[] = ["puzzles"];
 const LOCALE_NAMES: Record<string, string> = { en: "English", "pt-BR": "Português", es: "Español" };
 
 // The three reasons, each with a small line drawing: a sun, four steps, two

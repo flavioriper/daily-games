@@ -55,7 +55,6 @@ const CARDS := {
 	"sunbeam": ["sky", 1.5, Vector2(0.75, 0.30)],
 	"hedgehogs": ["autumn", 1.6, Vector2(0.60, 0.70)],
 	"slider": ["meadow", 1.5, Vector2(0.55, 0.45)],
-	"marigold": ["dusk", 1.5, Vector2(0.35, 0.35)],
 	"pixelgarden": ["meadow", 1.6, Vector2(0.30, 0.55)],
 	# Glimpse's mat lies under a clear sky, the memory skill's blue.
 	"glimpse": ["sky", 1.6, Vector2(0.40, 0.45)],
@@ -93,55 +92,6 @@ const CARDS := {
 	"buttons": ["meadow", 1.6, Vector2(0.58, 0.34)],
 	# Yarn Hoop is knitted indoors too, further along the same cottages.
 	"hoop": ["meadow", 1.6, Vector2(0.66, 0.38)],
-	# Versus (not a grid card): the treehouse terrace the reference stands
-	# the snooker table in.
-	"snooker": ["dusk", 1.3, Vector2(0.55, 0.55)],
-	# The meadow the garden set's lawn squares were mown from.
-	"chess": ["meadow", 1.4, Vector2(0.45, 0.6)],
-	# Checkers' lawn is chess's, looked at from further along the meadow.
-	"checkers": ["meadow", 1.5, Vector2(0.7, 0.7)],
-	# Air hockey's table stands out on the terrace under a clear sky.
-	"hockey": ["sky", 1.4, Vector2(0.6, 0.5)],
-	# Toy Boats' box is open on the beach, by the water its boats are for.
-	"boats": ["beach", 1.5, Vector2(0.62, 0.55)],
-	# Penny Drop's rack stands on the terrace at dusk, by snooker's table.
-	"penny": ["dusk", 1.5, Vector2(0.4, 0.5)],
-	# Dominoes' mat is laid out in the meadow, further along from the lawns.
-	"dominoes": ["meadow", 1.6, Vector2(0.3, 0.55)],
-	# Reversi's board lies on the terrace under a clear sky, by the hockey table.
-	"reversi": ["sky", 1.5, Vector2(0.4, 0.45)],
-	# Arcade (not a grid card): Firefly flies the night garden.
-	"firefly": ["night", 1.4, Vector2(0.5, 0.35)],
-	# Molehill is a lawn in the meadow too, nearer the grass.
-	"molehill": ["meadow", 1.7, Vector2(0.4, 0.75)],
-	# Stackwood's shelf stands in the greenhouse light of the sky vista.
-	"stackwood": ["sky", 1.5, Vector2(0.5, 0.55)],
-	# Lucky Thirteen's pebbles lie on the beach vista's sand.
-	"thirteen": ["beach", 1.5, Vector2(0.5, 0.65)],
-	# Posy's bed lies in the meadow vista's garden.
-	"posy": ["meadow", 1.5, Vector2(0.5, 0.6)],
-	# Peapod's cart stands on the meadow's grass, under its hills.
-	"peapod": ["meadow", 1.6, Vector2(0.7, 0.55)],
-	# Nightlight's star hangs high in the night vista's sky.
-	"nightlight": ["night", 2.2, Vector2(0.14, 0.3)],
-	# Beeline's bee flies the meadow's morning sky, over its hedges.
-	"beeline": ["meadow", 1.5, Vector2(0.3, 0.4)],
-	# Deckchair's cards are dealt out on the meadow's grass.
-	"deckchair": ["meadow", 1.5, Vector2(0.55, 0.6)],
-	# Eddy's pond lies in the meadow's grass.
-	"eddy": ["meadow", 1.6, Vector2(0.2, 0.6)],
-	# Furrow's beds are dug in the meadow's grass.
-	"furrow": ["meadow", 1.6, Vector2(0.6, 0.7)],
-	# Griddle's stand is set up on the meadow's grass.
-	"griddle": ["meadow", 1.6, Vector2(0.4, 0.65)],
-	# Trivet's tray stands in the warm light of the sky vista.
-	"trivet": ["sky", 1.5, Vector2(0.6, 0.5)],
-	# Brittle's tin cools on a sill in the warm light of the sky vista.
-	"brittle": ["sky", 1.5, Vector2(0.5, 0.55)],
-	# Tally's paper lies on a desk in the warm light of the sky vista.
-	"tally": ["sky", 1.5, Vector2(0.45, 0.55)],
-	# Bagatelle's velvet board is lit like an evening: the night vista.
-	"bagatelle": ["night", 1.6, Vector2(0.6, 0.35)],
 }
 
 ## The Streak tab's two pictures (ui/menu/streak_tab.gd): the run's card and

@@ -13,21 +13,7 @@ const STEPS := [
 	[2.2, "claim"],
 	[2.45, "shot", "gold_2_claim"],
 	[3.3, "shot", "gold_3_claimed"],
-	[3.4, "arcade"],
-	[4.1, "shot", "gold_4_arcade"],
-	[4.2, "shop"],
-	[4.8, "shot", "gold_5_shop"],
-	[4.9, "molehill"],
-	[5.7, "shot", "gold_6_boost"],
-	[5.8, "pick"],
-	[6.1, "shot", "gold_7_picked"],
-	[6.2, "play"],
-	[7.4, "shot", "gold_8_playing"],
-	[7.5, "time_up"],
-	[8.3, "shot", "gold_9_chance"],
-	[8.4, "decline"],
-	[11.2, "shot", "gold_10_end"],
-	[11.3, "quit"],
+	[3.6, "quit"],
 ]
 
 var _menu: Node
@@ -84,29 +70,6 @@ func _process(delta: float) -> bool:
 			"claim":
 				print("gifts sheet open: ", _menu.gifts_sheet.is_open())
 				_menu.gifts_sheet._claim_day()
-			"arcade":
-				_menu.gifts_sheet.close()
-				_menu._show_tab("arcade")
-			"shop":
-				_menu.shop_sheet.open_for("stackwood", "probe")
-			"molehill":
-				_menu.shop_sheet.close()
-				_menu._open_arcade("molehill")
-			"pick":
-				var card: Node = _menu.get_node("Molehill/BoostCard")
-				for id in card._toggles:
-					card._toggles[id].button_pressed = true
-			"play":
-				_menu.get_node("Molehill/BoostCard")._on_play()
-			"time_up":
-				var s: Node = _menu.get_node("Molehill")
-				print("molehill time left: %.1f forgive %d" % [s.sim.time_left(), s.sim.forgive])
-				s.sim.t = 500.0
-			"decline":
-				var chance: Node = _menu.get_node_or_null("Molehill/SecondChance")
-				print("second chance up: ", chance != null)
-				if chance != null:
-					chance._on_no()
 			"quit":
 				_finish()
 				return true

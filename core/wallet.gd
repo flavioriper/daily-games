@@ -1,9 +1,10 @@
 extends Node
 
-## Gold, the Arcade's boosters, and the daily gifts, kept on the device
-## (user://wallet.cfg) and never sold: gold is earned on the daily boards,
-## from the gifts and a little from Arcade runs, and spent in the shop and on
-## the boost card (spec docs/superpowers/specs/2026-09-28-gold-gifts-design.md).
+## Gold and the daily gifts, kept on the device (user://wallet.cfg) and never
+## sold: gold is earned on the daily boards and from the gifts (spec
+## docs/superpowers/specs/2026-09-28-gold-gifts-design.md). It was spent on
+## the Arcade's boosters and Second chance until Arcade left on 2026-11-03;
+## nothing spends it now, and the items a save still holds are never read.
 ##
 ## Autoload `Wallet`. Every write goes through `_save()` and says `changed`,
 ## so a gold pill anywhere follows without asking. `path` may be pointed
@@ -18,26 +19,22 @@ signal changed
 signal earned(amount: int, source: String)
 
 const Analytics = preload("res://core/analytics.gd")
-const Boosters = preload("res://arcade/boosters.gd")
 
 var path := "user://wallet.cfg"
 
 const WELCOME_GOLD := 150
 const BOARD_GOLD := 20
 const HEARTS_GOLD := 100
-const RUN_GOLD := 5
-const BEST_GOLD := 20
-const ARCADE_CAP := 60
-## The seven days of the calendar. "featured" is that many of the date's
-## featured booster (Boosters.featured).
+## The seven days of the calendar, gold only since the boosters left with
+## Arcade (2026-11-03; days 3 and 5 were items).
 const CALENDAR := [
 	{"gold": 50},
 	{"gold": 75},
-	{"items": {"second_chance": 1}},
+	{"gold": 75},
 	{"gold": 100},
-	{"featured": 2},
+	{"gold": 100},
 	{"gold": 150},
-	{"gold": 250, "items": {"second_chance": 1}, "featured": 2},
+	{"gold": 250},
 ]
 ## A claim more than this many days after the last one starts the week over:
 ## one missed day is forgiven, two are not.
@@ -52,8 +49,6 @@ func _cfg_now() -> ConfigFile:
 		if not bool(_cfg.get_value("wallet", "welcomed", false)):
 			_cfg.set_value("wallet", "welcomed", true)
 			_cfg.set_value("wallet", "gold", WELCOME_GOLD)
-			for id: String in Boosters.ITEMS:
-				_cfg.set_value("items", id, 1)
 			# not saved yet: the first real change saves it with everything
 			# else, so a screen that only reads the gold (a suite building
 			# the menu) leaves no file behind
@@ -91,64 +86,12 @@ func spend(amount: int, what: String) -> bool:
 	Analytics.track("gold_spent", {"item": what, "amount": amount, "balance": gold()})
 	return true
 
-# --- items ---
-
-func count(item: String) -> int:
-	return int(_cfg_now().get_value("items", item, 0))
-
-func give(item: String, n := 1) -> void:
-	if n <= 0:
-		return
-	_cfg_now().set_value("items", item, count(item) + n)
-	_save()
-
-## Buys one of `item` at its price. False when the gold is short.
-func buy(item: String) -> bool:
-	if not spend(Boosters.price(item), item):
-		return false
-	give(item, 1)
-	return true
-
-## Uses one of `item`, buying it first when none is held and `or_buy`.
-## False when there is none and it cannot be bought.
-func use(item: String, game: String, or_buy := false) -> bool:
-	if count(item) <= 0:
-		if not or_buy or not buy(item):
-			return false
-	_cfg_now().set_value("items", item, count(item) - 1)
-	_save()
-	Analytics.track("booster_used", {"item": item, "game": game})
-	return true
-
-## Takes back every `item` held, one no longer sold, for `price` gold each
-## (Eddy's two boosters, 2026-10-11). The gold given.
-func refund(item: String, price: int) -> int:
-	var n := count(item)
-	if n <= 0:
-		return 0
-	_cfg_now().set_value("items", item, 0)
-	_save()
-	add_gold(n * price, "refund")
-	return n * price
-
-func can_have(item: String) -> bool:
-	return count(item) > 0 or gold() >= Boosters.price(item)
-
 # --- a gift, resolved: {gold, items: {id: n}} ---
 
-static func resolve(raw: Dictionary, date_key: int) -> Dictionary:
-	var items := {}
-	for id: String in raw.get("items", {}):
-		items[id] = int(items.get(id, 0)) + int(raw.items[id])
-	if int(raw.get("featured", 0)) > 0:
-		var f := Boosters.featured(date_key)
-		items[f] = int(items.get(f, 0)) + int(raw.featured)
-	return {"gold": int(raw.get("gold", 0)), "items": items}
+static func resolve(raw: Dictionary, _date_key: int) -> Dictionary:
+	return {"gold": int(raw.get("gold", 0))}
 
 func _grant(gift: Dictionary, source: String) -> void:
-	for id: String in gift.items:
-		_cfg_now().set_value("items", id, count(id) + int(gift.items[id]))
-	_save()
 	add_gold(int(gift.gold), source)
 
 # --- the calendar ---
@@ -201,7 +144,7 @@ static func _unix(key: int) -> float:
 # --- the hearts gift ---
 
 func hearts_gift(today: int = Daily.date_key()) -> Dictionary:
-	return resolve({"gold": HEARTS_GOLD, "featured": 1}, today)
+	return resolve({"gold": HEARTS_GOLD}, today)
 
 func hearts_claimed(today: int = Daily.date_key()) -> bool:
 	return int(_cfg_now().get_value("hearts", "last", 0)) == today
@@ -246,29 +189,3 @@ func pay_board(board: String, day: int = Daily.date_key()) -> int:
 	_cfg_now().set_value("earn", "boards", paid)
 	add_gold(BOARD_GOLD, "board")
 	return BOARD_GOLD
-
-## Pays for a finished Arcade run, up to the day's cap; the gold paid.
-func pay_run(better: bool, today: int = Daily.date_key()) -> int:
-	return _pay_arcade(RUN_GOLD + (BEST_GOLD if better else 0), today)
-
-## The doubler's gold (a rewarded video, arcade/gold_doubler.gd): `amount`
-## more, still inside the day's cap.
-func pay_bonus(amount: int, today: int = Daily.date_key()) -> int:
-	return _pay_arcade(amount, today)
-
-## Gold the Arcade can still pay today.
-func arcade_room(today: int = Daily.date_key()) -> int:
-	var got := int(_cfg_now().get_value("earn", "arcade", 0))
-	if int(_cfg_now().get_value("earn", "arcade_day", 0)) != today:
-		got = 0
-	return maxi(0, ARCADE_CAP - got)
-
-func _pay_arcade(amount: int, today: int) -> int:
-	var pay := mini(amount, arcade_room(today))
-	if pay <= 0:
-		return 0
-	var got := ARCADE_CAP - arcade_room(today)
-	_cfg_now().set_value("earn", "arcade_day", today)
-	_cfg_now().set_value("earn", "arcade", got + pay)
-	add_gold(pay, "arcade")
-	return pay

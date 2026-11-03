@@ -24,7 +24,6 @@ extends RefCounted
 ## for it with `force`). `Engine.max_fps` is put back to what it was, so a
 ## harness that uncapped it is uncapped again after a wake.
 
-const Social = preload("res://core/social.gd")
 
 const REST_AFTER := 20.0
 const STREAM_REST_AFTER := 60.0
@@ -96,11 +95,6 @@ static func rest_now(stream: bool) -> void:
 static func _tick(delta: float) -> void:
 	if not enabled:
 		return
-	# A live online game, or a lobby waiting on a friend: the player is
-	# watching for the other side, so the game never rests on them.
-	if Social.in_game or Social.busy_with != "":
-		_idle = 0.0
-		return
 	_idle += delta
 	if not resting:
 		if _idle >= REST_AFTER:
@@ -137,7 +131,6 @@ static func _rest_stream() -> void:
 	if _stream_rested:
 		return
 	_stream_rested = true
-	Social.rest(true)
 
 static func _wake() -> void:
 	resting = false
@@ -153,4 +146,3 @@ static func _wake() -> void:
 	_idled.clear()
 	if _stream_rested:
 		_stream_rested = false
-		Social.rest(false)

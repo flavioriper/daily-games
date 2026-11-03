@@ -19,14 +19,8 @@ Teacups' friends and its card do too (the user, 2026-10-29), and the
 day's pair (`core/cast.gd`) sits on Hidden Word's card and reveal, Streak's
 Today card, the remove-ads sheet and the boot opening; nothing else does,
 never the header. Never redraw a Peeplet by hand or bake it to an image.
-
-**A second exception, chess sets made of models** (the user, 2026-10-30: "a
-gd model like the peeplets, not drawed by hand"): a chess skin that answers
-`model_dir()` is real `.glb` pieces on one shared transparent 3D layer over
-the 2D board (`versus/chess_models.gd`), modelled in Blender
-(`art/chess_*.blend`), never baked. A skin belongs to whoever wears it, so one
-game can show two (`versus/chess_board.gd` `skin_of(seat)`); read
-`docs/agents/versus.md` first.
+(The chess sets made of models were a second exception until Versus left on
+2026-11-03.)
 
 **The baked Peeplets** (2026-10-27): `server/functions/assets/peeplet_sheet.png`,
 the reference the night's painter and reviewer are given. It is rendered by
@@ -48,10 +42,9 @@ progress under them is simply never read. `ui/hud/out_of_rows.gd` and the
 `HTP_TN_HINT*` / `HTP_TN_HEARTS` tutorial captions were theirs first and are
 still used by other boards, under their old key names.
 
-**Marigold moved to the Arcade tab the same day** (`Registry.ARCADE`): the
-same daily board with its levels, its card in the Arcade list
-(`docs/agents/boards/marigold.md`). `Registry.PUZZLES` is the grid's
-thirty-nine; `Registry.all()` is every board.
+**Marigold moved to the Arcade tab the same day** and left the game with
+Arcade on 2026-11-03 (below). `Registry.PUZZLES` is the grid and
+`Registry.all()` returns it.
 
 **Sand Sweep, Domino Patio, Gumdrop, Knight, Drumbeat and Trestle were removed
 on 2026-11-02** (the user: "let's remove some games not so popular"): their
@@ -59,11 +52,31 @@ boards, cards, tutorials, sounds, shaders, banks, tools, tests, 492 locale rows
 and notes. Git history has all of it. The ids were `train`, `patio`, `gumdrop`,
 `knight`, `drumbeat` and `trestle`; saved progress under them is simply never
 read. Kept because others use them: `ui/menu/cards/drumbeat.gd` (Birdsong's
-card extends it), `ui/faces/drumbeat_parts.gd` (Birdsong), `ui/faces/chess_piece.gd`
-(the chess skins), `ui/faces/domino_tile.gd` (Versus Dominoes). Paper Planes now
+card extends it), `ui/faces/drumbeat_parts.gd` (Birdsong); `chess_piece.gd` and
+`domino_tile.gd` went with Versus on 2026-11-03. Paper Planes now
 owns the colour `FAMILY` it borrowed from Sand Sweep. The server still accepts
 Trestle's scores (`SCORED`, `server/functions/src/index.ts`) because store builds
 still send them.
+
+**Versus, Arcade, Factory, Friends and Marigold were removed on 2026-11-03**
+(the user: "wipe multiplayer and arcade from this app, we gonna only keep the
+daily puzzle ones"; Marigold went with Arcade by the user's call). The
+state before is on the remote branch `archive/pre-daily-only-2026-11-03`
+(9c7ca5d9). Gone: `versus/` (snooker, chess, checkers, air hockey, Toy Boats,
+Penny Drop, Dominoes, Reversi, online play), `arcade/` (Firefly, Molehill,
+Stackwood, Lucky Thirteen, Posy, Peapod, Nightlight, Beeline, Deckchair, Eddy,
+Furrow, Griddle, Trivet, Tally, Bagatelle, Brittle, the boosters, Second
+chance, the gold doubler), `factory/`, Marigold's board, `core/social.gd` and
+`core/deep_link.gd` (friends and their links), the Versus/Arcade/Friends/shop
+sheets and tabs, their cards, tutorial diagrams, sounds and `gen_sfx.py`
+families, harnesses, 1,762 locale rows, notes and the website's cards.
+`arcade/rewards.gd` moved to `ui/rewards.gd` (Paper Box and Untangle use it).
+The categories row holds only Puzzles, the way back from Streak and Stats.
+Gold is still earned on the boards and from the gifts (the calendar is gold
+only now) but nothing spends it. The server was not touched: store builds
+still send Versus turns, friends and Tally scores, so the rules and
+functions stay until those builds are gone. Older notes still name all of
+it as precedent.
 
 ## Where the detail lives
 
@@ -80,10 +93,6 @@ that area**, and add new history there rather than here.
 | First screen: menu, cards, pager, header, Stats/Streak, registry | `docs/agents/first-screen.md` |
 | Flat boards: shared rules, motion, shell, trays, faces, meshes | `docs/agents/flat-screens.md` |
 | One board's own notes | `docs/agents/boards/<board>.md` |
-| Versus (snooker, chess, checkers, air hockey, Toy Boats, Penny Drop, Dominoes, Reversi) | `docs/agents/versus.md` |
-| Friends: the link, codes, invites, a friend's game | `docs/agents/friends.md` |
-| Arcade (Firefly, Molehill, Stackwood, Lucky Thirteen, Posy, Peapod, Nightlight, Beeline, Deckchair, Eddy, Furrow, Griddle, Trivet, Tally, Bagatelle, Brittle; Factory and Marigold have cards there too) | `docs/agents/arcade.md` |
-| Factory: the land, the sim, the one-sim rule (and the dropped Valley and Grove, as history) | `docs/agents/factory.md` |
 | Gold, gifts and the shop | `docs/agents/gold-gifts-shop.md` |
 | Sound | `docs/agents/sound.md` |
 | Haptics: the kinds, the rules and the per-game list | `docs/agents/haptics.md` |
@@ -95,7 +104,7 @@ that area**, and add new history there rather than here.
 | Backend, Firestore, functions, locale | `docs/agents/turns-and-backend.md` |
 | CI | `docs/agents/ci.md` |
 | The day documents and the quality dashboard (`day_dict()`, `tools/export_days.gd`) | `docs/agents/days-dashboard.md` |
-| The board checkup (perf, tutorial, ?, undo/reset), the Versus and Arcade tutorials, and where it stands | `docs/agents/checkup.md` |
+| The board checkup (perf, tutorial, ?, undo/reset) and where it stands | `docs/agents/checkup.md` |
 
 ## Rules that apply everywhere
 
@@ -134,35 +143,32 @@ that area**, and add new history there rather than here.
 - **A game's world fills the screen** (the user, 2026-10-10, of Eddy: "the
   screen should fit everything, just like the factory does, it's gonna be a
   pattern from now on"): the field is laid full rect, edge to edge, and
-  the top bar, plates and controls lie over it, as `factory/screen.gd` and
-  `arcade/eddy_screen.gd` do. No paper page with the game in a frame. A
+  the top bar, plates and controls lie over it. No paper page with the game in a frame. A
   daily board asks the flat host for it with `"bleed": true` in the
   registry (`docs/agents/flat-screens.md`).
 - **A game screen is laid as the daily boards** (the user, 2026-10-31: "wire
   UI layout properly, make it a rule, using daily ones"), every screen
-  touched from now on, puzzle, Arcade or Versus: the world full rect (a
+  touched from now on: the world full rect (a
   mesh on a `_world` Control; `Scenery.planks` is the wooden floor), then on
   the 40 margin `FlatTopBar.new(title, motto, true, false, true)` and its tools
   row, Undo, the bin, a paper pill where the row's gap is (`_build_tools`:
   what the game counts) and the bulb, greyed where a game has none, then
   plates if any, then the field `SIZE_EXPAND_FILL`. The bin asks. No
   `Vistas.board_plate`, no paper page, no framed deck, and a game's own
-  buttons stand above its board. `versus/hockey_screen.gd` and
-  `versus/reversi_screen.gd` are the shortest examples. Older Versus screens
-  are not there yet: convert them when next touched.
+  buttons stand above its board.
 - **A new board** is a `Registry.PUZZLES` entry; the suite's parse guard walks
   the registry. `godot --headless --check-only --script puzzles/<board>2d.gd`
   before a harness. Text goes through locale keys (`locale/ui.csv`,
   `locale/boards.csv`); counts are `_ONE`/`_N` pairs; titles stay English.
-- **Harness hygiene**: poke on one frame, `force_draw()` on the next; a
-  harness puts `user://versus.cfg` / `arcade.cfg` back on every exit path;
+- **Harness hygiene**: poke on one frame, `force_draw()` on the next; ;
+  a harness puts back any `user://` save it touches on every exit path;
   mouse events are in window coordinates; send the release after a press.
 - **`Analytics.start()`, `Backend`, `Ads.start()` run only from
   `world/main.gd`**, so tests and harnesses stay offline and ad-free.
 - **The game rests** (`core/power.gd`, 2026-10-22): twenty seconds
   without a touch stop every face's idle and pause every forever-looping
-  tween, cap the frame at 30 and skip unchanged draws; a minute closes the
-  friends stream. A looping look that must run at rest is a `_process`,
+  tween, cap the frame at 30 and skip unchanged draws; a minute was when the
+  friends stream closed, before Friends left. A looping look that must run at rest is a `_process`,
   not a looping tween or a face idle. `Power.start` skips
   `--script` runs, so a harness never measures a resting game.
 - **After merging a parallel branch**, diff the merge against both parents:

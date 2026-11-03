@@ -1,6 +1,7 @@
 extends "res://ui/hud/panel.gd"
 
-## The first screen's categories: Puzzles, Versus, Arcade, in a row under the
+## The first screen's categories: only Puzzles since Versus and Arcade left
+## on 2026-11-03 (it is still the way back from Streak and Stats), in a row under the
 ## header and over the list they pick. Each is a chip of the one paper bar,
 ## its icon beside its word, and the one whose cards are up stands in a
 ## raised gold pill.
@@ -40,8 +41,6 @@ const IDLE_INK := Color("6e6057")
 const SPRIG_A := Color(0.55, 0.68, 0.35)
 const TABS := [
 	{"key": "home", "label": "BAR_HOME", "icon": "puzzle", "live": true},
-	{"key": "versus", "label": "BAR_VERSUS", "icon": "swords", "live": true},
-	{"key": "arcade", "label": "BAR_ARCADE", "icon": "gamepad", "live": true},
 ]
 
 var current := "home"

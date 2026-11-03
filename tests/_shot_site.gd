@@ -26,12 +26,6 @@ func _initialize() -> void:
 		if not e.get("soon", false):
 			progress.mark_tutorial_seen(String(e.id))
 			_jobs.append({"kind": "board", "id": String(e.id), "entry": e})
-	for g in load("res://ui/menu/arcade_tab.gd").GAMES:
-		if not load("res://ui/registry.gd").arcade(g).is_empty():
-			continue
-		_jobs.append({"kind": "arcade", "id": String(g)})
-	for g in load("res://ui/menu/versus_tab.gd").GAMES:
-		_jobs.append({"kind": "versus", "id": String(g)})
 	if not only.is_empty():
 		_jobs = _jobs.filter(func(j: Dictionary) -> bool: return only.has(j.id))
 	var main: Node = load("res://world/main.tscn").instantiate()
@@ -68,10 +62,6 @@ func _open(job: Dictionary) -> void:
 				_menu._open_at(job.entry, 1)
 			else:
 				_menu._open(job.entry)
-		"arcade":
-			_menu._open_arcade(job.id)
-		"versus":
-			_menu._open_versus(job.id, 1)
 
 func _clear_tutorial() -> void:
 	var top: Node = _menu.get_child(_menu.get_child_count() - 1)

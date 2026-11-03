@@ -26,7 +26,7 @@ const Motion = preload("res://core/motion.gd")
 const Face = preload("res://ui/faces/face.gd")
 const CardFace = preload("res://ui/menu/cards/card_face.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
-const Rewards = preload("res://arcade/rewards.gd")
+const Rewards = preload("res://ui/rewards.gd")
 
 ## The screen the picture was drawn on; everything scales with the width.
 const W := 1080.0

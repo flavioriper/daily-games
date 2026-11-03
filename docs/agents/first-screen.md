@@ -1,5 +1,7 @@
 <!-- Moved verbatim from CLAUDE.md on 2026-09-29. -->
 
+> **2026-11-03:** Versus, Arcade, Factory, Friends and Marigold left the game (CLAUDE.md, "Boards that left"). The categories row holds only Puzzles; everything below about the Versus and Arcade lists, the Friends row and the shop is history.
+
 ## The first screen
 
 **The first screen is a page of cards** (`ui/menu.gd`, 2026-09-18): the

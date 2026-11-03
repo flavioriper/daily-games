@@ -1,6 +1,6 @@
 import data from "@/data/games.json";
 
-export type Group = "puzzles" | "arcade" | "versus";
+export type Group = "puzzles";
 export type Lang = "en" | "pt" | "es";
 
 export type Game = {
@@ -13,7 +13,7 @@ export type Game = {
 };
 
 // The hero's fan of phones, left to right; scripts/gen_games.py cuts them.
-export const HERO_PHONES = ["minigolf", "honeycomb", "buttons", "boats", "posy"];
+export const HERO_PHONES = ["minigolf", "honeycomb", "buttons", "planes", "pinwheel"];
 
 export const GAMES = data as Game[];
 

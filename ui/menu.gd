@@ -3,8 +3,9 @@ extends Control
 ## The first screen: the wordmark and the two characters at the top, the day
 ## row under them, a page of eight puzzle cards in a grid of two (490x246
 ## cards, since the painted menu of 2026-09-24 -- twelve in a grid of three
-## before that), and the pager under them. The categories (Puzzles, Versus,
-## Arcade) are a row under the header since 2026-10-13
+## before that), and the pager under them. The categories row under the
+## header (2026-10-13) holds only Puzzles since Versus and Arcade left on
+## 2026-11-03
 ## (ui/menu/category_row.gd); a bottom bar of six tabs held them before, and
 ## "the bar" in the older notes below is that one. Everything on it is drawn in 2D -- there
 ## is no stage, no World3D and no model anywhere on this screen.
@@ -37,7 +38,6 @@ const SafeArea = preload("res://ui/safe_area.gd")
 const SettingsSheet = preload("res://ui/hud/settings_sheet.gd")
 const RemoveAdsSheet = preload("res://ui/hud/remove_ads_sheet.gd")
 const GiftsSheet = preload("res://ui/hud/gifts_sheet.gd")
-const ShopSheet = preload("res://ui/hud/shop_sheet.gd")
 const MenuHeader = preload("res://ui/menu/menu_header.gd")
 const Vistas = preload("res://ui/menu/vistas.gd")
 const DayRow = preload("res://ui/menu/day_row.gd")
@@ -48,47 +48,8 @@ const Icons = preload("res://ui/icons.gd")
 const Analytics = preload("res://core/analytics.gd")
 const StreakTab = preload("res://ui/menu/streak_tab.gd")
 const StatsTab = preload("res://ui/menu/stats_tab.gd")
-const VersusTab = preload("res://ui/menu/versus_tab.gd")
-const VersusSheet = preload("res://ui/menu/versus_sheet.gd")
-const SnookerScreen = preload("res://versus/snooker_screen.gd")
-const ChessScreen = preload("res://versus/chess_screen.gd")
-const CheckersScreen = preload("res://versus/checkers_screen.gd")
-const HockeyScreen = preload("res://versus/hockey_screen.gd")
-const BoatsScreen = preload("res://versus/boats_screen.gd")
-const PennyScreen = preload("res://versus/penny_screen.gd")
-const DominoesScreen = preload("res://versus/dominoes_screen.gd")
-const ReversiScreen = preload("res://versus/reversi_screen.gd")
-const ArcadeTab = preload("res://ui/menu/arcade_tab.gd")
 const PagerPill = preload("res://ui/menu/pager_pill.gd")
-const FireflyScreen = preload("res://arcade/firefly_screen.gd")
-const MolehillScreen = preload("res://arcade/molehill_screen.gd")
-const StackwoodScreen = preload("res://arcade/stackwood_screen.gd")
-const BeelineScreen = preload("res://arcade/beeline_screen.gd")
-const DeckchairScreen = preload("res://arcade/deckchair_screen.gd")
-const EddyScreen = preload("res://arcade/eddy_screen.gd")
-const FurrowScreen = preload("res://arcade/furrow_screen.gd")
-const GriddleScreen = preload("res://arcade/griddle_screen.gd")
-const TrivetScreen = preload("res://arcade/trivet_screen.gd")
-const TallyScreen = preload("res://arcade/tally_screen.gd")
-const BagatelleScreen = preload("res://arcade/bagatelle_screen.gd")
-const BrittleScreen = preload("res://arcade/brittle_screen.gd")
-const ThirteenScreen = preload("res://arcade/thirteen_screen.gd")
-const PeapodScreen = preload("res://arcade/peapod_screen.gd")
-const PosyScreen = preload("res://arcade/posy_screen.gd")
-const NightlightScreen = preload("res://arcade/nightlight_screen.gd")
-const FactoryTab = preload("res://ui/menu/factory_tab.gd")
-const ArcadeRecord = preload("res://arcade/arcade_record.gd")
-const FurrowSim = preload("res://arcade/furrow_sim.gd")
-const GriddleSim = preload("res://arcade/griddle_sim.gd")
-const TallySim = preload("res://arcade/tally_sim.gd")
-const BagatelleSim = preload("res://arcade/bagatelle_sim.gd")
-const FactoryScreen = preload("res://factory/screen.gd")
 const Streak = preload("res://core/streak.gd")
-const FriendsSheet = preload("res://ui/menu/friends_sheet.gd")
-const InviteCard = preload("res://ui/menu/invite_card.gd")
-const Social = preload("res://core/social.gd")
-const Online = preload("res://versus/online/online.gd")
-const Record = preload("res://versus/versus_record.gd")
 const Haptics = preload("res://core/haptics.gd")
 
 const MARGIN := 40
@@ -208,34 +169,13 @@ const PAGE_SLIDE := 0.34
 const PAGE_SLIDE_MIN := 0.14
 ## A page out of sight stands this many spans to the side (see `_spare`).
 const PARK := 3.0
-## Where a friend's card is drawn: over any sheet (10) and a sheet's own
-## dialog (12 more).
-const CARD_Z := 30
-## The line friend_link_failed says: its slot's height, the text's width and
-## how long it stands.
-const WORD_H := 150.0
-const WORD_W := 720.0
-const WORD_TIME := 4.0
-
 var settings_sheet: Control
 ## The purchase sheet: the header's remove-ads button, settings' row and
 ## (through world/main.gd) the banner's tab all open it.
 var remove_ads_sheet: Control
 var difficulty_sheet: Control
-var versus_sheet: Control
-## The daily gifts and the shop (spec 2026-09-28-gold-gifts-design.md).
+## The daily gifts (spec 2026-09-28-gold-gifts-design.md).
 var gifts_sheet: Control
-var shop_sheet: Control
-## Friends (spec 2026-10-04-friends-design.md): the sheet behind the Versus
-## tab's row, and the one card a friend raises over whatever is open -- an
-## invite to a game or a new friend (ui/menu/invite_card.gd). The card is
-## built when there is something to say and freed after, and is this node's
-## last child while it lives, over a host.
-var friends_sheet: Control
-var friend_card: Control
-## Set while open_friend_game closes what is open, so a screen's `closed`
-## neither shows the list nor offers an interstitial on the way to the game.
-var _switching := false
 var cards: Array = []
 ## Invisible padding for a short last row (task 8's width fix, 2026-09-20):
 ## see _build_page().
@@ -245,9 +185,6 @@ var day_row: Control
 var bar: Control
 var streak_tab: Control
 var stats_tab: Control
-var versus_tab: Control
-var arcade_tab: Control
-var factory_tab: Control
 var _tab := "home"
 var _tab_tw: Tween
 var _backdrop: ColorRect
@@ -294,12 +231,11 @@ var _drag_v := 0.0
 ## The seam-spacer between the grid and the bar; see PAGER_SEAM above.
 var _pager_seam: Control
 var _page := 0
-## Which list of cards the grid is showing: the Puzzles ("home"), "versus"
-## or "arcade". One grid, one swipe, one slide and one pager for all three;
-## only the list and the row above it change (the day row, the Friends row,
-## the gold strip). Each keeps the page it was left on.
+## Which list of cards the grid is showing: only the Puzzles ("home") since
+## the Versus and Arcade lists left on 2026-11-03. The deck machinery stays
+## for the list it still has.
 var _deck := "home"
-var _deck_page := {"home": 0, "versus": 0, "arcade": 0}
+var _deck_page := {"home": 0}
 ## The lists the grid is not showing, kept built as they were left: deck ->
 ## the bundle `_keep_deck` packs (its page, the page's neighbours, the fit
 ## it was built at). A tab used to free its cards and build the next list's
@@ -364,10 +300,6 @@ func _ready() -> void:
 	gifts_sheet.name = "GiftsSheet"
 	add_child(gifts_sheet)
 	header.gifts.connect(func() -> void: gifts_sheet.open())
-	shop_sheet = ShopSheet.new()
-	shop_sheet.name = "ShopSheet"
-	add_child(shop_sheet)
-	arcade_tab.shop.connect(func(game: String) -> void: shop_sheet.open_for(game, "arcade"))
 	Wallet.changed.connect(func() -> void: header.set_gifts(Wallet.claimable()))
 	# A puzzle card with levels asks which on this sheet (2026-10-27, the user:
 	# "move back the difficulties sheet when clicking on the game"); it is the
@@ -377,23 +309,6 @@ func _ready() -> void:
 	difficulty_sheet.name = "DifficultySheet"
 	difficulty_sheet.chose.connect(_open_at)
 	add_child(difficulty_sheet)
-	# A Versus card asks who to play on the same sheet's rows.
-	versus_sheet = VersusSheet.new()
-	versus_sheet.name = "VersusSheet"
-	versus_sheet.picked.connect(func(game: String, level: int) -> void:
-		Record.set_last_level(game, level)
-		_open_versus(game, level))
-	add_child(versus_sheet)
-	versus_tab.open.connect(versus_sheet.ask_game)
-	friends_sheet = FriendsSheet.new()
-	friends_sheet.name = "FriendsSheet"
-	friends_sheet.play.connect(func(game: String, uid: String) -> void: open_friend_game(game, uid, false))
-	add_child(friends_sheet)
-	versus_tab.friends.connect(func() -> void: friends_sheet.open())
-	var hub := Social.hub()
-	hub.invited.connect(_on_invited)
-	hub.withdrawn.connect(_on_withdrawn)
-	hub.befriended.connect(_on_befriended)
 	# A menu left open across 00:00 UTC catches up within a minute.
 	var day_timer := Timer.new()
 	day_timer.name = "DayTimer"
@@ -539,27 +454,6 @@ func _build_list() -> void:
 	stats_tab.open_streak.connect(func() -> void: _show_tab("streak"))
 	streak_tab.open_stats.connect(func() -> void: _show_tab("stats"))
 	root.add_child(stats_tab)
-	versus_tab = VersusTab.new()
-	versus_tab.name = "VersusTab"
-	versus_tab.visible = false
-	root.add_child(versus_tab)
-	arcade_tab = ArcadeTab.new()
-	arcade_tab.name = "ArcadeTab"
-	arcade_tab.visible = false
-	arcade_tab.play.connect(_open_arcade)
-	root.add_child(arcade_tab)
-	# Each is the row over the grid on its own tab, where the day row stands
-	# on Puzzles.
-	root.move_child(versus_tab, day_row.get_index() + 1)
-	root.move_child(arcade_tab, day_row.get_index() + 2)
-	# Factory is a card of the Arcade list since 2026-10-13 and this is no
-	# page any more: it stays, never shown, as the owner of the one land
-	# (it makes the sim, keeps it and lends it to the screen).
-	factory_tab = FactoryTab.new()
-	factory_tab.name = "FactoryTab"
-	factory_tab.visible = false
-	root.add_child(factory_tab)
-	arcade_tab.factory = factory_tab
 
 	# The pager: prev, dots, next, in their own paper pill -- see PAGER_MID
 	# above for why it is a pill and not a bare row, and PER_PAGE above and
@@ -656,21 +550,11 @@ func _pages(deck := _deck, per := _per_page) -> int:
 
 ## The list the grid is showing (or `deck`'s): the registry, or a tab's own
 ## games.
-func _source(deck := _deck) -> Array:
-	match deck:
-		"arcade":
-			return arcade_tab.entries()
-		"versus":
-			return versus_tab.entries()
+func _source(_deck_key := _deck) -> Array:
 	return Registry.PUZZLES
 
 ## The row that stands over the grid for the list that is up.
-func _top_row(deck := _deck) -> Control:
-	match deck:
-		"arcade":
-			return arcade_tab
-		"versus":
-			return versus_tab
+func _top_row(_deck_key := _deck) -> Control:
 	return day_row
 
 ## The entries on the page that is up, with the index each has in the
@@ -718,27 +602,10 @@ func _fill(grid: GridContainer, page: int, into: Array, pad: Array) -> void:
 func _make_card(row: Dictionary, deck: String, today: Array, done: Dictionary, row_h: float) -> PuzzleCard:
 	var entry: Dictionary = row.entry
 	var colour: Color = Pal.CAT[int(row.i) % Pal.CAT.size()]
-	var card: PuzzleCard
-	# A board is the same card on any list (Marigold stands on Arcade).
-	if deck == "home" or not Registry.arcade(String(entry.id)).is_empty():
-		card = PuzzleCard.new(entry, colour,
-			done.has(String(entry.id)), Progress.levels_in(today, String(entry.id)))
-		card.open.connect(_open.bind(entry))
-		card.blocked.connect(_on_soon.bind(entry))
-	else:
-		# A tab's game: the same card, opened through the tab's own
-		# signal; a swipe that started on it does not open it.
-		var game := String(entry.id)
-		card = PuzzleCard.new(entry, colour)
-		if deck == "arcade":
-			card.say(arcade_tab.line(game), arcade_tab.boosted(game))
-			card.open.connect(func() -> void:
-				if not _swiped:
-					arcade_tab.play.emit(game))
-		else:
-			card.open.connect(func() -> void:
-				if not _swiped:
-					versus_tab.open.emit(game))
+	var card := PuzzleCard.new(entry, colour,
+		done.has(String(entry.id)), Progress.levels_in(today, String(entry.id)))
+	card.open.connect(_open.bind(entry))
+	card.blocked.connect(_on_soon.bind(entry))
 	card.name = "Card_" + entry.id
 	card.fit_height(row_h)
 	return card
@@ -1074,7 +941,7 @@ func _warm(gen: int) -> void:
 				_spare[page] = made
 				_queue_warm(0.15))
 			return
-	for key: String in ["home", "versus", "arcade"]:
+	for key: String in _deck_page.keys():
 		if key == _deck or _kept.has(key):
 			continue
 		var fit := _measure_fit(key, key == "home" or _pages(key) > 1)
@@ -1278,10 +1145,6 @@ func _show_list(tab := "home") -> void:
 		_page = clamped
 		_build_page()
 	_refresh_day()
-	# Coming back to a tab that is already the open one still has to lay it
-	# out again (the Versus tab's record has moved).
-	if tab != "home":
-		_tab = ""
 	_show_tab(tab)
 	_enter()
 	_queue_warm(0.9)
@@ -1381,8 +1244,6 @@ func _show_tab(key: String) -> void:
 	day_row.visible = home
 	streak_tab.visible = key == "streak"
 	stats_tab.visible = key == "stats"
-	versus_tab.visible = key == "versus"
-	arcade_tab.visible = key == "arcade"
 	_grid_slot.visible = deck
 	Motion.stop(_tab_tw)
 	if deck:
@@ -1392,8 +1253,6 @@ func _show_tab(key: String) -> void:
 		if changed:
 			_keep_deck()
 			_deck = key
-		if not home:
-			(_top_row() as Control).refresh()
 		if changed:
 			# The list as it was left (or as `_warm` baked it), else built now
 			# at the fit it will have, so the fit does not build it twice.
@@ -1504,7 +1363,7 @@ func _free_bundle(b: Dictionary) -> void:
 		_free_grid(e.grid)
 
 ## What a kept card may have missed while it was out of sight: a board's
-## done marks and rings, an Arcade game's best.
+## done marks and rings.
 func _refresh_cards() -> void:
 	var today: Array = Progress.solve_log().get(Daily.date_key(), [])
 	var done_ids := Progress.completed_on()
@@ -1512,20 +1371,17 @@ func _refresh_cards() -> void:
 		if not is_instance_valid(card):
 			continue
 		var id := String(card.entry.get("id", ""))
-		if _deck == "home" or not Registry.arcade(id).is_empty():
-			var lv: Array = Progress.levels_in(today, id)
-			if lv != card.levels:
-				card.set_levels(lv)
-			var done: bool = done_ids.has(id) or not lv.is_empty()
-			if done != card.completed:
-				card.set_completed(done)
-		elif _deck == "arcade":
-			card.say(arcade_tab.line(id), arcade_tab.boosted(id))
+		var lv: Array = Progress.levels_in(today, id)
+		if lv != card.levels:
+			card.set_levels(lv)
+		var done: bool = done_ids.has(id) or not lv.is_empty()
+		if done != card.completed:
+			card.set_completed(done)
 
 ## Asks for every card face's script on a thread, so no tab's first tap
 ## compiles them (~440 ms for the 58 on this Mac).
 func _load_faces() -> void:
-	for source: Array in [Registry.all(), VersusTab.entries(), ArcadeTab.entries()]:
+	for source: Array in [Registry.all()]:
 		for e: Dictionary in source:
 			var path := String(e.get("card", ""))
 			if path.is_empty() or _faces_loading.has(path) or ResourceLoader.has_cached(path):
@@ -1569,9 +1425,6 @@ func go_back() -> void:
 			return
 	var host: Node = null
 	for child in get_children():
-		if child.is_in_group("versus_host") and not child.is_queued_for_deletion():
-			child.go_back()
-			return
 		if child is FlatHost and not child.is_queued_for_deletion():
 			host = child
 	if host != null:
@@ -1615,190 +1468,6 @@ func _open_at(entry: Dictionary, difficulty: int) -> void:
 	host.setup(entry, difficulty, Progress.completed(Registry.progress_id(entry, difficulty)))
 	_mount_host(host)
 
-## A game on the Versus tab: its own screen over the list, and back to the
-## Versus tab when it closes.
-func _open_versus(game: String, level: int) -> void:
-	var screen: Control
-	match game:
-		"snooker":
-			screen = SnookerScreen.new(level)
-			screen.name = "Snooker"
-		"chess":
-			screen = ChessScreen.new(level)
-			screen.name = "Chess"
-		"checkers":
-			screen = CheckersScreen.new(level)
-			screen.name = "Checkers"
-		"hockey":
-			screen = HockeyScreen.new(level)
-			screen.name = "Hockey"
-		"boats":
-			screen = BoatsScreen.new(level)
-			screen.name = "Boats"
-		"penny":
-			screen = PennyScreen.new(level)
-			screen.name = "Penny"
-		"dominoes":
-			screen = DominoesScreen.new(level)
-			screen.name = "Dominoes"
-		"reversi":
-			screen = ReversiScreen.new(level)
-			screen.name = "Reversi"
-		_:
-			return
-	screen.closed.connect(func() -> void:
-		screen.queue_free()
-		_left_game("versus"))
-	add_child(screen)
-	_raise_card()
-	# Not over a game online (level 3): the lobby is up, and then a stranger's
-	# clock is running. The screen opens it itself if the player takes the
-	# computer instead.
-	if screen.get("online") == null:
-		screen.tutor.first_play()
-	_list_root.visible = false
-
-## A game on the Arcade tab: its own screen over the list, and back to the
-## Arcade tab when it closes.
-func _open_arcade(game: String) -> void:
-	# A board on this tab (Marigold) opens as a board does: its levels, the
-	# flat host, and back here when it closes.
-	var board: Dictionary = Registry.arcade(game)
-	if not board.is_empty():
-		_open(board)
-		return
-	if game == "factory":
-		_open_factory(game)
-		return
-	var screen: Control
-	match game:
-		"firefly":
-			screen = FireflyScreen.new()
-			screen.name = "Firefly"
-		"molehill":
-			screen = MolehillScreen.new()
-			screen.name = "Molehill"
-		"stackwood":
-			screen = StackwoodScreen.new()
-			screen.name = "Stackwood"
-		"thirteen":
-			screen = ThirteenScreen.new()
-			screen.name = "Thirteen"
-		"posy":
-			screen = PosyScreen.new()
-			screen.name = "Posy"
-		"peapod":
-			screen = PeapodScreen.new()
-			screen.name = "Peapod"
-		"nightlight":
-			screen = NightlightScreen.new()
-			screen.name = "Nightlight"
-		"beeline":
-			screen = BeelineScreen.new()
-			screen.name = "Beeline"
-		"deckchair":
-			screen = DeckchairScreen.new()
-			screen.name = "Deckchair"
-		"eddy":
-			screen = EddyScreen.new()
-			screen.name = "Eddy"
-		"furrow":
-			screen = FurrowScreen.new()
-			screen.name = "Furrow"
-		"griddle":
-			screen = GriddleScreen.new()
-			screen.name = "Griddle"
-		"trivet":
-			screen = TrivetScreen.new()
-			screen.name = "Trivet"
-		"tally":
-			screen = TallyScreen.new()
-			screen.name = "Tally"
-		"bagatelle":
-			screen = BagatelleScreen.new()
-			screen.name = "Bagatelle"
-		"brittle":
-			screen = BrittleScreen.new()
-			screen.name = "Brittle"
-		_:
-			return
-	# Nightlight, Furrow, Griddle, Tally and Bagatelle are kept and have no run to finish: like the Factory's land
-	# tab it is looked in on, so leaving it is not a moment for an
-	# interstitial.
-	screen.closed.connect(func() -> void:
-		screen.queue_free()
-		if game != "nightlight" and game != "furrow" and game != "griddle" and game != "tally" and game != "bagatelle":
-			_left_game("arcade")
-		elif not _switching:
-			_show_list("arcade"))
-	add_child(screen)
-	_ask_start_over(screen, game)
-	_raise_card()
-	screen.tutor.first_play()
-	_list_root.visible = false
-
-## Every Arcade game can be put back to nothing from its settings sheet (the
-## user, 2026-10-17: "all arcade games must have a button to reset all
-## progress"). The sheet asks first (ui/hud/start_over_sheet.gd); on its yes
-## the screen goes, keeping what it keeps as it leaves, then what it kept is
-## wiped and the game opens again as on its first visit. Nightlight asks
-## and starts its star over itself, as it did first (2026-10-06).
-func _ask_start_over(screen: Control, game: String) -> void:
-	if game == "nightlight":
-		return
-	var sheet: Control = screen.settings_sheet
-	sheet.with_reset = true
-	sheet.reset_asks = ArcadeTab.NAMES[game]
-	sheet.start_over.connect(_start_over.bind(screen, game), CONNECT_DEFERRED | CONNECT_ONE_SHOT)
-
-func _start_over(screen: Control, game: String) -> void:
-	if not is_instance_valid(screen):
-		return
-	Analytics.track("arcade_reset", {"game": game})
-	# freed here, not queued: its last save lands before the wipe below
-	remove_child(screen)
-	screen.free()
-	ArcadeRecord.wipe(game)
-	if game == "factory":
-		factory_tab.returned()
-		factory_tab.start_over()
-		_open_factory(game)
-		return
-	var kept := ""
-	match game:
-		"furrow":
-			kept = FurrowSim.path
-		"griddle":
-			kept = GriddleSim.path
-		"tally":
-			kept = TallySim.path
-		"bagatelle":
-			kept = BagatelleSim.path
-	if not kept.is_empty() and FileAccess.file_exists(kept):
-		DirAccess.remove_absolute(kept)
-	_open_arcade(game)
-
-## Factory, a card of the Arcade list (a tab of its own until 2026-10-13):
-## its own screen over the list, and back to Arcade when it closes. The
-## hidden tab still owns the land (one sim, so nothing is
-## sold twice by two holders) and lends it for as long as the screen is up.
-## A land is looked in on for a minute, so leaving it is not a moment for an
-## interstitial, as leaving a board or an Arcade run is (`_left_game`).
-func _open_factory(_game: String) -> void:
-	var screen: Control = FactoryScreen.new()
-	screen.name = "Factory"
-	screen.setup(factory_tab.lend())
-	screen.closed.connect(func() -> void:
-		factory_tab.returned()
-		screen.queue_free()
-		if not _switching:
-			_show_list("arcade"))
-	add_child(screen)
-	_ask_start_over(screen, "factory")
-	_raise_card()
-	screen.tutor.first_play()
-	_list_root.visible = false
-
 func _mount_host(host: Control) -> void:
 	if host.has_signal("daily_completed"):
 		host.daily_completed.connect(_on_daily_completed)
@@ -1808,177 +1477,19 @@ func _mount_host(host: Control) -> void:
 		host.play_level.connect(func(difficulty: int) -> void:
 			host.queue_free()
 			_open_at(host._entry, difficulty))
-	# Back to the list its card stands in: the grid, or Arcade (Marigold).
+	# Back to the grid.
 	var deck: String = Registry.deck(host._entry)
 	host.closed.connect(func() -> void:
 		host.queue_free()
 		_left_game(deck))
 	add_child(host)
-	_raise_card()
 	_list_root.visible = false
 
 ## A board or a game has closed: back to the list on its tab, and the moment
-## an interstitial may be shown. Neither while open_friend_game is closing it
-## to open a friend's game in its place.
+## an interstitial may be shown.
 func _left_game(tab: String) -> void:
-	if _switching:
-		return
 	_show_list(tab)
 	Ads.leaving_game()
-
-# --- friends ---
-
-## Opens `game` (snooker, chess, checkers, boats, penny, dominoes, reversi) against the friend `uid`: asking
-## them (`accept` false: the lobby waits on their answer) or taking the
-## invite they sent (`accept` true). Whatever is open goes first -- a board,
-## an Arcade or Versus screen, any sheet, a card -- with no interstitial in
-## between, and the game closes back to the Versus tab. False if `game` is
-## not one played online (air hockey has no game online), or a live game online
-## is on (Social.in_game): that
-## one is not walked out of for another.
-func open_friend_game(game: String, uid: String, accept: bool) -> bool:
-	if not VersusTab.plays_online(game) or uid.is_empty() or Social.in_game:
-		return false
-	_switching = true
-	if is_instance_valid(friend_card):
-		friend_card.leave()
-	for node in find_children("*", "", true, false):
-		if node is CanvasItem and node.has_method("is_open") and node.is_open():
-			node.close()
-	for child in get_children():
-		if child.is_queued_for_deletion():
-			continue
-		if child.is_in_group("versus_host") or child is FlatHost:
-			# Its own way out, so a game left half played is still counted as
-			# abandoned; a screen that would ask first (a game online that is
-			# not live any more) is simply closed.
-			if child.get("online") != null:
-				child.closed.emit()
-			else:
-				child._on_back()
-			if not child.is_queued_for_deletion():
-				child.queue_free()
-	_switching = false
-	Online.with_friend = {"uid": uid, "accept": accept}
-	_open_versus(game, Record.ONLINE)
-	return true
-
-## A friend asks for a game: their card, over whatever is open. Social never
-## says this during a live game online (it declines for the player). One card
-## at a time: an invite that arrives under another waits its turn (_next_ask).
-func _on_invited(from: String, game: String) -> void:
-	if Social.in_game or get_node_or_null("../AgeScreen") != null:
-		return
-	if is_instance_valid(friend_card) and friend_card.is_open():
-		# A new friend's card gives way to someone asking for a game.
-		if friend_card.kind == InviteCard.Kind.INVITE:
-			return
-		friend_card.leave()
-	var card := InviteCard.invite(from, game)
-	card.play.connect(func(g: String) -> void:
-		Analytics.track("versus_friend_answer", {"game": g, "choice": "play"})
-		if not open_friend_game(g, from, true):
-			Social.decline(from))
-	card.dismissed.connect(func() -> void:
-		Analytics.track("versus_friend_answer", {"game": game, "choice": "not_now"})
-		Social.decline(from)
-		_next_ask.call_deferred(from))
-	_show_card(card)
-	Haptics.play(Haptics.GOOD)
-
-## The invite went before it was answered: its card goes with it.
-func _on_withdrawn(from: String) -> void:
-	if is_instance_valid(friend_card) and friend_card.is_open() \
-			and friend_card.kind == InviteCard.Kind.INVITE and friend_card.uid == from:
-		Analytics.track("versus_friend_answer", {"game": friend_card.game, "choice": "expired"})
-		friend_card.leave()
-		_next_ask.call_deferred(from)
-
-## Another friend may have been asking under the card that just went.
-func _next_ask(not_from: String) -> void:
-	for uid in Social.friends():
-		if uid == not_from:
-			continue
-		var game := Social.invite_from(uid)
-		if not game.is_empty():
-			_on_invited(uid, game)
-			return
-
-## Someone opened this player's link, or this player theirs: the new friend's
-## card, with Play (which asks which game) and Close. Not over the code
-## dialog, which says who was added itself; not over an invite.
-func _on_befriended(uid: String) -> void:
-	if friends_sheet.adding() or get_node_or_null("../AgeScreen") != null:
-		return
-	if is_instance_valid(friend_card) and friend_card.is_open():
-		return
-	var card := InviteCard.friend(uid)
-	# No Play while a live game online is on: it would mean walking out of it.
-	card.can_play = not Social.in_game
-	# versus_friend_invite is Online's, sent as the asking begins.
-	card.play.connect(func(game: String) -> void: open_friend_game(game, uid, false))
-	_show_card(card)
-	Haptics.play(Haptics.GOOD)
-
-## An invite link that made no friend (world/main.gd, from Social.add's
-## answer): `why` is "self", "unknown" or "offline". One line over whatever
-## is open, gone by itself; a link that worked needs no word, the new
-## friend's card is it.
-func friend_link_failed(why: String) -> void:
-	var key: String = {"self": "FRIENDS_ADD_SELF", "unknown": "FRIENDS_ADD_UNKNOWN"}.get(why, "FRIENDS_ADD_OFFLINE")
-	var old := get_node_or_null("FriendWord")
-	if old != null:
-		old.name = "FriendWordOld"
-		old.queue_free()
-	var word := CenterContainer.new()
-	word.name = "FriendWord"
-	word.z_index = CARD_Z
-	word.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	word.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-	word.offset_left = MARGIN
-	word.offset_right = -MARGIN
-	word.offset_bottom = -TOAST_OVER - SafeArea.insets(self).y
-	word.offset_top = word.offset_bottom - WORD_H
-	var pill := PanelContainer.new()
-	pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var paper := CozyTheme.lifted(Pal.SURFACE, 30, 22)
-	paper.content_margin_left = 36
-	paper.content_margin_right = 36
-	pill.add_theme_stylebox_override("panel", paper)
-	word.add_child(pill)
-	var line := Label.new()
-	line.text = key
-	line.theme_type_variation = "CardBody"
-	line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	line.custom_minimum_size.x = WORD_W
-	pill.add_child(line)
-	add_child(word)
-	Haptics.play(Haptics.WARN)
-	Motion.appear(word, 0.0, 1.0, TOAST_FADE)
-	get_tree().create_timer(WORD_TIME).timeout.connect(func() -> void:
-		if not is_instance_valid(word):
-			return
-		var tw := Motion.appear(word, word.modulate.a, 0.0, TOAST_FADE)
-		if tw == null:
-			word.queue_free()
-		else:
-			tw.finished.connect(word.queue_free))
-
-func _show_card(card: Control) -> void:
-	friend_card = card
-	# Over a sheet and over a card of the sheet's own (each a z step up).
-	card.z_index = CARD_Z
-	add_child(card)
-
-## The card stays over a host mounted after it: a later sibling takes the
-## taps, whatever z_index draws.
-func _raise_card() -> void:
-	if is_instance_valid(friend_card) and friend_card.get_parent() == self:
-		move_child(friend_card, -1)
-	var word := get_node_or_null("FriendWord")
-	if word != null:
-		move_child(word, -1)
 
 ## Marks the day the board was dealt on. A board dealt yesterday and solved
 ## after 00:00 UTC completes yesterday's card, so today's stays open.

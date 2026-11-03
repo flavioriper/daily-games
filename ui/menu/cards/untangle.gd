@@ -16,7 +16,7 @@ extends "res://ui/menu/cards/card_face.gd"
 const Board = preload("res://puzzles/untangle2d.gd")
 const Rope = preload("res://puzzles/untangle_rope.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
-const Rewards = preload("res://arcade/rewards.gd")
+const Rewards = preload("res://ui/rewards.gd")
 
 ## The row the card was drawn for (puzzle_card_2d.gd's CARD_H); the hoop
 ## grows with a taller one.
