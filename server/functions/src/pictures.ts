@@ -118,10 +118,11 @@ const DETAIL_FROM = 32;
  *  model holds no side: asked 8 it drew 17, asked 12 it drew 36 to 41,
  *  asked 18 and 24 it drew 34 and 36 (read off the drawings of 2026-10-14).
  *  Each next ask is scaled by what the last came out at. Jewel Box's 128
- *  asks 110: the overshoot falls as the ask grows (asked 12 it drew three
- *  times that, asked 40 a 64 cottage, 1.6 times), so 110 at 1.1 to 1.3
- *  times lands at 121 to 143, and one drawn over is asked again smaller. */
-const FIRST_ASK: Record<number, number> = {10: 8, 12: 9, 24: 18, 32: 24, 48: 40, 128: 110};
+ *  asked 110 while its side was 96 to 144 (the overshoot falls as the ask
+ *  grows: asked 12 it drew three times that, asked 40 a 64 cottage, 1.6
+ *  times) and drew 105 and 106; since 2026-11-03 the band is 64 to 84 a
+ *  side and asks 78, and one drawn over is asked again smaller. */
+const FIRST_ASK: Record<number, number> = {10: 8, 12: 9, 24: 18, 32: 24, 48: 40, 128: 78};
 /** Drawings of one band before it is written from words instead: a drawing
  *  on gemini-3-pro-image is one to four minutes with its rate limit, and the
  *  two small bands, which the model seldom draws small enough, get two. */

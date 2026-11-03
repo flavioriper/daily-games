@@ -23,6 +23,7 @@ const State = preload("res://puzzles/pixel_garden_state.gd")
 const Diagram = preload("res://ui/hud/pixel_garden_tutorial_diagram.gd")
 const Motion = preload("res://core/motion.gd")
 const PanZoom = preload("res://ui/flat/pan_zoom.gd")
+const ZOOM_B := 84.0
 
 const SIZE := Vector2(1000, 1350)
 
@@ -347,10 +348,42 @@ func _zoom_checks() -> void:
 		var st = _b._state
 		var z = _b.zoom
 		var view: Rect2 = z.view
+		# In a card (no foot) the button keeps the floor's lower left corner.
 		_ok(Rect2(Vector2.ZERO, SIZE).encloses(Rect2(_b._zoom_b.position, _b._zoom_b.size))
 			and view.encloses(Rect2(_b._zoom_b.position, _b._zoom_b.size)) and _b._zoom_b.size == Vector2(84, 84)
 			and _b._zoom_b.position.x < view.get_center().x and _b._zoom_b.position.y > view.get_center().y,
 			"band %d: the button is 84 square at the tray floor's lower left %s" % [band, _b._zoom_b.position])
+		# Bled (the game), it stands in the foot below the tray, over no peg,
+		# with the hand beside it once the board is close.
+		_b.set_clear(200.0, 40.0)
+		_b._layout()
+		var foot_b := Rect2(_b._zoom_b.position, _b._zoom_b.size)
+		var under := 0
+		for c in st.size():
+			if foot_b.has_point(_b.cell_to_local(c / st.n, c % st.n)):
+				under += 1
+		_ok(foot_b.position.y >= _b._board.end.y and foot_b.end.y <= SIZE.y - 40.0 and under == 0
+			and _b._hand_b.position.x > foot_b.end.x and _b._hand_b.position.y == foot_b.position.y,
+			"band %d: bled, the button stands below the tray at %s, over no peg, the hand to its right" % [band, foot_b.position])
+		_ok(_b.zoom.slack_hi == Vector2.ZERO, "band %d: nothing is pushed clear of it" % band)
+		# (a toast, said now, is drawn in the foot beside it: no peg under)
+		_b._tell("PG_NONE_LEFT")
+		_b._opened -= 5.0
+		_b._sync_zoom()
+		_ok(_b._toast == "PG_NONE_LEFT" and _b._foot_at().y + ZOOM_B * 0.5 > _b._board.end.y,
+			"band %d: the toast's line (%.0f) lies below the tray (%.0f)" % [band, _b._foot_at().y + ZOOM_B * 0.5, _b._board.end.y])
+		_b._toast = ""
+		_b._opened -= 5.0
+		_b._sync_zoom()
+		_ok(not _b._hand_b.visible, "band %d: the hand hides while the board is whole" % band)
+		_b._on_zoom_button()
+		_b._on_zoom_button()
+		_b._sync_zoom()
+		_ok(_b._hand_b.visible, "band %d: ... and shows once it is close" % band)
+		z.reset()
+		_b._bled = false
+		_b._layout()
+		view = z.view
 		_b._opened -= 5.0
 		_b._sync_zoom()
 		_ok(_b._zoom_b.visible and _b._zoom_icon == "plus", "band %d: the button shows, a plus" % band)
@@ -396,7 +429,7 @@ func _zoom_checks() -> void:
 				if _b._peg_at(z.to_layout(_at(c))) != c:
 					found = false
 		_ok(found and count > 0, "band %d: zoomed, %d pegs show and each is found under its centre" % [band, count])
-		# The lower left pegs come out from under the button.
+		# The lower left pegs come into view; the button is off the board.
 		_finger(0, view.get_center(), true)
 		_finger(1, view.get_center() + Vector2(100, 0), true)
 		for i in range(1, 120):
@@ -406,7 +439,7 @@ func _zoom_checks() -> void:
 		_finger(1, Vector2.ZERO, false)
 		var corner: int = (st.n - 1) * st.n
 		_ok(view.has_point(_at(corner)) and not Rect2(_b._zoom_b.position, _b._zoom_b.size).grow(4.0).has_point(_at(corner)),
-			"band %d: the lower left peg can be pushed clear of the button (peg at %s, k %.2f, view %s)" % [band, _at(corner), z.k, view])
+			"band %d: the lower left peg comes into view, no button over it (peg at %s, k %.2f, view %s)" % [band, _at(corner), z.k, view])
 		# A run keeps its row zoomed, and paints nothing out of sight.
 		z.reset()
 		_b._on_zoom_button()

@@ -698,6 +698,11 @@ fills its square, a sprite of 112 or more fills over half of 128 even
 padded, and one drawn under 112 is asked again bigger. A 96 was built
 first, the same day, and replaced before it was used.
 
+**Since 2026-11-03 the band is 64 to 84 a side** (the user: "jewel insane
+has too many pieces, 50% of it is enough"), `FIRST_ASK` 78, the fill as it
+was: half the jewels of the 105s the nights of 2026-11-03 and -04 drew.
+`docs/agents/boards/buttons.md`, "Insane at half the jewels".
+
 **The reader had to change for it.** `Beads.snap` read no grid finer than
 a 96th of the image, and a 128 sprite on its white board is always more,
 so a band's RULES may name `finest` (the 128's is 200) and snap is handed

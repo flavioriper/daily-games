@@ -11,7 +11,7 @@ const NAMES := ["chevron_left", "chevron_right", "undo", "reset", "bulb", "gear"
 	"puzzle", "flame", "cloud", "mountain", "sparkle", "trend", "crown", "no_ads", "versus", "arcade", "play",
 	"coin", "gift", "clock", "shield", "acorn", "run", "music", "buzz", "globe", "swords", "gamepad",
 	"friends", "copy", "share", "undo_back", "bin", "flip", "span", "bends", "arrow_down",
-	"skill_logic", "skill_space", "skill_planning", "skill_focus", "skill_words", "skill_memory"]
+	"skill_logic", "skill_space", "skill_planning", "skill_focus", "skill_words", "skill_memory", "hand"]
 const SEGMENTS := 24
 const FEATHERED := ["heart"]
 ## Stroke width of polylines as a fraction of the icon's width.
@@ -159,6 +159,16 @@ static func shape(name: String) -> Dictionary:
 		"next":
 			return {"polys": [PackedVector2Array([Vector2(0.2, 0.2), Vector2(0.64, 0.5), Vector2(0.2, 0.8)]),
 				PackedVector2Array([Vector2(0.66, 0.2), Vector2(0.8, 0.2), Vector2(0.8, 0.8), Vector2(0.66, 0.8)])], "lines": []}
+		"hand":
+			# An open palm, fingers up: the pan tool of a board too big to
+			# play whole (Pixel Garden's zoom). Three fingers and a thumb as
+			# strokes over a filled palm, so it reads at 44 px.
+			return {"polys": [PackedVector2Array([Vector2(0.26, 0.54), Vector2(0.74, 0.54), Vector2(0.74, 0.7),
+				Vector2(0.62, 0.86), Vector2(0.4, 0.86), Vector2(0.26, 0.7)])], "lines": [
+				PackedVector2Array([Vector2(0.32, 0.58), Vector2(0.32, 0.24)]),
+				PackedVector2Array([Vector2(0.5, 0.58), Vector2(0.5, 0.14)]),
+				PackedVector2Array([Vector2(0.68, 0.58), Vector2(0.68, 0.22)]),
+				PackedVector2Array([Vector2(0.3, 0.72), Vector2(0.14, 0.56)])]}
 		"speaker":
 			return {"polys": [_speaker()], "lines": [
 				PackedVector2Array([Vector2(0.64, 0.36), Vector2(0.71, 0.5), Vector2(0.64, 0.64)]),

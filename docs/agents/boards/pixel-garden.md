@@ -366,3 +366,91 @@ beads.
   Insane tour 101-105 whole and close, 125 at the win, 170 with the
   tutorial sheet. `_win.gd pixelgarden` PASS; suite 303252/0. No new
   sounds. Unseen on a phone; pt/es unread by a speaker.
+
+### Playable close up on a phone (2026-11-03)
+
+The user, of players' complaints on Hard and Insane: "when trying to move
+camera after zoom in, it places pieces instead, there is a black box message
+that keep showing and they have to wait it disappear to play because it's
+right in front of board, the + zoom button is right above the corner of
+board making impossible to place pieces. Check on web for references, we
+need to make it very accessible to mobile, to make it fun without losing
+challenge". Reproduced headless first on a 32 Insane board close up: one
+finger dragged 200 px from a bare peg seated four beads and moved nothing;
+the whole board had 16 pegs under the zoom's button; the toast lay over
+rows 23 to 26 of 32. The pinch path (two fingers a moment apart, a second
+finger off the floor) leaked no bead.
+
+References: the genre's largest colour-by-number (Easybrain's Pixel Art
+help, "How do I color 2D pictures") has two one-finger modes: with its
+swipe colouring on, a swipe on cells of the chosen number colours them and
+**a swipe on an area of any other colour moves the screen**; with it off,
+any one-finger swipe moves the screen and a tap colours. Nonogram and
+colouring apps that let one finger both paint and pan either split them by
+where the drag starts or give a bottom-anchored mode switch. A review of a
+rival ("zooming in sometimes leads to accidentally filling in squares")
+names this exact pain.
+
+- **Where a drag starts decides** (`_paintable`, `_gui_input`): close up,
+  a one-finger drag from a bare peg or a bead of the colour in hand is a
+  run or a lift, as always; from **anything that takes no bead** -- a bead
+  of another colour, a fused one, a plate under its iron, the floor beside
+  the pegs -- it moves the board (`zoom.one_finger_pan`, set as the finger
+  lands). That is Easybrain's rule made safe for a board that hides the
+  picture: it reads what is seated, never what the picture wants, so no
+  pan gives a peg away. Such a press is held back (`_pending`) until the
+  finger shows itself: a tap still does on lifting what a press did
+  before (the shiver, no words); a drag past `PanZoom.SLOP` is a pan and
+  the press never happened. Only a press on the floor is held: the card
+  held up and a chip picked answer the press at once, as always (a first
+  cut held those too, and the peek fired on release and was set down in
+  the same breath; caught in review). Whole, nothing pans and a drag from
+  another colour's bead runs on as before. Two fingers pinch and pan as
+  before.
+- **The hand** (`_hand_b`, `_set_hand`): a second round button beside the
+  zoom's, shown only while the board is close. On, one finger moves the
+  board from anywhere and a tap seats or lifts one bead (Jewel Box's and
+  Easybrain's tap mode); off, the rule above. It turns itself off when the
+  board is whole again, on a deal and on a restore. `PG_HAND_ON` /
+  `PG_HAND_OFF` say which, once, as the key event the toggle is. The icon
+  is `Icons` "hand", an open palm.
+- **The foot** (`FOOT`, `_foot_at`): bled, the zoom's button and the hand
+  stand in a strip below the tray (`ZOOM_INSET` under its floor, at its
+  left, the thumb side clear), never over a peg, and `_cell_in` keeps the
+  strip out of the room the pegs are sized to (the big boards are bound by
+  width, so at 810x1440 the pegs lose nothing and 184 px lie below the
+  tray). `slack_hi` is zero bled; in a card (the tutorial's art) the button
+  keeps the floor's corner and the push-up it had.
+- **The toast is for a key event** (the user's own rule for Jewel Box,
+  2026-10-12): `PG_FUSED` and `PG_TAKEN` are no longer said -- a refusal is
+  the shiver and its cue. `PG_NONE_LEFT`, the rule's nudge, is said **once
+  a colour a deal** (`_told_dry`); the chip's shake carries it after that.
+  Bled, the toast sits **in the foot**, level with the buttons and in the
+  width beside them, so it never covers a peg; in a card it hangs over the
+  tray's foot as before.
+- Locale: `PG_ZOOM_TIP`, `HTP_PG_ZOOM_BODY`, `HTP_PG_ZOOM_PAN_CAP`,
+  `HTP_PG_ZOOM_PLAY_CAP` reworded, `PG_HAND_ON` / `PG_HAND_OFF` added, in
+  en, pt and es (mine, unread by a speaker). The tutorial's ZOOM diagram
+  still animates the two-finger drag; its captions name the hand.
+- Glimpse extends this board and inherits all of it (its `GL_MISS` toast
+  sits in the foot too).
+- `tests/_probe_pixel_garden.gd`: the zoom section lays the board bled and
+  checks the button below the tray over no peg, the hand beside it hidden
+  whole and shown close, no push-up, and the toast's line below the tray;
+  0 failed. A throwaway check (not kept) drove every rule above by finger:
+  hand off, a drag from a bare peg paints and never pans; from another
+  colour's bead it pans and lifts nothing; a tap on it refuses silently;
+  from the floor's edge it pans; hand on, a drag from a bare peg pans and
+  a tap seats on lifting, the card is held up while the finger is down and
+  a chip is picked on the press; whole again, the hand is off and hidden.
+- Hearts, the iron, the kit and the deals are untouched: the challenge is
+  as it was; what went was the fight with the camera.
+- Measured, `opengl3_angle` at 810x1440, `tests/_shot_pixel_garden.gd --
+  d=3 tour` and `d=2 tour` (second readings): Insane 103 draw calls whole,
+  118 close, 122 at the win, 167 with the tutorial sheet; Hard 103 whole,
+  118 close, 123 at the win. Close was 101-105 before: the hand (one
+  IconButton, its palm a polygon and four strokes) and the pressed look are
+  the dozen more, far under the 855. Seen in the frames: the + and the
+  two-line tip in the foot beside it, over no peg; close, the minus and the
+  hand side by side under the tray's left; the pushed corner with no button
+  over it. Suite 303240/0. Not on a phone.

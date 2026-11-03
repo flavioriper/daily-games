@@ -1461,3 +1461,28 @@ after all pieces are in place". `_whole` keeps its sparkles, cue and word, and
 no jewel hops. The win and a part sewn start the moment the last jewel has
 merged, without `SOLVE_DELAY`: `win_lead()` is to the last merge alone.
 
+
+## Insane at half the jewels (2026-11-03)
+
+The user, of players' complaints: "jewel insane has too many pieces, 50% of
+it is enough to make it insane and funny to play". The nights of 2026-11-03
+and -04 had drawn 105 and 106 a side, 8,169 and 9,955 jewels (read off
+`days/<date>/turns/pictures`). Half the jewels is the side over root two,
+not a thinner fill (a sparse picture reads as broken): the band's rule is
+**64 to 84 a side** (`tools/beads.js` RULES 128, `core/themed_pictures.gd`
+RULES 128, the same fill of 50 to 90%), so 74 a side at today's fill is
+some 4,000 to 5,000, and `FIRST_ASK[128]` is 78 (asked 110 the model drew
+105). The key stays 128: it names the band in every day document, in
+`THEMED_KEY` and in the builds. The quarters (`State.quarters`) are 32 to
+42 a side, well over `PART_MIN`.
+
+- **A build before this holds the old range** and turns a 64 to 84 picture
+  down (`ThemedPictures.accepts`), so until it is updated it plays the
+  night's 48 in quarters (1,300 to 2,700 jewels these two days): fewer
+  than asked, never more.
+- Not done here, the user's calls: the functions deploy
+  (`tools/deploy_functions.sh`, a person runs it) and whether today's and
+  tomorrow's published 105s are repainted (a production write and an image
+  cost). The next night after the deploy draws the first 64 to 84.
+- `npx tsc --noEmit` in `server/functions` passes. Not seen: a real
+  drawing at the new ask.

@@ -137,6 +137,13 @@ const PEG_NEAR := 56.0
 const PEG_MOST := 84.0
 const ZOOM_B := 84.0
 const ZOOM_INSET := 12.0
+## The foot (2026-11-03, players: "the + zoom button is right above the
+## corner of the board making it impossible to place pieces"): on a board
+## that zooms the zoom's button and the hand stand in a strip of FOOT below
+## the tray, never over a peg, and the toast sits beside them, never over the
+## board. The strip is kept out of the room the pegs are sized to.
+const FOOT := ZOOM_B + 2.0 * ZOOM_INSET
+const HAND_GAP := 12.0
 
 # --- the motion ---
 ## How long the held picture takes to grow over the board, and how much of
@@ -388,6 +395,20 @@ var _ground: Control
 var _field: Control
 var _zoom_b: Button
 var _zoom_icon := ""
+## The hand (2026-11-03, players: "when trying to move the camera after
+## zooming in, it places pieces instead"): a toggle beside the zoom's button
+## while the board is close. On, one finger moves the board and a tap seats
+## or lifts one bead; off, one finger paints runs as always, and a drag that
+## begins on something that takes no bead -- a bead of another colour, a
+## fused one, the floor beside the pegs -- moves the board instead of
+## refusing. Two fingers always pinch and pan.
+var _hand_b: Button
+var _hand := false
+## A press held back until the finger shows whether it taps or drags: where
+## it landed, or INF for none.
+var _pending := Vector2.INF
+## The colours whose "used up" nudge this deal has already shown.
+var _told_dry := {}
 var _plates: ArrayMesh
 var _mask: ArrayMesh
 var _field_shown: Array = []
@@ -643,6 +664,15 @@ func _ready() -> void:
 	_zoom_b.add_theme_stylebox_override("pressed", down)
 	_zoom_b.pressed.connect(_on_zoom_button)
 	add_child(_zoom_b)
+	_hand_b = IconButton.new("hand", "", "IconButton")
+	_hand_b.name = "Hand"
+	_hand_b.visible = false
+	_hand_b.custom_minimum_size = Vector2(ZOOM_B, ZOOM_B)
+	for st in ["normal", "hover", "disabled"]:
+		_hand_b.add_theme_stylebox_override(st, up)
+	_hand_b.add_theme_stylebox_override("pressed", down)
+	_hand_b.pressed.connect(_on_hand_button)
+	add_child(_hand_b)
 	fx = Fx2D.new()
 	fx.name = "Fx"
 	fx.z_index = 2
@@ -688,6 +718,9 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_opened = _now()
 	_busy_for(Motion.ENTER_DELAY + Motion.ENTER_POP)
 	zoom.reset()
+	_set_hand(false, false)
+	_pending = Vector2.INF
+	_told_dry = {}
 	_focus = Vector2.INF
 	_layout()
 	fx.cue("enter")
@@ -779,8 +812,10 @@ func _cell_in(room: Vector2) -> float:
 		return 0.0
 	var span := _span()
 	var pad := _pad()
+	# A board that zooms keeps the foot's strip below the tray for its buttons.
+	var foot := FOOT if _bled and _zoomable() else 0.0
 	return maxf(0.0, minf((room.x - 2.0 * pad - 2.0 * RIM) / span,
-		(room.y - 2.0 * pad - _head_for() - HEAD_GAP - 2.0 * RIM) / span))
+		(room.y - 2.0 * pad - _head_for() - HEAD_GAP - 2.0 * RIM - foot) / span))
 
 func _cell_for(available: float) -> float:
 	return _cell_in(Vector2(size.x, available))
@@ -927,16 +962,31 @@ func _place() -> void:
 func _place_view() -> void:
 	var view := _board.grow(-RIM)
 	var lim := _zoom_limits() if _zoomable() and _cell > 0.0 else Vector2.ONE
-	# Close, the board may be pushed up clear of the button over its corner.
-	zoom.slack_hi = Vector2(0.0, ZOOM_B + 1.5 * ZOOM_INSET)
+	# Bled, the buttons stand below the tray and nothing is pushed clear of
+	# them; in a card the button keeps the floor's corner, and the close
+	# board may still be pushed up by its height so the pegs under it are
+	# reached.
+	zoom.slack_hi = Vector2.ZERO if _bled else Vector2(0.0, ZOOM_B + 1.5 * ZOOM_INSET)
 	zoom.setup(view, lim.x, lim.y)
 	if _ground == null:
 		return
 	_ground.position = Vector2.ZERO
 	_ground.size = size
 	_zoom_b.size = Vector2(ZOOM_B, ZOOM_B)
-	_zoom_b.position = Vector2(view.position.x + ZOOM_INSET, view.end.y - ZOOM_INSET - ZOOM_B)
+	_zoom_b.position = _foot_at()
+	_hand_b.size = Vector2(ZOOM_B, ZOOM_B)
+	_hand_b.position = _zoom_b.position + Vector2(ZOOM_B + HAND_GAP, 0.0)
 	_sync_zoom()
+
+## Where the foot's first button stands: the tray's left, ZOOM_INSET below
+## its floor, and never past the host's bottom row. A board in a card (no
+## foot of its own) keeps the button on the floor's lower left corner.
+func _foot_at() -> Vector2:
+	var view := _board.grow(-RIM)
+	if not _bled:
+		return Vector2(view.position.x + ZOOM_INSET, view.end.y - ZOOM_INSET - ZOOM_B)
+	var low := size.y - _clear.y - ZOOM_INSET - ZOOM_B
+	return Vector2(_board.position.x + ZOOM_INSET, minf(_board.end.y + ZOOM_INSET, low))
 
 ## The button shows only while the zoom answers, and reads plus when the
 ## board is whole, minus when close -- whether it or two fingers did it.
@@ -952,6 +1002,13 @@ func _sync_zoom() -> void:
 	if icon != _zoom_icon:
 		_zoom_icon = icon
 		(_zoom_b as IconButton).set_icon(icon)
+	# The hand has a job only while the board is close, and only in the
+	# game: in a card (the tutorial's little board) it would cover the pegs.
+	var hand_on := on and zoom.zoomed() and _bled
+	if not hand_on and _hand:
+		_set_hand(false, false)
+	if _hand_b.visible != hand_on:
+		_hand_b.visible = hand_on
 
 ## The button: a step closer on the peg last touched (the middle before
 ## any), whole, half way, close, and back out the same way.
@@ -960,6 +1017,38 @@ func _on_zoom_button() -> void:
 		return
 	zoom.cycle(Vector2.INF if _focus == Vector2.INF else zoom.to_screen(_focus))
 	_view_moved()
+
+## The hand: one finger moves the close board, a tap still seats a bead.
+func _on_hand_button() -> void:
+	if not _zoom_live() or not zoom.zoomed():
+		return
+	_set_hand(not _hand, true)
+
+func _set_hand(on: bool, say: bool) -> void:
+	if _hand == on:
+		return
+	_hand = on
+	zoom.one_finger_pan = on
+	_hand_b.button_pressed = on
+	_hand_b.toggle_mode = on
+	if say:
+		_tell("PG_HAND_ON" if on else "PG_HAND_OFF")
+	queue_redraw()
+
+## Whether a press at `at` (screen) would do something to a peg: a bare one
+## takes the colour in hand, one holding that colour gives it back. Anything
+## else -- another colour's bead, a fused one, the floor beside the pegs, a
+## plate under its iron -- refuses, so a drag from it may move the board.
+func _paintable(at: Vector2) -> bool:
+	if not zoom.view.has_point(at):
+		return false
+	var c := _peg_at(zoom.to_layout(at))
+	if c < 0 or _plate_busy(_state.plate_of(c)):
+		return false
+	if _state.locked[c] != 0:
+		return false
+	var held: int = _state.beads[c]
+	return held == State.EMPTY or held == brush
 
 ## Back to the whole board, gliding: the win, Reset, Try again.
 func _zoom_whole() -> void:
@@ -2617,7 +2706,14 @@ func _draw_toast(t: float, shown: Array) -> void:
 		return
 	var line := _toast_line()
 	var font: Font = CozyTheme.body(600)
-	var room := maxf(TOAST_PAD, size.x - 120.0)
+	# On a board with a foot the toast sits in it, beside the buttons when
+	# they show, so it never covers a peg; in a card it hangs over the tray's
+	# foot as it did.
+	var in_foot := _bled
+	var left_edge := 60.0
+	if in_foot and _zoom_b.visible:
+		left_edge = (_hand_b.position.x + ZOOM_B if _hand_b.visible else _zoom_b.position.x + ZOOM_B) + 20.0
+	var room := maxf(TOAST_PAD, (size.x - 60.0 - left_edge) if in_foot else size.x - 120.0)
 	var text_room := room - TOAST_PAD
 	var one: float = font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, TOAST_FONT).x
 	var lines := 1
@@ -2637,9 +2733,12 @@ func _draw_toast(t: float, shown: Array) -> void:
 		_toast_mesh_for = key
 	if _toast_mesh == null:
 		return
-	# (over the zoom's button, where there is one)
-	var lift := ZOOM_B + ZOOM_INSET if _zoomable() and zoom.enabled else 0.0
-	var mid := Vector2(size.x * 0.5, _board.end.y - TOAST_MARGIN - h * 0.5 - lift)
+	var mid := Vector2(size.x * 0.5, _board.end.y - TOAST_MARGIN - h * 0.5)
+	if in_foot:
+		# Level with the foot's buttons, in the width left beside them; a
+		# second line grows evenly up and down from that line.
+		var foot_mid := _foot_at().y + ZOOM_B * 0.5
+		mid = Vector2((left_edge + size.x - 60.0) * 0.5, foot_mid)
 	draw_mesh(_toast_mesh, null, Transform2D(0.0, mid), Color(Color.WHITE, alpha))
 	shown.append(_toast_mesh)
 	var top := mid.y - h * 0.5 + (TOAST_H - font.get_height(TOAST_FONT)) * 0.5 + font.get_ascent(TOAST_FONT)
@@ -2689,6 +2788,13 @@ func _tell_hearts(key: String, astray: int) -> void:
 ## makes the first the start of a pinch, and what it had begun is taken back.
 func _gui_input(event: InputEvent) -> void:
 	if _zoom_live():
+		# On the close board one finger may move it: always with the hand
+		# on, and from anything that takes no bead with it off. The zoom
+		# reads the flag as the finger drags, so it is set as it lands.
+		# Only on the floor: the card held up and a chip picked answer the
+		# press at once, as always.
+		if event is InputEventScreenTouch and event.pressed and _press_finger == -2 and zoom.zoomed():
+			zoom.one_finger_pan = zoom.view.has_point(event.position) and (_hand or not _paintable(event.position))
 		match zoom.feed(event):
 			PanZoom.BEGAN:
 				accept_event()
@@ -2707,11 +2813,20 @@ func _gui_input(event: InputEvent) -> void:
 			if _press_finger != -2:
 				return
 			_press_finger = finger
+			# A finger that may move the board is not answered until it
+			# shows itself: a tap does on lifting what a press did before.
+			if finger >= 0 and zoom.one_finger_pan and zoom.zoomed() and _zoom_live():
+				_pending = event.position
+				return
 			_press(event.position)
 		else:
 			if finger != _press_finger:
 				return
 			_press_finger = -2
+			if _pending != Vector2.INF:
+				var at := _pending
+				_pending = Vector2.INF
+				_press(at)
 			_release()
 	elif event is InputEventScreenDrag or event is InputEventMouseMotion:
 		var finger: int = event.index if event is InputEventScreenDrag else -1
@@ -2726,6 +2841,7 @@ func _pinch_began() -> void:
 	if _peek:
 		_release()
 	_cancel_stroke()
+	_pending = Vector2.INF
 	_press_finger = -2
 	_pinch_tick()
 	_view_moved()
@@ -2892,17 +3008,17 @@ func _paint(c: int) -> void:
 		"locked":
 			_shake_at[c] = t
 			_touch(c, t + Motion.SHIVER_TIME)
+			# A refusal is the shiver and its cue, no words (the user's rule
+			# for Jewel Box, 2026-10-12: a toast is for a key event).
 			if not _refused:
 				_refused = true
 				fx.cue("refuse")
-				_tell("PG_FUSED")
 		"taken":
 			_shake_at[c] = t
 			_touch(c, t + Motion.SHIVER_TIME)
 			if not _refused:
 				_refused = true
 				fx.cue("refuse")
-				_tell("PG_TAKEN")
 		"none_left":
 			_shake_at[c] = t
 			_touch(c, t + Motion.SHIVER_TIME)
@@ -2911,7 +3027,11 @@ func _paint(c: int) -> void:
 				_chip_shake[brush] = t
 				_busy_for(Motion.SHIVER_TIME)
 				fx.cue("refuse")
-				_tell("PG_NONE_LEFT")
+				# The nudge is the rule, said once a colour; the chip's
+				# shake carries it after that.
+				if not _told_dry.has(brush):
+					_told_dry[brush] = true
+					_tell("PG_NONE_LEFT")
 
 func _release() -> void:
 	if _peek:
@@ -3468,6 +3588,9 @@ func restore_completed_board() -> void:
 	out_of_hearts = false
 	modulate = Color.WHITE
 	_toast = ""
+	_set_hand(false, false)
+	_pending = Vector2.INF
+	_told_dry = {}
 	var t := _now()
 	_solved_at = t - 100.0
 	_won = true

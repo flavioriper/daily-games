@@ -57,7 +57,12 @@ var Beads = (function () {
     // squares a side its drawing is read at (snap): the white board round
     // a sprite of 112 to 144 is far more than snap's 96.
     // 96 since 2026-11-02: the image model holds about 100 squares a side.
-    128: { side: [96, 144], colours: [12, 16], fill: [.5, .9], small: true, lead: LEAD, finest: 200 } };
+    // 64 to 84 since 2026-11-03 (the user, of players' complaints: "jewel
+    // insane has too many pieces, 50% of it is enough"): the nights of
+    // 2026-11-03 and -04 drew 105 and 106 a side, 8,169 and 9,955 jewels;
+    // 74 a side at the same fill is some 4,000 to 5,000. The key stays
+    // 128: it names the band in every day document and build.
+    128: { side: [64, 84], colours: [12, 16], fill: [.5, .9], small: true, lead: LEAD, finest: 200 } };
   var CUT_FILL = [.3, .7], MOST = .45, WORK = 240;
   var DEFAULTS = { size: 10, frame: "subject", bg: "auto", tol: .1, margin: 1, colours: 4, zoom: 1, px: 0, py: 0, vivid: 1 };
 

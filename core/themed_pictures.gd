@@ -41,7 +41,10 @@ const RULES := {
 	24: {"side": [24, 34], "colours": [6, 12]},
 	32: {"side": [32, 40], "colours": [8, 14]},
 	48: {"side": [44, 64], "colours": [10, 16]},
-	128: {"side": [96, 144], "colours": [12, 16], "fill": [0.5, 0.9]},
+	# 64 to 84 since 2026-11-03 (half the jewels of the 96 to 144 it was): a
+	# build before it holds the old range, so it turns the night's smaller
+	# picture down and plays the night's 48 in quarters until updated.
+	128: {"side": [64, 84], "colours": [12, 16], "fill": [0.5, 0.9]},
 }
 const FILL := [0.25, 0.80]
 const LEAD := 0.6
