@@ -2156,6 +2156,76 @@ HB_ITEM_ORCA,Orca,Orca,Orca
 HB_ITEM_BUS,City bus,Ônibus,Autobús
 HB_ITEM_TREX,T. rex,T. rex,T. rex
 HB_ITEM_WHALE,Blue whale,Baleia-azul,Ballena azul
+HB_ITEM_MALLARD_DUCK,Mallard,Pato-real,Ánade real
+HB_ITEM_PARK_BENCH,Park bench,Banco de parque,Banco de parque
+HB_ITEM_EUROPEAN_BADGER,European badger,Texugo-europeu,Tejón europeo
+HB_ITEM_EUROPEAN_ROBIN,European robin,Pisco-de-peito-ruivo,Petirrojo europeo
+HB_ITEM_EURASIAN_OYSTERCATCHER,Eurasian oystercatcher,Ostraceiro-comum,Ostrero euroasiático
+HB_ITEM_BEVERAGE_CAN,Drink can,Lata de bebida,Lata de bebida
+HB_ITEM_CAPYBARA,Capybara,Capivara,Capibara
+HB_ITEM_MUTE_SWAN,Mute swan,Cisne-mudo,Cisne vulgar
+HB_ITEM_HOUSE_SPARROW,House sparrow,Pardal,Gorrión común
+HB_ITEM_ROCK_PIGEON,Rock pigeon,Pombo-comum,Paloma bravía
+HB_ITEM_GREYLAG_GOOSE,Greylag goose,Ganso-cinzento,Ánsar común
+HB_ITEM_OIL_DRUM,Oil drum,Tambor de óleo,Bidón de aceite
+HB_ITEM_BASKETBALL,Basketball,Bola de basquete,Pelota de baloncesto
+HB_ITEM_POLAR_BEAR,Polar bear,Urso-polar,Oso polar
+HB_ITEM_REINDEER,Reindeer,Rena,Reno
+HB_ITEM_ROUTEMASTER_BUS,Routemaster bus,Ônibus de dois andares,Autobús de dos pisos
+HB_ITEM_PIG,Pig,Porco,Cerdo
+HB_ITEM_DONKEY,Donkey,Burro,Burro
+HB_ITEM_LEGO_BRICK,Lego brick,Peça de Lego,Pieza de Lego
+HB_ITEM_GUINEA_PIG,Guinea pig,Porquinho-da-índia,Cobaya
+HB_ITEM_HERRING_GULL,Herring gull,Gaivota-prateada,Gaviota argéntea
+HB_ITEM_BLACKBIRD,Eurasian blackbird,Melro-preto,Mirlo común
+HB_ITEM_HONEY_BADGER,Honey badger,Texugo-do-mel,Tejón de miel
+HB_ITEM_TRAFFIC_CONE,Traffic cone,Cone de trânsito,Cono de tráfico
+HB_ITEM_POOL_TABLE,Pool table,Mesa de sinuca,Mesa de billar
+HB_ITEM_TABLE_TENNIS_TABLE,Table tennis table,Mesa de ping-pong,Mesa de ping pong
+HB_ITEM_MOOSE,Moose,Alce,Alce
+HB_ITEM_VW_BEETLE,Volkswagen Beetle,Fusca,Escarabajo
+HB_ITEM_VOLLEYBALL,Volleyball,Bola de vôlei,Balón de voleibol
+HB_ITEM_HIPPO,Hippopotamus,Hipopótamo,Hipopótamo
+HB_ITEM_CANADA_GOOSE,Canada goose,Ganso-do-canadá,Barnacla canadiense
+HB_ITEM_SKATEBOARD,Skateboard,Skate,Patineta
+HB_ITEM_RED_FOX,Red fox,Raposa-vermelha,Zorro rojo
+HB_ITEM_FIAT_500,Fiat 500,Fiat 500,Fiat 500
+HB_ITEM_PLAINS_ZEBRA,Plains zebra,Zebra-das-planícies,Cebra de llanura
+HB_ITEM_SMART_FORTWO,Smart fortwo,Smart fortwo,Smart fortwo
+HB_ITEM_GOAT,Goat,Cabra,Cabra
+HB_ITEM_WILD_TURKEY,Wild turkey,Peru selvagem,Pavo salvaje
+HB_ITEM_CRICKET_BALL,Cricket ball,Bola de críquete,Pelota de críquet
+HB_ITEM_BATHTUB,Bathtub,Banheira,Bañera
+HB_ITEM_WASHING_MACHINE,Washing machine,Máquina de lavar roupa,Lavadora
+HB_ITEM_GOLF_BALL,Golf ball,Bola de golfe,Pelota de golf
+HB_ITEM_LION,Lion,Leão,León
+HB_ITEM_GRAND_PIANO,Grand piano,Piano de cauda,Piano de cola
+HB_ITEM_ROCKING_CHAIR,Rocking chair,Cadeira de balanço,Mecedora
+HB_ITEM_TELEPHONE_BOX,Telephone box,Cabine telefônica,Cabina telefónica
+HB_ITEM_CLASSIC_MINI,Classic Mini,Mini clássico,Mini clásico
+HB_ITEM_FIRE_HYDRANT,Fire hydrant,Hidrante,Boca de incendio
+HB_ITEM_FIRE_EXTINGUISHER,Fire extinguisher,Extintor de incêndio,Extintor de incendios
+HB_ITEM_SNOOKER_TABLE,Snooker table,Mesa de sinuca,Mesa de snooker
+HB_ITEM_MOORHEN,Moorhen,Galinha-d'água,Gallineta común
+HB_ITEM_EURASIAN_COOT,Eurasian coot,Galeirão,Focha común
+HB_ITEM_UPRIGHT_PIANO,Upright piano,Piano vertical,Piano vertical
+HB_ITEM_SCHOOL_BUS,School bus,Ônibus escolar,Autobús escolar
+HB_ITEM_PENCIL,Pencil,Lápis,Lápiz
+HB_ITEM_COMMON_PHEASANT,Common pheasant,Faisão-comum,Faisán común
+HB_ITEM_SHIPPING_CONTAINER_20FT,20-foot shipping container,Contêiner de 20 pés,Contenedor de 20 pies
+HB_ITEM_BEER_KEG,Beer keg,Barril de chope,Barril de cerveza
+HB_ITEM_TAPIR_BRAZIL,Tapir,Anta,Tapir
+HB_ITEM_WHEELBARROW,Wheelbarrow,Carrinho de mão,Carretilla
+HB_ITEM_OSTRICH,Ostrich,Avestruz,Avestruz
+HB_ITEM_DOUBLE_BASS,Double bass,Contrabaixo,Contrabajo
+HB_ITEM_ATLANTIC_PUFFIN,Atlantic puffin,Papagaio-do-mar,Frailecillo atlántico
+HB_ITEM_RING_BILLED_GULL,Ring-billed gull,Gaivota-de-bico-anelado,Gaviota de Delaware
+HB_ITEM_RUBY_THROATED_HUMMINGBIRD,Ruby-throated hummingbird,Beija-flor-de-garganta-rubi,Colibrí gorjirrubí
+HB_ITEM_INDIAN_RHINOCEROS,Indian rhinoceros,Rinoceronte-indiano,Rinoceronte indio
+HB_ITEM_BOWLING_BALL,Bowling ball,Bola de boliche,Bola de bolos
+HB_ITEM_EURO_PALLET,Euro pallet,Palete europeu,Palé europeo
+HB_ITEM_DROMEDARY_CAMEL,Dromedary camel,Dromedário,Dromedario
+HB_ITEM_KING_PENGUIN,King penguin,Pinguim-rei,Pingüino rey
 HB_FACT_ANT,A queen of this little black garden ant can live for nearly 30 years.,A rainha dessa formiguinha preta de jardim pode viver quase 30 anos.,La reina de esta hormiguita negra de jardín puede vivir casi 30 años.
 HB_FACT_LADYBIRD,The seven-spot ladybird has three spots on each wing case and one shared in the middle.,A joaninha-de-sete-pintas tem três pintas em cada asa e uma dividida no meio.,La mariquita de siete puntos tiene tres en cada ala y uno compartido en el centro.
 HB_FACT_BEE,"A busy hive can hold as many as 60,000 worker bees.",Uma colmeia cheia pode ter até 60 mil abelhas operárias.,Una colmena llena puede tener hasta 60.000 abejas obreras.
@@ -2186,6 +2256,76 @@ HB_FACT_ORCA,"A male orca's back fin stands 1.8 metres tall, higher than most pe
 HB_FACT_BUS,A city bus is almost exactly as long as a T. rex.,Um ônibus urbano tem quase exatamente o comprimento de um T. rex.,Un autobús urbano es casi exactamente tan largo como un T. rex.
 HB_FACT_TREX,"Sue, one of the most complete T. rex skeletons, is more than 12 metres long.","Sue, um dos esqueletos de T. rex mais completos, tem mais de 12 metros de comprimento.","Sue, uno de los esqueletos de T. rex más completos, mide más de 12 metros de largo."
 HB_FACT_WHALE,The blue whale is the largest animal ever known; its heart alone weighs 180 kg.,A baleia-azul é o maior animal já conhecido; só o coração pesa 180 kg.,La ballena azul es el animal más grande que se conoce; solo su corazón pesa 180 kg.
+HB_FACT_MALLARD_DUCK,Mallard ducklings can swim within hours of hatching.,Patinhos-reais nadam poucas horas depois de nascer.,Los patitos de ánade real nadan pocas horas después de nacer.
+HB_FACT_PARK_BENCH,The word bench comes from a long seat built against a wall.,A palavra banco vem de um assento comprido encostado na parede.,La palabra banco viene de un asiento largo pegado a una pared.
+HB_FACT_EUROPEAN_BADGER,Badger setts can be used by the same family of badgers for generations.,As tocas de texugo podem ser usadas pela mesma família de texugos por gerações.,Las madrigueras de tejón pueden ser usadas por la misma familia durante generaciones.
+HB_FACT_EUROPEAN_ROBIN,"Robins sing through winter, and both males and females defend territories.","Os pintarroxos cantam no inverno, e machos e fêmeas defendem territórios.","Los petirrojos cantan en invierno, y machos y hembras defienden territorios."
+HB_FACT_EURASIAN_OYSTERCATCHER,Oystercatchers use their long bills to pry open mussels and cockles on the shore.,Ostraceiros usam o bico longo para abrir mexilhões e berbigões na praia.,Los ostreros usan su pico largo para abrir mejillones y berberechos en la orilla.
+HB_FACT_BEVERAGE_CAN,"A standard 355 ml drink can is only about 12 cm tall, yet holds a full cup and a half of liquid.","Uma lata padrão de 355 ml tem apenas cerca de 12 cm de altura, mas guarda quase um copo e meio de líquido.","Una lata estándar de 355 ml mide solo unos 12 cm de alto, pero contiene casi una taza y media de líquido."
+HB_FACT_CAPYBARA,The capybara is the largest rodent in the world and often shares water with other animals.,A capivara é o maior roedor do mundo e muitas vezes divide a água com outros animais.,El capibara es el roedor más grande del mundo y suele compartir el agua con otros animales.
+HB_FACT_MUTE_SWAN,"Despite its name, the mute swan makes hissing, grunting and snorting sounds.","Apesar do nome, o cisne-mudo emite sons de sibilo, grunhido e bufo.","A pesar de su nombre, el cisne vulgar emite siseos, gruñidos y resoplidos."
+HB_FACT_HOUSE_SPARROW,"House sparrows have lived alongside people for thousands of years, often picking crumbs near shops.","Os pardais vivem perto das pessoas há milhares de anos, muitas vezes catando migalhas perto de lojas.","Los gorriones viven junto a las personas desde hace miles de años, a menudo picoteando migas cerca de tiendas."
+HB_FACT_ROCK_PIGEON,Rock pigeons were tamed thousands of years ago and now live in almost every city in the world.,Os pombos-comuns foram domesticados há milhares de anos e vivem hoje em quase todas as cidades.,Las palomas bravías fueron domesticadas hace miles de años y hoy viven en casi todas las ciudades.
+HB_FACT_GREYLAG_GOOSE,"Greylag geese often form pair bonds that last for many years, and families stay together through the winter.","Gansos-cinzentos costumam formar casais que duram muitos anos, e as famílias ficam juntas no inverno.","Los ánsares comunes suelen formar parejas que duran muchos años, y las familias permanecen juntas en invierno."
+HB_FACT_OIL_DRUM,The standard 200-litre steel drum has been used for shipping liquids for more than a century.,O tambor padrão de aço de 200 litros é usado para transportar líquidos há mais de um século.,El bidón estándar de acero de 200 litros se usa para transportar líquidos desde hace más de un siglo.
+HB_FACT_BASKETBALL,An official basketball is about 75 cm around its middle.,Uma bola oficial de basquete tem cerca de 75 cm de circunferência.,Un balón oficial de baloncesto mide unos 75 cm de circunferencia.
+HB_FACT_POLAR_BEAR,Polar bears have black skin under their white fur.,Ursos-polares têm pele preta sob o pelo branco.,Los osos polares tienen la piel negra bajo el pelaje blanco.
+HB_FACT_REINDEER,Both female and male reindeer grow antlers.,Tanto fêmeas quanto machos de rena têm chifres.,Tanto hembras como machos de reno tienen cornamenta.
+HB_FACT_ROUTEMASTER_BUS,London's Routemaster double-decker ran on city streets for about 50 years.,O ônibus de dois andares Routemaster de Londres circulou por cerca de 50 anos.,El autobús de dos pisos Routemaster de Londres circuló por las calles durante unos 50 años.
+HB_FACT_PIG,"Pigs have few sweat glands, so they roll in mud to keep cool.","Os porcos têm poucas glândulas sudoríparas, por isso rolam na lama para se refrescar.","Los cerdos tienen pocas glándulas sudoríparas, así que se revuelcan en el barro para refrescarse."
+HB_FACT_DONKEY,"Donkeys were domesticated from African wild asses about 5,000 years ago.",Os burros foram domesticados a partir do asno selvagem africano há cerca de 5.000 anos.,Los burros fueron domesticados a partir del asno salvaje africano hace unos 5.000 años.
+HB_FACT_LEGO_BRICK,"A standard 2x4 Lego brick is only about 3 cm long, yet millions of combinations come from such bricks.","Um bloco Lego 2x4 padrão tem só cerca de 3 cm de comprimento, mas dá para fazer milhões de combinações.","Un ladrillo Lego 2x4 estándar mide solo unos 3 cm de largo, pero permite millones de combinaciones."
+HB_FACT_GUINEA_PIG,Guinea pigs are not pigs and not from Guinea; they come from the Andes and are rodents.,Porquinhos-da-índia não são porcos nem vêm da Guiné; são roedores dos Andes.,Las cobayas no son cerdos ni vienen de Guinea; son roedores originarios de los Andes.
+HB_FACT_HERRING_GULL,Herring gulls can live over 30 years in the wild.,Gaivotas-prateadas podem viver mais de 30 anos na natureza.,Las gaviotas argénteas pueden vivir más de 30 años en libertad.
+HB_FACT_BLACKBIRD,"Male blackbirds are glossy black with orange-yellow beaks, and they often feed on lawns near breakfast tables.",Os machos são negros brilhantes com bico laranja-amarelado e costumam alimentar-se em relvados.,Los machos son negros brillantes con pico amarillo anaranjado y suelen alimentarse en los céspedes.
+HB_FACT_HONEY_BADGER,Honey badgers are famous for fearlessly taking on animals much larger than themselves.,"Os texugos-do-mel são famosos por enfrentar, sem medo, animais muito maiores que eles.",Los tejones de miel son famosos por enfrentarse sin miedo a animales mucho más grandes que ellos.
+HB_FACT_TRAFFIC_CONE,Traffic cones are orange so drivers can spot them from far away.,Os cones de trânsito são laranja para que os motoristas os vejam de longe.,Los conos de tráfico son naranjas para que los conductores los vean desde lejos.
+HB_FACT_POOL_TABLE,A standard 9-foot pool table has a playing surface of 2.54 m by 1.27 m.,"Uma mesa de sinuca padrão de 9 pés tem área de jogo de 2,54 m por 1,27 m.","Una mesa de billar estándar de 9 pies tiene una superficie de juego de 2,54 m por 1,27 m."
+HB_FACT_TABLE_TENNIS_TABLE,"A table tennis table is exactly 2.74 metres long, the same size in every official match.","Uma mesa de tênis de mesa tem exatamente 2,74 metros de comprimento em todo jogo oficial.","Una mesa de tenis de mesa mide exactamente 2,74 metros de largo en todo partido oficial."
+HB_FACT_MOOSE,"Only male moose grow antlers, and they can span over 1.5 m.","Só os machos de alce têm chifres, que podem ultrapassar 1,5 m de largura.","Solo los machos de alce tienen astas, que pueden superar 1,5 m de envergadura."
+HB_FACT_VW_BEETLE,"The Volkswagen Beetle was built for over 60 years, and its classic shape stayed almost the same.","O Fusca foi produzido por mais de 60 anos, e seu formato clássico quase não mudou.",El Volkswagen Escarabajo se fabricó durante más de 60 años con una forma casi idéntica.
+HB_FACT_VOLLEYBALL,"A volleyball has a standard circumference of about 65 to 67 centimetres, a size fixed by the rules.","A bola de vôlei tem circunferência padrão de cerca de 65 a 67 centímetros, definida pelas regras.","Un balón de voleibol tiene una circunferencia estándar de unos 65 a 67 centímetros, fijada por las reglas."
+HB_FACT_HIPPO,A hippo can hold its breath underwater for up to about five minutes.,Um hipopótamo pode prender a respiração debaixo d'água por até cerca de cinco minutos.,Un hipopótamo puede aguantar la respiración bajo el agua hasta unos cinco minutos.
+HB_FACT_CANADA_GOOSE,Canada geese often return to the same lake or pond where they were born.,Os gansos-do-canadá costumam voltar ao mesmo lago ou lagoa onde nasceram.,Las barnaclas canadienses suelen volver al mismo lago o estanque donde nacieron.
+HB_FACT_SKATEBOARD,A standard street skateboard deck is about as long as a adult's forearm and hand.,O shape de uma prancha de skate de rua padrão tem cerca de 80 cm de comprimento.,La tabla de una patineta callejera estándar mide unos 80 cm de largo.
+HB_FACT_RED_FOX,Red foxes can hear prey squeaking under snow and pounce through the snow to catch it.,Raposas-vermelhas ouvem presas sob a neve e saltam por ela para pegá-las.,Los zorros rojos oyen presas bajo la nieve y saltan a través de ella para atraparlas.
+HB_FACT_FIAT_500,The original Fiat 500 was small enough to fit inside a modern car's boot... roughly.,O Fiat 500 original era pequeno o bastante para caber num porta-malas moderno... mais ou menos.,El Fiat 500 original era tan pequeño que cabría en el maletero de un coche moderno... más o menos.
+HB_FACT_PLAINS_ZEBRA,"Each plains zebra has a unique stripe pattern, like a fingerprint.","Cada zebra-das-planícies tem um padrão de listras único, como uma impressão digital.","Cada cebra de llanura tiene un patrón de rayas único, como una huella dactilar."
+HB_FACT_SMART_FORTWO,The Smart fortwo is so short it fits two of them in one regular parking space.,O Smart fortwo é tão curto que cabem dois em uma vaga comum de estacionamento.,El Smart fortwo es tan corto que caben dos en una plaza de aparcamiento normal.
+HB_FACT_GOAT,Goats have rectangular pupils that give them a wide view of their surroundings.,As cabras têm pupilas retangulares que lhes dão um campo de visão muito amplo.,Las cabras tienen pupilas rectangulares que les dan un campo visual muy amplio.
+HB_FACT_WILD_TURKEY,Wild turkeys can fly short distances and roost high in trees at night.,Os perus selvagens voam curtas distâncias e dormem no alto das árvores à noite.,Los pavos salvajes pueden volar distancias cortas y dormir en lo alto de los árboles.
+HB_FACT_CRICKET_BALL,A cricket ball has a cork core wound with string and covered in leather.,Uma bola de críquete tem núcleo de cortiça enrolado em barbante e coberto de couro.,Una pelota de críquet tiene un núcleo de corcho envuelto en hilo y cubierto de cuero.
+HB_FACT_BATHTUB,Early bathtubs were often made of copper or cast iron before acrylic became the common material.,"As primeiras banheiras eram muitas vezes de cobre ou ferro fundido, antes do acrílico se tornar comum.",Las primeras bañeras solían ser de cobre o hierro fundido antes de que el acrílico se volviera común.
+HB_FACT_WASHING_MACHINE,Early washing machines were hand-cranked tubs before electric drums became the standard design.,As primeiras máquinas de lavar eram tambores girados à mão antes do modelo elétrico se tornar padrão.,Las primeras lavadoras eran tinas giradas a mano antes de que el tambor eléctrico se volviera estándar.
+HB_FACT_GOLF_BALL,A golf ball has about 300 to 500 dimples on its surface.,Uma bola de golfe tem entre 300 e 500 covinhas na superfície.,Una pelota de golf tiene entre 300 y 500 hoyuelos en su superficie.
+HB_FACT_LION,A lion's roar can be heard from about 8 kilometres away.,O rugido de um leão pode ser ouvido a cerca de 8 quilômetros.,El rugido de un león se puede oír a unos 8 kilómetros.
+HB_FACT_GRAND_PIANO,"A concert grand piano has roughly 12,000 separate parts.",Um piano de cauda de concerto tem cerca de 12 mil peças.,Un piano de cola de concierto tiene unas 12.000 piezas.
+HB_FACT_ROCKING_CHAIR,The rocking chair was patented in the United States in 1867 and is still made to a similar pattern.,A cadeira de balanço foi patenteada nos Estados Unidos em 1867 e mantém um desenho parecido.,La mecedora se patentó en Estados Unidos en 1867 y aún se fabrica con un diseño parecido.
+HB_FACT_TELEPHONE_BOX,"The classic red K6 kiosk, designed by Giles Gilbert Scott, stands about 2.4 m tall.","A clássica cabine vermelha K6, desenhada por Giles Gilbert Scott, tem cerca de 2,4 m de altura.","La clásica cabina roja K6, diseñada por Giles Gilbert Scott, mide unos 2,4 m de alto."
+HB_FACT_CLASSIC_MINI,The original Mini was so compact that its designers fitted the engine sideways to save space.,O Mini original era tão compacto que o motor foi montado transversalmente para economizar espaço.,El Mini original era tan compacto que su motor se montó transversalmente para ahorrar espacio.
+HB_FACT_FIRE_HYDRANT,Fire hydrants are painted in different colours in different countries so firefighters can tell their water supply apart.,Os hidrantes são pintados de cores diferentes em cada país para que os bombeiros identifiquem o abastecimento de água.,Las bocas de incendio se pintan de colores distintos según el país para que los bomberos distingan su suministro.
+HB_FACT_FIRE_EXTINGUISHER,"The first portable fire extinguishers were soda-acid models, filled with water and a bottle of acid.","Os primeiros extintores portáteis eram de ácido e soda, cheios de água e um frasco de ácido.","Los primeros extintores portátiles eran de ácido y soda, llenos de agua y un frasco de ácido."
+HB_FACT_SNOOKER_TABLE,A full-size snooker table has a playing area twice as long as it is wide.,Uma mesa de snooker de tamanho oficial tem a área de jogo com o dobro do comprimento da largura.,Una mesa de snooker de tamaño oficial tiene el área de juego con el doble de largo que de ancho.
+HB_FACT_MOORHEN,Moorhens bob their white undertail when they swim and flick it as a warning.,As galinhas-d'água balançam a cauda branca ao nadar e a sacodem como alerta.,Las gallaretas agitan su cola blanca al nadar como señal de alarma.
+HB_FACT_EURASIAN_COOT,"Coots have lobed toe flaps, not webbed feet, to paddle through water.","Os galeirões têm dedos com lobos, e não palmados, para nadar.","Las fochas tienen dedos con lóbulos, no palmeados, para nadar."
+HB_FACT_UPRIGHT_PIANO,"An upright piano's strings run vertically inside the case, which is why it can stand against a wall.","As cordas de um piano vertical ficam na vertical dentro da caixa, por isso ele pode ficar encostado na parede.","Las cuerdas de un piano vertical van en vertical dentro de la caja, por eso puede apoyarse contra una pared."
+HB_FACT_SCHOOL_BUS,School buses are painted yellow so drivers can spot them more easily on busy roads.,Os ônibus escolares são pintados de amarelo para serem vistos com mais facilidade nas ruas.,Los autobuses escolares se pintan de amarillo para que se vean mejor en las carreteras.
+HB_FACT_PENCIL,A standard pencil's hexagonal shell is only about 7 millimetres across.,A haste hexagonal de um lápis padrão tem cerca de 7 milímetros de diâmetro.,El cuerpo hexagonal de un lápiz estándar mide unos 7 milímetros de ancho.
+HB_FACT_COMMON_PHEASANT,The male pheasant's long tail can make up more than half of its total length.,A cauda longa do faisão-macho pode ser mais da metade do seu comprimento total.,La cola larga del faisán macho puede suponer más de la mitad de su longitud total.
+HB_FACT_SHIPPING_CONTAINER_20FT,"Every standard 20-foot shipping container is built to the same size, so ships and trucks can carry any of them.","Todo contêiner padrão de 20 pés é construído no mesmo tamanho, para que navios e caminhões carreguem qualquer um.",Todo contenedor estándar de 20 pies se construye con el mismo tamaño para que barcos y camiones lo transporten.
+HB_FACT_BEER_KEG,A standard US half-barrel keg holds about 58 litres of beer.,Um barril de meio barril americano guarda cerca de 58 litros de cerveja.,Un medio barril estadounidense contiene unos 58 litros de cerveza.
+HB_FACT_TAPIR_BRAZIL,A tapir's flexible snout works like a short trunk for grabbing leaves.,O focinho flexível da anta funciona como uma tromba curta para pegar folhas.,El hocico flexible del tapir funciona como una trompa corta para agarrar hojas.
+HB_FACT_WHEELBARROW,"A wheelbarrow puts most of its load over one wheel, which makes it easy to push.","O carrinho de mão concentra a carga sobre uma roda, o que facilita empurrá-lo.","La carretilla concentra la carga sobre una rueda, lo que facilita empujarla."
+HB_FACT_OSTRICH,One ostrich egg holds about as much as two dozen chicken eggs.,Um ovo de avestruz tem cerca de duas dúzias de ovos de galinha.,Un huevo de avestruz equivale a unos veinticuatro huevos de gallina.
+HB_FACT_DOUBLE_BASS,The double bass is the largest and lowest-pitched bowed string instrument in the orchestra.,O contrabaixo é o maior e mais grave instrumento de cordas com arco da orquestra.,El contrabajo es el instrumento de cuerda con arco más grande y grave de la orquesta.
+HB_FACT_ATLANTIC_PUFFIN,Atlantic puffins carry several small fish crosswise in their bill to feed chicks.,Os papagaios-do-mar levam vários peixinhos atravessados no bico para alimentar os filhotes.,Los frailecillos llevan varios pececillos cruzados en el pico para alimentar a sus polluelos.
+HB_FACT_RING_BILLED_GULL,Gulls can drink seawater because a gland near the eyes filters out the excess salt.,Gaivotas bebem água do mar porque uma glândula perto dos olhos elimina o excesso de sal.,Las gaviotas beben agua de mar porque una glándula cerca de los ojos expulsa el exceso de sal.
+HB_FACT_RUBY_THROATED_HUMMINGBIRD,A ruby-throated hummingbird can beat its wings about 50 times a second.,Um beija-flor-de-garganta-rubi bate as asas cerca de 50 vezes por segundo.,Un colibrí gorjirrubí bate las alas unas 50 veces por segundo.
+HB_FACT_INDIAN_RHINOCEROS,The Indian rhinoceros has a single horn and armour-like folds of skin.,O rinoceronte-indiano tem um único chifre e dobras de pele que parecem armadura.,El rinoceronte indio tiene un solo cuerno y pliegues de piel que parecen armadura.
+HB_FACT_BOWLING_BALL,A bowling ball can weigh up to 7 kg yet fits a standard diameter of about 21.6 cm.,"Uma bola de boliche pode pesar até 7 kg, mas tem diâmetro padrão de cerca de 21,6 cm.","Una bola de bolos puede pesar hasta 7 kg, pero tiene un diámetro estándar de unos 21,6 cm."
+HB_FACT_EURO_PALLET,"Euro pallets share one standard size, so warehouses across Europe can use any of them.","Os paletes europeus têm tamanho padrão, usados em armazéns de toda a Europa.",Los palés europeos tienen medida estándar y sirven en almacenes de toda Europa.
+HB_FACT_DROMEDARY_CAMEL,A dromedary can drink about 100 litres of water in ten minutes after days without drinking.,Um dromedário pode beber cerca de 100 litros de água em dez minutos após dias sem beber.,Un dromedario puede beber unos 100 litros de agua en diez minutos tras días sin beber.
+HB_FACT_KING_PENGUIN,King penguins can dive deeper than 300 metres in search of fish.,Pinguins-reis podem mergulhar a mais de 300 metros em busca de peixes.,Los pingüinos rey pueden bucear a más de 300 metros en busca de peces.
 HTP_HB_SIZE,Size it by eye,Meça no olho,Mídelo a ojo
 HTP_HB_SIZE_BODY,"The dark shape is the ruler, standing at its real size. Drag anywhere to pull the white one bigger or smaller until the two look right together.","A forma escura é a régua, no tamanho real. Arraste em qualquer lugar para deixar a branca maior ou menor até as duas parecerem certas juntas.","La forma oscura es la regla, a su tamaño real. Arrastra en cualquier parte para agrandar o encoger la blanca hasta que las dos se vean bien juntas."
 HTP_HB_LOCK,Lock it in,Trave o palpite,Fija tu respuesta

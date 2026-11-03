@@ -56,7 +56,8 @@
   a round, so a counter would count nothing. Out of hearts is the
   out-of-hearts card: Try again is the same Ladder from its first rung, the
   video gives one heart and the climb goes on from the rung that was lost.
-- **The things** (`content/how_big.json`, thirty of them, 4 mm to 25 m):
+- **The things** (`content/how_big.json`, a hundred of them since 2026-11-03, the first
+  thirty below, 4 mm to 25 m):
   ant, ladybird, honey bee, snail, tennis ball, frog, mouse, monarch,
   football, blue crab, cat, rabbit, chicken, dog, sheep, emperor penguin,
   cow, horse, person, bicycle, door, elephant, crocodile, car, great white,
@@ -275,7 +276,7 @@ quality and ask to redo if it's poor".
 - **The phone**:
   - `ThemedPictures.things(daily_key)` checks every entry: the id `d_...`,
     the size, the measure, the names, and a shape inside its 1000 box.
-  - `State.setup(rng, band, things, day)` adds them to the thirty. The
+  - `State.setup(rng, band, things, day)` adds them to the bundled hundred. The
     day's new ones (`born` on the day) are dealt first in a pair band. On
     the Ladder, the first forty climbs must take one.
   - Their shapes live in `State._day_shapes` by id. An id is a thing's for
@@ -316,3 +317,22 @@ quality and ask to redo if it's poor".
 - Decided for the user, unconfirmed: the gate thresholds, two new things a
   day, six of the pool, PhyloPic over drawn animals, and new things dealt
   first.
+
+- **A hundred bundled things** (2026-11-03, the user: "how hard it is to
+  extend the shipped images to 100 instead of 30", then "do2"): seventy
+  more were made by the night's own pipeline in a batch and folded into
+  `tools/how_big/items.json` as traced shapes (`tools/how_big/src/<id>.json`,
+  `"traced": true` in the row; SOURCES.md credits each).
+  - `tools/how_big/batch_prep.mjs` takes the production pool and makes day
+    files; `batch_themes.sh N` writes N fresh themes, each told to avoid
+    the ones used; `batch_things.sh 70` runs `cli.js things` per day file
+    until 70 are kept; `fold_batch.py [--skip id,id]` writes rows, shapes
+    and HB_ITEM/HB_FACT rows (en, pt, es); then `build_how_big.py` and a
+    copy of the table to `server/functions/src/how_big_bank.json`, so the
+    night never offers them again.
+  - Yield: about 1.4 kept a day file on fresh themes at first, falling to
+    0.4-0.5 as the easy things were taken; most refusals were outlines that
+    stand too tall for the real thing. 107 day files, about four hours.
+  - Brand-named things came through the gates (VW Beetle, Fiat 500, Smart
+    Fortwo, Lego brick, Routemaster bus, Classic Mini): kept as made.
+  - The suite (303238/0) and the pairs harness pass with the hundred.
