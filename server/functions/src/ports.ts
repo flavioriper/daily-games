@@ -31,7 +31,7 @@ export interface PortTry {
   /** A map's mending: the panels the model asked, those kept, and what
    *  repairMesh and colourFrom let go ("board" the background panels), so
    *  a hole in the render is traced to the map or to the mending. */
-  mended?: {asked: number; kept: number; snapped: number; dropped: number; tees: number; clipped: number; board: number};
+  mended?: {asked: number; kept: number; snapped: number; dropped: number; tees: number; clipped: number; slimmed?: number; board: number};
 }
 
 export interface Port {
@@ -55,7 +55,7 @@ export function logTry(game: Port["game"], day: number, band: number, thing: str
   const what = t.error ?? (t.why !== "" ? t.why : `${t.verdict?.pick} ${t.verdict?.score}${t.kept ? ", kept" : ""}`);
   const m = t.mended;
   const mended = m === undefined ? "" :
-    ` [asked ${m.asked}, kept ${m.kept}, dropped ${m.dropped}, board ${m.board}, clipped ${m.clipped}, tees ${m.tees}, snapped ${m.snapped}]`;
+    ` [asked ${m.asked}, kept ${m.kept}, dropped ${m.dropped}, board ${m.board}, clipped ${m.clipped}, slimmed ${m.slimmed ?? 0}, tees ${m.tees}, snapped ${m.snapped}]`;
   console.log(`${game}: day ${day}, band ${band}, ${thing} try ${t.n} (${t.route}): ${what}${mended}`);
 }
 

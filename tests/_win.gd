@@ -33,6 +33,10 @@ func _initialize() -> void:
 	# (six boards read "host or board freed" that way on 2026-09-25).
 	var progress_path := "user://progress_harness.cfg"
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(progress_path))
+	# Yarn Hoop keeps a day's threads beside the progress file (2026-10-28):
+	# left over from a run that failed, they came back as the next run's
+	# hints and slips (2026-11-03)
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://progress_harness_hoop_play.cfg"))
 	var progress = load("res://core/progress.gd")
 	progress.path = progress_path
 	_entries = []

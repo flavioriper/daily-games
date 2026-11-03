@@ -62,6 +62,20 @@ const SPLIT_AREA := [3.2, 3.0, 2.8, 2.6]
 ## drawn between CORNERS_AIM's two ends.
 const MAX_CORNERS := 7
 const CORNERS_AIM := [[4, 7], [4, 7], [5, 7], [5, 7]]
+## No panel is a sliver (the user, 2026-11-03, of numerals cramped along a
+## picture's edge: "it's terrible to fill ... if too narrow merge with near
+## ones when creating the spaces"): after either cut, a panel whose width
+## (the least, over its sides, of how far its corners stand off that side)
+## is under THIN of the band's pin spacing, or whose area is under SMALL
+## spacings squared, joins the neighbour across its longest shared run of
+## sides while the union keeps to MAX_CORNERS and bends in nowhere past
+## REFLEX (the sine of the turn a corner may make the wrong way); failing
+## every neighbour, its shortest side is pinched shut and it falls out.
+## The smallest shape the pin spacing allows, a triangle of three
+## spacings, is 0.87 wide and 0.43 in area, and stays.
+const THIN := 0.6
+const SMALL := 0.35
+const REFLEX := 0.2
 ## A triangle is kept when bare linen is under this share of its beads
 ## (its sides keep the drawing's edges, so one over more is a bridge
 ## between two parts of it, not a piece of its outline).
@@ -135,10 +149,6 @@ var done := 0
 var threads := 0
 ## Threads asked for that are no panel's side.
 var refused := 0
-## The outline is threaded on every reset (`hem`): set by setup, cleared by
-## adopt_laid, so the tutorial's hand-cut boards open bare as their lessons
-## expect.
-var hems := false
 
 static func bank() -> Dictionary:
 	if not _bank_read:
@@ -167,7 +177,6 @@ static func hints_for(band_: int) -> int:
 ## band's side (core/themed_pictures.gd).
 func setup(rng: RandomNumberGenerator, difficulty: int, daily_key := 0) -> void:
 	band = clampi(difficulty, 0, THEMED_SIDE.size() - 1)
-	hems = true
 	var doc := bank()
 	var pics := pictures(band)
 	if pics.is_empty():
@@ -528,6 +537,7 @@ func _cut(rng: RandomNumberGenerator) -> void:
 	var cons: Array = placed[1]
 	var read := {}
 	var mesh := _mesh(points, cons, gap, read)
+	_gap = gap
 	# the triangles over SPLIT_AREA spacings squared whose middles are the
 	# spacing clear of every pin are split about them, the biggest first
 	var big: float = SPLIT_AREA[band] * gap * gap
@@ -917,6 +927,9 @@ func _read_half(lattice: PackedVector2Array, tri: Array) -> Array:
 		return [-1, int(count.get(-1, 0)), n]
 	return [best, best_n, n]
 
+## The cut's pin spacing, in the picture's squares, for the sliver rule.
+var _gap := 1.0
+
 ## Pins kept are the panels' corners only, numbered afresh; sides are every
 ## panel's outline, shared where two panels meet.
 func _index(lattice: PackedVector2Array, raw_panels: Array, raw_colour: Array) -> void:
@@ -933,7 +946,226 @@ func _index(lattice: PackedVector2Array, raw_panels: Array, raw_colour: Array) -
 			corners.append(renum[v])
 		panels.append(corners)
 		colour.append(raw_colour[k])
+	_tidy(_gap)
 	_link()
+
+# --- no sliver stays ---
+
+## Every panel too narrow or too small to thread (THIN, SMALL of `least`)
+## joined to a neighbour or pinched out, thinnest first, and the pins no
+## panel uses any more let go. Over `pins`, `panels` and `colour`; before
+## `_link`.
+func _tidy(least: float) -> void:
+	var tries := panels.size() + pins.size()
+	for pass_ in tries:
+		var k := _thinnest(least)
+		if k < 0:
+			break
+		if not _absorb(k):
+			_pinch(k)
+	_prune()
+
+## The thinnest panel under the rule, by its width in spacings, or -1.
+func _thinnest(least: float) -> int:
+	var worst := -1
+	var worst_by := INF
+	var floor_area := SMALL * least * least
+	for k in panels.size():
+		var o := outline(k)
+		var by := _width(o) / least
+		if by >= THIN and absf(_signed_area(o)) >= floor_area:
+			continue
+		if by < worst_by:
+			worst_by = by
+			worst = k
+	return worst
+
+## How narrow a panel is: the least, over its sides, of how far its corners
+## stand off that side's line (a thin triangle's height, a thin quad's
+## thickness, 0.87 of the side for a triangle of three equal ones).
+static func _width(o: PackedVector2Array) -> float:
+	var n := o.size()
+	var best := INF
+	for i in n:
+		var a := o[i]
+		var d := o[(i + 1) % n] - a
+		var len := d.length()
+		if len < 1.0e-6:
+			continue
+		var far := 0.0
+		for p in o:
+			far = maxf(far, absf(d.cross(p - a)) / len)
+		best = minf(best, far)
+	return best
+
+## Panel `k` joined to the neighbour it shares the longest run of sides
+## with (one of its own colour first among equals) whose union keeps to
+## MAX_CORNERS and bends little; false when none will do.
+func _absorb(k: int) -> bool:
+	var by_side := {}
+	for q in panels.size():
+		var corners: PackedInt32Array = panels[q]
+		for m in corners.size():
+			var key := _key(corners[m], corners[(m + 1) % corners.size()])
+			var lst: PackedInt32Array = by_side.get(key, PackedInt32Array())
+			lst.append(q)
+			by_side[key] = lst
+	var mine: PackedInt32Array = panels[k]
+	var n := mine.size()
+	var share := {}
+	for m in n:
+		var a := mine[m]
+		var b := mine[(m + 1) % n]
+		for q in by_side.get(_key(a, b), PackedInt32Array()):
+			if q != k:
+				share[q] = float(share.get(q, 0.0)) + pins[a].distance_to(pins[b])
+	var order := share.keys()
+	order.sort_custom(func(x: int, y: int) -> bool:
+		if not is_equal_approx(float(share[x]), float(share[y])):
+			return float(share[x]) > float(share[y])
+		return colour[x] == colour[k] and colour[y] != colour[k])
+	for q: int in order:
+		var joined := _union(mine, panels[q])
+		if joined.is_empty() or joined.size() > MAX_CORNERS or not _bends_little(joined):
+			continue
+		panels[q] = joined
+		panels.remove_at(k)
+		colour.remove_at(k)
+		return true
+	return false
+
+## The outlines `p` and `q` as one, joined along the sides they share when
+## those make one unbroken run of `p`; [] when they share none, every side,
+## two separate runs (a hole between them) or meet again at a pin off the
+## run (the union would pass that pin twice).
+func _union(p: PackedInt32Array, q: PackedInt32Array) -> PackedInt32Array:
+	var n := p.size()
+	var qq := q
+	if _signed_area(_shape(p)) * _signed_area(_shape(q)) < 0.0:
+		qq = q.duplicate()
+		qq.reverse()
+	var m := qq.size()
+	var q_sides := {}
+	for j in m:
+		q_sides[_key(qq[j], qq[(j + 1) % m])] = true
+	var shared := PackedByteArray()
+	shared.resize(n)
+	var count := 0
+	var starts := 0
+	var start := -1
+	for i in n:
+		shared[i] = 1 if q_sides.has(_key(p[i], p[(i + 1) % n])) else 0
+		count += shared[i]
+	if count == 0 or count == n:
+		return PackedInt32Array()
+	for i in n:
+		if shared[i] and not shared[(i + n - 1) % n]:
+			starts += 1
+			start = i
+	if starts != 1:
+		return PackedInt32Array()
+	var end := (start + count) % n
+	var out := PackedInt32Array()
+	# p's own way round, from the run's last pin back to its first
+	for i in range(n - count + 1):
+		out.append(p[(end + i) % n])
+	# then q's own way, from the run's first pin on to its last
+	var j := qq.find(p[start])
+	if j < 0:
+		return PackedInt32Array()
+	var steps := 0
+	j = (j + 1) % m
+	while qq[j] != p[end]:
+		out.append(qq[j])
+		j = (j + 1) % m
+		steps += 1
+		if steps > m:
+			return PackedInt32Array()
+	for i in out.size():
+		for i2 in range(i + 1, out.size()):
+			if out[i] == out[i2]:
+				return PackedInt32Array()
+	return out
+
+func _shape(ids: PackedInt32Array) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	for i in ids:
+		out.append(pins[i])
+	return out
+
+## Whether `poly` turns the wrong way at no corner by more than REFLEX, and
+## has no corner on another.
+func _bends_little(poly: PackedInt32Array) -> bool:
+	var n := poly.size()
+	var sign := 1.0 if _signed_area(_shape(poly)) >= 0.0 else -1.0
+	for i in n:
+		var a := pins[poly[i]]
+		var b := pins[poly[(i + 1) % n]]
+		var c := pins[poly[(i + 2) % n]]
+		var ab := (b - a).length()
+		var bc := (c - b).length()
+		if ab < 1.0e-6 or bc < 1.0e-6:
+			return false
+		if sign * (b - a).cross(c - b) < -REFLEX * ab * bc:
+			return false
+	return true
+
+## Panel `k`'s shortest side pinched shut: its two pins made one (the one
+## more panels meet at stays), so the sliver loses a corner, and at three
+## corners falls out; the panels about it close over the pin that went,
+## one pinched to a point by it split into its loops.
+func _pinch(k: int) -> void:
+	var mine: PackedInt32Array = panels[k]
+	var n := mine.size()
+	var a := mine[0]
+	var b := mine[1 % n]
+	var shortest := INF
+	for m in n:
+		var d := pins[mine[m]].distance_to(pins[mine[(m + 1) % n]])
+		if d < shortest:
+			shortest = d
+			a = mine[m]
+			b = mine[(m + 1) % n]
+	var meets_a := 0
+	var meets_b := 0
+	for corners in panels:
+		if (corners as PackedInt32Array).has(a):
+			meets_a += 1
+		if (corners as PackedInt32Array).has(b):
+			meets_b += 1
+	var keep := a if meets_a >= meets_b else b
+	var gone := b if keep == a else a
+	var out_panels: Array = []
+	var out_colour := PackedInt32Array()
+	for q in panels.size():
+		var ids := PackedInt32Array()
+		for i in panels[q]:
+			var r: int = keep if i == gone else i
+			if ids.is_empty() or ids[ids.size() - 1] != r:
+				ids.append(r)
+		while ids.size() > 1 and ids[0] == ids[ids.size() - 1]:
+			ids.remove_at(ids.size() - 1)
+		for loop in _simple_loops(ids):
+			if loop.size() < 3 or absf(_signed_area(_shape(loop))) < 1.0e-6:
+				continue
+			out_panels.append(loop)
+			out_colour.append(colour[q])
+	panels = out_panels
+	colour = out_colour
+
+## The pins numbered afresh, those no panel uses let go.
+func _prune() -> void:
+	var renum := {}
+	var out := PackedVector2Array()
+	for k in panels.size():
+		var corners := PackedInt32Array()
+		for v in panels[k]:
+			if not renum.has(v):
+				renum[v] = out.size()
+				out.append(pins[v])
+			corners.append(renum[v])
+		panels[k] = corners
+	pins = out
 
 ## The sides, from the panels.
 func _link() -> void:
@@ -976,7 +1208,6 @@ static func _key(a: int, b: int) -> int:
 ## A hand-made picture (the tutorial's): pins and panels as given, colours
 ## named.
 func adopt_laid(pin_list: Array, panel_list: Array, named: Array) -> void:
-	hems = false
 	w = 1
 	h = 1
 	name_key = ""
@@ -1019,6 +1250,7 @@ func adopt_drawn(got: Dictionary) -> void:
 			c = colours.size()
 			colours.append(named)
 		colour.append(c)
+	_tidy(DRAWN_LEAST[band])
 	_link()
 	reset()
 
@@ -1149,23 +1381,6 @@ func reset() -> void:
 	done = 0
 	threads = 0
 	refused = 0
-	if hems:
-		hem()
-
-## The picture's outline threaded before the first touch (2026-10-28, the
-## made-fun pass): the sides only one panel has, so the day opens on the
-## thing's silhouette in yarn and not on a cloud of pins, and the tedious
-## third of the threading (an Easy day was ~90 sides by hand, 20-45 of them
-## round the edge) is done. A side whose laying would close a panel stays
-## open, so nothing is knitted before the player's first thread.
-func hem() -> void:
-	for s in sides.size():
-		if laid[s] or (side_panels[s] as PackedInt32Array).size() != 1:
-			continue
-		if open_sides[side_panels[s][0]] <= 1:
-			continue
-		lay_side(s)
-	threads = 0
 
 ## The side between pins `a` and `b`, -1 for none.
 func side_between(a: int, b: int) -> int:

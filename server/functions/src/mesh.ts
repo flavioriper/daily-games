@@ -26,7 +26,7 @@ export interface Mesh {
   /** The image's 0-100 to that square: square = (image - x0) * s, and the
    *  same in y (the centring folded into x0 and y0). */
   box: {x0: number; y0: number; s: number};
-  stats: {asked: number; kept: number; snapped: number; dropped: number; tees: number; clipped: number};
+  stats: {asked: number; kept: number; snapped: number; dropped: number; tees: number; clipped: number; slimmed: number};
   why: string;
 }
 
@@ -223,7 +223,7 @@ function unstack(w: Work, stats: Stats): void {
 }
 
 /** Only the pins a panel uses, numbered in the order the panels use them. */
-function renumber(w: Work): void {
+export function renumber<T extends {k: number[]}>(w: {pins: P[]; panels: T[]}): void {
   const to = new Map<number, number>();
   const pins: P[] = [];
   for (const p of w.panels) {
@@ -233,6 +233,169 @@ function renumber(w: Work): void {
     });
   }
   w.pins = pins;
+}
+
+/** No panel is a sliver: the phone's rule (puzzles/hoop_state.gd `_tidy`,
+ *  the user, 2026-11-03: numerals cramped in slivers along a picture's
+ *  edge are "terrible to fill ... if too narrow merge with near ones"),
+ *  mirrored here so the eye judges the picture the phone will show. A
+ *  panel whose width (the least, over its sides, of how far its corners
+ *  stand off that side) is under THIN of `least`, or whose area is under
+ *  SMALL least squared, joins the neighbour across its longest shared run
+ *  of sides (one of its own colour first among equals) while the union
+ *  keeps to MOST_CORNERS and bends in nowhere past REFLEX; failing every
+ *  neighbour, its shortest side is pinched shut. Thinnest first, until
+ *  none is left; the pins no panel uses any more go. Answers how many panels
+ *  went, for the try's `mended`. */
+export const THIN = 0.6;
+export const SMALL = 0.35;
+export const REFLEX = 0.2;
+
+function width(o: P[]): number {
+  let best = Infinity;
+  for (let i = 0; i < o.length; i++) {
+    const a = o[i], b = o[(i + 1) % o.length];
+    const dx = b[0] - a[0], dy = b[1] - a[1];
+    const len = Math.hypot(dx, dy);
+    if (len < 1e-6) continue;
+    let far = 0;
+    for (const p of o) far = Math.max(far, Math.abs(dx * (p[1] - a[1]) - dy * (p[0] - a[0])) / len);
+    best = Math.min(best, far);
+  }
+  return best;
+}
+
+function sideKey(a: number, b: number): string {
+  return a < b ? `${a},${b}` : `${b},${a}`;
+}
+
+/** The outlines joined along the sides they share when those make one
+ *  unbroken run of `p`; null when they share none, every side, two runs or
+ *  meet again at a pin off the run. */
+function union(pins: P[], p: number[], q: number[]): number[] | null {
+  const n = p.length;
+  const qq = area2(p.map((i) => pins[i])) * area2(q.map((i) => pins[i])) < 0 ? q.slice().reverse() : q;
+  const m = qq.length;
+  const qSides = new Set<string>();
+  for (let j = 0; j < m; j++) qSides.add(sideKey(qq[j], qq[(j + 1) % m]));
+  const shared = p.map((_, i) => qSides.has(sideKey(p[i], p[(i + 1) % n])));
+  const count = shared.filter(Boolean).length;
+  if (count === 0 || count === n) return null;
+  let starts = 0, start = -1;
+  for (let i = 0; i < n; i++) if (shared[i] && !shared[(i + n - 1) % n]) { starts++; start = i; }
+  if (starts !== 1) return null;
+  const end = (start + count) % n;
+  const out: number[] = [];
+  for (let i = 0; i <= n - count; i++) out.push(p[(end + i) % n]);
+  let j = qq.indexOf(p[start]);
+  if (j < 0) return null;
+  j = (j + 1) % m;
+  for (let steps = 0; qq[j] !== p[end]; steps++) {
+    if (steps > m) return null;
+    out.push(qq[j]);
+    j = (j + 1) % m;
+  }
+  return new Set(out).size === out.length ? out : null;
+}
+
+/** Whether the outline turns the wrong way at no corner by more than
+ *  REFLEX, with no corner on another. */
+function bendsLittle(pins: P[], poly: number[]): boolean {
+  const n = poly.length;
+  const sign = area2(poly.map((i) => pins[i])) >= 0 ? 1 : -1;
+  for (let i = 0; i < n; i++) {
+    const a = pins[poly[i]], b = pins[poly[(i + 1) % n]], c = pins[poly[(i + 2) % n]];
+    const ab = Math.hypot(b[0] - a[0], b[1] - a[1]), bc = Math.hypot(c[0] - b[0], c[1] - b[1]);
+    if (ab < 1e-6 || bc < 1e-6) return false;
+    if (sign * ((b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0])) < -REFLEX * ab * bc) return false;
+  }
+  return true;
+}
+
+export function slim<T extends {k: number[]}>(w: {pins: P[]; panels: T[]}, least: number, same: (a: T, b: T) => boolean): number {
+  const had = w.panels.length;
+  const floorArea = SMALL * least * least;
+  const shape = (k: number[]) => k.map((i) => w.pins[i]);
+  for (let tries = w.panels.length + w.pins.length; tries > 0; tries--) {
+    // the thinnest panel under the rule
+    let worst = -1, worstBy = Infinity;
+    w.panels.forEach((p, k) => {
+      const o = shape(p.k);
+      const by = width(o) / least;
+      if (by >= THIN && Math.abs(area2(o)) * 0.5 >= floorArea) return;
+      if (by < worstBy) { worstBy = by; worst = k; }
+    });
+    if (worst < 0) break;
+    const mine = w.panels[worst];
+    // joined to the neighbour it shares the longest run with
+    const bySide = new Map<string, number[]>();
+    w.panels.forEach((p, q) => {
+      for (let s = 0; s < p.k.length; s++) {
+        const key = sideKey(p.k[s], p.k[(s + 1) % p.k.length]);
+        bySide.set(key, [...(bySide.get(key) ?? []), q]);
+      }
+    });
+    const share = new Map<number, number>();
+    for (let s = 0; s < mine.k.length; s++) {
+      const a = mine.k[s], b = mine.k[(s + 1) % mine.k.length];
+      for (const q of bySide.get(sideKey(a, b)) ?? []) {
+        if (q !== worst) share.set(q, (share.get(q) ?? 0) + Math.hypot(w.pins[a][0] - w.pins[b][0], w.pins[a][1] - w.pins[b][1]));
+      }
+    }
+    const order = [...share.keys()].sort((x, y) => {
+      if (Math.abs(share.get(x)! - share.get(y)!) > 1e-6) return share.get(y)! - share.get(x)!;
+      return Number(same(w.panels[y], mine)) - Number(same(w.panels[x], mine));
+    });
+    let joined = false;
+    for (const q of order) {
+      const got = union(w.pins, mine.k, w.panels[q].k);
+      if (got === null || got.length > MOST_CORNERS || !bendsLittle(w.pins, got)) continue;
+      w.panels[q].k = got;
+      w.panels.splice(worst, 1);
+      joined = true;
+      break;
+    }
+    if (joined) continue;
+    // pinched shut along its shortest side: the pin more panels meet at stays
+    let a = mine.k[0], b = mine.k[1 % mine.k.length], shortest = Infinity;
+    for (let s = 0; s < mine.k.length; s++) {
+      const u = mine.k[s], v = mine.k[(s + 1) % mine.k.length];
+      const d = Math.hypot(w.pins[u][0] - w.pins[v][0], w.pins[u][1] - w.pins[v][1]);
+      if (d < shortest) { shortest = d; a = u; b = v; }
+    }
+    const meets = (i: number) => w.panels.filter((p) => p.k.includes(i)).length;
+    const [keep, gone] = meets(a) >= meets(b) ? [a, b] : [b, a];
+    const out: T[] = [];
+    for (const p of w.panels) {
+      const ids: number[] = [];
+      for (const i of p.k) {
+        const r = i === gone ? keep : i;
+        if (ids.length === 0 || ids[ids.length - 1] !== r) ids.push(r);
+      }
+      while (ids.length > 1 && ids[0] === ids[ids.length - 1]) ids.pop();
+      for (const loop of simpleLoops(ids)) {
+        if (loop.length < 3 || Math.abs(area2(shape(loop))) < 1e-6) continue;
+        out.push({...p, k: loop});
+      }
+    }
+    w.panels = out;
+  }
+  renumber(w);
+  return had - w.panels.length;
+}
+
+/** An outline that passes a pin twice (pinched to a point) as the loops
+ *  either side of the pinch. */
+function simpleLoops(ids: number[]): number[][] {
+  const out: number[][] = [];
+  let stack: number[] = [];
+  for (const i of ids) {
+    const at = stack.indexOf(i);
+    if (at >= 0) { out.push(stack.slice(at)); stack = stack.slice(0, at); }
+    stack.push(i);
+  }
+  out.push(stack);
+  return out;
 }
 
 /** What the phone would refuse, the first of: a panel outside 3 to
@@ -286,13 +449,14 @@ function place(w: Work): {pins: number[]; box: Mesh["box"]} {
 /** The model's map for an `n` grid made into a band's mesh, mended in turn
  *  and checked as readHoop checks its own. */
 export function repairMesh(got: ModelMap, n: number, band: number): Mesh {
-  const stats: Stats = {asked: got.panels.length, kept: 0, snapped: 0, dropped: 0, tees: 0, clipped: 0};
+  const stats: Stats = {asked: got.panels.length, kept: 0, snapped: 0, dropped: 0, tees: 0, clipped: 0, slimmed: 0};
   const {pins, of} = snap(got, n, stats);
   const w = drop(got, pins, of, stats);
   tees(w, stats);
   weld(w, BANDS[band].least * 100 / 256, stats);
   unstack(w, stats);
   clip(w, stats);
+  stats.slimmed = slim(w, BANDS[band].least * 100 / 256, (a, b) => a.c === b.c);
   renumber(w);
   const why = check(w, band);
   stats.kept = w.panels.length;

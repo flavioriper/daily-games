@@ -713,3 +713,87 @@ tries 10 broke the board's rules, and the hoops cost US$1.96 of the day's $4.28.
 Rerun of bands 0-2: 6 min 44 s, US$0.36 of Claude, all kept (tent 18 panels by
 the reader at 7, lantern 59 by Haiku at 7, campfire 94 by Sonnet at 7).
 Parallel jellies and pictures have not run yet.
+
+## 2026-11-03: no sliver, no hem, whole numbers, a finger's snap
+
+The user, with a phone shot of an Easy board (a full square of forty panels
+with its outline threaded, numerals cramped in slivers along the edges) and
+ten of the reference's screens (bare linen, plain dots, one brown numeral a
+panel, whole from first to last, panels of a size): "some numbers are small
+at edges ... terrible to fill ... maybe some rules about how big a space can
+be, and if too narrow merge with near ones"; "remove the predefined border
+that already come filled, board should come clean and empty"; players "click
+or pass the finger on the dot, but it move the board instead missing the dot
+... but also be aware that increasing too much the helper can make it
+interpret every click to move board as a dot"; "stop decreasing the numbers
+as the dots are filled, keep the number always showing whole".
+
+- **The shot is the bank fallback.** Today's Easy hoop is the birdbath (40
+  panels, no square); the square with corner pins is the bead cut (`adopt`
+  → `_cut`) a phone takes when `ThemedPictures.hoop()` answers {} -- this
+  morning's HTTP-0 timeout (5707a858, in no store build) did exactly that.
+  So the sliver rule runs after **both** cuts.
+- **No sliver stays** (`HoopState._tidy`, from `_index` after the bead cut
+  with the cut's `gap`, and from `adopt_drawn` after the weld with
+  `DRAWN_LEAST`): a panel whose width (`_width`: the least, over its sides,
+  of how far its corners stand off that side's line, a thin triangle's
+  height) is under `THIN` 0.6 of the pin spacing, or whose area is under
+  `SMALL` 0.35 spacings squared, joins the neighbour it shares the longest
+  run of sides with (`_absorb`, `_union`: the two outlines joined along one
+  unbroken run; one of its own colour first among equals) while the union
+  keeps to `MAX_CORNERS` and turns the wrong way at no corner by more than
+  `REFLEX` 0.2 (the sine of the turn: a sliver taken across its long side
+  adds one near-straight corner; across a short side it would fold the
+  far apex in, and that is refused); failing every neighbour, its shortest
+  side is pinched shut (`_pinch`, the pin more panels meet at stays) and it
+  falls out. Thinnest first until none is left; `_prune` renumbers the
+  pins. The smallest shape the weld allows, a triangle of three spacings,
+  is 0.87 wide and 0.43 in area, and stays. Measured over the 21 cached
+  days (a throwaway over `backend_cache/pictures-*`): before, 9/15/26/41 a
+  band of 400/472/881/1430 panels were under half a spacing wide and
+  65/72/124/200 under one; after, none under the rule, every panel ≤7
+  corners, no side three panels share, 0-12 ms a picture (the bank cut
+  7-27 ms whole). The 19th's Insane pie went 170→150 panels and kept its
+  shape; the 20th's Medium, a wreath of slivers round a plant, 46→25. A
+  day kept mid-way under the old cut has another side count and is let
+  go by `_resume` once; one whose cut did not change keeps its threads,
+  the old hem among them, for that day.
+- **The night does the same** (`mesh.ts` `slim`, from `repairMesh` after
+  `clip` and from `readHoop` after its cut, with each path's `least`), so
+  the eye judges the picture the phone will show. On the raw cached maps
+  it gives 32/50/82/153 where the phone (welding first) gives
+  31/48/82/150. **Built, not deployed** (the user's call; the deploy list in
+  `docs/agents/turns-and-backend.md`). It runs before `check`, so a map
+  padded with slivers can fall under `LEAST_PANELS` and be re-asked (that
+  Medium against a floor of 26): a pass-rate and cost risk on Easy and
+  Medium, which already struggle (2026-11-02). `mended` logs `slimmed`.
+- **No hem.** `HoopState.hem` and `hems` are gone: the day opens on bare
+  linen and pins, as the reference does. The 2026-10-28 taste call undone.
+- **Whole numbers.** A panel's numeral is its corner count from the first
+  thread to the last (`_mark_into` strokes `n`); `_ticked`/`MARK_TICK` (the
+  swell on a count-down) went. The ink still turns to the panel's colour
+  as its sides are threaded, the one thing that moves. `MARK_H.x` 8.
+- **A finger's snap, at the zoom shown** (`FINGER` 52, `SNAP_MOST` 90,
+  `SNAP_SHARE` 0.5, `_snap_px`, `_reach_px`): the snap is half the
+  shortest side between two pins **as the zoom shows it**, within 52-90
+  screen px (1080 across a phone is ~15 px a millimetre), and a press
+  takes the nearest standing pin within it, no "clearly nearest" test
+  (`REACH_CLEAR` gone: a wrong pin is a cheap, visible slip, a pan an
+  expensive one). It was `SNAP` 24-46 px of the layout divided by the
+  zoom, a constant 24-46 on screen at 4x while the pins stood 72-180 px
+  apart and their heads grew with them: a finger at the edge of a zoomed
+  pin missed and, zoomed, panned, which is the players' complaint. Past
+  the snap is bare linen and, seen close, still a pan, so the helper does
+  not take every pan for a pin. The reach with a thread in hand scales
+  the same way (`REACH_MAX` 110). A throwaway headless probe on Insane at
+  4x (snap 52.9, reach 84.6): a ScreenTouch 34 px off a pin takes it and
+  starts no pan, a drag let go 34 px past the neighbour lays the side,
+  a press 366 px from every pin pans.
+- `YH_RULES` and `HTP_YH_FILL_BODY` (en/pt/es) say the corner count and no
+  outline. Probe every band solved; `_shot_hoop d=0 play` on
+  `opengl3_angle`: 86 at rest, 98 peak; the Easy board opens bare with
+  whole numerals.
+- **Unconfirmed**: the user's eye on the merged pictures and on the 0.6
+  threshold, the snap on a phone, the night's `slim` on Vertex. Nothing
+  reaches phones until a store build. Still open: the bank fallback cuts
+  the whole square of a scene (sky and all) when the day has no hoop.

@@ -44,28 +44,40 @@ const SIDE := 26.0
 const HUD_ROW := 76.0
 const RING := 30.0
 const INSET := 30.0
-## A pin's head, and how near a finger has to come to one (a share of the
-## shortest side between two pins, within the two bounds).
+## A pin's head.
 const PIN_R := 11.0
 const PIN_R_MIN := 5.5
-const SNAP := Vector2(24.0, 46.0)
-const SNAP_SHARE := 0.45
-## The magnet (the user, 2026-10-14: "some helper to help user when clicking
-## near the dot to avoid miss click by requiring something too accurate"):
-## past the snap, a finger still takes the nearest pin out to REACH (a share
-## of the shortest side, within the bound) when that pin is clearly the
-## nearest, REACH_CLEAR times nearer than the next; a halo on it says so
-## while the finger is down. A drag let go short of a pin: only the pins a
-## side joins to the pin held compete (`_target_at`), the nearest within
-## the reach taken outright (the user, 2026-10-15: players "have to click
-## exactly on the dot to connect after clicking on the start point").
+## The snap: a finger takes the nearest standing pin within it. It is
+## SNAP_SHARE of the shortest side between two pins **as the zoom shows
+## it**, never under FINGER px (a fingertip on a phone: 1080 px across one
+## is about 15 a millimetre, so 52 is a 3.5 mm reach) nor over SNAP_MOST,
+## so that off every snap is bare linen and, seen close, a pan. Measured on
+## the screen whatever the zoom (the user, 2026-11-03: players "click or
+## pass the finger on the dot, but it move the board instead missing the
+## dot": the snap was 24-46 px of the layout divided by the zoom, the same
+## 24-46 px on the screen at 4x while the pins stood 72-180 px apart and
+## their heads grew with them, so a finger at the edge of a zoomed pin
+## missed it and panned; and raised without bound it would take every pan
+## for a pin, as the user warned). No "clearly nearest" test any more: a
+## wrong pin is a cheap, visible slip, a pan an expensive one.
+const FINGER := 52.0
+const SNAP_MOST := 90.0
+const SNAP_SHARE := 0.5
+## With a thread in hand, only the pins a side joins to the pin held
+## compete (`_target_at`), the nearest within the reach (a share of the
+## shortest side as shown, within the bounds) taken outright, and farther
+## when the finger is nearer it than the pin held (the user, 2026-10-15:
+## players "have to click exactly on the dot to connect after clicking on
+## the start point"); a halo on it says so while the finger is down.
 const REACH_SHARE := 0.8
-const REACH_MAX := 78.0
-const REACH_CLEAR := 1.35
-## On its way a drag takes only a pin it passes this near (a share of the
-## snap): three pins all but in a line, and a straight drag to the far one
-## would be taken by the middle one at the full snap.
-const PASS_SHARE := 0.6
+const REACH_MAX := 110.0
+## On its way a drag takes only a pin it passes this near: PASS_SHARE of
+## the shortest side as shown, within PASS px (what it was at the whole
+## view before the finger snap, growing with the zoom). Three pins all but
+## in a line, and a straight drag to the far one would be taken by the
+## middle one at the full snap (`_win.gd` found it, twice).
+const PASS_SHARE := 0.27
+const PASS := Vector2(14.0, 40.0)
 ## A thread: its width at the most, and its twist a dash every TWIST
 ## pixels at that width. Chunky since 2026-10-28 (was 6, 0.13 of the
 ## shortest side): the reference's rope reads across the room, ours was a
@@ -108,18 +120,19 @@ const PIN := Color("6b5b8c")
 const PIN_DEEP := Color("4d4068")
 const PIN_HI := Color("a596c4")
 const MARK := Color("6f604c")
-## A panel's mark is how many of its sides are still to thread (its corner
-## count until the first, since the made-fun pass of 2026-10-28: the
-## board speaks as it is threaded, each lay ticking down the numbers on
-## either side of it), written in a stitched numeral sized to the room
-## about the panel's middle, this tall at the least and the most seen
-## whole; the zoom scales it with the linen. It was 3.5-5.5 px from the
-## user's 2026-10-14 "numbers should be really small" (on Insane's 300
-## panels): specks no one read at the whole view of a phone, where the
-## reference's numerals are as bold as its dots. Sized to the room, a
-## crowded board's stay small and an open one's read; the ink takes the
-## panel's colour as its sides are threaded, wholly at the last one.
-const MARK_H := Vector2(6.0, 18.0)
+## A panel's mark is its corner count, whole, from the first thread to the
+## last (the user, 2026-11-03: "stop decreasing the numbers as the dots
+## are filled, keep the number always showing whole"; from 2026-10-28 it
+## had counted the sides still open, ticking down at each lay), written in
+## a stitched numeral sized to the room about the panel's middle, this
+## tall at the least and the most seen whole; the zoom scales it with the
+## linen. It was 3.5-5.5 px from the user's 2026-10-14 "numbers should be
+## really small" (on Insane's 300 panels): specks no one read at the whole
+## view of a phone, where the reference's numerals are as bold as its dots.
+## Sized to the room, a crowded board's stay small and an open one's read;
+## the ink takes the panel's colour as its sides are threaded, wholly at
+## the last one, which is all that moves.
+const MARK_H := Vector2(8.0, 18.0)
 const MARK_W := 0.21
 const MARK_STROKE := 1.1
 const MARK_ROOM := 0.65
@@ -129,8 +142,6 @@ const MARK_SEEN := 24.0
 ## The darkest a numeral's ink may be lifted to, so a pale panel's still
 ## reads on the linen.
 const MARK_LUM := 0.38
-## A numeral ticking down swells and settles over MARK_TICK s.
-const MARK_TICK := 0.32
 ## The numerals a panel can need (1 to 7 sides), as strokes in a box a
 ## unit tall: a 1 is a flag and a stem, a 4 a stem and a bent arm, a 7 a
 ## bar and a slope; the 2, 3, 5 and 6 have bows (`_glyph`).
@@ -229,8 +240,10 @@ var _centre := Vector2.ZERO
 var _radius := 0.0
 var _mid := Vector2.ZERO
 var _k := 0.0
-var _snap := 30.0
-var _reach := 50.0
+## The shortest side between two pins as laid out, and the snap at the
+## whole view (the entrance's stagger).
+var _shortest := 60.0
+var _snap := FINGER
 var _pin_r := PIN_R
 ## The rope's width on this cut: YARN_W, thinner on a fine cut (Insane's
 ## panels are 18-40 px, and a 6 px rope round each made a wire mesh of
@@ -281,9 +294,6 @@ var _filling := {}
 var _gone := {}
 var _laid_at := {}
 var _shiver_at := {}
-## Panels whose numeral just ticked down: when, drawn swelling over the
-## still marks until MARK_TICK.
-var _ticked := {}
 
 # the hand
 var _cur := -1
@@ -436,7 +446,6 @@ func _deal() -> void:
 	_gone = {}
 	_laid_at = {}
 	_shiver_at = {}
-	_ticked = {}
 	_threads_stale = true
 	_pins_stale = true
 	_marks_stale = true
@@ -487,8 +496,8 @@ func _layout() -> void:
 	var shortest := INF
 	for s in state.sides:
 		shortest = minf(shortest, _px[s.x].distance_to(_px[s.y]))
-	_snap = clampf(shortest * SNAP_SHARE, SNAP.x, SNAP.y)
-	_reach = clampf(shortest * REACH_SHARE, _snap, REACH_MAX)
+	_shortest = maxf(shortest, 1.0)
+	_snap = clampf(_shortest * SNAP_SHARE, FINGER, SNAP_MOST)
 	_pin_r = clampf(shortest * 0.16, PIN_R_MIN, PIN_R)
 	_rope_w = clampf(shortest * ROPE_SHARE, 3.0, YARN_W)
 	# the zoom's room is the whole table; close is the shortest side made
@@ -810,13 +819,13 @@ func _pin_into(b, at: Vector2, r: float) -> void:
 	b.disc(at + Vector2(-0.4, -0.6), r * 0.82, PIN)
 	b.disc(at + Vector2(-r * 0.3, -r * 0.32), r * 0.3, PIN_HI)
 
-## Panel `k`'s mark: the sides it still wants threaded, stitched about
-## its middle in the mark's ink turning to the panel's colour as its sides
-## are laid (wholly at the last one), sized to the room the panel has about
-## that middle and never under MARK_H.x: a cramped panel's may touch its
-## sides, but every panel says its count. `swell` scales it (a numeral
-## ticking down). A count with no numeral (none is cut) gets a dot a side.
-func _mark_into(b, k: int, swell := 1.0) -> void:
+## Panel `k`'s mark: its corner count, stitched about its middle in the
+## mark's ink turning to the panel's colour as its sides are laid (wholly
+## at the last one), sized to the room the panel has about that middle and
+## never under MARK_H.x: a cramped panel's may touch its sides, but every
+## panel says its count. A count with no numeral (none is cut) gets a dot a
+## side.
+func _mark_into(b, k: int) -> void:
 	var outline := _outline_px(k)
 	var n := outline.size()
 	var left: int = state.open_sides[k]
@@ -825,7 +834,7 @@ func _mark_into(b, k: int, swell := 1.0) -> void:
 	var room := INF
 	for m in n:
 		room = minf(room, Geometry2D.get_closest_point_to_segment(c, outline[m], outline[(m + 1) % n]).distance_to(c))
-	var tall := minf(clampf(room * MARK_ROOM, MARK_H.x, MARK_H.y), MARK_SEEN / _built_k) * swell
+	var tall := minf(clampf(room * MARK_ROOM, MARK_H.x, MARK_H.y), MARK_SEEN / _built_k)
 	var wide := maxf(MARK_STROKE / _built_k, tall * MARK_W)
 	var ink := MARK
 	if left < n:
@@ -835,10 +844,10 @@ func _mark_into(b, k: int, swell := 1.0) -> void:
 		if lum > MARK_LUM:
 			own = own.darkened(1.0 - MARK_LUM / lum)
 		ink = MARK.lerp(own, 1.0 if left <= 1 else float(n - left) / float(n - 1))
-	var strokes := _glyph(left)
+	var strokes := _glyph(n)
 	if strokes.is_empty():
-		for m in left:
-			b.disc(c + Vector2.from_angle(TAU * m / maxf(1.0, left)) * tall * 0.45, 3.0, ink)
+		for m in n:
+			b.disc(c + Vector2.from_angle(TAU * m / maxf(1.0, n)) * tall * 0.45, 3.0, ink)
 		return
 	for stroke: Array in strokes:
 		var pts := PackedVector2Array()
@@ -970,7 +979,7 @@ func _marks_mesh() -> ArrayMesh:
 	_marks = null
 	var b := _builder()
 	for k in state.panels.size():
-		if not state.filled[k] and not _ticked.has(k):
+		if not state.filled[k]:
 			_mark_into(b, k)
 	_marks = b.mesh() if not b.idx.is_empty() else null
 	return _marks
@@ -1099,14 +1108,6 @@ func _moving_meshes(now: float, since: float) -> Array:
 		var a := _px[int(l.from)]
 		var c := _px[int(l.to)]
 		b.stroke(PackedVector2Array([a, a.lerp(c, Motion.back_out(e / THREAD_IN))]), _rope_w, YARN)
-	# numerals ticking down swell and settle
-	for kk: int in _ticked.keys():
-		var e := now - float(_ticked[kk])
-		if e >= MARK_TICK or state.filled[kk] or _solved_at > -INF:
-			_ticked.erase(kk)
-			_marks_stale = true
-			continue
-		_mark_into(b, kk, 1.0 + 0.45 * sin(PI * e / MARK_TICK) * (1.0 - e / MARK_TICK))
 	var knitting := _combine(parts)
 	var under := b.mesh() if not b.idx.is_empty() else null
 	b = _builder()
@@ -1332,44 +1333,39 @@ func _gui_input(event: InputEvent) -> void:
 func _can_play() -> bool:
 	return not (is_done() or _solved_at > -INF)
 
+## The snap and the reach on the screen, at the zoom shown.
+func _snap_px() -> float:
+	return clampf(_shortest * zoom.k * SNAP_SHARE, FINGER, SNAP_MOST)
+
+func _reach_px() -> float:
+	return clampf(_shortest * zoom.k * REACH_SHARE, _snap_px(), REACH_MAX)
+
+func _pass_px() -> float:
+	return clampf(_shortest * zoom.k * PASS_SHARE, PASS.x, PASS.y)
+
 ## The pin a finger at `at` (the screen; the table as the zoom shows it)
-## means: the nearest still standing within the snap, -1 for none. With
-## `reach` (a tap, or a drag let go), the magnet: out to the reach when it
-## is clearly the nearest. A drag on its way takes only what it passes
-## close to, or it would be pulled to pins beside its path.
-func pin_at(at: Vector2, but := -1, reach := false, within := -1.0) -> int:
-	var snap := (_snap if within < 0.0 else within) / zoom.k
+## means: the nearest still standing within `within` screen px (the snap
+## when not given), -1 for none. A drag on its way takes only what it
+## passes close to, or it would be pulled to pins beside its path.
+func pin_at(at: Vector2, but := -1, within := -1.0) -> int:
+	var snap := (_snap_px() if within < 0.0 else within) / zoom.k
 	var best := -1
-	var best_d := INF
-	var next_d := INF
+	var best_d := snap
 	var lp := zoom.to_layout(at)
 	for v in _px.size():
 		if v == but or state.pin_live[v] <= 0:
 			continue
 		var d := _px[v].distance_to(lp)
 		if d < best_d:
-			next_d = best_d
 			best_d = d
 			best = v
-		elif d < next_d:
-			next_d = d
-	if best < 0:
-		return -1
-	# within the snap it is taken; past it, only when clearly the nearest
-	if best_d < snap:
-		return best
-	if reach and best_d < _reach / zoom.k and best_d * REACH_CLEAR < next_d:
-		return best
-	return -1
+	return best
 
 func press(at: Vector2) -> void:
 	if not _can_play():
 		return
-	# a pin under the finger is the pin meant; off every pin, the magnet's
-	# pick
-	var v := pin_at(at, -1, false)
-	if v < 0:
-		v = pin_at(at, -1, true)
+	# the nearest pin within a finger of the press is the pin meant
+	var v := pin_at(at)
 	_finger = zoom.to_layout(at)
 	_moved = false
 	_pan_last = Vector2(-1.0, -1.0)
@@ -1406,7 +1402,7 @@ func _target_at(at: Vector2, from: int) -> int:
 	if from < 0:
 		return -1
 	var lp := zoom.to_layout(at)
-	var reach := _reach / zoom.k
+	var reach := _reach_px() / zoom.k
 	var held := _px[from].distance_to(lp)
 	var best := -1
 	var best_d := INF
@@ -1429,17 +1425,18 @@ func drag(at: Vector2) -> void:
 		return
 	if _cur < 0 or not _can_play():
 		return
-	# the finger's way since the last event, a sample a half snap apart, so
-	# a quick drag still passes every pin under it
+	# the finger's way since the last event, sampled closer than the pass
+	# is wide, so a quick drag still passes every pin under it
 	var lp := zoom.to_layout(at)
-	var snap := _snap / zoom.k
+	var snap := _snap_px() / zoom.k
+	var pass_ := _pass_px()
 	var from := _finger if _finger.x >= 0.0 else lp
-	var n := maxi(1, ceili(from.distance_to(lp) / (snap * 0.5)))
+	var n := maxi(1, ceili(from.distance_to(lp) / (pass_ / zoom.k * 0.7)))
 	for m in range(1, n + 1):
 		var q := from.lerp(lp, float(m) / n)
 		if _refused >= 0 and q.distance_to(_px[_refused]) > snap:
 			_refused = -1
-		var v := pin_at(zoom.to_screen(q), _cur, false, -1.0 if m == n else _snap * PASS_SHARE)
+		var v := pin_at(zoom.to_screen(q), _cur, -1.0 if m == n else pass_)
 		if v >= 0 and v != _refused:
 			_step(v)
 			if _cur < 0 or not _can_play():
@@ -1462,7 +1459,7 @@ func release(at: Vector2) -> void:
 			_step(v)
 	if _cur >= 0 and _can_play():
 		var lp := zoom.to_layout(at)
-		if lp.distance_to(_px[_cur]) > _snap / zoom.k:
+		if lp.distance_to(_px[_cur]) > _snap_px() / zoom.k:
 			fx.cue("pick", 0.72)
 			if not Motion.reduce:
 				fx.puff(_at(lp), YARN_HI, 4)
@@ -1506,11 +1503,8 @@ func _lay(s: int, a: int, b: int) -> void:
 	var semis := mini(_stroke_threads - 1, 10) * STITCH_STEP
 	fx.cue("stitch", pow(2.0, minf(semis, 5.0) / 12.0) * randf_range(0.97, 1.03))
 	var mid := (_px[a] + _px[b]) * 0.5
+	# the ink of the panels either side takes a step toward their colour
 	_marks_stale = true
-	if not Motion.reduce:
-		for k in state.side_panels[s]:
-			if not state.filled[k]:
-				_ticked[k] = now
 	for k in closed:
 		_close(k, mid, now)
 		for v in state.panels[k]:

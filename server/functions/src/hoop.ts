@@ -4,7 +4,7 @@ import {ask, draw, Drawing, shapesModel} from "./generate";
 import {mapPlan} from "./ladder";
 import {dataUrl, FLOOR, judge, renderPolygons} from "./eye";
 import {gridOver, GRID_N} from "./grid";
-import {checkMesh, colourFrom, ModelMap, repairMesh} from "./mesh";
+import {checkMesh, colourFrom, ModelMap, repairMesh, slim} from "./mesh";
 import {logTry as logLine, Port, PortTry, said} from "./ports";
 import {shrunk} from "./vistas";
 import {area, board, compact, dissolve, fewer, grow, join, network, raster, Raster, Regions, SIDE, split, touching, unring, unshadow} from "./facets";
@@ -350,6 +350,8 @@ export function readHoop(d: Drawing | Raster, band: number): {pins: number[]; pa
     if (got.panels.length <= rule.most) break;
     regions = Math.max(4, Math.floor(regions * Math.min(0.92, rule.most / got.panels.length)));
   }
+  // no sliver stays, as the phone will have it (mesh.ts `slim`)
+  slim(got, rule.least, (a, b) => a.region === b.region);
   let why = "";
   const crossed = overlaps(got.pins, got.panels) as number;
   if (crossed > 0) why = `${crossed} pins inside another panel`;
