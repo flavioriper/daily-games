@@ -81,7 +81,9 @@ export async function call<T>(url: string, body?: unknown): Promise<T> {
     method: body === undefined ? "GET" : "POST",
     headers: {
       Authorization: `Bearer ${t}`,
-      "x-goog-user-project": PROJECT,
+      // The service account's own project pays for GA calls; naming a quota
+      // project would need serviceusage.services.use on it.
+      ...(ga ? {} : { "x-goog-user-project": PROJECT }),
       ...(body === undefined ? {} : { "Content-Type": "application/json" }),
     },
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -91,7 +93,7 @@ export async function call<T>(url: string, body?: unknown): Promise<T> {
   if (!res.ok) {
     const msg: string = j?.error?.message ?? `HTTP ${res.status}`;
     let fix: string | undefined;
-    if (ga && res.status === 403 && !/has not been used|is disabled|SERVICE_DISABLED/i.test(msg))
+    if (ga && res.status === 403 && !/has not been used|is disabled|SERVICE_DISABLED|serviceusage/i.test(msg))
       fix = `In Google Analytics: Admin > Property access management > add ${ANALYTICS_SA} as a Viewer.`;
     else if (/insufficient authentication scopes|ACCESS_TOKEN_SCOPE_INSUFFICIENT/i.test(msg)) fix = SCOPE_FIX;
     else if (/has not been used|is disabled|SERVICE_DISABLED/i.test(msg)) {
