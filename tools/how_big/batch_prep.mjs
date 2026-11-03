@@ -4,8 +4,11 @@
 // Read only; uses this Mac's Application Default Credentials.
 //
 //   node tools/how_big/batch_prep.mjs [count]     (default 50 day files)
+//
+// Run again, it adds `count` day files after those there and keeps the
+// batch's pool.json, so nothing a run has kept is lost.
 import { createRequire } from "node:module";
-import { mkdirSync, writeFileSync, readdirSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 
 const here = path.dirname(new URL(import.meta.url).pathname);
@@ -33,10 +36,12 @@ for (const d of (await db.collection("themes").get()).docs) {
 if (themes.length === 0) throw new Error("no staged themes in themes/");
 
 mkdirSync(out, { recursive: true });
-for (const f of readdirSync(out)) if (/^day-\d+\.json$/.test(f)) rmSync(path.join(out, f));
-writeFileSync(path.join(out, "pool.json"), JSON.stringify(pool));
-writeFileSync(path.join(out, "night_ids.json"), JSON.stringify(pool.map((t) => t.id)));
-for (let i = 0; i < count; i++) {
+if (!existsSync(path.join(out, "pool.json"))) {
+  writeFileSync(path.join(out, "pool.json"), JSON.stringify(pool));
+  writeFileSync(path.join(out, "night_ids.json"), JSON.stringify(pool.map((t) => t.id)));
+}
+const there = readdirSync(out).filter((f) => /^day-\d+\.json$/.test(f)).length;
+for (let i = there; i < there + count; i++) {
   const t = themes[i % themes.length];
   writeFileSync(path.join(out, `day-${String(i + 1).padStart(3, "0")}.json`), JSON.stringify({ day: t.day, theme: t.theme }));
 }
