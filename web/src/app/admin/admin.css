@@ -1,0 +1,65 @@
+/* The local admin page: the site's paper and terracotta, quieter. Its own
+   tokens and class names so the landing page's styles never reach in. */
+body.admin {
+  --a-bg: #f6efe2;
+  --a-card: #fffaf1;
+  --a-ink: #2a2019;
+  --a-dim: #6f6052;
+  --a-rule: #e6dccb;
+  --a-track: #efe5d3;
+  --a-mark: #c4522c;
+  --a-error: #a3271a;
+  background: var(--a-bg);
+  color: var(--a-ink);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  overflow-x: hidden;
+}
+@media (prefers-color-scheme: dark) {
+  body.admin {
+    --a-bg: #1d1814;
+    --a-card: #26201b;
+    --a-ink: #f1e8da;
+    --a-dim: #b3a593;
+    --a-rule: #3a322a;
+    --a-track: #322a23;
+    --a-mark: #e2774f;
+    --a-error: #f08a7a;
+    color-scheme: dark;
+  }
+}
+
+.admin .shell { max-width: 960px; margin: 0 auto; padding: 32px 16px 64px; }
+.admin .top { margin-bottom: 24px; }
+.admin .kicker { margin: 0; color: var(--a-dim); font-size: 13px; letter-spacing: .04em; text-transform: uppercase; }
+.admin h1 { margin: 2px 0 0; font: 600 28px/1.2 Georgia, serif; }
+.admin h2 { margin: 0 0 4px; font-size: 18px; }
+.admin code { font-size: .88em; background: var(--a-track); padding: 1px 5px; border-radius: 6px; }
+
+.admin button { font: inherit; color: inherit; cursor: pointer; border: 1px solid var(--a-rule); background: var(--a-card); border-radius: 999px; }
+.admin button:disabled { opacity: .4; cursor: default; }
+
+.admin .card { background: var(--a-card); border: 1px solid var(--a-rule); border-radius: 20px; padding: 20px; margin-bottom: 16px; }
+.admin .card-head { margin-bottom: 16px; max-width: 640px; }
+.admin .dim { color: var(--a-dim); margin: 0; }
+.admin .small { font-size: 13px; margin-top: 16px; }
+.admin .error { color: var(--a-error); }
+
+.admin .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin: 0 0 16px; }
+.admin .facts div { border: 1px solid var(--a-rule); border-radius: 12px; padding: 8px 12px; }
+.admin .facts dt { font-size: 12px; color: var(--a-dim); }
+.admin .facts dd { margin: 0; color: var(--a-ink); font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.admin .playlist { list-style: none; margin: 0; padding: 0; }
+.admin .playlist li { display: flex; gap: 12px; align-items: start; padding: 12px 0; border-bottom: 1px solid var(--a-rule); }
+.admin .playlist li:last-child { border-bottom: 0; }
+.admin .play { flex: none; width: 40px; height: 40px; padding: 0; font-size: 13px; }
+.admin .playlist li.on .play { background: var(--a-mark); border-color: var(--a-mark); color: #fff; }
+.admin .body { flex: 1; min-width: 0; }
+.admin .line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.admin .n { color: var(--a-dim); font-variant-numeric: tabular-nums; min-width: 1.4em; }
+.admin .meta { font-size: 13px; font-variant-numeric: tabular-nums; }
+.admin .small-btn { padding: 2px 10px; font-size: 12px; margin-left: auto; }
+.admin .progress { height: 6px; background: var(--a-track); border-radius: 3px; margin-top: 8px; overflow: hidden; cursor: pointer; }
+.admin .progress span { display: block; height: 100%; background: var(--a-mark); }
+.admin .time { font-size: 12px; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.admin .prompt { margin: 8px 0 0; font-size: 14px; color: var(--a-dim); background: var(--a-track); border-radius: 12px; padding: 10px 12px; }

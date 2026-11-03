@@ -68,3 +68,18 @@ chrome stays quiet:
 - **Live** on Vercel since 2026-10-30: project `peeplet-landing`, team hypertradeworx, https://peeplet-landing.vercel.app. Linked to the GitHub repo (the user, 2026-10-30: "it should have a link to git main"): every push to `main` builds and deploys production, so the site ships with the game. The project's Root Directory must be `web`; the first Git build failed while it was `.` (no `next` at the repo root). `NEXT_PUBLIC_SITE_URL` is set there; change it when a domain arrives.
 - **Vercel Web Analytics and Speed Insights** (the user, 2026-10-30): `<Analytics />` and `<SpeedInsights />` in `src/app/[locale]/layout.tsx`, both already enabled in the project's dashboard (Hobby). They load same-origin scripts from `/_vercel/insights` and `/_vercel/speed-insights`, which exist only on Vercel, so the same export on Firebase Hosting 404s those two requests and counts nothing. `/_vercel/insights/script.js` still 404'd on the live site before the first deploy carrying this change.
 - **Ahrefs** (the user, 2026-10-30): the Web Analytics script and the `ahrefs-site-verification` meta came over from the old site (`src/app/[locale]/layout.tsx`, `src/lib/seo.ts`), same project and key. The Ahrefs project is scoped to `*.peeplet.com`, which resolved to nothing that day: the registrar (Squarespace) delegates to Google Cloud DNS nameservers that refuse the zone, and Vercel has no such domain. Site Audit stays at 0 and "Recheck installation" cannot pass until peeplet.com serves this site.
+- **The admin page, `/admin`, local only** (2026-11-03, the user: "I want to
+  literally be able to see which ones are in the game right now, an admin
+  itself"; and "local only", since the tracks may not be offered as a
+  library, `docs/agents/sound.md`). `cd web && npx next dev`, then
+  http://localhost:3000/admin. Files named `*.dev.tsx` / `*.dev.ts` are seen
+  only by `next dev` (`next.config.mjs` adds those page extensions in the
+  dev phase and drops `output: "export"` there), so no build, Vercel or
+  Firebase, carries the page, its route or the music. It reads the repo on
+  every load (`src/lib/soundtrack.ts`): order and titles from
+  `core/music.gd`'s `TRACKS`, take letter and prompt from
+  `tools/gen_music.py`, length (ffprobe) and size from `assets/music/`, and
+  the deck's volume, crossfades and loudness. Each track plays from
+  `/admin/music/<id>` (byte ranges, so it seeks), and the list plays on in the
+  game's order. A track listed in the game with no file is called out. The
+  soundtrack is its first section; more of the game goes beside it.
