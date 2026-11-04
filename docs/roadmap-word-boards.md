@@ -62,7 +62,11 @@ selling their own game. Four sources were read from search summaries only
 
 ## Shortlist (start here, in this order)
 
-- [ ] **1. Cross Stitch** (Waffle). Six five-letter words on a sampler,
+- [x] **1. Cross Stitch** (Waffle). Built 2026-11-04: spec
+      `docs/superpowers/specs/2026-11-04-cross-stitch-design.md`, notes
+      `docs/agents/boards/cross-stitch.md`. As proposed below, except Easy
+      deals one across and one down word whole and Insane allows one more
+      swap (16). Six five-letter words on a sampler,
       three across and three down crossing on a 5x5 with four holes; the
       letters are stitched in the wrong places; drag a letter onto another
       to swap; green sits, amber is on the right thread, grey a stray;

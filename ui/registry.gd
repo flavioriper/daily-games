@@ -632,6 +632,40 @@ const PUZZLES := [
 		],
 	},
 	{
+		"id": "crossstitch",
+		"skill": "words",
+		"kind": "puzzle",
+		"title": "Cross Stitch",
+		"blurb": "CS_BLURB",
+		"short": "CS_SHORT",
+		"motto": "CS_MOTTO",
+		"footer": "Swap · Stitch · Spell",
+		# A sampler on a sewing table: six five-letter words crossing on a
+		# 5 by 5 linen, their letters sewn on in the wrong places; swap two
+		# letters at a time until every one is stitched, within the band's
+		# swaps (puzzles/crossstitch2d.gd). The samplers are banked from
+		# Hidden Word's answers in the player's language
+		# (tools/build_crossstitch.py, content/insane/crossstitch*.json). The
+		# patches are dragged on the board itself, so no tray and no actions
+		# row: the bulb rides the tools row, and the bin stays shut (a swap
+		# is sewn in).
+		"script": "res://puzzles/crossstitch2d.gd",
+		"card": "res://ui/menu/cards/crossstitch.gd",
+		"shell": "flat",
+		"tray": "none",
+		"bleed": true,
+		"level_card": true,
+		"actions": false,
+		"difficulties": [0, 1, 2, 3],
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "CS_LVL_0"},
+			{"difficulty": 1, "name": "Medium", "line": "CS_LVL_1"},
+			{"difficulty": 2, "name": "Hard", "line": "CS_LVL_2"},
+			{"difficulty": 3, "name": "Insane", "line": "CS_LVL_3"},
+		],
+	},
+	{
 		"id": "clues",
 		"skill": "words",
 		"kind": "puzzle",

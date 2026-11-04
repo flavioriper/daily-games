@@ -1,0 +1,7306 @@
+{
+"version": 1,
+"note": "Cross Stitch's samplers for one band, built by tools/build_crossstitch.py from Hidden Word's answers (themselves drawn from wordfreq, Robyn Speer et al., CC-BY-SA 4.0). `words`: three across (rows 0/2/4) then three down (columns 0/2/4), folded; `shown`: the same as written; `start`: the 25 cells as dealt, row by row, '.' a hole; `min`: the fewest swaps that stitch it, solved exactly.",
+"boards": [
+{
+"words": [
+"guest",
+"angel",
+"early",
+"grape",
+"eager",
+"tally"
+],
+"shown": [
+"guest",
+"angel",
+"early",
+"grape",
+"eager",
+"tally"
+],
+"start": "greuep.a.aglleer.a.sntaly",
+"min": 10
+},
+{
+"words": [
+"eagle",
+"unite",
+"light",
+"equal",
+"going",
+"event"
+],
+"shown": [
+"eagle",
+"unite",
+"light",
+"equal",
+"going",
+"event"
+],
+"start": "hgtnvq.t.euainee.n.aligol",
+"min": 10
+},
+{
+"words": [
+"scarf",
+"angel",
+"large",
+"small",
+"anger",
+"false"
+],
+"shown": [
+"scarf",
+"angel",
+"large",
+"small",
+"anger",
+"false"
+],
+"start": "lgaars.n.lcfaeen.a.mlsrge",
+"min": 10
+},
+{
+"words": [
+"mouse",
+"vault",
+"rally",
+"mover",
+"usual",
+"entry"
+],
+"shown": [
+"mouse",
+"vault",
+"rally",
+"mover",
+"usual",
+"entry"
+],
+"start": "soumau.e.tsyelon.a.rrvlal",
+"min": 10
+},
+{
+"words": [
+"nurse",
+"tramp",
+"yummy",
+"nutty",
+"realm",
+"empty"
+],
+"shown": [
+"nurse",
+"tramp",
+"yummy",
+"nutty",
+"realm",
+"empty"
+],
+"start": "aernuu.e.supmmmy.t.tytlmr",
+"min": 10
+},
+{
+"words": [
+"diner",
+"naval",
+"early",
+"dense",
+"never",
+"rally"
+],
+"shown": [
+"diner",
+"naval",
+"early",
+"dense",
+"never",
+"rally"
+],
+"start": "drnrae.v.ynlseee.l.aiaeal",
+"min": 10
+},
+{
+"words": [
+"pedal",
+"onion",
+"eager",
+"probe",
+"doing",
+"liner"
+],
+"shown": [
+"pedal",
+"onion",
+"eager",
+"probe",
+"doing",
+"liner"
+],
+"start": "oarior.e.dennalb.n.eoegpi",
+"min": 10
+},
+{
+"words": [
+"serve",
+"vapor",
+"rider",
+"savor",
+"rapid",
+"error"
+],
+"shown": [
+"serve",
+"vapor",
+"rider",
+"savor",
+"rapid",
+"error"
+],
+"start": "veeier.i.rradpro.o.sravao",
+"min": 10
+},
+{
+"words": [
+"sneak",
+"extra",
+"larva",
+"spell",
+"enter",
+"koala"
+],
+"shown": [
+"sneak",
+"extra",
+"larva",
+"spell",
+"enter",
+"koala"
+],
+"start": "enlaap.l.srntaro.k.xleave",
+"min": 10
+},
+{
+"words": [
+"entry",
+"drove",
+"rapid",
+"elder",
+"troop",
+"yield"
+],
+"shown": [
+"entry",
+"drove",
+"rapid",
+"elder",
+"troop",
+"yield"
+],
+"start": "eondpl.r.ydrivre.o.earlit",
+"min": 10
+},
+{
+"words": [
+"cause",
+"after",
+"leash",
+"crawl",
+"ultra",
+"earth"
+],
+"shown": [
+"cause",
+"after",
+"leash",
+"crawl",
+"ultra",
+"earth"
+],
+"start": "utlsea.l.fsaretr.a.rweach",
+"min": 10
+},
+{
+"words": [
+"space",
+"owing",
+"their",
+"short",
+"alive",
+"eager"
+],
+"shown": [
+"space",
+"owing",
+"their",
+"short",
+"alive",
+"eager"
+],
+"start": "svhcea.l.eonepgi.r.trhwia",
+"min": 10
+},
+{
+"words": [
+"shown",
+"after",
+"perch",
+"sharp",
+"otter",
+"north"
+],
+"shown": [
+"shown",
+"after",
+"perch",
+"sharp",
+"otter",
+"north"
+],
+"start": "thrpoa.h.oteferw.e.trcnsh",
+"min": 10
+},
+{
+"words": [
+"hound",
+"plant",
+"yield",
+"happy",
+"usage",
+"dated"
+],
+"shown": [
+"hound",
+"plant",
+"yield",
+"happy",
+"usage",
+"dated"
+],
+"start": "apsnde.g.aplatuo.n.edlihy",
+"min": 10
+},
+{
+"words": [
+"growl",
+"eaten",
+"north",
+"green",
+"otter",
+"lunch"
+],
+"shown": [
+"growl",
+"eaten",
+"north",
+"green",
+"otter",
+"lunch"
+],
+"start": "ouowlt.r.rtnecet.e.hgaren",
+"min": 10
+},
+{
+"words": [
+"scrub",
+"ember",
+"lunch",
+"spell",
+"robin",
+"birch"
+],
+"shown": [
+"scrub",
+"ember",
+"lunch",
+"spell",
+"robin",
+"birch"
+],
+"start": "ulsebp.o.ihmuccn.i.blcrre",
+"min": 10
+},
+{
+"words": [
+"waltz",
+"oasis",
+"early",
+"whose",
+"laser",
+"zesty"
+],
+"shown": [
+"waltz",
+"oasis",
+"early",
+"whose",
+"laser",
+"zesty"
+],
+"start": "ztlwia.a.oeassay.r.tshele",
+"min": 10
+},
+{
+"words": [
+"crate",
+"upper",
+"their",
+"count",
+"apple",
+"error"
+],
+"shown": [
+"crate",
+"upper",
+"their",
+"count",
+"apple",
+"error"
+],
+"start": "ceoaro.p.errhten.l.puprit",
+"min": 10
+},
+{
+"words": [
+"skill",
+"opera",
+"delay",
+"stood",
+"ideal",
+"leafy"
+],
+"shown": [
+"skill",
+"opera",
+"delay",
+"stood",
+"ideal",
+"leafy"
+],
+"start": "skdile.e.loaloat.f.adprey",
+"min": 10
+},
+{
+"words": [
+"young",
+"media",
+"yield",
+"yummy",
+"undue",
+"guard"
+],
+"shown": [
+"young",
+"media",
+"yield",
+"yummy",
+"undue",
+"guard"
+],
+"start": "dduigu.m.uyeuina.e.rymonl",
+"min": 10
+},
+{
+"words": [
+"camel",
+"early",
+"ruler",
+"clear",
+"moral",
+"layer"
+],
+"shown": [
+"camel",
+"early",
+"ruler",
+"clear",
+"moral",
+"layer"
+],
+"start": "reaaya.u.eelrllc.o.mralae",
+"min": 10
+},
+{
+"words": [
+"couch",
+"utter",
+"belly",
+"crumb",
+"until",
+"hurry"
+],
+"shown": [
+"couch",
+"utter",
+"belly",
+"crumb",
+"until",
+"hurry"
+],
+"start": "rmucee.l.oyttnrh.i.rbuulc",
+"min": 10
+},
+{
+"words": [
+"input",
+"event",
+"laser",
+"ideal",
+"press",
+"tutor"
+],
+"shown": [
+"input",
+"event",
+"laser",
+"ideal",
+"press",
+"tutor"
+],
+"start": "linutd.u.tesanpa.s.vroeer",
+"min": 10
+},
+{
+"words": [
+"worry",
+"storm",
+"entry",
+"waste",
+"roost",
+"yummy"
+],
+"shown": [
+"worry",
+"storm",
+"entry",
+"waste",
+"roost",
+"yummy"
+],
+"start": "mrarwy.o.rutotms.s.eotnry",
+"min": 10
+},
+{
+"words": [
+"worth",
+"drill",
+"honey",
+"width",
+"reign",
+"holly"
+],
+"shown": [
+"worth",
+"drill",
+"honey",
+"width",
+"reign",
+"holly"
+],
+"start": "wlyloi.g.tdniolh.t.hroeer",
+"min": 10
+},
+{
+"words": [
+"carve",
+"miner",
+"tower",
+"comet",
+"renew",
+"error"
+],
+"shown": [
+"carve",
+"miner",
+"tower",
+"comet",
+"renew",
+"error"
+],
+"start": "wrioeo.e.evmecre.a.rnoter",
+"min": 10
+},
+{
+"words": [
+"grill",
+"apply",
+"enter",
+"grade",
+"input",
+"layer"
+],
+"shown": [
+"grill",
+"apply",
+"enter",
+"grade",
+"input",
+"layer"
+],
+"start": "gralrt.n.nyuprld.l.ieeaep",
+"min": 10
+},
+{
+"words": [
+"sonic",
+"solid",
+"inner",
+"sushi",
+"nylon",
+"cider"
+],
+"shown": [
+"sonic",
+"solid",
+"inner",
+"sushi",
+"nylon",
+"cider"
+],
+"start": "niyise.c.rdulois.o.einnoh",
+"min": 10
+},
+{
+"words": [
+"music",
+"since",
+"yacht",
+"mossy",
+"sonic",
+"chest"
+],
+"shown": [
+"music",
+"since",
+"yacht",
+"mossy",
+"sonic",
+"chest"
+],
+"start": "eaciis.o.smihons.s.hyucct",
+"min": 10
+},
+{
+"words": [
+"drove",
+"noise",
+"tight",
+"donut",
+"owing",
+"elect"
+],
+"shown": [
+"drove",
+"noise",
+"tight",
+"donut",
+"owing",
+"elect"
+],
+"start": "wronec.s.lnohdet.u.vtiiog",
+"min": 10
+},
+{
+"words": [
+"rough",
+"alarm",
+"yield",
+"ready",
+"usage",
+"humid"
+],
+"shown": [
+"rough",
+"alarm",
+"yield",
+"ready",
+"usage",
+"humid"
+],
+"start": "rougli.e.uslaydi.a.hgremd",
+"min": 10
+},
+{
+"words": [
+"crest",
+"onion",
+"kneel",
+"clock",
+"elite",
+"tonal"
+],
+"shown": [
+"crest",
+"onion",
+"kneel",
+"clock",
+"elite",
+"tonal"
+],
+"start": "acketl.n.norinlo.t.soceel",
+"min": 10
+},
+{
+"words": [
+"stiff",
+"ocean",
+"tally",
+"shout",
+"ideal",
+"funny"
+],
+"shown": [
+"stiff",
+"ocean",
+"tally",
+"shout",
+"ideal",
+"funny"
+],
+"start": "dtnflh.a.usoyinu.a.ctealf",
+"min": 10
+},
+{
+"words": [
+"mouth",
+"rated",
+"horse",
+"mirth",
+"utter",
+"hedge"
+],
+"shown": [
+"mouth",
+"rated",
+"horse",
+"mirth",
+"utter",
+"hedge"
+],
+"start": "ttmdur.t.haeteee.o.ghoisr",
+"min": 10
+},
+{
+"words": [
+"climb",
+"apple",
+"lotus",
+"crawl",
+"input",
+"bless"
+],
+"shown": [
+"climb",
+"apple",
+"lotus",
+"crawl",
+"input",
+"bless"
+],
+"start": "mlapib.n.ltpuoew.u.cllsrs",
+"min": 10
+},
+{
+"words": [
+"mulch",
+"ruler",
+"lucky",
+"mural",
+"lilac",
+"hardy"
+],
+"shown": [
+"mulch",
+"ruler",
+"lucky",
+"mural",
+"lilac",
+"hardy"
+],
+"start": "myuciu.u.drlhelr.u.alkcaa",
+"min": 10
+},
+{
+"words": [
+"merry",
+"drama",
+"limit",
+"medal",
+"realm",
+"yeast"
+],
+"shown": [
+"merry",
+"drama",
+"limit",
+"medal",
+"realm",
+"yeast"
+],
+"start": "meidsr.l.eertmar.y.aaimel",
+"min": 10
+},
+{
+"words": [
+"motel",
+"ultra",
+"tally",
+"mount",
+"total",
+"leafy"
+],
+"shown": [
+"motel",
+"ultra",
+"tally",
+"mount",
+"total",
+"leafy"
+],
+"start": "foaalr.u.meottan.e.ltyllo",
+"min": 10
+},
+{
+"words": [
+"slice",
+"guess",
+"tally",
+"sight",
+"ideal",
+"essay"
+],
+"shown": [
+"slice",
+"guess",
+"tally",
+"sight",
+"ideal",
+"essay"
+],
+"start": "sahcla.s.lileyti.g.esasud",
+"min": 10
+},
+{
+"words": [
+"shout",
+"aside",
+"elect",
+"stake",
+"olive",
+"theft"
+],
+"shown": [
+"shout",
+"aside",
+"elect",
+"stake",
+"olive",
+"theft"
+],
+"start": "shlvte.t.haostel.d.fuikce",
+"min": 10
+},
+{
+"words": [
+"comic",
+"after",
+"loose",
+"crawl",
+"metro",
+"carve"
+],
+"shown": [
+"comic",
+"after",
+"loose",
+"crawl",
+"metro",
+"carve"
+],
+"start": "ecriwc.e.savtafm.r.oloore",
+"min": 10
+},
+{
+"words": [
+"there",
+"anger",
+"later",
+"trail",
+"eight",
+"error"
+],
+"shown": [
+"there",
+"anger",
+"later",
+"trail",
+"eight",
+"error"
+],
+"start": "thlrha.t.errairg.e.oireen",
+"min": 10
+},
+{
+"words": [
+"apply",
+"gleam",
+"essay",
+"argue",
+"press",
+"yummy"
+],
+"shown": [
+"apply",
+"gleam",
+"essay",
+"argue",
+"press",
+"yummy"
+],
+"start": "epasyr.r.uspmgll.y.mausae",
+"min": 10
+},
+{
+"words": [
+"moody",
+"sonic",
+"crest",
+"music",
+"ounce",
+"yacht"
+],
+"shown": [
+"moody",
+"sonic",
+"crest",
+"music",
+"ounce",
+"yacht"
+],
+"start": "mcdiyn.i.aroochs.c.ouuest",
+"min": 10
+},
+{
+"words": [
+"ahead",
+"eaten",
+"agree",
+"arena",
+"enter",
+"dense"
+],
+"shown": [
+"ahead",
+"eaten",
+"agree",
+"arena",
+"enter",
+"dense"
+],
+"start": "aerndr.s.eeheatn.a.geeaen",
+"min": 10
+},
+{
+"words": [
+"lemon",
+"vault",
+"rated",
+"lover",
+"mount",
+"noted"
+],
+"shown": [
+"lemon",
+"vault",
+"rated",
+"lover",
+"mount",
+"noted"
+],
+"start": "eeuorv.e.otanlte.o.olnmad",
+"min": 10
+},
+{
+"words": [
+"rumor",
+"swamp",
+"nutty",
+"risen",
+"meant",
+"ropey"
+],
+"shown": [
+"rumor",
+"swamp",
+"nutty",
+"risen",
+"meant",
+"ropey"
+],
+"start": "rmnowt.e.ospuaue.n.yrmeti",
+"min": 10
+},
+{
+"words": [
+"chill",
+"drown",
+"rhyme",
+"cider",
+"ivory",
+"lance"
+],
+"shown": [
+"chill",
+"drown",
+"rhyme",
+"cider",
+"ivory",
+"lance"
+],
+"start": "crcahr.v.wllohie.r.ndiyme",
+"min": 10
+},
+{
+"words": [
+"brief",
+"opera",
+"mulch",
+"bloom",
+"ideal",
+"flash"
+],
+"shown": [
+"brief",
+"opera",
+"mulch",
+"bloom",
+"ideal",
+"flash"
+],
+"start": "upcrbl.d.alafreo.e.smolih",
+"min": 10
+},
+{
+"words": [
+"ideal",
+"patio",
+"three",
+"input",
+"enter",
+"loose"
+],
+"shown": [
+"ideal",
+"patio",
+"three",
+"input",
+"enter",
+"loose"
+],
+"start": "uslain.e.opetdoh.i.aenrte",
+"min": 10
+},
+{
+"words": [
+"enjoy",
+"drive",
+"rated",
+"elder",
+"joint",
+"yield"
+],
+"shown": [
+"enjoy",
+"drive",
+"rated",
+"elder",
+"joint",
+"yield"
+],
+"start": "njioye.t.rdliver.e.dnaelo",
+"min": 10
+},
+{
+"words": [
+"roost",
+"sheen",
+"ninth",
+"risen",
+"ocean",
+"tenth"
+],
+"shown": [
+"roost",
+"sheen",
+"ninth",
+"risen",
+"ocean",
+"tenth"
+],
+"start": "htroit.n.sohiene.a.ecsnte",
+"min": 10
+},
+{
+"words": [
+"breed",
+"often",
+"drape",
+"broad",
+"extra",
+"dense"
+],
+"shown": [
+"breed",
+"often",
+"drape",
+"broad",
+"extra",
+"dense"
+],
+"start": "renrae.x.bsrodee.f.adrtpe",
+"min": 10
+},
+{
+"words": [
+"light",
+"yeast",
+"later",
+"loyal",
+"giant",
+"tutor"
+],
+"shown": [
+"light",
+"yeast",
+"later",
+"loyal",
+"giant",
+"tutor"
+],
+"start": "eigheo.o.saalttu.n.tialyr",
+"min": 10
+},
+{
+"words": [
+"final",
+"early",
+"their",
+"fleet",
+"nurse",
+"layer"
+],
+"shown": [
+"final",
+"early",
+"their",
+"fleet",
+"nurse",
+"layer"
+],
+"start": "rirell.i.afatale.s.eeyuhn",
+"min": 10
+},
+{
+"words": [
+"woven",
+"apple",
+"early",
+"whale",
+"vapor",
+"needy"
+],
+"shown": [
+"woven",
+"apple",
+"early",
+"whale",
+"vapor",
+"needy"
+],
+"start": "awvenl.r.oahppoe.a.delley",
+"min": 10
+},
+{
+"words": [
+"river",
+"delay",
+"ridge",
+"radar",
+"valid",
+"rhyme"
+],
+"shown": [
+"river",
+"delay",
+"ridge",
+"radar",
+"valid",
+"rhyme"
+],
+"start": "mivdla.e.rrehaia.r.daeigy",
+"min": 10
+},
+{
+"words": [
+"craft",
+"onion",
+"needy",
+"clown",
+"alike",
+"tangy"
+],
+"shown": [
+"craft",
+"onion",
+"needy",
+"clown",
+"alike",
+"tangy"
+],
+"start": "lrnanl.c.ankifoy.e.gwtedo",
+"min": 10
+},
+{
+"words": [
+"place",
+"eager",
+"solar",
+"press",
+"angel",
+"error"
+],
+"shown": [
+"place",
+"eager",
+"solar",
+"press",
+"angel",
+"error"
+],
+"start": "erseer.a.aenglcs.o.lroapr",
+"min": 10
+},
+{
+"words": [
+"proof",
+"after",
+"large",
+"pearl",
+"outer",
+"force"
+],
+"shown": [
+"proof",
+"after",
+"large",
+"pearl",
+"outer",
+"force"
+],
+"start": "tforrr.o.oefagre.p.ulaece",
+"min": 10
+},
+{
+"words": [
+"flesh",
+"urban",
+"tower",
+"fruit",
+"elbow",
+"honor"
+],
+"shown": [
+"flesh",
+"urban",
+"tower",
+"fruit",
+"elbow",
+"honor"
+],
+"start": "loiote.l.suhbrna.o.efowrr",
+"min": 10
+},
+{
+"words": [
+"piece",
+"anger",
+"tardy",
+"plant",
+"eager",
+"early"
+],
+"shown": [
+"piece",
+"anger",
+"tardy",
+"plant",
+"eager",
+"early"
+],
+"start": "atlaen.a.rangeic.e.plredy",
+"min": 10
+},
+{
+"words": [
+"ivory",
+"arena",
+"exact",
+"image",
+"opera",
+"yeast"
+],
+"shown": [
+"ivory",
+"arena",
+"exact",
+"image",
+"opera",
+"yeast"
+],
+"start": "avsitm.p.raregey.r.acxeon",
+"min": 10
+},
+{
+"words": [
+"rally",
+"lyric",
+"roast",
+"ruler",
+"larva",
+"yacht"
+],
+"shown": [
+"rally",
+"lyric",
+"roast",
+"ruler",
+"larva",
+"yacht"
+],
+"start": "hoyilu.a.vlcrtae.a.lrrasy",
+"min": 10
+},
+{
+"words": [
+"punch",
+"often",
+"elder",
+"prove",
+"noted",
+"honor"
+],
+"shown": [
+"punch",
+"often",
+"elder",
+"prove",
+"noted",
+"honor"
+],
+"start": "plecor.t.oofneeu.o.dhnevr",
+"min": 10
+},
+{
+"words": [
+"watch",
+"owner",
+"glory",
+"wrong",
+"tango",
+"hardy"
+],
+"shown": [
+"watch",
+"owner",
+"glory",
+"wrong",
+"tango",
+"hardy"
+],
+"start": "odrayr.o.antwewn.g.aglrhc",
+"min": 10
+},
+{
+"words": [
+"route",
+"grave",
+"theft",
+"right",
+"usage",
+"event"
+],
+"shown": [
+"route",
+"grave",
+"theft",
+"right",
+"usage",
+"event"
+],
+"start": "ghiteu.s.vtrvner.g.fahoet",
+"min": 10
+},
+{
+"words": [
+"stone",
+"right",
+"panda",
+"scrap",
+"organ",
+"extra"
+],
+"shown": [
+"stone",
+"right",
+"panda",
+"scrap",
+"organ",
+"extra"
+],
+"start": "ctorxa.r.aginsra.t.pehnda",
+"min": 10
+},
+{
+"words": [
+"haunt",
+"bride",
+"yield",
+"hobby",
+"unite",
+"trend"
+],
+"shown": [
+"haunt",
+"bride",
+"yield",
+"hobby",
+"unite",
+"trend"
+],
+"start": "oerihu.l.rbtndtd.y.naienb",
+"min": 10
+},
+{
+"words": [
+"sting",
+"tango",
+"nerve",
+"satin",
+"inner",
+"grove"
+],
+"shown": [
+"sting",
+"tango",
+"nerve",
+"satin",
+"inner",
+"grove"
+],
+"start": "vvsgaa.n.ntgnieo.e.tiernr",
+"min": 10
+},
+{
+"words": [
+"fiber",
+"ideal",
+"dusty",
+"fried",
+"bless",
+"relay"
+],
+"shown": [
+"fiber",
+"ideal",
+"dusty",
+"fried",
+"bless",
+"relay"
+],
+"start": "fidaer.l.bieusdr.l.taseey",
+"min": 10
+},
+{
+"words": [
+"their",
+"angel",
+"tardy",
+"trait",
+"eager",
+"rally"
+],
+"shown": [
+"their",
+"angel",
+"tardy",
+"trait",
+"eager",
+"rally"
+],
+"start": "allrtn.a.gierehi.e.ytarda",
+"min": 10
+},
+{
+"words": [
+"exact",
+"roost",
+"hotel",
+"earth",
+"about",
+"total"
+],
+"shown": [
+"exact",
+"roost",
+"hotel",
+"earth",
+"about",
+"total"
+],
+"start": "ttacua.h.xrolboe.t.tsoeoa",
+"min": 10
+},
+{
+"words": [
+"pinch",
+"laser",
+"thyme",
+"pilot",
+"nasty",
+"horse"
+],
+"shown": [
+"pinch",
+"laser",
+"thyme",
+"pilot",
+"nasty",
+"horse"
+],
+"start": "aoneli.e.omatirs.t.schyph",
+"min": 10
+},
+{
+"words": [
+"noble",
+"raise",
+"eight",
+"nurse",
+"being",
+"elect"
+],
+"shown": [
+"noble",
+"raise",
+"eight",
+"nurse",
+"being",
+"elect"
+],
+"start": "boguil.l.neaiens.r.ceeths",
+"min": 10
+},
+{
+"words": [
+"crazy",
+"alarm",
+"honey",
+"coach",
+"again",
+"yummy"
+],
+"shown": [
+"crazy",
+"alarm",
+"honey",
+"coach",
+"again",
+"yummy"
+],
+"start": "acmzya.r.nilargo.y.mhoceu",
+"min": 10
+},
+{
+"words": [
+"offer",
+"scoop",
+"sedan",
+"oasis",
+"flood",
+"ripen"
+],
+"shown": [
+"offer",
+"scoop",
+"sedan",
+"oasis",
+"flood",
+"ripen"
+],
+"start": "oflerc.d.iseoasi.n.ofpaeo",
+"min": 10
+},
+{
+"words": [
+"cider",
+"owing",
+"sight",
+"cross",
+"doing",
+"right"
+],
+"shown": [
+"cider",
+"owing",
+"sight",
+"cross",
+"doing",
+"right"
+],
+"start": "isgtrs.o.hrwindg.o.heinic",
+"min": 10
+},
+{
+"words": [
+"cross",
+"index",
+"berry",
+"climb",
+"order",
+"sixty"
+],
+"shown": [
+"cross",
+"index",
+"berry",
+"climb",
+"order",
+"sixty"
+],
+"start": "irtssx.m.yrndero.e.icebrl",
+"min": 10
+},
+{
+"words": [
+"threw",
+"nudge",
+"loose",
+"tonal",
+"radio",
+"where"
+],
+"shown": [
+"threw",
+"nudge",
+"loose",
+"tonal",
+"radio",
+"where"
+],
+"start": "ewahdn.o.truogea.h.rlosie",
+"min": 10
+},
+{
+"words": [
+"teeth",
+"eager",
+"ditch",
+"trend",
+"eight",
+"harsh"
+],
+"shown": [
+"teeth",
+"eager",
+"ditch",
+"trend",
+"eight",
+"harsh"
+],
+"start": "aetneh.e.itigear.r.sdthch",
+"min": 10
+},
+{
+"words": [
+"sheep",
+"issue",
+"rhyme",
+"skier",
+"essay",
+"piece"
+],
+"shown": [
+"sheep",
+"issue",
+"rhyme",
+"skier",
+"essay",
+"piece"
+],
+"start": "cieesy.e.ieshseu.a.mrshpk",
+"min": 10
+},
+{
+"words": [
+"began",
+"ocean",
+"hatch",
+"booth",
+"greet",
+"ninth"
+],
+"shown": [
+"began",
+"ocean",
+"hatch",
+"booth",
+"greet",
+"ninth"
+],
+"start": "bethho.a.tocrgae.n.niatce",
+"min": 10
+},
+{
+"words": [
+"venue",
+"liver",
+"delay",
+"valid",
+"navel",
+"early"
+],
+"shown": [
+"venue",
+"liver",
+"delay",
+"valid",
+"navel",
+"early"
+],
+"start": "alneie.e.vauvyai.e.erdlal",
+"min": 10
+},
+{
+"words": [
+"faith",
+"exact",
+"teeth",
+"fleet",
+"image",
+"hatch"
+],
+"shown": [
+"faith",
+"exact",
+"teeth",
+"fleet",
+"image",
+"hatch"
+],
+"start": "eatxha.e.lmtthie.a.ccftge",
+"min": 10
+},
+{
+"words": [
+"being",
+"aware",
+"treat",
+"beast",
+"image",
+"guest"
+],
+"shown": [
+"being",
+"aware",
+"treat",
+"beast",
+"image",
+"guest"
+],
+"start": "eginsr.e.eauaret.g.wmabst",
+"min": 10
+},
+{
+"words": [
+"point",
+"nanny",
+"horse",
+"punch",
+"inner",
+"thyme"
+],
+"shown": [
+"point",
+"nanny",
+"horse",
+"punch",
+"inner",
+"thyme"
+],
+"start": "yointe.s.nuarenc.n.nhhopm",
+"min": 10
+},
+{
+"words": [
+"quote",
+"inner",
+"teeth",
+"quilt",
+"ounce",
+"earth"
+],
+"shown": [
+"quote",
+"inner",
+"teeth",
+"quilt",
+"ounce",
+"earth"
+],
+"start": "cuenet.u.hinqeou.a.ttelrt",
+"min": 10
+},
+{
+"words": [
+"ninth",
+"vivid",
+"large",
+"navel",
+"never",
+"hedge"
+],
+"shown": [
+"ninth",
+"vivid",
+"large",
+"navel",
+"never",
+"hedge"
+],
+"start": "enltiv.i.edgenae.h.ivarge",
+"min": 10
+},
+{
+"words": [
+"above",
+"alike",
+"event",
+"aware",
+"oxide",
+"elect"
+],
+"shown": [
+"above",
+"alike",
+"event",
+"aware",
+"oxide",
+"elect"
+],
+"start": "kioeet.x.nblwaec.d.rveval",
+"min": 10
+},
+{
+"words": [
+"panel",
+"anger",
+"extra",
+"plane",
+"night",
+"larva"
+],
+"shown": [
+"panel",
+"anger",
+"extra",
+"plane",
+"night",
+"larva"
+],
+"start": "ianepl.e.taelrnn.h.avxrga",
+"min": 10
+},
+{
+"words": [
+"crumb",
+"order",
+"dirty",
+"crowd",
+"under",
+"berry"
+],
+"shown": [
+"crumb",
+"order",
+"dirty",
+"crowd",
+"under",
+"berry"
+],
+"start": "byrorr.n.dwiteem.e.rdcurr",
+"min": 10
+},
+{
+"words": [
+"groan",
+"angel",
+"eaten",
+"grace",
+"ought",
+"nylon"
+],
+"shown": [
+"groan",
+"angel",
+"eaten",
+"grace",
+"ought",
+"nylon"
+],
+"start": "lryntn.u.raaoeog.h.cegnea",
+"min": 10
+},
+{
+"words": [
+"width",
+"sedan",
+"every",
+"waste",
+"dodge",
+"honey"
+],
+"shown": [
+"width",
+"sedan",
+"every",
+"waste",
+"dodge",
+"honey"
+],
+"start": "yidtan.h.weoodgt.r.eevsae",
+"min": 10
+},
+{
+"words": [
+"cliff",
+"linen",
+"rural",
+"color",
+"inner",
+"final"
+],
+"shown": [
+"cliff",
+"linen",
+"rural",
+"color",
+"inner",
+"final"
+],
+"start": "clifoo.n.nuelena.a.rifirl",
+"min": 10
+},
+{
+"words": [
+"radar",
+"diary",
+"rinse",
+"rider",
+"drain",
+"rhyme"
+],
+"shown": [
+"radar",
+"diary",
+"rinse",
+"rider",
+"drain",
+"rhyme"
+],
+"start": "rardes.r.irhdyir.m.aainie",
+"min": 10
+},
+{
+"words": [
+"scent",
+"issue",
+"layer",
+"swirl",
+"essay",
+"their"
+],
+"shown": [
+"scent",
+"issue",
+"layer",
+"swirl",
+"essay",
+"their"
+],
+"start": "nchawi.e.ussstlr.a.iseyer",
+"min": 10
+},
+{
+"words": [
+"broad",
+"inner",
+"every",
+"bride",
+"ounce",
+"dirty"
+],
+"shown": [
+"broad",
+"inner",
+"every",
+"bride",
+"ounce",
+"dirty"
+],
+"start": "neoryv.u.idnitrb.c.redare",
+"min": 10
+},
+{
+"words": [
+"clash",
+"meant",
+"lunch",
+"camel",
+"again",
+"hatch"
+],
+"shown": [
+"clash",
+"meant",
+"lunch",
+"camel",
+"again",
+"hatch"
+],
+"start": "cneeli.n.hmaagta.u.chsacl",
+"min": 10
+},
+{
+"words": [
+"zebra",
+"snake",
+"yield",
+"zesty",
+"blame",
+"ahead"
+],
+"shown": [
+"zebra",
+"snake",
+"yield",
+"zesty",
+"blame",
+"ahead"
+],
+"start": "edbris.l.aknaaee.m.helyzt",
+"min": 10
+},
+{
+"words": [
+"noise",
+"vapor",
+"later",
+"novel",
+"input",
+"error"
+],
+"shown": [
+"noise",
+"vapor",
+"later",
+"novel",
+"input",
+"error"
+],
+"start": "euirvn.a.rrlpose.t.oonaeo",
+"min": 10
+},
+{
+"words": [
+"sharp",
+"opera",
+"exact",
+"score",
+"arena",
+"plant"
+],
+"shown": [
+"sharp",
+"opera",
+"exact",
+"score",
+"arena",
+"plant"
+],
+"start": "pxnhrs.a.eorelar.c.npract",
+"min": 10
+},
+{
+"words": [
+"leash",
+"viola",
+"right",
+"lover",
+"along",
+"heart"
+],
+"shown": [
+"leash",
+"viola",
+"right",
+"lover",
+"along",
+"heart"
+],
+"start": "veaeel.l.aiiolno.s.rrgthh",
+"min": 10
+},
+{
+"words": [
+"floor",
+"cling",
+"scene",
+"focus",
+"oxide",
+"rogue"
+],
+"shown": [
+"floor",
+"cling",
+"scene",
+"focus",
+"oxide",
+"rogue"
+],
+"start": "foccrl.x.onueuil.o.gsdeno",
+"min": 10
+},
+{
+"words": [
+"hence",
+"light",
+"otter",
+"hello",
+"night",
+"enter"
+],
+"shown": [
+"hence",
+"light",
+"otter",
+"hello",
+"night",
+"enter"
+],
+"start": "hettle.c.ntegrnl.i.heehio",
+"min": 10
+},
+{
+"words": [
+"voice",
+"crowd",
+"layer",
+"vocal",
+"ivory",
+"elder"
+],
+"shown": [
+"voice",
+"crowd",
+"layer",
+"vocal",
+"ivory",
+"elder"
+],
+"start": "elcrel.v.vorwida.r.oeoyac",
+"min": 10
+},
+{
+"words": [
+"alone",
+"owing",
+"greet",
+"among",
+"oxide",
+"eight"
+],
+"shown": [
+"alone",
+"owing",
+"greet",
+"among",
+"oxide",
+"eight"
+],
+"start": "eaonem.x.ingohid.l.grwnet",
+"min": 10
+},
+{
+"words": [
+"argue",
+"alive",
+"midst",
+"alarm",
+"grind",
+"event"
+],
+"shown": [
+"argue",
+"alive",
+"midst",
+"alarm",
+"grind",
+"event"
+],
+"start": "nrvuil.r.lnarvet.s.gmidea",
+"min": 10
+},
+{
+"words": [
+"pansy",
+"larva",
+"elect",
+"pulse",
+"nurse",
+"yeast"
+],
+"shown": [
+"pansy",
+"larva",
+"elect",
+"pulse",
+"nurse",
+"yeast"
+],
+"start": "uueayl.p.slarcsv.t.sesean",
+"min": 10
+},
+{
+"words": [
+"fudge",
+"owing",
+"ruler",
+"floor",
+"drill",
+"eager"
+],
+"shown": [
+"fudge",
+"owing",
+"ruler",
+"floor",
+"drill",
+"eager"
+],
+"start": "owgdul.r.logunea.f.lriere",
+"min": 10
+},
+{
+"words": [
+"brush",
+"equal",
+"delay",
+"blend",
+"usual",
+"holly"
+],
+"shown": [
+"brush",
+"equal",
+"delay",
+"blend",
+"usual",
+"holly"
+],
+"start": "yaraul.s.leuoahn.q.bdllse",
+"min": 10
+},
+{
+"words": [
+"sport",
+"after",
+"earth",
+"spare",
+"otter",
+"torch"
+],
+"shown": [
+"sport",
+"after",
+"earth",
+"spare",
+"otter",
+"torch"
+],
+"start": "apopto.h.sarfrrr.e.tetcte",
+"min": 10
+},
+{
+"words": [
+"hurry",
+"realm",
+"entry",
+"horse",
+"roast",
+"yummy"
+],
+"shown": [
+"hurry",
+"realm",
+"entry",
+"horse",
+"roast",
+"yummy"
+],
+"start": "tusoms.a.urrolye.r.yrnehm",
+"min": 10
+},
+{
+"words": [
+"value",
+"ought",
+"after",
+"viola",
+"light",
+"enter"
+],
+"shown": [
+"value",
+"ought",
+"after",
+"viola",
+"light",
+"enter"
+],
+"start": "hageri.u.nvilouf.a.telthe",
+"min": 10
+},
+{
+"words": [
+"crawl",
+"acorn",
+"tiger",
+"craft",
+"along",
+"liner"
+],
+"shown": [
+"crawl",
+"acorn",
+"tiger",
+"craft",
+"along",
+"liner"
+],
+"start": "trcwar.e.icnrrne.g.iafllo",
+"min": 10
+},
+{
+"words": [
+"globe",
+"arena",
+"start",
+"grass",
+"opera",
+"exact"
+],
+"shown": [
+"globe",
+"arena",
+"start",
+"grass",
+"opera",
+"exact"
+],
+"start": "trebxe.o.asranat.r.csgprl",
+"min": 10
+},
+{
+"words": [
+"first",
+"ridge",
+"earth",
+"force",
+"rider",
+"teeth"
+],
+"shown": [
+"first",
+"ridge",
+"earth",
+"force",
+"rider",
+"teeth"
+],
+"start": "itreai.i.erhdfec.e.torsgt",
+"min": 10
+},
+{
+"words": [
+"mossy",
+"lyric",
+"night",
+"melon",
+"shrug",
+"yacht"
+],
+"shown": [
+"mossy",
+"lyric",
+"night",
+"melon",
+"shrug",
+"yacht"
+],
+"start": "uoesmy.o.hlgricy.h.hsiant",
+"min": 10
+},
+{
+"words": [
+"hello",
+"noted",
+"error",
+"hence",
+"later",
+"order"
+],
+"shown": [
+"hello",
+"noted",
+"error",
+"hence",
+"later",
+"order"
+],
+"start": "toeler.o.rdecone.e.elarhr",
+"min": 10
+},
+{
+"words": [
+"ripen",
+"faint",
+"every",
+"rifle",
+"pride",
+"nutty"
+],
+"shown": [
+"ripen",
+"faint",
+"every",
+"rifle",
+"pride",
+"nutty"
+],
+"start": "rpeein.r.ufyidrl.t.teiavn",
+"min": 10
+},
+{
+"words": [
+"skull",
+"going",
+"tunic",
+"sight",
+"union",
+"logic"
+],
+"shown": [
+"skull",
+"going",
+"tunic",
+"sight",
+"union",
+"logic"
+],
+"start": "nouolg.l.ignsiik.n.iuthoc",
+"min": 10
+},
+{
+"words": [
+"fence",
+"eager",
+"ditch",
+"field",
+"night",
+"earth"
+],
+"shown": [
+"fence",
+"eager",
+"ditch",
+"field",
+"night",
+"earth"
+],
+"start": "thhiai.a.decgnre.e.efitcl",
+"min": 10
+},
+{
+"words": [
+"thing",
+"apple",
+"eaten",
+"tease",
+"input",
+"green"
+],
+"shown": [
+"thing",
+"apple",
+"eaten",
+"tease",
+"input",
+"green"
+],
+"start": "nuaege.n.ahiptes.n.eeltrp",
+"min": 10
+},
+{
+"words": [
+"whisk",
+"usage",
+"dwell",
+"wound",
+"image",
+"kneel"
+],
+"shown": [
+"whisk",
+"usage",
+"dwell",
+"wound",
+"image",
+"kneel"
+],
+"start": "edeihl.n.gasumwn.g.sowelk",
+"min": 10
+},
+{
+"words": [
+"scene",
+"robot",
+"power",
+"syrup",
+"elbow",
+"enter"
+],
+"shown": [
+"scene",
+"robot",
+"power",
+"syrup",
+"elbow",
+"enter"
+],
+"start": "ynetsw.l.ueoroon.o.rpcbee",
+"min": 10
+},
+{
+"words": [
+"black",
+"unite",
+"dwell",
+"bound",
+"alike",
+"kneel"
+],
+"shown": [
+"black",
+"unite",
+"dwell",
+"bound",
+"alike",
+"kneel"
+],
+"start": "blkcnw.l.olniuet.d.enakle",
+"min": 10
+},
+{
+"words": [
+"world",
+"ultra",
+"dodge",
+"wound",
+"rated",
+"drape"
+],
+"shown": [
+"world",
+"ultra",
+"dodge",
+"wound",
+"rated",
+"drape"
+],
+"start": "rdrldo.r.tgapoln.u.aeodwe",
+"min": 10
+},
+{
+"words": [
+"might",
+"track",
+"ocean",
+"metro",
+"glade",
+"token"
+],
+"shown": [
+"might",
+"track",
+"ocean",
+"metro",
+"glade",
+"token"
+],
+"start": "hicmee.a.otrnokg.d.rtalec",
+"min": 10
+},
+{
+"words": [
+"sweet",
+"rated",
+"nanny",
+"siren",
+"eaten",
+"today"
+],
+"shown": [
+"sweet",
+"rated",
+"nanny",
+"siren",
+"eaten",
+"today"
+],
+"start": "eaonsi.e.raeeedt.n.waatny",
+"min": 10
+},
+{
+"words": [
+"trial",
+"super",
+"extra",
+"taste",
+"input",
+"larva"
+],
+"shown": [
+"trial",
+"super",
+"extra",
+"taste",
+"input",
+"larva"
+],
+"start": "artvun.s.auxpert.t.leiara",
+"min": 10
+},
+{
+"words": [
+"teach",
+"eager",
+"every",
+"there",
+"argue",
+"hurry"
+],
+"shown": [
+"teach",
+"eager",
+"every",
+"there",
+"argue",
+"hurry"
+],
+"start": "rercev.r.uteagre.h.ryhaeu",
+"min": 10
+},
+{
+"words": [
+"wrote",
+"going",
+"rogue",
+"wager",
+"owing",
+"eagle"
+],
+"shown": [
+"wrote",
+"going",
+"rogue",
+"wager",
+"owing",
+"eagle"
+],
+"start": "glorwi.r.aeeangg.n.otuowe",
+"min": 10
+},
+{
+"words": [
+"silky",
+"image",
+"field",
+"stiff",
+"lease",
+"yield"
+],
+"shown": [
+"silky",
+"image",
+"field",
+"stiff",
+"lease",
+"yield"
+],
+"start": "siakye.e.festigi.d.lflmli",
+"min": 10
+},
+{
+"words": [
+"piano",
+"ocean",
+"dodge",
+"proud",
+"ahead",
+"ounce"
+],
+"shown": [
+"piano",
+"ocean",
+"dodge",
+"proud",
+"ahead",
+"ounce"
+],
+"start": "piuhnc.n.rgouoca.a.eddaoe",
+"min": 10
+},
+{
+"words": [
+"stare",
+"oxide",
+"treat",
+"short",
+"alive",
+"elect"
+],
+"shown": [
+"stare",
+"oxide",
+"treat",
+"short",
+"alive",
+"elect"
+],
+"start": "aelrea.s.cxhidet.v.ttolrr",
+"min": 10
+},
+{
+"words": [
+"stall",
+"ivory",
+"eager",
+"spite",
+"along",
+"layer"
+],
+"shown": [
+"stall",
+"ivory",
+"eager",
+"spite",
+"along",
+"layer"
+],
+"start": "stalll.o.eieapgr.y.etavnr",
+"min": 10
+},
+{
+"words": [
+"outer",
+"inner",
+"growl",
+"owing",
+"tango",
+"rural"
+],
+"shown": [
+"outer",
+"inner",
+"growl",
+"owing",
+"tango",
+"rural"
+],
+"start": "auneot.n.nowaeiw.r.ggrrul",
+"min": 10
+},
+{
+"words": [
+"toast",
+"usage",
+"humid",
+"truth",
+"alarm",
+"trend"
+],
+"shown": [
+"toast",
+"usage",
+"humid",
+"truth",
+"alarm",
+"trend"
+],
+"start": "rgarau.l.sitsoed.t.thumnr",
+"min": 10
+},
+{
+"words": [
+"nylon",
+"shrug",
+"yeast",
+"nasty",
+"larva",
+"night"
+],
+"shown": [
+"nylon",
+"shrug",
+"yeast",
+"nasty",
+"larva",
+"night"
+],
+"start": "nyvyhg.a.ishsnot.t.areaul",
+"min": 10
+},
+{
+"words": [
+"clean",
+"argue",
+"hardy",
+"clash",
+"eager",
+"needy"
+],
+"shown": [
+"clean",
+"argue",
+"hardy",
+"clash",
+"eager",
+"needy"
+],
+"start": "eyledl.a.nsrduaa.a.ehgrce",
+"min": 10
+},
+{
+"words": [
+"ledge",
+"roast",
+"arena",
+"larva",
+"drape",
+"extra"
+],
+"shown": [
+"ledge",
+"roast",
+"arena",
+"larva",
+"drape",
+"extra"
+],
+"start": "geaedr.x.srlvoat.p.rarena",
+"min": 10
+},
+{
+"words": [
+"spark",
+"every",
+"prank",
+"sheep",
+"arena",
+"kayak"
+],
+"shown": [
+"spark",
+"every",
+"prank",
+"sheep",
+"arena",
+"kayak"
+],
+"start": "pkerkh.r.vreynre.a.apsana",
+"min": 10
+},
+{
+"words": [
+"snake",
+"right",
+"error",
+"surge",
+"anger",
+"enter"
+],
+"shown": [
+"snake",
+"right",
+"error",
+"surge",
+"anger",
+"enter"
+],
+"start": "oeskur.e.negehrg.n.rntiar",
+"min": 10
+},
+{
+"words": [
+"spine",
+"among",
+"layer",
+"shawl",
+"ivory",
+"eager"
+],
+"shown": [
+"spine",
+"among",
+"layer",
+"shawl",
+"ivory",
+"eager"
+],
+"start": "mpoeen.v.gaeihyw.r.snlara",
+"min": 10
+},
+{
+"words": [
+"noted",
+"voice",
+"lotus",
+"naval",
+"twist",
+"dress"
+],
+"shown": [
+"noted",
+"voice",
+"lotus",
+"naval",
+"twist",
+"dress"
+],
+"start": "cosiaa.w.esodtve.n.tlorus",
+"min": 10
+},
+{
+"words": [
+"hardy",
+"music",
+"donut",
+"humid",
+"risen",
+"yacht"
+],
+"shown": [
+"hardy",
+"music",
+"donut",
+"humid",
+"risen",
+"yacht"
+],
+"start": "iaotyh.i.audednu.u.hmrcsi",
+"min": 10
+},
+{
+"words": [
+"moose",
+"noise",
+"right",
+"minor",
+"owing",
+"elect"
+],
+"shown": [
+"moose",
+"noise",
+"right",
+"minor",
+"owing",
+"elect"
+],
+"start": "oosoec.w.mroiihn.e.lsignt",
+"min": 10
+},
+{
+"words": [
+"march",
+"tried",
+"rinse",
+"motor",
+"reign",
+"hedge"
+],
+"shown": [
+"march",
+"tried",
+"rinse",
+"motor",
+"reign",
+"hedge"
+],
+"start": "iorcha.o.rndimse.e.grtege",
+"min": 10
+},
+{
+"words": [
+"image",
+"night",
+"ruler",
+"inner",
+"angel",
+"enter"
+],
+"shown": [
+"image",
+"night",
+"ruler",
+"inner",
+"angel",
+"enter"
+],
+"start": "irgneh.u.netgiae.m.erlnen",
+"min": 10
+},
+{
+"words": [
+"moist",
+"ripen",
+"total",
+"merit",
+"input",
+"tonal"
+],
+"shown": [
+"moist",
+"ripen",
+"total",
+"merit",
+"input",
+"tonal"
+],
+"start": "mtnose.t.oeniarp.u.tioial",
+"min": 10
+},
+{
+"words": [
+"reign",
+"bless",
+"tally",
+"robot",
+"ideal",
+"nasty"
+],
+"shown": [
+"reign",
+"bless",
+"tally",
+"robot",
+"ideal",
+"nasty"
+],
+"start": "rtegad.b.ynesoso.a.italll",
+"min": 10
+},
+{
+"words": [
+"spurt",
+"after",
+"trade",
+"shaft",
+"ultra",
+"three"
+],
+"shown": [
+"spurt",
+"after",
+"trade",
+"shaft",
+"ultra",
+"three"
+],
+"start": "ufeeta.l.dhtfrht.r.rpraes",
+"min": 10
+},
+{
+"words": [
+"wafer",
+"decay",
+"waste",
+"widow",
+"focus",
+"rhyme"
+],
+"shown": [
+"wafer",
+"decay",
+"waste",
+"widow",
+"focus",
+"rhyme"
+],
+"start": "raawye.o.hdecuso.i.ewmatf",
+"min": 10
+},
+{
+"words": [
+"thief",
+"tenor",
+"large",
+"total",
+"inner",
+"force"
+],
+"shown": [
+"thief",
+"tenor",
+"large",
+"total",
+"inner",
+"force"
+],
+"start": "eretfo.g.atehlra.e.iconon",
+"min": 10
+},
+{
+"words": [
+"short",
+"extra",
+"large",
+"spell",
+"otter",
+"trade"
+],
+"shown": [
+"short",
+"extra",
+"large",
+"spell",
+"otter",
+"trade"
+],
+"start": "seorat.a.rexpdet.r.tlgrhl",
+"min": 10
+},
+{
+"words": [
+"cheek",
+"usage",
+"total",
+"crust",
+"exact",
+"kneel"
+],
+"shown": [
+"cheek",
+"usage",
+"total",
+"crust",
+"exact",
+"kneel"
+],
+"start": "eaesgc.x.runlhos.c.etktae",
+"min": 10
+},
+{
+"words": [
+"sandy",
+"elite",
+"field",
+"shelf",
+"noise",
+"yield"
+],
+"shown": [
+"sandy",
+"elite",
+"field",
+"shelf",
+"noise",
+"yield"
+],
+"start": "ehsdlo.e.ltiaynl.s.lfieid",
+"min": 10
+},
+{
+"words": [
+"wrath",
+"known",
+"needy",
+"woken",
+"alone",
+"honey"
+],
+"shown": [
+"wrath",
+"known",
+"needy",
+"woken",
+"alone",
+"honey"
+],
+"start": "twadle.e.okroenn.n.enwhyo",
+"min": 10
+},
+{
+"words": [
+"foggy",
+"elite",
+"trend",
+"fleet",
+"guide",
+"yield"
+],
+"shown": [
+"foggy",
+"elite",
+"trend",
+"fleet",
+"guide",
+"yield"
+],
+"start": "degyui.d.feiltro.t.lgeenl",
+"min": 10
+},
+{
+"words": [
+"which",
+"donut",
+"rural",
+"wider",
+"inner",
+"hotel"
+],
+"shown": [
+"which",
+"donut",
+"rural",
+"wider",
+"inner",
+"hotel"
+],
+"start": "whecrt.e.nuoinui.e.dharol",
+"min": 10
+},
+{
+"words": [
+"bloom",
+"noisy",
+"shear",
+"bonus",
+"oxide",
+"mayor"
+],
+"shown": [
+"bloom",
+"noisy",
+"shear",
+"bonus",
+"oxide",
+"mayor"
+],
+"start": "blodas.r.aoosnoy.x.omheiu",
+"min": 10
+},
+{
+"words": [
+"poach",
+"topaz",
+"loyal",
+"petal",
+"apply",
+"hazel"
+],
+"shown": [
+"poach",
+"topaz",
+"loyal",
+"petal",
+"apply",
+"hazel"
+],
+"start": "ooaept.p.aelyapo.h.cazlla",
+"min": 10
+},
+{
+"words": [
+"booth",
+"after",
+"early",
+"blade",
+"otter",
+"hardy"
+],
+"shown": [
+"booth",
+"after",
+"early",
+"blade",
+"otter",
+"hardy"
+],
+"start": "loeerd.b.tataord.e.yathfl",
+"min": 10
+},
+{
+"words": [
+"sight",
+"oxide",
+"eagle",
+"stove",
+"going",
+"theme"
+],
+"shown": [
+"sight",
+"oxide",
+"eagle",
+"stove",
+"going",
+"theme"
+],
+"start": "tigvdo.a.honxilh.t.msegee",
+"min": 10
+},
+{
+"words": [
+"photo",
+"alive",
+"linen",
+"pearl",
+"onion",
+"ocean"
+],
+"shown": [
+"photo",
+"alive",
+"linen",
+"pearl",
+"onion",
+"ocean"
+],
+"start": "ehnvie.o.naoltap.c.elonri",
+"min": 10
+},
+{
+"words": [
+"graze",
+"opera",
+"plant",
+"group",
+"arena",
+"exact"
+],
+"shown": [
+"graze",
+"opera",
+"plant",
+"group",
+"arena",
+"exact"
+],
+"start": "oraxpr.c.zuaerap.g.rlnnet",
+"min": 10
+},
+{
+"words": [
+"rinse",
+"bring",
+"theft",
+"robot",
+"noise",
+"eight"
+],
+"shown": [
+"rinse",
+"bring",
+"theft",
+"robot",
+"noise",
+"eight"
+],
+"start": "nihoni.o.bfriogh.s.rteets",
+"min": 10
+},
+{
+"words": [
+"loose",
+"vigor",
+"ranch",
+"liver",
+"organ",
+"earth"
+],
+"shown": [
+"loose",
+"vigor",
+"ranch",
+"liver",
+"organ",
+"earth"
+],
+"start": "ltrhei.s.ivrcoeg.r.oaanoa",
+"min": 10
+},
+{
+"words": [
+"magic",
+"usage",
+"event",
+"mouse",
+"glade",
+"chest"
+],
+"shown": [
+"magic",
+"usage",
+"event",
+"mouse",
+"glade",
+"chest"
+],
+"start": "messdo.l.hgseuge.c.aaitnv",
+"min": 10
+},
+{
+"words": [
+"prove",
+"under",
+"harsh",
+"pouch",
+"order",
+"earth"
+],
+"shown": [
+"prove",
+"under",
+"harsh",
+"pouch",
+"order",
+"earth"
+],
+"start": "rnhvao.e.uerdrec.o.ahsrtp",
+"min": 10
+},
+{
+"words": [
+"these",
+"ahead",
+"tutor",
+"trait",
+"event",
+"elder"
+],
+"shown": [
+"these",
+"ahead",
+"tutor",
+"trait",
+"event",
+"elder"
+],
+"start": "thesea.v.lotrria.u.edehnt",
+"min": 10
+},
+{
+"words": [
+"wheat",
+"dress",
+"witty",
+"widow",
+"elect",
+"tasty"
+],
+"shown": [
+"wheat",
+"dress",
+"witty",
+"widow",
+"elect",
+"tasty"
+],
+"start": "iewwrs.l.achoaet.d.tsitty",
+"min": 10
+},
+{
+"words": [
+"rival",
+"begin",
+"nurse",
+"robin",
+"vigor",
+"lance"
+],
+"shown": [
+"rival",
+"begin",
+"nurse",
+"robin",
+"vigor",
+"lance"
+],
+"start": "gnvslr.i.aceboio.a.inruie",
+"min": 10
+},
+{
+"words": [
+"cream",
+"otter",
+"north",
+"crown",
+"enter",
+"marsh"
+],
+"shown": [
+"cream",
+"otter",
+"north",
+"crown",
+"enter",
+"marsh"
+],
+"start": "orwetr.n.acaohrs.e.ntertm",
+"min": 10
+},
+{
+"words": [
+"widow",
+"tenor",
+"hatch",
+"watch",
+"donut",
+"worth"
+],
+"shown": [
+"widow",
+"tenor",
+"hatch",
+"watch",
+"donut",
+"worth"
+],
+"start": "eowtic.o.oowtcrh.u.naathd",
+"min": 10
+},
+{
+"words": [
+"glide",
+"aware",
+"sleet",
+"glass",
+"image",
+"event"
+],
+"shown": [
+"glide",
+"aware",
+"sleet",
+"glass",
+"image",
+"event"
+],
+"start": "laieew.m.vdgaess.l.tglner",
+"min": 10
+},
+{
+"words": [
+"tramp",
+"rated",
+"hurry",
+"torch",
+"after",
+"paddy"
+],
+"shown": [
+"tramp",
+"rated",
+"hurry",
+"torch",
+"after",
+"paddy"
+],
+"start": "tehfpo.d.yaruedc.m.rtrara",
+"min": 10
+},
+{
+"words": [
+"drape",
+"image",
+"tummy",
+"drift",
+"alarm",
+"every"
+],
+"shown": [
+"drape",
+"image",
+"tummy",
+"drift",
+"alarm",
+"every"
+],
+"start": "utafir.e.vpmeldr.r.ragmmy",
+"min": 10
+},
+{
+"words": [
+"undue",
+"unite",
+"light",
+"usual",
+"doing",
+"elect"
+],
+"shown": [
+"undue",
+"unite",
+"light",
+"usual",
+"doing",
+"elect"
+],
+"start": "undnlc.e.iuuosag.n.eltiht",
+"min": 10
+},
+{
+"words": [
+"trade",
+"group",
+"rugby",
+"tiger",
+"along",
+"empty"
+],
+"shown": [
+"trade",
+"group",
+"rugby",
+"tiger",
+"along",
+"empty"
+],
+"start": "urpdga.y.irboume.n.rttgle",
+"min": 10
+},
+{
+"words": [
+"hippo",
+"meant",
+"ruler",
+"humor",
+"pearl",
+"otter"
+],
+"shown": [
+"hippo",
+"meant",
+"ruler",
+"humor",
+"pearl",
+"otter"
+],
+"start": "lpeurp.r.oheeito.r.naumet",
+"min": 10
+},
+{
+"words": [
+"flown",
+"elect",
+"heavy",
+"flesh",
+"opera",
+"nutty"
+],
+"shown": [
+"flown",
+"elect",
+"heavy",
+"flesh",
+"opera",
+"nutty"
+],
+"start": "fhetnw.u.pelyltr.s.evcalo",
+"min": 10
+},
+{
+"words": [
+"total",
+"apply",
+"hazel",
+"trash",
+"topaz",
+"loyal"
+],
+"shown": [
+"total",
+"apply",
+"hazel",
+"trash",
+"topaz",
+"loyal"
+],
+"start": "tzshll.o.layptro.o.aaapea",
+"min": 10
+},
+{
+"words": [
+"whale",
+"grove",
+"nanny",
+"wagon",
+"acorn",
+"every"
+],
+"shown": [
+"whale",
+"grove",
+"nanny",
+"wagon",
+"acorn",
+"every"
+],
+"start": "vhrala.c.vgrrwne.n.yaneoo",
+"min": 10
+},
+{
+"words": [
+"liver",
+"rally",
+"chase",
+"lyric",
+"villa",
+"rhyme"
+],
+"shown": [
+"liver",
+"rally",
+"chase",
+"lyric",
+"villa",
+"rhyme"
+],
+"start": "ylhmry.l.iralaei.e.scvihl",
+"min": 10
+},
+{
+"words": [
+"occur",
+"train",
+"rhyme",
+"otter",
+"crazy",
+"rinse"
+],
+"shown": [
+"occur",
+"train",
+"rhyme",
+"otter",
+"crazy",
+"rinse"
+],
+"start": "trrcia.r.iheonue.z.scmytr",
+"min": 10
+},
+{
+"words": [
+"plumb",
+"radio",
+"ahead",
+"parka",
+"undue",
+"broad"
+],
+"shown": [
+"plumb",
+"radio",
+"ahead",
+"parka",
+"undue",
+"broad"
+],
+"start": "rauhbp.n.aelidoa.d.aaurmk",
+"min": 10
+},
+{
+"words": [
+"price",
+"upper",
+"hatch",
+"pouch",
+"input",
+"earth"
+],
+"shown": [
+"price",
+"upper",
+"hatch",
+"pouch",
+"input",
+"earth"
+],
+"start": "circho.r.nutpehc.p.tuaeap",
+"min": 10
+},
+{
+"words": [
+"layer",
+"tacky",
+"hotel",
+"latch",
+"yacht",
+"royal"
+],
+"shown": [
+"layer",
+"tacky",
+"hotel",
+"latch",
+"yacht",
+"royal"
+],
+"start": "oayarc.h.oeycaht.e.akatll",
+"min": 10
+},
+{
+"words": [
+"forty",
+"logic",
+"elect",
+"false",
+"rogue",
+"yacht"
+],
+"shown": [
+"forty",
+"logic",
+"elect",
+"false",
+"rogue",
+"yacht"
+],
+"start": "sorata.o.clltuof.e.hgeicy",
+"min": 10
+},
+{
+"words": [
+"safer",
+"owing",
+"entry",
+"score",
+"faint",
+"rugby"
+],
+"shown": [
+"safer",
+"owing",
+"entry",
+"score",
+"faint",
+"rugby"
+],
+"start": "faynno.i.urwtegr.s.bencra",
+"min": 10
+},
+{
+"words": [
+"quirk",
+"alone",
+"loyal",
+"quail",
+"ivory",
+"kneel"
+],
+"shown": [
+"quirk",
+"alone",
+"loyal",
+"quail",
+"ivory",
+"kneel"
+],
+"start": "ruqllu.i.veoinnr.e.aloyak",
+"min": 10
+},
+{
+"words": [
+"husky",
+"realm",
+"entry",
+"horse",
+"start",
+"yummy"
+],
+"shown": [
+"husky",
+"realm",
+"entry",
+"horse",
+"start",
+"yummy"
+],
+"start": "tmsrye.r.euklous.r.mhntay",
+"min": 10
+},
+{
+"words": [
+"hatch",
+"motor",
+"delay",
+"humid",
+"total",
+"hardy"
+],
+"shown": [
+"hatch",
+"motor",
+"delay",
+"humid",
+"total",
+"hardy"
+],
+"start": "tdacdu.h.oyohori.l.amaeat",
+"min": 10
+},
+{
+"words": [
+"tally",
+"parka",
+"yacht",
+"tipsy",
+"lyric",
+"yeast"
+],
+"shown": [
+"tally",
+"parka",
+"yacht",
+"tipsy",
+"lyric",
+"yeast"
+],
+"start": "pallyr.y.caaayit.s.ktiehs",
+"min": 10
+},
+{
+"words": [
+"blast",
+"organ",
+"teeth",
+"boost",
+"angle",
+"tenth"
+],
+"shown": [
+"blast",
+"organ",
+"teeth",
+"boost",
+"angle",
+"tenth"
+],
+"start": "bloste.e.aoaenlt.s.thngtr",
+"min": 10
+},
+{
+"words": [
+"lilac",
+"usage",
+"yeast",
+"lousy",
+"llama",
+"chest"
+],
+"shown": [
+"lilac",
+"usage",
+"yeast",
+"lousy",
+"llama",
+"chest"
+],
+"start": "lsyaco.t.muslisg.a.sehale",
+"min": 10
+},
+{
+"words": [
+"shark",
+"oxide",
+"dwell",
+"sword",
+"arise",
+"kneel"
+],
+"shown": [
+"shark",
+"oxide",
+"dwell",
+"sword",
+"arise",
+"kneel"
+],
+"start": "slreai.s.loxwdne.r.hdwerk",
+"min": 10
+},
+{
+"words": [
+"brook",
+"argue",
+"tonal",
+"beast",
+"organ",
+"kneel"
+],
+"shown": [
+"brook",
+"argue",
+"tonal",
+"beast",
+"organ",
+"kneel"
+],
+"start": "brooke.o.nsnlrtu.r.geaeaa",
+"min": 10
+},
+{
+"words": [
+"drain",
+"night",
+"early",
+"dance",
+"anger",
+"nutty"
+],
+"shown": [
+"drain",
+"night",
+"early",
+"dance",
+"anger",
+"nutty"
+],
+"start": "dnaicn.n.ueryagt.i.taerlh",
+"min": 10
+},
+{
+"words": [
+"frame",
+"owing",
+"there",
+"float",
+"alive",
+"eagle"
+],
+"shown": [
+"frame",
+"owing",
+"there",
+"float",
+"alive",
+"eagle"
+],
+"start": "vrafhr.l.nowigla.l.etmaee",
+"min": 10
+},
+{
+"words": [
+"wiper",
+"roast",
+"yield",
+"worry",
+"plane",
+"rated"
+],
+"shown": [
+"wiper",
+"roast",
+"yield",
+"worry",
+"plane",
+"rated"
+],
+"start": "wtaelo.e.reoanpr.d.iyislr",
+"min": 10
+},
+{
+"words": [
+"perch",
+"rover",
+"honey",
+"porch",
+"raven",
+"hardy"
+],
+"shown": [
+"perch",
+"rover",
+"honey",
+"porch",
+"raven",
+"hardy"
+],
+"start": "yeacda.r.rropeco.o.hvneeh",
+"min": 10
+},
+{
+"words": [
+"shake",
+"along",
+"there",
+"smart",
+"alone",
+"eagle"
+],
+"shown": [
+"shake",
+"along",
+"there",
+"smart",
+"alone",
+"eagle"
+],
+"start": "lhlkem.e.agaohts.l.anrern",
+"min": 10
+},
+{
+"words": [
+"hobby",
+"llama",
+"onset",
+"hello",
+"brass",
+"yeast"
+],
+"shown": [
+"hobby",
+"llama",
+"onset",
+"hello",
+"brass",
+"yeast"
+],
+"start": "eltlls.o.rbyamae.h.obnses",
+"min": 10
+},
+{
+"words": [
+"twine",
+"oasis",
+"needy",
+"thorn",
+"issue",
+"essay"
+],
+"shown": [
+"twine",
+"oasis",
+"needy",
+"thorn",
+"issue",
+"essay"
+],
+"start": "irieth.s.sudansw.a.oseney",
+"min": 10
+},
+{
+"words": [
+"large",
+"never",
+"honey",
+"lunch",
+"raven",
+"early"
+],
+"shown": [
+"large",
+"never",
+"honey",
+"lunch",
+"raven",
+"early"
+],
+"start": "ovyleg.c.anlreru.e.ahanee",
+"min": 10
+},
+{
+"words": [
+"utter",
+"hurry",
+"rebel",
+"usher",
+"throb",
+"royal"
+],
+"shown": [
+"utter",
+"hurry",
+"rebel",
+"usher",
+"throb",
+"royal"
+],
+"start": "uttehb.a.youherr.o.eesrrl",
+"min": 10
+},
+{
+"words": [
+"angel",
+"along",
+"event",
+"awake",
+"grove",
+"light"
+],
+"shown": [
+"angel",
+"along",
+"event",
+"awake",
+"grove",
+"light"
+],
+"start": "atgven.r.ihklnea.g.oelvnw",
+"min": 10
+},
+{
+"words": [
+"horse",
+"mover",
+"dirty",
+"humid",
+"river",
+"early"
+],
+"shown": [
+"horse",
+"mover",
+"dirty",
+"humid",
+"river",
+"early"
+],
+"start": "teleea.y.uimvooi.s.drirhr",
+"min": 10
+},
+{
+"words": [
+"sleep",
+"again",
+"extra",
+"stare",
+"exact",
+"panda"
+],
+"shown": [
+"sleep",
+"again",
+"extra",
+"stare",
+"exact",
+"panda"
+],
+"start": "sgirpd.x.caanxet.a.tearel",
+"min": 10
+},
+{
+"words": [
+"hazel",
+"mossy",
+"royal",
+"humor",
+"zesty",
+"loyal"
+],
+"shown": [
+"hazel",
+"mossy",
+"royal",
+"humor",
+"zesty",
+"loyal"
+],
+"start": "hluasz.o.lmaysot.o.eeoyar",
+"min": 10
+},
+{
+"words": [
+"blank",
+"every",
+"drank",
+"bread",
+"arena",
+"kayak"
+],
+"shown": [
+"blank",
+"every",
+"drank",
+"bread",
+"arena",
+"kayak"
+],
+"start": "krnnyd.r.enaebka.a.arralv",
+"min": 10
+},
+{
+"words": [
+"plane",
+"award",
+"humor",
+"poach",
+"alarm",
+"elder"
+],
+"shown": [
+"plane",
+"award",
+"humor",
+"poach",
+"alarm",
+"elder"
+],
+"start": "plaoor.l.racamwd.r.nheule",
+"min": 10
+},
+{
+"words": [
+"novel",
+"wrong",
+"yeast",
+"newly",
+"viola",
+"light"
+],
+"shown": [
+"novel",
+"wrong",
+"yeast",
+"newly",
+"viola",
+"light"
+],
+"start": "novllr.i.eyonsgl.t.eheaiw",
+"min": 10
+},
+{
+"words": [
+"smart",
+"onion",
+"needy",
+"spoon",
+"arise",
+"tangy"
+],
+"shown": [
+"smart",
+"onion",
+"needy",
+"spoon",
+"arise",
+"tangy"
+],
+"start": "stdyoe.r.anniogo.m.anresp",
+"min": 10
+},
+{
+"words": [
+"rhyme",
+"occur",
+"tutor",
+"roost",
+"yacht",
+"error"
+],
+"shown": [
+"rhyme",
+"occur",
+"tutor",
+"roost",
+"yacht",
+"error"
+],
+"start": "rtroec.a.hhrmuoo.c.orusty",
+"min": 10
+},
+{
+"words": [
+"lapse",
+"noted",
+"ruler",
+"lunar",
+"petal",
+"elder"
+],
+"shown": [
+"lapse",
+"noted",
+"ruler",
+"lunar",
+"petal",
+"elder"
+],
+"start": "epaora.r.enetdls.a.ueulel",
+"min": 10
+},
+{
+"words": [
+"sedan",
+"awake",
+"fiery",
+"staff",
+"drape",
+"needy"
+],
+"shown": [
+"sedan",
+"awake",
+"fiery",
+"staff",
+"drape",
+"needy"
+],
+"start": "eeefit.s.rwdaeak.p.dfanry",
+"min": 10
+},
+{
+"words": [
+"drive",
+"oasis",
+"needy",
+"drown",
+"issue",
+"essay"
+],
+"shown": [
+"drive",
+"oasis",
+"needy",
+"drown",
+"issue",
+"essay"
+],
+"start": "ivider.n.asarssd.u.oyeesw",
+"min": 10
+},
+{
+"words": [
+"plump",
+"union",
+"every",
+"pause",
+"unite",
+"piney"
+],
+"shown": [
+"plump",
+"union",
+"every",
+"pause",
+"unite",
+"piney"
+],
+"start": "elnuma.p.iynreps.t.evionu",
+"min": 10
+},
+{
+"words": [
+"paddy",
+"realm",
+"heavy",
+"porch",
+"drama",
+"yummy"
+],
+"shown": [
+"paddy",
+"realm",
+"heavy",
+"porch",
+"drama",
+"yummy"
+],
+"start": "maddyo.e.arcarlp.m.vumehy",
+"min": 10
+},
+{
+"words": [
+"weave",
+"their",
+"rider",
+"water",
+"ahead",
+"error"
+],
+"shown": [
+"weave",
+"their",
+"rider",
+"water",
+"ahead",
+"error"
+],
+"start": "reewea.r.ithaerv.e.oraihd",
+"min": 10
+},
+{
+"words": [
+"chose",
+"udder",
+"birch",
+"crumb",
+"order",
+"earth"
+],
+"shown": [
+"chose",
+"udder",
+"birch",
+"crumb",
+"order",
+"earth"
+],
+"start": "oimcer.r.subdere.h.dthacr",
+"min": 10
+},
+{
+"words": [
+"swamp",
+"angel",
+"event",
+"stake",
+"angle",
+"pilot"
+],
+"shown": [
+"swamp",
+"angel",
+"event",
+"stake",
+"angle",
+"pilot"
+],
+"start": "nlgaps.l.ianewvk.t.oetenm",
+"min": 10
+},
+{
+"words": [
+"marsh",
+"rival",
+"honey",
+"march",
+"raven",
+"holly"
+],
+"shown": [
+"marsh",
+"rival",
+"honey",
+"march",
+"raven",
+"holly"
+],
+"start": "ehroaa.a.hrisaol.e.ymncvl",
+"min": 10
+},
+{
+"words": [
+"field",
+"eaten",
+"yeast",
+"fiery",
+"extra",
+"donut"
+],
+"shown": [
+"field",
+"eaten",
+"yeast",
+"fiery",
+"extra",
+"donut"
+],
+"start": "foyrxi.d.neaueal.i.tseert",
+"min": 10
+},
+{
+"words": [
+"chart",
+"among",
+"honor",
+"crash",
+"acorn",
+"tiger"
+],
+"shown": [
+"chart",
+"among",
+"honor",
+"crash",
+"acorn",
+"tiger"
+],
+"start": "ngahtr.r.crecnms.r.oahooi",
+"min": 10
+},
+{
+"words": [
+"rover",
+"along",
+"yeast",
+"ready",
+"viola",
+"right"
+],
+"shown": [
+"rover",
+"along",
+"yeast",
+"ready",
+"viola",
+"right"
+],
+"start": "eevtyo.i.oahdnli.g.lraser",
+"min": 10
+},
+{
+"words": [
+"waist",
+"ripen",
+"hotel",
+"worth",
+"input",
+"tonal"
+],
+"shown": [
+"waist",
+"ripen",
+"hotel",
+"worth",
+"input",
+"tonal"
+],
+"start": "tawoeo.n.irpnslt.u.aiohet",
+"min": 10
+},
+{
+"words": [
+"check",
+"unite",
+"dwell",
+"could",
+"elite",
+"kneel"
+],
+"shown": [
+"check",
+"unite",
+"dwell",
+"could",
+"elite",
+"kneel"
+],
+"start": "cneekl.i.uhdecet.t.lwnoll",
+"min": 10
+},
+{
+"words": [
+"shiny",
+"gleam",
+"relay",
+"sugar",
+"ideal",
+"yummy"
+],
+"shown": [
+"shiny",
+"gleam",
+"relay",
+"sugar",
+"ideal",
+"yummy"
+],
+"start": "nyidyr.l.lgheama.a.emsuau",
+"min": 10
+},
+{
+"words": [
+"honor",
+"until",
+"elder",
+"house",
+"noted",
+"ruler"
+],
+"shown": [
+"honor",
+"until",
+"elder",
+"house",
+"noted",
+"ruler"
+],
+"start": "hiouen.o.osentlo.e.erludr",
+"min": 10
+},
+{
+"words": [
+"visit",
+"valid",
+"dirty",
+"vivid",
+"solar",
+"today"
+],
+"shown": [
+"visit",
+"valid",
+"dirty",
+"vivid",
+"solar",
+"today"
+],
+"start": "viiddl.s.oviriao.y.iaiatt",
+"min": 10
+},
+{
+"words": [
+"mayor",
+"trust",
+"rigid",
+"meter",
+"young",
+"rated"
+],
+"shown": [
+"mayor",
+"trust",
+"rigid",
+"meter",
+"young",
+"rated"
+],
+"start": "strdae.o.gmrnyte.e.oriaiu",
+"min": 10
+},
+{
+"words": [
+"lucky",
+"lyric",
+"chest",
+"lilac",
+"carve",
+"yacht"
+],
+"shown": [
+"lucky",
+"lyric",
+"chest",
+"lilac",
+"carve",
+"yacht"
+],
+"start": "hvykya.a.ahscice.l.urcilt",
+"min": 10
+},
+{
+"words": [
+"share",
+"plant",
+"radar",
+"super",
+"award",
+"enter"
+],
+"shown": [
+"share",
+"plant",
+"radar",
+"super",
+"award",
+"enter"
+],
+"start": "prareu.h.erlneaa.s.wrndat",
+"min": 10
+},
+{
+"words": [
+"crown",
+"inner",
+"forge",
+"cliff",
+"owner",
+"nurse"
+],
+"shown": [
+"crown",
+"inner",
+"forge",
+"cliff",
+"owner",
+"nurse"
+],
+"start": "csrenr.w.liunefw.r.noofeg",
+"min": 10
+},
+{
+"words": [
+"crisp",
+"award",
+"steel",
+"class",
+"image",
+"pedal"
+],
+"shown": [
+"crisp",
+"award",
+"steel",
+"class",
+"image",
+"pedal"
+],
+"start": "eaitpe.l.slmards.w.csrega",
+"min": 10
+},
+{
+"words": [
+"grind",
+"exact",
+"teeth",
+"great",
+"image",
+"ditch"
+],
+"shown": [
+"grind",
+"exact",
+"teeth",
+"great",
+"image",
+"ditch"
+],
+"start": "icendr.c.imttata.x.hrgege",
+"min": 10
+},
+{
+"words": [
+"court",
+"image",
+"breed",
+"climb",
+"usage",
+"trend"
+],
+"shown": [
+"court",
+"image",
+"breed",
+"climb",
+"usage",
+"trend"
+],
+"start": "gcuodl.m.rsmnger.r.ebitae",
+"min": 10
+},
+{
+"words": [
+"rural",
+"fiber",
+"extra",
+"rifle",
+"robot",
+"larva"
+],
+"shown": [
+"rural",
+"fiber",
+"extra",
+"rifle",
+"robot",
+"larva"
+],
+"start": "tulaov.r.ifxaerl.o.arebri",
+"min": 10
+},
+{
+"words": [
+"grace",
+"among",
+"scene",
+"glass",
+"alone",
+"eagle"
+],
+"shown": [
+"grace",
+"among",
+"scene",
+"glass",
+"alone",
+"eagle"
+],
+"start": "grleac.e.msnanea.l.osclng",
+"min": 10
+},
+{
+"words": [
+"laugh",
+"guilt",
+"loyal",
+"legal",
+"unity",
+"hotel"
+],
+"shown": [
+"laugh",
+"guilt",
+"loyal",
+"legal",
+"unity",
+"hotel"
+],
+"start": "uoagie.l.olglety.t.lunaah",
+"min": 10
+},
+{
+"words": [
+"shaft",
+"field",
+"ready",
+"safer",
+"arena",
+"today"
+],
+"shown": [
+"shaft",
+"field",
+"ready",
+"safer",
+"arena",
+"today"
+],
+"start": "aetreo.r.aeihlas.y.dfafdn",
+"min": 10
+},
+{
+"words": [
+"stand",
+"opera",
+"train",
+"spout",
+"arena",
+"drain"
+],
+"shown": [
+"stand",
+"opera",
+"train",
+"spout",
+"arena",
+"drain"
+],
+"start": "raetdo.p.rtarnau.n.irpsin",
+"min": 10
+},
+{
+"words": [
+"koala",
+"eagle",
+"larva",
+"kneel",
+"anger",
+"arena"
+],
+"shown": [
+"koala",
+"eagle",
+"larva",
+"kneel",
+"anger",
+"arena"
+],
+"start": "elvaak.n.rnaeeao.n.llerga",
+"min": 10
+},
+{
+"words": [
+"vowel",
+"noisy",
+"later",
+"vinyl",
+"wrist",
+"layer"
+],
+"shown": [
+"vowel",
+"noisy",
+"later",
+"vinyl",
+"wrist",
+"layer"
+],
+"start": "voweay.s.osnaily.t.elrier",
+"min": 10
+},
+{
+"words": [
+"mower",
+"magic",
+"candy",
+"mimic",
+"wagon",
+"rocky"
+],
+"shown": [
+"mower",
+"magic",
+"candy",
+"mimic",
+"wagon",
+"rocky"
+],
+"start": "ooacym.c.iaagiri.o.kdenwm",
+"min": 10
+},
+{
+"words": [
+"cable",
+"eager",
+"tenth",
+"chest",
+"began",
+"earth"
+],
+"shown": [
+"cable",
+"eager",
+"tenth",
+"chest",
+"began",
+"earth"
+],
+"start": "ctageb.e.tealhae.a.etrsnh",
+"min": 10
+},
+{
+"words": [
+"movie",
+"ruler",
+"their",
+"merit",
+"value",
+"error"
+],
+"shown": [
+"movie",
+"ruler",
+"their",
+"merit",
+"value",
+"error"
+],
+"start": "oioeee.a.uruvrhi.m.trleir",
+"min": 10
+},
+{
+"words": [
+"slide",
+"owner",
+"tardy",
+"stout",
+"inner",
+"early"
+],
+"shown": [
+"slide",
+"owner",
+"tardy",
+"stout",
+"inner",
+"early"
+],
+"start": "dliten.d.nosreru.y.laawet",
+"min": 10
+},
+{
+"words": [
+"patio",
+"smart",
+"eaten",
+"paste",
+"trait",
+"often"
+],
+"shown": [
+"patio",
+"smart",
+"eaten",
+"paste",
+"trait",
+"often"
+],
+"start": "tatemi.r.fsiaern.e.otatpa",
+"min": 10
+},
+{
+"words": [
+"lunch",
+"after",
+"today",
+"least",
+"noted",
+"hurry"
+],
+"shown": [
+"lunch",
+"after",
+"today",
+"least",
+"noted",
+"hurry"
+],
+"start": "acaehe.o.yfeturs.u.ntldro",
+"min": 10
+},
+{
+"words": [
+"rebel",
+"blood",
+"nudge",
+"robin",
+"broad",
+"ledge"
+],
+"shown": [
+"rebel",
+"blood",
+"nudge",
+"robin",
+"broad",
+"ledge"
+],
+"start": "rdeebo.l.ebedogi.o.gnrula",
+"min": 10
+},
+{
+"words": [
+"musty",
+"lyric",
+"night",
+"melon",
+"shrug",
+"yacht"
+],
+"shown": [
+"musty",
+"lyric",
+"night",
+"melon",
+"shrug",
+"yacht"
+],
+"start": "ilyhae.h.mucrtto.u.hsngyi",
+"min": 10
+},
+{
+"words": [
+"flood",
+"logic",
+"entry",
+"false",
+"ought",
+"decay"
+],
+"shown": [
+"flood",
+"logic",
+"entry",
+"false",
+"ought",
+"decay"
+],
+"start": "yloohc.u.doleifs.t.aeanrg",
+"min": 10
+},
+{
+"words": [
+"along",
+"olive",
+"treat",
+"about",
+"oxide",
+"guest"
+],
+"shown": [
+"along",
+"olive",
+"treat",
+"about",
+"oxide",
+"guest"
+],
+"start": "lionge.x.uvaoute.s.atrbdl",
+"min": 10
+},
+{
+"words": [
+"chase",
+"boost",
+"needy",
+"cabin",
+"above",
+"entry"
+],
+"shown": [
+"chase",
+"boost",
+"needy",
+"cabin",
+"above",
+"entry"
+],
+"start": "sereyb.e.nbaosto.v.hnacdi",
+"min": 10
+},
+{
+"words": [
+"quill",
+"among",
+"loyal",
+"quail",
+"ivory",
+"legal"
+],
+"shown": [
+"quill",
+"among",
+"loyal",
+"quail",
+"ivory",
+"legal"
+],
+"start": "uaoylu.i.qomgnia.r.alllev",
+"min": 10
+},
+{
+"words": [
+"vault",
+"later",
+"dirty",
+"valid",
+"utter",
+"tardy"
+],
+"shown": [
+"vault",
+"later",
+"dirty",
+"valid",
+"utter",
+"tardy"
+],
+"start": "vaalti.t.aettrie.y.drladu",
+"min": 10
+},
+{
+"words": [
+"civil",
+"began",
+"nerve",
+"cabin",
+"vigor",
+"lance"
+],
+"shown": [
+"civil",
+"began",
+"nerve",
+"cabin",
+"vigor",
+"lance"
+],
+"start": "arvvla.i.anbegci.e.ceoini",
+"min": 10
+},
+{
+"words": [
+"model",
+"start",
+"class",
+"music",
+"drama",
+"lotus"
+],
+"shown": [
+"model",
+"start",
+"class",
+"music",
+"drama",
+"lotus"
+],
+"start": "mutesl.m.odasrai.t.uclsro",
+"min": 10
+},
+{
+"words": [
+"truly",
+"realm",
+"every",
+"three",
+"usage",
+"yummy"
+],
+"shown": [
+"truly",
+"realm",
+"every",
+"three",
+"usage",
+"yummy"
+],
+"start": "tryuah.e.eelleuy.g.smvmrr",
+"min": 10
+},
+{
+"words": [
+"dough",
+"after",
+"awake",
+"drama",
+"ultra",
+"horse"
+],
+"shown": [
+"dough",
+"after",
+"awake",
+"drama",
+"ultra",
+"horse"
+],
+"start": "meaear.l.sudoghf.r.aowrkt",
+"min": 10
+},
+{
+"words": [
+"tasty",
+"arena",
+"pilot",
+"tramp",
+"swell",
+"yeast"
+],
+"shown": [
+"tasty",
+"arena",
+"pilot",
+"tramp",
+"swell",
+"yeast"
+],
+"start": "tsepyr.w.eaarttl.n.soalim",
+"min": 10
+},
+{
+"words": [
+"savor",
+"among",
+"exact",
+"shape",
+"viola",
+"right"
+],
+"shown": [
+"savor",
+"among",
+"exact",
+"shape",
+"viola",
+"right"
+],
+"start": "simoah.g.hvionap.t.erlacx",
+"min": 10
+},
+{
+"words": [
+"swing",
+"apple",
+"eaten",
+"stale",
+"input",
+"green"
+],
+"shown": [
+"swing",
+"apple",
+"eaten",
+"stale",
+"input",
+"green"
+],
+"start": "wernut.t.gapnnel.p.seaile",
+"min": 10
+},
+{
+"words": [
+"otter",
+"grass",
+"token",
+"ought",
+"track",
+"risen"
+],
+"shown": [
+"otter",
+"grass",
+"token",
+"ought",
+"track",
+"risen"
+],
+"start": "oatcrk.r.sisgtun.t.eeoreh",
+"min": 10
+},
+{
+"words": [
+"cabin",
+"alarm",
+"yield",
+"crazy",
+"brake",
+"named"
+],
+"shown": [
+"cabin",
+"alarm",
+"yield",
+"crazy",
+"brake",
+"named"
+],
+"start": "cablki.e.manrarz.r.ldieay",
+"min": 10
+},
+{
+"words": [
+"lyric",
+"argue",
+"enter",
+"lease",
+"right",
+"clear"
+],
+"shown": [
+"lyric",
+"argue",
+"enter",
+"lease",
+"right",
+"clear"
+],
+"start": "llrige.h.ancaurs.y.eetier",
+"min": 10
+},
+{
+"words": [
+"third",
+"arena",
+"nylon",
+"train",
+"ideal",
+"drain"
+],
+"shown": [
+"third",
+"arena",
+"nylon",
+"train",
+"ideal",
+"drain"
+],
+"start": "yhioda.a.rleantd.r.inrrin",
+"min": 10
+},
+{
+"words": [
+"boost",
+"ideal",
+"gravy",
+"bring",
+"opera",
+"tally"
+],
+"shown": [
+"boost",
+"ideal",
+"gravy",
+"bring",
+"opera",
+"tally"
+],
+"start": "ooisel.p.atbynag.r.lrravd",
+"min": 10
+},
+{
+"words": [
+"while",
+"dress",
+"relay",
+"wider",
+"ideal",
+"essay"
+],
+"shown": [
+"while",
+"dress",
+"relay",
+"wider",
+"ideal",
+"essay"
+],
+"start": "ldhare.s.ryieiss.a.aeelwd",
+"min": 10
+},
+{
+"words": [
+"major",
+"dried",
+"later",
+"model",
+"joint",
+"rider"
+],
+"shown": [
+"major",
+"dried",
+"later",
+"model",
+"joint",
+"rider"
+],
+"start": "mojldo.o.dnrieat.e.eearri",
+"min": 10
+},
+{
+"words": [
+"sheer",
+"opera",
+"nutty",
+"spoon",
+"event",
+"ready"
+],
+"shown": [
+"sheer",
+"opera",
+"nutty",
+"spoon",
+"event",
+"ready"
+],
+"start": "serepa.v.erhutop.n.deotny",
+"min": 10
+},
+{
+"words": [
+"tummy",
+"tribe",
+"rated",
+"tutor",
+"moist",
+"yield"
+],
+"shown": [
+"tummy",
+"tribe",
+"rated",
+"tutor",
+"moist",
+"yield"
+],
+"start": "smduyi.o.imtrluo.a.brteet",
+"min": 10
+},
+{
+"words": [
+"spear",
+"often",
+"lance",
+"stool",
+"eaten",
+"range"
+],
+"shown": [
+"spear",
+"often",
+"lance",
+"stool",
+"eaten",
+"range"
+],
+"start": "areact.o.aospfnt.e.glneea",
+"min": 10
+},
+{
+"words": [
+"wreck",
+"unite",
+"dwell",
+"would",
+"elite",
+"kneel"
+],
+"shown": [
+"wreck",
+"unite",
+"dwell",
+"would",
+"elite",
+"kneel"
+],
+"start": "wlenuo.t.nckiwdt.e.rleell",
+"min": 10
+},
+{
+"words": [
+"tango",
+"moist",
+"ocean",
+"tempo",
+"noise",
+"often"
+],
+"shown": [
+"tango",
+"moist",
+"ocean",
+"tempo",
+"noise",
+"often"
+],
+"start": "atogci.o.fmstnos.e.paoeen",
+"min": 10
+},
+{
+"words": [
+"speed",
+"opera",
+"eaten",
+"stone",
+"elect",
+"drain"
+],
+"shown": [
+"speed",
+"opera",
+"eaten",
+"stone",
+"elect",
+"drain"
+],
+"start": "sciedt.e.leaerao.r.pptnen",
+"min": 10
+},
+{
+"words": [
+"liner",
+"satin",
+"ridge",
+"laser",
+"noted",
+"rinse"
+],
+"shown": [
+"liner",
+"satin",
+"ridge",
+"laser",
+"noted",
+"rinse"
+],
+"start": "oitera.i.ndesine.r.aislge",
+"min": 10
+},
+{
+"words": [
+"forum",
+"order",
+"roomy",
+"flour",
+"radio",
+"merry"
+],
+"shown": [
+"forum",
+"order",
+"roomy",
+"flour",
+"radio",
+"merry"
+],
+"start": "udyeme.f.oorliro.a.rromur",
+"min": 10
+},
+{
+"words": [
+"cheer",
+"vital",
+"ready",
+"cover",
+"extra",
+"relay"
+],
+"shown": [
+"cheer",
+"vital",
+"ready",
+"cover",
+"extra",
+"relay"
+],
+"start": "rhvcer.x.ariaely.e.eetado",
+"min": 10
+},
+{
+"words": [
+"false",
+"after",
+"essay",
+"flake",
+"lotus",
+"early"
+],
+"shown": [
+"false",
+"after",
+"essay",
+"flake",
+"lotus",
+"early"
+],
+"start": "falufs.e.rsoaeta.a.lyskle",
+"min": 10
+},
+{
+"words": [
+"skate",
+"input",
+"every",
+"slime",
+"apple",
+"entry"
+],
+"shown": [
+"skate",
+"input",
+"every",
+"slime",
+"apple",
+"entry"
+],
+"start": "sptier.v.pnneytm.l.klaeru",
+"min": 10
+},
+{
+"words": [
+"mural",
+"drown",
+"layer",
+"model",
+"roomy",
+"lunar"
+],
+"shown": [
+"mural",
+"drown",
+"layer",
+"model",
+"roomy",
+"lunar"
+],
+"start": "luraoa.y.drnowoe.l.muamer",
+"min": 10
+},
+{
+"words": [
+"taffy",
+"alarm",
+"every",
+"trace",
+"frame",
+"yummy"
+],
+"shown": [
+"taffy",
+"alarm",
+"every",
+"trace",
+"frame",
+"yummy"
+],
+"start": "taamcr.f.ymfayue.l.mrverr",
+"min": 10
+},
+{
+"words": [
+"glove",
+"oasis",
+"nutty",
+"groan",
+"onset",
+"essay"
+],
+"shown": [
+"glove",
+"oasis",
+"nutty",
+"groan",
+"onset",
+"essay"
+],
+"start": "aosveg.n.soilesa.n.tyuart",
+"min": 10
+},
+{
+"words": [
+"fairy",
+"realm",
+"every",
+"forge",
+"image",
+"yummy"
+],
+"shown": [
+"fairy",
+"realm",
+"every",
+"forge",
+"image",
+"yummy"
+],
+"start": "omiaye.m.vfrmueg.g.lerary",
+"min": 10
+},
+{
+"words": [
+"rigid",
+"viola",
+"rally",
+"river",
+"growl",
+"diary"
+],
+"shown": [
+"rigid",
+"viola",
+"rally",
+"river",
+"growl",
+"diary"
+],
+"start": "oildyi.r.irvagei.w.raillr",
+"min": 10
+},
+{
+"words": [
+"minor",
+"dated",
+"ledge",
+"model",
+"noted",
+"ridge"
+],
+"shown": [
+"minor",
+"dated",
+"ledge",
+"model",
+"noted",
+"ridge"
+],
+"start": "iiegtn.e.dearlde.o.godeom",
+"min": 10
+},
+{
+"words": [
+"stood",
+"oasis",
+"entry",
+"slope",
+"onset",
+"dusty"
+],
+"shown": [
+"stood",
+"oasis",
+"entry",
+"slope",
+"onset",
+"dusty"
+],
+"start": "sspano.l.totiosd.u.eentry",
+"min": 10
+},
+{
+"words": [
+"drill",
+"apply",
+"enter",
+"drape",
+"input",
+"layer"
+],
+"shown": [
+"drill",
+"apply",
+"enter",
+"drape",
+"input",
+"layer"
+],
+"start": "erllnt.p.adaprip.u.yenelr",
+"min": 10
+},
+{
+"words": [
+"earth",
+"elder",
+"tardy",
+"event",
+"rider",
+"hardy"
+],
+"shown": [
+"earth",
+"elder",
+"tardy",
+"event",
+"rider",
+"hardy"
+],
+"start": "edrnra.v.aeytera.i.dtdhle",
+"min": 10
+},
+{
+"words": [
+"witty",
+"tunic",
+"roost",
+"water",
+"tango",
+"yacht"
+],
+"shown": [
+"witty",
+"tunic",
+"roost",
+"water",
+"tango",
+"yacht"
+],
+"start": "wyeaos.u.attrich.t.gnaoit",
+"min": 10
+},
+{
+"words": [
+"stool",
+"reign",
+"bench",
+"scrub",
+"onion",
+"lunch"
+],
+"shown": [
+"stool",
+"reign",
+"bench",
+"scrub",
+"onion",
+"lunch"
+],
+"start": "snchle.t.eiurono.g.uncboc",
+"min": 10
+},
+{
+"words": [
+"anger",
+"award",
+"elder",
+"awake",
+"guard",
+"rider"
+],
+"shown": [
+"anger",
+"award",
+"elder",
+"awake",
+"guard",
+"rider"
+],
+"start": "adgerl.r.aawrrki.e.weuedn",
+"min": 10
+},
+{
+"words": [
+"ridge",
+"bonus",
+"needy",
+"robin",
+"dense",
+"essay"
+],
+"shown": [
+"ridge",
+"bonus",
+"needy",
+"robin",
+"dense",
+"essay"
+],
+"start": "dseayo.e.siondbi.n.ugeers",
+"min": 10
+},
+{
+"words": [
+"crack",
+"loose",
+"regal",
+"color",
+"among",
+"kneel"
+],
+"shown": [
+"crack",
+"loose",
+"regal",
+"color",
+"among",
+"kneel"
+],
+"start": "ckreoo.m.cnsoana.e.lrlgoe",
+"min": 10
+},
+{
+"words": [
+"night",
+"realm",
+"elder",
+"nurse",
+"guard",
+"timer"
+],
+"shown": [
+"night",
+"realm",
+"elder",
+"nurse",
+"guard",
+"timer"
+],
+"start": "lrgitm.u.riealns.e.urdhee",
+"min": 10
+},
+{
+"words": [
+"regal",
+"yeast",
+"layer",
+"royal",
+"gravy",
+"later"
+],
+"shown": [
+"regal",
+"yeast",
+"layer",
+"royal",
+"gravy",
+"later"
+],
+"start": "vseelr.r.eaaaotr.e.alayyg",
+"min": 10
+},
+{
+"words": [
+"shone",
+"inner",
+"their",
+"skirt",
+"ounce",
+"error"
+],
+"shown": [
+"shone",
+"inner",
+"their",
+"skirt",
+"ounce",
+"error"
+],
+"start": "kctohs.u.nieerrr.i.onrnhe",
+"min": 10
+},
+{
+"words": [
+"prong",
+"issue",
+"eaten",
+"price",
+"onset",
+"green"
+],
+"shown": [
+"prong",
+"issue",
+"eaten",
+"price",
+"onset",
+"green"
+],
+"start": "roengs.p.setrceu.i.reaenn",
+"min": 10
+},
+{
+"words": [
+"brave",
+"night",
+"holly",
+"bench",
+"angel",
+"entry"
+],
+"shown": [
+"brave",
+"night",
+"holly",
+"bench",
+"angel",
+"entry"
+],
+"start": "thavei.n.bnlrnec.r.hogely",
+"min": 10
+},
+{
+"words": [
+"nasty",
+"lyric",
+"night",
+"nylon",
+"shrug",
+"yacht"
+],
+"shown": [
+"nasty",
+"lyric",
+"night",
+"nylon",
+"shrug",
+"yacht"
+],
+"start": "nagiyt.h.ahyhrlo.i.yntusc",
+"min": 10
+},
+{
+"words": [
+"brick",
+"opera",
+"delta",
+"broad",
+"ideal",
+"koala"
+],
+"shown": [
+"brick",
+"opera",
+"delta",
+"broad",
+"ideal",
+"koala"
+],
+"start": "deilba.a.corerar.o.pdklta",
+"min": 10
+},
+{
+"words": [
+"hover",
+"mural",
+"needy",
+"human",
+"verse",
+"rally"
+],
+"shown": [
+"hover",
+"mural",
+"needy",
+"human",
+"verse",
+"rally"
+],
+"start": "hoslre.e.muruana.l.devaey",
+"min": 10
+},
+{
+"words": [
+"delay",
+"tunic",
+"donut",
+"dated",
+"linen",
+"yacht"
+],
+"shown": [
+"delay",
+"tunic",
+"donut",
+"dated",
+"linen",
+"yacht"
+],
+"start": "ducata.d.atoeiue.e.iynnhl",
+"min": 10
+},
+{
+"words": [
+"prune",
+"awake",
+"elect",
+"plate",
+"usage",
+"event"
+],
+"shown": [
+"prune",
+"awake",
+"elect",
+"plate",
+"usage",
+"event"
+],
+"start": "rlvneg.c.kawastl.u.nepeet",
+"min": 10
+},
+{
+"words": [
+"award",
+"grown",
+"eagle",
+"angle",
+"along",
+"dance"
+],
+"shown": [
+"award",
+"grown",
+"eagle",
+"angle",
+"along",
+"dance"
+],
+"start": "cgadrl.l.ogaewla.n.awnenr",
+"min": 10
+},
+{
+"words": [
+"tempo",
+"round",
+"water",
+"threw",
+"mount",
+"order"
+],
+"shown": [
+"tempo",
+"round",
+"water",
+"threw",
+"mount",
+"order"
+],
+"start": "tenndr.p.oroumhe.e.reawot",
+"min": 10
+},
+{
+"words": [
+"guide",
+"oasis",
+"needy",
+"grown",
+"issue",
+"essay"
+],
+"shown": [
+"guide",
+"oasis",
+"needy",
+"grown",
+"issue",
+"essay"
+],
+"start": "radied.s.aonsgwu.u.iseesy",
+"min": 10
+},
+{
+"words": [
+"match",
+"reign",
+"eagle",
+"merge",
+"tying",
+"hinge"
+],
+"shown": [
+"match",
+"reign",
+"eagle",
+"merge",
+"tying",
+"hinge"
+],
+"start": "gatemn.r.iinlehg.y.geagce",
+"min": 10
+},
+{
+"words": [
+"tenth",
+"rider",
+"ocean",
+"turbo",
+"nudge",
+"heron"
+],
+"shown": [
+"tenth",
+"rider",
+"ocean",
+"turbo",
+"nudge",
+"heron"
+],
+"start": "ineudg.t.eoeoerb.h.rtcuan",
+"min": 10
+},
+{
+"words": [
+"squad",
+"eaten",
+"force",
+"shelf",
+"utter",
+"dense"
+],
+"shown": [
+"squad",
+"eaten",
+"force",
+"shelf",
+"utter",
+"dense"
+],
+"start": "aqcsuh.t.eseretl.e.odafne",
+"min": 10
+},
+{
+"words": [
+"waved",
+"raven",
+"dodge",
+"world",
+"vivid",
+"dense"
+],
+"shown": [
+"waved",
+"raven",
+"dodge",
+"world",
+"vivid",
+"dense"
+],
+"start": "oanlgd.v.ervaedw.i.seedio",
+"min": 10
+},
+{
+"words": [
+"berry",
+"alarm",
+"entry",
+"blaze",
+"roast",
+"yummy"
+],
+"shown": [
+"berry",
+"alarm",
+"entry",
+"blaze",
+"roast",
+"yummy"
+],
+"start": "errtmb.o.namrlsu.l.yezary",
+"min": 10
+},
+{
+"words": [
+"quilt",
+"along",
+"layer",
+"quail",
+"ivory",
+"tiger"
+],
+"shown": [
+"quilt",
+"along",
+"layer",
+"quail",
+"ivory",
+"tiger"
+],
+"start": "leianl.v.atrqigi.r.oluyeu",
+"min": 10
+},
+{
+"words": [
+"dream",
+"organ",
+"notch",
+"drown",
+"eight",
+"month"
+],
+"shown": [
+"dream",
+"organ",
+"notch",
+"drown",
+"eight",
+"month"
+],
+"start": "datahr.m.rnironw.o.tgheco",
+"min": 10
+},
+{
+"words": [
+"midst",
+"renew",
+"hotel",
+"marsh",
+"donut",
+"towel"
+],
+"shown": [
+"midst",
+"renew",
+"hotel",
+"marsh",
+"donut",
+"towel"
+],
+"start": "nmstde.o.ireeeas.o.wuhtol",
+"min": 10
+},
+{
+"words": [
+"forth",
+"offer",
+"north",
+"flown",
+"refer",
+"harsh"
+],
+"shown": [
+"forth",
+"offer",
+"north",
+"flown",
+"refer",
+"harsh"
+],
+"start": "ohtlhf.e.rofaeew.t.nsorfr",
+"min": 10
+},
+{
+"words": [
+"mount",
+"unity",
+"dense",
+"mound",
+"union",
+"thyme"
+],
+"shown": [
+"mount",
+"unity",
+"dense",
+"mound",
+"union",
+"thyme"
+],
+"start": "toenon.n.duhimyt.n.semnuo",
+"min": 10
+},
+{
+"words": [
+"throw",
+"urban",
+"hatch",
+"tough",
+"robot",
+"winch"
+],
+"shown": [
+"throw",
+"urban",
+"hatch",
+"tough",
+"robot",
+"winch"
+],
+"start": "iwhhto.o.raobagn.c.chrtou",
+"min": 10
+},
+{
+"words": [
+"stuff",
+"outer",
+"diary",
+"sword",
+"ultra",
+"ferry"
+],
+"shown": [
+"stuff",
+"outer",
+"diary",
+"sword",
+"ultra",
+"ferry"
+],
+"start": "sdrrfw.l.fyrteiu.t.ouerar",
+"min": 10
+},
+{
+"words": [
+"thorn",
+"upset",
+"husky",
+"truth",
+"oasis",
+"nutty"
+],
+"shown": [
+"thorn",
+"upset",
+"husky",
+"truth",
+"oasis",
+"nutty"
+],
+"start": "sksrny.t.uttuept.h.uiahor",
+"min": 10
+},
+{
+"words": [
+"drink",
+"essay",
+"sneak",
+"dress",
+"issue",
+"kayak"
+],
+"shown": [
+"drink",
+"essay",
+"sneak",
+"dress",
+"issue",
+"kayak"
+],
+"start": "dnskak.e.asasaye.r.usnrsi",
+"min": 10
+},
+{
+"words": [
+"spare",
+"elite",
+"treat",
+"scent",
+"alive",
+"event"
+],
+"shown": [
+"spare",
+"elite",
+"treat",
+"scent",
+"alive",
+"event"
+],
+"start": "tptrlc.e.velntre.s.veaina",
+"min": 10
+},
+{
+"words": [
+"label",
+"night",
+"honor",
+"lunch",
+"began",
+"later"
+],
+"shown": [
+"label",
+"night",
+"honor",
+"lunch",
+"began",
+"later"
+],
+"start": "baerei.n.anughhc.t.llooae",
+"min": 10
+},
+{
+"words": [
+"gloom",
+"anger",
+"dense",
+"grand",
+"organ",
+"merge"
+],
+"shown": [
+"gloom",
+"anger",
+"dense",
+"grand",
+"organ",
+"merge"
+],
+"start": "reosrm.o.erlaenn.a.gggnde",
+"min": 10
+},
+{
+"words": [
+"creep",
+"outer",
+"ranch",
+"choir",
+"eaten",
+"porch"
+],
+"shown": [
+"creep",
+"outer",
+"ranch",
+"choir",
+"eaten",
+"porch"
+],
+"start": "hpcece.a.eourcoi.h.rrenat",
+"min": 10
+},
+{
+"words": [
+"pizza",
+"noble",
+"award",
+"panda",
+"zebra",
+"ahead"
+],
+"shown": [
+"pizza",
+"noble",
+"award",
+"panda",
+"zebra",
+"ahead"
+],
+"start": "ozzari.a.neabrel.a.pawhdd",
+"min": 10
+},
+{
+"words": [
+"nerve",
+"radar",
+"harsh",
+"north",
+"rider",
+"earth"
+],
+"shown": [
+"nerve",
+"radar",
+"harsh",
+"north",
+"rider",
+"earth"
+],
+"start": "ohsern.a.tearrat.v.ihaerd",
+"min": 10
+},
+{
+"words": [
+"dusty",
+"parka",
+"habit",
+"depth",
+"scrub",
+"yeast"
+],
+"shown": [
+"dusty",
+"parka",
+"habit",
+"depth",
+"scrub",
+"yeast"
+],
+"start": "yustue.c.apshadk.t.riabet",
+"min": 10
+},
+{
+"words": [
+"moral",
+"dozen",
+"agree",
+"media",
+"razor",
+"lance"
+],
+"shown": [
+"moral",
+"dozen",
+"agree",
+"media",
+"razor",
+"lance"
+],
+"start": "ioelrz.n.aocrdma.o.eagaee",
+"min": 10
+},
+{
+"words": [
+"slate",
+"exact",
+"paddy",
+"sheep",
+"award",
+"entry"
+],
+"shown": [
+"slate",
+"exact",
+"paddy",
+"sheep",
+"award",
+"entry"
+],
+"start": "lnateh.d.rectyxe.r.asawdp",
+"min": 10
+},
+{
+"words": [
+"blood",
+"extra",
+"siren",
+"bless",
+"outer",
+"drain"
+],
+"shown": [
+"blood",
+"extra",
+"siren",
+"bless",
+"outer",
+"drain"
+],
+"start": "rnosod.b.urxeras.i.iltlee",
+"min": 10
+},
+{
+"words": [
+"usage",
+"dated",
+"error",
+"undue",
+"after",
+"elder"
+],
+"shown": [
+"usage",
+"dated",
+"error",
+"undue",
+"after",
+"elder"
+],
+"start": "ueruro.e.ldftesa.r.egadne",
+"min": 10
+},
+{
+"words": [
+"ember",
+"throb",
+"royal",
+"enter",
+"berry",
+"rebel"
+],
+"shown": [
+"ember",
+"throb",
+"royal",
+"enter",
+"berry",
+"rebel"
+],
+"start": "emhryb.e.eortber.o.enreal",
+"min": 10
+},
+{
+"words": [
+"bless",
+"rogue",
+"hotel",
+"birch",
+"eight",
+"steel"
+],
+"shown": [
+"bless",
+"rogue",
+"hotel",
+"birch",
+"eight",
+"steel"
+],
+"start": "lleihi.e.srtuots.c.ehobeg",
+"min": 10
+},
+{
+"words": [
+"giant",
+"opera",
+"exact",
+"grove",
+"arena",
+"toast"
+],
+"shown": [
+"giant",
+"opera",
+"exact",
+"grove",
+"arena",
+"toast"
+],
+"start": "gaotnr.e.oarptis.n.erxavc",
+"min": 10
+},
+{
+"words": [
+"tying",
+"maple",
+"often",
+"tempo",
+"input",
+"green"
+],
+"shown": [
+"tying",
+"maple",
+"often",
+"tempo",
+"input",
+"green"
+],
+"start": "itnnpe.u.lmtayep.g.eorfen",
+"min": 10
+},
+{
+"words": [
+"tower",
+"sedan",
+"earth",
+"taste",
+"wider",
+"ranch"
+],
+"shown": [
+"tower",
+"sedan",
+"earth",
+"taste",
+"wider",
+"ranch"
+],
+"start": "eianra.a.cstdtwe.r.eeaoth",
+"min": 10
+},
+{
+"words": [
+"tunic",
+"after",
+"thyme",
+"trait",
+"nutty",
+"curve"
+],
+"shown": [
+"tunic",
+"after",
+"thyme",
+"trait",
+"nutty",
+"curve"
+],
+"start": "muaicy.h.urrtvni.t.feteut",
+"min": 10
+},
+{
+"words": [
+"hinge",
+"vivid",
+"ruler",
+"hover",
+"novel",
+"elder"
+],
+"shown": [
+"hinge",
+"vivid",
+"ruler",
+"hover",
+"novel",
+"elder"
+],
+"start": "ilnohv.i.evrdeeg.e.oiuler",
+"min": 10
+},
+{
+"words": [
+"opera",
+"trace",
+"rated",
+"otter",
+"exact",
+"ahead"
+],
+"shown": [
+"opera",
+"trace",
+"rated",
+"otter",
+"exact",
+"ahead"
+],
+"start": "cxpeaa.e.hcrerot.r.aettad",
+"min": 10
+},
+{
+"words": [
+"range",
+"scrap",
+"needy",
+"risen",
+"nurse",
+"empty"
+],
+"shown": [
+"range",
+"scrap",
+"needy",
+"risen",
+"nurse",
+"empty"
+],
+"start": "pareei.e.dscynmr.t.snueag",
+"min": 10
+},
+{
+"words": [
+"table",
+"ought",
+"panda",
+"troop",
+"begin",
+"extra"
+],
+"shown": [
+"table",
+"ought",
+"panda",
+"troop",
+"begin",
+"extra"
+],
+"start": "pobner.e.adhluta.i.rgoatx",
+"min": 10
+},
+{
+"words": [
+"forge",
+"ought",
+"needy",
+"flown",
+"rogue",
+"entry"
+],
+"shown": [
+"forge",
+"ought",
+"needy",
+"flown",
+"rogue",
+"entry"
+],
+"start": "yerget.o.ognuond.u.rlhwef",
+"min": 10
+},
+{
+"words": [
+"stick",
+"lease",
+"dwell",
+"salad",
+"image",
+"kneel"
+],
+"shown": [
+"stick",
+"lease",
+"dwell",
+"salad",
+"image",
+"kneel"
+],
+"start": "kgmcad.a.nleswse.t.elieal",
+"min": 10
+},
+{
+"words": [
+"grief",
+"ahead",
+"solve",
+"grass",
+"ideal",
+"fudge"
+],
+"shown": [
+"grief",
+"ahead",
+"solve",
+"grass",
+"ideal",
+"fudge"
+],
+"start": "ardefd.e.laaegvh.g.ssoriu",
+"min": 10
+},
+{
+"words": [
+"cloud",
+"elite",
+"regal",
+"clear",
+"owing",
+"dwell"
+],
+"shown": [
+"cloud",
+"elite",
+"regal",
+"clear",
+"owing",
+"dwell"
+],
+"start": "ulnwdl.o.lawiclt.e.lreeag",
+"min": 10
+},
+{
+"words": [
+"stock",
+"extra",
+"larva",
+"swell",
+"otter",
+"koala"
+],
+"shown": [
+"stock",
+"extra",
+"larva",
+"swell",
+"otter",
+"koala"
+],
+"start": "rsrtew.o.ttckxal.e.lloaav",
+"min": 10
+},
+{
+"words": [
+"elder",
+"exact",
+"yield",
+"every",
+"drape",
+"rated"
+],
+"shown": [
+"elder",
+"exact",
+"yield",
+"every",
+"drape",
+"rated"
+],
+"start": "yadetl.e.reralrx.p.ceivde",
+"min": 10
+},
+{
+"words": [
+"trail",
+"along",
+"kneel",
+"thank",
+"above",
+"legal"
+],
+"shown": [
+"trail",
+"along",
+"kneel",
+"thank",
+"above",
+"legal"
+],
+"start": "oaaleh.l.grlbtni.v.aenekn",
+"min": 10
+},
+{
+"words": [
+"repay",
+"dream",
+"essay",
+"ridge",
+"press",
+"yummy"
+],
+"shown": [
+"repay",
+"dream",
+"essay",
+"ridge",
+"press",
+"yummy"
+],
+"start": "semsyu.r.yrremgs.d.aeaapi",
+"min": 10
+},
+{
+"words": [
+"crowd",
+"alike",
+"kneel",
+"crack",
+"olive",
+"dwell"
+],
+"shown": [
+"crowd",
+"alike",
+"kneel",
+"crack",
+"olive",
+"dwell"
+],
+"start": "cioawv.e.dlkcwen.r.lkelrl",
+"min": 10
+},
+{
+"words": [
+"sprig",
+"image",
+"eaten",
+"spite",
+"roast",
+"green"
+],
+"shown": [
+"sprig",
+"image",
+"eaten",
+"spite",
+"roast",
+"green"
+],
+"start": "sperem.o.earngai.s.eiptgt",
+"min": 10
+},
+{
+"words": [
+"dwell",
+"noisy",
+"their",
+"donut",
+"elite",
+"layer"
+],
+"shown": [
+"dwell",
+"noisy",
+"their",
+"donut",
+"elite",
+"layer"
+],
+"start": "dnlylo.l.etiaueo.t.hwseir",
+"min": 10
+},
+{
+"words": [
+"thank",
+"rugby",
+"break",
+"throb",
+"argue",
+"kayak"
+],
+"shown": [
+"thank",
+"rugby",
+"break",
+"throb",
+"argue",
+"kayak"
+],
+"start": "gaarto.r.bhuebyk.u.arhkan",
+"min": 10
+},
+{
+"words": [
+"peach",
+"about",
+"legal",
+"pearl",
+"among",
+"hotel"
+],
+"shown": [
+"peach",
+"about",
+"legal",
+"pearl",
+"among",
+"hotel"
+],
+"start": "neorhe.a.epcolag.t.elabmu",
+"min": 10
+},
+{
+"words": [
+"grass",
+"viola",
+"night",
+"given",
+"among",
+"start"
+],
+"shown": [
+"grass",
+"viola",
+"night",
+"given",
+"among",
+"start"
+],
+"start": "arastl.o.rvimshi.n.egngit",
+"min": 10
+},
+{
+"words": [
+"chain",
+"owing",
+"elect",
+"close",
+"alike",
+"night"
+],
+"shown": [
+"chain",
+"owing",
+"elect",
+"close",
+"alike",
+"night"
+],
+"start": "ceiwal.h.lioenls.i.hngkct",
+"min": 10
+},
+{
+"words": [
+"choir",
+"onion",
+"eagle",
+"chose",
+"owing",
+"range"
+],
+"shown": [
+"choir",
+"onion",
+"eagle",
+"chose",
+"owing",
+"range"
+],
+"start": "ghonli.e.aoniwns.c.oregah",
+"min": 10
+},
+{
+"words": [
+"local",
+"video",
+"large",
+"level",
+"cider",
+"loose"
+],
+"shown": [
+"local",
+"video",
+"large",
+"level",
+"cider",
+"loose"
+],
+"start": "dlceae.a.soivgoe.e.ilerol",
+"min": 10
+}
+]
+}

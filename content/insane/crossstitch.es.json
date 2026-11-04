@@ -1,0 +1,7306 @@
+{
+"version": 1,
+"note": "Cross Stitch's samplers for one band, built by tools/build_crossstitch.py from Hidden Word's answers (themselves drawn from wordfreq, Robyn Speer et al., CC-BY-SA 4.0). `words`: three across (rows 0/2/4) then three down (columns 0/2/4), folded; `shown`: the same as written; `start`: the 25 cells as dealt, row by row, '.' a hole; `min`: the fewest swaps that stitch it, solved exactly.",
+"boards": [
+{
+"words": [
+"fibra",
+"ronda",
+"apodo",
+"forma",
+"bando",
+"arado"
+],
+"shown": [
+"fibra",
+"ronda",
+"apodo",
+"forma",
+"bando",
+"arado"
+],
+"start": "dnifaa.d.mrordod.o.baparo",
+"min": 10
+},
+{
+"words": [
+"salon",
+"lucir",
+"rueda",
+"solar",
+"leche",
+"norma"
+],
+"shown": [
+"salón",
+"lucir",
+"rueda",
+"solar",
+"leche",
+"norma"
+],
+"start": "eilcnu.e.oladauo.h.armsro",
+"min": 10
+},
+{
+"words": [
+"reina",
+"creer",
+"obrar",
+"recto",
+"idear",
+"abrir"
+],
+"shown": [
+"reina",
+"creer",
+"obrar",
+"recto",
+"idear",
+"abrir"
+],
+"start": "anbari.r.ioreebc.a.etrerd",
+"min": 10
+},
+{
+"words": [
+"bueno",
+"buque",
+"reina",
+"beber",
+"esqui",
+"oreja"
+],
+"shown": [
+"bueno",
+"buque",
+"reina",
+"beber",
+"esquí",
+"oreja"
+],
+"start": "bunien.o.rrubuee.u.seejaq",
+"min": 10
+},
+{
+"words": [
+"fecha",
+"llano",
+"osado",
+"folio",
+"clara",
+"apodo"
+],
+"shown": [
+"fecha",
+"llano",
+"osado",
+"folio",
+"clara",
+"apodo"
+],
+"start": "sochao.o.pfalodn.r.iellad",
+"min": 10
+},
+{
+"words": [
+"serie",
+"noble",
+"acero",
+"senda",
+"roble",
+"enero"
+],
+"shown": [
+"serie",
+"noble",
+"acero",
+"senda",
+"roble",
+"enero"
+],
+"start": "ndrobe.c.naleeio.e.rsoerl",
+"min": 10
+},
+{
+"words": [
+"doble",
+"llano",
+"ebano",
+"dulce",
+"brasa",
+"enojo"
+],
+"shown": [
+"doble",
+"llano",
+"ébano",
+"dulce",
+"brasa",
+"enojo"
+],
+"start": "noboen.s.rludnbc.j.lealao",
+"min": 10
+},
+{
+"words": [
+"mueca",
+"nariz",
+"errar",
+"monte",
+"error",
+"alzar"
+],
+"shown": [
+"mueca",
+"nariz",
+"errar",
+"monte",
+"error",
+"alzar"
+],
+"start": "muetae.o.inacala.r.orrzrr",
+"min": 10
+},
+{
+"words": [
+"robot",
+"globo",
+"riego",
+"rogar",
+"brote",
+"trozo"
+],
+"shown": [
+"robot",
+"globo",
+"riego",
+"rogar",
+"brote",
+"trozo"
+],
+"start": "goegtr.b.rtoabzo.l.orioor",
+"min": 10
+},
+{
+"words": [
+"brisa",
+"nuevo",
+"apodo",
+"banca",
+"ileso",
+"apoyo"
+],
+"shown": [
+"brisa",
+"nuevo",
+"apodo",
+"banca",
+"ileso",
+"apoyo"
+],
+"start": "bdueva.r.pnlaaoc.s.siyopo",
+"min": 10
+},
+{
+"words": [
+"palmo",
+"cenit",
+"rueda",
+"picar",
+"lince",
+"ostra"
+],
+"shown": [
+"palmo",
+"cenit",
+"rueda",
+"picar",
+"lince",
+"ostra"
+],
+"start": "mrlaia.i.eecritc.o.nsupda",
+"min": 10
+},
+{
+"words": [
+"favor",
+"oasis",
+"abaco",
+"flota",
+"vista",
+"resto"
+],
+"shown": [
+"favor",
+"oasis",
+"ábaco",
+"flota",
+"vista",
+"resto"
+],
+"start": "sivoos.i.eoarctl.t.aatafb",
+"min": 10
+},
+{
+"words": [
+"crema",
+"reino",
+"ozono",
+"curso",
+"exito",
+"atomo"
+],
+"shown": [
+"crema",
+"reino",
+"ozono",
+"curso",
+"éxito",
+"átomo"
+],
+"start": "canore.e.smxitmt.z.ruoono",
+"min": 10
+},
+{
+"words": [
+"arpon",
+"dudar",
+"zarpa",
+"audaz",
+"pedir",
+"norma"
+],
+"shown": [
+"arpón",
+"dudar",
+"zarpa",
+"audaz",
+"pedir",
+"norma"
+],
+"start": "ropnaa.d.oauparu.a.mdzrie",
+"min": 10
+},
+{
+"words": [
+"verja",
+"potro",
+"rango",
+"vapor",
+"raton",
+"atomo"
+],
+"shown": [
+"verja",
+"potro",
+"rango",
+"vapor",
+"ratón",
+"átomo"
+],
+"start": "ttvpam.a.arojeao.o.rorngo",
+"min": 10
+},
+{
+"words": [
+"pizca",
+"danza",
+"llano",
+"pedal",
+"zanja",
+"abajo"
+],
+"shown": [
+"pizca",
+"danza",
+"llano",
+"pedal",
+"zanja",
+"abajo"
+],
+"start": "niazac.a.bazjoae.j.lldanp",
+"min": 10
+},
+{
+"words": [
+"jabon",
+"limon",
+"aguja",
+"jalea",
+"bambu",
+"nunca"
+],
+"shown": [
+"jabón",
+"limón",
+"aguja",
+"jalea",
+"bambú",
+"nunca"
+],
+"start": "uobjaj.a.cgmaoae.b.unlnia",
+"min": 10
+},
+{
+"words": [
+"araña",
+"estar",
+"obrar",
+"anexo",
+"altar",
+"abrir"
+],
+"shown": [
+"araña",
+"estar",
+"obrar",
+"anexo",
+"altar",
+"abrir"
+],
+"start": "aabaie.a.slbrañx.n.torrar",
+"min": 10
+},
+{
+"words": [
+"brasa",
+"reina",
+"ozono",
+"barco",
+"amigo",
+"asado"
+],
+"shown": [
+"brasa",
+"reina",
+"ozono",
+"barco",
+"amigo",
+"asado"
+],
+"start": "ziasbg.m.ardonac.n.roeoas",
+"min": 10
+},
+{
+"words": [
+"forma",
+"lamer",
+"enojo",
+"filme",
+"rumbo",
+"agrio"
+],
+"shown": [
+"forma",
+"lamer",
+"enojo",
+"filme",
+"rumbo",
+"agrio"
+],
+"start": "bagmje.i.ilnuerm.r.mfooao",
+"min": 10
+},
+{
+"words": [
+"falso",
+"espia",
+"otoño",
+"fiero",
+"lapso",
+"osado"
+],
+"shown": [
+"falso",
+"espía",
+"otoño",
+"fiero",
+"lapso",
+"osado"
+],
+"start": "fñodti.a.seoolsa.i.assorp",
+"min": 10
+},
+{
+"words": [
+"playa",
+"garza",
+"rasgo",
+"pagar",
+"atras",
+"abaco"
+],
+"shown": [
+"playa",
+"garza",
+"rasgo",
+"pagar",
+"atrás",
+"ábaco"
+],
+"start": "cgatra.s.lpygbaa.a.araazo",
+"min": 10
+},
+{
+"words": [
+"tenaz",
+"batir",
+"agrio",
+"tabla",
+"notar",
+"zorro"
+],
+"shown": [
+"tenaz",
+"batir",
+"agrio",
+"tabla",
+"notar",
+"zorro"
+],
+"start": "rezagb.a.otatoin.a.rroail",
+"min": 10
+},
+{
+"words": [
+"musgo",
+"jaula",
+"riego",
+"mujer",
+"sauce",
+"ocaso"
+],
+"shown": [
+"musgo",
+"jaula",
+"riego",
+"mujer",
+"sauce",
+"ocaso"
+],
+"start": "maugsc.u.jaoaeel.s.criugo",
+"min": 10
+},
+{
+"words": [
+"zarpa",
+"rango",
+"osado",
+"zorro",
+"ronda",
+"atomo"
+],
+"shown": [
+"zarpa",
+"rango",
+"osado",
+"zorro",
+"ronda",
+"átomo"
+],
+"start": "tarzaa.o.ornmspg.d.ordaoo",
+"min": 10
+},
+{
+"words": [
+"nueva",
+"rueda",
+"enojo",
+"norte",
+"enero",
+"abajo"
+],
+"shown": [
+"nueva",
+"rueda",
+"enojo",
+"norte",
+"enero",
+"abajo"
+],
+"start": "oeaueo.n.nrdejvt.a.jonbru",
+"min": 10
+},
+{
+"words": [
+"lugar",
+"tenaz",
+"asear",
+"letra",
+"gente",
+"rozar"
+],
+"shown": [
+"lugar",
+"tenaz",
+"asear",
+"letra",
+"gente",
+"rozar"
+],
+"start": "rlgeet.e.ntarzua.a.oasear",
+"min": 10
+},
+{
+"words": [
+"durar",
+"laton",
+"epoca",
+"dulce",
+"ritmo",
+"ronda"
+],
+"shown": [
+"durar",
+"latón",
+"época",
+"dulce",
+"ritmo",
+"ronda"
+],
+"start": "odraat.u.ouadonr.m.pliecc",
+"min": 10
+},
+{
+"words": [
+"cenar",
+"orden",
+"agrio",
+"caoba",
+"nadar",
+"ronco"
+],
+"shown": [
+"cenar",
+"orden",
+"agrio",
+"caoba",
+"nadar",
+"ronco"
+],
+"start": "reoicr.c.nobdero.a.ganaaa",
+"min": 10
+},
+{
+"words": [
+"pesar",
+"caliz",
+"rodar",
+"picar",
+"salud",
+"rozar"
+],
+"shown": [
+"pesar",
+"cáliz",
+"rodar",
+"picar",
+"salud",
+"rozar"
+],
+"start": "zciape.i.ouadsra.a.orlaar",
+"min": 10
+},
+{
+"words": [
+"licor",
+"anden",
+"aroma",
+"llama",
+"cedro",
+"ronda"
+],
+"shown": [
+"licor",
+"andén",
+"aroma",
+"llama",
+"cedro",
+"ronda"
+],
+"start": "aimocl.e.oomnedn.a.rdlrar",
+"min": 10
+},
+{
+"words": [
+"museo",
+"libra",
+"abono",
+"malva",
+"sabio",
+"opaco"
+],
+"shown": [
+"museo",
+"libra",
+"abono",
+"malva",
+"sabio",
+"opaco"
+],
+"start": "umooba.s.polreiv.i.cabnaa",
+"min": 10
+},
+{
+"words": [
+"polea",
+"lince",
+"arado",
+"pulpa",
+"linda",
+"anexo"
+],
+"shown": [
+"polea",
+"lince",
+"arado",
+"pulpa",
+"linda",
+"anexo"
+],
+"start": "poiola.i.npaddel.x.necura",
+"min": 10
+},
+{
+"words": [
+"beber",
+"lunes",
+"enano",
+"balde",
+"banca",
+"resto"
+],
+"shown": [
+"beber",
+"lunes",
+"enano",
+"balde",
+"banca",
+"resto"
+],
+"start": "bnbera.o.eauascn.d.eeltne",
+"min": 10
+},
+{
+"words": [
+"carga",
+"reino",
+"llano",
+"coral",
+"reina",
+"atomo"
+],
+"shown": [
+"carga",
+"reino",
+"llano",
+"coral",
+"reina",
+"átomo"
+],
+"start": "oanolo.e.trgmira.c.aelann",
+"min": 10
+},
+{
+"words": [
+"cerco",
+"tabla",
+"ritmo",
+"citar",
+"robot",
+"ocaso"
+],
+"shown": [
+"cerco",
+"tabla",
+"ritmo",
+"citar",
+"robot",
+"ocaso"
+],
+"start": "rireom.i.ctacoaa.o.btclso",
+"min": 10
+},
+{
+"words": [
+"leche",
+"marca",
+"nuevo",
+"limon",
+"carne",
+"ebano"
+],
+"shown": [
+"leche",
+"marca",
+"nuevo",
+"limón",
+"carne",
+"ébano"
+],
+"start": "leohnv.m.eenciab.n.acuaro",
+"min": 10
+},
+{
+"words": [
+"panza",
+"ronda",
+"osado",
+"pardo",
+"nunca",
+"abaco"
+],
+"shown": [
+"panza",
+"ronda",
+"osado",
+"pardo",
+"nunca",
+"ábaco"
+],
+"start": "danuaa.z.arnadpd.o.ooccsb",
+"min": 10
+},
+{
+"words": [
+"grupo",
+"amiga",
+"apoyo",
+"grava",
+"unico",
+"ocaso"
+],
+"shown": [
+"grupo",
+"amiga",
+"apoyo",
+"grava",
+"único",
+"ocaso"
+],
+"start": "pripyo.u.cvaogam.g.saornc",
+"min": 10
+},
+{
+"words": [
+"barca",
+"tabla",
+"ritmo",
+"batir",
+"robot",
+"arado"
+],
+"shown": [
+"barca",
+"tabla",
+"ritmo",
+"batir",
+"robot",
+"arado"
+],
+"start": "bmibtd.r.oaalraa.o.oritac",
+"min": 10
+},
+{
+"words": [
+"pinza",
+"unico",
+"anexo",
+"pausa",
+"naipe",
+"apoyo"
+],
+"shown": [
+"pinza",
+"único",
+"anexo",
+"pausa",
+"naipe",
+"apoyo"
+],
+"start": "ppicua.o.epnnzsa.o.ianaxy",
+"min": 10
+},
+{
+"words": [
+"pulpa",
+"senda",
+"enano",
+"poste",
+"linda",
+"abajo"
+],
+"shown": [
+"pulpa",
+"senda",
+"enano",
+"poste",
+"linda",
+"abajo"
+],
+"start": "aujpas.i.nanodet.l.bpndeo",
+"min": 10
+},
+{
+"words": [
+"canto",
+"marea",
+"osado",
+"campo",
+"norma",
+"opalo"
+],
+"shown": [
+"canto",
+"marea",
+"osado",
+"campo",
+"norma",
+"ópalo"
+],
+"start": "omtala.r.pdcaoep.m.nosaao",
+"min": 10
+},
+{
+"words": [
+"resto",
+"mueca",
+"anexo",
+"rampa",
+"siete",
+"opaco"
+],
+"shown": [
+"resto",
+"mueca",
+"anexo",
+"rampa",
+"siete",
+"opaco"
+],
+"start": "oestap.c.imnxeor.t.paaecu",
+"min": 10
+},
+{
+"words": [
+"alfil",
+"breve",
+"lirio",
+"arbol",
+"freir",
+"luego"
+],
+"shown": [
+"alfil",
+"breve",
+"lirio",
+"árbol",
+"freír",
+"luego"
+],
+"start": "llebii.r.frearuv.i.goirlo",
+"min": 10
+},
+{
+"words": [
+"panda",
+"savia",
+"agrio",
+"pesca",
+"nevar",
+"abaco"
+],
+"shown": [
+"panda",
+"savia",
+"agrio",
+"pesca",
+"nevar",
+"ábaco"
+],
+"start": "aangap.e.cscvibr.a.oaedai",
+"min": 10
+},
+{
+"words": [
+"cruce",
+"brisa",
+"aroma",
+"cobra",
+"unico",
+"etapa"
+],
+"shown": [
+"cruce",
+"brisa",
+"aroma",
+"cobra",
+"único",
+"etapa"
+],
+"start": "crrmst.n.uoerbic.c.paroaa",
+"min": 10
+},
+{
+"words": [
+"suela",
+"tarea",
+"largo",
+"sutil",
+"error",
+"atajo"
+],
+"shown": [
+"suela",
+"tarea",
+"largo",
+"sutil",
+"error",
+"atajo"
+],
+"start": "teuasu.a.atalorj.i.elgrro",
+"min": 10
+},
+{
+"words": [
+"pista",
+"dulce",
+"rodeo",
+"podar",
+"salud",
+"alero"
+],
+"shown": [
+"pista",
+"dulce",
+"rodeo",
+"podar",
+"salud",
+"alero"
+],
+"start": "ciptaa.u.leoaodl.u.rdesro",
+"min": 10
+},
+{
+"words": [
+"tucan",
+"tinte",
+"ritmo",
+"tutor",
+"cenit",
+"nieto"
+],
+"shown": [
+"tucán",
+"tinte",
+"ritmo",
+"tutor",
+"cenit",
+"nieto"
+],
+"start": "itinac.u.ttrtieo.t.nouemi",
+"min": 10
+},
+{
+"words": [
+"chapa",
+"ceder",
+"rozar",
+"cocer",
+"audaz",
+"abrir"
+],
+"shown": [
+"chapa",
+"ceder",
+"rozar",
+"cocer",
+"audaz",
+"abrir"
+],
+"start": "aphcae.a.bueozre.r.idocar",
+"min": 10
+},
+{
+"words": [
+"nieve",
+"novia",
+"apoyo",
+"nunca",
+"envio",
+"ebano"
+],
+"shown": [
+"nieve",
+"novia",
+"apoyo",
+"nunca",
+"envío",
+"ébano"
+],
+"start": "oipavy.n.aoovbec.i.ninneu",
+"min": 10
+},
+{
+"words": [
+"canoa",
+"nieta",
+"lleno",
+"canal",
+"nieve",
+"asado"
+],
+"shown": [
+"canoa",
+"nieta",
+"lleno",
+"canal",
+"nieve",
+"asado"
+],
+"start": "aslooa.a.nviaean.t.dilenc",
+"min": 10
+},
+{
+"words": [
+"pegar",
+"dulce",
+"enojo",
+"padre",
+"golfo",
+"riego"
+],
+"shown": [
+"pegar",
+"dulce",
+"enojo",
+"padre",
+"golfo",
+"riego"
+],
+"start": "pereol.e.udijaao.f.cgnogr",
+"min": 10
+},
+{
+"words": [
+"motor",
+"nariz",
+"asear",
+"mania",
+"tarde",
+"rizar"
+],
+"shown": [
+"motor",
+"nariz",
+"asear",
+"manía",
+"tarde",
+"rizar"
+],
+"start": "orzirn.m.aaaiira.d.aasoet",
+"min": 10
+},
+{
+"words": [
+"tarro",
+"libra",
+"ritmo",
+"talar",
+"robot",
+"opalo"
+],
+"shown": [
+"tarro",
+"libra",
+"ritmo",
+"talar",
+"robot",
+"ópalo"
+],
+"start": "pirroa.o.laobmoa.t.tlrair",
+"min": 10
+},
+{
+"words": [
+"poner",
+"lunes",
+"abaco",
+"polea",
+"nunca",
+"rasgo"
+],
+"shown": [
+"poner",
+"lunes",
+"ábaco",
+"polea",
+"nunca",
+"rasgo"
+],
+"start": "ebnelp.u.aeuoaac.r.snogco",
+"min": 10
+},
+{
+"words": [
+"creer",
+"nariz",
+"tirar",
+"cenit",
+"errar",
+"rezar"
+],
+"shown": [
+"creer",
+"nariz",
+"tirar",
+"cenit",
+"errar",
+"rezar"
+],
+"start": "iererr.e.ezrtrai.i.aaanrc",
+"min": 10
+},
+{
+"words": [
+"cirio",
+"robot",
+"avena",
+"carga",
+"roble",
+"ostra"
+],
+"shown": [
+"cirio",
+"robot",
+"avena",
+"carga",
+"roble",
+"ostra"
+],
+"start": "cnriov.o.ibaoots.l.garrae",
+"min": 10
+},
+{
+"words": [
+"capaz",
+"meson",
+"rueda",
+"comer",
+"poste",
+"zanja"
+],
+"shown": [
+"capaz",
+"mesón",
+"rueda",
+"comer",
+"poste",
+"zanja"
+],
+"start": "uzcaoa.o.ametsee.n.jraopd",
+"min": 10
+},
+{
+"words": [
+"cupon",
+"nieve",
+"opalo",
+"canto",
+"poema",
+"nuevo"
+],
+"shown": [
+"cupón",
+"nieve",
+"ópalo",
+"canto",
+"poema",
+"nuevo"
+],
+"start": "tupcvo.n.unmeeia.p.voaolo",
+"min": 10
+},
+{
+"words": [
+"balde",
+"oeste",
+"arado",
+"broma",
+"lista",
+"enero"
+],
+"shown": [
+"balde",
+"oeste",
+"arado",
+"broma",
+"lista",
+"enero"
+],
+"start": "easemr.d.noditlr.t.eabaor",
+"min": 10
+},
+{
+"words": [
+"largo",
+"tosco",
+"abono",
+"letra",
+"resto",
+"ozono"
+],
+"shown": [
+"largo",
+"tosco",
+"abono",
+"letra",
+"resto",
+"ozono"
+],
+"start": "cagtre.o.zoeonnl.t.rsbooa",
+"min": 10
+},
+{
+"words": [
+"asear",
+"arroz",
+"obrar",
+"asado",
+"error",
+"rizar"
+],
+"shown": [
+"asear",
+"arroz",
+"obrar",
+"asado",
+"error",
+"rizar"
+],
+"start": "oaszra.e.oadrrar.r.asbrio",
+"min": 10
+},
+{
+"words": [
+"lista",
+"balde",
+"abrir",
+"libra",
+"solar",
+"asear"
+],
+"shown": [
+"lista",
+"balde",
+"abrir",
+"libra",
+"solar",
+"asear"
+],
+"start": "aidali.a.learbsa.b.storir",
+"min": 10
+},
+{
+"words": [
+"suave",
+"latir",
+"durar",
+"salud",
+"actor",
+"error"
+],
+"shown": [
+"suave",
+"latir",
+"durar",
+"salud",
+"actor",
+"error"
+],
+"start": "sorora.c.rladuua.t.aviuer",
+"min": 10
+},
+{
+"words": [
+"bahia",
+"lince",
+"norma",
+"balon",
+"honor",
+"abeja"
+],
+"shown": [
+"bahía",
+"lince",
+"norma",
+"balón",
+"honor",
+"abeja"
+],
+"start": "eabcho.o.ibinaao.a.jrnoml",
+"min": 10
+},
+{
+"words": [
+"tecla",
+"brazo",
+"atajo",
+"tabla",
+"chapa",
+"apoyo"
+],
+"shown": [
+"tecla",
+"brazo",
+"atajo",
+"tabla",
+"chapa",
+"apoyo"
+],
+"start": "llreaa.h.ptpajca.z.ytaboo",
+"min": 10
+},
+{
+"words": [
+"flota",
+"letra",
+"zarpa",
+"feliz",
+"optar",
+"araña"
+],
+"shown": [
+"flota",
+"letra",
+"zarpa",
+"feliz",
+"optar",
+"araña"
+],
+"start": "eioftr.p.rlperaa.t.ñlaaza",
+"min": 10
+},
+{
+"words": [
+"valer",
+"leche",
+"agrio",
+"villa",
+"lucir",
+"riego"
+],
+"shown": [
+"valer",
+"leche",
+"agrio",
+"villa",
+"lucir",
+"riego"
+],
+"start": "iuoeri.l.ivlgcer.l.gaahie",
+"min": 10
+},
+{
+"words": [
+"final",
+"norte",
+"atajo",
+"finca",
+"norma",
+"luego"
+],
+"shown": [
+"final",
+"norte",
+"atajo",
+"finca",
+"norma",
+"luego"
+],
+"start": "ftnrlt.a.joacain.m.goeiuo",
+"min": 10
+},
+{
+"words": [
+"rimar",
+"salud",
+"asado",
+"resta",
+"malla",
+"rodeo"
+],
+"shown": [
+"rimar",
+"salud",
+"asado",
+"resta",
+"malla",
+"rodeo"
+],
+"start": "rieare.a.aadutlm.a.slsdoo",
+"min": 10
+},
+{
+"words": [
+"animo",
+"oveja",
+"apoyo",
+"ahora",
+"ileso",
+"osado"
+],
+"shown": [
+"ánimo",
+"oveja",
+"apoyo",
+"ahora",
+"ileso",
+"osado"
+],
+"start": "aaioyp.m.sovrjlo.e.danosh",
+"min": 10
+},
+{
+"words": [
+"lapso",
+"tribu",
+"aleta",
+"letra",
+"peine",
+"oruga"
+],
+"shown": [
+"lapso",
+"tribu",
+"aleta",
+"letra",
+"peine",
+"oruga"
+],
+"start": "aaaote.s.rlrernb.g.ultiep",
+"min": 10
+},
+{
+"words": [
+"tifon",
+"leche",
+"osado",
+"toldo",
+"ficha",
+"nieto"
+],
+"shown": [
+"tifón",
+"leche",
+"osado",
+"toldo",
+"ficha",
+"nieto"
+],
+"start": "iaiono.c.eildehh.f.totsdo",
+"min": 10
+},
+{
+"words": [
+"logro",
+"naipe",
+"epoca",
+"lince",
+"guiso",
+"opera"
+],
+"shown": [
+"logro",
+"naipe",
+"época",
+"lince",
+"guiso",
+"ópera"
+],
+"start": "logrrs.e.icacaiu.n.oppope",
+"min": 10
+},
+{
+"words": [
+"atlas",
+"estar",
+"arado",
+"aleta",
+"letra",
+"surco"
+],
+"shown": [
+"atlas",
+"estar",
+"arado",
+"aleta",
+"letra",
+"surco"
+],
+"start": "casaur.d.rlstaet.r.oteala",
+"min": 10
+},
+{
+"words": [
+"prosa",
+"gusto",
+"resta",
+"pagar",
+"oasis",
+"aroma"
+],
+"shown": [
+"prosa",
+"gusto",
+"resta",
+"pagar",
+"oasis",
+"aroma"
+],
+"start": "sgospa.t.remaroa.t.saauir",
+"min": 10
+},
+{
+"words": [
+"fiero",
+"lirio",
+"zorro",
+"feliz",
+"errar",
+"otoño"
+],
+"shown": [
+"fiero",
+"lirio",
+"zorro",
+"feliz",
+"errar",
+"otoño"
+],
+"start": "fireñz.l.toirooe.i.ariorr",
+"min": 10
+},
+{
+"words": [
+"salud",
+"lugar",
+"arado",
+"selva",
+"legua",
+"dardo"
+],
+"shown": [
+"salud",
+"lugar",
+"arado",
+"selva",
+"legua",
+"dardo"
+],
+"start": "dauurl.a.dgaelso.e.auradv",
+"min": 10
+},
+{
+"words": [
+"faena",
+"brasa",
+"atomo",
+"fibra",
+"enano",
+"arado"
+],
+"shown": [
+"faena",
+"brasa",
+"átomo",
+"fibra",
+"enano",
+"arado"
+],
+"start": "maefnb.n.adaanrr.s.oatoir",
+"min": 10
+},
+{
+"words": [
+"notar",
+"capaz",
+"rozar",
+"nacar",
+"tapiz",
+"rezar"
+],
+"shown": [
+"notar",
+"capaz",
+"rozar",
+"nácar",
+"tapiz",
+"rezar"
+],
+"start": "rnraza.o.icaeaao.a.prtzaa",
+"min": 10
+},
+{
+"words": [
+"habil",
+"tazon",
+"largo",
+"hotel",
+"bazar",
+"lento"
+],
+"shown": [
+"hábil",
+"tazón",
+"largo",
+"hotel",
+"bazar",
+"lento"
+],
+"start": "ehbigo.o.reatoaa.l.lzatna",
+"min": 10
+},
+{
+"words": [
+"meter",
+"jamon",
+"rango",
+"mujer",
+"timon",
+"ronco"
+],
+"shown": [
+"meter",
+"jamón",
+"rango",
+"mujer",
+"timón",
+"ronco"
+],
+"start": "aetnnm.c.oomiojr.u.eraego",
+"min": 10
+},
+{
+"words": [
+"cedro",
+"rombo",
+"agrio",
+"cerca",
+"domar",
+"otoño"
+],
+"shown": [
+"cedro",
+"rombo",
+"agrio",
+"cerca",
+"domar",
+"otoño"
+],
+"start": "cñacre.o.otomgod.b.raorie",
+"min": 10
+},
+{
+"words": [
+"cesta",
+"bolsa",
+"abaco",
+"cobra",
+"salsa",
+"arado"
+],
+"shown": [
+"cesta",
+"bolsa",
+"ábaco",
+"cobra",
+"salsa",
+"arado"
+],
+"start": "sedtar.l.ccaoaor.s.aobabs",
+"min": 10
+},
+{
+"words": [
+"calle",
+"pasta",
+"abajo",
+"copia",
+"lista",
+"enano"
+],
+"shown": [
+"calle",
+"pasta",
+"abajo",
+"copia",
+"lista",
+"enano"
+],
+"start": "saioaj.i.nclatal.t.ebpaon",
+"min": 10
+},
+{
+"words": [
+"mejor",
+"nueve",
+"enojo",
+"mente",
+"juego",
+"riego"
+],
+"shown": [
+"mejor",
+"nueve",
+"enojo",
+"mente",
+"juego",
+"riego"
+],
+"start": "neioeo.u.tjeevug.g.ejnmro",
+"min": 10
+},
+{
+"words": [
+"tilde",
+"cenit",
+"asear",
+"tecla",
+"lente",
+"estar"
+],
+"shown": [
+"tilde",
+"cenit",
+"asear",
+"tecla",
+"lente",
+"estar"
+],
+"start": "seltee.e.nircitt.e.lasdaa",
+"min": 10
+},
+{
+"words": [
+"heroe",
+"boina",
+"llano",
+"habil",
+"reina",
+"enano"
+],
+"shown": [
+"héroe",
+"boina",
+"llano",
+"hábil",
+"reina",
+"enano"
+],
+"start": "rnhooa.i.aelnian.e.neblno",
+"min": 10
+},
+{
+"words": [
+"siete",
+"buque",
+"reino",
+"subir",
+"esqui",
+"enero"
+],
+"shown": [
+"siete",
+"buque",
+"reino",
+"subir",
+"esquí",
+"enero"
+],
+"start": "nursiu.s.ebuiner.u.teqieo",
+"min": 10
+},
+{
+"words": [
+"buceo",
+"libra",
+"opalo",
+"bolso",
+"cobra",
+"osado"
+],
+"shown": [
+"buceo",
+"libra",
+"ópalo",
+"bolso",
+"cobra",
+"osado"
+],
+"start": "osluoo.e.rdiblas.o.bocapr",
+"min": 10
+},
+{
+"words": [
+"disco",
+"santo",
+"opaco",
+"deseo",
+"senda",
+"ozono"
+],
+"shown": [
+"disco",
+"santo",
+"opaco",
+"deseo",
+"senda",
+"ozono"
+],
+"start": "eoadic.n.szpntoe.a.socdeo",
+"min": 10
+},
+{
+"words": [
+"tonel",
+"raton",
+"obrar",
+"terco",
+"notar",
+"lunar"
+],
+"shown": [
+"tonel",
+"ratón",
+"obrar",
+"terco",
+"notar",
+"lunar"
+],
+"start": "torert.o.arenano.a.uoablc",
+"min": 10
+},
+{
+"words": [
+"panel",
+"cañon",
+"rizar",
+"picar",
+"niñez",
+"lunar"
+],
+"shown": [
+"panel",
+"cañón",
+"rizar",
+"picar",
+"niñez",
+"lunar"
+],
+"start": "pecoal.i.ñzanaeu.i.arinar",
+"min": 10
+},
+{
+"words": [
+"zanja",
+"recio",
+"alero",
+"zarpa",
+"noche",
+"atomo"
+],
+"shown": [
+"zanja",
+"recio",
+"alero",
+"zarpa",
+"noche",
+"átomo"
+],
+"start": "zjnaae.e.troormo.l.hcaaip",
+"min": 10
+},
+{
+"words": [
+"mania",
+"rogar",
+"atlas",
+"marca",
+"nogal",
+"atras"
+],
+"shown": [
+"manía",
+"rogar",
+"atlas",
+"marca",
+"nogal",
+"atrás"
+],
+"start": "ltmaar.o.aaaaaci.r.sgtnoa",
+"min": 10
+},
+{
+"words": [
+"ganso",
+"lleno",
+"otoño",
+"gallo",
+"nuevo",
+"ozono"
+],
+"shown": [
+"ganso",
+"lleno",
+"otoño",
+"gallo",
+"nuevo",
+"ozono"
+],
+"start": "luzslo.a.nontgan.o.loeñov",
+"min": 10
+},
+{
+"words": [
+"ideal",
+"oliva",
+"ozono",
+"idolo",
+"erizo",
+"llano"
+],
+"shown": [
+"ideal",
+"oliva",
+"ozono",
+"ídolo",
+"erizo",
+"llano"
+],
+"start": "alzald.o.lnoiver.d.iozoln",
+"min": 10
+},
+{
+"words": [
+"canal",
+"oveja",
+"abono",
+"caoba",
+"nuevo",
+"llano"
+],
+"shown": [
+"canal",
+"oveja",
+"abono",
+"caoba",
+"nuevo",
+"llano"
+],
+"start": "onaclb.a.vejluob.v.naaona",
+"min": 10
+},
+{
+"words": [
+"luego",
+"buque",
+"oliva",
+"labio",
+"esqui",
+"opera"
+],
+"shown": [
+"luego",
+"buque",
+"oliva",
+"labio",
+"esquí",
+"ópera"
+],
+"start": "uuaeul.u.pblqiie.v.roogsa",
+"min": 10
+},
+{
+"words": [
+"enero",
+"peaje",
+"ahora",
+"espia",
+"ebano",
+"oveja"
+],
+"shown": [
+"enero",
+"peaje",
+"ahora",
+"espía",
+"ébano",
+"oveja"
+],
+"start": "aneria.s.vhrajej.n.beeoop",
+"min": 10
+},
+{
+"words": [
+"caliz",
+"raton",
+"ronda",
+"curar",
+"laton",
+"zanja"
+],
+"shown": [
+"cáliz",
+"ratón",
+"ronda",
+"curar",
+"latón",
+"zanja"
+],
+"start": "cularn.a.araoioa.j.anztdo",
+"min": 10
+},
+{
+"words": [
+"tunel",
+"bache",
+"acero",
+"tabla",
+"noche",
+"luego"
+],
+"shown": [
+"túnel",
+"bache",
+"acero",
+"tabla",
+"noche",
+"luego"
+],
+"start": "runeel.o.ualcbet.o.ahcgha",
+"min": 10
+},
+{
+"words": [
+"pedir",
+"atlas",
+"abaco",
+"placa",
+"delta",
+"rasgo"
+],
+"shown": [
+"pedir",
+"atlas",
+"ábaco",
+"placa",
+"delta",
+"rasgo"
+],
+"start": "ldairl.a.acetaep.t.sacgbo",
+"min": 10
+},
+{
+"words": [
+"radio",
+"siete",
+"llama",
+"rosal",
+"dieta",
+"opera"
+],
+"shown": [
+"radio",
+"siete",
+"llama",
+"rosal",
+"dieta",
+"ópera"
+],
+"start": "itmito.s.ripeara.d.alloae",
+"min": 10
+},
+{
+"words": [
+"freir",
+"cursi",
+"agrio",
+"ficha",
+"error",
+"reino"
+],
+"shown": [
+"freír",
+"cursi",
+"agrio",
+"ficha",
+"error",
+"reino"
+],
+"start": "hrfgri.r.erousii.r.ncaoie",
+"min": 10
+},
+{
+"words": [
+"silla",
+"ducha",
+"riego",
+"sudar",
+"leche",
+"abajo"
+],
+"shown": [
+"silla",
+"ducha",
+"riego",
+"sudar",
+"leche",
+"abajo"
+],
+"start": "sjlghu.h.iaicuba.l.ardeeo",
+"min": 10
+},
+{
+"words": [
+"paseo",
+"espia",
+"apodo",
+"poema",
+"soplo",
+"ocaso"
+],
+"shown": [
+"paseo",
+"espía",
+"apodo",
+"poema",
+"soplo",
+"ocaso"
+],
+"start": "ssopsl.p.coipoom.e.oaeada",
+"min": 10
+},
+{
+"words": [
+"cueva",
+"copla",
+"ebano",
+"coche",
+"espia",
+"abaco"
+],
+"shown": [
+"cueva",
+"copla",
+"ébano",
+"coche",
+"espía",
+"ábaco"
+],
+"start": "cubpac.h.oooaecb.s.velani",
+"min": 10
+},
+{
+"words": [
+"truco",
+"chica",
+"otoño",
+"techo",
+"unico",
+"opalo"
+],
+"shown": [
+"truco",
+"chica",
+"otoño",
+"techo",
+"único",
+"ópalo"
+],
+"start": "trcoeo.l.iohucah.c.pñcont",
+"min": 10
+},
+{
+"words": [
+"pecho",
+"lunes",
+"atlas",
+"pulga",
+"canal",
+"oasis"
+],
+"shown": [
+"pecho",
+"lunes",
+"atlas",
+"pulga",
+"canal",
+"oasis"
+],
+"start": "sealau.t.clunasi.g.apeaho",
+"min": 10
+},
+{
+"words": [
+"banco",
+"sabio",
+"riego",
+"besar",
+"noble",
+"otoño"
+],
+"shown": [
+"banco",
+"sabio",
+"riego",
+"besar",
+"noble",
+"otoño"
+],
+"start": "oaneie.b.olbaair.s.ñcoogt",
+"min": 10
+},
+{
+"words": [
+"oruga",
+"votar",
+"obrar",
+"obvio",
+"untar",
+"abrir"
+],
+"shown": [
+"oruga",
+"votar",
+"obrar",
+"obvio",
+"untar",
+"abrir"
+],
+"start": "botoaa.n.iviubar.a.rgrrbo",
+"min": 10
+},
+{
+"words": [
+"pisar",
+"nariz",
+"asear",
+"panza",
+"serie",
+"rozar"
+],
+"shown": [
+"pisar",
+"nariz",
+"asear",
+"panza",
+"serie",
+"rozar"
+],
+"start": "pasaai.o.zrireaz.e.aiasnr",
+"min": 10
+},
+{
+"words": [
+"valla",
+"legua",
+"zorro",
+"veloz",
+"lugar",
+"abaco"
+],
+"shown": [
+"valla",
+"legua",
+"zorro",
+"veloz",
+"lugar",
+"ábaco"
+],
+"start": "elacav.l.blruzao.a.oeuorg",
+"min": 10
+},
+{
+"words": [
+"jamon",
+"balde",
+"nunca",
+"jabon",
+"melon",
+"nuera"
+],
+"shown": [
+"jamón",
+"balde",
+"nunca",
+"jabón",
+"melón",
+"nuera"
+],
+"start": "rauoea.c.ubaljon.d.nnoema",
+"min": 10
+},
+{
+"words": [
+"bolsa",
+"roble",
+"atajo",
+"barca",
+"libra",
+"ameno"
+],
+"shown": [
+"bolsa",
+"roble",
+"atajo",
+"barca",
+"libra",
+"ameno"
+],
+"start": "iaasbo.n.mcolebo.l.ratajr",
+"min": 10
+},
+{
+"words": [
+"hiena",
+"barba",
+"largo",
+"habil",
+"errar",
+"asado"
+],
+"shown": [
+"hiena",
+"barba",
+"largo",
+"hábil",
+"errar",
+"asado"
+],
+"start": "hndsea.b.gaaabli.a.rraroi",
+"min": 10
+},
+{
+"words": [
+"cinta",
+"abeto",
+"abajo",
+"clara",
+"nieta",
+"apodo"
+],
+"shown": [
+"cinta",
+"abeto",
+"abajo",
+"clara",
+"nieta",
+"apodo"
+],
+"start": "ciopoe.j.iabtdtr.t.aabanl",
+"min": 10
+},
+{
+"words": [
+"vuelo",
+"animo",
+"enojo",
+"viaje",
+"erizo",
+"ozono"
+],
+"shown": [
+"vuelo",
+"ánimo",
+"enojo",
+"viaje",
+"erizo",
+"ozono"
+],
+"start": "ueonoi.r.zenjnov.a.izmljo",
+"min": 10
+},
+{
+"words": [
+"secar",
+"voraz",
+"asear",
+"savia",
+"carne",
+"rezar"
+],
+"shown": [
+"secar",
+"voraz",
+"asear",
+"savia",
+"carne",
+"rezar"
+],
+"start": "erseza.a.evsaaai.o.aarrnc",
+"min": 10
+},
+{
+"words": [
+"broma",
+"listo",
+"opera",
+"bulbo",
+"oeste",
+"aroma"
+],
+"shown": [
+"broma",
+"listo",
+"ópera",
+"bulbo",
+"oeste",
+"aroma"
+],
+"start": "biosau.l.rmroptr.e.mobeat",
+"min": 10
+},
+{
+"words": [
+"sable",
+"libra",
+"dardo",
+"salud",
+"beber",
+"ebano"
+],
+"shown": [
+"sable",
+"libra",
+"dardo",
+"salud",
+"beber",
+"ébano"
+],
+"start": "earlia.b.dalbedn.e.ubasro",
+"min": 10
+},
+{
+"words": [
+"helar",
+"capaz",
+"alzar",
+"hacha",
+"lapiz",
+"rizar"
+],
+"shown": [
+"helar",
+"capaz",
+"alzar",
+"hacha",
+"lápiz",
+"rizar"
+],
+"start": "hrzaia.l.acalper.i.hazaaa",
+"min": 10
+},
+{
+"words": [
+"bazar",
+"cursi",
+"epoca",
+"bache",
+"zorro",
+"reina"
+],
+"shown": [
+"bazar",
+"cursi",
+"época",
+"bache",
+"zorro",
+"reina"
+],
+"start": "rueaba.o.rraaieh.n.sopzcc",
+"min": 10
+},
+{
+"words": [
+"polar",
+"atras",
+"apodo",
+"plaza",
+"lirio",
+"rasgo"
+],
+"shown": [
+"polar",
+"atrás",
+"apodo",
+"plaza",
+"lirio",
+"rasgo"
+],
+"start": "oliaro.r.azdlspt.i.gaopaa",
+"min": 10
+},
+{
+"words": [
+"ciclo",
+"idolo",
+"opaco",
+"chico",
+"cuota",
+"otoño"
+],
+"shown": [
+"ciclo",
+"ídolo",
+"opaco",
+"chico",
+"cuota",
+"otoño"
+],
+"start": "cacñdl.u.tihoooo.l.iotccp",
+"min": 10
+},
+{
+"words": [
+"salsa",
+"linda",
+"oreja",
+"salmo",
+"lente",
+"araña"
+],
+"shown": [
+"salsa",
+"linda",
+"oreja",
+"salmo",
+"lente",
+"araña"
+],
+"start": "dassll.o.añjnaem.t.iarear",
+"min": 10
+},
+{
+"words": [
+"curar",
+"oasis",
+"arado",
+"caoba",
+"resta",
+"resto"
+],
+"shown": [
+"curar",
+"oasis",
+"arado",
+"caoba",
+"resta",
+"resto"
+],
+"start": "touaia.d.etoscsa.b.rarare",
+"min": 10
+},
+{
+"words": [
+"saber",
+"balon",
+"enano",
+"sable",
+"balsa",
+"ronco"
+],
+"shown": [
+"saber",
+"balón",
+"enano",
+"sable",
+"balsa",
+"ronco"
+],
+"start": "aaoeao.r.sbolenn.s.alacbn",
+"min": 10
+},
+{
+"words": [
+"vivir",
+"lunes",
+"abril",
+"villa",
+"venir",
+"rosal"
+],
+"shown": [
+"vivir",
+"lunes",
+"abril",
+"villa",
+"venir",
+"rosal"
+],
+"start": "viluvr.s.oiirlel.i.baiaen",
+"min": 10
+},
+{
+"words": [
+"regla",
+"monte",
+"riego",
+"rumor",
+"gente",
+"anexo"
+],
+"shown": [
+"regla",
+"monte",
+"riego",
+"rumor",
+"gente",
+"anexo"
+],
+"start": "reiotx.e.nmeauro.o.glnegt",
+"min": 10
+},
+{
+"words": [
+"costa",
+"jaula",
+"nuevo",
+"cajon",
+"sauce",
+"atajo"
+],
+"shown": [
+"costa",
+"jaula",
+"nuevo",
+"cajón",
+"sauce",
+"atajo"
+],
+"start": "aancav.o.tjsutuo.a.jcaeol",
+"min": 10
+},
+{
+"words": [
+"pasta",
+"libro",
+"riego",
+"pulir",
+"sable",
+"abono"
+],
+"shown": [
+"pasta",
+"libro",
+"riego",
+"pulir",
+"sable",
+"abono"
+],
+"start": "rasraa.l.ulibobt.i.noipge",
+"min": 10
+},
+{
+"words": [
+"sacar",
+"borde",
+"opera",
+"sabio",
+"corte",
+"rueda"
+],
+"shown": [
+"sacar",
+"borde",
+"ópera",
+"sabio",
+"corte",
+"rueda"
+],
+"start": "oaouai.r.aserbed.t.doprca",
+"min": 10
+},
+{
+"words": [
+"labio",
+"cursi",
+"etapa",
+"leche",
+"barra",
+"oliva"
+],
+"shown": [
+"labio",
+"cursi",
+"etapa",
+"leche",
+"barra",
+"oliva"
+],
+"start": "eabope.a.lcrriit.a.svhlua",
+"min": 10
+},
+{
+"words": [
+"cetro",
+"cenit",
+"errar",
+"coche",
+"tener",
+"optar"
+],
+"shown": [
+"cetro",
+"cenit",
+"errar",
+"coche",
+"tener",
+"optar"
+],
+"start": "choari.e.rcpaeoe.e.tertnr",
+"min": 10
+},
+{
+"words": [
+"recto",
+"guiso",
+"asado",
+"regla",
+"clima",
+"ozono"
+],
+"shown": [
+"recto",
+"guiso",
+"asado",
+"regla",
+"clima",
+"ozono"
+],
+"start": "egctos.l.zoousil.a.meardn",
+"min": 10
+},
+{
+"words": [
+"tazon",
+"norte",
+"apodo",
+"tinta",
+"zorro",
+"nuevo"
+],
+"shown": [
+"tazón",
+"norte",
+"apodo",
+"tinta",
+"zorro",
+"nuevo"
+],
+"start": "aazoon.o.pdutter.v.tornio",
+"min": 10
+},
+{
+"words": [
+"astro",
+"firma",
+"luego",
+"alfil",
+"torre",
+"opalo"
+],
+"shown": [
+"astro",
+"firma",
+"luego",
+"alfil",
+"torre",
+"ópalo"
+],
+"start": "fmapol.e.uilrrai.o.ltrsgo",
+"min": 10
+},
+{
+"words": [
+"espia",
+"torre",
+"rodar",
+"estar",
+"pared",
+"asear"
+],
+"shown": [
+"espía",
+"torre",
+"rodar",
+"estar",
+"pared",
+"asear"
+],
+"start": "reedai.a.taosroa.s.asprer",
+"min": 10
+},
+{
+"words": [
+"nunca",
+"durar",
+"rezar",
+"nadar",
+"nariz",
+"abrir"
+],
+"shown": [
+"nunca",
+"durar",
+"rezar",
+"nadar",
+"nariz",
+"abrir"
+],
+"start": "zuaace.i.raanand.b.irurar",
+"min": 10
+},
+{
+"words": [
+"medio",
+"villa",
+"riego",
+"mover",
+"dulce",
+"opaco"
+],
+"shown": [
+"medio",
+"villa",
+"riego",
+"mover",
+"dulce",
+"opaco"
+],
+"start": "ieegmo.l.uodloai.c.crpevi",
+"min": 10
+},
+{
+"words": [
+"medir",
+"robot",
+"agrio",
+"marea",
+"deber",
+"ritmo"
+],
+"shown": [
+"medir",
+"robot",
+"agrio",
+"marea",
+"deber",
+"ritmo"
+],
+"start": "toeabd.e.iamioer.e.mgrrio",
+"min": 10
+},
+{
+"words": [
+"cabra",
+"siete",
+"alero",
+"costa",
+"breve",
+"acero"
+],
+"shown": [
+"cabra",
+"siete",
+"alero",
+"costa",
+"breve",
+"acero"
+],
+"start": "raaroo.c.cvtrera.e.silteb",
+"min": 10
+},
+{
+"words": [
+"listo",
+"cursi",
+"abeja",
+"lucha",
+"serie",
+"oliva"
+],
+"shown": [
+"listo",
+"cursi",
+"abeja",
+"lucha",
+"serie",
+"oliva"
+],
+"start": "liciou.j.lauhebs.i.staerv",
+"min": 10
+},
+{
+"words": [
+"hielo",
+"traje",
+"llama",
+"hotel",
+"etapa",
+"oveja"
+],
+"shown": [
+"hielo",
+"traje",
+"llama",
+"hotel",
+"etapa",
+"oveja"
+],
+"start": "itmjoo.p.jtraeel.v.alhlea",
+"min": 10
+},
+{
+"words": [
+"atras",
+"regar",
+"lirio",
+"abril",
+"rogar",
+"sorbo"
+],
+"shown": [
+"atrás",
+"regar",
+"lirio",
+"abril",
+"rogar",
+"sorbo"
+],
+"start": "airial.r.orgrabi.a.bsoteo",
+"min": 10
+},
+{
+"words": [
+"finca",
+"crema",
+"acero",
+"ficha",
+"nieve",
+"abaco"
+],
+"shown": [
+"finca",
+"crema",
+"acero",
+"ficha",
+"nieve",
+"ábaco"
+],
+"start": "boncca.i.acfrmav.e.ircihe",
+"min": 10
+},
+{
+"words": [
+"hongo",
+"cursi",
+"aleta",
+"hacha",
+"norte",
+"oliva"
+],
+"shown": [
+"hongo",
+"cursi",
+"aleta",
+"hacha",
+"norte",
+"oliva"
+],
+"start": "hinocg.a.hlurltv.t.aoseoa",
+"min": 10
+},
+{
+"words": [
+"torpe",
+"comba",
+"norma",
+"tucan",
+"remar",
+"etapa"
+],
+"shown": [
+"torpe",
+"comba",
+"norma",
+"tucán",
+"remar",
+"etapa"
+],
+"start": "macpae.o.trnpuae.b.taormo",
+"min": 10
+},
+{
+"words": [
+"trono",
+"cruce",
+"araña",
+"tecla",
+"oruga",
+"oreja"
+],
+"shown": [
+"trono",
+"cruce",
+"araña",
+"tecla",
+"oruga",
+"oreja"
+],
+"start": "jlnuoe.ñ.rcorrcr.a.gtraea",
+"min": 10
+},
+{
+"words": [
+"tinta",
+"oveja",
+"osado",
+"trono",
+"nueva",
+"arado"
+],
+"shown": [
+"tinta",
+"oveja",
+"osado",
+"trono",
+"nueva",
+"arado"
+],
+"start": "endtar.u.aijosvo.t.noardv",
+"min": 10
+},
+{
+"words": [
+"mango",
+"robot",
+"oveja",
+"marco",
+"noble",
+"ostra"
+],
+"shown": [
+"mango",
+"robot",
+"oveja",
+"marco",
+"noble",
+"ostra"
+],
+"start": "lbmaoc.o.otaorse.n.rovgja",
+"min": 10
+},
+{
+"words": [
+"placa",
+"enano",
+"osado",
+"pleno",
+"araña",
+"apodo"
+],
+"shown": [
+"placa",
+"enano",
+"osado",
+"pleno",
+"araña",
+"apodo"
+],
+"start": "olalñn.a.pesaron.d.ndpaco",
+"min": 10
+},
+{
+"words": [
+"himno",
+"latir",
+"rezar",
+"hilar",
+"matiz",
+"obrar"
+],
+"shown": [
+"himno",
+"latir",
+"rezar",
+"hilar",
+"matiz",
+"obrar"
+],
+"start": "haeilz.t.riomnba.r.araiai",
+"min": 10
+},
+{
+"words": [
+"amiga",
+"ileso",
+"norma",
+"avion",
+"idear",
+"ahora"
+],
+"shown": [
+"amiga",
+"ileso",
+"norma",
+"avión",
+"idear",
+"ahora"
+],
+"start": "aadgsh.a.niieaoo.o.rvrmlm",
+"min": 10
+},
+{
+"words": [
+"pedal",
+"error",
+"otoño",
+"pleno",
+"dardo",
+"largo"
+],
+"shown": [
+"pedal",
+"error",
+"otoño",
+"pleno",
+"dardo",
+"largo"
+],
+"start": "oreoae.l.arrpdon.a.gdtlño",
+"min": 10
+},
+{
+"words": [
+"total",
+"jamon",
+"rango",
+"tejer",
+"timon",
+"lento"
+],
+"shown": [
+"total",
+"jamón",
+"rango",
+"tejer",
+"timón",
+"lento"
+],
+"start": "ljtooa.e.egamite.o.nnatro",
+"min": 10
+},
+{
+"words": [
+"ambar",
+"melon",
+"rango",
+"armar",
+"balon",
+"ronco"
+],
+"shown": [
+"ámbar",
+"melón",
+"rango",
+"armar",
+"balón",
+"ronco"
+],
+"start": "omcrlb.o.ooaanaa.e.rnargm",
+"min": 10
+},
+{
+"words": [
+"traer",
+"avion",
+"apodo",
+"tiara",
+"atico",
+"ronco"
+],
+"shown": [
+"traer",
+"avión",
+"apodo",
+"tiara",
+"ático",
+"ronco"
+],
+"start": "ttcari.o.eidaono.c.rprova",
+"min": 10
+},
+{
+"words": [
+"abril",
+"dicha",
+"aroma",
+"aldea",
+"recto",
+"llama"
+],
+"shown": [
+"abril",
+"dicha",
+"aroma",
+"aldea",
+"recto",
+"llama"
+],
+"start": "lcraim.e.llabthe.a.aordmi",
+"min": 10
+},
+{
+"words": [
+"golfo",
+"ancla",
+"agrio",
+"guapa",
+"lucir",
+"opaco"
+],
+"shown": [
+"golfo",
+"ancla",
+"agrio",
+"guapa",
+"lucir",
+"opaco"
+],
+"start": "lcafgu.o.gpiruap.n.calioo",
+"min": 10
+},
+{
+"words": [
+"oasis",
+"veloz",
+"orden",
+"obvio",
+"salud",
+"sazon"
+],
+"shown": [
+"oasis",
+"veloz",
+"orden",
+"obvio",
+"salud",
+"sazón"
+],
+"start": "oaazib.e.ailssor.n.voodeu",
+"min": 10
+},
+{
+"words": [
+"madre",
+"nueva",
+"atomo",
+"monja",
+"dueño",
+"enano"
+],
+"shown": [
+"madre",
+"nueva",
+"átomo",
+"monja",
+"dueño",
+"enano"
+],
+"start": "madeau.e.nnvñroj.n.uaomto",
+"min": 10
+},
+{
+"words": [
+"pagar",
+"adios",
+"atajo",
+"plata",
+"gaita",
+"rasgo"
+],
+"shown": [
+"pagar",
+"adiós",
+"atajo",
+"plata",
+"gaita",
+"rasgo"
+],
+"start": "gaaaro.p.staaglt.t.ijaado",
+"min": 10
+},
+{
+"words": [
+"aguja",
+"estar",
+"obrar",
+"anexo",
+"untar",
+"abrir"
+],
+"shown": [
+"aguja",
+"estar",
+"obrar",
+"anexo",
+"untar",
+"abrir"
+],
+"start": "axgjrb.r.easannu.a.obiatr",
+"min": 10
+},
+{
+"words": [
+"fijar",
+"balon",
+"atomo",
+"fibra",
+"julio",
+"rango"
+],
+"shown": [
+"fijar",
+"balón",
+"átomo",
+"fibra",
+"julio",
+"rango"
+],
+"start": "onoloi.r.abarjfm.i.gauiat",
+"min": 10
+},
+{
+"words": [
+"barba",
+"andar",
+"obrar",
+"bravo",
+"rodar",
+"abrir"
+],
+"shown": [
+"barba",
+"andar",
+"obrar",
+"bravo",
+"rodar",
+"abrir"
+],
+"start": "rrraad.a.nobbrav.i.araobb",
+"min": 10
+},
+{
+"words": [
+"tutor",
+"oasis",
+"ozono",
+"trono",
+"tosco",
+"resto"
+],
+"shown": [
+"tutor",
+"oasis",
+"ozono",
+"trono",
+"tosco",
+"resto"
+],
+"start": "otrozt.e.tuonisc.s.ooaonr",
+"min": 10
+},
+{
+"words": [
+"llama",
+"nieve",
+"aroma",
+"linda",
+"acero",
+"acera"
+],
+"shown": [
+"llama",
+"nieve",
+"aroma",
+"linda",
+"acero",
+"acera"
+],
+"start": "acdaei.m.lraevnm.r.caroil",
+"min": 10
+},
+{
+"words": [
+"hacer",
+"lapiz",
+"rozar",
+"helar",
+"capaz",
+"rizar"
+],
+"shown": [
+"hacer",
+"lápiz",
+"rozar",
+"helar",
+"capaz",
+"rizar"
+],
+"start": "aoeepc.r.iarahzi.z.ralaaa",
+"min": 10
+},
+{
+"words": [
+"bambu",
+"cursi",
+"enano",
+"bache",
+"marca",
+"unico"
+],
+"shown": [
+"bambú",
+"cursi",
+"enano",
+"bache",
+"marca",
+"único"
+],
+"start": "babruu.m.oaiansh.a.cenccn",
+"min": 10
+},
+{
+"words": [
+"calma",
+"tejer",
+"rosal",
+"citar",
+"lejos",
+"abril"
+],
+"shown": [
+"calma",
+"tejer",
+"rosal",
+"citar",
+"lejos",
+"abril"
+],
+"start": "tcaelm.e.oaijeba.o.arrlsi",
+"min": 10
+},
+{
+"words": [
+"cavar",
+"feliz",
+"errar",
+"cofre",
+"valor",
+"rozar"
+],
+"shown": [
+"cavar",
+"feliz",
+"errar",
+"cofre",
+"valor",
+"rozar"
+],
+"start": "rrrroe.a.ofcilza.v.aaoera",
+"min": 10
+},
+{
+"words": [
+"autor",
+"atras",
+"ahora",
+"araña",
+"termo",
+"resta"
+],
+"shown": [
+"autor",
+"atrás",
+"ahora",
+"araña",
+"termo",
+"resta"
+],
+"start": "añtare.t.utoresa.o.amharr",
+"min": 10
+},
+{
+"words": [
+"frito",
+"rueda",
+"apodo",
+"forma",
+"ileso",
+"opalo"
+],
+"shown": [
+"frito",
+"rueda",
+"apodo",
+"forma",
+"ileso",
+"ópalo"
+],
+"start": "afdtom.l.pruelod.a.opsori",
+"min": 10
+},
+{
+"words": [
+"sanar",
+"voraz",
+"asear",
+"savia",
+"norte",
+"rezar"
+],
+"shown": [
+"sanar",
+"voraz",
+"asear",
+"savia",
+"norte",
+"rezar"
+],
+"start": "aazara.o.sroaevs.t.anaire",
+"min": 10
+},
+{
+"words": [
+"tenor",
+"lunes",
+"ocaso",
+"toldo",
+"nunca",
+"rasgo"
+],
+"shown": [
+"tenor",
+"lunes",
+"ocaso",
+"toldo",
+"nunca",
+"rasgo"
+],
+"start": "eeocrl.a.oaunstd.g.uconso",
+"min": 10
+},
+{
+"words": [
+"regar",
+"salud",
+"lunar",
+"rosal",
+"galan",
+"radar"
+],
+"shown": [
+"regar",
+"salud",
+"lunar",
+"rosal",
+"galán",
+"radar"
+],
+"start": "aulaaa.l.nsadaor.a.auegrr",
+"min": 10
+},
+{
+"words": [
+"norte",
+"ceder",
+"obrar",
+"nicho",
+"radar",
+"error"
+],
+"shown": [
+"norte",
+"ceder",
+"obrar",
+"nicho",
+"radar",
+"error"
+],
+"start": "ahieet.o.rreonra.b.docrar",
+"min": 10
+},
+{
+"words": [
+"lince",
+"nicho",
+"rueda",
+"lunar",
+"noche",
+"epoca"
+],
+"shown": [
+"lince",
+"nicho",
+"rueda",
+"lunar",
+"noche",
+"época"
+],
+"start": "licone.a.unirhoc.u.caepdh",
+"min": 10
+},
+{
+"words": [
+"remar",
+"galan",
+"rango",
+"rogar",
+"melon",
+"ronco"
+],
+"shown": [
+"remar",
+"galán",
+"rango",
+"rogar",
+"melón",
+"ronco"
+],
+"start": "rgeaao.e.armlgoc.n.oraona",
+"min": 10
+},
+{
+"words": [
+"tapon",
+"nacer",
+"arroz",
+"tanda",
+"picar",
+"nariz"
+],
+"shown": [
+"tapón",
+"nacer",
+"arroz",
+"tanda",
+"picar",
+"nariz"
+],
+"start": "prtond.a.aaazaer.r.inicoa",
+"min": 10
+},
+{
+"words": [
+"fosil",
+"lider",
+"opaco",
+"folio",
+"sidra",
+"largo"
+],
+"shown": [
+"fósil",
+"líder",
+"opaco",
+"folio",
+"sidra",
+"largo"
+],
+"start": "fgoaas.i.deiicrr.l.oolipo",
+"min": 10
+},
+{
+"words": [
+"cajon",
+"sauce",
+"asado",
+"costa",
+"jaula",
+"nuevo"
+],
+"shown": [
+"cajón",
+"sauce",
+"asado",
+"costa",
+"jaula",
+"nuevo"
+],
+"start": "ulound.c.saaoate.j.vacsao",
+"min": 10
+},
+{
+"words": [
+"rodar",
+"salon",
+"opera",
+"resto",
+"dulce",
+"ronda"
+],
+"shown": [
+"rodar",
+"salón",
+"ópera",
+"resto",
+"dulce",
+"ronda"
+],
+"start": "rodnrr.s.oaaldoe.u.eotpac",
+"min": 10
+},
+{
+"words": [
+"mosca",
+"verbo",
+"rueda",
+"mover",
+"serie",
+"ahora"
+],
+"shown": [
+"mosca",
+"verbo",
+"rueda",
+"mover",
+"serie",
+"ahora"
+],
+"start": "mbosar.u.odercre.h.oiveea",
+"min": 10
+},
+{
+"words": [
+"metal",
+"chica",
+"oruga",
+"mucho",
+"tribu",
+"llama"
+],
+"shown": [
+"metal",
+"chica",
+"oruga",
+"mucho",
+"tribu",
+"llama"
+],
+"start": "brcgll.u.ocmmteh.i.huaraa",
+"min": 10
+},
+{
+"words": [
+"dieta",
+"verde",
+"norma",
+"divan",
+"errar",
+"acera"
+],
+"shown": [
+"dieta",
+"verde",
+"norma",
+"diván",
+"errar",
+"acera"
+],
+"start": "mecnri.d.irradea.a.raveot",
+"min": 10
+},
+{
+"words": [
+"plata",
+"serie",
+"rizar",
+"pasar",
+"arroz",
+"asear"
+],
+"shown": [
+"plata",
+"serie",
+"rizar",
+"pasar",
+"arroz",
+"asear"
+],
+"start": "peazrr.s.tsarraa.o.aeliai",
+"min": 10
+},
+{
+"words": [
+"curva",
+"noche",
+"aroma",
+"canoa",
+"recio",
+"arena"
+],
+"shown": [
+"curva",
+"noche",
+"aroma",
+"canoa",
+"recio",
+"arena"
+],
+"start": "rnrvaa.u.rnhomea.c.oaeoic",
+"min": 10
+},
+{
+"words": [
+"valle",
+"ganso",
+"resto",
+"vigor",
+"lunes",
+"enojo"
+],
+"shown": [
+"valle",
+"ganso",
+"resto",
+"vigor",
+"lunes",
+"enojo"
+],
+"start": "aallte.e.vnnosuo.e.jrgosi",
+"min": 10
+},
+{
+"words": [
+"vivaz",
+"lunar",
+"asado",
+"villa",
+"venta",
+"zorro"
+],
+"shown": [
+"vivaz",
+"lunar",
+"asado",
+"villa",
+"venta",
+"zorro"
+],
+"start": "voiaza.u.oadllrn.a.rsetvi",
+"min": 10
+},
+{
+"words": [
+"sauce",
+"naipe",
+"atomo",
+"senda",
+"unico",
+"enero"
+],
+"shown": [
+"sauce",
+"naipe",
+"átomo",
+"senda",
+"único",
+"enero"
+],
+"start": "paoues.n.nrinced.c.ateamo",
+"min": 10
+},
+{
+"words": [
+"pulpo",
+"llano",
+"ocaso",
+"palco",
+"llama",
+"otoño"
+],
+"shown": [
+"pulpo",
+"llano",
+"ocaso",
+"palco",
+"llama",
+"otoño"
+],
+"start": "tooppl.a.aacluoc.m.ñnolsl",
+"min": 10
+},
+{
+"words": [
+"rumbo",
+"conde",
+"oveja",
+"recio",
+"mente",
+"opera"
+],
+"shown": [
+"rumbo",
+"conde",
+"oveja",
+"recio",
+"mente",
+"ópera"
+],
+"start": "uvobmt.e.eianoee.c.rjrpdo",
+"min": 10
+},
+{
+"words": [
+"villa",
+"legua",
+"ahora",
+"valla",
+"logro",
+"araña"
+],
+"shown": [
+"villa",
+"legua",
+"ahora",
+"valla",
+"logro",
+"araña"
+],
+"start": "valirg.r.hlaluae.r.aoñola",
+"min": 10
+},
+{
+"words": [
+"optar",
+"salud",
+"errar",
+"oeste",
+"talar",
+"rodar"
+],
+"shown": [
+"optar",
+"salud",
+"errar",
+"oeste",
+"talar",
+"rodar"
+],
+"start": "aoaart.o.uprlsat.a.radree",
+"min": 10
+},
+{
+"words": [
+"ostra",
+"tenue",
+"rizar",
+"optar",
+"tenaz",
+"asear"
+],
+"shown": [
+"ostra",
+"tenue",
+"rizar",
+"optar",
+"tenaz",
+"asear"
+],
+"start": "aserrn.p.raeuaea.t.aziots",
+"min": 10
+},
+{
+"words": [
+"atico",
+"dieta",
+"zorro",
+"audaz",
+"idear",
+"opalo"
+],
+"shown": [
+"ático",
+"dieta",
+"zorro",
+"audaz",
+"idear",
+"ópalo"
+],
+"start": "aodczt.a.ptieorl.a.daioru",
+"min": 10
+},
+{
+"words": [
+"ahora",
+"enero",
+"atajo",
+"abeja",
+"oreja",
+"abono"
+],
+"shown": [
+"ahora",
+"enero",
+"atajo",
+"abeja",
+"oreja",
+"abono"
+],
+"start": "rjotan.a.jhberoo.a.rebajn",
+"min": 10
+},
+{
+"words": [
+"ducha",
+"torpe",
+"lleno",
+"datil",
+"corte",
+"alero"
+],
+"shown": [
+"ducha",
+"torpe",
+"lleno",
+"dátil",
+"corte",
+"alero"
+],
+"start": "tpcaue.o.lterdho.o.rillna",
+"min": 10
+},
+{
+"words": [
+"vigor",
+"clave",
+"llama",
+"vocal",
+"grasa",
+"rueda"
+],
+"shown": [
+"vigor",
+"clave",
+"llama",
+"vocal",
+"grasa",
+"rueda"
+],
+"start": "losilc.a.garomea.u.dlvrav",
+"min": 10
+},
+{
+"words": [
+"grano",
+"ahora",
+"abono",
+"guapa",
+"apoyo",
+"opaco"
+],
+"shown": [
+"grano",
+"ahora",
+"abono",
+"guapa",
+"apoyo",
+"opaco"
+],
+"start": "arayou.p.pnponac.b.oaorhg",
+"min": 10
+},
+{
+"words": [
+"vieja",
+"riego",
+"ozono",
+"verbo",
+"enero",
+"atomo"
+],
+"shown": [
+"vieja",
+"riego",
+"ozono",
+"verbo",
+"enero",
+"átomo"
+],
+"start": "vjemge.o.trirooi.a.zenbno",
+"min": 10
+},
+{
+"words": [
+"veloz",
+"licor",
+"apodo",
+"villa",
+"lecho",
+"zorro"
+],
+"shown": [
+"veloz",
+"licor",
+"apodo",
+"villa",
+"lecho",
+"zorro"
+],
+"start": "dooloc.e.rlierhl.o.zapvoi",
+"min": 10
+},
+{
+"words": [
+"altar",
+"lunes",
+"surco",
+"atlas",
+"tenor",
+"rasgo"
+],
+"shown": [
+"altar",
+"lunes",
+"surco",
+"atlas",
+"tenor",
+"rasgo"
+],
+"start": "uarast.e.alusrge.o.clntao",
+"min": 10
+},
+{
+"words": [
+"enojo",
+"abeja",
+"ocaso",
+"ebano",
+"oveja",
+"opalo"
+],
+"shown": [
+"enojo",
+"abeja",
+"ocaso",
+"ébano",
+"oveja",
+"ópalo"
+],
+"start": "elcaon.b.javjjeb.a.ponoso",
+"min": 10
+},
+{
+"words": [
+"vapor",
+"cursi",
+"llano",
+"vocal",
+"perla",
+"reino"
+],
+"shown": [
+"vapor",
+"cursi",
+"llano",
+"vocal",
+"perla",
+"reino"
+],
+"start": "vaaono.e.snuilcp.e.orllar",
+"min": 10
+},
+{
+"words": [
+"roble",
+"epoca",
+"atajo",
+"rueda",
+"broma",
+"ebano"
+],
+"shown": [
+"roble",
+"época",
+"atajo",
+"rueda",
+"broma",
+"ébano"
+],
+"start": "rdaecu.l.bepoojn.r.maoabt",
+"min": 10
+},
+{
+"words": [
+"senda",
+"lleno",
+"opalo",
+"salvo",
+"nuera",
+"abono"
+],
+"shown": [
+"senda",
+"lleno",
+"ópalo",
+"salvo",
+"nuera",
+"abono"
+],
+"start": "annaee.u.dlllnrv.b.pooaso",
+"min": 10
+},
+{
+"words": [
+"rumor",
+"galan",
+"riego",
+"rogar",
+"molde",
+"rango"
+],
+"shown": [
+"rumor",
+"galán",
+"riego",
+"rogar",
+"molde",
+"rango"
+],
+"start": "norgeo.r.agolamr.o.iaguda",
+"min": 10
+},
+{
+"words": [
+"gallo",
+"lunes",
+"nieve",
+"galan",
+"lente",
+"oeste"
+],
+"shown": [
+"gallo",
+"lunes",
+"nieve",
+"galán",
+"lente",
+"oeste"
+],
+"start": "gealoa.t.uisleen.l.neeavt",
+"min": 10
+},
+{
+"words": [
+"apodo",
+"tiara",
+"otoño",
+"astro",
+"opaco",
+"opalo"
+],
+"shown": [
+"apodo",
+"tiara",
+"otoño",
+"astro",
+"opaco",
+"ópalo"
+],
+"start": "tporlo.p.oñiarpd.s.aootca",
+"min": 10
+},
+{
+"words": [
+"gaita",
+"nieve",
+"error",
+"gente",
+"idear",
+"asear"
+],
+"shown": [
+"gaita",
+"nieve",
+"error",
+"gente",
+"idear",
+"asear"
+],
+"start": "iaiaae.g.toednea.s.etvrrr",
+"min": 10
+},
+{
+"words": [
+"justo",
+"lunes",
+"atras",
+"jalea",
+"sonar",
+"oasis"
+],
+"shown": [
+"justo",
+"lunes",
+"atrás",
+"jalea",
+"sonar",
+"oasis"
+],
+"start": "statoa.e.aiurlne.o.sauajs",
+"min": 10
+},
+{
+"words": [
+"tacto",
+"serie",
+"oliva",
+"tosco",
+"cursi",
+"oveja"
+],
+"shown": [
+"tacto",
+"serie",
+"oliva",
+"tosco",
+"cursi",
+"oveja"
+],
+"start": "tuaeao.t.voersiv.s.coljci",
+"min": 10
+},
+{
+"words": [
+"meson",
+"roble",
+"aroma",
+"morsa",
+"sabio",
+"nieta"
+],
+"shown": [
+"mesón",
+"roble",
+"aroma",
+"morsa",
+"sabio",
+"nieta"
+],
+"start": "eesanr.a.ioolmsr.o.mtoiba",
+"min": 10
+},
+{
+"words": [
+"deseo",
+"tinta",
+"lirio",
+"datil",
+"sonar",
+"osado"
+],
+"shown": [
+"deseo",
+"tinta",
+"lirio",
+"dátil",
+"sonar",
+"osado"
+],
+"start": "teiidn.o.ltirsai.a.daooes",
+"min": 10
+},
+{
+"words": [
+"fugaz",
+"obrar",
+"abajo",
+"flota",
+"garra",
+"zorro"
+],
+"shown": [
+"fugaz",
+"obrar",
+"abajo",
+"flota",
+"garra",
+"zorro"
+],
+"start": "auzaor.a.rajafrb.o.lbrotg",
+"min": 10
+},
+{
+"words": [
+"abeja",
+"buque",
+"reino",
+"ambar",
+"esqui",
+"abeto"
+],
+"shown": [
+"abeja",
+"buque",
+"reino",
+"ámbar",
+"esquí",
+"abeto"
+],
+"start": "reqjsu.a.abutenb.u.mbeiao",
+"min": 10
+},
+{
+"words": [
+"fiera",
+"latir",
+"obrar",
+"folio",
+"estar",
+"abrir"
+],
+"shown": [
+"fiera",
+"latir",
+"obrar",
+"folio",
+"estar",
+"abrir"
+],
+"start": "lierri.s.atoobrb.i.iaaafr",
+"min": 10
+},
+{
+"words": [
+"picar",
+"atras",
+"oveja",
+"prado",
+"carne",
+"resta"
+],
+"shown": [
+"picar",
+"atrás",
+"oveja",
+"prado",
+"carne",
+"resta"
+],
+"start": "datari.a.restocj.n.arvepa",
+"min": 10
+},
+{
+"words": [
+"haber",
+"laton",
+"ronco",
+"helar",
+"boton",
+"rango"
+],
+"shown": [
+"haber",
+"latón",
+"ronco",
+"helar",
+"botón",
+"rango"
+],
+"start": "eonear.o.aahtooa.g.rlcnbo",
+"min": 10
+},
+{
+"words": [
+"rubio",
+"burla",
+"enano",
+"roble",
+"barra",
+"opaco"
+],
+"shown": [
+"rubio",
+"burla",
+"enano",
+"roble",
+"barra",
+"opaco"
+],
+"start": "luacoo.r.rnerlio.b.aubapn",
+"min": 10
+},
+{
+"words": [
+"copla",
+"etapa",
+"opalo",
+"cielo",
+"plaza",
+"arado"
+],
+"shown": [
+"copla",
+"etapa",
+"ópalo",
+"cielo",
+"plaza",
+"arado"
+],
+"start": "pozllr.a.lltadac.a.poeipo",
+"min": 10
+},
+{
+"words": [
+"tacon",
+"armar",
+"arroz",
+"tiara",
+"comer",
+"nariz"
+],
+"shown": [
+"tacón",
+"armar",
+"arroz",
+"tiara",
+"comer",
+"nariz"
+],
+"start": "otrmaa.o.orrnaia.e.iarrzc",
+"min": 10
+},
+{
+"words": [
+"lamer",
+"cursi",
+"apoyo",
+"lucha",
+"marco",
+"reino"
+],
+"shown": [
+"lamer",
+"cursi",
+"apoyo",
+"lucha",
+"marco",
+"reino"
+],
+"start": "lrmuhi.a.uscnecy.e.aaporo",
+"min": 10
+},
+{
+"words": [
+"lindo",
+"norte",
+"etapa",
+"lente",
+"norma",
+"oreja"
+],
+"shown": [
+"lindo",
+"norte",
+"etapa",
+"lente",
+"norma",
+"oreja"
+],
+"start": "eotete.p.rjraoin.m.nltoda",
+"min": 10
+},
+{
+"words": [
+"filme",
+"junio",
+"resto",
+"fijar",
+"lunes",
+"enojo"
+],
+"shown": [
+"filme",
+"junio",
+"resto",
+"fijar",
+"lunes",
+"enojo"
+],
+"start": "jutoau.i.neineme.j.fsrilo",
+"min": 10
+},
+{
+"words": [
+"banca",
+"licor",
+"obrar",
+"bolso",
+"nacar",
+"abrir"
+],
+"shown": [
+"banca",
+"licor",
+"obrar",
+"bolso",
+"nácar",
+"abrir"
+],
+"start": "lnaarr.r.bbaocis.c.oaboia",
+"min": 10
+},
+{
+"words": [
+"plaza",
+"breve",
+"enano",
+"pobre",
+"aleta",
+"acero"
+],
+"shown": [
+"plaza",
+"breve",
+"enano",
+"pobre",
+"aleta",
+"acero"
+],
+"start": "arrzao.l.plrenbo.t.veneca",
+"min": 10
+},
+{
+"words": [
+"citar",
+"roble",
+"araña",
+"carpa",
+"tabla",
+"rueda"
+],
+"shown": [
+"citar",
+"roble",
+"araña",
+"carpa",
+"tabla",
+"rueda"
+],
+"start": "patalr.a.uioabra.c.adrlñe",
+"min": 10
+},
+{
+"words": [
+"verbo",
+"cisne",
+"llama",
+"vocal",
+"resta",
+"oreja"
+],
+"shown": [
+"verbo",
+"cisne",
+"llama",
+"vocal",
+"resta",
+"oreja"
+],
+"start": "vajbco.l.eoaseie.r.tlmanr",
+"min": 10
+},
+{
+"words": [
+"mirlo",
+"tribu",
+"llama",
+"metal",
+"reina",
+"oruga"
+],
+"shown": [
+"mirlo",
+"tribu",
+"llama",
+"metal",
+"reina",
+"oruga"
+],
+"start": "mrrtbn.m.rgaieue.l.illaoa",
+"min": 10
+},
+{
+"words": [
+"gente",
+"ancla",
+"enero",
+"grave",
+"noche",
+"ebano"
+],
+"shown": [
+"gente",
+"ancla",
+"enero",
+"grave",
+"noche",
+"ébano"
+],
+"start": "contnn.e.eavgblh.o.renera",
+"min": 10
+},
+{
+"words": [
+"vagar",
+"lunes",
+"alero",
+"villa",
+"gente",
+"resto"
+],
+"shown": [
+"vagar",
+"lunes",
+"alero",
+"villa",
+"gente",
+"resto"
+],
+"start": "tngael.e.vetaula.r.islero",
+"min": 10
+},
+{
+"words": [
+"peaje",
+"osito",
+"aroma",
+"prosa",
+"arido",
+"epoca"
+],
+"shown": [
+"peaje",
+"osito",
+"aroma",
+"prosa",
+"árido",
+"época"
+],
+"start": "pdajar.o.oetercp.s.saromi",
+"min": 10
+},
+{
+"words": [
+"fondo",
+"enero",
+"osado",
+"fuego",
+"nieta",
+"otoño"
+],
+"shown": [
+"fondo",
+"enero",
+"osado",
+"fuego",
+"nieta",
+"otoño"
+],
+"start": "egaind.o.tnoerfd.t.ñusooo",
+"min": 10
+},
+{
+"words": [
+"dueño",
+"norma",
+"agrio",
+"danza",
+"error",
+"opaco"
+],
+"shown": [
+"dueño",
+"norma",
+"agrio",
+"danza",
+"error",
+"opaco"
+],
+"start": "dooroa.c.peoamrñ.g.izuarn",
+"min": 10
+},
+{
+"words": [
+"pulga",
+"nunca",
+"arado",
+"panza",
+"linda",
+"atajo"
+],
+"shown": [
+"pulga",
+"nunca",
+"arado",
+"panza",
+"linda",
+"atajo"
+],
+"start": "tucgja.i.uzdrpaa.d.naanlo",
+"min": 10
+},
+{
+"words": [
+"aleta",
+"flota",
+"llano",
+"alfil",
+"epoca",
+"atajo"
+],
+"shown": [
+"aleta",
+"flota",
+"llano",
+"alfil",
+"época",
+"atajo"
+],
+"start": "tfajal.e.lolotli.l.cptana",
+"min": 10
+},
+{
+"words": [
+"moler",
+"tacon",
+"luego",
+"metal",
+"leche",
+"rango"
+],
+"shown": [
+"moler",
+"tacón",
+"luego",
+"metal",
+"leche",
+"rango"
+],
+"start": "nleate.a.aocuemo.h.glrego",
+"min": 10
+},
+{
+"words": [
+"armar",
+"cursi",
+"abajo",
+"ancla",
+"morsa",
+"reino"
+],
+"shown": [
+"armar",
+"cursi",
+"abajo",
+"ancla",
+"morsa",
+"reino"
+],
+"start": "rnraaa.n.ecusmil.b.aorojs",
+"min": 10
+},
+{
+"words": [
+"pasto",
+"clave",
+"oveja",
+"pecho",
+"suave",
+"oreja"
+],
+"shown": [
+"pasto",
+"clave",
+"oveja",
+"pecho",
+"suave",
+"oreja"
+],
+"start": "pavvje.v.rcaloso.t.uehjea",
+"min": 10
+},
+{
+"words": [
+"malva",
+"noble",
+"asado",
+"monja",
+"libra",
+"alero"
+],
+"shown": [
+"malva",
+"noble",
+"asado",
+"monja",
+"libra",
+"alero"
+],
+"start": "mdobao.r.eiorllj.l.saaavn",
+"min": 10
+},
+{
+"words": [
+"ronco",
+"torre",
+"oreja",
+"ritmo",
+"norte",
+"oveja"
+],
+"shown": [
+"ronco",
+"torre",
+"oreja",
+"ritmo",
+"norte",
+"oveja"
+],
+"start": "eoivjr.a.eoorrmn.t.corojt",
+"min": 10
+},
+{
+"words": [
+"grado",
+"robot",
+"abrir",
+"garra",
+"ambar",
+"optar"
+],
+"shown": [
+"grado",
+"robot",
+"abrir",
+"garra",
+"ámbar",
+"optar"
+],
+"start": "grroaa.p.bbiotom.d.aarrra",
+"min": 10
+},
+{
+"words": [
+"talon",
+"noble",
+"lirio",
+"tonel",
+"labor",
+"nuevo"
+],
+"shown": [
+"talón",
+"noble",
+"lirio",
+"tonel",
+"labor",
+"nuevo"
+],
+"start": "tvooer.a.anouloo.n.ilileb",
+"min": 10
+},
+{
+"words": [
+"avena",
+"gorra",
+"lirio",
+"angel",
+"error",
+"abajo"
+],
+"shown": [
+"avena",
+"gorra",
+"lirio",
+"ángel",
+"error",
+"abajo"
+],
+"start": "ajearo.r.oanrblg.i.venrio",
+"min": 10
+},
+{
+"words": [
+"llano",
+"tribu",
+"nunca",
+"laton",
+"avion",
+"oruga"
+],
+"shown": [
+"llano",
+"tribu",
+"nunca",
+"latón",
+"avión",
+"oruga"
+],
+"start": "avunon.a.rtrbnlo.l.gucaio",
+"min": 10
+},
+{
+"words": [
+"cinco",
+"cenit",
+"etapa",
+"coche",
+"nunca",
+"ostra"
+],
+"shown": [
+"cinco",
+"cenit",
+"etapa",
+"coche",
+"nunca",
+"ostra"
+],
+"start": "eihctp.r.ucanito.c.aecons",
+"min": 10
+},
+{
+"words": [
+"ozono",
+"radio",
+"rango",
+"obrar",
+"orden",
+"otoño"
+],
+"shown": [
+"ozono",
+"radio",
+"rango",
+"obrar",
+"orden",
+"otoño"
+],
+"start": "ornrtb.o.oaainga.d.ñroeoz",
+"min": 10
+},
+{
+"words": [
+"echar",
+"pared",
+"asear",
+"espia",
+"heroe",
+"rodar"
+],
+"shown": [
+"echar",
+"pared",
+"asear",
+"espía",
+"héroe",
+"rodar"
+],
+"start": "heepro.a.oeacras.e.asidar",
+"min": 10
+},
+{
+"words": [
+"criar",
+"nueve",
+"abono",
+"canoa",
+"ileso",
+"riego"
+],
+"shown": [
+"criar",
+"nueve",
+"abono",
+"canoa",
+"ileso",
+"riego"
+],
+"start": "lorngi.b.iaueaen.s.rocavo",
+"min": 10
+},
+{
+"words": [
+"lento",
+"siete",
+"ahora",
+"lista",
+"nieto",
+"oreja"
+],
+"shown": [
+"lento",
+"siete",
+"ahora",
+"lista",
+"nieto",
+"oreja"
+],
+"start": "aeitoi.t.slehrot.t.jrinea",
+"min": 10
+},
+{
+"words": [
+"clavo",
+"norte",
+"resta",
+"cenar",
+"atras",
+"oreja"
+],
+"shown": [
+"clavo",
+"norte",
+"resta",
+"cenar",
+"atrás",
+"oreja"
+],
+"start": "caaroa.t.oesrner.l.vtjeta",
+"min": 10
+},
+{
+"words": [
+"busto",
+"heroe",
+"aleta",
+"bahia",
+"serie",
+"oreja"
+],
+"shown": [
+"busto",
+"héroe",
+"aleta",
+"bahía",
+"serie",
+"oreja"
+],
+"start": "blhuee.r.jseaori.t.aaieto",
+"min": 10
+},
+{
+"words": [
+"soplo",
+"cursi",
+"rodeo",
+"secar",
+"pared",
+"osito"
+],
+"shown": [
+"soplo",
+"cursi",
+"rodeo",
+"secar",
+"pared",
+"osito"
+],
+"start": "eospee.d.actrrla.o.uisoso",
+"min": 10
+},
+{
+"words": [
+"buque",
+"crema",
+"epoca",
+"bache",
+"queso",
+"etapa"
+],
+"shown": [
+"buque",
+"crema",
+"época",
+"bache",
+"queso",
+"etapa"
+],
+"start": "saabeo.u.tcqemcu.p.peahur",
+"min": 10
+},
+{
+"words": [
+"letra",
+"nicho",
+"ronco",
+"lunar",
+"tucan",
+"apoyo"
+],
+"shown": [
+"letra",
+"nicho",
+"ronco",
+"lunar",
+"tucán",
+"apoyo"
+],
+"start": "letcao.p.nyiuara.c.urnhoo",
+"min": 10
+},
+{
+"words": [
+"salir",
+"mitad",
+"rango",
+"sumar",
+"laton",
+"radio"
+],
+"shown": [
+"salir",
+"mitad",
+"rango",
+"sumar",
+"latón",
+"radio"
+],
+"start": "molara.t.suniida.g.aaairo",
+"min": 10
+},
+{
+"words": [
+"salto",
+"cenit",
+"resta",
+"sacar",
+"lunes",
+"ostra"
+],
+"shown": [
+"salto",
+"cenit",
+"resta",
+"sacar",
+"lunes",
+"ostra"
+],
+"start": "esctta.l.unriata.e.aresos",
+"min": 10
+},
+{
+"words": [
+"bingo",
+"tribu",
+"nieta",
+"boton",
+"naipe",
+"oruga"
+],
+"shown": [
+"bingo",
+"tribu",
+"nieta",
+"botón",
+"naipe",
+"oruga"
+],
+"start": "gngnto.b.aoeurpo.i.aiibtr",
+"min": 10
+},
+{
+"words": [
+"tarta",
+"nogal",
+"atras",
+"tinta",
+"rogar",
+"atlas"
+],
+"shown": [
+"tarta",
+"nogal",
+"atrás",
+"tinta",
+"rogar",
+"atlas"
+],
+"start": "tatgar.o.ltitaaa.a.oatnsr",
+"min": 10
+},
+{
+"words": [
+"selva",
+"lince",
+"nuevo",
+"salon",
+"lente",
+"acero"
+],
+"shown": [
+"selva",
+"lince",
+"nuevo",
+"salón",
+"lente",
+"acero"
+],
+"start": "secnlv.r.alveneo.t.ieacuo",
+"min": 10
+},
+{
+"words": [
+"sazon",
+"lente",
+"arado",
+"salsa",
+"zanja",
+"nuevo"
+],
+"shown": [
+"sazón",
+"lente",
+"arado",
+"salsa",
+"zanja",
+"nuevo"
+],
+"start": "udaosn.r.tlenzao.j.vsaeaa",
+"min": 10
+},
+{
+"words": [
+"libro",
+"cursi",
+"ebano",
+"leche",
+"barba",
+"osito"
+],
+"shown": [
+"libro",
+"cursi",
+"ébano",
+"leche",
+"barba",
+"osito"
+],
+"start": "bisrle.o.scaeouh.b.tirabn",
+"min": 10
+},
+{
+"words": [
+"choza",
+"ritmo",
+"ocaso",
+"cardo",
+"ostra",
+"abono"
+],
+"shown": [
+"choza",
+"ritmo",
+"ocaso",
+"cardo",
+"ostra",
+"abono"
+],
+"start": "zdocba.s.hanomso.t.iocrra",
+"min": 10
+},
+{
+"words": [
+"cojin",
+"regar",
+"arroz",
+"carpa",
+"jugar",
+"nariz"
+],
+"shown": [
+"cojín",
+"regar",
+"arroz",
+"carpa",
+"jugar",
+"nariz"
+],
+"start": "rijcre.u.rrzgaap.a.naooai",
+"min": 10
+},
+{
+"words": [
+"fogon",
+"errar",
+"ahora",
+"fiera",
+"gorro",
+"norma"
+],
+"shown": [
+"fogón",
+"errar",
+"ahora",
+"fiera",
+"gorro",
+"norma"
+],
+"start": "aogore.a.orrraoi.r.rnmfoh",
+"min": 10
+},
+{
+"words": [
+"tejer",
+"limon",
+"nunca",
+"talon",
+"jamon",
+"ronda"
+],
+"shown": [
+"tejer",
+"limón",
+"nunca",
+"talón",
+"jamón",
+"ronda"
+],
+"start": "dajeno.c.oitauno.e.rlonam",
+"min": 10
+},
+{
+"words": [
+"tarea",
+"comer",
+"nariz",
+"tacon",
+"remar",
+"arroz"
+],
+"shown": [
+"tarea",
+"comer",
+"nariz",
+"tacón",
+"remar",
+"arroz"
+],
+"start": "zaeare.o.rocreom.a.anirta",
+"min": 10
+},
+{
+"words": [
+"drama",
+"llama",
+"asado",
+"delta",
+"araña",
+"abajo"
+],
+"shown": [
+"drama",
+"llama",
+"asado",
+"delta",
+"araña",
+"abajo"
+],
+"start": "daaaas.b.ñrlamat.m.dolejr",
+"min": 10
+},
+{
+"words": [
+"fleco",
+"suave",
+"llama",
+"fosil",
+"etapa",
+"opera"
+],
+"shown": [
+"fleco",
+"suave",
+"llama",
+"fósil",
+"etapa",
+"ópera"
+],
+"start": "mlrcfl.t.ppaauei.e.olosva",
+"min": 10
+},
+{
+"words": [
+"llave",
+"girar",
+"rizar",
+"lugar",
+"arroz",
+"error"
+],
+"shown": [
+"llave",
+"girar",
+"rizar",
+"lugar",
+"arroz",
+"error"
+],
+"start": "rloreu.a.zovrlaa.r.iagrir",
+"min": 10
+},
+{
+"words": [
+"freno",
+"cursi",
+"largo",
+"facil",
+"errar",
+"osito"
+],
+"shown": [
+"freno",
+"cursi",
+"largo",
+"fácil",
+"errar",
+"osito"
+],
+"start": "frrnea.g.sotriic.a.loausr",
+"min": 10
+},
+{
+"words": [
+"perla",
+"nadar",
+"lirio",
+"panal",
+"rodar",
+"agrio"
+],
+"shown": [
+"perla",
+"nadar",
+"lirio",
+"panal",
+"rodar",
+"agrio"
+],
+"start": "paglrd.r.inaeaai.a.lroaoi",
+"min": 10
+},
+{
+"words": [
+"bulto",
+"leche",
+"araña",
+"balsa",
+"lucha",
+"oreja"
+],
+"shown": [
+"bulto",
+"leche",
+"araña",
+"balsa",
+"lucha",
+"oreja"
+],
+"start": "buacra.a.rlouejs.h.ñtlaeh",
+"min": 10
+},
+{
+"words": [
+"facil",
+"nueve",
+"asado",
+"funda",
+"crema",
+"luego"
+],
+"shown": [
+"fácil",
+"nueve",
+"asado",
+"funda",
+"crema",
+"luego"
+],
+"start": "famluu.r.ncudeed.s.gviaoa",
+"min": 10
+},
+{
+"words": [
+"manto",
+"tribu",
+"dieta",
+"mitad",
+"naipe",
+"oruga"
+],
+"shown": [
+"manto",
+"tribu",
+"dieta",
+"mitad",
+"naipe",
+"oruga"
+],
+"start": "eantuo.b.ititpra.r.idamga",
+"min": 10
+},
+{
+"words": [
+"folio",
+"cenit",
+"arena",
+"ficha",
+"lente",
+"ostra"
+],
+"shown": [
+"folio",
+"cenit",
+"arena",
+"ficha",
+"lente",
+"ostra"
+],
+"start": "cofirn.e.irolnth.t.eaaesi",
+"min": 10
+},
+{
+"words": [
+"horno",
+"tinte",
+"llama",
+"hotel",
+"ronda",
+"oreja"
+],
+"shown": [
+"horno",
+"tinte",
+"llama",
+"hotel",
+"ronda",
+"oreja"
+],
+"start": "rtohnt.a.rjianeo.d.ellomo",
+"min": 10
+},
+{
+"words": [
+"funda",
+"untar",
+"obrar",
+"fruto",
+"notar",
+"abrir"
+],
+"shown": [
+"funda",
+"untar",
+"obrar",
+"fruto",
+"notar",
+"abrir"
+],
+"start": "dotiar.f.banubru.a.nortar",
+"min": 10
+},
+{
+"words": [
+"yegua",
+"gallo",
+"ronda",
+"yogur",
+"galan",
+"ahora"
+],
+"shown": [
+"yegua",
+"gallo",
+"ronda",
+"yogur",
+"galán",
+"ahora"
+],
+"start": "rogulo.a.hylnoag.a.raduea",
+"min": 10
+},
+{
+"words": [
+"padre",
+"ritmo",
+"delta",
+"pared",
+"datil",
+"epoca"
+],
+"shown": [
+"padre",
+"ritmo",
+"delta",
+"pared",
+"dátil",
+"época"
+],
+"start": "ppdcri.a.rdataae.e.omelti",
+"min": 10
+},
+{
+"words": [
+"linda",
+"norte",
+"rezar",
+"lunar",
+"nariz",
+"asear"
+],
+"shown": [
+"linda",
+"norte",
+"rezar",
+"lunar",
+"nariz",
+"asear"
+],
+"start": "orltan.z.uaindea.i.areras",
+"min": 10
+},
+{
+"words": [
+"ganar",
+"adios",
+"opera",
+"gramo",
+"naipe",
+"resta"
+],
+"shown": [
+"ganar",
+"adiós",
+"ópera",
+"gramo",
+"naipe",
+"resta"
+],
+"start": "mopare.a.aoaidpr.n.tgsrea",
+"min": 10
+},
+{
+"words": [
+"feroz",
+"nadar",
+"largo",
+"final",
+"radar",
+"zorro"
+],
+"shown": [
+"feroz",
+"nadar",
+"largo",
+"final",
+"radar",
+"zorro"
+],
+"start": "aoaogf.a.roarnza.r.rladie",
+"min": 10
+},
+{
+"words": [
+"firma",
+"campo",
+"agrio",
+"fecha",
+"remar",
+"abono"
+],
+"shown": [
+"firma",
+"campo",
+"agrio",
+"fecha",
+"remar",
+"abono"
+],
+"start": "bnrmam.i.pfaerah.g.oaiceo",
+"min": 10
+},
+{
+"words": [
+"rango",
+"barba",
+"trapo",
+"robot",
+"norma",
+"ocaso"
+],
+"shown": [
+"rango",
+"barba",
+"trapo",
+"robot",
+"norma",
+"ocaso"
+],
+"start": "agrboo.o.bpaanao.m.rtorsc",
+"min": 10
+},
+{
+"words": [
+"venir",
+"raton",
+"zarpa",
+"voraz",
+"notar",
+"ronda"
+],
+"shown": [
+"venir",
+"ratón",
+"zarpa",
+"voraz",
+"notar",
+"ronda"
+],
+"start": "raaaor.o.ozpoinn.a.evardt",
+"min": 10
+},
+{
+"words": [
+"rezar",
+"borde",
+"trato",
+"robot",
+"zarpa",
+"riego"
+],
+"shown": [
+"rezar",
+"borde",
+"trato",
+"robot",
+"zarpa",
+"riego"
+],
+"start": "dezaio.g.oboraot.r.erartp",
+"min": 10
+},
+{
+"words": [
+"nueve",
+"verja",
+"lirio",
+"nivel",
+"error",
+"enano"
+],
+"shown": [
+"nueve",
+"verja",
+"lirio",
+"nivel",
+"error",
+"enano"
+],
+"start": "inevil.o.nvnjeae.i.urorre",
+"min": 10
+},
+{
+"words": [
+"besar",
+"lunes",
+"epoca",
+"balde",
+"santo",
+"resta"
+],
+"shown": [
+"besar",
+"lunes",
+"época",
+"balde",
+"santo",
+"resta"
+],
+"start": "easaoe.r.alueedb.t.tacspn",
+"min": 10
+},
+{
+"words": [
+"sudar",
+"galan",
+"oveja",
+"siglo",
+"dulce",
+"ronda"
+],
+"shown": [
+"sudar",
+"galán",
+"oveja",
+"siglo",
+"dulce",
+"ronda"
+],
+"start": "ujdarc.o.oeuiasl.a.dlvnga",
+"min": 10
+},
+{
+"words": [
+"verde",
+"litro",
+"zanja",
+"veloz",
+"raton",
+"epoca"
+],
+"shown": [
+"verde",
+"litro",
+"zanja",
+"veloz",
+"ratón",
+"época"
+],
+"start": "oarote.a.ploievz.c.aernjd",
+"min": 10
+},
+{
+"words": [
+"jurar",
+"robot",
+"apoyo",
+"jarra",
+"rubio",
+"ritmo"
+],
+"shown": [
+"jurar",
+"robot",
+"apoyo",
+"jarra",
+"rubio",
+"ritmo"
+],
+"start": "oiurta.r.oirboor.a.aypumj",
+"min": 10
+},
+{
+"words": [
+"furor",
+"leche",
+"aroma",
+"falda",
+"recto",
+"rueda"
+],
+"shown": [
+"furor",
+"leche",
+"aroma",
+"falda",
+"recto",
+"rueda"
+],
+"start": "fmurre.d.oauceet.h.dalora",
+"min": 10
+},
+{
+"words": [
+"alero",
+"ebano",
+"asado",
+"aleta",
+"etapa",
+"otoño"
+],
+"shown": [
+"alero",
+"ébano",
+"asado",
+"aleta",
+"etapa",
+"otoño"
+],
+"start": "abesat.t.lañoned.r.polato",
+"min": 10
+},
+{
+"words": [
+"prima",
+"lleno",
+"atomo",
+"pulpa",
+"ileso",
+"apoyo"
+],
+"shown": [
+"prima",
+"lleno",
+"átomo",
+"pulpa",
+"ileso",
+"apoyo"
+],
+"start": "ptrmun.y.llmeloa.o.paispo",
+"min": 10
+},
+{
+"words": [
+"caoba",
+"amiga",
+"epoca",
+"clave",
+"osito",
+"araña"
+],
+"shown": [
+"caoba",
+"amiga",
+"época",
+"clave",
+"osito",
+"araña"
+],
+"start": "sabcac.i.oañorav.t.lepamg",
+"min": 10
+},
+{
+"words": [
+"rampa",
+"gente",
+"abaco",
+"regla",
+"mania",
+"anexo"
+],
+"shown": [
+"rampa",
+"gente",
+"ábaco",
+"regla",
+"manía",
+"anexo"
+],
+"start": "eaneam.a.parcleb.g.iatxno",
+"min": 10
+},
+{
+"words": [
+"esqui",
+"abeto",
+"apodo",
+"etapa",
+"queso",
+"idolo"
+],
+"shown": [
+"esquí",
+"abeto",
+"apodo",
+"etapa",
+"queso",
+"ídolo"
+],
+"start": "bsquai.a.tpueoop.s.edtldo",
+"min": 10
+},
+{
+"words": [
+"lejos",
+"toser",
+"apoyo",
+"letra",
+"justo",
+"surco"
+],
+"shown": [
+"lejos",
+"toser",
+"apoyo",
+"letra",
+"justo",
+"surco"
+],
+"start": "pecsjo.t.utosery.l.eaoour",
+"min": 10
+},
+{
+"words": [
+"tiara",
+"reina",
+"ahora",
+"tarea",
+"amigo",
+"araña"
+],
+"shown": [
+"tiara",
+"reina",
+"ahora",
+"tarea",
+"amigo",
+"araña"
+],
+"start": "ñraeao.i.tmrraah.g.iarnea",
+"min": 10
+},
+{
+"words": [
+"volar",
+"laton",
+"ahora",
+"villa",
+"litro",
+"ronda"
+],
+"shown": [
+"volar",
+"latón",
+"ahora",
+"villa",
+"litro",
+"ronda"
+],
+"start": "oonrlr.i.llaaroo.v.daitha",
+"min": 10
+},
+{
+"words": [
+"deber",
+"balon",
+"enero",
+"doble",
+"balde",
+"rango"
+],
+"shown": [
+"deber",
+"balón",
+"enero",
+"doble",
+"balde",
+"rango"
+],
+"start": "degllo.o.abdnona.b.eraere",
+"min": 10
+},
+{
+"words": [
+"metro",
+"tilde",
+"danza",
+"mitad",
+"telon",
+"oveja"
+],
+"shown": [
+"metro",
+"tilde",
+"danza",
+"mitad",
+"telón",
+"oveja"
+],
+"start": "metdod.o.anjlaea.r.itivze",
+"min": 10
+},
+{
+"words": [
+"adios",
+"creer",
+"agrio",
+"ancla",
+"idear",
+"sorbo"
+],
+"shown": [
+"adiós",
+"creer",
+"agrio",
+"ancla",
+"idear",
+"sorbo"
+],
+"start": "gdinae.r.sorbero.a.dalcio",
+"min": 10
+},
+{
+"words": [
+"brote",
+"citar",
+"errar",
+"bache",
+"optar",
+"error"
+],
+"shown": [
+"brote",
+"citar",
+"errar",
+"bache",
+"optar",
+"error"
+],
+"start": "rrorar.p.actberh.r.eiaato",
+"min": 10
+},
+{
+"words": [
+"trece",
+"erizo",
+"ozono",
+"tieso",
+"exito",
+"enojo"
+],
+"shown": [
+"trece",
+"erizo",
+"ozono",
+"tieso",
+"éxito",
+"enojo"
+],
+"start": "nectei.r.oejoixs.t.zrzono",
+"min": 10
+},
+{
+"words": [
+"radar",
+"melon",
+"opalo",
+"rumbo",
+"delta",
+"ronco"
+],
+"shown": [
+"radar",
+"melón",
+"ópalo",
+"rumbo",
+"delta",
+"ronco"
+],
+"start": "clmura.n.oreadoe.p.obtalo",
+"min": 10
+},
+{
+"words": [
+"mente",
+"mirar",
+"rizar",
+"mimar",
+"nariz",
+"errar"
+],
+"shown": [
+"mente",
+"mirar",
+"rizar",
+"mimar",
+"nariz",
+"errar"
+],
+"start": "rainmr.i.mairzra.t.aeeiar",
+"min": 10
+},
+{
+"words": [
+"matiz",
+"nacer",
+"atomo",
+"mania",
+"techo",
+"zorro"
+],
+"shown": [
+"matiz",
+"nacer",
+"átomo",
+"manía",
+"techo",
+"zorro"
+],
+"start": "mheraa.e.izncmai.t.rotooa",
+"min": 10
+},
+{
+"words": [
+"comer",
+"salud",
+"ebano",
+"cisne",
+"malva",
+"radio"
+],
+"shown": [
+"comer",
+"salud",
+"ébano",
+"cisne",
+"malva",
+"radio"
+],
+"start": "comsve.n.leaaidn.a.ruiboa",
+"min": 10
+},
+{
+"words": [
+"cisne",
+"radar",
+"errar",
+"corte",
+"sudor",
+"error"
+],
+"shown": [
+"cisne",
+"radar",
+"errar",
+"corte",
+"sudor",
+"error"
+],
+"start": "cioreo.r.rsearta.u.naorrd",
+"min": 10
+},
+{
+"words": [
+"negro",
+"verja",
+"lirio",
+"nivel",
+"girar",
+"opaco"
+],
+"shown": [
+"negro",
+"verja",
+"lirio",
+"nivel",
+"girar",
+"opaco"
+],
+"start": "ergaoi.i.vpireac.l.onjeir",
+"min": 10
+},
+{
+"words": [
+"ileso",
+"opera",
+"ozono",
+"idolo",
+"enero",
+"ocaso"
+],
+"shown": [
+"ileso",
+"ópera",
+"ozono",
+"ídolo",
+"enero",
+"ocaso"
+],
+"start": "ilnrdn.s.loceozp.e.roaoso",
+"min": 10
+},
+{
+"words": [
+"errar",
+"orden",
+"abono",
+"epoca",
+"rodeo",
+"ronco"
+],
+"shown": [
+"errar",
+"orden",
+"abono",
+"época",
+"rodeo",
+"ronco"
+],
+"start": "dareen.a.oooporc.e.robcnr",
+"min": 10
+},
+{
+"words": [
+"tango",
+"coche",
+"opera",
+"tacto",
+"noche",
+"oreja"
+],
+"shown": [
+"tango",
+"coche",
+"ópera",
+"tacto",
+"noche",
+"oreja"
+],
+"start": "tccgoe.o.reooaha.t.njphar",
+"min": 10
+},
+{
+"words": [
+"latir",
+"cenit",
+"enero",
+"leche",
+"tinte",
+"ritmo"
+],
+"shown": [
+"latir",
+"cenit",
+"enero",
+"leche",
+"tinte",
+"ritmo"
+],
+"start": "etnlni.i.ecmatte.r.ieihro",
+"min": 10
+},
+{
+"words": [
+"nuera",
+"exito",
+"enojo",
+"nieve",
+"erizo",
+"abono"
+],
+"shown": [
+"nuera",
+"éxito",
+"enojo",
+"nieve",
+"erizo",
+"abono"
+],
+"start": "eturai.i.bexonoe.n.onrvjz",
+"min": 10
+},
+{
+"words": [
+"hotel",
+"nacar",
+"ronco",
+"honor",
+"tucan",
+"largo"
+],
+"shown": [
+"hotel",
+"nácar",
+"ronco",
+"honor",
+"tucán",
+"largo"
+],
+"start": "ootuho.c.aoornag.a.aelncr",
+"min": 10
+},
+{
+"words": [
+"abajo",
+"arena",
+"otoño",
+"abaco",
+"acero",
+"opaco"
+],
+"shown": [
+"abajo",
+"arena",
+"otoño",
+"ábaco",
+"acero",
+"opaco"
+],
+"start": "aboceñ.p.aarncbc.r.aotjoo",
+"min": 10
+},
+{
+"words": [
+"mudar",
+"robot",
+"agrio",
+"marca",
+"deber",
+"ritmo"
+],
+"shown": [
+"mudar",
+"robot",
+"agrio",
+"marca",
+"deber",
+"ritmo"
+],
+"start": "cmrdra.e.aooboet.u.gairmi",
+"min": 10
+},
+{
+"words": [
+"cerca",
+"jugar",
+"nariz",
+"cojin",
+"rugir",
+"arroz"
+],
+"shown": [
+"cerca",
+"jugar",
+"nariz",
+"cojín",
+"rugir",
+"arroz"
+],
+"start": "arcgoc.u.ueorari.i.anrijz",
+"min": 10
+},
+{
+"words": [
+"sabio",
+"tribu",
+"llama",
+"sutil",
+"brisa",
+"oruga"
+],
+"shown": [
+"sabio",
+"tribu",
+"llama",
+"sutil",
+"brisa",
+"oruga"
+],
+"start": "gasrom.s.ratriui.b.bllaiu",
+"min": 10
+},
+{
+"words": [
+"plomo",
+"aleta",
+"abaco",
+"playa",
+"opera",
+"opalo"
+],
+"shown": [
+"plomo",
+"aleta",
+"ábaco",
+"playa",
+"ópera",
+"ópalo"
+],
+"start": "llmpla.p.patcoby.a.rolaeo",
+"min": 10
+},
+{
+"words": [
+"menor",
+"tucan",
+"largo",
+"metal",
+"nacar",
+"ronco"
+],
+"shown": [
+"menor",
+"tucán",
+"largo",
+"metal",
+"nácar",
+"ronco"
+],
+"start": "ncnoaa.m.utaeara.o.olgrce",
+"min": 10
+},
+{
+"words": [
+"serio",
+"libra",
+"ritmo",
+"solar",
+"robot",
+"osado"
+],
+"shown": [
+"serio",
+"libra",
+"ritmo",
+"solar",
+"robot",
+"osado"
+],
+"start": "soriio.o.aameort.l.dbisro",
+"min": 10
+},
+{
+"words": [
+"tomar",
+"polen",
+"norma",
+"tapon",
+"moler",
+"ronda"
+],
+"shown": [
+"tomar",
+"polen",
+"norma",
+"tapón",
+"moler",
+"ronda"
+],
+"start": "doeorl.t.opaomne.a.naorom",
+"min": 10
+},
+{
+"words": [
+"grave",
+"abajo",
+"ocaso",
+"grano",
+"araña",
+"enojo"
+],
+"shown": [
+"grave",
+"abajo",
+"ocaso",
+"grano",
+"araña",
+"enojo"
+],
+"start": "orsvñr.j.nboaeoa.n.jrcaga",
+"min": 10
+},
+{
+"words": [
+"orden",
+"sable",
+"serie",
+"oasis",
+"deber",
+"nieve"
+],
+"shown": [
+"orden",
+"sable",
+"serie",
+"oasis",
+"deber",
+"nieve"
+],
+"start": "sieesv.r.iaerleo.a.inedbe",
+"min": 10
+},
+{
+"words": [
+"alzar",
+"atras",
+"ocaso",
+"abajo",
+"zarpa",
+"resto"
+],
+"shown": [
+"alzar",
+"atrás",
+"ocaso",
+"abajo",
+"zarpa",
+"resto"
+],
+"start": "altacr.p.ertazbj.o.soasaa",
+"min": 10
+},
+{
+"words": [
+"terco",
+"lecho",
+"enojo",
+"tilde",
+"recio",
+"ozono"
+],
+"shown": [
+"terco",
+"lecho",
+"enojo",
+"tilde",
+"recio",
+"ozono"
+],
+"start": "ooecin.e.rlecihd.t.jonoze",
+"min": 10
+},
+{
+"words": [
+"viaje",
+"gaita",
+"resto",
+"vagar",
+"adios",
+"enano"
+],
+"shown": [
+"viaje",
+"gaita",
+"resto",
+"vagar",
+"adiós",
+"enano"
+],
+"start": "oetana.d.ngiotav.a.rjesia",
+"min": 10
+},
+{
+"words": [
+"ebano",
+"atras",
+"atlas",
+"etapa",
+"abril",
+"oasis"
+],
+"shown": [
+"ébano",
+"atrás",
+"atlas",
+"etapa",
+"abril",
+"oasis"
+],
+"start": "aaabrt.p.esalaib.i.sntaot",
+"min": 10
+},
+{
+"words": [
+"raton",
+"galan",
+"avena",
+"regla",
+"tilde",
+"nunca"
+],
+"shown": [
+"ratón",
+"galán",
+"avena",
+"regla",
+"tilde",
+"nunca"
+],
+"start": "raoana.i.tlvnelu.d.cangea",
+"min": 10
+},
+{
+"words": [
+"poema",
+"novia",
+"apoyo",
+"pinza",
+"envio",
+"abajo"
+],
+"shown": [
+"poema",
+"novia",
+"apoyo",
+"pinza",
+"envío",
+"abajo"
+],
+"start": "vyezni.i.jmobnao.a.papoio",
+"min": 10
+},
+{
+"words": [
+"milla",
+"dejar",
+"oasis",
+"medio",
+"lejos",
+"atras"
+],
+"shown": [
+"milla",
+"dejar",
+"oasis",
+"medio",
+"lejos",
+"atrás"
+],
+"start": "meiitj.e.oelilra.o.daasas",
+"min": 10
+},
+{
+"words": [
+"abrir",
+"robot",
+"sueño",
+"atras",
+"roble",
+"ritmo"
+],
+"shown": [
+"abrir",
+"robot",
+"sueño",
+"atrás",
+"roble",
+"ritmo"
+],
+"start": "rribru.o.iambola.o.ñsotet",
+"min": 10
+},
+{
+"words": [
+"pobre",
+"calma",
+"ocaso",
+"pecho",
+"balsa",
+"ebano"
+],
+"shown": [
+"pobre",
+"calma",
+"ocaso",
+"pecho",
+"balsa",
+"ébano"
+],
+"start": "pmbcre.a.eholcon.s.oaaasb",
+"min": 10
+},
+{
+"words": [
+"techo",
+"bambu",
+"aroma",
+"tabla",
+"campo",
+"oruga"
+],
+"shown": [
+"techo",
+"bambú",
+"aroma",
+"tabla",
+"campo",
+"oruga"
+],
+"start": "aagaot.u.hlembba.m.cproar",
+"min": 10
+},
+{
+"words": [
+"toser",
+"atlas",
+"etapa",
+"traje",
+"silla",
+"resta"
+],
+"shown": [
+"toser",
+"atlas",
+"etapa",
+"traje",
+"silla",
+"resta"
+],
+"start": "trsite.a.ltorlsj.e.tapaae",
+"min": 10
+},
+{
+"words": [
+"casco",
+"lunes",
+"atras",
+"calma",
+"sanar",
+"oasis"
+],
+"shown": [
+"casco",
+"lunes",
+"atrás",
+"calma",
+"sanar",
+"oasis"
+],
+"start": "aatela.s.asccanm.a.oairus",
+"min": 10
+},
+{
+"words": [
+"tapar",
+"nariz",
+"abrir",
+"tinta",
+"parar",
+"rozar"
+],
+"shown": [
+"tapar",
+"nariz",
+"abrir",
+"tinta",
+"parar",
+"rozar"
+],
+"start": "aataat.a.zraaibi.r.opirrn",
+"min": 10
+},
+{
+"words": [
+"docil",
+"norte",
+"olivo",
+"denso",
+"cursi",
+"luego"
+],
+"shown": [
+"dócil",
+"norte",
+"olivo",
+"denso",
+"cursi",
+"luego"
+],
+"start": "uucdor.l.inieoev.s.sgloto",
+"min": 10
+},
+{
+"words": [
+"pausa",
+"naipe",
+"apoyo",
+"panza",
+"unico",
+"acero"
+],
+"shown": [
+"pausa",
+"naipe",
+"apoyo",
+"panza",
+"único",
+"acero"
+],
+"start": "zayirn.n.apcpsea.c.oaaoup",
+"min": 10
+},
+{
+"words": [
+"rugir",
+"balon",
+"enojo",
+"roble",
+"gallo",
+"ronco"
+],
+"shown": [
+"rugir",
+"balón",
+"enojo",
+"roble",
+"gallo",
+"ronco"
+],
+"start": "loeiug.a.noljorb.l.canoro",
+"min": 10
+},
+{
+"words": [
+"salmo",
+"doble",
+"ahora",
+"sidra",
+"libro",
+"opera"
+],
+"shown": [
+"salmo",
+"doble",
+"ahora",
+"sidra",
+"libro",
+"ópera"
+],
+"start": "oambos.i.ioehrdr.r.palrla",
+"min": 10
+},
+{
+"words": [
+"peine",
+"aroma",
+"atomo",
+"playa",
+"idolo",
+"enano"
+],
+"shown": [
+"peine",
+"aroma",
+"átomo",
+"playa",
+"ídolo",
+"enano"
+],
+"start": "teinep.l.anoaonl.m.yadomr",
+"min": 10
+},
+{
+"words": [
+"feliz",
+"raton",
+"linda",
+"farol",
+"laton",
+"zanja"
+],
+"shown": [
+"feliz",
+"ratón",
+"linda",
+"farol",
+"latón",
+"zanja"
+],
+"start": "fleaar.a.aolnzno.o.tjdiia",
+"min": 10
+},
+{
+"words": [
+"blusa",
+"amiga",
+"aroma",
+"brasa",
+"unico",
+"araña"
+],
+"shown": [
+"blusa",
+"amiga",
+"aroma",
+"brasa",
+"único",
+"araña"
+],
+"start": "brñgac.n.raiolam.m.aarssu",
+"min": 10
+},
+{
+"words": [
+"novia",
+"buceo",
+"epoca",
+"noble",
+"vacio",
+"aroma"
+],
+"shown": [
+"novia",
+"buceo",
+"época",
+"noble",
+"vacío",
+"aroma"
+],
+"start": "vnaiao.a.bpomeco.i.eurocl",
+"min": 10
+},
+{
+"words": [
+"sidra",
+"bueno",
+"ocaso",
+"sabio",
+"dieta",
+"abono"
+],
+"shown": [
+"sidra",
+"bueno",
+"ocaso",
+"sabio",
+"dieta",
+"abono"
+],
+"start": "sidson.a.btiebci.u.aroano",
+"min": 10
+},
+{
+"words": [
+"hogar",
+"balde",
+"linda",
+"habil",
+"galan",
+"rueda"
+],
+"shown": [
+"hogar",
+"balde",
+"linda",
+"hábil",
+"galán",
+"rueda"
+],
+"start": "lagbna.a.uhaldrd.a.eidoia",
+"min": 10
+},
+{
+"words": [
+"comun",
+"moler",
+"rueda",
+"comer",
+"molde",
+"norma"
+],
+"shown": [
+"común",
+"moler",
+"rueda",
+"comer",
+"molde",
+"norma"
+],
+"start": "uolome.r.moodnae.m.cruedo",
+"min": 10
+},
+{
+"words": [
+"garra",
+"unico",
+"abaco",
+"gruta",
+"reina",
+"abono"
+],
+"shown": [
+"garra",
+"único",
+"ábaco",
+"gruta",
+"reina",
+"abono"
+],
+"start": "nbaaau.o.bncinrc.e.grarto",
+"min": 10
+},
+{
+"words": [
+"vacio",
+"etapa",
+"osado",
+"viejo",
+"chapa",
+"opaco"
+],
+"shown": [
+"vacío",
+"etapa",
+"osado",
+"viejo",
+"chapa",
+"opaco"
+],
+"start": "eacspi.h.avajtop.d.caoipo",
+"min": 10
+},
+{
+"words": [
+"rosal",
+"idear",
+"arado",
+"reina",
+"suela",
+"lirio"
+],
+"shown": [
+"rosal",
+"idear",
+"arado",
+"reina",
+"suela",
+"lirio"
+],
+"start": "rieaae.i.iodalur.r.dnaslo",
+"min": 10
+},
+{
+"words": [
+"panal",
+"idear",
+"ameno",
+"prima",
+"nueve",
+"largo"
+],
+"shown": [
+"panal",
+"idear",
+"ameno",
+"prima",
+"nueve",
+"largo"
+],
+"start": "udlaan.m.oireagp.v.armane",
+"min": 10
+},
+{
+"words": [
+"oliva",
+"enero",
+"apodo",
+"opera",
+"ileso",
+"atomo"
+],
+"shown": [
+"oliva",
+"enero",
+"apodo",
+"ópera",
+"ileso",
+"átomo"
+],
+"start": "siltnp.l.oeoevoo.r.ampard",
+"min": 10
+}
+]
+}

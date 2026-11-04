@@ -1,0 +1,2646 @@
+{
+"version": 1,
+"note": "Cross Stitch's samplers for one band, built by tools/build_crossstitch.py from Hidden Word's answers (themselves drawn from wordfreq, Robyn Speer et al., CC-BY-SA 4.0). `words`: three across (rows 0/2/4) then three down (columns 0/2/4), folded; `shown`: the same as written; `start`: the 25 cells as dealt, row by row, '.' a hole; `min`: the fewest swaps that stitch it, solved exactly.",
+"boards": [
+{
+"words": [
+"amplo",
+"heroi",
+"rosto",
+"achar",
+"pires",
+"otimo"
+],
+"shown": [
+"amplo",
+"herói",
+"rosto",
+"achar",
+"pires",
+"ótimo"
+],
+"start": "ctpsoe.a.theroim.l.mriaoo",
+"min": 8
+},
+{
+"words": [
+"parte",
+"pausa",
+"idade",
+"papai",
+"roupa",
+"exame"
+],
+"shown": [
+"parte",
+"pausa",
+"idade",
+"papai",
+"roupa",
+"exame"
+],
+"start": "paaere.a.xpautaa.m.oidsdp",
+"min": 8
+},
+{
+"words": [
+"roupa",
+"coisa",
+"acaso",
+"rocha",
+"usina",
+"amado"
+],
+"shown": [
+"roupa",
+"coisa",
+"acaso",
+"rocha",
+"usina",
+"amado"
+],
+"start": "pmurad.o.aasicsh.n.oaocso",
+"min": 8
+},
+{
+"words": [
+"nuvem",
+"colar",
+"otimo",
+"nacao",
+"volei",
+"morro"
+],
+"shown": [
+"nuvem",
+"colar",
+"ótimo",
+"nação",
+"vôlei",
+"morro"
+],
+"start": "numetm.o.lcaiaoa.e.rvooro",
+"min": 8
+},
+{
+"words": [
+"facil",
+"assim",
+"exato",
+"frase",
+"costa",
+"limpo"
+],
+"shown": [
+"fácil",
+"assim",
+"exato",
+"frase",
+"costa",
+"limpo"
+],
+"start": "facirm.l.iaesits.o.ptxoas",
+"min": 8
+},
+{
+"words": [
+"honra",
+"marca",
+"razao",
+"humor",
+"nariz",
+"amado"
+],
+"shown": [
+"honra",
+"marca",
+"razão",
+"humor",
+"nariz",
+"amado"
+],
+"start": "inarrz.a.amaocmo.h.odauar",
+"min": 8
+},
+{
+"words": [
+"notar",
+"nariz",
+"amado",
+"nunca",
+"terra",
+"razao"
+],
+"shown": [
+"notar",
+"nariz",
+"amado",
+"nunca",
+"terra",
+"razão"
+],
+"start": "taedru.r.aiarnzm.o.aacaon",
+"min": 8
+},
+{
+"words": [
+"arena",
+"bater",
+"morar",
+"album",
+"estar",
+"abrir"
+],
+"shown": [
+"arena",
+"bater",
+"morar",
+"álbum",
+"estar",
+"abrir"
+],
+"start": "anebbl.s.araamru.r.teiaor",
+"min": 8
+},
+{
+"words": [
+"carta",
+"aluno",
+"etapa",
+"chave",
+"roupa",
+"agora"
+],
+"shown": [
+"carta",
+"aluno",
+"etapa",
+"chave",
+"roupa",
+"agora"
+],
+"start": "curtav.o.gartnlo.h.epaapa",
+"min": 8
+},
+{
+"words": [
+"curva",
+"saida",
+"apoio",
+"costa",
+"reino",
+"amado"
+],
+"shown": [
+"curva",
+"saída",
+"apoio",
+"costa",
+"reino",
+"amado"
+],
+"start": "pacdao.e.sauidmt.n.aorvio",
+"min": 8
+},
+{
+"words": [
+"preto",
+"papai",
+"largo",
+"papel",
+"expor",
+"otimo"
+],
+"shown": [
+"preto",
+"papai",
+"largo",
+"papel",
+"expor",
+"ótimo"
+],
+"start": "mpoaoa.x.tpletie.r.oaprga",
+"min": 8
+},
+{
+"words": [
+"poder",
+"adeus",
+"acaso",
+"prata",
+"dieta",
+"rosto"
+],
+"shown": [
+"poder",
+"adeus",
+"acaso",
+"prata",
+"dieta",
+"rosto"
+],
+"start": "drdeua.a.oiospst.t.trceao",
+"min": 8
+},
+{
+"words": [
+"olhar",
+"temer",
+"moral",
+"ontem",
+"humor",
+"rural"
+],
+"shown": [
+"olhar",
+"temer",
+"moral",
+"ontem",
+"humor",
+"rural"
+],
+"start": "elherm.u.traanue.m.oooral",
+"min": 8
+},
+{
+"words": [
+"valor",
+"levar",
+"ideal",
+"volei",
+"livre",
+"rural"
+],
+"shown": [
+"valor",
+"levar",
+"ideal",
+"vôlei",
+"livre",
+"rural"
+],
+"start": "ealoar.v.ulerlre.a.iidavo",
+"min": 8
+},
+{
+"words": [
+"nacao",
+"volei",
+"morro",
+"nuvem",
+"calor",
+"otimo"
+],
+"shown": [
+"nação",
+"vôlei",
+"morro",
+"nuvem",
+"calor",
+"ótimo"
+],
+"start": "aamcor.o.tvoloie.n.muareo",
+"min": 8
+},
+{
+"words": [
+"ontem",
+"dente",
+"massa",
+"ordem",
+"tenis",
+"moeda"
+],
+"shown": [
+"ontem",
+"dente",
+"massa",
+"ordem",
+"tênis",
+"moeda"
+],
+"start": "aoeetr.e.idensme.o.dntmsa",
+"min": 8
+},
+{
+"words": [
+"nunca",
+"verde",
+"moeda",
+"nuvem",
+"norte",
+"arena"
+],
+"shown": [
+"nunca",
+"verde",
+"moeda",
+"nuvem",
+"norte",
+"arena"
+],
+"start": "nuntru.r.ndeeace.v.omoeda",
+"min": 8
+},
+{
+"words": [
+"costa",
+"norte",
+"areia",
+"cinza",
+"sorte",
+"arena"
+],
+"shown": [
+"costa",
+"norte",
+"areia",
+"cinza",
+"sorte",
+"arena"
+],
+"start": "cnizai.o.rttreoe.t.narsoa",
+"min": 8
+},
+{
+"words": [
+"jogar",
+"virar",
+"moral",
+"jovem",
+"gerar",
+"rural"
+],
+"shown": [
+"jogar",
+"virar",
+"moral",
+"jovem",
+"gerar",
+"rural"
+],
+"start": "jerlge.o.uvoiara.r.amoaar",
+"min": 8
+},
+{
+"words": [
+"nuvem",
+"calor",
+"otimo",
+"nocao",
+"volei",
+"morro"
+],
+"shown": [
+"nuvem",
+"calor",
+"ótimo",
+"noção",
+"vôlei",
+"morro"
+],
+"start": "nmrvmo.o.oeeloca.i.uotrao",
+"min": 8
+},
+{
+"words": [
+"danca",
+"pobre",
+"areia",
+"dupla",
+"nobre",
+"arena"
+],
+"shown": [
+"dança",
+"pobre",
+"areia",
+"dupla",
+"nobre",
+"arena"
+],
+"start": "dencou.o.aprnreb.r.railaa",
+"min": 8
+},
+{
+"words": [
+"dieta",
+"usina",
+"apoio",
+"deusa",
+"exito",
+"amado"
+],
+"shown": [
+"dieta",
+"usina",
+"apoio",
+"deusa",
+"êxito",
+"amado"
+],
+"start": "distae.m.aeoundx.t.sapoii",
+"min": 8
+},
+{
+"words": [
+"forma",
+"copia",
+"razao",
+"ficar",
+"rapaz",
+"amado"
+],
+"shown": [
+"forma",
+"cópia",
+"razão",
+"ficar",
+"rapaz",
+"amado"
+],
+"start": "mraiao.a.mfopcao.a.darzia",
+"min": 8
+},
+{
+"words": [
+"poema",
+"suave",
+"areia",
+"pasta",
+"exame",
+"arena"
+],
+"shown": [
+"poema",
+"suave",
+"areia",
+"pasta",
+"exame",
+"arena"
+],
+"start": "esevaa.e.nxuaaot.m.parrim",
+"min": 8
+},
+{
+"words": [
+"ciclo",
+"volei",
+"largo",
+"civil",
+"calor",
+"otimo"
+],
+"shown": [
+"ciclo",
+"vôlei",
+"largo",
+"civil",
+"calor",
+"ótimo"
+],
+"start": "liclvi.a.oaoorii.o.mecltg",
+"min": 8
+},
+{
+"words": [
+"temer",
+"tenis",
+"largo",
+"total",
+"menor",
+"rosto"
+],
+"shown": [
+"temer",
+"tênis",
+"largo",
+"total",
+"menor",
+"rosto"
+],
+"start": "oemoio.a.eoenase.t.tltrrg",
+"min": 8
+},
+{
+"words": [
+"ponte",
+"ponta",
+"idade",
+"papai",
+"nunca",
+"exame"
+],
+"shown": [
+"ponte",
+"ponta",
+"idade",
+"papai",
+"nunca",
+"exame"
+],
+"start": "pootda.n.epianau.x.mtdaec",
+"min": 8
+},
+{
+"words": [
+"chave",
+"massa",
+"mamae",
+"comum",
+"assim",
+"exame"
+],
+"shown": [
+"chave",
+"massa",
+"mamãe",
+"comum",
+"assim",
+"exame"
+],
+"start": "vhaeas.a.immssau.c.omamxe",
+"min": 8
+},
+{
+"words": [
+"sorte",
+"massa",
+"agora",
+"samba",
+"resto",
+"etapa"
+],
+"shown": [
+"sorte",
+"massa",
+"agora",
+"samba",
+"resto",
+"etapa"
+],
+"start": "gtasta.a.emaetab.s.prsoro",
+"min": 8
+},
+{
+"words": [
+"antes",
+"estar",
+"salao",
+"adeus",
+"total",
+"serio"
+],
+"shown": [
+"antes",
+"estar",
+"salão",
+"adeus",
+"total",
+"sério"
+],
+"start": "totiaa.a.eesnora.s.esulad",
+"min": 8
+},
+{
+"words": [
+"gente",
+"ainda",
+"acaso",
+"graca",
+"nunca",
+"exato"
+],
+"shown": [
+"gente",
+"ainda",
+"acaso",
+"graça",
+"nunca",
+"exato"
+],
+"start": "xcdter.u.oaicenn.c.taaags",
+"min": 8
+},
+{
+"words": [
+"tirar",
+"nariz",
+"salto",
+"tenis",
+"rural",
+"razao"
+],
+"shown": [
+"tirar",
+"nariz",
+"salto",
+"tênis",
+"rural",
+"razão"
+],
+"start": "airuii.t.anaetza.a.asrorl",
+"min": 8
+},
+{
+"words": [
+"ideia",
+"extra",
+"largo",
+"ideal",
+"estar",
+"acaso"
+],
+"shown": [
+"ideia",
+"extra",
+"largo",
+"ideal",
+"estar",
+"acaso"
+],
+"start": "iaeicd.s.ergxdoa.a.slarat",
+"min": 8
+},
+{
+"words": [
+"local",
+"tirar",
+"acaso",
+"letra",
+"corda",
+"largo"
+],
+"shown": [
+"local",
+"tirar",
+"acaso",
+"letra",
+"corda",
+"largo"
+],
+"start": "areaoc.o.illraao.d.gtcasr",
+"min": 8
+},
+{
+"words": [
+"praca",
+"parar",
+"lazer",
+"papel",
+"arroz",
+"abrir"
+],
+"shown": [
+"praça",
+"parar",
+"lazer",
+"papel",
+"arroz",
+"abrir"
+],
+"start": "orirla.r.aparacz.p.aearbe",
+"min": 8
+},
+{
+"words": [
+"ordem",
+"torre",
+"marca",
+"ontem",
+"durar",
+"moeda"
+],
+"shown": [
+"ordem",
+"torre",
+"marca",
+"ontem",
+"durar",
+"moeda"
+],
+"start": "oamecn.u.rtddrer.a.oearom",
+"min": 8
+},
+{
+"words": [
+"enfim",
+"abrir",
+"agora",
+"etapa",
+"ferro",
+"marca"
+],
+"shown": [
+"enfim",
+"abrir",
+"agora",
+"etapa",
+"ferro",
+"marca"
+],
+"start": "enftme.g.apbriir.a.coarra",
+"min": 8
+},
+{
+"words": [
+"idade",
+"extra",
+"largo",
+"ideal",
+"autor",
+"exato"
+],
+"shown": [
+"idade",
+"extra",
+"largo",
+"ideal",
+"autor",
+"exato"
+],
+"start": "iaadle.o.dagtred.u.taxrxo",
+"min": 8
+},
+{
+"words": [
+"deusa",
+"noite",
+"etapa",
+"dente",
+"usina",
+"arena"
+],
+"shown": [
+"deusa",
+"noite",
+"etapa",
+"dente",
+"usina",
+"arena"
+],
+"start": "eduiae.s.rseaeat.n.nntopt",
+"min": 8
+},
+{
+"words": [
+"bacia",
+"ideia",
+"apoio",
+"beira",
+"cheio",
+"amado"
+],
+"shown": [
+"bacia",
+"ideia",
+"apoio",
+"beira",
+"cheio",
+"amado"
+],
+"start": "piciea.h.aedoimr.i.adoaib",
+"min": 8
+},
+{
+"words": [
+"livre",
+"terra",
+"arena",
+"letra",
+"verde",
+"etapa"
+],
+"shown": [
+"livre",
+"terra",
+"arena",
+"letra",
+"verde",
+"etapa"
+],
+"start": "eavele.e.rttanar.d.rrrpei",
+"min": 8
+},
+{
+"words": [
+"beira",
+"chave",
+"areia",
+"bacia",
+"idade",
+"arena"
+],
+"shown": [
+"beira",
+"chave",
+"areia",
+"bacia",
+"idade",
+"arena"
+],
+"start": "bnreaa.d.ireavei.r.adihca",
+"min": 8
+},
+{
+"words": [
+"haver",
+"morar",
+"moral",
+"homem",
+"virar",
+"rural"
+],
+"shown": [
+"haver",
+"morar",
+"moral",
+"homem",
+"virar",
+"rural"
+],
+"start": "moaeri.r.uholarr.a.aeovam",
+"min": 8
+},
+{
+"words": [
+"ficha",
+"reino",
+"exato",
+"firme",
+"caixa",
+"apoio"
+],
+"shown": [
+"ficha",
+"reino",
+"exato",
+"firme",
+"caixa",
+"apoio"
+],
+"start": "ficiai.p.aremiox.a.ehxtno",
+"min": 8
+},
+{
+"words": [
+"tenis",
+"natal",
+"abrir",
+"tinta",
+"notar",
+"solar"
+],
+"shown": [
+"tênis",
+"natal",
+"abrir",
+"tinta",
+"notar",
+"solar"
+],
+"start": "toiita.a.onataer.l.nsbair",
+"min": 8
+},
+{
+"words": [
+"ideal",
+"antes",
+"etapa",
+"idade",
+"extra",
+"lista"
+],
+"shown": [
+"ideal",
+"antes",
+"etapa",
+"idade",
+"extra",
+"lista"
+],
+"start": "iteaed.x.iaraesn.p.ldtdta",
+"min": 8
+},
+{
+"words": [
+"agora",
+"botao",
+"morro",
+"album",
+"obter",
+"apoio"
+],
+"shown": [
+"agora",
+"botão",
+"morro",
+"álbum",
+"obter",
+"apoio"
+],
+"start": "tgrler.i.poooaou.a.bbarom",
+"min": 8
+},
+{
+"words": [
+"antes",
+"bater",
+"milho",
+"album",
+"total",
+"serio"
+],
+"shown": [
+"antes",
+"bater",
+"milho",
+"álbum",
+"total",
+"sério"
+],
+"start": "aitrol.e.mbatsnh.a.eeolui",
+"min": 8
+},
+{
+"words": [
+"tigre",
+"norma",
+"sorte",
+"tenis",
+"gerar",
+"exame"
+],
+"shown": [
+"tigre",
+"norma",
+"sorte",
+"tênis",
+"gerar",
+"exame"
+],
+"start": "tisnre.e.xritmra.g.mooeae",
+"min": 8
+},
+{
+"words": [
+"banda",
+"reino",
+"areia",
+"barba",
+"noite",
+"agora"
+],
+"shown": [
+"banda",
+"reino",
+"areia",
+"barba",
+"noite",
+"agora"
+],
+"start": "ranrba.n.gteiaob.a.raodie",
+"min": 8
+},
+{
+"words": [
+"praia",
+"parar",
+"lazer",
+"papel",
+"arroz",
+"abrir"
+],
+"shown": [
+"praia",
+"parar",
+"lazer",
+"papel",
+"arroz",
+"abrir"
+],
+"start": "prriea.b.rporale.z.aaaira",
+"min": 8
+},
+{
+"words": [
+"pobre",
+"saida",
+"areia",
+"pista",
+"baile",
+"etapa"
+],
+"shown": [
+"pobre",
+"saída",
+"areia",
+"pista",
+"baile",
+"etapa"
+],
+"start": "ppirei.s.toaadba.r.lateia",
+"min": 8
+},
+{
+"words": [
+"massa",
+"norma",
+"exato",
+"monte",
+"serra",
+"acaso"
+],
+"shown": [
+"massa",
+"norma",
+"exato",
+"monte",
+"serra",
+"acaso"
+],
+"start": "mxsamr.e.cnosoot.a.setaar",
+"min": 8
+},
+{
+"words": [
+"pedir",
+"rapaz",
+"apoio",
+"porta",
+"duplo",
+"razao"
+],
+"shown": [
+"pedir",
+"rapaz",
+"apoio",
+"porta",
+"duplo",
+"razão"
+],
+"start": "ppairo.u.ezadapa.l.arotio",
+"min": 8
+},
+{
+"words": [
+"papel",
+"durar",
+"amado",
+"pedra",
+"porta",
+"largo"
+],
+"shown": [
+"papel",
+"durar",
+"amado",
+"pedra",
+"porta",
+"largo"
+],
+"start": "omplre.t.adarara.p.eaugdo",
+"min": 8
+},
+{
+"words": [
+"preco",
+"papai",
+"largo",
+"papel",
+"expor",
+"otimo"
+],
+"shown": [
+"preço",
+"papai",
+"largo",
+"papel",
+"expor",
+"ótimo"
+],
+"start": "procoa.t.ioagape.r.mlaxep",
+"min": 8
+},
+{
+"words": [
+"album",
+"estar",
+"serra",
+"adeus",
+"bater",
+"marca"
+],
+"shown": [
+"álbum",
+"estar",
+"serra",
+"adeus",
+"bater",
+"marca"
+],
+"start": "ulmued.r.teasara.e.crsbaa",
+"min": 8
+},
+{
+"words": [
+"total",
+"abrir",
+"apoio",
+"trama",
+"termo",
+"largo"
+],
+"shown": [
+"total",
+"abrir",
+"apoio",
+"trama",
+"termo",
+"largo"
+],
+"start": "titaar.o.gibramp.m.laeoro",
+"min": 8
+},
+{
+"words": [
+"calar",
+"mudar",
+"moral",
+"comum",
+"lidar",
+"rural"
+],
+"shown": [
+"calar",
+"mudar",
+"moral",
+"comum",
+"lidar",
+"rural"
+],
+"start": "cuarra.o.imadumo.a.arulal",
+"min": 8
+},
+{
+"words": [
+"grave",
+"acima",
+"agora",
+"graca",
+"aviao",
+"etapa"
+],
+"shown": [
+"grave",
+"acima",
+"agora",
+"graça",
+"avião",
+"etapa"
+],
+"start": "gravar.m.ovcirgt.a.paceaa",
+"min": 8
+},
+{
+"words": [
+"papel",
+"pires",
+"ideia",
+"papai",
+"parte",
+"lista"
+],
+"shown": [
+"papel",
+"pires",
+"ideia",
+"papai",
+"parte",
+"lista"
+],
+"start": "paiada.a.tpitela.e.pireis",
+"min": 8
+},
+{
+"words": [
+"obter",
+"durar",
+"moral",
+"ordem",
+"tirar",
+"rural"
+],
+"shown": [
+"obter",
+"durar",
+"moral",
+"ordem",
+"tirar",
+"rural"
+],
+"start": "omdbrt.i.uerralr.a.auorae",
+"min": 8
+},
+{
+"words": [
+"album",
+"exame",
+"agora",
+"areia",
+"bravo",
+"moeda"
+],
+"shown": [
+"álbum",
+"exame",
+"agora",
+"areia",
+"bravo",
+"moeda"
+],
+"start": "aibemr.r.ovuarem.o.lagxda",
+"min": 8
+},
+{
+"words": [
+"colar",
+"antes",
+"exato",
+"chave",
+"letra",
+"rosto"
+],
+"shown": [
+"colar",
+"antes",
+"exato",
+"chave",
+"letra",
+"rosto"
+],
+"start": "aorceh.t.tsnoaev.r.tleaxo",
+"min": 8
+},
+{
+"words": [
+"media",
+"gente",
+"arena",
+"magia",
+"dente",
+"areia"
+],
+"shown": [
+"média",
+"gente",
+"arena",
+"magia",
+"dente",
+"areia"
+],
+"start": "ridiaa.e.getiaee.t.ramnne",
+"min": 8
+},
+{
+"words": [
+"movel",
+"gerar",
+"apoio",
+"magia",
+"verao",
+"largo"
+],
+"shown": [
+"móvel",
+"gerar",
+"apoio",
+"magia",
+"verão",
+"largo"
+],
+"start": "mpgeoe.v.aaerarg.l.iaioao",
+"min": 8
+},
+{
+"words": [
+"calma",
+"mudar",
+"morar",
+"comum",
+"lider",
+"abrir"
+],
+"shown": [
+"calma",
+"mudar",
+"morar",
+"comum",
+"líder",
+"abrir"
+],
+"start": "cmlrau.i.aroumrd.m.ieobaa",
+"min": 8
+},
+{
+"words": [
+"navio",
+"volei",
+"morro",
+"nuvem",
+"valer",
+"otimo"
+],
+"shown": [
+"navio",
+"vôlei",
+"morro",
+"nuvem",
+"valer",
+"ótimo"
+],
+"start": "ntarou.i.movleme.e.vooria",
+"min": 8
+},
+{
+"words": [
+"teste",
+"norma",
+"suave",
+"tenis",
+"serra",
+"exame"
+],
+"shown": [
+"teste",
+"norma",
+"suave",
+"tênis",
+"serra",
+"exame"
+],
+"start": "smstee.e.xrortai.m.euanev",
+"min": 8
+},
+{
+"words": [
+"trama",
+"moeda",
+"rosto",
+"tomar",
+"adeus",
+"acaso"
+],
+"shown": [
+"trama",
+"moeda",
+"rosto",
+"tomar",
+"adeus",
+"acaso"
+],
+"start": "tramao.s.dootmac.a.seudro",
+"min": 8
+},
+{
+"words": [
+"civil",
+"nariz",
+"abrir",
+"cunha",
+"virar",
+"lazer"
+],
+"shown": [
+"civil",
+"nariz",
+"abrir",
+"cunha",
+"virar",
+"lazer"
+],
+"start": "chvrau.i.iraziln.a.eairib",
+"min": 8
+},
+{
+"words": [
+"baile",
+"samba",
+"agora",
+"busca",
+"irmao",
+"etapa"
+],
+"shown": [
+"baile",
+"samba",
+"agora",
+"busca",
+"irmão",
+"etapa"
+],
+"start": "taioea.l.gsambac.r.ubpara",
+"min": 8
+},
+{
+"words": [
+"nocao",
+"volei",
+"morro",
+"nuvem",
+"colar",
+"otimo"
+],
+"shown": [
+"noção",
+"vôlei",
+"morro",
+"nuvem",
+"colar",
+"ótimo"
+],
+"start": "ortaoe.o.mvnmuie.a.orcloo",
+"min": 8
+},
+{
+"words": [
+"tomar",
+"nariz",
+"salao",
+"tenis",
+"moral",
+"razao"
+],
+"shown": [
+"tomar",
+"nariz",
+"salão",
+"tênis",
+"moral",
+"razão"
+],
+"start": "sntari.o.aaomazi.r.eaalao",
+"min": 8
+},
+{
+"words": [
+"tomar",
+"nariz",
+"serio",
+"tenis",
+"morar",
+"razao"
+],
+"shown": [
+"tomar",
+"nariz",
+"sério",
+"tênis",
+"morar",
+"razão"
+],
+"start": "oanari.e.amorias.a.ozerit",
+"min": 8
+},
+{
+"words": [
+"hotel",
+"menor",
+"rosto",
+"humor",
+"tenis",
+"largo"
+],
+"shown": [
+"hotel",
+"menor",
+"rosto",
+"humor",
+"tênis",
+"largo"
+],
+"start": "mohslu.e.aeinoeo.g.rtorto",
+"min": 8
+},
+{
+"words": [
+"rocha",
+"reino",
+"largo",
+"rural",
+"criar",
+"apoio"
+],
+"shown": [
+"rocha",
+"reino",
+"largo",
+"rural",
+"criar",
+"apoio"
+],
+"start": "raceau.a.orriroa.o.plingh",
+"min": 8
+},
+{
+"words": [
+"papai",
+"busca",
+"exame",
+"pobre",
+"pasta",
+"idade"
+],
+"shown": [
+"papai",
+"busca",
+"exame",
+"pobre",
+"pasta",
+"idade"
+],
+"start": "papior.a.dbtscam.a.uexead",
+"min": 8
+},
+{
+"words": [
+"ficar",
+"nariz",
+"exato",
+"fonte",
+"coroa",
+"razao"
+],
+"shown": [
+"ficar",
+"nariz",
+"exato",
+"fonte",
+"coroa",
+"razão"
+],
+"start": "fixana.z.aroriat.c.teaooo",
+"min": 8
+},
+{
+"words": [
+"tenis",
+"moral",
+"razao",
+"temer",
+"nariz",
+"salao"
+],
+"shown": [
+"tênis",
+"moral",
+"razão",
+"temer",
+"nariz",
+"salão"
+],
+"start": "oerisr.a.amaoete.n.liazaa",
+"min": 8
+},
+{
+"words": [
+"cobra",
+"motor",
+"morar",
+"comum",
+"bater",
+"abrir"
+],
+"shown": [
+"cobra",
+"motor",
+"morar",
+"comum",
+"bater",
+"abrir"
+],
+"start": "motroo.a.crbuora.e.iaombr",
+"min": 8
+},
+{
+"words": [
+"poeta",
+"suave",
+"agora",
+"pesca",
+"exato",
+"arena"
+],
+"shown": [
+"poeta",
+"suave",
+"agora",
+"pesca",
+"exato",
+"arena"
+],
+"start": "peeaao.t.gtranec.s.vrxoua",
+"min": 8
+},
+{
+"words": [
+"pleno",
+"papai",
+"largo",
+"papel",
+"expor",
+"otimo"
+],
+"shown": [
+"pleno",
+"papai",
+"largo",
+"papel",
+"expor",
+"ótimo"
+],
+"start": "plpnoe.a.toaxeip.l.mraago",
+"min": 8
+},
+{
+"words": [
+"comum",
+"teste",
+"roupa",
+"citar",
+"museu",
+"moeda"
+],
+"shown": [
+"comum",
+"teste",
+"roupa",
+"citar",
+"museu",
+"moeda"
+],
+"start": "cuemti.u.otosera.o.depuma",
+"min": 8
+},
+{
+"words": [
+"votar",
+"lugar",
+"ideal",
+"volei",
+"tigre",
+"rural"
+],
+"shown": [
+"votar",
+"lugar",
+"ideal",
+"vôlei",
+"tigre",
+"rural"
+],
+"start": "altaoe.v.iougare.r.uadirl",
+"min": 8
+},
+{
+"words": [
+"feira",
+"areia",
+"exato",
+"frase",
+"ideia",
+"acaso"
+],
+"shown": [
+"feira",
+"areia",
+"exato",
+"frase",
+"ideia",
+"acaso"
+],
+"start": "srisrf.d.raxeiae.c.ieaato",
+"min": 8
+},
+{
+"words": [
+"drama",
+"noite",
+"agora",
+"danca",
+"amigo",
+"areia"
+],
+"shown": [
+"drama",
+"noite",
+"agora",
+"dança",
+"amigo",
+"areia"
+],
+"start": "timmaa.r.rroinec.a.oagdga",
+"min": 8
+},
+{
+"words": [
+"mamae",
+"nunca",
+"areia",
+"manha",
+"monte",
+"etapa"
+],
+"shown": [
+"mamãe",
+"nunca",
+"areia",
+"manhã",
+"monte",
+"etapa"
+],
+"start": "pamara.a.unoncah.e.temtia",
+"min": 8
+},
+{
+"words": [
+"citar",
+"morar",
+"moral",
+"comum",
+"tirar",
+"rural"
+],
+"shown": [
+"citar",
+"morar",
+"moral",
+"comum",
+"tirar",
+"rural"
+],
+"start": "oiacro.u.iaurarl.m.aromat",
+"min": 8
+},
+{
+"words": [
+"ainda",
+"bater",
+"morar",
+"album",
+"notar",
+"abrir"
+],
+"shown": [
+"ainda",
+"bater",
+"morar",
+"álbum",
+"notar",
+"abrir"
+],
+"start": "alaidb.o.rmateru.a.bnorai",
+"min": 8
+},
+{
+"words": [
+"pesca",
+"exame",
+"areia",
+"poema",
+"suave",
+"arena"
+],
+"shown": [
+"pesca",
+"exame",
+"areia",
+"poema",
+"suave",
+"arena"
+],
+"start": "pasueo.c.raxrniv.m.eaeema",
+"min": 8
+},
+{
+"words": [
+"casal",
+"bater",
+"apoio",
+"cobra",
+"sitio",
+"largo"
+],
+"shown": [
+"casal",
+"bater",
+"apoio",
+"cobra",
+"sítio",
+"largo"
+],
+"start": "caiaio.a.sbatlrg.i.earpoo",
+"min": 8
+},
+{
+"words": [
+"calca",
+"rocha",
+"apoio",
+"carta",
+"lucro",
+"acaso"
+],
+"shown": [
+"calça",
+"rocha",
+"apoio",
+"carta",
+"lucro",
+"acaso"
+],
+"start": "casroi.c.uaoahct.r.lcapao",
+"min": 8
+},
+{
+"words": [
+"copia",
+"sorte",
+"lista",
+"casal",
+"pires",
+"arena"
+],
+"shown": [
+"cópia",
+"sorte",
+"lista",
+"casal",
+"pires",
+"arena"
+],
+"start": "ceriap.s.osarteo.t.naiila",
+"min": 8
+},
+{
+"words": [
+"expor",
+"arroz",
+"exato",
+"exame",
+"porta",
+"razao"
+],
+"shown": [
+"expor",
+"arroz",
+"exato",
+"exame",
+"porta",
+"razão"
+],
+"start": "xaeozp.a.aomrore.t.rxxato",
+"min": 8
+},
+{
+"words": [
+"norma",
+"viver",
+"morar",
+"nuvem",
+"rever",
+"abrir"
+],
+"shown": [
+"norma",
+"viver",
+"morar",
+"nuvem",
+"rever",
+"abrir"
+],
+"start": "naemvi.o.bvrueri.e.rmorae",
+"min": 8
+},
+{
+"words": [
+"pires",
+"bacia",
+"exame",
+"pobre",
+"rocha",
+"suave"
+],
+"shown": [
+"pires",
+"bacia",
+"exame",
+"pobre",
+"rocha",
+"suave"
+],
+"start": "iorise.o.uvabeap.h.ceramx",
+"min": 8
+},
+{
+"words": [
+"navio",
+"volei",
+"morro",
+"nuvem",
+"valor",
+"otimo"
+],
+"shown": [
+"navio",
+"vôlei",
+"morro",
+"nuvem",
+"valor",
+"ótimo"
+],
+"start": "laoivu.r.otnavie.e.mmooro",
+"min": 8
+},
+{
+"words": [
+"adeus",
+"bater",
+"morro",
+"album",
+"estar",
+"serio"
+],
+"shown": [
+"adeus",
+"bater",
+"morro",
+"álbum",
+"estar",
+"sério"
+],
+"start": "aaseul.t.eoderru.a.imsrob",
+"min": 8
+},
+{
+"words": [
+"homem",
+"notar",
+"abrir",
+"honra",
+"motor",
+"morar"
+],
+"shown": [
+"homem",
+"notar",
+"abrir",
+"honra",
+"motor",
+"morar"
+],
+"start": "memroo.o.ornoart.a.aobhir",
+"min": 8
+},
+{
+"words": [
+"letra",
+"gente",
+"lista",
+"legal",
+"tenis",
+"arena"
+],
+"shown": [
+"letra",
+"gente",
+"lista",
+"legal",
+"tênis",
+"arena"
+],
+"start": "agtali.e.seeneta.t.rliner",
+"min": 8
+},
+{
+"words": [
+"teste",
+"nunca",
+"suave",
+"tenis",
+"senha",
+"exame"
+],
+"shown": [
+"teste",
+"nunca",
+"suave",
+"tênis",
+"senha",
+"exame"
+],
+"start": "ehstee.e.xnnvuat.c.usmaie",
+"min": 8
+},
+{
+"words": [
+"peixe",
+"roupa",
+"salao",
+"pires",
+"igual",
+"exato"
+],
+"shown": [
+"peixe",
+"roupa",
+"salão",
+"pires",
+"igual",
+"exato"
+],
+"start": "utpeei.g.xroxeap.i.lsaaao",
+"min": 8
+},
+{
+"words": [
+"ontem",
+"virar",
+"rural",
+"ouvir",
+"tirar",
+"moral"
+],
+"shown": [
+"ontem",
+"virar",
+"rural",
+"ouvir",
+"tirar",
+"moral"
+],
+"start": "ratemu.a.aviiaoi.r.unrorl",
+"min": 8
+},
+{
+"words": [
+"casar",
+"nariz",
+"amado",
+"cinza",
+"serra",
+"razao"
+],
+"shown": [
+"casar",
+"nariz",
+"amado",
+"cinza",
+"serra",
+"razão"
+],
+"start": "maiara.i.anzreao.r.azcdas",
+"min": 8
+},
+{
+"words": [
+"jovem",
+"solar",
+"otimo",
+"justo",
+"volei",
+"morro"
+],
+"shown": [
+"jovem",
+"solar",
+"ótimo",
+"justo",
+"vôlei",
+"morro"
+],
+"start": "ootlmu.o.vjomats.e.roeiro",
+"min": 8
+},
+{
+"words": [
+"obter",
+"tomar",
+"moral",
+"ontem",
+"temer",
+"rural"
+],
+"shown": [
+"obter",
+"tomar",
+"moral",
+"ontem",
+"temer",
+"rural"
+],
+"start": "obtrte.e.eeamora.r.nmuoal",
+"min": 8
+},
+{
+"words": [
+"amado",
+"heroi",
+"razao",
+"achar",
+"arroz",
+"otimo"
+],
+"shown": [
+"amado",
+"herói",
+"razão",
+"achar",
+"arroz",
+"ótimo"
+],
+"start": "zoaaoc.a.aheroia.r.mdmrot",
+"min": 8
+},
+{
+"words": [
+"estar",
+"ficar",
+"moral",
+"enfim",
+"tocar",
+"rural"
+],
+"shown": [
+"estar",
+"ficar",
+"moral",
+"enfim",
+"tocar",
+"rural"
+],
+"start": "isiaon.e.uratara.a.fmorcl",
+"min": 8
+},
+{
+"words": [
+"falar",
+"antes",
+"exato",
+"frase",
+"letra",
+"resto"
+],
+"shown": [
+"falar",
+"antes",
+"exato",
+"frase",
+"letra",
+"resto"
+],
+"start": "ratara.e.eaotenl.s.sfxrte",
+"min": 8
+},
+{
+"words": [
+"calor",
+"antes",
+"exato",
+"chave",
+"letra",
+"rosto"
+],
+"shown": [
+"calor",
+"antes",
+"exato",
+"chave",
+"letra",
+"rosto"
+],
+"start": "oaevre.l.xrtthst.a.ceoano",
+"min": 8
+},
+{
+"words": [
+"caixa",
+"suave",
+"areia",
+"costa",
+"idade",
+"arena"
+],
+"shown": [
+"caixa",
+"suave",
+"areia",
+"costa",
+"idade",
+"arena"
+],
+"start": "caieia.d.dnuavxt.o.aarser",
+"min": 8
+},
+{
+"words": [
+"adeus",
+"natal",
+"abrir",
+"ainda",
+"estar",
+"solar"
+],
+"shown": [
+"adeus",
+"natal",
+"abrir",
+"ainda",
+"estar",
+"solar"
+],
+"start": "adbosn.i.eaasald.a.arutir",
+"min": 8
+},
+{
+"words": [
+"viola",
+"letra",
+"irmao",
+"volei",
+"ontem",
+"amado"
+],
+"shown": [
+"viola",
+"letra",
+"irmão",
+"vôlei",
+"ontem",
+"amado"
+],
+"start": "adaleo.n.ilortie.m.evrmao",
+"min": 8
+},
+{
+"words": [
+"dupla",
+"ainda",
+"acaso",
+"drama",
+"ponta",
+"amado"
+],
+"shown": [
+"dupla",
+"ainda",
+"acaso",
+"drama",
+"ponta",
+"amado"
+],
+"start": "duralt.o.maimsna.a.dpcdao",
+"min": 8
+},
+{
+"words": [
+"antes",
+"bater",
+"molho",
+"album",
+"total",
+"serio"
+],
+"shown": [
+"antes",
+"bater",
+"molho",
+"álbum",
+"total",
+"sério"
+],
+"start": "tutshl.o.eoaberl.a.imnaeo",
+"min": 8
+},
+{
+"words": [
+"tocar",
+"rapaz",
+"exato",
+"torre",
+"copia",
+"razao"
+],
+"shown": [
+"tocar",
+"rapaz",
+"exato",
+"torre",
+"cópia",
+"razão"
+],
+"start": "toiaro.a.axraaze.c.rtapoo",
+"min": 8
+},
+{
+"words": [
+"pasta",
+"extra",
+"apoio",
+"poeta",
+"sitio",
+"acaso"
+],
+"shown": [
+"pasta",
+"extra",
+"apoio",
+"poeta",
+"sítio",
+"acaso"
+],
+"start": "pasteo.x.tpotraa.s.iaicio",
+"min": 8
+},
+{
+"words": [
+"pires",
+"pausa",
+"idade",
+"papai",
+"roupa",
+"suave"
+],
+"shown": [
+"pires",
+"pausa",
+"idade",
+"papai",
+"roupa",
+"suave"
+],
+"start": "raaosa.e.upapads.v.piuide",
+"min": 8
+},
+{
+"words": [
+"extra",
+"agora",
+"apoio",
+"etapa",
+"trono",
+"acaso"
+],
+"shown": [
+"extra",
+"agora",
+"apoio",
+"etapa",
+"trono",
+"acaso"
+],
+"start": "estaat.r.xagorop.c.pianro",
+"min": 8
+},
+{
+"words": [
+"local",
+"volei",
+"exame",
+"livre",
+"calca",
+"leite"
+],
+"shown": [
+"local",
+"vôlei",
+"exame",
+"livre",
+"calça",
+"leite"
+],
+"start": "llcalv.i.emaeeia.c.trxooe",
+"min": 8
+},
+{
+"words": [
+"achar",
+"pires",
+"otimo",
+"amplo",
+"heroi",
+"resto"
+],
+"shown": [
+"achar",
+"pires",
+"ótimo",
+"amplo",
+"herói",
+"resto"
+],
+"start": "riatrm.e.eelspha.o.cotimo",
+"min": 8
+},
+{
+"words": [
+"corte",
+"lista",
+"agora",
+"calca",
+"resto",
+"etapa"
+],
+"shown": [
+"corte",
+"lista",
+"agora",
+"calça",
+"resto",
+"etapa"
+],
+"start": "clreaa.t.iepstao.t.oagcrt",
+"min": 8
+},
+{
+"words": [
+"autor",
+"nariz",
+"amado",
+"ainda",
+"turma",
+"razao"
+],
+"shown": [
+"autor",
+"nariz",
+"amado",
+"ainda",
+"turma",
+"razão"
+],
+"start": "oiadru.a.anauida.m.ramzot",
+"min": 8
+},
+{
+"words": [
+"saida",
+"mamae",
+"agora",
+"samba",
+"irmao",
+"areia"
+],
+"shown": [
+"saída",
+"mamãe",
+"agora",
+"samba",
+"irmão",
+"areia"
+],
+"start": "rdimar.a.aramasb.a.iaeoag",
+"min": 8
+},
+{
+"words": [
+"forca",
+"nacao",
+"etapa",
+"fonte",
+"rocha",
+"agora"
+],
+"shown": [
+"força",
+"nação",
+"etapa",
+"fonte",
+"rocha",
+"agora"
+],
+"start": "aopcra.o.geatcot.h.rafnoa",
+"min": 8
+},
+{
+"words": [
+"prata",
+"parar",
+"lazer",
+"papel",
+"arroz",
+"abrir"
+],
+"shown": [
+"prata",
+"parar",
+"lazer",
+"papel",
+"arroz",
+"abrir"
+],
+"start": "pribaa.a.lraatrp.o.erazer",
+"min": 8
+},
+{
+"words": [
+"busca",
+"campo",
+"acaso",
+"bacia",
+"samba",
+"apoio"
+],
+"shown": [
+"busca",
+"campo",
+"acaso",
+"bacia",
+"samba",
+"apoio"
+],
+"start": "ubscap.a.obacaoi.a.ipamsc",
+"min": 8
+},
+{
+"words": [
+"etapa",
+"tinta",
+"acaso",
+"extra",
+"ainda",
+"amado"
+],
+"shown": [
+"etapa",
+"tinta",
+"acaso",
+"extra",
+"ainda",
+"amado"
+],
+"start": "atxpam.t.oaintar.d.ecdasi",
+"min": 8
+},
+{
+"words": [
+"valer",
+"lavar",
+"ideal",
+"volei",
+"livre",
+"rural"
+],
+"shown": [
+"valer",
+"lavar",
+"ideal",
+"vôlei",
+"livre",
+"rural"
+],
+"start": "ealeio.u.vravira.a.ledral",
+"min": 8
+},
+{
+"words": [
+"adeus",
+"total",
+"serio",
+"antes",
+"estar",
+"salto"
+],
+"shown": [
+"adeus",
+"total",
+"sério",
+"antes",
+"estar",
+"salto"
+],
+"start": "tsedan.s.uttoale.s.oaerai",
+"min": 8
+},
+{
+"words": [
+"vinte",
+"lenda",
+"idade",
+"volei",
+"nunca",
+"exame"
+],
+"shown": [
+"vinte",
+"lenda",
+"idade",
+"vôlei",
+"nunca",
+"exame"
+],
+"start": "vialmo.e.daendxe.c.nitude",
+"min": 8
+}
+]
+}

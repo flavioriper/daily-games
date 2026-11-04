@@ -1761,6 +1761,40 @@ SETS = {
         "solved":   ("a warm short celebratory flourish on a real kalimba and a music box, rising arpeggio ending on a soft hand bell shimmer, joyful and cozy", 2.0, -8, BEADBOX_TUNE, "warm:2600", "body:300"),
         "party":    ("a short cozy celebratory flourish on a real kalimba and a music box, rising and bright, with a few soft little party blower toots, warm and joyful", 2.0, -8, BEADBOX_TUNE, "warm:2600", "body:300"),
     },
+    # Cross Stitch (puzzle_id "crossstitch"), 2026-11-04: a sampler of six
+    # crossing words whose letters are swapped two at a time. Every action
+    # is a pop from the bank, by its job: `pick` the pebble (a patch picked
+    # up; varied at play), `drop` the lip (a patch put back), `swap` two
+    # wraps a step apart (the run rides the two patches trading places),
+    # `stitch` two wraps rising (a letter landed in its place; pitched up
+    # with the letters stitched and the swaps made), `word` three wraps
+    # rising to the octave (a word sewn round in gold), `refuse` the tongue
+    # twice falling (a stitched patch pressed), `tight` a quiet tongue
+    # falling (too few swaps left to finish), `fall` the lip falling (a star
+    # lost), `out` the tongue falling (the last swap spent), `more` two wraps
+    # rising (three more swaps), `reveal` a run of wraps (Show the sampler),
+    # `enter` a run of tokens (the patches sewn on). hint, solved, confetti
+    # and party are takes already on disk, copied into
+    # build/sfx_raw/crossstitch/ from Honeycomb's, never bought. All of it
+    # unheard.
+    "crossstitch": {
+        "pick":     ('one small smooth pebble dropped onto a wooden board, a single soft rounded click, very short', 0.5, -16, FOLEY, "bank:pebble", "cut:0.14", "notes:0:1", "tight"),
+        "drop":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -19, FOLEY, "bank:lip", "cut:0.12", "notes:0:-1", "tight"),
+        "swap":     ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -16, FOLEY, "bank:wrap", "cut:0.09", "notes:0.11:0,2", "tight"),
+        "stitch":   ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.1", "notes:0.06:5,9", "tight"),
+        "word":     ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -13, FOLEY, "bank:wrap", "cut:0.1", "notes:0.07:0,4,7,12", "tight"),
+        "refuse":   ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -16, FOLEY, "bank:tongue", "cut:0.2", "notes:0.1:-2,-4", "tight"),
+        "tight":    ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -19, FOLEY, "bank:tongue", "cut:0.2", "notes:0.12:-1,-4", "tight"),
+        "fall":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -18, FOLEY, "bank:lip", "cut:0.2", "notes:0.06:1,-1,-3", "tight"),
+        "out":      ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.3", "notes:0.12:-2,-5,-8", "tight"),
+        "more":     ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -15, FOLEY, "bank:wrap", "cut:0.1", "notes:0.07:1,8", "tight"),
+        "reveal":   ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -17, FOLEY, "bank:wrap", "cut:0.08", "notes:0.04:0,2,4,5,7,9,11,12", "tight"),
+        "hint":     ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -16, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320", "notes:0:2"),
+        "enter":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.5", "notes:0.05:-1,2,-1,1,4,2,5", "tight"),
+        "confetti": ("a soft little paper confetti pop and flutter with a tiny music box twinkle, cute", 1.0, -10, BEADBOX_TUNE, "warm:7000"),
+        "solved":   ("a warm short celebratory flourish on a real kalimba and a music box, rising arpeggio ending on a soft hand bell shimmer, joyful and cozy", 2.0, -8, BEADBOX_TUNE, "warm:2600", "body:300"),
+        "party":    ("a short cozy celebratory flourish on a real kalimba and a music box, rising and bright, with a few soft little party blower toots, warm and joyful", 2.0, -8, BEADBOX_TUNE, "warm:2600", "body:300"),
+    },
     # Fairy Lights (puzzle_id "fairylights"): tap a piece of garden wire to
     # turn it; wire joined back to the post runs gold and wakes its lanterns.
     # Hard and Insane blow a fuse on a wrong join; Insane is Wish Tags.

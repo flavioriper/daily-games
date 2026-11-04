@@ -3422,3 +3422,52 @@ HTP_SB_READ_CAP,First press: the bulb rings the piece the light needs,Primeiro t
 PP_FRENZY_1,Frenzy!,Frenesi!,¡Frenesí!
 PP_FRENZY_2,Frenzy x2!,Frenesi x2!,¡Frenesí x2!
 PP_FRENZY_3,Frenzy x3!,Frenesi x3!,¡Frenesí x3!
+CS_BLURB,"Six words cross on a sampler, their letters sewn on in the wrong places. Swap two at a time until every letter is stitched.","Seis palavras se cruzam num bordado, as letras costuradas nos lugares errados. Troque duas de cada vez até cada letra ficar no lugar.","Seis palabras se cruzan en un bordado, sus letras cosidas en el lugar equivocado. Cambia dos a la vez hasta que cada letra quede en su sitio."
+CS_SHORT,"Swap letters
+to stitch words.","Troque letras
+e borde palavras.","Cambia letras
+y borda palabras."
+CS_MOTTO,Every letter in its place,Cada letra no seu lugar,Cada letra en su sitio
+CS_LVL_0,Two words given,Duas palavras prontas,Dos palabras dadas
+CS_LVL_1,Common words,Palavras comuns,Palabras comunes
+CS_LVL_2,"Every word, ten swaps","Todas as palavras, dez trocas","Todas las palabras, diez cambios"
+CS_LVL_3,Loose Thread: no amber,Linha Solta: sem amarelo,Hilo Suelto: sin ámbar
+CS_RULES,"Six five-letter words cross on the sampler: three across and three down. Their letters are sewn on in the wrong places. Drag a letter onto another to swap them, or tap one and then the other.","Seis palavras de cinco letras se cruzam no bordado: três na horizontal e três na vertical. As letras estão costuradas nos lugares errados. Arraste uma letra sobre outra para trocá-las, ou toque numa e depois na outra.","Seis palabras de cinco letras se cruzan en el bordado: tres en horizontal y tres en vertical. Sus letras están cosidas en el lugar equivocado. Arrastra una letra sobre otra para cambiarlas, o toca una y luego la otra."
+CS_RULES_COLOURS,"Green is stitched: the letter is in its place and stays put. Amber is on the right thread: the letter belongs in that word (or, where two words cross, in either), somewhere else. Plain linen is a stray.","Verde está bordada: a letra está no lugar e não sai mais. Amarelo está na linha certa: a letra pertence a essa palavra (ou, num cruzamento, a uma das duas), em outro lugar. Linho liso é uma letra perdida.","Verde está bordada: la letra está en su sitio y ya no se mueve. Ámbar está en el hilo correcto: la letra pertenece a esa palabra (o, en un cruce, a cualquiera de las dos), en otro lugar. El lino liso es una letra perdida."
+CS_RULES_LOOSE,"Loose Thread: only green shows. A letter is stitched in its place or it is not, and the words are yours to find.","Linha Solta: só o verde aparece. A letra está bordada no lugar ou não está, e as palavras ficam por sua conta.","Hilo Suelto: solo se ve el verde. La letra está bordada en su sitio o no, y las palabras corren por tu cuenta."
+CS_RULES_SWAPS,"Today's sampler can be stitched in %d swaps, and you have %d. Three stars for the fewest.","O bordado de hoje sai em %d trocas, e você tem %d. Três estrelas para o mínimo.","El bordado de hoy sale en %d cambios, y tienes %d. Tres estrellas por el mínimo."
+CS_RULES_HINT,"Stuck? The bulb rings two letters and threads them; press it again to swap them, free.","Travou? A lâmpada marca duas letras e passa a linha entre elas; toque de novo para trocá-las, de graça.","¿Atascado? La bombilla marca dos letras y les pasa el hilo; tócala otra vez para cambiarlas, gratis."
+CS_SAY_STITCHED,That one is stitched in place.,Essa já está bordada no lugar.,Esa ya está bordada en su sitio.
+CS_SAY_NONE,No swaps left.,Acabaram as trocas.,No quedan cambios.
+CS_SAY_WORD,%s stitched!,%s bordada!,¡%s bordada!
+CS_SAY_TIGHT,Too few swaps left to finish now.,Faltam trocas para terminar agora.,Ya no quedan cambios para terminar.
+CS_SAY_OUT,Out of swaps.,Acabaram as trocas.,Se acabaron los cambios.
+CS_SAY_MORE,%s more swaps!,Mais %s trocas!,¡%s cambios más!
+CS_READ,These two belong in each other's place.,Estas duas são do lugar uma da outra.,Estas dos van en el lugar de la otra.
+CS_PERFECT,A perfect sampler!,Um bordado perfeito!,¡Un bordado perfecto!
+CS_DONE,All stitched!,Tudo bordado!,¡Todo bordado!
+CS_WORDS_N,%d of %d words stitched,%d de %d palavras bordadas,%d de %d palabras bordadas
+CS_LOOSE,no amber today,sem amarelo hoje,sin ámbar hoy
+CS_LEFT_ONE,1 swap left,1 troca restante,Queda 1 cambio
+CS_LEFT_N,%d swaps left,%d trocas restantes,Quedan %d cambios
+CS_OUT_TITLE,Out of swaps,Acabaram as trocas,Sin cambios
+CS_OUT_BODY,"Watch a short video for three more swaps, or see the sampler stitched.","Veja um vídeo curto para ganhar mais três trocas, ou veja o bordado pronto.","Mira un video corto para tres cambios más, o mira el bordado terminado."
+CS_OUT_BODY_REST,Every swap is spent. See the sampler stitched and come back tomorrow for a new one.,Todas as trocas foram usadas. Veja o bordado pronto e volte amanhã para um novo.,Se gastaron todos los cambios. Mira el bordado terminado y vuelve mañana por uno nuevo.
+CS_MORE,Three more swaps,Mais três trocas,Tres cambios más
+CS_SHOW,Show the sampler,Mostrar o bordado,Mostrar el bordado
+CS_WIN_PERFECT,"Stitched in %d swaps, the fewest there are.","Bordado em %d trocas, o mínimo possível.","Bordado en %d cambios, el mínimo posible."
+CS_WIN,Stitched in %d swaps. The fewest was %d.,Bordado em %d trocas. O mínimo era %d.,Bordado en %d cambios. El mínimo era %d.
+HTP_CS_SWAP,Swap two letters,Troque duas letras,Cambia dos letras
+HTP_CS_SWAP_BODY,"Drag a letter onto another to swap them, or tap one and then the other. A letter in its place turns green and stays put.","Arraste uma letra sobre outra para trocá-las, ou toque numa e depois na outra. A letra no lugar fica verde e não sai mais.","Arrastra una letra sobre otra para cambiarlas, o toca una y luego la otra. La letra en su sitio se vuelve verde y ya no se mueve."
+HTP_CS_THREAD,"Green, amber, linen","Verde, amarelo, linho","Verde, ámbar, lino"
+HTP_CS_THREAD_BODY,"Green is in its place. Amber belongs in that word, somewhere else; where two words cross, in either. Plain linen belongs in neither.","Verde está no lugar. Amarelo pertence a essa palavra, em outro lugar; num cruzamento, a uma das duas. Linho liso não pertence a nenhuma.","Verde está en su sitio. Ámbar pertenece a esa palabra, en otro lugar; en un cruce, a cualquiera de las dos. El lino liso no pertenece a ninguna."
+HTP_CS_LOOSE,Loose Thread,Linha Solta,Hilo Suelto
+HTP_CS_LOOSE_BODY,"On Insane there is no amber. A letter is green in its place, or plain linen; read the words from the letters you have.","No Insano não há amarelo. A letra fica verde no lugar, ou é linho liso; descubra as palavras pelas letras que tem.","En Demencial no hay ámbar. La letra está verde en su sitio, o es lino liso; descubre las palabras con las letras que tienes."
+HTP_CS_WORD,Stitch every word,Borde cada palavra,Borda cada palabra
+HTP_CS_WORD_BODY,"A word with every letter in place is sewn round in gold. Today's sampler takes %d swaps at the fewest, and you have %d.","A palavra com todas as letras no lugar ganha um contorno dourado. O bordado de hoje sai em %d trocas no mínimo, e você tem %d.","La palabra con todas sus letras en su sitio se cose con hilo dorado. El bordado de hoy sale en %d cambios como mínimo, y tienes %d."
+HTP_CS_HINT,Thread a pair,Passe a linha,Pasa el hilo
+HTP_CS_HINT_BODY,"The bulb rings two letters that belong in each other's place. Press it again and they swap, free.","A lâmpada marca duas letras que são do lugar uma da outra. Toque de novo e elas trocam, de graça.","La bombilla marca dos letras que van en el lugar de la otra. Tócala otra vez y se cambian, gratis."
+BRAIN_CS_1,Start with the green letters: a word with three in place usually has only one spelling left.,Comece pelas letras verdes: uma palavra com três no lugar quase sempre só tem um jeito de se escrever.,Empieza por las letras verdes: una palabra con tres en su sitio casi siempre tiene una sola forma de escribirse.
+BRAIN_CS_2,"Before you swap, find the place each letter wants: a swap that puts both letters home saves a swap.","Antes de trocar, ache o lugar que cada letra quer: uma troca que põe as duas no lugar economiza uma troca.","Antes de cambiar, busca el sitio que quiere cada letra: un cambio que pone las dos en su sitio ahorra un cambio."
+BRAIN_CS_3,Read the crossings: a letter at a corner or in the middle must fit both its words at once.,Leia os cruzamentos: uma letra no canto ou no meio precisa servir às duas palavras ao mesmo tempo.,Lee los cruces: una letra en una esquina o en el centro debe servir a sus dos palabras a la vez.
+BRAIN_CS_4,"Count before you move: when a letter is wanted in two places, send it where the other letter can go home too.","Conte antes de mexer: quando uma letra cabe em dois lugares, mande-a onde a outra letra também volta para casa.","Cuenta antes de mover: si una letra cabe en dos sitios, mándala donde la otra letra también vuelva a casa."
