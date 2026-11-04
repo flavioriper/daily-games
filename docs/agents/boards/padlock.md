@@ -32,17 +32,26 @@
   start window that is a word, the bulb alone opens 20 locks a bank in
   exactly par.
 - **Stars**: only a word that lights a new letter counts; the pill reads
-  `counted + to_go` against par: 3 within one over par (a dial turned one at
-  a time can spell a word on the way), 2 within three, 1 after. The bulb's
+  `counted + to_go` against par: 3 up to `three_line()` (par plus half par,
+  rounded up: a dial turned one at a time often spells a word on the way,
+  and the first cut, one word of slack, still gave a player dialling the
+  par words dial by dial two stars on Easy and Medium), 2 up to twice par,
+  1 after. `PL_RULES_ON_THE_WAY` and `BRAIN_PL_4` tell the player.
+  `quality()` reads the same line. The bulb's
   word is free for the stars and counts in `quality()` and the win line.
 - **Rusty Lock** (Insane), the roadmap's rule: the deepest dial (rust on
   its slot, an arrow over it) only turns down; dragged past its last letter
   it comes round to its first (`round`), dragged up or tapped above it
   refuses (`PL_SAY_RUSTY`). The bulb's second press ignores the rust.
 - No fail state, no Undo, the bin shut (a word found stays found).
+- `tests/_probe_padlock_board.gd` (headless) drives the board's own
+  `_press`/`_move`/`_release`: a tap, a tap mid-spring (the letter is read
+  from where the dial was drawn at the press), a word dialled again, the
+  rusty dial refusing a tap above and a drag up and coming round.
 - Harness: `tests/_shot_padlock.gd -- <dir> d=<0..3> [tut=<page>|card]`
   (zsh: pass `d=3 tut=2` as two words). Draw calls (opengl3_angle,
   810x1440): 88-114 in play, ~155 on the win, 104-110 a tutorial page.
-- Owed: the user's eye and ear (every cue unheard), a phone, pt/es read by
+- Owed: the rusty dial's coming round is drawn as a quick slide back up,
+  not a wrap; the user's eye and ear (every cue unheard), a phone, pt/es read by
   a native speaker, the word lists read by a person (names and odd forms
   still slip through: `hein`, `ecra`).

@@ -45,9 +45,12 @@ No dictionary ships: each lock carries its own words.
 A word counts when it lights at least one new letter (exploring is never
 punished). Stars on the tools row's pill read what the way stands at: the
 words counted plus the fewest still needed (solved live over every
-credited word, so a rare word may beat par), against par: 3 within one word over par (`STAR_THREE`: dials turn one at a
-time, so the window may spell a word on the way to the one meant, CHILL
-before CHILI, and that word counts), 2 within three (`STAR_TWO`), 1 after. The pill also says how many
+credited word, so a rare word may beat par), against par: 3 up to par and half par again, rounded up (`three_line()`:
+dials turn one at a time, so the window often spells a word on the way to
+the one meant, AGES before AGED, and that word counts; a player dialling
+exactly the par words dial by dial lands inside it), 2 up to twice par, 1
+after. The rules and a brain tip say so: turn first the dials that will
+not spell a word in passing. The pill also says how many
 letters are still dark.
 
 ## Bulb, two presses

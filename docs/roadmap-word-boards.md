@@ -84,7 +84,7 @@ selling their own game. Four sources were read from search summaries only
       words come from wordfreq's lists (Hunspell-checked, rude words and
       names pruned; Honeycomb's own lists drop every S word) and each lock
       carries its words, so no dictionary ships; Hard takes five seeds and
-      Insane six; three stars allow one word over par; the rusty dial
+      Insane six; three stars allow half par again over par (words spelled on the way count); the rusty dial
       comes round past its last letter so no lock is ever stuck.
       A combination padlock with letter dials;
       slide a dial so the window row spells a word; every letter on every

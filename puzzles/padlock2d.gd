@@ -168,7 +168,8 @@ func rules() -> String:
 	out += "\n\n" + tr("PL_RULES_LIGHT")
 	if _st.rusty >= 0:
 		out += "\n\n" + tr("PL_RULES_RUSTY")
-	out += "\n\n" + tr("PL_RULES_PAR") % _st.par
+	out += "\n\n" + tr("PL_RULES_PAR") % [_st.par, _st.three_line()]
+	out += "\n\n" + tr("PL_RULES_ON_THE_WAY")
 	out += "\n\n" + tr("PL_RULES_HINT")
 	return out
 
@@ -345,7 +346,9 @@ func _release(p: Vector2) -> void:
 		_set_dial(k, to, _vis[k])
 		return
 	# a tap: the letter under the finger comes to the window
-	var i: int = _st.pos[k] + roundi((p.y - _l("win_y")) / _l("cell"))
+	# read from where the dial was drawn as it was pressed (it may have been
+	# springing), not from the letter the state already holds
+	var i: int = roundi(_grab_v + (p.y - _l("win_y")) / _l("cell"))
 	if i < 0 or i >= n:
 		return
 	if i == _st.pos[k]:
@@ -936,15 +939,18 @@ func _tag_slots() -> Array:
 func _draw_tags() -> void:
 	if demo or _won or _tags.is_empty():
 		return
-	var slots := _tag_slots()
 	var moving := false
 	for t: Dictionary in _tags:
 		if _t - float(t.at) < TAG_TIME and not Motion.reduce:
 			moving = true
 	var bumping := _bump_tag >= 0 and _t - _bump_tag_at < Motion.BUMP_TIME
 	var key := "%d:%s" % [_tags.size(), str(_L.get("tags_y", 0))]
+	if not moving and not bumping and key == _tags_key and _tags_mesh != null:
+		draw_mesh(_tags_mesh, null)
+		_draw_tag_words(_tags_texts)
+		return
+	var slots := _tag_slots()
 	var b := Face.Builder.new()
-	var font: Font = CozyTheme.display(700)
 	var texts := []
 	for i in _tags.size():
 		var t: Dictionary = _tags[i]
@@ -966,10 +972,16 @@ func _draw_tags() -> void:
 		texts.append([rr, _st.written(String(t.word)).to_upper(), roundi(int(slots[i].fs) * k), bool(t.lit)])
 	if b.verts.is_empty():
 		return
-	if moving or bumping or key != _tags_key or _tags_mesh == null:
-		_tags_key = key if not moving and not bumping else ""
-		_tags_mesh = b.mesh()
+	_tags_key = key if not moving and not bumping else ""
+	_tags_mesh = b.mesh()
+	_tags_texts = texts
 	draw_mesh(_tags_mesh, null)
+	_draw_tag_words(texts)
+
+var _tags_texts: Array = []
+
+func _draw_tag_words(texts: Array) -> void:
+	var font: Font = CozyTheme.display(700)
 	for tx: Array in texts:
 		var rr: Rect2 = tx[0]
 		var fs: int = tx[2]

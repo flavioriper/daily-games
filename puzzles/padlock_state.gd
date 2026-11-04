@@ -22,13 +22,13 @@ extends RefCounted
 const BANKS := ["padlock_easy", "padlock_medium", "padlock_hard", "padlock"]
 ## The bulb, by band.
 const HINTS := [3, 2, 2, 1]
-## Stars: three within STAR_THREE words over par, two within STAR_TWO, one
-## after. Three stars allow one over par because dials are turned one at a
-## time and the window may spell a word on the way (CHILL on the way to
-## CHILI); that word lights letters and counts, and the player could not
-## avoid it.
-const STAR_THREE := 1
-const STAR_TWO := 3
+## Stars: three up to `three_line()` words, two up to twice par, one after.
+## Three stars allow half par again (rounded up) over par because dials are
+## turned one at a time and the window often spells a word on the way to
+## the one meant (AGES on the way to AGED, DALE to HALE); that word lights
+## letters and counts. A player dialling exactly the par words, dial by
+## dial, lands within it.
+const STAR_THREE := 0.5
 ## Should a bank be missing, a lock every language can dial (folded).
 const SPARE_DAY := {
 	"dials": ["mlt", "aio", "rns", "ek"],
@@ -277,11 +277,15 @@ func _cover(left: int, ms: Array[int], memo: Dictionary) -> int:
 ## against par.
 func stars() -> int:
 	var way := counted + to_go
-	if way <= par + STAR_THREE:
+	if way <= three_line():
 		return 3
-	if way <= par + STAR_TWO:
+	if way <= par * 2:
 		return 2
 	return 1
+
+## The most words that still earn three stars.
+func three_line() -> int:
+	return par + ceili(par * STAR_THREE)
 
 ## The bulb's word: a fair word not found, on a fewest path through the
 ## fair words, lighting the most. "" when there is none.
@@ -335,9 +339,10 @@ func share_glyphs() -> String:
 		out += "\n"
 	return out.strip_edges()
 
-## The brain score: par against the words it took (the bulb's count here),
-## nothing for an unsolved lock.
+## The brain score: the three-star line against the words it took (the
+## bulb's count here), nothing for an unsolved lock.
 func quality() -> float:
 	if not solved():
 		return 0.0
-	return clampf(float(par) / float(maxi(par, counted + helped)), 0.0, 1.0)
+	var line := three_line()
+	return clampf(float(line) / float(maxi(line, counted + helped)), 0.0, 1.0)
