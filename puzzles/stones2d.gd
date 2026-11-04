@@ -469,7 +469,7 @@ func undo() -> bool:
 ## The stones past `keep` of `before` rise out of the water and fade.
 func _lift(before: Array, keep: int) -> void:
 	for i in range(before.size() - 1, keep - 1, -1):
-		_gone.append({"word": String(before[i].word), "at": _stone_pos(i), "t": _t + (before.size() - 1 - i) * 0.05, "i": i})
+		_gone.append({"word": String(before[i].word), "at": _stone_pos(i), "t": _t + (before.size() - 1 - i) * 0.05, "i": i, "w": _l("stone_w")})
 	_born.resize(keep)
 	_relayout()
 
@@ -633,7 +633,7 @@ func _watch_osk() -> void:
 		if kb > 0 and win.y > 0:
 			h = float(kb) * get_viewport_rect().size.y / float(win.y)
 			h = maxf(0.0, h - (get_viewport_rect().size.y - get_global_rect().end.y))
-	if _st.crossed:
+	if _st.crossed and osk_override >= 0.0:
 		h = 0.0
 	if absf(h - _osk) > 0.5:
 		_osk = h
@@ -729,7 +729,7 @@ func _layout_for(top: float, bottom: float) -> Dictionary:
 	var far_edge := far_y - row * 0.5
 	# Easy's way runs left of the middle, clear of the given stone waiting
 	var col_x := w * (0.42 if _st.given != "" else 0.5)
-	var first_y := near_edge + row * 0.5 + (row * 0.5 if folded > 0 else 0.0)
+	var first_y := near_edge + row * 0.5 + (row * 0.62 if folded > 0 else 0.0)
 	return {
 		"u": u, "top": top, "bottom": bottom, "row": row, "stone_w": stone_w, "stone_h": stone_h,
 		"cell": cell, "slab_w": slab_w, "slab_h": slab_h, "near_y": near_y, "far_y": far_y,
@@ -755,7 +755,7 @@ func _stone_pos(i: int) -> Vector2:
 	var folded := int(_L.get("folded", 0))
 	var k := i - folded
 	if k < 0:
-		return Vector2(_l("col_x"), _l("first_y") - _l("row") * 0.75)
+		return Vector2(_l("col_x"), _l("near_edge") + _l("row") * 0.42)
 	var zig := ZIG * _u() * (1.0 if i % 2 == 0 else -1.0)
 	return Vector2(_l("col_x") + zig, _l("first_y") + k * _l("row"))
 
@@ -915,12 +915,12 @@ func _draw_fold() -> void:
 	var key := "f:%d" % roundi(_l("stone_h"))
 	if not _meshes.has(key):
 		var b := Face.Builder.new()
-		var h := _l("stone_h") * 0.6
+		var h := _l("stone_h") * 0.7
 		Art.stone(b, Vector2.ZERO, Vector2(h * 2.2, h), 5)
 		_meshes[key] = b.mesh()
 	draw_mesh(_meshes[key], null, Transform2D(0.0, at))
 	var font: Font = CozyTheme.display(800)
-	var fs := roundi(_l("stone_h") * 0.34)
+	var fs := roundi(_l("stone_h") * 0.42)
 	var text := "+%d" % folded
 	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 	draw_string(font, at + Vector2(-tw * 0.5, font.get_ascent(fs) * 0.36), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Art.INK_DIM)
@@ -928,16 +928,20 @@ func _draw_fold() -> void:
 ## Stones lifted (Undo, the bin, the bulb going back): rising and fading.
 func _draw_gone() -> void:
 	var u := _u()
+	var folded := int(_L.get("folded", 0))
 	for g: Dictionary in _gone:
-		var e := _t - float(g.t)
-		if e < 0.0:
-			draw_mesh(_stone_mesh(String(g.word), int(g.i), 0.0), null, Transform2D(0.0, g.at as Vector2))
+		if int(g.i) < folded:
 			continue
+		var e := maxf(0.0, _t - float(g.t))
 		var k := clampf(e / LIFT_TIME, 0.0, 1.0)
+		# drawn at the size it was lifted at, though the rows have grown since
+		var sc := float(g.get("w", _l("stone_w"))) / maxf(1.0, _l("stone_w")) * (1.0 - 0.15 * k)
 		var at: Vector2 = (g.at as Vector2) + Vector2(0.0, -40.0 * u * k)
 		var a := 1.0 - k
-		draw_mesh(_stone_mesh(String(g.word), int(g.i), 0.0), null, Transform2D(0.0, Vector2.ONE * (1.0 - 0.15 * k), 0.0, at), Color(1, 1, 1, a))
-		_letters(at, String(g.word), "", false, Color(1, 1, 1, a))
+		draw_mesh(_stone_mesh(String(g.word), int(g.i), 0.0), null, Transform2D(0.0, Vector2.ONE * sc, 0.0, at), Color(1, 1, 1, a))
+		draw_set_transform(at, 0.0, Vector2.ONE * sc)
+		_letters(Vector2.ZERO, String(g.word), "", false, Color(1, 1, 1, a))
+		draw_set_transform(Vector2.ZERO)
 
 ## Easy's given stone, mossy, waiting at the brook's side.
 func _draw_given() -> void:
@@ -1082,7 +1086,7 @@ func skill_quality() -> float:
 	return _st.quality()
 
 func share_glyphs() -> String:
-	return "🪨 " + _st.share_glyphs()
+	return "🌊 " + _st.share_glyphs()
 
 func flat_win() -> Dictionary:
 	var n: int = _st.stones()

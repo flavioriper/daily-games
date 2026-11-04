@@ -266,6 +266,12 @@ func offer(typed: String, kind := "hand") -> Dictionary:
 	if kind == "bulb":
 		helped += 1
 	out.said = Said.LAID
+	# a stone a step from the far bank crosses, even one a step from the
+	# given too: the given never steals a crossing earned
+	if step_ok(w, to):
+		crossed = true
+		out.crossed = true
+		return out
 	if given != "" and not given_in() and step_ok(w, given):
 		way.append({"word": given, "kind": "given"})
 		out.joined = true

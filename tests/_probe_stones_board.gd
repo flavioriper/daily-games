@@ -112,6 +112,12 @@ func _process(_d: float) -> bool:
 			print("insane route has a swap: ", swapped)
 		40:
 			_check("Insane: the route crosses (swaps allowed)", st.crossed)
+			# Easy: a stone a step from both the given and the far bank crosses
+			var e = State.new()
+			e.band = 0
+			e.load_day({"from": "cold", "to": "card", "par": 1, "given": "word", "route": ["cord"]})
+			e.offer("cord")
+			_check("Easy: a stone a step from given and far bank crosses", e.crossed and e.stones() == 1 and not e.given_in())
 			print("bad ", _bad)
 			quit()
 	return false
