@@ -3555,3 +3555,56 @@ BRAIN_BT_1,"Look for the endings first: pieces like ING, ION or MENT usually clo
 BRAIN_BT_2,Say a piece out loud and listen for a word it could start: sounds come quicker than spellings.,Fale um pedaço em voz alta e escute que palavra ele poderia começar: o som vem mais rápido que a grafia.,Di un trozo en voz alta y escucha qué palabra podría empezar: el sonido llega antes que la escritura.
 BRAIN_BT_3,"Short words on the way are free points: before a biscuit, try the plate's first two or three pieces with others.","Palavras curtas no caminho são pontos de graça: antes de um biscoito, teste os dois ou três primeiros pedaços do prato com outros.","Las palabras cortas en el camino son puntos gratis: antes de una galleta, prueba los dos o tres primeros trozos del plato con otros."
 BRAIN_BT_4,"As biscuits leave the tin, the rest get easier: make the one you see first, then look again.","Conforme os biscoitos saem da lata, o resto fica mais fácil: faça primeiro o que você enxerga e depois olhe de novo.","A medida que las galletas salen de la lata, el resto se vuelve más fácil: haz primero la que ves y luego vuelve a mirar."
+SS_BLURB,"A brook with a word on each bank. Lay stepping stones across, each a word one letter from the last, and reach the far bank in as few as you can.","Um riacho com uma palavra em cada margem. Ponha pedras para atravessar, cada uma uma palavra com uma letra diferente da anterior, e chegue à outra margem com o mínimo de pedras.","Un arroyo con una palabra en cada orilla. Pon piedras para cruzar, cada una una palabra con una letra distinta de la anterior, y llega a la otra orilla con las menos posibles."
+SS_SHORT,"Change one letter
+and step across.","Troque uma letra
+e atravesse.","Cambia una letra
+y cruza."
+SS_MOTTO,"One letter at a time, across the brook","Uma letra por vez, de margem a margem","Una letra cada vez, de orilla a orilla"
+SS_LVL_0,"Four letters, the middle stone given","Quatro letras, a pedra do meio já posta","Cuatro letras, la piedra del medio ya puesta"
+SS_LVL_1,Four-letter words,Palavras de quatro letras,Palabras de cuatro letras
+SS_LVL_2,Five-letter words,Palavras de cinco letras,Palabras de cinco letras
+SS_LVL_3,Slippery: swap two letters side by side,Escorregadia: troque duas letras vizinhas de lugar,Resbaladiza: intercambia dos letras vecinas
+SS_RULES,"A word waits on each bank of the brook. Lay stepping stones from the near bank: each stone is a word of %d letters with exactly one letter changed from the stone before, in the same place. Type it and it drops in. When a stone is one letter from the far bank's word, you are across.","Uma palavra espera em cada margem do riacho. Ponha pedras a partir da margem de cima: cada pedra é uma palavra de %d letras com exatamente uma letra trocada em relação à pedra anterior, no mesmo lugar. Digite e ela cai na água. Quando uma pedra estiver a uma letra da palavra da outra margem, você atravessou.","Una palabra espera en cada orilla del arroyo. Pon piedras desde la orilla de arriba: cada piedra es una palabra de %d letras con exactamente una letra cambiada respecto a la piedra anterior, en el mismo lugar. Escríbela y cae al agua. Cuando una piedra esté a una letra de la palabra de la otra orilla, has cruzado."
+SS_RULES_SLIP,"Slippery: a stone may also be the one before with two letters side by side swapped (TRIAL, then TRAIL).","Escorregadia: uma pedra também pode ser a anterior com duas letras vizinhas trocadas de lugar (PRATO, depois PARTO).","Resbaladiza: una piedra también puede ser la anterior con dos letras vecinas intercambiadas (PARTO, después PRATO)."
+SS_RULES_GIVEN,The mossy stone at the side is the middle of a short way: lay a stone one letter from it and it steps into your way.,A pedra com musgo ao lado é o meio de um caminho curto: ponha uma pedra a uma letra dela e ela entra no seu caminho.,La piedra con musgo al lado es el medio de un camino corto: pon una piedra a una letra de ella y entra en tu camino.
+SS_RULES_MOSS,"Letters on moss already match the far bank's word, in place. The letter each stone changed is inked gold.","Letras sobre o musgo já batem com a palavra da outra margem, no lugar certo. A letra que cada pedra trocou fica em dourado.","Las letras sobre musgo ya coinciden con la palabra de la otra orilla, en su sitio. La letra que cambió cada piedra va en dorado."
+SS_RULES_PAR,Today's crossing takes %d stones at par. Three stars up to %d.,A travessia de hoje leva %d pedras no par. Três estrelas até %d.,El cruce de hoy lleva %d piedras de par. Tres estrellas hasta %d.
+SS_RULES_UNDO,Undo lifts the last stone out; the bin lifts them all. Only the stones on your way when you cross count.,Desfazer tira a última pedra; a lixeira tira todas. Só contam as pedras do caminho na hora em que você atravessa.,Deshacer quita la última piedra; la papelera las quita todas. Solo cuentan las piedras del camino cuando cruzas.
+SS_RULES_HINT,Stuck? The bulb rings the letter to change next; press it again and it lays the stone.,Travou? A lâmpada marca a próxima letra a trocar; toque de novo e ela põe a pedra.,¿Atascado? La bombilla marca la próxima letra a cambiar; tócala otra vez y pone la piedra.
+SS_TYPE,Type the next stone,Digite a próxima pedra,Escribe la próxima piedra
+SS_TYPE_SLIP,Change a letter or swap two,Troque uma letra ou duas de lugar,Cambia una letra o intercambia dos
+SS_SAY_SHORT,A stone has %d letters.,Uma pedra tem %d letras.,Una piedra tiene %d letras.
+SS_SAY_UNKNOWN,%s is not a word the brook knows.,%s não é uma palavra que o riacho conhece.,%s no es una palabra que el arroyo conozca.
+SS_SAY_USED,%s is already on the way.,%s já está no caminho.,%s ya está en el camino.
+SS_SAY_SAME,Change one letter of %s.,Troque uma letra de %s.,Cambia una letra de %s.
+SS_SAY_OFF,That changes %d letters of %s: change just one.,Isso troca %d letras de %s: troque só uma.,Eso cambia %d letras de %s: cambia solo una.
+SS_SAY_OFF_SLIP,"That changes %d letters of %s: change one, or swap two side by side.","Isso troca %d letras de %s: troque uma, ou duas vizinhas de lugar.","Eso cambia %d letras de %s: cambia una, o intercambia dos vecinas."
+SS_SAY_GIVEN,%s steps into the way!,%s entra no caminho!,¡%s entra en el camino!
+SS_SAY_DEAD,Hard to go on from %s: Undo lifts it.,Difícil seguir a partir de %s: Desfazer tira a pedra.,Difícil seguir desde %s: Deshacer la quita.
+SS_READ,Change letter %d of %s.,Troque a letra %d de %s.,Cambia la letra %d de %s.
+SS_READ_SWAP,Swap letters %d and %d of %s.,Troque de lugar as letras %d e %d de %s.,Intercambia las letras %d y %d de %s.
+SS_READ_BACK,Go back to %s first.,Volte primeiro até %s.,Vuelve primero a %s.
+SS_PERFECT,Across at par!,Atravessou no par!,¡Cruzado en el par!
+SS_DONE,Across the brook!,Atravessou o riacho!,¡Cruzaste el arroyo!
+SS_PILL_ONE,1 stone · par %d,1 pedra · par %d,1 piedra · par %d
+SS_PILL_N,%d stones · par %d,%d pedras · par %d,%d piedras · par %d
+SS_WIN_ONE,Across in 1 stone.,Atravessou com 1 pedra.,Cruzaste con 1 piedra.
+SS_WIN_N,Across in %d stones.,Atravessou com %d pedras.,Cruzaste con %d piedras.
+SS_WIN_AT_PAR,At par!,No par!,¡En el par!
+SS_WIN_UNDER,Under par!,Abaixo do par!,¡Bajo el par!
+SS_WIN_PAR_WAS,Par was %d.,O par era %d.,El par era %d.
+HTP_SS_STEP,Change one letter,Troque uma letra,Cambia una letra
+HTP_SS_STEP_BODY,"Type a word with one letter changed from the stone above, in the same place. It drops into the brook as the next stone.","Digite uma palavra com uma letra trocada em relação à pedra de cima, no mesmo lugar. Ela cai no riacho como a próxima pedra.","Escribe una palabra con una letra cambiada respecto a la piedra de arriba, en el mismo lugar. Cae al arroyo como la próxima piedra."
+HTP_SS_CROSS,Reach the far bank,Chegue à outra margem,Llega a la otra orilla
+HTP_SS_CROSS_BODY,"When a stone is one letter from the far bank's word, you are across. Letters on moss already match it. Today's par is %d stones.","Quando uma pedra estiver a uma letra da palavra da outra margem, você atravessou. Letras sobre o musgo já batem com ela. O par de hoje é %d pedras.","Cuando una piedra esté a una letra de la palabra de la otra orilla, has cruzado. Las letras sobre musgo ya coinciden. El par de hoy es %d piedras."
+HTP_SS_GIVEN,The mossy stone,A pedra com musgo,La piedra con musgo
+HTP_SS_GIVEN_BODY,On Easy the middle stone waits at the side. Lay a stone one letter from it and it steps into your way.,No Fácil a pedra do meio espera ao lado. Ponha uma pedra a uma letra dela e ela entra no seu caminho.,En Fácil la piedra del medio espera al lado. Pon una piedra a una letra de ella y entra en tu camino.
+HTP_SS_SLIP,Slippery stones,Pedras escorregadias,Piedras resbaladizas
+HTP_SS_SLIP_BODY,"On Insane a stone may also swap two letters side by side, and today's shortest way takes a swap.","No Insano uma pedra também pode trocar duas letras vizinhas de lugar, e o caminho mais curto de hoje usa uma troca.","En Insano una piedra también puede intercambiar dos letras vecinas, y el camino más corto de hoy usa un intercambio."
+HTP_SS_HINT,Ask the bulb,Peça à lâmpada,Pide a la bombilla
+HTP_SS_HINT_BODY,The bulb rings the letter to change next. Press it again and it lays the stone for you.,A lâmpada marca a próxima letra a trocar. Toque de novo e ela põe a pedra para você.,La bombilla marca la próxima letra a cambiar. Tócala otra vez y pone la piedra por ti.
+BRAIN_SS_1,Look at the moss: a letter already matching the far bank is one you rarely need to touch again.,Olhe o musgo: uma letra que já bate com a outra margem quase nunca precisa ser trocada de novo.,Mira el musgo: una letra que ya coincide con la otra orilla casi nunca hay que volver a tocarla.
+BRAIN_SS_2,Vowels are the hinges: changing one usually opens more words than changing a consonant.,As vogais são as dobradiças: trocar uma costuma abrir mais palavras do que trocar uma consoante.,Las vocales son las bisagras: cambiar una suele abrir más palabras que cambiar una consonante.
+BRAIN_SS_3,"Work from both banks: think which words sit one letter from the far bank, then aim for one of them.",Pense pelas duas margens: veja que palavras ficam a uma letra da outra margem e mire numa delas.,Piensa desde las dos orillas: mira qué palabras quedan a una letra de la otra orilla y apunta a una.
+BRAIN_SS_4,A detour is not a loss: a stone that changes a letter twice can still be the shorter way round a dead end.,Um desvio não é perda: uma pedra que troca uma letra duas vezes ainda pode ser o caminho mais curto para sair de um beco.,Un desvío no es una pérdida: una piedra que cambia una letra dos veces aún puede ser el camino corto para salir de un callejón.

@@ -733,6 +733,41 @@ const PUZZLES := [
 		],
 	},
 	{
+		"id": "stones",
+		"skill": "words",
+		"kind": "puzzle",
+		"title": "Stepping Stones",
+		"blurb": "SS_BLURB",
+		"short": "SS_SHORT",
+		"motto": "SS_MOTTO",
+		"footer": "Change · Step · Cross",
+		# A brook between two banks, a word on each: lay stepping stones
+		# across, each a word one letter from the one before, until one is a
+		# step from the far bank's word (puzzles/stones2d.gd). The crossings
+		# are banked from wordfreq's words in the player's language
+		# (tools/build_stones.py, content/insane/stones*.json), and any word
+		# the brook knows is a stone (content/stones_<n>.json). It types on
+		# the phone's own keyboard as Five Clues does, so no tray, no actions
+		# row and no tip card; Undo lifts the last stone and the bin asks
+		# before it lifts them all.
+		"script": "res://puzzles/stones2d.gd",
+		"card": "res://ui/menu/cards/stones.gd",
+		"shell": "flat",
+		"tray": "none",
+		"tip": false,
+		"bleed": true,
+		"level_card": true,
+		"actions": false,
+		"difficulties": [0, 1, 2, 3],
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "SS_LVL_0"},
+			{"difficulty": 1, "name": "Medium", "line": "SS_LVL_1"},
+			{"difficulty": 2, "name": "Hard", "line": "SS_LVL_2"},
+			{"difficulty": 3, "name": "Insane", "line": "SS_LVL_3"},
+		],
+	},
+	{
 		"id": "clues",
 		"skill": "words",
 		"kind": "puzzle",

@@ -118,7 +118,16 @@ selling their own game. Four sources were read from search summaries only
       Insane *Crumbs*: a sixth biscuit's pieces mixed in and never fitting.
       (The published mock's tin shows one whole biscuit; redraw it from
       five real words for the concept tab.)
-- [ ] **4. Stepping Stones** (word ladder; Weaver, Crossclimb). A brook
+- [x] **4. Stepping Stones** (word ladder; Weaver, Crossclimb). Built
+      2026-11-04: spec
+      `docs/superpowers/specs/2026-11-04-stepping-stones-design.md`, notes
+      `docs/agents/boards/stepping-stones.md`. As proposed below, except:
+      the words come from wordfreq's lists (Biscuit Tin's pruned cache; four
+      letters had no list), five-letter bands also take Hidden Word's accept
+      list; Easy is four letters with the middle stone given; Insane is five
+      letters, par 4-6 counting swaps; three stars up to par + 1 (stones
+      laid and the fewest to go); Undo and the bin are free, only the way
+      at the crossing counts. A brook
       with a word on each bank; each stone is a word one letter from the
       last; reach the far bank in few stones; any real word is a stone.
       Phone keyboard as Five Clues types. Needs a four-letter cut of the
