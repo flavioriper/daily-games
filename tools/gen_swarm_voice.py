@@ -22,10 +22,19 @@ import urllib.request
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUT = ROOT / "assets/voice/swarm"
-# Veronica, Persona Studio's narrator (~/dev/hokipoki/persona-studio/voices.yaml).
-VOICE = "oFnUs65XPN5XcT0txEbR"
-MODEL = "eleven_multilingual_v2"
+# The Flavio demo's voice, exactly as Persona Studio speaks it
+# (~/dev/hokipoki/persona-studio/state/personas/flavio.json): Boyd on
+# eleven_v4_turbo at stability 0.35 and nothing else set, with at most one
+# delivery tag a line from its calm/warm/laugh palette.
+VOICE = "gfRt6Z3Z8aTbpLfexQ7N"
+MODEL = "eleven_v4_turbo"
+STABILITY = 0.35
 LANGS = ["en", "pt", "es"]
+TAGS = {
+    "SWARM_L1": "[warm]", "SWARM_L2": "[calm]", "SWARM_L3": "[warm]",
+    "SWARM_L4": "[laughs]", "SWARM_L5": "[calm]", "SWARM_L6": "[warm]",
+    "SWARM_L7": "[calm]", "SWARM_L8": "[calm]",
+}
 
 
 def keys() -> list[str]:
@@ -43,10 +52,7 @@ def keys() -> list[str]:
 
 
 def speak(text: str, lang: str) -> dict:
-    body = json.dumps({
-        "text": text, "model_id": MODEL,
-        "voice_settings": {"stability": 0.5, "similarity_boost": 0.75, "style": 0.15},
-    }).encode()
+    body = json.dumps({"text": text, "model_id": MODEL, "voice_settings": {"stability": STABILITY}}).encode()
     last = None
     for k in keys():
         req = urllib.request.Request(
@@ -73,10 +79,16 @@ def main() -> None:
             mp3 = OUT / f"{row['keys']}_{lang}.mp3"
             if mp3.exists() and mp3.stem in timings and not force:
                 continue
-            j = speak(text, lang)
+            tag = TAGS.get(row["keys"], "")
+            j = speak(f"{tag} {text}" if tag else text, lang)
             mp3.write_bytes(base64.b64decode(j["audio_base64"]))
             al = j.get("alignment") or {}
-            timings[mp3.stem] = {"text": text, "starts": [round(x, 3) for x in al.get("character_start_times_seconds", [])]}
+            # The tag is not shown, so its characters leave the timings; when the
+            # shown words cannot be found the game spreads them over the clip.
+            said = "".join(al.get("characters", []))
+            at = said.find(text)
+            starts = al.get("character_start_times_seconds", [])[at:at + len(text)] if at >= 0 else []
+            timings[mp3.stem] = {"text": text, "starts": [round(x, 3) for x in starts]}
             timing_path.write_text(json.dumps(timings, ensure_ascii=False, indent=0))
             print("spoke", mp3.name, len(al.get("characters", [])), "chars")
 
