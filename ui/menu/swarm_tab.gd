@@ -893,14 +893,13 @@ func _render() -> void:
 	_dots.buffer = db
 	_glows.buffer = gb
 
-	# The words travel with the face, under it, kept inside the room.
 	_words.text = _line
 	var ww := minf(size.x - 80.0, 640.0)
 	_words.size = Vector2(ww, 0)
 	_words.reset_size()
 	_words.size.x = ww
-	var wy := _c.y + _R * 1.55
-	_words.position = Vector2(clampf(_c.x - ww * 0.5, 40.0, size.x - ww - 40.0), minf(wy, size.y - _words.size.y - 30.0))
+	# Subtitles stay put near the foot of the screen, wherever the face goes.
+	_words.position = Vector2((size.x - ww) * 0.5, size.y - _insets.y - 170.0 - _words.size.y * 0.5)
 	_words.modulate.a = 1.0 if _formed else 0.0
 	_log.position = Vector2(36, size.y - _log.size.y - 28.0 - _insets.y)
 	_back.position = Vector2(28.0, 28.0 + _insets.x)

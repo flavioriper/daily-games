@@ -24,16 +24,18 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUT = ROOT / "assets/voice/swarm"
 # The Flavio demo's voice, exactly as Persona Studio speaks it
 # (~/dev/hokipoki/persona-studio/state/personas/flavio.json): Boyd on
-# eleven_v4_turbo at stability 0.35 and nothing else set, with at most one
-# delivery tag a line from its calm/warm/laugh palette.
+# eleven_v4_turbo, one delivery tag a line. Kinder than the demo (the user,
+# 2026-11-04: "make the voice sound more kind"): stability 0.5 rather than
+# its 0.35, and friendly/cheerful/gentle tags rather than warm/calm/laugh,
+# which in Boyd's low rasp came out sultry.
 VOICE = "gfRt6Z3Z8aTbpLfexQ7N"
 MODEL = "eleven_v4_turbo"
-STABILITY = 0.35
+STABILITY = 0.5
 LANGS = ["en", "pt", "es"]
 TAGS = {
-    "SWARM_L1": "[warm]", "SWARM_L2": "[calm]", "SWARM_L3": "[warm]",
-    "SWARM_L4": "[laughs]", "SWARM_L5": "[calm]", "SWARM_L6": "[warm]",
-    "SWARM_L7": "[calm]", "SWARM_L8": "[calm]",
+    "SWARM_L1": "[cheerful]", "SWARM_L2": "[friendly]", "SWARM_L3": "[cheerful]",
+    "SWARM_L4": "[friendly]", "SWARM_L5": "[friendly]", "SWARM_L6": "[cheerful]",
+    "SWARM_L7": "[friendly]", "SWARM_L8": "[gentle]",
 }
 
 
