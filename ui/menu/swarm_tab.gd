@@ -18,11 +18,22 @@ extends Control
 ## overshoots, settles and shimmers. The numbers are the web's, per 60 Hz
 ## step, with lengths scaled by `_u` (the face's radius over the web's 75).
 ##
-## Drawing: the sim runs in GDScript and lands in two MultiMeshes under an
-## additive material -- a sharp core per dot, stretched into a streak when it
-## travels fast, and a soft glow under the eyes, the big free motes and the
-## face -- plus one radial halo behind the face. Three draw calls for the
-## swarm whatever its size.
+## Drawing (2026-11-04, the second pass: "a futuristic fully detailed thing",
+## Godot-native, the renderer left on Compatibility): the sim runs in
+## GDScript and lands in MultiMeshes whose dots are drawn by a shader from
+## their custom data (shaders/swarm_dot_2d.gdshader: a soft mote, a hex
+## crystal or a bokeh disc, in or out of focus, a chromatic fringe along a
+## fast streak, a hot core). The face is a sphere, not a disc: every body dot
+## has a depth, the sphere turns toward where it looks, and its shading comes
+## from the turned normal under one light in the room, so the far side goes
+## dark and soft as it rolls away. The nearest body dots are tied by a
+## lattice of thin threads (a third MultiMesh), instrument rings turn on the
+## cloud's orbit plane (one quad, swarm_rings_2d), and the room itself is a
+## shader (a lit hex floor, the face's light pooled below it, dithered). The
+## bloom is Godot's only one on this renderer: the same MultiMeshes drawn
+## again at a quarter of the size into a SubViewport, blurred in a second,
+## and added over the screen. Eleven draw calls for the swarm whatever its
+## size, and no draw call grows with N.
 
 const Pal = preload("res://core/palette.gd")
 const CozyTheme = preload("res://ui/theme.gd")
@@ -40,9 +51,24 @@ const COL_P := Color8(138, 214, 166)
 const COL_PH := Color8(214, 246, 222)
 const COL_PD := Color8(36, 110, 70)
 const COL_EYE := Color8(246, 255, 248)
+## The cloud's cooler lights: the atoms passing in front lean cyan, the far
+## ones behind lean violet, so the orbit has a near and a far.
+const COL_CYAN := Color8(126, 228, 255)
+const COL_VIOLET := Color8(150, 126, 255)
 const ROOM := Color("0b1510")
 const ROOM_DEEP := Color("040806")
+## The one light in the room: from the upper left, toward the viewer.
+const LIGHT := Vector3(-0.45, -0.42, 0.79)
 const BACK := 64.0
+const BLOOM_DIV := 4
+const BLOOM_GROW := 1.7
+const BLOOM_STRENGTH := 0.6
+const LINKS_MAX := 900
+const DOT_SHADER := preload("res://shaders/swarm_dot_2d.gdshader")
+const LINK_SHADER := preload("res://shaders/swarm_link_2d.gdshader")
+const RINGS_SHADER := preload("res://shaders/swarm_rings_2d.gdshader")
+const ROOM_SHADER := preload("res://shaders/swarm_room_2d.gdshader")
+const BLUR_SHADER := preload("res://shaders/swarm_blur_2d.gdshader")
 const VOICE_DIR := "res://assets/voice/swarm/"
 const VOICE_TIMES := "res://content/swarm_voice.json"
 const VOICE_BUS := "Swarm"
@@ -97,7 +123,14 @@ var _ly := PackedFloat32Array()
 var _sh := PackedFloat32Array()
 var _ex := PackedFloat32Array()
 var _k := PackedFloat32Array()
+var _z := PackedFloat32Array()  # a body dot's depth on the sphere, 0 at the limb, 1 nearest
 var _role := PackedInt32Array()
+# The lattice: pairs of body dots, each with its rest length and a phase.
+var _la := PackedInt32Array()
+var _lb := PackedInt32Array()
+var _ll := PackedFloat32Array()
+var _lph := PackedFloat32Array()
+var _links_n := 0
 
 # --- the engine: the web's `eng`, one face only (the bare home) ---
 var _seeded := false
@@ -152,10 +185,22 @@ var _insets := Vector2.ZERO
 
 # --- the drawing ---
 var _dots: MultiMesh
-var _glows: MultiMesh
+var _links: MultiMesh
 var _dot_buf := PackedFloat32Array()
-var _glow_buf := PackedFloat32Array()
+var _link_buf := PackedFloat32Array()
 var _halo: Sprite2D
+var _room_mat: ShaderMaterial
+var _rings_mat: ShaderMaterial
+var _blur_mat: ShaderMaterial
+var _rings: MeshInstance2D
+var _rings_bloom: MeshInstance2D
+var _bloom_vp: SubViewport
+var _blur_vp: SubViewport
+var _blur_rect: TextureRect
+var _bloom_out: TextureRect
+var _bloom_root: Node2D
+var _vp_size := Vector2i.ZERO
+var _rings_open := 0.0
 var _words: Label
 var _log: Label
 
@@ -165,18 +210,18 @@ func _init() -> void:
 	clip_contents = true
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
+	# The room: one shader on one rect (the floor, the pool of light, the
+	# vignette and the dither).
 	var room := ColorRect.new()
-	room.color = ROOM
+	_room_mat = ShaderMaterial.new()
+	_room_mat.shader = ROOM_SHADER
+	_room_mat.set_shader_parameter("room", ROOM)
+	_room_mat.set_shader_parameter("deep", ROOM_DEEP)
+	_room_mat.set_shader_parameter("tint", COL_P)
+	room.material = _room_mat
 	room.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	room.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(room)
-	# A vignette: the room is deepest at its corners.
-	var vig := TextureRect.new()
-	vig.texture = _radial([Color(ROOM_DEEP, 0.0), Color(ROOM_DEEP, 0.0), Color(ROOM_DEEP, 0.85)], [0.0, 0.45, 1.0], 256)
-	vig.stretch_mode = TextureRect.STRETCH_SCALE
-	vig.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	vig.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(vig)
 
 	var add := CanvasItemMaterial.new()
 	add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
@@ -186,20 +231,81 @@ func _init() -> void:
 	_halo.material = add
 	add_child(_halo)
 
-	_glows = _multimesh()
-	_dots = _multimesh()
-	var glow_mi := MultiMeshInstance2D.new()
-	glow_mi.multimesh = _glows
-	glow_mi.texture = _glow_texture()
-	glow_mi.material = add
-	add_child(glow_mi)
-	var dot_mi := MultiMeshInstance2D.new()
-	dot_mi.multimesh = _dots
-	dot_mi.texture = _dot_texture()
-	dot_mi.material = add
-	add_child(dot_mi)
-	_dot_buf.resize(N * 12)
-	_glow_buf.resize(N * 12)
+	# The bloom: the swarm drawn again at a quarter of the size into one
+	# viewport, blurred into a second (the first is the second's child, so
+	# it is drawn first), and the second added over the screen.
+	_blur_vp = SubViewport.new()
+	_blur_vp.disable_3d = true
+	_blur_vp.transparent_bg = false
+	_blur_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	_blur_vp.size = Vector2i(64, 64)
+	add_child(_blur_vp)
+	_bloom_vp = SubViewport.new()
+	_bloom_vp.disable_3d = true
+	_bloom_vp.transparent_bg = false
+	_bloom_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	_bloom_vp.size = Vector2i(64, 64)
+	_blur_vp.add_child(_bloom_vp)
+	var black := ColorRect.new()
+	black.color = Color.BLACK
+	black.size = Vector2(4096, 4096)
+	_bloom_vp.add_child(black)
+	_bloom_root = Node2D.new()
+	_bloom_root.scale = Vector2.ONE / BLOOM_DIV
+	_bloom_vp.add_child(_bloom_root)
+	_blur_mat = ShaderMaterial.new()
+	_blur_mat.shader = BLUR_SHADER
+	_blur_rect = TextureRect.new()
+	_blur_rect.stretch_mode = TextureRect.STRETCH_SCALE
+	_blur_rect.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	_blur_rect.material = _blur_mat
+	_blur_vp.add_child(_blur_rect)
+	_bloom_out = TextureRect.new()
+	_bloom_out.stretch_mode = TextureRect.STRETCH_SCALE
+	_bloom_out.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	_bloom_out.material = add
+	_bloom_out.modulate = Color(1, 1, 1, BLOOM_STRENGTH)
+	_bloom_out.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_bloom_out.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_bloom_out)
+
+	# The swarm proper: the lattice under the dots, and the rings over them,
+	# each once on the screen and once, small, in the bloom.
+	_links = _multimesh(LINKS_MAX, false)
+	_dots = _multimesh(N, true)
+	var link_mat := ShaderMaterial.new()
+	link_mat.shader = LINK_SHADER
+	var dot_mat := ShaderMaterial.new()
+	dot_mat.shader = DOT_SHADER
+	var dot_bloom_mat := ShaderMaterial.new()
+	dot_bloom_mat.shader = DOT_SHADER
+	dot_bloom_mat.set_shader_parameter("grow", BLOOM_GROW)
+	_rings_mat = ShaderMaterial.new()
+	_rings_mat.shader = RINGS_SHADER
+	_rings_mat.set_shader_parameter("tint", COL_P)
+	_rings_mat.set_shader_parameter("hot", COL_PH)
+	_rings_mat.set_shader_parameter("open", 0.0)
+	var quad := QuadMesh.new()
+	quad.size = Vector2.ONE
+	for host in [self, _bloom_root]:
+		var link_mi := MultiMeshInstance2D.new()
+		link_mi.multimesh = _links
+		link_mi.material = link_mat
+		host.add_child(link_mi)
+		var dot_mi := MultiMeshInstance2D.new()
+		dot_mi.multimesh = _dots
+		dot_mi.material = dot_mat if host == self else dot_bloom_mat
+		host.add_child(dot_mi)
+		var rings := MeshInstance2D.new()
+		rings.mesh = quad
+		rings.material = _rings_mat
+		host.add_child(rings)
+		if host == self:
+			_rings = rings
+		else:
+			_rings_bloom = rings
+	_dot_buf.resize(N * 16)
+	_link_buf.resize(LINKS_MAX * 12)
 
 	_words = Label.new()
 	_words.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -271,8 +377,17 @@ func open() -> void:
 	_visit_back = null
 	_log.text = ""
 	_cv = Vector2.ZERO
+	_links_n = 0
+	_links.visible_instance_count = 0
+	_rings_open = 0.0
+	_rings_mat.set_shader_parameter("open", 0.0)
+	_room_mat.set_shader_parameter("lit", 0.0)
 	Music.hold("swarm", true)
 	visible = true
+	# A bare SubViewport draws every frame whether or not its parent shows,
+	# so the bloom's two run only while the room is open.
+	_bloom_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	_blur_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	set_process(true)
 	_last_active = _now
 	modulate.a = 0.0
@@ -287,6 +402,8 @@ func close() -> void:
 	_player.stop()
 	Music.hold("swarm", false)
 	visible = false
+	_bloom_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	_blur_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	set_process(false)
 	closed.emit()
 
@@ -308,14 +425,17 @@ func _ensure_bus() -> void:
 		AudioServer.add_bus_effect(at, fx)
 	_spectrum = AudioServer.get_bus_effect_instance(at, 0) as AudioEffectSpectrumAnalyzerInstance
 
-func _multimesh() -> MultiMesh:
+## A MultiMesh of unit quads; custom data (what the dot shader reads) has to
+## be switched on before the count is set.
+static func _multimesh(count: int, custom: bool) -> MultiMesh:
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_2D
 	mm.use_colors = true
+	mm.use_custom_data = custom
 	var q := QuadMesh.new()
 	q.size = Vector2.ONE
 	mm.mesh = q
-	mm.instance_count = N
+	mm.instance_count = count
 	mm.custom_aabb = AABB(Vector3(-20000, -20000, -1), Vector3(40000, 40000, 2))
 	return mm
 
@@ -332,28 +452,19 @@ static func _radial(cols: Array, offs: Array, px: int) -> GradientTexture2D:
 	t.height = px
 	return t
 
-## A dot: a hot white core with a short soft rim.
-static func _dot_texture() -> ImageTexture:
-	var n := 32
-	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
-	for j in n:
-		for i in n:
-			var d := Vector2(i + 0.5 - n * 0.5, j + 0.5 - n * 0.5).length() / (n * 0.5)
-			var a := clampf((1.0 - d) / 0.35, 0.0, 1.0)
-			a = a * a * (3.0 - 2.0 * a)
-			img.set_pixel(i, j, Color(1, 1, 1, a))
-	return ImageTexture.create_from_image(img)
-
-## A glow: a gaussian that runs out at the quad's edge.
-static func _glow_texture() -> ImageTexture:
-	var n := 64
-	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
-	for j in n:
-		for i in n:
-			var d := Vector2(i + 0.5 - n * 0.5, j + 0.5 - n * 0.5).length() / (n * 0.5)
-			var a := exp(-d * d * 4.5) * clampf((1.0 - d) * 4.0, 0.0, 1.0)
-			img.set_pixel(i, j, Color(1, 1, 1, a))
-	return ImageTexture.create_from_image(img)
+## The two viewports and the room follow the control's size.
+func _fit() -> void:
+	var want := Vector2i(ceili(size.x / BLOOM_DIV), ceili(size.y / BLOOM_DIV))
+	if want == _vp_size:
+		return
+	_vp_size = want
+	_bloom_vp.size = want
+	_blur_vp.size = want
+	_blur_rect.size = Vector2(want)
+	_blur_rect.texture = _bloom_vp.get_texture()
+	_blur_mat.set_shader_parameter("texel", Vector2(1.0 / want.x, 1.0 / want.y))
+	_bloom_out.texture = _blur_vp.get_texture()
+	_room_mat.set_shader_parameter("size", size)
 
 func _seed() -> void:
 	_seeded = true
@@ -363,7 +474,10 @@ func _seed() -> void:
 	_R = minf(w, h) * 0.17
 	_u = _R / 75.0
 	_c = _spot("centre")
-	for arr in [_x, _y, _vx, _vy, _s, _a, _ph, _uu, _ang, _r, _sp, _lx, _ly, _sh, _ex, _k]:
+	_fit()
+	_room_mat.set_shader_parameter("radius", _R)
+	_rings_mat.set_shader_parameter("px", 1.0 / _R)
+	for arr in [_x, _y, _vx, _vy, _s, _a, _ph, _uu, _ang, _r, _sp, _lx, _ly, _sh, _ex, _k, _z]:
 		arr.resize(N)
 	_role.resize(N)
 	for i in N:
@@ -381,6 +495,7 @@ func _seed() -> void:
 		_sh[i] = 1.0
 		_ex[i] = 1.0
 		_k[i] = 0.0
+		_z[i] = 0.0
 		_role[i] = Role.FREE
 
 func _free_shuffled() -> Array:
@@ -391,19 +506,71 @@ func _free_shuffled() -> Array:
 	out.shuffle()
 	return out
 
-## The swarm takes the shape of a face: a disc shaded from its upper left.
+## The swarm takes the shape of a face: a sphere seen from the front, every
+## dot on its near surface (its depth from its place on the disc), the limb
+## dimmer. Then the lattice: each body dot tied to its nearest neighbour on
+## the surface, found through a grid so the forming never hitches.
 func _become(count: int) -> void:
-	for i in _free_shuffled().slice(0, count):
+	var body := _free_shuffled().slice(0, count)
+	for i in body:
 		_role[i] = Role.BODY
 		_k[i] = randf_range(0.05, 0.1)
 		var a := randf_range(0, TAU)
 		var rr := sqrt(randf())
 		_lx[i] = cos(a) * rr
 		_ly[i] = sin(a) * rr
-		var d := Vector2(_lx[i] + 0.38, _ly[i] + 0.34).length()
-		_sh[i] = clampf(1.05 - d / 1.45, 0.08, 1.0) * (0.55 if rr > 0.93 else 1.0)
+		_z[i] = sqrt(maxf(0.0, 1.0 - rr * rr))
+		_sh[i] = 0.55 if rr > 0.93 else 1.0
 		_s[i] = randf_range(0.7, 1.9)
 		_a[i] = randf_range(0.55, 1.0)
+	_lattice(body)
+
+## The lattice's nodes are a quarter of the body (the hex crystals), each
+## tied to its two nearest nodes over the surface; a thread between two
+## neighbours of the whole body would be shorter than a dot.
+func _lattice(body: Array) -> void:
+	var nodes := []
+	for i in body:
+		if _uu[i] < 0.26:
+			nodes.append(i)
+	var cells := 8
+	var grid := {}
+	for i in nodes:
+		var key := int((_lx[i] + 1.0) * 0.5 * cells) * 64 + int((_ly[i] + 1.0) * 0.5 * cells)
+		if not grid.has(key):
+			grid[key] = []
+		grid[key].append(i)
+	var seen := {}
+	_la = PackedInt32Array()
+	_lb = PackedInt32Array()
+	_ll = PackedFloat32Array()
+	_lph = PackedFloat32Array()
+	for i in nodes:
+		var gx := int((_lx[i] + 1.0) * 0.5 * cells)
+		var gy := int((_ly[i] + 1.0) * 0.5 * cells)
+		var near := []
+		for dx in [-1, 0, 1]:
+			for dy in [-1, 0, 1]:
+				for j in grid.get((gx + dx) * 64 + gy + dy, []):
+					if j == i:
+						continue
+					var ex := _lx[i] - _lx[j]
+					var ey := _ly[i] - _ly[j]
+					var ez := _z[i] - _z[j]
+					near.append([ex * ex + ey * ey + ez * ez, j])
+		near.sort_custom(func(a, b): return a[0] < b[0])
+		for n in mini(2, near.size()):
+			var j: int = near[n][1]
+			var key := mini(i, j) * N + maxi(i, j)
+			if seen.has(key) or _la.size() >= LINKS_MAX:
+				continue
+			seen[key] = true
+			_la.append(i)
+			_lb.append(j)
+			_ll.append(Vector2(_lx[i] - _lx[j], _ly[i] - _ly[j]).length())
+			_lph.append(randf_range(0, TAU))
+	_links_n = _la.size()
+	_links.visible_instance_count = _links_n
 
 func _open_eyes(count: int) -> void:
 	var n := 0
@@ -415,6 +582,7 @@ func _open_eyes(count: int) -> void:
 		var p := _pill_point()
 		_lx[i] = p.x
 		_ly[i] = p.y
+		_z[i] = 0.96
 		_s[i] = randf_range(1.1, 2.0)
 		_a[i] = randf_range(0.8, 1.0)
 
@@ -634,7 +802,7 @@ func _process(delta: float) -> void:
 		_step()
 	if steps == 4:
 		_acc = 0.0
-	_render()
+	_render(dt)
 
 ## Before the agent exists the dots are a loose field; then they are pulled
 ## together and become a face.
@@ -714,7 +882,6 @@ func _step() -> void:
 	elif _state == "thinking":
 		fs = breathe * 0.97
 	var sc := fs * _R
-	var lean := 0.05 * sc
 	var cx := _c.x
 	var cy := _c.y
 	var gx := _gaze.x
@@ -724,6 +891,15 @@ func _step() -> void:
 	var voice := _voice
 	var env_lvl := minf(1.0, _level * 1.6)
 	var gather := _gather
+	# The sphere turns toward where it looks: a yaw and a pitch of the gaze
+	# (y runs down the screen, so looking up is a negative gaze and a
+	# positive pitch, which lifts the front of the sphere).
+	var yaw := gx * 0.36
+	var pitch := -gy * 0.28
+	var cyw := cos(yaw)
+	var syw := sin(yaw)
+	var cpt := cos(pitch)
+	var spt := sin(pitch)
 
 	for i in N:
 		var px := _x[i]
@@ -738,14 +914,26 @@ func _step() -> void:
 		var mx: float
 		if role == Role.BODY:
 			var ph := _ph[i]
-			tx = cx + _lx[i] * sc + sin(now / 700.0 + ph) * 0.9 * u + gx * lean
-			ty = cy + _ly[i] * sc + cos(now / 900.0 + ph * 1.3) * 0.9 * u + gy * lean
+			var lx := _lx[i]
+			var ly := _ly[i]
+			var lz := _z[i]
+			var rx := lx * cyw + lz * syw
+			var rz := lz * cyw - lx * syw
+			var ry := ly * cpt - rz * spt
+			tx = cx + rx * sc + sin(now / 700.0 + ph) * 0.9 * u
+			ty = cy + ry * sc + cos(now / 900.0 + ph * 1.3) * 0.9 * u
 			k = _k[i]
 			damp = 0.8
 			mx = 14.0 * u
 		elif role == Role.EYE:
-			tx = cx + _ex[i] * 0.17 * sc + _lx[i] * 0.05 * sc + gx * 0.22 * sc
-			ty = cy + 0.03 * sc + _ly[i] * 0.19 * sc * eo + gy * 0.16 * sc
+			var lx := _ex[i] * 0.17 + _lx[i] * 0.05
+			var ly := 0.03 + _ly[i] * 0.19 * eo
+			var lz := _z[i]
+			var rx := lx * cyw + lz * syw
+			var rz := lz * cyw - lx * syw
+			var ry := ly * cpt - rz * spt
+			tx = cx + rx * sc
+			ty = cy + ry * sc
 			k = _k[i]
 			damp = 0.78
 			mx = 14.0 * u
@@ -800,59 +988,144 @@ func _step() -> void:
 		_vx[i] = vx
 		_vy[i] = vy
 
-## Writes both MultiMeshes in one pass: each dot's colour and twinkle, a
-## streak along its velocity once it is fast, and a glow under the ones that
-## carry one.
-func _render() -> void:
+## Writes the dots and the lattice in one pass. Each dot gets its colour,
+## twinkle and custom data (its shape, its focus, its fringe, its hot core),
+## a streak along its velocity once it is fast; a body dot is shaded by its
+## turned normal under the room's one light, soft and dim as it rolls away;
+## a cloud atom is near or far by where it is on its orbit.
+func _render(dt: float) -> void:
+	_fit()
 	var now := _now
+	var reduce := Motion.reduce
 	var u := _u
 	var listening := _state == "listening"
-	var halo_a := 0.22 if listening else (0.14 + 0.06 * _level)
+	var halo_a := 0.2 if listening else (0.12 + 0.06 * _level)
 	_halo.position = _c
 	var hs := _R * 4.4 / 256.0
 	_halo.scale = Vector2(hs, hs)
 	_halo.modulate = Color(COL_P, halo_a if _formed else 0.0)
+	if _formed:
+		_rings_open = minf(1.0, _rings_open + dt / 1.4)
+	var rs := _R * 3.8
+	for rg in [_rings, _rings_bloom]:
+		rg.position = _c
+		rg.scale = Vector2(rs, rs)
+	# Under reduced motion the rings stand still and no streak splits its colours.
+	_rings_mat.set_shader_parameter("t", 0.0 if reduce else now / 1000.0)
+	_rings_mat.set_shader_parameter("level", _level)
+	_rings_mat.set_shader_parameter("open", _rings_open * (0.5 if reduce else 1.0))
+	_room_mat.set_shader_parameter("centre", _c)
+	_room_mat.set_shader_parameter("level", _level)
+	_room_mat.set_shader_parameter("lit", _rings_open)
 	var cvx := _cv.x
 	var cvy := _cv.y
+	var yaw := _gaze.x * 0.36
+	var pitch := -_gaze.y * 0.28
+	var cyw := cos(yaw)
+	var syw := sin(yaw)
+	var cpt := cos(pitch)
+	var spt := sin(pitch)
+	var lxd := LIGHT.x
+	var lyd := LIGHT.y
+	var lzd := LIGHT.z
+	var pdr := COL_PD.r
+	var pdg := COL_PD.g
+	var pdb := COL_PD.b
+	var phr := COL_PH.r
+	var phg := COL_PH.g
+	var phb := COL_PH.b
 	var db := _dot_buf
-	var gb := _glow_buf
 	for i in N:
 		var role := _role[i]
 		var tw := 0.65 + 0.35 * sin(now / 500.0 + _ph[i])
-		var col: Color
+		var cr: float
+		var cg: float
+		var cb: float
 		var alpha: float
-		var glow := 0.0
-		var glow_r := 3.0
+		var kind := 0.0
+		var soft := 0.0
+		var hot := 0.0
+		var grow := 1.0
 		if role == Role.BODY:
-			var k := _sh[i]
-			col = COL_PD.lerp(COL_PH, k)
-			alpha = _a[i] * (0.8 + 0.2 * tw)
-			glow = 0.07 + 0.05 * k
-			glow_r = 5.0
+			var lx := _lx[i]
+			var ly := _ly[i]
+			var lz := _z[i]
+			var rx := lx * cyw + lz * syw
+			var rz := lz * cyw - lx * syw
+			var ry := ly * cpt - rz * spt
+			var rz2 := ly * spt + rz * cpt
+			var shade := clampf(rx * lxd + ry * lyd + rz2 * lzd, 0.0, 1.0)
+			var k := (0.1 + 0.72 * shade) * _sh[i]
+			cr = pdr + (phr - pdr) * k
+			cg = pdg + (phg - pdg) * k
+			cb = pdb + (phb - pdb) * k
+			var near := clampf(rz2, 0.0, 1.0)
+			alpha = _a[i] * (0.8 + 0.2 * tw) * (0.45 + 0.55 * near) * 0.85
+			soft = (1.0 - near) * 0.8
+			hot = shade * 0.4
+			grow = 0.65 + 0.4 * near
+			if _uu[i] < 0.26:
+				# A node of the lattice: a crystal, a little bigger.
+				kind = 0.5
+				grow *= 1.3
+				hot = shade * 0.6
 		elif role == Role.EYE:
-			col = COL_EYE
-			alpha = _a[i] * 0.6
-			glow = 0.16
+			cr = COL_EYE.r
+			cg = COL_EYE.g
+			cb = COL_EYE.b
+			alpha = _a[i] * 0.8
+			hot = 1.0
+			grow = 1.15
+		elif _formed and _uu[i] <= 0.86:
+			var zf := sin(_ang[i])
+			var near := maxf(zf, 0.0)
+			var far := maxf(-zf, 0.0)
+			var kn := 0.45 * near
+			var kf := 0.4 * far
+			cr = COL_P.r + (COL_CYAN.r - COL_P.r) * kn + (COL_VIOLET.r - COL_P.r) * kf
+			cg = COL_P.g + (COL_CYAN.g - COL_P.g) * kn + (COL_VIOLET.g - COL_P.g) * kf
+			cb = COL_P.b + (COL_CYAN.b - COL_P.b) * kn + (COL_VIOLET.b - COL_P.b) * kf
+			alpha = _a[i] * tw * 0.85 * (0.7 + 0.3 * zf)
+			grow = (1.0 + 0.4 * zf) * (1.1 - 0.12 * (_r[i] - 1.3))
+			if _s[i] > 1.6 and zf > 0.5:
+				# Passing in front, close to the lens: a bokeh disc.
+				kind = 1.0
+				soft = 0.35 + 0.5 * near
+				grow *= 1.8
+				alpha *= 0.55
+			else:
+				soft = 0.3 * far
+				hot = 0.5 * (1.0 - far)
 		else:
-			col = COL_P
+			cr = COL_P.r
+			cg = COL_P.g
+			cb = COL_P.b
 			alpha = _a[i] * tw * 0.85
-			if _s[i] > 1.7:
-				glow = 0.1
+			if _uu[i] > 0.975:
+				# A few far lights, out of focus, drifting across the room.
+				kind = 1.0
+				soft = 0.6
+				grow = 5.0
+				alpha *= 0.09
+			else:
+				soft = 0.5
+				grow = 0.8
 		var vx := _vx[i]
 		var vy := _vy[i]
 		var rvx := vx - cvx if role != Role.FREE else vx
 		var rvy := vy - cvy if role != Role.FREE else vy
 		var spd := sqrt(rvx * rvx + rvy * rvy)
-		var d := _s[i] * u * 2.4
+		var d := _s[i] * u * 2.4 * grow
 		var px := _x[i]
 		var py := _y[i]
-		var o := i * 12
+		var o := i * 16
 		var ax := d
 		var ay := 0.0
 		var bx := 0.0
 		var by := d
 		var ox := px
 		var oy := py
+		var fringe := 0.0
 		if spd > 3.0 * u:
 			# A streak: the dot drawn long along where it is going.
 			var vl := sqrt(vx * vx + vy * vy)
@@ -865,6 +1138,8 @@ func _render() -> void:
 			by = dx * d * 0.8
 			ox = px - vx * 0.8
 			oy = py - vy * 0.8
+			if not reduce:
+				fringe = minf(1.0, (spd - 3.0 * u) / (9.0 * u))
 		db[o] = ax
 		db[o + 1] = bx
 		db[o + 2] = 0.0
@@ -873,25 +1148,58 @@ func _render() -> void:
 		db[o + 5] = by
 		db[o + 6] = 0.0
 		db[o + 7] = oy
-		db[o + 8] = col.r
-		db[o + 9] = col.g
-		db[o + 10] = col.b
+		db[o + 8] = cr
+		db[o + 9] = cg
+		db[o + 10] = cb
 		db[o + 11] = alpha
-		var gd := _s[i] * u * glow_r * 2.0 if glow > 0.0 else 0.0
-		gb[o] = gd
-		gb[o + 1] = 0.0
-		gb[o + 2] = 0.0
-		gb[o + 3] = px
-		gb[o + 4] = 0.0
-		gb[o + 5] = gd
-		gb[o + 6] = 0.0
-		gb[o + 7] = py
-		gb[o + 8] = col.r
-		gb[o + 9] = col.g
-		gb[o + 10] = col.b
-		gb[o + 11] = alpha * glow * 2.2
+		db[o + 12] = kind
+		db[o + 13] = soft
+		db[o + 14] = fringe
+		db[o + 15] = hot
 	_dots.buffer = db
-	_glows.buffer = gb
+
+	# The lattice: a thread from each body dot to its neighbour, flickering,
+	# dim on the far side, and gone while the two are far apart (forming, or
+	# streaming after a move).
+	if _links_n > 0:
+		var lb := _link_buf
+		var sc := _R
+		var wdt := 1.0 + 0.45 * u
+		var lr := COL_P.r + (COL_PH.r - COL_P.r) * 0.6
+		var lg := COL_P.g + (COL_PH.g - COL_P.g) * 0.6
+		var lbl := COL_P.b + (COL_PH.b - COL_P.b) * 0.6
+		for k in _links_n:
+			var ia := _la[k]
+			var ib := _lb[k]
+			var x1 := _x[ia]
+			var y1 := _y[ia]
+			var dx := _x[ib] - x1
+			var dy := _y[ib] - y1
+			var ln := sqrt(dx * dx + dy * dy)
+			var o := k * 12
+			var ratio := ln / maxf(_ll[k] * sc, 1.0)
+			var fade := clampf(2.0 - ratio, 0.0, 1.0)
+			var depth := 0.25 + 0.75 * (_z[ia] + _z[ib]) * 0.5
+			var flick := 0.6 + 0.4 * sin(now / 260.0 + _lph[k])
+			var alpha := 0.5 * fade * depth * flick * _rings_open
+			if ln < 0.5:
+				alpha = 0.0
+				ln = 0.5
+			var nx := -dy / ln * wdt
+			var ny := dx / ln * wdt
+			lb[o] = dx
+			lb[o + 1] = nx
+			lb[o + 2] = 0.0
+			lb[o + 3] = x1 + dx * 0.5
+			lb[o + 4] = dy
+			lb[o + 5] = ny
+			lb[o + 6] = 0.0
+			lb[o + 7] = y1 + dy * 0.5
+			lb[o + 8] = lr
+			lb[o + 9] = lg
+			lb[o + 10] = lbl
+			lb[o + 11] = alpha
+		_links.buffer = lb
 
 	_words.text = _line
 	var ww := minf(size.x - 80.0, 640.0)
