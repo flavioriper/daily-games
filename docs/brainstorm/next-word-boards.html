@@ -1,0 +1,389 @@
+<title>Next Word Boards</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Nunito:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one reading column; the ranked picks as a ledger of cards with a letter-tile diagram each, the market read and the rejects as plain lists. */
+:root{
+  --bg:#f6f1e6;        /* linen paper */
+  --paper:#fffaf0;     /* a card */
+  --ink:#2b2420;
+  --muted:#6e625a;
+  --rule:#d9cfbf;
+  --accent:#2f6f5e;    /* bottle green, the house's wooden-table green */
+  --accent-ink:#ffffff;
+  --tile:#f3e2b5;      /* a letter tile */
+  --tile-ink:#3a2c1a;
+  --warn:#9a5a1f;
+  --good:#2f6f5e;
+  --bad:#9b3b3b;
+  --display:"Fraunces",Georgia,"Times New Roman",serif;
+  --body:"Nunito","Segoe UI",Helvetica,Arial,sans-serif;
+  --mono:"JetBrains Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#1d1a16;--paper:#272320;--ink:#efe6d6;--muted:#b3a593;--rule:#3d362e;
+  --accent:#7cc3ad;--accent-ink:#13231d;--tile:#4a3d26;--tile-ink:#f6e7c4;
+  --warn:#e0a35c;--good:#7cc3ad;--bad:#e28a8a;color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#1d1a16;--paper:#272320;--ink:#efe6d6;--muted:#b3a593;--rule:#3d362e;
+  --accent:#7cc3ad;--accent-ink:#13231d;--tile:#4a3d26;--tile-ink:#f6e7c4;
+  --warn:#e0a35c;--good:#7cc3ad;--bad:#e28a8a;color-scheme:dark }
+
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 64px}
+main{max-width:860px;margin:0 auto}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;line-height:1.15;margin:0}
+h1{font-size:clamp(34px,6vw,52px);font-weight:700;letter-spacing:-.01em}
+h2{font-size:clamp(24px,3.6vw,30px);font-weight:700;margin-top:56px;padding-top:18px;border-top:2px solid var(--rule)}
+h3{font-size:22px;font-weight:700}
+p{margin:0;max-width:66ch}
+a{color:var(--accent)}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+header{padding-block:48px 8px;display:grid;gap:14px}
+header .lede{font-size:18px;max-width:62ch}
+.meta{display:flex;flex-wrap:wrap;gap:8px 18px;color:var(--muted);font-size:14px}
+.pill{display:inline-block;font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-radius:999px;border:1px solid var(--rule);color:var(--muted);white-space:nowrap}
+.pill.rec{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.pill.warn{color:var(--warn);border-color:var(--warn)}
+.pill.bad{color:var(--bad);border-color:var(--bad)}
+.stack{display:grid;gap:14px;margin-top:18px}
+ul{margin:0;padding-left:1.2em;max-width:70ch}
+li{margin:0}
+.stack ul,.stack ol{display:grid;gap:8px}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--rule);vertical-align:top}
+th{font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.tbl{overflow-x:auto;margin-top:18px}
+td.n{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* the ledger of picks */
+.ledger{display:grid;gap:22px;margin-top:22px}
+.card{background:var(--paper);border:1px solid var(--rule);border-radius:14px;padding:22px;display:grid;gap:16px;min-width:0}
+.card .top{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 14px}
+.card .rank{font-family:var(--display);font-size:30px;font-weight:700;color:var(--accent);line-height:1}
+.card .follows{color:var(--muted);font-size:14px}
+.card .body{display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:18px;align-items:start}
+@media (max-width:640px){.card .body{grid-template-columns:1fr}}
+.card .rules{display:grid;gap:10px}
+.facts{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;font-size:14px;margin:0}
+.facts dt{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding-top:3px}
+.facts dd{margin:0}
+.diagram{display:grid;gap:8px;justify-items:center}
+.diagram svg{max-width:100%;height:auto}
+.diagram .cap{font-size:12.5px;color:var(--muted);text-align:center;max-width:220px}
+.calls{display:grid;gap:10px;margin-top:18px}
+.call{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start;padding:12px 14px;border:1px dashed var(--rule);border-radius:10px}
+.call .k{font-family:var(--mono);font-size:12px;color:var(--accent);padding-top:3px}
+.note{font-size:14px;color:var(--muted);max-width:70ch}
+ol.sources{font-size:14px;padding-left:1.4em;display:grid;gap:6px;margin-top:14px}
+ol.sources li{overflow-wrap:anywhere}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion:no-preference){.card{transition:border-color .2s}.card:hover{border-color:var(--accent)}}
+</style>
+
+<main>
+<header>
+  <div class="eyebrow">Daily Puzzles · proposal · 2026-11-04</div>
+  <h1>Next Word Boards</h1>
+  <p class="lede">What the web's daily word games do that the Words row does not yet, five boards worth building from the lists the house already owns, and the ones to leave alone.</p>
+  <div class="meta">
+    <span>Words row today: 8 of 39 cards</span>
+    <span>Languages: en · pt · es</span>
+    <span>Nothing here is built or specced</span>
+  </div>
+</header>
+
+<h2>Already covered</h2>
+<div class="stack">
+  <p>The eight Words boards already follow the formats the big publishers lead with. Most of what this month's roundups recommend is a duplicate of a card on the grid.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>House board</th><th>Follows</th><th>Web games that would duplicate it</th></tr></thead>
+    <tbody>
+      <tr><td>Hidden Word</td><td>Wordle</td><td>Termo, Letreco, Quordle, Dordle, Pairdle, Phrazle, Crosswordle</td></tr>
+      <tr><td>Word Trail</td><td>Strands</td><td>LinkedIn's <b>Wend</b> (June 2026): a path through every open tile, walls force the bends, one solution. That is Word Trail.</td></tr>
+      <tr><td>Honeycomb</td><td>Spelling Bee</td><td>Blossom, Squaredle, Boggle-likes, Wordscapes-style "make words from these letters"</td></tr>
+      <tr><td>Four Shelves</td><td>Connections</td><td>Conexo (pt), NYT's 3×3 bonus edition</td></tr>
+      <tr><td>Five Clues</td><td>Pinpoint</td><td>Clues by Sam</td></tr>
+      <tr><td>Golden Acorn</td><td>quiz show</td><td>trivia dailies</td></tr>
+      <tr><td>Pearl Dive</td><td>rarity guessing</td><td>none worth naming</td></tr>
+      <tr><td>How Big?</td><td>size guessing</td><td>none; arguably not a Words board at all</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">Quordle is a Hidden Word Insane mode (four words, nine rows), not a card. Wend shipping in June 2026 means the house is a season ahead of LinkedIn's newest word release.</p>
+</div>
+
+<h2>The market read</h2>
+<div class="stack">
+  <ul>
+    <li><b>LinkedIn says word games are its weakest.</b> Its games lead told GamesBeat that Pinpoint and Crossclimb, the two word games, are the least popular of its lineup, Zip is the most, and the last four releases were logic. Then it shipped Wend anyway, so it has not given up on words.</li>
+    <li><b>At NYT the ones that stuck are Connections, Spelling Bee, the Mini and Wordle.</b> Connections overtook Wordle in social chatter. The September 2026 bonus drop (Wordle in 1, Connections 3×3) remixes those four rather than adding genres.</li>
+    <li><b>The indie hits of the last two years are mechanical, not editorial:</b> Waffle (swap letters), Quartiles on Apple News+ (combine fragments), Typeshift and Knotwords on Puzzmo, Letter Boxed. All of them are made from a dictionary, no clue writer needed.</li>
+    <li><b>The editorial hits need an author every day:</b> Bracket City at The Atlantic (17 nested clues a day), Apple's Emoji Game (pun phrases), Crossclimb (clued ladder), any crossword. In three languages that is the night pipeline writing and reviewing daily, and puns and nested idioms do not translate.</li>
+    <li><b>Brazil:</b> Termo had 450k players a day by 2022 and is still covered daily in 2026; Contexto, the guess-by-meaning game, is Brazilian-made. A pt-first audience knows both.</li>
+    <li>Most "best word games 2026" pages are SEO listicles that rank their own game first. The ranking below rests on the few trade pieces (GamesBeat, Engadget, Apple's own guide) and on the house's rules, not on those lists.</li>
+  </ul>
+</div>
+
+<h2>Shortlist, in build order</h2>
+<p class="note" style="margin-top:12px">Each runs on a list the house already ships, so the generator is pure list work and pt/es cost nothing new. Round length is the target for Medium. House names are proposals; the original's name is said once, to forbid it.</p>
+
+<div class="ledger">
+
+<section class="card">
+  <div class="top"><span class="rank">1</span><h3>Cross Stitch</h3><span class="pill rec">recommended first</span><span class="follows">follows Waffle</span></div>
+  <div class="body">
+    <div class="rules">
+      <p>Six five-letter words on a sampler, three across and three down, crossing on a lattice with four empty holes. The letters are stitched in the wrong places. Drag a letter onto another to swap them. A letter in its right hole sits green, one on the right thread but the wrong hole amber, a stray grey. Fifteen swaps; a perfect solve takes ten.</p>
+      <dl class="facts">
+        <dt>Gesture</dt><dd>drag one tile onto another, one thumb</dd>
+        <dt>Round</dt><dd>2 to 4 minutes</dd>
+        <dt>Runs on</dt><dd>Hidden Word's answers (en 968, pt 746, es 762) for the six words, its accept lists for nothing; the grid needs only six answers that cross</dd>
+        <dt>Generator</dt><dd>easy: search for three across and three down words that agree on nine crossings, then shuffle with a fixed number of swaps so the minimum is known</dd>
+        <dt>Stars</dt><dd>swaps left against the minimum; a swap that places two letters is the skill</dd>
+        <dt>Levels</dt><dd>Easy a 5×5 with two words given; Medium 5×5; Hard 7×7 (ten words, more swaps); Insane <i>Loose Thread</i>: no amber, only green and grey</dd>
+        <dt>Shares</dt><dd>as a colour grid, the way Hidden Word does</dd>
+      </dl>
+    </div>
+    <div class="diagram">
+      <svg viewBox="0 0 150 150" width="150" height="150" role="img" aria-label="A 5 by 5 waffle grid with four holes, letters coloured green, amber and grey">
+        <g font-family="JetBrains Mono, monospace" font-size="13" font-weight="600" text-anchor="middle">
+          <rect x="4" y="4" width="26" height="26" rx="5" fill="#8fc9a9"/><text x="17" y="22" fill="#1d3b2e">S</text>
+          <rect x="33" y="4" width="26" height="26" rx="5" fill="#e9c77a"/><text x="46" y="22" fill="#3a2c1a">T</text>
+          <rect x="62" y="4" width="26" height="26" rx="5" fill="#8fc9a9"/><text x="75" y="22" fill="#1d3b2e">I</text>
+          <rect x="91" y="4" width="26" height="26" rx="5" fill="#cfc6b6"/><text x="104" y="22" fill="#3a2c1a">R</text>
+          <rect x="120" y="4" width="26" height="26" rx="5" fill="#8fc9a9"/><text x="133" y="22" fill="#1d3b2e">H</text>
+          <rect x="4" y="33" width="26" height="26" rx="5" fill="#cfc6b6"/><text x="17" y="51" fill="#3a2c1a">A</text>
+          <rect x="62" y="33" width="26" height="26" rx="5" fill="#8fc9a9"/><text x="75" y="51" fill="#1d3b2e">E</text>
+          <rect x="120" y="33" width="26" height="26" rx="5" fill="#e9c77a"/><text x="133" y="51" fill="#3a2c1a">O</text>
+          <rect x="4" y="62" width="26" height="26" rx="5" fill="#8fc9a9"/><text x="17" y="80" fill="#1d3b2e">L</text>
+          <rect x="33" y="62" width="26" height="26" rx="5" fill="#cfc6b6"/><text x="46" y="80" fill="#3a2c1a">E</text>
+          <rect x="62" y="62" width="26" height="26" rx="5" fill="#8fc9a9"/><text x="75" y="80" fill="#1d3b2e">N</text>
+          <rect x="91" y="62" width="26" height="26" rx="5" fill="#e9c77a"/><text x="104" y="80" fill="#3a2c1a">M</text>
+          <rect x="120" y="62" width="26" height="26" rx="5" fill="#8fc9a9"/><text x="133" y="80" fill="#1d3b2e">U</text>
+          <rect x="4" y="91" width="26" height="26" rx="5" fill="#8fc9a9"/><text x="17" y="109" fill="#1d3b2e">T</text>
+          <rect x="62" y="91" width="26" height="26" rx="5" fill="#cfc6b6"/><text x="75" y="109" fill="#3a2c1a">A</text>
+          <rect x="120" y="91" width="26" height="26" rx="5" fill="#8fc9a9"/><text x="133" y="109" fill="#1d3b2e">S</text>
+          <rect x="4" y="120" width="26" height="26" rx="5" fill="#8fc9a9"/><text x="17" y="138" fill="#1d3b2e">S</text>
+          <rect x="33" y="120" width="26" height="26" rx="5" fill="#8fc9a9"/><text x="46" y="138" fill="#1d3b2e">T</text>
+          <rect x="62" y="120" width="26" height="26" rx="5" fill="#e9c77a"/><text x="75" y="138" fill="#3a2c1a">R</text>
+          <rect x="91" y="120" width="26" height="26" rx="5" fill="#8fc9a9"/><text x="104" y="138" fill="#1d3b2e">A</text>
+          <rect x="120" y="120" width="26" height="26" rx="5" fill="#cfc6b6"/><text x="133" y="138" fill="#3a2c1a">W</text>
+        </g>
+      </svg>
+      <div class="cap">The sampler: six words cross on a 5×5 with four holes. Green sits, amber is on the right thread, grey is a stray.</div>
+    </div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="top"><span class="rank">2</span><h3>Padlock</h3><span class="follows">follows Typeshift</span></div>
+  <div class="body">
+    <div class="rules">
+      <p>A combination padlock with five letter dials. Each dial holds three to five letters; slide a dial up or down so the row across the middle spells a word. Every letter on every dial belongs to at least one word. Spell them all and the lock opens.</p>
+      <dl class="facts">
+        <dt>Gesture</dt><dd>vertical drag on one dial, one thumb, nothing to type</dd>
+        <dt>Round</dt><dd>1 to 3 minutes</dd>
+        <dt>Runs on</dt><dd>Hidden Word's answers for the dealt words, its accept lists (en 15,921, pt 26,792, es 31,208) to credit any other real word the dials line up</dd>
+        <dt>Generator</dt><dd>trivial: pick four to six answers, stack their letters by column, shuffle each dial; count the full set of words the dials can make so the day's total is honest</dd>
+        <dt>Stars</dt><dd>dialled words against the minimum needed to use every letter; extra real words are bonus clicks, not penalties</dd>
+        <dt>Levels</dt><dd>Easy four-letter dials; Medium five; Hard six with deeper dials; Insane <i>Rusty Lock</i>: one dial is stuck and only turns one way</dd>
+        <dt>Shares</dt><dd>a column of lit tumblers</dd>
+      </dl>
+    </div>
+    <div class="diagram">
+      <svg viewBox="0 0 160 150" width="160" height="150" role="img" aria-label="Five vertical dials of letters, the middle row spelling a word">
+        <rect x="2" y="56" width="156" height="38" rx="7" fill="none" stroke="#2f6f5e" stroke-width="2.5"/>
+        <g font-family="JetBrains Mono, monospace" font-size="14" font-weight="600" text-anchor="middle" fill="#8e8070">
+          <text x="20" y="38">B</text><text x="20" y="120">T</text>
+          <text x="50" y="18">A</text><text x="50" y="38">O</text><text x="50" y="120">I</text><text x="50" y="140">U</text>
+          <text x="80" y="38">L</text><text x="80" y="120">R</text>
+          <text x="110" y="18">C</text><text x="110" y="38">D</text><text x="110" y="120">T</text>
+          <text x="140" y="38">E</text><text x="140" y="120">H</text><text x="140" y="140">Y</text>
+        </g>
+        <g font-family="JetBrains Mono, monospace" font-size="18" font-weight="700" text-anchor="middle">
+          <rect x="7" y="61" width="26" height="28" rx="5" fill="#f3e2b5"/><text x="20" y="81" fill="#3a2c1a">P</text>
+          <rect x="37" y="61" width="26" height="28" rx="5" fill="#f3e2b5"/><text x="50" y="81" fill="#3a2c1a">E</text>
+          <rect x="67" y="61" width="26" height="28" rx="5" fill="#f3e2b5"/><text x="80" y="81" fill="#3a2c1a">A</text>
+          <rect x="97" y="61" width="26" height="28" rx="5" fill="#f3e2b5"/><text x="110" y="81" fill="#3a2c1a">R</text>
+          <rect x="127" y="61" width="26" height="28" rx="5" fill="#f3e2b5"/><text x="140" y="81" fill="#3a2c1a">L</text>
+        </g>
+      </svg>
+      <div class="cap">Five dials; the window reads PEARL. Slide dials until every letter has been in the window inside a word.</div>
+    </div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="top"><span class="rank">3</span><h3>Biscuit Tin</h3><span class="follows">follows Quartiles</span></div>
+  <div class="body">
+    <div class="rules">
+      <p>Twenty broken biscuit pieces in a tin, each a chunk of two to four letters. Tap pieces in order to make a word from one to four of them. Five whole biscuits are hidden in the tin, each made of exactly four pieces; find all five and the tin is empty. Shorter words score along the way, so there is always something to do.</p>
+      <dl class="facts">
+        <dt>Gesture</dt><dd>tap pieces, tap the plate to serve; nothing to type</dd>
+        <dt>Round</dt><dd>3 to 6 minutes</dd>
+        <dt>Runs on</dt><dd>Honeycomb's wordfreq dictionaries (en 23,164, pt 33,098, es 34,206 words, rude lists already applied) for scoring; the five long words are chosen from the same lists' common tier</dd>
+        <dt>Generator</dt><dd>easy: pick five 8-to-13-letter words, cut each into four chunks, score every ordered combination of up to four pieces against the dictionary; reject a deal whose chunks spell a rude word</dd>
+        <dt>Stars</dt><dd>points to the day's line, like Honeycomb's jar; all five biscuits is the solve</dd>
+        <dt>Levels</dt><dd>Easy three biscuits and bigger chunks; Medium five; Hard five with two-letter chunks; Insane <i>Crumbs</i>: a sixth biscuit's pieces are mixed in and never fit</dd>
+        <dt>Shares</dt><dd>five biscuits, whole or broken</dd>
+      </dl>
+    </div>
+    <div class="diagram">
+      <svg viewBox="0 0 160 150" width="160" height="150" role="img" aria-label="A grid of letter chunks, four of them highlighted spelling a long word">
+        <g font-family="JetBrains Mono, monospace" font-size="11.5" font-weight="600" text-anchor="middle">
+          <rect x="4" y="4" width="34" height="24" rx="6" fill="#8fc9a9"/><text x="21" y="20" fill="#1d3b2e">WIN</text>
+          <rect x="42" y="4" width="34" height="24" rx="6" fill="#f3e2b5"/><text x="59" y="20" fill="#3a2c1a">GAR</text>
+          <rect x="80" y="4" width="34" height="24" rx="6" fill="#f3e2b5"/><text x="97" y="20" fill="#3a2c1a">TLE</text>
+          <rect x="118" y="4" width="34" height="24" rx="6" fill="#f3e2b5"/><text x="135" y="20" fill="#3a2c1a">PO</text>
+          <rect x="4" y="34" width="34" height="24" rx="6" fill="#f3e2b5"/><text x="21" y="50" fill="#3a2c1a">DEN</text>
+          <rect x="42" y="34" width="34" height="24" rx="6" fill="#8fc9a9"/><text x="59" y="50" fill="#1d3b2e">DOW</text>
+          <rect x="80" y="34" width="34" height="24" rx="6" fill="#f3e2b5"/><text x="97" y="50" fill="#3a2c1a">TUR</text>
+          <rect x="118" y="34" width="34" height="24" rx="6" fill="#f3e2b5"/><text x="135" y="50" fill="#3a2c1a">BUT</text>
+          <rect x="4" y="64" width="34" height="24" rx="6" fill="#f3e2b5"/><text x="21" y="80" fill="#3a2c1a">ER</text>
+          <rect x="42" y="64" width="34" height="24" rx="6" fill="#f3e2b5"/><text x="59" y="80" fill="#3a2c1a">SHA</text>
+          <rect x="80" y="64" width="34" height="24" rx="6" fill="#8fc9a9"/><text x="97" y="80" fill="#1d3b2e">SI</text>
+          <rect x="118" y="64" width="34" height="24" rx="6" fill="#f3e2b5"/><text x="135" y="80" fill="#3a2c1a">CUP</text>
+          <rect x="4" y="94" width="34" height="24" rx="6" fill="#f3e2b5"/><text x="21" y="110" fill="#3a2c1a">FLY</text>
+          <rect x="42" y="94" width="34" height="24" rx="6" fill="#8fc9a9"/><text x="59" y="110" fill="#1d3b2e">LL</text>
+          <rect x="80" y="94" width="34" height="24" rx="6" fill="#f3e2b5"/><text x="97" y="110" fill="#3a2c1a">TAB</text>
+          <rect x="118" y="94" width="34" height="24" rx="6" fill="#f3e2b5"/><text x="135" y="110" fill="#3a2c1a">LE</text>
+          <rect x="4" y="124" width="34" height="24" rx="6" fill="#f3e2b5"/><text x="21" y="140" fill="#3a2c1a">BO</text>
+          <rect x="42" y="124" width="34" height="24" rx="6" fill="#f3e2b5"/><text x="59" y="140" fill="#3a2c1a">ARD</text>
+          <rect x="80" y="124" width="34" height="24" rx="6" fill="#f3e2b5"/><text x="97" y="140" fill="#3a2c1a">PE</text>
+          <rect x="118" y="124" width="34" height="24" rx="6" fill="#f3e2b5"/><text x="135" y="140" fill="#3a2c1a">TAL</text>
+        </g>
+      </svg>
+      <div class="cap">Twenty pieces; WIN + DOW + SI + LL is one whole biscuit. SHA + DOW, TAB + LE and BUT + TER score on the way.</div>
+    </div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="top"><span class="rank">4</span><h3>Stepping Stones</h3><span class="follows">follows the word ladder (Weaver, Crossclimb)</span></div>
+  <div class="body">
+    <div class="rules">
+      <p>A brook with a word on each bank. Lay stones across: each stone is a word one letter different from the stone before. Reach the far bank in as few stones as you can. Any real word is a stone, so there is no wrong answer, only long ways round. Later, the night pipeline can add a clue to each stone for a Hard band that plays like the clued version.</p>
+      <dl class="facts">
+        <dt>Gesture</dt><dd>phone keyboard, as Five Clues and Hidden Word type</dd>
+        <dt>Round</dt><dd>1 to 3 minutes</dd>
+        <dt>Runs on</dt><dd>Word Trail's four-letter lists (en 160, pt 229, es 217) are too thin; a four-letter cut of the Honeycomb dictionaries gives thousands a language, and the accept lists judge the typed stones</dd>
+        <dt>Generator</dt><dd>easy: breadth-first search over the one-letter-apart graph; deal a pair whose shortest path is 4 to 6 and has several routes, so the solve is not a single line</dd>
+        <dt>Stars</dt><dd>stones laid against the shortest path, the exact metric Market Sums uses</dd>
+        <dt>Levels</dt><dd>Easy three stones with the middle one given; Medium four letters; Hard five letters; Insane <i>Slippery</i>: a stone may change one letter or swap two neighbours, and the path is longer</dd>
+        <dt>Shares</dt><dd>a row of stones with the count</dd>
+      </dl>
+    </div>
+    <div class="diagram">
+      <svg viewBox="0 0 160 150" width="160" height="150" role="img" aria-label="Five word stones across water, each one letter from the last">
+        <rect x="0" y="0" width="160" height="150" rx="10" fill="#bfe0ea"/>
+        <g font-family="JetBrains Mono, monospace" font-size="12.5" font-weight="700" text-anchor="middle">
+          <ellipse cx="30" cy="22" rx="28" ry="14" fill="#8e8070"/><text x="30" y="26" fill="#fff">COLD</text>
+          <ellipse cx="80" cy="48" rx="28" ry="14" fill="#cfc6b6"/><text x="80" y="52" fill="#3a2c1a">CORD</text>
+          <ellipse cx="38" cy="76" rx="28" ry="14" fill="#cfc6b6"/><text x="38" y="80" fill="#3a2c1a">WORD</text>
+          <ellipse cx="92" cy="102" rx="28" ry="14" fill="#cfc6b6"/><text x="92" y="106" fill="#3a2c1a">WARD</text>
+          <ellipse cx="60" cy="130" rx="28" ry="14" fill="#8e8070"/><text x="60" y="134" fill="#fff">WARM</text>
+        </g>
+      </svg>
+      <div class="cap">COLD to WARM in three stones. A longer way round is still a crossing, just fewer stars.</div>
+    </div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="top"><span class="rank">5</span><h3>Garden Fence</h3><span class="follows">follows Letter Boxed</span></div>
+  <div class="body">
+    <div class="rules">
+      <p>Twelve letters on the posts of a square fence, three to a side. String words from post to post; two letters in a row may never come from the same side, and each word starts with the last letter of the one before. Use every post and the fence is strung. The day says how many words that should take.</p>
+      <dl class="facts">
+        <dt>Gesture</dt><dd>tap the posts in turn, or type; the string draws itself across the garden</dd>
+        <dt>Round</dt><dd>3 to 6 minutes; the longest round on this page</dd>
+        <dt>Runs on</dt><dd>Honeycomb's dictionaries, no new list</dd>
+        <dt>Generator</dt><dd>moderate: deal twelve letters, check a two-word solution exists (the par), reject deals whose best is worse than three words</dd>
+        <dt>Stars</dt><dd>words used against par, two words being the day's best</dd>
+        <dt>Levels</dt><dd>Easy a triangle of nine posts; Medium the square; Hard a pentagon; Insane <i>Gate</i>: one post is the gate and must be the last letter used</dd>
+        <dt>Shares</dt><dd>the strung fence</dd>
+      </dl>
+    </div>
+    <div class="diagram">
+      <svg viewBox="0 0 160 160" width="160" height="160" role="img" aria-label="A square with three letters a side and a string crossing between sides">
+        <rect x="24" y="24" width="112" height="112" fill="none" stroke="#8e8070" stroke-width="2.5"/>
+        <polyline points="108,24 24,80 136,52 24,108 136,108" fill="none" stroke="#2f6f5e" stroke-width="2.5" stroke-linejoin="round"/>
+        <g font-family="JetBrains Mono, monospace" font-size="12" font-weight="700" text-anchor="middle" fill="#3a2c1a">
+          <circle cx="52" cy="24" r="10" fill="#f3e2b5"/><text x="52" y="28">P</text>
+          <circle cx="80" cy="24" r="10" fill="#f3e2b5"/><text x="80" y="28">U</text>
+          <circle cx="108" cy="24" r="10" fill="#f3e2b5"/><text x="108" y="28">M</text>
+          <circle cx="136" cy="52" r="10" fill="#f3e2b5"/><text x="136" y="56">I</text>
+          <circle cx="136" cy="80" r="10" fill="#f3e2b5"/><text x="136" y="84">A</text>
+          <circle cx="136" cy="108" r="10" fill="#f3e2b5"/><text x="136" y="112">T</text>
+          <circle cx="52" cy="136" r="10" fill="#f3e2b5"/><text x="52" y="140">E</text>
+          <circle cx="80" cy="136" r="10" fill="#f3e2b5"/><text x="80" y="140">R</text>
+          <circle cx="108" cy="136" r="10" fill="#f3e2b5"/><text x="108" y="140">K</text>
+          <circle cx="24" cy="52" r="10" fill="#f3e2b5"/><text x="24" y="56">L</text>
+          <circle cx="24" cy="80" r="10" fill="#f3e2b5"/><text x="24" y="84">O</text>
+          <circle cx="24" cy="108" r="10" fill="#f3e2b5"/><text x="24" y="112">S</text>
+        </g>
+      </svg>
+      <div class="cap">Twelve posts, three a side. MOIST crosses a side on every step; TUSK carries on from its T.</div>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<h2>Authored content, ranked below</h2>
+<div class="stack">
+  <p>These are the formats people talk about most, and each needs words written for it every day in three languages. The night pipeline (Haiku writes, Opus reviews) can do it, as it does for Golden Acorn, Four Shelves and Five Clues, but the credits ran out on 2026-10-29 and the pipeline's move is not settled. Build these after the five above, and only once the night is paid for.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Format</th><th>What the night writes</th><th>Verdict</th></tr></thead>
+    <tbody>
+      <tr><td><b>Hot and Cold</b> (follows Contexto, Semantle)</td><td>Nothing written; a ranking of 20k words by closeness of meaning to the day's word, per language, computed once at night from embeddings and shipped as a day document. A guess shows its rank; closer is warmer.</td><td><span class="pill warn">strong in pt, costly</span> Contexto is Brazilian and huge there. But a round is 30 to 100 guesses, the longest on this page by far, and the embeddings are a new server dependency. Worth a concept tab on its own.</td></tr>
+      <tr><td><b>Clued Stepping Stones</b> (Crossclimb)</td><td>one clue a stone, five a day</td><td><span class="pill">Hard band of pick 4</span> Add it to Stepping Stones once the night can write; a clue makes the ladder a crossword in miniature.</td></tr>
+      <tr><td><b>Mini crossword</b> (the NYT Mini)</td><td>a 5×5 grid from the lists, then ten clues a day</td><td><span class="pill warn">later</span> The most played format after Wordle, and the grid itself is list work. The clues are the cost: ten a day, three languages, each one reviewed. Jam-jar clues from a model read flat without an editor.</td></tr>
+      <tr><td><b>Matryoshka</b> (Bracket City)</td><td>fifteen nested clues resolving to a sentence</td><td><span class="pill bad">no</span> Brilliant, and the reviewers are right that it hooks. But it is English idiom nested in English idiom; it does not translate, and a model-written set in pt and es would be the weakest thing on the grid.</td></tr>
+      <tr><td><b>Emoji phrases</b> (Apple's Emoji Game)</td><td>three pun phrases a day with emoji blanks</td><td><span class="pill bad">no</span> Puns do not cross languages, and the house draws its own characters rather than using the phone's emoji set.</td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<h2>Left alone</h2>
+<div class="stack">
+  <ul>
+    <li><b>Wend, Squaredle, Blossom, Conexo, Quordle, Pairdle, Phrazle, Crosswordle:</b> a card on the grid already, or a mode of one (see the first table).</li>
+    <li><b>Redactle:</b> a redacted encyclopedia article, English only, twenty minutes a round.</li>
+    <li><b>Tiled Words:</b> rotate tiles to rebuild a crossword; needs clues, and the rotation gesture is Pinwheel's.</li>
+    <li><b>Anagram jumble (newspaper style):</b> cheap, but Honeycomb and Padlock already cover unscrambling with more to do.</li>
+    <li><b>Any guess-and-feedback code board:</b> removed on 2026-10-13 and not to be re-proposed, whatever the catalogue says about Wordle's skeleton.</li>
+  </ul>
+</div>
+
+<h2>Calls this page is for</h2>
+<div class="calls">
+  <div class="call"><span class="k">A</span><div><b>Build order.</b> Proposed: Cross Stitch, Padlock, Biscuit Tin, Stepping Stones, Garden Fence. The first three need no new list; the fourth needs a four-letter cut of the Honeycomb dictionaries; the fifth is the longest round.</div></div>
+  <div class="call"><span class="k">B</span><div><b>How many.</b> Proposed: three now (the first three), which takes Words from 8 to 11 of 42 cards; two more if the three earn their place after a week on the phone.</div></div>
+  <div class="call"><span class="k">C</span><div><b>Hot and Cold.</b> Proposed: a concept tab of its own, decided separately, because it is the only candidate with a real server cost and a real pt audience.</div></div>
+  <div class="call"><span class="k">D</span><div><b>Hidden Word Insane as four words.</b> Proposed: yes, as a mode, since the web's multi-board variants are the most cloned thing after Wordle itself.</div></div>
+  <div class="call"><span class="k">E</span><div><b>House names.</b> Proposed as written; each is a cozy thing the house already draws in code, none is the original's name.</div></div>
+</div>
+
+<h2>Next step, the house order</h2>
+<div class="stack">
+  <ol>
+    <li>A playable concept tab for each chosen board in <code>docs/brainstorm/concepts.html</code>, drawn in the 1080-wide design space, with its proposals as pills.</li>
+    <li>A spec per board after the mock is judged.</li>
+    <li>The build: a <code>Registry.PUZZLES</code> entry under <code>words</code>, four levels, stars, the two-press bulb, locale keys in en/pt/es, pops from the sound bank, a card, a tutorial.</li>
+  </ol>
+</div>
+
+<h2>Sources read</h2>
+<ol class="sources">
+  <li>GamesBeat on LinkedIn's shift from words to logic, with the quote on Pinpoint and Crossclimb being least popular: <a href="https://gamesbeat.com/how-linkedins-new-game-patches-demonstrates-its-shift-away-from-word-games/">gamesbeat.com</a></li>
+  <li>Engadget's review of Bracket City, rules and why it hooks: <a href="https://www.engadget.com/gaming/bracket-city-could-be-your-latest-word-game-obsession-151405964.html">engadget.com</a></li>
+  <li>Apple's guide to Quartiles (tiles, five four-tile words, scoring to Expert): <a href="https://support.apple.com/en-kw/guide/news/iph701ef27fb/mac">support.apple.com</a></li>
+  <li>Wend, LinkedIn's June 2026 word game: <a href="https://www.thewordfinder.com/blog/meet-wend-linkedins-new-daily-word-game/">thewordfinder.com</a> and <a href="https://www.playwendgame.com/faq">playwendgame.com</a> (fan site)</li>
+  <li>NYT's September 2026 bonus puzzles (Wordle in 1, Connections 3×3): <a href="https://www.forbes.com/sites/erikkain/2026/09/02/nyt-games-bonus-puzzles-wordle-in-1-connections-3x3/">forbes.com</a> (headline and search summary only; the page refused the fetch)</li>
+  <li>Apple's Emoji Game, rules: <a href="https://www.macrumors.com/2025/07/17/apple-news-emoji-game-now-available/">macrumors.com</a></li>
+  <li>Tiled Words, rules: <a href="https://thinkygames.com/games/tiled-words/">thinkygames.com</a></li>
+  <li>Termo's 450k daily players and the Brazilian clones: <a href="https://en.wikipedia.org/wiki/Termo_(video_game)">wikipedia.org</a>; the pt daily roundup naming Conexo and Contexto: <a href="https://www.hardware.com.br/artigos/5-jogos-diarios-de-navegador-para-manter-a-mente-afiada/amp/">hardware.com.br</a></li>
+  <li>Roundups used only for the candidate list, each selling its own game: <a href="https://www.summerengine.com/blog/games-like-wordle">summerengine.com</a>, <a href="https://www.logicloftgames.com/blog/best-daily-word-games/">logicloftgames.com</a>, <a href="https://www.pcgamer.com/best-games-like-wordle">pcgamer.com</a></li>
+</ol>
+</main>
