@@ -76,6 +76,8 @@ const CARDS := {
 	"shelves": ["meadow", 1.6, Vector2(0.75, 0.50)],
 	# Cross Stitch's sewing table by the meadow cottage's window.
 	"crossstitch": ["meadow", 1.6, Vector2(0.55, 0.60)],
+	# Padlock's shed door by the meadow's garden.
+	"padlock": ["meadow", 1.6, Vector2(0.30, 0.55)],
 	# Five Clues' shed wall by the meadow's garden.
 	"clues": ["meadow", 1.6, Vector2(0.20, 0.50)],
 	# Mini Golf's course is laid out on the meadow, under its cottages.

@@ -78,7 +78,15 @@ selling their own game. Four sources were read from search summaries only
       eight seven-letter words and needs a seven-letter Honeycomb cut, so
       not for the first pass); Insane *Loose Thread*: no amber. Shares as a
       colour grid.
-- [ ] **2. Padlock** (Typeshift). A combination padlock with letter dials;
+- [x] **2. Padlock** (Typeshift). Built 2026-11-04: spec
+      `docs/superpowers/specs/2026-11-04-padlock-design.md`, notes
+      `docs/agents/boards/padlock.md`. As proposed below, except: the
+      words come from wordfreq's lists (Hunspell-checked, rude words and
+      names pruned; Honeycomb's own lists drop every S word) and each lock
+      carries its words, so no dictionary ships; Hard takes five seeds and
+      Insane six; three stars allow one word over par; the rusty dial
+      comes round past its last letter so no lock is ever stuck.
+      A combination padlock with letter dials;
       slide a dial so the window row spells a word; every letter on every
       dial belongs to a word; spell them all and the lock opens. One-thumb
       vertical drag, nothing to type. Runs on Hidden Word's answers for the

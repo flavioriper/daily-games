@@ -1795,6 +1795,40 @@ SETS = {
         "solved":   ("a warm short celebratory flourish on a real kalimba and a music box, rising arpeggio ending on a soft hand bell shimmer, joyful and cozy", 2.0, -8, BEADBOX_TUNE, "warm:2600", "body:300"),
         "party":    ("a short cozy celebratory flourish on a real kalimba and a music box, rising and bright, with a few soft little party blower toots, warm and joyful", 2.0, -8, BEADBOX_TUNE, "warm:2600", "body:300"),
     },
+    # Padlock (puzzle_id "padlock"), 2026-11-04: a combination padlock whose
+    # letter dials are turned until the window spells words. Every action is
+    # a pop from the bank, by its job: `notch` the pebble, quiet and short
+    # (one for every letter that crosses the window, dragged or springing:
+    # the run rides the dial, pitched by dial and letter at play), `pick`
+    # the pebble (a dial taken by the finger), `set` the token (a dial
+    # settling on its letter), `word` three wraps rising (a word that lights
+    # letters; pitched up with the letters it lights), `plain` one wrap and
+    # a lower one (a word found that lights nothing new), `again` the lip
+    # twice (a word already on a tag), `refuse` the tongue twice falling
+    # (the rusty dial pushed up), `round` the token falling then a wrap (the
+    # rusty dial coming round to its first letter), `fall` the lip falling
+    # (a star lost), `open` tokens and wraps rising to the octave (the
+    # shackle springing), `enter` a run of tokens (the dials dropping in).
+    # hint, solved, confetti and party are takes already on disk, copied
+    # into build/sfx_raw/padlock/ from Honeycomb's, never bought. All of it
+    # unheard.
+    "padlock": {
+        "notch":    ('one small smooth pebble dropped onto a wooden board, a single soft rounded click, very short', 0.5, -22, FOLEY, "bank:pebble", "cut:0.07", "tight"),
+        "pick":     ('one small smooth pebble dropped onto a wooden board, a single soft rounded click, very short', 0.5, -17, FOLEY, "bank:pebble", "cut:0.12", "notes:0:2", "tight"),
+        "set":      ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -16, FOLEY, "bank:token", "cut:0.14", "tight"),
+        "word":     ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -13, FOLEY, "bank:wrap", "cut:0.1", "notes:0.07:0,4,7,12", "tight"),
+        "plain":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -17, FOLEY, "bank:wrap", "cut:0.1", "notes:0.09:0,-3", "tight"),
+        "again":    ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -18, FOLEY, "bank:lip", "cut:0.12", "notes:0.09:0,0", "tight"),
+        "refuse":   ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -16, FOLEY, "bank:tongue", "cut:0.2", "notes:0.1:-2,-4", "tight"),
+        "round":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -15, FOLEY, "bank:token", "cut:0.3", "notes:0.06:5,2,-1,-4,7", "tight"),
+        "fall":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -18, FOLEY, "bank:lip", "cut:0.2", "notes:0.06:1,-1,-3", "tight"),
+        "open":     ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -12, FOLEY, "bank:token", "cut:0.5", "notes:0.06:0,4,7,12,16", "tight"),
+        "hint":     ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -16, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320", "notes:0:2"),
+        "enter":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.5", "notes:0.06:-1,1,3,4,6,8", "tight"),
+        "confetti": ("a soft little paper confetti pop and flutter with a tiny music box twinkle, cute", 1.0, -10, BEADBOX_TUNE, "warm:7000"),
+        "solved":   ("a warm short celebratory flourish on a real kalimba and a music box, rising arpeggio ending on a soft hand bell shimmer, joyful and cozy", 2.0, -8, BEADBOX_TUNE, "warm:2600", "body:300"),
+        "party":    ("a short cozy celebratory flourish on a real kalimba and a music box, rising and bright, with a few soft little party blower toots, warm and joyful", 2.0, -8, BEADBOX_TUNE, "warm:2600", "body:300"),
+    },
     # Fairy Lights (puzzle_id "fairylights"): tap a piece of garden wire to
     # turn it; wire joined back to the post runs gold and wakes its lanterns.
     # Hard and Insane blow a fuse on a wrong join; Insane is Wish Tags.

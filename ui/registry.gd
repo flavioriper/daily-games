@@ -666,6 +666,40 @@ const PUZZLES := [
 		],
 	},
 	{
+		"id": "padlock",
+		"skill": "words",
+		"kind": "puzzle",
+		"title": "Padlock",
+		"blurb": "PL_BLURB",
+		"short": "PL_SHORT",
+		"motto": "PL_MOTTO",
+		"footer": "Turn · Spell · Unlock",
+		# A combination padlock on a shed door: a row of letter dials, one
+		# per letter of the band's word length; turn them so the window
+		# spells a word, and its letters light; light every letter on every
+		# dial and the lock opens (puzzles/padlock2d.gd). The locks are
+		# banked from wordfreq's words in the player's language
+		# (tools/build_padlock.py, content/insane/padlock*.json). The dials
+		# are turned on the board itself, so no tray and no actions row: the
+		# bulb rides the tools row, and the bin stays shut (a word found
+		# stays found).
+		"script": "res://puzzles/padlock2d.gd",
+		"card": "res://ui/menu/cards/padlock.gd",
+		"shell": "flat",
+		"tray": "none",
+		"bleed": true,
+		"level_card": true,
+		"actions": false,
+		"difficulties": [0, 1, 2, 3],
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "PL_LVL_0"},
+			{"difficulty": 1, "name": "Medium", "line": "PL_LVL_1"},
+			{"difficulty": 2, "name": "Hard", "line": "PL_LVL_2"},
+			{"difficulty": 3, "name": "Insane", "line": "PL_LVL_3"},
+		],
+	},
+	{
 		"id": "clues",
 		"skill": "words",
 		"kind": "puzzle",
