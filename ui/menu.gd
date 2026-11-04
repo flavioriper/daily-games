@@ -456,10 +456,6 @@ func _build_list() -> void:
 	stats_tab.open_streak.connect(func() -> void: _show_tab("streak"))
 	streak_tab.open_stats.connect(func() -> void: _show_tab("stats"))
 	root.add_child(stats_tab)
-	swarm_tab = SwarmTab.new()
-	swarm_tab.name = "SwarmTab"
-	swarm_tab.visible = false
-	root.add_child(swarm_tab)
 
 	# The pager: prev, dots, next, in their own paper pill -- see PAGER_MID
 	# above for why it is a pill and not a bare row, and PER_PAGE above and
@@ -1233,6 +1229,19 @@ func _tell_offline() -> void:
 			_say(tr("MENU_OFFLINE"), OFFLINE_TIME))
 
 func _on_tab(tab: String) -> void:
+	# The Swarm test takes the whole screen over the list; its back button
+	# (or Android's back) closes it and the list is as it was.
+	if tab == "swarm":
+		if swarm_tab == null:
+			swarm_tab = SwarmTab.new()
+			swarm_tab.name = "SwarmTab"
+			swarm_tab.closed.connect(func() -> void: _list_root.visible = true)
+			add_child(swarm_tab)
+		# Nothing under the room is seen, so nothing under it is drawn.
+		_list_root.visible = false
+		swarm_tab.open()
+		Analytics.track("tab_opened", {"tab": tab})
+		return
 	_show_tab(tab)
 
 ## Home is the day row, the grid and the pager; Stats and Streak each put
@@ -1250,7 +1259,6 @@ func _show_tab(key: String) -> void:
 	day_row.visible = home
 	streak_tab.visible = key == "streak"
 	stats_tab.visible = key == "stats"
-	swarm_tab.visible = key == "swarm"
 	_grid_slot.visible = deck
 	Motion.stop(_tab_tw)
 	if deck:
@@ -1294,7 +1302,7 @@ func _show_tab(key: String) -> void:
 	# over the tab.
 	Motion.stop(_pager_tw)
 	_pager.visible = false
-	var body: Control = {"streak": streak_tab, "stats": stats_tab, "swarm": swarm_tab}[key]
+	var body: Control = {"streak": streak_tab, "stats": stats_tab}[key]
 	body.refresh()
 	_tab_tw = Motion.appear(body, 0.0, 1.0, ENTER_FADE)
 	Analytics.track("tab_opened", {"tab": key})

@@ -1,0 +1,85 @@
+#!/usr/bin/env python3
+"""The Swarm test's voice (ui/menu/swarm_tab.gd): every SWARM_L* line of
+locale/ui.csv, in each language, spoken by ElevenLabs into
+assets/voice/swarm/<KEY>_<lang>.mp3, and into content/swarm_voice.json when
+each character starts (seconds), so the words appear as they are said
+(content/* is in the export's include filter; a loose json elsewhere is not).
+
+The key is $ELEVENLABS_API_KEY or ~/.config/elevenlabs/api_key (the fallback
+key, as tools/gen_sfx.py, when that one is out of quota); never stored here.
+A clip already on disk is kept unless --force.
+
+    python3 tools/gen_swarm_voice.py [--force]
+"""
+import base64
+import csv
+import json
+import os
+import pathlib
+import sys
+import urllib.error
+import urllib.request
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+OUT = ROOT / "assets/voice/swarm"
+# Veronica, Persona Studio's narrator (~/dev/hokipoki/persona-studio/voices.yaml).
+VOICE = "oFnUs65XPN5XcT0txEbR"
+MODEL = "eleven_multilingual_v2"
+LANGS = ["en", "pt", "es"]
+
+
+def keys() -> list[str]:
+    out = []
+    for env, name in (("ELEVENLABS_API_KEY", "api_key"), ("ELEVENLABS_API_KEY_FALLBACK", "api_key_fallback")):
+        k = os.environ.get(env, "").strip()
+        p = pathlib.Path.home() / ".config/elevenlabs" / name
+        if not k and p.exists():
+            k = p.read_text().strip()
+        if k:
+            out.append(k)
+    if not out:
+        sys.exit("no ElevenLabs key: set ELEVENLABS_API_KEY or write ~/.config/elevenlabs/api_key")
+    return out
+
+
+def speak(text: str, lang: str) -> dict:
+    body = json.dumps({
+        "text": text, "model_id": MODEL,
+        "voice_settings": {"stability": 0.5, "similarity_boost": 0.75, "style": 0.15},
+    }).encode()
+    last = None
+    for k in keys():
+        req = urllib.request.Request(
+            f"https://api.elevenlabs.io/v1/text-to-speech/{VOICE}/with-timestamps?output_format=mp3_44100_128",
+            data=body, headers={"xi-api-key": k, "Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                return json.load(r)
+        except urllib.error.HTTPError as e:
+            last = f"{e.code} {e.read().decode(errors='replace')[:300]}"
+    sys.exit(f"ElevenLabs refused {text!r}: {last}")
+
+
+def main() -> None:
+    force = "--force" in sys.argv
+    OUT.mkdir(parents=True, exist_ok=True)
+    with open(ROOT / "locale/ui.csv", newline="") as f:
+        rows = [r for r in csv.DictReader(f) if r["keys"].startswith("SWARM_L")]
+    timing_path = ROOT / "content/swarm_voice.json"
+    timings = json.loads(timing_path.read_text()) if timing_path.exists() else {}
+    for row in rows:
+        for lang in LANGS:
+            text = row[lang].replace("\\n", " ")
+            mp3 = OUT / f"{row['keys']}_{lang}.mp3"
+            if mp3.exists() and mp3.stem in timings and not force:
+                continue
+            j = speak(text, lang)
+            mp3.write_bytes(base64.b64decode(j["audio_base64"]))
+            al = j.get("alignment") or {}
+            timings[mp3.stem] = {"text": text, "starts": [round(x, 3) for x in al.get("character_start_times_seconds", [])]}
+            timing_path.write_text(json.dumps(timings, ensure_ascii=False, indent=0))
+            print("spoke", mp3.name, len(al.get("characters", [])), "chars")
+
+
+if __name__ == "__main__":
+    main()

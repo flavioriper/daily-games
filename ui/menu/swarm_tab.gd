@@ -1,12 +1,16 @@
 extends Control
 
 ## A test (the user, 2026-11-04): a port of Persona Studio's swarm
-## (~/dev/hokipoki/persona-studio/static/home.html, "the swarm") as a special
-## tab of the first screen. It deliberately wears none of the game's paper:
-## a dark room, and a swarm of glowing particles that gathers into a face and
-## talks to the player. Nothing is wired to a brain; a short script plays the
-## agent's two screen tools (agent/tools.py `swarm` and `move`) so every look,
-## glance, move, visit and idle can be seen.
+## (~/dev/hokipoki/persona-studio/static/home.html, "the swarm"), opened from
+## the Swarm chip of the first screen's categories. It deliberately wears none
+## of the game's paper: the whole screen is a dark room with one small back
+## button, and a swarm of glowing particles gathers into a face and talks to
+## the player out loud (ElevenLabs clips, tools/gen_swarm_voice.py; the words
+## appear as they are said, and the voice's loudness drives the face and the
+## cloud). The soundtrack is held while it is open (Music.hold). Nothing is
+## wired to a brain; a short script plays the agent's two screen tools
+## (agent/tools.py `swarm` and `move`) so every look, glance, move, visit and
+## idle can be seen.
 ##
 ## Every dot is one unit of the same material, with a role: free (the cloud
 ## round the face, a few wandering the room), body (a shaded disc) or eye (two
@@ -22,6 +26,9 @@ extends Control
 
 const Pal = preload("res://core/palette.gd")
 const CozyTheme = preload("res://ui/theme.gd")
+const Icons = preload("res://ui/icons.gd")
+const Music = preload("res://core/music.gd")
+const SafeArea = preload("res://ui/safe_area.gd")
 const Motion = preload("res://core/motion.gd")
 
 const N := 1300
@@ -35,7 +42,12 @@ const COL_PD := Color8(36, 110, 70)
 const COL_EYE := Color8(246, 255, 248)
 const ROOM := Color("0b1510")
 const ROOM_DEEP := Color("040806")
-const RADIUS := 36
+const BACK := 64.0
+const VOICE_DIR := "res://assets/voice/swarm/"
+const VOICE_TIMES := "res://content/swarm_voice.json"
+const VOICE_BUS := "Swarm"
+
+signal closed
 
 enum Role { FREE, BODY, EYE }
 
@@ -130,6 +142,13 @@ var _line_t := 0.0
 var _line_len := 0.0
 var _think_t := 0.0
 var _pending_say := ""
+var _starts := PackedFloat32Array()  # when each character of the line is said
+var _voiced := false  # the line has a clip playing
+var _player: AudioStreamPlayer
+var _spectrum: AudioEffectSpectrumAnalyzerInstance
+var _times := {}
+var _back: Button
+var _insets := Vector2.ZERO
 
 # --- the drawing ---
 var _dots: MultiMesh
@@ -144,13 +163,10 @@ func _init() -> void:
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = true
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
-	var room := Panel.new()
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = ROOM
-	sb.set_corner_radius_all(RADIUS)
-	sb.anti_aliasing_size = 1.2
-	room.add_theme_stylebox_override("panel", sb)
+	var room := ColorRect.new()
+	room.color = ROOM
 	room.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	room.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(room)
@@ -205,13 +221,92 @@ func _init() -> void:
 	_log.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_log)
 
-	visibility_changed.connect(func() -> void: set_process(is_visible_in_tree()))
+	# The way out: small, in the top left corner, glass on the dark.
+	_back = Button.new()
+	_back.flat = true
+	_back.focus_mode = Control.FOCUS_NONE
+	for st in ["normal", "hover", "pressed", "hover_pressed", "disabled", "focus"]:
+		_back.add_theme_stylebox_override(st, StyleBoxEmpty.new())
+	_back.size = Vector2(BACK, BACK)
+	_back.pivot_offset = Vector2(BACK, BACK) * 0.5
+	_back.draw.connect(func() -> void:
+		var c := Vector2(BACK, BACK) * 0.5
+		_back.draw_circle(c, BACK * 0.5, Color(COL_PH, 0.10))
+		_back.draw_arc(c, BACK * 0.5 - 1.0, 0, TAU, 48, Color(COL_PH, 0.22), 2.0, true)
+		Icons.paint(_back, "chevron_left", Rect2(c - Vector2(14, 14), Vector2(28, 28)), Color(COL_PH, 0.9)))
+	_back.button_down.connect(func() -> void: Motion.bump(_back, 0.12))
+	_back.pressed.connect(close)
+	add_child(_back)
+
+	_player = AudioStreamPlayer.new()
+	_player.bus = VOICE_BUS
+	add_child(_player)
+
+	visible = false
 	set_process(false)
 
-## The menu calls this when the tab opens.
-func refresh() -> void:
+## Opens the room: the swarm gathers again from a loose field, the script
+## starts from its first line and the soundtrack waits.
+func open() -> void:
+	if visible:
+		return
+	_ensure_bus()
+	if _times.is_empty() and FileAccess.file_exists(VOICE_TIMES):
+		var parsed = JSON.parse_string(FileAccess.get_file_as_string(VOICE_TIMES))
+		if parsed is Dictionary:
+			_times = parsed
+	_seeded = false
+	_formed = false
+	_boot_t = 0.0
+	_step_i = -1
+	_step_wait = 0.0
+	_state = ""
+	_voice = false
+	_line = ""
+	_think_t = 0.0
+	_idle = ""
+	_look = {"look": "ahead"}
+	_place = {"to": "centre"}
+	_glance_back = null
+	_visit_back = null
+	_log.text = ""
+	_cv = Vector2.ZERO
+	Music.hold("swarm", true)
+	visible = true
 	set_process(true)
 	_last_active = _now
+	modulate.a = 0.0
+	Motion.appear(self, 0.0, 1.0, 0.25)
+
+func is_open() -> bool:
+	return visible
+
+func close() -> void:
+	if not visible:
+		return
+	_player.stop()
+	Music.hold("swarm", false)
+	visible = false
+	set_process(false)
+	closed.emit()
+
+func _exit_tree() -> void:
+	Music.hold("swarm", false)
+
+## The voice's own bus, with an analyser on it so the face can follow how
+## loud it is; it sends to Master, so the Sound switch still silences it.
+func _ensure_bus() -> void:
+	var at := AudioServer.get_bus_index(VOICE_BUS)
+	if at < 0:
+		AudioServer.add_bus()
+		at = AudioServer.bus_count - 1
+		AudioServer.set_bus_name(at, VOICE_BUS)
+		AudioServer.set_bus_send(at, "Master")
+		var fx := AudioEffectSpectrumAnalyzer.new()
+		fx.buffer_length = 0.1
+		fx.fft_size = AudioEffectSpectrumAnalyzer.FFT_SIZE_1024
+		AudioServer.add_bus_effect(at, fx)
+	_spectrum = AudioServer.get_bus_effect_instance(at, 0) as AudioEffectSpectrumAnalyzerInstance
 
 func _multimesh() -> MultiMesh:
 	var mm := MultiMesh.new()
@@ -262,6 +357,7 @@ static func _glow_texture() -> ImageTexture:
 
 func _seed() -> void:
 	_seeded = true
+	_insets = SafeArea.insets(self)
 	var w := size.x
 	var h := size.y
 	_R = minf(w, h) * 0.17
@@ -423,14 +519,28 @@ func _run_script(dt: float) -> void:
 			_line = tr(_pending_say)
 			_line_t = 0.0
 			_line_len = _line.length() / 16.0 + 0.3
+			_start_voice(_pending_say)
 			_state = "speaking"
 			_voice = true
 		return
 	if _state == "speaking":
 		_line_t += dt
-		var shown := int(_line_t * 16.0)
+		# A line that was voiced stays whole for its last beat.
+		var shown := int(_line_t * 16.0) if _starts.is_empty() else -1
+		var done := _line_t >= _line_len
+		if _voiced:
+			# The words appear as they are said, and the line ends with the clip.
+			var at := _player.get_playback_position() + AudioServer.get_time_since_last_mix()
+			shown = 0
+			while shown < _starts.size() and _starts[shown] <= at:
+				shown += 1
+			if not _player.playing:
+				shown = -1
+				_voiced = false
+				_line_len = _line_t + 0.25
+			done = false
 		_words.visible_characters = shown
-		if _line_t >= _line_len:
+		if done:
 			_state = ""
 			_voice = false
 			_words.visible_characters = -1
@@ -459,11 +569,44 @@ func _run_script(dt: float) -> void:
 	elif st.has("wait"):
 		_step_wait = float(st.wait)
 
-## How loud the voice is right now, 0..1: syllables at the reveal's pace,
-## quiet on spaces and stops.
+## The line's clip in the game's language (English when it has none), and
+## when each of its characters is said; without a clip the line is shown at
+## a reading pace and the level is made up.
+func _start_voice(key: String) -> void:
+	_voiced = false
+	_starts = PackedFloat32Array()
+	var lang := TranslationServer.get_locale().substr(0, 2)
+	for l in [lang, "en"]:
+		var stem := "%s_%s" % [key, l]
+		var path := VOICE_DIR + stem + ".mp3"
+		if not ResourceLoader.exists(path):
+			continue
+		var t: Dictionary = _times.get(stem, {})
+		if t.is_empty() or String(t.get("text", "")) != _line:
+			if l != lang:
+				continue  # English audio under other words would not match
+		_player.stream = load(path)
+		_player.play()
+		_voiced = true
+		for v in t.get("starts", []):
+			_starts.append(float(v))
+		if _starts.is_empty():
+			# No timings: spread the characters over the clip.
+			var n := _line.length()
+			var ln := _player.stream.get_length()
+			for i in n:
+				_starts.append(ln * i / maxf(n, 1.0))
+		return
+
+## How loud the voice is right now, 0..1: the clip's own loudness when one is
+## playing, else syllables at the reveal's pace, quiet on spaces and stops.
 func _voice_level() -> float:
 	if _state != "speaking":
 		return 0.0
+	if _voiced and _spectrum != null:
+		var m := _spectrum.get_magnitude_for_frequency_range(90.0, 4000.0)
+		var db := linear_to_db(maxf(m.x, m.y))
+		return clampf((db + 52.0) / 34.0, 0.0, 1.0)
 	var i := int(_line_t * 16.0)
 	if i >= _line.length():
 		return 0.0
@@ -759,7 +902,8 @@ func _render() -> void:
 	var wy := _c.y + _R * 1.55
 	_words.position = Vector2(clampf(_c.x - ww * 0.5, 40.0, size.x - ww - 40.0), minf(wy, size.y - _words.size.y - 30.0))
 	_words.modulate.a = 1.0 if _formed else 0.0
-	_log.position = Vector2(36, size.y - _log.size.y - 28.0)
+	_log.position = Vector2(36, size.y - _log.size.y - 28.0 - _insets.y)
+	_back.position = Vector2(28.0, 28.0 + _insets.x)
 
 # --- the player ---
 
