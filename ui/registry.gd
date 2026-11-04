@@ -700,6 +700,39 @@ const PUZZLES := [
 		],
 	},
 	{
+		"id": "biscuit",
+		"skill": "words",
+		"kind": "puzzle",
+		"title": "Biscuit Tin",
+		"blurb": "BT_BLURB",
+		"short": "BT_SHORT",
+		"motto": "BT_MOTTO",
+		"footer": "Tap · Spell · Bake",
+		# An open biscuit tin of broken pieces, two to four letters each:
+		# lay pieces on the plate until they spell words; four that spell a
+		# long word knit into a whole biscuit for the lid; every biscuit
+		# whole is the solve (puzzles/biscuit2d.gd). The tins are banked from
+		# wordfreq's words in the player's language (tools/build_biscuit.py,
+		# content/insane/biscuit*.json). The pieces are tapped on the board
+		# itself, so no tray and no actions row: the bulb rides the tools
+		# row, and the bin stays shut (a word found stays found).
+		"script": "res://puzzles/biscuit2d.gd",
+		"card": "res://ui/menu/cards/biscuit.gd",
+		"shell": "flat",
+		"tray": "none",
+		"bleed": true,
+		"level_card": true,
+		"actions": false,
+		"difficulties": [0, 1, 2, 3],
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "BT_LVL_0"},
+			{"difficulty": 1, "name": "Medium", "line": "BT_LVL_1"},
+			{"difficulty": 2, "name": "Hard", "line": "BT_LVL_2"},
+			{"difficulty": 3, "name": "Insane", "line": "BT_LVL_3"},
+		],
+	},
+	{
 		"id": "clues",
 		"skill": "words",
 		"kind": "puzzle",

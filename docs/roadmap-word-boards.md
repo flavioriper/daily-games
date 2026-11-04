@@ -97,7 +97,16 @@ selling their own game. Four sources were read from search summaries only
       that uses every letter. Levels: Easy four-letter dials; Medium five;
       Hard six, deeper dials; Insane *Rusty Lock*: one dial only turns one
       way.
-- [ ] **3. Biscuit Tin** (Quartiles). Twenty broken biscuit pieces, two to
+- [x] **3. Biscuit Tin** (Quartiles). Built 2026-11-04: spec
+      `docs/superpowers/specs/2026-11-04-biscuit-tin-design.md`, notes
+      `docs/agents/boards/biscuit-tin.md`. As proposed below, except: the
+      words come from wordfreq's lists (as Padlock's; Honeycomb's drop
+      every S word and stop at seven letters) and each tin carries its
+      words; a word scores 1/2/4/8 by its pieces and counts the moment the
+      plate spells it; stars rise with the points (3 at the line, 2 at
+      three fifths, 1 on the solve), the bulb's biscuit scoring nothing;
+      Easy holds 10-13-letter biscuits with at most one two-letter piece
+      each, Hard 8-10 with two or more. Twenty broken biscuit pieces, two to
       four letters each; tap pieces in order to make a word of one to four
       pieces; five whole biscuits of exactly four pieces are hidden; find
       all five and the tin is empty; shorter words score on the way. Runs
