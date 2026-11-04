@@ -35,7 +35,7 @@ const TRACKS: Array[Dictionary] = [
 	{"id": "village_square", "title": "Village Square"},
 ]
 ## The bar's resting place. The files sit at -20 LUFS, so this is low already.
-const VOLUME := 0.7
+const VOLUME := 0.4
 ## One track into the next when it runs out, and when Next is pressed.
 const CROSS := 2.5
 const CROSS_NEXT := 0.5
