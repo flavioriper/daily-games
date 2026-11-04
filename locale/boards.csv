@@ -3608,3 +3608,58 @@ BRAIN_SS_1,Look at the moss: a letter already matching the far bank is one you r
 BRAIN_SS_2,Vowels are the hinges: changing one usually opens more words than changing a consonant.,As vogais são as dobradiças: trocar uma costuma abrir mais palavras do que trocar uma consoante.,Las vocales son las bisagras: cambiar una suele abrir más palabras que cambiar una consonante.
 BRAIN_SS_3,"Work from both banks: think which words sit one letter from the far bank, then aim for one of them.",Pense pelas duas margens: veja que palavras ficam a uma letra da outra margem e mire numa delas.,Piensa desde las dos orillas: mira qué palabras quedan a una letra de la otra orilla y apunta a una.
 BRAIN_SS_4,A detour is not a loss: a stone that changes a letter twice can still be the shorter way round a dead end.,Um desvio não é perda: uma pedra que troca uma letra duas vezes ainda pode ser o caminho mais curto para sair de um beco.,Un desvío no es una pérdida: una piedra que cambia una letra dos veces aún puede ser el camino corto para salir de un callejón.
+FN_BLURB,"A garden bed with a letter on every fence post. String twine post to post to spell words, each starting where the last ended, until every post is in bloom.","Um canteiro com uma letra em cada estaca da cerca. Estique o barbante de estaca em estaca formando palavras, cada uma começando onde a anterior terminou, até todas as estacas florirem.","Un huerto con una letra en cada poste de la cerca. Tiende el cordel de poste en poste formando palabras, cada una empezando donde terminó la anterior, hasta que todos los postes florezcan."
+FN_SHORT,"String the posts,
+make them bloom.","Ligue as estacas,
+faça florir.","Une los postes,
+hazlos florecer."
+FN_MOTTO,Every post in bloom,Toda estaca em flor,Cada poste en flor
+FN_LVL_0,"A triangle, nine posts","Um triângulo, nove estacas","Un triángulo, nueve postes"
+FN_LVL_1,"A square, twelve posts","Um quadrado, doze estacas","Un cuadrado, doce postes"
+FN_LVL_2,"A pentagon, fifteen posts","Um pentágono, quinze estacas","Un pentágono, quince postes"
+FN_LVL_3,Gate: end on the gate post,Portão: termine na estaca do portão,Puerta: termina en el poste de la puerta
+FN_RULES,"%d posts stand round the bed, three on each of its %d sides, a letter on each. Tap posts, or drag across them, to string twine and spell a word of three letters or more. Two letters in a row never come from the same side. Tap the last post again, or the sign, to tie the word off.","%d estacas cercam o canteiro, três em cada um dos %d lados, cada uma com uma letra. Toque nas estacas, ou arraste por elas, para esticar o barbante e formar uma palavra de três letras ou mais. Duas letras seguidas nunca vêm do mesmo lado. Toque de novo na última estaca, ou na placa, para amarrar a palavra.","%d postes rodean el huerto, tres en cada uno de sus %d lados, cada uno con una letra. Toca los postes, o arrastra por ellos, para tender el cordel y formar una palabra de tres letras o más. Dos letras seguidas nunca salen del mismo lado. Toca otra vez el último poste, o el letrero, para atar la palabra."
+FN_RULES_CHAIN,Each new word starts on the post the last one ended on. A post twine has touched opens a daisy; letters may be used again. Every post in bloom finishes the garden.,Cada palavra nova começa na estaca onde a anterior terminou. Uma estaca tocada pelo barbante abre uma margarida; as letras podem se repetir. Todas as estacas em flor terminam o jardim.,Cada palabra nueva empieza en el poste donde terminó la anterior. Un poste que toca el cordel abre una margarita; las letras se pueden repetir. Todos los postes en flor terminan el jardín.
+FN_RULES_GATE,Gate: the last word must end on the gate post. Every post in bloom is not enough until the twine ends there.,Portão: a última palavra precisa terminar na estaca do portão. Todas as estacas em flor não bastam até o barbante terminar ali.,Puerta: la última palabra debe terminar en el poste de la puerta. Todos los postes en flor no bastan hasta que el cordel termine ahí.
+FN_RULES_PAR,Today's garden can be done in %d words. Three stars up to %d.,O jardim de hoje pode ser feito com %d palavras. Três estrelas até %d.,El jardín de hoy se puede hacer con %d palabras. Tres estrellas hasta %d.
+FN_RULES_UNDO,"Undo takes back the last letter, or unties the last word; the bin unties them all. Only the words tied when the garden blooms count.","Desfazer tira a última letra, ou desamarra a última palavra; a lixeira desamarra todas. Só contam as palavras amarradas quando o jardim floresce.","Deshacer quita la última letra, o desata la última palabra; la papelera las desata todas. Solo cuentan las palabras atadas cuando el jardín florece."
+FN_RULES_HINT,Stuck? The bulb rings the posts the next word starts and ends on and says how long it is; press it again and it strings the word for you.,Travou? A lâmpada marca as estacas onde a próxima palavra começa e termina e diz o tamanho dela; toque de novo e ela estica a palavra para você.,¿Atascado? La bombilla marca los postes donde la próxima palabra empieza y termina y dice cuánto mide; tócala otra vez y tiende la palabra por ti.
+FN_SAY_SIDE,Not two in a row from one side.,Nunca duas seguidas do mesmo lado.,Nunca dos seguidas del mismo lado.
+FN_SAY_SHORT,A word has three letters at least.,Uma palavra tem pelo menos três letras.,Una palabra tiene al menos tres letras.
+FN_SAY_UNKNOWN,%s is not a word the garden knows.,%s não é uma palavra que o jardim conhece.,%s no es una palabra que el jardín conozca.
+FN_SAY_AGAIN,%s is tied already.,%s já está amarrada.,%s ya está atada.
+FN_SAY_TIED,%s +%d,%s +%d,%s +%d
+FN_SAY_TIED_NONE,%s: no new post.,%s: nenhuma estaca nova.,%s: ningún poste nuevo.
+FN_SAY_OPEN,Every post in bloom: now end on the gate.,Todas as estacas em flor: agora termine no portão.,Todos los postes en flor: ahora termina en la puerta.
+FN_SAY_UNTIED,%s untied.,%s desamarrada.,%s desatada.
+FN_READ,"%d letters, from %s to %s.","%d letras, de %s até %s.","%d letras, de %s a %s."
+FN_READ_BACK,Hard to go on from %s: untie it first.,Difícil seguir a partir de %s: desamarre primeiro.,Difícil seguir desde %s: desátala primero.
+FN_PERFECT,In bloom at par!,Em flor no par!,¡En flor en el par!
+FN_DONE,Every post in bloom!,Toda estaca em flor!,¡Cada poste en flor!
+FN_SIGN_START,Tap a post to start,Toque numa estaca para começar,Toca un poste para empezar
+FN_SIGN_NEXT,Next word from %s,Próxima palavra a partir de %s,Próxima palabra desde %s
+FN_SIGN_DONE,In bloom,Em flor,En flor
+FN_COUNT_ONE,1 post to go,Falta 1 estaca,Falta 1 poste
+FN_COUNT_N,%d posts to go,Faltam %d estacas,Faltan %d postes
+FN_COUNT_GATE,"End a word on %s, the gate","Termine uma palavra em %s, o portão","Termina una palabra en %s, la puerta"
+FN_COUNT_END,end on %s,termine em %s,termina en %s
+FN_PILL_ONE,1 word · par %d,1 palavra · par %d,1 palabra · par %d
+FN_PILL_N,%d words · par %d,%d palavras · par %d,%d palabras · par %d
+FN_WIN_ONE,In bloom with 1 word.,Em flor com 1 palavra.,En flor con 1 palabra.
+FN_WIN_N,In bloom with %d words.,Em flor com %d palavras.,En flor con %d palabras.
+FN_WIN_AT_PAR,At par!,No par!,¡En el par!
+FN_WIN_PAR_WAS,Par was %d.,O par era %d.,El par era %d.
+HTP_FN_STRING,String a word,Forme uma palavra,Forma una palabra
+HTP_FN_STRING_BODY,Tap posts to string twine and spell a word. Two letters in a row never come from one side. Tap the last post again to tie it off.,Toque nas estacas para esticar o barbante e formar uma palavra. Duas letras seguidas nunca vêm do mesmo lado. Toque de novo na última estaca para amarrar.,Toca los postes para tender el cordel y formar una palabra. Dos letras seguidas nunca salen del mismo lado. Toca otra vez el último poste para atarla.
+HTP_FN_CHAIN,Carry on from the last letter,Continue pela última letra,Sigue desde la última letra
+HTP_FN_CHAIN_BODY,The next word starts on the post the last one ended on. Posts on that same side wait their turn.,A próxima palavra começa na estaca onde a anterior terminou. As estacas daquele mesmo lado esperam a vez.,La próxima palabra empieza en el poste donde terminó la anterior. Los postes de ese mismo lado esperan su turno.
+HTP_FN_BLOOM,Make every post bloom,Faça toda estaca florir,Haz florecer cada poste
+HTP_FN_BLOOM_BODY,A post the twine touches opens a daisy. Use every post to finish; today it can be done in %d words.,Uma estaca tocada pelo barbante abre uma margarida. Use todas as estacas para terminar; hoje dá para fazer com %d palavras.,Un poste que toca el cordel abre una margarita. Usa todos los postes para terminar; hoy se puede hacer con %d palabras.
+HTP_FN_GATE,The gate,O portão,La puerta
+HTP_FN_GATE_BODY,On Insane one post is a gate: the last word must end on it.,No Insano uma estaca é um portão: a última palavra precisa terminar nela.,En Insano un poste es una puerta: la última palabra debe terminar en él.
+HTP_FN_HINT,Ask the bulb,Peça à lâmpada,Pide a la bombilla
+HTP_FN_HINT_BODY,The bulb rings where the next word starts and ends. Press it again and it strings the word for you.,A lâmpada marca onde a próxima palavra começa e termina. Toque de novo e ela estica a palavra para você.,La bombilla marca dónde empieza y termina la próxima palabra. Tócala otra vez y tiende la palabra por ti.
+BRAIN_FN_1,Long words do the work: one word that touches six or seven posts leaves the next one an easy job.,Palavras longas fazem o trabalho: uma que toca seis ou sete estacas deixa a próxima fácil.,Las palabras largas hacen el trabajo: una que toca seis o siete postes le deja fácil la siguiente.
+BRAIN_FN_2,"Look at the rare letters first, the ones on few words, and build a word through them.","Olhe primeiro as letras raras, as que estão em poucas palavras, e monte uma palavra que passe por elas.","Mira primero las letras raras, las que están en pocas palabras, y arma una palabra que pase por ellas."
+BRAIN_FN_3,"Think about the end: a word finishing on a common first letter, like S or T, keeps the next word open.","Pense no final: uma palavra que termina numa letra inicial comum, como C ou P, deixa a próxima em aberto.","Piensa en el final: una palabra que termina en una letra inicial común, como C o P, deja abierta la siguiente."
+BRAIN_FN_4,Say the posts' letters in pairs across the bed: sounds that go together jump out as word parts.,"Fale as letras das estacas em pares, de um lado a outro: os sons que combinam saltam como pedaços de palavras.","Di las letras de los postes en pares, de un lado a otro: los sonidos que combinan saltan como trozos de palabras."

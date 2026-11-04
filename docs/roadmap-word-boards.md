@@ -139,7 +139,17 @@ selling their own game. Four sources were read from search summaries only
       Hard five letters; Insane *Slippery*: a stone may also swap two
       neighbours. Later, when the night can write again, a clue a stone
       makes a Hard band that plays like Crossclimb.
-- [ ] **5. Garden Fence** (Letter Boxed). Twelve letters on the posts of a
+- [x] **5. Garden Fence** (Letter Boxed). Built 2026-11-04: spec
+      `docs/superpowers/specs/2026-11-04-garden-fence-design.md`, notes
+      `docs/agents/boards/garden-fence.md`. As proposed below, except: the
+      words come from wordfreq's lists (Biscuit Tin's pruned cache, with
+      three-letter words added) and one list a language ships, filtered by
+      the day's posts (per-fence lists were 4-5 MB a band); the par is the
+      seed chain's length proved over every word the fence takes, so Hard
+      (the pentagon) is par 3 and the others par 2; Insane is the square
+      with the gate; three stars up to par + 1, words tied plus the fewest
+      to go; tap or drag post to post, tap the last post (or the sign) to
+      tie. Twelve letters on the posts of a
       square fence, three a side; string words post to post, never two in a
       row from one side, each word starting with the last letter of the
       one before; use every post. Longest round here (3-6 min). Runs on

@@ -82,6 +82,8 @@ const CARDS := {
 	"biscuit": ["meadow", 1.6, Vector2(0.62, 0.48)],
 	# Stepping Stones' brook across the meadow, under its willows.
 	"stones": ["meadow", 1.6, Vector2(0.48, 0.66)],
+	# Garden Fence's bed on the meadow's lawn, by the cottage garden.
+	"fence": ["meadow", 1.6, Vector2(0.38, 0.62)],
 	# Five Clues' shed wall by the meadow's garden.
 	"clues": ["meadow", 1.6, Vector2(0.20, 0.50)],
 	# Mini Golf's course is laid out on the meadow, under its cottages.

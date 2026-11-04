@@ -768,6 +768,41 @@ const PUZZLES := [
 		],
 	},
 	{
+		"id": "fence",
+		"skill": "words",
+		"kind": "puzzle",
+		"title": "Garden Fence",
+		"blurb": "FN_BLURB",
+		"short": "FN_SHORT",
+		"motto": "FN_MOTTO",
+		"footer": "String · Tie · Bloom",
+		# A garden bed with a low fence round it, three posts a side and a
+		# letter on each: string twine post to post to spell words, never two
+		# posts in a row from one side, each word starting where the last
+		# ended, until every post is in bloom (puzzles/fence2d.gd). The
+		# fences are banked from wordfreq's words in the player's language
+		# (tools/build_fence.py, content/insane/fence*.json), and any word
+		# the garden knows that the fence can string counts
+		# (content/fence_words.json). The posts are tapped on the board
+		# itself, so no tray and no actions row; Undo takes back a letter or
+		# a word, and the bin asks before it unties them all.
+		"script": "res://puzzles/fence2d.gd",
+		"card": "res://ui/menu/cards/fence.gd",
+		"shell": "flat",
+		"tray": "none",
+		"bleed": true,
+		"level_card": true,
+		"actions": false,
+		"difficulties": [0, 1, 2, 3],
+		"pick_difficulty": true,
+		"levels": [
+			{"difficulty": 0, "name": "Easy", "line": "FN_LVL_0"},
+			{"difficulty": 1, "name": "Medium", "line": "FN_LVL_1"},
+			{"difficulty": 2, "name": "Hard", "line": "FN_LVL_2"},
+			{"difficulty": 3, "name": "Insane", "line": "FN_LVL_3"},
+		],
+	},
+	{
 		"id": "clues",
 		"skill": "words",
 		"kind": "puzzle",
