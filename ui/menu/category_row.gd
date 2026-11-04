@@ -41,6 +41,8 @@ const IDLE_INK := Color("6e6057")
 const SPRIG_A := Color(0.55, 0.68, 0.35)
 const TABS := [
 	{"key": "home", "label": "BAR_HOME", "icon": "puzzle", "live": true},
+	# A test (2026-11-04): the glowing swarm, ui/menu/swarm_tab.gd.
+	{"key": "swarm", "label": "BAR_SWARM", "icon": "sparkle", "live": true},
 ]
 
 var current := "home"

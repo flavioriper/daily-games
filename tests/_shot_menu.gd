@@ -55,6 +55,10 @@ var _turns_left := 1
 var _second_turn_at := INF
 var _settle := PAGE2_SETTLE
 var _tab_arg := ""
+## The swarm tab forms and starts talking over seconds: its shot waits, and
+## one is saved on the way (/tmp/shot_menu_swarm_mid.png).
+var _second_at := 0.0
+var _mid_saved := false
 
 func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
@@ -72,7 +76,7 @@ func _initialize() -> void:
 		_turns_left = 3
 		_settle = PAGE2_SETTLE + 3.2
 	for a in args:
-		if a in ["streak", "stats", "arcade", "versus"] or a == "diff" or a.begins_with("diff="):
+		if a in ["streak", "stats", "arcade", "versus", "swarm"] or a == "diff" or a.begins_with("diff="):
 			_tab_arg = a
 			break
 	# The difficulty sheet rings the row last played, so the `diff` shot
@@ -142,10 +146,16 @@ func _process(delta: float) -> bool:
 			print("saved /tmp/shot_menu_page2.png")
 			return true
 	elif _phase == 1 and not _tab_arg.is_empty():
-		if _t >= SECOND_AT - TAB_IDLE:
+		if _second_at == 0.0:
+			_second_at = SECOND_AT + (8.0 if _tab_arg == "swarm" else 0.0)
+		if _tab_arg == "swarm" and not _mid_saved and _t >= _second_at - 5.0:
+			_mid_saved = true
+			RenderingServer.force_draw()
+			root.get_texture().get_image().save_png("/tmp/shot_menu_swarm_mid.png")
+		if _t >= _second_at - TAB_IDLE:
 			_idle.append(delta * 1000.0)
 			_draws = maxi(_draws, int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)))
-		if _t >= SECOND_AT:
+		if _t >= _second_at:
 			var mean3 := 0.0
 			for ms in _idle:
 				mean3 += ms

@@ -825,3 +825,12 @@ PNY_Q_RACK_MOON_3,Four. I counted.,Quatro. Eu contei.,Cuatro. Conté.
 MUSIC_TRACK_OF,Track %d of %d,Faixa %d de %d,Pista %d de %d
 MUSIC_PAUSED,Paused,Pausado,En pausa
 MUSIC_HELD,Waits while this game plays,Espera durante este jogo,Espera durante este juego
+BAR_SWARM,Swarm,Enxame,Enjambre
+SWARM_L1,"Hello. I'm made of light.","Olá. Eu sou feito de luz.","Hola. Estoy hecho de luz."
+SWARM_L2,Every spark you see is part of me.,Cada faísca que você vê é parte de mim.,Cada chispa que ves es parte de mí.
+SWARM_L3,I can go anywhere on your screen.,Posso ir a qualquer lugar da sua tela.,Puedo ir a cualquier parte de tu pantalla.
+SWARM_L4,And look wherever I like.,E olhar para onde eu quiser.,Y mirar adonde quiera.
+SWARM_L5,"Down here for a moment, then back.","Aqui embaixo por um instante, e já volto.","Aquí abajo un momento, y vuelvo."
+SWARM_L6,"Touch anywhere, and I'll look.","Toque em qualquer lugar, e eu olho.","Toca donde quieras, y miraré."
+SWARM_L7,I'll just look around for a while.,Vou só dar uma olhada por aí.,Voy a mirar un poco por ahí.
+SWARM_L8,Getting a little sleepy…,Ficando com um pouco de sono…,Me está dando sueño…

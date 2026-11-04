@@ -48,6 +48,7 @@ const Icons = preload("res://ui/icons.gd")
 const Analytics = preload("res://core/analytics.gd")
 const StreakTab = preload("res://ui/menu/streak_tab.gd")
 const StatsTab = preload("res://ui/menu/stats_tab.gd")
+const SwarmTab = preload("res://ui/menu/swarm_tab.gd")
 const PagerPill = preload("res://ui/menu/pager_pill.gd")
 const Streak = preload("res://core/streak.gd")
 const Haptics = preload("res://core/haptics.gd")
@@ -185,6 +186,7 @@ var day_row: Control
 var bar: Control
 var streak_tab: Control
 var stats_tab: Control
+var swarm_tab: Control
 var _tab := "home"
 var _tab_tw: Tween
 var _backdrop: ColorRect
@@ -454,6 +456,10 @@ func _build_list() -> void:
 	stats_tab.open_streak.connect(func() -> void: _show_tab("streak"))
 	streak_tab.open_stats.connect(func() -> void: _show_tab("stats"))
 	root.add_child(stats_tab)
+	swarm_tab = SwarmTab.new()
+	swarm_tab.name = "SwarmTab"
+	swarm_tab.visible = false
+	root.add_child(swarm_tab)
 
 	# The pager: prev, dots, next, in their own paper pill -- see PAGER_MID
 	# above for why it is a pill and not a bare row, and PER_PAGE above and
@@ -1244,6 +1250,7 @@ func _show_tab(key: String) -> void:
 	day_row.visible = home
 	streak_tab.visible = key == "streak"
 	stats_tab.visible = key == "stats"
+	swarm_tab.visible = key == "swarm"
 	_grid_slot.visible = deck
 	Motion.stop(_tab_tw)
 	if deck:
@@ -1287,7 +1294,7 @@ func _show_tab(key: String) -> void:
 	# over the tab.
 	Motion.stop(_pager_tw)
 	_pager.visible = false
-	var body: Control = {"streak": streak_tab, "stats": stats_tab}[key]
+	var body: Control = {"streak": streak_tab, "stats": stats_tab, "swarm": swarm_tab}[key]
 	body.refresh()
 	_tab_tw = Motion.appear(body, 0.0, 1.0, ENTER_FADE)
 	Analytics.track("tab_opened", {"tab": key})
