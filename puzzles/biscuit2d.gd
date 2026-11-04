@@ -166,6 +166,7 @@ var _ghosts: ArrayMesh
 var _ghosts_key := ""
 var _reading_mesh: ArrayMesh
 var _bake_mesh: ArrayMesh
+var _bake_key := ""
 var _pill_mesh: ArrayMesh
 var fx: Node
 
@@ -390,7 +391,8 @@ func _bake(b: int, parts: Array, land: float, free: bool) -> void:
 		else:
 			_say_now("BT_SAY_BISCUIT", _st.written(_st.biscuit_words[b]).to_upper(), State.POINTS[State.PLATE])
 		if not free:
-			_floats.append({"text": "+%d" % State.POINTS[State.PLATE], "at": _t + CLOSE, "pos": _plate_mid()}))
+			# above the biscuit as it knits, clear of its word
+			_floats.append({"text": "+%d" % State.POINTS[State.PLATE], "at": _t + CLOSE, "pos": _plate_mid() - Vector2(0.0, _l("cell_h") * 0.6)}))
 	_later(land + CLOSE + KNIT * 0.5, func() -> void:
 		for i in parts:
 			_baking.erase(i)
@@ -1030,10 +1032,15 @@ func _draw_bakes(font: Font) -> void:
 			rad = lerpf(big, r, q)
 		if rad <= 0.0:
 			continue
-		var b := Face.Builder.new()
-		Art.whole(b, Vector2.ZERO, 1.0, int(bake.b))
-		_bake_mesh = b.mesh()
-		draw_set_transform(at, (e - KNIT) * 3.0 if e > KNIT and not Motion.reduce else 0.0, Vector2.ONE * rad)
+		# built once at its full size (strokes and holes keep their weight),
+		# drawn scaled down as it flies
+		var key := "%d:%d" % [int(bake.b), roundi(big)]
+		if key != _bake_key or _bake_mesh == null:
+			_bake_key = key
+			var b := Face.Builder.new()
+			Art.whole(b, Vector2.ZERO, big, int(bake.b))
+			_bake_mesh = b.mesh()
+		draw_set_transform(at, (e - KNIT) * 3.0 if e > KNIT and not Motion.reduce else 0.0, Vector2.ONE * (rad / big))
 		draw_mesh(_bake_mesh, null)
 		draw_set_transform(Vector2.ZERO)
 		if e < KNIT + TO_LID * 0.3 and rad > big * 0.4:

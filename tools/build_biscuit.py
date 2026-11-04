@@ -60,6 +60,19 @@ BANDS = [
 SHARE = [0.15, 0.15, 0.12, 0.12]
 # How often one word may be a biscuit in a bank.
 SEED_CAP = 2
+# Stems a credited word may not start with, past Padlock's lists: their
+# inflections are crude or cruel and a biscuit is written out on the lid
+# (a scan of the first build, 2026-11-04, found ESTUPROU and VAGABUNDA as
+# biscuits and PIROCAS, PENES, PERRAS among the words).
+BISCUIT_STEMS = {
+    "en": ("crapp", "homophob"),
+    "pt": ("estupr", "vagabund", "esporr", "piroc", "bundao"),
+    "es": ("drogad", "penes"),
+}
+# A rude word this long or longer takes its inflections with it: a word
+# that starts with it and runs on by three letters at most (BUNDA, BUNDAO;
+# TRANSA, TRANSAS). Shorter ones would take innocent words (ROLA, ROLAR).
+INFLECT = 5
 
 
 def lexicon(dicts, lang, cache):
@@ -118,6 +131,21 @@ def cut(rng, word, plo, phi, most_two, least_two):
     return [word[:a], word[a:a + b], word[a + b:a + b + c], word[a + b + c:]]
 
 
+def proper(lex, lang, bad):
+    """`lex` without the inflections of rude words and the board's own
+    stems (applied after the cache, so a change here needs no Hunspell
+    pass)."""
+    long_bad = [b for b in bad if len(b) >= INFLECT]
+    out = {}
+    for w, v in lex.items():
+        if w.startswith(BISCUIT_STEMS[lang]):
+            continue
+        if any(w.startswith(b) and len(w) - len(b) <= 3 for b in long_bad):
+            continue
+        out[w] = v
+    return out
+
+
 def prefixes(lex):
     """Every prefix of every word in `lex`, for the search to prune on."""
     out = set()
@@ -152,8 +180,8 @@ def credit(pieces, lex, pre):
 
 
 def build(dicts, lang, cache):
-    lex = lexicon(dicts, lang, cache)
     bad = rude(dicts, lang) | EXTRA_RUDE[lang]
+    lex = proper(lexicon(dicts, lang, cache), lang, bad)
     suffix = "" if lang == "en" else "." + lang
     for band, (bank, nb, (wlo, whi), (plo, phi), most_two, least_two, crumbs) in enumerate(BANDS):
         rng = random.Random(f"biscuit|{lang}|{bank}")

@@ -54,17 +54,24 @@ func _ready() -> void:
 	add_child(_over)
 	_deal()
 
-## The tin the pages show: a fixed entry of the band's bank, never today's.
+## The tin the pages show: a fixed entry of the band's bank, never today's,
+## and one whose pieces make a short word for the first page (the next
+## entry that does, should it not).
 static func tin(the_band: int) -> Dictionary:
 	var bank: String = State.BANKS[the_band]
 	var pool := InsaneBank.boards(bank)
 	if pool.is_empty():
 		return State.SPARE_DAY
 	var today := InsaneBank.pick(bank, 0)
-	var at := ENTRY % pool.size()
-	if pool[at] == today:
-		at = (at + 1) % pool.size()
-	return pool[at]
+	for step in mini(pool.size(), 40):
+		var at := (ENTRY + step) % pool.size()
+		if pool[at] == today:
+			continue
+		var st = State.new()
+		st.load_day(pool[at])
+		if not short_word(st).is_empty():
+			return pool[at]
+	return pool[ENTRY % pool.size()]
 
 func _deal() -> void:
 	if _board != null:

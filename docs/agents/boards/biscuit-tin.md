@@ -22,7 +22,14 @@
   every ordered run of one to four pieces with a prefix-pruned search, and
   keeps a deal only when the runs of four that spell a word are exactly its
   biscuits, every piece differs, and no piece and no run of two or three is
-  in the rude list. Honeycomb's own lists could not serve (no S, seven
+  in the rude list. On top of Padlock's filters, `proper()` drops the
+  inflections of every rude word of five letters or more (a word that
+  starts with one and runs three letters past it: BUNDAO, TRANSAS, PERRAS)
+  and the board's `BISCUIT_STEMS`: the first build's scan found ESTUPROU
+  and VAGABUNDA as biscuits, which the lid writes out. It costs a few
+  innocent words (CRACKER, HEROINE, DROGARIA, TRANSACAO). A change to the
+  filters wants a rebuild, then the substring scan of every biscuit and
+  credited word against the rude lists, read by eye. Honeycomb's own lists could not serve (no S, seven
   letters at most). 365 tins a band in every language; Spanish Hard takes
   ~110k tries (two-letter pieces repeat), the whole build ~10 min.
 - **Points and stars**: `line` = the biscuits' points and `SHARE`
@@ -46,7 +53,7 @@
   fifth, take back, clear, a word and again, a biscuit, the bulb; 0 bad).
 - Harness: `tests/_shot_biscuit.gd -- <dir> d=<0..3> [tut=<page> at=<frames>|card]`
   (zsh: split the args, `${=args}`). Draw calls (opengl3_angle, 810x1440):
-  121-169 in play, 151-155 on the win, 217-257 a tutorial page.
+  121-169 in play on all four bands, 151-155 on the win, 217-257 a tutorial page.
 - Owed: the user's eye and ear (every cue unheard), a phone, pt/es read by
   a native speaker, the word lists read by a person (rare words credited:
   `hame`, `tiro`), the website's game list (`web/scripts/gen_games.py`)

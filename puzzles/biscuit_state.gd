@@ -26,11 +26,13 @@ const TWO := 0.6
 ## The most pieces on the plate.
 const PLATE := 4
 ## Should a bank be missing, a tin every language can spell (folded).
+## Its one biscuit is CA+RA+MBO+LA; CARA and CARAMBOLA's own pieces
+## spell the rest.
 const SPARE_DAY := {
-	"pieces": ["ca", "ram", "ra", "ral", "ane", "pi", "ma", "nos"],
+	"pieces": ["ca", "ra", "mbo", "la", "pa", "to"],
 	"biscuits": [[0, 1, 2, 3]],
-	"words": [["caramelo", 3], ["carambola", 3]],
-	"fair": [0],
+	"words": [["cara", 2], ["carambola", 4], ["pato", 2]],
+	"fair": [0, 1, 2],
 	"line": 8,
 }
 
