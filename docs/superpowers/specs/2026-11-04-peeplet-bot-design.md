@@ -57,13 +57,15 @@ documents, no calendar, no email, no twin.
 3. "Forget that" works, out loud and from a list the player can read.
 4. English, Portuguese and Spanish, following the game's locale.
 5. The face does what it says: look, glance, move and idle through the same
-   two tools the demo's agent has, reworded for a phone.
+   two tools the demo's agent has, reworded for a phone; and two more of
+   Daily's own (2026-11-05): draw a picture with its dots, and grow or thin
+   the swarm.
 6. Nothing in the game dials out from a harness or the suite.
 
 ## Non-goals
 
 - Documents, RAG, email, calendar, reaching a real person: the agent tools
-  of the demo are not ported. The bot has the two screen tools and memory.
+  of the demo are not ported. The bot has the four screen tools and memory.
 - A Peeplet body, a typed chat, a text composer. Voice only; subtitles are
   a readout, not an input.
 - Accounts: the identity is Daily's anonymous Firebase uid. Memory does not
@@ -149,7 +151,8 @@ becomes `bot`; the locale key `BAR_SWARM` is reworded).
   holds `Music.hold("bot", true)` and `Power` (below) while open. Opening
   it starts a call; the back button ends it. Nothing else is on screen.
 - `bot/swarm_face.gd`: the body, cut out of today's `ui/menu/swarm_tab.gd`
-  (the sim, the shaders, the bloom, `apply_swarm`, `apply_move`, the
+  (the sim, the shaders, the bloom, `apply_swarm`, `apply_move`,
+  `apply_draw`, `apply_dots` and `ui/menu/swarm_picture.gd`, the
   states listening / thinking / speaking, the level from the Swarm bus's
   analyser). The tab's `SCRIPT` replay stays as the face's offline mode:
   it is what a harness and the suite run, and what a player sees when the
@@ -194,7 +197,7 @@ Persona Studio minus the studio: keep `voice/` (the call, Flux, the steer,
 the pace, the clip player, foley stripped of room sounds), `policy/`
 (see below), `memory/` (gate, embed, recall, consolidate, turn), the parts
 of `studio/` a call needs (card, brains, clips, prices, ledger), `agent/tools.py`
-cut to the two screen tools. Drop the pages, compile, calibration UI, Google,
+cut to the screen tools (the two, plus `draw` and `dots`). Drop the pages, compile, calibration UI, Google,
 documents, ingest, Neon, the show and talk views, the desk.
 
 - **Auth.** `/ws/bot` takes the Firebase id token in the first message
@@ -260,6 +263,41 @@ documents, ingest, Neon, the show and talk views, the desk.
   `move` keeps `centre`, the sides, the corners and `point`. `cursor`,
   `input` and `panel:` go, with the `[screen:` note. The client's
   `apply_swarm` and `apply_move` already take the rest.
+- **Two more screen tools** (the user, 2026-11-05: "let the agent draw any
+  pixel image using the particles", "also add tool to agent spawn more
+  particles, or despawn it"). The phone side is built and probed in the
+  Swarm tab (`apply_draw`, `apply_dots`, `ui/menu/swarm_picture.gd`); the
+  server validates and passes the command through as `tool {name, cmd}`,
+  as it does `swarm` and `move`. The phone answers a bad command with an
+  error of its own, so the server's checks are the cheap ones.
+  - `draw`: "Draw a picture with your dots: your face comes apart into it
+    where you are, and comes back when you clear it or after `seconds`.
+    Use it when a picture says it better than words, or when asked to show
+    or draw something. Pass one of: `name` = `bank:<id>`, one of these
+    ready pictures: <the ids of `content/pixel_garden.json`, read at
+    deploy>, or `today` for today's puzzle picture; or `rows` + `palette`
+    to draw your own: rows are strings of equal length, one character a
+    pixel, `.` for empty; palette maps every other character to `#rrggbb`
+    or a colour name (red, pink, white, yellow, orange, green, blue, sky,
+    purple, brown, ...). Keep your own drawings 8 to 24 pixels a side, bold
+    and bright: black does not show on the dark screen. `size` 0.2 to 0.95
+    of the screen (default 0.7); `seconds` 1 to 60; `clear: true` to bring
+    your face back. Your eyes are gone while you draw; move still moves
+    the picture." Server checks: one source only; rows 1 to 96 long, all
+    the same length, every character in the palette, palette values a hex
+    or a name from `Pal.PG_BEADS`; a `bank:` id in the list. A `png`
+    (base64) source is accepted by the phone for a later server-made
+    picture; the model is never offered it.
+  - `dots`: "Grow or thin your swarm: `add` or `remove` a number of dots,
+    or set a `total`, from 691 to 2400 (you start at 1300). New dots come
+    `from` your face (a burst, the default), the `edges` (drifting in) or
+    a `point` (x, y 0 to 1); dots go `to` nothing (`fade`, the default),
+    into your `face`, or off the `edges`. Only the cloud round you goes,
+    never your face or a picture. More dots let a picture be more
+    detailed." Server checks: exactly one of add, remove, total, each 1 to
+    2400; `from`/`to` in their words.
+  The result the model hears is the phone's own summary when the protocol
+  carries one back; until then the server's, from the validated command.
 - **Language.** Flux `flux-general-en` for English, `flux-general-multi`
   otherwise; the prompt and the clips in the player's language; ElevenLabs
   v4 turbo is multilingual. The "forget that" and "that's wrong" patterns

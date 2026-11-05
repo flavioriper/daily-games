@@ -34,6 +34,22 @@ extends Control
 ## again at a quarter of the size into a SubViewport, blurred in a second,
 ## and added over the screen. Eleven draw calls for the swarm whatever its
 ## size, and no draw call grows with N.
+##
+## Two more tools (2026-11-05, the user: "let the agent draw any pixel
+## image using the particles", "also add tool to agent spawn more
+## particles, or despawn it"):
+## - `apply_draw`: the face comes apart and its dots, and the cloud's, fly to
+##   the pixels of a picture (ui/menu/swarm_picture.gd: a Pixel Garden
+##   picture by name, the night's picture, a grid the agent wrote, or a png),
+##   each turning the pixel's colour and square as it lands; it travels with
+##   the move tool, stays until cleared or for `seconds`, then the face forms
+##   again. The rings, threads and halo fade and the bloom drops while it
+##   shows, so the pixels read.
+## - `apply_dots`: more dots (born at the face, a point or drifting in from
+##   the edges, fading in) or fewer (cloud dots only, fading where they are,
+##   swallowed by the face or flying off the edges), between MIN_LIVE and
+##   CAP. A slot is reused once its dot has died; the MultiMesh is sized
+##   CAP and draws only the slots in use, so the draw calls stay the same.
 
 const Pal = preload("res://core/palette.gd")
 const CozyTheme = preload("res://ui/theme.gd")
@@ -42,7 +58,18 @@ const Music = preload("res://core/music.gd")
 const SafeArea = preload("res://ui/safe_area.gd")
 const Motion = preload("res://core/motion.gd")
 
+const Picture = preload("res://ui/menu/swarm_picture.gd")
+
+## The dots the room opens with, and the most the dots tool may raise them
+## to (every slot a step and a draw walk is GDScript, so CAP is the brake).
 const N := 1300
+const CAP := 2400
+const BODY_N := int(N * 0.42)
+const EYE_N := int(N * 0.05)
+## The fewest live dots: the face's, and a thin cloud.
+const MIN_LIVE := BODY_N + EYE_N + 80
+const FADE_IN := 0.6
+const PIC_SIZE := 0.7
 const STEP := 1.0 / 60.0
 const IDLE_MS := 5000.0
 ## The web's dark theme (static/home.html, :root dark): the agent's green,
@@ -75,7 +102,8 @@ const VOICE_BUS := "Swarm"
 
 signal closed
 
-enum Role { FREE, BODY, EYE }
+enum Role { FREE, BODY, EYE, PIXEL, DEAD }
+enum Die { NO, FADE, FACE, OUT }
 
 const DIRS := {
 	"left": Vector2(-1, 0), "right": Vector2(1, 0), "up": Vector2(0, -1), "down": Vector2(0, 1),
@@ -89,8 +117,23 @@ const SPOTS := {
 	"bottom-left": Vector2(0.24, 0.7), "bottom-right": Vector2(0.76, 0.7),
 }
 
-## The demo: what an agent would have said and done with its two tools.
-## `look`/`idle`/`seconds` are the swarm tool's, `move` the move tool's.
+## A grid as an agent would write one for the draw tool.
+const HEART := [
+	"..rr.rr..",
+	".rprrrrr.",
+	"rpwprrrrr",
+	"rprrrrrrr",
+	"rrrrrrrrr",
+	".rrrrrrr.",
+	"..rrrrr..",
+	"...rrr...",
+	"....r....",
+]
+
+## The demo: what an agent would have said and done with its tools.
+## `look`/`idle`/`seconds` are the swarm tool's, `move` the move tool's,
+## `draw` the draw tool's and `dots` the dots tool's (no new lines are said
+## for those two: a line needs its clips).
 const SCRIPT := [
 	{"say": "SWARM_L1"},
 	{"look": "up-left", "seconds": 1.4, "say": "SWARM_L2"},
@@ -99,6 +142,10 @@ const SCRIPT := [
 	{"move": "bottom-right", "seconds": 4.5, "say": "SWARM_L5"},
 	{"wait": 4.5},
 	{"move": "centre", "look": "ahead", "idle": "cursor", "say": "SWARM_L6"},
+	{"dots": {"add": 700, "from": "face"}, "wait": 3.0},
+	{"draw": {"name": "bank:cat_in_box", "seconds": 7.0}, "wait": 8.5},
+	{"draw": {"rows": HEART, "palette": {"r": "red", "p": "pink", "w": "white"}, "size": 0.5, "seconds": 5.0}, "wait": 6.5},
+	{"dots": {"remove": 700, "to": "edges"}, "wait": 3.0},
 	{"wait": 9.0},
 	{"idle": "wander", "say": "SWARM_L7"},
 	{"wait": 12.0},
@@ -125,6 +172,20 @@ var _ex := PackedFloat32Array()
 var _k := PackedFloat32Array()
 var _z := PackedFloat32Array()  # a body dot's depth on the sphere, 0 at the limb, 1 nearest
 var _role := PackedInt32Array()
+var _life := PackedFloat32Array()  # 0 born or gone .. 1 fully there
+var _dying := PackedInt32Array()  # a Die: NO while alive, else how it goes
+var _pr := PackedFloat32Array()  # a pixel dot's colour
+var _pg := PackedFloat32Array()
+var _pb := PackedFloat32Array()
+var _hi := 0  # slots in use: every live or dying dot is below it
+
+# --- the picture the draw tool put up ---
+var _pic_on := false
+var _pic_w := 1
+var _pic_h := 1
+var _pic_size := PIC_SIZE
+var _pic_back_at := -1.0
+var _pic_k := 0.0  # eases to 1 while a picture shows (rings, threads, bloom down)
 # The lattice: pairs of body dots, each with its rest length and a phase.
 var _la := PackedInt32Array()
 var _lb := PackedInt32Array()
@@ -272,7 +333,7 @@ func _init() -> void:
 	# The swarm proper: the lattice under the dots, and the rings over them,
 	# each once on the screen and once, small, in the bloom.
 	_links = _multimesh(LINKS_MAX, false)
-	_dots = _multimesh(N, true)
+	_dots = _multimesh(CAP, true)
 	var link_mat := ShaderMaterial.new()
 	link_mat.shader = LINK_SHADER
 	var dot_mat := ShaderMaterial.new()
@@ -304,7 +365,7 @@ func _init() -> void:
 			_rings = rings
 		else:
 			_rings_bloom = rings
-	_dot_buf.resize(N * 16)
+	_dot_buf.resize(CAP * 16)
 	_link_buf.resize(LINKS_MAX * 12)
 
 	_words = Label.new()
@@ -379,6 +440,10 @@ func open() -> void:
 	_cv = Vector2.ZERO
 	_links_n = 0
 	_links.visible_instance_count = 0
+	_pic_on = false
+	_pic_k = 0.0
+	_pic_back_at = -1.0
+	_bloom_out.modulate.a = BLOOM_STRENGTH
 	_rings_open = 0.0
 	_rings_mat.set_shader_parameter("open", 0.0)
 	_room_mat.set_shader_parameter("lit", 0.0)
@@ -477,31 +542,48 @@ func _seed() -> void:
 	_fit()
 	_room_mat.set_shader_parameter("radius", _R)
 	_rings_mat.set_shader_parameter("px", 1.0 / _R)
-	for arr in [_x, _y, _vx, _vy, _s, _a, _ph, _uu, _ang, _r, _sp, _lx, _ly, _sh, _ex, _k, _z]:
-		arr.resize(N)
-	_role.resize(N)
+	for arr in [_x, _y, _vx, _vy, _s, _a, _ph, _uu, _ang, _r, _sp, _lx, _ly, _sh, _ex, _k, _z, _life, _pr, _pg, _pb]:
+		arr.resize(CAP)
+	_role.resize(CAP)
+	_dying.resize(CAP)
+	for i in CAP:
+		_role[i] = Role.DEAD
+		_dying[i] = Die.NO
+		_life[i] = 0.0
+	_hi = 0
 	for i in N:
-		_x[i] = randf_range(0, w)
-		_y[i] = randf_range(0, h)
-		_vx[i] = randf_range(-0.3, 0.3) * _u
-		_vy[i] = randf_range(-0.3, 0.3) * _u
-		_s[i] = randf_range(0.6, 2.0)
-		_a[i] = randf_range(0.3, 0.9)
-		_ph[i] = randf_range(0, TAU)
-		_uu[i] = randf()
-		_ang[i] = randf_range(0, TAU)
-		_r[i] = randf_range(1.3, 3.4)
-		_sp[i] = randf_range(0.002, 0.007) * (1.0 if randf() < 0.5 else -1.0)
-		_sh[i] = 1.0
-		_ex[i] = 1.0
-		_k[i] = 0.0
-		_z[i] = 0.0
-		_role[i] = Role.FREE
+		_born(i, Vector2(randf_range(0, w), randf_range(0, h)), Vector2(randf_range(-0.3, 0.3), randf_range(-0.3, 0.3)) * _u)
+		_life[i] = 1.0
+	_dots.visible_instance_count = _hi
+
+## A dot comes into slot `i` (a dead one) at `p`, moving at `v`, a free
+## dot of the cloud or a wanderer, fading in.
+func _born(i: int, p: Vector2, v: Vector2) -> void:
+	_x[i] = p.x
+	_y[i] = p.y
+	_vx[i] = v.x
+	_vy[i] = v.y
+	_s[i] = randf_range(0.6, 2.0)
+	_a[i] = randf_range(0.3, 0.9)
+	_ph[i] = randf_range(0, TAU)
+	_uu[i] = randf()
+	_ang[i] = atan2((p.y - _c.y) / 0.48, p.x - _c.x)
+	_r[i] = randf_range(1.3, 3.4)
+	_sp[i] = randf_range(0.002, 0.007) * (1.0 if randf() < 0.5 else -1.0)
+	_sh[i] = 1.0
+	_ex[i] = 1.0
+	_k[i] = 0.0
+	_z[i] = 0.0
+	_role[i] = Role.FREE
+	_dying[i] = Die.NO
+	_life[i] = 0.0
+	if i >= _hi:
+		_hi = i + 1
 
 func _free_shuffled() -> Array:
 	var out := []
-	for i in N:
-		if _role[i] == Role.FREE:
+	for i in _hi:
+		if _role[i] == Role.FREE and _dying[i] == Die.NO:
 			out.append(i)
 	out.shuffle()
 	return out
@@ -561,7 +643,7 @@ func _lattice(body: Array) -> void:
 		near.sort_custom(func(a, b): return a[0] < b[0])
 		for n in mini(2, near.size()):
 			var j: int = near[n][1]
-			var key := mini(i, j) * N + maxi(i, j)
+			var key := mini(i, j) * CAP + maxi(i, j)
 			if seen.has(key) or _la.size() >= LINKS_MAX:
 				continue
 			seen[key] = true
@@ -599,6 +681,10 @@ func _spot(to: String) -> Vector2:
 	return _clamp_face(Vector2(f.x * size.x, f.y * size.y))
 
 func _clamp_face(p: Vector2) -> Vector2:
+	if _pic_on:
+		# A picture keeps all of itself on screen, clear of the subtitles.
+		var half := Vector2(_pic_w, _pic_h) * _pic_cell() * 0.5 + Vector2(16, 16)
+		return Vector2(_fit_axis(p.x, half.x, size.x - half.x), _fit_axis(p.y, half.y + 40.0, size.y - half.y - 200.0))
 	var m := _R * 1.25
 	return Vector2(clampf(p.x, m, size.x - m), clampf(p.y, m, size.y - _R * 2.4))
 
@@ -635,6 +721,178 @@ func apply_move(cmd: Dictionary) -> void:
 		_c = _goal()
 		_cv = Vector2.ZERO
 	_note("move  " + String(cmd.to) + ("  · %ss" % cmd.seconds if cmd.has("seconds") else ""))
+
+static func _fit_axis(v: float, lo: float, hi: float) -> float:
+	return (lo + hi) * 0.5 if lo > hi else clampf(v, lo, hi)
+
+## How wide one pixel of the picture is on screen.
+func _pic_cell() -> float:
+	return minf(size.x, size.y) * _pic_size / float(maxi(1, maxi(_pic_w, _pic_h)))
+
+## The draw tool: the swarm becomes a picture (see Picture for the sources)
+## where the face is, `size` of the screen's shorter side across (0.2 to
+## 0.95), for good or for `seconds`; `clear` brings the face back. The face's
+## dots draw first, then the cloud's nearest it; the wanderers stay out. A
+## picture with more pixels than dots is shrunk, squares kept, until it
+## fits. Returns what was done, or an error, for the agent to hear.
+func apply_draw(cmd: Dictionary) -> Dictionary:
+	if bool(cmd.get("clear", false)):
+		if _pic_on:
+			_clear_picture()
+		_note("draw  clear")
+		return {"summary": "Done: my face is back"}
+	if not _formed:
+		return {"error": "the swarm is still forming"}
+	var got := Picture.image_of(cmd)
+	if got.has("error"):
+		_note("draw  " + String(got.error))
+		return got
+	var pool := []
+	var cloud := []
+	for i in _hi:
+		if _dying[i] != Die.NO:
+			continue
+		match _role[i]:
+			Role.BODY, Role.EYE, Role.PIXEL:
+				pool.append(i)
+			Role.FREE:
+				if _uu[i] <= 0.86:
+					cloud.append(i)
+	cloud.sort_custom(func(a, b): return _r[a] < _r[b])
+	pool.append_array(cloud)
+	var px := Picture.pixels(got.image, pool.size())
+	var n: int = px.n
+	if n == 0:
+		_note("draw  nothing to draw")
+		return {"error": "the picture has nothing bright enough to draw"}
+	# The dots sorted as the pixels are (top to bottom, in bands left to
+	# right), so each flies to a pixel near where it is.
+	var chosen := pool.slice(0, n)
+	chosen.sort_custom(func(a, b): return _y[a] < _y[b])
+	chosen = Picture.band_sorted(chosen, func(i): return _x[i])
+	var xs: PackedFloat32Array = px.x
+	var ys: PackedFloat32Array = px.y
+	var cs: PackedColorArray = px.c
+	for j in n:
+		var i: int = chosen[j]
+		_role[i] = Role.PIXEL
+		_lx[i] = xs[j]
+		_ly[i] = ys[j]
+		_pr[i] = cs[j].r
+		_pg[i] = cs[j].g
+		_pb[i] = cs[j].b
+		_k[i] = randf_range(0.035, 0.07)
+	for i in pool.slice(n):
+		if _role[i] != Role.FREE:
+			_to_cloud(i)
+	_pic_on = true
+	_pic_w = px.w
+	_pic_h = px.h
+	_pic_size = clampf(float(cmd.get("size", PIC_SIZE)), 0.2, 0.95)
+	_pic_back_at = _now + float(cmd.seconds) * 1000.0 if cmd.has("seconds") else -1.0
+	_links_n = 0
+	_links.visible_instance_count = 0
+	_note("draw  %s  %dx%d · %d dots" % [got.name, px.w, px.h, n] + ("  · %ss" % cmd.seconds if cmd.has("seconds") else ""))
+	return {"summary": "Done: I drew %s, %d by %d pixels, with %d dots" % [got.name, px.w, px.h, n], "w": px.w, "h": px.h, "dots": n}
+
+func _to_cloud(i: int) -> void:
+	_role[i] = Role.FREE
+	_ang[i] = atan2((_y[i] - _c.y) / 0.48, _x[i] - _c.x)
+
+## The picture comes apart and the face forms again out of every free dot.
+func _clear_picture() -> void:
+	for i in _hi:
+		var r := _role[i]
+		if r == Role.PIXEL or r == Role.BODY or r == Role.EYE:
+			_to_cloud(i)
+	_pic_on = false
+	_pic_back_at = -1.0
+	_become(BODY_N)
+	_open_eyes(EYE_N)
+
+func _live_count() -> int:
+	var n := 0
+	for i in _hi:
+		if _role[i] != Role.DEAD and _dying[i] == Die.NO:
+			n += 1
+	return n
+
+## The dots tool: `add` or `remove` that many, or make it `total`, between
+## MIN_LIVE and CAP. New dots come `from` the face (a burst out of it, the
+## default), the `edges` (drifting in) or a `point` (x, y from 0 to 1); dots
+## go `to` nothing where they are (`fade`, the default), into the `face`, or
+## off the `edges`. Only cloud dots and wanderers go, never the face's or a
+## picture's.
+func apply_dots(cmd: Dictionary) -> Dictionary:
+	var live := _live_count()
+	var want := live
+	if cmd.has("total"):
+		want = int(cmd.total)
+	elif cmd.has("add"):
+		want = live + int(cmd.add)
+	elif cmd.has("remove"):
+		want = live - int(cmd.remove)
+	else:
+		return {"error": "pass add, remove or total"}
+	want = clampi(want, MIN_LIVE, CAP)
+	var changed := 0
+	if want > live:
+		changed = _spawn(want - live, cmd)
+	elif want < live:
+		changed = -_despawn(live - want, cmd)
+	var now_live := live + changed
+	_note("dots  %+d  · %d" % [changed, now_live])
+	return {"summary": "Done: %d dots now (%+d)" % [now_live, changed], "dots": now_live, "fewest": MIN_LIVE, "most": CAP}
+
+func _spawn(n: int, cmd: Dictionary) -> int:
+	var from := String(cmd.get("from", "face"))
+	var made := 0
+	var i := 0
+	while made < n:
+		while i < CAP and _role[i] != Role.DEAD:
+			i += 1
+		if i >= CAP:
+			break
+		var p: Vector2
+		var v: Vector2
+		match from:
+			"edges":
+				var t := randf()
+				match randi() % 4:
+					0: p = Vector2(t * size.x, -8.0)
+					1: p = Vector2(t * size.x, size.y + 8.0)
+					2: p = Vector2(-8.0, t * size.y)
+					_: p = Vector2(size.x + 8.0, t * size.y)
+				v = (_c - p).normalized() * randf_range(1.0, 2.5) * _u
+			"point":
+				p = Vector2(clampf(float(cmd.get("x", 0.5)), 0.0, 1.0) * size.x, clampf(float(cmd.get("y", 0.5)), 0.0, 1.0) * size.y)
+				v = Vector2.from_angle(randf() * TAU) * randf_range(1.5, 6.0) * _u
+			_:
+				var a := randf() * TAU
+				p = _c + Vector2.from_angle(a) * sqrt(randf()) * _R * 0.4
+				v = Vector2.from_angle(a) * randf_range(2.0, 7.0) * _u
+		_born(i, p, v)
+		made += 1
+		i += 1
+	_dots.visible_instance_count = _hi
+	return made
+
+func _despawn(n: int, cmd: Dictionary) -> int:
+	var to := String(cmd.get("to", "fade"))
+	var mode := Die.FACE if to == "face" else (Die.OUT if to == "edges" else Die.FADE)
+	var pick := _free_shuffled()
+	n = mini(n, mini(_live_count() - MIN_LIVE, pick.size()))
+	for j in maxi(n, 0):
+		var i: int = pick[j]
+		_dying[i] = mode
+		if mode == Die.OUT:
+			var d := Vector2(_x[i], _y[i]) - _c
+			if d.length() < 1.0:
+				d = Vector2.RIGHT
+			var out := _c + d.normalized() * size.length()
+			_lx[i] = out.x
+			_ly[i] = out.y
+	return maxi(n, 0)
 
 func _note(s: String) -> void:
 	var lines := _log.text.split("\n", false)
@@ -732,6 +990,10 @@ func _run_script(dt: float) -> void:
 		sw.seconds = st.seconds
 	if not sw.is_empty():
 		apply_swarm(sw)
+	if st.has("dots"):
+		apply_dots(st.dots)
+	if st.has("draw"):
+		apply_draw(st.draw)
 	if st.has("say"):
 		_say(String(st.say))
 	elif st.has("wait"):
@@ -813,8 +1075,8 @@ func _boot(dt: float) -> void:
 	if _boot_t > 0.4:
 		_gather = 1.0
 	if _boot_t > 1.3:
-		_become(int(N * 0.42))
-		_open_eyes(int(N * 0.05))
+		_become(BODY_N)
+		_open_eyes(EYE_N)
 		_formed = true
 		_gather = 0.0
 		_note("form  the agent")
@@ -834,6 +1096,10 @@ func _step() -> void:
 		_place = _visit_back
 		_visit_back = null
 		_note("move  " + String(_place.to))
+	if _pic_on and _pic_back_at >= 0.0 and now >= _pic_back_at:
+		_clear_picture()
+		_note("draw  back to the face")
+	_pic_k += ((1.0 if _pic_on else 0.0) - _pic_k) * 0.05
 	if _state != "":
 		_last_active = now
 	var was := _idle_now
@@ -900,13 +1166,45 @@ func _step() -> void:
 	var syw := sin(yaw)
 	var cpt := cos(pitch)
 	var spt := sin(pitch)
+	# The picture sits where the face would, and swells a little with the voice.
+	var cell := _pic_cell() * (1.0 + 0.025 * _level)
+	# The cloud stands back from a picture, its inner ring outside the picture.
+	var push := 1.0 + _pic_k * maxf(0.0, Vector2(_pic_w, _pic_h).length() * 0.5 * _pic_cell() / (_R * 1.3) - 1.0)
 
-	for i in N:
+	for i in _hi:
+		var role := _role[i]
+		if role == Role.DEAD:
+			continue
+		var dm := _dying[i]
+		if dm != Die.NO:
+			# Going: into the face, off the edges, or nothing where it is.
+			var qvx := _vx[i]
+			var qvy := _vy[i]
+			if dm == Die.FACE:
+				qvx = (qvx + (cx - _x[i]) * 0.02) * 0.9
+				qvy = (qvy + (cy - _y[i]) * 0.02) * 0.9
+			elif dm == Die.OUT:
+				qvx = (qvx + (_lx[i] - _x[i]) * 0.004) * 0.95
+				qvy = (qvy + (_ly[i] - _y[i]) * 0.004) * 0.95
+			else:
+				qvx *= 0.96
+				qvy *= 0.96
+			_x[i] += qvx
+			_y[i] += qvy
+			_vx[i] = qvx
+			_vy[i] = qvy
+			_life[i] -= STEP / (0.7 if dm == Die.FADE else 1.2)
+			if _life[i] <= 0.0:
+				_life[i] = 0.0
+				_role[i] = Role.DEAD
+				_dying[i] = Die.NO
+			continue
+		if _life[i] < 1.0:
+			_life[i] = minf(1.0, _life[i] + STEP / FADE_IN)
 		var px := _x[i]
 		var py := _y[i]
 		var vx := _vx[i]
 		var vy := _vy[i]
-		var role := _role[i]
 		var tx: float
 		var ty: float
 		var k: float
@@ -937,6 +1235,13 @@ func _step() -> void:
 			k = _k[i]
 			damp = 0.78
 			mx = 14.0 * u
+		elif role == Role.PIXEL:
+			var ph3 := _ph[i]
+			tx = cx + _lx[i] * cell + sin(now / 800.0 + ph3) * 0.35 * u
+			ty = cy + _ly[i] * cell + cos(now / 950.0 + ph3) * 0.35 * u
+			k = _k[i]
+			damp = 0.8
+			mx = 16.0 * u
 		elif _formed and _uu[i] <= 0.86:
 			# The cloud: atoms circling the face; when it travels the cloud
 			# pulls in close and streams after it, inner atoms first.
@@ -945,7 +1250,7 @@ func _step() -> void:
 			var env := 1.0
 			if voice:
 				env = 1.0 + 0.45 * env_lvl * (0.7 + 0.3 * absf(sin(now / 150.0 + ph2 * 0.2)))
-			var rr := _R * _r[i] * (1.0 + 0.12 * sin(now / 1300.0 + ph2)) * env
+			var rr := _R * _r[i] * (1.0 + 0.12 * sin(now / 1300.0 + ph2)) * env * push
 			var wgt := clampf((3.6 - _r[i]) / 2.3, 0.15, 1.0)
 			var r2 := rr * (1.0 - 0.5 * mv)
 			tx = cx + cos(_ang[i]) * r2
@@ -987,6 +1292,8 @@ func _step() -> void:
 		_y[i] = py + vy
 		_vx[i] = vx
 		_vy[i] = vy
+	while _hi > 0 and _role[_hi - 1] == Role.DEAD:
+		_hi -= 1
 
 ## Writes the dots and the lattice in one pass. Each dot gets its colour,
 ## twinkle and custom data (its shape, its focus, its fringe, its hot core),
@@ -1003,7 +1310,9 @@ func _render(dt: float) -> void:
 	_halo.position = _c
 	var hs := _R * 4.4 / 256.0
 	_halo.scale = Vector2(hs, hs)
-	_halo.modulate = Color(COL_P, halo_a if _formed else 0.0)
+	_halo.modulate = Color(COL_P, (halo_a if _formed else 0.0) * (1.0 - _pic_k))
+	# A picture wants its pixels sharp: the bloom drops while it shows.
+	_bloom_out.modulate.a = BLOOM_STRENGTH * (1.0 - 0.65 * _pic_k)
 	if _formed:
 		_rings_open = minf(1.0, _rings_open + dt / 1.4)
 	var rs := _R * 3.8
@@ -1013,7 +1322,7 @@ func _render(dt: float) -> void:
 	# Under reduced motion the rings stand still and no streak splits its colours.
 	_rings_mat.set_shader_parameter("t", 0.0 if reduce else now / 1000.0)
 	_rings_mat.set_shader_parameter("level", _level)
-	_rings_mat.set_shader_parameter("open", _rings_open * (0.5 if reduce else 1.0))
+	_rings_mat.set_shader_parameter("open", _rings_open * (0.5 if reduce else 1.0) * (1.0 - _pic_k))
 	_room_mat.set_shader_parameter("centre", _c)
 	_room_mat.set_shader_parameter("level", _level)
 	_room_mat.set_shader_parameter("lit", _rings_open)
@@ -1035,8 +1344,20 @@ func _render(dt: float) -> void:
 	var phg := COL_PH.g
 	var phb := COL_PH.b
 	var db := _dot_buf
-	for i in N:
+	var cell := _pic_cell() * (1.0 + 0.025 * _level)
+	var pcx := _c.x
+	var pcy := _c.y
+	var cloud_dim := 1.0 - 0.7 * _pic_k
+	for i in _hi:
 		var role := _role[i]
+		if role == Role.DEAD:
+			# A slot between live ones draws nothing (and a reused slot never
+			# shows the dot it held before).
+			var oz := i * 16
+			for q in 16:
+				db[oz + q] = 0.0
+			continue
+		var land := 0.0
 		var tw := 0.65 + 0.35 * sin(now / 500.0 + _ph[i])
 		var cr: float
 		var cg: float
@@ -1076,6 +1397,17 @@ func _render(dt: float) -> void:
 			alpha = _a[i] * 0.8
 			hot = 1.0
 			grow = 1.15
+		elif role == Role.PIXEL:
+			# Green in flight, the pixel's own colour and a square as it lands.
+			var ddx := _x[i] - (pcx + _lx[i] * cell)
+			var ddy := _y[i] - (pcy + _ly[i] * cell)
+			land = clampf(1.0 - sqrt(ddx * ddx + ddy * ddy) / (cell * 4.0 + 6.0 * u), 0.0, 1.0)
+			cr = COL_P.r + (_pr[i] - COL_P.r) * land
+			cg = COL_P.g + (_pg[i] - COL_P.g) * land
+			cb = COL_P.b + (_pb[i] - COL_P.b) * land
+			alpha = (0.55 + 0.4 * land) * (0.94 + 0.06 * tw)
+			kind = 0.15 if land > 0.5 else 0.0
+			soft = 0.25 * (1.0 - land)
 		elif _formed and _uu[i] <= 0.86:
 			var zf := sin(_ang[i])
 			var near := maxf(zf, 0.0)
@@ -1085,7 +1417,7 @@ func _render(dt: float) -> void:
 			cr = COL_P.r + (COL_CYAN.r - COL_P.r) * kn + (COL_VIOLET.r - COL_P.r) * kf
 			cg = COL_P.g + (COL_CYAN.g - COL_P.g) * kn + (COL_VIOLET.g - COL_P.g) * kf
 			cb = COL_P.b + (COL_CYAN.b - COL_P.b) * kn + (COL_VIOLET.b - COL_P.b) * kf
-			alpha = _a[i] * tw * 0.85 * (0.7 + 0.3 * zf)
+			alpha = _a[i] * tw * 0.85 * (0.7 + 0.3 * zf) * cloud_dim
 			grow = (1.0 + 0.4 * zf) * (1.1 - 0.12 * (_r[i] - 1.3))
 			if _s[i] > 1.6 and zf > 0.5:
 				# Passing in front, close to the lens: a bokeh disc.
@@ -1116,6 +1448,9 @@ func _render(dt: float) -> void:
 		var rvy := vy - cvy if role != Role.FREE else vy
 		var spd := sqrt(rvx * rvx + rvy * rvy)
 		var d := _s[i] * u * 2.4 * grow
+		if role == Role.PIXEL:
+			d += (cell * 0.92 - d) * land
+		alpha *= _life[i]
 		var px := _x[i]
 		var py := _y[i]
 		var o := i * 16
@@ -1156,6 +1491,7 @@ func _render(dt: float) -> void:
 		db[o + 13] = soft
 		db[o + 14] = fringe
 		db[o + 15] = hot
+	_dots.visible_instance_count = _hi
 	_dots.buffer = db
 
 	# The lattice: a thread from each body dot to its neighbour, flickering,
@@ -1181,7 +1517,7 @@ func _render(dt: float) -> void:
 			var fade := clampf(2.0 - ratio, 0.0, 1.0)
 			var depth := 0.25 + 0.75 * (_z[ia] + _z[ib]) * 0.5
 			var flick := 0.6 + 0.4 * sin(now / 260.0 + _lph[k])
-			var alpha := 0.5 * fade * depth * flick * _rings_open
+			var alpha := 0.5 * fade * depth * flick * _rings_open * (1.0 - _pic_k)
 			if ln < 0.5:
 				alpha = 0.0
 				ln = 0.5

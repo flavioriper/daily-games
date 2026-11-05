@@ -4,7 +4,9 @@ render_mode blend_add, unshaded;
 // One dot of the swarm (ui/menu/swarm_tab.gd): a unit quad per instance of a
 // MultiMesh, drawn from its UV, no texture. The instance's custom data says
 // what it is: x the shape (0 a soft mote, 0.5 a hex crystal, 1 a bokeh disc,
-// the lens's out-of-focus circle with its bright rim), y how far out of focus
+// the lens's out-of-focus circle with its bright rim, 0.15 a square: a pixel
+// of a picture the draw tool put up, kept inside 0..1 so no driver's packing
+// of the custom data can lose it), y how far out of focus
 // it is (0 sharp .. 1 a blur), z its fringe (a fast dot splits its colours
 // along its streak, the way a lens does), w its hot core (how white its
 // middle burns). The bloom copy draws the same instances bigger (`grow`).
@@ -22,6 +24,9 @@ void vertex() {
 }
 
 float shape(vec2 p, float kind) {
+	if (kind > 0.1 && kind < 0.2) {
+		return max(abs(p.x), abs(p.y));
+	}
 	if (kind > 0.25 && kind < 0.75) {
 		return max(abs(p.x) * 0.866 + abs(p.y) * 0.5, abs(p.y));
 	}
@@ -30,7 +35,8 @@ float shape(vec2 p, float kind) {
 
 float cover(vec2 p, float kind, float soft) {
 	float d = shape(p, kind);
-	float edge = mix(0.22, 0.95, soft);
+	// A pixel's square keeps a hard edge, a hair soft against the shimmer.
+	float edge = (kind > 0.1 && kind < 0.2) ? mix(0.08, 0.5, soft) : mix(0.22, 0.95, soft);
 	float a = 1.0 - smoothstep(1.0 - edge, 1.0, d);
 	if (kind >= 0.75) {
 		// A bokeh disc: a bright rim round a dimmer plate.
