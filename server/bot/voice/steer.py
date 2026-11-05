@@ -293,7 +293,7 @@ class PolicySteer(FrameProcessor):
                 "memory": recalled.event if recalled else None,
             })
             if self.memory:
-                asyncio.ensure_future(self.memory.after_turn(turn_id, text, last_bot, features, recalled))
+                self.memory.schedule_after_turn(turn_id, text, last_bot, features, recalled)
             if not self._answering:
                 self.on_stage({"stage": "llm"})
             if not speculative:

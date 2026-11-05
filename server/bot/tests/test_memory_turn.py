@@ -14,15 +14,22 @@ def test_remember_requests_are_detected():
 
     for text in ["Remember that I like chess.", "please remember my sister is called Ana", "Don't forget that I play on Sundays",
                  "Lembra que eu gosto de xadrez.", "lembre-se de que eu moro no Porto", "Não esquece que eu jogo xadrez",
-                 "Recuerda que me gusta el ajedrez.", "no olvides que juego los domingos"]:
+                 "Recuerda que me gusta el ajedrez.", "no olvides que juego los domingos",
+                 "Remember, I like chess.", "Hi! Remember that I like chess.", "no te olvides de que juego los domingos",
+                 "lembre que eu gosto de xadrez", "não esqueça que eu jogo xadrez", "por favor, guarda isso", "Remember that I like chess. Can you draw?"]:
         assert asks_to_remember(text), text
-    for text in ["do you remember my sister", "I can't remember the word", "forget that", "Hi! What are you made of?"]:
+    for text in ["do you remember my sister", "I can't remember the word", "forget that", "Hi! What are you made of?",
+                 "Can you remember my name?", "Do you still remember that", "Did you remember that", "Why can't you remember that",
+                 "Remember me?", "I remember that I left it", "Você lembra que eu falei?", "Você guarda isso?", "ele guarda isso na gaveta",
+                 "Remember when we played"]:
         assert not asks_to_remember(text), text
 
 
 def test_dont_forget_is_not_a_forget():
     assert detect_request("Don't forget that I play on Sundays") is None
     assert detect_request("não esquece disso, tá?") is None
+    assert detect_request("never forget that I like chess") is None
+    assert detect_request("nunca esqueça isso") is None and detect_request("não se esqueça disso") is None
     assert detect_request("forget that") == "forget"
     assert detect_request("esquece isso") == "forget"
 
@@ -90,7 +97,6 @@ async def test_end_waits_for_the_last_turns_fact(card, monkeypatch):
     monkeypatch.setattr(turn_mod.consolidate, "weigh", weigh)
     monkeypatch.setattr(turn_mod.consolidate, "summarise", nothing)
     t = torch.tensor(embed(["Remember that I like chess."])[0])
-    asyncio.ensure_future(turn.after_turn("t1", "Remember that I like chess.", "hi", None, Recalled(vectors=(t, t))))
-    await asyncio.sleep(0)
+    turn.schedule_after_turn("t1", "Remember that I like chess.", "hi", None, Recalled(vectors=(t, t)))  # end() right away: counted from scheduling
     await turn.end([])
     assert [m["op"] for m in sent] == ["add"] and not turn.writing

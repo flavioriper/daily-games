@@ -21,18 +21,26 @@ SIMILAR = 0.6
 SUBJECT = 0.62  # cosine a turn needs to count as being about a document with the gate quiet: on a real 17-page PDF, on-topic lines scored 0.67 and up, small talk 0.59 and below
 LOAD_RETRIES, LOAD_RETRY_S = 2, 0.5
 WRITE_WAIT_S = 8.0  # the end of a call waits this long for the last turn's fact
-FORGET_EN = r"\b(don'?t|do not) (remember|save|keep) (that|this|it)\b|(?<!don't )(?<!dont )(?<!do not )\bforget (that|this|it|what i)\b|\bdelete that\b"  # "don't forget that ..." asks the opposite
-FORGET_PT = r"(?<!não )(?<!nao )\besque(?:ce|ça|ca|cer)(?: de)? (?:d?isso|d?isto|aquilo|o que eu)\b|\bnão (?:te )?(?:lembr[ae]s?|guard[ae]s?|salv[ae]s?) (?:d)?(?:isso|isto)\b|\bapag[au]e? (?:isso|isto)\b"
+FORGET_EN = r"\b(don'?t|do not) (remember|save|keep) (that|this|it)\b|(?<!don't )(?<!dont )(?<!do not )(?<!never )\bforget (that|this|it|what i)\b|\bdelete that\b"  # "don't forget that ..." asks the opposite
+FORGET_PT = r"(?<!não )(?<!nao )(?<!nunca )(?<!não se )(?<!nao se )(?<!nunca se )\besque(?:ce|ça|ca|cer)(?: de)? (?:d?isso|d?isto|aquilo|o que eu)\b|\bnão (?:te )?(?:lembr[ae]s?|guard[ae]s?|salv[ae]s?) (?:d)?(?:isso|isto)\b|\bapag[au]e? (?:isso|isto)\b"
 FORGET_ES = r"\bolvida(?:lo)? (?:eso|esto|lo que)\b|\bolvídalo\b|\bno (?:lo )?(?:recuerdes|guardes)\b|\bborra (?:eso|esto)\b"
 FORGET = re.compile("|".join((FORGET_EN, FORGET_PT, FORGET_ES)), re.I)
 WRONG_EN = r"\bthat'?s (wrong|not right|not true|incorrect)\b|\bthat is (wrong|not right|not true|incorrect)\b"
 WRONG_PT = r"\b(?:isso|isto) (?:está |tá |é |ta )?(?:errado|incorreto)\b|\b(?:isso|isto) não é (?:verdade|certo)\b"
 WRONG_ES = r"\beso (?:está |es )?(?:mal|incorrecto|equivocado)\b|\beso no es (?:verdad|cierto)\b"
 WRONG = re.compile("|".join((WRONG_EN, WRONG_PT, WRONG_ES)), re.I)  # pt and es beside the English: the card speaks all three
-REMEMBER_EN = r"(?<!do you )(?<!can't )(?<!cannot )(?<!don't )(?<!do not )\bremember (that|this|my|me|i|i'm|we)\b|\b(don'?t|do not) forget (that|my|i|i'm)\b"
-REMEMBER_PT = r"\blembr(?:a|e)(?:-se| se)?(?: de)? que\b|\b(?:não|nao) (?:se )?esque(?:ce|ça|ca)(?: de)? que\b|\bguarda (?:isso|que)\b"
-REMEMBER_ES = r"\brecuerda que\b|\bacuérdate(?: de)? que\b|\bno olvides que\b"
-REMEMBER = re.compile("|".join((REMEMBER_EN, REMEMBER_PT, REMEMBER_ES)), re.I)
+# An explicit "remember" is an imperative opening its own sentence (after "please", "just", "por favor"...), never a question, never "I remember ...".
+_ABOUT_EN = r"(?:\s*,|\s+(?:that|this|my|me|i|i'm|we|we're|our|to|it|it's)\b)"
+_ABOUT_PT = r"(?:\s*,|\s+(?:de\s+)?(?:que|disso|isso|isto|meu|minha|eu|a gente)\b)"
+_ABOUT_ES = r"(?:\s*,|\s+(?:de\s+)?(?:que|esto|eso|mi|yo)\b)"
+REMEMBER_VERB = "|".join((
+    rf"remember{_ABOUT_EN}", rf"(?:don't|dont|do not|never) forget{_ABOUT_EN}",
+    rf"lembr(?:a|e)(?:-se| se)?{_ABOUT_PT}", rf"(?:não|nao|nunca) (?:se )?esque(?:ce|ça|ca){_ABOUT_PT}", r"guarda (?:isso|que|aí|ai)\b",
+    rf"(?:recuerda|acuérdate){_ABOUT_ES}", rf"(?:no|nunca) (?:te )?olvides{_ABOUT_ES}",
+))
+REMEMBER = re.compile(rf"^(?:(?:please|pls|just|and|so|ok|okay|hey|oh|por favor|só|so|e|y|entonces|bueno)\s*,?\s+)*(?:{REMEMBER_VERB})", re.I)
+QUESTION = re.compile(r"\?\s*$|^\s*¿|^\s*(?:(?:can|could|will|would|did|do|does|can't|won't|didn't|don't)\s+you|você|voce|vc|tu|usted)\b", re.I)
+SENTENCES = re.compile(r"(?<=[.!?;])\s+")
 
 
 @dataclass
@@ -53,7 +61,13 @@ class Recalled:
 
 def asks_to_remember(text: str) -> bool:
     """Asked outright ("remember that I like chess"): kept as a lasting fact whatever the gate says. The trained gate drops these, and the voice has just promised to remember."""
-    return bool(REMEMBER.search(text.replace("’", "'"))) and detect_request(text) is None
+    if detect_request(text) is not None:
+        return False
+    for sentence in SENTENCES.split(text.replace("’", "'").strip()):
+        sentence = sentence.strip(" \"'«»“”")
+        if sentence and not QUESTION.search(sentence) and REMEMBER.search(sentence):
+            return True
+    return False
 
 
 def detect_request(text: str) -> str | None:
@@ -184,15 +198,18 @@ class MemoryTurn:
             if name in self.index.arrivals:
                 self.index.arrivals.remove(name)
         self._log_gate(turn_id, recalled)
-        task = asyncio.current_task()
-        self.writing.add(task)
         try:
             await self._after(turn_id, text, prev, features, recalled)
         except Exception as e:
             logger.warning(f"memory write failed: {type(e).__name__}: {e}")
             self.emit(kind="remember", turn_id=turn_id, action="failed", reason=type(e).__name__)
-        finally:
-            self.writing.discard(task)
+
+    def schedule_after_turn(self, *args) -> asyncio.Task:
+        """after_turn as a task, counted in `writing` from the moment it is scheduled, so an end() right after it still waits for it."""
+        task = asyncio.ensure_future(self.after_turn(*args))
+        self.writing.add(task)
+        task.add_done_callback(self.writing.discard)
+        return task
 
     async def _after(self, turn_id, text, prev, features, recalled) -> None:
         if not recalled or not recalled.vectors or self.hub.status != "up":
@@ -280,7 +297,9 @@ class MemoryTurn:
     async def end(self, messages: list[dict]) -> None:
         """Summarise the call, promote what lasts, clear short term. Runs once."""
         if self.writing:
-            await asyncio.wait(set(self.writing), timeout=WRITE_WAIT_S)
+            _, late = await asyncio.wait(set(self.writing), timeout=WRITE_WAIT_S)
+            for task in late:  # a write still running now would land after bye_ack, or after the call's memory is gone
+                task.cancel()
         if self.key is not None:
             self.hub.detach(self.key)
         if self.hub.status != "up" or not self.client:
