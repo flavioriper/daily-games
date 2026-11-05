@@ -18,3 +18,9 @@ def load_base() -> PolicyNet:
 @pytest.fixture
 def card() -> Card:
     return Card.model_validate(json.loads(Path("tests/fixtures/card.json").read_text()))
+
+
+@pytest.fixture(autouse=True)
+def _no_real_shared_layer(monkeypatch):
+    """No test reaches the real Neon: build_app would otherwise take NEON_SWARM_URL from the shell. Database tests use SWARM_TEST_DSN."""
+    monkeypatch.delenv("NEON_SWARM_URL", raising=False)

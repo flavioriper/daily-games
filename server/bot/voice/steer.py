@@ -66,6 +66,7 @@ def _prepend(message: dict, prefix: str) -> None:
         message["content"] = [{"type": "text", "text": prefix + _text(message)}]
 
 
+KNOWLEDGE_CHARS = 400  # one row on the prompt at most this long
 KNOWLEDGE_BUDGET_S = 0.8  # the shared layer's lookup may wait on its model or on Neon; past this the turn goes on without it
 
 
@@ -83,7 +84,7 @@ async def _within(task: asyncio.Task | None, budget: float) -> list[str]:
 
 
 def knowledge_lines(rows: list[str]) -> str:
-    return "".join(f"[knowledge: {' '.join(r.split())}]\n" for r in rows)
+    return "".join(f"[knowledge: {' '.join(r.split())[:KNOWLEDGE_CHARS].rstrip()}]\n" for r in rows)
 
 
 LOOK_EVERY_S, LOOK_BEATS = 1.8, 4  # about seven seconds of looking; past that, quiet is honest

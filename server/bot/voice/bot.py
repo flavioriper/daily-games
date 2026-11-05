@@ -162,7 +162,7 @@ async def read_style(shared, lang: str, budget: float = STYLE_BUDGET_S) -> list[
         notes, _knobs = await asyncio.wait_for(shared.style_and_knobs_for(lang), budget)
     except Exception:  # a timeout too
         return []
-    return [n.strip() for n in notes if isinstance(n, str) and n.strip()]
+    return [" ".join(n.split()) for n in notes if isinstance(n, str) and n.strip()]  # one line each: a note never breaks the prompt's layout
 
 
 def with_style(card: Card, notes: list[str]) -> Card:
@@ -183,6 +183,13 @@ async def run_call(websocket, card: Card, user_id: str, session_id: str, deps, s
     transport = FastAPIWebsocketTransport(KeptOpen(websocket), FastAPIWebsocketParams(audio_in_enabled=True, audio_out_enabled=True, audio_in_sample_rate=IN_RATE, audio_out_sample_rate=RATE, serializer=PcmSerializer(on_text=phone.on_text)))
     events = _dep(deps, "events")
     log = (lambda **e: events.add({"session_id": session_id, **e})) if events is not None else (lambda **e: None)  # KindLog keeps the kind only
+
+    def turn_event(e: dict) -> None:
+        log(**e)
+        try:
+            outcomes.on_event(e)  # inside the steer's turn: an error here must never cost the reply
+        except Exception as ex:
+            logger.warning(f"turn outcome failed: {type(ex).__name__}")
 
     def stage(e: dict) -> None:
         log(kind="stage", **e)
@@ -220,7 +227,7 @@ async def run_call(websocket, card: Card, user_id: str, session_id: str, deps, s
     memory = MemoryTurn(DeviceHub(store), card, user_id, session_id, log, _dep(deps, "memory_client") or default_memory_client(), ledger)
     memory.start()
     steer = PolicySteer(jev=jev, learner=_dep(deps, "learner") or base_learner(), slug=card.slug, user_id=user_id, default_decision=card.calibration.default_decision, clips=player,
-                        on_event=lambda e: (log(**e), outcomes.on_event(e)), on_jev_call=ledger_obs.jev_call, on_stage=stage, on_cue=cue, pace=pace, memory=memory,
+                        on_event=turn_event, on_jev_call=ledger_obs.jev_call, on_stage=stage, on_cue=cue, pace=pace, memory=memory,
                         knowledge=(lambda text: shared.knowledge_for(card.language, text)) if shared is not None and shared.online else None)  # the decision point Tasks 16-18 hook: on_event gets every turn's decision
 
     async def act(params) -> None:
@@ -317,8 +324,10 @@ async def run_call(websocket, card: Card, user_id: str, session_id: str, deps, s
     finally:
         capping.cancel()
         ledger_obs.flush_stt()
-        await finish_call(websocket, phone, memory, context.messages, ending[0] if ending else "gone")
-        await outcomes.end(call_s=asyncio.get_running_loop().time() - started)  # the last row, in the background: the socket is already closed
+        try:
+            await finish_call(websocket, phone, memory, context.messages, ending[0] if ending else "gone")
+        finally:
+            await outcomes.end(call_s=asyncio.get_running_loop().time() - started)  # the last row, in the background: the socket is already closed
 
 
 async def finish_call(websocket, phone: Phone, memory: MemoryTurn, messages: list[dict], reason: str) -> None:
