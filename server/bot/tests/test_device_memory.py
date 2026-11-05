@@ -22,7 +22,7 @@ def collect():
 
 async def test_round_trip():
     sent, emit = collect()
-    store = DeviceStore(PAYLOAD, emit)
+    store = await DeviceStore.load(PAYLOAD, emit)
     facts = await store.facts_for("peeplet", "u")
     assert len(facts) == 2 and {f.id for f in facts} == {"f1", "f2"}
     assert all(f.embedding.shape == (384,) and np.linalg.norm(f.embedding) > 0.9 for f in facts)
@@ -46,19 +46,24 @@ async def test_round_trip():
     assert (await store.counts("peeplet", "u"))["facts"] == 1
 
 
-def test_bad_items_dropped():
+async def test_bad_items_dropped():
     payload = {"facts": [{"id": "a", "since": "x"}, {"id": "b", "text": "x" * 400}, {"text": "no id"}, {"id": "c", "text": "kept"}, "junk"],
                "episodes": [{"id": "e", "at": "2026-11-01"}, {"id": "e2", "summary": "y" * 301}, {"id": "e3", "at": "2026-11-02", "summary": "kept too"}]}
-    store = DeviceStore(payload, lambda m: None)
+    store = await DeviceStore.load(payload, lambda m: None)
     assert [f.text for f in store.facts] == ["kept"]
     assert [e.summary for e in store.episodes] == ["kept too"]
-    assert DeviceStore(None, lambda m: None).facts == []
-    assert DeviceStore({"facts": "nope"}, lambda m: None).facts == []
+    assert (await DeviceStore.load(None, lambda m: None)).facts == []
+    assert (await DeviceStore.load({"facts": "nope"}, lambda m: None)).facts == []
+    many = {"facts": [{"id": f"f{i}", "text": f"fact {i}", "since": f"2026-01-01T00:00:{i:04d}"} for i in range(520)],
+            "episodes": [{"id": f"e{i}", "summary": f"call {i}", "at": f"2026-01-01T00:00:{i:04d}"} for i in range(210)]}
+    capped = await DeviceStore.load(many, lambda m: None)
+    assert len(capped.facts) == 500 and capped.facts[0].id == "f519" and "f19" not in {f.id for f in capped.facts}
+    assert len(capped.episodes) == 200 and capped.episodes[0].id == "e209" and "e9" not in {e.id for e in capped.episodes}
 
 
 async def test_writes_fit_the_phone_limit():
     sent, emit = collect()
-    store = DeviceStore({}, emit)
+    store = await DeviceStore.load({}, emit)
     long = "word " * 100
     await store.add_episode("p", "u", "s", long, embed([long])[0])
     assert len(sent[-1]["text"]) <= 300
@@ -69,7 +74,7 @@ async def test_writes_fit_the_phone_limit():
 
 async def test_notes_stay_in_ram():
     sent, emit = collect()
-    store = DeviceStore({}, emit)
+    store = await DeviceStore.load({}, emit)
     await store.add_note("p", "u", "s1", "They are tired today")
     assert await store.notes_for("s1") == ["They are tired today"]
     await store.clear_notes("s1")
@@ -84,7 +89,7 @@ async def test_notes_stay_in_ram():
 async def test_memory_turn_runs_on_the_device_hub(card):
     """turn.py's own calls, unchanged, against the device store: load, then a forget."""
     sent, emit = collect()
-    hub = DeviceHub(DeviceStore(PAYLOAD, emit))
+    hub = DeviceHub(await DeviceStore.load(PAYLOAD, emit))
     assert hub.status == "up" and await hub.ensure()
     events = []
     turn = MemoryTurn(hub, card, "u", "s1", emit=lambda **e: events.append(e))

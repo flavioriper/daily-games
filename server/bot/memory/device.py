@@ -1,4 +1,5 @@
 """The player's memory, fed by the phone. It arrives in the `hello` as `memory`, lives only in RAM for the call, and every change goes back to the phone through `emit`; nothing about the player is written on the server. `DeviceStore` answers the calls `memory/turn.py` and `RecallIndex.load` make of the old Postgres store, and `DeviceHub` the ones they make of its hub."""
+import asyncio
 import json
 import uuid
 from datetime import datetime, timezone
@@ -13,6 +14,7 @@ from memory.gate import GateNet, load_gate
 
 ROOT = Path(__file__).resolve().parent.parent
 LIMIT = 300  # characters; the phone drops a longer item on load, so a write never sends one
+MAX_FACTS, MAX_EPISODES = 500, 200  # newest kept: a huge or hostile file must not buy unbounded embedding work or RAM
 
 
 @dataclass
@@ -54,13 +56,22 @@ def _now() -> str:
 class DeviceStore:
     """One player and one persona for one call, so the slug and user arguments the store interface carries are ignored."""
 
-    def __init__(self, payload: dict | None, emit: Callable[[dict], None]):
+    def __init__(self, emit: Callable[[dict], None], facts: list[Fact] | None = None, episodes: list[Episode] | None = None):
+        """Takes items already embedded; a payload comes in through `load`, which embeds off the event loop."""
         self.emit = emit
-        facts, episodes = _items(payload, "facts", "text"), _items(payload, "episodes", "summary")
-        vectors = embed([f["text"] for f in facts] + [e["summary"] for e in episodes]) if facts or episodes else np.zeros((0, 384), np.float32)
-        self.facts = sorted((Fact(f["id"], f["text"], vectors[i], str(f.get("since") or "")) for i, f in enumerate(facts)), key=lambda f: f.since, reverse=True)
-        self.episodes = sorted((Episode(e["id"], e["summary"], vectors[len(facts) + i], str(e.get("at") or "")) for i, e in enumerate(episodes)), key=lambda e: e.created_at, reverse=True)
+        self.facts, self.episodes = list(facts or []), list(episodes or [])
         self.notes: list[tuple[str, str]] = []  # (session id, text): short term is one call long and never leaves the server's RAM
+
+    @classmethod
+    async def load(cls, payload: dict | None, emit: Callable[[dict], None]) -> "DeviceStore":
+        """Validated, capped to the newest MAX_FACTS and MAX_EPISODES, and embedded in one batch on a worker thread, so a big file or a first-run model download never blocks the call's loop."""
+        facts = sorted(_items(payload, "facts", "text"), key=lambda f: str(f.get("since") or ""), reverse=True)[:MAX_FACTS]
+        episodes = sorted(_items(payload, "episodes", "summary"), key=lambda e: str(e.get("at") or ""), reverse=True)[:MAX_EPISODES]
+        texts = [f["text"] for f in facts] + [e["summary"] for e in episodes]
+        vectors = await asyncio.to_thread(embed, texts) if texts else np.zeros((0, 384), np.float32)
+        return cls(emit,
+                   [Fact(f["id"], f["text"], vectors[i], str(f.get("since") or "")) for i, f in enumerate(facts)],
+                   [Episode(e["id"], e["summary"], vectors[len(facts) + i], str(e.get("at") or "")) for i, e in enumerate(episodes)])
 
     def _send(self, op: str, id: str, text: str = "") -> None:
         self.emit({"type": "memory", "op": op, "id": id, "text": text})
