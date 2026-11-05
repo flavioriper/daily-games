@@ -36,6 +36,7 @@ func _initialize() -> void:
 			"h": h = int(kv[1])
 			"out": _out = kv[1]
 			"list": list = kv[1]
+			"lang": Locale.set_current(kv[1])
 	_items = list.split(",", false)
 	_seed()
 	var holder := SubViewportContainer.new()
