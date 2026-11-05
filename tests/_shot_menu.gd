@@ -55,7 +55,9 @@ var _turns_left := 1
 var _second_turn_at := INF
 var _settle := PAGE2_SETTLE
 var _tab_arg := ""
-## The swarm tab forms and starts talking over seconds: its shot waits, and
+## `bot`: the Swarm's call screen (bot/bot_screen.gd), offline as every
+## harness is (Backend is not started under --script, so nothing is dialled):
+## the face forms and plays its intro over seconds, so its shot waits, and
 ## one is saved on the way (/tmp/shot_menu_swarm_mid.png).
 var _second_at := 0.0
 var _mid_saved := false
@@ -79,7 +81,7 @@ func _initialize() -> void:
 		_turns_left = 3
 		_settle = PAGE2_SETTLE + 3.2
 	for a in args:
-		if a in ["streak", "stats", "arcade", "versus", "swarm"] or a == "diff" or a.begins_with("diff="):
+		if a in ["streak", "stats", "arcade", "versus", "bot"] or a == "diff" or a.begins_with("diff="):
 			_tab_arg = a
 			break
 	# The difficulty sheet rings the row last played, so the `diff` shot
@@ -123,8 +125,8 @@ func _process(delta: float) -> bool:
 			_idle = []
 			_draws = 0
 		elif not _tab_arg.is_empty():
-			if _tab_arg == "swarm":
-				_menu._on_tab("swarm")
+			if _tab_arg == "bot":
+				_menu._on_tab("bot")
 			else:
 				_menu._show_tab(_tab_arg)
 			# `turn` after an `arcade`: its second page.
@@ -153,19 +155,20 @@ func _process(delta: float) -> bool:
 			return true
 	elif _phase == 1 and not _tab_arg.is_empty():
 		if _second_at == 0.0:
-			_second_at = SECOND_AT + (8.0 if _tab_arg == "swarm" else 0.0)
-		if _tab_arg == "swarm" and _menu.swarm_tab != null:
-			# The room waits for a touch since 2026-11-05: the shot plays the
-			# intro as its pill would, once the face has formed.
-			if not _intro_started and _menu.swarm_tab._formed:
+			_second_at = SECOND_AT + (8.0 if _tab_arg == "bot" else 0.0)
+		if _tab_arg == "bot" and _menu.bot_screen != null:
+			# Offline, the screen plays the intro itself once the face has
+			# formed; the shot only notes that it did.
+			var fc = _menu.bot_screen.face
+			if not _intro_started and not fc.demo().is_empty():
 				_intro_started = true
-				_menu.swarm_tab.play(_menu.swarm_tab.INTRO)
-			if _menu.swarm_tab._player.playing:
+				print("bot intro started at %.1fs" % _t)
+			if fc._player.playing:
 				_voiced_frames += 1
-			_max_level = maxf(_max_level, _menu.swarm_tab._level)
-		if _tab_arg == "swarm" and not _mid_saved and _t >= _second_at - 5.0:
+			_max_level = maxf(_max_level, fc._level)
+		if _tab_arg == "bot" and not _mid_saved and _t >= _second_at - 5.0:
 			_mid_saved = true
-			var sw = _menu.swarm_tab
+			var sw = _menu.bot_screen.face
 			print("swarm voiced=%s playing=%s stream=%s level=%.2f" % [sw._voiced, sw._player.playing, sw._player.stream.resource_path if sw._player.stream else "-", sw._level])
 			RenderingServer.force_draw()
 			root.get_texture().get_image().save_png("/tmp/shot_menu_swarm_mid.png")
@@ -177,7 +180,8 @@ func _process(delta: float) -> bool:
 			for ms in _idle:
 				mean3 += ms
 			mean3 /= maxf(_idle.size(), 1.0)
-			if _tab_arg == "swarm":
+			if _tab_arg == "bot":
+				print("bot status=%s" % _menu.bot_screen._status.text)
 				print("swarm voice frames=%d max_level=%.2f" % [_voiced_frames, _max_level])
 			print("tab idle frames=%d mean_ms=%.2f max_draw_calls=%d" % [_idle.size(), mean3, _draws])
 			RenderingServer.force_draw()

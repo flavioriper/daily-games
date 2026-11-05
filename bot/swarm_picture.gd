@@ -1,6 +1,6 @@
 extends RefCounted
 
-## What the swarm's draw tool shows (ui/menu/swarm_tab.gd `apply_draw`): a
+## What the swarm's draw tool shows (bot/swarm_face.gd `apply_draw`): a
 ## picture from any of four places, turned into an Image, then into the
 ## pixels whose shape the dots crowd into. Only the shape and each pixel's
 ## brightness are kept: the dots stay the swarm's own, in its tone (the user,

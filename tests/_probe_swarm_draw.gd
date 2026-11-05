@@ -17,8 +17,8 @@ func _check(ok: bool, what: String) -> void:
 func _process(_d: float) -> bool:
 	_f += 1
 	if _f == 1:
-		Tab = load("res://ui/menu/swarm_tab.gd")
-		Picture = load("res://ui/menu/swarm_picture.gd")
+		Tab = load("res://bot/swarm_face.gd")
+		Picture = load("res://bot/swarm_picture.gd")
 		var got: Dictionary = Picture.image_of({"name": "bank:strawberry"})
 		_check(got.has("image"), "bank picture loads")
 		var px: Dictionary = Picture.pixels(got.image, 1200)

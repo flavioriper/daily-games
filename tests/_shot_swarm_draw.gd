@@ -28,7 +28,7 @@ func _initialize() -> void:
 func _process(d: float) -> bool:
 	_t += d
 	if _tab == null:
-		_tab = load("res://ui/menu/swarm_tab.gd").new()
+		_tab = load("res://bot/swarm_face.gd").new()
 		root.add_child(_tab)
 		_tab.open()
 		return false
@@ -50,8 +50,9 @@ func _process(d: float) -> bool:
 					print("see %s %dx%d %d bytes draws=%d tone=#%s" % [st[2], got.w, got.h, got.bytes, _draws, _tab._tone.to_html(false)])
 				_draws = 0
 			"pill":
-				print("pill %s" % _tab._pills[st[2]].text)
-				_tab._pills[st[2]].pressed.emit()
+				# the face alone (bot/swarm_face.gd): its demo, as the pill plays it
+				print("pill %s" % ["Intro", "Draw"][st[2]])
+				_tab.play_demo(_tab.SHOWOFF if st[2] == 1 else _tab.INTRO)
 			"see":
 				var got: Dictionary = _tab.snapshot(384)
 				if got.has("error"):
@@ -63,8 +64,9 @@ func _process(d: float) -> bool:
 					print("see %s %dx%d %d bytes draws=%d tone=#%s" % [st[2], got.w, got.h, got.bytes, _draws, _tab._tone.to_html(false)])
 				_draws = 0
 			"pill":
-				print("pill %s" % _tab._pills[st[2]].text)
-				_tab._pills[st[2]].pressed.emit()
+				# the face alone (bot/swarm_face.gd): its demo, as the pill plays it
+				print("pill %s" % ["Intro", "Draw"][st[2]])
+				_tab.play_demo(_tab.SHOWOFF if st[2] == 1 else _tab.INTRO)
 			"shot":
 				RenderingServer.force_draw()
 				root.get_texture().get_image().save_png("%s/swarm_%s.png" % [_out, st[2]])

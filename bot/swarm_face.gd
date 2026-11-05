@@ -1,16 +1,18 @@
+class_name SwarmFace
 extends Control
 
-## A test (the user, 2026-11-04): a port of Persona Studio's swarm
-## (~/dev/hokipoki/persona-studio/static/home.html, "the swarm"), opened from
-## the Swarm chip of the first screen's categories. It deliberately wears none
-## of the game's paper: the whole screen is a dark room with one small back
-## button, and a swarm of glowing particles gathers into a face and talks to
-## the player out loud (ElevenLabs clips, tools/gen_swarm_voice.py; the words
-## appear as they are said, and the voice's loudness drives the face and the
-## cloud). The soundtrack is held while it is open (Music.hold). Nothing is
-## wired to a brain; a short script plays the agent's two screen tools
-## (agent/tools.py `swarm` and `move`) so every look, glance, move, visit and
-## idle can be seen.
+## The Swarm's face: a swarm of glowing particles that gathers into a face,
+## looks, moves, draws and talks. Cut out of the Swarm tab
+## (ui/menu/swarm_tab.gd) on 2026-11-05, when the tab became the call screen
+## (bot/bot_screen.gd, the room around this face: the back button, the log,
+## the demo pills, the call). The tab began as a test (the user, 2026-11-04):
+## a port of Persona Studio's swarm
+## (~/dev/hokipoki/persona-studio/static/home.html, "the swarm"). It
+## deliberately wears none of the game's paper: a dark room, and the face
+## talking to the player out loud. Offline it plays its demos (the words
+## appear as they are said from ElevenLabs clips, tools/gen_swarm_voice.py,
+## and the voice's loudness drives the face and the cloud); on a call
+## (`live`) the screen hands it the server's states, lines, level and tools.
 ##
 ## Every dot is one unit of the same material, with a role: free (the cloud
 ## round the face, a few wandering the room), body (a shaded disc) or eye (two
@@ -39,7 +41,7 @@ extends Control
 ## image using the particles", "also add tool to agent spawn more
 ## particles, or despawn it"):
 ## - `apply_draw`: the face comes apart and its dots, and the cloud's, crowd
-##   into the shape of a picture (ui/menu/swarm_picture.gd: a Pixel Garden
+##   into the shape of a picture (bot/swarm_picture.gd: a Pixel Garden
 ##   picture by name, the night's picture, a grid the agent wrote, or a png).
 ##   They stay the swarm's own dots, motes and crystals in its tone, each a
 ##   little brighter or dimmer by its pixel, so features show; never tiles in
@@ -61,12 +63,10 @@ extends Control
 
 const Pal = preload("res://core/palette.gd")
 const CozyTheme = preload("res://ui/theme.gd")
-const Icons = preload("res://ui/icons.gd")
-const Music = preload("res://core/music.gd")
 const SafeArea = preload("res://ui/safe_area.gd")
 const Motion = preload("res://core/motion.gd")
 
-const Picture = preload("res://ui/menu/swarm_picture.gd")
+const Picture = preload("res://bot/swarm_picture.gd")
 
 ## The dots the room opens with, and the most the dots tool may raise them
 ## to (every slot a step and a draw walk is GDScript, so CAP is the brake).
@@ -102,7 +102,6 @@ const ROOM := Color("0b1510")
 const ROOM_DEEP := Color("040806")
 ## The one light in the room: from the upper left, toward the viewer.
 const LIGHT := Vector3(-0.45, -0.42, 0.79)
-const BACK := 64.0
 const BLOOM_DIV := 4
 const BLOOM_GROW := 1.7
 const BLOOM_STRENGTH := 0.6
@@ -121,11 +120,17 @@ const VOICE_BUS := "Swarm"
 ## and one to showoff the drawing. swarm should be just idle waiting to
 ## interact with the user"): the room opens on the face alone, idling
 ## (`wander`: drifting looks, checking on the last touch now and then) until
-## touched. Two glass pills in the top right play the demos: Intro, the
+## touched. Two glass pills (the screen's) play the demos: Intro, the
 ## talking script (INTRO), and Draw, the draw and dots tools (SHOWOFF). A
 ## demo ends, or is stopped by the other pill, back at the idle face:
 ## centred, looking ahead, N dots.
-signal closed
+
+## What the tools just did, for the room's quiet log.
+signal noted(text: String)
+## A touch: where, and whether it landed on the face (or the picture).
+signal tapped(at: Vector2, on_face: bool)
+## A demo started or ended (`demo()` says which).
+signal demo_changed
 
 enum Role { FREE, BODY, EYE, PIXEL, DEAD }
 enum Die { NO, FADE, FACE, OUT }
@@ -186,9 +191,6 @@ const SHOWOFF := [
 	{"tone": {"tone": "cyan", "intensity": 1.7, "seconds": 1.2}, "wait": 2.0},
 	{"dots": {"remove": 700, "to": "edges"}, "wait": 3.0},
 ]
-const PILL_H := 64.0
-const SwarmTalk := preload("res://ui/menu/swarm_talk.gd")
-const MIC := 112.0
 
 # --- the particles, one slot each across parallel arrays ---
 var _x := PackedFloat32Array()
@@ -280,14 +282,10 @@ var _listen_until := 0.0
 # --- the talk ---
 var _step_i := -1
 var _script: Array = []  # the demo playing, or none: the face waits
-var _pills: Array[Button] = []  # Intro, Draw
-## Talking to it (swarm_talk.gd): a round mic above the subtitles, held to
-## speak; the reply is said in the swarm's own voice like any other line.
-var _talk: Node
-var _mic_btn: Button
-var _awaiting := false  # heard, the reply not back yet
-var _reply_stream: AudioStream
-var _reply_starts := PackedFloat32Array()
+## On a call: the screen sets the state, the line and the level, and no
+## demo runs (set_live).
+var live := false
+var _ext_level := 0.0
 var _step_wait := 0.0
 var _boot_t := 0.0
 var _line := ""
@@ -300,7 +298,6 @@ var _voiced := false  # the line has a clip playing
 var _player: AudioStreamPlayer
 var _spectrum: AudioEffectSpectrumAnalyzerInstance
 var _times := {}
-var _back: Button
 var _insets := Vector2.ZERO
 
 # --- the drawing ---
@@ -322,7 +319,6 @@ var _bloom_root: Node2D
 var _vp_size := Vector2i.ZERO
 var _rings_open := 0.0
 var _words: Label
-var _log: Label
 
 func _init() -> void:
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -438,81 +434,9 @@ func _init() -> void:
 	_words.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_words)
 
-	# What the agent just did with its tools, quietly, in the corner (the
-	# web's action log).
-	_log = Label.new()
-	_log.add_theme_font_override("font", CozyTheme.body(600))
-	_log.add_theme_font_size_override("font_size", 22)
-	_log.add_theme_color_override("font_color", Color(COL_P, 0.42))
-	_log.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_log)
-
-	# The way out: small, in the top left corner, glass on the dark.
-	_back = Button.new()
-	_back.flat = true
-	_back.focus_mode = Control.FOCUS_NONE
-	for st in ["normal", "hover", "pressed", "hover_pressed", "disabled", "focus"]:
-		_back.add_theme_stylebox_override(st, StyleBoxEmpty.new())
-	_back.size = Vector2(BACK, BACK)
-	_back.pivot_offset = Vector2(BACK, BACK) * 0.5
-	_back.draw.connect(func() -> void:
-		var c := Vector2(BACK, BACK) * 0.5
-		_back.draw_circle(c, BACK * 0.5, Color(COL_PH, 0.10))
-		_back.draw_arc(c, BACK * 0.5 - 1.0, 0, TAU, 48, Color(COL_PH, 0.22), 2.0, true)
-		Icons.paint(_back, "chevron_left", Rect2(c - Vector2(14, 14), Vector2(28, 28)), Color(COL_PH, 0.9)))
-	_back.button_down.connect(func() -> void: Motion.bump(_back, 0.12))
-	_back.pressed.connect(close)
-	add_child(_back)
-
-	# The two demos, glass pills in the top right.
-	for spec in [["SWARM_BTN_INTRO", INTRO], ["SWARM_BTN_DRAW", SHOWOFF]]:
-		var pill := Button.new()
-		pill.focus_mode = Control.FOCUS_NONE
-		pill.text = spec[0]
-		var up := StyleBoxFlat.new()
-		up.bg_color = Color(COL_PH, 0.10)
-		up.border_color = Color(COL_PH, 0.22)
-		up.set_border_width_all(2)
-		up.set_corner_radius_all(int(PILL_H * 0.5))
-		up.content_margin_left = 26
-		up.content_margin_right = 26
-		var down := up.duplicate()
-		down.bg_color = Color(COL_PH, 0.22)
-		for st in ["normal", "hover", "focus", "disabled"]:
-			pill.add_theme_stylebox_override(st, up)
-		pill.add_theme_stylebox_override("pressed", down)
-		pill.add_theme_stylebox_override("hover_pressed", down)
-		pill.add_theme_font_override("font", CozyTheme.body(700))
-		pill.add_theme_font_size_override("font_size", 24)
-		for c in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
-			pill.add_theme_color_override(c, Color(COL_PH, 0.9))
-		pill.custom_minimum_size = Vector2(0, PILL_H)
-		var demo: Array = spec[1]
-		pill.button_down.connect(func() -> void: Motion.bump(pill, 0.12))
-		pill.pressed.connect(func() -> void: play(demo))
-		add_child(pill)
-		_pills.append(pill)
-
 	_player = AudioStreamPlayer.new()
 	_player.bus = VOICE_BUS
 	add_child(_player)
-
-	_talk = SwarmTalk.new()
-	add_child(_talk)
-	_talk.heard.connect(func(t: String) -> void: _note("you  " + t))
-	_talk.spoken.connect(_on_spoken)
-	_talk.failed.connect(_on_talk_failed)
-	_mic_btn = Button.new()
-	_mic_btn.flat = true
-	_mic_btn.focus_mode = Control.FOCUS_NONE
-	for st in ["normal", "hover", "pressed", "hover_pressed", "disabled", "focus"]:
-		_mic_btn.add_theme_stylebox_override(st, StyleBoxEmpty.new())
-	_mic_btn.size = Vector2(MIC, MIC)
-	_mic_btn.pivot_offset = Vector2(MIC, MIC) * 0.5
-	_mic_btn.draw.connect(_draw_mic)
-	_mic_btn.button_down.connect(_mic_down)
-	_mic_btn.button_up.connect(_mic_up)
-	add_child(_mic_btn)
 
 	visible = false
 	set_process(false)
@@ -523,7 +447,6 @@ func open() -> void:
 	if visible:
 		return
 	_ensure_bus()
-	_talk.prepare()
 	if _times.is_empty() and FileAccess.file_exists(VOICE_TIMES):
 		var parsed = JSON.parse_string(FileAccess.get_file_as_string(VOICE_TIMES))
 		if parsed is Dictionary:
@@ -543,7 +466,6 @@ func open() -> void:
 	_place = {"to": "centre"}
 	_glance_back = null
 	_visit_back = null
-	_log.text = ""
 	_cv = Vector2.ZERO
 	_links_n = 0
 	_links.visible_instance_count = 0
@@ -560,7 +482,8 @@ func open() -> void:
 	_rings_open = 0.0
 	_rings_mat.set_shader_parameter("open", 0.0)
 	_room_mat.set_shader_parameter("lit", 0.0)
-	Music.hold("swarm", true)
+	live = false
+	_ext_level = 0.0
 	visible = true
 	# A bare SubViewport draws every frame whether or not its parent shows,
 	# so the bloom's two run only while the room is open.
@@ -578,17 +501,11 @@ func close() -> void:
 	if not visible:
 		return
 	_player.stop()
-	_talk.cancel()
-	_awaiting = false
-	Music.hold("swarm", false)
+	live = false
 	visible = false
 	_bloom_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	_blur_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	set_process(false)
-	closed.emit()
-
-func _exit_tree() -> void:
-	Music.hold("swarm", false)
 
 ## The voice's own bus and its analyser, shared with the call
 ## (BotCall.ensure_bus) so both voices go the same way.
@@ -933,12 +850,15 @@ func apply_draw(cmd: Dictionary) -> Dictionary:
 ## to see the screen ... so he can draw and see it"): the frame last drawn,
 ## the room only, shrunk to `width` pixels across and sent back as a JPEG in
 ## base64, for the call to hand the model as an image. It shows only what
-## this room draws (the swarm, the subtitles, the log, the two pills); there
-## is no camera and nothing of any other screen in it.
+## the room shows (the swarm, the subtitles, and the screen's log, status
+## line and buttons over them); there is no camera and nothing of any other
+## screen in it.
 func snapshot(width := 384) -> Dictionary:
 	if not visible or size.x < 10.0:
 		return {"error": "the room is not open"}
 	var frame := get_viewport().get_texture().get_image()
+	if frame == null or frame.is_empty():
+		return {"error": "no frame drawn"}  # headless: nothing is rendered
 	var r := Rect2i(get_global_rect()).intersection(Rect2i(Vector2i.ZERO, frame.get_size()))
 	if r.size.x < 10 or r.size.y < 10:
 		return {"error": "nothing on screen"}
@@ -1125,11 +1045,7 @@ func _despawn(n: int, cmd: Dictionary) -> int:
 	return maxi(n, 0)
 
 func _note(s: String) -> void:
-	var lines := _log.text.split("\n", false)
-	lines.append(s)
-	while lines.size() > 3:
-		lines.remove_at(0)
-	_log.text = "\n".join(lines)
+	noted.emit(s)
 
 ## Where the agent chose to look this step: a unit direction (`dir`), a
 ## point in the room, or nothing (straight ahead).
@@ -1160,7 +1076,62 @@ func _look_target() -> Dictionary:
 		return {"at": Vector2(float(cmd.x) * size.x, float(cmd.y) * size.y)}
 	return {}
 
-# --- the talk ---
+# --- on a call: the screen drives the face ---
+
+## On a call (true) the demos stop and the screen hands the face its state,
+## line and level; off a call the face is the demo face again, waiting.
+func set_live(on: bool) -> void:
+	if on == live:
+		return
+	if on:
+		_hush()
+		_script = []
+		demo_changed.emit()
+	live = on
+	_state = ""
+	_voice = false
+	_ext_level = 0.0
+	_line = ""
+	_words.visible_characters = -1
+
+## The server's state: listening, thinking, speaking or remembering (which
+## looks like thinking).
+func set_state(name: String) -> void:
+	match name:
+		"speaking":
+			_state = "speaking"
+		"thinking", "remembering":
+			_state = "thinking"
+		"listening":
+			_state = "listening"
+			_listen_until = _now + 800.0
+		_:
+			_state = ""
+	_voice = _state == "speaking"
+	if _state != "listening":
+		_last_active = _now
+
+func state() -> String:
+	return _state
+
+## How loud the voice is, 0..1 (BotCall.level()), read while speaking.
+func set_level(v: float) -> void:
+	_ext_level = clampf(v, 0.0, 1.0)
+
+## A line for the subtitles, shown from nothing; `reveal` uncovers it.
+func say(text: String) -> void:
+	_line = text
+	_line_t = 0.0
+	_words.visible_characters = 0
+
+## How many characters of the line show (-1: all of it).
+func reveal(n: int) -> void:
+	_words.visible_characters = n if n < _line.length() else -1
+
+func line() -> String:
+	return _line
+
+# --- the demos ---
 
 func _say(key: String) -> void:
 	# A beat of thought (eyes narrow) before the words come.
@@ -1169,8 +1140,6 @@ func _say(key: String) -> void:
 	_state = "thinking"
 
 func _run_script(dt: float) -> void:
-	if _awaiting or _talk.recording():
-		return  # listening, or thinking until the reply is back
 	if _think_t > 0.0:
 		_think_t -= dt
 		if _think_t <= 0.0:
@@ -1238,24 +1207,31 @@ func _run_script(dt: float) -> void:
 	elif st.has("wait"):
 		_step_wait = float(st.wait)
 
-## A demo from its first step, stopping whatever was playing (a pill
-## pressed again starts its demo over).
-func play(demo: Array) -> void:
-	if not _formed:
-		return
+## A demo (INTRO by default) from its first step, stopping whatever was
+## playing (a pill pressed again starts its demo over). Not on a call, and
+## not before the face has formed (false then).
+func play_demo(demo: Array = INTRO) -> bool:
+	if not _formed or live:
+		return false
 	_hush()
 	_rest()
 	_script = demo
 	_step_i = -1
 	_step_wait = 0.4
 	_last_active = _now
-	_pill_marks()
+	demo_changed.emit()
+	return true
+
+func is_formed() -> bool:
+	return _formed
+
+## The demo playing, or [] while the face waits.
+func demo() -> Array:
+	return _script
 
 ## The line being said stops where it is.
 func _hush() -> void:
 	_player.stop()
-	_awaiting = false
-	_reply_stream = null
 	_voiced = false
 	_voice = false
 	_think_t = 0.0
@@ -1280,13 +1256,7 @@ func _rest() -> void:
 	if _tone_to != COL_P or _inten_to != 1.0 or _tone_back != null:
 		apply_tone({"tone": "green", "intensity": 1.0})
 	apply_swarm({"look": "ahead", "idle": "wander"})
-	_pill_marks()
-
-## The pill whose demo is playing stands brighter.
-func _pill_marks() -> void:
-	for k in _pills.size():
-		var on := not _script.is_empty() and _script == (INTRO if k == 0 else SHOWOFF)
-		_pills[k].modulate = Color(1, 1, 1, 1.0 if on or _script.is_empty() else 0.55)
+	demo_changed.emit()
 
 ## The line's clip in the game's language (English when it has none), and
 ## when each of its characters is said; without a clip the line is shown at
@@ -1294,14 +1264,6 @@ func _pill_marks() -> void:
 func _start_voice(key: String) -> void:
 	_voiced = false
 	_starts = PackedFloat32Array()
-	if _reply_stream != null:
-		# A reply when talked to: ElevenLabs' audio and character times.
-		_player.stream = _reply_stream
-		_player.play()
-		_voiced = true
-		_starts = _reply_starts
-		_reply_stream = null
-		return
 	var lang := TranslationServer.get_locale().substr(0, 2)
 	for l in [lang, "en"]:
 		var stem := "%s_%s" % [key, l]
@@ -1328,6 +1290,13 @@ func _start_voice(key: String) -> void:
 ## How loud the voice is right now, 0..1: the clip's own loudness when one is
 ## playing, else syllables at the reveal's pace, quiet on spaces and stops.
 func _voice_level() -> float:
+	if live:
+		if _state == "speaking":
+			return _ext_level
+		if _state == "thinking" and _pic_on:
+			# Judging its own drawing: the picture murmurs, so it never looks frozen.
+			return 0.0 if Motion.reduce else 0.1 + 0.08 * sin(_now / 320.0)
+		return 0.0
 	if _state != "speaking":
 		return 0.0
 	if _voiced and _spectrum != null:
@@ -1351,7 +1320,7 @@ func _process(delta: float) -> void:
 		_seed()
 	var dt := minf(delta, 0.1)
 	_boot(dt)
-	if _formed:
+	if _formed and not live:
 		_run_script(dt)
 	_acc += dt
 	var steps := 0
@@ -1405,7 +1374,9 @@ func _step() -> void:
 		if Motion.reduce:
 			_tone = _tone_to
 			_inten = _inten_to
-	if _state != "":
+	# On a call, listening is the face's rest: the idle still comes when the
+	# player goes quiet (the swarm tool's `idle`), the listening glow stays.
+	if _state != "" and not (live and _state == "listening"):
 		_last_active = now
 	var was := _idle_now
 	_idle_now = _idle != "" and now - _last_active > IDLE_MS
@@ -1413,7 +1384,7 @@ func _step() -> void:
 		_note("idle  " + _idle)
 	if not _idle_now:
 		_wander_until = 0.0
-	if _state == "listening" and now > _listen_until:
+	if _state == "listening" and now > _listen_until and not live:
 		_state = ""
 	var target_level := _voice_level()
 	_level += (target_level - _level) * 0.35
@@ -1858,18 +1829,6 @@ func _render(dt: float) -> void:
 	# Subtitles stay put near the foot of the screen, wherever the face goes.
 	_words.position = Vector2((size.x - ww) * 0.5, size.y - _insets.y - 170.0 - _words.size.y * 0.5)
 	_words.modulate.a = 1.0 if _formed else 0.0
-	_log.position = Vector2(36, size.y - _log.size.y - 28.0 - _insets.y)
-	_mic_btn.position = Vector2((size.x - MIC) * 0.5, size.y - _insets.y - 330.0 - MIC * 0.5)
-	_mic_btn.visible = _formed
-	_back.position = Vector2(28.0, 28.0 + _insets.x)
-	var right := size.x - 28.0
-	for k in range(_pills.size() - 1, -1, -1):
-		var pill := _pills[k]
-		pill.size = pill.get_combined_minimum_size()
-		right -= pill.size.x
-		pill.position = Vector2(right, 28.0 + _insets.x + (BACK - PILL_H) * 0.5)
-		right -= 14.0
-		pill.visible = _formed
 
 # --- the player ---
 
@@ -1892,60 +1851,13 @@ func _touch(p: Vector2, tap: bool) -> void:
 		_listen_until = _now + 800.0
 	if tap and _formed:
 		apply_swarm({"look": "point", "x": p.x / size.x, "y": p.y / size.y, "seconds": 2.5})
+	if tap:
+		tapped.emit(p, on_face(p))
 
+## Whether `p` is on the face (or on the picture it is drawing).
+func on_face(p: Vector2) -> bool:
+	if _pic_on:
+		var half := Vector2(_pic_w, _pic_h) * _pic_cell() * 0.5
+		return absf(p.x - _c.x) <= half.x + 24.0 and absf(p.y - _c.y) <= half.y + 24.0
+	return p.distance_to(_c) <= _R * 1.3
 
-# --- talking to it ---
-
-func _mic_down() -> void:
-	Motion.bump(_mic_btn, 0.12)
-	_talk.cancel()
-	_hush()
-	_script = []
-	_pill_marks()
-	if not _talk.start_listening():
-		return
-	_state = "listening"
-	_listen_until = _now + 3600000.0
-	_mic_btn.queue_redraw()
-
-func _mic_up() -> void:
-	if not _talk.recording():
-		return
-	_talk.stop_listening()
-	_listen_until = 0.0
-	_state = "thinking"
-	_awaiting = true
-	_mic_btn.queue_redraw()
-
-func _on_spoken(text: String, stream: AudioStream, starts: PackedFloat32Array) -> void:
-	if not visible:
-		return
-	_note(_talk.timings())
-	_reply_stream = stream
-	_reply_starts = starts
-	_say(text)
-	_awaiting = false
-
-func _on_talk_failed(why: String) -> void:
-	_note("talk  " + why)
-	_awaiting = false
-	if _state == "thinking":
-		_state = ""
-	_mic_btn.queue_redraw()
-
-## A round glass button with a microphone; brighter while held.
-func _draw_mic() -> void:
-	var c := Vector2(MIC, MIC) * 0.5
-	var on: bool = _talk != null and _talk.recording()
-	_mic_btn.draw_circle(c, MIC * 0.5, Color(COL_PH, 0.28 if on else 0.10))
-	_mic_btn.draw_arc(c, MIC * 0.5 - 1.5, 0, TAU, 64, Color(COL_PH, 0.5 if on else 0.22), 3.0, true)
-	var ink := Color(COL_PH, 0.95)
-	var w := 22.0
-	var h := 38.0
-	var top := c + Vector2(-w * 0.5, -h * 0.5 - 8.0)
-	_mic_btn.draw_rect(Rect2(top + Vector2(0, w * 0.5), Vector2(w, h - w)), ink)
-	_mic_btn.draw_circle(top + Vector2(w * 0.5, w * 0.5), w * 0.5, ink)
-	_mic_btn.draw_circle(top + Vector2(w * 0.5, h - w * 0.5), w * 0.5, ink)
-	_mic_btn.draw_arc(c + Vector2(0, 2), 20.0, 0.15, PI - 0.15, 24, ink, 4.0, true)
-	_mic_btn.draw_line(c + Vector2(0, 22), c + Vector2(0, 32), ink, 4.0, true)
-	_mic_btn.draw_line(c + Vector2(-11, 32), c + Vector2(11, 32), ink, 4.0, true)

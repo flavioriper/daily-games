@@ -178,6 +178,19 @@ static func playing() -> bool:
 	return c._pb != null and c._pb.get_frames_available() < c._room - 64
 
 
+## Voice frames (24 kHz) the generator has played on this call: pushed, less
+## what still waits in it. A screen reveals a line's words by it. A `clear`
+## drops what waited, so it jumps forward there.
+static func consumed() -> int:
+	if _call == null:
+		return 0
+	var c := _call
+	var waiting := 0
+	if c._pb != null:
+		waiting = maxi(0, c._room - c._pb.get_frames_available())
+	return c.samples_pushed - waiting
+
+
 ## How loud the Swarm bus is right now, 0..1 (as the Swarm tab's face reads it).
 static func level() -> float:
 	var sp := spectrum()

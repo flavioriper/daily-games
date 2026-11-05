@@ -27,7 +27,7 @@ func _initialize() -> void:
 func _process(d: float) -> bool:
 	_t += d
 	if _tab == null:
-		_tab = load("res://ui/menu/swarm_tab.gd").new()
+		_tab = load("res://bot/swarm_face.gd").new()
 		root.add_child(_tab)
 		_tab.open()
 		_heard = _t

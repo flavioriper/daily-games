@@ -48,7 +48,7 @@ const Icons = preload("res://ui/icons.gd")
 const Analytics = preload("res://core/analytics.gd")
 const StreakTab = preload("res://ui/menu/streak_tab.gd")
 const StatsTab = preload("res://ui/menu/stats_tab.gd")
-const SwarmTab = preload("res://ui/menu/swarm_tab.gd")
+const BotScreenScript = preload("res://bot/bot_screen.gd")
 const PagerPill = preload("res://ui/menu/pager_pill.gd")
 const Streak = preload("res://core/streak.gd")
 const Haptics = preload("res://core/haptics.gd")
@@ -186,7 +186,7 @@ var day_row: Control
 var bar: Control
 var streak_tab: Control
 var stats_tab: Control
-var swarm_tab: Control
+var bot_screen: Control
 var _tab := "home"
 var _tab_tw: Tween
 var _backdrop: ColorRect
@@ -1229,17 +1229,18 @@ func _tell_offline() -> void:
 			_say(tr("MENU_OFFLINE"), OFFLINE_TIME))
 
 func _on_tab(tab: String) -> void:
-	# The Swarm test takes the whole screen over the list; its back button
-	# (or Android's back) closes it and the list is as it was.
-	if tab == "swarm":
-		if swarm_tab == null:
-			swarm_tab = SwarmTab.new()
-			swarm_tab.name = "SwarmTab"
-			swarm_tab.closed.connect(func() -> void: _list_root.visible = true)
-			add_child(swarm_tab)
+	# The Swarm's call screen (bot/bot_screen.gd) takes the whole screen over
+	# the list; its back button (or Android's back) ends the call and the
+	# list is as it was.
+	if tab == "bot":
+		if bot_screen == null:
+			bot_screen = BotScreenScript.new()
+			bot_screen.name = "BotScreen"
+			bot_screen.closed.connect(func() -> void: _list_root.visible = true)
+			add_child(bot_screen)
 		# Nothing under the room is seen, so nothing under it is drawn.
 		_list_root.visible = false
-		swarm_tab.open()
+		bot_screen.open()
 		Analytics.track("tab_opened", {"tab": tab})
 		return
 	_show_tab(tab)

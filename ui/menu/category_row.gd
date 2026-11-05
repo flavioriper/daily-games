@@ -26,6 +26,7 @@ signal picked(tab: String)
 const Icons = preload("res://ui/icons.gd")
 const SheetParts = preload("res://ui/hud/sheet_parts.gd")
 const Face = preload("res://ui/faces/face.gd")
+const AgeGate = preload("res://core/age_gate.gd")
 
 const HEIGHT := 88.0
 const ICON := 40.0
@@ -41,8 +42,9 @@ const IDLE_INK := Color("6e6057")
 const SPRIG_A := Color(0.55, 0.68, 0.35)
 const TABS := [
 	{"key": "home", "label": "BAR_HOME", "icon": "puzzle", "live": true},
-	# A test (2026-11-04): the glowing swarm, ui/menu/swarm_tab.gd.
-	{"key": "swarm", "label": "BAR_SWARM", "icon": "sparkle", "live": true},
+	# The Swarm's call (2026-11-05, bot/bot_screen.gd; a test tab since
+	# 2026-11-04): teens and adults only (`entries`).
+	{"key": "bot", "label": "BAR_BOT", "icon": "sparkle", "live": true, "teen": true},
 ]
 
 var current := "home"
@@ -65,9 +67,18 @@ func _build() -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 0)
 	_inner.add_child(row)
-	for tab in TABS:
+	for tab in entries():
 		row.add_child(_make_tab(tab))
 	_repaint()
+
+## The categories this player sees: a `teen` one only once the age gate
+## knows the player is 13 or over (an unknown age is the protective side).
+static func entries() -> Array:
+	var out := []
+	for tab in TABS:
+		if not tab.get("teen", false) or AgeGate.band() >= AgeGate.TEEN:
+			out.append(tab)
+	return out
 
 func _make_tab(tab: Dictionary) -> Control:
 	var holder := Control.new()
