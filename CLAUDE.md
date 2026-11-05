@@ -104,6 +104,7 @@ that area**, and add new history there rather than here.
 | Backend, Firestore, functions, locale | `docs/agents/turns-and-backend.md` |
 | CI | `docs/agents/ci.md` |
 | Talking to the swarm (mic, Deepgram, gpt-6-luna, ElevenLabs; dev keys on the phone) | `docs/agents/swarm-talk.md` |
+| The Swarm's call server (server/bot: auth, the call, the two memory layers, Neon shared layer, deploy) | `docs/agents/bot.md` |
 | The day documents and the quality dashboard (`day_dict()`, `tools/export_days.gd`) | `docs/agents/days-dashboard.md` |
 | The board checkup (perf, tutorial, ?, undo/reset) and where it stands | `docs/agents/checkup.md` |
 

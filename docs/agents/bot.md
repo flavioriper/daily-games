@@ -75,7 +75,7 @@ The steps, in order. Each block is for a terminal on the Mac.
 
 3. **The production `swarm` database on Neon** (project `peeplet`, id
    `shy-mud-44712747`, the production branch): create the database in the
-   Neon console (or `neonctl databases create --project-id shy-mud-44712747 --name swarm`),
+   Neon console (or `neon databases create --org-id org-young-lake-36988118 --project-id shy-mud-44712747 --branch production --name swarm`; the `neon` CLI, not `neonctl`, is the one on this Mac),
    copy its connection string, then apply the schema and sync the curated
    knowledge once. The URL goes in the environment of these commands only,
    never in a file or the shell history (`read -s` below):
