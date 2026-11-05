@@ -18,7 +18,7 @@ from policy.mood import mood
 from studio.corrections import FACTS, detect
 
 
-SILENT_TOOLS = {"swarm", "move"}  # tools that act on the screen, not the world: no typing sound, no bridge line
+SILENT_TOOLS = {"swarm", "move", "draw", "dots", "tone", "see"}  # tools that act on the screen, not the world: no typing sound, no bridge line
 
 
 class Clips(Protocol):
@@ -105,6 +105,8 @@ class PolicySteer(FrameProcessor):
 
     def start_early(self, text: str) -> None:
         """From Flux's eager end of turn: the commit usually lands after Jev has answered. Flux may re-issue the guess with a revised transcript; the same words keep the call in flight."""
+        if self.jev is None:
+            return
         if text.strip() and not (self._early and barely_changed(self._early[0], text) and not self._early[1].cancelled()):
             self._early = (text, self._ask(text))
 
@@ -195,6 +197,8 @@ class PolicySteer(FrameProcessor):
         path = "final"
         self._overdue = None
         early, self._early = self._early, None
+        if self.jev is None:  # no Jev for this language: every turn takes the card's default decision
+            return None, "off", 0
         if early and barely_changed(early[0], text):
             task, path = early[1], "early"
         else:

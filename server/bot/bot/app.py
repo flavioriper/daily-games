@@ -13,7 +13,9 @@ from starlette.websockets import WebSocketDisconnect
 
 from bot.auth import Unauthorized, verify
 from bot.cards import CLIPS, LANGUAGES, load_card, clip_card
+from memory.device import DeviceStore
 from studio.clips import has_clips
+from voice.phone import Phone
 
 HELLO_SECONDS = 5.0
 CALLS_PER_WINDOW = 6
@@ -46,18 +48,34 @@ async def stub_run_call(websocket, card, user_id, session_id, deps, store) -> No
     await wait_for_bye(websocket)
 
 
+async def voice_run_call(websocket, card, user_id, session_id, deps, store) -> None:
+    """The call (voice/bot.py), imported on first use so the socket's tests never load the pipeline."""
+    from voice.bot import run_call
+
+    await run_call(websocket, card, user_id, session_id, deps, store)
+
+
 @dataclass
 class Deps:
     """What the app is built with. `run_call` is the seam voice.bot plugs into."""
 
-    run_call: Callable[..., Awaitable[Any]] = stub_run_call  # (websocket, card, user_id, session_id, deps, store)
+    run_call: Callable[..., Awaitable[Any]] = voice_run_call  # (websocket, card, user_id, session_id, deps, store)
     verify: Callable[[str], str] = verify
     clips_root: Path = CLIPS  # one folder per language, each with a manifest.json
     now: Callable[[], float] = time.monotonic
     hello_timeout: float = HELLO_SECONDS
     calls_per_window: int = CALLS_PER_WINDOW
     window: float = WINDOW_SECONDS
-    store: Any = None  # the device memory store arrives with its own task
+    # What the call is built with; None takes voice/bot.py's default (keys from the environment)
+    services: Callable[..., Any] | None = None  # card -> Services(stt, llm, tts)
+    ledger: Any = None
+    jev: Callable[[], Any] | None = None  # a fresh Jev per call (English only)
+    learner: Any = None
+    eye: Any = None
+    memory_client: Any = None
+    events: Any = None  # a voice.phone.KindLog to keep event kinds; nothing by default
+    see_seconds: float = 2.0
+    cap_seconds: float = 15 * 60
 
 
 def build_app(deps: Deps | None = None) -> FastAPI:
@@ -124,7 +142,8 @@ def build_app(deps: Deps | None = None) -> FastAPI:
         try:
             session_id = uuid.uuid4().hex
             await websocket.send_json({"type": "session", "session_id": session_id})
-            await deps.run_call(websocket, card, uid, session_id, deps, deps.store)
+            store = await DeviceStore.load(hello.get("memory") or {}, Phone.of(websocket).send)  # the player's memory, in RAM for this call; every change goes back as `memory`
+            await deps.run_call(websocket, card, uid, session_id, deps, store)
         except WebSocketDisconnect:
             pass
         finally:

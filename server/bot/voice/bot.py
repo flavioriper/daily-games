@@ -1,9 +1,14 @@
-"""One call: browser websocket, Flux, PolicySteer, any LLM, ElevenLabs, clips (spec section 7). Flux's eager end of turn starts Jev and a held reply; its commit releases them."""
+"""One call: the phone's websocket, Flux, PolicySteer, any LLM, ElevenLabs, clips (spec section 7). Flux's eager end of turn starts Jev and a held reply; its commit releases them. Events go to the phone as they happen (voice/phone.py); nothing about the player is kept."""
 import asyncio
 import os
 import re
 from dataclasses import dataclass
+from functools import lru_cache
+from pathlib import Path
 from typing import Any
+
+from loguru import logger
+from pipecat.frames.frames import InterruptionFrame
 
 from pipecat.expressive.policy import ExpressionGuidance, ExpressionPolicy
 from pipecat.observers.user_bot_latency_observer import UserBotLatencyObserver
@@ -17,15 +22,21 @@ from pipecat.turns.user_start.min_words_user_turn_start_strategy import MinWords
 from pipecat.turns.user_stop.external_user_turn_stop_strategy import ExternalUserTurnStopStrategy
 from pipecat.turns.user_turn_strategies import UserTurnStrategies
 
-from agent.tools import TIMEOUT, result_text
+from agent.eye import MODEL as EYE_MODEL, Eye
+from agent.tools import COMMANDS, TIMEOUT, Toolbox, result_text
+from bot.cards import CLIPS, clip_card
+from memory.device import DeviceHub, DeviceStore
+from memory.turn import MemoryTurn
+from policy.learn import BaseLearner, load_base
 from studio.brains import make_llm
-from studio.card import Card
+from studio.card import Card, owner_of
 from studio.clips import SONIOX_VOICE
 from voice.clip_player import RATE, ClipOut, ClipPlayer
 from voice.eager import OneSpeculationStopStrategy
 from voice.foley import Listener
 from voice.ledger_observer import LedgerObserver
 from voice.pace import PaceProcessor
+from voice.phone import SEE_SECONDS, KeptOpen, KindLog, Phone
 from voice.prompt import system_prompt
 from voice.serializer import IN_RATE, PcmSerializer
 from voice.steer import AfterLLM, PolicySteer
@@ -91,46 +102,108 @@ def strategies(card: Card | None = None) -> UserTurnStrategies:
     return UserTurnStrategies(start=[StopWordUserTurnStartStrategy(), MinWordsUserTurnStartStrategy(min_words=2)], stop=[OneSpeculationStopStrategy() if speculate else ExternalUserTurnStopStrategy()])
 
 
-async def run_call(websocket, card: Card, user_id: str, session_id: str, deps) -> None:
-    s = (deps.services or make_services)(card)
-    transport = FastAPIWebsocketTransport(websocket, FastAPIWebsocketParams(audio_in_enabled=True, audio_out_enabled=True, audio_in_sample_rate=IN_RATE, audio_out_sample_rate=RATE, serializer=PcmSerializer()))
-    log = lambda **e: deps.events.add({"session_id": session_id, "slug": card.slug, **e})
-    stage = lambda e: log(kind="stage", **e)
-    ledger_obs = LedgerObserver(deps.ledger, user_id=user_id, persona=card.slug, session_id=session_id, brain=card.brain.chat, stt_model=stt_model(card), tts_model=card.voice.model, speech="soniox" if soniox(card) else None)
+CAP_SECONDS = 15 * 60  # a call ends itself after fifteen minutes, with a line
+BYE_GRACE = 0.4  # after the goodbye clip, before the pipeline stops
+STATES = {"hearing": "listening", "policy": "thinking", "speaking": "speaking", "done": "listening"}
+ROOT = Path(__file__).resolve().parent.parent
+
+
+def state_of(event: dict) -> str | None:
+    """The face's state from the steer's and the clip output's stage events. A guessed (speculative) turn is not thinking yet: the person may still be talking."""
+    stage = event.get("stage")
+    if stage == "jev":
+        return None if event.get("speculative") else "thinking"
+    return STATES.get(stage)
+
+
+@lru_cache(maxsize=1)
+def base_learner() -> BaseLearner:
+    """Read-only and shared: the base policy net, no player deltas."""
+    return BaseLearner(load_base(ROOT / "models" / "base.pt"))
+
+
+def default_ledger():
+    """Cost rows keyed by uid, the one thing kept about a player (spec, "Nothing persists"). BOT_LEDGER names the file; RAM otherwise."""
+    from studio.ledger import Ledger
+    from studio.prices import Prices
+
+    return Ledger(os.environ.get("BOT_LEDGER", ":memory:"), Prices.load(ROOT / "prices.yaml"))
+
+
+def default_jev():
+    """Jev's answers cached in RAM for this call only: a cache on disk would keep a hash of what the player said."""
+    from policy.jev import default_jev as make
+
+    return make(":memory:")
+
+
+def default_memory_client():
+    key = os.environ.get("OPENAI_API_KEY")
+    if not key:
+        return None
+    import openai
+
+    return openai.AsyncOpenAI(api_key=key)
+
+
+def _dep(deps, name: str, default=None):
+    return getattr(deps, name, None) or default
+
+
+async def run_call(websocket, card: Card, user_id: str, session_id: str, deps, store: DeviceStore | None = None) -> None:
+    """One call on the phone's socket, after the hello. Ends on `bye` (or the fifteen-minute cap) with the call's memory sent and `bye_ack`, or when the phone goes away, with nothing sent."""
+    phone = Phone.of(websocket, see_s=_dep(deps, "see_seconds", SEE_SECONDS))
+    if store is None:
+        store = await DeviceStore.load({}, phone.send)
+    card = card.model_copy(update={"screen": True})  # the person sees the swarm: the phone wording of the prompt
+    s = _dep(deps, "services", make_services)(card)
+    transport = FastAPIWebsocketTransport(KeptOpen(websocket), FastAPIWebsocketParams(audio_in_enabled=True, audio_out_enabled=True, audio_in_sample_rate=IN_RATE, audio_out_sample_rate=RATE, serializer=PcmSerializer(on_text=phone.on_text)))
+    events = _dep(deps, "events")
+    log = (lambda **e: events.add({"session_id": session_id, **e})) if events is not None else (lambda **e: None)  # KindLog keeps the kind only
+
+    def stage(e: dict) -> None:
+        log(kind="stage", **e)
+        if name := state_of(e):
+            phone.state(name)
+
+    ledger = _dep(deps, "ledger") or default_ledger()
+    ids = {"user_id": user_id, "persona": card.slug, "session_id": session_id}
+    ledger_obs = LedgerObserver(ledger, user_id=user_id, persona=card.slug, session_id=session_id, brain=card.brain.chat, stt_model=stt_model(card), tts_model=card.voice.model, speech="soniox" if soniox(card) else None)
     latency = UserBotLatencyObserver()
+    jev = (_dep(deps, "jev", default_jev))() if card.language == "en" else None  # Jev reads English; elsewhere the steer takes the card's default decision
 
-    toolbox = deps.toolbox(card, stage)
-    context = LLMContext(tools=toolbox.pipecat_schema()) if toolbox else LLMContext()
+    def eye_usage(u: dict) -> None:
+        ledger.record(kind="llm", provider="openai", model=EYE_MODEL, units={"prompt_tokens": u.get("prompt_tokens") or 0, "completion_tokens": u.get("completion_tokens") or 0, "gross": True}, source="eye", **ids)
+
+    toolbox = Toolbox(None, stage, owner=owner_of(card), phone=True, eye=_dep(deps, "eye") or Eye(), look=phone.look, on_usage=eye_usage)
+    context = LLMContext(tools=toolbox.pipecat_schema())
     pair = LLMContextAggregatorPair(context, user_params=LLMUserAggregatorParams(user_turn_strategies=strategies(card)))
-    clip_out, pace = ClipOut(on_stage=stage), PaceProcessor()
-    player = await asyncio.to_thread(ClipPlayer, clip_out, deps.voices_root, card)
+    clip_out, pace = ClipOut(on_stage=stage, on_said=phone.said), PaceProcessor()
+    player = await asyncio.to_thread(ClipPlayer, clip_out, _dep(deps, "clips_root", CLIPS), clip_card(card), phone.said)  # clips live under the language; everything else keys on the real card
 
-    async def cue(name: str) -> None:  # every room sound and backchannel is on the record, so a stray one can be traced to its source
+    async def cue(name: str) -> None:  # the phone drops sfx; kept so the steer's clock behaves as in the studio
         stage({"stage": "sfx", "name": name})
         await clip_out.cue(name)
 
-    def on_event(e: dict) -> None:
-        log(**deps.enrich_turn(e, user_id, card.slug))
+    memory = MemoryTurn(DeviceHub(store), card, user_id, session_id, log, _dep(deps, "memory_client") or default_memory_client(), ledger)
+    memory.start()
+    steer = PolicySteer(jev=jev, learner=_dep(deps, "learner") or base_learner(), slug=card.slug, user_id=user_id, default_decision=card.calibration.default_decision, clips=player,
+                        on_event=lambda e: log(**e), on_jev_call=ledger_obs.jev_call, on_stage=stage, on_cue=cue, pace=pace, memory=memory)  # the decision point Tasks 16-18 hook: on_event gets every turn's decision
 
-    def on_fact(fact: str) -> None:
-        asyncio.ensure_future(asyncio.to_thread(deps.add_fact, card.slug, fact))  # a bucket write has no place on the audio loop
+    async def act(params) -> None:
+        turn = sum(m.get("role") == "user" for m in context.messages)
+        result = await toolbox.run(params.function_name, dict(params.arguments), turn)
+        for key in COMMANDS:
+            if key in result:
+                phone.send({"type": "tool", "name": key, "cmd": result[key]})
+        await params.result_callback(result_text({k: v for k, v in result.items() if k not in COMMANDS}))  # the command is the phone's; the voice hears what was done
 
-    memory = deps.memory_turn(card, user_id, session_id, log)
-    steer = PolicySteer(jev=deps.jev, learner=deps.learner, slug=card.slug, user_id=user_id, default_decision=card.calibration.default_decision, clips=player, on_event=on_event, on_fact=on_fact, on_jev_call=ledger_obs.jev_call, on_stage=stage, on_cue=cue, pace=pace, memory=memory)
+    for name in toolbox.names():
+        s.llm.register_function(name, act, timeout_secs=TIMEOUT[name])
 
-    if toolbox:
-        toolbox.memory = memory
-
-        async def act(params) -> None:
-            turn = sum(m.get("role") == "user" for m in context.messages)  # what send_email counts to know the person has answered since the draft
-            await params.result_callback(result_text(await toolbox.run(params.function_name, dict(params.arguments), turn)))
-
-        for name in toolbox.names():
-            s.llm.register_function(name, act, timeout_secs=TIMEOUT[name])
-
-        @s.llm.event_handler("on_function_calls_started")
-        async def acting(_, calls):
-            await steer.tools_started([c.function_name for c in calls])
+    @s.llm.event_handler("on_function_calls_started")
+    async def acting(_, calls):
+        await steer.tools_started([c.function_name for c in calls])
 
     if "on_eager_end_of_turn" in s.stt._event_handlers:
         @s.stt.event_handler("on_eager_end_of_turn")
@@ -141,15 +214,50 @@ async def run_call(websocket, card: Card, user_id: str, session_id: str, deps) -
     v = card.voice.expression
     policy = ExpressionPolicy(delivery=v.deliveries, sounds=v.sounds, guidance=[ExpressionGuidance.MATCH_STYLE, f"Use at most {v.max_tags_per_reply} tags per reply."])
     task = PipelineTask(pipeline, params=PipelineParams(enable_metrics=True, enable_usage_metrics=True, enable_expressive_conversation=v.max_tags_per_reply > 0, expression_policy=policy if v.max_tags_per_reply > 0 else None), observers=[ledger_obs, latency])
+    ending: list[str] = []  # why the call ended: bye, cap or gone
+
+    async def end(reason: str) -> None:
+        if not ending:
+            ending.append(reason)
+            await task.cancel()
+
+    async def speak(kind: str) -> None:
+        """A whole clip line: speaking while it plays, then listening unless something else moved the face meanwhile."""
+        phone.state("speaking")
+        mark = phone.changes
+        seconds = await player.play(kind)
+        asyncio.get_running_loop().call_later(seconds, lambda: phone.changes == mark and phone.state("listening"))
+
+    async def interrupt() -> None:
+        await task.queue_frame(InterruptionFrame())  # a barge-in: the TTS stops and the phone gets `clear`
+
+    async def forget(fact_id: str) -> None:
+        if any(f.id == fact_id for f in store.facts):
+            memory.index.facts.remove_source(fact_id)
+            memory.recent = [x for x in memory.recent if x[0] != fact_id]
+            await store.expire_fact(fact_id)  # sends `memory {op: forget, id}`
+
+    async def bye() -> None:
+        await end("bye")
+
+    phone.on_interrupt, phone.on_forget, phone.on_bye = interrupt, forget, bye
+
+    async def cap() -> None:
+        await asyncio.sleep(_dep(deps, "cap_seconds", CAP_SECONDS))
+        phone.state("speaking")
+        seconds = await player.play("goodbye")  # says the line itself before the clip
+        if not seconds:
+            phone.said(card.lines.goodbye)
+        await asyncio.sleep(seconds + BYE_GRACE)
+        await end("cap")
 
     @latency.event_handler("on_latency_breakdown")
     async def breakdown(_, b):
-        log(kind="latency", secs=turn_secs(b), contributions=[c.model_dump(mode="json") for c in b.contributions])
+        log(kind="latency")
 
     @pair.assistant().event_handler("on_assistant_turn_stopped")
     async def said(_, message):
-        if message.content:
-            log(kind="said", text=message.content, interrupted=message.interrupted)
+        log(kind="said")  # the words went to the phone sentence by sentence (ClipOut); none are logged
 
     @pair.user().event_handler("on_user_turn_started")
     async def hearing(*_):
@@ -158,23 +266,45 @@ async def run_call(websocket, card: Card, user_id: str, session_id: str, deps) -
     @transport.event_handler("on_client_connected")
     async def connected(_, __):
         ledger_obs.open_stt()
-        asyncio.ensure_future(deps.jev.warm())
+        if jev is not None:
+            asyncio.ensure_future(jev.warm())
         asyncio.ensure_future(warm_llm(s.llm))
-        log(kind="connected", slug=card.slug)
-        await player.play("greeting")
+        log(kind="connected")
+        await speak("greeting")
         if card.disclose:
-            await player.play("disclosure")
+            await speak("disclosure")
 
     @transport.event_handler("on_client_disconnected")
     async def disconnected(_, __):
         log(kind="disconnected")
-        await task.cancel()
+        await end("gone")
 
+    capping = asyncio.ensure_future(cap())
     try:
         await PipelineRunner(handle_sigint=False).run(task)
     finally:
+        capping.cancel()
         ledger_obs.flush_stt()
-        await deps.after_call(memory, context.messages)
+        await finish_call(websocket, phone, memory, context.messages, ending[0] if ending else "gone")
+
+
+async def finish_call(websocket, phone: Phone, memory: MemoryTurn, messages: list[dict], reason: str) -> None:
+    """The end of the call. On `bye` or the cap, with the socket still open: remembering, the call's summary and lasting facts go to the phone as `memory`, then `bye_ack` and a close. A phone that went away gets nothing and costs nothing more. After this the server holds nothing of the call. (Tasks 16-18 hook the shared layer here, after memory.end.)"""
+    if reason in ("bye", "cap") and phone.open:
+        phone.state("remembering")
+        try:
+            await memory.end(messages)
+        except Exception as e:
+            logger.warning(f"end of call memory failed: {type(e).__name__}")
+        phone.send({"type": "bye_ack"})
+        await phone.flush()
+        try:
+            await websocket.close(code=1000)
+        except Exception:
+            pass  # already gone
+    elif memory.key is not None:
+        memory.hub.detach(memory.key)
+    phone.open = False
 
 
 def turn_secs(breakdown) -> float:

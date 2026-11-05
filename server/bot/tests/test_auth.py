@@ -5,7 +5,8 @@ from starlette.websockets import WebSocketDisconnect
 from fastapi.testclient import TestClient
 
 from bot import auth
-from bot.app import Deps, build_app
+from bot.app import Deps, build_app, stub_run_call, voice_run_call
+from memory.device import DeviceStore
 from bot.auth import Unauthorized, verify
 
 
@@ -155,7 +156,8 @@ def test_good_hello_gets_a_session_and_the_call_runs_with_the_real_card():
         assert msg["type"] == "session" and msg["session_id"]
         ws.send_json({"type": "bye"})
     (card, uid, session_id, store), = calls.args
-    assert uid == "u1" and session_id == msg["session_id"] and store is None
+    assert uid == "u1" and session_id == msg["session_id"]
+    assert isinstance(store, DeviceStore) and store.facts == [] and store.episodes == []  # the hello's memory had no items
     assert card.language == "pt" and card.slug != "pt"  # the real card, not clip_card's copy
 
 
@@ -190,7 +192,7 @@ def test_a_refused_call_does_not_use_up_the_hourly_allowance():
 
 
 def test_the_shipped_clips_cover_en_pt_es():
-    client = TestClient(build_app(Deps(verify=_verify)))  # default clips_root, default stub
+    client = TestClient(build_app(Deps(run_call=stub_run_call, verify=_verify)))  # default clips_root
     for language in ("en", "pt", "es"):
         with client.websocket_connect("/ws/bot") as ws:
             hello(ws, language=language)
@@ -290,8 +292,12 @@ def _drain(client):
     raise AssertionError("u1 stayed live")
 
 
+def test_the_default_run_call_is_the_voice_call():
+    assert Deps().run_call is voice_run_call
+
+
 def test_default_run_call_stub_ends_on_bye():
-    client = TestClient(build_app(Deps(verify=_verify, clips_root=_clips(("en",)))))
+    client = TestClient(build_app(Deps(run_call=stub_run_call, verify=_verify, clips_root=_clips(("en",)))))
     with client.websocket_connect("/ws/bot") as ws:
         hello(ws)
         ws.receive_json()

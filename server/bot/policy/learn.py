@@ -128,3 +128,28 @@ class Learner:
             self.store.reset(user_id, persona)
             self._deltas[(user_id, persona)] = Delta.zeros()
             return Outcome(True, "reset", 0.0, self._holdout(persona, Delta.zeros()))
+
+
+class BaseLearner:
+    """The bot's policy: the shipped base net, no persona or player delta, nothing learned and nothing written. A player's corrections would be data about them kept on the server, so there is no Store here at all."""
+
+    def __init__(self, base: PolicyNet):
+        self.base, self.store = base, None
+        self._zero = Delta.zeros()
+        self.persona_deltas: dict[str, Delta] = {}
+
+    def user_delta(self, user_id, persona) -> Delta:
+        return self._zero
+
+    def deltas_for(self, user_id, persona) -> list[Delta]:
+        return [self._zero]
+
+    def correct(self, c: Correction) -> Outcome:
+        return Outcome(False, "not kept on the server", 0.0, {})
+
+
+def load_base(path) -> PolicyNet:
+    net = PolicyNet()
+    net.load_state_dict(torch.load(path, weights_only=True))
+    net.requires_grad_(False)
+    return net

@@ -102,7 +102,8 @@
   ],
   "disclosure": "Just so you know, I'm an AI, a little friend made of light.",
   "reaching": [],
-  "searching": []
+  "searching": [],
+  "goodbye": "That's our fifteen minutes! I loved talking with you. Come back soon, okay?"
  },
  "lines_pt": {
   "greeting": "Oi, eu sou o Swarm! Eu moro neste joguinho de quebra-cabeça. Como posso te chamar?",
@@ -164,7 +165,8 @@
   ],
   "disclosure": "Só pra você saber, eu sou uma IA, um amiguinho feito de luz.",
   "reaching": [],
-  "searching": []
+  "searching": [],
+  "goodbye": "Deu nossos quinze minutos! Adorei conversar com você. Volta logo, tá?"
  },
  "lines_es": {
   "greeting": "¡Hola, soy Swarm! Vivo en este jueguito de acertijos. ¿Cómo te puedo llamar?",
@@ -226,6 +228,7 @@
   ],
   "disclosure": "Solo para que lo sepas, soy una IA, un amiguito hecho de luz.",
   "reaching": [],
-  "searching": []
+  "searching": [],
+  "goodbye": "¡Ya pasaron nuestros quince minutos! Me encantó hablar contigo. Vuelve pronto, ¿sí?"
  }
 }

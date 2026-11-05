@@ -61,6 +61,8 @@ def render_clips(card, root, api_key: str, ledger=None, client: httpx.Client | N
     lines = {"greeting": [card.lines.greeting], **{k: getattr(card.lines, k) for k in KINDS}}
     if card.disclose:
         lines["disclosure"] = [card.lines.disclosure]
+    if card.lines.goodbye:
+        lines["goodbye"] = [card.lines.goodbye]
     out: dict[str, list[Path]] = {}
     chars = 0
     for kind, texts in lines.items():

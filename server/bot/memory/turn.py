@@ -20,8 +20,14 @@ PIN_EVERY = 10
 SIMILAR = 0.6
 SUBJECT = 0.62  # cosine a turn needs to count as being about a document with the gate quiet: on a real 17-page PDF, on-topic lines scored 0.67 and up, small talk 0.59 and below
 LOAD_RETRIES, LOAD_RETRY_S = 2, 0.5
-FORGET = re.compile(r"\b(don'?t|do not) (remember|save|keep) (that|this|it)\b|\bforget (that|this|it|what i)\b|\bdelete that\b", re.I)
-WRONG = re.compile(r"\bthat'?s (wrong|not right|not true|incorrect)\b|\bthat is (wrong|not right|not true|incorrect)\b", re.I)
+FORGET_EN = r"\b(don'?t|do not) (remember|save|keep) (that|this|it)\b|\bforget (that|this|it|what i)\b|\bdelete that\b"
+FORGET_PT = r"\besque(?:ce|ça|ca|cer)(?: de)? (?:d?isso|d?isto|aquilo|o que eu)\b|\bnão (?:te )?(?:lembr[ae]s?|guard[ae]s?|salv[ae]s?) (?:d)?(?:isso|isto)\b|\bapag[au]e? (?:isso|isto)\b"
+FORGET_ES = r"\bolvida(?:lo)? (?:eso|esto|lo que)\b|\bolvídalo\b|\bno (?:lo )?(?:recuerdes|guardes)\b|\bborra (?:eso|esto)\b"
+FORGET = re.compile("|".join((FORGET_EN, FORGET_PT, FORGET_ES)), re.I)
+WRONG_EN = r"\bthat'?s (wrong|not right|not true|incorrect)\b|\bthat is (wrong|not right|not true|incorrect)\b"
+WRONG_PT = r"\b(?:isso|isto) (?:está |tá |é |ta )?(?:errado|incorreto)\b|\b(?:isso|isto) não é (?:verdade|certo)\b"
+WRONG_ES = r"\beso (?:está |es )?(?:mal|incorrecto|equivocado)\b|\beso no es (?:verdad|cierto)\b"
+WRONG = re.compile("|".join((WRONG_EN, WRONG_PT, WRONG_ES)), re.I)  # pt and es beside the English: the card speaks all three
 
 
 @dataclass

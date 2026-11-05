@@ -45,5 +45,25 @@ uv run pytest -q          # no keys, no network
 uv run python -c "import voice.bot, memory.turn, agent.tools"
 ```
 
+## The call (voice/bot.py, voice/phone.py)
+
+After `session`, the socket carries 16-bit PCM both ways and JSON text. Out:
+`said {text}` (a sentence as its TTS starts, or a clip's line before it plays),
+`state {name}` (listening, thinking, speaking, remembering), `tool {name, cmd}`
+(swarm, move, draw, dots, tone; `see` with an `id`), `memory`, `clear`,
+`sfx` (the phone drops it), `bye_ack`. In: `interrupt`, `forget {id}`, `bye`,
+`seen {id, jpg, w, h}` (waited for 2 s, judged by gpt-6.1-terra in
+`agent/eye.py`, never kept). `bye` and the fifteen-minute cap stop the
+pipeline, run the memory's `end()`, send its `memory` messages and `bye_ack`,
+then close 1000. Nothing about a player is written: no policy Store (the
+learner is `BaseLearner`, the base only), Jev's cache in RAM, the events log
+keeps kinds only, and `server.py` logs at WARNING because Pipecat's DEBUG
+lines carry what was said.
+
+`content/pixel_garden.json` is a copy of the game's file, for the draw tool's
+bank ids: copy it again when the game's bank changes. The cap's goodbye line
+(`goodbye` in each `lines_<lang>`) has no clip until `render_clips` runs
+again; without one the line is sent as `said` and not heard.
+
 The `Dockerfile` runs `server.py` (`bot.app.build_app`): `GET /health` and the call
 socket at `/ws/bot` (`hello` with a Firebase token, then `session`, then the call).

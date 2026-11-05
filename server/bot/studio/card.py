@@ -25,6 +25,7 @@ class Lines(BaseModel):
     reaching: list[str] = Field(default_factory=list)  # before going silent to try the real person
     searching: list[str] = Field(default_factory=lambda: list(SEARCHING))  # as a document search starts; defaulted so cards saved before this existed have it
     disclosure: str = "Just so you know, I'm an AI assistant."
+    goodbye: str = ""  # said when a call reaches its time limit
 
 
 class Expression(BaseModel):
