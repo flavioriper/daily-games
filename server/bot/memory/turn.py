@@ -9,6 +9,7 @@ import torch
 from loguru import logger
 
 from memory import consolidate
+from memory.device import DeviceHub
 from memory.embed import embed
 from memory.gate import RECALL, keep_scores, recall_scores
 from memory.recall import RecallIndex
@@ -44,7 +45,7 @@ def detect_request(text: str) -> str | None:
 
 
 class MemoryTurn:
-    def __init__(self, hub, card, user_id: str, session_id: str, emit, client=None, ledger=None):
+    def __init__(self, hub: DeviceHub, card, user_id: str, session_id: str, emit, client=None, ledger=None):
         self.hub, self.card, self.slug, self.user_id, self.session_id, self.emit = hub, card, card.slug, user_id, session_id, emit
         self.client, self.ledger, self.brain = client, ledger, card.brain.memory
         self.ids = {"user_id": user_id, "persona": card.slug, "session_id": session_id}

@@ -10,7 +10,8 @@ never edited from here.
   pace, serializer, clip player, ledger observer, prompt). From `foley.py` only
   the `Listener` backchannel and `strip_tags` remain.
 - `policy/`: Jev features, the policy net, behaviours, mood, learner, store.
-- `memory/`: `embed`, `gate`, `recall`, `consolidate`, `turn`.
+- `memory/`: `embed`, `gate`, `recall`, `consolidate`, `turn`, and `device`
+  (the phone-fed store and hub `turn` runs on, held in RAM for the call).
 - `studio/`: `card`, `brains`, `clips`, `prices`, `ledger`, `text_turn`, plus
   `corrections` (imported by the steer; it was not on the brief's list).
 - `agent/`: `tools.py` and the `google.py` client it uses.
@@ -24,8 +25,9 @@ never edited from here.
 - Web app and studio: `server.py`, `static/`, `studio/{service,db,desk,voices,compile,calibrate}.py`,
   `seeds/`, `state/`, `data/`, `bench/`, `tools/`, `docs/`, Neon/Cloud Build files.
 - Memory storage: `memory/{store,hub,ingest}.py` and `memory/schema/` (Postgres,
-  PDF ingest). `memory/turn.py` still talks to a `hub` by duck typing; the
-  device-backed memory replaces it in a later task.
+  PDF ingest). `memory/device.py` replaces them: the player's facts and
+  episodes come in the `hello`, live in RAM, and every change goes back to the
+  phone as a `memory` message.
 - Room sounds: `RoomTags`, `TagStripper`, the office tag paragraph in the prompt.
 - Training: `train/{train_gate,gate_data,gate_rubric}`, the gate data.
 - `policy.learn.Learner.install` (needed `studio.calibrate` and pyarrow).
