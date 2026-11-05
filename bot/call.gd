@@ -23,9 +23,11 @@ extends Node
 ## frames keep their pace and the server hears silence, never a gap.
 ## Where the call server lives. In a debug build only, overridden by the BOT_URL
 ## environment variable, then by the first line of user://bot_url (a phone
-## pointed at a Mac's server). While it is still this placeholder the Bot chip
-## is not shown (`configured`).
-const BOT_URL := "wss://peeplet-bot.invalid/ws/bot"
+## pointed at a Mac's server). The Cloud Run service `peeplet-bot` in
+## daily-games-420bf, deployed 2026-11-05. While the address is the placeholder
+## the Bot chip is not shown (`configured`).
+const BOT_URL := "wss://peeplet-bot-ao7js3tmhq-uc.a.run.app/ws/bot"
+const PLACEHOLDER := "wss://peeplet-bot.invalid/ws/bot"
 const URL_FILE := "user://bot_url"
 const VOICE_BUS := "Swarm"
 const MIC_BUS := "SwarmMic"
@@ -118,7 +120,7 @@ static func url() -> String:
 
 ## A real server to call: the Bot chip shows only then.
 static func configured() -> bool:
-	return url() != BOT_URL
+	return url() != PLACEHOLDER
 
 
 ## Dials `url` and says hello with the token, the language and the phone's

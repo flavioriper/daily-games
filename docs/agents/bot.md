@@ -144,6 +144,8 @@ named `peeplet-bot-*` in Secret Manager: `OPENAI_API_KEY`,
 layer's multilingual one) and ships `voices/`: without the clips every call
 is refused with 4409.
 
+**Deployed 2026-11-05** (steps 3-8 run by the user): `https://peeplet-bot-ao7js3tmhq-uc.a.run.app`, image `5cbc455e-20261105175016`; the production `swarm` database on Neon's production branch, 59 knowledge rows a language; `/health` 200, a bad token closes 4401. `BotCall.BOT_URL` points at it, so the Bot chip shows in every build (Teen band and up). `tools/public_invoker.sh` was not executable; it is now.
+
 The steps, in order. Each block is for a terminal on the Mac.
 
 1. **Settle the admin account.** The navlio account was denied on
