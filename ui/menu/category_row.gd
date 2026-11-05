@@ -85,9 +85,13 @@ func rebuild_tabs() -> void:
 
 ## The categories this player sees: a `teen` one only once the age gate
 ## knows the player is 13 or over (an unknown age is the protective side).
+## The Bot chip waits for a real server address too (BotCall.configured): CI
+## ships every push to testers, and the placeholder would dial nowhere.
 static func entries() -> Array:
 	var out := []
 	for tab in TABS:
+		if tab.key == "bot" and not BotCall.configured():
+			continue
 		if not tab.get("teen", false) or AgeGate.band() >= AgeGate.TEEN:
 			out.append(tab)
 	return out

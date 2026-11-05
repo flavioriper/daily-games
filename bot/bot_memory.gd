@@ -84,7 +84,12 @@ static func _save(m: Dictionary) -> bool:
 	if f == null:
 		return false
 	f.store_string(JSON.stringify(m))
+	var wrote := f.get_error()
 	f.close()
+	if wrote != OK:
+		# a full disk: the old file stays as it was
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(tmp))
+		return false
 	var err := DirAccess.rename_absolute(ProjectSettings.globalize_path(tmp), ProjectSettings.globalize_path(path))
 	if err != OK:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(tmp))

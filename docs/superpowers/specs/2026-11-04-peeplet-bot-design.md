@@ -177,6 +177,13 @@ becomes `bot`; the locale key `BAR_SWARM` is reworded).
   - Duplex: decided by the first spike (below). The fallback is
     half-duplex: while the bot speaks, the client sends silence frames and
     a tap on the face interrupts (sends `interrupt`, the server clears).
+    Amended 2026-11-05: the user chose hold to talk ("Make sure to add a
+    talk button that user has to hold to talk, instead of being a free
+    hand"), replacing half duplex: the mic's frames go up only while the
+    talk button is held, silence frames at every other moment, and a press
+    while the bot speaks interrupts first. Evidence: a hands-free call
+    saved the Swarm's own disclosure ("made of light") as the player's fact,
+    heard back through the speaker.
 - `bot/bot_memory.gd`: the device store. `user://bot_memory.json` holding
   `facts` (`id`, `text`, `since`, `valid_to`), `episodes` (`id`, `at`,
   `summary`) and `language`. Sent whole in `hello`; every `memory` event

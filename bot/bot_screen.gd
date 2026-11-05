@@ -69,7 +69,11 @@ const PERMISSION_WAIT := 30.0
 const LANGS := ["en", "pt", "es"]
 const TOOLS := ["swarm", "move", "draw", "dots", "tone"]
 ## A call's end, by `ended`'s reason, to the status line ("" says nothing).
-const ENDS := {"4429": "BOT_LIMIT", "4409": "BOT_OFFLINE", "offline": "BOT_OFFLINE", "bye": ""}
+## A `bye` that reaches here was not the screen's (its own are ignored): the
+## server's fifteen minutes, its error closing 1000, or BotCall's own cap.
+const ENDS := {"4429": "BOT_LIMIT", "4409": "BOT_OFFLINE", "offline": "BOT_OFFLINE", "bye": "BOT_REDIAL"}
+## Ends a tap on the face does not call again after: the answer stands.
+const FINAL := ["4429", "4409"]
 
 var face: Face
 var _back: Button
@@ -201,7 +205,9 @@ func _init() -> void:
 	add_child(_memory_btn)
 	sheet = MemorySheet.new()
 	sheet.name = "MemorySheet"
-	_memory_btn.pressed.connect(sheet.open)
+	_memory_btn.pressed.connect(func() -> void:
+		_mic_up(true)  # the sheet covers the button: its release would never come
+		sheet.open())
 	add_child(sheet)
 
 	BotCall.hub().event.connect(_on_event)
@@ -296,6 +302,7 @@ func close() -> void:
 
 
 func _exit_tree() -> void:
+	_mic_up(true)
 	Music.hold("bot", false)
 	Ads.hold("bot", false)
 	_hold(false)
@@ -303,6 +310,9 @@ func _exit_tree() -> void:
 
 func _notification(what: int) -> void:
 	match what:
+		NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_WM_WINDOW_FOCUS_OUT:
+			# the shade or an overlay took the screen: the release may never come
+			_mic_up(true)
 		NOTIFICATION_APPLICATION_PAUSED:
 			_on_background()
 		NOTIFICATION_APPLICATION_RESUMED:
@@ -370,7 +380,8 @@ func _begin_call(n: int) -> void:
 			while _perm == null and Time.get_ticks_msec() - t0 < int(PERMISSION_WAIT * 1000.0):
 				await tree.process_frame
 			tree.on_request_permissions_result.disconnect(_on_permission)
-			granted = _perm == true
+			# the answer may come by another way than the signal
+			granted = _perm == true or _has_mic()
 		if n != _open_n:
 			return
 		if not granted:
@@ -457,6 +468,9 @@ func _drive() -> void:
 	var playing := BotCall.playing()
 	var speaking := _server_state == "speaking"
 	BotCall.send_silence(not _held)
+	if _held and BotCall.mic_dead():
+		_mic_refused()
+		return
 	face.set_level(BotCall.level())
 	# The button held is the listening look. The speaking look holds until
 	# the voice has drained; a listening that came early waits for it (not
@@ -560,8 +574,20 @@ func _on_ended(reason: String) -> void:
 	_server_state = ""
 	_shown = ""
 	_judging = false
-	_redial = reason != "4429"
+	_redial = not (reason in FINAL)
 	_go_offline(String(ENDS.get(reason, "BOT_DROPPED")), 0.0, false)
+
+
+## The talk button held and the mic gives only exact zeros (iOS answers a
+## refused mic with silence): the call ends at once and the screen says why.
+func _mic_refused() -> void:
+	_stale += 1
+	BotCall.stop(true)
+	_server_state = ""
+	_shown = ""
+	_judging = false
+	_redial = false
+	_go_offline("BOT_MIC_REFUSED", 0.0, true)
 
 
 ## A tap on the face while it talks: it stops (the mic stays as the button

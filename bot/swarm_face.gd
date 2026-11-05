@@ -858,6 +858,8 @@ func apply_draw(cmd: Dictionary) -> Dictionary:
 func snapshot(width := 384) -> Dictionary:
 	if not visible or size.x < 10.0:
 		return {"error": "the room is not open"}
+	if DisplayServer.get_name() == "headless":
+		return {"error": "no frame drawn"}  # nothing is rendered (the dummy renderer would only complain)
 	var frame := get_viewport().get_texture().get_image()
 	if frame == null or frame.is_empty():
 		return {"error": "no frame drawn"}  # headless: nothing is rendered

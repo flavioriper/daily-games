@@ -40,6 +40,21 @@ hour's limit excepted), or after an offline open, calls again. Knocks: GOOD
 when the session comes, TAP when a tap cuts the voice (TICK when nothing was
 playing), TAP when the back button hangs up a call.
 
+**The final review's fixes** (2026-11-05): the Bot chip shows only once
+`BotCall.configured()` (the address is no longer the placeholder `BOT_URL`;
+the env `BOT_URL` and `user://bot_url` are read in debug builds only, so a
+store build dials only the constant). `stop()` silences the voice at once
+(queue dropped, a `clear`'s fade, nothing after the bye is played) and waits
+up to 30 s for `bye_ack` (the server's end budget is 25). The socket pings
+every 10 s; a call live 16 minutes says bye by itself. The talk button held
+with the mic giving only exact zeros for 1.5 s (iOS answers a refused mic
+with silence) ends the call with `BOT_MIC_REFUSED`. A `bye` the screen did
+not ask for (the server's cap, its error close) says `BOT_REDIAL`; 4409 and
+4429 do not redial. The talk button lets go on focus out (shade, overlay),
+when the memory sheet opens, and when the screen leaves the tree. The server
+logs `bye received` and, when a call gets no summary, why (`hub <status>`,
+`no client`, `N lines of M messages`), never the words.
+
 **The memory sheet** (2026-11-05, the plan's Task 14): `bot/memory_sheet.gd`
 extends `ui/hud/sheet.gd` (paper, also over the dark room): facts as chips,
 episodes as rows under them, newest first by `since`/`at`, `BOT_KNOWN_NONE`

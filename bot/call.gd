@@ -21,8 +21,10 @@ extends Node
 ## The screen gates the mic with send_silence: zeros go up in the mic's place
 ## whenever the talk button is not held (hold to talk, 2026-11-05), so the
 ## frames keep their pace and the server hears silence, never a gap.
-## Where the call server lives. Overridden by the BOT_URL environment variable,
-## then by the first line of user://bot_url (a phone pointed at a Mac's server).
+## Where the call server lives. In a debug build only, overridden by the BOT_URL
+## environment variable, then by the first line of user://bot_url (a phone
+## pointed at a Mac's server). While it is still this placeholder the Bot chip
+## is not shown (`configured`).
 const BOT_URL := "wss://peeplet-bot.invalid/ws/bot"
 const URL_FILE := "user://bot_url"
 const VOICE_BUS := "Swarm"
@@ -32,8 +34,18 @@ const DOWN_RATE := 24000
 const FRAME := 320  # samples up per frame, 20 ms at 16 kHz
 const LEAD := 0.2  # seconds of voice kept in the generator; the rest waits in our queue
 const FADE := 0.05  # a `clear` winds the voice down over this
-const BYE_WAIT := 6.0  # after `bye`, renewed by each `remembering` or `memory` frame
-const BYE_MAX := 30.0  # ... but never past this long after stop()
+## After `bye` the server's end-of-call memory may take up to 25 s (END_MEMORY_S)
+## before `bye_ack`: the call waits the whole thirty, never less.
+const BYE_MAX := 30.0
+const BYE_WAIT := BYE_MAX
+## A call live this long is ended here (the server's own cap is fifteen
+## minutes), so a lost server can never hold the game and the screen awake.
+const CALL_MAX := 16.0 * 60.0
+## The socket pings this often, so a dead line is noticed and closed.
+const HEARTBEAT := 10.0
+## The button held and the mic giving nothing but exact zeros this long: the
+## mic was refused (iOS gives silence, not an error).
+const MIC_DEAD := 1.5
 
 ## No `session` this long after `start` ends the call with "timeout" (a cold
 ## start of the server can take forty seconds). A probe may shorten it.
@@ -56,6 +68,8 @@ var _peer := WebSocketPeer.new()
 var _hello := {}
 var _t0 := 0  # ticks at start; the clocks below are the wall clock, not summed deltas
 var _live := false  # `session` came
+var _live_at := 0
+var _heard_at := 0  # ticks of the last non-zero mic sample, or of the button's press
 var _stopping := false
 var _bye_at := 0
 var _stop_at := 0
@@ -90,6 +104,8 @@ static func hub() -> Hub:
 ## The server's address: the constant, then the environment, then the file.
 static func url() -> String:
 	var u := BOT_URL
+	if not OS.is_debug_build():
+		return u
 	var env := OS.get_environment("BOT_URL").strip_edges()
 	if env != "":
 		u = env
@@ -98,6 +114,11 @@ static func url() -> String:
 		if line != "":
 			u = line
 	return u
+
+
+## A real server to call: the Bot chip shows only then.
+static func configured() -> bool:
+	return url() != BOT_URL
 
 
 ## Dials `url` and says hello with the token, the language and the phone's
@@ -119,6 +140,7 @@ static func start(host: Node, address: String, token: String, memory: Dictionary
 	c._peer.inbound_buffer_size = 1 << 20  # replies come in bursts faster than they play
 	c._peer.outbound_buffer_size = 1 << 20
 	c._peer.max_queued_packets = 8192
+	c._peer.heartbeat_interval = HEARTBEAT
 	_call = c
 	host.add_child(c)
 	var err := c._peer.connect_to_url(address)
@@ -126,9 +148,9 @@ static func start(host: Node, address: String, token: String, memory: Dictionary
 		c._finish("dropped")
 
 
-## Says bye; the call ends at `bye_ack`, or after six seconds without one. A
-## `remembering` state or a `memory` frame restarts the six seconds (the
-## server is still writing the call's memory), up to thirty after stop().
+## Says bye; the call ends at `bye_ack`, or thirty seconds after stop() without
+## one. The Swarm's voice stops at once (faded, as a `clear`): what it was
+## still saying, and any voice that comes after the bye, is dropped.
 ## With `now` (the app sent to the background, where nothing is waited for)
 ## the bye goes up and the call ends at once with "bye", the memory frames
 ## the server was still to send left unread.
@@ -148,6 +170,7 @@ static func stop(now := false) -> void:
 	c._stop_at = Time.get_ticks_msec()
 	c._bye_at = c._stop_at + int(BYE_WAIT * 1000.0)
 	c._release_mic()
+	c._clear_voice()
 	if c._peer.get_ready_state() == WebSocketPeer.STATE_OPEN and c._live:
 		c._send({"type": "bye"})
 	else:
@@ -172,7 +195,18 @@ static func seen(id: String, jpg: PackedByteArray, w: int, h: int) -> void:
 
 static func send_silence(on: bool) -> void:
 	if _call != null:
+		if _call._silence and not on:
+			_call._heard_at = Time.get_ticks_msec()  # the press starts the clock
 		_call._silence = on
+
+
+## The mic is held open and has given only exact zeros (or nothing) for
+## MIC_DEAD seconds: a refused mic. Never with the test tone.
+static func mic_dead() -> bool:
+	if _call == null or test_tone_hz > 0.0:
+		return false
+	var c := _call
+	return c._live and not c._stopping and not c._silence and Time.get_ticks_msec() - c._heard_at >= int(MIC_DEAD * 1000.0)
 
 
 static func live() -> bool:
@@ -252,7 +286,7 @@ func _process(dt: float) -> void:
 		var pkt := _peer.get_packet()
 		if _peer.was_string_packet():  # of the packet just taken
 			_on_text(pkt.get_string_from_utf8())
-		else:
+		elif not _stopping:  # after bye the voice is not played
 			_down.append_array(pkt)
 		if _done:
 			return
@@ -272,6 +306,8 @@ func _process(dt: float) -> void:
 		if Time.get_ticks_msec() >= _bye_at:
 			_finish("bye")
 			return
+	elif _live and Time.get_ticks_msec() - _live_at >= int(CALL_MAX * 1000.0):
+		BotCall.stop()
 	if _live and not _stopping:
 		_pump_up(dt)
 	_feed_voice(dt)
@@ -282,11 +318,11 @@ func _on_text(raw: String) -> void:
 	if not (m is Dictionary):
 		return
 	var kind := String(m.get("type", ""))
-	if _stopping and (kind == "memory" or (kind == "state" and m.get("name") == "remembering")):
-		_bye_at = mini(Time.get_ticks_msec() + int(BYE_WAIT * 1000.0), _stop_at + int(BYE_MAX * 1000.0))
 	match kind:
 		"session":
 			_live = true
+			_live_at = Time.get_ticks_msec()
+			_heard_at = _live_at
 			_open_voice()
 			_open_mic()
 		"clear":
@@ -392,8 +428,12 @@ func _pump_up(dt: float) -> void:
 		return
 	var base := _src.size()
 	_src.resize(base + st.size())
+	var any := false
 	for i in st.size():
 		_src[base + i] = (st[i].x + st[i].y) * 0.5
+		any = any or _src[base + i] != 0.0
+	if any:
+		_heard_at = Time.get_ticks_msec()
 	# each output sample averages the input over its step; the fraction carries
 	var step := _rate / UP_RATE
 	while int(_pos + step) <= _src.size():
