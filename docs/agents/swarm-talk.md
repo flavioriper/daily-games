@@ -1,5 +1,10 @@
 # Talking to the swarm
 
+> **Superseded by `docs/agents/bot.md` on 2026-11-05.** The hold-to-talk
+> button (`ui/menu/swarm_talk.gd`) and its dev keys in `user://swarm_keys/`
+> are gone: the app reads no key now, the call server does the hearing, the
+> answer and the voice. What follows is kept for its phone measurements.
+
 The user, 2026-11-05: "I should be able to talk to the swarm", then, after a
 day's detour through voices made on the phone itself (Qwen3-TTS, Kokoro and
 Whisper in a GDExtension; measured and dropped, "not the right moment",

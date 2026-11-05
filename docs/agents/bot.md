@@ -7,6 +7,23 @@ pre-made clips fill the gaps), and the player's memory travels in the
 `hello` and comes back as `memory` messages. How it is built: `server/bot/README.md`.
 The one-shot hold-to-talk button that came first is `swarm-talk.md`.
 
+## The phone's side
+
+`bot/bot_screen.gd` (the Bot chip, teens and adults only:
+`ui/menu/category_row.gd` `entries()`) is the room: the back button, the
+log, the status line, the demo pills (offline only), the memory button
+(hidden until its sheet). Opening it asks for the mic on Android, takes
+`Backend.token()` and dials `bot/call.gd`; no token, a `--script` run or a
+refused mic is the offline face (the intro demo, the line after five
+seconds). `bot/swarm_face.gd` is the face cut out of the old Swarm tab;
+the screen drives it with `set_live`, `set_state`, `set_level`, `say` and
+`reveal`, and the `tool` frames with its `apply_*`. A call's `ended` is
+counted against the calls the screen let go of, so a late one from a
+closed call is ignored; a new call waits for the last one's bye to finish.
+`memory` frames are applied whenever they come, after the screen closed
+too. Draw calls on the screen offline with the intro talking: 26 (the old
+tab with its mic button: 36), 2026-11-05.
+
 ## Testing a call locally
 
 `BOT_TEST_PAGE=1 uv run python server.py` serves `GET /test`
