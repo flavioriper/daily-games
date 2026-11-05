@@ -1,6 +1,7 @@
 """The call socket: hello, token, limits, a session id, then the call. Nothing about a player is kept here but the uid on a call and call start times."""
 import asyncio
 import json
+import os
 import time
 import uuid
 from collections import deque
@@ -9,6 +10,7 @@ from pathlib import Path
 from typing import Any, Awaitable, Callable
 
 from fastapi import FastAPI, WebSocket
+from fastapi.responses import FileResponse
 from starlette.websockets import WebSocketDisconnect
 
 from bot.auth import Unauthorized, verify
@@ -24,6 +26,7 @@ WINDOW_SECONDS = 3600.0
 UNAUTHORIZED = 4401  # no or bad token, or this uid is already on a call
 RATE_LIMITED = 4429  # six calls in the last hour
 NO_CLIPS = 4409  # the language has no pre-made clips
+TEST_PAGE = Path(__file__).resolve().parent.parent / "static" / "test.html"
 
 
 async def wait_for_bye(websocket: WebSocket) -> None:
@@ -89,6 +92,12 @@ def build_app(deps: Deps | None = None) -> FastAPI:
     @app.get("/health")
     async def health():
         return {"ok": True}
+
+    if os.environ.get("BOT_TEST_PAGE") == "1":  # a local page to call from a browser; never on in production
+
+        @app.get("/test")
+        async def test_page():
+            return FileResponse(TEST_PAGE, media_type="text/html")
 
     async def refuse(websocket: WebSocket, code: int) -> None:
         try:

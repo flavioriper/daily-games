@@ -332,3 +332,11 @@ def test_refusals_leave_no_uid_in_the_start_times():
         hello(ws)
         assert closed_with(ws) == 4409
     assert client.app.state.starts == {}
+
+
+def test_test_page_only_when_asked(monkeypatch):
+    monkeypatch.delenv("BOT_TEST_PAGE", raising=False)
+    assert TestClient(build_app(Deps(run_call=stub_run_call))).get("/test").status_code == 404
+    monkeypatch.setenv("BOT_TEST_PAGE", "1")
+    r = TestClient(build_app(Deps(run_call=stub_run_call))).get("/test")
+    assert r.status_code == 200 and "/ws/bot" in r.text and "hello" in r.text

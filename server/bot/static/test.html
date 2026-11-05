@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Swarm call test</title>
+<style>
+:root{--bg:#f7f4ee;--fg:#222;--muted:#777;--line:#ccc;--box:#fff}
+@media (prefers-color-scheme:dark){:root{--bg:#1c1b19;--fg:#eee;--muted:#999;--line:#444;--box:#262522}}
+body{background:var(--bg);color:var(--fg);font:15px/1.4 system-ui,sans-serif;margin:0;padding:16px;max-width:760px}
+h1{font-size:20px;margin:0 0 4px}p{color:var(--muted);margin:0 0 12px}
+label{display:block;font-weight:600;margin:10px 0 4px}
+textarea,select{width:100%;box-sizing:border-box;background:var(--box);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:8px;font:13px ui-monospace,monospace}
+#token{height:70px}#memory{height:140px}#log{height:260px}
+.row{display:flex;gap:8px;margin:12px 0;flex-wrap:wrap}button{font:inherit;padding:8px 16px;border-radius:6px;border:1px solid var(--line);background:var(--box);color:var(--fg);cursor:pointer}
+button:disabled{opacity:.4;cursor:default}#status{color:var(--muted);align-self:center}
+</style>
+</head>
+<body>
+<h1>Swarm call test</h1>
+<p>Local only (served when BOT_TEST_PAGE=1). Paste a Firebase id token, keep or edit the memory, call, talk, then Bye.</p>
+<label for="token">Firebase id token</label><textarea id="token" spellcheck="false"></textarea>
+<label for="lang">Language</label><select id="lang"><option>en</option><option>pt</option><option>es</option></select>
+<label for="memory">Memory (the phone's file: facts and episodes; memory events update it)</label>
+<textarea id="memory" spellcheck="false">{"facts": [], "episodes": []}</textarea>
+<div class="row"><button id="call">Call</button><button id="bye" disabled>Bye</button><button id="interrupt" disabled>Interrupt</button><span id="status">idle</span></div>
+<label for="log">Events</label><textarea id="log" readonly spellcheck="false"></textarea>
+<script>
+// Browser audio, from the studio's call.js: mic to 16 kHz PCM, 24 kHz PCM to the speakers, `clear` winds the voice down at the next pause.
+const CAPTURE=`class C extends AudioWorkletProcessor{process(i){const c=i[0][0];if(c){const o=new Int16Array(c.length);for(let n=0;n<c.length;n++)o[n]=Math.max(-1,Math.min(1,c[n]))*32767;this.port.postMessage(o.buffer,[o.buffer])}return true}}registerProcessor('capture',C)`;
+const PLAY=`class P extends AudioWorkletProcessor{constructor(){super();this.q=[];this.o=0;this.t=null;this.i=0;this.port.onmessage=e=>{if(e.data==='clear')this.stop();else this.q.push(e.data)}}
+take(n){const a=new Float32Array(n);let i=0;while(i<n&&this.q.length){const b=this.q[0],k=Math.min(n-i,b.length-this.o);a.set(b.subarray(this.o,this.o+k),i);i+=k;this.o+=k;if(this.o>=b.length){this.q.shift();this.o=0}}return a.subarray(0,i)}
+fade(a,n){n=Math.min(n,a.length);for(let k=0;k<n;k++)a[a.length-n+k]*=.5+.5*Math.cos(Math.PI*(k+1)/n);return a}
+stop(){const r=sampleRate;if(this.t){this.t=this.fade(this.t.slice(this.i,this.i+Math.round(.06*r)),Math.round(.05*r));this.i=0;this.q=[];this.o=0;return}
+const a=this.take(Math.round(.5*r)),w=Math.round(.01*r);this.q=[];this.o=0;let end=0,quiet=0;
+for(let p=Math.round(.18*r);p+w<=a.length;p+=w){let e=0;for(let k=0;k<w;k++)e+=a[p+k]*a[p+k];quiet=Math.sqrt(e/w)<.012?quiet+1:0;if(quiet==3){end=p-2*w;break}}
+this.t=end?this.fade(a.slice(0,end),Math.round(.03*r)):this.fade(a.slice(0,Math.min(a.length,Math.round((.32+Math.random()*.1)*r))),Math.round(.2*r));this.i=0}
+process(_,out){const c=out[0][0];let i=0;if(this.t){const n=Math.min(c.length,this.t.length-this.i);c.set(this.t.subarray(this.i,this.i+n),0);i=n;this.i+=n;if(this.i>=this.t.length)this.t=null}
+for(;i<c.length;){const b=this.q[0];if(!b)break;const n=Math.min(c.length-i,b.length-this.o);c.set(b.subarray(this.o,this.o+n),i);i+=n;this.o+=n;if(this.o>=b.length){this.q.shift();this.o=0}}return true}}registerProcessor('play',P)`;
+const CLOSE={1000:'ended',4401:'not signed in, bad token, or already on a call',4409:'no clips for this language',4429:'six calls in the last hour'};
+const worklet=(ctx,src)=>ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([src],{type:'text/javascript'})));
+const $=id=>document.getElementById(id);
+const t0=performance.now();
+const log=line=>{const l=$('log');l.value+=`${((performance.now()-t0)/1000).toFixed(2).padStart(7)}  ${line}\n`;l.scrollTop=l.scrollHeight};
+const status=s=>$('status').textContent=s;
+let ws=null;
+
+function readMemory(){try{const m=JSON.parse($('memory').value);return{facts:Array.isArray(m.facts)?m.facts:[],episodes:Array.isArray(m.episodes)?m.episodes:[]}}catch{log('memory box is not JSON; sending an empty memory');return{facts:[],episodes:[]}}}
+function applyMemory(m){const mem=readMemory();
+ if(m.op=='add')mem.facts.push({id:m.id,text:m.text});
+ else if(m.op=='forget')mem.facts=mem.facts.filter(f=>f.id!=m.id);
+ else if(m.op=='episode'){mem.episodes=mem.episodes.filter(e=>e.id!=m.id);mem.episodes.push({id:m.id,summary:m.text,created_at:new Date().toISOString()})}
+ $('memory').value=JSON.stringify(mem,null,1)}
+
+async function call(){
+ const token=$('token').value.trim();if(!token){log('paste a token first');return}
+ const mic=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+ const inCtx=new AudioContext({sampleRate:16000}),outCtx=new AudioContext({sampleRate:24000});
+ await worklet(inCtx,CAPTURE);await worklet(outCtx,PLAY);
+ const play=new AudioWorkletNode(outCtx,'play',{outputChannelCount:[1]});play.connect(outCtx.destination);
+ const cap=new AudioWorkletNode(inCtx,'capture');inCtx.createMediaStreamSource(mic).connect(cap);
+ ws=new WebSocket(`${location.protocol=='https:'?'wss':'ws'}://${location.host}/ws/bot`);ws.binaryType='arraybuffer';
+ let live=false;
+ ws.onopen=()=>{ws.send(JSON.stringify({type:'hello',token,language:$('lang').value,memory:readMemory()}));log('> hello');status('connecting')};
+ cap.port.onmessage=e=>{if(live&&ws.readyState==1)ws.send(e.data)};
+ ws.onmessage=e=>{if(typeof e.data!='string'){const i=new Int16Array(e.data),f=new Float32Array(i.length);for(let n=0;n<i.length;n++)f[n]=i[n]/32768;play.port.postMessage(f,[f.buffer]);return}
+  const m=JSON.parse(e.data);
+  if(m.type=='session'){live=true;status('on a call');$('bye').disabled=$('interrupt').disabled=false}
+  if(m.type=='clear')play.port.postMessage('clear');
+  if(m.type=='memory')applyMemory(m);
+  if(m.type=='state')status(m.name);
+  log('< '+e.data)};
+ ws.onclose=e=>{mic.getTracks().forEach(t=>t.stop());inCtx.close();outCtx.close();log(`closed ${e.code} ${CLOSE[e.code]||''}`);status('idle');$('call').disabled=false;$('bye').disabled=$('interrupt').disabled=true;ws=null};
+ $('call').disabled=true;
+}
+$('call').onclick=()=>call().catch(e=>log('error: '+e.message));
+$('bye').onclick=()=>{if(ws){ws.send(JSON.stringify({type:'bye'}));log('> bye');$('bye').disabled=true}};
+$('interrupt').onclick=()=>{if(ws){ws.send(JSON.stringify({type:'interrupt'}));log('> interrupt')}};
+</script>
+</body>
+</html>
