@@ -1,0 +1,243 @@
+{
+  "rows": {
+    "train": 11095,
+    "val": 2324,
+    "held": 2143,
+    "check": 202
+  },
+  "params": {
+    "hidden": 32,
+    "epochs": 20,
+    "lr": 0.001,
+    "decay": 0.01
+  },
+  "thresholds": {
+    "facts": 0.85,
+    "episodes": 0.7,
+    "documents": 0.7,
+    "long": 0.9
+  },
+  "val": {
+    "recall": {
+      "facts": {
+        "precision": 0.611,
+        "recall": 0.407,
+        "f1": 0.489,
+        "support": 54
+      },
+      "episodes": {
+        "precision": 0.618,
+        "recall": 0.855,
+        "f1": 0.718,
+        "support": 55
+      },
+      "documents": {
+        "precision": 0.737,
+        "recall": 0.887,
+        "f1": 0.805,
+        "support": 541
+      }
+    },
+    "keep": {
+      "drop": {
+        "precision": 0.838,
+        "recall": 0.719,
+        "f1": 0.774,
+        "support": 1373
+      },
+      "short": {
+        "precision": 0.576,
+        "recall": 0.793,
+        "f1": 0.667,
+        "support": 692
+      },
+      "long": {
+        "precision": 0.808,
+        "recall": 0.602,
+        "f1": 0.69,
+        "support": 259
+      }
+    },
+    "recall_macro_f1": 0.671,
+    "keep_macro_f1": 0.71
+  },
+  "held": {
+    "recall": {
+      "facts": {
+        "precision": 0.167,
+        "recall": 0.08,
+        "f1": 0.108,
+        "support": 25
+      },
+      "episodes": {
+        "precision": 0.083,
+        "recall": 0.25,
+        "f1": 0.125,
+        "support": 8
+      },
+      "documents": {
+        "precision": 0.685,
+        "recall": 0.848,
+        "f1": 0.757,
+        "support": 433
+      }
+    },
+    "keep": {
+      "drop": {
+        "precision": 0.877,
+        "recall": 0.735,
+        "f1": 0.8,
+        "support": 1376
+      },
+      "short": {
+        "precision": 0.54,
+        "recall": 0.815,
+        "f1": 0.649,
+        "support": 523
+      },
+      "long": {
+        "precision": 0.78,
+        "recall": 0.639,
+        "f1": 0.703,
+        "support": 244
+      }
+    },
+    "recall_macro_f1": 0.33,
+    "keep_macro_f1": 0.717
+  },
+  "baselines": {
+    "majority": {
+      "recall": {
+        "facts": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 25
+        },
+        "episodes": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 8
+        },
+        "documents": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 433
+        }
+      },
+      "keep": {
+        "drop": {
+          "precision": 0.642,
+          "recall": 1.0,
+          "f1": 0.782,
+          "support": 1376
+        },
+        "short": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 523
+        },
+        "long": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 244
+        }
+      },
+      "recall_macro_f1": 0.0,
+      "keep_macro_f1": 0.261
+    },
+    "keyword": {
+      "recall": {
+        "facts": {
+          "precision": 0.036,
+          "recall": 0.04,
+          "f1": 0.038,
+          "support": 25
+        },
+        "episodes": {
+          "precision": 0.5,
+          "recall": 0.125,
+          "f1": 0.2,
+          "support": 8
+        },
+        "documents": {
+          "precision": 0.634,
+          "recall": 0.104,
+          "f1": 0.179,
+          "support": 433
+        }
+      },
+      "keep": {
+        "drop": {
+          "precision": 0.677,
+          "recall": 0.938,
+          "f1": 0.787,
+          "support": 1376
+        },
+        "short": {
+          "precision": 0.4,
+          "recall": 0.019,
+          "f1": 0.036,
+          "support": 523
+        },
+        "long": {
+          "precision": 0.476,
+          "recall": 0.414,
+          "f1": 0.443,
+          "support": 244
+        }
+      },
+      "recall_macro_f1": 0.139,
+      "keep_macro_f1": 0.422
+    }
+  },
+  "synthetic_check": {
+    "recall": {
+      "facts": {
+        "precision": 0.774,
+        "recall": 0.828,
+        "f1": 0.8,
+        "support": 29
+      },
+      "episodes": {
+        "precision": 0.556,
+        "recall": 0.893,
+        "f1": 0.685,
+        "support": 28
+      },
+      "documents": {
+        "precision": 1.0,
+        "recall": 0.889,
+        "f1": 0.941,
+        "support": 81
+      }
+    },
+    "keep": {
+      "drop": {
+        "precision": 0.789,
+        "recall": 0.69,
+        "f1": 0.736,
+        "support": 87
+      },
+      "short": {
+        "precision": 0.642,
+        "recall": 0.819,
+        "f1": 0.72,
+        "support": 83
+      },
+      "long": {
+        "precision": 1.0,
+        "recall": 0.625,
+        "f1": 0.769,
+        "support": 32
+      }
+    },
+    "recall_macro_f1": 0.809,
+    "keep_macro_f1": 0.742
+  },
+  "labels": "LLM labels from gpt-6-luna, not human annotation; held-out is real dialogue only"
+}

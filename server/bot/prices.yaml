@@ -1,0 +1,46 @@
+# USD. Units: *_mtok per 1M tokens, 1k_chars per 1,000 characters, minute, call. A null price shows as unpriced, never as 0.
+# Prices come from the spec's section 10 survey of 2026-10-31.
+rows:
+- {provider: anthropic, model: claude-haiku-5-5, unit: input_mtok, price_usd: 0.10, source: "https://platform.claude.com/docs/en/about-claude/pricing", checked: "2026-10-31"}
+- {provider: anthropic, model: claude-haiku-5-5, unit: cache_read_mtok, price_usd: 0.01, source: "https://platform.claude.com/docs/en/about-claude/pricing", checked: "2026-10-31"}
+- {provider: anthropic, model: claude-haiku-5-5, unit: cache_write_mtok, price_usd: 0.125, source: "https://platform.claude.com/docs/en/about-claude/pricing", checked: "2026-10-31"}
+- {provider: anthropic, model: claude-haiku-5-5, unit: output_mtok, price_usd: 0.50, source: "https://platform.claude.com/docs/en/about-claude/pricing", checked: "2026-10-31"}
+- {provider: anthropic, model: claude-sonnet-5-5, unit: input_mtok, price_usd: 2.00, source: "https://platform.claude.com/docs/en/about-claude/pricing", checked: "2026-10-31"}
+- {provider: anthropic, model: claude-sonnet-5-5, unit: cache_read_mtok, price_usd: 0.10, source: "https://platform.claude.com/docs/en/about-claude/pricing", checked: "2026-10-31"}
+- {provider: anthropic, model: claude-sonnet-5-5, unit: cache_write_mtok, price_usd: 2.50, source: "https://platform.claude.com/docs/en/about-claude/pricing", checked: "2026-10-31"}
+- {provider: anthropic, model: claude-sonnet-5-5, unit: output_mtok, price_usd: 10.00, source: "https://platform.claude.com/docs/en/about-claude/pricing", checked: "2026-10-31"}
+- {provider: anthropic, model: claude-opus-5-5, unit: input_mtok, price_usd: 4.00, source: "https://platform.claude.com/docs/en/about-claude/pricing", checked: "2026-10-31"}
+- {provider: anthropic, model: claude-opus-5-5, unit: cache_read_mtok, price_usd: 0.20, source: "https://platform.claude.com/docs/en/about-claude/pricing", checked: "2026-10-31"}
+- {provider: anthropic, model: claude-opus-5-5, unit: cache_write_mtok, price_usd: 5.00, source: "https://platform.claude.com/docs/en/about-claude/pricing", checked: "2026-10-31"}
+- {provider: anthropic, model: claude-opus-5-5, unit: output_mtok, price_usd: 20.00, source: "https://platform.claude.com/docs/en/about-claude/pricing", checked: "2026-10-31"}
+- {provider: openai, model: gpt-6-luna, unit: input_mtok, price_usd: 0.10, source: "https://developers.openai.com/api/docs/pricing", checked: "2026-10-31"}
+- {provider: openai, model: gpt-6-luna, unit: cache_read_mtok, price_usd: 0.01, source: "https://developers.openai.com/api/docs/pricing", checked: "2026-10-31"}
+- {provider: openai, model: gpt-6-luna, unit: output_mtok, price_usd: 0.50, source: "https://developers.openai.com/api/docs/pricing", checked: "2026-10-31"}
+- {provider: google, model: gemini-3.1-flash-lite, unit: input_mtok, price_usd: 0.25, source: "https://ai.google.dev/gemini-api/docs/pricing", checked: "2026-10-31"}
+- {provider: google, model: gemini-3.1-flash-lite, unit: output_mtok, price_usd: 1.50, source: "https://ai.google.dev/gemini-api/docs/pricing", checked: "2026-10-31"}
+- {provider: groq, model: openai/gpt-oss-120b, unit: input_mtok, price_usd: 0.15, source: "https://console.groq.com/docs/models", checked: "2026-10-31"}
+- {provider: groq, model: openai/gpt-oss-120b, unit: output_mtok, price_usd: 0.60, source: "https://console.groq.com/docs/models", checked: "2026-10-31"}
+- {provider: cerebras, model: gpt-oss-120b, unit: input_mtok, price_usd: 0.35, source: "https://cerebras.ai/pricing", checked: "2026-10-31"}
+- {provider: cerebras, model: gpt-oss-120b, unit: output_mtok, price_usd: 0.75, source: "https://cerebras.ai/pricing", checked: "2026-10-31"}
+- {provider: gateway, model: openai/gpt-5.4-nano, unit: input_mtok, price_usd: 0.2, source: "https://vercel.com/ai-gateway/models", checked: "2026-11-01"}
+- {provider: gateway, model: openai/gpt-5.4-nano, unit: cache_read_mtok, price_usd: 0.02, source: "https://vercel.com/ai-gateway/models", checked: "2026-11-01"}
+- {provider: gateway, model: openai/gpt-5.4-nano, unit: output_mtok, price_usd: 1.25, source: "https://vercel.com/ai-gateway/models", checked: "2026-11-01"}
+- {provider: gateway, model: openai/gpt-6-luna, unit: input_mtok, price_usd: 0.1, source: "https://vercel.com/ai-gateway/models", checked: "2026-11-01"}
+- {provider: gateway, model: openai/gpt-6-luna, unit: output_mtok, price_usd: 0.5, source: "https://vercel.com/ai-gateway/models", checked: "2026-11-01"}
+- {provider: gateway, model: anthropic/claude-sonnet-5.5, unit: input_mtok, price_usd: 2.0, source: "https://vercel.com/ai-gateway/models", checked: "2026-11-01"}
+- {provider: gateway, model: anthropic/claude-sonnet-5.5, unit: output_mtok, price_usd: 10.0, source: "https://vercel.com/ai-gateway/models", checked: "2026-11-01"}
+- {provider: glm, model: glm-5.3-flash, unit: input_mtok, price_usd: 0.15, source: "https://docs.z.ai/guides/overview/pricing", checked: "2026-11-04"}
+- {provider: glm, model: glm-5.3-flash, unit: output_mtok, price_usd: 0.50, source: "https://docs.z.ai/guides/overview/pricing", checked: "2026-11-04"}
+- {provider: deepgram, model: flux-general-en, unit: minute, price_usd: 0.0078, source: "https://deepgram.com/pricing", checked: "2026-10-31"}
+- {provider: deepgram, model: flux-general-multi, unit: minute, price_usd: 0.0078, source: "https://deepgram.com/pricing", checked: "2026-10-31"}
+- {provider: elevenlabs, model: eleven_v4_turbo, unit: 1k_chars, price_usd: 0.04, source: "https://elevenlabs.io/pricing/api", checked: "2026-10-31"}
+- {provider: elevenlabs, model: eleven_flash_v2_5, unit: 1k_chars, price_usd: 0.04, source: "https://elevenlabs.io/pricing/api", checked: "2026-10-31"}
+- {provider: cartesia, model: sonic-3.6, unit: 1k_chars, price_usd: 0.038, source: "https://cartesia.ai/pricing", checked: "2026-10-31"}
+- {provider: inworld, model: tts-2, unit: 1k_chars, price_usd: 0.025, source: "https://inworld.ai/pricing", checked: "2026-10-31"}
+- {provider: typesafe, model: jev-1.13.0, unit: call, price_usd: 0.00003, source: "https://typesafe.ai $42 per billion input tokens x ~730 measured tokens per turn; output price unconfirmed", checked: "2026-11-01"}
+- {provider: openai, model: gpt-6.1-terra, unit: input_mtok, price_usd: 1.0, source: "https://ai-gateway.vercel.sh/v1/models", checked: "2026-11-01"}
+- {provider: openai, model: gpt-6.1-terra, unit: cache_read_mtok, price_usd: 0.05, source: "https://ai-gateway.vercel.sh/v1/models", checked: "2026-11-01"}
+- {provider: openai, model: gpt-6.1-terra, unit: output_mtok, price_usd: 5.0, source: "https://ai-gateway.vercel.sh/v1/models", checked: "2026-11-01"}
+- {provider: openai, model: gpt-6-sol, unit: input_mtok, price_usd: 2.0, source: "https://ai-gateway.vercel.sh/v1/models", checked: "2026-11-01"}
+- {provider: openai, model: gpt-6-sol, unit: cache_read_mtok, price_usd: 0.2, source: "https://ai-gateway.vercel.sh/v1/models", checked: "2026-11-01"}
+- {provider: openai, model: gpt-6-sol, unit: output_mtok, price_usd: 10.0, source: "https://ai-gateway.vercel.sh/v1/models", checked: "2026-11-01"}

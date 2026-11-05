@@ -1,0 +1,12 @@
+.git
+.venv
+.superpowers
+state
+voices
+tests
+docs
+**/__pycache__
+data/*.sqlite
+node_modules/
+.env.local
+.neon

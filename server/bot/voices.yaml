@@ -1,0 +1,3 @@
+# The two audiobook voices. More library voices need listening with a key (spec section 6).
+- {voice_id: oFnUs65XPN5XcT0txEbR, name: Veronica, sex: female, age: adult, texture: "the audiobook's narrator", languages: [en]}
+- {voice_id: gfRt6Z3Z8aTbpLfexQ7N, name: Boyd, sex: male, age: fifties, texture: "low, unhurried, slight rasp", languages: [en]}

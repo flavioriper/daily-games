@@ -1,0 +1,26 @@
+{
+  "holdout": {
+    "stance": 0.8764,
+    "register": 0.9056,
+    "warmth": 1.0,
+    "ack": 0.9166
+  },
+  "baseline": {
+    "stance": 0.6498,
+    "register": 0.6382,
+    "warmth": 0.8295,
+    "ack": 0.7485
+  },
+  "train": {
+    "stance": 0.8875,
+    "register": 0.8915,
+    "warmth": 1.0,
+    "ack": 0.9149
+  },
+  "rows": {
+    "train": 14358,
+    "holdout": 1642
+  },
+  "accepted": true,
+  "misses": []
+}
