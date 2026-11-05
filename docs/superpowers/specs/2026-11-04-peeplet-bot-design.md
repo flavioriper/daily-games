@@ -323,8 +323,18 @@ documents, ingest, Neon, the show and talk views, the desk.
     result says "seen" and a user message with the image follows it). The
     server waits at most 2 s and answers "could not see" past it. The
     picture is not kept: not logged, not in the ledger, not in memory.
-    Open, to check before session 2: whether `gpt-6-luna` takes image
-    input, and the cost of one look (one 384x683 image at low detail).
+    Measured 2026-11-05 (the six demo drawings as `snapshot(384)` gives
+    them, "what does the drawing show?"): `gpt-6-luna` takes images but
+    misreads them (2 of 6 at high detail, a duck as "a seated person", the
+    strawberry as "a skull"; 0 of 2 at low). `gpt-6.1-terra` read 18 of 18
+    over three runs in 1.1 to 2.4 s at high detail, 355 tokens in and under
+    50 out; `gpt-6.1-sol`, `gpt-6-astra` and `gpt-5.5` 4 or 5 of 6. So the
+    call keeps `gpt-6-luna` as the voice and the see tool's picture goes to
+    `gpt-6.1-terra` alone, which answers luna in words ("it reads as a
+    duck"; "it reads as a cat, not a tulip: thin the leaves, mark the cup"),
+    and terra also writes the rows when the agent draws its own. At the
+    rates third-party pages quote (terra $1 in / $5 out a million tokens,
+    unconfirmed on OpenAI's page) a look is under a tenth of a cent.
   The result the model hears is the phone's own summary when the protocol
   carries one back; until then the server's, from the validated command.
 - **Language.** Flux `flux-general-en` for English, `flux-general-multi`
