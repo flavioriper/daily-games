@@ -729,6 +729,9 @@ static func _fit_axis(v: float, lo: float, hi: float) -> float:
 func _pic_cell() -> float:
 	return minf(size.x, size.y) * _pic_size / float(maxi(1, maxi(_pic_w, _pic_h)))
 
+func _pic_cell_for(px: Dictionary) -> float:
+	return minf(size.x, size.y) * _pic_size / float(maxi(1, maxi(int(px.w), int(px.h))))
+
 ## The draw tool: the swarm becomes a picture (see Picture for the sources)
 ## where the face is, `size` of the screen's shorter side across (0.2 to
 ## 0.95), for good or for `seconds`; `clear` brings the face back. The face's
@@ -761,6 +764,7 @@ func apply_draw(cmd: Dictionary) -> Dictionary:
 	cloud.sort_custom(func(a, b): return _r[a] < _r[b])
 	pool.append_array(cloud)
 	var px := Picture.pixels(got.image, pool.size())
+	_pic_size = clampf(float(cmd.get("size", PIC_SIZE)), 0.2, 0.95)
 	var n: int = px.n
 	if n == 0:
 		_note("draw  nothing to draw")
@@ -782,13 +786,18 @@ func apply_draw(cmd: Dictionary) -> Dictionary:
 		_pg[i] = cs[j].g
 		_pb[i] = cs[j].b
 		_k[i] = randf_range(0.035, 0.07)
+		if Motion.reduce:
+			# Under reduced motion the picture is simply there.
+			_x[i] = _c.x + xs[j] * _pic_cell_for(px)
+			_y[i] = _c.y + ys[j] * _pic_cell_for(px)
+			_vx[i] = 0.0
+			_vy[i] = 0.0
 	for i in pool.slice(n):
 		if _role[i] != Role.FREE:
 			_to_cloud(i)
 	_pic_on = true
 	_pic_w = px.w
 	_pic_h = px.h
-	_pic_size = clampf(float(cmd.get("size", PIC_SIZE)), 0.2, 0.95)
 	_pic_back_at = _now + float(cmd.seconds) * 1000.0 if cmd.has("seconds") else -1.0
 	_links_n = 0
 	_links.visible_instance_count = 0
@@ -872,6 +881,8 @@ func _spawn(n: int, cmd: Dictionary) -> int:
 				p = _c + Vector2.from_angle(a) * sqrt(randf()) * _R * 0.4
 				v = Vector2.from_angle(a) * randf_range(2.0, 7.0) * _u
 		_born(i, p, v)
+		if Motion.reduce:
+			_life[i] = 1.0
 		made += 1
 		i += 1
 	_dots.visible_instance_count = _hi
@@ -880,10 +891,18 @@ func _spawn(n: int, cmd: Dictionary) -> int:
 func _despawn(n: int, cmd: Dictionary) -> int:
 	var to := String(cmd.get("to", "fade"))
 	var mode := Die.FACE if to == "face" else (Die.OUT if to == "edges" else Die.FADE)
+	# The newest go first, so the slots in use shrink back after a thinning.
 	var pick := _free_shuffled()
+	pick.sort()
+	pick.reverse()
 	n = mini(n, mini(_live_count() - MIN_LIVE, pick.size()))
 	for j in maxi(n, 0):
 		var i: int = pick[j]
+		if Motion.reduce:
+			# Under reduced motion they are simply gone.
+			_role[i] = Role.DEAD
+			_life[i] = 0.0
+			continue
 		_dying[i] = mode
 		if mode == Die.OUT:
 			var d := Vector2(_x[i], _y[i]) - _c

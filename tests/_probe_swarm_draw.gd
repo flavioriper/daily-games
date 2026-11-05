@@ -70,6 +70,28 @@ func _process(_d: float) -> bool:
 		_check(_tab._hi < Tab.CAP, "dead slots shed hi=%d live=%d" % [_tab._hi, _tab._live_count()])
 		var r: Dictionary = _tab.apply_dots({"total": 1600, "from": "point", "x": 0.2, "y": 0.3})
 		_check(int(r.dots) == 1600, "total: " + str(r))
+	elif _f == 430:
+		var Motion = load("res://core/motion.gd")
+		var was: bool = Motion.reduce
+		Motion.reduce = true
+		var r: Dictionary = _tab.apply_draw({"name": "bank:strawberry"})
+		var off := 0.0
+		var cell: float = _tab._pic_cell()
+		for i in _tab._hi:
+			if _tab._role[i] == Tab.Role.PIXEL:
+				off = maxf(off, Vector2(_tab._x[i] - (_tab._c.x + _tab._lx[i] * cell), _tab._y[i] - (_tab._c.y + _tab._ly[i] * cell)).length())
+		_check(r.has("dots") and off < 0.01, "reduce: the picture is at once in place (off %.3f)" % off)
+		var live: int = _tab._live_count()
+		r = _tab.apply_dots({"remove": 200})
+		_check(_tab._live_count() == live - 200, "reduce: dots gone at once")
+		r = _tab.apply_dots({"add": 100})
+		var full := 0
+		for i in _tab._hi:
+			if _tab._role[i] == Tab.Role.FREE and _tab._life[i] == 1.0:
+				full += 1
+		_check(int(r.dots) == live - 100, "reduce: dots born whole")
+		_tab.apply_draw({"clear": true})
+		Motion.reduce = was
 	elif _f == 460:
 		print("done fails=%d" % _fails)
 		_tab.close()
