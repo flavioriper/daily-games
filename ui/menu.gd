@@ -409,6 +409,12 @@ func _build_list() -> void:
 	bar.name = "Categories"
 	bar.picked.connect(_on_tab)
 	root.add_child(bar)
+	# The row hides with one category (category_row.gd): the grid gets its
+	# room back, and the header's arrow is the way home.
+	bar.visibility_changed.connect(func() -> void:
+		_queue_fit()
+		_sync_back())
+	header.back.connect(go_back)
 
 	day_row = DayRow.new()
 	day_row.name = "DayRow"
@@ -718,7 +724,8 @@ func _measure_fit(deck: String, seam: bool) -> Dictionary:
 	var room_w := _list_root.size.x - _margins.get_theme_constant("margin_left") \
 		- _margins.get_theme_constant("margin_right")
 	var room_h := _list_root.size.y - _margins.get_theme_constant("margin_top") \
-		- _margins.get_theme_constant("margin_bottom") - header.size.y - _top_h(deck) - bar.size.y - GAP * 3
+		- _margins.get_theme_constant("margin_bottom") - header.size.y - _top_h(deck) - GAP * 2 \
+		- (bar.size.y + GAP if bar.visible else 0.0)
 	if seam:
 		room_h -= PAGER_SEAM + GAP
 	var cols := maxi(1, floori((room_w + GAP + 0.5) / (MIN_CARD_W + GAP)))
@@ -1246,6 +1253,7 @@ func _show_tab(key: String) -> void:
 		return
 	_tab = key
 	bar.show_tab(key)
+	_sync_back()
 	var home := key == "home"
 	var deck := key in _deck_page
 	day_row.visible = home
@@ -1418,6 +1426,12 @@ func _on_soon(entry: Dictionary) -> void:
 ## _notification): the topmost thing open goes first -- a sheet, then the
 ## first-play card, then the board -- then Stats or Streak go Home, and only
 ## Home quits.
+## The header's back arrow stands on Streak and Stats only when the
+## categories row (and its Puzzles pill home) is hidden.
+func _sync_back() -> void:
+	if header != null and bar != null:
+		header.back_button.visible = _tab != "home" and not bar.visible
+
 func go_back() -> void:
 	# The age question (ui/hud/age_screen.gd) has no way out but an answer.
 	if get_node_or_null("../AgeScreen") != null:

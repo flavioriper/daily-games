@@ -81,6 +81,10 @@ func rebuild_tabs() -> void:
 	_tabs.clear()
 	for tab in entries():
 		_row.add_child(_make_tab(tab))
+	# One category is nothing to pick (a store build: Puzzles alone; the
+	# user, 2026-11-05): the row stands down and the header's back arrow
+	# takes Streak and Stats home.
+	visible = _tabs.size() > 1
 	_repaint()
 
 ## The categories this player sees: a `teen` one only once the age gate

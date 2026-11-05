@@ -1416,3 +1416,22 @@ tile colours in `ui/menu/word_tiles.gd` were the app palette's muted kin
 blue `72b5fb`, coral `fb7c6a`, and the letters are white on every coloured
 tile, the yellow included, as the icon has them. The opening lays the same
 colours. Menu idle 160 draw calls, unchanged.
+
+## One category hides the row (2026-11-05)
+
+The user: "when there is only 1 category like prod that has only puzzles,
+hide the top categories picker". `CategoryRow.rebuild_tabs` sets the row
+`visible` only with two or more entries; a store build has Puzzles alone (the
+Swarm chip is testers' builds only), so the row is gone there and the grid's
+fit (`_measure_fit`) takes back its height and gap: a 1080x2340 phone shows
+twelve cards on page one. The pill was the way home from Streak and Stats, so
+the header grows a back arrow top left (`menu_header.gd` `back_button`, the
+boards' 110 round chevron), shown only off Home while the row is hidden, and it
+calls `go_back` (Stats goes to Streak, Streak goes Home), the user's pick over a
+toggling calendar or a row that comes back off Home. Testers' builds keep the
+row and no arrow.
+
+Store screenshots come from `tests/_store_shots.gd` (the game in a SubViewport
+at phone pixels, the Swarm chip removed as in a store build, tutorials marked
+seen, a seeded streak, `id:diff:hints` items); `tests/_store_menu.gd` is the
+user's page-one order for the shot only, never the game's.

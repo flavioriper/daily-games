@@ -25,6 +25,10 @@ extends Control
 signal settings
 ## The gift button: the daily gifts sheet (spec 2026-09-28-gold-gifts).
 signal gifts
+## The back arrow, top left: shown on Streak and Stats when the categories
+## row is hidden (a store build has one category, so the row has no pill to
+## go home by; the user, 2026-11-05).
+signal back
 
 const Pal = preload("res://core/palette.gd")
 const CozyTheme = preload("res://ui/theme.gd")
@@ -62,6 +66,7 @@ const MOTTO_AT := 0.10
 var gear: Button
 var calendar: Button
 var gift: Button
+var back_button: Button
 var _badge: Control
 var _streak := 0
 var _motto: Label
@@ -107,6 +112,15 @@ func _build() -> void:
 	gift.offset_right = -BUTTON.x * 2.0 - BUTTON_GAP * 2.0
 	gift.offset_bottom = BUTTON.y
 	gift.pressed.connect(func() -> void: gifts.emit())
+
+	# --- the way home from Streak and Stats, top left, as a board's ---
+	back_button = _button("chevron_left")
+	back_button.name = "Back"
+	back_button.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	back_button.offset_right = BUTTON.x
+	back_button.offset_bottom = BUTTON.y
+	back_button.visible = false
+	back_button.pressed.connect(func() -> void: back.emit())
 
 	# --- the lettering ---
 	_title_block = VBoxContainer.new()
