@@ -145,13 +145,50 @@
 - [ ] **Step 2: Price it**: `uv run python -c "..."` summing the ledger's session rows with `prices.yaml`; write the cost of that call per minute into `docs/agents/bot.md`.
 - [ ] **Step 3: Commit** the page and the doc line.
 
+### Task 16: The shared layer's store and the knowledge sync
+
+Run after Task 8, before Task 9 (spec, "Amendment, 2026-11-05: two layers").
+
+**Files:**
+- Create: `server/bot/shared/__init__.py`, `server/bot/shared/schema.sql` (the four tables of the amendment, pgvector, `create extension if not exists vector`), `server/bot/shared/store.py`, `server/bot/knowledge/{en,pt,es}/*.md` (a first set: what the game is, its puzzle boards by name with a one-line rule each from `Registry.PUZZLES` and the locale's mottos, hearts/hints/undo, the Swarm room, who the Swarm is), `tools/sync_swarm_knowledge.py`
+- Test: `server/bot/tests/test_shared_store.py`
+
+**Interfaces:**
+- Produces: `SharedStore(dsn: str | None)` with async `knowledge_for(lang, text, k=4) -> list[str]`, `style_for(lang) -> list[str]`, `add_outcome(row: dict)`, `add_suggestion(lang, kind, text, embedding)` (near-duplicate by cosine >= 0.92 bumps `seen` and `last_day`), `pending(limit) -> list[dict]`, `accept(id, edited_text=None)`, `reject(id)`; with `dsn=None` every read returns empty and every write is a no-op (the offline and test default). Embeddings via `memory.embed.embed`.
+- Markdown: one file a topic, `# Title` then paragraphs; each paragraph is one `knowledge` row (`source='curated'`); a sync replaces the curated rows of a file wholesale and leaves `learned` rows alone.
+
+- [ ] **Step 1: Tests** without network: `test_offline_store_is_empty` (dsn None: reads empty, writes no-ops) and `test_markdown_rows` (the sync's parser turns a two-paragraph file into two rows with lang and topic). Database tests run only when `SWARM_TEST_DSN` is set (skipped otherwise).
+- [ ] **Step 2: Implement** the store and the sync; create the database on a Neon branch `swarm-dev` of project `peeplet` (agent may create the dev branch and database; production's database is person-run in Task 9) and run the schema and a sync against it; run the database tests with `SWARM_TEST_DSN`.
+- [ ] **Step 3: Commit**.
+
+### Task 17: Knowledge, style and outcomes in the call
+
+**Files:**
+- Modify: `server/bot/voice/bot.py` / `voice/prompt.py` (knowledge rows for the user's last turn in the prompt, style notes at call start), the steer's decision hook (one `turn_outcomes` row per bot turn: decision, features, interrupted, gap to the user's next speech, call length on the last row)
+- Test: `server/bot/tests/test_shared_in_call.py`
+
+- [ ] **Step 1: Tests**: `test_prompt_carries_knowledge_and_style` (a fake SharedStore returning two rows and one note: both appear in the system/context message), `test_outcome_has_no_text` (the row written has none of the user's words, no uid, no session id, `day` as a date).
+- [ ] **Step 2: Implement**; Neon down or `dsn=None` leaves the call unchanged.
+- [ ] **Step 3: Run** `uv run pytest -q`; commit.
+
+### Task 18: Suggestions at call end and the review tool
+
+**Files:**
+- Create: `server/bot/shared/distil.py` (two LLM passes on `gpt-6-luna`: distil 0 to 3 lessons as JSON `{kind, text}`; scrub: refuse any item still holding a name, a number tied to a person, a place, contact details, health, school or family facts), `tools/review_swarm_suggestions.py` (list pending by `seen`; accept / edit / reject; accept writes `knowledge` source `learned` or `style`)
+- Modify: the call's end path (after `memory.end`), fire and forget with a timeout, never delaying `bye_ack`
+- Test: `server/bot/tests/test_distil.py`
+
+- [ ] **Step 1: Tests** with a fake model: `test_personal_items_refused` (an item naming a person or a street is dropped by the scrub), `test_no_ids_stored` (the suggestion row has no uid, no session id), `test_end_never_waits` (a model that hangs does not delay `bye_ack`).
+- [ ] **Step 2: Implement**; run once for real against `swarm-dev` with keys from `~/.config/openai/api_key` on a fake call's messages; the review tool lists it.
+- [ ] **Step 3: Run** `uv run pytest -q`; commit.
+
 ### Task 9: Deploy `peeplet-bot` *(person-run steps marked)*
 
 **Files:**
-- Create: `server/bot/cloudbuild.yaml` (from the studio's: service `peeplet-bot`, `--max-instances=1 --min-instances=0 --cpu=2 --memory=2Gi --no-cpu-throttling --timeout=3600 --concurrency=<measured>`, volume `STUDIO_DATA` on bucket `daily-games-420bf-peeplet-bot`, secrets `OPENAI_API_KEY`, `DEEPGRAM_API_KEY`, `ELEVENLABS_API_KEY`, `JEV_API_KEY`), `tools/deploy_bot.sh` (person-run `gcloud builds submit`), `docs/agents/bot.md` section "Deploy"
+- Create: `server/bot/cloudbuild.yaml` (from the studio's: service `peeplet-bot`, `--max-instances=1 --min-instances=0 --cpu=2 --memory=2Gi --no-cpu-throttling --timeout=3600 --concurrency=<measured>`, volume `STUDIO_DATA` on bucket `daily-games-420bf-peeplet-bot`, secrets `OPENAI_API_KEY`, `DEEPGRAM_API_KEY`, `ELEVENLABS_API_KEY`, `JEV_API_KEY`, `NEON_SWARM_URL`), `tools/deploy_bot.sh` (person-run `gcloud builds submit`), `docs/agents/bot.md` section "Deploy"
 - Modify: `server/bot/Dockerfile` (bake `voices/peeplet`, `FASTEMBED_CACHE_PATH`)
 
-- [ ] **Step 1: Write** the three files; `docs/agents/bot.md` lists, in order, the **person-run** steps: settle the admin account (`gcloud auth login` as the project's owner; the navlio account was denied on 2026-11-04, the firebase CLI deploys as `flavio@hypertradeworx.xyz`), create the four secrets, the bucket, the `peeplet-bot` service account with `roles/storage.objectAdmin` on the bucket and `secretmanager.secretAccessor` on its secrets, `tools/deploy_bot.sh`, then `tools/public_invoker.sh peeplet-bot`.
+- [ ] **Step 1: Write** the three files; `docs/agents/bot.md` lists, in order, the **person-run** steps: settle the admin account (`gcloud auth login` as the project's owner; the navlio account was denied on 2026-11-04, the firebase CLI deploys as `flavio@hypertradeworx.xyz`), create the five secrets (the fifth the production `swarm` database's URL on Neon project `peeplet`, its schema from `server/bot/shared/schema.sql` and a knowledge sync), the bucket, the `peeplet-bot` service account with `roles/storage.objectAdmin` on the bucket and `secretmanager.secretAccessor` on its secrets, `tools/deploy_bot.sh`, then `tools/public_invoker.sh peeplet-bot`.
 - [ ] **Step 2: Hand the steps to Flavio** and wait; the session does not run them.
 - [ ] **Step 3: After the deploy**, `curl https://<service-url>/health` expected `{"ok":true}`; the test page from Task 8 against the service: a call works, memory round-trips.
 - [ ] **Step 4: Measure concurrency**: two test pages at once; note CPU in Cloud Run metrics; set `--concurrency` and record it in the doc.

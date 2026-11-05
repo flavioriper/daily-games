@@ -445,3 +445,50 @@ feel for English calls without per-player state on the server.
    text, the `docs/agents/bot.md` page, a harness shot of the screen.
 
 Each session commits locally; pushes are Flavio's call.
+
+
+## Amendment, 2026-11-05: two layers
+
+The user: "we should have 2 layers for the agent. A high level where it has a
+shared knowledge and memory, so polishes and improvements are shared among
+all apps. And the local layer, where it saves memories about the user, so he
+can remember things without leaking outside user device." Approved the same
+morning ("all great!"), with the bot named the Swarm, a warm friendly
+companion in the game, not a Peeplet character.
+
+**The local layer** is this spec's device-fed memory, unchanged: facts and
+episodes in a file on the phone, sent in `hello`, held in RAM for the call,
+changes pushed back as `memory` events.
+
+**The shared layer** is a database `swarm` on the Neon project `peeplet`
+(pgvector), read and written by the bot server only (`NEON_SWARM_URL`):
+
+- `knowledge` (id, lang, topic, text, embedding, source curated|learned,
+  active, updated_at): the games, their rules and tips, the Swarm's lore,
+  common answers. Curated rows come from `server/bot/knowledge/<lang>/*.md`
+  through `tools/sync_swarm_knowledge.py`; no release needed. Each turn the
+  server retrieves the top few rows by embedding against what was just
+  said and puts them in the prompt.
+- `style` (key, lang, text, active, updated_at): short notes appended to
+  the prompt and knobs (voice speed), read at call start. A polish reaches
+  every app at once.
+- `turn_outcomes` (day, lang, decision, features, interrupted, gap_ms,
+  call_s): numbers only, no text, no uid, no session id, day granularity.
+  Collected now; an offline tool retrains the policy base from it later
+  (not built this round).
+- `suggestions` (id, lang, kind question|fix|fact|style, text, embedding,
+  seen, status pending|accepted|rejected, first_day, last_day): at call end
+  the server distils 0 to 3 general, impersonal lessons from the call's
+  messages (held in RAM), a second pass strips names, numbers, places and
+  anything personal and refuses the item if any is left; no uid or session
+  id is stored, and a near-duplicate (embedding) bumps `seen`. Nothing goes
+  live by itself: `tools/review_swarm_suggestions.py` lists pending items by
+  `seen`, and a person accepts (into `knowledge` as `learned`, or `style`),
+  edits or rejects.
+
+The privacy line becomes: nothing that identifies a player persists on the
+server, and no transcripts; player words reach the shared layer only as
+checked, impersonal lessons, shared only after a person's review. The
+learner's per-user deltas stay unwritten. If Neon is unreachable the call
+goes on without knowledge or style, and outcomes and suggestions are
+dropped, never queued on disk.
