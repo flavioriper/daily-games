@@ -827,11 +827,11 @@ MUSIC_PAUSED,Paused,Pausado,En pausa
 MUSIC_HELD,Waits while this game plays,Espera durante este jogo,Espera durante este juego
 BAR_BOT,Swarm,Enxame,Enjambre
 BOT_MIC_REFUSED,"I can't hear you without the microphone. You can allow it in Settings.","Sem o microfone eu não consigo te ouvir. Você pode liberar nos Ajustes.","Sin el micrófono no puedo oírte. Puedes permitirlo en Ajustes."
-BOT_OFFLINE,I can't connect right now. Come back in a little while.,Não consigo me conectar agora. Volte daqui a pouco.,No puedo conectarme ahora. Vuelve en un ratito.
+BOT_OFFLINE,I can't connect right now. Tap me to try again in a little while.,Não consigo me conectar agora. Toque em mim para tentar de novo daqui a pouco.,No puedo conectarme ahora. Tócame para intentarlo de nuevo en un ratito.
 BOT_WAKING,Waking up…,Acordando…,Despertando…
 BOT_REMEMBERING,Remembering our chat…,Guardando nossa conversa…,Guardando nuestra charla…
 BOT_LIMIT,"That's enough talking for now. Let's chat again later.","Já conversamos bastante por agora. Vamos falar de novo mais tarde.","Ya hablamos bastante por ahora. Charlemos de nuevo más tarde."
-BOT_DROPPED,We got cut off. Come back and call me again.,A ligação caiu. Volte e me chame de novo.,Se cortó la llamada. Vuelve y llámame otra vez.
+BOT_DROPPED,We got cut off. Tap me to call again.,A ligação caiu. Toque em mim para ligar de novo.,Se cortó la llamada. Tócame para llamar otra vez.
 BOT_KNOWN_TITLE,What I know about you,O que eu sei sobre você,Lo que sé de ti
 BOT_KNOWN_NONE,Nothing yet. Tell me about yourself!,Nada ainda. Me conta sobre você!,Nada todavía. ¡Cuéntame de ti!
 BOT_FORGET,Forget,Esquecer,Olvidar

@@ -79,6 +79,9 @@ var _stale: Timer
 ## animates down to 0, then the frame needs a moment to catch up.
 const KEYBOARD_SETTLE := 0.25
 var _keyboard_up := false
+## Who asked for the banner to stand aside (hold()): while anyone has, the
+## native view is hidden and the screens are told there is no banner.
+var _held := {}
 var _settle := 0.0
 
 func _ready() -> void:
@@ -246,7 +249,9 @@ func _load_banner() -> void:
 			return
 		# Every refresh lands here, and show() places the banner: only a hidden
 		# one is shown, or a refresh under the keyboard parks it on top of it.
-		if not _banner_visible:
+		if not _held.is_empty():
+			_ad_view.hide()  # loaded under a screen that holds it aside
+		elif not _banner_visible:
 			_ad_view.show()
 		_set_banner(true, float(_ad_view.get_height_in_pixels()))
 		Analytics.track("ad_banner_loaded")
@@ -274,7 +279,7 @@ func _watch_keyboard(height: int, delta: float) -> void:
 	if _settle <= 0.0:
 		return
 	_settle -= delta
-	if _settle <= 0.0 and _ad_view != null and not _removed:
+	if _settle <= 0.0 and _ad_view != null and not _removed and _held.is_empty():
 		_ad_view.set_position(AdPosition.BOTTOM)
 
 ## remove_ads was bought: the banner goes now and is never asked for again.
@@ -300,21 +305,41 @@ func show_privacy_options() -> void:
 		UserMessagingPlatform.show_privacy_options_form(_on_privacy_options_closed)
 
 func is_banner_visible() -> bool:
-	return _banner_visible
+	return _banner_visible and _held.is_empty()
+
+## A screen that takes the whole phone (the Swarm's call, bot/bot_screen.gd)
+## asks the banner to stand aside while it is up, keyed by who asks, and lets
+## it back on close. Only the banner's view is hidden: it keeps loading and
+## refreshing, and comes back as it was. Idempotent per key.
+func hold(who: String, on: bool) -> void:
+	var was := _held.is_empty()
+	if on:
+		_held[who] = true
+	else:
+		_held.erase(who)
+	if was == _held.is_empty():
+		return
+	if _ad_view != null and _banner_visible and not _removed:
+		if _held.is_empty():
+			_ad_view.show()
+		else:
+			_ad_view.hide()
+	if _banner_visible:
+		banner_changed.emit(is_banner_visible(), bottom_inset())
 
 ## Window pixels, the unit ui/safe_area.gd scales from. A fake banner is given
 ## in design pixels, so fake_height() is what the stand-in paints.
 func bottom_inset() -> float:
-	return _banner_height if _banner_visible else 0.0
+	return _banner_height if is_banner_visible() else 0.0
 
 func fake_height() -> float:
-	return _fake if _banner_visible and _fake > 0.0 else 0.0
+	return _fake if is_banner_visible() and _fake > 0.0 else 0.0
 
 func _set_banner(visible: bool, height: float) -> void:
 	var changed := _banner_visible != visible or not is_equal_approx(_banner_height, height)
 	_banner_visible = visible
 	_banner_height = height if visible else 0.0
-	if changed:
+	if changed and _held.is_empty():
 		banner_changed.emit(_banner_visible, _banner_height)
 
 func _unit(kind: String) -> String:

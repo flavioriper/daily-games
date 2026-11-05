@@ -11,7 +11,7 @@ extends Control
 ## quiet log of what the tools did, the demo pills while there is no call
 ## (under it), and the "what I know about you" pill in the top right, which
 ## opens the memory sheet (bot/memory_sheet.gd) over the room; a call goes on
-## under it.
+## under it. The ad banner stands aside while the room is up (Ads.hold).
 ##
 ## No key is read by the app: the brain, the ears and the voice are the
 ## server's. Offline (no token: a harness, the suite, a phone without the
@@ -214,6 +214,8 @@ func open() -> void:
 	_cut = false
 	_token = ""
 	Music.hold("bot", true)
+	# The banner stands aside before the insets are read.
+	Ads.hold("bot", true)
 	visible = true
 	set_process(true)
 	face.open()
@@ -246,6 +248,7 @@ func close() -> void:
 	sheet.close()
 	face.close()
 	Music.hold("bot", false)
+	Ads.hold("bot", false)
 	visible = false
 	set_process(false)
 	closed.emit()
@@ -253,6 +256,7 @@ func close() -> void:
 
 func _exit_tree() -> void:
 	Music.hold("bot", false)
+	Ads.hold("bot", false)
 	_hold(false)
 
 
