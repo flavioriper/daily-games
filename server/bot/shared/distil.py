@@ -44,33 +44,47 @@ SCRUB = """You are the privacy check on lessons a voice assistant wants to share
 Answer JSON only: {"verdicts": [{"n": 0, "verdict": "keep|refuse", "text": "the lesson after removal", "reason": ""}]}"""
 
 _W = r"(?:'s)?"
+_NUM_WORDS = (r"one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety"
+              r"|um|uma|dois|duas|três|quatro|cinco|seis|sete|oito|nove|dez|onze|doze|treze|catorze|quatorze|quinze|dezesseis|dezessete|dezoito|dezenove|vinte|trinta|quarenta|cinquenta|sessenta|setenta|oitenta|noventa"
+              r"|un|uno|dos|tres|cuatro|siete|ocho|nueve|diez|once|doce|trece|catorce|dieciséis|diecisiete|dieciocho|diecinueve|veinte|treinta|cuarenta|cincuenta|sesenta|ochenta")
+_SUBJECTS = (r"player|players|user|users|caller|person|kid|child|boy|girl|he|she|they|we|someone|somebody|anyone"
+             r"|jogador|jogadora|jogadores|usuário|usuária|usuario|usuaria|pessoa|criança|menino|menina|ele|ela|eles|elas|alguém|nós"
+             r"|jugador|jugadora|jugadores|persona|niño|niña|chico|chica|él|ella|ellos|ellas|alguien|nosotros")
+_VERBS = (r"said|says|say|told|tells|tell|mentioned|mentions|mention|asked|likes|like|liked|loves|love|loved|has|have|had|lives|live|lived|is|are|was|were"
+          r"|wants|want|wanted|named|called|works|work|goes|go|prefers|prefer|preferred|plays|play|played|enjoys|enjoy|hates|hate|thinks|think|feels|feel|uses|use"
+          r"|disse|disseram|diz|dizem|falou|falaram|contou|contaram|perguntou|gosta|gostam|gostou|ama|amam|tem|têm|tinha|tinham|mora|moram|morava|é|são|era|eram"
+          r"|quer|querem|queria|chama|chamam|chamou|trabalha|trabalham|estuda|estudam|vai|vão|prefere|preferem|joga|jogam|jogou|acha|acham|achou"
+          r"|dijo|dijeron|dice|dicen|contó|preguntó|le gusta|les gusta|ama|aman|tiene|tienen|tenía|vive|viven|vivía|es|son|era|eran"
+          r"|quiere|quieren|quería|llama|llaman|trabaja|trabajan|estudia|estudian|va|van|prefiere|prefieren|juega|juegan|jugó|piensa|cree")
 CHECKS: list[tuple[str, re.Pattern]] = [(reason, re.compile(p, re.I)) for reason, p in (
-    ("contact", r"https?://|www\.|\b[\w.-]+\.(?:com|org|net|io|app|br|es|pt|me)\b|\S+@\S+"),
+    ("contact", r"https?://|www\.|\b[\w.-]+\.(?:com|org|net|io|app|br|es|pt|me)\b|\S+@\S+|(?<!\w)@\w{2,}"
+                r"|\b(?:instagram|insta|tiktok|twitter|facebook|whatsapp|telegram|discord|snapchat|youtube|twitch)\b"),
     ("contact", r"\+?\d[\d\s().-]{6,}\d"),
     ("number", r"\b\d{4}-\d{1,2}-\d{1,2}\b|\b\d{1,2}/\d{1,2}(?:/\d{2,4})?\b|\b(?:19|20)\d{2}\b|\d{3,}"),
     ("number", r"\b(?:january|february|march|april|june|july|august|september|october|november|december"
                r"|janeiro|fevereiro|março|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro"
                r"|enero|febrero|marzo|mayo|junio|julio|septiembre|octubre|noviembre|diciembre|birthday|aniversário|cumpleaños)\b"),
-    ("number", r"[$€£¥]|\bR\$|\b\d+\s*(?:dollars?|euros?|reais|real|reales|pesos?|bucks|cents?|centavos?)\b"),
-    ("number", r"\byears? old\b|\baged?\s+\d|\b\d+\s*(?:anos|años|yo)\b|\b(?:tenho|tengo)\s+\d"),
-    ("quote", r"[\"“”«»„]"),
-    ("personal", rf"\b(?:the|this|that|a|one|o|a|esse|essa|este|esta|el|la|ese|esa)?\s*(?:player|user|caller|person|kid|child|boy|girl|he|she|they"
-                 rf"|jogador|jogadora|usuário|usuária|usuario|usuaria|pessoa|criança|menino|menina|ele|ela|jugador|jugadora|persona|niño|niña|chico|chica|él|ella){_W}\s+"
-                 r"(?:said|says|told|tells|mentioned|mentions|likes|liked|loves|loved|has|had|lives|lived|is|was|wants|wanted|named|called|works|goes"
-                 r"|disse|diz|falou|contou|gosta|gostou|ama|tem|tinha|mora|morava|é|era|quer|queria|chama|chamou|trabalha|estuda|vai"
-                 r"|dijo|dice|contó|le gusta|ama|tiene|tenía|vive|vivía|es|era|quiere|quería|llama|trabaja|estudia|va)\b"),
+    ("number", r"[$€£¥]|\bR\$|\b(?:dollars?|euros?|reais|reales|pesos?|bucks|cents?|centavos?|pounds?|libras?|dólar(?:es)?)\b"),
+    ("number", rf"\byears?[- ]old\b|\baged?\s+\d|\b(?:\d+|{_NUM_WORDS})\s*(?:anos|años|yo)\b|\b(?:tenho|tengo|tem|tiene)\s+\d|\bde (?:idade|edad)\b"),
+    ("quote", r"[\"“”«»„]|(?<![^\W\d_])['‘’]|['‘’](?![^\W\d_])"),
+    ("personal", rf"\b(?:{_SUBJECTS}){_W}\s+(?:\w+\s+)?(?:{_VERBS})\b"),
     ("personal", r"\b(?:i'm|i am|my name|i live|i have|eu sou|me chamo|meu nome|eu moro|eu tenho|me llamo|mi nombre|vivo en|moro em|yo tengo)\b"),
     ("family", r"\b(?:his|her|my|their|your|seu|sua|meu|minha|dele|dela|su|sus|mi|mis|tu|tus)\s+"
                r"(?:dog|cat|pet|mom|mum|mother|dad|father|sister|brother|son|daughter|wife|husband|kids?|children|grandma|grandmother|grandpa|grandfather|friend|boss|job|name|age|city|town|address|house|home|teacher|school"
                r"|cachorro|cão|gato|bicho|mãe|pai|irmã|irmão|filho|filha|esposa|marido|filhos|avó|avô|amigo|amiga|chefe|trabalho|nome|idade|cidade|endereço|casa|professor|professora|escola"
                r"|perro|gato|mascota|madre|mamá|padre|papá|hermana|hermano|hijo|hija|esposa|esposo|marido|hijos|abuela|abuelo|amigo|amiga|jefe|trabajo|nombre|edad|ciudad|dirección|casa|maestro|maestra|escuela|colegio)\b"),
-    ("family", r"\b(?:mom|mum|dad|grandma|grandpa|wife|husband|boyfriend|girlfriend|mãe|pai|vovó|vovô|namorado|namorada|mamá|papá|abuela|abuelo|novio|novia)\b"),
-    ("health", r"\b(?:hospital|doctor|nurse|sick|illness|disease|diagnos\w*|medicine|medication|therapy|pregnan\w*|disabilit\w*|adhd|autis\w*|cancer|depress\w*|anxiety"
-               r"|médico|médica|enfermeira|doente|doença|remédio|terapia|grávida|deficiência|câncer|depressão|ansiedade"
-               r"|enfermera|enfermo|enferma|enfermedad|medicina|embarazada|discapacidad|cáncer|depresión|ansiedad)\b"),
+    ("family", r"\b(?:mom|mum|dad|grandma|grandpa|wife|husband|boyfriend|girlfriend|sister|sisters|brother|brothers|daughter|daughters|sons|kids|children|siblings|cousin|aunt|uncle|grandson|granddaughter"
+               r"|mãe|pai|vovó|vovô|namorado|namorada|irmã|irmãs|irmão|irmãos|filho|filha|filhos|filhas|primo|prima|tio|tia|neto|neta"
+               r"|mamá|papá|abuela|abuelo|novio|novia|hermana|hermanas|hermano|hermanos|hijo|hija|hijos|hijas|tío|tía|nieto|nieta)\b"),
+    ("family", r"\b(?:cat|dog|pet|kitten|puppy|bird|fish|hamster|rabbit|gato|gata|gatinho|cachorro|cachorra|cão|cadela|bicho|pássaro|coelho|perro|perra|perrito|gatito|mascota|pájaro|conejo)s?\s+"
+               r"(?:named|called|chamad[oa]|de nome|llamad[oa]|de nombre)\b"),
+    ("health", r"\b(?:hospital|doctor|nurse|sick|illness|disease|diagnos\w*|medicine|medication|therapy|pregnan\w*|disabilit\w*|disabled|adhd|autis\w*|cancer|depress\w*|anxiety"
+               r"|dyslexi\w*|blind|deaf|diabet\w*|asthma|surgery|epilep\w*|wheelchair|colou?r[- ]?blind\w*|seizure\w*|allerg\w*"
+               r"|médico|médica|enfermeira|doente|doença|remédio|terapia|grávida|deficiência|deficiente|câncer|depressão|ansiedade|tdah|disléxi\w*|dislexi\w*|cego|cega|surdo|surda|diabét\w*|asma|cirurgia|epilép\w*|cadeira de rodas|daltônic\w*|alergi\w*|autist\w*"
+               r"|enfermera|enfermo|enferma|enfermedad|medicina|embarazada|discapacidad|discapacitad\w*|cáncer|depresión|ansiedad|ciego|ciega|sordo|sorda|cirugía|silla de ruedas|daltónic\w*)\b"),
     ("school", r"\b(?:school|teacher|classroom|class of|grade \w+|homework|university|college|escola|professora?|sala de aula|lição de casa|faculdade|universidade"
                r"|escuela|colegio|maestr[oa]|profesor[a]?|tarea|universidad)\b"),
-    ("place", r"\b(?:street|avenue|road|lane|rua|avenida|travessa|bairro|calle|carrera|barrio|colonia|neighbou?rhood|city of|cidade de|ciudad de|lives in|mora em|vive en)\b"),
+    ("place", r"\b(?:street|avenue|road|lane|rua|avenida|travessa|bairro|calle|carrera|barrio|colonia|neighbou?rhood|city of|cidade de|ciudad de|lives in|mora em|vive en|near the|perto d[aeo]|cerca de)\b"),
 )]
 
 

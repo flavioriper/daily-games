@@ -351,27 +351,35 @@ def learner_for(shared, lang: str, memory, on_usage=None, timeout: float = disti
 
 
 async def finish_call(websocket, phone: Phone, memory: MemoryTurn, messages: list[dict], reason: str, learn=None) -> None:
-    """The end of the call. On `bye` or the cap, with the socket still open: remembering, the call's summary and lasting facts go to the phone as `memory`, then `bye_ack` and a close. A phone that went away gets nothing and costs nothing more. After this the server holds nothing of the call but `learn`'s distil, started after memory.end and before `bye_ack`, in the background: it never delays the goodbye."""
+    """The end of the call. On `bye` or the cap, with the socket still open: remembering, the call's summary and lasting facts go to the phone as `memory`, then `bye_ack` and a close. A phone that went away gets nothing. Either way `learn` starts the call's distil in the background (after memory.end and before `bye_ack` when there is one); it never delays the goodbye, and after it the server holds nothing of the call."""
     if reason in ("bye", "cap") and phone.open:
         phone.state("remembering")
         try:
             await memory.end(messages)
         except Exception as e:
             logger.warning(f"end of call memory failed: {type(e).__name__}")
-        if learn is not None:
-            try:
-                learn(messages)
-            except Exception as e:
-                logger.warning(f"end of call lessons failed: {type(e).__name__}")
+        _learn(learn, messages)
         phone.send({"type": "bye_ack"})
         await phone.flush()
         try:
             await websocket.close(code=1000)
         except Exception:
             pass  # already gone
-    elif memory.key is not None:
-        memory.hub.detach(memory.key)
+    else:
+        if memory.key is not None:
+            memory.hub.detach(memory.key)
+        _learn(learn, messages)  # the ruling of 2026-11-05: a call that ends gone gets no memory, but its lessons are drafted
     phone.open = False
+
+
+def _learn(learn, messages: list[dict]) -> None:
+    """Start the call's lessons in the background; nothing here may cost the end of the call."""
+    if learn is None:
+        return
+    try:
+        learn(messages)
+    except Exception as e:
+        logger.warning(f"end of call lessons failed: {type(e).__name__}")
 
 
 def turn_secs(breakdown) -> float:

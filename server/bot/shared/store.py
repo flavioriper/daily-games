@@ -124,17 +124,27 @@ class SharedStore:
             await self._pool.close()
             self._pool = None
 
-    async def _run(self, what: str, fn, default=None):
-        """Run ``fn(conn)`` on a pooled connection; any failure is logged (kind only) and answered with ``default``."""
-        if not self.online or time.monotonic() < self._down_until:
+    @property
+    def down(self) -> bool:
+        """A read failed within the last DOWN_FOR_S: reads answer empty and writes drop at once until then."""
+        return time.monotonic() < self._down_until
+
+    async def _run(self, what: str, fn, default=None, mark_down: bool = True):
+        """Run ``fn(conn)`` on a pooled connection; any failure is logged (kind only) and answered with ``default``.
+        A background write passes ``mark_down=False``: it is dropped alone, and the reads of every call (a cold compute
+        waking past the timeout, a single slow insert) are not taken down with it."""
+        if not self.online or self.down:
             return default
         try:
             pool = await self._get_pool()
             async with pool.connection() as conn:
                 return await asyncio.wait_for(fn(conn), READ_TIMEOUT_S * 2)
         except Exception as e:
-            self._down_until = time.monotonic() + DOWN_FOR_S
-            log.warning("shared layer %s failed: %s (down for %.0f s)", what, type(e).__name__, DOWN_FOR_S)
+            if mark_down:
+                self._down_until = time.monotonic() + DOWN_FOR_S
+                log.warning("shared layer %s failed: %s (down for %.0f s)", what, type(e).__name__, DOWN_FOR_S)
+            else:
+                log.warning("shared layer %s failed: %s (dropped)", what, type(e).__name__)
             return default
 
     # reads
@@ -222,7 +232,7 @@ class SharedStore:
                 vals,
             )
 
-        await self._run("add_outcome", go)
+        await self._run("add_outcome", go, mark_down=False)
 
     async def add_suggestion(self, lang: str, kind: str, text: str, embedding=None) -> int | None:
         """Store a pending lesson, or bump ``seen`` and ``last_day`` of a near-duplicate (cosine >= 0.92) of the same
@@ -257,7 +267,7 @@ class SharedStore:
                 )
                 return (await cur.fetchone())[0]
 
-        return await self._run("add_suggestion", go)
+        return await self._run("add_suggestion", go, mark_down=False)
 
     async def accept(self, id: int, edited_text: str | None = None) -> bool:
         """A person accepts a pending suggestion: into ``knowledge`` as learned (question, fix, fact) or ``style``."""

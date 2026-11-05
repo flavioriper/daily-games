@@ -86,6 +86,24 @@ async def test_personal_items_refused(caplog):
     "The call was on 2026-11-05.",
     "It costs $5 to remove ads.",
     'Someone asked "is my score good?"',
+    "A 9-year-old player finds Insane too hard.",
+    "Uma criança de nove anos achou o Insane difícil.",
+    "They have two kids who love Teacups.",
+    "They live near the beach and play on the bus.",
+    "The player prefers dark mode and plays at night.",
+    "Eles moram no Recife e jogam de manhã.",
+    "Ellos viven en Monterrey y juegan de noche.",
+    "The player's sister loves Hidden Word.",
+    "A cat named Rex watches every Bridges game.",
+    "Find the player on Instagram @anasilva_99x",
+    "Removing ads costs five dollars.",
+    "Someone said 'my score is bad' after Insane.",
+    "Someone said ‘my score is bad’ after Insane.",
+    "A dyslexic player finds Hidden Word hard.",
+    "Alguém disse que o Insane é difícil.",
+    "Alguien dijo que el Insane es difícil.",
+    "Players with ADHD lose focus on long boards.",
+    "Un niño de diez años encontró el Insane difícil.",
 ])
 def test_the_last_check_refuses_when_in_doubt(text):
     assert distil.local_refusal(text) is not None
@@ -96,6 +114,8 @@ def test_the_last_check_refuses_when_in_doubt(text):
     "Hidden Word has five letters and six rows.",
     "Keep a reply to two short sentences on the phone.",
     "Os corações voltam sozinhos, um a cada meia hora.",
+    "Los corazones son cinco y vuelven solos, uno cada media hora.",
+    "Don't read the rules aloud; it's better to give one step.",
 ])
 def test_the_last_check_keeps_general_lessons(text):
     assert distil.local_refusal(text) is None
@@ -168,10 +188,19 @@ async def test_a_hung_model_is_given_up_on_its_timeout(caplog):
     assert shared.added == [] and distil.pending_tasks() == set() and "timed out" in caplog.text
 
 
-async def test_a_call_that_ends_gone_teaches_nothing():
+async def test_a_call_that_ends_gone_still_teaches():
+    """The ruling of 2026-11-05: a phone that went away gets no memory and no bye_ack, but its call's lessons are drafted."""
     sock, called = FakeSocket(), []
-    await finish_call(sock, Phone(sock), FakeMemory(), CALL, "gone", learn=lambda m: called.append(m))
-    assert called == []
+    memory = FakeMemory()
+    ended = []
+    memory.end = lambda m: ended.append(m)
+    await finish_call(sock, Phone(sock), memory, CALL, "gone", learn=lambda m: called.append(m))
+    assert called == [CALL] and ended == [] and sock.sent == [] and sock.closed is None
+
+    def boom(_):
+        raise RuntimeError("Ana")
+
+    await finish_call(sock, Phone(sock), FakeMemory(), CALL, "gone", learn=boom)  # never raises
 
 
 async def test_a_learner_that_raises_never_costs_the_bye_ack():
@@ -182,3 +211,34 @@ async def test_a_learner_that_raises_never_costs_the_bye_ack():
 
     await finish_call(sock, Phone(sock), FakeMemory(), CALL, "bye", learn=boom)
     assert sock.sent[-1] == {"type": "bye_ack"}
+
+
+async def test_a_failed_background_write_does_not_take_the_layer_down(monkeypatch):
+    from shared import store as store_mod
+
+    s = store_mod.SharedStore("postgresql://nobody@127.0.0.1:1/none")
+
+    async def no_pool():
+        raise OSError("no route")
+
+    async def vec(*_):
+        return "[0]"
+
+    monkeypatch.setattr(s, "_get_pool", no_pool)
+    monkeypatch.setattr(s, "_vec_of", vec)
+    assert await s.add_suggestion("en", "fact", "A fact.") is None
+    await s.add_outcome({"lang": "en", "decision": 1, "features": [0.1], "interrupted": False, "gap_ms": 1, "call_s": 1})
+    assert not s.down  # writes dropped quietly; reads still go to the database
+    assert await s.pending(1) == [] and s.down  # a failed read still marks it down
+
+
+def test_review_table_strips_control_characters():
+    import importlib.util
+    from pathlib import Path
+
+    spec = importlib.util.spec_from_file_location("review", Path(__file__).resolve().parents[3] / "tools" / "review_swarm_suggestions.py")
+    review = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(review)
+    row = {"id": 1, "lang": "en", "kind": "fact", "seen": 2, "first_day": "2026-11-05", "last_day": "2026-11-05", "text": "a\x1b[2Jb\nc\u202ed"}
+    out = review.table([row])
+    assert "\x1b" not in out and "\u202e" not in out and out.count("\n") == 1

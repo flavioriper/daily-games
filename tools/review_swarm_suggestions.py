@@ -13,13 +13,22 @@ for them). The DSN comes from the environment only (NEON_SWARM_URL, or SWARM_TES
 import argparse
 import asyncio
 import os
+import re
 import sys
 from pathlib import Path
 
 BOT = Path(__file__).resolve().parent.parent / "server" / "bot"
 sys.path.insert(0, str(BOT))
 
+from shared.distil import local_refusal  # noqa: E402
 from shared.store import SharedStore  # noqa: E402
+
+# A lesson came from a call: no control character, line break or direction override of it reaches the terminal.
+UNSAFE = re.compile(r"[\x00-\x1f\x7f-\x9f\u200b-\u200f\u2028-\u202e\u2066-\u2069\ufeff]")
+
+
+def safe(text) -> str:
+    return UNSAFE.sub(" ", str(text))
 
 
 def table(rows: list[dict]) -> str:
@@ -28,7 +37,7 @@ def table(rows: list[dict]) -> str:
     out = [f"{'id':>5}  lang  {'kind':<8}  seen  days                   text"]
     for r in rows:
         days = f"{r['first_day']}..{r['last_day']}" if r["first_day"] != r["last_day"] else str(r["first_day"])
-        out.append(f"{r['id']:>5}  {r['lang']:<4}  {r['kind']:<8}  {r['seen']:>4}  {days:<21}  {r['text']}")
+        out.append(f"{r['id']:>5}  {safe(r['lang']):<4}  {safe(r['kind']):<8}  {r['seen']:>4}  {days:<21}  {safe(r['text'])}")
     return "\n".join(out)
 
 
@@ -53,7 +62,7 @@ async def main() -> int:
     try:
         if args.cmd == "list":
             rows = await store.pending(args.limit)
-            if not rows and store._down_until:
+            if not rows and store.down:
                 print("the shared layer did not answer", file=sys.stderr)
                 return 1
             print(table(rows))
@@ -62,6 +71,8 @@ async def main() -> int:
             if args.text is not None and not args.text.strip():
                 print("--text is empty", file=sys.stderr)
                 return 1
+            if args.text is not None and (reason := local_refusal(args.text)) is not None:
+                print(f"warning: the call-end check would have refused this text ({reason}); accepting it as you wrote it", file=sys.stderr)
             done = await store.accept(args.id, args.text)
         else:
             done = await store.reject(args.id)
