@@ -2,7 +2,8 @@
 # Archive the Xcode project tools/export_ios.sh --release wrote and send it to
 # App Store Connect, where it lands in TestFlight.
 #
-#   tools/export_ios.sh --release && tools/upload_ios.sh
+#   tools/export_ios.sh --release --beta && tools/upload_ios.sh   TestFlight
+#   tools/export_ios.sh --release && tools/upload_ios.sh          App Store
 #   tools/upload_ios.sh --archive-only     build the .xcarchive, upload nothing
 #   tools/upload_ios.sh --upload-only      upload the .xcarchive already built
 #
@@ -12,7 +13,11 @@
 # registered iPhone, and the team has none. The upload goes through the Apple
 # account signed in to Xcode (Settings > Accounts). The build number is the
 # commit count on HEAD, like the Android versionCode, so every upload from a later commit
-# outranks the last one; override with BUILD_NUMBER.
+# outranks the last one; override with BUILD_NUMBER. A store build (exported
+# without --beta) is the count plus ".1", so it can follow a beta build of the
+# same commit, and App Store Connect tells the two apart at a glance: **only a
+# build ending in .1 may go to App Review** -- a beta build shows the
+# testers-only parts (bot/call.gd testers_build).
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -20,7 +25,13 @@ cd "$root"
 
 project=build/ios/peeplet-daily.xcodeproj
 archive=build/ios/peeplet-daily.xcarchive
-build="${BUILD_NUMBER:-$(git rev-list --count HEAD)}"
+channel="$(cat build/ios/channel 2>/dev/null || echo unknown)"
+case "$channel" in
+  beta) build="${BUILD_NUMBER:-$(git rev-list --count HEAD)}" ;;
+  store) build="${BUILD_NUMBER:-$(git rev-list --count HEAD).1}" ;;
+  *) echo "build/ios/channel is '$channel': export with tools/export_ios.sh --release [--beta] first" >&2; exit 1 ;;
+esac
+echo "uploading the $channel build as $build"
 team=R6H9QS77XM
 profile="Peeplet Daily App Store"
 

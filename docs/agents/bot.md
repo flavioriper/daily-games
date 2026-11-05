@@ -7,6 +7,24 @@ pre-made clips fill the gaps), and the player's memory travels in the
 `hello` and comes back as `memory` messages. How it is built: `server/bot/README.md`.
 The one-shot hold-to-talk button that came first is `swarm-talk.md`.
 
+## Testers only (2026-11-05)
+
+**The Swarm is never in a store build** (the user: "hide swarm in
+production, only available at firebase and ios testflight"). The Bot chip
+shows only on a testers' build, `BotCall.testers_build()`:
+`OS.is_debug_build()` (Android's App Distribution APKs, CI and
+`tools/deploy_android.sh`, are debug exports; Play's AAB from
+`tools/release_android.sh` is release) or the `beta` feature tag. iOS
+TestFlight and the App Store share one binary, so the tag is baked in at
+export: **TestFlight = `tools/export_ios.sh --release --beta`**, App Store =
+`tools/export_ios.sh --release`, each then `tools/upload_ios.sh`. The upload
+numbers a store build `<commit count>.1` and a beta build `<commit count>`,
+so **only a build ending in .1 may be picked for App Review**; a beta build
+sent there would put the Swarm in the store. The chip is the only door to
+the call screen (`ui/menu.gd`), so hiding it hides the Swarm. Checked
+2026-11-05: a `--beta` export's pck carries `_custom_features = "beta"`, a
+plain one none, and `export_presets.cfg` comes back unchanged.
+
 ## The phone's side
 
 `bot/bot_screen.gd` (the Bot chip, teens and adults only:

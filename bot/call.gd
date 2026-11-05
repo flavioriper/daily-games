@@ -123,6 +123,17 @@ static func configured() -> bool:
 	return url() != PLACEHOLDER
 
 
+## A testers' build: the Swarm is not in the stores yet (the user,
+## 2026-11-05: "hide swarm in production, only available at firebase and ios
+## testflight"). Android's App Distribution builds are debug exports and Play's
+## AAB a release one; on iOS TestFlight and the App Store share one release
+## binary, so a TestFlight build is exported with `tools/export_ios.sh
+## --release --beta`, which bakes the `beta` feature tag in, and an App Store
+## build without it.
+static func testers_build() -> bool:
+	return OS.is_debug_build() or OS.has_feature("beta")
+
+
 ## Dials `url` and says hello with the token, the language and the phone's
 ## memory file. An empty token is offline: `ended("offline")` next frame. A
 ## second start while a call is live is refused with a warning and emits
