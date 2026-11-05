@@ -1,0 +1,129 @@
+"""The call socket: hello, token, limits, a session id, then the call. Nothing about a player is kept here but the uid on a call and call start times."""
+import asyncio
+import json
+import time
+import uuid
+from collections import defaultdict, deque
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Awaitable, Callable
+
+from fastapi import FastAPI, WebSocket
+from starlette.websockets import WebSocketDisconnect
+
+from bot.auth import Unauthorized, verify
+from bot.cards import CLIPS, LANGUAGES, load_card, clip_card
+from studio.clips import has_clips
+
+HELLO_SECONDS = 5.0
+CALLS_PER_WINDOW = 6
+WINDOW_SECONDS = 3600.0
+
+UNAUTHORIZED = 4401  # no or bad token, or this uid is already on a call
+RATE_LIMITED = 4429  # six calls in the last hour
+NO_CLIPS = 4409  # the language has no pre-made clips
+
+
+async def wait_for_bye(websocket: WebSocket) -> None:
+    """The stand-in call: read until the client says bye or goes away."""
+    while True:
+        try:
+            frame = await websocket.receive()
+        except (WebSocketDisconnect, RuntimeError):
+            return
+        if frame["type"] == "websocket.disconnect":
+            return
+        text = frame.get("text")
+        if text:
+            try:
+                if json.loads(text).get("type") == "bye":
+                    return
+            except (ValueError, AttributeError):
+                pass
+
+
+async def stub_run_call(websocket, card, user_id, session_id, deps, store) -> None:
+    await wait_for_bye(websocket)
+
+
+@dataclass
+class Deps:
+    """What the app is built with. `run_call` is the seam voice.bot plugs into."""
+
+    run_call: Callable[..., Awaitable[Any]] = stub_run_call  # (websocket, card, user_id, session_id, deps, store)
+    verify: Callable[[str], str] = verify
+    clips_root: Path = CLIPS  # one folder per language, each with a manifest.json
+    now: Callable[[], float] = time.monotonic
+    hello_timeout: float = HELLO_SECONDS
+    calls_per_window: int = CALLS_PER_WINDOW
+    window: float = WINDOW_SECONDS
+    store: Any = None  # the device memory store arrives with its own task
+
+
+def build_app(deps: Deps | None = None) -> FastAPI:
+    deps = deps or Deps()
+    app = FastAPI()
+    live: set[str] = set()
+    starts: dict[str, deque] = defaultdict(deque)
+    app.state.live = live
+    app.state.starts = starts
+
+    @app.get("/health")
+    async def health():
+        return {"ok": True}
+
+    async def refuse(websocket: WebSocket, code: int) -> None:
+        try:
+            await websocket.close(code=code)
+        except RuntimeError:
+            pass
+
+    async def read_hello(websocket: WebSocket) -> dict | None:
+        try:
+            raw = await asyncio.wait_for(websocket.receive_text(), deps.hello_timeout)
+            hello = json.loads(raw)
+        except (asyncio.TimeoutError, WebSocketDisconnect, ValueError, RuntimeError):
+            return None
+        return hello if isinstance(hello, dict) and hello.get("type") == "hello" else None
+
+    @app.websocket("/ws/bot")
+    async def ws_bot(websocket: WebSocket):
+        await websocket.accept()
+        hello = await read_hello(websocket)
+        token = hello.get("token") if hello else None
+        if not isinstance(token, str) or not token:
+            return await refuse(websocket, UNAUTHORIZED)
+        try:
+            uid = await asyncio.to_thread(deps.verify, token)
+        except Unauthorized:
+            return await refuse(websocket, UNAUTHORIZED)
+        language = hello.get("language")
+        language = language if language in LANGUAGES else "en"
+        card = load_card(language)
+
+        # no await between these checks and taking the uid, so two hellos cannot both pass
+        if uid in live:
+            return await refuse(websocket, UNAUTHORIZED)
+        recent = starts[uid]
+        now = deps.now()
+        while recent and now - recent[0] >= deps.window:
+            recent.popleft()
+        if len(recent) >= deps.calls_per_window:
+            return await refuse(websocket, RATE_LIMITED)
+        if not has_clips(clip_card(card), deps.clips_root):  # the clip tools look in <root>/<card.slug>; clip_card makes the slug the language
+            return await refuse(websocket, NO_CLIPS)
+        live.add(uid)
+        recent.append(now)
+        try:
+            session_id = uuid.uuid4().hex
+            await websocket.send_json({"type": "session", "session_id": session_id})
+            await deps.run_call(websocket, card, uid, session_id, deps, deps.store)
+        except WebSocketDisconnect:
+            pass
+        finally:
+            live.discard(uid)
+            if not recent:
+                starts.pop(uid, None)
+            await refuse(websocket, 1000)
+
+    return app

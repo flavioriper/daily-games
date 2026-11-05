@@ -15,6 +15,7 @@ dependencies = [
   "pyyaml",
   "fastembed>=0.9.1",
   "google-auth",
+  "requests",
   "websockets",
 ]
 [dependency-groups]

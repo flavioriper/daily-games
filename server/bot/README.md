@@ -43,5 +43,5 @@ uv run pytest -q          # no keys, no network
 uv run python -c "import voice.bot, memory.turn, agent.tools"
 ```
 
-The `Dockerfile` still points at `server.py`, which is gone; the Peeplet app
-entry point arrives with the next tasks.
+The `Dockerfile` runs `server.py` (`bot.app.build_app`): `GET /health` and the call
+socket at `/ws/bot` (`hello` with a Firebase token, then `session`, then the call).
