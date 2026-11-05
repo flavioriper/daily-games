@@ -19,8 +19,8 @@ extends Node
 ## does both and hands `start` the token ("" means offline, nothing dialled).
 
 ## The screen gates the mic with send_silence: zeros go up in the mic's place
-## whenever the talk button is not held (hold to talk, 2026-11-05), so the
-## frames keep their pace and the server hears silence, never a gap.
+## while the Swarm talks (half duplex: no echo cancelling here), so the frames
+## keep their pace and the server hears silence, never a gap.
 ## Where the call server lives. In a debug build only, overridden by the BOT_URL
 ## environment variable, then by the first line of user://bot_url (a phone
 ## pointed at a Mac's server). The Cloud Run service `peeplet-bot` in
@@ -71,7 +71,8 @@ var _hello := {}
 var _t0 := 0  # ticks at start; the clocks below are the wall clock, not summed deltas
 var _live := false  # `session` came
 var _live_at := 0
-var _heard_at := 0  # ticks of the last non-zero mic sample, or of the button's press
+var _heard_at := 0  # ticks of the last non-zero mic sample, or of the mic opening
+var _mic_alive := false  # the mic has given a non-zero sample this call: a refused one never does
 var _stopping := false
 var _bye_at := 0
 var _stop_at := 0
@@ -209,17 +210,19 @@ static func seen(id: String, jpg: PackedByteArray, w: int, h: int) -> void:
 static func send_silence(on: bool) -> void:
 	if _call != null:
 		if _call._silence and not on:
-			_call._heard_at = Time.get_ticks_msec()  # the press starts the clock
+			_call._heard_at = Time.get_ticks_msec()  # the mic opening starts the clock
 		_call._silence = on
 
 
-## The mic is held open and has given only exact zeros (or nothing) for
-## MIC_DEAD seconds: a refused mic. Never with the test tone.
+## The mic is open and has given only exact zeros (or nothing) for
+## MIC_DEAD seconds and never a sound this call: a refused mic. A mic that
+## has worked is never called dead (a phone may gate a quiet room to zeros).
+## Never with the test tone.
 static func mic_dead() -> bool:
 	if _call == null or test_tone_hz > 0.0:
 		return false
 	var c := _call
-	return c._live and not c._stopping and not c._silence and Time.get_ticks_msec() - c._heard_at >= int(MIC_DEAD * 1000.0)
+	return c._live and not c._stopping and not c._silence and not c._mic_alive and Time.get_ticks_msec() - c._heard_at >= int(MIC_DEAD * 1000.0)
 
 
 static func live() -> bool:
@@ -447,6 +450,7 @@ func _pump_up(dt: float) -> void:
 		any = any or _src[base + i] != 0.0
 	if any:
 		_heard_at = Time.get_ticks_msec()
+		_mic_alive = true
 	# each output sample averages the input over its step; the fraction carries
 	var step := _rate / UP_RATE
 	while int(_pos + step) <= _src.size():

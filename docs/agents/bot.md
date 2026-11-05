@@ -88,31 +88,21 @@ drivers. While the room is up the ad banner stands aside (`Ads.hold("bot")`,
 `docs/agents/ads-and-purchase.md`). Every line a tap redials from
 (`BOT_DROPPED`, `BOT_OFFLINE`) ends on that tap.
 
-**Hold to talk** (2026-11-05, the user: "Make sure to add a talk button that
-user has to hold to talk, instead of being a free hand"): the mic opens only
-while the round talk button at the foot of the room is held. It is the old
-Swarm tab's mic (`MIC` 112, `_draw_mic`, from `ui/menu/swarm_tab.gd` before
-faad2239), centred 360 px over the foot of the safe area (one big button,
-clear of either thumb's side), its `BOT_HOLD` hint under it while live and
-idle, the status line over it, the subtitles under it (three lines clear).
-Shown faint and disabled while the call is on its way (asking, dialing,
-connecting), pressable only live, hidden offline and in the demo, so the
-pills and the redial tap stay as they were. The free hand before was half
-duplex: the mic streamed all the time and only the Swarm's own voice shut it
-(`BotCall.FULL_DUPLEX`, removed with it). Now `_drive` sends
-`BotCall.send_silence(not _held)` every frame of a call (silence also while
-connecting): the socket and the 20 ms frames are unchanged, zeros in place of
-the mic, so the server did not change and Flux ends the turn on the silence
-after the release. A press while the Swarm talks or its voice still plays
-sends `interrupt` first (as the face's tap, which still interrupts and no
-longer opens anything); held, the face takes its listening look. Press and
-release are the button's own `gui_input`, ScreenTouch (one index) and the
-mouse; the viewport hands the release to the button wherever it lands, a
-cancelled touch is a release, and any phase but live (the call ended, the
-background, close) lets go quietly. Heard and felt: the press the house token
-(`UiSound.click`, the button itself is `silent`) and a TICK (a TAP when it
-cuts the voice), the release the token and the echo. `tests/_shot_menu.gd --
-bot live` fakes a session for the shot.
+**Hands free, like a call** (2026-11-05 evening, the user: "replace the mic
+button with a hands free like a call, i think it's better"). The hold-to-talk
+button of that afternoon (7f08e4d8: the round mic, `BOT_HOLD`, `_draw_mic`)
+is gone. Half duplex, as before it: `_drive` sends
+`BotCall.send_silence((speaking or playing) and not _opened)` every frame, so
+the mic is open whenever the Swarm is not talking and zeros go up while it
+talks or its voice still plays (Godot's mic has no echo cancelling: a full
+duplex mic would hand Flux the Swarm's own words from the speaker). A tap on
+the face cuts the voice and opens the mic at once. The server did not
+change: persona-studio was always free hand on the same pipeline (Flux ends
+the turn; `MinWords(2)` and the stop word start one). The dead-mic check
+(`BotCall.mic_dead`, `BOT_MIC_REFUSED`) now only fires on a mic that has
+never given a non-zero sample in the call (`_mic_alive`): a refused mic
+never does, a phone gating a quiet room to zeros did once. Draw calls on the
+live room with three lines of subtitles: 27 (39 with the button).
 
 ## Testing a call locally
 
@@ -147,7 +137,7 @@ runs none of this. The files: `server/bot/cloudbuild.yaml`,
 (which now takes a service name). There is no trigger: a push to `main`
 does not deploy the bot, only `tools/deploy_bot.sh` does.
 
-What the service is: `--max-instances=1 --min-instances=0 --cpu=2
+What the service is: `--max-instances=1 --min-instances=1 --cpu=2
 --memory=2Gi --no-cpu-throttling --timeout=3600 --session-affinity
 --concurrency=4` (4 is a placeholder, step 9 measures it); the bucket
 `daily-games-420bf-peeplet-bot` mounts at `/data` (`STUDIO_DATA`), and
@@ -161,6 +151,16 @@ named `peeplet-bot-*` in Secret Manager: `OPENAI_API_KEY`,
 `FASTEMBED_CACHE_PATH` (the device memory's English one and the shared
 layer's multilingual one) and ships `voices/`: without the clips every call
 is refused with 4409.
+
+**Min instances 1** (2026-11-05 evening, the user: "keep min 1"; applied
+with `gcloud run services update --min-instances=1`, revision
+`peeplet-bot-00002-bx9`, and in `cloudbuild.yaml`). The user found the
+answers slow beside persona-studio's demo: both calls that day had landed on
+a fresh instance (`Starting new instance. Reason: AUTOSCALING`), about 18 s
+from the instance's start to the socket being accepted. One warm instance,
+2 vCPU without CPU throttling, is billed around the clock. Per-turn timings
+are not logged (`breakdown()` logs the kind only), so what a warm turn costs
+in production is not measured yet.
 
 **Deployed 2026-11-05** (steps 3-8 run by the user): `https://peeplet-bot-ao7js3tmhq-uc.a.run.app`, image `5cbc455e-20261105175016`; the production `swarm` database on Neon's production branch, 59 knowledge rows a language; `/health` 200, a bad token closes 4401. `BotCall.BOT_URL` points at it, so the Bot chip shows in every build (Teen band and up). `tools/public_invoker.sh` was not executable; it is now.
 

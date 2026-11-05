@@ -19,16 +19,16 @@ extends Control
 ## says why. A harness never dials: a `--script` run is offline even when it
 ## builds world/main.tscn, which starts Backend (as Power.start skips one).
 ##
-## Hold to talk (the user, 2026-11-05: "add a talk button that user has to
-## hold to talk, instead of being a free hand"): the round mic button at the
-## foot of the room is the only thing that opens the mic. While it is held
-## the mic's frames go up; at every other moment silence goes up in their
-## place (BotCall.send_silence), at the same pace, so the server is unchanged
-## and its ears end the turn on the silence after the release. A press while
-## the Swarm talks interrupts it first. A tap on the face still interrupts
-## (and no longer opens the mic). The face's speaking look holds until the
-## voice has drained, not until the server's next state, and a drawing being
-## judged (`draw`, then `see`) keeps a thinking look.
+## Hands free, like a call (the user, 2026-11-05 evening: "replace the mic
+## button with a hands free like a call"; the hold-to-talk button of that
+## afternoon is gone). Half duplex: the mic is open whenever the Swarm is not
+## talking; while the server says `speaking` or its voice still plays,
+## silence goes up in the mic's place (BotCall.send_silence), at the same
+## pace, so the phone's speaker never feeds the Swarm its own words (Godot's
+## mic has no echo cancelling). A tap on the face while it talks cuts it and
+## opens the mic at once. The face's speaking look holds until the voice has
+## drained, not until the server's next state, and a drawing being judged
+## (`draw`, then `see`) keeps a thinking look.
 ##
 ## A call in progress (dialing, connecting, live; the demo is a show and is
 ## not one) holds the game awake (Power.hold "bot": it would rest after twenty
@@ -52,13 +52,9 @@ const Backend = preload("res://core/backend.gd")
 const Power = preload("res://core/power.gd")
 const Haptics = preload("res://core/haptics.gd")
 const MemorySheet = preload("res://bot/memory_sheet.gd")
-const UiSound = preload("res://ui/ui_sound.gd")
 
 const BACK := 64.0
 const PILL_H := 64.0
-## The talk button (the old Swarm tab's mic, 2026-11-04).
-const MIC := 112.0
-const MOUSE_HOLD := -2
 ## How long the waking face shows before an offline screen says so.
 const OFFLINE_AFTER := 5.0
 ## The subtitles' pace against the voice played, characters a second.
@@ -77,11 +73,6 @@ const FINAL := ["4429", "4409"]
 
 var face: Face
 var _back: Button
-## Hold to talk: shown on the way to a call and on it, pressable only live.
-var _mic_btn: Button
-var _hint: Label
-var _held := false  # the talk button is down: the mic's frames go up
-var _held_by := -1  # the touch index holding it, MOUSE_HOLD for the mouse
 var _pills: Array[Button] = []  # Intro, Draw
 var _memory_btn: Button
 ## What the Swarm knows, the house's paper sheet over the room.
@@ -102,7 +93,7 @@ var _stale := 0
 var _server_state := ""
 var _shown := ""  # the state the face was last given
 var _judging := false  # a drawing is being judged: thinking until the next said or state
-var _opened := false  # a tap or a press interrupted: no speaking look until the next said or state
+var _opened := false  # a tap interrupted: the mic stays open, no speaking look, until the next said or state
 var _mark := 0  # BotCall.consumed() when the line came
 var _offline_at := -1  # ticks when the offline line shows
 var _offline_line := ""
@@ -162,32 +153,6 @@ func _init() -> void:
 	_back.pressed.connect(close)
 	add_child(_back)
 
-	# Hold to talk: the round glass mic at the foot of the room, centred
-	# under the face (one big button, clear of either thumb's side). Its own
-	# press and release, from a finger and from the mouse; the theme's click
-	# on `pressed` is silenced, as the screen plays the press and the release.
-	_mic_btn = Button.new()
-	_mic_btn.flat = true
-	_mic_btn.focus_mode = Control.FOCUS_NONE
-	for st in ["normal", "hover", "pressed", "hover_pressed", "disabled", "focus"]:
-		_mic_btn.add_theme_stylebox_override(st, StyleBoxEmpty.new())
-	_mic_btn.size = Vector2(MIC, MIC)
-	_mic_btn.pivot_offset = Vector2(MIC, MIC) * 0.5
-	_mic_btn.set_meta("silent", true)
-	_mic_btn.visible = false
-	_mic_btn.draw.connect(_draw_mic)
-	_mic_btn.gui_input.connect(_mic_input)
-	add_child(_mic_btn)
-	_hint = Label.new()
-	_hint.text = "BOT_HOLD"
-	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_hint.add_theme_font_override("font", CozyTheme.body(600))
-	_hint.add_theme_font_size_override("font_size", 22)
-	_hint.add_theme_color_override("font_color", Color(Face.COL_PH, 0.5))
-	_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_hint.visible = false
-	add_child(_hint)
-
 	# The two demos, glass pills in the top right, only while there is no call.
 	for spec in [["SWARM_BTN_INTRO", Face.INTRO], ["SWARM_BTN_DRAW", Face.SHOWOFF]]:
 		var pill := _glass_pill(spec[0])
@@ -205,9 +170,7 @@ func _init() -> void:
 	add_child(_memory_btn)
 	sheet = MemorySheet.new()
 	sheet.name = "MemorySheet"
-	_memory_btn.pressed.connect(func() -> void:
-		_mic_up(true)  # the sheet covers the button: its release would never come
-		sheet.open())
+	_memory_btn.pressed.connect(sheet.open)
 	add_child(sheet)
 
 	BotCall.hub().event.connect(_on_event)
@@ -286,7 +249,6 @@ func close() -> void:
 	if _phase == "dialing" or _phase == "connecting" or _phase == "live":
 		# Hanging up is felt: a touch of the hand.
 		Haptics.play(Haptics.TAP)
-	_mic_up(true)
 	if _phase == "connecting" or _phase == "live":
 		_stale += 1
 		BotCall.stop()
@@ -302,7 +264,6 @@ func close() -> void:
 
 
 func _exit_tree() -> void:
-	_mic_up(true)
 	Music.hold("bot", false)
 	Ads.hold("bot", false)
 	_hold(false)
@@ -310,9 +271,6 @@ func _exit_tree() -> void:
 
 func _notification(what: int) -> void:
 	match what:
-		NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_WM_WINDOW_FOCUS_OUT:
-			# the shade or an overlay took the screen: the release may never come
-			_mic_up(true)
 		NOTIFICATION_APPLICATION_PAUSED:
 			_on_background()
 		NOTIFICATION_APPLICATION_RESUMED:
@@ -435,8 +393,6 @@ func _go_offline(key: String, after: float, demo: bool) -> void:
 
 func _set_phase(p: String) -> void:
 	_phase = p
-	if p != "live":
-		_mic_up(true)  # never a mic left open off a call
 	_hold(p == "dialing" or p == "connecting" or p == "live")
 
 
@@ -457,29 +413,26 @@ func _process(_delta: float) -> void:
 				BotCall.send_silence(true)
 				_token = ""
 		"connecting":
-			BotCall.send_silence(true)  # nobody holds the button before the call is on
+			BotCall.send_silence(true)  # the greeting comes first: nothing to hear before the call is on
 		"live":
 			_drive()
 
 
-## Each frame of a call: the mic (open only while the button is held), the
+## Each frame of a call: the mic (open unless the Swarm is talking), the
 ## level, the face's look and the subtitles' reveal.
 func _drive() -> void:
 	var playing := BotCall.playing()
 	var speaking := _server_state == "speaking"
-	BotCall.send_silence(not _held)
-	if _held and BotCall.mic_dead():
+	BotCall.send_silence((speaking or playing) and not _opened)
+	if BotCall.mic_dead():
 		_mic_refused()
 		return
 	face.set_level(BotCall.level())
-	# The button held is the listening look. The speaking look holds until
-	# the voice has drained; a listening that came early waits for it (not
-	# after a tap, a press or a `clear`: the voice is being cut). A drawing
-	# being judged looks thoughtful.
+	# The speaking look holds until the voice has drained; a listening that
+	# came early waits for it (not after a tap or a `clear`: the voice is
+	# being cut). A drawing being judged looks thoughtful.
 	var look := _server_state
-	if _held:
-		look = "listening"
-	elif playing and not _opened:
+	if playing and not _opened:
 		look = "speaking"
 	elif _judging:
 		look = "thinking"
@@ -530,8 +483,8 @@ func _on_event(msg: Dictionary) -> void:
 			_opened = false
 		"clear":
 			# The voice was cut: the rest of the line was never said, and the
-			# Swarm has stopped talking, whether or not a state follows (the
-			# speaking look goes until the next said or state).
+			# Swarm has stopped talking, whether or not a state follows. The
+			# mic opens again until the next said or state.
 			face.say("")
 			_server_state = "listening"
 			_opened = true
@@ -578,7 +531,7 @@ func _on_ended(reason: String) -> void:
 	_go_offline(String(ENDS.get(reason, "BOT_DROPPED")), 0.0, false)
 
 
-## The talk button held and the mic gives only exact zeros (iOS answers a
+## The mic open and giving only exact zeros (iOS answers a
 ## refused mic with silence): the call ends at once and the screen says why.
 func _mic_refused() -> void:
 	_stale += 1
@@ -590,8 +543,7 @@ func _mic_refused() -> void:
 	_go_offline("BOT_MIC_REFUSED", 0.0, true)
 
 
-## A tap on the face while it talks: it stops (the mic stays as the button
-## has it: only a hold opens it). Off a call, after
+## A tap on the face while it talks: it stops, and listens. Off a call, after
 ## one ended, it calls again (the hour's limit excepted: that answer stands).
 func _on_tap(_at: Vector2, on_face: bool) -> void:
 	if not on_face:
@@ -600,6 +552,7 @@ func _on_tap(_at: Vector2, on_face: bool) -> void:
 		# Cutting the voice is a tap of the hand; a tap while it listens only a tick.
 		Haptics.play(Haptics.TAP if (_server_state == "speaking" or BotCall.playing()) else Haptics.TICK)
 		BotCall.interrupt()
+		BotCall.send_silence(false)
 		_opened = true
 	elif _phase == "offline" and _redial and BotCall.current() == null:
 		_redial = false
@@ -643,22 +596,7 @@ func _layout() -> void:
 	_status.size = Vector2(ww, 0)
 	_status.reset_size()
 	_status.size.x = ww
-	# The talk button centred at the foot (the subtitles stay under it), its
-	# hint under it, the status line over it.
-	var mic_y := size.y - _insets.y - 360.0  # its hint clears three lines of subtitles
-	_status.position = Vector2((size.x - ww) * 0.5, mic_y - MIC * 0.5 - 40.0 - _status.size.y * 0.5)
-	var on_way := _phase == "asking" or _phase == "dialing" or _phase == "connecting" or _phase == "live"
-	_mic_btn.position = Vector2((size.x - MIC) * 0.5, mic_y - MIC * 0.5)
-	_mic_btn.visible = on_way and face.is_formed()
-	var can := _phase == "live"
-	if _mic_btn.disabled == can:
-		_mic_btn.disabled = not can
-		_mic_btn.queue_redraw()
-	_hint.size = Vector2(ww, 0)
-	_hint.reset_size()
-	_hint.size.x = ww
-	_hint.position = Vector2((size.x - ww) * 0.5, mic_y + MIC * 0.5 + 10.0)
-	_hint.visible = _mic_btn.visible and can and not _held and _server_state != "speaking" and not BotCall.playing()
+	_status.position = Vector2((size.x - ww) * 0.5, size.y - _insets.y - 290.0 - _status.size.y * 0.5)
 	# The memory pill beside the back button's row, the demos in a row under it.
 	var top := 28.0 + _insets.x + (BACK - PILL_H) * 0.5
 	_memory_btn.size = _memory_btn.get_combined_minimum_size()
@@ -672,77 +610,3 @@ func _layout() -> void:
 		right -= 14.0
 		pill.visible = demos
 
-
-# --- hold to talk ---
-
-## The talk button's own press and release, a finger's (one index) or the
-## mouse's. The release reaches the button wherever it lands (the viewport
-## keeps a pressed touch and mouse on the control they pressed), and a
-## cancelled touch is a release too: the mic never stays open.
-func _mic_input(event: InputEvent) -> void:
-	if event is InputEventScreenTouch:
-		if event.pressed:
-			if not _held:
-				_mic_down(event.index)
-		elif _held and _held_by == event.index:
-			_mic_up()
-		_mic_btn.accept_event()
-	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		if event.pressed:
-			if not _held:
-				_mic_down(MOUSE_HOLD)
-		elif _held and _held_by == MOUSE_HOLD:
-			_mic_up()
-		_mic_btn.accept_event()
-
-
-## Pressed: a Swarm talking is cut first (as the face's tap does), then the
-## mic opens. Heard (the house token) and felt (a tick; a tap when it cuts).
-func _mic_down(by: int) -> void:
-	if _phase != "live" or not _mic_btn.visible or _mic_btn.disabled:
-		return
-	var cut := _server_state == "speaking" or BotCall.playing()
-	if cut:
-		BotCall.interrupt()
-		_opened = true
-	_held = true
-	_held_by = by
-	BotCall.send_silence(false)
-	Motion.bump(_mic_btn, 0.12)
-	Haptics.play(Haptics.TAP if cut else Haptics.TICK)
-	UiSound.click(self)
-	_mic_btn.queue_redraw()
-
-
-## Let go: silence goes up again and the server's ears end the turn on it.
-## `quiet` when the screen lets go itself (the call ended, the room closed).
-func _mic_up(quiet := false) -> void:
-	if not _held:
-		return
-	_held = false
-	_held_by = -1
-	BotCall.send_silence(true)
-	if not quiet:
-		Haptics.play(Haptics.ECHO)
-		UiSound.click(self)
-	_mic_btn.queue_redraw()
-
-
-## A round glass button with a microphone; brighter while held, faint while
-## the call is not on yet.
-func _draw_mic() -> void:
-	var c := Vector2(MIC, MIC) * 0.5
-	var on := _held
-	var dim := 0.4 if _mic_btn.disabled else 1.0
-	_mic_btn.draw_circle(c, MIC * 0.5, Color(Face.COL_PH, (0.28 if on else 0.10) * dim))
-	_mic_btn.draw_arc(c, MIC * 0.5 - 1.5, 0, TAU, 64, Color(Face.COL_PH, (0.5 if on else 0.22) * dim), 3.0, true)
-	var ink := Color(Face.COL_PH, 0.95 * dim)
-	var w := 22.0
-	var h := 38.0
-	var top := c + Vector2(-w * 0.5, -h * 0.5 - 8.0)
-	_mic_btn.draw_rect(Rect2(top + Vector2(0, w * 0.5), Vector2(w, h - w)), ink)
-	_mic_btn.draw_circle(top + Vector2(w * 0.5, w * 0.5), w * 0.5, ink)
-	_mic_btn.draw_circle(top + Vector2(w * 0.5, h - w * 0.5), w * 0.5, ink)
-	_mic_btn.draw_arc(c + Vector2(0, 2), 20.0, 0.15, PI - 0.15, 24, ink, 4.0, true)
-	_mic_btn.draw_line(c + Vector2(0, 22), c + Vector2(0, 32), ink, 4.0, true)
-	_mic_btn.draw_line(c + Vector2(-11, 32), c + Vector2(11, 32), ink, 4.0, true)

@@ -74,8 +74,7 @@ var _intro_started := false
 const SHEET_MEM := "user://_shot_menu_bot_memory.json"
 var _sheet := false
 ## `bot live`: as if a call were on (no socket: a faked `session` a few
-## seconds before the shot), so the talk button shows live and idle with its
-## hint (offline it is hidden).
+## seconds before the shot), so the live room shows with its subtitles.
 var _live := false
 var _live_set := false
 var _sheet_opened := false
@@ -207,7 +206,7 @@ func _process(delta: float) -> bool:
 			_live_set = true
 			_menu.bot_screen._set_phase("connecting")
 			BotCall.hub().event.emit({"type": "session", "session_id": "shot"})
-			# A long line whole, so the subtitles' room under the button shows.
+			# A long line whole, so the subtitles' room shows.
 			BotCall.hub().event.emit({"type": "said", "text": "Hello again! I kept the little sun we drew yesterday, do you want to add a moon beside it tonight?"})
 			_menu.bot_screen._heard = true
 		if _sheet and not _sheet_opened and _t >= _second_at - 3.0:
