@@ -294,6 +294,11 @@ class MemoryTurn:
         self.emit(kind="remember", **event)
         asyncio.ensure_future(self.hub.store.log_event(self.slug, self.user_id, {"kind": "remember", **event}))
 
+    def _skipped(self, reason: str) -> None:
+        """Why the call got no summary, in counts and states only (never its words): the server's log and the events log."""
+        logger.info(f"end of call summary skipped: {reason}")
+        self.emit(kind="end_skipped", reason=reason)
+
     async def end(self, messages: list[dict]) -> None:
         """Summarise the call, promote what lasts, clear short term. Runs once."""
         if self.writing:
@@ -303,12 +308,14 @@ class MemoryTurn:
         if self.key is not None:
             self.hub.detach(self.key)
         if self.hub.status != "up" or not self.client:
-            return
+            return self._skipped("hub " + str(self.hub.status) if self.hub.status != "up" else "no client")
         from voice.bot import clean_transcript
 
         try:
             lines = [f"{m['role']}: {m['text']}" for m in clean_transcript(messages)]
-            if len(lines) >= 2:
+            if len(lines) < 2:
+                self._skipped(f"{len(lines)} lines of {len(messages)} messages")
+            else:
                 summary = await consolidate.summarise("\n".join(lines), self.client, self.brain, self.ledger, self.ids)
                 for fact in self.forgotten:  # the transcript still holds what they asked to forget
                     summary = await consolidate.scrub(summary, fact, self.client, self.brain, self.ledger, self.ids)

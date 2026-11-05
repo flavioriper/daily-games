@@ -287,6 +287,8 @@ async def run_call(websocket, card: Card, user_id: str, session_id: str, deps, s
         await memory.forget_by_id(fact_id)  # sends `memory {op: forget, id}`; end() scrubs it
 
     async def bye() -> None:
+        logger.info("bye received")  # the kind only: the end of call memory follows (or says why it skipped)
+        log(kind="bye")
         await end("bye")
 
     phone.on_interrupt, phone.on_forget, phone.on_bye = interrupt, forget, bye

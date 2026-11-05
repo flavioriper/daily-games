@@ -100,3 +100,18 @@ async def test_end_waits_for_the_last_turns_fact(card, monkeypatch):
     turn.schedule_after_turn("t1", "Remember that I like chess.", "hi", None, Recalled(vectors=(t, t)))  # end() right away: counted from scheduling
     await turn.end([])
     assert [m["op"] for m in sent] == ["add"] and not turn.writing
+
+
+async def test_end_says_why_it_skipped_the_summary(card):
+    """A call with no summary leaves its reason in the events, in counts and states only (never the words)."""
+    from memory.device import DeviceHub, DeviceStore
+    from memory.turn import MemoryTurn
+
+    events = []
+    hub = DeviceHub(await DeviceStore.load({}, lambda m: None))
+    turn = MemoryTurn(hub, card, "u", "s1", emit=lambda **e: events.append(e), client=object())
+    await turn.end([{"role": "user", "content": "hi there"}, {"role": "assistant", "tool_calls": []}])
+    assert events == [{"kind": "end_skipped", "reason": "1 lines of 2 messages"}]
+    events.clear()
+    await MemoryTurn(hub, card, "u", "s2", emit=lambda **e: events.append(e)).end([])
+    assert events == [{"kind": "end_skipped", "reason": "no client"}]
