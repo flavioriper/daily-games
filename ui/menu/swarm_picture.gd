@@ -2,19 +2,24 @@ extends RefCounted
 
 ## What the swarm's draw tool shows (ui/menu/swarm_tab.gd `apply_draw`): a
 ## picture from any of four places, turned into an Image, then into the
-## pixels the dots fly to.
+## pixels whose shape the dots crowd into. Only the shape and each pixel's
+## brightness are kept: the dots stay the swarm's own, in its tone (the user,
+## 2026-11-05: "Drawing should be done using the particles").
 ##
 ##   name  "bank:<id>"   one of Pixel Garden's hand-drawn pictures
 ##                       (content/pixel_garden.json), by id, e.g. bank:strawberry
 ##         "today[:<side>]"  the night's themed picture (ThemedPictures) of
 ##                       that band side (10, 12, 24, 32; 24 when left out);
 ##                       only what the phone already holds, never the network
-##   rows + palette      a grid the agent wrote: one string a row, one char a
-##                       pixel, "." or " " bare; palette maps each other char
-##                       to "#rrggbb" or a bead name (Pal.PG_BEADS)
+##   rows [+ palette]    a grid the agent wrote: one string a row, one char a
+##                       pixel, "." or " " bare; any other char is a pixel at
+##                       full brightness unless the palette maps it to
+##                       "#rrggbb" or a bead name (Pal.PG_BEADS), whose
+##                       brightness it then takes (only the brightness: the
+##                       dots keep the swarm's tone)
 ##   png                 a small picture, base64 (from the bot server)
 ##
-## Every source ends as one Image, so they all fit, colour and sort the same.
+## Every source ends as one Image, so they all fit, shade and sort the same.
 
 const Pal = preload("res://core/palette.gd")
 const ThemedPictures = preload("res://core/themed_pictures.gd")
@@ -23,10 +28,10 @@ const BANK := "res://content/pixel_garden.json"
 ## A grid the agent writes, or a png it sends, is kept at most this many
 ## pixels a side before it is fitted to the dots.
 const SIDE_MOST := 96
-## Additive dots on a dark room cannot show black: a pixel darker than
-## EMPTY_LUM is left bare, and any other is lifted to at least LUM_FLOOR.
+## A pixel darker than EMPTY_LUM is the dark around a picture: left bare.
 const EMPTY_LUM := 0.05
-const LUM_FLOOR := 0.3
+## The dimmest pixel of a picture still glows this much of the brightest.
+const DIMMEST := 0.2
 
 static var _bank := {}
 
@@ -91,9 +96,7 @@ static func _grid(rows, palette, shown: String) -> Dictionary:
 			var ch := r[x]
 			if ch == "." or ch == " ":
 				continue
-			if not cols.has(ch):
-				return {"error": "%s is in the rows but not in the palette" % ch}
-			img.set_pixel(x, y, cols[ch])
+			img.set_pixel(x, y, cols.get(ch, Color.WHITE))
 	return {"image": img, "name": shown}
 
 static func _colour(s: String):
@@ -113,11 +116,10 @@ static func _capped(img: Image) -> Image:
 		img.resize(maxi(1, int(img.get_width() * f)), maxi(1, int(img.get_height() * f)), Image.INTERPOLATE_BILINEAR)
 	return img
 
-## The pixels a picture shows with at most `most` dots: shrunk (keeping its
-## squares) until it fits, then listed with their place in pixels from the
-## picture's centre and their colour, lifted to show on the dark. Sorted so
-## the nearest dot of a sorted swarm flies to it: rows in bands of about
-## sqrt(n), left to right in each (the swarm sorts its dots the same way).
+## The pixels of a picture, at most `most`: shrunk (keeping its squares)
+## until it fits, then listed with their place in pixels from the picture's
+## centre and their brightness, spread from DIMMEST for its darkest to 1 for
+## its brightest, so its outlines and features show in one tone.
 static func pixels(source: Image, most: int) -> Dictionary:
 	var img := source
 	var pts := _opaque(img)
@@ -132,17 +134,20 @@ static func pixels(source: Image, most: int) -> Dictionary:
 		pts.resize(most)
 	var w := img.get_width()
 	var h := img.get_height()
-	pts.sort_custom(func(a, b): return a[1] < b[1] or (a[1] == b[1] and a[0] < b[0]))
-	pts = band_sorted(pts, func(p): return p[0])
+	var lo := 1.0
+	var hi := 0.0
+	for p in pts:
+		lo = minf(lo, p[2])
+		hi = maxf(hi, p[2])
 	# Built in locals: a packed array read out of a dictionary is a copy.
 	var xs := PackedFloat32Array()
 	var ys := PackedFloat32Array()
-	var cs := PackedColorArray()
+	var ls := PackedFloat32Array()
 	for p in pts:
 		xs.append(p[0] + 0.5 - w * 0.5)
 		ys.append(p[1] + 0.5 - h * 0.5)
-		cs.append(p[2])
-	return {"w": w, "h": h, "n": pts.size(), "x": xs, "y": ys, "c": cs}
+		ls.append(1.0 if hi - lo < 0.05 else DIMMEST + (1.0 - DIMMEST) * (p[2] - lo) / (hi - lo))
+	return {"w": w, "h": h, "n": pts.size(), "x": xs, "y": ys, "l": ls}
 
 ## A list already sorted top to bottom, cut into bands of about sqrt(n) and
 ## each band sorted left to right by `key`.
@@ -170,8 +175,5 @@ static func _opaque(img: Image) -> Array:
 			var lum := c.get_luminance()
 			if lum < EMPTY_LUM:
 				continue
-			if lum < LUM_FLOOR:
-				var lift := LUM_FLOOR / lum
-				c = Color(minf(1.0, c.r * lift), minf(1.0, c.g * lift), minf(1.0, c.b * lift))
-			pts.append([x, y, Color(c, 1.0)])
+			pts.append([x, y, lum])
 	return pts

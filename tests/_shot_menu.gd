@@ -61,6 +61,7 @@ var _second_at := 0.0
 var _mid_saved := false
 var _voiced_frames := 0
 var _max_level := 0.0
+var _intro_started := false
 
 func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
@@ -154,6 +155,11 @@ func _process(delta: float) -> bool:
 		if _second_at == 0.0:
 			_second_at = SECOND_AT + (8.0 if _tab_arg == "swarm" else 0.0)
 		if _tab_arg == "swarm" and _menu.swarm_tab != null:
+			# The room waits for a touch since 2026-11-05: the shot plays the
+			# intro as its pill would, once the face has formed.
+			if not _intro_started and _menu.swarm_tab._formed:
+				_intro_started = true
+				_menu.swarm_tab.play(_menu.swarm_tab.INTRO)
 			if _menu.swarm_tab._player.playing:
 				_voiced_frames += 1
 			_max_level = maxf(_max_level, _menu.swarm_tab._level)

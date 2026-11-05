@@ -38,13 +38,21 @@ extends Control
 ## Two more tools (2026-11-05, the user: "let the agent draw any pixel
 ## image using the particles", "also add tool to agent spawn more
 ## particles, or despawn it"):
-## - `apply_draw`: the face comes apart and its dots, and the cloud's, fly to
-##   the pixels of a picture (ui/menu/swarm_picture.gd: a Pixel Garden
-##   picture by name, the night's picture, a grid the agent wrote, or a png),
-##   each turning the pixel's colour and square as it lands; it travels with
-##   the move tool, stays until cleared or for `seconds`, then the face forms
-##   again. The rings, threads and halo fade and the bloom drops while it
-##   shows, so the pixels read.
+## - `apply_draw`: the face comes apart and its dots, and the cloud's, crowd
+##   into the shape of a picture (ui/menu/swarm_picture.gd: a Pixel Garden
+##   picture by name, the night's picture, a grid the agent wrote, or a png).
+##   They stay the swarm's own dots, motes and crystals in its tone, each a
+##   little brighter or dimmer by its pixel, so features show; never tiles in
+##   the picture's colours (the user: "Drawing should be done using the
+##   particles, not spawning something"). It travels with the move tool,
+##   stays until cleared or for `seconds`, then the face forms again; the
+##   rings, threads and halo fade while it shows.
+## - `apply_tone` (the user: "Give him tool to change particles tone and
+##   intensity"): the whole swarm's colour, by name or hex, and how bright
+##   it burns, eased over a second, for good or for `seconds`. The face's
+##   palette (its lit, deep, eye and two orbit accents), the halo, the rings
+##   and the room's pool all follow, each keeping its place against the base
+##   as the green ones do.
 ## - `apply_dots`: more dots (born at the face, a point or drifting in from
 ##   the edges, fading in) or fewer (cloud dots only, fading where they are,
 ##   swallowed by the face or flying off the edges), between MIN_LIVE and
@@ -70,6 +78,7 @@ const EYE_N := int(N * 0.05)
 const MIN_LIVE := BODY_N + EYE_N + 80
 const FADE_IN := 0.6
 const PIC_SIZE := 0.7
+const DOTS_A_PIXEL := 3
 const STEP := 1.0 / 60.0
 const IDLE_MS := 5000.0
 ## The web's dark theme (static/home.html, :root dark): the agent's green,
@@ -82,6 +91,13 @@ const COL_EYE := Color8(246, 255, 248)
 ## ones behind lean violet, so the orbit has a near and a far.
 const COL_CYAN := Color8(126, 228, 255)
 const COL_VIOLET := Color8(150, 126, 255)
+## The tones the tone tool knows by name (any "#rrggbb" works too).
+const TONES := {
+	"green": COL_P, "mint": Color("9ff0c8"), "cyan": Color("7ee4ff"), "blue": Color("7fa8ff"),
+	"violet": Color("a58bff"), "pink": Color("ff8fc8"), "red": Color("ff6f6f"),
+	"orange": Color("ffa45c"), "gold": Color("ffd166"), "white": Color("e6eef0"),
+}
+const INTENSITY := [0.2, 1.8]
 const ROOM := Color("0b1510")
 const ROOM_DEEP := Color("040806")
 ## The one light in the room: from the upper left, toward the viewer.
@@ -100,6 +116,15 @@ const VOICE_DIR := "res://assets/voice/swarm/"
 const VOICE_TIMES := "res://content/swarm_voice.json"
 const VOICE_BUS := "Swarm"
 
+##
+## Waiting (2026-11-05, the user: "add a button on hud to start the intro,
+## and one to showoff the drawing. swarm should be just idle waiting to
+## interact with the user"): the room opens on the face alone, idling
+## (`wander`: drifting looks, checking on the last touch now and then) until
+## touched. Two glass pills in the top right play the demos: Intro, the
+## talking script (INTRO), and Draw, the draw and dots tools (SHOWOFF). A
+## demo ends, or is stopped by the other pill, back at the idle face:
+## centred, looking ahead, N dots.
 signal closed
 
 enum Role { FREE, BODY, EYE, PIXEL, DEAD }
@@ -130,11 +155,11 @@ const HEART := [
 	"....r....",
 ]
 
-## The demo: what an agent would have said and done with its tools.
+## The demos: what an agent would have said and done with its tools.
 ## `look`/`idle`/`seconds` are the swarm tool's, `move` the move tool's,
-## `draw` the draw tool's and `dots` the dots tool's (no new lines are said
-## for those two: a line needs its clips).
-const SCRIPT := [
+## `draw` the draw tool's and `dots` the dots tool's (the drawing demo says
+## nothing: a line needs its clips).
+const INTRO := [
 	{"say": "SWARM_L1"},
 	{"look": "up-left", "seconds": 1.4, "say": "SWARM_L2"},
 	{"move": "top-left", "say": "SWARM_L3"},
@@ -142,16 +167,24 @@ const SCRIPT := [
 	{"move": "bottom-right", "seconds": 4.5, "say": "SWARM_L5"},
 	{"wait": 4.5},
 	{"move": "centre", "look": "ahead", "idle": "cursor", "say": "SWARM_L6"},
-	{"dots": {"add": 700, "from": "face"}, "wait": 3.0},
-	{"draw": {"name": "bank:cat_in_box", "seconds": 7.0}, "wait": 8.5},
-	{"draw": {"rows": HEART, "palette": {"r": "red", "p": "pink", "w": "white"}, "size": 0.5, "seconds": 5.0}, "wait": 6.5},
-	{"dots": {"remove": 700, "to": "edges"}, "wait": 3.0},
 	{"wait": 9.0},
 	{"idle": "wander", "say": "SWARM_L7"},
 	{"wait": 12.0},
 	{"idle": "doze", "say": "SWARM_L8"},
-	{"wait": 16.0},
+	{"wait": 6.0},
 ]
+
+const SHOWOFF := [
+	{"dots": {"add": 700, "from": "face"}, "wait": 2.5},
+	{"draw": {"name": "bank:cat_in_box"}, "tone": {"tone": "gold"}, "wait": 6.0},
+	{"draw": {"rows": HEART, "palette": {"r": "red", "p": "pink", "w": "white"}, "size": 0.5}, "tone": {"tone": "pink", "intensity": 1.3}, "wait": 4.5},
+	{"draw": {"name": "bank:strawberry", "size": 0.6}, "move": "top-right", "tone": {"tone": "red"}, "wait": 4.5},
+	{"draw": {"name": "bank:frog", "size": 0.6}, "move": "bottom-left", "tone": {"tone": "mint", "intensity": 0.8}, "wait": 4.5},
+	{"draw": {"clear": true}, "move": "centre", "tone": {"tone": "green", "intensity": 1.0}, "wait": 2.0},
+	{"tone": {"tone": "cyan", "intensity": 1.7, "seconds": 1.2}, "wait": 2.0},
+	{"dots": {"remove": 700, "to": "edges"}, "wait": 3.0},
+]
+const PILL_H := 64.0
 
 # --- the particles, one slot each across parallel arrays ---
 var _x := PackedFloat32Array()
@@ -174,9 +207,7 @@ var _z := PackedFloat32Array()  # a body dot's depth on the sphere, 0 at the lim
 var _role := PackedInt32Array()
 var _life := PackedFloat32Array()  # 0 born or gone .. 1 fully there
 var _dying := PackedInt32Array()  # a Die: NO while alive, else how it goes
-var _pr := PackedFloat32Array()  # a pixel dot's colour
-var _pg := PackedFloat32Array()
-var _pb := PackedFloat32Array()
+var _pl := PackedFloat32Array()  # a picture dot's brightness, from its pixel
 var _hi := 0  # slots in use: every live or dying dot is below it
 
 # --- the picture the draw tool put up ---
@@ -185,7 +216,22 @@ var _pic_w := 1
 var _pic_h := 1
 var _pic_size := PIC_SIZE
 var _pic_back_at := -1.0
-var _pic_k := 0.0  # eases to 1 while a picture shows (rings, threads, bloom down)
+var _pic_px := {}  # the picture's pixels (Picture.pixels), for dots born into it
+var _pic_k := 0.0  # eases to 1 while a picture shows (rings, threads, halo fade)
+
+# --- the tone tool: the swarm's colour and how bright it burns ---
+var _tone := COL_P
+var _tone_to := COL_P
+var _inten := 1.0
+var _inten_to := 1.0
+var _tone_back = null  # {tone, intensity} to go back to, for a while
+var _tone_at := 0.0
+var _cp := COL_P
+var _cph := COL_PH
+var _cpd := COL_PD
+var _ceye := COL_EYE
+var _cacc1 := COL_CYAN
+var _cacc2 := COL_VIOLET
 # The lattice: pairs of body dots, each with its rest length and a phase.
 var _la := PackedInt32Array()
 var _lb := PackedInt32Array()
@@ -229,6 +275,8 @@ var _listen_until := 0.0
 
 # --- the talk ---
 var _step_i := -1
+var _script: Array = []  # the demo playing, or none: the face waits
+var _pills: Array[Button] = []  # Intro, Draw
 var _step_wait := 0.0
 var _boot_t := 0.0
 var _line := ""
@@ -405,6 +453,35 @@ func _init() -> void:
 	_back.pressed.connect(close)
 	add_child(_back)
 
+	# The two demos, glass pills in the top right.
+	for spec in [["SWARM_BTN_INTRO", INTRO], ["SWARM_BTN_DRAW", SHOWOFF]]:
+		var pill := Button.new()
+		pill.focus_mode = Control.FOCUS_NONE
+		pill.text = spec[0]
+		var up := StyleBoxFlat.new()
+		up.bg_color = Color(COL_PH, 0.10)
+		up.border_color = Color(COL_PH, 0.22)
+		up.set_border_width_all(2)
+		up.set_corner_radius_all(int(PILL_H * 0.5))
+		up.content_margin_left = 26
+		up.content_margin_right = 26
+		var down := up.duplicate()
+		down.bg_color = Color(COL_PH, 0.22)
+		for st in ["normal", "hover", "focus", "disabled"]:
+			pill.add_theme_stylebox_override(st, up)
+		pill.add_theme_stylebox_override("pressed", down)
+		pill.add_theme_stylebox_override("hover_pressed", down)
+		pill.add_theme_font_override("font", CozyTheme.body(700))
+		pill.add_theme_font_size_override("font_size", 24)
+		for c in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
+			pill.add_theme_color_override(c, Color(COL_PH, 0.9))
+		pill.custom_minimum_size = Vector2(0, PILL_H)
+		var demo: Array = spec[1]
+		pill.button_down.connect(func() -> void: Motion.bump(pill, 0.12))
+		pill.pressed.connect(func() -> void: play(demo))
+		add_child(pill)
+		_pills.append(pill)
+
 	_player = AudioStreamPlayer.new()
 	_player.bus = VOICE_BUS
 	add_child(_player)
@@ -427,11 +504,12 @@ func open() -> void:
 	_boot_t = 0.0
 	_step_i = -1
 	_step_wait = 0.0
+	_script = []
 	_state = ""
 	_voice = false
 	_line = ""
 	_think_t = 0.0
-	_idle = ""
+	_idle = "wander"
 	_look = {"look": "ahead"}
 	_place = {"to": "centre"}
 	_glance_back = null
@@ -443,6 +521,12 @@ func open() -> void:
 	_pic_on = false
 	_pic_k = 0.0
 	_pic_back_at = -1.0
+	_tone = COL_P
+	_tone_to = COL_P
+	_inten = 1.0
+	_inten_to = 1.0
+	_tone_back = null
+	_palette()
 	_bloom_out.modulate.a = BLOOM_STRENGTH
 	_rings_open = 0.0
 	_rings_mat.set_shader_parameter("open", 0.0)
@@ -542,7 +626,7 @@ func _seed() -> void:
 	_fit()
 	_room_mat.set_shader_parameter("radius", _R)
 	_rings_mat.set_shader_parameter("px", 1.0 / _R)
-	for arr in [_x, _y, _vx, _vy, _s, _a, _ph, _uu, _ang, _r, _sp, _lx, _ly, _sh, _ex, _k, _z, _life, _pr, _pg, _pb]:
+	for arr in [_x, _y, _vx, _vy, _s, _a, _ph, _uu, _ang, _r, _sp, _lx, _ly, _sh, _ex, _k, _z, _life, _pl]:
 		arr.resize(CAP)
 	_role.resize(CAP)
 	_dying.resize(CAP)
@@ -732,12 +816,14 @@ func _pic_cell() -> float:
 func _pic_cell_for(px: Dictionary) -> float:
 	return minf(size.x, size.y) * _pic_size / float(maxi(1, maxi(int(px.w), int(px.h))))
 
-## The draw tool: the swarm becomes a picture (see Picture for the sources)
-## where the face is, `size` of the screen's shorter side across (0.2 to
-## 0.95), for good or for `seconds`; `clear` brings the face back. The face's
-## dots draw first, then the cloud's nearest it; the wanderers stay out. A
-## picture with more pixels than dots is shrunk, squares kept, until it
-## fits. Returns what was done, or an error, for the agent to hear.
+## The draw tool: the swarm takes the shape of a picture (see Picture for
+## the sources) where the face is, `size` of the screen's shorter side
+## across (0.2 to 0.95), for good or for `seconds`; `clear` brings the face
+## back. Every dot of the face and the cloud goes into it, dealt round its
+## pixels so each holds its share, scattered inside its pixel; the
+## wanderers stay out. A picture is shrunk, squares kept, until every pixel
+## has at least DOTS_A_PIXEL dots. Returns what was done, or an error, for
+## the agent to hear.
 func apply_draw(cmd: Dictionary) -> Dictionary:
 	if bool(cmd.get("clear", false)):
 		if _pic_on:
@@ -763,46 +849,102 @@ func apply_draw(cmd: Dictionary) -> Dictionary:
 					cloud.append(i)
 	cloud.sort_custom(func(a, b): return _r[a] < _r[b])
 	pool.append_array(cloud)
-	var px := Picture.pixels(got.image, pool.size())
+	var px := Picture.pixels(got.image, maxi(1, pool.size() / DOTS_A_PIXEL))
 	_pic_size = clampf(float(cmd.get("size", PIC_SIZE)), 0.2, 0.95)
 	var n: int = px.n
 	if n == 0:
 		_note("draw  nothing to draw")
 		return {"error": "the picture has nothing bright enough to draw"}
-	# The dots sorted as the pixels are (top to bottom, in bands left to
-	# right), so each flies to a pixel near where it is.
-	var chosen := pool.slice(0, n)
-	chosen.sort_custom(func(a, b): return _y[a] < _y[b])
-	chosen = Picture.band_sorted(chosen, func(i): return _x[i])
+	# A place for every dot: the pixels dealt round in a shuffled order, so
+	# each holds its share, the dot anywhere inside its pixel.
 	var xs: PackedFloat32Array = px.x
 	var ys: PackedFloat32Array = px.y
-	var cs: PackedColorArray = px.c
-	for j in n:
-		var i: int = chosen[j]
+	var ls: PackedFloat32Array = px.l
+	var deal := range(n)
+	deal.shuffle()
+	var spots := []
+	for j in pool.size():
+		var c: int = deal[j % n]
+		spots.append([xs[c] + randf_range(-0.5, 0.5), ys[c] + randf_range(-0.5, 0.5), ls[c]])
+	# Dots and places sorted alike (top to bottom, in bands left to right),
+	# so each dot flies to a place near where it is.
+	spots.sort_custom(func(a, b): return a[1] < b[1])
+	spots = Picture.band_sorted(spots, func(q): return q[0])
+	pool.sort_custom(func(a, b): return _y[a] < _y[b])
+	pool = Picture.band_sorted(pool, func(i): return _x[i])
+	_pic_px = px
+	var cell := _pic_cell_for(px)
+	for j in pool.size():
+		var i: int = pool[j]
 		_role[i] = Role.PIXEL
-		_lx[i] = xs[j]
-		_ly[i] = ys[j]
-		_pr[i] = cs[j].r
-		_pg[i] = cs[j].g
-		_pb[i] = cs[j].b
-		_k[i] = randf_range(0.035, 0.07)
+		_lx[i] = spots[j][0]
+		_ly[i] = spots[j][1]
+		_pl[i] = spots[j][2]
+		_k[i] = randf_range(0.03, 0.065)
 		if Motion.reduce:
 			# Under reduced motion the picture is simply there.
-			_x[i] = _c.x + xs[j] * _pic_cell_for(px)
-			_y[i] = _c.y + ys[j] * _pic_cell_for(px)
+			_x[i] = _c.x + _lx[i] * cell
+			_y[i] = _c.y + _ly[i] * cell
 			_vx[i] = 0.0
 			_vy[i] = 0.0
-	for i in pool.slice(n):
-		if _role[i] != Role.FREE:
-			_to_cloud(i)
 	_pic_on = true
 	_pic_w = px.w
 	_pic_h = px.h
 	_pic_back_at = _now + float(cmd.seconds) * 1000.0 if cmd.has("seconds") else -1.0
 	_links_n = 0
 	_links.visible_instance_count = 0
-	_note("draw  %s  %dx%d · %d dots" % [got.name, px.w, px.h, n] + ("  · %ss" % cmd.seconds if cmd.has("seconds") else ""))
-	return {"summary": "Done: I drew %s, %d by %d pixels, with %d dots" % [got.name, px.w, px.h, n], "w": px.w, "h": px.h, "dots": n}
+	_note("draw  %s  %dx%d · %d dots" % [got.name, px.w, px.h, pool.size()] + ("  · %ss" % cmd.seconds if cmd.has("seconds") else ""))
+	return {"summary": "Done: I drew %s with my %d dots, %d by %d" % [got.name, pool.size(), px.w, px.h], "w": px.w, "h": px.h, "dots": pool.size()}
+
+## The tone tool: the swarm's `tone` (a name of TONES or "#rrggbb") and its
+## `intensity` (0.2 dim .. 1 as it is .. 1.8 blazing), either or both,
+## eased in over about a second; `seconds` makes it a flash that goes back.
+func apply_tone(cmd: Dictionary) -> Dictionary:
+	if not cmd.has("tone") and not cmd.has("intensity"):
+		return {"error": "pass tone, intensity, or both"}
+	var to := _tone_to
+	if cmd.has("tone"):
+		var t := String(cmd.tone).strip_edges().to_lower()
+		if TONES.has(t):
+			to = TONES[t]
+		elif t.trim_prefix("#").length() == 6 and t.trim_prefix("#").is_valid_hex_number():
+			to = Color.html(t.trim_prefix("#"))
+		else:
+			return {"error": "tone is one of %s or #rrggbb" % ", ".join(TONES.keys())}
+		if to.get_luminance() < 0.2:
+			# Light on the dark: a tone too dark to glow is lifted.
+			to = to.lightened(0.45)
+	var inten := clampf(float(cmd.get("intensity", _inten_to)), INTENSITY[0], INTENSITY[1])
+	_tone_back = null
+	if cmd.has("seconds"):
+		_tone_back = {"tone": _tone_to, "intensity": _inten_to}
+		_tone_at = _now + float(cmd.seconds) * 1000.0
+	_tone_to = to
+	_inten_to = inten
+	if Motion.reduce:
+		_tone = to
+		_inten = inten
+	_note("tone  #%s  · %.1f" % [to.to_html(false), inten] + ("  · %ss" % cmd.seconds if cmd.has("seconds") else ""))
+	return {"summary": "Done: my dots are #%s at %.1f" % [to.to_html(false), inten], "tone": "#" + to.to_html(false), "intensity": inten}
+
+## The face's palette from the tone: every colour of the green set moved by
+## the tone's turn of hue and scaled by its saturation and value against the
+## green's, so green gives back the set exactly and white whitens it all.
+func _palette() -> void:
+	var dh := _tone.h - COL_P.h
+	var fs := _tone.s / COL_P.s
+	var fv := _tone.v / COL_P.v
+	var shift := func(k: Color) -> Color:
+		return Color.from_hsv(wrapf(k.h + dh, 0.0, 1.0), clampf(k.s * fs, 0.0, 1.0), clampf(k.v * fv, 0.0, 1.0))
+	_cp = _tone
+	_cph = shift.call(COL_PH)
+	_cpd = shift.call(COL_PD)
+	_ceye = shift.call(COL_EYE)
+	_cacc1 = shift.call(COL_CYAN)
+	_cacc2 = shift.call(COL_VIOLET)
+	_room_mat.set_shader_parameter("tint", _cp)
+	_rings_mat.set_shader_parameter("tint", _cp)
+	_rings_mat.set_shader_parameter("hot", _cph)
 
 func _to_cloud(i: int) -> void:
 	_role[i] = Role.FREE
@@ -830,8 +972,9 @@ func _live_count() -> int:
 ## MIN_LIVE and CAP. New dots come `from` the face (a burst out of it, the
 ## default), the `edges` (drifting in) or a `point` (x, y from 0 to 1); dots
 ## go `to` nothing where they are (`fade`, the default), into the `face`, or
-## off the `edges`. Only cloud dots and wanderers go, never the face's or a
-## picture's.
+## off the `edges`. Cloud dots and wanderers go first, never the face's;
+## while a picture shows, new dots fly into it and dots may leave it (it
+## grows denser or sparser, never smaller).
 func apply_dots(cmd: Dictionary) -> Dictionary:
 	var live := _live_count()
 	var want := live
@@ -881,6 +1024,13 @@ func _spawn(n: int, cmd: Dictionary) -> int:
 				p = _c + Vector2.from_angle(a) * sqrt(randf()) * _R * 0.4
 				v = Vector2.from_angle(a) * randf_range(2.0, 7.0) * _u
 		_born(i, p, v)
+		if _pic_on and not _pic_px.is_empty():
+			var c := randi() % int(_pic_px.n)
+			_role[i] = Role.PIXEL
+			_lx[i] = _pic_px.x[c] + randf_range(-0.5, 0.5)
+			_ly[i] = _pic_px.y[c] + randf_range(-0.5, 0.5)
+			_pl[i] = _pic_px.l[c]
+			_k[i] = randf_range(0.03, 0.065)
 		if Motion.reduce:
 			_life[i] = 1.0
 		made += 1
@@ -895,6 +1045,14 @@ func _despawn(n: int, cmd: Dictionary) -> int:
 	var pick := _free_shuffled()
 	pick.sort()
 	pick.reverse()
+	if _pic_on:
+		var inside := []
+		for i in _hi:
+			if _role[i] == Role.PIXEL and _dying[i] == Die.NO:
+				inside.append(i)
+		inside.sort()
+		inside.reverse()
+		pick.append_array(inside)
 	n = mini(n, mini(_live_count() - MIN_LIVE, pick.size()))
 	for j in maxi(n, 0):
 		var i: int = pick[j]
@@ -991,11 +1149,16 @@ func _run_script(dt: float) -> void:
 			_words.visible_characters = -1
 			_step_wait = 1.1
 		return
+	if _script.is_empty():
+		return
 	if _step_wait > 0.0:
 		_step_wait -= dt
 		return
-	_step_i = (_step_i + 1) % SCRIPT.size()
-	var st: Dictionary = SCRIPT[_step_i]
+	if _step_i + 1 >= _script.size():
+		_rest()
+		return
+	_step_i += 1
+	var st: Dictionary = _script[_step_i]
 	if st.has("move"):
 		var m := {"to": st.move}
 		if st.has("seconds") and not st.has("look"):
@@ -1013,10 +1176,60 @@ func _run_script(dt: float) -> void:
 		apply_dots(st.dots)
 	if st.has("draw"):
 		apply_draw(st.draw)
+	if st.has("tone"):
+		apply_tone(st.tone)
 	if st.has("say"):
 		_say(String(st.say))
 	elif st.has("wait"):
 		_step_wait = float(st.wait)
+
+## A demo from its first step, stopping whatever was playing (a pill
+## pressed again starts its demo over).
+func play(demo: Array) -> void:
+	if not _formed:
+		return
+	_hush()
+	_rest()
+	_script = demo
+	_step_i = -1
+	_step_wait = 0.4
+	_last_active = _now
+	_pill_marks()
+
+## The line being said stops where it is.
+func _hush() -> void:
+	_player.stop()
+	_voiced = false
+	_voice = false
+	_think_t = 0.0
+	_line = ""
+	_words.visible_characters = -1
+	if _state == "speaking" or _state == "thinking":
+		_state = ""
+
+## Back to the waiting face: no demo, no picture, N dots, centred, looking
+## ahead, wandering when left alone.
+func _rest() -> void:
+	_script = []
+	if _pic_on:
+		apply_draw({"clear": true})
+	var live := _live_count()
+	if live > N:
+		apply_dots({"total": N, "to": "face"})
+	elif live < N:
+		apply_dots({"total": N, "from": "edges"})
+	if String(_place.get("to", "")) != "centre" or _visit_back != null:
+		apply_move({"to": "centre"})
+	if _tone_to != COL_P or _inten_to != 1.0 or _tone_back != null:
+		apply_tone({"tone": "green", "intensity": 1.0})
+	apply_swarm({"look": "ahead", "idle": "wander"})
+	_pill_marks()
+
+## The pill whose demo is playing stands brighter.
+func _pill_marks() -> void:
+	for k in _pills.size():
+		var on := not _script.is_empty() and _script == (INTRO if k == 0 else SHOWOFF)
+		_pills[k].modulate = Color(1, 1, 1, 1.0 if on or _script.is_empty() else 0.55)
 
 ## The line's clip in the game's language (English when it has none), and
 ## when each of its characters is said; without a clip the line is shown at
@@ -1119,6 +1332,14 @@ func _step() -> void:
 		_clear_picture()
 		_note("draw  back to the face")
 	_pic_k += ((1.0 if _pic_on else 0.0) - _pic_k) * 0.05
+	if _tone_back != null and now >= _tone_at:
+		var back: Dictionary = _tone_back
+		_tone_back = null
+		_tone_to = back.tone
+		_inten_to = back.intensity
+		if Motion.reduce:
+			_tone = _tone_to
+			_inten = _inten_to
 	if _state != "":
 		_last_active = now
 	var was := _idle_now
@@ -1321,6 +1542,14 @@ func _step() -> void:
 ## a cloud atom is near or far by where it is on its orbit.
 func _render(dt: float) -> void:
 	_fit()
+	# The tone eases toward where the tone tool set it.
+	if not _tone.is_equal_approx(_tone_to) or absf(_inten - _inten_to) > 0.001:
+		var e := minf(1.0, dt * 3.0)
+		_tone = _tone.lerp(_tone_to, e)
+		_inten += (_inten_to - _inten) * e
+		if _tone.is_equal_approx(_tone_to):
+			_tone = _tone_to
+		_palette()
 	var now := _now
 	var reduce := Motion.reduce
 	var u := _u
@@ -1329,9 +1558,8 @@ func _render(dt: float) -> void:
 	_halo.position = _c
 	var hs := _R * 4.4 / 256.0
 	_halo.scale = Vector2(hs, hs)
-	_halo.modulate = Color(COL_P, (halo_a if _formed else 0.0) * (1.0 - _pic_k))
-	# A picture wants its pixels sharp: the bloom drops while it shows.
-	_bloom_out.modulate.a = BLOOM_STRENGTH * (1.0 - 0.65 * _pic_k)
+	_halo.modulate = Color(_cp, (halo_a if _formed else 0.0) * (1.0 - _pic_k) * _inten)
+	_bloom_out.modulate.a = BLOOM_STRENGTH * minf(_inten, 1.4)
 	if _formed:
 		_rings_open = minf(1.0, _rings_open + dt / 1.4)
 	var rs := _R * 3.8
@@ -1356,16 +1584,13 @@ func _render(dt: float) -> void:
 	var lxd := LIGHT.x
 	var lyd := LIGHT.y
 	var lzd := LIGHT.z
-	var pdr := COL_PD.r
-	var pdg := COL_PD.g
-	var pdb := COL_PD.b
-	var phr := COL_PH.r
-	var phg := COL_PH.g
-	var phb := COL_PH.b
+	var pdr := _cpd.r
+	var pdg := _cpd.g
+	var pdb := _cpd.b
+	var phr := _cph.r
+	var phg := _cph.g
+	var phb := _cph.b
 	var db := _dot_buf
-	var cell := _pic_cell() * (1.0 + 0.025 * _level)
-	var pcx := _c.x
-	var pcy := _c.y
 	var cloud_dim := 1.0 - 0.7 * _pic_k
 	for i in _hi:
 		var role := _role[i]
@@ -1376,7 +1601,6 @@ func _render(dt: float) -> void:
 			for q in 16:
 				db[oz + q] = 0.0
 			continue
-		var land := 0.0
 		var tw := 0.65 + 0.35 * sin(now / 500.0 + _ph[i])
 		var cr: float
 		var cg: float
@@ -1410,32 +1634,36 @@ func _render(dt: float) -> void:
 				grow *= 1.3
 				hot = shade * 0.6
 		elif role == Role.EYE:
-			cr = COL_EYE.r
-			cg = COL_EYE.g
-			cb = COL_EYE.b
+			cr = _ceye.r
+			cg = _ceye.g
+			cb = _ceye.b
 			alpha = _a[i] * 0.8
 			hot = 1.0
 			grow = 1.15
 		elif role == Role.PIXEL:
-			# Green in flight, the pixel's own colour and a square as it lands.
-			var ddx := _x[i] - (pcx + _lx[i] * cell)
-			var ddy := _y[i] - (pcy + _ly[i] * cell)
-			land = clampf(1.0 - sqrt(ddx * ddx + ddy * ddy) / (cell * 4.0 + 6.0 * u), 0.0, 1.0)
-			cr = COL_P.r + (_pr[i] - COL_P.r) * land
-			cg = COL_P.g + (_pg[i] - COL_P.g) * land
-			cb = COL_P.b + (_pb[i] - COL_P.b) * land
-			alpha = (0.55 + 0.4 * land) * (0.94 + 0.06 * tw)
-			kind = 0.15 if land > 0.5 else 0.0
-			soft = 0.25 * (1.0 - land)
+			# A dot of the picture: the swarm's own, in its tone, lit as
+			# brightly as its pixel; a quarter are crystals, as on the face.
+			var lum := _pl[i]
+			var kp := 0.12 + 0.88 * lum
+			cr = pdr + (phr - pdr) * kp
+			cg = pdg + (phg - pdg) * kp
+			cb = pdb + (phb - pdb) * kp
+			alpha = _a[i] * (0.7 + 0.3 * tw) * (0.3 + 0.7 * lum)
+			soft = 0.12
+			hot = 0.55 * lum
+			grow = 0.8 + 0.55 * lum
+			if _uu[i] < 0.26:
+				kind = 0.5
+				grow *= 1.2
 		elif _formed and _uu[i] <= 0.86:
 			var zf := sin(_ang[i])
 			var near := maxf(zf, 0.0)
 			var far := maxf(-zf, 0.0)
 			var kn := 0.45 * near
 			var kf := 0.4 * far
-			cr = COL_P.r + (COL_CYAN.r - COL_P.r) * kn + (COL_VIOLET.r - COL_P.r) * kf
-			cg = COL_P.g + (COL_CYAN.g - COL_P.g) * kn + (COL_VIOLET.g - COL_P.g) * kf
-			cb = COL_P.b + (COL_CYAN.b - COL_P.b) * kn + (COL_VIOLET.b - COL_P.b) * kf
+			cr = _cp.r + (_cacc1.r - _cp.r) * kn + (_cacc2.r - _cp.r) * kf
+			cg = _cp.g + (_cacc1.g - _cp.g) * kn + (_cacc2.g - _cp.g) * kf
+			cb = _cp.b + (_cacc1.b - _cp.b) * kn + (_cacc2.b - _cp.b) * kf
 			alpha = _a[i] * tw * 0.85 * (0.7 + 0.3 * zf) * cloud_dim
 			grow = (1.0 + 0.4 * zf) * (1.1 - 0.12 * (_r[i] - 1.3))
 			if _s[i] > 1.6 and zf > 0.5:
@@ -1448,9 +1676,9 @@ func _render(dt: float) -> void:
 				soft = 0.3 * far
 				hot = 0.5 * (1.0 - far)
 		else:
-			cr = COL_P.r
-			cg = COL_P.g
-			cb = COL_P.b
+			cr = _cp.r
+			cg = _cp.g
+			cb = _cp.b
 			alpha = _a[i] * tw * 0.85
 			if _uu[i] > 0.975:
 				# A few far lights, out of focus, drifting across the room.
@@ -1467,9 +1695,7 @@ func _render(dt: float) -> void:
 		var rvy := vy - cvy if role != Role.FREE else vy
 		var spd := sqrt(rvx * rvx + rvy * rvy)
 		var d := _s[i] * u * 2.4 * grow
-		if role == Role.PIXEL:
-			d += (cell * 0.92 - d) * land
-		alpha *= _life[i]
+		alpha *= _life[i] * _inten
 		var px := _x[i]
 		var py := _y[i]
 		var o := i * 16
@@ -1520,9 +1746,9 @@ func _render(dt: float) -> void:
 		var lb := _link_buf
 		var sc := _R
 		var wdt := 1.0 + 0.45 * u
-		var lr := COL_P.r + (COL_PH.r - COL_P.r) * 0.6
-		var lg := COL_P.g + (COL_PH.g - COL_P.g) * 0.6
-		var lbl := COL_P.b + (COL_PH.b - COL_P.b) * 0.6
+		var lr := _cp.r + (_cph.r - _cp.r) * 0.6
+		var lg := _cp.g + (_cph.g - _cp.g) * 0.6
+		var lbl := _cp.b + (_cph.b - _cp.b) * 0.6
 		for k in _links_n:
 			var ia := _la[k]
 			var ib := _lb[k]
@@ -1536,7 +1762,7 @@ func _render(dt: float) -> void:
 			var fade := clampf(2.0 - ratio, 0.0, 1.0)
 			var depth := 0.25 + 0.75 * (_z[ia] + _z[ib]) * 0.5
 			var flick := 0.6 + 0.4 * sin(now / 260.0 + _lph[k])
-			var alpha := 0.5 * fade * depth * flick * _rings_open * (1.0 - _pic_k)
+			var alpha := 0.5 * fade * depth * flick * _rings_open * (1.0 - _pic_k) * _inten
 			if ln < 0.5:
 				alpha = 0.0
 				ln = 0.5
@@ -1566,6 +1792,14 @@ func _render(dt: float) -> void:
 	_words.modulate.a = 1.0 if _formed else 0.0
 	_log.position = Vector2(36, size.y - _log.size.y - 28.0 - _insets.y)
 	_back.position = Vector2(28.0, 28.0 + _insets.x)
+	var right := size.x - 28.0
+	for k in range(_pills.size() - 1, -1, -1):
+		var pill := _pills[k]
+		pill.size = pill.get_combined_minimum_size()
+		right -= pill.size.x
+		pill.position = Vector2(right, 28.0 + _insets.x + (BACK - PILL_H) * 0.5)
+		right -= 14.0
+		pill.visible = _formed
 
 # --- the player ---
 
