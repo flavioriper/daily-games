@@ -3,7 +3,7 @@ import asyncio
 import json
 import time
 import uuid
-from collections import defaultdict, deque
+from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Awaitable, Callable
@@ -64,7 +64,7 @@ def build_app(deps: Deps | None = None) -> FastAPI:
     deps = deps or Deps()
     app = FastAPI()
     live: set[str] = set()
-    starts: dict[str, deque] = defaultdict(deque)
+    starts: dict[str, deque] = {}
     app.state.live = live
     app.state.starts = starts
 
@@ -75,14 +75,17 @@ def build_app(deps: Deps | None = None) -> FastAPI:
     async def refuse(websocket: WebSocket, code: int) -> None:
         try:
             await websocket.close(code=code)
-        except RuntimeError:
+        except (RuntimeError, WebSocketDisconnect, OSError):  # the client is already gone
             pass
 
     async def read_hello(websocket: WebSocket) -> dict | None:
         try:
-            raw = await asyncio.wait_for(websocket.receive_text(), deps.hello_timeout)
+            frame = await asyncio.wait_for(websocket.receive(), deps.hello_timeout)
+            raw = frame.get("text")  # a binary or disconnect frame has none
+            if raw is None:
+                return None
             hello = json.loads(raw)
-        except (asyncio.TimeoutError, WebSocketDisconnect, ValueError, RuntimeError):
+        except (asyncio.TimeoutError, WebSocketDisconnect, ValueError, RuntimeError, OSError):
             return None
         return hello if isinstance(hello, dict) and hello.get("type") == "hello" else None
 
@@ -104,16 +107,20 @@ def build_app(deps: Deps | None = None) -> FastAPI:
         # no await between these checks and taking the uid, so two hellos cannot both pass
         if uid in live:
             return await refuse(websocket, UNAUTHORIZED)
-        recent = starts[uid]
         now = deps.now()
-        while recent and now - recent[0] >= deps.window:
-            recent.popleft()
-        if len(recent) >= deps.calls_per_window:
+        recent = starts.get(uid)
+        if recent is not None:
+            while recent and now - recent[0] >= deps.window:
+                recent.popleft()
+            if not recent:
+                del starts[uid]
+                recent = None
+        if recent is not None and len(recent) >= deps.calls_per_window:
             return await refuse(websocket, RATE_LIMITED)
         if not has_clips(clip_card(card), deps.clips_root):  # the clip tools look in <root>/<card.slug>; clip_card makes the slug the language
             return await refuse(websocket, NO_CLIPS)
         live.add(uid)
-        recent.append(now)
+        starts.setdefault(uid, deque()).append(now)
         try:
             session_id = uuid.uuid4().hex
             await websocket.send_json({"type": "session", "session_id": session_id})
@@ -122,8 +129,6 @@ def build_app(deps: Deps | None = None) -> FastAPI:
             pass
         finally:
             live.discard(uid)
-            if not recent:
-                starts.pop(uid, None)
             await refuse(websocket, 1000)
 
     return app

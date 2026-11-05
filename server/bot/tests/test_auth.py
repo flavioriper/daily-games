@@ -23,13 +23,19 @@ def test_verify_returns_uid_and_checks_audience(monkeypatch):
     seen = {}
 
     def fake(token, request, audience=None, **kw):
-        seen["audience"] = audience
-        return {"sub": "uid-1", "user_id": "uid-1"}
+        seen.update(audience=audience, **kw)
+        return {"sub": "uid-1", "iss": f"https://securetoken.google.com/{audience}"}
 
     monkeypatch.setattr(auth.id_token, "verify_firebase_token", fake)
     assert verify("a.b.c") == "uid-1"
-    assert seen["audience"] == "daily-games-420bf"
+    assert seen["audience"] == "daily-games-420bf" and seen["clock_skew_in_seconds"] == 10
     assert verify("a.b.c", project="other") == "uid-1" and seen["audience"] == "other"
+
+
+def test_verify_rejects_a_wrong_issuer(monkeypatch):
+    monkeypatch.setattr(auth.id_token, "verify_firebase_token", lambda *a, **k: {"sub": "u", "iss": "https://evil.example/daily-games-420bf"})
+    with pytest.raises(Unauthorized):
+        verify("a.b.c")
 
 
 def test_verify_wraps_every_failure(monkeypatch):
@@ -291,3 +297,32 @@ def test_default_run_call_stub_ends_on_bye():
         ws.receive_json()
         ws.send_json({"type": "bye"})
         assert closed_with(ws) == 1000
+
+
+def test_binary_first_frame_closes_4401():
+    client, _ = make()
+    with client.websocket_connect("/ws/bot") as ws:
+        ws.send_bytes(b"\x00\x01")
+        assert closed_with(ws) == 4401
+
+
+def test_a_run_call_that_raises_frees_the_uid():
+    async def boom(websocket, card, user_id, session_id, deps, store):
+        raise RuntimeError("the call blew up")
+
+    client, _ = make(run_call=boom)
+    with pytest.raises(RuntimeError, match="blew up"):  # the test client re-raises what the server logs
+        with client.websocket_connect("/ws/bot") as ws:
+            hello(ws)
+            ws.receive_json()
+            ws.receive_json()
+    _drain(client)
+    assert "u1" not in client.app.state.live
+
+
+def test_refusals_leave_no_uid_in_the_start_times():
+    client, _ = make(clips_root=_clips(()))
+    with client.websocket_connect("/ws/bot") as ws:
+        hello(ws)
+        assert closed_with(ws) == 4409
+    assert client.app.state.starts == {}
