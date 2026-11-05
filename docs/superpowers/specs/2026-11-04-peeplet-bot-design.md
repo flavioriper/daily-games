@@ -276,7 +276,8 @@ documents, ingest, Neon, the show and talk views, the desk.
     dots in your tone, brighter where the picture is bright. It comes back
     when you clear it or after `seconds`. Use it when a picture says it
     better than words, or when asked to show or draw something. Pass one
-    of: `name` = `bank:<id>`, one of these ready pictures: <the ids of
+    of: `subject` = the thing in a few words (\"a rocket\", \"a sleeping cat\"):
+    it is drawn for you; `name` = `bank:<id>`, one of these ready pictures: <the ids of
     `content/pixel_garden.json`, read at deploy>, or `today` for today's
     puzzle picture; or `rows` to draw your own: strings of equal length, one
     character a pixel, `.` for empty, any other character a bright pixel;
@@ -289,7 +290,10 @@ documents, ingest, Neon, the show and talk views, the desk.
     long and all the same length; palette values a hex or a name from
     `Pal.PG_BEADS`; a `bank:` id in the list. A `png` (base64) source is
     accepted by the phone for a later server-made picture; the model is
-    never offered it.
+    never offered it. A `subject` never reaches the phone as such: the
+    server has `gpt-6.1-terra` write its rows (`tools/swarm_eye.py`
+    `rows_for`, to be `agent/eye.py`), sends those down as the `draw`, and
+    the tool result tells the voice what was drawn.
   - `tone` (the user, 2026-11-05: "Give him tool to change particles tone
     and intensity"): "Change the colour and glow of all your dots, your
     face or your drawing: `tone` = green (yours), mint, cyan, blue, violet,
@@ -332,7 +336,17 @@ documents, ingest, Neon, the show and talk views, the desk.
     call keeps `gpt-6-luna` as the voice and the see tool's picture goes to
     `gpt-6.1-terra` alone, which answers luna in words ("it reads as a
     duck"; "it reads as a cat, not a tulip: thin the leaves, mark the cup"),
-    and terra also writes the rows when the agent draws its own. At the
+    and terra also writes the rows for a `subject`. Built and run on this
+    Mac 2026-11-05: `tools/swarm_eye.py` (`rows_for`, `judge`,
+    `check_rows`), `tools/swarm_draw_loop.py` driving the real swarm
+    through `tests/_swarm_eye_link.gd`: eight things not in the bank
+    (lighthouse, cat, rocket, house, fish, tree, guitar, umbrella) all read
+    to terra and to the eye of the person checking, six on the first try,
+    the cat on the third; at `reasoning_effort` low a try is about 5 s to
+    write and 2 s to look (8 to 15 s to write at the default). The voice
+    should talk while it draws. The eye judging its own drawings is the
+    same model, so it may be kind to them: a person's eye agreed on all
+    eight that day. At the
     rates third-party pages quote (terra $1 in / $5 out a million tokens,
     unconfirmed on OpenAI's page) a look is under a tenth of a cent.
   The result the model hears is the phone's own summary when the protocol

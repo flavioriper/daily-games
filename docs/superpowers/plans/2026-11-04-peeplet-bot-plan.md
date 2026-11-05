@@ -121,6 +121,7 @@
 ### Task 7: The call, with pushed events and `bye`
 
 **Files:**
+- Create: `server/bot/agent/eye.py` (a copy of `tools/swarm_eye.py`: `rows_for` behind the draw tool's `subject`, `judge` behind `see`, `check_rows` behind every `rows`)
 - Modify: `server/bot/voice/bot.py` (`run_call(websocket, card, user_id, session_id, deps, store: DeviceStore)`), `server/bot/agent/tools.py` (phone wording), `server/bot/memory/turn.py` (pt/es `FORGET`/`WRONG` patterns)
 - Test: `server/bot/tests/test_call_events.py`
 
