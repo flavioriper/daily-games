@@ -40,6 +40,8 @@ const OFFLINE_AFTER := 5.0
 ## The subtitles' pace against the voice played, characters a second.
 const REVEAL_CPS := 16.0
 const MIC_PERMISSION := "RECORD_AUDIO"
+## How long the permission's answer is waited for before it counts as refused.
+const PERMISSION_WAIT := 30.0
 const LANGS := ["en", "pt", "es"]
 const TOOLS := ["swarm", "move", "draw", "dots", "tone"]
 ## A call's end, by `ended`'s reason, to the status line ("" says nothing).
@@ -70,6 +72,8 @@ var _mark := 0  # BotCall.consumed() when the line came
 var _offline_at := -1  # ticks when the offline line shows
 var _offline_line := ""
 var _demo_due := false
+var _perm = null  # the mic permission's answer, while it is asked
+var _heard := false  # the line's voice has started playing
 
 
 func _init() -> void:
@@ -226,11 +230,17 @@ func _begin_call(n: int) -> void:
 	_status.text = tr("BOT_WAKING")
 	if OS.get_name() == "Android" and not _has_mic():
 		var granted := OS.request_permission(MIC_PERMISSION)
-		while not granted:
-			var got: Array = await get_tree().on_request_permissions_result
-			if String(got[0]).ends_with(MIC_PERMISSION):
-				granted = bool(got[1])
-				break
+		if not granted:
+			# The answer, or after PERMISSION_WAIT none: refused, never a
+			# screen left on the waking line.
+			_perm = null
+			var tree := get_tree()
+			tree.on_request_permissions_result.connect(_on_permission)
+			var t0 := Time.get_ticks_msec()
+			while _perm == null and Time.get_ticks_msec() - t0 < int(PERMISSION_WAIT * 1000.0):
+				await tree.process_frame
+			tree.on_request_permissions_result.disconnect(_on_permission)
+			granted = _perm == true
 		if n != _open_n:
 			return
 		if not granted:
@@ -247,6 +257,11 @@ func _begin_call(n: int) -> void:
 		return
 	_token = token
 	_set_phase("dialing")
+
+
+func _on_permission(permission: String, granted: bool) -> void:
+	if permission.ends_with(MIC_PERMISSION):
+		_perm = granted
 
 
 static func _has_mic() -> bool:
@@ -307,9 +322,10 @@ func _drive() -> void:
 	BotCall.send_silence((speaking or playing) and not _opened)
 	face.set_level(BotCall.level())
 	# The speaking look holds until the voice has drained; a listening that
-	# came early waits for it. A drawing being judged looks thoughtful.
+	# came early waits for it (not after a tap or a `clear`: the voice is
+	# being cut). A drawing being judged looks thoughtful.
 	var look := _server_state
-	if playing:
+	if playing and not _opened:
 		look = "speaking"
 	elif _judging:
 		look = "thinking"
@@ -317,11 +333,16 @@ func _drive() -> void:
 		_shown = look
 		face.set_state(look)
 	if face.line() != "":
-		if playing or speaking:
-			var n := int(float(BotCall.consumed() - _mark) / BotCall.DOWN_RATE * REVEAL_CPS)
-			face.reveal(maxi(n, 0))
-		else:
+		# A line's `said` comes before its voice: nothing shows until the voice
+		# plays, then the words keep pace with it, and the whole line only
+		# once it has played and drained.
+		var played := BotCall.consumed() - _mark
+		if played > 0:
+			_heard = true
+		if _heard and not playing and not speaking:
 			face.reveal(-1)
+		else:
+			face.reveal(maxi(int(float(played) / BotCall.DOWN_RATE * REVEAL_CPS), 0))
 
 
 func _on_event(msg: Dictionary) -> void:
@@ -348,11 +369,16 @@ func _on_event(msg: Dictionary) -> void:
 		"said":
 			face.say(String(msg.get("text", "")))
 			_mark = BotCall.consumed()
+			_heard = false
 			_judging = false
 			_opened = false
 		"clear":
-			# The voice was cut: the rest of the line was never said.
+			# The voice was cut: the rest of the line was never said, and the
+			# Swarm has stopped talking, whether or not a state follows. The
+			# mic opens again (half duplex) until the next said or state.
 			face.say("")
+			_server_state = "listening"
+			_opened = true
 		"tool":
 			_tool(String(msg.get("name", "")), msg)
 

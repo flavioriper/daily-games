@@ -56,7 +56,8 @@ var _second_turn_at := INF
 var _settle := PAGE2_SETTLE
 var _tab_arg := ""
 ## `bot`: the Swarm's call screen (bot/bot_screen.gd), offline as every
-## harness is (Backend is not started under --script, so nothing is dialled):
+## harness is (main.tscn starts Backend, but the screen never dials in a
+## --script run):
 ## the face forms and plays its intro over seconds, so its shot waits, and
 ## one is saved on the way (/tmp/shot_menu_swarm_mid.png).
 var _second_at := 0.0

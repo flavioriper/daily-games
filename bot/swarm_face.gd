@@ -494,7 +494,9 @@ func open() -> void:
 	modulate.a = 0.0
 	Motion.appear(self, 0.0, 1.0, 0.25)
 
-func is_open() -> bool:
+## Not `is_open`: ui/menu.gd go_back() closes the first node answering
+## is_open(), and that must be the screen (which ends the call), never the face.
+func is_showing() -> bool:
 	return visible
 
 func close() -> void:
