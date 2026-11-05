@@ -590,20 +590,10 @@ func close() -> void:
 func _exit_tree() -> void:
 	Music.hold("swarm", false)
 
-## The voice's own bus, with an analyser on it so the face can follow how
-## loud it is; it sends to Master, so the Sound switch still silences it.
+## The voice's own bus and its analyser, shared with the call
+## (BotCall.ensure_bus) so both voices go the same way.
 func _ensure_bus() -> void:
-	var at := AudioServer.get_bus_index(VOICE_BUS)
-	if at < 0:
-		AudioServer.add_bus()
-		at = AudioServer.bus_count - 1
-		AudioServer.set_bus_name(at, VOICE_BUS)
-		AudioServer.set_bus_send(at, "Master")
-		var fx := AudioEffectSpectrumAnalyzer.new()
-		fx.buffer_length = 0.1
-		fx.fft_size = AudioEffectSpectrumAnalyzer.FFT_SIZE_1024
-		AudioServer.add_bus_effect(at, fx)
-	_spectrum = AudioServer.get_bus_effect_instance(at, 0) as AudioEffectSpectrumAnalyzerInstance
+	_spectrum = BotCall.spectrum()
 
 ## A MultiMesh of unit quads; custom data (what the dot shader reads) has to
 ## be switched on before the count is set.
