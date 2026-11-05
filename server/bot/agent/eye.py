@@ -29,6 +29,8 @@ SIDE = (8, 32)  # rows_for asks for 12 to 20 a side; the checks allow this
 BRIGHT, DIM = "#", "o"
 PALETTE = {BRIGHT: "#ffffff", DIM: "#7a7a7a"}  # brightness only: the swarm keeps its tone
 FACE = "a face made of glowing dots"  # what the screen should show when nothing was drawn
+WRITE_TIMEOUT = 13.0  # a try; the draw tool waits 30 s for two
+JUDGE_TIMEOUT = 8.0  # the see tool waits 12 s: 2 for the phone, this for the eye
 
 WRITE = """You draw for a swarm of glowing dots on a dark phone screen. Your
 drawing is a grid; the dots crowd into its pixels, more into bright pixels
@@ -56,7 +58,13 @@ Answer with JSON only: {{"reads_as": "<what a person would say it is, in a
 few words>", "ok": <true if a person would see {meant} without being told>,
 "fix": "<if not ok: what to change in the shape, in one sentence; else empty>"}}"""
 
-Ask = Callable[[list], tuple[dict, dict]]
+LOOK = """This is a phone screen. On it, a swarm of glowing dots has just
+drawn something. Ignore the faint stray dots, the buttons and the small text.
+
+Answer with JSON only: {{"reads_as": "<what a person would say it is, in a
+few words>"}}"""
+
+Ask = Callable[..., tuple[dict, dict]]  # (content, timeout=seconds) -> (answer, usage)
 
 
 def _key() -> str:
@@ -108,17 +116,20 @@ class Eye:
             feedback = "\nYour last try, which did not read:\n" + "\n".join(before) + f"\nWhat to change: {fix}\n"
         last, usage = "", {}
         for _ in range(tries):
-            got, usage = self.ask([{"type": "text", "text": WRITE.format(subject=subject, feedback=feedback + (f"\nYour answer was refused: {last}.\n" if last else ""))}])
+            got, usage = self.ask([{"type": "text", "text": WRITE.format(subject=subject, feedback=feedback + (f"\nYour answer was refused: {last}.\n" if last else ""))}], timeout=WRITE_TIMEOUT)
             rows = [str(r) for r in got.get("rows", [])] if isinstance(got.get("rows"), list) else got.get("rows")
             last = check_rows(rows)
             if not last:
                 return {"rows": rows, "palette": dict(PALETTE)}, usage
         raise ValueError(f"terra could not draw {subject}: {last}")
 
-    def judge(self, jpg: bytes, meant: str = "") -> tuple[dict, dict]:
-        """What the snapshot reads as: {reads_as, ok, fix}, and the usage."""
-        meant = meant or FACE
+    def judge(self, jpg: bytes, meant: str | None = None) -> tuple[dict, dict]:
+        """What the snapshot reads as: {reads_as, ok, fix}, and the usage. `meant` None: nothing is drawn, so the face is what should show; "" : an open look (today's picture, whose name the server does not know), ok None for the voice to compare."""
         b64 = base64.b64encode(jpg).decode()
-        got, usage = self.ask([{"type": "text", "text": JUDGE.format(meant=meant)},
-                               {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64," + b64, "detail": "high"}}])
+        image = {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64," + b64, "detail": "high"}}
+        if meant == "":
+            got, usage = self.ask([{"type": "text", "text": LOOK}, image], timeout=JUDGE_TIMEOUT)
+            return {"reads_as": str(got.get("reads_as", "")), "ok": None, "fix": ""}, usage
+        meant = meant or FACE
+        got, usage = self.ask([{"type": "text", "text": JUDGE.format(meant=meant)}, image], timeout=JUDGE_TIMEOUT)
         return {"reads_as": str(got.get("reads_as", "")), "ok": bool(got.get("ok", False)), "fix": str(got.get("fix", ""))}, usage

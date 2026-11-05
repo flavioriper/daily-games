@@ -33,7 +33,8 @@ class FakeAsk:
     def __init__(self, *answers):
         self.answers, self.seen = list(answers), []
 
-    def __call__(self, content):
+    def __call__(self, content, timeout=None):
+        assert timeout and timeout <= 13  # every terra call is bounded below its tool's timeout
         self.seen.append(content)
         return self.answers.pop(0), {"prompt_tokens": 10, "completion_tokens": 5}
 
@@ -68,8 +69,9 @@ async def test_draw_checks():
     assert "error" in await run(b, "draw")
     assert "error" in await run(b, "draw", rows=["#" * 97])
     assert "error" in await run(b, "draw", name="bank:duck", size=2)
-    good = await run(b, "draw", rows=GOOD_ROWS, palette={"#": "#ffcc00", "o": "navy"}, seconds=10)
-    assert good["draw"] == {"rows": GOOD_ROWS, "palette": {"#": "#ffcc00", "o": "navy"}, "seconds": 10}
+    assert "error" in await run(b, "draw", rows=GOOD_ROWS)  # rows need meant
+    good = await run(b, "draw", rows=GOOD_ROWS, meant="a diamond", palette={"#": "#ffcc00", "o": "navy"}, seconds=10)
+    assert good["draw"] == {"rows": GOOD_ROWS, "palette": {"#": "#ffcc00", "o": "navy"}, "seconds": 10} and b.drawn == "a diamond"
     assert (await run(b, "draw", name="bank:duck"))["draw"] == {"name": "bank:duck"}
     assert (await run(b, "draw", name="today"))["draw"] == {"name": "today"}
     assert (await run(b, "draw", clear=True))["draw"] == {"clear": True}
@@ -129,6 +131,23 @@ async def test_see_waits():
     assert all(set(e) <= {"t", "session_id", "kind"} for e in log.items)
     assert b64 not in json.dumps(list(log.items)) and b64 not in json.dumps(sock.sent) and b64 not in json.dumps(got)
 
+    async def look_at(**draw) -> list:
+        """What the eye was asked after this drawing."""
+        await run(b, "draw", **draw)
+        sock.sent.clear()
+        answering = asyncio.ensure_future(answer())
+        got = await run(b, "see")
+        await answering
+        return [got, ask.seen[-1][0]["text"]]
+
+    ask.answers += [{"reads_as": "a heart", "ok": True, "fix": ""}, {"reads_as": "a cat"}, {"reads_as": "a face", "ok": True, "fix": ""}]
+    got, asked = await look_at(rows=GOOD_ROWS, meant="a heart")
+    assert "a heart" in asked and got["ok"] is True
+    got, asked = await look_at(name="today")
+    assert "meant" not in asked and got["ok"] is None and "Compare" in got["summary"]  # an open look: the voice compares
+    got, asked = await look_at(clear=True)
+    assert "a face made of glowing dots" in asked  # nothing drawn: the face is what should show
+
     phone.see_s = 0.05
     late = await run(b, "see")
     assert "could not see" in json.dumps(late)
@@ -175,6 +194,14 @@ async def test_said_when_a_sentence_starts():
     for f in (sentence, word, skipped):
         await out.watch(f)
     assert said == ["Oh, a duck! Nice."]
+
+
+def test_a_guessed_turn_is_not_thinking():
+    from voice.bot import state_of
+
+    assert state_of({"stage": "policy", "speculative": True}) is None and state_of({"stage": "jev", "speculative": True}) is None
+    assert state_of({"stage": "policy", "speculative": False}) == "thinking" and state_of({"stage": "jev"}) == "thinking"
+    assert state_of({"stage": "speaking"}) == "speaking" and state_of({"stage": "hearing"}) == "listening"
 
 
 def test_forget_patterns_pt_es():

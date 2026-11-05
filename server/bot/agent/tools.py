@@ -73,13 +73,14 @@ SCREEN = [
         "It comes back when you clear it or after `seconds`. Use it when a picture says it better than words, or when asked to show or draw something. "
         "Pass one of: `subject` = the thing in a few words (\"a rocket\", \"a sleeping cat\"): it is drawn for you; "
         "`name` = `bank:<id>`, one of these ready pictures: " + ", ".join(BANK_IDS) + "; or `today` for today's puzzle picture; "
-        "or `rows` to draw your own: strings of equal length, one character a pixel, `.` for empty, any other character a bright pixel; "
+        "or `rows` to draw your own: strings of equal length, one character a pixel, `.` for empty, any other character a bright pixel, with `meant` = what they show in a few words (\"a heart\"); "
         "an optional `palette` maps a character to a colour whose brightness it takes (e.g. a darker outline). "
         "Keep your own drawings 8 to 24 pixels a side and bold: the shape is what shows. Colour is the tone tool's. "
         "`size` 0.2 to 0.95 of the screen (default 0.7); `seconds` 1 to 60; `clear: true` to bring your face back. "
         "Your eyes are gone while you draw; move still moves the picture."),
      "properties": {"subject": {"type": "string", "description": "The thing to draw, in a few words"}, "name": {"type": "string", "description": "bank:<id> or today"},
                     "rows": {"type": "array", "items": {"type": "string"}, "description": "Your own drawing, one string a row, all the same length"},
+                    "meant": {"type": "string", "description": "With rows: what they show, in a few words"},
                     "palette": {"type": "object", "additionalProperties": {"type": "string"}, "description": "Optional: a character to a colour (#rrggbb or a bead name) whose brightness it takes"},
                     "size": {"type": "number", "description": "0.2 to 0.95 of the screen"}, "seconds": {"type": "number", "description": "1 to 60"}, "clear": {"type": "boolean", "description": "true brings your face back"}},
      "required": [], "timeout": 30},
@@ -178,7 +179,7 @@ class Toolbox:
         self.draft: dict | None = None
         self.draft_turn, self.sends, self.events = -1, 0, 0
         self.screen_note: str | None = None  # the typed path's note for this turn; the phone sends none
-        self.drawn: str | None = None  # what the last drawing was meant to be, for the see tool's eye
+        self.drawn: str | None = None  # what the drawing on screen is meant to be, for the see tool's eye: None = no drawing (the face), "" = today's picture (an open look)
 
     def new_turn(self, screen: str | None) -> None:
         self.screen_note = screen
@@ -272,7 +273,7 @@ class Toolbox:
         where = {"centre": "the middle of your screen", "point": f"the spot at {x:.2f}, {y:.2f}" if to == "point" else ""}.get(to) or f"the {to.replace('-', ' ')} of your screen"
         return {"summary": f"Done: my face is at {where}" + (f" for {seconds:g} s, then back" if seconds else ""), "move": cmd, "note": "This is your own face on their screen. If they asked, say it in the first person, briefly."}
 
-    async def draw(self, call, turn, subject: str | None = None, name: str | None = None, rows: list | None = None, palette: dict | None = None, size: float | None = None, seconds: float | None = None, clear: bool = False) -> dict:
+    async def draw(self, call, turn, subject: str | None = None, name: str | None = None, rows: list | None = None, palette: dict | None = None, size: float | None = None, seconds: float | None = None, clear: bool = False, meant: str | None = None) -> dict:
         """The spec's checks: one source only; rows 1 to 96 long and all the same length; palette values a hex or a bead name; a bank id in the list. A subject goes to the eye and comes down as rows."""
         if no := self._screen("draw"):
             return no
@@ -295,19 +296,22 @@ class Toolbox:
             name = str(name).strip().lower()
             if name != "today" and not (name.startswith("bank:") and name[5:] in BANK_IDS):
                 return {"error": "name must be today or bank:<id> with an id from the list"}
-            meant = "today's puzzle picture" if name == "today" else name[5:].replace("_", " ")
-            self.drawn = None if name == "today" else meant
-            return {"summary": f"Done: I drew {meant} with my dots", "draw": {"name": name, **extra}}
+            what = "today's puzzle picture" if name == "today" else name[5:].replace("_", " ")
+            self.drawn = "" if name == "today" else what
+            return {"summary": f"Done: I drew {what} with my dots", "draw": {"name": name, **extra}}
         if rows is not None:
             if why := _rows_wrong(rows):
                 return {"error": why}
+            meant = " ".join(str(meant or "").split())[:80]
+            if not meant:
+                return {"error": "with rows, pass meant: what they show, in a few words"}
             cmd = {"rows": list(rows)}
             if palette is not None:
                 if why := _palette_wrong(palette):
                     return {"error": why}
                 cmd["palette"] = {k: v.strip().lower() for k, v in palette.items()}
-            self.drawn = None
-            return {"summary": f"Done: I drew your rows, {len(rows[0])} by {len(rows)}, with my dots", "draw": {**cmd, **extra}}
+            self.drawn = meant
+            return {"summary": f"Done: I drew {meant}, {len(rows[0])} by {len(rows)}, with my dots", "draw": {**cmd, **extra}}
         subject = " ".join(str(subject).split())[:80]
         if not self.eye:
             return {"error": "drawing a subject is not available; draw rows yourself"}
@@ -388,14 +392,15 @@ class Toolbox:
         if not jpg:
             return could_not
         try:
-            verdict, usage = await asyncio.to_thread(self.eye.judge, jpg, self.drawn or "")
+            verdict, usage = await asyncio.to_thread(self.eye.judge, jpg, self.drawn)
         except Exception:
             return could_not
         finally:
             del jpg, seen
         self.on_usage(usage)
-        fix = f" To fix: {verdict['fix']}" if verdict["fix"] and not verdict["ok"] else ""
-        return {"summary": f"Seen: it reads as {verdict['reads_as'] or 'nothing clear'}." + fix, "ok": verdict["ok"],
+        fix = f" To fix: {verdict['fix']}" if verdict["fix"] and verdict["ok"] is False else ""
+        compare = " Compare it with what you meant to show." if verdict["ok"] is None else ""
+        return {"summary": f"Seen: it reads as {verdict['reads_as'] or 'nothing clear'}." + fix + compare, "ok": verdict["ok"],
                 "note": "If it does not read as you meant, change it and look again, at most twice. Say nothing about looking unless asked."}
 
     async def search_docs(self, call, turn, query: str) -> dict:

@@ -101,5 +101,11 @@ async def test_memory_turn_runs_on_the_device_hub(card):
     await turn._apply("t1", Request("forget", "f1", "Their dog is called Biscuit"), t, t, None)
     assert sent[-1] == {"type": "memory", "op": "forget", "id": "f1", "text": ""}
     assert events[-1]["action"] == "forget" and "f1" not in [m[0] for m in turn.index.facts.meta]
+    turn.notes = ["They play Hidden Word every morning", "Their sister lives in Porto"]
+    assert not await turn.forget_by_id("nope")
+    assert await turn.forget_by_id("f2")  # the phone's forget, by id
+    assert sent[-1] == {"type": "memory", "op": "forget", "id": "f2", "text": ""}
+    assert turn.forgotten[-1] == "They play Hidden Word every morning"  # end() scrubs it from the summary
+    assert turn.notes == ["Their sister lives in Porto"] and "f2" not in [m[0] for m in turn.index.facts.meta]
     await turn.end([])
     assert turn.key not in hub.live

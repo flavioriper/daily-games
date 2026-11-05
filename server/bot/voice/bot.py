@@ -104,14 +104,14 @@ def strategies(card: Card | None = None) -> UserTurnStrategies:
 
 CAP_SECONDS = 15 * 60  # a call ends itself after fifteen minutes, with a line
 BYE_GRACE = 0.4  # after the goodbye clip, before the pipeline stops
-STATES = {"hearing": "listening", "policy": "thinking", "speaking": "speaking", "done": "listening"}
+STATES = {"hearing": "listening", "speaking": "speaking", "done": "listening"}
 ROOT = Path(__file__).resolve().parent.parent
 
 
 def state_of(event: dict) -> str | None:
     """The face's state from the steer's and the clip output's stage events. A guessed (speculative) turn is not thinking yet: the person may still be talking."""
     stage = event.get("stage")
-    if stage == "jev":
+    if stage in ("jev", "policy"):
         return None if event.get("speculative") else "thinking"
     return STATES.get(stage)
 
@@ -232,10 +232,7 @@ async def run_call(websocket, card: Card, user_id: str, session_id: str, deps, s
         await task.queue_frame(InterruptionFrame())  # a barge-in: the TTS stops and the phone gets `clear`
 
     async def forget(fact_id: str) -> None:
-        if any(f.id == fact_id for f in store.facts):
-            memory.index.facts.remove_source(fact_id)
-            memory.recent = [x for x in memory.recent if x[0] != fact_id]
-            await store.expire_fact(fact_id)  # sends `memory {op: forget, id}`
+        await memory.forget_by_id(fact_id)  # sends `memory {op: forget, id}`; end() scrubs it
 
     async def bye() -> None:
         await end("bye")
@@ -244,9 +241,10 @@ async def run_call(websocket, card: Card, user_id: str, session_id: str, deps, s
 
     async def cap() -> None:
         await asyncio.sleep(_dep(deps, "cap_seconds", CAP_SECONDS))
+        await task.queue_frame(InterruptionFrame())  # a reply in flight stops; the goodbye does not play over it
         phone.state("speaking")
-        seconds = await player.play("goodbye")  # says the line itself before the clip
-        if not seconds:
+        seconds = await player.play("goodbye")
+        if player.last_said is None:  # no clip, or its line did not line up: the phone still reads it
             phone.said(card.lines.goodbye)
         await asyncio.sleep(seconds + BYE_GRACE)
         await end("cap")

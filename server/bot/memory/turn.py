@@ -237,6 +237,19 @@ class MemoryTurn:
         self.notes = [n for n in self.notes if r.text.lower() not in n.lower()]
         self.emit(kind="remember", **event, learned=learned)  # the forgotten text is deliberately not in this event
 
+    async def forget_by_id(self, fact_id: str) -> bool:
+        """The phone's own forget (`{"type": "forget", "id"}`): gone from the store and the index, and, like a spoken forget, scrubbed from the end-of-call summary and never promoted again from a note."""
+        facts = await self.hub.store.facts_for(self.slug, self.user_id)
+        text = next((f.text for f in facts if f.id == fact_id), None)
+        if text is None:
+            return False
+        self.index.facts.remove_source(fact_id)
+        self.recent = [x for x in self.recent if x[0] != fact_id]
+        self.forgotten.append(text)
+        self.notes = [n for n in self.notes if text.lower() not in n.lower()]
+        await self.hub.store.forget_fact(self.slug, self.user_id, fact_id, text)  # also drops the store's notes holding it; sends `memory forget`
+        return True
+
     def _log_gate(self, turn_id: str, recalled: Recalled | None) -> None:
         """Scores and tool names only: the words stay out, so a forgotten sentence leaves nothing here."""
         gate = recalled.event.get("gate") if recalled else None
@@ -270,4 +283,4 @@ class MemoryTurn:
                     await self._store_fact(fact, {"turn_id": None, "keep": "promoted"})
             await self.hub.store.clear_notes(self.session_id)
         except Exception as e:
-            logger.warning(f"memory end of call failed: {type(e).__name__}: {e}")
+            logger.warning(f"memory end of call failed: {type(e).__name__}")  # the error's text may quote the call

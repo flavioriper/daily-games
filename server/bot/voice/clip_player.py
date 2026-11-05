@@ -60,6 +60,7 @@ class ClipPlayer:
         self._rng = random.Random()
         self._clips: dict[str, list[bytes]] = {}
         self._texts: dict[str, list[str]] = {}
+        self.last_said: str | None = None  # the line the last play sent to on_said, None when it sent none
         manifest = Path(root) / card.slug / "manifest.json"
         if manifest.exists():
             for kind, names in json.loads(manifest.read_text()).items():
@@ -74,6 +75,7 @@ class ClipPlayer:
 
     async def play(self, kind: str, gain: float = 1.0) -> float:
         """Pushes one clip of `kind` and returns its length in seconds (0 when there is none)."""
+        self.last_said = None
         if not self._clips.get(kind):
             kind = FALLBACK.get(kind, "")
         clips = self._clips.get(kind)
@@ -82,7 +84,8 @@ class ClipPlayer:
         i = self._rng.randrange(len(clips))
         audio = clips[i]
         if self.on_said and kind in self._texts:
-            self.on_said(self._texts[kind][i])
+            self.last_said = self._texts[kind][i]
+            self.on_said(self.last_said)
         if gain != 1.0:
             audio = audioop.mul(audio, 2, gain)
         for i in range(0, len(audio), CHUNK):
