@@ -187,6 +187,8 @@ const SHOWOFF := [
 	{"dots": {"remove": 700, "to": "edges"}, "wait": 3.0},
 ]
 const PILL_H := 64.0
+const SwarmTalk := preload("res://ui/menu/swarm_talk.gd")
+const MIC := 112.0
 
 # --- the particles, one slot each across parallel arrays ---
 var _x := PackedFloat32Array()
@@ -279,6 +281,13 @@ var _listen_until := 0.0
 var _step_i := -1
 var _script: Array = []  # the demo playing, or none: the face waits
 var _pills: Array[Button] = []  # Intro, Draw
+## Talking to it (swarm_talk.gd): a round mic above the subtitles, held to
+## speak; the reply is said in the swarm's own voice like any other line.
+var _talk: Node
+var _mic_btn: Button
+var _awaiting := false  # heard, the reply not back yet
+var _reply_stream: AudioStream
+var _reply_starts := PackedFloat32Array()
 var _step_wait := 0.0
 var _boot_t := 0.0
 var _line := ""
@@ -488,6 +497,23 @@ func _init() -> void:
 	_player.bus = VOICE_BUS
 	add_child(_player)
 
+	_talk = SwarmTalk.new()
+	add_child(_talk)
+	_talk.heard.connect(func(t: String) -> void: _note("you  " + t))
+	_talk.spoken.connect(_on_spoken)
+	_talk.failed.connect(_on_talk_failed)
+	_mic_btn = Button.new()
+	_mic_btn.flat = true
+	_mic_btn.focus_mode = Control.FOCUS_NONE
+	for st in ["normal", "hover", "pressed", "hover_pressed", "disabled", "focus"]:
+		_mic_btn.add_theme_stylebox_override(st, StyleBoxEmpty.new())
+	_mic_btn.size = Vector2(MIC, MIC)
+	_mic_btn.pivot_offset = Vector2(MIC, MIC) * 0.5
+	_mic_btn.draw.connect(_draw_mic)
+	_mic_btn.button_down.connect(_mic_down)
+	_mic_btn.button_up.connect(_mic_up)
+	add_child(_mic_btn)
+
 	visible = false
 	set_process(false)
 
@@ -497,6 +523,7 @@ func open() -> void:
 	if visible:
 		return
 	_ensure_bus()
+	_talk.prepare()
 	if _times.is_empty() and FileAccess.file_exists(VOICE_TIMES):
 		var parsed = JSON.parse_string(FileAccess.get_file_as_string(VOICE_TIMES))
 		if parsed is Dictionary:
@@ -551,6 +578,8 @@ func close() -> void:
 	if not visible:
 		return
 	_player.stop()
+	_talk.cancel()
+	_awaiting = false
 	Music.hold("swarm", false)
 	visible = false
 	_bloom_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
@@ -1150,6 +1179,8 @@ func _say(key: String) -> void:
 	_state = "thinking"
 
 func _run_script(dt: float) -> void:
+	if _awaiting or _talk.recording():
+		return  # listening, or thinking until the reply is back
 	if _think_t > 0.0:
 		_think_t -= dt
 		if _think_t <= 0.0:
@@ -1233,6 +1264,8 @@ func play(demo: Array) -> void:
 ## The line being said stops where it is.
 func _hush() -> void:
 	_player.stop()
+	_awaiting = false
+	_reply_stream = null
 	_voiced = false
 	_voice = false
 	_think_t = 0.0
@@ -1271,6 +1304,14 @@ func _pill_marks() -> void:
 func _start_voice(key: String) -> void:
 	_voiced = false
 	_starts = PackedFloat32Array()
+	if _reply_stream != null:
+		# A reply when talked to: ElevenLabs' audio and character times.
+		_player.stream = _reply_stream
+		_player.play()
+		_voiced = true
+		_starts = _reply_starts
+		_reply_stream = null
+		return
 	var lang := TranslationServer.get_locale().substr(0, 2)
 	for l in [lang, "en"]:
 		var stem := "%s_%s" % [key, l]
@@ -1828,6 +1869,8 @@ func _render(dt: float) -> void:
 	_words.position = Vector2((size.x - ww) * 0.5, size.y - _insets.y - 170.0 - _words.size.y * 0.5)
 	_words.modulate.a = 1.0 if _formed else 0.0
 	_log.position = Vector2(36, size.y - _log.size.y - 28.0 - _insets.y)
+	_mic_btn.position = Vector2((size.x - MIC) * 0.5, size.y - _insets.y - 330.0 - MIC * 0.5)
+	_mic_btn.visible = _formed
 	_back.position = Vector2(28.0, 28.0 + _insets.x)
 	var right := size.x - 28.0
 	for k in range(_pills.size() - 1, -1, -1):
@@ -1859,3 +1902,60 @@ func _touch(p: Vector2, tap: bool) -> void:
 		_listen_until = _now + 800.0
 	if tap and _formed:
 		apply_swarm({"look": "point", "x": p.x / size.x, "y": p.y / size.y, "seconds": 2.5})
+
+
+# --- talking to it ---
+
+func _mic_down() -> void:
+	Motion.bump(_mic_btn, 0.12)
+	_talk.cancel()
+	_hush()
+	_script = []
+	_pill_marks()
+	if not _talk.start_listening():
+		return
+	_state = "listening"
+	_listen_until = _now + 3600000.0
+	_mic_btn.queue_redraw()
+
+func _mic_up() -> void:
+	if not _talk.recording():
+		return
+	_talk.stop_listening()
+	_listen_until = 0.0
+	_state = "thinking"
+	_awaiting = true
+	_mic_btn.queue_redraw()
+
+func _on_spoken(text: String, stream: AudioStream, starts: PackedFloat32Array) -> void:
+	if not visible:
+		return
+	_note(_talk.timings())
+	_reply_stream = stream
+	_reply_starts = starts
+	_say(text)
+	_awaiting = false
+
+func _on_talk_failed(why: String) -> void:
+	_note("talk  " + why)
+	_awaiting = false
+	if _state == "thinking":
+		_state = ""
+	_mic_btn.queue_redraw()
+
+## A round glass button with a microphone; brighter while held.
+func _draw_mic() -> void:
+	var c := Vector2(MIC, MIC) * 0.5
+	var on: bool = _talk != null and _talk.recording()
+	_mic_btn.draw_circle(c, MIC * 0.5, Color(COL_PH, 0.28 if on else 0.10))
+	_mic_btn.draw_arc(c, MIC * 0.5 - 1.5, 0, TAU, 64, Color(COL_PH, 0.5 if on else 0.22), 3.0, true)
+	var ink := Color(COL_PH, 0.95)
+	var w := 22.0
+	var h := 38.0
+	var top := c + Vector2(-w * 0.5, -h * 0.5 - 8.0)
+	_mic_btn.draw_rect(Rect2(top + Vector2(0, w * 0.5), Vector2(w, h - w)), ink)
+	_mic_btn.draw_circle(top + Vector2(w * 0.5, w * 0.5), w * 0.5, ink)
+	_mic_btn.draw_circle(top + Vector2(w * 0.5, h - w * 0.5), w * 0.5, ink)
+	_mic_btn.draw_arc(c + Vector2(0, 2), 20.0, 0.15, PI - 0.15, 24, ink, 4.0, true)
+	_mic_btn.draw_line(c + Vector2(0, 22), c + Vector2(0, 32), ink, 4.0, true)
+	_mic_btn.draw_line(c + Vector2(-11, 32), c + Vector2(11, 32), ink, 4.0, true)

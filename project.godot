@@ -36,6 +36,10 @@ boot_splash/bg_color=Color(0.988235, 0.960784, 0.913725, 1)
 boot_splash/show_image=false
 config/icon="res://assets/icon/icon.png"
 
+[audio]
+
+driver/enable_input=true
+
 [autoload]
 
 MCPGameBridge="res://addons/godot_mcp/game_bridge/mcp_game_bridge.gd"
