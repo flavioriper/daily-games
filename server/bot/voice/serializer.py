@@ -20,6 +20,8 @@ class PcmSerializer(FrameSerializer):
         if isinstance(frame, InterruptionFrame):
             return json.dumps({"type": "clear"})
         if isinstance(frame, (OutputTransportMessageFrame, OutputTransportMessageUrgentFrame)):
+            if isinstance(frame.message, dict) and frame.message.get("label") == "rtvi-ai":
+                return None  # Pipecat's RTVI chatter (live transcripts, LLM tokens, metrics): not the phone's protocol
             return json.dumps(frame.message)
         return None
 

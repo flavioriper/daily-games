@@ -20,14 +20,19 @@ PIN_EVERY = 10
 SIMILAR = 0.6
 SUBJECT = 0.62  # cosine a turn needs to count as being about a document with the gate quiet: on a real 17-page PDF, on-topic lines scored 0.67 and up, small talk 0.59 and below
 LOAD_RETRIES, LOAD_RETRY_S = 2, 0.5
-FORGET_EN = r"\b(don'?t|do not) (remember|save|keep) (that|this|it)\b|\bforget (that|this|it|what i)\b|\bdelete that\b"
-FORGET_PT = r"\besque(?:ce|ça|ca|cer)(?: de)? (?:d?isso|d?isto|aquilo|o que eu)\b|\bnão (?:te )?(?:lembr[ae]s?|guard[ae]s?|salv[ae]s?) (?:d)?(?:isso|isto)\b|\bapag[au]e? (?:isso|isto)\b"
+WRITE_WAIT_S = 8.0  # the end of a call waits this long for the last turn's fact
+FORGET_EN = r"\b(don'?t|do not) (remember|save|keep) (that|this|it)\b|(?<!don't )(?<!dont )(?<!do not )\bforget (that|this|it|what i)\b|\bdelete that\b"  # "don't forget that ..." asks the opposite
+FORGET_PT = r"(?<!não )(?<!nao )\besque(?:ce|ça|ca|cer)(?: de)? (?:d?isso|d?isto|aquilo|o que eu)\b|\bnão (?:te )?(?:lembr[ae]s?|guard[ae]s?|salv[ae]s?) (?:d)?(?:isso|isto)\b|\bapag[au]e? (?:isso|isto)\b"
 FORGET_ES = r"\bolvida(?:lo)? (?:eso|esto|lo que)\b|\bolvídalo\b|\bno (?:lo )?(?:recuerdes|guardes)\b|\bborra (?:eso|esto)\b"
 FORGET = re.compile("|".join((FORGET_EN, FORGET_PT, FORGET_ES)), re.I)
 WRONG_EN = r"\bthat'?s (wrong|not right|not true|incorrect)\b|\bthat is (wrong|not right|not true|incorrect)\b"
 WRONG_PT = r"\b(?:isso|isto) (?:está |tá |é |ta )?(?:errado|incorreto)\b|\b(?:isso|isto) não é (?:verdade|certo)\b"
 WRONG_ES = r"\beso (?:está |es )?(?:mal|incorrecto|equivocado)\b|\beso no es (?:verdad|cierto)\b"
 WRONG = re.compile("|".join((WRONG_EN, WRONG_PT, WRONG_ES)), re.I)  # pt and es beside the English: the card speaks all three
+REMEMBER_EN = r"(?<!do you )(?<!can't )(?<!cannot )(?<!don't )(?<!do not )\bremember (that|this|my|me|i|i'm|we)\b|\b(don'?t|do not) forget (that|my|i|i'm)\b"
+REMEMBER_PT = r"\blembr(?:a|e)(?:-se| se)?(?: de)? que\b|\b(?:não|nao) (?:se )?esque(?:ce|ça|ca)(?: de)? que\b|\bguarda (?:isso|que)\b"
+REMEMBER_ES = r"\brecuerda que\b|\bacuérdate(?: de)? que\b|\bno olvides que\b"
+REMEMBER = re.compile("|".join((REMEMBER_EN, REMEMBER_PT, REMEMBER_ES)), re.I)
 
 
 @dataclass
@@ -46,7 +51,13 @@ class Recalled:
     arrived: list[str] = field(default_factory=list)
 
 
+def asks_to_remember(text: str) -> bool:
+    """Asked outright ("remember that I like chess"): kept as a lasting fact whatever the gate says. The trained gate drops these, and the voice has just promised to remember."""
+    return bool(REMEMBER.search(text.replace("’", "'"))) and detect_request(text) is None
+
+
 def detect_request(text: str) -> str | None:
+    text = text.replace("’", "'")  # a curly apostrophe would slip past "don't"
     return "forget" if FORGET.search(text) else "wrong" if WRONG.search(text) else None
 
 
@@ -62,6 +73,7 @@ class MemoryTurn:
         self.turns, self.pinned = 0, []
         self.forgotten: list[str] = []
         self.ready: asyncio.Task | None = None
+        self.writing: set[asyncio.Task] = set()  # after_turn writes still running; end() waits for them so a "remember that" said just before bye still lands
 
     def start(self) -> None:
         self.ready = asyncio.ensure_future(self._load())
@@ -172,11 +184,15 @@ class MemoryTurn:
             if name in self.index.arrivals:
                 self.index.arrivals.remove(name)
         self._log_gate(turn_id, recalled)
+        task = asyncio.current_task()
+        self.writing.add(task)
         try:
             await self._after(turn_id, text, prev, features, recalled)
         except Exception as e:
             logger.warning(f"memory write failed: {type(e).__name__}: {e}")
             self.emit(kind="remember", turn_id=turn_id, action="failed", reason=type(e).__name__)
+        finally:
+            self.writing.discard(task)
 
     async def _after(self, turn_id, text, prev, features, recalled) -> None:
         if not recalled or not recalled.vectors or self.hub.status != "up":
@@ -185,7 +201,7 @@ class MemoryTurn:
         if recalled.request:
             return await self._apply(turn_id, recalled.request, t, p, features)
         scores = keep_scores(self.gate, t, p, features)
-        keep = "long" if scores["long"] >= self.hub.thresholds["long"] else "short" if scores["short"] >= scores["drop"] else "drop"
+        keep = "asked" if asks_to_remember(text) else "long" if scores["long"] >= self.hub.thresholds["long"] else "short" if scores["short"] >= scores["drop"] else "drop"
         event = {"turn_id": turn_id, "keep": keep, "scores": scores, "jev": features is not None}
         if keep == "drop" or not self.client:
             return self._record({**event, "action": "drop"})
@@ -263,6 +279,8 @@ class MemoryTurn:
 
     async def end(self, messages: list[dict]) -> None:
         """Summarise the call, promote what lasts, clear short term. Runs once."""
+        if self.writing:
+            await asyncio.wait(set(self.writing), timeout=WRITE_WAIT_S)
         if self.key is not None:
             self.hub.detach(self.key)
         if self.hub.status != "up" or not self.client:

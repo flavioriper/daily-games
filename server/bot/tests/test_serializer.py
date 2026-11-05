@@ -13,3 +13,12 @@ async def test_audio_and_clear():
     f = await s.deserialize(b"\x01\x02")
     assert isinstance(f, InputAudioRawFrame) and f.sample_rate == 16000
     assert await s.deserialize("nonsense") is None
+
+
+async def test_rtvi_chatter_never_reaches_the_phone():
+    from pipecat.frames.frames import OutputTransportMessageFrame
+
+    s = PcmSerializer()
+    rtvi = {"label": "rtvi-ai", "type": "user-transcription", "data": {"text": "what the player said"}}
+    assert await s.serialize(OutputTransportMessageFrame(message=rtvi)) is None
+    assert json.loads(await s.serialize(OutputTransportMessageFrame(message={"type": "said", "text": "hi"}))) == {"type": "said", "text": "hi"}
