@@ -123,7 +123,7 @@ class Card(BaseModel):
     brain: Brain = Field(default_factory=Brain)
     facts: list[str] = Field(default_factory=list)
     notes: str = ""
-    room: str = "office"  # the sound of the place; empty for none
+    room: str | None = "office"  # the sound of the place; empty or null for none
     disclose: bool = False  # say it is an AI right after the greeting; on for calls with the public
     owner: Owner | None = None  # who the persona stands in for; old cards have none, see owner_of
     agent: bool = False  # acts on the owner's real Gmail and Calendar; see agent/tools.py
