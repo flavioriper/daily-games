@@ -120,6 +120,7 @@ func _ready() -> void:
 		age.name = "AgeScreen"
 		age.answered.connect(func(year: int) -> void:
 			AgeGate.set_birth_year(year)
+			$UI/Menu.bar.rebuild_tabs()  # the Bot chip is for teens and adults
 			Analytics.track("age_answered", {"band": AgeGate.band_name(AgeGate.band())})
 			Ads.start())
 		$UI.add_child(age)

@@ -186,6 +186,9 @@ func open() -> void:
 	visible = true
 	set_process(true)
 	face.open()
+	# The room's buttons and lines fade in with the face.
+	modulate.a = 0.0
+	Motion.appear(self, 0.0, 1.0, 0.25)
 	_insets = SafeArea.insets(self)
 	_set_phase("asking")
 	_begin_call(_open_n)

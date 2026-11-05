@@ -50,6 +50,7 @@ const TABS := [
 var current := "home"
 var _tabs: Dictionary = {}
 var _pill_mesh: ArrayMesh
+var _row: HBoxContainer
 
 func _init() -> void:
 	enter_from = Vector2(0, -24)
@@ -64,11 +65,22 @@ func _build() -> void:
 	bar.border_color = Color(Pal.LINE, 0.28)
 	_inner.add_theme_stylebox_override("panel", bar)
 	_inner.custom_minimum_size.y = HEIGHT
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 0)
-	_inner.add_child(row)
+	_row = HBoxContainer.new()
+	_row.add_theme_constant_override("separation", 0)
+	_inner.add_child(_row)
+	rebuild_tabs()
+
+## The chips again from `entries()`: the age question is answered after the
+## row is built on a first launch (world/main.gd), and the Bot chip follows.
+func rebuild_tabs() -> void:
+	if _row == null:
+		return
+	for c in _row.get_children():
+		_row.remove_child(c)
+		c.queue_free()
+	_tabs.clear()
 	for tab in entries():
-		row.add_child(_make_tab(tab))
+		_row.add_child(_make_tab(tab))
 	_repaint()
 
 ## The categories this player sees: a `teen` one only once the age gate
