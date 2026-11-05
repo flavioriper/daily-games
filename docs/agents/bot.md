@@ -11,8 +11,8 @@ The one-shot hold-to-talk button that came first is `swarm-talk.md`.
 
 `bot/bot_screen.gd` (the Bot chip, teens and adults only:
 `ui/menu/category_row.gd` `entries()`) is the room: the back button, the
-log, the status line, the demo pills (offline only), the memory button
-(hidden until its sheet). Opening it asks for the mic on Android, takes
+log, the status line, the demo pills (offline only, a row under the memory
+pill), the memory pill top right. Opening it asks for the mic on Android, takes
 `Backend.token()` and dials `bot/call.gd`; no token, a `--script` run or a
 refused mic is the offline face (the intro demo, the line after five
 seconds). `bot/swarm_face.gd` is the face cut out of the old Swarm tab;
@@ -38,6 +38,21 @@ status line says `BOT_REDIAL`. A tap on the face after any call ended (the
 hour's limit excepted), or after an offline open, calls again. Knocks: GOOD
 when the session comes, TAP when a tap cuts the voice (TICK when nothing was
 playing), TAP when the back button hangs up a call.
+
+**The memory sheet** (2026-11-05, the plan's Task 14): `bot/memory_sheet.gd`
+extends `ui/hud/sheet.gd` (paper, also over the dark room): facts as chips,
+episodes as rows under them, newest first by `since`/`at`, `BOT_KNOWN_NONE`
+when empty, scrolling past 820 px. A tap asks on the bin's card
+(`Dialog`, `flat_host._ask_clear`'s recipe; `BOT_KEEP` the sun button,
+`BOT_FORGET` the pill) and forgets through `BotMemory.forget` (facts and
+episodes alike) and `BotCall.forget` during a call. The ask is a child of the
+sheet and the sheet the room's last child, so Android's back closes the ask,
+then the sheet, then the room; the room's `close()` closes the sheet too. A
+`memory` frame refreshes the open sheet (`sheet.refresh()`, deferred); the call
+goes on under it. 58 draw calls with the sheet up over the offline room, both
+drivers. While the room is up the ad banner stands aside (`Ads.hold("bot")`,
+`docs/agents/ads-and-purchase.md`). Every line a tap redials from
+(`BOT_DROPPED`, `BOT_OFFLINE`) ends on that tap.
 
 ## Testing a call locally
 

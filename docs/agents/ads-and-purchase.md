@@ -199,3 +199,13 @@ stated before the 3D game left.
   banner and, Android only, calls `set_position(BOTTOM)` `KEYBOARD_SETTLE`
   after `virtual_keyboard_get_height()` reaches 0. Read from the plugin's
   bytecode (5.1.0); no device was attached, so not yet seen on a phone.
+
+- **A screen can hold the banner aside** (2026-11-05, the Swarm's call over the
+  banner on the first phone test): `Ads.hold(who, on)`, keyed like
+  `Music.hold`. While anyone holds, the native view is hidden (it keeps
+  loading and refreshing), `is_banner_visible()`, `bottom_inset()` and
+  `fake_height()` report no banner, and `banner_changed` fires once at each
+  edge so SafeArea, BannerHost's tab and open sheets reflow. A banner that
+  loads while held is hidden, not shown; the keyboard re-place waits; release
+  shows a loaded banner again. Only `bot/bot_screen.gd` holds it (open to
+  close). Seen with `ADS_FAKE_BANNER`; the native hide/show not yet on a phone.
