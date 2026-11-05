@@ -129,10 +129,21 @@ static func start(host: Node, address: String, token: String, memory: Dictionary
 ## Says bye; the call ends at `bye_ack`, or after six seconds without one. A
 ## `remembering` state or a `memory` frame restarts the six seconds (the
 ## server is still writing the call's memory), up to thirty after stop().
-static func stop() -> void:
-	if _call == null or _call._stopping:
+## With `now` (the app sent to the background, where nothing is waited for)
+## the bye goes up and the call ends at once with "bye", the memory frames
+## the server was still to send left unread.
+static func stop(now := false) -> void:
+	if _call == null or (_call._stopping and not now):
 		return
 	var c := _call
+	if now:
+		c._release_mic()
+		if c._peer.get_ready_state() == WebSocketPeer.STATE_OPEN and c._live and not c._stopping:
+			c._send({"type": "bye"})
+			c._peer.poll()  # the frame leaves before the socket closes
+		c._stopping = true
+		c._finish("bye")
+		return
 	c._stopping = true
 	c._stop_at = Time.get_ticks_msec()
 	c._bye_at = c._stop_at + int(BYE_WAIT * 1000.0)

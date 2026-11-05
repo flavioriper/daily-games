@@ -24,6 +24,21 @@ closed call is ignored; a new call waits for the last one's bye to finish.
 too. Draw calls on the screen offline with the intro talking: 26 (the old
 tab with its mic button: 36), 2026-11-05.
 
+**Awake, screen on, background** (2026-11-05): while the screen's phase is
+dialing, connecting or live it holds `Power.hold("bot", true)` (the game would
+rest after twenty idle seconds, 30 fps and the face's idle stopped; a hold
+also keeps the shade's unfocus from resting the frame) and
+`DisplayServer.screen_set_keep_on(true)`; both go the moment the phase leaves
+those three (`_set_phase`), on close and when the screen is freed. The demo
+holds nothing. `NOTIFICATION_APPLICATION_PAUSED` ends a call at once
+(`BotCall.stop(true)`: bye sent, nothing waited for, the memory frames the
+server was still writing are lost) and never redials; on
+`NOTIFICATION_APPLICATION_RESUMED` the face says `SWARM_L1` again and the
+status line says `BOT_REDIAL`. A tap on the face after any call ended (the
+hour's limit excepted), or after an offline open, calls again. Knocks: GOOD
+when the session comes, TAP when a tap cuts the voice (TICK when nothing was
+playing), TAP when the back button hangs up a call.
+
 ## Testing a call locally
 
 `BOT_TEST_PAGE=1 uv run python server.py` serves `GET /test`

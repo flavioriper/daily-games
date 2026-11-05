@@ -23,6 +23,13 @@ extends RefCounted
 ## resting game after twenty idle seconds (tests/_probe_battery.gd asks
 ## for it with `force`). `Engine.max_fps` is put back to what it was, so a
 ## harness that uncapped it is uncapped again after a wake.
+##
+## A hold (`hold(who, on)`, 2026-11-05, like Music.hold) keeps the game
+## awake while something the player is talking to runs without a touch: the
+## Swarm's call (bot/bot_screen.gd). While any hold is on the idle clock
+## stays at zero, a resting game wakes when a hold starts, and the window
+## merely unfocused (the shade) does not rest the frame. The app sent to the
+## background still rests: the call's holder lets go of its hold there.
 
 
 const REST_AFTER := 20.0
@@ -36,6 +43,7 @@ static var _fps_before := 0
 static var _paused: Array[Tween] = []
 static var _idled: Array[Node] = []
 static var _stream_rested := false
+static var _holds: Dictionary = {}
 
 ## The node that watches the input and the clock. Processes while the
 ## tree is paused, so a pause screen left up still rests and still wakes.
@@ -81,10 +89,25 @@ static func touch() -> void:
 	if resting:
 		_wake()
 
+## The game stays awake while `who` holds it, and wakes now if it rests.
+static func hold(who: String, on: bool) -> void:
+	if on:
+		_holds[who] = true
+		_idle = 0.0
+		if resting:
+			_wake()
+	else:
+		_holds.erase(who)
+		_idle = 0.0
+
+static func is_held() -> bool:
+	return not _holds.is_empty()
+
 ## Rest at once: the window unfocused rests the frame, the app sent to
-## the background (`stream`) closes the stream too.
+## the background (`stream`) closes the stream too. A hold keeps the frame
+## awake against an unfocus; only the background rests it.
 static func rest_now(stream: bool) -> void:
-	if not enabled:
+	if not enabled or (not stream and not _holds.is_empty()):
 		return
 	_idle = STREAM_REST_AFTER if stream else REST_AFTER
 	if not resting:
@@ -94,6 +117,9 @@ static func rest_now(stream: bool) -> void:
 
 static func _tick(delta: float) -> void:
 	if not enabled:
+		return
+	if not _holds.is_empty():
+		_idle = 0.0
 		return
 	_idle += delta
 	if not resting:

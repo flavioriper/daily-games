@@ -22,6 +22,16 @@ extends Control
 ## on the face interrupts and opens the mic again. The face's speaking look
 ## holds until the voice has drained, not until the server's next state, and
 ## a drawing being judged (`draw`, then `see`) keeps a thinking look.
+##
+## A call in progress (dialing, connecting, live; the demo is a show and is
+## not one) holds the game awake (Power.hold "bot": it would rest after twenty
+## seconds without a touch, at 30 fps and with the face's idle stopped) and
+## the phone's screen on. Both let go the moment the phase leaves those three
+## (the call ended, closed, freed). The app sent to the background
+## (NOTIFICATION_APPLICATION_PAUSED) ends the call at once, BotCall.stop(true)
+## and never redials: a call costs money and the player has left. When the
+## app comes back the face greets again (SWARM_L1) and a line says a tap on
+## the face calls again (`_redial`).
 
 signal closed
 
@@ -32,6 +42,8 @@ const Music = preload("res://core/music.gd")
 const SafeArea = preload("res://ui/safe_area.gd")
 const Motion = preload("res://core/motion.gd")
 const Backend = preload("res://core/backend.gd")
+const Power = preload("res://core/power.gd")
+const Haptics = preload("res://core/haptics.gd")
 
 const BACK := 64.0
 const PILL_H := 64.0
@@ -74,6 +86,9 @@ var _offline_line := ""
 var _demo_due := false
 var _perm = null  # the mic permission's answer, while it is asked
 var _heard := false  # the line's voice has started playing
+var _kept := false  # the phone's screen is held on by this screen
+var _redial := false  # a call ended: a tap on the face calls again
+var _cut := false  # the background ended the call: the face greets on return
 
 
 func _init() -> void:
@@ -185,6 +200,8 @@ func open() -> void:
 	_opened = false
 	_offline_at = -1
 	_demo_due = false
+	_redial = false
+	_cut = false
 	_token = ""
 	Music.hold("bot", true)
 	visible = true
@@ -208,10 +225,13 @@ func close() -> void:
 	if not visible:
 		return
 	_open_n += 1
+	if _phase == "dialing" or _phase == "connecting" or _phase == "live":
+		# Hanging up is felt: a touch of the hand.
+		Haptics.play(Haptics.TAP)
 	if _phase == "connecting" or _phase == "live":
 		_stale += 1
 		BotCall.stop()
-	_phase = ""
+	_set_phase("")
 	_demo_due = false
 	face.close()
 	Music.hold("bot", false)
@@ -222,6 +242,60 @@ func close() -> void:
 
 func _exit_tree() -> void:
 	Music.hold("bot", false)
+	_hold(false)
+
+
+func _notification(what: int) -> void:
+	match what:
+		NOTIFICATION_APPLICATION_PAUSED:
+			_on_background()
+		NOTIFICATION_APPLICATION_RESUMED:
+			_on_foreground()
+
+
+## The game and the phone's screen stay awake while a call is on the way or
+## on; `Power.hold` is idempotent and so is the screen switch (only this
+## screen's own switch is undone).
+func _hold(on: bool) -> void:
+	Power.hold("bot", on)
+	if on and not _kept:
+		_kept = true
+		DisplayServer.screen_set_keep_on(true)
+	elif not on and _kept:
+		_kept = false
+		DisplayServer.screen_set_keep_on(false)
+
+
+## The app went to the background: a call dialing or on ends at once (bye
+## sent, nothing waited for, its `ended` ignored) and the holds go with it.
+## Nothing redials.
+func _on_background() -> void:
+	if not visible:
+		return
+	if _phase != "dialing" and _phase != "connecting" and _phase != "live":
+		return
+	if _phase != "dialing" and BotCall.current() != null:
+		_stale += 1
+		BotCall.stop(true)
+	_token = ""
+	_open_n += 1  # an await still waiting on the token drops what it was doing
+	_server_state = ""
+	_shown = ""
+	_judging = false
+	_cut = true
+	_redial = true
+	_go_offline("", 0.0, false)
+
+
+## Back in the app after the call was cut: the face greets again and says how
+## to call. A pause that ended nothing (the permission sheet) says nothing.
+func _on_foreground() -> void:
+	if not visible or not _cut or _phase != "offline":
+		return
+	_cut = false
+	face.say(tr("SWARM_L1"))
+	face.reveal(-1)
+	_status.text = tr("BOT_REDIAL")
 
 
 ## The mic permission (Android asks here; iOS and desktops ask when the mic
@@ -253,6 +327,7 @@ func _begin_call(n: int) -> void:
 	if n != _open_n:
 		return
 	if token == "":
+		_redial = true  # a retry costs nothing
 		_go_offline("BOT_OFFLINE", OFFLINE_AFTER, true)
 		return
 	_token = token
@@ -293,6 +368,7 @@ func _go_offline(key: String, after: float, demo: bool) -> void:
 
 func _set_phase(p: String) -> void:
 	_phase = p
+	_hold(p == "dialing" or p == "connecting" or p == "live")
 
 
 func _process(_delta: float) -> void:
@@ -356,6 +432,7 @@ func _on_event(msg: Dictionary) -> void:
 	match kind:
 		"session":
 			_set_phase("live")
+			Haptics.play(Haptics.GOOD)  # the call is on
 			_offline_at = -1
 			_status.text = ""
 			_server_state = "listening"
@@ -418,15 +495,37 @@ func _on_ended(reason: String) -> void:
 	_server_state = ""
 	_shown = ""
 	_judging = false
+	_redial = reason != "4429"
 	_go_offline(String(ENDS.get(reason, "BOT_DROPPED")), 0.0, false)
 
 
-## A tap on the face while it talks: it stops, and listens.
+## A tap on the face while it talks: it stops, and listens. Off a call, after
+## one ended, it calls again (the hour's limit excepted: that answer stands).
 func _on_tap(_at: Vector2, on_face: bool) -> void:
-	if _phase == "live" and on_face:
+	if not on_face:
+		return
+	if _phase == "live":
+		# Cutting the voice is a tap of the hand; a tap while it listens only a tick.
+		Haptics.play(Haptics.TAP if (_server_state == "speaking" or BotCall.playing()) else Haptics.TICK)
 		BotCall.interrupt()
 		BotCall.send_silence(false)
 		_opened = true
+	elif _phase == "offline" and _redial and BotCall.current() == null:
+		_redial = false
+		Haptics.play(Haptics.TICK)
+		_open_n += 1
+		_log.text = ""
+		_status.text = ""
+		_server_state = ""
+		_shown = ""
+		_judging = false
+		_opened = false
+		_demo_due = false
+		_offline_at = -1
+		_token = ""
+		face.say("")
+		_set_phase("asking")
+		_begin_call(_open_n)
 
 
 func _note(s: String) -> void:
