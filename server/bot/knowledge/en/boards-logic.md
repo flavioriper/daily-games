@@ -8,9 +8,9 @@ Market Sums. Six crates of numbers on a market stall and an order on the board. 
 
 Who Ate the Pie?. Bakers at the village fête, and somebody ate the pie. Every baker you clear says one true thing. Prove who did it, one baker at a time. Its motto: "No guessing, only proof".
 
-Queens. Seat one queen in every row, column and colour. Its motto: "Every queen has her seat".
+Queens. Seat one queen in every row, column and colour. No two queens may touch, not even at a corner. Its motto: "Every queen has her seat".
 
-Nonogram. Fill the runs and reveal the picture. Its motto: "Numbers make a picture".
+Nonogram. Fill the runs and reveal the picture. The numbers give the lengths of the filled runs in each line, in order, with a gap between runs. Its motto: "Numbers make a picture".
 
 Hedgehogs. Rake the leaves and let the sleeping hedgehogs lie. Its motto: "Let sleeping ones lie".
 

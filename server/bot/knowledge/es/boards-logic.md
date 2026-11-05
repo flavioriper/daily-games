@@ -8,9 +8,9 @@ Market Sums. Seis cajas de números en un puesto del mercado y un pedido en la p
 
 Who Ate the Pie?. Pasteleros en la feria del pueblo, y alguien se comió el pastel. Cada pastelero que marcas dice una verdad. Demuestra quién fue, uno a uno. Su lema: "Sin adivinar, solo pruebas".
 
-Queens. Sienta una reina en cada fila, columna y color. Su lema: "Cada reina en su trono".
+Queens. Sienta una reina en cada fila, columna y color. Dos reinas no pueden tocarse, ni siquiera en diagonal. Su lema: "Cada reina en su trono".
 
-Nonogram. Rellena las tiras y revela el dibujo. Su lema: "Los números dibujan".
+Nonogram. Rellena las tiras y revela el dibujo. Los números dan el largo de las tiras pintadas en cada línea, en orden, con un hueco entre ellas. Su lema: "Los números dibujan".
 
 Hedgehogs. Rastrilla las hojas y deja dormir a los erizos. Su lema: "Deja dormir a quien duerme".
 

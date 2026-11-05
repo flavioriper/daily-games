@@ -33,7 +33,7 @@ async def sync(store: SharedStore, files: dict[tuple[str, str], list[dict]]) -> 
     counts = {lang: 0 for lang in LANGS}
     for (lang, topic), rows in files.items():
         counts[lang] += await store.replace_curated(lang, topic, rows)
-    await store.prune_curated(set(files))
+    await store.prune_curated(set(files), LANGS)
     return counts
 
 
@@ -45,6 +45,12 @@ async def main() -> int:
     ap.add_argument("--dev", action="store_true", help="read the DSN from SWARM_TEST_DSN instead of NEON_SWARM_URL")
     args = ap.parse_args()
     files = read_all(args.knowledge)
+    missing = [lang for lang in LANGS if not any(lg == lang for (lg, _) in files)]
+    empty = sorted(f"{lg}/{tp}" for (lg, tp), rows in files.items() if not rows)
+    if missing or empty:
+        # A mistyped --knowledge path or an empty file must never wipe the curated rows.
+        print(f"refusing to sync: no files for {missing or 'none'}, files with no paragraphs: {empty or 'none'}", file=sys.stderr)
+        return 1
     per_lang = {lang: sum(len(r) for (lg, _), r in files.items() if lg == lang) for lang in LANGS}
     print(f"{len(files)} files, rows per language: {per_lang}")
     if args.dry_run:

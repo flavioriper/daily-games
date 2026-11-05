@@ -77,7 +77,7 @@ a Postgres database `swarm` with pgvector on the Neon project `peeplet`, read an
 written by the server only (`NEON_SWARM_URL`). `shared/schema.sql` makes the four
 tables (`knowledge`, `style`, `turn_outcomes`, `suggestions`); `shared/store.py` is
 `SharedStore(dsn)`, which with `dsn=None` reads empty and writes nothing, and with an
-unreachable database logs a warning and answers empty. Nothing identifying a player
+unreachable database logs a warning and answers empty. The shared layer embeds with its own multilingual model (`paraphrase-multilingual-MiniLM-L12-v2`, 384 wide; the device memory keeps bge-small), so changing it needs a re-sync. After a database failure the store answers empty for 30 s. Nothing identifying a player
 is ever stored. The curated knowledge is `knowledge/<lang>/<topic>.md` (`# Title`,
 then one paragraph a row) and goes in with
 `uv run python ../../tools/sync_swarm_knowledge.py [--schema]`. Tests that touch the

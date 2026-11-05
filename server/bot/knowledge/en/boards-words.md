@@ -1,6 +1,6 @@
 # Word boards
 
-Hidden Word. Five letters, six tries. A new word every day. Its motto: "Find the hidden word".
+Hidden Word. Five letters, six tries. A new word every day. On Hard and Insane every clue must be used: a green letter stays in its place, and a letter the rows found goes in every guess after. Its motto: "Find the hidden word".
 
 Word Trail. Trace every hidden word. The lengths are the only clue. Its motto: "Every letter finds its way".
 

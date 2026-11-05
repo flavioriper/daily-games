@@ -8,9 +8,9 @@ Market Sums. Seis caixotes de números numa banca de feira e um pedido no quadro
 
 Who Ate the Pie?. Confeiteiros na festa da vila, e alguém comeu a torta. Cada confeiteiro que você marca diz uma verdade. Prove quem foi, um de cada vez. Seu lema: "Sem chute, só prova".
 
-Queens. Ponha uma rainha em cada linha, coluna e cor. Seu lema: "Cada rainha em seu trono".
+Queens. Ponha uma rainha em cada linha, coluna e cor. Duas rainhas não podem se tocar, nem na diagonal. Seu lema: "Cada rainha em seu trono".
 
-Nonogram. Preencha as sequências e revele a imagem. Seu lema: "Números formam imagens".
+Nonogram. Preencha as sequências e revele a imagem. Os números dão o tamanho das sequências pintadas em cada linha, em ordem, com um espaço entre elas. Seu lema: "Números formam imagens".
 
 Hedgehogs. Rastele as folhas e deixe os ouriços dormirem. Seu lema: "Deixe quem dorme dormir".
 

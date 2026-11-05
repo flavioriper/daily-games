@@ -1,6 +1,6 @@
 # Tableros de palabras
 
-Hidden Word. Cinco letras, seis intentos. Una palabra nueva cada día. Su lema: "Encuentra la palabra oculta".
+Hidden Word. Cinco letras, seis intentos. Una palabra nueva cada día. En Difícil y en Insano hay que usar cada pista: una letra verde se queda en su lugar, y una letra que las filas encontraron va en cada intento siguiente. Su lema: "Encuentra la palabra oculta".
 
 Word Trail. Traza cada palabra oculta. Las longitudes son la única pista. Su lema: "Cada letra encuentra su camino".
 

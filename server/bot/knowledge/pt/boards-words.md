@@ -1,6 +1,6 @@
 # Jogos de palavras
 
-Hidden Word. Cinco letras, seis tentativas. Uma palavra nova por dia. Seu lema: "Encontre a palavra oculta".
+Hidden Word. Cinco letras, seis tentativas. Uma palavra nova por dia. No Difícil e no Insano, toda pista tem que ser usada: uma letra verde fica no lugar dela, e uma letra que as fileiras acharam entra em todo palpite depois. Seu lema: "Encontre a palavra oculta".
 
 Word Trail. Trace cada palavra escondida. Os tamanhos são a única pista. Seu lema: "Cada letra acha seu caminho".
 
