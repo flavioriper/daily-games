@@ -15,7 +15,7 @@ memory JSON, Call, talk, Bye. `memory` events rewrite the memory box, the
 way the phone's file would change. Without `BOT_TEST_PAGE=1` there is no
 `/test`. Keys go in the server's environment only: `OPENAI_API_KEY`,
 `ELEVENLABS_API_KEY`, `DEEPGRAM_API_KEY`, `JEV_API_KEY`; `BOT_LEDGER=<file>`
-keeps the cost rows (RAM otherwise).
+is where the cost rows are copied (RAM only otherwise).
 
 ## What a minute costs
 
@@ -44,7 +44,9 @@ What the service is: `--max-instances=1 --min-instances=0 --cpu=2
 --memory=2Gi --no-cpu-throttling --timeout=3600 --session-affinity
 --concurrency=4` (4 is a placeholder, step 9 measures it); the bucket
 `daily-games-420bf-peeplet-bot` mounts at `/data` (`STUDIO_DATA`), and
-`BOT_LEDGER=/data/ledger.sqlite` keeps the cost rows there. Five secrets,
+`BOT_LEDGER=/data/ledger.sqlite` is where the cost rows are copied (the
+process keeps them in RAM and copies them there at each call end, below).
+Five secrets,
 named `peeplet-bot-*` in Secret Manager: `OPENAI_API_KEY`,
 `DEEPGRAM_API_KEY`, `ELEVENLABS_API_KEY`, `JEV_API_KEY`, `NEON_SWARM_URL`.
 `BOT_LOG_LEVEL` stays at its WARNING default (DEBUG logs what is said) and
@@ -128,7 +130,12 @@ The steps, in order. Each block is for a terminal on the Mac.
 
    (Only one of the two builder accounts is the one Cloud Build uses on
    this project; granting both is harmless, and a "does not exist" on one
-   can be ignored.)
+   can be ignored.) If the organisation disables the automatic Editor grant
+   to those default accounts, the build account may also need
+   `roles/logging.logWriter` on the project (the build logs to Cloud
+   Logging only) and read on `gs://daily-games-420bf_cloudbuild` (where
+   `gcloud builds submit` stages the source), for example
+   `roles/storage.objectViewer` on that bucket.
 
 7. **Build and deploy:**
 
@@ -157,7 +164,14 @@ The steps, in order. Each block is for a terminal on the Mac.
    change `--concurrency=4` in `cloudbuild.yaml` and record the measured
    figure here: **not measured yet**.
 
-Known risk: `BOT_LEDGER` is a SQLite file on a Cloud Storage mount. The
-mount has no file locking and writes back on close, so rows from a call that
-ends with the instance can be lost; with one instance this is acceptable
-for cost rows, and a failure to open the file shows at the first call.
+The ledger (2026-11-05, final review): one per process (`Deps.ledger`,
+`studio.ledger.open_ledger`), SQLite in RAM, so a row's commit never waits
+on the Cloud Storage mount. At start the process reads back the copy at
+`BOT_LEDGER` (one it cannot read is left alone and never saved over: that
+process keeps its rows in RAM only); at each call end a worker thread
+copies every row there with SQLite's backup API (into a local temp file,
+then onto the mount, then a rename), and shutdown makes a last copy and
+closes it. Known risk: the mount has no file locking, so with more than one
+instance the copies would overwrite each other; with `--max-instances=1`
+that cannot happen. Rows from a call that ends with the instance killed
+before its copy are lost; acceptable for cost rows.

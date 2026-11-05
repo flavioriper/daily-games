@@ -109,3 +109,9 @@ async def test_memory_turn_runs_on_the_device_hub(card):
     assert turn.notes == ["Their sister lives in Porto"] and "f2" not in [m[0] for m in turn.index.facts.meta]
     await turn.end([])
     assert turn.key not in hub.live
+
+
+async def test_the_gate_is_read_once_per_process():
+    a = DeviceHub(await DeviceStore.load({}, lambda _: None))
+    b = DeviceHub(await DeviceStore.load({}, lambda _: None))
+    assert a.gate is b.gate and a.thresholds == b.thresholds and a.thresholds is not b.thresholds

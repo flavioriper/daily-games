@@ -1,6 +1,7 @@
 """The player's memory, fed by the phone. It arrives in the `hello` as `memory`, lives only in RAM for the call, and every change goes back to the phone through `emit`; nothing about the player is written on the server. `DeviceStore` answers the calls `memory/turn.py` and `RecallIndex.load` make of the old Postgres store, and `DeviceHub` the ones they make of its hub."""
 import asyncio
 import json
+from functools import lru_cache
 import uuid
 from datetime import datetime, timezone
 from dataclasses import dataclass
@@ -137,13 +138,19 @@ class DeviceStore:
         return {"facts": len(self.facts), "notes": len(self.notes), "episodes": len(self.episodes), "documents": 0, "chunks": 0}
 
 
+@lru_cache(maxsize=2)
+def _shared_gate(models_dir: str) -> tuple[GateNet, dict]:
+    """Read once per process: the gate is frozen (eval, no grad) and never taught here, so every call shares it."""
+    return load_gate(Path(models_dir) / "gate.pt"), json.loads((Path(models_dir) / "gate-metrics.json").read_text())["thresholds"]
+
+
 class DeviceHub:
     """The shared gate and the call's live index; always up, because the store is in RAM."""
 
     def __init__(self, store: DeviceStore, models_dir=ROOT / "models"):
         self.store, self.status = store, "up"
-        self.gate = load_gate(Path(models_dir) / "gate.pt")
-        self.thresholds = json.loads((Path(models_dir) / "gate-metrics.json").read_text())["thresholds"]
+        self.gate, thresholds = _shared_gate(str(Path(models_dir).resolve()))
+        self.thresholds = dict(thresholds)
         self.live: dict[int, tuple[str, object]] = {}
 
     async def ensure(self) -> bool:

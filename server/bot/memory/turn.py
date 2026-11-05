@@ -201,7 +201,7 @@ class MemoryTurn:
         try:
             await self._after(turn_id, text, prev, features, recalled)
         except Exception as e:
-            logger.warning(f"memory write failed: {type(e).__name__}: {e}")
+            logger.warning(f"memory write failed: {type(e).__name__}")  # the type only: the message can quote what was said
             self.emit(kind="remember", turn_id=turn_id, action="failed", reason=type(e).__name__)
 
     def schedule_after_turn(self, *args) -> asyncio.Task:

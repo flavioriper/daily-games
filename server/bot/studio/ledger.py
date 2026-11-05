@@ -1,8 +1,12 @@
 """Usage ledger (spec section 9): every billed unit with its price, cost None when unpriced."""
 import json
+import os
+import shutil
 import sqlite3
+import tempfile
 import threading
 import time
+from pathlib import Path
 from collections import Counter
 from typing import NamedTuple
 
@@ -45,13 +49,58 @@ def unit_cost(prices: Prices, kind: str, provider: str, model: str, u: dict) -> 
 
 
 class Ledger:
-    def __init__(self, path, prices: Prices):
-        self.prices = prices
+    """`dest`, when set, is where save() copies the rows (the bot keeps them in RAM and copies them to the bucket at each
+    call end, off the event loop, so a record() never waits on a network mount)."""
+
+    def __init__(self, path, prices: Prices, dest=None):
+        self.prices, self.dest = prices, Path(dest) if dest else None
         self._db = sqlite3.connect(path, check_same_thread=False)
         self._db.execute(
             "CREATE TABLE IF NOT EXISTS usage (id INTEGER PRIMARY KEY, ts REAL, user_id TEXT, persona TEXT, session_id TEXT, kind TEXT, provider TEXT, model TEXT, units_json TEXT, cost_usd REAL, source TEXT)"
         )
         self._lock = threading.Lock()
+        self._saving = threading.Lock()  # one copy at a time; record() only ever waits for the in-RAM backup, never the copy
+        self._closed = False
+
+    def restore(self, src) -> None:
+        """Load the rows of an earlier copy (the process's start), so a save never overwrites history with less."""
+        source = sqlite3.connect(str(src))
+        try:
+            with self._lock:
+                source.backup(self._db)
+        finally:
+            source.close()
+
+    def save(self, dest=None) -> bool:
+        """Copy every row to `dest` (default self.dest) with sqlite's backup API: into a local file first, under the row
+        lock (fast, RAM to local disk), then onto `dest` outside it. Blocking: call it with asyncio.to_thread."""
+        dest = Path(dest) if dest else self.dest
+        if dest is None:
+            return False
+        with self._saving:
+            if self._closed:
+                return False
+            fd, tmp = tempfile.mkstemp(suffix=".sqlite")
+            os.close(fd)
+            try:
+                local = sqlite3.connect(tmp)
+                try:
+                    with self._lock:
+                        self._db.backup(local)
+                finally:
+                    local.close()
+                part = dest.with_name(dest.name + ".part")
+                shutil.copyfile(tmp, part)
+                os.replace(part, dest)  # a reader never sees half a file
+            finally:
+                os.unlink(tmp)
+        return True
+
+    def close(self) -> None:
+        with self._saving, self._lock:
+            if not self._closed:
+                self._closed = True
+                self._db.close()
 
     def record(self, *, user_id, persona, session_id, kind, provider, model, units: dict, source: str) -> Row:
         cost = unit_cost(self.prices, kind, provider, model, units)
@@ -139,3 +188,18 @@ class Ledger:
                 provider, model = key.split(":", 1)
                 out.append({"key": key, "kind": swap_kind, "cost_usd": repriced(swap_kind, provider, model)})
         return out
+
+
+def open_ledger(dest, prices_path) -> Ledger:
+    """The process's one ledger (the bot): rows in RAM, copied to `dest` by save(). An earlier copy at `dest` is read
+    back first; one that cannot be read is left alone and never overwritten: this process then keeps its rows in RAM only."""
+    ledger = Ledger(":memory:", Prices.shared(prices_path), dest=dest)
+    if dest and Path(dest).exists():
+        try:
+            ledger.restore(dest)
+        except Exception as e:
+            import logging
+
+            logging.getLogger("ledger").warning(f"ledger restore failed, not saving over it: {type(e).__name__}")
+            ledger.dest = None
+    return ledger

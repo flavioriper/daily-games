@@ -51,6 +51,34 @@ def test_verify_wraps_every_failure(monkeypatch):
         verify("a.b.c")
 
 
+def test_certificates_are_fetched_once_per_max_age_with_a_short_timeout():
+    import requests
+
+    calls = []
+
+    class Session:
+        def request(self, method, url, data=None, headers=None, timeout=None, **kw):
+            calls.append(timeout)
+            r = requests.Response()
+            r.status_code, r._content = 200, b'{"k": "cert"}'
+            r.headers["Cache-Control"] = "public, max-age=100, must-revalidate"
+            return r
+
+        def close(self):
+            pass
+
+    now = [0.0]
+    req = auth.CachedRequest(clock=lambda: now[0])
+    req.session = Session()
+    for _ in range(3):
+        assert req("https://certs.example", method="GET").data == b'{"k": "cert"}'
+    assert calls == [auth.FETCH_TIMEOUT]  # one fetch, 5 s instead of the library's 120
+    now[0] = 101.0
+    req("https://certs.example", method="GET")
+    assert len(calls) == 2  # past max-age, fetched again
+    assert isinstance(auth._request, auth.CachedRequest)
+
+
 # ---- the socket -------------------------------------------------------------
 
 

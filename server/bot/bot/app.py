@@ -28,6 +28,42 @@ UNAUTHORIZED = 4401  # no or bad token, or this uid is already on a call
 RATE_LIMITED = 4429  # six calls in the last hour
 NO_CLIPS = 4409  # the language has no pre-made clips
 TEST_PAGE = Path(__file__).resolve().parent.parent / "static" / "test.html"
+PRICES = Path(__file__).resolve().parent.parent / "prices.yaml"
+_saves: set[asyncio.Task] = set()  # ledger copies still running
+
+
+def save_ledger(ledger) -> asyncio.Task | None:
+    """Copy the ledger to its destination in a worker thread, in the background: a call's end never waits on the bucket."""
+    if getattr(ledger, "dest", None) is None or not hasattr(ledger, "save"):
+        return None
+
+    async def save() -> None:
+        try:
+            await asyncio.to_thread(ledger.save)
+        except Exception as e:
+            from loguru import logger
+
+            logger.warning(f"ledger save failed: {type(e).__name__}")
+
+    task = asyncio.ensure_future(save())
+    _saves.add(task)
+    task.add_done_callback(_saves.discard)
+    return task
+
+
+async def close_ledger(ledger, timeout: float = 10.0) -> None:
+    """Shutdown: the last copy, then the connection closes. Never raises."""
+    try:
+        if _saves:
+            await asyncio.wait(set(_saves), timeout=timeout)
+        task = save_ledger(ledger)
+        if task is not None:
+            await asyncio.wait({task}, timeout=timeout)
+        close = getattr(ledger, "close", None)
+        if close is not None:
+            await asyncio.to_thread(close)
+    except Exception:
+        pass  # shutting down anyway
 
 
 async def wait_for_bye(websocket: WebSocket) -> None:
@@ -72,7 +108,7 @@ class Deps:
     window: float = WINDOW_SECONDS
     # What the call is built with; None takes voice/bot.py's default (keys from the environment)
     services: Callable[..., Any] | None = None  # card -> Services(stt, llm, tts)
-    ledger: Any = None
+    ledger: Any = None  # None builds the process's one ledger (studio.ledger.open_ledger): rows in RAM, copied to $BOT_LEDGER at each call end
     jev: Callable[[], Any] | None = None  # a fresh Jev per call (English only)
     learner: Any = None
     eye: Any = None
@@ -89,6 +125,10 @@ def build_app(deps: Deps | None = None) -> FastAPI:
         from shared.store import SharedStore
 
         deps.shared = SharedStore(os.environ.get("NEON_SWARM_URL"))  # one per process: its pool and its model are shared by every call
+    if deps.ledger is None:
+        from studio.ledger import open_ledger
+
+        deps.ledger = open_ledger(os.environ.get("BOT_LEDGER"), PRICES)  # one per process; a call's rows never wait on the bucket
 
     @asynccontextmanager
     async def lifespan(_):
@@ -101,6 +141,10 @@ def build_app(deps: Deps | None = None) -> FastAPI:
             from shared import distil
 
             await distil.cancel_pending()  # a call's lessons still being distilled are dropped, never queued
+            from voice import outcomes
+
+            await outcomes.cancel_pending()  # turn rows still in flight get a moment, then are dropped
+            await close_ledger(deps.ledger)
             close = getattr(deps.shared, "close", None)
             if close is not None:
                 try:

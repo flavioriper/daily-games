@@ -54,11 +54,15 @@ After `session`, the socket carries 16-bit PCM both ways and JSON text. Out:
 `sfx` (the phone drops it), `bye_ack`. In: `interrupt`, `forget {id}`, `bye`,
 `seen {id, jpg, w, h}` (waited for 2 s, judged by gpt-6.1-terra in
 `agent/eye.py`, never kept). `bye` and the fifteen-minute cap stop the
-pipeline, run the memory's `end()`, send its `memory` messages and `bye_ack`,
-then close 1000. Nothing about a player is written: no policy Store (the
+pipeline, run the memory's `end()` (bounded at 25 s; the OpenAI client
+gives up a request at 15 s with one retry), send its `memory` messages and
+`bye_ack`, then close 1000. Nothing about a player is written: no policy Store (the
 learner is `BaseLearner`, the base only), Jev's cache in RAM, the events log
 keeps kinds only, and `server.py` logs at WARNING because Pipecat's DEBUG
-lines carry what was said.
+lines carry what was said (`bot/logs.py`: no locals in tracebacks, and
+Pipecat's raw tool arguments on a parse failure are dropped). The cost
+ledger is one per process, in RAM, copied to `BOT_LEDGER` in a worker thread
+at each call end (`docs/agents/bot.md`, "Deploy").
 
 `content/pixel_garden.json` is a copy of the game's file, for the draw tool's
 bank ids: copy it again when the game's bank changes. The cap's goodbye line

@@ -242,3 +242,33 @@ def test_review_table_strips_control_characters():
     row = {"id": 1, "lang": "en", "kind": "fact", "seen": 2, "first_day": "2026-11-05", "last_day": "2026-11-05", "text": "a\x1b[2Jb\nc\u202ed"}
     out = review.table([row])
     assert "\x1b" not in out and "\u202e" not in out and out.count("\n") == 1
+
+
+async def test_a_hung_end_of_call_memory_still_lets_bye_ack_out():
+    """An OpenAI stall on bye or the cap: memory.end is given up on its bound, bye_ack goes out, only the error type is logged."""
+    sock, memory = FakeSocket(), FakeMemory()
+
+    async def hang(messages):
+        await asyncio.sleep(3600)
+
+    memory.end = hang
+    from loguru import logger
+
+    seen: list[str] = []
+    sink = logger.add(lambda m: seen.append(str(m)), level="WARNING")
+    started = time.perf_counter()
+    try:
+        await finish_call(sock, Phone(sock), memory, CALL, "bye", end_timeout=0.05)
+    finally:
+        logger.remove(sink)
+    assert time.perf_counter() - started < 1.0
+    assert sock.sent[-1] == {"type": "bye_ack"} and sock.closed == 1000
+    assert any("TimeoutError" in m for m in seen)
+
+
+def test_the_memory_client_gives_up_quickly(monkeypatch):
+    from voice import bot
+
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    client = bot.default_memory_client()
+    assert client.timeout == 15 and client.max_retries == 1

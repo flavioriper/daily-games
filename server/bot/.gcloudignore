@@ -1,0 +1,15 @@
+# What `gcloud builds submit server/bot` leaves out (mirrors .dockerignore): without this the 1.1 GB .venv is uploaded.
+# voices/ (the clips) is needed by the image and stays in.
+.gcloudignore
+.git
+.venv
+.superpowers
+.pytest_cache
+**/__pycache__
+state
+tests
+docs
+data/*.sqlite
+node_modules/
+.env.local
+.neon

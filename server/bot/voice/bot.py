@@ -24,6 +24,7 @@ from pipecat.turns.user_turn_strategies import UserTurnStrategies
 
 from agent.eye import MODEL as EYE_MODEL, Eye
 from agent.tools import COMMANDS, TIMEOUT, Toolbox, result_text
+from bot.app import save_ledger
 from bot.cards import CLIPS, clip_card
 from memory.device import DeviceHub, DeviceStore
 from memory.turn import MemoryTurn
@@ -124,12 +125,13 @@ def base_learner() -> BaseLearner:
     return BaseLearner(load_base(ROOT / "models" / "base.pt"))
 
 
+@lru_cache(maxsize=1)
 def default_ledger():
-    """Cost rows keyed by uid, the one thing kept about a player (spec, "Nothing persists"). BOT_LEDGER names the file; RAM otherwise."""
-    from studio.ledger import Ledger
-    from studio.prices import Prices
+    """Cost rows keyed by uid, the one thing kept about a player (spec, "Nothing persists"). One per process, in RAM;
+    build_app normally hands its own in (Deps.ledger), this is for a call run without one. BOT_LEDGER names the copy."""
+    from studio.ledger import open_ledger
 
-    return Ledger(os.environ.get("BOT_LEDGER", ":memory:"), Prices.load(ROOT / "prices.yaml"))
+    return open_ledger(os.environ.get("BOT_LEDGER"), ROOT / "prices.yaml")
 
 
 def default_jev():
@@ -139,13 +141,17 @@ def default_jev():
     return make(":memory:")
 
 
+MEMORY_CLIENT_TIMEOUT_S = 15.0
+END_MEMORY_S = 25.0  # the end of call memory's whole budget: past it the phone gets bye_ack without it
+
+
 def default_memory_client():
     key = os.environ.get("OPENAI_API_KEY")
     if not key:
         return None
     import openai
 
-    return openai.AsyncOpenAI(api_key=key)
+    return openai.AsyncOpenAI(api_key=key, timeout=MEMORY_CLIENT_TIMEOUT_S, max_retries=1)  # SDK defaults (600 s, 2 retries) would hold a goodbye for half an hour
 
 
 def _dep(deps, name: str, default=None):
@@ -332,6 +338,7 @@ async def run_call(websocket, card: Card, user_id: str, session_id: str, deps, s
             await finish_call(websocket, phone, memory, context.messages, ending[0] if ending else "gone", learn=learner_for(shared, card.language, memory, on_usage=lesson_usage))
         finally:
             await outcomes.end(call_s=asyncio.get_running_loop().time() - started)  # the last row, in the background: the socket is already closed
+            save_ledger(ledger)  # the call's cost rows copied to the bucket in a worker thread; nothing waits for it
 
 
 def learner_for(shared, lang: str, memory, on_usage=None, timeout: float = distil.TIMEOUT_S):
@@ -350,12 +357,14 @@ def learner_for(shared, lang: str, memory, on_usage=None, timeout: float = disti
     return learn
 
 
-async def finish_call(websocket, phone: Phone, memory: MemoryTurn, messages: list[dict], reason: str, learn=None) -> None:
+async def finish_call(websocket, phone: Phone, memory: MemoryTurn, messages: list[dict], reason: str, learn=None, end_timeout: float = END_MEMORY_S) -> None:
     """The end of the call. On `bye` or the cap, with the socket still open: remembering, the call's summary and lasting facts go to the phone as `memory`, then `bye_ack` and a close. A phone that went away gets nothing. Either way `learn` starts the call's distil in the background (after memory.end and before `bye_ack` when there is one); it never delays the goodbye, and after it the server holds nothing of the call."""
     if reason in ("bye", "cap") and phone.open:
         phone.state("remembering")
         try:
-            await memory.end(messages)
+            await asyncio.wait_for(memory.end(messages), end_timeout)
+        except asyncio.TimeoutError:
+            logger.warning("end of call memory failed: TimeoutError")
         except Exception as e:
             logger.warning(f"end of call memory failed: {type(e).__name__}")
         _learn(learn, messages)

@@ -248,3 +248,38 @@ def test_tests_never_see_the_real_database():
     import os
 
     assert "NEON_SWARM_URL" not in os.environ
+
+
+async def test_shutdown_lets_rows_land_then_drops_the_hung_ones():
+    from voice import outcomes
+
+    class Hung(FakeShared):
+        async def add_outcome(self, row):
+            await asyncio.sleep(3600)
+
+    quick, hung = Outcomes(FakeShared(), "en"), Outcomes(Hung(), "en")
+    for o in (quick, hung):
+        o.on_event({"kind": "turn", "decision": {}, "raw_features": [0.0]})
+        await o.end(call_s=1.0)
+    assert len(outcomes.pending_tasks()) == 2
+    started = time.perf_counter()
+    await outcomes.cancel_pending(timeout=0.05)
+    assert time.perf_counter() - started < 1.0
+    assert outcomes.pending_tasks() == set() and len(quick.shared.rows) == 1
+
+
+def test_the_build_app_shutdown_drains_outcomes(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from bot.app import Deps, build_app
+    from voice import outcomes
+
+    called = []
+
+    async def fake(timeout: float = 2.0):
+        called.append(timeout)
+
+    monkeypatch.setattr(outcomes, "cancel_pending", fake)
+    with TestClient(build_app(Deps())):
+        pass
+    assert called

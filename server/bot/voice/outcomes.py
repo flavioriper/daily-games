@@ -16,6 +16,22 @@ log = logging.getLogger("outcomes")
 _tasks: set[asyncio.Task] = set()  # writes still in flight after their call has ended
 
 
+def pending_tasks() -> set[asyncio.Task]:
+    return {t for t in _tasks if not t.done()}
+
+
+async def cancel_pending(timeout: float = 2.0) -> None:
+    """Server shutdown: rows still being written get `timeout` to land, then are dropped, never queued."""
+    left = pending_tasks()
+    if not left:
+        return
+    _done, late = await asyncio.wait(left, timeout=timeout)
+    for t in late:
+        t.cancel()
+    if late:
+        await asyncio.wait(late, timeout=timeout)
+
+
 def decision_code(decision: dict) -> int:
     """stance, register, warmth and ack as one mixed-radix integer, 0..71 in HEADS order; -1 for an unknown value."""
     code = 0
