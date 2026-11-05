@@ -7,17 +7,17 @@ var _tab: Control
 var _t := 0.0
 var _out := "/tmp"
 var _draws := 0
-## The room waits idle; the Draw pill is pressed, then the Intro pill
-## (stopping the drawing).
+## The room waits idle; the Draw pill is pressed. Each "see" saves what the
+## agent's see tool would hand it (snapshot, 384 wide).
 var _plan := [
-	[3.0, "shot", "idle"],
+	[3.0, "see", "idle"],
 	[3.2, "pill", 1],
-	[9.0, "shot", "cat_gold"],
-	[13.5, "shot", "heart_pink"],
-	[18.0, "shot", "strawberry_red"],
-	[22.5, "shot", "frog_mint"],
-	[23.0, "pill", 0],
-	[25.0, "shot", "intro_started"],
+	[7.2, "see", "sun"],
+	[12.2, "see", "duck"],
+	[17.0, "see", "heart"],
+	[21.5, "see", "strawberry"],
+	[26.0, "see", "tulip"],
+	[30.5, "see", "snail"],
 ]
 
 func _initialize() -> void:
@@ -39,9 +39,29 @@ func _process(d: float) -> bool:
 			"dots": print("dots ", _tab.apply_dots(st[2]))
 			"draw": print("draw ", _tab.apply_draw(st[2]))
 			"move": _tab.apply_move(st[2])
+			"see":
+				var got: Dictionary = _tab.snapshot(384)
+				if got.has("error"):
+					print("see %s error %s" % [st[2], got.error])
+				else:
+					var f := FileAccess.open("%s/see_%s.jpg" % [_out, st[2]], FileAccess.WRITE)
+					f.store_buffer(Marshalls.base64_to_raw(got.jpg))
+					f.close()
+					print("see %s %dx%d %d bytes draws=%d tone=#%s" % [st[2], got.w, got.h, got.bytes, _draws, _tab._tone.to_html(false)])
+				_draws = 0
 			"pill":
 				print("pill %s" % _tab._pills[st[2]].text)
 				_tab._pills[st[2]].pressed.emit()
+			"see":
+				var got: Dictionary = _tab.snapshot(384)
+				if got.has("error"):
+					print("see %s error %s" % [st[2], got.error])
+				else:
+					var f := FileAccess.open("%s/see_%s.jpg" % [_out, st[2]], FileAccess.WRITE)
+					f.store_buffer(Marshalls.base64_to_raw(got.jpg))
+					f.close()
+					print("see %s %dx%d %d bytes draws=%d tone=#%s" % [st[2], got.w, got.h, got.bytes, _draws, _tab._tone.to_html(false)])
+				_draws = 0
 			"pill":
 				print("pill %s" % _tab._pills[st[2]].text)
 				_tab._pills[st[2]].pressed.emit()

@@ -78,7 +78,7 @@ const EYE_N := int(N * 0.05)
 const MIN_LIVE := BODY_N + EYE_N + 80
 const FADE_IN := 0.6
 const PIC_SIZE := 0.7
-const DOTS_A_PIXEL := 3
+const DOTS_A_PIXEL := 6
 const STEP := 1.0 / 60.0
 const IDLE_MS := 5000.0
 ## The web's dark theme (static/home.html, :root dark): the agent's green,
@@ -176,10 +176,12 @@ const INTRO := [
 
 const SHOWOFF := [
 	{"dots": {"add": 700, "from": "face"}, "wait": 2.5},
-	{"draw": {"name": "bank:cat_in_box"}, "tone": {"tone": "gold"}, "wait": 6.0},
+	{"draw": {"name": "bank:sun"}, "tone": {"tone": "gold"}, "wait": 5.0},
+	{"draw": {"name": "bank:duck", "size": 0.65}, "tone": {"tone": "cyan"}, "wait": 5.0},
 	{"draw": {"rows": HEART, "palette": {"r": "red", "p": "pink", "w": "white"}, "size": 0.5}, "tone": {"tone": "pink", "intensity": 1.3}, "wait": 4.5},
 	{"draw": {"name": "bank:strawberry", "size": 0.6}, "move": "top-right", "tone": {"tone": "red"}, "wait": 4.5},
-	{"draw": {"name": "bank:frog", "size": 0.6}, "move": "bottom-left", "tone": {"tone": "mint", "intensity": 0.8}, "wait": 4.5},
+	{"draw": {"name": "bank:tulip", "size": 0.6}, "move": "bottom-left", "tone": {"tone": "violet"}, "wait": 4.5},
+	{"draw": {"name": "bank:snail", "size": 0.65}, "move": "centre", "tone": {"tone": "mint", "intensity": 0.9}, "wait": 4.5},
 	{"draw": {"clear": true}, "move": "centre", "tone": {"tone": "green", "intensity": 1.0}, "wait": 2.0},
 	{"tone": {"tone": "cyan", "intensity": 1.7, "seconds": 1.2}, "wait": 2.0},
 	{"dots": {"remove": 700, "to": "edges"}, "wait": 3.0},
@@ -855,16 +857,28 @@ func apply_draw(cmd: Dictionary) -> Dictionary:
 	if n == 0:
 		_note("draw  nothing to draw")
 		return {"error": "the picture has nothing bright enough to draw"}
-	# A place for every dot: the pixels dealt round in a shuffled order, so
-	# each holds its share, the dot anywhere inside its pixel.
+	# A place for every dot: the pixels share the dots by weight (bright
+	# ones and outlines more, dark ones fewer: Picture.pixels), dealt in
+	# even steps along the weights so the shares are exact, each dot
+	# anywhere inside its pixel.
 	var xs: PackedFloat32Array = px.x
 	var ys: PackedFloat32Array = px.y
 	var ls: PackedFloat32Array = px.l
-	var deal := range(n)
-	deal.shuffle()
+	var ws: PackedFloat32Array = px.wt
+	var total := 0.0
+	for wt in ws:
+		total += wt
+	var stride := total / pool.size()
+	var at := randf() * stride
+	var run := 0.0
 	var spots := []
-	for j in pool.size():
-		var c: int = deal[j % n]
+	for c in n:
+		run += ws[c]
+		while at < run and spots.size() < pool.size():
+			spots.append([xs[c] + randf_range(-0.5, 0.5), ys[c] + randf_range(-0.5, 0.5), ls[c]])
+			at += stride
+	while spots.size() < pool.size():
+		var c := randi() % n
 		spots.append([xs[c] + randf_range(-0.5, 0.5), ys[c] + randf_range(-0.5, 0.5), ls[c]])
 	# Dots and places sorted alike (top to bottom, in bands left to right),
 	# so each dot flies to a place near where it is.
@@ -895,6 +909,26 @@ func apply_draw(cmd: Dictionary) -> Dictionary:
 	_links.visible_instance_count = 0
 	_note("draw  %s  %dx%d · %d dots" % [got.name, px.w, px.h, pool.size()] + ("  · %ss" % cmd.seconds if cmd.has("seconds") else ""))
 	return {"summary": "Done: I drew %s with my %d dots, %d by %d" % [got.name, pool.size(), px.w, px.h], "w": px.w, "h": px.h, "dots": pool.size()}
+
+## The see tool's phone half (the user, 2026-11-05: "give the agent a tool
+## to see the screen ... so he can draw and see it"): the frame last drawn,
+## the room only, shrunk to `width` pixels across and sent back as a JPEG in
+## base64, for the call to hand the model as an image. It shows only what
+## this room draws (the swarm, the subtitles, the log, the two pills); there
+## is no camera and nothing of any other screen in it.
+func snapshot(width := 384) -> Dictionary:
+	if not visible or size.x < 10.0:
+		return {"error": "the room is not open"}
+	var frame := get_viewport().get_texture().get_image()
+	var r := Rect2i(get_global_rect()).intersection(Rect2i(Vector2i.ZERO, frame.get_size()))
+	if r.size.x < 10 or r.size.y < 10:
+		return {"error": "nothing on screen"}
+	var img := frame.get_region(r)
+	var w := clampi(width, 128, 768)
+	img.resize(w, maxi(1, int(round(float(r.size.y) * w / r.size.x))), Image.INTERPOLATE_BILINEAR)
+	var jpg := img.save_jpg_to_buffer(0.75)
+	_note("see  %dx%d" % [img.get_width(), img.get_height()])
+	return {"jpg": Marshalls.raw_to_base64(jpg), "w": img.get_width(), "h": img.get_height(), "bytes": jpg.size()}
 
 ## The tone tool: the swarm's `tone` (a name of TONES or "#rrggbb") and its
 ## `intensity` (0.2 dim .. 1 as it is .. 1.8 blazing), either or both,
@@ -1643,18 +1677,21 @@ func _render(dt: float) -> void:
 		elif role == Role.PIXEL:
 			# A dot of the picture: the swarm's own, in its tone, lit as
 			# brightly as its pixel; a quarter are crystals, as on the face.
+			# The shading is in how many dots crowd a pixel; their own light
+			# varies only a little, and they are small and sharp so the
+			# shape holds under the glow.
 			var lum := _pl[i]
-			var kp := 0.12 + 0.88 * lum
+			var kp := 0.35 + 0.65 * lum
 			cr = pdr + (phr - pdr) * kp
 			cg = pdg + (phg - pdg) * kp
 			cb = pdb + (phb - pdb) * kp
-			alpha = _a[i] * (0.7 + 0.3 * tw) * (0.3 + 0.7 * lum)
-			soft = 0.12
-			hot = 0.55 * lum
-			grow = 0.8 + 0.55 * lum
+			alpha = (0.55 + 0.25 * _a[i]) * (0.8 + 0.2 * tw) * (0.6 + 0.4 * lum)
+			soft = 0.05
+			hot = 0.4 * lum
+			grow = 0.6 + 0.3 * lum
 			if _uu[i] < 0.26:
 				kind = 0.5
-				grow *= 1.2
+				grow *= 1.15
 		elif _formed and _uu[i] <= 0.86:
 			var zf := sin(_ang[i])
 			var near := maxf(zf, 0.0)

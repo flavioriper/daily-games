@@ -32,6 +32,17 @@ const SIDE_MOST := 96
 const EMPTY_LUM := 0.05
 ## The dimmest pixel of a picture still glows this much of the brightest.
 const DIMMEST := 0.2
+## A border colour holding this share of a full picture's border is its
+## ground (sky, grass, a table), taken away so the thing stands alone.
+const GROUND_SHARE := 0.12
+const GROUND_NEAR := 0.1
+## How many dots a pixel draws, against its brightness: a pixel's weight is
+## (FLOOR + its brightness) ^ CURVE, and an outline pixel's EDGE more, so
+## bright parts and outlines crowd and dark ones thin (stippling: with one
+## tone, the shading is in how many dots there are, not how bright they are).
+const WEIGHT_FLOOR := 0.3
+const WEIGHT_CURVE := 1.2
+const WEIGHT_EDGE := 0.9
 
 static var _bank := {}
 
@@ -120,7 +131,8 @@ static func _capped(img: Image) -> Image:
 ## until it fits, then listed with their place in pixels from the picture's
 ## centre and their brightness, spread from DIMMEST for its darkest to 1 for
 ## its brightest, so its outlines and features show in one tone.
-static func pixels(source: Image, most: int) -> Dictionary:
+static func pixels(picture: Image, most: int) -> Dictionary:
+	var source := _without_ground(picture)
 	var img := source
 	var pts := _opaque(img)
 	var tries := 0
@@ -143,11 +155,81 @@ static func pixels(source: Image, most: int) -> Dictionary:
 	var xs := PackedFloat32Array()
 	var ys := PackedFloat32Array()
 	var ls := PackedFloat32Array()
+	var ws := PackedFloat32Array()
 	for p in pts:
-		xs.append(p[0] + 0.5 - w * 0.5)
-		ys.append(p[1] + 0.5 - h * 0.5)
-		ls.append(1.0 if hi - lo < 0.05 else DIMMEST + (1.0 - DIMMEST) * (p[2] - lo) / (hi - lo))
-	return {"w": w, "h": h, "n": pts.size(), "x": xs, "y": ys, "l": ls}
+		var x: int = p[0]
+		var y: int = p[1]
+		xs.append(x + 0.5 - w * 0.5)
+		ys.append(y + 0.5 - h * 0.5)
+		var t: float = 1.0 if hi - lo < 0.05 else (float(p[2]) - lo) / (hi - lo)
+		ls.append(DIMMEST + (1.0 - DIMMEST) * t)
+		var edge := false
+		for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var q: Vector2i = Vector2i(x, y) + d
+			if q.x < 0 or q.y < 0 or q.x >= w or q.y >= h or not _lit(img.get_pixel(q.x, q.y)):
+				edge = true
+				break
+		ws.append(pow(WEIGHT_FLOOR + t, WEIGHT_CURVE) + (WEIGHT_EDGE if edge else 0.0))
+	return {"w": w, "h": h, "n": pts.size(), "x": xs, "y": ys, "l": ls, "wt": ws}
+
+static func _lit(c: Color) -> bool:
+	return c.a >= 0.5 and c.get_luminance() >= EMPTY_LUM
+
+## A full picture (no bare pixel: a scene, a photo) loses its ground: each
+## colour that holds GROUND_SHARE of the border is flooded away from the
+## border inward, so only the thing in it is left. A picture with bare
+## pixels is a thing already and is kept whole (a drawing that touches its
+## own edges must not lose them).
+static func _without_ground(picture: Image) -> Image:
+	var img := picture.duplicate() as Image
+	var w := img.get_width()
+	var h := img.get_height()
+	for y in h:
+		for x in w:
+			if not _lit(img.get_pixel(x, y)):
+				return img
+	var border: Array[Vector2i] = []
+	for x in w:
+		border.append(Vector2i(x, 0))
+		border.append(Vector2i(x, h - 1))
+	for y in range(1, h - 1):
+		border.append(Vector2i(0, y))
+		border.append(Vector2i(w - 1, y))
+	var grounds: Array[Color] = []
+	for b in border:
+		var c := img.get_pixel(b.x, b.y)
+		var known := false
+		for g in grounds:
+			if _near(g, c):
+				known = true
+		if known:
+			continue
+		var count := 0
+		for o in border:
+			if _near(img.get_pixel(o.x, o.y), c):
+				count += 1
+		if count >= GROUND_SHARE * border.size():
+			grounds.append(c)
+	var bare := Color(0, 0, 0, 0)
+	for g in grounds:
+		var todo: Array[Vector2i] = []
+		for b in border:
+			if _near(img.get_pixel(b.x, b.y), g):
+				todo.append(b)
+		while not todo.is_empty():
+			var p: Vector2i = todo.pop_back()
+			var c := img.get_pixel(p.x, p.y)
+			if c.a < 0.5 or not _near(c, g):
+				continue
+			img.set_pixelv(p, bare)
+			for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				var q: Vector2i = p + d
+				if q.x >= 0 and q.y >= 0 and q.x < w and q.y < h:
+					todo.append(q)
+	return img
+
+static func _near(a: Color, b: Color) -> bool:
+	return a.a >= 0.5 and b.a >= 0.5 and absf(a.r - b.r) <= GROUND_NEAR and absf(a.g - b.g) <= GROUND_NEAR and absf(a.b - b.b) <= GROUND_NEAR
 
 ## A list already sorted top to bottom, cut into bands of about sqrt(n) and
 ## each band sorted left to right by `key`.
@@ -172,8 +254,7 @@ static func _opaque(img: Image) -> Array:
 			var c := img.get_pixel(x, y)
 			if c.a < 0.5:
 				continue
-			var lum := c.get_luminance()
-			if lum < EMPTY_LUM:
+			if not _lit(c):
 				continue
-			pts.append([x, y, lum])
+			pts.append([x, y, c.get_luminance()])
 	return pts

@@ -197,7 +197,7 @@ Persona Studio minus the studio: keep `voice/` (the call, Flux, the steer,
 the pace, the clip player, foley stripped of room sounds), `policy/`
 (see below), `memory/` (gate, embed, recall, consolidate, turn), the parts
 of `studio/` a call needs (card, brains, clips, prices, ledger), `agent/tools.py`
-cut to the screen tools (the two, plus `draw`, `dots` and `tone`). Drop the pages, compile, calibration UI, Google,
+cut to the screen tools (the two, plus `draw`, `dots`, `tone` and `see`). Drop the pages, compile, calibration UI, Google,
 documents, ingest, Neon, the show and talk views, the desk.
 
 - **Auth.** `/ws/bot` takes the Firebase id token in the first message
@@ -263,7 +263,7 @@ documents, ingest, Neon, the show and talk views, the desk.
   `move` keeps `centre`, the sides, the corners and `point`. `cursor`,
   `input` and `panel:` go, with the `[screen:` note. The client's
   `apply_swarm` and `apply_move` already take the rest.
-- **Three more screen tools** (the user, 2026-11-05: "let the agent draw any
+- **Four more screen tools** (the user, 2026-11-05: "let the agent draw any
   pixel image using the particles", "also add tool to agent spawn more
   particles, or despawn it"). The phone side is built and probed in the
   Swarm tab (`apply_draw`, `apply_dots`, `apply_tone`,
@@ -308,6 +308,23 @@ documents, ingest, Neon, the show and talk views, the desk.
     never your face; while you draw, new dots join the drawing and dots may
     leave it. More dots let a drawing be more detailed." Server checks: exactly one of add, remove, total, each 1 to
     2400; `from`/`to` in their words.
+  - `see` (the user, 2026-11-05: "give the agent a tool to see the screen
+    ... in a way that he can draw and see it"): "Look at your own screen:
+    you get a picture of it as it is now (only your room: your dots, your
+    words). Use it after you draw, to check the drawing reads as what you
+    meant; if it does not, change it (simpler rows, bolder shape, another
+    tone, more dots) and look again, at most twice. Say nothing about
+    looking unless asked." No arguments. This is the one screen tool that
+    waits on the phone: the server sends `tool {name: see, id}`, the phone
+    answers `{"type": "seen", "id", "jpg", "w", "h"}` (`snapshot(384)` in
+    the Swarm tab: the room's last frame, 384 wide, JPEG, about 20 KB) and
+    the server gives the model that picture as image input on the turn
+    (in Chat Completions a tool message cannot hold an image: the tool
+    result says "seen" and a user message with the image follows it). The
+    server waits at most 2 s and answers "could not see" past it. The
+    picture is not kept: not logged, not in the ledger, not in memory.
+    Open, to check before session 2: whether `gpt-6-luna` takes image
+    input, and the cost of one look (one 384x683 image at low detail).
   The result the model hears is the phone's own summary when the protocol
   carries one back; until then the server's, from the validated command.
 - **Language.** Flux `flux-general-en` for English, `flux-general-multi`
