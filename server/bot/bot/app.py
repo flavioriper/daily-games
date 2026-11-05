@@ -98,6 +98,9 @@ def build_app(deps: Deps | None = None) -> FastAPI:
         finally:
             if warming is not None:
                 warming.cancel()
+            from shared import distil
+
+            await distil.cancel_pending()  # a call's lessons still being distilled are dropped, never queued
             close = getattr(deps.shared, "close", None)
             if close is not None:
                 try:

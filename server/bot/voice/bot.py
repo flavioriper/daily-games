@@ -28,6 +28,7 @@ from bot.cards import CLIPS, clip_card
 from memory.device import DeviceHub, DeviceStore
 from memory.turn import MemoryTurn
 from policy.learn import BaseLearner, load_base
+from shared import distil
 from studio.brains import make_llm
 from studio.card import Card, owner_of
 from studio.clips import SONIOX_VOICE
@@ -209,6 +210,9 @@ async def run_call(websocket, card: Card, user_id: str, session_id: str, deps, s
     latency = UserBotLatencyObserver()
     jev = (_dep(deps, "jev", default_jev))() if card.language == "en" else None  # Jev reads English; elsewhere the steer takes the card's default decision
 
+    def lesson_usage(u: dict) -> None:  # the distil's cost, in this process's ledger like every other; the shared layer gets no id
+        ledger.record(kind="llm", provider="openai", model=distil.MODEL, units=u, source="distil", **ids)
+
     def eye_usage(u: dict) -> None:
         ledger.record(kind="llm", provider="openai", model=EYE_MODEL, units={"prompt_tokens": u.get("prompt_tokens") or 0, "completion_tokens": u.get("completion_tokens") or 0, "gross": True}, source="eye", **ids)
 
@@ -325,19 +329,40 @@ async def run_call(websocket, card: Card, user_id: str, session_id: str, deps, s
         capping.cancel()
         ledger_obs.flush_stt()
         try:
-            await finish_call(websocket, phone, memory, context.messages, ending[0] if ending else "gone")
+            await finish_call(websocket, phone, memory, context.messages, ending[0] if ending else "gone", learn=learner_for(shared, card.language, memory, on_usage=lesson_usage))
         finally:
             await outcomes.end(call_s=asyncio.get_running_loop().time() - started)  # the last row, in the background: the socket is already closed
 
 
-async def finish_call(websocket, phone: Phone, memory: MemoryTurn, messages: list[dict], reason: str) -> None:
-    """The end of the call. On `bye` or the cap, with the socket still open: remembering, the call's summary and lasting facts go to the phone as `memory`, then `bye_ack` and a close. A phone that went away gets nothing and costs nothing more. After this the server holds nothing of the call. (Tasks 16-18 hook the shared layer here, after memory.end.)"""
+def learner_for(shared, lang: str, memory, on_usage=None, timeout: float = distil.TIMEOUT_S):
+    """The call's lessons for the shared layer (shared/distil.py), or None when there is nowhere to send them (offline,
+    a language with no calls, no model client). The learner takes the call's messages and starts the distil in the
+    background; a call in which the person asked to forget something teaches nothing."""
+    client = getattr(memory, "client", None)
+    if shared is None or not getattr(shared, "online", False) or lang not in distil.LANGS or client is None or not hasattr(client, "chat"):
+        return None
+
+    def learn(messages: list[dict]):
+        if getattr(memory, "forgotten", None):
+            return None
+        return distil.schedule(shared, distil.transcript_of(messages), lang, client, on_usage=on_usage, timeout=timeout)
+
+    return learn
+
+
+async def finish_call(websocket, phone: Phone, memory: MemoryTurn, messages: list[dict], reason: str, learn=None) -> None:
+    """The end of the call. On `bye` or the cap, with the socket still open: remembering, the call's summary and lasting facts go to the phone as `memory`, then `bye_ack` and a close. A phone that went away gets nothing and costs nothing more. After this the server holds nothing of the call but `learn`'s distil, started after memory.end and before `bye_ack`, in the background: it never delays the goodbye."""
     if reason in ("bye", "cap") and phone.open:
         phone.state("remembering")
         try:
             await memory.end(messages)
         except Exception as e:
             logger.warning(f"end of call memory failed: {type(e).__name__}")
+        if learn is not None:
+            try:
+                learn(messages)
+            except Exception as e:
+                logger.warning(f"end of call lessons failed: {type(e).__name__}")
         phone.send({"type": "bye_ack"})
         await phone.flush()
         try:
