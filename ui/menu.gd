@@ -36,7 +36,6 @@ const FlatHost = preload("res://ui/flat/flat_host.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const SafeArea = preload("res://ui/safe_area.gd")
 const SettingsSheet = preload("res://ui/hud/settings_sheet.gd")
-const RemoveAdsSheet = preload("res://ui/hud/remove_ads_sheet.gd")
 const GiftsSheet = preload("res://ui/hud/gifts_sheet.gd")
 const MenuHeader = preload("res://ui/menu/menu_header.gd")
 const Vistas = preload("res://ui/menu/vistas.gd")
@@ -171,9 +170,6 @@ const PAGE_SLIDE_MIN := 0.14
 ## A page out of sight stands this many spans to the side (see `_spare`).
 const PARK := 3.0
 var settings_sheet: Control
-## The purchase sheet: the header's remove-ads button, settings' row and
-## (through world/main.gd) the banner's tab all open it.
-var remove_ads_sheet: Control
 var difficulty_sheet: Control
 ## The daily gifts (spec 2026-09-28-gold-gifts-design.md).
 var gifts_sheet: Control
@@ -293,11 +289,6 @@ func _ready() -> void:
 	settings_sheet.name = "SettingsSheet"
 	settings_sheet.reduce_changed.connect(header.refresh_motion)
 	add_child(settings_sheet)
-	remove_ads_sheet = RemoveAdsSheet.new()
-	remove_ads_sheet.name = "RemoveAdsSheet"
-	add_child(remove_ads_sheet)
-	header.remove_ads.connect(func() -> void: remove_ads_sheet.open_from("header"))
-	settings_sheet.remove_ads.connect(func() -> void: remove_ads_sheet.open_from("settings"))
 	gifts_sheet = GiftsSheet.new()
 	gifts_sheet.name = "GiftsSheet"
 	add_child(gifts_sheet)

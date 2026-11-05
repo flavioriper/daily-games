@@ -26,7 +26,6 @@ const Motion = preload("res://core/motion.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const SafeArea = preload("res://ui/safe_area.gd")
 const SettingsSheet = preload("res://ui/hud/settings_sheet.gd")
-const RemoveAdsSheet = preload("res://ui/hud/remove_ads_sheet.gd")
 const RulesSheet = preload("res://ui/hud/rules_sheet.gd")
 const RewardPrompt = preload("res://ui/ads/reward_prompt.gd")
 const HowToPlay = preload("res://ui/hud/how_to_play.gd")
@@ -51,7 +50,6 @@ var day_card: Control
 var help_card: Control
 var action_bar: Control
 var settings_sheet: Control
-var remove_ads_sheet: Control
 var rules_sheet: Control
 var footer: Label
 var _board_holder: Control
@@ -100,12 +98,7 @@ func _ready() -> void:
 		if not is_instance_valid(_tutorial):
 			_hold_clock(false))
 	add_child(settings_sheet)
-	remove_ads_sheet = RemoveAdsSheet.new()
-	remove_ads_sheet.name = "RemoveAdsSheet"
-	add_child(remove_ads_sheet)
-	settings_sheet.remove_ads.connect(func() -> void: remove_ads_sheet.open_from("settings"))
-	# world/main.gd finds an open board here to open the purchase sheet over
-	# it when the banner's tab is tapped.
+	# A board finds its own host by this group.
 	add_to_group("puzzle_host")
 
 	# A second card for the same board (the island Binairo beside the flat one)

@@ -30,7 +30,7 @@ mkdir -p build/android
 tools/strip_dev_addons.sh
 # Gradle build: the template in android/ is unpacked from the engine's own
 # android_source.zip, so it always matches the engine (android/ is not in git).
-# The patch script installs it when missing and raises its AGP for godot-iap;
+# The patch script installs it when missing and raises its AGP (see there);
 # the export must not reinstall it, so no --install-android-build-template.
 GODOT="$godot_bin" tools/patch_android_template.sh
 "$godot_bin" --headless --path . --export-debug Android "$out"

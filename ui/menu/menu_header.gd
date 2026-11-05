@@ -1,11 +1,10 @@
 extends Control
 
 ## The first screen's header: the icon's DAILY / PUZZLES letter tiles
-## (ui/menu/word_tiles.gd) with the motto under them, and remove-ads, gifts,
-## settings and calendar above, all over the day's own dusk painting
-## (ui/menu.gd's backdrop, Vistas.set_header_vista). The remove-ads button is
-## the purchase sheet's door from the first screen and goes for good once
-## remove_ads is owned (spec 2026-09-25-ads-and-remove-ads-design.md, section 4).
+## (ui/menu/word_tiles.gd) with the motto under them, and gifts, settings
+## and calendar above, all over the day's own dusk painting (ui/menu.gd's
+## backdrop, Vistas.set_header_vista). The remove-ads button that stood left
+## of the gift left with the purchase on 2026-11-05.
 ##
 ## The sun and the moon, the i's small sun and the sprig that stood here
 ## went on 2026-10-27 (spec 2026-10-27-peeplet-brand-design.md, Part B): the
@@ -24,7 +23,6 @@ extends Control
 ## and 4.
 
 signal settings
-signal remove_ads
 ## The gift button: the daily gifts sheet (spec 2026-09-28-gold-gifts).
 signal gifts
 
@@ -62,7 +60,6 @@ const BUTTON_AT := 0.04
 const MOTTO_AT := 0.10
 
 var gear: Button
-var no_ads: Button
 var calendar: Button
 var gift: Button
 var _badge: Control
@@ -110,15 +107,6 @@ func _build() -> void:
 	gift.offset_right = -BUTTON.x * 2.0 - BUTTON_GAP * 2.0
 	gift.offset_bottom = BUTTON.y
 	gift.pressed.connect(func() -> void: gifts.emit())
-
-	no_ads = _button("no_ads")
-	no_ads.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	no_ads.offset_left = -BUTTON.x * 4.0 - BUTTON_GAP * 3.0
-	no_ads.offset_right = -BUTTON.x * 3.0 - BUTTON_GAP * 3.0
-	no_ads.offset_bottom = BUTTON.y
-	no_ads.pressed.connect(func() -> void: remove_ads.emit())
-	no_ads.visible = Store.SELLING and not Store.owns_remove_ads()
-	Store.owned_changed.connect(func(owned: bool) -> void: no_ads.visible = Store.SELLING and not owned)
 
 	# --- the lettering ---
 	_title_block = VBoxContainer.new()
@@ -190,7 +178,6 @@ func enter(delay: float, fade: float) -> void:
 	_title_block.position.y = TITLE_TOP + TITLE_LIFT
 	_tiles.shown = 0
 	_motto.modulate.a = 0.0
-	_prepare_button(no_ads)
 	_prepare_button(gear)
 	_prepare_button(calendar)
 	_prepare_button(gift)
@@ -209,7 +196,6 @@ func enter(delay: float, fade: float) -> void:
 	_scale_in(gear, delay + BUTTON_AT, BUTTON_TIME)
 	_scale_in(calendar, delay + BUTTON_AT + 0.06, BUTTON_TIME)
 	_scale_in(gift, delay + BUTTON_AT + 0.12, BUTTON_TIME)
-	_scale_in(no_ads, delay + BUTTON_AT + 0.18, BUTTON_TIME)
 
 func _prepare_button(button: Control) -> void:
 	button.pivot_offset = button.size * 0.5
@@ -225,7 +211,7 @@ func _set_entrance_final() -> void:
 	_title_block.position.y = TITLE_TOP
 	_tiles.shown = WordTiles.count()
 	_motto.modulate.a = 1.0
-	for button in [no_ads, gear, calendar, gift]:
+	for button in [gear, calendar, gift]:
 		button.scale = Vector2.ONE
 		button.modulate.a = 1.0
 

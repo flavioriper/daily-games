@@ -3,9 +3,7 @@ extends "res://ui/hud/sheet.gd"
 ## The settings sheet: the Reduce motion, Sound and Vibration switches, the
 ## soundtrack's player, the language,
 ## How to play and a New puzzle row (both only on a board; the menu leaves
-## them out), Remove ads (the purchase sheet's door; "Ads removed" and
-## disabled once owned -- Restore lives on that sheet, one tap away, which
-## is Apple's rule), Start over (only on a kept game that asks for it:
+## them out), Start over (only on a kept game that asks for it:
 ## Nightlight, whose screen asks "are you sure" before anything is lost),
 ## Privacy choices (only when UMP says the region needs
 ## the door), Credits and Close. How to play is the rules sheet's only door since the tip card went
@@ -37,8 +35,7 @@ const MOTION_TINT := Color("f8c877")
 const SOUND_TINT := Color("a8cf9a")
 const HAPTICS_TINT := Color("f4b8a4")
 const LANGUAGE_TINT := Color("aab4e8")
-## Remove ads on taupe paper, Credits on rose with a maroon heart.
-const ADS_TINT := Color("ece2d6")
+## Credits on rose with a maroon heart.
 const CREDITS_TINT := Color("f7dedb")
 const HEART_INK := Color("8e2f3c")
 ## A switch that is on.
@@ -47,7 +44,6 @@ const SWITCH_ON := Color("6aa477")
 signal reduce_changed(on: bool)
 signal new_puzzle
 signal rules
-signal remove_ads
 signal start_over
 
 var with_new := true
@@ -77,7 +73,6 @@ var sound_toggle: CheckButton
 var haptics_toggle: CheckButton
 var music_player: Control
 var credits_button: Button
-var ads_button: Button
 var privacy_button: Button
 ## Opens over this sheet, so closing it lands back here.
 var credits_sheet: Control
@@ -130,8 +125,6 @@ func _build_sheet(col: VBoxContainer) -> void:
 		else:
 			start_over_sheet.game_title = reset_asks
 			start_over_sheet.open())
-	ads_button = _small_button("no_ads", "ADS_TAB", ADS_TINT)
-	ads_button.pressed.connect(func() -> void: close_then(remove_ads.emit))
 	privacy_button = _small_button("eye", "SETTINGS_PRIVACY", Pal.SURFACE)
 	privacy_button.pressed.connect(func() -> void: close_then(Ads.show_privacy_options))
 	credits_button = _small_button("heart", "SETTINGS_CREDITS", CREDITS_TINT)
@@ -166,7 +159,7 @@ func _small_button(icon: String, key: String, fill: Color) -> Button:
 ## lone last one stands centred at a row's half width.
 func _pack_buttons() -> void:
 	var shown: Array[Button] = []
-	for b: Button in [rules_button, new_button, reset_button, ads_button, privacy_button, credits_button]:
+	for b: Button in [rules_button, new_button, reset_button, privacy_button, credits_button]:
 		var on := b.visible
 		if b == rules_button:
 			on = with_new or with_rules
@@ -174,8 +167,6 @@ func _pack_buttons() -> void:
 			on = with_new
 		elif b == reset_button:
 			on = with_reset
-		elif b == ads_button:
-			on = Store.SELLING
 		elif b == privacy_button:
 			on = _privacy
 		if b.get_parent() != null:
@@ -214,7 +205,7 @@ func _pack_buttons() -> void:
 ## still there when the game quits (its styles and its text with it).
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_PREDELETE:
-		for b: Button in [rules_button, new_button, reset_button, ads_button, privacy_button, credits_button]:
+		for b: Button in [rules_button, new_button, reset_button, privacy_button, credits_button]:
 			if is_instance_valid(b) and b.get_parent() == null:
 				b.free()
 
@@ -236,10 +227,6 @@ func _on_open() -> void:
 	music_player.refresh()
 	_set_switch(haptics_toggle, Haptics.on)
 	_show_languages(false)
-	# IconButton letters a child Label and keeps Button.text empty.
-	var owned := Store.owns_remove_ads()
-	ads_button.set_label(tr("STORE_OWNED") if owned else tr("ADS_TAB"))
-	ads_button.set_enabled(not owned)
 	var privacy := Ads.privacy_options_required()
 	if privacy != _privacy:
 		_privacy = privacy

@@ -17,7 +17,8 @@ SubViewport with its own `World3D`. Who Ate the Pie?'s bakers (up to twenty
 on Insane, `peeplet/peeplet_personas.gd`) and its menu card use it,
 Teacups' friends and its card do too (the user, 2026-10-29), and the
 day's pair (`core/cast.gd`) sits on Hidden Word's card and reveal, Streak's
-Today card, the remove-ads sheet and the boot opening; nothing else does,
+Today card and the boot opening (the remove-ads sheet too until it left on
+2026-11-05); nothing else does,
 never the header. Never redraw a Peeplet by hand or bake it to an image.
 (The chess sets made of models were a second exception until Versus left on
 2026-11-03.)

@@ -21,7 +21,8 @@ templates. `build/` is ignored -- it is output.
 skipped when already there, all run on every call (2026-10-04; before, the
 script left as soon as the first was found done):
 
-1. the Android Gradle plugin, 8.6.1 to 8.9.1, for godot-iap;
+1. the Android Gradle plugin, 8.6.1 to 8.9.1, for godot-iap (which left on
+   2026-11-05; the raise stays until an Android build shows it is not needed);
 2. the friend link's `.FriendLink` activity-alias in
    `android/build/src/main/AndroidManifest.xml` (`docs/agents/friends.md`,
    "The link");

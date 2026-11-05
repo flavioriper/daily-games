@@ -2,6 +2,25 @@
 
 ## Ads and the purchase
 
+**The purchase left the game on 2026-11-05** (the user: "it will be no more
+remove ads", then "take out of the app"). Gone: `core/store.gd` and its
+`Store` autoload, `ui/hud/remove_ads_sheet.gd` (and `Vistas.STORE`), the
+banner's "Remove ads" tab (`Ads.TAB_H`, `Ads.tab_height()`, BannerHost's
+`tapped`, `world/main.gd`'s `_open_store`), the header's remove-ads button,
+the settings row, `Ads.remove()` and its `_removed` guards, `STORE_FAKE`,
+the `STORE_*` / `ADS_TAB` locale rows, the purchase analytics events and
+the whole `addons/godot-iap` (26M) with `tools/export_ios.sh`'s steps that
+switched it on and embedded its frameworks. It had been off since
+2026-10-21 (`Store.SELLING` false) and its plugin since 2026-10-27, so no
+player saw it go; a `user://store.cfg` that says owned is simply never
+read, so anyone who bought (a Play test purchase, at most) sees ads again.
+Left on purpose: the `remove_ads` IAP in App Store Connect (an unsubmitted
+draft customers never see; deleting it would burn the id) and Play's
+inactive `remove_ads`; the AGP 8.9.1 raise in
+`tools/patch_android_template.sh` until an Android build shows it is not
+needed; the `no_ads` glyph in `ui/icons.gd`. Everything below about the
+store, the sheet, the owned flag, `godot-iap` and the tab is history.
+
 A banner (Poing's `godot-admob-plugin` v5.1.0) and a lifetime remove-ads
 purchase (`godot-iap` 3.5.2, `hyodotdev/openiap`), built 2026-09-25
 (`docs/superpowers/specs/2026-09-25-ads-and-remove-ads-design.md`) on branch

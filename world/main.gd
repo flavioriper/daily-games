@@ -126,31 +126,9 @@ func _ready() -> void:
 		$UI.add_child(age)
 	else:
 		Ads.start()
-	$UI/BannerHost.tapped.connect(_open_store)
 
 ## The game brought back to the front may be on a new day.
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_RESUMED and is_node_ready():
 		_watch_day()
 
-## The banner's "Remove ads" tab: the purchase sheet over whatever is up --
-## the open board's own, else the menu's. BannerHost stands last under UI, so
-## its tab would otherwise take taps through any modal already up (a sheet,
-## or the first-play card) -- z_index doesn't reorder input, only drawing --
-## and do nothing useful underneath it. Does nothing while one is up, the
-## same "is anything open" check ui/menu.gd's go_back uses to find the
-## topmost thing, minus the closing.
-func _open_store() -> void:
-	var host: Node = get_tree().get_first_node_in_group("puzzle_host")
-	var root: Node = host if (host != null and not host.is_queued_for_deletion()) else $UI/Menu
-	if _modal_open(root):
-		return
-	root.remove_ads_sheet.open_from("banner")
-
-func _modal_open(root: Node) -> bool:
-	for node in root.find_children("*", "", true, false):
-		if node is CanvasItem and node.has_method("is_open") and node.is_open():
-			return true
-	# A board's host carries the card itself; a Versus or Arcade screen under
-	# the menu carries its own.
-	return root.find_child("HowToPlay", true, false) != null

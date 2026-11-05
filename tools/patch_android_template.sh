@@ -3,9 +3,11 @@
 # Android Gradle plugin from 8.6.1 to 8.9.1, wire the Firebase Gradle plugins,
 # and turn R8 on for the release build (patch 4 at the bottom says why).
 #
-# Why: godot-iap's openiap-google 3.5.2 pulls androidx.core 1.18, which
+# Why: godot-iap's openiap-google 3.5.2 pulled androidx.core 1.18, which
 # refuses to build under AGP older than 8.9.1, and Godot 4.7's template pins
-# 8.6.1 (its Gradle wrapper, 8.11.1, already carries 8.9).
+# 8.6.1 (its Gradle wrapper, 8.11.1, already carries 8.9). godot-iap left on
+# 2026-11-05; the raise stays until an Android build shows the other plugins
+# (AdMob, Firebase) are fine without it.
 #
 # Why this script installs the template too: Godot only honours
 # --install-android-build-template as part of a full Android export (not with

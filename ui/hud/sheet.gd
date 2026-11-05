@@ -193,7 +193,7 @@ func _travel() -> float:
 ## Stand clear of the bottom inset -- the banner and its tab included. A real
 ## banner is a native view over the whole app, so a card under it would have
 ## its last row (Close, often) covered. Re-read at every open and whenever the
-## banner comes or goes (a purchase takes it away under an open sheet).
+## banner comes or goes.
 func _fit_bottom() -> void:
 	_card.offset_bottom = -MARGIN - SafeArea.insets(self).y
 

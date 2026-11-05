@@ -14,7 +14,7 @@ extends RefCounted
 ## the mode go back. After STREAM_REST_AFTER the friends stream closes too
 ## (core/social.gd `rest`) and reopens on the wake; the app sent to the
 ## background closes it at once, the window merely unfocused (the shade,
-## an ad, the purchase sheet) only rests the frame. A live online game or
+## an ad) only rests the frame. A live online game or
 ## a lobby waiting on a friend never rests: the player is watching for
 ## the other side.
 ##

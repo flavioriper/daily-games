@@ -3,8 +3,7 @@ extends Control
 ## Binairo's "Out of hearts" card, over the whole screen when the last heart
 ## of a Hard or Insane board is gone: Try again (the same board, hearts full,
 ## clock and moves from zero), One more heart (a rewarded video once a board,
-## asked never pushed; left out when no video is ready -- a remove-ads
-## player watches it too, since videos stay for buyers and there is no
+## asked never pushed; left out when no video is ready -- there is no
 ## free-reward path, docs/agents/ads-and-purchase.md), and Back to camp. Dressed like every centred
 ## dialog (ui/hud/dialog.gd), built like ui/ads/reward_prompt.gd. The board
 ## owns what each answer does; this only asks, once, and frees itself.

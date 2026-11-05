@@ -6,8 +6,7 @@ extends Node
 ##
 ## start() runs from world/main.gd (and again once the age screen is
 ## answered), so tests and harnesses never ask for an ad. Order: the player's
-## age must be known (an owner of remove_ads goes the same way: only the banner
-## and the interstitial are dropped, the opt-in rewarded videos stay), then the
+## age must be known, then the
 ## request configuration it sets, then UMP consent (update, then the form when it is required), then MobileAds.initialize,
 ## then an anchored adaptive banner at the bottom. A consent update that fails
 ## still goes on to the ads: the SDK serves non-personalised ads without
@@ -27,10 +26,6 @@ const AgeGate = preload("res://core/age_gate.gd")
 const Sound = preload("res://core/sound.gd")
 const AdPacing = preload("res://core/ad_pacing.gd")
 const Backend = preload("res://core/backend.gd")
-## The "Remove ads" tab BannerHost stands on the banner's top edge, in design
-## pixels whatever the banner's own unit: ui/safe_area.gd adds it to the
-## bottom inset, unscaled, whenever a banner is up.
-const TAB_H := 56.0
 ## Google's published test banners. A debug build (App Distribution, a
 ## harness) always asks for these, so only the release builds the stores
 ## carry ever request the real units in project.godot's ads/ keys: a click on
@@ -42,15 +37,14 @@ const TEST_INTERSTITIAL_IOS := "ca-app-pub-3940256099942544/4411468910"
 const TEST_REWARDED_ANDROID := "ca-app-pub-3940256099942544/5224354917"
 const TEST_REWARDED_IOS := "ca-app-pub-3940256099942544/1712485313"
 
-## A rewarded video finished loading, was used, or ownership changed: open
-## cards refresh their buttons.
+## A rewarded video finished loading or was used: open cards refresh their
+## buttons.
 signal rewards_changed
 
 var _ad_view: Object
 var _banner_visible := false
 var _banner_height := 0.0
 var _started := false
-var _removed := false
 var _fake := 0.0
 var state_path := "user://ads.cfg"
 var pacing := AdPacing.new()
@@ -102,10 +96,6 @@ func _ready() -> void:
 	_stale.timeout.connect(_drop_stale)
 	add_child(_stale)
 	_stale.start()
-	Store.owned_changed.connect(func(owned: bool) -> void:
-		if owned:
-			remove()
-		rewards_changed.emit())
 
 func reload_state() -> void:
 	var cfg := ConfigFile.new()
@@ -122,11 +112,7 @@ func _save_state() -> void:
 func start() -> void:
 	if _started:
 		return
-	# An owner still starts the SDK: the opt-in videos stay. Only the banner
-	# and the interstitial are dropped, by _removed.
-	if Store.owns_remove_ads():
-		_removed = true
-	if _fake > 0.0 and not _removed:
+	if _fake > 0.0:
 		_started = true
 		_set_banner(true, _fake)
 		return
@@ -225,8 +211,6 @@ func _on_ads_ready(_status: InitializationStatus) -> void:
 	_load_rewarded()
 
 func _load_banner() -> void:
-	if _removed:
-		return
 	var ios := OS.get_name() == "iOS"
 	var unit := str(ProjectSettings.get_setting("ads/banner_unit_id.ios" if ios else "ads/banner_unit_id.android", ""))
 	if OS.is_debug_build():
@@ -245,7 +229,7 @@ func _load_banner() -> void:
 		_ad_view.hide()
 	var listener := AdListener.new()
 	listener.on_ad_loaded = func() -> void:
-		if _removed or _ad_view == null:
+		if _ad_view == null:
 			return
 		# Every refresh lands here, and show() places the banner: only a hidden
 		# one is shown, or a refresh under the keyboard parks it on top of it.
@@ -279,20 +263,8 @@ func _watch_keyboard(height: int, delta: float) -> void:
 	if _settle <= 0.0:
 		return
 	_settle -= delta
-	if _settle <= 0.0 and _ad_view != null and not _removed and _held.is_empty():
+	if _settle <= 0.0 and _ad_view != null and _held.is_empty():
 		_ad_view.set_position(AdPosition.BOTTOM)
-
-## remove_ads was bought: the banner goes now and is never asked for again.
-func remove() -> void:
-	_removed = true
-	if _ad_view != null:
-		_ad_view.destroy()
-		_ad_view = null
-	_set_banner(false, 0.0)
-	if _interstitial != null:
-		_interstitial.destroy()
-		_interstitial = null
-	rewards_changed.emit()
 
 func privacy_options_required() -> bool:
 	if not OS.has_feature("mobile") or not _plugin_present():
@@ -319,7 +291,7 @@ func hold(who: String, on: bool) -> void:
 		_held.erase(who)
 	if was == _held.is_empty():
 		return
-	if _ad_view != null and _banner_visible and not _removed:
+	if _ad_view != null and _banner_visible:
 		if _held.is_empty():
 			_ad_view.show()
 		else:
@@ -355,7 +327,7 @@ func _retry_soon() -> void:
 		_retry.start()
 
 func _load_interstitial() -> void:
-	if not post_play or _removed or _interstitial != null or _loading_interstitial or AgeGate.band() == AgeGate.CHILD:
+	if not post_play or _interstitial != null or _loading_interstitial or AgeGate.band() == AgeGate.CHILD:
 		return
 	var unit := _unit("interstitial")
 	if unit.is_empty():
@@ -418,7 +390,7 @@ func leaving_game() -> void:
 	if not _finished_pending:
 		return
 	_finished_pending = false
-	if _removed or not post_play:
+	if not post_play:
 		return
 	var now := Time.get_unix_time_from_system()
 	var today := Daily.date_key()
@@ -570,6 +542,3 @@ func _fake_show(kind: String, then: Callable) -> void:
 		layer.queue_free()
 		then.call(_fake_full != "skip"))
 
-## The tab's height, or nothing while the store sells nothing (Store.SELLING).
-func tab_height() -> float:
-	return TAB_H if Store.SELLING else 0.0

@@ -15,8 +15,6 @@ extends "res://world/main.gd"
 ## sign-in has begun, and only the frame's end takes them back.
 
 func _ready() -> void:
-	# The lines of the real _ready that are not a start. A link is only
-	# taken when the harness has given the game a Social.fake (unstarted,
-	# _take_link does nothing): `-- --link=<url>` then opens it offline.
-	$UI/BannerHost.tapped.connect(_open_store)
-	_take_link()
+	# Every line of the real _ready is a start now (the banner's tab and the
+	# friend link that were not both left), so nothing runs here.
+	pass

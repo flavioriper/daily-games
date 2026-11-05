@@ -6,14 +6,11 @@ extends RefCounted
 ## the screen, not the window, so it reads as zero there -- except for a
 ## debug ADS_FAKE_BANNER run, where the desktop bottom inset is the fake
 ## banner's own design-pixel height, so the layout can be checked off a phone.
-## While a banner is up, its "Remove ads" tab (Ads.TAB_H, design px) rides on
-## top of it and is added here too, unscaled, in both cases.
 
 static func insets(control: Control) -> Vector2:
 	var fake := Ads.fake_height() if Ads != null else 0.0
-	var tab := Ads.tab_height() if Ads != null and Ads.is_banner_visible() else 0.0
 	if not OS.has_feature("mobile"):
-		return Vector2(0.0, fake + tab)
+		return Vector2(0.0, fake)
 	var win := DisplayServer.window_get_size()
 	if win.y <= 0:
 		return Vector2.ZERO
@@ -23,5 +20,4 @@ static func insets(control: Control) -> Vector2:
 	var bottom := maxf(0.0, float(win.y - safe.end.y)) * k
 	if Ads != null:
 		bottom += (Ads.bottom_inset() * k) if fake == 0.0 else fake
-	bottom += tab
 	return Vector2(top, bottom)

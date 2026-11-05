@@ -54,7 +54,7 @@ const Fx2D = preload("res://ui/fx2d.gd")
 const Haptics = preload("res://core/haptics.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const Face = preload("res://ui/faces/face.gd")
-## Loaded when wanted, not preloaded: both reach the autoloads (Ads, Store),
+## Loaded when wanted, not preloaded: both reach the autoloads (Ads),
 ## which a --check-only of this file cannot see.
 const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 const FLAT_HOST := "res://ui/flat/flat_host.gd"
