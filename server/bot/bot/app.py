@@ -5,6 +5,7 @@ import os
 import time
 import uuid
 from collections import deque
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Awaitable, Callable
@@ -79,11 +80,32 @@ class Deps:
     events: Any = None  # a voice.phone.KindLog to keep event kinds; nothing by default
     see_seconds: float = 2.0
     cap_seconds: float = 15 * 60
+    shared: Any = None  # the shared layer (shared.store.SharedStore); None builds one from NEON_SWARM_URL, offline when unset
 
 
 def build_app(deps: Deps | None = None) -> FastAPI:
     deps = deps or Deps()
-    app = FastAPI()
+    if deps.shared is None:
+        from shared.store import SharedStore
+
+        deps.shared = SharedStore(os.environ.get("NEON_SWARM_URL"))  # one per process: its pool and its model are shared by every call
+
+    @asynccontextmanager
+    async def lifespan(_):
+        warming = asyncio.ensure_future(deps.shared.warm()) if getattr(deps.shared, "online", False) else None  # the model loads beside /health and the first call, never in front of them
+        try:
+            yield
+        finally:
+            if warming is not None:
+                warming.cancel()
+            close = getattr(deps.shared, "close", None)
+            if close is not None:
+                try:
+                    await close()
+                except Exception:
+                    pass  # shutting down anyway
+
+    app = FastAPI(lifespan=lifespan)
     live: set[str] = set()
     starts: dict[str, deque] = {}
     app.state.live = live

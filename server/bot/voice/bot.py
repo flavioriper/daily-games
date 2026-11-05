@@ -34,6 +34,7 @@ from studio.clips import SONIOX_VOICE
 from voice.clip_player import RATE, ClipOut, ClipPlayer
 from voice.eager import OneSpeculationStopStrategy
 from voice.foley import Listener
+from voice.outcomes import Outcomes
 from voice.ledger_observer import LedgerObserver
 from voice.pace import PaceProcessor
 from voice.phone import SEE_SECONDS, KeptOpen, KindLog, Phone
@@ -150,19 +151,48 @@ def _dep(deps, name: str, default=None):
     return getattr(deps, name, None) or default
 
 
+STYLE_BUDGET_S = 0.8  # the shared layer's style notes, read once at call start; late or down, the call starts without them
+
+
+async def read_style(shared, lang: str, budget: float = STYLE_BUDGET_S) -> list[str]:
+    """The shared layer's prompt notes for this language, or none (offline, down, slow). Never raises."""
+    if shared is None or not getattr(shared, "online", False):
+        return []
+    try:
+        notes, _knobs = await asyncio.wait_for(shared.style_and_knobs_for(lang), budget)
+    except Exception:  # a timeout too
+        return []
+    return [n.strip() for n in notes if isinstance(n, str) and n.strip()]
+
+
+def with_style(card: Card, notes: list[str]) -> Card:
+    """The notes join the card's own "How you speak" lines, after them."""
+    return card.model_copy(update={"style": [*card.style, *notes]}) if notes else card
+
+
 async def run_call(websocket, card: Card, user_id: str, session_id: str, deps, store: DeviceStore | None = None) -> None:
     """One call on the phone's socket, after the hello. Ends on `bye` (or the fifteen-minute cap) with the call's memory sent and `bye_ack`, or when the phone goes away, with nothing sent."""
     phone = Phone.of(websocket, see_s=_dep(deps, "see_seconds", SEE_SECONDS))
     if store is None:
         store = await DeviceStore.load({}, phone.send)
     card = card.model_copy(update={"screen": True})  # the person sees the swarm: the phone wording of the prompt
-    s = _dep(deps, "services", make_services)(card)
+    shared = _dep(deps, "shared")  # the shared layer (shared/store.py), one per process; None or offline leaves the call as it was
+    styling = asyncio.ensure_future(read_style(shared, card.language))  # beside the clip load below, which takes longer
+    outcomes = Outcomes(shared, card.language)
+    started = asyncio.get_running_loop().time()
     transport = FastAPIWebsocketTransport(KeptOpen(websocket), FastAPIWebsocketParams(audio_in_enabled=True, audio_out_enabled=True, audio_in_sample_rate=IN_RATE, audio_out_sample_rate=RATE, serializer=PcmSerializer(on_text=phone.on_text)))
     events = _dep(deps, "events")
     log = (lambda **e: events.add({"session_id": session_id, **e})) if events is not None else (lambda **e: None)  # KindLog keeps the kind only
 
     def stage(e: dict) -> None:
         log(kind="stage", **e)
+        at = e.get("stage")
+        if at == "speaking":
+            outcomes.speaking()
+        elif at == "done":
+            outcomes.done()
+        elif at == "hearing":
+            outcomes.heard()
         if name := state_of(e):
             phone.state(name)
 
@@ -180,6 +210,8 @@ async def run_call(websocket, card: Card, user_id: str, session_id: str, deps, s
     pair = LLMContextAggregatorPair(context, user_params=LLMUserAggregatorParams(user_turn_strategies=strategies(card)))
     clip_out, pace = ClipOut(on_stage=stage, on_said=phone.said), PaceProcessor()
     player = await asyncio.to_thread(ClipPlayer, clip_out, _dep(deps, "clips_root", CLIPS), clip_card(card), phone.said)  # clips live under the language; everything else keys on the real card
+    card = with_style(card, await styling)
+    s = _dep(deps, "services", make_services)(card)
 
     async def cue(name: str) -> None:  # the phone drops sfx; kept so the steer's clock behaves as in the studio
         stage({"stage": "sfx", "name": name})
@@ -188,7 +220,8 @@ async def run_call(websocket, card: Card, user_id: str, session_id: str, deps, s
     memory = MemoryTurn(DeviceHub(store), card, user_id, session_id, log, _dep(deps, "memory_client") or default_memory_client(), ledger)
     memory.start()
     steer = PolicySteer(jev=jev, learner=_dep(deps, "learner") or base_learner(), slug=card.slug, user_id=user_id, default_decision=card.calibration.default_decision, clips=player,
-                        on_event=lambda e: log(**e), on_jev_call=ledger_obs.jev_call, on_stage=stage, on_cue=cue, pace=pace, memory=memory)  # the decision point Tasks 16-18 hook: on_event gets every turn's decision
+                        on_event=lambda e: (log(**e), outcomes.on_event(e)), on_jev_call=ledger_obs.jev_call, on_stage=stage, on_cue=cue, pace=pace, memory=memory,
+                        knowledge=(lambda text: shared.knowledge_for(card.language, text)) if shared is not None and shared.online else None)  # the decision point Tasks 16-18 hook: on_event gets every turn's decision
 
     async def act(params) -> None:
         turn = sum(m.get("role") == "user" for m in context.messages)
@@ -229,6 +262,7 @@ async def run_call(websocket, card: Card, user_id: str, session_id: str, deps, s
         asyncio.get_running_loop().call_later(seconds, lambda: phone.changes == mark and phone.state("listening"))
 
     async def interrupt() -> None:
+        outcomes.interrupt()
         await task.queue_frame(InterruptionFrame())  # a barge-in: the TTS stops and the phone gets `clear`
 
     async def forget(fact_id: str) -> None:
@@ -284,6 +318,7 @@ async def run_call(websocket, card: Card, user_id: str, session_id: str, deps, s
         capping.cancel()
         ledger_obs.flush_stt()
         await finish_call(websocket, phone, memory, context.messages, ending[0] if ending else "gone")
+        await outcomes.end(call_s=asyncio.get_running_loop().time() - started)  # the last row, in the background: the socket is already closed
 
 
 async def finish_call(websocket, phone: Phone, memory: MemoryTurn, messages: list[dict], reason: str) -> None:
@@ -311,7 +346,7 @@ def turn_secs(breakdown) -> float:
     return sum(parts) if parts else breakdown.total_secs
 
 
-STEER_LINES = re.compile(r"^\[(?:steer|learned|memory):.*\]\n", re.M)
+STEER_LINES = re.compile(r"^\[(?:steer|learned|memory|knowledge):.*\]\n", re.M)
 
 
 def clean_transcript(messages: list[dict]) -> list[dict]:

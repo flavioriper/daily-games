@@ -66,6 +66,26 @@ def _prepend(message: dict, prefix: str) -> None:
         message["content"] = [{"type": "text", "text": prefix + _text(message)}]
 
 
+KNOWLEDGE_BUDGET_S = 0.8  # the shared layer's lookup may wait on its model or on Neon; past this the turn goes on without it
+
+
+async def _within(task: asyncio.Task | None, budget: float) -> list[str]:
+    """The knowledge rows if they come back within ``budget`` of being awaited, else none; never raises."""
+    if task is None:
+        return []
+    try:
+        rows = await asyncio.wait_for(task, budget)
+    except asyncio.TimeoutError:
+        return []
+    except Exception:
+        return []
+    return [r for r in rows or [] if isinstance(r, str) and r.strip()]
+
+
+def knowledge_lines(rows: list[str]) -> str:
+    return "".join(f"[knowledge: {' '.join(r.split())}]\n" for r in rows)
+
+
 LOOK_EVERY_S, LOOK_BEATS = 1.8, 4  # about seven seconds of looking; past that, quiet is honest
 
 
@@ -75,7 +95,7 @@ class PolicySteer(FrameProcessor):
     def __init__(self, *, jev, learner, slug: str, user_id: str, default_decision: dict[str, str], clips: Clips, on_event: Callable[[dict], None],
                  on_fact: Callable[[str], None] = lambda _: None, on_jev_call: Callable[[], None] = lambda: None, on_stage: Callable[[dict], None] = lambda _: None,
                  on_cue: Callable[[str], Awaitable[None]] | None = None, jev_budget_s: float = 0.25, speculative_budget_s: float = 0.7, bridge_after_s: float = 2.0, stall_after_s: float = 4.5,
-                 reflex_chance: float = 0.0, pace=None, rng=None, memory=None, **kwargs):  # off: a "yeah" the moment the user stops is a filler with nothing to fill (Flavio, 2026-11-01)
+                 reflex_chance: float = 0.0, pace=None, rng=None, memory=None, knowledge: Callable[[str], Awaitable[list[str]]] | None = None, knowledge_budget_s: float = KNOWLEDGE_BUDGET_S, **kwargs):  # off: a "yeah" the moment the user stops is a filler with nothing to fill (Flavio, 2026-11-01)
         super().__init__(**kwargs)
         self.jev, self.learner, self.slug, self.user_id = jev, learner, slug, user_id
         self.default_decision = Decision(**default_decision)
@@ -85,6 +105,7 @@ class PolicySteer(FrameProcessor):
         self.budget, self.speculative_budget, self.bridge_after, self.stall_after, self.reflex_chance, self.pace = jev_budget_s, speculative_budget_s, bridge_after_s, stall_after_s, reflex_chance, pace
         self.rng = rng or random.Random()
         self.memory = memory
+        self.knowledge, self.knowledge_budget = knowledge, knowledge_budget_s  # the shared layer's rows for what was just said
         self._early: tuple[str, asyncio.Task] | None = None
         self._asked: tuple[str, asyncio.Task] | None = None
         self._bridge: asyncio.Task | None = None
@@ -230,6 +251,8 @@ class PolicySteer(FrameProcessor):
         last_bot = next((_text(m) for m in reversed(context.messages) if m.get("role") == "assistant"), "")
         self.on_stage({"stage": "jev", "text": text, "speculative": speculative})
         recalling = asyncio.ensure_future(self.memory.recall(text, last_bot)) if self.memory else None  # beside Jev, not after it: it has its own deadline
+        knowing = asyncio.ensure_future(self.knowledge(text)) if self.knowledge and text.strip() else None  # beside Jev too, under its own budget
+        knowing_from = time.perf_counter()
         # a guessed turn is held anyway, so it can wait for Jev; a committed one has someone waiting in silence
         answers, path, jev_ms = await self._answers(text, self.speculative_budget if speculative else self.budget)
         overdue, self._overdue = self._overdue, None
@@ -255,7 +278,8 @@ class PolicySteer(FrameProcessor):
 
         recalled = await recalling if recalling else None
         memory_lines = "".join(line + "\n" for line in recalled.lines) if recalled else ""
-        _prepend(message, spoken.steer_line() + "\n" + (f"[learned: {learned['head']}={learned['wanted']}]\n" if learned else "") + memory_lines)
+        known = await _within(knowing, max(0.0, self.knowledge_budget - (time.perf_counter() - knowing_from)))  # the budget runs from the turn's start, not from here
+        _prepend(message, spoken.steer_line() + "\n" + (f"[learned: {learned['head']}={learned['wanted']}]\n" if learned else "") + memory_lines + knowledge_lines(known))
 
         async def finish() -> None:
             nonlocal learned
@@ -290,7 +314,7 @@ class PolicySteer(FrameProcessor):
                 "override": prediction.override if prediction else None, "probabilities": prediction.probabilities if prediction else {}, "explanation": prediction.explanation if prediction else {},
                 "steer": decision.steer_line(), "clips": clips, "learned": learned, "gap": sound, "perceived_gap_ms": gap if gap is None else round((time.perf_counter() - kick) * 1000),
                 "pace": self.pace.pace() if self.pace else None, "wps": self.pace.words_per_second() if self.pace else None,
-                "memory": recalled.event if recalled else None,
+                "memory": recalled.event if recalled else None, "knowledge": len(known),
             })
             if self.memory:
                 self.memory.schedule_after_turn(turn_id, text, last_bot, features, recalled)
