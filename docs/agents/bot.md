@@ -22,7 +22,8 @@ counted against the calls the screen let go of, so a late one from a
 closed call is ignored; a new call waits for the last one's bye to finish.
 `memory` frames are applied whenever they come, after the screen closed
 too. Draw calls on the screen offline with the intro talking: 26 (the old
-tab with its mic button: 36), 2026-11-05.
+tab with its mic button: 36), 2026-11-05; live with the talk button, its hint
+and three lines of subtitles: 39.
 
 **Awake, screen on, background** (2026-11-05): while the screen's phase is
 dialing, connecting or live it holds `Power.hold("bot", true)` (the game would
@@ -53,6 +54,32 @@ goes on under it. 58 draw calls with the sheet up over the offline room, both
 drivers. While the room is up the ad banner stands aside (`Ads.hold("bot")`,
 `docs/agents/ads-and-purchase.md`). Every line a tap redials from
 (`BOT_DROPPED`, `BOT_OFFLINE`) ends on that tap.
+
+**Hold to talk** (2026-11-05, the user: "Make sure to add a talk button that
+user has to hold to talk, instead of being a free hand"): the mic opens only
+while the round talk button at the foot of the room is held. It is the old
+Swarm tab's mic (`MIC` 112, `_draw_mic`, from `ui/menu/swarm_tab.gd` before
+faad2239), centred 360 px over the foot of the safe area (one big button,
+clear of either thumb's side), its `BOT_HOLD` hint under it while live and
+idle, the status line over it, the subtitles under it (three lines clear).
+Shown faint and disabled while the call is on its way (asking, dialing,
+connecting), pressable only live, hidden offline and in the demo, so the
+pills and the redial tap stay as they were. The free hand before was half
+duplex: the mic streamed all the time and only the Swarm's own voice shut it
+(`BotCall.FULL_DUPLEX`, removed with it). Now `_drive` sends
+`BotCall.send_silence(not _held)` every frame of a call (silence also while
+connecting): the socket and the 20 ms frames are unchanged, zeros in place of
+the mic, so the server did not change and Flux ends the turn on the silence
+after the release. A press while the Swarm talks or its voice still plays
+sends `interrupt` first (as the face's tap, which still interrupts and no
+longer opens anything); held, the face takes its listening look. Press and
+release are the button's own `gui_input`, ScreenTouch (one index) and the
+mouse; the viewport hands the release to the button wherever it lands, a
+cancelled touch is a release, and any phase but live (the call ended, the
+background, close) lets go quietly. Heard and felt: the press the house token
+(`UiSound.click`, the button itself is `silent`) and a TICK (a TAP when it
+cuts the voice), the release the token and the echo. `tests/_shot_menu.gd --
+bot live` fakes a session for the shot.
 
 ## Testing a call locally
 

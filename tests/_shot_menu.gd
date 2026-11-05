@@ -13,6 +13,7 @@ extends SceneTree
 ##     godot --path . --resolution 810x1440 --script res://tests/_shot_menu.gd -- stats
 ##     godot --path . --resolution 810x1440 --script res://tests/_shot_menu.gd -- diff
 ##     godot --path . --resolution 810x1440 --script res://tests/_shot_menu.gd -- bot sheet
+##     godot --path . --resolution 810x1440 --script res://tests/_shot_menu.gd -- bot live
 ##
 ## `diff` opens the difficulty sheet over Light Up's card in place of a tab
 ## (`diff=<id>` for another board's), on a throwaway progress file whose last
@@ -72,6 +73,11 @@ var _intro_started := false
 ## touched), so the tab idle line reads the sheet up.
 const SHEET_MEM := "user://_shot_menu_bot_memory.json"
 var _sheet := false
+## `bot live`: as if a call were on (no socket: a faked `session` a few
+## seconds before the shot), so the talk button shows live and idle with its
+## hint (offline it is hidden).
+var _live := false
+var _live_set := false
 var _sheet_opened := false
 var _saved_mem := ""
 
@@ -103,6 +109,7 @@ func _initialize() -> void:
 		DirAccess.remove_absolute(progress.path)
 		var id := _tab_arg.trim_prefix("diff=") if "=" in _tab_arg else "lightup"
 		progress.set_last_level(id, 1)
+	_live = _tab_arg == "bot" and args.has("live")
 	if _tab_arg == "bot" and args.has("sheet"):
 		_sheet = true
 		var mem = load("res://bot/bot_memory.gd")
@@ -196,6 +203,13 @@ func _process(delta: float) -> bool:
 			if fc._player.playing:
 				_voiced_frames += 1
 			_max_level = maxf(_max_level, fc._level)
+		if _live and not _live_set and _t >= _second_at - 4.0:
+			_live_set = true
+			_menu.bot_screen._set_phase("connecting")
+			BotCall.hub().event.emit({"type": "session", "session_id": "shot"})
+			# A long line whole, so the subtitles' room under the button shows.
+			BotCall.hub().event.emit({"type": "said", "text": "Hello again! I kept the little sun we drew yesterday, do you want to add a moon beside it tonight?"})
+			_menu.bot_screen._heard = true
 		if _sheet and not _sheet_opened and _t >= _second_at - 3.0:
 			_sheet_opened = true
 			_menu.bot_screen.sheet.open()

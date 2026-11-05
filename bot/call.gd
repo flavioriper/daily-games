@@ -18,9 +18,9 @@ extends Node
 ## Nothing here asks for the mic permission or reads `Backend`: the screen
 ## does both and hands `start` the token ("" means offline, nothing dialled).
 
-## Half duplex: while the Swarm speaks the screen calls send_silence(true) and
-## zeros go up instead of the mic. With FULL_DUPLEX on, send_silence is ignored.
-const FULL_DUPLEX := false
+## The screen gates the mic with send_silence: zeros go up in the mic's place
+## whenever the talk button is not held (hold to talk, 2026-11-05), so the
+## frames keep their pace and the server hears silence, never a gap.
 ## Where the call server lives. Overridden by the BOT_URL environment variable,
 ## then by the first line of user://bot_url (a phone pointed at a Mac's server).
 const BOT_URL := "wss://peeplet-bot.invalid/ws/bot"
@@ -171,7 +171,7 @@ static func seen(id: String, jpg: PackedByteArray, w: int, h: int) -> void:
 
 
 static func send_silence(on: bool) -> void:
-	if _call != null and not FULL_DUPLEX:
+	if _call != null:
 		_call._silence = on
 
 
