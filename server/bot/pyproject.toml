@@ -17,6 +17,7 @@ dependencies = [
   "google-auth",
   "requests",
   "websockets",
+  "psycopg[binary,pool]>=3.3.8",
 ]
 [dependency-groups]
 dev = [

@@ -31,7 +31,7 @@ never edited from here.
 - Room sounds: `RoomTags`, `TagStripper`, the office tag paragraph in the prompt.
 - Training: `train/{train_gate,gate_data,gate_rubric}`, the gate data.
 - `policy.learn.Learner.install` (needed `studio.calibrate` and pyarrow).
-- Dependencies: `psycopg`, `pypdf`, `pyarrow`, dev `datasets`. Added `google-auth`
+- Dependencies: `psycopg` (re-added on 2026-11-05 for the shared layer, below), `pypdf`, `pyarrow`, dev `datasets`. Added `google-auth`
   and `websockets` (for the test client).
 - Tests of every cut module, deleted not skipped. Tests that mixed kept and cut
   code were trimmed (Postgres memory turns, holdout parquet, seeds, room tags).
@@ -69,3 +69,16 @@ The `Dockerfile` runs `server.py` (`bot.app.build_app`): `GET /health` and the c
 socket at `/ws/bot` (`hello` with a Firebase token, then `session`, then the call).
 With `BOT_TEST_PAGE=1` it also serves `GET /test` (`static/test.html`), a browser
 page to call it from by hand; cost per minute is in `docs/agents/bot.md`.
+
+## The shared layer (shared/)
+
+What every player's Swarm knows in common (spec, "Amendment, 2026-11-05: two layers"):
+a Postgres database `swarm` with pgvector on the Neon project `peeplet`, read and
+written by the server only (`NEON_SWARM_URL`). `shared/schema.sql` makes the four
+tables (`knowledge`, `style`, `turn_outcomes`, `suggestions`); `shared/store.py` is
+`SharedStore(dsn)`, which with `dsn=None` reads empty and writes nothing, and with an
+unreachable database logs a warning and answers empty. Nothing identifying a player
+is ever stored. The curated knowledge is `knowledge/<lang>/<topic>.md` (`# Title`,
+then one paragraph a row) and goes in with
+`uv run python ../../tools/sync_swarm_knowledge.py [--schema]`. Tests that touch the
+database run only with `SWARM_TEST_DSN` set (a dev Neon branch, never production).
