@@ -62,8 +62,10 @@ lines carry what was said.
 
 `content/pixel_garden.json` is a copy of the game's file, for the draw tool's
 bank ids: copy it again when the game's bank changes. The cap's goodbye line
-(`goodbye` in each `lines_<lang>`) has no clip until `render_clips` runs
-again; without one the line is sent as `said` and not heard.
+(`goodbye` in each `lines_<lang>`) has its clip in each language since
+2026-11-05; a line without a clip is sent as `said` and not heard.
 
 The `Dockerfile` runs `server.py` (`bot.app.build_app`): `GET /health` and the call
 socket at `/ws/bot` (`hello` with a Firebase token, then `session`, then the call).
+With `BOT_TEST_PAGE=1` it also serves `GET /test` (`static/test.html`), a browser
+page to call it from by hand; cost per minute is in `docs/agents/bot.md`.
