@@ -143,6 +143,7 @@ def default_jev():
 
 MEMORY_CLIENT_TIMEOUT_S = 15.0
 END_MEMORY_S = 25.0  # the end of call memory's whole budget: past it the phone gets bye_ack without it
+CLOSE_WAIT_S = 2.0  # after bye_ack the phone closes first: Godot's peer drops frames that arrive with a close
 
 
 def default_memory_client():
@@ -335,7 +336,7 @@ async def run_call(websocket, card: Card, user_id: str, session_id: str, deps, s
         capping.cancel()
         ledger_obs.flush_stt()
         try:
-            await finish_call(websocket, phone, memory, context.messages, ending[0] if ending else "gone", learn=learner_for(shared, card.language, memory, on_usage=lesson_usage))
+            await finish_call(websocket, phone, memory, context.messages, ending[0] if ending else "gone", learn=learner_for(shared, card.language, memory, on_usage=lesson_usage), close_wait=_dep(deps, "close_wait", CLOSE_WAIT_S))
         finally:
             await outcomes.end(call_s=asyncio.get_running_loop().time() - started)  # the last row, in the background: the socket is already closed
             save_ledger(ledger)  # the call's cost rows copied to the bucket in a worker thread; nothing waits for it
@@ -357,8 +358,8 @@ def learner_for(shared, lang: str, memory, on_usage=None, timeout: float = disti
     return learn
 
 
-async def finish_call(websocket, phone: Phone, memory: MemoryTurn, messages: list[dict], reason: str, learn=None, end_timeout: float = END_MEMORY_S) -> None:
-    """The end of the call. On `bye` or the cap, with the socket still open: remembering, the call's summary and lasting facts go to the phone as `memory`, then `bye_ack` and a close. A phone that went away gets nothing. Either way `learn` starts the call's distil in the background (after memory.end and before `bye_ack` when there is one); it never delays the goodbye, and after it the server holds nothing of the call."""
+async def finish_call(websocket, phone: Phone, memory: MemoryTurn, messages: list[dict], reason: str, learn=None, end_timeout: float = END_MEMORY_S, close_wait: float = CLOSE_WAIT_S) -> None:
+    """The end of the call. On `bye` or the cap, with the socket still open: remembering, the call's summary and lasting facts go to the phone as `memory`, then `bye_ack`, then the phone's own close (up to close_wait; a Godot peer loses whatever arrives in the same read as a server's close), then ours if it has not come. A phone that went away gets nothing. Either way `learn` starts the call's distil in the background (after memory.end and before `bye_ack` when there is one); it never delays the goodbye, and after it the server holds nothing of the call."""
     if reason in ("bye", "cap") and phone.open:
         phone.state("remembering")
         try:
@@ -370,15 +371,37 @@ async def finish_call(websocket, phone: Phone, memory: MemoryTurn, messages: lis
         _learn(learn, messages)
         phone.send({"type": "bye_ack"})
         await phone.flush()
-        try:
-            await websocket.close(code=1000)
-        except Exception:
-            pass  # already gone
+        if not await client_closed(websocket, close_wait):
+            try:
+                await websocket.close(code=1000)
+            except Exception:
+                pass  # already gone
     else:
         if memory.key is not None:
             memory.hub.detach(memory.key)
         _learn(learn, messages)  # the ruling of 2026-11-05: a call that ends gone gets no memory, but its lessons are drafted
     phone.open = False
+
+
+async def client_closed(websocket, timeout: float) -> bool:
+    """Reads (and drops) what the phone still sends until its close, for up to timeout. True when it closed or is gone. The pipeline has stopped by now, so nothing else is reading the socket."""
+
+    if not hasattr(websocket, "receive"):  # a test socket that cannot hear the phone
+        return False
+
+    async def until_close() -> None:
+        while True:
+            frame = await websocket.receive()
+            if frame.get("type") == "websocket.disconnect":
+                return
+
+    try:
+        await asyncio.wait_for(until_close(), timeout)
+        return True
+    except asyncio.TimeoutError:
+        return False
+    except Exception:  # the phone is already gone
+        return True
 
 
 def _learn(learn, messages: list[dict]) -> None:

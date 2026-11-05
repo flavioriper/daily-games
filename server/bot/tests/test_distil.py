@@ -272,3 +272,29 @@ def test_the_memory_client_gives_up_quickly(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
     client = bot.default_memory_client()
     assert client.timeout == 15 and client.max_retries == 1
+
+
+async def test_after_bye_ack_the_phone_closes_first():
+    """Godot's peer drops frames read with a close, so the server waits (up to close_wait) for the phone to close after `bye_ack`, then closes 1000 itself."""
+
+    class Listening(FakeSocket):
+        def __init__(self):
+            super().__init__()
+            self.hangs_up = asyncio.Event()
+
+        async def receive(self):
+            await self.hangs_up.wait()
+            return {"type": "websocket.disconnect", "code": 1000}
+
+    sock = Listening()
+    ending = asyncio.ensure_future(finish_call(sock, Phone(sock), FakeMemory(), CALL, "bye", close_wait=5.0))
+    await asyncio.sleep(0.2)
+    assert sock.sent[-1] == {"type": "bye_ack"} and sock.closed is None and not ending.done()  # waiting on the phone
+    sock.hangs_up.set()
+    await asyncio.wait_for(ending, 1.0)
+    assert sock.closed is None  # the phone closed; nothing more to close
+
+    silent = Listening()  # a phone that never closes
+    started = time.perf_counter()
+    await finish_call(silent, Phone(silent), FakeMemory(), CALL, "cap", close_wait=0.3)
+    assert 0.3 <= time.perf_counter() - started < 1.0 and silent.closed == 1000

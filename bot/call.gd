@@ -11,7 +11,9 @@ extends Node
 ## Signals live on a hub that outlives every call (GDScript has no static
 ## signals): `BotCall.hub().event` (every JSON frame, a Dictionary) and
 ## `BotCall.hub().ended` (reason: "bye", "4401", "4429", "4409", "dropped",
-## "timeout", "offline"). Exactly one `ended` per `start`.
+## "timeout", "offline"). Exactly one `ended` per accepted `start`, always
+## deferred (a listener connected right after `start`, or a host being torn
+## down, is safe); a refused second `start` emits nothing.
 ##
 ## Nothing here asks for the mic permission or reads `Backend`: the screen
 ## does both and hands `start` the token ("" means offline, nothing dialled).
@@ -30,7 +32,8 @@ const DOWN_RATE := 24000
 const FRAME := 320  # samples up per frame, 20 ms at 16 kHz
 const LEAD := 0.2  # seconds of voice kept in the generator; the rest waits in our queue
 const FADE := 0.05  # a `clear` winds the voice down over this
-const BYE_WAIT := 6.0
+const BYE_WAIT := 6.0  # after `bye`, renewed by each `remembering` or `memory` frame
+const BYE_MAX := 30.0  # ... but never past this long after stop()
 
 ## No `session` this long after `start` ends the call with "timeout" (a cold
 ## start of the server can take forty seconds). A probe may shorten it.
@@ -55,6 +58,7 @@ var _t0 := 0  # ticks at start; the clocks below are the wall clock, not summed 
 var _live := false  # `session` came
 var _stopping := false
 var _bye_at := 0
+var _stop_at := 0
 var _done := false
 var _silence := false
 # up
@@ -98,7 +102,8 @@ static func url() -> String:
 
 ## Dials `url` and says hello with the token, the language and the phone's
 ## memory file. An empty token is offline: `ended("offline")` next frame. A
-## second start while a call is live is refused (one call at a time).
+## second start while a call is live is refused with a warning and emits
+## nothing (one call at a time; the live call's `ended` is still to come).
 static func start(host: Node, address: String, token: String, memory: Dictionary, language: String) -> void:
 	if _call != null:
 		push_warning("BotCall: a call is already live")
@@ -112,7 +117,7 @@ static func start(host: Node, address: String, token: String, memory: Dictionary
 	c._t0 = Time.get_ticks_msec()
 	c._hello = {"type": "hello", "token": token, "language": language, "memory": memory}
 	c._peer.inbound_buffer_size = 1 << 20  # replies come in bursts faster than they play
-	c._peer.outbound_buffer_size = 1 << 18
+	c._peer.outbound_buffer_size = 1 << 20
 	c._peer.max_queued_packets = 8192
 	_call = c
 	host.add_child(c)
@@ -121,13 +126,16 @@ static func start(host: Node, address: String, token: String, memory: Dictionary
 		c._finish("dropped")
 
 
-## Says bye; the call ends at `bye_ack` or after six seconds, whichever first.
+## Says bye; the call ends at `bye_ack`, or after six seconds without one. A
+## `remembering` state or a `memory` frame restarts the six seconds (the
+## server is still writing the call's memory), up to thirty after stop().
 static func stop() -> void:
 	if _call == null or _call._stopping:
 		return
 	var c := _call
 	c._stopping = true
-	c._bye_at = Time.get_ticks_msec() + int(BYE_WAIT * 1000.0)
+	c._stop_at = Time.get_ticks_msec()
+	c._bye_at = c._stop_at + int(BYE_WAIT * 1000.0)
 	c._release_mic()
 	if c._peer.get_ready_state() == WebSocketPeer.STATE_OPEN and c._live:
 		c._send({"type": "bye"})
@@ -249,7 +257,10 @@ func _on_text(raw: String) -> void:
 	var m = JSON.parse_string(raw)
 	if not (m is Dictionary):
 		return
-	match String(m.get("type", "")):
+	var kind := String(m.get("type", ""))
+	if _stopping and (kind == "memory" or (kind == "state" and m.get("name") == "remembering")):
+		_bye_at = mini(Time.get_ticks_msec() + int(BYE_WAIT * 1000.0), _stop_at + int(BYE_MAX * 1000.0))
+	match kind:
 		"session":
 			_live = true
 			_open_voice()
@@ -258,7 +269,7 @@ func _on_text(raw: String) -> void:
 			_clear_voice()
 		"bye_ack":
 			_hub.event.emit(m)
-			_peer.close(1000)
+			_peer.close(1000)  # the phone closes first; the server waits for it
 			_finish("bye")
 			return
 	_hub.event.emit(m)
@@ -266,7 +277,9 @@ func _on_text(raw: String) -> void:
 
 func _send(msg: Dictionary) -> void:
 	if _peer.get_ready_state() == WebSocketPeer.STATE_OPEN:
-		_peer.send_text(JSON.stringify(msg))
+		var err := _peer.send_text(JSON.stringify(msg))
+		if err != OK:
+			push_warning("BotCall: %s not sent (%s)" % [msg.get("type"), error_string(err)])
 
 
 func _finish(reason: String) -> void:
@@ -286,7 +299,7 @@ func _finish(reason: String) -> void:
 		_call = null
 	if is_inside_tree():
 		queue_free()
-	_hub.ended.emit(reason)
+	_hub.call_deferred("emit_signal", "ended", reason)
 
 
 func _exit_tree() -> void:
@@ -311,8 +324,11 @@ func _open_mic() -> void:
 		AudioServer.set_bus_name(at, MIC_BUS)
 		AudioServer.set_bus_mute(at, false)
 		AudioServer.set_bus_volume_db(at, -80.0)  # captured, never heard
-		AudioServer.add_bus_effect(at, AudioEffectCapture.new())
+		var fx := AudioEffectCapture.new()
+		fx.buffer_length = 0.5  # a slow frame never overflows the capture
+		AudioServer.add_bus_effect(at, fx)
 	_cap = AudioServer.get_bus_effect(at, 0) as AudioEffectCapture
+	_cap.buffer_length = 0.5  # the bus may be the Swarm tab's, made at 0.1
 	_cap.clear_buffer()
 	_mic = AudioStreamPlayer.new()
 	_mic.stream = AudioStreamMicrophone.new()
