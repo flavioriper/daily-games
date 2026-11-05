@@ -12,6 +12,7 @@ extends SceneTree
 ##     godot --path . --resolution 810x1440 --script res://tests/_shot_menu.gd -- streak
 ##     godot --path . --resolution 810x1440 --script res://tests/_shot_menu.gd -- stats
 ##     godot --path . --resolution 810x1440 --script res://tests/_shot_menu.gd -- diff
+##     godot --path . --resolution 810x1440 --script res://tests/_shot_menu.gd -- bot sheet
 ##
 ## `diff` opens the difficulty sheet over Light Up's card in place of a tab
 ## (`diff=<id>` for another board's), on a throwaway progress file whose last
@@ -65,6 +66,14 @@ var _mid_saved := false
 var _voiced_frames := 0
 var _max_level := 0.0
 var _intro_started := false
+## `bot sheet`: the memory sheet (bot/memory_sheet.gd) open over the room, a
+## few seconds after the face has formed, on a throwaway memory file of three
+## facts and an episode (the player's own user://bot_memory.json is never
+## touched), so the tab idle line reads the sheet up.
+const SHEET_MEM := "user://_shot_menu_bot_memory.json"
+var _sheet := false
+var _sheet_opened := false
+var _saved_mem := ""
 
 func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
@@ -94,6 +103,19 @@ func _initialize() -> void:
 		DirAccess.remove_absolute(progress.path)
 		var id := _tab_arg.trim_prefix("diff=") if "=" in _tab_arg else "lightup"
 		progress.set_last_level(id, 1)
+	if _tab_arg == "bot" and args.has("sheet"):
+		_sheet = true
+		var mem = load("res://bot/bot_memory.gd")
+		_saved_mem = mem.path
+		mem.path = SHEET_MEM
+		_drop_sheet_mem()
+		var f := FileAccess.open(SHEET_MEM, FileAccess.WRITE)
+		f.store_string(JSON.stringify({"facts": [
+			{"id": "f1", "text": "Has a cat called Biscuit.", "since": "2026-11-01T10:00:00Z"},
+			{"id": "f2", "text": "Likes owls.", "since": "2026-11-03T10:00:00Z"},
+			{"id": "f3", "text": "Is learning the flute, and practises every evening after dinner.", "since": "2026-11-04T10:00:00Z"}],
+			"episodes": [{"id": "e1", "summary": "We drew a sun together and talked about the beach.", "at": "2026-11-04T18:00:00Z"}]}))
+		f.close()
 	var main: Node = load("res://world/main.tscn").instantiate()
 	root.add_child(main)
 	_menu = main.get_node("UI/Menu")
@@ -101,6 +123,13 @@ func _initialize() -> void:
 func _finalize() -> void:
 	if _tab_arg.begins_with("diff"):
 		DirAccess.remove_absolute("user://_shot_menu_progress.cfg")
+	if _sheet:
+		_drop_sheet_mem()
+		load("res://bot/bot_memory.gd").path = _saved_mem
+
+func _drop_sheet_mem() -> void:
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(SHEET_MEM))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(SHEET_MEM + ".tmp"))
 
 func _process(delta: float) -> bool:
 	_t += delta
@@ -167,6 +196,9 @@ func _process(delta: float) -> bool:
 			if fc._player.playing:
 				_voiced_frames += 1
 			_max_level = maxf(_max_level, fc._level)
+		if _sheet and not _sheet_opened and _t >= _second_at - 3.0:
+			_sheet_opened = true
+			_menu.bot_screen.sheet.open()
 		if _tab_arg == "bot" and not _mid_saved and _t >= _second_at - 5.0:
 			_mid_saved = true
 			var sw = _menu.bot_screen.face

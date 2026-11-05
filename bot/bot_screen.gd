@@ -8,8 +8,10 @@ extends Control
 ## call says bye in the background, and the memory frames that come after are
 ## still kept, BotMemory.apply). Nothing else is on screen: the one back
 ## button, the subtitles (the face's), a status line under the face, the
-## quiet log of what the tools did, the demo pills while there is no call,
-## and the "what I know about you" button (hidden until its sheet exists).
+## quiet log of what the tools did, the demo pills while there is no call
+## (under it), and the "what I know about you" pill in the top right, which
+## opens the memory sheet (bot/memory_sheet.gd) over the room; a call goes on
+## under it.
 ##
 ## No key is read by the app: the brain, the ears and the voice are the
 ## server's. Offline (no token: a harness, the suite, a phone without the
@@ -44,6 +46,7 @@ const Motion = preload("res://core/motion.gd")
 const Backend = preload("res://core/backend.gd")
 const Power = preload("res://core/power.gd")
 const Haptics = preload("res://core/haptics.gd")
+const MemorySheet = preload("res://bot/memory_sheet.gd")
 
 const BACK := 64.0
 const PILL_H := 64.0
@@ -63,6 +66,8 @@ var face: Face
 var _back: Button
 var _pills: Array[Button] = []  # Intro, Draw
 var _memory_btn: Button
+## What the Swarm knows, the house's paper sheet over the room.
+var sheet: MemorySheet
 var _log: Label
 var _status: Label
 var _insets := Vector2.ZERO
@@ -148,11 +153,16 @@ func _init() -> void:
 		add_child(pill)
 		_pills.append(pill)
 
-	# What the Swarm knows about the player: hidden until its sheet lands
-	# (bot/memory_sheet.gd, the plan's Task 14).
+	# What the Swarm knows about the player, and forgetting it: the sheet
+	# (bot/memory_sheet.gd), last in the room so it stands over everything and
+	# Android's back closes it before the room.
 	_memory_btn = _glass_pill("BOT_KNOWN_TITLE")
-	_memory_btn.visible = false
+	_memory_btn.button_down.connect(func() -> void: Motion.bump(_memory_btn, 0.12))
 	add_child(_memory_btn)
+	sheet = MemorySheet.new()
+	sheet.name = "MemorySheet"
+	_memory_btn.pressed.connect(sheet.open)
+	add_child(sheet)
 
 	BotCall.hub().event.connect(_on_event)
 	BotCall.hub().ended.connect(_on_ended)
@@ -233,6 +243,7 @@ func close() -> void:
 		BotCall.stop()
 	_set_phase("")
 	_demo_due = false
+	sheet.close()
 	face.close()
 	Music.hold("bot", false)
 	visible = false
@@ -426,6 +437,7 @@ func _on_event(msg: Dictionary) -> void:
 	if kind == "memory":
 		# Kept whenever it comes, the call's end after the screen has closed too.
 		BotMemory.apply(msg)
+		sheet.refresh()
 		return
 	if _phase != "connecting" and _phase != "live":
 		return
@@ -553,13 +565,15 @@ func _layout() -> void:
 	_status.reset_size()
 	_status.size.x = ww
 	_status.position = Vector2((size.x - ww) * 0.5, size.y - _insets.y - 290.0 - _status.size.y * 0.5)
+	# The memory pill beside the back button's row, the demos in a row under it.
+	var top := 28.0 + _insets.x + (BACK - PILL_H) * 0.5
+	_memory_btn.size = _memory_btn.get_combined_minimum_size()
+	_memory_btn.position = Vector2(size.x - 28.0 - _memory_btn.size.x, top)
 	var right := size.x - 28.0
 	for k in range(_pills.size() - 1, -1, -1):
 		var pill := _pills[k]
 		pill.size = pill.get_combined_minimum_size()
 		right -= pill.size.x
-		pill.position = Vector2(right, 28.0 + _insets.x + (BACK - PILL_H) * 0.5)
+		pill.position = Vector2(right, top + PILL_H + 14.0)
 		right -= 14.0
 		pill.visible = demos
-	_memory_btn.size = _memory_btn.get_combined_minimum_size()
-	_memory_btn.position = Vector2(size.x - 28.0 - _memory_btn.size.x, 28.0 + _insets.x + (BACK - PILL_H) * 0.5)
