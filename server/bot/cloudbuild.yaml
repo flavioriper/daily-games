@@ -1,0 +1,46 @@
+# The Swarm's call server on Cloud Run, built and deployed by tools/deploy_bot.sh (person-run):
+#   gcloud builds submit server/bot --config server/bot/cloudbuild.yaml --project daily-games-420bf \
+#     --substitutions _TAG=<tag>
+# There is no trigger on this: a push to main does not deploy the bot. Setup order: docs/agents/bot.md, "Deploy".
+steps:
+- name: gcr.io/cloud-builders/docker
+  args: [build, -t, "$_IMAGE:$_TAG", .]
+- name: gcr.io/cloud-builders/docker
+  args: [push, "$_IMAGE:$_TAG"]
+- name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+  entrypoint: gcloud
+  args:
+  - run
+  - deploy
+  - peeplet-bot
+  - --image=$_IMAGE:$_TAG
+  - --region=$_REGION
+  - --execution-environment=gen2
+  - --max-instances=1
+  - --min-instances=0
+  - --cpu=2
+  - --memory=2Gi
+  - --no-cpu-throttling
+  - --timeout=3600
+  # Step 4 of the deploy (two calls at once, CPU in Cloud Run metrics) measures this; 4 is a placeholder until then.
+  - --concurrency=4
+  - --session-affinity
+  - --add-volume=name=studio,type=cloud-storage,bucket=$_BUCKET
+  - --add-volume-mount=volume=studio,mount-path=/data
+  - --service-account=peeplet-bot@${PROJECT_ID}.iam.gserviceaccount.com
+  # BOT_LEDGER keeps the cost rows on the bucket (STUDIO_DATA=/data is in the Dockerfile). BOT_LOG_LEVEL stays at its
+  # WARNING default, because DEBUG logs what is said; BOT_TEST_PAGE is never set in production.
+  - --set-env-vars=BOT_LEDGER=/data/ledger.sqlite
+  - --set-secrets=OPENAI_API_KEY=peeplet-bot-openai:latest,DEEPGRAM_API_KEY=peeplet-bot-deepgram:latest,ELEVENLABS_API_KEY=peeplet-bot-elevenlabs:latest,JEV_API_KEY=peeplet-bot-jev:latest,NEON_SWARM_URL=peeplet-bot-neon-swarm-url:latest
+  # No --allow-unauthenticated: this organisation refuses allUsers on a deploy. tools/public_invoker.sh peeplet-bot opens the service.
+substitutions:
+  _REGION: us-central1
+  _IMAGE: us-central1-docker.pkg.dev/${PROJECT_ID}/peeplet-bot/peeplet-bot
+  _BUCKET: ${PROJECT_ID}-peeplet-bot
+  _TAG: manual
+options:
+  dynamicSubstitutions: true
+  machineType: E2_HIGHCPU_8
+  logging: CLOUD_LOGGING_ONLY
+images:
+- $_IMAGE:$_TAG

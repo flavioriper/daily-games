@@ -2,7 +2,6 @@
 .venv
 .superpowers
 state
-voices
 tests
 docs
 **/__pycache__

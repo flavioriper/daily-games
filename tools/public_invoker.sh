@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# One-time setup: let anyone on the internet call submitTurn.
+# One-time setup: let anyone on the internet call submitTurn (or, given a service name as the first argument,
+# that Cloud Run service: `tools/public_invoker.sh peeplet-bot` for the Swarm's call server, whose callers are
+# anonymous Firebase users too and which verifies the id token itself).
 #
 # submitTurn is a public endpoint by design: the game's players are anonymous
 # Firebase users, not Google identities, so Cloud Run cannot authenticate
@@ -24,6 +26,7 @@
 # allowed to change policies or grant roles, which is the right default.
 set -euo pipefail
 P=daily-games-420bf
+SERVICE="${1:-submitturn}"
 
 # Off by default on a fresh project, and gcloud would stop to ask.
 gcloud services enable orgpolicy.googleapis.com --project "$P"
@@ -44,12 +47,19 @@ rm -f "$tmp"
 # check on the service altogether: no `allUsers` member exists, the service
 # simply accepts unauthenticated calls, and the function's token check is the
 # gate, as designed. Either path leaves submitTurn callable by the game.
-if gcloud run services add-iam-policy-binding submitturn --region us-central1 --project "$P" \
+if gcloud run services add-iam-policy-binding "$SERVICE" --region us-central1 --project "$P" \
     --member allUsers --role roles/run.invoker >/dev/null 2>&1; then
   echo "granted roles/run.invoker to allUsers"
 else
   echo "allUsers grant refused (restriction still cached); disabling the invoker IAM check instead"
-  gcloud run services update submitturn --region us-central1 --project "$P" --no-invoker-iam-check >/dev/null
+  gcloud run services update "$SERVICE" --region us-central1 --project "$P" --no-invoker-iam-check >/dev/null
+fi
+
+if [ "$SERVICE" != submitturn ]; then
+  URL="$(gcloud run services describe "$SERVICE" --region us-central1 --project "$P" --format 'value(status.url)')"
+  echo "$SERVICE is public; its health answers:"
+  curl -s -w "\n%{http_code}\n" "$URL/health"
+  exit 0
 fi
 
 echo "submitTurn is public; a POST without a token should now answer 401 from the function:"
