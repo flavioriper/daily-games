@@ -179,16 +179,19 @@ static func deal(rng: RandomNumberGenerator, difficulty: int, themed: Array = []
 
 ## The day's theme words (ThemedPictures.theme_pool, folded) that band
 ## `difficulty`'s own slice of the list holds, as the list spells them, the
-## strongest first: Medium's and Hard's themed answer (2026-11-06). Easy
-## takes the night's own picks (ThemedPictures.words) from the whole list.
+## WEAKEST first: Medium's and Hard's themed answer (2026-11-06). The bank
+## word boards print the strongest theme word they hold, so taking from the
+## other end keeps Hidden Word's answer off them (a day with one word in the
+## slice can still meet one). Easy takes the night's own picks
+## (ThemedPictures.words), which the pool never holds.
 static func from_pool(pool: Array, difficulty: int) -> Array:
 	_load()
 	var end := _folded.size()
 	if difficulty < 2 and difficulty < _bands.size():
 		end = mini(end, int(_bands[difficulty]))
 	var out: Array = []
-	for w in pool:
-		var k := _folded.find(String(w))
+	for i in range(pool.size() - 1, -1, -1):
+		var k := _folded.find(String(pool[i]))
 		if k >= 0 and k < end and String(_folded[k]).length() == LEN:
 			out.append(_answers[k])
 	return out

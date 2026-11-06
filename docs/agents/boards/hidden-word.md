@@ -270,7 +270,14 @@ were". This replaces the 40% mirror above.
   the whole list), so a themed word never makes a band easier or harder than
   its slice; Insane keeps its bank (the theme would give it away).
   `_day_words` deals through the same `_themed_for(b)`, so the bands still
-  never share a word (fixture pool: en Medium FLAME, Hard SMOKE).
+  never share a word. **Spoilers**: the bank word boards print the theme
+  word they hold (Stepping Stones from the first frame, the others when
+  made and on the win), and they take the strongest; so Medium and Hard take
+  their slice's theme words weakest first (fixture: en Medium CABIN, Hard
+  STOOL), and `theme_pool` never holds the night's `hiddenword` picks
+  (Easy's answers: on 2026-11-06 SHIRT was both Easy's pick and the
+  Biscuit Tin and Padlock word before this). A day with a single theme word
+  in a slice can still meet a bank board's.
 - A themed answer: the win's subtitle adds `HW_WIN_THEME` ("A word from
   today's theme!"), the new `theme` cue (the wrap climbing an octave) rings
   as the seal comes down (STAMP_AT after the party), `day_dict` says

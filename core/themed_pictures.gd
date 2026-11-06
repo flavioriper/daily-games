@@ -210,8 +210,9 @@ static func words(date_key: int, board: String):
 ## The day's theme words in the player's language, folded as the word
 ## boards fold (Locale.fold), the strongest first, each once: the night's own
 ## list for the bank boards (`words.theme`, since 2026-11-06, a deploy owed),
-## then Hidden Word's and Word Trail's picks, then the words of the
-## pictures' names (three letters up, never a little word like "de"). The
+## then Word Trail's picks, then the words of the pictures' names (three
+## letters up, never a little word like "de"). Never Hidden Word's own
+## picks: they are Easy's answers, and the bank boards print their word. The
 ## bank boards (Biscuit Tin, Cross Stitch, Padlock, Stepping Stones, Garden
 ## Fence) deal the bank entry that holds one (`bank_pick`); Hidden Word's
 ## Medium and Hard take the first their slice holds.
@@ -226,8 +227,12 @@ static func theme_pool(date_key: int) -> Array:
 	var lang := Locale.current()
 	var raw: Array = []
 	var all = doc.get("words")
+	var easy: Array = []
+	if all is Dictionary and all.get("hiddenword") is Dictionary and all.hiddenword.get(lang) is Array:
+		for w in all.hiddenword[lang]:
+			easy.append(Locale.fold(String(w)))
 	if all is Dictionary:
-		for board in ["theme", "hiddenword"]:
+		for board in ["theme"]:
 			var got = all.get(board, {}).get(lang) if all.get(board) is Dictionary else null
 			if got is Array:
 				raw.append_array(got)
@@ -244,7 +249,7 @@ static func theme_pool(date_key: int) -> Array:
 		if not w is String:
 			continue
 		var f := Locale.fold(String(w).strip_edges())
-		if f.length() < 3 or f.length() > 16 or POOL_STOP.has(f) or out.has(f):
+		if f.length() < 3 or f.length() > 16 or POOL_STOP.has(f) or out.has(f) or easy.has(f):
 			continue
 		var letters := true
 		for ch in f:
