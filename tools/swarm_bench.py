@@ -196,6 +196,7 @@ def language_of(text: str) -> str | None:
 
 def score(case: dict, trace: list[dict], reply: str, gave_up: bool) -> dict:
     """1 pass, 0 fail, None not asked of this case."""
+    reply = reply.replace("\u2019", "'").replace("\u2018", "'")  # models write "I’m"
     calls = flat_calls(trace)
     names = {n for n, _ in calls}
     s: dict = {}
@@ -260,7 +261,7 @@ async def one_run(key: str, case: dict, rep: int, effort: str, fake: bool, price
 
 
 def trace_text(run: dict) -> str:
-    did = [f"  {'' if e['ok'] else 'FAILED '}{e['name']}({json.dumps(e['args'], ensure_ascii=False)[:400]})" for e in run["trace"]] or ["  (nothing on screen)"]
+    did = [f"  {'' if e['ok'] else 'FAILED '}{e['name']}({json.dumps(e['args'], ensure_ascii=False)})" for e in run["trace"]] or ["  (nothing on screen)"]
     return "\n".join(did) + f'\n  said: "{run["raw"]}"'
 
 
@@ -324,10 +325,18 @@ def report(runs: list[dict], verdicts: list[dict], args) -> str:
         cells = [statistics.mean(r["score"] for r in runs if r["model"] == m and r["case"] == cid) for m in models]
         lines.append(f"| {cid} | " + " | ".join(f"{c:.2f}" for c in cells) + " |")
     if verdicts:
-        lines += ["", f"## Judge ({args.judge}, blind, both orders; a win only when both agree)", "", "| model | wins | losses | ties |", "|---|---|---|---|"]
-        for m in models:
-            mine = [v for v in verdicts if m in (v["a"], v["b"]) and v.get("winner")]
-            lines.append(f"| `{m}` | {sum(v['winner'] == m for v in mine)} | {sum(v['winner'] not in (m, 'tie') for v in mine)} | {sum(v['winner'] == 'tie' for v in mine)} |")
+        judges = list(dict.fromkeys(v["judge"] for v in verdicts))
+        sets = {j: [v for v in verdicts if v["judge"] == j] for j in judges}
+        if len(judges) > 1:  # a win every judge gave; anything else is a tie
+            keyed = {}
+            for v in verdicts:
+                keyed.setdefault((v["case"], v["a"], v["b"], v["rep"]), []).append(v.get("winner"))
+            sets["all judges agree"] = [{"a": k[1], "b": k[2], "winner": w[0] if len(set(w)) == 1 and None not in w else "tie"} for k, w in keyed.items()]
+        lines += ["", "## Judges (blind, both orders; a win only when both orders agree)", "", "| judge | model | wins | losses | ties |", "|---|---|---|---|---|"]
+        for j, vs in sets.items():
+            for m in models:
+                mine = [v for v in vs if m in (v["a"], v["b"]) and v.get("winner")]
+                lines.append(f"| {j} | `{m}` | {sum(v['winner'] == m for v in mine)} | {sum(v['winner'] not in (m, 'tie') for v in mine)} | {sum(v['winner'] == 'tie' for v in mine)} |")
         broken = sum(1 for v in verdicts if not v.get("winner"))
         if broken:
             lines.append(f"\n{broken} judge calls failed (see judge.jsonl).")
@@ -349,6 +358,7 @@ async def main():
     p.add_argument("--parallel", type=int, default=6)
     p.add_argument("--worst", type=int, default=8)
     p.add_argument("--fake", action="store_true")
+    p.add_argument("--from", dest="source", default="", help="a past --out: re-score its runs with the current cases and judge them again, no new runs")
     p.add_argument("--out", default=str(Path(os.environ.get("TMPDIR", "/tmp")) / "swarm_bench" / time.strftime("%Y%m%d-%H%M%S")))
     args = p.parse_args()
     args.models = [m for m in args.models.split(",") if m]
@@ -369,13 +379,23 @@ async def main():
         print(f"[{done}/{len(jobs)}] {m.split(':')[1]:>14} {c['id']:<16} {r['score']:.2f} {r['ms']:>6}ms {r['error'] or ''}", flush=True)
         return r
 
-    runs = await asyncio.gather(*(run(*j) for j in jobs))
+    if args.source:
+        runs = [json.loads(l) for l in (Path(args.source) / "runs.jsonl").read_text().splitlines() if l]
+        runs = [r for r in runs if r["case"] in cases and r["model"] in args.models]
+        for r in runs:
+            if not r["error"]:
+                r.update(score(cases[r["case"]], r["trace"], r["reply"], r["raw"].startswith("Sorry, that took too many steps")))
+        args.reps = len({r["rep"] for r in runs})
+    else:
+        runs = await asyncio.gather(*(run(*j) for j in jobs))
     runs.sort(key=lambda r: (r["model"], r["case"], r["rep"]))
     (out / "runs.jsonl").write_text("\n".join(json.dumps(r, ensure_ascii=False, default=str) for r in runs) + "\n")
     verdicts = []
     if args.judge and not args.fake and len(args.models) > 1 and any(c.get("judge") for c in cases.values()):
         print("judging...", flush=True)
-        verdicts = await judge_pairs(runs, cases, args.judge, args.judge_effort, gate)
+        verdicts = []
+        for judge in args.judge.split(","):
+            verdicts += [{**v, "judge": judge} for v in await judge_pairs(runs, cases, judge, args.judge_effort, gate)]
         (out / "judge.jsonl").write_text("\n".join(json.dumps(v, ensure_ascii=False) for v in verdicts) + "\n")
     text = report(runs, verdicts, args)
     (out / "report.md").write_text(text)

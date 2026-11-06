@@ -50,6 +50,7 @@ cases:
     want:
       - [{tool: draw, arg: subject, contains: [cat, kitten]}]
       - [{tool: draw, arg: meant, contains: [cat, kitten]}]
+      - [{tool: draw, arg: name, contains: [cat, kitten]}]
 
   - id: bigger_followup
     lang: en
