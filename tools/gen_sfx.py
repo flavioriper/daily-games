@@ -758,6 +758,9 @@ SETS = {
         # steps are set by each take's own note, so that every note lands
         # between 400 and 700 Hz.
         "type":     ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -15, FOLEY, "bank:wrap", "cut:0.1", "tight"),
+        # A word of the day's theme found (2026-11-06): the wrap climbing an
+        # octave as the seal comes down, as the themed boards' wins.
+        "theme":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -15, FOLEY, "bank:wrap", "cut:0.1", "notes:0.06:7,12,16", "tight"),
         # A letter taken back: a lighter thing set down.
         "erase":    ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -16, FOLEY, "bank:lip", "cut:0.12", "tight"),
         "flip":     ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.14", "notes:0:-2", "tight"),
@@ -1832,9 +1835,10 @@ SETS = {
     # falling (too few swaps left to finish), `fall` the lip falling (a star
     # lost), `out` the tongue falling (the last swap spent), `more` two wraps
     # rising (three more swaps), `reveal` a run of wraps (Show the sampler),
-    # `enter` a run of tokens (the patches sewn on). hint, solved, confetti
-    # and party are takes already on disk, copied into
-    # build/sfx_raw/crossstitch/ from Honeycomb's, never bought. All of it
+    # `enter` a run of tokens (the patches sewn on), `theme` three wraps
+    # high (the day's theme word stitched, its sun out; 2026-11-06, as
+    # Pie's). hint, solved, confetti and party are takes already on disk,
+    # copied into build/sfx_raw/crossstitch/ from Honeycomb's, never bought. All of it
     # unheard.
     "crossstitch": {
         "pick":     ('one small smooth pebble dropped onto a wooden board, a single soft rounded click, very short', 0.5, -16, FOLEY, "bank:pebble", "cut:0.14", "notes:0:1", "tight"),
@@ -1853,6 +1857,7 @@ SETS = {
         "confetti": ("a soft little paper confetti pop and flutter with a tiny music box twinkle, cute", 1.0, -10, BEADBOX_TUNE, "warm:7000"),
         "solved":   ("a warm short celebratory flourish on a real kalimba and a music box, rising arpeggio ending on a soft hand bell shimmer, joyful and cozy", 2.0, -8, BEADBOX_TUNE, "warm:2600", "body:300"),
         "party":    ("a short cozy celebratory flourish on a real kalimba and a music box, rising and bright, with a few soft little party blower toots, warm and joyful", 2.0, -8, BEADBOX_TUNE, "warm:2600", "body:300"),
+        "theme":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -15, FOLEY, "bank:wrap", "cut:0.1", "notes:0.06:7,12,16", "tight"),
     },
     # Padlock (puzzle_id "padlock"), 2026-11-04: a combination padlock whose
     # letter dials are turned until the window spells words. Every action is
@@ -1870,7 +1875,8 @@ SETS = {
     # shackle springing), `enter` a run of tokens (the dials dropping in).
     # hint, solved, confetti and party are takes already on disk, copied
     # into build/sfx_raw/padlock/ from Honeycomb's, never bought. All of it
-    # unheard.
+    # unheard. `theme` (2026-11-06) one wrap and two above it, as Pie's (the
+    # day's word written on the sun tag).
     "padlock": {
         "notch":    ('one small smooth pebble dropped onto a wooden board, a single soft rounded click, very short', 0.5, -22, FOLEY, "bank:pebble", "cut:0.07", "tight"),
         "pick":     ('one small smooth pebble dropped onto a wooden board, a single soft rounded click, very short', 0.5, -17, FOLEY, "bank:pebble", "cut:0.12", "notes:0:2", "tight"),
@@ -1887,6 +1893,7 @@ SETS = {
         "confetti": ("a soft little paper confetti pop and flutter with a tiny music box twinkle, cute", 1.0, -10, BEADBOX_TUNE, "warm:7000"),
         "solved":   ("a warm short celebratory flourish on a real kalimba and a music box, rising arpeggio ending on a soft hand bell shimmer, joyful and cozy", 2.0, -8, BEADBOX_TUNE, "warm:2600", "body:300"),
         "party":    ("a short cozy celebratory flourish on a real kalimba and a music box, rising and bright, with a few soft little party blower toots, warm and joyful", 2.0, -8, BEADBOX_TUNE, "warm:2600", "body:300"),
+        "theme":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -15, FOLEY, "bank:wrap", "cut:0.1", "notes:0.06:7,12,16", "tight"),
     },
     # Biscuit Tin (puzzle_id "biscuit"), 2026-11-04: broken biscuit pieces
     # laid on a plate until they spell words; four that spell a long word
@@ -1917,6 +1924,8 @@ SETS = {
         "sweep":    ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -18, FOLEY, "bank:lip", "cut:0.3", "notes:0.06:1,-1,-3", "tight"),
         "hint":     ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -16, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320", "notes:0:2"),
         "enter":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.5", "notes:0.06:-1,1,3,4,6,8", "tight"),
+        # the daily theme (2026-11-06): the day's word made, its tag opened
+        "theme":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -15, FOLEY, "bank:wrap", "cut:0.1", "notes:0.06:7,12,16", "tight"),
         "confetti": ("a soft little paper confetti pop and flutter with a tiny music box twinkle, cute", 1.0, -10, BEADBOX_TUNE, "warm:7000"),
         "solved":   ("a warm short celebratory flourish on a real kalimba and a music box, rising arpeggio ending on a soft hand bell shimmer, joyful and cozy", 2.0, -8, BEADBOX_TUNE, "warm:2600", "body:300"),
         "party":    ("a short cozy celebratory flourish on a real kalimba and a music box, rising and bright, with a few soft little party blower toots, warm and joyful", 2.0, -8, BEADBOX_TUNE, "warm:2600", "body:300"),
@@ -1925,7 +1934,8 @@ SETS = {
     # brook, typed on the phone's own keyboard. Every action is a pop from
     # the bank, by its job: `type` the token light (a letter typed; pitched
     # up with the line's length at play), `erase` the lip (a letter taken
-    # back), `lay` the token low and a wrap (a stone set down in the water),
+    # back), `lay` the plop low and up (a stone set down in the water: the
+    # bank's water drop since 2026-11-06, the token before),
     # `join` tokens rising (Easy's given stone steps into the way), `refuse`
     # the tongue twice falling (a line refused), `again` the lip twice (a
     # word already on the way), `undo` the lip falling (a stone lifted),
@@ -1935,11 +1945,12 @@ SETS = {
     # (the far bank reached), `enter` a run of tokens (the banks laid out).
     # hint, solved, confetti and party are takes already on disk, copied
     # into build/sfx_raw/stones/ from Honeycomb's, never bought. All of it
-    # unheard.
+    # unheard. 2026-11-06 (the daily theme): `theme` the boards' wrap
+    # climbing 7/12/16 (the day's word reached, a sun on its stone).
     "stones": {
         "type":     ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -19, FOLEY, "bank:token", "cut:0.09", "notes:0:3", "tight"),
         "erase":    ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -20, FOLEY, "bank:lip", "cut:0.1", "notes:0:-1", "tight"),
-        "lay":      ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -13, FOLEY, "bank:token", "cut:0.2", "notes:0.06:-3,4", "tight"),
+        "lay":      ('one water drop falling into a cup of water, a single soft plop, close, very short', 0.5, -13, FOLEY, "bank:plop", "cut:0.2", "notes:0.06:-3,4", "tight"),
         "join":     ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -13, FOLEY, "bank:token", "cut:0.3", "notes:0.06:0,4,7,12", "tight"),
         "refuse":   ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -16, FOLEY, "bank:tongue", "cut:0.2", "notes:0.1:-2,-4", "tight"),
         "again":    ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -18, FOLEY, "bank:lip", "cut:0.12", "notes:0.09:0,0", "tight"),
@@ -1948,6 +1959,7 @@ SETS = {
         "fall":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -18, FOLEY, "bank:lip", "cut:0.12", "notes:0:-5", "tight"),
         "hop":      ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -15, FOLEY, "bank:wrap", "cut:0.1", "tight"),
         "bank":     ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -12, FOLEY, "bank:wrap", "cut:0.4", "notes:0.07:0,4,7,12", "tight"),
+        "theme":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -15, FOLEY, "bank:wrap", "cut:0.1", "notes:0.06:7,12,16", "tight"),
         "hint":     ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -16, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320", "notes:0:2"),
         "enter":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.4", "notes:0.07:-1,1,3,4", "tight"),
         "confetti": ("a soft little paper confetti pop and flutter with a tiny music box twinkle, cute", 1.0, -10, BEADBOX_TUNE, "warm:7000"),
@@ -1986,6 +1998,9 @@ SETS = {
         "gate":     ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -13, FOLEY, "bank:token", "cut:0.3", "notes:0.07:0,4,7", "tight"),
         "hint":     ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -16, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320", "notes:0:2"),
         "enter":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.4", "notes:0.07:-1,1,3,4", "tight"),
+        # The day's theme word tied (the daily theme, 2026-11-06): the wrap
+        # climbing as its ribbon and bow come on, as the themed boards' wins.
+        "theme":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -15, FOLEY, "bank:wrap", "cut:0.1", "notes:0.06:7,12,16", "tight"),
         "confetti": ("a soft little paper confetti pop and flutter with a tiny music box twinkle, cute", 1.0, -10, BEADBOX_TUNE, "warm:7000"),
         "solved":   ("a warm short celebratory flourish on a real kalimba and a music box, rising arpeggio ending on a soft hand bell shimmer, joyful and cozy", 2.0, -8, BEADBOX_TUNE, "warm:2600", "body:300"),
         "party":    ("a short cozy celebratory flourish on a real kalimba and a music box, rising and bright, with a few soft little party blower toots, warm and joyful", 2.0, -8, BEADBOX_TUNE, "warm:2600", "body:300"),

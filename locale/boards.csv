@@ -3474,6 +3474,8 @@ CS_MORE,Three more swaps,Mais três trocas,Tres cambios más
 CS_SHOW,Show the sampler,Mostrar o bordado,Mostrar el bordado
 CS_WIN_PERFECT,"Stitched in %d swaps, the fewest there are.","Bordado em %d trocas, o mínimo possível.","Bordado en %d cambios, el mínimo posible."
 CS_WIN,Stitched in %d swaps. The fewest was %d.,Bordado em %d trocas. O mínimo era %d.,Bordado en %d cambios. El mínimo era %d.
+CS_SAY_THEME,Today's word: %s!,Palavra do dia: %s!,¡Palabra del día: %s!
+CS_WIN_THEME,"Today's word: %s. %s","Palavra do dia: %s. %s","La palabra del día: %s. %s"
 HTP_CS_SWAP,Swap two letters,Troque duas letras,Cambia dos letras
 HTP_CS_SWAP_BODY,"Drag a letter onto another to swap them, or tap one and then the other. A letter in its place turns green and stays put.","Arraste uma letra sobre outra para trocá-las, ou toque numa e depois na outra. A letra no lugar fica verde e não sai mais.","Arrastra una letra sobre otra para cambiarlas, o toca una y luego la otra. La letra en su sitio se vuelve verde y ya no se mueve."
 HTP_CS_THREAD,"Green, amber, linen","Verde, amarelo, linho","Verde, ámbar, lino"
@@ -3518,6 +3520,10 @@ PL_DARK_ONE,1 letter dark,1 letra apagada,1 letra apagada
 PL_DARK_N,%d letters dark,%d letras apagadas,%d letras apagadas
 PL_WIN_PAR,"Opened with %d words, at par.","Aberto com %d palavras, no par.","Abierto con %d palabras, en el par."
 PL_WIN,Opened with %d words. Par was %d.,Aberto com %d palavras. O par era %d.,Abierto con %d palabras. El par era %d.
+PL_SAY_THEME,Today's word: %s!,Palavra do dia: %s!,¡Palabra del día: %s!
+PL_WIN_THEME,Today's word: %s! %s,Palavra do dia: %s! %s,¡Palabra del día: %s! %s
+PL_WIN_THEME_MISSED,Today's word was %s. %s,A palavra do dia era %s. %s,La palabra del día era %s. %s
+PL_RULES_THEME,Today the lock hides the day's word. Dial it and it is written on the sun tag hanging from the shackle.,Hoje o cadeado esconde a palavra do dia. Forme-a nos discos e ela fica escrita na etiqueta do sol pendurada na argola.,Hoy el candado esconde la palabra del día. Fórmala en los discos y quedará escrita en la etiqueta del sol que cuelga del gancho.
 HTP_PL_TURN,Turn the dials,Gire os discos,Gira los discos
 HTP_PL_TURN_BODY,"Drag a dial up or down, or tap a letter on it, to bring the letter to the window. Spell a word there and its letters light up gold.","Arraste um disco para cima ou para baixo, ou toque numa letra dele, para trazê-la até a janela. Forme uma palavra ali e as letras dela acendem em dourado.","Arrastra un disco hacia arriba o hacia abajo, o toca una de sus letras, para llevarla a la ventana. Forma una palabra ahí y sus letras se encienden en dorado."
 HTP_PL_LIGHT,Light every letter,Acenda cada letra,Enciende cada letra
@@ -3560,6 +3566,10 @@ BT_CRUMBS,four crumbs fit nowhere,quatro migalhas não servem,cuatro migajas no 
 BT_POINTS,%d / %d points,%d / %d pontos,%d / %d puntos
 BT_WIN_LINE,"%d points from %d words, past the line.","%d pontos com %d palavras, além da linha.","%d puntos con %d palabras, más allá de la línea."
 BT_WIN,%d points. The line was %d.,%d pontos. A linha era %d.,%d puntos. La línea era %d.
+BT_SAY_THEME,Today's word: %s! +%d,Palavra do dia: %s! +%d,Palabra del día: ¡%s! +%d
+BT_SAY_THEME_FREE,Today's word: %s!,Palavra do dia: %s!,Palabra del día: ¡%s!
+BT_WIN_THEME,Today's word: %s! %s,Palavra do dia: %s! %s,Palabra del día: ¡%s! %s
+BT_WIN_THEME_MISSED,Today's word was %s. %s,A palavra do dia era %s. %s,La palabra del día era %s. %s
 HTP_BT_WORD,Lay pieces on the plate,Ponha pedaços no prato,Pon trozos en el plato
 HTP_BT_WORD_BODY,"Tap a piece and it goes to the plate. When the plate spells a word, it counts at once, and you can keep adding pieces for a longer one.","Toque num pedaço e ele vai para o prato. Quando o prato formar uma palavra, ela conta na hora, e você pode continuar juntando pedaços para uma mais longa.","Toca un trozo y va al plato. Cuando el plato forme una palabra, cuenta enseguida, y puedes seguir sumando trozos para una más larga."
 HTP_BT_BISCUIT,Make a whole biscuit,Faça um biscoito inteiro,Haz una galleta entera
@@ -3611,6 +3621,9 @@ SS_WIN_N,Across in %d stones.,Atravessou com %d pedras.,Cruzaste con %d piedras.
 SS_WIN_AT_PAR,At par!,No par!,¡En el par!
 SS_WIN_UNDER,Under par!,Abaixo do par!,¡Bajo el par!
 SS_WIN_PAR_WAS,Par was %d.,O par era %d.,El par era %d.
+SS_WIN_THEME,Today's word: %s! %s,Palavra do dia: %s! %s,Palabra del día: ¡%s! %s
+SS_WIN_THEME_WAY,Today's word hid on the way: %s. %s,A palavra do dia estava no caminho: %s. %s,La palabra del día estaba en el camino: %s. %s
+SS_SAY_THEME,Today's word: %s!,Palavra do dia: %s!,Palabra del día: ¡%s!
 HTP_SS_STEP,Change one letter,Troque uma letra,Cambia una letra
 HTP_SS_STEP_BODY,"Type a word with one letter changed from the stone above, in the same place. It drops into the brook as the next stone.","Digite uma palavra com uma letra trocada em relação à pedra de cima, no mesmo lugar. Ela cai no riacho como a próxima pedra.","Escribe una palabra con una letra cambiada respecto a la piedra de arriba, en el mismo lugar. Cae al arroyo como la próxima piedra."
 HTP_SS_CROSS,Reach the far bank,Chegue à outra margem,Llega a la otra orilla
@@ -3666,6 +3679,10 @@ FN_WIN_ONE,In bloom with 1 word.,Em flor com 1 palavra.,En flor con 1 palabra.
 FN_WIN_N,In bloom with %d words.,Em flor com %d palavras.,En flor con %d palabras.
 FN_WIN_AT_PAR,At par!,No par!,¡En el par!
 FN_WIN_PAR_WAS,Par was %d.,O par era %d.,El par era %d.
+FN_SAY_THEME_HIDDEN,Today's word is hiding in the fence.,A palavra do dia está escondida na cerca.,La palabra del día se esconde en la cerca.
+FN_SAY_THEME,Today's word: %s!,Palavra do dia: %s!,¡Palabra del día: %s!
+FN_WIN_THEME,Today's word: %s! %s,Palavra do dia: %s! %s,¡Palabra del día: %s! %s
+FN_WIN_THEME_WAS,%s Today's word was %s.,%s A palavra do dia era %s.,%s La palabra del día era %s.
 HTP_FN_STRING,String a word,Forme uma palavra,Forma una palabra
 HTP_FN_STRING_BODY,Tap posts to string twine and spell a word. Two letters in a row never come from one side. Tap the last post again to tie it off.,Toque nas estacas para esticar o barbante e formar uma palavra. Duas letras seguidas nunca vêm do mesmo lado. Toque de novo na última estaca para amarrar.,Toca los postes para tender el cordel y formar una palabra. Dos letras seguidas nunca salen del mismo lado. Toca otra vez el último poste para atarla.
 HTP_FN_CHAIN,Carry on from the last letter,Continue pela última letra,Sigue desde la última letra
