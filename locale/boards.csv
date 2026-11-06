@@ -2026,6 +2026,7 @@ HP_RESET,A bare meadow again.,O campo limpo de novo.,El prado limpio otra vez.
 HP_WIN,"Penned, with room to graze.","Cercado, e com pasto de sobra.","Encerrado, y con pasto de sobra."
 HP_WIN_SUB,A pen of %d. The best we know is %d.,Um cercado de %d. O melhor que conhecemos é %d.,Un corral de %d. El mejor que conocemos es %d.
 HP_WIN_SUB_BEST,A pen of %d: the best we know!,Um cercado de %d: o melhor que conhecemos!,Un corral de %d: ¡el mejor que conocemos!
+HP_WIN_THEME,"Today's meadow: %s. %s","Pasto de hoje: %s. %s","El prado de hoy: %s. %s"
 HP_WIN_SUB_GHOST,A pen of %d. The best we know is %d: its bales are the faint ones.,Um cercado de %d. O melhor que conhecemos é %d: os fardos dele são os apagados.,Un corral de %d. El mejor que conocemos es %d: sus fardos son los tenues.
 HP_OUT,The horse dozes off for now.,O cavalo cochilou por agora.,El caballo se echa una siesta por ahora.
 HP_SEAL_BEST,Best pen,Melhor cercado,Mejor corral

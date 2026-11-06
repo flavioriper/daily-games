@@ -3,7 +3,7 @@ extends SceneTree
 ## Shots and probes of Horse Pen, played through the board's own input path
 ## (a touch pressed and let go on a cell). Windowed, one at a time:
 ##
-##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_horse.gd -- [d=0..3] [mode] [rm] [out=<dir>]
+##     godot --path . --resolution 810x1440 --always-on-top --script res://tests/_shot_horse.gd -- [d=0..3] [mode] [rm] [theme] [out=<dir>]
 ##
 ## Modes: `rest` (the entrance and the bare field); `play` (the answer's
 ## bales one at a time: the wheat shrinking, the pen closing, the pills);
@@ -25,6 +25,9 @@ var _t := 0.0
 var _level := 0
 var _mode := "rest"
 var _reduce := false
+## `theme`: the field re-dealt in the newest cached night's things, as a
+## themed daily deals it (the harness's backend never starts).
+var _theme := false
 var _dir := SHOT_DIR
 var _menu: Node
 var _host: Node
@@ -48,6 +51,8 @@ func _initialize() -> void:
 			_reduce = true
 		elif a.begins_with("out="):
 			_dir = a.substr(4)
+		elif a == "theme":
+			_theme = true
 		else:
 			_mode = a
 	var progress = load("res://core/progress.gd")
@@ -77,6 +82,8 @@ func _process(delta: float) -> bool:
 		_puzzle.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		if _host.has_node("HowToPlay"):
 			_host.get_node("HowToPlay").free()
+		if _theme:
+			_redeal_themed()
 		_script()
 		return false
 	while not _plan.is_empty() and float(_plan[0][0]) <= _t:
@@ -101,6 +108,28 @@ func _process(delta: float) -> bool:
 		quit()
 		return true
 	return false
+
+func _redeal_themed() -> void:
+	var cache := "/Users/flavioriper/Library/Application Support/Godot/app_userdata/Peeplet Daily/backend_cache"
+	var files: Array = []
+	for f in DirAccess.get_files_at(cache):
+		if f.begins_with("pictures-202611") and f.ends_with("-content.json"):
+			files.append(f)
+	files.sort()
+	var doc = JSON.parse_string(FileAccess.get_file_as_string(cache + "/" + String(files[-1])))
+	var pics: Array = []
+	var gen = load("res://puzzles/horse_gen.gd")
+	for side in gen.THEMED_SIZES[_level]:
+		var p = doc.sizes.get(str(side))
+		if p is Dictionary:
+			var nm = p.get("name")
+			pics.append({"id": "themed_" + String(p.id), "rows": p.rows,
+				"name": String(nm.get("en", p.id)) if nm is Dictionary else String(p.id)})
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261106 + _level
+	_puzzle.state.setup(rng, _level, pics)
+	_puzzle._begin()
+	print("theme: ", files[-1], " -> ", _puzzle.state.theme.get("name", "(rectangle)"))
 
 func _cleanup() -> void:
 	for n in root.get_children():

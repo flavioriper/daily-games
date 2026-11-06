@@ -23,6 +23,13 @@ extends RefCounted
 const NONE := 0
 const WATER := 1
 const STONE := 2
+## Outside the day's shape (the daily theme, 2026-11-06): no grass, no
+## walking, and a lawn cell beside it is an edge cell -- the shape is the
+## field's edge.
+const VOID := 3
+
+const Planes = preload("res://puzzles/planes_state.gd")
+const HHGen = preload("res://puzzles/hedgehogs_gen.gd")
 
 const APPLE := 1
 const GOLD := 2
@@ -47,6 +54,12 @@ const BANDS := [
 ## own (a fallback when the bank is missing) and the miner's.
 const GROWS_LIVE := 40
 const STEPS_LIVE := 400
+## A themed day's meadow is laid on the phone (the bank is rectangles):
+## a longer look than the fallback's, since its best sets the stars, and a
+## few layouts before the bank deals instead.
+const GROWS_THEME := 40
+const STEPS_THEME := 2000
+const ATTEMPTS_THEME := 24
 const GROWS_MINE := 200
 const STEPS_MINE := 120000
 ## A pen over this share of the field was nearly closed already.
@@ -60,10 +73,17 @@ static func target_for(best: int, band: int) -> int:
 	return maxi(1, int(floor(best * float(band_of(band).share))))
 
 ## A meadow with its best pen, or {} when none worth playing turned up.
+## `shape` (shape_fit's) lays the meadow inside a cut of the day's thing.
 static func generate(rng: RandomNumberGenerator, band: int,
-		grows := GROWS_LIVE, steps := STEPS_LIVE) -> Dictionary:
+		grows := GROWS_LIVE, steps := STEPS_LIVE, shape := {}, attempts := 400) -> Dictionary:
 	var spec := band_of(band)
-	for _attempt in 400:
+	if not shape.is_empty():
+		spec = spec.duplicate()
+		spec["w"] = int(shape.w)
+		spec["h"] = int(shape.h)
+		spec["void"] = shape.void
+	var lawn := lawn_of(spec)
+	for _attempt in attempts:
 		var m := _lay(rng, spec)
 		if m.is_empty():
 			continue
@@ -75,7 +95,7 @@ static func generate(rng: RandomNumberGenerator, band: int,
 		# The stock has to matter: a pen closed with bales to spare is a day
 		# with nothing to weigh.
 		if walls.size() < int(spec.budget) - 1 or int(found.pen) < int(spec.pen) \
-				or int(found.pen) > int(MAX_PEN * int(spec.w) * int(spec.h)):
+				or int(found.pen) > int(MAX_PEN * lawn):
 			continue
 		m["budget"] = int(spec.budget)
 		m["best"] = int(found.score)
@@ -103,7 +123,25 @@ static func pack(m: Dictionary) -> Dictionary:
 			BEE: bees.append(i)
 	return {"w": m.w, "h": m.h, "horse": m.horse, "water": water, "stones": stones,
 		"apples": apples, "gold": gold, "bees": bees, "tunnels": m.tunnels,
-		"budget": m.budget, "best": m.best, "sol": m.sol}
+		"budget": m.budget, "best": m.best, "sol": m.sol, "void": voids_of(m)}
+
+## The cells outside the day's shape, [] on a rectangle.
+static func voids_of(m: Dictionary) -> Array:
+	var out: Array = []
+	var block: PackedByteArray = m.block
+	for i in block.size():
+		if block[i] == VOID:
+			out.append(i)
+	return out
+
+## The cells a meadow of `spec` lays its grass on.
+static func lawn_of(spec: Dictionary) -> int:
+	var n := int(spec.w) * int(spec.h)
+	var v = spec.get("void")
+	if v is PackedByteArray:
+		for b in v:
+			n -= int(b)
+	return n
 
 ## The bank's lists back into a meadow, prepared. {} when `d` is not one.
 static func unpack(d: Dictionary) -> Dictionary:
@@ -119,6 +157,8 @@ static func unpack(d: Dictionary) -> Dictionary:
 		block[int(i)] = WATER
 	for i in d.get("stones", []):
 		block[int(i)] = STONE
+	for i in d.get("void", []):
+		block[int(i)] = VOID
 	for i in d.get("apples", []):
 		item[int(i)] = APPLE
 	for i in d.get("gold", []):
@@ -168,6 +208,10 @@ static func prepare(m: Dictionary) -> void:
 		if twin[i] >= 0: list.append(twin[i])
 		nb.append(list)
 		edge[i] = 1 if x == 0 or y == 0 or x == w - 1 or y == h - 1 else 0
+		if block[i] != VOID:
+			for k: int in list:
+				if block[k] == VOID:
+					edge[i] = 1
 		bare[i] = 1 if block[i] == NONE and item[i] == NONE and twin[i] < 0 and i != int(m.horse) else 0
 	m["nb"] = nb
 	m["edge"] = edge
@@ -445,12 +489,22 @@ static func _lay(rng: RandomNumberGenerator, spec: Dictionary) -> Dictionary:
 	var n := w * h
 	var block := PackedByteArray()
 	block.resize(n)
+	var lawn: Array = []
+	var shaped = spec.get("void")
+	for i in n:
+		if shaped is PackedByteArray and shaped[i] == 1:
+			block[i] = VOID
+		else:
+			lawn.append(i)
 	var dirs := [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]
 	# Streams: walks that mostly keep going straight, so they read as channels
 	# and not as scattered puddles, and run off the field rather than turning
 	# along its edge -- a channel that leaves is a wall the pen can lean on.
 	for _s in int(spec.streams):
 		var c := Vector2i(rng.randi_range(0, w - 1), rng.randi_range(0, h - 1))
+		if shaped is PackedByteArray:
+			var at0: int = lawn[rng.randi_range(0, lawn.size() - 1)]
+			c = Vector2i(at0 % w, at0 / w)
 		var d: Vector2i = dirs[rng.randi_range(0, 3)]
 		var run := rng.randi_range(int(mini(w, h) * 0.5), int(maxi(w, h) * 0.7))
 		for _i in run:
@@ -460,11 +514,15 @@ static func _lay(rng: RandomNumberGenerator, spec: Dictionary) -> Dictionary:
 				if turn != -d:
 					d = turn
 			var nx := c + d
-			if nx.x < 0 or nx.y < 0 or nx.x >= w or nx.y >= h:
+			# Off the field, or off the day's shape: the channel runs out.
+			if nx.x < 0 or nx.y < 0 or nx.x >= w or nx.y >= h or block[nx.y * w + nx.x] == VOID:
 				break
 			c = nx
 	for _p in int(spec.pools):
 		var pool: Array = [Vector2i(rng.randi_range(0, w - 1), rng.randi_range(0, h - 1))]
+		if shaped is PackedByteArray:
+			var p0: int = lawn[rng.randi_range(0, lawn.size() - 1)]
+			pool[0] = Vector2i(p0 % w, p0 / w)
 		block[pool[0].y * w + pool[0].x] = WATER
 		var size := rng.randi_range(3, 5)
 		var guard := 0
@@ -494,9 +552,10 @@ static func _lay(rng: RandomNumberGenerator, spec: Dictionary) -> Dictionary:
 	none.resize(n)
 	var horse := -1
 	var widest := 0
+	var lay_edge: PackedByteArray = m.edge
 	for _try in 40:
 		var i := rng.randi_range(1, h - 2) * w + rng.randi_range(1, w - 2)
-		if block[i] != NONE:
+		if block[i] != NONE or lay_edge[i] == 1:
 			continue
 		m.horse = i
 		var r := reach(m, none)
@@ -505,7 +564,7 @@ static func _lay(rng: RandomNumberGenerator, spec: Dictionary) -> Dictionary:
 		if (r.order as PackedInt32Array).size() > widest:
 			widest = (r.order as PackedInt32Array).size()
 			horse = i
-	if horse < 0 or widest < n / 3:
+	if horse < 0 or widest < lawn.size() / 3:
 		return {}
 	m.horse = horse
 	var walk := reach(m, none)
@@ -540,3 +599,56 @@ static func _lay(rng: RandomNumberGenerator, spec: Dictionary) -> Dictionary:
 			break
 	m["tunnels"] = tunnels
 	return m
+
+# --- the day's theme (wave 2 of the daily theme roadmap, 2026-11-06) ---
+
+## The night's sides each band tries first, so the bands mostly lay
+## different things.
+const THEMED_SIZES := [[10, 12, 24, 32], [12, 10, 24, 32], [24, 12, 32, 10], [32, 24, 12, 10]]
+## A cut is kept when its lawn is at least SHAPE_MIN of the band's own
+## rectangle (a smaller meadow is a shorter day) and at most SHAPE_MAX of
+## its box (or it is a rectangle with a corner off). Boxes grow up to
+## SHAPE_GROW a side past the band's.
+const SHAPE_MIN := 0.65
+const SHAPE_MAX := 0.88
+const SHAPE_GROW := 1
+
+## `pic_rows` (a night picture's rows) cut for band `band`: {w, h, void
+## (a byte a cell), beads (Vector2i -> bead name), cells}, or {} when no box
+## keeps the rules. Hedgehogs' cut: smoothed, its largest piece, in its own
+## extent.
+static func shape_fit(pic_rows: Array, band: int) -> Dictionary:
+	var spec := band_of(band)
+	var n0 := int(spec.w) * int(spec.h)
+	for grow in SHAPE_GROW + 1:
+		var box := Vector2i(int(spec.w) + grow, int(spec.h) + grow)
+		var cut := Planes.cut_shape(pic_rows, box, false)
+		if cut.is_empty():
+			continue
+		var off := Vector2i((box.x - int(cut.cols)) / 2, (box.y - int(cut.rows)) / 2)
+		var on := {}
+		for c: Vector2i in cut.cells:
+			on[c + off] = cut.cells[c]
+		on = HHGen._smooth(on, box)
+		var lo := Vector2i(1 << 20, 1 << 20)
+		var hi := Vector2i(-1, -1)
+		for c: Vector2i in on:
+			lo = Vector2i(mini(lo.x, c.x), mini(lo.y, c.y))
+			hi = Vector2i(maxi(hi.x, c.x), maxi(hi.y, c.y))
+		if hi.x < 0:
+			continue
+		box = hi - lo + Vector2i.ONE
+		var moved := {}
+		for c: Vector2i in on:
+			moved[c - lo] = on[c]
+		on = moved
+		var count := on.size()
+		if float(count) < SHAPE_MIN * float(n0) or float(count) > SHAPE_MAX * float(box.x * box.y):
+			continue
+		var voids := PackedByteArray()
+		voids.resize(box.x * box.y)
+		voids.fill(1)
+		for c: Vector2i in on:
+			voids[c.y * box.x + c.x] = 0
+		return {"w": box.x, "h": box.y, "void": voids, "beads": on, "cells": count}
+	return {}

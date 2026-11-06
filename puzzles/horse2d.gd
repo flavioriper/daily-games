@@ -112,6 +112,17 @@ const BLOOM_STEP := 0.045
 const BLOOM_CAP := 0.9
 const BLOOM_TIME := 0.3
 const BLOOMS := [Pal.BLOOM, Pal.FLOWER_EYE, Pal.SUN_RAY]
+const ThemedPictures = preload("res://core/themed_pictures.gd")
+## The day's theme (wave 2, 2026-11-06): a themed meadow is cut to one of
+## the night's things, the world's pasture showing where the shape is not.
+## On the win the whole meadow takes the thing's own beads (core/palette.gd
+## PG_BEADS) from the horse outward on the flowers' clock, as a bead
+## PAINT_SIDE of the wheat's square under the bales; a bead paler than
+## PAINT_PALE is shaded PAINT_PALE_SHADE, or white would vanish on grass.
+const PAINT_ALPHA := 0.94
+const PAINT_PALE := 0.82
+const PAINT_PALE_SHADE := 0.12
+const PAINT_SHADOW := 0.3
 const WIN_WAIT := 1.5
 const PARTY_EXTRA := 0.7
 const STAMP_AT := 0.5
@@ -189,6 +200,7 @@ const HAPTICS := {
 	"star_down": Haptics.TICK,
 	"out_of_hearts": Haptics.LOSE,
 	"solved": Haptics.WIN,
+	"theme": Haptics.GOOD,
 }
 
 var state = State.new()
@@ -308,7 +320,7 @@ var _pill_bump := [-INF, -INF]
 var _pill_bad := -INF
 
 var _opened := -1.0e9
-var _solved_at := -1.0
+var _solved_at := -INF
 var _stamp_at := INF
 var _anim_until := 0.0
 var _tip_text := ""
@@ -420,8 +432,21 @@ func _layer(nm: String, z: int, draw: Callable) -> Control:
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_gen += 1
-	state.setup(rng, difficulty)
+	state.setup(rng, difficulty, _night_pictures(difficulty))
 	_begin()
+
+## The night's things this band may cut its meadow to (Gen.THEMED_SIZES),
+## on a daily dealt first; [] on any other deal (the tutorial's meadows, a
+## New deal), which plays the bank's.
+func _night_pictures(difficulty: int) -> Array:
+	var out: Array = []
+	if bank_step != 0 or daily_key == 0:
+		return out
+	for side in Gen.THEMED_SIZES[clampi(difficulty, 0, Gen.THEMED_SIZES.size() - 1)]:
+		var pic := ThemedPictures.picture(daily_key, int(side))
+		if not pic.is_empty():
+			out.append(pic)
+	return out
 
 ## The day as dealt, for tools/export_days.gd (PuzzleBase.day_dict): the
 ## meadow, and the answer's bales with the pen they close. The meadow is the
@@ -446,7 +471,9 @@ func day_dict() -> Dictionary:
 	var answer: Array = []
 	for i in n:
 		var cell := {}
-		if state.is_water(i):
+		if state.is_void(i):
+			cell = {"void": true}
+		elif state.is_water(i):
 			cell = {"c": 0}
 		elif state.is_stone(i):
 			cell = {"wall": true}
@@ -468,7 +495,8 @@ func day_dict() -> Dictionary:
 	dealt.erase("best")
 	var banked: bool = not State.pool(state.band).is_empty()
 	return {
-		"source": "bank" if banked else "generator", "kind": "grid",
+		"source": "theme" if state.themed() else ("bank" if banked else "generator"), "kind": "grid",
+		"theme": String(state.theme.get("id", "")),
 		"payload": dealt,
 		"solution": {"bales": sol, "score": int(pen.score), "pen": (pen.order as PackedInt32Array).size()},
 		"metrics": {"w": state.w, "h": state.h, "stock": state.budget, "best": state.best,
@@ -488,7 +516,7 @@ func _begin() -> void:
 	max_moves = state.moves_budget()
 	_heart_used = false
 	_lost_ever = false
-	_solved_at = -1.0
+	_solved_at = -INF
 	_stamp_at = INF
 	_seal_mesh = null
 	_deal()
@@ -701,7 +729,8 @@ func _cell_at(local: Vector2) -> int:
 	if _cell <= 0.0:
 		return -1
 	var p := (local - _grid) / _cell
-	return state.at(Vector2i(int(floor(p.x)), int(floor(p.y))))
+	var i: int = state.at(Vector2i(int(floor(p.x)), int(floor(p.y))))
+	return -1 if i >= 0 and state.is_void(i) else i
 
 func _field_px() -> Rect2:
 	return Rect2(_grid, Vector2(_cell * state.w, _cell * state.h))
@@ -750,14 +779,19 @@ func _build_still() -> ArrayMesh:
 					or not _card.grow(-16.0).has_point(p):
 				continue
 			Scenery.tuft(b, p, _cell * 0.16)
-	b.fan(Face.Builder.round_rect(field.position - Vector2.ONE * 4.0, field.size + Vector2.ONE * 8.0,
-		FIELD_RADIUS + 4.0), Color(Pal.LEAF_DEEP, 0.35))
-	b.fan(Face.Builder.round_rect(field.position, field.size, FIELD_RADIUS), Pal.MEADOW)
+	if state.themed():
+		_build_shaped_field(b)
+	else:
+		b.fan(Face.Builder.round_rect(field.position - Vector2.ONE * 4.0, field.size + Vector2.ONE * 8.0,
+			FIELD_RADIUS + 4.0), Color(Pal.LEAF_DEEP, 0.35))
+		b.fan(Face.Builder.round_rect(field.position, field.size, FIELD_RADIUS), Pal.MEADOW)
 	var line := Color(Pal.TURF_LINE, GRID_ALPHA)
-	for x in range(1, state.w):
+	if state.themed():
+		_shaped_lines(b, line)
+	for x in range(1, state.w if not state.themed() else 1):
 		b.stroke(PackedVector2Array([field.position + Vector2(x * _cell, 0.0),
 			field.position + Vector2(x * _cell, field.size.y)]), GRID_WIDTH, line, false, false)
-	for y in range(1, state.h):
+	for y in range(1, state.h if not state.themed() else 1):
 		b.stroke(PackedVector2Array([field.position + Vector2(0.0, y * _cell),
 			field.position + Vector2(field.size.x, y * _cell)]), GRID_WIDTH, line, false, false)
 	Parts.water(b, state.is_water, state.w, state.h, _grid, _cell)
@@ -766,6 +800,35 @@ func _build_still() -> ArrayMesh:
 			Parts.shade(b, cell_centre(i), _cell, 0.38, 0.16)
 			Parts.boulder(b, cell_centre(i), _cell * 0.94, i)
 	return b.mesh()
+
+## A themed meadow's field: the day's thing in grass, a cell at a time over
+## a soft dark rim, the world's pasture where the shape is not.
+func _build_shaped_field(b: Face.Builder) -> void:
+	var rim := Color(Pal.LEAF_DEEP, 0.55)
+	for pass_i in 2:
+		for i in state.cells():
+			if state.is_void(i):
+				continue
+			var at := _grid + Vector2(i % state.w, i / state.w) * _cell
+			if pass_i == 0:
+				b.fan(Face.Builder.round_rect(at - Vector2.ONE * 4.0, Vector2.ONE * (_cell + 8.0), 6.0), rim)
+			else:
+				b.fan(Face.Builder.round_rect(at - Vector2.ONE * 0.5, Vector2.ONE * (_cell + 1.0), 1.0), Pal.MEADOW)
+
+## The faint plot lines between two cells of a themed meadow.
+func _shaped_lines(b: Face.Builder, line: Color) -> void:
+	for i in state.cells():
+		if state.is_void(i):
+			continue
+		var x: int = i % state.w
+		var y: int = i / state.w
+		var at := _grid + Vector2(x, y) * _cell
+		if x + 1 < state.w and not state.is_void(i + 1):
+			b.stroke(PackedVector2Array([at + Vector2(_cell, 0.0), at + Vector2(_cell, _cell)]),
+				GRID_WIDTH, line, false, false)
+		if y + 1 < state.h and not state.is_void(i + state.w):
+			b.stroke(PackedVector2Array([at + Vector2(0.0, _cell), at + Vector2(_cell, _cell)]),
+				GRID_WIDTH, line, false, false)
 
 ## What lies on the grass, over the wheat: apples, the golden apple, hives
 ## and the tunnels' mouths.
@@ -888,8 +951,8 @@ func _build_live(now: float) -> ArrayMesh:
 			fb.append(_wash_unit, Transform2D(0.0, cell_centre(cell)), Color(Pal.BAD, BLUSH_ALPHA * level * 0.6))
 	for cell in gone:
 		_blush.erase(cell)
-	if _solved_at >= 0.0:
-		busy = _build_blooms(fb, now) or busy
+	if _solved_at > -INF:
+		busy = (_build_paint(fb, now) if state.themed() else _build_blooms(fb, now)) or busy
 	var still: Array = []
 	for out in _bale_out:
 		var e: float = now - float(out.at)
@@ -933,7 +996,7 @@ func _build_live(now: float) -> ArrayMesh:
 		_bale(fb, cell, sc, lift, state.pinned.has(cell), alpha)
 	# The best pen's bales the player's pen did without, faint, once the
 	# flowers are out: what the best we know looks like.
-	if _solved_at >= 0.0:
+	if _solved_at > -INF:
 		var k := 0
 		for cell: int in _ghosts():
 			var e: float = now - _solved_at - GHOST_AT - k * GHOST_STEP
@@ -972,6 +1035,35 @@ func _bale(fb, cell: int, sc: Vector2, lift: float, old: bool, alpha: float) -> 
 	var foot := Vector2(0.0, 0.35 * _cell)
 	var xf := Transform2D(0.0, sc, 0.0, at + foot - Vector2(0.0, lift)) * Transform2D(0.0, -foot)
 	fb.append(_bale_old_unit if old else _bale_unit, xf, Color(1.0, 1.0, 1.0, alpha))
+
+## A themed day's win: the whole meadow takes its thing's beads from the
+## horse outward on the flowers' clock. True while any is pouring.
+func _build_paint(fb, now: float) -> bool:
+	var beads: Dictionary = state.theme.get("beads", {})
+	var home := state.xy(state.horse)
+	var busy := false
+	for cell in state.cells():
+		if state.is_void(cell):
+			continue
+		var c := state.xy(cell)
+		var bead = Pal.PG_BEADS.get(String(beads.get(c, "")))
+		if bead == null:
+			continue
+		var d := absi(c.x - home.x) + absi(c.y - home.y)
+		var e: float = now - _solved_at - Motion.SOLVE_DELAY - minf(BLOOM_CAP, d * BLOOM_STEP)
+		var k := 1.0 if Motion.reduce else Motion.pop_in_scale(e, BLOOM_TIME).x
+		if e < BLOOM_TIME and not Motion.reduce:
+			busy = true
+		if k <= 0.0:
+			continue
+		var face: Color = bead
+		if face.get_luminance() > PAINT_PALE:
+			face = face.darkened(PAINT_PALE_SHADE)
+		var a := PAINT_ALPHA * minf(1.0, k)
+		fb.append(_wash_unit, Transform2D(0.0, Vector2(k, k), 0.0, cell_centre(cell) + Vector2(0.0, _cell * 0.04)),
+			Color(face.darkened(PAINT_SHADOW), a))
+		fb.append(_wash_unit, Transform2D(0.0, Vector2(k, k), 0.0, cell_centre(cell)), Color(face, a))
+	return busy
 
 ## Flowers over the pen from the horse outward. True while any is opening.
 func _build_blooms(fb, now: float) -> bool:
@@ -1187,10 +1279,10 @@ func _walk_pose(now: float) -> Dictionary:
 			# Leaning out over the edge, and back.
 			var edge := state.xy(_walk[n])
 			var out_dir := Vector2.ZERO
-			if edge.x == 0: out_dir.x = -1.0
-			elif edge.x == state.w - 1: out_dir.x = 1.0
-			if edge.y == 0: out_dir.y = -1.0
-			elif edge.y == state.h - 1: out_dir.y = 1.0
+			if edge.x == 0 or state.is_void(_walk[n] - 1): out_dir.x = -1.0
+			elif edge.x == state.w - 1 or state.is_void(_walk[n] + 1): out_dir.x = 1.0
+			if edge.y == 0 or state.is_void(_walk[n] - state.w): out_dir.y = -1.0
+			elif edge.y == state.h - 1 or state.is_void(_walk[n] + state.w): out_dir.y = 1.0
 			out.at = cell_centre(_walk[n]) + out_dir.normalized() * sin(PI * m) * PEEK_LEAN * _cell
 			if out_dir.x != 0.0:
 				out.left = out_dir.x < 0.0
@@ -1733,6 +1825,9 @@ func flat_win() -> Dictionary:
 		else tr("HP_WIN_SUB_GHOST") % [_final_score, state.best]
 	if _final_score >= state.best:
 		sub = tr("HP_WIN_SUB_BEST") % _final_score
+	var name := String(state.theme.get("name", ""))
+	if name != "":
+		sub = tr("HP_WIN_THEME") % [name, sub]
 	return {"faces": [], "subtitle": sub}
 
 func win_delay() -> float:
@@ -1760,6 +1855,9 @@ func _on_solved() -> void:
 		k += 1
 	_say(tr("HP_WIN"), Face.Expr.JOY)
 	fx.cue("solved")
+	if state.themed():
+		# The day's colours pour on from the horse as the flowers would.
+		_after(0.0 if Motion.reduce else Motion.SOLVE_DELAY, func(): fx.cue("theme"))
 	_hud_layer.queue_redraw()
 	_party()
 	_busy_for(maxf(Motion.SOLVE_DELAY + BLOOM_CAP + BLOOM_TIME,

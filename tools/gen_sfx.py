@@ -2243,6 +2243,10 @@ SETS = {
         # fourth apart.
         "out_of_hearts": ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:12,8,3"),
         "heart_back":    ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.14:5,10", "cut:0.7"),
+        # 2026-11-06: a themed day's meadow takes its picture's colours on the
+        # win (the daily theme, wave 2): Nonogram's and Hedgehogs' theme cue,
+        # the bank's wraps climbing an octave as the colour pours.
+        "theme":         ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -15, FOLEY, "bank:wrap", "cut:0.1", "notes:0.06:7,12,16", "tight"),
     },
     # Lattice (puzzles/lattice2d.gd): wooden number tiles swapped about a
     # lattice. `pick`, `swap` and one of `home`, `home2` or `miss` fire on

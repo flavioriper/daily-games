@@ -67,10 +67,31 @@ static func pool(band_: int) -> Array:
 static func hints_for(band_: int) -> int:
 	return HINTS_BY[clampi(band_, 0, HINTS_BY.size() - 1)]
 
+## The day's theme (wave 2 of the daily theme roadmap, 2026-11-06): {id,
+## name, beads (Vector2i -> bead name)} when the meadow is cut to one of the
+## night's things, {} on a rectangle.
+var theme: Dictionary = {}
+
 ## The day's meadow out of the bank; without one the phone lays its own.
-func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
+## `pictures` are the night's things this band may take, in
+## Gen.THEMED_SIZES' order ({id, name, rows}): the first whose cut lays a
+## meadow worth playing is dealt; [] (or none passing) deals the bank's, the
+## same draws off `rng` as before the theme.
+func setup(rng: RandomNumberGenerator, difficulty: int, pictures: Array = []) -> void:
 	band = clampi(difficulty, 0, Gen.BANDS.size() - 1)
 	m = {}
+	theme = {}
+	for pic: Dictionary in pictures:
+		var shape := Gen.shape_fit(pic.rows, band)
+		if shape.is_empty():
+			continue
+		var tried := RandomNumberGenerator.new()
+		tried.seed = rng.seed ^ hash(String(pic.id))
+		m = Gen.generate(tried, band, Gen.GROWS_THEME, Gen.STEPS_THEME, shape, Gen.ATTEMPTS_THEME)
+		if not m.is_empty():
+			theme = {"id": String(pic.id), "name": String(pic.get("name", "")), "beads": shape.beads}
+			adopt(m)
+			return
 	var meadows := pool(band)
 	if not meadows.is_empty():
 		m = Gen.unpack(meadows[rng.randi_range(0, meadows.size() - 1)])
@@ -115,6 +136,9 @@ func at(c: Vector2i) -> int:
 
 func is_water(i: int) -> bool: return m.block[i] == Gen.WATER
 func is_stone(i: int) -> bool: return m.block[i] == Gen.STONE
+## Outside the day's shape: no grass, never tapped.
+func is_void(i: int) -> bool: return m.block[i] == Gen.VOID
+func themed() -> bool: return not theme.is_empty()
 func item(i: int) -> int: return m.item[i]
 func twin(i: int) -> int: return m.twin[i]
 func has_bale(i: int) -> bool: return walls[i] == 1
@@ -352,7 +376,8 @@ func share_glyphs() -> String:
 	var out := ""
 	for i in cells():
 		var ch := "🟩"
-		if i == horse: ch = "🐴"
+		if is_void(i): ch = "⬛"
+		elif i == horse: ch = "🐴"
 		elif walls[i] == 1: ch = "🟫"
 		elif is_water(i): ch = "🟦"
 		elif is_stone(i): ch = "⬜"

@@ -200,3 +200,58 @@ I see what I should have done'".
   and 90%), Submit on a one-star pen with no second ask, the ways-out count
   being edge cells rather than holes, the six lines, the strolls' timing and
   count, the ghosts. Not on a phone; the four new cues unheard.
+
+### The day's theme: the meadow is cut to the day's thing (2026-11-06)
+
+Wave 2 of the daily theme roadmap (`docs/superpowers/specs/2026-10-13-daily-theme-design.md`,
+memory `daily-theme-roadmap`), built unattended on the user's "integrate the
+daily theme into all games, get the next on the list". Free: the phone reads
+the night's `pictures` doc, no server change. Reference: Hedgehogs' and
+Nonogram's themed boards of the same day, not the daily it follows (its
+fields are rectangles).
+
+- **The meadow is the day's thing** on every band (`Gen.THEMED_SIZES`: Easy
+  tries the 10 first, Medium the 12, Hard the 24, Insane the 32).
+  `Gen.shape_fit` is Hedgehogs' cut (`PlanesState.cut_shape`, then
+  `HHGen._smooth`: no one-cell spurs or nooks, the largest piece, in its own
+  extent), to the band's box or one bigger a side, kept at `SHAPE_MIN`
+  (0.65) of the band's rectangle to `SHAPE_MAX` (0.88) of its box.
+- **Outside the shape is `Gen.VOID`** (a block kind): never walked, never a
+  bale, and **a grass cell beside it is an edge cell** (`prepare`), so the
+  shape is the fence the horse escapes over. `_lay` lays on the shape:
+  streams start on grass and run out at the shape's edge, pools and
+  boulders stay on it, the horse stands on a non-edge cell, and `widest` and
+  `MAX_PEN` count the grass, not the box. `pack`/`unpack` carry a `void`
+  list (empty on the bank's rectangles).
+- **The phone lays it** (the bank is rectangles): `GROWS_THEME` 40 pens and
+  `STEPS_THEME` 2000 steps a layout, `ATTEMPTS_THEME` 24 layouts a thing,
+  each thing on its own rng (`rng.seed ^ hash(id)`); none passing
+  `generate`'s own gates deals the bank's meadow off the untouched rng, as
+  before. `tests/_probe_hp_theme.gd` (headless, the cached nights
+  20261102-07): 22 of 24 band-days themed; the live best is 88-100% of a
+  miner-length search of the same meadow (200 pens, 120,000 steps; 20 of 22
+  equal), so the stars still mean what they did; slowest deal 453 ms on
+  this Mac (a rectangle after every thing failed: 328 ms). For comparison the old fallback
+  (`GROWS_LIVE`/`STEPS_LIVE`) sits at 84-94% of the bank's best on Hard and
+  Insane rectangles (`base`).
+- **In play** the field is drawn a cell at a time over a dark rim
+  (`_build_shaped_field`, `_shaped_lines`), the world's pasture where the
+  shape is not; taps there are ignored (`_cell_at` -1). The horse peeking
+  over a way out leans toward the void beside it. No name is shown, the
+  shape is the guess.
+- **The reveal**: on the win the whole meadow takes the thing's beads
+  (`Pal.PG_BEADS`, pale ones shaded) from the horse outward on the flowers'
+  clock, in place of the flowers (`_build_paint`, in `_live`, under the
+  bales and ghosts); the `theme` cue rings with it (felt as a good), the win
+  card's subtitle is `HP_WIN_THEME` ("Today's meadow: %s. %s", the score
+  line after it), `day_dict` says `"source": "theme"`, the thing's id and
+  each void cell; the share prints void as ⬛.
+- **Fixed on the way**: a reopened day set `_solved_at` ten seconds back and
+  the board read a negative time as unsolved, so a day reopened within ten
+  seconds of launch lost its flowers (and now its picture); the sentinel is
+  `-INF`.
+- Checked on the 20261107 cached night, `opengl3_angle`, 810x1440
+  (`tests/_shot_horse.gd -- theme`): Medium cactus solve 155 draw calls peak,
+  Insane glaze jar 154, Hard restore 90; `_win.gd -- horse` PASS. Owed: a
+  phone (the deal's time there), the user's ear on the cue, pt/es read by a
+  native.
