@@ -121,7 +121,7 @@ plays it in English with no deploy.
   `theme` cue, then a bump and a sparkle, whole at about 2.1 s. The card
   waits THEME_HOLD 1.6 longer (3.0 s). Subtitle `PI_WIN_THEME` ("On the
   pie: %s! %s"). A reopened themed day shows the pie with the bakers
-  stepped back; the card's eye shows it under the report. Under reduce
+  stepped back (the card's eye showing it under the report is unseen). Under reduce
   motion the pie is simply there. The deal, the solver and the clues are
   untouched; `day_dict` says `source: theme`.
 - **The caught bakers' lines**: every other baker caught (the 1st, 3rd...)
@@ -134,8 +134,12 @@ plays it in English with no deploy.
 - **The night side** (committed, not deployed): the theme writer's schema
   asks each object's `g` (`server/functions/src/theme.ts`, `genderOf`), and
   `pictures.ts` carries it beside `name` on each size. Old themes without
-  it still parse. Owed: `tools/deploy_functions.sh` (the user's), then a
-  night smoke of the theme writer.
+  it still parse. `g` is in the writer's `required` schema, so a writer
+  that balks at it answers no theme and every board deals its bank that
+  night: smoke `node lib/cli.js theme <day> <out>` on the Neon gateway
+  before any deploy. Smoked 2026-11-06 (Haiku writes, Sonnet reviews,
+  ~1 cent): six things, every `g` given and right. Owed:
+  `tools/deploy_functions.sh` (the user's).
 - Draw calls (opengl3_angle 810x1440, `theme`): Insane play 143-167, win
   127-225; Medium win 196. `_win.gd -- pie` PASS.
 - Harness: `tests/_shot_pie.gd -- <dir> d=<n> theme|night=YYYYMMDD [fakeg]
