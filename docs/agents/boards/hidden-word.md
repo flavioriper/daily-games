@@ -261,3 +261,19 @@ were". This replaces the 40% mirror above.
   `tests/_win.gd -- hiddenword` checks the keys are hidden above a 42%
   keyboard: PASS. Peak 82-83 draw calls on `opengl3_angle`. Unseen on a
   phone.
+
+## The daily theme on Medium and Hard (2026-11-06)
+
+- Easy already took the night's own pick (`words.hiddenword`). Medium and
+  Hard now take the first word of `ThemedPictures.theme_pool` their own
+  slice holds (`State.from_pool`: Medium the first `_bands[1]` answers, Hard
+  the whole list), so a themed word never makes a band easier or harder than
+  its slice; Insane keeps its bank (the theme would give it away).
+  `_day_words` deals through the same `_themed_for(b)`, so the bands still
+  never share a word (fixture pool: en Medium FLAME, Hard SMOKE).
+- A themed answer: the win's subtitle adds `HW_WIN_THEME` ("A word from
+  today's theme!"), the new `theme` cue (the wrap climbing an octave) rings
+  as the seal comes down (STAMP_AT after the party), `day_dict` says
+  `source: theme`. No mark on the board: a themed look before the solve
+  would hint the word.
+- Owed: the night's `words.theme` (deploy), phone, ear, pt/es native.

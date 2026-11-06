@@ -177,6 +177,22 @@ static func deal(rng: RandomNumberGenerator, difficulty: int, themed: Array = []
 			return w
 	return String(_answers[at])
 
+## The day's theme words (ThemedPictures.theme_pool, folded) that band
+## `difficulty`'s own slice of the list holds, as the list spells them, the
+## strongest first: Medium's and Hard's themed answer (2026-11-06). Easy
+## takes the night's own picks (ThemedPictures.words) from the whole list.
+static func from_pool(pool: Array, difficulty: int) -> Array:
+	_load()
+	var end := _folded.size()
+	if difficulty < 2 and difficulty < _bands.size():
+		end = mini(end, int(_bands[difficulty]))
+	var out: Array = []
+	for w in pool:
+		var k := _folded.find(String(w))
+		if k >= 0 and k < end and String(_folded[k]).length() == LEN:
+			out.append(_answers[k])
+	return out
+
 ## How many words could still be the answer after the first `upto` rows
 ## (the ones showing their colours): the band's own slice of the list --
 ## Easy's 217, Medium's 467, Hard's and Insane's whole list -- and the answer

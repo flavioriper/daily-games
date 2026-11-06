@@ -48,6 +48,7 @@ HW_TOAST_NOT_WORD,Not a word,Não é uma palavra,No es una palabra
 HW_TOAST_REPEAT,You guessed that already,Você já tentou essa,Ya probaste esa
 HW_WORD_WAS,The word was,A palavra era,La palabra era
 HW_WIN,Found it.,Acertou!,¡La encontraste!
+HW_WIN_THEME,A word from today’s theme!,Uma palavra do tema de hoje!,¡Una palabra del tema de hoy!
 WT_MOTTO,Every letter finds its way,Cada letra acha seu caminho,Cada letra encuentra su camino
 WT_SHORT,"Trace the words,\nfill the field.","Ache as palavras,\nencha o campo.","Traza palabras,\nllena el campo."
 WT_TIP_DRAG,Drag from letter to letter. Never diagonally.,Arraste de letra em letra. Nunca na diagonal.,Arrastra de letra en letra. Nunca en diagonal.

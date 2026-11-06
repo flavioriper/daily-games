@@ -394,6 +394,9 @@ var _shiver_at: Array[float] = []
 ## `_ghost_letter` draws the ghost off it; it is here because the board owns
 ## its moments.
 var _given_at: Dictionary = {}
+## The answer when it is a word of the day's theme (2026-11-06), or "": the
+## win says so and the theme cue rings as the seal comes down.
+var _themed_word := ""
 ## The keyboard repaints still owed, in the order they were earned: each is
 ## `{"at", "marks", "letters"}` -- the second that row's last tile lands, and
 ## what that row taught, **snapshotted at the moment it was committed**.
@@ -798,8 +801,7 @@ func _day_words(difficulty: int) -> Array:
 	var dt := {"year": daily_key / 10000, "month": daily_key / 100 % 100, "day": daily_key % 100}
 	for b in mini(difficulty, 3):
 		var r := Daily.rng(puzzle_id(), b, dt)
-		var themed: Array = ThemedPictures.words(daily_key, puzzle_id()) if b == 0 else []
-		out.append(State.deal(r, b, themed, out.duplicate()))
+		out.append(State.deal(r, b, _themed_for(b), out.duplicate()))
 	return out
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
@@ -809,10 +811,12 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	var banked := ""
 	if difficulty >= 3:
 		banked = String(InsaneBank.pick(puzzle_id(), bank_step).get("answer", ""))
-	# Easy's daily takes the day's theme's word when this phone holds one.
-	var themed: Array = ThemedPictures.words(daily_key, puzzle_id()) if difficulty == 0 and bank_step == 0 else []
+	# Easy's, Medium's and Hard's daily take a word of the day's theme when
+	# this phone holds one (Insane keeps its bank: the theme gives it away).
+	var themed: Array = _themed_for(difficulty) if bank_step == 0 else []
 	var avoid: Array = _day_words(difficulty) if bank_step == 0 and daily_key != 0 else []
 	state.setup(rng, difficulty, banked, themed, avoid)
+	_themed_word = state.written if themed.has(state.written) and banked.is_empty() else ""
 	state.seen = 0
 	_gen += 1
 	if _tray != null:
@@ -840,7 +844,8 @@ func day_dict() -> Dictionary:
 	var banked: bool = state.snail and String(InsaneBank.pick(puzzle_id(), bank_step).get("answer", "")) == state.written
 	var pool: int = InsaneBank.size(puzzle_id()) if banked else State._answers.size()
 	return {
-		"source": "bank", "kind": "text",
+		"source": "theme" if _themed_word != "" else "bank", "kind": "text",
+		"theme": _themed_word,
 		"payload": {"letters": State.LEN, "rows": state.tries, "lang": Locale.current(), "bands": State._bands,
 			"list": "content/insane/hiddenword.json" if banked else "content/hidden_word.json"},
 		"solution": {"word": state.written.to_upper(), "typed": state.answer.to_upper()},
@@ -2672,6 +2677,9 @@ func _party_on() -> void:
 		return
 	fx.cue("party")
 	_after(0.15, fx.cue.bind("dance"))
+	if _themed_word != "":
+		# a word of the day's theme: the wrap climbs as the seal comes down
+		_after(STAMP_AT, fx.cue.bind("theme"))
 	var row: int = state.rows.size() - 1
 	var left := cell_to_local(row, 0)
 	var right := cell_to_local(row, State.LEN - 1)
@@ -3080,7 +3088,19 @@ func _recorded_guesses() -> Array[String]:
 ## The win screen shows no cast: five green tiles spelling the word are what
 ## stays on the card under it, the way Nonogram leaves its picture.
 func flat_win() -> Dictionary:
+	if _themed_word != "":
+		return {"faces": [], "subtitle": tr("HW_WIN") + " " + tr("HW_WIN_THEME")}
 	return {"faces": [], "subtitle": tr("HW_WIN")}
+
+## The day's theme words band `b` may deal, the strongest first: Easy the
+## night's own picks, Medium and Hard the theme words their slice holds
+## (State.from_pool), Insane none. Only a daily from its day.
+func _themed_for(b: int) -> Array:
+	if daily_key == 0 or b >= 3:
+		return []
+	if b == 0:
+		return ThemedPictures.words(daily_key, puzzle_id())
+	return State.from_pool(ThemedPictures.theme_pool(daily_key), b)
 
 ## WIN_WAIT after the winning row has **landed**, not from the Enter that won
 ## it: `solved` fires the moment Enter is pressed, so a flat WIN_WAIT would
