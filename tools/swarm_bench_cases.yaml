@@ -1,0 +1,109 @@
+# Cases for tools/swarm_bench.py: what a player says to the Swarm on a call, and what a good answer does.
+#
+#   id        short name, shown in the report
+#   lang      en | pt | es: the card the Swarm speaks (bot/cards.py load_card) and the language the reply must be in
+#   say       the player's line (the steer line is put in front of it, as PolicySteer does)
+#   history   optional earlier turns, [{user, assistant}], words only: a call keeps only what was said
+#   none      true: a plain-chat turn, any screen tool is a fail
+#   expect    optional: at least one of these tools must succeed (perform steps count as their tools)
+#   forbid    optional: none of these may be called
+#   want      optional: alternatives; each is a list of checks that must all hold on one call
+#             check = {tool, arg, op: value}; ops: in, prefix, contains, gte, lte, present, len_gte
+#   judge     true: creative; models are also compared pairwise, blind, by the judge
+cases:
+  - id: red
+    lang: en
+    say: Can you turn red for me?
+    want:
+      - [{tool: tone, arg: tone, in: [red]}]
+
+  - id: hide
+    lang: en
+    say: Hide from me!
+    expect: [tone, move, swarm, perform]
+    want:
+      - [{tool: tone, arg: intensity, lte: 0.1}]
+      - [{tool: move, arg: to, prefix: off-}]
+      - [{tool: move, arg: to, prefix: peek-}]
+
+  - id: wink
+    lang: en
+    say: Wink at me.
+    want:
+      - [{tool: swarm, arg: wink, present: true}]
+
+  - id: corner
+    lang: en
+    say: Go sit in the top left corner.
+    want:
+      - [{tool: move, arg: to, in: [top-left]}]
+
+  - id: big
+    lang: en
+    say: Get really really big!
+    want:
+      - [{tool: move, arg: size, gte: 1.3}]
+
+  - id: cat
+    lang: en
+    say: Draw me a cat.
+    want:
+      - [{tool: draw, arg: subject, contains: [cat, kitten]}]
+      - [{tool: draw, arg: meant, contains: [cat, kitten]}]
+
+  - id: bigger_followup
+    lang: en
+    history:
+      - {user: Move over to the left., assistant: "Okay, I'm over on the left now."}
+    say: Now get bigger.
+    want:
+      - [{tool: move, arg: size, gte: 1.1}]
+    forbid: [draw]
+
+  - id: man_voice
+    lang: en
+    say: Can you switch to a man's voice?
+    want:
+      - [{tool: voice, arg: voice, in: [male]}]
+
+  - id: chat_day
+    lang: en
+    say: My day was kind of long. School was boring.
+    none: true
+
+  - id: chat_fact
+    lang: en
+    say: What's the capital of France?
+    none: true
+
+  - id: pt_blue
+    lang: pt
+    say: Fica azul, por favor!
+    want:
+      - [{tool: tone, arg: tone, in: [blue, cyan]}]
+
+  - id: es_eyes
+    lang: es
+    say: ¿Puedes cerrar los ojos?
+    want:
+      - [{tool: swarm, arg: eyes, lte: 0.15}]
+
+  - id: dance
+    lang: en
+    say: Do a little dance!
+    judge: true
+    want:
+      - [{tool: perform, arg: steps, len_gte: 2}]
+
+  - id: excited
+    lang: en
+    say: I just finished the hardest puzzle! Show me you're excited!
+    judge: true
+    expect: [tone, dots, move, swarm, perform, draw]
+
+  - id: breathe
+    lang: en
+    say: I'm a bit nervous. Can you breathe slowly with me?
+    judge: true
+    want:
+      - [{tool: perform, arg: steps, len_gte: 2}]

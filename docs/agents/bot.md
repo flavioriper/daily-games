@@ -326,6 +326,20 @@ to agent creativity", then "do all"):
   stays on screen).
 - Probe: `tests/_probe_swarm_dials.gd` (untracked), 13 checks and snapshots.
 
+## The tool bench: luna, terra, sol (2026-11-06)
+
+`tools/swarm_bench.py` with `tools/swarm_bench_cases.yaml` (15 cases, en/pt/es) puts the same player lines
+through the real Swarm card (`load_card`, screen on), `system_prompt`, `Toolbox(phone=True, screen_level=2)`
+and the typed tool loop (`tool_reply`), once per model, with the call's settings (`CHAT_REASONING`,
+500 completion tokens). Rules score every run: right tool, intent (checked on what the phone was told,
+after the Toolbox's clamps), valid calls (a mapped near miss is half), honest (no "I did it" with nothing
+that worked), restraint (no tools on plain chat, at most four calls), speech (50 words, no banned phrases),
+language. The `judge: true` cases are also compared pairwise, blind, both orders, by `--judge` (sol by
+default, which is a contestant: the rule table is the verdict, the judge is colour). It does not measure
+the eye (stubbed), memory or style notes, speech recognition or barge-in. Run from `server/bot` with
+`OPENAI_API_KEY` set (it bills the production OpenAI account); `--fake` checks the scoring offline. Output:
+`runs.jsonl`, `judge.jsonl`, `report.md` under `--out`.
+
 ## Testing a call locally
 
 `BOT_TEST_PAGE=1 uv run python server.py` serves `GET /test`
