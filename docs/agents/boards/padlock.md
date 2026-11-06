@@ -55,3 +55,63 @@
   not a wrap; the user's eye and ear (every cue unheard), a phone, pt/es read by
   a native speaker, the word lists read by a person (names and odd forms
   still slip through: `hein`, `ecra`).
+
+## The daily theme (2026-11-06)
+
+The lock hides the day's word.
+
+- **Deal**: on a daily dealt from its day (`bank_step == 0`, `daily_key`
+  set, never the tutorial's demo lock) `_deal_themed` hands
+  `ThemedPictures.theme_pool(daily_key)` and the band's bank
+  (`InsaneBank.boards(State.BANKS[band])`, each lock's **fair** words) to
+  `ThemedPictures.bank_pick` and deals that lock instead of
+  `InsaneBank.pick`. No pool or no hit: the bank's turn as ever. The lock
+  and its par are the bank's, untouched. With the fixture pool every band
+  in every language hits (en Easy `tent`, Medium `flame`, Hard and Insane
+  `basket`; pt `fogo`, `cesta`, `tronco`, `caneca`; es `leña`, `fuego`,
+  `ceniza`). The bank folds keeping ñ, as `Locale.fold` does for es.
+- **The tag**: a kraft luggage tag on a red string, a little sun printed by
+  its hole (`Art.luggage`, `Art.sun`), tied to the shackle's right flank
+  (THEME_KNOT on the arc, lifting with it), hanging at THEME_TILT and
+  swaying THEME_SWAY in `_process` (it runs at rest; it is one cached mesh
+  under a transform, the word one `draw_string`). Blank, a pencil dash line
+  waits; the word length is no secret (every word on a lock is the dials'
+  length). Sized THEME_TAG_H and shrunk whole to stay on the door.
+- **Found**: the day's word dialled (by hand or by the bulb's second press:
+  it is a word like any other and counts for par and stars exactly as any)
+  is written on the tag in ink as its letters land, a warm halo glows
+  behind it (a halo, never a shade of the card or of the gold cells), the
+  tag kicks (THEME_KICK, settles in ~1.5 s), `fx.ring` and `fx.sparkle` in
+  `Pal.SUN` round it, the `theme` cue 0.14 s after the word's own, and the
+  line under the lock says `PL_SAY_THEME` ("Today's word: TENT!") in place
+  of the letters count. Its tag in the found row wears the sun on its hole.
+  When it is the word that opens the lock, `PL_PERFECT`/`PL_DONE` takes
+  the line 0.3 s later (the win line names it).
+- **Win**: the tag rides the shackle up and kicks again as it springs.
+  Opened without the word, the tag gets it in pencil at the spring (the
+  board's to show once the day is done). Subtitle `PL_WIN_THEME` ("Today's
+  word: %s! %s") or `PL_WIN_THEME_MISSED` ("Today's word was %s. %s"),
+  the board's own line kept as the second `%s`; `win_delay` adds
+  THEME_HOLD 0.6 only when it was found. The rules sheet adds
+  `PL_RULES_THEME` on a themed lock. A reopened themed day re-deals the
+  same lock (same day key, same cached night) and shows the tag written
+  (ink, or pencil if missed); the win card covers most of it, the eye
+  shows it. `day_dict` says `"source": "theme"`, `"theme": <word as
+  written>`. Under `Motion.reduce` the tag hangs still and the word is
+  written without its pop.
+- Draw calls (opengl3_angle 810x1440, `theme`): Easy 89 at rest, 111
+  as the word lights, 96 with the tag written, 156 won; Hard 93, 121, 100,
+  160 won (plain Hard was 92, 115, 97, 158).
+- Sound: new `theme` (one wrap and two above it, Pie's row); the rest of
+  the set was already bank pops by job, nothing changed.
+- Harness: `tests/_shot_padlock.gd -- <dir> d=<n> theme|themiss
+  [lang=pt|es]` (zsh: separate words) reads the fixture pool
+  (THEME_FIXTURE, in the 2026-11-06 session's scratchpad), sets the
+  board's static seam `theme_pool_override` and re-deals through
+  `start()`; `theme` dials the day's word at step 2 (`theme_lit`,
+  `theme_tag`), `themiss` opens the lock without it. The harness boots
+  world/main, so with no `theme` arg the real path reads today's cached
+  night: Medium dealt on `shirt` (2026-11-06). `tests/_win.gd` has no
+  `padlock` solver yet, so it reports FAIL whatever the board does.
+- Owed: phone, ear (the `theme` cue unheard), pt/es read by a native
+  speaker (`argola`, `gancho` for the shackle in the rules line).

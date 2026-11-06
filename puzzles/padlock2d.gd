@@ -41,6 +41,7 @@ const Haptics = preload("res://core/haptics.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const StarLine = preload("res://ui/flat/star_line.gd")
 const FlatTopBar = preload("res://ui/flat/flat_top_bar.gd")
+const ThemedPictures = preload("res://core/themed_pictures.gd")
 const FLAT_HOST := "res://ui/flat/flat_host.gd"
 
 const HAPTICS := {
@@ -54,6 +55,7 @@ const HAPTICS := {
 	"open": Haptics.BUMP,
 	"hint": Haptics.GOOD,
 	"solved": Haptics.WIN,
+	"theme": Haptics.GOOD,
 }
 
 ## The screen the board was drawn on; everything scales with the width.
@@ -98,8 +100,39 @@ const OPEN_TIME := 0.45
 const SWING := 0.07
 const WIN_HOLD := 1.7
 
+## The daily theme (2026-11-06): on a daily whose night wrote its theme
+## words, the lock dealt is one of the band's bank that spells the
+## strongest of them (ThemedPictures.bank_pick over the fair words), and a
+## blank kraft luggage tag with a sun hangs on the shackle's right flank.
+## Dial the day's word (by hand or by the bulb: it is a word like any other,
+## counted the same) and it is written on the tag, which swings, glows and
+## sparkles; its tag in the row wears the sun. Opened without it, the tag
+## gets the word in pencil as the shackle springs. The tag's knot sits on
+## the shackle at THEME_KNOT (radians from the right, up is negative), it
+## hangs at THEME_TILT and sways by THEME_SWAY; a find kicks it by
+## THEME_KICK. The win card waits THEME_HOLD longer on a day it was found.
+const THEME_KNOT := -0.55
+const THEME_TILT := 0.2
+const THEME_SWAY := 0.03
+const THEME_KICK := 0.32
+const THEME_TAG_H := 90.0
+const THEME_HOLD := 0.6
+
 var demo := false
 var demo_day := {}
+## The harness's seam: a theme pool (folded words, strongest first) dealt
+## in place of the night's (tests/_shot_padlock.gd `theme`). Static so a
+## reopened board reads it too.
+static var theme_pool_override: Array = []
+
+## The day's word as the bank folds it ("" on a plain lock), when it was
+## written on the tag, and the tag's last kick.
+var _theme := ""
+var _theme_at := -INF
+var _kick_at := -INF
+var _kick := 0.0
+var _charm: ArrayMesh
+var _charm_key := ""
 
 var _st = State.new()
 var _band := 0
@@ -168,6 +201,8 @@ func rules() -> String:
 	out += "\n\n" + tr("PL_RULES_LIGHT")
 	if _st.rusty >= 0:
 		out += "\n\n" + tr("PL_RULES_RUSTY")
+	if themed():
+		out += "\n\n" + tr("PL_RULES_THEME")
 	out += "\n\n" + tr("PL_RULES_PAR") % [_st.par, _st.three_line()]
 	out += "\n\n" + tr("PL_RULES_ON_THE_WAY")
 	out += "\n\n" + tr("PL_RULES_HINT")
@@ -226,14 +261,50 @@ func _ready() -> void:
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_band = clampi(difficulty, 0, 3)
 	_rng.seed = rng.randi()
+	_theme = ""
+	_theme_at = -INF
 	if demo and not demo_day.is_empty():
 		_st.band = _band
 		_st.load_day(demo_day)
-	else:
+	elif not _deal_themed():
 		_st.deal(rng, _band, bank_step)
 	_fresh()
 	_enter_at = _t
 	_cue("enter")
+
+## The daily theme's deal: the band's bank lock whose fair words hold the
+## strongest of the day's theme words, the same lock and par as any day.
+## False (and the bank's turn deals) on New, the tutorial, a day with no
+## theme words cached, or none the bank holds.
+func _deal_themed() -> bool:
+	if demo or bank_step != 0:
+		return false
+	var pool: Array = theme_pool_override if not theme_pool_override.is_empty() else (ThemedPictures.theme_pool(daily_key) if daily_key != 0 else [])
+	if pool.is_empty():
+		return false
+	var boards: Array = InsaneBank.boards(State.BANKS[_band])
+	var key := daily_key if daily_key != 0 else 1
+	var got: Dictionary = ThemedPictures.bank_pick(boards, pool, key, func(e: Dictionary) -> Array:
+		var out := []
+		var all: Array = e.get("words", [])
+		for i in e.get("fair", []):
+			if int(i) < all.size():
+				out.append(all[int(i)])
+		return out)
+	if got.is_empty():
+		return false
+	_st.band = _band
+	_st.load_day(boards[int(got.index)])
+	var w := String(got.word)
+	if _st.knows(w):
+		_theme = w
+	return true
+
+func themed() -> bool:
+	return _theme != ""
+
+func _theme_found() -> bool:
+	return themed() and _st.found.has(_theme)
 
 ## Every dial as dealt, nothing moving.
 func _fresh() -> void:
@@ -271,7 +342,8 @@ func day_dict() -> Dictionary:
 	for i in _st.fair:
 		fair.append(_st.written(_st.words[i]))
 	return {
-		"source": "bank", "kind": "text",
+		"source": "theme" if themed() else "bank", "kind": "text",
+		"theme": _st.written(_theme) if themed() else "",
 		"payload": {"dials": Array(_st.dials), "start": Array(_st._start)},
 		"solution": {"fair": fair},
 		"metrics": {"par": _st.par, "words": _st.words.size(), "letters": _st.letter_count(), "rusty": _st.rusty},
@@ -395,8 +467,11 @@ func _read(land: float, free: bool) -> void:
 	var fresh: int = r.new
 	var lit_now: int = _st.lit
 	var cells := _cells_of(fresh)
+	var theme_now := themed() and w == _theme
 	_tags.append({"word": w, "lit": fresh != 0, "at": land})
 	_tags_key = ""
+	if theme_now:
+		_later(land, func() -> void: _theme_found_now())
 	_later(land, func() -> void:
 		_shown_lit = lit_now
 		for k in _st.length():
@@ -407,11 +482,12 @@ func _read(land: float, free: bool) -> void:
 				for c: Vector2i in cells:
 					fx.ring(_cell_pos(c.x, c.y), _l("cell") * 0.6, Art.GOLD)
 				fx.sparkle(Vector2(_l("mid_x"), _l("win_y")), Art.GOLD)
-			if not _st.solved():
+			if not _st.solved() and not theme_now:
 				_say_now("PL_SAY_WORD_ONE" if cells.size() == 1 else "PL_SAY_WORD_N", _st.written(w).to_upper(), cells.size())
 		else:
 			_cue("plain")
-			_say_now("PL_SAY_PLAIN", _st.written(w).to_upper())
+			if not theme_now:
+				_say_now("PL_SAY_PLAIN", _st.written(w).to_upper())
 		_rate(true)
 		_refresh_pill())
 	if _st.solved():
@@ -440,6 +516,10 @@ func _phase_solved(land: float) -> void:
 	_won_at = land + 0.3
 	_later(land + 0.3, func() -> void:
 		_cue("open")
+		if themed():
+			_kick_at = _t
+			_kick = THEME_KICK * 0.7
+			_charm_key = ""
 		_say_now("PL_PERFECT" if _st.counted + _st.helped <= _st.par else "PL_DONE"))
 	_later(land + 0.6, func() -> void:
 		_cue("solved")
@@ -756,6 +836,7 @@ func _draw() -> void:
 	draw_mesh(_glass, null)
 	draw_set_transform(Vector2.ZERO)
 	_draw_reading(lock)
+	_draw_charm(lock)
 	_draw_tags()
 	_draw_say()
 	_draw_count()
@@ -969,6 +1050,8 @@ func _draw_tags() -> void:
 			k *= Motion.bump_scale(_t - _bump_tag_at, 0.16)
 		var rr := Rect2(at + r.size * (1.0 - k) * 0.5, r.size * k)
 		Art.tag(b, rr, bool(t.lit))
+		if themed() and String(t.word) == _theme:
+			Art.sun(b, rr.position + Vector2(rr.size.y * 0.27, rr.size.y * 0.5), rr.size.y * 0.2, true)
 		texts.append([rr, _st.written(String(t.word)).to_upper(), roundi(int(slots[i].fs) * k), bool(t.lit)])
 	if b.verts.is_empty():
 		return
@@ -1003,7 +1086,7 @@ func _draw_say() -> void:
 		text = text % _say_n
 	elif _say_arg != "" and text.contains("%s"):
 		text = text % _say_arg
-	var good := _say in ["PL_SAY_WORD_ONE", "PL_SAY_WORD_N", "PL_PERFECT", "PL_DONE", "PL_READ"]
+	var good := _say in ["PL_SAY_WORD_ONE", "PL_SAY_WORD_N", "PL_PERFECT", "PL_DONE", "PL_READ", "PL_SAY_THEME"]
 	var fs := roundi(SAY_SIZE * (1.2 if good else 1.0) * _s())
 	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 	if tw > size.x * 0.94:
@@ -1075,7 +1158,7 @@ func _draw_pill() -> void:
 func win_delay() -> float:
 	if Motion.reduce:
 		return Motion.REDUCED_TIME
-	return WIN_HOLD
+	return WIN_HOLD + (THEME_HOLD if _theme_found() else 0.0)
 
 func skill_quality() -> float:
 	if _st.dials.is_empty():
@@ -1093,6 +1176,10 @@ func flat_win() -> Dictionary:
 		line = tr("PL_WIN_PAR") % all
 	else:
 		line = tr("PL_WIN") % [all, _st.par]
+	if _theme_found():
+		line = tr("PL_WIN_THEME") % [_st.written(_theme).to_upper(), line]
+	elif themed():
+		line = tr("PL_WIN_THEME_MISSED") % [_st.written(_theme).to_upper(), line]
 	return {"faces": [], "subtitle": line}
 
 func completion_record() -> Dictionary:
@@ -1112,4 +1199,96 @@ func restore_completed_board() -> void:
 	_enter_at = -10.0
 	_won_at = -INF
 	_open_at = -INF
+	# a reopened themed day shows its tag written (in pencil if it was missed)
+	_theme_at = -10.0 if _theme_found() else -INF
+	_charm_key = ""
 	queue_redraw()
+
+# --- the daily theme (2026-11-06) ---
+
+## The day's word dialled, as its letters land: written on the tag, which
+## kicks and glows, a ring and a sparkle round it, the theme cue just after
+## the word's own, and the line under the lock names it.
+func _theme_found_now() -> void:
+	_theme_at = _t
+	_kick_at = _t
+	_kick = THEME_KICK
+	_charm_key = ""
+	_say_now("PL_SAY_THEME", _st.written(_theme).to_upper())
+	_later(_t + 0.14, func() -> void: _cue("theme"))
+	if fx != null and not _L.is_empty():
+		var g := _charm_geom()
+		var c: Vector2 = _lock_xf() * (Transform2D(_charm_angle(), g.knot) * g.centre)
+		fx.ring(c, float(g.th) * 1.3, Pal.SUN)
+		fx.sparkle(c, Pal.SUN)
+
+## The tag's knot on the shackle's right flank (lifting with it), its height,
+## width, the hole and the card's middle about the knot, and the word's size.
+func _charm_geom() -> Dictionary:
+	var body: Rect2 = _L.body
+	var t := _l("shackle_t")
+	var h := _l("shackle_h") + t
+	var half := body.size.x * 0.62 * 0.5 - t * 0.5
+	var up := h * 0.42 * maxf(_shackle_lift, 0.0)
+	var c := Vector2(body.get_center().x, body.position.y - h + half - up)
+	var knot := c + Vector2(cos(THEME_KNOT), sin(THEME_KNOT)) * (half + t * 0.5)
+	var font: Font = CozyTheme.display(800)
+	var th := THEME_TAG_H * _s()
+	var word := _st.written(_theme).to_upper()
+	var tw := font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, roundi(th * 0.5)).x
+	var w := th * 0.42 + th * 0.95 + tw + th * 0.4
+	# kept on the screen: the tag shrinks as a whole when the door is narrow
+	var room := size.x - knot.x - 14.0 * _s()
+	var k := clampf(room / (w + th * 0.1), 0.5, 1.0)
+	th *= k
+	w *= k
+	var hole := Vector2(th * 0.5, th * 0.75)
+	return {"knot": knot, "th": th, "w": w, "hole": hole, "word": word, "fs": roundi(th * 0.5),
+		"centre": hole + Vector2(w * 0.5 - th * 0.42, 0.0)}
+
+## How the tag hangs now: its tilt, a slow sway, the kick of a find or the
+## shackle springing. Still under reduce.
+func _charm_angle() -> float:
+	if Motion.reduce:
+		return THEME_TILT
+	var a := THEME_TILT + THEME_SWAY * sin(_t * 1.7)
+	var e := _t - _kick_at
+	if e >= 0.0 and e < 3.0:
+		a += _kick * sin(e * 7.0) * exp(-e * 2.2)
+	return a
+
+## The tag: one cached mesh about its knot under the lock's transform, the
+## word one draw_string. 0 blank, 1 the word dialled (ink, glowing), 2 the
+## lock opened without it (pencil).
+func _draw_charm(lock: Transform2D) -> void:
+	if not themed() or _L.is_empty():
+		return
+	var g := _charm_geom()
+	var state := 0
+	if _theme_found() and _theme_at > -INF and _t >= _theme_at:
+		state = 1
+	elif not _theme_found() and is_done() and (_open_at == -INF or _t >= _open_at):
+		state = 2
+	var th: float = g.th
+	var key := "%d:%d:%d" % [state, roundi(th * 10.0), roundi(float(g.w))]
+	if key != _charm_key or _charm == null:
+		_charm_key = key
+		var b := Face.Builder.new()
+		Art.luggage(b, g.hole, Vector2(g.w, th), state == 1)
+		_charm = b.mesh()
+	var xf: Transform2D = lock * Transform2D(_charm_angle(), g.knot)
+	draw_set_transform_matrix(xf)
+	draw_mesh(_charm, null)
+	if state != 0:
+		var font: Font = CozyTheme.display(800)
+		var fs: int = g.fs
+		var hole: Vector2 = g.hole
+		var x0 := hole.x + th * 0.95
+		var x1 := hole.x - th * 0.42 + float(g.w) - th * 0.3
+		var tw := font.get_string_size(g.word, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		var mid := Vector2((x0 + x1) * 0.5, hole.y)
+		var e := _t - (_theme_at if state == 1 else maxf(_open_at, -10.0))
+		var k := Motion.pop_in_scale(e, 0.3).x if e < 0.3 and not Motion.reduce else 1.0
+		draw_set_transform_matrix(xf * Transform2D(0.0, Vector2.ONE * k, 0.0, mid))
+		draw_string(font, Vector2(-tw * 0.5, font.get_ascent(fs) * 0.36), g.word, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Art.KRAFT_INK if state == 1 else Color(Art.PENCIL, 0.9))
+	draw_set_transform(Vector2.ZERO)

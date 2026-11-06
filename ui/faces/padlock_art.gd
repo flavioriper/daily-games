@@ -130,6 +130,75 @@ static func tag(b, rect: Rect2, lit: bool) -> void:
 	b.fan(Face.Builder.round_rect(rect.position, rect.size, r), BRASS_LIT if lit else STEEL_LIT)
 	b.disc(rect.position + Vector2(r * 0.9, rect.size.y * 0.5), rect.size.y * 0.13, BRASS_DARK if lit else STEEL_DEEP)
 
+## The daily theme's luggage tag (2026-11-06): a kraft card tied to the
+## shackle on a red string, a little sun printed by its hole. The caller
+## builds it about the knot (0, 0) and turns it there; the string runs to
+## the hole at `hole`, the card `sz` lies to its right. Blank, a pencil line
+## waits for the word; `found` (the day's word dialled), a warm halo glows
+## behind it (a halo, never a shade of the card). The word is the caller's.
+const KRAFT := Color("ecd9ab")
+const KRAFT_DEEP := Color("c4a266")
+const KRAFT_INK := Color("4f3416")
+const PENCIL := Color("8a7556")
+const STRING := Color("c4473d")
+const STRING_DEEP := Color("8f2f28")
+
+static func luggage(b, hole: Vector2, sz: Vector2, found: bool) -> void:
+	var h := sz.y
+	var at := hole - Vector2(h * 0.42, h * 0.5)
+	var rect := Rect2(at, sz)
+	if found:
+		Scenery.soft_disc(b, rect.get_center(), sz.x * 0.75, h * 1.25, Color(Pal.SUN_RAY, 0.55))
+	# the string from the knot to the hole, a little slack
+	var mid := hole * 0.5 + Vector2(-h * 0.08, h * 0.12)
+	var line := PackedVector2Array([Vector2.ZERO, mid, hole])
+	b.stroke(line, maxf(1.5, h * 0.075), STRING_DEEP)
+	b.stroke(line, maxf(1.0, h * 0.045), STRING)
+	b.disc(Vector2.ZERO, h * 0.07, STRING_DEEP)
+	# the card, its left corners clipped, a shadow under it
+	var c := h * 0.28
+	var card := PackedVector2Array([
+		at + Vector2(c, 0.0), at + Vector2(sz.x - h * 0.12, 0.0), at + Vector2(sz.x, h * 0.12),
+		at + Vector2(sz.x, h - h * 0.12), at + Vector2(sz.x - h * 0.12, h), at + Vector2(c, h),
+		at + Vector2(0.0, h - c), at + Vector2(0.0, c)])
+	var shadow := PackedVector2Array()
+	for p in card:
+		shadow.append(p + Vector2(h * 0.04, h * 0.1))
+	b.polygon(shadow, Color(0.1, 0.12, 0.06, 0.25))
+	var rim := PackedVector2Array()
+	for p in card:
+		rim.append(p + Vector2(0.0, h * 0.06))
+	b.polygon(rim, KRAFT_DEEP)
+	b.polygon(card, KRAFT)
+	b.polygon(_box(at + Vector2(c, h * 0.08), Vector2(sz.x - c - h * 0.2, h * 0.06)), Color(1, 1, 1, 0.35))
+	# the hole's eyelet
+	b.disc(hole, h * 0.16, KRAFT_DEEP)
+	b.disc(hole, h * 0.09, Color(0.25, 0.2, 0.12))
+	# the sun by the hole
+	sun(b, hole + Vector2(h * 0.52, 0.0), h * 0.22, found)
+	if not found:
+		# a pencil line where the word will be written
+		var x0 := hole.x + h * 0.95
+		var x1 := at.x + sz.x - h * 0.3
+		var y := at.y + h * 0.7
+		var x := x0
+		while x < x1:
+			b.polygon(_box(Vector2(x, y), Vector2(minf(h * 0.18, x1 - x), maxf(1.0, h * 0.04))), Color(PENCIL, 0.6))
+			x += h * 0.28
+
+## A little sun about `at`, `r` its disc: eight rays round it. `bright`
+## lengthens the rays.
+static func sun(b, at: Vector2, r: float, bright := false) -> void:
+	var ray := r * (0.75 if bright else 0.5)
+	for k in 8:
+		var a := TAU * k / 8.0
+		var d := Vector2(cos(a), sin(a))
+		var n := Vector2(-d.y, d.x)
+		b.polygon(PackedVector2Array([at + d * r * 1.15 + n * r * 0.22, at + d * (r * 1.2 + ray), at + d * r * 1.15 - n * r * 0.22]), Pal.SUN_DEEP)
+	b.disc(at, r, Pal.SUN_DEEP)
+	b.disc(at - Vector2(0.0, r * 0.06), r * 0.86, Pal.SUN)
+	b.disc(at - Vector2(r * 0.25, r * 0.3), r * 0.28, Color(Pal.SUN_RAY, 0.9))
+
 ## The shed door edge to edge, `sz`: painted vertical boards with gaps,
 ## knots and worn paint, a brace across.
 static func door(b, sz: Vector2, u: float) -> void:

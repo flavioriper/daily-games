@@ -8,6 +8,13 @@ extends SceneTree
 ## rusty dial is pushed up (refused) and down past its last letter (round).
 ## `tut` shoots a tutorial page played a while; `card` the menu card beside
 ## Cross Stitch's. Puts nothing in the player's save.
+## `theme` (2026-11-06): once the board is built, the fixture pool
+## (THEME_FIXTURE, en/pt/es lists, folded and filtered as theme_pool does)
+## is handed to the board's seam and the lock re-dealt themed; the word
+## dialled is the day's, shot as `theme_lit` and `theme_tag`, and the win
+## and the reopened day show its tag. `themiss`: the same lock opened
+## without it (pencil on the tag, the softer win line). `lang=pt|es`.
+const THEME_FIXTURE := "/private/tmp/claude-501/-Users-flavioriper-dev-daily/34d2447a-148c-4075-8921-873314a4eae3/scratchpad/theme_pool_fixture.json"
 
 var _menu: Node
 var _host: Node
@@ -20,6 +27,9 @@ var _step := 0
 var _diag: Control
 var _at := 90
 var _word := ""
+var _theme := false
+var _miss := false
+var _lang := ""
 
 func _initialize() -> void:
 	for a in OS.get_cmdline_user_args():
@@ -33,6 +43,13 @@ func _initialize() -> void:
 			_at = int(a.substr(3))
 		elif a == "card":
 			_step = 60
+		elif a == "theme":
+			_theme = true
+		elif a == "themiss":
+			_theme = true
+			_miss = true
+		elif a.begins_with("lang="):
+			_lang = a.substr(5)
 		else:
 			_dir = a
 	var progress = load("res://core/progress.gd")
@@ -41,11 +58,16 @@ func _initialize() -> void:
 	if _step == 60:
 		return
 	progress.mark_tutorial_seen("padlock")
+	if _lang != "":
+		# the language for this run only: never saved to the player's settings
+		Locale._current = _lang
+		TranslationServer.set_locale(_lang)
 	var main: Node = load("res://world/main.tscn").instantiate()
 	root.add_child(main)
 	_menu = main.get_node("UI/Menu")
 
 func _finish() -> void:
+	load("res://puzzles/padlock2d.gd").theme_pool_override = []
 	var progress = load("res://core/progress.gd")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(progress.path))
 	quit()
@@ -109,6 +131,9 @@ func _process(_delta: float) -> bool:
 	if _b == null:
 		_b = _host._puzzle
 		_b.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		if _theme:
+			_theme_deal()
+			return false
 	var st = _b.state()
 	match _step:
 		0:
@@ -139,6 +164,8 @@ func _process(_delta: float) -> bool:
 		2:
 			if _f == 2001:
 				_word = st.hint_word()
+				if _theme and not _miss:
+					_word = _b._theme
 				for k in st.length():
 					var i: int = st.dials[k].find(_word[k])
 					if i != st.pos[k] and st.can_turn(k, i):
@@ -147,9 +174,11 @@ func _process(_delta: float) -> bool:
 						st.dial_to(_word)
 						_b._fresh()
 			if _f == 2012:
-				_shot("lighting")
+				_shot("lighting" if not _theme else "theme_lit")
 			if _f == 2040:
-				_shot("word")
+				_shot("word" if not _theme else "theme_tag")
+				if _theme:
+					print("theme %s found=%s say=%s" % [_b._theme, _b._theme_found(), _b._say])
 				print("word %s found=%s lit dark=%d counted=%d stars=%d to_go=%d" % [_word, st.found, st.dark_count(), st.counted, st.stars(), st.to_go])
 				# the same word again: nudge a dial off and back
 				var k := 0
@@ -204,7 +233,7 @@ func _process(_delta: float) -> bool:
 				_step = 6
 				_f = 6000
 			elif not _b.busy() and _f % 12 == 0:
-				var w: String = st.hint_word()
+				var w: String = st.hint_word() if not _miss else _other_word(st)
 				for k in st.length():
 					var i: int = st.dials[k].find(w[k])
 					if i != st.pos[k]:
@@ -223,6 +252,7 @@ func _process(_delta: float) -> bool:
 			if _f == 6240:
 				_shot("won")
 				print("won counted=%d helped=%d par=%d stars=%d quality=%.2f" % [st.counted, st.helped, st.par, st.stars(), _b.skill_quality()])
+				print("win: ", _b.flat_win().subtitle, " delay=", _b.win_delay(), " day=", _b.day_dict().get("source"), " ", _b.day_dict().get("theme"))
 				print(_b.share_glyphs())
 				_host.closed.emit()
 				_step = 7
@@ -259,3 +289,47 @@ func _process(_delta: float) -> bool:
 				_finish()
 				return true
 	return false
+
+## The fixture's words for the language, folded and kept as theme_pool keeps
+## them, handed to the board's seam; the lock re-dealt through start().
+func _theme_deal() -> void:
+	var doc = JSON.parse_string(FileAccess.get_file_as_string(THEME_FIXTURE))
+	var pool: Array = []
+	for w in (doc as Dictionary).get(Locale.current(), []):
+		var f := Locale.fold(String(w).strip_edges())
+		if f.length() < 3 or f.length() > 16 or pool.has(f):
+			continue
+		var ok := true
+		for ch in f:
+			if not Locale.alphabet().contains(ch):
+				ok = false
+		if ok:
+			pool.append(f)
+	load("res://puzzles/padlock2d.gd").theme_pool_override = pool
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 1
+	print("daily_key=%d bank_step=%d lang=%s pool=%d" % [_b.daily_key, _b.bank_step, Locale.current(), pool.size()])
+	_b.start(rng, _band)
+	_b.skip_entrance()
+	_b.moved.emit()
+	var st = _b.state()
+	print("themed=%s word=%s shown=%s par=%d fair=%d" % [_b.themed(), _b._theme, st.written(_b._theme), st.par, st.fair.size()])
+
+## A fair word not the day's that lights something dark (themiss), else the
+## day's.
+func _other_word(st) -> String:
+	var best := ""
+	var most := 0
+	for i in st.fair:
+		var w: String = st.words[i]
+		if w == _b._theme or st.found.has(w):
+			continue
+		var m: int = st.mask_of(w) & ~st.lit
+		var n := 0
+		while m != 0:
+			m &= m - 1
+			n += 1
+		if n > most:
+			most = n
+			best = w
+	return best if best != "" else st.hint_word()
