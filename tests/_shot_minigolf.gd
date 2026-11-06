@@ -121,8 +121,8 @@ func _shot(tag := "") -> void:
 		" stickers ", _puzzle._stickers.map(func(s): return s.text))
 	if _puzzle._world != null and _puzzle._world.themed():
 		var tp: Control = _puzzle._world._topiary
-		print("  topiary rows %.2f scale %s pivot %s pos %s mesh %s world %s %s" % [_puzzle._world._shown_rows, tp.scale, tp.pivot_offset,
-			tp.position, _puzzle._world._topiary_shown != null, _puzzle._world.position, _puzzle._world.scale])
+		print("  topiary rows %.2f scale %s pos %s mesh %s visible %s modulate %s world %s %s" % [_puzzle._world._shown_rows, tp.scale,
+			tp.position, _puzzle._world._topiary_shown != null, tp.is_visible_in_tree(), tp.modulate, _puzzle._world.position, _puzzle._world.scale])
 
 func _mouse(pos: Vector2, down: bool) -> void:
 	var ev := InputEventMouseButton.new()
@@ -275,6 +275,8 @@ func _script() -> void:
 			_at(1.2, func(): _auto = true)
 			for k in 52:
 				_at(2.0 + 0.75 * k, _shot)
+			for k in 24:
+				_at(14.0 + 0.25 * k, _shot.bind("q"))
 			_end = 42.0
 		"out":
 			_at(1.2, func(): _auto = true)

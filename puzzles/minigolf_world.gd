@@ -178,6 +178,10 @@ func _build() -> void:
 	_sails.position = _hub(u)
 	_sails.visible = not themed()
 	_sails.queue_redraw()
+	# The topiary's Control spans the world: a Control is culled by its own
+	# rect, and a zero one at the corner left the screen under the bump's
+	# and the win slide's scale (the thing blinked out).
+	_topiary.size = size
 	_build_topiary()
 
 ## The windmill's hub, where the sails turn.

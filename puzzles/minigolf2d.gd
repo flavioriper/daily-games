@@ -982,7 +982,6 @@ func _paint_topiary(i: int, last: bool) -> void:
 		fx.sparkle(_world.topiary_mid() - _fo, Pal.SUN_RAY)
 	if last:
 		fx.cue("theme")
-		fx.buzz(Haptics.GOOD)
 
 # --- the words ---
 

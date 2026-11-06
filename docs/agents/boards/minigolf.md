@@ -198,6 +198,14 @@ day shows it whole; a plain day keeps the windmill. `day_dict` carries the
 - `tests/_shot_minigolf.gd -- d=<n> theme [rm] [night=<yyyymmdd>]` plays
   the newest cached night's thing to the win. `_win.gd -- minigolf` PASS.
 - Sounds moved to the bank the same day (`docs/agents/sound.md`).
+- **The topiary Control spans the world** (`_topiary.size = size`): a
+  Control is culled by its own rect, and a zero one at the corner left the
+  screen under the bump's scale and the win slide's, so the finished thing
+  blinked out on those frames (seen in shots every 0.25 s, fixed the same
+  day). A drawn-only Control that may be scaled needs a real rect.
 - Decided for the user, unconfirmed: a topiary (not a statue or a sign),
-  painted bottom up, the 1.5 s hold before the win card. Owed: a phone,
-  the ear, pt/es native ("Topiaria").
+  painted bottom up, the 1.5 s hold before the win card, and **the theme
+  cue at SINK_TIME**, the slot the last cup's word was taken out of for
+  "three tunes at once": it is three wrap pops, not a tune, but listen for
+  it over `solved` and before `party`. Owed: a phone, the ear, pt/es native
+  ("Topiaria").
