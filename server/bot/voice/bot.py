@@ -261,7 +261,7 @@ async def run_call(websocket, card: Card, user_id: str, session_id: str, deps, s
         if to.voice.voice_id == s_voice[0]:
             return
         player.use(clip_card(to).slug)
-        await task.queue_frame(TTSUpdateSettingsFrame(delta=type(s.tts._settings)(voice=to.voice.voice_id), service=s.tts))
+        await s.tts.queue_frame(TTSUpdateSettingsFrame(delta=type(s.tts._settings)(voice=to.voice.voice_id), service=s.tts))  # into the TTS's own queue, ahead of the reply the tool's result starts
         s_voice[0] = to.voice.voice_id
         log(kind="voice")
 

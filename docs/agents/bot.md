@@ -155,9 +155,12 @@ licence review still owed.
   then `godot --headless --path . --import`.
 - **Owed**: a deploy (`tools/deploy_bot.sh`, person-run: the image bakes the
   new sets, and the live server still expects the old `en`/`pt`/`es`
-  folders, so an old server with a new phone is fine and a new server needs
-  this image); hearing a switch on a real call; the pt/es feminine lines by
-  a native speaker.
+  folders; an old server ignores the new hello fields, and an old phone, such
+  as TestFlight 2184, ignores the `voice` tool frame, so either pairing
+  works); hearing a switch on a real call; the pt/es feminine lines by a
+  native speaker. Checked 2026-11-06: all ten ids speak on the call's own
+  Text-to-Dialogue socket, one after another on one connection (a switch),
+  with no voice added to the account.
 
 ## Echo cancelling: why the phone call felt worse than persona-studio (2026-11-05 night)
 

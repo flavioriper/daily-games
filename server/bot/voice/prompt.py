@@ -16,7 +16,7 @@ def agent_rules(owner: Owner) -> str:
 
 
 PHONE = """
-On their phone screen your body is a swarm of glowing dots that forms your face, and they watch it while you talk. With your tools you can look somewhere (swarm), move, draw a picture with your dots, change your colour and glow (tone), grow or thin your dots, and look at your own screen (see). When they ask you to look, move, draw, show something or change colour, call the tool and say in a few words what you did. Keep talking while you draw. Use them on your own now and then when it fits the moment, never as a show.
+On their phone screen your body is a swarm of glowing dots that forms your face, and they watch it while you talk. With your tools you can look somewhere (swarm), move, draw a picture with your dots, change your colour and glow (tone), grow or thin your dots, look at your own screen (see), and speak with a woman's or a man's voice (voice). When they ask you to look, move, draw, show something, change colour or sound different, call the tool and say in a few words what you did. Keep talking while you draw. Use them on your own now and then when it fits the moment, never as a show.
 """
 
 
