@@ -62,6 +62,13 @@ func _init(day: Dictionary) -> void:
 		if i / n > 0: a.append(i - n)
 		if i / n < n - 1: a.append(i + n)
 		nbs.append(a)
+	# a square outside the day's shape needs no link and is no way
+	var voids: Array = day.get("void", [])
+	for v in voids:
+		need[int(v)] = 0
+	if not voids.is_empty():
+		for i in N:
+			nbs[i] = (nbs[i] as Array).filter(func(u: int) -> bool: return need[u] > 0)
 	var ends: Array = day.ends
 	for c in ends.size():
 		var e: Array = ends[c]

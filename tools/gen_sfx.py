@@ -1653,6 +1653,11 @@ SETS = {
         "confetti": ("a soft little paper confetti pop and flutter with a tiny music box twinkle, cute", 1.0, -10, BEADBOX_TUNE, "warm:7000"),
         "solved":   ("a warm short celebratory flourish on a real kalimba and a music box, rising arpeggio ending on a soft hand bell shimmer, joyful and cozy", 2.0, -8, BEADBOX_TUNE, "warm:2600", "body:300"),
         "party":    ("a short cozy celebratory flourish on a real kalimba and a music box, rising and bright, with a few soft little party blower toots, warm and joyful", 2.0, -8, BEADBOX_TUNE, "warm:2600", "body:300"),
+        # 2026-11-06: a themed day's bed takes its picture's colours on the
+        # win (the daily theme, wave 2): Nonogram's, Hedgehogs' and Horse
+        # Pen's theme cue, the bank's wraps climbing an octave as the colour
+        # pours.
+        "theme":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -15, FOLEY, "bank:wrap", "cut:0.1", "notes:0.06:7,12,16", "tight"),
     },
     # Honeycomb (puzzle_id "honeycomb"), 2026-10-22: seven letters on a
     # comb of wax cells, words spelt by tapping them and sent into the honey

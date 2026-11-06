@@ -46,6 +46,7 @@ const Haptics = preload("res://core/haptics.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Reader = preload("res://puzzles/hoses_reader.gd")
 const StarLine = preload("res://ui/flat/star_line.gd")
+const ThemedPictures = preload("res://core/themed_pictures.gd")
 
 const Step = State.Step
 
@@ -62,6 +63,7 @@ const HAPTICS := {
 	"reset": Haptics.TAP,
 	"hint": Haptics.GOOD,
 	"solved": Haptics.WIN,
+	"theme": Haptics.GOOD,
 }
 
 ## The screen the board was drawn on; everything scales with the width.
@@ -91,6 +93,19 @@ const JOIN_STEP := 0.05
 ## The win: the flowers' wave, how long the board's own win plays.
 const WIN_HOLD := 1.4
 const WAVE_STEP := 0.07
+## The day's theme (wave 2, 2026-11-06): on Easy and Medium the bed is cut to
+## one of the night's things, its frame following the shape. On the win the
+## soil takes the thing's own beads (core/palette.gd PG_BEADS) in the
+## daisies' wave, a bead paler than PAINT_PALE shaded PAINT_PALE_SHADE so
+## white still reads on the frame, and the hoses ease to HOSE_REST so the
+## picture shows through them.
+const PAINT_TIME := 0.35
+const PAINT_PALE := 0.82
+const PAINT_PALE_SHADE := 0.12
+const HOSE_REST := 0.4
+## A themed win holds this much longer before the report, so the picture is
+## seen whole.
+const THEME_HOLD := 0.9
 
 ## Built silent and deaf for the tutorial's page.
 var demo := false
@@ -206,10 +221,23 @@ func _ready() -> void:
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_band = clampi(difficulty, 0, 3)
-	_st.deal(rng, _band, bank_step)
+	_st.deal(rng, _band, bank_step, _night_pictures(_band))
 	_fresh()
 	_enter_at = _t
 	_cue("enter")
+
+## The night's things this band may cut its bed to (Gen.THEMED_SIZES), on a
+## daily dealt first; [] on any other deal (the tutorial's beds, a New deal),
+## which plays the band's square.
+func _night_pictures(band: int) -> Array:
+	var out: Array = []
+	if bank_step != 0 or daily_key == 0 or band >= Gen.THEMED_SIZES.size():
+		return out
+	for side in Gen.THEMED_SIZES[band]:
+		var pic := ThemedPictures.picture(daily_key, int(side))
+		if not pic.is_empty():
+			out.append(pic)
+	return out
 
 ## The tutorial's own bed: `day` (a fixed one, never today's) at `band`.
 func demo_day(day: Dictionary, band: int) -> void:
@@ -244,8 +272,9 @@ func day_dict() -> Dictionary:
 		return {}
 	var banked: bool = _band >= 2 and InsaneBank.size("hoses" if _band == 3 else "hoses_hard") > 0
 	return {
-		"source": "bank" if banked else "generator", "kind": "grid",
-		"payload": {"n": _st.n, "ends": _st.ends.duplicate(true), "seeds": _st.seeds.duplicate()},
+		"source": "theme" if _st.themed() else ("bank" if banked else "generator"), "kind": "grid",
+		"theme": String(_st.theme.get("id", "")),
+		"payload": {"n": _st.n, "ends": _st.ends.duplicate(true), "seeds": _st.seeds.duplicate(), "void": _st.voids.duplicate()},
 		"solution": {"paths": _st.answer.duplicate(true)},
 		"metrics": {"hoses": _st.count(), "seeds": _st.seeds.size()},
 	}
@@ -367,10 +396,21 @@ func _phase_solved() -> void:
 		if not is_inside_tree():
 			return
 		_cue("solved")
+		if _st.themed():
+			_after(Motion.SOLVE_DELAY + 0.3, func() -> void: _cue("theme"))
 		if not demo and fx != null:
 			fx.confetti(Vector2(size.x * 0.5, _l("oy") + _l("cell") * _st.n * 0.4), 26, size.x * 0.7)
 			# every hose drawn in one go, and no bulb: the party
 			_cue("party" if _perfect() else "confetti"))
+
+func _after(wait: float, then: Callable) -> void:
+	var tree := get_tree()
+	if tree == null or Motion.reduce:
+		then.call()
+		return
+	tree.create_timer(wait, false).timeout.connect(func() -> void:
+		if is_inside_tree():
+			then.call())
 
 func _perfect() -> bool:
 	return _st.strokes <= _st.count() and hints_used == 0
@@ -427,7 +467,7 @@ func hint() -> bool:
 ## What the bulb reads now: {hose, cell, rule, ways}, cell -1 and ways the
 ## hose's ends when no square decides one. {} when every hose is right.
 func _read() -> Dictionary:
-	var day := {"n": _st.n, "ends": _st.ends, "seeds": _st.seeds}
+	var day := {"n": _st.n, "ends": _st.ends, "seeds": _st.seeds, "void": _st.voids}
 	var r = Reader.new(day)
 	for l: Array in _st.right_links():
 		r.link(int(l[0]), int(l[1]))
@@ -586,6 +626,10 @@ func cell_at(local: Vector2, clamp := false) -> int:
 		return -1
 	var x := clampi(int(floorf(p.x)), 0, n - 1)
 	var y := clampi(int(floorf(p.y)), 0, n - 1)
+	# outside a themed bed's shape is lawn: nothing to press (a drag held to
+	# the bed may still aim there, and the walk stops at the edge)
+	if not clamp and _st.is_void(y * n + x):
+		return -1
 	return y * n + x
 
 # --- the layout ---
@@ -636,7 +680,9 @@ func _relayout() -> void:
 		var L: Dictionary = _from if _won and not _from.is_empty() else _L
 		var cs := float(L.cell)
 		var fw := cs * FRAME
-		var bed := Rect2(float(L.ox) - fw, float(L.oy) - fw, cs * _st.n + fw * 2.0, cs * _st.n + fw * 2.0)
+		var ext := _extent()
+		var bed := Rect2(float(L.ox) + ext.position.x * cs - fw, float(L.oy) + ext.position.y * cs - fw,
+			cs * ext.size.x + fw * 2.0, cs * ext.size.y + fw * 2.0)
 		_world.set_bed(bed, float(L.oy) - fw - 70.0 * float(L.u))
 	_soil_key = ""
 	_hoses_key = ""
@@ -646,15 +692,28 @@ func _relayout() -> void:
 func _layout_for(top: float, bottom: float) -> Dictionary:
 	var w := size.x
 	var u := w / W
-	var n: int = maxi(_st.n, 1)
+	# a themed bed is laid by its shape's own extent, not its square's
+	var ext := _extent()
 	var count_h := 0.0 if demo or _won else COUNT_H * u
 	var span := maxf(bottom - top - count_h, 200.0 * u)
 	var room_w := w - SIDE * 2.0 * u
-	var cell := minf(minf(room_w / (n + FRAME * 2.0), (span - 24.0 * u) / (n + FRAME * 2.0)), CELL_MAX * u)
-	var side := cell * n
-	var ox := (w - side) * 0.5
-	var oy := top + (span - side) * 0.5
-	return {"u": u, "cell": cell, "ox": ox, "oy": oy, "count_y": oy + side + cell * FRAME + 64.0 * u}
+	var cell := minf(minf(room_w / (ext.size.x + FRAME * 2.0), (span - 24.0 * u) / (ext.size.y + FRAME * 2.0)), CELL_MAX * u)
+	var ox := (w - cell * ext.size.x) * 0.5 - ext.position.x * cell
+	var oy := top + (span - cell * ext.size.y) * 0.5 - ext.position.y * cell
+	return {"u": u, "cell": cell, "ox": ox, "oy": oy, "count_y": oy + cell * ext.end.y + cell * FRAME + 64.0 * u}
+
+## The squares the bed spans: the whole square, or a themed shape's extent.
+func _extent() -> Rect2i:
+	var n: int = maxi(_st.n, 1)
+	if _st.voids.is_empty():
+		return Rect2i(0, 0, n, n)
+	var lo := Vector2i(n, n)
+	var hi := Vector2i(-1, -1)
+	for i in n * n:
+		if not _st.is_void(i):
+			lo = Vector2i(mini(lo.x, i % n), mini(lo.y, i / n))
+			hi = Vector2i(maxi(hi.x, i % n), maxi(hi.y, i / n))
+	return Rect2i(lo, hi - lo + Vector2i.ONE)
 
 ## A layout value, eased from the play's layout into the win's.
 func _l(key: String) -> float:
@@ -740,11 +799,26 @@ func _draw_soil(easing: bool) -> void:
 		var b := Face.Builder.new()
 		var cs := _l("cell")
 		var n: int = _st.n
-		Art.frame(b, Rect2(_l("ox"), _l("oy"), cs * n, cs * n), cs * FRAME)
+		if _st.themed():
+			var centres := []
+			var open_top := []
+			for i in n * n:
+				if not _st.is_void(i):
+					centres.append(_cell_pos(i))
+					open_top.append(i < n or _st.is_void(i - n))
+			Art.frame_shape(b, centres, open_top, cs, cs * FRAME)
+		else:
+			Art.frame(b, Rect2(_l("ox"), _l("oy"), cs * n, cs * n), cs * FRAME)
+		var painting: bool = is_done() and _st.themed()
 		for i in n * n:
-			Art.soil(b, _cell_pos(i), cs, wet.has(i), i)
+			if _st.is_void(i):
+				continue
+			Art.soil(b, _cell_pos(i), cs, wet.has(i), i, _paint(i) if painting else Color(0, 0, 0, 0))
 		for i in n * n:
-			if not wet.has(i) or _st.end_of(i) >= 0 or _st.is_seed(i):
+			if not wet.has(i) or _st.end_of(i) >= 0 or _st.is_seed(i) or _st.is_void(i):
+				continue
+			# a themed day's picture stands without tufts once it is in
+			if painting and _paint(i).a > 0.5:
 				continue
 			var grow := 1.0
 			var bloom := 0.0
@@ -757,13 +831,29 @@ func _draw_soil(easing: bool) -> void:
 		_soil = b.mesh()
 	draw_mesh(_soil, null)
 
+## A themed day's bead on square `i`, its alpha how far the win's wave has
+## brought it in (all the way on a reopened day); clear where the picture
+## has no bead.
+func _paint(i: int) -> Color:
+	var n: int = _st.n
+	var bead = Pal.PG_BEADS.get(String((_st.theme.get("beads", {}) as Dictionary).get(Vector2i(i % n, i / n), "")))
+	if bead == null:
+		return Color(0, 0, 0, 0)
+	var face: Color = bead
+	if face.get_luminance() > PAINT_PALE:
+		face = face.darkened(PAINT_PALE_SHADE)
+	var k := 1.0
+	if not Motion.reduce and _won_at > -INF:
+		k = clampf((_t - _won_at - (i % n + i / n) * WAVE_STEP * 0.6) / PAINT_TIME, 0.0, 1.0)
+	return Color(face, k)
+
 ## Every hose joined and squares still dry: each dry square rimmed in sun.
 func _draw_dry() -> void:
 	if _st.live >= 0 or not _st.all_joined_dry() or is_done():
 		return
 	var dry := []
-	for i in _st.squares():
-		if _st.owner(i) < 0 and _st.end_of(i) < 0:
+	for i in _st.n * _st.n:
+		if _st.owner(i) < 0 and _st.end_of(i) < 0 and not _st.is_void(i):
 			dry.append(i)
 	var key := "%s:%d:%d:%d" % [str(dry), roundi(_l("cell") * 8.0), roundi(_l("ox")), roundi(_l("oy"))]
 	if key != _dry_key or _dry_mesh == null:
@@ -838,7 +928,10 @@ func _draw_hoses(easing: bool) -> void:
 			Art.hose(b, pts, cs, Art.colour(c))
 		_hoses = b.mesh() if not b.verts.is_empty() else null
 	if _hoses != null:
-		draw_mesh(_hoses, null)
+		var a := 1.0
+		if is_done() and _st.themed():
+			a = HOSE_REST if Motion.reduce or _won_at == -INF else lerpf(1.0, HOSE_REST, clampf((_t - _won_at - 0.4) / 0.6, 0.0, 1.0))
+		draw_mesh(_hoses, null, Transform2D(), Color(1, 1, 1, a))
 
 ## Water running down a hose just joined: three cream drops from its first
 ## square to its last.
@@ -1030,7 +1123,7 @@ func _draw_count() -> void:
 func win_delay() -> float:
 	if Motion.reduce:
 		return Motion.REDUCED_TIME
-	return WIN_HOLD
+	return WIN_HOLD + (THEME_HOLD if _st.themed() else 0.0)
 
 func share_glyphs() -> String:
 	return "🌷 " + "🟩".repeat(_st.count()) + ("" if hints_used == 0 else " " + "💡".repeat(hints_used))
@@ -1038,7 +1131,11 @@ func share_glyphs() -> String:
 func flat_win() -> Dictionary:
 	var made: String = (tr("HS_WIN_ONE") if _st.strokes == 1 else tr("HS_WIN_N")) % [_st.count(), _st.strokes]
 	var line: String = tr("HS_WIN_PERFECT") if _st.strokes <= _st.count() else ""
-	return {"faces": [], "subtitle": (made + " " + line).strip_edges()}
+	var sub := (made + " " + line).strip_edges()
+	var name := String(_st.theme.get("name", ""))
+	if _st.themed() and name != "":
+		sub = tr("HS_WIN_THEME") % [name, sub]
+	return {"faces": [], "subtitle": sub}
 
 ## Three stars while the strokes are at most one past the hoses (a hose a
 ## stroke, and one slip), two up to four past, one beyond; a hose the bulb
@@ -1064,8 +1161,9 @@ func restore_completed_board() -> void:
 	_lay = {}
 	_say = ""
 	_reading = {}
-	for i in _st.squares():
-		_wet_at[i] = -INF
+	for i in _st.n * _st.n:
+		if not _st.is_void(i):
+			_wet_at[i] = -INF
 	_rate(false)
 	_won_at = -INF
 	queue_redraw()

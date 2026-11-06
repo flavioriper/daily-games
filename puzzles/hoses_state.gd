@@ -28,6 +28,14 @@ var n := 5
 var ends: Array = []
 ## The seeds' squares (Insane).
 var seeds: Array = []
+## The squares outside the day's shape ([] on the band's square), and the
+## same as a set.
+var voids: Array = []
+var _void := {}
+## The day's theme (wave 2 of the daily theme roadmap, 2026-11-06): {id,
+## name, beads (Vector2i -> bead name)} when the bed is cut to one of the
+## night's things, {} on the band's square.
+var theme: Dictionary = {}
 ## The answer: per hose, its squares tap..flower (a seed hose's to its seed).
 var answer: Array = []
 ## Per hose, its squares from the end it was drawn from; [] when undrawn.
@@ -47,8 +55,26 @@ var hinted := 0
 ## Square -> [hose, which end] for every tap and flower.
 var _end_at := {}
 
-func deal(rng: RandomNumberGenerator, the_band: int, bank_step := 0) -> void:
+## `pictures` are the night's things this band may take, in
+## Gen.THEMED_SIZES' order ({id, name, rows}): the first whose cut deals a
+## bed with one answer is laid; [] (or none passing) deals as before, the
+## same draws off `rng`.
+func deal(rng: RandomNumberGenerator, the_band: int, bank_step := 0, pictures: Array = []) -> void:
 	band = clampi(the_band, 0, 3)
+	theme = {}
+	if band >= Gen.THEMED_SIZES.size():
+		pictures = []
+	for pic: Dictionary in pictures:
+		var shape := Gen.shape_fit(pic.rows, band)
+		if shape.is_empty():
+			continue
+		var tried := RandomNumberGenerator.new()
+		tried.seed = rng.seed ^ hash(String(pic.id))
+		var themed := Gen.deal(tried, band, int(Gen.THEME_TRIES[band]), shape)
+		if not themed.is_empty():
+			load_day(themed)
+			theme = {"id": String(pic.id), "name": String(pic.get("name", "")), "beads": shape.beads}
+			return
 	var day: Dictionary = {}
 	# Hard and Insane are mined on the Mac (tools/insane/hoses*_ladder.gd): a
 	# bed proven to have one answer takes too long at board open on a phone.
@@ -74,6 +100,10 @@ func load_day(day: Dictionary) -> void:
 	n = int(day.n)
 	ends = day.ends
 	seeds = day.get("seeds", [])
+	voids = day.get("void", [])
+	_void = {}
+	for v in voids:
+		_void[int(v)] = true
 	answer = day.paths
 	_end_at = {}
 	for c in ends.size():
@@ -108,6 +138,12 @@ func end_of(cell: int) -> int:
 
 func is_tap(cell: int) -> bool:
 	return _end_at.has(cell) and int((_end_at[cell] as Array)[1]) == 0
+
+func is_void(cell: int) -> bool:
+	return _void.has(cell)
+
+func themed() -> bool:
+	return not theme.is_empty()
 
 func is_seed(cell: int) -> bool:
 	return seeds.has(cell)
@@ -149,17 +185,20 @@ func watered() -> int:
 		k += h.size()
 	return k
 
+## The bed's squares (the shape's, on a themed day).
 func squares() -> int:
-	return n * n
+	return n * n - voids.size()
 
 func solved() -> bool:
-	return joined_count() == hoses.size() and watered() == n * n
+	return joined_count() == hoses.size() and watered() == squares()
 
 ## Every hose joined but squares still dry: the bed says so.
 func all_joined_dry() -> bool:
-	return joined_count() == hoses.size() and watered() < n * n
+	return joined_count() == hoses.size() and watered() < squares()
 
 func adjacent(a: int, b: int) -> bool:
+	if _void.has(a) or _void.has(b):
+		return false
 	var ax := a % n
 	var bx := b % n
 	return (a / n == b / n and absi(ax - bx) == 1) or (ax == bx and absi(a / n - b / n) == 1)

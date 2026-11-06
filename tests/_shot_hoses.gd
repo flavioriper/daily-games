@@ -6,7 +6,10 @@ extends SceneTree
 ## running), an Undo, the bulb's hose drawn out, the bed half done, the win
 ## settled and the day reopened from its card, with the draw calls of each
 ## frame. `tut` shoots a tutorial page played a while; `card` the menu card
-## beside Market Sums'. Puts nothing in the player's save.
+## beside Market Sums'. Puts nothing in the player's save. `theme` re-deals
+## the bed in the newest cached night's things, as a themed daily deals it
+## (the harness's backend never starts), and in place of the reopen restores
+## the won bed on the board itself and shoots it (`reopen`).
 
 var _menu: Node
 var _host: Node
@@ -18,6 +21,7 @@ var _f := 0
 var _step := 0
 var _diag: Control
 var _order: Array = []
+var _theme := false
 
 func _initialize() -> void:
 	for a in OS.get_cmdline_user_args():
@@ -29,6 +33,8 @@ func _initialize() -> void:
 				_page = int(a.substr(4))
 		elif a == "card":
 			_step = 60
+		elif a == "theme":
+			_theme = true
 		else:
 			_dir = a
 	var progress = load("res://core/progress.gd")
@@ -90,6 +96,8 @@ func _process(_delta: float) -> bool:
 		return false
 	if _b == null:
 		_b = _host._puzzle
+		if _theme:
+			_redeal_themed()
 	var st = _b.state()
 	match _step:
 		0:
@@ -168,11 +176,24 @@ func _process(_delta: float) -> bool:
 		6:
 			if _f == 6012:
 				_shot("won_early")
+			if _f == 6095:
+				_shot("won_paint")
 			if _f == 6240:
 				_shot("won")
+				if _theme:
+					_b.completed_record = _b.completion_record()
+					_b.restore_completed_board()
+					_step = 8
+					_f = 9000
+					return false
 				_host.closed.emit()
 				_step = 7
 				_f = 7000
+		8:
+			if _f == 9010:
+				_shot("reopen")
+				print("reopen themed=%s done=%s" % [st.themed(), _b.is_done()])
+				return true
 		50:
 			var pages: Array = _b.tutorial_pages()
 			_diag = pages[clampi(_page, 0, pages.size() - 1)].diagram
@@ -197,3 +218,25 @@ func _process(_delta: float) -> bool:
 				_shot("tut%d_b" % _page)
 				return true
 	return false
+
+func _redeal_themed() -> void:
+	var cache := "/Users/flavioriper/Library/Application Support/Godot/app_userdata/Peeplet Daily/backend_cache"
+	var files: Array = []
+	for f in DirAccess.get_files_at(cache):
+		if f.begins_with("pictures-202611") and f.ends_with("-content.json"):
+			files.append(f)
+	files.sort()
+	var doc = JSON.parse_string(FileAccess.get_file_as_string(cache + "/" + String(files[-1])))
+	var pics: Array = []
+	var gen = load("res://puzzles/hoses_gen.gd")
+	for side in gen.THEMED_SIZES[_band]:
+		var p = doc.sizes.get(str(side))
+		if p is Dictionary:
+			var nm = p.get("name")
+			pics.append({"id": "themed_" + String(p.id), "rows": p.rows,
+				"name": String(nm.get("en", p.id)) if nm is Dictionary else String(p.id)})
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261106 + _band
+	_b.state().deal(rng, _band, 0, pics)
+	_b._fresh()
+	print("theme: ", files[-1], " -> ", _b.state().theme.get("name", "(square)"))

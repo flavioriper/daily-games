@@ -31,21 +31,40 @@ const MAX_HOSES := 8
 ## A cell no hose owns yet, and a seed no hose has reached.
 const EMPTY := -1
 const SEED := -2
+## A square outside the day's shape (the daily theme, 2026-11-06): no hose,
+## no water, never counted.
+const VOID := -3
+
+const Planes = preload("res://puzzles/planes_state.gd")
+const HHGen = preload("res://puzzles/hedgehogs_gen.gd")
 
 # --- the deal ---
 
 ## The day for `band`: {n, ends: [[tap, flower], ...] (flower -1 for a
-## seed hose's), seeds: [cells], paths: [[cells tap..flower], ...]}.
-static func deal(rng: RandomNumberGenerator, band: int, tries := 400) -> Dictionary:
+## seed hose's), seeds: [cells], paths: [[cells tap..flower], ...], void:
+## [cells outside the shape]}. `shape` (shape_fit's) lays the bed inside a
+## cut of the day's thing; {} lays the band's square.
+static func deal(rng: RandomNumberGenerator, band: int, tries := 400, shape := {}) -> Dictionary:
 	var b: Dictionary = BANDS[clampi(band, 0, 3)]
 	var n := int(b.n)
 	var seeds := int(b.seeds)
+	var voids := PackedByteArray()
+	var cells := n * n
+	if not shape.is_empty():
+		n = int(shape.n)
+		voids = shape.void
+		cells = int(shape.cells)
 	for attempt in tries:
 		var k := rng.randi_range(int(b.lo), int(b.hi))
-		var paths := _grow(rng, n, k)
+		var paths := _grow(rng, n, k, voids)
 		if paths.is_empty():
 			continue
+		# a thin shape tends to one long hose snaking through it: none may
+		# take more than LONGEST of the bed
+		if not voids.is_empty() and _longest(paths) > LONGEST * cells:
+			continue
 		var day := _day_of(rng, n, paths, 0)
+		day["void"] = _void_list(voids)
 		if count(day, 2) != 1:
 			continue
 		if seeds == 0:
@@ -55,10 +74,24 @@ static func deal(rng: RandomNumberGenerator, band: int, tries := 400) -> Diction
 		# with seeds, a few different hoses seeded before it is let go
 		for again in 8:
 			var seeded := _day_of(rng, n, day.paths, seeds)
+			seeded["void"] = day.void
 			if (seeded.seeds as Array).size() == seeds and count(seeded, 2) == 1:
 				seeded["attempts"] = attempt + 1
 				return seeded
 	return {}
+
+static func _longest(paths: Array) -> int:
+	var most := 0
+	for p: Array in paths:
+		most = maxi(most, p.size())
+	return most
+
+static func _void_list(voids: PackedByteArray) -> Array:
+	var out := []
+	for i in voids.size():
+		if voids[i] == 1:
+			out.append(i)
+	return out
 
 ## A banked day (content/insane/hoses.json, hoses_hard.json) back as `deal`
 ## hands one over, or {} when it does not hold together. The phone checks
@@ -150,15 +183,17 @@ static func _day_of(rng: RandomNumberGenerator, n: int, paths: Array, seeds: int
 ## square starts as a hose of one, and two hoses whose ends are side by side
 ## are joined, the shortest first, until `k` are left. [] when it stalls or
 ## leaves a hose under MIN_LEN.
-static func _grow(rng: RandomNumberGenerator, n: int, k: int) -> Array:
+static func _grow(rng: RandomNumberGenerator, n: int, k: int, voids := PackedByteArray()) -> Array:
 	var N := n * n
 	var paths := {}
 	var of := PackedInt32Array()
 	of.resize(N)
+	var left := 0
 	for i in N:
-		paths[i] = [i]
 		of[i] = i
-	var left := N
+		if voids.is_empty() or voids[i] == 0:
+			paths[i] = [i]
+			left += 1
 	while left > k:
 		# the shortest hoses' ends look for a neighbour's end first
 		var shortest := N
@@ -170,7 +205,7 @@ static func _grow(rng: RandomNumberGenerator, n: int, k: int) -> Array:
 			var p: Array = paths[id]
 			var ends := [p[0]] if p.size() == 1 else [p[0], p[p.size() - 1]]
 			for e in ends:
-				for v in _nbs(int(e), n):
+				for v in _nbs(int(e), n, voids):
 					var q: Array = paths[of[v]]
 					if of[v] == id or (int(q[0]) != v and int(q[q.size() - 1]) != v):
 						continue
@@ -229,7 +264,7 @@ static func _touches(paths: Array, n: int) -> bool:
 					return true
 	return false
 
-static func _nbs(i: int, n: int) -> Array:
+static func _nbs(i: int, n: int, voids := PackedByteArray()) -> Array:
 	var x := i % n
 	var y := i / n
 	var out := []
@@ -237,6 +272,8 @@ static func _nbs(i: int, n: int) -> Array:
 	if x < n - 1: out.append(i + 1)
 	if y > 0: out.append(i - n)
 	if y < n - 1: out.append(i + n)
+	if not voids.is_empty():
+		out = out.filter(func(v: int) -> bool: return voids[v] == 0)
 	return out
 
 # --- the solver ---
@@ -300,6 +337,16 @@ class Solver:
 			nbs.append(a)
 		owner.resize(N)
 		owner.fill(EMPTY)
+		var voids: Array = day.get("void", [])
+		if not voids.is_empty():
+			for v in voids:
+				owner[int(v)] = VOID
+			for i in N:
+				var kept := PackedInt32Array()
+				for v in nbs[i]:
+					if owner[v] != VOID:
+						kept.append(v)
+				nbs[i] = kept
 		_region.resize(N)
 		_stack.resize(N)
 		var ends: Array = day.ends
@@ -486,3 +533,67 @@ class Solver:
 			if not served[r]:
 				return false
 		return true
+
+# --- the day's theme (wave 2 of the daily theme roadmap, 2026-11-06) ---
+
+## The night's sides each band tries first, so the bands mostly lay
+## different things.
+## Easy and Medium only: Hard and Insane stay on their mined banks (a live
+## proof of a shaped 7-9 bed took 0.5-3.4 s on the Mac, and a shape's
+## edge decides so much that its beds either read through square by square
+## or, held to the band's reading, cost seconds more: docs/agents/boards/
+## hoses.md).
+const THEMED_SIZES := [[10, 12, 24, 32], [12, 10, 24, 32]]
+## A cut is kept when its bed is at least SHAPE_MIN of the band's square (a
+## smaller bed is a shorter day) and at most SHAPE_MAX of its own square (or
+## it is the square with a corner off). The square grows up to SHAPE_GROW
+## past the band's side.
+const SHAPE_MIN := 0.7
+const SHAPE_MAX := 0.88
+const SHAPE_GROW := 1
+## No hose of a shaped bed longer than this share of its squares.
+const LONGEST := 0.34
+## Cuts tried for a themed bed, by band, before the next thing (or the
+## square) is dealt.
+const THEME_TRIES := [120, 120]
+
+## `pic_rows` (a night picture's rows) cut for band `band`: {n (the square's
+## side), void (a byte a square), beads (Vector2i -> bead name), cells}, or
+## {} when no square keeps the rules. Hedgehogs' cut: smoothed, its largest
+## piece, centred in the square of its longer side.
+static func shape_fit(pic_rows: Array, band: int) -> Dictionary:
+	var n0 := int((BANDS[clampi(band, 0, 3)] as Dictionary).n)
+	for grow in SHAPE_GROW + 1:
+		var m := n0 + grow
+		var box := Vector2i(m, m)
+		var cut := Planes.cut_shape(pic_rows, box, false)
+		if cut.is_empty():
+			continue
+		var off := Vector2i((m - int(cut.cols)) / 2, (m - int(cut.rows)) / 2)
+		var on := {}
+		for c: Vector2i in cut.cells:
+			on[c + off] = cut.cells[c]
+		on = HHGen._smooth(on, box)
+		if on.is_empty():
+			continue
+		var lo := Vector2i(1 << 20, 1 << 20)
+		var hi := Vector2i(-1, -1)
+		for c: Vector2i in on:
+			lo = Vector2i(mini(lo.x, c.x), mini(lo.y, c.y))
+			hi = Vector2i(maxi(hi.x, c.x), maxi(hi.y, c.y))
+		var ext := hi - lo + Vector2i.ONE
+		var side := maxi(ext.x, ext.y)
+		var shift := Vector2i((side - ext.x) / 2, (side - ext.y) / 2) - lo
+		var moved := {}
+		for c: Vector2i in on:
+			moved[c + shift] = on[c]
+		var count := moved.size()
+		if float(count) < SHAPE_MIN * float(n0 * n0) or float(count) > SHAPE_MAX * float(side * side):
+			continue
+		var voids := PackedByteArray()
+		voids.resize(side * side)
+		voids.fill(1)
+		for c: Vector2i in moved:
+			voids[c.y * side + c.x] = 0
+		return {"n": side, "void": voids, "beads": moved, "cells": count}
+	return {}

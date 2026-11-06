@@ -128,3 +128,61 @@ demo has no count line); its caption says it. The all-joined-but-dry rims
 have no harness mode and are unseen. Owed: a phone
 (the drag on a diagonal flick, the pulse), the pitch climb heard, pt/es by a
 reader.
+
+## The day's theme (2026-11-06)
+
+Wave 2 of the daily theme roadmap (`docs/superpowers/specs/2026-10-13-daily-theme-design.md`,
+memory `daily-theme-roadmap`). The user: "start integrating the daily theme
+into all games, get the next on the list", autonomous. The genre's own
+shaped-board spin-off (never named) keeps the same rules on boards that are
+not squares and is among its best-rated, so a bed cut to a shape is in
+keeping.
+
+- **Easy and Medium are cut to the day's thing** (`Gen.THEMED_SIZES`:
+  Easy the 10 first, Medium the 12): `Gen.shape_fit` is Horse Pen's and
+  Hedgehogs' cut (`PlanesState.cut_shape`, `HHGen._smooth`, its largest
+  piece), centred in the square of its longer side (5-6 Easy, 6-7 Medium),
+  kept when it holds at least `SHAPE_MIN` 0.7 of the band's square and at
+  most `SHAPE_MAX` 0.88 of its own. Outside it is `void`: no hose, no water,
+  never counted (`State.squares()`), never a way in the solver
+  (`Solver` owner `VOID`, its neighbours dropped) or the reader (`need` 0).
+  The deal grows hoses on the shape alone and turns down a bed whose longest
+  hose takes over `LONGEST` 0.34 of it (the roadmap's "floor on hose count":
+  a thin shape snakes one hose through). `THEME_TRIES` 120 cuts a thing
+  before the next, then the square, off a copy of the day's rng, so the
+  square deals as before.
+- **Hard and Insane stay on their banks.** Measured on 24 cached nights
+  (`tests/_probe_hs_theme.gd`): every band deals a shape every day, but a
+  live proof of a shaped 7-9 bed took 0.5-3.4 s on the Mac, and a shape's
+  edge decides so much that its beds read through square by square (the
+  reader, `hoses_reader.gd`, finished 100% of most themed Hard and Insane
+  beds, against 61% and 20% for the banks). Gating them by the reader's
+  reach before the proof made it worse: themed beds are bimodal (100% or
+  8-63%), so the passing ones were harder than the square and seconds slow.
+  Medium is ungated for the same reason, so **a themed Medium reads easier
+  than the square's 76%** (23 of 24 at 100%); decided for the user.
+- Measured, Mac: Easy 24/24 themed, worst 38 ms; Medium 24/24, worst 236 ms
+  (square deals unchanged: 39 and 140 ms, `_probe_hoses.gd`).
+- **The board**: the bed is laid by the shape's extent (`_extent`), so a
+  shape narrower than its square is centred and as big as it can be; the
+  frame follows the shape (`Art.frame_shape`: a plank's width round every
+  square, lit where the top faces out, one mesh). A press outside the shape
+  is nothing (`cell_at` -1); a drag aimed there walks to the edge and stops.
+- **The win**: the soil takes the picture's beads (`Pal.PG_BEADS`, pale ones
+  shaded) in the daisies' diagonal wave, tufts give way to it, the hoses ease
+  to `HOSE_REST` 0.4 so the picture shows through, the `theme` cue rings
+  (wraps climbing an octave, Horse Pen's) with a GOOD knock, the card says
+  "Today's bed: %s." (`HS_WIN_THEME`), and the report waits `THEME_HOLD` 0.9
+  s more so the picture is seen whole. A reopened day stands painted.
+  `day_dict` says `source: theme`, the thing's id and the `void` squares.
+- Harness: `tests/_shot_hoses.gd -- <dir> d=<0|1> theme` re-deals on the
+  newest cached night and, in place of the menu reopen, restores the won bed
+  on the board (`reopen`); `won_paint` is the picture before the report.
+  Note the harness boots the real main scene, so a plain run on a day this
+  Mac has cached is themed too (20261106's Easy is the Towel, a 4x5 bed).
+  The theme run logs one "Parameter mesh is null" on its re-deal frame (the
+  world rebuilt and drawn in one frame); plain runs and `_win.gd` are clean.
+- Draw calls (opengl3_angle, 810x1440): 78-91 in play, 146 peak on the win.
+  `_win.gd -- hoses` PASS.
+- Owed: a phone (the shaped frame at a phone's width, a drag along a
+  shape's notch), the cue heard, the pt/es lines by a reader.

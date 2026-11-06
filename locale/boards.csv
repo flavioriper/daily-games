@@ -3149,6 +3149,7 @@ HS_SAY_DRY,"Every flower is reached, but some squares are still dry.","Toda flor
 HS_WIN_ONE,%d hoses in %d stroke.,%d mangueiras em %d traço.,%d mangueras en %d trazo.
 HS_WIN_N,%d hoses in %d strokes.,%d mangueiras em %d traços.,%d mangueras en %d trazos.
 HS_WIN_PERFECT,Every hose in one go.,Cada mangueira de uma vez só.,Cada manguera de una sola vez.
+HS_WIN_THEME,"Today's bed: %s. %s","Canteiro de hoje: %s. %s","El cantero de hoy: %s. %s"
 HS_WHY_TAP,This tap has only one free side.,Esta torneira só tem um lado livre.,Este grifo solo tiene un lado libre.
 HS_WHY_FLOWER,This flower has only one free side.,Esta flor só tem um lado livre.,Esta flor solo tiene un lado libre.
 HS_WHY_SEED,This seed has only one free side.,Esta semente só tem um lado livre.,Esta semilla solo tiene un lado libre.

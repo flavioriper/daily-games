@@ -81,12 +81,23 @@ static func mark(b: Face.Builder, at: Vector2, r: float, c: int, ink: Color) -> 
 			b.stroke(PackedVector2Array([at + Vector2(-r * 0.55, r * 0.3), at + Vector2(0.0, -r * 0.3), at + Vector2(r * 0.55, r * 0.3)]), r * 0.3, ink)
 
 ## A soil square `s` wide about `at`, dry or wet; `seed` places its specks.
-static func soil(b: Face.Builder, at: Vector2, s: float, wet: bool, seed: int) -> void:
+## `paint` (a themed day's win, 2026-11-06): the square takes the day's
+## picture's bead, its alpha how far it has come in; the soil's flecks and
+## shines go as it does.
+static func soil(b: Face.Builder, at: Vector2, s: float, wet: bool, seed: int, paint := Color(0, 0, 0, 0)) -> void:
 	var t := s * (1.0 - TILE_GAP)
 	var r := s * TILE_CORNER
 	var top := at - Vector2(t, t) * 0.5
-	b.fan(Face.Builder.round_rect(top + Vector2(0.0, s * 0.03), Vector2(t, t), r), WET_DEEP if wet else DRY_DEEP)
-	b.fan(Face.Builder.round_rect(top, Vector2(t, t * 0.97), r), WET if wet else DRY)
+	var face := WET if wet else DRY
+	var deep := WET_DEEP if wet else DRY_DEEP
+	if paint.a > 0.0:
+		var bead := Color(paint, 1.0)
+		face = face.lerp(bead, paint.a)
+		deep = deep.lerp(bead.darkened(0.3), paint.a)
+	b.fan(Face.Builder.round_rect(top + Vector2(0.0, s * 0.03), Vector2(t, t), r), deep)
+	b.fan(Face.Builder.round_rect(top, Vector2(t, t * 0.97), r), face)
+	if paint.a > 0.5:
+		return
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed * 7919 + 13
 	if wet:
@@ -111,6 +122,23 @@ static func frame(b: Face.Builder, rect: Rect2, w: float) -> void:
 	for p: Vector2 in [o.position, Vector2(o.end.x, o.position.y), o.end, Vector2(o.position.x, o.end.y)]:
 		var q := p + (o.get_center() - p).sign() * w * 0.5
 		b.disc(q, w * 0.13, FRAME_NAIL)
+
+## A themed day's frame (2026-11-06): the boards follow the day's shape, a
+## plank's width round every square of `centres` (`s` wide), lit along the
+## tops that face out; the dark bed under the squares the same way.
+static func frame_shape(b: Face.Builder, centres: Array, open_top: Array, s: float, w: float) -> void:
+	var half := Vector2(s, s) * 0.5
+	for at: Vector2 in centres:
+		b.fan(Face.Builder.round_rect(at - half - Vector2(w, w) + Vector2(0.0, w * 0.35), Vector2(s, s) + Vector2(w, w) * 2.0, w * 0.6), FRAME_DEEP)
+	for at: Vector2 in centres:
+		b.fan(Face.Builder.round_rect(at - half - Vector2(w, w), Vector2(s, s) + Vector2(w, w) * 2.0, w * 0.6), FRAME)
+	for i in centres.size():
+		if not open_top[i]:
+			continue
+		var at: Vector2 = centres[i]
+		b.fan(Face.Builder.round_rect(at - half + Vector2(-w * 0.8, -w * 0.85), Vector2(s + w * 1.6, w * 0.3), w * 0.15), FRAME_LIT)
+	for at: Vector2 in centres:
+		b.fan(Face.Builder.round_rect(at - half - Vector2(w, w) * 0.12, Vector2(s, s) + Vector2(w, w) * 0.24, w * 0.3), WET_DEEP)
 
 ## The centreline of a hose through `pts` (square middles), each turn a
 ## round bend from the middle of one step to the middle of the next.
