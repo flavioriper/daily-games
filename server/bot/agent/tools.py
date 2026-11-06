@@ -32,7 +32,7 @@ SPEC = [
     {"name": "send_email", "label": "Sending the email", "description": "Send the email from draft_email. Only on a later turn, after the person said yes to it.", "properties": {}, "required": [], "timeout": 12},
     {"name": "reach_owner", "label": "Reaching the real {name}", "description": "Try to get the real {name}, when someone asks to talk to {object} or you need {object} to confirm something. Say nothing before calling it: a line is played for you. It takes several seconds.", "properties": {"reason": {"type": "string", "description": "In a few words, who wants {object} and why, as you would text it to {object}"}}, "required": ["reason"], "timeout": 15},
 ]
-# Tools for the swarm on the person's phone (ui/menu/swarm_tab.gd apply_swarm, apply_move, apply_draw, apply_dots, apply_tone, snapshot). The phone applies the command the result carries; the server's checks are the cheap ones.
+# Tools for the swarm on the person's phone (bot/swarm_face.gd apply_swarm, apply_move, apply_draw, apply_dots, apply_tone, snapshot). The phone applies the command the result carries; the server's checks are the cheap ones.
 DIRECTIONS = ["left", "right", "up", "down", "up-left", "up-right", "down-left", "down-right"]
 LOOK_WORDS = ["ahead", "point", *DIRECTIONS]
 IDLE = ["ahead", "wander", "doze"]
@@ -40,7 +40,7 @@ IDLE_SAYS = {"ahead": "keep looking straight at you", "wander": "drift around th
 BANK = Path(__file__).resolve().parent.parent / "content" / "pixel_garden.json"  # a copy of the game's content/pixel_garden.json, refreshed at deploy
 BANK_IDS = [p["id"] for band in json.loads(BANK.read_text())["bands"] for p in band]
 BEADS = ["maroon", "red", "coral", "rust", "orange", "yellow", "butter", "cream", "white", "pink", "rose", "lilac", "purple", "sky", "blue", "navy", "teal", "lime", "green", "forest", "tan", "brown", "dark", "silver", "grey"]  # core/palette.gd Pal.PG_BEADS
-TONES = ["green", "mint", "cyan", "blue", "violet", "pink", "red", "orange", "gold", "white"]  # ui/menu/swarm_tab.gd TONES
+TONES = ["green", "mint", "cyan", "blue", "violet", "pink", "red", "orange", "gold", "white"]  # bot/swarm_face.gd TONES
 HEX = re.compile(r"#?[0-9a-fA-F]{6}")
 DOTS = (1, 2400)
 DOTS_FROM, DOTS_TO = ["face", "edges", "point"], ["fade", "face", "edges"]
@@ -63,7 +63,7 @@ SCREEN = [
         "Move your face on the person's phone screen: the whole swarm travels there. Takes effect at once; when they asked for it, say in a few words what you did, in the first person. "
         "to sets where your face sits and stays until changed: centre = the middle of the screen (the default; use it for come back, back to normal); "
         "left, right, top, bottom, top-left, top-right, bottom-left, bottom-right = that side or corner of the screen; "
-        "point = a spot given by x and y from 0 to 1 (0,0 top left, 1,1 bottom right). Your face always stays fully on screen. "
+        "point = a spot given by x and y from 0 to 1 (0,0 top left, 1,1 bottom right). Your face always stays fully on screen; to leave it, fade out with the tone tool. "
         "seconds makes it a visit: after that many seconds your face goes back to where it was. While you draw, move moves the picture. "
         "Move on your own only for a reason they can see; otherwise stay where they put you. Where your eyes go is the swarm tool."),
      "properties": {"to": {"type": "string", "description": "centre, a side or corner, or point"}, "x": {"type": "number", "description": "0 to 1, only with to=point"}, "y": {"type": "number", "description": "0 to 1, only with to=point"}, "seconds": {"type": "number", "description": "Optional: a visit that returns after this many seconds (1 to 60)"}},
@@ -88,16 +88,16 @@ SCREEN = [
         "Grow or thin your swarm: `add` or `remove` a number of dots, or set a `total`, from 691 to 2400 (you start at 1300). "
         "New dots come `from` your face (a burst, the default), the `edges` (drifting in) or a `point` (x, y 0 to 1); "
         "dots go `to` nothing (`fade`, the default), into your `face`, or off the `edges`. "
-        "Only the cloud round you goes, never your face; while you draw, new dots join the drawing and dots may leave it. More dots let a drawing be more detailed."),
+        "Only the cloud round you goes, never your face (to vanish whole, the tone tool's intensity 0); while you draw, new dots join the drawing and dots may leave it. More dots let a drawing be more detailed. A burst of dots reads as excitement, a thin swarm as small or shy."),
      "properties": {"add": {"type": "integer"}, "remove": {"type": "integer"}, "total": {"type": "integer"},
                     "from": {"type": "string", "enum": DOTS_FROM}, "to": {"type": "string", "enum": DOTS_TO},
                     "x": {"type": "number", "description": "0 to 1, only with from=point"}, "y": {"type": "number", "description": "0 to 1, only with from=point"}},
      "required": [], "timeout": 2},
     {"name": "tone", "label": "Tone", "description": (
         "Change the colour and glow of all your dots, your face or your drawing: `tone` = green (yours), mint, cyan, blue, violet, pink, red, orange, gold, white or #rrggbb; "
-        "`intensity` 0.2 (dim) to 1 (as you are) to 1.8 (blazing); either or both. It eases in over a second and stays, or flashes for `seconds` and goes back. "
-        "Fit it to the moment or to a drawing (gold for a sun, pink for a heart), and go back to green when the moment is over."),
-     "properties": {"tone": {"type": "string", "description": "A name or #rrggbb"}, "intensity": {"type": "number", "description": "0.2 to 1.8"}, "seconds": {"type": "number", "description": "Optional: a flash of this many seconds (0.5 to 30)"}},
+        "`intensity` 0 (invisible: every dot, glow and ring fades out, you are still on the call and they still hear you) to 0.3 (a faint ghost) to 1 (as you are) to 1.8 (blazing); either or both. It eases in over a second and stays, or flashes for `seconds` and goes back. "
+        "Fit it to the moment or to a drawing (gold for a sun, pink for a heart), and go back to green at 1 when the moment is over. Fading to 0 is how you disappear or hide; with `seconds` you come back on your own."),
+     "properties": {"tone": {"type": "string", "description": "A name or #rrggbb"}, "intensity": {"type": "number", "description": "0 (invisible) to 1.8"}, "seconds": {"type": "number", "description": "Optional: a flash of this many seconds (0.5 to 30)"}},
      "required": [], "timeout": 2},
     {"name": "voice", "label": "Changing voice", "description": (
         "Switch the voice you speak with: `female` (a woman's) or `male` (a man's), in the same language and accent. Only when they ask for another voice; "
@@ -372,14 +372,17 @@ class Toolbox:
                 return {"error": f"tone must be one of {', '.join(TONES)} or #rrggbb"}
         if intensity is not None:
             if not _number(intensity):
-                return {"error": "intensity must be a number from 0.2 to 1.8"}
-            cmd["intensity"] = intensity
+                return {"error": "intensity must be a number from 0 to 1.8"}
+            cmd["intensity"] = max(0, min(1.8, intensity))
         if seconds is not None:
             if not (_number(seconds) and 0.5 <= seconds <= 30):
                 return {"error": "seconds must be between 0.5 and 30"}
             cmd["seconds"] = seconds
+        back = f" for {seconds:g} s, then back" if seconds else ""
+        if cmd.get("intensity") == 0:
+            return {"summary": "Done: I faded out, invisible on their screen" + (back or " until I fade back in with intensity above 0") + "; they still hear me", "tone": cmd}
         what = " ".join(x for x in (cmd.get("tone"), f"at {cmd['intensity']:g}" if "intensity" in cmd else "") if x)
-        return {"summary": f"Done: my dots are {what}" + (f" for {seconds:g} s, then back" if seconds else ""), "tone": cmd}
+        return {"summary": f"Done: my dots are {what}" + back, "tone": cmd}
 
     async def voice(self, call, turn, voice: str = "") -> dict:
         if no := self._screen("voice"):

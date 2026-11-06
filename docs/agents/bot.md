@@ -265,6 +265,27 @@ are committed, as Firebase's; `android/` is not in git), and
   check logcat says `aec=true` on the ROG; on iOS (TestFlight) the same, the
   device log says `SwarmVoice: started, voice processing 1`.
 
+## The screen tools are dials, not tricks (2026-11-06)
+
+A tester asked the Swarm to disappear; it said it would try and did nothing.
+No tool could do it (intensity floored at 0.2, dots at the face's 691,
+`move` keeps the face on screen), and the prompt listed the tools by verb, so
+a request with no matching name fell through. The user: "they should be
+generic enough to let the agent be creative". Now:
+
+- `tone` intensity goes to **0** (`bot/swarm_face.gd` `INTENSITY`, the server
+  clamps to 0..1.8): every dot, the halo, rings and bloom scale with it, so 0
+  is gone from the screen while the call and the voice go on. The result says
+  so; `seconds` brings it back on its own, and reopening the room resets to 1.
+  Builds before this clamp 0 to 0.2 (a faint ghost).
+- `PHONE` in `voice/prompt.py` names each tool as a dial and gives mixes as
+  examples (hide = intensity 0, peek = corner + dim + look, excited = burst +
+  flash, shy = thin + dim + glance away, sleep = doze + dim), with the rule:
+  do the closest mix at once and say what you did, never "I'll try" and
+  nothing, "can't" only when nothing comes close.
+- `move` and `dots` point at `tone` 0 for leaving or vanishing whole. The face
+  still cannot leave the screen by moving.
+
 ## Testing a call locally
 
 `BOT_TEST_PAGE=1 uv run python server.py` serves `GET /test`

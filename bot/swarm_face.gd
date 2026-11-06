@@ -97,7 +97,7 @@ const TONES := {
 	"violet": Color("a58bff"), "pink": Color("ff8fc8"), "red": Color("ff6f6f"),
 	"orange": Color("ffa45c"), "gold": Color("ffd166"), "white": Color("e6eef0"),
 }
-const INTENSITY := [0.2, 1.8]
+const INTENSITY := [0.0, 1.8]  # 0 = gone from the screen, still on the call (the user, 2026-11-06)
 const ROOM := Color("0b1510")
 const ROOM_DEEP := Color("040806")
 ## The one light in the room: from the upper left, toward the viewer.
@@ -877,7 +877,7 @@ func snapshot(width := 384) -> Dictionary:
 	return {"jpg": Marshalls.raw_to_base64(jpg), "w": img.get_width(), "h": img.get_height(), "bytes": jpg.size()}
 
 ## The tone tool: the swarm's `tone` (a name of TONES or "#rrggbb") and its
-## `intensity` (0.2 dim .. 1 as it is .. 1.8 blazing), either or both,
+## `intensity` (0 invisible .. 1 as it is .. 1.8 blazing), either or both,
 ## eased in over about a second; `seconds` makes it a flash that goes back.
 func apply_tone(cmd: Dictionary) -> Dictionary:
 	if not cmd.has("tone") and not cmd.has("intensity"):
