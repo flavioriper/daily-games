@@ -39,6 +39,7 @@ const Haptics = preload("res://core/haptics.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const StarLine = preload("res://ui/flat/star_line.gd")
 const FlatTopBar = preload("res://ui/flat/flat_top_bar.gd")
+const ThemedPictures = preload("res://core/themed_pictures.gd")
 const FLAT_HOST := "res://ui/flat/flat_host.gd"
 
 const Said = State.Said
@@ -57,6 +58,7 @@ const HAPTICS := {
 	"gate": Haptics.BUMP,
 	"hint": Haptics.GOOD,
 	"solved": Haptics.WIN,
+	"theme": Haptics.GOOD,
 }
 
 ## The screen the board was drawn on; everything scales with the width.
@@ -105,9 +107,33 @@ const BULB_STEP := 0.16
 const WAVE_STEP := 0.05
 const SAY_TIME := 2.4
 const WIN_HOLD := 1.7
+## The daily theme (2026-11-06): on a daily dealt from its day, the fence
+## dealt is one the day's theme word can be strung on (fence_state.gd's
+## `theme_words`, ThemedPictures.bank_pick), never another fence or par. A
+## seed packet with a sun on it hangs on the sign while the word is hidden,
+## and the board says so THEME_TEASE_AT after it enters. Tied, the word's
+## twine is a rose ribbon with a bow on its first strand (a colour and a
+## shape no twine state uses), its tag gets a bow, the theme cue rings THEME_CUE_AT
+## after the tie with a sparkle on each of its posts, and the line names it.
+## The win waits THEME_HOLD longer when it was found (the ribbon sparkles
+## again); its line names the word either way.
+const THEME_TEASE_AT := 1.1
+const THEME_CUE_AT := 0.22
+const THEME_HOLD := 0.6
+const BOW_TIME := 0.36
 
 var demo := false
 var demo_day := {}
+## The day's theme word the fence was dealt for (folded), "" on a plain day;
+## when it was tied (the bow's pop-in).
+var theme_word := ""
+## The harness's seam: a pool (folded, strongest first) dealt from in place
+## of the day's, set before the board is built (Backend never starts in a
+## harness). null in the game.
+static var theme_pool_seam = null
+var _theme_at := -INF
+var _bow_mesh: ArrayMesh
+var _bow_key := ""
 
 var _st = State.new()
 var _band := 0
@@ -244,13 +270,65 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_band = clampi(difficulty, 0, 3)
 	_rng.seed = rng.randi()
 	_st.band = _band
+	theme_word = ""
 	if demo and not demo_day.is_empty():
 		_st.load_day(demo_day)
-	else:
+	elif demo or bank_step != 0 or daily_key == 0 or not _theme_deal(_theme_pool()):
 		_st.deal(rng, _band, bank_step)
 	_fresh()
 	_enter_at = _t
 	_cue("enter")
+	_tease()
+
+## The day's theme words, or the harness's (theme_pool_seam).
+func _theme_pool() -> Array:
+	if theme_pool_seam is Array:
+		return theme_pool_seam
+	return ThemedPictures.theme_pool(daily_key)
+
+## The daily theme's deal: of the band's bank, the fence the strongest word
+## of `pool` (theme_pool: folded, strongest first) can be strung on, as
+## ThemedPictures.bank_pick chooses it. False, and nothing dealt, when no
+## fence holds one.
+func _theme_deal(pool: Array) -> bool:
+	if pool.is_empty():
+		return false
+	var accepted: Array = State.theme_accepted(pool)
+	if accepted.is_empty():
+		return false
+	var boards: Array = InsaneBank.boards(State.BANKS[_band])
+	var bits: PackedInt64Array = State.theme_bits(accepted)
+	var hit: Dictionary = ThemedPictures.bank_pick(boards, accepted, daily_key,
+		func(e: Dictionary) -> Array: return State.theme_words(e, accepted, bits))
+	if hit.is_empty():
+		return false
+	_st.band = _band
+	_st.load_day(boards[int(hit.index)])
+	theme_word = String(hit.word)
+	return true
+
+func themed() -> bool:
+	return theme_word != ""
+
+## Whether the day's theme word is tied (an untied one is hidden again).
+func theme_found() -> bool:
+	if not themed():
+		return false
+	for t: Dictionary in _st.tied:
+		if String(t.word) == theme_word:
+			return true
+	return false
+
+## The word as the list writes it (accents), upper case.
+func _theme_shown() -> String:
+	return _st.written(theme_word).to_upper()
+
+## A themed fence says, once it is in, that the day's word is in it.
+func _tease() -> void:
+	if not themed() or demo:
+		return
+	_say_now("FN_SAY_THEME_HIDDEN")
+	_say_at = _t + THEME_TEASE_AT
 
 ## Every post as dealt, nothing moving.
 func _fresh() -> void:
@@ -275,6 +353,7 @@ func _fresh() -> void:
 	_relayout()
 
 func _dirty() -> void:
+	_bow_key = ""
 	_tied_key = ""
 	_trail_key = ""
 	_sign_key = ""
@@ -285,7 +364,8 @@ func day_dict() -> Dictionary:
 	if _st.posts.is_empty():
 		return {}
 	return {
-		"source": "bank", "kind": "text",
+		"source": "theme" if themed() else "bank", "kind": "text",
+		"theme": theme_word,
 		"payload": {"posts": "".join(_st.posts), "sides": _st.sides, "gate": _st.gate},
 		"solution": {"route": Array(_st.route)},
 		"metrics": {"par": _st.par, "words": _st.word_count()},
@@ -382,8 +462,26 @@ func _tie(kind := "hand") -> void:
 		_say_now("FN_SAY_TIED", [_st.written(word).to_upper(), gain])
 	else:
 		_say_now("FN_SAY_TIED_NONE", [_st.written(word).to_upper()])
+	if themed() and word == theme_word:
+		_theme_tied(posts, said == Said.SOLVED)
 	_rate(true)
 	moved.emit()
+
+## The day's theme word tied: its twine turns ribbon and a bow pops on its
+## first strand, the line names it, the theme cue rings a beat after the tie
+## with a sparkle on each of its posts.
+func _theme_tied(posts: Array, solving: bool) -> void:
+	_theme_at = _t
+	_tied_key = ""
+	_tags_key = ""
+	_sign_key = ""
+	if not solving:
+		_say_now("FN_SAY_THEME", [_theme_shown()])
+	_later(_t + THEME_CUE_AT, func() -> void:
+		_cue("theme")
+		if fx != null:
+			for p in posts:
+				fx.sparkle(_post_at(int(p)), Art.RIBBON_LIT))
 
 func _refuse(key: String, args: Array = []) -> void:
 	_sign_shiver_at = _t
@@ -406,6 +504,10 @@ func _phase_solved(land: float) -> void:
 	_later(land + 0.3, func() -> void:
 		if fx != null:
 			fx.confetti(Vector2(size.x * 0.5, (_L.fence as Rect2).get_center().y), 28, size.x * 0.7)
+			if theme_found():
+				# the ribbon sparkles again under the confetti
+				for ch in theme_word:
+					fx.sparkle(_post_at(_st.post_of(ch)), Art.RIBBON_LIT)
 		var perfect: bool = _st.tied.size() <= _st.par and hints_used == 0
 		_cue("party" if perfect else "confetti"))
 
@@ -913,6 +1015,7 @@ func _draw() -> void:
 	_draw_trail()
 	_draw_gate()
 	_draw_posts()
+	_draw_bow()
 	_draw_reading()
 	draw_set_transform(Vector2.ZERO)
 	_draw_sign()
@@ -956,13 +1059,51 @@ func _draw_tied() -> void:
 		var wd := _l("r") * 0.16
 		for t: Dictionary in _st.tied:
 			var w: String = t.word
+			# the day's theme word is a rose ribbon, a little wider, below
+			if themed() and w == theme_word:
+				continue
 			for k in w.length() - 1:
 				var a := _post_at(_st.post_of(w[k]))
 				var z := _post_at(_st.post_of(w[k + 1]))
 				Art.twine(b, a, z, wd + 2.0 * _s(), Art.TWINE_DEEP, _sag(a, z))
 				Art.twine(b, a, z, wd, Art.TWINE, _sag(a, z))
+		if theme_found():
+			var w2 := theme_word
+			for k in w2.length() - 1:
+				var a := _post_at(_st.post_of(w2[k]))
+				var z := _post_at(_st.post_of(w2[k + 1]))
+				Art.twine(b, a, z, wd * 1.35 + 3.0 * _s(), Art.RIBBON_DEEP, _sag(a, z))
+				Art.twine(b, a, z, wd * 1.35, Art.RIBBON, _sag(a, z))
 		_tied_mesh = b.mesh()
 	draw_mesh(_tied_mesh, null)
+
+## The bow on the theme word's ribbon, at its first strand's middle:
+## one cached mesh, popping in when the word is tied.
+func _draw_bow() -> void:
+	if not theme_found():
+		return
+	var a := _post_at(_st.post_of(theme_word[0]))
+	var z := _post_at(_st.post_of(theme_word[1]))
+	var at := (a + z) * 0.5 + (z - a).orthogonal().normalized() * _sag(a, z) * 0.5
+	var key := "%s:%s" % [str(_L.fence), theme_word]
+	if key != _bow_key or _bow_mesh == null:
+		_bow_key = key
+		var b := Face.Builder.new()
+		var dir := (z - a).normalized()
+		if dir.x < 0.0:
+			dir = -dir
+		Art.bow(b, Vector2.ZERO, _l("r") * 0.8, dir)
+		_bow_mesh = b.mesh()
+	var k := 1.0
+	if not Motion.reduce and _t - _theme_at < BOW_TIME:
+		k = Motion.pop_in_scale(maxf(0.0, _t - _theme_at), BOW_TIME).x
+	if k <= 0.0:
+		return
+	var c := (_L.fence as Rect2).get_center()
+	var e := _enter_e()
+	draw_set_transform(c * (1.0 - e) + at * e, 0.0, Vector2.ONE * e * k)
+	draw_mesh(_bow_mesh, null)
+	draw_set_transform(c * (1.0 - e), 0.0, Vector2.ONE * e)
 
 ## A strand's sag: longer strands hang lower.
 func _sag(a: Vector2, z: Vector2) -> float:
@@ -1164,11 +1305,17 @@ func _draw_reading() -> void:
 ## the garden knows it; empty, what to do.
 func _draw_sign() -> void:
 	var rect: Rect2 = _L.sign
-	var key := str(rect)
+	var hidden := themed() and not theme_found() and not _st.solved()
+	var key := "%s:%s" % [str(rect), str(hidden)]
 	if key != _sign_key or _sign_mesh == null:
 		_sign_key = key
 		var b := Face.Builder.new()
 		Art.sign(b, rect)
+		if hidden:
+			# the day's word is in the fence: a seed packet hung by the
+			# sign's left end, clear of the fence below
+			var pw := rect.size.y * 0.56
+			Art.packet(b, Vector2(rect.position.x - pw * 0.3, rect.position.y + rect.size.y * 0.16), pw)
 		_sign_mesh = b.mesh()
 	var at := Vector2.ZERO
 	if not Motion.reduce:
@@ -1216,12 +1363,12 @@ func _draw_tags() -> void:
 	var rects: Array = spots.rects
 	var key := "%s:%d" % [str(rects), _st.tied.size()]
 	for t: Dictionary in _st.tied:
-		key += String(t.kind)
+		key += String(t.kind) + String(t.word)
 	if key != _tags_key or _tags_mesh == null:
 		_tags_key = key
 		var b := Face.Builder.new()
 		for k in rects.size():
-			Art.tag(b, rects[k], String(_st.tied[k].kind) == "bulb")
+			Art.tag(b, rects[k], String(_st.tied[k].kind) == "bulb", _is_theme(k))
 		_tags_mesh = b.mesh()
 	var newest := _tag_at[-1] if not _tag_at.is_empty() else -INF
 	var popping := not Motion.reduce and _t - newest < Motion.POP_IN
@@ -1235,18 +1382,21 @@ func _draw_tags() -> void:
 			if e <= 0.0:
 				continue
 			var g := Face.Builder.new()
-			Art.tag(g, rect, String(_st.tied[k].kind) == "bulb")
+			Art.tag(g, rect, String(_st.tied[k].kind) == "bulb", _is_theme(k))
 			draw_set_transform(rect.get_center() * (1.0 - e), 0.0, Vector2.ONE * e)
 			draw_mesh(_keep(g.mesh()), null)
 		elif popping:
 			var g2 := Face.Builder.new()
-			Art.tag(g2, rect, String(_st.tied[k].kind) == "bulb")
+			Art.tag(g2, rect, String(_st.tied[k].kind) == "bulb", _is_theme(k))
 			draw_mesh(_keep(g2.mesh()), null)
 		var text: String = _st.written(String(_st.tied[k].word)).to_upper()
 		var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 		var x := rect.position.x + rect.size.y * 0.55 + (rect.size.x - rect.size.y * 0.55 - tw) * 0.5
 		draw_string(font, Vector2(x, rect.get_center().y + font.get_ascent(fs) * 0.36), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Art.INK)
 		draw_set_transform(Vector2.ZERO)
+
+func _is_theme(k: int) -> bool:
+	return themed() and String(_st.tied[k].word) == theme_word
 
 ## The tags laid out: [Rect2] in reading order and their font size, shrunk
 ## until they fit the rows.
@@ -1295,7 +1445,7 @@ func _draw_say() -> void:
 	var text := tr(_say)
 	if not _say_args.is_empty():
 		text = text % _say_args
-	var good := _say in ["FN_SAY_TIED", "FN_SAY_TIED_NONE", "FN_SAY_OPEN", "FN_PERFECT", "FN_DONE", "FN_READ"]
+	var good := _say in ["FN_SAY_TIED", "FN_SAY_TIED_NONE", "FN_SAY_OPEN", "FN_PERFECT", "FN_DONE", "FN_READ", "FN_SAY_THEME", "FN_SAY_THEME_HIDDEN"]
 	var fs := roundi(SAY_SIZE * (1.1 if good else 1.0) * _s())
 	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 	if tw > size.x * 0.94:
@@ -1372,7 +1522,7 @@ func _draw_pill() -> void:
 func win_delay() -> float:
 	if Motion.reduce:
 		return Motion.REDUCED_TIME
-	return WIN_HOLD + _st.posts.size() * WAVE_STEP
+	return WIN_HOLD + _st.posts.size() * WAVE_STEP + (THEME_HOLD if theme_found() else 0.0)
 
 func skill_quality() -> float:
 	if _st.posts.is_empty():
@@ -1389,6 +1539,10 @@ func flat_win() -> Dictionary:
 		line += " " + tr("FN_WIN_AT_PAR")
 	else:
 		line += " " + tr("FN_WIN_PAR_WAS") % _st.par
+	if theme_found():
+		line = tr("FN_WIN_THEME") % [_theme_shown(), line]
+	elif themed():
+		line = tr("FN_WIN_THEME_WAS") % [line, _theme_shown()]
 	return {"faces": [], "subtitle": line}
 
 func completion_record() -> Dictionary:
@@ -1397,10 +1551,21 @@ func completion_record() -> Dictionary:
 	for t: Dictionary in _st.tied:
 		words.append(String(t.word))
 		kinds.append(String(t.kind))
-	return {"words": words, "kinds": kinds, "helped": _st.helped, "stars": _st.stars()}
+	return {"words": words, "kinds": kinds, "helped": _st.helped, "stars": _st.stars(),
+		"posts": "".join(_st.posts), "theme": theme_word}
 
 ## A finished day reopens in bloom, its words as tied.
 func restore_completed_board() -> void:
+	# the fence the day was played on, should the theme's pool have come or
+	# gone since (the deal reads the cached day): dealt again from the bank
+	var was := String(completed_record.get("posts", ""))
+	if was != "" and was != "".join(_st.posts):
+		for e in InsaneBank.boards(State.BANKS[_band]):
+			if e is Dictionary and String(e.get("posts", "")) == was:
+				_st.load_day(e)
+				break
+	if completed_record.has("theme"):
+		theme_word = String(completed_record.theme)
 	var words: Array = completed_record.get("words", [])
 	var kinds: Array = completed_record.get("kinds", [])
 	_st.restart()
@@ -1415,4 +1580,5 @@ func restore_completed_board() -> void:
 	_st.helped = int(completed_record.get("helped", 0))
 	_fresh()
 	_enter_at = -10.0
+	_theme_at = -10.0
 	queue_redraw()

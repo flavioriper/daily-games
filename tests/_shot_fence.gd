@@ -7,6 +7,16 @@ extends SceneTree
 ## the win settled and the day reopened from its card, with the draw calls
 ## of each frame. `tut` shoots a tutorial page played a while; `card` the
 ## menu card beside Stepping Stones'. Puts nothing in the player's save.
+##
+## `theme` (2026-11-06): the day's theme pool is the fixture at FIXTURE
+## (keys en/pt/es, folded here), handed to the board's seam before it is
+## built, so the fence is dealt as a themed daily would be. It prints the
+## themed fences of every band and how long the pick takes, strings the
+## theme word first (`theme_tease`, `theme_strung`, `theme_tied`,
+## `theme_found`), then the bulb finishes and the win and the reopened day
+## are shot as above. `theme=miss` never strings it (the win's softer line,
+## unless the bulb strings it); `theme=drop` strings it and takes the pool
+## away before the reopen. `lang=<pt|es>` plays in that language.
 
 var _menu: Node
 var _host: Node
@@ -18,6 +28,12 @@ var _f := 0
 var _step := 0
 var _diag: Control
 var _at := 90
+var _theme := ""
+var _lang := ""
+const FIXTURE := "/private/tmp/claude-501/-Users-flavioriper-dev-daily/34d2447a-148c-4075-8921-873314a4eae3/scratchpad/theme_pool_fixture.json"
+const Board = preload("res://puzzles/fence2d.gd")
+const State = preload("res://puzzles/fence_state.gd")
+const ThemedPictures = preload("res://core/themed_pictures.gd")
 
 func _initialize() -> void:
 	for a in OS.get_cmdline_user_args():
@@ -31,6 +47,10 @@ func _initialize() -> void:
 			_at = int(a.substr(3))
 		elif a == "card":
 			_step = 60
+		elif a == "theme" or a.begins_with("theme="):
+			_theme = "hit" if a == "theme" else a.substr(6)
+		elif a.begins_with("lang="):
+			_lang = a.substr(5)
 		else:
 			_dir = a
 	var progress = load("res://core/progress.gd")
@@ -44,6 +64,7 @@ func _initialize() -> void:
 	_menu = main.get_node("UI/Menu")
 
 func _finish() -> void:
+	Board.theme_pool_seam = null
 	var progress = load("res://core/progress.gd")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(progress.path))
 	quit()
@@ -89,6 +110,14 @@ func _process(_delta: float) -> bool:
 			quit()
 			return true
 		return false
+	if _f == 4:
+		if _lang != "":
+			# the banks, the words and the pool read Locale's language;
+			# nothing is saved
+			Locale._current = _lang
+			TranslationServer.set_locale(_lang)
+		if _theme != "":
+			_seed_pool()
 	if _f == 5:
 		_menu._open_at(load("res://ui/registry.gd").find("fence"), _band)
 		_host = _menu.get_child(_menu.get_child_count() - 1)
@@ -99,13 +128,17 @@ func _process(_delta: float) -> bool:
 	if _f < 60:
 		return false
 	if _step == 7:
+		if _f == 7004 and _theme == "drop":
+			# the day's pool gone by the reopen: the played fence comes back
+			# from the record
+			Board.theme_pool_seam = null
 		if _f == 7005:
 			_menu._open_at(load("res://ui/registry.gd").find("fence"), _band)
 			_host = _menu.get_child(_menu.get_child_count() - 1)
 		if _f == 7200:
 			_b = _host._puzzle
 			_shot("reopen")
-			print("reopen done=%s solved=%s tied=%s" % [_b.is_done(), _b.is_solved(), _b.state().tied])
+			print("reopen done=%s solved=%s tied=%s themed=%s found=%s" % [_b.is_done(), _b.is_solved(), _b.state().tied, _b.themed(), _b.theme_found()])
 			_finish()
 			return true
 		return false
@@ -113,7 +146,33 @@ func _process(_delta: float) -> bool:
 		_b = _host._puzzle
 		_b.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var st = _b.state()
+	if _theme != "" and _step == 0:
+		print("themed=%s word=%s daily_key=%d bank_step=%d day=%s" % [_b.themed(), _b.theme_word, _b.daily_key, _b.bank_step, _b.day_dict()])
+		_step = 20 if _theme in ["hit", "drop"] and _b.themed() else 4
+		_f = 2000 if _step == 20 else 4000
+		_shot("theme_rest")
+		return false
 	match _step:
+		20:
+			var w: String = _b.theme_word
+			if _f == 2060:
+				_shot("theme_tease")
+				for k in w.length() - 1:
+					_tap(st.post_of(w[k]))
+			if _f == 2062:
+				_tap(st.post_of(w.right(1)))
+			if _f == 2090:
+				_shot("theme_strung")
+				_tap(st.post_of(w.right(1)))
+			if _f == 2098:
+				_shot("theme_tied")
+			if _f == 2112:
+				_shot("theme_sparkle")
+			if _f == 2150:
+				_shot("theme_found")
+				print("theme tied %s found=%s tied=%s stars=%d" % [w, _b.theme_found(), st.tied, st.stars()])
+				_step = 4
+				_f = 4000
 		0:
 			_shot("rest")
 			print("posts %s sides %d gate %d par %d route %s words %d" % ["".join(st.posts), st.sides, st.gate, st.par, st.route, st.word_count()])
@@ -186,6 +245,7 @@ func _process(_delta: float) -> bool:
 				_shot("won")
 				print("won tied=%s helped=%d stars=%d quality=%.2f" % [st.tied, st.helped, st.stars(), _b.skill_quality()])
 				print(_b.share_glyphs())
+				print("win line: %s | delay %.2f | found=%s" % [_b.flat_win().subtitle, _b.win_delay(), _b.theme_found()])
 				_host.closed.emit()
 				_step = 7
 				_f = 7000
@@ -196,7 +256,7 @@ func _process(_delta: float) -> bool:
 			if _f == 7200:
 				_b = _host._puzzle
 				_shot("reopen")
-				print("reopen done=%s solved=%s tied=%s" % [_b.is_done(), _b.is_solved(), _b.state().tied])
+				print("reopen done=%s solved=%s tied=%s themed=%s found=%s" % [_b.is_done(), _b.is_solved(), _b.state().tied, _b.themed(), _b.theme_found()])
 				_finish()
 				return true
 		50:
@@ -221,3 +281,38 @@ func _process(_delta: float) -> bool:
 				_finish()
 				return true
 	return false
+
+## The fixture's words for the player's language, folded and kept as
+## ThemedPictures.theme_pool keeps them, handed to the board's seam; then
+## every band's bank walked as a themed deal would walk it.
+func _seed_pool() -> void:
+	var doc = JSON.parse_string(FileAccess.get_file_as_string(FIXTURE))
+	var lang := Locale.current()
+	var pool: Array = []
+	for w in doc.get(lang, []):
+		var f := Locale.fold(String(w).strip_edges())
+		if f.length() < 3 or f.length() > 16 or pool.has(f):
+			continue
+		var ok := true
+		for ch in f:
+			if not Locale.alphabet().contains(ch):
+				ok = false
+				break
+		if ok:
+			pool.append(f)
+	Board.theme_pool_seam = pool
+	var t0 := Time.get_ticks_usec()
+	var accepted: Array = State.theme_accepted(pool)
+	var t_acc := Time.get_ticks_usec() - t0
+	print("theme pool %s: %d words, %d the garden takes (%d us): %s" % [lang, pool.size(), accepted.size(), t_acc, accepted])
+	for bank in State.BANKS:
+		var boards: Array = InsaneBank.boards(bank)
+		var t1 := Time.get_ticks_usec()
+		var bits: PackedInt64Array = State.theme_bits(accepted)
+		var hit := ThemedPictures.bank_pick(boards, accepted, 20261106, func(e: Dictionary) -> Array: return State.theme_words(e, accepted, bits))
+		var t_pick := Time.get_ticks_usec() - t1
+		var n := 0
+		for e in boards:
+			if not State.theme_words(e, accepted).is_empty():
+				n += 1
+		print("  %s: %d of %d fences themed; pick %s in %d us" % [bank, n, boards.size(), hit, t_pick])

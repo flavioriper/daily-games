@@ -88,6 +88,89 @@ static func words_doc() -> Dictionary:
 	_cache[path] = out
 	return out
 
+## Words a player may string but no route takes and the day's theme never
+## hides: tools/build_fence.py's CRUDE (the shipped list has them among the
+## `more` words, unmarked), folded as Locale.fold folds them.
+const CRUDE := {
+	"en": ["fart", "farts", "poop", "poops", "turd", "turds", "puke", "pukes", "vomit", "pimp", "pimps",
+		"arse", "arses", "bums", "hoes", "booty", "thong", "drug", "drugs", "gays", "pees", "piss", "boozy",
+		"pee", "poo", "bum", "gay", "sex", "hoe", "tit", "fag", "nob", "wee", "jap", "kkk", "pot", "pus"],
+	"pt": ["xixi", "mijo", "mija", "mijar", "mijou", "caga", "cagar", "cagou", "peido", "peida", "bosta",
+		"cocos", "drogas", "porre", "cu", "coc", "cag", "pum", "xot", "bum", "gay", "sexo", "pau",
+		"coco", "bunda", "rabo", "pinto"],
+	"es": ["mear", "meado", "caga", "cagar", "cagan", "pito", "pitos", "paja", "pajas", "mamar", "pedos",
+		"drogas", "pis", "pedo", "caca", "culo", "gay", "sexo", "teta", "nabo", "rabo"],
+}
+
+# --- the daily theme (2026-11-06) ---
+
+## Of `pool` (ThemedPictures.theme_pool: folded, strongest first), the words
+## the garden takes: in the language's list and not crude. Read once a deal,
+## before the bank is walked.
+static func theme_accepted(pool: Array) -> Array:
+	var doc := words_doc()
+	var crude: Array = CRUDE.get(Locale.current(), [])
+	var out: Array = []
+	for w in pool:
+		var f := String(w)
+		if f.length() < SHORTEST or crude.has(f) or out.has(f):
+			continue
+		var first := f.substr(0, 1)
+		var fair = doc.fair.get(first)
+		var more = doc.more.get(first)
+		var known := fair != null and (fair as PackedStringArray).has(f)
+		if not known and more != null:
+			var at: int = (more as PackedStringArray).bsearch(f)
+			known = at < more.size() and more[at] == f
+		if known:
+			out.append(f)
+	return out
+
+## Whether a fence of `posts` (three a side, each letter once) can string
+## `w`: every letter on a post, never two in a row from one side (so never
+## one letter twice in a row).
+static func strings(posts: String, w: String) -> bool:
+	if w.length() < SHORTEST:
+		return false
+	var prev := -1
+	for ch in w:
+		var p := posts.find(ch)
+		if p < 0 or p / 3 == prev:
+			return false
+		prev = p / 3
+	return true
+
+## A word's letters as bits (a letter's code point mod 63): a fence can
+## string a word only when its posts' bits hold all of the word's.
+static func letter_bits(w: String) -> int:
+	var m := 0
+	for k in w.length():
+		m |= 1 << (w.unicode_at(k) % 63)
+	return m
+
+## The words of `accepted` (theme_accepted) a bank entry can string: the
+## `words_of` ThemedPictures.bank_pick walks the bank with. `bits` (each
+## accepted word's letter_bits, in order) skips the words a fence lacks a
+## letter of before the side rule is read.
+static func theme_words(entry: Dictionary, accepted: Array, bits := PackedInt64Array()) -> Array:
+	# the banks' posts are folded already (tools/build_fence.py)
+	var posts := String(entry.get("posts", ""))
+	var have := letter_bits(posts) if bits.size() == accepted.size() else -1
+	var out: Array = []
+	for i in accepted.size():
+		if have != -1 and bits[i] & ~have != 0:
+			continue
+		if strings(posts, accepted[i]):
+			out.append(accepted[i])
+	return out
+
+## Every accepted word's letter_bits, for theme_words.
+static func theme_bits(accepted: Array) -> PackedInt64Array:
+	var out := PackedInt64Array()
+	for w in accepted:
+		out.append(letter_bits(String(w)))
+	return out
+
 func deal(_rng: RandomNumberGenerator, the_band: int, bank_step := 0) -> void:
 	band = clampi(the_band, 0, 3)
 	var day: Dictionary = InsaneBank.pick(BANKS[band], bank_step)

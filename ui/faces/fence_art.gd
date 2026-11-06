@@ -50,6 +50,16 @@ const SIGN_LIT := Color("e0bf92")
 const SIGN_DEEP := Color("986f43")
 const TAG := Color("f6ecd6")
 const TAG_DEEP := Color("d8c6a2")
+## The daily theme's word, tied: a rose ribbon (no twine state is rose) with
+## a bow; the seed packet with a sun on it that hangs on the sign while the
+## word is hidden.
+const RIBBON := Color("e0697c")
+const RIBBON_DEEP := Color("a9465a")
+const RIBBON_LIT := Color("ffb3bd")
+const PACKET := Color("f3e3c0")
+const PACKET_DEEP := Color("c9ad7c")
+const SUN := Color("f6b93b")
+const SUN_DEEP := Color("d48a1c")
 
 ## The lawn edge to edge, `sz`: soft mowing stripes, a few daisies and
 ## tufts, kept clear of `keep` (the bed and its fence).
@@ -181,6 +191,50 @@ static func knot(b, at: Vector2, r: float, colour := TWINE) -> void:
 	b.stroke(PackedVector2Array([at + Vector2(-r * 0.2, r * 0.6), at + Vector2(-r * 0.9, r * 1.9)]), maxf(1.5, r * 0.45), colour)
 	b.stroke(PackedVector2Array([at + Vector2(r * 0.2, r * 0.6), at + Vector2(r * 0.7, r * 2.0)]), maxf(1.5, r * 0.45), colour)
 
+## A ribbon bow of half-width `r` at `at`, its loops along `dir` (unit):
+## two loops, two tails hanging, the knot between.
+static func bow(b, at: Vector2, r: float, dir := Vector2.RIGHT) -> void:
+	# the tails hang down whichever way the loops lie
+	var n := dir.orthogonal()
+	if n.y < 0.0:
+		n = -n
+	for side in [-1.0, 1.0]:
+		var tail := PackedVector2Array([at, at + dir * side * r * 0.45 + n * r * 0.95, at + dir * side * r * 0.8 + n * r * 0.8])
+		b.stroke(tail, maxf(1.5, r * 0.26), RIBBON_DEEP)
+	for side in [-1.0, 1.0]:
+		var c: Vector2 = at + dir * side * r * 0.56 - n * r * 0.08
+		var loop := Face.Builder.ring(c, r * 0.52, r * 0.34)
+		var rot := PackedVector2Array()
+		var a := dir.angle()
+		for q in loop:
+			var d := q - c
+			rot.append(c + Vector2(d.x * cos(a) - d.y * sin(a), d.x * sin(a) + d.y * cos(a)))
+		b.fan(rot, RIBBON_DEEP)
+		var inner := PackedVector2Array()
+		for q in rot:
+			inner.append(c + (q - c) * 0.72 - n * r * 0.04)
+		b.fan(inner, RIBBON)
+	b.disc(at + n * r * 0.06, r * 0.26, RIBBON_DEEP)
+	b.disc(at, r * 0.22, RIBBON_LIT.lerp(RIBBON, 0.5))
+
+## The seed packet of `w` x 1.3 `w`, its top middle at `top`: a paper
+## pouch with a folded lip and a sun on its front, hung by a bit of twine.
+static func packet(b, top: Vector2, w: float) -> void:
+	var h := w * 1.3
+	var tl := top - Vector2(w * 0.5, 0.0)
+	b.stroke(PackedVector2Array([top + Vector2(0.0, -w * 0.3), top + Vector2(0.0, w * 0.08)]), maxf(1.5, w * 0.06), TWINE_DEEP)
+	b.fan(Face.Builder.round_rect(tl + Vector2(0.0, w * 0.06), Vector2(w, h), w * 0.1), PACKET_DEEP)
+	b.fan(Face.Builder.round_rect(tl, Vector2(w, h), w * 0.1), PACKET)
+	b.polygon(PackedVector2Array([tl + Vector2(0.0, h * 0.2), tl + Vector2(w, h * 0.2), tl + Vector2(w, h * 0.26), tl + Vector2(0.0, h * 0.26)]), Color(PACKET_DEEP, 0.7))
+	var sc := tl + Vector2(w * 0.5, h * 0.6)
+	var sr := w * 0.2
+	for k in 8:
+		var a := TAU * k / 8.0
+		var d := Vector2(cos(a), sin(a))
+		b.polygon(PackedVector2Array([sc + d * sr * 1.95, sc + d.rotated(0.32) * sr * 1.2, sc + d.rotated(-0.32) * sr * 1.2]), SUN)
+	b.disc(sc + Vector2(0.0, sr * 0.1), sr * 1.05, SUN_DEEP)
+	b.disc(sc, sr, SUN)
+
 ## Insane's gate: a leafy arch over the outer half of the post at `at`
 ## (radius `r`), facing out along `out` (unit), a gold ring round its cap
 ## and a gold bud at the arch's crown. It stays within half a post of the
@@ -230,7 +284,7 @@ static func sign(b, rect: Rect2) -> void:
 
 ## A seed tag a tied word hangs on: a little card with a punched hole and
 ## its string, `bulb` blue-edged.
-static func tag(b, rect: Rect2, bulb := false) -> void:
+static func tag(b, rect: Rect2, bulb := false, theme := false) -> void:
 	var r := rect.size.y * 0.24
 	b.fan(Face.Builder.round_rect(rect.position + Vector2(0.0, rect.size.y * 0.08), rect.size, r), TAG_DEEP)
 	b.fan(Face.Builder.round_rect(rect.position, rect.size, r), TAG)
@@ -238,6 +292,9 @@ static func tag(b, rect: Rect2, bulb := false) -> void:
 	b.disc(hole, rect.size.y * 0.1, TAG_DEEP)
 	if bulb:
 		b.stroke(Face.Builder.round_rect(rect.position + Vector2.ONE * 2.0, rect.size - Vector2.ONE * 4.0, r), maxf(1.5, rect.size.y * 0.06), Color("7fb2d9"), true)
+	if theme:
+		# the day's word: a ribbon bow tied through its hole
+		bow(b, hole, rect.size.y * 0.28)
 
 ## `ring` pulled in towards `c` by `d`.
 static func _inset(ring: PackedVector2Array, c: Vector2, d: float) -> PackedVector2Array:

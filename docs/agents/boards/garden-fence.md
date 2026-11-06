@@ -71,3 +71,76 @@
   native speaker (the locale rows and the seed words), the word lists read
   by a person, the website's game list (`web/scripts/gen_games.py`) not
   regenerated.
+
+## The daily theme (2026-11-06)
+
+A fence's route words (two or three long seeds) almost never are theme
+words (the lead's 25 nights: 0-4 fences a band), so a fence counts as
+themed when a theme word **can be strung on it** by the board's own rules
+and the board would take it.
+
+- **The deal**: on a daily dealt from its day (`bank_step == 0`,
+  `daily_key != 0`, never the tutorial's fence) the board takes
+  `ThemedPictures.theme_pool(daily_key)`, keeps the words the garden takes
+  (`State.theme_accepted`: in the language's `fence_words` list, `fair` or
+  `more`, and not `State.CRUDE`, a copy of `tools/build_fence.py`'s, since
+  the shipped list does not mark them), and hands the band's bank to
+  `ThemedPictures.bank_pick` with `State.theme_words` (every letter on a
+  post, never two in a row from one side). The fence is dealt as banked:
+  its posts, route and par never change. No hit deals as before.
+  `State.theme_bits` (each word's letters as bits) skips a fence that lacks
+  a letter before the side rule is read: the pick is 1.6 (Easy), 3.5
+  (Medium), 6.3-8.9 (Hard), 3.1-5.0 (Insane) ms on this Mac; the first
+  `theme_accepted` a session also loads the word list the board loads
+  anyway (8 ms en, 19 ms pt).
+- **Themed fences a band** with the fixture pool (2026-11-06's campfire
+  night, the harness's): en 131 / 322 / 361 / 300 of 365; pt 172 / 339 /
+  364 / 340. The strongest word wins (LANTERN on Easy, Medium and Insane,
+  CAMPFIRE on Hard in en; LANTERNA, then FOGUEIRA in pt). Words with a
+  letter twice in a row (wood, moss, kettle) are never on a fence.
+- **The tease**: while the word is hidden a seed packet with a sun on it
+  hangs by the sign's left end (in the sign's mesh), and THEME_TEASE_AT
+  1.1 s after the fence comes in the line says `FN_SAY_THEME_HIDDEN`
+  ("Today's word is hiding in the fence."). The word itself is never shown.
+- **Found** (by hand or by the bulb): the word's twine is a rose ribbon a
+  little wider than twine (RIBBON, a colour no twine state uses: green
+  strung, gold known, jute tied) with a bow on its first strand that pops
+  in over BOW_TIME 0.36 s; its seed tag gets a bow through its hole; the
+  `theme` cue and a sparkle on each of its posts come THEME_CUE_AT 0.22 s
+  after the tie; the line says `FN_SAY_THEME` ("Today's word: LANTERN!")
+  in place of the +N line (not when that tie solves: the win's line comes
+  then). It counts as any word; stars, par and quality are untouched.
+  Untied, the ribbon and bow go and the packet comes back.
+- **The win**: found, the ribbon sparkles again with the confetti and the
+  card waits THEME_HOLD 0.6 s longer; subtitle `FN_WIN_THEME` ("Today's
+  word: LANTERN! In bloom with 2 words. At par!"). Not found:
+  `FN_WIN_THEME_WAS` after the board's line ("... Today's word was
+  LANTERN."). The word is shown as the list writes it (`written`: MAÇÃ,
+  not MACA). A reopened day shows the ribbon if it was tied: the
+  completion record keeps the fence's `posts` and `theme`, and
+  `restore_completed_board` deals that fence back from the bank when the
+  day's deal came out another (the cached day fetched or lost since;
+  `theme=drop` in the harness). `day_dict` says `"source": "theme"`, `"theme": <word>`.
+  Reduce: no pop, the bow and ribbon simply there.
+- Draw calls, opengl3_angle 810x1440 `theme`: Easy 99-115 play, 178-179
+  won; Medium 107-123, 188; Hard 113-129, 197. The ribbon is in the tied
+  mesh, the packet in the sign's, the tag's bow in the tags'; the bow on
+  the strand is one cached mesh (one call).
+- Sound: new `theme` row (the boards' wrap climbing, as Pie's). The rest of
+  the set read against "The house sound": no clear violation (pebble
+  select, wrap repeats, lip take-backs, tongue refusals, token set-downs,
+  breeze bulb, borrowed moments).
+- Harness: `tests/_shot_fence.gd -- <dir> d=<n> theme [lang=pt|es]` hands
+  the board the fixture pool through `theme_pool_seam` (a static set before
+  the board is built, so the reopened day is themed too), prints every
+  band's themed count and pick time, strings the word first
+  (`theme_rest`, `theme_tease`, `theme_strung`, `theme_tied`,
+  `theme_sparkle`, `theme_found`), then the bulb finishes; `theme=miss`
+  never strings it (the softer line); `theme=drop` takes the pool away
+  before the reopen. Backend never starts in a harness, so
+  the real path finds no pool.
+- `tests/_win.gd fence` FAILs: it has no `fence` solver (nor do the other
+  2026-11-04 word boards), before and after this.
+- Owed: phone, ear (`theme` unheard), pt/es native read of the four rows,
+  es in a harness (ñ is a letter of its own there), the user's eye on the
+  ribbon's rose and the packet.
