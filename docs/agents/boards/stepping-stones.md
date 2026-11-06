@@ -68,3 +68,61 @@
   layout and autocorrect), pt/es read by a native speaker (verb forms on
   the banks: SUMIU, DIRÉ), the word lists read by a person, the website's
   game list (`web/scripts/gen_games.py`) not regenerated.
+
+## The daily theme (2026-11-06)
+
+The bank word boards' wave: the day's crossing comes from the night's
+theme words (`ThemedPictures.theme_pool` and `bank_pick`, 1753f58a).
+
+- **The deal**: on a daily dealt from its day (`bank_step == 0`,
+  `daily_key != 0`, never the tutorial's board) `_themed_entry()` runs
+  `bank_pick` over the band's bank twice: a crossing whose banks (`from`,
+  `to`) hold a theme word first, else one whose route (and Easy's given)
+  does, and deals that entry with `load_day`. The crossing, its par and
+  route are the bank's as built; no hit deals `InsaneBank.pick` as ever.
+  `_theme` = `{word (folded), at: "to" | "from" | "way"}`. With the
+  scratch fixture's pools every band in every language found one (en Easy
+  ends: bark, camp, fire, tent, wood; en Hard cider, smoke; en Insane
+  only toast).
+- **The mark**: a little sun medallion (`Art.sun_mark`: rays, a dark rim,
+  the sun disc) on the top right corner of the word's slab or stone,
+  baked into that slab's or stone's cached mesh, so it costs no draw
+  call. Never a shade of the stone. A bank's sun is there from the start;
+  a route stone's comes with the stone (Easy's given wears it while it
+  waits at the side).
+- **Reaching it**: a route stone laid (by hand, the bulb or Easy's given
+  coming in) plays `theme` with a ring and a sparkle at its sun
+  Motion.DROP_TIME after the lay (the given: when its slide ends) and
+  says `SS_SAY_THEME` ("Today's word: MOSS!") over the given's line. A
+  bank's word: at the crossing, `theme` and the sparkle at its slab's sun
+  THEME_AT 0.12 after the far bank's `bank`; the solve's flourish waits
+  THEME_SHIFT 0.2 more. The win card waits THEME_HOLD 0.45 longer.
+- **The win**: `SS_WIN_THEME` ("Today's word: SMOKE! Across in 5 stones.
+  At par!"); a route word the player's way went round is named as
+  `SS_WIN_THEME_WAY` ("Today's word hid on the way: %s. %s"). Words are
+  shown as written (`written()`: MAÇÃ). `day_dict` says
+  `"source": "theme"` and `"theme"` (the written word). The completion
+  record keeps the crossing (`from`, `to`) and `_theme`, and a reopened
+  day whose deal has moved since (the night's words came in after it was
+  played) is laid back on the record's crossing (`_redeal_as_played`).
+- Draw calls (opengl3_angle 810x1440 `theme`): Easy en (TENT, near bank)
+  89 rest, 91-102 play, 155 won; Hard en (SMOKE, far bank) 87 rest,
+  87-121 play, 159 won; Easy `theme=moss` (a route stone) the same as
+  Easy; pt `theme=maçã` 89-100, 155. The same as a plain day.
+- Sound: new `theme` (the boards' wrap climbing 7/12/16); `lay` moved from
+  the token to the bank's plop (the house sound: a thing set down on a
+  water board), its treatment kept. Both unheard.
+- Harness: `tests/_shot_stones.gd -- <dir> d=<n> theme|theme=<word>
+  [lang=pt|es]`: the fixture pool (or one word) is set on the board's
+  `static var theme_pool_override` before the board opens (Backend is not
+  started in a `--script` run), shots are prefixed `theme_` and add
+  `theme_reach` (the crossing's sun sparkling) and `theme_stone` (a route
+  word laid again after the bin, when the run gets that far; on
+  `d=0 theme=moss` the bulb crosses first, and `theme_laid` shows the
+  toast). `lang` sets `Locale._current`, saving nothing.
+- `tests/_win.gd stones` reports FAIL: `_win.gd` has no Stepping Stones
+  solver (none of the 2026-11-04 word boards has one); the board's own
+  probes and the shot harness cross it.
+- Owed: phone, ear (`theme`, the new `lay`), pt/es native read of the
+  three lines, reduce motion written (the sun is baked, nothing pulses)
+  but unseen.

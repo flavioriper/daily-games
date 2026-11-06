@@ -8,6 +8,12 @@ extends SceneTree
 ## out above a stand-in phone keyboard that tall. `tut` shoots a tutorial
 ## page played a while; `card` the menu card beside Padlock's. Puts nothing
 ## in the player's save.
+##
+## `theme` (the daily theme, 2026-11-06): the board deals from the scratch
+## fixture pool (theme_pool_override, set before the board is opened, as
+## Backend is not started here), shots prefixed `theme_`; `theme=<word>`
+## puts that one word in the pool instead (`theme=moss` on Easy: a route
+## stone, shot as `theme_stone` once laid). `lang=pt` plays in Portuguese.
 
 var _menu: Node
 var _host: Node
@@ -20,6 +26,12 @@ var _step := 0
 var _diag: Control
 var _osk := -1.0
 var _queue: Array = []
+var _theme := ""
+var _lang := ""
+var _pre := ""
+var _stone_at := 0
+var _toasted := 0
+const FIXTURE := "/private/tmp/claude-501/-Users-flavioriper-dev-daily/34d2447a-148c-4075-8921-873314a4eae3/scratchpad/theme_pool_fixture.json"
 
 func _initialize() -> void:
 	for a in OS.get_cmdline_user_args():
@@ -33,6 +45,11 @@ func _initialize() -> void:
 			_step = 60
 		elif a.begins_with("osk="):
 			_osk = float(a.substr(4))
+		elif a == "theme" or a.begins_with("theme="):
+			_theme = a.substr(6) if a.begins_with("theme=") else "*"
+			_pre = "theme_"
+		elif a.begins_with("lang="):
+			_lang = a.substr(5)
 		else:
 			_dir = a
 	var progress = load("res://core/progress.gd")
@@ -48,7 +65,7 @@ func _initialize() -> void:
 func _shot(name: String) -> void:
 	RenderingServer.force_draw()
 	var calls := RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME)
-	root.get_texture().get_image().save_png("%s/ss_%s.png" % [_dir, name])
+	root.get_texture().get_image().save_png("%s/ss_%s%s.png" % [_dir, _pre, name])
 	print("shot %s draw_calls=%d" % [name, calls])
 
 func _type(w: String) -> void:
@@ -69,6 +86,12 @@ func _process(_delta: float) -> bool:
 			_shot("card")
 			return true
 		return false
+	if _f == 4 and _lang != "":
+		# the content and the pool read Locale's language; nothing is saved
+		Locale._current = _lang
+		TranslationServer.set_locale(_lang)
+	if _f == 5 and _theme != "":
+		_set_pool()
 	if _f == 5:
 		_menu._open_at(load("res://ui/registry.gd").find("stones"), _band)
 		_host = _menu.get_child(_menu.get_child_count() - 1)
@@ -85,7 +108,7 @@ func _process(_delta: float) -> bool:
 		if _f == 7200:
 			_b = _host._puzzle
 			_shot("reopen")
-			print("reopen done=%s stones=%d" % [_b.is_done(), _b.state().stones()])
+			print("reopen done=%s stones=%d theme=%s" % [_b.is_done(), _b.state().stones(), _b._theme])
 			return true
 		return false
 	if _b == null:
@@ -94,6 +117,10 @@ func _process(_delta: float) -> bool:
 	if _osk >= 0.0 and _b.osk_override != _osk:
 		_b.osk_override = _osk
 		return false
+	if _pre != "" and _b._say == "SS_SAY_THEME" and _toasted == 0:
+		_toasted = _f + 12
+	if _toasted > 0 and _f == _toasted:
+		_shot("toast")
 	while not _queue.is_empty() and st.used(String(_queue[0])):
 		_queue.pop_front()
 	if not _queue.is_empty() and _b._typed == "":
@@ -101,6 +128,7 @@ func _process(_delta: float) -> bool:
 	match _step:
 		0:
 			print("day %s > %s par %d route %s given %s" % [st.from, st.to, st.par, st.route, st.given])
+			print("daily_key=%d bank_step=%d theme=%s" % [_b.daily_key, _b.bank_step, _b._theme])
 			_shot("rest")
 			_type(String(st.route[0]).substr(0, st.n - 1))
 			_step = 1
@@ -148,16 +176,26 @@ func _process(_delta: float) -> bool:
 			if _f == 3030:
 				_shot("cleared")
 				_queue = st.route.duplicate()
+			if _pre != "" and _stone_at == 0 and _b._theme_in_way() and String(_b._theme.at) == "way":
+				_stone_at = _f + 22
+			if _stone_at > 0 and _f == _stone_at:
+				_shot("stone")
 			if _b.is_done() and _step == 3:
 				_step = 4
 				_f = 4000
 		4:
+			if _pre != "" and _stone_at >= 0 and _b._won_at > -INF and _b._t >= _b._won_at + _b.THEME_AT + 0.12:
+				_stone_at = -1
+				_shot("reach")
 			if _f == 4008:
 				_shot("crossing")
 			if _f == 4040:
 				_shot("crossed")
 			if _f == 4240:
 				_shot("won")
+				print("win: ", _b.flat_win().subtitle)
+				print("day_dict: ", _b.day_dict())
+				print("win_delay: ", _b.win_delay())
 				_host.closed.emit()
 				_step = 7
 				_f = 7000
@@ -183,3 +221,19 @@ func _process(_delta: float) -> bool:
 				_shot("tut%d_b" % _page)
 				return true
 	return false
+
+## The fixture's words in the playing language, folded, or the one word
+## named: the pool the board deals from.
+func _set_pool() -> void:
+	var pool: Array = []
+	if _theme == "*":
+		var doc = JSON.parse_string(FileAccess.get_file_as_string(FIXTURE))
+		var lang: String = Locale.current()
+		for w in (doc.get(lang, []) if doc is Dictionary else []):
+			var f := Locale.fold(String(w))
+			if not pool.has(f):
+				pool.append(f)
+	else:
+		pool = [Locale.fold(_theme)]
+	load("res://puzzles/stones2d.gd").theme_pool_override = pool
+	print("pool %s: %s" % [Locale.current(), pool.slice(0, 8)])

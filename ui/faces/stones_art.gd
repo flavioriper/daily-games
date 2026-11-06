@@ -82,6 +82,20 @@ static func ripples(b, at: Vector2, size: Vector2) -> void:
 	b.stroke(Face.Builder.ring(at, size.x * 0.5, size.y * 0.5), maxf(2.0, size.y * 0.05), Color(WATER_HI, 0.85), true)
 	b.stroke(Face.Builder.ring(at, size.x * 0.4, size.y * 0.36), maxf(1.5, size.y * 0.03), Color(WATER_HI, 0.5), true)
 
+## The day's word (the daily theme, 2026-11-06): a little sun medallion
+## pinned to a stone's or a slab's corner, its rays out and a dark rim, so
+## it reads as a thing on the stone and never as a shade of it.
+static func sun_mark(b, at: Vector2, r: float) -> void:
+	for k in 8:
+		var a := TAU * k / 8.0 - PI * 0.5
+		var d := Vector2(cos(a), sin(a))
+		var s := Vector2(-d.y, d.x)
+		b.polygon(PackedVector2Array([at + d * r * 1.55, at + d * r * 0.8 + s * r * 0.3, at + d * r * 0.8 - s * r * 0.3]), Pal.SUN_DEEP)
+	b.disc(at + Vector2(0.0, r * 0.1), r * 1.04, Color(INK, 0.35))
+	b.disc(at, r * 1.0, Pal.SUN_DEEP)
+	b.disc(at, r * 0.82, Pal.SUN)
+	b.ellipse(at + Vector2(-r * 0.25, -r * 0.3), r * 0.32, r * 0.2, Color(1, 1, 1, 0.45))
+
 ## The brook edge to edge, `sz`: the near bank's grass down to `near`, the
 ## water to `far`, the far bank's grass under it; reeds and pebbles along
 ## both edges.

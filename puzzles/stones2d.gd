@@ -44,6 +44,7 @@ const CozyTheme = preload("res://ui/theme.gd")
 const StarLine = preload("res://ui/flat/star_line.gd")
 const FlatTopBar = preload("res://ui/flat/flat_top_bar.gd")
 const FLAT_HOST := "res://ui/flat/flat_host.gd"
+const ThemedPictures = preload("res://core/themed_pictures.gd")
 
 const Said = State.Said
 
@@ -60,6 +61,7 @@ const HAPTICS := {
 	"bank": Haptics.BUMP,
 	"hint": Haptics.GOOD,
 	"solved": Haptics.WIN,
+	"theme": Haptics.GOOD,
 }
 
 ## The screen the board was drawn on; everything scales with the width.
@@ -94,6 +96,19 @@ const SAY_TIME := 2.4
 const WIN_HOLD := 1.5
 ## The current's drift, design px a second.
 const DRIFT := 18.0
+## The daily theme (2026-11-06): on a daily dealt from its day the crossing
+## comes from the band's bank entry holding the night's strongest theme
+## word, a bank's word first, else a stone of its route (Easy's given too).
+## The word wears a sun (Art.sun_mark) baked into its slab's or stone's mesh:
+## a bank's from the start, a stone's as it is laid. Reaching it plays the
+## theme cue with a sparkle THEME_AT after the far bank's, the solve waiting
+## THEME_SHIFT more; a stone laid says SS_SAY_THEME. The win card waits
+## THEME_HOLD longer and names the word.
+const THEME_AT := 0.12
+const THEME_SHIFT := 0.2
+const THEME_HOLD := 0.45
+## The sun's radius against a stone's height.
+const MARK_K := 0.22
 
 var demo := false
 var demo_day := {}
@@ -126,6 +141,11 @@ var _say_at := -INF
 var _stars := StarLine.new()
 var _due: Array = []
 var _rng := RandomNumberGenerator.new()
+## The day's theme: {"word" (folded), "at": "to", "from" or "way"}, {} on a
+## plain deal. The harness's seam: a pool set here before the deal stands in
+## for the night's (Backend is not started in a --script run).
+var _theme := {}
+static var theme_pool_override: Array = []
 
 var _clear := Vector2.ZERO
 var _won := false
@@ -308,9 +328,14 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_st = State.new()
 	_st.band = _band
 	if demo and not demo_day.is_empty():
+		_theme = {}
 		_st.load_day(demo_day)
 	else:
-		_st.deal(rng, _band, bank_step)
+		var entry := _themed_entry()
+		if entry.is_empty():
+			_st.deal(rng, _band, bank_step)
+		else:
+			_st.load_day(entry)
 	if _field != null:
 		_field.max_length = _st.n
 	_fresh()
@@ -335,12 +360,15 @@ func _fresh() -> void:
 func day_dict() -> Dictionary:
 	if _st.from == "":
 		return {}
-	return {
-		"source": "bank", "kind": "text",
+	var out := {
+		"source": "theme" if themed() else "bank", "kind": "text",
 		"payload": {"from": _st.written(_st.from), "to": _st.written(_st.to), "given": _st.written(_st.given) if _st.given != "" else ""},
 		"solution": {"route": _st.route.map(func(w: String) -> String: return _st.written(w))},
 		"metrics": {"par": _st.par, "ways": _st.ways, "letters": _st.n, "slippery": _st.swaps},
 	}
+	if themed():
+		out["theme"] = _st.written(String(_theme.word))
+	return out
 
 # --- the moves ---
 
@@ -401,6 +429,12 @@ func _laid(r: Dictionary, free: bool) -> void:
 			if fx != null:
 				fx.ring(_stone_pos(first), _l("stone_w") * 0.45, Art.WATER_HI)
 				fx.puff(_stone_pos(first) + Vector2(0.0, _l("stone_h") * 0.3), Art.WATER_HI, 4))
+	if themed():
+		for idx in range(first, _st.way.size()):
+			if String(_st.way[idx].word) == String(_theme.word):
+				var j := idx
+				var gave: bool = _st.way[idx].kind == "given"
+				_later(_t + (0.25 + JOIN_TIME if gave else Motion.DROP_TIME), func() -> void: _theme_stone(j))
 	if joined:
 		var gi := _born.size() - 1
 		_born[gi] = -INF
@@ -408,7 +442,8 @@ func _laid(r: Dictionary, free: bool) -> void:
 		_join_from = _given_side()
 		_later(_join_at, func() -> void:
 			_cue("join")
-			_say_now("SS_SAY_GIVEN", [_st.written(_st.given).to_upper()])
+			if not _theme_is(_st.given):
+				_say_now("SS_SAY_GIVEN", [_st.written(_st.given).to_upper()])
 			if fx != null:
 				fx.sparkle(_stone_pos(gi), Art.MOSS))
 	if _st.crossed:
@@ -438,7 +473,15 @@ func _crossed_now(at := -1.0) -> void:
 		if fx != null:
 			fx.ring(_far_pos(), _l("slab_w") * 0.55, Pal.SUN)
 			fx.sparkle(_far_pos(), Pal.SUN))
-	_later(end + 0.3, func() -> void:
+	var slab := themed() and String(_theme.at) != "way"
+	if slab:
+		_later(end + THEME_AT, func() -> void:
+			_cue("theme")
+			var mark := _slab_mark_pos(String(_theme.at) == "from")
+			if fx != null:
+				fx.ring(mark, _l("stone_h") * 0.6, Pal.SUN)
+				fx.sparkle(mark, Pal.SUN_RAY))
+	_later(end + 0.3 + (THEME_SHIFT if slab else 0.0), func() -> void:
 		_cue("solved")
 		if fx != null:
 			fx.confetti(Vector2(size.x * 0.5, _far_pos().y - _l("row") * 2.0), 28, size.x * 0.7)
@@ -810,6 +853,8 @@ func _stone_mesh(word: String, i: int, moss: float) -> ArrayMesh:
 		var sz := Vector2(_l("stone_w"), _l("stone_h"))
 		Art.stone(b, Vector2.ZERO, sz, 17 + i * 31 + word.hash() % 97, moss)
 		_add_moss(b, word, Vector2.ZERO)
+		if _theme_is(word):
+			Art.sun_mark(b, _mark_off(sz), _l("stone_h") * MARK_K)
 		_meshes[key] = b.mesh()
 	return _meshes[key]
 
@@ -827,6 +872,8 @@ func _draw_slab(at: Vector2, word: String, near: bool) -> void:
 		Art.slab(b, Vector2.ZERO, Vector2(_l("slab_w"), _l("slab_h")))
 		if near:
 			_add_moss(b, word, Vector2.ZERO)
+		if _theme_is(word):
+			Art.sun_mark(b, _mark_off(Vector2(_l("slab_w"), _l("slab_h"))), _l("stone_h") * MARK_K * 1.15)
 		_meshes[key] = b.mesh()
 	var e := _t - _enter_at - Motion.ENTER_DELAY - (0.0 if near else 0.12)
 	var sc := 1.0 if Motion.reduce else Motion.pop_in_scale(e).x
@@ -1019,7 +1066,7 @@ func _draw_say() -> void:
 	var text := tr(_say)
 	if not _say_args.is_empty():
 		text = text % _say_args
-	var good := _say in ["SS_SAY_GIVEN", "SS_PERFECT", "SS_DONE", "SS_READ", "SS_READ_SWAP", "SS_READ_BACK"]
+	var good := _say in ["SS_SAY_THEME", "SS_SAY_GIVEN", "SS_PERFECT", "SS_DONE", "SS_READ", "SS_READ_SWAP", "SS_READ_BACK"]
 	var fs := roundi(SAY_SIZE * (1.15 if good else 1.0) * _u() * (0.9 if bool(_L.get("tight", false)) else 1.0))
 	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 	if tw > size.x * 0.94:
@@ -1078,7 +1125,7 @@ func _draw_pill() -> void:
 func win_delay() -> float:
 	if Motion.reduce:
 		return Motion.REDUCED_TIME
-	return WIN_HOLD + _st.stones() * WAVE_STEP
+	return WIN_HOLD + _st.stones() * WAVE_STEP + (THEME_HOLD if themed() else 0.0)
 
 func skill_quality() -> float:
 	if _st.from == "":
@@ -1097,16 +1144,106 @@ func flat_win() -> Dictionary:
 		line += " " + tr("SS_WIN_AT_PAR")
 	else:
 		line += " " + tr("SS_WIN_PAR_WAS") % _st.par
+	if themed():
+		var shown: String = _st.written(String(_theme.word)).to_upper()
+		if String(_theme.at) != "way" or _theme_in_way():
+			line = tr("SS_WIN_THEME") % [shown, line]
+		else:
+			line = tr("SS_WIN_THEME_WAY") % [shown, line]
 	return {"faces": [], "subtitle": line}
 
 func completion_record() -> Dictionary:
-	return {"way": _st.way.duplicate(true), "helped": _st.helped, "stars": _st.stars()}
+	return {"way": _st.way.duplicate(true), "helped": _st.helped, "stars": _st.stars(), "from": _st.from, "to": _st.to, "theme": _theme.duplicate()}
 
-## A finished day reopens crossed, its stones as laid.
+## A finished day reopens crossed, its stones as laid: on the crossing it was
+## played on, should the night's theme have changed the deal since.
 func restore_completed_board() -> void:
+	_redeal_as_played()
 	_st.finish(completed_record.get("way", []) as Array)
 	_st.helped = int(completed_record.get("helped", 0))
 	_fresh()
 	_enter_at = -10.0
 	_dismiss()
 	queue_redraw()
+
+# --- the daily theme (2026-11-06) ---
+
+func themed() -> bool:
+	return not _theme.is_empty()
+
+func _theme_is(word: String) -> bool:
+	return themed() and word != "" and word == String(_theme.word)
+
+func _theme_in_way() -> bool:
+	for s: Dictionary in _st.way:
+		if _theme_is(String(s.word)):
+			return true
+	return false
+
+## The bank entry a daily dealt from its day takes on a themed day (never
+## New, never the tutorial's): the one holding the night's strongest theme
+## word on a bank, else on its route (or Easy's given). {} deals as ever.
+## Sets `_theme`.
+func _themed_entry() -> Dictionary:
+	_theme = {}
+	if demo or bank_step != 0 or daily_key == 0:
+		return {}
+	var pool: Array = theme_pool_override if not theme_pool_override.is_empty() else ThemedPictures.theme_pool(daily_key)
+	if pool.is_empty():
+		return {}
+	var boards: Array = InsaneBank.boards(State.BANKS[_band])
+	var easy := _band == 0
+	var got := ThemedPictures.bank_pick(boards, pool, daily_key, func(e) -> Array:
+		return [String(e.get("from", "")), String(e.get("to", ""))])
+	if got.is_empty():
+		got = ThemedPictures.bank_pick(boards, pool, daily_key, func(e) -> Array:
+			var words: Array = (e.get("route", []) as Array).duplicate()
+			if easy and String(e.get("given", "")) != "":
+				words.append(String(e.given))
+			return words)
+	if got.is_empty():
+		return {}
+	var entry: Dictionary = boards[int(got.index)]
+	var word := String(got.word)
+	var at := "way"
+	if Locale.fold(String(entry.get("to", ""))) == word:
+		at = "to"
+	elif Locale.fold(String(entry.get("from", ""))) == word:
+		at = "from"
+	_theme = {"word": word, "at": at}
+	return entry
+
+## A reopened day whose record names another crossing than the one dealt
+## now (the night's words came in after it was played): the record's.
+func _redeal_as_played() -> void:
+	var from := String(completed_record.get("from", ""))
+	var to := String(completed_record.get("to", ""))
+	if from == "" or (from == _st.from and to == _st.to):
+		return
+	for e in InsaneBank.boards(State.BANKS[_band]):
+		if e is Dictionary and Locale.fold(String(e.get("from", ""))) == from and Locale.fold(String(e.get("to", ""))) == to:
+			_st.load_day(e)
+			var t = completed_record.get("theme", {})
+			_theme = (t as Dictionary).duplicate() if t is Dictionary else {}
+			return
+
+## A themed stone laid (or Easy's given come in): the cue, a sparkle at its
+## sun and the board says the word.
+func _theme_stone(i: int) -> void:
+	if i >= _st.way.size() or not _theme_is(String(_st.way[i].word)):
+		return
+	_cue("theme")
+	_say_now("SS_SAY_THEME", [_st.written(String(_theme.word)).to_upper()])
+	if fx != null:
+		var at := _stone_pos(i) + _mark_off(Vector2(_l("stone_w"), _l("stone_h")))
+		fx.ring(at, _l("stone_h") * 0.5, Pal.SUN)
+		fx.sparkle(at, Pal.SUN_RAY)
+
+## Where the sun sits on a stone or slab of `sz`, from its middle: on the
+## top right corner.
+func _mark_off(sz: Vector2) -> Vector2:
+	var r := _l("stone_h") * MARK_K
+	return Vector2(sz.x * 0.5 - r * 0.55, -sz.y * 0.5 + r * 0.25)
+
+func _slab_mark_pos(near: bool) -> Vector2:
+	return (_near_pos() if near else _far_pos()) + _mark_off(Vector2(_l("slab_w"), _l("slab_h")))
