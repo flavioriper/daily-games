@@ -316,6 +316,7 @@ QL_HINTED_FAST,That one was sewn on for you.,Esse foi costurado para você.,Ese 
 QL_REFUSE_OVER,That cell already has a patch on it.,Essa casa já tem um retalho.,Esa casilla ya tiene un retazo.
 QL_REFUSE_OFF,Every square of a patch has to be on the quilt.,Cada quadradinho do retalho tem que ficar na colcha.,Cada cuadrito del retazo tiene que quedar en la colcha.
 QL_WIN,Not a gap left.,Nenhum buraco sobrando.,No queda ni un hueco.
+QL_WIN_THEME,"Today's quilt: %s. %s","Colcha de hoje: %s. %s","La colcha de hoy: %s. %s"
 QL_ONE_LEFT,One patch left.,Falta um retalho.,Queda un retazo.
 QL_N_LEFT,%d patches left.,Faltam %d retalhos.,Quedan %d retazos.
 QL_TAKEN_BACK,Taken back.,Desfeito.,Deshecho.

@@ -131,13 +131,41 @@ var _keys: Array = []
 ## on every band of eight patches or fewer, so those days look as they always
 ## did; Scrap Basket's twelve are coloured by `_assign_cloths`.
 var cloth_of := PackedInt32Array()
+## The day's theme (wave 2 of the daily theme roadmap, 2026-11-06): {id,
+## name, beads (Vector2i -> bead name, a quilt cell each)} when the quilt's
+## outline is one of the night's things, {} on a plain quilt.
+var theme: Dictionary = {}
+
+func themed() -> bool:
+	return not theme.is_empty()
 
 ## `bank_step` is PuzzleBase.bank_step: how many times New has been pressed
 ## since the board opened, which walks Insane through its bank.
-func setup(rng: RandomNumberGenerator, difficulty: int, bank_step := 0) -> void:
+##
+## `pictures` are the night's things this band may take, in
+## Gen.THEMED_SIZES' order ({id, name, rows}): the first whose cut grows a
+## quilt with one tiling a careful player reads is laid, its outline the
+## thing's; [] (or none passing) deals as before, the same draws off `rng`.
+func setup(rng: RandomNumberGenerator, difficulty: int, bank_step := 0, pictures: Array = []) -> void:
 	band = clampi(difficulty, 0, Gen.BANDS.size() - 1)
+	theme = {}
 	var out: Dictionary = {}
-	if band == 3:
+	if band < Gen.THEMED_SIZES.size():
+		var cut := 0
+		for pic: Dictionary in pictures:
+			if cut >= Gen.THEME_PICTURES:
+				break
+			var shape := Gen.shape_fit(pic.rows, band)
+			if shape.is_empty():
+				continue
+			cut += 1
+			var tried := RandomNumberGenerator.new()
+			tried.seed = rng.seed ^ hash(String(pic.id))
+			out = Gen.generate_shaped(tried, band, shape)
+			if not out.is_empty():
+				theme = {"id": String(pic.id), "name": String(pic.get("name", "")), "beads": shape.beads}
+				break
+	if out.is_empty() and band == 3:
 		# Scrap Basket is dealt from the bank: the miner keeps the boards whose
 		# proof walked furthest, which a live deal cannot look for in time. An
 		# empty bank or an entry that does not hold together grows a live one.

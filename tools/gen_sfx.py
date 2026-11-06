@@ -1031,7 +1031,9 @@ SETS = {
         "confetti": ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
         "love":     ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.1:5,5,8", "cut:0.6"),
         "button":   ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -15, FOLEY, "bank:token", "cut:0.14", "notes:0:-1", "tight"),
-        "boing":    ("one small wooden spool set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1600", "cut:0.4", "body:320", "tight", "notes:0.1:0,3,0"),
+        # 2026-11-06: boing moved from the old felt tock to the bank's token
+        # (the house sound), place's take three times, up and back.
+        "boing":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -15, FOLEY, "bank:token", "cut:0.4", "notes:0.1:0,3,0", "tight"),
         # A row or column of the quilt finished: four quick quiet notes up.
         "row":      ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.07:3,5,7,10", "cut:0.7"),
         # Hearts, the wrong patch's thread let go (one light notch) and the
@@ -1048,6 +1050,11 @@ SETS = {
         "party":    ("one soft note on a kalimba over a gentle tongue drum, warm and cozy, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:-1,3,6,3,6,8", "cut:1.9"),
         "dance":    ("a short cheerful little kalimba and soft hand-drum shuffle, four playful bouncy notes, a tiny happy dance, cozy and cute", 1.2, -9),
         "purr":     ("one short soft contented chirrup, a little rolling trill with the mouth closed, gentle and happy", 1.0, -12, KITTEN, "warm:2400", "ease:0.01", "body:300"),
+        # 2026-11-06: a themed day's quilt takes its picture's colours after
+        # the solve (the daily theme, wave 2): Nonogram's, Hedgehogs', Horse
+        # Pen's and Hosepipes' theme cue, the bank's wraps climbing an octave
+        # as the colour pours.
+        "theme":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -15, FOLEY, "bank:wrap", "cut:0.1", "notes:0.06:7,12,16", "tight"),
         # Insane: Scrap Basket. The three scraps strung up as bunting at the solve.
         "bunting":  ("little cloth flags strung up on a line and fluttering in a gentle breeze, soft fabric flaps with a cheerful rising three-note kalimba, happy and cozy", 1.3, -11, COZY, "warm:2400", "body:300"),
     },

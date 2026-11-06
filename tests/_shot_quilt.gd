@@ -78,6 +78,8 @@ func _process(delta: float) -> bool:
 		_menu._open_at(entry, _level)
 		_host = _menu.get_child(_menu.get_child_count() - 1)
 		_puzzle = _host._puzzle
+		if _mode == "theme":
+			_redeal_themed()
 		if _host.has_node("HowToPlay"):
 			_host.get_node("HowToPlay").free()
 		_script()
@@ -339,9 +341,53 @@ func _script() -> void:
 			_at(t1 + 3.65, func() -> void:
 				print("cat curled %s, tip: %s" % [_puzzle._cat_curled, _puzzle.tip_line().text]))
 			_end = t1 + 3.8
+		"theme":
+			# solve's script on the newest cached night's thing, then the day
+			# reopened (restore) on the board itself
+			var order := _answer_order()
+			for k in order.size():
+				var p: int = order[k]
+				_drag(1.0 + k * 0.7, p, int(st.answer[p]))
+			var t1 := 1.0 + (order.size() - 1) * 0.7 + 0.4
+			_at(t1 + 0.05, func() -> void:
+				print("solved %s, themed %s, win_delay %.2f, subtitle: %s" % [_puzzle.is_done(),
+					st.themed(), _puzzle.win_delay(), _puzzle.flat_win().subtitle]))
+			for dt in [0.6, 1.2, 1.6, 2.2, 3.0, 4.4]:
+				_at(t1 + dt, _shot.bind("_%02d" % int(dt * 10)))
+			_at(t1 + 4.5, func() -> void:
+				_puzzle.completed_record = _puzzle.completion_record()
+				_puzzle.restore_completed_board())
+			_at(t1 + 5.0, _shot.bind("_reopen"))
+			_end = t1 + 5.1
 		"restore":
 			_at(1.5, func() -> void:
 				_puzzle.completed_record = {"flawless": true, "hearts": 1}
 				_puzzle.restore_completed_board())
 			_at(2.0, _shot)
 			_end = 2.2
+
+## The board dealt again in the newest cached night's things, as a themed
+## daily deals it (the harness's backend never starts).
+func _redeal_themed() -> void:
+	var cache := "/Users/flavioriper/Library/Application Support/Godot/app_userdata/Peeplet Daily/backend_cache"
+	var files: Array = []
+	for f in DirAccess.get_files_at(cache):
+		if f.begins_with("pictures-202611") and f.ends_with("-content.json"):
+			files.append(f)
+	files.sort()
+	var doc = JSON.parse_string(FileAccess.get_file_as_string(cache + "/" + String(files[-1])))
+	var pics: Array = []
+	var gen = load("res://puzzles/quilt_gen.gd")
+	for side in gen.THEMED_SIZES[mini(_level, 1)]:
+		var p = doc.sizes.get(str(side))
+		if p is Dictionary:
+			var nm = p.get("name")
+			pics.append({"id": "themed_" + String(p.id), "rows": p.rows,
+				"name": String(nm.get("en", p.id)) if nm is Dictionary else String(p.id)})
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261106 + _level
+	_puzzle._state.setup(rng, _level, 0, pics)
+	_puzzle._shape_cache()
+	_puzzle._layout()
+	_puzzle._enter()
+	print("theme: ", files[-1], " -> ", _puzzle._state.theme.get("name", "(plain)"))

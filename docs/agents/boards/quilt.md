@@ -344,3 +344,64 @@ funnier to play, right now nobody likes it", autonomous, push when done.
   gap wash on Hard as well; the drop into a gap is not refused; the bank
   left alone. Not on a phone; no new sound (the wash is silent, as a ghost
   is).
+
+## The day's theme (2026-11-06, wave 2 of the daily theme roadmap)
+
+The user: "start integrating the daily theme into all games, get the next on
+the list", autonomous. Quilt was next after Hosepipes.
+
+- **The outline is the day's thing, on Easy and Medium.** Quilt has no
+  field to cut, since its region is whatever the patches grew into, so a
+  themed day is the reverse problem: `Gen.shape_fit` cuts one of the night's
+  pictures (Easy the 10 first, Medium the 12) to a 6 box (Easy, else 5) or
+  7 (Medium, else 6), smooths it as Hedgehogs does, keeps the largest
+  piece, **fills its holes** (a hole in a quilt reads as a drawing bug,
+  and `_has_hole` refuses one) and wants a 2x2 somewhere. A cut must cover
+  0.7 of the band's own box, at most 0.9 of its bounding box, and at most
+  `THEME_CELLS` (26, 35): a cut near patches x biggest patch has to be
+  all big patches and wedged for thousands of grows.
+- **`Gen.generate_shaped`** grows patches inside the cut until it is
+  covered (`_grow_in`): each from the first bare cell in scan order, a size
+  the band draws that never leaves fewer cells than its smallest patch, the
+  cells drawn with a lean toward bare cells with the fewest bare neighbours
+  (`_grow_hugging`, so a patch fills nooks; its own draws, so a plain day's
+  grow is untouched), a patch regrown up to `PATCH_RETRIES` times when it
+  wedges or shuts in a pocket smaller than the smallest patch, and at most
+  `THEME_PATCHES` (6, 7, never past the eight cloths). Then the plain
+  day's proof and reading: one tiling, Easy and Medium read to the end. No
+  node window: the outline decides the grade.
+- **The budget.** A grow is ~0.24 ms, its proof ~0.46, the reading ~2.4
+  (and 2,462 of 2,942 failed reads fail at the first move). `THEME_TRIES`
+  80 / 30 grows a cut and `THEME_PICTURES` 2 things, then the plain quilt off
+  the untouched rng (each thing grows off `rng.seed ^ hash(id)`).
+  `Gen.pocket_cells` moved from dictionaries to flat arrays (same output,
+  the suite's 8261 checks agree): reads 3.09 -> 2.41 ms.
+  `tests/_probe_ql_theme.gd` over the 24 cached nights: **Easy 24/24
+  themed, worst 145 ms, mean 22; Medium 18/24, worst 172 ms (a plain
+  fallback after two failed cuts), mean 60.** Modes `tries`, `each`, `prof`
+  and `draw` say where the time goes.
+- **Hard and Insane stay plain.** A themed Hard took 10 of 24 days at all
+  and read through like a Medium (the outline tiles more rigidly than a
+  grown one, and the node floor had to go); Insane is Scrap Basket's bank.
+- **The reveal is the bricks' picture, on the win only** (a brick's
+  picture during play would say it was sewn wrong, which the no-state-by-
+  shade rule forbids on a board coloured by index). From `_paint_from()`
+  (half the solve wave's last hop) each brick takes the picture's beads
+  (`Pal.PG_BEADS`) as a tile a cell, a rounded square inset 0.07 standing
+  0.05 proud with a stud of its own, in a wave `PAINT_STEP` a cell out from
+  the top left over `PAINT_TIME`; a bead paler than 0.82 is shaded 0.12.
+  The brick's own edge shows round the tiles, so it is still a brick, and
+  the picture rides the dance. Looks: `LOOK_PAINT + p * 64 + step * 4 +
+  bits`, the last step goes into the still mesh. The `theme` cue rings as
+  it starts, the card reads `QL_WIN_THEME` ("Today's quilt: %s. %s"), the
+  report waits `THEME_HOLD` 0.9 s longer, and a reopened day shows it whole.
+- **The cat naps in the emptied tray** on a themed day, never on the
+  picture.
+- `tests/_shot_quilt.gd theme` re-deals in the newest cached night (the
+  harness's backend never starts), solves and reopens. `opengl3_angle`,
+  810x1440, second reading: themed Medium and Easy peak **155** draw calls
+  (plain solve 110 the same session); `_win.gd -- quilt` PASS.
+- Decided for the user, unconfirmed: Hard left plain; themed Medium reads
+  easier than a node-graded one could; the cat moved off the quilt; `boing`
+  onto the bank token. Owed: a phone, the ear, pt/es native read of
+  QL_WIN_THEME.

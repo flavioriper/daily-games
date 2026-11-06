@@ -525,6 +525,15 @@ static func _grow(rng: RandomNumberGenerator, b: Dictionary, relaxed: bool = fal
 		cells_of.append(got)
 	if _has_hole(owner, n):
 		return {}
+	return _packed(owner, n, cells_of, relaxed)
+
+## The grown `owner` (a patch index a cell, -1 empty, -2 outside a themed
+## shape) translated onto its own bounding box: {cols, rows, region, shapes,
+## answer}, or {} when `relaxed` is false and the region fills neither of the
+## box's dimensions.
+static func _packed(owner: PackedInt32Array, n: int, cells_of: Array, relaxed: bool) -> Dictionary:
+	var total := n * n
+	var patches := cells_of.size()
 	var lox := n
 	var loy := n
 	var hix := -1
@@ -621,7 +630,7 @@ static func _grow_patch(rng: RandomNumberGenerator, owner: PackedInt32Array, n: 
 				if qc < 0 or qr < 0 or qc >= n or qr >= n:
 					continue
 				var q := qr * n + qc
-				if owner[q] >= 0 or seen.has(q):
+				if owner[q] != -1 or seen.has(q):
 					continue
 				seen[q] = true
 				if maxi(hix, qc) - mini(lox, qc) >= MAX_SPAN:
@@ -805,11 +814,20 @@ static func _cells_at(cols: int, offs: Array, origin: int) -> PackedInt32Array:
 ## `readable` asks it to rule a spot out.
 static func pocket_cells(cols: int, rows: int, region: PackedByteArray,
 		cover: PackedInt32Array, taking: PackedInt32Array, smallest: int) -> PackedInt32Array:
+	# Marks in flat arrays, not dictionaries (2026-11-06: the themed deal
+	# asks this thousands of times a board): 1 in `mark` is the patch's own
+	# cell, 2 a cell already shut, and `seen` holds the start that last
+	# walked a cell, so each pocket still floods on its own.
 	var out := PackedInt32Array()
-	var mine := {}
+	var total := cols * rows
+	var mark := PackedByteArray()
+	mark.resize(total)
+	var seen := PackedInt32Array()
+	seen.resize(total)
+	seen.fill(-1)
 	for k in taking:
-		mine[k] = true
-	var shut := {}
+		mark[k] = 1
+	var pocket := PackedInt32Array()
 	for t in taking:
 		var tc := t % cols
 		var tr := t / cols
@@ -819,12 +837,14 @@ static func pocket_cells(cols: int, rows: int, region: PackedByteArray,
 			if sc < 0 or sr < 0 or sc >= cols or sr >= rows:
 				continue
 			var start := sr * cols + sc
-			if mine.has(start) or shut.has(start) or region[start] != 1 or cover[start] >= 0:
+			if mark[start] != 0 or region[start] != 1 or cover[start] >= 0:
 				continue
 			# Each pocket floods on its own: a walk cut short at `smallest`
 			# must not leave marks that make a later start see a fragment.
-			var seen := {start: true}
-			var pocket: Array[int] = [start]
+			var walk := t * 4 + DIRS.find(d0)
+			seen[start] = walk
+			pocket.clear()
+			pocket.append(start)
 			var i := 0
 			var open := false
 			while i < pocket.size():
@@ -841,14 +861,14 @@ static func pocket_cells(cols: int, rows: int, region: PackedByteArray,
 					if qc < 0 or qr < 0 or qc >= cols or qr >= rows:
 						continue
 					var q := qr * cols + qc
-					if seen.has(q) or mine.has(q) or region[q] != 1 or cover[q] >= 0:
+					if seen[q] == walk or mark[q] == 1 or region[q] != 1 or cover[q] >= 0:
 						continue
-					seen[q] = true
+					seen[q] = walk
 					pocket.append(q)
 			if not open:
 				for k in pocket:
-					shut[k] = true
-				out.append_array(PackedInt32Array(pocket))
+					mark[k] = 2
+				out.append_array(pocket)
 	return out
 
 # ----------------------------------------------------------------- the proof
@@ -1131,3 +1151,285 @@ static func _tile(ctx: Dictionary, covered: int, left: Array, used: Array, assig
 			assign[p] = -1
 			if int(state.count) >= cap:
 				return
+
+# --- the day's theme (wave 2 of the daily theme roadmap, 2026-11-06) ---
+#
+# The other boards grow their field and lay things on it; Quilt has no
+# field, its region is whatever the patches grew into. So a themed quilt is
+# the reverse problem: the outline is one of the night's things, cut down to
+# a box a little bigger than the band's, and the patches are grown *inside*
+# it until it is covered -- each new patch from the first bare cell in scan
+# order, which fills it as an exact cover would and wedges far less than a
+# seed anywhere. Then the same proof (one tiling) and the same reading
+# (Easy and Medium read to the end, Hard a first move) as a plain day.
+# Insane stays on its bank.
+
+const Planes = preload("res://puzzles/planes_state.gd")
+const HHGen = preload("res://puzzles/hedgehogs_gen.gd")
+
+## The night's sides each band tries first, so the bands mostly lay
+## different things. Easy and Medium only: Hard keeps its plain quilt, graded
+## by the proof's nodes (a cut outline tiles more rigidly -- themed Hard
+## cuts read through 2 of 10 times and took 10 of 24 days at all, so a
+## themed Hard was a Medium), and Insane is Scrap Basket's bank.
+const THEMED_SIZES := [[10, 12, 24, 32], [12, 10, 24, 32]]
+## The boxes a band's cut is tried in, biggest first: a thing reads better a
+## cell bigger than the band's own box. Never past 7 (MASK_CELLS).
+const THEME_BOXES := [[6, 5], [7, 6]]
+## The most patches a themed quilt may take: the band's own count and one
+## more on Easy and Medium, and never past the eight cloths (the rack's
+## shelves shrink a patch, and `cloth_of` stays each patch's own index).
+const THEME_PATCHES := [6, 7]
+## A cut is kept when it covers at least SHAPE_MIN of the band's own box (a
+## smaller quilt is a shorter day) and at most SHAPE_MAX of its own bounding
+## box (or it is the box with a corner off).
+const SHAPE_MIN := 0.7
+const SHAPE_MAX := 0.9
+## And at most this many cells: about 4.4 and 5 a patch, so the sizes the
+## band draws have room to vary (a cut near THEME_PATCHES times the biggest
+## patch has to be all big patches, and grows wedge for thousands of tries).
+const THEME_CELLS := [26, 35]
+## Grows tried on one cut before the next thing is, and how many things are
+## tried before the plain quilt is dealt: a grow and its proof cost about a
+## millisecond on this Mac, and the gate is 194 ms. Measured over the 24
+## cached nights (2026-11-06), half the cuts need 11-15 grows and nine in
+## ten 75-115; a few want hundreds, which is why a second thing is tried.
+const THEME_TRIES := [80, 30]
+const THEME_PICTURES := 2
+
+## `pic_rows` (a night picture's rows) cut for band `band`: {n (the square's
+## side), owner (-1 a quilt cell, -2 outside), beads (Vector2i -> bead name,
+## in the bounding box's own cells), cells}, or {} when no box keeps the
+## rules. Hedgehogs' smoothing, its largest piece, every hole filled (a hole
+## in a quilt reads as a drawing bug), and a 2x2 somewhere for the cat.
+static func shape_fit(pic_rows: Array, band: int) -> Dictionary:
+	var d := clampi(band, 0, THEME_BOXES.size() - 1)
+	var b: Dictionary = BANDS[d]
+	var n0 := int(b.box)
+	var most := int(THEME_CELLS[d])
+	for m: int in THEME_BOXES[d]:
+		var box := Vector2i(m, m)
+		var cut := Planes.cut_shape(pic_rows, box, false)
+		if cut.is_empty():
+			continue
+		var off := Vector2i((m - int(cut.cols)) / 2, (m - int(cut.rows)) / 2)
+		var on := {}
+		for c: Vector2i in cut.cells:
+			on[c + off] = cut.cells[c]
+		on = HHGen._smooth(on, box)
+		if on.is_empty():
+			continue
+		_fill_holes(on, m)
+		var count := on.size()
+		var lo := Vector2i(m, m)
+		var hi := Vector2i(-1, -1)
+		for c: Vector2i in on:
+			lo = Vector2i(mini(lo.x, c.x), mini(lo.y, c.y))
+			hi = Vector2i(maxi(hi.x, c.x), maxi(hi.y, c.y))
+		var ext := hi - lo + Vector2i.ONE
+		if float(count) < SHAPE_MIN * float(n0 * n0) or count > most:
+			continue
+		if float(count) > SHAPE_MAX * float(ext.x * ext.y):
+			continue
+		if not _has_square(on):
+			continue
+		var owner := PackedInt32Array()
+		owner.resize(m * m)
+		owner.fill(-2)
+		var beads := {}
+		for c: Vector2i in on:
+			owner[c.y * m + c.x] = -1
+			beads[c - lo] = on[c]
+		return {"n": m, "owner": owner, "beads": beads, "cells": count}
+	return {}
+
+## Every cell of the m box no orthogonal path from the box's border reaches
+## is put into the shape, taking a neighbour's bead.
+static func _fill_holes(on: Dictionary, m: int) -> void:
+	var seen := {}
+	var stack: Array = []
+	for i in m * m:
+		var c := Vector2i(i % m, i / m)
+		if on.has(c) or (c.x != 0 and c.y != 0 and c.x != m - 1 and c.y != m - 1):
+			continue
+		seen[c] = true
+		stack.append(c)
+	while not stack.is_empty():
+		var c: Vector2i = stack.pop_back()
+		for dv: Vector2i in DIRS:
+			var q: Vector2i = c + dv
+			if q.x < 0 or q.y < 0 or q.x >= m or q.y >= m or on.has(q) or seen.has(q):
+				continue
+			seen[q] = true
+			stack.append(q)
+	var holes: Array = []
+	for i in m * m:
+		var c := Vector2i(i % m, i / m)
+		if not on.has(c) and not seen.has(c):
+			holes.append(c)
+	# a hole's cells take their beads from the shape round them, outside in
+	while not holes.is_empty():
+		var left: Array = []
+		for c: Vector2i in holes:
+			var bead := ""
+			for dv: Vector2i in DIRS:
+				if on.has(c + dv):
+					bead = String(on[c + dv])
+					break
+			if bead == "":
+				left.append(c)
+			else:
+				on[c] = bead
+		if left.size() == holes.size():
+			break
+		holes = left
+
+static func _has_square(on: Dictionary) -> bool:
+	for c: Vector2i in on:
+		if on.has(c + Vector2i(1, 0)) and on.has(c + Vector2i(0, 1)) and on.has(c + Vector2i(1, 1)):
+			return true
+	return false
+
+## A quilt grown inside `shape` (shape_fit's) for band `band`: generate's
+## board, or {} when THEME_TRIES grows found none with one tiling that a
+## careful player reads (Easy and Medium to the end, Hard a first move).
+static func generate_shaped(rng: RandomNumberGenerator, band: int, shape: Dictionary) -> Dictionary:
+	var d := clampi(band, 0, THEME_BOXES.size() - 1)
+	var b: Dictionary = BANDS[d]
+	for attempt in range(1, int(THEME_TRIES[d]) + 1):
+		var grown := _grow_in(rng, shape, b, int(THEME_PATCHES[d]))
+		if grown.is_empty():
+			continue
+		var board := _proved(grown, attempt)
+		if not bool(board.unique):
+			continue
+		var shapes: Array = board.shapes
+		var need := ceili(float(READ_SHARE[d]) * shapes.size())
+		var read := readable(int(board.cols), int(board.rows), board.region, shapes,
+			PackedByteArray(), need)
+		if read < need:
+			continue
+		board["read"] = read
+		return board
+	return {}
+
+## The patches grown inside the shape until it is covered: each from the
+## first bare cell in scan order, a size the band draws (never one that
+## leaves fewer cells than its smallest patch), refused when a bare pocket
+## smaller than the smallest patch is shut in or the patches run past `most`.
+static func _grow_in(rng: RandomNumberGenerator, shape: Dictionary, b: Dictionary, most: int) -> Dictionary:
+	var n := int(shape.n)
+	var owner: PackedInt32Array = (shape.owner as PackedInt32Array).duplicate()
+	var sizes: Array = b.sizes
+	var least: int = int(sizes.min())
+	var left := int(shape.cells)
+	var cells_of: Array = []
+	while left > 0:
+		if cells_of.size() >= most:
+			return {}
+		var start := owner.find(-1)
+		var can: Array = []
+		for s in sizes:
+			if int(s) == left or (int(s) < left and left - int(s) >= least):
+				can.append(int(s))
+		if can.is_empty():
+			return {}
+		# a patch that wedges or shuts in a pocket too small for any patch is
+		# grown again, a few times, before the whole quilt is given up
+		var got := PackedInt32Array()
+		var want := 0
+		for again in PATCH_RETRIES:
+			want = can[rng.randi_range(0, can.size() - 1)]
+			got = _grow_hugging(rng, owner, n, cells_of.size(), start, want)
+			if got.is_empty():
+				continue
+			if left - want > 0 and _pocket_under(owner, n, least):
+				for k in got:
+					owner[k] = -1
+				got = PackedInt32Array()
+				continue
+			break
+		if got.is_empty():
+			return {}
+		cells_of.append(got)
+		left -= want
+	return _packed(owner, n, cells_of, true)
+
+## Times one patch of a themed grow is grown again before the quilt is.
+const PATCH_RETRIES := 6
+
+## `_grow_patch` for a themed outline: each cell taken is drawn with a lean
+## toward the bare cells with the fewest bare neighbours, so a patch hugs the
+## outline and fills its nooks rather than leaving them to wedge the next.
+## Its own draws, so a plain day's grow is untouched.
+static func _grow_hugging(rng: RandomNumberGenerator, owner: PackedInt32Array, n: int,
+		p: int, start: int, want: int) -> PackedInt32Array:
+	var cells := PackedInt32Array([start])
+	owner[start] = p
+	var lo := Vector2i(start % n, start / n)
+	var hi := lo
+	while cells.size() < want:
+		var cand := PackedInt32Array()
+		var weight := PackedFloat32Array()
+		var total := 0.0
+		for idx in cells:
+			for dv: Vector2i in DIRS:
+				var q := Vector2i(idx % n, idx / n) + dv
+				if q.x < 0 or q.y < 0 or q.x >= n or q.y >= n:
+					continue
+				var k := q.y * n + q.x
+				if owner[k] != -1 or cand.has(k):
+					continue
+				if maxi(hi.x, q.x) - mini(lo.x, q.x) >= MAX_SPAN or maxi(hi.y, q.y) - mini(lo.y, q.y) >= MAX_SPAN:
+					continue
+				var free := 0
+				for dw: Vector2i in DIRS:
+					var r: Vector2i = q + dw
+					if r.x >= 0 and r.y >= 0 and r.x < n and r.y < n and owner[r.y * n + r.x] == -1:
+						free += 1
+				var w := 1.0 / float(1 + free * free)
+				cand.append(k)
+				weight.append(w)
+				total += w
+		if cand.is_empty():
+			for idx in cells:
+				owner[idx] = -1
+			return PackedInt32Array()
+		var roll := rng.randf() * total
+		var pick := cand[cand.size() - 1]
+		for i in cand.size():
+			roll -= weight[i]
+			if roll <= 0.0:
+				pick = cand[i]
+				break
+		owner[pick] = p
+		cells.append(pick)
+		lo = Vector2i(mini(lo.x, pick % n), mini(lo.y, pick / n))
+		hi = Vector2i(maxi(hi.x, pick % n), maxi(hi.y, pick / n))
+	return cells
+
+## Whether any bare (-1) pocket of `owner` is smaller than `least` cells.
+static func _pocket_under(owner: PackedInt32Array, n: int, least: int) -> bool:
+	var seen := PackedByteArray()
+	seen.resize(n * n)
+	for i in n * n:
+		if owner[i] != -1 or seen[i] == 1:
+			continue
+		var size := 0
+		var stack: Array[int] = [i]
+		seen[i] = 1
+		while not stack.is_empty():
+			var k: int = stack.pop_back()
+			size += 1
+			for dv: Vector2i in DIRS:
+				var qc: int = k % n + dv.x
+				var qr: int = k / n + dv.y
+				if qc < 0 or qr < 0 or qc >= n or qr >= n:
+					continue
+				var q := qr * n + qc
+				if owner[q] == -1 and seen[q] == 0:
+					seen[q] = 1
+					stack.append(q)
+		if size < least:
+			return true
+	return false

@@ -70,6 +70,7 @@ const Face = preload("res://ui/faces/face.gd")
 ## brick (ui/faces/brick_piece.gd), which answers every name the cloth did;
 ## the board still says patch, quilt and sew in its own words.
 const Cloth = preload("res://ui/faces/brick_piece.gd")
+const ThemedPictures = preload("res://core/themed_pictures.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const NapCat = preload("res://ui/faces/nap_cat.gd")
@@ -354,6 +355,29 @@ const LOOK_GONE := 2000000
 const LOOK_SEAM := 3000000
 ## The solve's sheen and the hem's warming, in this many cached steps.
 const SHEEN_STEPS := 8
+## A painted brick's look on a themed win: LOOK_PAINT + p * 64 + step * 4 +
+## bits, step 1 to PAINT_STEPS - 1 how far its picture has come in.
+const LOOK_PAINT := 4000000
+const PAINT_STEPS := 8
+## The day's theme (wave 2 of the daily theme roadmap, 2026-11-06): on Easy
+## and Medium the quilt's outline is one of the night's things. On the win,
+## once the solve's wave has run, each brick takes the picture's beads as
+## tiles on its cells (core/palette.gd PG_BEADS), in a wave PAINT_STEP a
+## cell out from the top left, each over PAINT_TIME; a bead paler than
+## PAINT_PALE is shaded PAINT_PALE_SHADE so white still reads on the plate.
+## A tile is inset PAINT_INSET with a PAINT_ROUND corner and stands
+## PAINT_DEPTH proud, so a brick's own edge still shows round the picture.
+## Never during play: a brick's picture would tell it was sewn wrong.
+const PAINT_STEP := 0.06
+const PAINT_TIME := 0.35
+const PAINT_PALE := 0.82
+const PAINT_PALE_SHADE := 0.12
+const PAINT_INSET := 0.07
+const PAINT_ROUND := 0.14
+const PAINT_DEPTH := 0.05
+## A themed win holds this much longer before the report, so the picture is
+## seen whole.
+const THEME_HOLD := 0.9
 
 var _state = State.new()
 ## The world, and whether the host has said what its rows cover (`bleed`).
@@ -402,6 +426,9 @@ var _pending: Array = []
 var _opened := 0.0
 var _anim_until := 0.0
 var _solved_at := -1.0
+## When a themed quilt's picture began to come in (its wave runs from
+## `_paint_from()` after it); INF before the solve and on a plain quilt.
+var _paint_at := INF
 ## The three meshes, dropped whenever something changed so the next _draw
 ## rebuilds them.
 var _quilt: ArrayMesh
@@ -649,6 +676,7 @@ const HAPTICS := {
 	"heart_lost": Haptics.BAD,
 	"out_of_hearts": Haptics.LOSE,
 	"solved": Haptics.WIN,
+	"theme": Haptics.GOOD,
 }
 
 func _ready() -> void:
@@ -689,7 +717,8 @@ func _layer(nm: String, z: int, draw: Callable) -> Control:
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_gen += 1
-	_state.setup(rng, difficulty, bank_step)
+	_state.setup(rng, difficulty, bank_step, _night_pictures(difficulty))
+	_paint_at = INF
 	max_hearts = State.hearts_for(_state.band) if _state.judged() else 0
 	max_moves = _state.moves_budget()
 	_heart_used = false
@@ -714,6 +743,19 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_hold_until = 0.0
 	_say(_tip(0), Face.Expr.HAPPY)
 	_tip_timer.start()
+
+## The night's things this band may cut its quilt to (Gen.THEMED_SIZES), on
+## a daily dealt first; [] on any other deal (the tutorial's, a New deal),
+## which grows the band's plain quilt.
+func _night_pictures(difficulty: int) -> Array:
+	var out: Array = []
+	if bank_step != 0 or daily_key == 0 or difficulty >= State.Gen.THEMED_SIZES.size():
+		return out
+	for side in State.Gen.THEMED_SIZES[difficulty]:
+		var pic := ThemedPictures.picture(daily_key, int(side))
+		if not pic.is_empty():
+			out.append(pic)
+	return out
 
 ## The board as it is dealt, and as Try again deals it back: every heart,
 ## the day's light, nothing peeling, pulsing or wiggling.
@@ -1672,8 +1714,7 @@ func _build_quilt(t: float) -> ArrayMesh:
 	for p: int in order:
 		var f := _frame_of(p, t)
 		var look := _sewn_look_id(p, f, t)
-		if look >= 0 and _at_rest(f, _corner_of(int(_state.at[p])), _cell()) \
-				and (look - LOOK_SEWN) % 64 < 4:
+		if look >= 0 and _at_rest(f, _corner_of(int(_state.at[p])), _cell()) and _still_look(look):
 			plan.append_array([float(look), f["pos"].x, f["pos"].y])
 			still[p] = true
 		else:
@@ -1758,10 +1799,83 @@ func _sewn_look_id(p: int, f: Dictionary, t: float) -> int:
 			bits |= 1
 	if int(_state.locked[p]) == 1:
 		bits |= 2
+	var paint := _paint_level(p, t)
+	if paint > 0.0:
+		return LOOK_PAINT + p * 64 + ceili(paint * float(PAINT_STEPS - 1)) * 4 + bits
 	var step := 0
 	if _solved_at >= 0.0:
 		step = roundi(_sheen(p, t) * float(SHEEN_STEPS - 1))
 	return LOOK_SEWN + p * 64 + step * 4 + bits
+
+## Whether a sewn look is one the patch keeps at rest (and so goes into the
+## still mesh): unwarmed, or its picture all the way in.
+func _still_look(look: int) -> bool:
+	if look >= LOOK_PAINT:
+		return (look - LOOK_PAINT) % 64 / 4 == PAINT_STEPS - 1
+	return (look - LOOK_SEWN) % 64 < 4
+
+## How far a themed win's picture has come in on patch `p` at `t`, 0 to 1.
+func _paint_level(p: int, t: float) -> float:
+	if _paint_at == INF or not _state.themed() or int(_state.at[p]) < 0:
+		return 0.0
+	if Motion.reduce:
+		return 1.0
+	var mid := _centroid(p)
+	return clampf((t - _paint_at - _paint_from() - (mid.x + mid.y) * PAINT_STEP) / PAINT_TIME, 0.0, 1.0)
+
+## When the picture starts after the solve: half the solve wave's last hop.
+func _paint_from() -> float:
+	return Motion.SOLVE_DELAY + _solve_span() + Motion.SOLVE_TIME * 0.5
+
+## How long the picture takes from its first brick to its last.
+func _paint_span() -> float:
+	return float(_state.cols + _state.rows) * PAINT_STEP + PAINT_TIME
+
+## A brick's tiles of the day's picture at `level`, one a cell, drawn as
+## its frame `f` lays it (a look's frame, or one squashed, leant or lifted).
+func _paint(b, p: int, f: Dictionary, level: float) -> void:
+	var origin := int(_state.at[p])
+	if level <= 0.0 or origin < 0:
+		return
+	var beads: Dictionary = _state.theme.get("beads", {})
+	var cell := float(f["cell"])
+	var sc: Vector2 = f["sc"]
+	var rot := float(f.get("rot", 0.0))
+	var alpha := level * float(f.get("alpha", 1.0))
+	var oc: int = origin % _state.cols
+	var orr: int = origin / _state.cols
+	var tile := _tile_loop()
+	for c: Vector2i in _state.shapes[p]:
+		var bead = Pal.PG_BEADS.get(String(beads.get(Vector2i(oc + c.x, orr + c.y), "")))
+		if bead == null:
+			continue
+		var face: Color = bead
+		if face.get_luminance() > PAINT_PALE:
+			face = face.darkened(PAINT_PALE_SHADE)
+		var top := PackedVector2Array()
+		var side := PackedVector2Array()
+		for v: Vector2 in tile:
+			top.append(Cloth.place(Vector2(c) + v, f["pos"], cell, _spans[p], sc, rot))
+			side.append(Cloth.place(Vector2(c) + v + Vector2(0.0, PAINT_DEPTH), f["pos"], cell, _spans[p], sc, rot))
+		b.polygon(side, Color(face.lerp(Pal.TEXT, Cloth.DEEP), alpha))
+		b.polygon(top, Color(face, alpha))
+		Cloth.stud(b, Cloth.place(Vector2(c) + Vector2(0.5, 0.5), f["pos"], cell, _spans[p], sc, rot),
+			cell * minf(sc.x, sc.y), face, alpha)
+
+var _tile_cache := PackedVector2Array()
+
+## One tile's outline in a cell's own units: a square inset PAINT_INSET with
+## PAINT_ROUND corners.
+func _tile_loop() -> PackedVector2Array:
+	if not _tile_cache.is_empty():
+		return _tile_cache
+	var lo := PAINT_INSET + PAINT_ROUND
+	var hi := 1.0 - PAINT_INSET - PAINT_ROUND
+	for corner: Array in [[Vector2(hi, lo), -PI * 0.5], [Vector2(hi, hi), 0.0], [Vector2(lo, hi), PI * 0.5], [Vector2(lo, lo), PI]]:
+		for k in 4:
+			var a: float = float(corner[1]) + PI * 0.5 * float(k) / 3.0
+			_tile_cache.append((corner[0] as Vector2) + Vector2(cos(a), sin(a)) * PAINT_ROUND)
+	return _tile_cache
 
 ## A patch's look laid where its frame puts it: the look is drawn about its
 ## own top-left at the cell, so `Cloth.place`'s squash and turn about the
@@ -1800,7 +1914,10 @@ func _seam_look_id(sm: Dictionary, t: float) -> int:
 ## Draws look `id` about its own top-left, in its own colours, for `_rm`.
 func _look(id: int) -> Face.Builder:
 	var b := Face.Builder.new()
-	if id >= LOOK_SEAM:
+	if id >= LOOK_PAINT:
+		var k := id - LOOK_PAINT
+		_sewn_look(b, k / 64, 0.0, k % 4, float((k % 64) / 4) / float(PAINT_STEPS - 1))
+	elif id >= LOOK_SEAM:
 		var k := id - LOOK_SEAM
 		var across := k % 2 == 1
 		var step := (k / 2) % SHEEN_STEPS
@@ -1823,24 +1940,27 @@ func _look(id: int) -> Face.Builder:
 			"rot": 0.0, "lift": 0.0, "face": Cloth.cloth(_ci(p))}, false, -1.0, true)
 	else:
 		var k := id - LOOK_SEWN
-		var p := k / 64
-		var step := (k % 64) / 4
-		var level := float(step) / float(SHEEN_STEPS - 1)
-		var f := {"pos": Vector2.ZERO, "cell": _cell(), "sc": Vector2.ONE, "alpha": 1.0,
-			"rot": 0.0, "lift": 0.0, "face": Cloth.cloth(_ci(p)).lerp(Pal.SURFACE, SHEEN * level)}
-		var cell := _cell()
-		Cloth.patch(b, _loops[p], f["pos"], cell, _spans[p], f["face"], Cloth.cloth_deep(_ci(p)))
-		Cloth.print_cloth(b, _state.shapes[p], _ci(p), f["pos"], cell, _spans[p])
-		if k & 1:
-			_button(b, p, f, 1.0)
-		var ink := Cloth.cloth_thread(_ci(p)).lerp(Pal.SUN_RAY, level)
-		for loop: PackedVector2Array in _insets[p]:
-			var pts := Cloth.laid(loop, f["pos"], cell, _spans[p], Vector2.ONE, 0.0, Cloth.RADIUS * 0.6)
-			Cloth.dash_loop(b, pts, Cloth.QUILT_W * cell, Cloth.QUILT_ON * cell,
-				Cloth.QUILT_OFF * cell, ink, Cloth.perimeter(pts))
-		if k & 2:
-			_hint_glow(b, p, f)
+		_sewn_look(b, k / 64, float((k % 64) / 4) / float(SHEEN_STEPS - 1), k % 4)
 	return b
+
+## A sewn patch's look about its own top-left: warmed `level` of the way
+## by the solve's sheen, with its button (`bits` 1) and hint glow (2).
+func _sewn_look(b, p: int, level: float, bits: int, paint := 0.0) -> void:
+	var cell := _cell()
+	var f := {"pos": Vector2.ZERO, "cell": cell, "sc": Vector2.ONE, "alpha": 1.0,
+		"rot": 0.0, "lift": 0.0, "face": Cloth.cloth(_ci(p)).lerp(Pal.SURFACE, SHEEN * level)}
+	Cloth.patch(b, _loops[p], f["pos"], cell, _spans[p], f["face"], Cloth.cloth_deep(_ci(p)))
+	Cloth.print_cloth(b, _state.shapes[p], _ci(p), f["pos"], cell, _spans[p])
+	_paint(b, p, f, paint)
+	if bits & 1:
+		_button(b, p, f, 1.0)
+	var ink := Cloth.cloth_thread(_ci(p)).lerp(Pal.SUN_RAY, level)
+	for loop: PackedVector2Array in _insets[p]:
+		var pts := Cloth.laid(loop, f["pos"], cell, _spans[p], Vector2.ONE, 0.0, Cloth.RADIUS * 0.6)
+		Cloth.dash_loop(b, pts, Cloth.QUILT_W * cell, Cloth.QUILT_ON * cell,
+			Cloth.QUILT_OFF * cell, ink, Cloth.perimeter(pts))
+	if bits & 2:
+		_hint_glow(b, p, f)
 
 ## The dead end on Easy and Medium: every bare cell no patch left can reach
 ## wears a rose halo that pulses DEAD_PULSES times. Under reduce motion it
@@ -2023,6 +2143,8 @@ func _patch(b, p: int, f: Dictionary, sewn := false, reach := -1.0, still := fal
 		float(f.get("rot", 0.0)))
 	Cloth.print_cloth(b, _state.shapes[p], _ci(p), f["pos"], cell, _spans[p],
 		f["sc"], float(f["alpha"]), float(f.get("rot", 0.0)))
+	if sewn:
+		_paint(b, p, f, _paint_level(p, _now()))
 	if still:
 		return
 	if _buttons.has(p):
@@ -2838,6 +2960,7 @@ func _wipe() -> void:
 		var e: Dictionary = was[p]
 		_fly_home(int(p), e["at"], Motion.stagger(int(e["step"]), Motion.RESET_STAGGER))
 	_solved_at = -1.0
+	_paint_at = INF
 	_busy_for(Motion.stagger(_state.cols + _state.rows - 2, Motion.RESET_STAGGER) + FLY_TIME)
 	moves = 0
 	_running = true
@@ -2887,6 +3010,7 @@ func restore_completed_board() -> void:
 	# quilt, the seal when the solve earned one, and on Scrap Basket the
 	# bunting, still.
 	_cat_at = t - 100.0
+	_paint_at = t - 100.0 if _state.themed() else INF
 	if _flawless or _state.band == 3:
 		_stamp_at = t - 100.0
 	if not _state.scraps().is_empty():
@@ -2921,7 +3045,11 @@ func completion_record() -> Dictionary:
 # --- the win ---
 
 func flat_win() -> Dictionary:
-	return {"faces": [], "subtitle": tr("QL_WIN")}
+	var sub := tr("QL_WIN")
+	var name := String(_state.theme.get("name", ""))
+	if _state.themed() and name != "":
+		sub = tr("QL_WIN_THEME") % [name, sub]
+	return {"faces": [], "subtitle": sub}
 
 ## Long enough for the hem's stitch to run all the way round the finished
 ## quilt. Under reduce-motion there is no wave, so the win follows the last
@@ -2930,7 +3058,9 @@ func flat_win() -> Dictionary:
 ## The party comes after it: PARTY_AT on from the wave and PARTY_EXTRA to
 ## let the cat curl up and the seal land before the win screen covers them.
 func win_delay() -> float:
-	return Motion.REDUCED_TIME if Motion.reduce else WIN_WAIT + PARTY_AT + PARTY_EXTRA
+	if Motion.reduce:
+		return Motion.REDUCED_TIME
+	return WIN_WAIT + PARTY_AT + PARTY_EXTRA + (THEME_HOLD if _state.themed() else 0.0)
 
 func _on_solved() -> void:
 	_solved_at = _now()
@@ -2953,6 +3083,11 @@ func _on_solved() -> void:
 	_busy_for(Motion.SOLVE_DELAY + _solve_span() + Motion.SOLVE_TIME)
 	_say(tr("QL_WIN"), Face.Expr.JOY)
 	fx.cue("solved")
+	# A themed quilt's picture comes in on the bricks once the wave has run.
+	if _state.themed():
+		_paint_at = _solved_at
+		_busy_for(_paint_from() + _paint_span())
+		_after(0.0 if Motion.reduce else _paint_from(), fx.cue.bind("theme"))
 	# The streak's bubble goes; the party takes over.
 	_combo_out_at = _now() if _combo_n >= COMBO_FROM else -INF
 	_party()
@@ -3314,6 +3449,10 @@ func _cheer() -> String:
 ## quilt's own middle, a little down and right, so she lies on cloth -- and
 ## never on a button, which she would hide.
 func _cat_spot() -> Vector2:
+	# a themed quilt's picture is the point: she naps in the emptied tray
+	if _state.themed():
+		var box := _rack_box()
+		return Vector2(box.get_center().x, box.position.y + box.size.y * 0.55)
 	var want := Vector2(float(_state.cols), float(_state.rows)) * 0.5 + Vector2(0.4, 0.5)
 	var studs: Array = []
 	for p in _buttons:
@@ -4098,7 +4237,8 @@ func day_dict() -> Dictionary:
 	if banked:
 		metrics["nodes"] = int(entry.get("nodes", 0))
 	var out := {
-		"source": "bank" if banked else "generator", "kind": "grid",
+		"source": "theme" if _state.themed() else ("bank" if banked else "generator"), "kind": "grid",
+		"theme": String(_state.theme.get("id", "")),
 		"payload": {"cols": cols, "rows": rows, "region": region, "patches": patches},
 		"solution": {"answer": Array(_state.answer)},
 		"metrics": metrics,
