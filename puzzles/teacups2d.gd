@@ -55,6 +55,8 @@ const PeepletView = preload("res://ui/peeplet_view.gd")
 const Personas = preload("res://peeplet/peeplet_personas.gd")
 const StarLine = preload("res://ui/flat/star_line.gd")
 const Toast = preload("res://ui/flat/toast_card.gd")
+const ThemedPictures = preload("res://core/themed_pictures.gd")
+const Cast = preload("res://core/cast.gd")
 
 enum Phase { PLAY, HOLD, BUSY, DONE }
 
@@ -67,6 +69,7 @@ const HAPTICS := {
 	"waltz": Haptics.TICK,
 	"hint": Haptics.GOOD,
 	"solved": Haptics.WIN,
+	"theme": Haptics.GOOD,
 }
 
 ## The screen the board was drawn on; everything scales with the width.
@@ -105,6 +108,34 @@ const FEET := Cup.FEET
 const UP_FPS := 12.0
 ## A lapse's rim on the saucer the twin sat on, and a found-by-memory ring.
 const RIM_TIME := 2.2
+
+## The daily theme (2026-11-06). On a daily whose night pictures this phone
+## holds, the day's thing is hidden in the cloth under the cups, the old
+## tea-table game's picture under the cards: each pair found pours the beads
+## nearest its two saucers in, rippling out from them (REVEAL_AT after the
+## cups fly, REVEAL_STEP a bead of distance, each swelling in over
+## REVEAL_TIME), so the picture grows only where memory is done with. On the
+## win every bead bumps in a wave from the middle (THEME_WAVE a bead) as the
+## theme cue rings, and the card waits THEME_HOLD longer and names it. The
+## picture is laid over the cups' span, PIC_FILL of it; pale beads are
+## shaded so they read on the cream cloth.
+const THEMED_SIZES := [12, 10]
+const REVEAL_AT := 0.05
+const REVEAL_STEP := 0.035
+const REVEAL_TIME := 0.3
+const THEME_AT := 1.45
+## After their laughing wave the friends slip away and the saucers step back
+## to SAUCER_TO, over FADE_TIME from FADE_AT, so the picture reads whole (a
+## friend half faded reads as a ghost, so they go all the way); a reopened
+## themed day stays so.
+const FADE_AT := 1.05
+const FADE_TIME := 0.35
+const SAUCER_TO := 0.25
+const THEME_WAVE := 0.025
+const THEME_HOLD := 0.9
+const PIC_FILL := 0.98
+const PAINT_PALE := 0.82
+const PAINT_PALE_SHADE := 0.12
 
 ## Built silent and deaf for the tutorial's page.
 var demo := false
@@ -166,6 +197,17 @@ var _lay_at := -INF
 var _world: Control
 var _table: ArrayMesh
 var _table_key := ""
+## The day's thing ({id, name, rows}) on a themed daily, {} otherwise; the
+## day's two Peeplets seated as friends; when the win's wave began (INF
+## none); the beads' mesh, its key, and until when it must be built again
+## every frame (beads still swelling).
+var _theme: Dictionary = {}
+var _guests: Array[int] = []
+var _theme_at := INF
+var _fade_at := INF
+var _beads: ArrayMesh
+var _beads_key := ""
+var _beads_busy := -INF
 ## The board's sounds and sparks; none on the tutorial's silent board.
 var fx: Node
 
@@ -246,6 +288,11 @@ func _ready() -> void:
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_band = clampi(difficulty, 0, 3)
 	_st.deal(rng, _band)
+	_theme = _night_picture()
+	_guests.clear()
+	if _dealt_daily():
+		_guests = _st.seat_guests(Cast.pair(daily_key))
+	_cast_ids.clear()
 	_fresh()
 	_enter_at = _t
 	_cue("enter")
@@ -278,6 +325,10 @@ func _fresh() -> void:
 		_peek_tok.append(0)
 	_held.clear()
 	_queue.clear()
+	_theme_at = INF
+	_fade_at = INF
+	_beads_key = ""
+	_beads_busy = -INF
 	_phase = Phase.PLAY
 	_reading = -1
 	_fresh_rim = false
@@ -291,8 +342,9 @@ func day_dict() -> Dictionary:
 	if _st.kind.is_empty():
 		return {}
 	return {
-		"source": "generator", "kind": "text",
-		"payload": {"cols": _st.cols(), "rows": _st.rows(), "waltz": _st.waltzes()},
+		"source": "theme" if themed() else "generator", "kind": "text",
+		"theme": String(_theme.get("id", "")),
+		"payload": {"cols": _st.cols(), "rows": _st.rows(), "waltz": _st.waltzes(), "guests": Array(_guests)},
 		"solution": {"kind": Array(_st.kind), "slot": Array(_st.slot), "persona": Array(_st.persona)},
 		"metrics": {"pairs": _st.pairs(), "cups": _st.cups()},
 	}
@@ -396,8 +448,11 @@ func _found(a: int, c: int) -> void:
 		_hop_at[k] = at
 	var run: int = _st.run
 	var by_heart: bool = _st.remembered
-	if run >= 3 and run % 3 == 0 and not _st.solved():
+	if _st.is_guest(a, _guests) and not _st.solved():
+		_toast.say(tr("TC_GUEST") % _st.name_of(a), _t)
+	elif run >= 3 and run % 3 == 0 and not _st.solved():
 		_toast.say(tr("TC_RUN") % run, _t)
+	_beads_busy = at + REVEAL_AT + REVEAL_STEP * 24.0 + REVEAL_TIME
 	_after(LIFT_TIME * 0.8, func() -> void:
 		_cue("pair", 1.0 + 0.05 * clampi(run - 1, 0, 4))
 		for k in [a, c]:
@@ -456,6 +511,8 @@ func _solved_now() -> void:
 			fx.confetti(Vector2(size.x * 0.5, _l("oy")), 26, size.x * 0.7)
 			# not one partner forgotten all day: the party's toots
 			_cue("party" if _st.lapses == 0 else "confetti"))
+	if themed():
+		_theme_win()
 	check_solved()
 
 func is_solved() -> bool:
@@ -808,13 +865,15 @@ func _friend_at(c: int) -> Vector2:
 func _draw() -> void:
 	if _L.is_empty() or _st.kind.is_empty():
 		return
+	if themed():
+		_draw_beads()
 	_draw_table()
 	var r := _l("r")
 	for c in _st.cups():
 		var gone := _t - _gone_at[c] if _gone_at[c] > -INF else -1.0
 		if _st.found[c] and gone >= 0.0:
 			var ring_k := Motion.pop_in_scale(gone).x if gone < Motion.POP_IN else 1.0
-			draw_mesh(Cup.found_ring(r), null, Transform2D(0.0, Vector2.ONE * ring_k, 0.0, _slot_pos(_st.slot[c])))
+			draw_mesh(Cup.found_ring(r), null, Transform2D(0.0, Vector2.ONE * ring_k, 0.0, _slot_pos(_st.slot[c])), Color(1, 1, 1, _saucer_fade()))
 	# the bulb's reading: the cups never lifted, where an unseen twin hides
 	if _fresh_rim:
 		var pulse := 0.55 + 0.25 * sin(_t * 5.0) if not Motion.reduce else 0.7
@@ -829,6 +888,10 @@ func _draw() -> void:
 		draw_mesh(Cup.found_ring(r, Pal.BERRY), null, Transform2D(0.0, Vector2.ONE * k * 1.1, 0.0, _slot_pos(_rim_slot)),
 			Color(1, 1, 1, a))
 	_place_cast()
+	var fade := _fade()
+	for cast in _casts:
+		cast.modulate.a = fade
+		cast.visible = fade > 0.0
 
 ## The saucers, one cached mesh a layout.
 func _draw_table() -> void:
@@ -840,7 +903,7 @@ func _draw_table() -> void:
 		for s in _st.cups():
 			Cup.saucer(b, _slot_pos(s), r)
 		_table = b.mesh()
-	draw_mesh(_table, null)
+	draw_mesh(_table, null, Transform2D.IDENTITY, Color(1, 1, 1, _saucer_fade()))
 
 ## Row `i`'s cups, far to near, over its friends; and the names of the
 ## friends under its lifted cups on their saucers' lips.
@@ -940,7 +1003,7 @@ func _draw_top() -> void:
 func win_delay() -> float:
 	if Motion.reduce:
 		return Motion.REDUCED_TIME
-	return WIN_HOLD
+	return WIN_HOLD + (THEME_HOLD if themed() else 0.0)
 
 func skill_quality() -> float:
 	if _st.kind.is_empty():
@@ -958,6 +1021,8 @@ func flat_win() -> Dictionary:
 		line = (tr("TC_WIN_LAPSES_ONE") if _st.lapses == 1 else tr("TC_WIN_LAPSES_N")) % _st.lapses
 	if _st.best_run >= 3 and _st.best_run < _st.pairs():
 		line += " " + tr("TC_WIN_RUN") % _st.best_run
+	if themed():
+		return {"faces": [], "subtitle": tr("TC_WIN_THEME") % [String(_theme.name), line]}
 	return {"faces": [], "subtitle": tr("TC_WIN") % _st.lifts + " " + line}
 
 func completion_record() -> Dictionary:
@@ -975,4 +1040,129 @@ func restore_completed_board() -> void:
 		_up_at[c] = -10.0
 	_phase = Phase.DONE
 	_won_at = _t
+	if themed():
+		# a reopened themed day shows the picture the cloth hid
+		_fade_at = _t - 10.0
 	queue_redraw()
+
+# --- the daily theme (2026-11-06) ---
+
+func themed() -> bool:
+	return not _theme.is_empty()
+
+## A daily dealt from its day: never New, never the tutorial's table.
+func _dealt_daily() -> bool:
+	return not demo and bank_step == 0 and daily_key != 0
+
+## The night's thing hidden in the cloth, the first size the phone holds.
+func _night_picture() -> Dictionary:
+	if not _dealt_daily():
+		return {}
+	for side in THEMED_SIZES:
+		var pic := ThemedPictures.picture(daily_key, int(side))
+		if not pic.is_empty():
+			return pic
+	return {}
+
+## How much of the friends and saucers shows: all of it until a themed
+## win steps them back.
+func _fade() -> float:
+	if _fade_at == INF:
+		return 1.0
+	return 1.0 - clampf((_t - _fade_at) / FADE_TIME, 0.0, 1.0)
+
+## The saucers' share of `_fade`: they keep a trace of the table.
+func _saucer_fade() -> float:
+	return lerpf(SAUCER_TO, 1.0, _fade())
+
+## The last pair found on a themed day: the friends step back, then the
+## whole picture bumps from its middle out as the theme cue rings. Under
+## reduce motion it is simply there.
+func _theme_win() -> void:
+	if Motion.reduce:
+		_fade_at = _t - 10.0
+		_cue("theme")
+		return
+	_fade_at = _t + FADE_AT
+	_theme_at = _t + THEME_AT
+	_beads_busy = _theme_at + THEME_WAVE * 24.0 + Motion.BUMP_TIME
+	_after(THEME_AT, func() -> void:
+		_cue("theme")
+		if not demo and fx != null and not _L.is_empty():
+			fx.sparkle(_pic_rect().get_center(), Pal.SUN))
+
+## Where the picture lies: a square over the cups' span, from the cups'
+## tops to the saucers of the nearest row.
+func _pic_rect() -> Rect2:
+	var cw := _l("cw")
+	var x0 := _l("ox")
+	var x1 := x0 + _st.cols() * cw
+	var y0 := _l("oy") - cw * 0.5
+	var y1 := _l("foot")
+	var side := minf(x1 - x0, y1 - y0) * PIC_FILL
+	var mid := Vector2((x0 + x1) * 0.5, (y0 + y1) * 0.5)
+	return Rect2(mid - Vector2.ONE * side * 0.5, Vector2.ONE * side)
+
+## The picture's beads under the saucers: each belongs to the nearest place
+## and is shown once that place's pair is found, rippling out from it. One
+## mesh, built again only while a bead swells or the layout moves.
+func _draw_beads() -> void:
+	var rows: Array = _theme.rows
+	var n := rows.size()
+	if n == 0:
+		return
+	var rect := _pic_rect()
+	var key := "%d:%d:%d:%d" % [roundi(rect.position.x), roundi(rect.position.y), roundi(rect.size.x), _st.pairs_found]
+	if key != _beads_key or _t <= _beads_busy or _beads == null:
+		_beads_key = key
+		_beads = _bead_mesh(rows, rect)
+	if _beads != null:
+		draw_mesh(_beads, null)
+
+func _bead_mesh(rows: Array, rect: Rect2) -> ArrayMesh:
+	var n := rows.size()
+	var cell := rect.size.x / float(n)
+	var letters: Dictionary = ThemedPictures.letters()
+	var places: Array[Vector2] = []
+	for s in _st.cups():
+		places.append(_slot_pos(s) + Vector2(0.0, -_l("r") * 0.3))
+	var mid := rect.get_center()
+	var b := Face.Builder.new()
+	for r in n:
+		var row: String = rows[r]
+		for c in row.length():
+			if row[c] == ".":
+				continue
+			var bead = Pal.PG_BEADS.get(String(letters.get(row[c], "")))
+			if bead == null:
+				continue
+			var at := rect.position + (Vector2(c, r) + Vector2.ONE * 0.5) * cell
+			# the nearest place, and how far from it in beads
+			var best := 0
+			var far := INF
+			for s in places.size():
+				var d := at.distance_squared_to(places[s])
+				if d < far:
+					far = d
+					best = s
+			var cup: int = _st.cup_at(best)
+			if cup < 0 or not _st.found[cup] or _gone_at[cup] == -INF:
+				continue
+			var k := 1.0
+			if not Motion.reduce:
+				k = clampf((_t - _gone_at[cup] - REVEAL_AT - sqrt(far) / cell * REVEAL_STEP) / REVEAL_TIME, 0.0, 1.0)
+			if k <= 0.0:
+				continue
+			var grow := Motion.back_out(k)
+			if _theme_at != INF and not Motion.reduce:
+				var e := _t - _theme_at - at.distance_to(mid) / cell * THEME_WAVE
+				if e >= 0.0 and e < Motion.BUMP_TIME:
+					grow *= Motion.bump_scale(e, 0.3)
+			var face: Color = bead
+			if face.get_luminance() > PAINT_PALE:
+				face = face.darkened(PAINT_PALE_SHADE)
+			var sz := Vector2.ONE * cell * 0.9 * lerpf(0.3, 1.0, grow)
+			var lo := at - sz * 0.5
+			b.fan(Face.Builder.round_rect(lo + Vector2(0.0, cell * 0.06), sz, cell * 0.22), Color(face.darkened(0.3), k))
+			b.fan(Face.Builder.round_rect(lo, sz, cell * 0.22), Color(face, k))
+	return b.mesh() if not b.verts.is_empty() else null

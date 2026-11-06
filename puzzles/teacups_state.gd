@@ -125,6 +125,41 @@ func _cast(rng: RandomNumberGenerator) -> void:
 		if persona.size() >= KINDS:
 			break
 
+## The daily theme (2026-11-06): the day's pair of Peeplets (core/cast.gd,
+## the two the night paints into the day's vistas) come to tea as the first
+## two pairs dealt. Only the persona a kind wears changes, never a cup, a
+## place or an rng draw, and the one-coat-a-friend rule holds: a guest takes
+## the slot of the friend in its own coat by a swap, and a second guest in
+## the first one's coat stays home. Returns the guests seated.
+func seat_guests(guests: Array) -> Array[int]:
+	var seated: Array[int] = []
+	if persona.is_empty() or kind.size() < 4:
+		return seated
+	var targets: Array[int] = [kind[0], kind[2]]
+	for i in mini(guests.size(), 2):
+		var g := int(guests[i])
+		if g < 0 or g >= Personas.count():
+			continue
+		var coat := int(Personas.get_persona(g).coat)
+		var clash := false
+		for s in seated:
+			if int(Personas.get_persona(s).coat) == coat:
+				clash = true
+		if clash:
+			continue
+		var at := targets[i] % persona.size()
+		for j in persona.size():
+			if j != at and int(Personas.get_persona(persona[j]).coat) == coat:
+				persona[j] = persona[at]
+				break
+		persona[at] = g
+		seated.append(g)
+	return seated
+
+## Whether the friend under cup `c` is one of `guests`.
+func is_guest(c: int, guests: Array) -> bool:
+	return persona_of(c) in guests
+
 ## The persona under cup `c`.
 func persona_of(c: int) -> int:
 	return persona[kind[c] % persona.size()]

@@ -20,6 +20,9 @@ var _f := 0
 var _step := 0
 var _diag: Control
 var _read := false
+## `theme` (or `night=YYYYMMDD`): the cloth hides the newest cached night's
+## thing (the harness's backend never starts, so it is handed in).
+var _night := ""
 
 func _initialize() -> void:
 	for a in OS.get_cmdline_user_args():
@@ -33,6 +36,10 @@ func _initialize() -> void:
 			_step = 60
 		elif a == "read":
 			_read = true
+		elif a == "theme":
+			_night = "newest"
+		elif a.begins_with("night="):
+			_night = a.substr(6)
 		else:
 			_dir = a
 	var progress = load("res://core/progress.gd")
@@ -49,7 +56,25 @@ func _shot(name: String) -> void:
 	RenderingServer.force_draw()
 	var calls := RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME)
 	root.get_texture().get_image().save_png("%s/tc_%s.png" % [_dir, name])
-	print("shot %s draw_calls=%d" % [name, calls])
+	print("shot %s draw_calls=%d t_won=%.2f" % [name, calls, (_b._t - _b._won_at) if _b != null else 0.0])
+
+## The night's thing for the cloth, as the board would read it.
+func _themed() -> Dictionary:
+	var cache := "/Users/flavioriper/Library/Application Support/Godot/app_userdata/Peeplet Daily/backend_cache"
+	var files: Array = []
+	for f in DirAccess.get_files_at(cache):
+		if f.begins_with("pictures-202611") and f.ends_with("-content.json"):
+			files.append(f)
+	files.sort()
+	var pick := String(files[-1]) if _night == "newest" else "pictures-%s-content.json" % _night
+	var doc = JSON.parse_string(FileAccess.get_file_as_string(cache + "/" + pick))
+	var B = load("res://puzzles/teacups2d.gd")
+	for side in B.THEMED_SIZES:
+		var p = doc.sizes.get(str(side))
+		if p is Dictionary:
+			print("theme: ", pick, " ", side, " ", p.id)
+			return {"id": "themed_" + String(p.id), "name": String(p.name.en).capitalize(), "rows": p.rows}
+	return {}
 
 func _tap(s: int) -> void:
 	_b.demo_tap(s)
@@ -83,12 +108,19 @@ func _process(_delta: float) -> bool:
 			_host = _menu.get_child(_menu.get_child_count() - 1)
 		if _f == 7200:
 			_b = _host._puzzle
+			if _night != "":
+				_b._theme = _themed()
+				_b._fade_at = _b._t - 10.0
+		if _f == 7202:
 			_shot("reopen")
 			print("reopen done=%s lifts=%d" % [_b.is_done(), _b.state().lifts])
 			return true
 		return false
 	if _b == null:
 		_b = _host._puzzle
+		if _night != "":
+			_b._theme = _themed()
+		print("guests=", _b._guests, " personas=", _b.state().persona)
 	var st = _b.state()
 	match _step:
 		0:
@@ -150,14 +182,24 @@ func _process(_delta: float) -> bool:
 			if _b.is_done():
 				_step = 6
 				_f = 6000
-			elif _b.phase() == _b.Phase.PLAY and _f % 8 == 0:
+			elif _b.phase() == _b.Phase.PLAY and _f % 8 == 0 and (_f < 5100 or _f > 5140):
 				var a: int = st.hidden()[0]
 				_tap(st.slot[a])
 				_tap(st.slot[st.partner(a)])
+				if st.pairs_found == st.pairs() / 2 and _night != "":
+					_f = 5100
+			if _f == 5140 and _night != "":
+				_shot("half")
 		6:
 			if _f == 6012:
 				_shot("won_early")
-			if _f == 6240:
+			if _night != "" and _f == 6080:
+				_shot("theme_fade")
+			if _night != "" and _f == 6098:
+				_shot("theme_wave")
+			if _night != "" and _f == 6125:
+				_shot("theme_whole")
+			if _f == (6300 if _night != "" else 6240):
 				_shot("won")
 				_host.closed.emit()
 				_step = 7

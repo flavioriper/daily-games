@@ -74,3 +74,43 @@ rather than fruits, like it's done on who ate the pie".
   `_win.gd teacups` PASS (lapse toast + rim, reading, free second press,
   a view a cup); suite 303252/0. Unseen on a phone (up to 20 SubViewports,
   as Pie's Insane).
+
+## The daily theme (2026-11-06)
+
+The roadmap's Teacups row (wave 4, B, free), widened: the day's two
+Peeplets come to tea, and the day's thing is hidden in the cloth.
+
+- **Guests**: on a daily dealt from its day (never New, never the
+  tutorial's table) `State.seat_guests(Cast.pair(daily_key))` gives the
+  first two pairs dealt (`kind[0]`, `kind[2]`) the day's pair. Only
+  `persona` changes, after every rng draw, so cups and places are the
+  plain day's; a guest swaps with the friend in its own coat, and a second
+  guest in the first's coat stays home (both seated on 1424 of 1600
+  deals in a throwaway check, coats unique and deals unmoved on all).
+  Finding one toasts `TC_GUEST` ("Today's guest: %s!"). `day_dict`
+  payload carries `guests`.
+- **The picture under the cloth** (the old tea-table game's picture under
+  the cards): with the night's 12 (else 10) in the phone's cache, the
+  thing lies in beads over the cups' span (`_pic_rect`, a square), under
+  the saucers. Each bead belongs to its nearest place and swells in once
+  that place's pair is found, rippling out from the saucer
+  (REVEAL_STEP a bead), so the picture only grows where memory is done
+  with and never helps a pair. Its name stays hidden until the win.
+- **The win**: the friends laugh their wave, then slip away and the
+  saucers step back to SAUCER_TO (FADE_AT 1.05 s, over 0.35 s; a friend
+  half faded read as a ghost, so they go all the way), then every bead
+  bumps from the middle out with the `theme` cue and a sparkle (THEME_AT
+  1.45 s). The card waits THEME_HOLD 0.9 longer: the picture stands alone
+  about 0.9 s. Subtitle `TC_WIN_THEME` ("Under the cloth: %s! %s"). A
+  reopened themed day shows the picture with the friends away.
+- One cached mesh for the beads, built again only while one swells or the
+  layout moves. opengl3_angle 810x1440 `theme`: Easy 100-106 play, 159
+  won; Medium 108-114, 179; Hard 116-122, 187. `_win.gd teacups` PASS.
+- Sound: new `theme` (the boards' wrap climbing an octave, as Market's);
+  the rest of the set was already bank pops.
+- Harness: `tests/_shot_teacups.gd -- <dir> d=<n> theme|night=YYYYMMDD`
+  hands the board the cached night's thing and adds `half`,
+  `theme_fade`, `theme_wave`, `theme_whole`. The harness boots
+  world/main, so the real path reads today's cached night too (the
+  reopened card names it).
+- Owed: phone (up to 20 views fading), ear, pt/es native read.

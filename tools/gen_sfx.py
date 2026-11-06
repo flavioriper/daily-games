@@ -1585,7 +1585,10 @@ SETS = {
     # trading places). The rest are takes already on disk, copied into
     # build/sfx_raw/teacups/ from Domino Patio's (themselves Birdsong's),
     # never bought. All of it unheard.
+    # 2026-11-06 (the daily theme): `theme`, the boards' wrap climbing an
+    # octave, as the picture hidden in the cloth bumps whole on the win.
     "teacups": {
+        "theme":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -15, FOLEY, "bank:wrap", "cut:0.1", "notes:0.06:7,12,16", "tight"),
         "lift":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -15, FOLEY, "bank:lip", "cut:0.18", "notes:0:1", "tight"),
         "down":     ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -16, FOLEY, "bank:token", "cut:0.16", "notes:0:-2", "tight"),
         "pair":     ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.1", "notes:0.07:0,4,7", "tight"),
