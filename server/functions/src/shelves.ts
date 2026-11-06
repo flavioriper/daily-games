@@ -226,9 +226,9 @@ however correct.
 
 How a board is built:
 - Start from the subtlest group (a word that goes before or after a partner \
-word, a word hiding a smaller word, words that are also verbs or names of \
-something else, things that can be "broken", a phrase each completes, \
-a sound, a double meaning). Then pick the plain groups so that several of \
+word to make a common word or phrase of that language, words that are also \
+verbs or names of something else, things that can be "broken", a phrase \
+each completes, a double meaning). Then pick the plain groups so that several of \
 their words, and several of the subtle group's words, look as though they \
 belong to another group.
 - **Red herrings, on purpose**: list them in "traps", each a word and the \
@@ -240,8 +240,13 @@ partner word. Every trap must genuinely tempt an adult.
 group's surface, never its exact idea as the label states it. No five words \
 truly share one label.
 - Vary the kinds of groups within a puzzle: at most one plain "kinds of X" \
-on Medium and harder; the others are properties, partner words, hidden \
-words, roles, things that do something, phrases.
+on Medium and harder; the others are properties, partner words, roles, \
+things that do something, phrases.
+- **No letter tricks**: never a group of words hiding a smaller word, \
+sharing letters, sounding like letters, rhyming or spelled some way. You \
+cannot see inside words reliably and such groups come out wrong. A partner \
+word must make a real, common word or phrase with every one of its four, \
+on the side the label says ("before" means WORD then partner).
 - Never use these tired ideas, nor anything close: ${STOCK.join(", ")}. \
 Prefer vivid, playful, everyday words (food, home, nature, games, stories) \
 over dull ones.
@@ -254,7 +259,11 @@ translated word for word, each with its own traps. The plain groups keep the \
 same idea in all three, in the same order. A subtle group built on a double \
 meaning, a partner word or a sound seldom survives translation: give each \
 language its own subtle idea that is natural there, at the same place in the \
-order. Each language's set must sort one way only, in that language.
+order. In Portuguese and Spanish never a partner-word group ("words before \
+X", "completes X ___"): they come out as English compounds put into other \
+words. Use there a double meaning (each word is also a verb, or also \
+something else), things that can be done to something ("things you can \
+break"), or a role each plays. Each language's set must sort one way only, in that language.
 - A group's "label" names its idea in a few words (at most 30 characters), \
 in that language, said with a smile when it can ("Words before 'cake'", \
 "Things that can be broken").`;
@@ -263,16 +272,16 @@ in that language, said with a smile when it can ("Words before 'cake'", \
 const BRIEFS = [
   (n: number) => `${n} easy puzzle(s) of three groups each (12 words): ideas a ten-year-old knows, at least one honest red herring, and the last group a gentle twist (a partner word, a property).`,
   (n: number) => `${n} puzzle(s) of four groups each (16 words): one plain group, the others properties or partner words, the last subtle; at least three red herrings.`,
-  (n: number) => `${n} hard puzzle(s) of four groups each (16 words): the last two groups subtle (a partner word, a hidden word, a double meaning), at least four red herrings, so an obvious-looking group of four is a trap.`,
+  (n: number) => `${n} hard puzzle(s) of four groups each (16 words): the last two groups subtle (a partner word, a double meaning, a phrase each completes), at least four red herrings, so an obvious-looking group of four is a trap.`,
   (n: number) => `${n} very hard puzzle(s) of five groups each (20 words): the last two groups subtle, at least five red herrings across groups, two plausible groups of five where only four belong.`,
 ];
 
 /** Kinds of subtle group a draft leans on, one a draft, so the drafts of a
  *  band do not all reach for "words before X". */
 const LEANS = [
-  "a word hidden inside each word, or a partner word before or after",
+  "a partner word before or after",
   "a double meaning (each word is also something else), or a phrase each completes",
-  "things that do or have something unexpected, or a sound or a letter trick",
+  "things that do or have something unexpected, or a role or job each can play",
 ];
 
 /** The day's theme as the writer is told it, and what it asks: one plain
@@ -284,11 +293,11 @@ function themeAsk(theme: Theme | null): string {
   const things = theme.objects.map((o) => o.name).join(", ");
   return `The day has a theme, "${theme.name.en}" (pt "${theme.name.pt}", es "${theme.name.es}"): ` +
     `${theme.scene} Its things: ${things}. Exactly one group in every language is the theme's, ` +
-    `marked "theme": true: four plain things a player would find there (not necessarily those listed), ` +
-    `the most obvious group of the board, its label naming the place or moment in a few warm words ` +
-    `("Round the campfire"), never just the theme's title. At least one red herring of another group ` +
-    `seems to belong on the theme's shelf. Every other group is marked "theme": false and has nothing ` +
-    `to do with the theme.`;
+    `marked "theme": true, the most obvious group of the board: a precise idea from that scene that ` +
+    `exactly its four words fit, in your own words, never a loose "things found there", which every ` +
+    `scene word would fit, and never just the theme's title. One ` +
+    `other group may hold a scene word as a red herring only when that word does not fit the theme ` +
+    `group's label exactly. Every other group is marked "theme": false.`;
 }
 
 function writerPrompt(day: number, band: number, taken: string[], draft = 0, theme: Theme | null = null): string {
@@ -343,9 +352,15 @@ export function goodTraps(w: Wording & {traps?: unknown}): Trap[] {
 /** Whether a written puzzle carries the band's red herrings in every
  *  language, and not so many the board is a lottery. */
 export function trapped(p: Puzzle, band: number): boolean {
+  // English must carry the band's count; Portuguese and Spanish one fewer
+  // (at least one): their words are chosen natively and the writer often
+  // names one decoy short or one that is not on the board (2026-11-06: two
+  // drafts of three were thrown away so). The blind review's "fooled" is
+  // the real test of a red herring.
   return LANGS.every((l) => {
     const n = goodTraps(p[l]).length;
-    return n >= TRAPS[band] && n <= TRAPS_MAX;
+    const least = l === "en" ? TRAPS[band] : Math.max(1, TRAPS[band] - 1);
+    return n >= least && n <= TRAPS_MAX;
   });
 }
 
@@ -454,15 +469,25 @@ export function inFoundOrder(groups: Group[], shelves: string[][]): Group[] {
 /** The puzzles the reviewer sorted as the writer meant in every language,
  *  with nothing to say against them, re-ordered as it found the shelves.
  *  The Easy band may be plain; every other one must have fooled it once. */
-export function passing(puzzles: Puzzle[], sorts: Sort[], band = 0): Puzzle[] {
+export function passing(puzzles: Puzzle[], sorts: Sort[], band = 0, checked: Check[] = []): Puzzle[] {
   const out: Puzzle[] = [];
   for (const p of puzzles) {
     const why: string[] = [];
     const kept = {id: p.id} as Puzzle;
     for (const l of LANGS) {
       const s = sorts.find((x) => x.id === p.id && x.lang === l);
+      const c = checked.find((x) => x.id === p.id && x.lang === l);
       if (s === undefined) why.push(`${l}: no sort`);
-      else if (!samePartition(p[l].groups, s.shelves)) why.push(`${l}: sorted otherwise`);
+      else if (!samePartition(p[l].groups, s.shelves)) {
+        // Fooled to the end, which is no fault when the answer, shown, is
+        // airtight: a player is told "one away" and finds it. What a
+        // reviewer that never found a group says of it (obscure, ambiguous)
+        // is the sighted check's to judge; only unsuitable stands.
+        if (s.issue === "unsuitable") why.push(`${l}: sorted otherwise, ${s.issue}`);
+        else if (c === undefined) why.push(`${l}: sorted otherwise`);
+        else if (!c.unique || c.issue !== "none") why.push(`${l}: sorted otherwise, then ${c.unique ? c.issue : "not unique"}`);
+        else kept[l] = {groups: p[l].groups};
+      }
       else if (s.issue !== "none" && !(band === 0 && s.issue === "dull")) why.push(`${l}: ${s.issue}`);
       else if (band > 0 && !(Number(s.fooled) >= 1)) why.push(`${l}: fooled nobody`);
       else kept[l] = {groups: inFoundOrder(p[l].groups, s.shelves)};
@@ -475,6 +500,86 @@ export function passing(puzzles: Puzzle[], sorts: Sort[], band = 0): Puzzle[] {
     }
   }
   return out;
+}
+
+// --- the sighted check ---
+
+/** A language the blind reviewer sorted otherwise, looked at again with
+ *  the answer shown: is it the only sorting, and fair? */
+export interface Check {
+  id: string;
+  lang: string;
+  unique: boolean;
+  issue: string;
+}
+
+const CHECK_SCHEMA = {
+  type: "object",
+  properties: {
+    checks: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          id: {type: "string"},
+          lang: {type: "string", enum: [...LANGS]},
+          other: {type: "string"},
+          unique: {type: "boolean"},
+          issue: {type: "string", enum: ["none", "ambiguous", "wrong", "obscure", "translation", "unsuitable"]},
+        },
+        required: ["id", "lang", "other", "unique", "issue"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["checks"],
+  additionalProperties: false,
+};
+
+const CHECKER = `You check a family word-grouping puzzle before it is \
+published. A player sorts all its words into groups of four and is told \
+when three of their four were right, so words that could fit two groups \
+are the fun of it, not a flaw: the counting forces each onto one shelf. \
+You are shown the intended groups with their labels.
+
+For each puzzle and language:
+- "other": try to find a different complete sorting of all the words into \
+groups of four where every group fits a clear, sensible label just as \
+well as the intended ones. If you find one, write it out (each group as \
+"label: four words"); otherwise "".
+- "unique": false only when you wrote such a sorting out; true otherwise.
+- "issue": wrong (a word does not truly fit its own group's label as \
+stated, e.g. it does not hide the word it should, or a "before" is really \
+an "after"), ambiguous (unique is false), obscure (most adults would not \
+get a group even once shown it), translation (the language's words read \
+unnaturally), unsuitable (not for a family game), or none.`;
+
+function checkPrompt(items: {p: Puzzle; l: Lang; shelves: string[][]}[]): string {
+  // The blind sorting is not shown: shown a plausible other way, the check
+  // leaned to calling every board ambiguous (2026-11-06).
+  const blocks = items.map(({p, l}) =>
+    `[${p.id}] ${l}: ${p[l].groups.map((g) => `${g.label}: ${g.words.join(", ")}`).join(" | ")}`);
+  return `Check these ${items.length} sortings, one check each by id and language.\n\n${blocks.join("\n")}`;
+}
+
+/** The languages the blind reviewer sorted otherwise with nothing else to
+ *  say, of puzzles that fail on nothing else, checked with the answer
+ *  shown. One ask for the band; none when nothing needs it. */
+export async function check(puzzles: Puzzle[], sorts: Sort[], band: number): Promise<Check[]> {
+  const items: {p: Puzzle; l: Lang; shelves: string[][]}[] = [];
+  for (const p of puzzles) {
+    const mine = LANGS.map((l) => ({l, s: sorts.find((x) => x.id === p.id && x.lang === l)}));
+    const hard = mine.some(({l, s}) => {
+      if (s === undefined) return true;
+      if (!samePartition(p[l].groups, s.shelves)) return s.issue === "unsuitable";
+      return (s.issue !== "none" && !(band === 0 && s.issue === "dull")) || (band > 0 && !(Number(s.fooled) >= 1));
+    });
+    if (hard) continue;
+    for (const {l, s} of mine) if (s !== undefined && !samePartition(p[l].groups, s.shelves)) items.push({p, l, shelves: s.shelves});
+  }
+  if (items.length === 0) return [];
+  const got = await ask<{checks: Check[]}>({system: CHECKER, prompt: checkPrompt(items), schema: CHECK_SCHEMA, role: "review"});
+  return Array.isArray(got.checks) ? got.checks : [];
 }
 
 // --- the day ---
@@ -526,7 +631,14 @@ export async function writeBand(day: number, band: number, taken: string[], pref
     schema: SORT_SCHEMA,
     role: "review",
   });
-  const passed = passing(written, Array.isArray(review.sorts) ? review.sorts : [], band);
+  const sorts = Array.isArray(review.sorts) ? review.sorts : [];
+  let checked: Check[] = [];
+  try {
+    checked = await check(written, sorts, band);
+  } catch (e) {
+    console.error("shelves: the sighted check failed", e);
+  }
+  const passed = passing(written, sorts, band, checked);
   // On a themed day a board with its theme shelf comes first; one without
   // still beats the bank.
   return theme === null ? passed : [...passed.filter(themed), ...passed.filter((p) => !themed(p))];

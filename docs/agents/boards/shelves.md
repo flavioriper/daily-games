@@ -76,10 +76,26 @@
     shelf the theme's. 113-155 draw calls.
   - Unheard; the night's writer is undeployed until a person runs
     `tools/deploy_functions.sh`, and the first themed board is the first
-    day published after that. Smoke-run 2026-11-06 on the Neon AI Gateway
-    (the night's models, `server/functions/.env` + the
-    `NEON_AI_GATEWAY_TOKEN` secret; OpenRouter is no longer used): every
-    themed draft carried its theme shelf first ("Round the campfire"), but
-    0 of 6 themed drafts passed review, and 0 of 3 unthemed ones did either
-    (pt/es "sorted otherwise", "obscure"), so the review rate is the
-    board's, not the theme's.
+    day published after that.
+- **The gate and the writer, fixed 2026-11-06** (the user: "fix it", after
+  ~30 smoke drafts on the Neon AI Gateway passed none, themed or not):
+  - A blind sort that differs is no longer fatal: being fooled is the
+    game. Those languages go to a sighted check (`check`, `CHECKER`, one
+    Sonnet ask a band) shown the intended groups only (shown the blind
+    sort too, it called everything ambiguous), which must write out an
+    other complete sorting to call it not unique, and says `wrong` when a
+    word does not fit its own label. What the blind pass says of a group it
+    never found (obscure, ambiguous) is the check's to judge; unsuitable
+    stands. Order stays the writer's when the blind sort differs.
+  - Red herrings: English needs the band's `TRAPS`, pt/es one fewer.
+  - No letter tricks (hidden words, letters, sounds, rhymes): the model
+    cannot see inside words and almost every `wrong` was one. pt/es never
+    get a partner-word group (they came out as English compounds put into
+    other words: "palavras antes de 'quente'"); they use double meanings,
+    things you can do to something, roles.
+  - The theme shelf is asked as a precise idea of the scene in the
+    writer's own words (an example in the ask was copied by every draft).
+  - Result: Medium/Hard themed, 1 of 6 drafts passed (a band has 6 a
+    night), against 0 of ~30 before: "Camping gear you pack / Sweet treats
+    / Words before 'fly' / Things you can break". Tested by
+    `writeBand` alone, never the whole night.
