@@ -212,7 +212,7 @@ Sweepers): clear it and the picture shows in colour.
   board deals the rectangle off the untouched `rng`, so a day without a
   theme (or whose things all fail) deals exactly as before. Each thing is
   tried on its own rng (`rng.seed ^ hash(id)`).
-- **Measured** (`tests/_probe_hh_theme.gd`, the five cached nights 20261103-07
+- **Measured** (`tests/_probe_hh_theme.gd`, the six cached nights 20261102-07
   and the bank's 60 things): 23 of 24 cached band-days took a thing, 10-13 of
   15 bank days a band; lawns 57-99 cells (8x10 to 11x12); a reader of
   singles stalls no worse than on the rectangle (Insane better); slowest
