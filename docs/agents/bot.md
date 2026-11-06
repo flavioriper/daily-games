@@ -162,6 +162,31 @@ licence review still owed.
   Text-to-Dialogue socket, one after another on one connection (a switch),
   with no voice added to the account.
 
+## Fillers only while a slow tool works; subtitles off (2026-11-06)
+
+The user: the filler phrases "work fine into a call but not that fine into
+here"; keep them only "when the agent has to check for something that can
+take longer, like 'let me think' or 'hmmm', but not needed for plain
+replies". `PolicySteer(gap_fillers=False)` (only `voice/bot.py` passes it;
+the studio and the tests keep the old clock): no `acks`, no `learned` line,
+no bridge/thinking/stall gap clock on a plain reply, the Jev steer line
+still goes in. A slow screen tool (`slow_call`: `see`, or `draw` with a
+`subject`) started before the model has said a word gets one `thinking`
+clip, then one `stalls` at `stall_after_s` if still nothing; a tool called
+after words gets nothing. `voice` joined `SILENT_TOOLS` (it was getting the
+typing cue).
+
+Subtitles: "completely different from what the agent says... keep the
+subtitle off till user ask for a subtitle". `SwarmFace.subtitles` (false)
+hides the `_words` label only; `said` and the line still drive the talking
+look and the reveal clock. Not debugged; the likely cause for whoever turns
+them on: pipecat pushes a sentence's `AggregatedTextFrame` when the TTS
+starts synthesising it, which with a fast LLM is while an earlier sentence
+is still playing in the phone's buffer, and `bot_screen.gd`'s `said`
+replaces the line and resets `_mark` each time, so the caption runs ahead
+of the voice. Clip lines were checked: every kind's texts line up with its
+manifest (en-us-female).
+
 ## Echo cancelling: why the phone call felt worse than persona-studio (2026-11-05 night)
 
 The user: "Bot here can't properly understand pauses, i talk and he answer 3

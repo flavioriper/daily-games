@@ -243,7 +243,8 @@ async def run_call(websocket, card: Card, user_id: str, session_id: str, deps, s
     memory.start()
     steer = PolicySteer(jev=jev, learner=_dep(deps, "learner") or base_learner(), slug=card.slug, user_id=user_id, default_decision=card.calibration.default_decision, clips=player,
                         on_event=turn_event, on_jev_call=ledger_obs.jev_call, on_stage=stage, on_cue=cue, pace=pace, memory=memory,
-                        knowledge=(lambda text: shared.knowledge_for(card.language, text)) if shared is not None and shared.online else None)  # the decision point Tasks 16-18 hook: on_event gets every turn's decision
+                        knowledge=(lambda text: shared.knowledge_for(card.language, text)) if shared is not None and shared.online else None,
+                        gap_fillers=False)  # the decision point Tasks 16-18 hook: on_event gets every turn's decision
 
     async def act(params) -> None:
         turn = sum(m.get("role") == "user" for m in context.messages)
@@ -271,7 +272,7 @@ async def run_call(websocket, card: Card, user_id: str, session_id: str, deps, s
 
     @s.llm.event_handler("on_function_calls_started")
     async def acting(_, calls):
-        await steer.tools_started([c.function_name for c in calls])
+        await steer.tools_started([c.function_name for c in calls], slow=any(slow_call(c.function_name, c.arguments) for c in calls))
 
     if "on_eager_end_of_turn" in s.stt._event_handlers:
         @s.stt.event_handler("on_eager_end_of_turn")
@@ -440,6 +441,11 @@ def turn_secs(breakdown) -> float:
 
 
 STEER_LINES = re.compile(r"^\[(?:steer|learned|memory|knowledge):.*\]\n", re.M)
+
+
+def slow_call(name: str, arguments) -> bool:
+    """The screen tools that take seconds: a look at the screen, and a drawing made for a subject (the others are instant)."""
+    return name == "see" or (name == "draw" and bool((arguments or {}).get("subject")))
 
 
 def clean_transcript(messages: list[dict]) -> list[dict]:

@@ -18,7 +18,7 @@ from policy.mood import mood
 from studio.corrections import FACTS, detect
 
 
-SILENT_TOOLS = {"swarm", "move", "draw", "dots", "tone", "see"}  # tools that act on the screen, not the world: no typing sound, no bridge line
+SILENT_TOOLS = {"swarm", "move", "draw", "dots", "tone", "see", "voice"}  # tools that act on the screen, not the world: no typing sound, no bridge line
 
 
 class Clips(Protocol):
@@ -96,7 +96,7 @@ class PolicySteer(FrameProcessor):
     def __init__(self, *, jev, learner, slug: str, user_id: str, default_decision: dict[str, str], clips: Clips, on_event: Callable[[dict], None],
                  on_fact: Callable[[str], None] = lambda _: None, on_jev_call: Callable[[], None] = lambda: None, on_stage: Callable[[dict], None] = lambda _: None,
                  on_cue: Callable[[str], Awaitable[None]] | None = None, jev_budget_s: float = 0.25, speculative_budget_s: float = 0.7, bridge_after_s: float = 2.0, stall_after_s: float = 4.5,
-                 reflex_chance: float = 0.0, pace=None, rng=None, memory=None, knowledge: Callable[[str], Awaitable[list[str]]] | None = None, knowledge_budget_s: float = KNOWLEDGE_BUDGET_S, **kwargs):  # off: a "yeah" the moment the user stops is a filler with nothing to fill (Flavio, 2026-11-01)
+                 reflex_chance: float = 0.0, pace=None, rng=None, memory=None, knowledge: Callable[[str], Awaitable[list[str]]] | None = None, knowledge_budget_s: float = KNOWLEDGE_BUDGET_S, gap_fillers: bool = True, **kwargs):  # off: a "yeah" the moment the user stops is a filler with nothing to fill (Flavio, 2026-11-01)
         super().__init__(**kwargs)
         self.jev, self.learner, self.slug, self.user_id = jev, learner, slug, user_id
         self.default_decision = Decision(**default_decision)
@@ -107,6 +107,7 @@ class PolicySteer(FrameProcessor):
         self.rng = rng or random.Random()
         self.memory = memory
         self.knowledge, self.knowledge_budget = knowledge, knowledge_budget_s  # the shared layer's rows for what was just said
+        self.gap_fillers = gap_fillers  # off (the Swarm): no ack, learned line or gap clock on a plain reply; a line only while a slow tool works (the user, 2026-11-06)
         self._early: tuple[str, asyncio.Task] | None = None
         self._asked: tuple[str, asyncio.Task] | None = None
         self._bridge: asyncio.Task | None = None
@@ -154,8 +155,15 @@ class PolicySteer(FrameProcessor):
         self._answering = True
         self._stand_down()
 
-    async def tools_started(self, names: list[str]) -> None:
-        """A tool can run after the model has already spoken, when the gap clock has stood down, and the silence would read as a dead line. Reaching a person gets its one line and then real quiet."""
+    async def tools_started(self, names: list[str], slow: bool = False) -> None:
+        """A tool can run after the model has already spoken, when the gap clock has stood down, and the silence would read as a dead line. Reaching a person gets its one line and then real quiet. `slow`: a screen tool that takes seconds (a drawing made from a subject, a look at the screen); without the gap clock it gets one thinking line and one stall, unless the model has spoken."""
+        if slow and not self.gap_fillers:
+            if not self._answering and not self._looked:
+                self._looked = True
+                self._stand_down()
+                await self.clips.play("thinking")
+                self._bridge = asyncio.ensure_future(self._stall_later())
+            return
         if set(names) <= SILENT_TOOLS:
             return  # moving its own body is instant and needs no cover
         if "reach_owner" in names:
@@ -186,6 +194,12 @@ class PolicySteer(FrameProcessor):
             elif self.on_cue:
                 await self.on_cue("papers")
         self._bridge = None
+
+    async def _stall_later(self) -> None:
+        await asyncio.sleep(self._jitter(self.stall_after))
+        self._bridge = None
+        if not self._answering:
+            await self.clips.play("stalls")
 
     def _jitter(self, seconds: float) -> float:
         """A filler on a fixed clock is a metronome; people vary by about a fifth."""
@@ -292,7 +306,9 @@ class PolicySteer(FrameProcessor):
                 asyncio.ensure_future(self._late(overdue, text, last_bot, previous))
             clips, gap = ["reflex"] if self._reflexed else [], None
             kick = time.perf_counter()
-            if learned:
+            if not self.gap_fillers:
+                pass  # a plain reply starts with its own words
+            elif learned:
                 clips.append("learned")
                 await self.clips.play("learned")
                 gap = 0
@@ -303,7 +319,7 @@ class PolicySteer(FrameProcessor):
             if self._reflexed:
                 gap = 0
             sound = None
-            if not self._answering and not ({"acks", "learned"} & set(clips)):
+            if self.gap_fillers and not self._answering and not ({"acks", "learned"} & set(clips)):
                 sound = gap_sound(decision.stance, features, text)
                 await self._fill(decision.stance, sound, bridge=not self._reflexed)
             self.last_decision = decision.as_dict()

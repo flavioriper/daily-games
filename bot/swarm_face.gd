@@ -319,6 +319,9 @@ var _bloom_root: Node2D
 var _vp_size := Vector2i.ZERO
 var _rings_open := 0.0
 var _words: Label
+## The subtitles are off (the user, 2026-11-06: they did not match the voice;
+## off until asked for). The line still drives the talking look.
+var subtitles := false
 
 func _init() -> void:
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -1836,6 +1839,7 @@ func _render(dt: float) -> void:
 	# Subtitles stay put near the foot of the screen, wherever the face goes.
 	_words.position = Vector2((size.x - ww) * 0.5, size.y - _insets.y - 170.0 - _words.size.y * 0.5)
 	_words.modulate.a = 1.0 if _formed else 0.0
+	_words.visible = subtitles
 
 # --- the player ---
 
