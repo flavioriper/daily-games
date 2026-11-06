@@ -31,9 +31,8 @@ steps:
   # BOT_LEDGER is where the cost rows are copied on the bucket: the process keeps them in RAM and copies them there in a
   # worker thread at each call end, so no row waits on the mount (STUDIO_DATA=/data is in the Dockerfile). BOT_LOG_LEVEL stays at its
   # WARNING default, because DEBUG logs what is said; BOT_TEST_PAGE is never set in production.
-  # The Swarm's chat brain runs on Neon's AI Gateway on trial (6 Nov): the base URL is the production branch's gateway host.
-  - --set-env-vars=BOT_LEDGER=/data/ledger.sqlite,NEON_AI_GATEWAY_BASE_URL=https://br-purple-mouse-ain5dob7-api.ai.c-4.us-east-1.aws.neon.tech
-  - --set-secrets=OPENAI_API_KEY=peeplet-bot-openai:latest,DEEPGRAM_API_KEY=peeplet-bot-deepgram:latest,ELEVENLABS_API_KEY=peeplet-bot-elevenlabs:latest,JEV_API_KEY=peeplet-bot-jev:latest,NEON_SWARM_URL=peeplet-bot-neon-swarm-url:latest,NEON_AI_GATEWAY_TOKEN=peeplet-bot-neon-ai-gateway:latest
+  - --set-env-vars=BOT_LEDGER=/data/ledger.sqlite
+  - --set-secrets=OPENAI_API_KEY=peeplet-bot-openai:latest,DEEPGRAM_API_KEY=peeplet-bot-deepgram:latest,ELEVENLABS_API_KEY=peeplet-bot-elevenlabs:latest,JEV_API_KEY=peeplet-bot-jev:latest,NEON_SWARM_URL=peeplet-bot-neon-swarm-url:latest
   # No --allow-unauthenticated: this organisation refuses allUsers on a deploy. tools/public_invoker.sh peeplet-bot opens the service.
 substitutions:
   _REGION: us-central1

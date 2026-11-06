@@ -5,11 +5,10 @@ import pytest
 from studio.brains import KEYS, make_llm
 from studio.prices import Prices
 
-ENV = {"gateway": "AI_GATEWAY_API_KEY", "anthropic": "ANTHROPIC_API_KEY", "openai": "OPENAI_API_KEY", "google": "GEMINI_API_KEY", "groq": "GROQ_API_KEY", "cerebras": "CEREBRAS_API_KEY", "glm": "GLM_API_KEY", "neon": "NEON_AI_GATEWAY_TOKEN"}
+ENV = {"gateway": "AI_GATEWAY_API_KEY", "anthropic": "ANTHROPIC_API_KEY", "openai": "OPENAI_API_KEY", "google": "GEMINI_API_KEY", "groq": "GROQ_API_KEY", "cerebras": "CEREBRAS_API_KEY", "glm": "GLM_API_KEY"}
 
 
 def test_every_brain_key_builds_without_network(monkeypatch):
-    monkeypatch.setenv("NEON_AI_GATEWAY_BASE_URL", "https://br-x-api.ai.c-4.us-east-1.aws.neon.tech")
     for k in KEYS:
         monkeypatch.setenv(ENV[k.split(":")[0]], "x")
     for k in KEYS:

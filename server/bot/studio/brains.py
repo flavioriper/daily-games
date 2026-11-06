@@ -14,16 +14,10 @@ KEYS = [
     "gateway:openai/gpt-5.4-nano",
     "gateway:openai/gpt-6-luna",
     "gateway:anthropic/claude-sonnet-5.5",
-    "neon:gpt-6-luna",  # the same luna through Neon's AI Gateway, on trial for the Swarm (6 Nov)
     "glm:glm-5.3-flash",  # Lia's model in Fraction (Sam, 4 Nov)
 ]
 GATEWAY_URL = "https://ai-gateway.vercel.sh/v1"
 GLM_URL = "https://api.z.ai/api/paas/v4"
-
-
-def neon_url() -> str:
-    """NEON_AI_GATEWAY_BASE_URL is the bare branch host; the OpenAI-compatible chat route is /v1 under it."""
-    return os.environ["NEON_AI_GATEWAY_BASE_URL"].rstrip("/") + "/v1"
 # GLM 5.3 refuses "disabled" thinking (Fraction measured it, 30 Oct): a spoken turn asks for the least it allows
 GLM_THINKING = {"extra_body": {"thinking": {"type": "enabled"}}, "reasoning_effort": "low"}
 MAX_TOKENS = 500  # a tool call carrying an email body counts against this; the steer line keeps spoken replies short
@@ -58,10 +52,6 @@ def make_llm(key: str, system: str | None = None):
             from pipecat.services.openai.llm import OpenAILLMService as S
 
             return S(api_key=os.environ["AI_GATEWAY_API_KEY"], base_url=GATEWAY_URL, settings=S.Settings(model=model, system_instruction=system, max_completion_tokens=MAX_TOKENS))
-        case "neon":
-            from pipecat.services.openai.llm import OpenAILLMService as S
-
-            return S(api_key=os.environ["NEON_AI_GATEWAY_TOKEN"], base_url=neon_url(), settings=S.Settings(model=model, system_instruction=system, max_completion_tokens=MAX_TOKENS, extra={"reasoning_effort": CHAT_REASONING}))
         case "glm":
             from pipecat.services.openai.llm import OpenAILLMService as S
 

@@ -27,9 +27,6 @@ rows:
 - {provider: gateway, model: openai/gpt-5.4-nano, unit: output_mtok, price_usd: 1.25, source: "https://vercel.com/ai-gateway/models", checked: "2026-11-01"}
 - {provider: gateway, model: openai/gpt-6-luna, unit: input_mtok, price_usd: 0.1, source: "https://vercel.com/ai-gateway/models", checked: "2026-11-01"}
 - {provider: gateway, model: openai/gpt-6-luna, unit: output_mtok, price_usd: 0.5, source: "https://vercel.com/ai-gateway/models", checked: "2026-11-01"}
-- {provider: neon, model: gpt-6-luna, unit: input_mtok, price_usd: 0.1, source: "https://models.dev/providers/neon", checked: "2026-11-06"}
-- {provider: neon, model: gpt-6-luna, unit: cache_read_mtok, price_usd: 0.01, source: "https://models.dev/providers/neon", checked: "2026-11-06"}
-- {provider: neon, model: gpt-6-luna, unit: output_mtok, price_usd: 0.5, source: "https://models.dev/providers/neon", checked: "2026-11-06"}
 - {provider: gateway, model: anthropic/claude-sonnet-5.5, unit: input_mtok, price_usd: 2.0, source: "https://vercel.com/ai-gateway/models", checked: "2026-11-01"}
 - {provider: gateway, model: anthropic/claude-sonnet-5.5, unit: output_mtok, price_usd: 10.0, source: "https://vercel.com/ai-gateway/models", checked: "2026-11-01"}
 - {provider: glm, model: glm-5.3-flash, unit: input_mtok, price_usd: 0.15, source: "https://docs.z.ai/guides/overview/pricing", checked: "2026-11-04"}

@@ -20,7 +20,7 @@
   }
  },
  "brain": {
-  "chat": "neon:gpt-6-luna",
+  "chat": "openai:gpt-6-luna",
   "compile": "openai:gpt-6-luna",
   "memory": "openai:gpt-6-luna"
  },
