@@ -10,6 +10,10 @@ extends RefCounted
 ## that takes no lamp, needs no light, and wants exactly n lamps shining on
 ## it. Negative, so every `>= 0` test for a numbered block stays true.
 
+const Planes = preload("res://puzzles/planes_state.gd")
+const HHGen = preload("res://puzzles/hedgehogs_gen.gd")
+const QLGen = preload("res://puzzles/quilt_gen.gd")
+
 const WALL := -2
 const WHITE := -1
 const CAT := -10
@@ -29,9 +33,14 @@ static func has_cats(grid: Array) -> bool:
 				return true
 	return false
 
-static func generate(rng: RandomNumberGenerator, w: int, h: int, wall_pct: float) -> Dictionary:
-	for _attempt in 120:
-		var grid := _random_walls(rng, w, h, wall_pct)
+## `voids` (a themed court's, the daily theme 2026-11-06: Vector2i -> true)
+## are the squares outside the day's thing: blocks to the rules, never a
+## number, drawn as no court at all. Empty, the deal is the old one draw for
+## draw.
+static func generate(rng: RandomNumberGenerator, w: int, h: int, wall_pct: float,
+		voids: Dictionary = {}, attempts := 120) -> Dictionary:
+	for _attempt in attempts:
+		var grid := _random_walls(rng, w, h, wall_pct, voids)
 		var bulbs := _place_bulbs(rng, grid, w, h)
 		if bulbs.is_empty():
 			continue
@@ -42,7 +51,7 @@ static func generate(rng: RandomNumberGenerator, w: int, h: int, wall_pct: float
 		var clued := _copy(grid)
 		for y in h:
 			for x in w:
-				if grid[y][x] == WALL:
+				if grid[y][x] == WALL and not voids.has(Vector2i(x, y)):
 					clued[y][x] = _adjacent_bulbs(Vector2i(x, y), bulbs, w, h)
 		if solve_count(clued, w, h, 2) != 1:
 			continue
@@ -222,11 +231,15 @@ static func _adjacent_bulbs(wall: Vector2i, bulbs: Array, w: int, h: int) -> int
 			n += 1
 	return n
 
-static func _random_walls(rng: RandomNumberGenerator, w: int, h: int, pct: float) -> Array:
+static func _random_walls(rng: RandomNumberGenerator, w: int, h: int, pct: float,
+		voids: Dictionary = {}) -> Array:
 	var grid: Array = []
 	for y in h:
 		var row: Array = []
 		for x in w:
+			if voids.has(Vector2i(x, y)):
+				row.append(WALL)
+				continue
 			row.append(WALL if rng.randf() < pct else WHITE)
 		grid.append(row)
 	return grid
@@ -650,3 +663,64 @@ static func from_bank(b: Dictionary) -> Dictionary:
 	for c in b.lamps:
 		bulbs.append(Vector2i(int(c[0]), int(c[1])))
 	return {"grid": grid, "bulbs": bulbs, "w": w, "h": h, "ok": true}
+
+# --- the daily theme (2026-11-06) ---
+
+## The night's things each band's court may be cut to, tried in order: Easy
+## the 10 then the 12, Medium the 12 then the 10, Hard the 12 then the 24.
+## Insane is Cat Naps off its bank and is never cut.
+const THEMED_SIZES := [[10, 12], [12, 10], [12, 24]]
+## The square box a band's cut is laid in: a stone bigger than the band's
+## court, since the squares outside the thing are lost.
+const THEME_BOXES := [6, 7, 8]
+## The plain court's side a band (State.SIZES), so a cut keeps at least
+## SHAPE_MIN of its stones (a smaller court is a shorter day) and at most
+## SHAPE_MAX of its own bounding box (or it is the square with a corner off).
+const BAND_SIDES := [5, 6, 7]
+const SHAPE_MIN := 0.8
+const SHAPE_MAX := 0.9
+## The blocks sown inside a cut, against the band's own share: the outline
+## is already walls, and a court that breaks every row into crumbs is read
+## by sight alone.
+const THEME_WALLS := 0.8
+## Deals a cut tries before it gives the day back to the square court.
+const THEME_ATTEMPTS := 60
+
+## `pic_rows` (a night picture's rows) cut for band `d`: {w, h, voids
+## (Vector2i -> true), beads (Vector2i -> bead name), cells}, or {} when the
+## box keeps none of the rules.
+static func shape_fit(pic_rows: Array, d: int) -> Dictionary:
+	var bi := clampi(d, 0, THEME_BOXES.size() - 1)
+	var m: int = THEME_BOXES[bi]
+	var n0: int = BAND_SIDES[bi] * BAND_SIDES[bi]
+	var box := Vector2i(m, m)
+	var cut := Planes.cut_shape(pic_rows, box, false)
+	if cut.is_empty():
+		return {}
+	var off := Vector2i((m - int(cut.cols)) / 2, (m - int(cut.rows)) / 2)
+	var on := {}
+	for c: Vector2i in cut.cells:
+		on[c + off] = cut.cells[c]
+	on = HHGen._smooth(on, box)
+	if on.is_empty():
+		return {}
+	QLGen._fill_holes(on, m)
+	var lo := Vector2i(m, m)
+	var hi := Vector2i(-1, -1)
+	for c: Vector2i in on:
+		lo = Vector2i(mini(lo.x, c.x), mini(lo.y, c.y))
+		hi = Vector2i(maxi(hi.x, c.x), maxi(hi.y, c.y))
+	var ext := hi - lo + Vector2i.ONE
+	var count := on.size()
+	if float(count) < SHAPE_MIN * float(n0) or float(count) > SHAPE_MAX * float(ext.x * ext.y):
+		return {}
+	var voids := {}
+	var beads := {}
+	for y in ext.y:
+		for x in ext.x:
+			var q := Vector2i(x, y)
+			if on.has(q + lo):
+				beads[q] = on[q + lo]
+			else:
+				voids[q] = true
+	return {"w": ext.x, "h": ext.y, "voids": voids, "beads": beads, "cells": count}

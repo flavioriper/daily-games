@@ -592,7 +592,9 @@ SETS = {
         # A lamp put out: a lift is a lighter thing set down. The board also
         # plays it 5 dB down when a wrong lamp is taken away, so it is no
         # quieter than place.
-        "strike":   ("one small light wooden block set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.12", "body:320", "tight"),
+        # A lamp taken off is the house's lip pop (2026-11-06). The board
+        # also plays it 5 dB down when a wrong lamp is taken away.
+        "strike":   ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -13, FOLEY, "bank:lip", "cut:0.2", "notes:0:-1", "tight"),
         "locked":   ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -12, FOLEY, "bank:tongue", "cut:0.3", "tight"),
         "undo":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -15, FOLEY, "bank:lip", "cut:0.28", "notes:0.11:0,-3", "tight"),
         "check":    ("a gentle two-note melody on a soft kalimba: one note, then a second lower note, 'uh-oh' but kind, a cozy 'not quite yet', warm and round, never a buzzer", 1.0, -17, STYLE, "fall"),
@@ -619,6 +621,10 @@ SETS = {
         "party":    ("one soft note on a kalimba over a gentle tongue drum, warm and cozy, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:0,3,7,3,7,12", "cut:1.9"),
         # The sky lanterns going up: a long slow breath of air, no shimmer.
         "lanterns": ("a long soft gust of warm breeze through a few leaves, one slow gentle whoosh of air that rises and fades", 2.0, -15, BREEZE, "warm:1100", "steep", "ease:0.15", "body:320"),
+        # A themed win (the daily theme, 2026-11-06): the court pours into
+        # the day's picture from the lamps outward; the boards' theme cue,
+        # a run of wrap pops a step off Caterpillar's.
+        "theme":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -15, FOLEY, "bank:wrap", "cut:0.1", "notes:0.07:5,9,12,17", "tight"),
     },
     # Nonogram: mosaic tiles laid on a floor by row and column clues.
     "nonogram": {

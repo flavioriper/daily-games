@@ -79,6 +79,7 @@ const World = preload("res://puzzles/lightup_world.gd")
 const FLAT_HOST := "res://ui/flat/flat_host.gd"
 const ToastCard = preload("res://ui/flat/toast_card.gd")
 const StarLine = preload("res://ui/flat/star_line.gd")
+const ThemedPictures = preload("res://core/themed_pictures.gd")
 ## The slide into the win's span (the host's SLOT_TIME).
 const WIN_SLIDE := 0.45
 ## The moves the out-of-moves card's video buys, once a board.
@@ -333,6 +334,19 @@ const PARTY_AT := 0.15
 const PARTY_HAT := 0.3
 const PARTY_HAT_STAGGER := 0.03
 const PARTY_EXTRA := 1.3
+## A themed court's win (the daily theme, 2026-11-06): as each lamp lets its
+## sky lantern go it fades off its stone over LAMP_LEAVE, and the court takes
+## the day's picture from the lamps outward, a stone every PAINT_STEP, each
+## tile swelling in over PAINT_TIME: the light left the thing behind. The
+## win card waits THEME_HOLD longer so the picture is whole under it.
+const LAMP_LEAVE := 0.3
+const PAINT_STEP := 0.08
+const PAINT_TIME := 0.3
+const PAINT_SIDE := 0.9
+const PAINT_RADIUS := 0.16
+const PAINT_PALE := 0.82
+const PAINT_PALE_SHADE := 0.12
+const THEME_HOLD := 0.9
 const GARLAND_TIME := 0.6
 const GARLAND_SETTLE := 2.5
 const GARLAND_SAG := 0.3
@@ -442,6 +456,15 @@ var _purrs: Array = []
 var _stamp_at := INF
 var _garland_at := INF
 var _sky: Array = []
+## When a themed win's picture began to pour on from the lamps (INF before,
+## and on a square court); `_paint_wait` each stone's delay after it (its
+## steps from the nearest lamp); `_paint_mesh` kept once every tile is down.
+var _paint_at := INF
+var _paint_wait: Dictionary = {}
+var _paint_mesh: ArrayMesh
+var _paint_done := false
+## A themed win's lamps fading off their stones (lamp -> Tween).
+var _leave_tw: Dictionary = {}
 var _seal_mesh: ArrayMesh
 var _life_layer: Control
 var _life_shown: Array = []
@@ -681,6 +704,7 @@ const HAPTICS := {
 	"heart_lost": Haptics.BAD,
 	"out_of_hearts": Haptics.LOSE,
 	"solved": Haptics.WIN,
+	"theme": Haptics.GOOD,
 }
 ## True while the hand's own tap is being put on the court: only then does
 ## a cat's number met knock.
@@ -744,7 +768,12 @@ func _layer(nm: String, z: int, draw: Callable) -> Control:
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_stop_all()
-	state.setup(rng, difficulty, bank_step)
+	state.setup(rng, difficulty, bank_step, _night_pictures(difficulty))
+	_dealt_court()
+
+## Everything a court starts from once the state holds it (build()'s, and a
+## harness's themed deal).
+func _dealt_court() -> void:
 	max_hearts = State.HEARTS[state.band]
 	max_moves = state.moves_budget()
 	_heart_used = false
@@ -774,6 +803,18 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_tip_timer.start()
 	_enter()
 
+## The night's things Easy to Hard may cut the court to (Gen.THEMED_SIZES):
+## only a daily dealt from its day, never New, and never Insane.
+func _night_pictures(difficulty: int) -> Array:
+	var out: Array = []
+	if bank_step != 0 or daily_key == 0 or difficulty >= Gen.THEMED_SIZES.size():
+		return out
+	for side in Gen.THEMED_SIZES[maxi(difficulty, 0)]:
+		var pic := ThemedPictures.picture(daily_key, int(side))
+		if not pic.is_empty():
+			out.append(pic)
+	return out
+
 ## The day as dealt, for tools/export_days.gd (PuzzleBase.day_dict). Insane
 ## comes out of its bank when the bank has the day (State.setup). A block is
 ## a wall, with its number when it carries one; a cat is a stone noted "cat"
@@ -795,7 +836,10 @@ func day_dict() -> Dictionary:
 		for x in w:
 			var v: int = int(state.grid[y][x]) if dealt else Gen.WHITE
 			var cell := {}
-			if v == Gen.WHITE:
+			if state.is_void(Vector2i(x, y)):
+				line += " "
+				cell = {"void": true}
+			elif v == Gen.WHITE:
 				line += "."
 			elif Gen.is_cat(v):
 				cell = {"t": str(v - Gen.CAT), "note": "cat", "given": true}
@@ -814,9 +858,10 @@ func day_dict() -> Dictionary:
 	for b: Vector2i in state.solution:
 		lamps.append([b.x, b.y])
 		answer[b.y * w + b.x] = {"c": 0}
-	var whites: int = w * h - walls - state.cats.size()
+	var whites: int = w * h - walls - state.voids.size() - state.cats.size()
 	var out := {
-		"source": "bank" if banked else "generator", "kind": "grid",
+		"source": "bank" if banked else ("theme" if state.themed() else "generator"), "kind": "grid",
+		"theme": String(state.theme.get("id", "")),
 		"payload": {"w": w, "h": h, "rows": rows},
 		"solution": {"lamps": lamps},
 		"metrics": {"w": w, "h": h, "cells": w * h, "walls": walls, "numbered": numbered,
@@ -856,6 +901,10 @@ func _deal() -> void:
 	_garland_at = INF
 	_garland_mesh = null
 	_seal_mesh = null
+	_paint_at = INF
+	_paint_wait = {}
+	_paint_mesh = null
+	_paint_done = false
 	_sweep_n = 0
 	_blocks_met = _met_blocks()
 	_toast.clear()
@@ -1212,7 +1261,7 @@ func _cell_at(local: Vector2) -> Vector2i:
 		return Vector2i(-1, -1)
 	var p := (local - _grid) / _cell
 	var cell := Vector2i(int(floor(p.x)), int(floor(p.y)))
-	return cell if state.in_field(cell) else Vector2i(-1, -1)
+	return cell if state.in_field(cell) and not state.is_void(cell) else Vector2i(-1, -1)
 
 ## The court's centre in board pixels: what the floor is built about.
 func _court_centre() -> Vector2:
@@ -1313,7 +1362,7 @@ func _floor_cells() -> Array:
 
 ## A block's stone: neither open nor a cat's.
 func _is_block(cell: Vector2i) -> bool:
-	return state.in_field(cell) and not state.lets_light(cell)
+	return state.in_field(cell) and not state.lets_light(cell) and not state.is_void(cell)
 
 ## How far into dusk the court is right now, 0 to 1.
 func _dusk(now: float) -> float:
@@ -1377,6 +1426,8 @@ func _draw() -> void:
 		if m != null:
 			draw_mesh(m, null)
 			shown.append(m)
+	if _draw_paint(now, shown):
+		busy = true
 	_shown = shown
 	_draw_numbers(now)
 	if busy:
@@ -1403,8 +1454,28 @@ func _build_court(now: float) -> bool:
 		bed = bed.lerp(Color(Pal.SUN, WARM_ALPHA), _sine_io(won))
 	var field := Vector2(_cell * state.w, _cell * state.h)
 	var bb := Face.Builder.new()
-	bb.fan(Face.Builder.round_rect(origin - Vector2.ONE * MORTAR,
-		field + Vector2.ONE * 2.0 * MORTAR, MORTAR_RADIUS), bed)
+	if state.themed():
+		# A themed court's bed follows the day's thing: a square a stone of
+		# it, reaching MORTAR past its sides that face the void.
+		for y in state.h:
+			for x in state.w:
+				var c := Vector2i(x, y)
+				if state.is_void(c):
+					continue
+				var lo := origin + Vector2(x, y) * _cell
+				var hi := lo + Vector2.ONE * _cell
+				if not state.in_field(c + Vector2i.LEFT) or state.is_void(c + Vector2i.LEFT):
+					lo.x -= MORTAR
+				if not state.in_field(c + Vector2i.UP) or state.is_void(c + Vector2i.UP):
+					lo.y -= MORTAR
+				if not state.in_field(c + Vector2i.RIGHT) or state.is_void(c + Vector2i.RIGHT):
+					hi.x += MORTAR
+				if not state.in_field(c + Vector2i.DOWN) or state.is_void(c + Vector2i.DOWN):
+					hi.y += MORTAR
+				bb.fan(PackedVector2Array([lo, Vector2(hi.x, lo.y), hi, Vector2(lo.x, hi.y)]), bed)
+	else:
+		bb.fan(Face.Builder.round_rect(origin - Vector2.ONE * MORTAR,
+			field + Vector2.ONE * 2.0 * MORTAR, MORTAR_RADIUS), bed)
 	_bed = bb.mesh()
 	# The stones: each at rest is one of four made once (lit or not, dusk or
 	# not); a stone sinking, warming or glinting is built again this frame.
@@ -2087,6 +2158,10 @@ func _draw_numbers(now: float) -> void:
 			var ink: Color = Pal.BLOCK_NUM
 			if state.block_state(cell) != State.BLOCK_IDLE:
 				ink = Color.WHITE
+			# A themed win's picture covers the block, number and all.
+			ink.a *= 1.0 - _paint_level(cell, now)
+			if ink.a <= 0.0:
+				continue
 			var text := str(number)
 			var wide := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, px).x
 			draw_set_transform(cell_to_local(y, x) + (pose.offset as Vector2), 0.0, pose.scale as Vector2)
@@ -2874,6 +2949,12 @@ func restore_completed_board() -> void:
 	# not claimed.
 	_garland_at = now - 10.0
 	_stamp_at = now - 10.0 if _insane() else INF
+	if state.themed():
+		# A reopened themed day shows its picture, the lamps long gone up.
+		_paint_order()
+		_paint_at = now - 10.0
+		for cell in state.solution:
+			_lamp_node(cell).visible = false
 	_life_layer.queue_redraw()
 	_say(tr("LU_WIN"), Face.Expr.JOY)
 	_redraw()
@@ -2895,10 +2976,13 @@ func share_glyphs() -> String:
 ## The board is the answer, so the win screen shows no cast: the lit court
 ## stays on the card under it.
 func flat_win() -> Dictionary:
-	return {"faces": [], "subtitle": tr("LU_WIN")}
+	var name := String(state.theme.get("name", ""))
+	return {"faces": [], "subtitle": tr("LU_WIN_THEME") % name if name != "" else tr("LU_WIN")}
 
 func win_delay() -> float:
-	return Motion.REDUCED_TIME if Motion.reduce else WIN_WAIT + PARTY_EXTRA
+	if Motion.reduce:
+		return Motion.REDUCED_TIME
+	return WIN_WAIT + PARTY_EXTRA + (THEME_HOLD if state.themed() else 0.0)
 
 ## Every lamp and block hops the solve wave along the diagonal, each lamp
 ## grinning as the wave reaches it with a spark, and the chips clear away in
@@ -3864,6 +3948,8 @@ func _party(lead: float) -> void:
 	_garland_at = now if Motion.reduce else now + lead + PARTY_AT
 	_garland_mesh = null
 	_after(_garland_at - now, func() -> void: _life_layer.queue_redraw())
+	if state.themed():
+		_theme_win(now, lead)
 	if Motion.reduce:
 		return
 	var at := lead + PARTY_AT
@@ -3901,6 +3987,105 @@ func _party(lead: float) -> void:
 		for f in _flies:
 			f.leave = true)
 	_anim_until = maxf(_anim_until, now + at + PARTY_HAT + 1.0)
+
+## A themed court's win: each lamp fades off its stone as its sky lantern
+## lifts, and the court pours into the day's picture from the lamps outward
+## (`_paint_wait`, steps from the nearest lamp over the thing's squares).
+## Under reduce motion the lamps are simply gone and the picture there.
+func _theme_win(now: float, lead: float) -> void:
+	_paint_order()
+	if Motion.reduce:
+		_paint_at = now
+		for cell in state.lamps():
+			_lamp_node(cell).visible = false
+		fx.cue("theme")
+		_redraw()
+		return
+	var sky := lead + PARTY_AT + PARTY_HAT + SKY_AT
+	_paint_at = now + sky
+	for cell in state.lamps():
+		var lamp := _lamp_node(cell)
+		# Its own tween: the solve's hop is still running in `_pos_tw`.
+		Motion.stop(_leave_tw.get(lamp))
+		var tw: Tween = lamp.create_tween()
+		_leave_tw[lamp] = tw
+		tw.tween_property(lamp, "modulate:a", 0.0, LAMP_LEAVE) \
+			.set_delay(sky + Motion.stagger(cell.x + cell.y, SKY_STAGGER))
+		tw.tween_callback(func() -> void: lamp.visible = false)
+	_after(sky + PAINT_STEP, fx.cue.bind("theme"))
+	var far := 0.0
+	for c in _paint_wait:
+		far = maxf(far, float(_paint_wait[c]))
+	_after(sky, func() -> void: _busy_for(far + PAINT_TIME + 0.1))
+
+## Every square of the thing's delay after the picture starts: its steps
+## from the nearest lamp, PAINT_STEP each.
+func _paint_order() -> void:
+	_paint_wait = {}
+	var front: Array = []
+	for cell in state.lamps():
+		_paint_wait[cell] = 0.0
+		front.append(cell)
+	var step := 0
+	while not front.is_empty():
+		step += 1
+		var next: Array = []
+		for c: Vector2i in front:
+			for d in State.DIRS:
+				var q: Vector2i = c + d
+				if state.in_field(q) and not state.is_void(q) and not _paint_wait.has(q):
+					_paint_wait[q] = PAINT_STEP * step
+					next.append(q)
+		front = next
+	_paint_mesh = null
+	_paint_done = false
+
+## How far `cell` has taken its tile of the day's picture, 0 to 1: nothing
+## before a themed win pours it on.
+func _paint_level(cell: Vector2i, now: float) -> float:
+	if _paint_at == INF or not _paint_wait.has(cell):
+		return 0.0
+	if Motion.reduce:
+		return 1.0
+	return clampf((now - _paint_at - float(_paint_wait[cell])) / PAINT_TIME, 0.0, 1.0)
+
+## The solved themed court as its picture: a raised tile on every square of
+## the thing (stones and blocks alike) in the picture's own bead, swelling in
+## as the light's wave reaches it. One mesh, kept once every tile is down.
+## Returns whether it is still pouring.
+func _draw_paint(now: float, shown: Array) -> bool:
+	if _paint_at == INF or not state.themed() or now < _paint_at:
+		return _paint_at != INF and now < _paint_at
+	if _paint_mesh == null or not _paint_done:
+		var beads: Dictionary = state.theme.get("beads", {})
+		var b := Face.Builder.new()
+		var all := true
+		var s := _cell
+		for cell: Vector2i in _paint_wait:
+			var k := _paint_level(cell, now)
+			if k < 1.0:
+				all = false
+			if k <= 0.0:
+				continue
+			var bead = Pal.PG_BEADS.get(String(beads.get(cell, "")))
+			if bead == null:
+				continue
+			var face: Color = bead
+			if face.get_luminance() > PAINT_PALE:
+				face = face.darkened(PAINT_PALE_SHADE)
+			var e := Motion.back_out(k)
+			var side := Vector2.ONE * s * PAINT_SIDE * lerpf(0.4, 1.0, e)
+			var at := cell_to_local(cell.y, cell.x) - side * 0.5
+			b.fan(Face.Builder.round_rect(at + Vector2(0.0, s * 0.05), side, s * PAINT_RADIUS), Color(face.darkened(0.3), k))
+			b.fan(Face.Builder.round_rect(at, side, s * PAINT_RADIUS), Color(face, k))
+			b.fan(Face.Builder.round_rect(at + side * Vector2(0.16, 0.1), side * Vector2(0.36, 0.14), s * 0.05),
+				Color(face.lightened(0.45), 0.7 * k))
+		_paint_mesh = b.mesh() if not b.verts.is_empty() else null
+		_paint_done = all
+	if _paint_mesh != null:
+		draw_mesh(_paint_mesh, null)
+		shown.append(_paint_mesh)
+	return not _paint_done
 
 ## An Insane court: Cat Naps, or the old band 3 when the bank is empty.
 func _insane() -> bool:
@@ -3986,6 +4171,9 @@ func _stop_all() -> void:
 		Motion.stop(tw)
 	for tw in _gag_tw.values():
 		Motion.stop(tw)
+	for tw in _leave_tw.values():
+		Motion.stop(tw)
+	_leave_tw = {}
 	_pos_tw = {}
 	_look_tw = {}
 	_gag_tw = {}

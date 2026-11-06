@@ -231,3 +231,61 @@ spectacle (gags, moths, streak, party); the gap was reading and stakes.
 - Calls made without the user: a bulb read is a slip; a reading starts from
   the answer's lamps already down and ignores off-answer ones (the old
   bulb did the same); stuck/starved judged with chips ignored.
+
+## The court is cut to the day's thing (2026-11-06)
+
+Wave 2 of the daily theme roadmap. On a daily whose night pictures this
+phone holds, Easy, Medium and Hard lay the court in one of the theme's
+things; Insane stays Cat Naps off its bank.
+
+- **The cut** (`Gen.shape_fit`): Easy tries the 10 then the 12, Medium the
+  12 then the 10, Hard the 12 then the 24, each in a square box a stone
+  bigger than the band's court (6, 7, 8), with Hedgehogs' smoothing and
+  Quilt's hole filling, trimmed to its extent. Kept when it has at least
+  `SHAPE_MIN` 0.8 of the plain court's stones and at most `SHAPE_MAX` 0.9
+  of its own bounding box.
+- **The squares outside** are `Gen.WALL` in the grid, so every rule, the
+  solver, the reader, stuck and starved read them as blocks with nothing
+  on them; `State.voids` keeps them, they are never numbered, `_is_block`
+  is false there (no block is drawn), a press there is no stone
+  (`_cell_at`), and the mortar bed follows the thing (a square a stone,
+  reaching MORTAR past the sides that face the void).
+- **The deal** (`Gen.generate(..., voids, THEME_ATTEMPTS)`): blocks sown
+  inside at `THEME_WALLS` 0.8 of the band's share (0.6 and under failed
+  most cuts or was slow: 0.3 themed 2/24 Hard, 0 never once), 60 tries,
+  each cut off `rng.seed ^ hash(id)`; a cut that deals nothing gives the
+  day to the square court off the untouched rng (the plain draw order is
+  the same: a void square draws nothing, and there are none on a plain
+  court).
+- **Measured** (`tests/_probe_lu_theme.gd`, the 24 cached nights, `draw`
+  prints the courts): Easy 24/24 themed, worst deal 13 ms; Medium 21/24,
+  30 ms; Hard 18/24, 65 ms; 0 with two answers. The reader's unruled
+  "good place to start" readings from an empty court: 0.75 / 1.00 / 1.22
+  against the plain 0.88 / 1.14 / 1.89. **Themed Hard reads a little
+  easier** (the outline is walls that decide stones); decided for the
+  user, as Caterpillar's.
+- **The win** (`_theme_win`, `_paint_order`, `_paint_level`,
+  `_draw_paint`): as each lamp lets its sky lantern go it fades off its
+  stone (`LAMP_LEAVE`), and the court takes the picture's beads
+  (`Pal.PG_BEADS`, raised rounded tiles, a pale bead shaded) from the
+  lamps outward, a step of the thing every `PAINT_STEP`: the light left
+  the thing behind. Blocks are painted too and their numbers fade under
+  the tile. The `theme` cue rings a step in, the card waits `THEME_HOLD`
+  0.9 s longer, reads `LU_WIN_THEME` ("Today's court: %s."), and a
+  reopened day shows the picture with the lamps gone. Under reduce motion
+  the lamps are gone and the picture there.
+- `tests/_shot_lightup.gd -- d=<0..2> [night=YYYYMMDD] theme [rm]` re-deals
+  in a cached night's things (the newest by default), solves lamp by lamp,
+  shoots the reveal and the reopen. `opengl3_angle`, 810x1440: 163 / 150 /
+  154 (Medium, Hard, Easy reduce) draw calls peak. `_win.gd -- lightup`
+  PASS; the lightup suite 32/0.
+- Sounds: `strike` (a lamp taken off) moved to the bank's lip, `theme` new.
+  Unheard.
+- Looked for: no Light Up app found on the web reveals a picture; the
+  picture reveal is the nonogram's reward, which the genre's own (lit
+  court, lanterns going up) now ends in.
+- Decided for the user, unconfirmed: the lamps leaving for the picture,
+  void squares as no court, themed Hard reading easier, Insane plain, the
+  party's moths still circling the stones the lamps left (they go at
+  `FLIES_STAY`). A shared themed court prints its void squares as walls.
+  Owed: a phone, the ear, a pt/es native read of LU_WIN_THEME.

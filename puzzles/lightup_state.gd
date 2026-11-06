@@ -87,11 +87,40 @@ var band := 0
 ## One entry per gesture, newest last: [{"cell": Vector2i, "prev": int}].
 var history: Array = []
 
+## A themed court's squares outside the day's thing (the daily theme,
+## 2026-11-06): blocks to the rules (Gen.WALL in the grid, never numbered),
+## no court on the screen. Vector2i -> true; empty on a square court.
+var voids: Dictionary = {}
+## {id, name, beads (Vector2i -> bead name)} on a themed court, else {}.
+var theme: Dictionary = {}
+
 ## Insane reads the Cat Naps bank, stepped by `bank_step` (the host's New
 ## count), and falls back to its live band with no cats when the bank is empty.
-func setup(rng: RandomNumberGenerator, difficulty: int, bank_step := 0) -> void:
+## `pictures` are the night's things Easy to Hard may cut the court to, in
+## Gen.THEMED_SIZES order; each is tried off its own rng (`rng.seed ^
+## hash(id)`), so a cut that deals nothing leaves the square court the same
+## draws off `rng` as before the theme.
+func setup(rng: RandomNumberGenerator, difficulty: int, bank_step := 0, pictures: Array = []) -> void:
 	band = clampi(difficulty, 0, SIZES.size() - 1)
 	var out: Dictionary = {}
+	voids = {}
+	theme = {}
+	if band < Gen.THEMED_SIZES.size():
+		for pic: Dictionary in pictures:
+			var shape := Gen.shape_fit(pic.get("rows", []), band)
+			if shape.is_empty():
+				continue
+			var r := RandomNumberGenerator.new()
+			r.seed = rng.seed ^ hash(String(pic.get("id", "")))
+			var step: Array = SIZES[band]
+			var got := Gen.generate(r, int(shape.w), int(shape.h), float(step[2]) * Gen.THEME_WALLS,
+				shape.voids, Gen.THEME_ATTEMPTS)
+			if not bool(got.ok):
+				continue
+			out = got
+			voids = shape.voids
+			theme = {"id": String(pic.get("id", "")), "name": String(pic.get("name", "")), "beads": shape.beads}
+			break
 	if band == 3:
 		out = Gen.from_bank(InsaneBank.pick("lightup", bank_step))
 	if out.is_empty():
@@ -115,6 +144,13 @@ func setup(rng: RandomNumberGenerator, difficulty: int, bank_step := 0) -> void:
 
 func in_field(cell: Vector2i) -> bool:
 	return cell.x >= 0 and cell.y >= 0 and cell.x < w and cell.y < h
+
+## A square outside a themed court's thing: no stone, no block, nothing.
+func is_void(cell: Vector2i) -> bool:
+	return voids.has(cell)
+
+func themed() -> bool:
+	return not theme.is_empty()
 
 ## An open stone: somewhere a lamp or a chip may go. Never a cat's.
 func is_white(cell: Vector2i) -> bool:

@@ -47,6 +47,8 @@ func _initialize() -> void:
 			_reduce = true
 		elif a.begins_with("out="):
 			_dir = a.substr(4)
+		elif a.begins_with("night="):
+			pass
 		else:
 			_mode = a
 	var progress = load("res://core/progress.gd")
@@ -76,6 +78,8 @@ func _process(delta: float) -> bool:
 		_menu._open_at(entry, _level)
 		_host = _menu.get_child(_menu.get_child_count() - 1)
 		_puzzle = _host._puzzle
+		if _mode == "theme":
+			_redeal_themed()
 		if _host.has_node("HowToPlay"):
 			_host.get_node("HowToPlay").free()
 		_script()
@@ -261,6 +265,33 @@ func _script() -> void:
 			_at(2.0, _shot)
 			_at(2.6, _shot)
 			_end = 2.8
+		"theme":
+			# the newest cached night's thing (night=YYYYMMDD for another):
+			# at rest, solved lamp by lamp, the lamps going up and the
+			# picture pouring on, then the day reopened (restore)
+			_at(1.2, _shot.bind("_rest"))
+			var lamps: Array = _puzzle.state.solution.duplicate()
+			for k in lamps.size():
+				_tap(1.4 + k * 0.2, lamps[k])
+			var done := 1.4 + lamps.size() * 0.2
+			_at(done + 0.1, func() -> void:
+				print("solved %s, themed %s, win_delay %.2f, subtitle: %s" % [_puzzle.is_done(),
+					_puzzle.state.themed(), _puzzle.win_delay(), _puzzle.flat_win().subtitle]))
+			_ms_from = done
+			# the solve's hop still plays under the lamps' leaving
+			for dt in [0.3, 0.5, 0.7]:
+				_at(done + dt, func() -> void:
+					var lift := 0.0
+					for c in _puzzle.state.lamps():
+						lift = maxf(lift, -_puzzle._lamp_node(c).position.y)
+					print("hop at +%.1f: highest lamp %.1f px" % [dt, lift]))
+			for dt in [0.6, 1.2, 1.6, 2.0, 2.6, 3.6]:
+				_at(done + dt, _shot.bind("_%02d" % int(dt * 10)))
+			_at(done + 4.6, func() -> void:
+				_puzzle.completed_record = _puzzle.completion_record()
+				_puzzle.restore_completed_board())
+			_at(done + 5.2, _shot.bind("_reopen"))
+			_end = done + 5.3
 		"solve":
 			var lamps: Array = _puzzle.state.solution.duplicate()
 			for k in lamps.size():
@@ -294,3 +325,32 @@ func _stuck_cell() -> Vector2i:
 			if hit:
 				return c
 	return Vector2i(-1, -1)
+
+## The board dealt again in the newest cached night's things, as a themed
+## daily deals it (the harness's backend never starts).
+func _redeal_themed() -> void:
+	var cache := "/Users/flavioriper/Library/Application Support/Godot/app_userdata/Peeplet Daily/backend_cache"
+	var files: Array = []
+	for f in DirAccess.get_files_at(cache):
+		if f.begins_with("pictures-202611") and f.ends_with("-content.json"):
+			files.append(f)
+	files.sort()
+	var pick := String(files[-1])
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("night="):
+			pick = "pictures-%s-content.json" % a.substr(6)
+	var doc = JSON.parse_string(FileAccess.get_file_as_string(cache + "/" + pick))
+	var pics: Array = []
+	var gen = load("res://puzzles/lightup_gen.gd")
+	for side in gen.THEMED_SIZES[mini(_level, gen.THEMED_SIZES.size() - 1)]:
+		var p = doc.sizes.get(str(side))
+		if p is Dictionary:
+			var nm = p.get("name")
+			pics.append({"id": "themed_" + String(p.id), "rows": p.rows,
+				"name": String(nm.get("en", p.id)) if nm is Dictionary else String(p.id)})
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261106 + _level
+	_puzzle._stop_all()
+	_puzzle.state.setup(rng, _level, 0, pics)
+	_puzzle._dealt_court()
+	print("theme: ", pick, " -> ", _puzzle.state.theme.get("name", "(plain)"))
