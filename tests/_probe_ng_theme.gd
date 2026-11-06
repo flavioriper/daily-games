@@ -21,7 +21,7 @@ func _sweeps(o: Dictionary) -> int:
 func _initialize() -> void:
 	var doc = JSON.parse_string(FileAccess.get_file_as_string("res://content/pixel_garden.json"))
 	var singles: Array = doc.bands[0] + doc.bands[1]
-	for band in [1, 2]:
+	for band in [1, 2, 3]:
 		var took := 0
 		var days := 0
 		var sw: Array = []
@@ -41,7 +41,7 @@ func _initialize() -> void:
 			if not o.is_empty():
 				took += 1
 				sw.append("%s %dx%d s%d" % [o.theme.id, o.w, o.h, _sweeps(o)])
-			var g := Gen.generate(rng, drawn.x, drawn.y)
+			var g := Gen.hardest(rng, drawn.x, drawn.y) if band == 3 else Gen.generate(rng, drawn.x, drawn.y)
 			if g.ok:
 				gen_sw.append(_sweeps(g))
 		print("band %d: themed %d/%d days, slowest deal %d ms" % [band, took, days, ms])

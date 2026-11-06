@@ -267,24 +267,28 @@ the night's `pictures` doc, no server change.
   `_night_pictures`): Medium tries the 10, 24, 32, Hard the 12, 32, 24, 10
   (each size is a different thing of the theme, so the two bands mostly
   differ). Each is cut with `PlanesState.cut_shape(rows, box, false)` (the
-  `false` keeps bead names) to the day's drawn box, then the band's others.
+  `false` keeps bead names) to the day's drawn box and the band's others;
+  the first thing with a cut that passes deals its **biggest** cut, at least
+  `MIN_SIDE` a side (6 Medium, 10 Hard: the level cards' "6 to 10" and "10
+  to 15 a side"). Taking the first cut that passed dealt Hards of 10 x 8.
 - **Drawn, not a lump**: a cut is tried first as a line picture
   (`State.drawn_cells`: its edge and details, the inside cells of the body's
   bead blank), then whole. Kept when line logic alone fills it (the no-guess
-  rule, `Gen.Lines`), it is at least `MIN_SIDE` a side and `THEMED_AREA` of
-  the band's fallback square, and fills no more than `THEMED_FULL` (0.75).
+  rule, `Gen.Lines`) and fills no more than `THEMED_FULL` (0.75) of its box.
   The whole silhouettes of the night's outlined things were 0.8-ish blobs.
 - **No draw off the rng**: `Gen.shape_for` still draws first; a themed day
   deals the same everywhere, and a day without a theme (or one whose things
   all fail) deals exactly as before.
 - **Decided for the user**: Easy (5-7 a side) and **Insane stay unthemed**.
-  Measured over the bank's 60 single things (`tests/_probe_ng_theme.gd`):
-  themed cuts at Insane's sizes line-solve in 3-4 sweeps, Insane's own
-  `Gen.hardest` pictures in 6-16; the user asked for Insane "way harder".
-  Medium themed: 3-7 sweeps against the generator's 2-5; Hard 3-7 against
-  3-6; 20 of 20 bank days took a thing on both bands; a deal is under 10 ms.
-  On the cached nights 20261103-07 every Medium and Hard took a thing
-  (pear, birdbath, lemon, jug, moon, flame, dress, jumper, vase, cactus pot).
+  Measured with the drawn cuts over the bank's 60 single things, three a day
+  (`tests/_probe_ng_theme.gd`, 20 days): at Insane's sizes they line-solve
+  in 3-6 sweeps (one 15), Insane's own `Gen.hardest` in 6-14 (median 8); the
+  user asked for Insane "way harder". The bank's things are 10 and 12
+  drawings scaled up; the night's 24 and 32 might carry more detail, not
+  measured. Medium themed: 2-7 sweeps against the generator's 2-5; Hard 3-7
+  against 3-6; 20 of 20 days took a thing on both bands; the slowest deal
+  14 ms. On the cached nights 20261103-07 every Medium (7-8 a side) and Hard
+  (12 x 10 to 12 x 14) took a thing; 20261106 drew its dress on both.
 - **The reveal** (the picture-logic convention: the solved picture takes its
   colours and its name): `_beaded` lerps a tile's three colours to its bead
   (`Pal.PG_BEADS`; beads over `PAINT_PALE` luminance shaded so white and

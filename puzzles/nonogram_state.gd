@@ -87,15 +87,14 @@ var history: Array = []
 ## Medium leads with the 10 and Hard with the 12, so the two bands mostly
 ## draw different things.
 const THEMED_SIZES := [[], [10, 24, 32], [12, 32, 24, 10], []]
-## The thing must line-solve (the no-guess rule), cover at least this share
-## of the band's fallback square, at least MIN_SIDE a side, and leave some
+## The thing must line-solve (the no-guess rule), keep the band's promise
+## (MIN_SIDE: the level card says "10 to 15 a side" for Hard), and leave some
 ## blanks: the night's things are outlined shapes, and a whole silhouette is
 ## a lump.
 ##
 ## Each cut is tried drawn first, as a picture-logic picture is drawn: its
 ## edge and details, the body's inside left blank (drawn_cells); then whole. A drawn cut keeps THEMED_DRAWN of the thing.
-const THEMED_AREA := 0.75
-const MIN_SIDE := 5
+const MIN_SIDE := [5, 6, 10, 13]
 const THEMED_FULL := 0.75
 const THEMED_DRAWN := 0.3
 ## {id, name, beads (Vector2i -> bead name, core/palette.gd PG_BEADS)} when
@@ -145,8 +144,9 @@ func setup(rng: RandomNumberGenerator, difficulty: int, bank_step := 0, pictures
 	auto = {}
 	history = []
 
-## The first of `pictures` that cuts, at the day's drawn box and then the
-## band's others, to a picture line logic fills alone and THEMED_* allow:
+## The first of `pictures` that cuts, to the day's drawn box or any of the
+## band's others, to a picture line logic fills alone and THEMED_* allow;
+## of its cuts the biggest (the drawn one on a tie):
 ## {bitmap, rows, cols, w, h, ok, theme}, or {}. No draw off any rng, so a
 ## themed day deals the same on every phone and on every reopening.
 static func themed(pictures: Array, p_band: int, drawn: Vector2i) -> Dictionary:
@@ -155,15 +155,16 @@ static func themed(pictures: Array, p_band: int, drawn: Vector2i) -> Dictionary:
 		var box := Vector2i(int(s[0]), int(s[1]))
 		if not boxes.has(box):
 			boxes.append(box)
-	var least := float(SIZES[p_band] * SIZES[p_band]) * THEMED_AREA
+	var side: int = MIN_SIDE[p_band]
 	for pic in pictures:
+		var best: Dictionary = {}
 		for box in boxes:
 			var cut := Planes.cut_shape(pic.rows, box, false)
 			if cut.is_empty():
 				continue
 			var w: int = cut.cols
 			var h: int = cut.rows
-			if w < MIN_SIDE or h < MIN_SIDE or float(w * h) < least:
+			if mini(w, h) < side or (not best.is_empty() and w * h <= int(best.w) * int(best.h)):
 				continue
 			var whole: Dictionary = cut.cells
 			for on: Dictionary in [drawn_cells(whole), whole]:
@@ -174,7 +175,10 @@ static func themed(pictures: Array, p_band: int, drawn: Vector2i) -> Dictionary:
 				if not got.is_empty():
 					got["theme"] = {"id": String(pic.id), "name": String(pic.get("name", "")),
 						"beads": on}
-					return got
+					best = got
+					break
+		if not best.is_empty():
+			return best
 	return {}
 
 ## A cut drawn as a line picture: its edge (a cell beside the void or the
