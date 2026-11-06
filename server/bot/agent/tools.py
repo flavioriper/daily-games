@@ -198,12 +198,13 @@ def open_slots(events: list[dict], day: str, minutes: int, tz: str, shown: ZoneI
 
 class Toolbox:
     def __init__(self, google: Google | None, emit: Callable[[dict], None], *, owner: Owner, tz: str | None = None, pause: Callable = asyncio.sleep, memory=None, docs_only: bool = False, screen: bool = False,
-                 phone: bool = False, eye=None, look: Callable[[], Awaitable[dict | None]] | None = None, on_usage: Callable[[dict], None] = lambda _: None):
+                 phone: bool = False, screen_level: int = 2, eye=None, look: Callable[[], Awaitable[dict | None]] | None = None, on_usage: Callable[[dict], None] = lambda _: None):
         """`phone`: only the screen tools, for the Swarm on a phone. `eye` writes drawings and judges snapshots (agent/eye.py); `look` asks the phone for a snapshot ({jpg, w, h} or None); `on_usage` gets the eye's token counts."""
         self.google, self.emit, self.pause, self.memory = google, emit, pause, memory
         self.owner, self.tz = owner, tz or owner.timezone
         self.eye, self.look, self.on_usage = eye, look, on_usage
         tools = tool_spec(owner)
+        self.screen_level = screen_level  # the phone's face (bot/call.gd SCREEN_LEVEL): below 2, the dials of 2026-11-06 are kept from the Swarm
         if phone:
             self.spec = screen_spec(owner)
         else:
@@ -237,7 +238,7 @@ class Toolbox:
         self._say(call, name, "running", self.label.get(name, name), args=args)
         took = lambda: round((time.perf_counter() - started) * 1000)
         try:
-            result = await getattr(self, name)(call, turn, **args)
+            result = {"error": why} if (why := self._too_new(name, args)) else await getattr(self, name)(call, turn, **args)
         except asyncio.CancelledError:
             self._say(call, name, "cancelled", "Interrupted", ms=took())
             raise
@@ -254,6 +255,16 @@ class Toolbox:
         if not self.google:
             raise GoogleError("Gmail and Calendar are not connected on this server")
         return self.google
+
+    def _too_new(self, name: str, args: dict) -> str | None:
+        """On a phone whose app predates the dials, what it would drop without a word: refused, so the Swarm never says it did what nobody sees."""
+        if self.screen_level >= 2:
+            return None
+        to = str(args.get("to") or "")
+        if (name == "perform" or (name == "swarm" and {"eyes", "blink", "wink"} & set(args)) or (name == "move" and ({"size", "speed"} & set(args) or not to or "peek" in to or "off" in to or to in ("away", "gone", "hide")))
+                or (name == "draw" and args.get("frames")) or (name == "tone" and _number(args.get("intensity")) and args["intensity"] < 0.2)):
+            return "the app on this phone is too old for that; it needs an update. Do the closest thing the older tools can, and say so"
+        return None
 
     def _screen(self, name: str) -> dict | None:
         return None if name in self.names() else {"error": "there is no screen in front of this person"}

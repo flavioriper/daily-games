@@ -224,6 +224,7 @@ def build_app(deps: Deps | None = None) -> FastAPI:
             session_id = uuid.uuid4().hex
             await websocket.send_json({"type": "session", "session_id": session_id})
             await websocket.send_json({"type": "tool", "name": "voice", "cmd": seat_of(card)[2]})  # the phone keeps it and sends it in every later hello
+            websocket.state.screen = hello.get("screen") if isinstance(hello.get("screen"), int) else 1  # what the phone's face can do (bot/call.gd SCREEN_LEVEL); older builds send none
             store = await DeviceStore.load(hello.get("memory") or {}, Phone.of(websocket).send)  # the player's memory, in RAM for this call; every change goes back as `memory`
             await deps.run_call(websocket, card, uid, session_id, deps, store)
         except WebSocketDisconnect:

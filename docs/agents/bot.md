@@ -314,8 +314,16 @@ to agent creativity", then "do all"):
   mischievously, dramatically, singing, slowly...) and 9 sounds (laughs,
   giggles, gasps, hums...), 2 tags a reply, all in the character rule;
   pipecat writes them as ElevenLabs audio tags, subtitles drop them. Unheard.
-- Old phone builds: `perform`, eyes, size, speed and peek/off are ignored
-  (unknown tool or key), intensity clamps at 0.2.
+- Old phone builds would drop these without a word while the Swarm said it
+  did them, so the hello now carries `screen` (`bot/call.gd` SCREEN_LEVEL,
+  2); a hello without it gets `Toolbox.screen_level` 1 and `_too_new` refuses
+  perform, eyes/blink/wink, size, speed, peek/off spots, frames and intensity
+  under 0.2 with "the app on this phone is too old for that".
+- A call that ends (`set_live(false)`) brings the face back to rest: the
+  routine dropped, the dials at 1, then `_rest()` (centre, green at 1, N dots,
+  no picture), so a call never leaves the room empty or the face off screen.
+- With a picture showing, `peek-*`/`off-*` go to that side instead (a picture
+  stays on screen).
 - Probe: `tests/_probe_swarm_dials.gd` (untracked), 13 checks and snapshots.
 
 ## Testing a call locally

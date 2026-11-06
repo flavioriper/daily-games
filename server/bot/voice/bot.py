@@ -223,7 +223,7 @@ async def run_call(websocket, card: Card, user_id: str, session_id: str, deps, s
     def eye_usage(u: dict) -> None:
         ledger.record(kind="llm", provider="openai", model=EYE_MODEL, units={"prompt_tokens": u.get("prompt_tokens") or 0, "completion_tokens": u.get("completion_tokens") or 0, "gross": True}, source="eye", **ids)
 
-    toolbox = Toolbox(None, stage, owner=owner_of(card), phone=True, eye=_dep(deps, "eye") or Eye(), look=phone.look, on_usage=eye_usage)
+    toolbox = Toolbox(None, stage, owner=owner_of(card), phone=True, screen_level=getattr(getattr(websocket, "state", None), "screen", 1), eye=_dep(deps, "eye") or Eye(), look=phone.look, on_usage=eye_usage)
     context = LLMContext(tools=toolbox.pipecat_schema())
     pair = LLMContextAggregatorPair(context, user_params=LLMUserAggregatorParams(user_turn_strategies=strategies(card)))
     clip_out, pace = ClipOut(on_stage=stage, on_said=phone.said), PaceProcessor()

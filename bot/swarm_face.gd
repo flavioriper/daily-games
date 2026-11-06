@@ -751,6 +751,8 @@ func _spot(to: String) -> Vector2:
 				return Vector2(size.x * 0.5, -out)
 			"bottom":
 				return Vector2(size.x * 0.5, size.y + out)
+	if to.begins_with("peek-") or to.begins_with("off-"):
+		to = to.get_slice("-", 1)  # a picture goes as far toward that edge as it can
 	var f: Vector2 = SPOTS.get(to, SPOTS.centre)
 	return _clamp_face(Vector2(f.x * size.x, f.y * size.y))
 
@@ -1225,6 +1227,17 @@ func set_live(on: bool) -> void:
 	_ext_level = 0.0
 	_line = ""
 	_words.visible_characters = -1
+	if not on:
+		# A call that ends never leaves the room empty: hidden, off the screen,
+		# tiny or mid-routine, the face comes back to rest.
+		_perf.clear()
+		_perf_end = -1.0
+		_perf_snap = null
+		_eyes_to = 1.0
+		_eyes_back = null
+		_scale_to = 1.0
+		_speed = 1.0
+		_rest()
 
 ## The server's state: listening, thinking, speaking or remembering (which
 ## looks like thinking).
