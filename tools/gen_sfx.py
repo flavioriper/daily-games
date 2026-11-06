@@ -1416,8 +1416,11 @@ SETS = {
         # breeze each. A lift is a lighter thing set down.
         "lift":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -16, FOLEY, "bank:lip", "cut:0.12", "tight"),
         "step":     ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -19, FOLEY, "bank:wrap", "cut:0.06", "notes:0:-1", "tight"),
-        "bump":     ("a solid hardwood toy block gently knocking against another wooden block, one soft dull hollow wooden knock, very short", 0.5, -13, WALNUT, "warm:7000", "cut:0.16", "tight"),
-        "slide":    ("one small smooth wooden toy block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.16", "body:320", "tight"),
+        # 2026-11-06 (the theme pass): bump and slide join the house pops --
+        # a block pushed at a wall or a neighbour is a refusal (the tongue),
+        # a block let go a thing set down (the token).
+        "bump":     ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -14, FOLEY, "bank:tongue", "cut:0.16", "notes:0:-2", "tight"),
+        "slide":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.16", "notes:0:-3", "tight"),
         # Put back where it was lifted: slide's take, lower and quieter.
         "drop":     ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -17, FOLEY, "bank:token", "cut:0.14", "notes:0:-4", "tight"),
         "undo":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -15, FOLEY, "bank:lip", "cut:0.28", "notes:0.11:0,-3", "tight"),
@@ -1455,6 +1458,9 @@ SETS = {
         "stamp":    ("one soft note on a kalimba, proud and warm, left to fade", 1.5, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.26:8,4,11"),
         "party":    ("one soft note on a kalimba over a gentle tongue drum, warm and cozy, left to fade", 2.0, -8, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:4,7,11,7,11,13", "cut:1.9"),
         "purr":     ("one short soft contented chirrup, a little rolling trill with the mouth closed, gentle and happy", 1.0, -12, KITTEN, "warm:2400", "ease:0.01", "body:300"),
+        # The daily theme (2026-11-06): the thing under the blocks pours into
+        # its beads, the house's bead run climbing.
+        "theme":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -15, FOLEY, "bank:wrap", "cut:0.1", "notes:0.06:7,12,16", "tight"),
     },
     # Pixel Garden: copy a little picture onto a pegboard in beads; a full
     # plate is ironed. `place` fires on every bead a stroke seats (pitched a

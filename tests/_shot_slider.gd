@@ -14,7 +14,9 @@ extends SceneTree
 ## `streak` (nearer moves with gags forced: twirl, love, butterfly, the
 ## bubble); `solve` (the shortest way dragged out, then the party);
 ## `stars` (Easy: moves that take the big block farther until a star
-## falls, then Undo); `restore`. Frames go to <dir>/sl_<mode>_d<level>_<n>.png; every mode
+## falls, then Undo); `restore`; `theme` (the newest cached night's picture
+## under the tray: a shot at rest, a few moves in, then the shortest way out
+## and the pour; `theme_restore` the reopened day). Frames go to <dir>/sl_<mode>_d<level>_<n>.png; every mode
 ## prints the peak draw calls and the mean frame from 0.5 s on.
 
 const Gen = preload("res://puzzles/slider_gen.gd")
@@ -78,6 +80,10 @@ func _process(delta: float) -> bool:
 			_host.get_node("HowToPlay").free()
 		if _mode != "early":
 			_puzzle._state.finish()
+		if _mode.begins_with("theme"):
+			_puzzle._theme = _themed()
+			_puzzle._floor = null
+			_puzzle._refresh()
 		_script()
 		return false
 	while not _plan.is_empty() and float(_plan[0][0]) <= _t:
@@ -181,7 +187,7 @@ func _drive(from: float, until: float, each: Callable) -> void:
 			if _puzzle.is_done():
 				if _won_at < 0.0:
 					_won_at = _t
-					for k in [0.4, 1.4, 2.6, 3.8]:
+					for k in ([0.4, 1.0, 1.4, 1.9, 2.6, 3.8] if _mode == "theme" else [0.4, 1.4, 2.6, 3.8]):
 						_at(_t + k, _shot)
 					_end = _t + 4.4
 				return
@@ -196,6 +202,22 @@ func _drive(from: float, until: float, each: Callable) -> void:
 		t += 0.1
 
 var _next_ok := 0.0
+
+## The newest cached night's picture, as the board would read it.
+func _themed() -> Dictionary:
+	var cache := "/Users/flavioriper/Library/Application Support/Godot/app_userdata/Peeplet Daily/backend_cache"
+	var files: Array = []
+	for f in DirAccess.get_files_at(cache):
+		if f.begins_with("pictures-202611") and f.ends_with("-content.json"):
+			files.append(f)
+	files.sort()
+	var doc = JSON.parse_string(FileAccess.get_file_as_string(cache + "/" + String(files[-1])))
+	for side in load("res://puzzles/slider2d.gd").THEMED_SIZES:
+		var p = doc.sizes.get(str(side))
+		if p is Dictionary:
+			print("theme: ", files[-1], " ", side, " ", p.id)
+			return {"id": "themed_" + String(p.id), "name": String(p.name.en).capitalize(), "rows": p.rows}
+	return {}
 
 func _script() -> void:
 	var t0 := 1.6
@@ -355,6 +377,19 @@ func _script() -> void:
 		"solve":
 			_drive(t0, 200.0, func(): pass)
 			_end = 200.0
+		"theme":
+			_at(1.2, _shot)
+			_drive(t0, 200.0, func():
+				if _moves_done in [3, 6]:
+					_at(_t + 0.6, _shot)
+				_moves_done += 1)
+			_end = 200.0
+		"theme_restore":
+			_at(0.6, func():
+				_puzzle.completed_record = {"hearts": 0, "flawless": false}
+				_puzzle.restore_completed())
+			_at(1.4, _shot)
+			_end = 2.0
 		"restore":
 			_at(0.6, func():
 				_puzzle.completed_record = {"hearts": 1, "flawless": true}

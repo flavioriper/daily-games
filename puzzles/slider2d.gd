@@ -61,6 +61,15 @@ extends "res://core/puzzle_base.gd"
 ## butterfly, the streak's bubble, the seal). The blocks are
 ## ui/faces/slider_block.gd, which the menu card draws too.
 ##
+## **The daily theme (2026-11-06)**: on a daily whose night pictures this
+## phone holds, the day's thing is inlaid in the tray's floor under the
+## blocks, a 24 (else a 12) picture over the top four rows, whole beads to a
+## cell (the gate's row stays plain wood). The two hollows show the patch
+## under them, faint, so every move uncovers a different bit of it. Out of
+## the gate, the others fade off the floor and the thing pours into its
+## beads from the gate's row up, the theme cue ringing (`_theme_*`); the
+## win screen waits for it (`win_lead`) and names it. The deal never reads it.
+##
 ## Spec: docs/superpowers/specs/2026-09-26-super-slider-flat-design.md.
 
 signal leave
@@ -80,6 +89,7 @@ const Cat = preload("res://ui/faces/caterpillar.gd")
 const RunMesh = preload("res://ui/flat/run_mesh.gd")
 const Bench = preload("res://puzzles/slider_world.gd")
 const StarLine = preload("res://ui/flat/star_line.gd")
+const ThemedPictures = preload("res://core/themed_pictures.gd")
 const FLAT_HOST := "res://ui/flat/flat_host.gd"
 ## The slide into the win's span (the host's SLOT_TIME), and the air the
 ## tray keeps inside that span.
@@ -368,6 +378,29 @@ var _stars := StarLine.new()
 var _stars_known := false
 var _stranded_said := false
 
+## The daily theme: the night's picture ({id, name, rows}) or {}; the bead
+## mesh poured on the win, kept once every row is down; the others' blocks
+## and the big block in meshes of their own once won, so the others can fade
+## off the floor while the big block stands on the runner.
+const THEMED_SIZES := [24, 12]
+const THEME_ROWS := 4
+const INLAY := 0.42
+const INLAY_PAD := 0.1
+const BEAD_PALE := 0.82
+const BEAD_PALE_SHADE := 0.12
+const THEME_FADE_AT := 0.1
+const THEME_FADE := 0.4
+const THEME_PAINT_AT := 0.4
+const THEME_STEP := 0.025
+const THEME_BEAD := 0.3
+const THEME_SEE := 0.45
+var _theme: Dictionary = {}
+var _pic_shown: ArrayMesh
+var _pic_done := false
+var _pic_key: Array = []
+var _rm_big: RunMesh
+var _live_big: ArrayMesh
+
 func puzzle_id() -> String: return "slider"
 func title() -> String: return "Super Slider"
 
@@ -452,6 +485,7 @@ const HAPTICS := {
 	"fret": Haptics.TICK,
 	"undo": Haptics.TICK,
 	"star": Haptics.TICK,
+	"theme": Haptics.GOOD,
 	"reset": Haptics.TAP,
 	"confetti": Haptics.BUMP,
 	"hint": Haptics.GOOD,
@@ -548,6 +582,7 @@ func day_dict() -> Dictionary:
 			"blocks": _state.start_blocks.duplicate(true), "gate": Gen.GOAL,
 			"homesick": bool(_state.homesick)},
 		"solution": {"tray": Gen.encode(key), "moves": line},
+		"theme": String(_theme.get("id", "")),
 		"metrics": {"par": int(_state.par), "moves": line.size(), "blocks": blocks.size(),
 			"band": int(_state.band), "homesick": bool(_state.homesick),
 			"positions": int(r.get("keys", PackedInt64Array()).size()),
@@ -560,6 +595,7 @@ func day_dict() -> Dictionary:
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_close_card()
 	_state.build(rng, difficulty, bank_step)
+	_theme = _night_picture()
 	max_hearts = State.hearts_for(difficulty)
 	max_moves = _state.moves_budget()
 	_heart_used = false
@@ -616,6 +652,9 @@ func _deal() -> void:
 	_solved_at = -1.0
 	_won = false
 	_halfway = false
+	_pic_shown = null
+	_pic_done = false
+	_live_big = null
 	if _heart_layer != null:
 		_heart_layer.queue_redraw()
 
@@ -1069,10 +1108,21 @@ func _draw() -> void:
 		_build_floor(t)
 		_live = _build_live(t)
 	var shown: Array = []
-	for m in [_still, _floor, _live]:
+	for m in [_still, _floor]:
 		if m != null:
 			draw_mesh(m, null, xf, tint)
 			shown.append(m)
+	if themed() and _won:
+		_build_picture(t)
+		if _pic_shown != null:
+			draw_mesh(_pic_shown, null, xf, tint)
+			shown.append(_pic_shown)
+	if _live != null:
+		draw_mesh(_live, null, xf, Color(1.0, 1.0, 1.0, seen * _others_left(t)))
+		shown.append(_live)
+	if _live_big != null:
+		draw_mesh(_live_big, null, xf, tint)
+		shown.append(_live_big)
 	_draw_count(seen)
 	_draw_toast(t, shown)
 	_shown = shown
@@ -1197,6 +1247,8 @@ func _build_floor(t: float) -> void:
 		Block.mat(b, o, s, glow)
 	for c in Gen.N:
 		if _state.block_at(c) < 0:
+			if themed() and not _won:
+				_inlay(b, c)
 			Block.hollow(b, _pt(_xy(c)), s)
 	_draw_home_line(b, t)
 	_draw_trail(b, t)
@@ -1216,6 +1268,7 @@ func _build_live(t: float) -> ArrayMesh:
 		_rm = RunMesh.new(_make_look)
 	if s != _look_cell:
 		_rm.reset()
+		_rm_big = null
 		_look_cell = s
 	_rm.begin()
 	var order: Array = range(_state.blocks.size())
@@ -1224,14 +1277,31 @@ func _build_live(t: float) -> ArrayMesh:
 	# the big block walks out over the frame, so it is drawn after the doors
 	order.sort_custom(func(a, z): return _rank(a, held, big) < _rank(z, held, big))
 	var doors_drawn := false
+	# On a themed win the big block is a mesh of its own: the others fade
+	# off the floor under it (`_others_left`).
+	var apart := themed() and _won
+	_live_big = null
 	for p: int in order:
 		if p == big and _won and not doors_drawn:
 			_put_doors(o, s, t)
 			doors_drawn = true
+		if p == big and apart:
+			continue
 		_block(p, t)
 	if not doors_drawn:
 		_put_doors(o, s, t)
-	return _rm.mesh()
+	var others := _rm.mesh()
+	if apart and big >= 0:
+		if _rm_big == null:
+			_rm_big = RunMesh.new(_make_look)
+			_rm_big.share_shapes(_rm)
+		var keep := _rm
+		_rm = _rm_big
+		_rm.begin()
+		_block(big, t)
+		_live_big = _rm.mesh()
+		_rm = keep
+	return others
 
 func _put_doors(o: Vector2, s: float, t: float) -> void:
 	var b := Face.Builder.new()
@@ -2378,6 +2448,10 @@ func _head(t: float) -> Vector2:
 # --- the win ---
 
 func flat_win() -> Dictionary:
+	if themed():
+		# the thing's name takes the shortest's place: with both the line
+		# runs off a phone's width
+		return {"faces": [], "subtitle": tr("SL_WIN_THEME") % [String(_theme.name), moves]}
 	return {"faces": [], "subtitle": _win_line()}
 
 ## Out in the shortest way, or in how many against it.
@@ -2393,7 +2467,16 @@ func win_delay() -> float:
 		return Motion.REDUCED_TIME
 	var walk := maxf(0.0, _solved_at - _now()) + GLOW_TIME + DOOR_TIME * 0.6 + EXIT_TIME + WIN_HOLD
 	var party := maxf(0.0, _party_at - _now()) + PARTY_TIME if _party_at < INF else walk
-	return maxf(walk, party)
+	# a themed day's card waited (win_lead) for the pour: what is left after it
+	return maxf(0.3, maxf(walk, party) - win_lead())
+
+## A themed day holds the win screen back until the thing under the blocks
+## is poured and seen: the card would name it first, and cover the floor.
+func win_lead() -> float:
+	if not themed() or not _won or Motion.reduce:
+		return 0.0
+	# a reopened day (solved long ago) shows it at once
+	return maxf(0.0, _solved_at + _theme_span() + THEME_SEE - _now())
 
 func _on_solved() -> void:
 	var t := _now()
@@ -2413,6 +2496,9 @@ func _on_solved() -> void:
 	_streak_gen += 1
 	_clear_gags()
 	var total := _solved_at - t + GLOW_TIME + DOOR_TIME + EXIT_TIME + Motion.SOLVE_TIME + 0.6
+	if themed():
+		total = maxf(total, _solved_at - t + _theme_span() + 0.1)
+		_theme_win(t)
 	_busy_for(total)
 	_after(_solved_at - t, fx.buzz.bind(Haptics.WIN))
 	if not Motion.reduce:
@@ -2772,3 +2858,122 @@ func _draw_stamp(now: float, shown: Array) -> void:
 
 func _now() -> float:
 	return Time.get_ticks_msec() / 1000.0
+
+# --- the daily theme (2026-11-06) ---
+
+func themed() -> bool:
+	return not _theme.is_empty()
+
+## The night's picture under the tray: only a daily dealt from its day,
+## never New, the tutorial or the menu card. The deal never reads it.
+func _night_picture() -> Dictionary:
+	if bank_step != 0 or daily_key == 0:
+		return {}
+	for side in THEMED_SIZES:
+		var pic := ThemedPictures.picture(daily_key, int(side))
+		if not pic.is_empty():
+			return pic
+	return {}
+
+## The beads a picture of `n` squares lays to a cell (it spans THEME_ROWS
+## cells both ways, so a hollow always shows whole beads).
+func _per_cell() -> int:
+	return maxi(1, (_theme.rows as Array).size() / THEME_ROWS)
+
+## Bead (`r`, `c`)'s colour, or a clear colour where the picture is bare.
+func _bead(r: int, c: int) -> Color:
+	var rows: Array = _theme.rows
+	if r < 0 or r >= rows.size():
+		return Color(0, 0, 0, 0)
+	var row: String = rows[r]
+	if c < 0 or c >= row.length() or row[c] == ".":
+		return Color(0, 0, 0, 0)
+	var bead = Pal.PG_BEADS.get(String(ThemedPictures.letters().get(row[c], "")))
+	if bead == null:
+		return Color(0, 0, 0, 0)
+	var face: Color = bead
+	if face.get_luminance() > BEAD_PALE:
+		face = face.darkened(BEAD_PALE_SHADE)
+	return face
+
+## One bead of the picture at bead square (`r`, `c`), `k` (0 to 1) of the way
+## swelled in, at `alpha`.
+func _put_bead(b: Face.Builder, r: int, c: int, k: float, alpha: float) -> void:
+	var face := _bead(r, c)
+	if face.a <= 0.0 or k <= 0.0:
+		return
+	var bead := _cell() / float(_per_cell())
+	var sz := Vector2.ONE * bead * (1.0 - 2.0 * INLAY_PAD) * lerpf(0.4, 1.0, Motion.back_out(k))
+	var lo := _origin() + (Vector2(c, r) + Vector2.ONE * 0.5) * bead - sz * 0.5
+	b.fan(Face.Builder.round_rect(lo + Vector2(0.0, bead * 0.06), sz, bead * 0.22), Color(face.darkened(0.3), alpha * k))
+	b.fan(Face.Builder.round_rect(lo, sz, bead * 0.22), Color(face, alpha * k))
+
+## The patch of the inlay an empty cell shows, faint, in play.
+func _inlay(b: Face.Builder, cell: int) -> void:
+	var at := _xy(cell)
+	if int(at.y) >= THEME_ROWS:
+		return
+	var k := _per_cell()
+	for r in range(int(at.y) * k, (int(at.y) + 1) * k):
+		for c in range(int(at.x) * k, (int(at.x) + 1) * k):
+			_put_bead(b, r, c, 1.0, INLAY)
+
+## Seconds since the gate opened under the win, the theme's clock.
+func _theme_clock(t: float) -> float:
+	return t - _solved_at - GLOW_TIME - DOOR_TIME * 0.6
+
+## How much of the others is left on the floor: all of it in play, fading
+## off as the big block walks out on a themed win.
+func _others_left(t: float) -> float:
+	if not themed() or not _won:
+		return 1.0
+	if Motion.reduce:
+		return 0.0
+	var u := clampf((_theme_clock(t) - THEME_FADE_AT) / THEME_FADE, 0.0, 1.0)
+	return 1.0 - u * u * (3.0 - 2.0 * u)
+
+## How far bead row `r` has swelled in, 0 to 1: the gate's side first.
+func _row_in(r: int, t: float) -> float:
+	if Motion.reduce:
+		return 1.0
+	var n := (_theme.rows as Array).size()
+	var e := _theme_clock(t) - THEME_PAINT_AT - THEME_STEP * float(n - 1 - r)
+	return clampf(e / THEME_BEAD, 0.0, 1.0)
+
+## The whole picture on the floor, poured row by row; kept once every row
+## is down.
+func _build_picture(t: float) -> void:
+	var key := [_cell(), _origin()]
+	if _pic_done and key == _pic_key and _pic_shown != null:
+		return
+	_pic_key = key
+	var n := (_theme.rows as Array).size()
+	var b := Face.Builder.new()
+	var all := true
+	for r in n:
+		var k := _row_in(r, t)
+		if k < 1.0:
+			all = false
+		if k <= 0.0:
+			continue
+		for c in n:
+			_put_bead(b, r, c, k, 1.0)
+	_pic_shown = b.mesh() if not b.verts.is_empty() else null
+	_pic_done = all
+
+## When the pour ends, after the solve, for the win's wait and its sparkle.
+func _theme_span() -> float:
+	var n := (_theme.rows as Array).size()
+	return GLOW_TIME + DOOR_TIME * 0.6 + THEME_PAINT_AT + THEME_STEP * float(n) + THEME_BEAD
+
+## The win's theme: the cue as the first row pours, a sparkle over the
+## thing once it is all down. Under reduce motion it is simply there.
+func _theme_win(t: float) -> void:
+	if Motion.reduce:
+		_after(0.0, fx.cue.bind("theme"))
+		return
+	var n := (_theme.rows as Array).size()
+	var from := _solved_at - t + GLOW_TIME + DOOR_TIME * 0.6 + THEME_PAINT_AT
+	_after(from, fx.cue.bind("theme"))
+	_after(from + THEME_STEP * float(n) + THEME_BEAD, func() -> void:
+		fx.sparkle(_pt(Vector2(THEME_ROWS, THEME_ROWS) * 0.5), Pal.SUN))

@@ -143,3 +143,43 @@ every band, Insane's Homesick graph included.
   it (stars out, the toast, Undo, stars back).
 - Mine, the user's to call: the ladder (a fifth / three fifths), Undo still
   counting, Undo on Insane, the stranded line.
+
+### The thing under the blocks (2026-11-06, the daily theme)
+
+Roadmap row C ("the big block wears the 10 picture; mock it first"), built
+on the user's "do everything autonomous". The roadmap's idea was dropped:
+the big block is the mascot (face, gaze, blink), and a picture on it fights
+the face and the hard wood. Instead, after the hidden-picture sliding apps
+(the picture under the board, uncovered as you play), **the day's thing is
+inlaid in the tray's floor under the blocks**.
+
+- `_night_picture()`: a daily from its day only (`bank_step == 0`,
+  `daily_key != 0`), the night's 24 picture, else its 12
+  (`THEMED_SIZES`). The deal never reads it.
+- It spans the top `THEME_ROWS` (4) rows, whole beads to a cell (6 or 3),
+  so a hollow always shows whole beads; the gate's row stays plain wood.
+- In play each empty cell shows its patch of beads at `INLAY` (0.42),
+  under the hollow's shade (`_inlay`, in the floor mesh, so it is rebuilt
+  only when the tray changes). Every move uncovers a different bit.
+- The win: once the gate is open (`_theme_clock`), the others fade off the
+  floor (`_others_left`, THEME_FADE_AT 0.1, THEME_FADE 0.4) while the big
+  block walks on (it is a mesh of its own on a themed win, `_rm_big`
+  sharing `_rm`'s shapes), and the thing pours into its beads from the
+  gate's row up (THEME_PAINT_AT 0.4, a row every 0.025 s, a bead 0.3 s),
+  the `theme` cue as it starts, a sparkle once down. **The win screen waits
+  for it** (`win_lead`, Jewel Box's and Mini Golf's hook: the pour plus
+  THEME_SEE 0.45, about 2.3 s after the last move): shown at once, the card
+  named the thing over a tray still full of blocks and covered the walk
+  out. `win_delay` is what is left of the party after the lead. The card
+  reads `SL_WIN_THEME` ("Under the blocks: %s. Out in %d moves."; the
+  shortest is dropped, the line ran off a phone). A reopened day shows the
+  picture, the tray empty, the cat asleep, with no lead. Reduce motion: no
+  lead, the picture is simply there.
+- Pale beads are darkened past luminance 0.82 (Market's rule), so a white
+  bowl reads on the oak.
+- Sounds: `bump` -> bank tongue, `slide` -> bank token, `theme` new.
+- Checked: `tests/_shot_slider.gd -- d=0 theme` (Easy, clay bowl 24,
+  ANGLE): 113 draw calls peak through the pour; `theme_restore` on Medium,
+  91; `tests/_win.gd -- slider` PASS. Owed: phone, ear (three cues), pt/es
+  read of SL_WIN_THEME, reduce motion and Insane's Homesick line over the
+  inlay unseen.

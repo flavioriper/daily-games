@@ -1811,6 +1811,7 @@ HTP_SL_UNDO_BODY_HOME,"Undo takes your last move back, and Reset puts every bloc
 SL_TIP_STARS,A move of the shortest way keeps your stars; a wander spends them.,Um lance do caminho mais curto mantém suas estrelas; um passeio as gasta.,Una jugada del camino más corto mantiene tus estrellas; un paseo las gasta.
 SL_STRANDED,The red block can't get home from here. Undo a few moves.,Daqui o bloco vermelho não chega em casa. Desfaça alguns lances.,Desde aquí el bloque rojo no llega a casa. Deshaz algunas jugadas.
 SL_WIN_BEST,Out in %d moves: the shortest way there is!,Saiu em %d lances: o caminho mais curto que existe!,Salió en %d jugadas: ¡el camino más corto que hay!
+SL_WIN_THEME,Under the blocks: %s. Out in %d moves.,Debaixo dos blocos: %s. Saiu em %d lances.,Bajo los bloques: %s. Salió en %d jugadas.
 HTP_SL_HINT_BODY_ONE,The bulb slides the next block of the shortest way out for you. You have one hint.,A lâmpada desliza para você o próximo bloco do caminho mais curto. Você tem uma dica.,La bombilla desliza por ti el siguiente bloque del camino más corto. Tienes una pista.
 HTP_SL_HINT_BODY_N,The bulb slides the next block of the shortest way out for you. You have %d hints.,A lâmpada desliza para você o próximo bloco do caminho mais curto. Você tem %d dicas.,La bombilla desliza por ti el siguiente bloque del camino más corto. Tienes %d pistas.
 HTP_SL_DRAG_CAP,Drag a block into an empty cell,Arraste um bloco para uma casa vazia,Arrastra un bloque a una casilla vacía
