@@ -283,8 +283,40 @@ generic enough to let the agent be creative". Now:
   flash, shy = thin + dim + glance away, sleep = doze + dim), with the rule:
   do the closest mix at once and say what you did, never "I'll try" and
   nothing, "can't" only when nothing comes close.
-- `move` and `dots` point at `tone` 0 for leaving or vanishing whole. The face
-  still cannot leave the screen by moving.
+- `move` and `dots` point at `tone` 0 for vanishing whole.
+
+The same day, second pass ("check how we can make others tools way more open
+to agent creativity", then "do all"):
+
+- **`perform`**, a routine: `steps` each any mix of swarm, move, dots, tone,
+  draw (rows/name/clear) and `wait`, `repeat` 1-20, `back` (default) puts
+  eyes, place, size, speed, colour, dots and face back, `stop` ends one. The
+  server checks each step with that tool's own handler and sends `at`
+  offsets; the phone (`apply_perform`, `_perf_fire`) fires them with the
+  same `apply_*` a single call uses. Not `_run_script`: that one waits while
+  the face speaks and ends in `_rest`. At most 120 s, 40 written steps.
+- **swarm** gains `eyes` (0 shut .. 1.5 wide, eased, `seconds` for a
+  moment), `blink`, `wink` left/right (per eye by `_ex`).
+- **move** gains `size` (0.4-1.8, `_scale` multiplies sc, the cloud, halo,
+  rings, room pool, clamp and `on_face`; `_R` is untouched), `speed`
+  (0.25-3, the spring and its cap), and `peek-<edge>` (half off) and
+  `off-<edge>` (4.2 radii off) spots; a picture still stays on screen. `to`
+  is optional now.
+- **draw** gains `frames` (2-12 same-size drawings, `frame_seconds`, `loops`):
+  the server sends them as a `perform` of rows, and redrawing over a picture
+  moves the same dots to the new shape, so frames flow, no flicker.
+- Every `seconds` shares one cap, 0.5-120. Near misses are acted on, not
+  refused (`_nearest`: "lef" is left, "vilet" violet, "hide" off-right),
+  and common colour words map to a tone or hex (`COLOUR_WORDS`).
+- Intensity 0 also closes the rings and the room's pool (`minf(_inten, 1)`):
+  before, the rings stayed at 0.
+- The voice's expression (`seeds/swarm.json`): 21 deliveries (whispers,
+  mischievously, dramatically, singing, slowly...) and 9 sounds (laughs,
+  giggles, gasps, hums...), 2 tags a reply, all in the character rule;
+  pipecat writes them as ElevenLabs audio tags, subtitles drop them. Unheard.
+- Old phone builds: `perform`, eyes, size, speed and peek/off are ignored
+  (unknown tool or key), intensity clamps at 0.2.
+- Probe: `tests/_probe_swarm_dials.gd` (untracked), 13 checks and snapshots.
 
 ## Testing a call locally
 

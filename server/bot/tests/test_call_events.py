@@ -51,7 +51,7 @@ def test_tool_words_have_no_desktop():
     assert LOOK_WORDS == ["ahead", "point", *DIRECTIONS]
     assert IDLE == ["ahead", "wander", "doze"]
     assert "point" in PLACES and not any("panel" in p for p in PLACES)
-    assert box().names() == ["swarm", "move", "draw", "dots", "tone", "voice", "see"]
+    assert box().names() == ["swarm", "move", "draw", "dots", "tone", "perform", "voice", "see"]
     for tool in SCREEN:
         words = [tool["description"]] + [json.dumps(p) for p in tool["properties"].values()]
         for w in words:
@@ -89,7 +89,7 @@ async def test_tone_checks():
     assert "error" in await run(b, "tone", tone="plaid")
     assert "error" in await run(b, "tone")
     assert "error" in await run(b, "tone", intensity="bright")
-    assert "error" in await run(b, "tone", tone="gold", seconds=99)
+    assert "error" in await run(b, "tone", tone="gold", seconds=999)
     assert (await run(b, "tone", tone="#3366FF"))["tone"] == {"tone": "#3366ff"}
     assert (await run(b, "tone", tone="gold", intensity=1.4, seconds=3))["tone"] == {"tone": "gold", "intensity": 1.4, "seconds": 3}
 

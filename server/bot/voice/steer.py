@@ -18,7 +18,7 @@ from policy.mood import mood
 from studio.corrections import FACTS, detect
 
 
-SILENT_TOOLS = {"swarm", "move", "draw", "dots", "tone", "see", "voice"}  # tools that act on the screen, not the world: no typing sound, no bridge line
+SILENT_TOOLS = {"swarm", "move", "draw", "dots", "tone", "perform", "see", "voice"}  # tools that act on the screen, not the world: no typing sound, no bridge line
 
 
 class Clips(Protocol):

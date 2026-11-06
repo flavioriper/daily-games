@@ -98,6 +98,13 @@ const TONES := {
 	"orange": Color("ffa45c"), "gold": Color("ffd166"), "white": Color("e6eef0"),
 }
 const INTENSITY := [0.0, 1.8]  # 0 = gone from the screen, still on the call (the user, 2026-11-06)
+## The dials the swarm and move tools turn (the user, 2026-11-06: "way more
+## open to agent creativity"): how open the eyes are, the face's size, and how
+## fast it travels, each a multiplier of the face as it is.
+const EYES := [0.0, 1.5]
+const SCALE := [0.4, 1.8]
+const SPEED := [0.25, 3.0]
+const WINK_MS := 380.0
 const ROOM := Color("0b1510")
 const ROOM_DEEP := Color("040806")
 ## The one light in the room: from the upper left, toward the viewer.
@@ -231,6 +238,22 @@ var _tone_to := COL_P
 var _inten := 1.0
 var _inten_to := 1.0
 var _tone_back = null  # {tone, intensity} to go back to, for a while
+var _eyes := 1.0
+var _eyes_to := 1.0
+var _eyes_back = null  # the eyes' openness to go back to, for a while
+var _eyes_at := 0.0
+var _wink := 0.0  # -1 the left eye (as seen), 1 the right, 0 none
+var _wink_until := 0.0
+var _scale := 1.0
+var _scale_to := 1.0
+var _speed := 1.0
+## The perform tool's routine: steps {at (s from the start), swarm, move,
+## dots, tone, draw} still to fire, when it started and ends (ms), and with
+## `back`, how the face was, to put back when it ends.
+var _perf: Array = []
+var _perf_t0 := 0.0
+var _perf_end := -1.0
+var _perf_snap = null
 var _tone_at := 0.0
 var _cp := COL_P
 var _cph := COL_PH
@@ -480,6 +503,16 @@ func open() -> void:
 	_inten = 1.0
 	_inten_to = 1.0
 	_tone_back = null
+	_eyes = 1.0
+	_eyes_to = 1.0
+	_eyes_back = null
+	_wink = 0.0
+	_scale = 1.0
+	_scale_to = 1.0
+	_speed = 1.0
+	_perf.clear()
+	_perf_end = -1.0
+	_perf_snap = null
 	_palette()
 	_bloom_out.modulate.a = BLOOM_STRENGTH
 	_rings_open = 0.0
@@ -704,6 +737,20 @@ static func _pill_point() -> Vector2:
 	return Vector2.ZERO
 
 func _spot(to: String) -> Vector2:
+	# Half off an edge (peeking in) or right off it (gone that way): the face
+	# only; a picture keeps all of itself on screen.
+	if not _pic_on and (to.begins_with("peek-") or to.begins_with("off-")):
+		var r := _R * _scale
+		var out := r * (0.0 if to.begins_with("peek-") else 4.2)
+		match to.get_slice("-", 1):
+			"left":
+				return Vector2(-out, size.y * 0.42)
+			"right":
+				return Vector2(size.x + out, size.y * 0.42)
+			"top":
+				return Vector2(size.x * 0.5, -out)
+			"bottom":
+				return Vector2(size.x * 0.5, size.y + out)
 	var f: Vector2 = SPOTS.get(to, SPOTS.centre)
 	return _clamp_face(Vector2(f.x * size.x, f.y * size.y))
 
@@ -712,8 +759,8 @@ func _clamp_face(p: Vector2) -> Vector2:
 		# A picture keeps all of itself on screen, clear of the subtitles.
 		var half := Vector2(_pic_w, _pic_h) * _pic_cell() * 0.5 + Vector2(16, 16)
 		return Vector2(_fit_axis(p.x, half.x, size.x - half.x), _fit_axis(p.y, half.y + 40.0, size.y - half.y - 200.0))
-	var m := _R * 1.25
-	return Vector2(clampf(p.x, m, size.x - m), clampf(p.y, m, size.y - _R * 2.4))
+	var m := _R * _scale * 1.25
+	return Vector2(_fit_axis(p.x, m, size.x - m), _fit_axis(p.y, m, size.y - _R * _scale * 2.4))
 
 func _goal() -> Vector2:
 	if _place.to == "point":
@@ -728,6 +775,20 @@ func apply_swarm(cmd: Dictionary) -> void:
 	if cmd.has("idle"):
 		_idle = String(cmd.idle)
 		_note("idle set  " + _idle)
+	if cmd.has("eyes"):
+		_eyes_back = null
+		if cmd.has("seconds"):
+			_eyes_back = _eyes_to
+			_eyes_at = _now + float(cmd.seconds) * 1000.0
+		_eyes_to = clampf(float(cmd.eyes), EYES[0], EYES[1])
+		_note("eyes  %.2f" % _eyes_to + ("  · %ss" % cmd.seconds if cmd.has("seconds") else ""))
+	if bool(cmd.get("blink", false)):
+		_blink_until = _now + 130.0
+		_note("blink")
+	if cmd.has("wink"):
+		_wink = -1.0 if String(cmd.wink) == "left" else 1.0
+		_wink_until = _now + WINK_MS
+		_note("wink  " + String(cmd.wink))
 	if not cmd.has("look"):
 		return
 	_glance_back = null
@@ -739,6 +800,16 @@ func apply_swarm(cmd: Dictionary) -> void:
 
 ## The move tool: where the face sits, for a visit or for good.
 func apply_move(cmd: Dictionary) -> void:
+	if cmd.has("size"):
+		_scale_to = clampf(float(cmd.size), SCALE[0], SCALE[1])
+		if Motion.reduce:
+			_scale = _scale_to
+		_note("size  %.2f" % _scale_to)
+	if cmd.has("speed"):
+		_speed = clampf(float(cmd.speed), SPEED[0], SPEED[1])
+		_note("speed  %.2f" % _speed)
+	if not cmd.has("to"):
+		return
 	_visit_back = null
 	if cmd.has("seconds"):
 		_visit_back = _place
@@ -875,6 +946,60 @@ func snapshot(width := 384) -> Dictionary:
 	var jpg := img.save_jpg_to_buffer(0.75)
 	_note("see  %dx%d" % [img.get_width(), img.get_height()])
 	return {"jpg": Marshalls.raw_to_base64(jpg), "w": img.get_width(), "h": img.get_height(), "bytes": jpg.size()}
+
+## The perform tool: a routine of the other tools' commands, each fired at
+## its `at` (seconds from the start) by the same apply_* a single call uses;
+## with `back` (the default) the face is put back as it was when it ends
+## (`end` seconds). A new routine ends the one playing; `stop` ends it early.
+func apply_perform(cmd: Dictionary) -> void:
+	_perf_finish()
+	if bool(cmd.get("stop", false)):
+		_note("perform  stop")
+		return
+	var steps: Array = cmd.get("steps", [])
+	_perf = steps.duplicate()
+	_perf.sort_custom(func(a, b): return float(a.get("at", 0.0)) < float(b.get("at", 0.0)))
+	_perf_t0 = _now
+	_perf_end = _now + float(cmd.get("end", 0.0)) * 1000.0
+	_perf_snap = _face_now() if bool(cmd.get("back", true)) else null
+	_note("perform  %d steps · %ss" % [_perf.size(), cmd.get("end", 0)])
+
+func _perf_fire(st: Dictionary) -> void:
+	if st.get("move") is Dictionary:
+		apply_move(st.move)
+	if st.get("swarm") is Dictionary:
+		apply_swarm(st.swarm)
+	if st.get("dots") is Dictionary:
+		apply_dots(st.dots)
+	if st.get("tone") is Dictionary:
+		apply_tone(st.tone)
+	if st.get("draw") is Dictionary:
+		apply_draw(st.draw)
+
+func _perf_finish() -> void:
+	_perf.clear()
+	_perf_end = -1.0
+	if _perf_snap == null:
+		return
+	var was: Dictionary = _perf_snap
+	_perf_snap = null
+	if _pic_on and not bool(was.pic):
+		apply_draw({"clear": true})
+	var place: Dictionary = was.place.duplicate()
+	place.erase("seconds")
+	apply_move(place.merged({"size": was.scale, "speed": was.speed}))
+	var look: Dictionary = was.look.duplicate()
+	look.erase("seconds")
+	apply_swarm(look.merged({"eyes": was.eyes, "idle": was.idle}) if was.idle != "" else look.merged({"eyes": was.eyes}))
+	apply_tone({"tone": "#" + (was.tone as Color).to_html(false), "intensity": was.inten})
+	if _live_count() != int(was.dots):
+		apply_dots({"total": int(was.dots)})
+	_note("perform  back")
+
+## How the face is now, for a routine to put back.
+func _face_now() -> Dictionary:
+	return {"place": _place.duplicate(), "look": _look.duplicate(), "idle": _idle, "tone": _tone_to, "inten": _inten_to,
+		"eyes": _eyes_to, "scale": _scale_to, "speed": _speed, "dots": _live_count(), "pic": _pic_on}
 
 ## The tone tool: the swarm's `tone` (a name of TONES or "#rrggbb") and its
 ## `intensity` (0 invisible .. 1 as it is .. 1.8 blazing), either or both,
@@ -1376,6 +1501,17 @@ func _step() -> void:
 		_clear_picture()
 		_note("draw  back to the face")
 	_pic_k += ((1.0 if _pic_on else 0.0) - _pic_k) * 0.05
+	if _eyes_back != null and now >= _eyes_at:
+		_eyes_to = float(_eyes_back)
+		_eyes_back = null
+	if _perf_end >= 0.0:
+		var t := (now - _perf_t0) / 1000.0
+		while not _perf.is_empty() and float(_perf[0].get("at", 0.0)) <= t:
+			_perf_fire(_perf.pop_front())
+		if _perf.is_empty() and now >= _perf_end:
+			_perf_finish()
+	_eyes += (_eyes_to - _eyes) * 0.2
+	_scale += (_scale_to - _scale) * (1.0 if Motion.reduce else 0.06)
 	if _tone_back != null and now >= _tone_at:
 		var back: Dictionary = _tone_back
 		_tone_back = null
@@ -1405,7 +1541,9 @@ func _step() -> void:
 	var blink := now < _blink_until
 	var dozing := 1.0 if (_idle_now and _idle == "doze") else 0.0
 	_doze += (dozing - _doze) * (0.004 if _idle_now else 0.2)
-	_eye_open += (((0.08 if blink else (0.32 if _state == "thinking" else 1.0)) * (1.0 - 0.72 * _doze)) - _eye_open) * 0.3
+	_eye_open += (((0.08 if blink else (0.32 if _state == "thinking" else 1.0)) * (1.0 - 0.72 * _doze) * _eyes) - _eye_open) * 0.3
+	if _wink != 0.0 and now >= _wink_until:
+		_wink = 0.0
 
 	var t := _look_target()
 	var tg := Vector2.ZERO
@@ -1418,11 +1556,12 @@ func _step() -> void:
 	_gaze += (tg - _gaze) * 0.12
 
 	var g := _goal()
-	_cv = (_cv + (g - _c) * 0.0075) * 0.875
+	_cv = (_cv + (g - _c) * 0.0075 * _speed) * 0.875
 	var cm := _cv.length()
-	if cm > 9.0 * u:
-		_cv *= 9.0 * u / cm
-		cm = 9.0 * u
+	var top := 9.0 * u * _speed
+	if cm > top:
+		_cv *= top / cm
+		cm = top
 	_c += _cv
 	var mvn := minf(1.0, cm / (6.0 * u))
 	_travel += (mvn - _travel) * (0.08 if cm > _travel * 6.0 * u else 0.025)
@@ -1433,7 +1572,7 @@ func _step() -> void:
 		fs = breathe + 0.11 * _level
 	elif _state == "thinking":
 		fs = breathe * 0.97
-	var sc := fs * _R
+	var sc := fs * _R * _scale
 	var cx := _c.x
 	var cy := _c.y
 	var gx := _gaze.x
@@ -1511,7 +1650,7 @@ func _step() -> void:
 			mx = 14.0 * u
 		elif role == Role.EYE:
 			var lx := _ex[i] * 0.17 + _lx[i] * 0.05
-			var ly := 0.03 + _ly[i] * 0.19 * eo
+			var ly := 0.03 + _ly[i] * 0.19 * (eo * 0.08 if _wink == _ex[i] else eo)
 			var lz := _z[i]
 			var rx := lx * cyw + lz * syw
 			var rz := lz * cyw - lx * syw
@@ -1536,7 +1675,7 @@ func _step() -> void:
 			var env := 1.0
 			if voice:
 				env = 1.0 + 0.45 * env_lvl * (0.7 + 0.3 * absf(sin(now / 150.0 + ph2 * 0.2)))
-			var rr := _R * _r[i] * (1.0 + 0.12 * sin(now / 1300.0 + ph2)) * env * push
+			var rr := _R * _scale * _r[i] * (1.0 + 0.12 * sin(now / 1300.0 + ph2)) * env * push
 			var wgt := clampf((3.6 - _r[i]) / 2.3, 0.15, 1.0)
 			var r2 := rr * (1.0 - 0.5 * mv)
 			tx = cx + cos(_ang[i]) * r2
@@ -1602,23 +1741,25 @@ func _render(dt: float) -> void:
 	var listening := _state == "listening"
 	var halo_a := 0.2 if listening else (0.12 + 0.06 * _level)
 	_halo.position = _c
-	var hs := _R * 4.4 / 256.0
+	var hs := _R * _scale * 4.4 / 256.0
 	_halo.scale = Vector2(hs, hs)
 	_halo.modulate = Color(_cp, (halo_a if _formed else 0.0) * (1.0 - _pic_k) * _inten)
 	_bloom_out.modulate.a = BLOOM_STRENGTH * minf(_inten, 1.4)
 	if _formed:
 		_rings_open = minf(1.0, _rings_open + dt / 1.4)
-	var rs := _R * 3.8
+	var rs := _R * _scale * 3.8
+	_rings_mat.set_shader_parameter("px", 1.0 / (_R * _scale))
 	for rg in [_rings, _rings_bloom]:
 		rg.position = _c
 		rg.scale = Vector2(rs, rs)
 	# Under reduced motion the rings stand still and no streak splits its colours.
 	_rings_mat.set_shader_parameter("t", 0.0 if reduce else now / 1000.0)
 	_rings_mat.set_shader_parameter("level", _level)
-	_rings_mat.set_shader_parameter("open", _rings_open * (0.5 if reduce else 1.0) * (1.0 - _pic_k))
+	_rings_mat.set_shader_parameter("open", _rings_open * (0.5 if reduce else 1.0) * (1.0 - _pic_k) * minf(_inten, 1.0))
 	_room_mat.set_shader_parameter("centre", _c)
+	_room_mat.set_shader_parameter("radius", _R * _scale)
 	_room_mat.set_shader_parameter("level", _level)
-	_room_mat.set_shader_parameter("lit", _rings_open)
+	_room_mat.set_shader_parameter("lit", _rings_open * minf(_inten, 1.0))
 	var cvx := _cv.x
 	var cvy := _cv.y
 	var yaw := _gaze.x * 0.36
@@ -1793,7 +1934,7 @@ func _render(dt: float) -> void:
 	# streaming after a move).
 	if _links_n > 0:
 		var lb := _link_buf
-		var sc := _R
+		var sc := _R * _scale
 		var wdt := 1.0 + 0.45 * u
 		var lr := _cp.r + (_cph.r - _cp.r) * 0.6
 		var lg := _cp.g + (_cph.g - _cp.g) * 0.6
@@ -1870,5 +2011,5 @@ func on_face(p: Vector2) -> bool:
 	if _pic_on:
 		var half := Vector2(_pic_w, _pic_h) * _pic_cell() * 0.5
 		return absf(p.x - _c.x) <= half.x + 24.0 and absf(p.y - _c.y) <= half.y + 24.0
-	return p.distance_to(_c) <= _R * 1.3
+	return p.distance_to(_c) <= _R * _scale * 1.3
 

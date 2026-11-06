@@ -14,13 +14,9 @@
   "stability": 0.5,
   "brief": "warm, playful and kind, full of energy but supportive: ready to play and eager to know you",
   "expression": {
-   "deliveries": [
-    "friendly",
-    "cheerful",
-    "gentle"
-   ],
-   "sounds": [],
-   "max_tags_per_reply": 1
+   "deliveries": ["friendly", "cheerful", "gentle", "excited", "delighted", "amazed", "surprised", "curious", "thoughtful", "warmly", "reassuring", "sympathetic", "mischievously", "playfully", "sheepishly", "cute", "dramatically", "whispers", "singing", "slowly", "quickly"],
+   "sounds": ["laughs", "giggles", "chuckles", "sighs", "gasps", "woo", "short breath", "inhales deeply", "hums"],
+   "max_tags_per_reply": 2
   }
  },
  "brain": {

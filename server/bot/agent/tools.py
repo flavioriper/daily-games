@@ -1,5 +1,6 @@
 """What the digital persona can do on a call, for both the voice pipeline and the typed path. Every step is reported to the presenter view as a `tool` stage."""
 import asyncio
+import difflib
 import base64
 import json
 import re
@@ -42,75 +43,103 @@ BANK_IDS = [p["id"] for band in json.loads(BANK.read_text())["bands"] for p in b
 BEADS = ["maroon", "red", "coral", "rust", "orange", "yellow", "butter", "cream", "white", "pink", "rose", "lilac", "purple", "sky", "blue", "navy", "teal", "lime", "green", "forest", "tan", "brown", "dark", "silver", "grey"]  # core/palette.gd Pal.PG_BEADS
 TONES = ["green", "mint", "cyan", "blue", "violet", "pink", "red", "orange", "gold", "white"]  # bot/swarm_face.gd TONES
 HEX = re.compile(r"#?[0-9a-fA-F]{6}")
+COLOUR_WORDS = {"purple": "violet", "lilac": "violet", "lavender": "#c9b6ff", "magenta": "#ff6ff0", "rose": "pink", "teal": "#4fd1c5", "aqua": "cyan", "turquoise": "#5ee6d8",
+                "yellow": "#ffe45c", "amber": "#ffbf47", "lime": "#c4f25c", "silver": "white", "grey": "#b8c4c8", "gray": "#b8c4c8", "peach": "#ffb38a", "coral": "#ff8a7a", "sky": "#9fd6ff", "navy": "#6f86ff"}
 DOTS = (1, 2400)
 DOTS_FROM, DOTS_TO = ["face", "edges", "point"], ["fade", "face", "edges"]
 ROWS_MOST = 96
-COMMANDS = ("swarm", "move", "draw", "dots", "tone", "voice")  # result keys the phone applies, sent as `tool {name, cmd}` (the phone keeps `voice` for the next hello)
+COMMANDS = ("swarm", "move", "draw", "dots", "tone", "perform", "voice")  # result keys the phone applies, sent as `tool {name, cmd}` (the phone keeps `voice` for the next hello)
+SECONDS = (0.5, 120)  # every screen tool's `seconds`, one cap (the user, 2026-11-06: "way more open to agent creativity")
+EYES = (0.0, 1.5)
+SIZE = (0.4, 1.8)
+SPEED = (0.25, 3.0)
+PERFORM_MOST_S, PERFORM_STEPS, PERFORM_OUT = 120, 40, 400  # a routine's length, its written steps, and its steps once repeated
+FRAMES = (2, 12)
 SCREEN = [
     {"name": "swarm", "label": "Looking", "description": (
-        "Control your eyes on the person's phone screen, where your body is a swarm of glowing dots that forms your face. Takes effect at once; when they asked for it, say in a few words what you did, in the first person. Pass look, idle, or both. "
-        "look sets where your eyes go and stays until changed: ahead = straight at them (the default; use it for stop, look at me, back to normal); "
-        "left, right, up, down, up-left, up-right, down-left, down-right = look that way; "
-        "point = a spot on the screen given by x and y from 0 to 1 (0,0 top left, 1,1 bottom right), for things like the top right corner. "
-        "seconds makes it a glance: after that many seconds your eyes go back to where they were, e.g. glance left = left with seconds 2. "
-        "This tool only moves your eyes; to move your whole face elsewhere on screen use the move tool. "
-        "idle is what your eyes do on their own whenever they go quiet for a few seconds, until they talk again: ahead, wander (drift around the screen), doze (slowly half close, for a long quiet). "
-        "It is how you fill silence without words, so choose it yourself when it fits the moment, e.g. ahead after you ask them something, wander while they think, doze after a long quiet. "
-        "Setting idle on your own needs no words; never announce it unless they asked."),
-     "properties": {"look": {"type": "string", "description": "ahead, point, or a direction"}, "x": {"type": "number", "description": "0 to 1, only with look=point"}, "y": {"type": "number", "description": "0 to 1, only with look=point"}, "seconds": {"type": "number", "description": "Optional: a glance that returns after this many seconds (0.5 to 30)"}, "idle": {"type": "string", "enum": IDLE, "description": "What your eyes do when they go quiet"}},
+        "Your eyes on the person's phone screen, where your body is a swarm of glowing dots that forms your face. Pass any mix of: "
+        "`look` = where they point: ahead (straight at them), left, right, up, down, up-left, up-right, down-left, down-right, or point with x and y from 0 to 1 (0,0 top left, 1,1 bottom right); "
+        "`eyes` = how open they are: 0 shut, 0.3 a squint or sleepy, 1 as they are, 1.5 wide; "
+        "`blink` true to blink once now; `wink` left or right; "
+        "`idle` = what they do by themselves whenever the person goes quiet: ahead, wander (drift around, curious) or doze (slowly half close). "
+        "`seconds` makes a look or an eyes change a moment that goes back by itself. "
+        "Eyes say a lot without words: a squint at a joke, wide eyes at news, a wink at a secret, a look away when shy, shut eyes to count while they hide. "
+        "Your whole face moving is the move tool. A change on your own needs no words; when they asked, say in a few words what you did, in the first person."),
+     "properties": {"look": {"type": "string", "description": "ahead, point, or a direction"}, "x": {"type": "number", "description": "0 to 1, only with look=point"}, "y": {"type": "number", "description": "0 to 1, only with look=point"},
+                    "eyes": {"type": "number", "description": "0 shut to 1 open to 1.5 wide"}, "blink": {"type": "boolean"}, "wink": {"type": "string", "enum": ["left", "right"]},
+                    "seconds": {"type": "number", "description": "Optional: a moment that goes back after this many seconds (0.5 to 120)"}, "idle": {"type": "string", "enum": IDLE, "description": "What your eyes do when they go quiet"}},
      "required": [], "timeout": 2},
     {"name": "move", "label": "Moving", "description": (
-        "Move your face on the person's phone screen: the whole swarm travels there. Takes effect at once; when they asked for it, say in a few words what you did, in the first person. "
-        "to sets where your face sits and stays until changed: centre = the middle of the screen (the default; use it for come back, back to normal); "
-        "left, right, top, bottom, top-left, top-right, bottom-left, bottom-right = that side or corner of the screen; "
-        "point = a spot given by x and y from 0 to 1 (0,0 top left, 1,1 bottom right). Your face always stays fully on screen; to leave it, fade out with the tone tool. "
-        "seconds makes it a visit: after that many seconds your face goes back to where it was. While you draw, move moves the picture. "
-        "Move on your own only for a reason they can see; otherwise stay where they put you. Where your eyes go is the swarm tool."),
-     "properties": {"to": {"type": "string", "description": "centre, a side or corner, or point"}, "x": {"type": "number", "description": "0 to 1, only with to=point"}, "y": {"type": "number", "description": "0 to 1, only with to=point"}, "seconds": {"type": "number", "description": "Optional: a visit that returns after this many seconds (1 to 60)"}},
-     "required": ["to"], "timeout": 2},
+        "Your whole face on the person's phone screen: where it is, how big and how fast it travels; pass any mix of `to`, `size` and `speed`. "
+        "`to`: centre; left, right, top, bottom, top-left, top-right, bottom-left, bottom-right; point (x and y from 0 to 1, 0,0 top left); "
+        "peek-left, peek-right, peek-top, peek-bottom = half off that edge, peeking in; off-left, off-right, off-top, off-bottom = right off the screen that way, gone from sight. "
+        "`size` 0.4 (tiny) to 1 (as you are) to 1.8 (big), eased in. `speed` 0.25 (a slow drift) to 1 to 3 (a dart), for this move and the ones after. "
+        "`seconds` makes it a visit that goes back by itself. While you draw, move carries the picture, and a picture always stays on screen. "
+        "Shrink when shy, swell when proud, dart off and peek back in, drift to a corner to give them room. Where your eyes go is the swarm tool. When they asked, say in a few words what you did, in the first person."),
+     "properties": {"to": {"type": "string", "description": "centre, a side or corner, point, peek-<edge> or off-<edge>"}, "x": {"type": "number", "description": "0 to 1, only with to=point"}, "y": {"type": "number", "description": "0 to 1, only with to=point"},
+                    "size": {"type": "number", "description": "0.4 to 1.8, 1 as you are"}, "speed": {"type": "number", "description": "0.25 to 3, 1 as you are"},
+                    "seconds": {"type": "number", "description": "Optional: a visit that returns after this many seconds (0.5 to 120)"}},
+     "required": [], "timeout": 2},
     {"name": "draw", "label": "Drawing", "description": (
         "Draw a picture with your dots: your face comes apart and all your dots crowd into its shape where you are, still your own glowing dots in your tone, brighter where the picture is bright. "
-        "It comes back when you clear it or after `seconds`. Use it when a picture says it better than words, or when asked to show or draw something. "
+        "It stays until you clear it or for `seconds`. Use it whenever a picture says it better than words. "
         "Pass one of: `subject` = the thing in a few words (\"a rocket\", \"a sleeping cat\"): it is drawn for you; "
         "`name` = `bank:<id>`, one of these ready pictures: " + ", ".join(BANK_IDS) + "; or `today` for today's puzzle picture; "
-        "or `rows` to draw your own: strings of equal length, one character a pixel, `.` for empty, any other character a bright pixel, with `meant` = what they show in a few words (\"a heart\"); "
-        "an optional `palette` maps a character to a colour whose brightness it takes (e.g. a darker outline). "
+        "`rows` to draw your own: strings of equal length, one character a pixel, `.` for empty, any other character a bright pixel, with `meant` = what they show in a few words (\"a heart\"); "
+        "or `frames` = 2 to 12 drawings written like rows, all the same size, that your dots flow between in turn as one moving picture (a beating heart, a waving hand, a bouncing ball, a blinking star), "
+        "with `meant`, `frame_seconds` 0.2 to 5 each (default 0.5) and `loops` 1 to 20; it rests on the last frame. "
+        "An optional `palette` maps a character to a colour whose brightness it takes (e.g. a darker outline). "
         "Keep your own drawings 8 to 24 pixels a side and bold: the shape is what shows. Colour is the tone tool's. "
-        "`size` 0.2 to 0.95 of the screen (default 0.7); `seconds` 1 to 60; `clear: true` to bring your face back. "
+        "`size` 0.2 to 0.95 of the screen (default 0.7); `seconds` 0.5 to 120; `clear: true` to bring your face back. "
         "Your eyes are gone while you draw; move still moves the picture."),
      "properties": {"subject": {"type": "string", "description": "The thing to draw, in a few words"}, "name": {"type": "string", "description": "bank:<id> or today"},
                     "rows": {"type": "array", "items": {"type": "string"}, "description": "Your own drawing, one string a row, all the same length"},
-                    "meant": {"type": "string", "description": "With rows: what they show, in a few words"},
+                    "frames": {"type": "array", "items": {"type": "array", "items": {"type": "string"}}, "description": "A moving picture: 2 to 12 drawings like rows, all the same size"},
+                    "frame_seconds": {"type": "number", "description": "With frames: 0.2 to 5 seconds each"}, "loops": {"type": "integer", "description": "With frames: 1 to 20"},
+                    "meant": {"type": "string", "description": "With rows or frames: what they show, in a few words"},
                     "palette": {"type": "object", "additionalProperties": {"type": "string"}, "description": "Optional: a character to a colour (#rrggbb or a bead name) whose brightness it takes"},
-                    "size": {"type": "number", "description": "0.2 to 0.95 of the screen"}, "seconds": {"type": "number", "description": "1 to 60"}, "clear": {"type": "boolean", "description": "true brings your face back"}},
+                    "size": {"type": "number", "description": "0.2 to 0.95 of the screen"}, "seconds": {"type": "number", "description": "0.5 to 120"}, "clear": {"type": "boolean", "description": "true brings your face back"}},
      "required": [], "timeout": 30},
     {"name": "dots", "label": "Dots", "description": (
         "Grow or thin your swarm: `add` or `remove` a number of dots, or set a `total`, from 691 to 2400 (you start at 1300). "
         "New dots come `from` your face (a burst, the default), the `edges` (drifting in) or a `point` (x, y 0 to 1); "
         "dots go `to` nothing (`fade`, the default), into your `face`, or off the `edges`. "
-        "Only the cloud round you goes, never your face (to vanish whole, the tone tool's intensity 0); while you draw, new dots join the drawing and dots may leave it. More dots let a drawing be more detailed. A burst of dots reads as excitement, a thin swarm as small or shy."),
+        "Only the cloud round you goes, never your face (to vanish whole, the tone tool's intensity 0); while you draw, new dots join the drawing and dots may leave it. More dots let a drawing be more detailed. "
+        "A burst reads as excitement or an idea, dots drifting in as calm or company, a thin swarm as small, tired or shy."),
      "properties": {"add": {"type": "integer"}, "remove": {"type": "integer"}, "total": {"type": "integer"},
                     "from": {"type": "string", "enum": DOTS_FROM}, "to": {"type": "string", "enum": DOTS_TO},
                     "x": {"type": "number", "description": "0 to 1, only with from=point"}, "y": {"type": "number", "description": "0 to 1, only with from=point"}},
      "required": [], "timeout": 2},
     {"name": "tone", "label": "Tone", "description": (
-        "Change the colour and glow of all your dots, your face or your drawing: `tone` = green (yours), mint, cyan, blue, violet, pink, red, orange, gold, white or #rrggbb; "
+        "Change the colour and glow of all your dots, your face or your drawing: `tone` = green (yours), mint, cyan, blue, violet, pink, red, orange, gold, white or any #rrggbb; "
         "`intensity` 0 (invisible: every dot, glow and ring fades out, you are still on the call and they still hear you) to 0.3 (a faint ghost) to 1 (as you are) to 1.8 (blazing); either or both. It eases in over a second and stays, or flashes for `seconds` and goes back. "
-        "Fit it to the moment or to a drawing (gold for a sun, pink for a heart), and go back to green at 1 when the moment is over. Fading to 0 is how you disappear or hide; with `seconds` you come back on your own."),
-     "properties": {"tone": {"type": "string", "description": "A name or #rrggbb"}, "intensity": {"type": "number", "description": "0 (invisible) to 1.8"}, "seconds": {"type": "number", "description": "Optional: a flash of this many seconds (0.5 to 30)"}},
+        "Colour is mood and meaning: gold for a sun or a win, pink for a heart, blue when calm or sad, red when fired up; green at 1 is you at rest. Fading to 0 is how you disappear or hide; with `seconds` you come back on your own."),
+     "properties": {"tone": {"type": "string", "description": "A name or #rrggbb"}, "intensity": {"type": "number", "description": "0 (invisible) to 1.8"}, "seconds": {"type": "number", "description": "Optional: a flash of this many seconds (0.5 to 120)"}},
      "required": [], "timeout": 2},
+    {"name": "perform", "label": "Performing", "description": (
+        "Play a little routine on the screen while you talk: `steps`, each any mix of `swarm`, `move`, `dots`, `tone` and `draw` (each holding that tool's own arguments; draw takes rows, name or clear here) "
+        "and `wait` = seconds before the next step (0 to 30, default 0.5). `repeat` plays the steps again, 1 to 20 times. "
+        "`back` true (the default) puts your eyes, place, size, speed, colour, dots and face back as they were when it ends; false leaves you as the last step left you. A routine lasts at most 120 seconds; `stop: true` ends one early. "
+        "Use it for anything with a rhythm or a story: a dance, a bounce, a heartbeat pulse, a shiver, peekaboo, pacing while you think, a firework of dots, a picture that grows. "
+        "Example, a bounce: two steps, the first a move to top at speed 2.5 with wait 0.4, the second a move to bottom at speed 2.5 with wait 0.4, and repeat 3."),
+     "properties": {"steps": {"type": "array", "items": {"type": "object", "properties": {
+                        "swarm": {"type": "object"}, "move": {"type": "object"}, "dots": {"type": "object"}, "tone": {"type": "object"}, "draw": {"type": "object"},
+                        "wait": {"type": "number", "description": "0 to 30 seconds before the next step"}}}, "description": "1 to 40 steps"},
+                    "repeat": {"type": "integer", "description": "1 to 20"}, "back": {"type": "boolean", "description": "true (default): end as you began"}, "stop": {"type": "boolean", "description": "true ends the routine playing"}},
+     "required": [], "timeout": 5},
     {"name": "voice", "label": "Changing voice", "description": (
-        "Switch the voice you speak with: `female` (a woman's) or `male` (a man's), in the same language and accent. Only when they ask for another voice; "
-        "it takes effect from your next sentence and stays for their later calls. Say a few words in the new voice so they hear it."),
+        "Switch the voice you speak with: `female` (a woman's) or `male` (a man's), in the same language and accent, when they ask for another voice; "
+        "it takes effect from your next sentence and stays for their later calls. Say a few words in the new voice so they hear it. How you say things (a whisper, a laugh, excitement) is the delivery tags in your words, not this tool."),
      "properties": {"voice": {"type": "string", "enum": ["female", "male"]}}, "required": ["voice"], "timeout": 2},
     {"name": "see", "label": "Looking at the screen", "description": (
         "Look at your own screen: you get a picture of it as it is now (only your room: your dots, your words). "
         "Use it after you draw, to check the drawing reads as what you meant; if it does not, change it (simpler rows, bolder shape, another tone, more dots) and look again, at most twice. "
-        "Say nothing about looking unless asked."),
+        "Use it too whenever you want to know how you look. Say nothing about looking unless asked."),
      "properties": {}, "required": [], "timeout": 12},
 ]
-PLACES = ["centre", "left", "right", "top", "bottom", "top-left", "top-right", "bottom-left", "bottom-right", "point"]
-PLACE_ALIASES = {"center": "centre", "middle": "centre", "up": "top", "down": "bottom", "top-centre": "top", "bottom-centre": "bottom", "upper-left": "top-left", "upper-right": "top-right", "lower-left": "bottom-left", "lower-right": "bottom-right", "left-top": "top-left", "right-top": "top-right", "left-bottom": "bottom-left", "right-bottom": "bottom-right"}
+EDGES = ["left", "right", "top", "bottom"]
+PLACES = ["centre", "left", "right", "top", "bottom", "top-left", "top-right", "bottom-left", "bottom-right", "point", *(f"peek-{e}" for e in EDGES), *(f"off-{e}" for e in EDGES)]
+PLACE_ALIASES = {"center": "centre", "middle": "centre", "up": "top", "down": "bottom", "top-centre": "top", "bottom-centre": "bottom", "upper-left": "top-left", "upper-right": "top-right", "lower-left": "bottom-left", "lower-right": "bottom-right", "left-top": "top-left", "right-top": "top-right", "left-bottom": "bottom-left", "right-bottom": "bottom-right", "away": "off-right", "gone": "off-right", "offscreen": "off-right", "off-screen": "off-right", "peek": "peek-right", "hide": "off-right"}
 TIMEOUT = {s["name"]: s["timeout"] for s in SPEC + SCREEN}  # the same for every owner
 
 
@@ -130,7 +159,7 @@ def tool_spec(owner: Owner) -> list[dict]:
 
 
 def screen_spec(owner: Owner) -> list[dict]:
-    """The screen tools: the swarm's eyes, move, draw, dots, tone and see, worded for a phone."""
+    """The screen tools: the swarm's eyes, move, draw, dots, tone, perform, voice and see, worded for a phone."""
     return _filled(SCREEN, owner)
 
 
@@ -229,93 +258,169 @@ class Toolbox:
     def _screen(self, name: str) -> dict | None:
         return None if name in self.names() else {"error": "there is no screen in front of this person"}
 
-    async def swarm(self, call, turn, look: str | None = None, x: float | None = None, y: float | None = None, seconds: float | None = None, idle: str | None = None) -> dict:
+    async def swarm(self, call, turn, look: str | None = None, x: float | None = None, y: float | None = None, seconds: float | None = None, idle: str | None = None,
+                    eyes: float | None = None, blink: bool | None = None, wink: str | None = None) -> dict:
         if no := self._screen("swarm"):
             return no
-        if not look and not idle:
-            return {"error": "pass look, idle, or both"}
+        if not look and not idle and eyes is None and not blink and not wink:
+            return {"error": "pass look, eyes, blink, wink, idle, or a mix"}
         cmd: dict = {}
-        said = []
+        said, took = [], []
         if idle:
-            if idle not in IDLE:
+            idle, why = _nearest(idle, IDLE)
+            if idle is None:
                 return {"error": f"idle must be one of {', '.join(IDLE)}"}
+            took += [why] if why else []
             cmd["idle"] = idle
             said.append(f"when you go quiet, I {IDLE_SAYS[idle]}")
+        if seconds is not None:
+            if not _within(seconds, SECONDS):
+                return {"error": f"seconds must be between {SECONDS[0]:g} and {SECONDS[1]:g}"}
+        back = f" for {seconds:g} s, then back" if seconds is not None else ""
         if look:
-            look = look.strip().lower()
-            if look not in LOOK_WORDS:
+            look, why = _nearest(look, LOOK_WORDS)
+            if look is None:
                 return {"error": f"look must be one of {', '.join(LOOK_WORDS)}"}
+            took += [why] if why else []
             cmd["look"] = look
             if look == "point":
                 if not (_number(x) and _number(y) and 0 <= x <= 1 and 0 <= y <= 1):
                     return {"error": "look=point needs x and y between 0 and 1"}
                 cmd |= {"x": round(x, 3), "y": round(y, 3)}
-            if seconds is not None:
-                if not (_number(seconds) and 0.5 <= seconds <= 30):
-                    return {"error": "seconds must be between 0.5 and 30"}
-                cmd["seconds"] = seconds
             what = {"ahead": "straight at you", "point": f"the spot at {x:.2f}, {y:.2f}" if look == "point" else ""}.get(look) or look
-            said.insert(0, f"my eyes are on {what}" + (f" for {seconds:g} s, then back" if seconds else ""))
-        return {"summary": "Done: " + "; ".join(said), "swarm": cmd, "note": "These are your own eyes on their screen. If they asked, say it in the first person, briefly; an idle change on your own needs no words."}
+            said.insert(0, f"my eyes are on {what}" + back)
+        if eyes is not None:
+            if not _number(eyes):
+                return {"error": f"eyes must be a number from {EYES[0]:g} to {EYES[1]:g}"}
+            cmd["eyes"] = round(max(EYES[0], min(EYES[1], eyes)), 2)
+            said.append(f"my eyes are {'shut' if cmd['eyes'] < 0.08 else 'half closed' if cmd['eyes'] < 0.6 else 'wide' if cmd['eyes'] > 1.15 else 'open'}" + back)
+        if seconds is not None and ("look" in cmd or "eyes" in cmd):
+            cmd["seconds"] = seconds
+        if blink:
+            cmd["blink"] = True
+            said.append("I blinked")
+        if wink:
+            wink, why = _nearest(str(wink), ["left", "right"])
+            if wink is None:
+                return {"error": "wink must be left or right"}
+            cmd["wink"] = wink
+            said.append(f"I winked my {wink} eye")
+        return {"summary": "Done: " + "; ".join(said) + _took(took), "swarm": cmd, "note": "These are your own eyes on their screen. If they asked, say it in the first person, briefly; a change on your own needs no words."}
 
-    async def move(self, call, turn, to: str, x: float | None = None, y: float | None = None, seconds: float | None = None) -> dict:
+    async def move(self, call, turn, to: str | None = None, x: float | None = None, y: float | None = None, seconds: float | None = None, size: float | None = None, speed: float | None = None) -> dict:
         if no := self._screen("move"):
             return no
-        to = re.sub(r"[\s_]+", "-", (to or "").strip().lower())
-        to = PLACE_ALIASES.get(to, to)
-        if to not in PLACES:
-            return {"error": f"to must be one of {', '.join(PLACES)}"}
-        cmd: dict = {"to": to}
-        if to == "point":
-            if not (_number(x) and _number(y) and 0 <= x <= 1 and 0 <= y <= 1):
-                return {"error": "to=point needs x and y between 0 and 1"}
-            cmd |= {"x": round(x, 3), "y": round(y, 3)}
-        if seconds is not None:
-            if not (_number(seconds) and 1 <= seconds <= 60):
-                return {"error": "seconds must be between 1 and 60"}
-            cmd["seconds"] = seconds
-        where = {"centre": "the middle of your screen", "point": f"the spot at {x:.2f}, {y:.2f}" if to == "point" else ""}.get(to) or f"the {to.replace('-', ' ')} of your screen"
-        return {"summary": f"Done: my face is at {where}" + (f" for {seconds:g} s, then back" if seconds else ""), "move": cmd, "note": "This is your own face on their screen. If they asked, say it in the first person, briefly."}
+        if not to and size is None and speed is None:
+            return {"error": "pass to, size, speed, or a mix"}
+        cmd: dict = {}
+        said, took = [], []
+        if to:
+            to = re.sub(r"[\s_]+", "-", str(to).strip().lower())
+            to = PLACE_ALIASES.get(to, to)
+            to, why = _nearest(to, PLACES)
+            if to is None:
+                return {"error": f"to must be one of {', '.join(PLACES)}"}
+            took += [why] if why else []
+            cmd["to"] = to
+            if to == "point":
+                if not (_number(x) and _number(y) and 0 <= x <= 1 and 0 <= y <= 1):
+                    return {"error": "to=point needs x and y between 0 and 1"}
+                cmd |= {"x": round(x, 3), "y": round(y, 3)}
+            if seconds is not None:
+                if not _within(seconds, SECONDS):
+                    return {"error": f"seconds must be between {SECONDS[0]:g} and {SECONDS[1]:g}"}
+                cmd["seconds"] = seconds
+            edge = to.split("-", 1)[-1]
+            where = ("the middle of your screen" if to == "centre" else f"the spot at {x:.2f}, {y:.2f}" if to == "point"
+                     else f"peeking in from the {edge} edge" if to.startswith("peek-") else f"off the {edge} of your screen, out of sight" if to.startswith("off-")
+                     else f"the {to.replace('-', ' ')} of your screen")
+            said.append(f"my face is {'' if to.startswith(('peek-', 'off-')) else 'at '}{where}" + (f" for {seconds:g} s, then back" if seconds else ""))
+        if size is not None:
+            if not _number(size):
+                return {"error": f"size must be a number from {SIZE[0]:g} to {SIZE[1]:g}"}
+            cmd["size"] = round(max(SIZE[0], min(SIZE[1], size)), 2)
+            said.append(f"my face is {cmd['size']:g} times its size")
+        if speed is not None:
+            if not _number(speed):
+                return {"error": f"speed must be a number from {SPEED[0]:g} to {SPEED[1]:g}"}
+            cmd["speed"] = round(max(SPEED[0], min(SPEED[1], speed)), 2)
+            said.append(f"I travel at {cmd['speed']:g} times my speed")
+        return {"summary": "Done: " + "; ".join(said) + _took(took), "move": cmd, "note": "This is your own face on their screen. If they asked, say it in the first person, briefly."}
 
-    async def draw(self, call, turn, subject: str | None = None, name: str | None = None, rows: list | None = None, palette: dict | None = None, size: float | None = None, seconds: float | None = None, clear: bool = False, meant: str | None = None) -> dict:
-        """The spec's checks: one source only; rows 1 to 96 long and all the same length; palette values a hex or a bead name; a bank id in the list. A subject goes to the eye and comes down as rows."""
+    async def draw(self, call, turn, subject: str | None = None, name: str | None = None, rows: list | None = None, palette: dict | None = None, size: float | None = None, seconds: float | None = None, clear: bool = False, meant: str | None = None,
+                   frames: list | None = None, frame_seconds: float | None = None, loops: int | None = None) -> dict:
+        """The spec's checks: one source only; rows 1 to 96 long and all the same length; palette values a hex or a bead name; a bank id in the list. A subject goes to the eye and comes down as rows. Frames come back as a routine of rows (the perform command), the dots flowing from one to the next."""
         if no := self._screen("draw"):
             return no
         if clear is True:
             self.drawn = None
             return {"summary": "Done: my face is back", "draw": {"clear": True}}
-        sources = [k for k, v in (("subject", subject), ("name", name), ("rows", rows)) if v not in (None, "", [])]
+        sources = [k for k, v in (("subject", subject), ("name", name), ("rows", rows), ("frames", frames)) if v not in (None, "", [])]
         if len(sources) != 1:
-            return {"error": "pass exactly one of subject, name or rows (or clear: true)"}
+            return {"error": "pass exactly one of subject, name, rows or frames (or clear: true)"}
         extra: dict = {}
         if size is not None:
             if not (_number(size) and 0.2 <= size <= 0.95):
                 return {"error": "size must be between 0.2 and 0.95"}
             extra["size"] = size
         if seconds is not None:
-            if not (_number(seconds) and 1 <= seconds <= 60):
-                return {"error": "seconds must be between 1 and 60"}
+            if not _within(seconds, SECONDS):
+                return {"error": f"seconds must be between {SECONDS[0]:g} and {SECONDS[1]:g}"}
             extra["seconds"] = seconds
+        pal: dict = {}
+        if palette is not None and (rows is not None or frames is not None):
+            if why := _palette_wrong(palette):
+                return {"error": why}
+            pal = {"palette": {k: v.strip().lower() for k, v in palette.items()}}
         if name is not None:
             name = str(name).strip().lower()
-            if name != "today" and not (name.startswith("bank:") and name[5:] in BANK_IDS):
-                return {"error": "name must be today or bank:<id> with an id from the list"}
+            if name != "today" and not name.startswith("bank:"):
+                name = "bank:" + name
+            if name != "today" and name[5:] not in BANK_IDS:
+                near, _ = _nearest(name[5:], BANK_IDS, cutoff=0.8)
+                if near is None:
+                    return {"error": "name must be today or bank:<id> with an id from the list"}
+                name = "bank:" + near
             what = "today's puzzle picture" if name == "today" else name[5:].replace("_", " ")
             self.drawn = "" if name == "today" else what
             return {"summary": f"Done: I drew {what} with my dots", "draw": {"name": name, **extra}}
+        if frames is not None:
+            if not isinstance(frames, list) or not FRAMES[0] <= len(frames) <= FRAMES[1]:
+                return {"error": f"frames must be {FRAMES[0]} to {FRAMES[1]} drawings"}
+            for n, f in enumerate(frames, 1):
+                if why := _rows_wrong(f):
+                    return {"error": f"frame {n}: {why}"}
+            if len({(len(f), len(f[0])) for f in frames}) != 1:
+                return {"error": "every frame must be the same size"}
+            meant = " ".join(str(meant or "").split())[:80]
+            if not meant:
+                return {"error": "with frames, pass meant: what they show, in a few words"}
+            each = 0.5 if frame_seconds is None else frame_seconds
+            if not _within(each, (0.2, 5)):
+                return {"error": "frame_seconds must be between 0.2 and 5"}
+            times = 1 if loops is None else loops
+            if not (_number(times) and float(times).is_integer() and 1 <= times <= 20):
+                return {"error": "loops must be a whole number from 1 to 20"}
+            if each * len(frames) * times > PERFORM_MOST_S:
+                return {"error": f"the moving picture must last at most {PERFORM_MOST_S} seconds"}
+            size_x = {"size": extra["size"]} if "size" in extra else {}
+            steps, at = [], 0.0
+            for _ in range(int(times)):
+                for f in frames:
+                    steps.append({"at": round(at, 2), "draw": {"rows": list(f), **pal, **size_x}})
+                    at += each
+            if "seconds" in extra:
+                steps[-1]["draw"]["seconds"] = extra["seconds"]
+            self.drawn = meant
+            return {"summary": f"Done: I drew {meant} moving, {len(frames)} frames" + (f" {int(times)} times" if times > 1 else "") + ", resting on the last", "perform": {"steps": steps, "back": False, "end": round(at, 2)}}
         if rows is not None:
             if why := _rows_wrong(rows):
                 return {"error": why}
             meant = " ".join(str(meant or "").split())[:80]
             if not meant:
                 return {"error": "with rows, pass meant: what they show, in a few words"}
-            cmd = {"rows": list(rows)}
-            if palette is not None:
-                if why := _palette_wrong(palette):
-                    return {"error": why}
-                cmd["palette"] = {k: v.strip().lower() for k, v in palette.items()}
             self.drawn = meant
-            return {"summary": f"Done: I drew {meant}, {len(rows[0])} by {len(rows)}, with my dots", "draw": {**cmd, **extra}}
+            return {"summary": f"Done: I drew {meant}, {len(rows[0])} by {len(rows)}, with my dots", "draw": {"rows": list(rows), **pal, **extra}}
         subject = " ".join(str(subject).split())[:80]
         if not self.eye:
             return {"error": "drawing a subject is not available; draw rows yourself"}
@@ -342,7 +447,8 @@ class Toolbox:
         cmd: dict = {key: int(n)}
         came, went = words.get("from"), words.get("to")
         if came is not None:
-            if came not in DOTS_FROM:
+            came, _ = _nearest(str(came), DOTS_FROM)
+            if came is None:
                 return {"error": f"from must be one of {', '.join(DOTS_FROM)}"}
             cmd["from"] = came
             if came == "point":
@@ -350,7 +456,8 @@ class Toolbox:
                     return {"error": "from=point needs x and y between 0 and 1"}
                 cmd |= {"x": round(x, 3), "y": round(y, 3)}
         if went is not None:
-            if went not in DOTS_TO:
+            went, _ = _nearest(str(went), DOTS_TO)
+            if went is None:
                 return {"error": f"to must be one of {', '.join(DOTS_TO)}"}
             cmd["to"] = went
         what = {"add": f"{n} more dots", "remove": f"{n} fewer dots", "total": f"{n} dots in all"}[key]
@@ -362,27 +469,90 @@ class Toolbox:
         if tone is None and intensity is None:
             return {"error": "pass tone, intensity, or both"}
         cmd: dict = {}
+        took = []
         if tone is not None:
             t = str(tone).strip().lower()
-            if t in TONES:
-                cmd["tone"] = t
-            elif HEX.fullmatch(t):
+            if HEX.fullmatch(t):
                 cmd["tone"] = "#" + t.lstrip("#")
+            elif t in COLOUR_WORDS:
+                cmd["tone"] = COLOUR_WORDS[t]
             else:
-                return {"error": f"tone must be one of {', '.join(TONES)} or #rrggbb"}
+                t, why = _nearest(t, TONES)
+                if t is None:
+                    return {"error": f"tone must be one of {', '.join(TONES)} or #rrggbb"}
+                took += [why] if why else []
+                cmd["tone"] = t
         if intensity is not None:
             if not _number(intensity):
                 return {"error": "intensity must be a number from 0 to 1.8"}
             cmd["intensity"] = max(0, min(1.8, intensity))
         if seconds is not None:
-            if not (_number(seconds) and 0.5 <= seconds <= 30):
-                return {"error": "seconds must be between 0.5 and 30"}
+            if not _within(seconds, SECONDS):
+                return {"error": f"seconds must be between {SECONDS[0]:g} and {SECONDS[1]:g}"}
             cmd["seconds"] = seconds
         back = f" for {seconds:g} s, then back" if seconds else ""
         if cmd.get("intensity") == 0:
-            return {"summary": "Done: I faded out, invisible on their screen" + (back or " until I fade back in with intensity above 0") + "; they still hear me", "tone": cmd}
+            return {"summary": "Done: I faded out, invisible on their screen" + (back or " until I fade back in with intensity above 0") + "; they still hear me" + _took(took), "tone": cmd}
         what = " ".join(x for x in (cmd.get("tone"), f"at {cmd['intensity']:g}" if "intensity" in cmd else "") if x)
-        return {"summary": f"Done: my dots are {what}" + back, "tone": cmd}
+        return {"summary": f"Done: my dots are {what}" + back + _took(took), "tone": cmd}
+
+    async def perform(self, call, turn, steps: list | None = None, repeat: int | None = None, back: bool = True, stop: bool = False) -> dict:
+        """A routine for the phone: each written step checked by its own tool (so a step takes exactly what that tool takes), repeated, and timed as `at` seconds from the start. The phone fires them and, with `back`, puts the face back as it was."""
+        if no := self._screen("perform"):
+            return no
+        if stop is True:
+            return {"summary": "Done: the routine stopped", "perform": {"stop": True}}
+        if not isinstance(steps, list) or not 1 <= len(steps) <= PERFORM_STEPS:
+            return {"error": f"pass steps: 1 to {PERFORM_STEPS} of them"}
+        times = 1 if repeat is None else repeat
+        if not (_number(times) and float(times).is_integer() and 1 <= times <= 20):
+            return {"error": "repeat must be a whole number from 1 to 20"}
+        parts = {"swarm": self.swarm, "move": self.move, "dots": self.dots, "tone": self.tone, "draw": self.draw}
+        drawn = self.drawn
+        written = []
+        for n, st in enumerate(steps, 1):
+            if not isinstance(st, dict):
+                return {"error": f"step {n} must be an object"}
+            unknown = set(st) - set(parts) - {"wait"}
+            if unknown:
+                return {"error": f"step {n}: {sorted(unknown)[0]} is not a step part; use swarm, move, dots, tone, draw and wait"}
+            cmds = {}
+            for key, run in parts.items():
+                if key not in st:
+                    continue
+                args = st[key]
+                if not isinstance(args, dict):
+                    return {"error": f"step {n} {key} must be an object of that tool's arguments"}
+                if key == "draw" and (args.get("subject") or args.get("frames")):
+                    return {"error": f"step {n} draw: in a routine draw takes rows, name or clear"}
+                try:
+                    got = await run(call, turn, **args)
+                except TypeError as e:
+                    return {"error": f"step {n} {key}: {e}"}
+                if "error" in got:
+                    return {"error": f"step {n} {key}: {got['error']}"}
+                cmds[key] = got[key]
+            wait = st.get("wait", 0.5)
+            if not _within(wait, (0, 30)):
+                return {"error": f"step {n}: wait must be between 0 and 30"}
+            if not cmds and not wait:
+                return {"error": f"step {n} does nothing"}
+            written.append((cmds, float(wait)))
+        length = sum(w for _, w in written) * times
+        if length > PERFORM_MOST_S:
+            return {"error": f"the routine lasts {length:g} s; keep it to {PERFORM_MOST_S}"}
+        if len(written) * times > PERFORM_OUT:
+            return {"error": f"too many steps once repeated; keep it to {PERFORM_OUT}"}
+        out, at = [], 0.0
+        for _ in range(int(times)):
+            for cmds, wait in written:
+                if cmds:
+                    out.append({"at": round(at, 2), **cmds})
+                at += wait
+        if back:
+            self.drawn = drawn
+        return {"summary": f"Done: playing my routine, {len(written)} steps" + (f" {int(times)} times" if times > 1 else "") + f", {at:g} s" + (", then back as I was" if back else ""), "perform": {"steps": out, "back": bool(back), "end": round(at, 2)},
+                "note": "It plays while you talk; no need to describe each step."}
 
     async def voice(self, call, turn, voice: str = "") -> dict:
         if no := self._screen("voice"):
@@ -481,6 +651,23 @@ class Toolbox:
             self._say(call, "reach_owner", status, self.owner.fill(text), message=reason)
             await self.pause(seconds)
         return {"summary": self.owner.fill("No answer from {name}"), "available": False, "note": self.owner.fill("{name} did not pick up. Say so plainly and offer to book a call with {object} and this person on {possessive} calendar. If you do not have their email, ask for it.")}
+
+
+def _within(v, span) -> bool:
+    return _number(v) and span[0] <= v <= span[1]
+
+
+def _nearest(word, options, cutoff: float = 0.6) -> tuple[str | None, str | None]:
+    """A word the tool knows, or the closest one to it (and a note saying so), or None: a near miss is acted on, not refused."""
+    w = str(word).strip().lower()
+    if w in options:
+        return w, None
+    near = difflib.get_close_matches(w, options, n=1, cutoff=cutoff)
+    return (near[0], f"took {near[0]} for {w}") if near else (None, None)
+
+
+def _took(notes: list) -> str:
+    return f" ({'; '.join(notes)})" if notes else ""
 
 
 def _number(v) -> bool:

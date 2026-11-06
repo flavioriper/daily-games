@@ -66,7 +66,7 @@ const MIC_PERMISSION := "RECORD_AUDIO"
 ## How long the permission's answer is waited for before it counts as refused.
 const PERMISSION_WAIT := 30.0
 const LANGS := ["en", "pt", "es"]
-const TOOLS := ["swarm", "move", "draw", "dots", "tone"]
+const TOOLS := ["swarm", "move", "draw", "dots", "tone", "perform"]
 ## A call's end, by `ended`'s reason, to the status line ("" says nothing).
 ## A `bye` that reaches here was not the screen's (its own are ignored): the
 ## server's fifteen minutes, its error closing 1000, or BotCall's own cap.
@@ -515,8 +515,7 @@ func _tool(name: String, msg: Dictionary) -> void:
 		"swarm":
 			face.apply_swarm(cmd)
 		"move":
-			if cmd.has("to"):
-				face.apply_move(cmd)
+			face.apply_move(cmd)
 		"draw":
 			face.apply_draw(cmd)
 			_judging = not bool(cmd.get("clear", false))
@@ -524,6 +523,8 @@ func _tool(name: String, msg: Dictionary) -> void:
 			face.apply_dots(cmd)
 		"tone":
 			face.apply_tone(cmd)
+		"perform":
+			face.apply_perform(cmd)
 
 
 func _on_ended(reason: String) -> void:
